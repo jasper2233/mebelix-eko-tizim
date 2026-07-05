@@ -1,0 +1,25 @@
+from typing import TYPE_CHECKING
+
+from sqlalchemy import String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from .base import BaseModel
+
+if TYPE_CHECKING:
+    from .item import Item
+
+
+class User(BaseModel):
+    __tablename__ = "user"
+
+    name: Mapped[str | None] = mapped_column(String(30), kw_only=True)
+    username: Mapped[str] = mapped_column(String(20), unique=True, index=True, kw_only=True)
+    # E.164 Uzbek mobile: '+998' + 9 digits = 13 chars total. Stored canonical, no spaces.
+    phone: Mapped[str] = mapped_column(String(13), unique=True, index=True, kw_only=True)
+    hashed_password: Mapped[str] = mapped_column(String, kw_only=True)
+
+    is_active: Mapped[bool] = mapped_column(default=True, kw_only=True)
+    is_superuser: Mapped[bool] = mapped_column(default=False, kw_only=True)
+    token_version: Mapped[int] = mapped_column(default=0, server_default="0", kw_only=True)
+
+    items: Mapped[list["Item"]] = relationship("Item", back_populates="owner", cascade="all, delete-orphan", init=False)  # type: ignore

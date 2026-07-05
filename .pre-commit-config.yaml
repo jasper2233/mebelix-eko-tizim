@@ -1,0 +1,37 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-toml
+      - id: check-yaml
+        args:
+          - --unsafe
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.13.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      # mypy needs the project's installed environment (it imports app modules), so it stays as a
+      # local hook. `make install` (uv sync) is a setup prerequisite — already part of `make setup`.
+      - id: mypy
+        name: mypy
+        entry: uv --directory backend run mypy app
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      # biome runs from `frontend/` so it picks up `biome.json`. `npm install` is a setup prereq.
+      - id: biome-check
+        name: biome check (frontend)
+        entry: bash -c 'cd frontend && npx --no-install biome check --no-errors-on-unmatched --files-ignore-unknown=true ./'
+        language: system
+        files: ^frontend/.*\.(ts|tsx|js|jsx|json|css)$
+        pass_filenames: false

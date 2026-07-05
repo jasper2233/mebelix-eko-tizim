@@ -1,0 +1,96 @@
+
+# Variables
+export PYTHONPATH := backend
+WORKER_SETTINGS := app.core.worker.WorkerSettings
+
+.PHONY: help
+help: ## Show this help message
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: setup
+setup: ## Run initial setup (install, env, migrations, pre-commit)
+	./scripts/setup.sh
+	@make install-hooks
+
+.PHONY: install-hooks
+install-hooks: ## Install git hooks (pre-commit)
+	uv --project backend run pre-commit install
+
+.PHONY: install
+install: ## Install dependencies using uv
+	uv --project backend sync
+
+.PHONY: run-backend
+run-backend: ## Run the FastAPI application locally with reload
+	uv --project backend run uvicorn app.main:app --reload
+
+.PHONY: worker
+worker: ## Run the ARQ background worker
+	uv --project backend run arq $(WORKER_SETTINGS)
+
+# Frontend
+.PHONY: run-frontend
+run-frontend: ## Run frontend development server
+	cd frontend && npm run dev
+
+.PHONY: frontend-install
+frontend-install: ## Install frontend dependencies
+	cd frontend && npm install
+
+.PHONY: frontend-build
+frontend-build: ## Build frontend for production
+	cd frontend && npm run build
+
+.PHONY: frontend-lint
+frontend-lint: ## Run frontend linting checks
+	cd frontend && npm run lint
+
+.PHONY: frontend-gen
+frontend-gen: ## Generate frontend client from OpenAPI spec
+	./scripts/generate-client.sh
+
+.PHONY: lint
+lint: ## Run linting checks (ruff and mypy)
+	uv --project backend run ruff check .
+	cd backend && uv run mypy app
+
+.PHONY: format
+format: ## Run code formatting (ruff)
+	uv --project backend run ruff format .
+	uv --project backend run ruff check . --fix
+
+.PHONY: migrate
+migrate: ## Run database migrations to head
+	cd backend && uv run alembic upgrade head
+
+.PHONY: makemigrations
+makemigrations: ## Create a new database migration (usage: make makemigrations m="migration message")
+	cd backend && uv run alembic revision --autogenerate -m "$(m)"
+
+.PHONY: cmd
+cmd: ## Run a custom command from app.commands (usage: make cmd n="command_name")
+	cd backend && uv run python -m app.commands.$(n)
+
+.PHONY: docker-local
+docker-local: ## Start local development services
+	docker compose -f docker-compose.local.yml up -d
+
+.PHONY: docker-prod
+docker-prod: ## Start production services
+	docker compose -f docker-compose.prod.yml up -d
+
+.PHONY: docker-down
+docker-down: ## Stop all services
+	docker compose -f docker-compose.local.yml down
+	docker compose -f docker-compose.prod.yml down
+
+.PHONY: docker-logs
+docker-logs: ## View docker compose logs
+	docker compose logs -f
+
+.PHONY: clean
+clean: ## Clean up temporary files
+	find . -type d -name "__pycache__" -exec rm -rf {} +
+	find . -type f -name "*.pyc" -delete
+	find . -type d -name ".mypy_cache" -exec rm -rf {} +
+	find . -type d -name ".ruff_cache" -exec rm -rf {} +

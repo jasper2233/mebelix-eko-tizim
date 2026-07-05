@@ -1,0 +1,58 @@
+from typing import Annotated
+
+from fastapi import Depends, Request
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.db import async_get_db
+from app.core.exceptions import ForbiddenException, UnauthorizedException
+from app.core.security import ACCESS_COOKIE_NAME, TokenType, verify_token
+from app.crud import crud_users
+from app.models.user import User
+
+SessionDep = Annotated[AsyncSession, Depends(async_get_db)]
+
+# auto_error=False so a missing Bearer header doesn't 401 — the cookie is tried as a fallback.
+_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/login/access-token", auto_error=False)
+
+
+def _extract_token(request: Request, bearer_token: str | None) -> str | None:
+    """Prefer the explicit Authorization header over the cookie fallback."""
+    return bearer_token or request.cookies.get(ACCESS_COOKIE_NAME)
+
+
+async def _resolve_user(db: AsyncSession, token: str) -> User | None:
+    token_data = verify_token(token, TokenType.ACCESS)
+    if token_data is None:
+        return None
+    user = await crud_users.get_by_login(db=db, identifier=token_data.username_or_phone)
+    if user is None or not user.is_active or user.token_version != token_data.token_version:
+        return None
+    return user
+
+
+async def get_current_user(
+    request: Request,
+    db: SessionDep,
+    bearer_token: Annotated[str | None, Depends(_oauth2_scheme)] = None,
+) -> User:
+    token = _extract_token(request, bearer_token)
+    if not token:
+        raise UnauthorizedException("Tizimga kirilmagan.")
+
+    user = await _resolve_user(db, token)
+    if user is None:
+        raise UnauthorizedException("Tizimga kirilmagan.")
+    return user
+
+
+CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+async def get_current_superuser(current_user: CurrentUser) -> User:
+    if not current_user.is_superuser:
+        raise ForbiddenException("Sizda yetarli huquq yo'q.")
+    return current_user
+
+
+SuperUserDep = Annotated[User, Depends(get_current_superuser)]
