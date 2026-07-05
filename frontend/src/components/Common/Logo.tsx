@@ -30,7 +30,7 @@ export function Logo({
           src={logo}
           alt="MebeliX"
           className={cn(
-            "h-6 w-auto group-data-[collapsible=icon]:hidden",
+            "h-8 w-auto group-data-[collapsible=icon]:hidden",
             className,
           )}
         />
@@ -38,7 +38,7 @@ export function Logo({
           src={icon}
           alt="MebeliX"
           className={cn(
-            "h-5 w-auto hidden group-data-[collapsible=icon]:block",
+            "h-6 w-auto hidden group-data-[collapsible=icon]:block",
             className,
           )}
         />

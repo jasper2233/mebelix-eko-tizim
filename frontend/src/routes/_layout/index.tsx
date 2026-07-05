@@ -18,14 +18,12 @@ function Dashboard() {
 
   return (
     <div>
-      <div>
-        <h1 className="text-2xl truncate max-w-sm">
-          Salom, {currentUser?.name || currentUser?.phone} 👋
-        </h1>
-        <p className="text-muted-foreground">
-          Yana ko'rishganimizdan xursandmiz!
-        </p>
-      </div>
+      <h1 className="text-3xl font-bold tracking-tight">
+        Salom, {currentUser?.name || currentUser?.phone} 👋
+      </h1>
+      <p className="mt-1 text-muted-foreground">
+        Yana ko'rishganimizdan xursandmiz!
+      </p>
     </div>
   )
 }

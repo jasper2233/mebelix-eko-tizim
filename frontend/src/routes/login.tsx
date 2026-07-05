@@ -72,8 +72,13 @@ function Login() {
           onSubmit={form.handleSubmit(onSubmit)}
           className="flex flex-col gap-6"
         >
-          <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-2xl font-bold">Hisobingizga kiring</h1>
+          <div className="flex flex-col gap-1.5">
+            <h1 className="text-3xl font-bold tracking-tight">
+              Hisobingizga kiring
+            </h1>
+            <p className="text-muted-foreground">
+              Davom etish uchun ma'lumotlaringizni kiriting
+            </p>
           </div>
 
           <div className="grid gap-4">
@@ -88,6 +93,7 @@ function Login() {
                       placeholder="foydalanuvchi nomi yoki +998901234567"
                       type="text"
                       autoComplete="username"
+                      className="h-11"
                       {...field}
                     />
                   </FormControl>
@@ -105,14 +111,22 @@ function Login() {
                     <FormLabel>Parol</FormLabel>
                   </div>
                   <FormControl>
-                    <PasswordInput placeholder="Parol" {...field} />
+                    <PasswordInput
+                      placeholder="Parol"
+                      className="h-11"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage className="text-xs" />
                 </FormItem>
               )}
             />
 
-            <LoadingButton type="submit" loading={loginMutation.isPending}>
+            <LoadingButton
+              type="submit"
+              className="h-11 text-base"
+              loading={loginMutation.isPending}
+            >
               Kirish
             </LoadingButton>
           </div>

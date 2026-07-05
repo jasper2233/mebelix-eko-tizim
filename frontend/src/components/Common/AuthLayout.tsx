@@ -13,13 +13,19 @@ export function AuthLayout({ children }: AuthLayoutProps) {
           src="/assets/logo/icon-gold.png"
           alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute -right-24 -bottom-16 w-[28rem] rotate-[-8deg] opacity-[0.07]"
+          className="pointer-events-none absolute -right-14 -bottom-14 w-[26rem] opacity-[0.09] select-none"
         />
-        <Logo variant="full" tone="gold" className="h-16" asLink={false} />
+        <Logo variant="full" tone="gold" className="h-24" asLink={false} />
       </div>
-      <div className="flex flex-col gap-4 p-6 md:p-10">
+      <div className="relative overflow-hidden flex flex-col gap-4 p-6 md:p-10">
+        <img
+          src="/assets/logo/icon-navy.png"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-12 -bottom-12 w-72 opacity-[0.05] select-none lg:hidden"
+        />
         <div className="flex flex-1 items-center justify-center">
-          <div className="w-full max-w-xs">{children}</div>
+          <div className="w-full max-w-md">{children}</div>
         </div>
         <Footer />
       </div>
