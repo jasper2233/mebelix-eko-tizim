@@ -28,13 +28,16 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-4 group-data-[collapsible=icon]:px-2">
         <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-3">
-          <Link to="/" className="flex min-w-0 items-center gap-2.5">
+          <Link
+            to="/"
+            className="flex min-w-0 items-center gap-2.5 group-data-[collapsible=icon]:hidden"
+          >
             <img
               src="/assets/logo/icon-gold.png"
               alt="MebeliX"
-              className="h-8 w-auto shrink-0 group-data-[collapsible=icon]:h-6"
+              className="h-8 w-auto shrink-0"
             />
-            <span className="text-lg font-bold tracking-tight text-white group-data-[collapsible=icon]:hidden">
+            <span className="text-lg font-bold tracking-tight text-white">
               MebeliX
             </span>
           </Link>
