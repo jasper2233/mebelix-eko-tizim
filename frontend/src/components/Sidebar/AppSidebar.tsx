@@ -21,7 +21,7 @@ export function AppSidebar() {
   const { currentUser } = useCurrentUser()
 
   const items = currentUser?.is_superuser
-    ? [...baseItems, { icon: Users, title: "Admin", path: "/admin" }]
+    ? [...baseItems, { icon: Users, title: "Foydalanuvchilar", path: "/admin" }]
     : baseItems
 
   return (

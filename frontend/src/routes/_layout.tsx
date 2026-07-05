@@ -16,7 +16,7 @@ import {
 const sectionTitles: Record<string, string> = {
   "/": "Boshqaruv paneli",
   "/items": "Elementlar",
-  "/admin": "Admin",
+  "/admin": "Foydalanuvchilar",
   "/settings": "Sozlamalar",
 }
 
