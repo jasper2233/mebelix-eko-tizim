@@ -28,13 +28,13 @@ function UserInfo({ fullName, phone }: UserInfoProps) {
   return (
     <div className="flex items-center gap-2.5 w-full min-w-0">
       <Avatar className="size-8">
-        <AvatarFallback className="bg-zinc-600 text-white">
+        <AvatarFallback className="bg-[#f0a52f] font-semibold text-[#1c2b42]">
           {getInitials(fullName || "User")}
         </AvatarFallback>
       </Avatar>
       <div className="flex flex-col items-start min-w-0">
         <p className="text-sm font-medium truncate w-full">{fullName}</p>
-        <p className="text-xs text-muted-foreground truncate w-full">{phone}</p>
+        <p className="text-xs opacity-70 truncate w-full">{phone}</p>
       </div>
     </div>
   )
@@ -65,7 +65,7 @@ export function User({ user }: { user: any }) {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <UserInfo fullName={user?.name} phone={user?.phone} />
-              <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
+              <ChevronsUpDown className="ml-auto size-4 opacity-70" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
