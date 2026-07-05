@@ -29,7 +29,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import useCustomToast from "@/hooks/useCustomToast"
-import { optionalNameSchema, passwordSchema, phoneSchema } from "@/lib/validation"
+import {
+  optionalNameSchema,
+  passwordSchema,
+  phoneSchema,
+} from "@/lib/validation"
 import { handleError } from "@/utils"
 
 const formSchema = z
@@ -37,9 +41,7 @@ const formSchema = z
     phone: phoneSchema,
     name: optionalNameSchema,
     password: passwordSchema,
-    confirm_password: z
-      .string()
-      .min(1, { message: "Parolni tasdiqlang" }),
+    confirm_password: z.string().min(1, { message: "Parolni tasdiqlang" }),
     is_superuser: z.boolean(),
     is_active: z.boolean(),
   })
@@ -146,7 +148,8 @@ const AddUser = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Parol o'rnatish <span className="text-destructive">*</span>
+                      Parol o'rnatish{" "}
+                      <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input

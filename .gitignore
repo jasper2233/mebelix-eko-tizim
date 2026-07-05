@@ -36,7 +36,6 @@ backend/.venv
 .coverage
 .coverage.*
 htmlcov/
-.pytest_cache/
 .tox/
 .nox/
 .cache

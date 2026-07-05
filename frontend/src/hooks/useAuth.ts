@@ -1,7 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 
-import { type Body_login_access_token as AccessToken, LoginService } from "@/client"
+import {
+  type Body_login_access_token as AccessToken,
+  LoginService,
+} from "@/client"
 import { handleError } from "@/utils"
 import useCustomToast from "./useCustomToast"
 

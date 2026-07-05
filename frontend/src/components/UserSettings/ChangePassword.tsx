@@ -22,9 +22,7 @@ const formSchema = z
   .object({
     current_password: passwordSchema,
     new_password: passwordSchema,
-    confirm_password: z
-      .string()
-      .min(1, { message: "Parolni tasdiqlang" }),
+    confirm_password: z.string().min(1, { message: "Parolni tasdiqlang" }),
   })
   .refine((data) => data.new_password === data.confirm_password, {
     message: "Parollar mos emas",

@@ -6,7 +6,6 @@ import { z } from "zod"
 import type { Body_login_access_token as AccessToken } from "@/client"
 import { UsersService } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
-import { passwordSchema } from "@/lib/validation"
 import {
   Form,
   FormControl,
@@ -19,9 +18,12 @@ import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
 import useAuth from "@/hooks/useAuth"
+import { passwordSchema } from "@/lib/validation"
 
 const formSchema = z.object({
-  username: z.string().min(1, { message: "Foydalanuvchi nomi yoki telefon majburiy" }),
+  username: z
+    .string()
+    .min(1, { message: "Foydalanuvchi nomi yoki telefon majburiy" }),
   password: passwordSchema,
 }) satisfies z.ZodType<AccessToken>
 

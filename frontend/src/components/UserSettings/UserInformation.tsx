@@ -19,7 +19,7 @@ import { LoadingButton } from "@/components/ui/loading-button"
 import useCurrentUser from "@/hooks/useCurrentUser"
 import useCustomToast from "@/hooks/useCustomToast"
 import { cn } from "@/lib/utils"
-import { phoneSchema, optionalNameSchema } from "@/lib/validation"
+import { optionalNameSchema, phoneSchema } from "@/lib/validation"
 import { handleError } from "@/utils"
 
 const formSchema = z.object({

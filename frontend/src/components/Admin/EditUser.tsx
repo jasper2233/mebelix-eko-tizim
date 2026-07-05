@@ -29,7 +29,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import useCustomToast from "@/hooks/useCustomToast"
-import { optionalNameSchema, optionalPasswordSchema, phoneSchema } from "@/lib/validation"
+import {
+  optionalNameSchema,
+  optionalPasswordSchema,
+  phoneSchema,
+} from "@/lib/validation"
 import { handleError } from "@/utils"
 
 const formSchema = z
@@ -161,11 +165,7 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
                   <FormItem>
                     <FormLabel>Parol o'rnatish</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Parol"
-                        type="password"
-                        {...field}
-                      />
+                      <Input placeholder="Parol" type="password" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -179,11 +179,7 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
                   <FormItem>
                     <FormLabel>Parolni tasdiqlash</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Parol"
-                        type="password"
-                        {...field}
-                      />
+                      <Input placeholder="Parol" type="password" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

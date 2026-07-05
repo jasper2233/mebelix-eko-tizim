@@ -43,7 +43,9 @@ export const ConfirmDialog = ({
     <DialogContent className="sm:max-w-md">
       <DialogHeader>
         <DialogTitle>{title}</DialogTitle>
-        {description ? <DialogDescription>{description}</DialogDescription> : null}
+        {description ? (
+          <DialogDescription>{description}</DialogDescription>
+        ) : null}
       </DialogHeader>
       <DialogFooter className="mt-4">
         <DialogClose asChild>

@@ -6,9 +6,9 @@ import {
 } from "@tanstack/react-query"
 import { createRouter, RouterProvider } from "@tanstack/react-router"
 import axios from "axios"
+import { ThemeProvider } from "next-themes"
 import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
-import { ThemeProvider } from "next-themes"
 import { ApiError, LoginService, OpenAPI } from "./client"
 import { Toaster } from "./components/ui/sonner"
 import "./index.css"
@@ -35,12 +35,12 @@ const subscribeTokenRefresh = (
 }
 
 const onRefreshed = () => {
-  refreshSubscribers.forEach(({ resolve }) => resolve())
+  for (const { resolve } of refreshSubscribers) resolve()
   refreshSubscribers = []
 }
 
 const onRefreshFailed = (error: unknown) => {
-  refreshSubscribers.forEach(({ reject }) => reject(error))
+  for (const { reject } of refreshSubscribers) reject(error)
   refreshSubscribers = []
 }
 
@@ -115,7 +115,12 @@ declare module "@tanstack/react-router" {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem storageKey="vite-ui-theme">
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      enableSystem
+      storageKey="vite-ui-theme"
+    >
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
         <Toaster richColors closeButton />

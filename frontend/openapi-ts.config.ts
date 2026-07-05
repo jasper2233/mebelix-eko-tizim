@@ -14,8 +14,8 @@ export default defineConfig({
       classNameBuilder: "{{name}}Service",
       methodNameBuilder: (operation) => {
         // @ts-expect-error
-        let name: string = operation.name
-        
+        const name: string = operation.name
+
         // Basic camelCase conversion if needed, though usually operationIds are already good
         return name.charAt(0).toLowerCase() + name.slice(1)
       },

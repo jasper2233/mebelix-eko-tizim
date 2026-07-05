@@ -21,10 +21,8 @@ class Settings(BaseSettings):
     """All application settings, flat. Grouped by `# === Section ===` comments for readability only."""
 
     # === Application ===
-    APP_NAME: str = "FastAPI Fullstack Boilerplate"
-    APP_DESCRIPTION: str | None = (
-        "A production-ready FastAPI boilerplate with authentication, database, and async task queue."
-    )
+    APP_NAME: str = "MebeliX"
+    APP_DESCRIPTION: str | None = "MebeliX API"
     APP_VERSION: str | None = "0.1.0"
     LICENSE_NAME: str | None = "MIT"
     CONTACT_NAME: str | None = None
