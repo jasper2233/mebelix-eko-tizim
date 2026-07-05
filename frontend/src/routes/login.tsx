@@ -42,7 +42,7 @@ export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       {
-        title: "Kirish - FastAPI Cloud",
+        title: "Kirish - MebeliX",
       },
     ],
   }),

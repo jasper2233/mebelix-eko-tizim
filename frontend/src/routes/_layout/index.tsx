@@ -7,7 +7,7 @@ export const Route = createFileRoute("/_layout/")({
   head: () => ({
     meta: [
       {
-        title: "Boshqaruv paneli - FastAPI Cloud",
+        title: "Boshqaruv paneli - MebeliX",
       },
     ],
   }),

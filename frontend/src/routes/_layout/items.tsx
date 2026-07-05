@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_layout/items")({
   head: () => ({
     meta: [
       {
-        title: "Elementlar - FastAPI Cloud",
+        title: "Elementlar - MebeliX",
       },
     ],
   }),
