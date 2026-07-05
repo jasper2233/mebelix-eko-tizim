@@ -1,20 +1,28 @@
 import { Link } from "@tanstack/react-router"
 
 import { cn } from "@/lib/utils"
-import icon from "/assets/logo/icon-navy.png"
-import logo from "/assets/logo/logo-navy.png"
+import iconGold from "/assets/logo/icon-gold.png"
+import iconNavy from "/assets/logo/icon-navy.png"
+import logoGold from "/assets/logo/logo-gold.png"
+import logoNavy from "/assets/logo/logo-navy.png"
 
 interface LogoProps {
   variant?: "full" | "icon" | "responsive"
+  /** navy on light surfaces, gold on navy surfaces */
+  tone?: "navy" | "gold"
   className?: string
   asLink?: boolean
 }
 
 export function Logo({
   variant = "full",
+  tone = "navy",
   className,
   asLink = true,
 }: LogoProps) {
+  const logo = tone === "gold" ? logoGold : logoNavy
+  const icon = tone === "gold" ? iconGold : iconNavy
+
   const content =
     variant === "responsive" ? (
       <>
