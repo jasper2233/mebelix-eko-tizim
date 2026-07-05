@@ -6,7 +6,6 @@ import {
 } from "@tanstack/react-query"
 import { createRouter, RouterProvider } from "@tanstack/react-router"
 import axios from "axios"
-import { ThemeProvider } from "next-themes"
 import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
 import { ApiError, LoginService, OpenAPI } from "./client"
@@ -115,16 +114,9 @@ declare module "@tanstack/react-router" {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="dark"
-      enableSystem
-      storageKey="vite-ui-theme"
-    >
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-        <Toaster richColors closeButton />
-      </QueryClientProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+      <Toaster richColors closeButton />
+    </QueryClientProvider>
   </StrictMode>,
 )

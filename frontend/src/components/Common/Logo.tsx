@@ -1,11 +1,8 @@
 import { Link } from "@tanstack/react-router"
-import { useTheme } from "next-themes"
 
 import { cn } from "@/lib/utils"
 import icon from "/assets/logo/icon-navy.png"
-import iconLight from "/assets/logo/icon-gold.png"
 import logo from "/assets/logo/logo-navy.png"
-import logoLight from "/assets/logo/logo-gold.png"
 
 interface LogoProps {
   variant?: "full" | "icon" | "responsive"
@@ -18,17 +15,11 @@ export function Logo({
   className,
   asLink = true,
 }: LogoProps) {
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
-
-  const fullLogo = isDark ? logoLight : logo
-  const iconLogo = isDark ? iconLight : icon
-
   const content =
     variant === "responsive" ? (
       <>
         <img
-          src={fullLogo}
+          src={logo}
           alt="MebeliX"
           className={cn(
             "h-6 w-auto group-data-[collapsible=icon]:hidden",
@@ -36,7 +27,7 @@ export function Logo({
           )}
         />
         <img
-          src={iconLogo}
+          src={icon}
           alt="MebeliX"
           className={cn(
             "h-5 w-auto hidden group-data-[collapsible=icon]:block",
@@ -46,9 +37,12 @@ export function Logo({
       </>
     ) : (
       <img
-        src={variant === "full" ? fullLogo : iconLogo}
+        src={variant === "full" ? logo : icon}
         alt="MebeliX"
-        className={cn(variant === "full" ? "h-6 w-auto" : "h-5 w-auto", className)}
+        className={cn(
+          variant === "full" ? "h-6 w-auto" : "h-5 w-auto",
+          className,
+        )}
       />
     )
 
