@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import { Briefcase, Home, Users } from "lucide-react"
+import { Home, Users } from "lucide-react"
 
 import {
   Sidebar,
@@ -12,10 +12,7 @@ import useCurrentUser from "@/hooks/useCurrentUser"
 import { type Item, Main } from "./Main"
 import { User } from "./User"
 
-const baseItems: Item[] = [
-  { icon: Home, title: "Boshqaruv paneli", path: "/" },
-  { icon: Briefcase, title: "Elementlar", path: "/items" },
-]
+const baseItems: Item[] = [{ icon: Home, title: "Boshqaruv paneli", path: "/" }]
 
 export function AppSidebar() {
   const { currentUser } = useCurrentUser()
