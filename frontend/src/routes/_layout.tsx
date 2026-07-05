@@ -45,7 +45,7 @@ function Layout() {
           src="/assets/logo/icon-navy.png"
           alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute -right-12 -bottom-12 w-80 opacity-[0.05] select-none"
+          className="pointer-events-none absolute -right-16 -bottom-16 w-[28rem] opacity-[0.05] select-none"
         />
         <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-3 border-b bg-background px-4">
           <SidebarTrigger className="-ml-1 text-muted-foreground" />
