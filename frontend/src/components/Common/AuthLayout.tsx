@@ -1,4 +1,3 @@
-import { Logo } from "@/components/Common/Logo"
 import { Footer } from "./Footer"
 
 interface AuthLayoutProps {
@@ -15,7 +14,11 @@ export function AuthLayout({ children }: AuthLayoutProps) {
           aria-hidden="true"
           className="pointer-events-none absolute -right-16 -bottom-16 w-[36rem] opacity-[0.09] select-none"
         />
-        <Logo variant="full" tone="gold" className="h-24" asLink={false} />
+        <img
+          src="/assets/logo/logo-gold.png"
+          alt="MebeliX"
+          className="h-24 w-auto"
+        />
       </div>
       <div className="relative overflow-hidden flex flex-col gap-4 p-6 md:p-10">
         <img

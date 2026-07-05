@@ -1,11 +1,12 @@
+import { Link } from "@tanstack/react-router"
 import { Briefcase, Home, Users } from "lucide-react"
 
-import { Logo } from "@/components/Common/Logo"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
+  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import useCurrentUser from "@/hooks/useCurrentUser"
 import { type Item, Main } from "./Main"
@@ -25,8 +26,20 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="px-4 py-6 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:items-center">
-        <Logo variant="responsive" tone="gold" />
+      <SidebarHeader className="px-4 py-4 group-data-[collapsible=icon]:px-2">
+        <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-3">
+          <Link to="/" className="flex min-w-0 items-center gap-2.5">
+            <img
+              src="/assets/logo/icon-gold.png"
+              alt="MebeliX"
+              className="h-8 w-auto shrink-0 group-data-[collapsible=icon]:h-6"
+            />
+            <span className="text-lg font-bold tracking-tight text-white group-data-[collapsible=icon]:hidden">
+              MebeliX
+            </span>
+          </Link>
+          <SidebarTrigger className="ml-auto text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:ml-0" />
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <Main items={items} />
