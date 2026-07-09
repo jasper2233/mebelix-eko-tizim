@@ -34,9 +34,10 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     command: bash -c "/app/scripts/prestart.sh && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    env_file:
+      - .env
     volumes:
       - ./backend/app:/app/backend/app
-      - ./.env:/app/.env
       - ./scripts:/app/scripts
     ports:
       - "8000:8000"
@@ -60,9 +61,10 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     command: arq app.core.worker.WorkerSettings
+    env_file:
+      - .env
     volumes:
       - ./backend/app:/app/backend/app
-      - ./.env:/app/.env
       - ./scripts:/app/scripts
     environment:
       POSTGRES_SERVER: db
@@ -79,6 +81,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+        VITE_API_TIMEOUT_MS: ${VITE_API_TIMEOUT_MS:-30000}
     ports:
       - "3000:80"
     depends_on:

@@ -36,9 +36,16 @@
 		reverse_proxy api:8000
 	}
 
-	# Prometheus metrics — restrict here when exposing publicly.
-	handle /metrics {
+	# Prometheus metrics — faqat ichki/private tarmoqdan (scraper shu yerdan keladi).
+	@internal_metrics {
+		path /metrics
+		remote_ip private_ranges
+	}
+	handle @internal_metrics {
 		reverse_proxy api:8000
+	}
+	handle /metrics {
+		respond "Forbidden" 403
 	}
 
 	# Frontend application
@@ -50,4 +57,9 @@
 			header_up X-Forwarded-Proto {scheme}
 		}
 	}
+}
+
+# Docker healthcheck uchun doimiy HTTP endpoint — SITE_ADDRESS TLS'ga o'tganda ham ishlaydi.
+:8080 {
+	respond /healthz "OK" 200
 }
