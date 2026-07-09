@@ -18,13 +18,14 @@ import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
 import useAuth from "@/hooks/useAuth"
-import { passwordSchema } from "@/lib/validation"
 
 const formSchema = z.object({
   username: z
     .string()
     .min(1, { message: "Foydalanuvchi nomi yoki telefon majburiy" }),
-  password: passwordSchema,
+  // Faqat bo'sh emasligi tekshiriladi — kuch talablari parol O'RNATISHDA qo'llanadi,
+  // login'da esas mavjud (jumladan eski/seed) parol bilan kirish imkonini saqlash kerak.
+  password: z.string().min(1, { message: "Parol majburiy" }),
 }) satisfies z.ZodType<AccessToken>
 
 type FormData = z.infer<typeof formSchema>

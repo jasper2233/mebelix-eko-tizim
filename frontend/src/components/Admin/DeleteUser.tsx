@@ -48,9 +48,8 @@ const DeleteUser = ({ id, onSuccess }: DeleteUserProps) => {
         title="Foydalanuvchini o'chirish"
         description={
           <>
-            Bu foydalanuvchiga tegishli barcha elementlar ham{" "}
-            <strong>butunlay o'chiriladi.</strong> Ishonchingiz komilmi? Bu
-            amalni qaytarib bo'lmaydi.
+            Foydalanuvchi <strong>o'chirilgan deb belgilanadi</strong> va
+            tizimga kira olmaydi. Ishonchingiz komilmi?
           </>
         }
         confirmText="O'chirish"

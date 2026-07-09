@@ -5,7 +5,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router"
 
-import { UsersService } from "@/client"
+import { ApiError, UsersService } from "@/client"
 import AppSidebar from "@/components/Sidebar/AppSidebar"
 import {
   SidebarInset,
@@ -24,8 +24,13 @@ export const Route = createFileRoute("/_layout")({
   beforeLoad: async () => {
     try {
       await UsersService.readUserMe()
-    } catch {
-      throw redirect({ to: "/login" })
+    } catch (err) {
+      // Faqat 401 login'ga yo'naltiradi — tarmoq uzilishi/5xx da sessiyani o'ldirmaymiz,
+      // xato errorComponent'da ko'rinadi.
+      if (err instanceof ApiError && err.status === 401) {
+        throw redirect({ to: "/login" })
+      }
+      throw err
     }
   },
 })
