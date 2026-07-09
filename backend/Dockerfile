@@ -13,8 +13,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=backend/pyproject.toml,target=pyproject.toml \
     uv sync --frozen --no-install-project
 
-# Copy the project source code
-COPY . /app
+# Copy only what the backend image needs (frontend/docs would bust the layer cache for nothing)
+COPY backend /app/backend
+COPY scripts /app/scripts
 
 # Install the project
 RUN --mount=type=cache,target=/root/.cache/uv \

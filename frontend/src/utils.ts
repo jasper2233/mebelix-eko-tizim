@@ -3,6 +3,12 @@ import type { ApiError } from "./client"
 
 function extractErrorMessage(err: ApiError): string {
   if (err instanceof AxiosError) {
+    if (err.code === AxiosError.ERR_NETWORK) {
+      return "Tarmoq xatosi — internet aloqasini tekshiring"
+    }
+    if (err.code === AxiosError.ECONNABORTED) {
+      return "So'rov vaqti tugadi — qayta urinib ko'ring"
+    }
     return err.message
   }
 
@@ -10,7 +16,7 @@ function extractErrorMessage(err: ApiError): string {
   if (Array.isArray(errDetail) && errDetail.length > 0) {
     return errDetail[0].msg
   }
-  return errDetail || "Something went wrong."
+  return errDetail || "Xatolik yuz berdi. Qayta urinib ko'ring."
 }
 
 type ToastFn = (message: string) => void

@@ -77,7 +77,7 @@ docker-local: ## Start local development services
 
 .PHONY: docker-prod
 docker-prod: ## Start production services
-	docker compose -f docker-compose.prod.yml up -d
+	docker compose -f docker-compose.prod.yml up -d --build
 
 .PHONY: docker-down
 docker-down: ## Stop all services

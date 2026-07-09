@@ -22,11 +22,7 @@ class Settings(BaseSettings):
 
     # === Application ===
     APP_NAME: str = "MebeliX"
-    APP_DESCRIPTION: str | None = "MebeliX API"
-    APP_VERSION: str | None = "0.1.0"
-    LICENSE_NAME: str | None = "MIT"
-    CONTACT_NAME: str | None = None
-    CONTACT_EMAIL: str | None = None
+    APP_VERSION: str = "0.1.0"  # reported by /health and /ready
 
     # === Crypto / JWT ===
     SECRET_KEY: SecretStr = SecretStr(_DEFAULT_SECRET_KEY)
@@ -106,8 +102,8 @@ class Settings(BaseSettings):
 
 
 def _validate_production_settings(s: Settings) -> None:
-    """Refuse to boot with insecure defaults in production. Caught at startup, not at first request."""
-    if s.ENVIRONMENT != EnvironmentOption.PRODUCTION:
+    """Refuse to boot with insecure defaults in any non-local environment (staging included)."""
+    if s.ENVIRONMENT == EnvironmentOption.LOCAL:
         return
     problems: list[str] = []
     if s.SECRET_KEY.get_secret_value() == _DEFAULT_SECRET_KEY:

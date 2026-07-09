@@ -168,13 +168,8 @@ def create_application(
     """Build the FastAPI app: metadata, lifespan, middleware (CORS + request logging), and env-conditional docs."""
     kwargs.update(
         title=settings.APP_NAME,
-        description=settings.APP_DESCRIPTION,
-        contact=(
-            {"name": settings.CONTACT_NAME, "email": settings.CONTACT_EMAIL}
-            if (settings.CONTACT_NAME or settings.CONTACT_EMAIL)
-            else None
-        ),
-        license_info={"name": settings.LICENSE_NAME},
+        description="MebeliX API",
+        license_info={"name": "MIT"},
         # FastAPI's built-in docs are always disabled — we wire our own conditional ones via `_install_docs_router`.
         docs_url=None,
         redoc_url=None,

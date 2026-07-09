@@ -12,9 +12,11 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build argument for API URL
+# Build arguments baked into the Vite bundle
 ARG VITE_API_URL
+ARG VITE_API_TIMEOUT_MS=30000
 ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_API_TIMEOUT_MS=${VITE_API_TIMEOUT_MS}
 
 # Build the application
 RUN npm run build

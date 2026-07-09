@@ -37,4 +37,5 @@ class WorkerSettings:
     redis_settings = RedisSettings(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
     on_startup = startup
     on_shutdown = shutdown
-    handle_signals = False
+    # handle_signals defaults to True — the worker must catch SIGTERM on `docker stop`
+    # so in-flight jobs finish (or re-queue) instead of dying mid-run.
