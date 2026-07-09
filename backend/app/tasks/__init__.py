@@ -1,5 +1,9 @@
-from .sample_tasks import sample_background_task
+from typing import Any
 
-all_tasks = [
-    sample_background_task,
-]
+
+async def ping(ctx: dict[str, Any]) -> str:
+    """Liveness probe task. ARQ requires at least one registered function; real MES tasks replace this."""
+    return "pong"
+
+
+all_tasks = [ping]
