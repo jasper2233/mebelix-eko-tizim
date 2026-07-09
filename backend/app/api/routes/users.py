@@ -30,6 +30,12 @@ def _derive_username_from_phone(phone: str) -> str:
     return phone.lstrip("+")
 
 
+def _drop_forbidden_nulls(update_data: dict) -> dict:
+    """PATCH bodies may carry explicit `null`s; only `name` is genuinely nullable — the rest would
+    hit NOT NULL columns and 500."""
+    return {k: v for k, v in update_data.items() if v is not None or k == "name"}
+
+
 @router.post("/", response_model=UserRead, status_code=201, operation_id="create_user")
 async def write_user(
     user: UserCreate,
@@ -58,11 +64,12 @@ async def write_user(
 
 @router.get("/", response_model=PaginatedResponse, operation_id="read_users")
 async def read_users(
+    current_user: SuperUserDep,
     db: SessionDep,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=settings.DEFAULT_PAGE_SIZE, ge=1, le=settings.MAX_PAGE_SIZE),
 ) -> PaginatedResponse:
-    """List users with pagination."""
+    """List users with pagination (superuser only — the list exposes every phone number)."""
     rows, total = await crud_users.get_multi(db=db, offset=skip, limit=limit)
     return PaginatedResponse(
         data=[UserRead.model_validate(user) for user in rows],
@@ -83,7 +90,7 @@ async def update_user_me(
 ) -> UserRead:
     """Update the caller's own profile. Privilege flags are not in the schema, so escalation is impossible here."""
     await _ensure_unique(db, phone=values.phone, username=values.username, current=current_user)
-    update_data = values.model_dump(exclude_unset=True)
+    update_data = _drop_forbidden_nulls(values.model_dump(exclude_unset=True))
     updated_user = await crud_users.update(db=db, db_user=current_user, user_update=update_data)
     return UserRead.model_validate(updated_user)
 
@@ -100,7 +107,7 @@ async def update_password_me(
         raise DuplicateValueException("Yangi parol joriy paroldan farq qilishi kerak")
 
     await crud_users.update(
-        db=db, db_user=current_user, user_update={"hashed_password": get_password_hash(body.new_password)}
+        db=db, db_user=current_user, user_update={"hashed_password": await get_password_hash(body.new_password)}
     )
     return {"message": "Parol muvaffaqiyatli yangilandi"}
 
@@ -116,7 +123,10 @@ async def delete_user_me(current_user: CurrentUser, db: SessionDep) -> dict[str,
 
 
 @router.get("/{user_id}", response_model=UserRead, operation_id="read_user_by_id")
-async def read_user_by_id(user_id: int, db: SessionDep) -> UserRead:
+async def read_user_by_id(user_id: int, current_user: CurrentUser, db: SessionDep) -> UserRead:
+    """Read a user by id — only the user themselves or a superuser (phone numbers are private)."""
+    if not current_user.is_superuser and user_id != current_user.id:
+        raise ForbiddenException("Sizda yetarli huquq yo'q.")
     db_user = await crud_users.get(db=db, id=user_id)
     if db_user is None:
         raise NotFoundException("Foydalanuvchi topilmadi")
@@ -136,7 +146,8 @@ async def patch_user(
         raise NotFoundException("Foydalanuvchi topilmadi")
 
     await _ensure_unique(db, phone=values.phone, username=values.username, current=db_user)
-    updated_user = await crud_users.update(db=db, db_user=db_user, user_update=values.model_dump(exclude_unset=True))
+    update_data = _drop_forbidden_nulls(values.model_dump(exclude_unset=True))
+    updated_user = await crud_users.update(db=db, db_user=db_user, user_update=update_data)
     return UserRead.model_validate(updated_user)
 
 

@@ -22,6 +22,7 @@ class RateLimiter:
 
     async def is_rate_limited(self, key: str, limit: int, period: int) -> bool:
         if self.client is None:
+            # Rate limiting disabled by config (ENABLE_REDIS_RATE_LIMIT) — deliberate, so allow.
             return False
         try:
             current_count = await self.client.incr(key)
@@ -30,7 +31,8 @@ class RateLimiter:
             return current_count > limit
         except Exception as e:
             logger.exception("Error checking rate limit for key %s: %s", key, e)
-            return False
+            # Fail closed: a Redis outage must not silently switch off brute-force protection.
+            return True
 
 
 rate_limiter = RateLimiter()

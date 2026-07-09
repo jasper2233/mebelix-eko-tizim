@@ -1,4 +1,3 @@
-from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Any, Generic, TypeVar
 
@@ -73,18 +72,15 @@ class BaseCRUD(Generic[ModelType]):
 
     def _build_query(
         self,
-        options: Sequence[Any] | None = None,
         **kwargs: Any,
     ) -> Select[tuple[ModelType]]:
-        """Build the base query with optional loading options and filters.
+        """Build the base query with equality filters.
 
         If the model has soft-delete support (is_deleted field) and
         exclude_deleted is True, automatically filters out deleted records
         unless is_deleted is explicitly provided in kwargs.
         """
         query = select(self.model)
-        if options:
-            query = query.options(*options)
         # Auto-apply soft delete filter when not explicitly overridden by caller
         if self.exclude_deleted and hasattr(self.model, "is_deleted") and "is_deleted" not in kwargs:
             query = query.where(getattr(self.model, "is_deleted") == False)  # noqa: E712
@@ -95,7 +91,6 @@ class BaseCRUD(Generic[ModelType]):
     async def get(
         self,
         db: AsyncSession,
-        options: Sequence[Any] | None = None,
         **kwargs: Any,
     ) -> ModelType | None:
         """Fetch a single record by any field.
@@ -104,8 +99,6 @@ class BaseCRUD(Generic[ModelType]):
         ----------
         db : AsyncSession
             The database session.
-        options : Sequence[Any] | None, default=None
-            SQLAlchemy loading options (e.g., selectinload).
         **kwargs : Any
             Field-value pairs to filter by (e.g., email="user@example.com").
 
@@ -116,11 +109,9 @@ class BaseCRUD(Generic[ModelType]):
 
         Examples
         --------
-        >>> from sqlalchemy.orm import selectinload
-        >>> user = await crud.get(db, email="user@example.com", options=[selectinload(User.items)])
         >>> user = await crud.get(db, username="john", is_deleted=False)
         """
-        query = self._build_query(options=options, **kwargs)
+        query = self._build_query(**kwargs)
         result = await db.execute(query)
         return result.scalar_one_or_none()
 
@@ -129,7 +120,6 @@ class BaseCRUD(Generic[ModelType]):
         db: AsyncSession,
         offset: int = 0,
         limit: int = 100,
-        options: Sequence[Any] | None = None,
         **kwargs: Any,
     ) -> tuple[list[ModelType], int]:
         """Fetch a page of records and the total matching count.
@@ -138,8 +128,6 @@ class BaseCRUD(Generic[ModelType]):
         ----------
         offset, limit
             Pagination window.
-        options
-            SQLAlchemy loading options (e.g. ``selectinload``) — applied to the data query, not the count.
         **kwargs
             Equality filters (e.g. ``owner_id=1, is_deleted=False``).
 
@@ -157,9 +145,8 @@ class BaseCRUD(Generic[ModelType]):
         count_query = select(func.count()).select_from(query.subquery())
         total = (await db.execute(count_query)).scalar_one()
 
-        data_query = query.offset(offset).limit(limit)
-        if options:
-            data_query = data_query.options(*options)
+        # Stable ordering — without it Postgres may return pages with duplicated/missing rows.
+        data_query = query.order_by(self.model.id).offset(offset).limit(limit)
         rows = (await db.execute(data_query)).scalars().all()
 
         return list(rows), total

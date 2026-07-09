@@ -1,3 +1,4 @@
+import uuid
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Any
@@ -30,7 +31,12 @@ async def verify_password(plain_password: str, hashed_password: str) -> bool:
     return await run_in_threadpool(bcrypt.checkpw, plain_password.encode(), hashed_password.encode())
 
 
-def get_password_hash(password: str) -> str:
+async def get_password_hash(password: str) -> str:
+    # bcrypt with 12 rounds takes ~250ms — must not block the event loop.
+    return await run_in_threadpool(_hash_password_sync, password)
+
+
+def _hash_password_sync(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=settings.BCRYPT_ROUNDS)).decode()
 
 
@@ -45,7 +51,9 @@ def create_access_token(data: dict[str, Any]) -> str:
 
 
 def create_refresh_token(data: dict[str, Any]) -> str:
-    return _create_token(data, TokenType.REFRESH, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+    # `jti` makes every refresh token unique, so it can be marked as used after one rotation.
+    payload = {**data, "jti": uuid.uuid4().hex}
+    return _create_token(payload, TokenType.REFRESH, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
 
 
 def verify_token(token: str, expected_token_type: TokenType) -> TokenData | None:
@@ -59,7 +67,12 @@ def verify_token(token: str, expected_token_type: TokenType) -> TokenData | None
     if subject is None or payload.get("token_type") != expected_token_type.value:
         return None
 
-    return TokenData(username_or_phone=subject, token_version=payload.get("token_version", 0))
+    try:
+        user_id = int(subject)
+    except (TypeError, ValueError):
+        return None
+
+    return TokenData(user_id=user_id, token_version=payload.get("token_version", 0), jti=payload.get("jti"))
 
 
 def _is_secure_environment() -> bool:

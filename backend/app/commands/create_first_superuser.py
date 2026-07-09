@@ -26,7 +26,7 @@ async def create_first_user(session: AsyncSession) -> None:
             name=name,
             phone=phone,
             username=username,
-            hashed_password=get_password_hash(settings.ADMIN_PASSWORD),
+            hashed_password=await get_password_hash(settings.ADMIN_PASSWORD),
             is_active=True,
             is_superuser=True,
         )
