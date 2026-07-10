@@ -90,8 +90,10 @@ services:
     image: caddy:2-alpine
     restart: always
     ports:
-      - "80:80"
-      - "443:443"
+      # Mavjud host-nginx (ISPmanager) ortida ishlaganda: CADDY_HTTP_BIND=127.0.0.1:8200,
+      # CADDY_HTTPS_BIND=127.0.0.1:8443 va SITE_ADDRESS=:80 (TLS'ni nginx tugatadi).
+      - "${CADDY_HTTP_BIND:-80}:80"
+      - "${CADDY_HTTPS_BIND:-443}:443"
     environment:
       # `:80` (default) → plain HTTP. Set `SITE_ADDRESS=your-domain.com` to get auto-HTTPS.
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
