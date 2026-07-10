@@ -31,7 +31,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import useCustomToast from "@/hooks/useCustomToast"
 import { useMesWs } from "@/hooks/useMesWs"
-import { formatSize, POST_COLORS } from "@/lib/mes"
+import { formatSize, OPERATOR_ROLES, POST_COLORS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import {
   getTerminalContextQueryOptions,
@@ -44,7 +44,12 @@ export const Route = createFileRoute("/terminal")({
   beforeLoad: async () => {
     try {
       const me = await UsersService.readUserMe()
-      if (me.role !== "terminal" && me.role !== "admin" && !me.is_superuser) {
+      if (
+        me.role !== "terminal" &&
+        me.role !== "admin" &&
+        !me.is_superuser &&
+        !OPERATOR_ROLES.includes(me.role as never)
+      ) {
         throw redirect({ to: "/" })
       }
     } catch (err) {
@@ -71,7 +76,6 @@ function TerminalPage() {
 
   const [scanOn, setScanOn] = useState(true)
   const [locked, setLocked] = useState(false)
-  const [showMap, setShowMap] = useState(false)
   const [mapOrderId, setMapOrderId] = useState<number | null>(null)
   const [lastScan, setLastScan] = useState<LastScan>(null)
   const [history, setHistory] = useState<
@@ -233,6 +237,7 @@ function TerminalPage() {
     scanMutation.mutate(value)
   }
 
+  const mapOpen = ctx?.post_code === "ARRA" && mapOrderId !== null
   const canUndo = lastScan?.kind === "ok" && Date.now() - lastScan.at < 60_000
   const postColor = ctx
     ? (POST_COLORS[ctx.post_code] ?? "var(--primary)")
@@ -260,11 +265,17 @@ function TerminalPage() {
           </div>
         </div>
 
-        <div className="relative mx-auto w-full max-w-md">
+        {/* Xarita ochiq bo'lsa skan qismi yashirin — skan faqat proyektlar ro'yxatida */}
+        <div
+          className={cn(
+            "relative mx-auto w-full max-w-md",
+            mapOpen && "invisible",
+          )}
+        >
           <ScanLine className="absolute left-3 top-2.5 size-5 text-muted-foreground" />
           <input
             ref={inputRef}
-            disabled={!scanOn || locked}
+            disabled={!scanOn || locked || mapOpen}
             className="h-10 w-full rounded-lg border-2 border-primary/40 bg-white pl-10 pr-24 font-mono text-sm outline-none focus:border-primary disabled:bg-muted"
             placeholder={
               ctx?.session ? "QR scan qiling..." : "Beyjik QR scan qiling..."
@@ -293,16 +304,13 @@ function TerminalPage() {
         )}
         <div className="num hidden text-xl font-bold md:block">{clock}</div>
         <div className="flex items-center gap-1">
-          {ctx?.post_code === "ARRA" && (
+          {ctx?.post_code === "ARRA" && mapOrderId !== null && (
             <Button
-              variant={showMap ? "default" : "outline"}
+              variant="outline"
               size="sm"
-              onClick={() => {
-                setShowMap((v) => !v)
-                setMapOrderId(null)
-              }}
+              onClick={() => setMapOrderId(null)}
             >
-              <MapIcon /> Xarita
+              <MapIcon /> Proyektlar
             </Button>
           )}
           <Button
@@ -344,9 +352,9 @@ function TerminalPage() {
         )}
       </div>
 
-      {/* Asosiy maydon */}
+      {/* Asosiy maydon — ARRA: proyekt ro'yxati → kesish xaritasi; boshqa postlar: vazifalar */}
       <main className="flex min-h-0 flex-1 gap-3 p-3">
-        {showMap && ctx?.post_code === "ARRA" ? (
+        {ctx?.post_code === "ARRA" ? (
           <div className="min-h-0 flex-1">
             {mapOrderId ? (
               <CutmapView
@@ -529,7 +537,7 @@ function OrderPicker({ onPick }: { onPick: (orderId: number) => void }) {
   return (
     <div className="rounded-xl border bg-white p-4">
       <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-        Kesish xaritasi — buyurtmani tanlang
+        Proyektlar — xarita uchun proyektni tanlang
       </h2>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {(

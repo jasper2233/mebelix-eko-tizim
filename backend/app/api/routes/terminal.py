@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 
@@ -14,7 +14,7 @@ from app.core.exceptions import NotFoundException
 from app.core.ws import ws_manager
 from app.crud import log_action
 from app.models import Employee, Order, OrderFile, Part, PartInstance, PartRoute, Scan, WorkSession
-from app.models.enums import EmployeeStatus, OrderStatus, PostCode, SessionStatus, UserRole
+from app.models.enums import POST_ROLES, EmployeeStatus, OrderStatus, PostCode, SessionStatus, UserRole
 from app.models.user import User
 from app.schemas.common import Message
 from app.schemas.terminal import (
@@ -25,11 +25,11 @@ from app.schemas.terminal import (
     TaskRow,
     TerminalContext,
 )
-from app.services.scanning import ScanRejected, resolve_terminal
+from app.services.scanning import ScanRejected, active_session, resolve_terminal
 
 router = APIRouter(prefix="/terminal", tags=["terminal"])
 
-TerminalUser = Annotated[User, Depends(require_roles(UserRole.TERMINAL))]
+TerminalUser = Annotated[User, Depends(require_roles(UserRole.TERMINAL, *POST_ROLES))]
 
 
 def _scan_http_error(exc: ScanRejected) -> HTTPException:
@@ -70,7 +70,14 @@ async def read_terminal_context(db: SessionDep, user: TerminalUser) -> TerminalC
         post_code=post.code,
         post_name=post.name,
     )
-    session = await _current_session(db, machine.id)
+    session: WorkSession | None
+    if UserRole(user.role) in POST_ROLES:
+        # Operator role: login is the shift — session opens automatically, no badge.
+        session = await active_session(db, user, machine)
+        await db.commit()
+        await db.refresh(session)
+    else:
+        session = await _current_session(db, machine.id)
     if session is not None:
         employee = await db.get(Employee, session.employee_id)
         ctx.session = _session_read(session, employee.full_name if employee else "")
@@ -316,6 +323,17 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
         await queue.pool.enqueue_job("print_label", instance_id)
     await ws_manager.publish("label.printed", {"instance_id": instance_id, "qr_text": instance.qr_text})
     return Message(message=f"Yorliq chop etishga yuborildi: {instance.qr_text}")
+
+
+@router.get("/labels/{instance_id}.png", operation_id="render_instance_label")
+async def render_instance_label(db: SessionDep, user: TerminalUser, instance_id: int) -> Response:
+    """Yorliqning PNG ko'rinishi — brauzerdan istalgan printerga chop etish uchun (GoDEX shart emas)."""
+    from app.services.labels import load_label_data, render_label_png
+
+    data = await load_label_data(db, instance_id)
+    if data is None:
+        raise NotFoundException("Nusxa topilmadi.")
+    return Response(content=render_label_png(data), media_type="image/png")
 
 
 @router.get("/files/{file_id}", operation_id="download_terminal_file")

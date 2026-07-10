@@ -66,3 +66,7 @@ backend/app/logs/*.log
 backend/uploads/
 bridge-agent/print-queue.jsonl
 frontend/openapi.json
+
+# Local shop-floor data (project/SCX uploads, reference photos)
+uploads/
+chek/

@@ -6,7 +6,7 @@ from sqlalchemy.sql import Subquery
 
 from app.api.deps import ManagerUser, SessionDep, StaffReadUser
 from app.core.config import settings
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import DuplicateValueException, NotFoundException
 from app.crud import crud_clients, log_action
 from app.models import Client, Order
 from app.schemas.clients import ClientCreate, ClientRead, ClientUpdate
@@ -53,8 +53,26 @@ async def read_clients(
     return Paginated(data=data, count=total)
 
 
+async def _ensure_phone_free(db: SessionDep, phone: str | None, exclude_id: int | None = None) -> None:
+    """One phone — one client (live rows). Checks both phone and phone_alt columns."""
+    if not phone:
+        return
+    query = select(Client).where(
+        or_(Client.phone == phone, Client.phone_alt == phone),
+        Client.is_deleted == False,  # noqa: E712
+    )
+    if exclude_id is not None:
+        query = query.where(Client.id != exclude_id)
+    existing = (await db.execute(query.limit(1))).scalar_one_or_none()
+    if existing is not None:
+        raise DuplicateValueException(f"Bu raqam boshqa mijozga kiritilgan: {existing.full_name}")
+
+
 @router.post("/", response_model=ClientRead, status_code=201, operation_id="create_client")
 async def create_client(db: SessionDep, current_user: ManagerUser, body: ClientCreate, request: Request) -> Client:
+    await _ensure_phone_free(db, body.phone)
+    if body.phone_alt and body.phone_alt != body.phone:
+        await _ensure_phone_free(db, body.phone_alt)
     client = Client(**body.model_dump())
     db.add(client)
     await db.flush()
@@ -95,7 +113,11 @@ async def update_client(
     client = await crud_clients.get(db, id=client_id)
     if client is None:
         raise NotFoundException("Mijoz topilmadi.")
-    for field, value in body.model_dump(exclude_unset=True).items():
+    updates = body.model_dump(exclude_unset=True)
+    for key in ("phone", "phone_alt"):
+        if updates.get(key):
+            await _ensure_phone_free(db, updates[key], exclude_id=client_id)
+    for field, value in updates.items():
         setattr(client, field, value)
     log_action(
         db,

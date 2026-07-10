@@ -12,6 +12,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { OPERATOR_ROLES } from "@/lib/mes"
 
 const sectionTitles: Record<string, string> = {
   "/": "Boshqaruv paneli",
@@ -32,8 +33,9 @@ export const Route = createFileRoute("/_layout")({
   beforeLoad: async () => {
     try {
       const me = await UsersService.readUserMe()
-      // Qurilma akkauntlari admin panelga kirmaydi — o'z ekraniga (TZ 3.4/3.5)
-      if (me.role === "terminal") throw redirect({ to: "/terminal" })
+      // Qurilma akkauntlari va operatorlar admin panelga kirmaydi — o'z ekraniga (TZ 3.4/3.5)
+      if (me.role === "terminal" || OPERATOR_ROLES.includes(me.role as never))
+        throw redirect({ to: "/terminal" })
       if (me.role === "tablo") throw redirect({ to: "/tablo" })
     } catch (err) {
       // Faqat 401 login'ga yo'naltiradi — tarmoq uzilishi/5xx da sessiyani o'ldirmaymiz,

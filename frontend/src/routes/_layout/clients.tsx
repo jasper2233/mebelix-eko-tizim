@@ -5,7 +5,6 @@ import { useState } from "react"
 
 import { AddClient } from "@/components/Clients/AddClient"
 import { PageHeader } from "@/components/Common/PageHeader"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -16,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { CLIENT_TYPE_LABELS, formatDate } from "@/lib/mes"
+import { formatDate } from "@/lib/mes"
 import { getClientsQueryOptions } from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/clients")({
@@ -52,7 +51,6 @@ function ClientsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>F.I.Sh / Kompaniya</TableHead>
-                <TableHead>Turi</TableHead>
                 <TableHead>Telefon</TableHead>
                 <TableHead>Manzil</TableHead>
                 <TableHead className="text-right">Buyurtmalar</TableHead>
@@ -64,11 +62,6 @@ function ClientsPage() {
                 data.data.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">{c.full_name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {CLIENT_TYPE_LABELS[c.client_type]}
-                      </Badge>
-                    </TableCell>
                     <TableCell className="num">{c.phone ?? "—"}</TableCell>
                     <TableCell className="max-w-[240px] truncate">
                       {c.address ?? "—"}
@@ -84,7 +77,7 @@ function ClientsPage() {
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={5}
                     className="h-24 text-center text-muted-foreground"
                   >
                     Mijozlar topilmadi. "+ Yangi mijoz" bilan qo'shing.

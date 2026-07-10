@@ -26,6 +26,8 @@ class Order(BaseModel):
     priority: Mapped[OrderPriority] = mapped_column(db_enum(OrderPriority), default=OrderPriority.MEDIUM, kw_only=True)
     deadline: Mapped[date | None] = mapped_column(Date, default=None, kw_only=True)
     amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), default=None, kw_only=True)
+    # Boshlang'ich to'lov (avans) — manager buyurtma ochishda kiritadi
+    advance_payment: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), default=None, kw_only=True)
     notes: Mapped[str | None] = mapped_column(Text, default=None, kw_only=True)
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
 

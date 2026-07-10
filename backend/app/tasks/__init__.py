@@ -1,16 +1,13 @@
 import json
 import logging
 import socket
-from datetime import UTC, datetime
 from typing import Any
-from zoneinfo import ZoneInfo
 
 from fastapi.concurrency import run_in_threadpool
 
 from app.core.config import settings
 from app.core.db import local_session
-from app.models import Order, Part, PartInstance
-from app.services.labels import LabelData, build_label_ezpl
+from app.services.labels import build_label_ezpl, load_label_data
 
 logger = logging.getLogger(__name__)
 
@@ -34,30 +31,10 @@ async def print_label(ctx: dict[str, Any], instance_id: int) -> str:
     on the GoDEX. Local mode (PRINTER_IP set): direct TCP to printer:9100.
     """
     async with local_session() as db:
-        instance = await db.get(PartInstance, instance_id)
-        if instance is None:
+        data = await load_label_data(db, instance_id)
+        if data is None:
             return f"skip:{instance_id}"
-        part = await db.get(Part, instance.part_id)
-        order = await db.get(Order, instance.order_id)
-        if part is None or order is None:
-            return f"skip:{instance_id}"
-
-        ezpl = build_label_ezpl(
-            LabelData(
-                qr_text=instance.qr_text,
-                part_code=instance.qr_text.rsplit("_", 1)[0],
-                part_name=part.name,
-                project_name=order.project_name or order.number,
-                material=part.material_name or "",
-                length=part.length,
-                width=part.width,
-                thickness=part.thickness,
-                edges=part.edges,
-                xnc_summary=part.xnc_summary,
-                label_num=part.label_num,
-                printed_at=datetime.now(UTC).astimezone(ZoneInfo("Asia/Tashkent")),
-            )
-        )
+        ezpl = build_label_ezpl(data)
 
     if settings.PRINTER_IP:
         try:

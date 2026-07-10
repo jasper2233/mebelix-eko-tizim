@@ -15,6 +15,12 @@ class UserRole(StrEnum):
     TEXNOLOG = "texnolog"
     TERMINAL = "terminal"
     TABLO = "tablo"
+    ARRACHI = "arrachi"
+    KROMKACHI = "kromkachi"
+    PRISADKACHI = "prisadkachi"
+    PAZCHI = "pazchi"
+    ROVERCHI = "roverchi"
+    STOLYAR = "stolyar"
 
 
 class PostCode(StrEnum):
@@ -24,6 +30,18 @@ class PostCode(StrEnum):
     PAZ = "PAZ"
     ROVER = "ROVER"
     STOLYARKA = "STOLYARKA"
+
+
+# Operator roles log in with their own account and see their post's terminal —
+# no machine binding, no badge (unlike TERMINAL device accounts).
+POST_ROLES: dict[UserRole, PostCode] = {
+    UserRole.ARRACHI: PostCode.ARRA,
+    UserRole.KROMKACHI: PostCode.KROMKA,
+    UserRole.PRISADKACHI: PostCode.PRISADKA,
+    UserRole.PAZCHI: PostCode.PAZ,
+    UserRole.ROVERCHI: PostCode.ROVER,
+    UserRole.STOLYAR: PostCode.STOLYARKA,
+}
 
 
 class PostUnit(StrEnum):

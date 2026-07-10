@@ -36,6 +36,19 @@ def _i(el: ET.Element, attr: str, default: int = 0) -> int:
         return default
 
 
+def _dedupe_part_code(code: str, seen: set[str], product_code: str, warnings: list[str]) -> str:
+    """Real exports repeat codes (e.g. the same product good twice) — rename deterministically
+    so the durable key productCode_partCode stays unique (QR, SCX)."""
+    if code not in seen:
+        return code
+    n = 2
+    while f"{code}-{n}" in seen:
+        n += 1
+    renamed = f"{code}-{n}"
+    warnings.append(f"Detal kodi takrorlangan: {product_code} ichida {code} — {renamed} deb saqlandi.")
+    return renamed
+
+
 def parse_project(content: bytes) -> ParsedProject:
     try:
         root = ET.fromstring(content)
@@ -109,8 +122,7 @@ def parse_project(content: bytes) -> ParsedProject:
             code = p.get("code") or p.get("part.code") or ""
             if not code:
                 raise ParseError(f"Mahsulot {product.code} ichida kodsiz detal bor (part id={p.get('id')}).")
-            if code in seen:
-                raise ParseError(f"Detal kodi takrorlangan: {product.code} ichida {code}.")
+            code = _dedupe_part_code(code, seen, product.code, project.warnings)
             seen.add(code)
             edges: dict[str, dict[str, object]] = {}
             for side in _EDGE_SIDES:

@@ -9,6 +9,7 @@ import { z } from "zod"
 import { OrdersService } from "@/client"
 import { AddClient } from "@/components/Clients/AddClient"
 import { Button } from "@/components/ui/button"
+import { DatePicker } from "@/components/ui/date-picker"
 import {
   Dialog,
   DialogContent,
@@ -37,16 +38,30 @@ import {
 } from "@/components/ui/select"
 import useCustomToast from "@/hooks/useCustomToast"
 import { PRIORITY_LABELS } from "@/lib/mes"
+import { formatMoneyInput } from "@/lib/validation"
 import { getClientsQueryOptions } from "@/queries/mes"
 import { handleError } from "@/utils"
 
-const formSchema = z.object({
-  client_id: z.string().min(1, "Mijozni tanlang"),
-  deadline: z.string().optional(),
-  priority: z.enum(["low", "medium", "high", "urgent"]),
-  amount: z.string().optional(),
-  notes: z.string().optional(),
-})
+const money = (v: string) => v.replace(/\s+/g, "")
+
+const formSchema = z
+  .object({
+    client_id: z.string().min(1, "Mijozni tanlang"),
+    deadline: z.string().optional(),
+    priority: z.enum(["low", "medium", "high", "urgent"]),
+    amount: z.string().min(1, "Umumiy narxni kiriting"),
+    advance_payment: z.string().optional(),
+    notes: z.string().optional(),
+  })
+  .refine(
+    (d) =>
+      !d.advance_payment ||
+      Number(money(d.advance_payment)) <= Number(money(d.amount)),
+    {
+      message: "Boshlang'ich to'lov umumiy narxdan oshmasligi kerak",
+      path: ["advance_payment"],
+    },
+  )
 
 type FormValues = z.infer<typeof formSchema>
 
@@ -64,6 +79,7 @@ export function AddOrder() {
       deadline: "",
       priority: "medium",
       amount: "",
+      advance_payment: "",
       notes: "",
     },
   })
@@ -75,7 +91,8 @@ export function AddOrder() {
           client_id: Number(data.client_id),
           deadline: data.deadline || null,
           priority: data.priority,
-          amount: data.amount || null,
+          amount: money(data.amount) || null,
+          advance_payment: money(data.advance_payment ?? "") || null,
           notes: data.notes || null,
         },
       }),
@@ -159,7 +176,11 @@ export function AddOrder() {
                   <FormItem>
                     <FormLabel>Topshirish sanasi</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <DatePicker
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        className="w-full"
+                      />
                     </FormControl>
                   </FormItem>
                 )}
@@ -190,18 +211,50 @@ export function AddOrder() {
                 )}
               />
             </div>
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Summa (so'm)</FormLabel>
-                  <FormControl>
-                    <Input type="number" min="0" {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Umumiy narx (so'm)</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        inputMode="numeric"
+                        className="num"
+                        placeholder="5 000 000"
+                        onChange={(e) =>
+                          field.onChange(formatMoneyInput(e.target.value))
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="advance_payment"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Boshlang'ich to'lov (so'm)</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        inputMode="numeric"
+                        className="num"
+                        placeholder="2 000 000"
+                        onChange={(e) =>
+                          field.onChange(formatMoneyInput(e.target.value))
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={form.control}
               name="notes"

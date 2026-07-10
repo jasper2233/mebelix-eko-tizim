@@ -13,7 +13,8 @@ from app.core.exceptions import DuplicateValueException, ForbiddenException, Not
 from app.core.ws import ws_manager
 from app.crud import crud_clients, crud_orders, log_action
 from app.models import Client, Machine, Order, OrderFile, Part, PartInstance, PartRoute, Post, Product
-from app.models.enums import FileKind, OrderStatus, PostCode, RouteSource
+from app.models.enums import FileKind, OrderStatus, PostCode, RouteSource, UserRole
+from app.models.user import User
 from app.schemas.common import Message, Paginated
 from app.schemas.orders import (
     MachineAssignments,
@@ -39,6 +40,11 @@ _EDITABLE_STATUSES = (OrderStatus.DRAFT, OrderStatus.TECHNICAL_REVIEW)
 
 def _client_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
+
+
+def _hide_cancelled(user: User) -> bool:
+    """Bekor qilinganlar texnologga kerak emas — faqat manager/direktor/admin ko'radi."""
+    return user.role == UserRole.TEXNOLOG and not user.is_superuser
 
 
 async def _get_order(db: SessionDep, order_id: int) -> Order:
@@ -92,7 +98,7 @@ async def create_order(db: SessionDep, current_user: ManagerUser, body: OrderCre
 @router.get("/", response_model=Paginated[OrderRead], operation_id="read_orders")
 async def read_orders(
     db: SessionDep,
-    _: StaffReadUser,
+    current_user: StaffReadUser,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=settings.MAX_PAGE_SIZE)] = settings.DEFAULT_PAGE_SIZE,
     status: OrderStatus | None = None,
@@ -101,6 +107,9 @@ async def read_orders(
     query = (
         select(Order, Client.full_name).join(Client, Client.id == Order.client_id).where(Order.is_deleted == False)  # noqa: E712
     )
+    # Bekor qilinganlar texnologga ko'rinmaydi — uning ish navbatiga aloqasi yo'q
+    if _hide_cancelled(current_user):
+        query = query.where(Order.status != OrderStatus.CANCELLED)
     if status is not None:
         query = query.where(Order.status == status)
     if search:
@@ -117,6 +126,21 @@ async def read_orders(
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
     rows = (await db.execute(query.order_by(Order.id.desc()).offset(skip).limit(limit))).all()
     return Paginated(data=[_order_read(order, client_name) for order, client_name in rows], count=total)
+
+
+# NOTE: /{order_id} dan OLDIN turishi shart — aks holda "status-counts" order_id deb o'qiladi.
+@router.get("/status-counts", response_model=dict[str, int], operation_id="read_order_status_counts")
+async def read_order_status_counts(db: SessionDep, current_user: StaffReadUser) -> dict[str, int]:
+    """Reestr tablari uchun har holatdagi buyurtmalar soni."""
+    query = (
+        select(Order.status, func.count(Order.id))
+        .where(Order.is_deleted == False)  # noqa: E712
+        .group_by(Order.status)
+    )
+    if _hide_cancelled(current_user):
+        query = query.where(Order.status != OrderStatus.CANCELLED)
+    rows = (await db.execute(query)).all()
+    return {str(s): c for s, c in rows}
 
 
 @router.get("/{order_id}", response_model=OrderDetail, operation_id="read_order")
@@ -162,8 +186,11 @@ async def update_order(
     if order.status in (OrderStatus.DELIVERED, OrderStatus.CANCELLED):
         raise ForbiddenException("Yakunlangan yoki bekor qilingan buyurtmani o'zgartirib bo'lmaydi.")
     update_data = body.model_dump(exclude_unset=True)
-    if "client_id" in update_data and await crud_clients.get(db, id=update_data["client_id"]) is None:
-        raise NotFoundException("Mijoz topilmadi.")
+    if "client_id" in update_data:
+        if order.status != OrderStatus.DRAFT and update_data["client_id"] != order.client_id:
+            raise ForbiddenException("Mijozni faqat qoralama (DRAFT) holatida almashtirish mumkin.")
+        if await crud_clients.get(db, id=update_data["client_id"]) is None:
+            raise NotFoundException("Mijoz topilmadi.")
     for field, value in update_data.items():
         setattr(order, field, value)
     log_action(
@@ -443,23 +470,24 @@ async def assign_order_machines(
     return Message(message="Stanoklar biriktirildi.")
 
 
-@router.post("/{order_id}/submit-review", response_model=OrderRead, operation_id="submit_order_review")
-async def submit_order_review(db: SessionDep, current_user: TexnologUser, order_id: int, request: Request) -> OrderRead:
-    """Texnolog 'Tayyor' (TZ 6.3.4): DRAFT → TECHNICAL_REVIEW after the project file is processed."""
+@router.post("/{order_id}/confirm", response_model=OrderRead, operation_id="confirm_order")
+async def confirm_order(db: SessionDep, current_user: ManagerUser, order_id: int, request: Request) -> OrderRead:
+    """Manager 'Tasdiqlash': DRAFT → TECHNICAL_REVIEW — buyurtma texnologga o'tadi.
+    Tasdiqlanmaganlar DRAFT holatda qoladi; texnolog ularga fayl biriktira olmaydi."""
     order = await _get_order(db, order_id)
     if order.status != OrderStatus.DRAFT:
         raise ForbiddenException("Faqat qoralama (DRAFT) buyurtmani tasdiqlash mumkin.")
-    if order.project_uuid is None:
-        raise ForbiddenException("Avval .project fayl yuklanishi kerak.")
+    if order.amount is None:
+        raise ForbiddenException("Tasdiqlashdan oldin buyurtma narxi kiritilishi kerak.")
     order.status = OrderStatus.TECHNICAL_REVIEW
     log_action(
         db,
         module="orders",
-        action="submitted_review",
+        action="confirmed",
         user_id=current_user.id,
         entity_type="order",
         entity_id=order.id,
-        message="Texnolog buyurtmani tasdiqlab managerga uzatdi",
+        message="Manager buyurtmani tasdiqlab texnologga uzatdi",
         ip=_client_ip(request),
     )
     await db.commit()
@@ -475,7 +503,9 @@ async def start_order_production(
     """Manager 'Ishlab chiqarishga uzatish' (TZ 6.4.2): TECHNICAL_REVIEW → PRODUCTION."""
     order = await _get_order(db, order_id)
     if order.status != OrderStatus.TECHNICAL_REVIEW:
-        raise ForbiddenException("Buyurtma texnolog tasdig'idan o'tgan bo'lishi kerak.")
+        raise ForbiddenException("Buyurtma avval tasdiqlangan bo'lishi kerak.")
+    if order.project_uuid is None:
+        raise ForbiddenException("Texnolog hali .project fayl biriktirmagan.")
 
     # Posts with several machines and requires_assignment_choice must be assigned.
     posts = {p.id: p for p in (await db.execute(select(Post))).scalars()}
@@ -549,8 +579,10 @@ async def upload_order_project(
     """Texnolog uploads the .project file (TZ 6.3). Exactly ONE file per order; re-upload
     replaces all previous parse results and is allowed only before PRODUCTION."""
     order = await _get_order(db, order_id)
-    if order.status not in _EDITABLE_STATUSES:
-        raise ForbiddenException("Fayl faqat ishlab chiqarishga uzatilgunga qadar yuklanadi.")
+    if order.status != OrderStatus.TECHNICAL_REVIEW:
+        raise ForbiddenException(
+            "Fayl faqat tasdiqlangan buyurtmaga yuklanadi. Avval manager buyurtmani tasdiqlashi kerak."
+        )
     if not (file.filename or "").lower().endswith(".project"):
         raise HTTPException(status_code=422, detail="Faqat .project kengaytmali fayl qabul qilinadi.")
 

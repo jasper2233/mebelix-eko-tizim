@@ -336,6 +336,7 @@ export type OrderCreate = {
     deadline?: (string | null);
     priority?: OrderPriority;
     amount?: (number | string | null);
+    advance_payment?: (number | string | null);
     notes?: (string | null);
 };
 
@@ -351,10 +352,12 @@ export type OrderDetail = {
     client_name?: string;
     deadline: (string | null);
     amount: (string | null);
+    advance_payment: (string | null);
     notes: (string | null);
     project_name: (string | null);
     project_generation: (ProjectGeneration | null);
     created_at: string;
+    updated_at: (string | null);
     production_started_at: (string | null);
     completed_at: (string | null);
     delivered_at: (string | null);
@@ -398,10 +401,12 @@ export type OrderRead = {
     client_name?: string;
     deadline: (string | null);
     amount: (string | null);
+    advance_payment: (string | null);
     notes: (string | null);
     project_name: (string | null);
     project_generation: (ProjectGeneration | null);
     created_at: string;
+    updated_at: (string | null);
     production_started_at: (string | null);
     completed_at: (string | null);
     delivered_at: (string | null);
@@ -435,6 +440,7 @@ export type OrderUpdate = {
     deadline?: (string | null);
     priority?: (OrderPriority | null);
     amount?: (number | string | null);
+    advance_payment?: (number | string | null);
     notes?: (string | null);
 };
 
@@ -694,7 +700,7 @@ export type UserRead = {
     machine_id?: (number | null);
 };
 
-export type UserRole = 'admin' | 'director' | 'manager' | 'texnolog' | 'terminal' | 'tablo';
+export type UserRole = 'admin' | 'director' | 'manager' | 'texnolog' | 'terminal' | 'tablo' | 'arrachi' | 'kromkachi' | 'prisadkachi' | 'pazchi' | 'roverchi' | 'stolyar';
 
 /**
  * Body for `PATCH /users/me` — self-update only.
@@ -891,6 +897,10 @@ export type ReadOrdersData = {
 
 export type ReadOrdersResponse = (Paginated_OrderRead_);
 
+export type ReadOrderStatusCountsResponse = ({
+    [key: string]: number;
+});
+
 export type ReadOrderData = {
     orderId: number;
 };
@@ -937,11 +947,11 @@ export type AssignOrderMachinesData = {
 
 export type AssignOrderMachinesResponse = (Message);
 
-export type SubmitOrderReviewData = {
+export type ConfirmOrderData = {
     orderId: number;
 };
 
-export type SubmitOrderReviewResponse = (OrderRead);
+export type ConfirmOrderResponse = (OrderRead);
 
 export type StartOrderProductionData = {
     orderId: number;

@@ -20,10 +20,12 @@ class OrderRead(BaseModel):
     client_name: str = ""  # joined in the route
     deadline: date | None
     amount: Decimal | None
+    advance_payment: Decimal | None
     notes: str | None
     project_name: str | None
     project_generation: ProjectGeneration | None
     created_at: datetime
+    updated_at: datetime | None
     production_started_at: datetime | None
     completed_at: datetime | None
     delivered_at: datetime | None
@@ -62,6 +64,7 @@ class OrderCreate(BaseModel):
     deadline: date | None = None
     priority: OrderPriority = OrderPriority.MEDIUM
     amount: Decimal | None = Field(default=None, ge=0)
+    advance_payment: Decimal | None = Field(default=None, ge=0)
     notes: str | None = None
 
 
@@ -72,6 +75,7 @@ class OrderUpdate(BaseModel):
     deadline: date | None = None
     priority: OrderPriority | None = None
     amount: Decimal | None = Field(default=None, ge=0)
+    advance_payment: Decimal | None = Field(default=None, ge=0)
     notes: str | None = None
 
 

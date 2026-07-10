@@ -15,6 +15,7 @@ import { OpenAPI, OrdersService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { StatusBadge } from "@/components/Common/StatusBadge"
+import { EditOrder } from "@/components/Orders/EditOrder"
 import { MachineAssign } from "@/components/Orders/MachineAssign"
 import { OrderMatrix } from "@/components/Orders/OrderMatrix"
 import { Button } from "@/components/ui/button"
@@ -85,9 +86,9 @@ function OrderDetailPage() {
     }
   }
 
-  const submitReview = useMutation({
-    mutationFn: () => OrdersService.submitOrderReview({ orderId: id }),
-    onSuccess: () => showSuccessToast("Buyurtma managerga uzatildi"),
+  const confirm = useMutation({
+    mutationFn: () => OrdersService.confirmOrder({ orderId: id }),
+    onSuccess: () => showSuccessToast("Buyurtma tasdiqlandi — texnologga uzatildi"),
     onError: handleError(showErrorToast),
     onSettled: invalidate,
   })
@@ -142,7 +143,19 @@ function OrderDetailPage() {
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {isTexnolog && editableStatus && (
+            {isManager &&
+              !["delivered", "cancelled"].includes(order.status) && (
+                <EditOrder order={order} onSaved={invalidate} />
+              )}
+            {isManager && order.status === "draft" && (
+              <LoadingButton
+                loading={confirm.isPending}
+                onClick={() => confirm.mutate()}
+              >
+                <CheckCheck /> Tasdiqlash
+              </LoadingButton>
+            )}
+            {isTexnolog && order.status === "technical_review" && (
               <>
                 <input
                   ref={fileInput}
@@ -162,22 +175,16 @@ function OrderDetailPage() {
                 </LoadingButton>
               </>
             )}
-            {isTexnolog && order.status === "draft" && order.project_uuid && (
-              <LoadingButton
-                loading={submitReview.isPending}
-                onClick={() => submitReview.mutate()}
-              >
-                <CheckCheck /> Tayyor
-              </LoadingButton>
-            )}
-            {isManager && order.status === "technical_review" && (
-              <LoadingButton
-                loading={start.isPending}
-                onClick={() => start.mutate()}
-              >
-                <Play /> Ishlab chiqarishga uzatish
-              </LoadingButton>
-            )}
+            {isManager &&
+              order.status === "technical_review" &&
+              order.project_uuid && (
+                <LoadingButton
+                  loading={start.isPending}
+                  onClick={() => start.mutate()}
+                >
+                  <Play /> Ishlab chiqarishga uzatish
+                </LoadingButton>
+              )}
             {order.project_uuid != null && (
               <Button asChild variant="outline">
                 <Link to="/cutmap/$orderId" params={{ orderId }}>
@@ -206,17 +213,39 @@ function OrderDetailPage() {
       <div className="mb-6 grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
         <Meta label="Holat" value={<StatusBadge status={order.status} />} />
         <Meta label="Mijoz" value={order.client_name} />
-        <Meta label="Muddat" value={formatDate(order.deadline)} />
+        <Meta label="Topshirish sanasi" value={formatDate(order.deadline)} />
         <Meta
           label="Prioritet"
           value={PRIORITY_LABELS[order.priority] ?? order.priority}
         />
-        <Meta label="Summa" value={formatMoney(order.amount)} />
+        <Meta label="Umumiy narx" value={formatMoney(order.amount)} />
+        <Meta
+          label="Boshlang'ich to'lov"
+          value={formatMoney(order.advance_payment)}
+        />
+        <Meta
+          label="Qoldiq to'lov"
+          value={
+            order.amount != null
+              ? formatMoney(
+                  Number(order.amount) - Number(order.advance_payment ?? 0),
+                )
+              : "—"
+          }
+        />
         <Meta
           label="Detallar / nusxalar"
           value={`${order.parts_count} / ${order.instances_count}`}
         />
         <Meta label="Ochilgan" value={formatDateTime(order.created_at)} />
+        <Meta
+          label="Oxirgi tahrir"
+          value={
+            order.updated_at && order.updated_at !== order.created_at
+              ? formatDateTime(order.updated_at)
+              : "—"
+          }
+        />
         <Meta
           label="Fayl yuklangan"
           value={

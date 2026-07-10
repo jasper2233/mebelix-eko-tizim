@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models import Employee, Machine, Order, OrderFile, Part, PartInstance, PartRoute, Post, Scan, WorkSession
-from app.models.enums import FileKind, OrderStatus, SessionStatus
+from app.models.enums import POST_ROLES, FileKind, OrderStatus, SessionStatus, UserRole
 from app.models.user import User
 
 _QR_RE = re.compile(r"^.+_.+_\d+$")  # {productCode}_{partCode}_{n} (TZ 5.8)
@@ -45,6 +45,31 @@ class ScanOutcome:
 
 
 async def resolve_terminal(db: AsyncSession, user: User) -> tuple[Machine, Post]:
+    post_code = POST_ROLES.get(UserRole(user.role))
+    if post_code is not None:
+        # Operator role (arrachi, kromkachi, ...): post comes from the role itself.
+        post = (
+            await db.execute(select(Post).where(Post.code == post_code, Post.is_deleted == False))  # noqa: E712
+        ).scalar_one_or_none()
+        if post is None:
+            raise ScanRejected("E001", f"{post_code} posti topilmadi. Admin postlarni sozlashi kerak.")
+        machine = None
+        if user.machine_id is not None:
+            machine = await db.get(Machine, user.machine_id)
+        if machine is None or machine.is_deleted:
+            # ponytail: first active machine of the post; bind user.machine_id when a post gets several
+            machine = (
+                await db.execute(
+                    select(Machine)
+                    .where(Machine.post_id == post.id, Machine.is_deleted == False)  # noqa: E712
+                    .order_by(Machine.id)
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+        if machine is None:
+            raise ScanRejected("E001", f"{post.name} postida stanok yo'q. Admin stanok qo'shishi kerak.")
+        return machine, post
+
     if user.machine_id is None:
         raise ScanRejected("E001", "Terminal foydalanuvchisiga stanok biriktirilmagan.")
     machine = await db.get(Machine, user.machine_id)
@@ -54,6 +79,29 @@ async def resolve_terminal(db: AsyncSession, user: User) -> tuple[Machine, Post]
     if post is None:
         raise ScanRejected("E001", "Stanok posti topilmadi.")
     return machine, post
+
+
+async def operator_employee(db: AsyncSession, user: User, post_id: int) -> Employee:
+    """Auto-provisioned Employee mirror for operator-role users, so scans, sessions and
+    productivity reports keep their employee attribution without a badge."""
+    badge = f"user-{user.id}"  # ponytail: avoids a user_id FK migration; badge_id is unique and 36 chars
+    employee = (
+        await db.execute(
+            select(Employee).where(Employee.badge_id == badge, Employee.is_deleted == False)  # noqa: E712
+        )
+    ).scalar_one_or_none()
+    if employee is None:
+        employee = Employee(
+            full_name=user.name or user.username,
+            badge_id=badge,
+            position=str(user.role),
+            assigned_post_ids=[post_id],
+        )
+        db.add(employee)
+        await db.flush()
+    elif post_id not in employee.assigned_post_ids:
+        employee.assigned_post_ids = [*employee.assigned_post_ids, post_id]
+    return employee
 
 
 async def active_session(db: AsyncSession, user: User, machine: Machine) -> WorkSession:
@@ -69,17 +117,37 @@ async def active_session(db: AsyncSession, user: User, machine: Machine) -> Work
             .limit(1)
         )
     ).scalar_one_or_none()
+
+    # 12-hour shift timeout (TZ 8.5 E005)
+    if session is not None:
+        started = session.created_at if session.created_at.tzinfo else session.created_at.replace(tzinfo=UTC)
+        if datetime.now(UTC) - started > timedelta(hours=settings.SESSION_MAX_HOURS):
+            session.status = SessionStatus.ENDED
+            session.ended_at = datetime.now(UTC)
+            await db.flush()
+            session = None
+            if POST_ROLES.get(UserRole(user.role)) is None:
+                raise ScanRejected("E005", "Sessiya muddati tugadi (12 soat). Beyjikni qaytadan scan qiling.")
+
+    # Operator role: the login IS the shift — open/take over the session automatically.
+    if POST_ROLES.get(UserRole(user.role)) is not None:
+        employee = await operator_employee(db, user, machine.post_id)
+        if session is not None and session.employee_id != employee.id:
+            session.status = SessionStatus.ENDED
+            session.ended_at = datetime.now(UTC)
+            session = None
+        if session is None:
+            session = WorkSession(
+                employee_id=employee.id, user_id=user.id, machine_id=machine.id, post_id=machine.post_id
+            )
+            db.add(session)
+            await db.flush()
+        return session
+
     if session is None:
         raise ScanRejected("E005", "Aktiv sessiya yo'q. Beyjikni scan qiling.")
-    # 12-hour shift timeout (TZ 8.5 E005)
-    started = session.created_at if session.created_at.tzinfo else session.created_at.replace(tzinfo=UTC)
-    if datetime.now(UTC) - started > timedelta(hours=settings.SESSION_MAX_HOURS):
-        session.status = SessionStatus.ENDED
-        session.ended_at = datetime.now(UTC)
-        await db.flush()
-        raise ScanRejected("E005", "Sessiya muddati tugadi (12 soat). Beyjikni qaytadan scan qiling.")
-    employee = await db.get(Employee, session.employee_id)
-    if employee is None or employee.status != "active":
+    badge_employee = await db.get(Employee, session.employee_id)
+    if badge_employee is None or badge_employee.status != "active":
         raise ScanRejected("E006", "Beyjik nofaol. Adminga murojaat qiling.")
     return session
 

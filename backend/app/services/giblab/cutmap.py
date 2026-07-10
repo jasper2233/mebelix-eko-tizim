@@ -56,6 +56,7 @@ def _place(
     vertical: bool,
     cells: list[dict[str, Any]],
     cuts: list[dict[str, Any]],
+    dims: list[dict[str, Any]] | None = None,
 ) -> float:
     """Place one preorder node whose slice starts at (x, y) inside a w×h region.
 
@@ -70,6 +71,13 @@ def _place(
         ry = y if vertical else y + consumed
         rw = node.value if vertical else w
         rh = h if vertical else node.value
+
+        # Root strip dimension chain (GibSaw: chain drawn on the root-cut side only).
+        if dims is not None and node.value >= 10:
+            if vertical:
+                dims.append({"ax": "X", "a": round(rx), "b": round(rx + node.value), "v": round(node.value)})
+            else:
+                dims.append({"ax": "Y", "a": round(ry), "b": round(ry + node.value), "v": round(node.value)})
 
         if node.type in (3, 4):  # part or registered waste — a physical cell
             cells.append({"part_id": node.part_id, "waste": node.type == 4, "x": rx, "y": ry, "w": rw, "h": rh})
@@ -91,9 +99,12 @@ def _place(
     return consumed
 
 
-def _place_pattern(pattern: BlobPattern) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def _place_pattern(
+    pattern: BlobPattern,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     cells: list[dict[str, Any]] = []
     cuts: list[dict[str, Any]] = []
+    dims: list[dict[str, Any]] = []
     cursor = pattern.leading_trim or 0.0
     if pattern.leading_trim:
         cuts.append(
@@ -103,9 +114,9 @@ def _place_pattern(pattern: BlobPattern) -> tuple[list[dict[str, Any]], list[dic
         )
     for node in pattern.records:
         if pattern.root_axis_vertical:
-            cursor += _place(node, cursor, 0.0, pattern.length, pattern.width, True, cells, cuts)
+            cursor += _place(node, cursor, 0.0, pattern.length, pattern.width, True, cells, cuts, dims)
         else:
-            cursor += _place(node, 0.0, cursor, pattern.length, pattern.width, False, cells, cuts)
+            cursor += _place(node, 0.0, cursor, pattern.length, pattern.width, False, cells, cuts, dims)
 
     # Deduplicate identical lines and drop ones lying on the sheet border.
     unique: dict[tuple[float, float, float, float], dict[str, Any]] = {}
@@ -116,7 +127,7 @@ def _place_pattern(pattern: BlobPattern) -> tuple[list[dict[str, Any]], list[dic
         )
         if not on_border:
             unique[key] = c
-    return cells, list(unique.values())
+    return cells, list(unique.values()), dims
 
 
 def build_cutmap(project: ParsedProject) -> CutmapResult:
@@ -150,14 +161,14 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
         material_placed = 0  # part cells × mult, compared to cPartCount below
         for pat in patterns:
             pattern_no += 1
-            cells, cuts = _place_pattern(pat)
+            cells, cuts, dims = _place_pattern(pat)
             sheet: dict[str, Any] = {
                 "no": pattern_no,
                 "L": pat.length,
                 "W": pat.width,
                 "mult": pat.mult,
                 "parts": [],
-                "dims": [],  # ponytail: dimension chains derivable client-side from parts/cuts
+                "dims": dims,  # root strip chain (GibSaw style)
                 "cuts": cuts,
             }
             cell_index = 0

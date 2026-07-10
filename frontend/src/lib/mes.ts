@@ -41,7 +41,23 @@ export const ROLE_LABELS: Record<string, string> = {
   texnolog: "Texnolog",
   terminal: "Terminal",
   tablo: "TABLO",
+  arrachi: "Arrachi",
+  kromkachi: "Kromkachi",
+  prisadkachi: "Prisadkachi",
+  pazchi: "Pazchi",
+  roverchi: "Roverchi",
+  stolyar: "Stolyar",
 }
+
+// Operator rollar — o'z posti terminalini ko'radi (stanok/beyjik shart emas)
+export const OPERATOR_ROLES = [
+  "arrachi",
+  "kromkachi",
+  "prisadkachi",
+  "pazchi",
+  "roverchi",
+  "stolyar",
+] as const
 
 export const EMPLOYEE_STATUS_LABELS: Record<string, string> = {
   active: "AKTIV",
@@ -58,11 +74,6 @@ export const MATERIAL_TYPE_LABELS: Record<string, string> = {
   sheet: "List",
   band: "Kromka lenta",
   hardware: "Furnitura",
-}
-
-export const CLIENT_TYPE_LABELS: Record<string, string> = {
-  individual: "Jismoniy",
-  legal: "Yuridik",
 }
 
 const dateFmt = new Intl.DateTimeFormat("uz-Latn-UZ", {

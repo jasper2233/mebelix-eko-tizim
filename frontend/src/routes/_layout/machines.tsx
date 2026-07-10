@@ -55,12 +55,6 @@ export const Route = createFileRoute("/_layout/machines")({
   head: () => ({ meta: [{ title: "Stanoklar | MebeliX" }] }),
 })
 
-const CAPACITY_UNITS: Record<string, string> = {
-  m2_per_hour: "m²/soat",
-  meter_per_hour: "metr/soat",
-  units_per_hour: "dona/soat",
-}
-
 function MachinesPage() {
   const { data: machines, isLoading } = useQuery(getMachinesQueryOptions())
   const { data: posts } = useQuery(getPostsQueryOptions())
@@ -84,8 +78,6 @@ function MachinesPage() {
               <TableRow>
                 <TableHead>Stanok</TableHead>
                 <TableHead>Post</TableHead>
-                <TableHead>IP manzil</TableHead>
-                <TableHead>Quvvat</TableHead>
                 <TableHead>Holat</TableHead>
               </TableRow>
             </TableHeader>
@@ -109,14 +101,6 @@ function MachinesPage() {
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="num">
-                        {m.ip_address ?? "—"}
-                      </TableCell>
-                      <TableCell className="num">
-                        {m.capacity
-                          ? `${m.capacity} ${CAPACITY_UNITS[m.capacity_unit ?? ""] ?? ""}`
-                          : "—"}
-                      </TableCell>
                       <TableCell>
                         <Badge
                           variant={
@@ -132,7 +116,7 @@ function MachinesPage() {
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={3}
                     className="h-24 text-center text-muted-foreground"
                   >
                     Stanoklar yo'q.
@@ -150,11 +134,6 @@ function MachinesPage() {
 const formSchema = z.object({
   name: z.string().trim().min(2).max(100),
   post_id: z.string().min(1, "Postni tanlang"),
-  ip_address: z.string().max(45).optional(),
-  capacity: z.string().optional(),
-  capacity_unit: z
-    .enum(["m2_per_hour", "meter_per_hour", "units_per_hour"])
-    .optional(),
 })
 
 function AddMachine() {
@@ -165,7 +144,7 @@ function AddMachine() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: "", post_id: "", ip_address: "", capacity: "" },
+    defaultValues: { name: "", post_id: "" },
   })
 
   const mutation = useMutation({
@@ -174,9 +153,6 @@ function AddMachine() {
         requestBody: {
           name: data.name,
           post_id: Number(data.post_id),
-          ip_address: data.ip_address || null,
-          capacity: data.capacity ? Number(data.capacity) : null,
-          capacity_unit: data.capacity_unit ?? null,
         },
       }),
     onSuccess: () => {
@@ -241,58 +217,6 @@ function AddMachine() {
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-3 gap-3">
-              <FormField
-                control={form.control}
-                name="ip_address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>IP</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="192.168.1.80" />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="capacity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quvvat</FormLabel>
-                    <FormControl>
-                      <Input type="number" min="0" {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="capacity_unit"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Birlik</FormLabel>
-                    <Select
-                      value={field.value ?? ""}
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="—" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.entries(CAPACITY_UNITS).map(([v, l]) => (
-                          <SelectItem key={v} value={v}>
-                            {l}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )}
-              />
-            </div>
             <DialogFooter className="pt-2">
               <LoadingButton type="submit" loading={mutation.isPending}>
                 Saqlash

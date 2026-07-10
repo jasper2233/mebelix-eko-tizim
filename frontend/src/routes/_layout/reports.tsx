@@ -9,7 +9,7 @@ import { OpenAPI, ReportsService } from "@/client"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { StatusBadge } from "@/components/Common/StatusBadge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -67,19 +67,19 @@ function ReportsPage() {
           </TabsList>
         </Tabs>
         <div className="ml-auto flex items-center gap-2 text-sm">
-          <Input
-            type="date"
+          <DatePicker
             value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="h-9 w-36"
+            onChange={setDateFrom}
+            placeholder="Boshlanish"
+            className="h-9"
             aria-label="Boshlanish sanasi"
           />
           <span className="text-muted-foreground">—</span>
-          <Input
-            type="date"
+          <DatePicker
             value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="h-9 w-36"
+            onChange={setDateTo}
+            placeholder="Tugash"
+            className="h-9"
             aria-label="Tugash sanasi"
           />
         </div>

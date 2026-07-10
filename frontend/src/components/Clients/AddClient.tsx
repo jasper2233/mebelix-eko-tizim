@@ -25,30 +25,15 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import useCustomToast from "@/hooks/useCustomToast"
-import { PHONE_PATTERN } from "@/lib/validation"
+import { formatUzPhone, optionalFormattedPhoneSchema } from "@/lib/validation"
 import { handleError } from "@/utils"
 
 const formSchema = z.object({
   full_name: z.string().trim().min(2, "Kamida 2 belgi").max(150),
-  client_type: z.enum(["individual", "legal"]),
-  phone: z
-    .string()
-    .regex(PHONE_PATTERN, "+998XXXXXXXXX formatida")
-    .or(z.literal("")),
-  phone_alt: z
-    .string()
-    .regex(PHONE_PATTERN, "+998XXXXXXXXX formatida")
-    .or(z.literal("")),
+  phone: optionalFormattedPhoneSchema,
+  phone_alt: optionalFormattedPhoneSchema,
   address: z.string().max(255).optional(),
-  inn: z.string().max(20).optional(),
   notes: z.string().optional(),
 })
 
@@ -70,11 +55,9 @@ export function AddClient({
     mode: "onBlur",
     defaultValues: {
       full_name: "",
-      client_type: "individual",
       phone: "",
       phone_alt: "",
       address: "",
-      inn: "",
       notes: "",
     },
   })
@@ -84,11 +67,9 @@ export function AddClient({
       ClientsService.createClient({
         requestBody: {
           full_name: data.full_name,
-          client_type: data.client_type,
           phone: data.phone || null,
           phone_alt: data.phone_alt || null,
           address: data.address || null,
-          inn: data.inn || null,
           notes: data.notes || null,
         },
       }),
@@ -135,46 +116,21 @@ export function AddClient({
             <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
-                name="client_type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Turi</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="individual">Jismoniy</SelectItem>
-                        <SelectItem value="legal">Yuridik</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="inn"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>STIR (INN)</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Yuridik shaxs uchun" />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <FormField
-                control={form.control}
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Telefon</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="+998901234567" />
+                      <Input
+                        {...field}
+                        inputMode="tel"
+                        placeholder="+998 90 123 45 67"
+                        onChange={(e) =>
+                          field.onChange(
+                            formatUzPhone(e.target.value, field.value),
+                          )
+                        }
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -187,7 +143,16 @@ export function AddClient({
                   <FormItem>
                     <FormLabel>Qo'shimcha tel.</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="+998..." />
+                      <Input
+                        {...field}
+                        inputMode="tel"
+                        placeholder="+998 90 123 45 67"
+                        onChange={(e) =>
+                          field.onChange(
+                            formatUzPhone(e.target.value, field.value),
+                          )
+                        }
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

@@ -1984,6 +1984,22 @@ export const OrderCreateSchema = {
             ],
             title: 'Amount'
         },
+        advance_payment: {
+            anyOf: [
+                {
+                    type: 'number',
+                    minimum: 0
+                },
+                {
+                    type: 'string',
+                    pattern: '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Advance Payment'
+        },
         notes: {
             anyOf: [
                 {
@@ -2051,6 +2067,18 @@ export const OrderDetailSchema = {
             ],
             title: 'Amount'
         },
+        advance_payment: {
+            anyOf: [
+                {
+                    type: 'string',
+                    pattern: '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Advance Payment'
+        },
         notes: {
             anyOf: [
                 {
@@ -2087,6 +2115,18 @@ export const OrderDetailSchema = {
             type: 'string',
             format: 'date-time',
             title: 'Created At'
+        },
+        updated_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Updated At'
         },
         production_started_at: {
             anyOf: [
@@ -2197,7 +2237,7 @@ export const OrderDetailSchema = {
         }
     },
     type: 'object',
-    required: ['id', 'number', 'status', 'priority', 'client_id', 'deadline', 'amount', 'notes', 'project_name', 'project_generation', 'created_at', 'production_started_at', 'completed_at', 'delivered_at', 'cancelled_at', 'cancel_reason', 'machine_assignments', 'project_uuid', 'project_loaded_at'],
+    required: ['id', 'number', 'status', 'priority', 'client_id', 'deadline', 'amount', 'advance_payment', 'notes', 'project_name', 'project_generation', 'created_at', 'updated_at', 'production_started_at', 'completed_at', 'delivered_at', 'cancelled_at', 'cancel_reason', 'machine_assignments', 'project_uuid', 'project_loaded_at'],
     title: 'OrderDetail',
     description: 'Order card (TZ 10.3.3): metadata + files; the parts matrix comes from /matrix.'
 } as const;
@@ -2322,6 +2362,18 @@ export const OrderReadSchema = {
             ],
             title: 'Amount'
         },
+        advance_payment: {
+            anyOf: [
+                {
+                    type: 'string',
+                    pattern: '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Advance Payment'
+        },
         notes: {
             anyOf: [
                 {
@@ -2358,6 +2410,18 @@ export const OrderReadSchema = {
             type: 'string',
             format: 'date-time',
             title: 'Created At'
+        },
+        updated_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Updated At'
         },
         production_started_at: {
             anyOf: [
@@ -2420,7 +2484,7 @@ export const OrderReadSchema = {
         }
     },
     type: 'object',
-    required: ['id', 'number', 'status', 'priority', 'client_id', 'deadline', 'amount', 'notes', 'project_name', 'project_generation', 'created_at', 'production_started_at', 'completed_at', 'delivered_at', 'cancelled_at', 'cancel_reason'],
+    required: ['id', 'number', 'status', 'priority', 'client_id', 'deadline', 'amount', 'advance_payment', 'notes', 'project_name', 'project_generation', 'created_at', 'updated_at', 'production_started_at', 'completed_at', 'delivered_at', 'cancelled_at', 'cancel_reason'],
     title: 'OrderRead',
     description: 'Registry row (TZ 10.3.1).'
 } as const;
@@ -2569,6 +2633,22 @@ export const OrderUpdateSchema = {
                 }
             ],
             title: 'Amount'
+        },
+        advance_payment: {
+            anyOf: [
+                {
+                    type: 'number',
+                    minimum: 0
+                },
+                {
+                    type: 'string',
+                    pattern: '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Advance Payment'
         },
         notes: {
             anyOf: [
@@ -3731,7 +3811,7 @@ export const UserReadSchema = {
 
 export const UserRoleSchema = {
     type: 'string',
-    enum: ['admin', 'director', 'manager', 'texnolog', 'terminal', 'tablo'],
+    enum: ['admin', 'director', 'manager', 'texnolog', 'terminal', 'tablo', 'arrachi', 'kromkachi', 'prisadkachi', 'pazchi', 'roverchi', 'stolyar'],
     title: 'UserRole'
 } as const;
 
