@@ -17,4 +17,8 @@ fi
 echo "Creating first superuser..."
 python -m app.commands.create_first_superuser
 
+# Seed default organization and production posts
+echo "Seeding defaults..."
+python -m app.commands.seed_defaults
+
 echo "Pre-start script finished successfully."

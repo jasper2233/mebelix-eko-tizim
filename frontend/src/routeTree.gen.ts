@@ -9,12 +9,34 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TerminalRouteImport } from './routes/terminal'
+import { Route as TabloRouteImport } from './routes/tablo'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
+import { Route as LayoutTransactionsRouteImport } from './routes/_layout/transactions'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
+import { Route as LayoutReportsRouteImport } from './routes/_layout/reports'
+import { Route as LayoutMaterialsRouteImport } from './routes/_layout/materials'
+import { Route as LayoutMachinesRouteImport } from './routes/_layout/machines'
+import { Route as LayoutLogsRouteImport } from './routes/_layout/logs'
+import { Route as LayoutEmployeesRouteImport } from './routes/_layout/employees'
+import { Route as LayoutClientsRouteImport } from './routes/_layout/clients'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
+import { Route as LayoutOrdersIndexRouteImport } from './routes/_layout/orders/index'
+import { Route as LayoutOrdersOrderIdRouteImport } from './routes/_layout/orders/$orderId'
+import { Route as LayoutCutmapOrderIdRouteImport } from './routes/_layout/cutmap.$orderId'
 
+const TerminalRoute = TerminalRouteImport.update({
+  id: '/terminal',
+  path: '/terminal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TabloRoute = TabloRouteImport.update({
+  id: '/tablo',
+  path: '/tablo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -29,9 +51,44 @@ const LayoutIndexRoute = LayoutIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutTransactionsRoute = LayoutTransactionsRouteImport.update({
+  id: '/transactions',
+  path: '/transactions',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutReportsRoute = LayoutReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutMaterialsRoute = LayoutMaterialsRouteImport.update({
+  id: '/materials',
+  path: '/materials',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutMachinesRoute = LayoutMachinesRouteImport.update({
+  id: '/machines',
+  path: '/machines',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutLogsRoute = LayoutLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutEmployeesRoute = LayoutEmployeesRouteImport.update({
+  id: '/employees',
+  path: '/employees',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutClientsRoute = LayoutClientsRouteImport.update({
+  id: '/clients',
+  path: '/clients',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutAdminRoute = LayoutAdminRouteImport.update({
@@ -39,48 +96,159 @@ const LayoutAdminRoute = LayoutAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutOrdersIndexRoute = LayoutOrdersIndexRouteImport.update({
+  id: '/orders/',
+  path: '/orders/',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutOrdersOrderIdRoute = LayoutOrdersOrderIdRouteImport.update({
+  id: '/orders/$orderId',
+  path: '/orders/$orderId',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutCutmapOrderIdRoute = LayoutCutmapOrderIdRouteImport.update({
+  id: '/cutmap/$orderId',
+  path: '/cutmap/$orderId',
+  getParentRoute: () => LayoutRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
   '/login': typeof LoginRoute
+  '/tablo': typeof TabloRoute
+  '/terminal': typeof TerminalRoute
   '/admin': typeof LayoutAdminRoute
+  '/clients': typeof LayoutClientsRoute
+  '/employees': typeof LayoutEmployeesRoute
+  '/logs': typeof LayoutLogsRoute
+  '/machines': typeof LayoutMachinesRoute
+  '/materials': typeof LayoutMaterialsRoute
+  '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
+  '/transactions': typeof LayoutTransactionsRoute
+  '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
+  '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
+  '/orders/': typeof LayoutOrdersIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/tablo': typeof TabloRoute
+  '/terminal': typeof TerminalRoute
   '/admin': typeof LayoutAdminRoute
+  '/clients': typeof LayoutClientsRoute
+  '/employees': typeof LayoutEmployeesRoute
+  '/logs': typeof LayoutLogsRoute
+  '/machines': typeof LayoutMachinesRoute
+  '/materials': typeof LayoutMaterialsRoute
+  '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
+  '/transactions': typeof LayoutTransactionsRoute
   '/': typeof LayoutIndexRoute
+  '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
+  '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
+  '/orders': typeof LayoutOrdersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_layout': typeof LayoutRouteWithChildren
   '/login': typeof LoginRoute
+  '/tablo': typeof TabloRoute
+  '/terminal': typeof TerminalRoute
   '/_layout/admin': typeof LayoutAdminRoute
+  '/_layout/clients': typeof LayoutClientsRoute
+  '/_layout/employees': typeof LayoutEmployeesRoute
+  '/_layout/logs': typeof LayoutLogsRoute
+  '/_layout/machines': typeof LayoutMachinesRoute
+  '/_layout/materials': typeof LayoutMaterialsRoute
+  '/_layout/reports': typeof LayoutReportsRoute
   '/_layout/settings': typeof LayoutSettingsRoute
+  '/_layout/transactions': typeof LayoutTransactionsRoute
   '/_layout/': typeof LayoutIndexRoute
+  '/_layout/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
+  '/_layout/orders/$orderId': typeof LayoutOrdersOrderIdRoute
+  '/_layout/orders/': typeof LayoutOrdersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/admin' | '/settings'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/tablo'
+    | '/terminal'
+    | '/admin'
+    | '/clients'
+    | '/employees'
+    | '/logs'
+    | '/machines'
+    | '/materials'
+    | '/reports'
+    | '/settings'
+    | '/transactions'
+    | '/cutmap/$orderId'
+    | '/orders/$orderId'
+    | '/orders/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/admin' | '/settings' | '/'
+  to:
+    | '/login'
+    | '/tablo'
+    | '/terminal'
+    | '/admin'
+    | '/clients'
+    | '/employees'
+    | '/logs'
+    | '/machines'
+    | '/materials'
+    | '/reports'
+    | '/settings'
+    | '/transactions'
+    | '/'
+    | '/cutmap/$orderId'
+    | '/orders/$orderId'
+    | '/orders'
   id:
     | '__root__'
     | '/_layout'
     | '/login'
+    | '/tablo'
+    | '/terminal'
     | '/_layout/admin'
+    | '/_layout/clients'
+    | '/_layout/employees'
+    | '/_layout/logs'
+    | '/_layout/machines'
+    | '/_layout/materials'
+    | '/_layout/reports'
     | '/_layout/settings'
+    | '/_layout/transactions'
     | '/_layout/'
+    | '/_layout/cutmap/$orderId'
+    | '/_layout/orders/$orderId'
+    | '/_layout/orders/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
   LoginRoute: typeof LoginRoute
+  TabloRoute: typeof TabloRoute
+  TerminalRoute: typeof TerminalRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terminal': {
+      id: '/terminal'
+      path: '/terminal'
+      fullPath: '/terminal'
+      preLoaderRoute: typeof TerminalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tablo': {
+      id: '/tablo'
+      path: '/tablo'
+      fullPath: '/tablo'
+      preLoaderRoute: typeof TabloRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -102,11 +270,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutIndexRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/transactions': {
+      id: '/_layout/transactions'
+      path: '/transactions'
+      fullPath: '/transactions'
+      preLoaderRoute: typeof LayoutTransactionsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/settings': {
       id: '/_layout/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof LayoutSettingsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/reports': {
+      id: '/_layout/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof LayoutReportsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/materials': {
+      id: '/_layout/materials'
+      path: '/materials'
+      fullPath: '/materials'
+      preLoaderRoute: typeof LayoutMaterialsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/machines': {
+      id: '/_layout/machines'
+      path: '/machines'
+      fullPath: '/machines'
+      preLoaderRoute: typeof LayoutMachinesRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/logs': {
+      id: '/_layout/logs'
+      path: '/logs'
+      fullPath: '/logs'
+      preLoaderRoute: typeof LayoutLogsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/employees': {
+      id: '/_layout/employees'
+      path: '/employees'
+      fullPath: '/employees'
+      preLoaderRoute: typeof LayoutEmployeesRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/clients': {
+      id: '/_layout/clients'
+      path: '/clients'
+      fullPath: '/clients'
+      preLoaderRoute: typeof LayoutClientsRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/admin': {
@@ -116,19 +333,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAdminRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/orders/': {
+      id: '/_layout/orders/'
+      path: '/orders'
+      fullPath: '/orders/'
+      preLoaderRoute: typeof LayoutOrdersIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/orders/$orderId': {
+      id: '/_layout/orders/$orderId'
+      path: '/orders/$orderId'
+      fullPath: '/orders/$orderId'
+      preLoaderRoute: typeof LayoutOrdersOrderIdRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/cutmap/$orderId': {
+      id: '/_layout/cutmap/$orderId'
+      path: '/cutmap/$orderId'
+      fullPath: '/cutmap/$orderId'
+      preLoaderRoute: typeof LayoutCutmapOrderIdRouteImport
+      parentRoute: typeof LayoutRoute
+    }
   }
 }
 
 interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
+  LayoutClientsRoute: typeof LayoutClientsRoute
+  LayoutEmployeesRoute: typeof LayoutEmployeesRoute
+  LayoutLogsRoute: typeof LayoutLogsRoute
+  LayoutMachinesRoute: typeof LayoutMachinesRoute
+  LayoutMaterialsRoute: typeof LayoutMaterialsRoute
+  LayoutReportsRoute: typeof LayoutReportsRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
+  LayoutTransactionsRoute: typeof LayoutTransactionsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
+  LayoutCutmapOrderIdRoute: typeof LayoutCutmapOrderIdRoute
+  LayoutOrdersOrderIdRoute: typeof LayoutOrdersOrderIdRoute
+  LayoutOrdersIndexRoute: typeof LayoutOrdersIndexRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRoute: LayoutAdminRoute,
+  LayoutClientsRoute: LayoutClientsRoute,
+  LayoutEmployeesRoute: LayoutEmployeesRoute,
+  LayoutLogsRoute: LayoutLogsRoute,
+  LayoutMachinesRoute: LayoutMachinesRoute,
+  LayoutMaterialsRoute: LayoutMaterialsRoute,
+  LayoutReportsRoute: LayoutReportsRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
+  LayoutTransactionsRoute: LayoutTransactionsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
+  LayoutCutmapOrderIdRoute: LayoutCutmapOrderIdRoute,
+  LayoutOrdersOrderIdRoute: LayoutOrdersOrderIdRoute,
+  LayoutOrdersIndexRoute: LayoutOrdersIndexRoute,
 }
 
 const LayoutRouteWithChildren =
@@ -137,6 +395,8 @@ const LayoutRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
   LoginRoute: LoginRoute,
+  TabloRoute: TabloRoute,
+  TerminalRoute: TerminalRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

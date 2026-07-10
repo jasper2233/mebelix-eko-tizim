@@ -3,7 +3,280 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, RefreshAccessTokenResponse, LogoutResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
+import type { ReadAuditLogsData, ReadAuditLogsResponse, ReadClientsData, ReadClientsResponse, CreateClientData, CreateClientResponse, ReadClientData, ReadClientResponse, UpdateClientData, UpdateClientResponse, DeleteClientData, DeleteClientResponse, ReadEmployeesData, ReadEmployeesResponse, CreateEmployeeData, CreateEmployeeResponse, ReadEmployeeData, ReadEmployeeResponse, UpdateEmployeeData, UpdateEmployeeResponse, DeleteEmployeeData, DeleteEmployeeResponse, RegenerateBadgeData, RegenerateBadgeResponse, HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, RefreshAccessTokenResponse, LogoutResponse, ReadMachinesResponse, CreateMachineData, CreateMachineResponse, ReadMachineData, ReadMachineResponse, UpdateMachineData, UpdateMachineResponse, DeleteMachineData, DeleteMachineResponse, ReadMaterialsData, ReadMaterialsResponse, CreateMaterialData, CreateMaterialResponse, UpdateMaterialData, UpdateMaterialResponse, DeleteMaterialData, DeleteMaterialResponse, CreateOrderData, CreateOrderResponse, ReadOrdersData, ReadOrdersResponse, ReadOrderData, ReadOrderResponse, UpdateOrderData, UpdateOrderResponse, CancelOrderData, CancelOrderResponse, DeliverOrderData, DeliverOrderResponse, ReadOrderMatrixData, ReadOrderMatrixResponse, EditOrderMatrixData, EditOrderMatrixResponse, AssignOrderMachinesData, AssignOrderMachinesResponse, SubmitOrderReviewData, SubmitOrderReviewResponse, StartOrderProductionData, StartOrderProductionResponse, UploadOrderProjectData, UploadOrderProjectResponse, DownloadOrderFileData, DownloadOrderFileResponse, ReadOrderCutmapData, ReadOrderCutmapResponse, ReadPostsResponse, UpdatePostData, UpdatePostResponse, ReportProductivityData, ReportProductivityResponse, ReportOrdersData, ReportOrdersResponse, ReportMaterialsData, ReportMaterialsResponse, ReportDashboardResponse, RecordScanData, RecordScanResponse, CancelScanData, CancelScanResponse, ReadRecentScansData, ReadRecentScansResponse, ReadTabloMatrixResponse, ReadTabloOrderData, ReadTabloOrderResponse, ReadTerminalContextResponse, StartTerminalSessionData, StartTerminalSessionResponse, EndTerminalSessionResponse, ReadTerminalTasksResponse, ReadTerminalOrdersResponse, ReadTerminalCutmapData, ReadTerminalCutmapResponse, PrintInstanceLabelData, PrintInstanceLabelResponse, DownloadTerminalFileData, DownloadTerminalFileResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
+
+export class AuditService {
+    /**
+     * Read Audit Logs
+     * @param data The data for the request.
+     * @param data.skip
+     * @param data.limit
+     * @param data.module
+     * @param data.action
+     * @param data.userId
+     * @param data.dateFrom
+     * @param data.dateTo
+     * @returns Paginated_AuditLogRead_ Successful Response
+     * @throws ApiError
+     */
+    public static readAuditLogs(data: ReadAuditLogsData = {}): CancelablePromise<ReadAuditLogsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/audit-logs/',
+            query: {
+                skip: data.skip,
+                limit: data.limit,
+                module: data.module,
+                action: data.action,
+                user_id: data.userId,
+                date_from: data.dateFrom,
+                date_to: data.dateTo
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class ClientsService {
+    /**
+     * Read Clients
+     * @param data The data for the request.
+     * @param data.skip
+     * @param data.limit
+     * @param data.search
+     * @returns Paginated_ClientRead_ Successful Response
+     * @throws ApiError
+     */
+    public static readClients(data: ReadClientsData = {}): CancelablePromise<ReadClientsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/clients/',
+            query: {
+                skip: data.skip,
+                limit: data.limit,
+                search: data.search
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Create Client
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns ClientRead Successful Response
+     * @throws ApiError
+     */
+    public static createClient(data: CreateClientData): CancelablePromise<CreateClientResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/clients/',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Read Client
+     * @param data The data for the request.
+     * @param data.clientId
+     * @returns ClientRead Successful Response
+     * @throws ApiError
+     */
+    public static readClient(data: ReadClientData): CancelablePromise<ReadClientResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/clients/{client_id}',
+            path: {
+                client_id: data.clientId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Client
+     * @param data The data for the request.
+     * @param data.clientId
+     * @param data.requestBody
+     * @returns ClientRead Successful Response
+     * @throws ApiError
+     */
+    public static updateClient(data: UpdateClientData): CancelablePromise<UpdateClientResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/clients/{client_id}',
+            path: {
+                client_id: data.clientId
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Delete Client
+     * @param data The data for the request.
+     * @param data.clientId
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static deleteClient(data: DeleteClientData): CancelablePromise<DeleteClientResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/clients/{client_id}',
+            path: {
+                client_id: data.clientId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class EmployeesService {
+    /**
+     * Read Employees
+     * @param data The data for the request.
+     * @param data.skip
+     * @param data.limit
+     * @param data.search
+     * @param data.status
+     * @returns Paginated_EmployeeRead_ Successful Response
+     * @throws ApiError
+     */
+    public static readEmployees(data: ReadEmployeesData = {}): CancelablePromise<ReadEmployeesResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/employees/',
+            query: {
+                skip: data.skip,
+                limit: data.limit,
+                search: data.search,
+                status: data.status
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Create Employee
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns EmployeeRead Successful Response
+     * @throws ApiError
+     */
+    public static createEmployee(data: CreateEmployeeData): CancelablePromise<CreateEmployeeResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/employees/',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Read Employee
+     * @param data The data for the request.
+     * @param data.employeeId
+     * @returns EmployeeRead Successful Response
+     * @throws ApiError
+     */
+    public static readEmployee(data: ReadEmployeeData): CancelablePromise<ReadEmployeeResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/employees/{employee_id}',
+            path: {
+                employee_id: data.employeeId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Employee
+     * @param data The data for the request.
+     * @param data.employeeId
+     * @param data.requestBody
+     * @returns EmployeeRead Successful Response
+     * @throws ApiError
+     */
+    public static updateEmployee(data: UpdateEmployeeData): CancelablePromise<UpdateEmployeeResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/employees/{employee_id}',
+            path: {
+                employee_id: data.employeeId
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Delete Employee
+     * @param data The data for the request.
+     * @param data.employeeId
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static deleteEmployee(data: DeleteEmployeeData): CancelablePromise<DeleteEmployeeResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/employees/{employee_id}',
+            path: {
+                employee_id: data.employeeId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Regenerate Badge
+     * Lost badge (TZ 4.2): old badge stops working immediately, history stays on the same employee.
+     * @param data The data for the request.
+     * @param data.employeeId
+     * @returns EmployeeRead Successful Response
+     * @throws ApiError
+     */
+    public static regenerateBadge(data: RegenerateBadgeData): CancelablePromise<RegenerateBadgeResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/employees/{employee_id}/badge',
+            path: {
+                employee_id: data.employeeId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
 
 export class HealthService {
     /**
@@ -75,6 +348,862 @@ export class LoginService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/logout'
+        });
+    }
+}
+
+export class MachinesService {
+    /**
+     * Read Machines
+     * All machines — small fixed set, no pagination. Terminals/TABLO need this for context too.
+     * @returns MachineRead Successful Response
+     * @throws ApiError
+     */
+    public static readMachines(): CancelablePromise<ReadMachinesResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/machines/'
+        });
+    }
+    
+    /**
+     * Create Machine
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns MachineRead Successful Response
+     * @throws ApiError
+     */
+    public static createMachine(data: CreateMachineData): CancelablePromise<CreateMachineResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/machines/',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Read Machine
+     * @param data The data for the request.
+     * @param data.machineId
+     * @returns MachineRead Successful Response
+     * @throws ApiError
+     */
+    public static readMachine(data: ReadMachineData): CancelablePromise<ReadMachineResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/machines/{machine_id}',
+            path: {
+                machine_id: data.machineId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Machine
+     * @param data The data for the request.
+     * @param data.machineId
+     * @param data.requestBody
+     * @returns MachineRead Successful Response
+     * @throws ApiError
+     */
+    public static updateMachine(data: UpdateMachineData): CancelablePromise<UpdateMachineResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/machines/{machine_id}',
+            path: {
+                machine_id: data.machineId
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Delete Machine
+     * @param data The data for the request.
+     * @param data.machineId
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static deleteMachine(data: DeleteMachineData): CancelablePromise<DeleteMachineResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/machines/{machine_id}',
+            path: {
+                machine_id: data.machineId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class MaterialsService {
+    /**
+     * Read Materials
+     * @param data The data for the request.
+     * @param data.skip
+     * @param data.limit
+     * @param data.search
+     * @param data.type
+     * @returns Paginated_MaterialRead_ Successful Response
+     * @throws ApiError
+     */
+    public static readMaterials(data: ReadMaterialsData = {}): CancelablePromise<ReadMaterialsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/materials/',
+            query: {
+                skip: data.skip,
+                limit: data.limit,
+                search: data.search,
+                type: data.type
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Create Material
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns MaterialRead Successful Response
+     * @throws ApiError
+     */
+    public static createMaterial(data: CreateMaterialData): CancelablePromise<CreateMaterialResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/materials/',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Material
+     * @param data The data for the request.
+     * @param data.materialId
+     * @param data.requestBody
+     * @returns MaterialRead Successful Response
+     * @throws ApiError
+     */
+    public static updateMaterial(data: UpdateMaterialData): CancelablePromise<UpdateMaterialResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/materials/{material_id}',
+            path: {
+                material_id: data.materialId
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Delete Material
+     * @param data The data for the request.
+     * @param data.materialId
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static deleteMaterial(data: DeleteMaterialData): CancelablePromise<DeleteMaterialResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/materials/{material_id}',
+            path: {
+                material_id: data.materialId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class OrdersService {
+    /**
+     * Create Order
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns OrderRead Successful Response
+     * @throws ApiError
+     */
+    public static createOrder(data: CreateOrderData): CancelablePromise<CreateOrderResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/orders/',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Read Orders
+     * @param data The data for the request.
+     * @param data.skip
+     * @param data.limit
+     * @param data.status
+     * @param data.search
+     * @returns Paginated_OrderRead_ Successful Response
+     * @throws ApiError
+     */
+    public static readOrders(data: ReadOrdersData = {}): CancelablePromise<ReadOrdersResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/orders/',
+            query: {
+                skip: data.skip,
+                limit: data.limit,
+                status: data.status,
+                search: data.search
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Read Order
+     * @param data The data for the request.
+     * @param data.orderId
+     * @returns OrderDetail Successful Response
+     * @throws ApiError
+     */
+    public static readOrder(data: ReadOrderData): CancelablePromise<ReadOrderResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/orders/{order_id}',
+            path: {
+                order_id: data.orderId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Order
+     * @param data The data for the request.
+     * @param data.orderId
+     * @param data.requestBody
+     * @returns OrderRead Successful Response
+     * @throws ApiError
+     */
+    public static updateOrder(data: UpdateOrderData): CancelablePromise<UpdateOrderResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/orders/{order_id}',
+            path: {
+                order_id: data.orderId
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Cancel Order
+     * TZ 6.5: any stage; scans/history stay for audit; terminals are notified in real time.
+     * @param data The data for the request.
+     * @param data.orderId
+     * @param data.requestBody
+     * @returns OrderRead Successful Response
+     * @throws ApiError
+     */
+    public static cancelOrder(data: CancelOrderData): CancelablePromise<CancelOrderResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/orders/{order_id}/cancel',
+            path: {
+                order_id: data.orderId
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Deliver Order
+     * TZ 10.3: TOPSHIRILDI — only from COMPLETED; date recorded automatically.
+     * @param data The data for the request.
+     * @param data.orderId
+     * @returns OrderRead Successful Response
+     * @throws ApiError
+     */
+    public static deliverOrder(data: DeliverOrderData): CancelablePromise<DeliverOrderResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/orders/{order_id}/deliver',
+            path: {
+                order_id: data.orderId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Read Order Matrix
+     * @param data The data for the request.
+     * @param data.orderId
+     * @returns OrderMatrix Successful Response
+     * @throws ApiError
+     */
+    public static readOrderMatrix(data: ReadOrderMatrixData): CancelablePromise<ReadOrderMatrixResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/orders/{order_id}/matrix',
+            path: {
+                order_id: data.orderId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Edit Order Matrix
+     * Texnolog matrix edits (TZ 6.3.3): stage toggles, notes, rare count fixes. Pre-production only.
+     * @param data The data for the request.
+     * @param data.orderId
+     * @param data.requestBody
+     * @returns OrderMatrix Successful Response
+     * @throws ApiError
+     */
+    public static editOrderMatrix(data: EditOrderMatrixData): CancelablePromise<EditOrderMatrixResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/orders/{order_id}/matrix',
+            path: {
+                order_id: data.orderId
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Assign Order Machines
+     * Manager picks a machine per post where several exist (TZ 6.4.1).
+     * @param data The data for the request.
+     * @param data.orderId
+     * @param data.requestBody
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static assignOrderMachines(data: AssignOrderMachinesData): CancelablePromise<AssignOrderMachinesResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/orders/{order_id}/machines',
+            path: {
+                order_id: data.orderId
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Submit Order Review
+     * Texnolog 'Tayyor' (TZ 6.3.4): DRAFT → TECHNICAL_REVIEW after the project file is processed.
+     * @param data The data for the request.
+     * @param data.orderId
+     * @returns OrderRead Successful Response
+     * @throws ApiError
+     */
+    public static submitOrderReview(data: SubmitOrderReviewData): CancelablePromise<SubmitOrderReviewResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/orders/{order_id}/submit-review',
+            path: {
+                order_id: data.orderId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Start Order Production
+     * Manager 'Ishlab chiqarishga uzatish' (TZ 6.4.2): TECHNICAL_REVIEW → PRODUCTION.
+     * @param data The data for the request.
+     * @param data.orderId
+     * @returns OrderRead Successful Response
+     * @throws ApiError
+     */
+    public static startOrderProduction(data: StartOrderProductionData): CancelablePromise<StartOrderProductionResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/orders/{order_id}/start',
+            path: {
+                order_id: data.orderId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Upload Order Project
+     * Texnolog uploads the .project file (TZ 6.3). Exactly ONE file per order; re-upload
+     * replaces all previous parse results and is allowed only before PRODUCTION.
+     * @param data The data for the request.
+     * @param data.orderId
+     * @param data.formData
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static uploadOrderProject(data: UploadOrderProjectData): CancelablePromise<UploadOrderProjectResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/orders/{order_id}/upload',
+            path: {
+                order_id: data.orderId
+            },
+            formData: data.formData,
+            mediaType: 'multipart/form-data',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Download Order File
+     * Download a stored file (project / SCX / document).
+     * @param data The data for the request.
+     * @param data.orderId
+     * @param data.fileId
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static downloadOrderFile(data: DownloadOrderFileData): CancelablePromise<DownloadOrderFileResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/orders/{order_id}/files/{file_id}',
+            path: {
+                order_id: data.orderId,
+                file_id: data.fileId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Read Order Cutmap
+     * Kesish xaritalari (TZ 10.3): manager/texnolog view + browser-print for a paper copy.
+     * @param data The data for the request.
+     * @param data.orderId
+     * @returns CutmapState Successful Response
+     * @throws ApiError
+     */
+    public static readOrderCutmap(data: ReadOrderCutmapData): CancelablePromise<ReadOrderCutmapResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/orders/{order_id}/cutmap',
+            path: {
+                order_id: data.orderId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class PostsService {
+    /**
+     * Read Posts
+     * @returns PostRead Successful Response
+     * @throws ApiError
+     */
+    public static readPosts(): CancelablePromise<ReadPostsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/posts/'
+        });
+    }
+    
+    /**
+     * Update Post
+     * @param data The data for the request.
+     * @param data.postId
+     * @param data.requestBody
+     * @returns PostRead Successful Response
+     * @throws ApiError
+     */
+    public static updatePost(data: UpdatePostData): CancelablePromise<UpdatePostResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/posts/{post_id}',
+            path: {
+                post_id: data.postId
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class ReportsService {
+    /**
+     * Report Productivity
+     * @param data The data for the request.
+     * @param data.dateFrom
+     * @param data.dateTo
+     * @param data.format
+     * @returns ProductivityReport Successful Response
+     * @throws ApiError
+     */
+    public static reportProductivity(data: ReportProductivityData = {}): CancelablePromise<ReportProductivityResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/reports/productivity',
+            query: {
+                date_from: data.dateFrom,
+                date_to: data.dateTo,
+                format: data.format
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Report Orders
+     * @param data The data for the request.
+     * @param data.dateFrom
+     * @param data.dateTo
+     * @param data.format
+     * @returns OrdersReport Successful Response
+     * @throws ApiError
+     */
+    public static reportOrders(data: ReportOrdersData = {}): CancelablePromise<ReportOrdersResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/reports/orders',
+            query: {
+                date_from: data.dateFrom,
+                date_to: data.dateTo,
+                format: data.format
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Report Materials
+     * @param data The data for the request.
+     * @param data.dateFrom
+     * @param data.dateTo
+     * @param data.format
+     * @returns MaterialsReport Successful Response
+     * @throws ApiError
+     */
+    public static reportMaterials(data: ReportMaterialsData = {}): CancelablePromise<ReportMaterialsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/reports/materials',
+            query: {
+                date_from: data.dateFrom,
+                date_to: data.dateTo,
+                format: data.format
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Report Dashboard
+     * @returns DashboardStats Successful Response
+     * @throws ApiError
+     */
+    public static reportDashboard(): CancelablePromise<ReportDashboardResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/reports/dashboard'
+        });
+    }
+}
+
+export class ScansService {
+    /**
+     * Record Scan Endpoint
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns ScanResult Successful Response
+     * @throws ApiError
+     */
+    public static recordScan(data: RecordScanData): CancelablePromise<RecordScanResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/scans/',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Cancel Scan Endpoint
+     * @param data The data for the request.
+     * @param data.scanId
+     * @returns ScanHistoryItem Successful Response
+     * @throws ApiError
+     */
+    public static cancelScan(data: CancelScanData): CancelablePromise<CancelScanResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/scans/{scan_id}',
+            path: {
+                scan_id: data.scanId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Read Recent Scans
+     * TARIX block (TZ 8.3.3): last 50 entries of the CURRENT session only.
+     * @param data The data for the request.
+     * @param data.limit
+     * @returns ScanHistoryItem Successful Response
+     * @throws ApiError
+     */
+    public static readRecentScans(data: ReadRecentScansData = {}): CancelablePromise<ReadRecentScansResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/scans/recent',
+            query: {
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class TabloService {
+    /**
+     * Read Tablo Matrix
+     * @returns TabloMatrix Successful Response
+     * @throws ApiError
+     */
+    public static readTabloMatrix(): CancelablePromise<ReadTabloMatrixResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/tablo/matrix'
+        });
+    }
+    
+    /**
+     * Read Tablo Order
+     * Drill-down (TZ 9.5): SONI NAZORATI — every part × stage.
+     * @param data The data for the request.
+     * @param data.orderId
+     * @returns TabloOrderDetail Successful Response
+     * @throws ApiError
+     */
+    public static readTabloOrder(data: ReadTabloOrderData): CancelablePromise<ReadTabloOrderResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/tablo/orders/{order_id}',
+            path: {
+                order_id: data.orderId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class TerminalService {
+    /**
+     * Read Terminal Context
+     * @returns TerminalContext Successful Response
+     * @throws ApiError
+     */
+    public static readTerminalContext(): CancelablePromise<ReadTerminalContextResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/terminal/context'
+        });
+    }
+    
+    /**
+     * Start Terminal Session
+     * Badge scan opens the shift (TZ 8.2.2).
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns SessionRead Successful Response
+     * @throws ApiError
+     */
+    public static startTerminalSession(data: StartTerminalSessionData): CancelablePromise<StartTerminalSessionResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/terminal/session',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * End Terminal Session
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static endTerminalSession(): CancelablePromise<EndTerminalSessionResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/terminal/session/end'
+        });
+    }
+    
+    /**
+     * Read Terminal Tasks
+     * NAVBATDAGI VAZIFALAR (TZ 8.3.2): deadline order, QOLDIQ > 0, this post/machine only.
+     * @returns TaskRow Successful Response
+     * @throws ApiError
+     */
+    public static readTerminalTasks(): CancelablePromise<ReadTerminalTasksResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/terminal/tasks'
+        });
+    }
+    
+    /**
+     * Read Terminal Orders
+     * Active orders relevant to this terminal (for the ARRA map order picker).
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static readTerminalOrders(): CancelablePromise<ReadTerminalOrdersResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/terminal/orders'
+        });
+    }
+    
+    /**
+     * Read Terminal Cutmap
+     * ARRA cut-map screen (TZ 7.1.7). Cell state survives terminal restarts — it lives here.
+     * @param data The data for the request.
+     * @param data.orderId
+     * @returns CutmapState Successful Response
+     * @throws ApiError
+     */
+    public static readTerminalCutmap(data: ReadTerminalCutmapData): CancelablePromise<ReadTerminalCutmapResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/terminal/orders/{order_id}/cutmap',
+            path: {
+                order_id: data.orderId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Print Instance Label
+     * YORLIQ CHOP ETISH (TZ 7.1.4): on-demand, per selected cell. Queued to the bridge-agent.
+     * @param data The data for the request.
+     * @param data.instanceId
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static printInstanceLabel(data: PrintInstanceLabelData): CancelablePromise<PrintInstanceLabelResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/terminal/labels/{instance_id}',
+            path: {
+                instance_id: data.instanceId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Download Terminal File
+     * SCX download at the machine browser (TZ 12.5) — served fresh on every scan.
+     * @param data The data for the request.
+     * @param data.fileId
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static downloadTerminalFile(data: DownloadTerminalFileData): CancelablePromise<DownloadTerminalFileResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/terminal/files/{file_id}',
+            path: {
+                file_id: data.fileId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
         });
     }
 }

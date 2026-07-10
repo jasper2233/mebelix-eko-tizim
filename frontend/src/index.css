@@ -78,15 +78,52 @@
   --sidebar-ring: #f0a52f;
 }
 
+/* Production posts (TZ 4.4) — one hue per stage, used in pipeline chips, matrix cells, tablo */
+:root {
+  --post-arra: #c2410c;
+  --post-kromka: #0e7490;
+  --post-prisadka: #7c3aed;
+  --post-paz: #b45309;
+  --post-rover: #be185d;
+  --post-stolyarka: #15803d;
+  --status-draft: #64748b;
+  --status-review: #b45309;
+  --status-production: #1d4ed8;
+  --status-completed: #15803d;
+  --status-delivered: #0f766e;
+  --status-cancelled: #b91c1c;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-[#f4f6f9] text-foreground;
   }
   button,
   [role="button"] {
     cursor: pointer;
+  }
+  /* Industrial numerals: counters, sizes and QOLDIQ figures align in columns */
+  .num {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* PDF / qog'oz chop (TZ 10.3): faqat kontent — sidebar, headerlar va boshqaruvlar yashirinadi */
+@media print {
+  [data-slot="sidebar-wrapper"] > [data-slot="sidebar"],
+  [data-sidebar],
+  header,
+  .print-hide {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  body {
+    background: white;
   }
 }

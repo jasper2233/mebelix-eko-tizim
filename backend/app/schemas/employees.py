@@ -1,0 +1,53 @@
+from datetime import date, datetime
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.models.enums import EmployeeStatus
+
+from .users import PHONE_PATTERN
+
+_PHONE = Field(pattern=PHONE_PATTERN, examples=["+998901234567"], default=None)
+
+
+class EmployeeRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    full_name: str
+    badge_id: str
+    phone: str | None
+    passport_id: str | None
+    position: str | None
+    status: EmployeeStatus
+    photo_url: str | None
+    assigned_post_ids: list[int]
+    hired_date: date | None
+    created_at: datetime
+
+
+class EmployeeCreate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    full_name: Annotated[str, Field(min_length=2, max_length=100)]
+    phone: Annotated[str | None, _PHONE]
+    passport_id: str | None = Field(default=None, max_length=20)
+    position: str | None = Field(default=None, max_length=50)
+    status: EmployeeStatus = EmployeeStatus.ACTIVE
+    photo_url: str | None = None
+    assigned_post_ids: list[int] = []
+    hired_date: date | None = None
+    # badge_id is server-generated (UUID) — never client-supplied
+
+
+class EmployeeUpdate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    full_name: Annotated[str | None, Field(min_length=2, max_length=100, default=None)]
+    phone: Annotated[str | None, _PHONE]
+    passport_id: str | None = Field(default=None, max_length=20)
+    position: str | None = Field(default=None, max_length=50)
+    status: EmployeeStatus | None = None
+    photo_url: str | None = None
+    assigned_post_ids: list[int] | None = None
+    hired_date: date | None = None

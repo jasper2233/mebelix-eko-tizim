@@ -63,6 +63,22 @@ class Settings(BaseSettings):
     DEFAULT_PAGE_SIZE: int = 50
     MAX_PAGE_SIZE: int = 100
 
+    # === File storage ===
+    UPLOAD_DIR: str = "uploads"  # project/scx/label files root (TZ 2.4.3); S3 mount later if needed
+    MAX_PROJECT_FILE_SIZE: int = 50 * 1024 * 1024  # .project files in the corpus are < 5 MB
+
+    # === Production floor (TZ 7–8) ===
+    STRICT_STAGE_ORDER: bool = False  # E004: block scan until the previous stage is done (optional, TZ 7.2.5)
+    SESSION_MAX_HOURS: int = 12  # operator shift timeout (TZ 8.5 E005)
+    SCAN_UNDO_SECONDS: int = 60  # BEKOR QILISH window (TZ 8.6)
+
+    # === Printing (TZ 12.3 / 13.2) ===
+    # Remote-first (TZ 2.2): labels go through the bridge-agent queue. Set PRINTER_IP only in
+    # LOCAL deployments where the backend can reach the GoDEX directly (TZ 2.2.3).
+    PRINTER_IP: str | None = None
+    PRINTER_PORT: int = 9100
+    BRIDGE_TOKEN: str = ""  # non-empty enables the /ws/bridge endpoint for the shop-floor agent
+
     # === Startup probes ===
     STARTUP_RETRY_MAX_ATTEMPTS: int = 5
     STARTUP_RETRY_DELAY_SECONDS: int = 2

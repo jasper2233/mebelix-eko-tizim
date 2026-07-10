@@ -1,4 +1,5 @@
-from typing import Annotated
+from collections.abc import Callable, Coroutine
+from typing import Annotated, Any
 
 from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
@@ -8,6 +9,7 @@ from app.core.db import async_get_db
 from app.core.exceptions import ForbiddenException, UnauthorizedException
 from app.core.security import ACCESS_COOKIE_NAME, TokenType, verify_token
 from app.crud import crud_users
+from app.models.enums import UserRole
 from app.models.user import User
 
 SessionDep = Annotated[AsyncSession, Depends(async_get_db)]
@@ -56,3 +58,24 @@ async def get_current_superuser(current_user: CurrentUser) -> User:
 
 
 SuperUserDep = Annotated[User, Depends(get_current_superuser)]
+
+
+def require_roles(*roles: UserRole) -> Callable[..., Coroutine[Any, Any, User]]:
+    """Dependency factory: allow only the given roles. ADMIN role and superusers always pass."""
+
+    async def checker(current_user: CurrentUser) -> User:
+        if current_user.is_superuser or current_user.role == UserRole.ADMIN or current_user.role in roles:
+            return current_user
+        raise ForbiddenException("Sizda yetarli huquq yo'q.")
+
+    return checker
+
+
+# Common role groups (TZ 3.7 role/module matrix)
+ManagerUser = Annotated[User, Depends(require_roles(UserRole.MANAGER))]
+TexnologUser = Annotated[User, Depends(require_roles(UserRole.TEXNOLOG))]
+ManagerOrTexnolog = Annotated[User, Depends(require_roles(UserRole.MANAGER, UserRole.TEXNOLOG))]
+StaffReadUser = Annotated[
+    User, Depends(require_roles(UserRole.MANAGER, UserRole.TEXNOLOG, UserRole.DIRECTOR))
+]  # read-only lists shared by office roles
+AdminUser = Annotated[User, Depends(require_roles())]  # admin/superuser only

@@ -1,5 +1,17 @@
 import { Link } from "@tanstack/react-router"
-import { Home, Users } from "lucide-react"
+import {
+  BarChart3,
+  ClipboardList,
+  Factory,
+  HardHat,
+  Home,
+  Layers,
+  ListChecks,
+  MonitorPlay,
+  ScrollText,
+  UserRound,
+  Users,
+} from "lucide-react"
 
 import {
   Sidebar,
@@ -12,14 +24,55 @@ import useCurrentUser from "@/hooks/useCurrentUser"
 import { type Item, Main } from "./Main"
 import { User } from "./User"
 
-const baseItems: Item[] = [{ icon: Home, title: "Boshqaruv paneli", path: "/" }]
+// Rolga qarab navigatsiya (TZ 3.7 rollar-modullar matritsasi)
+function navItems(role: string | undefined, isSuperuser: boolean): Item[] {
+  const admin = isSuperuser || role === "admin"
+  const items: Item[] = [{ icon: Home, title: "Boshqaruv paneli", path: "/" }]
+
+  if (
+    admin ||
+    role === "manager" ||
+    role === "texnolog" ||
+    role === "director"
+  ) {
+    items.push({ icon: ClipboardList, title: "Buyurtmalar", path: "/orders" })
+  }
+  if (admin || role === "manager" || role === "director") {
+    items.push({ icon: UserRound, title: "Mijozlar", path: "/clients" })
+  }
+  if (admin || role === "manager" || role === "director") {
+    items.push({ icon: HardHat, title: "Hodimlar", path: "/employees" })
+  }
+  if (
+    admin ||
+    role === "manager" ||
+    role === "texnolog" ||
+    role === "director"
+  ) {
+    items.push({ icon: Factory, title: "Stanoklar", path: "/machines" })
+    items.push({ icon: Layers, title: "Materiallar", path: "/materials" })
+  }
+  if (admin || role === "manager" || role === "director") {
+    items.push({ icon: BarChart3, title: "Hisobotlar", path: "/reports" })
+  }
+  items.push({ icon: MonitorPlay, title: "LIVE Tablo", path: "/tablo" })
+  if (admin || role === "director") {
+    items.push({
+      icon: ListChecks,
+      title: "Tranzaksiyalar",
+      path: "/transactions",
+    })
+  }
+  if (admin) {
+    items.push({ icon: Users, title: "Foydalanuvchilar", path: "/admin" })
+    items.push({ icon: ScrollText, title: "Logs", path: "/logs" })
+  }
+  return items
+}
 
 export function AppSidebar() {
   const { currentUser } = useCurrentUser()
-
-  const items = currentUser?.is_superuser
-    ? [...baseItems, { icon: Users, title: "Foydalanuvchilar", path: "/admin" }]
-    : baseItems
+  const items = navItems(currentUser?.role, Boolean(currentUser?.is_superuser))
 
   return (
     <Sidebar collapsible="icon">
