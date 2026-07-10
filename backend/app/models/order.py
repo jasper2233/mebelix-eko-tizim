@@ -1,0 +1,144 @@
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Any
+
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Numeric, String, Text, text
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column
+
+from .base import BaseModel
+from .enums import FileKind, OrderPriority, OrderStatus, ProjectGeneration, RouteSource, db_enum
+
+
+class Order(BaseModel):
+    """Production order (TZ 6). Lifecycle: DRAFT → TECHNICAL_REVIEW → PRODUCTION → COMPLETED → DELIVERED."""
+
+    __tablename__ = "order"
+
+    __table_args__ = (Index("ix_order_number", "number", unique=True, postgresql_where=text("NOT is_deleted")),)
+
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organization.id"), default=1, kw_only=True)
+    number: Mapped[str] = mapped_column(String(20), kw_only=True)  # B-2026-001, auto
+    client_id: Mapped[int] = mapped_column(ForeignKey("client.id"), index=True, kw_only=True)
+    status: Mapped[OrderStatus] = mapped_column(
+        db_enum(OrderStatus), default=OrderStatus.DRAFT, index=True, kw_only=True
+    )
+    priority: Mapped[OrderPriority] = mapped_column(db_enum(OrderPriority), default=OrderPriority.MEDIUM, kw_only=True)
+    deadline: Mapped[date | None] = mapped_column(Date, default=None, kw_only=True)
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), default=None, kw_only=True)
+    notes: Mapped[str | None] = mapped_column(Text, default=None, kw_only=True)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
+
+    # .project file metadata (set by texnolog upload; file name is informational only, TZ 6.2.2)
+    project_uuid: Mapped[str | None] = mapped_column(String(64), default=None, kw_only=True)
+    project_name: Mapped[str | None] = mapped_column(String(255), default=None, kw_only=True)
+    project_generation: Mapped[ProjectGeneration | None] = mapped_column(
+        db_enum(ProjectGeneration), default=None, kw_only=True
+    )
+    project_loaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
+
+    # Cut map visual model (TZ 5.7.5) built from CS data blob; rendered by ARRA terminal.
+    cutmap: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None, kw_only=True)
+    # Material consumption from the project file (TZ 11.3): [{name, kind, count, unit}]
+    material_usage: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default_factory=list, kw_only=True)
+    # Manager's machine choice per post: {"PAZ": 3, "ROVER": 5} (TZ 6.4.1)
+    machine_assignments: Mapped[dict[str, int]] = mapped_column(JSONB, default_factory=dict, kw_only=True)
+
+    production_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
+    cancel_reason: Mapped[str | None] = mapped_column(Text, default=None, kw_only=True)
+    cancelled_by_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
+
+
+class Product(BaseModel):
+    """Furniture item inside an order — <good typeId="product"> (TZ 5.2.2)."""
+
+    __tablename__ = "product"
+
+    order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), index=True, kw_only=True)
+    code: Mapped[str] = mapped_column(String(50), kw_only=True)  # e.g. 301401
+    name: Mapped[str] = mapped_column(String(255), kw_only=True)
+    count: Mapped[int] = mapped_column(default=1, kw_only=True)
+    import_source: Mapped[str | None] = mapped_column(String(50), default=None, kw_only=True)  # product.import
+
+
+class Part(BaseModel):
+    """Part definition — <part> inside product. Stable key: productCode_partCode (TZ 5.8)."""
+
+    __tablename__ = "part"
+
+    order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), index=True, kw_only=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("product.id"), index=True, kw_only=True)
+    code: Mapped[str] = mapped_column(String(50), kw_only=True)  # e.g. 01_002
+    name: Mapped[str] = mapped_column(String(255), kw_only=True)
+    count: Mapped[int] = mapped_column(default=1, kw_only=True)
+    length: Mapped[float | None] = mapped_column(default=None, kw_only=True)  # l, mm (finished)
+    width: Mapped[float | None] = mapped_column(default=None, kw_only=True)  # w, mm
+    thickness: Mapped[float | None] = mapped_column(default=None, kw_only=True)  # from sheet good t
+    saw_length: Mapped[float | None] = mapped_column(default=None, kw_only=True)  # jl
+    saw_width: Mapped[float | None] = mapped_column(default=None, kw_only=True)  # jw
+    txt: Mapped[bool] = mapped_column(default=False, kw_only=True)  # texture lock
+    material_name: Mapped[str | None] = mapped_column(String(150), default=None, kw_only=True)  # sheet good
+    label_num: Mapped[int | None] = mapped_column(default=None, kw_only=True)  # CS stub order, 1-based
+    # Edge banding per side: {"l": {"mat": "06-19 SASNA", "symbol": "A"}, "t": {...}} (ell/elr/elt/elb)
+    edges: Mapped[dict[str, Any]] = mapped_column(JSONB, default_factory=dict, kw_only=True)
+    # Merged XNC summary: {"bores": N, "edge_bores": N, "grooves": N, "mills": N, "sides": 1|2}
+    xnc_summary: Mapped[dict[str, Any]] = mapped_column(JSONB, default_factory=dict, kw_only=True)
+    note: Mapped[str | None] = mapped_column(Text, default=None, kw_only=True)  # texnolog izohi
+
+
+class PartInstance(BaseModel):
+    """Physical copy of a part. QR = productCode_partCode_n; each copy tracked separately (TZ 5.8.1)."""
+
+    __tablename__ = "part_instance"
+
+    __table_args__ = (
+        Index("ix_part_instance_order_qr", "order_id", "qr_text", unique=True, postgresql_where=text("NOT is_deleted")),
+    )
+
+    order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), index=True, kw_only=True)
+    part_id: Mapped[int] = mapped_column(ForeignKey("part.id"), index=True, kw_only=True)
+    instance_no: Mapped[int] = mapped_column(kw_only=True)  # 1..count
+    qr_text: Mapped[str] = mapped_column(String(120), kw_only=True)
+    # Cut map cell binding: which pattern sheet / cell this copy occupies (TZ 7.1.4)
+    pattern_no: Mapped[int | None] = mapped_column(default=None, kw_only=True)
+    cell_index: Mapped[int | None] = mapped_column(default=None, kw_only=True)
+    label_printed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
+
+
+class PartRoute(BaseModel):
+    """Route entry: part must pass this post. Denormalized counters for fast QOLDIQ (TZ 5.4)."""
+
+    __tablename__ = "part_route"
+
+    __table_args__ = (
+        Index("ix_part_route_part_post", "part_id", "post_id", unique=True, postgresql_where=text("NOT is_deleted")),
+        Index("ix_part_route_order_post", "order_id", "post_id"),
+    )
+
+    order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), kw_only=True)
+    part_id: Mapped[int] = mapped_column(ForeignKey("part.id"), kw_only=True)
+    post_id: Mapped[int] = mapped_column(ForeignKey("post.id"), kw_only=True)
+    machine_id: Mapped[int | None] = mapped_column(ForeignKey("machine.id"), default=None, kw_only=True)
+    source: Mapped[RouteSource] = mapped_column(db_enum(RouteSource), default=RouteSource.AUTO, kw_only=True)
+    is_enabled: Mapped[bool] = mapped_column(default=True, kw_only=True)  # texnolog can switch off
+    # Scans needed per instance at this post (KROMKA: sides count; PRISADKA _2: 2; else 1)
+    per_instance: Mapped[int] = mapped_column(default=1, kw_only=True)
+    total_required: Mapped[int] = mapped_column(default=0, kw_only=True)  # count × per_instance
+    total_done: Mapped[int] = mapped_column(default=0, kw_only=True)
+
+
+class OrderFile(BaseModel):
+    """Stored file: uploaded .project, generated .scx per part, label PDFs, contract docs."""
+
+    __tablename__ = "order_file"
+
+    order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), index=True, kw_only=True)
+    part_id: Mapped[int | None] = mapped_column(ForeignKey("part.id"), default=None, kw_only=True)
+    kind: Mapped[FileKind] = mapped_column(db_enum(FileKind), kw_only=True)
+    path: Mapped[str] = mapped_column(String(500), kw_only=True)
+    filename: Mapped[str] = mapped_column(String(255), kw_only=True)
+    size: Mapped[int | None] = mapped_column(default=None, kw_only=True)
+    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, default_factory=dict, kw_only=True)

@@ -27,9 +27,7 @@ def upgrade() -> None:
     # Full unique -> partial unique: soft-deleted users release their username/phone.
     op.drop_index(op.f("ix_user_username"), table_name="user")
     op.drop_index(op.f("ix_user_phone"), table_name="user")
-    op.create_index(
-        "ix_user_username", "user", ["username"], unique=True, postgresql_where=sa.text("NOT is_deleted")
-    )
+    op.create_index("ix_user_username", "user", ["username"], unique=True, postgresql_where=sa.text("NOT is_deleted"))
     op.create_index("ix_user_phone", "user", ["phone"], unique=True, postgresql_where=sa.text("NOT is_deleted"))
 
 

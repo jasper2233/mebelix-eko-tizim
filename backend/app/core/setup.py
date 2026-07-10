@@ -13,12 +13,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from prometheus_fastapi_instrumentator import Instrumentator
+from redis.asyncio import Redis as AsyncRedis
 from sqlalchemy import text
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.api.deps import get_current_superuser
 from app.core.middleware import RequestLoggingMiddleware
 from app.core.utils.rate_limit import rate_limiter
+from app.core.ws import ws_manager
 
 from .config import EnvironmentOption, Settings, settings
 from .db import async_engine as engine
@@ -118,6 +120,7 @@ def lifespan_factory(settings: Settings) -> Callable[[FastAPI], _AsyncGeneratorC
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator:
         set_threadpool_tokens()
+        ws_redis: AsyncRedis | None = None
         try:
             if settings.ENABLE_REDIS_QUEUE:
                 await create_redis_queue_pool()
@@ -125,10 +128,16 @@ def lifespan_factory(settings: Settings) -> Callable[[FastAPI], _AsyncGeneratorC
                 await create_redis_rate_limit_pool()
             if settings.ENABLE_REDIS_QUEUE or settings.ENABLE_REDIS_RATE_LIMIT:
                 await check_redis_connection()
+                # Real-time bridge (TZ 2.3): cross-worker WS fan-out over Redis pub/sub.
+                ws_redis = AsyncRedis.from_url(settings.REDIS_URL)
+                await ws_manager.start_listener(ws_redis)
 
             await check_database_connection()
             yield
         finally:
+            await ws_manager.stop_listener()
+            if ws_redis is not None:
+                await ws_redis.close()
             if settings.ENABLE_REDIS_QUEUE:
                 await close_redis_queue_pool()
             if settings.ENABLE_REDIS_RATE_LIMIT:

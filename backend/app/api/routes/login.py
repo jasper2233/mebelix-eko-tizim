@@ -26,9 +26,7 @@ from app.schemas.auth import Token
 router = APIRouter(prefix="/login", tags=["login"])
 
 # Brute-force defence — tunable via LOGIN_RATE_LIMIT_ATTEMPTS / LOGIN_RATE_LIMIT_PERIOD.
-_LOGIN_RATE_LIMIT = RateLimit(
-    limit=settings.LOGIN_RATE_LIMIT_ATTEMPTS, period=settings.LOGIN_RATE_LIMIT_PERIOD
-)
+_LOGIN_RATE_LIMIT = RateLimit(limit=settings.LOGIN_RATE_LIMIT_ATTEMPTS, period=settings.LOGIN_RATE_LIMIT_PERIOD)
 
 ACCESS_MAX_AGE = ACCESS_TOKEN_EXPIRE_MINUTES * 60
 REFRESH_MAX_AGE = REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
@@ -70,9 +68,7 @@ async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Annotated[AsyncSession, Depends(async_get_db)],
 ) -> dict[str, str]:
-    user = await crud_users.authenticate(
-        db=db, username_or_phone=form_data.username, password=form_data.password
-    )
+    user = await crud_users.authenticate(db=db, username_or_phone=form_data.username, password=form_data.password)
     if not user:
         raise UnauthorizedException("Foydalanuvchi nomi, telefon yoki parol noto'g'ri.")
     if not user.is_active:

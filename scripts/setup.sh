@@ -30,5 +30,6 @@ uv run alembic upgrade head
 # Create superuser
 echo "👤 Creating first superuser..."
 uv run python -m app.commands.create_first_superuser
+uv run python -m app.commands.seed_defaults
 
 echo "✅ Setup complete! You can now run the app with 'make run-backend' (local dev) or 'make docker-local' (containers)."

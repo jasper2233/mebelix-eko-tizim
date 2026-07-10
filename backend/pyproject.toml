@@ -25,6 +25,7 @@ dependencies = [
     "bcrypt>=4.1.1",
     "gunicorn>=23.0.0",
     "prometheus-fastapi-instrumentator>=7.0.0",
+    "openpyxl>=3.1.5",
 ]
 
 [dependency-groups]
@@ -33,6 +34,8 @@ dev = [
     "types-redis>=4.6.0",
     "ruff>=0.15.12",
     "pre-commit>=4.6.0",
+    "types-openpyxl>=3.1.5.20260518",
+    "websockets>=16.0",
 ]
 
 [build-system]

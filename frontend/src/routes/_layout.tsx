@@ -15,7 +15,15 @@ import {
 
 const sectionTitles: Record<string, string> = {
   "/": "Boshqaruv paneli",
+  "/orders": "Buyurtmalar",
+  "/clients": "Mijozlar",
+  "/employees": "Hodimlar",
+  "/machines": "Stanoklar",
+  "/materials": "Materiallar",
+  "/transactions": "Tranzaksiyalar",
+  "/reports": "Hisobotlar",
   "/admin": "Foydalanuvchilar",
+  "/logs": "Logs",
   "/settings": "Sozlamalar",
 }
 
@@ -23,7 +31,10 @@ export const Route = createFileRoute("/_layout")({
   component: Layout,
   beforeLoad: async () => {
     try {
-      await UsersService.readUserMe()
+      const me = await UsersService.readUserMe()
+      // Qurilma akkauntlari admin panelga kirmaydi — o'z ekraniga (TZ 3.4/3.5)
+      if (me.role === "terminal") throw redirect({ to: "/terminal" })
+      if (me.role === "tablo") throw redirect({ to: "/tablo" })
     } catch (err) {
       // Faqat 401 login'ga yo'naltiradi — tarmoq uzilishi/5xx da sessiyani o'ldirmaymiz,
       // xato errorComponent'da ko'rinadi.

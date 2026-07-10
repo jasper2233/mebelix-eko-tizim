@@ -2,6 +2,7 @@ import type { ColumnDef } from "@tanstack/react-table"
 
 import type { UserRead } from "@/client"
 import { Badge } from "@/components/ui/badge"
+import { ROLE_LABELS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { UserActionsMenu } from "./UserActionsMenu"
 
@@ -39,11 +40,19 @@ export const columns: ColumnDef<UserTableData>[] = [
     ),
   },
   {
-    accessorKey: "is_superuser",
+    accessorKey: "role",
     header: "Rol",
     cell: ({ row }) => (
-      <Badge variant={row.original.is_superuser ? "default" : "secondary"}>
-        {row.original.is_superuser ? "Admin" : "Foydalanuvchi"}
+      <Badge
+        variant={
+          row.original.is_superuser || row.original.role === "admin"
+            ? "default"
+            : "secondary"
+        }
+      >
+        {row.original.is_superuser
+          ? "Admin"
+          : (ROLE_LABELS[row.original.role] ?? row.original.role)}
       </Badge>
     ),
   },

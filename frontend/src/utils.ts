@@ -1,7 +1,7 @@
 import { AxiosError } from "axios"
 import type { ApiError } from "./client"
 
-function extractErrorMessage(err: ApiError): string {
+export function extractErrorMessage(err: ApiError): string {
   if (err instanceof AxiosError) {
     if (err.code === AxiosError.ERR_NETWORK) {
       return "Tarmoq xatosi — internet aloqasini tekshiring"

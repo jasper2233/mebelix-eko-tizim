@@ -8,6 +8,8 @@ from pydantic import (
     field_validator,
 )
 
+from app.models.enums import UserRole
+
 # Uzbekistan E.164 phone — `+998` country code + 9 digits. Stored canonical, no spaces.
 PHONE_PATTERN = r"^\+998\d{9}$"
 
@@ -44,6 +46,8 @@ class UserRead(BaseModel):
     phone: Annotated[str, _PHONE_FIELD]
     is_active: bool
     is_superuser: bool
+    role: UserRole
+    machine_id: int | None = None
 
 
 class UserCreate(BaseModel):
@@ -57,6 +61,8 @@ class UserCreate(BaseModel):
     password: Annotated[str, Field(examples=["Str1ngst!"])]
     is_superuser: bool = False
     is_active: bool = True
+    role: UserRole = UserRole.MANAGER
+    machine_id: int | None = None  # required in practice for TERMINAL/TABLO roles
 
     @field_validator("password")
     @classmethod
@@ -84,6 +90,8 @@ class UserAdminUpdate(UserUpdate):
     password: str | None = Field(default=None)
     is_active: bool | None = None
     is_superuser: bool | None = None
+    role: UserRole | None = None
+    machine_id: int | None = None
 
     @field_validator("password")
     @classmethod

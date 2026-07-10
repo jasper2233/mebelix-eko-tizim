@@ -1,7 +1,8 @@
-from sqlalchemy import Index, String, text
+from sqlalchemy import ForeignKey, Index, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import BaseModel
+from .enums import UserRole, db_enum
 
 
 class User(BaseModel):
@@ -23,3 +24,10 @@ class User(BaseModel):
     is_active: Mapped[bool] = mapped_column(default=True, kw_only=True)
     is_superuser: Mapped[bool] = mapped_column(default=False, kw_only=True)
     token_version: Mapped[int] = mapped_column(default=0, server_default="0", kw_only=True)
+
+    # TZ 3: admin/director/manager/texnolog are people; terminal/tablo are device accounts
+    # bound to a machine (TZ 8.1 variant B). Operators are NOT users — they are employees (badge).
+    role: Mapped[UserRole] = mapped_column(
+        db_enum(UserRole), default=UserRole.ADMIN, server_default="admin", kw_only=True
+    )
+    machine_id: Mapped[int | None] = mapped_column(ForeignKey("machine.id"), default=None, kw_only=True)

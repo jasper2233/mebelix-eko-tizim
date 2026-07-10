@@ -12,6 +12,8 @@ Loyihaning to'liq texnik hujjatlari. Har bir fayl o'z subsystemidagi **har bir m
 | [06-frontend-components.md](06-frontend-components.md) | Komponentlar: Admin (user CRUD), Common, Sidebar, UserSettings, shadcn/ui jadvali (custom o'zgartirishlar bilan) |
 | [07-infra-devops.md](07-infra-devops.md) | Docker Compose (local/prod), Dockerfilelar, Caddy, nginx, Makefile, scriptlar, pre-commit, env variablelar jadvali |
 | [08-packages.md](08-packages.md) | Paket versiyalari, 2026-07-09 upgrade tarixi, ataylab ushlab qolingan versiyalar (ceilinglar) va yangilash yo'llari |
+| [09-mes-domain.md](09-mes-domain.md) | MES domen qatlami (TT implementatsiyasi): data model, GibLab parser (CS blob, SCX), scan engine, real-time, chop etish (EZPL + bridge-agent), API xaritasi, frontend tuzilishi |
+| [Mebelix_MES_TZ_v2.2.docx](Mebelix_MES_TZ_v2.2.docx) | Texnik Topshiriq (TT) — talablarning yagona manbasi |
 
 ## Yangilab borish
 
