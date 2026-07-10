@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { renderToStaticMarkup } from "react-dom/server"
 
 import { OpenAPI, OrdersService, TerminalService } from "@/client"
 import { Button } from "@/components/ui/button"
@@ -57,59 +58,61 @@ function escapeHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)
 }
 
-/** Umumiy listlar ro'yxati — chop etish uchun ixcham ko'rinish (xarita va statistikasiz). */
-function printSheetSummary(orderNumber: string, materials: Material[]) {
-  const w = window.open("", "_blank", "width=800,height=900")
+/** Barcha kesish xaritalarini chop etish: har xarita tepasida
+ * "Material nomi | №1 — 2750 × 1830 mm × 2 list" sarlavha, har list o'z sahifasida. */
+function printAllMaps(
+  orderNumber: string,
+  materials: Material[],
+  holes: Record<string, any>,
+  instancesByCell: Map<string, any[]>,
+) {
+  const w = window.open("", "_blank", "width=1000,height=800")
   if (!w) return
-  const total = materials.reduce(
-    (a: number, m: Material) =>
-      a + m.sheets.reduce((b: number, s: Sheet) => b + (s.mult || 1), 0),
-    0,
-  )
-  const body = materials
-    .map(
-      (m: Material) => `
-      <h2>${escapeHtml(m.name)}</h2>
-      <table>
-        ${m.sheets
-          .map(
-            (s: Sheet) =>
-              `<tr><td class="n">№${s.no}</td><td>${s.L} × ${s.W} mm</td><td class="n">× ${s.mult || 1} list</td></tr>`,
-          )
-          .join("")}
-      </table>`,
+  const blocks = materials
+    .flatMap((m: Material) =>
+      m.sheets.map(
+        (s: Sheet) => `
+        <section>
+          <h2>${escapeHtml(m.name)} | №${s.no} — ${s.L} × ${s.W} mm × ${s.mult || 1} list</h2>
+          ${renderToStaticMarkup(
+            <SheetSvg
+              sheet={s}
+              holes={holes}
+              instancesByCell={instancesByCell}
+              onSelect={() => {}}
+              selectedCell={null}
+            />,
+          )}
+        </section>`,
+      ),
     )
     .join("")
   w.document.write(`<!doctype html><html lang="uz"><head><meta charset="utf-8">
-    <title>${escapeHtml(orderNumber)} — kesish listlari</title>
+    <title>${escapeHtml(orderNumber)} — kesish xaritalari</title>
     <style>
-      body{font-family:system-ui,sans-serif;color:#000;margin:24px;font-size:14px}
-      h1{font-size:18px;margin:0 0 4px} .sub{color:#555;margin:0 0 16px}
-      h2{font-size:14px;margin:16px 0 4px;border-bottom:1px solid #000;padding-bottom:2px}
-      table{border-collapse:collapse;width:100%}
-      td{padding:3px 8px;border-bottom:1px solid #ddd}
-      td.n{white-space:nowrap;font-variant-numeric:tabular-nums}
-      .total{margin-top:16px;font-weight:bold}
-      @media print{ body{margin:8mm} }
-    </style></head><body>
-    <h1>${escapeHtml(orderNumber)} — kesish listlari</h1>
-    <p class="sub">${new Date().toLocaleString("uz-Latn-UZ")}</p>
-    ${body}
-    <p class="total">Jami: ${total} list</p>
-    </body></html>`)
+      @page{ size: A4 landscape; margin: 8mm }
+      body{font-family:system-ui,sans-serif;color:#000;margin:0}
+      section{page-break-after:always;page-break-inside:avoid;padding:4px 8px}
+      section:last-child{page-break-after:auto}
+      h2{font-size:15px;margin:0 0 4px;border-bottom:2px solid #000;padding-bottom:3px}
+      svg{width:100%;height:auto;max-height:180mm;display:block}
+    </style></head><body>${blocks}</body></html>`)
   w.document.close()
   w.focus()
-  setTimeout(() => w.print(), 200)
+  setTimeout(() => w.print(), 300)
 }
 
 export function CutmapView({
   orderId,
   onBack,
   admin = false,
+  registerPrint,
 }: {
   orderId: number
   onBack: () => void
   admin?: boolean
+  /** Sahifa tepasidagi "PDF / Chop etish" tugmasi shu funksiyani chaqiradi (barcha xaritalar). */
+  registerPrint?: (fn: () => void) => void
 }) {
   const { data, isLoading } = useQuery(getCutmapQueryOptions(orderId, admin))
   const [materialIdx, setMaterialIdx] = useState(0)
@@ -164,22 +167,17 @@ export function CutmapView({
     })
   }
 
+  registerPrint?.(() =>
+    printAllMaps(data.order_number, materials, holes, instancesByCell as never),
+  )
+
   return (
     <div className="flex h-full flex-col gap-3 lg:flex-row">
       {/* Materiallar + statistika paneli */}
       <div className="w-full shrink-0 space-y-3 lg:w-72">
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={onBack}>
-            <ArrowLeft /> Vazifalar ro'yxati
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => printSheetSummary(data.order_number, materials)}
-          >
-            <Printer /> Listlar ro'yxati
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={onBack}>
+          <ArrowLeft /> Vazifalar ro'yxati
+        </Button>
         <div className="rounded-xl border bg-card">
           <div className="border-b px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Materiallar · {materials.length}
@@ -196,7 +194,7 @@ export function CutmapView({
                     setMaterialIdx(i)
                     setSheetIdx(0)
                   }}
-                  className={`flex w-full items-center justify-between px-3 py-2.5 text-left text-sm ${
+                  className={`flex min-h-12 w-full items-center justify-between px-3 py-2.5 text-left text-base ${
                     i === materialIdx
                       ? "bg-secondary font-semibold"
                       : "hover:bg-muted"
@@ -300,7 +298,7 @@ export function CutmapView({
                   type="button"
                   key={s.no}
                   onClick={() => setSheetIdx(i)}
-                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
+                  className={`flex min-h-12 w-full items-center gap-2 px-3 py-2 text-left text-base ${
                     i === sheetIdx
                       ? "bg-secondary font-semibold"
                       : "hover:bg-muted"
@@ -337,10 +335,10 @@ export function CutmapView({
                   × {sheet.mult} list
                 </span>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1.5">
                 <Button
                   variant="outline"
-                  size="icon-sm"
+                  className="size-12 [&_svg]:size-6"
                   disabled={sheetIdx === 0}
                   onClick={() => setSheetIdx(sheetIdx - 1)}
                 >
@@ -348,7 +346,7 @@ export function CutmapView({
                 </Button>
                 <Button
                   variant="outline"
-                  size="icon-sm"
+                  className="size-12 [&_svg]:size-6"
                   disabled={sheetIdx >= sheets.length - 1}
                   onClick={() => setSheetIdx(sheetIdx + 1)}
                 >
@@ -1092,7 +1090,7 @@ function PartCard({
 
   return (
     <Dialog open={!!part} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
             №{part.num} — {part.name}{" "}
@@ -1105,7 +1103,7 @@ function PartCard({
         <div className="flex items-start gap-4">
           {next && (
             <div className="shrink-0 rounded-lg border p-2">
-              <QRCodeSVG value={next.qr_text} size={140} />
+              <QRCodeSVG value={next.qr_text} size={170} />
               <div className="num mt-1 text-center text-[10px] text-muted-foreground">
                 {next.qr_text}
               </div>
@@ -1133,7 +1131,7 @@ function PartCard({
           {insts.map((inst) => (
             <div
               key={inst.instance_id}
-              className="flex items-center justify-between rounded-lg border px-3 py-1.5 text-sm"
+              className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm"
             >
               <span className="num">
                 {inst.qr_text}{" "}
@@ -1143,7 +1141,7 @@ function PartCard({
               </span>
               {!admin && (
                 <LoadingButton
-                  size="sm"
+                  className="h-12 px-4 text-base font-bold"
                   loading={printMutation.isPending}
                   onClick={() => {
                     // PNG yangi tabda — brauzerdan istalgan printerga chop etiladi;

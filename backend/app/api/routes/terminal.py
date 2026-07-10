@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.deps import SessionDep, require_roles
 from app.core.config import settings
@@ -229,7 +229,11 @@ async def read_terminal_orders(db: SessionDep, user: TerminalUser) -> list[dict]
         raise _scan_http_error(exc) from None
     rows = (
         await db.execute(
-            select(Order)
+            select(
+                Order,
+                func.sum(PartRoute.total_done),
+                func.sum(PartRoute.total_required),
+            )
             .join(PartRoute, PartRoute.order_id == Order.id)
             .where(
                 Order.status == OrderStatus.PRODUCTION,
@@ -238,11 +242,22 @@ async def read_terminal_orders(db: SessionDep, user: TerminalUser) -> list[dict]
                 PartRoute.is_enabled == True,  # noqa: E712
                 PartRoute.is_deleted == False,  # noqa: E712
             )
-            .distinct()
+            .group_by(Order.id)
             .order_by(Order.deadline.asc().nulls_last(), Order.id)
         )
-    ).scalars()
-    return [{"id": o.id, "number": o.number, "project_name": o.project_name, "deadline": o.deadline} for o in rows]
+    ).all()
+    return [
+        {
+            "id": o.id,
+            "number": o.number,
+            "project_name": o.project_name,
+            "deadline": o.deadline,
+            "priority": o.priority,
+            "done": int(done or 0),
+            "total": int(total or 0),
+        }
+        for o, done, total in rows
+    ]
 
 
 @router.get("/orders/{order_id}/cutmap", response_model=CutmapState, operation_id="read_terminal_cutmap")

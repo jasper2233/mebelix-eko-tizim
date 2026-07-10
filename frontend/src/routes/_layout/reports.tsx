@@ -170,7 +170,7 @@ function OrdersTable({ params }: { params: RangeParams }) {
             <TableHead>Raqam</TableHead>
             <TableHead>Mijoz</TableHead>
             <TableHead>Holat</TableHead>
-            <TableHead>Muddat</TableHead>
+            <TableHead>Topshirish sanasi</TableHead>
             <TableHead>Tayyor</TableHead>
             <TableHead>Topshirilgan</TableHead>
             <TableHead>Izoh</TableHead>

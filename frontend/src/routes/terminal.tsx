@@ -29,9 +29,17 @@ import {
 import { CutmapView } from "@/components/Terminal/CutmapView"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
+import useAuth from "@/hooks/useAuth"
+import useCurrentUser from "@/hooks/useCurrentUser"
 import useCustomToast from "@/hooks/useCustomToast"
 import { useMesWs } from "@/hooks/useMesWs"
-import { formatSize, OPERATOR_ROLES, POST_COLORS } from "@/lib/mes"
+import {
+  formatDate,
+  formatSize,
+  OPERATOR_ROLES,
+  POST_COLORS,
+  PRIORITY_LABELS,
+} from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import {
   getTerminalContextQueryOptions,
@@ -73,6 +81,9 @@ function TerminalPage() {
   const { showSuccessToast, showErrorToast } = useCustomToast()
   const { data: ctx } = useQuery(getTerminalContextQueryOptions())
   const { data: tasks } = useQuery(getTerminalTasksQueryOptions())
+  const { currentUser } = useCurrentUser()
+  const { logout } = useAuth()
+  const isOperator = OPERATOR_ROLES.includes(currentUser?.role as never)
 
   const [scanOn, setScanOn] = useState(true)
   const [locked, setLocked] = useState(false)
@@ -246,6 +257,21 @@ function TerminalPage() {
 
   return (
     <div className="flex h-dvh flex-col bg-[#eef1f5]">
+      {/* Qulf ekrani: tasodifiy tegishlardan himoya */}
+      {locked && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-slate-900/95 text-white">
+          <Lock className="size-16 opacity-80" />
+          <div className="text-2xl font-black">Ekran qulflangan</div>
+          <Button
+            size="lg"
+            variant="secondary"
+            className="h-14 px-10 text-lg font-bold"
+            onClick={() => setLocked(false)}
+          >
+            Ochish
+          </Button>
+        </div>
+      )}
       {/* Header (TZ 8.3.1) */}
       <header className="flex items-center gap-4 border-b bg-white px-4 py-2 shadow-sm">
         <div>
@@ -276,7 +302,7 @@ function TerminalPage() {
           <input
             ref={inputRef}
             disabled={!scanOn || locked || mapOpen}
-            className="h-10 w-full rounded-lg border-2 border-primary/40 bg-white pl-10 pr-24 font-mono text-sm outline-none focus:border-primary disabled:bg-muted"
+            className="h-12 w-full rounded-lg border-2 border-primary/40 bg-white pl-10 pr-24 font-mono text-base outline-none focus:border-primary disabled:bg-muted"
             placeholder={
               ctx?.session ? "QR scan qiling..." : "Beyjik QR scan qiling..."
             }
@@ -307,7 +333,7 @@ function TerminalPage() {
           {ctx?.post_code === "ARRA" && mapOrderId !== null && (
             <Button
               variant="outline"
-              size="sm"
+              className="h-12 px-4 text-base"
               onClick={() => setMapOrderId(null)}
             >
               <MapIcon /> Proyektlar
@@ -315,21 +341,32 @@ function TerminalPage() {
           )}
           <Button
             variant="ghost"
-            size="icon-sm"
-            onClick={() => setLocked((v) => !v)}
-            title="Ekranni bloklash"
+            className="size-12 [&_svg]:size-6"
+            onClick={() => setLocked(true)}
+            title="Ekranni qulflash"
           >
-            <Lock className={locked ? "text-red-600" : ""} />
+            <Lock />
           </Button>
-          {ctx?.session && (
+          {isOperator ? (
             <Button
               variant="ghost"
-              size="icon-sm"
-              title="Sessiyani yakunlash"
-              onClick={() => endSession.mutate()}
+              className="size-12 [&_svg]:size-6"
+              title="Tizimdan chiqish"
+              onClick={() => logout()}
             >
               <LogOut />
             </Button>
+          ) : (
+            ctx?.session && (
+              <Button
+                variant="ghost"
+                className="size-12 [&_svg]:size-6"
+                title="Sessiyani yakunlash"
+                onClick={() => endSession.mutate()}
+              >
+                <LogOut />
+              </Button>
+            )
           )}
         </div>
       </header>
@@ -373,14 +410,14 @@ function TerminalPage() {
                 Navbatdagi vazifalar
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-muted/80 text-left text-[11px] uppercase tracking-wider text-muted-foreground backdrop-blur">
+                <table className="w-full text-base">
+                  <thead className="sticky top-0 bg-muted/80 text-left text-xs uppercase tracking-wider text-muted-foreground backdrop-blur">
                     <tr>
-                      <th className="px-4 py-2">Kod</th>
-                      <th className="px-4 py-2">Nomi</th>
-                      <th className="px-4 py-2">O'lchamlari</th>
-                      <th className="px-4 py-2">Muddat</th>
-                      <th className="px-4 py-2 text-right">Qoldiq</th>
+                      <th className="px-4 py-2.5">Kod</th>
+                      <th className="px-4 py-2.5">Nomi</th>
+                      <th className="px-4 py-2.5">O'lchamlari</th>
+                      <th className="px-4 py-2.5">Topshirish sanasi</th>
+                      <th className="px-4 py-2.5 text-right">Qoldiq</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -390,19 +427,19 @@ function TerminalPage() {
                           key={`${t.order_id}-${t.part_id}`}
                           className="border-b last:border-0"
                         >
-                          <td className="num px-4 py-2.5 font-semibold">
+                          <td className="num px-4 py-3.5 font-semibold">
                             {t.code}
                           </td>
-                          <td className="max-w-[240px] truncate px-4 py-2.5">
+                          <td className="max-w-[240px] truncate px-4 py-3.5">
                             {t.name}
                           </td>
-                          <td className="num px-4 py-2.5 text-xs">
+                          <td className="num px-4 py-3.5 text-sm">
                             {formatSize(t.length, t.width, t.thickness)}
                           </td>
-                          <td className="num px-4 py-2.5 text-xs">
-                            {t.deadline ?? "—"}
+                          <td className="num px-4 py-3.5 text-sm">
+                            {formatDate(t.deadline)}
                           </td>
-                          <td className="num px-4 py-2.5 text-right text-2xl font-black text-primary">
+                          <td className="num px-4 py-3.5 text-right text-3xl font-black text-primary">
                             {t.qoldiq}
                           </td>
                         </tr>
@@ -475,7 +512,7 @@ function TerminalPage() {
                     />
                   </span>
                 </div>
-                <ul className="min-h-0 flex-1 overflow-y-auto text-xs">
+                <ul className="min-h-0 flex-1 overflow-y-auto text-sm">
                   {visibleHistory.map((h) => (
                     <li
                       key={`${h.id}-${h.time}`}
@@ -534,36 +571,80 @@ function OrderPicker({ onPick }: { onPick: (orderId: number) => void }) {
     queryFn: () => TerminalService.readTerminalOrders(),
     refetchInterval: 30_000,
   })
+  const orders = data as
+    | Array<{
+        id: number
+        number: string
+        project_name?: string
+        deadline?: string
+        priority?: string
+        done?: number
+        total?: number
+      }>
+    | undefined
   return (
-    <div className="rounded-xl border bg-white p-4">
+    <div className="h-full overflow-y-auto rounded-xl border bg-white p-4">
       <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">
         Proyektlar — xarita uchun proyektni tanlang
       </h2>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {(
-          data as
-            | Array<{
-                id: number
-                number: string
-                project_name?: string
-                deadline?: string
-              }>
-            | undefined
-        )?.map((o) => (
-          <button
-            type="button"
-            key={o.id}
-            onClick={() => onPick(o.id)}
-            className="rounded-xl border-2 p-4 text-left hover:border-primary"
-          >
-            <div className="text-lg font-black">{o.number}</div>
-            <div className="truncate text-sm text-muted-foreground">
-              {o.project_name ?? ""}
-            </div>
-            <div className="num mt-1 text-xs">Muddat: {o.deadline ?? "—"}</div>
-          </button>
-        ))}
-        {!data?.length && (
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {orders?.map((o) => {
+          const total = o.total ?? 0
+          const done = o.done ?? 0
+          const pct = total ? Math.round((done / total) * 100) : 0
+          const finished = total > 0 && done >= total
+          return (
+            <button
+              type="button"
+              key={o.id}
+              onClick={() => onPick(o.id)}
+              className={`rounded-xl border-2 p-4 text-left transition-colors hover:border-primary ${
+                finished ? "border-green-500/60 bg-green-50/50" : ""
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="text-lg font-black">{o.number}</div>
+                {o.priority && (
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-black ${
+                      o.priority === "urgent"
+                        ? "bg-red-600 text-white"
+                        : o.priority === "high"
+                          ? "bg-orange-500 text-white"
+                          : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {PRIORITY_LABELS[o.priority] ?? o.priority}
+                  </span>
+                )}
+              </div>
+              <div className="truncate text-sm text-muted-foreground">
+                {o.project_name ?? ""}
+              </div>
+              {/* ARRA bo'yicha bajarilish: kesilgan nusxalar / jami */}
+              <div className="mt-2">
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={`h-full rounded-full ${finished ? "bg-green-500" : "bg-primary"}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <div className="num mt-1 flex justify-between text-xs">
+                  <span className="font-bold">
+                    {pct}% {finished && "✓"}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {done}/{total} detal
+                  </span>
+                </div>
+              </div>
+              <div className="num mt-1.5 text-xs text-muted-foreground">
+                Topshirish sanasi: <b>{formatDate(o.deadline)}</b>
+              </div>
+            </button>
+          )
+        })}
+        {!orders?.length && (
           <p className="text-sm text-muted-foreground">
             Aktiv buyurtmalar yo'q
           </p>

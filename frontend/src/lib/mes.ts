@@ -76,27 +76,19 @@ export const MATERIAL_TYPE_LABELS: Record<string, string> = {
   hardware: "Furnitura",
 }
 
-const dateFmt = new Intl.DateTimeFormat("uz-Latn-UZ", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-})
-const dateTimeFmt = new Intl.DateTimeFormat("uz-Latn-UZ", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-})
+// Hamma joyda bir xil: kun.oy.yil (brauzer locale'iga bog'liq emas)
+const p2 = (n: number) => String(n).padStart(2, "0")
 
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "—"
-  return dateFmt.format(new Date(value))
+  const d = new Date(value)
+  return `${p2(d.getDate())}.${p2(d.getMonth() + 1)}.${d.getFullYear()}`
 }
 
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return "—"
-  return dateTimeFmt.format(new Date(value))
+  const d = new Date(value)
+  return `${p2(d.getDate())}.${p2(d.getMonth() + 1)}.${d.getFullYear()} ${p2(d.getHours())}:${p2(d.getMinutes())}`
 }
 
 export function formatMoney(value: string | number | null | undefined): string {

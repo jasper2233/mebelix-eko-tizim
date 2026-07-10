@@ -157,7 +157,7 @@ function TabloPage() {
             <thead>
               <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
                 <th className="px-2 text-left">№ / Buyurtma</th>
-                <th className="px-2 text-left">Muddat</th>
+                <th className="px-2 text-left">Topshirish sanasi</th>
                 {(data?.posts as TabloPost[] | undefined)?.map((p) => (
                   <th
                     key={p.id}

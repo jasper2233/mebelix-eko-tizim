@@ -3,6 +3,7 @@
 
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { ArrowLeft, Printer } from "lucide-react"
+import { useRef } from "react"
 
 import { CutmapView } from "@/components/Terminal/CutmapView"
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/_layout/cutmap/$orderId")({
 function AdminCutmapPage() {
   const { orderId } = Route.useParams()
   const navigate = useNavigate()
+  const printRef = useRef<(() => void) | null>(null)
 
   return (
     <div className="flex h-[calc(100dvh-6rem)] flex-col">
@@ -30,7 +32,7 @@ function AdminCutmapPage() {
           variant="outline"
           size="sm"
           className="ml-auto"
-          onClick={() => window.print()}
+          onClick={() => printRef.current?.()}
         >
           <Printer /> PDF / Chop etish
         </Button>
@@ -42,6 +44,9 @@ function AdminCutmapPage() {
           onBack={() =>
             navigate({ to: "/orders/$orderId", params: { orderId } })
           }
+          registerPrint={(fn) => {
+            printRef.current = fn
+          }}
         />
       </div>
     </div>

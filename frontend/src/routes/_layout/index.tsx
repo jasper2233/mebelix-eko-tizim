@@ -167,7 +167,9 @@ function Dashboard() {
                 )}
               </div>
               <div className="num text-xs">
-                <span className="text-muted-foreground">Muddat:</span>{" "}
+                <span className="text-muted-foreground">
+                  Topshirish sanasi:
+                </span>{" "}
                 <b>{formatDate(o.deadline)}</b>
               </div>
               <div className="ml-auto">
