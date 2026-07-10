@@ -88,7 +88,8 @@ function OrderDetailPage() {
 
   const confirm = useMutation({
     mutationFn: () => OrdersService.confirmOrder({ orderId: id }),
-    onSuccess: () => showSuccessToast("Buyurtma tasdiqlandi — texnologga uzatildi"),
+    onSuccess: () =>
+      showSuccessToast("Buyurtma tasdiqlandi — texnologga uzatildi"),
     onError: handleError(showErrorToast),
     onSettled: invalidate,
   })

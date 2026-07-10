@@ -54,7 +54,10 @@ function phoneDigits(s: string): string {
 
 /** Pul maydoni avto-separatori: "5000000" → "5 000 000". Submit'da bo'shliqlar olib tashlanadi. */
 export function formatMoneyInput(input: string): string {
-  const d = input.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 12)
+  const d = input
+    .replace(/\D/g, "")
+    .replace(/^0+(?=\d)/, "")
+    .slice(0, 12)
   return d.replace(/\B(?=(\d{3})+(?!\d))/g, " ")
 }
 
