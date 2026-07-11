@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { Plus } from "lucide-react"
 import { useState } from "react"
@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import { OrdersService } from "@/client"
-import { AddClient } from "@/components/Clients/AddClient"
+import { ClientCombobox } from "@/components/Clients/ClientCombobox"
 import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
 import {
@@ -39,7 +39,6 @@ import {
 import useCustomToast from "@/hooks/useCustomToast"
 import { PRIORITY_LABELS } from "@/lib/mes"
 import { formatMoneyInput } from "@/lib/validation"
-import { getClientsQueryOptions } from "@/queries/mes"
 import { handleError } from "@/utils"
 
 const money = (v: string) => v.replace(/\s+/g, "")
@@ -70,7 +69,6 @@ export function AddOrder() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const { showSuccessToast, showErrorToast } = useCustomToast()
-  const { data: clients } = useQuery(getClientsQueryOptions())
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -135,35 +133,12 @@ export function AddOrder() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Mijoz</FormLabel>
-                  <div className="flex gap-2">
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Mijozni tanlang" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {clients?.data.map((c) => (
-                          <SelectItem key={c.id} value={String(c.id)}>
-                            {c.full_name} {c.phone ? `(${c.phone})` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <AddClient
-                      trigger={
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          title="Yangi mijoz"
-                        >
-                          <Plus />
-                        </Button>
-                      }
-                      onCreated={(c) => field.onChange(String(c.id))}
+                  <FormControl>
+                    <ClientCombobox
+                      value={field.value}
+                      onChange={field.onChange}
                     />
-                  </div>
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

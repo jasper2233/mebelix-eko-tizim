@@ -2,13 +2,14 @@
 // keyin mijozdan tashqari (backend ham shu qoidani ushlaydi).
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Pencil } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import { type OrderDetail, OrdersService } from "@/client"
+import { ClientCombobox } from "@/components/Clients/ClientCombobox"
 import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
 import {
@@ -39,7 +40,6 @@ import {
 import useCustomToast from "@/hooks/useCustomToast"
 import { PRIORITY_LABELS } from "@/lib/mes"
 import { formatMoneyInput } from "@/lib/validation"
-import { getClientsQueryOptions } from "@/queries/mes"
 import { handleError } from "@/utils"
 
 const money = (v: string) => v.replace(/\s+/g, "")
@@ -75,7 +75,6 @@ export function EditOrder({
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
-  const { data: clients } = useQuery(getClientsQueryOptions())
   const isDraft = order.status === "draft"
 
   const form = useForm<FormValues>({
@@ -141,24 +140,14 @@ export function EditOrder({
                       </span>
                     )}
                   </FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={!isDraft}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Mijozni tanlang" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {clients?.data.map((c) => (
-                        <SelectItem key={c.id} value={String(c.id)}>
-                          {c.full_name} {c.phone ? `(${c.phone})` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <ClientCombobox
+                      value={field.value}
+                      onChange={field.onChange}
+                      initialLabel={order.client_name}
+                      disabled={!isDraft}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
