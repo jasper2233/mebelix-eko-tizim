@@ -37,7 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import useCustomToast from "@/hooks/useCustomToast"
-import { PRIORITY_DOT_CLASSES, PRIORITY_LABELS } from "@/lib/mes"
+import { PRIORITY_LABELS } from "@/lib/mes"
 import { formatMoneyInput } from "@/lib/validation"
 import { handleError } from "@/utils"
 
@@ -176,9 +176,6 @@ export function AddOrder() {
                         {Object.entries(PRIORITY_LABELS).map(
                           ([value, label]) => (
                             <SelectItem key={value} value={value}>
-                              <span
-                                className={`size-2 shrink-0 rounded-full ${PRIORITY_DOT_CLASSES[value]}`}
-                              />
                               {label}
                             </SelectItem>
                           ),
