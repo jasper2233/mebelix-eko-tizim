@@ -3,7 +3,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import type { Body_login_access_token as AccessToken } from "@/client"
+import type { Body_login_access_token as AccessToken, ApiError } from "@/client"
 import { UsersService } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
 import {
@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
 import useAuth from "@/hooks/useAuth"
+import { extractErrorMessage } from "@/utils"
 
 const formSchema = z.object({
   username: z
@@ -74,12 +75,47 @@ function Login() {
           className="flex flex-col gap-6"
         >
           <div className="flex flex-col gap-1.5">
+            <p className="text-[11px] font-medium uppercase tracking-[0.3em] text-[#b8862f]">
+              MebeliX MES
+            </p>
             <h1 className="text-3xl font-bold tracking-tight">
-              Hisobingizga kiring
+              Tizimga kirish
             </h1>
             <p className="text-muted-foreground">
               Davom etish uchun ma'lumotlaringizni kiriting
             </p>
+            {/* Chap paneldagi o'lcham chizig'ining aks-sadosi */}
+            <svg
+              width="96"
+              height="10"
+              aria-hidden="true"
+              className="mt-2 text-[#EAA83C]"
+            >
+              <line
+                x1="1"
+                y1="5"
+                x2="95"
+                y2="5"
+                stroke="currentColor"
+                strokeOpacity="0.7"
+              />
+              <line
+                x1="1"
+                y1="0.5"
+                x2="1"
+                y2="9.5"
+                stroke="currentColor"
+                strokeOpacity="0.7"
+              />
+              <line
+                x1="95"
+                y1="0.5"
+                x2="95"
+                y2="9.5"
+                stroke="currentColor"
+                strokeOpacity="0.7"
+              />
+            </svg>
           </div>
 
           <div className="grid gap-4">
@@ -122,6 +158,15 @@ function Login() {
                 </FormItem>
               )}
             />
+
+            {loginMutation.isError && (
+              <div
+                role="alert"
+                className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
+              >
+                {extractErrorMessage(loginMutation.error as ApiError)}
+              </div>
+            )}
 
             <LoadingButton
               type="submit"
