@@ -42,9 +42,13 @@ def _client_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
 
 
-def _hide_cancelled(user: User) -> bool:
-    """Bekor qilinganlar texnologga kerak emas — faqat manager/direktor/admin ko'radi."""
-    return user.role == UserRole.TEXNOLOG and not user.is_superuser
+def _hidden_statuses(user: User) -> set[OrderStatus]:
+    """Texnolog navbatiga tushmagan holatlar: qoralama (hali tasdiqlanmagan,
+    tijoriy bosqich) va bekor qilinganlar. Buyurtma texnologga confirm'dan
+    keyin (TECHNICAL_REVIEW) ko'rinadi."""
+    if user.role == UserRole.TEXNOLOG and not user.is_superuser:
+        return {OrderStatus.DRAFT, OrderStatus.CANCELLED}
+    return set()
 
 
 async def _get_order(db: SessionDep, order_id: int) -> Order:
@@ -107,9 +111,9 @@ async def read_orders(
     query = (
         select(Order, Client.full_name).join(Client, Client.id == Order.client_id).where(Order.is_deleted == False)  # noqa: E712
     )
-    # Bekor qilinganlar texnologga ko'rinmaydi — uning ish navbatiga aloqasi yo'q
-    if _hide_cancelled(current_user):
-        query = query.where(Order.status != OrderStatus.CANCELLED)
+    hidden = _hidden_statuses(current_user)
+    if hidden:
+        query = query.where(Order.status.not_in(hidden))
     if status is not None:
         query = query.where(Order.status == status)
     if search:
@@ -137,15 +141,19 @@ async def read_order_status_counts(db: SessionDep, current_user: StaffReadUser) 
         .where(Order.is_deleted == False)  # noqa: E712
         .group_by(Order.status)
     )
-    if _hide_cancelled(current_user):
-        query = query.where(Order.status != OrderStatus.CANCELLED)
+    hidden = _hidden_statuses(current_user)
+    if hidden:
+        query = query.where(Order.status.not_in(hidden))
     rows = (await db.execute(query)).all()
     return {str(s): c for s, c in rows}
 
 
 @router.get("/{order_id}", response_model=OrderDetail, operation_id="read_order")
-async def read_order(db: SessionDep, _: StaffReadUser, order_id: int) -> OrderDetail:
+async def read_order(db: SessionDep, current_user: StaffReadUser, order_id: int) -> OrderDetail:
     order = await _get_order(db, order_id)
+    # List'da yashiringan holat to'g'ridan ID bilan ham ochilmasin
+    if order.status in _hidden_statuses(current_user):
+        raise NotFoundException("Buyurtma topilmadi.")
     client = await db.get(Client, order.client_id)  # include soft-deleted: history must render
     files = (
         (

@@ -129,11 +129,12 @@ function OrdersPage() {
     currentUser?.is_superuser ||
     currentUser?.role === "admin" ||
     currentUser?.role === "manager"
-  // Bekor qilinganlar texnologga ko'rinmaydi (backend ham filtrlaydi)
+  // Qoralama va bekor qilinganlar texnologga ko'rinmaydi (backend ham filtrlaydi):
+  // buyurtma texnolog navbatiga confirm'dan keyin tushadi
   const isTexnolog =
     currentUser?.role === "texnolog" && !currentUser.is_superuser
   const visibleTabs = isTexnolog
-    ? TABS.filter((t) => t.value !== "cancelled")
+    ? TABS.filter((t) => t.value !== "cancelled" && t.value !== "draft")
     : TABS
 
   return (
