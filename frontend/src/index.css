@@ -45,6 +45,10 @@
 /* MebeliX brand: navy #2F496E (logo), gold #F0A52F (logo), cool paper neutrals */
 :root {
   --radius: 0.625rem;
+  /* Brand aksentlari: login/cutmap oltin chiziqlar, to'q navy fon */
+  --brand-gold: #eaa83c;
+  --brand-gold-deep: #b8862f; /* oq fonda o'qiladigan to'q oltin */
+  --brand-navy-deep: #16233a;
   --background: #ffffff;
   --foreground: #1c2b42;
   --card: #ffffff;

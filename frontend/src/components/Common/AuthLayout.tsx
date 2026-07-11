@@ -4,7 +4,7 @@ interface AuthLayoutProps {
   children: React.ReactNode
 }
 
-const GOLD = "#EAA83C"
+const GOLD = "var(--brand-gold)"
 
 // Stilizatsiya qilingan kesish xaritasi (2440×1220 laminat plita, GibSaw uslubi) —
 // login sahifaning imzo elementi. Chiziqlar sahifa ochilganda chizilib paydo bo'ladi.
@@ -156,12 +156,12 @@ function CutmapArt() {
 export function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
-      <div className="relative hidden overflow-hidden bg-[#16233a] lg:block">
+      <div className="relative hidden overflow-hidden bg-(--brand-navy-deep) lg:block">
         <CutmapArt />
         {/* Tagline o'qilishi uchun pastki qoraytirish */}
         <div
           aria-hidden="true"
-          className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-[#16233a] to-transparent"
+          className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-(--brand-navy-deep) to-transparent"
         />
         <div className="absolute inset-0 flex flex-col justify-between p-10 xl:p-16">
           <img
@@ -170,7 +170,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
             className="h-12 w-auto self-start"
           />
           <div className="flex flex-col gap-3">
-            <p className="text-[11px] font-medium uppercase tracking-[0.3em] text-[#EAA83C]/80">
+            <p className="text-[11px] font-medium uppercase tracking-[0.3em] text-(--brand-gold)/80">
               Ishlab chiqarishni boshqarish tizimi
             </p>
             <p className="max-w-md text-2xl font-semibold leading-snug text-white/90 xl:text-3xl">

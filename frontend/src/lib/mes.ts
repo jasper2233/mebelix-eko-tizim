@@ -25,12 +25,19 @@ export const PRIORITY_LABELS: Record<string, string> = {
   urgent: "Shoshilinch",
 }
 
-// Reestrdagi matn ranglariga mos (urgent qizil, high to'q sariq)
+// Prioritet ranglari bitta manbadan: select nuqtalari va reestr matni
 export const PRIORITY_DOT_CLASSES: Record<string, string> = {
   low: "bg-slate-300",
   medium: "bg-slate-400",
   high: "bg-orange-500",
   urgent: "bg-red-500",
+}
+
+export const PRIORITY_TEXT_CLASSES: Record<string, string> = {
+  low: "text-muted-foreground",
+  medium: "text-muted-foreground",
+  high: "font-semibold text-orange-600",
+  urgent: "font-bold text-red-600",
 }
 
 export const POST_COLORS: Record<string, string> = {

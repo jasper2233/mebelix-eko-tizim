@@ -19,7 +19,12 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import useCurrentUser from "@/hooks/useCurrentUser"
-import { formatDate, formatMoney, PRIORITY_LABELS } from "@/lib/mes"
+import {
+  formatDate,
+  formatMoney,
+  PRIORITY_LABELS,
+  PRIORITY_TEXT_CLASSES,
+} from "@/lib/mes"
 import { getOrdersQueryOptions } from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/orders/")({
@@ -232,11 +237,8 @@ function OrdersPage() {
                     <TableCell>
                       <span
                         className={
-                          o.priority === "urgent"
-                            ? "font-bold text-red-600"
-                            : o.priority === "high"
-                              ? "font-semibold text-orange-600"
-                              : "text-muted-foreground"
+                          PRIORITY_TEXT_CLASSES[o.priority] ??
+                          "text-muted-foreground"
                         }
                       >
                         {PRIORITY_LABELS[o.priority] ?? o.priority}
