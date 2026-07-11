@@ -25,6 +25,14 @@ export const PRIORITY_LABELS: Record<string, string> = {
   urgent: "Shoshilinch",
 }
 
+// Reestrdagi matn ranglariga mos (urgent qizil, high to'q sariq)
+export const PRIORITY_DOT_CLASSES: Record<string, string> = {
+  low: "bg-slate-300",
+  medium: "bg-slate-400",
+  high: "bg-orange-500",
+  urgent: "bg-red-500",
+}
+
 export const POST_COLORS: Record<string, string> = {
   ARRA: "var(--post-arra)",
   KROMKA: "var(--post-kromka)",

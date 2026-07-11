@@ -78,13 +78,51 @@ function DialogContent({
   )
 }
 
-function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
+function DialogHeader({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
       className={cn("flex flex-col gap-2 text-center sm:text-left", className)}
       {...props}
-    />
+    >
+      {children}
+      {/* Oila belgisi: login sahifasidagi o'lcham-chizig'ining aks-sadosi */}
+      <svg
+        width="64"
+        height="8"
+        aria-hidden="true"
+        className="hidden text-[#EAA83C] sm:block"
+      >
+        <line
+          x1="1"
+          y1="4"
+          x2="63"
+          y2="4"
+          stroke="currentColor"
+          strokeOpacity="0.7"
+        />
+        <line
+          x1="1"
+          y1="0.5"
+          x2="1"
+          y2="7.5"
+          stroke="currentColor"
+          strokeOpacity="0.7"
+        />
+        <line
+          x1="63"
+          y1="0.5"
+          x2="63"
+          y2="7.5"
+          stroke="currentColor"
+          strokeOpacity="0.7"
+        />
+      </svg>
+    </div>
   )
 }
 
