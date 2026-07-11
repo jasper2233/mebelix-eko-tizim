@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { Check, ChevronsUpDown, Loader2, Plus } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { AddClient } from "@/components/Clients/AddClient"
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,7 @@ export function ClientCombobox({
   disabled,
 }: ClientComboboxProps) {
   const [open, setOpen] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [label, setLabel] = useState(initialLabel ?? "")
   const [search, setSearch] = useState("")
   const [debounced, setDebounced] = useState("")
@@ -59,7 +60,8 @@ export function ClientCombobox({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    // modal: Dialog ichida ochilganda pointer-events/scroll qulfi to'g'ri ishlashi uchun
+    <Popover open={open} onOpenChange={setOpen} modal>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -76,11 +78,17 @@ export function ClientCombobox({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-[--radix-popover-trigger-width] p-0"
+        className="w-[var(--radix-popover-trigger-width)] p-0"
+        onOpenAutoFocus={(e) => {
+          // Radix'ning o'z avto-fokusi Dialog fokus-tuzog'i bilan urishadi —
+          // o'zimiz to'g'ridan qidiruv maydoniga beramiz
+          e.preventDefault()
+          inputRef.current?.focus()
+        }}
       >
         <div className="relative border-b p-2">
           <Input
-            autoFocus
+            ref={inputRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => {
@@ -104,6 +112,11 @@ export function ClientCombobox({
           )}
         </div>
         <div className="max-h-64 overflow-y-auto p-1">
+          {items.length === 0 && isFetching && (
+            <p className="px-2 py-6 text-center text-sm text-muted-foreground">
+              Qidirilmoqda…
+            </p>
+          )}
           {items.length === 0 && !isFetching && (
             <p className="px-2 py-6 text-center text-sm text-muted-foreground">
               {debounced
