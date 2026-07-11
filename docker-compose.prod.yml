@@ -29,7 +29,9 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    command: bash -c "/app/scripts/prestart.sh && gunicorn app.main:app -w ${GUNICORN_WORKERS:-4} -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000"
+    # --forwarded-allow-ips flag sifatida beriladi: FORWARDED_ALLOW_IPS env'ini gunicorn
+    # ham o'qiydi va pydantic'ning JSON list formati ('["*"]') uni yiqitadi.
+    command: bash -c "/app/scripts/prestart.sh && gunicorn app.main:app -w ${GUNICORN_WORKERS:-4} -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 --forwarded-allow-ips '*'"
     restart: always
     expose:
       - "8000"
@@ -81,7 +83,8 @@ services:
     depends_on:
       - api
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      # 127.0.0.1: konteyner ichida `localhost` ::1 ga ketadi, nginx esa faqat IPv4 tinglaydi.
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/"]
       interval: 30s
       timeout: 3s
       retries: 3
