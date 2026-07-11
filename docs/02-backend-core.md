@@ -8,7 +8,7 @@ Umumiy arxitektura oqimi:
 backend/app/main.py
   └── create_application(router, settings)        # core/setup.py
         ├── Settings (env → pydantic)             # core/config.py
-        ├── lifespan: Redis pool'lar + DB probe   # core/setup.py
+        ├── lifespan: Redis pool'lar + WS pub/sub listener + DB probe   # core/setup.py, core/ws.py
         ├── RequestLoggingMiddleware              # core/middleware.py
         ├── CORSMiddleware, ProxyHeadersMiddleware
         ├── Prometheus /metrics
@@ -30,6 +30,7 @@ backend/app/main.py
 | `backend/app/core/security.py` | bcrypt parol hash, JWT token, httpOnly cookie'lar |
 | `backend/app/core/setup.py` | Application factory, lifespan, probe'lar, metrics, docs |
 | `backend/app/core/worker.py` | arq background worker konfiguratsiyasi |
+| `backend/app/core/ws.py` | Real-time ko'prik — WebSocket fan-out + Redis pub/sub (`WsManager`) |
 | `backend/app/core/utils/__init__.py` | Bo'sh package marker |
 | `backend/app/core/utils/queue.py` | arq Redis pool uchun global holder |
 | `backend/app/core/utils/rate_limit.py` | Redis asosidagi rate limiting (`RateLimiter`, `RateLimit`) |
@@ -66,6 +67,9 @@ app = create_application(router=router, settings=settings)
 | Redis | `REDIS_HOST/PORT`, `ENABLE_REDIS_QUEUE`, `ENABLE_REDIS_RATE_LIMIT` (ikkalasi default `True`) |
 | Rate limit | `DEFAULT_RATE_LIMIT_LIMIT=10`/`PERIOD=3600`, `LOGIN_RATE_LIMIT_ATTEMPTS=5`/`PERIOD=300` |
 | Pagination | `DEFAULT_PAGE_SIZE=50`, `MAX_PAGE_SIZE=100` |
+| File storage | `UPLOAD_DIR="uploads"` (project/scx/label fayllar ildizi, TZ 2.4.3), `MAX_PROJECT_FILE_SIZE` = 50 MB |
+| Production floor | `STRICT_STAGE_ORDER=False` (E004 — oldingi bosqich tugamaguncha skanni bloklash, ixtiyoriy, TZ 7.2.5), `SESSION_MAX_HOURS=12` (operator smenasi timeout'i, TZ 8.5), `SCAN_UNDO_SECONDS=60` (BEKOR QILISH oynasi, TZ 8.6) |
+| Printing | `PRINTER_IP=None` (faqat LOCAL'da printerga to'g'ridan ulanish uchun), `PRINTER_PORT=9100`, `BRIDGE_TOKEN=""` (bo'sh bo'lmasa sex bridge-agent'i uchun `/ws/bridge` endpoint yoqiladi) |
 | Startup probes | `STARTUP_RETRY_MAX_ATTEMPTS=5`, `STARTUP_RETRY_DELAY_SECONDS=2` |
 | Threadpool | `THREADPOOL_TOKENS=100` (AnyIO sync-bridge slotlari) |
 | Reverse-proxy | `FORWARDED_ALLOW_IPS=["*"]` — X-Forwarded-* headerlariga ishoniladigan IP'lar |
@@ -186,7 +190,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 - `check_redis_connection()` — faol Redis klientlarni (`queue.pool`, `rate_limiter.client`) ping qiladi; ikkalasi ham o'chiq bo'lsa tekshiruv o'tkazib yuboriladi.
 - Redis pool boshqaruvi: `create_redis_queue_pool()` (arq `create_pool` → `queue.pool`), `close_redis_queue_pool()`, `create_redis_rate_limit_pool()` (`rate_limiter.initialize(settings.REDIS_URL)`), `close_redis_rate_limit_pool()`.
 - `set_threadpool_tokens()` — AnyIO thread-pool hajmini `THREADPOOL_TOKENS`ga ko'taradi (bloklovchi chaqiriqlar navbatda turib qolmasligi uchun).
-- `lifespan_factory(settings)` — `@asynccontextmanager` lifespan quradi: threadpool → (yoqilgan bo'lsa) Redis pool'lar + ping → DB probe → `yield` → `finally`da pool'lar yopiladi.
+- `lifespan_factory(settings)` — `@asynccontextmanager` lifespan quradi: threadpool → (yoqilgan bo'lsa) Redis pool'lar + ping → **WS real-time ko'prik**: alohida Redis klient ochilib `ws_manager.start_listener(...)` ishga tushiriladi (`core/ws.py`; kamida bitta Redis funksiya yoqilgan bo'lsa) → DB probe → `yield` → `finally`da WS listener to'xtatiladi, WS Redis klienti va pool'lar yopiladi.
 - `_install_docs_router(application, settings)` — docs siyosati:
   - **production**: docs umuman yo'q;
   - **staging**: `/docs`, `/redoc`, `/openapi.json` faqat superuser uchun (`Depends(get_current_superuser)`);
@@ -199,7 +203,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 - `NON_BUSINESS_PATHS = ["/metrics", "/api/v1/health", "/api/v1/ready"]` — metrics'dan ham, access-log'dan ham chiqarib tashlanadigan pathlar (yagona manba — single source of truth).
 - `_install_metrics(application)` — `prometheus_fastapi_instrumentator` orqali `/metrics` endpoint (gzip, schema'da ko'rinmaydi). Endpoint autentifikatsiyasiz — production'da Caddy darajasida cheklash nazarda tutilgan.
 
-**Bog'lanishlar:** `config.py`, `db.py`, `middleware.py`, `utils/queue.py`, `utils/rate_limit.py`, `backend/app/api/deps.py` (`get_current_superuser`); `main.py` va `worker.py` bu modulni ishlatadi.
+**Bog'lanishlar:** `config.py`, `db.py`, `middleware.py`, `ws.py` (`ws_manager`), `utils/queue.py`, `utils/rate_limit.py`, `backend/app/api/deps.py` (`get_current_superuser`); `main.py` va `worker.py` bu modulni ishlatadi.
 
 ---
 
@@ -225,7 +229,24 @@ class WorkerSettings:
 
 - `handle_signals` endi o'rnatilmaydi (default `True`): `docker stop`da SIGTERM to'g'ri ushlanib, bajarilayotgan joblar tugatiladi yoki qayta navbatga qo'yiladi.
 
-**Bog'lanishlar:** `config.py`, `setup.py` (`check_database_connection`), `backend/app/tasks/__init__.py` (`all_tasks` — hozircha faqat `ping` liveness-placeholder vazifasi; arq kamida bitta funksiya talab qiladi, real MES vazifalar keyin qo'shiladi). Web-process `utils/queue.py`dagi pool orqali vazifalarni shu worker navbatiga qo'yadi.
+**Bog'lanishlar:** `config.py`, `setup.py` (`check_database_connection`), `backend/app/tasks/__init__.py` (`all_tasks = [ping, print_label]`). `ping` — liveness placeholder (arq kamida bitta funksiya talab qiladi). `print_label(ctx, instance_id)` — real vazifa (TZ 7.1.4): `PartInstance` uchun label ma'lumotini yuklab (`services/labels.py`) EZPL quradi; `PRINTER_IP` sozlangan bo'lsa printerga to'g'ridan-to'g'ri TCP orqali yuboradi (cp1251 kodlash, threadpool'da), TCP xatosida (`OSError`) yoki `PRINTER_IP` bo'lmasa Redis `mes:print:queue` ro'yxatiga `LPUSH` qiladi — uni sexdagi bridge-agent oladi (remote-first, TZ 2.2). Web-process `utils/queue.py`dagi pool orqali vazifalarni shu worker navbatiga qo'yadi.
+
+---
+
+## `backend/app/core/ws.py`
+
+**Maqsadi:** real-time ko'prik (TZ 2.3) — WebSocket klientlarga event fan-out. Gunicorn worker'lari aro tarqatish Redis pub/sub `mes:events` kanali orqali amalga oshadi (har bir worker faqat o'z lokal socketlarini ko'radi, kanal orqali hammasi bir xil eventni oladi).
+
+**Muhim elementlar:**
+
+- `WsClient` (dataclass) — bitta ulanish: `socket`, `scope` (`"terminal"` / `"tablo"` / `"dashboard"`) va ixtiyoriy `post_id`/`machine_id` filtrlar. `wants(event)` — dashboard hamma eventni oladi; target'siz eventlar broadcast; terminal/tablo faqat o'z `post_id`/`machine_id`siga mos eventlarni oladi (TZ 2.3.2).
+- `WsManager` (modul-darajali singleton `ws_manager`):
+  - `connect(client)` / `disconnect(client)` — lokal klientlar ro'yxatini boshqaradi (`accept` + qo'shish / olib tashlash).
+  - `publish(event_type, payload, **targets)` — event quradi (`{"type", "payload"}` + `post_id`/`machine_id` target'lar) va Redis mavjud bo'lsa `mes:events` kanaliga `PUBLISH` qiladi; Redis yo'q (dev) yoki yiqilgan bo'lsa **lokal yetkazishga degradatsiya** qiladi (`_dispatch`).
+  - `_dispatch(event)` — `wants()`ga mos klientlarga `send_json`; yuborishda xato bergan **o'lik socketlar ro'yxatdan tozalanadi**.
+  - `start_listener(redis)` / `stop_listener()` — lifespan boshqaradigan pub/sub listener task: `mes:events`ga subscribe bo'lib, kelgan xabarlarni `_dispatch`ga uzatadi; shutdown'da unsubscribe + cancel.
+
+**Bog'lanishlar:** `setup.py` (lifespan listener'ni ishga tushiradi/to'xtatadi), `backend/app/api/routes/ws.py` (WebSocket endpointlar klientlarni ro'yxatga oladi); mutatsiya qiluvchi API endpointlar `ws_manager.publish(...)` orqali event yuboradi.
 
 ---
 

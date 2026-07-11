@@ -6,7 +6,7 @@ Bu hujjat MebeliX MES backend'ining ma'lumotlar qatlamini qamrab oladi: SQLAlche
 API routes  →  schemas (validation)  →  crud (biznes DB-operatsiyalar)  →  models (ORM)  →  PostgreSQL
 ```
 
-Hozircha domen modeli minimal: faqat `User` (shablondan qolgan demo `Item` moduli to'liq olib tashlangan). MES-ga xos jadvallar hali qo'shilmagan — bu qatlam kelajakdagi entitylar uchun tayyor skelet vazifasini bajaradi.
+Domen modeli to'liq MES sohasini qamrab oladi: **16 jadval** — `user` + 15 MES jadvali (`organization`, `client`, `employee`, `material`, `post`, `machine`, `audit_log`, `order`, `work_session`, `product`, `part`, `order_file`, `part_instance`, `part_route`, `scan`). Shablondan qolgan demo `Item` moduli to'liq olib tashlangan.
 
 ---
 
@@ -30,11 +30,39 @@ class BaseModel(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
 
 **Bog'lanish:** `Base` deklarativ asosi `backend/app/core/db.py` dan keladi. `BaseCRUD` (`backend/app/crud/base.py`) aynan shu mixinlar mavjudligiga tayanadi (ayniqsa soft-delete ustunlariga).
 
-### 1.2 `backend/app/models/user.py` — User modeli
+### 1.2 `backend/app/models/enums.py` — Domen enumlari
+
+`db_enum(enum_cls, length=30)` helper — **VARCHAR-backed** SQLAlchemy `Enum` (`native_enum=False`): yangi a'zo qo'shilganda PG native enum ALTER'i kerak emas (masalan, `UserRole` ga 6 operator roli migratsiyasiz qo'shilgan). Faylda **14 ta StrEnum**:
+
+| Enum | A'zolar |
+|---|---|
+| `UserRole` | 12 ta: 6 xodim/qurilma (`admin`, `director`, `manager`, `texnolog`, `terminal`, `tablo`) + 6 operator (`arrachi`, `kromkachi`, `prisadkachi`, `pazchi`, `roverchi`, `stolyar`) |
+| `PostCode` | `ARRA`, `KROMKA`, `PRISADKA`, `PAZ`, `ROVER`, `STOLYARKA` |
+| `PostUnit` | `m2`, `meter`, `piece` |
+| `MachineStatus` | `active`, `inactive`, `repair` |
+| `CapacityUnit` | `m2_per_hour`, `meter_per_hour`, `units_per_hour` |
+| `EmployeeStatus` | `active`, `inactive` |
+| `ClientType` | `individual`, `legal` |
+| `MaterialType` | `sheet`, `band`, `hardware` |
+| `OrderStatus` | `draft`, `technical_review`, `production`, `completed`, `delivered`, `cancelled` |
+| `OrderPriority` | `low`, `medium`, `high`, `urgent` |
+| `ProjectGeneration` | `processed`, `template` |
+| `RouteSource` | `auto`, `manual` |
+| `FileKind` | `project`, `scx`, `label_pdf`, `document` |
+| `SessionStatus` | `active`, `ended` |
+
+`POST_ROLES: dict[UserRole, PostCode]` — 6 operator rolini o'z postiga bog'laydi (`ARRACHI→ARRA`, `KROMKACHI→KROMKA`, `PRISADKACHI→PRISADKA`, `PAZCHI→PAZ`, `ROVERCHI→ROVER`, `STOLYAR→STOLYARKA`). Operator rollari o'z akkaunti bilan kiradi va o'z postining terminalini ko'radi — stanok binding'i va badge talab qilinmaydi (`TERMINAL` qurilma akkauntlaridan farqli).
+
+### 1.3 `backend/app/models/user.py` — User modeli
 
 `user` jadvali. Login identifikatori sifatida **username yoki telefon** ishlatiladi; telefon O'zbekiston E.164 formatida kanonik saqlanadi (`+998` + 9 raqam = 13 belgi). `token_version` — barcha chiqarilgan JWT tokenlarni bir zarbda bekor qilish mexanizmi (parol o'zgarganda/logout-all da inkrement qilinadi, `backend/app/crud/users.py` dagi `increment_token_version` ga qarang).
 
-Uniqueness endi ustun darajasida emas (`unique=True`/`index=True` yo'q), balki `__table_args__` dagi **PARTIAL UNIQUE indexlar** orqali:
+MES uchun ikkita yangi ustun (TZ 3 / TZ 8.1):
+
+- `role: UserRole` — `db_enum(UserRole)` (VARCHAR), NOT NULL, `server_default="admin"`. `admin`/`director`/`manager`/`texnolog` — odamlar; `terminal`/`tablo` — stanokka bog'langan qurilma akkauntlari; operator rollari — post terminaliga kiruvchi ishchilar.
+- `machine_id: int | None` — FK `machine.id` (`fk_user_machine_id`); `TERMINAL`/`TABLO` qurilma akkauntini konkret stanokka bog'laydi.
+
+Uniqueness ustun darajasida emas, `__table_args__` dagi **PARTIAL UNIQUE indexlar** orqali:
 
 ```python
 __table_args__ = (
@@ -43,87 +71,143 @@ __table_args__ = (
 )
 ```
 
-Ya'ni uniqueness faqat **tirik** (soft-o'chirilmagan) qatorlar orasida amal qiladi — soft-o'chirilgan userning telefon/username'i IntegrityError'siz qayta ro'yxatdan o'tkazilishi mumkin.
+Ya'ni uniqueness faqat **tirik** (soft-o'chirilmagan) qatorlar orasida amal qiladi — soft-o'chirilgan userning telefon/username'i IntegrityError'siz qayta ro'yxatdan o'tkazilishi mumkin. Bu naqsh MES jadvallarida ham takrorlanadi (1.5-bo'lim).
 
-Relationlar yo'q (demo `Item` moduli bilan birga `items` relation ham olib tashlangan).
-
-### 1.3 `backend/app/models/item.py` — olib tashlangan (demo)
-
-Shablondan qolgan demo `Item` modeli o'chirildi; `item` jadvali `b7f3a9c41d02` migratsiyasida drop qilinadi (4.5-bo'limga qarang).
-
-### 1.4 `backend/app/models/__init__.py`
-
-Faqat re-export: `from .user import User`. Alembic `env.py` esa modellarni bu faylga tayanmasdan `pkgutil.walk_packages` bilan dinamik import qiladi.
-
-### 1.5 DB jadvallar strukturasi
-
-Manba: modellar + migratsiyalar (`e1c262d7e2ae_init.py` → `b7f3a9c41d02_drop_items_partial_unique_user.py`).
-
-**Jadval: `user`**
+**Jadval: `user`** (mixin ustunlari — `id`, `created_at`, `updated_at`, `deleted_at`, `is_deleted` — 1.1-bo'limdagidek, quyida takrorlanmaydi)
 
 | Ustun | Tip | Null | Default | Index/Constraint |
 |---|---|---|---|---|
-| `id` | `Integer` | NOT NULL | autoincrement | **PK** |
 | `name` | `String(30)` | NULL | — | — |
-| `username` | `String(20)` | NOT NULL | — | **PARTIAL UNIQUE index** `ix_user_username` (`WHERE NOT is_deleted`) |
-| `phone` | `String(13)` | NOT NULL | — | **PARTIAL UNIQUE index** `ix_user_phone` (`WHERE NOT is_deleted`; E.164: `+998XXXXXXXXX`) |
+| `username` | `String(20)` | NOT NULL | — | PARTIAL UNIQUE `ix_user_username` (`WHERE NOT is_deleted`) |
+| `phone` | `String(13)` | NOT NULL | — | PARTIAL UNIQUE `ix_user_phone` (E.164: `+998XXXXXXXXX`) |
 | `hashed_password` | `String` | NOT NULL | — | — |
 | `is_active` | `Boolean` | NOT NULL | `True` (Python) | — |
 | `is_superuser` | `Boolean` | NOT NULL | `False` (Python) | — |
-| `token_version` | `Integer` | NOT NULL | `0` (server_default) | JWT'larni ommaviy bekor qilish uchun |
-| `created_at` | `DateTime(tz)` | NOT NULL | `current_timestamp(0)` | — |
-| `updated_at` | `DateTime(tz)` | NULL | `current_timestamp(0)`, `onupdate=now(UTC)` | — |
-| `deleted_at` | `DateTime(tz)` | NULL | — | — |
-| `is_deleted` | `Boolean` | NOT NULL | `False` (Python) | index `ix_user_is_deleted` |
+| `token_version` | `Integer` | NOT NULL | `0` (server_default) | JWT'larni ommaviy bekor qilish |
+| `role` | `VARCHAR(30)` (`UserRole`) | NOT NULL | `'admin'` (server_default) | — |
+| `machine_id` | `Integer` | NULL | — | FK `machine.id` (`fk_user_machine_id`) |
 
-`item` jadvali olib tashlangan (demo); relationlar yo'q.
+### 1.4 MES modellari
+
+Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete), enumlar `db_enum(...)` bilan VARCHAR sifatida saqlanadi. Ko'p jadvalda `organization_id` FK (`default=1`) — sxema multi-tenant'ga tayyor (TZ 4.1), hozircha bitta "Mebelix" tashkiloti.
+
+**Registr modellari** (har biri o'z faylida):
+
+| Model / jadval | Fayl | Muhim ustunlar | Unikal/muhim indekslar |
+|---|---|---|---|
+| `Organization` | `organization.py` | `name(100)`, `logo_url`, `address`, `phones` **JSONB** (list), `currency` (`"UZS"`), `timezone` (`"Asia/Tashkent"`), `settings` **JSONB** | — |
+| `Client` | `client.py` | `organization_id`, `full_name(150)`, `client_type` (`ClientType`, default `individual`), `phone`/`phone_alt(13)`, `address`, `inn(20)`, `notes` | — (`orders_count` saqlanmaydi — query'da hisoblanadi) |
+| `Employee` | `employee.py` | `organization_id`, `full_name(100)`, `badge_id(36)` (badge QR, UUID), `phone`, `passport_id`, `position`, `status` (`EmployeeStatus`), `photo_url`, `assigned_post_ids` **JSONB** (int list — join-table o'rniga, maks. 6 post), `hired_date` | PARTIAL UNIQUE `ix_employee_badge_id`. Yo'qolgan badge: qator saqlanadi, `badge_id` almashtiriladi — scan tarixi buzilmaydi |
+| `Material` | `material.py` | `organization_id`, `name(150)`, `code`, `type` (`MaterialType`), `thickness`/`width`/`length`, `default_supplier`, `price_per_unit Numeric(14,2)`, `color`, `glossiness` | PARTIAL UNIQUE `ix_material_name_type` (`name`, `type`). `.project` fayllardan avtomatik to'ldiriladi |
+| `Post` | `post.py` | `organization_id`, `code` (`PostCode`), `name(50)`, `order_index`, `unit` (`PostUnit`), `requires_qr_print`, `auto_skip_if_empty` (default `True`), `requires_assignment_choice`, `icon`, `color` | PARTIAL UNIQUE `ix_post_code`. 6 bosqichli ishlab chiqarish zanjiri (TZ 4.4) |
+| `Machine` | `machine.py` | `organization_id`, `post_id` FK (index), `name(100)`, `ip_address(45)`, `mac_address(17)`, `capacity` + `capacity_unit` (`CapacityUnit`), `status` (`MachineStatus`), `icon_url`, `serial_number`, `installed_date` | IP — terminal/TABLO kontekstini aniqlash uchun (TZ 4.3) |
+| `AuditLog` | `audit.py` | `user_id` FK NULL (index), `employee_id` FK NULL, `module(50)`, `action(50)`, `entity_type`, `entity_id`, `message`, `meta` **JSONB**, `ip(45)` | `created_at` = hodisa vaqti (TZ 10.11) |
+
+**Buyurtma modellari** (`order.py` — 6 klass):
+
+| Model / jadval | Muhim ustunlar | Unikal/muhim indekslar |
+|---|---|---|
+| `Order` | `number(20)` (`B-2026-001`, avto), `client_id` FK (index), `status` (`OrderStatus`, default `draft`, index), `priority` (`OrderPriority`), `deadline`, `amount Numeric(14,2)`, `advance_payment Numeric(14,2)` (boshlang'ich to'lov — manager buyurtma ochishda kiritadi), `notes`, `created_by_id` FK user; `.project` metadata: `project_uuid/name/generation/loaded_at`; **JSONB**: `cutmap` (kesish xaritasi vizual modeli, TZ 5.7.5), `material_usage` (default `[]` — `[{name, kind, count, unit}]`, TZ 11.3), `machine_assignments` (default `{}` — `{"PAZ": 3, "ROVER": 5}`, TZ 6.4.1); lifecycle: `production_started_at`, `completed_at`, `delivered_at`, `cancelled_at`, `cancel_reason`, `cancelled_by_id` | PARTIAL UNIQUE `ix_order_number` |
+| `Product` | `order_id` FK (index), `code(50)`, `name(255)`, `count`, `import_source` | `<good typeId="product">` (TZ 5.2.2) |
+| `Part` | `order_id`/`product_id` FK (index), `code(50)` (masalan `01_002`), `name`, `count`, o'lchamlar `length/width/thickness` + `saw_length/saw_width` (jl/jw), `txt` (tekstura qulfi), `material_name(150)`, `label_num`; **JSONB**: `edges` (tomon bo'yicha kromka: `{"l": {"mat": ..., "symbol": "A"}, ...}`), `xnc_summary` (`{"bores", "edge_bores", "grooves", "mills", "sides"}`); `note` (texnolog izohi) | Barqaror kalit: `productCode_partCode` (TZ 5.8) |
+| `PartInstance` | `order_id`/`part_id` FK (index), `instance_no` (1..count), `qr_text(120)`, `pattern_no`/`cell_index` (kesish xaritasi katagi, TZ 7.1.4), `label_printed_at` | **PARTIAL UNIQUE `ix_part_instance_order_qr` (`order_id`, `qr_text`) `WHERE NOT is_deleted`** — QR = `productCode_partCode_n` |
+| `PartRoute` | `order_id`/`part_id`/`post_id` FK, `machine_id` FK NULL, `source` (`RouteSource`), `is_enabled` (texnolog o'chira oladi), `per_instance` (post'dagi skan soni: KROMKA — tomonlar, PRISADKA `_2` — 2), `total_required` = count × per_instance, `total_done` | PARTIAL UNIQUE `ix_part_route_part_post` (`part_id`, `post_id`); `ix_part_route_order_post`. Denormalizatsiyalangan hisoblagichlar — tez QOLDIQ (TZ 5.4) |
+| `OrderFile` | `order_id` FK (index), `part_id` FK NULL, `kind` (`FileKind`), `path(500)`, `filename(255)`, `size`, `meta` **JSONB** | Yuklangan `.project`, part-boshiga `.scx`, label PDF, hujjatlar |
+
+**Skan modellari** (`scan.py` — 2 klass):
+
+| Model / jadval | Muhim ustunlar | Unikal/muhim indekslar |
+|---|---|---|
+| `WorkSession` | `employee_id` FK (index), `user_id` FK NULL (terminal akkaunt), `machine_id` FK NULL, `post_id` FK, `status` (`SessionStatus`, index), `ended_at` | Operator smenasi, badge skani bilan ochiladi (TZ 8.2); `created_at` = boshlanish vaqti |
+| `Scan` | `order_id`/`part_id`/`instance_id`/`route_id`/`post_id` FK, `machine_id` FK NULL, `employee_id` FK (index), `session_id` FK (index), `client_event_id(64)`, `is_cancelled`, `cancelled_at` | UNIQUE `ix_scan_client_event_id` (idempotentlik — network replay rad etiladi, TZ 8.4.4); `ix_scan_order_post`; PARTIAL `ix_scan_instance_post` (`WHERE NOT is_cancelled`). Bekor qilingan skan auditda qoladi, hisoblagich qayta oshiriladi |
+
+### 1.5 `backend/app/models/__init__.py`
+
+16 model klassini re-export qiladi (`__all__`): `AuditLog`, `Client`, `Employee`, `Machine`, `Material`, `Order`, `OrderFile`, `Organization`, `Part`, `PartInstance`, `PartRoute`, `Post`, `Product`, `Scan`, `User`, `WorkSession`. Alembic `env.py` esa modellarni bu faylga tayanmasdan `pkgutil.walk_packages` bilan dinamik import qiladi.
 
 ---
 
 ## 2. Schemas — `backend/app/schemas/`
 
-Pydantic v2 schemalari — API request/response validatsiyasi. `backend/app/schemas/__init__.py` bo'sh (re-export yo'q, importlar to'g'ridan-to'g'ri moduldan qilinadi).
+Pydantic v2 schemalari — API request/response validatsiyasi. `backend/app/schemas/__init__.py` bo'sh (re-export yo'q, importlar to'g'ridan-to'g'ri moduldan qilinadi). Umumiy naqshlar: read-schemalar `from_attributes=True`, create/update-schemalar `extra="ignore"`, update'larda hamma maydon optional (partial PATCH).
 
 ### 2.1 `backend/app/schemas/base.py`
 
-`TimestampSchema` — `created_at: datetime`, `updated_at: datetime | None`. Kelajakdagi read-schemalar meros olishi uchun (hozircha ishlatuvchisi yo'q — demo Item schemalari bilan birga foydalanish joyi ham ketdi).
+`TimestampSchema` — `created_at: datetime`, `updated_at: datetime | None`. Read-schemalar meros olishi uchun (hozircha ishlatuvchisi yo'q — MES read-schemalari `created_at` ni to'g'ridan-to'g'ri e'lon qiladi).
 
 ### 2.2 `backend/app/schemas/users.py` — User schemalari
 
-Eng boy schema fayli. Umumiy validatsiya elementlari:
+Umumiy validatsiya elementlari:
 
-- `PHONE_PATTERN = r"^\+998\d{9}$"` — O'zbekiston E.164 telefon regex'i (model'dagi `String(13)` bilan mos).
+- `PHONE_PATTERN = r"^\+998\d{9}$"` — O'zbekiston E.164 telefon regex'i (model'dagi `String(13)` bilan mos); clients/employees schemalari ham shu konstantani import qiladi.
 - `validate_password_strength(v)` — parol kuchi: 8+ belgi, kichik harf, katta harf, raqam, maxsus belgi. Xato bo'lsa `ValueError`.
 - Qayta ishlatiladigan `Field` konstantalar: `_NAME_FIELD` (2–30), `_USERNAME_FIELD` (2–20, `^[a-z0-9]+$`), `_PHONE_FIELD`, `_OPTIONAL_PHONE_FIELD`.
 
 | Schema | Vazifasi | Muhim jihatlar |
 |---|---|---|
-| `UserRead` | Barcha read javoblar | `from_attributes=True`; `id` — `BeforeValidator(str)` bilan **string** ga aylantiriladi; `hashed_password` chiqarilmaydi |
-| `UserCreate` | `POST /users` (faqat superuser) | `password` strength-validatsiya; `is_superuser`/`is_active` flaglar shu yerda (endpoint superuser-only bo'lgani uchun) |
+| `UserRead` | Barcha read javoblar | `from_attributes=True`; `id` — `BeforeValidator(str)` bilan **string** ga aylantiriladi; `role: UserRole` va `machine_id` qaytariladi; `hashed_password` chiqarilmaydi |
+| `UserCreate` | `POST /users` (faqat superuser) | `password` strength-validatsiya; `is_superuser`/`is_active` flaglar; `role` (default `UserRole.MANAGER`) va `machine_id` (TERMINAL/TABLO rollari uchun amalda majburiy) |
 | `UserUpdate` | `PATCH /users/me` (self-update) | Faqat `name`/`username`/`phone`; privilegiya flaglari va parol yo'q |
-| `UserAdminUpdate` | `PATCH /users/{user_id}` (superuser) | `UserUpdate` + `password`, `is_active`, `is_superuser` (hammasi optional) |
+| `UserAdminUpdate` | `PATCH /users/{user_id}` (superuser) | `UserUpdate` + `password`, `is_active`, `is_superuser`, `role`, `machine_id` (hammasi optional) |
 | `UpdatePassword` | `PATCH /users/me/password` | `current_password` + `new_password` (strength check) |
 
 ### 2.3 `backend/app/schemas/auth.py`
 
 - `Token` — `access_token`, `token_type` (login javobi).
 - `TokenData` — JWT payload'dan dekodlangan ma'lumot:
-  - `user_id: int` — subject endi **immutable PK** (username/phone emas: ular o'zgarishi mumkin, bu tirik sessiyalarni uzib qo'yar va qayta ro'yxatdan o'tishda account confusion'ga yo'l ochar edi);
+  - `user_id: int` — subject **immutable PK** (username/phone emas: ular o'zgarishi mumkin, bu tirik sessiyalarni uzib qo'yar va qayta ro'yxatdan o'tishda account confusion'ga yo'l ochar edi);
   - `token_version: int = 0` — User modeli bilan solishtiriladi;
   - `jti: str | None = None` — refresh tokenning unikal id'si (one-time-use enforcement uchun); access tokenlarda `None`.
 
-### 2.4 `backend/app/schemas/items.py` — olib tashlangan (demo)
+### 2.4 MES registr schemalari
 
-Demo Item CRUD schemalari (`ItemBase`/`ItemCreate`/`ItemUpdate`/`ItemPublic`/`ItemsPublic`) Item moduli bilan birga o'chirildi.
+Har bir registr moduli standart uchlik (`*Read` / `*Create` / `*Update`) beradi:
 
-### 2.5 Kichik schemalar
+| Fayl | Schemalar | Muhim jihatlar |
+|---|---|---|
+| `clients.py` | `ClientRead`, `ClientCreate`, `ClientUpdate` | `full_name` 2–150; telefonlar `PHONE_PATTERN`; `ClientRead.orders_count` — route'da hisoblanadi (default 0) |
+| `employees.py` | `EmployeeRead`, `EmployeeCreate`, `EmployeeUpdate` | `badge_id` **faqat server tomonda** generatsiya qilinadi (UUID) — `EmployeeCreate` da yo'q; `assigned_post_ids: list[int]` |
+| `machines.py` | `MachineRead`, `MachineCreate`, `MachineUpdate` | `post_id` majburiy; `capacity` `gt=0`; `capacity_unit`/`status` enumlar |
+| `materials.py` | `MaterialRead`, `MaterialCreate`, `MaterialUpdate` | `type: MaterialType` faqat create'da (update'da o'zgartirilmaydi); o'lchamlar `gt=0`, `price_per_unit ge=0` |
+| `posts.py` | `PostRead`, `PostUpdate` | Create yo'q — 6 postlik zanjir qat'iy (TZ 4.4), faqat prezentatsion/xulq maydonlari tahrirlanadi (`name`, `order_index`, `auto_skip_if_empty`, `requires_assignment_choice`, `icon`, `color`) |
+
+### 2.5 `backend/app/schemas/orders.py` — Buyurtma schemalari
+
+| Schema | Vazifasi |
+|---|---|
+| `OrderRead` | Registr qatori (TZ 10.3.1): `number`, `status`, `priority`, `client_id` + route'da join qilinadigan `client_name`, `deadline`, `amount`, `advance_payment`, `notes`, project metadata, barcha lifecycle timestamplar |
+| `OrderFileRead` | Fayl qatori: `kind`, `filename`, `size`, `part_id` |
+| `OrderDetail` | `OrderRead` + `machine_assignments`, `project_uuid`/`project_loaded_at`, `files: list[OrderFileRead]`, `parts_count`, `instances_count` (buyurtma kartasi, TZ 10.3.3) |
+| `OrderCreate` | Manager DRAFT ochadi (TZ 6.2): `client_id`, `deadline`, `priority`, `amount`/`advance_payment` (`ge=0`), `notes`; `number` avto (`B-2026-001`) |
+| `OrderUpdate` | Hammasi optional (shu jumladan `advance_payment`) |
+| `OrderCancel` | `reason` (3–500 belgi, majburiy) |
+| `MachineAssignments` | `assignments: dict[PostCode, int]` — ishlab chiqarishdan oldin post-boshiga stanok tanlovi (TZ 6.4) |
+| `RouteCell` | Matritsa katagi (part × post): `post_id`, `source`, `is_enabled`, `per_instance`, `total_required`, `total_done`, `machine_id` |
+| `MatrixPart` | Matritsa qatori: part o'lchamlari + `edges`/`xnc_summary` + `routes: list[RouteCell]` |
+| `OrderMatrix` | `order_id` + `parts: list[MatrixPart]` |
+| `MatrixPartEdit` | Texnolog bitta part qatorini tahrirlaydi (TZ 6.3.3): `note`, `count` (1–1000), `stages: dict[int, bool]` (post_id → yoqilgan) |
+| `MatrixEdit` | `edits: list[MatrixPartEdit]` — batch wrapper |
+
+### 2.6 `backend/app/schemas/terminal.py` — Terminal/skan schemalari
+
+| Schema | Vazifasi |
+|---|---|
+| `BadgeStart` | `badge_id` (8–36 belgi) — badge skani bilan smena ochish |
+| `SessionRead` | Sessiya: `employee_id` + join qilinadigan `employee_name`, `machine_id`, `post_id`, `status`, `ended_at` |
+| `TerminalContext` | Terminal konteksti: stanok + post ma'lumotlari + aktiv `session` |
+| `TaskRow` | NAVBATDAGI VAZIFALAR qatori (TZ 8.3.2): part o'lchamlari, `qoldiq` (shu postdagi qolgan skanlar), `total`, `edges` |
+| `ScanRequest` | `qr_text` + `client_event_id` (klient UUID — idempotentlik, TZ 8.4.4) |
+| `ScanResult` | `scan_id`, `duplicate` (replay — xato emas), part ma'lumotlari, yangi `qoldiq`, `scx_file_ids` (CNC postlar uchun har skanda, TZ 12.5), `order_stage_completed`/`order_completed` flaglar |
+| `ScanHistoryItem` | Skan tarixi qatori (`is_cancelled` bilan) |
+| `CutmapInstanceState`, `CutmapState` | ARRA kesish xaritasi ekrani (TZ 7.1.7): vizual `model` (JSONB) + har nusxaning jonli holati (`pattern_no`/`cell_index`/`done`/`label_printed_at`) |
+
+### 2.7 Kichik schemalar
 
 | Fayl | Schema | Vazifasi |
 |---|---|---|
 | `backend/app/schemas/common.py` | `Message` | Generic `{"message": str}` javob |
+| | `Paginated[T]` | Standart sahifalangan ro'yxat javobi: `{data: list[T], count: int}` — barcha list endpointlarda ishlatiladi |
 | `backend/app/schemas/health.py` | `HealthCheck`, `ReadyCheck` | Liveness/readiness endpointlari; `ReadyCheck` `database` va `redis` holatini ham qaytaradi |
-
-`backend/app/schemas/job.py` (`Job` — ARQ job javobi) demo task API bilan birga olib tashlangan.
 
 ---
 
@@ -149,7 +233,7 @@ Asosiy metodlar (hammasi async, `AsyncSession` qabul qiladi):
 | `exists` | `(db, **kwargs) -> bool` | Yozuv borligini tekshirish (count > 0) |
 | `delete` | `(db, **kwargs) -> bool` | **Soft delete**: `is_deleted=True`, `deleted_at=now(UTC)`; topilmasa `False` |
 
-Muhim xulq: qidiruvlar default holda o'chirilgan yozuvlarni **ko'rmaydi**; o'chirilganlarni ham olish uchun `is_deleted=True/False` ni explicit berish yoki `exclude_deleted` ni override qilish kerak. Ilgari `get`/`get_multi` da bo'lgan `options` (eager-loading) parametri ishlatilmagani uchun olib tashlandi.
+Muhim xulq: qidiruvlar default holda o'chirilgan yozuvlarni **ko'rmaydi**; o'chirilganlarni ham olish uchun `is_deleted=True/False` ni explicit berish yoki `exclude_deleted` ni override qilish kerak.
 
 ### 3.2 `backend/app/crud/users.py` — `CRUDUser`
 
@@ -163,13 +247,32 @@ Muhim xulq: qidiruvlar default holda o'chirilgan yozuvlarni **ko'rmaydi**; o'chi
 | `authenticate(db, username_or_phone, password)` | `get_by_login` + `verify_password`; user **topilmasa ham** modul-darajali `_DUMMY_HASH` ustida `verify_password` bajariladi — javob vaqti user mavjudligini oshkor qilmaydi (timing attack himoyasi); muvaffaqiyatsiz urinish `logger.warning` bilan loglanadi; xatoda `None` |
 | `increment_token_version(db, user)` | `token_version += 1` — foydalanuvchining barcha access/refresh tokenlarini bekor qiladi |
 
-### 3.3 `backend/app/crud/items.py` — olib tashlangan (demo)
+### 3.3 `backend/app/crud/orders.py` — `CRUDOrder`
 
-`CRUDItem` / `crud_items` demo Item moduli bilan birga o'chirildi.
+`BaseCRUD[Order]` + bitta maxsus metod:
 
-### 3.4 `backend/app/crud/__init__.py`
+- `next_number(db) -> str` — joriy yil ichida ketma-ket buyurtma raqami (TZ 6.2.2): `B-{yil}-` prefiksli maksimal `Order.number` topiladi, suffiks +1, `B-2026-001` formatida (`{seq:03d}`) qaytariladi.
 
-Re-export: faqat `crud_users` (`__all__` da). API routelar odatda `from app.crud import crud_users` deb ishlatadi.
+Singleton: `crud_orders = CRUDOrder(Order)`.
+
+### 3.4 `backend/app/crud/audit.py` — `log_action`
+
+Singleton emas — oddiy funksiya (sync, `db.add` qiladi, `await` yo'q):
+
+```python
+def log_action(db, *, module, action, user_id=None, employee_id=None,
+               entity_type=None, entity_id=None, message=None, meta=None, ip=None) -> AuditLog
+```
+
+`AuditLog` qatorini **caller tranzaksiyasida** stage qiladi — asosiy o'zgarish bilan birga commit bo'ladi (yoki birga rollback). Routelar `from app.crud import log_action` deb ishlatadi.
+
+### 3.5 Yupqa registr CRUD'lari
+
+`clients.py`, `employees.py`, `machines.py`, `materials.py`, `posts.py` — har biri `BaseCRUD` ning bo'sh subclass'i + singleton (`crud_clients`, `crud_employees`, `crud_machines`, `crud_materials`, `crud_posts`). Maxsus logika route qatlamida (masalan, employee badge regeneratsiyasi, client orders_count join'i).
+
+### 3.6 `backend/app/crud/__init__.py`
+
+Re-export (`__all__`): **7 singleton** — `crud_clients`, `crud_employees`, `crud_machines`, `crud_materials`, `crud_orders`, `crud_posts`, `crud_users` — hamda `log_action`.
 
 ---
 
@@ -192,17 +295,19 @@ Async migration environment:
 
 Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skeleti, `revision`/`down_revision` identifikatorlari).
 
-### 4.4 `backend/app/migrations/versions/e1c262d7e2ae_init.py`
+### 4.4 Versiyalar zanjiri — `backend/app/migrations/versions/`
 
-Birinchi migratsiya — **init** (revision `e1c262d7e2ae`, `down_revision=None`). `user` va (o'sha paytdagi demo) `item` jadvallarini hamda to'liq unique indekslarni yaratadi. `downgrade()` hammasini teskari tartibda o'chiradi. Yakuniy struktura keyingi migratsiya bilan birga o'qilishi kerak (1.5-bo'lim jadvali — ikkalasining natijasi).
+5 ta migratsiya, head: `7d2c9f5e1b3a`.
 
-### 4.5 `backend/app/migrations/versions/b7f3a9c41d02_drop_items_partial_unique_user.py`
+| # | Revision | Fayl | Nima qiladi |
+|---|---|---|---|
+| 1 | `e1c262d7e2ae` | `e1c262d7e2ae_init.py` | **Init**: `user` va (o'sha paytdagi demo) `item` jadvallari, to'liq unique indekslar |
+| 2 | `b7f3a9c41d02` | `b7f3a9c41d02_drop_items_partial_unique_user.py` | `item` jadvalini drop qiladi; `ix_user_username`/`ix_user_phone` ni **partial unique** ga almashtiradi (`WHERE NOT is_deleted`) |
+| 3 | `1393a241b793` | `1393a241b793_mes_domain_org_posts_machines_employees_.py` | **MES domeni**: 15 jadval yaratadi (`organization`, `client`, `employee`, `material`, `post`, `machine`, `audit_log`, `order`, `work_session`, `product`, `part`, `order_file`, `part_instance`, `part_route`, `scan`) + `user` ga `role` (server_default `'admin'`) va `machine_id` (FK `fk_user_machine_id`) qo'shadi |
+| 4 | `3b4e0b90f440` | `3b4e0b90f440_order_material_usage.py` | `order.material_usage` JSONB NOT NULL (server_default `'[]'`) |
+| 5 | `7d2c9f5e1b3a` | `7d2c9f5e1b3a_order_advance_payment.py` | `order.advance_payment Numeric(14,2)` NULL — to'lov oqimi maydoni |
 
-Ikkinchi migratsiya (revision `b7f3a9c41d02`, `down_revision=e1c262d7e2ae`):
-
-- `item` jadvalini (va `ix_item_is_deleted` indeksini) **drop** qiladi — demo modul olib tashlangani uchun.
-- `ix_user_username` / `ix_user_phone` to'liq unique indekslarni **partial unique** ga almashtiradi (`postgresql_where=NOT is_deleted`) — soft-o'chirilgan user telefon/username'i qayta ishlatilishi mumkin bo'ladi.
-- `downgrade()` indekslarni to'liq unique holiga qaytaradi va `item` jadvalini qayta yaratadi.
+Eslatma: `1393a241b793` dagi `user.role` enum'i 6 qiymat bilan yaratilgan; keyinchalik 6 operator roli faqat Python enum'ga qo'shildi — ustun VARCHAR bo'lgani uchun (`db_enum`, `native_enum=False`) DB migratsiyasi kerak bo'lmadi.
 
 ---
 
@@ -213,9 +318,16 @@ Ikkinchi migratsiya (revision `b7f3a9c41d02`, `down_revision=e1c262d7e2ae`):
 Idempotent bootstrap skript — birinchi admin foydalanuvchini yaratadi (`python -m app.commands.create_first_superuser` yoki deploy scriptidan chaqiriladi):
 
 - Ma'lumotlar `settings` dan: `ADMIN_NAME`, `ADMIN_PHONE`, `ADMIN_USERNAME`, `ADMIN_PASSWORD` (`backend/app/core/config.py`).
-- `phone` bo'yicha tekshiradi: mavjud bo'lsa hech narsa qilmaydi (log: "already exists"), bo'lmasa `is_active=True, is_superuser=True` bilan yaratadi.
+- `phone` bo'yicha tekshiradi: mavjud bo'lsa hech narsa qilmaydi (log: "already exists"), bo'lmasa `is_active=True, is_superuser=True` bilan yaratadi (`role` server default bo'yicha `admin`).
 - Session `app.core.db.local_session` dan olinadi; parol `await get_password_hash(...)` bilan xeshlanadi (funksiya async).
 - E'tibor: `crud_users.create` emas, to'g'ridan-to'g'ri `User(...)` konstruktor ishlatadi (schema-validatsiyasiz bootstrap yo'li).
+
+### 5.2 `backend/app/commands/seed_defaults.py`
+
+Idempotent bootstrap — default tashkilot va 6 ishlab chiqarish postini yaratadi (`python -m app.commands.seed_defaults`, prestart/setup scriptlardan chaqiriladi):
+
+- Tashkilot: `select(Organization).limit(1)` — DB'da **birorta ham** tashkilot bo'lmasa `Organization(name="Mebelix")` yaratadi.
+- Postlar: mavjud `code` lar to'plami bilan solishtirib, yetishmaganlarini `POSTS` ro'yxatidan qo'shadi — 6 post (`ARRA`…`STOLYARKA`) `order_index` 1–6, `unit` (m2/meter/piece), `color`/`icon` va xulq flaglari bilan: `ARRA` — `requires_qr_print=True`, `PAZ` va `ROVER` — `requires_assignment_choice=True`.
 
 `backend/app/commands/__init__.py` — bo'sh (faqat package marker).
 
@@ -223,19 +335,23 @@ Idempotent bootstrap skript — birinchi admin foydalanuvchini yaratadi (`python
 
 ## 6. Tasks — ARQ background workers
 
-`backend/app/tasks/sample_tasks.py` (demo `sample_background_task`) olib tashlangan. Hozir package bitta fayldan iborat:
+`backend/app/tasks/__init__.py` — package bitta fayldan iborat, ikkita registered task:
 
-### 6.1 `backend/app/tasks/__init__.py`
+| Task | Vazifasi |
+|---|---|
+| `ping(ctx)` | Liveness probe — `"pong"` qaytaradi (ARQ kamida bitta funksiya talab qiladi) |
+| `print_label(ctx, instance_id)` | Bitta fizik nusxa uchun EZPL etiketkani quradi va yuboradi (TZ 7.1.4) |
+
+`print_label` oqimi: `app.services.labels` dan `load_label_data` + `build_label_ezpl` bilan etiketka tayyorlanadi (topilmasa `skip:` qaytadi), so'ng:
+
+1. `settings.PRINTER_IP` berilgan bo'lsa — GoDEX printerga **to'g'ridan-to'g'ri TCP** (`PRINTER_IP:PRINTER_PORT`, cp1251 kodlash, threadpool'da); `OSError` da navbatga fallback.
+2. Aks holda (yoki TCP xatosida) — ARQ worker kontekstidagi Redis'ga `LPUSH` bilan JSON job (`mes:print:queue` ro'yxati) — sexdagi bridge-agent uni o'qib printerda bajaradi (TZ 2.2.2).
 
 ```python
-async def ping(ctx: dict[str, Any]) -> str:
-    """Liveness probe task. ARQ requires at least one registered function; real MES tasks replace this."""
-    return "pong"
-
-all_tasks = [ping]
+all_tasks = [ping, print_label]
 ```
 
-`ping` — placeholder: ARQ worker kamida bitta registered funksiya talab qiladi; real MES tasklari qo'shilganda uning o'rnini egallaydi. Worker konfiguratsiyasi (ARQ `WorkerSettings`) ro'yxatni `all_tasks` dan oladi; yangi task qo'shilganda shu ro'yxatga kiritilishi kerak. ARQ konvensiyasi: birinchi argument worker context (`ctx`).
+Worker konfiguratsiyasi (ARQ `WorkerSettings`) ro'yxatni `all_tasks` dan oladi; yangi task qo'shilganda shu ro'yxatga kiritilishi kerak. ARQ konvensiyasi: birinchi argument worker context (`ctx`).
 
 ---
 
@@ -243,11 +359,11 @@ all_tasks = [ping]
 
 | Qatlam | Fayllar | Kimga tayanadi | Kim ishlatadi |
 |---|---|---|---|
-| Models | `backend/app/models/*` | `app.core.db.Base` | CRUD, Alembic autogenerate, commands |
-| Schemas | `backend/app/schemas/*` | Pydantic | API routes (request/response), CRUD (create/update input) |
-| CRUD | `backend/app/crud/*` | Models, Schemas, `app.core.security` | API routes (`crud_users` singletoni) |
+| Models | `backend/app/models/*` | `app.core.db.Base` | CRUD, Alembic autogenerate, commands, services |
+| Schemas | `backend/app/schemas/*` | Pydantic, `app.models.enums` | API routes (request/response), CRUD (create/update input) |
+| CRUD | `backend/app/crud/*` | Models, Schemas, `app.core.security` | API routes (7 singleton + `log_action`) |
 | Migrations | `backend/app/migrations/*`, `backend/alembic.ini` | `app.core.config.settings`, `Base.metadata` | deploy/`alembic upgrade head` |
-| Commands | `backend/app/commands/*` | settings, `local_session`, Models | bootstrap (birinchi superuser) |
-| Tasks | `backend/app/tasks/*` | ARQ | worker process |
+| Commands | `backend/app/commands/*` | settings, `local_session`, Models | bootstrap (superuser, organization + postlar) |
+| Tasks | `backend/app/tasks/*` | ARQ, `app.services.labels`, Redis | worker process |
 
-Naqshlar: **soft delete hamma joyda default** (BaseCRUD avtomatik filtr), **token_version** bilan JWT mass-invalidation, **E.164 telefon** username bilan teng huquqli login identifikatori, **MappedAsDataclass** ORM uslubi, **singleton CRUD instancelar**, **partial update** (`exclude_unset=True`).
+Naqshlar: **soft delete hamma joyda default** (BaseCRUD avtomatik filtr), **partial unique indekslar** tirik qatorlar orasida (`user`, `order.number`, `employee.badge_id`, `material`, `post.code`, `part_instance`, `part_route`), **VARCHAR-backed enumlar** (`db_enum`, migratsiyasiz yangi a'zo), **JSONB** moslashuvchan maydonlar uchun (cutmap, edges, machine_assignments, assigned_post_ids), **token_version** bilan JWT mass-invalidation, **E.164 telefon** username bilan teng huquqli login identifikatori, **MappedAsDataclass** ORM uslubi, **singleton CRUD instancelar**, **partial update** (`exclude_unset=True`), **idempotentlik** (`scan.client_event_id`, seed skriptlar).

@@ -77,6 +77,13 @@ Vite client type'lari + `ImportMetaEnv` interfeysi (`VITE_API_URL`) — env o'zg
 ### `frontend/src/lib/utils.ts`
 shadcn standarti — `cn(...inputs)`: `clsx` + `tailwind-merge` kombinatsiyasi, class name'larni konfliktlarsiz birlashtirish uchun. Deyarli barcha UI komponentlar shuni ishlatadi.
 
+### `frontend/src/lib/mes.ts`
+MES domen konstantalari va format helper'lari — deyarli barcha sahifa va komponentlar shu modulga tayanadi:
+- **O'zbekcha label map'lar**: `ORDER_STATUS_LABELS`/`ORDER_STATUS_COLORS` (draft → "QORALAMA", ... + CSS o'zgaruvchi ranglar), `PRIORITY_LABELS`, `ROLE_LABELS` (12 rol), `EMPLOYEE_STATUS_LABELS`, `MACHINE_STATUS_LABELS`, `MATERIAL_TYPE_LABELS`;
+- **`POST_COLORS`** — post kodi (ARRA, KROMKA, PRISADKA, PAZ, ROVER, STOLYARKA) → CSS o'zgaruvchisi (`var(--post-arra)` ...); bosqich ranglari butun ilova bo'ylab shu map'dan olinadi;
+- **`OPERATOR_ROLES`** — 6 ta operator rol tuple'i (arrachi, kromkachi, prisadkachi, pazchi, roverchi, stolyar); route guard'lar (`_layout.tsx`, `/terminal`) shu ro'yxat bilan tekshiradi;
+- **Format helper'lar**: `formatDate`/`formatDateTime` (brauzer locale'idan mustaqil `dd.mm.yyyy`), `formatMoney` (`Intl.NumberFormat("uz-Latn-UZ")` + "so'm"), `formatSize(l, w, t)` (`L × W × T mm`).
+
 ### `frontend/src/lib/validation.ts`
 Umumiy zod schema'lar — backend cheklovlari bilan sinxron ushlab turiladi (`backend/app/schemas/users.py` ga qarang):
 
@@ -89,6 +96,9 @@ Umumiy zod schema'lar — backend cheklovlari bilan sinxron ushlab turiladi (`ba
 | `optionalPasswordSchema` | `passwordSchema`dan hosil qilingan ixtiyoriy variant (`.optional().or(z.literal(""))`) — admin edit: bo'sh = "o'zgartirmaslik" |
 | `phoneSchema` | Majburiy telefon, regex bilan |
 | `optionalNameSchema` | Ixtiyoriy ism: `trim`, max 30 belgi, to'ldirilgan bo'lsa min 2 belgi; bo'sh satr `undefined`ga transform qilinadi (backend `min_length=2` tufayli 422 bermasligi uchun) |
+| `optionalFormattedPhoneSchema` | Ko'rinishda formatlangan telefon (`+998 90 123-45-67`) qabul qilinadi; transform'da bo'shliq/defis olib tashlanib kanonik `PHONE_PATTERN` bilan tekshiriladi, bo'sh satr ruxsat |
+| `formatUzPhone(input, prev?)` | Yozish paytida jonli avto-format: `+998 90 123-45-67`; `prev` argumenti separator o'chirilganda oxirgi raqamni ham olib tashlaydi (backspace qulfini oldini oladi) |
+| `formatMoneyInput(input)` | Pul maydoni avto-separatori: `"5000000"` → `"5 000 000"`, max 12 raqam; submit oldidan bo'shliqlar olib tashlanadi |
 
 Xato xabarlari o'zbek tilida — formalar to'g'ridan-to'g'ri foydalanuvchiga ko'rsatadi.
 
@@ -102,12 +112,29 @@ TanStack Router `src/routes/` papkasidan quyidagi daraxtni quradi (`routeTree.ge
 
 ```
 __root.tsx                 → root layout (Outlet, devtools, 404/error)
-├── login.tsx              → /login          (mehmon sahifa, teskari guard)
-└── _layout.tsx            → pathless layout (auth guard + sidebar shell)
-    ├── _layout/index.tsx    → /             (Dashboard)
-    ├── _layout/admin.tsx    → /admin        (Foydalanuvchilar boshqaruvi)
-    └── _layout/settings.tsx → /settings     (Foydalanuvchi sozlamalari)
+├── login.tsx              → /login       (mehmon sahifa, teskari guard)
+├── terminal.tsx           → /terminal    (fullscreen operator POS ekrani, sidebar'siz)
+├── tablo.tsx              → /tablo       (fullscreen sex TV-tablosi, sidebar'siz)
+└── _layout.tsx            → pathless layout (auth guard + rol-router + sidebar shell)
 ```
+
+`_layout` ichidagi sahifalar (`frontend/src/routes/_layout/*`):
+
+| Route | Fayl | Mazmuni |
+|---|---|---|
+| `/` | `index.tsx` | Dashboard — jonli ishlab chiqarish monitori (quyida) |
+| `/orders` | `orders/index.tsx` | Buyurtmalar reestri: status tab'lar + to'lov ustunlari (quyida) |
+| `/orders/:id` | `orders/$orderId.tsx` | Buyurtma sahifasi — lifecycle tugmalari, to'lovlar, matritsa (quyida) |
+| `/cutmap/:id` | `cutmap.$orderId.tsx` | Kesish xaritalari — admin/print ko'rinishi (quyida) |
+| `/clients` | `clients.tsx` | Mijozlar reestri: qidiruv (ism/telefon), `AddClient` dialogi, buyurtmalar soni ustuni |
+| `/employees` | `employees.tsx` | Hodimlar: qidiruv, post chip'lari (`POST_COLORS`), `AddEmployee` (admin-only; multi-post checkbox, kamida 1 post), beyjik dialogi — UUID `QRCodeSVG` sifatida chop etishga tayyor, beyjikni qayta generatsiya admin-only (eski beyjik bloklanadi) |
+| `/machines` | `machines.tsx` | Stanoklar: post badge'lari, holat (`MACHINE_STATUS_LABELS`), `AddMachine` (admin-only) |
+| `/materials` | `materials.tsx` | Materiallar: turi tab'lari (List/Kromka/Furnitura) + qidiruv; reestr project fayllardan avtomatik to'ldiriladi (TZ 4.5) |
+| `/transactions` | `transactions.tsx` | Audit jurnal "Tranzaksiyalar" nomi bilan — modul tab'lari (`getAuditLogsQueryOptions`) |
+| `/reports` | `reports.tsx` | Hisobotlar (TZ 11): Mahsuldorlik / Buyurtmalar / Material sarfi tab'lari, `DatePicker` sana oralig'i, Excel eksport (`GET /api/v1/reports/{kind}?format=xlsx`) |
+| `/admin` | `admin.tsx` | Foydalanuvchilar boshqaruvi (superuser guard, quyida) |
+| `/logs` | `logs.tsx` | Xuddi shu audit jurnal "Tizim loglari" nomi bilan (transactions bilan bir xil manba) |
+| `/settings` | `settings.tsx` | Foydalanuvchi sozlamalari (quyida) |
 
 ### `frontend/src/routes/__root.tsx`
 `createRootRoute` — barcha route'larning ildizi. `HeadContent` (route'lardagi `head()` meta/title'larni renderlash), `Outlet`, hamda `TanStackRouterDevtools` va `ReactQueryDevtools`. `notFoundComponent` → `@/components/Common/NotFound`, `errorComponent` → `@/components/Common/ErrorComponent`.
@@ -116,10 +143,18 @@ __root.tsx                 → root layout (Outlet, devtools, 404/error)
 `/login` sahifasi. **Teskari guard**: `beforeLoad`da `UsersService.readUserMe()` chaqiriladi — agar muvaffaqiyatli bo'lsa (foydalanuvchi allaqachon tizimda), `redirect({ to: "/" })` tashlanadi; xato bo'lsa sahifa ochiladi. Forma react-hook-form + zod (`formSchema`: `username` — foydalanuvchi nomi yoki telefon, `password` — faqat `min(1)` (bo'sh emasligi; kuch talablari faqat parol o'rnatishda qo'llanadi, eski/seed parollar bilan kirish saqlanadi); `satisfies z.ZodType<Body_login_access_token>` orqali generatsiya qilingan API tipiga bog'langan). Submit `useAuth().loginMutation` ga yuboriladi, UI `AuthLayout`, `LoadingButton`, `PasswordInput` komponentlaridan foydalanadi.
 
 ### `frontend/src/routes/_layout.tsx`
-Pathless layout — himoyalangan sahifalar qobig'i. **Auth guard**: `beforeLoad`da `UsersService.readUserMe()` chaqiriladi — faqat `ApiError.status === 401` bo'lsa `redirect({ to: "/login" })`; boshqa xatolar (tarmoq uzilishi, 5xx) qayta throw qilinadi va `errorComponent`da ko'rinadi (sessiya o'ldirilmaydi). Layout `SidebarProvider` + `AppSidebar` (`@/components/Sidebar/AppSidebar`) + `SidebarInset`dan iborat; fon suvbelgisi sifatida navy logo (opacity 0.06), mobil ko'rinishda (md dan kichik) `SidebarTrigger`li header ko'rsatiladi. `sectionTitles` map'i pathname bo'yicha mobil header sarlavhasini beradi (`/` → "Boshqaruv paneli", `/admin` → "Foydalanuvchilar", `/settings` → "Sozlamalar").
+Pathless layout — himoyalangan sahifalar qobig'i. **Auth guard + rol-router**: `beforeLoad`da `UsersService.readUserMe()` chaqiriladi, so'ng rol bo'yicha yo'naltiriladi (TZ 3.4/3.5) — `terminal` roli yoki `OPERATOR_ROLES`dagi rollar (`@/lib/mes`) → `redirect({ to: "/terminal" })`, `tablo` roli → `/tablo`; ya'ni qurilma/operator akkauntlari admin panelga umuman kira olmaydi. Faqat `ApiError.status === 401` bo'lsa `redirect({ to: "/login" })`; boshqa xatolar (tarmoq uzilishi, 5xx) qayta throw qilinadi va `errorComponent`da ko'rinadi (sessiya o'ldirilmaydi). Layout `SidebarProvider` + `AppSidebar` (`@/components/Sidebar/AppSidebar`) + `SidebarInset`dan iborat; fon suvbelgisi sifatida navy logo (opacity 0.06), mobil ko'rinishda (md dan kichik) `SidebarTrigger`li header ko'rsatiladi. `sectionTitles` map'i pathname bo'yicha mobil header sarlavhasini beradi — 11 ta yozuv: `/`, `/orders`, `/clients`, `/employees`, `/machines`, `/materials`, `/transactions`, `/reports`, `/admin`, `/logs`, `/settings`.
 
 ### `frontend/src/routes/_layout/index.tsx`
-`/` — Dashboard. Hozircha minimal: `useCurrentUser()` orqali joriy foydalanuvchini olib, "Salom, {name || phone}" salomlashuvi. `head()` orqali sahifa title'i o'rnatiladi.
+`/` — Dashboard, jonli ishlab chiqarish monitori (TZ 10.2):
+- **Stanok kartalari**: `getMachinesQueryOptions()` ro'yxati, har karta post rangida (`POST_COLORS`), holat badge'i va quvvat (m²/soat, m/soat, dona/soat). Navbat statistikasi (`queue_scans`, hajm, bugungi scanlar, `forecast_hours` — TZ 4.3 prognoz) `ReportsService.reportDashboard`dan 60s poll bilan olinadi va faqat superuser/admin/manager/director'ga so'raladi (`enabled: canStats`);
+- **Aktiv buyurtmalar**: `TabloService.readTabloMatrix` (60s poll) — har qatorda `StagePipeline` (bosqichlar bo'yicha done/total), muddat, `StatusBadge`; qator buyurtma sahifasiga link;
+- **Jonli rejim**: `useMesWs` — `scan.*`/`order.*`/`session.*` event'larida `["tablo"]` invalidatsiyasi; header'da `online` flag'idan LIVE MONITORING / OFFLINE badge.
+
+### Orders moduli (`_layout/orders/*`, `_layout/cutmap.$orderId.tsx`)
+- **`orders/index.tsx` — `/orders` reestri.** Status tab'lari (Hammasi / Qoralama / Texnologda / Jarayonda / Tayyor / Topshirilgan / Bekor qilingan) jonli count'lar bilan — `OrdersService.readOrderStatusCounts`, 30s poll; texnologga "Bekor qilingan" tab ko'rinmaydi (backend ham filtrlaydi). Qidiruv (raqam/nom/mijoz) server-side (`getOrdersQueryOptions`), saralash client-side (`created_at`, `deadline`, `priority`, `amount`, qoldiq to'lov; reestr bitta sahifaga sig'adi — limit 100, oshsa server-side sort kerak bo'ladi). To'lov ustunlari: "Umumiy narx" va "Qoldiq to'lov" = `amount − advance_payment`. Yangi buyurtma (`AddOrder`) faqat admin/manager/superuser'ga.
+- **`orders/$orderId.tsx` — buyurtma sahifasi.** Meta grid (holat, mijoz, muddat, prioritet, umumiy narx / boshlang'ich to'lov / qoldiq, detallar/nusxalar, sanalar, bekor sababi) + rol-gated lifecycle tugmalari: Tasdiqlash (manager, `draft` → `confirmOrder`), Project fayl yuklash (texnolog, `technical_review`, `.project`), Ishlab chiqarishga uzatish (manager, fayl yuklangach), Kesish xaritalari (fayl bor bo'lsa), TOPSHIRILDI (manager, `completed`), Bekor qilish (sabab kamida 3 belgi). Pastda `MachineAssign` (stanok biriktirish) va `OrderMatrix` (detallar matritsasi, texnologga tahrirlanadi), fayllar ro'yxati yuklab olish havolalari bilan. Har amal `["orders"]` key'larini invalidatsiya qiladi.
+- **`cutmap.$orderId.tsx` — `/cutmap/:id`.** Kesish xaritalarining admin ko'rinishi (TZ 10.3): `Terminal/CutmapView` `admin` rejimida, `registerPrint` callback'i orqali "PDF / Chop etish" tugmasi brauzer print'ini chaqiradi (arrachiga yoki mijozga qog'oz nusxa).
 
 ### `frontend/src/routes/_layout/admin.tsx`
 `/admin` — foydalanuvchilar boshqaruvi. **Superuser guard**: `beforeLoad`da `readUserMe()` natijasi `is_superuser` bo'lmasa `redirect({ to: "/" })` (backend ham ro'yxatni faqat superuser'ga beradi). `useSuspenseQuery(getUsersQueryOptions())` bilan ro'yxat olinadi (`Suspense` fallback — `PendingUsers` skeleton). Har bir `UserRead`ga `isCurrentUser` flag'i qo'shilib (`useCurrentUser` bilan solishtirish) `DataTable`ga (`@/components/Common/DataTable`, ustunlar `@/components/Admin/columns`) uzatiladi. Yuqorida `AddUser` dialog tugmasi.
@@ -127,10 +162,22 @@ Pathless layout — himoyalangan sahifalar qobig'i. **Auth guard**: `beforeLoad`
 ### `frontend/src/routes/_layout/settings.tsx`
 `/settings` — sozlamalar, Tabs asosida: "Profilim" (`UserInformation`), "Parol" (`ChangePassword`), "Xavfli zona" (`DeleteAccount`). Superuser uchun "Xavfli zona" yashiriladi (`tabsConfig.slice(0, 2)`) — superuser o'z hisobini o'chira olmaydi. `currentUser` hali yuklanmagan bo'lsa `null` qaytaradi.
 
+### `frontend/src/routes/terminal.tsx` — `/terminal` (operator POS ekrani)
+Fullscreen terminal (TZ 8) — sidebar'siz, POS monoblokda doim ochiq turadi. Guard: faqat `terminal`, `admin`, superuser va `OPERATOR_ROLES`; boshqalar `/` ga qaytariladi (401 → `/login`). Asosiy mexanika:
+- **Avto-skan input** doim fokusda (har 2s qayta fokus, AVTO-SKAN switch bilan o'chiriladi): qiymat UUID regex'ga mos kelsa **beyjik** — `TerminalService.startTerminalSession` (sessiya ochish); aks holda **detal QR** — `ScansService.recordScan` (idempotentlik uchun `client_event_id = crypto.randomUUID()`). Bir xil kod uchun 2s cooldown (duplikat yutiladi, TZ 8.4.4); WS offline bo'lsa detal scan bloklanadi (E007 "Aloqa yo'q").
+- **Scan natijasi**: audio signal (`Terminal/audio.ts`), "Oxirgi skan" paneli (kod + qoldiq yoki xato kodi), 50 talik tarix ("faqat xatolar" filtri), 60s ichida BEKOR QILISH (`cancelScan`, ConfirmDialog bilan); javobda `scx_file_ids` kelsa fayllar avtomatik yuklab olinadi (qaysi scanda SCX qaytishi server tomonda hal qilinadi, TZ 12.5).
+- **ARRA posti**: vazifalar jadvali o'rniga proyekt kartalari (`GET /terminal/orders`, 30s poll — raqam, prioritet badge, ARRA done/total progress, muddat) → tanlangan proyekt `Terminal/CutmapView` kesish xaritasida ochiladi. Boshqa postlarda: navbatdagi vazifalar jadvali (70%) + o'ng panel (30%).
+- **Qulf va chiqish**: ekranni qulflash overlay'i (fullscreen, tasodifiy tegishlardan himoya, "Ochish" tugmasi), operator rollar uchun logout, `terminal` qurilma akkauntida sessiyani yakunlash (`endTerminalSession`). Jonli soat; `useMesWs` `scan.recorded/scan.cancelled/order.started/order.cancelled` event'larida `["terminal"]` invalidatsiyasi.
+
+Domen tafsilotlari (scan engine, xatolik kodlari, cutmap modeli): `docs/09-mes-domain.md`.
+
+### `frontend/src/routes/tablo.tsx` — `/tablo` (sex TV-tablosi)
+Fullscreen jonli matritsa (TZ 9): buyurtmalar × postlar jadvali `TabloService.readTabloMatrix`dan — 60s poll + WS `scan.*`/`order.*` invalidatsiyasi + har 5 daqiqada to'liq sahifa reload (TZ 9.7, kesh himoyasi). Uch rejim: **HAJM** (volume done/total, post birligida m²/m/dona), **SONI** (done/total), **FOIZ** (default). Yuqorida "Jami hajm" yig'indi qatori; har katakda post rangida progress fill, tugagan bosqich yashil "✓", muddati o'tib boshlanmagani qizil "BOSHLANMADI". `tablo` roli stanokka bog'langan bo'lsa boshqa post ustunlari xiralashadi (kontekst rejim, "JORIY NUQTA" badge'i). Qator bosilsa buyurtma drill-down'i — detal × 6 post jadvali (`readTabloOrder`, 30s poll). Guard faqat login talab qiladi (har qanday rol ochishi mumkin; `tablo` rolining o'zi `_layout`dan shu yerga yo'naltiriladi). Jonli soat va online indikator.
+
 ### Auth flow (login → cookie token → guard → silent refresh)
 
 1. **Login**: `/login` formasida `useAuth().loginMutation` → `LoginService.loginAccessToken({ formData })` (OAuth2 form-data: username/password). Server javobida `access_token` va `refresh_token` **HttpOnly cookie** sifatida o'rnatiladi — frontend token'ni hech qayerda saqlamaydi (`localStorage` yo'q). Muvaffaqiyatda `navigate({ to: "/" })`.
-2. **Guard**: har bir himoyalangan sahifaga kirishda `_layout.tsx` `beforeLoad`i `readUserMe()` chaqiradi — cookie yaroqli bo'lsa o'tadi, 401 bo'lsa `/login` ga redirect (boshqa xatolar `errorComponent`ga chiqadi). `/admin` qo'shimcha superuser tekshiruvidan o'tkazadi. `/login` esa teskari tekshiradi: sessiya bor bo'lsa `/` ga qaytaradi.
+2. **Guard + rol-router**: har bir himoyalangan sahifaga kirishda `_layout.tsx` `beforeLoad`i `readUserMe()` chaqiradi — cookie yaroqli bo'lsa rol tekshiriladi: `terminal`/operator rollar `/terminal` ga, `tablo` `/tablo` ga yo'naltiriladi, qolganlar o'tadi; 401 bo'lsa `/login` ga redirect (boshqa xatolar `errorComponent`ga chiqadi). `/admin` qo'shimcha superuser tekshiruvidan, `/terminal` o'z rol tekshiruvidan o'tkazadi. `/login` esa teskari tekshiradi: sessiya bor bo'lsa `/` ga qaytaradi.
 3. **So'rovlar**: barcha API chaqiriqlar `withCredentials: true` bilan ketadi (`main.tsx`da `OpenAPI.WITH_CREDENTIALS = true`), cookie avtomatik biriktiriladi.
 4. **Silent refresh**: access token muddati tugab 401 kelsa, `main.tsx`dagi Axios interceptor `LoginService.refreshAccessToken()` orqali cookie'ni yangilab, asl so'rovni bir marta qayta yuboradi; parallel so'rovlar navbatda kutadi.
 5. **Fallback logout**: refresh ham 401 bersa (yoki `token_version` mismatch), `QueryCache`/`MutationCache` `onError`i cache'ni tozalab `/login` ga yo'naltiradi.
@@ -156,6 +203,9 @@ Joriy foydalanuvchi — `useQuery(getCurrentUserQueryOptions())`, `retry: false`
 ### `frontend/src/hooks/useMobile.ts`
 `useIsMobile()` — `matchMedia("(max-width: 767px)")` (breakpoint 768) asosida responsive flag. shadcn `sidebar` komponenti mobil/desktop rejimni shu bilan aniqlaydi.
 
+### `frontend/src/hooks/useMesWs.ts`
+`useMesWs(onEvent)` — jonli yangilanishlar kanali (TZ 2.3): `OpenAPI.BASE`dagi `http` `ws` ga almashtirilib `/api/v1/ws/events` ga WebSocket ochiladi. Ulanish uzilsa 3s dan keyin avto-reconnect, har 30s "ping" heartbeat ("pong" va JSON bo'lmagan frame'lar filtrlanadi); `onEvent` ref orqali saqlanadi — har doim eng so'nggi callback chaqiriladi. Qaytaradi: `{ online }` — Dashboard'dagi LIVE/OFFLINE badge, terminaldagi "ALOQA YO'Q" bloki va tablo indikatori shu flag'dan. Iste'molchilar event turi bo'yicha (`scan.*`, `order.*`, `session.*`) tegishli query key'larni invalidatsiya qiladi.
+
 ---
 
 ## 5. Queries
@@ -171,6 +221,25 @@ getCurrentUserQueryOptions()  // queryKey: ["currentUser"], readUserMe
 `getUsersQueryOptions` `queryFn`i sahifalab yig'adi: `PAGE_SIZE = 100` (backend `MAX_PAGE_SIZE`) bilan `readUsers({ skip, limit })` loop'da `count`ga yetguncha chaqiriladi — 100 dan ortiq foydalanuvchi ham to'liq ko'rinadi (jadval client-side; foydalanuvchilar minglab bo'lsa server-side paginatsiyaga o'tish kerak bo'ladi).
 
 `/admin` sahifasi `useSuspenseQuery` bilan, `useCurrentUser` oddiy `useQuery` bilan ishlatadi. Foydalanuvchi CRUD mutation'lari (Admin komponentlarida) invalidatsiya uchun shu key'larga tayanadi.
+
+### `frontend/src/queries/mes.ts`
+MES query factory'lari — 11 ta, `PAGE = 100` (backend max sahifa):
+
+```ts
+getPostsQueryOptions()             // ["posts"], readPosts — staleTime 5 min (deyarli statik)
+getMachinesQueryOptions()          // ["machines"], readMachines — staleTime 60s
+getClientsQueryOptions(search)     // ["clients", search] — search-parametrli, limit 100
+getEmployeesQueryOptions(search)   // ["employees", search]
+getMaterialsQueryOptions(search, type) // ["materials", search, type] — type: sheet|band|hardware
+getOrdersQueryOptions({status, search, page}) // ["orders", status, search, page], skip = page*100
+getOrderQueryOptions(id)           // ["orders", id]
+getOrderMatrixQueryOptions(id)     // ["orders", id, "matrix"]
+getAuditLogsQueryOptions({module, page})      // ["audit", module, page]
+getTerminalContextQueryOptions()   // ["terminal", "context"]
+getTerminalTasksQueryOptions()     // ["terminal", "tasks"], refetchInterval 30s (WS asosiy trigger, bu zaxira)
+```
+
+Mutation va WS event handler'lar shu key'larga invalidatsiya qiladi: scan/sessiya event'lari `["terminal"]`, buyurtma amallari `["orders"]`, tablo/dashboard `["tablo"]`.
 
 ---
 
@@ -207,7 +276,7 @@ Faqat tip deklaratsiyalari. `ApiRequestOptions<T>` — bitta so'rovning to'liq t
 | Fayl | Nima | Generator |
 |---|---|---|
 | `frontend/src/routeTree.gen.ts` | Route daraxti (type-safe) — `src/routes/` fayllaridan | `@tanstack/router-plugin` (Vite dev/build paytida avtomatik) |
-| `frontend/src/client/sdk.gen.ts` | Servis klasslari: `HealthService`, `LoginService`, `UsersService` — har metod `CancelablePromise` qaytaradi (`ItemsService`/`TasksService` backend demo modullari bilan birga olib tashlangan) | `@hey-api/openapi-ts` |
+| `frontend/src/client/sdk.gen.ts` | 14 ta servis klass: `AuditService`, `ClientsService`, `EmployeesService`, `HealthService`, `LoginService`, `MachinesService`, `MaterialsService`, `OrdersService`, `PostsService`, `ReportsService`, `ScansService`, `TabloService`, `TerminalService`, `UsersService` — har metod `CancelablePromise` qaytaradi | `@hey-api/openapi-ts` |
 | `frontend/src/client/types.gen.ts` | Request/response TypeScript tiplari (`UserRead`, `Body_login_access_token`, ...) | `@hey-api/openapi-ts` |
 | `frontend/src/client/schemas.gen.ts` | JSON schema'lar | `@hey-api/openapi-ts` |
 
@@ -226,11 +295,16 @@ Backend endpoint/schema o'zgarganda shu skript qayta ishga tushiriladi; generats
 ```
 main.tsx ──(BASE, WITH_CREDENTIALS)──> client/core/OpenAPI.ts
 main.tsx ──(401 interceptor)─────────> LoginService.refreshAccessToken (sdk.gen.ts)
-routes/* ──(beforeLoad guard)────────> UsersService.readUserMe
+routes/* ──(beforeLoad guard)────────> UsersService.readUserMe (+ rol-router: lib/mes.ts OPERATOR_ROLES)
 routes/login.tsx ──> hooks/useAuth ──> LoginService.loginAccessToken / logout
+routes/_layout/* ──> queries/mes.ts ──> 14 ta *Service (sdk.gen.ts)
+routes/terminal.tsx ──> TerminalService / ScansService + Terminal/CutmapView + hooks/useMesWs
+routes/tablo.tsx, _layout/index.tsx ──> TabloService (matrix) + hooks/useMesWs
+hooks/useMesWs ──(ws://.../api/v1/ws/events)──> query invalidatsiya + {online} flag
 routes/_layout/admin.tsx ──> queries/users.ts ──> UsersService.readUsers
 hooks/useCurrentUser ──> queries/users.ts (["currentUser"])
 sdk.gen.ts ──> core/request.ts ──> core/CancelablePromise.ts, core/ApiError.ts
 utils.ts (handleError) <── hooks/useCustomToast <── mutation onError'lar
+lib/mes.ts (label/rang/format konstantalari) <── deyarli barcha route va komponentlar
 lib/validation.ts <──> backend/app/schemas/users.py (qo'lda sinxron)
 ```

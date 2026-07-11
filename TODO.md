@@ -4,7 +4,7 @@ TT manba: `docs/Mebelix_MES_TZ_v2.2.docx`. Arxitektura: `docs/01..08-*.md`.
 Har faza tugagach: lint + mypy + migratsiya + client regen o'tishi shart. Ushbu fayl har qadam yangilanadi.
 
 ## Faza 1 — Data model (backend) ✅ (2026-07-10)
-- [x] User modeliga `role` (ADMIN/DIRECTOR/MANAGER/TEXNOLOG/TERMINAL/TABLO) va `machine_id` (terminal/tablo bog'lash)
+- [x] User modeliga `role` (ADMIN/DIRECTOR/MANAGER/TEXNOLOG/TERMINAL/TABLO + 6 operator roli: ARRACHI/KROMKACHI/PRISADKACHI/PAZCHI/ROVERCHI/STOLYAR — `POST_ROLES` rol→post mapping; operator uchun login = smena, stanok bog'lash va beyjik shart emas) va `machine_id` (terminal/tablo bog'lash)
 - [x] Organization (multi-tenant tayyor sxema, bitta org)
 - [x] Post (6 bosqich: ARRA, KROMKA, PRISADKA, PAZ, ROVER, STOLYARKA; unit, order_index, flaglar) + seed
 - [x] Machine (post FK, ip, capacity, status)
@@ -21,7 +21,8 @@ Har faza tugagach: lint + mypy + migratsiya + client regen o'tishi shart. Ushbu 
 - [x] Rol-based deps (`require_roles`, ManagerUser/TexnologUser/StaffReadUser/AdminUser)
 - [x] CRUD API: clients (orders_count bilan), employees (beyjik regen), machines, posts, materials
 - [x] Users API: role + machine_id maydonlari
-- [x] Orders API: yaratish (B-YYYY-NNN retry bilan), reestr (status/search), kartochka (fayllar, countlar), bekor qilish, TOPSHIRILDI, matritsa (o'qish+texnolog tahriri), stanok biriktirish, submit-review, start (PRODUCTION)
+- [x] Orders API: yaratish (B-YYYY-NNN retry bilan), reestr (status/search) + `GET /status-counts` (tab counterlar), kartochka (fayllar, countlar), bekor qilish, TOPSHIRILDI, matritsa (o'qish+texnolog tahriri), stanok biriktirish, confirm (manager-only `POST /{id}/confirm`: DRAFT→TECHNICAL_REVIEW, narx majburiy; texnolog .project ni faqat confirmdan keyin yuklaydi), start (PRODUCTION — .project biriktirilgan bo'lishi shart)
+- [x] To'lov oqimi (b5ee41d): `Order.advance_payment` (migratsiya `7d2c9f5e1b3a`), OrderCreate/Update/Read sxemalarida; confirm da narx majburiy; DRAFT dan keyin mijoz o'zgartirish qulflanadi; mijoz telefon dublikat tekshiruvi (phone/phone_alt, 409 egasi nomi bilan)
 - [x] Audit log yozish (log_action, tranzaksiya ichida) + ro'yxat API (filtrlar)
 - [x] Smoke-test: login→CRUD→order lifecycle in-process ✅
 
@@ -67,9 +68,10 @@ Har faza tugagach: lint + mypy + migratsiya + client regen o'tishi shart. Ushbu 
 ## Faza 7 — Operator terminali (TT 8) ✅ (2026-07-10)
 - [x] /terminal route (rol guard), beyjik UUID → sessiya (bir input: beyjik ham QR ham), sessiya yakunlash
 - [x] Asosiy ekran: header (post/stanok/soat), NAVBATDAGI VAZIFALAR (katta QOLDIQ), OXIRGI SKAN (yashil/qizil), TARIX (50, faqat-xatolar filtri), BEKOR QILISH (60s)
-- [x] Avto-skan input (doimiy fokus har 2s, SKAN ON/OFF tumbler, lock), 2s cooldown
+- [x] Avto-skan input (doimiy fokus har 2s, SKAN ON/OFF tumbler), 2s cooldown
 - [x] Audio (WebAudio 600/200/800Hz — lokal), vizual flash
-- [x] ARRA kesish xaritasi: materiallar+statistika (KK/KD/KO/DR/KR/PZ), list kartochkalari (×mult), SVG list (detallar, nom-barqaror rang, tekstura chiziqlari, o'lchamlar+kromka belgilar, teshiklar overlay, kesim chiziqlari, atxot zebra), detal kartochkasi (katta QR + YORLIQ CHOP ETISH + nusxalar holati), ✓ real-time (WS)
+- [x] ARRA kesish xaritasi — GibSaw-parity (b5ee41d): loyiha kartalari → to'liq xarita; materiallar+statistika (KK/KD/KO/DR/KR/PZ), zich list ro'yxati, SVG list (halo yorliqlar, o'lcham zanjirlari/dims, yuzaki+yon teshiklar (edge bores) real masshtabda, to'g'ri teshik rotatsiyasi, tekstura chiziqlari, kesim chiziqlari, atxot zebra), wheel/pinch zoom + pan, detal kartochkasi (katta QR + YORLIQ CHOP ETISH + nusxalar holati), ✓ real-time (WS)
+- [x] 17" touch UX (f7b901d): glove-mode 48px touch nishonlar, haqiqiy fullscreen lock overlay + qulfdan chiqarish, operator rollari uchun ishlaydigan logout, boy loyiha kartalari (priority badge, ARRA progress done/total — yangi `GET /terminal/orders` agregati, topshirish sanasi), barcha xaritalarni chop etish (bitta PDF tugma, har list A4 landscape + material sarlavhasi), dd.mm.yyyy formatlar
 - [x] PRISADKA/PAZ/ROVER: scan javobidagi scx_file_ids → avtomatik download
 - [x] Offline: WS uzilsa ALOQA YO'Q, scan blok (E007)
 
@@ -83,7 +85,7 @@ Har faza tugagach: lint + mypy + migratsiya + client regen o'tishi shart. Ushbu 
 ## Faza 9 — Hisobotlar, chop etish, yakuniy ✅ asosiy (2026-07-10)
 - [x] Hisobotlar (`/reports/*`): mahsuldorlik (hodim reytingi, kun/soat o'rtacha), buyurtmalar holati (kechikkanlar, bekor sabablari), material sarfi (`order.material_usage` dan) — hammasi `?format=xlsx` Excel bilan (openpyxl)
 - [x] Dashboard prognoz (`/reports/dashboard`): stanok navbati (scan + hajm), ~tugatish soat (TT 4.3 formula), bugungi scanlar — kartalarga ulandi
-- [x] EZPL yorliq (`app/services/labels.py`): 80×60, QR (instance), kod/nom/material/o'lcham, kromka qatori, P/S/F ikonkalar, №num; `print_label` ARQ task (PRINTER_IP → TCP, aks holda Redis navbat)
+- [x] EZPL yorliq (`app/services/labels.py`): 80×60 chek-uslub shablon (b5ee41d: MEBELIX header + buyurtma №, katta QR, katta `L x W = soni` qatori, kromkali tomonlari qalin chizilgan detal eskizi); `print_label` ARQ task (PRINTER_IP → TCP, aks holda Redis navbat) + brauzer yo'li: `GET /terminal/labels/{id}.png` PNG render (Pillow+qrcode) — GoDEX/worker shart emas
 - [x] Bridge-agent (`bridge-agent/agent.py` + README + systemd): outbound WS `/ws/bridge` (BRIDGE_TOKEN), lokal JSONL navbat, printer flusher; E2E sinaldi (job→agent→ack→navbat bo'sh)
 - [x] Kesish xaritasi admin ko'rinishi (`/cutmap/$orderId`, TT 10.3) + PDF/chop (window.print + print CSS)
 - [x] TABLO JAMI HAJM qatori
@@ -93,7 +95,10 @@ Har faza tugagach: lint + mypy + migratsiya + client regen o'tishi shart. Ushbu 
 
 ## Holat jurnali
 - 2026-07-10: TT + docs o'rganildi, TODO yaratildi. Faza 1 boshlandi.
-- 2026-07-10: Faza 1–8 asosiylari yakunlandi. Backend: 17 jadval, 60+ endpoint, GibLab parser (blob dekoder testlar bilan), scan engine, WS (Redis pub/sub). Frontend: admin panel (7 modul), terminal (ARRA SVG xarita), TABLO. Gatelar: mypy ✅ ruff ✅ tsc ✅ biome ✅ build ✅ parser testlar ✅ API E2E ✅.
+- 2026-07-10: Faza 1–8 asosiylari yakunlandi. Backend: 16 jadval, 60+ endpoint, GibLab parser (blob dekoder testlar bilan), scan engine, WS (Redis pub/sub). Frontend: admin panel (7 modul), terminal (ARRA SVG xarita), TABLO. Gatelar: mypy ✅ ruff ✅ tsc ✅ biome ✅ build ✅ parser testlar ✅ API E2E ✅.
 - Muhit: .env yaratildi (lokal, DB=mebelix host postgresda), redis konteyner `mebelix-mes-system_redis_1` ishlamoqda, dev serverlar (8000/5173) fonda.
 - Qolgan (Faza 9): hisobotlar+Excel, EZPL yorliq+print queue, bridge-agent, kesish xaritasi PDF, admin cutmap ko'rish, JAMI HAJM, efficiency prognoz, docs yangilash.
 - 2026-07-10 (kech): Faza 9 asosiylari yakunlandi — reports+xlsx, EZPL+bridge (E2E ✅), admin cutmap+print, JAMI HAJM, dashboard prognoz, docs/09. MUHIM FIX: eski uvicorn jarayoni WS routelarni bermasdi (stale process) — o'ldirilib qayta ishga tushirildi, /ws/events va /ws/bridge jonli tasdiqlandi. Yangi env: PRINTER_IP/PRINTER_PORT/BRIDGE_TOKEN.
+- 2026-07-10 (b5ee41d): operator rollari (arrachi..stolyar, POST_ROLES, scan/payroll uchun avto Employee mirror); buyurtma oqimi teskari qilindi — manager confirm (narx majburiy) → texnolog .project yuklaydi → start fayl talab qiladi; to'lov oqimi (`advance_payment` + migratsiya `7d2c9f5e1b3a`); `GET /orders/status-counts`; GibSaw-parity cutmap (dims zanjirlari, dublikat detal kodlari rename); chek-uslub EZPL + `labels/{id}.png` PNG (yangi deplar: pillow, qrcode, tzdata); frontend: EditOrder, uz DatePicker, telefon/pul auto-formatlash.
+- 2026-07-10 (f7b901d): terminal 17" touch UX — boy loyiha kartalari (priority, ARRA progress, topshirish sanasi; `GET /terminal/orders`), haqiqiy fullscreen lock overlay, operator logout, glove-mode 48px nishonlar, barcha xaritalarni bitta PDF da chop etish.
+- 2026-07-10 (5db2d80): prod Caddy port bindinglari parametrlandi (`CADDY_HTTP_BIND`/`CADDY_HTTPS_BIND`, docker-compose.prod.yml) — mavjud host nginx (ISPmanager) ortida ishlatish uchun (127.0.0.1:8200/8443 + SITE_ADDRESS=:80 retsepti).

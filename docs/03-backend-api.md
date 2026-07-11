@@ -7,11 +7,25 @@ Bu hujjat MebeliX MES backend'ining HTTP API qatlamini tavsiflaydi: router ierar
 ```
 /api                        ← backend/app/api/__init__.py (root router)
   └── /v1                   ← backend/app/api/routes/__init__.py (versiya router)
-        ├── /health, /ready ← health.py   (auth talab qilinmaydi)
-        ├── /login/*        ← login.py    (auth talab qilinmaydi)
-        ├── /logout         ← logout.py   (get_current_user)
-        └── /users/*        ← users.py    (get_current_user)
+        ├── /health, /ready ← health.py    (ochiq — auth yo'q)
+        ├── /login/*        ← login.py     (ochiq — auth yo'q)
+        ├── /logout         ← logout.py    ┐
+        ├── /users/*        ← users.py     │
+        ├── /clients/*      ← clients.py   │
+        ├── /employees/*    ← employees.py │
+        ├── /machines/*     ← machines.py  │
+        ├── /posts/*        ← posts.py     │  router darajasida
+        ├── /materials/*    ← materials.py │  Depends(get_current_user)
+        ├── /orders/*       ← orders.py    │
+        ├── /audit-logs/    ← audit.py     │
+        ├── /terminal/*     ← terminal.py  │
+        ├── /scans/*        ← scans.py     │
+        ├── /tablo/*        ← tablo.py     │
+        ├── /reports/*      ← reports.py   ┘
+        └── /ws/*           ← ws.py        (router darajasida auth YO'Q — auth endpoint ichida)
 ```
+
+Jami 16 router: 2 ta ochiq (`health`, `login`), 13 tasi `get_current_user` ortida, `ws` esa WebSocket bo'lgani uchun autentifikatsiyani endpoint ichida o'zi bajaradi.
 
 Autentifikatsiya modeli: JWT access + refresh token juftligi, ikkalasi ham `httpOnly` cookie sifatida o'rnatiladi; qo'shimcha ravishda `Authorization: Bearer` header ham qabul qilinadi (header cookie'dan ustun). Token bekor qilish `token_version` mexanizmi orqali — logout paytida foydalanuvchining `token_version` oshiriladi va barcha eski tokenlar yaroqsiz bo'ladi.
 
@@ -29,9 +43,9 @@ Autentifikatsiya modeli: JWT access + refresh token juftligi, ikkalasi ham `http
 
 ---
 
-## `backend/app/api/deps.py` — Dependency'lar (auth va DB session)
+## `backend/app/api/deps.py` — Dependency'lar (auth, rollar va DB session)
 
-**Maqsadi:** Endpointlarda ishlatiladigan umumiy FastAPI dependency'larni belgilaydi: DB session, joriy foydalanuvchi va superuser tekshiruvi.
+**Maqsadi:** Endpointlarda ishlatiladigan umumiy FastAPI dependency'larni belgilaydi: DB session, joriy foydalanuvchi, superuser tekshiruvi va rol-asosli avtorizatsiya.
 
 Asosiy elementlar:
 
@@ -47,7 +61,21 @@ Asosiy elementlar:
 
 Muhim xavfsizlik detali: `_resolve_user` da `user.token_version != token_data.token_version` tekshiruvi — logout qilingan (versiyasi oshirilgan) tokenlar rad etiladi.
 
-**Bog'lanishlar:** `backend/app/core/db.py` (`async_get_db`), `backend/app/core/security.py` (`verify_token`, `TokenType`, `ACCESS_COOKIE_NAME`), `backend/app/core/exceptions.py`, `backend/app/crud` (`crud_users`), `backend/app/models/user.py`.
+### Rol-asosli avtorizatsiya (TZ 3.7 rol/modul matritsasi)
+
+`require_roles(*roles)` — dependency factory: joriy foydalanuvchi ruxsat etilgan rollardan birida bo'lishi kerak. **Superuser va `UserRole.ADMIN` HAR DOIM o'tadi**, aks holda `ForbiddenException("Sizda yetarli huquq yo'q.")`. Tayyor aliaslar:
+
+| Alias | Ta'rifi | Kimga ruxsat (admin/superuser'dan tashqari) |
+|---|---|---|
+| `ManagerUser` | `require_roles(MANAGER)` | manager |
+| `TexnologUser` | `require_roles(TEXNOLOG)` | texnolog |
+| `ManagerOrTexnolog` | `require_roles(MANAGER, TEXNOLOG)` | manager yoki texnolog |
+| `StaffReadUser` | `require_roles(MANAGER, TEXNOLOG, DIRECTOR)` | ofis rollari uchun umumiy read-only ro'yxatlar |
+| `AdminUser` | `require_roles()` | hech kim — faqat admin/superuser |
+
+Terminal oqimida esa route fayllar o'zi lokal alias tuzadi: `TerminalUser = require_roles(UserRole.TERMINAL, *POST_ROLES)` (`terminal.py`, `scans.py`) — maxsus terminal akkauntlar va 6 ta operator roli (arrachi, kromkachi, prisadkachi, pazchi, roverchi, stolyar).
+
+**Bog'lanishlar:** `backend/app/core/db.py` (`async_get_db`), `backend/app/core/security.py` (`verify_token`, `TokenType`, `ACCESS_COOKIE_NAME`), `backend/app/core/exceptions.py`, `backend/app/crud` (`crud_users`), `backend/app/models/user.py`, `backend/app/models/enums.py` (`UserRole`).
 
 ---
 
@@ -57,15 +85,27 @@ Muhim xavfsizlik detali: `_resolve_user` da `user.token_version != token_data.to
 
 ```python
 router = APIRouter(prefix="/v1")
-router.include_router(health_router)                                        # ochiq
-router.include_router(login_router)                                         # ochiq
-router.include_router(logout_router, dependencies=[Depends(get_current_user)])
-router.include_router(users_router,  dependencies=[Depends(get_current_user)])
+router.include_router(health_router)   # ochiq
+router.include_router(login_router)    # ochiq
+
+_protected = [Depends(get_current_user)]
+router.include_router(logout_router, dependencies=_protected)
+router.include_router(users_router, dependencies=_protected)
+router.include_router(clients_router, dependencies=_protected)
+router.include_router(employees_router, dependencies=_protected)
+router.include_router(machines_router, dependencies=_protected)
+router.include_router(posts_router, dependencies=_protected)
+router.include_router(materials_router, dependencies=_protected)
+router.include_router(orders_router, dependencies=_protected)
+router.include_router(audit_router, dependencies=_protected)
+router.include_router(terminal_router, dependencies=_protected)
+router.include_router(scans_router, dependencies=_protected)
+router.include_router(tablo_router, dependencies=_protected)
+router.include_router(reports_router, dependencies=_protected)
+router.include_router(ws_router)  # WebSocket auth endpoint ichida
 ```
 
-Ilgari mavjud bo'lgan demo modullar (`tasks.py`, `items.py`) butunlay olib tashlangan.
-
-Ya'ni auth router darajasida qo'llanadi: `health` va `login` dan tashqari hamma narsa login talab qiladi.
+Ya'ni auth ikki qatlamda: router darajasida `get_current_user` (login bo'lganlik), endpoint darajasida esa `deps.py` dagi rol aliaslari (kim nima qila oladi). `ws_router` istisno — WebSocket'da HTTP dependency ishlamaydi, shuning uchun autentifikatsiya har endpoint ichida bajariladi (quyida `ws.py` bo'limi).
 
 **Bog'lanishlar:** `backend/app/api/deps.py` va barcha route fayllar.
 
@@ -144,12 +184,215 @@ Yordamchi funksiyalar:
 
 ---
 
+## `backend/app/api/routes/clients.py` — Mijozlar
+
+**Maqsadi:** Mijozlar CRUD (buyurtma reestri uchun manba). Ro'yxat javobida har mijozga `orders_count` (tirik buyurtmalar soni, subquery orqali) qo'shiladi.
+
+| Metod | Path | Rol | Izoh |
+|---|---|---|---|
+| GET | `/api/v1/clients/` | `StaffReadUser` | Paginatsiya (`skip`/`limit`), `search` — ism/telefon bo'yicha `ilike` |
+| POST | `/api/v1/clients/` | `ManagerUser` | 201; telefon unikalligi: `phone` va `phone_alt` ustunlari bo'yicha tirik yozuvlarda tekshiriladi, band bo'lsa 409 — xabarda egasining ismi ko'rsatiladi |
+| GET | `/api/v1/clients/{id}` | `StaffReadUser` | Bitta mijoz + `orders_count`; topilmasa 404 |
+| PATCH | `/api/v1/clients/{id}` | `ManagerUser` | Yangilash; telefon o'zgarsa unikallik qayta tekshiriladi |
+| DELETE | `/api/v1/clients/{id}` | `ManagerUser` | Soft-delete, `Message` qaytaradi |
+
+Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
+
+**Bog'lanishlar:** `backend/app/schemas/clients.py`, `backend/app/crud` (`crud_clients`, `log_action`), `backend/app/schemas/common.py` (`Paginated`, `Message`).
+
+---
+
+## `backend/app/api/routes/employees.py` — Hodimlar va beyjiklar
+
+**Maqsadi:** Sex hodimlari CRUD va beyjik (QR badge) boshqaruvi. Hodim — tizimga kirmaydigan shaxs; u terminalda beyjik skan qilib ishlaydi.
+
+| Metod | Path | Rol | Izoh |
+|---|---|---|---|
+| GET | `/api/v1/employees/` | `StaffReadUser` | Paginatsiya; `search` — ism/beyjik; `status` filtri (`EmployeeStatus`) |
+| POST | `/api/v1/employees/` | `AdminUser` | 201; `badge_id` avtomatik `uuid4` sifatida yaratiladi; `assigned_post_ids` mavjudligi tekshiriladi |
+| GET | `/api/v1/employees/{id}` | `StaffReadUser` | Topilmasa 404 |
+| PATCH | `/api/v1/employees/{id}` | `AdminUser` | `assigned_post_ids` o'zgarsa qayta validatsiya |
+| POST | `/api/v1/employees/{id}/badge` | `AdminUser` | Beyjik yo'qolganda (TZ 4.2): yangi `uuid4` beriladi — eskisi darhol ishlamay qoladi, tarix shu hodimda qoladi; eski beyjik audit `meta`sida saqlanadi |
+| DELETE | `/api/v1/employees/{id}` | `AdminUser` | Soft-delete |
+
+**Bog'lanishlar:** `backend/app/schemas/employees.py`, `backend/app/crud` (`crud_employees`, `crud_posts`, `log_action`), `backend/app/models/enums.py` (`EmployeeStatus`).
+
+---
+
+## `backend/app/api/routes/machines.py` — Stanoklar
+
+**Maqsadi:** Stanoklar CRUD. Ro'yxat kichik va o'zgarmas bo'lgani uchun paginatsiyasiz; o'qish har qanday login qilgan foydalanuvchiga ochiq (terminal/TABLO kontekstga ham kerak).
+
+| Metod | Path | Rol | Izoh |
+|---|---|---|---|
+| GET | `/api/v1/machines/` | login (har qanday) | Barcha stanoklar, `list[MachineRead]` |
+| POST | `/api/v1/machines/` | `AdminUser` | 201; `post_id` mavjudligi tekshiriladi |
+| GET | `/api/v1/machines/{id}` | login (har qanday) | Topilmasa 404 |
+| PATCH | `/api/v1/machines/{id}` | `AdminUser` | `post_id` o'zgarsa qayta tekshiriladi |
+| DELETE | `/api/v1/machines/{id}` | `AdminUser` | Soft-delete |
+
+**Bog'lanishlar:** `backend/app/schemas/machines.py`, `backend/app/crud` (`crud_machines`, `crud_posts`, `log_action`).
+
+---
+
+## `backend/app/api/routes/posts.py` — Ishlab chiqarish postlari
+
+**Maqsadi:** 6 ta belgilangan post (ARRA…STOLYARKA) — ular `seed_defaults` komandasi bilan yaratiladi, shuning uchun API'da create/delete YO'Q, faqat o'qish va sozlash.
+
+| Metod | Path | Rol | Izoh |
+|---|---|---|---|
+| GET | `/api/v1/posts/` | login (har qanday) | `order_index` bo'yicha tartiblangan postlar ro'yxati |
+| PATCH | `/api/v1/posts/{id}` | `AdminUser` | Post sozlamalarini yangilash (nom, rang, flaglar) |
+
+**Bog'lanishlar:** `backend/app/schemas/posts.py`, `backend/app/crud` (`crud_posts`, `log_action`), `backend/app/commands/seed_defaults.py`.
+
+---
+
+## `backend/app/api/routes/materials.py` — Materiallar katalogi
+
+**Maqsadi:** Material spravochnigi (list/kromka). Katalogni texnolog yuritadi.
+
+| Metod | Path | Rol | Izoh |
+|---|---|---|---|
+| GET | `/api/v1/materials/` | login (har qanday) | Paginatsiya; `search` — nom/kod; `type` filtri (`MaterialType`) |
+| POST | `/api/v1/materials/` | `TexnologUser` | 201; nom+tur dublikati bo'lsa 409 |
+| PATCH | `/api/v1/materials/{id}` | `TexnologUser` | Yangilash |
+| DELETE | `/api/v1/materials/{id}` | `TexnologUser` | Soft-delete |
+
+**Bog'lanishlar:** `backend/app/schemas/materials.py`, `backend/app/crud` (`crud_materials`, `log_action`), `backend/app/models/enums.py` (`MaterialType`).
+
+---
+
+## `backend/app/api/routes/orders.py` — Buyurtmalar (hayot sikli, matritsa, fayllar)
+
+**Maqsadi:** Eng katta route moduli (15 endpoint) — buyurtma hayot sikli TZ 6 bo'yicha: `DRAFT → TECHNICAL_REVIEW → PRODUCTION → COMPLETED → DELIVERED` (+ istalgan bosqichda `CANCELLED`). Tahrirlash cheklovlari `_EDITABLE_STATUSES = (DRAFT, TECHNICAL_REVIEW)` atrofida qurilgan.
+
+| Metod | Path | Rol | Izoh |
+|---|---|---|---|
+| POST | `/api/v1/orders/` | `ManagerUser` | 201; tartib raqami `crud_orders.next_number` ("B-2026-001" ko'rinishida, yiliga ketma-ket); ikki manager poygasida unique index hakam — `IntegrityError` bo'lsa 3 martagacha qayta uriniladi; WS `order.created` |
+| GET | `/api/v1/orders/` | `StaffReadUser` | Paginatsiya; `status` filtri; `search` — raqam/loyiha nomi/loyiha UUID/mijoz ismi; CANCELLED buyurtmalar texnologga KO'RINMAYDI (`_hide_cancelled`) |
+| GET | `/api/v1/orders/status-counts` | `StaffReadUser` | Reestr tablari uchun har holatdagi buyurtmalar soni; `/{order_id}` dan OLDIN e'lon qilingan (aks holda "status-counts" order_id deb o'qilardi) |
+| GET | `/api/v1/orders/{id}` | `StaffReadUser` | `OrderDetail`: mijoz ismi, biriktirilgan fayllar, `parts_count`, `instances_count` |
+| PATCH | `/api/v1/orders/{id}` | `ManagerUser` | DELIVERED/CANCELLED tahrirlanmaydi (403); `client_id` faqat DRAFT holatida almashtiriladi |
+| POST | `/api/v1/orders/{id}/confirm` | `ManagerUser` | Tasdiqlash: `DRAFT → TECHNICAL_REVIEW` — buyurtma texnologga o'tadi; `amount` (narx) kiritilgan bo'lishi shart |
+| POST | `/api/v1/orders/{id}/upload` | `TexnologUser` | `.project` fayl yuklash (TZ 6.3): faqat TECHNICAL_REVIEW holatida; kengaytma va hajm (`MAX_PROJECT_FILE_SIZE`) tekshiriladi; parse xatosi 422; TEMPLATE (GibLab'da optimizatsiya qilinmagan) fayl 422 aniq yo'riqnoma matni bilan rad etiladi (TZ 5.3.3); qayta yuklashda `wipe_previous_parse` oldingi parse natijalarini o'chiradi, `ingest_project` yangisini yozadi |
+| GET | `/api/v1/orders/{id}/matrix` | `StaffReadUser` | `OrderMatrix` — detal × bosqich marshrutlar (`RouteCell`) |
+| PATCH | `/api/v1/orders/{id}/matrix` | `TexnologUser` | Matritsa tahriri (TZ 6.3.3): bosqich on/off (ARRA'ni o'chirib BO'LMAYDI — 403), izoh, soni o'zgartirish (`_resize_instances` fizik nusxalar va route summalarini moslashtiradi); faqat production'gacha |
+| POST | `/api/v1/orders/{id}/machines` | `ManagerUser` | Bir postda bir nechta stanok bo'lsa manager tanlaydi (TZ 6.4.1); post/stanok mosligi tekshiriladi; faqat production'gacha |
+| POST | `/api/v1/orders/{id}/start` | `ManagerUser` | Ishlab chiqarishga uzatish (TZ 6.4.2): `TECHNICAL_REVIEW → PRODUCTION`; `.project` yuklangan bo'lishi shart; `requires_assignment_choice` postlarda stanok tanlanmagan bo'lsa 403; tanlangan stanok route yozuvlariga muhrlanadi (terminal filtri uchun); WS `order.started` |
+| POST | `/api/v1/orders/{id}/cancel` | `ManagerUser` | Bekor qilish (TZ 6.5): istalgan bosqichda (DELIVERED/CANCELLED dan tashqari); sabab majburiy; skan tarixi audit uchun saqlanadi; WS `order.cancelled` — terminallar vazifalarni DARHOL tashlaydi |
+| POST | `/api/v1/orders/{id}/deliver` | `ManagerUser` | TOPSHIRILDI (TZ 10.3): faqat `COMPLETED → DELIVERED`; `delivered_at` avtomatik; WS `order.delivered` |
+| GET | `/api/v1/orders/{id}/files/{file_id}` | `StaffReadUser` | Saqlangan faylni yuklab olish (project/SCX/hujjat), `FileResponse` |
+| GET | `/api/v1/orders/{id}/cutmap` | `StaffReadUser` | Kesish xaritasi holati (TZ 10.3) — admin-panel ko'rinishi va brauzer-print; terminal bilan umumiy `build_cutmap_state` (ARRA posti) |
+
+Barcha mutatsiyalar `log_action` bilan audit qilinadi. `.project` parser qoidalari va cutmap tafsilotlari — `docs/09-mes-domain.md`.
+
+**Bog'lanishlar:** `backend/app/schemas/orders.py`, `backend/app/services/giblab` (`parse_project`, `ingest_project`, `wipe_previous_parse`), `backend/app/core/ws.py` (`ws_manager`), `backend/app/api/routes/terminal.py` (`build_cutmap_state`).
+
+---
+
+## `backend/app/api/routes/audit.py` — Audit jurnali
+
+**Maqsadi:** Barcha modullar yozgan audit yozuvlarini o'qish. Yozish API orqali emas — har mutatsion endpoint o'z tranzaksiyasida `crud.log_action` chaqiradi.
+
+| Metod | Path | Rol | Izoh |
+|---|---|---|---|
+| GET | `/api/v1/audit-logs/` | `StaffReadUser` | `Paginated[AuditLogRead]`; filtrlar: `module`, `action`, `user_id`, `date_from`, `date_to` |
+
+`AuditLogRead` shu faylda lokal e'lon qilingan: user/employee, modul, amal, entity, xabar, `meta` (JSON), IP, vaqt.
+
+**Bog'lanishlar:** `backend/app/models` (`AuditLog`), `backend/app/crud` (`log_action` — yozuvchi tomon).
+
+---
+
+## `backend/app/api/routes/terminal.py` — Operator terminali (TZ 8)
+
+**Maqsadi:** Sexdagi 17" touch-terminal API: kontekst, beyjik-smena, vazifalar navbati, ARRA kesish xaritasi, yorliq chop etish, SCX fayllar. Barcha endpointlar `require_roles(UserRole.TERMINAL, *POST_ROLES)` ortida. Terminal→stanok bog'lanishi `resolve_terminal` orqali (`user.machine_id`dan).
+
+| Metod | Path | Rol | Izoh |
+|---|---|---|---|
+| GET | `/api/v1/terminal/context` | terminal/operator | Stanok+post konteksti. Operator rollarida (POST_ROLES) sessiya birinchi so'rovda AVTOMATIK ochiladi — login = smena, beyjik kerak emas; TERMINAL rolida esa joriy aktiv sessiya (bo'lsa) qaytariladi |
+| POST | `/api/v1/terminal/session` | terminal/operator | Beyjik skan smenani ochadi (TZ 8.2.2); xatolar 422 `{code: "E006", message}` — beyjik topilmadi / nofaol / hodim bu postga biriktirilmagan; bitta terminalda bitta aktiv sessiya — yangi beyjik eskisini yopadi; WS `session.started` |
+| POST | `/api/v1/terminal/session/end` | terminal/operator | Smenani yakunlaydi; aktiv sessiya bo'lmasa 404; WS `session.ended` |
+| GET | `/api/v1/terminal/tasks` | terminal/operator | NAVBATDAGI VAZIFALAR (TZ 8.3.2): faqat shu post/stanok, QOLDIQ > 0, PRODUCTION buyurtmalar, muddat (deadline) tartibida |
+| GET | `/api/v1/terminal/orders` | terminal/operator | Shu postga tegishli aktiv buyurtmalar (ARRA xarita tanlagichi uchun), done/total bilan |
+| GET | `/api/v1/terminal/orders/{id}/cutmap` | terminal/operator | ARRA kesish xaritasi (TZ 7.1.7); ARRA bo'lmagan postda 403; katak holati serverda — terminal qayta yonganda saqlanib qoladi |
+| POST | `/api/v1/terminal/labels/{instance_id}` | terminal/operator | YORLIQ CHOP ETISH (TZ 7.1.4): ARQ `print_label` navbatiga qo'yiladi (bridge-agent/GoDEX); `label_printed_at` belgilanadi; WS `label.printed` |
+| GET | `/api/v1/terminal/labels/{instance_id}.png` | terminal/operator | Yorliqning PNG ko'rinishi — brauzerdan istalgan printerga chop etish uchun (GoDEX shart emas) |
+| GET | `/api/v1/terminal/files/{file_id}` | terminal/operator | SCX faylni stanok brauzeriga yuklab olish (TZ 12.5) — har safar yangidan beriladi |
+
+**Bog'lanishlar:** `backend/app/schemas/terminal.py`, `backend/app/services/scanning.py` (`resolve_terminal`, `active_session`, `ScanRejected`), `backend/app/services/labels.py`, `backend/app/tasks` (`print_label`), `backend/app/core/ws.py`.
+
+---
+
+## `backend/app/api/routes/scans.py` — Skan ro'yxatga olish va bekor qilish (TZ 8.4–8.6)
+
+**Maqsadi:** Terminaldagi QR skanlarni qayd etish/bekor qilish. Rol: `require_roles(UserRole.TERMINAL, *POST_ROLES)`. Butun domen logikasi `app/services/scanning.py` da — endpoint yupqa adapter.
+
+| Metod | Path | Rol | Izoh |
+|---|---|---|---|
+| POST | `/api/v1/scans/` | terminal/operator | `record_scan` chaqiradi; rad etilsa rollback + 422 `{code, message}` (**E001–E007** xato kodlari); muvaffaqiyatda WS eventlar publish qilinadi; javob `ScanResult`: `scan_id`, `duplicate`, `qoldiq`, `scx_file_ids`, `order_stage_completed`, `order_completed` va detal ma'lumotlari |
+| DELETE | `/api/v1/scans/{scan_id}` | terminal/operator | Skanni bekor qilish (undo) — `cancel_scan`; hisoblagichlar qaytariladi, WS eventlar publish qilinadi |
+| GET | `/api/v1/scans/recent` | terminal/operator | TARIX bloki (TZ 8.3.3): faqat JORIY sessiyaning oxirgi 50 ta yozuvi |
+
+Skan qabul qilish qoidalari (marshrut/ketma-ketlik tekshiruvi, dublikat, E001–E007 kodlarining ma'nosi) — `docs/09-mes-domain.md` da batafsil.
+
+**Bog'lanishlar:** `backend/app/services/scanning.py` (`record_scan`, `cancel_scan`, `ScanRejected`), `backend/app/schemas/terminal.py` (`ScanRequest`, `ScanResult`, `ScanHistoryItem`), `backend/app/core/ws.py`.
+
+---
+
+## `backend/app/api/routes/tablo.py` — TABLO (sex televizori, TZ 9)
+
+**Maqsadi:** Buyurtmalar × bosqichlar jonli matritsasi. Read-only, har qanday login qilgan foydalanuvchi/qurilma (TABLO akkaunt ham, ofis ham).
+
+| Metod | Path | Rol | Izoh |
+|---|---|---|---|
+| GET | `/api/v1/tablo/matrix` | login (har qanday) | `TabloMatrix`: postlar ro'yxati + PRODUCTION va COMPLETED buyurtmalar; har katak `StageAgg` — done/total va post birligidagi hajm (`part_volume`: m²/metr/dona) |
+| GET | `/api/v1/tablo/orders/{id}` | login (har qanday) | Drill-down (TZ 9.5 SONI NAZORATI): har detal × bosqich done/total |
+
+**Bog'lanishlar:** `backend/app/services/metrics.py` (`part_volume`), `backend/app/models` (`Order`, `PartRoute`, `Post`).
+
+---
+
+## `backend/app/api/routes/reports.py` — Hisobotlar (TZ 11) va dashboard statistikasi
+
+**Maqsadi:** Boshqaruv hisobotlari. Rol: `require_roles(MANAGER, DIRECTOR)` (admin/superuser har doim o'tadi). Uch hisobot default JSON qaytaradi, `?format=xlsx` bilan Excel fayl stream qilinadi (TZ 11.4, `services/excel.xlsx_response`). Sana oralig'i berilmasa — oxirgi 30 kun, chegaralar Asia/Tashkent bo'yicha inklyuziv kunlar.
+
+| Metod | Path | Rol | Izoh |
+|---|---|---|---|
+| GET | `/api/v1/reports/productivity` | manager/direktor | Hodim mahsuldorligi (TZ 11.1.1): skan soni, faol kunlar, kuniga/soatiga o'rtacha; `?format=xlsx` |
+| GET | `/api/v1/reports/orders` | manager/direktor | Buyurtmalar holati (TZ 11.2): holat, muddatlar, `overdue` belgisi (muddat o'tgan tugallanmaganlar), bekor sababi; `?format=xlsx` |
+| GET | `/api/v1/reports/materials` | manager/direktor | Material sarfi (TZ 11.3): `Order.material_usage` JSONB'dan agregatsiya (`project_loaded_at` oralig'ida, CANCELLED chiqariladi); `?format=xlsx` |
+| GET | `/api/v1/reports/dashboard` | manager/direktor | Dashboard (TZ 10.2.1): har stanok uchun navbat (qolgan skanlar/hajm), quvvat va prognoz soatlar (TZ 4.3: navbat/quvvat), bugungi skanlar; faqat JSON |
+
+**Bog'lanishlar:** `backend/app/services/excel.py` (`xlsx_response`), `backend/app/services/metrics.py` (`part_volume`).
+
+---
+
+## `backend/app/api/routes/ws.py` — WebSocket endpointlari
+
+**Maqsadi:** Ikki WebSocket kanal. Router darajasida auth YO'Q — WebSocket'da HTTP dependency ishlamaydi, autentifikatsiya har endpoint ichida.
+
+| Endpoint | Auth | Izoh |
+|---|---|---|
+| WS `/api/v1/ws/events` | `?token=` query yoki access cookie | Brauzer klientlari (TZ 2.3). Token `verify_token` + `is_active` + `token_version` bilan tekshiriladi; muvaffaqiyatsiz bo'lsa **4401** kod bilan yopiladi. Klient scope'i rol bo'yicha: TERMINAL→`terminal`, TABLO→`tablo`, qolganlar→`dashboard`; `user.machine_id` dan post/stanok scope aniqlanadi. Heartbeat (TZ 2.3.2): klientning har qanday xabariga `{"type": "pong"}` |
+| WS `/api/v1/ws/bridge` | `?token=` ↔ `settings.BRIDGE_TOKEN` (`secrets.compare_digest`) | Sex tarmog'idagi bridge-agent uplink'i (TZ 2.2.2 — lokal GoDEX'da chop etadi). Token noto'g'ri yoki `BRIDGE_TOKEN` sozlanmagan bo'lsa 4401. Redis `mes:print:queue` ro'yxatidan `brpop` (5s timeout) bilan ishlarni oladi va agentga yuboradi; agent har ishni 15s ichida `{"ok": true}` bilan ack qilishi shart — ack kelmasa yoki uzilsa ish `rpush` bilan navbatga QAYTARILADI (hech bir ish yo'qolmaydi); bo'sh navbatda `{"type": "ping"}` heartbeat |
+
+Server → klient eventlarni `app/core/ws.py` dagi `ws_manager` tarqatadi: `order.*`, `session.*`, skan eventlari, `label.printed` — mutatsion HTTP endpointlar publish qiladi.
+
+**Bog'lanishlar:** `backend/app/core/ws.py` (`WsClient`, `ws_manager`), `backend/app/core/security.py`, `backend/app/tasks` (`PRINT_QUEUE_KEY = "mes:print:queue"`), `backend/app/core/config.py` (`BRIDGE_TOKEN`, `REDIS_URL`).
+
+---
+
 ## Umumiy naqshlar (patterns)
 
-- **Auth ikki kanalda:** `Authorization: Bearer` header (ustuvor) yoki `httpOnly` access cookie — `deps._extract_token`.
+- **Auth ikki kanalda:** `Authorization: Bearer` header (ustuvor) yoki `httpOnly` access cookie — `deps._extract_token`. WebSocket'da esa `?token=` query yoki cookie, xato — 4401.
+- **Rol-guruh avtorizatsiyasi:** `require_roles` aliaslari (`ManagerUser`, `TexnologUser`, `StaffReadUser`, `AdminUser`, terminal oqimida `TerminalUser`) — superuser va ADMIN har doim o'tadi; deyarli har MES endpoint shulardan birini ishlatadi.
 - **Token bekor qilish:** `token_version` — DB'dagi qiymat token payload'idagi qiymat bilan mos kelmasa 401; logout versiyani oshiradi.
 - **Refresh rotatsiyasi:** har `POST /login/refresh` da access va refresh ikkalasi qayta beriladi; eski refresh token `jti`si Redis'da belgilanadi (one-time-use), replay aniqlansa `token_version` bump bilan butun sessiya bekor qilinadi.
 - **Rate limiting:** `RateLimit` dependency — login endpointida (`LOGIN_RATE_LIMIT_*`).
-- **Paginatsiya:** `skip`/`limit` query parametrlari, chegaralar `settings.DEFAULT_PAGE_SIZE` / `settings.MAX_PAGE_SIZE` dan.
-- **Xatoliklar:** `backend/app/core/exceptions.py` dagi maxsus exception'lar (`UnauthorizedException` 401, `ForbiddenException` 403, `NotFoundException` 404, `DuplicateValueException` 409) — xabarlar o'zbek tilida.
-- **OpenAPI barqarorligi:** ko'p endpointlarda aniq `operation_id` berilgan (frontend client generatsiyasi uchun qulay).
+- **Paginatsiya:** `skip`/`limit` query parametrlari, chegaralar `settings.DEFAULT_PAGE_SIZE` / `settings.MAX_PAGE_SIZE` dan; ro'yxat javoblari `app/schemas/common.py` dagi generik `Paginated[T]` (`{data, count}`) sxemasida, oddiy tasdiqlar `Message` da.
+- **Audit:** deyarli barcha mutatsion endpointlar (clients/employees/machines/posts/materials/orders/terminal) o'z tranzaksiyasida `crud.log_action` chaqiradi — modul, amal, foydalanuvchi, entity, `meta`, IP yoziladi; o'qish `GET /api/v1/audit-logs/` orqali.
+- **Real-time eventlar:** mutatsion endpointlar `ws_manager.publish` orqali WS eventlar tarqatadi (`order.*`, `session.*`, skan eventlari, `label.printed`) — terminallar, TABLO va dashboard jonli yangilanadi.
+- **Xatoliklar:** `backend/app/core/exceptions.py` dagi maxsus exception'lar (`UnauthorizedException` 401, `ForbiddenException` 403, `NotFoundException` 404, `DuplicateValueException` 409) — xabarlar o'zbek tilida. Terminal/skan oqimida esa 422 `{code, message}` formati (E001–E007 kodlari).
+- **OpenAPI barqarorligi:** endpointlarda aniq `operation_id` berilgan (frontend client generatsiyasi uchun qulay).

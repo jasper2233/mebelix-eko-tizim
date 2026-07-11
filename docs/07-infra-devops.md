@@ -9,7 +9,7 @@ Stack ikki rejimda ishlaydi:
 | Rejim | Compose fayl | Kirish nuqtasi | App server | TLS |
 |---|---|---|---|---|
 | Lokal (dev) | `docker-compose.local.yml` | portlar to'g'ridan-to'g'ri hostga ochiq (`8000`, `3000`, `5432`, `6379`) | `uvicorn --reload` | yo'q |
-| Production | `docker-compose.prod.yml` | faqat Caddy (`:80`/`:443`); `api`/`frontend` faqat `expose`, `db`/`redis` umuman port ochmaydi | `gunicorn` + `UvicornWorker` | Caddy auto-HTTPS (Let's Encrypt) |
+| Production | `docker-compose.prod.yml` | faqat Caddy (default `:80`/`:443`; `CADDY_HTTP_BIND`/`CADDY_HTTPS_BIND` bilan o'zgartiriladi); `api`/`frontend` faqat `expose`, `db`/`redis` umuman port ochmaydi | `gunicorn` + `UvicornWorker` | Caddy auto-HTTPS (Let's Encrypt) |
 
 Servislar: `db` (PostgreSQL 15), `redis` (Redis 7, ARQ queue + rate limit), `api` (FastAPI), `worker` (ARQ background worker), `frontend` (Vite build + nginx), production'da qo'shimcha `caddy` (reverse proxy + TLS).
 
@@ -49,7 +49,7 @@ Bu rejimda `POSTGRES_SERVER=localhost` va `REDIS_HOST=localhost` bo'lishi kerak 
   ```
   bash -c "/app/scripts/prestart.sh && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
   ```
-  Ya'ni avval migratsiya + superuser (`scripts/prestart.sh`), keyin hot-reload uvicorn. **Bind-mountlar** hot-reload uchun: `./backend/app`, `./scripts`. `.env` esa bind-mount emas, `env_file: .env` orqali yuklanadi — fayl yo'q bo'lsa compose aniq xato beradi (bind-mount holatida Docker jimgina bo'sh katalog yaratardi). `POSTGRES_SERVER=db`, `REDIS_HOST=redis` environment orqali override qilinadi (`.env` dagi `localhost` ni yengadi). Healthcheck: `curl -f http://localhost:8000/api/v1/health`, `start_period: 40s`. `db` va `redis` `service_healthy` bo'lgandan keyingina start oladi.
+  Ya'ni avval migratsiya + superuser + default seedlar (`scripts/prestart.sh`), keyin hot-reload uvicorn. **Bind-mountlar** hot-reload uchun: `./backend/app`, `./scripts`. `.env` esa bind-mount emas, `env_file: .env` orqali yuklanadi — fayl yo'q bo'lsa compose aniq xato beradi (bind-mount holatida Docker jimgina bo'sh katalog yaratardi). `POSTGRES_SERVER=db`, `REDIS_HOST=redis` environment orqali override qilinadi (`.env` dagi `localhost` ni yengadi). Healthcheck: `curl -f http://localhost:8000/api/v1/health`, `start_period: 40s`. `db` va `redis` `service_healthy` bo'lgandan keyingina start oladi.
 - **`worker`** — xuddi shu image, command: `arq app.core.worker.WorkerSettings`, xuddi shu mountlar va env.
 - **`frontend`** — `frontend/Dockerfile` dan build, build-arglar: `VITE_API_URL` (default `http://localhost:8000` — brauzer API'ga to'g'ridan-to'g'ri boradi) va `VITE_API_TIMEOUT_MS` (default `30000`), port `3000:80`.
 
@@ -80,7 +80,7 @@ Lokal composeda Caddy yo'q — frontend nginx'i to'g'ridan-to'g'ri `3000` portda
 
 Lokaldan asosiy farqlar:
 
-- **Hech qanday servis DB/Redis/API portini hostga ochmaydi** — `api` va `frontend` faqat `expose` qiladi; tashqi dunyoga faqat `caddy` `80:80` va `443:443` portlarini ochadi.
+- **Hech qanday servis DB/Redis/API portini hostga ochmaydi** — `api` va `frontend` faqat `expose` qiladi; tashqi dunyoga faqat `caddy` port ochadi, host binding parametrlangan: `${CADDY_HTTP_BIND:-80}:80` va `${CADDY_HTTPS_BIND:-443}:443` (default — to'g'ridan-to'g'ri `80`/`443`).
 - **`api`** production serverda ishlaydi:
   ```
   bash -c "/app/scripts/prestart.sh && gunicorn app.main:app -w ${GUNICORN_WORKERS:-4} -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000"
@@ -91,6 +91,16 @@ Lokaldan asosiy farqlar:
 - **`caddy`** — `caddy:2-alpine`, `./caddy/Caddyfile` read-only mount, `caddy_data` (TLS sertifikatlar) va `caddy_config` volumelari. `SITE_ADDRESS` env (default `:80`). `depends_on`: `api` `service_healthy`, `frontend` `service_started` — Caddy backend tayyor bo'lgandan keyingina start oladi. Healthcheck `http://localhost:8080/healthz` orqali — Caddyfile'dagi alohida `:8080` health blokiga (asosiy `:80` emas, chunki `SITE_ADDRESS` domen bo'lganda `:80` HTTPS'ga avto-redirect qiladi).
 
 Ishga tushirish: `.env` ni production qiymatlar bilan to'ldirish (ayniqsa `SECRET_KEY`, `POSTGRES_PASSWORD`, `ADMIN_PASSWORD`, `SITE_ADDRESS`, `ENVIRONMENT=production`), so'ng `make docker-prod`.
+
+**Mavjud nginx ortida (ISPmanager) ishga tushirish.** Hostda `80`/`443` allaqachon band bo'lsa, Caddy'ni loopback'ka bog'lab TLS'ni host nginx'iga qoldirish mumkin — `.env` ga:
+
+```
+CADDY_HTTP_BIND=127.0.0.1:8200
+CADDY_HTTPS_BIND=127.0.0.1:8443
+SITE_ADDRESS=:80
+```
+
+Bunda Caddy oddiy HTTP'da qoladi (sertifikatni nginx tugatadi), host nginx esa saytni `127.0.0.1:8200` ga proxy qiladi. Shu retsept `docker-compose.prod.yml` dagi `ports` izohida ham yozilgan.
 
 ### `caddy/Caddyfile` — reverse proxy va TLS
 
@@ -147,11 +157,11 @@ Barcha `scripts/*.sh` fayllar git'da **executable (mode 100755)** saqlanadi. Bu 
 
 ### `scripts/setup.sh` — bir martalik lokal setup
 
-`make setup` chaqiradi. `set -e` bilan: (1) `uv` o'rnatilganini tekshiradi, yo'q bo'lsa xato bilan chiqadi; (2) `.env` bo'lmasa `.env.example` dan nusxa oladi; (3) `uv --project backend sync`; (4) `alembic upgrade head`; (5) `python -m app.commands.create_first_superuser` (`.env` dagi `ADMIN_*` qiymatlaridan). `Makefile` dagi `setup` targeti bundan keyin `install-hooks` (pre-commit) ni ham bajaradi.
+`make setup` chaqiradi. `set -e` bilan: (1) `uv` o'rnatilganini tekshiradi, yo'q bo'lsa xato bilan chiqadi; (2) `.env` bo'lmasa `.env.example` dan nusxa oladi; (3) `uv --project backend sync`; (4) `alembic upgrade head`; (5) `python -m app.commands.create_first_superuser` (`.env` dagi `ADMIN_*` qiymatlaridan); (6) `python -m app.commands.seed_defaults` — default organizatsiya va 6 ta ishlab chiqarish posti. `Makefile` dagi `setup` targeti bundan keyin `install-hooks` (pre-commit) ni ham bajaradi.
 
 ### `scripts/prestart.sh` — konteyner startidan oldingi bosqich
 
-Ikkala composeda ham `api` command zanjirining birinchi qismi. `alembic.ini` mavjud bo'lsa `python -m alembic upgrade head`, so'ng `python -m app.commands.create_first_superuser`. Shu tufayli konteyner har startda schema'ni head'ga keltiradi va admin user mavjudligini kafolatlaydi. `worker` servisi buni ishlatmaydi (migratsiyani `api` ga qoldiradi).
+Ikkala composeda ham `api` command zanjirining birinchi qismi. Uch qadam: `alembic.ini` mavjud bo'lsa `python -m alembic upgrade head`, so'ng `python -m app.commands.create_first_superuser`, oxirida `python -m app.commands.seed_defaults` (default organizatsiya va 6 ta ishlab chiqarish postini idempotent seed qiladi). Shu tufayli konteyner har startda schema'ni head'ga keltiradi, admin user va default org/postlar mavjudligini kafolatlaydi. `worker` servisi buni ishlatmaydi (migratsiyani `api` ga qoldiradi).
 
 ### `scripts/generate-client.sh` — OpenAPI → TypeScript client
 
@@ -159,7 +169,9 @@ Ikkala composeda ham `api` command zanjirining birinchi qismi. `alembic.ini` mav
 
 ---
 
-## CI hooklar — `.pre-commit-config.yaml`
+## Sifat nazorati — pre-commit hooklar va GitHub Actions CI
+
+### `.pre-commit-config.yaml` — commit-oldi hooklar
 
 `make install-hooks` (`pre-commit install`) bilan o'rnatiladi; har commitda ishlaydi:
 
@@ -170,7 +182,18 @@ Ikkala composeda ham `api` command zanjirining birinchi qismi. `alembic.ini` mav
 | `mypy` (local, `language: system`) | `uv --directory backend run mypy app` | type check — loyiha venv'i kerakligi uchun local hook (`make install` prereq) |
 | `biome-check` (local) | `cd frontend && npx --no-install biome check ...` | frontend lint — `frontend/biome.json` ni olishi uchun `frontend/` dan ishlaydi (`npm install` prereq) |
 
-`mypy` va `biome` hooklari `pass_filenames: false` — butun loyiha bo'yicha tekshiradi. Boshqa CI pipeline (GitHub Actions va h.k.) repo'da yo'q; sifat nazorati pre-commit + `make lint` darajasida.
+`mypy` va `biome` hooklari `pass_filenames: false` — butun loyiha bo'yicha tekshiradi.
+
+### `.github/workflows/ci.yml` — GitHub Actions
+
+`main` ga push va har bir pull request'da ishga tushadi; ikkita parallel job:
+
+| Job | Qadamlar |
+|---|---|
+| `backend` | `astral-sh/setup-uv` → `uv --project backend sync --all-groups` → `ruff check app` + `ruff format --check app` → `mypy app` → `python -m tests.test_giblab` (GibLab parser testlari) |
+| `frontend` | `actions/setup-node` (versiya `frontend/.nvmrc` dan, npm cache) → `npm ci` → `npx biome ci .` → `npm run build` (`tsc && vite build`) |
+
+Ya'ni sifat nazorati ikki qatlamli: lokalda pre-commit + `make lint`, remote'da GitHub Actions har push/PR'ni tekshiradi.
 
 ---
 
@@ -208,6 +231,11 @@ Ikkala composeda ham `api` command zanjirining birinchi qismi. `alembic.ini` mav
 | `VITE_API_TIMEOUT_MS` | `30000` | Axios timeout |
 | `GUNICORN_WORKERS` | `4` | Prod worker soni; odatda `(2 * CPU) + 1` |
 | `SITE_ADDRESS` | `:80` | Caddy listener; domen berilsa auto-HTTPS |
+| `PRINTER_IP` | `""` (bo'sh) | GoDEX printer IP. Bo'sh = remote-first: chop etish Redis navbati orqali sexdagi bridge-agent'ga boradi (TZ 12.3/13.2); faqat lokal deploy'da to'g'ridan-to'g'ri TCP uchun to'ldiriladi |
+| `PRINTER_PORT` | `9100` | Printer TCP porti |
+| `BRIDGE_TOKEN` | `""` (bo'sh) | `openssl rand -hex 24` bilan generatsiya qilinadi; bo'sh bo'lmasa `/ws/bridge` endpoint yoqiladi (bridge-agent autentifikatsiyasi) |
+
+Eslatma: `CADDY_HTTP_BIND` / `CADDY_HTTPS_BIND` `.env.example` da yo'q — ular `docker-compose.prod.yml` dagi compose-level substitutsiyalar (defaultlari `80` / `443`); behind-nginx rejimida `.env` ga qo'lda qo'shiladi.
 
 ---
 
@@ -257,4 +285,5 @@ Frontend dev qo'llanmasi: nvm/fnm bilan Node o'rnatish, `npm install` + `npm run
 - `docker-compose.*.yml` → `backend/Dockerfile` (context root, `scripts/` ni oladi), `frontend/Dockerfile` (+`VITE_API_URL` / `VITE_API_TIMEOUT_MS` build-arglar), `scripts/prestart.sh` (api command), `.env` / `.env.example`.
 - `docker-compose.prod.yml` → `caddy/Caddyfile` (`SITE_ADDRESS` env orqali TLS rejimi) → `api:8000` va `frontend:80` (`frontend/nginx/index.conf`).
 - `.pre-commit-config.yaml` → `backend/pyproject.toml` (ruff/mypy config), `frontend/biome.json` (biome hook).
+- `.github/workflows/ci.yml` → `backend/pyproject.toml` (uv sync, ruff/mypy), `backend/tests/test_giblab.py`, `frontend/.nvmrc` + `frontend/package-lock.json` (Node versiya va npm cache).
 - `scripts/generate-client.sh` → backend OpenAPI spec → `frontend/src/client/` (frontend va backend orasidagi kontrakt sinxronizatsiyasi).

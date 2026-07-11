@@ -1,6 +1,6 @@
 # 08 — Paketlar va versiyalar
 
-Holat: **2026-07-09**. Barcha paketlar shu sanadagi eng so'ngi stable versiyaga ko'tarilgan (quyidagi 2 ta ataylab qilingan istisno bilan).
+Holat: **2026-07-11** (oxirgi to'liq upgrade: 2026-07-09). Barcha paketlar 2026-07-09 dagi eng so'ngi stable versiyaga ko'tarilgan (quyidagi 3 ta ataylab qilingan istisno bilan).
 
 ## Yangilash tarixi (2026-07-09 upgrade)
 
@@ -31,6 +31,14 @@ Asosiy paketlar (yangilangandan keyin):
 | pre-commit (dev) | 4.6.0 | latest |
 
 Tekshiruv: `uv run ruff check .` ✅ · `uv run mypy app` ✅ (46 fayl) · `import app.main` ✅
+
+**2026-07-10 (b5ee41d) da qo'shilganlar** — yorliq chop etish (label-printing) feature uchun yangi runtime dependency'lar:
+
+| Paket | Constraint | Lock | Izoh |
+| --- | --- | --- | --- |
+| tzdata | >=2026.2 | 2026.2 | Windows'da timezone datasi |
+| pillow | >=12.3.0 | 12.3.0 | Yorliqni PNG qilib render qilish |
+| qrcode | >=8.2 | 8.2 | Yorliqdagi QR kod generatsiyasi |
 
 ### Frontend (`frontend/package.json` + `package-lock.json`)
 

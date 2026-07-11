@@ -65,12 +65,7 @@ Done, you have a frontend-less (api-only) app. 🤓
 
 ---
 
-If you want, you can also remove the `FRONTEND` environment variables from:
-
-* `.env`
-* `./scripts/*.sh`
-
-But it would be only to clean them up, leaving them won't really have any effect either way.
+If you want, you can also remove the frontend-related environment variables (`VITE_API_URL`, `VITE_API_TIMEOUT_MS`) from `.env`. But it would be only to clean them up, leaving them won't really have any effect either way.
 
 ## Generate Client
 
@@ -86,14 +81,22 @@ make frontend-gen
 
 ### Manually
 
-* Start the Docker Compose stack.
+The manual flow mirrors what `scripts/generate-client.sh` does:
 
-* Download the OpenAPI JSON file from `http://localhost/api/v1/openapi.json` and copy it to a new file `openapi.json` at the root of the `frontend` directory.
+* Export the OpenAPI schema directly from the backend app (no server needed) into `openapi.json` at the root of the `frontend` directory:
 
-* To generate the frontend client, run:
+```bash
+cd backend
+uv run python -c "import app.main; import json; print(json.dumps(app.main.app.openapi()))" > ../frontend/openapi.json
+```
+
+*(Alternatively, with the backend running locally you can download it from `http://localhost:8000/openapi.json` — note it is served at the app root, not under `/api/v1`, and only in non-production environments.)*
+
+* To generate the frontend client, run (inside `frontend/`):
 
 ```bash
 npm run generate-client
+npx biome format --write ./src/client
 ```
 
 * Commit the changes.
@@ -115,8 +118,10 @@ Then, when you run the frontend, it will use that URL as the base URL for the AP
 The frontend code is structured as follows:
 
 * `frontend/src` - The main frontend code.
-* `frontend/src/assets` - Static assets.
 * `frontend/src/client` - The generated OpenAPI client.
 * `frontend/src/components` -  The different components of the frontend.
 * `frontend/src/hooks` - Custom hooks.
+* `frontend/src/lib` - Shared helpers: MES domain constants and formatting (`mes.ts`), zod schemas and input formatters (`validation.ts`), utilities (`utils.ts`).
+* `frontend/src/queries` - TanStack Query option factories (`mes.ts`, `users.ts`).
 * `frontend/src/routes` - The different routes of the frontend which include the pages.
+* `frontend/public/assets` - Static assets (served as `/assets/*`).
