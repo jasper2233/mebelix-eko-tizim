@@ -38,3 +38,40 @@ jobs:
         run: npx biome ci .
       - name: Build (tsc + vite)
         run: npm run build
+
+  deploy:
+    # main'ga push + CI yashil bo'lsa prodga chiqadi (mes.mebelix.uz)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: prod-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+      - name: Sync code
+        run: |
+          rsync -az --delete \
+            --exclude .git --exclude node_modules --exclude .venv \
+            --exclude __pycache__ --exclude dist --exclude uploads \
+            --exclude .env \
+            ./ "root@${{ secrets.DEPLOY_HOST }}:/opt/mebelix-mes/"
+      - name: Build & restart stack
+        run: |
+          ssh "root@${{ secrets.DEPLOY_HOST }}" \
+            'cd /opt/mebelix-mes && docker compose -f docker-compose.prod.yml up -d --build'
+      - name: Smoke check
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://mes.mebelix.uz/api/v1/ready) && \
+            [ "$code" = "200" ] && curl -s https://mes.mebelix.uz/api/v1/ready && exit 0
+            sleep 5
+          done
+          echo "ready endpoint never returned 200" >&2
+          exit 1
