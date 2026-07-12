@@ -301,6 +301,23 @@ function TerminalPage() {
           </div>
         </div>
 
+        {/* Sessiya — ixcham chip (alohida qator o'rniga, vertikal joy tejaladi) */}
+        <div className="hidden shrink-0 items-center gap-1.5 rounded-full border bg-white px-3 py-1.5 text-sm md:flex">
+          {ctx?.session ? (
+            <>
+              <span className="size-2 rounded-full bg-green-500" />
+              <b className="max-w-40 truncate">{ctx.session.employee_name}</b>
+            </>
+          ) : (
+            <>
+              <span className="size-2 rounded-full bg-amber-500" />
+              <span className="text-muted-foreground">
+                Beyjik QR scan qiling
+              </span>
+            </>
+          )}
+        </div>
+
         {/* Xarita ochiq bo'lsa skan o'rnini ixcham material statlari egallaydi */}
         <div
           className={cn(
@@ -389,24 +406,6 @@ function TerminalPage() {
           )}
         </div>
       </header>
-
-      {/* Sessiya bar */}
-      <div className="flex items-center gap-2 border-b bg-white/60 px-4 py-1.5 text-sm">
-        {ctx?.session ? (
-          <>
-            <span className="size-2 rounded-full bg-green-500" />
-            <b>{ctx.session.employee_name}</b>
-            <span className="text-xs text-muted-foreground">AKTIV SESSIYA</span>
-          </>
-        ) : (
-          <>
-            <span className="size-2 rounded-full bg-amber-500" />
-            <span className="text-muted-foreground">
-              Sessiya ochilmagan — beyjik QR ni scan qiling
-            </span>
-          </>
-        )}
-      </div>
 
       {/* Asosiy maydon — ARRA: proyekt ro'yxati → kesish xaritasi; boshqa postlar: vazifalar */}
       <main className="flex min-h-0 flex-1 gap-3 p-3">
