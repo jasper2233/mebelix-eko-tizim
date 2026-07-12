@@ -14,7 +14,6 @@ import {
   ChevronUp,
   Maximize2,
   Minus,
-  Palette,
   Plus,
   Printer,
   RotateCw,
@@ -125,8 +124,7 @@ export function CutmapView({
   const [materialIdx, setMaterialIdx] = useState(0)
   const [sheetIdx, setSheetIdx] = useState<number | null>(null)
   const [selected, setSelected] = useState<SheetPart | null>(null)
-  // GibLab toolbar: rang toggle + zoom API (SheetSvg ro'yxatdan o'tkazadi)
-  const [colored, setColored] = useState(true)
+  // GibLab toolbar zoom API (SheetSvg ro'yxatdan o'tkazadi)
   const zoomApi = useRef<{
     zin: () => void
     zout: () => void
@@ -235,9 +233,9 @@ export function CutmapView({
     </div>
   ) : null
 
-  // GibLab toolbar tugmasi ko'rinishi (tbtn): katta kvadrat, yumshoq gradient
+  // Toolbar tugmasi: brand uslubidagi flat kvadrat (GibLab joylashuvi, zamonaviy ko'rinish)
   const TBTN =
-    "flex h-14 w-full items-center justify-center rounded-lg border border-slate-300 bg-gradient-to-b from-white to-slate-200 text-slate-800 shadow-sm transition-all active:to-slate-300 disabled:opacity-40 [&_svg]:size-7"
+    "flex h-14 w-full items-center justify-center rounded-xl border bg-white text-foreground shadow-sm transition-all hover:border-primary active:scale-95 disabled:opacity-40 [&_svg]:size-7"
 
   return (
     <div className="flex h-full gap-3">
@@ -299,14 +297,6 @@ export function CutmapView({
           onClick={() => zoomApi.current?.reset()}
         >
           <Maximize2 />
-        </button>
-        <button
-          type="button"
-          className={`${TBTN} ${colored ? "" : "border-primary text-primary"}`}
-          title="Ranglar / yorliqlar"
-          onClick={() => setColored(!colored)}
-        >
-          <Palette />
         </button>
       </div>
 
@@ -373,7 +363,6 @@ export function CutmapView({
                         onSelect={() => {}}
                         selectedCell={null}
                         thumbnail
-                        colored={colored}
                       />
                     </div>
                   </button>
@@ -403,7 +392,6 @@ export function CutmapView({
                 instancesByCell={instancesByCell as never}
                 onSelect={setSelected}
                 selectedCell={selected?.cell ?? null}
-                colored={colored}
                 registerZoom={(a) => {
                   zoomApi.current = a
                 }}
@@ -480,7 +468,6 @@ function SheetSvg({
   onSelect,
   selectedCell,
   thumbnail = false,
-  colored = true,
   registerZoom,
 }: {
   sheet: Sheet
@@ -490,8 +477,6 @@ function SheetSvg({
   selectedCell: number | null
   /** Mini preview (material kartasi): interaktivsiz, scroll bloklamaydi */
   thumbnail?: boolean
-  /** GibLab rang toggle: false = kulrang rejim */
-  colored?: boolean
   /** Chap toolbar zoom tugmalari uchun API (GibLab uslubi) */
   registerZoom?: (api: {
     zin: () => void
@@ -638,13 +623,7 @@ function SheetSvg({
     const allDone = !p.waste && insts.length > 0 && doneCount === insts.length
     const selected = selectedCell === p.cell
     const H = holes[String(p.id)]
-    const fill = p.waste
-      ? "url(#zebra)"
-      : selected
-        ? PART_SELECTED
-        : colored
-          ? PART_FILL
-          : "#d6d6d6"
+    const fill = p.waste ? "url(#zebra)" : selected ? PART_SELECTED : PART_FILL
 
     if (!p.waste) {
       const wv = p.w
