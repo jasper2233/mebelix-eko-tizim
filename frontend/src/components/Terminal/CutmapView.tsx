@@ -120,8 +120,8 @@ export function CutmapView({
   statsContainer?: HTMLElement | null
 }) {
   const { data, isLoading } = useQuery(getCutmapQueryOptions(orderId, admin))
-  // Drill-down: null = hali tanlanmagan (materiallar -> listlar -> xarita)
-  const [materialIdx, setMaterialIdx] = useState<number | null>(null)
+  // GibLab uslubi: bitta sahifa (material tablar + list grid), list -> xarita
+  const [materialIdx, setMaterialIdx] = useState(0)
   const [sheetIdx, setSheetIdx] = useState<number | null>(null)
   const [selected, setSelected] = useState<SheetPart | null>(null)
 
@@ -162,7 +162,7 @@ export function CutmapView({
 
   const model = data.model as any
   const materials: Material[] = model.materials ?? []
-  const material = materialIdx !== null ? materials[materialIdx] : undefined
+  const material = materials[materialIdx]
   const sheets: Sheet[] = material?.sheets ?? []
   const sheet = sheetIdx !== null ? sheets[sheetIdx] : undefined
   const holes = (model.holes ?? {}) as Record<string, any>
@@ -233,10 +233,10 @@ export function CutmapView({
         ? statsRow && createPortal(statsRow, statsContainer)
         : statsRow}
 
-      {materialIdx === null ? (
-        /* 1-qadam: material tanlash */
+      {sheetIdx === null ? (
+        /* GibLab uslubi: bitta sahifa — material tablar + list grid */
         <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border bg-white p-4">
-          <div className="mb-3 flex items-center gap-3">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               className="h-12 px-5 text-base"
@@ -244,69 +244,26 @@ export function CutmapView({
             >
               <ArrowLeft /> {admin ? "Orqaga" : "Proyektlar"}
             </Button>
-            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-              Materialni tanlang · {materials.length}
-            </h2>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Material tanlagich — GibLab'dagi kabi, tab ko'rinishida */}
             {materials.map((m: Material, i: number) => {
-              const done = m.sheets.filter(sheetDone).length
-              const total = m.sheets.length
-              const allDone = done === total && total > 0
-              const dona = m.sheets.reduce(
-                (a: number, s: Sheet) => a + (s.mult || 1),
-                0,
-              )
+              const mdone = m.sheets.filter(sheetDone).length
+              const active = i === materialIdx
               return (
-                <button
-                  type="button"
+                <Button
                   key={m.name}
+                  variant={active ? "default" : "outline"}
+                  className="h-12 max-w-xs px-4 text-base"
                   onClick={() => setMaterialIdx(i)}
-                  className={`rounded-xl border-2 p-4 text-left transition-all hover:border-primary active:scale-[0.98] active:border-primary ${
-                    allDone ? "border-green-500/60 bg-green-50/50" : ""
-                  }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="text-base font-black">{m.name}</div>
-                    {allDone && (
-                      <span className="text-xl text-green-600">✓</span>
-                    )}
-                  </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={`h-full rounded-full ${allDone ? "bg-green-500" : "bg-primary"}`}
-                      style={{
-                        width: `${total ? Math.round((done / total) * 100) : 0}%`,
-                      }}
-                    />
-                  </div>
-                  <div className="num mt-1 flex justify-between text-sm">
-                    <span className="font-bold">
-                      {done}/{total} karta
-                    </span>
-                    <span className="text-muted-foreground">
-                      {dona} dona list
-                    </span>
-                  </div>
-                </button>
+                  <span className="truncate">{m.name}</span>
+                  <span
+                    className={`num ml-1 text-xs ${active ? "opacity-80" : "text-muted-foreground"}`}
+                  >
+                    {mdone}/{m.sheets.length}
+                  </span>
+                </Button>
               )
             })}
-          </div>
-        </div>
-      ) : sheetIdx === null ? (
-        /* 2-qadam: list tanlash */
-        <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border bg-white p-4">
-          <div className="mb-3 flex items-center gap-3">
-            <Button
-              variant="outline"
-              className="h-12 px-5 text-base"
-              onClick={() => setMaterialIdx(null)}
-            >
-              <ArrowLeft /> Materiallar
-            </Button>
-            <h2 className="truncate text-sm font-bold uppercase tracking-wider text-muted-foreground">
-              {material.name} — listni tanlang · {sheets.length} karta
-            </h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {sheets.map((s: Sheet, i: number) => {
@@ -351,27 +308,16 @@ export function CutmapView({
           </div>
         </div>
       ) : (
-        /* 3-qadam: xarita — to'liq kenglikda, kulrang fon (blik kamayadi) */
+        /* Xarita — to'liq kenglikda, kulrang fon (blik kamayadi) */
         <div className="flex min-h-0 flex-1 flex-col rounded-xl border bg-slate-200 p-3">
           <div className="mb-2 flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-3">
-              {/* Orqaga-navigatsiya chap klasterda: 1 bosishda listlar yoki materiallar */}
               <Button
                 variant="outline"
                 className="h-12 bg-white px-4 text-base shadow-sm"
                 onClick={() => setSheetIdx(null)}
               >
                 <ArrowLeft /> Listlar
-              </Button>
-              <Button
-                variant="outline"
-                className="h-12 bg-white px-4 text-base shadow-sm"
-                onClick={() => {
-                  setSheetIdx(null)
-                  setMaterialIdx(null)
-                }}
-              >
-                Materiallar
               </Button>
               <div className="truncate text-base font-black">
                 №{sheet.no} —{" "}
