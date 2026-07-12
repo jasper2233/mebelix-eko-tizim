@@ -355,12 +355,23 @@ export function CutmapView({
         <div className="flex min-h-0 flex-1 flex-col rounded-xl border bg-slate-200 p-3">
           <div className="mb-2 flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-3">
+              {/* Orqaga-navigatsiya chap klasterda: 1 bosishda listlar yoki materiallar */}
               <Button
                 variant="outline"
                 className="h-12 bg-white px-4 text-base shadow-sm"
                 onClick={() => setSheetIdx(null)}
               >
                 <ArrowLeft /> Listlar
+              </Button>
+              <Button
+                variant="outline"
+                className="h-12 bg-white px-4 text-base shadow-sm"
+                onClick={() => {
+                  setSheetIdx(null)
+                  setMaterialIdx(null)
+                }}
+              >
+                Materiallar
               </Button>
               <div className="truncate text-base font-black">
                 №{sheet.no} —{" "}
