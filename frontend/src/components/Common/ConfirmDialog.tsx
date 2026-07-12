@@ -47,14 +47,16 @@ export const ConfirmDialog = ({
           <DialogDescription>{description}</DialogDescription>
         ) : null}
       </DialogHeader>
-      <DialogFooter className="mt-4">
+      {/* h-11 = 44px: terminal (touch) va admin uchun bir xil minimal barmoq o'lchami */}
+      <DialogFooter className="mt-4 gap-3">
         <DialogClose asChild>
-          <Button variant="outline" disabled={loading}>
+          <Button variant="outline" className="h-11 px-5" disabled={loading}>
             {cancelText}
           </Button>
         </DialogClose>
         <LoadingButton
           variant={destructive ? "destructive" : "default"}
+          className="h-11 px-5"
           loading={loading}
           onClick={onConfirm}
         >

@@ -40,6 +40,13 @@ export const PRIORITY_TEXT_CLASSES: Record<string, string> = {
   urgent: "font-bold text-red-600",
 }
 
+export const PRIORITY_BADGE_CLASSES: Record<string, string> = {
+  low: "bg-muted text-muted-foreground",
+  medium: "bg-muted text-muted-foreground",
+  high: "bg-orange-500 text-white",
+  urgent: "bg-red-500 text-white",
+}
+
 export const POST_COLORS: Record<string, string> = {
   ARRA: "var(--post-arra)",
   KROMKA: "var(--post-kromka)",

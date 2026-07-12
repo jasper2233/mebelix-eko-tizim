@@ -28,6 +28,7 @@ import {
 } from "@/components/Terminal/audio"
 import { CutmapView } from "@/components/Terminal/CutmapView"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import useAuth from "@/hooks/useAuth"
 import useCurrentUser from "@/hooks/useCurrentUser"
@@ -38,6 +39,7 @@ import {
   formatSize,
   OPERATOR_ROLES,
   POST_COLORS,
+  PRIORITY_BADGE_CLASSES,
   PRIORITY_LABELS,
 } from "@/lib/mes"
 import { cn } from "@/lib/utils"
@@ -79,7 +81,9 @@ type LastScan =
 function TerminalPage() {
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
-  const { data: ctx } = useQuery(getTerminalContextQueryOptions())
+  const { data: ctx, isLoading: ctxLoading } = useQuery(
+    getTerminalContextQueryOptions(),
+  )
   const { data: tasks } = useQuery(getTerminalTasksQueryOptions())
   const { currentUser } = useCurrentUser()
   const { logout } = useAuth()
@@ -94,6 +98,7 @@ function TerminalPage() {
   >([])
   const [errorsOnly, setErrorsOnly] = useState(false)
   const [undoOpen, setUndoOpen] = useState(false)
+  const [logoutOpen, setLogoutOpen] = useState(false)
   const [clock, setClock] = useState(() =>
     new Date().toLocaleTimeString("uz-Latn-UZ"),
   )
@@ -126,14 +131,14 @@ function TerminalPage() {
     return () => clearInterval(t)
   }, [])
 
-  // Avto-skan: input doim fokusda (TZ 8.4.1)
+  // Avto-skan: input doim fokusda (TZ 8.4.1); xarita yopilganda darhol qaytadi
   useEffect(() => {
-    if (!scanOn || locked) return
+    if (!scanOn || locked || mapOrderId !== null) return
     const focus = () => inputRef.current?.focus()
     focus()
     const t = setInterval(focus, 2000)
     return () => clearInterval(t)
-  }, [scanOn, locked])
+  }, [scanOn, locked, mapOrderId])
 
   const pushHistory = (entry: {
     id: number
@@ -198,6 +203,8 @@ function TerminalPage() {
       const { code, message } = detailParts(err)
       if (code === "E001" && message.includes("yakunlangan")) playWarning()
       else playError()
+      // Shovqinli sexda ovoz yetarli emas — xato toast bilan ham ko'rsatiladi
+      showErrorToast(detailMessage(err))
       setLastScan({ kind: "error", code, message, at: Date.now() })
       pushHistory({ id: Date.now(), code: message, ok: false, note: code })
     },
@@ -302,7 +309,7 @@ function TerminalPage() {
           <input
             ref={inputRef}
             disabled={!scanOn || locked || mapOpen}
-            className="h-12 w-full rounded-lg border-2 border-primary/40 bg-white pl-10 pr-24 font-mono text-base outline-none focus:border-primary disabled:bg-muted"
+            className="h-12 w-full rounded-lg border-2 border-primary/40 bg-white pl-10 pr-4 font-mono text-base outline-none focus:border-primary disabled:bg-muted"
             placeholder={
               ctx?.session ? "QR scan qiling..." : "Beyjik QR scan qiling..."
             }
@@ -313,15 +320,17 @@ function TerminalPage() {
               }
             }}
           />
-          <div className="absolute right-2 top-2 flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground">
-            AVTO-SKAN
-            <Switch
-              checked={scanOn}
-              onCheckedChange={setScanOn}
-              aria-label="SKAN ON/OFF"
-            />
-          </div>
         </div>
+
+        {/* 48px toggle: qo'lqop bilan ham aniq; OFF holati qizil — skan to'xtagani ko'rinib tursin */}
+        <Button
+          variant={scanOn ? "outline" : "destructive"}
+          className="h-12 shrink-0 px-3 text-xs font-black"
+          onClick={() => setScanOn(!scanOn)}
+        >
+          <ScanLine className="size-5" />
+          {scanOn ? "SKAN ON" : "SKAN OFF"}
+        </Button>
 
         {!online && (
           <div className="flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white">
@@ -329,7 +338,7 @@ function TerminalPage() {
           </div>
         )}
         <div className="num hidden text-xl font-bold md:block">{clock}</div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-3">
           {ctx?.post_code === "ARRA" && mapOrderId !== null && (
             <Button
               variant="outline"
@@ -350,9 +359,9 @@ function TerminalPage() {
           {isOperator ? (
             <Button
               variant="ghost"
-              className="size-12 [&_svg]:size-6"
+              className="size-12 text-destructive [&_svg]:size-6"
               title="Tizimdan chiqish"
-              onClick={() => logout()}
+              onClick={() => setLogoutOpen(true)}
             >
               <LogOut />
             </Button>
@@ -391,16 +400,59 @@ function TerminalPage() {
 
       {/* Asosiy maydon — ARRA: proyekt ro'yxati → kesish xaritasi; boshqa postlar: vazifalar */}
       <main className="flex min-h-0 flex-1 gap-3 p-3">
-        {ctx?.post_code === "ARRA" ? (
-          <div className="min-h-0 flex-1">
-            {mapOrderId ? (
-              <CutmapView
-                orderId={mapOrderId}
-                onBack={() => setMapOrderId(null)}
-              />
-            ) : (
-              <OrderPicker onPick={setMapOrderId} />
+        {ctxLoading && !ctx ? (
+          <Skeleton className="h-full flex-1" />
+        ) : ctx?.post_code === "ARRA" ? (
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            {/* Oxirgi skan + BEKOR QILISH — arra shovqinida ovozga ishonib bo'lmaydi */}
+            {lastScan && (
+              <div
+                className={cn(
+                  "flex items-center gap-3 rounded-xl border-2 px-4 py-2",
+                  lastScan.kind === "ok"
+                    ? "border-green-500 bg-green-50"
+                    : "border-red-500 bg-red-50",
+                )}
+              >
+                {lastScan.kind === "ok" ? (
+                  <>
+                    <span className="num text-xl font-black text-green-700">
+                      {lastScan.code}
+                    </span>
+                    <span className="text-base text-green-800">
+                      Qoldiq: <b>{lastScan.qoldiq}</b>
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-lg font-black text-red-700">
+                      {lastScan.code}
+                    </span>
+                    <span className="truncate text-base text-red-800">
+                      {lastScan.message}
+                    </span>
+                  </>
+                )}
+                <Button
+                  variant="destructive"
+                  className="ml-auto h-12 shrink-0 px-4 text-sm font-black"
+                  disabled={!canUndo}
+                  onClick={() => setUndoOpen(true)}
+                >
+                  <Undo2 /> BEKOR QILISH
+                </Button>
+              </div>
             )}
+            <div className="min-h-0 flex-1">
+              {mapOrderId ? (
+                <CutmapView
+                  orderId={mapOrderId}
+                  onBack={() => setMapOrderId(null)}
+                />
+              ) : (
+                <OrderPicker onPick={setMapOrderId} />
+              )}
+            </div>
           </div>
         ) : (
           <>
@@ -546,6 +598,15 @@ function TerminalPage() {
       </main>
 
       <ConfirmDialog
+        open={logoutOpen}
+        onOpenChange={setLogoutOpen}
+        title="Tizimdan chiqish"
+        description="Terminal login sahifasiga qaytadi — qayta kirish uchun parol kerak bo'ladi."
+        confirmText="Chiqish"
+        destructive
+        onConfirm={() => logout()}
+      />
+      <ConfirmDialog
         open={undoOpen}
         onOpenChange={setUndoOpen}
         title="Oxirgi scanni bekor qilish"
@@ -565,8 +626,20 @@ function TerminalPage() {
   )
 }
 
+// Muddat ohangi: o'tgan = qizil, bugun = amber
+function deadlineTone(value?: string | null): "overdue" | "today" | "" {
+  if (!value) return ""
+  const d = new Date(value)
+  const today = new Date()
+  d.setHours(0, 0, 0, 0)
+  today.setHours(0, 0, 0, 0)
+  if (d < today) return "overdue"
+  if (d.getTime() === today.getTime()) return "today"
+  return ""
+}
+
 function OrderPicker({ onPick }: { onPick: (orderId: number) => void }) {
-  const { data } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["terminal", "orders"],
     queryFn: () => TerminalService.readTerminalOrders(),
     refetchInterval: 30_000,
@@ -580,6 +653,9 @@ function OrderPicker({ onPick }: { onPick: (orderId: number) => void }) {
         priority?: string
         done?: number
         total?: number
+        materials?: string[]
+        sheets_total?: number
+        has_cutmap?: boolean
       }>
     | undefined
   return (
@@ -587,69 +663,110 @@ function OrderPicker({ onPick }: { onPick: (orderId: number) => void }) {
       <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">
         Proyektlar — xarita uchun proyektni tanlang
       </h2>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {orders?.map((o) => {
-          const total = o.total ?? 0
-          const done = o.done ?? 0
-          const pct = total ? Math.round((done / total) * 100) : 0
-          const finished = total > 0 && done >= total
-          return (
-            <button
-              type="button"
-              key={o.id}
-              onClick={() => onPick(o.id)}
-              className={`rounded-xl border-2 p-4 text-left transition-colors hover:border-primary ${
-                finished ? "border-green-500/60 bg-green-50/50" : ""
-              }`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="text-lg font-black">{o.number}</div>
-                {o.priority && (
-                  <span
-                    className={`rounded px-1.5 py-0.5 text-[10px] font-black ${
-                      o.priority === "urgent"
-                        ? "bg-red-600 text-white"
-                        : o.priority === "high"
-                          ? "bg-orange-500 text-white"
-                          : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {PRIORITY_LABELS[o.priority] ?? o.priority}
+      {isError && (
+        <div className="mb-3 rounded-lg border-2 border-red-500 bg-red-50 px-4 py-3 text-base font-bold text-red-700">
+          Yuklashda xato — qayta urinilmoqda...
+        </div>
+      )}
+      {isLoading ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="h-44 rounded-xl" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {orders?.map((o) => {
+            const total = o.total ?? 0
+            const done = o.done ?? 0
+            const pct = total ? Math.round((done / total) * 100) : 0
+            const finished = total > 0 && done >= total
+            const tone = deadlineTone(o.deadline)
+            return (
+              <button
+                type="button"
+                key={o.id}
+                onClick={() => onPick(o.id)}
+                className={`rounded-xl border-2 p-4 text-left transition-all hover:border-primary active:scale-[0.98] active:border-primary ${
+                  finished ? "border-green-500/60 bg-green-50/50" : ""
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-base font-black">{o.number}</div>
+                    <div className="truncate text-sm text-muted-foreground">
+                      {o.project_name ?? ""}
+                    </div>
+                  </div>
+                  {o.priority && (
+                    <span
+                      className={`shrink-0 rounded px-2 py-0.5 text-sm font-black ${
+                        PRIORITY_BADGE_CLASSES[o.priority] ??
+                        "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {PRIORITY_LABELS[o.priority] ?? o.priority}
+                    </span>
+                  )}
+                </div>
+                {/* Material — arrachi arradagi plita bo'yicha partiyalab kesadi */}
+                {!!o.materials?.length && (
+                  <div className="mt-1 truncate text-sm font-semibold">
+                    {o.materials.join(" · ")}
+                  </div>
+                )}
+                {/* ARRA bo'yicha bajarilish: kesilgan nusxalar / jami */}
+                <div className="mt-2">
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full rounded-full ${finished ? "bg-green-500" : "bg-primary"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <div className="num mt-1 flex items-end justify-between">
+                    {finished ? (
+                      <span className="text-xl font-black text-green-600">
+                        ✓ 100%
+                      </span>
+                    ) : (
+                      <span className="text-xl font-black text-primary">
+                        Qoldiq: {total - done}
+                      </span>
+                    )}
+                    <span className="text-sm text-muted-foreground">
+                      {done}/{total} detal
+                      {o.sheets_total ? ` · ${o.sheets_total} list` : ""}
+                    </span>
+                  </div>
+                </div>
+                <div
+                  className={`num mt-1.5 text-base font-bold ${
+                    tone === "overdue"
+                      ? "text-red-600"
+                      : tone === "today"
+                        ? "text-amber-600"
+                        : ""
+                  }`}
+                >
+                  {formatDate(o.deadline)}
+                  {tone === "overdue" && " · KECHIKKAN"}
+                  {tone === "today" && " · BUGUN"}
+                </div>
+                {o.has_cutmap === false && (
+                  <span className="mt-1.5 inline-block rounded bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">
+                    XARITA YO'Q
                   </span>
                 )}
-              </div>
-              <div className="truncate text-sm text-muted-foreground">
-                {o.project_name ?? ""}
-              </div>
-              {/* ARRA bo'yicha bajarilish: kesilgan nusxalar / jami */}
-              <div className="mt-2">
-                <div className="h-2 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={`h-full rounded-full ${finished ? "bg-green-500" : "bg-primary"}`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <div className="num mt-1 flex justify-between text-xs">
-                  <span className="font-bold">
-                    {pct}% {finished && "✓"}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {done}/{total} detal
-                  </span>
-                </div>
-              </div>
-              <div className="num mt-1.5 text-xs text-muted-foreground">
-                Topshirish sanasi: <b>{formatDate(o.deadline)}</b>
-              </div>
-            </button>
-          )
-        })}
-        {!orders?.length && (
-          <p className="text-sm text-muted-foreground">
-            Aktiv buyurtmalar yo'q
-          </p>
-        )}
-      </div>
+              </button>
+            )
+          })}
+          {!isError && !orders?.length && (
+            <p className="text-sm text-muted-foreground">
+              Aktiv buyurtmalar yo'q
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 }

@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 
 from app.api.deps import SessionDep, require_roles
 from app.core.config import settings
@@ -14,7 +14,15 @@ from app.core.exceptions import NotFoundException
 from app.core.ws import ws_manager
 from app.crud import log_action
 from app.models import Employee, Order, OrderFile, Part, PartInstance, PartRoute, Scan, WorkSession
-from app.models.enums import POST_ROLES, EmployeeStatus, OrderStatus, PostCode, SessionStatus, UserRole
+from app.models.enums import (
+    POST_ROLES,
+    EmployeeStatus,
+    OrderPriority,
+    OrderStatus,
+    PostCode,
+    SessionStatus,
+    UserRole,
+)
 from app.models.user import User
 from app.schemas.common import Message
 from app.schemas.terminal import (
@@ -227,6 +235,13 @@ async def read_terminal_orders(db: SessionDep, user: TerminalUser) -> list[dict]
         machine, post = await resolve_terminal(db, user)
     except ScanRejected as exc:
         raise _scan_http_error(exc) from None
+    # SHOSHILINCH tepada tursin: prioritet birinchi, keyin deadline (nulls oxirida)
+    priority_rank = case(
+        (Order.priority == OrderPriority.URGENT, 0),
+        (Order.priority == OrderPriority.HIGH, 1),
+        (Order.priority == OrderPriority.MEDIUM, 2),
+        else_=3,
+    )
     rows = (
         await db.execute(
             select(
@@ -241,9 +256,11 @@ async def read_terminal_orders(db: SessionDep, user: TerminalUser) -> list[dict]
                 PartRoute.post_id == post.id,
                 PartRoute.is_enabled == True,  # noqa: E712
                 PartRoute.is_deleted == False,  # noqa: E712
+                # boshqa stanokka biriktirilgan yo'nalishlar bu terminalda ko'rinmasin (/tasks bilan bir xil)
+                (PartRoute.machine_id == machine.id) | (PartRoute.machine_id.is_(None)),
             )
             .group_by(Order.id)
-            .order_by(Order.deadline.asc().nulls_last(), Order.id)
+            .order_by(priority_rank, Order.deadline.asc().nulls_last(), Order.id)
         )
     ).all()
     return [
@@ -255,6 +272,14 @@ async def read_terminal_orders(db: SessionDep, user: TerminalUser) -> list[dict]
             "priority": o.priority,
             "done": int(done or 0),
             "total": int(total or 0),
+            # karta uchun: arrachi plita bo'yicha partiyalab kesadi
+            "materials": [m["name"] for m in o.material_usage if m.get("kind") == "sheet"],
+            "sheets_total": sum(
+                int(s.get("mult") or 1)
+                for mat in (o.cutmap or {}).get("materials", [])
+                for s in mat.get("sheets", [])
+            ),
+            "has_cutmap": o.cutmap is not None,
         }
         for o, done, total in rows
     ]

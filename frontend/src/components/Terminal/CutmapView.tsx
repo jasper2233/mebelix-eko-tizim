@@ -12,6 +12,9 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
+  Maximize2,
+  Minus,
+  Plus,
   Printer,
   RotateCw,
 } from "lucide-react"
@@ -143,7 +146,11 @@ export function CutmapView({
           Kesish xaritasi mavjud emas — fayl GibLabda optimizatsiya qilinmagan
           (TEMPLATE). Oddiy vazifalar ro'yxatidan foydalaning.
         </p>
-        <Button variant="outline" onClick={onBack}>
+        <Button
+          variant="outline"
+          className="h-12 px-6 text-base"
+          onClick={onBack}
+        >
           <ArrowLeft /> Orqaga
         </Button>
       </div>
@@ -175,8 +182,12 @@ export function CutmapView({
     <div className="flex h-full flex-col gap-3 lg:flex-row">
       {/* Materiallar + statistika paneli */}
       <div className="w-full shrink-0 space-y-3 lg:w-72">
-        <Button variant="outline" size="sm" onClick={onBack}>
-          <ArrowLeft /> Vazifalar ro'yxati
+        <Button
+          variant="outline"
+          className="h-12 w-full text-base"
+          onClick={onBack}
+        >
+          <ArrowLeft /> {admin ? "Orqaga" : "Proyektlar"}
         </Button>
         <div className="rounded-xl border bg-card">
           <div className="border-b px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -215,7 +226,7 @@ export function CutmapView({
         {material && (
           <div className="num grid grid-cols-3 gap-px overflow-hidden rounded-xl border bg-border text-center text-xs">
             <Stat
-              label="KK"
+              label="Listlar"
               value={(() => {
                 const tot = sheets.reduce(
                   (a: number, s: Sheet) => a + (s.mult || 1),
@@ -226,10 +237,9 @@ export function CutmapView({
                   .reduce((a: number, s: Sheet) => a + (s.mult || 1), 0)
                 return `${tot}−${dn}=${tot - dn}`
               })()}
-              hint="Listlar: jami − bajarilgan = qolgan"
             />
             <Stat
-              label="KD"
+              label="Detallar"
               value={(() => {
                 const tot = Number(material.kd) || 0
                 const dn = sheets.reduce(
@@ -251,37 +261,22 @@ export function CutmapView({
                 )
                 return `${tot}−${dn}=${tot - dn}`
               })()}
-              hint="Detallar: jami − bajarilgan = qolgan"
             />
-            <Stat label="KO" value={material.ko} hint="Atxot" />
+            <Stat label="Atxot" value={material.ko} />
             <Stat
-              label="DR"
+              label="Rez, m"
               value={material.dr?.toFixed?.(1) ?? material.dr}
-              hint="Rez, m"
             />
-            <Stat label="KR" value={material.kr} hint="Rezlar" />
+            <Stat label="Rezlar" value={material.kr} />
             <Stat
-              label="PZ"
+              label="To'ldirish"
               value={
                 material.fill ? `${(material.fill * 100).toFixed(1)}%` : "—"
               }
-              hint="To'ldirish"
             />
-            <Stat
-              label="TP"
-              value={`${material.kerf ?? "—"}`}
-              hint="Arra qalinligi, mm"
-            />
-            <Stat
-              label="TD"
-              value={`${material.trimL ?? "—"}`}
-              hint="Tirim uzunlik, mm"
-            />
-            <Stat
-              label="TSh"
-              value={`${material.trimW ?? "—"}`}
-              hint="Tirim en, mm"
-            />
+            <Stat label="Arra, mm" value={`${material.kerf ?? "—"}`} />
+            <Stat label="Tirim uzun." value={`${material.trimL ?? "—"}`} />
+            <Stat label="Tirim en" value={`${material.trimW ?? "—"}`} />
           </div>
         )}
         {/* Listlar — zich ro'yxat: ko'p listda ham sig'adi, joriy list ajralib turadi */}
@@ -326,7 +321,7 @@ export function CutmapView({
         {sheet ? (
           <>
             <div className="mb-2 flex items-center justify-between gap-2">
-              <div className="text-sm font-bold">
+              <div className="text-base font-black">
                 №{sheet.no} —{" "}
                 <span className="num">
                   {sheet.L} × {sheet.W} mm
@@ -361,6 +356,7 @@ export function CutmapView({
                 instancesByCell={instancesByCell as never}
                 onSelect={setSelected}
                 selectedCell={selected?.cell ?? null}
+                controls
               />
             </div>
           </>
@@ -381,18 +377,10 @@ export function CutmapView({
   )
 }
 
-function Stat({
-  label,
-  value,
-  hint,
-}: {
-  label: string
-  value: unknown
-  hint: string
-}) {
+function Stat({ label, value }: { label: string; value: unknown }) {
   return (
-    <div className="bg-card p-2" title={hint}>
-      <div className="text-[10px] font-bold text-muted-foreground">{label}</div>
+    <div className="bg-card p-2">
+      <div className="text-xs font-bold text-muted-foreground">{label}</div>
       <div className="text-sm font-bold">{String(value ?? "—")}</div>
     </div>
   )
@@ -456,12 +444,15 @@ function SheetSvg({
   instancesByCell,
   onSelect,
   selectedCell,
+  controls = false,
 }: {
   sheet: Sheet
   holes: Record<string, any>
   instancesByCell: Map<string, any[]>
   onSelect: (part: SheetPart) => void
   selectedCell: number | null
+  /** Interaktiv rejim: +/− /reset zoom tugmalari (printda chiqmaydi) */
+  controls?: boolean
 }) {
   const { L, W } = sheet
   const svgRef = useRef<SVGSVGElement>(null)
@@ -571,6 +562,20 @@ function SheetSvg({
     ptsRef.current.delete(e.pointerId)
     if (ptsRef.current.size < 2) pinchRef.current = null
     if (!ptsRef.current.size) panRef.current = null
+  }
+
+  // Tugma zoom — qo'lqopda pinch ishonchsiz; markaz atrofida 1.5x
+  const zoomBy = (f: number) => {
+    const cur = svgRef.current?.viewBox.baseVal
+    if (!cur) return
+    const nw = Math.min(base.w, Math.max(base.w / 14, cur.width * f))
+    const nh = nw * (base.h / base.w)
+    applyVb(
+      cur.x + cur.width / 2 - nw / 2,
+      cur.y + cur.height / 2 - nh / 2,
+      nw,
+      nh,
+    )
   }
 
   // Yorliqlar hamma narsadan KEYIN chiziladi (teshik/tekstura ortida qolmasin), halo bilan
@@ -866,7 +871,7 @@ function SheetSvg({
     )
   })
 
-  return (
+  const svgEl = (
     <svg
       ref={svgRef}
       viewBox={
@@ -920,6 +925,39 @@ function SheetSvg({
       {dimNodes}
       <g pointerEvents="none">{labels}</g>
     </svg>
+  )
+
+  if (!controls) return svgEl
+  return (
+    <div className="relative h-full w-full">
+      {svgEl}
+      <div className="absolute bottom-2 right-2 flex flex-col gap-1.5">
+        <Button
+          variant="secondary"
+          className="size-12 border shadow-sm [&_svg]:size-6"
+          onClick={() => zoomBy(1 / 1.5)}
+          title="Kattalashtirish"
+        >
+          <Plus />
+        </Button>
+        <Button
+          variant="secondary"
+          className="size-12 border shadow-sm [&_svg]:size-6"
+          onClick={() => zoomBy(1.5)}
+          title="Kichiklashtirish"
+        >
+          <Minus />
+        </Button>
+        <Button
+          variant="secondary"
+          className="size-12 border shadow-sm [&_svg]:size-6"
+          onClick={() => setVb(null)}
+          title="To'liq ko'rinish"
+        >
+          <Maximize2 />
+        </Button>
+      </div>
+    </div>
   )
 }
 
@@ -1159,6 +1197,14 @@ function PartCard({
             </div>
           ))}
         </div>
+        {/* Radix X 16px — qo'lqopga kichik; katta yopish tugmasi */}
+        <Button
+          variant="outline"
+          className="h-12 w-full text-base font-bold"
+          onClick={onClose}
+        >
+          Yopish
+        </Button>
       </DialogContent>
     </Dialog>
   )
