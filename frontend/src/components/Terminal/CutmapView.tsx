@@ -180,54 +180,49 @@ export function CutmapView({
     printAllMaps(data.order_number, materials, holes, instancesByCell as never),
   )
 
-  // Material statistikasi: terminalda header'ga portal, admin sahifada xarita panelida
+  // Material statistikasi — ixcham bir qator (terminalda SKAN ON qatoriga portal,
+  // admin sahifada xarita tepasida). Xarita balandligidan joy olmaydi.
+  const listTot = sheets.reduce((a: number, s: Sheet) => a + (s.mult || 1), 0)
+  const listDn = sheets
+    .filter(sheetDone)
+    .reduce((a: number, s: Sheet) => a + (s.mult || 1), 0)
+  const detTot = Number(material?.kd) || 0
+  const detDn = sheets.reduce(
+    (a: number, s: Sheet) =>
+      a +
+      (s.parts as SheetPart[])
+        .filter((p) => !p.waste)
+        .reduce(
+          (b, p) =>
+            b +
+            ((instancesByCell.get(`${s.no}:${p.cell}`) as any[]) ?? []).filter(
+              (i) => i.done,
+            ).length,
+          0,
+        ),
+    0,
+  )
+  const statPairs: Array<[string, string | number]> = [
+    ["Listlar", `${listTot}−${listDn}=${listTot - listDn}`],
+    ["Detallar", `${detTot}−${detDn}=${detTot - detDn}`],
+    ["Atxot", material?.ko ?? "—"],
+    ["Rez, m", material?.dr?.toFixed?.(1) ?? material?.dr ?? "—"],
+    ["Rezlar", material?.kr ?? "—"],
+    [
+      "To'ldirish",
+      material?.fill ? `${(material.fill * 100).toFixed(1)}%` : "—",
+    ],
+    ["Arra", material?.kerf ?? "—"],
+    ["Tirim uz.", material?.trimL ?? "—"],
+    ["Tirim en", material?.trimW ?? "—"],
+  ]
   const statsRow = material ? (
-    <div className="num grid grid-cols-3 gap-px overflow-hidden rounded-lg border bg-border text-center text-xs md:grid-cols-9">
-      <Stat
-        label="Listlar"
-        value={(() => {
-          const tot = sheets.reduce(
-            (a: number, s: Sheet) => a + (s.mult || 1),
-            0,
-          )
-          const dn = sheets
-            .filter(sheetDone)
-            .reduce((a: number, s: Sheet) => a + (s.mult || 1), 0)
-          return `${tot}−${dn}=${tot - dn}`
-        })()}
-      />
-      <Stat
-        label="Detallar"
-        value={(() => {
-          const tot = Number(material.kd) || 0
-          const dn = sheets.reduce(
-            (a: number, s: Sheet) =>
-              a +
-              (s.parts as SheetPart[])
-                .filter((p) => !p.waste)
-                .reduce(
-                  (b, p) =>
-                    b +
-                    (
-                      (instancesByCell.get(`${s.no}:${p.cell}`) as any[]) ?? []
-                    ).filter((i) => i.done).length,
-                  0,
-                ),
-            0,
-          )
-          return `${tot}−${dn}=${tot - dn}`
-        })()}
-      />
-      <Stat label="Atxot" value={material.ko} />
-      <Stat label="Rez, m" value={material.dr?.toFixed?.(1) ?? material.dr} />
-      <Stat label="Rezlar" value={material.kr} />
-      <Stat
-        label="To'ldirish"
-        value={material.fill ? `${(material.fill * 100).toFixed(1)}%` : "—"}
-      />
-      <Stat label="Arra, mm" value={`${material.kerf ?? "—"}`} />
-      <Stat label="Tirim uzun." value={`${material.trimL ?? "—"}`} />
-      <Stat label="Tirim en" value={`${material.trimW ?? "—"}`} />
+    <div className="num flex flex-wrap items-center justify-end gap-x-4 gap-y-0.5 text-xs">
+      {statPairs.map(([l, v]) => (
+        <span key={l} className="whitespace-nowrap">
+          <span className="text-muted-foreground">{l}:</span> <b>{v}</b>
+        </span>
+      ))}
     </div>
   ) : null
 
@@ -378,15 +373,6 @@ export function CutmapView({
           holes={holes}
         />
       </div>
-    </div>
-  )
-}
-
-function Stat({ label, value }: { label: string; value: unknown }) {
-  return (
-    <div className="bg-card p-2">
-      <div className="text-xs font-bold text-muted-foreground">{label}</div>
-      <div className="text-sm font-bold">{String(value ?? "—")}</div>
     </div>
   )
 }

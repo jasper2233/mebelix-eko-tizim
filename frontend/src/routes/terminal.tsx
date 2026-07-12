@@ -282,108 +282,108 @@ function TerminalPage() {
         </div>
       )}
       {/* Header (TZ 8.3.1) */}
-      <header className="border-b bg-white px-4 py-2 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Ishlab chiqarish posti
-            </div>
-            <div className="text-lg font-black" style={{ color: postColor }}>
-              {ctx?.post_name?.toUpperCase() ?? "—"}
-            </div>
+      <header className="flex items-center gap-4 border-b bg-white px-4 py-2 shadow-sm">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Ishlab chiqarish posti
           </div>
-          <div className="hidden sm:block">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Aktiv uskuna
-            </div>
-            <div className="text-sm font-semibold">
-              {ctx?.machine_name ?? "—"}
-            </div>
+          <div className="text-lg font-black" style={{ color: postColor }}>
+            {ctx?.post_name?.toUpperCase() ?? "—"}
           </div>
-
-          {/* Xarita ochiq bo'lsa skan qismi yashirin — skan faqat proyektlar ro'yxatida */}
-          <div
-            className={cn(
-              "relative mx-auto w-full max-w-md",
-              mapOpen && "invisible",
-            )}
-          >
-            <ScanLine className="absolute left-3 top-2.5 size-5 text-muted-foreground" />
-            <input
-              ref={inputRef}
-              disabled={!scanOn || locked || mapOpen}
-              className="h-12 w-full rounded-lg border-2 border-primary/40 bg-white pl-10 pr-4 font-mono text-base outline-none focus:border-primary disabled:bg-muted"
-              placeholder={
-                ctx?.session ? "QR scan qiling..." : "Beyjik QR scan qiling..."
-              }
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleSubmit((e.target as HTMLInputElement).value)
-                  ;(e.target as HTMLInputElement).value = ""
-                }
-              }}
-            />
+        </div>
+        <div className="hidden sm:block">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Aktiv uskuna
           </div>
+          <div className="text-sm font-semibold">
+            {ctx?.machine_name ?? "—"}
+          </div>
+        </div>
 
-          {/* 48px toggle: qo'lqop bilan ham aniq; OFF holati qizil — skan to'xtagani ko'rinib tursin */}
-          <Button
-            variant={scanOn ? "outline" : "destructive"}
-            className="h-12 shrink-0 px-3 text-xs font-black"
-            onClick={() => setScanOn(!scanOn)}
-          >
-            <ScanLine className="size-5" />
-            {scanOn ? "SKAN ON" : "SKAN OFF"}
-          </Button>
-
-          {!online && (
-            <div className="flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white">
-              <WifiOff className="size-4" /> ALOQA YO'Q
-            </div>
+        {/* Xarita ochiq bo'lsa skan o'rnini ixcham material statlari egallaydi */}
+        <div
+          className={cn(
+            "relative mx-auto w-full max-w-md",
+            mapOpen && "hidden",
           )}
-          <div className="num hidden text-xl font-bold md:block">{clock}</div>
-          <div className="flex items-center gap-3">
-            {ctx?.post_code === "ARRA" && mapOrderId !== null && (
-              <Button
-                variant="outline"
-                className="h-12 px-4 text-base"
-                onClick={() => setMapOrderId(null)}
-              >
-                <MapIcon /> Proyektlar
-              </Button>
-            )}
+        >
+          <ScanLine className="absolute left-3 top-2.5 size-5 text-muted-foreground" />
+          <input
+            ref={inputRef}
+            disabled={!scanOn || locked || mapOpen}
+            className="h-12 w-full rounded-lg border-2 border-primary/40 bg-white pl-10 pr-4 font-mono text-base outline-none focus:border-primary disabled:bg-muted"
+            placeholder={
+              ctx?.session ? "QR scan qiling..." : "Beyjik QR scan qiling..."
+            }
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleSubmit((e.target as HTMLInputElement).value)
+                ;(e.target as HTMLInputElement).value = ""
+              }
+            }}
+          />
+        </div>
+        <div
+          ref={setStatsEl}
+          className={cn("min-w-0 flex-1 empty:hidden", !mapOpen && "hidden")}
+        />
+
+        {/* 48px toggle: qo'lqop bilan ham aniq; OFF holati qizil — skan to'xtagani ko'rinib tursin */}
+        <Button
+          variant={scanOn ? "outline" : "destructive"}
+          className="h-12 shrink-0 px-3 text-xs font-black"
+          onClick={() => setScanOn(!scanOn)}
+        >
+          <ScanLine className="size-5" />
+          {scanOn ? "SKAN ON" : "SKAN OFF"}
+        </Button>
+
+        {!online && (
+          <div className="flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white">
+            <WifiOff className="size-4" /> ALOQA YO'Q
+          </div>
+        )}
+        <div className="num hidden text-xl font-bold md:block">{clock}</div>
+        <div className="flex items-center gap-3">
+          {ctx?.post_code === "ARRA" && mapOrderId !== null && (
+            <Button
+              variant="outline"
+              className="h-12 px-4 text-base"
+              onClick={() => setMapOrderId(null)}
+            >
+              <MapIcon /> Proyektlar
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            className="size-12 [&_svg]:size-6"
+            onClick={() => setLocked(true)}
+            title="Ekranni qulflash"
+          >
+            <Lock />
+          </Button>
+          {isOperator ? (
             <Button
               variant="ghost"
-              className="size-12 [&_svg]:size-6"
-              onClick={() => setLocked(true)}
-              title="Ekranni qulflash"
+              className="size-12 text-destructive [&_svg]:size-6"
+              title="Tizimdan chiqish"
+              onClick={() => setLogoutOpen(true)}
             >
-              <Lock />
+              <LogOut />
             </Button>
-            {isOperator ? (
+          ) : (
+            ctx?.session && (
               <Button
                 variant="ghost"
-                className="size-12 text-destructive [&_svg]:size-6"
-                title="Tizimdan chiqish"
-                onClick={() => setLogoutOpen(true)}
+                className="size-12 [&_svg]:size-6"
+                title="Sessiyani yakunlash"
+                onClick={() => endSession.mutate()}
               >
                 <LogOut />
               </Button>
-            ) : (
-              ctx?.session && (
-                <Button
-                  variant="ghost"
-                  className="size-12 [&_svg]:size-6"
-                  title="Sessiyani yakunlash"
-                  onClick={() => endSession.mutate()}
-                >
-                  <LogOut />
-                </Button>
-              )
-            )}
-          </div>
+            )
+          )}
         </div>
-        {/* Xarita material statlari shu yerga portal bo'ladi (bo'sh bo'lsa ko'rinmaydi) */}
-        <div ref={setStatsEl} className="mt-2 empty:hidden" />
       </header>
 
       {/* Sessiya bar */}
