@@ -10,10 +10,11 @@ import {
 } from "@tanstack/react-query"
 import {
   ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Maximize2,
   Minus,
+  Palette,
   Plus,
   Printer,
   RotateCw,
@@ -124,6 +125,13 @@ export function CutmapView({
   const [materialIdx, setMaterialIdx] = useState(0)
   const [sheetIdx, setSheetIdx] = useState<number | null>(null)
   const [selected, setSelected] = useState<SheetPart | null>(null)
+  // GibLab toolbar: rang toggle + zoom API (SheetSvg ro'yxatdan o'tkazadi)
+  const [colored, setColored] = useState(true)
+  const zoomApi = useRef<{
+    zin: () => void
+    zout: () => void
+    reset: () => void
+  } | null>(null)
 
   const instancesByCell = useMemo(() => {
     const map = new Map<
@@ -227,139 +235,183 @@ export function CutmapView({
     </div>
   ) : null
 
+  // GibLab toolbar tugmasi ko'rinishi (tbtn): katta kvadrat, yumshoq gradient
+  const TBTN =
+    "flex h-14 w-full items-center justify-center rounded-lg border border-slate-300 bg-gradient-to-b from-white to-slate-200 text-slate-800 shadow-sm transition-all active:to-slate-300 disabled:opacity-40 [&_svg]:size-7"
+
   return (
-    <div className="flex h-full flex-col gap-3">
+    <div className="flex h-full gap-3">
       {statsContainer
         ? statsRow && createPortal(statsRow, statsContainer)
-        : statsRow}
+        : null}
 
-      {sheetIdx === null ? (
-        /* GibLab uslubi: bitta sahifa — material tablar + list grid */
-        <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border bg-white p-4">
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              className="h-12 px-5 text-base"
-              onClick={onBack}
-            >
-              <ArrowLeft /> {admin ? "Orqaga" : "Proyektlar"}
-            </Button>
-            {/* Material tanlagich — GibLab'dagi kabi, tab ko'rinishida */}
-            {materials.map((m: Material, i: number) => {
-              const mdone = m.sheets.filter(sheetDone).length
-              const active = i === materialIdx
-              return (
-                <Button
-                  key={m.name}
-                  variant={active ? "default" : "outline"}
-                  className="h-12 max-w-xs px-4 text-base"
-                  onClick={() => setMaterialIdx(i)}
-                >
-                  <span className="truncate">{m.name}</span>
-                  <span
-                    className={`num ml-1 text-xs ${active ? "opacity-80" : "text-muted-foreground"}`}
+      {/* GibLab uslubidagi chap toolbar: orqaga / list almashish / zoom / rang */}
+      <div className="flex w-[72px] shrink-0 flex-col gap-2">
+        <button
+          type="button"
+          className={TBTN}
+          title="Orqaga"
+          onClick={() => (sheetIdx !== null ? setSheetIdx(null) : onBack())}
+        >
+          <ArrowLeft />
+        </button>
+        <button
+          type="button"
+          className={TBTN}
+          title="Oldingi list"
+          disabled={sheetIdx === null || sheetIdx === 0}
+          onClick={() => sheetIdx !== null && setSheetIdx(sheetIdx - 1)}
+        >
+          <ChevronUp />
+        </button>
+        <button
+          type="button"
+          className={TBTN}
+          title="Keyingi list"
+          disabled={sheetIdx === null || sheetIdx >= sheets.length - 1}
+          onClick={() => sheetIdx !== null && setSheetIdx(sheetIdx + 1)}
+        >
+          <ChevronDown />
+        </button>
+        <button
+          type="button"
+          className={TBTN}
+          title="Yaqinlashtirish"
+          disabled={sheetIdx === null}
+          onClick={() => zoomApi.current?.zin()}
+        >
+          <Plus />
+        </button>
+        <button
+          type="button"
+          className={TBTN}
+          title="Uzoqlashtirish"
+          disabled={sheetIdx === null}
+          onClick={() => zoomApi.current?.zout()}
+        >
+          <Minus />
+        </button>
+        <button
+          type="button"
+          className={TBTN}
+          title="To'liq ko'rinish"
+          disabled={sheetIdx === null}
+          onClick={() => zoomApi.current?.reset()}
+        >
+          <Maximize2 />
+        </button>
+        <button
+          type="button"
+          className={`${TBTN} ${colored ? "" : "border-primary text-primary"}`}
+          title="Ranglar / yorliqlar"
+          onClick={() => setColored(!colored)}
+        >
+          <Palette />
+        </button>
+      </div>
+
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+        {!statsContainer && statsRow}
+        {sheetIdx === null ? (
+          /* Jadval sahifasi: material tablar + list grid (GibLab #matlist + #grid) */
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border bg-white p-4">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              {materials.map((m: Material, i: number) => {
+                const mdone = m.sheets.filter(sheetDone).length
+                const active = i === materialIdx
+                return (
+                  <Button
+                    key={m.name}
+                    variant={active ? "default" : "outline"}
+                    className="h-12 max-w-xs px-4 text-base"
+                    onClick={() => setMaterialIdx(i)}
                   >
-                    {mdone}/{m.sheets.length}
-                  </span>
-                </Button>
-              )
-            })}
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {sheets.map((s: Sheet, i: number) => {
-              const done = sheetDone(s)
-              return (
-                <button
-                  type="button"
-                  key={s.no}
-                  onClick={() => setSheetIdx(i)}
-                  className={`rounded-xl border-2 px-4 py-3 text-left transition-all hover:border-primary active:scale-[0.98] active:border-primary ${
-                    done
-                      ? "border-green-500/60 bg-green-50/50 text-muted-foreground"
-                      : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="num text-xl font-black">№{s.no}</span>
-                    <span className="num flex-1 text-base">
-                      {s.L}×{s.W}
+                    <span className="truncate">{m.name}</span>
+                    <span
+                      className={`num ml-1 text-xs ${active ? "opacity-80" : "text-muted-foreground"}`}
+                    >
+                      {mdone}/{m.sheets.length}
                     </span>
-                    {(s.mult || 1) > 1 && (
-                      <span className="num rounded bg-primary/10 px-2 py-0.5 text-sm font-bold text-primary">
-                        ×{s.mult}
+                  </Button>
+                )
+              })}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {sheets.map((s: Sheet, i: number) => {
+                const done = sheetDone(s)
+                return (
+                  <button
+                    type="button"
+                    key={s.no}
+                    onClick={() => setSheetIdx(i)}
+                    className={`rounded-xl border-2 px-4 py-3 text-left transition-all hover:border-primary active:scale-[0.98] active:border-primary ${
+                      done
+                        ? "border-green-500/60 bg-green-50/50 text-muted-foreground"
+                        : ""
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="num text-xl font-black">№{s.no}</span>
+                      <span className="num flex-1 text-base">
+                        {s.L}×{s.W}
                       </span>
-                    )}
-                    {done && <span className="text-xl text-green-600">✓</span>}
-                  </div>
-                  {/* Mini xarita — kichik preview, bosishga xalaqit bermaydi */}
-                  <div className="pointer-events-none mt-2 h-32 overflow-hidden rounded-lg border bg-slate-100 p-1">
-                    <SheetSvg
-                      sheet={s}
-                      holes={holes}
-                      instancesByCell={instancesByCell as never}
-                      onSelect={() => {}}
-                      selectedCell={null}
-                      thumbnail
-                    />
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      ) : (
-        /* Xarita — to'liq kenglikda, kulrang fon (blik kamayadi) */
-        <div className="flex min-h-0 flex-1 flex-col rounded-xl border bg-slate-200 p-3">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-3">
-              <Button
-                variant="outline"
-                className="h-12 bg-white px-4 text-base shadow-sm"
-                onClick={() => setSheetIdx(null)}
-              >
-                <ArrowLeft /> Listlar
-              </Button>
-              <div className="truncate text-base font-black">
-                №{sheet.no} —{" "}
-                <span className="num">
-                  {sheet.L} × {sheet.W} mm
-                </span>
-                <span className="num ml-2 rounded bg-secondary px-1.5 py-0.5 text-xs">
-                  × {sheet.mult} list
-                </span>
-              </div>
-            </div>
-            <div className="flex gap-1.5">
-              <Button
-                variant="default"
-                className="size-12 shadow-md [&_svg]:size-6"
-                disabled={sheetIdx === 0}
-                onClick={() => setSheetIdx(sheetIdx - 1)}
-              >
-                <ChevronLeft />
-              </Button>
-              <Button
-                variant="default"
-                className="size-12 shadow-md [&_svg]:size-6"
-                disabled={sheetIdx >= sheets.length - 1}
-                onClick={() => setSheetIdx(sheetIdx + 1)}
-              >
-                <ChevronRight />
-              </Button>
+                      {(s.mult || 1) > 1 && (
+                        <span className="num rounded bg-primary/10 px-2 py-0.5 text-sm font-bold text-primary">
+                          ×{s.mult}
+                        </span>
+                      )}
+                      {done && (
+                        <span className="text-xl text-green-600">✓</span>
+                      )}
+                    </div>
+                    {/* Mini xarita — kichik preview, bosishga xalaqit bermaydi */}
+                    <div className="pointer-events-none mt-2 h-32 overflow-hidden rounded-lg border bg-slate-100 p-1">
+                      <SheetSvg
+                        sheet={s}
+                        holes={holes}
+                        instancesByCell={instancesByCell as never}
+                        onSelect={() => {}}
+                        selectedCell={null}
+                        thumbnail
+                        colored={colored}
+                      />
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </div>
-          <div className="min-h-0 flex-1">
-            <SheetSvg
-              sheet={sheet}
-              holes={holes}
-              instancesByCell={instancesByCell as never}
-              onSelect={setSelected}
-              selectedCell={selected?.cell ?? null}
-              controls
-            />
+        ) : (
+          /* Xarita (GibLab #single) — to'liq kenglikda, kulrang fon */
+          <div className="flex min-h-0 flex-1 flex-col rounded-xl border bg-slate-200 p-3">
+            <div className="mb-2 truncate text-base font-black">
+              №{sheet.no} —{" "}
+              <span className="num">
+                {sheet.L} × {sheet.W} mm
+              </span>
+              <span className="num ml-2 rounded bg-secondary px-1.5 py-0.5 text-xs">
+                × {sheet.mult} list
+              </span>
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                {material?.name}
+              </span>
+            </div>
+            <div className="min-h-0 flex-1">
+              <SheetSvg
+                sheet={sheet}
+                holes={holes}
+                instancesByCell={instancesByCell as never}
+                onSelect={setSelected}
+                selectedCell={selected?.cell ?? null}
+                colored={colored}
+                registerZoom={(a) => {
+                  zoomApi.current = a
+                }}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <PartCard
         part={selected}
@@ -427,18 +479,25 @@ function SheetSvg({
   instancesByCell,
   onSelect,
   selectedCell,
-  controls = false,
   thumbnail = false,
+  colored = true,
+  registerZoom,
 }: {
   sheet: Sheet
   holes: Record<string, any>
   instancesByCell: Map<string, any[]>
   onSelect: (part: SheetPart) => void
   selectedCell: number | null
-  /** Interaktiv rejim: +/− /reset zoom tugmalari (printda chiqmaydi) */
-  controls?: boolean
   /** Mini preview (material kartasi): interaktivsiz, scroll bloklamaydi */
   thumbnail?: boolean
+  /** GibLab rang toggle: false = kulrang rejim */
+  colored?: boolean
+  /** Chap toolbar zoom tugmalari uchun API (GibLab uslubi) */
+  registerZoom?: (api: {
+    zin: () => void
+    zout: () => void
+    reset: () => void
+  }) => void
 }) {
   const { L, W } = sheet
   const svgRef = useRef<SVGSVGElement>(null)
@@ -564,6 +623,11 @@ function SheetSvg({
       nh,
     )
   }
+  registerZoom?.({
+    zin: () => zoomBy(1 / 1.5),
+    zout: () => zoomBy(1.5),
+    reset: () => setVb(null),
+  })
 
   // Yorliqlar hamma narsadan KEYIN chiziladi (teshik/tekstura ortida qolmasin), halo bilan
   const labels: React.ReactNode[] = []
@@ -574,7 +638,13 @@ function SheetSvg({
     const allDone = !p.waste && insts.length > 0 && doneCount === insts.length
     const selected = selectedCell === p.cell
     const H = holes[String(p.id)]
-    const fill = p.waste ? "url(#zebra)" : selected ? PART_SELECTED : PART_FILL
+    const fill = p.waste
+      ? "url(#zebra)"
+      : selected
+        ? PART_SELECTED
+        : colored
+          ? PART_FILL
+          : "#d6d6d6"
 
     if (!p.waste) {
       const wv = p.w
@@ -994,38 +1064,7 @@ function SheetSvg({
     </svg>
   )
 
-  if (!controls) return svgEl
-  return (
-    <div className="relative h-full w-full">
-      {svgEl}
-      <div className="absolute bottom-2 right-2 flex flex-col gap-1.5">
-        <Button
-          variant="default"
-          className="size-12 shadow-md [&_svg]:size-6"
-          onClick={() => zoomBy(1 / 1.5)}
-          title="Kattalashtirish"
-        >
-          <Plus />
-        </Button>
-        <Button
-          variant="default"
-          className="size-12 shadow-md [&_svg]:size-6"
-          onClick={() => zoomBy(1.5)}
-          title="Kichiklashtirish"
-        >
-          <Minus />
-        </Button>
-        <Button
-          variant="default"
-          className="size-12 shadow-md [&_svg]:size-6"
-          onClick={() => setVb(null)}
-          title="To'liq ko'rinish"
-        >
-          <Maximize2 />
-        </Button>
-      </div>
-    </div>
-  )
+  return svgEl
 }
 
 /** Tanlangan detal mini-chizmasi: o'lcham strelkalari + teshiklar (GibSaw «Чертеж детали»). */
