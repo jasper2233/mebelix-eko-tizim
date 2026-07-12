@@ -147,6 +147,7 @@ function TerminalPage() {
   // Deploy'dan keyin yangi build: index.html ETag o'zgarsa belgilab qo'yamiz,
   // xavfsiz paytda (xarita yopiq, 2 daqiqa skan yo'q) o'zi reload qiladi.
   useEffect(() => {
+    if (import.meta.env.DEV) return // Vite ETag'i o'zgaruvchan — dev'da reload sikli bo'ladi
     let etag: string | null = null
     const check = async () => {
       try {
