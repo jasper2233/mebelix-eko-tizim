@@ -50,9 +50,10 @@ const getCutmapQueryOptions = (orderId: number, admin: boolean) =>
     refetchInterval: 60_000,
   })
 
-// Barcha detallar bir xil brand tilla tusda (--brand-gold #eaa83c ning och varianti:
-// qora yozuvlar va kesim chiziqlari o'qilishi uchun); tanlangani to'q apelsin bo'lib ajraladi
-const PART_FILL = "#f4d9a6"
+// Barcha detallar bir xil to'q apelsin; tanlangani moviy bo'lib ajraladi.
+// Xarita paneli kulrang (oq emas) — yorug' sexda ko'z qamashtirmaydi, detallar ajralib turadi
+const PART_FILL = "#f39800"
+const PART_SELECTED = "#2596be"
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)
@@ -313,8 +314,8 @@ export function CutmapView({
         </div>
       </div>
 
-      {/* To'liq list ko'rinishi */}
-      <div className="flex min-h-0 flex-1 flex-col rounded-xl border bg-card p-3">
+      {/* To'liq list ko'rinishi — kulrang fon: oq blik o'rniga yumshoq kontrast */}
+      <div className="flex min-h-0 flex-1 flex-col rounded-xl border bg-slate-200 p-3">
         {sheet ? (
           <>
             <div className="mb-2 flex items-center justify-between gap-2">
@@ -330,7 +331,7 @@ export function CutmapView({
               <div className="flex gap-1.5">
                 <Button
                   variant="outline"
-                  className="size-12 [&_svg]:size-6"
+                  className="size-12 bg-white shadow-sm [&_svg]:size-6"
                   disabled={sheetIdx === 0}
                   onClick={() => setSheetIdx(sheetIdx - 1)}
                 >
@@ -338,7 +339,7 @@ export function CutmapView({
                 </Button>
                 <Button
                   variant="outline"
-                  className="size-12 [&_svg]:size-6"
+                  className="size-12 bg-white shadow-sm [&_svg]:size-6"
                   disabled={sheetIdx >= sheets.length - 1}
                   onClick={() => setSheetIdx(sheetIdx + 1)}
                 >
@@ -385,12 +386,8 @@ function Stat({ label, value }: { label: string; value: unknown }) {
 
 // --- GibSaw render qoidalari (GibLabViewer'dan portlangan, foto-tekshirilgan) ---
 
-const HALO = {
-  stroke: "#fff",
-  strokeWidth: 6,
-  strokeLinejoin: "round" as const,
-  style: { paintOrder: "stroke" as const },
-}
+// O'lcham/nom yozuvlari toza qora, oq halo'siz (to'q apelsin fonda halo shart emas)
+const HALO = {}
 
 /** Teshik koordinatasi detal lokal (l×w) o'qidan katakka: rot = o'q almashinuvi, OYNASIZ. */
 function holeXY(
@@ -584,11 +581,7 @@ function SheetSvg({
     const allDone = !p.waste && insts.length > 0 && doneCount === insts.length
     const selected = selectedCell === p.cell
     const H = holes[String(p.id)]
-    const fill = p.waste
-      ? "url(#zebra)"
-      : selected
-        ? "#ff7800"
-        : PART_FILL
+    const fill = p.waste ? "url(#zebra)" : selected ? PART_SELECTED : PART_FILL
 
     if (!p.waste) {
       const wv = p.w
@@ -662,68 +655,149 @@ function SheetSvg({
             />,
           )
       }
-      if (showW && oneLine)
+      // O'lcham/nom yozuvlari teshiklar ustiga tushmasin: har yozuvga bir necha
+      // nomzod joy, teshiksiz birinchisi tanlanadi; tanlangan joy keyingi
+      // yozuvlar uchun ham to'siq — yozuvlar bir-birining ustiga chiqmaydi
+      type Box = { x: number; y: number; w: number; h: number }
+      const obstacles: Box[] = []
+      if (H) {
+        for (const b of H.bores ?? []) {
+          const [bx, by] = holeXY(p, H, b.x, b.y)
+          const r = Math.max(b.d / 2, 4) + 4
+          obstacles.push({ x: bx - r, y: by - r, w: 2 * r, h: 2 * r })
+        }
+        for (const b of H.edge ?? []) {
+          const [lx, ly] = edgeLocalXY(H, b.side, b.pos)
+          const [bx, by] = holeXY(p, H, lx, ly)
+          const r = edgeBoreRect(p, bx, by, b.d, b.dp)
+          obstacles.push({ x: r.x - 4, y: r.y - 4, w: r.w + 8, h: r.h + 8 })
+        }
+      }
+      const overlaps = (b: Box) =>
+        obstacles.some(
+          (o) =>
+            b.x < o.x + o.w &&
+            o.x < b.x + b.w &&
+            b.y < o.y + o.h &&
+            o.y < b.y + b.h,
+        )
+      const pickSpot = <T extends { box: Box }>(cands: T[]): T => {
+        const c = cands.find((v) => !overlaps(v.box)) ?? cands[0]
+        obstacles.push(c.box)
+        return c
+      }
+
+      const wText = `${wv}${eTop ? ` ${eTop}` : ""}`
+      if (showW && oneLine) {
+        const wlen = wText.length * dW * 0.62
+        const spot = pickSpot(
+          [
+            { x: p.x + leftB + 6, y: p.y + hv - dW * 0.7 },
+            { x: p.x + wv - wlen - 6, y: p.y + hv - dW * 0.7 },
+            { x: p.x + leftB + 6, y: p.y + dW * 0.95 },
+          ].map((c) => ({
+            ...c,
+            box: { x: c.x, y: c.y - dW * 0.85, w: wlen, h: dW },
+          })),
+        )
         labels.push(
           <text
             key={`w${p.cell}`}
-            x={p.x + leftB + 6}
-            y={p.y + hv - dW * 0.7}
+            x={spot.x}
+            y={spot.y}
             fontSize={dW}
             fill="#333"
             {...HALO}
           >
-            {wv}
-            {eTop ? ` ${eTop}` : ""}
+            {wText}
           </text>,
         )
-      else if (showW)
+      } else if (showW) {
+        const wlen = wText.length * dW * 0.62
+        const spot = pickSpot(
+          [
+            { x: cx, y: p.y + dW * 0.85 },
+            { x: p.x + wv * 0.28, y: p.y + dW * 0.85 },
+            { x: p.x + wv * 0.72, y: p.y + dW * 0.85 },
+            { x: cx, y: p.y + hv - dW * 0.35 },
+            { x: p.x + wv * 0.28, y: p.y + hv - dW * 0.35 },
+            { x: p.x + wv * 0.72, y: p.y + hv - dW * 0.35 },
+          ].map((c) => ({
+            ...c,
+            box: { x: c.x - wlen / 2, y: c.y - dW * 0.85, w: wlen, h: dW },
+          })),
+        )
         labels.push(
           <text
             key={`w${p.cell}`}
-            x={cx}
-            y={p.y + dW * 0.85}
+            x={spot.x}
+            y={spot.y}
             fontSize={dW}
             fill="#333"
             textAnchor="middle"
             {...HALO}
           >
-            {wv}
-            {eTop ? ` ${eTop}` : ""}
+            {wText}
           </text>,
         )
-      if (showH)
+      }
+      const hText = `${hv}${eLeft ? ` ${eLeft}` : ""}`
+      if (showH) {
+        const hlen = hText.length * dH * 0.62
+        const spot = pickSpot(
+          [
+            { x: p.x + dH * 0.85, y: cy },
+            { x: p.x + dH * 0.85, y: p.y + hv * 0.3 },
+            { x: p.x + dH * 0.85, y: p.y + hv * 0.72 },
+            { x: p.x + wv - dH * 0.35, y: cy },
+            { x: p.x + wv - dH * 0.35, y: p.y + hv * 0.3 },
+            { x: p.x + wv - dH * 0.35, y: p.y + hv * 0.72 },
+          ].map((c) => ({
+            ...c,
+            box: { x: c.x - dH * 0.85, y: c.y - hlen / 2, w: dH, h: hlen },
+          })),
+        )
         labels.push(
           <text
             key={`h${p.cell}`}
-            x={p.x + dH * 0.85}
-            y={cy}
+            x={spot.x}
+            y={spot.y}
             fontSize={dH}
             fill="#333"
             textAnchor="middle"
-            transform={`rotate(-90 ${p.x + dH * 0.85} ${cy})`}
+            transform={`rotate(-90 ${spot.x} ${spot.y})`}
             {...HALO}
           >
-            {hv}
-            {eLeft ? ` ${eLeft}` : ""}
+            {hText}
           </text>,
         )
-      if (shown)
+      }
+      if (shown) {
+        const nw = vert ? fsN : shown.length * fsN * 0.55
+        const nh = vert ? shown.length * fsN * 0.55 : fsN
+        const spot = pickSpot(
+          [cy, cy + hv * 0.18, cy - hv * 0.18].map((yy) => ({
+            y: yy,
+            box: { x: cx - nw / 2, y: yy - nh / 2, w: nw, h: nh },
+          })),
+        )
         labels.push(
           <text
             key={`n${p.cell}`}
             x={cx}
-            y={cy}
+            y={spot.y}
             fontSize={fsN}
             fill="#111"
             fontWeight="700"
             textAnchor="middle"
             dominantBaseline="middle"
-            transform={vert ? `rotate(-90 ${cx} ${cy})` : undefined}
+            transform={vert ? `rotate(-90 ${cx} ${spot.y})` : undefined}
             {...HALO}
           >
             {shown}
           </text>,
         )
+      }
       if (allDone) {
         const fs = Math.max(34, Math.min(80, Math.min(wv, hv) / 3))
         labels.push(
@@ -930,24 +1004,24 @@ function SheetSvg({
       {svgEl}
       <div className="absolute bottom-2 right-2 flex flex-col gap-1.5">
         <Button
-          variant="secondary"
-          className="size-12 border shadow-sm [&_svg]:size-6"
+          variant="outline"
+          className="size-12 bg-white shadow-md [&_svg]:size-6"
           onClick={() => zoomBy(1 / 1.5)}
           title="Kattalashtirish"
         >
           <Plus />
         </Button>
         <Button
-          variant="secondary"
-          className="size-12 border shadow-sm [&_svg]:size-6"
+          variant="outline"
+          className="size-12 bg-white shadow-md [&_svg]:size-6"
           onClick={() => zoomBy(1.5)}
           title="Kichiklashtirish"
         >
           <Minus />
         </Button>
         <Button
-          variant="secondary"
-          className="size-12 border shadow-sm [&_svg]:size-6"
+          variant="outline"
+          className="size-12 bg-white shadow-md [&_svg]:size-6"
           onClick={() => setVb(null)}
           title="To'liq ko'rinish"
         >
