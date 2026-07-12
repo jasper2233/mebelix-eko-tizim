@@ -71,18 +71,29 @@ jobs:
           code=$(curl -s -o /dev/null -w '%{http_code}' https://mes.mebelix.uz/api/v1/ready)
           [ "$code" = "200" ] || { echo "public ready: $code" >&2; exit 1; }
           curl -s https://mes.mebelix.uz/api/v1/ready
+
+  notify:
+    # Alohida job: CI (backend/frontend) yiqilsa deploy skip bo'ladi —
+    # notify deploy ichida bo'lsa xabar umuman ketmaydi. Bu yerda har doim ketadi.
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, frontend, deploy]
+    runs-on: ubuntu-latest
+    steps:
       - name: Telegram notify
-        if: always()
         env:
           # env orqali: commit message'dagi maxsus belgilar shell'ga tushmasin
           COMMIT_MSG: ${{ github.event.head_commit.message }}
-          JOB_STATUS: ${{ job.status }}
+          BACKEND: ${{ needs.backend.result }}
+          FRONTEND: ${{ needs.frontend.result }}
+          DEPLOY: ${{ needs.deploy.result }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TG_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TG_CHAT_ID }}
         run: |
-          if [ "$JOB_STATUS" = "success" ]; then
+          if [ "$DEPLOY" = "success" ]; then
             head="✅ MebeliX deploy OK"
+          elif [ "$DEPLOY" = "skipped" ]; then
+            head="❌ MebeliX CI YIQILDI (deploy boshlanmadi) — backend: $BACKEND, frontend: $FRONTEND"
           else
             head="❌ MebeliX deploy YIQILDI (avto-rollback ishlagan bo'lishi kerak)"
           fi

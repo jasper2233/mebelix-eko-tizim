@@ -275,9 +275,7 @@ async def read_terminal_orders(db: SessionDep, user: TerminalUser) -> list[dict]
             # karta uchun: arrachi plita bo'yicha partiyalab kesadi
             "materials": [m["name"] for m in o.material_usage if m.get("kind") == "sheet"],
             "sheets_total": sum(
-                int(s.get("mult") or 1)
-                for mat in (o.cutmap or {}).get("materials", [])
-                for s in mat.get("sheets", [])
+                int(s.get("mult") or 1) for mat in (o.cutmap or {}).get("materials", []) for s in mat.get("sheets", [])
             ),
             "has_cutmap": o.cutmap is not None,
         }
