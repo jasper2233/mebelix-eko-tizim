@@ -3,14 +3,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import {
-  Expand,
-  Lock,
-  LogOut,
-  ScanLine,
-  Undo2,
-  WifiOff,
-} from "lucide-react"
+import { Expand, Lock, LogOut, ScanLine, Undo2, WifiOff } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import {
