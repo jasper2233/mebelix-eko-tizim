@@ -217,7 +217,7 @@ export function CutmapView({
     ["Tirim en", material?.trimW ?? "—"],
   ]
   const statsRow = material ? (
-    <div className="num flex flex-wrap items-center justify-end gap-x-4 gap-y-0.5 text-xs">
+    <div className="num flex flex-wrap items-center justify-center gap-x-4 gap-y-0.5 text-xs">
       {statPairs.map(([l, v]) => (
         <span key={l} className="whitespace-nowrap">
           <span className="text-muted-foreground">{l}:</span> <b>{v}</b>

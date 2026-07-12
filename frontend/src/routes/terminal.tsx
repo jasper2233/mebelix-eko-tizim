@@ -283,7 +283,8 @@ function TerminalPage() {
       )}
       {/* Header (TZ 8.3.1) */}
       <header className="flex items-center gap-4 border-b bg-white px-4 py-2 shadow-sm">
-        <div>
+        {/* Ikkala blok bir xil shkala — qatordagi balandlik va baseline tekis turadi */}
+        <div className="shrink-0 whitespace-nowrap">
           <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             Ishlab chiqarish posti
           </div>
@@ -291,11 +292,11 @@ function TerminalPage() {
             {ctx?.post_name?.toUpperCase() ?? "—"}
           </div>
         </div>
-        <div className="hidden sm:block">
+        <div className="hidden shrink-0 whitespace-nowrap sm:block">
           <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             Aktiv uskuna
           </div>
-          <div className="text-sm font-semibold">
+          <div className="text-lg font-black text-foreground/80">
             {ctx?.machine_name ?? "—"}
           </div>
         </div>
@@ -325,7 +326,10 @@ function TerminalPage() {
         </div>
         <div
           ref={setStatsEl}
-          className={cn("min-w-0 flex-1 empty:hidden", !mapOpen && "hidden")}
+          className={cn(
+            "min-w-0 flex-1 px-4 empty:hidden",
+            !mapOpen && "hidden",
+          )}
         />
 
         {/* 48px toggle: qo'lqop bilan ham aniq; OFF holati qizil — skan to'xtagani ko'rinib tursin */}
