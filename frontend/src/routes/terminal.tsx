@@ -3,7 +3,15 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { Expand, Lock, LogOut, ScanLine, Undo2, WifiOff } from "lucide-react"
+import {
+  Expand,
+  Lock,
+  LogOut,
+  ScanLine,
+  Undo2,
+  UserRound,
+  WifiOff,
+} from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import {
@@ -345,6 +353,7 @@ function TerminalPage() {
 
         {/* Sessiya — ixcham chip (alohida qator o'rniga, vertikal joy tejaladi) */}
         <div className="hidden shrink-0 items-center gap-1.5 rounded-full border bg-white px-3 py-1.5 text-sm md:flex">
+          <UserRound className="size-4 text-muted-foreground" />
           {ctx?.session ? (
             <>
               <span className="size-2 rounded-full bg-green-500" />

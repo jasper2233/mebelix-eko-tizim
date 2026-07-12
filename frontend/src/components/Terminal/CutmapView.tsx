@@ -126,8 +126,14 @@ export function CutmapView({
   const { data, isLoading } = useQuery(getCutmapQueryOptions(orderId, admin))
   // GibLab uslubi: bitta sahifa (material tablar + list grid), list -> xarita
   const [materialIdx, setMaterialIdx] = useState(0)
-  const [sheetIdx, setSheetIdx] = useState<number | null>(null)
+  const [sheetIdx, setSheetIdxRaw] = useState<number | null>(null)
+  const setSheetIdx = (v: number | null) => {
+    setSheetIdxRaw(v)
+    setMarkedCell(null)
+  }
   const [selected, setSelected] = useState<SheetPart | null>(null)
+  // Bosilgan detal kartochka yopilgach ham moviy belgilangan qoladi
+  const [markedCell, setMarkedCell] = useState<number | null>(null)
   // GibLab toolbar zoom API (SheetSvg ro'yxatdan o'tkazadi)
   const zoomApi = useRef<{
     zin: () => void
@@ -406,8 +412,11 @@ export function CutmapView({
                 sheet={sheet}
                 holes={holes}
                 instancesByCell={instancesByCell as never}
-                onSelect={setSelected}
-                selectedCell={selected?.cell ?? null}
+                onSelect={(part) => {
+                  setSelected(part)
+                  setMarkedCell(part.cell)
+                }}
+                selectedCell={markedCell}
                 registerZoom={(a) => {
                   zoomApi.current = a
                 }}
