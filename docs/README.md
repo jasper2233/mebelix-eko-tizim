@@ -10,7 +10,7 @@ Loyihaning to'liq texnik hujjatlari. Har bir fayl o'z subsystemidagi **har bir m
 | [04-backend-data.md](04-backend-data.md) | Models (User, Item — jadval strukturalari), Pydantic schemas, CRUD layer, Alembic migrations, CLI commandlar, ARQ tasklar |
 | [05-frontend-app.md](05-frontend-app.md) | `frontend/src/`: routing (TanStack Router), auth flow, hooks, queries, generated API client, Vite/TS/Biome config |
 | [06-frontend-components.md](06-frontend-components.md) | Komponentlar: Admin (user CRUD), Common, Sidebar, UserSettings, shadcn/ui jadvali (custom o'zgartirishlar bilan) |
-| [07-infra-devops.md](07-infra-devops.md) | Docker Compose (local/prod), Dockerfilelar, Caddy, nginx, Makefile, scriptlar, pre-commit, env variablelar jadvali |
+| [07-infra-devops.md](07-infra-devops.md) | Docker Compose (local/prod), Dockerfilelar, Caddy, nginx, Makefile, scriptlar, pre-commit, CI/CD (avto-deploy, rollback, backup), env variablelar jadvali |
 | [08-packages.md](08-packages.md) | Paket versiyalari, 2026-07-09 upgrade tarixi, ataylab ushlab qolingan versiyalar (ceilinglar) va yangilash yo'llari |
 | [09-mes-domain.md](09-mes-domain.md) | MES domen qatlami (TT implementatsiyasi): data model, GibLab parser (CS blob, SCX), scan engine, real-time, chop etish (EZPL + bridge-agent), API xaritasi, frontend tuzilishi |
 | [Mebelix_MES_TZ_v2.2.docx](Mebelix_MES_TZ_v2.2.docx) | Texnik Topshiriq (TT) — talablarning yagona manbasi |

@@ -8,7 +8,7 @@ aloqa tiklangach bajariladi — hech bir yorliq yo'qolmaydi.
 
 O'rnatish (sexdagi istalgan kompyuter / mini-PC):
     pip install websockets
-    MES_URL=wss://app.mebelix.uz BRIDGE_TOKEN=... PRINTER_IP=192.168.1.90 python3 agent.py
+    MES_URL=wss://mes.mebelix.uz BRIDGE_TOKEN=... PRINTER_IP=192.168.1.90 python3 agent.py
 
 Env sozlamalari:
     MES_URL       — server manzili (wss://... yoki ws://host:8000)

@@ -61,6 +61,10 @@ If you are developing an API-only app and want to remove the frontend, you can d
 
 * In `docker-compose.prod.yml` and `docker-compose.local.yml`, remove the `frontend` service section.
 
+* In `docker-compose.prod.yml`, remove `frontend` from the `caddy` service's `depends_on`.
+
+* In `caddy/Caddyfile`, remove the catch-all `handle { reverse_proxy frontend:80 ... }` block ("Frontend application").
+
 Done, you have a frontend-less (api-only) app. 🤓
 
 ---

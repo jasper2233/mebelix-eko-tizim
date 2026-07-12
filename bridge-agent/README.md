@@ -13,11 +13,14 @@ pip install websockets
 ## Ishga tushirish
 
 ```bash
-MES_URL=wss://app.mebelix.uz \
+MES_URL=wss://mes.mebelix.uz \
 BRIDGE_TOKEN=<serverdagi BRIDGE_TOKEN> \
 PRINTER_IP=192.168.1.90 \
 python3 agent.py
 ```
+
+Ixtiyoriy env: `PRINTER_PORT` (default 9100), `QUEUE_FILE` (navbat fayli yo'lini
+almashtirish, default `./print-queue.jsonl`).
 
 Serverda `.env` ichida `BRIDGE_TOKEN` bir xil qiymatda bo'lishi shart
 (`openssl rand -hex 24` bilan yarating).
@@ -31,7 +34,7 @@ Description=MebeliX bridge-agent
 After=network-online.target
 
 [Service]
-Environment=MES_URL=wss://app.mebelix.uz
+Environment=MES_URL=wss://mes.mebelix.uz
 Environment=BRIDGE_TOKEN=CHANGE_ME
 Environment=PRINTER_IP=192.168.1.90
 WorkingDirectory=/opt/mebelix-bridge

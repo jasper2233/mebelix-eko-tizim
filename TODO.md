@@ -51,19 +51,20 @@ Har faza tugagach: lint + mypy + migratsiya + client regen o'tishi shart. Ushbu 
 ## Faza 5 — Frontend poydevor + dizayn tizimi ✅ (2026-07-10)
 - [x] Dizayn tokenlar: post ranglari (--post-*), status ranglari, `.num` tabular raqamlar, Archivo; imzo element — StagePipeline (6 bosqich zanjiri)
 - [x] Rolga qarab routing/sidebar (terminal→/terminal, tablo→/tablo redirect; menyu TZ 3.7 matritsa bo'yicha)
-- [x] API client regen (12 servis) + query keys (`queries/mes.ts`)
+- [x] API client regen (14 servis) + query keys (`queries/mes.ts`)
 - [x] Umumiy komponentlar: StatusBadge, StagePipeline, PageHeader; `lib/mes.ts` (uzbek labellar, formatlash)
 
 ## Faza 6 — Admin panel modullari (TT 10) — asosiylari ✅ (2026-07-10)
 - [x] Dashboard: stanok kartalari (post rangi, holat, quvvat), aktiv buyurtmalar StagePipeline progress, LIVE indikator (WS)
-- [x] Buyurtmalar: reestr (7 tab filtr, search), yangi buyurtma modal (mijoz lookup+yangi), kartochka (metadata, fayl yuklash, Tayyor/Uzatish/TOPSHIRILDI/Bekor qilish, fayllar ro'yxati + yuklab olish)
+- [x] Buyurtmalar: reestr (7 tab filtr — texnolog 5 ta ko'radi, draft/cancelled yashirin; search), yangi buyurtma modal (mijoz lookup+yangi), kartochka (metadata, fayl yuklash, Tayyor/Uzatish/TOPSHIRILDI/Bekor qilish, fayllar ro'yxati + yuklab olish)
 - [x] Texnolog matritsasi (interaktiv: bosqich checkboxlar, ARRA qulflangan, izohlar; progress katakchalar)
 - [x] Stanok tanlovi (MachineAssign — requires_assignment_choice postlar)
 - [x] Mijozlar, Hodimlar (beyjik QR ko'rish/chop/regen), Stanoklar (+post rang chiplar), Materiallar
 - [x] Foydalanuvchilar (rol + terminal/tablo uchun stanok tanlash), Logs, Tranzaksiyalar (modul filtri)
-- [ ] Efficiency % / ~tugatish vaqti prognozi (capacity formula) — Faza 9 hisobotlar bilan
-- [ ] Kesish xaritasini admin panelda ko'rish + PDF chop (manager/texnolog, TT 10.3) 
-- [ ] Excel eksport tugmalari — Faza 9
+- [x] ~tugatish vaqti prognozi (capacity formula) — Faza 9 dashboard prognoz (`/reports/dashboard` forecast_hours)
+- [ ] Efficiency % ko'rsatkichi — keyingi iteratsiya
+- [x] Kesish xaritasini admin panelda ko'rish + PDF chop (manager/texnolog, TT 10.3) — Faza 9 (`/cutmap/$orderId`)
+- [x] Excel eksport tugmalari — Faza 9 (`?format=xlsx`)
 
 ## Faza 7 — Operator terminali (TT 8) ✅ (2026-07-10)
 - [x] /terminal route (rol guard), beyjik UUID → sessiya (bir input: beyjik ham QR ham), sessiya yakunlash
@@ -80,7 +81,7 @@ Har faza tugagach: lint + mypy + migratsiya + client regen o'tishi shart. Ushbu 
 - [x] Matritsa (buyurtma × 6 bosqich), katakcha holatlari (✓ yashil / progress / qizil BOSHLANMADI muddat o'tganda), backend `/tablo/matrix`
 - [x] HAJM/SONI/FOIZ rejimlar (hajm: ARRA m², KROMKA m; PAZ dona — ponytail ceiling), drill-down (detal × bosqich)
 - [x] Real-time WS + auto-refresh 5min + OFFLINE indikator
-- [ ] JAMI HAJM qatori (yuqori agregat) — keyingi iteratsiya
+- [x] JAMI HAJM qatori (yuqori agregat) — Faza 9 da qilindi
 
 ## Faza 9 — Hisobotlar, chop etish, yakuniy ✅ asosiy (2026-07-10)
 - [x] Hisobotlar (`/reports/*`): mahsuldorlik (hodim reytingi, kun/soat o'rtacha), buyurtmalar holati (kechikkanlar, bekor sabablari), material sarfi (`order.material_usage` dan) — hammasi `?format=xlsx` Excel bilan (openpyxl)
@@ -102,3 +103,11 @@ Har faza tugagach: lint + mypy + migratsiya + client regen o'tishi shart. Ushbu 
 - 2026-07-10 (b5ee41d): operator rollari (arrachi..stolyar, POST_ROLES, scan/payroll uchun avto Employee mirror); buyurtma oqimi teskari qilindi — manager confirm (narx majburiy) → texnolog .project yuklaydi → start fayl talab qiladi; to'lov oqimi (`advance_payment` + migratsiya `7d2c9f5e1b3a`); `GET /orders/status-counts`; GibSaw-parity cutmap (dims zanjirlari, dublikat detal kodlari rename); chek-uslub EZPL + `labels/{id}.png` PNG (yangi deplar: pillow, qrcode, tzdata); frontend: EditOrder, uz DatePicker, telefon/pul auto-formatlash.
 - 2026-07-10 (f7b901d): terminal 17" touch UX — boy loyiha kartalari (priority, ARRA progress, topshirish sanasi; `GET /terminal/orders`), haqiqiy fullscreen lock overlay, operator logout, glove-mode 48px nishonlar, barcha xaritalarni bitta PDF da chop etish.
 - 2026-07-10 (5db2d80): prod Caddy port bindinglari parametrlandi (`CADDY_HTTP_BIND`/`CADDY_HTTPS_BIND`, docker-compose.prod.yml) — mavjud host nginx (ISPmanager) ortida ishlatish uchun (127.0.0.1:8200/8443 + SITE_ADDRESS=:80 retsepti).
+- 2026-07-11 (3e30b26): DRAFT/CANCELLED buyurtmalar texnologdan yashirildi (backend filtri + reestrda 5 tab) — buyurtma texnolog navbatiga confirm'dan keyin tushadi.
+- 2026-07-11 (9ff88b7, 4b4ce8b): server-side qidiruvli ClientCombobox; dialog ichida yopishib qolish fix, priority nuqtalari qaytarildi.
+- 2026-07-11 (28d4118): login redesign — CutmapArt imzo paneli (AuthLayout), inline auth xato xabari.
+- 2026-07-11 (729b6be): brand rang tokenlari, PRIORITY_* ranglar yagona manbadan.
+- 2026-07-11 (09ec838): deploy fix — gunicorn `--forwarded-allow-ips`, IPv4 healthcheck.
+- 2026-07-11 (bcb477a): CI — yashil main dan prodga avto-deploy.
+- 2026-07-12 (1e24df6): deploy.sh — smoke yiqilsa oxirgi stable tagga avto-rollback.
+- 2026-07-12 (4e4f5ec): Telegram deploy xabarnomalari (CI) + kunlik shifrlangan DB backup (`scripts/backup.sh`).

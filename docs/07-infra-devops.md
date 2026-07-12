@@ -81,13 +81,14 @@ Lokal composeda Caddy yo'q — frontend nginx'i to'g'ridan-to'g'ri `3000` portda
 Lokaldan asosiy farqlar:
 
 - **Hech qanday servis DB/Redis/API portini hostga ochmaydi** — `api` va `frontend` faqat `expose` qiladi; tashqi dunyoga faqat `caddy` port ochadi, host binding parametrlangan: `${CADDY_HTTP_BIND:-80}:80` va `${CADDY_HTTPS_BIND:-443}:443` (default — to'g'ridan-to'g'ri `80`/`443`).
+- **Image'lar `TAG` bilan parametrlangan** — `mebelix-mes-backend:${TAG:-latest}` / `mebelix-mes-frontend:${TAG:-latest}`; CI `TAG` sifatida git sha beradi (rollback uchun, pastda `scripts/deploy.sh`), default `latest` — lokal qo'lda ishga tushirishga. `worker` `api` image'ini qayta ishlatadi — alohida build yo'q.
 - **`api`** production serverda ishlaydi:
   ```
-  bash -c "/app/scripts/prestart.sh && gunicorn app.main:app -w ${GUNICORN_WORKERS:-4} -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000"
+  bash -c "/app/scripts/prestart.sh && gunicorn app.main:app -w ${GUNICORN_WORKERS:-4} -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 --forwarded-allow-ips '*'"
   ```
-  `env_file: .env` orqali to'liq konfiguratsiya, `POSTGRES_SERVER=db` / `REDIS_HOST=redis` override. `restart: always`. Healthcheck: `curl -f http://localhost:8000/api/v1/health` (`start_period: 40s`) — `caddy` shu healthcheck'ka tayanadi.
+  `--forwarded-allow-ips` flag sifatida beriladi, chunki gunicorn `FORWARDED_ALLOW_IPS` env'ini ham o'qiydi va pydantic'ning JSON list formati (`'["*"]'`) uni yiqitadi. `env_file: .env` orqali to'liq konfiguratsiya, `POSTGRES_SERVER=db` / `REDIS_HOST=redis` override. `restart: always`. Healthcheck: `curl -f http://localhost:8000/api/v1/health` (`start_period: 40s`) — `caddy` shu healthcheck'ka tayanadi.
 - **`db` / `redis`** credentiallari defaultsiz — `.env` da majburiy (`${POSTGRES_USER}` va h.k.).
-- **`frontend`** `VITE_API_URL=""` (bo'sh string) bilan build qilinadi — generatsiyalangan SDK yo'llari allaqachon `/api/v1` bilan boshlanadi, shuning uchun bo'sh base same-origin so'rovlar beradi va ularni Caddy backendga proxy qiladi (avvalgi `/api` qiymati so'rovlarni `/api/api/v1` ga aylantirib 404 berardi). Qo'shimcha build-arg: `VITE_API_TIMEOUT_MS` (`${VITE_API_TIMEOUT_MS:-30000}`). `wget --spider` healthcheck.
+- **`frontend`** `VITE_API_URL=""` (bo'sh string) bilan build qilinadi — generatsiyalangan SDK yo'llari allaqachon `/api/v1` bilan boshlanadi, shuning uchun bo'sh base same-origin so'rovlar beradi va ularni Caddy backendga proxy qiladi (avvalgi `/api` qiymati so'rovlarni `/api/api/v1` ga aylantirib 404 berardi). Qo'shimcha build-arg: `VITE_API_TIMEOUT_MS` (`${VITE_API_TIMEOUT_MS:-30000}`). Healthcheck `wget --spider http://127.0.0.1/` ga qadalgan — konteyner ichida `localhost` `::1` ga ketadi, nginx esa faqat IPv4 tinglaydi.
 - **`caddy`** — `caddy:2-alpine`, `./caddy/Caddyfile` read-only mount, `caddy_data` (TLS sertifikatlar) va `caddy_config` volumelari. `SITE_ADDRESS` env (default `:80`). `depends_on`: `api` `service_healthy`, `frontend` `service_started` — Caddy backend tayyor bo'lgandan keyingina start oladi. Healthcheck `http://localhost:8080/healthz` orqali — Caddyfile'dagi alohida `:8080` health blokiga (asosiy `:80` emas, chunki `SITE_ADDRESS` domen bo'lganda `:80` HTTPS'ga avto-redirect qiladi).
 
 Ishga tushirish: `.env` ni production qiymatlar bilan to'ldirish (ayniqsa `SECRET_KEY`, `POSTGRES_PASSWORD`, `ADMIN_PASSWORD`, `SITE_ADDRESS`, `ENVIRONMENT=production`), so'ng `make docker-prod`.
@@ -121,7 +122,7 @@ Blok ichida: security headerlar (`X-Frame-Options SAMEORIGIN`, `X-Content-Type-O
 
 Asosiy site blokidan tashqari alohida **`:8080` bloki** bor — `respond /healthz "OK" 200`. Bu Docker healthcheck uchun doimiy plain-HTTP endpoint: `SITE_ADDRESS` domenga o'tib asosiy blok TLS'ga ko'chganda ham ishlayveradi.
 
-Backend `X-Forwarded-*` headerlariga ishonishi `.env` dagi `FORWARDED_ALLOW_IPS` bilan boshqariladi.
+Backend `X-Forwarded-*` headerlariga ishonishi ikki qatlamli: app-level `ProxyHeadersMiddleware` haliyam `.env` dagi `FORWARDED_ALLOW_IPS` dan oladi, lekin prod'da gunicorn darajasi `--forwarded-allow-ips '*'` flagi bilan qattiq belgilangan (yuqoridagi `api` command).
 
 ### `frontend/nginx/index.conf` — konteyner ichidagi static server
 
@@ -147,7 +148,7 @@ Muhim: build context — **repo root** (`context: .`), chunki image'ga `scripts/
 ### `frontend/Dockerfile` — multi-stage, Node → nginx
 
 1. **build-stage** — `node:24-alpine` (versiya `frontend/.nvmrc` dagi `24` bilan mos). `package*.json` avval ko'chiriladi → `npm ci` (layer caching), keyin kod. `ARG VITE_API_URL` va `ARG VITE_API_TIMEOUT_MS` (default `30000`) build vaqtida env'ga aylanadi — Vite build'ga statik ravishda "pishiriladi" (shuning uchun lokal va prod composelar turli `VITE_API_URL` bilan alohida build qiladi). `npm run build` → `tsc && vite build` → `dist/`.
-2. **Runtime** — `nginx:1.29-alpine`. Default config o'chiriladi, `dist/` → `/usr/share/nginx/html`, `nginx/index.conf` → `default.conf`. `HEALTHCHECK` — `wget --spider http://localhost/`.
+2. **Runtime** — `nginx:1.29-alpine`. Default config o'chiriladi, `dist/` → `/usr/share/nginx/html`, `nginx/index.conf` → `default.conf`. `HEALTHCHECK` — `wget --spider http://localhost/` (prod compose buni `http://127.0.0.1/` bilan override qiladi — nginx faqat IPv4 tinglaydi).
 
 ---
 
@@ -166,6 +167,14 @@ Ikkala composeda ham `api` command zanjirining birinchi qismi. Uch qadam: `alemb
 ### `scripts/generate-client.sh` — OpenAPI → TypeScript client
 
 `make frontend-gen` chaqiradi. Oqim: `backend/` da `app.main.app.openapi()` ni Python orqali JSON'ga dump → `frontend/openapi.json`; keyin `npm run generate-client` (`@hey-api/openapi-ts`, `frontend/package.json` dagi `generate-client: openapi-ts` script) → `frontend/src/client/`; oxirida `npx biome format --write ./src/client`. Backend endpoint/schema o'zgarganda shu buyruqni qayta ishlatish kerak (`frontend/README.md` da ham qo'lda variant tasvirlangan).
+
+### `scripts/deploy.sh` — prod deploy avto-rollback bilan
+
+CI chaqiradi: `TAG=<git sha> bash scripts/deploy.sh`. Oqim: build (yiqilsa eski stack joyida qoladi) → yangi `TAG` ga switch (`docker compose up -d`) → smoke. Smoke `SMOKE_URL` ga uradi (default `http://127.0.0.1:8200/api/v1/ready`) — `/api/v1/ready` DB+Redis'ni tekshiruvchi readiness probe (`/api/v1/health` dan farqli, u faqat process tirikligini aytadi); CI'ning public smoke'i ham shu endpointga uradi. Smoke o'tsa `TAG` `.stable_tag` fayliga yoziladi va eski image'lar tozalanadi (joriy + oldingi stable qoladi); yiqilsa `.stable_tag` dagi oxirgi barqaror tag'ga avto-rollback qilinadi. **Muhim qoida: rollback DB'ni pastga tushirmaydi — migratsiyalar additive bo'lishi shart** (ustun/jadval qo'shish; eski kod yangi ustunlarga chidashi kerak).
+
+### `scripts/backup.sh` — kunlik shifrlangan DB backup
+
+Server cron'ida kunlik ishlaydi (`0 2 * * *`). Oqim: `pg_dump` (db konteyneri ichida) | `gzip` | `openssl aes-256-cbc -pbkdf2` (parol — `.env` dagi `ADMIN_PASSWORD`), so'ng natija Telegram'ga document sifatida yuboriladi. `.env` dan tashqari `.backup.env` fayli kerak (`TG_BOT_TOKEN`, `TG_CHAT_ID`). Ochish: `openssl enc -d -aes-256-cbc -pbkdf2 -in FILE.sql.gz.enc | gunzip > dump.sql`.
 
 ---
 
@@ -186,14 +195,17 @@ Ikkala composeda ham `api` command zanjirining birinchi qismi. Uch qadam: `alemb
 
 ### `.github/workflows/ci.yml` — GitHub Actions
 
-`main` ga push va har bir pull request'da ishga tushadi; ikkita parallel job:
+`main` ga push va har bir pull request'da ishga tushadi; uchta job — `backend` va `frontend` parallel, `deploy` ularga bog'liq:
 
 | Job | Qadamlar |
 |---|---|
 | `backend` | `astral-sh/setup-uv` → `uv --project backend sync --all-groups` → `ruff check app` + `ruff format --check app` → `mypy app` → `python -m tests.test_giblab` (GibLab parser testlari) |
 | `frontend` | `actions/setup-node` (versiya `frontend/.nvmrc` dan, npm cache) → `npm ci` → `npx biome ci .` → `npm run build` (`tsc && vite build`) |
+| `deploy` | faqat `main` ga push + ikkala job yashil bo'lsa (`needs: [backend, frontend]`); `concurrency: prod-deploy` (parallel deploy yo'q). Qadamlar: SSH key setup → `rsync` kodni `root@DEPLOY_HOST:/opt/mebelix-mes` ga (`.git`/`node_modules`/`.venv`/`dist`/`uploads`/`.env` exclude) → `ssh` orqali `TAG=<git sha> bash scripts/deploy.sh` → public smoke `https://mes.mebelix.uz/api/v1/ready` (nginx/TLS yo'li orqali). Secrets: `DEPLOY_SSH_KEY`, `DEPLOY_HOST` |
 
-Ya'ni sifat nazorati ikki qatlamli: lokalda pre-commit + `make lint`, remote'da GitHub Actions har push/PR'ni tekshiradi.
+`deploy` job oxirida **Telegram notify** qadami bor (`if: always()`): success/failure holati + commit subject + Actions run URL Telegram'ga yuboriladi. Secrets: `TG_BOT_TOKEN`, `TG_CHAT_ID`.
+
+Ya'ni sifat nazorati ikki qatlamli: lokalda pre-commit + `make lint`, remote'da GitHub Actions har push/PR'ni tekshiradi, yashil `main` esa avtomatik prodga chiqadi.
 
 ---
 
@@ -235,7 +247,7 @@ Ya'ni sifat nazorati ikki qatlamli: lokalda pre-commit + `make lint`, remote'da 
 | `PRINTER_PORT` | `9100` | Printer TCP porti |
 | `BRIDGE_TOKEN` | `""` (bo'sh) | `openssl rand -hex 24` bilan generatsiya qilinadi; bo'sh bo'lmasa `/ws/bridge` endpoint yoqiladi (bridge-agent autentifikatsiyasi) |
 
-Eslatma: `CADDY_HTTP_BIND` / `CADDY_HTTPS_BIND` `.env.example` da yo'q — ular `docker-compose.prod.yml` dagi compose-level substitutsiyalar (defaultlari `80` / `443`); behind-nginx rejimida `.env` ga qo'lda qo'shiladi.
+Eslatma: `CADDY_HTTP_BIND` / `CADDY_HTTPS_BIND` `.env.example` da yo'q — ular `docker-compose.prod.yml` dagi compose-level substitutsiyalar (defaultlari `80` / `443`); behind-nginx rejimida `.env` ga qo'lda qo'shiladi. `TAG` ham shu kategoriyada — compose-level substitutsiya (default `latest`), CI uni git sha bilan beradi.
 
 ---
 
@@ -251,7 +263,7 @@ Bitta qoida: `* text=auto eol=lf` — barcha matn fayllar LF line-ending bilan n
 
 ### `.gitignore`
 
-Standart Python artefaktlari (`__pycache__`, egg/build/dist), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
+Standart Python artefaktlari (`__pycache__`, egg/build/dist), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. MES runtime artefaktlari ham ignore: `backend/uploads/`, `bridge-agent/print-queue.jsonl`, `frontend/openapi.json`, hamda lokal sex ma'lumotlari `uploads/` va `chek/`. E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
 
 ---
 
@@ -259,7 +271,7 @@ Standart Python artefaktlari (`__pycache__`, egg/build/dist), virtualenvlar (`.v
 
 ### `backend/pyproject.toml`
 
-`mebelix-backend` 0.1.0, `requires-python >=3.11, <3.14`, build-backend `hatchling` (faqat `app/` package). Asosiy runtime dependencylar: `fastapi`, `uvicorn` + `uvloop`, `gunicorn`, `SQLAlchemy` 2 + `asyncpg` + `alembic`, `pydantic`/`pydantic-settings`, `pyjwt[crypto]` + `bcrypt`, `redis` + `arq` (queue/worker), `prometheus-fastapi-instrumentator` (metrics), `uuid6`, `httpx`. Dev group: `mypy`, `ruff`, `pre-commit`, `types-redis`. Tooling konfiguratsiyasi shu faylda: **ruff** (`target-version py311`, line-length 120, `F/E/W/C/UP/I` rulesetlar, `__init__.py` da unused/star import istisno) va **mypy** (`python_version 3.11`, `app.*` uchun `disallow_untyped_defs = true`).
+`mebelix-backend` 0.1.0, `requires-python >=3.11, <3.14`, build-backend `hatchling` (faqat `app/` package). Asosiy runtime dependencylar: `fastapi`, `uvicorn` + `uvloop`, `gunicorn`, `SQLAlchemy` 2 + `asyncpg` + `alembic`, `pydantic`/`pydantic-settings`, `pyjwt[crypto]` + `bcrypt`, `redis` + `arq` (queue/worker), `prometheus-fastapi-instrumentator` (metrics), `uuid6`, `httpx`, `openpyxl` (Excel), `pillow` + `qrcode` (yorliq PNG), `tzdata`. Dev group: `mypy`, `ruff`, `pre-commit`, `types-redis`, `types-openpyxl`, `websockets`. Tooling konfiguratsiyasi shu faylda: **ruff** (`target-version py311`, line-length 120, `F/E/W/C/UP/I` rulesetlar, `__init__.py` da unused/star import istisno) va **mypy** (`python_version 3.11`, `app.*` uchun `disallow_untyped_defs = true`).
 
 ### `frontend/package.json` va `frontend/.nvmrc`
 
@@ -267,7 +279,7 @@ Standart Python artefaktlari (`__pycache__`, egg/build/dist), virtualenvlar (`.v
 
 ### `backend/README.md`
 
-Hozircha **bo'sh fayl (0 bayt)** — `pyproject.toml` dagi `readme = "README.md"` deklaratsiyasini qanoatlantirish uchun mavjud. Backend hujjatlari `docs/` katalogida.
+Backend dev qo'llanmasi: texnologiyalar ro'yxati, `make setup` yoki qo'lda setup (`uv sync`, `.env`, migratsiyalar, superuser, seed), ishga tushirish (`make run-backend` / `make docker-local`), ARQ worker, test/lint/migratsiya buyruqlari. `docs/07-infra-devops.md` va `docs/09-mes-domain.md` ga yo'naltiradi.
 
 ### `LICENSE.md`
 

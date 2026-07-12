@@ -32,7 +32,7 @@ uv run python -m app.commands.seed_defaults        # default tashkilot + 6 post 
 
 ```bash
 make run-backend    # lokal: uvicorn app.main:app --reload (http://localhost:8000)
-make docker-local   # yoki: db + redis + api konteynerlarda (prestart.sh migratsiya+seed ni o'zi bajaradi)
+make docker-local   # yoki: db + redis + api + worker (ARQ) + frontend (port 3000) konteynerlarda (prestart.sh migratsiya+seed ni o'zi bajaradi)
 ```
 
 Swagger UI: http://localhost:8000/docs (faqat non-production; `ENVIRONMENT=local` da ochiq, staging da superuser talab qilinadi).

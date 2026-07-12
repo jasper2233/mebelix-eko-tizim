@@ -1,6 +1,6 @@
 # Frontend Components (Admin, Clients, Common, Orders, Pending, Sidebar, Terminal, UserSettings, ui)
 
-Ushbu hujjat `frontend/src/components/` katalogidagi React komponentlarini qamrab oladi. Stack: React + TypeScript, TanStack Router/Query/Table, react-hook-form + zod, shadcn/ui (Radix UI + Tailwind CSS 4). Barcha komponentlar backend bilan avtomatik generatsiya qilingan `@/client` (UsersService, ClientsService, OrdersService, TerminalService va model turlari) orqali gaplashadi; umumiy query'lar `@/queries/mes` dagi `queryOptions` fabrikalarida (getClients/getMachines/getPosts/getOrderMatrixQueryOptions va h.k.), domen konstantalari `@/lib/mes` da (ROLE_LABELS, PRIORITY_LABELS, POST_COLORS, ORDER_STATUS_LABELS/COLORS, formatSize); toast xabarlari `useCustomToast` hooki, xatoliklar `handleError` utiliti orqali ko'rsatiladi.
+Ushbu hujjat `frontend/src/components/` katalogidagi React komponentlarini qamrab oladi. Stack: React + TypeScript, TanStack Router/Query/Table, react-hook-form + zod, shadcn/ui (Radix UI + Tailwind CSS 4). Barcha komponentlar backend bilan avtomatik generatsiya qilingan `@/client` (UsersService, ClientsService, OrdersService, TerminalService va model turlari) orqali gaplashadi; umumiy query'lar `@/queries/mes` dagi `queryOptions` fabrikalarida (getClients/getMachines/getPosts/getOrderMatrixQueryOptions va h.k.), domen konstantalari `@/lib/mes` da (ROLE_LABELS, PRIORITY_LABELS, PRIORITY_DOT_CLASSES/PRIORITY_TEXT_CLASSES — prioritet ranglari yagona manbadan, POST_COLORS, ORDER_STATUS_LABELS/COLORS, formatSize); toast xabarlari `useCustomToast` hooki, xatoliklar `handleError` utiliti orqali ko'rsatiladi.
 
 Umumiy naqsh (pattern): **forma → zod schema → react-hook-form → useMutation → @/client servisi → toast + query invalidation**. Barcha UI matnlari o'zbek tilida.
 
@@ -73,8 +73,17 @@ if (data.password) payload.password = data.password
 **Maqsadi:** yangi mijoz yaratish dialogi (TZ 4.6) — mustaqil ham, boshqa forma ichidan ham ishlaydi.
 
 - zod: `full_name` (min 2 belgi), `phone`/`phone_alt` (`optionalFormattedPhoneSchema`), `address`, `notes`; telefon inputlari yozish paytida `formatUzPhone` bilan "+998 90 123 45 67" ko'rinishida maskalash qiladi.
-- Props: `trigger?` (default "+ Yangi mijoz" tugmasi o'rniga istalgan React node) va `onCreated?(client)` — `Orders/AddOrder` shulardan foydalanib mijozni inline yaratadi va selectda avtomatik tanlaydi.
+- Props: `trigger?` (default "+ Yangi mijoz" tugmasi o'rniga istalgan React node) va `onCreated?(client)` — `Clients/ClientCombobox` popover footeri shulardan foydalanib mijozni inline yaratadi va combobox'da avtomatik tanlaydi.
 - Mutation: `ClientsService.createClient`; muvaffaqiyatda toast, reset, dialog yopilib `onCreated?.(client)` chaqiriladi; `["clients"]` invalidatsiyasi.
+
+### `frontend/src/components/Clients/ClientCombobox.tsx`
+
+**Maqsadi:** server-qidiruvli mijoz tanlagich — ro'yxat backend `?search=` bilan filtrlanadi, mijozlar soni mingga yetsa ham ishlaydi.
+
+- Qidiruv 300ms debounce bilan `getClientsQueryOptions(search)` ga uzatiladi (`enabled: open`); ArrowUp/ArrowDown/Enter klaviatura navigatsiyasi.
+- Dialog ichida ishlashi uchun `Popover` `modal` rejimda; `onOpenAutoFocus` da Radix avto-fokusi bekor qilinib, fokus qidiruv inputiga beriladi.
+- Props: `value`/`onChange`, `initialLabel?` (tanlangan mijoz nomi tashqaridan kelganda, masalan EditOrder), `disabled?`.
+- Popover footerida inline `AddClient` ("Yangi mijoz qo'shish" ghost tugma trigger, `onCreated` yangi mijozni avtomatik tanlaydi). `Orders/AddOrder` va `Orders/EditOrder` da ishlatiladi.
 
 ---
 
@@ -84,7 +93,7 @@ if (data.password) payload.password = data.password
 
 **Maqsadi:** login sahifasi uchun ikki ustunli layout.
 
-- Chap ustun (faqat `lg:` da): navy gradient (`#2f496e → #1c2e49`) fon, markazda oltin `logo-gold.png`, burchakda katta shaffof `icon-gold.png` watermark (opacity 0.09).
+- Chap ustun (faqat `lg:` da): solid `bg-(--brand-navy-deep)` fon, ustida animatsiyali `CutmapArt` SVG — stilize kesish xaritasi (2440×1220 plita, GibSaw uslubi), chiziqlar `mx-draw`/`mx-fade` animatsiyalari bilan `--brand-gold` rangda chizilib paydo bo'ladi; `logo-gold.png` tepada (`self-start`), pastda tagline bloki ("Ishlab chiqarishni boshqarish tizimi" + "Kesishdan yetkazishgacha — har bir detal nazorat ostida.").
 - O'ng ustun: markazlangan `max-w-md` forma konteyneri (`children`), pastda `Footer`; mobil ko'rinishda navy watermark (`icon-navy.png`).
 - Hozircha yagona auth route — `routes/login.tsx` shu layout bilan o'raladi (signup route yo'q).
 
@@ -95,7 +104,7 @@ if (data.password) payload.password = data.password
 - Props: `open`, `onOpenChange`, `title`, `description?`, `confirmText?` (default "Tasdiqlash"), `cancelText?` (default "Bekor qilish"), `destructive?`, `loading?`, `onConfirm`.
 - Tasdiqlash tugmasi `LoadingButton` (`variant={destructive ? "destructive" : "default"}`).
 
-**Foydalanuvchilari:** `Admin/DeleteUser.tsx`, `UserSettings/DeleteAccount.tsx`.
+**Foydalanuvchilari:** `Admin/DeleteUser.tsx`, `UserSettings/DeleteAccount.tsx`, `routes/_layout/orders/$orderId.tsx`, `routes/terminal.tsx`.
 
 ### `frontend/src/components/Common/DataTable.tsx`
 
@@ -113,7 +122,7 @@ if (data.password) payload.password = data.password
 
 ### `frontend/src/components/Common/Footer.tsx`
 
-**Maqsadi:** oddiy footer — `MebeliX - {joriy yil}`. `AuthLayout` ichida ishlatiladi.
+**Maqsadi:** oddiy footer — `MebeliX MES · {joriy yil}`. `AuthLayout` ichida ishlatiladi.
 
 ### `frontend/src/components/Common/NotFound.tsx`
 
@@ -145,14 +154,14 @@ Buyurtma sahifalari (`/orders`, `/orders/$orderId`) uchun dialog va jadval kompo
 **Maqsadi:** yangi buyurtma dialogi ("+ Yangi buyurtma") — raqamni tizim beradi (B-YYYY-NNN), fayl keyin texnolog tomonidan yuklanadi.
 
 - zod: `client_id` (majburiy), `deadline?`, `priority` enum (low/medium/high/urgent, default medium, `PRIORITY_LABELS`), `amount` (majburiy), `advance_payment?`, `notes?`; `.refine()` — boshlang'ich to'lov umumiy narxdan oshmasligi kerak.
-- Mijoz `Select` (`getClientsQueryOptions`) yonida inline `Clients/AddClient` (`+` icon trigger, `onCreated` yangi mijozni avtomatik tanlaydi); deadline — `ui/date-picker` DatePicker; pul maydonlari `formatMoneyInput` bilan ming ajratkichli.
+- Mijoz maydoni — `Clients/ClientCombobox` (server-side qidiruvli; yangi mijoz combobox popover footeridagi inline `AddClient` orqali qo'shiladi); deadline — `ui/date-picker` DatePicker; prioritet `Select` bandlarida `PRIORITY_DOT_CLASSES` rangli nuqtalar; pul maydonlari `formatMoneyInput` bilan ming ajratkichli.
 - Mutation: `OrdersService.createOrder`; muvaffaqiyatda toast va yangi buyurtma sahifasiga `navigate`.
 
 ### `frontend/src/components/Orders/EditOrder.tsx`
 
 **Maqsadi:** buyurtmani tahrirlash dialogi (manager) — AddOrder bilan bir xil schema/maydonlar, qiymatlar `values:` orqali `order` dan olinadi.
 
-- Mijoz select `disabled={!isDraft}` — DRAFT dan keyin mijoz almashtirilmaydi ("faqat qoralamada almashtiriladi"; backend ham shu qoidani ushlaydi).
+- Mijoz maydoni — `ClientCombobox` (`initialLabel={order.client_name}`, `disabled={!isDraft}`) — DRAFT dan keyin mijoz almashtirilmaydi ("faqat qoralamada almashtiriladi"; backend ham shu qoidani ushlaydi); prioritet `Select` bandlarida `PRIORITY_DOT_CLASSES` rangli nuqtalar.
 - Mutation: `OrdersService.updateOrder`; muvaffaqiyatda `onSaved()` callback.
 
 ### `frontend/src/components/Orders/MachineAssign.tsx`
@@ -219,7 +228,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida, alohida app header/foot
 
 - Chap panel: materiallar ro'yxati (har birida bajarilgan/jami list hisobi) + GibSaw uslubidagi 9 katakli statistika (KK/KD/KO/DR/KR/PZ/TP/TD/TSh — listlar, detallar, atxot, rez metri/soni, to'ldirish %, arra qalinligi, tirim) + zich listlar ro'yxati (×mult, ✓ belgilar).
 - `SheetSvg` — to'liq list SVG: g'ildirak zoom (kursor nuqtasiga), pan va ikki barmoqli pinch (Pointer Events); halo-konturlangan yorliqlar, atxot uchun zebra pattern, `sheet.dims` root-strip **o'lcham zanjirlari** (strelka/extension chiziqlar bilan), teshik (bore) va yon (edge-bore) overlaylar real masshtabda.
-- `PartCard` dialogi: detal eskizi (`PartPreview`), katta QR (`qrcode.react`, qr_text bilan) va har instansiya uchun "YORLIQ CHOP ETISH" — PNG yorliq yangi tabda ochiladi (`/api/v1/terminal/labels/{id}.png`, istalgan printerga) + parallel GoDEX navbatiga yuboriladi (`TerminalService.printInstanceLabel`).
+- `PartCard` dialogi: detal eskizi (`PartPreview`), katta QR (`qrcode.react`, qr_text bilan) va har instansiya uchun "YORLIQ CHOP ETISH" (faqat terminal rejimida — `admin` bo'lsa yashirin) — PNG yorliq yangi tabda ochiladi (`/api/v1/terminal/labels/{id}.png`, istalgan printerga) + parallel GoDEX navbatiga yuboriladi (`TerminalService.printInstanceLabel`).
 - `printAllMaps` — barcha xaritalarni chop etish: har list o'z A4 landscape sahifasida, "Material | №N — L × W mm × k list" sarlavhasi bilan; sahifadagi "PDF / Chop etish" tugmasiga `registerPrint` prop orqali ulanadi.
 
 ### `frontend/src/components/Terminal/audio.ts`
@@ -323,8 +332,9 @@ shadcn'da yo'q, to'liq loyihaga yozilgan o'zbekcha sana tanlagich: `react-day-pi
 ```
 routes (_layout sahifalar)                      routes (terminal / cutmap)
   ├─ PageHeader / StatusBadge / StagePipeline     ├─ CutmapView (SheetSvg → PartCard + QR)
-  ├─ AddOrder ─── AddClient (inline)              └─ audio (playSuccess/Error/Warning)
-  ├─ EditOrder / MachineAssign / OrderMatrix
+  ├─ AddOrder / EditOrder ── ClientCombobox       └─ audio (playSuccess/Error/Warning)
+  │                            └─ AddClient (inline)
+  ├─ MachineAssign / OrderMatrix
   ├─ AddUser
   ├─ DataTable + columns
   │    └─ UserActionsMenu ─ EditUser / DeleteUser ─ ConfirmDialog
@@ -339,8 +349,9 @@ routes (settings)                               routes (__root / layout)
 
 Tashqi bog'liqliklar: @/client (UsersService, ClientsService, OrdersService, TerminalService va
 User*/Client*/Order*/Post* model turlari), @/queries/mes (getClients/getMachines/getPosts/
-getOrderMatrixQueryOptions va h.k.), @/lib/mes (ROLE_LABELS, PRIORITY_LABELS, POST_COLORS,
-ORDER_STATUS_LABELS/COLORS, formatSize), @/hooks (useAuth, useCurrentUser, useCustomToast, useMobile),
+getOrderMatrixQueryOptions va h.k.), @/lib/mes (ROLE_LABELS, PRIORITY_LABELS,
+PRIORITY_DOT_CLASSES/PRIORITY_TEXT_CLASSES, POST_COLORS, ORDER_STATUS_LABELS/COLORS, formatSize),
+@/hooks (useAuth, useCurrentUser, useCustomToast, useMobile),
 @/lib/validation (zod schema'lar, formatMoneyInput, formatUzPhone), @/lib/utils (cn),
 @/utils (handleError, getInitials).
 ```

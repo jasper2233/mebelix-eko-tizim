@@ -59,7 +59,8 @@ bilan muvaffaqiyat. `STRICT_STAGE_ORDER=true` bo'lsa E004 (oldingi bosqich shu n
 
 Operator-rol oqimi (`resolve_terminal` / `operator_employee` / `active_session`): arrachi…stolyar
 uchun post roldan aniqlanadi (`POST_ROLES`); stanok — `user.machine_id`, bo'lmasa postning birinchi
-aktiv stanogi. Employee mirror avto-yaratiladi (`badge_id = "user-<id>"`) — scan/mahsuldorlik
+o'chirilmagan stanogi (faqat soft-delete tekshiriladi, holat emas — NOAKTIV/TA'MIRDA stanok ham
+tushishi mumkin). Employee mirror avto-yaratiladi (`badge_id = "user-<id>"`) — scan/mahsuldorlik
 attributsiyasi beyjiksiz saqlanadi. **Login = smena**: sessiya avtomatik ochiladi/qayta ochiladi
 (beyjik scan talab qilinmaydi); TERMINAL qurilma akkauntida esa avvalgidek beyjik shart (E005/E006).
 
@@ -93,7 +94,7 @@ navbat (printer/internet uzilganda yo'qotmaydi), 5s flusher. O'rnatish: `bridge-
 | Router | Prefix | Kirish |
 |---|---|---|
 | `clients/employees/machines/posts/materials` | CRUD + qidiruv | rol-based (`api/deps.py: require_roles`) |
-| `orders` | lifecycle (`/confirm`, `/start`, …) + `/status-counts` + `/upload` + `/matrix` + `/machines` + `/cutmap` + `/files/{id}` | manager/texnolog/admin |
+| `orders` | lifecycle (`/confirm`, `/start`, …) + `/status-counts` + `/upload` + `/matrix` + `/machines` + `/cutmap` + `/files/{id}` | o'qish: manager/texnolog/director (`StaffReadUser`); yozish: manager/texnolog (+admin/superuser) |
 | `scans` | POST scan, DELETE undo, `/recent` | terminal + 6 operator rol |
 | `terminal` | `/context`, `/session`, `/session/end`, `/tasks`, `/orders` (loyiha kartalari: done/total agregat), `/orders/{id}/cutmap`, `/labels/{id}` (GoDEX navbat), `/labels/{id}.png`, `/files/{id}` | terminal + 6 operator rol |
 | `tablo` | `/matrix`, `/orders/{id}` | istalgan auth |
@@ -109,6 +110,10 @@ Manager buyurtmani narx (`amount`, ixtiyoriy `advance_payment`) kiritib yaratadi
 `requires_assignment_choice` postlar uchun `machine_assignments` ni talab qiladi.
 `GET /orders/status-counts` — registr tablari uchun har status bo'yicha son. Frontendda
 qoldiq to'lov = `amount − advance_payment`, `advance ≤ amount` validatsiyasi bilan.
+
+Texnolog ko'rinishi cheklangan (`orders.py: _hidden_statuses`): DRAFT va CANCELLED buyurtmalar
+ro'yxatdan va `/status-counts` dan yashirin, to'g'ridan ID bilan GET ham 404 — buyurtma
+texnologga confirm'dan keyin ko'rinadi.
 
 ### Hisobot yordamchilari
 

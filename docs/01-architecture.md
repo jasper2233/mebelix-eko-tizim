@@ -24,11 +24,11 @@ MebeliX-Mes-System/
 ├── frontend/         # Vite + React SPA (src/routes, src/components, src/client, ...)
 ├── bridge-agent/     # Tsex agenti (agent.py) — print joblarni GoDEX printerga yuboradi
 ├── caddy/            # Caddy reverse proxy konfiguratsiyasi (prod)
-├── scripts/          # setup.sh, prestart.sh, generate-client.sh
+├── scripts/          # setup.sh, prestart.sh, generate-client.sh, deploy.sh (TAG deploy + avto-rollback), backup.sh (kunlik shifrlangan DB backup)
 ├── docs/             # Ushbu hujjatlar to'plami
 ├── docker-compose.local.yml
 ├── docker-compose.prod.yml
-└── Makefile          # Barcha dev/deploy operatsiyalar kirish nuqtasi
+└── Makefile          # Dev operatsiyalar kirish nuqtasi (prod deploy: CI + scripts/deploy.sh)
 ```
 
 ## 2. Texnologik stack
@@ -44,7 +44,7 @@ MebeliX-Mes-System/
 | Validatsiya / config | Pydantic v2 + pydantic-settings (`.env` → `Settings` singleton) |
 | Auth | PyJWT (HS256 access/refresh), bcrypt, httpOnly cookies, `token_version` revocation |
 | Background jobs | ARQ (Redis asosli queue, alohida worker process) |
-| Rate limiting | Redis asosli, fail-open (Redis yiqilsa so'rovlar bloklanmaydi) |
+| Rate limiting | Redis asosli, fail-closed (Redis yiqilsa so'rovlar bloklanadi — brute-force himoya o'chib qolmasligi uchun) |
 | Observability | prometheus-fastapi-instrumentator (`/metrics`), JSON structured logging + X-Request-ID |
 | Package manager | uv |
 
@@ -127,10 +127,14 @@ Asosiy nuqtalar:
   qaytaradi — yorliq yo'qolmaydi) → GoDEX printerga TCP 9100 (cp1251).
   `PRINTER_IP` sozlansa server to'g'ridan-to'g'ri TCP yuboradi.
 - **Ikkita Redis pool**: biri ARQ job queue, biri rate limiting — ikkalasi ham
-  startup'da retry'li probe bilan tekshiriladi (fail-fast boot), lekin rate limit
-  runtime'da fail-open.
+  startup'da retry'li probe bilan tekshiriladi (fail-fast boot); rate limit
+  runtime'da ham fail-closed — Redis xatosida so'rov bloklanadi.
 - **ARQ worker** alohida konteyner/processda ishlaydi (`app/core/worker.py` →
   `WorkerSettings`), tasklar `app/tasks/` da ro'yxatdan o'tadi.
+- **Prod deploy TAG asosida**: prod image'lar TAG bilan parametrlangan
+  (`mebelix-mes-backend/frontend:${TAG:-latest}`, `docker-compose.prod.yml`);
+  `scripts/deploy.sh` yangi TAG'ni build/switch qiladi, smoke (`/api/v1/ready`)
+  yiqilsa `.stable_tag`dagi oxirgi stable TAG'ga avto-rollback qiladi.
 - Har konteyner startida `scripts/prestart.sh` **alembic migratsiya + birinchi
   superuser + default org/postlar seed** (`seed_defaults`) ni bajaradi.
 
@@ -170,8 +174,8 @@ Browser (React)                FastAPI                        PostgreSQL
    | (generatsiya qilingan        |                               |
    |  UsersService, cookie avto)  |                               |
    |----------------------------->|                               |
+   |         ProxyHeadersMiddleware (real client IP) -> CORS ->   |
    |         RequestLoggingMiddleware (X-Request-ID, JSON log)    |
-   |         CORS -> ProxyHeadersMiddleware (real client IP)      |
    |                              |                               |
    |                              |-- get_current_user dep ------>| JWT decode +
    |                              |   (CurrentUser/SuperUserDep)  | token_version tekshiruv
@@ -213,7 +217,10 @@ Sifat nazorati ikki qatlamda: **pre-commit hooks** (`.pre-commit-config.yaml`,
 `make install-hooks` bilan o'rnatiladi) va **GitHub Actions CI**
 (`.github/workflows/ci.yml`, `main`ga push va har PR'da): `backend` job — ruff
 check/format, mypy, GibLab parser testlari; `frontend` job — `biome ci` va
-`tsc + vite build`.
+`tsc + vite build`; `deploy` job — yashil `main` push'da kod
+`/opt/mebelix-mes`ga rsync qilinadi, `TAG=<git sha> scripts/deploy.sh`
+ishga tushadi, public smoke (`https://mes.mebelix.uz/api/v1/ready`)
+tekshiriladi va natija Telegram'ga yuboriladi.
 
 ### Backend (Python)
 
