@@ -620,7 +620,7 @@ export function SheetSvg({
           ? `${vb.x} ${vb.y} ${vb.w} ${vb.h}`
           : `${base.x} ${base.y} ${base.w} ${base.h}`
       }
-      className={`h-full w-full touch-none${thumbnail ? " pointer-events-none" : ""}`}
+      className={`h-full w-full touch-none select-none${thumbnail ? " pointer-events-none" : ""}`}
       preserveAspectRatio="xMidYMid meet"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}

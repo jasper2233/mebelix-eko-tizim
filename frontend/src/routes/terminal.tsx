@@ -3,7 +3,15 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { Lock, LogOut, ScanLine, Undo2, WifiOff } from "lucide-react"
+import {
+  Expand,
+  Lock,
+  LogOut,
+  ScanLine,
+  Shrink,
+  Undo2,
+  WifiOff,
+} from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import {
@@ -92,6 +100,8 @@ function TerminalPage() {
   const [errorsOnly, setErrorsOnly] = useState(false)
   const [undoOpen, setUndoOpen] = useState(false)
   const [logoutOpen, setLogoutOpen] = useState(false)
+  // Kiosk to'liq ekran (F11 o'rniga tugma): Fullscreen API user-gesture talab qiladi
+  const [fullscreen, setFullscreen] = useState(false)
   // Xarita statlari header ichiga portal qilinadi (CutmapView statsContainer)
   const [statsEl, setStatsEl] = useState<HTMLDivElement | null>(null)
   // Xarita toolbari chap ustunga portal qilinadi (CutmapView toolbarContainer)
@@ -116,6 +126,12 @@ function TerminalPage() {
       [queryClient],
     ),
   )
+
+  useEffect(() => {
+    const onFs = () => setFullscreen(!!document.fullscreenElement)
+    document.addEventListener("fullscreenchange", onFs)
+    return () => document.removeEventListener("fullscreenchange", onFs)
+  }, [])
 
   // Avto-skan: input doim fokusda (TZ 8.4.1); xarita yopilganda darhol qaytadi
   useEffect(() => {
@@ -350,6 +366,16 @@ function TerminalPage() {
             className="flex flex-col gap-2 empty:hidden"
           />
           <div className="mt-auto flex flex-col gap-2">
+            <TBtn
+              label="Ekran"
+              onClick={() =>
+                document.fullscreenElement
+                  ? document.exitFullscreen()
+                  : document.documentElement.requestFullscreen()
+              }
+            >
+              {fullscreen ? <Shrink /> : <Expand />}
+            </TBtn>
             <TBtn label="Qulflash" tone="warn" onClick={() => setLocked(true)}>
               <Lock />
             </TBtn>
