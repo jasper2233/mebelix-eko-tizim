@@ -11,6 +11,8 @@ import {
 import {
   ArrowLeft,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   Maximize2,
   Minus,
@@ -397,10 +399,17 @@ export function CutmapView({
           /* Xarita (GibLab #single) — to'liq maydon; sarlavha xarita ustida overlay
              (alohida qator xaritadan joy olmasin) */
           <div
-            className={`min-h-0 flex-1 overflow-hidden bg-slate-200 ${
+            className={`relative min-h-0 flex-1 overflow-hidden bg-slate-200 ${
               toolbarContainer ? "" : "rounded-xl border p-1"
             }`}
           >
+            {/* Swipe affordance: chetdagi xira strelkalar — qo'shni list bor */}
+            {sheetIdx > 0 && (
+              <ChevronLeft className="pointer-events-none absolute left-0 top-1/2 z-10 size-12 -translate-y-1/2 text-slate-500/50" />
+            )}
+            {sheetIdx < sheets.length - 1 && (
+              <ChevronRight className="pointer-events-none absolute right-0 top-1/2 z-10 size-12 -translate-y-1/2 text-slate-500/50" />
+            )}
             <div className="h-full w-full">
               <SheetSvg
                 sheet={sheet}

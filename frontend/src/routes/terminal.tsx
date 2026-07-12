@@ -8,7 +8,6 @@ import {
   Lock,
   LogOut,
   ScanLine,
-  Shrink,
   Undo2,
   WifiOff,
 } from "lucide-react"
@@ -266,6 +265,24 @@ function TerminalPage() {
 
   return (
     <div className="flex h-dvh flex-col bg-[#eef1f5]">
+      {/* Majburiy to'liq ekran: kiosk tartibi — to'liq ekranga o'tmaguncha ish yo'q.
+          requestFullscreen user-gesture talab qiladi, shuning uchun tugma. */}
+      {!fullscreen && !locked && (
+        <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-6 bg-slate-900/95 text-white">
+          <Expand className="size-16 opacity-80" />
+          <div className="text-2xl font-black">
+            Terminal to'liq ekranda ishlaydi
+          </div>
+          <Button
+            size="lg"
+            variant="secondary"
+            className="h-14 px-10 text-lg font-bold"
+            onClick={() => document.documentElement.requestFullscreen()}
+          >
+            To'liq ekranga o'tish
+          </Button>
+        </div>
+      )}
       {/* Qulf ekrani: tasodifiy tegishlardan himoya */}
       {locked && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-slate-900/95 text-white">
@@ -366,16 +383,6 @@ function TerminalPage() {
             className="flex flex-col gap-2 empty:hidden"
           />
           <div className="mt-auto flex flex-col gap-2">
-            <TBtn
-              label="Ekran"
-              onClick={() =>
-                document.fullscreenElement
-                  ? document.exitFullscreen()
-                  : document.documentElement.requestFullscreen()
-              }
-            >
-              {fullscreen ? <Shrink /> : <Expand />}
-            </TBtn>
             <TBtn label="Qulflash" tone="warn" onClick={() => setLocked(true)}>
               <Lock />
             </TBtn>
