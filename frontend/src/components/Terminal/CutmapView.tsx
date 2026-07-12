@@ -374,16 +374,16 @@ export function CutmapView({
             </div>
             <div className="flex gap-1.5">
               <Button
-                variant="outline"
-                className="size-12 bg-white shadow-sm [&_svg]:size-6"
+                variant="default"
+                className="size-12 shadow-md [&_svg]:size-6"
                 disabled={sheetIdx === 0}
                 onClick={() => setSheetIdx(sheetIdx - 1)}
               >
                 <ChevronLeft />
               </Button>
               <Button
-                variant="outline"
-                className="size-12 bg-white shadow-sm [&_svg]:size-6"
+                variant="default"
+                className="size-12 shadow-md [&_svg]:size-6"
                 disabled={sheetIdx >= sheets.length - 1}
                 onClick={() => setSheetIdx(sheetIdx + 1)}
               >
@@ -1043,24 +1043,24 @@ function SheetSvg({
       {svgEl}
       <div className="absolute bottom-2 right-2 flex flex-col gap-1.5">
         <Button
-          variant="outline"
-          className="size-12 bg-white shadow-md [&_svg]:size-6"
+          variant="default"
+          className="size-12 shadow-md [&_svg]:size-6"
           onClick={() => zoomBy(1 / 1.5)}
           title="Kattalashtirish"
         >
           <Plus />
         </Button>
         <Button
-          variant="outline"
-          className="size-12 bg-white shadow-md [&_svg]:size-6"
+          variant="default"
+          className="size-12 shadow-md [&_svg]:size-6"
           onClick={() => zoomBy(1.5)}
           title="Kichiklashtirish"
         >
           <Minus />
         </Button>
         <Button
-          variant="outline"
-          className="size-12 bg-white shadow-md [&_svg]:size-6"
+          variant="default"
+          className="size-12 shadow-md [&_svg]:size-6"
           onClick={() => setVb(null)}
           title="To'liq ko'rinish"
         >
