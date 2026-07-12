@@ -305,7 +305,8 @@ export function CutmapView({
         {sheetIdx === null ? (
           /* Jadval sahifasi: material tablar + list grid (GibLab #matlist + #grid) */
           <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border bg-white p-4">
-            <div className="mb-3 flex flex-wrap items-center gap-2">
+            {/* Material tablar: bitta qator, ko'paysa gorizontal swipe (grid joyini yemaydi) */}
+            <div className="mb-3 flex items-center gap-2 overflow-x-auto pb-1">
               {materials.map((m: Material, i: number) => {
                 const mdone = m.sheets.filter(sheetDone).length
                 const active = i === materialIdx
@@ -313,7 +314,7 @@ export function CutmapView({
                   <Button
                     key={m.name}
                     variant={active ? "default" : "outline"}
-                    className="h-12 max-w-xs px-4 text-base"
+                    className="h-12 max-w-xs shrink-0 px-4 text-base"
                     onClick={() => setMaterialIdx(i)}
                   >
                     <span className="truncate">{m.name}</span>
