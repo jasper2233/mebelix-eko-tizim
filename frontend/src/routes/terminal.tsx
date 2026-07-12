@@ -3,14 +3,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import {
-  Lock,
-  LogOut,
-  Map as MapIcon,
-  ScanLine,
-  Undo2,
-  WifiOff,
-} from "lucide-react"
+import { Lock, LogOut, ScanLine, Undo2, WifiOff } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import {
@@ -26,7 +19,7 @@ import {
   playSuccess,
   playWarning,
 } from "@/components/Terminal/audio"
-import { CutmapView } from "@/components/Terminal/CutmapView"
+import { CutmapView, TBtn } from "@/components/Terminal/CutmapView"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
@@ -101,9 +94,8 @@ function TerminalPage() {
   const [logoutOpen, setLogoutOpen] = useState(false)
   // Xarita statlari header ichiga portal qilinadi (CutmapView statsContainer)
   const [statsEl, setStatsEl] = useState<HTMLDivElement | null>(null)
-  const [clock, setClock] = useState(() =>
-    new Date().toLocaleTimeString("uz-Latn-UZ"),
-  )
+  // Xarita toolbari chap ustunga portal qilinadi (CutmapView toolbarContainer)
+  const [toolbarEl, setToolbarEl] = useState<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const cooldownRef = useRef<Map<string, number>>(new Map())
 
@@ -124,14 +116,6 @@ function TerminalPage() {
       [queryClient],
     ),
   )
-
-  useEffect(() => {
-    const t = setInterval(
-      () => setClock(new Date().toLocaleTimeString("uz-Latn-UZ")),
-      1000,
-    )
-    return () => clearInterval(t)
-  }, [])
 
   // Avto-skan: input doim fokusda (TZ 8.4.1); xarita yopilganda darhol qaytadi
   useEffect(() => {
@@ -283,22 +267,13 @@ function TerminalPage() {
       )}
       {/* Header (TZ 8.3.1) */}
       <header className="flex items-center gap-4 border-b bg-white px-4 py-2 shadow-sm">
-        {/* Ikkala blok bir xil shkala — qatordagi balandlik va baseline tekis turadi */}
-        <div className="shrink-0 whitespace-nowrap">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            Ishlab chiqarish posti
-          </div>
-          <div className="text-lg font-black" style={{ color: postColor }}>
-            {ctx?.post_name?.toUpperCase() ?? "—"}
-          </div>
-        </div>
-        <div className="hidden shrink-0 whitespace-nowrap sm:block">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            Aktiv uskuna
-          </div>
-          <div className="text-lg font-black text-foreground/80">
-            {ctx?.machine_name ?? "—"}
-          </div>
+        {/* Arrachi tilida bitta identitet: stanok nomi (post rangida) — "post/uskuna"
+            taksonomiyasi olib tashlandi, ism yonidagi chipda */}
+        <div
+          className="shrink-0 whitespace-nowrap text-xl font-black"
+          style={{ color: postColor }}
+        >
+          {ctx?.machine_name ?? ctx?.post_name?.toUpperCase() ?? "—"}
         </div>
 
         {/* Sessiya — ixcham chip (alohida qator o'rniga, vertikal joy tejaladi) */}
@@ -364,55 +339,49 @@ function TerminalPage() {
             <WifiOff className="size-4" /> ALOQA YO'Q
           </div>
         )}
-        <div className="num hidden text-xl font-bold md:block">{clock}</div>
-        <div className="flex items-center gap-3">
-          {ctx?.post_code === "ARRA" && mapOrderId !== null && (
-            <Button
-              variant="outline"
-              className="h-12 px-4 text-base"
-              onClick={() => setMapOrderId(null)}
-            >
-              <MapIcon /> Proyektlar
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            className="size-12 [&_svg]:size-6"
-            onClick={() => setLocked(true)}
-            title="Ekranni qulflash"
-          >
-            <Lock />
-          </Button>
-          {isOperator ? (
-            <Button
-              variant="ghost"
-              className="size-12 text-destructive [&_svg]:size-6"
-              title="Tizimdan chiqish"
-              onClick={() => setLogoutOpen(true)}
-            >
-              <LogOut />
-            </Button>
-          ) : (
-            ctx?.session && (
-              <Button
-                variant="ghost"
-                className="size-12 [&_svg]:size-6"
-                title="Sessiyani yakunlash"
-                onClick={() => endSession.mutate()}
-              >
-                <LogOut />
-              </Button>
-            )
-          )}
-        </div>
       </header>
 
       {/* Asosiy maydon — ARRA: proyekt ro'yxati → kesish xaritasi; boshqa postlar: vazifalar */}
       <main className="flex min-h-0 flex-1 gap-3 p-3">
+        {/* Chap ustun: xarita toolbari (portal) tepada, qulf/chiqish doim pastda */}
+        <div className="flex w-[76px] shrink-0 flex-col gap-2">
+          <div
+            ref={setToolbarEl}
+            className="flex flex-col gap-2 empty:hidden"
+          />
+          <div className="mt-auto flex flex-col gap-2">
+            <TBtn label="Qulflash" tone="warn" onClick={() => setLocked(true)}>
+              <Lock />
+            </TBtn>
+            {isOperator ? (
+              <TBtn
+                label="Chiqish"
+                tone="danger"
+                onClick={() => setLogoutOpen(true)}
+              >
+                <LogOut />
+              </TBtn>
+            ) : ctx?.session ? (
+              <TBtn
+                label="Yakunlash"
+                tone="danger"
+                onClick={() => endSession.mutate()}
+              >
+                <LogOut />
+              </TBtn>
+            ) : null}
+          </div>
+        </div>
         {ctxLoading && !ctx ? (
           <Skeleton className="h-full flex-1" />
         ) : ctx?.post_code === "ARRA" ? (
-          <div className="flex min-h-0 flex-1 flex-col gap-3">
+          <div
+            className={cn(
+              "flex min-h-0 min-w-0 flex-1 flex-col gap-3",
+              // Xarita ochiqda tepa/past/o'ng paddingga yopishadi — xarita kattaroq
+              mapOpen && "-my-3 -mr-3",
+            )}
+          >
             {/* Oxirgi skan + BEKOR QILISH — arra shovqinida ovozga ishonib bo'lmaydi */}
             {lastScan && (
               <div
@@ -458,6 +427,7 @@ function TerminalPage() {
                   orderId={mapOrderId}
                   onBack={() => setMapOrderId(null)}
                   statsContainer={statsEl}
+                  toolbarContainer={toolbarEl}
                 />
               ) : (
                 <OrderPicker onPick={setMapOrderId} />
