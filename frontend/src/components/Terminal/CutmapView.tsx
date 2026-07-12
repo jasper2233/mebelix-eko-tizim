@@ -50,12 +50,9 @@ const getCutmapQueryOptions = (orderId: number, admin: boolean) =>
     refetchInterval: 60_000,
   })
 
-// Nom bo'yicha barqaror rang (TZ 7.1.7) — hue hash, past to'yinganlik
-function partColor(name: string): string {
-  let hash = 0
-  for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) % 360
-  return `hsl(${hash} 45% 88%)`
-}
+// Barcha detallar bir xil brand tilla tusda (--brand-gold #eaa83c ning och varianti:
+// qora yozuvlar va kesim chiziqlari o'qilishi uchun); tanlangani to'q apelsin bo'lib ajraladi
+const PART_FILL = "#f4d9a6"
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)
@@ -591,7 +588,7 @@ function SheetSvg({
       ? "url(#zebra)"
       : selected
         ? "#ff7800"
-        : partColor(p.name)
+        : PART_FILL
 
     if (!p.waste) {
       const wv = p.w
