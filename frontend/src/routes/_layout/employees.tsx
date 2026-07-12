@@ -1,13 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { IdCard, Plus, Search } from "lucide-react"
+import { IdCard, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import { type EmployeeRead, EmployeesService } from "@/client"
+import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -32,6 +33,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Switch } from "@/components/ui/switch"
 import {
   Table,
   TableBody,
@@ -65,6 +67,8 @@ const formSchema = z.object({
 function EmployeesPage() {
   const [search, setSearch] = useState("")
   const [badgeFor, setBadgeFor] = useState<EmployeeRead | null>(null)
+  const [editFor, setEditFor] = useState<EmployeeRead | null>(null)
+  const [deleteFor, setDeleteFor] = useState<EmployeeRead | null>(null)
   const { data, isLoading } = useQuery(getEmployeesQueryOptions(search))
   const { data: posts } = useQuery(getPostsQueryOptions())
   const { currentUser } = useCurrentUser()
@@ -98,7 +102,7 @@ function EmployeesPage() {
                 <TableHead>Lavozim</TableHead>
                 <TableHead>Postlar</TableHead>
                 <TableHead>Holat</TableHead>
-                <TableHead>Beyjik</TableHead>
+                <TableHead>Amallar</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -137,13 +141,36 @@ function EmployeesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setBadgeFor(e)}
-                      >
-                        <IdCard /> Beyjik
-                      </Button>
+                      <div className="flex gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setBadgeFor(e)}
+                        >
+                          <IdCard /> Beyjik
+                        </Button>
+                        {isAdmin && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title="Tahrirlash"
+                              onClick={() => setEditFor(e)}
+                            >
+                              <Pencil />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive"
+                              title="O'chirish"
+                              onClick={() => setDeleteFor(e)}
+                            >
+                              <Trash2 />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -166,7 +193,197 @@ function EmployeesPage() {
         onClose={() => setBadgeFor(null)}
         isAdmin={Boolean(isAdmin)}
       />
+      {editFor && (
+        <EditEmployee employee={editFor} onClose={() => setEditFor(null)} />
+      )}
+      <DeleteEmployee employee={deleteFor} onClose={() => setDeleteFor(null)} />
     </div>
+  )
+}
+
+function EditEmployee({
+  employee,
+  onClose,
+}: {
+  employee: EmployeeRead
+  onClose: () => void
+}) {
+  const { data: posts } = useQuery(getPostsQueryOptions())
+  const queryClient = useQueryClient()
+  const { showSuccessToast, showErrorToast } = useCustomToast()
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      full_name: employee.full_name,
+      phone: employee.phone ?? "",
+      position: employee.position ?? "",
+      assigned_post_ids: employee.assigned_post_ids,
+    },
+  })
+  const [active, setActive] = useState(employee.status === "active")
+
+  const mutation = useMutation({
+    mutationFn: (data: z.infer<typeof formSchema>) =>
+      EmployeesService.updateEmployee({
+        employeeId: employee.id,
+        requestBody: {
+          full_name: data.full_name,
+          phone: data.phone || null,
+          position: data.position || null,
+          assigned_post_ids: data.assigned_post_ids,
+          status: active ? "active" : "inactive",
+        },
+      }),
+    onSuccess: () => {
+      showSuccessToast("Hodim yangilandi")
+      onClose()
+    },
+    onError: handleError(showErrorToast),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["employees"] }),
+  })
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Hodimni tahrirlash</DialogTitle>
+          <DialogDescription>{employee.full_name}</DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit((d) => mutation.mutate(d))}
+            className="space-y-3"
+          >
+            <FormField
+              control={form.control}
+              name="full_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>F.I.Sh</FormLabel>
+                  <FormControl>
+                    <Input {...field} autoFocus />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefon</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="+998..." />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="position"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lavozim</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="ISHCHI XODIM" />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="assigned_post_ids"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Qaysi postlarda ishlaydi</FormLabel>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(posts ?? []).map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex items-center gap-2 rounded-lg border p-2 text-sm"
+                      >
+                        <Checkbox
+                          checked={field.value.includes(p.id)}
+                          aria-label={p.code}
+                          onCheckedChange={(v) =>
+                            field.onChange(
+                              v === true
+                                ? [...field.value, p.id]
+                                : field.value.filter((x) => x !== p.id),
+                            )
+                          }
+                        />
+                        <span
+                          style={{ color: POST_COLORS[p.code] }}
+                          className="font-semibold"
+                        >
+                          {p.code}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <span className="text-sm font-medium">
+                {active ? "AKTIV" : "NOFAOL"} — beyjik{" "}
+                {active ? "ishlaydi" : "bloklangan"}
+              </span>
+              <Switch checked={active} onCheckedChange={setActive} />
+            </div>
+            <DialogFooter className="pt-2">
+              <LoadingButton type="submit" loading={mutation.isPending}>
+                Saqlash
+              </LoadingButton>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function DeleteEmployee({
+  employee,
+  onClose,
+}: {
+  employee: EmployeeRead | null
+  onClose: () => void
+}) {
+  const queryClient = useQueryClient()
+  const { showSuccessToast, showErrorToast } = useCustomToast()
+  const mutation = useMutation({
+    mutationFn: (id: number) =>
+      EmployeesService.deleteEmployee({ employeeId: id }),
+    onSuccess: () => {
+      showSuccessToast("Hodim o'chirildi")
+      onClose()
+    },
+    onError: handleError(showErrorToast),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["employees"] }),
+  })
+  return (
+    <ConfirmDialog
+      open={!!employee}
+      onOpenChange={(v) => !v && onClose()}
+      title="Hodimni o'chirish"
+      description={
+        employee
+          ? `${employee.full_name} ro'yxatdan o'chiriladi, beyjigi ishlamay qoladi. Scan tarixi saqlanadi.`
+          : ""
+      }
+      confirmText="O'chirish"
+      destructive
+      loading={mutation.isPending}
+      onConfirm={() => employee && mutation.mutate(employee.id)}
+    />
   )
 }
 

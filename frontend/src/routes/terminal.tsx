@@ -92,8 +92,14 @@ function TerminalPage() {
   const [errorsOnly, setErrorsOnly] = useState(false)
   const [undoOpen, setUndoOpen] = useState(false)
   const [logoutOpen, setLogoutOpen] = useState(false)
-  // Kiosk to'liq ekran (F11 o'rniga tugma): Fullscreen API user-gesture talab qiladi
-  const [fullscreen, setFullscreen] = useState(false)
+  // Kiosk to'liq ekran: Fullscreen API YOKI chrome --kiosk / PWA (display-mode)
+  const [fullscreen, setFullscreen] = useState(
+    () =>
+      !!document.fullscreenElement ||
+      window.matchMedia("(display-mode: fullscreen)").matches,
+  )
+  // Yangi build chiqdi — xavfsiz paytda avto-reload
+  const [updateReady, setUpdateReady] = useState(false)
   // Xarita statlari header ichiga portal qilinadi (CutmapView statsContainer)
   const [statsEl, setStatsEl] = useState<HTMLDivElement | null>(null)
   // Xarita toolbari chap ustunga portal qilinadi (CutmapView toolbarContainer)
@@ -120,10 +126,45 @@ function TerminalPage() {
   )
 
   useEffect(() => {
-    const onFs = () => setFullscreen(!!document.fullscreenElement)
+    const mq = window.matchMedia("(display-mode: fullscreen)")
+    const onFs = () => setFullscreen(!!document.fullscreenElement || mq.matches)
     document.addEventListener("fullscreenchange", onFs)
-    return () => document.removeEventListener("fullscreenchange", onFs)
+    mq.addEventListener("change", onFs)
+    return () => {
+      document.removeEventListener("fullscreenchange", onFs)
+      mq.removeEventListener("change", onFs)
+    }
   }, [])
+
+  // Deploy'dan keyin yangi build: index.html ETag o'zgarsa belgilab qo'yamiz,
+  // xavfsiz paytda (xarita yopiq, 2 daqiqa skan yo'q) o'zi reload qiladi.
+  useEffect(() => {
+    let etag: string | null = null
+    const check = async () => {
+      try {
+        const r = await fetch("/", { method: "HEAD", cache: "no-store" })
+        const e = r.headers.get("etag")
+        if (etag === null) etag = e
+        else if (e && e !== etag) setUpdateReady(true)
+      } catch {
+        /* oflayn — keyingi urinishda */
+      }
+    }
+    check()
+    const t = setInterval(check, 5 * 60_000)
+    return () => clearInterval(t)
+  }, [])
+
+  useEffect(() => {
+    if (!updateReady) return
+    const tryReload = () => {
+      const quiet = !lastScan || Date.now() - lastScan.at > 120_000
+      if (mapOrderId === null && quiet) window.location.reload()
+    }
+    tryReload()
+    const t = setInterval(tryReload, 30_000)
+    return () => clearInterval(t)
+  }, [updateReady, mapOrderId, lastScan])
 
   // Avto-skan: input doim fokusda (TZ 8.4.1); xarita yopilganda darhol qaytadi
   useEffect(() => {

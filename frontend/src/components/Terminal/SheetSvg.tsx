@@ -257,19 +257,21 @@ export function SheetSvg({
       const cy = p.y + hv / 2
       const eTop = (p.eH ?? []).filter(Boolean).join("")
       const eLeft = (p.eW ?? []).filter(Boolean).join("")
-      // o'lcham shrifti deyarli doimiy (GibSaw pattrenPartDim), faqat tor detalda kichrayadi
+      // o'lcham shrifti deyarli doimiy (GibSaw pattrenPartDim), faqat tor detalda kichrayadi.
+      // 17" da to'liq ko'rinishda o'qilsin: cap 42 (~ekranda 18px); kichik detalda formula
+      // o'zi qisqartiradi — u yerda yechim zoom yoki detal kartochkasi
       const dW = Math.max(
-        12,
+        16,
         Math.min(
-          28,
+          42,
           hv * 0.28,
           (wv * 0.9) / Math.max(3, `${wv}${eTop}`.length * 0.6),
         ),
       )
       const dH = Math.max(
-        12,
+        16,
         Math.min(
-          28,
+          42,
           wv * 0.28,
           (hv * 0.9) / Math.max(3, `${hv}${eLeft}`.length * 0.6),
         ),
