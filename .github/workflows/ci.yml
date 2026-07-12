@@ -62,16 +62,12 @@ jobs:
             --exclude __pycache__ --exclude dist --exclude uploads \
             --exclude .env \
             ./ "root@${{ secrets.DEPLOY_HOST }}:/opt/mebelix-mes/"
-      - name: Build & restart stack
+      - name: Deploy (smoke yiqilsa avto-rollback)
         run: |
           ssh "root@${{ secrets.DEPLOY_HOST }}" \
-            'cd /opt/mebelix-mes && docker compose -f docker-compose.prod.yml up -d --build'
-      - name: Smoke check
+            "cd /opt/mebelix-mes && TAG=${{ github.sha }} bash scripts/deploy.sh"
+      - name: Public smoke (nginx/TLS yo'li)
         run: |
-          for i in $(seq 1 30); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' https://mes.mebelix.uz/api/v1/ready) && \
-            [ "$code" = "200" ] && curl -s https://mes.mebelix.uz/api/v1/ready && exit 0
-            sleep 5
-          done
-          echo "ready endpoint never returned 200" >&2
-          exit 1
+          code=$(curl -s -o /dev/null -w '%{http_code}' https://mes.mebelix.uz/api/v1/ready)
+          [ "$code" = "200" ] || { echo "public ready: $code" >&2; exit 1; }
+          curl -s https://mes.mebelix.uz/api/v1/ready
