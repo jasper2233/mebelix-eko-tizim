@@ -368,9 +368,9 @@ function TerminalPage() {
       </header>
 
       {/* Asosiy maydon — ARRA: proyekt ro'yxati → kesish xaritasi; boshqa postlar: vazifalar */}
-      <main className="flex min-h-0 flex-1 gap-3 p-3">
+      <main className="flex min-h-0 flex-1 gap-1.5 p-3 pl-1.5">
         {/* Chap ustun: xarita toolbari (portal) tepada, qulf/chiqish doim pastda */}
-        <div className="flex w-[76px] shrink-0 flex-col gap-2">
+        <div className="flex w-[68px] shrink-0 flex-col gap-2">
           <div
             ref={setToolbarEl}
             className="flex flex-col gap-2 empty:hidden"
