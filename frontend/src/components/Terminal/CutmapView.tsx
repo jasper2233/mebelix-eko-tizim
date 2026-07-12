@@ -221,62 +221,6 @@ export function CutmapView({
             })}
           </div>
         </div>
-        {material && (
-          <div className="num grid grid-cols-3 gap-px overflow-hidden rounded-xl border bg-border text-center text-xs">
-            <Stat
-              label="Listlar"
-              value={(() => {
-                const tot = sheets.reduce(
-                  (a: number, s: Sheet) => a + (s.mult || 1),
-                  0,
-                )
-                const dn = sheets
-                  .filter(sheetDone)
-                  .reduce((a: number, s: Sheet) => a + (s.mult || 1), 0)
-                return `${tot}−${dn}=${tot - dn}`
-              })()}
-            />
-            <Stat
-              label="Detallar"
-              value={(() => {
-                const tot = Number(material.kd) || 0
-                const dn = sheets.reduce(
-                  (a: number, s: Sheet) =>
-                    a +
-                    (s.parts as SheetPart[])
-                      .filter((p) => !p.waste)
-                      .reduce(
-                        (b, p) =>
-                          b +
-                          (
-                            (instancesByCell.get(
-                              `${s.no}:${p.cell}`,
-                            ) as any[]) ?? []
-                          ).filter((i) => i.done).length,
-                        0,
-                      ),
-                  0,
-                )
-                return `${tot}−${dn}=${tot - dn}`
-              })()}
-            />
-            <Stat label="Atxot" value={material.ko} />
-            <Stat
-              label="Rez, m"
-              value={material.dr?.toFixed?.(1) ?? material.dr}
-            />
-            <Stat label="Rezlar" value={material.kr} />
-            <Stat
-              label="To'ldirish"
-              value={
-                material.fill ? `${(material.fill * 100).toFixed(1)}%` : "—"
-              }
-            />
-            <Stat label="Arra, mm" value={`${material.kerf ?? "—"}`} />
-            <Stat label="Tirim uzun." value={`${material.trimL ?? "—"}`} />
-            <Stat label="Tirim en" value={`${material.trimW ?? "—"}`} />
-          </div>
-        )}
         {/* Listlar — zich ro'yxat: ko'p listda ham sig'adi, joriy list ajralib turadi */}
         <div className="rounded-xl border bg-card">
           <div className="border-b px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -347,6 +291,63 @@ export function CutmapView({
                 </Button>
               </div>
             </div>
+            {/* Material statistikasi — xarita tepasida bir qatorda */}
+            {material && (
+              <div className="num mb-2 grid grid-cols-3 gap-px overflow-hidden rounded-lg border bg-border text-center text-xs md:grid-cols-9">
+                <Stat
+                  label="Listlar"
+                  value={(() => {
+                    const tot = sheets.reduce(
+                      (a: number, s: Sheet) => a + (s.mult || 1),
+                      0,
+                    )
+                    const dn = sheets
+                      .filter(sheetDone)
+                      .reduce((a: number, s: Sheet) => a + (s.mult || 1), 0)
+                    return `${tot}−${dn}=${tot - dn}`
+                  })()}
+                />
+                <Stat
+                  label="Detallar"
+                  value={(() => {
+                    const tot = Number(material.kd) || 0
+                    const dn = sheets.reduce(
+                      (a: number, s: Sheet) =>
+                        a +
+                        (s.parts as SheetPart[])
+                          .filter((p) => !p.waste)
+                          .reduce(
+                            (b, p) =>
+                              b +
+                              (
+                                (instancesByCell.get(
+                                  `${s.no}:${p.cell}`,
+                                ) as any[]) ?? []
+                              ).filter((i) => i.done).length,
+                            0,
+                          ),
+                      0,
+                    )
+                    return `${tot}−${dn}=${tot - dn}`
+                  })()}
+                />
+                <Stat label="Atxot" value={material.ko} />
+                <Stat
+                  label="Rez, m"
+                  value={material.dr?.toFixed?.(1) ?? material.dr}
+                />
+                <Stat label="Rezlar" value={material.kr} />
+                <Stat
+                  label="To'ldirish"
+                  value={
+                    material.fill ? `${(material.fill * 100).toFixed(1)}%` : "—"
+                  }
+                />
+                <Stat label="Arra, mm" value={`${material.kerf ?? "—"}`} />
+                <Stat label="Tirim uzun." value={`${material.trimL ?? "—"}`} />
+                <Stat label="Tirim en" value={`${material.trimW ?? "—"}`} />
+              </div>
+            )}
             <div className="min-h-0 flex-1">
               <SheetSvg
                 sheet={sheet}
