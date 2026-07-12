@@ -316,22 +316,35 @@ export function CutmapView({
                   type="button"
                   key={s.no}
                   onClick={() => setSheetIdx(i)}
-                  className={`flex min-h-16 items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all hover:border-primary active:scale-[0.98] active:border-primary ${
+                  className={`rounded-xl border-2 px-4 py-3 text-left transition-all hover:border-primary active:scale-[0.98] active:border-primary ${
                     done
                       ? "border-green-500/60 bg-green-50/50 text-muted-foreground"
                       : ""
                   }`}
                 >
-                  <span className="num text-xl font-black">№{s.no}</span>
-                  <span className="num flex-1 text-base">
-                    {s.L}×{s.W}
-                  </span>
-                  {(s.mult || 1) > 1 && (
-                    <span className="num rounded bg-primary/10 px-2 py-0.5 text-sm font-bold text-primary">
-                      ×{s.mult}
+                  <div className="flex items-center gap-3">
+                    <span className="num text-xl font-black">№{s.no}</span>
+                    <span className="num flex-1 text-base">
+                      {s.L}×{s.W}
                     </span>
-                  )}
-                  {done && <span className="text-xl text-green-600">✓</span>}
+                    {(s.mult || 1) > 1 && (
+                      <span className="num rounded bg-primary/10 px-2 py-0.5 text-sm font-bold text-primary">
+                        ×{s.mult}
+                      </span>
+                    )}
+                    {done && <span className="text-xl text-green-600">✓</span>}
+                  </div>
+                  {/* Mini xarita — kichik preview, bosishga xalaqit bermaydi */}
+                  <div className="pointer-events-none mt-2 h-32 overflow-hidden rounded-lg border bg-slate-100 p-1">
+                    <SheetSvg
+                      sheet={s}
+                      holes={holes}
+                      instancesByCell={instancesByCell as never}
+                      onSelect={() => {}}
+                      selectedCell={null}
+                      thumbnail
+                    />
+                  </div>
                 </button>
               )
             })}
@@ -458,6 +471,7 @@ function SheetSvg({
   onSelect,
   selectedCell,
   controls = false,
+  thumbnail = false,
 }: {
   sheet: Sheet
   holes: Record<string, any>
@@ -466,6 +480,8 @@ function SheetSvg({
   selectedCell: number | null
   /** Interaktiv rejim: +/− /reset zoom tugmalari (printda chiqmaydi) */
   controls?: boolean
+  /** Mini preview (material kartasi): interaktivsiz, scroll bloklamaydi */
+  thumbnail?: boolean
 }) {
   const { L, W } = sheet
   const svgRef = useRef<SVGSVGElement>(null)
@@ -503,6 +519,7 @@ function SheetSvg({
 
   // g'ildirak zoom kursor nuqtasiga (native listener — passive:false kerak)
   useEffect(() => {
+    if (thumbnail) return
     const svg = svgRef.current
     if (!svg) return
     const onWheel = (e: WheelEvent) => {
@@ -972,7 +989,7 @@ function SheetSvg({
           ? `${vb.x} ${vb.y} ${vb.w} ${vb.h}`
           : `${base.x} ${base.y} ${base.w} ${base.h}`
       }
-      className="h-full w-full touch-none"
+      className={`h-full w-full touch-none${thumbnail ? " pointer-events-none" : ""}`}
       preserveAspectRatio="xMidYMid meet"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
