@@ -53,7 +53,7 @@ const getCutmapQueryOptions = (orderId: number, admin: boolean) =>
 
 // Barcha detallar bir xil to'q apelsin; tanlangani moviy bo'lib ajraladi.
 // Xarita paneli kulrang (oq emas) — yorug' sexda ko'z qamashtirmaydi, detallar ajralib turadi
-const PART_FILL = "#f39800"
+const PART_FILL = "#e88b00"
 const PART_SELECTED = "#2596be"
 
 function escapeHtml(s: string): string {
@@ -699,7 +699,8 @@ function SheetSvg({
             x={spot.x}
             y={spot.y}
             fontSize={dW}
-            fill="#333"
+            fill="#1f1f1f"
+            fontWeight="700"
             {...HALO}
           >
             {wText}
@@ -726,7 +727,8 @@ function SheetSvg({
             x={spot.x}
             y={spot.y}
             fontSize={dW}
-            fill="#333"
+            fill="#1f1f1f"
+            fontWeight="700"
             textAnchor="middle"
             {...HALO}
           >
@@ -756,7 +758,8 @@ function SheetSvg({
             x={spot.x}
             y={spot.y}
             fontSize={dH}
-            fill="#333"
+            fill="#1f1f1f"
+            fontWeight="700"
             textAnchor="middle"
             transform={`rotate(-90 ${spot.x} ${spot.y})`}
             {...HALO}
