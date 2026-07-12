@@ -120,8 +120,9 @@ export function CutmapView({
   statsContainer?: HTMLElement | null
 }) {
   const { data, isLoading } = useQuery(getCutmapQueryOptions(orderId, admin))
-  const [materialIdx, setMaterialIdx] = useState(0)
-  const [sheetIdx, setSheetIdx] = useState(0)
+  // Drill-down: null = hali tanlanmagan (materiallar -> listlar -> xarita)
+  const [materialIdx, setMaterialIdx] = useState<number | null>(null)
+  const [sheetIdx, setSheetIdx] = useState<number | null>(null)
   const [selected, setSelected] = useState<SheetPart | null>(null)
 
   const instancesByCell = useMemo(() => {
@@ -161,9 +162,9 @@ export function CutmapView({
 
   const model = data.model as any
   const materials: Material[] = model.materials ?? []
-  const material = materials[materialIdx]
+  const material = materialIdx !== null ? materials[materialIdx] : undefined
   const sheets: Sheet[] = material?.sheets ?? []
-  const sheet = sheets[sheetIdx]
+  const sheet = sheetIdx !== null ? sheets[sheetIdx] : undefined
   const holes = (model.holes ?? {}) as Record<string, any>
 
   const sheetDone = (s: Sheet) => {
@@ -217,7 +218,7 @@ export function CutmapView({
     ["Tirim en", material?.trimW ?? "—"],
   ]
   const statsRow = material ? (
-    <div className="num flex flex-wrap items-center justify-center gap-x-4 gap-y-0.5 text-xs">
+    <div className="num flex flex-wrap items-center justify-center gap-4 text-xs">
       {statPairs.map(([l, v]) => (
         <span key={l} className="whitespace-nowrap">
           <span className="text-muted-foreground">{l}:</span> <b>{v}</b>
@@ -231,148 +232,173 @@ export function CutmapView({
       {statsContainer
         ? statsRow && createPortal(statsRow, statsContainer)
         : statsRow}
-      <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
-        {/* Materiallar paneli */}
-        <div className="w-full shrink-0 space-y-3 lg:w-72">
-          <Button
-            variant="outline"
-            className="h-12 w-full text-base"
-            onClick={onBack}
-          >
-            <ArrowLeft /> {admin ? "Orqaga" : "Proyektlar"}
-          </Button>
-          <div className="rounded-xl border bg-card">
-            <div className="border-b px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Materiallar · {materials.length}
-            </div>
-            <div className="max-h-48 overflow-y-auto">
-              {materials.map((m: Material, i: number) => {
-                const done = m.sheets.filter(sheetDone).length
-                const allDone = done === m.sheets.length && m.sheets.length > 0
-                return (
-                  <button
-                    type="button"
-                    key={m.name}
-                    onClick={() => {
-                      setMaterialIdx(i)
-                      setSheetIdx(0)
-                    }}
-                    className={`flex min-h-12 w-full items-center justify-between px-3 py-2.5 text-left text-base ${
-                      i === materialIdx
-                        ? "bg-secondary font-semibold"
-                        : "hover:bg-muted"
-                    } ${allDone ? "text-muted-foreground" : ""}`}
-                  >
-                    <span className="truncate">
-                      {allDone && (
-                        <span className="mr-1 text-green-600">✓</span>
-                      )}
-                      {m.name}
-                    </span>
-                    <span className="num ml-2 shrink-0 text-xs text-muted-foreground">
-                      {done}/{m.sheets.length}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+
+      {materialIdx === null ? (
+        /* 1-qadam: material tanlash */
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border bg-white p-4">
+          <div className="mb-3 flex items-center gap-3">
+            <Button
+              variant="outline"
+              className="h-12 px-5 text-base"
+              onClick={onBack}
+            >
+              <ArrowLeft /> {admin ? "Orqaga" : "Proyektlar"}
+            </Button>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              Materialni tanlang · {materials.length}
+            </h2>
           </div>
-          {/* Listlar — zich ro'yxat: ko'p listda ham sig'adi, joriy list ajralib turadi */}
-          <div className="rounded-xl border bg-card">
-            <div className="border-b px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Listlar · {sheets.length} karta (
-              {sheets.reduce((a: number, s: Sheet) => a + (s.mult || 1), 0)}{" "}
-              dona)
-            </div>
-            <div className="max-h-64 overflow-y-auto lg:max-h-[38vh]">
-              {sheets.map((s: Sheet, i: number) => {
-                const done = sheetDone(s)
-                return (
-                  <button
-                    type="button"
-                    key={s.no}
-                    onClick={() => setSheetIdx(i)}
-                    className={`flex min-h-12 w-full items-center gap-2 px-3 py-2 text-left text-base ${
-                      i === sheetIdx
-                        ? "bg-secondary font-semibold"
-                        : "hover:bg-muted"
-                    } ${done ? "text-muted-foreground" : ""}`}
-                  >
-                    <span className="num w-9 shrink-0 font-bold">№{s.no}</span>
-                    <span className="num flex-1">
-                      {s.L}×{s.W}
-                    </span>
-                    {(s.mult || 1) > 1 && (
-                      <span className="num rounded bg-primary/10 px-1.5 text-xs font-bold text-primary">
-                        ×{s.mult}
-                      </span>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {materials.map((m: Material, i: number) => {
+              const done = m.sheets.filter(sheetDone).length
+              const total = m.sheets.length
+              const allDone = done === total && total > 0
+              const dona = m.sheets.reduce(
+                (a: number, s: Sheet) => a + (s.mult || 1),
+                0,
+              )
+              return (
+                <button
+                  type="button"
+                  key={m.name}
+                  onClick={() => setMaterialIdx(i)}
+                  className={`rounded-xl border-2 p-4 text-left transition-all hover:border-primary active:scale-[0.98] active:border-primary ${
+                    allDone ? "border-green-500/60 bg-green-50/50" : ""
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="text-base font-black">{m.name}</div>
+                    {allDone && (
+                      <span className="text-xl text-green-600">✓</span>
                     )}
-                    {done && <span className="text-green-600">✓</span>}
-                  </button>
-                )
-              })}
-            </div>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full rounded-full ${allDone ? "bg-green-500" : "bg-primary"}`}
+                      style={{
+                        width: `${total ? Math.round((done / total) * 100) : 0}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="num mt-1 flex justify-between text-sm">
+                    <span className="font-bold">
+                      {done}/{total} karta
+                    </span>
+                    <span className="text-muted-foreground">
+                      {dona} dona list
+                    </span>
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </div>
-
-        {/* To'liq list ko'rinishi — kulrang fon: oq blik o'rniga yumshoq kontrast */}
-        <div className="flex min-h-0 flex-1 flex-col rounded-xl border bg-slate-200 p-3">
-          {sheet ? (
-            <>
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <div className="text-base font-black">
-                  №{sheet.no} —{" "}
-                  <span className="num">
-                    {sheet.L} × {sheet.W} mm
+      ) : sheetIdx === null ? (
+        /* 2-qadam: list tanlash */
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border bg-white p-4">
+          <div className="mb-3 flex items-center gap-3">
+            <Button
+              variant="outline"
+              className="h-12 px-5 text-base"
+              onClick={() => setMaterialIdx(null)}
+            >
+              <ArrowLeft /> Materiallar
+            </Button>
+            <h2 className="truncate text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              {material.name} — listni tanlang · {sheets.length} karta
+            </h2>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {sheets.map((s: Sheet, i: number) => {
+              const done = sheetDone(s)
+              return (
+                <button
+                  type="button"
+                  key={s.no}
+                  onClick={() => setSheetIdx(i)}
+                  className={`flex min-h-16 items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all hover:border-primary active:scale-[0.98] active:border-primary ${
+                    done
+                      ? "border-green-500/60 bg-green-50/50 text-muted-foreground"
+                      : ""
+                  }`}
+                >
+                  <span className="num text-xl font-black">№{s.no}</span>
+                  <span className="num flex-1 text-base">
+                    {s.L}×{s.W}
                   </span>
-                  <span className="num ml-2 rounded bg-secondary px-1.5 py-0.5 text-xs">
-                    × {sheet.mult} list
-                  </span>
-                </div>
-                <div className="flex gap-1.5">
-                  <Button
-                    variant="outline"
-                    className="size-12 bg-white shadow-sm [&_svg]:size-6"
-                    disabled={sheetIdx === 0}
-                    onClick={() => setSheetIdx(sheetIdx - 1)}
-                  >
-                    <ChevronLeft />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="size-12 bg-white shadow-sm [&_svg]:size-6"
-                    disabled={sheetIdx >= sheets.length - 1}
-                    onClick={() => setSheetIdx(sheetIdx + 1)}
-                  >
-                    <ChevronRight />
-                  </Button>
-                </div>
-              </div>
-              <div className="min-h-0 flex-1">
-                <SheetSvg
-                  sheet={sheet}
-                  holes={holes}
-                  instancesByCell={instancesByCell as never}
-                  onSelect={setSelected}
-                  selectedCell={selected?.cell ?? null}
-                  controls
-                />
-              </div>
-            </>
-          ) : (
-            <p className="m-auto text-muted-foreground">List tanlanmagan</p>
-          )}
+                  {(s.mult || 1) > 1 && (
+                    <span className="num rounded bg-primary/10 px-2 py-0.5 text-sm font-bold text-primary">
+                      ×{s.mult}
+                    </span>
+                  )}
+                  {done && <span className="text-xl text-green-600">✓</span>}
+                </button>
+              )
+            })}
+          </div>
         </div>
+      ) : (
+        /* 3-qadam: xarita — to'liq kenglikda, kulrang fon (blik kamayadi) */
+        <div className="flex min-h-0 flex-1 flex-col rounded-xl border bg-slate-200 p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-3">
+              <Button
+                variant="outline"
+                className="h-12 bg-white px-4 text-base shadow-sm"
+                onClick={() => setSheetIdx(null)}
+              >
+                <ArrowLeft /> Listlar
+              </Button>
+              <div className="truncate text-base font-black">
+                №{sheet.no} —{" "}
+                <span className="num">
+                  {sheet.L} × {sheet.W} mm
+                </span>
+                <span className="num ml-2 rounded bg-secondary px-1.5 py-0.5 text-xs">
+                  × {sheet.mult} list
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-1.5">
+              <Button
+                variant="outline"
+                className="size-12 bg-white shadow-sm [&_svg]:size-6"
+                disabled={sheetIdx === 0}
+                onClick={() => setSheetIdx(sheetIdx - 1)}
+              >
+                <ChevronLeft />
+              </Button>
+              <Button
+                variant="outline"
+                className="size-12 bg-white shadow-sm [&_svg]:size-6"
+                disabled={sheetIdx >= sheets.length - 1}
+                onClick={() => setSheetIdx(sheetIdx + 1)}
+              >
+                <ChevronRight />
+              </Button>
+            </div>
+          </div>
+          <div className="min-h-0 flex-1">
+            <SheetSvg
+              sheet={sheet}
+              holes={holes}
+              instancesByCell={instancesByCell as never}
+              onSelect={setSelected}
+              selectedCell={selected?.cell ?? null}
+              controls
+            />
+          </div>
+        </div>
+      )}
 
-        <PartCard
-          part={selected}
-          sheetNo={sheet?.no}
-          instancesByCell={instancesByCell as never}
-          onClose={() => setSelected(null)}
-          admin={admin}
-          holes={holes}
-        />
-      </div>
+      <PartCard
+        part={selected}
+        sheetNo={sheet?.no}
+        instancesByCell={instancesByCell as never}
+        onClose={() => setSelected(null)}
+        admin={admin}
+        holes={holes}
+      />
     </div>
   )
 }
