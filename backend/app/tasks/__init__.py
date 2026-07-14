@@ -1,3 +1,4 @@
+import base64
 import json
 import logging
 import socket
@@ -7,7 +8,7 @@ from fastapi.concurrency import run_in_threadpool
 
 from app.core.config import settings
 from app.core.db import local_session
-from app.services.labels import build_label_ezpl, load_label_data
+from app.services.labels import build_label_ezpl, load_label_data, render_label_png
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,9 @@ async def print_label(ctx: dict[str, Any], instance_id: int) -> str:
         if data is None:
             return f"skip:{instance_id}"
         ezpl = build_label_ezpl(data)
+        # PNG ham yuboriladi: USB (GDI) rejimidagi agent rasmni chizadi — printer
+        # dialektiga bog'liq emas; tarmoq GoDEX esa ezpl'ni oladi
+        png_b64 = base64.b64encode(render_label_png(data)).decode()
 
     if settings.PRINTER_IP:
         try:
@@ -45,7 +49,7 @@ async def print_label(ctx: dict[str, Any], instance_id: int) -> str:
 
     redis = ctx.get("redis")  # arq worker context carries its Redis connection
     if redis is not None:
-        job = json.dumps({"type": "print", "instance_id": instance_id, "ezpl": ezpl})
+        job = json.dumps({"type": "print", "instance_id": instance_id, "ezpl": ezpl, "png": png_b64})
         await redis.lpush(PRINT_QUEUE_KEY, job)
         return f"queued:{instance_id}"
 

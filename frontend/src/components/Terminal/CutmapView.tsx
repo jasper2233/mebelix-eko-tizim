@@ -141,6 +141,19 @@ export function CutmapView({
     reset: () => void
   } | null>(null)
 
+  const queryClient = useQueryClient()
+  const { showSuccessToast, showErrorToast } = useCustomToast()
+  // Chap qatordagi Chop etish: belgilangan detalning navbatdagi nusxasi
+  // to'g'ridan-to'g'ri GoDEX navbatiga ketadi (dialog yo'q)
+  const printMutation = useMutation({
+    mutationFn: (instanceId: number) =>
+      TerminalService.printInstanceLabel({ instanceId }),
+    onSuccess: (r) => showSuccessToast(r.message),
+    onError: handleError(showErrorToast),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: ["terminal", "cutmap"] }),
+  })
+
   const instancesByCell = useMemo(() => {
     const map = new Map<
       string,
@@ -219,6 +232,17 @@ export function CutmapView({
         ),
     0,
   )
+  const markedPart =
+    sheet && markedCell !== null
+      ? (sheet.parts as SheetPart[]).find(
+          (p) => p.cell === markedCell && !p.waste,
+        )
+      : undefined
+  const markedInsts = markedPart
+    ? ((instancesByCell.get(`${sheet.no}:${markedPart.cell}`) as any[]) ?? [])
+    : []
+  const nextInstance = markedInsts.find((i) => !i.done) ?? markedInsts[0]
+
   const statPairs: Array<[string, string | number]> = [
     ["Listlar", `${listTot}−${listDn}=${listTot - listDn}`],
     ["Detallar", `${detTot}−${detDn}=${detTot - detDn}`],
@@ -308,6 +332,16 @@ export function CutmapView({
         onClick={() => zoomApi.current?.reset()}
       >
         <Maximize2 />
+      </TBtn>
+      <TBtn
+        label="Chop etish"
+        tone={nextInstance ? "success" : "default"}
+        disabled={!nextInstance || printMutation.isPending}
+        onClick={() =>
+          nextInstance && printMutation.mutate(nextInstance.instance_id)
+        }
+      >
+        <Printer />
       </TBtn>
     </>
   )
@@ -413,7 +447,9 @@ export function CutmapView({
                 holes={holes}
                 instancesByCell={instancesByCell as never}
                 onSelect={(part) => {
-                  setSelected(part)
+                  // Terminalda tap faqat belgilaydi — chop etish chap qatordan;
+                  // admin (texnolog) esa QR kartochkani ko'radi
+                  if (admin) setSelected(part)
                   setMarkedCell(part.cell)
                 }}
                 selectedCell={markedCell}
@@ -455,6 +491,7 @@ const TBTN_TONES = {
   // warn to'ldirilmaydi: amber fon xarita apelsini bilan qo'shilib ketardi — faqat ikonka rangi
   warn: "border bg-white text-amber-600 hover:border-amber-500",
   danger: "border-transparent bg-red-600 text-white hover:bg-red-700",
+  success: "border-transparent bg-green-600 text-white hover:bg-green-700",
 } as const
 
 export function TBtn({

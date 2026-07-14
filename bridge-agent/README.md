@@ -22,6 +22,24 @@ python3 agent.py
 Ixtiyoriy env: `PRINTER_PORT` (default 9100), `QUEUE_FILE` (navbat fayli yo'lini
 almashtirish, default `./print-queue.jsonl`).
 
+## USB printer (GoDEX G500-U) — Windows
+
+Ethernet porti yo'q modellarda EZPL Windows share orqali yuboriladi:
+
+1. GoDEX drayverini o'rnating (printer nomi: `GODEX`).
+2. Printer properties → Sharing → **Share this printer**, share nomi `GODEX`.
+3. Agentni `PRINTER_IP` o'rniga share bilan ishga tushiring:
+
+```powershell
+$env:MES_URL="wss://mes.mebelix.uz"
+$env:BRIDGE_TOKEN="<serverdagi BRIDGE_TOKEN>"
+$env:PRINTER_SHARE="\\localhost\GODEX"
+python agent.py
+```
+
+Doimiy ishlashi uchun shu buyruqni Windows Task Scheduler'da "At startup"
+trigger bilan ro'yxatdan o'tkazing (terminal monoblokning o'zida ham bo'ladi).
+
 Serverda `.env` ichida `BRIDGE_TOKEN` bir xil qiymatda bo'lishi shart
 (`openssl rand -hex 24` bilan yarating).
 

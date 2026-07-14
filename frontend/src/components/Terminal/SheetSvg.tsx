@@ -152,12 +152,9 @@ export function SheetSvg({
   })
 
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    // ATAYIN capture yo'q: setPointerCapture keyingi click'ni SVG'ga retarget
+    // qilib, detal <g> onClick'ini o'ldiradi (tanlash ishlamay qoladi)
     ptsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-    try {
-      svgRef.current?.setPointerCapture(e.pointerId)
-    } catch {
-      /* sintetik pointer (test) — capture shart emas */
-    }
     if (ptsRef.current.size === 2) {
       panRef.current = null
       swipeRef.current = null
