@@ -37,11 +37,44 @@ import websockets
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("bridge-agent")
 
+
+def _load_dotenv() -> None:
+    """Exe yonidagi .env'ni o'qiydi — monoblokda start-skript kerak emas, ikki bosish yetadi."""
+    import sys
+
+    base = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path.cwd()
+    env_file = base / ".env"
+    if not env_file.exists():
+        return
+    for line in env_file.read_text(encoding="utf-8-sig").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        os.environ.setdefault(key.strip(), val.strip().strip('"'))
+
+
+def _detect_printer() -> str:
+    """PRINTER_NAME berilmasa nomida 'godex' bor lokal printerni topadi —
+    yangi printer ulanganda config o'zgarmaydi, drayver o'rnatilsa bas."""
+    try:
+        import win32print
+
+        for p in win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL):
+            if "godex" in p[2].lower():
+                return p[2]
+    except Exception:  # noqa: BLE001 — win32 yo'q (Linux) yoki printer topilmadi
+        pass
+    return ""
+
+
+_load_dotenv()
+
 MES_URL = os.environ.get("MES_URL", "ws://localhost:8000")
 BRIDGE_TOKEN = os.environ.get("BRIDGE_TOKEN", "")
 PRINTER_IP = os.environ.get("PRINTER_IP", "")
 PRINTER_PORT = int(os.environ.get("PRINTER_PORT", "9100"))
-PRINTER_NAME = os.environ.get("PRINTER_NAME", "")  # Windows printer nomi (win32print RAW)
+PRINTER_NAME = os.environ.get("PRINTER_NAME", "") or _detect_printer()  # Windows printer nomi
 PRINTER_SHARE = os.environ.get("PRINTER_SHARE", "")  # USB GoDEX: r"\\host\sharename"
 QUEUE_FILE = Path(os.environ.get("QUEUE_FILE", "print-queue.jsonl"))
 
@@ -226,7 +259,8 @@ async def uplink() -> None:
 
 async def main() -> None:
     if not BRIDGE_TOKEN:
-        raise SystemExit("BRIDGE_TOKEN env sozlanmagan")
+        raise SystemExit("BRIDGE_TOKEN env sozlanmagan (.env fayl yoki env var)")
+    log.info("Printer: %s", PRINTER_NAME or PRINTER_SHARE or (PRINTER_IP and f"{PRINTER_IP}:{PRINTER_PORT}") or "TOPILMADI — GoDEX drayverini o'rnating")
     await asyncio.gather(uplink(), flusher())
 
 
