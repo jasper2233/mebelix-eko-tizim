@@ -378,7 +378,7 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
         vt = f"{_n(long_side)}{sym_b}"
         vfont = font(3.2, bold=True)
         vbb = draw.textbbox((0, 0), vt, font=vfont)
-        vimg = Image.new("RGB", (vbb[2] + 2, vbb[3] + 2), "white")
+        vimg = Image.new("RGB", (int(vbb[2]) + 2, int(vbb[3]) + 2), "white")
         vdraw = ImageDraw.Draw(vimg)
         vdraw.fontmode = "1"
         vdraw.text((1, 1), vt, fill="black", font=vfont)
