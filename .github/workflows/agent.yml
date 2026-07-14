@@ -5,7 +5,7 @@ name: Bridge Agent
 on:
   push:
     branches: [main]
-    paths: [bridge-agent/**]
+    paths: [bridge-agent/**, .github/workflows/agent.yml]
 
 jobs:
   build-and-send:
@@ -26,8 +26,11 @@ jobs:
           TG_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TG_CHAT_ID }}
         run: |
-          curl -s -F chat_id="$TG_CHAT" \
+          ls -la dist/
+          resp=$(curl -s -F chat_id="$TG_CHAT" \
             -F document=@dist/mebelix-agent.exe \
             -F caption="mebelix-agent yangi versiya (${GITHUB_SHA::7}) — monoblokda eski exe ustiga qo'ying" \
-            "https://api.telegram.org/bot${TG_TOKEN}/sendDocument" > /dev/null
-          echo "Telegramga yuborildi"
+            "https://api.telegram.org/bot${TG_TOKEN}/sendDocument")
+          # token javobda yo'q — faqat ok/error_code/description keladi
+          echo "$resp" | head -c 400
+          echo "$resp" | grep -q '"ok":true' || { echo "::error::Telegram sendDocument yiqildi"; exit 1; }
