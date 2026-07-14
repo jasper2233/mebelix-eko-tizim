@@ -54,6 +54,7 @@ function OrderDetailPage() {
   const { showSuccessToast, showErrorToast } = useCustomToast()
   const fileInput = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [deliverOpen, setDeliverOpen] = useState(false)
   const [cancelReason, setCancelReason] = useState("")
@@ -210,6 +211,45 @@ function OrderDetailPage() {
           </div>
         }
       />
+
+      {isTexnolog && order.status === "technical_review" && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: drop zone — klaviatura uchun yonidagi tugma bor
+        // biome-ignore lint/a11y/useKeyWithClickEvents: klaviatura yo'li headerdagi "Project fayl yuklash" tugmasi
+        <div
+          onDragOver={(e) => {
+            e.preventDefault()
+            setDragOver(true)
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault()
+            setDragOver(false)
+            const f = e.dataTransfer.files?.[0]
+            if (!f) return
+            if (!f.name.endsWith(".project")) {
+              showErrorToast("Faqat .project fayl qabul qilinadi")
+              return
+            }
+            upload(f)
+          }}
+          onClick={() => fileInput.current?.click()}
+          className={`mb-6 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+            dragOver
+              ? "border-primary bg-primary/5"
+              : "border-muted-foreground/30 text-muted-foreground hover:border-primary/50"
+          }`}
+        >
+          <FileUp className="size-6" />
+          <span className="font-medium">
+            {uploading
+              ? "Yuklanmoqda..."
+              : ".project faylni shu yerga tashlang yoki bosing"}
+          </span>
+          <span className="text-xs">
+            GibLab eksport fayli — yuklangach tahlil avtomatik boshlanadi
+          </span>
+        </div>
+      )}
 
       <div className="mb-6 grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
         <Meta label="Holat" value={<StatusBadge status={order.status} />} />

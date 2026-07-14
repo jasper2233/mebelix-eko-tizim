@@ -34,6 +34,7 @@ class LabelData:
     printed_at: datetime
     # Haqiqiy teshiklar (cutmap'dan): {"l","w","bores":[{x,y,d,thru}],"edge":[{side,pos,d,dp}]}
     holes: dict[str, Any] | None = None
+    texture: bool = False  # tekstura yo'nalishi qulflangan (uzunlik bo'ylab)
 
 
 async def load_label_data(db: "AsyncSession", instance_id: int) -> LabelData | None:
@@ -79,6 +80,7 @@ async def load_label_data(db: "AsyncSession", instance_id: int) -> LabelData | N
         label_num=part.label_num,
         printed_at=datetime.now(UTC).astimezone(ZoneInfo("Asia/Tashkent")),
         holes=holes,
+        texture=part.txt,
     )
 
 
@@ -247,22 +249,22 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
         text(5, 1, "MEBELIX", 4, bold=True)
 
     product_code = d.part_code.split("_", 1)[0]
-    text(26, 1.5, "Formatka", 2.6)
-    text(26, 4.8, product_code, 3.4, bold=True)
-    text(5, 9.5, d.part_code, 2.4)
+    text(26, 1.5, "Formatka", 2.8)
+    text(26, 4.8, product_code[:7], 3.7, bold=True)
+    text(5, 9.5, d.part_code[:18], 2.7)
 
-    # Loyiha
-    text(5, 13.5, d.project_name[:30], 3, bold=True)
+    # Loyiha (limit 26: kattaroq shriftda eskiz chizig'iga yetmasin)
+    text(5, 13.5, d.project_name[:26], 3.3, bold=True)
 
     # Kromka 2x2 (tagchiziq bilan): chapda uzunlik tomonlari (t/b), o'ngda en (l/r)
     def edge_cell(x: float, y: float, mat: str) -> None:
         if not mat:
             return
-        text(x, y, mat, 2.6, bold=True)
+        text(x, y, mat[:14], 2.9, bold=True)
         draw.line(
             (int(x * mm), int((y + 3.4) * mm), int((x + 22) * mm), int((y + 3.4) * mm)),
             fill="black",
-            width=max(1, scale),
+            width=max(2, scale),
         )
 
     edge_cell(5, 19, edge_mat("t"))
@@ -275,31 +277,42 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
         size = f"{_n(d.length)} x {_n(d.width)}"
         if d.count:
             size += f" = {d.count}"
-        text(28, 24, size, 4.2, bold=True, anchor="ma")
+        text(28, 24, size, 4.6, bold=True, anchor="ma")
 
     # N_detal nomi (mebelix.lbl index_name): 12_bok
     label_name = f"{d.label_num}_{d.part_name}" if d.label_num else d.part_name
-    text(5, 36.5, label_name[:26], 3, bold=True)
+    text(5, 36.5, label_name[:24], 3.3, bold=True)
 
-    # XNC belgilari (GibSaw): P=paz, F=freza, C=teshik
+    # XNC belgilari (GibSaw grafic_images): П=paz, Ф=freza, teshik — sverlo ikonkasi
     icons = []
     if d.xnc_summary.get("grooves"):
         icons.append("П")
     if d.xnc_summary.get("mills"):
         icons.append("Ф")
-    if d.xnc_summary.get("bores") or d.xnc_summary.get("edge_bores"):
-        icons.append("С")
     if icons:
-        text(5, 41.5, " ".join(icons), 3.2, bold=True)
+        text(5, 41.5, " ".join(icons), 3.4, bold=True)
+    if d.xnc_summary.get("bores") or d.xnc_summary.get("edge_bores"):
+        # Sverlo ikonkasi zakaz ID ("Formatka 305201") tagida — detal kodi (~x27
+        # gacha), loyiha (y13.5+) va QR (x40+) oralig'idagi bo'sh joyda
+        drill_path = Path(__file__).resolve().parents[1] / "assets" / "label-icon-drill.png"
+        isz = int(4 * mm)  # zakaz ID (past ~8.9) va loyiha qatori (13.5) orasiga sig'adi
+        try:
+            raw = Image.open(drill_path)
+            flat = Image.new("RGB", raw.size, "white")
+            flat.paste(raw, mask=raw.getchannel("A") if "A" in raw.getbands() else None)
+            icon = flat.convert("L").point(lambda v: 0 if v < 160 else 255).convert("RGB").resize((isz, isz))
+            img.paste(icon, (int(35 * mm), int(9.4 * mm)))
+        except OSError:
+            text(35, 9.4, "С", 3.2, bold=True)
 
     # Material va sana pastda
-    text(5, 49, d.material[:26], 2.6, bold=True)
-    text(5, 53, d.printed_at.strftime("%Y.%m.%d %H:%M"), 2.4)
+    text(5, 49, d.material[:24], 2.9, bold=True)
+    text(5, 53, d.printed_at.strftime("%Y.%m.%d %H:%M"), 2.7)
     n = f"N{d.label_num}" if d.label_num else ""
     copy = f"{d.instance_no}/{d.count}" if d.instance_no else ""
     tail = f"{n} {copy}".strip()
     if tail:
-        text(5, 56.2, tail, 2.6, bold=True)
+        text(5, 56.2, tail, 2.9, bold=True)
 
     # ============ O'NG USTUN (x 56..78) ============
     # QR tepada — to'liq nusxa kodi (skan oqimi)
@@ -314,8 +327,9 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
         long_side, short_side = max(d.length, d.width), min(d.length, d.width)
         off = int(1 * mm)  # edgeband.offset=1mm
         bt = max(2, int(0.6 * mm))  # kromka chizig'i qalinligi
-        area_x, area_y = 61 * mm, 3 * mm
-        area_w, area_h = 13 * mm, 46 * mm
+        # QR'dan keyin (kromka chizig'i ham QR'ga tegmasin — quiet zone)
+        area_x, area_y = int(58.5 * mm), 3 * mm
+        area_w, area_h = 15 * mm, 46 * mm
         bh = area_h
         bw = max(5 * mm, int(bh * short_side / long_side))
         if bw > area_w:
@@ -323,7 +337,8 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
             bh = min(area_h, int(bw * long_side / short_side))
         bx = area_x + (area_w - bw) // 2
         by = area_y
-        draw.rectangle((bx, by, bx + bw, by + bh), outline="black", width=max(1, scale))
+        # kamida 2px kontur: GDI kichraytirishda 1px chiziq yo'qolishi mumkin
+        draw.rectangle((bx, by, bx + bw, by + bh), outline="black", width=max(2, scale))
 
         def edge_sym(side: str) -> str:
             e = d.edges.get(side)
@@ -339,6 +354,15 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
         if d.edges.get("r"):
             draw.rectangle((bx, by + bh + off, bx + bw, by + bh + off + bt), fill="black")
 
+        # Tekstura yo'nalishi (xaritadagidek): uzunlik bo'ylab 3 ingichka chiziq —
+        # eskizda vertikal. Teshiklardan oldin chiziladi (teshik ustida qolsin)
+        if d.texture:
+            tl = int(bh * 0.32)
+            gap = max(3, bw // 4)
+            # kamida 2px: GDI kichraytirishda 1px vertikal chiziq yo'qolib qoladi
+            for xx in (bx + bw // 2 - gap, bx + bw // 2, bx + bw // 2 + gap):
+                draw.line((xx, by + (bh - tl) // 2, xx, by + (bh + tl) // 2), fill="black", width=max(2, scale))
+
         # Haqiqiy sverlo o'rinlari (GibSaw'da yo'q — bizda cutmap'dan bor):
         # lokal (x bo'ylab uzunlik, y bo'ylab en) -> vertikal eskiz koordinatalari
         if d.holes and d.holes.get("l") and d.holes.get("w"):
@@ -348,7 +372,7 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
                 cxp = bx + int(float(b["y"]) * kx)
                 cyp = by + int(float(b["x"]) * ky)
                 r = max(int(0.4 * mm), int(float(b.get("d", 5)) / 2 * min(kx, ky)))
-                draw.ellipse((cxp - r, cyp - r, cxp + r, cyp + r), outline="black", width=max(1, scale))
+                draw.ellipse((cxp - r, cyp - r, cxp + r, cyp + r), fill="white", outline="black", width=max(2, scale))
             for b in d.holes.get("edge", []):
                 side, pos = b.get("side"), float(b.get("pos", 0))
                 dp = min(float(b.get("dp", 12)), 30) * min(kx, ky)
@@ -366,16 +390,19 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
                     xx = bx + int(pos * kx)
                     draw.line((xx, by + bh - tick, xx, by + bh), fill="black", width=2)
 
-        # O'lchamlar: en pastda gorizontal, uzunlik o'ngda aylantirilgan (Universal size.top/left=false)
-        sym_b = f" ({edge_sym('b')})" if edge_sym("b") else ""
+        # O'lchamlar: en pastda gorizontal, uzunlik o'ngda aylantirilgan (Universal size.top/left=false).
+        # Har o'lcham yoniga o'sha tomonlar kromka belgilari (xaritadagi "450 B" uslubi):
+        # uzunlik <- t/b tomonlar, en <- l/r tomonlar
+        sym_long = "".join(s for s in (edge_sym("t"), edge_sym("b")) if s)
+        sym_short = "".join(s for s in (edge_sym("l"), edge_sym("r")) if s)
         draw.text(
             (bx + bw // 2, by + bh + off + bt + int(0.6 * mm)),
-            _n(short_side),
+            f"{_n(short_side)} {sym_short}".strip(),
             fill="black",
             font=font(3.2, bold=True),
             anchor="ma",
         )
-        vt = f"{_n(long_side)}{sym_b}"
+        vt = f"{_n(long_side)} {sym_long}".strip()
         vfont = font(3.2, bold=True)
         vbb = draw.textbbox((0, 0), vt, font=vfont)
         vimg = Image.new("RGB", (int(vbb[2]) + 2, int(vbb[3]) + 2), "white")
@@ -383,7 +410,9 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
         vdraw.fontmode = "1"
         vdraw.text((1, 1), vt, fill="black", font=vfont)
         vimg = vimg.rotate(90, expand=True)
-        img.paste(vimg, (bx + bw + off + bt + int(0.6 * mm), by + (bh - vimg.height) // 2))
+        # Keng eskizda yozuv qog'oz chetidan chiqib ketmasin
+        vx = min(bx + bw + off + bt + int(0.6 * mm), W - vimg.width - 1)
+        img.paste(vimg, (vx, by + (bh - vimg.height) // 2))
 
     buf = _io.BytesIO()
     # Yakuniy 1-bit: har piksel sof qora yoki oq
