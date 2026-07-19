@@ -198,6 +198,114 @@ export const Body_upload_room_photoSchema = {
     title: 'Body_upload_room_photo'
 } as const;
 
+export const BridgeAgentCreateSchema = {
+    properties: {
+        name: {
+            type: 'string',
+            maxLength: 100,
+            minLength: 2,
+            title: 'Name',
+            examples: ['Arrachi monoblok']
+        }
+    },
+    type: 'object',
+    required: ['name'],
+    title: 'BridgeAgentCreate'
+} as const;
+
+export const BridgeAgentReadSchema = {
+    properties: {
+        id: {
+            type: 'integer',
+            title: 'Id'
+        },
+        name: {
+            type: 'string',
+            title: 'Name'
+        },
+        paired: {
+            type: 'boolean',
+            title: 'Paired'
+        },
+        pair_code: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Pair Code'
+        },
+        pair_expires_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Pair Expires At'
+        },
+        last_seen_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Seen At'
+        },
+        created_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Created At'
+        }
+    },
+    type: 'object',
+    required: ['id', 'name', 'paired', 'pair_code', 'pair_expires_at', 'last_seen_at', 'created_at'],
+    title: 'BridgeAgentRead',
+    description: `Admin ro'yxati. pair_code faqat hali ulanmagan agentda bo'ladi —
+ro'yxatning o'zi admin-only, shuning uchun kodni ko'rsatish xavfsiz.`
+} as const;
+
+export const BridgePairRequestSchema = {
+    properties: {
+        code: {
+            type: 'string',
+            maxLength: 16,
+            minLength: 4,
+            title: 'Code'
+        }
+    },
+    type: 'object',
+    required: ['code'],
+    title: 'BridgePairRequest'
+} as const;
+
+export const BridgePairResponseSchema = {
+    properties: {
+        token: {
+            type: 'string',
+            title: 'Token'
+        },
+        name: {
+            type: 'string',
+            title: 'Name'
+        }
+    },
+    type: 'object',
+    required: ['token', 'name'],
+    title: 'BridgePairResponse',
+    description: 'Token FAQAT shu javobda beriladi — bazada sha256 xeshi qoladi.'
+} as const;
+
 export const CapacityUnitSchema = {
     type: 'string',
     enum: ['m2_per_hour', 'meter_per_hour', 'units_per_hour'],

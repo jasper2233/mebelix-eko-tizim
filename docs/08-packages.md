@@ -84,7 +84,7 @@ Tekshiruv: `npm run build` (tsc + vite) ✅ · `bash scripts/generate-client.sh`
 
 ## Bridge-agent bog'liqliklari (manifestsiz)
 
-`bridge-agent/` da `pyproject.toml` ham, `requirements.txt` ham **yo'q** — bog'liqliklar `agent.py` docstring'ida va `README.md` da bir xil buyruq sifatida yozilgan: `pip install websockets pywin32 pillow`. Sabab: bu printer ulangan kompyuterga alohida qo'yiladigan bitta fayllik skript, backend venv'iga kirmaydi.
+`bridge-agent/` da `pyproject.toml` ham, `requirements.txt` ham **yo'q**. Uchta runtime paket agent `mebelix-agent.exe` ichiga PyInstaller bilan yig'iladi (`pyinstaller --onefile --console --name mebelix-agent agent.py`) — sexdagi kompyuterga na Python, na `pip`, na alohida paket o'rnatiladi. `pyinstaller`ning o'zi faqat **build-time** asbob (dasturchi mashinasida), runtime bog'liqlik emas va hech qaysi manifestda yozilmagan.
 
 | Paket | Nima uchun |
 | --- | --- |
@@ -155,4 +155,4 @@ bash scripts/generate-client.sh
 
 `npm outdated` major bump ko'rsatsa — `package.json` dagi caret versiyani qo'lda ko'tarish kerak (caret major'dan o'tkazmaydi). Yuqoridagi 3 ceiling'ni tekshirishni unutmang.
 
-Bridge-agent bu siklga kirmaydi: uning `websockets` / `pywin32` / `pillow` paketlari printer ulangan kompyuterda alohida `pip` bilan boshqariladi, lock fayli yo'q.
+Bridge-agent bu siklga kirmaydi: uning `websockets` / `pywin32` / `pillow` versiyalari exe yig'ilgan paytdagi dasturchi muhitidan keladi, lock fayli yo'q. Yangilash = paketlarni yangilab exe'ni qayta yig'ish va serverdagi `backend/uploads/agent/mebelix-agent.exe` ni almashtirish.

@@ -38,6 +38,10 @@ services:
     restart: always
     expose:
       - "8000"
+    volumes:
+      # Yuklangan fayllar (.project, SCX, anketa xona rasmlari, agent exe) konteyner
+      # ichida turadi — volumesiz har deploy yangi konteyner bilan o'chib ketardi.
+      - uploads_data:/app/backend/uploads
     env_file:
       - .env
     environment:
@@ -122,5 +126,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  uploads_data:
   caddy_data:
   caddy_config:

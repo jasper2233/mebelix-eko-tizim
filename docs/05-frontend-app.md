@@ -150,6 +150,7 @@ __root.tsx                 → root layout (Outlet, devtools, 404/error)
 | `/transactions` | `transactions.tsx` | Audit jurnal "Tranzaksiyalar" nomi bilan — modul tab'lari (`getAuditLogsQueryOptions`) |
 | `/reports` | `reports.tsx` | Hisobotlar (TZ 11): Mahsuldorlik / Buyurtmalar / Material sarfi tab'lari, `DatePicker` sana oralig'i, Excel eksport (`GET /api/v1/reports/{kind}?format=xlsx`) |
 | `/admin` | `admin.tsx` | Foydalanuvchilar boshqaruvi (superuser guard, quyida) |
+| `/printers` | `printers.tsx` | Printer agentlar — exe yuklab olish, ulanish kodlari, agentlar holati (admin-only, quyida) |
 | `/logs` | `logs.tsx` | Xuddi shu audit jurnal "Tizim loglari" nomi bilan (transactions bilan bir xil manba) |
 | `/settings` | `settings.tsx` | Foydalanuvchi sozlamalari (quyida) |
 
@@ -181,6 +182,9 @@ Pathless layout — himoyalangan sahifalar qobig'i. **Auth guard + rol-router**:
 
 ### `frontend/src/routes/_layout/admin.tsx`
 `/admin` — foydalanuvchilar boshqaruvi. **Superuser guard**: `beforeLoad`da `readUserMe()` natijasi `is_superuser` bo'lmasa `redirect({ to: "/" })` (backend ham ro'yxatni faqat superuser'ga beradi). `useSuspenseQuery(getUsersQueryOptions())` bilan ro'yxat olinadi (`Suspense` fallback — `PendingUsers` skeleton). Har bir `UserRead`ga `isCurrentUser` flag'i qo'shilib (`useCurrentUser` bilan solishtirish) `DataTable`ga (`@/components/Common/DataTable`, ustunlar `@/components/Admin/columns`) uzatiladi. Yuqorida `AddUser` dialog tugmasi.
+
+### `frontend/src/routes/_layout/printers.tsx`
+`/printers` — printer agentlari (TZ 2.2.2 pairing oqimi), sarlavha `head()` orqali "Printer agentlar | MebeliX". Sahifa admin uchun: `AppSidebar.tsx` da `Printer` ikonkali yozuv faqat `admin` blokida qo'shiladi, ro'yxat/amal endpointlari esa backendda `AdminUser` bilan himoyalangan. Yuqorida ikkita amal: "Agentni yuklab olish" (`${OpenAPI.BASE}/api/v1/bridge-agents/download` ga to'g'ridan-to'g'ri `download` havolasi — `mebelix-agent.exe`) va "Yangi agent" dialogi; ostida uch qadamli o'rnatish yo'riqnomasi (drayver → exe → kod). Jadval `BridgeAgentsService.readBridgeAgents` dan (60s poll): nomi, holat — **Onlayn** (`last_seen_at` 6 daqiqadan yangi, `ONLINE_MS`), **Oflayn** (ulangan, lekin jim), **"Kod kutilmoqda"** (hali ulanmagan, kodi tirik) yoki "Kod muddati o'tgan" — ulanish kodi, oxirgi ulanish vaqti va har qatorda ikki amal: `KeyRound` — yangi kod (`regenerateBridgeCode`, eski token bekor bo'ladi) va `Trash2` — agentni bekor qilish (`deleteBridgeAgent`); ikkalasi ham `ConfirmDialog` orqali. Kod faqat dialogda bir marta ko'rsatiladi — `fmtCode` bilan `AB12-CD34` ko'rinishida (telefonda aytish oson), 15 daqiqa amal qiladi.
 
 ### `frontend/src/routes/_layout/settings.tsx`
 `/settings` — sozlamalar, Tabs asosida: "Profilim" (`UserInformation`), "Parol" (`ChangePassword`), "Xavfli zona" (`DeleteAccount`). Superuser uchun "Xavfli zona" yashiriladi (`tabsConfig.slice(0, 2)`) — superuser o'z hisobini o'chira olmaydi. `currentUser` hali yuklanmagan bo'lsa `null` qaytaradi.
@@ -311,7 +315,7 @@ Faqat tip deklaratsiyalari. `ApiRequestOptions<T>` — bitta so'rovning to'liq t
 | Fayl | Nima | Generator |
 |---|---|---|
 | `frontend/src/routeTree.gen.ts` | Route daraxti (type-safe) — `src/routes/` fayllaridan | `@tanstack/router-plugin` (Vite dev/build paytida avtomatik) |
-| `frontend/src/client/sdk.gen.ts` | 14 ta servis klass: `AuditService`, `ClientsService`, `EmployeesService`, `HealthService`, `LoginService`, `MachinesService`, `MaterialsService`, `OrdersService`, `PostsService`, `ReportsService`, `ScansService`, `TabloService`, `TerminalService`, `UsersService` — har metod `CancelablePromise` qaytaradi | `@hey-api/openapi-ts` |
+| `frontend/src/client/sdk.gen.ts` | 15 ta servis klass: `AuditService`, `BridgeAgentsService`, `ClientsService`, `EmployeesService`, `HealthService`, `LoginService`, `MachinesService`, `MaterialsService`, `OrdersService`, `PostsService`, `ReportsService`, `ScansService`, `TabloService`, `TerminalService`, `UsersService` — har metod `CancelablePromise` qaytaradi | `@hey-api/openapi-ts` |
 | `frontend/src/client/types.gen.ts` | Request/response TypeScript tiplari (`UserRead`, `Body_login_access_token`, `OrderSurvey`/`SurveyRoom`/`SurveyWall`/`SurveyModule`, `OrderFileRead.meta`, ...) | `@hey-api/openapi-ts` |
 | `frontend/src/client/schemas.gen.ts` | JSON schema'lar | `@hey-api/openapi-ts` |
 
@@ -341,7 +345,7 @@ main.tsx ──(BASE, WITH_CREDENTIALS)──> client/core/OpenAPI.ts
 main.tsx ──(401 interceptor)─────────> LoginService.refreshAccessToken (sdk.gen.ts)
 routes/* ──(beforeLoad guard)────────> UsersService.readUserMe (+ rol-router: lib/mes.ts OPERATOR_ROLES)
 routes/login.tsx ──> hooks/useAuth ──> LoginService.loginAccessToken / logout
-routes/_layout/* ──> queries/mes.ts ──> 14 ta *Service (sdk.gen.ts)
+routes/_layout/* ──> queries/mes.ts ──> 15 ta *Service (sdk.gen.ts)
 routes/_layout/anketa.$orderId.tsx ──> lib/anketa.ts (kod→label) + OrdersService.saveOrderSurvey / uploadRoomPhoto / deleteRoomPhoto
 routes/terminal.tsx ──> TerminalService / ScansService + Terminal/CutmapView (+ SheetSvg) + hooks/useMesWs
 routes/terminal.tsx ──(TBtn "Chop etish")──> TerminalService.printInstanceLabel ──> arq/Redis ──> bridge-agent ──> GoDEX

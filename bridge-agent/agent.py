@@ -8,14 +8,14 @@ Internet yoki printer uzilganda buyruqlar lokal diskda (JSONL) saqlanadi va
 aloqa tiklangach bajariladi — hech bir yorliq yo'qolmaydi.
 
 O'rnatish (faqat printer ulangan kompyuterda):
-    pip install websockets pywin32 pillow
-    MES_URL=wss://mes.mebelix.uz BRIDGE_TOKEN=... python agent.py
+    mebelix-agent.exe ni ishga tushiring va admin paneldagi ulanish kodini kiriting.
+    Kod bir marta so'raladi — token %APPDATA%\MebelixAgent\.env ga saqlanadi.
 
 Printer avto-topiladi (nomida "godex" bor Windows printeri) — sozlash shart emas.
 
-Env sozlamalari:
+Env sozlamalari (ixtiyoriy, pairing o'zi to'ldiradi):
     MES_URL       — server manzili (wss://... yoki ws://host:8000)
-    BRIDGE_TOKEN  — serverdagi BRIDGE_TOKEN bilan bir xil
+    BRIDGE_TOKEN  — token (pairing bergan yoki serverdagi umumiy token)
     PRINTER_NAME  — printer nomini qo'lda berish (avto-topish o'rniga)
     QUEUE_FILE    — lokal navbat fayli (default ./print-queue.jsonl)
 """
@@ -25,12 +25,107 @@ import contextlib
 import json
 import logging
 import os
+import sys
 from pathlib import Path
 
 import websockets
+import websockets.exceptions
+
+# Windows konsoli standart cp866 — o'zbekcha tinish belgilari buzilmasin
+for _stream in (sys.stdout, sys.stderr):
+    with contextlib.suppress(Exception):
+        _stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("bridge-agent")
+
+# O'rnatish konfiguratsiyasi shu yerda saqlanadi (exe qayerdan ishlatilishidan qat'i nazar)
+CONFIG_DIR = Path(os.environ.get("APPDATA", str(Path.home()))) / "MebelixAgent"
+
+
+def _load_dotenv() -> None:
+    r"""Config o'qish tartibi: env var > exe yonidagi .env > %APPDATA%\MebelixAgent\.env."""
+    base = (
+        Path(sys.executable).parent
+        if getattr(sys, "frozen", False)
+        else Path(__file__).resolve().parent
+    )
+    for env_file in (base / ".env", CONFIG_DIR / ".env"):
+        if not env_file.exists():
+            continue
+        for line in env_file.read_text(encoding="utf-8-sig").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, val = line.partition("=")
+            os.environ.setdefault(key.strip(), val.strip().strip('"'))
+
+
+def _pair_interactive() -> None:
+    """Birinchi o'rnatish: admin panel bergan ulanish kodini doimiy tokenga
+    almashtiradi va %APPDATA% ga saqlaydi. Serverga SSH ham, .env tahriri ham
+    kerak emas. Kod bir martalik va 15 daqiqa yashaydi; token muddatsiz."""
+    import json as _json
+    import urllib.error
+    import urllib.request
+
+    if os.environ.get("BRIDGE_TOKEN") or not sys.stdin or not sys.stdin.isatty():
+        return  # allaqachon ulangan yoki headless (Task Scheduler) — prompt yo'q
+    try:
+        print("=== MebeliX printer agenti — birinchi ulanish ===")
+        url = (
+            input("Server manzili [Enter = wss://mes.mebelix.uz]: ").strip()
+            or "wss://mes.mebelix.uz"
+        )
+        code = input("Ulanish kodi (admin panel > Printer agentlar): ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return
+    if not code:
+        return
+
+    # Sxema normalizatsiyasi: https://, http://, sxemasiz — hammasi qabul qilinadi
+    url = url.rstrip("/")
+    if "://" not in url:
+        url = "wss://" + url
+    url = url.replace("https://", "wss://", 1).replace("http://", "ws://", 1)
+    if url.startswith("ws://"):
+        from urllib.parse import urlparse
+
+        if urlparse(url).hostname not in ("localhost", "127.0.0.1"):
+            print(
+                "DIQQAT: TLS'siz (ws://) — token ochiq tarmoqdan o'tadi; wss:// tavsiya etiladi."
+            )
+    http = url.replace("wss://", "https://", 1).replace("ws://", "http://", 1)
+
+    req = urllib.request.Request(
+        f"{http}/api/v1/bridge-agents/pair",
+        data=_json.dumps({"code": code}).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = _json.loads(resp.read())
+            token, name = data["token"], data["name"]
+    except urllib.error.HTTPError as exc:
+        detail = ""
+        with contextlib.suppress(Exception):
+            detail = _json.loads(exc.read()).get("detail", "")
+        raise SystemExit(f"Kod qabul qilinmadi: {detail or exc}") from None
+    except OSError as exc:
+        raise SystemExit(f"Serverga ulanib bo'lmadi ({http}): {exc}") from None
+    except (ValueError, KeyError):
+        raise SystemExit(
+            f"Server javobi tushunarsiz — manzil to'g'riligini tekshiring: {http}"
+        ) from None
+
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    (CONFIG_DIR / ".env").write_text(
+        f"MES_URL={url}\nBRIDGE_TOKEN={token}\n", encoding="utf-8"
+    )
+    os.environ["MES_URL"] = url
+    os.environ["BRIDGE_TOKEN"] = token
+    print(f"Ulandi: {name}. Sozlama saqlandi — keyingi safar so'ralmaydi.")
+
 
 def _detect_printer() -> str:
     """PRINTER_NAME berilmasa nomida 'godex' bor lokal printerni topadi —
@@ -45,6 +140,9 @@ def _detect_printer() -> str:
         pass
     return ""
 
+
+_load_dotenv()
+_pair_interactive()
 
 MES_URL = os.environ.get("MES_URL", "ws://localhost:8000")
 BRIDGE_TOKEN = os.environ.get("BRIDGE_TOKEN", "")
@@ -107,7 +205,10 @@ def _print_png_gdi(png_b64: str) -> None:
     dm.PaperLength = 600  # 60mm
     dm.Orientation = 1  # portret
     dm.Fields |= (
-        win32con.DM_PAPERSIZE | win32con.DM_PAPERWIDTH | win32con.DM_PAPERLENGTH | win32con.DM_ORIENTATION
+        win32con.DM_PAPERSIZE
+        | win32con.DM_PAPERWIDTH
+        | win32con.DM_PAPERLENGTH
+        | win32con.DM_ORIENTATION
     )
 
     hdc_raw = win32gui.CreateDC("WINSPOOL", PRINTER_NAME, dm)
@@ -132,7 +233,9 @@ def send_to_printer(png_b64: str) -> bool:
         log.error("GoDEX printer topilmadi — drayver o'rnatilganini tekshiring")
         return False
     if not png_b64:
-        log.warning("PNG'siz job tashlab yuborildi")  # eski formatdagi yozuv navbatni to'smasin
+        log.warning(
+            "PNG'siz job tashlab yuborildi"
+        )  # eski formatdagi yozuv navbatni to'smasin
         return True
     try:
         _print_png_gdi(png_b64)
@@ -163,12 +266,28 @@ async def flusher() -> None:
         FLUSH_EVENT.clear()
 
 
+# v14+ additional_headers, eski v13- extra_headers
+_HDR_KW = (
+    "additional_headers"
+    if int(websockets.__version__.split(".")[0]) >= 14
+    else "extra_headers"
+)
+# Rad etilgan handshake (403) — v14+ InvalidStatus, eski v13- InvalidStatusCode
+_REJECTED: tuple[type[Exception], ...] = (
+    (websockets.exceptions.InvalidStatus,)
+    if hasattr(websockets.exceptions, "InvalidStatus")
+    else (websockets.exceptions.InvalidStatusCode,)
+)
+
+
 async def uplink() -> None:
     """Serverga doimiy outbound ulanish; uzilsa 5s backoff bilan qayta ulanadi."""
-    url = f"{MES_URL.rstrip('/')}/api/v1/ws/bridge?token={BRIDGE_TOKEN}"
+    # Token Authorization headerda — URL query'da emas (server loglariga tushmasin)
+    url = f"{MES_URL.rstrip('/')}/api/v1/ws/bridge"
+    kwargs = {_HDR_KW: {"Authorization": f"Bearer {BRIDGE_TOKEN}"}}
     while True:
         try:
-            async with websockets.connect(url, ping_interval=30) as ws:
+            async with websockets.connect(url, ping_interval=30, **kwargs) as ws:
                 log.info("Serverga ulandi: %s", MES_URL)
                 async for raw in ws:
                     try:
@@ -183,7 +302,18 @@ async def uplink() -> None:
                         local_enqueue(msg)
                         await ws.send(json.dumps({"ok": True}))
                         FLUSH_EVENT.set()
-                        log.info("Print job qabul qilindi: instance %s", msg.get("instance_id"))
+                        log.info(
+                            "Print job qabul qilindi: instance %s",
+                            msg.get("instance_id"),
+                        )
+        except _REJECTED as exc:
+            log.error(
+                "Server ulanishni rad etdi (%s) — token bekor qilingan bo'lishi mumkin. "
+                "Yangi kod bilan ulash uchun %s faylini o'chirib agentni qayta ishga tushiring.",
+                exc,
+                CONFIG_DIR / ".env",
+            )
+            await asyncio.sleep(60)
         except Exception as exc:
             log.warning("Ulanish uzildi (%s) — 5s dan keyin qayta urinish", exc)
             await asyncio.sleep(5)
@@ -191,10 +321,22 @@ async def uplink() -> None:
 
 async def main() -> None:
     if not BRIDGE_TOKEN:
-        raise SystemExit("BRIDGE_TOKEN env sozlanmagan")
+        raise SystemExit(
+            "Token yo'q — agentni ishga tushirib admin paneldagi ulanish kodini kiriting"
+        )
     log.info("Printer: %s", PRINTER_NAME or "TOPILMADI — GoDEX drayverini o'rnating")
     await asyncio.gather(uplink(), flusher())
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
+    except SystemExit as exc:
+        # Exe ikki marta bosilganda oyna darhol yopilmasin — xato o'qilsin
+        print("\nXATO:", exc)
+        if sys.stdin and sys.stdin.isatty():
+            with contextlib.suppress(Exception):
+                input("Yopish uchun Enter bosing...")
+        raise

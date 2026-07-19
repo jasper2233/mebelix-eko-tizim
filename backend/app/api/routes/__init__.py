@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 from app.api.deps import get_current_user
 
 from .audit import router as audit_router
+from .bridge_agents import router as bridge_agents_router
 from .clients import router as clients_router
 from .employees import router as employees_router
 from .health import router as health_router
@@ -37,4 +38,6 @@ router.include_router(terminal_router, dependencies=_protected)
 router.include_router(scans_router, dependencies=_protected)
 router.include_router(tablo_router, dependencies=_protected)
 router.include_router(reports_router, dependencies=_protected)
+# Himoyasiz ulanadi: /pair ochiq bo'lishi shart, admin endpointlar o'z ichida AdminUser bilan
+router.include_router(bridge_agents_router)
 router.include_router(ws_router)  # WebSocket auth is handled inside the endpoint

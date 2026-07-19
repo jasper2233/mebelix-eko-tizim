@@ -22,10 +22,11 @@ Bu hujjat MebeliX MES backend'ining HTTP API qatlamini tavsiflaydi: router ierar
         ├── /scans/*        ← scans.py     │
         ├── /tablo/*        ← tablo.py     │
         ├── /reports/*      ← reports.py   ┘
+        ├── /bridge-agents/*← bridge_agents.py (router darajasida auth YO'Q — /pair ochiq, admin endpointlar o'zini himoyalaydi)
         └── /ws/*           ← ws.py        (router darajasida auth YO'Q — auth endpoint ichida)
 ```
 
-Jami 16 router: 2 ta ochiq (`health`, `login`), 13 tasi `get_current_user` ortida, `ws` esa WebSocket bo'lgani uchun autentifikatsiyani endpoint ichida o'zi bajaradi.
+Jami 17 router: 2 ta ochiq (`health`, `login`), 13 tasi `get_current_user` ortida, `bridge_agents` va `ws` esa router darajasida himoyalanmaydi — autentifikatsiyani endpointlar o'zi bajaradi (WebSocket'da HTTP dependency ishlamaydi, `/bridge-agents/pair` esa sessiyasiz agent uchun ochiq bo'lishi shart).
 
 Autentifikatsiya modeli: JWT access + refresh token juftligi, ikkalasi ham `httpOnly` cookie sifatida o'rnatiladi; qo'shimcha ravishda `Authorization: Bearer` header ham qabul qilinadi (header cookie'dan ustun). Token bekor qilish `token_version` mexanizmi orqali — logout paytida foydalanuvchining `token_version` oshiriladi va barcha eski tokenlar yaroqsiz bo'ladi.
 
@@ -102,10 +103,11 @@ router.include_router(terminal_router, dependencies=_protected)
 router.include_router(scans_router, dependencies=_protected)
 router.include_router(tablo_router, dependencies=_protected)
 router.include_router(reports_router, dependencies=_protected)
+router.include_router(bridge_agents_router)  # /pair ochiq bo'lishi shart
 router.include_router(ws_router)  # WebSocket auth endpoint ichida
 ```
 
-Ya'ni auth ikki qatlamda: router darajasida `get_current_user` (login bo'lganlik), endpoint darajasida esa `deps.py` dagi rol aliaslari (kim nima qila oladi). `ws_router` istisno — WebSocket'da HTTP dependency ishlamaydi, shuning uchun autentifikatsiya har endpoint ichida bajariladi (quyida `ws.py` bo'limi).
+Ya'ni auth ikki qatlamda: router darajasida `get_current_user` (login bo'lganlik), endpoint darajasida esa `deps.py` dagi rol aliaslari (kim nima qila oladi). Ikki istisno: `ws_router` — WebSocket'da HTTP dependency ishlamaydi, shuning uchun autentifikatsiya har endpoint ichida bajariladi (quyida `ws.py` bo'limi); `bridge_agents_router` — `/pair` va `/download` sessiyasiz kompyuterdan chaqiriladi, shuning uchun butun router himoyasiz ulanadi va admin endpointlarning har biri `AdminUser` bilan o'zini himoyalaydi.
 
 **Bog'lanishlar:** `backend/app/api/deps.py` va barcha route fayllar.
 
@@ -418,6 +420,38 @@ Skan qabul qilish qoidalari (marshrut/ketma-ketlik tekshiruvi, dublikat, E001–
 
 ---
 
+## `backend/app/api/routes/bridge_agents.py` — Printer agentlari va pairing (TZ 2.2.2)
+
+**Maqsadi:** Printerli kompyuterdagi bridge-agent'ni serverga ulash (pairing) — podpiska modeli uchun: admin panelda kod beriladi, agent kodni doimiy tokenga almashtiradi. Serverga SSH kirish ham, `.env` tahriri ham kerak emas. Har printerning o'z tokeni bor — birini bekor qilish qolganlariga tegmaydi.
+
+Router `/api/v1/bridge-agents` prefiksi bilan **himoyasiz** ulanadi (`/pair` chaqirilganda agentda sessiya yo'q), shuning uchun admin endpointlarning har biri o'z signaturasida `AdminUser` talab qiladi.
+
+| Metod | Path | Rol | Izoh |
+|---|---|---|---|
+| GET | `/api/v1/bridge-agents/` | `AdminUser` | Agentlar ro'yxati (`BridgeAgentRead`: `id`, `name`, `paired`, `pair_code`, `pair_expires_at`, `last_seen_at`, `created_at`); `pair_code` faqat muddati o'tmagan bo'lsa qaytariladi, aks holda `null` |
+| POST | `/api/v1/bridge-agents/` | `AdminUser` | 201; agent yaratiladi va **bir martalik 8 belgili ulanish kodi** beriladi (`PAIR_TTL` = 15 daqiqa); audit `created` |
+| POST | `/api/v1/bridge-agents/{id}/code` | `AdminUser` | Yangi ulanish kodi (kod eskirgan yoki kompyuter almashgan holat); `token_hash` tozalanadi — eski kompyuter keyingi ulanishda rad etiladi; audit `code_regenerated` |
+| DELETE | `/api/v1/bridge-agents/{id}` | `AdminUser` | Soft-delete; jonli WebSocket ham uziladi (`touch_agent()` 5 daqiqada bir tekshiradi); audit `deleted` |
+| POST | `/api/v1/bridge-agents/pair` | **Yo'q (ochiq)** | Agent bir martalik kodni doimiy tokenga almashtiradi; javob `BridgePairResponse` (`token`, `name`); audit `paired` (`user_id=None`) |
+| GET | `/api/v1/bridge-agents/download` | **Yo'q (ochiq)** | Windows agent dasturi — `uploads/agent/mebelix-agent.exe`, `FileResponse`; fayl yuklanmagan bo'lsa 404 |
+
+**Ulanish kodi:** `_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"` — I/L/O/0/1 yo'q, telefonda aytganda adashtirmaydi. 30⁸ ≈ 6.5·10¹¹ kombinatsiya, 15 daqiqalik oynada brute-force amalda imkonsiz.
+
+**Pairing xavfsizligi** (`POST /pair`):
+
+- Atomik `UPDATE ... RETURNING` — bir kodni ikki kompyuter bir vaqtda yuborsa faqat bittasi yutadi (kod shu tranzaksiyada `NULL` ga o'tadi).
+- Kod topilmasa ham, muddati o'tgan bo'lsa ham **bitta umumiy xato**: 400 "Ulanish kodi noto'g'ri yoki muddati o'tgan." — kodning bor-yo'qligi oshkor qilinmaydi.
+- Kirishda `-` va bo'shliqlar olib tashlanadi, harflar katta registrga o'tkaziladi (qo'lda kiritishga bardosh).
+- Token `secrets.token_hex(24)` bilan yaratiladi va **faqat shu javobda** beriladi; bazada `token_hash` sifatida sha256 xeshi qoladi.
+
+`/download` auth talab qilmaydi: fayl hamma mijozga bir xil, hech qanday sir saqlamaydi, monoblok brauzerida esa sessiya bo'lmasligi mumkin. Yangi versiya chiqarish — exe'ni `uploads/agent/` ga qo'yish.
+
+**Agent tomoni** (`bridge-agent/agent.py`): PyInstaller onefile `mebelix-agent.exe` — sex kompyuteriga Python o'rnatish shart emas. `_load_dotenv()` config'ni shu tartibda o'qiydi: env var > exe yonidagi `.env` > `%APPDATA%\MebelixAgent\.env`. `_pair_interactive()` birinchi ishga tushishda server manzili va ulanish kodini so'raydi, `POST /pair` orqali tokenni oladi va `%APPDATA%\MebelixAgent\.env` ga yozadi; `BRIDGE_TOKEN` allaqachon bor bo'lsa yoki jarayon headless bo'lsa (Task Scheduler, `stdin` tty emas) prompt umuman chiqmaydi. Qolgan hammasi o'zgarmagan — printer avto-topiladi, `print-queue.jsonl` durable navbat, `_print_png_gdi` chiqish yo'li.
+
+**Bog'lanishlar:** `backend/app/schemas/bridge_agents.py` (`BridgeAgentCreate`, `BridgeAgentRead`, `BridgePairRequest`, `BridgePairResponse`), `backend/app/models/bridge_agent.py` (`BridgeAgent`), migratsiya `backend/app/migrations/versions/d5e81a24c3b7_bridge_agent_pairing.py`, `backend/app/crud` (`crud_bridge_agents`, `log_action`), `backend/app/api/routes/ws.py` (`/ws/bridge` shu tokenni tanidi), `bridge-agent/agent.py`.
+
+---
+
 ## `backend/app/api/routes/ws.py` — WebSocket endpointlari
 
 **Maqsadi:** Ikki WebSocket kanal. Router darajasida auth YO'Q — WebSocket'da HTTP dependency ishlamaydi, autentifikatsiya har endpoint ichida.
@@ -425,11 +459,11 @@ Skan qabul qilish qoidalari (marshrut/ketma-ketlik tekshiruvi, dublikat, E001–
 | Endpoint | Auth | Izoh |
 |---|---|---|
 | WS `/api/v1/ws/events` | `?token=` query yoki access cookie | Brauzer klientlari (TZ 2.3). Token `verify_token` + `is_active` + `token_version` bilan tekshiriladi; muvaffaqiyatsiz bo'lsa **4401** kod bilan yopiladi. Klient scope'i rol bo'yicha: TERMINAL→`terminal`, TABLO→`tablo`, qolganlar→`dashboard`; `user.machine_id` dan post/stanok scope aniqlanadi. Heartbeat (TZ 2.3.2): klientning har qanday xabariga `{"type": "pong"}` |
-| WS `/api/v1/ws/bridge` | `?token=` ↔ `settings.BRIDGE_TOKEN` (`secrets.compare_digest`) | Sex tarmog'idagi bridge-agent uplink'i (TZ 2.2.2 — USB GoDEX'da chop etadi). Ulanish CHIQUVCHI: agent o'zi ulanadi, sex routerida port ochilmaydi. Token noto'g'ri yoki `BRIDGE_TOKEN` sozlanmagan bo'lsa 4401. Redis `mes:print:queue` ro'yxatidan `brpop` (5s timeout) bilan ishlarni oladi va agentga yuboradi (job JSON: `type`, `instance_id`, `png` — base64 PNG); agent ishni lokal `print-queue.jsonl` ga yozgach 15s ichida `{"ok": true}` bilan ack qilishi shart — ack kelmasa yoki uzilsa ish `rpush` bilan navbatga QAYTARILADI (hech bir ish yo'qolmaydi); bo'sh navbatda `{"type": "ping"}` heartbeat va 10s ichida javob kutiladi |
+| WS `/api/v1/ws/bridge` | `Authorization: Bearer <token>` header (fallback: `?token=` query) → `bridge_agent.token_hash` (sha256) yoki legacy `settings.BRIDGE_TOKEN` (`secrets.compare_digest`) | Sex tarmog'idagi bridge-agent uplink'i (TZ 2.2.2 — USB GoDEX'da chop etadi). Ulanish CHIQUVCHI: agent o'zi ulanadi, sex routerida port ochilmaydi. Token headerda keladi — server access-loglariga tushmasin; `?token=` eski agentlar uchun qoldirilgan. Avval legacy umumiy `BRIDGE_TOKEN` bilan solishtiriladi (bytes'da — non-ASCII tokenda `compare_digest(str)` TypeError beradi), mos kelmasa token sha256 xeshi bo'yicha `bridge_agent` jadvalidan qidiriladi; topilmasa 4401. Ulangandan keyin `touch_agent()` har 300 sekundda `last_seen_at` ni yangilaydi va agent hali tirikligini qayta tekshiradi — agent o'chirilgan yoki yangi kod berilgan bo'lsa ulanish 4401 bilan yopiladi, qo'lda turgan ish esa navbatga QAYTARILADI (revoke jonli ulanishni ~5 daqiqa ichida uzadi). DB xatosi ulanishni yiqitmaydi. Redis `mes:print:queue` ro'yxatidan `brpop` (5s timeout) bilan ishlarni oladi va agentga yuboradi (job JSON: `type`, `instance_id`, `png` — base64 PNG); agent ishni lokal `print-queue.jsonl` ga yozgach 15s ichida `{"ok": true}` bilan ack qilishi shart — ack kelmasa yoki uzilsa ish `rpush` bilan navbatga QAYTARILADI (hech bir ish yo'qolmaydi); bo'sh navbatda `{"type": "ping"}` heartbeat va 10s ichida javob kutiladi |
 
 Server → klient eventlarni `app/core/ws.py` dagi `ws_manager` tarqatadi: `order.*`, `session.*`, skan eventlari, `label.printed` — mutatsion HTTP endpointlar publish qiladi.
 
-**Bog'lanishlar:** `backend/app/core/ws.py` (`WsClient`, `ws_manager`), `backend/app/core/security.py`, `backend/app/tasks` (`PRINT_QUEUE_KEY = "mes:print:queue"`), `backend/app/core/config.py` (`BRIDGE_TOKEN`, `REDIS_URL`).
+**Bog'lanishlar:** `backend/app/core/ws.py` (`WsClient`, `ws_manager`), `backend/app/core/security.py`, `backend/app/models/bridge_agent.py` (`BridgeAgent.token_hash`, `last_seen_at`), `backend/app/api/routes/bridge_agents.py` (pairing — token shu yerda beriladi), `backend/app/tasks` (`PRINT_QUEUE_KEY = "mes:print:queue"`), `backend/app/core/config.py` (`BRIDGE_TOKEN` — legacy, `REDIS_URL`).
 
 ---
 

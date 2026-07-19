@@ -1,4 +1,5 @@
 from .audit import AuditLog
+from .bridge_agent import BridgeAgent
 from .client import Client
 from .employee import Employee
 from .machine import Machine
@@ -11,6 +12,7 @@ from .user import User
 
 __all__ = [
     "AuditLog",
+    "BridgeAgent",
     "Client",
     "Employee",
     "Machine",

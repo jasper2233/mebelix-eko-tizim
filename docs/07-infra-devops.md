@@ -103,7 +103,7 @@ SITE_ADDRESS=:80
 
 Bunda Caddy oddiy HTTP'da qoladi (sertifikatni nginx tugatadi), host nginx esa saytni `127.0.0.1:8200` ga proxy qiladi. Shu retsept `docker-compose.prod.yml` dagi `ports` izohida ham yozilgan.
 
-### Yuklangan fayllar (`UPLOAD_DIR`) — hozircha volume'siz
+### Yuklangan fayllar (`UPLOAD_DIR`) va `uploads_data` volume
 
 Backend yuklangan fayllarni diskka yozadi (`backend/app/core/config.py`: `UPLOAD_DIR: str = "uploads"` — **nisbiy** yo'l, image ichidagi CWD `/app/backend` dan hisoblanadi, ya'ni `/app/backend/uploads`). Katalog tarkibi:
 
@@ -112,10 +112,13 @@ Backend yuklangan fayllarni diskka yozadi (`backend/app/core/config.py`: `UPLOAD
 | `projects/` | yuklangan GibLab `.project` fayllari | `upload_order_project` |
 | `scx/` | SCX/CNC fayllari | orders route'lari |
 | `survey/{order_id}/` | anketa xona rasmlari, nomi `{uuid4().hex}{ext}` | `upload_room_photo` (`POST /orders/{id}/survey/photos`) |
+| `agent/mebelix-agent.exe` | printer agentining Windows build'i | qo'lda qo'yiladi (deploy emas); `download_bridge_agent` tarqatadi |
 
 DB'da faqat nisbiy yo'l saqlanadi (`OrderFile.path`), o'qishda `Path(settings.UPLOAD_DIR).resolve() / row.path` bilan qayta yig'iladi.
 
-**Muhim:** hech qaysi compose faylda `uploads` uchun volume yoki bind-mount **yo'q** — `docker-compose.local.yml` faqat `./backend/app` va `./scripts` ni mount qiladi, `docker-compose.prod.yml` esa `api`/`worker` uchun umuman volume bermaydi. CI `rsync` ham `uploads` ni exclude qiladi. Natijada prod'da yuklangan fayllar konteyner qatlamida yashaydi va **har deploy'da (image qayta build + konteyner almashishi) yo'qoladi** — DB'dagi `OrderFile` yozuvlari qoladi, fayl esa yo'q bo'ladi (`download_order_file` "Fayl diskda topilmadi" beradi). Doimiy saqlash kerak bo'lganda `api` va `worker` ga umumiy named volume (`/app/backend/uploads`) qo'shilishi kerak — ikkalasi ham bir xil ko'rishi shart, chunki parse `api` da, yorliq `worker` da ishlaydi.
+**Prod'da doimiylik:** `docker-compose.prod.yml` da `api` xizmati `uploads_data` named volume'ini `/app/backend/uploads` ga mount qiladi. Volume bo'lmaganda fayllar konteyner qatlamida qolar va **har deploy'da (image qayta build + konteyner almashishi) yo'qolar edi** — DB'dagi `OrderFile` yozuvlari qolib, fayl yo'q bo'lardi (`download_order_file` "Fayl diskda topilmadi" beradi). `worker` ga mount berilmagan: arq tasklari (`print_label`) faylga tegmaydi, yorliq DB ma'lumotidan chiziladi — `UPLOAD_DIR` ni faqat `api` route'lari o'qiydi.
+
+`docker-compose.local.yml` faqat `./backend/app` va `./scripts` ni mount qiladi — lokal ishda fayllar repo ichidagi `backend/uploads/` ga tushadi (`.gitignore` da). CI `rsync` ham `uploads` ni exclude qiladi, ya'ni deploy serverdagi fayllarga tegmaydi.
 
 ### `caddy/Caddyfile` — reverse proxy va TLS
 
@@ -194,7 +197,7 @@ Server cron'ida kunlik ishlaydi (`0 2 * * *`). Oqim: `pg_dump` (db konteyneri ic
 
 ## Chop etish infratuzilmasi — bridge-agent va GoDEX G500-U
 
-Printer sexda, server esa masofada (`mes.mebelix.uz`) turadi. GoDEX G500-U **faqat USB** — unda tarmoq porti umuman yo'q, ya'ni printerga IP orqali murojaat qilish imkoni yo'q. Shuning uchun oraliqda **bridge-agent** — printer ulangan kompyuterda ishlaydigan, serverga **chiquvchi** (outbound) WebSocket ochadigan bitta Python fayl (`bridge-agent/agent.py`). Sex tarmog'ida hech qanday port ochilmaydi, oq IP kerak emas.
+Printer sexda, server esa masofada (`mes.mebelix.uz`) turadi. GoDEX G500-U **faqat USB** — unda tarmoq porti umuman yo'q, ya'ni printerga IP orqali murojaat qilish imkoni yo'q. Shuning uchun oraliqda **bridge-agent** — printer ulangan kompyuterda ishlaydigan, serverga **chiquvchi** (outbound) WebSocket ochadigan servis. Manbasi bitta Python fayl (`bridge-agent/agent.py`), sexga esa u **Windows exe** (`mebelix-agent.exe`) sifatida boradi — o'rnatiladigan mashinada Python ham, kutubxona ham kerak emas. Sex tarmog'ida hech qanday port ochilmaydi, oq IP kerak emas.
 
 Agent faqat **printer ulangan bitta kompyuterga** o'rnatiladi; menejer, texnolog va boshqa post terminallariga hech narsa kerak emas — ular brauzerdan tugmani bosadi.
 
@@ -212,7 +215,7 @@ Terminal (arrachi)
     ├── render_label_png(data)      → PNG, base64
     └── redis.lpush("mes:print:queue", job)            → job = {type, instance_id, png}
           ↓
-  GET /api/v1/ws/bridge?token=…                        (backend/app/api/routes/ws.py)
+  GET /api/v1/ws/bridge  (Authorization: Bearer …)     (backend/app/api/routes/ws.py)
     brpop("mes:print:queue", 5) → send → ack kutish → yo'q bo'lsa rpush (qaytarib qo'yish)
           ↓
   bridge-agent (sex)                                   (bridge-agent/agent.py)
@@ -232,9 +235,32 @@ Zanjirning har bo'g'inida jobni yo'qotmaslik choralari bor:
 - **Bo'sh vaqtda.** Agent oddiy holatda 5 sekundda bir sikl uradi, lekin yangi job kelganda `FLUSH_EVENT.set()` flusher'ni **darhol** uyg'otadi — kutish yo'q.
 - **Yarim-ochiq TCP.** Server jobsiz 5 sekunddan keyin `{"type": "ping"}` yuboradi va javob kutadi; agent unga `{"ok": true}` bilan javob beradi. Sex tarmog'ida "o'lgan" ulanish tez aniqlanadi. Agent tomonda `websockets.connect(..., ping_interval=30)`, uzilganda 5s backoff bilan qayta ulanish.
 
-### Autentifikatsiya
+### Autentifikatsiya — har agent uchun alohida token (pairing)
 
-`/ws/bridge` faqat serverdagi `.env` da `BRIDGE_TOKEN` bo'sh bo'lmaganda ishlaydi; token `secrets.compare_digest` bilan solishtiriladi, mos kelmasa WebSocket `code=4401` bilan yopiladi. Token: `openssl rand -hex 24`, server `.env` va agent env'ida **bir xil** bo'lishi shart.
+Avval serverda bitta umumiy `BRIDGE_TOKEN` bo'lardi va uni har printerli mashinaga qo'lda ko'chirish kerak edi. Endi **har agent o'z tokeni bilan** ishlaydi, tokenni esa admin panel beradi — serverga SSH ham, `.env` tahriri ham kerak emas (`backend/app/api/routes/bridge_agents.py`).
+
+Oqim:
+
+1. **Kod.** Admin panelda "Yangi agent" → `bridge_agent` qatori yaratiladi va 8 belgili **bir martalik kod** beriladi (`P7HJ-N46U` ko'rinishida ko'rsatiladi), muddati **15 daqiqa** (`PAIR_TTL`). Alifboda `I/L/O/0/1` yo'q — kodni telefonda aytganda adashilmaydi; 30⁸ ≈ 6.5e11 kombinatsiya 15 daqiqalik oynada brute-force'ni ma'nosiz qiladi.
+2. **Almashtirish.** Agent kodni `POST /api/v1/bridge-agents/pair` ga yuboradi va **muddatsiz token** oladi (`secrets.token_hex(24)`). Bazada faqat `sha256` xesh saqlanadi, kod esa o'chiriladi. UPDATE atomik — bitta kodni ikki kompyuter bir vaqtda yuborsa faqat bittasi yutadi. Kod noto'g'ri yoki eskirgan bo'lsa bitta umumiy xato qaytadi (kod umuman bor-yo'qligi oshkor qilinmaydi). `/pair` — ochiq endpoint, chunki agentda sessiya yo'q; qolgan barcha `bridge-agents` endpointlari `AdminUser` bilan yopiq.
+3. **Ulanish.** `/ws/bridge` tokenni **`Authorization: Bearer`** headeridan oladi (URL query'da emas — server access-loglariga tushmasin); `?token=` query eski agentlar uchun fallback bo'lib qolgan. Token avval legacy `settings.BRIDGE_TOKEN` bilan `secrets.compare_digest` orqali solishtiriladi (bytes'da — non-ASCII tokenda `str` solishtirish `TypeError` beradi), mos kelmasa `sha256` bo'yicha `bridge_agent` jadvalidan qidiriladi. Ikkovi ham topilmasa WebSocket `code=4401` bilan yopiladi.
+
+`settings.BRIDGE_TOKEN` endi **ixtiyoriy legacy back-compat** — bo'sh bo'lsa ham chop etish to'liq ishlaydi. Yangi o'rnatishlarda uni umuman to'ldirmaslik kerak.
+
+**Bekor qilish (revoke) darhol emas, lekin kafolatli.** Ulanish davomida `touch_agent()` har **300 sekundda** `last_seen_at` ni yangilaydi (paneldagi "Onlayn" indikatorining manbai) va shu UPDATE'ning o'zi agent hali mavjudligini qayta tekshiradi: `token_hash` mos kelmasa yoki qator o'chirilgan bo'lsa `RETURNING` bo'sh qaytadi. Ya'ni bekor qilingan agentning **jonli** ulanishi ham 5 daqiqa ichida `4401` bilan uziladi, qo'lida turgan job esa Redis navbatiga `rpush` bilan qaytariladi — yo'qolmaydi. DB xatosi ulanishni **yiqitmaydi** (jobni saqlab qolish ustuvor).
+
+### Admin panel — "Printer agentlar"
+
+`frontend/src/routes/_layout/printers.tsx`, faqat admin. Sahifada: exe yuklab olish tugmasi, uch qatorli o'rnatish yo'riqnomasi va agentlar jadvali — nomi, holati, joriy ulanish kodi, oxirgi ulanish vaqti, amallar.
+
+| Holat | Qachon |
+|---|---|
+| `Onlayn` | `last_seen_at` 6 daqiqadan yangi (server 5 daqiqada bir yangilaydi — bitta sikl zaxira) |
+| `Oflayn` | ulangan (token bor), lekin oxirgi 6 daqiqada ko'rinmadi |
+| `Kod kutilmoqda` | kod berilgan, agent hali ulanmagan |
+| `Kod muddati o'tgan` | 15 daqiqa o'tdi, agent ulanmadi — "yangi kod" kerak |
+
+Amallar: **yangi kod** (`POST /{id}/code` — eski tokenni ham bekor qiladi, kompyuter almashganda) va **bekor qilish** (`DELETE /{id}` — soft delete, ulanish endi rad etiladi). Ikkalasi ham `audit_log` ga yozadi.
 
 ### Yorliq PNG — bitta format
 
@@ -280,36 +306,42 @@ Printer xatosi ushlanadi va `False` qaytariladi — job navbatda qoladi, yo'qolm
 
 ### Agent o'rnatish
 
-Faqat printer USB bilan ulangan Windows kompyuterga (sexdagi terminal monoblokning o'zi ham bo'ladi). Uch qadam (`bridge-agent/README.md`):
+Faqat printer USB bilan ulangan Windows kompyuterga (sexdagi terminal monoblokning o'zi ham bo'ladi). Hammasi brauzerdan bajariladi — serverga SSH kirish, server `.env` ini tahrirlash yoki sex routerida biror port ochish **kerak emas** (ulanish baribir chiquvchi). Qadamlar (`bridge-agent/README.md`):
 
 1. **GoDEX drayverini o'rnatish** — printer USB'ga ulangan holda. Agent printerni nomidan o'zi topadi, boshqa sozlash yo'q.
-2. **Python 3.11+ va kutubxonalar:**
+2. **Agentni yuklab olish** — admin panel > "Printer agentlar" > "Agentni yuklab olish": `mebelix-agent.exe` tushadi (`GET /api/v1/bridge-agents/download`). Python, `pip`, kutubxonalar — hech biri kerak emas, hammasi exe ichida.
+3. **Ulanish kodini olish** — o'sha sahifada "Yangi agent", kompyuterga nom beriladi va 8 belgili bir martalik kod chiqadi (masalan `P7HJ-N46U`), 15 daqiqa amal qiladi.
+4. **Exe'ni ishga tushirish** — u server manzilini (Enter = `wss://mes.mebelix.uz`) va kodni so'raydi, kodni doimiy tokenga almashtiradi va `%APPDATA%\MebelixAgent\.env` ga saqlaydi. Ikkinchi marta so'ramaydi; kod muddati o'tishi allaqachon ulangan agentga ta'sir qilmaydi.
+5. **Doimiy ishlash** — exe'ni Windows Task Scheduler'da "At startup" trigger bilan ro'yxatdan o'tkazing. Konsolsiz (headless) ishga tushganda agent kod so'rashni butunlay o'tkazib yuboradi va saqlangan tokendan foydalanadi.
 
-   ```bash
-   pip install websockets pywin32 pillow
-   ```
+Log'da `Printer: Godex G500` va `Serverga ulandi` chiqsa — tayyor. Printer topilmasa log `Printer: TOPILMADI — GoDEX drayverini o'rnating` beradi. Token bekor qilingan bo'lsa handshake `4401` bilan rad etiladi va agent log'da `%APPDATA%\MebelixAgent\.env` ni o'chirib qayta ulanishni maslahat beradi (keyin 60s kutadi — serverni bekorga urmaydi).
 
-   `pywin32` (`win32print`, `win32ui`, `win32gui`, `win32con`) va `pillow` — GDI chop etish uchun; ularsiz agent ishlamaydi.
-3. **Ishga tushirish:**
-
-   ```powershell
-   $env:MES_URL="wss://mes.mebelix.uz"
-   $env:BRIDGE_TOKEN="<serverdagi BRIDGE_TOKEN>"
-   python agent.py
-   ```
-
-Log'da `Printer: Godex G500` va `Serverga ulandi` chiqsa — tayyor. Printer topilmasa log `Printer: TOPILMADI — GoDEX drayverini o'rnating` beradi.
-
-Agent env'lari (bular **server `.env`** ida emas — printerli mashinada):
+Agent sozlamalari (bular **server `.env`** ida emas — printerli mashinada, `%APPDATA%\MebelixAgent\.env` da). O'qish tartibi: **env o'zgaruvchi > exe yonidagi `.env` > `%APPDATA%\MebelixAgent\.env`**. Odatda qo'lda hech narsa yozilmaydi — birinchi ulanish `MES_URL` va `BRIDGE_TOKEN` ni o'zi to'ldiradi.
 
 | Env | Default | Tavsif |
 |---|---|---|
-| `MES_URL` | `ws://localhost:8000` | server manzili; agent oxiriga `/api/v1/ws/bridge?token=…` qo'shadi |
-| `BRIDGE_TOKEN` | — | majburiy; bo'sh bo'lsa agent `SystemExit` bilan to'xtaydi |
+| `MES_URL` | `ws://localhost:8000` | server manzili; agent oxiriga `/api/v1/ws/bridge` qo'shadi. Pairing paytida `https://`/`http://`/sxemasiz manzil ham qabul qilinadi va `wss://`/`ws://` ga normallashtiriladi (TLS'siz manzilga ogohlantirish chiqadi) |
+| `BRIDGE_TOKEN` | — | pairing bergan doimiy token; bo'sh bo'lsa agent `SystemExit` bilan to'xtaydi ("ulanish kodini kiriting") |
 | `PRINTER_NAME` | avto-topish (`godex`) | printer nomini qo'lda berish — faqat avto-topish mos kelmaganda |
 | `QUEUE_FILE` | `./print-queue.jsonl` | lokal durable navbat fayli |
 
-Doimiy ishlashi uchun shu buyruqni Windows Task Scheduler'da "At startup" trigger bilan ro'yxatdan o'tkazing. Navbat fayli `.gitignore` da (`bridge-agent/print-queue.jsonl`).
+Navbat fayli `.gitignore` da (`bridge-agent/print-queue.jsonl`).
+
+### Agentning yangi versiyasini chiqarish
+
+`bridge-agent/` katalogida:
+
+```bash
+pyinstaller --onefile --console --name mebelix-agent agent.py
+```
+
+Natijadagi `mebelix-agent.exe` serverda `uploads/agent/` ga qo'yiladi — panel o'sha yerdagi faylni tarqatadi. Bu yo'l `.gitignore` da, ya'ni **binar repoda saqlanmaydi** va deploy uni ko'chirmaydi; serverga bir marta qo'lda yuklanadi:
+
+```bash
+docker compose -f docker-compose.prod.yml cp mebelix-agent.exe api:/app/backend/uploads/agent/
+```
+
+`uploads_data` volume tufayli fayl keyingi deploylarda joyida qoladi — yangi versiya chiqqandagina qayta yuklanadi.
 
 Eslatma: SCX/CNC fayllar bridge orqali **o'tmaydi** — ular stanok kompyuterida brauzer orqali yuklab olinadi (TZ 12.5). Bridge faqat yorliq chop etish uchun.
 
@@ -389,9 +421,9 @@ Ya'ni sifat nazorati ikki qatlamli: lokalda pre-commit + `make lint`, remote'da 
 | `VITE_API_TIMEOUT_MS` | `30000` | Axios timeout |
 | `GUNICORN_WORKERS` | `4` | Prod worker soni; odatda `(2 * CPU) + 1` |
 | `SITE_ADDRESS` | `:80` | Caddy listener; domen berilsa auto-HTTPS |
-| `BRIDGE_TOKEN` | `""` (bo'sh) | `openssl rand -hex 24` bilan generatsiya qilinadi; bo'sh bo'lmasa `/ws/bridge` endpoint yoqiladi (bridge-agent autentifikatsiyasi) |
+| `BRIDGE_TOKEN` | `""` (bo'sh) | **Legacy, ixtiyoriy.** Bridge-agentlar endi admin paneldagi pairing orqali o'z tokenini oladi; bu maydon faqat eski, pairing'gacha o'rnatilgan agent uchun qoldirilgan. Yangi o'rnatishda bo'sh qoladi va chop etish to'liq ishlayveradi |
 
-Eslatma: chop etish bo'yicha serverda **yagona** sozlama — `BRIDGE_TOKEN`. Printerga tegishli hech qanday env server `.env` ida yo'q (G500-U'da tarmoq porti yo'q, printerni faqat agent ko'radi); `PRINTER_NAME` esa faqat printerli mashinadagi agent env'i (yuqoridagi "Chop etish infratuzilmasi" bo'limi).
+Eslatma: chop etishga tegishli **majburiy** server sozlamasi yo'q. `BRIDGE_TOKEN` ixtiyoriy legacy, printer env'lari esa umuman server `.env` ida emas (G500-U'da tarmoq porti yo'q, printerni faqat agent ko'radi) — `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME`, `QUEUE_FILE` printerli mashinadagi `%APPDATA%\MebelixAgent\.env` da yashaydi (yuqoridagi "Chop etish infratuzilmasi" bo'limi).
 
 Eslatma: `CADDY_HTTP_BIND` / `CADDY_HTTPS_BIND` `.env.example` da yo'q — ular `docker-compose.prod.yml` dagi compose-level substitutsiyalar (defaultlari `80` / `443`); behind-nginx rejimida `.env` ga qo'lda qo'shiladi. `TAG` ham shu kategoriyada — compose-level substitutsiya (default `latest`), CI uni git sha bilan beradi.
 
@@ -409,7 +441,7 @@ Bitta qoida: `* text=auto eol=lf` — barcha matn fayllar LF line-ending bilan n
 
 ### `.gitignore`
 
-Standart Python artefaktlari (`__pycache__`, egg/build/dist), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. MES runtime artefaktlari ham ignore: `backend/uploads/` (`projects/`, `scx/`, `survey/` — yuklangan fayllar va anketa xona rasmlari), `bridge-agent/print-queue.jsonl` (agent'ning durable print navbati), `frontend/openapi.json`, hamda lokal sex ma'lumotlari `uploads/` (repo root'da: `.project`/SCX namunalari va `forma/mebel_buyurtma_anketa.html` — anketaning qog'oz manbasi) va `chek/` (namuna yorliq fotolari, `labels.py` maketi shulardan olingan). E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
+Standart Python artefaktlari (`__pycache__`, egg/build/dist), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. MES runtime artefaktlari ham ignore: `backend/uploads/` (`projects/`, `scx/`, `survey/` — yuklangan fayllar va anketa xona rasmlari, hamda `agent/mebelix-agent.exe` — binar repoda saqlanmaydi), `bridge-agent/print-queue.jsonl` (agent'ning durable print navbati), `bridge-agent/build/` va `bridge-agent/dist/` (PyInstaller artefaktlari), `frontend/openapi.json`, hamda lokal sex ma'lumotlari `uploads/` (repo root'da: `.project`/SCX namunalari va `forma/mebel_buyurtma_anketa.html` — anketaning qog'oz manbasi) va `chek/` (namuna yorliq fotolari, `labels.py` maketi shulardan olingan). E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
 
 ---
 
@@ -445,4 +477,5 @@ Frontend dev qo'llanmasi: nvm/fnm bilan Node o'rnatish, `npm install` + `npm run
 - `.pre-commit-config.yaml` → `backend/pyproject.toml` (ruff/mypy config), `frontend/biome.json` (biome hook).
 - `.github/workflows/ci.yml` → `backend/pyproject.toml` (uv sync, ruff/mypy), `backend/tests/test_giblab.py`, `frontend/.nvmrc` + `frontend/package-lock.json` (Node versiya va npm cache), `scripts/deploy.sh` (deploy job), Telegram secrets (notify job).
 - `scripts/generate-client.sh` → backend OpenAPI spec → `frontend/src/client/` (frontend va backend orasidagi kontrakt sinxronizatsiyasi).
-- Chop etish zanjiri: `backend/app/api/routes/terminal.py` (`POST /terminal/labels/{id}`) → `backend/app/tasks/__init__.py` (`print_label`) → `backend/app/services/labels.py` (`load_label_data` + `render_label_png` + `backend/app/assets/label-*.png`) → Redis `mes:print:queue` → `backend/app/api/routes/ws.py` (`/ws/bridge`, `BRIDGE_TOKEN`) → `bridge-agent/agent.py` (`_print_png_gdi`) → USB GoDEX.
+- Chop etish zanjiri: `backend/app/api/routes/terminal.py` (`POST /terminal/labels/{id}`) → `backend/app/tasks/__init__.py` (`print_label`) → `backend/app/services/labels.py` (`load_label_data` + `render_label_png` + `backend/app/assets/label-*.png`) → Redis `mes:print:queue` → `backend/app/api/routes/ws.py` (`/ws/bridge`, `Authorization: Bearer`) → `bridge-agent/agent.py` (`_print_png_gdi`) → USB GoDEX.
+- Agent autentifikatsiyasi: `frontend/src/routes/_layout/printers.tsx` → `backend/app/api/routes/bridge_agents.py` (kod berish, `/pair`, `/download`) → `bridge_agent` jadvali (`token_hash`, `last_seen_at`) → `backend/app/api/routes/ws.py` (`ws_bridge`, `touch_agent`) → `%APPDATA%\MebelixAgent\.env`.

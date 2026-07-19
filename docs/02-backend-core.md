@@ -70,7 +70,7 @@ app = create_application(router=router, settings=settings)
 | Pagination | `DEFAULT_PAGE_SIZE=50`, `MAX_PAGE_SIZE=100` |
 | File storage | `UPLOAD_DIR="uploads"` (project/scx/label fayllar ildizi, TZ 2.4.3), `MAX_PROJECT_FILE_SIZE` = 50 MB |
 | Production floor | `STRICT_STAGE_ORDER=False` (E004 — oldingi bosqich tugamaguncha skanni bloklash, ixtiyoriy, TZ 7.2.5), `SESSION_MAX_HOURS=12` (operator smenasi timeout'i, TZ 8.5), `SCAN_UNDO_SECONDS=60` (BEKOR QILISH oynasi, TZ 8.6) |
-| Printing (TZ 12.3 / 13.2) | `BRIDGE_TOKEN=""` — bo'sh bo'lmasa sex bridge-agent'i uchun `/ws/bridge` endpoint yoqiladi. Yorliqlar faqat shu navbat orqali USB GoDEX'ga boradi (G500-U'da tarmoq porti yo'q), shuning uchun printer manzili sozlamasi yo'q |
+| Printing (TZ 12.3 / 13.2) | `BRIDGE_TOKEN=""` — **legacy**, ixtiyoriy: eski agentlar uchun umumiy token. Printerlar endi per-agent pairing orqali ulanadi (`bridge_agent` jadvali), shuning uchun bu sozlama bo'sh qolganda ham chop etish ishlaydi. Yorliqlar faqat shu navbat orqali USB GoDEX'ga boradi (G500-U'da tarmoq porti yo'q), shuning uchun printer manzili sozlamasi yo'q |
 | Startup probes | `STARTUP_RETRY_MAX_ATTEMPTS=5`, `STARTUP_RETRY_DELAY_SECONDS=2` |
 | Threadpool | `THREADPOOL_TOKENS=100` (AnyIO sync-bridge slotlari) |
 | Reverse-proxy | `FORWARDED_ALLOW_IPS=["*"]` — X-Forwarded-* headerlariga ishoniladigan IP'lar |
@@ -251,11 +251,17 @@ terminal → POST /api/v1/terminal/labels/{instance_id}
   → label_printed_at yoziladi + ws_manager.publish("label.printed", ...)
   → queue.pool.enqueue_job("print_label", instance_id)
   → arq worker: render_label_png → LPUSH mes:print:queue
-  → /ws/bridge (BRIDGE_TOKEN auth; BRPOP + ack talab qiladi, ack kelmasa RPUSH bilan qaytariladi)
+  → /ws/bridge (per-agent token auth; BRPOP + ack talab qiladi, ack kelmasa RPUSH bilan qaytariladi)
   → bridge-agent → print-queue.jsonl (durable) → Windows GDI (_print_png_gdi) → USB GoDEX G500-U
 ```
 
-Bridge-agent faqat printer ulangan kompyuterga o'rnatiladi va GoDEX printerini nomidan o'zi topadi (`_detect_printer`, nomida "godex" bor Windows printeri); `PRINTER_NAME` env faqat qo'lda override uchun. Menejer, texnolog va boshqa terminallarga hech narsa o'rnatilmaydi — ular brauzerdan tugmani bosadi.
+Bridge-agent faqat printer ulangan kompyuterga o'rnatiladi va GoDEX printerini nomidan o'zi topadi (`_detect_printer`, nomida "godex" bor Windows printeri); `PRINTER_NAME` env faqat qo'lda override uchun. Sexdagi kompyuterda `mebelix-agent.exe` (PyInstaller onefile) ishlaydi — Python ham, pip ham, serverdagi `.env` tahriri ham kerak emas. Menejer, texnolog va boshqa terminallarga hech narsa o'rnatilmaydi — ular brauzerdan tugmani bosadi.
+
+**`/ws/bridge` autentifikatsiyasi — per-agent pairing.** Admin panel har bir printerli kompyuter uchun 8 belgili bir martalik ulanish kodi beradi (alifboda I/L/O/0/1 yo'q — telefonda aytganda adashtirmaydi; TTL 15 daqiqa). Agent birinchi ishga tushganda kodni ochiq `POST /api/v1/bridge-agents/pair` endpointi orqali doimiy tokenga almashtiradi; bazada tokenning faqat sha256 xeshi qoladi (`bridge_agent.token_hash`, unikal) — token o'zi bir marta, pair javobida beriladi.
+
+Ulanishda token `Authorization: Bearer` headerda keladi (server access-loglariga tushmasligi uchun; `?token=` query eski agentlar uchun fallback). Tekshiruv tartibi: avval legacy `settings.BRIDGE_TOKEN` bilan `secrets.compare_digest` orqali solishtiriladi, mos kelmasa token sha256'si bo'yicha `bridge_agent` jadvalidan qidiriladi; topilmasa socket 4401 bilan yopiladi. Ulanish davomida har 300 soniyada `touch_agent()` ishlaydi — `last_seen_at`ni yangilaydi (paneldagi "Onlayn") va shu bilan birga agent qatori hali borligini tekshiradi: admin bekor qilgan bo'lsa jonli ulanish ham 4401 bilan uziladi, qo'lda turgan job esa `rpush` bilan navbatga qaytariladi — yo'qolmaydi.
+
+**Bog'liq fayllar (core'dan tashqarida):** `backend/app/models/bridge_agent.py` (`bridge_agent` jadvali: `organization_id`, `name`, `token_hash`, `pair_code`, `pair_expires_at`, `last_seen_at`), migratsiya `d5e81a24c3b7`, `backend/app/crud/bridge_agents.py` (`crud_bridge_agents`), `backend/app/schemas/bridge_agents.py`, `backend/app/api/routes/bridge_agents.py`.
 
 ---
 

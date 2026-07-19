@@ -6,7 +6,7 @@ Bu hujjat MebeliX MES backend'ining ma'lumotlar qatlamini qamrab oladi: SQLAlche
 API routes  →  schemas (validation)  →  crud (biznes DB-operatsiyalar)  →  models (ORM)  →  PostgreSQL
 ```
 
-Domen modeli to'liq MES sohasini qamrab oladi: **16 jadval** — `user` + 15 MES jadvali (`organization`, `client`, `employee`, `material`, `post`, `machine`, `audit_log`, `order`, `work_session`, `product`, `part`, `order_file`, `part_instance`, `part_route`, `scan`). Shablondan qolgan demo `Item` moduli to'liq olib tashlangan.
+Domen modeli to'liq MES sohasini qamrab oladi: **17 jadval** — `user` + 16 MES jadvali (`organization`, `client`, `employee`, `material`, `post`, `machine`, `audit_log`, `order`, `work_session`, `product`, `part`, `order_file`, `part_instance`, `part_route`, `scan`, `bridge_agent`). Shablondan qolgan demo `Item` moduli to'liq olib tashlangan.
 
 ---
 
@@ -102,6 +102,7 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
 | `Post` | `post.py` | `organization_id`, `code` (`PostCode`), `name(50)`, `order_index`, `unit` (`PostUnit`), `requires_qr_print`, `auto_skip_if_empty` (default `True`), `requires_assignment_choice`, `icon`, `color` | PARTIAL UNIQUE `ix_post_code`. 6 bosqichli ishlab chiqarish zanjiri (TZ 4.4) |
 | `Machine` | `machine.py` | `organization_id`, `post_id` FK (index), `name(100)`, `ip_address(45)`, `mac_address(17)`, `capacity` + `capacity_unit` (`CapacityUnit`), `status` (`MachineStatus`), `icon_url`, `serial_number`, `installed_date` | IP — terminal/TABLO kontekstini aniqlash uchun (TZ 4.3) |
 | `AuditLog` | `audit.py` | `user_id` FK NULL (index), `employee_id` FK NULL, `module(50)`, `action(50)`, `entity_type`, `entity_id`, `message`, `meta` **JSONB**, `ip(45)` | `created_at` = hodisa vaqti (TZ 10.11) |
+| `BridgeAgent` | `bridge_agent.py` | `organization_id`, `name(100)` (qaysi kompyuter/post — admin panelda ko'rinadi), `token_hash(64)` (doimiy tokenning sha256'si; NULL = hali ulanmagan), `pair_code(16)` (8 belgili bir martalik kod), `pair_expires_at` (kod TTL — 15 daqiqa), `last_seen_at` | UNIQUE `ix_bridge_agent_token_hash`; `ix_bridge_agent_pair_code`. Har printerli kompyuterga bitta qator; bekor qilish — soft delete (1.4.2-bo'lim) |
 
 **Buyurtma modellari** (`order.py` — 6 klass):
 
@@ -132,9 +133,19 @@ Xona surati uchun yangi jadval qo'shilmagan: `OrderFile` qatori `kind=FileKind.D
 | `WorkSession` | `employee_id` FK (index), `user_id` FK NULL (terminal akkaunt), `machine_id` FK NULL, `post_id` FK, `status` (`SessionStatus`, index), `ended_at` | Operator smenasi, badge skani bilan ochiladi (TZ 8.2); `created_at` = boshlanish vaqti |
 | `Scan` | `order_id`/`part_id`/`instance_id`/`route_id`/`post_id` FK, `machine_id` FK NULL, `employee_id` FK (index), `session_id` FK (index), `client_event_id(64)`, `is_cancelled`, `cancelled_at` | UNIQUE `ix_scan_client_event_id` (idempotentlik — network replay rad etiladi, TZ 8.4.4); `ix_scan_order_post`; PARTIAL `ix_scan_instance_post` (`WHERE NOT is_cancelled`). Bekor qilingan skan auditda qoladi, hisoblagich qayta oshiriladi |
 
+#### 1.4.2 `bridge_agent` — har printerga o'z tokeni (pairing)
+
+Ilgari barcha printerlar server `.env` idagi **bitta** `BRIDGE_TOKEN` bilan ishlar edi: yangi printer qo'shish uchun serverga SSH kirish kerak bo'lar, bitta token sizib chiqsa esa hamma printer ochilib qolar edi. Endi har printerli kompyuter uchun `bridge_agent` da alohida qator (`BaseModel` ustunlari — id/timestamp/soft-delete — odatdagidek):
+
+- Admin panel yangi agent yaratadi → **8 belgili bir martalik kod** (`pair_code` + `pair_expires_at` = 15 daqiqa). Alfavitda `I/L/O/0/1` yo'q — kodni telefonda aytganda adashtirmaydi (`backend/app/api/routes/bridge_agents.py`).
+- Agent kodni `POST /api/v1/bridge-agents/pair` orqali doimiy tokenga almashtiradi. Almashtirish **atomik `UPDATE ... RETURNING`** (`pair_code` mos + muddati o'tmagan) — bitta kodni ikki kompyuter yuborsa faqat bittasi yutadi, kod darhol `NULL` ga tushadi.
+- Bazada faqat `token_hash` (sha256, UNIQUE) saqlanadi; tokenning o'zi bir marta — pair javobida — beriladi va agent uni `%APPDATA%\MebelixAgent\.env` ga yozadi.
+- `last_seen_at` ni `/ws/bridge` har 5 daqiqada yangilaydi (DB'ga ortiqcha yuk bo'lmasin) — panel shundan **Onlayn/Oflayn** ni ko'rsatadi.
+- Bekor qilish — soft delete (`BaseCRUD.delete`): keyingi ulanish 4401 bilan rad etiladi, jonli ulanish esa navbatdagi tekshiruvda (maks. ~5 daqiqa) uziladi va qo'lda turgan job navbatga qaytadi. Yangi kod berish (`POST /bridge-agents/{id}/code`) `token_hash` ni ham tozalaydi — eski kompyuter shu zahoti kesiladi. Bittasini bekor qilish qolgan printerlarga tegmaydi.
+
 ### 1.5 `backend/app/models/__init__.py`
 
-16 model klassini re-export qiladi (`__all__`): `AuditLog`, `Client`, `Employee`, `Machine`, `Material`, `Order`, `OrderFile`, `Organization`, `Part`, `PartInstance`, `PartRoute`, `Post`, `Product`, `Scan`, `User`, `WorkSession`. Alembic `env.py` esa modellarni bu faylga tayanmasdan `pkgutil.walk_packages` bilan dinamik import qiladi.
+17 model klassini re-export qiladi (`__all__`): `AuditLog`, `BridgeAgent`, `Client`, `Employee`, `Machine`, `Material`, `Order`, `OrderFile`, `Organization`, `Part`, `PartInstance`, `PartRoute`, `Post`, `Product`, `Scan`, `User`, `WorkSession`. Alembic `env.py` esa modellarni bu faylga tayanmasdan `pkgutil.walk_packages` bilan dinamik import qiladi.
 
 ---
 
@@ -255,6 +266,7 @@ Barcha mm-o'lchamlar umumiy alias orqali: `_Mm = Annotated[float | None, Field(d
 | `backend/app/schemas/common.py` | `Message` | Generic `{"message": str}` javob |
 | | `Paginated[T]` | Standart sahifalangan ro'yxat javobi: `{data: list[T], count: int}` — barcha list endpointlarda ishlatiladi |
 | `backend/app/schemas/health.py` | `HealthCheck`, `ReadyCheck` | Liveness/readiness endpointlari; `ReadyCheck` `database` va `redis` holatini ham qaytaradi |
+| `backend/app/schemas/bridge_agents.py` | `BridgeAgentRead`, `BridgeAgentCreate`, `BridgePairRequest`, `BridgePairResponse` | Printer agentlari (1.4.2-bo'lim): `BridgeAgentRead` `token_hash` o'rniga `paired: bool` beradi, `pair_code` faqat muddati o'tmagan bo'lsa; `BridgePairResponse.token` — tokenning yagona ko'rinishi |
 
 ---
 
@@ -315,11 +327,11 @@ def log_action(db, *, module, action, user_id=None, employee_id=None,
 
 ### 3.5 Yupqa registr CRUD'lari
 
-`clients.py`, `employees.py`, `machines.py`, `materials.py`, `posts.py` — har biri `BaseCRUD` ning bo'sh subclass'i + singleton (`crud_clients`, `crud_employees`, `crud_machines`, `crud_materials`, `crud_posts`). Maxsus logika route qatlamida (masalan, employee badge regeneratsiyasi, client orders_count join'i).
+`bridge_agents.py`, `clients.py`, `employees.py`, `machines.py`, `materials.py`, `posts.py` — har biri `BaseCRUD` ning bo'sh subclass'i + singleton (`crud_bridge_agents`, `crud_clients`, `crud_employees`, `crud_machines`, `crud_materials`, `crud_posts`). Maxsus logika route qatlamida (masalan, employee badge regeneratsiyasi, client orders_count join'i, agent pairing'ining atomik `UPDATE` i).
 
 ### 3.6 `backend/app/crud/__init__.py`
 
-Re-export (`__all__`): **7 singleton** — `crud_clients`, `crud_employees`, `crud_machines`, `crud_materials`, `crud_orders`, `crud_posts`, `crud_users` — hamda `log_action`.
+Re-export (`__all__`): **8 singleton** — `crud_bridge_agents`, `crud_clients`, `crud_employees`, `crud_machines`, `crud_materials`, `crud_orders`, `crud_posts`, `crud_users` — hamda `log_action`.
 
 ---
 
@@ -344,7 +356,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 
 ### 4.4 Versiyalar zanjiri — `backend/app/migrations/versions/`
 
-6 ta migratsiya, head: `a91c7d34f6e2`.
+7 ta migratsiya, head: `d5e81a24c3b7`.
 
 | # | Revision | Fayl | Nima qiladi |
 |---|---|---|---|
@@ -354,6 +366,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 | 4 | `3b4e0b90f440` | `3b4e0b90f440_order_material_usage.py` | `order.material_usage` JSONB NOT NULL (server_default `'[]'`) |
 | 5 | `7d2c9f5e1b3a` | `7d2c9f5e1b3a_order_advance_payment.py` | `order.advance_payment Numeric(14,2)` NULL — to'lov oqimi maydoni |
 | 6 | `a91c7d34f6e2` | `a91c7d34f6e2_order_survey.py` | `order.survey JSONB` NULL — mijoz anketasi va o'lchov varag'i (xonalar bo'yicha) |
+| 7 | `d5e81a24c3b7` | `d5e81a24c3b7_bridge_agent_pairing.py` | **`bridge_agent`** jadvali (printer agentlari: ulanish kodi + token xeshi) + 3 indeks: UNIQUE `ix_bridge_agent_token_hash`, `ix_bridge_agent_pair_code`, `ix_bridge_agent_is_deleted` (1.4.2-bo'lim) |
 
 Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kind=DOCUMENT` + `meta` JSONB bilan ishlatiladi (1.4.1-bo'lim).
 
@@ -405,13 +418,13 @@ To'liq zanjir:
 Terminal "Chop etish"
   -> POST /api/v1/terminal/labels/{instance_id}   (label_printed_at + ws "label.printed")
   -> arq print_label: render_label_png -> LPUSH mes:print:queue
-  -> /ws/bridge (BRIDGE_TOKEN auth): brpop -> agentga yuboradi, ack kutadi
+  -> /ws/bridge (per-agent token -> bridge_agent.token_hash): brpop -> agentga yuboradi, ack kutadi
   -> bridge-agent: print-queue.jsonl (durable) -> Windows GDI -> USB GoDEX
 ```
 
-`/ws/bridge` (`backend/app/api/routes/ws.py`) jobni ack (`{"ok": true}`) kelmasa `rpush` bilan navbatga qaytaradi — yorliq yo'qolmaydi. Serverda bitta sozlama: `settings.BRIDGE_TOKEN` (bo'sh bo'lsa endpoint 4401 bilan yopiladi).
+`/ws/bridge` (`backend/app/api/routes/ws.py`) jobni ack (`{"ok": true}`) kelmasa `rpush` bilan navbatga qaytaradi — yorliq yo'qolmaydi. Auth **per-agent**: token `Authorization: Bearer` headerda keladi (query param eski agentlar uchun fallback), sha256 xeshi bo'yicha tirik `bridge_agent` qatori qidiriladi — topilmasa 4401. Serverda sozlama kerak emas, printer admin paneldan ulanadi (1.4.2-bo'lim). `settings.BRIDGE_TOKEN` faqat **legacy** back-compat sifatida qoldi: bo'sh bo'lsa e'tiborga olinmaydi, to'ldirilgan bo'lsa eski umumiy tokenli agent ham o'tadi (bunday ulanishning jadvalda qatori yo'q — `last_seen_at` yangilanmaydi, panelda ham ko'rinmaydi).
 
-Bridge-agent (`bridge-agent/agent.py`) faqat printer ulangan kompyuterga o'rnatiladi — menejer, texnolog va boshqa post terminallariga hech narsa kerak emas. Printerni `_detect_printer()` avtomatik topadi (nomida `godex` bor Windows printeri); env'lari: `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME` (ixtiyoriy, qo'lda override), `QUEUE_FILE`.
+Bridge-agent (`bridge-agent/agent.py`) faqat printer ulangan kompyuterga o'rnatiladi — menejer, texnolog va boshqa post terminallariga hech narsa kerak emas. Birinchi ishga tushganda `_pair_interactive()` server manzili va ulanish kodini so'raydi, tokenni olib `%APPDATA%\MebelixAgent\.env` ga yozadi — keyingi safar so'ralmaydi (headless/Task Scheduler rejimida prompt chiqmaydi). Exe'ning o'zi `GET /api/v1/bridge-agents/download` dan olinadi. Printerni `_detect_printer()` avtomatik topadi (nomida `godex` bor Windows printeri); env'lari: `MES_URL`, `BRIDGE_TOKEN` (pairing to'ldiradi), `PRINTER_NAME` (ixtiyoriy, qo'lda override), `QUEUE_FILE`.
 
 ```python
 all_tasks = [ping, print_label]
@@ -427,7 +440,7 @@ Worker konfiguratsiyasi (ARQ `WorkerSettings`) ro'yxatni `all_tasks` dan oladi; 
 |---|---|---|---|
 | Models | `backend/app/models/*` | `app.core.db.Base` | CRUD, Alembic autogenerate, commands, services |
 | Schemas | `backend/app/schemas/*` | Pydantic, `app.models.enums` | API routes (request/response), CRUD (create/update input) |
-| CRUD | `backend/app/crud/*` | Models, Schemas, `app.core.security` | API routes (7 singleton + `log_action`) |
+| CRUD | `backend/app/crud/*` | Models, Schemas, `app.core.security` | API routes (8 singleton + `log_action`) |
 | Migrations | `backend/app/migrations/*`, `backend/alembic.ini` | `app.core.config.settings`, `Base.metadata` | deploy/`alembic upgrade head` |
 | Commands | `backend/app/commands/*` | settings, `local_session`, Models | bootstrap (superuser, organization + postlar) |
 | Tasks | `backend/app/tasks/*` | ARQ, `app.services.labels`, Redis | worker process |

@@ -8,6 +8,7 @@ import {
   Layers,
   ListChecks,
   MonitorPlay,
+  Printer,
   ScrollText,
   UserRound,
   Users,
@@ -65,6 +66,7 @@ function navItems(role: string | undefined, isSuperuser: boolean): Item[] {
   }
   if (admin) {
     items.push({ icon: Users, title: "Foydalanuvchilar", path: "/admin" })
+    items.push({ icon: Printer, title: "Printer agentlar", path: "/printers" })
     items.push({ icon: ScrollText, title: "Logs", path: "/logs" })
   }
   return items

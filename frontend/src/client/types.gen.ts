@@ -38,6 +38,36 @@ export type Body_upload_room_photo = {
     file: string;
 };
 
+export type BridgeAgentCreate = {
+    name: string;
+};
+
+/**
+ * Admin ro'yxati. pair_code faqat hali ulanmagan agentda bo'ladi —
+ * ro'yxatning o'zi admin-only, shuning uchun kodni ko'rsatish xavfsiz.
+ */
+export type BridgeAgentRead = {
+    id: number;
+    name: string;
+    paired: boolean;
+    pair_code: (string | null);
+    pair_expires_at: (string | null);
+    last_seen_at: (string | null);
+    created_at: string;
+};
+
+export type BridgePairRequest = {
+    code: string;
+};
+
+/**
+ * Token FAQAT shu javobda beriladi — bazada sha256 xeshi qoladi.
+ */
+export type BridgePairResponse = {
+    token: string;
+    name: string;
+};
+
 export type CapacityUnit = 'm2_per_hour' | 'meter_per_hour' | 'units_per_hour';
 
 export type ClientCreate = {
@@ -808,6 +838,32 @@ export type ReadAuditLogsData = {
 };
 
 export type ReadAuditLogsResponse = (Paginated_AuditLogRead_);
+
+export type ReadBridgeAgentsResponse = (Array<BridgeAgentRead>);
+
+export type CreateBridgeAgentData = {
+    requestBody: BridgeAgentCreate;
+};
+
+export type CreateBridgeAgentResponse = (BridgeAgentRead);
+
+export type RegenerateBridgeCodeData = {
+    agentId: number;
+};
+
+export type RegenerateBridgeCodeResponse = (BridgeAgentRead);
+
+export type DeleteBridgeAgentData = {
+    agentId: number;
+};
+
+export type DeleteBridgeAgentResponse = (Message);
+
+export type PairBridgeAgentData = {
+    requestBody: BridgePairRequest;
+};
+
+export type PairBridgeAgentResponse = (BridgePairResponse);
 
 export type ReadClientsData = {
     limit?: number;

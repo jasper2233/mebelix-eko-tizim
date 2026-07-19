@@ -5,10 +5,11 @@
 **MebeliX MES** — mebel ishlab chiqarishni boshqarish tizimi (Manufacturing Execution
 System) uchun to'liq ishlaydigan fullstack ilova. FastAPI fullstack template
 poydevorida (JWT + httpOnly cookie auth, users boshqaruvi) **to'liq MES domeni**
-qurilgan: `/v1` agregatorida **16 ta router** (health, login, logout, users,
+qurilgan: `/v1` agregatorida **17 ta router** (health, login, logout, users,
 clients, employees, machines, posts, materials, orders, audit, terminal, scans,
-tablo, reports, ws), **16 ta ORM model** (Order/Product/Part/PartInstance/PartRoute,
-Client, Employee, Machine, Post, Material, Scan/WorkSession, AuditLog va h.k.) va
+tablo, reports, bridge-agents, ws), **17 ta ORM model**
+(Order/Product/Part/PartInstance/PartRoute, Client, Employee, Machine, Post,
+Material, Scan/WorkSession, AuditLog, BridgeAgent va h.k.) va
 **12 ta `UserRole`** (admin, director, manager, texnolog, terminal, tablo + 6 ta
 post operatori roli: arrachi, kromkachi, prisadkachi, pazchi, roverchi, stolyar).
 Domen tafsilotlari uchun [09-mes-domain.md](./09-mes-domain.md) ga qarang.
@@ -24,6 +25,7 @@ MebeliX-Mes-System/
 ├── frontend/         # Vite + React SPA (src/routes, src/components, src/client, ...)
 ├── bridge-agent/     # Tsex agenti (agent.py) — print joblarni USB GoDEX printerga yuboradi
 │                     #   (Windows drayveri orqali PNG; faqat printerli kompyuterda)
+│                     #   mebelix-agent.exe bo'lib yig'iladi, panel kodi bilan ulanadi (pairing)
 ├── caddy/            # Caddy reverse proxy konfiguratsiyasi (prod)
 ├── scripts/          # setup.sh, prestart.sh, generate-client.sh, deploy.sh (TAG deploy + avto-rollback), backup.sh (kunlik shifrlangan DB backup)
 ├── docs/             # Ushbu hujjatlar to'plami
@@ -73,7 +75,7 @@ MebeliX-Mes-System/
 | Reverse proxy | Caddy (prod, `SITE_ADDRESS` orqali auto-HTTPS / Let's Encrypt); port bindinglar `CADDY_HTTP_BIND`/`CADDY_HTTPS_BIND` bilan parametrlangan — mavjud host-nginx (ISPmanager) ortida ishlash rejimi uchun |
 | Static serving | nginx (frontend build, SPA fallback, 1 yillik asset cache) |
 | Sifat nazorati | pre-commit hooks (ruff, mypy, biome) + GitHub Actions CI (`.github/workflows/ci.yml`) |
-| Konfiguratsiya | Yagona `.env` fayl (JWT, DB/Redis, admin user, rate-limit, `GUNICORN_WORKERS`, `SITE_ADDRESS`, printing: `BRIDGE_TOKEN`) |
+| Konfiguratsiya | Yagona `.env` fayl (JWT, DB/Redis, admin user, rate-limit, `GUNICORN_WORKERS`, `SITE_ADDRESS`); `BRIDGE_TOKEN` endi ixtiyoriy — printerlar admin paneldagi pairing bilan ulanadi |
 
 ## 3. High-level arxitektura
 
@@ -122,7 +124,10 @@ Asosiy nuqtalar:
 - **WebSocket qatlami** (`app/api/routes/ws.py`): `/api/v1/ws/events` — brauzer
   real-time kanali (JWT cookie yoki `?token=` bilan auth, rolga qarab
   terminal/tablo/dashboard scope, `ws_manager` fan-out); `/api/v1/ws/bridge` —
-  bridge-agent uplink (`BRIDGE_TOKEN` bilan auth, `compare_digest`).
+  bridge-agent uplink (per-agent token `Authorization: Bearer` headerda,
+  `bridge_agent.token_hash` bo'yicha sha256 qidiruv; legacy umumiy `BRIDGE_TOKEN`
+  `compare_digest` bilan hamon qabul qilinadi). Batafsil:
+  [4.3](#43-yorliq-chop-etish-zanjiri).
 - **Yorliq chop etish oqimi**: `print_label` ARQ task base64 PNG
   (`render_label_png`) ni Redis `mes:print:queue` ro'yxatiga qo'yadi →
   `/ws/bridge` uni printerli kompyuterdagi `bridge-agent/agent.py` ga uzatadi
@@ -192,7 +197,9 @@ Browser (React)                FastAPI                        PostgreSQL
 
 - Router ierarxiyasi: `/api` root → `/v1` agregator; auth **router darajasida**
   qo'llanadi (`health`, `login` ochiq; `logout`, `users` va 11 ta MES routeri
-  `get_current_user` ortida; `ws` router auth'ni endpoint ichida o'zi hal qiladi).
+  `get_current_user` ortida; `ws` va `bridge-agents` routerlari auth'ni o'zlari
+  hal qiladi — `bridge-agents` da `/pair` ochiq bo'lishi shart, admin
+  endpointlar esa har biri `AdminUser` bilan himoyalangan).
 - Frontend'da route guard'lar `beforeLoad`da `UsersService.readUserMe()` bilan
   ishlaydi: `_layout.tsx` himoyalangan sahifalarni qo'riqlaydi va rolga qarab
   yo'naltiradi — `terminal` va operator rollari (`arrachi`...`stolyar`) →
@@ -247,10 +254,43 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
 - Printer AVTO-TOPILADI: `_detect_printer()` `win32print.EnumPrinters` ro'yxatidan
   nomida `godex` bor lokal printerni oladi — drayver o'rnatilsa bas, sozlash
   shart emas. `PRINTER_NAME` faqat qo'lda override uchun. Agent env'lari:
-  `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME` (ixtiyoriy), `QUEUE_FILE`.
+  `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME` (ixtiyoriy), `QUEUE_FILE`;
+  `_load_dotenv()` ularni shu tartibda o'qiydi: env var > exe yonidagi `.env` >
+  `%APPDATA%\MebelixAgent\.env`.
 - Agent FAQAT printer ulangan kompyuterga o'rnatiladi (Windows Task Scheduler,
   "At startup"); menejer, texnolog va boshqa post terminallariga hech narsa
   kerak emas — ular brauzerdan tugmani bosadi.
+- **Ulanish (pairing)** — har printer o'z tokeni bilan ishlaydi, serverda yagona
+  umumiy token yo'q. Admin `/printers` sahifasida agent yaratadi va **8 belgili
+  bir martalik kod** oladi (alifboda I/L/O/0/1 yo'q — telefonda aytganda
+  adashtirmaydi; 15 daqiqa yashaydi). Tsex kompyuterida `mebelix-agent.exe`
+  birinchi marta ishga tushganda (`_pair_interactive()`) server manzili va kodni
+  so'raydi, `POST /bridge-agents/pair` orqali doimiy tokenga almashtiradi va uni
+  `%APPDATA%\MebelixAgent\.env` ga yozadi. `BRIDGE_TOKEN` allaqachon berilgan
+  bo'lsa yoki stdin tty bo'lmasa — so'ramaydi.
+- `bridge_agent` jadvali (`app/models/bridge_agent.py`, migratsiya
+  `d5e81a24c3b7`): `organization_id`, `name`, `token_hash` (tokenning sha256'i,
+  unique — token o'zi faqat pair javobida bir marta ko'rinadi), `pair_code`,
+  `pair_expires_at`, `last_seen_at`.
+- `/bridge-agents` routeri (`app/api/routes/bridge_agents.py`): `GET /` ro'yxat,
+  `POST /` yangi agent + kod, `POST /{id}/code` yangi kod (`token_hash` tozalanadi
+  — eski kompyuter bekor bo'ladi), `DELETE /{id}` soft-delete — barchasi
+  `AdminUser`. `POST /pair` OCHIQ: atomik `UPDATE ... RETURNING` bilan bitta kodni
+  ikki kompyuter bir vaqtda ishlata olmaydi, xato esa yagona umumiy matn — kod
+  bor-yo'qligi oshkor bo'lmaydi. `GET /download` `uploads/agent/mebelix-agent.exe`
+  ni beradi.
+- `/ws/bridge` tokenni `Authorization: Bearer` headerdan oladi (server
+  access-loglariga tushmasin; `?token=` eski agentlar uchun fallback). Legacy
+  `settings.BRIDGE_TOKEN` `compare_digest` bilan hamon qabul qilinadi; aks holda
+  sha256 xesh `bridge_agent` da qidiriladi, topilmasa ulanish 4401 bilan yopiladi.
+  `touch_agent()` har 300 s da `last_seen_at` ni yangilaydi va agent hali tirikligini
+  qayta tekshiradi — bekor qilingan bo'lsa jonli ulanish ham uziladi (maks ~5 daqiqa
+  kechikish) va qo'ldagi job navbatga qaytariladi.
+- Tsex kompyuteriga Python ham, pip ham, SSH ham, serverdagi `.env` tahriri ham
+  KERAK EMAS: agent PyInstaller onefile `mebelix-agent.exe` (~16 MB) bo'lib
+  yig'iladi — admin uni paneldan yuklab oladi, ishga tushiradi va kodni yozadi.
+  Frontend tomoni: `frontend/src/routes/_layout/printers.tsx` ("Printer agentlar")
+  va sidebar yozuvi.
 - `render_label_png()` (`app/services/labels.py`) — 80×60 mm, 203 dpi
   (8 dot/mm → 640×480 px). `draw.fontmode = "1"` (antialiasing yo'q) va yakuniy
   `convert("L").point(v < 160)` — chiqish sof 1-bit, drayver dither qilmasin.
