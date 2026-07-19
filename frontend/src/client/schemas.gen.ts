@@ -180,6 +180,24 @@ export const Body_upload_order_projectSchema = {
     title: 'Body_upload_order_project'
 } as const;
 
+export const Body_upload_room_photoSchema = {
+    properties: {
+        room_id: {
+            type: 'string',
+            maxLength: 40,
+            title: 'Room Id'
+        },
+        file: {
+            type: 'string',
+            contentMediaType: 'application/octet-stream',
+            title: 'File'
+        }
+    },
+    type: 'object',
+    required: ['room_id', 'file'],
+    title: 'Body_upload_room_photo'
+} as const;
+
 export const CapacityUnitSchema = {
     type: 'string',
     enum: ['m2_per_hour', 'meter_per_hour', 'units_per_hour'],
@@ -2288,6 +2306,12 @@ export const OrderFileReadSchema = {
                 }
             ],
             title: 'Part Id'
+        },
+        meta: {
+            additionalProperties: true,
+            type: 'object',
+            title: 'Meta',
+            default: {}
         },
         created_at: {
             type: 'string',

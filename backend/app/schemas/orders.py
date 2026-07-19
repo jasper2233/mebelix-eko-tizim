@@ -41,6 +41,7 @@ class OrderFileRead(BaseModel):
     filename: str
     size: int | None
     part_id: int | None
+    meta: dict[str, Any] = {}  # anketa rasmi uchun {"room_id": ..., "content_type": ...}
     created_at: datetime
 
 

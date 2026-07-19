@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { ArrowLeft, ImagePlus, Plus, Save, Trash2, X } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 
 import {
+  OpenAPI,
+  type OrderFileRead,
   type OrderSurvey,
   OrdersService,
   type SurveyModule,
@@ -12,6 +14,13 @@ import {
 import { PageHeader } from "@/components/Common/PageHeader"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { DatePicker } from "@/components/ui/date-picker"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -59,7 +68,7 @@ function AnketaPage() {
   const queryClient = useQueryClient()
   const { data: order, isLoading } = useQuery(getOrderQueryOptions(id))
   const { currentUser } = useCurrentUser()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
+  const { showErrorToast } = useCustomToast()
 
   const role = currentUser?.role
   const canEdit =
@@ -68,10 +77,14 @@ function AnketaPage() {
   const [survey, setSurvey] = useState<OrderSurvey>({ version: 1, rooms: [] })
   const [active, setActive] = useState(0)
   const [dirty, setDirty] = useState(false)
+  const [savedAt, setSavedAt] = useState<string | null>(null)
 
-  // Serverdagi anketa kelgach bir marta yuklanadi; keyin tahrir lokal holatда
+  // Serverdan FAQAT BIR MARTA yuklanadi. Aks holda saqlashdan keyingi refetch
+  // menejer yozayotgan matn ustiga tushadi.
+  const loaded = useRef(false)
   useEffect(() => {
-    if (!order) return
+    if (!order || loaded.current) return
+    loaded.current = true
     const saved = order.survey as OrderSurvey | null
     setSurvey(
       saved?.rooms?.length
@@ -81,20 +94,60 @@ function AnketaPage() {
   }, [order])
 
   const save = useMutation({
-    mutationFn: () =>
-      OrdersService.saveOrderSurvey({ orderId: id, requestBody: survey }),
+    mutationFn: (body: OrderSurvey) =>
+      OrdersService.saveOrderSurvey({ orderId: id, requestBody: body }),
     onSuccess: () => {
-      showSuccessToast("Anketa saqlandi")
       setDirty(false)
+      setSavedAt(new Date().toLocaleTimeString("uz-UZ", { timeStyle: "short" }))
       queryClient.invalidateQueries({ queryKey: ["orders", id] })
     },
     onError: handleError(showErrorToast),
   })
 
+  // Avtosaqlash: menejer bilmasdan chiqib ketsa ham ma'lumot yo'qolmaydi.
+  // Anketa o'zi qoralama — alohida "chop etish" bosqichi yo'q.
+  const surveyRef = useRef(survey)
+  surveyRef.current = survey
+  const dirtyRef = useRef(dirty)
+  dirtyRef.current = dirty
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: survey ataylab — har tahrirda taymer qaytadan boshlanadi
+  useEffect(() => {
+    if (!dirty || !canEdit) return
+    const t = setTimeout(() => save.mutate(surveyRef.current), 1500)
+    return () => clearTimeout(t)
+  }, [survey, dirty, canEdit, save.mutate])
+
+  // Sahifadan chiqishda (1.5s kutmasdan) va tab yopilishida ogohlantirish
+  useEffect(() => {
+    if (!canEdit) return
+    const warn = (e: BeforeUnloadEvent) => {
+      if (dirtyRef.current) e.preventDefault()
+    }
+    window.addEventListener("beforeunload", warn)
+    return () => {
+      window.removeEventListener("beforeunload", warn)
+      if (dirtyRef.current) {
+        // fire-and-forget: komponent yo'q bo'lyapti, javob kutilmaydi
+        OrdersService.saveOrderSurvey({
+          orderId: id,
+          requestBody: surveyRef.current,
+        }).catch(() => {})
+      }
+    }
+  }, [id, canEdit])
+
   if (isLoading || !order) return <Skeleton className="h-96 w-full" />
 
   const rooms = survey.rooms ?? []
   const room = rooms[active]
+
+  // Xona rasmlari OrderFile'da saqlanadi (meta.room_id) — anketa JSON'ida emas,
+  // shuning uchun avtosaqlash bilan aralashmaydi
+  const photosOf = (roomId: string) =>
+    (order.files ?? []).filter(
+      (f) => f.kind === "document" && f.meta?.room_id === roomId,
+    )
 
   const patch = (changes: Partial<SurveyRoom>) => {
     setSurvey((s) => ({
@@ -162,31 +215,49 @@ function AnketaPage() {
       </div>
 
       {/* Texnolog/direktor: forma emas, o'qish uchun jamlanma — matn nusxa olinadi */}
-      {room && !canEdit && <RoomSummary room={room} survey={survey} />}
+      {room && !canEdit && (
+        <RoomSummary
+          room={room}
+          survey={survey}
+          orderId={id}
+          photos={photosOf(room.id)}
+        />
+      )}
 
       {room && canEdit && (
         <div className="space-y-5">
+          {/* Chapda xona nomi, o'ngda rasmlar — menejer nomni yozib, darhol
+              mijozning suratini shu yerga tashlaydi */}
           <Section title="Xona">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Xona nomi">
-                <Input
-                  value={room.name ?? ""}
-                  disabled={!canEdit}
-                  placeholder="Oshxona"
-                  onChange={(e) => patch({ name: e.target.value })}
-                />
-              </Field>
-              {canEdit && rooms.length > 1 && (
-                <div className="flex items-end">
+            <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+              <div className="space-y-3">
+                <Field label="Xona nomi">
+                  {/* Qisqa qiymat ("Oshxona") — butun ustun kengligini egallamasin */}
+                  <Input
+                    className="max-w-xs"
+                    value={room.name ?? ""}
+                    disabled={!canEdit}
+                    maxLength={60}
+                    placeholder="Oshxona"
+                    onChange={(e) => patch({ name: e.target.value })}
+                  />
+                </Field>
+                {canEdit && rooms.length > 1 && (
                   <Button
                     variant="ghost"
-                    className="text-destructive"
+                    className="-ml-3 text-destructive"
                     onClick={() => removeRoom(active)}
                   >
                     <Trash2 /> Bu xonani o'chirish
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
+              <RoomPhotos
+                orderId={id}
+                roomId={room.id}
+                photos={photosOf(room.id)}
+                canEdit={!!canEdit}
+              />
             </div>
           </Section>
 
@@ -200,6 +271,7 @@ function AnketaPage() {
             <Field label="Boshqa">
               <Input
                 value={room.furniture_other ?? ""}
+                maxLength={120}
                 disabled={!canEdit}
                 onChange={(e) => patch({ furniture_other: e.target.value })}
               />
@@ -213,27 +285,27 @@ function AnketaPage() {
               disabled={!canEdit}
               onChange={(v) => patch({ shape: v })}
             />
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Num
-                label="Xona uzunligi"
+                label="Xona uzunligi (mm)"
                 value={room.room_length}
                 disabled={!canEdit}
                 onChange={(v) => patch({ room_length: v })}
               />
               <Num
-                label="Xona kengligi"
+                label="Xona kengligi (mm)"
                 value={room.room_width}
                 disabled={!canEdit}
                 onChange={(v) => patch({ room_width: v })}
               />
               <Num
-                label="Xona balandligi"
+                label="Xona balandligi (mm)"
                 value={room.room_height}
                 disabled={!canEdit}
                 onChange={(v) => patch({ room_height: v })}
               />
               <Num
-                label="Mebel devori uzunligi"
+                label="Mebel devori uzunligi (mm)"
                 value={room.furniture_wall_length}
                 disabled={!canEdit}
                 onChange={(v) => patch({ furniture_wall_length: v })}
@@ -248,10 +320,11 @@ function AnketaPage() {
               disabled={!canEdit}
               onChange={(v) => patch({ corpus_materials: v })}
             />
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="grid items-start gap-3 sm:grid-cols-2">
               <Field label="Rang / dekor">
                 <Input
                   value={room.corpus_color ?? ""}
+                  maxLength={120}
                   disabled={!canEdit}
                   onChange={(e) => patch({ corpus_color: e.target.value })}
                 />
@@ -268,6 +341,7 @@ function AnketaPage() {
             <Field label="Korpus izohi">
               <Input
                 value={room.corpus_note ?? ""}
+                maxLength={300}
                 disabled={!canEdit}
                 onChange={(e) => patch({ corpus_note: e.target.value })}
               />
@@ -281,15 +355,16 @@ function AnketaPage() {
               disabled={!canEdit}
               onChange={(v) => patch({ facade_materials: v })}
             />
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="grid items-start gap-3 sm:grid-cols-2">
               <Field label="Rang / tekstura">
                 <Input
                   value={room.facade_color ?? ""}
+                  maxLength={120}
                   disabled={!canEdit}
                   onChange={(e) => patch({ facade_color: e.target.value })}
                 />
               </Field>
-              <Field label="Stol usti (oshxona)">
+              <Field label="Stol usti">
                 <Choice
                   options={COUNTERTOPS}
                   value={room.countertop ?? null}
@@ -301,6 +376,7 @@ function AnketaPage() {
             <Field label="Fasad izohi">
               <Input
                 value={room.facade_note ?? ""}
+                maxLength={300}
                 disabled={!canEdit}
                 onChange={(e) => patch({ facade_note: e.target.value })}
               />
@@ -316,7 +392,7 @@ function AnketaPage() {
                 onChange={(v) => patch({ hardware_level: v })}
               />
             </Field>
-            <div className="mt-3">
+            <div>
               <CheckGrid
                 options={EXTRA_SERVICES}
                 values={room.extra_services ?? []}
@@ -330,6 +406,7 @@ function AnketaPage() {
             <Textarea
               rows={3}
               value={room.note ?? ""}
+              maxLength={1000}
               disabled={!canEdit}
               placeholder="Mijozning qo'shimcha talab va izohlari"
               onChange={(e) => patch({ note: e.target.value })}
@@ -345,17 +422,14 @@ function AnketaPage() {
               </span>
             </summary>
             <div className="space-y-5 border-t p-4">
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid items-start gap-3 sm:grid-cols-2">
                 <Field label="O'lchov sanasi">
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={survey.measured_at ?? ""}
-                    disabled={!canEdit}
-                    onChange={(e) => {
-                      setSurvey((s) => ({
-                        ...s,
-                        measured_at: e.target.value || null,
-                      }))
+                    className="w-full"
+                    aria-label="O'lchov sanasi"
+                    onChange={(v) => {
+                      setSurvey((s) => ({ ...s, measured_at: v || null }))
                       setDirty(true)
                     }}
                   />
@@ -363,6 +437,7 @@ function AnketaPage() {
                 <Field label="O'lchagan usta">
                   <Input
                     value={survey.measured_by ?? ""}
+                    maxLength={120}
                     disabled={!canEdit}
                     onChange={(e) => {
                       setSurvey((s) => ({ ...s, measured_by: e.target.value }))
@@ -398,23 +473,17 @@ function AnketaPage() {
                         <span className="w-6 shrink-0 text-center font-bold text-primary">
                           {letter}
                         </span>
-                        <Input
-                          inputMode="numeric"
+                        <NumInput
                           placeholder="uzunlik"
-                          value={w.length ?? ""}
+                          value={w.length}
                           disabled={!canEdit}
-                          onChange={(e) =>
-                            setWall("length", numOrNull(e.target.value))
-                          }
+                          onChange={(v) => setWall("length", v)}
                         />
-                        <Input
-                          inputMode="numeric"
+                        <NumInput
                           placeholder="balandlik"
-                          value={w.height ?? ""}
+                          value={w.height}
                           disabled={!canEdit}
-                          onChange={(e) =>
-                            setWall("height", numOrNull(e.target.value))
-                          }
+                          onChange={(v) => setWall("height", v)}
                         />
                       </div>
                     )
@@ -457,6 +526,7 @@ function AnketaPage() {
                             <td className="py-1 pr-1">
                               <Input
                                 value={m.name ?? ""}
+                                maxLength={120}
                                 disabled={!canEdit}
                                 onChange={(e) =>
                                   setMod({ name: e.target.value })
@@ -466,6 +536,7 @@ function AnketaPage() {
                             <td className="py-1 pr-1">
                               <Input
                                 value={m.wall ?? ""}
+                                maxLength={2}
                                 disabled={!canEdit}
                                 onChange={(e) =>
                                   setMod({ wall: e.target.value })
@@ -473,48 +544,41 @@ function AnketaPage() {
                               />
                             </td>
                             <td className="py-1 pr-1">
-                              <Input
-                                inputMode="numeric"
-                                value={m.width ?? ""}
+                              <NumInput
+                                value={m.width}
                                 disabled={!canEdit}
-                                onChange={(e) =>
-                                  setMod({ width: numOrNull(e.target.value) })
-                                }
+                                integer={false}
+                                onChange={(v) => setMod({ width: v })}
                               />
                             </td>
                             <td className="py-1 pr-1">
-                              <Input
-                                inputMode="numeric"
-                                value={m.depth ?? ""}
+                              <NumInput
+                                value={m.depth}
                                 disabled={!canEdit}
-                                onChange={(e) =>
-                                  setMod({ depth: numOrNull(e.target.value) })
-                                }
+                                integer={false}
+                                onChange={(v) => setMod({ depth: v })}
                               />
                             </td>
                             <td className="py-1 pr-1">
-                              <Input
-                                inputMode="numeric"
-                                value={m.height ?? ""}
+                              <NumInput
+                                value={m.height}
                                 disabled={!canEdit}
-                                onChange={(e) =>
-                                  setMod({ height: numOrNull(e.target.value) })
-                                }
+                                integer={false}
+                                onChange={(v) => setMod({ height: v })}
                               />
                             </td>
                             <td className="py-1 pr-1">
-                              <Input
-                                inputMode="numeric"
-                                value={m.count ?? ""}
+                              <NumInput
+                                value={m.count}
                                 disabled={!canEdit}
-                                onChange={(e) =>
-                                  setMod({ count: numOrNull(e.target.value) })
-                                }
+                                integer={true}
+                                onChange={(v) => setMod({ count: v })}
                               />
                             </td>
                             <td className="py-1 pr-1">
                               <Input
                                 value={m.note ?? ""}
+                                maxLength={200}
                                 disabled={!canEdit}
                                 onChange={(e) =>
                                   setMod({ note: e.target.value })
@@ -558,15 +622,15 @@ function AnketaPage() {
                     <Plus /> Qator qo'shish
                   </Button>
                 )}
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div className="grid items-start gap-3 sm:grid-cols-2">
                   <Num
-                    label="Umumiy uzunlik (pogonometr, pm)"
+                    label="Umumiy uzunlik (pm)"
                     value={room.total_running_meters}
                     disabled={!canEdit}
                     onChange={(v) => patch({ total_running_meters: v })}
                   />
                   <Num
-                    label="Umumiy balandlik"
+                    label="Umumiy balandlik (mm)"
                     value={room.total_height}
                     disabled={!canEdit}
                     onChange={(v) => patch({ total_height: v })}
@@ -584,12 +648,18 @@ function AnketaPage() {
         <div className="-mx-6 md:-mx-8 -mb-6 md:-mb-8 sticky bottom-0 z-10 mt-5 border-t bg-background/95 px-6 py-3 backdrop-blur md:px-8">
           <div className="flex items-center justify-end gap-3">
             <span className="text-muted-foreground text-sm">
-              {dirty ? "Saqlanmagan o'zgarishlar bor" : "Hammasi saqlangan"}
+              {save.isPending
+                ? "Saqlanmoqda..."
+                : dirty
+                  ? "O'zgarishlar avtomatik saqlanadi"
+                  : savedAt
+                    ? `Saqlandi ${savedAt}`
+                    : "Hammasi saqlangan"}
             </span>
             <LoadingButton
               loading={save.isPending}
               disabled={!dirty}
-              onClick={() => save.mutate()}
+              onClick={() => save.mutate(surveyRef.current)}
             >
               <Save /> Saqlash
             </LoadingButton>
@@ -600,14 +670,224 @@ function AnketaPage() {
   )
 }
 
+const MAX_PHOTOS = 6
+const MAX_PHOTO_MB = 5
+
+/** Xona uchun taxminiy ko'rinish rasmlari — mijoz ko'rsatgan namuna/render.
+ *  Butun panel drop-zona; rasm bosilsa to'liq hajmda ochiladi. */
+function RoomPhotos({
+  orderId,
+  roomId,
+  photos,
+  canEdit,
+}: {
+  orderId: number
+  roomId: string
+  photos: OrderFileRead[]
+  canEdit: boolean
+}) {
+  const queryClient = useQueryClient()
+  const { showErrorToast } = useCustomToast()
+  const input = useRef<HTMLInputElement>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const [preview, setPreview] = useState<OrderFileRead | null>(null)
+  const refresh = () =>
+    queryClient.invalidateQueries({ queryKey: ["orders", orderId] })
+
+  const upload = useMutation({
+    mutationFn: (file: File) =>
+      OrdersService.uploadRoomPhoto({
+        orderId,
+        formData: { room_id: roomId, file: file as unknown as string },
+      }),
+    onSuccess: refresh,
+    onError: handleError(showErrorToast),
+  })
+  const remove = useMutation({
+    mutationFn: (fileId: number) =>
+      OrdersService.deleteRoomPhoto({ orderId, fileId }),
+    onSuccess: refresh,
+    onError: handleError(showErrorToast),
+  })
+
+  // Serverga bormasdan tekshiramiz — menejer xatoni darhol ko'rsin
+  const add = (files: FileList | null) => {
+    const list = Array.from(files ?? [])
+    let free = MAX_PHOTOS - photos.length
+    for (const f of list) {
+      if (!f.type.startsWith("image/")) {
+        showErrorToast(`${f.name}: faqat rasm qo'shish mumkin`)
+        continue
+      }
+      if (f.size > MAX_PHOTO_MB * 1024 * 1024) {
+        showErrorToast(`${f.name}: ${MAX_PHOTO_MB} MB dan katta`)
+        continue
+      }
+      if (free <= 0) {
+        showErrorToast(`Bitta xonaga ${MAX_PHOTOS} tadan ko'p rasm sig'maydi`)
+        break
+      }
+      free--
+      upload.mutate(f)
+    }
+  }
+
+  if (!canEdit && !photos.length) return null
+
+  const src = (fileId: number) =>
+    `${OpenAPI.BASE}/api/v1/orders/${orderId}/files/${fileId}`
+  const full = photos.length >= MAX_PHOTOS
+
+  return (
+    <div>
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <span className="text-muted-foreground text-sm">
+          Xona rasmi{" "}
+          <span className="text-xs">(mijoz ko'rsatgan taxminiy ko'rinish)</span>
+        </span>
+        {photos.length > 0 && (
+          <span className="text-muted-foreground text-xs tabular-nums">
+            {photos.length}/{MAX_PHOTOS}
+          </span>
+        )}
+      </div>
+
+      {/* Butun panel drop-zona: rasm panelning istalgan yeriga tashlanadi */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: faqat drag&drop — klaviatura yo'li "Rasm qo'shish" tugmasi */}
+      <div
+        onDragOver={
+          canEdit
+            ? (e) => {
+                e.preventDefault()
+                setDragOver(true)
+              }
+            : undefined
+        }
+        onDragLeave={canEdit ? () => setDragOver(false) : undefined}
+        onDrop={
+          canEdit
+            ? (e) => {
+                e.preventDefault()
+                setDragOver(false)
+                add(e.dataTransfer.files)
+              }
+            : undefined
+        }
+        className={`rounded-lg border-2 border-dashed p-3 transition-colors ${
+          dragOver ? "border-primary bg-primary/5" : "border-transparent"
+        }`}
+      >
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {photos.map((p) => (
+            <div key={p.id} className="group relative">
+              <button
+                type="button"
+                onClick={() => setPreview(p)}
+                className="block w-full overflow-hidden rounded-md border focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+                aria-label={`${p.filename} — kattalashtirish`}
+              >
+                <img
+                  src={src(p.id)}
+                  alt={p.filename}
+                  crossOrigin="use-credentials"
+                  className="aspect-square w-full object-cover transition-transform duration-200 group-hover:scale-105"
+                />
+              </button>
+              {canEdit && (
+                <button
+                  type="button"
+                  aria-label={`${p.filename} — o'chirish`}
+                  onClick={() => remove.mutate(p.id)}
+                  className="absolute top-1 right-1 rounded-full border bg-background/90 p-1 text-destructive opacity-0 shadow-sm backdrop-blur transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+
+          {canEdit && !full && (
+            <>
+              <input
+                ref={input}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  add(e.target.files)
+                  e.target.value = ""
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => input.current?.click()}
+                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-md border border-dashed p-1 text-center text-muted-foreground text-xs transition-colors hover:border-primary/60 hover:text-foreground"
+              >
+                {upload.isPending ? (
+                  "Yuklanmoqda..."
+                ) : (
+                  <>
+                    <ImagePlus className="size-5" />
+                    Rasm qo'shish
+                  </>
+                )}
+              </button>
+            </>
+          )}
+        </div>
+
+        {canEdit && (
+          <p className="mt-2 text-muted-foreground text-xs">
+            {full
+              ? `Xonaga ${MAX_PHOTOS} ta rasm yuklangan — yangisini qo'shish uchun birortasini o'chiring.`
+              : `Sudrab tashlang yoki tanlang · JPG, PNG, WEBP · ${MAX_PHOTO_MB} MB gacha`}
+          </p>
+        )}
+      </div>
+
+      {/* Kattalashtirilgan ko'rinish */}
+      <Dialog open={!!preview} onOpenChange={(v) => !v && setPreview(null)}>
+        <DialogContent className="gap-2 p-3 sm:max-w-4xl">
+          <DialogHeader className="px-1">
+            <DialogTitle className="truncate text-base">
+              {preview?.filename}
+            </DialogTitle>
+          </DialogHeader>
+          {preview && (
+            <img
+              src={src(preview.id)}
+              alt={preview.filename}
+              crossOrigin="use-credentials"
+              className="max-h-[75vh] w-full rounded-md object-contain"
+            />
+          )}
+          <a
+            href={preview ? src(preview.id) : "#"}
+            target="_blank"
+            rel="noreferrer"
+            className="px-1 text-muted-foreground text-xs underline-offset-2 hover:underline"
+          >
+            Asl hajmda yangi oynada ochish
+          </a>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
 /** Texnolog ko'rinishi: tartib qog'ozning teskarisi — avval modullar va o'lchamlar,
  *  keyin material. Texnolog aynan shu tartibda GibLab'da dizayn yasaydi. */
 function RoomSummary({
   room,
   survey,
+  orderId,
+  photos,
 }: {
   room: SurveyRoom
   survey: OrderSurvey
+  orderId: number
+  photos: OrderFileRead[]
 }) {
   const dims = [room.room_length, room.room_width, room.room_height]
   const walls = (room.walls ?? []).filter((w) => w.length || w.height)
@@ -615,6 +895,28 @@ function RoomSummary({
 
   return (
     <div className="space-y-5">
+      {photos.length > 0 && (
+        <Section title="Xona rasmi" hint="mijoz ko'rsatgan taxminiy ko'rinish">
+          <div className="flex flex-wrap gap-2">
+            {photos.map((p) => (
+              <a
+                key={p.id}
+                href={`${OpenAPI.BASE}/api/v1/orders/${orderId}/files/${p.id}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <img
+                  src={`${OpenAPI.BASE}/api/v1/orders/${orderId}/files/${p.id}`}
+                  alt={p.filename}
+                  crossOrigin="use-credentials"
+                  className="size-32 rounded-lg border object-cover"
+                />
+              </a>
+            ))}
+          </div>
+        </Section>
+      )}
+
       <Section title={`Modullar (${modules.length} ta)`}>
         {modules.length ? (
           <div className="overflow-x-auto">
@@ -767,8 +1069,41 @@ function Facts({ items }: { items: [string, string][] }) {
 }
 
 function numOrNull(v: string): number | null {
-  const n = Number(v)
+  // O'zbek/rus klaviaturasida o'nlik ajratgich vergul — "3,5" ni ham qabul qilamiz
+  const n = Number(v.replace(",", "."))
   return v.trim() === "" || Number.isNaN(n) ? null : n
+}
+
+/** Raqamli maydon: yozilayotgan xom matn saqlanadi, aks holda "3," yozilganda
+ *  qiymat null bo'lib maydon o'z-o'zidan tozalanadi. Blur'da normallashadi. */
+function NumInput({
+  value,
+  disabled,
+  onChange,
+  placeholder,
+  integer = false,
+}: {
+  value: number | null | undefined
+  disabled?: boolean
+  onChange: (v: number | null) => void
+  placeholder?: string
+  integer?: boolean
+}) {
+  const [raw, setRaw] = useState<string | null>(null)
+  return (
+    <Input
+      inputMode={integer ? "numeric" : "decimal"}
+      placeholder={placeholder}
+      disabled={disabled}
+      value={raw ?? value ?? ""}
+      onChange={(e) => {
+        setRaw(e.target.value)
+        const n = numOrNull(e.target.value)
+        onChange(n != null && integer ? Math.trunc(n) : n)
+      }}
+      onBlur={() => setRaw(null)}
+    />
+  )
 }
 
 function Section({
@@ -790,7 +1125,8 @@ function Section({
           </span>
         )}
       </h3>
-      {children}
+      {/* Bo'shliq bitta joydan: bolalar orasida space-y, grid ichida esa gap */}
+      <div className="space-y-3">{children}</div>
     </section>
   )
 }
@@ -803,9 +1139,13 @@ function Field({
   children: React.ReactNode
 }) {
   return (
+    // Margin YO'Q: grid ichida `first:mt-0` faqat birinchi katakka tegib, qolganini
+    // pastga surar edi (input va tugmalar bir qatorda turmasdi). Bo'shliqni ota beradi.
     // biome-ignore lint/a11y/noLabelWithoutControl: input children orqali keladi — bosilganda fokus oladi
-    <label className="mt-3 block first:mt-0">
-      <span className="mb-1 block text-muted-foreground text-sm">{label}</span>
+    <label className="block">
+      <span className="mb-1 block min-h-5 leading-5 text-muted-foreground text-sm">
+        {label}
+      </span>
       {children}
     </label>
   )
@@ -823,13 +1163,8 @@ function Num({
   onChange: (v: number | null) => void
 }) {
   return (
-    <Field label={`${label} (mm)`}>
-      <Input
-        inputMode="numeric"
-        value={value ?? ""}
-        disabled={disabled}
-        onChange={(e) => onChange(numOrNull(e.target.value))}
-      />
+    <Field label={label}>
+      <NumInput value={value} disabled={disabled} onChange={onChange} />
     </Field>
   )
 }
@@ -892,14 +1227,15 @@ function Choice({
   onChange: (v: string | null) => void
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex min-h-9 flex-wrap items-center gap-2">
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
           disabled={disabled}
           onClick={() => onChange(value === o.value ? null : o.value)}
-          className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+          // h-9 — Input bilan bir xil balandlik, yonma-yon turganda qator buzilmaydi
+          className={`inline-flex h-9 items-center rounded-md border px-3 text-sm shadow-xs transition-colors ${
             value === o.value
               ? "border-primary bg-primary text-primary-foreground"
               : "hover:border-primary/40"

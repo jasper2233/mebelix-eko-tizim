@@ -33,6 +33,11 @@ export type Body_upload_order_project = {
     file: string;
 };
 
+export type Body_upload_room_photo = {
+    room_id: string;
+    file: string;
+};
+
 export type CapacityUnit = 'm2_per_hour' | 'meter_per_hour' | 'units_per_hour';
 
 export type ClientCreate = {
@@ -382,6 +387,9 @@ export type OrderFileRead = {
     filename: string;
     size: (number | null);
     part_id: (number | null);
+    meta?: {
+        [key: string]: unknown;
+    };
     created_at: string;
 };
 
@@ -985,6 +993,20 @@ export type SaveOrderSurveyData = {
 };
 
 export type SaveOrderSurveyResponse = (Message);
+
+export type UploadRoomPhotoData = {
+    formData: Body_upload_room_photo;
+    orderId: number;
+};
+
+export type UploadRoomPhotoResponse = (OrderFileRead);
+
+export type DeleteRoomPhotoData = {
+    fileId: number;
+    orderId: number;
+};
+
+export type DeleteRoomPhotoResponse = (Message);
 
 export type CancelOrderData = {
     orderId: number;

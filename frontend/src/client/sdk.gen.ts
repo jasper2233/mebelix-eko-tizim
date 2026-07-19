@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { ReadAuditLogsData, ReadAuditLogsResponse, ReadClientsData, ReadClientsResponse, CreateClientData, CreateClientResponse, ReadClientData, ReadClientResponse, UpdateClientData, UpdateClientResponse, DeleteClientData, DeleteClientResponse, ReadEmployeesData, ReadEmployeesResponse, CreateEmployeeData, CreateEmployeeResponse, ReadEmployeeData, ReadEmployeeResponse, UpdateEmployeeData, UpdateEmployeeResponse, DeleteEmployeeData, DeleteEmployeeResponse, RegenerateBadgeData, RegenerateBadgeResponse, HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, RefreshAccessTokenResponse, LogoutResponse, ReadMachinesResponse, CreateMachineData, CreateMachineResponse, ReadMachineData, ReadMachineResponse, UpdateMachineData, UpdateMachineResponse, DeleteMachineData, DeleteMachineResponse, ReadMaterialsData, ReadMaterialsResponse, CreateMaterialData, CreateMaterialResponse, UpdateMaterialData, UpdateMaterialResponse, DeleteMaterialData, DeleteMaterialResponse, CreateOrderData, CreateOrderResponse, ReadOrdersData, ReadOrdersResponse, ReadOrderStatusCountsResponse, ReadOrderData, ReadOrderResponse, UpdateOrderData, UpdateOrderResponse, SaveOrderSurveyData, SaveOrderSurveyResponse, CancelOrderData, CancelOrderResponse, DeliverOrderData, DeliverOrderResponse, ReadOrderMatrixData, ReadOrderMatrixResponse, EditOrderMatrixData, EditOrderMatrixResponse, AssignOrderMachinesData, AssignOrderMachinesResponse, ConfirmOrderData, ConfirmOrderResponse, StartOrderProductionData, StartOrderProductionResponse, UploadOrderProjectData, UploadOrderProjectResponse, DownloadOrderFileData, DownloadOrderFileResponse, ReadOrderCutmapData, ReadOrderCutmapResponse, ReadPostsResponse, UpdatePostData, UpdatePostResponse, ReportProductivityData, ReportProductivityResponse, ReportOrdersData, ReportOrdersResponse, ReportMaterialsData, ReportMaterialsResponse, ReportDashboardResponse, RecordScanData, RecordScanResponse, CancelScanData, CancelScanResponse, ReadRecentScansData, ReadRecentScansResponse, ReadTabloMatrixResponse, ReadTabloOrderData, ReadTabloOrderResponse, ReadTerminalContextResponse, StartTerminalSessionData, StartTerminalSessionResponse, EndTerminalSessionResponse, ReadTerminalTasksResponse, ReadTerminalOrdersResponse, ReadTerminalCutmapData, ReadTerminalCutmapResponse, PrintInstanceLabelData, PrintInstanceLabelResponse, RenderInstanceLabelData, RenderInstanceLabelResponse, DownloadTerminalFileData, DownloadTerminalFileResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
+import type { ReadAuditLogsData, ReadAuditLogsResponse, ReadClientsData, ReadClientsResponse, CreateClientData, CreateClientResponse, ReadClientData, ReadClientResponse, UpdateClientData, UpdateClientResponse, DeleteClientData, DeleteClientResponse, ReadEmployeesData, ReadEmployeesResponse, CreateEmployeeData, CreateEmployeeResponse, ReadEmployeeData, ReadEmployeeResponse, UpdateEmployeeData, UpdateEmployeeResponse, DeleteEmployeeData, DeleteEmployeeResponse, RegenerateBadgeData, RegenerateBadgeResponse, HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, RefreshAccessTokenResponse, LogoutResponse, ReadMachinesResponse, CreateMachineData, CreateMachineResponse, ReadMachineData, ReadMachineResponse, UpdateMachineData, UpdateMachineResponse, DeleteMachineData, DeleteMachineResponse, ReadMaterialsData, ReadMaterialsResponse, CreateMaterialData, CreateMaterialResponse, UpdateMaterialData, UpdateMaterialResponse, DeleteMaterialData, DeleteMaterialResponse, CreateOrderData, CreateOrderResponse, ReadOrdersData, ReadOrdersResponse, ReadOrderStatusCountsResponse, ReadOrderData, ReadOrderResponse, UpdateOrderData, UpdateOrderResponse, SaveOrderSurveyData, SaveOrderSurveyResponse, UploadRoomPhotoData, UploadRoomPhotoResponse, DeleteRoomPhotoData, DeleteRoomPhotoResponse, CancelOrderData, CancelOrderResponse, DeliverOrderData, DeliverOrderResponse, ReadOrderMatrixData, ReadOrderMatrixResponse, EditOrderMatrixData, EditOrderMatrixResponse, AssignOrderMachinesData, AssignOrderMachinesResponse, ConfirmOrderData, ConfirmOrderResponse, StartOrderProductionData, StartOrderProductionResponse, UploadOrderProjectData, UploadOrderProjectResponse, DownloadOrderFileData, DownloadOrderFileResponse, ReadOrderCutmapData, ReadOrderCutmapResponse, ReadPostsResponse, UpdatePostData, UpdatePostResponse, ReportProductivityData, ReportProductivityResponse, ReportOrdersData, ReportOrdersResponse, ReportMaterialsData, ReportMaterialsResponse, ReportDashboardResponse, RecordScanData, RecordScanResponse, CancelScanData, CancelScanResponse, ReadRecentScansData, ReadRecentScansResponse, ReadTabloMatrixResponse, ReadTabloOrderData, ReadTabloOrderResponse, ReadTerminalContextResponse, StartTerminalSessionData, StartTerminalSessionResponse, EndTerminalSessionResponse, ReadTerminalTasksResponse, ReadTerminalOrdersResponse, ReadTerminalCutmapData, ReadTerminalCutmapResponse, PrintInstanceLabelData, PrintInstanceLabelResponse, RenderInstanceLabelData, RenderInstanceLabelResponse, DownloadTerminalFileData, DownloadTerminalFileResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
 
 export class AuditService {
     /**
@@ -661,6 +661,54 @@ export class OrdersService {
             },
             body: data.requestBody,
             mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Upload Room Photo
+     * Xona uchun taxminiy ko'rinish rasmi (anketa, mijoz ko'rsatgan namuna).
+     *
+     * Rasm SurveyRoom.id ga bog'lanadi — xona ro'yxatdagi o'rni o'zgarsa ham yo'qolmaydi.
+     * @param data The data for the request.
+     * @param data.orderId
+     * @param data.formData
+     * @returns OrderFileRead Successful Response
+     * @throws ApiError
+     */
+    public static uploadRoomPhoto(data: UploadRoomPhotoData): CancelablePromise<UploadRoomPhotoResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/orders/{order_id}/survey/photos',
+            path: {
+                order_id: data.orderId
+            },
+            formData: data.formData,
+            mediaType: 'multipart/form-data',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Delete Room Photo
+     * @param data The data for the request.
+     * @param data.orderId
+     * @param data.fileId
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static deleteRoomPhoto(data: DeleteRoomPhotoData): CancelablePromise<DeleteRoomPhotoResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/orders/{order_id}/survey/photos/{file_id}',
+            path: {
+                order_id: data.orderId,
+                file_id: data.fileId
+            },
             errors: {
                 422: 'Validation Error'
             }
