@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Prod deploy avto-rollback bilan. CI chaqiradi: TAG=<git sha> bash scripts/deploy.sh
 #
-# Oqim: build (yiqilsa eski stack joyida qoladi) -> yangi TAG'ga switch -> smoke.
+# Oqim: pull (yiqilsa eski stack joyida qoladi) -> yangi TAG'ga switch -> smoke.
+# Image'lar CI'da (GitHub Actions) qurilib ghcr.io ga yuboriladi — bu server 1 vCPU,
+# u yerda build qilish saytni sekinlashtirardi.
 # Smoke yiqilsa oxirgi stable TAG'ga qaytariladi (.stable_tag fayli).
 #
 # Eslatma: rollback DB'ni downgrade QILMAYDI — migratsiyalar additiv (ustun/jadval
@@ -24,8 +26,8 @@ smoke() {
 
 STABLE="$(cat "$STABLE_FILE" 2>/dev/null || true)"
 
-echo "==> Build: TAG=$TAG"
-TAG="$TAG" $COMPOSE build
+echo "==> Pull: TAG=$TAG"
+TAG="$TAG" $COMPOSE pull
 
 echo "==> Switch: TAG=$TAG"
 TAG="$TAG" $COMPOSE up -d
@@ -34,7 +36,9 @@ if smoke; then
     echo "$TAG" >"$STABLE_FILE"
     echo "==> Deploy OK, stable=$TAG"
     # Eski image'lar: joriy + oldingi stable qoladi (favqulodda zaxira), qolgani o'chadi
-    docker images 'mebelix-mes-*' --format '{{.Repository}}:{{.Tag}}' |
+    # grep, --filter=reference emas: docker glob'i '/' dan o'tmaydi va
+    # ghcr.io/<owner>/mebelix-mes-* nomlari hech qachon mos kelmasdi
+    docker images --format '{{.Repository}}:{{.Tag}}' | grep 'mebelix-mes-' |
         grep -vE ":(${TAG}|${STABLE:-latest})$" | xargs -r docker rmi >/dev/null 2>&1 || true
     docker image prune -f >/dev/null
     exit 0

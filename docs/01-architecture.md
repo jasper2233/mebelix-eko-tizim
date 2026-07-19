@@ -140,10 +140,11 @@ Asosiy nuqtalar:
   runtime'da ham fail-closed — Redis xatosida so'rov bloklanadi.
 - **ARQ worker** alohida konteyner/processda ishlaydi (`app/core/worker.py` →
   `WorkerSettings`), tasklar `app/tasks/` da ro'yxatdan o'tadi.
-- **Prod deploy TAG asosida**: prod image'lar TAG bilan parametrlangan
-  (`mebelix-mes-backend/frontend:${TAG:-latest}`, `docker-compose.prod.yml`);
-  `scripts/deploy.sh` yangi TAG'ni build/switch qiladi, smoke (`/api/v1/ready`)
-  yiqilsa `.stable_tag`dagi oxirgi stable TAG'ga avto-rollback qiladi.
+- **Prod deploy TAG asosida**: image'lar CI'da qurilib `ghcr.io` ga yuboriladi
+  (`ghcr.io/<owner>/mebelix-mes-backend/frontend:${TAG}`, TAG = git sha);
+  `scripts/deploy.sh` serverda faqat `pull` + switch qiladi, smoke
+  (`/api/v1/ready`) yiqilsa `.stable_tag`dagi oxirgi stable TAG'ga avto-rollback.
+  Serverda build yo'q — u 1 vCPU / 2 GB, build saytni sekinlashtirardi.
 - Har konteyner startida `scripts/prestart.sh` **alembic migratsiya + birinchi
   superuser + default org/postlar seed** (`seed_defaults`) ni bajaradi.
 
@@ -389,11 +390,13 @@ Sifat nazorati ikki qatlamda: **pre-commit hooks** (`.pre-commit-config.yaml`,
 `make install-hooks` bilan o'rnatiladi) va **GitHub Actions CI**
 (`.github/workflows/ci.yml`, `main`ga push va har PR'da): `backend` job — ruff
 check/format, mypy, GibLab parser testlari; `frontend` job — `biome ci` va
-`tsc + vite build`; `deploy` job — yashil `main` push'da kod
-`/opt/mebelix-mes`ga rsync qilinadi, `TAG=<git sha> scripts/deploy.sh`
-ishga tushadi va public smoke (`https://mes.mebelix.uz/api/v1/ready`)
-tekshiriladi; `notify` job — Telegram xabari. Notify ataylab ALOHIDA job
-(`if: always()`, `needs: [backend, frontend, deploy]`): `deploy` ichida turganda
+`tsc + vite build`; `images` job — ikkala image'ni qurib `ghcr.io` ga
+yuboradi (matritsa, GHA layer keshi bilan); `deploy` job — yashil `main`
+push'da kod `/opt/mebelix-mes`ga rsync qilinadi, server ghcr'ga login
+qiladi, `TAG=<git sha> REGISTRY=... scripts/deploy.sh` ishga tushadi va
+public smoke (`https://mes.mebelix.uz/api/v1/ready`) tekshiriladi;
+`notify` job — Telegram xabari. Notify ataylab ALOHIDA job
+(`if: always()`, `needs: [backend, frontend, images, deploy]`): `deploy` ichida turganda
 CI yiqilsa butun job skip bo'lib, xabar umuman ketmasdi. Endi `deploy` natijasi
 `skipped` bo'lsa ham xabar ketadi va qaysi job yiqilgani ko'rsatiladi.
 

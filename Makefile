@@ -76,8 +76,9 @@ docker-local: ## Start local development services
 	docker compose -f docker-compose.local.yml up -d
 
 .PHONY: docker-prod
-docker-prod: ## Start production services
-	docker compose -f docker-compose.prod.yml up -d --build
+docker-prod: ## Start production services (image'lar ghcr.io dan tortiladi, build yo'q)
+	docker compose -f docker-compose.prod.yml pull
+	docker compose -f docker-compose.prod.yml up -d
 
 .PHONY: docker-down
 docker-down: ## Stop all services
