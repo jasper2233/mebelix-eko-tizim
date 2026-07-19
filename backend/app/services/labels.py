@@ -93,13 +93,18 @@ def _n(v: float) -> str:
 # GDI chop etish (bridge-agent PRINTER_NAME rejimi) va brauzer ko'rinishi uchun
 # yagona manba. QR kutubxona bilan chiziladi — printer dialektiga bog'liq emas.
 
+# Liberation Sans — Arial bilan metrik mos (harf kengliklari bir xil), shuning
+# uchun Windowsda sozlangan maket serverda ham aynan shunday joylashadi.
+# DejaVu kengroq: zaxira sifatida qoladi, chunki maketni siljitadi.
 _FONT_REGULAR = (
     "C:/Windows/Fonts/arial.ttf",  # Windows dev
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Debian docker
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",  # Debian docker
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/dejavu/DejaVuSans.ttf",
 )
 _FONT_BOLD = (
     "C:/Windows/Fonts/arialbd.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
 )

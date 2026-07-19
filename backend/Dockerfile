@@ -25,7 +25,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 FROM python:3.13-slim-bookworm
 
 # Install curl for healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+# fonts-liberation: yorliq PNG'si (render_label_png) TTF shriftsiz PIL'ning mayda
+# bitmap fontiga tushib qolardi — chek o'qib bo'lmas holda chiqardi
+RUN apt-get update && apt-get install -y --no-install-recommends curl fonts-liberation && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user for security
 RUN groupadd --gid 1000 app \
