@@ -2217,6 +2217,18 @@ export const OrderDetailSchema = {
             ],
             title: 'Project Loaded At'
         },
+        survey: {
+            anyOf: [
+                {
+                    additionalProperties: true,
+                    type: 'object'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Survey'
+        },
         files: {
             items: {
                 '$ref': '#/components/schemas/OrderFileRead'
@@ -2581,6 +2593,46 @@ export const OrderStatusSchema = {
     type: 'string',
     enum: ['draft', 'technical_review', 'production', 'completed', 'delivered', 'cancelled'],
     title: 'OrderStatus'
+} as const;
+
+export const OrderSurveySchema = {
+    properties: {
+        version: {
+            type: 'integer',
+            title: 'Version',
+            default: 1
+        },
+        measured_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Measured At'
+        },
+        measured_by: {
+            type: 'string',
+            maxLength: 120,
+            title: 'Measured By',
+            default: ''
+        },
+        rooms: {
+            items: {
+                '$ref': '#/components/schemas/SurveyRoom'
+            },
+            type: 'array',
+            maxItems: 10,
+            title: 'Rooms',
+            default: []
+        }
+    },
+    type: 'object',
+    title: 'OrderSurvey',
+    description: 'Buyurtma anketasi: bitta yoki bir nechta xona.'
 } as const;
 
 export const OrderUpdateSchema = {
@@ -3270,6 +3322,360 @@ export const StageAggSchema = {
     type: 'object',
     required: ['post_id', 'done', 'total', 'volume_total', 'volume_done'],
     title: 'StageAgg'
+} as const;
+
+export const SurveyModuleSchema = {
+    properties: {
+        name: {
+            type: 'string',
+            maxLength: 120,
+            title: 'Name',
+            default: ''
+        },
+        wall: {
+            type: 'string',
+            maxLength: 2,
+            title: 'Wall',
+            default: ''
+        },
+        width: {
+            anyOf: [
+                {
+                    type: 'number',
+                    maximum: 50000,
+                    minimum: 0
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Width'
+        },
+        depth: {
+            anyOf: [
+                {
+                    type: 'number',
+                    maximum: 50000,
+                    minimum: 0
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Depth'
+        },
+        height: {
+            anyOf: [
+                {
+                    type: 'number',
+                    maximum: 50000,
+                    minimum: 0
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Height'
+        },
+        count: {
+            anyOf: [
+                {
+                    type: 'integer',
+                    maximum: 999,
+                    minimum: 1
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Count'
+        },
+        note: {
+            type: 'string',
+            maxLength: 200,
+            title: 'Note',
+            default: ''
+        }
+    },
+    type: 'object',
+    title: 'SurveyModule',
+    description: "O'lchov varag'i B bo'limi: yasaladigan moduldan bitta qator."
+} as const;
+
+export const SurveyRoomSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            maxLength: 40,
+            title: 'Id'
+        },
+        name: {
+            type: 'string',
+            maxLength: 60,
+            title: 'Name',
+            default: ''
+        },
+        furniture_types: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            maxItems: 20,
+            title: 'Furniture Types',
+            default: []
+        },
+        furniture_other: {
+            type: 'string',
+            maxLength: 120,
+            title: 'Furniture Other',
+            default: ''
+        },
+        shape: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 20
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Shape'
+        },
+        room_length: {
+            anyOf: [
+                {
+                    type: 'number',
+                    maximum: 50000,
+                    minimum: 0
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Room Length'
+        },
+        room_width: {
+            anyOf: [
+                {
+                    type: 'number',
+                    maximum: 50000,
+                    minimum: 0
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Room Width'
+        },
+        room_height: {
+            anyOf: [
+                {
+                    type: 'number',
+                    maximum: 50000,
+                    minimum: 0
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Room Height'
+        },
+        furniture_wall_length: {
+            anyOf: [
+                {
+                    type: 'number',
+                    maximum: 50000,
+                    minimum: 0
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Furniture Wall Length'
+        },
+        corpus_materials: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            maxItems: 10,
+            title: 'Corpus Materials',
+            default: []
+        },
+        corpus_color: {
+            type: 'string',
+            maxLength: 120,
+            title: 'Corpus Color',
+            default: ''
+        },
+        corpus_thickness: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 20
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Corpus Thickness'
+        },
+        corpus_note: {
+            type: 'string',
+            maxLength: 300,
+            title: 'Corpus Note',
+            default: ''
+        },
+        facade_materials: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            maxItems: 10,
+            title: 'Facade Materials',
+            default: []
+        },
+        facade_color: {
+            type: 'string',
+            maxLength: 120,
+            title: 'Facade Color',
+            default: ''
+        },
+        countertop: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 20
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Countertop'
+        },
+        facade_note: {
+            type: 'string',
+            maxLength: 300,
+            title: 'Facade Note',
+            default: ''
+        },
+        hardware_level: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 20
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Hardware Level'
+        },
+        extra_services: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            maxItems: 10,
+            title: 'Extra Services',
+            default: []
+        },
+        note: {
+            type: 'string',
+            maxLength: 1000,
+            title: 'Note',
+            default: ''
+        },
+        walls: {
+            items: {
+                '$ref': '#/components/schemas/SurveyWall'
+            },
+            type: 'array',
+            maxItems: 8,
+            title: 'Walls',
+            default: []
+        },
+        modules: {
+            items: {
+                '$ref': '#/components/schemas/SurveyModule'
+            },
+            type: 'array',
+            maxItems: 40,
+            title: 'Modules',
+            default: []
+        },
+        total_running_meters: {
+            anyOf: [
+                {
+                    type: 'number',
+                    maximum: 1000,
+                    minimum: 0
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Total Running Meters'
+        },
+        total_height: {
+            anyOf: [
+                {
+                    type: 'number',
+                    maximum: 50000,
+                    minimum: 0
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Total Height'
+        }
+    },
+    type: 'object',
+    required: ['id'],
+    title: 'SurveyRoom',
+    description: "Bitta xona uchun anketa — menejer har xonaga alohida to'ldiradi."
+} as const;
+
+export const SurveyWallSchema = {
+    properties: {
+        letter: {
+            type: 'string',
+            maxLength: 2,
+            title: 'Letter',
+            default: ''
+        },
+        length: {
+            anyOf: [
+                {
+                    type: 'number',
+                    maximum: 50000,
+                    minimum: 0
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Length'
+        },
+        height: {
+            anyOf: [
+                {
+                    type: 'number',
+                    maximum: 50000,
+                    minimum: 0
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Height'
+        }
+    },
+    type: 'object',
+    title: 'SurveyWall',
+    description: "O'lchov varag'i A bo'limi: bitta devor (A..E)."
 } as const;
 
 export const TabloMatrixSchema = {

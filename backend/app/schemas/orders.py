@@ -50,6 +50,7 @@ class OrderDetail(OrderRead):
     machine_assignments: dict[str, int]
     project_uuid: str | None
     project_loaded_at: datetime | None
+    survey: dict[str, Any] | None = None  # mijoz anketasi (OrderSurvey), texnolog o'qiydi
     files: list[OrderFileRead] = []
     parts_count: int = 0
     instances_count: int = 0
@@ -81,6 +82,92 @@ class OrderUpdate(BaseModel):
 
 class OrderCancel(BaseModel):
     reason: Annotated[str, Field(min_length=3, max_length=500)]
+
+
+# --- Mijoz anketasi (qog'oz forma o'rniga, uploads/forma/mebel_buyurtma_anketa.html) ---
+# Variantlar kodlari (ldsp, mdf, akril...) frontend/src/lib/anketa.ts da matnga aylantiriladi —
+# bu yerda ro'yxat qat'iy emas: yangi variant qo'shilganda migratsiya kerak bo'lmasin.
+# Mijoz ma'lumotlari Client'da, narx/avans/muddat Order'da — anketada takrorlanmaydi.
+
+
+# Anketa tashqi kirish — chegaralar shu yerda, aks holda bitta so'rov bazani to'ldirib yuboradi
+_Mm = Annotated[float | None, Field(default=None, ge=0, le=50_000)]
+
+
+class SurveyWall(BaseModel):
+    """O'lchov varag'i A bo'limi: bitta devor (A..E)."""
+
+    letter: Annotated[str, Field(max_length=2)] = ""
+    length: _Mm = None
+    height: _Mm = None
+
+
+class SurveyModule(BaseModel):
+    """O'lchov varag'i B bo'limi: yasaladigan moduldan bitta qator."""
+
+    name: Annotated[str, Field(max_length=120)] = ""
+    wall: Annotated[str, Field(max_length=2)] = ""
+    width: _Mm = None  # eni
+    depth: _Mm = None  # chuqurlik
+    height: _Mm = None  # balandlik
+    count: Annotated[int | None, Field(default=None, ge=1, le=999)] = None
+    note: Annotated[str, Field(max_length=200)] = ""
+
+
+class SurveyRoom(BaseModel):
+    """Bitta xona uchun anketa — menejer har xonaga alohida to'ldiradi."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: Annotated[str, Field(max_length=40)]  # frontend beradigan barqaror kalit
+    name: Annotated[str, Field(max_length=60)] = ""  # "Oshxona", "Yotoqxona 1"
+
+    # 2. Qanday mebel kerak
+    furniture_types: Annotated[list[str], Field(max_length=20)] = []
+    furniture_other: Annotated[str, Field(max_length=120)] = ""
+
+    # 3. Shakl va xona o'lchamlari (mm)
+    shape: Annotated[str | None, Field(default=None, max_length=20)] = None
+    room_length: _Mm = None
+    room_width: _Mm = None
+    room_height: _Mm = None
+    furniture_wall_length: _Mm = None
+
+    # 4. Korpus
+    corpus_materials: Annotated[list[str], Field(max_length=10)] = []
+    corpus_color: Annotated[str, Field(max_length=120)] = ""
+    corpus_thickness: Annotated[str | None, Field(default=None, max_length=20)] = None
+    corpus_note: Annotated[str, Field(max_length=300)] = ""
+
+    # 5. Fasad
+    facade_materials: Annotated[list[str], Field(max_length=10)] = []
+    facade_color: Annotated[str, Field(max_length=120)] = ""
+    countertop: Annotated[str | None, Field(default=None, max_length=20)] = None
+    facade_note: Annotated[str, Field(max_length=300)] = ""
+
+    # 6-7. Furnitura va qo'shimcha xizmatlar
+    hardware_level: Annotated[str | None, Field(default=None, max_length=20)] = None
+    extra_services: Annotated[list[str], Field(max_length=10)] = []
+
+    # 8. Izoh
+    note: Annotated[str, Field(max_length=1000)] = ""
+
+    # O'lchov varag'i (zamerdan keyin to'ldiriladi)
+    walls: Annotated[list[SurveyWall], Field(max_length=8)] = []
+    modules: Annotated[list[SurveyModule], Field(max_length=40)] = []
+    total_running_meters: Annotated[float | None, Field(default=None, ge=0, le=1000)] = None  # pm
+    total_height: _Mm = None
+
+
+class OrderSurvey(BaseModel):
+    """Buyurtma anketasi: bitta yoki bir nechta xona."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    version: int = 1
+    measured_at: date | None = None  # o'lchov sanasi
+    measured_by: Annotated[str, Field(max_length=120)] = ""  # o'lchagan usta
+    rooms: Annotated[list[SurveyRoom], Field(max_length=10)] = []
 
 
 class MachineAssignments(BaseModel):

@@ -26,6 +26,7 @@ from app.schemas.orders import (
     OrderFileRead,
     OrderMatrix,
     OrderRead,
+    OrderSurvey,
     OrderUpdate,
     RouteCell,
 )
@@ -214,6 +215,32 @@ async def update_order(
     await db.refresh(order)
     client = await crud_clients.get(db, id=order.client_id)
     return _order_read(order, client.full_name if client else "")
+
+
+@router.put("/{order_id}/survey", response_model=Message, operation_id="save_order_survey")
+async def save_order_survey(
+    db: SessionDep, current_user: ManagerUser, order_id: int, body: OrderSurvey, request: Request
+) -> Message:
+    """Mijoz anketasi va o'lchov varag'ini saqlaydi (TZ 6.2, qog'oz forma o'rniga).
+
+    Butun anketa bir butun sifatida yoziladi — menejer to'ldirib boradi, texnolog o'qiydi.
+    """
+    order = await _get_order(db, order_id)
+    if order.status in (OrderStatus.DELIVERED, OrderStatus.CANCELLED):
+        raise ForbiddenException("Yakunlangan yoki bekor qilingan buyurtma anketasini o'zgartirib bo'lmaydi.")
+    order.survey = body.model_dump(mode="json")
+    log_action(
+        db,
+        module="orders",
+        action="survey_saved",
+        user_id=current_user.id,
+        entity_type="order",
+        entity_id=order.id,
+        message=f"Anketa saqlandi: {len(body.rooms)} ta xona",
+        ip=_client_ip(request),
+    )
+    await db.commit()
+    return Message(message="Anketa saqlandi.")
 
 
 @router.post("/{order_id}/cancel", response_model=OrderRead, operation_id="cancel_order")

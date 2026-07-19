@@ -26,6 +26,7 @@ import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 import { Route as LayoutOrdersIndexRouteImport } from './routes/_layout/orders/index'
 import { Route as LayoutOrdersOrderIdRouteImport } from './routes/_layout/orders/$orderId'
 import { Route as LayoutCutmapOrderIdRouteImport } from './routes/_layout/cutmap.$orderId'
+import { Route as LayoutAnketaOrderIdRouteImport } from './routes/_layout/anketa.$orderId'
 
 const TerminalRoute = TerminalRouteImport.update({
   id: '/terminal',
@@ -111,6 +112,11 @@ const LayoutCutmapOrderIdRoute = LayoutCutmapOrderIdRouteImport.update({
   path: '/cutmap/$orderId',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutAnketaOrderIdRoute = LayoutAnketaOrderIdRouteImport.update({
+  id: '/anketa/$orderId',
+  path: '/anketa/$orderId',
+  getParentRoute: () => LayoutRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
   '/transactions': typeof LayoutTransactionsRoute
+  '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
   '/orders/': typeof LayoutOrdersIndexRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByTo {
   '/settings': typeof LayoutSettingsRoute
   '/transactions': typeof LayoutTransactionsRoute
   '/': typeof LayoutIndexRoute
+  '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
   '/orders': typeof LayoutOrdersIndexRoute
@@ -164,6 +172,7 @@ export interface FileRoutesById {
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/transactions': typeof LayoutTransactionsRoute
   '/_layout/': typeof LayoutIndexRoute
+  '/_layout/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/_layout/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/_layout/orders/$orderId': typeof LayoutOrdersOrderIdRoute
   '/_layout/orders/': typeof LayoutOrdersIndexRoute
@@ -184,6 +193,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/transactions'
+    | '/anketa/$orderId'
     | '/cutmap/$orderId'
     | '/orders/$orderId'
     | '/orders/'
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/transactions'
     | '/'
+    | '/anketa/$orderId'
     | '/cutmap/$orderId'
     | '/orders/$orderId'
     | '/orders'
@@ -221,6 +232,7 @@ export interface FileRouteTypes {
     | '/_layout/settings'
     | '/_layout/transactions'
     | '/_layout/'
+    | '/_layout/anketa/$orderId'
     | '/_layout/cutmap/$orderId'
     | '/_layout/orders/$orderId'
     | '/_layout/orders/'
@@ -354,6 +366,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutCutmapOrderIdRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/anketa/$orderId': {
+      id: '/_layout/anketa/$orderId'
+      path: '/anketa/$orderId'
+      fullPath: '/anketa/$orderId'
+      preLoaderRoute: typeof LayoutAnketaOrderIdRouteImport
+      parentRoute: typeof LayoutRoute
+    }
   }
 }
 
@@ -368,6 +387,7 @@ interface LayoutRouteChildren {
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutTransactionsRoute: typeof LayoutTransactionsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
+  LayoutAnketaOrderIdRoute: typeof LayoutAnketaOrderIdRoute
   LayoutCutmapOrderIdRoute: typeof LayoutCutmapOrderIdRoute
   LayoutOrdersOrderIdRoute: typeof LayoutOrdersOrderIdRoute
   LayoutOrdersIndexRoute: typeof LayoutOrdersIndexRoute
@@ -384,6 +404,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutTransactionsRoute: LayoutTransactionsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
+  LayoutAnketaOrderIdRoute: LayoutAnketaOrderIdRoute,
   LayoutCutmapOrderIdRoute: LayoutCutmapOrderIdRoute,
   LayoutOrdersOrderIdRoute: LayoutOrdersOrderIdRoute,
   LayoutOrdersIndexRoute: LayoutOrdersIndexRoute,

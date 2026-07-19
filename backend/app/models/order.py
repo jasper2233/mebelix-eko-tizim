@@ -45,6 +45,9 @@ class Order(BaseModel):
     material_usage: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default_factory=list, kw_only=True)
     # Manager's machine choice per post: {"PAZ": 3, "ROVER": 5} (TZ 6.4.1)
     machine_assignments: Mapped[dict[str, int]] = mapped_column(JSONB, default_factory=dict, kw_only=True)
+    # Mijoz anketasi + o'lchov varag'i, xonalar bo'yicha (qog'oz forma o'rniga).
+    # Manager to'ldiradi, texnolog o'qiydi va shunga qarab dizayn yasaydi. Sxema: schemas/orders.OrderSurvey
+    survey: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None, kw_only=True)
 
     production_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)

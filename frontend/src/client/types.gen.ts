@@ -368,6 +368,9 @@ export type OrderDetail = {
     };
     project_uuid: (string | null);
     project_loaded_at: (string | null);
+    survey?: ({
+    [key: string]: unknown;
+} | null);
     files?: Array<OrderFileRead>;
     parts_count?: number;
     instances_count?: number;
@@ -434,6 +437,16 @@ export type OrdersReport = {
 };
 
 export type OrderStatus = 'draft' | 'technical_review' | 'production' | 'completed' | 'delivered' | 'cancelled';
+
+/**
+ * Buyurtma anketasi: bitta yoki bir nechta xona.
+ */
+export type OrderSurvey = {
+    version?: number;
+    measured_at?: (string | null);
+    measured_by?: string;
+    rooms?: Array<SurveyRoom>;
+};
 
 export type OrderUpdate = {
     client_id?: (number | null);
@@ -582,6 +595,58 @@ export type StageAgg = {
     total: number;
     volume_total: number;
     volume_done: number;
+};
+
+/**
+ * O'lchov varag'i B bo'limi: yasaladigan moduldan bitta qator.
+ */
+export type SurveyModule = {
+    name?: string;
+    wall?: string;
+    width?: (number | null);
+    depth?: (number | null);
+    height?: (number | null);
+    count?: (number | null);
+    note?: string;
+};
+
+/**
+ * Bitta xona uchun anketa — menejer har xonaga alohida to'ldiradi.
+ */
+export type SurveyRoom = {
+    id: string;
+    name?: string;
+    furniture_types?: Array<string>;
+    furniture_other?: string;
+    shape?: (string | null);
+    room_length?: (number | null);
+    room_width?: (number | null);
+    room_height?: (number | null);
+    furniture_wall_length?: (number | null);
+    corpus_materials?: Array<string>;
+    corpus_color?: string;
+    corpus_thickness?: (string | null);
+    corpus_note?: string;
+    facade_materials?: Array<string>;
+    facade_color?: string;
+    countertop?: (string | null);
+    facade_note?: string;
+    hardware_level?: (string | null);
+    extra_services?: Array<string>;
+    note?: string;
+    walls?: Array<SurveyWall>;
+    modules?: Array<SurveyModule>;
+    total_running_meters?: (number | null);
+    total_height?: (number | null);
+};
+
+/**
+ * O'lchov varag'i A bo'limi: bitta devor (A..E).
+ */
+export type SurveyWall = {
+    letter?: string;
+    length?: (number | null);
+    height?: (number | null);
 };
 
 export type TabloMatrix = {
@@ -914,6 +979,13 @@ export type UpdateOrderData = {
 
 export type UpdateOrderResponse = (OrderRead);
 
+export type SaveOrderSurveyData = {
+    orderId: number;
+    requestBody: OrderSurvey;
+};
+
+export type SaveOrderSurveyResponse = (Message);
+
 export type CancelOrderData = {
     orderId: number;
     requestBody: OrderCancel;
@@ -1067,6 +1139,12 @@ export type PrintInstanceLabelData = {
 };
 
 export type PrintInstanceLabelResponse = (Message);
+
+export type RenderInstanceLabelData = {
+    instanceId: number;
+};
+
+export type RenderInstanceLabelResponse = (unknown);
 
 export type DownloadTerminalFileData = {
     fileId: number;

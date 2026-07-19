@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import {
   ArrowLeft,
   CheckCheck,
+  ClipboardList,
   FileUp,
   Map as MapIcon,
   Play,
@@ -187,6 +188,11 @@ function OrderDetailPage() {
                   <Play /> Ishlab chiqarishga uzatish
                 </LoadingButton>
               )}
+            <Button asChild variant="outline">
+              <Link to="/anketa/$orderId" params={{ orderId }}>
+                <ClipboardList /> Anketa
+              </Link>
+            </Button>
             {order.project_uuid != null && (
               <Button asChild variant="outline">
                 <Link to="/cutmap/$orderId" params={{ orderId }}>
