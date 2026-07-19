@@ -11,6 +11,7 @@ import {
   type SurveyModule,
   type SurveyRoom,
 } from "@/client"
+import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -51,7 +52,7 @@ export const Route = createFileRoute("/_layout/anketa/$orderId")({
 
 const newRoom = (n: number): SurveyRoom => ({
   id: `r${Date.now()}${n}`,
-  name: n === 1 ? "Xona 1" : `Xona ${n}`,
+  name: "", // bo'sh: tab va sarlavha `Xona N` zaxirasini ishlatadi va o'chirishdan keyin o'zi qayta raqamlanadi
   furniture_types: [],
   corpus_materials: [],
   facade_materials: [],
@@ -78,6 +79,7 @@ function AnketaPage() {
   const [active, setActive] = useState(0)
   const [dirty, setDirty] = useState(false)
   const [savedAt, setSavedAt] = useState<string | null>(null)
+  const [removeOpen, setRemoveOpen] = useState(false)
 
   // Serverdan FAQAT BIR MARTA yuklanadi. Aks holda saqlashdan keyingi refetch
   // menejer yozayotgan matn ustiga tushadi.
@@ -228,17 +230,17 @@ function AnketaPage() {
         <div className="space-y-5">
           {/* Chapda xona nomi, o'ngda rasmlar — menejer nomni yozib, darhol
               mijozning suratini shu yerga tashlaydi */}
-          <Section title="Xona">
+          <Section n={1} title="Xona va rasmlar">
             <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
               <div className="space-y-3">
-                <Field label="Xona nomi">
+                <Field label="Nomi">
                   {/* Qisqa qiymat ("Oshxona") — butun ustun kengligini egallamasin */}
                   <Input
                     className="max-w-xs"
                     value={room.name ?? ""}
                     disabled={!canEdit}
                     maxLength={60}
-                    placeholder="Oshxona"
+                    placeholder="Oshxona, Yotoqxona, Mehmonxona…"
                     onChange={(e) => patch({ name: e.target.value })}
                   />
                 </Field>
@@ -246,7 +248,7 @@ function AnketaPage() {
                   <Button
                     variant="ghost"
                     className="-ml-3 text-destructive"
-                    onClick={() => removeRoom(active)}
+                    onClick={() => setRemoveOpen(true)}
                   >
                     <Trash2 /> Bu xonani o'chirish
                   </Button>
@@ -261,7 +263,7 @@ function AnketaPage() {
             </div>
           </Section>
 
-          <Section title="Qanday mebel kerak">
+          <Section n={2} title="Qanday mebel kerak">
             <CheckGrid
               options={FURNITURE_TYPES}
               values={room.furniture_types ?? []}
@@ -278,9 +280,8 @@ function AnketaPage() {
             </Field>
           </Section>
 
-          <Section title="Xonadagi shakli va o'lchamlari">
-            <Choice
-              options={LAYOUT_SHAPES}
+          <Section n={3} title="Xonadagi shakli va o'lchamlari">
+            <ShapeChoice
               value={room.shape ?? null}
               disabled={!canEdit}
               onChange={(v) => patch({ shape: v })}
@@ -313,7 +314,7 @@ function AnketaPage() {
             </div>
           </Section>
 
-          <Section title="Korpus materiali" hint="mebelning ichki qismi">
+          <Section n={4} title="Korpus materiali" hint="mebelning ichki qismi">
             <CheckGrid
               options={CORPUS_MATERIALS}
               values={room.corpus_materials ?? []}
@@ -348,7 +349,7 @@ function AnketaPage() {
             </Field>
           </Section>
 
-          <Section title="Fasad materiali" hint="old eshik va tortmalar">
+          <Section n={5} title="Fasad materiali" hint="old eshik va tortmalar">
             <CheckGrid
               options={FACADE_MATERIALS}
               values={room.facade_materials ?? []}
@@ -383,7 +384,7 @@ function AnketaPage() {
             </Field>
           </Section>
 
-          <Section title="Furnitura va qo'shimcha xizmat">
+          <Section n={6} title="Furnitura va qo'shimcha xizmat">
             <Field label="Furnitura darajasi">
               <Choice
                 options={HARDWARE_LEVELS}
@@ -402,7 +403,7 @@ function AnketaPage() {
             </div>
           </Section>
 
-          <Section title="Qo'shimcha izoh">
+          <Section n={7} title="Qo'shimcha izoh">
             <Textarea
               rows={3}
               value={room.note ?? ""}
@@ -416,9 +417,10 @@ function AnketaPage() {
           {/* O'lchov varag'i — zamerdan keyin to'ldiriladi, shuning uchun yopiq turadi */}
           <details className="rounded-xl border bg-card">
             <summary className="cursor-pointer px-4 py-3 font-semibold">
+              <span className="mr-2 text-muted-foreground">8</span>
               O'lchov varag'i{" "}
               <span className="font-normal text-muted-foreground text-sm">
-                (zamerdan keyin to'ldiriladi)
+                (usta to'ldiradi)
               </span>
             </summary>
             <div className="space-y-5 border-t p-4">
@@ -473,14 +475,18 @@ function AnketaPage() {
                         <span className="w-6 shrink-0 text-center font-bold text-primary">
                           {letter}
                         </span>
+                        <span className="shrink-0 text-muted-foreground text-xs">
+                          uz
+                        </span>
                         <NumInput
-                          placeholder="uzunlik"
                           value={w.length}
                           disabled={!canEdit}
                           onChange={(v) => setWall("length", v)}
                         />
+                        <span className="shrink-0 text-muted-foreground text-xs">
+                          bal
+                        </span>
                         <NumInput
-                          placeholder="balandlik"
                           value={w.height}
                           disabled={!canEdit}
                           onChange={(v) => setWall("height", v)}
@@ -493,7 +499,7 @@ function AnketaPage() {
 
               <div>
                 <div className="mb-2 font-medium text-sm">
-                  Yasaladigan mebel razmerlari
+                  Yasaladigan mebel o'lchamlari
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[720px] border-collapse text-sm">
@@ -502,9 +508,9 @@ function AnketaPage() {
                         <th className="w-8 py-2">№</th>
                         <th className="py-2">Modul / bo'lim</th>
                         <th className="w-20 py-2">Devor</th>
-                        <th className="w-24 py-2">Eni</th>
-                        <th className="w-24 py-2">Chuqurlik</th>
-                        <th className="w-24 py-2">Balandlik</th>
+                        <th className="w-24 py-2">Eni (mm)</th>
+                        <th className="w-24 py-2">Chuqurlik (mm)</th>
+                        <th className="w-24 py-2">Balandlik (mm)</th>
                         <th className="w-16 py-2">Soni</th>
                         <th className="py-2">Izoh</th>
                         <th className="w-10 py-2" />
@@ -547,7 +553,7 @@ function AnketaPage() {
                               <NumInput
                                 value={m.width}
                                 disabled={!canEdit}
-                                integer={false}
+                                integer={true}
                                 onChange={(v) => setMod({ width: v })}
                               />
                             </td>
@@ -555,7 +561,7 @@ function AnketaPage() {
                               <NumInput
                                 value={m.depth}
                                 disabled={!canEdit}
-                                integer={false}
+                                integer={true}
                                 onChange={(v) => setMod({ depth: v })}
                               />
                             </td>
@@ -563,7 +569,7 @@ function AnketaPage() {
                               <NumInput
                                 value={m.height}
                                 disabled={!canEdit}
-                                integer={false}
+                                integer={true}
                                 onChange={(v) => setMod({ height: v })}
                               />
                             </td>
@@ -641,6 +647,21 @@ function AnketaPage() {
           </details>
         </div>
       )}
+
+      {/* Xona o'chirish qaytarilmaydi: avtosaqlash 1.5s da serverga yozadi va
+          backend shu xonaning rasmlarini diskdan ham o'chiradi */}
+      <ConfirmDialog
+        open={removeOpen}
+        onOpenChange={setRemoveOpen}
+        title={`${room?.name || `Xona ${active + 1}`} o'chirilsinmi?`}
+        description="Shu xonaning materiali, o'lchamlari, modullari va rasmlari o'chadi. Qaytarib bo'lmaydi."
+        confirmText="O'chirish"
+        destructive
+        onConfirm={() => {
+          removeRoom(active)
+          setRemoveOpen(false)
+        }}
+      />
 
       {/* Saqlash paneli — sahifa uzun, tugma doim ko'rinib tursin.
           sticky (fixed emas): sidebar ustiga chiqmaydi, main padding'ini teskari margin bilan qoplaydi */}
@@ -895,39 +916,22 @@ function RoomSummary({
 
   return (
     <div className="space-y-5">
-      {photos.length > 0 && (
-        <Section title="Xona rasmi" hint="mijoz ko'rsatgan taxminiy ko'rinish">
-          <div className="flex flex-wrap gap-2">
-            {photos.map((p) => (
-              <a
-                key={p.id}
-                href={`${OpenAPI.BASE}/api/v1/orders/${orderId}/files/${p.id}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <img
-                  src={`${OpenAPI.BASE}/api/v1/orders/${orderId}/files/${p.id}`}
-                  alt={p.filename}
-                  crossOrigin="use-credentials"
-                  className="size-32 rounded-lg border object-cover"
-                />
-              </a>
-            ))}
-          </div>
-        </Section>
-      )}
+      {/* Qaysi xona ekani — texnolog buni bilmasa noto'g'ri o'lchamda modul yasaydi */}
+      <h2 className="font-semibold text-lg">{room.name || "Xona"}</h2>
 
       <Section title={`Modullar (${modules.length} ta)`}>
         {modules.length ? (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] border-collapse text-sm">
+            <table className="w-full min-w-[700px] border-collapse text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground text-xs">
                   <th className="w-8 py-2">№</th>
                   <th className="py-2">Nomi</th>
                   <th className="w-16 py-2">Devor</th>
-                  <th className="w-40 py-2">Eni × Chuq × Bal</th>
-                  <th className="w-16 py-2">Soni</th>
+                  <th className="w-20 py-2 text-right">Eni, mm</th>
+                  <th className="w-20 py-2 text-right">Chuq., mm</th>
+                  <th className="w-20 py-2 text-right">Bal., mm</th>
+                  <th className="w-16 py-2 text-right">Soni</th>
                   <th className="py-2">Izoh</th>
                 </tr>
               </thead>
@@ -937,14 +941,18 @@ function RoomSummary({
                     <td className="py-2 text-muted-foreground">{i + 1}</td>
                     <td className="py-2 font-medium">{m.name || "—"}</td>
                     <td className="py-2">{m.wall || "—"}</td>
-                    <td className="py-2 tabular-nums">
-                      {[m.width, m.depth, m.height].every((v) => v == null)
-                        ? "—"
-                        : [m.width, m.depth, m.height]
-                            .map((v) => v ?? "?")
-                            .join(" × ")}
+                    <td className="py-2 text-right tabular-nums">
+                      {m.width ?? "—"}
                     </td>
-                    <td className="py-2 tabular-nums">{m.count ?? "—"}</td>
+                    <td className="py-2 text-right tabular-nums">
+                      {m.depth ?? "—"}
+                    </td>
+                    <td className="py-2 text-right tabular-nums">
+                      {m.height ?? "—"}
+                    </td>
+                    <td className="py-2 text-right tabular-nums">
+                      {m.count ?? "—"}
+                    </td>
                     <td className="py-2 text-muted-foreground">
                       {m.note || ""}
                     </td>
@@ -966,6 +974,13 @@ function RoomSummary({
         )}
       </Section>
 
+      <RoomPhotos
+        orderId={orderId}
+        roomId={room.id}
+        photos={photos}
+        canEdit={false}
+      />
+
       <Section title="Xona o'lchamlari">
         <Facts
           items={[
@@ -983,7 +998,7 @@ function RoomSummary({
             ],
             ["Shakl", room.shape ? labelOf(LAYOUT_SHAPES, room.shape) : ""],
             [
-              "Devorlar",
+              "Devorlar (uzunlik / balandlik)",
               walls
                 .map((w) => `${w.letter} ${w.length ?? "?"}/${w.height ?? "?"}`)
                 .join(" · "),
@@ -1093,6 +1108,8 @@ function NumInput({
   return (
     <Input
       inputMode={integer ? "numeric" : "decimal"}
+      // raqamlar bir xil kenglikda va o'ngga tekis — ustunni ko'z bilan qo'shish mumkin
+      className="num text-right"
       placeholder={placeholder}
       disabled={disabled}
       value={raw ?? value ?? ""}
@@ -1107,10 +1124,14 @@ function NumInput({
 }
 
 function Section({
+  n,
   title,
   hint,
   children,
 }: {
+  /** Bo'lim raqami — qog'oz anketadagidek. Menejer mijozga "3-bo'limga o'tamiz"
+   *  deb aytadi va telefonda qog'oz nusxa bilan gaplasha oladi. */
+  n?: number
   title: string
   hint?: string
   children: React.ReactNode
@@ -1118,6 +1139,7 @@ function Section({
   return (
     <section className="rounded-xl border bg-card p-4">
       <h3 className="mb-3 font-semibold">
+        {n && <span className="mr-2 text-muted-foreground">{n}</span>}
         {title}
         {hint && (
           <span className="ml-2 font-normal text-muted-foreground text-sm">
@@ -1212,6 +1234,78 @@ function CheckGrid({
       })}
     </div>
   )
+}
+
+/** Planirovka silueti — qog'oz anketadagi chizmalar (uploads/forma/...html:90-103).
+ *  Bu sahifadagi yagona savol javobi matn emas, SHAKL: mijoz siluetni tanidi-yu,
+ *  "П-shakl (U)" jargonini o'qimaydi. Xato bu yerda eng qimmat — texnolog
+ *  butun planirovkani shunga qarab yasaydi. */
+function ShapeChoice({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: string | null
+  disabled?: boolean
+  onChange: (v: string | null) => void
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {LAYOUT_SHAPES.map((o) => {
+        const on = value === o.value
+        return (
+          <button
+            key={o.value}
+            type="button"
+            disabled={disabled}
+            aria-pressed={on}
+            onClick={() => onChange(on ? null : o.value)}
+            // Tanlangan holat Choice bilan AYNAN bir xil token — sahifada bitta grammatika
+            className={`flex flex-col items-center gap-2 rounded-md border p-3 text-sm shadow-xs transition-colors ${
+              on
+                ? "border-primary bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:border-primary/40 hover:text-foreground"
+            } ${disabled ? "opacity-70" : ""}`}
+          >
+            <svg
+              viewBox="0 0 52 34"
+              aria-hidden="true"
+              className="h-auto w-full max-w-24"
+              fill="currentColor"
+            >
+              <title>{o.label}</title>
+              {SHAPE_ART[o.value]}
+            </svg>
+            <span className="font-medium">{o.label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** Siluetlar: mebel tepadan ko'rilgan holatda, xona devorlari bo'ylab */
+const SHAPE_ART: Record<string, React.ReactNode> = {
+  togri: <rect x="4" y="6" width="44" height="8" rx="2" />,
+  burchak: (
+    <>
+      <rect x="4" y="6" width="34" height="8" rx="2" />
+      <rect x="4" y="14" width="8" height="16" rx="2" />
+    </>
+  ),
+  p_shakl: (
+    <>
+      <rect x="4" y="6" width="44" height="8" rx="2" />
+      <rect x="4" y="14" width="8" height="16" rx="2" />
+      <rect x="40" y="14" width="8" height="16" rx="2" />
+    </>
+  ),
+  orolchali: (
+    <>
+      <rect x="4" y="5" width="44" height="6" rx="2" />
+      <rect x="16" y="20" width="20" height="9" rx="2" />
+    </>
+  ),
 }
 
 /** Bitta tanlov — qayta bosilsa bekor qilinadi (radio'da bu imkonsiz) */
