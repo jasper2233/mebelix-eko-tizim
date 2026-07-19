@@ -88,8 +88,11 @@ function PrintersPage() {
           <li>
             GoDEX drayveri o'rnatilgan bo'lsin (printer USB ulangan holda)
           </li>
-          <li>"Agentni yuklab olish" → faylni ishga tushiring</li>
-          <li>"Yangi agent" bilan kod oling va agentga kiriting — tamom</li>
+          <li>"Yangi agent" bilan kod oling</li>
+          <li>
+            "Agentni yuklab olish" → faylni oching → kodni kiriting. Shundan
+            keyin agent fonda ishlaydi va kompyuter yonganda o'zi tushadi
+          </li>
         </ol>
       </div>
 

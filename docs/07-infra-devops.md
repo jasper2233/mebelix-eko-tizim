@@ -313,10 +313,15 @@ Faqat printer USB bilan ulangan Windows kompyuterga (sexdagi terminal monoblokni
 1. **GoDEX drayverini o'rnatish** — printer USB'ga ulangan holda. Agent printerni nomidan o'zi topadi, boshqa sozlash yo'q.
 2. **Agentni yuklab olish** — admin panel > "Printer agentlar" > "Agentni yuklab olish": `mebelix-agent.exe` tushadi (`GET /api/v1/bridge-agents/download`). Python, `pip`, kutubxonalar — hech biri kerak emas, hammasi exe ichida.
 3. **Ulanish kodini olish** — o'sha sahifada "Yangi agent", kompyuterga nom beriladi va 8 belgili bir martalik kod chiqadi (masalan `P7HJ-N46U`), 15 daqiqa amal qiladi.
-4. **Exe'ni ishga tushirish** — u server manzilini (Enter = `wss://mes.mebelix.uz`) va kodni so'raydi, kodni doimiy tokenga almashtiradi va `%APPDATA%\MebelixAgent\.env` ga saqlaydi. Ikkinchi marta so'ramaydi; kod muddati o'tishi allaqachon ulangan agentga ta'sir qilmaydi.
-5. **Doimiy ishlash** — exe'ni Windows Task Scheduler'da "At startup" trigger bilan ro'yxatdan o'tkazing. Konsolsiz (headless) ishga tushganda agent kod so'rashni butunlay o'tkazib yuboradi va saqlangan tokendan foydalanadi.
+4. **Exe'ni ishga tushirish** — kichik oyna chiqadi: server manzili (default `wss://mes.mebelix.uz`) va ulanish kodi. "Ulash" bosilgach kod doimiy tokenga almashtiriladi va `%APPDATA%\MebelixAgent\.env` ga saqlanadi. Kod noto'g'ri bo'lsa oyna xato matni bilan qayta ochiladi — dasturni qayta ishga tushirish shart emas. Kod muddati o'tishi allaqachon ulangan agentga ta'sir qilmaydi.
 
-Log'da `Printer: Godex G500` va `Serverga ulandi` chiqsa — tayyor. Printer topilmasa log `Printer: TOPILMADI — GoDEX drayverini o'rnating` beradi. Token bekor qilingan bo'lsa handshake `4401` bilan rad etiladi va agent log'da `%APPDATA%\MebelixAgent\.env` ni o'chirib qayta ulanishni maslahat beradi (keyin 60s kutadi — serverni bekorga urmaydi).
+Beshinchi qadam yo'q: agent birinchi ulanishda o'zini `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` ga yozadi, ya'ni kompyuter yonganda o'zi tushadi (admin huquqi kerak emas, faqat shu foydalanuvchi uchun). Exe `--noconsole` bilan qurilgani uchun **hech qanday oyna ko'rinmaydi** — yopib qo'yish mumkin bo'lgan konsol yo'q.
+
+Ishlayotganini admin paneldagi **Onlayn** belgisi bildiradi. Diagnostika `%APPDATA%\MebelixAgent\agent.log` da (`RotatingFileHandler`, 1 MB x 3): `Printer: Godex G500` va `Serverga ulandi` — tayyor; `Printer: TOPILMADI` — GoDEX drayveri yo'q.
+
+Ikkinchi nusxa ishga tushmaydi — `win32event.CreateMutex` bilan singleton. Oyna ko'rinmagani uchun foydalanuvchi "ishlayaptimi?" deb exe'ni qayta bosishi tabiiy; ikki agent bir printerga ulansa navbat ular orasida bo'linib ketardi.
+
+Token bekor qilinganda (admin "yangi kod" yoki "o'chirish" bosgan) handshake `403`/`4401` bilan rad etiladi. Agent buni payqab saqlangan `.env` ni o'chiradi va sozlash oynasini qayta ochadi — yangi kod kiritilsa ishlashda davom etadi, bekor qilinsa to'xtaydi. Aks holda foydalanuvchi `.env` ni qo'lda o'chirib, avval fon jarayonini Task Manager'dan yopishga majbur bo'lardi.
 
 Agent sozlamalari (bular **server `.env`** ida emas — printerli mashinada, `%APPDATA%\MebelixAgent\.env` da). O'qish tartibi: **env o'zgaruvchi > exe yonidagi `.env` > `%APPDATA%\MebelixAgent\.env`**. Odatda qo'lda hech narsa yozilmaydi — birinchi ulanish `MES_URL` va `BRIDGE_TOKEN` ni o'zi to'ldiradi.
 
@@ -334,7 +339,7 @@ Navbat fayli `.gitignore` da (`bridge-agent/print-queue.jsonl`).
 `bridge-agent/` katalogida:
 
 ```bash
-pyinstaller --onefile --console --name mebelix-agent agent.py
+pyinstaller --onefile --noconsole --name mebelix-agent agent.py
 ```
 
 Natijadagi `mebelix-agent.exe` serverda `uploads/agent/` ga qo'yiladi — panel o'sha yerdagi faylni tarqatadi. Bu yo'l `.gitignore` da, ya'ni **binar repoda saqlanmaydi** va deploy uni ko'chirmaydi; serverga bir marta qo'lda yuklanadi:

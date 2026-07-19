@@ -17,16 +17,21 @@ terminallariga hech narsa kerak emas (ular brauzerdan tugmani bosadi).
    yuklanadi (`GET /api/v1/bridge-agents/download`). Python ham, `pip` ham kerak emas.
 3. O'sha sahifada "Yangi agent" 8 belgili bir martalik kod beradi (masalan
    `P7HJ-N46U`) — 15 daqiqa amal qiladi.
-4. Exe'ni ishga tushiring: server manzilini (Enter = `wss://mes.mebelix.uz`) va
-   kodni so'raydi, kodni `POST /api/v1/bridge-agents/pair` orqali doimiy tokenga
-   almashtiradi va `%APPDATA%\MebelixAgent\.env` ga saqlaydi — keyingi safar
-   so'ramaydi. Kod muddati o'tishi ulangan agentga ta'sir qilmaydi.
+4. Exe'ni ishga tushiring — kichik oyna chiqadi, ikkita maydon: server manzili
+   (default `wss://mes.mebelix.uz`) va ulanish kodi. "Ulash" bosilgach kod
+   `POST /api/v1/bridge-agents/pair` orqali doimiy tokenga almashtiriladi va
+   `%APPDATA%\MebelixAgent\.env` ga saqlanadi. Kod noto'g'ri bo'lsa oyna xato
+   bilan qayta ochiladi — dasturni qayta ishga tushirish shart emas.
 
-Log'da `Printer: Godex G500` va `Serverga ulandi` chiqsa — tayyor.
+Shundan keyin **oyna umuman ko'rinmaydi**: agent fonda ishlaydi va kompyuter
+yonganda o'zi tushadi (birinchi ulanishda `HKCU\...\Run` ga yoziladi, admin
+huquqi kerak emas). Ishlayotganini admin paneldagi **Onlayn** belgisi bildiradi;
+tafsilotlar `%APPDATA%\MebelixAgent\agent.log` da (1 MB x 3 rotatsiya).
 
-Doimiy ishlashi uchun exe'ni Windows Task Scheduler'da "At startup" trigger
-bilan ro'yxatdan o'tkazing — headless ishga tushganda kod so'ralmaydi, saqlangan
-token ishlatiladi.
+Kod muddati o'tishi ulangan agentga ta'sir qilmaydi — token muddatsiz.
+
+Agentni ikki marta ishga tushirib bo'lmaydi: mutex ikkinchi nusxani to'xtatib,
+"allaqachon ishlab turibdi" deydi. Oyna ko'rinmagani uchun bu tez-tez uchraydi.
 
 ## Env sozlamalari
 
@@ -54,19 +59,29 @@ Ack kelmasa yoki ulanish uzilsa job navbatga qaytadi — yorliq yo'qolmaydi.
 
 ## Muammolar
 
-Admin panelda "yangi kod" yoki "bekor qilish" bosilgan bo'lsa agent log'da server
-ulanishni rad etganini yozadi. Yechim: `%APPDATA%\MebelixAgent\.env` faylini
-o'chirib, exe'ni yangi kod bilan qaytadan ishga tushiring.
+Admin panelda "yangi kod" yoki "bekor qilish" bosilsa server ulanishni rad etadi.
+Agent buni o'zi payqaydi: saqlangan tokenni o'chirib, sozlash oynasini qayta
+ochadi — yangi kodni kiritsangiz ishlashda davom etadi. Oyna bekor qilinsa agent
+to'xtaydi.
+
+Chek chiqmasa birinchi qaraydigan joy — admin paneldagi holat. **Oflayn** bo'lsa
+agent ishlamayapti: `agent.log` ni oching. Muhimi, bu paytda ham hech narsa
+yo'qolmaydi — yorliqlar Redis navbatida turadi va agent qaytishi bilan chiqadi.
 
 ## Dasturchi uchun: exe yig'ish
 
 ```bash
-pyinstaller --onefile --console --name mebelix-agent agent.py
+pyinstaller --onefile --noconsole --name mebelix-agent agent.py
 ```
 
-So'ng `dist/mebelix-agent.exe` ni serverdagi `backend/uploads/agent/` ga
-ko'chiring — "Agentni yuklab olish" o'sha fayldan beradi. Binar repo'da yo'q
-(gitignore).
+`--noconsole` muhim: usiz qora konsol oynasi ochiq turadi va uni kimdir yopib
+qo'ysa chek chiqmay qoladi. Oynasiz rejimda `sys.stdout` yo'q — shuning uchun
+hamma narsa `agent.log` ga yoziladi, foydalanuvchiga esa faqat messagebox orqali
+gapiriladi.
+
+So'ng `dist/mebelix-agent.exe` ni serverdagi `uploads/agent/` ga ko'chiring —
+"Agentni yuklab olish" o'sha fayldan beradi. Binar repo'da yo'q (gitignore),
+deploy uni ko'chirmaydi; `uploads_data` volume tufayli joyida qoladi.
 
 Eslatma: SCX fayllar bridge orqali o'tmaydi — ular stanok kompyuterida brauzer
 orqali yuklab olinadi (TZ 12.5).
