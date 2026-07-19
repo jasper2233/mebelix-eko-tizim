@@ -69,17 +69,16 @@ attributsiyasi beyjiksiz saqlanadi. **Login = smena**: sessiya avtomatik ochilad
 - `/ws/events` — brauzer klientlar: JWT (cookie yoki `?token=`); rol → scope (terminal/tablo/dashboard),
   post/stanok bo'yicha filtrlash; `ping`→`pong` heartbeat.
 - Fan-out Redis pub/sub (`mes:events`) orqali — gunicorn workerlar orasida; Redis o'chiq bo'lsa lokal.
-- `/ws/bridge` — sex bridge-agenti (`BRIDGE_TOKEN` bilan): Redis `mes:print:queue` dan chop etish
-  joblarini oladi, ack qilinmagan job qayta navbatga qaytadi.
 
 ## 5. Yorliq chop etish (TT 12.3 / 13.2)
 
-`app/services/labels.py` ikki chiqish beradi, ikkalasi ham `load_label_data(db, instance_id)`
-yig'gan `LabelData` dan (qr_text, part_code, part_name, project_name, material, l/w/t, count,
-instance_no, edges, xnc_summary, label_num, **holes**, **texture**). `holes` — `order.cutmap`
-dan shu detal katakchasi bo'yicha (`part.label_num` → cutmap `parts[].num` → `cutmap.holes[cell.id]`).
+`app/services/labels.py` bitta chiqish beradi — `render_label_png()`, manbasi
+`load_label_data(db, instance_id)` yig'gan `LabelData` (qr_text, part_code, part_name, project_name,
+material, l/w/t, count, instance_no, edges, xnc_summary, label_num, **holes**, **texture**).
+`holes` — `order.cutmap` dan shu detal katakchasi bo'yicha (`part.label_num` → cutmap `parts[].num`
+→ `cutmap.holes[cell.id]`).
 
-**`render_label_png(d, scale=1)` — asosiy maket** (GibSaw `mebelix.lbl` uslubi). 80×60 mm,
+**`render_label_png(d, scale=1)` — yorliq maketi** (GibSaw `mebelix.lbl` uslubi). 80×60 mm,
 203 dpi (8 dot/mm → 640×480 px), oxirida `point(... , "1")` bilan sof 1-bit; `draw.fontmode = "1"`
 — antialiasing yo'q, aks holda termodrayver dither qiladi. Koordinatalar mm da. Tarkibi:
 
@@ -94,32 +93,23 @@ dan shu detal katakchasi bo'yicha (`part.label_num` → cutmap `parts[].num` →
 
 Chiziqlar `width=max(2, scale)` — GDI kichraytirishda 1 px chiziq yo'qoladi.
 
-**`build_label_ezpl(d)`** — legacy EZPL matni, faqat tarmoqdagi GoDEX'ga TCP 9100 orqali to'g'ridan
-yuborish yo'li uchun qoldi (PNG maketidan farq qiladi, chek uslubidagi eski tartib).
-
-Zanjir (terminal → printer):
+Zanjir (terminal → printer) — chop etishni **brauzerning o'zi** qiladi, server hech narsa yubormaydi:
 
 ```
-terminal (POST /terminal/labels/{instance_id})
-  → arq task print_label (app/tasks/__init__.py)
-     · PRINTER_IP bor bo'lsa: _send_tcp(ezpl) → printer:9100 (xato bo'lsa navbatga tushadi)
-     · aks holda: LPUSH mes:print:queue = {type, instance_id, ezpl, png(base64)}
-  → /ws/bridge (Redis brpop + ack; ack kelmasa job navbatga qaytadi)
-  → bridge-agent/agent.py → printer
+arrachi monoblokda "Chop etish"
+  → printLabelPng() (frontend/src/components/Terminal/CutmapView.tsx)
+     yashirin iframe: GET /api/v1/terminal/labels/{instance_id}.png → win.print()
+     (@page size 80mm 60mm, margin 0; Chrome --kiosk-printing bo'lsa dialogsiz)
+  → parallel POST /api/v1/terminal/labels/{instance_id} (print_instance_label)
+     faqat instance.label_printed_at = now + ws_manager.publish("label.printed") — TABLO uchun
 ```
 
-`GET /terminal/labels/{instance_id}.png` — o'sha `render_label_png()` chiqishi to'g'ridan brauzerga;
-worker ham, GoDEX ham, bridge-agent ham shart emas.
+`GET /terminal/labels/{instance_id}.png` (`render_instance_label`) — `render_label_png()` chiqishini
+to'g'ridan brauzerga beradi; worker, navbat va oraliq servis yo'q.
 
-`bridge-agent/agent.py` — sexdagi mustaqil servis (websockets + pywin32 + Pillow): outbound WS,
-lokal JSONL navbat `QUEUE_FILE` (printer/internet uzilganda yo'qotmaydi), flusher **event-driven** —
-`FLUSH_EVENT` bilan darhol uyg'onadi, 5 s faqat zaxira timeout. `send_to_printer()` to'rtta chiqish
-rejimini qat'iy tartibda sinaydi: `PRINTER_NAME` (Windows GDI, jobdagi PNG) → `PRINTER_NAME`
-(`win32print` RAW EZPL) → `PRINTER_SHARE` (`copy /b`) → `PRINTER_IP` (TCP 9100). Har qanday xatoda
-`False` qaytadi va job lokal navbatda qoladi.
-
-Rejimlar jadvali, `_print_png_gdi()` ning DEVMODE 80×60 mm majburlashi, agent env'lari va o'rnatish
-qadamlari: [07-infra-devops.md](07-infra-devops.md) → "Chop etish infratuzilmasi".
+Printerli kompyuterga hech qanday dastur o'rnatilmaydi. Sozlash uch qadam: Chrome yorlig'i
+`chrome.exe --kiosk-printing --kiosk <url>/terminal`, GoDEX G500-U (USB) — Windows'da **standart**
+printer, drayverda qog'oz o'lchami 80×60 mm. Batafsil: [07-infra-devops.md](07-infra-devops.md).
 
 ## 6. API xaritasi (yangi routerlar)
 
@@ -128,7 +118,7 @@ qadamlari: [07-infra-devops.md](07-infra-devops.md) → "Chop etish infratuzilma
 | `clients/employees/machines/posts/materials` | CRUD + qidiruv | rol-based (`api/deps.py: require_roles`) |
 | `orders` | lifecycle (`/confirm`, `/start`, …) + `/status-counts` + `/upload` + `/matrix` + `/machines` + `/cutmap` + `/files/{id}` + `/survey` + `/survey/photos[/{file_id}]` | o'qish: manager/texnolog/director (`StaffReadUser`); yozish: manager/texnolog (+admin/superuser); anketa yozuvi: `ManagerUser` |
 | `scans` | POST scan, DELETE undo, `/recent` | terminal + 6 operator rol |
-| `terminal` | `/context`, `/session`, `/session/end`, `/tasks`, `/orders` (loyiha kartalari: done/total agregat), `/orders/{id}/cutmap`, `/labels/{id}` (GoDEX navbat), `/labels/{id}.png`, `/files/{id}` | terminal + 6 operator rol |
+| `terminal` | `/context`, `/session`, `/session/end`, `/tasks`, `/orders` (loyiha kartalari: done/total agregat), `/orders/{id}/cutmap`, `/labels/{id}` (chop etildi belgisi), `/labels/{id}.png`, `/files/{id}` | terminal + 6 operator rol |
 | `tablo` | `/matrix`, `/orders/{id}` | istalgan auth |
 | `reports` | `/productivity`, `/orders`, `/materials` (+`?format=xlsx`), `/dashboard` | manager/director/admin |
 | `audit-logs` | filtrli ro'yxat | staff |
@@ -227,10 +217,6 @@ direktor ham ko'radi.
 
 ## 8. Sozlamalar (yangi env)
 
-Backend: `UPLOAD_DIR`, `MAX_PROJECT_FILE_SIZE`, `STRICT_STAGE_ORDER`, `SESSION_MAX_HOURS`,
-`SCAN_UNDO_SECONDS`, `PRINTER_IP`/`PRINTER_PORT` (faqat lokal rejim), `BRIDGE_TOKEN`.
-
-Bridge-agent (`bridge-agent/agent.py`, backend settings'ida emas — o'z env'i): `MES_URL`
-(default `ws://localhost:8000`), `BRIDGE_TOKEN` (serverdagi bilan bir xil), `PRINTER_NAME`
-(Windows GDI, tavsiya etilgan yo'l), `PRINTER_SHARE`, `PRINTER_IP`/`PRINTER_PORT`,
-`QUEUE_FILE` (default `print-queue.jsonl`).
+Backend (`app/core/config.py`): `UPLOAD_DIR`, `MAX_PROJECT_FILE_SIZE`, `STRICT_STAGE_ORDER`,
+`SESSION_MAX_HOURS`, `SCAN_UNDO_SECONDS`. Chop etish uchun env yo'q — printer sozlamalari
+monoblokdagi Chrome yorlig'ida va Windows drayverida.

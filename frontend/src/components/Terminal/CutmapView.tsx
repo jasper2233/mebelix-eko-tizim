@@ -61,6 +61,34 @@ function escapeHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)
 }
 
+/** Yorliqni brauzer orqali chop etadi. Monoblok Chrome'i `--kiosk-printing`
+ *  bilan ochilgan bo'lsa dialog chiqmaydi — to'g'ridan-to'g'ri standart
+ *  printerga (GoDEX) ketadi. Yashirin iframe: popup bloklanmaydi, oyna ochilmaydi. */
+function printLabelPng(instanceId: number) {
+  const src = `${OpenAPI.BASE}/api/v1/terminal/labels/${instanceId}.png`
+  const frame = document.createElement("iframe")
+  frame.setAttribute("aria-hidden", "true")
+  frame.style.cssText =
+    "position:fixed;right:0;bottom:0;width:0;height:0;border:0"
+  frame.srcdoc = `<style>@page{size:80mm 60mm;margin:0}html,body{margin:0;padding:0}img{width:80mm;height:60mm;display:block}</style><img crossorigin="use-credentials" src="${src}" alt="">`
+  frame.onload = () => {
+    const win = frame.contentWindow
+    const img = win?.document.images[0]
+    if (!win || !img) return
+    const go = () => {
+      win.focus()
+      win.print()
+      setTimeout(() => frame.remove(), 2000)
+    }
+    if (img.complete) go()
+    else {
+      img.addEventListener("load", go)
+      img.addEventListener("error", () => frame.remove())
+    }
+  }
+  document.body.appendChild(frame)
+}
+
 /** Barcha kesish xaritalarini chop etish: har xarita tepasida
  * "Material nomi | №1 — 2750 × 1830 mm × 2 list" sarlavha, har list o'z sahifasida. */
 function printAllMaps(
@@ -337,9 +365,11 @@ export function CutmapView({
         label="Chop etish"
         tone={nextInstance ? "success" : "default"}
         disabled={!nextInstance || printMutation.isPending}
-        onClick={() =>
-          nextInstance && printMutation.mutate(nextInstance.instance_id)
-        }
+        onClick={() => {
+          if (!nextInstance) return
+          printLabelPng(nextInstance.instance_id)
+          printMutation.mutate(nextInstance.instance_id) // chop etilgan deb belgilash
+        }}
       >
         <Printer />
       </TBtn>
@@ -741,13 +771,8 @@ function PartCard({
                   className="h-12 px-4 text-base font-bold"
                   loading={printMutation.isPending}
                   onClick={() => {
-                    // PNG yangi tabda — brauzerdan istalgan printerga chop etiladi;
-                    // parallel ravishda GoDEX navbatiga ham yuboriladi (bridge ulangan bo'lsa)
-                    window.open(
-                      `${OpenAPI.BASE}/api/v1/terminal/labels/${inst.instance_id}.png`,
-                      "_blank",
-                    )
-                    printMutation.mutate(inst.instance_id)
+                    printLabelPng(inst.instance_id)
+                    printMutation.mutate(inst.instance_id) // chop etilgan deb belgilash
                   }}
                 >
                   <Printer /> YORLIQ CHOP ETISH

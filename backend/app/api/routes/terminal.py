@@ -348,19 +348,19 @@ async def build_cutmap_state(db: SessionDep, order: Order, arra_post_id: int) ->
 
 @router.post("/labels/{instance_id}", response_model=Message, operation_id="print_instance_label")
 async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: int) -> Message:
-    """YORLIQ CHOP ETISH (TZ 7.1.4): on-demand, per selected cell. Queued to the bridge-agent."""
+    """Yorliq chop etilgan deb belgilaydi (TZ 7.1.4).
+
+    Qog'ozga chiqarishni brauzerning o'zi qiladi: terminal /labels/{id}.png ni
+    yashirin iframe'da ochib print qiladi (Chrome --kiosk-printing bilan dialogsiz).
+    Bu endpoint faqat holatni yozadi va TABLO'ga xabar beradi.
+    """
     instance = await db.get(PartInstance, instance_id)
     if instance is None or instance.is_deleted:
         raise NotFoundException("Nusxa topilmadi.")
     instance.label_printed_at = datetime.now(UTC)
     await db.commit()
-
-    from app.core.utils import queue
-
-    if queue.pool is not None:
-        await queue.pool.enqueue_job("print_label", instance_id)
     await ws_manager.publish("label.printed", {"instance_id": instance_id, "qr_text": instance.qr_text})
-    return Message(message=f"Yorliq chop etishga yuborildi: {instance.qr_text}")
+    return Message(message=f"Yorliq chop etildi: {instance.qr_text}")
 
 
 @router.get("/labels/{instance_id}.png", operation_id="render_instance_label")

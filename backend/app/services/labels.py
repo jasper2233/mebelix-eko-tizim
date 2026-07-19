@@ -1,9 +1,8 @@
-"""GoDEX EZPL label builder (TZ 5.8.2 / 13.2.2): 80×60 mm thermal label, 203 dpi (8 dots/mm).
+"""Yorliq renderi (TZ 5.8.2 / 13.2.2): 80×60 mm termal yorliq, 203 dpi (8 dot/mm).
 
-Layout mirrors the MES PRO sample label (chek/IMG_4925.JPG) the shop already reads:
-header (logo text + order no), big QR right, detail key + product/project, kromka line,
-huge "L x W = count", part sketch with banded sides drawn thick, footer material + date.
-ponytail: dot offsets tuned for GoDEX G500 defaults — calibrate on the real printer once.
+render_label_png PNG chizadi — terminal uni brauzerda chop etadi (Chrome
+--kiosk-printing bilan dialogsiz, USB GoDEX standart printer). Maket MES PRO
+chekiga (chek/IMG_4925.JPG) va GibSaw shablonlariga asoslangan.
 """
 
 from dataclasses import dataclass
@@ -84,105 +83,6 @@ async def load_label_data(db: "AsyncSession", instance_id: int) -> LabelData | N
     )
 
 
-def _edge_mats(edges: dict[str, Any]) -> str:
-    """Unique kromka materials, chek style: '19*06 kashmir'."""
-    mats: list[str] = []
-    for side in ("l", "r", "t", "b"):
-        e = edges.get(side)
-        mat = str(e.get("mat") or "").strip() if e else ""
-        if mat and mat not in mats:
-            mats.append(mat)
-    return " / ".join(mats)
-
-
-def build_label_ezpl(d: LabelData) -> str:
-    size = ""
-    if d.length and d.width:
-        size = f"{_n(d.length)} x {_n(d.width)}"
-        if d.count:
-            size += f" = {d.count}"
-
-    icons = []
-    if d.xnc_summary.get("grooves"):
-        icons.append("P")  # paz
-    if d.xnc_summary.get("bores") or d.xnc_summary.get("edge_bores"):
-        icons.append("S")  # teshik
-    if d.xnc_summary.get("mills"):
-        icons.append("F")  # freza
-
-    kromka = _edge_mats(d.edges)
-
-    lines = [
-        "^Q60,3",  # label height 60mm, gap 3mm
-        "^W80",  # width 80mm
-        "^H10",  # darkness
-        "^P1",  # copies (one label per copy — on-demand printing, TZ 7.1.4)
-        "^S2",  # speed
-        "^AD",
-        "^C1",
-        "^R0",
-        "~Q+0",
-        "^O0",
-        "^D0",
-        "^E12",
-        "~R255",
-        "^XSET,ROTATION,0",
-        "^L",
-        # --- Header: brand left, order number right, rule under ---
-        "AB,16,10,2,2,0,0E,MEBELIX",
-        f"AB,300,10,2,2,0,0E,{_esc(d.order_number[:16])}",
-        "R16,52,624,55,2,2",
-        # --- QR right (scale 6 ~ 30mm) ---
-        f"BQ,440,66,2,6,80,0,0,M2,N,'{d.qr_text}'",
-        # --- Left column: detail key, product/project, kromka, big size ---
-        f"AB,16,66,2,2,0,0E,{_esc(d.part_code[:20])}",
-        f"AB,16,116,1,1,0,0E,{_esc(d.part_name[:30])}",
-        f"AB,16,148,1,1,0,0E,{_esc(d.project_name[:30])}",
-        f"AB,16,180,1,1,0,0E,KROMKA: {_esc(kromka[:24]) if kromka else '-'}",
-        f"AB,16,212,3,2,0,0E,{_esc(size)}",
-        f"AB,16,264,1,1,0,0E,{' '.join(icons)}",
-    ]
-
-    lines += _sketch(d)
-
-    footer = f"{_esc(d.material[:28])}  {d.printed_at.strftime('%d.%m.%Y %H:%M')}"
-    n = f"N{d.label_num}" if d.label_num else ""
-    copy = f"{d.instance_no}/{d.count}" if d.instance_no else ""
-    lines += [
-        f"AB,16,446,1,1,0,0E,{footer}",
-        f"AB,500,446,1,1,0,0E,{n} {copy}".rstrip(),
-        "E",
-    ]
-    return "\n".join(lines) + "\n"
-
-
-def _sketch(d: LabelData) -> list[str]:
-    """Part outline like the chek: rectangle, banded sides thick, dims alongside."""
-    if not (d.length and d.width):
-        return []
-    bx, by, bw = 16, 292, 300
-    long_side, short_side = max(d.length, d.width), min(d.length, d.width)
-    bh = max(36, min(120, int(bw * short_side / long_side)))
-    t = 8  # banded-side mark thickness
-    out = [f"R{bx},{by},{bx + bw},{by + bh},2,2"]
-    if d.edges.get("t"):
-        out.append(f"R{bx},{by},{bx + bw},{by + t},4,4")
-    if d.edges.get("b"):
-        out.append(f"R{bx},{by + bh - t},{bx + bw},{by + bh},4,4")
-    if d.edges.get("l"):
-        out.append(f"R{bx},{by},{bx + t},{by + bh},4,4")
-    if d.edges.get("r"):
-        out.append(f"R{bx + bw - t},{by},{bx + bw},{by + bh},4,4")
-    # dims: length under the box, width to the right (chek: 1900 below, 330 side)
-    out.append(f"AB,{bx + bw // 2 - 40},{by + bh + 8},1,1,0,0E,{_n(long_side)}")
-    out.append(f"AB,{bx + bw + 12},{by + bh // 2 - 12},1,1,0,0E,{_n(short_side)}")
-    return out
-
-
-def _esc(text: str) -> str:
-    return text.replace(",", " ").replace("'", " ")
-
-
 def _n(v: float) -> str:
     return str(int(v)) if float(v).is_integer() else f"{v:g}"
 
@@ -190,8 +90,7 @@ def _n(v: float) -> str:
 # --- PNG render: GibSaw shablonlari asosidagi maket (80x60mm), mm-koordinatalarda ---
 # Manba ikkita: Universal.lbl (kromka konturdan tashqarida, QR/eskiz joylashuvi, logo) va
 # mebelix.lbl (ustunlar tartibi, index_name "12_bok"). Har joyda qaysi biridan olingani yozilgan.
-# GDI chop etish (bridge-agent PRINTER_NAME rejimi) va brauzer ko'rinishi uchun
-# yagona manba. QR kutubxona bilan chiziladi — printer dialektiga bog'liq emas.
+# QR kutubxona bilan chiziladi — printer dialektiga bog'liq emas.
 
 _FONT_REGULAR = (
     "C:/Windows/Fonts/arial.ttf",  # Windows dev

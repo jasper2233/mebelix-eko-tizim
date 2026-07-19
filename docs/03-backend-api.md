@@ -347,30 +347,37 @@ Yuklash cheklovlari (`orders.py` dagi konstantalar):
 | GET | `/api/v1/terminal/tasks` | terminal/operator | NAVBATDAGI VAZIFALAR (TZ 8.3.2): faqat shu post/stanok, QOLDIQ > 0, PRODUCTION buyurtmalar, muddat (deadline) tartibida |
 | GET | `/api/v1/terminal/orders` | terminal/operator | Shu postga tegishli aktiv buyurtmalar (ARRA xarita tanlagichi uchun). Tartib: prioritet (`URGENT→HIGH→MEDIUM→LOW`, `priority_rank` `case()`), keyin deadline (nulls oxirida), keyin id. `/tasks` bilan bir xil stanok filtri: boshqa stanokka muhrlangan route'lar ko'rinmaydi. Har kartada `done`/`total`, `materials` (`material_usage` dagi `kind == "sheet"` nomlari), `sheets_total` (cutmap listlari `mult` bilan), `has_cutmap` |
 | GET | `/api/v1/terminal/orders/{id}/cutmap` | terminal/operator | ARRA kesish xaritasi (TZ 7.1.7); ARRA bo'lmagan postda 403; katak holati serverda — terminal qayta yonganda saqlanib qoladi |
-| POST | `/api/v1/terminal/labels/{instance_id}` | terminal/operator | YORLIQ CHOP ETISH (TZ 7.1.4): ARQ `print_label` navbatiga qo'yiladi (bridge-agent/GoDEX); `label_printed_at` belgilanadi; WS `label.printed` |
-| GET | `/api/v1/terminal/labels/{instance_id}.png` | terminal/operator | Yorliqning PNG ko'rinishi (`load_label_data` + `render_label_png`) — brauzerdan istalgan printerga chop etish uchun (GoDEX shart emas); `Response(media_type="image/png")` |
+| POST | `/api/v1/terminal/labels/{instance_id}` | terminal/operator | Yorliq chop etilgan deb BELGILAYDI (TZ 7.1.4): `label_printed_at = now()`, WS `label.printed`. Qog'ozga chiqarishni brauzer o'zi qiladi — bu endpoint faqat holatni yozadi |
+| GET | `/api/v1/terminal/labels/{instance_id}.png` | terminal/operator | Yorliqning PNG ko'rinishi (`load_label_data` + `render_label_png`) — chop etiladigan yagona manba; `Response(media_type="image/png")` |
 | GET | `/api/v1/terminal/files/{file_id}` | terminal/operator | SCX faylni stanok brauzeriga yuklab olish (TZ 12.5) — har safar yangidan beriladi |
 
-### Yorliq chop etish zanjiri
+### Yorliq chop etish oqimi
+
+Chop etish butunlay brauzer tomonida. Server navbat ham, printer protokoli ham bilmaydi — u faqat PNG beradi va faktni yozadi.
 
 ```
-terminal (POST /terminal/labels/{instance_id})
-  → arq: app.tasks.print_label(instance_id)
-      load_label_data(db, instance_id) → LabelData
-      build_label_ezpl(data)   → EZPL matn (tarmoqdagi GoDEX dialekti)
-      render_label_png(data)   → PNG (base64), printer dialektiga bog'liq emas
-  → PRINTER_IP sozlangan bo'lsa: to'g'ridan TCP printer:9100 (cp1251), xato bo'lsa navbatga tushadi
-  → aks holda Redis LPUSH mes:print:queue
-      job = {"type": "print", "instance_id": ..., "ezpl": ..., "png": <base64>}
-  → WS /api/v1/ws/bridge (brpop + ack)
-  → bridge-agent → printer
+arrachi monoblokda "Chop etish" bosiladi (CutmapView.tsx → printLabelPng)
+  → yashirin <iframe> yaratiladi, srcdoc ichida:
+      <style>@page{size:80mm 60mm;margin:0}</style>
+      <img src="{OpenAPI.BASE}/api/v1/terminal/labels/{instance_id}.png"
+           crossorigin="use-credentials">
+  → rasm yuklangach win.focus() + win.print(), 2s dan keyin iframe olib tashlanadi
+  → Chrome --kiosk-printing bilan ochilgan bo'lsa DIALOGSIZ standart printerga
+    (USB GoDEX G500-U) chiqadi
+parallel: POST /api/v1/terminal/labels/{instance_id}
+  → label_printed_at = now()
+  → ws_manager.publish("label.printed", {instance_id, qr_text})  ← TABLO/terminal uchun
 ```
 
-`print_label` qaytaradigan qiymatlar: `printed:<id>` (to'g'ridan TCP), `queued:<id>` (Redis navbati), `skip:<id>` (nusxa topilmadi), `lost:<id>` (na printer, na Redis bor).
+Yashirin iframe `window.open` o'rniga ishlatiladi: popup bloklanmaydi va operator ekranida oyna ochilmaydi. `crossorigin="use-credentials"` — PNG endpointi auth cookie talab qiladi.
 
-Agent tomoni (`bridge-agent/agent.py`): `PRINTER_NAME` berilgan bo'lsa job'dagi PNG Windows GDI orqali chop etiladi (win32ui + PIL, DEVMODE 80×60 mm ga majburlanadi), aks holda EZPL lokal GoDEX'ga uzatiladi.
+Monoblokni sozlash (printerli kompyuterga hech qanday dastur o'rnatilmaydi):
 
-**Bog'lanishlar:** `backend/app/schemas/terminal.py`, `backend/app/services/scanning.py` (`resolve_terminal`, `active_session`, `ScanRejected`), `backend/app/services/labels.py` (`LabelData`, `load_label_data`, `build_label_ezpl`, `render_label_png` — 80×60 mm, 203 dpi, 1-bit), `backend/app/tasks` (`print_label`, `PRINT_QUEUE_KEY`), `backend/app/core/ws.py`, `bridge-agent/agent.py`.
+- Chrome yorlig'i: `chrome.exe --kiosk-printing --kiosk <url>/terminal`
+- GoDEX G500-U USB orqali ulanadi va **standart printer** qilib qo'yiladi
+- drayver sozlamalarida qog'oz o'lchami 80×60 mm
+
+**Bog'lanishlar:** `backend/app/schemas/terminal.py`, `backend/app/services/scanning.py` (`resolve_terminal`, `active_session`, `ScanRejected`), `backend/app/services/labels.py` (`LabelData`, `load_label_data`, `render_label_png` — 80×60 mm, 203 dpi, 1-bit), `backend/app/core/ws.py`, frontend tomoni: `frontend/src/components/Terminal/CutmapView.tsx` (`printLabelPng`).
 
 ---
 
@@ -418,18 +425,17 @@ Skan qabul qilish qoidalari (marshrut/ketma-ketlik tekshiruvi, dublikat, E001–
 
 ---
 
-## `backend/app/api/routes/ws.py` — WebSocket endpointlari
+## `backend/app/api/routes/ws.py` — WebSocket endpointi
 
-**Maqsadi:** Ikki WebSocket kanal. Router darajasida auth YO'Q — WebSocket'da HTTP dependency ishlamaydi, autentifikatsiya har endpoint ichida.
+**Maqsadi:** Bitta WebSocket kanal. Router darajasida auth YO'Q — WebSocket'da HTTP dependency ishlamaydi, autentifikatsiya endpoint ichida.
 
 | Endpoint | Auth | Izoh |
 |---|---|---|
 | WS `/api/v1/ws/events` | `?token=` query yoki access cookie | Brauzer klientlari (TZ 2.3). Token `verify_token` + `is_active` + `token_version` bilan tekshiriladi; muvaffaqiyatsiz bo'lsa **4401** kod bilan yopiladi. Klient scope'i rol bo'yicha: TERMINAL→`terminal`, TABLO→`tablo`, qolganlar→`dashboard`; `user.machine_id` dan post/stanok scope aniqlanadi. Heartbeat (TZ 2.3.2): klientning har qanday xabariga `{"type": "pong"}` |
-| WS `/api/v1/ws/bridge` | `?token=` ↔ `settings.BRIDGE_TOKEN` (`secrets.compare_digest`) | Sex tarmog'idagi bridge-agent uplink'i (TZ 2.2.2 — lokal GoDEX'da chop etadi). Token noto'g'ri yoki `BRIDGE_TOKEN` sozlanmagan bo'lsa 4401. Redis `mes:print:queue` ro'yxatidan `brpop` (5s timeout) bilan ishlarni oladi va agentga yuboradi (job JSON: `type`, `instance_id`, `ezpl`, `png` — base64 PNG); agent har ishni 15s ichida `{"ok": true}` bilan ack qilishi shart — ack kelmasa yoki uzilsa ish `rpush` bilan navbatga QAYTARILADI (hech bir ish yo'qolmaydi); bo'sh navbatda `{"type": "ping"}` heartbeat va 10s ichida javob kutiladi |
 
 Server → klient eventlarni `app/core/ws.py` dagi `ws_manager` tarqatadi: `order.*`, `session.*`, skan eventlari, `label.printed` — mutatsion HTTP endpointlar publish qiladi.
 
-**Bog'lanishlar:** `backend/app/core/ws.py` (`WsClient`, `ws_manager`), `backend/app/core/security.py`, `backend/app/tasks` (`PRINT_QUEUE_KEY = "mes:print:queue"`), `backend/app/core/config.py` (`BRIDGE_TOKEN`, `REDIS_URL`).
+**Bog'lanishlar:** `backend/app/core/ws.py` (`WsClient`, `ws_manager`), `backend/app/core/security.py` (`verify_token`, `TokenType`, `ACCESS_COOKIE_NAME`), `backend/app/crud` (`crud_users`), `backend/app/models` (`Machine`).
 
 ---
 

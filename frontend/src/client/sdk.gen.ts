@@ -1255,7 +1255,11 @@ export class TerminalService {
     
     /**
      * Print Instance Label
-     * YORLIQ CHOP ETISH (TZ 7.1.4): on-demand, per selected cell. Queued to the bridge-agent.
+     * Yorliq chop etilgan deb belgilaydi (TZ 7.1.4).
+     *
+     * Qog'ozga chiqarishni brauzerning o'zi qiladi: terminal /labels/{id}.png ni
+     * yashirin iframe'da ochib print qiladi (Chrome --kiosk-printing bilan dialogsiz).
+     * Bu endpoint faqat holatni yozadi va TABLO'ga xabar beradi.
      * @param data The data for the request.
      * @param data.instanceId
      * @returns Message Successful Response
