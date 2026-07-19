@@ -22,6 +22,8 @@ Repo tuzilishi:
 MebeliX-Mes-System/
 ├── backend/          # FastAPI ilova (app/api, app/core, app/models, app/services, app/assets, ...)
 ├── frontend/         # Vite + React SPA (src/routes, src/components, src/client, ...)
+├── bridge-agent/     # Tsex agenti (agent.py) — print joblarni USB GoDEX printerga yuboradi
+│                     #   (Windows drayveri orqali PNG; faqat printerli kompyuterda)
 ├── caddy/            # Caddy reverse proxy konfiguratsiyasi (prod)
 ├── scripts/          # setup.sh, prestart.sh, generate-client.sh, deploy.sh (TAG deploy + avto-rollback), backup.sh (kunlik shifrlangan DB backup)
 ├── docs/             # Ushbu hujjatlar to'plami
@@ -71,16 +73,15 @@ MebeliX-Mes-System/
 | Reverse proxy | Caddy (prod, `SITE_ADDRESS` orqali auto-HTTPS / Let's Encrypt); port bindinglar `CADDY_HTTP_BIND`/`CADDY_HTTPS_BIND` bilan parametrlangan — mavjud host-nginx (ISPmanager) ortida ishlash rejimi uchun |
 | Static serving | nginx (frontend build, SPA fallback, 1 yillik asset cache) |
 | Sifat nazorati | pre-commit hooks (ruff, mypy, biome) + GitHub Actions CI (`.github/workflows/ci.yml`) |
-| Konfiguratsiya | Yagona `.env` fayl (JWT, DB/Redis, admin user, rate-limit, `GUNICORN_WORKERS`, `SITE_ADDRESS`) — chop etish uchun server tomonda hech qanday sozlama yo'q |
-| Yorliq chop etish | Server tomonda: yo'q. Printerli monoblokda Chrome yorlig'i `--kiosk-printing` + GoDEX G500-U (USB) standart printer, drayverda qog'oz 80×60 mm |
+| Konfiguratsiya | Yagona `.env` fayl (JWT, DB/Redis, admin user, rate-limit, `GUNICORN_WORKERS`, `SITE_ADDRESS`, printing: `BRIDGE_TOKEN`) |
 
 ## 3. High-level arxitektura
 
 ```mermaid
 flowchart LR
     B[Browser<br/>React SPA]
-    MB[Arrachi monoblok<br/>Chrome --kiosk-printing]
-    PR[GoDEX G500-U<br/>USB, Windows standart printeri]
+    G[bridge-agent<br/>printerli kompyuter]
+    PR[GoDEX G500-U<br/>yorliq printeri, USB]
 
     subgraph Prod stack
         C[Caddy :80/:443<br/>auto-HTTPS]
@@ -93,15 +94,16 @@ flowchart LR
 
     B -->|HTTPS| C
     B <-->|"WS /api/v1/ws/events"| C
-    MB -->|"GET /api/v1/terminal/labels/{id}.png<br/>yashirin iframe -> window.print()"| C
-    MB -->|"USB (dialogsiz, standart printer)"| PR
+    G <-->|"outbound WS /api/v1/ws/bridge"| C
+    G -->|"PNG -> Windows GDI<br/>(USB)"| PR
     C -->|"/api*, /docs*, /redoc*, /openapi.json"| A
     C -->|"/metrics (faqat private IP)"| A
     C -->|qolgan pathlar| N
     A -->|async SQLAlchemy + asyncpg| P
     A -->|rate limit pool| R
-    A -->|arq pool| R
+    A -->|job enqueue - arq pool| R
     R -->|job dequeue| W
+    W -->|"LPUSH mes:print:queue<br/>(png base64)"| R
     W --> P
 ```
 
@@ -117,21 +119,22 @@ Asosiy nuqtalar:
   server alohida; `VITE_API_URL` build-arg local'da `http://localhost:8000`,
   prod'da `""` (bo'sh — SDK yo'llari allaqachon `/api/v1` bilan boshlanadi,
   so'rovlar same-origin, Caddy orqali). Ikkinchi build-arg: `VITE_API_TIMEOUT_MS`.
-- **WebSocket qatlami** (`app/api/routes/ws.py`): yagona endpoint
-  `/api/v1/ws/events` — brauzer real-time kanali (JWT cookie yoki `?token=`
-  bilan auth, rolga qarab terminal/tablo/dashboard scope, `ws_manager` fan-out).
-- **Yorliq chop etish brauzerda**: server faqat PNG beradi
-  (`GET /api/v1/terminal/labels/{instance_id}.png`), qog'ozga chiqarishni
-  monoblokning Chrome'i qiladi — yashirin iframe + `window.print()`, GoDEX
-  G500-U esa o'sha kompyuterga USB bilan ulangan standart printer. Server
-  tomonda navbat ham, background task ham yo'q. Batafsil:
+- **WebSocket qatlami** (`app/api/routes/ws.py`): `/api/v1/ws/events` — brauzer
+  real-time kanali (JWT cookie yoki `?token=` bilan auth, rolga qarab
+  terminal/tablo/dashboard scope, `ws_manager` fan-out); `/api/v1/ws/bridge` —
+  bridge-agent uplink (`BRIDGE_TOKEN` bilan auth, `compare_digest`).
+- **Yorliq chop etish oqimi**: `print_label` ARQ task base64 PNG
+  (`render_label_png`) ni Redis `mes:print:queue` ro'yxatiga qo'yadi →
+  `/ws/bridge` uni printerli kompyuterdagi `bridge-agent/agent.py` ga uzatadi
+  (agent lokal JSONL navbatga yozib ack qaytaradi — yorliq yo'qolmaydi) →
+  Windows drayveri orqali USB GoDEX'ga chiqadi. G500-U'da tarmoq porti yo'q,
+  shuning uchun yagona transport shu. Batafsil:
   [4.3](#43-yorliq-chop-etish-zanjiri).
 - **Ikkita Redis pool**: biri ARQ job queue, biri rate limiting — ikkalasi ham
   startup'da retry'li probe bilan tekshiriladi (fail-fast boot); rate limit
   runtime'da ham fail-closed — Redis xatosida so'rov bloklanadi.
 - **ARQ worker** alohida konteyner/processda ishlaydi (`app/core/worker.py` →
-  `WorkerSettings`), tasklar `app/tasks/` da ro'yxatdan o'tadi — hozircha faqat
-  `ping` (liveness); MES oqimlarining hech biri background job'ga tayanmaydi.
+  `WorkerSettings`), tasklar `app/tasks/` da ro'yxatdan o'tadi.
 - **Prod deploy TAG asosida**: prod image'lar TAG bilan parametrlangan
   (`mebelix-mes-backend/frontend:${TAG:-latest}`, `docker-compose.prod.yml`);
   `scripts/deploy.sh` yangi TAG'ni build/switch qiladi, smoke (`/api/v1/ready`)
@@ -205,52 +208,49 @@ Browser (React)                FastAPI                        PostgreSQL
 
 ### 4.3 Yorliq chop etish zanjiri
 
-Chekni faqat printer yonidagi odam bosadi (arrachi monoblokda), shuning uchun
-masofaviy chop etish talab qilinmaydi — hammasi brauzerning o'zida bajariladi:
-
 ```
-Arrachi monobloki (Chrome)              FastAPI                GoDEX G500-U (USB)
-   |                                       |                          |
-   | "Chop etish" bosildi                  |                          |
-   | yashirin iframe:                      |                          |
-   |   GET /api/v1/terminal/labels/{instance_id}.png                  |
-   |-------------------------------------->|                          |
-   |<--------- image/png (80x60 mm, 1-bit) |                          |
-   | iframe ichida window.print() ------------------------------>     | standart
-   |   (--kiosk-printing bo'lsa dialogsiz)                            | printer
-   |                                       |                          |
-   | parallel: POST /api/v1/terminal/labels/{instance_id}             |
-   |-------------------------------------->| label_printed_at=now (DB)|
-   |                                       | ws_manager: "label.printed" -> TABLO
-   |<------ {"message":"Yorliq chop etildi: ..."}                     |
+Terminal          FastAPI              ARQ worker          Redis        bridge-agent      GoDEX
+   |                 |                     |                 |               |              |
+   | POST /api/v1/terminal/labels/{instance_id}              |               |              |
+   |---------------->|                     |                 |               |              |
+   |                 | label_printed_at=now (DB)             |               |              |
+   |                 | enqueue_job("print_label", id) ------>|               |              |
+   |                 | ws_manager: "label.printed"           |               |              |
+   |                 |                     |<----------------|               |              |
+   |                 |                     | load_label_data(db, id)         |              |
+   |                 |                     | render_label_png() -> base64    |              |
+   |                 |                     | LPUSH mes:print:queue --------->|              |
+   |                 |  /ws/bridge: brpop -> {"type","instance_id","png"} -->|              |
+   |                 |<---------- ack {"ok": true} (agent diskka yozgach) ---|              |
+   |                 |                     |                 |  JSONL -> flusher -> GDI --->|
 ```
 
-- `printLabelPng()` (`frontend/src/components/Terminal/CutmapView.tsx`) —
-  `document.createElement("iframe")`, `srcdoc` ichida
-  `@page{size:80mm 60mm;margin:0}` va
-  `<img crossorigin="use-credentials" src="…/labels/{id}.png">`. Rasm yuklangach
-  (`img.complete` yoki `load` hodisasi) `win.focus()` + `win.print()`, 2 s dan
-  keyin iframe DOM'dan olib tashlanadi. Yashirin iframe tanlangani bejiz emas:
-  popup bloklanmaydi va operator oldida yangi oyna ochilmaydi.
 - `POST /terminal/labels/{instance_id}` (`print_instance_label`,
-  `app/api/routes/terminal.py`) — FAQAT holatni yozadi:
-  `PartInstance.label_printed_at = now` va
-  `ws_manager.publish("label.printed", {"instance_id", "qr_text"})` (TABLO uchun).
-  Navbat ham, background job ham yo'q. Frontend uni `printLabelPng()` bilan
-  parallel chaqiradi (`printMutation.mutate`) — chop etish tugmasi tarmoq
-  javobini kutib turmaydi.
-- `GET /terminal/labels/{instance_id}.png` (`render_instance_label`) —
-  `load_label_data()` + `render_label_png()` →
-  `Response(media_type="image/png")`. Yagona chop etish manbai; ikkala endpoint
-  ham `TerminalUser` ostida.
-- Printerli kompyuterga HECH QANDAY dastur o'rnatilmaydi. Sozlash uchtagina:
-  1. Chrome yorlig'i —
-     `chrome.exe --kiosk-printing --kiosk https://mes.mebelix.uz/terminal`
-     (`--kiosk-printing` chop etish dialogini o'chiradi, `--kiosk` esa
-     terminalning to'liq ekran talabini ham qondiradi —
-     [4.5](#45-arrachi-terminali-kesish-xaritasi)).
-  2. GoDEX G500-U Windows'da **standart** printer qilib qo'yiladi (USB).
-  3. Drayver sozlamalarida qog'oz o'lchami 80×60 mm.
+  `app/api/routes/terminal.py`) — `PartInstance.label_printed_at` yoziladi, ARQ'ga
+  `print_label` job qo'yiladi, `label.printed` WS eventi tarqatiladi.
+- `app/tasks/__init__.py:print_label` yorliqni render qilib faqat Redis navbatiga
+  qo'yadi. Job JSON: `{"type":"print","instance_id","png"}` →
+  `LPUSH mes:print:queue`. Redis yo'q bo'lsa job `lost:` bilan yakunlanadi va
+  xato log'ga yoziladi. Server printerga to'g'ridan-to'g'ri chiqmaydi — yagona
+  yo'l bridge-agent.
+- `/ws/bridge` (`app/api/routes/ws.py`) navbatni `brpop(timeout=5)` bilan so'radi;
+  bo'sh bo'lsa `{"type":"ping"}` heartbeat yuboradi (yarim ochiq TCP tez o'lsin).
+  Ack kelmasa yoki nak bo'lsa job `rpush` bilan navbatga qaytariladi — uzilishda
+  yorliq yo'qolmaydi.
+- bridge-agent job'ni AVVAL diskka (`print-queue.jsonl`) yozadi, keyin ack qaytaradi —
+  server ackdan keyin jobni unutadi. `FLUSH_EVENT` bilan flusher darhol uyg'onadi
+  (aks holda 5 s siklda printer tiklanishini kutadi).
+- `send_to_printer()` da bitta chiqish yo'li bor: `_print_png_gdi()` — Windows
+  drayveri (`win32ui` + `ImageWin.Dib`), DEVMODE'da qog'oz `DMPAPER_USER`
+  80×60 mm ga majburlanadi. Admin huquqi ham, printer share ham talab qilmaydi.
+  Printer xatosi `False` qaytaradi va job lokal navbatda qoladi.
+- Printer AVTO-TOPILADI: `_detect_printer()` `win32print.EnumPrinters` ro'yxatidan
+  nomida `godex` bor lokal printerni oladi — drayver o'rnatilsa bas, sozlash
+  shart emas. `PRINTER_NAME` faqat qo'lda override uchun. Agent env'lari:
+  `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME` (ixtiyoriy), `QUEUE_FILE`.
+- Agent FAQAT printer ulangan kompyuterga o'rnatiladi (Windows Task Scheduler,
+  "At startup"); menejer, texnolog va boshqa post terminallariga hech narsa
+  kerak emas — ular brauzerdan tugmani bosadi.
 - `render_label_png()` (`app/services/labels.py`) — 80×60 mm, 203 dpi
   (8 dot/mm → 640×480 px). `draw.fontmode = "1"` (antialiasing yo'q) va yakuniy
   `convert("L").point(v < 160)` — chiqish sof 1-bit, drayver dither qilmasin.
@@ -263,12 +263,8 @@ Arrachi monobloki (Chrome)              FastAPI                GoDEX G500-U (USB
   tekstura chiziqlari, va cutmap'dan HAQIQIY teshiklar: `load_label_data()`
   `order.cutmap["holes"][cell_id]` ni `part.label_num` bo'yicha topadi, `bores`
   aylana, `edge` esa qirradan ichkariga chiziqcha bo'lib chiziladi.
-- `app/services/labels.py` ning butun umumiy API'si shu uchtadan iborat:
-  `LabelData`, `load_label_data()`, `render_label_png()` — printerga maxsus
-  komanda tili kerak emas, PNG'ni Windows drayveri o'zi rasterlaydi.
-- Kesish xaritalarini chop etish alohida yo'l: `printAllMaps()` (o'sha
-  `CutmapView.tsx`) `window.open()` bilan har list o'z sahifasida bo'lgan HTML
-  yasab `w.print()` qiladi — bu A4 hujjat, yorliq printeri emas.
+- `GET /terminal/labels/{instance_id}.png` (`render_instance_label`) o'sha PNG'ni
+  brauzerga beradi — GoDEX bo'lmasa istalgan printerdan chop etish yo'li.
 
 ### 4.4 Buyurtma anketasi (mijoz so'rovnomasi + o'lchov varag'i)
 

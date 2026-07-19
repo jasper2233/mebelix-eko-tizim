@@ -48,7 +48,7 @@ class BaseModel(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
 | `OrderPriority` | `low`, `medium`, `high`, `urgent` |
 | `ProjectGeneration` | `processed`, `template` |
 | `RouteSource` | `auto`, `manual` |
-| `FileKind` | `project`, `scx`, `label_pdf` (zaxira — hozircha ishlatilmaydi), `document` |
+| `FileKind` | `project`, `scx`, `label_pdf`, `document` |
 | `SessionStatus` | `active`, `ended` |
 
 `POST_ROLES: dict[UserRole, PostCode]` — 6 operator rolini o'z postiga bog'laydi (`ARRACHI→ARRA`, `KROMKACHI→KROMKA`, `PRISADKACHI→PRISADKA`, `PAZCHI→PAZ`, `ROVERCHI→ROVER`, `STOLYAR→STOLYARKA`). Operator rollari o'z akkaunti bilan kiradi va o'z postining terminalini ko'radi — stanok binding'i va badge talab qilinmaydi (`TERMINAL` qurilma akkauntlaridan farqli).
@@ -110,9 +110,9 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
 | `Order` | `number(20)` (`B-2026-001`, avto), `client_id` FK (index), `status` (`OrderStatus`, default `draft`, index), `priority` (`OrderPriority`), `deadline`, `amount Numeric(14,2)`, `advance_payment Numeric(14,2)` (boshlang'ich to'lov — manager buyurtma ochishda kiritadi), `notes`, `created_by_id` FK user; `.project` metadata: `project_uuid/name/generation/loaded_at`; **JSONB**: `cutmap` (kesish xaritasi vizual modeli, TZ 5.7.5), `material_usage` (default `[]` — `[{name, kind, count, unit}]`, TZ 11.3), `machine_assignments` (default `{}` — `{"PAZ": 3, "ROVER": 5}`, TZ 6.4.1), `survey` (mijoz anketasi + o'lchov varag'i, NULL — sxema `schemas/orders.OrderSurvey`, 2.5.1-bo'lim); lifecycle: `production_started_at`, `completed_at`, `delivered_at`, `cancelled_at`, `cancel_reason`, `cancelled_by_id` | PARTIAL UNIQUE `ix_order_number` |
 | `Product` | `order_id` FK (index), `code(50)`, `name(255)`, `count`, `import_source` | `<good typeId="product">` (TZ 5.2.2) |
 | `Part` | `order_id`/`product_id` FK (index), `code(50)` (masalan `01_002`), `name`, `count`, o'lchamlar `length/width/thickness` + `saw_length/saw_width` (jl/jw), `txt` (tekstura qulfi), `material_name(150)`, `label_num`; **JSONB**: `edges` (tomon bo'yicha kromka: `{"l": {"mat": ..., "symbol": "A"}, ...}`), `xnc_summary` (`{"bores", "edge_bores", "grooves", "mills", "sides"}`); `note` (texnolog izohi) | Barqaror kalit: `productCode_partCode` (TZ 5.8) |
-| `PartInstance` | `order_id`/`part_id` FK (index), `instance_no` (1..count), `qr_text(120)`, `pattern_no`/`cell_index` (kesish xaritasi katagi, TZ 7.1.4), `label_printed_at` (`POST /terminal/labels/{id}` yozadi, 6.1-bo'lim) | **PARTIAL UNIQUE `ix_part_instance_order_qr` (`order_id`, `qr_text`) `WHERE NOT is_deleted`** — QR = `productCode_partCode_n` |
+| `PartInstance` | `order_id`/`part_id` FK (index), `instance_no` (1..count), `qr_text(120)`, `pattern_no`/`cell_index` (kesish xaritasi katagi, TZ 7.1.4), `label_printed_at` | **PARTIAL UNIQUE `ix_part_instance_order_qr` (`order_id`, `qr_text`) `WHERE NOT is_deleted`** — QR = `productCode_partCode_n` |
 | `PartRoute` | `order_id`/`part_id`/`post_id` FK, `machine_id` FK NULL, `source` (`RouteSource`), `is_enabled` (texnolog o'chira oladi), `per_instance` (post'dagi skan soni: KROMKA — tomonlar, PRISADKA `_2` — 2), `total_required` = count × per_instance, `total_done` | PARTIAL UNIQUE `ix_part_route_part_post` (`part_id`, `post_id`); `ix_part_route_order_post`. Denormalizatsiyalangan hisoblagichlar — tez QOLDIQ (TZ 5.4) |
-| `OrderFile` | `order_id` FK (index), `part_id` FK NULL, `kind` (`FileKind`), `path(500)`, `filename(255)`, `size`, `meta` **JSONB** (default `{}`) | Yuklangan `.project`, part-boshiga `.scx`, hujjatlar (yorliq bu yerda saqlanmaydi — PNG har so'rovda renderlanadi, 6.1-bo'lim). Anketa xona rasmlari ham shu yerda: `kind=DOCUMENT` + `meta={"room_id": ..., "content_type": ...}` — alohida jadval/migratsiyasiz (1.4.1-bo'lim) |
+| `OrderFile` | `order_id` FK (index), `part_id` FK NULL, `kind` (`FileKind`), `path(500)`, `filename(255)`, `size`, `meta` **JSONB** (default `{}`) | Yuklangan `.project`, part-boshiga `.scx`, label PDF, hujjatlar. Anketa xona rasmlari ham shu yerda: `kind=DOCUMENT` + `meta={"room_id": ..., "content_type": ...}` — alohida jadval/migratsiyasiz (1.4.1-bo'lim) |
 
 #### 1.4.1 Anketa xona rasmlari — `OrderFile.meta` orqali
 
@@ -385,31 +385,39 @@ Idempotent bootstrap — default tashkilot va 6 ishlab chiqarish postini yaratad
 
 ## 6. Tasks — ARQ background workers
 
-`backend/app/tasks/__init__.py` — package bitta fayldan iborat, bitta registered task:
+`backend/app/tasks/__init__.py` — package bitta fayldan iborat, ikkita registered task:
 
 | Task | Vazifasi |
 |---|---|
 | `ping(ctx)` | Liveness probe — `"pong"` qaytaradi (ARQ kamida bitta funksiya talab qiladi) |
+| `print_label(ctx, instance_id)` | Bitta fizik nusxa uchun yorliq PNG'ini render qilib chop etish navbatiga qo'yadi (TZ 7.1.4) |
+
+`print_label` oqimi:
+
+1. `app.services.labels.load_label_data(db, instance_id)` — nusxa/detal/buyurtma ma'lumoti va cutmap teshiklari yig'iladi; topilmasa `skip:{instance_id}`.
+2. `render_label_png(data)` → `base64` (`png_b64`). Yagona format — PNG: GoDEX G500-U faqat USB, agent rasmni Windows drayveri (GDI) orqali chizadi, printer dialekti kerak emas.
+3. ARQ worker kontekstidagi Redis'ga `LPUSH`: `PRINT_QUEUE_KEY = "mes:print:queue"` ro'yxatiga JSON job `{"type": "print", "instance_id", "png"}` → `queued:{instance_id}` (TZ 2.2.2).
+4. Worker kontekstida Redis bo'lmasa — `logger.error` + `lost:{instance_id}`.
+
+To'liq zanjir:
+
+```
+Terminal "Chop etish"
+  -> POST /api/v1/terminal/labels/{instance_id}   (label_printed_at + ws "label.printed")
+  -> arq print_label: render_label_png -> LPUSH mes:print:queue
+  -> /ws/bridge (BRIDGE_TOKEN auth): brpop -> agentga yuboradi, ack kutadi
+  -> bridge-agent: print-queue.jsonl (durable) -> Windows GDI -> USB GoDEX
+```
+
+`/ws/bridge` (`backend/app/api/routes/ws.py`) jobni ack (`{"ok": true}`) kelmasa `rpush` bilan navbatga qaytaradi — yorliq yo'qolmaydi. Serverda bitta sozlama: `settings.BRIDGE_TOKEN` (bo'sh bo'lsa endpoint 4401 bilan yopiladi).
+
+Bridge-agent (`bridge-agent/agent.py`) faqat printer ulangan kompyuterga o'rnatiladi — menejer, texnolog va boshqa post terminallariga hech narsa kerak emas. Printerni `_detect_printer()` avtomatik topadi (nomida `godex` bor Windows printeri); env'lari: `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME` (ixtiyoriy, qo'lda override), `QUEUE_FILE`.
 
 ```python
-all_tasks = [ping]
+all_tasks = [ping, print_label]
 ```
 
 Worker konfiguratsiyasi (ARQ `WorkerSettings`) ro'yxatni `all_tasks` dan oladi; yangi task qo'shilganda shu ro'yxatga kiritilishi kerak. ARQ konvensiyasi: birinchi argument worker context (`ctx`).
-
-### 6.1 Yorliq chop etish — fon taskisiz
-
-GoDEX G500-U arrachi monoblokiga **USB** bilan ulangan va chekni printer yonidagi operatorning o'zi bosadi — shuning uchun na ARQ taski, na Redis navbati, na printer agenti bor. Chop etishni brauzerning o'zi bajaradi.
-
-Oqim (`frontend/src/components/Terminal/CutmapView.tsx` → `printLabelPng`):
-
-1. Operator "Chop etish" tugmasini bosadi → frontend yashirin `<iframe>` yaratadi (`srcdoc`: `@page{size:80mm 60mm;margin:0}` + `<img crossorigin="use-credentials">`), rasm manbai `GET /api/v1/terminal/labels/{instance_id}.png`.
-2. Rasm yuklangach iframe ichida `window.print()` chaqiriladi, so'ng iframe olib tashlanadi. Monoblok Chrome'i `--kiosk-printing` bayrog'i bilan ochilgan bo'lsa dialog chiqmaydi — chek to'g'ridan-to'g'ri standart printerga (USB GoDEX) ketadi.
-3. Parallel `POST /api/v1/terminal/labels/{instance_id}` (`print_instance_label`, `backend/app/api/routes/terminal.py`) — faqat `PartInstance.label_printed_at = now(UTC)` yozadi va `ws_manager.publish("label.printed", {"instance_id", "qr_text"})` bilan TABLO'ni xabardor qiladi. Navbatga hech narsa qo'yilmaydi.
-
-PNG'ni `GET /terminal/labels/{instance_id}.png` (`render_instance_label`) `backend/app/services/labels.py` orqali beradi: `load_label_data(db, instance_id)` → `LabelData` (part, order, `edges`, `xnc_summary` va cutmap'dagi haqiqiy teshiklar), `render_label_png(data)` → 80×60 mm, 203 dpi (8 dot/mm = 640×480 px), antialiasing'siz 1-bit PNG. Fayl diskda saqlanmaydi — har so'rovda qaytadan chiziladi.
-
-Printerli kompyuterga hech qanday dastur o'rnatilmaydi. Sozlash: Chrome yorlig'i `chrome.exe --kiosk-printing --kiosk <url>/terminal`, GoDEX standart printer qilib belgilanadi, drayverda qog'oz o'lchami 80×60 mm.
 
 ---
 
@@ -422,6 +430,6 @@ Printerli kompyuterga hech qanday dastur o'rnatilmaydi. Sozlash: Chrome yorlig'i
 | CRUD | `backend/app/crud/*` | Models, Schemas, `app.core.security` | API routes (7 singleton + `log_action`) |
 | Migrations | `backend/app/migrations/*`, `backend/alembic.ini` | `app.core.config.settings`, `Base.metadata` | deploy/`alembic upgrade head` |
 | Commands | `backend/app/commands/*` | settings, `local_session`, Models | bootstrap (superuser, organization + postlar) |
-| Tasks | `backend/app/tasks/*` | ARQ | worker process |
+| Tasks | `backend/app/tasks/*` | ARQ, `app.services.labels`, Redis | worker process |
 
 Naqshlar: **soft delete hamma joyda default** (BaseCRUD avtomatik filtr), **partial unique indekslar** tirik qatorlar orasida (`user`, `order.number`, `employee.badge_id`, `material`, `post.code`, `part_instance`, `part_route`), **VARCHAR-backed enumlar** (`db_enum`, migratsiyasiz yangi a'zo), **JSONB** moslashuvchan maydonlar uchun (cutmap, edges, machine_assignments, assigned_post_ids, survey, order_file.meta — anketa rasmlari jadvalsiz shu orqali bog'lanadi), **token_version** bilan JWT mass-invalidation, **E.164 telefon** username bilan teng huquqli login identifikatori, **MappedAsDataclass** ORM uslubi, **singleton CRUD instancelar**, **partial update** (`exclude_unset=True`), **idempotentlik** (`scan.client_event_id`, seed skriptlar).

@@ -72,6 +72,10 @@ class Settings(BaseSettings):
     SESSION_MAX_HOURS: int = 12  # operator shift timeout (TZ 8.5 E005)
     SCAN_UNDO_SECONDS: int = 60  # BEKOR QILISH window (TZ 8.6)
 
+    # === Printing (TZ 12.3 / 13.2) ===
+    # Yorliqlar bridge-agent navbati orqali USB GoDEX'ga boradi (G500-U'da tarmoq porti yo'q).
+    BRIDGE_TOKEN: str = ""  # non-empty enables the /ws/bridge endpoint for the shop-floor agent
+
     # === Startup probes ===
     STARTUP_RETRY_MAX_ATTEMPTS: int = 5
     STARTUP_RETRY_DELAY_SECONDS: int = 2

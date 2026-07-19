@@ -64,6 +64,7 @@ backend/app/logs/*.log
 
 # MES runtime artifacts — never commit
 backend/uploads/
+bridge-agent/print-queue.jsonl
 frontend/openapi.json
 
 # Local shop-floor data (project/SCX uploads, reference photos)

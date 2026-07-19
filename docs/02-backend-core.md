@@ -34,7 +34,7 @@ backend/app/main.py
 | `backend/app/core/utils/__init__.py` | Bo'sh package marker |
 | `backend/app/core/utils/queue.py` | arq Redis pool uchun global holder |
 | `backend/app/core/utils/rate_limit.py` | Redis asosidagi rate limiting (`RateLimiter`, `RateLimit`) |
-| `backend/app/tasks/__init__.py` | arq'ga ro'yxatga olinadigan vazifalar — hozircha faqat `ping` |
+| `backend/app/tasks/__init__.py` | arq'ga ro'yxatga olinadigan vazifalar (`ping`, `print_label`) + `PRINT_QUEUE_KEY` |
 
 ---
 
@@ -70,6 +70,7 @@ app = create_application(router=router, settings=settings)
 | Pagination | `DEFAULT_PAGE_SIZE=50`, `MAX_PAGE_SIZE=100` |
 | File storage | `UPLOAD_DIR="uploads"` (project/scx/label fayllar ildizi, TZ 2.4.3), `MAX_PROJECT_FILE_SIZE` = 50 MB |
 | Production floor | `STRICT_STAGE_ORDER=False` (E004 — oldingi bosqich tugamaguncha skanni bloklash, ixtiyoriy, TZ 7.2.5), `SESSION_MAX_HOURS=12` (operator smenasi timeout'i, TZ 8.5), `SCAN_UNDO_SECONDS=60` (BEKOR QILISH oynasi, TZ 8.6) |
+| Printing (TZ 12.3 / 13.2) | `BRIDGE_TOKEN=""` — bo'sh bo'lmasa sex bridge-agent'i uchun `/ws/bridge` endpoint yoqiladi. Yorliqlar faqat shu navbat orqali USB GoDEX'ga boradi (G500-U'da tarmoq porti yo'q), shuning uchun printer manzili sozlamasi yo'q |
 | Startup probes | `STARTUP_RETRY_MAX_ATTEMPTS=5`, `STARTUP_RETRY_DELAY_SECONDS=2` |
 | Threadpool | `THREADPOOL_TOKENS=100` (AnyIO sync-bridge slotlari) |
 | Reverse-proxy | `FORWARDED_ALLOW_IPS=["*"]` — X-Forwarded-* headerlariga ishoniladigan IP'lar |
@@ -229,36 +230,32 @@ class WorkerSettings:
 
 - `handle_signals` endi o'rnatilmaydi (default `True`): `docker stop`da SIGTERM to'g'ri ushlanib, bajarilayotgan joblar tugatiladi yoki qayta navbatga qo'yiladi.
 
-**Bog'lanishlar:** `config.py`, `setup.py` (`check_database_connection`), `backend/app/tasks/__init__.py` (`all_tasks = [ping]`).
-
-**Ayni paytda worker hech qanday biznes vazifasini bajarmaydi** — ro'yxatda faqat `ping` bor va ilova kodida birorta `enqueue_job(...)` chaqiruvi yo'q. Worker infratuzilma sifatida (arq pool, `WorkerSettings`, DB probe) tayyor turadi; birinchi haqiqiy fon vazifa paydo bo'lganda `all_tasks`ga qo'shiladi.
+**Bog'lanishlar:** `config.py`, `setup.py` (`check_database_connection`), `backend/app/tasks/__init__.py` (`all_tasks = [ping, print_label]`). Web-process `utils/queue.py`dagi pool orqali vazifalarni shu worker navbatiga qo'yadi.
 
 ### `backend/app/tasks/__init__.py` — ro'yxatga olingan vazifalar
 
 - `ping(ctx)` — liveness placeholder (arq kamida bitta funksiya talab qiladi), `"pong"` qaytaradi.
-- `all_tasks = [ping]` — modulda shundan boshqa hech narsa yo'q.
+- `PRINT_QUEUE_KEY = "mes:print:queue"` — bridge-agent shu Redis ro'yxatini bo'shatadi (TZ 2.2.2). `backend/app/api/routes/ws.py` ham shu konstantani import qiladi.
+- `print_label(ctx, instance_id)` — yorliq chiqarish vazifasi (TZ 7.1.4). Bitta DB sessiyasida (`local_session`) `services/labels.py`dan:
+  - `load_label_data(db, instance_id)` — `None` bo'lsa `"skip:{id}"` qaytarib chiqadi;
+  - `render_label_png(data)` — o'sha yorliqning 80×60 mm / 203 dpi rasteri; `base64` bilan kodlanadi.
 
-**Yorliq chop etish fon vazifasi emas.** Chop etishni brauzerning o'zi qiladi — pastdagi "Yorliq chop etish oqimi" bo'limiga qarang.
+  **Nega PNG:** GoDEX G500-U USB bilan ishlaydi va bridge-agent uni Windows drayveri (GDI) orqali chizadi — PNG printer dialektiga bog'liq emas.
 
-### Yorliq chop etish oqimi (TZ 7.1.4)
+  So'ng arq context'idagi Redis (`ctx["redis"]`) orqali `LPUSH mes:print:queue`, job JSON: `{"type": "print", "instance_id", "png"}` (`png` — base64 PNG). Natija `"queued:{id}"`. Redis mavjud bo'lmasa — xato loglanadi, `"lost:{id}"`.
 
-GoDEX G500-U faqat USB orqali ulanadi va chekni printer yonidagi odam (arrachi monoblokda) bosadi — shuning uchun masofaviy chop etish, navbat va agent yo'q. Printerli kompyuterga hech qanday dastur o'rnatilmaydi.
+**To'liq zanjir (TZ 2.2):**
 
 ```
-arrachi monoblokda "Chop etish"
-  ├── printLabelPng(instance_id)   # frontend/src/components/Terminal/CutmapView.tsx
-  │     └── yashirin iframe → GET /api/v1/terminal/labels/{instance_id}.png
-  │           └── iframe ichida window.print()
-  │                 └── Chrome --kiosk-printing → dialogsiz standart printer (USB GoDEX)
-  └── POST /api/v1/terminal/labels/{instance_id}
-        └── label_printed_at = now() + ws_manager.publish("label.printed") → TABLO
+terminal → POST /api/v1/terminal/labels/{instance_id}
+  → label_printed_at yoziladi + ws_manager.publish("label.printed", ...)
+  → queue.pool.enqueue_job("print_label", instance_id)
+  → arq worker: render_label_png → LPUSH mes:print:queue
+  → /ws/bridge (BRIDGE_TOKEN auth; BRPOP + ack talab qiladi, ack kelmasa RPUSH bilan qaytariladi)
+  → bridge-agent → print-queue.jsonl (durable) → Windows GDI (_print_png_gdi) → USB GoDEX G500-U
 ```
 
-- `GET /terminal/labels/{instance_id}.png` (`api/routes/terminal.py`, `render_instance_label`) — `services/labels.py`dagi `load_label_data(db, instance_id)` + `render_label_png(data)`: 80×60 mm / 203 dpi (8 dot/mm → 640×480 px) 1-bit PNG. `services/labels.py`da faqat shu to'plam bor: `LabelData`, `load_label_data`, `_n`, `render_label_png`.
-- `POST /terminal/labels/{instance_id}` (`print_instance_label`) — qog'ozga hech narsa yubormaydi: `label_printed_at`ni yozadi va `label.printed` eventini `ws_manager` orqali tarqatadi. Frontend ikkalasini parallel chaqiradi.
-- iframe `srcdoc`ida `@page{size:80mm 60mm;margin:0}` — printer drayveri qog'oz o'lchamini shu yerdan oladi.
-
-**Monoblokni sozlash:** Chrome yorlig'i `chrome.exe --kiosk-printing --kiosk <url>/terminal` + GoDEX standart printer qilib belgilanadi + drayverda qog'oz 80×60 mm.
+Bridge-agent faqat printer ulangan kompyuterga o'rnatiladi va GoDEX printerini nomidan o'zi topadi (`_detect_printer`, nomida "godex" bor Windows printeri); `PRINTER_NAME` env faqat qo'lda override uchun. Menejer, texnolog va boshqa terminallarga hech narsa o'rnatilmaydi — ular brauzerdan tugmani bosadi.
 
 ---
 
@@ -275,7 +272,7 @@ arrachi monoblokda "Chop etish"
   - `_dispatch(event)` — `wants()`ga mos klientlarga `send_json`; yuborishda xato bergan **o'lik socketlar ro'yxatdan tozalanadi**.
   - `start_listener(redis)` / `stop_listener()` — lifespan boshqaradigan pub/sub listener task: `mes:events`ga subscribe bo'lib, kelgan xabarlarni `_dispatch`ga uzatadi; shutdown'da unsubscribe + cancel.
 
-**Bog'lanishlar:** `setup.py` (lifespan listener'ni ishga tushiradi/to'xtatadi), `backend/app/api/routes/ws.py` — faylda yagona endpoint `/ws/events` bor: cookie yoki `?token=` orqali autentifikatsiya qilib, foydalanuvchi roliga qarab `scope` (`terminal`/`tablo`/`dashboard`) va `post_id`/`machine_id` bilan `WsClient` ro'yxatga oladi. Mutatsiya qiluvchi API endpointlar `ws_manager.publish(...)` orqali event yuboradi.
+**Bog'lanishlar:** `setup.py` (lifespan listener'ni ishga tushiradi/to'xtatadi), `backend/app/api/routes/ws.py` (WebSocket endpointlar klientlarni ro'yxatga oladi); mutatsiya qiluvchi API endpointlar `ws_manager.publish(...)` orqali event yuboradi.
 
 ---
 
@@ -287,7 +284,7 @@ arrachi monoblokda "Chop etish"
 pool: ArqRedis | None = None
 ```
 
-Pool `setup.py`dagi lifespan'da (`create_redis_queue_pool`) to'ldiriladi va shutdown'da yopiladi; `health.py` va `setup.py` uni ping uchun ishlatadi. Vazifa qo'ymoqchi bo'lgan kod `queue.pool.enqueue_job(...)`ni shu modul orqali chaqirishi kerak — hozircha bunday chaqiruv ilovada yo'q.
+Pool `setup.py`dagi lifespan'da (`create_redis_queue_pool`) to'ldiriladi va shutdown'da yopiladi. Vazifa qo'ymoqchi bo'lgan kod `queue.pool.enqueue_job(...)`ni shu modul orqali chaqiradi; `health.py` va `setup.py` ping uchun ishlatadi.
 
 ---
 

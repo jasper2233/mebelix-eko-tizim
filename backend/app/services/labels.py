@@ -1,8 +1,8 @@
 """Yorliq renderi (TZ 5.8.2 / 13.2.2): 80×60 mm termal yorliq, 203 dpi (8 dot/mm).
 
-render_label_png PNG chizadi — terminal uni brauzerda chop etadi (Chrome
---kiosk-printing bilan dialogsiz, USB GoDEX standart printer). Maket MES PRO
-chekiga (chek/IMG_4925.JPG) va GibSaw shablonlariga asoslangan.
+render_label_png PNG chizadi — bridge-agent uni USB GoDEX'ga Windows drayveri (GDI)
+orqali chiqaradi. Maket MES PRO chekiga (chek/IMG_4925.JPG) va GibSaw shablonlariga
+asoslangan. EZPL yo'q: G500-U'da tarmoq porti yo'q, RAW dialekt kerak emas.
 """
 
 from dataclasses import dataclass
@@ -90,7 +90,8 @@ def _n(v: float) -> str:
 # --- PNG render: GibSaw shablonlari asosidagi maket (80x60mm), mm-koordinatalarda ---
 # Manba ikkita: Universal.lbl (kromka konturdan tashqarida, QR/eskiz joylashuvi, logo) va
 # mebelix.lbl (ustunlar tartibi, index_name "12_bok"). Har joyda qaysi biridan olingani yozilgan.
-# QR kutubxona bilan chiziladi — printer dialektiga bog'liq emas.
+# GDI chop etish (bridge-agent PRINTER_NAME rejimi) va brauzer ko'rinishi uchun
+# yagona manba. QR kutubxona bilan chiziladi — printer dialektiga bog'liq emas.
 
 _FONT_REGULAR = (
     "C:/Windows/Fonts/arial.ttf",  # Windows dev

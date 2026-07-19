@@ -2,9 +2,12 @@
 
 Holat: **2026-07-19** tekshiruvi (oxirgi to'liq upgrade: 2026-07-09). Barcha paketlar 2026-07-09 dagi eng so'ngi stable versiyaga ko'tarilgan (quyidagi 3 ta ataylab qilingan istisno bilan).
 
-**2026-07-19 tekshiruvi:** 2026-07-11 (59a7f59) dan HEAD (8d02c7d) gacha bo'lgan 37 ta commitda `backend/pyproject.toml`, `backend/uv.lock`, `frontend/package.json`, `frontend/package-lock.json` fayllarining birortasi ham **o'zgarmagan**. Buyurtma anketasi (`anketa.$orderId.tsx`, `Order.survey`), arrachi terminali qayta dizayni (`SheetSvg.tsx`, `CutmapView.tsx`) va GoDEX yorliq chop etish — hammasi mavjud bog'liqliklar ustiga qurilgan, bitta ham yangi npm/PyPI paketi qo'shilmagan.
+**2026-07-19 tekshiruvi:** 2026-07-11 (59a7f59) dan HEAD gacha bo'lgan 38 ta commitda `backend/pyproject.toml`, `backend/uv.lock`, `frontend/package.json`, `frontend/package-lock.json` fayllarining birortasi ham **o'zgarmagan**. Buyurtma anketasi (`anketa.$orderId.tsx`, `Order.survey`), arrachi terminali qayta dizayni (`SheetSvg.tsx`, `CutmapView.tsx`) va GoDEX yorliq chop etish — hammasi mavjud bog'liqliklar ustiga qurilgan, bitta ham yangi npm/PyPI paketi qo'shilmagan.
 
-Manifestdan **tashqaridagi** yagona bog'liqlik — `render_label_png()` uchun tizim TrueType shriftlari (Docker image'da o'rnatilmagan). Quyida alohida bo'limda. Yorliqni qog'ozga chiqarish hech qanday paket talab qilmaydi: buni brauzerning o'zi qiladi (o'sha bo'limga qarang).
+Yangi bog'liqliklar faqat manifestdan **tashqarida** paydo bo'ldi va ikkalasi ham quyida alohida bo'limlarda yozilgan:
+
+- bridge-agent'ning Windows GDI chop etish yo'li — `pywin32` + `pillow` (repo'da manifest fayli yo'q);
+- `render_label_png()` uchun tizim TrueType shriftlari (Docker image'da o'rnatilmagan).
 
 ## Yangilash tarixi (2026-07-09 upgrade)
 
@@ -50,9 +53,9 @@ Bu uchtasining **haqiqiy ishlatilishi** (99cebc3 dagi `render_label_png()` qayta
 - **qrcode** — `qrcode.make(d.qr_text, box_size=..., border=0)` shu funksiya ichida. Pillow o'rnatilgani uchun PIL image qaytaradi va to'g'ridan-to'g'ri yorliq rasmiga joylashtiriladi.
 - **tzdata** — `zoneinfo.ZoneInfo("Asia/Tashkent")`, `load_label_data()` da `printed_at` qiymati uchun (modul darajasidagi import).
 
-`labels.py` da shu uchtadan boshqa hech narsa yo'q: modul `LabelData`, `load_label_data()`, `_n()` va `render_label_png()` dan iborat — PNG maketi yagona chiqish formati, printer dialekti (EZPL va h.k.) generatsiya qilinmaydi.
+`labels.py` ning butun tashqi yuzasi shu uchtaga tayanadi: `LabelData`, `load_label_data()`, `_n()`, `render_label_png()` — boshqa paket talab qilmaydi. `print_label` taski (`backend/app/tasks/__init__.py`) PNG'ni base64 qilib Redis navbatiga (`mes:print:queue`) qo'yadi, job JSON'i `{"type", "instance_id", "png"}` — printer dialekti generatsiya qilinmaydi, shuning uchun task tomonda ham qo'shimcha bog'liqlik yo'q.
 
-Dev group'dagi `websockets>=16.0` `backend/app` da hech qayerda import qilinmaydi, lekin **runtime uchun kerak**: `uvicorn` bu yerda `[standard]` extrasisiz o'rnatilgan, WS protokol implementatsiyasini esa `uvicorn/protocols/websockets/auto.py` `import websockets` bilan tanlaydi. Paket bo'lmasa `AutoWebSocketsProtocol` `None` bo'lib qoladi va `/ws/events` ishlamaydi. Image'da mavjud, chunki `backend/Dockerfile` `uv sync --frozen` ni `--no-dev` siz chaqiradi — dev group ham o'rnatiladi. Agar dev group tozalansa, `websockets` asosiy `dependencies` ga ko'chirilishi kerak.
+Dev group'dagi `websockets>=16.0` `backend/app` ichida umuman import qilinmaydi — repo bo'yicha yagona `import websockets` `bridge-agent/agent.py` da.
 
 ### Frontend (`frontend/package.json` + `package-lock.json`)
 
@@ -79,23 +82,23 @@ Tekshiruv: `npm run build` (tsc + vite) ✅ · `bash scripts/generate-client.sh`
 
 **2026-07-19:** `frontend/src` dagi barcha tashqi importlar `package.json` da e'lon qilingan — e'lon qilinmagan (phantom) bog'liqlik yo'q. Jadvalda ko'rsatilmagan, lekin ishlatiladigan runtime paketlar: `qrcode.react` 4.2.0 (`components/Terminal/CutmapView.tsx`, `routes/_layout/employees.tsx`), `react-day-picker` 10.0.1 (`ui/date-picker`, anketa sanalarida), `sonner` 2.0.7 (`useCustomToast`). Yangi `ui/textarea.tsx` — xom `<textarea>` ustidagi wrapper, Radix paketi talab qilmaydi; `SheetSvg.tsx` faqat React va inline SVG ishlatadi (chizma kutubxonasi yo'q).
 
+## Bridge-agent bog'liqliklari (manifestsiz)
+
+`bridge-agent/` da `pyproject.toml` ham, `requirements.txt` ham **yo'q** — bog'liqliklar `agent.py` docstring'ida va `README.md` da bir xil buyruq sifatida yozilgan: `pip install websockets pywin32 pillow`. Sabab: bu printer ulangan kompyuterga alohida qo'yiladigan bitta fayllik skript, backend venv'iga kirmaydi.
+
+| Paket | Nima uchun |
+| --- | --- |
+| websockets | `uplink()` — serverga outbound WS (`/api/v1/ws/bridge`), modul darajasidagi yagona tashqi import |
+| pywin32 | `win32print` — `_detect_printer()` da printerni topish va `_print_png_gdi()` da DEVMODE; `win32gui`, `win32ui`, `win32con` — GDI konteksti |
+| pillow | `PIL.Image`, `PIL.ImageWin` — serverdan kelgan base64 PNG'ni GDI kontekstiga chizish |
+
+Uchtasi ham kerak: chiqish yo'li bitta — `_print_png_gdi()` (Windows drayveri, DEVMODE'da qog'oz 80×60 mm ga majburlanadi). `pywin32` va `pillow` importlari funksiya ichida, lekin ularsiz `send_to_printer()` ishlamaydi, ya'ni agent amalda Windows'ga bog'langan.
+
+Printer nomi sozlanmaydi: `_detect_printer()` `win32print.EnumPrinters()` bilan nomida "godex" bor lokal printerni qidiradi, `PRINTER_NAME` env faqat qo'lda override uchun. Agent env'lari to'liq ro'yxati — `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME` (ixtiyoriy), `QUEUE_FILE`.
+
+Agent faqat printer ulangan kompyuterga o'rnatiladi. Menejer, texnolog va boshqa post terminallarida hech qanday paket kerak emas — ular brauzerdan tugmani bosadi.
+
 ## Tizim darajasidagi bog'liqliklar (paket menejeridan tashqari)
-
-### Chop etish: paket emas, sozlama
-
-Printerli kompyuterga (arrachi monobloki) **hech qanday dastur o'rnatilmaydi** — na agent, na drayverdan boshqa narsa. Chop etish butunlay brauzerda: `CutmapView.tsx` dagi `printLabelPng()` yashirin `<iframe>` ochadi (`srcdoc` ichida `@page{size:80mm 60mm;margin:0}` va `GET /api/v1/terminal/labels/{instance_id}.png`), rasm yuklangach `win.print()` chaqiradi. Parallel `POST /api/v1/terminal/labels/{instance_id}` faqat `label_printed_at` ni yozadi va `ws_manager.publish("label.printed", ...)` qiladi (TABLO uchun) — navbat ham, arq taski ham yo'q.
-
-Shuning uchun bu bo'g'inda PyPI/npm bog'liqligi o'rniga uchta sozlama turadi:
-
-| Nima | Qiymat | Nima uchun |
-| --- | --- | --- |
-| Chrome yorlig'i | `chrome.exe --kiosk-printing --kiosk <url>/terminal` | `--kiosk-printing` chop etish dialogini o'chiradi — `win.print()` to'g'ridan-to'g'ri standart printerga ketadi |
-| Standart printer | GoDEX G500-U (USB) | G500-U faqat USB; chekni printer yonidagi odam bosadi, masofaviy chop etish talab qilinmaydi |
-| Drayver qog'ozi | 80×60 mm | `render_label_png()` aynan shu o'lchamda chizadi (203 dpi → 640×480 px); mos kelmasa drayver masshtablaydi |
-
-`--kiosk-printing` siz ochilgan brauzerda oqim baribir ishlaydi — faqat operator har safar chop etish dialogini tasdiqlaydi.
-
-### Shriftlar
 
 `render_label_png()` PyPI paketlaridan tashqari **OS shriftlariga** bog'liq. `labels.py` dagi qidiruv ro'yxatlari:
 
@@ -151,3 +154,5 @@ bash scripts/generate-client.sh
 ```
 
 `npm outdated` major bump ko'rsatsa — `package.json` dagi caret versiyani qo'lda ko'tarish kerak (caret major'dan o'tkazmaydi). Yuqoridagi 3 ceiling'ni tekshirishni unutmang.
+
+Bridge-agent bu siklga kirmaydi: uning `websockets` / `pywin32` / `pillow` paketlari printer ulangan kompyuterda alohida `pip` bilan boshqariladi, lock fayli yo'q.

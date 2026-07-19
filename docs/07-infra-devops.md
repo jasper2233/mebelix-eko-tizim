@@ -1,6 +1,6 @@
 # 07 — Infra & DevOps (Docker, Caddy, Makefile, scripts, chop etish, CI hooks)
 
-Bu hujjat MebeliX MES loyihasining infratuzilma va DevOps qatlamini tavsiflaydi: Docker Compose stacklari (lokal va production), backend/frontend Dockerfile'lar, Caddy reverse proxy, nginx static server, `Makefile` buyruqlari, yordamchi scriptlar, sexdagi chop etish infratuzilmasi (Chrome kiosk-printing + GoDEX G500-U), pre-commit hooklar, CI/CD va environment konfiguratsiyasi.
+Bu hujjat MebeliX MES loyihasining infratuzilma va DevOps qatlamini tavsiflaydi: Docker Compose stacklari (lokal va production), backend/frontend Dockerfile'lar, Caddy reverse proxy, nginx static server, `Makefile` buyruqlari, yordamchi scriptlar, sexdagi chop etish infratuzilmasi (bridge-agent + GoDEX), pre-commit hooklar, CI/CD va environment konfiguratsiyasi.
 
 ## Umumiy arxitektura
 
@@ -115,7 +115,7 @@ Backend yuklangan fayllarni diskka yozadi (`backend/app/core/config.py`: `UPLOAD
 
 DB'da faqat nisbiy yo'l saqlanadi (`OrderFile.path`), o'qishda `Path(settings.UPLOAD_DIR).resolve() / row.path` bilan qayta yig'iladi.
 
-**Muhim:** hech qaysi compose faylda `uploads` uchun volume yoki bind-mount **yo'q** — `docker-compose.local.yml` faqat `./backend/app` va `./scripts` ni mount qiladi, `docker-compose.prod.yml` esa `api`/`worker` uchun umuman volume bermaydi. CI `rsync` ham `uploads` ni exclude qiladi. Natijada prod'da yuklangan fayllar konteyner qatlamida yashaydi va **har deploy'da (image qayta build + konteyner almashishi) yo'qoladi** — DB'dagi `OrderFile` yozuvlari qoladi, fayl esa yo'q bo'ladi (`download_order_file` "Fayl diskda topilmadi" beradi). Doimiy saqlash kerak bo'lganda `api` ga named volume (`/app/backend/uploads`) qo'shilishi kerak — `uploads/` ga yozish ham, o'qish ham faqat `api` da bo'ladi (`.project` parse, SCX, anketa rasmlari); `worker` bu katalogga tegmaydi.
+**Muhim:** hech qaysi compose faylda `uploads` uchun volume yoki bind-mount **yo'q** — `docker-compose.local.yml` faqat `./backend/app` va `./scripts` ni mount qiladi, `docker-compose.prod.yml` esa `api`/`worker` uchun umuman volume bermaydi. CI `rsync` ham `uploads` ni exclude qiladi. Natijada prod'da yuklangan fayllar konteyner qatlamida yashaydi va **har deploy'da (image qayta build + konteyner almashishi) yo'qoladi** — DB'dagi `OrderFile` yozuvlari qoladi, fayl esa yo'q bo'ladi (`download_order_file` "Fayl diskda topilmadi" beradi). Doimiy saqlash kerak bo'lganda `api` va `worker` ga umumiy named volume (`/app/backend/uploads`) qo'shilishi kerak — ikkalasi ham bir xil ko'rishi shart, chunki parse `api` da, yorliq `worker` da ishlaydi.
 
 ### `caddy/Caddyfile` — reverse proxy va TLS
 
@@ -192,59 +192,64 @@ Server cron'ida kunlik ishlaydi (`0 2 * * *`). Oqim: `pg_dump` (db konteyneri ic
 
 ---
 
-## Chop etish infratuzilmasi — Chrome kiosk-printing va GoDEX G500-U
+## Chop etish infratuzilmasi — bridge-agent va GoDEX G500-U
 
-GoDEX G500-U faqat **USB** bilan ishlaydi va yorliqni printer yonidagi odam — arrachi o'z monoblogida — bosadi. Masofaviy chop etish talab qilinmaydi, shuning uchun butun oqim brauzerda kechadi: **printerli kompyuterga qo'shimcha dastur o'rnatilmaydi**, GoDEX drayveri va Chrome yetarli.
+Printer sexda, server esa masofada (`mes.mebelix.uz`) turadi. GoDEX G500-U **faqat USB** — unda tarmoq porti umuman yo'q, ya'ni printerga IP orqali murojaat qilish imkoni yo'q. Shuning uchun oraliqda **bridge-agent** — printer ulangan kompyuterda ishlaydigan, serverga **chiquvchi** (outbound) WebSocket ochadigan bitta Python fayl (`bridge-agent/agent.py`). Sex tarmog'ida hech qanday port ochilmaydi, oq IP kerak emas.
+
+Agent faqat **printer ulangan bitta kompyuterga** o'rnatiladi; menejer, texnolog va boshqa post terminallariga hech narsa kerak emas — ular brauzerdan tugmani bosadi.
 
 ### Zanjir (uchdan-uchgacha)
 
 ```
-Arrachi monoblok — "Chop etish" tugmasi     (frontend/src/components/Terminal/CutmapView.tsx)
-  ├── printLabelPng(instance_id)
-  │     yashirin iframe (srcdoc, @page{size:80mm 60mm;margin:0})
-  │       <img crossorigin="use-credentials"
-  │            src="{BASE}/api/v1/terminal/labels/{instance_id}.png">
-  │       img yuklangach → win.focus() → win.print()
-  │         → Chrome --kiosk-printing bo'lsa DIALOGSIZ standart printerga (USB GoDEX)
-  │       2 s dan keyin iframe DOM'dan o'chiriladi
-  └── POST /api/v1/terminal/labels/{instance_id}    (backend/app/api/routes/terminal.py)
-        ├── instance.label_printed_at = now()
-        └── ws_manager.publish("label.printed", {instance_id, qr_text})  → TABLO va boshqa brauzerlar
-
-GET /api/v1/terminal/labels/{instance_id}.png        (backend/app/api/routes/terminal.py)
-  load_label_data(db, instance_id) → render_label_png(data) → Response(image/png)
-                                                     (backend/app/services/labels.py)
+Terminal (arrachi)
+  POST /api/v1/terminal/labels/{instance_id}          (backend/app/api/routes/terminal.py)
+    ├── instance.label_printed_at = now()
+    ├── ws_manager.publish("label.printed", …)         → brauzerlarga live yangilanish
+    └── arq enqueue_job("print_label", instance_id)
+          ↓
+  print_label task                                     (backend/app/tasks/__init__.py)
+    ├── load_label_data(db, instance_id)               (backend/app/services/labels.py)
+    ├── render_label_png(data)      → PNG, base64
+    └── redis.lpush("mes:print:queue", job)            → job = {type, instance_id, png}
+          ↓
+  GET /api/v1/ws/bridge?token=…                        (backend/app/api/routes/ws.py)
+    brpop("mes:print:queue", 5) → send → ack kutish → yo'q bo'lsa rpush (qaytarib qo'yish)
+          ↓
+  bridge-agent (sex)                                   (bridge-agent/agent.py)
+    uplink() → local_enqueue(job) → ack → FLUSH_EVENT.set()
+    flusher() → send_to_printer(png)                   → Windows GDI → USB GoDEX
 ```
 
-Ikki so'rov **parallel** ketadi: POST faqat holatni yozib TABLO'ga xabar beradi, qog'ozga chiqarish esa iframe ichida brauzerning o'z print yo'li bilan bo'ladi. Chop etish ARQ'ga umuman tegmaydi — `backend/app/tasks/__init__.py` da faqat `ping` bor (ARQ hech bo'lmasa bitta registratsiyalangan funksiya talab qiladi), `worker` servisi yorliqda ishtirok etmaydi.
+Job'ning Redis'dagi kaliti — `PRINT_QUEUE_KEY = "mes:print:queue"` (`backend/app/tasks/__init__.py`).
 
-Rasm `crossorigin="use-credentials"` bilan olinadi — endpoint `TerminalUser` autentifikatsiyasini talab qiladi, iframe esa cookie'ni shu atribut bilan yuboradi.
+### Ishonchlilik: hech bir yorliq yo'qolmaydi
 
-### Monoblokni sozlash (bir martalik)
+Zanjirning har bo'g'inida jobni yo'qotmaslik choralari bor:
 
-1. GoDEX G500-U USB'ga ulanadi, drayveri o'rnatiladi va **standart printer** qilib qo'yiladi (Printers & scanners → Set as default) — `--kiosk-printing` aynan standart printerga yuboradi.
-2. Drayver sozlamalarida qog'oz o'lchami **80×60 mm** qilinadi (Printing preferences → Stock/Paper). Iframe `@page{size:80mm 60mm;margin:0}` beradi, lekin drayverdagi stock mos kelmasa yorliq siljib chiqadi.
-3. Chrome yorlig'i shu bayroqlar bilan ochiladi:
+- **Server → agent.** `ws_bridge` jobni `brpop` bilan Redis'dan **oladi** (ya'ni navbatdan chiqadi), keyin yuboradi va `{"ok": true}` ack kutadi (`asyncio.wait_for`, 15s). Ack kelmasa yoki `ok` false bo'lsa — `rpush` bilan navbatga **qaytariladi**, ulanish esa uziladi.
+- **Agent tomonda.** `uplink()` jobni avval `local_enqueue()` bilan diskka yozadi (`print-queue.jsonl`, JSONL append), **keyin** ack yuboradi. Ya'ni server jobni faqat u sexdagi diskda turgani aniq bo'lgach unutadi — agent yoki kompyuter o'chsa ham job saqlanadi.
+- **Printer o'chiq bo'lsa.** `flusher()` navbatni ketma-ket chiqaradi; birinchi muvaffaqiyatsiz jobda to'xtaydi va **qolgan barchasini** `local_rewrite()` bilan faylga qaytarib yozadi (tartib buzilmaydi), keyin `"Printer kutilmoqda — navbatda N ta yorliq"` deb log yozadi.
+- **Bo'sh vaqtda.** Agent oddiy holatda 5 sekundda bir sikl uradi, lekin yangi job kelganda `FLUSH_EVENT.set()` flusher'ni **darhol** uyg'otadi — kutish yo'q.
+- **Yarim-ochiq TCP.** Server jobsiz 5 sekunddan keyin `{"type": "ping"}` yuboradi va javob kutadi; agent unga `{"ok": true}` bilan javob beradi. Sex tarmog'ida "o'lgan" ulanish tez aniqlanadi. Agent tomonda `websockets.connect(..., ping_interval=30)`, uzilganda 5s backoff bilan qayta ulanish.
 
-```
-chrome.exe --kiosk-printing --kiosk https://mes.mebelix.uz/terminal
-```
+### Autentifikatsiya
 
-`--kiosk-printing` chop etish dialogini butunlay olib tashlaydi — `window.print()` to'g'ridan-to'g'ri standart printerga ketadi. Bayroqsiz oqim baribir ishlaydi, lekin har yorliqda dialog chiqadi va operator "Print" bosishi kerak. `--kiosk` esa terminalni to'liq ekranda ushlaydi (frontend'ning o'z fullscreen darvozasi `display-mode: fullscreen` ni ham tan oladi, `frontend/src/routes/terminal.tsx`).
+`/ws/bridge` faqat serverdagi `.env` da `BRIDGE_TOKEN` bo'sh bo'lmaganda ishlaydi; token `secrets.compare_digest` bilan solishtiriladi, mos kelmasa WebSocket `code=4401` bilan yopiladi. Token: `openssl rand -hex 24`, server `.env` va agent env'ida **bir xil** bo'lishi shart.
 
-Avtostart: yorliq `shell:startup` katalogiga qo'yiladi.
+### Yorliq PNG — bitta format
 
-### Yorliq PNG — bitta render yo'li
+`backend/app/services/labels.py` da yorliqning yagona chiqish formati bor:
 
-`backend/app/services/labels.py` da `LabelData` (DB'dan `load_label_data` bilan yig'iladi) va undan chiqadigan yagona format:
+| Funksiya | Chiqish | Kim ishlatadi |
+|---|---|---|
+| `load_label_data(db, instance_id)` | `LabelData` (DB'dan yig'iladi, cutmap'dagi haqiqiy teshiklar bilan) | `print_label` task va PNG endpoint uchun umumiy manba |
+| `render_label_png(d, scale=1)` | 80×60 mm, 203 dpi (8 dot/mm → 640×480 px), **1-bit** PNG | agent'ning Windows GDI yo'li; `GET /api/v1/terminal/labels/{id}.png` (brauzerdan istalgan printerga) |
 
-| Funksiya | Chiqish |
-|---|---|
-| `render_label_png(d, scale=1)` | 80×60 mm, 203 dpi (8 dot/mm → 640×480 px), **1-bit** PNG |
+`print_label` task jobga faqat base64 `png` soladi — job JSON: `{"type": "print", "instance_id", "png"}`. PNG printer dialektiga bog'liq emas — server hech qanday xom printer formatini generatsiya qilmaydi, chizishni Windows drayveri bajaradi.
 
 PNG maketi GibSaw `mebelix.lbl` ga taqlid qiladi: chap ustun — logo, `Formatka` + zakaz kodi, detal kodi, loyiha nomi, 2×2 kromka jadvali (tagchiziq bilan), katta `L x W = count`, `N_detal` nomi, XNC belgilari (`П`=paz, `Ф`=freza), material va sana; o'ng ustun — QR (tepada, `qrcode` kutubxonasi bilan chiziladi) va vertikal detal eskizi. Eskizda kromka konturdan 1 mm tashqarida qalin chiziq bilan, `d.texture` bo'lsa uzunlik bo'ylab 3 ta chiziq, `d.holes` (cutmap'dan olingan haqiqiy teshiklar) aylana/qirra tikkalari bilan chiziladi.
 
-Termoprinter uchun ikki qat'iy qoida kodga o'rnatilgan: `draw.fontmode = "1"` (antialiasing o'chiq) va yakuniy `img.convert("L").point(… , "1")` — har piksel sof qora yoki oq. Aks holda drayver dither qiladi va QR skanerlanmay qoladi. Shuningdek barcha chiziqlar `width=max(2, scale)` — drayver rasmni kichraytirganda 1 px chiziq yo'qolib ketadi.
+Termoprinter uchun ikki qat'iy qoida kodga o'rnatilgan: `draw.fontmode = "1"` (antialiasing o'chiq) va yakuniy `img.convert("L").point(… , "1")` — har piksel sof qora yoki oq. Aks holda drayver dither qiladi va QR skanerlanmay qoladi. Shuningdek barcha chiziqlar `width=max(2, scale)` — GDI kichraytirishda 1 px chiziq yo'qolib ketadi.
 
 **Assetlar** (`backend/app/assets/`, image ichiga `COPY backend /app/backend` bilan tushadi):
 
@@ -253,12 +258,60 @@ Termoprinter uchun ikki qat'iy qoida kodga o'rnatilgan: `draw.fontmode = "1"` (a
 | `label-logo.png` | yorliq tepa-chapida, 160 threshold bilan 1-bit qilinadi; ochib bo'lmasa `MEBELIX` matni fallback |
 | `label-icon-drill.png` | teshik bor detallarda sverlo ikonkasi (alpha oq fonga flatten qilinadi); ochib bo'lmasa `С` harfi fallback |
 
-**Shrift eslatmasi.** `_FONT_REGULAR` / `_FONT_BOLD` ro'yxatlari Windows (`C:/Windows/Fonts/arial.ttf`, `arialbd.ttf`) va Debian DejaVu yo'llarini sinab ko'radi, hech biri topilmasa `ImageFont.load_default()` ga tushadi. `backend/Dockerfile` final stage'ida faqat `curl` o'rnatiladi — `fonts-dejavu-core` yo'q. PNG server tomonda (`GET /labels/{id}.png`) render qilingani uchun yorliq TTF shriftda chiqishi kerak bo'lsa, image'ga shrift paketi qo'shilishi shart.
+**Shrift eslatmasi.** `_FONT_REGULAR` / `_FONT_BOLD` ro'yxatlari Windows (`C:/Windows/Fonts/arial.ttf`, `arialbd.ttf`) va Debian DejaVu yo'llarini sinab ko'radi, hech biri topilmasa `ImageFont.load_default()` ga tushadi. `backend/Dockerfile` final stage'ida faqat `curl` o'rnatiladi — `fonts-dejavu-core` yo'q. Server tomonda PNG (`/labels/{id}.png` endpointi va `print_label` task'idagi `render_label_png`) TTF shriftda chiqishi kerak bo'lsa, image'ga shrift paketi qo'shilishi kerak.
 
-### Yorliqdan tashqari chiqish yo'llari
+### Chiqish yo'li — bitta: Windows GDI
 
-- **SCX/CNC fayllar** — stanok kompyuterida brauzer orqali `GET /api/v1/terminal/files/{file_id}` bilan yuklab olinadi (TZ 12.5), yorliq yo'liga aloqasi yo'q.
-- **Kesish xaritalari** — `CutmapView` dagi `printAllMaps()` yangi oyna ochib har listni o'z sahifasida chiqaradi (`@page{size:A4 landscape;margin:8mm}`): bu yorliq printeri emas, oddiy A4 printer uchun.
+`send_to_printer(png_b64)` da bitta yo'l bor: `_print_png_gdi()` — win32ui/PIL orqali Windows drayveriga rasm chizish. Bu GibSaw'ning "Used the printer driver" rejimi bilan bir xil; admin huquqi ham, printer share ham kerak emas.
+
+Printer **avtomatik topiladi**: `_detect_printer()` `win32print.EnumPrinters(PRINTER_ENUM_LOCAL)` bo'yicha yuradi va nomida `godex` bo'lgan birinchi lokal printerni oladi. Shuning uchun odatdagi o'rnatishda hech qanday printer sozlamasi yozilmaydi — GoDEX drayveri o'rnatilgan bo'lsa bas, printer almashsa ham config o'zgarmaydi. `PRINTER_NAME` env'i faqat qo'lda override uchun (avto-topish o'rniga).
+
+Printer topilmasa job navbatda qoladi va log'da `GoDEX printer topilmadi — drayver o'rnatilganini tekshiring` xatosi chiqadi. `png` maydonisiz job (eski format yozuvi) navbatni to'smasligi uchun tashlab yuboriladi.
+
+**`_print_png_gdi()` nima qiladi.** Windows printer drayveri default qog'oz o'lchamiga (ko'pincha A4 yoki roll default'i) qarab yorliqni noto'g'ri joylashtiradi, shuning uchun DEVMODE qo'lda majburlanadi:
+
+1. `win32print.GetPrinter(h, 2)["pDevMode"]` — drayverning joriy DEVMODE'i olinadi;
+2. `PaperSize = 256` (`DMPAPER_USER`), `PaperWidth = 800`, `PaperLength = 600` — birlik **0.1 mm**, ya'ni 80×60 mm; `Orientation = 1` (portret);
+3. `dm.Fields |= DM_PAPERSIZE | DM_PAPERWIDTH | DM_PAPERLENGTH | DM_ORIENTATION` — drayverga bu maydonlar haqiqiy ekani bildiriladi;
+4. `win32gui.CreateDC("WINSPOOL", PRINTER_NAME, dm)` bilan shu DEVMODE'li DC ochiladi;
+5. rasm `HORZRES`/`VERTRES` ga proporsional (`min` scale) sig'diriladi va `ImageWin.Dib(img).draw(...)` bilan `StartDoc`/`StartPage` ichida chiziladi.
+
+Printer xatosi ushlanadi va `False` qaytariladi — job navbatda qoladi, yo'qolmaydi.
+
+### Agent o'rnatish
+
+Faqat printer USB bilan ulangan Windows kompyuterga (sexdagi terminal monoblokning o'zi ham bo'ladi). Uch qadam (`bridge-agent/README.md`):
+
+1. **GoDEX drayverini o'rnatish** — printer USB'ga ulangan holda. Agent printerni nomidan o'zi topadi, boshqa sozlash yo'q.
+2. **Python 3.11+ va kutubxonalar:**
+
+   ```bash
+   pip install websockets pywin32 pillow
+   ```
+
+   `pywin32` (`win32print`, `win32ui`, `win32gui`, `win32con`) va `pillow` — GDI chop etish uchun; ularsiz agent ishlamaydi.
+3. **Ishga tushirish:**
+
+   ```powershell
+   $env:MES_URL="wss://mes.mebelix.uz"
+   $env:BRIDGE_TOKEN="<serverdagi BRIDGE_TOKEN>"
+   python agent.py
+   ```
+
+Log'da `Printer: Godex G500` va `Serverga ulandi` chiqsa — tayyor. Printer topilmasa log `Printer: TOPILMADI — GoDEX drayverini o'rnating` beradi.
+
+Agent env'lari (bular **server `.env`** ida emas — printerli mashinada):
+
+| Env | Default | Tavsif |
+|---|---|---|
+| `MES_URL` | `ws://localhost:8000` | server manzili; agent oxiriga `/api/v1/ws/bridge?token=…` qo'shadi |
+| `BRIDGE_TOKEN` | — | majburiy; bo'sh bo'lsa agent `SystemExit` bilan to'xtaydi |
+| `PRINTER_NAME` | avto-topish (`godex`) | printer nomini qo'lda berish — faqat avto-topish mos kelmaganda |
+| `QUEUE_FILE` | `./print-queue.jsonl` | lokal durable navbat fayli |
+
+Doimiy ishlashi uchun shu buyruqni Windows Task Scheduler'da "At startup" trigger bilan ro'yxatdan o'tkazing. Navbat fayli `.gitignore` da (`bridge-agent/print-queue.jsonl`).
+
+Eslatma: SCX/CNC fayllar bridge orqali **o'tmaydi** — ular stanok kompyuterida brauzer orqali yuklab olinadi (TZ 12.5). Bridge faqat yorliq chop etish uchun.
 
 ---
 
@@ -336,8 +389,9 @@ Ya'ni sifat nazorati ikki qatlamli: lokalda pre-commit + `make lint`, remote'da 
 | `VITE_API_TIMEOUT_MS` | `30000` | Axios timeout |
 | `GUNICORN_WORKERS` | `4` | Prod worker soni; odatda `(2 * CPU) + 1` |
 | `SITE_ADDRESS` | `:80` | Caddy listener; domen berilsa auto-HTTPS |
+| `BRIDGE_TOKEN` | `""` (bo'sh) | `openssl rand -hex 24` bilan generatsiya qilinadi; bo'sh bo'lmasa `/ws/bridge` endpoint yoqiladi (bridge-agent autentifikatsiyasi) |
 
-Eslatma: chop etish uchun serverda **hech qanday env yo'q** — printer sozlamasi butunlay monoblok tomonda (standart printer + Chrome `--kiosk-printing`, yuqoridagi "Chop etish infratuzilmasi" bo'limi).
+Eslatma: chop etish bo'yicha serverda **yagona** sozlama — `BRIDGE_TOKEN`. Printerga tegishli hech qanday env server `.env` ida yo'q (G500-U'da tarmoq porti yo'q, printerni faqat agent ko'radi); `PRINTER_NAME` esa faqat printerli mashinadagi agent env'i (yuqoridagi "Chop etish infratuzilmasi" bo'limi).
 
 Eslatma: `CADDY_HTTP_BIND` / `CADDY_HTTPS_BIND` `.env.example` da yo'q — ular `docker-compose.prod.yml` dagi compose-level substitutsiyalar (defaultlari `80` / `443`); behind-nginx rejimida `.env` ga qo'lda qo'shiladi. `TAG` ham shu kategoriyada — compose-level substitutsiya (default `latest`), CI uni git sha bilan beradi.
 
@@ -355,7 +409,7 @@ Bitta qoida: `* text=auto eol=lf` — barcha matn fayllar LF line-ending bilan n
 
 ### `.gitignore`
 
-Standart Python artefaktlari (`__pycache__`, egg/build/dist), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. MES runtime artefaktlari ham ignore: `backend/uploads/` (`projects/`, `scx/`, `survey/` — yuklangan fayllar va anketa xona rasmlari), `frontend/openapi.json`, hamda lokal sex ma'lumotlari `uploads/` (repo root'da: `.project`/SCX namunalari va `forma/mebel_buyurtma_anketa.html` — anketaning qog'oz manbasi) va `chek/` (namuna yorliq fotolari, `labels.py` maketi shulardan olingan). E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
+Standart Python artefaktlari (`__pycache__`, egg/build/dist), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. MES runtime artefaktlari ham ignore: `backend/uploads/` (`projects/`, `scx/`, `survey/` — yuklangan fayllar va anketa xona rasmlari), `bridge-agent/print-queue.jsonl` (agent'ning durable print navbati), `frontend/openapi.json`, hamda lokal sex ma'lumotlari `uploads/` (repo root'da: `.project`/SCX namunalari va `forma/mebel_buyurtma_anketa.html` — anketaning qog'oz manbasi) va `chek/` (namuna yorliq fotolari, `labels.py` maketi shulardan olingan). E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
 
 ---
 
@@ -391,4 +445,4 @@ Frontend dev qo'llanmasi: nvm/fnm bilan Node o'rnatish, `npm install` + `npm run
 - `.pre-commit-config.yaml` → `backend/pyproject.toml` (ruff/mypy config), `frontend/biome.json` (biome hook).
 - `.github/workflows/ci.yml` → `backend/pyproject.toml` (uv sync, ruff/mypy), `backend/tests/test_giblab.py`, `frontend/.nvmrc` + `frontend/package-lock.json` (Node versiya va npm cache), `scripts/deploy.sh` (deploy job), Telegram secrets (notify job).
 - `scripts/generate-client.sh` → backend OpenAPI spec → `frontend/src/client/` (frontend va backend orasidagi kontrakt sinxronizatsiyasi).
-- Chop etish zanjiri: `frontend/src/components/Terminal/CutmapView.tsx` (`printLabelPng` — yashirin iframe + `window.print()`) → `backend/app/api/routes/terminal.py` (`GET /terminal/labels/{id}.png`) → `backend/app/services/labels.py` (`load_label_data` + `render_label_png` + `backend/app/assets/label-*.png`) → Chrome `--kiosk-printing` → USB GoDEX. Parallel: `POST /terminal/labels/{id}` → `label_printed_at` + `ws_manager.publish("label.printed")` → `backend/app/api/routes/ws.py` (`/ws/events`) → TABLO.
+- Chop etish zanjiri: `backend/app/api/routes/terminal.py` (`POST /terminal/labels/{id}`) → `backend/app/tasks/__init__.py` (`print_label`) → `backend/app/services/labels.py` (`load_label_data` + `render_label_png` + `backend/app/assets/label-*.png`) → Redis `mes:print:queue` → `backend/app/api/routes/ws.py` (`/ws/bridge`, `BRIDGE_TOKEN`) → `bridge-agent/agent.py` (`_print_png_gdi`) → USB GoDEX.
