@@ -187,7 +187,9 @@ def _n(v: float) -> str:
     return str(int(v)) if float(v).is_integer() else f"{v:g}"
 
 
-# --- PNG render: GibSaw Universal.lbl maketi (80x60mm) mm-koordinatalarda ---
+# --- PNG render: GibSaw shablonlari asosidagi maket (80x60mm), mm-koordinatalarda ---
+# Manba ikkita: Universal.lbl (kromka konturdan tashqarida, QR/eskiz joylashuvi, logo) va
+# mebelix.lbl (ustunlar tartibi, index_name "12_bok"). Har joyda qaysi biridan olingani yozilgan.
 # GDI chop etish (bridge-agent PRINTER_NAME rejimi) va brauzer ko'rinishi uchun
 # yagona manba. QR kutubxona bilan chiziladi — printer dialektiga bog'liq emas.
 
@@ -206,7 +208,7 @@ _FONT_BOLD = (
 def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — chiziqli layout kodi
     """80x60mm yorliq PNG (203 dpi: 8 dot/mm -> 640x480 px).
 
-    Tartib mebelix.lbl (GibSaw) bo'yicha: chap ustun — matnlar, o'ng ustun —
+    Ustunlar tartibi mebelix.lbl bo'yicha: chap ustun — matnlar, o'ng ustun —
     QR (tepada) va detal eskizi vertikal (ostida). 1-bit, antialiasing'siz.
     """
     import io as _io

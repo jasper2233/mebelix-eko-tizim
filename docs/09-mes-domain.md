@@ -1,6 +1,6 @@
 # 09 — MES domen qatlami (TT bo'yicha implementatsiya)
 
-Holat: **2026-07-11**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Fazalar holati: repo ildizidagi `TODO.md`.
+Holat: **2026-07-19**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Fazalar holati: repo ildizidagi `TODO.md`.
 
 ## 1. Data model (`app/models/`)
 
@@ -14,12 +14,12 @@ Holat: **2026-07-11**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Fazalar holati: rep
 | `employee` | Beyjik egasi (badge_id UUID partial-unique, assigned_post_ids JSONB) | 4.2 |
 | `client` | Mijoz (jismoniy/yuridik, INN) | 4.6 |
 | `material` | Katalog — .project fayldan avtomatik to'ladi | 4.5 |
-| `order` | B-YYYY-NNN, status DRAFT→…→DELIVERED/CANCELLED; `amount` + `advance_payment` Numeric(14,2) (boshlang'ich to'lov, migratsiya `7d2c9f5e1b3a`); `cutmap` JSONB (5.7.5 modeli), `machine_assignments`, `material_usage` | 6 |
+| `order` | B-YYYY-NNN, status DRAFT→…→DELIVERED/CANCELLED; `amount` + `advance_payment` Numeric(14,2) (boshlang'ich to'lov, migratsiya `7d2c9f5e1b3a`); `cutmap` JSONB (5.7.5 modeli), `machine_assignments`, `material_usage`; `survey` JSONB — mijoz anketasi + o'lchov varag'i (migratsiya `a91c7d34f6e2`, §6.2) | 6 |
 | `product`/`part`/`part_instance` | Fayl tarkibi; instance QR = `productCode_partCode_n`, kesish xaritasi katakchasiga bog'langan (pattern_no, cell_index) | 5.8 |
 | `part_route` | Detal × post: per_instance (KROMKA tomonlar), total_required/done — QOLDIQ shu yerda | 5.4 |
 | `scan` | Muvaffaqiyatli ish birligi; `client_event_id` UNIQUE (idempotency), bekor qilish belgisi | 8.4 |
 | `work_session` | Smena (beyjik → sessiya) | 8.2 |
-| `order_file` | project / scx / hujjatlar (diskda `UPLOAD_DIR` ostida) | 2.4.3 |
+| `order_file` | project / scx / hujjatlar (diskda `UPLOAD_DIR` ostida); `meta` JSONB — anketa xona rasmlari uchun `{"room_id", "content_type"}` | 2.4.3 |
 | `audit_log` | Kim-qachon-nima (`crud/audit.py: log_action`, tranzaksiya ichida) | 10.11 |
 
 `user` jadvaliga qo'shildi: `role` (`UserRole`, 12 a'zo) + `machine_id`. Rollar ikki guruh
@@ -72,29 +72,61 @@ attributsiyasi beyjiksiz saqlanadi. **Login = smena**: sessiya avtomatik ochilad
 - `/ws/bridge` — sex bridge-agenti (`BRIDGE_TOKEN` bilan): Redis `mes:print:queue` dan chop etish
   joblarini oladi, ack qilinmagan job qayta navbatga qaytadi.
 
-## 5. Chop etish (TT 12.3 / 13.2)
+## 5. Yorliq chop etish (TT 12.3 / 13.2)
 
-`app/services/labels.py` — EZPL 80×60, chek-uslub (MES PRO namunasi): MEBELIX header + buyurtma №,
-o'ngda katta QR, detal kodi/nomi/loyiha, kromka qatori, katta `L x W = soni`, kromkali tomonlari
-qalin chizilgan detal eskizi (o'lchamlar yonida), footer material + sana, P/S/F ikonkalar.
+`app/services/labels.py` ikki chiqish beradi, ikkalasi ham `load_label_data(db, instance_id)`
+yig'gan `LabelData` dan (qr_text, part_code, part_name, project_name, material, l/w/t, count,
+instance_no, edges, xnc_summary, label_num, **holes**, **texture**). `holes` — `order.cutmap`
+dan shu detal katakchasi bo'yicha (`part.label_num` → cutmap `parts[].num` → `cutmap.holes[cell.id]`).
 
-Ikki chop etish yo'li:
+**`render_label_png(d, scale=1)` — asosiy maket** (GibSaw `mebelix.lbl` uslubi). 80×60 mm,
+203 dpi (8 dot/mm → 640×480 px), oxirida `point(... , "1")` bilan sof 1-bit; `draw.fontmode = "1"`
+— antialiasing yo'q, aks holda termodrayver dither qiladi. Koordinatalar mm da. Tarkibi:
 
-1. GoDEX: ARQ task `print_label` (`app/tasks/`) — `PRINTER_IP` sozlangan bo'lsa to'g'ridan TCP 9100;
-   aks holda Redis navbatga (bridge-agent oladi). **Worker faqat shu yo'lga kerak**: `make worker`.
-2. Brauzer/PNG: `render_label_png()` EZPL chiqishini o'zini parslab PNG chizadi (Pillow + qrcode,
-   shablon o'zgarsa avtomatik mos) — `GET /terminal/labels/{instance_id}.png`; istalgan
-   brauzer/printer, worker ham, GoDEX ham shart emas.
+- chap ustun: `assets/label-logo.png` (threshold 160), `Formatka` + product kodi, detal kaliti,
+  loyiha nomi, kromka materiallari 2×2 (t/l/b/r, tagchiziq bilan), markazda katta `L x W = soni`,
+  `N_detal nomi`, П/Ф belgilari (paz/freza), teshik bo'lsa `assets/label-icon-drill.png` ikonkasi,
+  pastda material + sana + `N{label_num} {instance_no}/{count}`;
+- o'ng ustun: QR (`qrcode`, `d.qr_text`) tepada, ostida **vertikal detal eskizi** — ingichka kontur,
+  kromka konturdan 1 mm tashqarida qalin chiziq, `texture` bo'lsa uzunlik bo'ylab 3 chiziq,
+  cutmap'dagi **haqiqiy teshiklar** (`bores` aylana, `edge` qirra shtrixi), o'lchamlar en pastda va
+  uzunlik o'ngda 90° aylantirilgan, har biri yoniga o'sha tomonlar kromka simvoli.
 
-`bridge-agent/agent.py` — sexdagi mustaqil servis (websockets + stdlib): outbound WS, lokal JSONL
-navbat (printer/internet uzilganda yo'qotmaydi), 5s flusher. O'rnatish: `bridge-agent/README.md`.
+Chiziqlar `width=max(2, scale)` — GDI kichraytirishda 1 px chiziq yo'qoladi.
+
+**`build_label_ezpl(d)`** — legacy EZPL matni, faqat tarmoqdagi GoDEX'ga TCP 9100 orqali to'g'ridan
+yuborish yo'li uchun qoldi (PNG maketidan farq qiladi, chek uslubidagi eski tartib).
+
+Zanjir (terminal → printer):
+
+```
+terminal (POST /terminal/labels/{instance_id})
+  → arq task print_label (app/tasks/__init__.py)
+     · PRINTER_IP bor bo'lsa: _send_tcp(ezpl) → printer:9100 (xato bo'lsa navbatga tushadi)
+     · aks holda: LPUSH mes:print:queue = {type, instance_id, ezpl, png(base64)}
+  → /ws/bridge (Redis brpop + ack; ack kelmasa job navbatga qaytadi)
+  → bridge-agent/agent.py → printer
+```
+
+`GET /terminal/labels/{instance_id}.png` — o'sha `render_label_png()` chiqishi to'g'ridan brauzerga;
+worker ham, GoDEX ham, bridge-agent ham shart emas.
+
+`bridge-agent/agent.py` — sexdagi mustaqil servis (websockets + pywin32 + Pillow): outbound WS,
+lokal JSONL navbat `QUEUE_FILE` (printer/internet uzilganda yo'qotmaydi), flusher **event-driven** —
+`FLUSH_EVENT` bilan darhol uyg'onadi, 5 s faqat zaxira timeout. `send_to_printer()` to'rtta chiqish
+rejimini qat'iy tartibda sinaydi: `PRINTER_NAME` (Windows GDI, jobdagi PNG) → `PRINTER_NAME`
+(`win32print` RAW EZPL) → `PRINTER_SHARE` (`copy /b`) → `PRINTER_IP` (TCP 9100). Har qanday xatoda
+`False` qaytadi va job lokal navbatda qoladi.
+
+Rejimlar jadvali, `_print_png_gdi()` ning DEVMODE 80×60 mm majburlashi, agent env'lari va o'rnatish
+qadamlari: [07-infra-devops.md](07-infra-devops.md) → "Chop etish infratuzilmasi".
 
 ## 6. API xaritasi (yangi routerlar)
 
 | Router | Prefix | Kirish |
 |---|---|---|
 | `clients/employees/machines/posts/materials` | CRUD + qidiruv | rol-based (`api/deps.py: require_roles`) |
-| `orders` | lifecycle (`/confirm`, `/start`, …) + `/status-counts` + `/upload` + `/matrix` + `/machines` + `/cutmap` + `/files/{id}` | o'qish: manager/texnolog/director (`StaffReadUser`); yozish: manager/texnolog (+admin/superuser) |
+| `orders` | lifecycle (`/confirm`, `/start`, …) + `/status-counts` + `/upload` + `/matrix` + `/machines` + `/cutmap` + `/files/{id}` + `/survey` + `/survey/photos[/{file_id}]` | o'qish: manager/texnolog/director (`StaffReadUser`); yozish: manager/texnolog (+admin/superuser); anketa yozuvi: `ManagerUser` |
 | `scans` | POST scan, DELETE undo, `/recent` | terminal + 6 operator rol |
 | `terminal` | `/context`, `/session`, `/session/end`, `/tasks`, `/orders` (loyiha kartalari: done/total agregat), `/orders/{id}/cutmap`, `/labels/{id}` (GoDEX navbat), `/labels/{id}.png`, `/files/{id}` | terminal + 6 operator rol |
 | `tablo` | `/matrix`, `/orders/{id}` | istalgan auth |
@@ -115,6 +147,51 @@ Texnolog ko'rinishi cheklangan (`orders.py: _hidden_statuses`): DRAFT va CANCELL
 ro'yxatdan va `/status-counts` dan yashirin, to'g'ridan ID bilan GET ham 404 — buyurtma
 texnologga confirm'dan keyin ko'rinadi.
 
+### Buyurtma anketasi (mijoz so'rovnomasi + o'lchov varag'i)
+
+Qog'oz forma (`uploads/forma/mebel_buyurtma_anketa.html`) o'rniga. Menejer to'ldiradi, texnolog
+o'qiydi va shunga qarab dizayn yasaydi — ya'ni `.project` fayldan **oldingi** bosqich.
+
+Saqlash joyi: `order.survey` JSONB, butun anketa bir butun sifatida yoziladi (qism-qism PATCH yo'q).
+Sxema `app/schemas/orders.py`:
+
+| Model | Mazmun |
+|---|---|
+| `OrderSurvey` | `version`, `measured_at` (o'lchov sanasi), `measured_by` (o'lchagan usta), `rooms` (max 10) |
+| `SurveyRoom` | `id` (frontend beradigan barqaror kalit) + `name`; 2-bo'lim `furniture_types`/`furniture_other`; 3-bo'lim `shape`, `room_length/width/height`, `furniture_wall_length`; 4-bo'lim `corpus_materials`, `corpus_color`, `corpus_thickness`, `corpus_note`; 5-bo'lim `facade_materials`, `facade_color`, `countertop`, `facade_note`; 6-7 `hardware_level`, `extra_services`; 8 `note`; o'lchov varag'i `walls`, `modules`, `total_running_meters`, `total_height` |
+| `SurveyWall` | A bo'limi: `letter` (A..E), `length`, `height` — max 8 ta |
+| `SurveyModule` | B bo'limi: `name`, `wall`, `width`/`depth`/`height`, `count`, `note` — max 40 ta |
+
+Barcha mm maydonlari `ge=0, le=50_000`, matnlar `max_length` bilan, ro'yxatlar cheklangan —
+chegaralar tashqi kirish nuqtasida, aks holda bitta so'rov bazani to'ldirib yuboradi.
+`model_config = extra="ignore"`. Variant **kodlari** (`ldsp`, `akril`, `burchak`, …) bazada,
+matnga aylantirish faqat `frontend/src/lib/anketa.ts` da (`FURNITURE_TYPES`, `LAYOUT_SHAPES`,
+`CORPUS_MATERIALS`, `CORPUS_THICKNESS`, `FACADE_MATERIALS`, `COUNTERTOPS`, `HARDWARE_LEVELS`,
+`EXTRA_SERVICES`, `WALL_LETTERS` + `labelOf`/`labelsOf`) — yangi variant qo'shilganda migratsiya
+kerak emas, saqlangan tarix ham buzilmaydi. Mijoz ma'lumotlari `client` da, narx/avans/muddat
+`order` da — anketada takrorlanmaydi.
+
+Endpointlar (`app/api/routes/orders.py`, hammasi `ManagerUser`):
+
+- `PUT /orders/{id}/survey` → `save_order_survey`. DELIVERED/CANCELLED buyurtmada 403. Saqlashda
+  **yetim rasm tozalash**: `body.rooms` da yo'q `room_id` li `OrderFile` lar diskdan `unlink`,
+  bazada soft-delete. Audit: `survey_saved`.
+- `POST /orders/{id}/survey/photos` → `upload_room_photo`. `room_id` (Form) + `file`. Faqat
+  `image/jpeg|png|webp` (`_ROOM_PHOTO_TYPES`), `MAX_ROOM_PHOTO_SIZE` 5 MB, xonaga
+  `MAX_ROOM_PHOTOS` = 6 ta. Diskda `UPLOAD_DIR/survey/{order_id}/{uuid4().hex}{ext}`. Audit:
+  `survey_photo_added`.
+- `DELETE /orders/{id}/survey/photos/{file_id}` → `delete_room_photo`: diskdan ham o'chadi
+  (anketa rasmlari tarix uchun saqlanmaydi). Audit: `survey_photo_deleted`.
+
+Rasmlar **alohida jadval yaratmasdan** `OrderFile(kind=DOCUMENT, meta={"room_id", "content_type"})`
+da — migratsiyasiz, anketa JSON'iga tegmaydi (avtosaqlash bilan poyga yo'q). Rasm `SurveyRoom.id`
+ga bog'lanadi, xona ro'yxatdagi o'rni o'zgarsa ham yo'qolmaydi. `OrderFileRead.meta` shu sababli
+qo'shilgan; `download_order_file` PROJECT/SCX uchun `application/xml`, qolganiga
+`meta.content_type` beradi — aks holda brauzer `<img>` o'rniga faylni yuklab oladi.
+
+O'qish: `GET /orders/{id}` javobida `OrderDetail.survey` — `StaffReadUser`, ya'ni texnolog va
+direktor ham ko'radi.
+
 ### Hisobot yordamchilari
 
 - `app/services/metrics.py: part_volume()` — TT 9.3.1 HAJM matematikasi (ARRA m², KROMKA metr,
@@ -128,17 +205,32 @@ texnologga confirm'dan keyin ko'rinadi.
 - Dizayn tokenlar: `src/index.css` (post/status ranglari, `.num`, print CSS); domen konstantalar `src/lib/mes.ts`.
 - Imzo komponent: `Common/StagePipeline` — 6 bosqich zanjiri (dashboard, buyurtma qatorlari).
 - Routelar: `_layout/*` admin modullar (orders, clients, employees, machines, materials, reports,
-  transactions, logs, cutmap.$orderId), `/terminal`, `/tablo` (JAMI HAJM + rejimlar + drill-down).
-- `/terminal` (17" touch UX) ikki bosqichli: loyiha kartalari (`GET /terminal/orders` — priority
-  badge, ARRA progress, deadline) → GibSaw-parity xarita (`Terminal/CutmapView`: wheel/pinch zoom +
-  pan, halo-label, o'lcham zanjirlari, teshik/kromka-bore overlay, print-all-maps — har list A4
-  landscape). Qo'shimcha: lock overlay (tasodifiy touch himoyasi, scan to'xtaydi), operator logout,
-  jonli soat.
+  transactions, logs, cutmap.$orderId, `anketa.$orderId`), `/terminal`, `/tablo`
+  (JAMI HAJM + rejimlar + drill-down).
+- Anketa UI: `_layout/anketa.$orderId.tsx` — xonalar tab bilan almashadi, 7 ta bo'lim + yopiladigan
+  "O'lchov varag'i". Yozish huquqi `is_superuser || admin || manager`; boshqa rollarga forma emas,
+  `RoomSummary` — o'qish uchun jamlanma (matn nusxa olinadi). Avtosaqlash: har tahrirdan 1.5 s
+  keyin `PUT /survey` (alohida "saqlash" bosqichi yo'q), `beforeunload` ogohlantirish +
+  unmount'da fire-and-forget saqlash. Server javobi formaga **bir marta** yuklanadi
+  (`loaded` ref) — aks holda refetch menejer yozayotgan matn ustiga tushadi.
+- Buyurtma kartasi (`orders/$orderId.tsx`): `.project` uchun drag&drop zona (kengaytma tekshiriladi,
+  boshqasiga xato toast) va anketaga o'tish tugmasi.
+- `/terminal` (17" touch UX) drill-down: loyiha kartalari (`GET /terminal/orders` — priority badge,
+  ARRA progress, deadline) → materiallar ro'yxati (har material bo'yicha bajarilgan list soni) →
+  listlar → to'liq ekran xarita. Chizish `Terminal/CutmapView` + `Terminal/SheetSvg` (detallar,
+  teshiklar, o'lcham zanjirlari, zoom/swipe); `printAllMaps` — har list A4 landscape. Qo'shimcha:
+  majburiy to'liq ekran overlay, lock overlay (tasodifiy touch himoyasi, scan to'xtaydi), operator
+  logout, jonli soat.
 - WS hook: `hooks/useMesWs.ts` (reconnect + heartbeat + online flag).
 - Rol-marshrutlash: `_layout.tsx` beforeLoad — terminal va 6 operator rol → `/terminal`,
   tablo → `/tablo` (qurilma/operator akkauntlar admin panelga kira olmaydi).
 
 ## 8. Sozlamalar (yangi env)
 
-`UPLOAD_DIR`, `MAX_PROJECT_FILE_SIZE`, `STRICT_STAGE_ORDER`, `SESSION_MAX_HOURS`,
+Backend: `UPLOAD_DIR`, `MAX_PROJECT_FILE_SIZE`, `STRICT_STAGE_ORDER`, `SESSION_MAX_HOURS`,
 `SCAN_UNDO_SECONDS`, `PRINTER_IP`/`PRINTER_PORT` (faqat lokal rejim), `BRIDGE_TOKEN`.
+
+Bridge-agent (`bridge-agent/agent.py`, backend settings'ida emas — o'z env'i): `MES_URL`
+(default `ws://localhost:8000`), `BRIDGE_TOKEN` (serverdagi bilan bir xil), `PRINTER_NAME`
+(Windows GDI, tavsiya etilgan yo'l), `PRINTER_SHARE`, `PRINTER_IP`/`PRINTER_PORT`,
+`QUEUE_FILE` (default `print-queue.jsonl`).

@@ -20,9 +20,10 @@ Repo tuzilishi:
 
 ```
 MebeliX-Mes-System/
-├── backend/          # FastAPI ilova (app/api, app/core, app/models, ...)
+├── backend/          # FastAPI ilova (app/api, app/core, app/models, app/services, app/assets, ...)
 ├── frontend/         # Vite + React SPA (src/routes, src/components, src/client, ...)
 ├── bridge-agent/     # Tsex agenti (agent.py) — print joblarni GoDEX printerga yuboradi
+│                     #   (TCP 9100 EZPL yoki Windows drayveri orqali PNG)
 ├── caddy/            # Caddy reverse proxy konfiguratsiyasi (prod)
 ├── scripts/          # setup.sh, prestart.sh, generate-client.sh, deploy.sh (TAG deploy + avto-rollback), backup.sh (kunlik shifrlangan DB backup)
 ├── docs/             # Ushbu hujjatlar to'plami
@@ -44,6 +45,7 @@ MebeliX-Mes-System/
 | Validatsiya / config | Pydantic v2 + pydantic-settings (`.env` → `Settings` singleton) |
 | Auth | PyJWT (HS256 access/refresh), bcrypt, httpOnly cookies, `token_version` revocation |
 | Background jobs | ARQ (Redis asosli queue, alohida worker process) |
+| Yorliq renderi | Pillow (80×60 mm PNG chizish, 1-bit chiqish) + qrcode (QR) — `app/services/labels.py` |
 | Rate limiting | Redis asosli, fail-closed (Redis yiqilsa so'rovlar bloklanadi — brute-force himoya o'chib qolmasligi uchun) |
 | Observability | prometheus-fastapi-instrumentator (`/metrics`), JSON structured logging + X-Request-ID |
 | Package manager | uv |
@@ -79,7 +81,7 @@ MebeliX-Mes-System/
 flowchart LR
     B[Browser<br/>React SPA]
     G[bridge-agent<br/>tsex kompyuteri]
-    PR[GoDEX printer<br/>TCP 9100]
+    PR[GoDEX G500-U<br/>yorliq printeri]
 
     subgraph Prod stack
         C[Caddy :80/:443<br/>auto-HTTPS]
@@ -93,7 +95,7 @@ flowchart LR
     B -->|HTTPS| C
     B <-->|"WS /api/v1/ws/events"| C
     G <-->|"outbound WS /api/v1/ws/bridge"| C
-    G -->|"EZPL, TCP 9100"| PR
+    G -->|"EZPL TCP 9100 yoki<br/>PNG Windows GDI"| PR
     C -->|"/api*, /docs*, /redoc*, /openapi.json"| A
     C -->|"/metrics (faqat private IP)"| A
     C -->|qolgan pathlar| N
@@ -101,7 +103,7 @@ flowchart LR
     A -->|rate limit pool| R
     A -->|job enqueue - arq pool| R
     R -->|job dequeue| W
-    W -->|"LPUSH mes:print:queue"| R
+    W -->|"LPUSH mes:print:queue<br/>(ezpl + png base64)"| R
     W --> P
 ```
 
@@ -121,11 +123,14 @@ Asosiy nuqtalar:
   real-time kanali (JWT cookie yoki `?token=` bilan auth, rolga qarab
   terminal/tablo/dashboard scope, `ws_manager` fan-out); `/api/v1/ws/bridge` —
   bridge-agent uplink (`BRIDGE_TOKEN` bilan auth, `compare_digest`).
-- **Yorliq chop etish oqimi**: `print_label` ARQ task EZPL yorliqni Redis
-  `mes:print:queue` ro'yxatiga qo'yadi → `/ws/bridge` uni tsexdagi
-  `bridge-agent/agent.py` ga uzatadi (agent lokal JSONL navbatga yozib ack
-  qaytaradi — yorliq yo'qolmaydi) → GoDEX printerga TCP 9100 (cp1251).
-  `PRINTER_IP` sozlansa server to'g'ridan-to'g'ri TCP yuboradi.
+- **Yorliq chop etish oqimi**: `print_label` ARQ task har bir job'ga IKKI
+  formatni soladi — EZPL matn (`build_label_ezpl`) va base64 PNG
+  (`render_label_png`) — va Redis `mes:print:queue` ro'yxatiga qo'yadi →
+  `/ws/bridge` uni tsexdagi `bridge-agent/agent.py` ga uzatadi (agent lokal
+  JSONL navbatga yozib ack qaytaradi — yorliq yo'qolmaydi) → GoDEX'ga
+  `PRINTER_NAME` bo'lsa Windows drayveri orqali PNG, aks holda TCP 9100 ga
+  EZPL (cp1251). `PRINTER_IP` sozlansa server to'g'ridan-to'g'ri TCP yuboradi.
+  Batafsil: [4.3](#43-yorliq-chop-etish-zanjiri).
 - **Ikkita Redis pool**: biri ARQ job queue, biri rate limiting — ikkalasi ham
   startup'da retry'li probe bilan tekshiriladi (fail-fast boot); rate limit
   runtime'da ham fail-closed — Redis xatosida so'rov bloklanadi.
@@ -197,6 +202,130 @@ Browser (React)                FastAPI                        PostgreSQL
   qaytaradi.
 - Parallel so'rovlarda 401 kelsa, interceptor ularni navbatga qo'yib bitta refresh
   bilan hal qiladi.
+- `_layout.tsx` qobig'ida fon logotipi dekoratsiyasi alohida
+  `absolute inset-0 overflow-hidden` konteynerga ko'chirilgan. Avval
+  `overflow-hidden` `SidebarInset`ning o'zida edi va u ichki sahifalardagi
+  `sticky` panellarni ishlamay qoldirardi.
+
+### 4.3 Yorliq chop etish zanjiri
+
+```
+Terminal          FastAPI              ARQ worker          Redis        bridge-agent      GoDEX
+   |                 |                     |                 |               |              |
+   | POST /api/v1/terminal/labels/{instance_id}              |               |              |
+   |---------------->|                     |                 |               |              |
+   |                 | label_printed_at=now (DB)             |               |              |
+   |                 | enqueue_job("print_label", id) ------>|               |              |
+   |                 | ws_manager: "label.printed"           |               |              |
+   |                 |                     |<----------------|               |              |
+   |                 |                     | load_label_data(db, id)         |              |
+   |                 |                     | build_label_ezpl() + render_label_png()        |
+   |                 |                     | LPUSH mes:print:queue --------->|              |
+   |                 |  /ws/bridge: brpop -> {"type":"print","ezpl","png"} -->|              |
+   |                 |<---------- ack {"ok": true} (agent diskka yozgach) ---|              |
+   |                 |                     |                 |  JSONL -> flusher ---------->|
+```
+
+- `POST /terminal/labels/{instance_id}` (`print_instance_label`,
+  `app/api/routes/terminal.py`) — `PartInstance.label_printed_at` yoziladi, ARQ'ga
+  `print_label` job qo'yiladi, `label.printed` WS eventi tarqatiladi.
+- `app/tasks/__init__.py:print_label` bitta job ichida ikkala formatni tayyorlaydi.
+  Job JSON: `{"type":"print","instance_id","ezpl","png"}` → `LPUSH mes:print:queue`.
+  `settings.PRINTER_IP` sozlangan bo'lsa avval to'g'ridan-to'g'ri TCP 9100 sinaladi,
+  xato bo'lsa job baribir Redis navbatiga tushadi.
+- `/ws/bridge` (`app/api/routes/ws.py`) navbatni `brpop(timeout=5)` bilan so'radi;
+  bo'sh bo'lsa `{"type":"ping"}` heartbeat yuboradi (yarim ochiq TCP tez o'lsin).
+  Ack kelmasa yoki nak bo'lsa job `rpush` bilan navbatga qaytariladi — uzilishda
+  yorliq yo'qolmaydi.
+- bridge-agent job'ni AVVAL diskka (`print-queue.jsonl`) yozadi, keyin ack qaytaradi —
+  server ackdan keyin jobni unutadi. `FLUSH_EVENT` bilan flusher darhol uyg'onadi
+  (aks holda 5 s siklda printer tiklanishini kutadi).
+- Agent printerga chiqish yo'lini `send_to_printer()` da tanlaydi:
+  - `PRINTER_NAME` + PNG bor → `_print_png_gdi()`: Windows drayveri (`win32ui` +
+    `ImageWin.Dib`), DEVMODE'da qog'oz `DMPAPER_USER` 80×60 mm ga majburlanadi.
+    USB G500-U uchun asosiy yo'l — admin huquqi va share talab qilmaydi.
+  - `PRINTER_NAME`, PNG yo'q → `win32print` bilan RAW EZPL spooler'ga.
+  - `PRINTER_SHARE` → `copy /b <tmp.prn> \\host\share`.
+  - `PRINTER_IP` → TCP 9100, cp1251.
+- `render_label_png()` (`app/services/labels.py`) — 80×60 mm, 203 dpi
+  (8 dot/mm → 640×480 px). `draw.fontmode = "1"` (antialiasing yo'q) va yakuniy
+  `convert("L").point(v < 160)` — chiqish sof 1-bit, drayver dither qilmasin.
+  Maket: chap ustunda logo (`app/assets/label-logo.png`), `Formatka` + zakaz kodi,
+  detal kodi, loyiha nomi, 2×2 kromka katakchalari (tagchiziqli), katta
+  `L x W = count`, `N_nom`, XNC belgilari (`П` paz, `Ф` freza, teshik uchun
+  `app/assets/label-icon-drill.png` ikonkasi), material va sana; o'ng ustunda QR
+  (`qrcode`, `instance.qr_text`) va vertikal detal eskizi.
+- Eskizda kromka konturdan 1 mm tashqarida qalin chiziq bilan, `part.txt` bo'lsa
+  tekstura chiziqlari, va cutmap'dan HAQIQIY teshiklar: `load_label_data()`
+  `order.cutmap["holes"][cell_id]` ni `part.label_num` bo'yicha topadi, `bores`
+  aylana, `edge` esa qirradan ichkariga chiziqcha bo'lib chiziladi.
+- `build_label_ezpl()` legacy tarmoq GoDEX yo'li uchun qoladi (PNG'siz RAW rejim).
+- `GET /terminal/labels/{instance_id}.png` (`render_instance_label`) o'sha PNG'ni
+  brauzerga beradi — GoDEX bo'lmasa istalgan printerdan chop etish yo'li.
+
+### 4.4 Buyurtma anketasi (mijoz so'rovnomasi + o'lchov varag'i)
+
+Qog'oz anketa (`uploads/forma/mebel_buyurtma_anketa.html`, repo'da kuzatilmaydi)
+o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
+
+- Saqlash: `PUT /api/v1/orders/{id}/survey` (`save_order_survey`, ManagerUser) —
+  butun anketa bir butun sifatida `Order.survey` (JSONB, migratsiya
+  `a91c7d34f6e2_order_survey.py`) ga yoziladi. `DELIVERED`/`CANCELLED` statusda
+  403. Audit: `survey_saved`.
+- Sxema `app/schemas/orders.py`: `OrderSurvey` (`version`, `measured_at`,
+  `measured_by`, `rooms` ≤10) → `SurveyRoom` (mebel turlari, shakl, xona
+  o'lchamlari, korpus/fasad materiali, stol usti, furnitura darajasi, qo'shimcha
+  xizmatlar, izoh) → `walls` ≤8 (`SurveyWall`) va `modules` ≤40 (`SurveyModule`).
+  Har bir mm maydoni `ge=0, le=50_000` bilan chegaralangan — bitta so'rov bazani
+  to'ldirib yubormasin. `OrderDetail.survey` orqali o'qiladi.
+- Variant kodlari (`ldsp`, `akril`, `led`…) bazada, matnlari faqat
+  `frontend/src/lib/anketa.ts` da — katalog o'zgarsa saqlangan tarix buzilmaydi
+  va migratsiya kerak emas.
+- Xona rasmlari: `POST /orders/{id}/survey/photos` (`upload_room_photo`,
+  multipart `room_id` + `file`) — JPG/PNG/WEBP, ≤5 MB, bitta xonaga ≤6 ta. Fayl
+  `uploads/survey/{order_id}/{uuid}.ext` ga yoziladi va mavjud
+  `OrderFile(kind=DOCUMENT, meta={"room_id","content_type"})` qatorida qayd
+  etiladi — alohida jadval va migratsiya yo'q.
+- `DELETE /orders/{id}/survey/photos/{file_id}` (`delete_room_photo`) diskdagi
+  faylni ham o'chiradi. `save_order_survey` esa o'chirilgan xonalarning rasmlarini
+  yetim qoldirmaydi: `meta["room_id"]` tirik xonalar ro'yxatida bo'lmagan
+  `OrderFile` lar soft-delete qilinadi va diskdan `unlink` bo'ladi.
+- `OrderFileRead` ga `meta` maydoni qo'shildi (frontend rasmlarni `room_id`
+  bo'yicha ajratadi); `download_order_file` endi DOCUMENT uchun
+  `meta["content_type"]` ni media type qilib qaytaradi — aks holda brauzer
+  `<img>` da ko'rsatish o'rniga faylni yuklab olardi.
+- Frontend `frontend/src/routes/_layout/anketa.$orderId.tsx` (`/anketa/{orderId}`):
+  xona tablari, 1.5 s debounce avtosaqlash, `beforeunload` ogohlantirish va
+  unmount'da fire-and-forget saqlash. Server javobi FAQAT bir marta yuklanadi
+  (`loaded` ref) — saqlashdan keyingi refetch menejer yozayotgan matn ustiga
+  tushmasin. Admin/manager formani ko'radi, qolgan rollar `RoomSummary` jamlanmasini.
+  Kirish nuqtasi — buyurtma kartasidagi "Anketa" tugmasi.
+- Yangi UI primitivi: `frontend/src/components/ui/textarea.tsx`.
+
+### 4.5 Arrachi terminali: kesish xaritasi
+
+- `frontend/src/routes/terminal.tsx` — majburiy to'liq ekran overlay: to'liq
+  ekranga o'tmaguncha ish boshlanmaydi. `requestFullscreen` user-gesture talab
+  qilgani uchun tugma orqali; holat `document.fullscreenElement` VA
+  `matchMedia("(display-mode: fullscreen)")` bo'yicha aniqlanadi, ya'ni
+  `chrome --kiosk` / PWA rejimi ham to'liq ekran hisoblanadi.
+- Kiosk avto-yangilanish: `index.html` ga davriy `HEAD` so'rov, `ETag` o'zgarsa
+  `updateReady` belgilanadi va xavfsiz paytda (xarita yopiq, 2 daqiqa skan yo'q)
+  sahifa o'zi reload bo'ladi. `import.meta.env.DEV` da o'chirilgan — Vite ETag'i
+  o'zgaruvchan, dev'da reload sikli bo'lardi.
+- `components/Terminal/CutmapView.tsx` — drill-down oqim: material tablari →
+  list kartalari (har birida mini xarita preview) → to'liq ekran xarita. Chap
+  toolbar: orqaga, listlar ro'yxati, zoom. Material statistikasi terminal
+  header'iga portal qilinadi — xarita balandligidan joy olmaydi.
+- `components/Terminal/SheetSvg.tsx` (yangi) — bitta listning to'liq SVG renderi:
+  detallar, kesim chiziqlari, teshiklar (`holeXY`, `edgeLocalXY`, `edgeBoreRect`),
+  o'lchamlar zanjiri, zoom/pan/swipe; `thumbnail` rejimida interaktivsiz va
+  scrollni bloklamaydi. Xarita ham, list kartalaridagi preview ham shu bitta
+  komponentni ishlatadi.
+- `GET /terminal/orders` javobi karta uchun kengaydi: `materials` (`sheet` turidagi
+  plita nomlari), `sheets_total`, `has_cutmap`. Tartib — prioritet (URGENT birinchi)
+  → `deadline` (nulls oxirida) → `id`; boshqa stanokka biriktirilgan `PartRoute`lar
+  bu terminalda ko'rinmaydi (`/tasks` bilan bir xil filtr).
 
 ## 5. Hujjatlar xaritasi
 
@@ -219,8 +348,11 @@ Sifat nazorati ikki qatlamda: **pre-commit hooks** (`.pre-commit-config.yaml`,
 check/format, mypy, GibLab parser testlari; `frontend` job — `biome ci` va
 `tsc + vite build`; `deploy` job — yashil `main` push'da kod
 `/opt/mebelix-mes`ga rsync qilinadi, `TAG=<git sha> scripts/deploy.sh`
-ishga tushadi, public smoke (`https://mes.mebelix.uz/api/v1/ready`)
-tekshiriladi va natija Telegram'ga yuboriladi.
+ishga tushadi va public smoke (`https://mes.mebelix.uz/api/v1/ready`)
+tekshiriladi; `notify` job — Telegram xabari. Notify ataylab ALOHIDA job
+(`if: always()`, `needs: [backend, frontend, deploy]`): `deploy` ichida turganda
+CI yiqilsa butun job skip bo'lib, xabar umuman ketmasdi. Endi `deploy` natijasi
+`skipped` bo'lsa ham xabar ketadi va qaysi job yiqilgani ko'rsatiladi.
 
 ### Backend (Python)
 

@@ -80,10 +80,25 @@ shadcn standarti — `cn(...inputs)`: `clsx` + `tailwind-merge` kombinatsiyasi, 
 ### `frontend/src/lib/mes.ts`
 MES domen konstantalari va format helper'lari — deyarli barcha sahifa va komponentlar shu modulga tayanadi:
 - **O'zbekcha label map'lar**: `ORDER_STATUS_LABELS`/`ORDER_STATUS_COLORS` (draft → "QORALAMA", ... + CSS o'zgaruvchi ranglar), `PRIORITY_LABELS`, `ROLE_LABELS` (12 rol), `EMPLOYEE_STATUS_LABELS`, `MACHINE_STATUS_LABELS`, `MATERIAL_TYPE_LABELS`;
-- **`PRIORITY_DOT_CLASSES` / `PRIORITY_TEXT_CLASSES`** — prioritet ranglarining yagona manbasi: select nuqtalari va reestr matni uchun Tailwind class map'lari;
+- **`PRIORITY_DOT_CLASSES` / `PRIORITY_TEXT_CLASSES` / `PRIORITY_BADGE_CLASSES`** — prioritet ranglarining yagona manbasi: select nuqtalari, reestr matni va to'ldirilgan badge (terminal proyekt kartalari) uchun Tailwind class map'lari;
 - **`POST_COLORS`** — post kodi (ARRA, KROMKA, PRISADKA, PAZ, ROVER, STOLYARKA) → CSS o'zgaruvchisi (`var(--post-arra)` ...); bosqich ranglari butun ilova bo'ylab shu map'dan olinadi;
 - **`OPERATOR_ROLES`** — 6 ta operator rol tuple'i (arrachi, kromkachi, prisadkachi, pazchi, roverchi, stolyar); route guard'lar (`_layout.tsx`, `/terminal`) shu ro'yxat bilan tekshiradi;
 - **Format helper'lar**: `formatDate`/`formatDateTime` (brauzer locale'idan mustaqil `dd.mm.yyyy`), `formatMoney` (`Intl.NumberFormat("uz-Latn-UZ")` + "so'm"), `formatSize(l, w, t)` (`L × W × T mm`).
+
+### `frontend/src/lib/anketa.ts`
+Buyurtma anketasining variantlar katalogi (qog'oz manba: `uploads/forma/mebel_buyurtma_anketa.html`). Bazaga faqat **kod** yoziladi, matn shu yerda turadi — label o'zgarsa saqlangan tarix buzilmaydi.
+
+| Eksport | Mazmuni |
+|---|---|
+| `Option` | `{ value, label }` tipi |
+| `FURNITURE_TYPES` | 10 ta mebel turi (oshxona, shkaf_kupe, yotoq, divan, bolalar, ofis, prixojaya, tv_tumba, komod, vannaxona) |
+| `LAYOUT_SHAPES` | Xonadagi joylashuv: `togri` / `burchak` / `p_shakl` / `orolchali` |
+| `CORPUS_MATERIALS`, `CORPUS_THICKNESS` | Korpus materiali (ldsp/mdf/massiv/plastik/fanera) va qalinligi (16/18/boshqa) |
+| `FACADE_MATERIALS`, `COUNTERTOPS` | Fasad materiali (7 ta) va stol usti (postforming / sun'iy tosh / massiv / kerak emas) |
+| `HARDWARE_LEVELS` | `oddiy` / `medium` / `premium` |
+| `EXTRA_SERVICES` | LED, rozetka, organayzer, oyna, yetkazish, montaj |
+| `WALL_LETTERS` | `["A","B","C","D","E"]` — o'lchov varag'ida devor harflari (A dan soat yo'nalishi bo'yicha) |
+| `labelOf(options, value)` / `labelsOf(options, values)` | Kod → matn; kodlar ro'yxati → vergul bilan ajratilgan matn (texnolog jamlanmasi uchun) |
 
 ### `frontend/src/lib/validation.ts`
 Umumiy zod schema'lar — backend cheklovlari bilan sinxron ushlab turiladi (`backend/app/schemas/users.py` ga qarang):
@@ -126,9 +141,10 @@ __root.tsx                 → root layout (Outlet, devtools, 404/error)
 | `/` | `index.tsx` | Dashboard — jonli ishlab chiqarish monitori (quyida) |
 | `/orders` | `orders/index.tsx` | Buyurtmalar reestri: status tab'lar + to'lov ustunlari (quyida) |
 | `/orders/:id` | `orders/$orderId.tsx` | Buyurtma sahifasi — lifecycle tugmalari, to'lovlar, matritsa (quyida) |
+| `/anketa/:id` | `anketa.$orderId.tsx` | Buyurtma anketasi — mijoz so'rovnomasi + o'lchov varag'i (quyida) |
 | `/cutmap/:id` | `cutmap.$orderId.tsx` | Kesish xaritalari — admin/print ko'rinishi (quyida) |
 | `/clients` | `clients.tsx` | Mijozlar reestri: qidiruv (ism/telefon), `AddClient` dialogi, buyurtmalar soni ustuni |
-| `/employees` | `employees.tsx` | Hodimlar: qidiruv, post chip'lari (`POST_COLORS`), `AddEmployee` (admin-only; multi-post checkbox, kamida 1 post), beyjik dialogi — UUID `QRCodeSVG` sifatida chop etishga tayyor, beyjikni qayta generatsiya admin-only (eski beyjik bloklanadi) |
+| `/employees` | `employees.tsx` | Hodimlar: qidiruv, post chip'lari (`POST_COLORS`), `AddEmployee` (admin-only; multi-post checkbox, kamida 1 post), beyjik dialogi — UUID `QRCodeSVG` sifatida chop etishga tayyor, beyjikni qayta generatsiya admin-only (eski beyjik bloklanadi). Admin/superuser uchun har qatorda `EditEmployee` (qalam) va `DeleteEmployee` (savat) tugmalari — `EmployeesService.updateEmployee` / `deleteEmployee` |
 | `/machines` | `machines.tsx` | Stanoklar: post badge'lari, holat (`MACHINE_STATUS_LABELS`), `AddMachine` (admin-only) |
 | `/materials` | `materials.tsx` | Materiallar: turi tab'lari (List/Kromka/Furnitura) + qidiruv; reestr project fayllardan avtomatik to'ldiriladi (TZ 4.5) |
 | `/transactions` | `transactions.tsx` | Audit jurnal "Tranzaksiyalar" nomi bilan — modul tab'lari (`getAuditLogsQueryOptions`) |
@@ -144,7 +160,7 @@ __root.tsx                 → root layout (Outlet, devtools, 404/error)
 `/login` sahifasi. **Teskari guard**: `beforeLoad`da `UsersService.readUserMe()` chaqiriladi — agar muvaffaqiyatli bo'lsa (foydalanuvchi allaqachon tizimda), `redirect({ to: "/" })` tashlanadi; xato bo'lsa sahifa ochiladi. Forma react-hook-form + zod (`formSchema`: `username` — foydalanuvchi nomi yoki telefon, `password` — faqat `min(1)` (bo'sh emasligi; kuch talablari faqat parol o'rnatishda qo'llanadi, eski/seed parollar bilan kirish saqlanadi); `satisfies z.ZodType<Body_login_access_token>` orqali generatsiya qilingan API tipiga bog'langan). Submit `useAuth().loginMutation` ga yuboriladi, UI `AuthLayout`, `LoadingButton`, `PasswordInput` komponentlaridan foydalanadi. Login xatosi toast emas — forma ichida inline `role="alert"` bloki sifatida ko'rsatiladi (`extractErrorMessage`).
 
 ### `frontend/src/routes/_layout.tsx`
-Pathless layout — himoyalangan sahifalar qobig'i. **Auth guard + rol-router**: `beforeLoad`da `UsersService.readUserMe()` chaqiriladi, so'ng rol bo'yicha yo'naltiriladi (TZ 3.4/3.5) — `terminal` roli yoki `OPERATOR_ROLES`dagi rollar (`@/lib/mes`) → `redirect({ to: "/terminal" })`, `tablo` roli → `/tablo`; ya'ni qurilma/operator akkauntlari admin panelga umuman kira olmaydi. Faqat `ApiError.status === 401` bo'lsa `redirect({ to: "/login" })`; boshqa xatolar (tarmoq uzilishi, 5xx) qayta throw qilinadi va `errorComponent`da ko'rinadi (sessiya o'ldirilmaydi). Layout `SidebarProvider` + `AppSidebar` (`@/components/Sidebar/AppSidebar`) + `SidebarInset`dan iborat; fon suvbelgisi sifatida navy logo (opacity 0.06), mobil ko'rinishda (md dan kichik) `SidebarTrigger`li header ko'rsatiladi. `sectionTitles` map'i pathname bo'yicha mobil header sarlavhasini beradi — 11 ta yozuv: `/`, `/orders`, `/clients`, `/employees`, `/machines`, `/materials`, `/transactions`, `/reports`, `/admin`, `/logs`, `/settings`.
+Pathless layout — himoyalangan sahifalar qobig'i. **Auth guard + rol-router**: `beforeLoad`da `UsersService.readUserMe()` chaqiriladi, so'ng rol bo'yicha yo'naltiriladi (TZ 3.4/3.5) — `terminal` roli yoki `OPERATOR_ROLES`dagi rollar (`@/lib/mes`) → `redirect({ to: "/terminal" })`, `tablo` roli → `/tablo`; ya'ni qurilma/operator akkauntlari admin panelga umuman kira olmaydi. Faqat `ApiError.status === 401` bo'lsa `redirect({ to: "/login" })`; boshqa xatolar (tarmoq uzilishi, 5xx) qayta throw qilinadi va `errorComponent`da ko'rinadi (sessiya o'ldirilmaydi). Layout `SidebarProvider` + `AppSidebar` (`@/components/Sidebar/AppSidebar`) + `SidebarInset`dan iborat; fon suvbelgisi sifatida navy logo (opacity 0.06), mobil ko'rinishda (md dan kichik) `SidebarTrigger`li header ko'rsatiladi. `overflow-hidden` faqat suvbelgi konteynerida (`absolute inset-0`) — `SidebarInset`da turganda u sahifalar ichidagi `sticky` panellarni (masalan anketa saqlash paneli) ishlamas holga keltirardi. `sectionTitles` map'i pathname bo'yicha mobil header sarlavhasini beradi — 11 ta yozuv: `/`, `/orders`, `/clients`, `/employees`, `/machines`, `/materials`, `/transactions`, `/reports`, `/admin`, `/logs`, `/settings`.
 
 ### `frontend/src/routes/_layout/index.tsx`
 `/` — Dashboard, jonli ishlab chiqarish monitori (TZ 10.2):
@@ -152,10 +168,16 @@ Pathless layout — himoyalangan sahifalar qobig'i. **Auth guard + rol-router**:
 - **Aktiv buyurtmalar**: `TabloService.readTabloMatrix` (60s poll) — har qatorda `StagePipeline` (bosqichlar bo'yicha done/total), muddat, `StatusBadge`; qator buyurtma sahifasiga link;
 - **Jonli rejim**: `useMesWs` — `scan.*`/`order.*`/`session.*` event'larida `["tablo"]` invalidatsiyasi; header'da `online` flag'idan LIVE MONITORING / OFFLINE badge.
 
-### Orders moduli (`_layout/orders/*`, `_layout/cutmap.$orderId.tsx`)
+### Orders moduli (`_layout/orders/*`, `_layout/anketa.$orderId.tsx`, `_layout/cutmap.$orderId.tsx`)
 - **`orders/index.tsx` — `/orders` reestri.** Status tab'lari (Hammasi / Qoralama / Texnologda / Jarayonda / Tayyor (sexda) / Topshirilgan / Bekor qilingan) jonli count'lar bilan — `OrdersService.readOrderStatusCounts`, 30s poll; texnologga (superuser bo'lmasa) "Qoralama" va "Bekor qilingan" tab'lari ko'rinmaydi (backend ham filtrlaydi). Qidiruv (raqam/nom/mijoz) server-side (`getOrdersQueryOptions`), saralash client-side (`created_at`, `deadline`, `priority`, `amount`, qoldiq to'lov; reestr bitta sahifaga sig'adi — limit 100, oshsa server-side sort kerak bo'ladi). To'lov ustunlari: "Umumiy narx" va "Qoldiq to'lov" = `amount − advance_payment`. Yangi buyurtma (`AddOrder`) faqat admin/manager/superuser'ga.
-- **`orders/$orderId.tsx` — buyurtma sahifasi.** Meta grid (holat, mijoz, muddat, prioritet, umumiy narx / boshlang'ich to'lov / qoldiq, detallar/nusxalar, sanalar, bekor sababi) + rol-gated lifecycle tugmalari: Tasdiqlash (manager, `draft` → `confirmOrder`), Project fayl yuklash (texnolog, `technical_review`, `.project`), Ishlab chiqarishga uzatish (manager, fayl yuklangach), Kesish xaritalari (fayl bor bo'lsa), TOPSHIRILDI (manager, `completed`), Bekor qilish (sabab kamida 3 belgi). Pastda `MachineAssign` (stanok biriktirish) va `OrderMatrix` (detallar matritsasi, texnologga tahrirlanadi), fayllar ro'yxati yuklab olish havolalari bilan. Har amal `["orders"]` key'larini invalidatsiya qiladi.
-- **`cutmap.$orderId.tsx` — `/cutmap/:id`.** Kesish xaritalarining admin ko'rinishi (TZ 10.3): `Terminal/CutmapView` `admin` rejimida, `registerPrint` callback'i orqali "PDF / Chop etish" tugmasi brauzer print'ini chaqiradi (arrachiga yoki mijozga qog'oz nusxa).
+- **`orders/$orderId.tsx` — buyurtma sahifasi.** Meta grid (holat, mijoz, muddat, prioritet, umumiy narx / boshlang'ich to'lov / qoldiq, detallar/nusxalar, sanalar, bekor sababi) + rol-gated lifecycle tugmalari: Tasdiqlash (manager, `draft` → `confirmOrder`), Project fayl yuklash (texnolog, `technical_review`, `.project`), Ishlab chiqarishga uzatish (manager, fayl yuklangach), **Anketa** (`Link to="/anketa/$orderId"` — har doim ko'rinadi), Kesish xaritalari (fayl bor bo'lsa), TOPSHIRILDI (manager, `completed`), Bekor qilish (sabab kamida 3 belgi). Texnolog `technical_review` holatida meta grid ustida **drag&drop zonasi** oladi: `.project` fayl sudrab tashlanadi yoki zonaga bosilib file dialog ochiladi; kengaytma `.project` bo'lmasa "Faqat .project fayl qabul qilinadi" toast'i (klaviatura yo'li — headerdagi "Project fayl yuklash" tugmasi). Pastda `MachineAssign` (stanok biriktirish) va `OrderMatrix` (detallar matritsasi, texnologga tahrirlanadi), fayllar ro'yxati yuklab olish havolalari bilan. Har amal `["orders"]` key'larini invalidatsiya qiladi.
+- **`anketa.$orderId.tsx` — `/anketa/:id`, buyurtma anketasi.** Qog'oz so'rovnomaning (`uploads/forma/mebel_buyurtma_anketa.html`) ekran varianti; ma'lumot `Order.survey` JSONB ustunida, `OrderSurvey` schema'si bo'yicha. Sahifa `getOrderQueryOptions(id)` bilan buyurtmani oladi va `order.survey` ni **faqat bir marta** (`loaded` ref) lokal `useState`ga ko'chiradi — aks holda saqlashdan keyingi refetch menejer yozayotgan matn ustiga tushadi.
+  - **Rollar**: `canEdit` = superuser / `admin` / `manager` — forma ko'rinishi. Qolganlar (texnolog, direktor) `RoomSummary` — o'qish uchun jamlanma; tartib qog'ozning teskarisi (avval modullar va o'lchamlar, keyin material), bo'sh maydonlar tashlab yuboriladi (`Facts`).
+  - **Xonalar**: anketa xonalar massivi (`survey.rooms`), tepada tab tugmalari + "Xona qo'shish"; xona o'chirish `ConfirmDialog` orqali (rasmlar ham server tomonda o'chadi). Har xona: 1) nomi va rasmlar, 2) mebel turi, 3) shakl (`ShapeChoice` — SVG piktogrammali `SHAPE_ART`) va xona uzunlik/kenglik/balandlik + mebel devori uzunligi, 4) korpus materiali/rangi/qalinligi/izohi, 5) fasad materiali/rangi/stol usti/izohi, 6) furnitura darajasi + qo'shimcha xizmatlar, 7) izoh (`Textarea`, max 1000). 8-bo'lim — **O'lchov varag'i** `<details>` ichida yopiq turadi (zamerdan keyin to'ldiriladi): o'lchov sanasi (`DatePicker`) / o'lchagan usta (`survey.measured_at`, `measured_by` — xona emas, anketa darajasida), `WALL_LETTERS` bo'yicha 5 ta devor uzunlik/balandligi, modullar jadvali (nomi, devor, eni/chuqurlik/balandlik, soni, izoh — qator qo'shish/o'chirish) va umumiy pm/balandlik.
+  - **Avtosaqlash**: har tahrirda `dirty` yoqiladi, 1.5s debounce'dan keyin `OrdersService.saveOrderSurvey` (PUT `/orders/{id}/survey`); pastda `sticky` panel holatni ko'rsatadi ("Saqlanmoqda..." / "O'zgarishlar avtomatik saqlanadi" / "Saqlandi HH:MM") va qo'lda "Saqlash" tugmasi. `beforeunload` da ogohlantirish, komponent unmount bo'lganda saqlanmagan qoralama fire-and-forget yuboriladi. Muvaffaqiyatda `["orders", id]` invalidatsiya qilinadi.
+  - **Xona rasmlari** (`RoomPhotos`): anketa JSON'ida emas — `OrderFile(kind=DOCUMENT, meta.room_id)` da, shuning uchun avtosaqlash bilan aralashmaydi. Butun panel drop-zona; `OrdersService.uploadRoomPhoto` (POST `/orders/{id}/survey/photos`, form-data `room_id` + `file`) va `deleteRoomPhoto`. Klient chegaralari: xonaga 6 tagacha rasm, har biri 5 MB gacha, faqat `image/*` — chegara buzilsa toast, serverga so'rov ketmaydi. Rasm `src` = `${OpenAPI.BASE}/api/v1/orders/{id}/files/{fileId}` (`crossOrigin="use-credentials"` — cookie auth), bosilsa `Dialog`da kattalashadi. Har amaldan keyin `["orders", orderId]` invalidatsiya (rasmlar `order.files`dan o'qiladi).
+  - Raqamli maydonlar `NumInput`/`Num` orqali: yozilayotgan xom matn saqlanadi (aks holda "3," yozilganda maydon o'zini tozalab yuboradi), blur'da normallashadi; `numOrNull` vergulni nuqtaga aylantiradi.
+- **`cutmap.$orderId.tsx` — `/cutmap/:id`.** Kesish xaritalarining admin ko'rinishi (TZ 10.3): `Terminal/CutmapView` `admin` rejimida (`OrdersService.readOrderCutmap`), `registerPrint` callback'i orqali "PDF / Chop etish" tugmasi barcha xaritalarni yangi oynada A4 landscape sahifalarga chiqaradi (har list — alohida sahifa).
 
 ### `frontend/src/routes/_layout/admin.tsx`
 `/admin` — foydalanuvchilar boshqaruvi. **Superuser guard**: `beforeLoad`da `readUserMe()` natijasi `is_superuser` bo'lmasa `redirect({ to: "/" })` (backend ham ro'yxatni faqat superuser'ga beradi). `useSuspenseQuery(getUsersQueryOptions())` bilan ro'yxat olinadi (`Suspense` fallback — `PendingUsers` skeleton). Har bir `UserRead`ga `isCurrentUser` flag'i qo'shilib (`useCurrentUser` bilan solishtirish) `DataTable`ga (`@/components/Common/DataTable`, ustunlar `@/components/Admin/columns`) uzatiladi. Yuqorida `AddUser` dialog tugmasi.
@@ -165,10 +187,15 @@ Pathless layout — himoyalangan sahifalar qobig'i. **Auth guard + rol-router**:
 
 ### `frontend/src/routes/terminal.tsx` — `/terminal` (operator POS ekrani)
 Fullscreen terminal (TZ 8) — sidebar'siz, POS monoblokda doim ochiq turadi. Guard: faqat `terminal`, `admin`, superuser va `OPERATOR_ROLES`; boshqalar `/` ga qaytariladi (401 → `/login`). Asosiy mexanika:
-- **Avto-skan input** doim fokusda (har 2s qayta fokus, AVTO-SKAN switch bilan o'chiriladi): qiymat UUID regex'ga mos kelsa **beyjik** — `TerminalService.startTerminalSession` (sessiya ochish); aks holda **detal QR** — `ScansService.recordScan` (idempotentlik uchun `client_event_id = crypto.randomUUID()`). Bir xil kod uchun 2s cooldown (duplikat yutiladi, TZ 8.4.4); WS offline bo'lsa detal scan bloklanadi (E007 "Aloqa yo'q").
-- **Scan natijasi**: audio signal (`Terminal/audio.ts`), "Oxirgi skan" paneli (kod + qoldiq yoki xato kodi), 50 talik tarix ("faqat xatolar" filtri), 60s ichida BEKOR QILISH (`cancelScan`, ConfirmDialog bilan); javobda `scx_file_ids` kelsa fayllar avtomatik yuklab olinadi (qaysi scanda SCX qaytishi server tomonda hal qilinadi, TZ 12.5).
-- **ARRA posti**: vazifalar jadvali o'rniga proyekt kartalari (`GET /terminal/orders`, 30s poll — raqam, prioritet badge, ARRA done/total progress, muddat) → tanlangan proyekt `Terminal/CutmapView` kesish xaritasida ochiladi. Boshqa postlarda: navbatdagi vazifalar jadvali (70%) + o'ng panel (30%).
-- **Qulf va chiqish**: ekranni qulflash overlay'i (fullscreen, tasodifiy tegishlardan himoya, "Ochish" tugmasi), operator rollar uchun logout, `terminal` qurilma akkauntida sessiyani yakunlash (`endTerminalSession`). Jonli soat; `useMesWs` `scan.recorded/scan.cancelled/order.started/order.cancelled` event'larida `["terminal"]` invalidatsiyasi.
+- **Majburiy to'liq ekran**: `document.fullscreenElement` ham, `matchMedia("(display-mode: fullscreen)")` ham false bo'lsa butun ekranni overlay yopadi va faqat "To'liq ekranga o'tish" tugmasi qoladi (`requestFullscreen` user-gesture talab qiladi). `fullscreenchange` va media-query `change` event'lari holatni kuzatadi; `chrome --kiosk` / PWA rejimida overlay chiqmaydi.
+- **Kiosk avto-yangilanish**: har 5 daqiqada `/` ga `HEAD` so'rov, `ETag` o'zgargani yangi build belgisi (`updateReady`). Reload faqat xavfsiz paytda — xarita yopiq va oxirgi skandan 2 daqiqa o'tgan bo'lsa (30s da bir tekshiriladi). `import.meta.env.DEV` da butunlay o'chirilgan (Vite ETag'i o'zgaruvchan — reload sikli bo'ladi).
+- **Avto-skan input** doim fokusda (har 2s qayta fokus; xarita ochiq yoki ekran qulflangan bo'lsa fokus qaytarilmaydi). Header'dagi SKAN ON / SKAN OFF tugmasi (OFF holatida `destructive` qizil) uni o'chiradi. Qiymat UUID regex'ga mos kelsa **beyjik** — `TerminalService.startTerminalSession` (sessiya ochish); aks holda **detal QR** — `ScansService.recordScan` (idempotentlik uchun `client_event_id = crypto.randomUUID()`). Bir xil kod uchun 2s cooldown (duplikat yutiladi, TZ 8.4.4); WS offline bo'lsa detal scan bloklanadi (E007 "Aloqa yo'q").
+- **Scan natijasi**: audio signal (`Terminal/audio.ts`), "Oxirgi skan" paneli (kod + qoldiq yoki xato kodi), 50 talik tarix ("Faqat xatolar" `Switch` filtri), 60s ichida BEKOR QILISH (`cancelScan`, ConfirmDialog bilan); javobda `scx_file_ids` kelsa fayllar avtomatik yuklab olinadi (qaysi scanda SCX qaytishi server tomonda hal qilinadi, TZ 12.5).
+- **ARRA posti** — GibSaw uslubidagi drill-down: proyekt kartalari (`OrderPicker`, `TerminalService.readTerminalOrders`, 30s poll — raqam, proyekt nomi, `PRIORITY_BADGE_CLASSES` badge'i, materiallar ro'yxati, ARRA done/total progress va qoldiq, listlar soni, muddat rangi) → tanlangan proyekt `Terminal/CutmapView` ichida ochiladi: material tab'lari → list gridi → to'liq ekran xaritasi (`Terminal/SheetSvg`). Xarita ochiqda (`mapOpen`) header'dagi skan inputi o'rnini `statsContainer` portali egallaydi (material statistikasi 3×3 blok), chap ustundagi `toolbarContainer` portaliga esa CutmapView toolbari tushadi (Orqaga / Oldingi / Keyingi / Katta / Kichik / To'liq / **Chop etish**). "Chop etish" belgilangan detalning navbatdagi nusxasini `TerminalService.printInstanceLabel` orqali GoDEX navbatiga yuboradi (dialog yo'q). Xarita ochiqda `main` paddingi teskari margin bilan qoplanadi — xarita katta ko'rinadi. Boshqa postlarda: navbatdagi vazifalar jadvali (70%) + o'ng panel (30%).
+- **Header**: chapda stanok nomi post rangida (`ctx.machine_name`, bo'lmasa post nomi) — "post/uskuna" taksonomiyasi olib tashlandi, arrachi tilida bitta identitet; yonida sessiya chipi (yashil nuqta + hodim ismi yoki amber "Beyjik QR scan qiling"), o'ngda SKAN ON/OFF tugmasi va WS uzilganda "ALOQA YO'Q" bloki. Jonli soat va alohida vaqt paneli yo'q — vaqt faqat scan tarixi qatorlarida.
+- **Qulf va chiqish**: chap ustunning pastida doim turadigan `TBtn` tugmalari — "Qulflash" (butun ekranni yopadigan overlay, "Ochish" tugmasi bilan), operator rollar uchun "Chiqish" (logout), `terminal` qurilma akkauntida sessiya bo'lsa "Yakunlash" (`endTerminalSession`). `useMesWs` `scan.recorded/scan.cancelled/order.started/order.cancelled` event'larida `["terminal"]` invalidatsiyasi.
+
+Yorliq (chek) chop etish zanjiri: terminal → `POST /api/v1/terminal/labels/{instance_id}` → arq task → Redis `mes:print:queue` → `/ws/bridge` → `bridge-agent` → GoDEX G500-U. Frontend faqat zanjirning birinchi bo'g'ini; tafsilotlar `docs/03-backend-api.md` va `docs/07-infra-devops.md` da.
 
 Domen tafsilotlari (scan engine, xatolik kodlari, cutmap modeli): `docs/09-mes-domain.md`.
 
@@ -242,6 +269,13 @@ getTerminalTasksQueryOptions()     // ["terminal", "tasks"], refetchInterval 30s
 
 Mutation va WS event handler'lar shu key'larga invalidatsiya qiladi: scan/sessiya event'lari `["terminal"]`, buyurtma amallari `["orders"]`, tablo/dashboard `["tablo"]`.
 
+Ikkita query factory'dan tashqarida — ular faqat bitta iste'molchiga tegishli:
+
+| Key | Joyi | Sozlama |
+|---|---|---|
+| `["terminal", "orders"]` | `routes/terminal.tsx` → `OrderPicker` | `TerminalService.readTerminalOrders`, `refetchInterval` 30s |
+| `["terminal" \| "admin", "cutmap", orderId]` | `components/Terminal/CutmapView.tsx` → `getCutmapQueryOptions(orderId, admin)` | `admin` bo'lsa `OrdersService.readOrderCutmap`, aks holda `TerminalService.readTerminalCutmap`; `refetchInterval` 60s. Yorliq chop etilgach shu key invalidatsiya qilinadi |
+
 ---
 
 ## 6. API Client (`frontend/src/client/`)
@@ -278,7 +312,7 @@ Faqat tip deklaratsiyalari. `ApiRequestOptions<T>` — bitta so'rovning to'liq t
 |---|---|---|
 | `frontend/src/routeTree.gen.ts` | Route daraxti (type-safe) — `src/routes/` fayllaridan | `@tanstack/router-plugin` (Vite dev/build paytida avtomatik) |
 | `frontend/src/client/sdk.gen.ts` | 14 ta servis klass: `AuditService`, `ClientsService`, `EmployeesService`, `HealthService`, `LoginService`, `MachinesService`, `MaterialsService`, `OrdersService`, `PostsService`, `ReportsService`, `ScansService`, `TabloService`, `TerminalService`, `UsersService` — har metod `CancelablePromise` qaytaradi | `@hey-api/openapi-ts` |
-| `frontend/src/client/types.gen.ts` | Request/response TypeScript tiplari (`UserRead`, `Body_login_access_token`, ...) | `@hey-api/openapi-ts` |
+| `frontend/src/client/types.gen.ts` | Request/response TypeScript tiplari (`UserRead`, `Body_login_access_token`, `OrderSurvey`/`SurveyRoom`/`SurveyWall`/`SurveyModule`, `OrderFileRead.meta`, ...) | `@hey-api/openapi-ts` |
 | `frontend/src/client/schemas.gen.ts` | JSON schema'lar | `@hey-api/openapi-ts` |
 
 API client'ni yangilash — `scripts/generate-client.sh` (repo root'dan):
@@ -288,6 +322,15 @@ API client'ni yangilash — `scripts/generate-client.sh` (repo root'dan):
 4. `npx biome format --write ./src/client`.
 
 Backend endpoint/schema o'zgarganda shu skript qayta ishga tushiriladi; generatsiya qilingan fayllar qo'lda tahrirlanmaydi (Biome ham ularni lint'dan chiqargan).
+
+Oxirgi generatsiyada qo'shilgan metodlar:
+
+| Metod | Endpoint | Ishlatilishi |
+|---|---|---|
+| `OrdersService.saveOrderSurvey` | `PUT /api/v1/orders/{order_id}/survey` | `/anketa/:id` avtosaqlash va "Saqlash" tugmasi |
+| `OrdersService.uploadRoomPhoto` | `POST /api/v1/orders/{order_id}/survey/photos` | `RoomPhotos` — form-data `room_id` + `file` |
+| `OrdersService.deleteRoomPhoto` | `DELETE /api/v1/orders/{order_id}/survey/photos/{file_id}` | `RoomPhotos` o'chirish tugmasi |
+| `TerminalService.renderInstanceLabel` | `GET /api/v1/terminal/labels/{instance_id}.png` | Yorliq PNG'ini brauzerda ko'rish (UI'da hozircha chaqirilmaydi — chop etish `printInstanceLabel` orqali ketadi) |
 
 ---
 
@@ -299,7 +342,9 @@ main.tsx ──(401 interceptor)─────────> LoginService.refres
 routes/* ──(beforeLoad guard)────────> UsersService.readUserMe (+ rol-router: lib/mes.ts OPERATOR_ROLES)
 routes/login.tsx ──> hooks/useAuth ──> LoginService.loginAccessToken / logout
 routes/_layout/* ──> queries/mes.ts ──> 14 ta *Service (sdk.gen.ts)
-routes/terminal.tsx ──> TerminalService / ScansService + Terminal/CutmapView + hooks/useMesWs
+routes/_layout/anketa.$orderId.tsx ──> lib/anketa.ts (kod→label) + OrdersService.saveOrderSurvey / uploadRoomPhoto / deleteRoomPhoto
+routes/terminal.tsx ──> TerminalService / ScansService + Terminal/CutmapView (+ SheetSvg) + hooks/useMesWs
+routes/terminal.tsx ──(TBtn "Chop etish")──> TerminalService.printInstanceLabel ──> arq/Redis ──> bridge-agent ──> GoDEX
 routes/tablo.tsx, _layout/index.tsx ──> TabloService (matrix) + hooks/useMesWs
 hooks/useMesWs ──(ws://.../api/v1/ws/events)──> query invalidatsiya + {online} flag
 routes/_layout/admin.tsx ──> queries/users.ts ──> UsersService.readUsers

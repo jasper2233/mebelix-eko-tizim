@@ -107,12 +107,23 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
 
 | Model / jadval | Muhim ustunlar | Unikal/muhim indekslar |
 |---|---|---|
-| `Order` | `number(20)` (`B-2026-001`, avto), `client_id` FK (index), `status` (`OrderStatus`, default `draft`, index), `priority` (`OrderPriority`), `deadline`, `amount Numeric(14,2)`, `advance_payment Numeric(14,2)` (boshlang'ich to'lov — manager buyurtma ochishda kiritadi), `notes`, `created_by_id` FK user; `.project` metadata: `project_uuid/name/generation/loaded_at`; **JSONB**: `cutmap` (kesish xaritasi vizual modeli, TZ 5.7.5), `material_usage` (default `[]` — `[{name, kind, count, unit}]`, TZ 11.3), `machine_assignments` (default `{}` — `{"PAZ": 3, "ROVER": 5}`, TZ 6.4.1); lifecycle: `production_started_at`, `completed_at`, `delivered_at`, `cancelled_at`, `cancel_reason`, `cancelled_by_id` | PARTIAL UNIQUE `ix_order_number` |
+| `Order` | `number(20)` (`B-2026-001`, avto), `client_id` FK (index), `status` (`OrderStatus`, default `draft`, index), `priority` (`OrderPriority`), `deadline`, `amount Numeric(14,2)`, `advance_payment Numeric(14,2)` (boshlang'ich to'lov — manager buyurtma ochishda kiritadi), `notes`, `created_by_id` FK user; `.project` metadata: `project_uuid/name/generation/loaded_at`; **JSONB**: `cutmap` (kesish xaritasi vizual modeli, TZ 5.7.5), `material_usage` (default `[]` — `[{name, kind, count, unit}]`, TZ 11.3), `machine_assignments` (default `{}` — `{"PAZ": 3, "ROVER": 5}`, TZ 6.4.1), `survey` (mijoz anketasi + o'lchov varag'i, NULL — sxema `schemas/orders.OrderSurvey`, 2.5.1-bo'lim); lifecycle: `production_started_at`, `completed_at`, `delivered_at`, `cancelled_at`, `cancel_reason`, `cancelled_by_id` | PARTIAL UNIQUE `ix_order_number` |
 | `Product` | `order_id` FK (index), `code(50)`, `name(255)`, `count`, `import_source` | `<good typeId="product">` (TZ 5.2.2) |
 | `Part` | `order_id`/`product_id` FK (index), `code(50)` (masalan `01_002`), `name`, `count`, o'lchamlar `length/width/thickness` + `saw_length/saw_width` (jl/jw), `txt` (tekstura qulfi), `material_name(150)`, `label_num`; **JSONB**: `edges` (tomon bo'yicha kromka: `{"l": {"mat": ..., "symbol": "A"}, ...}`), `xnc_summary` (`{"bores", "edge_bores", "grooves", "mills", "sides"}`); `note` (texnolog izohi) | Barqaror kalit: `productCode_partCode` (TZ 5.8) |
 | `PartInstance` | `order_id`/`part_id` FK (index), `instance_no` (1..count), `qr_text(120)`, `pattern_no`/`cell_index` (kesish xaritasi katagi, TZ 7.1.4), `label_printed_at` | **PARTIAL UNIQUE `ix_part_instance_order_qr` (`order_id`, `qr_text`) `WHERE NOT is_deleted`** — QR = `productCode_partCode_n` |
 | `PartRoute` | `order_id`/`part_id`/`post_id` FK, `machine_id` FK NULL, `source` (`RouteSource`), `is_enabled` (texnolog o'chira oladi), `per_instance` (post'dagi skan soni: KROMKA — tomonlar, PRISADKA `_2` — 2), `total_required` = count × per_instance, `total_done` | PARTIAL UNIQUE `ix_part_route_part_post` (`part_id`, `post_id`); `ix_part_route_order_post`. Denormalizatsiyalangan hisoblagichlar — tez QOLDIQ (TZ 5.4) |
-| `OrderFile` | `order_id` FK (index), `part_id` FK NULL, `kind` (`FileKind`), `path(500)`, `filename(255)`, `size`, `meta` **JSONB** | Yuklangan `.project`, part-boshiga `.scx`, label PDF, hujjatlar |
+| `OrderFile` | `order_id` FK (index), `part_id` FK NULL, `kind` (`FileKind`), `path(500)`, `filename(255)`, `size`, `meta` **JSONB** (default `{}`) | Yuklangan `.project`, part-boshiga `.scx`, label PDF, hujjatlar. Anketa xona rasmlari ham shu yerda: `kind=DOCUMENT` + `meta={"room_id": ..., "content_type": ...}` — alohida jadval/migratsiyasiz (1.4.1-bo'lim) |
+
+#### 1.4.1 Anketa xona rasmlari — `OrderFile.meta` orqali
+
+Xona surati uchun yangi jadval qo'shilmagan: `OrderFile` qatori `kind=FileKind.DOCUMENT` va `meta` JSONB'ida `room_id` (`SurveyRoom.id` ga bog'lanish) + `content_type` bilan saqlanadi. Shu sababli:
+
+- Rasm xonaning ro'yxatdagi **o'rniga** emas, barqaror `SurveyRoom.id` ga bog'langan — xonalar qayta tartiblansa ham bog'lanish buzilmaydi.
+- Filtr JSONB operatorlari bilan: `OrderFile.meta["room_id"].astext == room_id`, yetimlarni topishda `OrderFile.meta.has_key("room_id")`.
+- Disk yo'li: `{UPLOAD_DIR}/survey/{order_id}/{uuid4().hex}{.jpg|.png|.webp}`.
+- Chegaralar route qatlamida (`backend/app/api/routes/orders.py`): `_ROOM_PHOTO_TYPES` = jpeg/png/webp, `MAX_ROOM_PHOTO_SIZE` = 5 MB, `MAX_ROOM_PHOTOS` = 6 (bitta xonaga).
+- `PUT /orders/{id}/survey` (`save_order_survey`) saqlashda anketada endi mavjud bo'lmagan `room_id` li rasmlarni topib, diskdan `unlink` qiladi va qatorni soft-delete qiladi (yetim rasm tozalash). `DELETE /orders/{id}/survey/photos/{file_id}` ham diskdagi faylni o'chiradi — anketa rasmlari tarix uchun saqlanmaydi.
+- `GET /orders/{id}/files/{file_id}` (`download_order_file`) `kind` `PROJECT`/`SCX` bo'lsa `application/xml`, aks holda `meta["content_type"]` (bo'lmasa `application/octet-stream`) ni `media_type` qilib beradi — brauzer rasmni `<img>` da yuklab olmasdan ko'rsatadi.
 
 **Skan modellari** (`scan.py` — 2 klass):
 
@@ -176,8 +187,8 @@ Har bir registr moduli standart uchlik (`*Read` / `*Create` / `*Update`) beradi:
 | Schema | Vazifasi |
 |---|---|
 | `OrderRead` | Registr qatori (TZ 10.3.1): `number`, `status`, `priority`, `client_id` + route'da join qilinadigan `client_name`, `deadline`, `amount`, `advance_payment`, `notes`, project metadata, barcha lifecycle timestamplar |
-| `OrderFileRead` | Fayl qatori: `kind`, `filename`, `size`, `part_id` |
-| `OrderDetail` | `OrderRead` + `machine_assignments`, `project_uuid`/`project_loaded_at`, `files: list[OrderFileRead]`, `parts_count`, `instances_count` (buyurtma kartasi, TZ 10.3.3) |
+| `OrderFileRead` | Fayl qatori: `id`, `kind`, `filename`, `size`, `part_id`, `meta: dict[str, Any]` (default `{}` — anketa rasmida `{"room_id", "content_type"}`), `created_at` |
+| `OrderDetail` | `OrderRead` + `machine_assignments`, `project_uuid`/`project_loaded_at`, `survey: dict \| None` (xom JSONB — texnolog o'qiydi), `files: list[OrderFileRead]`, `parts_count`, `instances_count` (buyurtma kartasi, TZ 10.3.3) |
 | `OrderCreate` | Manager DRAFT ochadi (TZ 6.2): `client_id`, `deadline`, `priority`, `amount`/`advance_payment` (`ge=0`), `notes`; `number` avto (`B-2026-001`) |
 | `OrderUpdate` | Hammasi optional (shu jumladan `advance_payment`) |
 | `OrderCancel` | `reason` (3–500 belgi, majburiy) |
@@ -187,6 +198,42 @@ Har bir registr moduli standart uchlik (`*Read` / `*Create` / `*Update`) beradi:
 | `OrderMatrix` | `order_id` + `parts: list[MatrixPart]` |
 | `MatrixPartEdit` | Texnolog bitta part qatorini tahrirlaydi (TZ 6.3.3): `note`, `count` (1–1000), `stages: dict[int, bool]` (post_id → yoqilgan) |
 | `MatrixEdit` | `edits: list[MatrixPartEdit]` — batch wrapper |
+| `OrderSurvey`, `SurveyRoom`, `SurveyWall`, `SurveyModule` | Mijoz anketasi + o'lchov varag'i — 2.5.1-bo'lim |
+
+#### 2.5.1 Anketa schemalari — `Order.survey` JSONB sxemasi
+
+Qog'oz forma (`uploads/forma/mebel_buyurtma_anketa.html`) o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi. `PUT /orders/{id}/survey` butun anketani **bir butun sifatida** yozadi (partial patch yo'q) — `order.survey = body.model_dump(mode="json")`. O'qishda `OrderDetail.survey` xom dict qaytaradi (qayta validatsiya qilinmaydi — eski versiyadagi qatorlar javobni yiqitmasin).
+
+Mijoz ismi/telefoni `Client` da, narx/avans/muddat `Order` da — anketada takrorlanmaydi.
+
+**`OrderSurvey`** (`extra="ignore"`):
+
+| Maydon | Tip | Chegara |
+|---|---|---|
+| `version` | `int` | default `1` — sxema evolyutsiyasi uchun |
+| `measured_at` | `date \| None` | o'lchov sanasi |
+| `measured_by` | `str` | ≤120 — o'lchagan usta |
+| `rooms` | `list[SurveyRoom]` | ≤10 |
+
+**`SurveyRoom`** — har xona alohida to'ldiriladi (`extra="ignore"`). `id` — frontend beradigan barqaror kalit (≤40), xona rasmlari shu `id` ga bog'lanadi (1.4.1-bo'lim).
+
+| Bo'lim | Maydonlar |
+|---|---|
+| Kimlik | `id` (≤40, majburiy), `name` (≤60 — "Oshxona", "Yotoqxona 1") |
+| 2. Mebel turi | `furniture_types: list[str]` (≤20), `furniture_other` (≤120) |
+| 3. Shakl/o'lcham | `shape` (≤20), `room_length`, `room_width`, `room_height`, `furniture_wall_length` |
+| 4. Korpus | `corpus_materials: list[str]` (≤10), `corpus_color` (≤120), `corpus_thickness` (≤20), `corpus_note` (≤300) |
+| 5. Fasad | `facade_materials: list[str]` (≤10), `facade_color` (≤120), `countertop` (≤20), `facade_note` (≤300) |
+| 6-7. Furnitura/xizmat | `hardware_level` (≤20), `extra_services: list[str]` (≤10) |
+| 8. Izoh | `note` (≤1000) |
+| O'lchov varag'i | `walls: list[SurveyWall]` (≤8), `modules: list[SurveyModule]` (≤40), `total_running_meters` (0–1000 pm), `total_height` |
+
+**`SurveyWall`** (A bo'limi): `letter` (≤2 — A..E), `length`, `height`.
+**`SurveyModule`** (B bo'limi, yasaladigan modul qatori): `name` (≤120), `wall` (≤2), `width` (eni), `depth` (chuqurlik), `height` (balandlik), `count` (1–999), `note` (≤200).
+
+Barcha mm-o'lchamlar umumiy alias orqali: `_Mm = Annotated[float | None, Field(default=None, ge=0, le=50_000)]` — anketa tashqi kirish, chegarasiz bitta so'rov JSONB'ni to'ldirib yuborardi. Ro'yxat maydonlarida `Field(max_length=...)` element sonini cheklaydi.
+
+**Variant kodlari** (`ldsp`, `mdf`, `akril`, `led`, `montaj`, `burchak`, ...) bazaga **kod** sifatida yoziladi; matnga aylantirish faqat `frontend/src/lib/anketa.ts` katalogida (`FURNITURE_TYPES`, `LAYOUT_SHAPES`, `CORPUS_MATERIALS`, `CORPUS_THICKNESS`, `FACADE_MATERIALS`, `COUNTERTOPS`, `HARDWARE_LEVELS`, `EXTRA_SERVICES`, `WALL_LETTERS` + `labelOf`/`labelsOf`). Backend ro'yxatni qat'iy tekshirmaydi — yangi variant qo'shilganda migratsiya ham, backend o'zgarishi ham kerak emas, eski qatorlarda saqlangan kod ham buzilmaydi.
 
 ### 2.6 `backend/app/schemas/terminal.py` — Terminal/skan schemalari
 
@@ -297,7 +344,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 
 ### 4.4 Versiyalar zanjiri — `backend/app/migrations/versions/`
 
-5 ta migratsiya, head: `7d2c9f5e1b3a`.
+6 ta migratsiya, head: `a91c7d34f6e2`.
 
 | # | Revision | Fayl | Nima qiladi |
 |---|---|---|---|
@@ -306,6 +353,9 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 | 3 | `1393a241b793` | `1393a241b793_mes_domain_org_posts_machines_employees_.py` | **MES domeni**: 15 jadval yaratadi (`organization`, `client`, `employee`, `material`, `post`, `machine`, `audit_log`, `order`, `work_session`, `product`, `part`, `order_file`, `part_instance`, `part_route`, `scan`) + `user` ga `role` (server_default `'admin'`) va `machine_id` (FK `fk_user_machine_id`) qo'shadi |
 | 4 | `3b4e0b90f440` | `3b4e0b90f440_order_material_usage.py` | `order.material_usage` JSONB NOT NULL (server_default `'[]'`) |
 | 5 | `7d2c9f5e1b3a` | `7d2c9f5e1b3a_order_advance_payment.py` | `order.advance_payment Numeric(14,2)` NULL — to'lov oqimi maydoni |
+| 6 | `a91c7d34f6e2` | `a91c7d34f6e2_order_survey.py` | `order.survey JSONB` NULL — mijoz anketasi va o'lchov varag'i (xonalar bo'yicha) |
+
+Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kind=DOCUMENT` + `meta` JSONB bilan ishlatiladi (1.4.1-bo'lim).
 
 Eslatma: `1393a241b793` dagi `user.role` enum'i 6 qiymat bilan yaratilgan; keyinchalik 6 operator roli faqat Python enum'ga qo'shildi — ustun VARCHAR bo'lgani uchun (`db_enum`, `native_enum=False`) DB migratsiyasi kerak bo'lmadi.
 
@@ -340,12 +390,20 @@ Idempotent bootstrap — default tashkilot va 6 ishlab chiqarish postini yaratad
 | Task | Vazifasi |
 |---|---|
 | `ping(ctx)` | Liveness probe — `"pong"` qaytaradi (ARQ kamida bitta funksiya talab qiladi) |
-| `print_label(ctx, instance_id)` | Bitta fizik nusxa uchun EZPL etiketkani quradi va yuboradi (TZ 7.1.4) |
+| `print_label(ctx, instance_id)` | Bitta fizik nusxa uchun yorliqni (EZPL + PNG) quradi va yuboradi (TZ 7.1.4) |
 
-`print_label` oqimi: `app.services.labels` dan `load_label_data` + `build_label_ezpl` bilan etiketka tayyorlanadi (topilmasa `skip:` qaytadi), so'ng:
+`print_label` oqimi: `app.services.labels` dan `load_label_data` bilan ma'lumot olinadi (topilmasa `skip:{instance_id}`), so'ng **ikkala format** ham tayyorlanadi:
 
-1. `settings.PRINTER_IP` berilgan bo'lsa — GoDEX printerga **to'g'ridan-to'g'ri TCP** (`PRINTER_IP:PRINTER_PORT`, cp1251 kodlash, threadpool'da); `OSError` da navbatga fallback.
-2. Aks holda (yoki TCP xatosida) — ARQ worker kontekstidagi Redis'ga `LPUSH` bilan JSON job (`mes:print:queue` ro'yxati) — sexdagi bridge-agent uni o'qib printerda bajaradi (TZ 2.2.2).
+- `build_label_ezpl(data)` — tarmoqdagi GoDEX uchun EZPL matni (legacy TCP yo'li);
+- `render_label_png(data)` → `base64` (`png_b64`) — USB'ga ulangan printerda agent Windows GDI orqali rasmni chizadi, printer dialektiga bog'lanmaydi.
+
+So'ngra yuborish:
+
+1. `settings.PRINTER_IP` berilgan bo'lsa — GoDEX printerga **to'g'ridan-to'g'ri TCP** (`PRINTER_IP:PRINTER_PORT`, cp1251 kodlash, threadpool'dagi `_send_tcp`), natija `printed:{id}`; `OSError` da log yozilib navbatga fallback.
+2. Aks holda (yoki TCP xatosida) — ARQ worker kontekstidagi Redis'ga `LPUSH`: `PRINT_QUEUE_KEY = "mes:print:queue"` ro'yxatiga JSON job `{"type": "print", "instance_id", "ezpl", "png"}` (`queued:{id}`) — sexdagi bridge-agent `/ws/bridge` orqali uni olib printerda bajaradi (TZ 2.2.2).
+3. Na printer, na Redis bo'lsa — `logger.error` + `lost:{instance_id}`.
+
+To'liq zanjir: terminal → `POST /terminal/labels/{instance_id}` → ARQ → Redis `mes:print:queue` → `/ws/bridge` (`brpop` + ack) → bridge-agent → printer.
 
 ```python
 all_tasks = [ping, print_label]
@@ -366,4 +424,4 @@ Worker konfiguratsiyasi (ARQ `WorkerSettings`) ro'yxatni `all_tasks` dan oladi; 
 | Commands | `backend/app/commands/*` | settings, `local_session`, Models | bootstrap (superuser, organization + postlar) |
 | Tasks | `backend/app/tasks/*` | ARQ, `app.services.labels`, Redis | worker process |
 
-Naqshlar: **soft delete hamma joyda default** (BaseCRUD avtomatik filtr), **partial unique indekslar** tirik qatorlar orasida (`user`, `order.number`, `employee.badge_id`, `material`, `post.code`, `part_instance`, `part_route`), **VARCHAR-backed enumlar** (`db_enum`, migratsiyasiz yangi a'zo), **JSONB** moslashuvchan maydonlar uchun (cutmap, edges, machine_assignments, assigned_post_ids), **token_version** bilan JWT mass-invalidation, **E.164 telefon** username bilan teng huquqli login identifikatori, **MappedAsDataclass** ORM uslubi, **singleton CRUD instancelar**, **partial update** (`exclude_unset=True`), **idempotentlik** (`scan.client_event_id`, seed skriptlar).
+Naqshlar: **soft delete hamma joyda default** (BaseCRUD avtomatik filtr), **partial unique indekslar** tirik qatorlar orasida (`user`, `order.number`, `employee.badge_id`, `material`, `post.code`, `part_instance`, `part_route`), **VARCHAR-backed enumlar** (`db_enum`, migratsiyasiz yangi a'zo), **JSONB** moslashuvchan maydonlar uchun (cutmap, edges, machine_assignments, assigned_post_ids, survey, order_file.meta — anketa rasmlari jadvalsiz shu orqali bog'lanadi), **token_version** bilan JWT mass-invalidation, **E.164 telefon** username bilan teng huquqli login identifikatori, **MappedAsDataclass** ORM uslubi, **singleton CRUD instancelar**, **partial update** (`exclude_unset=True`), **idempotentlik** (`scan.client_event_id`, seed skriptlar).

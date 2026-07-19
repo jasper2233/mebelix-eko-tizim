@@ -265,15 +265,18 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 
 ## `backend/app/api/routes/orders.py` — Buyurtmalar (hayot sikli, matritsa, fayllar)
 
-**Maqsadi:** Eng katta route moduli (15 endpoint) — buyurtma hayot sikli TZ 6 bo'yicha: `DRAFT → TECHNICAL_REVIEW → PRODUCTION → COMPLETED → DELIVERED` (+ istalgan bosqichda `CANCELLED`). Tahrirlash cheklovlari `_EDITABLE_STATUSES = (DRAFT, TECHNICAL_REVIEW)` atrofida qurilgan.
+**Maqsadi:** Eng katta route moduli (18 endpoint) — buyurtma hayot sikli TZ 6 bo'yicha: `DRAFT → TECHNICAL_REVIEW → PRODUCTION → COMPLETED → DELIVERED` (+ istalgan bosqichda `CANCELLED`). Tahrirlash cheklovlari `_EDITABLE_STATUSES = (DRAFT, TECHNICAL_REVIEW)` atrofida qurilgan.
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
 | POST | `/api/v1/orders/` | `ManagerUser` | 201; tartib raqami `crud_orders.next_number` ("B-2026-001" ko'rinishida, yiliga ketma-ket); ikki manager poygasida unique index hakam — `IntegrityError` bo'lsa 3 martagacha qayta uriniladi; WS `order.created` |
 | GET | `/api/v1/orders/` | `StaffReadUser` | Paginatsiya; `status` filtri; `search` — raqam/loyiha nomi/loyiha UUID/mijoz ismi; DRAFT va CANCELLED buyurtmalar texnologga (superuser bo'lmasa) KO'RINMAYDI (`_hidden_statuses`) |
 | GET | `/api/v1/orders/status-counts` | `StaffReadUser` | Reestr tablari uchun har holatdagi buyurtmalar soni; `_hidden_statuses` filtri bu yerda ham amal qiladi; `/{order_id}` dan OLDIN e'lon qilingan (aks holda "status-counts" order_id deb o'qilardi) |
-| GET | `/api/v1/orders/{id}` | `StaffReadUser` | `OrderDetail`: mijoz ismi, biriktirilgan fayllar, `parts_count`, `instances_count`; yashirin holatdagi buyurtma texnologga to'g'ridan ID bilan ham 404 |
+| GET | `/api/v1/orders/{id}` | `StaffReadUser` | `OrderDetail`: mijoz ismi, biriktirilgan fayllar (`OrderFileRead`, `meta` bilan), `survey` (anketa JSON), `parts_count`, `instances_count`; yashirin holatdagi buyurtma texnologga to'g'ridan ID bilan ham 404 |
 | PATCH | `/api/v1/orders/{id}` | `ManagerUser` | DELIVERED/CANCELLED tahrirlanmaydi (403); `client_id` faqat DRAFT holatida almashtiriladi |
+| PUT | `/api/v1/orders/{id}/survey` | `ManagerUser` | Mijoz anketasi + o'lchov varag'ini to'liq almashtiradi (`OrderSurvey` → `Order.survey` JSONB); DELIVERED/CANCELLED da 403; saqlashda o'chirilgan xonalarning rasmlari yetim qolmasin deb tozalanadi (quyida); audit `survey_saved` |
+| POST | `/api/v1/orders/{id}/survey/photos` | `ManagerUser` | 201, multipart: `room_id` (Form, ≤40 belgi) + `file`; xona uchun namuna rasm; javob `OrderFileRead`; audit `survey_photo_added` |
+| DELETE | `/api/v1/orders/{id}/survey/photos/{file_id}` | `ManagerUser` | Rasmni o'chiradi — diskdan ham, bazada `is_deleted=True`; boshqa buyurtmaning yoki `DOCUMENT` bo'lmagan fayl uchun 404; audit `survey_photo_deleted` |
 | POST | `/api/v1/orders/{id}/confirm` | `ManagerUser` | Tasdiqlash: `DRAFT → TECHNICAL_REVIEW` — buyurtma texnologga o'tadi; `amount` (narx) kiritilgan bo'lishi shart |
 | POST | `/api/v1/orders/{id}/upload` | `TexnologUser` | `.project` fayl yuklash (TZ 6.3): faqat TECHNICAL_REVIEW holatida; kengaytma va hajm (`MAX_PROJECT_FILE_SIZE`) tekshiriladi; parse xatosi 422; TEMPLATE (GibLab'da optimizatsiya qilinmagan) fayl 422 aniq yo'riqnoma matni bilan rad etiladi (TZ 5.3.3); qayta yuklashda `wipe_previous_parse` oldingi parse natijalarini o'chiradi, `ingest_project` yangisini yozadi |
 | GET | `/api/v1/orders/{id}/matrix` | `StaffReadUser` | `OrderMatrix` — detal × bosqich marshrutlar (`RouteCell`) |
@@ -282,12 +285,39 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | POST | `/api/v1/orders/{id}/start` | `ManagerUser` | Ishlab chiqarishga uzatish (TZ 6.4.2): `TECHNICAL_REVIEW → PRODUCTION`; `.project` yuklangan bo'lishi shart; `requires_assignment_choice` postlarda stanok tanlanmagan bo'lsa 403; tanlangan stanok route yozuvlariga muhrlanadi (terminal filtri uchun); WS `order.started` |
 | POST | `/api/v1/orders/{id}/cancel` | `ManagerUser` | Bekor qilish (TZ 6.5): istalgan bosqichda (DELIVERED/CANCELLED dan tashqari); sabab majburiy; skan tarixi audit uchun saqlanadi; WS `order.cancelled` — terminallar vazifalarni DARHOL tashlaydi |
 | POST | `/api/v1/orders/{id}/deliver` | `ManagerUser` | TOPSHIRILDI (TZ 10.3): faqat `COMPLETED → DELIVERED`; `delivered_at` avtomatik; WS `order.delivered` |
-| GET | `/api/v1/orders/{id}/files/{file_id}` | `StaffReadUser` | Saqlangan faylni yuklab olish (project/SCX/hujjat), `FileResponse` |
+| GET | `/api/v1/orders/{id}/files/{file_id}` | `StaffReadUser` | Saqlangan faylni yuklab olish (project/SCX/hujjat), `FileResponse`; `media_type`: PROJECT/SCX uchun `application/xml`, qolganlari uchun `meta["content_type"]` (yo'q bo'lsa `application/octet-stream`) — anketa rasmlari `<img>` da ko'rsatilishi uchun shart |
 | GET | `/api/v1/orders/{id}/cutmap` | `StaffReadUser` | Kesish xaritasi holati (TZ 10.3) — admin-panel ko'rinishi va brauzer-print; terminal bilan umumiy `build_cutmap_state` (ARRA posti) |
 
 Barcha mutatsiyalar `log_action` bilan audit qilinadi. `.project` parser qoidalari va cutmap tafsilotlari — `docs/09-mes-domain.md`.
 
-**Bog'lanishlar:** `backend/app/schemas/orders.py`, `backend/app/services/giblab` (`parse_project`, `ingest_project`, `wipe_previous_parse`), `backend/app/core/ws.py` (`ws_manager`), `backend/app/api/routes/terminal.py` (`build_cutmap_state`).
+### Buyurtma anketasi (mijoz so'rovnomasi + o'lchov varag'i)
+
+Qog'oz forma (`uploads/forma/mebel_buyurtma_anketa.html`) o'rniga. Menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
+
+**Saqlash:** `Order.survey` — nullable JSONB ustun (`backend/app/models/order.py`, migratsiya `backend/app/migrations/versions/a91c7d34f6e2_order_survey.py`). Butun anketa bir butun sifatida yoziladi: `PUT /survey` mavjud qiymatni to'liq almashtiradi, patch semantikasi yo'q.
+
+**Sxemalar** (`backend/app/schemas/orders.py`) — barcha maydonlar tashqi kirish bo'lgani uchun chegaralangan:
+
+| Sxema | Maydonlar | Chegaralar |
+|---|---|---|
+| `OrderSurvey` | `version` (default 1), `measured_at` (o'lchov sanasi), `measured_by`, `rooms` | `rooms` ≤ 10; `measured_by` ≤ 120 belgi |
+| `SurveyRoom` | `id` (frontend beradigan barqaror kalit), `name`, `furniture_types`/`furniture_other`, `shape` + `room_length`/`room_width`/`room_height`/`furniture_wall_length`, `corpus_materials`/`corpus_color`/`corpus_thickness`/`corpus_note`, `facade_materials`/`facade_color`/`countertop`/`facade_note`, `hardware_level`, `extra_services`, `note`, `walls`, `modules`, `total_running_meters`, `total_height` | `id` ≤ 40; `furniture_types` ≤ 20 element; material/xizmat ro'yxatlari ≤ 10; `note` ≤ 1000; `walls` ≤ 8; `modules` ≤ 40; `total_running_meters` 0..1000 |
+| `SurveyWall` | `letter` (A..E), `length`, `height` | o'lchamlar mm da, `_Mm` = 0..50 000 |
+| `SurveyModule` | `name`, `wall`, `width` (eni), `depth` (chuqurlik), `height`, `count`, `note` | `count` 1..999; `note` ≤ 200; o'lchamlar `_Mm` |
+
+Variant kodlari (`ldsp`, `mdf`, `akril`…) backend'da qat'iy ro'yxat emas — matnga aylantirish `frontend/src/lib/anketa.ts` da; yangi variant qo'shishda migratsiya kerak emas. Mijoz ma'lumotlari `Client` da, narx/avans/muddat `Order` da — anketada takrorlanmaydi.
+
+**Xona rasmlari** alohida jadval talab qilmaydi: `OrderFile(kind=FileKind.DOCUMENT, meta={"room_id": ..., "content_type": ...})`, disk yo'li `uploads/survey/{order_id}/{uuid4().hex}{ext}`. Shu sabab `OrderFileRead` ga `meta` maydoni qo'shilgan.
+
+Yuklash cheklovlari (`orders.py` dagi konstantalar):
+
+- `_ROOM_PHOTO_TYPES` — faqat `image/jpeg` → `.jpg`, `image/png` → `.png`, `image/webp` → `.webp`; boshqasi 422 "Faqat JPG, PNG yoki WEBP rasm qabul qilinadi."
+- `MAX_ROOM_PHOTO_SIZE = 5 MB` — oshsa 422 (telefon surati odatda 2–4 MB).
+- `MAX_ROOM_PHOTOS = 6` — bitta `room_id` uchun; oshsa 422.
+
+**Yetim rasm tozalash:** `save_order_survey` anketani yozgach, `room_id`si kelgan `rooms` ro'yxatida yo'q bo'lgan `DOCUMENT` fayllarni topadi (JSONB `meta ? 'room_id'` + `meta->>'room_id' NOT IN (...)`), diskdan `unlink` qiladi (`OSError` yutiladi) va `is_deleted`/`deleted_at` belgilaydi. Ya'ni xona anketadan olib tashlansa uning rasmlari ham yo'qoladi.
+
+**Bog'lanishlar:** `backend/app/schemas/orders.py`, `backend/app/models/order.py` (`Order.survey`), `backend/app/services/giblab` (`parse_project`, `ingest_project`, `wipe_previous_parse`), `backend/app/core/ws.py` (`ws_manager`), `backend/app/api/routes/terminal.py` (`build_cutmap_state`), frontend tomoni: `frontend/src/routes/_layout/anketa.$orderId.tsx`, `frontend/src/lib/anketa.ts`.
 
 ---
 
@@ -315,13 +345,32 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi. `.project` parser qoidala
 | POST | `/api/v1/terminal/session` | terminal/operator | Beyjik skan smenani ochadi (TZ 8.2.2); xatolar 422 `{code: "E006", message}` — beyjik topilmadi / nofaol / hodim bu postga biriktirilmagan; bitta terminalda bitta aktiv sessiya — yangi beyjik eskisini yopadi; WS `session.started` |
 | POST | `/api/v1/terminal/session/end` | terminal/operator | Smenani yakunlaydi; aktiv sessiya bo'lmasa 404; WS `session.ended` |
 | GET | `/api/v1/terminal/tasks` | terminal/operator | NAVBATDAGI VAZIFALAR (TZ 8.3.2): faqat shu post/stanok, QOLDIQ > 0, PRODUCTION buyurtmalar, muddat (deadline) tartibida |
-| GET | `/api/v1/terminal/orders` | terminal/operator | Shu postga tegishli aktiv buyurtmalar (ARRA xarita tanlagichi uchun), done/total bilan |
+| GET | `/api/v1/terminal/orders` | terminal/operator | Shu postga tegishli aktiv buyurtmalar (ARRA xarita tanlagichi uchun). Tartib: prioritet (`URGENT→HIGH→MEDIUM→LOW`, `priority_rank` `case()`), keyin deadline (nulls oxirida), keyin id. `/tasks` bilan bir xil stanok filtri: boshqa stanokka muhrlangan route'lar ko'rinmaydi. Har kartada `done`/`total`, `materials` (`material_usage` dagi `kind == "sheet"` nomlari), `sheets_total` (cutmap listlari `mult` bilan), `has_cutmap` |
 | GET | `/api/v1/terminal/orders/{id}/cutmap` | terminal/operator | ARRA kesish xaritasi (TZ 7.1.7); ARRA bo'lmagan postda 403; katak holati serverda — terminal qayta yonganda saqlanib qoladi |
 | POST | `/api/v1/terminal/labels/{instance_id}` | terminal/operator | YORLIQ CHOP ETISH (TZ 7.1.4): ARQ `print_label` navbatiga qo'yiladi (bridge-agent/GoDEX); `label_printed_at` belgilanadi; WS `label.printed` |
-| GET | `/api/v1/terminal/labels/{instance_id}.png` | terminal/operator | Yorliqning PNG ko'rinishi — brauzerdan istalgan printerga chop etish uchun (GoDEX shart emas) |
+| GET | `/api/v1/terminal/labels/{instance_id}.png` | terminal/operator | Yorliqning PNG ko'rinishi (`load_label_data` + `render_label_png`) — brauzerdan istalgan printerga chop etish uchun (GoDEX shart emas); `Response(media_type="image/png")` |
 | GET | `/api/v1/terminal/files/{file_id}` | terminal/operator | SCX faylni stanok brauzeriga yuklab olish (TZ 12.5) — har safar yangidan beriladi |
 
-**Bog'lanishlar:** `backend/app/schemas/terminal.py`, `backend/app/services/scanning.py` (`resolve_terminal`, `active_session`, `ScanRejected`), `backend/app/services/labels.py`, `backend/app/tasks` (`print_label`), `backend/app/core/ws.py`.
+### Yorliq chop etish zanjiri
+
+```
+terminal (POST /terminal/labels/{instance_id})
+  → arq: app.tasks.print_label(instance_id)
+      load_label_data(db, instance_id) → LabelData
+      build_label_ezpl(data)   → EZPL matn (tarmoqdagi GoDEX dialekti)
+      render_label_png(data)   → PNG (base64), printer dialektiga bog'liq emas
+  → PRINTER_IP sozlangan bo'lsa: to'g'ridan TCP printer:9100 (cp1251), xato bo'lsa navbatga tushadi
+  → aks holda Redis LPUSH mes:print:queue
+      job = {"type": "print", "instance_id": ..., "ezpl": ..., "png": <base64>}
+  → WS /api/v1/ws/bridge (brpop + ack)
+  → bridge-agent → printer
+```
+
+`print_label` qaytaradigan qiymatlar: `printed:<id>` (to'g'ridan TCP), `queued:<id>` (Redis navbati), `skip:<id>` (nusxa topilmadi), `lost:<id>` (na printer, na Redis bor).
+
+Agent tomoni (`bridge-agent/agent.py`): `PRINTER_NAME` berilgan bo'lsa job'dagi PNG Windows GDI orqali chop etiladi (win32ui + PIL, DEVMODE 80×60 mm ga majburlanadi), aks holda EZPL lokal GoDEX'ga uzatiladi.
+
+**Bog'lanishlar:** `backend/app/schemas/terminal.py`, `backend/app/services/scanning.py` (`resolve_terminal`, `active_session`, `ScanRejected`), `backend/app/services/labels.py` (`LabelData`, `load_label_data`, `build_label_ezpl`, `render_label_png` — 80×60 mm, 203 dpi, 1-bit), `backend/app/tasks` (`print_label`, `PRINT_QUEUE_KEY`), `backend/app/core/ws.py`, `bridge-agent/agent.py`.
 
 ---
 
@@ -376,7 +425,7 @@ Skan qabul qilish qoidalari (marshrut/ketma-ketlik tekshiruvi, dublikat, E001–
 | Endpoint | Auth | Izoh |
 |---|---|---|
 | WS `/api/v1/ws/events` | `?token=` query yoki access cookie | Brauzer klientlari (TZ 2.3). Token `verify_token` + `is_active` + `token_version` bilan tekshiriladi; muvaffaqiyatsiz bo'lsa **4401** kod bilan yopiladi. Klient scope'i rol bo'yicha: TERMINAL→`terminal`, TABLO→`tablo`, qolganlar→`dashboard`; `user.machine_id` dan post/stanok scope aniqlanadi. Heartbeat (TZ 2.3.2): klientning har qanday xabariga `{"type": "pong"}` |
-| WS `/api/v1/ws/bridge` | `?token=` ↔ `settings.BRIDGE_TOKEN` (`secrets.compare_digest`) | Sex tarmog'idagi bridge-agent uplink'i (TZ 2.2.2 — lokal GoDEX'da chop etadi). Token noto'g'ri yoki `BRIDGE_TOKEN` sozlanmagan bo'lsa 4401. Redis `mes:print:queue` ro'yxatidan `brpop` (5s timeout) bilan ishlarni oladi va agentga yuboradi; agent har ishni 15s ichida `{"ok": true}` bilan ack qilishi shart — ack kelmasa yoki uzilsa ish `rpush` bilan navbatga QAYTARILADI (hech bir ish yo'qolmaydi); bo'sh navbatda `{"type": "ping"}` heartbeat |
+| WS `/api/v1/ws/bridge` | `?token=` ↔ `settings.BRIDGE_TOKEN` (`secrets.compare_digest`) | Sex tarmog'idagi bridge-agent uplink'i (TZ 2.2.2 — lokal GoDEX'da chop etadi). Token noto'g'ri yoki `BRIDGE_TOKEN` sozlanmagan bo'lsa 4401. Redis `mes:print:queue` ro'yxatidan `brpop` (5s timeout) bilan ishlarni oladi va agentga yuboradi (job JSON: `type`, `instance_id`, `ezpl`, `png` — base64 PNG); agent har ishni 15s ichida `{"ok": true}` bilan ack qilishi shart — ack kelmasa yoki uzilsa ish `rpush` bilan navbatga QAYTARILADI (hech bir ish yo'qolmaydi); bo'sh navbatda `{"type": "ping"}` heartbeat va 10s ichida javob kutiladi |
 
 Server → klient eventlarni `app/core/ws.py` dagi `ws_manager` tarqatadi: `order.*`, `session.*`, skan eventlari, `label.printed` — mutatsion HTTP endpointlar publish qiladi.
 
@@ -392,6 +441,7 @@ Server → klient eventlarni `app/core/ws.py` dagi `ws_manager` tarqatadi: `orde
 - **Refresh rotatsiyasi:** har `POST /login/refresh` da access va refresh ikkalasi qayta beriladi; eski refresh token `jti`si Redis'da belgilanadi (one-time-use), replay aniqlansa `token_version` bump bilan butun sessiya bekor qilinadi.
 - **Rate limiting:** `RateLimit` dependency — login endpointida (`LOGIN_RATE_LIMIT_*`).
 - **Paginatsiya:** `skip`/`limit` query parametrlari, chegaralar `settings.DEFAULT_PAGE_SIZE` / `settings.MAX_PAGE_SIZE` dan; ro'yxat javoblari `app/schemas/common.py` dagi generik `Paginated[T]` (`{data, count}`) sxemasida, oddiy tasdiqlar `Message` da.
+- **Fayl yuklash:** `UploadFile` qabul qiladigan endpointlar (`/orders/{id}/upload` — `.project`, `/orders/{id}/survey/photos` — xona rasmi) kengaytma/MIME va hajmni endpoint ichida tekshiradi, xato 422; fayl `settings.UPLOAD_DIR` ostiga yoziladi, bazada `OrderFile` qatori qoladi (yo'l — nisbiy).
 - **Audit:** deyarli barcha mutatsion endpointlar (clients/employees/machines/posts/materials/orders/terminal) o'z tranzaksiyasida `crud.log_action` chaqiradi — modul, amal, foydalanuvchi, entity, `meta`, IP yoziladi; o'qish `GET /api/v1/audit-logs/` orqali.
 - **Real-time eventlar:** mutatsion endpointlar `ws_manager.publish` orqali WS eventlar tarqatadi (`order.*`, `session.*`, skan eventlari, `label.printed`) — terminallar, TABLO va dashboard jonli yangilanadi.
 - **Xatoliklar:** `backend/app/core/exceptions.py` dagi maxsus exception'lar (`UnauthorizedException` 401, `ForbiddenException` 403, `NotFoundException` 404, `DuplicateValueException` 409) — xabarlar o'zbek tilida. Terminal/skan oqimida esa 422 `{code, message}` formati (E001–E007 kodlari).

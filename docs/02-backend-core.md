@@ -34,6 +34,7 @@ backend/app/main.py
 | `backend/app/core/utils/__init__.py` | Bo'sh package marker |
 | `backend/app/core/utils/queue.py` | arq Redis pool uchun global holder |
 | `backend/app/core/utils/rate_limit.py` | Redis asosidagi rate limiting (`RateLimiter`, `RateLimit`) |
+| `backend/app/tasks/__init__.py` | arq'ga ro'yxatga olinadigan vazifalar (`ping`, `print_label`) + `PRINT_QUEUE_KEY` |
 
 ---
 
@@ -229,7 +230,32 @@ class WorkerSettings:
 
 - `handle_signals` endi o'rnatilmaydi (default `True`): `docker stop`da SIGTERM to'g'ri ushlanib, bajarilayotgan joblar tugatiladi yoki qayta navbatga qo'yiladi.
 
-**Bog'lanishlar:** `config.py`, `setup.py` (`check_database_connection`), `backend/app/tasks/__init__.py` (`all_tasks = [ping, print_label]`). `ping` — liveness placeholder (arq kamida bitta funksiya talab qiladi). `print_label(ctx, instance_id)` — real vazifa (TZ 7.1.4): `PartInstance` uchun label ma'lumotini yuklab (`services/labels.py`) EZPL quradi; `PRINTER_IP` sozlangan bo'lsa printerga to'g'ridan-to'g'ri TCP orqali yuboradi (cp1251 kodlash, threadpool'da), TCP xatosida (`OSError`) yoki `PRINTER_IP` bo'lmasa Redis `mes:print:queue` ro'yxatiga `LPUSH` qiladi — uni sexdagi bridge-agent oladi (remote-first, TZ 2.2). Web-process `utils/queue.py`dagi pool orqali vazifalarni shu worker navbatiga qo'yadi.
+**Bog'lanishlar:** `config.py`, `setup.py` (`check_database_connection`), `backend/app/tasks/__init__.py` (`all_tasks = [ping, print_label]`). Web-process `utils/queue.py`dagi pool orqali vazifalarni shu worker navbatiga qo'yadi.
+
+### `backend/app/tasks/__init__.py` — ro'yxatga olingan vazifalar
+
+- `ping(ctx)` — liveness placeholder (arq kamida bitta funksiya talab qiladi), `"pong"` qaytaradi.
+- `PRINT_QUEUE_KEY = "mes:print:queue"` — bridge-agent shu Redis ro'yxatini bo'shatadi (TZ 2.2.2). `backend/app/api/routes/ws.py` ham shu konstantani import qiladi.
+- `print_label(ctx, instance_id)` — yorliq chiqarish vazifasi (TZ 7.1.4). Bitta DB sessiyasida (`local_session`) `services/labels.py`dan:
+  - `load_label_data(db, instance_id)` — `None` bo'lsa `"skip:{id}"` qaytarib chiqadi;
+  - `build_label_ezpl(data)` — tarmoqdagi GoDEX uchun EZPL matni;
+  - `render_label_png(data)` — o'sha yorliqning 80×60 mm / 203 dpi rasteri; `base64` bilan kodlanadi.
+
+  **Nega ikkalasi ham:** USB'ga ulangan printerda agent Windows GDI orqali PNG'ni chizadi (printer dialektiga bog'liq emas), tarmoqdagi GoDEX esa `ezpl`ni oladi.
+
+  Dispatch tartibi:
+  1. `PRINTER_IP` sozlangan bo'lsa — printerga to'g'ridan-to'g'ri TCP (`_send_tcp`, cp1251 kodlash, `run_in_threadpool`), muvaffaqiyatda `"printed:{id}"`.
+  2. TCP xatosida (`OSError`) yoki `PRINTER_IP` bo'lmasa — arq context'idagi Redis (`ctx["redis"]`) orqali `LPUSH mes:print:queue`, job JSON: `{"type": "print", "instance_id", "ezpl", "png"}` (`png` — base64 PNG). Natija `"queued:{id}"`.
+  3. Na printer, na Redis bo'lsa — xato loglanadi, `"lost:{id}"`.
+
+**To'liq zanjir (remote-first, TZ 2.2):**
+
+```
+terminal → POST /api/v1/terminal/labels/{instance_id} → queue.pool.enqueue_job("print_label", instance_id)
+  → arq worker → LPUSH mes:print:queue
+  → /ws/bridge (BRPOP + ack talab qiladi; ack kelmasa RPUSH bilan qaytariladi)
+  → bridge-agent (PRINTER_NAME orqali Windows GDI, yoki legacy TCP) → GoDEX G500-U
+```
 
 ---
 

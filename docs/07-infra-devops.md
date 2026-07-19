@@ -1,6 +1,6 @@
-# 07 — Infra & DevOps (Docker, Caddy, Makefile, scripts, CI hooks)
+# 07 — Infra & DevOps (Docker, Caddy, Makefile, scripts, chop etish, CI hooks)
 
-Bu hujjat MebeliX MES loyihasining infratuzilma va DevOps qatlamini tavsiflaydi: Docker Compose stacklari (lokal va production), backend/frontend Dockerfile'lar, Caddy reverse proxy, nginx static server, `Makefile` buyruqlari, yordamchi scriptlar, pre-commit hooklar va environment konfiguratsiyasi.
+Bu hujjat MebeliX MES loyihasining infratuzilma va DevOps qatlamini tavsiflaydi: Docker Compose stacklari (lokal va production), backend/frontend Dockerfile'lar, Caddy reverse proxy, nginx static server, `Makefile` buyruqlari, yordamchi scriptlar, sexdagi chop etish infratuzilmasi (bridge-agent + GoDEX), pre-commit hooklar, CI/CD va environment konfiguratsiyasi.
 
 ## Umumiy arxitektura
 
@@ -103,6 +103,20 @@ SITE_ADDRESS=:80
 
 Bunda Caddy oddiy HTTP'da qoladi (sertifikatni nginx tugatadi), host nginx esa saytni `127.0.0.1:8200` ga proxy qiladi. Shu retsept `docker-compose.prod.yml` dagi `ports` izohida ham yozilgan.
 
+### Yuklangan fayllar (`UPLOAD_DIR`) — hozircha volume'siz
+
+Backend yuklangan fayllarni diskka yozadi (`backend/app/core/config.py`: `UPLOAD_DIR: str = "uploads"` — **nisbiy** yo'l, image ichidagi CWD `/app/backend` dan hisoblanadi, ya'ni `/app/backend/uploads`). Katalog tarkibi:
+
+| Kichik katalog | Nima | Yozuvchi |
+|---|---|---|
+| `projects/` | yuklangan GibLab `.project` fayllari | `upload_order_project` |
+| `scx/` | SCX/CNC fayllari | orders route'lari |
+| `survey/{order_id}/` | anketa xona rasmlari, nomi `{uuid4().hex}{ext}` | `upload_room_photo` (`POST /orders/{id}/survey/photos`) |
+
+DB'da faqat nisbiy yo'l saqlanadi (`OrderFile.path`), o'qishda `Path(settings.UPLOAD_DIR).resolve() / row.path` bilan qayta yig'iladi.
+
+**Muhim:** hech qaysi compose faylda `uploads` uchun volume yoki bind-mount **yo'q** — `docker-compose.local.yml` faqat `./backend/app` va `./scripts` ni mount qiladi, `docker-compose.prod.yml` esa `api`/`worker` uchun umuman volume bermaydi. CI `rsync` ham `uploads` ni exclude qiladi. Natijada prod'da yuklangan fayllar konteyner qatlamida yashaydi va **har deploy'da (image qayta build + konteyner almashishi) yo'qoladi** — DB'dagi `OrderFile` yozuvlari qoladi, fayl esa yo'q bo'ladi (`download_order_file` "Fayl diskda topilmadi" beradi). Doimiy saqlash kerak bo'lganda `api` va `worker` ga umumiy named volume (`/app/backend/uploads`) qo'shilishi kerak — ikkalasi ham bir xil ko'rishi shart, chunki parse `api` da, yorliq `worker` da ishlaydi.
+
 ### `caddy/Caddyfile` — reverse proxy va TLS
 
 Site bloki `{$SITE_ADDRESS::80}` — env-driven listener:
@@ -178,6 +192,139 @@ Server cron'ida kunlik ishlaydi (`0 2 * * *`). Oqim: `pg_dump` (db konteyneri ic
 
 ---
 
+## Chop etish infratuzilmasi — bridge-agent va GoDEX G500-U
+
+Printer sexda, server esa masofada (`mes.mebelix.uz`) turadi. Server printerga to'g'ridan-to'g'ri yeta olmaydi, shuning uchun oraliqda **bridge-agent** — sexdagi kompyuterda ishlaydigan, serverga **chiquvchi** (outbound) WebSocket ochadigan bitta Python fayl (`bridge-agent/agent.py`). Sex tarmog'ida hech qanday port ochilmaydi, oq IP kerak emas.
+
+### Zanjir (uchdan-uchgacha)
+
+```
+Terminal (arrachi)
+  POST /api/v1/terminal/labels/{instance_id}          (backend/app/api/routes/terminal.py)
+    ├── instance.label_printed_at = now()
+    ├── ws_manager.publish("label.printed", …)         → brauzerlarga live yangilanish
+    └── arq enqueue_job("print_label", instance_id)
+          ↓
+  print_label task                                     (backend/app/tasks/__init__.py)
+    ├── load_label_data(db, instance_id)               (backend/app/services/labels.py)
+    ├── build_label_ezpl(data)      → EZPL matni
+    ├── render_label_png(data)      → PNG, base64
+    ├── PRINTER_IP bo'lsa: _send_tcp(ezpl, ip, port)   → lokal deploy, printer:9100
+    └── aks holda: redis.lpush("mes:print:queue", job) → job = {type, instance_id, ezpl, png}
+          ↓
+  GET /api/v1/ws/bridge?token=…                        (backend/app/api/routes/ws.py)
+    brpop("mes:print:queue", 5) → send → ack kutish → yo'q bo'lsa rpush (qaytarib qo'yish)
+          ↓
+  bridge-agent (sex)                                   (bridge-agent/agent.py)
+    uplink() → local_enqueue(job) → ack → FLUSH_EVENT.set()
+    flusher() → send_to_printer(ezpl, png)             → GoDEX
+```
+
+Job'ning Redis'dagi kaliti — `PRINT_QUEUE_KEY = "mes:print:queue"` (`backend/app/tasks/__init__.py`).
+
+### Ishonchlilik: hech bir yorliq yo'qolmaydi
+
+Zanjirning har bo'g'inida jobni yo'qotmaslik choralari bor:
+
+- **Server → agent.** `ws_bridge` jobni `brpop` bilan Redis'dan **oladi** (ya'ni navbatdan chiqadi), keyin yuboradi va `{"ok": true}` ack kutadi (`asyncio.wait_for`, 15s). Ack kelmasa yoki `ok` false bo'lsa — `rpush` bilan navbatga **qaytariladi**, ulanish esa uziladi.
+- **Agent tomonda.** `uplink()` jobni avval `local_enqueue()` bilan diskka yozadi (`print-queue.jsonl`, JSONL append), **keyin** ack yuboradi. Ya'ni server jobni faqat u sexdagi diskda turgani aniq bo'lgach unutadi — agent yoki kompyuter o'chsa ham job saqlanadi.
+- **Printer o'chiq bo'lsa.** `flusher()` navbatni ketma-ket chiqaradi; birinchi muvaffaqiyatsiz jobda to'xtaydi va **qolgan barchasini** `local_rewrite()` bilan faylga qaytarib yozadi (tartib buzilmaydi), keyin `"Printer kutilmoqda — navbatda N ta yorliq"` deb log yozadi.
+- **Bo'sh vaqtda.** Agent oddiy holatda 5 sekundda bir sikl uradi, lekin yangi job kelganda `FLUSH_EVENT.set()` flusher'ni **darhol** uyg'otadi — kutish yo'q.
+- **Yarim-ochiq TCP.** Server jobsiz 5 sekunddan keyin `{"type": "ping"}` yuboradi va javob kutadi; agent unga `{"ok": true}` bilan javob beradi. Sex tarmog'ida "o'lgan" ulanish tez aniqlanadi. Agent tomonda `websockets.connect(..., ping_interval=30)`, uzilganda 5s backoff bilan qayta ulanish.
+
+### Autentifikatsiya
+
+`/ws/bridge` faqat serverdagi `.env` da `BRIDGE_TOKEN` bo'sh bo'lmaganda ishlaydi; token `secrets.compare_digest` bilan solishtiriladi, mos kelmasa WebSocket `code=4401` bilan yopiladi. Token: `openssl rand -hex 24`, server `.env` va agent env'ida **bir xil** bo'lishi shart.
+
+### Yorliq PNG va EZPL — ikki format, bitta manba
+
+`backend/app/services/labels.py` bitta `LabelData` dan ikki chiqish beradi:
+
+| Funksiya | Chiqish | Kim ishlatadi |
+|---|---|---|
+| `build_label_ezpl(d)` | GoDEX EZPL matni (cp1251) | tarmoq GoDEX'i (TCP 9100) va agent'ning RAW spooler yo'li |
+| `render_label_png(d, scale=1)` | 80×60 mm, 203 dpi (8 dot/mm → 640×480 px), **1-bit** PNG | agent'ning Windows GDI yo'li; `GET /api/v1/terminal/labels/{id}.png` (brauzerdan istalgan printerga) |
+
+`print_label` task **ikkalasini ham** jobga soladi (`ezpl` + base64 `png`), chunki agent qaysi rejimda ishlashini server bilmaydi.
+
+PNG maketi GibSaw `mebelix.lbl` ga taqlid qiladi: chap ustun — logo, `Formatka` + zakaz kodi, detal kodi, loyiha nomi, 2×2 kromka jadvali (tagchiziq bilan), katta `L x W = count`, `N_detal` nomi, XNC belgilari (`П`=paz, `Ф`=freza), material va sana; o'ng ustun — QR (tepada, `qrcode` kutubxonasi bilan chiziladi) va vertikal detal eskizi. Eskizda kromka konturdan 1 mm tashqarida qalin chiziq bilan, `d.texture` bo'lsa uzunlik bo'ylab 3 ta chiziq, `d.holes` (cutmap'dan olingan haqiqiy teshiklar) aylana/qirra tikkalari bilan chiziladi.
+
+Termoprinter uchun ikki qat'iy qoida kodga o'rnatilgan: `draw.fontmode = "1"` (antialiasing o'chiq) va yakuniy `img.convert("L").point(… , "1")` — har piksel sof qora yoki oq. Aks holda drayver dither qiladi va QR skanerlanmay qoladi. Shuningdek barcha chiziqlar `width=max(2, scale)` — GDI kichraytirishda 1 px chiziq yo'qolib ketadi.
+
+**Assetlar** (`backend/app/assets/`, image ichiga `COPY backend /app/backend` bilan tushadi):
+
+| Fayl | Qayerda |
+|---|---|
+| `label-logo.png` | yorliq tepa-chapida, 160 threshold bilan 1-bit qilinadi; ochib bo'lmasa `MEBELIX` matni fallback |
+| `label-icon-drill.png` | teshik bor detallarda sverlo ikonkasi (alpha oq fonga flatten qilinadi); ochib bo'lmasa `С` harfi fallback |
+
+**Shrift eslatmasi.** `_FONT_REGULAR` / `_FONT_BOLD` ro'yxatlari Windows (`C:/Windows/Fonts/arial.ttf`, `arialbd.ttf`) va Debian DejaVu yo'llarini sinab ko'radi, hech biri topilmasa `ImageFont.load_default()` ga tushadi. `backend/Dockerfile` final stage'ida faqat `curl` o'rnatiladi — `fonts-dejavu-core` yo'q. Server tomonda PNG (`/labels/{id}.png` endpointi va `print_label` task'idagi `render_label_png`) TTF shriftda chiqishi kerak bo'lsa, image'ga shrift paketi qo'shilishi kerak.
+
+### Agent'ning to'rtta chiqish rejimi
+
+`send_to_printer(ezpl, png_b64)` env'ga qarab shu tartibda tanlaydi:
+
+| Shart | Yo'l | Izoh |
+|---|---|---|
+| `PRINTER_NAME` (+ `png`) | `_print_png_gdi()` — win32ui/PIL orqali Windows drayveriga rasm chizish | **USB G500-U uchun asosiy yo'l.** Admin huquqi va share kerak emas. GibSaw'ning "Used the printer driver" rejimi bilan bir xil |
+| `PRINTER_NAME` (png yo'q) | `win32print` RAW: `StartDocPrinter(…, "RAW")` → `WritePrinter(ezpl)` | xom EZPL spooler orqali |
+| `PRINTER_SHARE` | `cmd /c copy /b <tmp.prn> \\host\share` (timeout 30s) | `PRINTER_NAME` imkoni bo'lmaganda; Windows'da printer share qilingan bo'lishi kerak |
+| `PRINTER_IP` | `socket.create_connection((ip, port), timeout=10)` | Ethernet GoDEX, `PRINTER_PORT` default `9100` |
+
+Hech biri sozlanmasa job lokal navbatda qoladi va log'da `PRINTER_IP yoki PRINTER_SHARE sozlanmagan` xatosi chiqadi.
+
+**`_print_png_gdi()` nima qiladi.** Windows printer drayveri default qog'oz o'lchamiga (ko'pincha A4 yoki roll default'i) qarab yorliqni noto'g'ri joylashtiradi, shuning uchun DEVMODE qo'lda majburlanadi:
+
+1. `win32print.GetPrinter(h, 2)["pDevMode"]` — drayverning joriy DEVMODE'i olinadi;
+2. `PaperSize = 256` (`DMPAPER_USER`), `PaperWidth = 800`, `PaperLength = 600` — birlik **0.1 mm**, ya'ni 80×60 mm; `Orientation = 1` (portret);
+3. `dm.Fields |= DM_PAPERSIZE | DM_PAPERWIDTH | DM_PAPERLENGTH | DM_ORIENTATION` — drayverga bu maydonlar haqiqiy ekani bildiriladi;
+4. `win32gui.CreateDC("WINSPOOL", PRINTER_NAME, dm)` bilan shu DEVMODE'li DC ochiladi;
+5. rasm `HORZRES`/`VERTRES` ga proporsional (`min` scale) sig'diriladi va `ImageWin.Dib(img).draw(...)` bilan `StartDoc`/`StartPage` ichida chiziladi.
+
+Printer xatosi ushlanadi va `False` qaytariladi — job navbatda qoladi, yo'qolmaydi.
+
+### Agent o'rnatish
+
+Sexdagi istalgan Windows kompyuter yoki terminal monoblokning o'zi bo'ladi.
+
+```bash
+pip install websockets pywin32 pillow
+```
+
+`websockets` — har doim; `pywin32` + `pillow` — `PRINTER_NAME` (GDI/RAW) rejimi uchun. Linux'da faqat `websockets` yetarli (`PRINTER_IP` rejimi).
+
+USB GoDEX, Windows (tavsiya etilgan yo'l):
+
+```powershell
+$env:MES_URL="wss://mes.mebelix.uz"
+$env:BRIDGE_TOKEN="<serverdagi BRIDGE_TOKEN>"
+$env:PRINTER_NAME="Godex G500"   # Printers & scanners'dagi aynan shu nom
+python agent.py
+```
+
+Ethernet GoDEX, Linux:
+
+```bash
+MES_URL=wss://mes.mebelix.uz BRIDGE_TOKEN=... PRINTER_IP=192.168.1.90 python3 agent.py
+```
+
+Agent env'lari (bular **server `.env`** ida emas — sexdagi mashinada):
+
+| Env | Default | Tavsif |
+|---|---|---|
+| `MES_URL` | `ws://localhost:8000` | server manzili; agent oxiriga `/api/v1/ws/bridge?token=…` qo'shadi |
+| `BRIDGE_TOKEN` | — | majburiy; bo'sh bo'lsa agent `SystemExit` bilan to'xtaydi |
+| `PRINTER_NAME` | `""` | Windows printer nomi — GDI/RAW rejimi |
+| `PRINTER_SHARE` | `""` | UNC share yo'li, masalan `\\localhost\GODEX` |
+| `PRINTER_IP` / `PRINTER_PORT` | `""` / `9100` | tarmoq GoDEX |
+| `QUEUE_FILE` | `./print-queue.jsonl` | lokal durable navbat fayli |
+
+Doimiy ishlashi uchun: Windows'da Task Scheduler "At startup" trigger; Linux'da systemd unit (namunasi `bridge-agent/README.md` da). Navbat fayli `.gitignore` da (`bridge-agent/print-queue.jsonl`).
+
+Eslatma: SCX/CNC fayllar bridge orqali **o'tmaydi** — ular stanok kompyuterida brauzer orqali yuklab olinadi (TZ 12.5). Bridge faqat yorliq chop etish uchun.
+
+---
+
 ## Sifat nazorati — pre-commit hooklar va GitHub Actions CI
 
 ### `.pre-commit-config.yaml` — commit-oldi hooklar
@@ -195,15 +342,24 @@ Server cron'ida kunlik ishlaydi (`0 2 * * *`). Oqim: `pg_dump` (db konteyneri ic
 
 ### `.github/workflows/ci.yml` — GitHub Actions
 
-`main` ga push va har bir pull request'da ishga tushadi; uchta job — `backend` va `frontend` parallel, `deploy` ularga bog'liq:
+`main` ga push va har bir pull request'da ishga tushadi; to'rtta job — `backend` va `frontend` parallel, `deploy` ularga bog'liq, `notify` uchalasiga:
 
 | Job | Qadamlar |
 |---|---|
 | `backend` | `astral-sh/setup-uv` → `uv --project backend sync --all-groups` → `ruff check app` + `ruff format --check app` → `mypy app` → `python -m tests.test_giblab` (GibLab parser testlari) |
 | `frontend` | `actions/setup-node` (versiya `frontend/.nvmrc` dan, npm cache) → `npm ci` → `npx biome ci .` → `npm run build` (`tsc && vite build`) |
-| `deploy` | faqat `main` ga push + ikkala job yashil bo'lsa (`needs: [backend, frontend]`); `concurrency: prod-deploy` (parallel deploy yo'q). Qadamlar: SSH key setup → `rsync` kodni `root@DEPLOY_HOST:/opt/mebelix-mes` ga (`.git`/`node_modules`/`.venv`/`dist`/`uploads`/`.env` exclude) → `ssh` orqali `TAG=<git sha> bash scripts/deploy.sh` → public smoke `https://mes.mebelix.uz/api/v1/ready` (nginx/TLS yo'li orqali). Secrets: `DEPLOY_SSH_KEY`, `DEPLOY_HOST` |
+| `deploy` | faqat `main` ga push + ikkala job yashil bo'lsa (`needs: [backend, frontend]`); `concurrency: prod-deploy` (parallel deploy yo'q). Qadamlar: SSH key setup → `rsync` kodni `root@DEPLOY_HOST:/opt/mebelix-mes` ga (`.git`/`node_modules`/`.venv`/`__pycache__`/`dist`/`uploads`/`.env` exclude) → `ssh` orqali `TAG=<git sha> bash scripts/deploy.sh` → public smoke `https://mes.mebelix.uz/api/v1/ready` (nginx/TLS yo'li orqali). Secrets: `DEPLOY_SSH_KEY`, `DEPLOY_HOST` |
+| `notify` | `if: always() && push && ref == main`, `needs: [backend, frontend, deploy]` — Telegram xabari. Secrets: `TG_BOT_TOKEN`, `TG_CHAT_ID` |
 
-`deploy` job oxirida **Telegram notify** qadami bor (`if: always()`): success/failure holati + commit subject + Actions run URL Telegram'ga yuboriladi. Secrets: `TG_BOT_TOKEN`, `TG_CHAT_ID`.
+**Nega `notify` alohida job.** Avval u `deploy` ichida `if: always()` qadami edi. Lekin `backend` yoki `frontend` yiqilsa `deploy` butunlay **skipped** bo'ladi — skip qilingan job'ning qadamlari umuman ishlamaydi, ya'ni CI yiqilganda xabar hech kimga bormasdi. Endi `notify` mustaqil job va uchala natijani `needs.<job>.result` orqali env'da oladi (`BACKEND`, `FRONTEND`, `DEPLOY`):
+
+| `DEPLOY` natijasi | Xabar |
+|---|---|
+| `success` | `✅ MebeliX deploy OK` |
+| `skipped` | `❌ MebeliX CI YIQILDI (deploy boshlanmadi) — backend: …, frontend: …` |
+| qolgani (`failure`/`cancelled`) | `❌ MebeliX deploy YIQILDI (avto-rollback ishlagan bo'lishi kerak)` |
+
+Xabar tanasiga commit subject (`head -1`), qisqa sha (`${GITHUB_SHA::7}`) va Actions run URL qo'shiladi. Commit message `COMMIT_MSG` env orqali uzatiladi va `--data-urlencode` bilan yuboriladi — maxsus belgilar shell'ga ham, URL'ga ham tushib ketmasligi uchun.
 
 Ya'ni sifat nazorati ikki qatlamli: lokalda pre-commit + `make lint`, remote'da GitHub Actions har push/PR'ni tekshiradi, yashil `main` esa avtomatik prodga chiqadi.
 
@@ -247,6 +403,8 @@ Ya'ni sifat nazorati ikki qatlamli: lokalda pre-commit + `make lint`, remote'da 
 | `PRINTER_PORT` | `9100` | Printer TCP porti |
 | `BRIDGE_TOKEN` | `""` (bo'sh) | `openssl rand -hex 24` bilan generatsiya qilinadi; bo'sh bo'lmasa `/ws/bridge` endpoint yoqiladi (bridge-agent autentifikatsiyasi) |
 
+Eslatma: `PRINTER_NAME` va `PRINTER_SHARE` server `.env` ida **yo'q** — ular faqat sexdagi bridge-agent env'lari (yuqoridagi "Chop etish infratuzilmasi" bo'limi). Serverga faqat `BRIDGE_TOKEN` kerak; `PRINTER_IP` esa server printerga o'zi yeta oladigan lokal deploy uchun.
+
 Eslatma: `CADDY_HTTP_BIND` / `CADDY_HTTPS_BIND` `.env.example` da yo'q — ular `docker-compose.prod.yml` dagi compose-level substitutsiyalar (defaultlari `80` / `443`); behind-nginx rejimida `.env` ga qo'lda qo'shiladi. `TAG` ham shu kategoriyada — compose-level substitutsiya (default `latest`), CI uni git sha bilan beradi.
 
 ---
@@ -263,7 +421,7 @@ Bitta qoida: `* text=auto eol=lf` — barcha matn fayllar LF line-ending bilan n
 
 ### `.gitignore`
 
-Standart Python artefaktlari (`__pycache__`, egg/build/dist), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. MES runtime artefaktlari ham ignore: `backend/uploads/`, `bridge-agent/print-queue.jsonl`, `frontend/openapi.json`, hamda lokal sex ma'lumotlari `uploads/` va `chek/`. E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
+Standart Python artefaktlari (`__pycache__`, egg/build/dist), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. MES runtime artefaktlari ham ignore: `backend/uploads/` (`projects/`, `scx/`, `survey/` — yuklangan fayllar va anketa xona rasmlari), `bridge-agent/print-queue.jsonl` (agent'ning durable print navbati), `frontend/openapi.json`, hamda lokal sex ma'lumotlari `uploads/` (repo root'da: `.project`/SCX namunalari va `forma/mebel_buyurtma_anketa.html` — anketaning qog'oz manbasi) va `chek/` (namuna yorliq fotolari, `labels.py` maketi shulardan olingan). E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
 
 ---
 
@@ -271,7 +429,7 @@ Standart Python artefaktlari (`__pycache__`, egg/build/dist), virtualenvlar (`.v
 
 ### `backend/pyproject.toml`
 
-`mebelix-backend` 0.1.0, `requires-python >=3.11, <3.14`, build-backend `hatchling` (faqat `app/` package). Asosiy runtime dependencylar: `fastapi`, `uvicorn` + `uvloop`, `gunicorn`, `SQLAlchemy` 2 + `asyncpg` + `alembic`, `pydantic`/`pydantic-settings`, `pyjwt[crypto]` + `bcrypt`, `redis` + `arq` (queue/worker), `prometheus-fastapi-instrumentator` (metrics), `uuid6`, `httpx`, `openpyxl` (Excel), `pillow` + `qrcode` (yorliq PNG), `tzdata`. Dev group: `mypy`, `ruff`, `pre-commit`, `types-redis`, `types-openpyxl`, `websockets`. Tooling konfiguratsiyasi shu faylda: **ruff** (`target-version py311`, line-length 120, `F/E/W/C/UP/I` rulesetlar, `__init__.py` da unused/star import istisno) va **mypy** (`python_version 3.11`, `app.*` uchun `disallow_untyped_defs = true`).
+`mebelix-backend` 0.1.0, `requires-python >=3.11, <3.14`, build-backend `hatchling` (faqat `app/` package). Asosiy runtime dependencylar: `fastapi`, `uvicorn` + `uvloop`, `gunicorn`, `SQLAlchemy` 2 + `asyncpg` + `alembic`, `pydantic`/`pydantic-settings`, `pyjwt[crypto]` + `bcrypt`, `redis` + `arq` (queue/worker), `prometheus-fastapi-instrumentator` (metrics), `uuid6`, `httpx`, `python-multipart` (fayl yuklash: `.project`, SCX, anketa rasmlari), `openpyxl` (Excel), `pillow` + `qrcode` (`render_label_png` — yorliq PNG), `tzdata` (`ZoneInfo("Asia/Tashkent")` yorliq sanasi uchun). Dev group: `mypy`, `ruff`, `pre-commit`, `types-redis`, `types-openpyxl`, `websockets`. Tooling konfiguratsiyasi shu faylda: **ruff** (`target-version py311`, line-length 120, `F/E/W/C/UP/I` rulesetlar, `__init__.py` da unused/star import istisno) va **mypy** (`python_version 3.11`, `app.*` uchun `disallow_untyped_defs = true`).
 
 ### `frontend/package.json` va `frontend/.nvmrc`
 
@@ -297,5 +455,6 @@ Frontend dev qo'llanmasi: nvm/fnm bilan Node o'rnatish, `npm install` + `npm run
 - `docker-compose.*.yml` → `backend/Dockerfile` (context root, `scripts/` ni oladi), `frontend/Dockerfile` (+`VITE_API_URL` / `VITE_API_TIMEOUT_MS` build-arglar), `scripts/prestart.sh` (api command), `.env` / `.env.example`.
 - `docker-compose.prod.yml` → `caddy/Caddyfile` (`SITE_ADDRESS` env orqali TLS rejimi) → `api:8000` va `frontend:80` (`frontend/nginx/index.conf`).
 - `.pre-commit-config.yaml` → `backend/pyproject.toml` (ruff/mypy config), `frontend/biome.json` (biome hook).
-- `.github/workflows/ci.yml` → `backend/pyproject.toml` (uv sync, ruff/mypy), `backend/tests/test_giblab.py`, `frontend/.nvmrc` + `frontend/package-lock.json` (Node versiya va npm cache).
+- `.github/workflows/ci.yml` → `backend/pyproject.toml` (uv sync, ruff/mypy), `backend/tests/test_giblab.py`, `frontend/.nvmrc` + `frontend/package-lock.json` (Node versiya va npm cache), `scripts/deploy.sh` (deploy job), Telegram secrets (notify job).
 - `scripts/generate-client.sh` → backend OpenAPI spec → `frontend/src/client/` (frontend va backend orasidagi kontrakt sinxronizatsiyasi).
+- Chop etish zanjiri: `backend/app/api/routes/terminal.py` (`POST /terminal/labels/{id}`) → `backend/app/tasks/__init__.py` (`print_label`) → `backend/app/services/labels.py` (`build_label_ezpl` + `render_label_png` + `backend/app/assets/label-*.png`) → Redis `mes:print:queue` → `backend/app/api/routes/ws.py` (`/ws/bridge`, `BRIDGE_TOKEN`) → `bridge-agent/agent.py` → GoDEX.
