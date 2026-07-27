@@ -155,17 +155,13 @@ export function CutmapView({
   })
 
   const instancesByCell = useMemo(() => {
-    const map = new Map<
-      string,
-      typeof data extends undefined
-        ? never
-        : NonNullable<typeof data>["instances"]
-    >()
+    const map = new Map<string, NonNullable<typeof data>["instances"]>()
     for (const inst of data?.instances ?? []) {
       if (inst.pattern_no == null) continue
       const key = `${inst.pattern_no}:${inst.cell_index}`
-      const list = (map.get(key) as never[] | undefined) ?? []
-      map.set(key, [...list, inst] as never)
+      const list = map.get(key)
+      if (list) list.push(inst)
+      else map.set(key, [inst])
     }
     return map
   }, [data])
@@ -200,14 +196,13 @@ export function CutmapView({
     const cells = (s.parts as SheetPart[]).filter((p) => !p.waste)
     if (!cells.length) return false
     return cells.every((p) => {
-      const insts =
-        (instancesByCell.get(`${s.no}:${p.cell}`) as any[] | undefined) ?? []
+      const insts = instancesByCell.get(`${s.no}:${p.cell}`) ?? []
       return insts.length > 0 && insts.every((i) => i.done)
     })
   }
 
   registerPrint?.(() =>
-    printAllMaps(data.order_number, materials, holes, instancesByCell as never),
+    printAllMaps(data.order_number, materials, holes, instancesByCell),
   )
 
   // Material statistikasi — ixcham bir qator (terminalda SKAN ON qatoriga portal,
@@ -217,21 +212,15 @@ export function CutmapView({
     .filter(sheetDone)
     .reduce((a: number, s: Sheet) => a + (s.mult || 1), 0)
   const detTot = Number(material?.kd) || 0
-  const detDn = sheets.reduce(
-    (a: number, s: Sheet) =>
-      a +
-      (s.parts as SheetPart[])
-        .filter((p) => !p.waste)
-        .reduce(
-          (b, p) =>
-            b +
-            ((instancesByCell.get(`${s.no}:${p.cell}`) as any[]) ?? []).filter(
-              (i) => i.done,
-            ).length,
-          0,
-        ),
-    0,
-  )
+  let detDn = 0
+  for (const s of sheets) {
+    for (const p of s.parts as SheetPart[]) {
+      if (p.waste) continue
+      detDn += (instancesByCell.get(`${s.no}:${p.cell}`) ?? []).filter(
+        (i) => i.done,
+      ).length
+    }
+  }
   const markedPart =
     sheet && markedCell !== null
       ? (sheet.parts as SheetPart[]).find(
@@ -239,7 +228,7 @@ export function CutmapView({
         )
       : undefined
   const markedInsts = markedPart
-    ? ((instancesByCell.get(`${sheet.no}:${markedPart.cell}`) as any[]) ?? [])
+    ? (instancesByCell.get(`${sheet.no}:${markedPart.cell}`) ?? [])
     : []
   const nextInstance = markedInsts.find((i) => !i.done) ?? markedInsts[0]
 
@@ -422,7 +411,7 @@ export function CutmapView({
                       <SheetSvg
                         sheet={s}
                         holes={holes}
-                        instancesByCell={instancesByCell as never}
+                        instancesByCell={instancesByCell}
                         onSelect={() => {}}
                         selectedCell={null}
                         thumbnail
@@ -445,7 +434,7 @@ export function CutmapView({
               <SheetSvg
                 sheet={sheet}
                 holes={holes}
-                instancesByCell={instancesByCell as never}
+                instancesByCell={instancesByCell}
                 onSelect={(part) => {
                   // Terminalda tap faqat belgilaydi — chop etish chap qatordan;
                   // admin (texnolog) esa QR kartochkani ko'radi
@@ -473,7 +462,7 @@ export function CutmapView({
       <PartCard
         part={selected}
         sheetNo={sheet?.no}
-        instancesByCell={instancesByCell as never}
+        instancesByCell={instancesByCell}
         onClose={() => setSelected(null)}
         admin={admin}
         holes={holes}

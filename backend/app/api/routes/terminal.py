@@ -13,7 +13,7 @@ from app.core.config import settings
 from app.core.exceptions import NotFoundException
 from app.core.ws import ws_manager
 from app.crud import log_action
-from app.models import Employee, Order, OrderFile, Part, PartInstance, PartRoute, Scan, WorkSession
+from app.models import Employee, Order, OrderFile, Part, PartInstance, PartRoute, Product, Scan, WorkSession
 from app.models.enums import (
     POST_ROLES,
     EmployeeStatus,
@@ -185,9 +185,10 @@ async def read_terminal_tasks(db: SessionDep, user: TerminalUser) -> list[TaskRo
 
     rows = (
         await db.execute(
-            select(PartRoute, Part, Order)
+            select(PartRoute, Part, Order, Product.code)
             .join(Part, Part.id == PartRoute.part_id)
             .join(Order, Order.id == PartRoute.order_id)
+            .join(Product, Product.id == Part.product_id)
             .where(
                 PartRoute.post_id == post.id,
                 PartRoute.is_enabled == True,  # noqa: E712
@@ -201,31 +202,23 @@ async def read_terminal_tasks(db: SessionDep, user: TerminalUser) -> list[TaskRo
         )
     ).all()
 
-    result: list[TaskRow] = []
-    product_codes: dict[int, str] = {}
-    for route, part, order in rows:
-        if part.product_id not in product_codes:
-            from app.models import Product
-
-            product = await db.get(Product, part.product_id)
-            product_codes[part.product_id] = product.code if product else ""
-        result.append(
-            TaskRow(
-                part_id=part.id,
-                order_id=order.id,
-                order_number=order.number,
-                deadline=order.deadline,
-                code=f"{product_codes[part.product_id]}_{part.code}",
-                name=part.name,
-                length=part.length,
-                width=part.width,
-                thickness=part.thickness,
-                qoldiq=route.total_required - route.total_done,
-                total=route.total_required,
-                edges=part.edges,
-            )
+    return [
+        TaskRow(
+            part_id=part.id,
+            order_id=order.id,
+            order_number=order.number,
+            deadline=order.deadline,
+            code=f"{product_code}_{part.code}",
+            name=part.name,
+            length=part.length,
+            width=part.width,
+            thickness=part.thickness,
+            qoldiq=route.total_required - route.total_done,
+            total=route.total_required,
+            edges=part.edges,
         )
-    return result
+        for route, part, order, product_code in rows
+    ]
 
 
 @router.get("/orders", response_model=list[dict], operation_id="read_terminal_orders")

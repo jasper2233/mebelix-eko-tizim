@@ -4,7 +4,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { IdCard, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { type Control, useForm } from "react-hook-form"
 import { z } from "zod"
 
 import { type EmployeeRead, EmployeesService } from "@/client"
@@ -63,6 +63,98 @@ const formSchema = z.object({
   position: z.string().max(50).optional(),
   assigned_post_ids: z.array(z.number()).min(1, "Kamida bitta post tanlang"),
 })
+
+/** Qo'shish va tahrirlash dialoglaridagi bir xil maydonlar. Ikkalasi ham bitta
+ * formSchema'ga tayanadi: maydon qo'shilsa u avtomat ikkala dialogda chiqadi. */
+function EmployeeFields({
+  control,
+}: {
+  control: Control<z.infer<typeof formSchema>>
+}) {
+  // TanStack bir xil kalit bo'yicha dedupe qiladi — dialog o'zi so'rasa ham qo'shimcha so'rov ketmaydi
+  const { data: posts } = useQuery(getPostsQueryOptions())
+
+  return (
+    <>
+      <FormField
+        control={control}
+        name="full_name"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>F.I.Sh</FormLabel>
+            <FormControl>
+              <Input {...field} autoFocus />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <div className="grid grid-cols-2 gap-3">
+        <FormField
+          control={control}
+          name="phone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Telefon</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="+998..." />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name="position"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Lavozim</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="ISHCHI XODIM" />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+      </div>
+      <FormField
+        control={control}
+        name="assigned_post_ids"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Qaysi postlarda ishlaydi</FormLabel>
+            <div className="grid grid-cols-3 gap-2">
+              {(posts ?? []).map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center gap-2 rounded-lg border p-2 text-sm"
+                >
+                  <Checkbox
+                    checked={field.value.includes(p.id)}
+                    aria-label={p.code}
+                    onCheckedChange={(v) =>
+                      field.onChange(
+                        v === true
+                          ? [...field.value, p.id]
+                          : field.value.filter((x) => x !== p.id),
+                      )
+                    }
+                  />
+                  <span
+                    style={{ color: POST_COLORS[p.code] }}
+                    className="font-semibold"
+                  >
+                    {p.code}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </>
+  )
+}
 
 function EmployeesPage() {
   const [search, setSearch] = useState("")
@@ -208,7 +300,6 @@ function EditEmployee({
   employee: EmployeeRead
   onClose: () => void
 }) {
-  const { data: posts } = useQuery(getPostsQueryOptions())
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
 
@@ -255,82 +346,7 @@ function EditEmployee({
             onSubmit={form.handleSubmit((d) => mutation.mutate(d))}
             className="space-y-3"
           >
-            <FormField
-              control={form.control}
-              name="full_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>F.I.Sh</FormLabel>
-                  <FormControl>
-                    <Input {...field} autoFocus />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Telefon</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="+998..." />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="position"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Lavozim</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="ISHCHI XODIM" />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="assigned_post_ids"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Qaysi postlarda ishlaydi</FormLabel>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(posts ?? []).map((p) => (
-                      <div
-                        key={p.id}
-                        className="flex items-center gap-2 rounded-lg border p-2 text-sm"
-                      >
-                        <Checkbox
-                          checked={field.value.includes(p.id)}
-                          aria-label={p.code}
-                          onCheckedChange={(v) =>
-                            field.onChange(
-                              v === true
-                                ? [...field.value, p.id]
-                                : field.value.filter((x) => x !== p.id),
-                            )
-                          }
-                        />
-                        <span
-                          style={{ color: POST_COLORS[p.code] }}
-                          className="font-semibold"
-                        >
-                          {p.code}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <EmployeeFields control={form.control} />
             <div className="flex items-center justify-between rounded-lg border p-3">
               <span className="text-sm font-medium">
                 {active ? "AKTIV" : "NOFAOL"} — beyjik{" "}
@@ -389,7 +405,6 @@ function DeleteEmployee({
 
 function AddEmployee() {
   const [open, setOpen] = useState(false)
-  const { data: posts } = useQuery(getPostsQueryOptions())
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
 
@@ -441,82 +456,7 @@ function AddEmployee() {
             onSubmit={form.handleSubmit((d) => mutation.mutate(d))}
             className="space-y-3"
           >
-            <FormField
-              control={form.control}
-              name="full_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>F.I.Sh</FormLabel>
-                  <FormControl>
-                    <Input {...field} autoFocus />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Telefon</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="+998..." />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="position"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Lavozim</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="ISHCHI XODIM" />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="assigned_post_ids"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Qaysi postlarda ishlaydi</FormLabel>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(posts ?? []).map((p) => (
-                      <div
-                        key={p.id}
-                        className="flex items-center gap-2 rounded-lg border p-2 text-sm"
-                      >
-                        <Checkbox
-                          checked={field.value.includes(p.id)}
-                          aria-label={p.code}
-                          onCheckedChange={(v) =>
-                            field.onChange(
-                              v === true
-                                ? [...field.value, p.id]
-                                : field.value.filter((x) => x !== p.id),
-                            )
-                          }
-                        />
-                        <span
-                          style={{ color: POST_COLORS[p.code] }}
-                          className="font-semibold"
-                        >
-                          {p.code}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <EmployeeFields control={form.control} />
             <DialogFooter className="pt-2">
               <LoadingButton type="submit" loading={mutation.isPending}>
                 Saqlash

@@ -241,7 +241,7 @@ async def record_scan(
     if settings.STRICT_STAGE_ORDER:
         earlier_routes = (
             await db.execute(
-                select(PartRoute, Post.order_index)
+                select(PartRoute)
                 .join(Post, Post.id == PartRoute.post_id)
                 .where(
                     PartRoute.part_id == part.id,
@@ -250,8 +250,8 @@ async def record_scan(
                     Post.order_index < post.order_index,
                 )
             )
-        ).all()
-        for prev_route, _idx in earlier_routes:
+        ).scalars()
+        for prev_route in earlier_routes:
             prev_done = await _scans_done(db, instance.id, prev_route.post_id)
             if prev_done < prev_route.per_instance:
                 raise ScanRejected("E004", "Oldingi bosqich yakunlanmagan. Avval oldingi bosqichni yakunlang.")

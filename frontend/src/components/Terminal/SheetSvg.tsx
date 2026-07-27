@@ -15,9 +15,6 @@ const PART_SELECTED = "#2596be"
 
 // --- GibSaw render qoidalari (GibLabViewer'dan portlangan, foto-tekshirilgan) ---
 
-// O'lcham/nom yozuvlari toza qora, oq halo'siz (to'q apelsin fonda halo shart emas)
-const HALO = {}
-
 /** Teshik koordinatasi detal lokal (l×w) o'qidan katakka: rot = o'q almashinuvi, OYNASIZ. */
 export function holeXY(
   p: SheetPart,
@@ -374,7 +371,6 @@ export function SheetSvg({
             fontSize={dW}
             fill="#1f1f1f"
             fontWeight="700"
-            {...HALO}
           >
             {wText}
           </text>,
@@ -403,7 +399,6 @@ export function SheetSvg({
             fill="#1f1f1f"
             fontWeight="700"
             textAnchor="middle"
-            {...HALO}
           >
             {wText}
           </text>,
@@ -435,7 +430,6 @@ export function SheetSvg({
             fontWeight="700"
             textAnchor="middle"
             transform={`rotate(-90 ${spot.x} ${spot.y})`}
-            {...HALO}
           >
             {hText}
           </text>,
@@ -461,7 +455,6 @@ export function SheetSvg({
             textAnchor="middle"
             dominantBaseline="middle"
             transform={vert ? `rotate(-90 ${cx} ${spot.y})` : undefined}
-            {...HALO}
           >
             {shown}
           </text>,

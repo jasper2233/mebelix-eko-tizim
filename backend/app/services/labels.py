@@ -48,19 +48,24 @@ async def load_label_data(db: "AsyncSession", instance_id: int) -> LabelData | N
     if part is None or order is None:
         return None
 
-    # Cutmap'dan shu detal teshiklari: label_num -> file_part_id -> holes
+    # Cutmap'dan shu detal teshiklari: label_num -> file_part_id -> holes.
+    # Birinchi mos katak yetarli: katakdagi `id` va `num` bitta part'dan keladi
+    # (cutmap.py `part.file_part_id` / `part.label_num`), ya'ni bir xil `num` li
+    # barcha kataklar bir xil `id` ga ega — boshqa varaqda qidirish natijani o'zgartirmaydi.
     holes = None
     if order.cutmap and part.label_num is not None:
-        for mat in order.cutmap.get("materials", []):
-            for sheet in mat.get("sheets", []):
-                for cell in sheet.get("parts", []):
-                    if not cell.get("waste") and cell.get("num") == part.label_num:
-                        holes = order.cutmap.get("holes", {}).get(str(cell.get("id")))
-                        break
-                if holes:
-                    break
-            if holes:
-                break
+        cell = next(
+            (
+                c
+                for mat in order.cutmap.get("materials", [])
+                for sheet in mat.get("sheets", [])
+                for c in sheet.get("parts", [])
+                if not c.get("waste") and c.get("num") == part.label_num
+            ),
+            None,
+        )
+        if cell:
+            holes = order.cutmap.get("holes", {}).get(str(cell.get("id")))
 
     return LabelData(
         qr_text=instance.qr_text,
