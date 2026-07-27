@@ -17,7 +17,9 @@ source .env # POSTGRES_* va ADMIN_PASSWORD
 [ -f .backup.env ] && source .backup.env
 set +a
 
-BACKUP_DIR="${BACKUP_DIR:-backups}"
+# Deploy daraxtidan TASHQARIDA: CI `rsync --delete` bilan /opt/mebelix-mes ni
+# repo bilan tenglashtiradi, ya'ni repoda yo'q katalogni o'chirib yuboradi.
+BACKUP_DIR="${BACKUP_DIR:-/var/backups/mebelix}"
 KEEP_DAYS="${BACKUP_KEEP_DAYS:-14}"
 STAMP=$(date +%F)
 FILE="${BACKUP_DIR}/mebelix-${STAMP}.sql.gz.enc"

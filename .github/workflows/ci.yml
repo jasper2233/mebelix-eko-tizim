@@ -110,7 +110,7 @@ jobs:
           rsync -az --delete \
             --exclude .git --exclude node_modules --exclude .venv \
             --exclude __pycache__ --exclude dist --exclude uploads \
-            --exclude .env \
+            --exclude .env --exclude backups \
             ./ "root@${{ secrets.DEPLOY_HOST }}:/opt/mebelix-mes/"
       - name: Registry login (serverda)
         # Paketlar private — server ghcr'dan tortish uchun autentifikatsiya qiladi.
