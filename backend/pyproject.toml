@@ -10,6 +10,9 @@ dependencies = [
     "pydantic[email]>=2.6.1",
     "fastapi>=0.136.1",
     "uvicorn>=0.46.0",
+    # WebSocket transporti: uvicorn [standard] extra'siz o'rnatilgan (click + h11),
+    # wsproto ham yo'q — /ws/events va /ws/bridge aynan shu paketga tayanadi
+    "websockets>=16.0",
     "uvloop>=0.22.1; sys_platform != 'win32'",
     "uuid6>=2024.1.12",
     "alembic>=1.18.4",
@@ -38,7 +41,6 @@ dev = [
     "ruff>=0.15.12",
     "pre-commit>=4.6.0",
     "types-openpyxl>=3.1.5.20260518",
-    "websockets>=16.0",
 ]
 
 [build-system]

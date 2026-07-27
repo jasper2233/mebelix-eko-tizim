@@ -55,7 +55,7 @@ Bu uchtasining **haqiqiy ishlatilishi** (99cebc3 dagi `render_label_png()` qayta
 
 `labels.py` ning butun tashqi yuzasi shu uchtaga tayanadi: `LabelData`, `load_label_data()`, `_n()`, `render_label_png()` — boshqa paket talab qilmaydi. `print_label` taski (`backend/app/tasks/__init__.py`) PNG'ni base64 qilib Redis navbatiga (`mes:print:queue`) qo'yadi, job JSON'i `{"type", "instance_id", "png"}` — printer dialekti generatsiya qilinmaydi, shuning uchun task tomonda ham qo'shimcha bog'liqlik yo'q.
 
-Dev group'dagi `websockets>=16.0` `backend/app` ichida umuman import qilinmaydi (repo bo'yicha yagona `import websockets` — `bridge-agent/agent.py` da), lekin uni **o'chirib bo'lmaydi**: lock'da `uvicorn` 0.51.0 `[standard]` extra'siz (faqat `click` + `h11`), `wsproto` esa umuman yo'q — ya'ni `/ws/events` va `/ws/bridge` uchun WebSocket transporti aynan shu paket. Prod image'ga u `backend/Dockerfile` dagi `uv sync --frozen` dev group'ni ham o'rnatgani uchun tushadi; to'g'ri joyi — asosiy `dependencies` (yoki `uvicorn[standard]`).
+`websockets>=16.0` asosiy `dependencies` da, garchi `backend/app` ichida hech qayerda `import` qilinmasa ham (repo bo'yicha yagona `import websockets` — `bridge-agent/agent.py` da). Sabab: `uvicorn` 0.51.0 `[standard]` extra'siz o'rnatilgan (bog'liqliklari faqat `click` + `h11`), `wsproto` esa lock'da umuman yo'q — ya'ni `/ws/events` va `/ws/bridge` uchun WebSocket transporti aynan shu paket. Avval u dev group'da turardi va prod image'ga faqat `uv sync --frozen` dev'ni ham o'rnatgani uchun tushardi: kimdir `--no-dev` qo'shsa TABLO ham, chek chiqarish ham jimgina o'lardi.
 
 ### Frontend (`frontend/package.json` + `package-lock.json`)
 

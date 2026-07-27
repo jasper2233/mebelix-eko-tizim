@@ -674,6 +674,7 @@ dependencies = [
     { name = "uuid6" },
     { name = "uvicorn" },
     { name = "uvloop", marker = "sys_platform != 'win32'" },
+    { name = "websockets" },
 ]
 
 [package.dev-dependencies]
@@ -683,7 +684,6 @@ dev = [
     { name = "ruff" },
     { name = "types-openpyxl" },
     { name = "types-redis" },
-    { name = "websockets" },
 ]
 
 [package.metadata]
@@ -710,6 +710,7 @@ requires-dist = [
     { name = "uuid6", specifier = ">=2024.1.12" },
     { name = "uvicorn", specifier = ">=0.46.0" },
     { name = "uvloop", marker = "sys_platform != 'win32'", specifier = ">=0.22.1" },
+    { name = "websockets", specifier = ">=16.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -719,7 +720,6 @@ dev = [
     { name = "ruff", specifier = ">=0.15.12" },
     { name = "types-openpyxl", specifier = ">=3.1.5.20260518" },
     { name = "types-redis", specifier = ">=4.6.0" },
-    { name = "websockets", specifier = ">=16.0" },
 ]
 
 [[package]]
