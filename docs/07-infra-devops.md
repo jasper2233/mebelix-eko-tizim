@@ -473,10 +473,6 @@ Standart Python artefaktlari (`__pycache__`, egg/build/dist), virtualenvlar (`.v
 
 Backend dev qo'llanmasi: texnologiyalar ro'yxati, `make setup` yoki qo'lda setup (`uv sync`, `.env`, migratsiyalar, superuser, seed), ishga tushirish (`make run-backend` / `make docker-local`), ARQ worker, test/lint/migratsiya buyruqlari. `docs/07-infra-devops.md` va `docs/09-mes-domain.md` ga yo'naltiradi.
 
-### `LICENSE.md`
-
-Repo root'da — **MIT License**, copyright (c) 2026 Olimbek Nizomov. `backend/pyproject.toml` dagi `license = { text = "MIT" }` shu bilan mos.
-
 ### `frontend/README.md`
 
 Frontend dev qo'llanmasi: nvm/fnm bilan Node o'rnatish, `npm install` + `npm run dev` (port 5173), Docker'siz lokal dev tavsiyasi, OpenAPI client generatsiyasi (`make frontend-gen` yoki qo'lda), `VITE_API_URL` bilan remote API'ga ulanish, `src/` katalog strukturasi (`client/` — generatsiyalangan client, `routes/`, `components/`, `hooks/`).

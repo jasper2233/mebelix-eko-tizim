@@ -3,7 +3,6 @@ name = "mebelix-backend"
 version = "0.1.0"
 description = "MebeliX backend"
 authors = [{ name = "MebeliX", email = "imkonwork@gmail.com" }]
-license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.11, <3.14"
 dependencies = [

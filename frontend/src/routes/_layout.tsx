@@ -24,7 +24,6 @@ const sectionTitles: Record<string, string> = {
   "/transactions": "Tranzaksiyalar",
   "/reports": "Hisobotlar",
   "/admin": "Foydalanuvchilar",
-  "/logs": "Logs",
   "/settings": "Sozlamalar",
 }
 
