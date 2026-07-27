@@ -70,3 +70,6 @@ frontend/openapi.json
 # Local shop-floor data (project/SCX uploads, reference photos)
 uploads/
 chek/
+
+# Serverdagi shifrlangan DB backuplar (scripts/backup.sh)
+backups/
