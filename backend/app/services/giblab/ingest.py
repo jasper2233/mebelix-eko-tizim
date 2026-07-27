@@ -182,8 +182,13 @@ async def ingest_project(
                 )
                 instances_created += 1
 
-            # routes (TZ 5.4): ARRA always; KROMKA by sides; XNC stages by program content
-            stage_per_instance: dict[PostCode, int] = {PostCode.ARRA: 1}
+            # routes (TZ 5.4): ARRA (kesish) — faqat listdan kesiladigan detalga;
+            # KROMKA — qirralari bo'yicha; XNC bosqichlari — dastur mazmunidan.
+            # Optimizatsiya qilingan faylda materiali ham, yorliq raqami ham yo'q detal
+            # umuman listga joylashtirilmagan (masalan kupe alyuminiy profillari) —
+            # unga ARRA vazifasi berilsa arrachi kesa olmaydigan soxta ish paydo bo'ladi.
+            sheet_part = project.generation != "processed" or pp.material_name or pp.label_num is not None
+            stage_per_instance: dict[PostCode, int] = {PostCode.ARRA: 1} if sheet_part else {}
             if pp.kromka_sides:
                 stage_per_instance[PostCode.KROMKA] = pp.kromka_sides
             for code_str, sides in pp.stage_sides().items():
@@ -228,6 +233,20 @@ async def ingest_project(
     order.project_generation = ProjectGeneration(project.generation)
     order.project_loaded_at = datetime.now(UTC)
     order.cutmap = cutmap.model if cutmap else None
+
+    # Kesish xaritasi qurilgan bo'lsa: unda joyi yo'q detallarni texnolog bilishi shart.
+    # Ikki sabab bo'ladi — (a) listdan kesilmaydigan profil, (b) GibLab uni ataylab
+    # joylashtirmagan (usedCount=0), ya'ni material yetmagan yoki dizayner chiqarib tashlagan.
+    if cutmap:
+        placed = {b.part_key for b in cutmap.bindings}
+        ghosts = [p for p in project.all_parts if p.key not in placed]
+        if ghosts:
+            names = ", ".join(f"{p.code} ({p.name})" for p in ghosts[:5])
+            more = f" va yana {len(ghosts) - 5} ta" if len(ghosts) > 5 else ""
+            project.warnings.append(
+                f"Kesish xaritasida {len(ghosts)} ta detalning joyi yo'q: {names}{more}. "
+                f"Ular arrachi ro'yxatiga tushmaydi."
+            )
 
     return {
         "products": len(project.products),

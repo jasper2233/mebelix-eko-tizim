@@ -81,11 +81,13 @@ function OrderDetailPage() {
   const upload = async (file: File) => {
     setUploading(true)
     try {
-      await OrdersService.uploadOrderProject({
+      const res = await OrdersService.uploadOrderProject({
         orderId: id,
         formData: { file: file as unknown as string },
       })
-      showSuccessToast("Fayl qabul qilindi va tahlil qilindi")
+      // Server javobida detal soni va tahlil ogohlantirishlari bor (kodsiz detal,
+      // takroriy kod, xaritada joyi yo'q detal) — ilgari ular ko'rsatilmasdi.
+      showSuccessToast(res.message)
       invalidate()
     } catch (err) {
       showErrorToast(extractErrorMessage(err as never))

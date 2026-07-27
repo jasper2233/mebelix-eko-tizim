@@ -796,12 +796,16 @@ async def upload_order_project(
         ip=_client_ip(request),
     )
     await db.commit()
-    return Message(
-        message=(
-            f"Fayl qabul qilindi: {summary['products']} mahsulot, {summary['parts']} detal, "
-            f"{summary['instances']} nusxa."
-        )
+    warnings = summary["warnings"]
+    text = (
+        f"Fayl qabul qilindi: {summary['products']} mahsulot, {summary['parts']} detal, {summary['instances']} nusxa."
     )
+    if warnings:
+        # Ogohlantirishlar avval faqat audit logga tushardi — menejer ularni ko'rmasdi.
+        text += f" Diqqat ({len(warnings)}): " + " | ".join(warnings[:3])
+        if len(warnings) > 3:
+            text += f" | va yana {len(warnings) - 3} ta (audit logda to'liq)"
+    return Message(message=text)
 
 
 @router.get("/{order_id}/files/{file_id}", operation_id="download_order_file")

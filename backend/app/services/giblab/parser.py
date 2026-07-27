@@ -49,6 +49,52 @@ def _dedupe_part_code(code: str, seen: set[str], product_code: str, warnings: li
     return renamed
 
 
+def _build_part(p: ET.Element, product: ParsedProduct, seen: set[str], warnings: list[str]) -> ParsedPart:
+    """Bitta <part> elementidan ParsedPart. Kod va o'lcham shu yerda normallashtiriladi."""
+    code = p.get("code") or p.get("part.code") or ""
+    if not code:
+        # Eski GibLab eksporti (version 21052101) detal kodini umuman yozmaydi —
+        # nomida kod o'rniga "№" turadi. Tartib raqamidan beramiz: GibLab'ning
+        # o'z sxemasi ham shu (yangi eksportda code = "{blok}_{part.position}").
+        code = f"{len(product.parts) + 1:03d}"
+        if len(product.parts) == 0:
+            warnings.append(
+                f"{product.code}: faylda detal kodlari yo'q (eski GibLab eksporti) — "
+                f"tartib raqami bo'yicha berildi (001, 002, ...)."
+            )
+    code = _dedupe_part_code(code, seen, product.code, warnings)
+    seen.add(code)
+
+    edges: dict[str, dict[str, object]] = {}
+    for side in _EDGE_SIDES:
+        if p.get(f"el{side}") is not None:
+            edges[side] = {"mat": p.get(f"el{side}Mat"), "symbol": None}
+
+    length = _f(p, "l") or _f(p, "dl")
+    width = _f(p, "w") or _f(p, "dw")
+    # Manfiy o'lcham fizik ma'noga ega emas — GibLab uni ba'zi X-profillarga bayroq
+    # sifatida qo'yadi. Modul olamiz, aks holda hisobotlarda maydon manfiy chiqadi.
+    if (length or 0) < 0 or (width or 0) < 0:
+        warnings.append(f"{product.code}/{code}: faylda manfiy o'lcham ({length}x{width}) — moduli olindi.")
+        length, width = abs(length or 0), abs(width or 0)
+
+    return ParsedPart(
+        file_part_id=int(p.get("id", 0)),
+        product_code=product.code,
+        code=code,
+        name=p.get("name", code),
+        count=_i(p, "count", 1),
+        length=length,
+        width=width,
+        saw_length=_f(p, "jl"),
+        saw_width=_f(p, "jw"),
+        thickness=None,  # CS materialidan quyida to'ldiriladi
+        txt=p.get("txt") == "true",
+        material_name=None,
+        edges=edges,
+    )
+
+
 def parse_project(content: bytes) -> ParsedProject:
     try:
         root = ET.fromstring(content)
@@ -119,38 +165,7 @@ def parse_project(content: bytes) -> ParsedProject:
         )
         seen = part_code_seen.setdefault(product.code, set())
         for p in g.findall("part"):
-            code = p.get("code") or p.get("part.code") or ""
-            if not code:
-                # Eski GibLab eksporti (version 21052101) detal kodini umuman yozmaydi —
-                # nomida kod o'rniga "№" turadi. Tartib raqamidan beramiz: GibLab'ning
-                # o'z sxemasi ham shu (yangi eksportda code = "{blok}_{part.position}").
-                code = f"{len(product.parts) + 1:03d}"
-                if len(product.parts) == 0:
-                    project.warnings.append(
-                        f"{product.code}: faylda detal kodlari yo'q (eski GibLab eksporti) — "
-                        f"tartib raqami bo'yicha berildi (001, 002, ...)."
-                    )
-            code = _dedupe_part_code(code, seen, product.code, project.warnings)
-            seen.add(code)
-            edges: dict[str, dict[str, object]] = {}
-            for side in _EDGE_SIDES:
-                if p.get(f"el{side}") is not None:
-                    edges[side] = {"mat": p.get(f"el{side}Mat"), "symbol": None}
-            part = ParsedPart(
-                file_part_id=int(p.get("id", 0)),
-                product_code=product.code,
-                code=code,
-                name=p.get("name", code),
-                count=_i(p, "count", 1),
-                length=_f(p, "l") or _f(p, "dl"),
-                width=_f(p, "w") or _f(p, "dw"),
-                saw_length=_f(p, "jl"),
-                saw_width=_f(p, "jw"),
-                thickness=None,  # filled from the CS material below
-                txt=p.get("txt") == "true",
-                material_name=None,
-                edges=edges,
-            )
+            part = _build_part(p, product, seen, project.warnings)
             product.parts.append(part)
             part_by_file_id[part.file_part_id] = part
         project.products.append(product)

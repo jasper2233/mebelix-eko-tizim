@@ -254,6 +254,27 @@ def test_old_export_without_part_codes() -> None:
     print("old export (kodsiz detal + e'lonsiz XNC konstanta) OK")
 
 
+def test_negative_dimensions() -> None:
+    """GibLab ba'zi X-profillarga manfiy uzunlik yozadi (kupe alyuminiy profillari).
+    Manfiy o'lcham hisobotlarda maydonni manfiy qiladi — moduli olinadi va ogohlantiriladi."""
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<project version="21052101">'
+        '<good typeId="product" id="1" code="4210" name="Model2" count="1">'
+        '<part id="1" code="X1" name="№ X1" dl="-818" dw="26" count="1"/>'
+        '<part id="2" code="A1" name="bok" dl="700" dw="500" count="1"/>'
+        "</good>"
+        "</project>"
+    ).encode()
+    project = parse_project(xml)
+
+    x1, a1 = project.all_parts
+    assert (x1.length, x1.width) == (818.0, 26.0)  # moduli olindi
+    assert (a1.length, a1.width) == (700.0, 500.0)  # musbat o'lcham tegilmaydi
+    assert sum("manfiy o'lcham" in w for w in project.warnings) == 1
+    print("manfiy o'lcham normallashtirish OK")
+
+
 if __name__ == "__main__":
     test_blob_decoder()
     test_parser_and_routes()
@@ -261,4 +282,5 @@ if __name__ == "__main__":
     test_scx()
     test_windows_1251_template()
     test_old_export_without_part_codes()
+    test_negative_dimensions()
     print("ALL GIBLAB TESTS PASSED")
