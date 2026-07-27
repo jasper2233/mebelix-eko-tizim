@@ -11,11 +11,6 @@ logger = logging.getLogger(__name__)
 PRINT_QUEUE_KEY = "mes:print:queue"  # bridge-agent drains this list (TZ 2.2.2)
 
 
-async def ping(ctx: dict[str, Any]) -> str:
-    """Liveness probe task. ARQ requires at least one registered function."""
-    return "pong"
-
-
 async def print_label(ctx: dict[str, Any], instance_id: int) -> str:
     """Render the label PNG for one physical copy and queue it (TZ 7.1.4).
 
@@ -39,4 +34,4 @@ async def print_label(ctx: dict[str, Any], instance_id: int) -> str:
     return f"lost:{instance_id}"
 
 
-all_tasks = [ping, print_label]
+all_tasks = [print_label]

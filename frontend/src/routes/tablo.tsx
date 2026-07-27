@@ -20,6 +20,7 @@ import { useMesWs } from "@/hooks/useMesWs"
 import { formatDate, POST_COLORS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { getMachinesQueryOptions } from "@/queries/mes"
+import { getCurrentUserQueryOptions } from "@/queries/users"
 
 export const Route = createFileRoute("/tablo")({
   component: TabloPage,
@@ -43,6 +44,16 @@ const UNIT_LABELS: Record<string, string> = {
   piece: "dona",
 }
 
+// Drill ko'rinishi ustunlari — sarlavha va qatorlar bir tartibda bo'lishi shart
+const DRILL_POSTS = [
+  "ARRA",
+  "KROMKA",
+  "PRISADKA",
+  "PAZ",
+  "ROVER",
+  "STOLYARKA",
+] as const
+
 function TabloPage() {
   const queryClient = useQueryClient()
   const [mode, setMode] = useState<Mode>("foiz")
@@ -51,10 +62,7 @@ function TabloPage() {
     new Date().toLocaleTimeString("uz-Latn-UZ"),
   )
 
-  const { data: me } = useQuery({
-    queryKey: ["currentUser"],
-    queryFn: () => UsersService.readUserMe(),
-  })
+  const { data: me } = useQuery(getCurrentUserQueryOptions())
   const { data: machines } = useQuery({
     ...getMachinesQueryOptions(),
     enabled: me?.role === "tablo",
@@ -380,17 +388,15 @@ function TabloOrderDrill({
             <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
               <th className="px-2 text-left">Detal</th>
               <th className="px-2 text-center">Soni</th>
-              {["ARRA", "KROMKA", "PRISADKA", "PAZ", "ROVER", "STOLYARKA"].map(
-                (c) => (
-                  <th
-                    key={c}
-                    className="px-2 text-center"
-                    style={{ color: POST_COLORS[c] }}
-                  >
-                    {c}
-                  </th>
-                ),
-              )}
+              {DRILL_POSTS.map((c) => (
+                <th
+                  key={c}
+                  className="px-2 text-center"
+                  style={{ color: POST_COLORS[c] }}
+                >
+                  {c}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -405,14 +411,7 @@ function TabloOrderDrill({
                 <td className="num bg-white px-2 py-2 text-center font-bold shadow-sm">
                   {p.count}
                 </td>
-                {[
-                  "ARRA",
-                  "KROMKA",
-                  "PRISADKA",
-                  "PAZ",
-                  "ROVER",
-                  "STOLYARKA",
-                ].map((c) => (
+                {DRILL_POSTS.map((c) => (
                   <TabloCell
                     key={c}
                     stage={p.stages[c]}

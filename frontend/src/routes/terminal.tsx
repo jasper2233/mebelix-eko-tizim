@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import {
   ApiError,
+  OpenAPI,
   type ScanResult,
   ScansService,
   TerminalService,
@@ -238,7 +239,7 @@ function TerminalPage() {
       // SCX fayllar har scanda qaytadan (TZ 12.5): CNC postlarda avtomatik yuklab olish
       for (const fid of r.scx_file_ids ?? []) {
         const a = document.createElement("a")
-        a.href = `${(window as never as { __API__?: string }).__API__ ?? ""}/api/v1/terminal/files/${fid}`
+        a.href = `${OpenAPI.BASE}/api/v1/terminal/files/${fid}`
         a.download = ""
         a.click()
       }

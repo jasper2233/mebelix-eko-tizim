@@ -520,7 +520,7 @@ export type Paginated_OrderRead_ = {
     count: number;
 };
 
-export type PaginatedResponse = {
+export type Paginated_UserRead_ = {
     data: Array<UserRead>;
     count: number;
 };
@@ -864,6 +864,8 @@ export type PairBridgeAgentData = {
 };
 
 export type PairBridgeAgentResponse = (BridgePairResponse);
+
+export type DownloadBridgeAgentResponse = (unknown);
 
 export type ReadClientsData = {
     limit?: number;
@@ -1241,7 +1243,7 @@ export type ReadUsersData = {
     skip?: number;
 };
 
-export type ReadUsersResponse = (PaginatedResponse);
+export type ReadUsersResponse = (Paginated_UserRead_);
 
 export type ReadUserMeResponse = (UserRead);
 

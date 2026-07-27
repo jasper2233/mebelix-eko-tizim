@@ -1,14 +1,15 @@
 """Shared production volume math (TZ 9.3.1 HAJM / 4.3 capacity forecast)."""
 
 from app.models import Part
+from app.models.enums import PostCode
 
 
 def part_volume(part: Part, post_code: str) -> float:
     """Full-part volume in the post's unit. ponytail: PAZ meters approximated as pieces —
     groove lengths are not persisted per part; upgrade when reports need exact meters."""
-    if post_code == "ARRA":
+    if post_code == PostCode.ARRA:
         return ((part.length or 0) * (part.width or 0) / 1_000_000) * part.count
-    if post_code == "KROMKA":
+    if post_code == PostCode.KROMKA:
         total = 0.0
         for side in part.edges:
             total += (part.width or 0) if side in ("l", "r") else (part.length or 0)

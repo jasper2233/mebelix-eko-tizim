@@ -87,7 +87,7 @@ docker-down: ## Stop all services
 
 .PHONY: docker-logs
 docker-logs: ## View docker compose logs
-	docker compose logs -f
+	docker compose -f docker-compose.local.yml logs -f
 
 .PHONY: clean
 clean: ## Clean up temporary files

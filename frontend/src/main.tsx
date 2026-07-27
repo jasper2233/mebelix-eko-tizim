@@ -18,30 +18,9 @@ OpenAPI.BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000"
 OpenAPI.WITH_CREDENTIALS = true
 axios.defaults.timeout = Number(import.meta.env.VITE_API_TIMEOUT_MS ?? 30_000)
 
-// --- Silent refresh with concurrent request queuing ---
+// --- Silent refresh: bir vaqtda kelgan 401'lar bitta promise'ni kutadi ---
 
-let isRefreshing = false
-let refreshSubscribers: {
-  resolve: () => void
-  reject: (error: unknown) => void
-}[] = []
-
-const subscribeTokenRefresh = (
-  resolve: () => void,
-  reject: (error: unknown) => void,
-) => {
-  refreshSubscribers.push({ resolve, reject })
-}
-
-const onRefreshed = () => {
-  for (const { resolve } of refreshSubscribers) resolve()
-  refreshSubscribers = []
-}
-
-const onRefreshFailed = (error: unknown) => {
-  for (const { reject } of refreshSubscribers) reject(error)
-  refreshSubscribers = []
-}
+let refreshing: Promise<unknown> | null = null
 
 axios.interceptors.response.use(
   (response) => response,
@@ -53,29 +32,13 @@ axios.interceptors.response.use(
       !originalRequest.url?.includes("/login/refresh") &&
       !originalRequest.url?.includes("/login/access-token")
     ) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          subscribeTokenRefresh(
-            () => resolve(axios(originalRequest)),
-            (err) => reject(err),
-          )
-        })
-      }
-
       originalRequest._retry = true
-      isRefreshing = true
-
-      try {
-        // Server sets the new access_token cookie in the response automatically.
-        await LoginService.refreshAccessToken()
-        onRefreshed()
-        return axios(originalRequest)
-      } catch (err) {
-        onRefreshFailed(err)
-        return Promise.reject(err)
-      } finally {
-        isRefreshing = false
-      }
+      // Server sets the new access_token cookie in the response automatically.
+      refreshing ??= LoginService.refreshAccessToken().finally(() => {
+        refreshing = null
+      })
+      await refreshing // refresh yiqilsa — kutayotgan barcha so'rov shu xato bilan rad etiladi
+      return axios(originalRequest)
     }
     return Promise.reject(error)
   },

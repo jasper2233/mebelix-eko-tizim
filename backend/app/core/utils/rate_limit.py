@@ -22,10 +22,10 @@ class RateLimiter:
 
     async def is_rate_limited(self, key: str, limit: int, period: int) -> bool:
         if self.client is None:
-            # Rate limiting disabled by config (ENABLE_REDIS_RATE_LIMIT) — deliberate, so allow.
-            return False
+            return True  # lifespan doim initialize() qiladi; bu yerga tushsak — fail-closed
         try:
-            current_count = await self.client.incr(key)
+            # redis-py o'z tiplarida ResponseT (Any) qaytaradi — `int` bo'lmasa warn_return_any yonadi
+            current_count: int = await self.client.incr(key)
             if current_count == 1:
                 await self.client.expire(key, period)
             return current_count > limit

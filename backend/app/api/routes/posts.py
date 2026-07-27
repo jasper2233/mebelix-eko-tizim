@@ -2,7 +2,6 @@ from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from app.api.deps import AdminUser, CurrentUser, SessionDep
-from app.core.exceptions import NotFoundException
 from app.crud import crud_posts, log_action
 from app.models import Post
 from app.schemas.posts import PostRead, PostUpdate
@@ -24,9 +23,7 @@ async def read_posts(db: SessionDep, _: CurrentUser) -> list[Post]:
 async def update_post(
     db: SessionDep, current_user: AdminUser, post_id: int, body: PostUpdate, request: Request
 ) -> Post:
-    post = await crud_posts.get(db, id=post_id)
-    if post is None:
-        raise NotFoundException("Post topilmadi.")
+    post = await crud_posts.get_or_404(db, "Post topilmadi.", id=post_id)
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(post, field, value)
     log_action(

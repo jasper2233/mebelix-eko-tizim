@@ -124,6 +124,21 @@ export function SheetSvg({
     return new DOMPoint(clientX, clientY).matrixTransform(ctm.inverse())
   }
 
+  // f — zoom faktori (>1 uzoqlashtiradi), (ax, ay) SVG nuqtasi joyida qoladi.
+  // base.w/14 — maksimal yaqinlik: g'ildirak/pinch/tugma uchun yagona chegara
+  const zoomAt = (f: number, ax: number, ay: number) => {
+    const cur = svgRef.current?.viewBox.baseVal
+    if (!cur) return
+    const nw = Math.min(base.w, Math.max(base.w / 14, cur.width * f))
+    const nh = nw * (base.h / base.w)
+    applyVb(
+      ax - (ax - cur.x) * (nw / cur.width),
+      ay - (ay - cur.y) * (nh / cur.height),
+      nw,
+      nh,
+    )
+  }
+
   // g'ildirak zoom kursor nuqtasiga (native listener — passive:false kerak)
   useEffect(() => {
     if (thumbnail) return
@@ -131,18 +146,9 @@ export function SheetSvg({
     if (!svg) return
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
-      const cur = svg.viewBox.baseVal
       const pt = svgPoint(e.clientX, e.clientY)
       if (!pt) return
-      const f = e.deltaY < 0 ? 1 / 1.25 : 1.25
-      const nw = Math.min(base.w, Math.max(base.w / 14, cur.width * f))
-      const nh = nw * (base.h / base.w)
-      applyVb(
-        pt.x - (pt.x - cur.x) * (nw / cur.width),
-        pt.y - (pt.y - cur.y) * (nh / cur.height),
-        nw,
-        nh,
-      )
+      zoomAt(e.deltaY < 0 ? 1 / 1.25 : 1.25, pt.x, pt.y)
     }
     svg.addEventListener("wheel", onWheel, { passive: false })
     return () => svg.removeEventListener("wheel", onWheel)
@@ -173,19 +179,11 @@ export function SheetSvg({
       const [a, c] = [...ptsRef.current.values()]
       const d2 = Math.hypot(a.x - c.x, a.y - c.y)
       if (d2 < 20) return
-      const f = pinchRef.current / d2
+      const f = pinchRef.current / d2 // AVVAL faktor, keyin yangi masofa
       pinchRef.current = d2
-      const cur = svg.viewBox.baseVal
       const mid = svgPoint((a.x + c.x) / 2, (a.y + c.y) / 2)
       if (!mid) return
-      const nw = Math.min(base.w, Math.max(base.w / 14, cur.width * f))
-      const nh = nw * (base.h / base.w)
-      applyVb(
-        mid.x - (mid.x - cur.x) * (nw / cur.width),
-        mid.y - (mid.y - cur.y) * (nh / cur.height),
-        nw,
-        nh,
-      )
+      zoomAt(f, mid.x, mid.y)
       return
     }
     const pan = panRef.current
@@ -217,15 +215,7 @@ export function SheetSvg({
   // Tugma zoom — qo'lqopda pinch ishonchsiz; markaz atrofida 1.5x
   const zoomBy = (f: number) => {
     const cur = svgRef.current?.viewBox.baseVal
-    if (!cur) return
-    const nw = Math.min(base.w, Math.max(base.w / 14, cur.width * f))
-    const nh = nw * (base.h / base.w)
-    applyVb(
-      cur.x + cur.width / 2 - nw / 2,
-      cur.y + cur.height / 2 - nh / 2,
-      nw,
-      nh,
-    )
+    if (cur) zoomAt(f, cur.x + cur.width / 2, cur.y + cur.height / 2)
   }
   registerZoom?.({
     zin: () => zoomBy(1 / 1.5),

@@ -14,14 +14,12 @@ dependencies = [
     # wsproto ham yo'q — /ws/events va /ws/bridge aynan shu paketga tayanadi
     "websockets>=16.0",
     "uvloop>=0.22.1; sys_platform != 'win32'",
-    "uuid6>=2024.1.12",
     "alembic>=1.18.4",
     "asyncpg>=0.31.0",
     "pyjwt[crypto]>=2.8.0",
     "SQLAlchemy>=2.0.25",
     "python-multipart>=0.0.26",
     "greenlet>=3.4.0",
-    "httpx>=0.26.0",
     "pydantic-settings>=2.14.0",
     "redis>=5.0.1",
     "arq>=0.28.0",
@@ -37,7 +35,6 @@ dependencies = [
 [dependency-groups]
 dev = [
     "mypy>=1.20.2",
-    "types-redis>=4.6.0",
     "ruff>=0.15.12",
     "pre-commit>=4.6.0",
     "types-openpyxl>=3.1.5.20260518",

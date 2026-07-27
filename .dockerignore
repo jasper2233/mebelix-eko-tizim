@@ -1,7 +1,15 @@
+# backend/Dockerfile faqat `backend` va `scripts` ni COPY qiladi (kontekst — repo ildizi),
+# qolgani daemon'ga behuda yuklanadi. frontend o'z konteksti (./frontend) va o'z .dockerignore'i bilan quriladi.
 .git
 **/.env
 **/.venv
 **/__pycache__
-frontend/node_modules
-frontend/dist
+**/.mypy_cache
+**/.ruff_cache
 docker-compose*.yml
+bridge-agent
+frontend
+docs
+uploads
+backups
+caddy

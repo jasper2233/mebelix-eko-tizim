@@ -2875,25 +2875,6 @@ export const OrdersReportSchema = {
     title: 'OrdersReport'
 } as const;
 
-export const PaginatedResponseSchema = {
-    properties: {
-        data: {
-            items: {
-                '$ref': '#/components/schemas/UserRead'
-            },
-            type: 'array',
-            title: 'Data'
-        },
-        count: {
-            type: 'integer',
-            title: 'Count'
-        }
-    },
-    type: 'object',
-    required: ['data', 'count'],
-    title: 'PaginatedResponse'
-} as const;
-
 export const Paginated_AuditLogRead_Schema = {
     properties: {
         data: {
@@ -2987,6 +2968,25 @@ export const Paginated_OrderRead_Schema = {
     type: 'object',
     required: ['data', 'count'],
     title: 'Paginated[OrderRead]'
+} as const;
+
+export const Paginated_UserRead_Schema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/UserRead'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'Paginated[UserRead]'
 } as const;
 
 export const PostCodeSchema = {

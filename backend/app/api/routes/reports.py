@@ -64,8 +64,8 @@ async def report_productivity(
     format: Annotated[Literal["json", "xlsx"], Query()] = "json",
 ) -> ProductivityReport | StreamingResponse:
     start, end = _range(date_from, date_to)
-    day = func.date_trunc("day", func.timezone("Asia/Tashkent", Scan.created_at))
-    hour = func.date_trunc("hour", func.timezone("Asia/Tashkent", Scan.created_at))
+    day = func.date_trunc("day", func.timezone(_TASHKENT.key, Scan.created_at))
+    hour = func.date_trunc("hour", func.timezone(_TASHKENT.key, Scan.created_at))
     rows = (
         await db.execute(
             select(

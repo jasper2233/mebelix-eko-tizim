@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models import Employee, Machine, Order, OrderFile, Part, PartInstance, PartRoute, Post, Scan, WorkSession
-from app.models.enums import POST_ROLES, FileKind, OrderStatus, SessionStatus, UserRole
+from app.models.enums import POST_ROLES, EmployeeStatus, FileKind, OrderStatus, PostCode, SessionStatus, UserRole
 from app.models.user import User
 
 _QR_RE = re.compile(r"^.+_.+_\d+$")  # {productCode}_{partCode}_{n} (TZ 5.8)
@@ -104,12 +104,13 @@ async def operator_employee(db: AsyncSession, user: User, post_id: int) -> Emplo
     return employee
 
 
-async def active_session(db: AsyncSession, user: User, machine: Machine) -> WorkSession:
-    session = (
+async def latest_active_session(db: AsyncSession, machine_id: int) -> WorkSession | None:
+    """Shu stanokdagi ochiq smena (eng oxirgisi)."""
+    return (
         await db.execute(
             select(WorkSession)
             .where(
-                WorkSession.machine_id == machine.id,
+                WorkSession.machine_id == machine_id,
                 WorkSession.status == SessionStatus.ACTIVE,
                 WorkSession.is_deleted == False,  # noqa: E712
             )
@@ -117,6 +118,10 @@ async def active_session(db: AsyncSession, user: User, machine: Machine) -> Work
             .limit(1)
         )
     ).scalar_one_or_none()
+
+
+async def active_session(db: AsyncSession, user: User, machine: Machine) -> WorkSession:
+    session = await latest_active_session(db, machine.id)
 
     # 12-hour shift timeout (TZ 8.5 E005)
     if session is not None:
@@ -127,7 +132,10 @@ async def active_session(db: AsyncSession, user: User, machine: Machine) -> Work
             await db.flush()
             session = None
             if POST_ROLES.get(UserRole(user.role)) is None:
-                raise ScanRejected("E005", "Sessiya muddati tugadi (12 soat). Beyjikni qaytadan scan qiling.")
+                raise ScanRejected(
+                    "E005",
+                    f"Sessiya muddati tugadi ({settings.SESSION_MAX_HOURS} soat). Beyjikni qaytadan scan qiling.",
+                )
 
     # Operator role: the login IS the shift — open/take over the session automatically.
     if POST_ROLES.get(UserRole(user.role)) is not None:
@@ -147,7 +155,7 @@ async def active_session(db: AsyncSession, user: User, machine: Machine) -> Work
     if session is None:
         raise ScanRejected("E005", "Aktiv sessiya yo'q. Beyjikni scan qiling.")
     badge_employee = await db.get(Employee, session.employee_id)
-    if badge_employee is None or badge_employee.status != "active":
+    if badge_employee is None or badge_employee.status != EmployeeStatus.ACTIVE:
         raise ScanRejected("E006", "Beyjik nofaol. Adminga murojaat qiling.")
     return session
 
@@ -283,7 +291,7 @@ async def record_scan(
     )
 
     # SCX served on EVERY scan at CNC posts (TZ 12.5).
-    if str(post.code) in ("PRISADKA", "PAZ", "ROVER"):
+    if post.code in (PostCode.PRISADKA, PostCode.PAZ, PostCode.ROVER):
         files = (
             (
                 await db.execute(
@@ -374,7 +382,7 @@ async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Sc
         raise ScanRejected("E001", "Bu scan allaqachon bekor qilingan.")
     created = scan.created_at if scan.created_at.tzinfo else scan.created_at.replace(tzinfo=UTC)
     if datetime.now(UTC) - created > timedelta(seconds=settings.SCAN_UNDO_SECONDS):
-        raise ScanRejected("E001", "60 sekunddan ko'p o'tdi — faqat admin bekor qila oladi.")
+        raise ScanRejected("E001", f"{settings.SCAN_UNDO_SECONDS} sekunddan ko'p o'tdi — faqat admin bekor qila oladi.")
 
     scan.is_cancelled = True
     scan.cancelled_at = datetime.now(UTC)

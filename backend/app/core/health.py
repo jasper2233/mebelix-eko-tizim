@@ -19,10 +19,8 @@ async def check_database_health(db: AsyncSession) -> bool:
 
 
 async def check_redis_health() -> bool:
-    """Ping every Redis client this app uses. If no Redis features are enabled, the check passes vacuously."""
+    """Ping every Redis client this app uses."""
     clients = [c for c in (queue.pool, rate_limiter.client) if c is not None]
-    if not clients:
-        return True
     try:
         for client in clients:
             await client.ping()

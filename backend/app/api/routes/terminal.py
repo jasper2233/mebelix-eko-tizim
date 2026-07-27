@@ -12,8 +12,20 @@ from app.api.deps import SessionDep, require_roles
 from app.core.config import settings
 from app.core.exceptions import NotFoundException
 from app.core.ws import ws_manager
-from app.crud import log_action
-from app.models import Employee, Order, OrderFile, Part, PartInstance, PartRoute, Product, Scan, WorkSession
+from app.crud import crud_orders, log_action
+from app.models import (
+    Employee,
+    Machine,
+    Order,
+    OrderFile,
+    Part,
+    PartInstance,
+    PartRoute,
+    Post,
+    Product,
+    Scan,
+    WorkSession,
+)
 from app.models.enums import (
     POST_ROLES,
     EmployeeStatus,
@@ -33,15 +45,23 @@ from app.schemas.terminal import (
     TaskRow,
     TerminalContext,
 )
-from app.services.scanning import ScanRejected, active_session, resolve_terminal
+from app.services.scanning import ScanRejected, active_session, latest_active_session, resolve_terminal
 
 router = APIRouter(prefix="/terminal", tags=["terminal"])
 
 TerminalUser = Annotated[User, Depends(require_roles(UserRole.TERMINAL, *POST_ROLES))]
 
 
-def _scan_http_error(exc: ScanRejected) -> HTTPException:
-    return HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message})
+async def _terminal_ctx(db: SessionDep, user: TerminalUser) -> tuple[Machine, Post]:
+    """Stanok + post. Faqat shu ikkisiga muhtoj route'larga qo'yiladi — router darajasida EMAS:
+    yorliq/fayl route'lari stanoksiz terminal foydalanuvchisi uchun ham ishlashi kerak."""
+    try:
+        return await resolve_terminal(db, user)
+    except ScanRejected as exc:
+        raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
+
+
+TerminalCtx = Annotated[tuple[Machine, Post], Depends(_terminal_ctx)]
 
 
 def _session_read(session: WorkSession, employee_name: str) -> SessionRead:
@@ -50,28 +70,10 @@ def _session_read(session: WorkSession, employee_name: str) -> SessionRead:
     return item
 
 
-async def _current_session(db: SessionDep, machine_id: int) -> WorkSession | None:
-    return (
-        await db.execute(
-            select(WorkSession)
-            .where(
-                WorkSession.machine_id == machine_id,
-                WorkSession.status == SessionStatus.ACTIVE,
-                WorkSession.is_deleted == False,  # noqa: E712
-            )
-            .order_by(WorkSession.id.desc())
-            .limit(1)
-        )
-    ).scalar_one_or_none()
-
-
 @router.get("/context", response_model=TerminalContext, operation_id="read_terminal_context")
-async def read_terminal_context(db: SessionDep, user: TerminalUser) -> TerminalContext:
-    try:
-        machine, post = await resolve_terminal(db, user)
-    except ScanRejected as exc:
-        raise _scan_http_error(exc) from None
-    ctx = TerminalContext(
+async def read_terminal_context(db: SessionDep, user: TerminalUser, ctx: TerminalCtx) -> TerminalContext:
+    machine, post = ctx
+    out = TerminalContext(
         machine_id=machine.id,
         machine_name=machine.name,
         post_id=post.id,
@@ -85,21 +87,19 @@ async def read_terminal_context(db: SessionDep, user: TerminalUser) -> TerminalC
         await db.commit()
         await db.refresh(session)
     else:
-        session = await _current_session(db, machine.id)
+        session = await latest_active_session(db, machine.id)
     if session is not None:
         employee = await db.get(Employee, session.employee_id)
-        ctx.session = _session_read(session, employee.full_name if employee else "")
-    return ctx
+        out.session = _session_read(session, employee.full_name if employee else "")
+    return out
 
 
 @router.post("/session", response_model=SessionRead, operation_id="start_terminal_session")
-async def start_terminal_session(db: SessionDep, user: TerminalUser, body: BadgeStart, request: Request) -> SessionRead:
+async def start_terminal_session(
+    db: SessionDep, user: TerminalUser, ctx: TerminalCtx, body: BadgeStart, request: Request
+) -> SessionRead:
     """Badge scan opens the shift (TZ 8.2.2)."""
-    try:
-        machine, post = await resolve_terminal(db, user)
-    except ScanRejected as exc:
-        raise _scan_http_error(exc) from None
-
+    machine, post = ctx
     employee = (
         await db.execute(
             select(Employee).where(
@@ -121,7 +121,7 @@ async def start_terminal_session(db: SessionDep, user: TerminalUser, body: Badge
         )
 
     # One active session per terminal: a new badge closes the previous shift.
-    previous = await _current_session(db, machine.id)
+    previous = await latest_active_session(db, machine.id)
     if previous is not None:
         previous.status = SessionStatus.ENDED
         previous.ended_at = datetime.now(UTC)
@@ -150,12 +150,9 @@ async def start_terminal_session(db: SessionDep, user: TerminalUser, body: Badge
 
 
 @router.post("/session/end", response_model=Message, operation_id="end_terminal_session")
-async def end_terminal_session(db: SessionDep, user: TerminalUser, request: Request) -> Message:
-    try:
-        machine, _post = await resolve_terminal(db, user)
-    except ScanRejected as exc:
-        raise _scan_http_error(exc) from None
-    session = await _current_session(db, machine.id)
+async def end_terminal_session(db: SessionDep, user: TerminalUser, ctx: TerminalCtx, request: Request) -> Message:
+    machine, _post = ctx
+    session = await latest_active_session(db, machine.id)
     if session is None:
         raise NotFoundException("Aktiv sessiya yo'q.")
     session.status = SessionStatus.ENDED
@@ -176,13 +173,9 @@ async def end_terminal_session(db: SessionDep, user: TerminalUser, request: Requ
 
 
 @router.get("/tasks", response_model=list[TaskRow], operation_id="read_terminal_tasks")
-async def read_terminal_tasks(db: SessionDep, user: TerminalUser) -> list[TaskRow]:
+async def read_terminal_tasks(db: SessionDep, ctx: TerminalCtx) -> list[TaskRow]:
     """NAVBATDAGI VAZIFALAR (TZ 8.3.2): deadline order, QOLDIQ > 0, this post/machine only."""
-    try:
-        machine, post = await resolve_terminal(db, user)
-    except ScanRejected as exc:
-        raise _scan_http_error(exc) from None
-
+    machine, post = ctx
     rows = (
         await db.execute(
             select(PartRoute, Part, Order, Product.code)
@@ -222,12 +215,9 @@ async def read_terminal_tasks(db: SessionDep, user: TerminalUser) -> list[TaskRo
 
 
 @router.get("/orders", response_model=list[dict], operation_id="read_terminal_orders")
-async def read_terminal_orders(db: SessionDep, user: TerminalUser) -> list[dict]:
+async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[dict]:
     """Active orders relevant to this terminal (for the ARRA map order picker)."""
-    try:
-        machine, post = await resolve_terminal(db, user)
-    except ScanRejected as exc:
-        raise _scan_http_error(exc) from None
+    machine, post = ctx
     # SHOSHILINCH tepada tursin: prioritet birinchi, keyin deadline (nulls oxirida)
     priority_rank = case(
         (Order.priority == OrderPriority.URGENT, 0),
@@ -277,18 +267,13 @@ async def read_terminal_orders(db: SessionDep, user: TerminalUser) -> list[dict]
 
 
 @router.get("/orders/{order_id}/cutmap", response_model=CutmapState, operation_id="read_terminal_cutmap")
-async def read_terminal_cutmap(db: SessionDep, user: TerminalUser, order_id: int) -> CutmapState:
+async def read_terminal_cutmap(db: SessionDep, ctx: TerminalCtx, order_id: int) -> CutmapState:
     """ARRA cut-map screen (TZ 7.1.7). Cell state survives terminal restarts — it lives here."""
-    try:
-        machine, post = await resolve_terminal(db, user)
-    except ScanRejected as exc:
-        raise _scan_http_error(exc) from None
+    _machine, post = ctx
     if post.code != PostCode.ARRA:
         raise HTTPException(status_code=403, detail="Kesish xaritasi faqat ARRA postida ko'rsatiladi.")
 
-    order = await db.get(Order, order_id)
-    if order is None or order.is_deleted:
-        raise NotFoundException("Buyurtma topilmadi.")
+    order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
     return await build_cutmap_state(db, order, post.id)
 
 

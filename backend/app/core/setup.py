@@ -71,10 +71,6 @@ async def check_redis_connection() -> None:
     if rate_limiter.client is not None:
         checks.append(("RateLimit", rate_limiter.client))
 
-    if not checks:
-        logging.info("Redis is disabled (no features enabled), skipping connection check.")
-        return
-
     async def _probe() -> None:
         for _, connection in checks:
             await connection.ping()
@@ -122,15 +118,12 @@ def lifespan_factory(settings: Settings) -> Callable[[FastAPI], _AsyncGeneratorC
         set_threadpool_tokens()
         ws_redis: AsyncRedis | None = None
         try:
-            if settings.ENABLE_REDIS_QUEUE:
-                await create_redis_queue_pool()
-            if settings.ENABLE_REDIS_RATE_LIMIT:
-                await create_redis_rate_limit_pool()
-            if settings.ENABLE_REDIS_QUEUE or settings.ENABLE_REDIS_RATE_LIMIT:
-                await check_redis_connection()
-                # Real-time bridge (TZ 2.3): cross-worker WS fan-out over Redis pub/sub.
-                ws_redis = AsyncRedis.from_url(settings.REDIS_URL)
-                await ws_manager.start_listener(ws_redis)
+            await create_redis_queue_pool()
+            await create_redis_rate_limit_pool()
+            await check_redis_connection()
+            # Real-time bridge (TZ 2.3): cross-worker WS fan-out over Redis pub/sub.
+            ws_redis = AsyncRedis.from_url(settings.REDIS_URL)
+            await ws_manager.start_listener(ws_redis)
 
             await check_database_connection()
             yield
@@ -138,10 +131,8 @@ def lifespan_factory(settings: Settings) -> Callable[[FastAPI], _AsyncGeneratorC
             await ws_manager.stop_listener()
             if ws_redis is not None:
                 await ws_redis.close()
-            if settings.ENABLE_REDIS_QUEUE:
-                await close_redis_queue_pool()
-            if settings.ENABLE_REDIS_RATE_LIMIT:
-                await close_redis_rate_limit_pool()
+            await close_redis_queue_pool()
+            await close_redis_rate_limit_pool()
 
     return lifespan
 

@@ -298,7 +298,7 @@ async def upload_room_photo(
         raise HTTPException(status_code=422, detail="Faqat JPG, PNG yoki WEBP rasm qabul qilinadi.")
     content = await file.read()
     if len(content) > MAX_ROOM_PHOTO_SIZE:
-        raise HTTPException(status_code=422, detail="Rasm 5 MB dan katta bo'lmasin.")
+        raise HTTPException(status_code=422, detail=f"Rasm {MAX_ROOM_PHOTO_SIZE // 1024**2} MB dan katta bo'lmasin.")
 
     existing = (
         await db.execute(

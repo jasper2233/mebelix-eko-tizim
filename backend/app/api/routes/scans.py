@@ -8,7 +8,7 @@ from sqlalchemy import select
 from app.api.deps import SessionDep, require_roles
 from app.core.ws import ws_manager
 from app.models import Part, PartInstance, Scan, WorkSession
-from app.models.enums import POST_ROLES, UserRole
+from app.models.enums import POST_ROLES, SessionStatus, UserRole
 from app.models.user import User
 from app.schemas.terminal import ScanHistoryItem, ScanRequest, ScanResult
 from app.services.scanning import ScanRejected, cancel_scan, record_scan
@@ -73,7 +73,7 @@ async def read_recent_scans(db: SessionDep, user: TerminalUser, limit: int = 50)
             select(WorkSession)
             .where(
                 WorkSession.user_id == user.id,
-                WorkSession.status == "active",
+                WorkSession.status == SessionStatus.ACTIVE,
                 WorkSession.is_deleted == False,  # noqa: E712
             )
             .order_by(WorkSession.id.desc())

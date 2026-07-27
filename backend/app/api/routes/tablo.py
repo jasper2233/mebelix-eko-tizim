@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep
-from app.core.exceptions import NotFoundException
+from app.crud import crud_orders
 from app.models import Order, Part, PartRoute, Post, Product
 from app.models.enums import OrderStatus
 from app.services.metrics import part_volume
@@ -124,9 +124,7 @@ class TabloOrderDetail(BaseModel):
 @router.get("/orders/{order_id}", response_model=TabloOrderDetail, operation_id="read_tablo_order")
 async def read_tablo_order(db: SessionDep, _: CurrentUser, order_id: int) -> TabloOrderDetail:
     """Drill-down (TZ 9.5): SONI NAZORATI — every part × stage."""
-    order = await db.get(Order, order_id)
-    if order is None or order.is_deleted:
-        raise NotFoundException("Buyurtma topilmadi.")
+    order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
     posts = {p.id: p for p in (await db.execute(select(Post))).scalars()}
     rows = (
         await db.execute(

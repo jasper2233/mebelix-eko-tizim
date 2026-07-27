@@ -23,7 +23,8 @@ def _extract_token(request: Request, bearer_token: str | None) -> str | None:
     return bearer_token or request.cookies.get(ACCESS_COOKIE_NAME)
 
 
-async def _resolve_user(db: AsyncSession, token: str) -> User | None:
+async def resolve_user(db: AsyncSession, token: str) -> User | None:
+    """Token -> User, sessiya hali amal qilsa. token_version bump = global revoke."""
     token_data = verify_token(token, TokenType.ACCESS)
     if token_data is None:
         return None
@@ -42,7 +43,7 @@ async def get_current_user(
     if not token:
         raise UnauthorizedException("Tizimga kirilmagan.")
 
-    user = await _resolve_user(db, token)
+    user = await resolve_user(db, token)
     if user is None:
         raise UnauthorizedException("Tizimga kirilmagan.")
     return user

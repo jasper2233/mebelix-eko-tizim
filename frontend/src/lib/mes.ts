@@ -1,5 +1,7 @@
 // MES domain constants: Uzbek labels + stage colors (TZ 3, 4.4, 6.1)
 
+import type { UserRole } from "@/client"
+
 export const ORDER_STATUS_LABELS: Record<string, string> = {
   draft: "QORALAMA",
   technical_review: "TEXNOLOGDA",
@@ -56,7 +58,9 @@ export const POST_COLORS: Record<string, string> = {
   STOLYARKA: "var(--post-stolyarka)",
 }
 
-export const ROLE_LABELS: Record<string, string> = {
+// Rollar manbasi — backend enum'i (generatsiya qilingan UserRole); yorliq
+// yozilmagan yangi rol build'ni yiqitadi
+export const ROLE_LABELS: Record<UserRole, string> = {
   admin: "Admin",
   director: "Direktor",
   manager: "Manager",

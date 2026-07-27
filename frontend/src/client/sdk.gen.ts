@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { ReadAuditLogsData, ReadAuditLogsResponse, ReadBridgeAgentsResponse, CreateBridgeAgentData, CreateBridgeAgentResponse, RegenerateBridgeCodeData, RegenerateBridgeCodeResponse, DeleteBridgeAgentData, DeleteBridgeAgentResponse, PairBridgeAgentData, PairBridgeAgentResponse, ReadClientsData, ReadClientsResponse, CreateClientData, CreateClientResponse, ReadClientData, ReadClientResponse, UpdateClientData, UpdateClientResponse, DeleteClientData, DeleteClientResponse, ReadEmployeesData, ReadEmployeesResponse, CreateEmployeeData, CreateEmployeeResponse, ReadEmployeeData, ReadEmployeeResponse, UpdateEmployeeData, UpdateEmployeeResponse, DeleteEmployeeData, DeleteEmployeeResponse, RegenerateBadgeData, RegenerateBadgeResponse, HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, RefreshAccessTokenResponse, LogoutResponse, ReadMachinesResponse, CreateMachineData, CreateMachineResponse, ReadMachineData, ReadMachineResponse, UpdateMachineData, UpdateMachineResponse, DeleteMachineData, DeleteMachineResponse, ReadMaterialsData, ReadMaterialsResponse, CreateMaterialData, CreateMaterialResponse, UpdateMaterialData, UpdateMaterialResponse, DeleteMaterialData, DeleteMaterialResponse, CreateOrderData, CreateOrderResponse, ReadOrdersData, ReadOrdersResponse, ReadOrderStatusCountsResponse, ReadOrderData, ReadOrderResponse, UpdateOrderData, UpdateOrderResponse, SaveOrderSurveyData, SaveOrderSurveyResponse, UploadRoomPhotoData, UploadRoomPhotoResponse, DeleteRoomPhotoData, DeleteRoomPhotoResponse, CancelOrderData, CancelOrderResponse, DeliverOrderData, DeliverOrderResponse, ReadOrderMatrixData, ReadOrderMatrixResponse, EditOrderMatrixData, EditOrderMatrixResponse, AssignOrderMachinesData, AssignOrderMachinesResponse, ConfirmOrderData, ConfirmOrderResponse, StartOrderProductionData, StartOrderProductionResponse, UploadOrderProjectData, UploadOrderProjectResponse, DownloadOrderFileData, DownloadOrderFileResponse, ReadOrderCutmapData, ReadOrderCutmapResponse, ReadPostsResponse, UpdatePostData, UpdatePostResponse, ReportProductivityData, ReportProductivityResponse, ReportOrdersData, ReportOrdersResponse, ReportMaterialsData, ReportMaterialsResponse, ReportDashboardResponse, RecordScanData, RecordScanResponse, CancelScanData, CancelScanResponse, ReadRecentScansData, ReadRecentScansResponse, ReadTabloMatrixResponse, ReadTabloOrderData, ReadTabloOrderResponse, ReadTerminalContextResponse, StartTerminalSessionData, StartTerminalSessionResponse, EndTerminalSessionResponse, ReadTerminalTasksResponse, ReadTerminalOrdersResponse, ReadTerminalCutmapData, ReadTerminalCutmapResponse, PrintInstanceLabelData, PrintInstanceLabelResponse, RenderInstanceLabelData, RenderInstanceLabelResponse, DownloadTerminalFileData, DownloadTerminalFileResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
+import type { ReadAuditLogsData, ReadAuditLogsResponse, ReadBridgeAgentsResponse, CreateBridgeAgentData, CreateBridgeAgentResponse, RegenerateBridgeCodeData, RegenerateBridgeCodeResponse, DeleteBridgeAgentData, DeleteBridgeAgentResponse, PairBridgeAgentData, PairBridgeAgentResponse, DownloadBridgeAgentResponse, ReadClientsData, ReadClientsResponse, CreateClientData, CreateClientResponse, ReadClientData, ReadClientResponse, UpdateClientData, UpdateClientResponse, DeleteClientData, DeleteClientResponse, ReadEmployeesData, ReadEmployeesResponse, CreateEmployeeData, CreateEmployeeResponse, ReadEmployeeData, ReadEmployeeResponse, UpdateEmployeeData, UpdateEmployeeResponse, DeleteEmployeeData, DeleteEmployeeResponse, RegenerateBadgeData, RegenerateBadgeResponse, HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, RefreshAccessTokenResponse, LogoutResponse, ReadMachinesResponse, CreateMachineData, CreateMachineResponse, ReadMachineData, ReadMachineResponse, UpdateMachineData, UpdateMachineResponse, DeleteMachineData, DeleteMachineResponse, ReadMaterialsData, ReadMaterialsResponse, CreateMaterialData, CreateMaterialResponse, UpdateMaterialData, UpdateMaterialResponse, DeleteMaterialData, DeleteMaterialResponse, CreateOrderData, CreateOrderResponse, ReadOrdersData, ReadOrdersResponse, ReadOrderStatusCountsResponse, ReadOrderData, ReadOrderResponse, UpdateOrderData, UpdateOrderResponse, SaveOrderSurveyData, SaveOrderSurveyResponse, UploadRoomPhotoData, UploadRoomPhotoResponse, DeleteRoomPhotoData, DeleteRoomPhotoResponse, CancelOrderData, CancelOrderResponse, DeliverOrderData, DeliverOrderResponse, ReadOrderMatrixData, ReadOrderMatrixResponse, EditOrderMatrixData, EditOrderMatrixResponse, AssignOrderMachinesData, AssignOrderMachinesResponse, ConfirmOrderData, ConfirmOrderResponse, StartOrderProductionData, StartOrderProductionResponse, UploadOrderProjectData, UploadOrderProjectResponse, DownloadOrderFileData, DownloadOrderFileResponse, ReadOrderCutmapData, ReadOrderCutmapResponse, ReadPostsResponse, UpdatePostData, UpdatePostResponse, ReportProductivityData, ReportProductivityResponse, ReportOrdersData, ReportOrdersResponse, ReportMaterialsData, ReportMaterialsResponse, ReportDashboardResponse, RecordScanData, RecordScanResponse, CancelScanData, CancelScanResponse, ReadRecentScansData, ReadRecentScansResponse, ReadTabloMatrixResponse, ReadTabloOrderData, ReadTabloOrderResponse, ReadTerminalContextResponse, StartTerminalSessionData, StartTerminalSessionResponse, EndTerminalSessionResponse, ReadTerminalTasksResponse, ReadTerminalOrdersResponse, ReadTerminalCutmapData, ReadTerminalCutmapResponse, PrintInstanceLabelData, PrintInstanceLabelResponse, RenderInstanceLabelData, RenderInstanceLabelResponse, DownloadTerminalFileData, DownloadTerminalFileResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
 
 export class AuditService {
     /**
@@ -135,6 +135,21 @@ export class BridgeAgentsService {
             errors: {
                 422: 'Validation Error'
             }
+        });
+    }
+    
+    /**
+     * Download Bridge Agent
+     * Agent dasturi (Windows exe). Sir saqlamaydi — hamma mijozga bir xil fayl,
+     * shuning uchun auth talab qilinmaydi (monoblok brauzerida sessiya bo'lmasligi mumkin).
+     * Yangi versiya: exe'ni uploads/agent/ ga qo'yish kifoya.
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static downloadBridgeAgent(): CancelablePromise<DownloadBridgeAgentResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/bridge-agents/download'
         });
     }
 }
@@ -1444,7 +1459,7 @@ export class UsersService {
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
-     * @returns PaginatedResponse Successful Response
+     * @returns Paginated_UserRead_ Successful Response
      * @throws ApiError
      */
     public static readUsers(data: ReadUsersData = {}): CancelablePromise<ReadUsersResponse> {

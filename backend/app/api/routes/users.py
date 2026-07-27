@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Query
-from pydantic import BaseModel
 
 from app.api.deps import CurrentUser, SessionDep, SuperUserDep
 from app.core.config import settings
@@ -7,14 +6,10 @@ from app.core.exceptions import DuplicateValueException, ForbiddenException, Not
 from app.core.security import get_password_hash, verify_password
 from app.crud import crud_users
 from app.models.user import User
+from app.schemas.common import Paginated
 from app.schemas.users import UpdatePassword, UserAdminUpdate, UserCreate, UserRead, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
-
-
-class PaginatedResponse(BaseModel):
-    data: list[UserRead]
-    count: int
 
 
 async def _ensure_unique(db: SessionDep, *, phone: str | None, username: str | None, current: User) -> None:
@@ -62,19 +57,16 @@ async def write_user(
     return UserRead.model_validate(created_user)
 
 
-@router.get("/", response_model=PaginatedResponse, operation_id="read_users")
+@router.get("/", response_model=Paginated[UserRead], operation_id="read_users")
 async def read_users(
     current_user: SuperUserDep,
     db: SessionDep,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=settings.DEFAULT_PAGE_SIZE, ge=1, le=settings.MAX_PAGE_SIZE),
-) -> PaginatedResponse:
+) -> Paginated[UserRead]:
     """List users with pagination (superuser only — the list exposes every phone number)."""
     rows, total = await crud_users.get_multi(db=db, offset=skip, limit=limit)
-    return PaginatedResponse(
-        data=[UserRead.model_validate(user) for user in rows],
-        count=total,
-    )
+    return Paginated(data=[UserRead.model_validate(user) for user in rows], count=total)
 
 
 @router.get("/me", response_model=UserRead, operation_id="read_user_me")

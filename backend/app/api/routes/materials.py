@@ -5,7 +5,7 @@ from sqlalchemy import func, or_, select
 
 from app.api.deps import CurrentUser, SessionDep, TexnologUser
 from app.core.config import settings
-from app.core.exceptions import DuplicateValueException, NotFoundException
+from app.core.exceptions import DuplicateValueException
 from app.crud import crud_materials, log_action
 from app.models import Material
 from app.models.enums import MaterialType
@@ -64,9 +64,7 @@ async def create_material(
 async def update_material(
     db: SessionDep, current_user: TexnologUser, material_id: int, body: MaterialUpdate, request: Request
 ) -> Material:
-    material = await crud_materials.get(db, id=material_id)
-    if material is None:
-        raise NotFoundException("Material topilmadi.")
+    material = await crud_materials.get_or_404(db, "Material topilmadi.", id=material_id)
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(material, field, value)
     log_action(
@@ -85,9 +83,7 @@ async def update_material(
 
 @router.delete("/{material_id}", response_model=Message, operation_id="delete_material")
 async def delete_material(db: SessionDep, current_user: TexnologUser, material_id: int, request: Request) -> Message:
-    material = await crud_materials.get(db, id=material_id)
-    if material is None:
-        raise NotFoundException("Material topilmadi.")
+    material = await crud_materials.get_or_404(db, "Material topilmadi.", id=material_id)
     log_action(
         db,
         module="materials",

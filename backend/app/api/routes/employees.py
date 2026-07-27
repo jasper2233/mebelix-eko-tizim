@@ -70,19 +70,14 @@ async def create_employee(db: SessionDep, current_user: AdminUser, body: Employe
 
 @router.get("/{employee_id}", response_model=EmployeeRead, operation_id="read_employee")
 async def read_employee(db: SessionDep, _: StaffReadUser, employee_id: int) -> Employee:
-    employee = await crud_employees.get(db, id=employee_id)
-    if employee is None:
-        raise NotFoundException("Hodim topilmadi.")
-    return employee
+    return await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
 
 
 @router.patch("/{employee_id}", response_model=EmployeeRead, operation_id="update_employee")
 async def update_employee(
     db: SessionDep, current_user: AdminUser, employee_id: int, body: EmployeeUpdate, request: Request
 ) -> Employee:
-    employee = await crud_employees.get(db, id=employee_id)
-    if employee is None:
-        raise NotFoundException("Hodim topilmadi.")
+    employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
     update_data = body.model_dump(exclude_unset=True)
     if "assigned_post_ids" in update_data and update_data["assigned_post_ids"] is not None:
         await _validate_post_ids(db, update_data["assigned_post_ids"])
@@ -105,9 +100,7 @@ async def update_employee(
 @router.post("/{employee_id}/badge", response_model=EmployeeRead, operation_id="regenerate_badge")
 async def regenerate_badge(db: SessionDep, current_user: AdminUser, employee_id: int, request: Request) -> Employee:
     """Lost badge (TZ 4.2): old badge stops working immediately, history stays on the same employee."""
-    employee = await crud_employees.get(db, id=employee_id)
-    if employee is None:
-        raise NotFoundException("Hodim topilmadi.")
+    employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
     old_badge = employee.badge_id
     employee.badge_id = str(uuid4())
     log_action(
@@ -128,9 +121,7 @@ async def regenerate_badge(db: SessionDep, current_user: AdminUser, employee_id:
 
 @router.delete("/{employee_id}", response_model=Message, operation_id="delete_employee")
 async def delete_employee(db: SessionDep, current_user: AdminUser, employee_id: int, request: Request) -> Message:
-    employee = await crud_employees.get(db, id=employee_id)
-    if employee is None:
-        raise NotFoundException("Hodim topilmadi.")
+    employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
     log_action(
         db,
         module="employees",

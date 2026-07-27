@@ -4,7 +4,7 @@ import { Plus } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { type UserCreate, UsersService } from "@/client"
+import { type UserCreate, type UserRole, UsersService } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -51,20 +51,7 @@ const formSchema = z
     name: optionalNameSchema,
     password: passwordSchema,
     confirm_password: z.string().min(1, { message: "Parolni tasdiqlang" }),
-    role: z.enum([
-      "admin",
-      "director",
-      "manager",
-      "texnolog",
-      "terminal",
-      "tablo",
-      "arrachi",
-      "kromkachi",
-      "prisadkachi",
-      "pazchi",
-      "roverchi",
-      "stolyar",
-    ]),
+    role: z.enum(Object.keys(ROLE_LABELS) as [UserRole, ...UserRole[]]),
     machine_id: z.string().optional(),
     is_superuser: z.boolean(),
     is_active: z.boolean(),

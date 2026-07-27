@@ -6,7 +6,7 @@ from sqlalchemy.sql import Subquery
 
 from app.api.deps import ManagerUser, SessionDep, StaffReadUser
 from app.core.config import settings
-from app.core.exceptions import DuplicateValueException, NotFoundException
+from app.core.exceptions import DuplicateValueException
 from app.crud import crud_clients, log_action
 from app.models import Client, Order
 from app.schemas.clients import ClientCreate, ClientRead, ClientUpdate
@@ -93,9 +93,7 @@ async def create_client(db: SessionDep, current_user: ManagerUser, body: ClientC
 
 @router.get("/{client_id}", response_model=ClientRead, operation_id="read_client")
 async def read_client(db: SessionDep, _: StaffReadUser, client_id: int) -> ClientRead:
-    client = await crud_clients.get(db, id=client_id)
-    if client is None:
-        raise NotFoundException("Mijoz topilmadi.")
+    client = await crud_clients.get_or_404(db, "Mijoz topilmadi.", id=client_id)
     orders_count = (
         await db.execute(
             select(func.count(Order.id)).where(Order.client_id == client_id, Order.is_deleted == False)  # noqa: E712
@@ -110,9 +108,7 @@ async def read_client(db: SessionDep, _: StaffReadUser, client_id: int) -> Clien
 async def update_client(
     db: SessionDep, current_user: ManagerUser, client_id: int, body: ClientUpdate, request: Request
 ) -> Client:
-    client = await crud_clients.get(db, id=client_id)
-    if client is None:
-        raise NotFoundException("Mijoz topilmadi.")
+    client = await crud_clients.get_or_404(db, "Mijoz topilmadi.", id=client_id)
     updates = body.model_dump(exclude_unset=True)
     for key in ("phone", "phone_alt"):
         if updates.get(key):
@@ -135,9 +131,7 @@ async def update_client(
 
 @router.delete("/{client_id}", response_model=Message, operation_id="delete_client")
 async def delete_client(db: SessionDep, current_user: ManagerUser, client_id: int, request: Request) -> Message:
-    client = await crud_clients.get(db, id=client_id)
-    if client is None:
-        raise NotFoundException("Mijoz topilmadi.")
+    client = await crud_clients.get_or_404(db, "Mijoz topilmadi.", id=client_id)
     log_action(
         db,
         module="clients",

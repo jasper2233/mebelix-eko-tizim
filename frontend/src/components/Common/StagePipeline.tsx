@@ -1,8 +1,7 @@
 // Signature element: the 6-stage production pipeline (TZ 4.4) rendered as connected
-// stage cells — the same visual grammar on dashboard, order rows, matrix and TABLO.
+// stage cells.
 
 import { POST_COLORS } from "@/lib/mes"
-import { cn } from "@/lib/utils"
 
 export type StageCell = {
   code: string
@@ -10,13 +9,7 @@ export type StageCell = {
   total: number
 }
 
-export function StagePipeline({
-  stages,
-  compact = false,
-}: {
-  stages: StageCell[]
-  compact?: boolean
-}) {
+export function StagePipeline({ stages }: { stages: StageCell[] }) {
   if (!stages.length)
     return <span className="text-xs text-muted-foreground">—</span>
   return (
@@ -30,10 +23,7 @@ export function StagePipeline({
           <div key={s.code} className="flex items-center">
             {i > 0 && <div className="h-px w-1.5 bg-border" />}
             <div
-              className={cn(
-                "relative overflow-hidden rounded",
-                compact ? "h-5 w-9" : "h-6 w-12",
-              )}
+              className="relative h-6 w-12 overflow-hidden rounded"
               style={{
                 backgroundColor: `color-mix(in srgb, ${color} 14%, white)`,
               }}
@@ -50,11 +40,7 @@ export function StagePipeline({
                 className="num relative flex h-full items-center justify-center text-[9px] font-bold"
                 style={{ color }}
               >
-                {complete
-                  ? "✓"
-                  : compact
-                    ? s.code.slice(0, 2)
-                    : `${s.done}/${s.total}`}
+                {complete ? "✓" : `${s.done}/${s.total}`}
               </span>
             </div>
           </div>

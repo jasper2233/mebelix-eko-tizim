@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
 
+from app.core.exceptions import NotFoundException
 from app.models.base import BaseModel
 
 ModelType = TypeVar("ModelType", bound=BaseModel)
@@ -114,6 +115,23 @@ class BaseCRUD(Generic[ModelType]):
         query = self._build_query(**kwargs)
         result = await db.execute(query)
         return result.scalar_one_or_none()
+
+    async def get_or_404(
+        self,
+        db: AsyncSession,
+        detail: str,
+        **kwargs: Any,
+    ) -> ModelType:
+        """`get()` kabi, lekin topilmasa (yoki soft-delete bo'lsa) NotFoundException.
+
+        Examples
+        --------
+        >>> client = await crud_clients.get_or_404(db, "Mijoz topilmadi.", id=client_id)
+        """
+        obj = await self.get(db, **kwargs)
+        if obj is None:
+            raise NotFoundException(detail)
+        return obj
 
     async def get_multi(
         self,

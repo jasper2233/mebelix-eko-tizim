@@ -12,11 +12,11 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from redis.asyncio import Redis as AsyncRedis
 from sqlalchemy import select, update
 
+from app.api.deps import resolve_user
 from app.core.config import settings
 from app.core.db import local_session
-from app.core.security import ACCESS_COOKIE_NAME, TokenType, verify_token
+from app.core.security import ACCESS_COOKIE_NAME
 from app.core.ws import WsClient, ws_manager
-from app.crud import crud_users
 from app.models import BridgeAgent, Machine
 from app.models.enums import UserRole
 from app.tasks import PRINT_QUEUE_KEY
@@ -32,14 +32,9 @@ _SCOPE_BY_ROLE = {
 @router.websocket("/ws/events")
 async def ws_events(websocket: WebSocket, token: str | None = None) -> None:
     raw_token = token or websocket.cookies.get(ACCESS_COOKIE_NAME)
-    token_data = verify_token(raw_token, TokenType.ACCESS) if raw_token else None
-    if token_data is None:
-        await websocket.close(code=4401)
-        return
-
     async with local_session() as db:
-        user = await crud_users.get(db, id=token_data.user_id)
-        if user is None or not user.is_active or user.token_version != token_data.token_version:
+        user = await resolve_user(db, raw_token) if raw_token else None
+        if user is None:
             await websocket.close(code=4401)
             return
         post_id = None

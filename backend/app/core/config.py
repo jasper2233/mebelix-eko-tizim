@@ -50,12 +50,8 @@ class Settings(BaseSettings):
     # === Redis (caching, queue, rate limit) ===
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
-    ENABLE_REDIS_QUEUE: bool = True
-    ENABLE_REDIS_RATE_LIMIT: bool = True
 
-    # === Rate-limit defaults ===
-    DEFAULT_RATE_LIMIT_LIMIT: int = 10
-    DEFAULT_RATE_LIMIT_PERIOD: int = 3600
+    # === Rate limit ===
     LOGIN_RATE_LIMIT_ATTEMPTS: int = 5
     LOGIN_RATE_LIMIT_PERIOD: int = 300
 

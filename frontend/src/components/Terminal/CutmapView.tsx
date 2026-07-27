@@ -57,6 +57,20 @@ const getCutmapQueryOptions = (orderId: number, admin: boolean) =>
     refetchInterval: 60_000,
   })
 
+// Yorliq chop etish — CutmapView va PartCard bir xil shartnomadan foydalanadi
+function usePrintLabel() {
+  const queryClient = useQueryClient()
+  const { showSuccessToast, showErrorToast } = useCustomToast()
+  return useMutation({
+    mutationFn: (instanceId: number) =>
+      TerminalService.printInstanceLabel({ instanceId }),
+    onSuccess: (r) => showSuccessToast(r.message),
+    onError: handleError(showErrorToast),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: ["terminal", "cutmap"] }),
+  })
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)
 }
@@ -141,18 +155,9 @@ export function CutmapView({
     reset: () => void
   } | null>(null)
 
-  const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
   // Chap qatordagi Chop etish: belgilangan detalning navbatdagi nusxasi
   // to'g'ridan-to'g'ri GoDEX navbatiga ketadi (dialog yo'q)
-  const printMutation = useMutation({
-    mutationFn: (instanceId: number) =>
-      TerminalService.printInstanceLabel({ instanceId }),
-    onSuccess: (r) => showSuccessToast(r.message),
-    onError: handleError(showErrorToast),
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: ["terminal", "cutmap"] }),
-  })
+  const printMutation = usePrintLabel()
 
   const instancesByCell = useMemo(() => {
     const map = new Map<string, NonNullable<typeof data>["instances"]>()
@@ -659,16 +664,7 @@ function PartCard({
   admin?: boolean
   holes: Record<string, any>
 }) {
-  const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
-  const printMutation = useMutation({
-    mutationFn: (instanceId: number) =>
-      TerminalService.printInstanceLabel({ instanceId }),
-    onSuccess: (r) => showSuccessToast(r.message),
-    onError: handleError(showErrorToast),
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: ["terminal", "cutmap"] }),
-  })
+  const printMutation = usePrintLabel()
 
   if (!part || part.waste) return null
   const insts = instancesByCell.get(`${sheetNo}:${part.cell}`) ?? []

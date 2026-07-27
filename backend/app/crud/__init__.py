@@ -1,12 +1,18 @@
+from app.models import BridgeAgent, Client, Employee, Machine, Material, Post
+
 from .audit import log_action
-from .bridge_agents import crud_bridge_agents
-from .clients import crud_clients
-from .employees import crud_employees
-from .machines import crud_machines
-from .materials import crud_materials
+from .base import BaseCRUD
 from .orders import crud_orders
-from .posts import crud_posts
 from .users import crud_users
+
+# Yupqa registrlar — o'z metodi yo'q, shuning uchun BaseCRUD to'g'ridan-to'g'ri.
+# Modelga maxsus metod kerak bo'lsa — orders.py/users.py kabi alohida subclass qilinadi.
+crud_bridge_agents: BaseCRUD[BridgeAgent] = BaseCRUD(BridgeAgent)
+crud_clients: BaseCRUD[Client] = BaseCRUD(Client)
+crud_employees: BaseCRUD[Employee] = BaseCRUD(Employee)
+crud_machines: BaseCRUD[Machine] = BaseCRUD(Machine)
+crud_materials: BaseCRUD[Material] = BaseCRUD(Material)
+crud_posts: BaseCRUD[Post] = BaseCRUD(Post)
 
 __all__ = [
     "crud_bridge_agents",
