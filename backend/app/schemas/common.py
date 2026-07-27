@@ -6,8 +6,6 @@ T = TypeVar("T")
 
 
 class Message(BaseModel):
-    """Generic message response schema"""
-
     message: str
 
 

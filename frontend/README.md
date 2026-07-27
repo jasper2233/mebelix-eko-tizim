@@ -107,7 +107,7 @@ The frontend code is structured as follows:
 * `frontend/src/client` - The generated OpenAPI client.
 * `frontend/src/components` -  The different components of the frontend.
 * `frontend/src/hooks` - Custom hooks.
-* `frontend/src/lib` - Shared helpers: MES domain constants and formatting (`mes.ts`), zod schemas and input formatters (`validation.ts`), utilities (`utils.ts`).
+* `frontend/src/lib` - Shared helpers: MES domain constants and formatting (`mes.ts`), zod schemas and input formatters (`validation.ts`), anketa variantlari katalogi (`anketa.ts`), utilities (`utils.ts`).
 * `frontend/src/queries` - TanStack Query option factories (`mes.ts`, `users.ts`).
 * `frontend/src/routes` - The different routes of the frontend which include the pages.
 * `frontend/public/assets` - Static assets (served as `/assets/*`).

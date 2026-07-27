@@ -726,7 +726,6 @@ async def start_order_production(
 
     order.status = OrderStatus.PRODUCTION
     order.production_started_at = datetime.now(UTC)
-    # (event published after commit below)
     log_action(
         db,
         module="orders",

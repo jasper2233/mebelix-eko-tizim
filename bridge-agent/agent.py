@@ -12,7 +12,7 @@ O'rnatish (faqat printer ulangan kompyuterda):
     paneldagi ulanish kodini so'raydi. Shundan keyin oyna umuman ko'rinmaydi:
     agent fonda ishlaydi, kompyuter yonganda o'zi tushadi (avtostart), holati esa
     admin panelda Onlayn/Oflayn bo'lib ko'rinadi.
-    Sozlama: %APPDATA%\MebelixAgent\.env, loglar: %APPDATA%\MebelixAgentgent.log
+    Sozlama: %APPDATA%\MebelixAgent\.env, loglar: %APPDATA%\MebelixAgent\agent.log
 
 Printer avto-topiladi (nomida "godex" bor Windows printeri) — sozlash shart emas.
 

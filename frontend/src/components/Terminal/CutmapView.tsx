@@ -42,7 +42,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 type SheetPart = any
 type Sheet = any
 type Material = any

@@ -12,77 +12,21 @@ ModelType = TypeVar("ModelType", bound=BaseModel)
 
 
 class BaseCRUD(Generic[ModelType]):
-    """Base class for CRUD operations on SQLAlchemy models.
-
-    Provides common database operations that can be inherited by
-    model-specific CRUD classes.
-
-    Requirements
-    ------------
-    Models MUST inherit from `app.models.base.BaseModel`, which guarantees:
-
-    - **ID field**: `id: int` (primary key, auto-increment)
-    - **Timestamps**: `created_at`, `updated_at` (automatic tracking)
-    - **Soft Delete**: `is_deleted: bool`, `deleted_at: datetime | None`
-
-    These fields enable the generic `delete()` method
-    to work correctly across all models.
-
-    For Custom Models
-    -----------------
-    If you have a model that should NOT inherit from BaseModel:
-
-    1. **Option A**: Inherit from BaseModel anyway (unused fields are okay)
-    2. **Option B**: Create a custom CRUD class without extending BaseCRUD
-    3. **Option C**: Override the `delete()` method in your model's CRUD class
-
-    Type Parameters
-    ---------------
-    ModelType : BaseModel
-        The SQLAlchemy model type this CRUD instance operates on.
-        Must inherit from `app.models.base.BaseModel`.
-
-    Examples
-    --------
-    Create a CRUD instance for your model:
-
-    >>> from app.models.user import User
-    >>> from app.crud.base import BaseCRUD
-    >>>
-    >>> class CRUDUser(BaseCRUD[User]):
-    >>>     async def create(self, db, user_create):
-    >>>         # Custom create logic here
-    >>>         pass
-    >>>
-    >>> crud_users = CRUDUser(User)
-    """
+    """Umumiy CRUD. Hamma metodda `**kwargs` = WHERE tenglik zanjiri (field == value)."""
 
     exclude_deleted: bool = True
     """When True, automatically filters out soft-deleted records (is_deleted=False).
     Override at the class level or pass is_deleted explicitly to bypass."""
 
     def __init__(self, model: type[ModelType]):
-        """Initialize the CRUD instance with a model.
-
-        Parameters
-        ----------
-        model : type[ModelType]
-            The SQLAlchemy model class to perform operations on.
-        """
         self.model = model
 
     def _build_query(
         self,
         **kwargs: Any,
     ) -> Select[tuple[ModelType]]:
-        """Build the base query with equality filters.
-
-        If the model has soft-delete support (is_deleted field) and
-        exclude_deleted is True, automatically filters out deleted records
-        unless is_deleted is explicitly provided in kwargs.
-        """
+        """`is_deleted` ochiq berilmasa soft-delete filtri o'zi qo'shiladi."""
         query = select(self.model)
-        # Auto-apply soft delete filter when not explicitly overridden by caller
         if self.exclude_deleted and hasattr(self.model, "is_deleted") and "is_deleted" not in kwargs:
             query = query.where(getattr(self.model, "is_deleted") == False)  # noqa: E712
         for field, value in kwargs.items():
@@ -94,24 +38,7 @@ class BaseCRUD(Generic[ModelType]):
         db: AsyncSession,
         **kwargs: Any,
     ) -> ModelType | None:
-        """Fetch a single record by any field.
-
-        Parameters
-        ----------
-        db : AsyncSession
-            The database session.
-        **kwargs : Any
-            Field-value pairs to filter by (e.g., email="user@example.com").
-
-        Returns
-        -------
-        ModelType | None
-            The matching record, or None if not found.
-
-        Examples
-        --------
-        >>> user = await crud.get(db, username="john", is_deleted=False)
-        """
+        """Bitta yozuv istalgan maydon bo'yicha; topilmasa None."""
         query = self._build_query(**kwargs)
         result = await db.execute(query)
         return result.scalar_one_or_none()
@@ -124,8 +51,6 @@ class BaseCRUD(Generic[ModelType]):
     ) -> ModelType:
         """`get()` kabi, lekin topilmasa (yoki soft-delete bo'lsa) NotFoundException.
 
-        Examples
-        --------
         >>> client = await crud_clients.get_or_404(db, "Mijoz topilmadi.", id=client_id)
         """
         obj = await self.get(db, **kwargs)
@@ -140,24 +65,7 @@ class BaseCRUD(Generic[ModelType]):
         limit: int = 100,
         **kwargs: Any,
     ) -> tuple[list[ModelType], int]:
-        """Fetch a page of records and the total matching count.
-
-        Parameters
-        ----------
-        offset, limit
-            Pagination window.
-        **kwargs
-            Equality filters (e.g. ``owner_id=1, is_deleted=False``).
-
-        Returns
-        -------
-        (data, total)
-            ``data`` is the page; ``total`` is the unpaginated count of matching rows.
-
-        Examples
-        --------
-        >>> data, total = await crud.get_multi(db, offset=0, limit=10)
-        """
+        """(sahifa, umumiy son). `total` — paginatsiyasiz, filtrlarga mos qatorlar soni."""
         query = self._build_query(**kwargs)
 
         count_query = select(func.count()).select_from(query.subquery())
@@ -174,24 +82,6 @@ class BaseCRUD(Generic[ModelType]):
         db: AsyncSession,
         **kwargs: Any,
     ) -> bool:
-        """Check if a record exists.
-
-        Parameters
-        ----------
-        db : AsyncSession
-            The database session.
-        **kwargs : Any
-            Field-value pairs to filter by.
-
-        Returns
-        -------
-        bool
-            True if a matching record exists, False otherwise.
-
-        Examples
-        --------
-        >>> exists = await crud.exists(db, email="user@example.com")
-        """
         query = self._build_query(**kwargs)
 
         count_query = select(func.count()).select_from(query.subquery())
@@ -204,32 +94,9 @@ class BaseCRUD(Generic[ModelType]):
         db: AsyncSession,
         **kwargs: Any,
     ) -> bool:
-        """Soft delete a record (sets is_deleted=True, deleted_at=now).
+        """Soft delete: is_deleted=True, deleted_at=now; topilmasa False.
 
-        This method requires the model to inherit from BaseModel,
-        which provides the soft-delete fields.
-
-        Parameters
-        ----------
-        db : AsyncSession
-            The database session.
-        **kwargs : Any
-            Field-value pairs to identify the record to delete.
-
-        Returns
-        -------
-        bool
-            True if a record was deleted, False if not found.
-
-        Notes
-        -----
-        This is a "soft delete" - the record remains in the database
-        but is marked as deleted.
-
-        Examples
-        --------
-        >>> deleted = await crud.delete(db, username="john")
-        >>> # User still exists in DB but is_deleted=True
+        Sinfdagi yagona metod bo'lib, o'z tranzaksiyasini o'zi commit qiladi.
         """
         record = await self.get(db, **kwargs)
         if record is None:

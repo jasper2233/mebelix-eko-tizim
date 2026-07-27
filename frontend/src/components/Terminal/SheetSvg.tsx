@@ -4,7 +4,6 @@
 
 import { useEffect, useRef, useState } from "react"
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 type SheetPart = any
 type Sheet = any
 

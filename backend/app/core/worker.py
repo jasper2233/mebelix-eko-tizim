@@ -29,10 +29,6 @@ async def shutdown(ctx: Worker) -> None:
 
 
 class WorkerSettings:
-    """
-    Configuration for the arq worker.
-    """
-
     functions = all_tasks
     redis_settings = RedisSettings(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
     on_startup = startup

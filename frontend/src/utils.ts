@@ -21,11 +21,7 @@ export function extractErrorMessage(err: ApiError): string {
 
 type ToastFn = (message: string) => void
 
-/**
- * Build a TanStack Query `onError` handler that pipes the API error message into the given toast function.
- *
- * Usage: `onError: handleError(showErrorToast)`.
- */
+/** Usage: `onError: handleError(showErrorToast)`. */
 export const handleError =
   (showToast: ToastFn) =>
   (err: ApiError): void => {

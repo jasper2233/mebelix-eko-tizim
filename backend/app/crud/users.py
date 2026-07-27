@@ -21,8 +21,6 @@ _DUMMY_HASH = bcrypt.hashpw(b"timing-equalizer", bcrypt.gensalt(rounds=settings.
 
 
 class CRUDUser(BaseCRUD[User]):
-    """CRUD operations for User model with authentication logic."""
-
     async def get_by_login(self, db: AsyncSession, identifier: str) -> User | None:
         """Look up a user by phone if the identifier starts with `+`, otherwise by username."""
         if identifier.startswith("+"):

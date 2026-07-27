@@ -1,6 +1,6 @@
 # MebeliX MES — Backend
 
-FastAPI asosidagi MES (ishlab chiqarish boshqaruvi) backend: buyurtmalar hayot sikli, GibLab `.project` parser (CUTMAP/SCX), scan engine, operator terminali, TABLO, hisobotlar, EZPL yorliq chop etish va WebSocket real-time (`/api/v1/*`, jami ~70 endpoint).
+FastAPI asosidagi MES (ishlab chiqarish boshqaruvi) backend: buyurtmalar hayot sikli, GibLab `.project` parser (CUTMAP/SCX), scan engine, operator terminali, TABLO, hisobotlar, EZPL yorliq chop etish va WebSocket real-time (`/api/v1/*`, jami ~80 endpoint).
 
 Texnologiyalar: Python 3.11+, FastAPI, SQLAlchemy 2 (async) + Alembic, PostgreSQL, Redis (pub/sub + navbatlar), ARQ worker, Pillow/qrcode (yorliq PNG), openpyxl (Excel).
 
