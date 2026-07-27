@@ -47,7 +47,18 @@ def parse_xnc_program(code: str, program_xml: str) -> XncOp:
     dx = float(root.get("dx") or root.get("l") or 0)
     dy = float(root.get("dy") or root.get("w") or 0)
     dz = float(root.get("dz") or root.get("thick") or 0)
-    env: dict[str, float] = {"dx": dx, "dy": dy, "dz": dz}
+    # GibLab standart konstantalari. Yangi eksport ularni <var> bilan e'lon qiladi, eski
+    # (version 21052101) esa e'lonsiz ishlatadi — o'shanda dastur hisoblanmay qolardi.
+    # Qiymatlar korpusdagi barcha e'lonlardan olingan va bir xil: throughBoreDepth/
+    # throughCutDepth = dz+3.00, contMillDepth = dz. <var> bo'lsa u baribir ustun keladi.
+    env: dict[str, float] = {
+        "dx": dx,
+        "dy": dy,
+        "dz": dz,
+        "throughBoreDepth": dz + 3.0,
+        "throughCutDepth": dz + 3.0,
+        "contMillDepth": dz,
+    }
 
     tools: dict[str, float] = {}
     op = XncOp(code=code, side2=code.endswith("_2"), dx=dx, dy=dy, dz=dz)

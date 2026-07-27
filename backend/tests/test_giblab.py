@@ -5,6 +5,7 @@ Run: uv run python -m tests.test_giblab  (assert-based, no framework)
 
 import struct
 from base64 import b64encode
+from xml.sax.saxutils import quoteattr
 
 from app.services.giblab import parse_project
 from app.services.giblab.csblob import decode_cs_blob
@@ -216,10 +217,48 @@ def test_windows_1251_template() -> None:
     print("windows-1251 template OK")
 
 
+def test_old_export_without_part_codes() -> None:
+    """GibLab 21052101 eksporti: detallarda code yo'q (nomida kod o'rniga "№"),
+    XNC esa standart konstantani e'lonsiz ishlatadi. Ikkalasi ham fayl umuman
+    import bo'lmasligiga olib kelardi."""
+    program = (
+        '<program dx="1000" dy="500" dz="16">'
+        '<tool name="Mill40" d="40"/>'
+        # throughCutDepth <var> bilan e'lon QILINMAGAN — eski eksportning o'zi shunday
+        '<ms x="60" y="60" dp="throughCutDepth" name="Mill40"/>'
+        '<ml x="940" y="60"/>'
+        '<bf x="100" y="200" dp="throughBoreDepth" name="Bore8"/>'
+        "</program>"
+    )
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<project version="21052101">'
+        '<good typeId="product" id="1" code="200101" name="01" count="1">'
+        '<part id="1" name="№ polka $1,2,3$" dl="1000" dw="500" count="1"/>'
+        '<part id="2" name="№ bok" dl="800" dw="400" count="2"/>'
+        "</good>"
+        f'<operation typeId="XNC" id="3" program={quoteattr(program)}><part id="1"/></operation>'
+        "</project>"
+    ).encode()
+    project = parse_project(xml)
+
+    parts = project.all_parts
+    assert [p.code for p in parts] == ["001", "002"]  # tartib raqamidan
+    assert [p.key for p in parts] == ["200101_001", "200101_002"]  # QR/SCX uchun yaroqli
+    assert any("detal kodlari yo'q" in w for w in project.warnings)
+    assert len(project.warnings) == 1  # har detal uchun emas, bir marta
+
+    op = parts[0].xnc_ops[0]
+    assert op.mills[0][0]["dp"] == 19.0  # throughCutDepth = dz+3
+    assert op.bores[0]["dp"] == 19.0  # throughBoreDepth = dz+3
+    print("old export (kodsiz detal + e'lonsiz XNC konstanta) OK")
+
+
 if __name__ == "__main__":
     test_blob_decoder()
     test_parser_and_routes()
     test_cutmap()
     test_scx()
     test_windows_1251_template()
+    test_old_export_without_part_codes()
     print("ALL GIBLAB TESTS PASSED")

@@ -121,7 +121,15 @@ def parse_project(content: bytes) -> ParsedProject:
         for p in g.findall("part"):
             code = p.get("code") or p.get("part.code") or ""
             if not code:
-                raise ParseError(f"Mahsulot {product.code} ichida kodsiz detal bor (part id={p.get('id')}).")
+                # Eski GibLab eksporti (version 21052101) detal kodini umuman yozmaydi —
+                # nomida kod o'rniga "№" turadi. Tartib raqamidan beramiz: GibLab'ning
+                # o'z sxemasi ham shu (yangi eksportda code = "{blok}_{part.position}").
+                code = f"{len(product.parts) + 1:03d}"
+                if len(product.parts) == 0:
+                    project.warnings.append(
+                        f"{product.code}: faylda detal kodlari yo'q (eski GibLab eksporti) — "
+                        f"tartib raqami bo'yicha berildi (001, 002, ...)."
+                    )
             code = _dedupe_part_code(code, seen, product.code, project.warnings)
             seen.add(code)
             edges: dict[str, dict[str, object]] = {}
