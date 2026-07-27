@@ -36,7 +36,7 @@ from app.schemas.common import Message
 
 router = APIRouter(prefix="/bridge-agents", tags=["bridge-agents"])
 
-# I/L/O/0/1 yo'q — telefonda aytganda adashtirmaydi. 30^8 ≈ 6.5e11 kombinatsiya:
+# I/L/O/0/1 yo'q — telefonda aytganda adashtirmaydi. 31^8 ≈ 8.5e11 kombinatsiya:
 # 15 daqiqalik oynada brute-force amalda imkonsiz.
 _CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 _CODE_LEN = 8

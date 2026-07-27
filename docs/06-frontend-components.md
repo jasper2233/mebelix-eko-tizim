@@ -104,7 +104,7 @@ if (data.password) payload.password = data.password
 - Props: `open`, `onOpenChange`, `title`, `description?`, `confirmText?` (default "Tasdiqlash"), `cancelText?` (default "Bekor qilish"), `destructive?`, `loading?`, `onConfirm`.
 - Tasdiqlash tugmasi `LoadingButton` (`variant={destructive ? "destructive" : "default"}`); ikkala tugma ham `h-11 px-5` — 44px minimal barmoq o'lchami terminal (touch) va admin uchun bir xil.
 
-**Foydalanuvchilari:** `Admin/DeleteUser.tsx`, `UserSettings/DeleteAccount.tsx`, `routes/_layout/orders/$orderId.tsx`, `routes/_layout/anketa.$orderId.tsx` (xona o'chirish), `routes/_layout/employees.tsx`, `routes/terminal.tsx`.
+**Foydalanuvchilari:** `Admin/DeleteUser.tsx`, `UserSettings/DeleteAccount.tsx`, `routes/_layout/orders/$orderId.tsx`, `routes/_layout/anketa.$orderId.tsx` (xona o'chirish), `routes/_layout/employees.tsx`, `routes/_layout/printers.tsx` (agentga yangi kod berish va agentni bekor qilish — ikkita dialog), `routes/terminal.tsx`.
 
 ### `frontend/src/components/Common/DataTable.tsx`
 
@@ -130,7 +130,7 @@ if (data.password) payload.password = data.password
 
 ### `frontend/src/components/Common/PageHeader.tsx`
 
-**Maqsadi:** sahifa sarlavhasi — `title`, ixtiyoriy `description` va o'ng tomonda `actions` slot. Barcha `_layout` sahifalarida ishlatiladi (dashboard, orders, clients, employees, machines, materials, reports, transactions, logs).
+**Maqsadi:** sahifa sarlavhasi — `title`, ixtiyoriy `description` va o'ng tomonda `actions` slot. Deyarli barcha `_layout` sahifalarida ishlatiladi (dashboard, orders ro'yxati va sahifasi, clients, employees, machines, materials, reports, transactions, logs, printers, anketa); istisno — `admin.tsx` va `settings.tsx` sarlavhani o'zi qo'lda (`<h1>`) chizadi, `cutmap.$orderId.tsx` da esa sarlavha umuman yo'q (to'liq ekran).
 
 ### `frontend/src/components/Common/StagePipeline.tsx`
 
@@ -235,7 +235,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida, alohida app header/foot
 
 **Maqsadi:** ilovaning asosiy yon paneli — brend, navigatsiya va foydalanuvchi menyusini yig'adi.
 
-- `navItems(role, isSuperuser)` funksiyasi (TZ 3.7 rollar-modullar matritsasi) 11 tagacha punkt quradi (`admin = is_superuser || role === "admin"`): Boshqaruv paneli `/` va LIVE Tablo `/tablo` — hammaga; Buyurtmalar `/orders`, Stanoklar `/machines`, Materiallar `/materials` — admin/manager/texnolog/director; Mijozlar `/clients`, Hodimlar `/employees`, Hisobotlar `/reports` — admin/manager/director; Tranzaksiyalar `/transactions` — admin/director; Foydalanuvchilar `/admin` va Logs `/logs` — faqat admin. **Rolga qarab navigatsiya**.
+- `navItems(role, isSuperuser)` funksiyasi (TZ 3.7 rollar-modullar matritsasi) 12 tagacha punkt quradi (`admin = is_superuser || role === "admin"`): Boshqaruv paneli `/` va LIVE Tablo `/tablo` — hammaga; Buyurtmalar `/orders`, Stanoklar `/machines`, Materiallar `/materials` — admin/manager/texnolog/director; Mijozlar `/clients`, Hodimlar `/employees`, Hisobotlar `/reports` — admin/manager/director; Tranzaksiyalar `/transactions` — admin/director; Foydalanuvchilar `/admin`, Printer agentlar `/printers` (`Printer` ikonkasi) va Logs `/logs` — faqat admin. **Rolga qarab navigatsiya**.
 - `<Sidebar collapsible="icon">`: yig'ilganda faqat ikonkalar qoladi. Header'da `Link to="/"` (logo `icon-gold.png` + "MebeliX" yozuvi, yig'ilganda `group-data-[collapsible=icon]:hidden` bilan yashiriladi) va `SidebarTrigger` (yig'ilgan railda yolg'iz qoladi).
 - `SidebarContent` → `Main items={items}`; `SidebarFooter` → `User user={currentUser}`.
 
@@ -379,7 +379,7 @@ function LoadingButton({ loading = false, disabled, asChild = false, ... }: Butt
 // loading=true -> disabled + <Loader2 className="mr-2 h-5 w-5 animate-spin" />
 ```
 
-Barcha mutation submit tugmalarida ishlatiladi (AddUser, EditUser, AddClient, AddOrder, EditOrder, MachineAssign, OrderMatrix, CutmapView, ConfirmDialog, ChangePassword, UserInformation, anketa saqlash paneli, employees hodim formalari).
+Barcha mutation submit tugmalarida ishlatiladi (AddUser, EditUser, AddClient, AddOrder, EditOrder, MachineAssign, OrderMatrix, CutmapView, ConfirmDialog, ChangePassword, UserInformation, anketa saqlash paneli, employees hodim formalari, printers agent qo'shish formasi).
 
 ### `frontend/src/components/ui/password-input.tsx` (custom)
 

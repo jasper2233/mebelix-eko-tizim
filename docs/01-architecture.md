@@ -71,7 +71,7 @@ MebeliX-Mes-System/
 |---|---|
 | Konteynerlash | Docker Compose — `local` (hot-reload, portlar ochiq) va `prod` (faqat Caddy tashqariga ochiq) |
 | Ma'lumotlar bazasi | PostgreSQL 15 |
-| Cache / queue | Redis 7 (ARQ queue + rate limit, ikkita alohida pool) |
+| Cache / queue | Redis 7 (ARQ queue + rate limit + WS pub/sub, uchta alohida ulanish) |
 | Reverse proxy | Caddy (prod, `SITE_ADDRESS` orqali auto-HTTPS / Let's Encrypt); port bindinglar `CADDY_HTTP_BIND`/`CADDY_HTTPS_BIND` bilan parametrlangan — mavjud host-nginx (ISPmanager) ortida ishlash rejimi uchun |
 | Static serving | nginx (frontend build, SPA fallback, 1 yillik asset cache) |
 | Sifat nazorati | pre-commit hooks (ruff, mypy, biome) + GitHub Actions CI (`.github/workflows/ci.yml`) |
@@ -104,6 +104,7 @@ flowchart LR
     A -->|async SQLAlchemy + asyncpg| P
     A -->|rate limit pool| R
     A -->|job enqueue - arq pool| R
+    A <-->|"pub/sub mes:events (ws_redis)"| R
     R -->|job dequeue| W
     W -->|"LPUSH mes:print:queue<br/>(png base64)"| R
     W --> P
@@ -135,8 +136,10 @@ Asosiy nuqtalar:
   Windows drayveri orqali USB GoDEX'ga chiqadi. G500-U'da tarmoq porti yo'q,
   shuning uchun yagona transport shu. Batafsil:
   [4.3](#43-yorliq-chop-etish-zanjiri).
-- **Ikkita Redis pool**: biri ARQ job queue, biri rate limiting — ikkalasi ham
-  startup'da retry'li probe bilan tekshiriladi (fail-fast boot); rate limit
+- **Uchta Redis ulanishi**: ARQ job queue pool, rate limiting pool va WebSocket
+  pub/sub uchun alohida `ws_redis` (`AsyncRedis.from_url`, `mes:events` kanali —
+  gunicorn worker'lar orasida `ws_manager` fan-out'ini ta'minlaydi). Startup'dagi
+  retry'li probe faqat birinchi ikkitasini tekshiradi (fail-fast boot); rate limit
   runtime'da ham fail-closed — Redis xatosida so'rov bloklanadi.
 - **ARQ worker** alohida konteyner/processda ishlaydi (`app/core/worker.py` →
   `WorkerSettings`), tasklar `app/tasks/` da ro'yxatdan o'tadi.
@@ -258,17 +261,24 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME` (ixtiyoriy), `QUEUE_FILE`;
   `_load_dotenv()` ularni shu tartibda o'qiydi: env var > exe yonidagi `.env` >
   `%APPDATA%\MebelixAgent\.env`.
-- Agent FAQAT printer ulangan kompyuterga o'rnatiladi (Windows Task Scheduler,
-  "At startup"); menejer, texnolog va boshqa post terminallariga hech narsa
-  kerak emas — ular brauzerdan tugmani bosadi.
+- Agent FAQAT printer ulangan kompyuterga o'rnatiladi; avtostartni agentning o'zi
+  qo'yadi — ulangandan keyin `_register_autostart()` exe yo'lini
+  `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` dagi `MebelixAgent`
+  qiymatiga yozadi (admin huquqi kerak emas, Task Scheduler ishlatilmaydi).
+  Menejer, texnolog va boshqa post terminallariga hech narsa kerak emas — ular
+  brauzerdan tugmani bosadi.
 - **Ulanish (pairing)** — har printer o'z tokeni bilan ishlaydi, serverda yagona
   umumiy token yo'q. Admin `/printers` sahifasida agent yaratadi va **8 belgili
   bir martalik kod** oladi (alifboda I/L/O/0/1 yo'q — telefonda aytganda
   adashtirmaydi; 15 daqiqa yashaydi). Tsex kompyuterida `mebelix-agent.exe`
-  birinchi marta ishga tushganda (`_pair_interactive()`) server manzili va kodni
-  so'raydi, `POST /bridge-agents/pair` orqali doimiy tokenga almashtiradi va uni
+  birinchi marta ishga tushganda `_pair()` kichik sozlash oynasini
+  (`_pair_dialog()`) ochib server manzili va kodni so'raydi, `_exchange()` esa
+  `POST /bridge-agents/pair` orqali doimiy tokenga almashtiradi va uni
   `%APPDATA%\MebelixAgent\.env` ga yozadi. `BRIDGE_TOKEN` allaqachon berilgan
-  bo'lsa yoki stdin tty bo'lmasa — so'ramaydi.
+  bo'lsa — umuman so'ramaydi. Oyna tty bor-yo'qligidan qat'i nazar ochiladi (exe
+  `--noconsole` bilan qurilgan, tty umuman yo'q); faqat tkinter ishlamasa
+  `_pair_console()` zaxira yo'liga tushadi, u esa stdin tty bo'lmasa hech narsa
+  so'ramaydi va agent "Ulanish bekor qilindi" bilan to'xtaydi.
 - `bridge_agent` jadvali (`app/models/bridge_agent.py`, migratsiya
   `d5e81a24c3b7`): `organization_id`, `name`, `token_hash` (tokenning sha256'i,
   unique — token o'zi faqat pair javobida bir marta ko'rinadi), `pair_code`,

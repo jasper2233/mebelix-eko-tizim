@@ -61,7 +61,7 @@ app = create_application(router=router, settings=settings)
 
 | Guruh | Asosiy maydonlar |
 |---|---|
-| Application | `APP_NAME`, `APP_VERSION` (`/health` va `/ready` hisobotida ishlatiladi) — description/license/contact sozlamalari olib tashlangan, metadata `setup.py`da literal yoziladi |
+| Application | `APP_NAME` (FastAPI `title`), `APP_VERSION` (`/health` va `/ready` hisobotida ishlatiladi) — description/license/contact sozlamalari olib tashlangan, metadata `setup.py`da literal yoziladi |
 | Crypto / JWT | `SECRET_KEY: SecretStr`, `ALGORITHM="HS256"`, `ACCESS_TOKEN_EXPIRE_MINUTES=30`, `REFRESH_TOKEN_EXPIRE_DAYS=7`, `BCRYPT_ROUNDS=12` |
 | PostgreSQL | `POSTGRES_USER/PASSWORD/SERVER/PORT/DB`, `POSTGRES_ASYNC_PREFIX="postgresql+asyncpg://"`, `DB_POOL_SIZE=10`, `DB_MAX_OVERFLOW=20` |
 | First admin | `ADMIN_NAME/PHONE/USERNAME/PASSWORD` — startup'da yaratiladigan birinchi admin |
@@ -129,7 +129,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 - `check_database_health(db: AsyncSession) -> bool` — `SELECT 1` bajaradi; xato bo'lsa log yozib `False` qaytaradi.
 - `check_redis_health() -> bool` — ilova ishlatayotgan **har bir** Redis klientni (`queue.pool` va `rate_limiter.client`) `ping()` qiladi. Hech qanday Redis funksiya yoqilmagan bo'lsa, tekshiruv "vacuously" muvaffaqiyatli hisoblanadi (`True`).
 
-**Bog'lanishlar:** `utils/queue.py`, `utils/rate_limit.py`; API'dagi `/api/v1/health` va `/api/v1/ready` endpointlari shu funksiyalarni chaqiradi (bu pathlar `setup.py`dagi `NON_BUSINESS_PATHS`da ham ro'yxatga olingan).
+**Bog'lanishlar:** `utils/queue.py`, `utils/rate_limit.py`; shu funksiyalarni faqat `/api/v1/ready` endpointi chaqiradi (`routes/health.py`) — `/api/v1/health` esa sof liveness probe: hech qanday bog'liqlikni tekshirmaydi, doim 200 va statik payload qaytaradi (prod'dagi konteyner healthcheck'i aynan shu pathga uradi). Ikkala path `setup.py`dagi `NON_BUSINESS_PATHS`da ham ro'yxatga olingan.
 
 ---
 

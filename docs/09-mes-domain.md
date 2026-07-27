@@ -4,7 +4,7 @@ Holat: **2026-07-19**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Fazalar holati: rep
 
 ## 1. Data model (`app/models/`)
 
-16 jadval, hammasi `BaseModel` (ID + timestamps + soft-delete):
+17 jadval, hammasi `BaseModel` (ID + timestamps + soft-delete):
 
 | Jadval | Mazmun | TT |
 |---|---|---|
@@ -21,6 +21,7 @@ Holat: **2026-07-19**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Fazalar holati: rep
 | `work_session` | Smena (beyjik → sessiya) | 8.2 |
 | `order_file` | project / scx / hujjatlar (diskda `UPLOAD_DIR` ostida); `meta` JSONB — anketa xona rasmlari uchun `{"room_id", "content_type"}` | 2.4.3 |
 | `audit_log` | Kim-qachon-nima (`crud/audit.py: log_action`, tranzaksiya ichida) | 10.11 |
+| `bridge_agent` | Printerli kompyuterdagi chop etish agenti: `name`, `token_hash` (sha256, unique), bir martalik `pair_code` + `pair_expires_at` (15 daqiqa), `last_seen_at` (panelda Onlayn/Oflayn); migratsiya `d5e81a24c3b7` | 2.2.2 |
 
 `user` jadvaliga qo'shildi: `role` (`UserRole`, 12 a'zo) + `machine_id`. Rollar ikki guruh
 (`app/models/enums.py`):
@@ -69,8 +70,11 @@ attributsiyasi beyjiksiz saqlanadi. **Login = smena**: sessiya avtomatik ochilad
 - `/ws/events` — brauzer klientlar: JWT (cookie yoki `?token=`); rol → scope (terminal/tablo/dashboard),
   post/stanok bo'yicha filtrlash; `ping`→`pong` heartbeat.
 - Fan-out Redis pub/sub (`mes:events`) orqali — gunicorn workerlar orasida; Redis o'chiq bo'lsa lokal.
-- `/ws/bridge` — sex bridge-agenti (`BRIDGE_TOKEN` bilan): Redis `mes:print:queue` dan chop etish
-  joblarini oladi, ack qilinmagan job qayta navbatga qaytadi.
+- `/ws/bridge` — sex bridge-agenti (per-agent pairing tokeni: `Authorization: Bearer` header, sha256
+  → `bridge_agent.token_hash`; umumiy `BRIDGE_TOKEN` faqat legacy moslik): Redis `mes:print:queue`
+  dan chop etish joblarini oladi, ack qilinmagan job qayta navbatga qaytadi. `touch_agent()` har
+  5 daqiqada `last_seen_at` ni yangilaydi — token bekor qilingan bo'lsa jonli ulanish 4401 bilan
+  uziladi, qo'ldagi job navbatga qaytadi.
 
 ## 5. Yorliq chop etish (TT 12.3 / 13.2)
 
@@ -101,7 +105,8 @@ Zanjir (terminal → printer) — GoDEX G500-U faqat USB, tarmoq porti yo'q, shu
 terminal (POST /terminal/labels/{instance_id})   → label_printed_at + ws "label.printed"
   → arq task print_label (app/tasks/__init__.py)
      · render_label_png → LPUSH mes:print:queue = {type, instance_id, png(base64)}
-  → /ws/bridge (BRIDGE_TOKEN auth, Redis brpop + ack; ack kelmasa rpush bilan navbatga qaytadi)
+  → /ws/bridge (per-agent token auth: Bearer → sha256 bridge_agent.token_hash; Redis brpop + ack;
+     ack kelmasa rpush bilan navbatga qaytadi)
   → bridge-agent/agent.py → print-queue.jsonl → Windows GDI → USB GoDEX
 ```
 
@@ -131,6 +136,7 @@ O'rnatish qadamlari: [07-infra-devops.md](07-infra-devops.md) → "Chop etish in
 | `tablo` | `/matrix`, `/orders/{id}` | istalgan auth |
 | `reports` | `/productivity`, `/orders`, `/materials` (+`?format=xlsx`), `/dashboard` | manager/director/admin |
 | `audit-logs` | filtrli ro'yxat | staff |
+| `bridge-agents` | ro'yxat/yaratish, `/{id}/code` (yangi ulanish kodi), `/{id}` DELETE, `/pair`, `/download` | admin (`AdminUser`); `/pair` va `/download` ochiq — router global auth'siz ulanadi |
 
 ### Buyurtma lifecycle va to'lovlar
 
@@ -204,7 +210,7 @@ direktor ham ko'radi.
 - Dizayn tokenlar: `src/index.css` (post/status ranglari, `.num`, print CSS); domen konstantalar `src/lib/mes.ts`.
 - Imzo komponent: `Common/StagePipeline` — 6 bosqich zanjiri (dashboard, buyurtma qatorlari).
 - Routelar: `_layout/*` admin modullar (orders, clients, employees, machines, materials, reports,
-  transactions, logs, cutmap.$orderId, `anketa.$orderId`), `/terminal`, `/tablo`
+  transactions, logs, printers, cutmap.$orderId, `anketa.$orderId`), `/terminal`, `/tablo`
   (JAMI HAJM + rejimlar + drill-down).
 - Anketa UI: `_layout/anketa.$orderId.tsx` — xonalar tab bilan almashadi, 7 ta bo'lim + yopiladigan
   "O'lchov varag'i". Yozish huquqi `is_superuser || admin || manager`; boshqa rollarga forma emas,
@@ -227,8 +233,11 @@ direktor ham ko'radi.
 ## 8. Sozlamalar (yangi env)
 
 Backend: `UPLOAD_DIR`, `MAX_PROJECT_FILE_SIZE`, `STRICT_STAGE_ORDER`, `SESSION_MAX_HOURS`,
-`SCAN_UNDO_SECONDS`, `BRIDGE_TOKEN` (bo'sh bo'lmasa `/ws/bridge` ochiladi).
+`SCAN_UNDO_SECONDS`, `BRIDGE_TOKEN` — ixtiyoriy **legacy** moslik: bo'sh bo'lsa ham `/ws/bridge`
+ishlaydi (agentlar admin paneldagi pairing tokeni bilan ulanadi), faqat eski umumiy tokenli
+agentlar uchun to'ldiriladi.
 
 Bridge-agent (`bridge-agent/agent.py`, backend settings'ida emas — o'z env'i): `MES_URL`
-(default `ws://localhost:8000`), `BRIDGE_TOKEN` (serverdagi bilan bir xil), `PRINTER_NAME`
+(default `ws://localhost:8000`), `BRIDGE_TOKEN` (pairing bergan per-agent token — birinchi ishga
+tushishda `%APPDATA%\MebelixAgent\.env` ga o'zi yoziladi; qo'lda berish faqat legacy holat), `PRINTER_NAME`
 (ixtiyoriy — avto-topish o'rniga qo'lda), `QUEUE_FILE` (default `print-queue.jsonl`).

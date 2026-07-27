@@ -435,7 +435,7 @@ Router `/api/v1/bridge-agents` prefiksi bilan **himoyasiz** ulanadi (`/pair` cha
 | POST | `/api/v1/bridge-agents/pair` | **Yo'q (ochiq)** | Agent bir martalik kodni doimiy tokenga almashtiradi; javob `BridgePairResponse` (`token`, `name`); audit `paired` (`user_id=None`) |
 | GET | `/api/v1/bridge-agents/download` | **Yo'q (ochiq)** | Windows agent dasturi — `uploads/agent/mebelix-agent.exe`, `FileResponse`; fayl yuklanmagan bo'lsa 404 |
 
-**Ulanish kodi:** `_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"` — I/L/O/0/1 yo'q, telefonda aytganda adashtirmaydi. 30⁸ ≈ 6.5·10¹¹ kombinatsiya, 15 daqiqalik oynada brute-force amalda imkonsiz.
+**Ulanish kodi:** `_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"` — I/L/O/0/1 yo'q, telefonda aytganda adashtirmaydi. 31 belgi × 8 uzunlik (`_CODE_LEN = 8`) = 31⁸ ≈ 8.5·10¹¹ kombinatsiya, 15 daqiqalik oynada brute-force amalda imkonsiz.
 
 **Pairing xavfsizligi** (`POST /pair`):
 
@@ -446,7 +446,7 @@ Router `/api/v1/bridge-agents` prefiksi bilan **himoyasiz** ulanadi (`/pair` cha
 
 `/download` auth talab qilmaydi: fayl hamma mijozga bir xil, hech qanday sir saqlamaydi, monoblok brauzerida esa sessiya bo'lmasligi mumkin. Yangi versiya chiqarish — exe'ni `uploads/agent/` ga qo'yish.
 
-**Agent tomoni** (`bridge-agent/agent.py`): PyInstaller onefile `mebelix-agent.exe` — sex kompyuteriga Python o'rnatish shart emas. `_load_dotenv()` config'ni shu tartibda o'qiydi: env var > exe yonidagi `.env` > `%APPDATA%\MebelixAgent\.env`. `_pair_interactive()` birinchi ishga tushishda server manzili va ulanish kodini so'raydi, `POST /pair` orqali tokenni oladi va `%APPDATA%\MebelixAgent\.env` ga yozadi; `BRIDGE_TOKEN` allaqachon bor bo'lsa yoki jarayon headless bo'lsa (Task Scheduler, `stdin` tty emas) prompt umuman chiqmaydi. Qolgan hammasi o'zgarmagan — printer avto-topiladi, `print-queue.jsonl` durable navbat, `_print_png_gdi` chiqish yo'li.
+**Agent tomoni** (`bridge-agent/agent.py`): PyInstaller onefile `mebelix-agent.exe` — sex kompyuteriga Python o'rnatish shart emas. `_load_dotenv()` config'ni shu tartibda o'qiydi: env var > exe yonidagi `.env` > `%APPDATA%\MebelixAgent\.env`. `_pair()` (import paytida chaqiriladi) birinchi ishga tushishda kichik tkinter oynasi (`_pair_dialog()`) orqali server manzili va ulanish kodini so'raydi, `_exchange()` ularni `POST /pair` ga yuboradi va olingan tokenni `%APPDATA%\MebelixAgent\.env` ga yozadi; kod noto'g'ri bo'lsa oyna xato matni bilan qayta ochiladi. `BRIDGE_TOKEN` allaqachon bor bo'lsa `_pair()` darhol qaytadi — hech narsa so'ralmaydi; aks holda oyna har doim ochiladi, `stdin` tty bo'lishi shart emas (exe `--noconsole` bilan quriladi, konsol umuman yo'q). Faqat tkinter ishlamagan muhitda (dev/Linux) `_pair_console()` zaxira sifatida ishlaydi, u ham kod ololmasa `SystemExit("Ulanish bekor qilindi.")` — agent jim davom etmaydi, xato oynasini ko'rsatib to'xtaydi. Qolgan hammasi o'zgarmagan — printer avto-topiladi, `print-queue.jsonl` durable navbat, `_print_png_gdi` chiqish yo'li.
 
 **Bog'lanishlar:** `backend/app/schemas/bridge_agents.py` (`BridgeAgentCreate`, `BridgeAgentRead`, `BridgePairRequest`, `BridgePairResponse`), `backend/app/models/bridge_agent.py` (`BridgeAgent`), migratsiya `backend/app/migrations/versions/d5e81a24c3b7_bridge_agent_pairing.py`, `backend/app/crud` (`crud_bridge_agents`, `log_action`), `backend/app/api/routes/ws.py` (`/ws/bridge` shu tokenni tanidi), `bridge-agent/agent.py`.
 

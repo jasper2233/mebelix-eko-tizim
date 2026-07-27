@@ -184,7 +184,7 @@ Pathless layout — himoyalangan sahifalar qobig'i. **Auth guard + rol-router**:
 `/admin` — foydalanuvchilar boshqaruvi. **Superuser guard**: `beforeLoad`da `readUserMe()` natijasi `is_superuser` bo'lmasa `redirect({ to: "/" })` (backend ham ro'yxatni faqat superuser'ga beradi). `useSuspenseQuery(getUsersQueryOptions())` bilan ro'yxat olinadi (`Suspense` fallback — `PendingUsers` skeleton). Har bir `UserRead`ga `isCurrentUser` flag'i qo'shilib (`useCurrentUser` bilan solishtirish) `DataTable`ga (`@/components/Common/DataTable`, ustunlar `@/components/Admin/columns`) uzatiladi. Yuqorida `AddUser` dialog tugmasi.
 
 ### `frontend/src/routes/_layout/printers.tsx`
-`/printers` — printer agentlari (TZ 2.2.2 pairing oqimi), sarlavha `head()` orqali "Printer agentlar | MebeliX". Sahifa admin uchun: `AppSidebar.tsx` da `Printer` ikonkali yozuv faqat `admin` blokida qo'shiladi, ro'yxat/amal endpointlari esa backendda `AdminUser` bilan himoyalangan. Yuqorida ikkita amal: "Agentni yuklab olish" (`${OpenAPI.BASE}/api/v1/bridge-agents/download` ga to'g'ridan-to'g'ri `download` havolasi — `mebelix-agent.exe`) va "Yangi agent" dialogi; ostida uch qadamli o'rnatish yo'riqnomasi (drayver → exe → kod). Jadval `BridgeAgentsService.readBridgeAgents` dan (60s poll): nomi, holat — **Onlayn** (`last_seen_at` 6 daqiqadan yangi, `ONLINE_MS`), **Oflayn** (ulangan, lekin jim), **"Kod kutilmoqda"** (hali ulanmagan, kodi tirik) yoki "Kod muddati o'tgan" — ulanish kodi, oxirgi ulanish vaqti va har qatorda ikki amal: `KeyRound` — yangi kod (`regenerateBridgeCode`, eski token bekor bo'ladi) va `Trash2` — agentni bekor qilish (`deleteBridgeAgent`); ikkalasi ham `ConfirmDialog` orqali. Kod faqat dialogda bir marta ko'rsatiladi — `fmtCode` bilan `AB12-CD34` ko'rinishida (telefonda aytish oson), 15 daqiqa amal qiladi.
+`/printers` — printer agentlari (TZ 2.2.2 pairing oqimi), sarlavha `head()` orqali "Printer agentlar | MebeliX". Sahifa admin uchun: `AppSidebar.tsx` da `Printer` ikonkali yozuv faqat `admin` blokida qo'shiladi, ro'yxat/amal endpointlari esa backendda `AdminUser` bilan himoyalangan. Yuqorida ikkita amal: "Agentni yuklab olish" (`${OpenAPI.BASE}/api/v1/bridge-agents/download` ga to'g'ridan-to'g'ri `download` havolasi — `mebelix-agent.exe`) va "Yangi agent" dialogi; ostida uch qadamli o'rnatish yo'riqnomasi (drayver → exe → kod). Jadval `BridgeAgentsService.readBridgeAgents` dan (60s poll): nomi, holat — **Onlayn** (`last_seen_at` 6 daqiqadan yangi, `ONLINE_MS`), **Oflayn** (ulangan, lekin jim), **"Kod kutilmoqda"** (hali ulanmagan, kodi tirik) yoki "Kod muddati o'tgan" — ulanish kodi, oxirgi ulanish vaqti va har qatorda ikki amal: `KeyRound` — yangi kod (`regenerateBridgeCode`, eski token bekor bo'ladi) va `Trash2` — agentni bekor qilish (`deleteBridgeAgent`); ikkalasi ham `ConfirmDialog` orqali. Kod "Yangi agent" dialogida katta shriftda va jadvalning "Ulanish kodi" ustunida ko'rsatiladi — `fmtCode` bilan `AB12-CD34` ko'rinishida (telefonda aytish oson), 15 daqiqa amal qiladi; ulanish amalga oshgach yoki muddat o'tgach server `pair_code = null` qaytaradi (`bridge_agents.py` `_read()`) va ustunda "—" turadi.
 
 ### `frontend/src/routes/_layout/settings.tsx`
 `/settings` — sozlamalar, Tabs asosida: "Profilim" (`UserInformation`), "Parol" (`ChangePassword`), "Xavfli zona" (`DeleteAccount`). Superuser uchun "Xavfli zona" yashiriladi (`tabsConfig.slice(0, 2)`) — superuser o'z hisobini o'chira olmaydi. `currentUser` hali yuklanmagan bo'lsa `null` qaytaradi.
@@ -273,12 +273,19 @@ getTerminalTasksQueryOptions()     // ["terminal", "tasks"], refetchInterval 30s
 
 Mutation va WS event handler'lar shu key'larga invalidatsiya qiladi: scan/sessiya event'lari `["terminal"]`, buyurtma amallari `["orders"]`, tablo/dashboard `["tablo"]`.
 
-Ikkita query factory'dan tashqarida — ular faqat bitta iste'molchiga tegishli:
+Factory'lardan tashqarida sahifa/komponent ichida inline e'lon qilingan 12 ta `useQuery` bor (`["tablo", "matrix"]` ikki sahifada alohida takrorlangan):
 
 | Key | Joyi | Sozlama |
 |---|---|---|
 | `["terminal", "orders"]` | `routes/terminal.tsx` → `OrderPicker` | `TerminalService.readTerminalOrders`, `refetchInterval` 30s |
 | `["terminal" \| "admin", "cutmap", orderId]` | `components/Terminal/CutmapView.tsx` → `getCutmapQueryOptions(orderId, admin)` | `admin` bo'lsa `OrdersService.readOrderCutmap`, aks holda `TerminalService.readTerminalCutmap`; `refetchInterval` 60s. Yorliq chop etilgach shu key invalidatsiya qilinadi |
+| `["tablo", "matrix"]` | `routes/tablo.tsx` va `_layout/index.tsx` — har birida alohida | `TabloService.readTabloMatrix`, `refetchInterval` 60s; WS event'larida `["tablo"]` invalidatsiyasi ikkalasini ham yangilaydi |
+| `["tablo", "order", orderId]` | `routes/tablo.tsx` → qator drill-down'i | `TabloService.readTabloOrder`, `refetchInterval` 30s |
+| `["reports", "dashboard"]` | `_layout/index.tsx` (Dashboard) | `ReportsService.reportDashboard`, `refetchInterval` 60s, `enabled: canStats` |
+| `["reports", "productivity" \| "orders" \| "materials", params]` | `_layout/reports.tsx` — uch tab | `ReportsService.report*(params)`; poll yo'q, sana oralig'i (`params`) key'ning bir qismi |
+| `["orders", "status-counts"]` | `_layout/orders/index.tsx` — tab count'lari | `OrdersService.readOrderStatusCounts`, `refetchInterval` 30s |
+| `["bridge-agents"]` | `_layout/printers.tsx` | `BridgeAgentsService.readBridgeAgents`, `refetchInterval` 60s |
+| `["currentUser"]` | `routes/tablo.tsx` | `UsersService.readUserMe` — `queries/users.ts` factory'sining inline dublikati (tablo `_layout`dan tashqarida) |
 
 ---
 
@@ -345,7 +352,7 @@ main.tsx ──(BASE, WITH_CREDENTIALS)──> client/core/OpenAPI.ts
 main.tsx ──(401 interceptor)─────────> LoginService.refreshAccessToken (sdk.gen.ts)
 routes/* ──(beforeLoad guard)────────> UsersService.readUserMe (+ rol-router: lib/mes.ts OPERATOR_ROLES)
 routes/login.tsx ──> hooks/useAuth ──> LoginService.loginAccessToken / logout
-routes/_layout/* ──> queries/mes.ts ──> 15 ta *Service (sdk.gen.ts)
+routes/_layout/* ──> queries/mes.ts ──> 8 ta *Service (Audit/Clients/Employees/Machines/Materials/Orders/Posts/Terminal, sdk.gen.ts)
 routes/_layout/anketa.$orderId.tsx ──> lib/anketa.ts (kod→label) + OrdersService.saveOrderSurvey / uploadRoomPhoto / deleteRoomPhoto
 routes/terminal.tsx ──> TerminalService / ScansService + Terminal/CutmapView (+ SheetSvg) + hooks/useMesWs
 routes/terminal.tsx ──(TBtn "Chop etish")──> TerminalService.printInstanceLabel ──> arq/Redis ──> bridge-agent ──> GoDEX

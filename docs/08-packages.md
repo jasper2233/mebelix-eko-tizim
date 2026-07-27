@@ -7,7 +7,7 @@ Holat: **2026-07-19** tekshiruvi (oxirgi to'liq upgrade: 2026-07-09). Barcha pak
 Yangi bog'liqliklar faqat manifestdan **tashqarida** paydo bo'ldi va ikkalasi ham quyida alohida bo'limlarda yozilgan:
 
 - bridge-agent'ning Windows GDI chop etish yo'li — `pywin32` + `pillow` (repo'da manifest fayli yo'q);
-- `render_label_png()` uchun tizim TrueType shriftlari (Docker image'da o'rnatilmagan).
+- `render_label_png()` uchun tizim TrueType shriftlari (Docker image'ga `fonts-liberation` apt paketi bilan qo'shilgan).
 
 ## Yangilash tarixi (2026-07-09 upgrade)
 
@@ -55,7 +55,7 @@ Bu uchtasining **haqiqiy ishlatilishi** (99cebc3 dagi `render_label_png()` qayta
 
 `labels.py` ning butun tashqi yuzasi shu uchtaga tayanadi: `LabelData`, `load_label_data()`, `_n()`, `render_label_png()` — boshqa paket talab qilmaydi. `print_label` taski (`backend/app/tasks/__init__.py`) PNG'ni base64 qilib Redis navbatiga (`mes:print:queue`) qo'yadi, job JSON'i `{"type", "instance_id", "png"}` — printer dialekti generatsiya qilinmaydi, shuning uchun task tomonda ham qo'shimcha bog'liqlik yo'q.
 
-Dev group'dagi `websockets>=16.0` `backend/app` ichida umuman import qilinmaydi — repo bo'yicha yagona `import websockets` `bridge-agent/agent.py` da.
+Dev group'dagi `websockets>=16.0` `backend/app` ichida umuman import qilinmaydi (repo bo'yicha yagona `import websockets` — `bridge-agent/agent.py` da), lekin uni **o'chirib bo'lmaydi**: lock'da `uvicorn` 0.51.0 `[standard]` extra'siz (faqat `click` + `h11`), `wsproto` esa umuman yo'q — ya'ni `/ws/events` va `/ws/bridge` uchun WebSocket transporti aynan shu paket. Prod image'ga u `backend/Dockerfile` dagi `uv sync --frozen` dev group'ni ham o'rnatgani uchun tushadi; to'g'ri joyi — asosiy `dependencies` (yoki `uvicorn[standard]`).
 
 ### Frontend (`frontend/package.json` + `package-lock.json`)
 
@@ -84,7 +84,7 @@ Tekshiruv: `npm run build` (tsc + vite) ✅ · `bash scripts/generate-client.sh`
 
 ## Bridge-agent bog'liqliklari (manifestsiz)
 
-`bridge-agent/` da `pyproject.toml` ham, `requirements.txt` ham **yo'q**. Uchta runtime paket agent `mebelix-agent.exe` ichiga PyInstaller bilan yig'iladi (`pyinstaller --onefile --console --name mebelix-agent agent.py`) — sexdagi kompyuterga na Python, na `pip`, na alohida paket o'rnatiladi. `pyinstaller`ning o'zi faqat **build-time** asbob (dasturchi mashinasida), runtime bog'liqlik emas va hech qaysi manifestda yozilmagan.
+`bridge-agent/` da `pyproject.toml` ham, `requirements.txt` ham **yo'q**. Uchta runtime paket agent `mebelix-agent.exe` ichiga PyInstaller bilan yig'iladi (`pyinstaller --onefile --noconsole --name mebelix-agent agent.py`) — sexdagi kompyuterga na Python, na `pip`, na alohida paket o'rnatiladi. `pyinstaller`ning o'zi faqat **build-time** asbob (dasturchi mashinasida), runtime bog'liqlik emas va hech qaysi manifestda yozilmagan.
 
 | Paket | Nima uchun |
 | --- | --- |
@@ -102,12 +102,14 @@ Agent faqat printer ulangan kompyuterga o'rnatiladi. Menejer, texnolog va boshqa
 
 `render_label_png()` PyPI paketlaridan tashqari **OS shriftlariga** bog'liq. `labels.py` dagi qidiruv ro'yxatlari:
 
-- `_FONT_REGULAR`: `C:/Windows/Fonts/arial.ttf` → `/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf` → `/usr/share/fonts/dejavu/DejaVuSans.ttf`
-- `_FONT_BOLD`: `C:/Windows/Fonts/arialbd.ttf` → `/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf` → `/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf`
+- `_FONT_REGULAR`: `C:/Windows/Fonts/arial.ttf` → `/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf` → `/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf` → `/usr/share/fonts/dejavu/DejaVuSans.ttf`
+- `_FONT_BOLD`: `C:/Windows/Fonts/arialbd.ttf` → `/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf` → `/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf` → `/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf`
+
+Liberation Sans birinchi Linux nomzodi: Arial bilan metrik mos (harf kengliklari bir xil), shuning uchun Windowsda sozlangan maket serverda ham aynan shunday joylashadi. DejaVu kengroq — maketni siljitadi, faqat zaxira bo'lib qoladi.
 
 Hech biri topilmasa `ImageFont.load_default()` ga tushadi (kichik bitmap shrift — `size_mm` e'tiborga olinmaydi, yorliq matni o'lchamsiz chiqadi).
 
-⚠️ `backend/Dockerfile` final stage'da faqat `curl` o'rnatiladi (`apt-get install -y --no-install-recommends curl`) — `fonts-dejavu-core` yo'q. Ya'ni konteynerda yuqoridagi barcha yo'llar topilmaydi va yorliq `load_default()` bilan render bo'ladi. Windows dev mashinasida arial.ttf topilgani uchun muammo lokal ko'rinmaydi.
+`backend/Dockerfile` final stage'da `curl` bilan birga `fonts-liberation` ham o'rnatiladi (`apt-get install -y --no-install-recommends curl fonts-liberation`) — konteynerda `LiberationSans-Regular.ttf` topiladi va yorliq `load_default()` ga tushmaydi. `fonts-dejavu-core` o'rnatilmagan: DejaVu yo'llari faqat boshqa muhitlar uchun zaxira.
 
 Yorliq rasm assetlari — `backend/app/assets/label-logo.png`, `label-icon-drill.png` — image'ga `COPY backend /app/backend` orqali, wheel'ga esa `[tool.hatch.build.targets.wheel] include = ["app/"]` orqali tushadi.
 

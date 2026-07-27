@@ -74,7 +74,9 @@ class Settings(BaseSettings):
 
     # === Printing (TZ 12.3 / 13.2) ===
     # Yorliqlar bridge-agent navbati orqali USB GoDEX'ga boradi (G500-U'da tarmoq porti yo'q).
-    BRIDGE_TOKEN: str = ""  # non-empty enables the /ws/bridge endpoint for the shop-floor agent
+    # Legacy back-compat: printerlar admin paneldagi pairing tokeni bilan ulanadi
+    # (bridge_agent.token_hash). Bu bo'sh bo'lsa ham /ws/bridge ishlayveradi.
+    BRIDGE_TOKEN: str = ""
 
     # === Startup probes ===
     STARTUP_RETRY_MAX_ATTEMPTS: int = 5
