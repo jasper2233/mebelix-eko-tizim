@@ -85,7 +85,7 @@ class OrderCancel(BaseModel):
     reason: Annotated[str, Field(min_length=3, max_length=500)]
 
 
-# --- Mijoz anketasi (qog'oz forma o'rniga, uploads/forma/mebel_buyurtma_anketa.html) ---
+# --- Mijoz anketasi (menejer to'ldiradigan qog'oz forma o'rniga) ---
 # Variantlar kodlari (ldsp, mdf, akril...) frontend/src/lib/anketa.ts da matnga aylantiriladi —
 # bu yerda ro'yxat qat'iy emas: yangi variant qo'shilganda migratsiya kerak bo'lmasin.
 # Mijoz ma'lumotlari Client'da, narx/avans/muddat Order'da — anketada takrorlanmaydi.

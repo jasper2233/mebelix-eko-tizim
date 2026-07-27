@@ -169,7 +169,6 @@ def create_application(
     kwargs.update(
         title=settings.APP_NAME,
         description="MebeliX API",
-        license_info={"name": "MIT"},
         # FastAPI's built-in docs are always disabled — we wire our own conditional ones via `_install_docs_router`.
         docs_url=None,
         redoc_url=None,

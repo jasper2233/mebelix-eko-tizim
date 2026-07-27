@@ -27,8 +27,10 @@ MebeliX-Mes-System/
 │                     #   (Windows drayveri orqali PNG; faqat printerli kompyuterda)
 │                     #   mebelix-agent.exe bo'lib yig'iladi, panel kodi bilan ulanadi (pairing)
 ├── caddy/            # Caddy reverse proxy konfiguratsiyasi (prod)
-├── scripts/          # setup.sh, prestart.sh, generate-client.sh, deploy.sh (TAG deploy + avto-rollback), backup.sh (kunlik shifrlangan DB backup)
+├── scripts/          # setup.sh, prestart.sh, generate-client.sh, deploy.sh (TAG deploy + avto-rollback),
+│                     #   backup.sh (kunlik shifrlangan DB backup → serverdagi backups/, Telegram ixtiyoriy nusxa)
 ├── docs/             # Ushbu hujjatlar to'plami
+├── design/           # Logo masterlari (frontend build'iga kirmaydi)
 ├── docker-compose.local.yml
 ├── docker-compose.prod.yml
 └── Makefile          # Dev operatsiyalar kirish nuqtasi (prod deploy: CI + scripts/deploy.sh)
@@ -42,6 +44,7 @@ MebeliX-Mes-System/
 |---|---|
 | Til / runtime | Python 3.11–3.13, uvloop |
 | Web framework | FastAPI (async), uvicorn (dev) / gunicorn + UvicornWorker (prod) |
+| WebSocket transporti | `websockets` — runtime bog'liqlik: uvicorn `[standard]` extra'siz o'rnatilgan (wsproto ham yo'q), `/ws/events` va `/ws/bridge` aynan shu paketga tayanadi |
 | ORM / DB driver | SQLAlchemy 2.0 (async, MappedAsDataclass) + asyncpg |
 | Migratsiyalar | Alembic (async rejim, autogenerate) |
 | Validatsiya / config | Pydantic v2 + pydantic-settings (`.env` → `Settings` singleton) |
@@ -319,7 +322,7 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
 
 ### 4.4 Buyurtma anketasi (mijoz so'rovnomasi + o'lchov varag'i)
 
-Qog'oz anketa (`uploads/forma/mebel_buyurtma_anketa.html`, repo'da kuzatilmaydi)
+Qog'oz anketa (menejerning bosma formasi, repo'da yo'q)
 o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
 
 - Saqlash: `PUT /api/v1/orders/{id}/survey` (`save_order_survey`, ManagerUser) —
@@ -389,7 +392,7 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
 | [03-backend-api.md](./03-backend-api.md) | REST endpointlar: ikki bosqichli router ierarxiyasi, login/logout/refresh (one-time-use rotatsiya) va `token_version` revocation, `users` moduli, health/readiness problar, rate limiting. |
 | [04-backend-data.md](./04-backend-data.md) | Data layer: `BaseModel` (ID/Timestamp/SoftDelete mixin'lar), generic `BaseCRUD`, rolga qarab ajratilgan Pydantic schemalar, Alembic async migratsiyalar, `create_first_superuser` bootstrap, ARQ task infratuzilmasi. |
 | [05-frontend-app.md](./05-frontend-app.md) | SPA arxitekturasi: TanStack Router file-based routing, TanStack Query, cookie-auth + silent refresh interceptor, OpenAPI'dan generatsiya qilingan client, zod validatsiya, route guard'lar. |
-| [06-frontend-components.md](./06-frontend-components.md) | Prezentatsiya qatlami: Admin CRUD dialoglari, Common (DataTable, ConfirmDialog), rolga qarab Sidebar navigatsiya, UserSettings, custom shadcn/ui primitivlar (sidebar, loading-button, password-input). |
+| [06-frontend-components.md](./06-frontend-components.md) | Prezentatsiya qatlami: Admin CRUD dialoglari, Common (ConfirmDialog, PageHeader, StatusBadge, StagePipeline), rolga qarab Sidebar navigatsiya, UserSettings, custom shadcn/ui primitivlar (sidebar, loading-button, password-input). |
 | [07-infra-devops.md](./07-infra-devops.md) | Infra: local/prod Docker Compose stacklar, Caddy auto-HTTPS routing, multi-stage Dockerfile'lar (uv / node→nginx), prestart migratsiyalar, Makefile targetlar, pre-commit hooks. |
 | [08-packages.md](./08-packages.md) | Dependency snapshot: backend/frontend paket versiyalari va ataylab ushlab qolingan ceiling'lar (redis, openapi-ts, typescript). |
 | [09-mes-domain.md](./09-mes-domain.md) | MES domeni: data model, GibLab parser, scan engine, cutmap, chop etish, terminal/tablo/reports API va frontend tuzilishi. |

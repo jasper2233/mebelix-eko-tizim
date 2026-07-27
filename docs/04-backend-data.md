@@ -108,7 +108,7 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
 
 | Model / jadval | Muhim ustunlar | Unikal/muhim indekslar |
 |---|---|---|
-| `Order` | `number(20)` (`B-2026-001`, avto), `client_id` FK (index), `status` (`OrderStatus`, default `draft`, index), `priority` (`OrderPriority`), `deadline`, `amount Numeric(14,2)`, `advance_payment Numeric(14,2)` (boshlang'ich to'lov — manager buyurtma ochishda kiritadi), `notes`, `created_by_id` FK user; `.project` metadata: `project_uuid/name/generation/loaded_at`; **JSONB**: `cutmap` (kesish xaritasi vizual modeli, TZ 5.7.5), `material_usage` (default `[]` — `[{name, kind, count, unit}]`, TZ 11.3), `machine_assignments` (default `{}` — `{"PAZ": 3, "ROVER": 5}`, TZ 6.4.1), `survey` (mijoz anketasi + o'lchov varag'i, NULL — sxema `schemas/orders.OrderSurvey`, 2.5.1-bo'lim); lifecycle: `production_started_at`, `completed_at`, `delivered_at`, `cancelled_at`, `cancel_reason`, `cancelled_by_id` | PARTIAL UNIQUE `ix_order_number` |
+| `Order` | `number(20)` (`B-2026-001`, avto), `client_id` FK (index), `status` (`OrderStatus`, default `draft`, index), `priority` (`OrderPriority`), `deadline`, `amount Numeric(14,2)`, `advance_payment Numeric(14,2)` (boshlang'ich to'lov — manager buyurtma ochishda kiritadi), `notes`, `created_by_id` FK user; `.project` metadata: `project_uuid/name/generation/loaded_at`; **JSONB**: `cutmap` (kesish xaritasi vizual modeli, TZ 5.7.5), `material_usage` (default `[]` — `[{name, kind, count, unit}]`, TZ 11.3), `machine_assignments` (default `{}` — `{"PAZ": 3, "ROVER": 5}`, TZ 6.4.1), `survey` (mijoz anketasi + o'lchov varag'i, NULL — sxema `schemas/orders.OrderSurvey`, 2.4.1-bo'lim); lifecycle: `production_started_at`, `completed_at`, `delivered_at`, `cancelled_at`, `cancel_reason`, `cancelled_by_id` | PARTIAL UNIQUE `ix_order_number` |
 | `Product` | `order_id` FK (index), `code(50)`, `name(255)`, `count`, `import_source` | `<good typeId="product">` (TZ 5.2.2) |
 | `Part` | `order_id`/`product_id` FK (index), `code(50)` (masalan `01_002`), `name`, `count`, o'lchamlar `length/width/thickness` + `saw_length/saw_width` (jl/jw), `txt` (tekstura qulfi), `material_name(150)`, `label_num`; **JSONB**: `edges` (tomon bo'yicha kromka: `{"l": {"mat": ..., "symbol": "A"}, ...}`), `xnc_summary` (`{"bores", "edge_bores", "grooves", "mills", "sides"}`); `note` (texnolog izohi) | Barqaror kalit: `productCode_partCode` (TZ 5.8) |
 | `PartInstance` | `order_id`/`part_id` FK (index), `instance_no` (1..count), `qr_text(120)`, `pattern_no`/`cell_index` (kesish xaritasi katagi, TZ 7.1.4), `label_printed_at` | **PARTIAL UNIQUE `ix_part_instance_order_qr` (`order_id`, `qr_text`) `WHERE NOT is_deleted`** — QR = `productCode_partCode_n` |
@@ -153,11 +153,7 @@ Ilgari barcha printerlar server `.env` idagi **bitta** `BRIDGE_TOKEN` bilan ishl
 
 Pydantic v2 schemalari — API request/response validatsiyasi. `backend/app/schemas/__init__.py` bo'sh (re-export yo'q, importlar to'g'ridan-to'g'ri moduldan qilinadi). Umumiy naqshlar: read-schemalar `from_attributes=True`, create/update-schemalar `extra="ignore"`, update'larda hamma maydon optional (partial PATCH).
 
-### 2.1 `backend/app/schemas/base.py`
-
-`TimestampSchema` — `created_at: datetime`, `updated_at: datetime | None`. Read-schemalar meros olishi uchun (hozircha ishlatuvchisi yo'q — MES read-schemalari `created_at` ni to'g'ridan-to'g'ri e'lon qiladi).
-
-### 2.2 `backend/app/schemas/users.py` — User schemalari
+### 2.1 `backend/app/schemas/users.py` — User schemalari
 
 Umumiy validatsiya elementlari:
 
@@ -173,7 +169,7 @@ Umumiy validatsiya elementlari:
 | `UserAdminUpdate` | `PATCH /users/{user_id}` (superuser) | `UserUpdate` + `password`, `is_active`, `is_superuser`, `role`, `machine_id` (hammasi optional) |
 | `UpdatePassword` | `PATCH /users/me/password` | `current_password` + `new_password` (strength check) |
 
-### 2.3 `backend/app/schemas/auth.py`
+### 2.2 `backend/app/schemas/auth.py`
 
 - `Token` — `access_token`, `token_type` (login javobi).
 - `TokenData` — JWT payload'dan dekodlangan ma'lumot:
@@ -181,7 +177,7 @@ Umumiy validatsiya elementlari:
   - `token_version: int = 0` — User modeli bilan solishtiriladi;
   - `jti: str | None = None` — refresh tokenning unikal id'si (one-time-use enforcement uchun); access tokenlarda `None`.
 
-### 2.4 MES registr schemalari
+### 2.3 MES registr schemalari
 
 Har bir registr moduli standart uchlik (`*Read` / `*Create` / `*Update`) beradi:
 
@@ -193,7 +189,7 @@ Har bir registr moduli standart uchlik (`*Read` / `*Create` / `*Update`) beradi:
 | `materials.py` | `MaterialRead`, `MaterialCreate`, `MaterialUpdate` | `type: MaterialType` faqat create'da (update'da o'zgartirilmaydi); o'lchamlar `gt=0`, `price_per_unit ge=0` |
 | `posts.py` | `PostRead`, `PostUpdate` | Create yo'q — 6 postlik zanjir qat'iy (TZ 4.4), faqat prezentatsion/xulq maydonlari tahrirlanadi (`name`, `order_index`, `auto_skip_if_empty`, `requires_assignment_choice`, `icon`, `color`) |
 
-### 2.5 `backend/app/schemas/orders.py` — Buyurtma schemalari
+### 2.4 `backend/app/schemas/orders.py` — Buyurtma schemalari
 
 | Schema | Vazifasi |
 |---|---|
@@ -209,11 +205,11 @@ Har bir registr moduli standart uchlik (`*Read` / `*Create` / `*Update`) beradi:
 | `OrderMatrix` | `order_id` + `parts: list[MatrixPart]` |
 | `MatrixPartEdit` | Texnolog bitta part qatorini tahrirlaydi (TZ 6.3.3): `note`, `count` (1–1000), `stages: dict[int, bool]` (post_id → yoqilgan) |
 | `MatrixEdit` | `edits: list[MatrixPartEdit]` — batch wrapper |
-| `OrderSurvey`, `SurveyRoom`, `SurveyWall`, `SurveyModule` | Mijoz anketasi + o'lchov varag'i — 2.5.1-bo'lim |
+| `OrderSurvey`, `SurveyRoom`, `SurveyWall`, `SurveyModule` | Mijoz anketasi + o'lchov varag'i — 2.4.1-bo'lim |
 
-#### 2.5.1 Anketa schemalari — `Order.survey` JSONB sxemasi
+#### 2.4.1 Anketa schemalari — `Order.survey` JSONB sxemasi
 
-Qog'oz forma (`uploads/forma/mebel_buyurtma_anketa.html`) o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi. `PUT /orders/{id}/survey` butun anketani **bir butun sifatida** yozadi (partial patch yo'q) — `order.survey = body.model_dump(mode="json")`. O'qishda `OrderDetail.survey` xom dict qaytaradi (qayta validatsiya qilinmaydi — eski versiyadagi qatorlar javobni yiqitmasin).
+Qog'oz formaning o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi. `PUT /orders/{id}/survey` butun anketani **bir butun sifatida** yozadi (partial patch yo'q) — `order.survey = body.model_dump(mode="json")`. O'qishda `OrderDetail.survey` xom dict qaytaradi (qayta validatsiya qilinmaydi — eski versiyadagi qatorlar javobni yiqitmasin).
 
 Mijoz ismi/telefoni `Client` da, narx/avans/muddat `Order` da — anketada takrorlanmaydi.
 
@@ -246,7 +242,7 @@ Barcha mm-o'lchamlar umumiy alias orqali: `_Mm = Annotated[float | None, Field(d
 
 **Variant kodlari** (`ldsp`, `mdf`, `akril`, `led`, `montaj`, `burchak`, ...) bazaga **kod** sifatida yoziladi; matnga aylantirish faqat `frontend/src/lib/anketa.ts` katalogida (`FURNITURE_TYPES`, `LAYOUT_SHAPES`, `CORPUS_MATERIALS`, `CORPUS_THICKNESS`, `FACADE_MATERIALS`, `COUNTERTOPS`, `HARDWARE_LEVELS`, `EXTRA_SERVICES`, `WALL_LETTERS` + `labelOf`/`labelsOf`). Backend ro'yxatni qat'iy tekshirmaydi — yangi variant qo'shilganda migratsiya ham, backend o'zgarishi ham kerak emas, eski qatorlarda saqlangan kod ham buzilmaydi.
 
-### 2.6 `backend/app/schemas/terminal.py` — Terminal/skan schemalari
+### 2.5 `backend/app/schemas/terminal.py` — Terminal/skan schemalari
 
 | Schema | Vazifasi |
 |---|---|
@@ -259,7 +255,7 @@ Barcha mm-o'lchamlar umumiy alias orqali: `_Mm = Annotated[float | None, Field(d
 | `ScanHistoryItem` | Skan tarixi qatori (`is_cancelled` bilan) |
 | `CutmapInstanceState`, `CutmapState` | ARRA kesish xaritasi ekrani (TZ 7.1.7): vizual `model` (JSONB) + har nusxaning jonli holati (`pattern_no`/`cell_index`/`done`/`label_printed_at`) |
 
-### 2.7 Kichik schemalar
+### 2.6 Kichik schemalar
 
 | Fayl | Schema | Vazifasi |
 |---|---|---|
@@ -288,6 +284,7 @@ Asosiy metodlar (hammasi async, `AsyncSession` qabul qiladi):
 |---|---|---|
 | `_build_query` | `(**kwargs) -> Select` | `**kwargs` — equality filterlar; `exclude_deleted=True` bo'lsa va caller `is_deleted` bermagan bo'lsa avtomatik `is_deleted == False` qo'shadi |
 | `get` | `(db, **kwargs) -> ModelType \| None` | Istalgan field bo'yicha bitta yozuv (`scalar_one_or_none`) |
+| `get_or_404` | `(db, detail, **kwargs) -> ModelType` | `get` kabi, topilmasa (yoki soft-delete bo'lsa) `NotFoundException(detail)` (`app.core.exceptions`) — routelardagi qo'lda yozilgan get-or-404 bloklari o'rniga |
 | `get_multi` | `(db, offset=0, limit=100, **kwargs) -> (list, int)` | Sahifa + jami count (count subquery orqali, paginatsiyasiz); sahifa `ORDER BY id` bilan — barqaror tartib bo'lmasa Postgres sahifalarda qatorlarni takrorlashi/tushirib qoldirishi mumkin |
 | `exists` | `(db, **kwargs) -> bool` | Yozuv borligini tekshirish (count > 0) |
 | `delete` | `(db, **kwargs) -> bool` | **Soft delete**: `is_deleted=True`, `deleted_at=now(UTC)`; topilmasa `False` |
@@ -325,11 +322,20 @@ def log_action(db, *, module, action, user_id=None, employee_id=None,
 
 `AuditLog` qatorini **caller tranzaksiyasida** stage qiladi — asosiy o'zgarish bilan birga commit bo'ladi (yoki birga rollback). Routelar `from app.crud import log_action` deb ishlatadi.
 
-### 3.5 Yupqa registr CRUD'lari
+### 3.5 `backend/app/crud/__init__.py` — yupqa registrlar + re-export
 
-`bridge_agents.py`, `clients.py`, `employees.py`, `machines.py`, `materials.py`, `posts.py` — har biri `BaseCRUD` ning bo'sh subclass'i + singleton (`crud_bridge_agents`, `crud_clients`, `crud_employees`, `crud_machines`, `crud_materials`, `crud_posts`). Maxsus logika route qatlamida (masalan, employee badge regeneratsiyasi, client orders_count join'i, agent pairing'ining atomik `UPDATE` i).
+Paketda `__init__.py` dan tashqari **4 modul** bor: `base.py`, `orders.py`, `users.py`, `audit.py`. O'z metodi yo'q oltita registr uchun alohida fayl ham, bo'sh subclass ham yo'q — `BaseCRUD` to'g'ridan-to'g'ri shu yerda instansiyalanadi:
 
-### 3.6 `backend/app/crud/__init__.py`
+```python
+crud_bridge_agents: BaseCRUD[BridgeAgent] = BaseCRUD(BridgeAgent)
+crud_clients: BaseCRUD[Client] = BaseCRUD(Client)
+crud_employees: BaseCRUD[Employee] = BaseCRUD(Employee)
+crud_machines: BaseCRUD[Machine] = BaseCRUD(Machine)
+crud_materials: BaseCRUD[Material] = BaseCRUD(Material)
+crud_posts: BaseCRUD[Post] = BaseCRUD(Post)
+```
+
+Modelga maxsus metod kerak bo'lsa — `orders.py`/`users.py` kabi alohida subclass qilinadi. Registrlarning maxsus logikasi route qatlamida (masalan, employee badge regeneratsiyasi, client orders_count join'i, agent pairing'ining atomik `UPDATE` i).
 
 Re-export (`__all__`): **8 singleton** — `crud_bridge_agents`, `crud_clients`, `crud_employees`, `crud_machines`, `crud_materials`, `crud_orders`, `crud_posts`, `crud_users` — hamda `log_action`.
 
@@ -398,11 +404,10 @@ Idempotent bootstrap — default tashkilot va 6 ishlab chiqarish postini yaratad
 
 ## 6. Tasks — ARQ background workers
 
-`backend/app/tasks/__init__.py` — package bitta fayldan iborat, ikkita registered task:
+`backend/app/tasks/__init__.py` — package bitta fayldan iborat, bitta registered task:
 
 | Task | Vazifasi |
 |---|---|
-| `ping(ctx)` | Liveness probe — `"pong"` qaytaradi (ARQ kamida bitta funksiya talab qiladi) |
 | `print_label(ctx, instance_id)` | Bitta fizik nusxa uchun yorliq PNG'ini render qilib chop etish navbatiga qo'yadi (TZ 7.1.4) |
 
 `print_label` oqimi:
@@ -427,7 +432,7 @@ Terminal "Chop etish"
 Bridge-agent (`bridge-agent/agent.py`) faqat printer ulangan kompyuterga o'rnatiladi — menejer, texnolog va boshqa post terminallariga hech narsa kerak emas. Birinchi ishga tushganda `_pair()` sozlash oynasini ochadi (`_pair_dialog()` — tkinter, server manzili + ulanish kodi; tkinter bo'lmasa `_pair_console()` zaxirasi), `_exchange()` kodni tokenga almashtiradi va `%APPDATA%\MebelixAgent\.env` ga yozadi — token allaqachon bo'lsa oyna umuman ochilmaydi. Ulangandan keyin `_register_autostart()` agentni `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` ga yozadi, exe esa `--noconsole` bilan qurilgan — kompyuter yonganda oynasiz fonda o'zi tushadi. Exe'ning o'zi `GET /api/v1/bridge-agents/download` dan olinadi. Printerni `_detect_printer()` avtomatik topadi (nomida `godex` bor Windows printeri); env'lari: `MES_URL`, `BRIDGE_TOKEN` (pairing to'ldiradi), `PRINTER_NAME` (ixtiyoriy, qo'lda override), `QUEUE_FILE`.
 
 ```python
-all_tasks = [ping, print_label]
+all_tasks = [print_label]
 ```
 
 Worker konfiguratsiyasi (ARQ `WorkerSettings`) ro'yxatni `all_tasks` dan oladi; yangi task qo'shilganda shu ro'yxatga kiritilishi kerak. ARQ konvensiyasi: birinchi argument worker context (`ctx`).

@@ -193,7 +193,11 @@ Tozalash `docker images --format '{{.Repository}}:{{.Tag}}' | grep 'mebelix-mes-
 
 ### `scripts/backup.sh` — kunlik shifrlangan DB backup
 
-Server cron'ida kunlik ishlaydi (`0 2 * * *`). Oqim: `pg_dump` (db konteyneri ichida) | `gzip` | `openssl aes-256-cbc -pbkdf2` (parol — `.env` dagi `ADMIN_PASSWORD`), so'ng natija Telegram'ga document sifatida yuboriladi. `.env` dan tashqari `.backup.env` fayli kerak (`TG_BOT_TOKEN`, `TG_CHAT_ID`). Ochish: `openssl enc -d -aes-256-cbc -pbkdf2 -in FILE.sql.gz.enc | gunzip > dump.sql`.
+Server cron'ida kunlik ishlaydi (`0 2 * * *`). Oqim: `pg_dump` (prod composedagi `db` konteyneri ichida) | `gzip` | `openssl aes-256-cbc -pbkdf2` (parol — `.env` dagi `ADMIN_PASSWORD`) → natija **serverdagi `backups/mebelix-YYYY-MM-DD.sql.gz.enc`** fayliga yoziladi. So'ng ikkita nazorat: fayl 1000 baytdan kichik bo'lsa dump yiqilgan deb hisoblanadi (fayl o'chiriladi, script `exit 1`), va `BACKUP_KEEP_DAYS` (default `14`) kundan eski nusxalar `find … -delete` bilan tozalanadi. Katalogni `BACKUP_DIR` (default `backups`), saqlash muddatini `BACKUP_KEEP_DAYS` o'zgartiradi — ikkalasi ham `.env.example` da yo'q, kerak bo'lsa `.env` ga qo'lda qo'shiladi. `backups/` `.gitignore` da.
+
+Telegram — **ixtiyoriy tashqi nusxa**: `.backup.env` da `TG_BOT_TOKEN` va `TG_CHAT_ID` bo'lsa fayl document sifatida ham yuboriladi, bo'lmasa script "Telegram sozlanmagan" deb yozib normal tugaydi; yuborish yiqilsa ogohlantirish chiqadi, lekin lokal backup joyida. Diskka yozish asosiy yo'l ekani ataylab: Telegram yagona yo'l bo'lganda `.backup.env` yo'qligi butun scriptni yiqitib, 15 kecha davomida birorta backup olinmagan edi.
+
+Ochish: `openssl enc -d -aes-256-cbc -pbkdf2 -in FILE.sql.gz.enc | gunzip > dump.sql`.
 
 ---
 
@@ -421,10 +425,7 @@ Ya'ni sifat nazorati ikki qatlamli: lokalda pre-commit + `make lint`, remote'da 
 | `DB_POOL_SIZE` / `DB_MAX_OVERFLOW` | `10` / `20` | SQLAlchemy pool sozlamalari |
 | `REDIS_HOST` | `localhost` | Docker'da `redis` |
 | `REDIS_PORT` | `6379` | Redis port |
-| `ENABLE_REDIS_QUEUE` | `True` | ARQ queue yoqilgan/o'chiq |
-| `ENABLE_REDIS_RATE_LIMIT` | `True` | Redis-based rate limiting |
-| `DEFAULT_RATE_LIMIT_LIMIT` / `DEFAULT_RATE_LIMIT_PERIOD` | `10` / `3600` | Umumiy rate limit (so'rov / sekund oynasi) |
-| `LOGIN_RATE_LIMIT_ATTEMPTS` / `LOGIN_RATE_LIMIT_PERIOD` | `5` / `300` | Login urinishlari limiti |
+| `LOGIN_RATE_LIMIT_ATTEMPTS` / `LOGIN_RATE_LIMIT_PERIOD` | `5` / `300` | Login urinishlari limiti — `.env.example` dagi yagona rate-limit kaliti |
 | `DEFAULT_PAGE_SIZE` / `MAX_PAGE_SIZE` | `50` / `100` | Pagination |
 | `STARTUP_RETRY_MAX_ATTEMPTS` / `STARTUP_RETRY_DELAY_SECONDS` | `5` / `2` | Lifespan'da DB/Redis health retry |
 | `THREADPOOL_TOKENS` | `100` | AnyIO sync-bridge slotlari |
@@ -439,6 +440,8 @@ Ya'ni sifat nazorati ikki qatlamli: lokalda pre-commit + `make lint`, remote'da 
 
 Eslatma: chop etishga tegishli **majburiy** server sozlamasi yo'q. `BRIDGE_TOKEN` ixtiyoriy legacy, printer env'lari esa umuman server `.env` ida emas (G500-U'da tarmoq porti yo'q, printerni faqat agent ko'radi) — `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME`, `QUEUE_FILE` printerli mashinadagi `%APPDATA%\MebelixAgent\.env` da yashaydi (yuqoridagi "Chop etish infratuzilmasi" bo'limi).
 
+Eslatma: Redis navbati va rate-limitini o'chiradigan flag yo'q — pool'lar lifespan'da so'zsiz ochiladi, `RateLimiter` esa client bo'lmaganda **fail-closed** ishlaydi (so'rov rad etiladi). Umumiy (login'dan tashqari) rate limit sozlamasi ham yo'q.
+
 Eslatma: `CADDY_HTTP_BIND` / `CADDY_HTTPS_BIND` `.env.example` da yo'q — ular `docker-compose.prod.yml` dagi compose-level substitutsiyalar (defaultlari `80` / `443`); behind-nginx rejimida `.env` ga qo'lda qo'shiladi. `TAG` va `REGISTRY` ham shu kategoriyada — compose-level substitutsiyalar (defaultlari `latest` va `ghcr.io/dshukriddinov`), CI ularni git sha va `ghcr.io/<owner>` bilan beradi.
 
 ---
@@ -447,7 +450,9 @@ Eslatma: `CADDY_HTTP_BIND` / `CADDY_HTTPS_BIND` `.env.example` da yo'q — ular 
 
 ### `.dockerignore`
 
-Docker build contextdan chiqariladi: `.git`, barcha `.env` va `.venv` lar, `__pycache__`, `frontend/node_modules`, `frontend/dist`, `docker-compose*.yml`. Bu image'ga secretlar va keraksiz artefaktlar kirmasligini va build tezligini ta'minlaydi (backend build contexti repo root bo'lgani uchun ayniqsa muhim).
+Backend build contexti (repo root) uchun denylist. Chiqariladi: `.git`, barcha `.env` va `.venv` lar, `__pycache__`, `.mypy_cache`, `.ruff_cache`, `docker-compose*.yml`, hamda backend image'iga umuman kirmaydigan yirik kataloglar — `bridge-agent`, `frontend`, `docs`, `uploads`, `backups`, `caddy`. `backend/Dockerfile` baribir faqat `backend` va `scripts` ni `COPY` qiladi, qolgani daemon'ga behuda uzatilardi (~43 MB). Shu bilan secretlar ham image'ga tushmaydi.
+
+Frontend'ning o'z konteksti (`./frontend`) va o'z `frontend/.dockerignore` i bor — ikki qator: `node_modules`, `dist`.
 
 ### `.gitattributes`
 
@@ -455,7 +460,7 @@ Bitta qoida: `* text=auto eol=lf` — barcha matn fayllar LF line-ending bilan n
 
 ### `.gitignore`
 
-Standart Python artefaktlari (`__pycache__`, egg/build/dist), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. MES runtime artefaktlari ham ignore: `backend/uploads/` (`projects/`, `scx/`, `survey/` — yuklangan fayllar va anketa xona rasmlari, hamda `agent/mebelix-agent.exe` — binar repoda saqlanmaydi), `bridge-agent/print-queue.jsonl` (agent'ning durable print navbati), `bridge-agent/build/` va `bridge-agent/dist/` (PyInstaller artefaktlari), `frontend/openapi.json`, hamda lokal sex ma'lumotlari `uploads/` (repo root'da: `.project`/SCX namunalari va `forma/mebel_buyurtma_anketa.html` — anketaning qog'oz manbasi) va `chek/` (namuna yorliq fotolari, `labels.py` maketi shulardan olingan). E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
+Standart Python artefaktlari (`__pycache__`, egg/build/dist), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. MES runtime artefaktlari ham ignore: `backend/uploads/` (`projects/`, `scx/`, `survey/` — yuklangan fayllar va anketa xona rasmlari, hamda `agent/mebelix-agent.exe` — binar repoda saqlanmaydi), `bridge-agent/print-queue.jsonl` (agent'ning durable print navbati), `frontend/openapi.json`, serverdagi shifrlangan DB nusxalari uchun `backups/` (`scripts/backup.sh`), hamda lokal sex ma'lumotlari — `uploads/` (repo root'da: `.project`/SCX namunalari) va `chek/` (namuna yorliq fotolari, `labels.py` maketi shulardan olingan). PyInstaller'ning `bridge-agent/build/` va `bridge-agent/dist/` kataloglari alohida qoida talab qilmaydi — umumiy `build/` / `dist/` naqshlari ularni istalgan chuqurlikda tutadi. E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
 
 ---
 
@@ -463,11 +468,11 @@ Standart Python artefaktlari (`__pycache__`, egg/build/dist), virtualenvlar (`.v
 
 ### `backend/pyproject.toml`
 
-`mebelix-backend` 0.1.0, `requires-python >=3.11, <3.14`, build-backend `hatchling` (faqat `app/` package). Asosiy runtime dependencylar: `fastapi`, `uvicorn` + `uvloop`, `gunicorn`, `SQLAlchemy` 2 + `asyncpg` + `alembic`, `pydantic`/`pydantic-settings`, `pyjwt[crypto]` + `bcrypt`, `redis` + `arq` (queue/worker), `prometheus-fastapi-instrumentator` (metrics), `uuid6`, `httpx`, `python-multipart` (fayl yuklash: `.project`, SCX, anketa rasmlari), `openpyxl` (Excel), `pillow` + `qrcode` (`render_label_png` — yorliq PNG), `tzdata` (`ZoneInfo("Asia/Tashkent")` yorliq sanasi uchun). Dev group: `mypy`, `ruff`, `pre-commit`, `types-redis`, `types-openpyxl`, `websockets`. Tooling konfiguratsiyasi shu faylda: **ruff** (`target-version py311`, line-length 120, `F/E/W/C/UP/I` rulesetlar, `__init__.py` da unused/star import istisno) va **mypy** (`python_version 3.11`, `app.*` uchun `disallow_untyped_defs = true`).
+`mebelix-backend` 0.1.0, `requires-python >=3.11, <3.14`, build-backend `hatchling` (faqat `app/` package). Runtime dependencylar (21 ta): `fastapi`, `uvicorn` + `uvloop` (uvloop faqat non-Windows), `websockets`, `gunicorn`, `SQLAlchemy` 2 + `asyncpg` + `greenlet` + `alembic`, `pydantic[email]`/`pydantic-settings`, `pyjwt[crypto]` + `bcrypt`, `redis` + `arq` (queue/worker), `prometheus-fastapi-instrumentator` (metrics), `python-multipart` (fayl yuklash: `.project`, SCX, anketa rasmlari), `openpyxl` (Excel), `pillow` + `qrcode` (`render_label_png` — yorliq PNG), `tzdata` (`ZoneInfo("Asia/Tashkent")` yorliq sanasi uchun). `websockets` aynan runtime dependency: uvicorn `[standard]` extra'siz o'rnatilgan (`wsproto` ham yo'q), ya'ni `/ws/events` va `/ws/bridge` transporti shu paketga tayanadi — dev groupda qolsa prod image'da WebSocket ishlamasdi. Dev group — to'rtta: `mypy`, `ruff`, `pre-commit`, `types-openpyxl`. Tooling konfiguratsiyasi shu faylda: **ruff** (`target-version py311`, line-length 120, `F/E/W/C/UP/I` rulesetlar, `__init__.py` da unused/star import istisno) va **mypy** (`python_version 3.11`, `app.*` uchun `disallow_untyped_defs = true`).
 
 ### `frontend/package.json` va `frontend/.nvmrc`
 
-`.nvmrc` — `24` (Dockerfile'dagi `node:24-alpine` bilan sinxron; `nvm use` / `fnm use` uchun). `package.json` scriptlari: `dev` (vite), `build` (`tsc && vite build`), `lint` (biome, `--write --unsafe`), `preview`, `generate-client` (`openapi-ts`). Stack: React 19, TanStack Router/Query/Table, Tailwind CSS 4, Radix UI, react-hook-form + zod, axios, sonner; dev tomonda Biome, `@hey-api/openapi-ts`, Vite 8 + SWC, TypeScript 6 (7 emas — sabab `docs/08-packages.md` da).
+`.nvmrc` — `24` (Dockerfile'dagi `node:24-alpine` bilan sinxron; `nvm use` / `fnm use` uchun). `package.json` scriptlari: `dev` (vite), `build` (`tsc && vite build`), `lint` (biome, `--write --unsafe`), `preview`, `generate-client` (`openapi-ts`). Stack: React 19, TanStack Router + Query (react-table yo'q — jadvallar oddiy `<Table>` bilan chiziladi), Tailwind CSS 4, Radix UI, react-hook-form + zod, axios, sonner; dev tomonda Biome, `@hey-api/openapi-ts`, Vite 8 + SWC, TypeScript 6 (7 emas — sabab `docs/08-packages.md` da).
 
 ### `backend/README.md`
 
@@ -475,7 +480,7 @@ Backend dev qo'llanmasi: texnologiyalar ro'yxati, `make setup` yoki qo'lda setup
 
 ### `frontend/README.md`
 
-Frontend dev qo'llanmasi: nvm/fnm bilan Node o'rnatish, `npm install` + `npm run dev` (port 5173), Docker'siz lokal dev tavsiyasi, OpenAPI client generatsiyasi (`make frontend-gen` yoki qo'lda), `VITE_API_URL` bilan remote API'ga ulanish, `src/` katalog strukturasi (`client/` — generatsiyalangan client, `routes/`, `components/`, `hooks/`).
+Frontend dev qo'llanmasi: nvm/fnm bilan Node o'rnatish, `npm install` + `npm run dev` (port 5173), Docker'siz lokal dev tavsiyasi, OpenAPI client generatsiyasi (`make frontend-gen` yoki qo'lda), `VITE_API_URL` bilan remote API'ga ulanish, `src/` katalog strukturasi (`client/` — generatsiyalangan client, `components/`, `hooks/`, `lib/`, `queries/`, `routes/`) va `public/assets`.
 
 ---
 

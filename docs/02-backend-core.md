@@ -34,7 +34,7 @@ backend/app/main.py
 | `backend/app/core/utils/__init__.py` | Bo'sh package marker |
 | `backend/app/core/utils/queue.py` | arq Redis pool uchun global holder |
 | `backend/app/core/utils/rate_limit.py` | Redis asosidagi rate limiting (`RateLimiter`, `RateLimit`) |
-| `backend/app/tasks/__init__.py` | arq'ga ro'yxatga olinadigan vazifalar (`ping`, `print_label`) + `PRINT_QUEUE_KEY` |
+| `backend/app/tasks/__init__.py` | arq'ga ro'yxatga olinadigan vazifa (`print_label`) + `PRINT_QUEUE_KEY` |
 
 ---
 
@@ -65,8 +65,8 @@ app = create_application(router=router, settings=settings)
 | Crypto / JWT | `SECRET_KEY: SecretStr`, `ALGORITHM="HS256"`, `ACCESS_TOKEN_EXPIRE_MINUTES=30`, `REFRESH_TOKEN_EXPIRE_DAYS=7`, `BCRYPT_ROUNDS=12` |
 | PostgreSQL | `POSTGRES_USER/PASSWORD/SERVER/PORT/DB`, `POSTGRES_ASYNC_PREFIX="postgresql+asyncpg://"`, `DB_POOL_SIZE=10`, `DB_MAX_OVERFLOW=20` |
 | First admin | `ADMIN_NAME/PHONE/USERNAME/PASSWORD` — startup'da yaratiladigan birinchi admin |
-| Redis | `REDIS_HOST/PORT`, `ENABLE_REDIS_QUEUE`, `ENABLE_REDIS_RATE_LIMIT` (ikkalasi default `True`) |
-| Rate limit | `DEFAULT_RATE_LIMIT_LIMIT=10`/`PERIOD=3600`, `LOGIN_RATE_LIMIT_ATTEMPTS=5`/`PERIOD=300` |
+| Redis | `REDIS_HOST`, `REDIS_PORT` — navbat ham, rate limit ham, WS pub/sub ham shu bitta Redis'ga boradi (yoqish/o'chirish bayroqlari yo'q) |
+| Rate limit | `LOGIN_RATE_LIMIT_ATTEMPTS=5`/`LOGIN_RATE_LIMIT_PERIOD=300` — rate limit faqat login uchun ishlatiladi, umumiy default'lar yo'q |
 | Pagination | `DEFAULT_PAGE_SIZE=50`, `MAX_PAGE_SIZE=100` |
 | File storage | `UPLOAD_DIR="uploads"` (project/scx/label fayllar ildizi, TZ 2.4.3), `MAX_PROJECT_FILE_SIZE` = 50 MB |
 | Production floor | `STRICT_STAGE_ORDER=False` (E004 — oldingi bosqich tugamaguncha skanni bloklash, ixtiyoriy, TZ 7.2.5), `SESSION_MAX_HOURS=12` (operator smenasi timeout'i, TZ 8.5), `SCAN_UNDO_SECONDS=60` (BEKOR QILISH oynasi, TZ 8.6) |
@@ -127,7 +127,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 **Maqsadi:** health-check endpointlari uchun tekshiruv funksiyalari.
 
 - `check_database_health(db: AsyncSession) -> bool` — `SELECT 1` bajaradi; xato bo'lsa log yozib `False` qaytaradi.
-- `check_redis_health() -> bool` — ilova ishlatayotgan **har bir** Redis klientni (`queue.pool` va `rate_limiter.client`) `ping()` qiladi. Hech qanday Redis funksiya yoqilmagan bo'lsa, tekshiruv "vacuously" muvaffaqiyatli hisoblanadi (`True`).
+- `check_redis_health() -> bool` — ilova ishlatayotgan **har bir** Redis klientni (`queue.pool` va `rate_limiter.client`) `ping()` qiladi. Ikkalasi ham lifespan'da ochiladi; ro'yxat bo'sh bo'lsa (masalan lifespan'gacha) tekshiruv "vacuously" muvaffaqiyatli hisoblanadi (`True`).
 
 **Bog'lanishlar:** `utils/queue.py`, `utils/rate_limit.py`; shu funksiyalarni faqat `/api/v1/ready` endpointi chaqiradi (`routes/health.py`) — `/api/v1/health` esa sof liveness probe: hech qanday bog'liqlikni tekshirmaydi, doim 200 va statik payload qaytaradi (prod'dagi konteyner healthcheck'i aynan shu pathga uradi). Ikkala path `setup.py`dagi `NON_BUSINESS_PATHS`da ham ro'yxatga olingan.
 
@@ -188,16 +188,16 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 
 - `_retry_async(label, fn)` — startup probe'lar uchun retry helper: `STARTUP_RETRY_MAX_ATTEMPTS` (5) marta urinadi, orasida `STARTUP_RETRY_DELAY_SECONDS` (2s) kutadi; `CancelledError`/`KeyboardInterrupt` darhol yuqoriga uzatiladi.
 - `check_database_connection()` — engine orqali `SELECT 1` probe (retry bilan).
-- `check_redis_connection()` — faol Redis klientlarni (`queue.pool`, `rate_limiter.client`) ping qiladi; ikkalasi ham o'chiq bo'lsa tekshiruv o'tkazib yuboriladi.
+- `check_redis_connection()` — ochilgan Redis klientlarni (`queue.pool`, `rate_limiter.client`) ping qiladi (retry bilan) va qaysilari tekshirilganini logga yozadi.
 - Redis pool boshqaruvi: `create_redis_queue_pool()` (arq `create_pool` → `queue.pool`), `close_redis_queue_pool()`, `create_redis_rate_limit_pool()` (`rate_limiter.initialize(settings.REDIS_URL)`), `close_redis_rate_limit_pool()`.
 - `set_threadpool_tokens()` — AnyIO thread-pool hajmini `THREADPOOL_TOKENS`ga ko'taradi (bloklovchi chaqiriqlar navbatda turib qolmasligi uchun).
-- `lifespan_factory(settings)` — `@asynccontextmanager` lifespan quradi: threadpool → (yoqilgan bo'lsa) Redis pool'lar + ping → **WS real-time ko'prik**: alohida Redis klient ochilib `ws_manager.start_listener(...)` ishga tushiriladi (`core/ws.py`; kamida bitta Redis funksiya yoqilgan bo'lsa) → DB probe → `yield` → `finally`da WS listener to'xtatiladi, WS Redis klienti va pool'lar yopiladi.
+- `lifespan_factory(settings)` — `@asynccontextmanager` lifespan quradi: threadpool → Redis pool'lar (navbat + rate limit) + ping → **WS real-time ko'prik**: alohida Redis klient ochilib `ws_manager.start_listener(...)` ishga tushiriladi (`core/ws.py`) → DB probe → `yield` → `finally`da WS listener to'xtatiladi, WS Redis klienti va pool'lar yopiladi. Hech qanday shart yo'q — Redis ilovaning majburiy bog'liqligi, ko'tarilmasa startup probe'da yiqiladi.
 - `_install_docs_router(application, settings)` — docs siyosati:
   - **production**: docs umuman yo'q;
   - **staging**: `/docs`, `/redoc`, `/openapi.json` faqat superuser uchun (`Depends(get_current_superuser)`);
   - **local**: ochiq.
 - `create_application(router, settings, **kwargs) -> FastAPI` — asosiy factory:
-  1. FastAPI metadata — `title` `settings.APP_NAME`dan, `description` (`"MebeliX API"`) va `license_info` (MIT) esa literal (settings'dan emas); **built-in docs har doim o'chiriladi** (`docs_url=None` va h.k.) — o'rniga shartli router o'rnatiladi.
+  1. FastAPI metadata — `title` `settings.APP_NAME`dan, `description` (`"MebeliX API"`) esa literal (settings'dan emas; `license_info` yo'q — repo litsenziyasiz); **built-in docs har doim o'chiriladi** (`docs_url=None` va h.k.) — o'rniga shartli router o'rnatiladi.
   2. `lifespan_factory(settings)` bilan `FastAPI(...)` yaratadi va berilgan `router`ni ulaydi.
   3. Middleware'lar: `RequestLoggingMiddleware`, `CORSMiddleware` (`allow_credentials=True` — cookie-auth uchun zarur), `ProxyHeadersMiddleware` (`FORWARDED_ALLOW_IPS` bilan) — busiz `request.client.host` har doim proxy IP bo'lib, barcha foydalanuvchilar bitta rate-limit bucket'iga tushib qolardi.
   4. `_install_metrics()` va `_install_docs_router()`.
@@ -230,11 +230,10 @@ class WorkerSettings:
 
 - `handle_signals` endi o'rnatilmaydi (default `True`): `docker stop`da SIGTERM to'g'ri ushlanib, bajarilayotgan joblar tugatiladi yoki qayta navbatga qo'yiladi.
 
-**Bog'lanishlar:** `config.py`, `setup.py` (`check_database_connection`), `backend/app/tasks/__init__.py` (`all_tasks = [ping, print_label]`). Web-process `utils/queue.py`dagi pool orqali vazifalarni shu worker navbatiga qo'yadi.
+**Bog'lanishlar:** `config.py`, `setup.py` (`check_database_connection`), `backend/app/tasks/__init__.py` (`all_tasks = [print_label]`). Web-process `utils/queue.py`dagi pool orqali vazifalarni shu worker navbatiga qo'yadi.
 
-### `backend/app/tasks/__init__.py` — ro'yxatga olingan vazifalar
+### `backend/app/tasks/__init__.py` — ro'yxatga olingan vazifa
 
-- `ping(ctx)` — liveness placeholder (arq kamida bitta funksiya talab qiladi), `"pong"` qaytaradi.
 - `PRINT_QUEUE_KEY = "mes:print:queue"` — bridge-agent shu Redis ro'yxatini bo'shatadi (TZ 2.2.2). `backend/app/api/routes/ws.py` ham shu konstantani import qiladi.
 - `print_label(ctx, instance_id)` — yorliq chiqarish vazifasi (TZ 7.1.4). Bitta DB sessiyasida (`local_session`) `services/labels.py`dan:
   - `load_label_data(db, instance_id)` — `None` bo'lsa `"skip:{id}"` qaytarib chiqadi;
@@ -261,7 +260,7 @@ Bridge-agent faqat printer ulangan kompyuterga o'rnatiladi va GoDEX printerini n
 
 Ulanishda token `Authorization: Bearer` headerda keladi (server access-loglariga tushmasligi uchun; `?token=` query eski agentlar uchun fallback). Tekshiruv tartibi: avval legacy `settings.BRIDGE_TOKEN` bilan `secrets.compare_digest` orqali solishtiriladi, mos kelmasa token sha256'si bo'yicha `bridge_agent` jadvalidan qidiriladi; topilmasa socket 4401 bilan yopiladi. Ulanish davomida har 300 soniyada `touch_agent()` ishlaydi — `last_seen_at`ni yangilaydi (paneldagi "Onlayn") va shu bilan birga agent qatori hali borligini tekshiradi: admin bekor qilgan bo'lsa jonli ulanish ham 4401 bilan uziladi, qo'lda turgan job esa `rpush` bilan navbatga qaytariladi — yo'qolmaydi.
 
-**Bog'liq fayllar (core'dan tashqarida):** `backend/app/models/bridge_agent.py` (`bridge_agent` jadvali: `organization_id`, `name`, `token_hash`, `pair_code`, `pair_expires_at`, `last_seen_at`), migratsiya `d5e81a24c3b7`, `backend/app/crud/bridge_agents.py` (`crud_bridge_agents`), `backend/app/schemas/bridge_agents.py`, `backend/app/api/routes/bridge_agents.py`.
+**Bog'liq fayllar (core'dan tashqarida):** `backend/app/models/bridge_agent.py` (`bridge_agent` jadvali: `organization_id`, `name`, `token_hash`, `pair_code`, `pair_expires_at`, `last_seen_at`), migratsiya `d5e81a24c3b7`, `backend/app/crud/__init__.py` (`crud_bridge_agents` — `BaseCRUD[BridgeAgent]`, o'z moduli yo'q), `backend/app/schemas/bridge_agents.py`, `backend/app/api/routes/bridge_agents.py`.
 
 ---
 
@@ -302,7 +301,7 @@ Pool `setup.py`dagi lifespan'da (`create_redis_queue_pool`) to'ldiriladi va shut
 
 - `RateLimiter` klassi (modul-darajali singleton `rate_limiter`):
   - `initialize(redis_url)` — `ConnectionPool.from_url` + `Redis` klient yaratadi (idempotent: pool bor bo'lsa qayta yaratmaydi).
-  - `is_rate_limited(key, limit, period) -> bool` — `INCR` + birinchi urinishda `EXPIRE`; hisob `limit`dan oshsa `True`. **Fail-closed**: Redis xatosi bo'lsa `True` qaytaradi (so'rov 429 oladi, xato loglanadi) — Redis yiqilishi brute-force himoyasini jimgina o'chirib qo'ymasligi uchun. Klient `None` bo'lsa (`ENABLE_REDIS_RATE_LIMIT` orqali ataylab o'chirilgan) avvalgidek ochiq — `False` qaytaradi.
+  - `is_rate_limited(key, limit, period) -> bool` — `INCR` + birinchi urinishda `EXPIRE`; hisob `limit`dan oshsa `True`. **Fail-closed**: Redis xatosi bo'lsa ham, klient `None` bo'lsa ham `True` qaytaradi (so'rov 429 oladi, xato loglanadi) — Redis yiqilishi brute-force himoyasini jimgina o'chirib qo'ymasligi uchun. Klient `None` bo'lishi normal holat emas: lifespan doim `initialize()` qiladi.
 - `RateLimit(limit, period)` — endpoint dependency (callable klass):
   - Kalit: `ratelimit:{ip}:{path}:{window_start}` — fixed-window algoritmi (`window_start = timestamp - timestamp % period`).
   - Limit oshsa `RateLimitException` (429, o'zbekcha xabar) ko'taradi.
@@ -321,6 +320,6 @@ Ikkalasi ham bo'sh — faqat Python package marker vazifasini bajaradi, hech qan
 ## Yakuniy kuzatuvlar
 
 - **Yagona konfiguratsiya manbasi:** hamma narsa `Settings` singleton'idan keladi; har qanday non-local (staging/production) muhitda xavfsiz bo'lmagan default'lar bilan boot bloklanadi.
-- **Fail-fast startup, fail-closed rate limit:** DB/Redis ulanishi startup'da retry bilan tekshiriladi (ishlamasa ilova ko'tarilmaydi); runtime'da Redis yiqilsa rate limit **fail-closed** ishlaydi — cheklangan endpointlar 429 qaytaradi (brute-force himoyasi jimgina o'chib qolmaydi). Faqat config orqali ataylab o'chirilgan bo'lsa ochiq.
+- **Fail-fast startup, fail-closed rate limit:** DB/Redis ulanishi startup'da retry bilan tekshiriladi (ishlamasa ilova ko'tarilmaydi); runtime'da Redis yiqilsa rate limit **fail-closed** ishlaydi — cheklangan endpointlar 429 qaytaradi (brute-force himoyasi jimgina o'chib qolmaydi). Uni o'chiradigan sozlama yo'q.
 - **Kuzatuvchanlik (observability):** JSON loglar + `X-Request-ID` korrelatsiyasi + Prometheus `/metrics`; health/ready pathlari shovqin qilmasligi uchun `NON_BUSINESS_PATHS` orqali chiqarib tashlangan.
 - **Xavfsizlik defaults:** httpOnly + SameSite=Strict cookie'lar, HS256 JWT (access/refresh ajratilgan, `token_version` bilan revocation, refresh'da unikal `jti`), bcrypt (hash ham, verify ham) threadpool'da, docs production'da yopiq.

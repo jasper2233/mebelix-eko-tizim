@@ -1,8 +1,12 @@
 # 08 — Paketlar va versiyalar
 
-Holat: **2026-07-19** tekshiruvi (oxirgi to'liq upgrade: 2026-07-09). Barcha paketlar 2026-07-09 dagi eng so'ngi stable versiyaga ko'tarilgan (quyidagi 3 ta ataylab qilingan istisno bilan).
+Holat: **2026-07-27** tekshiruvi (oxirgi to'liq upgrade: 2026-07-09). Barcha paketlar 2026-07-09 dagi eng so'ngi stable versiyaga ko'tarilgan (quyidagi 3 ta ataylab qilingan istisno bilan).
 
-**2026-07-19 tekshiruvi:** 2026-07-11 (59a7f59) dan HEAD gacha bo'lgan 38 ta commitda `backend/pyproject.toml`, `backend/uv.lock`, `frontend/package.json`, `frontend/package-lock.json` fayllarining birortasi ham **o'zgarmagan**. Buyurtma anketasi (`anketa.$orderId.tsx`, `Order.survey`), arrachi terminali qayta dizayni (`SheetSvg.tsx`, `CutmapView.tsx`) va GoDEX yorliq chop etish — hammasi mavjud bog'liqliklar ustiga qurilgan, bitta ham yangi npm/PyPI paketi qo'shilmagan.
+**2026-07-27 tekshiruvi:** oxirgi upgrade'dan keyin manifestlar uch marta o'zgardi va uchalasi ham **kamaytirish** bo'ldi — bitta ham yangi npm/PyPI paketi qo'shilmagan:
+
+- `4306a42` — `websockets` dev group'dan asosiy `dependencies` ga ko'chirildi (pastda alohida bo'lim);
+- `87d23ab` — `httpx` va `uuid6` runtime'dan, `types-redis` dev'dan chiqarildi (kod ularni hech qayerda import qilmasdi); `uv.lock` 71 → **63** paketga tushdi (`certifi`, `httpcore`, `types-cffi`, `types-pyopenssl`, `types-setuptools` transitiv bo'lib birga ketdi);
+- `a916088` — `@tanstack/react-table` o'chirildi (`Common/DataTable.tsx` va `Admin/columns.tsx` bilan birga; `admin.tsx` endi oddiy `<Table>` chizadi), `backend/pyproject.toml` dagi `license` kaliti ham olib tashlandi.
 
 Yangi bog'liqliklar faqat manifestdan **tashqarida** paydo bo'ldi va ikkalasi ham quyida alohida bo'limlarda yozilgan:
 
@@ -37,7 +41,7 @@ Asosiy paketlar (yangilangandan keyin):
 | ruff (dev) | 0.15.20 | latest |
 | pre-commit (dev) | 4.6.0 | latest |
 
-Tekshiruv: `uv run ruff check .` ✅ · `uv run mypy app` ✅ (46 fayl) · `import app.main` ✅
+Tekshiruv: `uv run ruff check .` ✅ · `uv run mypy app` ✅ (93 fayl) · `import app.main` ✅
 
 **2026-07-10 (b5ee41d) da qo'shilganlar** — yorliq chop etish (label-printing) feature uchun yangi runtime dependency'lar:
 
@@ -55,7 +59,7 @@ Bu uchtasining **haqiqiy ishlatilishi** (99cebc3 dagi `render_label_png()` qayta
 
 `labels.py` ning butun tashqi yuzasi shu uchtaga tayanadi: `LabelData`, `load_label_data()`, `_n()`, `render_label_png()` — boshqa paket talab qilmaydi. `print_label` taski (`backend/app/tasks/__init__.py`) PNG'ni base64 qilib Redis navbatiga (`mes:print:queue`) qo'yadi, job JSON'i `{"type", "instance_id", "png"}` — printer dialekti generatsiya qilinmaydi, shuning uchun task tomonda ham qo'shimcha bog'liqlik yo'q.
 
-`websockets>=16.0` asosiy `dependencies` da, garchi `backend/app` ichida hech qayerda `import` qilinmasa ham (repo bo'yicha yagona `import websockets` — `bridge-agent/agent.py` da). Sabab: `uvicorn` 0.51.0 `[standard]` extra'siz o'rnatilgan (bog'liqliklari faqat `click` + `h11`), `wsproto` esa lock'da umuman yo'q — ya'ni `/ws/events` va `/ws/bridge` uchun WebSocket transporti aynan shu paket. Avval u dev group'da turardi va prod image'ga faqat `uv sync --frozen` dev'ni ham o'rnatgani uchun tushardi: kimdir `--no-dev` qo'shsa TABLO ham, chek chiqarish ham jimgina o'lardi.
+`websockets>=16.0` asosiy `dependencies` da, garchi `backend/app` ichida hech qayerda `import` qilinmasa ham (repo bo'yicha yagona `import websockets` — `bridge-agent/agent.py` da). Sabab: `uvicorn` 0.51.0 `[standard]` extra'siz o'rnatilgan (lock'da bog'liqliklari faqat `click` + `h11`), `wsproto` esa umuman yo'q — ya'ni `/ws/events` va `/ws/bridge` uchun WebSocket transporti aynan shu paket. Dev group'da tursa `uv sync --no-dev` bilan yig'ilgan image'da TABLO ham, yorliq chop etish ham jimgina o'lardi; shuning uchun `pyproject.toml` da qator ustiga izoh yozib qo'yilgan.
 
 ### Frontend (`frontend/package.json` + `package-lock.json`)
 
@@ -68,7 +72,6 @@ Asosiy paketlar (yangilangandan keyin):
 | react / react-dom | 19.2.7 | latest |
 | @tanstack/react-query | 5.101.2 | latest |
 | @tanstack/react-router | 1.170.17 | latest |
-| @tanstack/react-table | 8.21.3 | latest |
 | axios | 1.18.1 | latest |
 | tailwindcss / @tailwindcss/vite | 4.3.2 | latest |
 | zod | 4.4.3 | latest |
@@ -80,7 +83,7 @@ Asosiy paketlar (yangilangandan keyin):
 
 Tekshiruv: `npm run build` (tsc + vite) ✅ · `bash scripts/generate-client.sh` ✅ (client qayta generate qilindi, build o'tdi)
 
-**2026-07-19:** `frontend/src` dagi barcha tashqi importlar `package.json` da e'lon qilingan — e'lon qilinmagan (phantom) bog'liqlik yo'q. Jadvalda ko'rsatilmagan, lekin ishlatiladigan runtime paketlar: `qrcode.react` 4.2.0 (`components/Terminal/CutmapView.tsx`, `routes/_layout/employees.tsx`), `react-day-picker` 10.0.1 (`ui/date-picker`, anketa sanalarida), `sonner` 2.0.7 (`useCustomToast`). Yangi `ui/textarea.tsx` — xom `<textarea>` ustidagi wrapper, Radix paketi talab qilmaydi; `SheetSvg.tsx` faqat React va inline SVG ishlatadi (chizma kutubxonasi yo'q).
+**2026-07-27:** `frontend/src` dagi barcha tashqi importlar (29 ta modul) `package.json` da e'lon qilingan — e'lon qilinmagan (phantom) bog'liqlik yo'q va aksincha, ishlatilmay qolgan paket ham yo'q. Jadvalda ko'rsatilmagan, lekin ishlatiladigan runtime paketlar: `qrcode.react` 4.2.0 (`components/Terminal/CutmapView.tsx`, `routes/_layout/employees.tsx`), `react-day-picker` 10.0.1 (`ui/date-picker`, anketa sanalarida), `sonner` 2.0.7 (`ui/sonner`, `useCustomToast`, `main.tsx`). `ui/textarea.tsx` — xom `<textarea>` ustidagi wrapper, Radix paketi talab qilmaydi; `SheetSvg.tsx` faqat React va inline SVG ishlatadi (chizma kutubxonasi yo'q).
 
 ## Bridge-agent bog'liqliklari (manifestsiz)
 
@@ -89,7 +92,7 @@ Tekshiruv: `npm run build` (tsc + vite) ✅ · `bash scripts/generate-client.sh`
 | Paket | Nima uchun |
 | --- | --- |
 | websockets | `uplink()` — serverga outbound WS (`/api/v1/ws/bridge`), modul darajasidagi yagona tashqi import |
-| pywin32 | `win32print` — `_detect_printer()` da printerni topish va `_print_png_gdi()` da DEVMODE; `win32gui`, `win32ui`, `win32con` — GDI konteksti |
+| pywin32 | `win32print` — `_detect_printer()` da printerni topish va `_print_png_gdi()` da DEVMODE; `win32gui`, `win32ui`, `win32con` — GDI konteksti; `win32api`+`win32event`+`winerror` — `_single_instance()` mutexi |
 | pillow | `PIL.Image`, `PIL.ImageWin` — serverdan kelgan base64 PNG'ni GDI kontekstiga chizish |
 
 Uchtasi ham kerak: chiqish yo'li bitta — `_print_png_gdi()` (Windows drayveri, DEVMODE'da qog'oz 80×60 mm ga majburlanadi). `pywin32` va `pillow` importlari funksiya ichida, lekin ularsiz `send_to_printer()` ishlamaydi, ya'ni agent amalda Windows'ga bog'langan.
