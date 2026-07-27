@@ -1,7 +1,17 @@
+# Konteyner loglari default'da CHEKLANMAGAN — bitta shovqinli xato sikli diskni
+# to'ldirib tizimni to'xtatishi mumkin. Repo bilan yuradi, ya'ni yangi o'rnatishda
+# ham o'zi qo'llanadi (serverdagi /etc/docker/daemon.json ga tayanmaydi).
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "3"
+
 services:
   db:
     image: postgres:15-alpine
     restart: always
+    logging: *logging
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -17,6 +27,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: always
+    logging: *logging
     volumes:
       - redis_data:/data
     healthcheck:
@@ -35,6 +46,7 @@ services:
     # ham o'qiydi va pydantic'ning JSON list formati ('["*"]') uni yiqitadi.
     command: bash -c "/app/scripts/prestart.sh && gunicorn app.main:app -w ${GUNICORN_WORKERS:-4} -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 --forwarded-allow-ips '*'"
     restart: always
+    logging: *logging
     expose:
       - "8000"
     volumes:
@@ -63,6 +75,7 @@ services:
     image: ${REGISTRY:-ghcr.io/dshukriddinov}/mebelix-mes-backend:${TAG:-latest}
     command: arq app.core.worker.WorkerSettings
     restart: always
+    logging: *logging
     env_file:
       - .env
     environment:
@@ -80,6 +93,7 @@ services:
     # SDK yo'llari /api/v1 bilan boshlanadi: bo'sh BASE = same-origin, Caddy orqali.
     image: ${REGISTRY:-ghcr.io/dshukriddinov}/mebelix-mes-frontend:${TAG:-latest}
     restart: always
+    logging: *logging
     expose:
       - "80"
     depends_on:
@@ -94,6 +108,7 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: always
+    logging: *logging
     ports:
       # Mavjud host-nginx (ISPmanager) ortida ishlaganda: CADDY_HTTP_BIND=127.0.0.1:8200,
       # CADDY_HTTPS_BIND=127.0.0.1:8443 va SITE_ADDRESS=:80 (TLS'ni nginx tugatadi).

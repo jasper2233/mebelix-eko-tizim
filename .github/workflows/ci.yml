@@ -85,6 +85,16 @@ jobs:
           # Runner'lar orasida qatlam keshi — o'zgarmagan qatlam qayta qurilmaydi
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+      # Har deploy ghcr'ga ~620 MB qo'yadi va eski versiyalar o'zi o'chmaydi —
+      # private repo paket xotirasi cheklangan. Oxirgi 10 tasi qoladi: rollback
+      # uchun yetarli (deploy.sh faqat bitta oldingi stable'ga qaytaradi).
+      - uses: actions/delete-package-versions@v5
+        continue-on-error: true # tozalash yiqilsa deploy to'xtamasin
+        with:
+          package-name: mebelix-mes-${{ matrix.name }}
+          package-type: container
+          min-versions-to-keep: 10
+          delete-only-untagged-versions: false
 
   deploy:
     # main'ga push + CI yashil bo'lsa prodga chiqadi (mes.mebelix.uz)

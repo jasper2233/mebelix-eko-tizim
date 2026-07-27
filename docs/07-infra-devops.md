@@ -103,6 +103,20 @@ SITE_ADDRESS=:80
 
 Bunda Caddy oddiy HTTP'da qoladi (sertifikatni nginx tugatadi), host nginx esa saytni `127.0.0.1:8200` ga proxy qiladi. Shu retsept `docker-compose.prod.yml` dagi `ports` izohida ham yozilgan.
 
+### Disk gigiyenasi — nima o'sadi va nima cheklangan
+
+Serverda cheksiz o'sishi mumkin bo'lgan uch narsa bor edi; hammasi yopilgan:
+
+| Nima | Holat |
+|---|---|
+| Docker **build keshi** | Endi umuman paydo bo'lmaydi: server build qilmaydi, `deploy.sh` faqat `pull` qiladi. Ghcr o'tishidan oldin 11.6 GB yig'ilgan edi — bir marta tozalandi (`docker builder prune -af`). |
+| Konteyner **loglari** | `docker-compose.prod.yml` dagi `x-logging` anchor: `json-file`, `max-size 20m` × `max-file 3` — har xizmatga maksimum 60 MB. Sozlama **repoda**, serverdagi `/etc/docker/daemon.json` da emas: yangi o'rnatishda o'zi qo'llanadi va yagona manba bo'lib qoladi. |
+| **journald** | `/etc/systemd/journald.conf.d/99-mebelix.conf`: `SystemMaxUse=300M`, `MaxRetentionSec=1month`. Default cheklov diskning 10% i (bu serverda ~4.8 GB) — 3 GB gacha o'sgan edi. |
+
+Image'lar tomonida: `deploy.sh` har muvaffaqiyatli deploydan keyin eskilarini o'chiradi (joriy + oldingi stable qoladi), CI esa ghcr'da oxirgi 10 versiyani saqlab qolganini tozalaydi (`actions/delete-package-versions`) — har deploy registrga ~620 MB qo'yadi va private repo paket xotirasi cheklangan.
+
+Backuplar `/var/backups/mebelix` da (deploy daraxtidan tashqarida), `BACKUP_KEEP_DAYS` bo'yicha 14 kun.
+
 ### Yuklangan fayllar (`UPLOAD_DIR`) va `uploads_data` volume
 
 Backend yuklangan fayllarni diskka yozadi (`backend/app/core/config.py`: `UPLOAD_DIR: str = "uploads"` — **nisbiy** yo'l, image ichidagi CWD `/app/backend` dan hisoblanadi, ya'ni `/app/backend/uploads`). Katalog tarkibi:
