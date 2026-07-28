@@ -960,7 +960,7 @@ function RoomSummary({
   return (
     <div className="space-y-5">
       {/* Qaysi xona ekani — texnolog buni bilmasa noto'g'ri o'lchamda modul yasaydi */}
-      <h2 className="font-semibold text-lg">{room.name || "Xona"}</h2>
+      <h2 className="text-base font-semibold">{room.name || "Xona"}</h2>
 
       <Section title={`Modullar (${modules.length} ta)`}>
         {modules.length ? (
@@ -1181,7 +1181,7 @@ function Section({
 }) {
   return (
     <section className="rounded-xl border bg-card p-4">
-      <h3 className="mb-3 font-semibold">
+      <h3 className="mb-3 text-base font-semibold">
         {n && <span className="mr-2 text-muted-foreground">{n}</span>}
         {title}
         {hint && (

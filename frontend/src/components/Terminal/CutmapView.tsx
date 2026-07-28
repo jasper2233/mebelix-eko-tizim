@@ -261,7 +261,7 @@ export function CutmapView({
           <span className="num">
             {sheet.L} × {sheet.W} mm
           </span>
-          <span className="num ml-2 rounded bg-secondary px-1.5 py-0.5 text-xs">
+          <span className="num ml-2 rounded-sm bg-secondary px-1.5 py-0.5 text-xs">
             × {sheet.mult} list
           </span>
           <div className="truncate text-xs font-normal text-muted-foreground">
@@ -402,7 +402,7 @@ export function CutmapView({
                         {s.L}×{s.W}
                       </span>
                       {(s.mult || 1) > 1 && (
-                        <span className="num rounded bg-primary/10 px-2 py-0.5 text-sm font-bold text-primary">
+                        <span className="num rounded-sm bg-primary/10 px-2 py-0.5 text-sm font-bold text-primary">
                           ×{s.mult}
                         </span>
                       )}

@@ -5,6 +5,7 @@ import { Suspense } from "react"
 import { type UserRead, UsersService } from "@/client"
 import AddUser from "@/components/Admin/AddUser"
 import { UserActionsMenu } from "@/components/Admin/UserActionsMenu"
+import { PageHeader } from "@/components/Common/PageHeader"
 import PendingUsers from "@/components/Pending/PendingUsers"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -141,17 +142,11 @@ function UsersTable() {
 function Admin() {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Foydalanuvchilar
-          </h1>
-          <p className="text-muted-foreground">
-            Foydalanuvchi hisoblari va huquqlarini boshqaring
-          </p>
-        </div>
-        <AddUser />
-      </div>
+      <PageHeader
+        title="Foydalanuvchilar"
+        description="Foydalanuvchi hisoblari va huquqlarini boshqaring"
+        actions={<AddUser />}
+      />
       <UsersTable />
     </div>
   )

@@ -125,7 +125,7 @@ function TabloPage() {
               : "Foiz nazorati"}
         </span>
         {myMachine && (
-          <span className="rounded bg-secondary px-3 py-1.5 text-xl font-bold">
+          <span className="rounded-sm bg-secondary px-3 py-1.5 text-xl font-bold">
             JORIY NUQTA: {myMachine.name}
           </span>
         )}
@@ -136,7 +136,7 @@ function TabloPage() {
               key={m}
               onClick={() => setMode(m)}
               className={cn(
-                "rounded px-4 py-2 text-xl font-black uppercase",
+                "rounded-sm px-4 py-2 text-xl font-black uppercase",
                 mode === m
                   ? "bg-(--brand-gold) text-foreground"
                   : "bg-secondary hover:bg-accent",
@@ -320,7 +320,7 @@ function TabloCell({
   return (
     <td
       className={cn(
-        "relative overflow-hidden rounded px-2 py-3 text-center align-middle",
+        "relative overflow-hidden rounded-sm px-2 py-3 text-center align-middle",
         complete
           ? "bg-green-100"
           : overdue

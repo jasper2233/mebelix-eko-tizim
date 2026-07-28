@@ -251,7 +251,7 @@ function MatrixCell({
   return (
     <TableCell className="text-center">
       <span
-        className="num inline-flex min-w-11 justify-center rounded px-1.5 py-0.5 text-xs font-bold"
+        className="num inline-flex min-w-11 justify-center rounded-sm px-1.5 py-0.5 text-xs font-bold"
         style={{
           color,
           backgroundColor: `color-mix(in srgb, ${color} ${complete ? 22 : 10}%, white)`,

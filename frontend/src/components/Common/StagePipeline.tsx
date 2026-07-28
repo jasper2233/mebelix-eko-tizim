@@ -23,7 +23,7 @@ export function StagePipeline({ stages }: { stages: StageCell[] }) {
           <div key={s.code} className="flex items-center">
             {i > 0 && <div className="h-px w-1.5 bg-border" />}
             <div
-              className="relative h-6 w-12 overflow-hidden rounded"
+              className="relative h-6 w-12 overflow-hidden rounded-sm"
               style={{
                 backgroundColor: `color-mix(in srgb, ${color} 14%, white)`,
               }}

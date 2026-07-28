@@ -178,7 +178,7 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
       </TableCell>
       <TableCell>
         {agent.pair_code ? (
-          <code className="rounded bg-muted px-2 py-1 font-semibold tracking-wider">
+          <code className="rounded-sm bg-muted px-2 py-1 font-semibold tracking-wider">
             {fmtCode(agent.pair_code)}
           </code>
         ) : (

@@ -96,14 +96,19 @@
   --sidebar-ring: #f0a52f;
 }
 
-/* Production posts (TZ 4.4) — one hue per stage, used in pipeline chips, matrix cells, tablo */
+/* Production posts (TZ 4.4) — one hue per stage, used in pipeline chips, matrix cells, tablo.
+   Post va status ranglari ikki AYRIM semantik oila: post = qaysi bosqich,
+   status = buyurtma holati. Ular bir qatorda birga ko'rinadi (reestrda
+   StatusBadge + StagePipeline), shuning uchun bir xil qiymat bo'lmasligi kerak —
+   avval --post-paz == --status-review va --post-stolyarka == --status-completed
+   bayt-baytiga bir xil edi, ya'ni yashil chip "tugadi" degan ma'noni ham berardi. */
 :root {
   --post-arra: #c2410c;
   --post-kromka: #0e7490;
   --post-prisadka: #7c3aed;
-  --post-paz: #b45309;
+  --post-paz: #a16207; /* yellow-700 — review'ning amber-700 idan ajratilgan */
   --post-rover: #be185d;
-  --post-stolyarka: #15803d;
+  --post-stolyarka: #4d7c0f; /* lime-700 — completed'ning green-700 idan ajratilgan */
   --status-draft: #64748b;
   --status-review: #b45309;
   --status-production: #1d4ed8;

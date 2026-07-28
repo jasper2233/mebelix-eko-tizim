@@ -15,6 +15,7 @@ import { z } from "zod"
 import { type EmployeeRead, EmployeesService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { PageHeader } from "@/components/Common/PageHeader"
+import { PostBadge } from "@/components/Common/PostBadge"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -218,18 +219,7 @@ function EmployeesPage() {
                         {e.assigned_post_ids.map((pid) => {
                           const post = postById.get(pid)
                           if (!post) return null
-                          return (
-                            <span
-                              key={pid}
-                              className="rounded px-1.5 py-0.5 text-[10px] font-bold"
-                              style={{
-                                color: POST_COLORS[post.code],
-                                backgroundColor: `color-mix(in srgb, ${POST_COLORS[post.code]} 12%, white)`,
-                              }}
-                            >
-                              {post.code}
-                            </span>
-                          )
+                          return <PostBadge key={pid} code={post.code} />
                         })}
                       </div>
                     </TableCell>

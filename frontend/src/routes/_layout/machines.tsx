@@ -8,6 +8,7 @@ import { z } from "zod"
 
 import { MachinesService } from "@/client"
 import { PageHeader } from "@/components/Common/PageHeader"
+import { PostBadge } from "@/components/Common/PostBadge"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -46,7 +47,7 @@ import {
 } from "@/components/ui/table"
 import useCurrentUser from "@/hooks/useCurrentUser"
 import useCustomToast from "@/hooks/useCustomToast"
-import { MACHINE_STATUS_LABELS, POST_COLORS } from "@/lib/mes"
+import { MACHINE_STATUS_LABELS } from "@/lib/mes"
 import { getMachinesQueryOptions, getPostsQueryOptions } from "@/queries/mes"
 import { handleError } from "@/utils"
 
@@ -89,17 +90,7 @@ function MachinesPage() {
                     <TableRow key={m.id}>
                       <TableCell className="font-medium">{m.name}</TableCell>
                       <TableCell>
-                        {post && (
-                          <span
-                            className="rounded px-2 py-0.5 text-xs font-bold"
-                            style={{
-                              color: POST_COLORS[post.code],
-                              backgroundColor: `color-mix(in srgb, ${POST_COLORS[post.code]} 12%, white)`,
-                            }}
-                          >
-                            {post.code}
-                          </span>
-                        )}
+                        {post && <PostBadge code={post.code} />}
                       </TableCell>
                       <TableCell>
                         <Badge

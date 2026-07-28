@@ -5,6 +5,7 @@ import { useCallback } from "react"
 
 import { ReportsService, TabloService } from "@/client"
 import { PageHeader } from "@/components/Common/PageHeader"
+import { SectionTitle } from "@/components/Common/SectionTitle"
 import { StagePipeline } from "@/components/Common/StagePipeline"
 import { StatusBadge } from "@/components/Common/StatusBadge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -90,9 +91,7 @@ function Dashboard() {
       />
 
       {/* Stanoklar (TZ 10.2.1) */}
-      <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-        Stanoklar
-      </h2>
+      <SectionTitle>Stanoklar</SectionTitle>
       {machinesLoading ? (
         <Skeleton className="h-28 w-full" />
       ) : (
@@ -149,9 +148,7 @@ function Dashboard() {
       )}
 
       {/* Aktiv buyurtmalar progressi (TZ 10.2.2) */}
-      <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-        Aktiv buyurtmalar
-      </h2>
+      <SectionTitle>Aktiv buyurtmalar</SectionTitle>
       {matrixLoading ? (
         <Skeleton className="h-40 w-full" />
       ) : matrix?.orders.length ? (

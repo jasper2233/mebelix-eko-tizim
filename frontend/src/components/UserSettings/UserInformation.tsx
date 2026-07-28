@@ -81,7 +81,9 @@ const UserInformation = () => {
 
   return (
     <div className="max-w-md">
-      <h3 className="text-lg font-semibold py-4">Foydalanuvchi ma'lumotlari</h3>
+      <h3 className="py-4 text-base font-semibold">
+        Foydalanuvchi ma'lumotlari
+      </h3>
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}

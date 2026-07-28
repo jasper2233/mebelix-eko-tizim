@@ -23,6 +23,7 @@ import {
   UsersService,
 } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
+import { SectionTitle } from "@/components/Common/SectionTitle"
 import {
   playError,
   playSuccess,
@@ -739,9 +740,7 @@ function OrderPicker({ onPick }: { onPick: (orderId: number) => void }) {
     | undefined
   return (
     <div className="h-full overflow-y-auto rounded-xl border bg-white p-4">
-      <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-        Proyektlar — xarita uchun proyektni tanlang
-      </h2>
+      <SectionTitle>Proyektlar — xarita uchun proyektni tanlang</SectionTitle>
       {isError && (
         <div className="mb-3 rounded-lg border-2 border-red-500 bg-red-50 px-4 py-3 text-base font-bold text-red-700">
           Yuklashda xato — qayta urinilmoqda...
@@ -779,7 +778,7 @@ function OrderPicker({ onPick }: { onPick: (orderId: number) => void }) {
                   </div>
                   {o.priority && (
                     <span
-                      className={`shrink-0 rounded px-2 py-0.5 text-sm font-black ${
+                      className={`shrink-0 rounded-sm px-2 py-0.5 text-sm font-black ${
                         PRIORITY_BADGE_CLASSES[o.priority] ??
                         "bg-muted text-muted-foreground"
                       }`}
@@ -832,7 +831,7 @@ function OrderPicker({ onPick }: { onPick: (orderId: number) => void }) {
                   {tone === "today" && " · BUGUN"}
                 </div>
                 {o.has_cutmap === false && (
-                  <span className="mt-1.5 inline-block rounded bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">
+                  <span className="mt-1.5 inline-block rounded-sm bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">
                     XARITA YO'Q
                   </span>
                 )}
