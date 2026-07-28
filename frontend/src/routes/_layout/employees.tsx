@@ -282,7 +282,9 @@ function EmployeesPage() {
                     colSpan={5}
                     className="h-24 text-center text-muted-foreground"
                   >
-                    Hodimlar topilmadi.
+                    {debounced
+                      ? `"${debounced}" bo'yicha hodim topilmadi.`
+                      : "Hali hodim yo'q — \"Hodim qo'shish\" bilan qo'shing."}
                   </TableCell>
                 </TableRow>
               )}
@@ -490,11 +492,14 @@ function BadgeDialog({
 }) {
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
+  const [confirmRegen, setConfirmRegen] = useState(false)
   const regen = useMutation({
     mutationFn: (id: number) =>
       EmployeesService.regenerateBadge({ employeeId: id }),
-    onSuccess: () =>
-      showSuccessToast("Yangi beyjik berildi — eskisi bloklandi"),
+    onSuccess: () => {
+      setConfirmRegen(false)
+      showSuccessToast("Yangi beyjik tayyor — chop etib bering")
+    },
     onError: handleError(showErrorToast),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["employees"] }),
   })
@@ -523,12 +528,22 @@ function BadgeDialog({
             <LoadingButton
               variant="destructive"
               loading={regen.isPending}
-              onClick={() => regen.mutate(employee.id)}
+              onClick={() => setConfirmRegen(true)}
             >
               Yo'qolgan — yangi beyjik berish
             </LoadingButton>
           )}
         </DialogFooter>
+        <ConfirmDialog
+          open={confirmRegen}
+          onOpenChange={setConfirmRegen}
+          title="Yangi beyjik berilsinmi?"
+          description={`${employee.full_name} ning eski beyjigi darhol ishlamay qoladi. Yangi QR ni chop etib bermaguningizcha u terminalga kira olmaydi.`}
+          confirmText="Yangi beyjik berish"
+          destructive
+          loading={regen.isPending}
+          onConfirm={() => regen.mutate(employee.id)}
+        />
       </DialogContent>
     </Dialog>
   )

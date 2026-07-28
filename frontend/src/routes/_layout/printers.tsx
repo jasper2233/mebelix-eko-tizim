@@ -222,7 +222,8 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
           onOpenChange={(v) => !v && setConfirm(null)}
           title={`${agent.name} bekor qilinsinmi?`}
           description="Agent boshqa ulana olmaydi va chek chiqara olmaydi."
-          confirmText="Bekor qilish"
+          confirmText="Agentni bekor qilish"
+          cancelText="Yopish"
           destructive
           loading={remove.isPending}
           onConfirm={() => remove.mutate()}

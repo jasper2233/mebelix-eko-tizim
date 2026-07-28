@@ -15,6 +15,7 @@ import { useRef, useState } from "react"
 import { OpenAPI, OrdersService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { PageHeader } from "@/components/Common/PageHeader"
+import { QueryError } from "@/components/Common/QueryError"
 import { StatusBadge } from "@/components/Common/StatusBadge"
 import { EditOrder } from "@/components/Orders/EditOrder"
 import { MachineAssign } from "@/components/Orders/MachineAssign"
@@ -50,7 +51,12 @@ function OrderDetailPage() {
   const { orderId } = Route.useParams()
   const id = Number(orderId)
   const queryClient = useQueryClient()
-  const { data: order, isLoading } = useQuery(getOrderQueryOptions(id))
+  const {
+    data: order,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery(getOrderQueryOptions(id))
   const { currentUser } = useCurrentUser()
   const { showSuccessToast, showErrorToast } = useCustomToast()
   const fileInput = useRef<HTMLInputElement>(null)
@@ -124,6 +130,13 @@ function OrderDetailPage() {
     onSettled: invalidate,
   })
 
+  if (isError)
+    return (
+      <QueryError
+        message="Buyurtmani ochib bo'lmadi."
+        onRetry={() => refetch()}
+      />
+    )
   if (isLoading || !order) return <Skeleton className="h-96 w-full" />
 
   const editableStatus =

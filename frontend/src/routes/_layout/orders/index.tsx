@@ -305,7 +305,11 @@ function OrdersPage() {
                     colSpan={8}
                     className="h-24 text-center text-muted-foreground"
                   >
-                    Buyurtmalar topilmadi.
+                    {debounced
+                      ? `"${debounced}" bo'yicha buyurtma topilmadi.`
+                      : status
+                        ? "Bu holatda buyurtma yo'q."
+                        : 'Hali buyurtma yo\'q — birinchisini "Yangi buyurtma" bilan oching.'}
                   </TableCell>
                 </TableRow>
               )}

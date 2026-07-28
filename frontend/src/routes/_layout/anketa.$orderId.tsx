@@ -13,6 +13,7 @@ import {
 } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { PageHeader } from "@/components/Common/PageHeader"
+import { QueryError } from "@/components/Common/QueryError"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DatePicker } from "@/components/ui/date-picker"
@@ -68,7 +69,12 @@ function AnketaPage() {
   const { orderId } = Route.useParams()
   const id = Number(orderId)
   const queryClient = useQueryClient()
-  const { data: order, isLoading } = useQuery(getOrderQueryOptions(id))
+  const {
+    data: order,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery(getOrderQueryOptions(id))
   const { currentUser } = useCurrentUser()
   const { showErrorToast } = useCustomToast()
 
@@ -144,6 +150,13 @@ function AnketaPage() {
     }
   }, [id, canEdit])
 
+  if (isError)
+    return (
+      <QueryError
+        message="Anketani ochib bo'lmadi."
+        onRetry={() => refetch()}
+      />
+    )
   if (isLoading || !order) return <Skeleton className="h-96 w-full" />
 
   const rooms = survey.rooms ?? []
@@ -727,6 +740,7 @@ function RoomPhotos({
   const input = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [preview, setPreview] = useState<OrderFileRead | null>(null)
+  const [toRemove, setToRemove] = useState<OrderFileRead | null>(null)
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: ["orders", orderId] })
 
@@ -742,7 +756,10 @@ function RoomPhotos({
   const remove = useMutation({
     mutationFn: (fileId: number) =>
       OrdersService.deleteRoomPhoto({ orderId, fileId }),
-    onSuccess: refresh,
+    onSuccess: () => {
+      setToRemove(null)
+      refresh()
+    },
     onError: handleError(showErrorToast),
   })
 
@@ -833,10 +850,10 @@ function RoomPhotos({
                 <button
                   type="button"
                   aria-label={`${p.filename} — o'chirish`}
-                  onClick={() => remove.mutate(p.id)}
-                  className="absolute top-1 right-1 rounded-full border bg-background/90 p-1 text-destructive opacity-0 shadow-sm backdrop-blur transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                  onClick={() => setToRemove(p)}
+                  className="absolute top-1 right-1 rounded-full border bg-background/90 p-1.5 text-destructive shadow-sm backdrop-blur"
                 >
-                  <X className="size-3.5" />
+                  <X className="size-4" />
                 </button>
               )}
             </div>
@@ -908,6 +925,17 @@ function RoomPhotos({
           </a>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!toRemove}
+        onOpenChange={(v) => !v && setToRemove(null)}
+        title="Rasm o'chirilsinmi?"
+        description={`${toRemove?.filename ?? "Rasm"} serverdan butunlay o'chadi — anketa rasmlari tarix uchun saqlanmaydi.`}
+        confirmText="O'chirish"
+        destructive
+        loading={remove.isPending}
+        onConfirm={() => toRemove && remove.mutate(toRemove.id)}
+      />
     </div>
   )
 }

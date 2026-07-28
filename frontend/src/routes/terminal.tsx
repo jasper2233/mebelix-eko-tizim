@@ -87,7 +87,11 @@ function TerminalPage() {
   const { data: ctx, isLoading: ctxLoading } = useQuery(
     getTerminalContextQueryOptions(),
   )
-  const { data: tasks } = useQuery(getTerminalTasksQueryOptions())
+  const {
+    data: tasks,
+    isLoading: tasksLoading,
+    isError: tasksError,
+  } = useQuery(getTerminalTasksQueryOptions())
   const { currentUser } = useCurrentUser()
   const { logout } = useAuth()
   const isOperator = OPERATOR_ROLES.includes(currentUser?.role as never)
@@ -102,6 +106,7 @@ function TerminalPage() {
   const [errorsOnly, setErrorsOnly] = useState(false)
   const [undoOpen, setUndoOpen] = useState(false)
   const [logoutOpen, setLogoutOpen] = useState(false)
+  const [endOpen, setEndOpen] = useState(false)
   // Kiosk to'liq ekran: Fullscreen API YOKI chrome --kiosk / PWA (display-mode)
   const [fullscreen, setFullscreen] = useState(
     () =>
@@ -444,7 +449,7 @@ function TerminalPage() {
               <TBtn
                 label="Yakunlash"
                 tone="danger"
-                onClick={() => endSession.mutate()}
+                onClick={() => setEndOpen(true)}
               >
                 <LogOut />
               </TBtn>
@@ -559,9 +564,18 @@ function TerminalPage() {
                       <tr>
                         <td
                           colSpan={5}
-                          className="h-32 text-center text-muted-foreground"
+                          className={cn(
+                            "h-32 text-center",
+                            tasksError
+                              ? "font-bold text-destructive"
+                              : "text-muted-foreground",
+                          )}
                         >
-                          Vazifalar yo'q
+                          {tasksLoading
+                            ? "Yuklanmoqda..."
+                            : tasksError
+                              ? "Vazifalarni olishda xatolik — aloqani tekshiring"
+                              : "Bu postda navbatdagi vazifa yo'q"}
                         </td>
                       </tr>
                     )}
@@ -666,6 +680,23 @@ function TerminalPage() {
         onConfirm={() => logout()}
       />
       <ConfirmDialog
+        open={endOpen}
+        onOpenChange={setEndOpen}
+        title="Smenani yakunlash"
+        description={`${ctx?.session?.employee_name ?? "Hodim"} smenasi yopiladi. Ishni davom ettirish uchun beyjikni qaytadan scan qilish kerak bo'ladi.`}
+        confirmText="Yakunlash"
+        destructive
+        loading={endSession.isPending}
+        onConfirm={() =>
+          endSession.mutate(undefined, {
+            onSuccess: () => {
+              setEndOpen(false)
+              showSuccessToast("Smena yakunlandi")
+            },
+          })
+        }
+      />
+      <ConfirmDialog
         open={undoOpen}
         onOpenChange={setUndoOpen}
         title="Oxirgi scanni bekor qilish"
@@ -674,7 +705,8 @@ function TerminalPage() {
             ? `${lastScan.code} scan bekor qilinadi, qoldiq qaytariladi.`
             : ""
         }
-        confirmText="Bekor qilish"
+        confirmText="Scanni bekor qilish"
+        cancelText="Yopish"
         destructive
         loading={undoMutation.isPending}
         onConfirm={() =>

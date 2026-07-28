@@ -67,7 +67,12 @@ function Dashboard() {
   return (
     <div>
       <PageHeader
-        title={`Salom, ${currentUser?.name || currentUser?.username || ""}!`}
+        // Ism hali yuklanmaganda "Salom, !" chiqmasin
+        title={
+          currentUser?.name || currentUser?.username
+            ? `Salom, ${currentUser.name || currentUser.username}!`
+            : "Boshqaruv paneli"
+        }
         description="Ishlab chiqarish holati — jonli"
         actions={
           <span

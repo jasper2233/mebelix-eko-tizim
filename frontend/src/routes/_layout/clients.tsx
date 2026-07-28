@@ -85,7 +85,9 @@ function ClientsPage() {
                     colSpan={5}
                     className="h-24 text-center text-muted-foreground"
                   >
-                    Mijozlar topilmadi. "+ Yangi mijoz" bilan qo'shing.
+                    {debounced
+                      ? `"${debounced}" bo'yicha mijoz topilmadi.`
+                      : "Hali mijoz yo'q — \"+ Yangi mijoz\" bilan qo'shing."}
                   </TableCell>
                 </TableRow>
               )}
