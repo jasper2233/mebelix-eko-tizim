@@ -24,7 +24,6 @@ import {
 import useCurrentUser from "@/hooks/useCurrentUser"
 import { getOrderStatusCountsQueryOptions } from "@/queries/mes"
 import { type Item, Main } from "./Main"
-import { ShopStatus } from "./ShopStatus"
 import { User } from "./User"
 
 // Rolga qarab navigatsiya (TZ 3.7 rollar-modullar matritsasi)
@@ -117,7 +116,6 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <Main items={withBadges} />
-        <ShopStatus />
       </SidebarContent>
       <SidebarFooter>
         <User user={currentUser} />
