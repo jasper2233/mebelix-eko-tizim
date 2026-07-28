@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { createFileRoute, redirect } from "@tanstack/react-router"
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
@@ -20,16 +21,21 @@ import { PasswordInput } from "@/components/ui/password-input"
 import useAuth from "@/hooks/useAuth"
 import { extractErrorMessage } from "@/utils"
 
-const formSchema = z.object({
-  username: z
-    .string()
-    .min(1, { message: "Foydalanuvchi nomi yoki telefon majburiy" }),
-  // Faqat bo'sh emasligi tekshiriladi — kuch talablari parol O'RNATISHDA qo'llanadi,
-  // login'da esas mavjud (jumladan eski/seed) parol bilan kirish imkonini saqlash kerak.
-  password: z.string().min(1, { message: "Parol majburiy" }),
-}) satisfies z.ZodType<AccessToken>
+// Sxema modul darajasida EMAS, funksiya ichida: `routeTree.gen.ts` marshrut
+// modulini statik import qiladi, shuning uchun top-level `z.object(...)` zod'ni
+// entry chunk'ka tortardi — formasi umuman yo'q terminal va TABLO kioski ham
+// har cold start'da uni yuklab, parse qilardi.
+const makeFormSchema = () =>
+  z.object({
+    username: z
+      .string()
+      .min(1, { message: "Foydalanuvchi nomi yoki telefon majburiy" }),
+    // Faqat bo'sh emasligi tekshiriladi — kuch talablari parol O'RNATISHDA qo'llanadi,
+    // login'da esas mavjud (jumladan eski/seed) parol bilan kirish imkonini saqlash kerak.
+    password: z.string().min(1, { message: "Parol majburiy" }),
+  }) satisfies z.ZodType<AccessToken>
 
-type FormData = z.infer<typeof formSchema>
+type FormData = z.infer<ReturnType<typeof makeFormSchema>>
 
 export const Route = createFileRoute("/login")({
   component: Login,
@@ -52,6 +58,7 @@ export const Route = createFileRoute("/login")({
 
 function Login() {
   const { loginMutation } = useAuth()
+  const [formSchema] = useState(makeFormSchema)
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",

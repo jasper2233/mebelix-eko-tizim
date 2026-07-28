@@ -145,13 +145,14 @@ export function SheetSvg({
     if (!svg) return
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
-      const pt = svgPoint(e.clientX, e.clientY)
+      const pt = fnRef.current.svgPoint(e.clientX, e.clientY)
       if (!pt) return
-      zoomAt(e.deltaY < 0 ? 1 / 1.25 : 1.25, pt.x, pt.y)
+      fnRef.current.zoomAt(e.deltaY < 0 ? 1 / 1.25 : 1.25, pt.x, pt.y)
     }
     svg.addEventListener("wheel", onWheel, { passive: false })
     return () => svg.removeEventListener("wheel", onWheel)
-  })
+    // handler fnRef'dan o'qiydi — listener bir marta o'rnatiladi, har renderda emas
+  }, [thumbnail])
 
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     // ATAYIN capture yo'q: setPointerCapture keyingi click'ni SVG'ga retarget
@@ -216,11 +217,21 @@ export function SheetSvg({
     const cur = svgRef.current?.viewBox.baseVal
     if (cur) zoomAt(f, cur.x + cur.width / 2, cur.y + cur.height / 2)
   }
-  registerZoom?.({
-    zin: () => zoomBy(1 / 1.5),
-    zout: () => zoomBy(1.5),
-    reset: () => setVb(null),
-  })
+  // Eng so'nggi funksiyalar ref'da: har renderda yangi identifikatsiya olsalar
+  // ham, listener va registerZoom bir marta o'rnatiladi.
+  const fnRef = useRef({ zoomAt, zoomBy, svgPoint })
+  fnRef.current = { zoomAt, zoomBy, svgPoint }
+
+  // Render paytida emas, effektda: render tanasida tashqi ref'ga yozish yon
+  // ta'sir bo'lib, StrictMode va kelajakdagi concurrent render'da ikki marta
+  // ishlaydi.
+  useEffect(() => {
+    registerZoom?.({
+      zin: () => fnRef.current.zoomBy(1 / 1.5),
+      zout: () => fnRef.current.zoomBy(1.5),
+      reset: () => setVb(null),
+    })
+  }, [registerZoom])
 
   // Yorliqlar hamma narsadan KEYIN chiziladi (teshik/tekstura ortida qolmasin), halo bilan
   const labels: React.ReactNode[] = []
@@ -230,10 +241,17 @@ export function SheetSvg({
     const doneCount = insts.filter((i) => i.done).length
     const allDone = !p.waste && insts.length > 0 && doneCount === insts.length
     const selected = selectedCell === p.cell
-    const H = holes[String(p.id)]
+    // 128px balandlikdagi kartochka preview'ida teshiklar, tekstura chiziqlari,
+    // o'lcham zanjiri va yozuvlar piksel ostida qoladi, lekin to'liq hisoblanib
+    // SVG tugunlariga aylanardi: 12 listli materialda ~6000 ortiqcha tugun va
+    // har detal uchun yozuv-to'qnashuv algoritmi. Thumbnail'da ular chizilmaydi.
+    const H = thumbnail ? undefined : holes[String(p.id)]
     const fill = p.waste ? "url(#zebra)" : selected ? PART_SELECTED : PART_FILL
 
-    if (!p.waste) {
+    // thumbnail'da yozuvlar umuman hisoblanmaydi — pickSpot to'qnashuv qidiruvi
+    // har detal uchun bir necha nomzod joyni tekshiradi, natijasi esa 128px da
+    // ko'rinmaydi.
+    if (!p.waste && !thumbnail) {
       const wv = p.w
       const hv = p.h
       const cx = p.x + wv / 2
@@ -524,74 +542,76 @@ export function SheetSvg({
   })
 
   // polosa o'lcham zanjiri: chetda strelka, ichki chegarada kesim davomi + ✕ (GibSaw)
-  const dimNodes = ((sheet.dims as any[]) ?? []).map((dm, i) => {
-    const mid = (dm.a + dm.b) / 2
-    if (dm.ax === "X") {
-      const y = -34
+  const dimNodes = (thumbnail ? [] : ((sheet.dims as any[]) ?? [])).map(
+    (dm, i) => {
+      const mid = (dm.a + dm.b) / 2
+      if (dm.ax === "X") {
+        const y = -34
+        return (
+          <g key={`dm${i}`} stroke="#1a1a1a" strokeWidth="2" fill="none">
+            <line x1={dm.a} y1={y} x2={dm.b} y2={y} />
+            {dm.a <= 6 ? (
+              <path d={`M${dm.a} ${y} l13 -8 M${dm.a} ${y} l13 8`} />
+            ) : (
+              <path
+                d={`M${dm.a} -50 L${dm.a} 0 M${dm.a - 11} -45 L${dm.a + 11} -23 M${dm.a - 11} -23 L${dm.a + 11} -45`}
+              />
+            )}
+            {dm.b >= L - 6 ? (
+              <path d={`M${dm.b} ${y} l-13 -8 M${dm.b} ${y} l-13 8`} />
+            ) : (
+              <path
+                d={`M${dm.b} -50 L${dm.b} 0 M${dm.b - 11} -45 L${dm.b + 11} -23 M${dm.b - 11} -23 L${dm.b + 11} -45`}
+              />
+            )}
+            <text
+              x={mid}
+              y={y - 14}
+              fontSize="44"
+              fontWeight="bold"
+              fill="#000"
+              stroke="none"
+              textAnchor="middle"
+            >
+              {dm.v}
+            </text>
+          </g>
+        )
+      }
+      const x = -34
       return (
         <g key={`dm${i}`} stroke="#1a1a1a" strokeWidth="2" fill="none">
-          <line x1={dm.a} y1={y} x2={dm.b} y2={y} />
+          <line x1={x} y1={dm.a} x2={x} y2={dm.b} />
           {dm.a <= 6 ? (
-            <path d={`M${dm.a} ${y} l13 -8 M${dm.a} ${y} l13 8`} />
+            <path d={`M${x} ${dm.a} l-8 13 M${x} ${dm.a} l8 13`} />
           ) : (
             <path
-              d={`M${dm.a} -50 L${dm.a} 0 M${dm.a - 11} -45 L${dm.a + 11} -23 M${dm.a - 11} -23 L${dm.a + 11} -45`}
+              d={`M-50 ${dm.a} L0 ${dm.a} M-45 ${dm.a - 11} L-23 ${dm.a + 11} M-45 ${dm.a + 11} L-23 ${dm.a - 11}`}
             />
           )}
-          {dm.b >= L - 6 ? (
-            <path d={`M${dm.b} ${y} l-13 -8 M${dm.b} ${y} l-13 8`} />
+          {dm.b >= W - 6 ? (
+            <path d={`M${x} ${dm.b} l-8 -13 M${x} ${dm.b} l8 -13`} />
           ) : (
             <path
-              d={`M${dm.b} -50 L${dm.b} 0 M${dm.b - 11} -45 L${dm.b + 11} -23 M${dm.b - 11} -23 L${dm.b + 11} -45`}
+              d={`M-50 ${dm.b} L0 ${dm.b} M-45 ${dm.b - 11} L-23 ${dm.b + 11} M-45 ${dm.b + 11} L-23 ${dm.b - 11}`}
             />
           )}
           <text
-            x={mid}
-            y={y - 14}
+            x={x - 14}
+            y={mid}
             fontSize="44"
             fontWeight="bold"
             fill="#000"
             stroke="none"
             textAnchor="middle"
+            transform={`rotate(-90 ${x - 14} ${mid})`}
           >
             {dm.v}
           </text>
         </g>
       )
-    }
-    const x = -34
-    return (
-      <g key={`dm${i}`} stroke="#1a1a1a" strokeWidth="2" fill="none">
-        <line x1={x} y1={dm.a} x2={x} y2={dm.b} />
-        {dm.a <= 6 ? (
-          <path d={`M${x} ${dm.a} l-8 13 M${x} ${dm.a} l8 13`} />
-        ) : (
-          <path
-            d={`M-50 ${dm.a} L0 ${dm.a} M-45 ${dm.a - 11} L-23 ${dm.a + 11} M-45 ${dm.a + 11} L-23 ${dm.a - 11}`}
-          />
-        )}
-        {dm.b >= W - 6 ? (
-          <path d={`M${x} ${dm.b} l-8 -13 M${x} ${dm.b} l8 -13`} />
-        ) : (
-          <path
-            d={`M-50 ${dm.b} L0 ${dm.b} M-45 ${dm.b - 11} L-23 ${dm.b + 11} M-45 ${dm.b + 11} L-23 ${dm.b - 11}`}
-          />
-        )}
-        <text
-          x={x - 14}
-          y={mid}
-          fontSize="44"
-          fontWeight="bold"
-          fill="#000"
-          stroke="none"
-          textAnchor="middle"
-          transform={`rotate(-90 ${x - 14} ${mid})`}
-        >
-          {dm.v}
-        </text>
-      </g>
-    )
-  })
+    },
+  )
 
   const svgEl = (
     <svg
@@ -645,7 +665,7 @@ export function SheetSvg({
         />
       ))}
       {dimNodes}
-      <g pointerEvents="none">{labels}</g>
+      {!thumbnail && <g pointerEvents="none">{labels}</g>}
     </svg>
   )
 

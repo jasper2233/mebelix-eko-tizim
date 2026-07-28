@@ -213,7 +213,9 @@ function TerminalPage() {
     onSuccess: (s) => {
       playSuccess()
       showSuccessToast(`Sessiya ochildi: ${s.employee_name}`)
-      queryClient.invalidateQueries({ queryKey: ["terminal"] })
+      // Faqat kontekst: sessiya ochilishi vazifalar ro'yxatini ham, kesish
+      // xaritasini ham o'zgartirmaydi (["terminal"] prefiksi cutmap'ni ham olardi)
+      queryClient.invalidateQueries({ queryKey: ["terminal", "context"] })
     },
     onError: (err) => {
       playError()
@@ -279,7 +281,8 @@ function TerminalPage() {
 
   const endSession = useMutation({
     mutationFn: () => TerminalService.endTerminalSession(),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["terminal"] }),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: ["terminal", "context"] }),
   })
 
   const handleSubmit = (raw: string) => {
@@ -632,14 +635,18 @@ function TerminalPage() {
                   {/* Sensorli ekran: butun yorliq bosiladigan maydon va
                       balandligi 44px — Switch'ning o'zi 18x32px edi, qo'lqopli
                       barmoq bilan tegib bo'lmasdi. */}
-                  <label className="-my-2 flex h-11 cursor-pointer items-center gap-2 px-1 text-xs font-semibold text-muted-foreground">
+                  <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
                     Faqat xatolar
+                    {/* Sensorli ekran: ko'rinish o'zgarmaydi, lekin bosiladigan
+                        maydon pseudo-element bilan 44px ga kengaytiriladi —
+                        Switch'ning o'zi 18x32px, qo'lqopli barmoq tegmaydi. */}
                     <Switch
                       checked={errorsOnly}
                       onCheckedChange={setErrorsOnly}
                       aria-label="Faqat xatolar"
+                      className="relative after:absolute after:-inset-3 after:content-['']"
                     />
-                  </label>
+                  </span>
                 </div>
                 <ul className="min-h-0 flex-1 overflow-y-auto text-sm">
                   {visibleHistory.map((h) => (
