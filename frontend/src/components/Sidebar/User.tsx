@@ -1,6 +1,6 @@
 import { Link as RouterLink } from "@tanstack/react-router"
 import { ChevronsUpDown, LogOut, Settings } from "lucide-react"
-
+import type { UserRead } from "@/client"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -20,8 +20,8 @@ import useAuth from "@/hooks/useAuth"
 import { getInitials } from "@/utils"
 
 interface UserInfoProps {
-  fullName?: string
-  phone?: string
+  fullName?: string | null
+  phone?: string | null
 }
 
 function UserInfo({ fullName, phone }: UserInfoProps) {
@@ -40,7 +40,7 @@ function UserInfo({ fullName, phone }: UserInfoProps) {
   )
 }
 
-export function User({ user }: { user: any }) {
+export function User({ user }: { user?: UserRead | null }) {
   const { logout } = useAuth()
   const { isMobile, setOpenMobile } = useSidebar()
 

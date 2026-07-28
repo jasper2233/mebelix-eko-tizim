@@ -13,10 +13,20 @@ export function extractErrorMessage(err: ApiError): string {
   }
 
   const errDetail = (err.body as any)?.detail
+  // FastAPI validatsiya xatosi: [{msg, loc, ...}]
   if (Array.isArray(errDetail) && errDetail.length > 0) {
     return errDetail[0].msg
   }
-  return errDetail || "Xatolik yuz berdi. Qayta urinib ko'ring."
+  // MES tuzilmali xatosi: {code: "E003", message: "..."} — skan va terminal
+  // oqimlari shu konvertni qaytaradi. Busiz toast'ga "[object Object]" tushardi.
+  if (errDetail && typeof errDetail === "object") {
+    const { code, message } = errDetail as { code?: string; message?: string }
+    if (message) return code ? `${code}: ${message}` : message
+    if (code) return code
+  }
+  return typeof errDetail === "string" && errDetail
+    ? errDetail
+    : "Xatolik yuz berdi. Qayta urinib ko'ring."
 }
 
 type ToastFn = (message: string) => void

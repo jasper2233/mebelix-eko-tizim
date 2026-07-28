@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { Activity } from "lucide-react"
 import { useCallback } from "react"
 
-import { ReportsService, TabloService } from "@/client"
+import { ReportsService } from "@/client"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { SectionTitle } from "@/components/Common/SectionTitle"
 import { StagePipeline } from "@/components/Common/StagePipeline"
@@ -13,7 +13,11 @@ import useCurrentUser from "@/hooks/useCurrentUser"
 import { useMesWs } from "@/hooks/useMesWs"
 import { formatDate, MACHINE_STATUS_LABELS, POST_COLORS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
-import { getMachinesQueryOptions, getPostsQueryOptions } from "@/queries/mes"
+import {
+  getMachinesQueryOptions,
+  getPostsQueryOptions,
+  getTabloMatrixQueryOptions,
+} from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/")({
   component: Dashboard,
@@ -39,11 +43,9 @@ function Dashboard() {
     refetchInterval: 60_000,
   })
   const { data: posts } = useQuery(getPostsQueryOptions())
-  const { data: matrix, isLoading: matrixLoading } = useQuery({
-    queryKey: ["tablo", "matrix"],
-    queryFn: () => TabloService.readTabloMatrix(),
-    refetchInterval: 60_000,
-  })
+  const { data: matrix, isLoading: matrixLoading } = useQuery(
+    getTabloMatrixQueryOptions(),
+  )
 
   const { online } = useMesWs(
     useCallback(

@@ -19,7 +19,10 @@ type TabloPost = {
 import { useMesWs } from "@/hooks/useMesWs"
 import { deadlineTone, formatDate, POST_COLORS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
-import { getMachinesQueryOptions } from "@/queries/mes"
+import {
+  getMachinesQueryOptions,
+  getTabloMatrixQueryOptions,
+} from "@/queries/mes"
 import { getCurrentUserQueryOptions } from "@/queries/users"
 
 export const Route = createFileRoute("/tablo")({
@@ -77,11 +80,7 @@ function TabloPage() {
     ...getMachinesQueryOptions(),
     enabled: me?.role === "tablo",
   })
-  const { data, isLoading } = useQuery({
-    queryKey: ["tablo", "matrix"],
-    queryFn: () => TabloService.readTabloMatrix(),
-    refetchInterval: 60_000,
-  })
+  const { data, isLoading } = useQuery(getTabloMatrixQueryOptions())
 
   const { online } = useMesWs(
     useCallback(

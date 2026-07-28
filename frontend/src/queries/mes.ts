@@ -8,6 +8,7 @@ import {
   MaterialsService,
   OrdersService,
   PostsService,
+  TabloService,
   TerminalService,
 } from "@/client"
 
@@ -109,4 +110,13 @@ export const getTerminalTasksQueryOptions = () =>
     queryKey: ["terminal", "tasks"],
     queryFn: () => TerminalService.readTerminalTasks(),
     refetchInterval: 30_000, // WS is the primary trigger; this is the safety net
+  })
+
+/** TABLO matritsasi — /tablo va boshqaruv paneli ikkalasi ham shu bitta so'rovdan
+ *  oziqlanadi (avval har birida alohida yozilgan edi). */
+export const getTabloMatrixQueryOptions = () =>
+  queryOptions({
+    queryKey: ["tablo", "matrix"],
+    queryFn: () => TabloService.readTabloMatrix(),
+    refetchInterval: 60_000,
   })

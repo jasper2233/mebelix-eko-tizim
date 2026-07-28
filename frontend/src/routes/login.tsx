@@ -137,6 +137,9 @@ function Login() {
                       placeholder="foydalanuvchi nomi yoki +998901234567"
                       type="text"
                       autoComplete="username"
+                      // Terminal va ofisda har kirishda ortiqcha bosish bo'lmasin
+                      // (boshqa formalar ham birinchi maydonga fokus beradi)
+                      autoFocus
                       className="h-11"
                       {...field}
                     />

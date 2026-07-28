@@ -4,6 +4,10 @@ export default defineConfig({
   input: "./openapi.json",
   output: "./src/client",
 
+  // @hey-api/schemas plugini olib tashlandi: u `src/client/schemas.gen.ts`
+  // (4443 qator, 105 KB) generatsiya qilardi, lekin uni na `client/index.ts`
+  // re-eksport qilardi, na biror kod import qilardi — bundle'ga ham tushmasdi.
+  // Kerak bo'lsa qayta qo'shish bir qatorlik ish.
   plugins: [
     "legacy/axios",
     {
@@ -19,10 +23,6 @@ export default defineConfig({
         // Basic camelCase conversion if needed, though usually operationIds are already good
         return name.charAt(0).toLowerCase() + name.slice(1)
       },
-    },
-    {
-      name: "@hey-api/schemas",
-      type: "json",
     },
   ],
 })

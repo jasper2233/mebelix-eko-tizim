@@ -311,7 +311,18 @@ function TerminalPage() {
   }
 
   const mapOpen = ctx?.post_code === "ARRA" && mapOrderId !== null
-  const canUndo = lastScan?.kind === "ok" && Date.now() - lastScan.at < 60_000
+  // BEKOR QILISH oynasi 60 s (TZ 8.6). Vaqtga bog'liq bo'lgani uchun taymer
+  // kerak: busiz tugma muddat o'tgach ham yoqilgan ko'rinib turardi va
+  // bosilganda server rad etardi.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (lastScan?.kind !== "ok") return
+    const left = 60_000 - (Date.now() - lastScan.at)
+    if (left <= 0) return
+    const t = setTimeout(() => setNow(Date.now()), left)
+    return () => clearTimeout(t)
+  }, [lastScan])
+  const canUndo = lastScan?.kind === "ok" && now - lastScan.at < 60_000
   const postColor = ctx
     ? (POST_COLORS[ctx.post_code] ?? "var(--primary)")
     : "var(--primary)"
@@ -591,6 +602,10 @@ function TerminalPage() {
             {/* O'ng panel (30%) */}
             <section className="flex min-h-0 flex-[3] flex-col gap-3">
               <div
+                // key: har yangi skanda element qayta yaratiladi, aks holda
+                // animatsiya faqat birinchi marta ishlab, ketma-ket skanlarda
+                // umuman ko'rinmasdi
+                key={lastScan?.at ?? "bosh"}
                 className={cn(
                   "rounded-xl border-2 p-4 text-center transition-colors",
                   lastScan?.kind === "ok" &&

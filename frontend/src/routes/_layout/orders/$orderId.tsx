@@ -71,11 +71,10 @@ function OrderDetailPage() {
   const isManager = isAdmin || role === "manager"
   const isTexnolog = isAdmin || role === "texnolog"
 
-  const invalidate = () => {
+  // ["orders"] prefiksi ["orders", id] va ["orders", id, "matrix"] ni ham
+  // qamraydi — qolgan ikki chaqiruv ortiqcha edi.
+  const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["orders"] })
-    queryClient.invalidateQueries({ queryKey: ["orders", id] })
-    queryClient.invalidateQueries({ queryKey: ["orders", id, "matrix"] })
-  }
 
   const upload = async (file: File) => {
     setUploading(true)
