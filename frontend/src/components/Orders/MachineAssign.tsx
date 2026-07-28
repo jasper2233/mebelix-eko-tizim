@@ -76,7 +76,7 @@ export function MachineAssign({
           return (
             <div key={post.id} className="min-w-[200px]">
               <div
-                className="mb-1 text-[11px] font-bold uppercase tracking-wider"
+                className="mb-1 text-2xs font-bold uppercase tracking-wider"
                 style={{ color: POST_COLORS[post.code] }}
               >
                 {post.code}

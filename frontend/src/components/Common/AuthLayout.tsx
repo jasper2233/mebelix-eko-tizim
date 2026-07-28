@@ -170,7 +170,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
             className="h-12 w-auto self-start"
           />
           <div className="flex flex-col gap-3">
-            <p className="text-[11px] font-medium uppercase tracking-[0.3em] text-(--brand-gold)/80">
+            <p className="text-2xs font-medium uppercase tracking-[0.3em] text-(--brand-gold)/80">
               Ishlab chiqarishni boshqarish tizimi
             </p>
             <p className="max-w-md text-2xl font-semibold leading-snug text-white/90 xl:text-3xl">

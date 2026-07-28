@@ -508,7 +508,7 @@ export function TBtn({
       className={`flex h-16 w-full flex-col items-center justify-center gap-1 rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-40 [&_svg]:size-6 ${TBTN_TONES[tone]}`}
     >
       {children}
-      <span className="text-[10px] font-bold leading-none">{label}</span>
+      <span className="text-2xs font-bold leading-none">{label}</span>
     </button>
   )
 }
@@ -685,7 +685,7 @@ function PartCard({
           {next && (
             <div className="shrink-0 rounded-lg border p-2">
               <QRCodeSVG value={next.qr_text} size={170} />
-              <div className="num mt-1 text-center text-[10px] text-muted-foreground">
+              <div className="num mt-1 text-center text-2xs text-muted-foreground">
                 {next.qr_text}
               </div>
             </div>

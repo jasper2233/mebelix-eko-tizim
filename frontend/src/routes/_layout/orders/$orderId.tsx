@@ -402,7 +402,7 @@ function OrderDetailPage() {
 function Meta({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
       <div className="mt-0.5 text-sm font-medium">{value}</div>

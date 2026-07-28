@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
  * ham, fon ham bir xil tondan olingan. `78%, black` bilan nisbat 6.18-7.01:1
  * ga chiqadi va chipning yengil ko'rinishi saqlanadi.
  *
- * Avval employees.tsx va machines.tsx da ikki xil o'lchamda (text-[10px] va
+ * Avval employees.tsx va machines.tsx da ikki xil o'lchamda (text-2xs va
  * text-xs) qo'lda takrorlangan edi.
  */
 export function PostBadge({

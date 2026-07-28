@@ -102,7 +102,7 @@ export function DatePicker({
               "flex size-8 items-center justify-center rounded-lg hover:bg-muted [&>svg]:size-4 [&>svg]:fill-current",
             weekdays: "flex",
             weekday:
-              "w-9 py-1.5 text-center text-[11px] font-semibold uppercase text-muted-foreground",
+              "w-9 py-1.5 text-center text-2xs font-semibold uppercase text-muted-foreground",
             week: "flex",
             day: "p-0",
             day_button:

@@ -175,7 +175,7 @@ function OrdersPage() {
               <TabsTrigger key={t.value} value={t.value} className="text-xs">
                 {t.label}
                 {counts && tabCount(t.value) > 0 && (
-                  <span className="num ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                  <span className="num ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-2xs font-bold text-primary">
                     {tabCount(t.value)}
                   </span>
                 )}

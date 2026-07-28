@@ -614,7 +614,7 @@ function TerminalPage() {
                   !lastScan && "bg-white",
                 )}
               >
-                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <div className="text-2xs font-bold uppercase tracking-wider text-muted-foreground">
                   Oxirgi skan
                 </div>
                 {lastScan ? (

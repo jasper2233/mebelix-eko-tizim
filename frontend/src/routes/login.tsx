@@ -82,7 +82,7 @@ function Login() {
           className="flex flex-col gap-6"
         >
           <div className="flex flex-col gap-1.5">
-            <p className="text-[11px] font-medium uppercase tracking-[0.3em] text-(--brand-gold-deep)">
+            <p className="text-2xs font-medium uppercase tracking-[0.3em] text-(--brand-gold-deep)">
               MebeliX MES
             </p>
             <h1 className="text-3xl font-bold tracking-tight">
