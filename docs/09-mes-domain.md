@@ -1,6 +1,6 @@
 # 09 — MES domen qatlami (TT bo'yicha implementatsiya)
 
-Holat: **2026-07-27**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Fazalar holati: repo ildizidagi `TODO.md`.
+Holat: **2026-07-28**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Barcha fazalar implementatsiya qilingan — alohida `TODO.md` yuritilmaydi, holat shu hujjatlar to'plami va git tarixidan o'qiladi.
 
 ## 1. Data model (`app/models/`)
 
@@ -82,8 +82,9 @@ attributsiyasi beyjiksiz saqlanadi. **Login = smena**: sessiya avtomatik ochilad
 
 `app/services/labels.py` API: `LabelData`, `load_label_data(db, instance_id)`, `_n`,
 `render_label_png`. Yagona chiqish — PNG rasm; `LabelData` maydonlari: qr_text, part_code,
-part_name, project_name, material, l/w/t, count, instance_no, edges, xnc_summary, label_num,
-**holes**, **texture**. `holes` — `order.cutmap` dan shu detal katakchasi bo'yicha
+part_name, project_name (`order.project_name or order.number`), order_number, material, l/w/t, count,
+instance_no, edges, xnc_summary, label_num, printed_at (Asia/Tashkent — yorliq pastida sana bo'lib
+chiqadi), **holes**, **texture**. `holes` — `order.cutmap` dan shu detal katakchasi bo'yicha
 (`part.label_num` → cutmap `parts[].num` → `cutmap.holes[cell.id]`).
 
 **`render_label_png(d, scale=1)` — asosiy maket** (GibSaw `mebelix.lbl` uslubi). 80×60 mm,
@@ -144,7 +145,11 @@ O'rnatish qadamlari: [07-infra-devops.md](07-infra-devops.md) → "Chop etish in
 
 Manager buyurtmani narx (`amount`, ixtiyoriy `advance_payment`) kiritib yaratadi, so'ng
 `POST /orders/{id}/confirm` — DRAFT → TECHNICAL_REVIEW (`amount` bo'lmasa rad etiladi). Texnolog
-`.project` faylni **faqat tasdiqdan keyin** (TECHNICAL_REVIEW holatida) yuklay oladi;
+`.project` faylni **faqat tasdiqdan keyin** (TECHNICAL_REVIEW holatida) yuklay oladi. Fayl PROCESSED
+bo'lishi ham shart: `parse_project` avlodni aniqlaydi (`processed` = CS `data` blob ham, `project.uuid`
+ham bor; aks holda `template`), va `upload_order_project` TEMPLATE faylni **422** bilan rad etadi —
+"Bu fayl GibLabda hali optimizatsiya qilinmagan…". Bundan oldin kengaytma (`.project`) va hajm
+(`MAX_PROJECT_FILE_SIZE`) tekshiriladi.
 `POST /{id}/start` (TECHNICAL_REVIEW → PRODUCTION) `.project` biriktirilgan bo'lishini va
 `requires_assignment_choice` postlar uchun `machine_assignments` ni talab qiladi.
 `GET /orders/status-counts` — registr tablari uchun har status bo'yicha son. Frontendda
@@ -213,7 +218,8 @@ direktor ham ko'radi.
 - Imzo komponent: `Common/StagePipeline` — 6 bosqich zanjiri (dashboard, buyurtma qatorlari).
 - Routelar: `_layout/*` admin modullar (orders, clients, employees, machines, materials, reports,
   transactions, printers, admin, settings, cutmap.$orderId, `anketa.$orderId`), `/terminal`, `/tablo`
-  (JAMI HAJM + rejimlar + drill-down). Yon menyu sarlavhalari (`_layout.tsx: sectionTitles`) — 10 ta.
+  (JAMI HAJM + rejimlar + drill-down + jonli soat). Yon menyu sarlavhalari
+  (`_layout.tsx: sectionTitles`) — 10 ta.
 - Anketa UI: `_layout/anketa.$orderId.tsx` — xonalar tab bilan almashadi, 7 ta bo'lim + yopiladigan
   "O'lchov varag'i". Yozish huquqi `is_superuser || admin || manager`; boshqa rollarga forma emas,
   `RoomSummary` — o'qish uchun jamlanma (matn nusxa olinadi). Avtosaqlash: har tahrirdan 1.5 s
@@ -227,7 +233,8 @@ direktor ham ko'radi.
   listlar → to'liq ekran xarita. Chizish `Terminal/CutmapView` + `Terminal/SheetSvg` (detallar,
   teshiklar, o'lcham zanjirlari, zoom/swipe); `printAllMaps` — har list A4 landscape. Qo'shimcha:
   majburiy to'liq ekran overlay, lock overlay (tasodifiy touch himoyasi, scan to'xtaydi), operator
-  logout, jonli soat.
+  logout, bir xil QR uchun 2 s cooldown (TT 8.4.4), yangi build uchun har 5 daqiqada `/` HEAD ETag
+  tekshiruvi va xavfsiz paytda (xarita yopiq + 2 daqiqa skan yo'q) avto-reload.
 - WS hook: `hooks/useMesWs.ts` (reconnect + heartbeat + online flag).
 - Rol-marshrutlash: `_layout.tsx` beforeLoad — terminal va 6 operator rol → `/terminal`,
   tablo → `/tablo` (qurilma/operator akkauntlar admin panelga kira olmaydi).

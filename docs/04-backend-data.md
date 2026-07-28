@@ -55,7 +55,7 @@ class BaseModel(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
 
 ### 1.3 `backend/app/models/user.py` — User modeli
 
-`user` jadvali. Login identifikatori sifatida **username yoki telefon** ishlatiladi; telefon O'zbekiston E.164 formatida kanonik saqlanadi (`+998` + 9 raqam = 13 belgi). `token_version` — barcha chiqarilgan JWT tokenlarni bir zarbda bekor qilish mexanizmi (parol o'zgarganda/logout-all da inkrement qilinadi, `backend/app/crud/users.py` dagi `increment_token_version` ga qarang).
+`user` jadvali. Login identifikatori sifatida **username yoki telefon** ishlatiladi; telefon O'zbekiston E.164 formatida kanonik saqlanadi (`+998` + 9 raqam = 13 belgi). `token_version` — barcha chiqarilgan JWT tokenlarni bir zarbda bekor qilish mexanizmi. Faqat ikki joyda inkrement qilinadi: logout (`backend/app/api/routes/logout.py`) va o'g'irlangan refresh token qayta ishlatilganda (`login.py`, one-time-use nazorati). **Parol almashtirish tirik sessiyalarni uzmaydi** — `PATCH /users/me/password` versiyani oshirmaydi. `backend/app/crud/users.py` dagi `increment_token_version` ga qarang.
 
 MES uchun ikkita yangi ustun (TZ 3 / TZ 8.1):
 
@@ -97,7 +97,7 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
 |---|---|---|---|
 | `Organization` | `organization.py` | `name(100)`, `logo_url`, `address`, `phones` **JSONB** (list), `currency` (`"UZS"`), `timezone` (`"Asia/Tashkent"`), `settings` **JSONB** | — |
 | `Client` | `client.py` | `organization_id`, `full_name(150)`, `client_type` (`ClientType`, default `individual`), `phone`/`phone_alt(13)`, `address`, `inn(20)`, `notes` | — (`orders_count` saqlanmaydi — query'da hisoblanadi) |
-| `Employee` | `employee.py` | `organization_id`, `full_name(100)`, `badge_id(36)` (badge QR, UUID), `phone`, `passport_id`, `position`, `status` (`EmployeeStatus`), `photo_url`, `assigned_post_ids` **JSONB** (int list — join-table o'rniga, maks. 6 post), `hired_date` | PARTIAL UNIQUE `ix_employee_badge_id`. Yo'qolgan badge: qator saqlanadi, `badge_id` almashtiriladi — scan tarixi buzilmaydi |
+| `Employee` | `employee.py` | `organization_id`, `full_name(100)`, `badge_id(36)` (badge QR — registrda `uuid4()`; operator rolidagi foydalanuvchi birinchi skanida `services/scanning.py: operator_employee` `user-{user_id}` badge bilan ko'zgu qatorni avtomatik yaratadi — `docs/09-mes-domain.md` §3), `phone`, `passport_id`, `position`, `status` (`EmployeeStatus`), `photo_url`, `assigned_post_ids` **JSONB** (int list — join-table o'rniga, maks. 6 post), `hired_date` | PARTIAL UNIQUE `ix_employee_badge_id`. Yo'qolgan badge: qator saqlanadi, `badge_id` almashtiriladi — scan tarixi buzilmaydi |
 | `Material` | `material.py` | `organization_id`, `name(150)`, `code`, `type` (`MaterialType`), `thickness`/`width`/`length`, `default_supplier`, `price_per_unit Numeric(14,2)`, `color`, `glossiness` | PARTIAL UNIQUE `ix_material_name_type` (`name`, `type`). `.project` fayllardan avtomatik to'ldiriladi |
 | `Post` | `post.py` | `organization_id`, `code` (`PostCode`), `name(50)`, `order_index`, `unit` (`PostUnit`), `requires_qr_print`, `auto_skip_if_empty` (default `True`), `requires_assignment_choice`, `icon`, `color` | PARTIAL UNIQUE `ix_post_code`. 6 bosqichli ishlab chiqarish zanjiri (TZ 4.4) |
 | `Machine` | `machine.py` | `organization_id`, `post_id` FK (index), `name(100)`, `ip_address(45)`, `mac_address(17)`, `capacity` + `capacity_unit` (`CapacityUnit`), `status` (`MachineStatus`), `icon_url`, `serial_number`, `installed_date` | IP — terminal/TABLO kontekstini aniqlash uchun (TZ 4.3) |
@@ -130,7 +130,7 @@ Xona surati uchun yangi jadval qo'shilmagan: `OrderFile` qatori `kind=FileKind.D
 
 | Model / jadval | Muhim ustunlar | Unikal/muhim indekslar |
 |---|---|---|
-| `WorkSession` | `employee_id` FK (index), `user_id` FK NULL (terminal akkaunt), `machine_id` FK NULL, `post_id` FK, `status` (`SessionStatus`, index), `ended_at` | Operator smenasi, badge skani bilan ochiladi (TZ 8.2); `created_at` = boshlanish vaqti |
+| `WorkSession` | `employee_id` FK (index), `user_id` FK NULL (sessiyani ochgan akkaunt — TERMINAL qurilmasi yoki operator), `machine_id` FK NULL, `post_id` FK, `status` (`SessionStatus`, index), `ended_at` | TERMINAL qurilma akkauntida smena badge skani bilan ochiladi (TZ 8.2); operator rolida (`POST_ROLES`) login-ning o'zi smena — `services/scanning.py: active_session` sessiyani avtomatik ochadi/egallaydi va `user_id` ga operator user'ini yozadi. `SESSION_MAX_HOURS` (12 soat) dan oshgan smena avtomatik ENDED bo'ladi. `created_at` = boshlanish vaqti |
 | `Scan` | `order_id`/`part_id`/`instance_id`/`route_id`/`post_id` FK, `machine_id` FK NULL, `employee_id` FK (index), `session_id` FK (index), `client_event_id(64)`, `is_cancelled`, `cancelled_at` | UNIQUE `ix_scan_client_event_id` (idempotentlik — network replay rad etiladi, TZ 8.4.4); `ix_scan_order_post`; PARTIAL `ix_scan_instance_post` (`WHERE NOT is_cancelled`). Bekor qilingan skan auditda qoladi, hisoblagich qayta oshiriladi |
 
 #### 1.4.2 `bridge_agent` — har printerga o'z tokeni (pairing)

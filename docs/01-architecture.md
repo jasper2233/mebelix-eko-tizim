@@ -28,7 +28,9 @@ MebeliX-Mes-System/
 │                     #   mebelix-agent.exe bo'lib yig'iladi, panel kodi bilan ulanadi (pairing)
 ├── caddy/            # Caddy reverse proxy konfiguratsiyasi (prod)
 ├── scripts/          # setup.sh, prestart.sh, generate-client.sh, deploy.sh (TAG deploy + avto-rollback),
-│                     #   backup.sh (kunlik shifrlangan DB backup → serverdagi backups/, Telegram ixtiyoriy nusxa)
+│                     #   backup.sh (kunlik shifrlangan DB backup → /var/backups/mebelix, ya'ni deploy
+│                     #   daraxtidan tashqarida — CI rsync --delete o'chirib yubormasin;
+│                     #   Telegram ixtiyoriy nusxa)
 ├── docs/             # Ushbu hujjatlar to'plami
 ├── design/           # Logo masterlari (frontend build'iga kirmaydi)
 ├── docker-compose.local.yml
@@ -65,7 +67,7 @@ MebeliX-Mes-System/
 | API client | `@hey-api/openapi-ts` — backend `openapi.json`dan avtomatik generatsiya |
 | HTTP | Axios (401 → silent refresh interceptor) |
 | Formalar / validatsiya | react-hook-form + zod |
-| UI | Tailwind CSS v4 + shadcn/ui (Radix), MebeliX brend palitrasi (navy `#1c2b42` / gold `#f0a52f`) |
+| UI | Tailwind CSS v4 + shadcn/ui (Radix), MebeliX brend palitrasi (navy `#2f496e` / gold `#f0a52f`; matn rangi `#1c2b42`) |
 | Lint / format | Biome |
 
 ### Infra & DevOps
@@ -151,8 +153,11 @@ Asosiy nuqtalar:
   `scripts/deploy.sh` serverda faqat `pull` + switch qiladi, smoke
   (`/api/v1/ready`) yiqilsa `.stable_tag`dagi oxirgi stable TAG'ga avto-rollback.
   Serverda build yo'q — u 1 vCPU / 2 GB, build saytni sekinlashtirardi.
-- Har konteyner startida `scripts/prestart.sh` **alembic migratsiya + birinchi
-  superuser + default org/postlar seed** (`seed_defaults`) ni bajaradi.
+- `api` konteyneri startida `scripts/prestart.sh` **alembic migratsiya + birinchi
+  superuser + default org/postlar seed** (`seed_defaults`) ni bajaradi. `worker`
+  konteyneri prestart'ni chaqirmaydi (to'g'ridan-to'g'ri
+  `arq app.core.worker.WorkerSettings`) — ikki jarayon bir vaqtda
+  `alembic upgrade head` qilib migratsiya poygasiga tushmasin.
 
 ## 4. Request lifecycle
 
@@ -161,7 +166,8 @@ Asosiy nuqtalar:
 ```
 Browser                      FastAPI                        PostgreSQL/Redis
    |                            |                                 |
-   |  POST /api/v1/login        |                                 |
+   |  POST /api/v1/login/       |                                 |
+   |       access-token         |                                 |
    |  (username/telefon+parol)  |                                 |
    |--------------------------->|                                 |
    |                            |-- RateLimit dependency -------->| Redis: brute-force tekshiruv
@@ -177,7 +183,8 @@ Browser                      FastAPI                        PostgreSQL/Redis
 - Tokenlar **hech qachon JS'ga berilmaydi** — faqat httpOnly cookie
   (`secure` flag non-local muhitlarda). `Authorization: Bearer` header ham qabul
   qilinadi va cookie'dan ustuvor.
-- `login`/`refresh` har chaqiruvda **ikkala tokenni rotatsiya** qiladi.
+- `login`/`refresh` har chaqiruvda **ikkala tokenni rotatsiya** qiladi
+  (yo'llar: `POST /api/v1/login/access-token`, `POST /api/v1/login/refresh`).
 - Logout DB'dagi `token_version`ni oshiradi — barcha eski tokenlar birdaniga 401
   oladi (mass-invalidation).
 
@@ -205,8 +212,8 @@ Browser (React)                FastAPI                        PostgreSQL
 - Router ierarxiyasi: `/api` root → `/v1` agregator; auth **router darajasida**
   qo'llanadi (`health`, `login` ochiq; `logout`, `users` va 11 ta MES routeri
   `get_current_user` ortida; `ws` va `bridge-agents` routerlari auth'ni o'zlari
-  hal qiladi — `bridge-agents` da `/pair` ochiq bo'lishi shart, admin
-  endpointlar esa har biri `AdminUser` bilan himoyalangan).
+  hal qiladi — `bridge-agents` da `/pair` va `/download` ochiq bo'lishi shart,
+  qolgan admin endpointlar esa har biri `AdminUser` bilan himoyalangan).
 - Frontend'da route guard'lar `beforeLoad`da `UsersService.readUserMe()` bilan
   ishlaydi: `_layout.tsx` himoyalangan sahifalarni qo'riqlaydi va rolga qarab
   yo'naltiradi — `terminal` va operator rollari (`arrachi`...`stolyar`) →
@@ -291,8 +298,9 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   — eski kompyuter bekor bo'ladi), `DELETE /{id}` soft-delete — barchasi
   `AdminUser`. `POST /pair` OCHIQ: atomik `UPDATE ... RETURNING` bilan bitta kodni
   ikki kompyuter bir vaqtda ishlata olmaydi, xato esa yagona umumiy matn — kod
-  bor-yo'qligi oshkor bo'lmaydi. `GET /download` `uploads/agent/mebelix-agent.exe`
-  ni beradi.
+  bor-yo'qligi oshkor bo'lmaydi. `GET /download` ham OCHIQ (auth yo'q) —
+  `uploads/agent/mebelix-agent.exe` ni beradi: fayl hamma mijoz uchun bir xil,
+  sir saqlamaydi, tsex monoblokida esa sessiya bo'lmasligi mumkin.
 - `/ws/bridge` tokenni `Authorization: Bearer` headerdan oladi (server
   access-loglariga tushmasin; `?token=` eski agentlar uchun fallback). Legacy
   `settings.BRIDGE_TOKEN` `compare_digest` bilan hamon qabul qilinadi; aks holda
@@ -372,8 +380,12 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
   o'zgaruvchan, dev'da reload sikli bo'lardi.
 - `components/Terminal/CutmapView.tsx` — drill-down oqim: material tablari →
   list kartalari (har birida mini xarita preview) → to'liq ekran xarita. Chap
-  toolbar: orqaga, listlar ro'yxati, zoom. Material statistikasi terminal
-  header'iga portal qilinadi — xarita balandligidan joy olmaydi.
+  toolbar: orqaga, oldingi/keyingi list, zoom (katta/kichik/to'liq) va
+  **Chop etish** — belgilangan katakning navbatdagi nusxasi to'g'ridan-to'g'ri
+  GoDEX navbatiga ketadi (`POST /terminal/labels/{instance_id}`). Terminalda
+  detalga tegish faqat belgilaydi; QR kartochkasi (`PartCard`) faqat admin
+  ko'rinishida ochiladi. Material statistikasi terminal header'iga portal
+  qilinadi — xarita balandligidan joy olmaydi.
 - `components/Terminal/SheetSvg.tsx` (yangi) — bitta listning to'liq SVG renderi:
   detallar, kesim chiziqlari, teshiklar (`holeXY`, `edgeLocalXY`, `edgeBoreRect`),
   o'lchamlar zanjiri, zoom/pan/swipe; `thumbnail` rejimida interaktivsiz va

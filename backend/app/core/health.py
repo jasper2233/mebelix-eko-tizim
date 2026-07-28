@@ -19,7 +19,10 @@ async def check_database_health(db: AsyncSession) -> bool:
 
 
 async def check_redis_health() -> bool:
-    """Ping every Redis client this app uses."""
+    """Ping the two lifespan-owned Redis clients (queue + rate limit).
+
+    The WS pub/sub client and the per-connection client in /ws/bridge are not covered.
+    """
     clients = [c for c in (queue.pool, rate_limiter.client) if c is not None]
     try:
         for client in clients:

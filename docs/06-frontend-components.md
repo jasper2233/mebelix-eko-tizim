@@ -2,7 +2,7 @@
 
 Ushbu hujjat `frontend/src/components/` katalogidagi React komponentlarini va anketa sahifasi ichidagi komponentlarni (`routes/_layout/anketa.$orderId.tsx`) qamrab oladi. Stack: React + TypeScript, TanStack Router/Query, react-hook-form + zod, shadcn/ui (Radix UI + Tailwind CSS 4). Barcha komponentlar backend bilan avtomatik generatsiya qilingan `@/client` (UsersService, ClientsService, OrdersService, TerminalService va model turlari) orqali gaplashadi; umumiy query'lar `@/queries/mes` dagi `queryOptions` fabrikalarida (getClients/getMachines/getPosts/getOrderMatrixQueryOptions va h.k.), domen konstantalari `@/lib/mes` da (ROLE_LABELS, PRIORITY_LABELS, PRIORITY_DOT_CLASSES/PRIORITY_TEXT_CLASSES/PRIORITY_BADGE_CLASSES — prioritet ranglari yagona manbadan, POST_COLORS, ORDER_STATUS_LABELS/COLORS, formatSize), buyurtma anketasi variantlari `@/lib/anketa` da; toast xabarlari `useCustomToast` hooki, xatoliklar `handleError` utiliti orqali ko'rsatiladi.
 
-Umumiy naqsh (pattern): **forma → zod schema → react-hook-form → useMutation → @/client servisi → toast + query invalidation**. Barcha UI matnlari o'zbek tilida.
+Umumiy naqsh (pattern): **forma → zod schema → react-hook-form → useMutation → @/client servisi → toast + query invalidation**. Barcha ko'rinadigan UI matnlari o'zbek tilida; shadcn primitivlaridan qolgan ekran o'quvchi uchun yashirin matnlar hozircha inglizcha (`sidebar.tsx` — "Collapse/Open Sidebar", mobil sidebar sr-only sarlavhasi "Sidebar"/"Displays the mobile sidebar."; `dialog.tsx`/`sheet.tsx` — sr-only "Close"; `password-input.tsx` — aria-label "Show/Hide password").
 
 ---
 
@@ -63,7 +63,7 @@ if (data.password) payload.password = data.password
 
 **Maqsadi:** yangi mijoz yaratish dialogi (TZ 4.6) — mustaqil ham, boshqa forma ichidan ham ishlaydi.
 
-- zod: `full_name` (min 2 belgi), `phone`/`phone_alt` (`optionalFormattedPhoneSchema`), `address`, `notes`; telefon inputlari yozish paytida `formatUzPhone` bilan "+998 90 123 45 67" ko'rinishida maskalash qiladi.
+- zod: `full_name` (min 2 belgi), `phone`/`phone_alt` (`optionalFormattedPhoneSchema`), `address`, `notes`; telefon inputlari yozish paytida `formatUzPhone` bilan "+998 90 123-45-67" ko'rinishida maskalanadi (placeholder esa "+998 90 123 45 67"); submitda `optionalFormattedPhoneSchema` probel/chiziqchalarni olib tashlab kanonik `+998901234567` ga o'tkazadi.
 - Props: `trigger?` (default "+ Yangi mijoz" tugmasi o'rniga istalgan React node) va `onCreated?(client)` — `Clients/ClientCombobox` popover footeri shulardan foydalanib mijozni inline yaratadi va combobox'da avtomatik tanlaydi.
 - Mutation: `ClientsService.createClient`; muvaffaqiyatda toast, reset, dialog yopilib `onCreated?.(client)` chaqiriladi; `["clients"]` invalidatsiyasi.
 
@@ -310,7 +310,9 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida, alohida app header/foot
 
 ### `frontend/src/components/UserSettings/DeleteAccount.tsx`
 
-**Maqsadi:** "xavfli zona" — o'z hisobini butunlay o'chirish.
+**Maqsadi:** "xavfli zona" — o'z hisobini o'chirish. Backend soft-delete qiladi (`crud_users.delete` → `is_deleted=True`, `deleted_at=now`), ya'ni `Admin/DeleteUser` bilan bir xil semantika: foydalanuvchi tizimga kira olmaydi, yozuv esa bazada qoladi. Komponent matni ("butunlay o'chiriladi") haqiqiy xatti-harakatdan kuchliroq.
+
+Superuser bu bo'limni ko'rmaydi: `routes/_layout/settings.tsx` da `is_superuser` bo'lsa tablar `slice(0, 2)` bilan kesiladi; backend ham `delete_user_me` da adminga `ForbiddenException` qaytaradi.
 
 - Qizil hoshiyali karta (`border-destructive/50`), "Hisobni o'chirish" destructive tugmasi → `ConfirmDialog` (destructive, "O'chirish").
 - Mutation: `UsersService.deleteUserMe()`; muvaffaqiyatda toast va `useAuth().logout()` (sessiya tugatiladi); `["currentUser"]` invalidatsiyasi.
@@ -333,7 +335,7 @@ shadcn/ui asosidagi 24 ta primitiv. Ko'pchiligi standart generatsiya; quyidagi j
 | `form.tsx` | Form, FormField, FormItem/Label/Control/Message, useFormField | react-hook-form + Radix Label | Yo'q |
 | `input.tsx` | Input | native `<input>` | Yo'q |
 | `label.tsx` | Label | Radix Label | Yo'q |
-| `loading-button.tsx` | LoadingButton, ButtonProps | cva (button nusxasi) | **To'liq custom** (pastda) |
+| `loading-button.tsx` | LoadingButton (`ButtonProps` — fayl ichida, eksport emas) | cva (button nusxasi) | **To'liq custom** (pastda) |
 | `password-input.tsx` | PasswordInput | native `<input>` + Button | **To'liq custom** (pastda) |
 | `popover.tsx` | Popover, PopoverTrigger, PopoverContent | Radix Popover | Deyarli standart (`rounded-xl`, `p-3`, `align="start"`) |
 | `select.tsx` | Select, SelectTrigger/Content/Item/..., 10 ta eksport | Radix Select | Yo'q |
@@ -342,7 +344,7 @@ shadcn/ui asosidagi 24 ta primitiv. Ko'pchiligi standart generatsiya; quyidagi j
 | `sidebar.tsx` | 24 ta eksport: SidebarProvider, Sidebar, SidebarTrigger, SidebarMenu*, useSidebar, ... | shadcn sidebar block | **Ha, o'zgartirilgan** (pastda) |
 | `skeleton.tsx` | Skeleton | div + animate-pulse | Yo'q |
 | `sonner.tsx` | Toaster | sonner kutubxonasi | **Kichik custom**: `theme="light"` qattiq belgilangan (next-themes yo'q), lucide ikonkalar to'plami (success/info/warning/error/loading), CSS o'zgaruvchilar mapping'i |
-| `switch.tsx` | Switch | Radix Switch | Yo'q (terminal ekranida ishlatiladi) |
+| `switch.tsx` | Switch | Radix Switch | Yo'q (terminaldagi "Faqat xatolar" filtri va `employees.tsx` hodim dialogidagi AKTIV/NOFAOL almashtirgichi) |
 | `table.tsx` | Table, TableHeader/Body/Footer/Row/Head/Cell/Caption | native table | **Stil custom**: konteyner `rounded-lg border`, TableHeader `bg-muted/50`, TableHead `h-11 text-xs font-semibold uppercase tracking-wider`, TableCell `px-4 py-3 whitespace-nowrap` |
 | `tabs.tsx` | Tabs, TabsList, TabsTrigger, TabsContent | Radix Tabs | Yo'q |
 | `textarea.tsx` | Textarea | native `<textarea>` | Yo'q (standart shadcn; anketa "Qo'shimcha izoh" maydoni uchun qo'shilgan) |
@@ -361,7 +363,7 @@ Eng katta ui fayl (~740 qator, 24 eksport). shadcn'ning rasmiy sidebar blokiga a
 
 ### `frontend/src/components/ui/loading-button.tsx` (custom)
 
-shadcn'da yo'q, loyihaga qo'shilgan komponent. `button.tsx` dagi `buttonVariants` nusxasini o'zida saqlaydi (dublikat — sinxron ushlab turish kerak) va ustiga `loading` prop qo'shadi:
+shadcn'da yo'q, loyihaga qo'shilgan komponent. `button.tsx` dagi `buttonVariants` nusxasini o'zida saqlaydi va ustiga `loading` prop qo'shadi. **Nusxa allaqachon ajralib ketgan:** `loading-button.tsx` da `icon-sm`/`icon-lg` o'lchamlari yo'q (`<LoadingButton size="icon-sm">` TypeScript xatosi beradi), `default`/`destructive`/`secondary` variantlarida esa `button.tsx` da bo'lmagan `shadow-xs` bor — ikkalasini bir manbaga birlashtirish yoki qo'lda sinxronlash kerak.
 
 ```tsx
 function LoadingButton({ loading = false, disabled, asChild = false, ... }: ButtonProps)
@@ -409,7 +411,9 @@ routes (settings)                               routes (__root / layout)
 
 Tashqi bog'liqliklar: @/client (UsersService, ClientsService, OrdersService, TerminalService va
 User*/Client*/Order*/Post* model turlari), @/queries/mes (getClients/getMachines/getPosts/
-getOrderMatrixQueryOptions/getOrderQueryOptions va h.k.), @/lib/mes (ROLE_LABELS, PRIORITY_LABELS,
+getOrderMatrixQueryOptions/getOrderQueryOptions va h.k.),
+@/queries/users (getUsersQueryOptions — barcha sahifalarni bitta ro'yxatga yig'adi, `admin.tsx`;
+getCurrentUserQueryOptions — `useCurrentUser` va `tablo.tsx` shundan foydalanadi), @/lib/mes (ROLE_LABELS, PRIORITY_LABELS,
 PRIORITY_DOT_CLASSES/PRIORITY_TEXT_CLASSES/PRIORITY_BADGE_CLASSES, POST_COLORS,
 ORDER_STATUS_LABELS/COLORS, formatSize),
 @/hooks (useAuth, useCurrentUser, useCustomToast, useMobile),

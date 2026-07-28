@@ -1,6 +1,6 @@
 # MebeliX MES — Hujjatlar
 
-Loyihaning to'liq texnik hujjatlari. Har bir fayl o'z subsystemidagi **har bir manba faylni** boshidan oxirigacha o'rganib yozilgan va manba kod bilan solishtirilib tekshirilgan (oxirgi sinxronizatsiya: 2026-07-27).
+Loyihaning to'liq texnik hujjatlari. Har bir fayl o'z subsystemidagi **har bir manba faylni** boshidan oxirigacha o'rganib yozilgan va manba kod bilan solishtirilib tekshirilgan (oxirgi sinxronizatsiya: 2026-07-28).
 
 | Hujjat | Mazmun |
 | --- | --- |

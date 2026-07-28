@@ -127,7 +127,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 **Maqsadi:** health-check endpointlari uchun tekshiruv funksiyalari.
 
 - `check_database_health(db: AsyncSession) -> bool` — `SELECT 1` bajaradi; xato bo'lsa log yozib `False` qaytaradi.
-- `check_redis_health() -> bool` — ilova ishlatayotgan **har bir** Redis klientni (`queue.pool` va `rate_limiter.client`) `ping()` qiladi. Ikkalasi ham lifespan'da ochiladi; ro'yxat bo'sh bo'lsa (masalan lifespan'gacha) tekshiruv "vacuously" muvaffaqiyatli hisoblanadi (`True`).
+- `check_redis_health() -> bool` — lifespan ochadigan **ikkita** Redis klientni (`queue.pool` va `rate_limiter.client`) `ping()` qiladi; ro'yxat bo'sh bo'lsa (masalan lifespan'gacha) tekshiruv "vacuously" muvaffaqiyatli hisoblanadi (`True`). WS pub/sub klienti (lifespan'da alohida ochiladigan `ws_redis`) va `/ws/bridge` ichidagi per-ulanish klienti bu tekshiruvga kirmaydi — ya'ni `/ready` real-time kanal holatini qamramaydi.
 
 **Bog'lanishlar:** `utils/queue.py`, `utils/rate_limit.py`; shu funksiyalarni faqat `/api/v1/ready` endpointi chaqiradi (`routes/health.py`) — `/api/v1/health` esa sof liveness probe: hech qanday bog'liqlikni tekshirmaydi, doim 200 va statik payload qaytaradi (prod'dagi konteyner healthcheck'i aynan shu pathga uradi). Ikkala path `setup.py`dagi `NON_BUSINESS_PATHS`da ham ro'yxatga olingan.
 

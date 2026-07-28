@@ -23,7 +23,7 @@ _QR_RE = re.compile(r"^.+_.+_\d+$")  # {productCode}_{partCode}_{n} (TZ 5.8)
 
 
 class ScanRejected(Exception):
-    """TZ 8.5 error dialog: code (E001..E007) + Uzbek message."""
+    """TZ 8.5 error dialog: code (E001..E006) + Uzbek message."""
 
     def __init__(self, code: str, message: str):
         self.code = code
