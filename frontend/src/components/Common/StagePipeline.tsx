@@ -3,7 +3,7 @@
 
 import { POST_COLORS } from "@/lib/mes"
 
-export type StageCell = {
+type StageCell = {
   code: string
   done: number
   total: number

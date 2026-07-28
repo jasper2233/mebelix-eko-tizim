@@ -1,34 +1,19 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
 *.so
-.Python
+# build/ va dist/ — bridge-agent PyInstaller chiqishi
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
 **/lib/
 **/lib64/
 !frontend/src/lib/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
 
 # Environment & Virtual Envs
 .env
 .env.local
 .venv
 venv/
-ENV/
 env/
 backend/.venv
 
@@ -36,12 +21,9 @@ backend/.venv
 .coverage
 .coverage.*
 htmlcov/
-.tox/
-.nox/
 .cache
 .mypy_cache/
 .ruff_cache/
-.hypothesis/
 
 # IDEs & Editors
 .vscode/*

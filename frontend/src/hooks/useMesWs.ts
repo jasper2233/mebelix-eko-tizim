@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 
 import { OpenAPI } from "@/client"
 
-export type MesEvent = { type: string; payload: Record<string, unknown> }
+type MesEvent = { type: string; payload: Record<string, unknown> }
 
 export function useMesWs(onEvent: (event: MesEvent) => void) {
   const [online, setOnline] = useState(false)

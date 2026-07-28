@@ -2,8 +2,8 @@ import { z } from "zod"
 
 // Mirror the limits enforced by the backend (see `backend/app/schemas/users.py`).
 // Keep these in sync when tightening or relaxing rules on either side.
-export const PASSWORD_MIN_LENGTH = 8
-export const NAME_MAX_LENGTH = 30
+const PASSWORD_MIN_LENGTH = 8
+const NAME_MAX_LENGTH = 30
 
 // E.164 Uzbek mobile: `+998` + 9 digits, no spaces. Matches `PHONE_PATTERN` on the server.
 export const PHONE_PATTERN = /^\+998\d{9}$/
