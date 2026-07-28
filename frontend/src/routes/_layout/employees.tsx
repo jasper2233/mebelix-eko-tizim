@@ -1,5 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { IdCard, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
@@ -44,6 +49,7 @@ import {
 } from "@/components/ui/table"
 import useCurrentUser from "@/hooks/useCurrentUser"
 import useCustomToast from "@/hooks/useCustomToast"
+import { useDebounced } from "@/hooks/useDebounced"
 import { EMPLOYEE_STATUS_LABELS, POST_COLORS } from "@/lib/mes"
 import { PHONE_PATTERN } from "@/lib/validation"
 import { getEmployeesQueryOptions, getPostsQueryOptions } from "@/queries/mes"
@@ -161,7 +167,11 @@ function EmployeesPage() {
   const [badgeFor, setBadgeFor] = useState<EmployeeRead | null>(null)
   const [editFor, setEditFor] = useState<EmployeeRead | null>(null)
   const [deleteFor, setDeleteFor] = useState<EmployeeRead | null>(null)
-  const { data, isLoading } = useQuery(getEmployeesQueryOptions(search))
+  const debounced = useDebounced(search.trim())
+  const { data, isLoading } = useQuery({
+    ...getEmployeesQueryOptions(debounced),
+    placeholderData: keepPreviousData,
+  })
   const { data: posts } = useQuery(getPostsQueryOptions())
   const { currentUser } = useCurrentUser()
   const isAdmin = currentUser?.is_superuser || currentUser?.role === "admin"

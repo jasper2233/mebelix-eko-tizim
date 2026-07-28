@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { Search } from "lucide-react"
 import { useState } from "react"
@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { useDebounced } from "@/hooks/useDebounced"
 import { formatDate } from "@/lib/mes"
 import { getClientsQueryOptions } from "@/queries/mes"
 
@@ -25,7 +26,11 @@ export const Route = createFileRoute("/_layout/clients")({
 
 function ClientsPage() {
   const [search, setSearch] = useState("")
-  const { data, isLoading } = useQuery(getClientsQueryOptions(search))
+  const debounced = useDebounced(search.trim())
+  const { data, isLoading } = useQuery({
+    ...getClientsQueryOptions(debounced),
+    placeholderData: keepPreviousData,
+  })
 
   return (
     <div>

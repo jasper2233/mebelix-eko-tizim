@@ -2,6 +2,15 @@
 @import "tw-animate-css";
 @import "@fontsource-variable/archivo";
 
+/* Dark rejim rejada yo'q: `Toaster` `theme="light"` da qattiq belgilangan va
+   83 tokendan birortasi ham dark uchun qayta belgilanmagan. Tailwind v4 da
+   `dark:` sukut bo'yicha `prefers-color-scheme` ga bog'lanadi — ya'ni OS'i dark
+   bo'lgan foydalanuvchida shadcn'dan qolgan 32 ta `dark:` klass yonib, fon va
+   matn oq/navy qolgani holda tugma va inputlar rangini o'zgartirardi.
+   Variantni `.dark` klassiga bog'laymiz: klass hech qachon qo'yilmagani uchun
+   ular o'lik qoladi, kelajakda dark kerak bo'lsa tokenlar + toggle qo'shiladi. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 
 @theme inline {
   --font-sans: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;

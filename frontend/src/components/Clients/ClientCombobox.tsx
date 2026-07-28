@@ -10,6 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { useDebounced } from "@/hooks/useDebounced"
 import { cn } from "@/lib/utils"
 import { getClientsQueryOptions } from "@/queries/mes"
 
@@ -35,13 +36,8 @@ export function ClientCombobox({
   const inputRef = useRef<HTMLInputElement>(null)
   const [label, setLabel] = useState(initialLabel ?? "")
   const [search, setSearch] = useState("")
-  const [debounced, setDebounced] = useState("")
   const [active, setActive] = useState(0)
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(search.trim()), 300)
-    return () => clearTimeout(t)
-  }, [search])
+  const debounced = useDebounced(search.trim())
 
   const { data, isFetching } = useQuery({
     ...getClientsQueryOptions(debounced),

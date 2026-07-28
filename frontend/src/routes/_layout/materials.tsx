@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { Search } from "lucide-react"
 import { useState } from "react"
@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useDebounced } from "@/hooks/useDebounced"
 import { MATERIAL_TYPE_LABELS } from "@/lib/mes"
 import { getMaterialsQueryOptions } from "@/queries/mes"
 
@@ -27,12 +28,14 @@ export const Route = createFileRoute("/_layout/materials")({
 function MaterialsPage() {
   const [search, setSearch] = useState("")
   const [type, setType] = useState("")
-  const { data, isLoading } = useQuery(
-    getMaterialsQueryOptions(
-      search,
+  const debounced = useDebounced(search.trim())
+  const { data, isLoading } = useQuery({
+    ...getMaterialsQueryOptions(
+      debounced,
       (type || undefined) as "sheet" | "band" | "hardware" | undefined,
     ),
-  )
+    placeholderData: keepPreviousData,
+  })
 
   return (
     <div>

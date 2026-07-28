@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { ArrowDown, ArrowUp, Search } from "lucide-react"
 import { useMemo, useState } from "react"
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import useCurrentUser from "@/hooks/useCurrentUser"
+import { useDebounced } from "@/hooks/useDebounced"
 import {
   formatDate,
   formatMoney,
@@ -50,13 +51,58 @@ const TABS = [
   { value: "cancelled", label: "Bekor qilingan" },
 ]
 
+/**
+ * Saralanadigan ustun sarlavhasi. Modul darajasida — avval `OrdersPage` ichida
+ * e'lon qilingani uchun har renderda YANGI komponent tipi tug'ilib, beshta
+ * sarlavha unmount/remount bo'lardi (fokus va tooltip ham yo'qolardi).
+ */
+function SortHead({
+  label,
+  k,
+  sort,
+  onToggle,
+  className,
+}: {
+  label: string
+  k: SortKey
+  sort: { key: SortKey; desc: boolean } | null
+  onToggle: (k: SortKey) => void
+  className?: string
+}) {
+  const activeSort = sort?.key === k ? sort : null
+  return (
+    <TableHead
+      className={className}
+      aria-sort={
+        activeSort ? (activeSort.desc ? "descending" : "ascending") : "none"
+      }
+    >
+      <button
+        type="button"
+        onClick={() => onToggle(k)}
+        className="inline-flex items-center gap-1 hover:text-foreground"
+      >
+        {label}
+        {activeSort &&
+          (activeSort.desc ? (
+            <ArrowDown className="size-3.5" />
+          ) : (
+            <ArrowUp className="size-3.5" />
+          ))}
+      </button>
+    </TableHead>
+  )
+}
+
 function OrdersPage() {
   const navigate = useNavigate()
   const [status, setStatus] = useState("")
   const [search, setSearch] = useState("")
-  const { data, isLoading } = useQuery(
-    getOrdersQueryOptions({ status, search }),
-  )
+  const debounced = useDebounced(search.trim())
+  const { data, isLoading } = useQuery({
+    ...getOrdersQueryOptions({ status, search: debounced }),
+    placeholderData: keepPreviousData,
+  })
   const { data: counts } = useQuery({
     queryKey: ["orders", "status-counts"],
     queryFn: () => OrdersService.readOrderStatusCounts(),
@@ -104,31 +150,6 @@ function OrdersPage() {
     )
   }, [data, sort])
 
-  const SortHead = ({
-    label,
-    k,
-    className,
-  }: {
-    label: string
-    k: SortKey
-    className?: string
-  }) => (
-    <TableHead className={className}>
-      <button
-        type="button"
-        onClick={() => toggleSort(k)}
-        className="inline-flex items-center gap-1 hover:text-foreground"
-      >
-        {label}
-        {sort?.key === k &&
-          (sort.desc ? (
-            <ArrowDown className="size-3.5" />
-          ) : (
-            <ArrowUp className="size-3.5" />
-          ))}
-      </button>
-    </TableHead>
-  )
   const { currentUser } = useCurrentUser()
   const canCreate =
     currentUser?.is_superuser ||
@@ -183,15 +204,34 @@ function OrdersPage() {
               <TableRow>
                 <TableHead>Buyurtma</TableHead>
                 <TableHead>Kontragent</TableHead>
-                <SortHead label="Ochilgan" k="created_at" />
-                <SortHead label="Topshirish sanasi" k="deadline" />
-                <SortHead label="Prioritet" k="priority" />
                 <SortHead
+                  sort={sort}
+                  onToggle={toggleSort}
+                  label="Ochilgan"
+                  k="created_at"
+                />
+                <SortHead
+                  sort={sort}
+                  onToggle={toggleSort}
+                  label="Topshirish sanasi"
+                  k="deadline"
+                />
+                <SortHead
+                  sort={sort}
+                  onToggle={toggleSort}
+                  label="Prioritet"
+                  k="priority"
+                />
+                <SortHead
+                  sort={sort}
+                  onToggle={toggleSort}
                   label="Umumiy narx"
                   k="amount"
                   className="text-right"
                 />
                 <SortHead
+                  sort={sort}
+                  onToggle={toggleSort}
                   label="Qoldiq to'lov"
                   k="left"
                   className="text-right"
