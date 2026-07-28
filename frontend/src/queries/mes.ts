@@ -120,3 +120,12 @@ export const getTabloMatrixQueryOptions = () =>
     queryFn: () => TabloService.readTabloMatrix(),
     refetchInterval: 60_000,
   })
+
+/** Status bo'yicha buyurtma sonlari. Reyestr tablari ham, sidebar badge'i ham
+ *  shu bitta so'rovdan oziqlanadi — bir xil kalit, ya'ni TanStack dedupe qiladi. */
+export const getOrderStatusCountsQueryOptions = () =>
+  queryOptions({
+    queryKey: ["orders", "status-counts"],
+    queryFn: () => OrdersService.readOrderStatusCounts(),
+    refetchInterval: 30_000,
+  })

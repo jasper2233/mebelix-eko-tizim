@@ -1,14 +1,15 @@
+import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import {
   BarChart3,
   ClipboardList,
   Factory,
-  HardHat,
+  History,
   Home,
+  IdCard,
   Layers,
-  ListChecks,
-  MonitorPlay,
   Printer,
+  Tv,
   UserRound,
   Users,
 } from "lucide-react"
@@ -21,7 +22,9 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import useCurrentUser from "@/hooks/useCurrentUser"
+import { getOrderStatusCountsQueryOptions } from "@/queries/mes"
 import { type Item, Main } from "./Main"
+import { ShopStatus } from "./ShopStatus"
 import { User } from "./User"
 
 // Rolga qarab navigatsiya (TZ 3.7 rollar-modullar matritsasi)
@@ -41,7 +44,7 @@ function navItems(role: string | undefined, isSuperuser: boolean): Item[] {
     items.push({ icon: UserRound, title: "Mijozlar", path: "/clients" })
   }
   if (admin || role === "manager" || role === "director") {
-    items.push({ icon: HardHat, title: "Hodimlar", path: "/employees" })
+    items.push({ icon: IdCard, title: "Hodimlar", path: "/employees" })
   }
   if (
     admin ||
@@ -55,10 +58,10 @@ function navItems(role: string | undefined, isSuperuser: boolean): Item[] {
   if (admin || role === "manager" || role === "director") {
     items.push({ icon: BarChart3, title: "Hisobotlar", path: "/reports" })
   }
-  items.push({ icon: MonitorPlay, title: "LIVE Tablo", path: "/tablo" })
+  items.push({ icon: Tv, title: "LIVE Tablo", path: "/tablo" })
   if (admin || role === "director") {
     items.push({
-      icon: ListChecks,
+      icon: History,
       title: "Tranzaksiyalar",
       path: "/transactions",
     })
@@ -70,24 +73,42 @@ function navItems(role: string | undefined, isSuperuser: boolean): Item[] {
   return items
 }
 
+// Terminal holatlar: yakunlangan ish sanoqqa kirmaydi
+const TERMINAL_STATUSES = ["delivered", "cancelled"]
+
 export function AppSidebar() {
   const { currentUser } = useCurrentUser()
   const items = navItems(currentUser?.role, Boolean(currentUser?.is_superuser))
+
+  // Reyestr sahifasi ham AYNAN shu kalitni ishlatadi — TanStack dedupe qiladi,
+  // ya'ni sidebar qo'shimcha so'rov qo'shmaydi.
+  const canSeeOrders = items.some((i) => i.path === "/orders")
+  const { data: counts } = useQuery({
+    ...getOrderStatusCountsQueryOptions(),
+    enabled: canSeeOrders,
+  })
+  const activeOrders = Object.entries(counts ?? {})
+    .filter(([status]) => !TERMINAL_STATUSES.includes(status))
+    .reduce((sum, [, n]) => sum + n, 0)
+
+  const withBadges = items.map((i) =>
+    i.path === "/orders" ? { ...i, badge: activeOrders } : i,
+  )
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-4 group-data-[collapsible=icon]:px-2">
         <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-3">
-          <Link
-            to="/"
-            className="flex min-w-0 items-center gap-2.5 group-data-[collapsible=icon]:hidden"
-          >
+          {/* Yig'ilgan rejimda faqat YOZUV yashirinadi, belgi qoladi. Avval
+              `hidden` butun havolaga qo'yilgani uchun icon rejimida logo ham,
+              bosh sahifaga havola ham yo'qolib, panel nomsiz qolardi. */}
+          <Link to="/" className="flex min-w-0 items-center gap-2.5">
             <img
               src="/assets/logo/icon-gold.png"
-              alt="MebeliX"
+              alt="MebeliX — bosh sahifa"
               className="h-8 w-auto shrink-0"
             />
-            <span className="text-lg font-bold tracking-tight text-white">
+            <span className="text-lg font-bold tracking-tight text-white group-data-[collapsible=icon]:hidden">
               MebeliX
             </span>
           </Link>
@@ -95,7 +116,8 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <Main items={items} />
+        <Main items={withBadges} />
+        <ShopStatus />
       </SidebarContent>
       <SidebarFooter>
         <User user={currentUser} />

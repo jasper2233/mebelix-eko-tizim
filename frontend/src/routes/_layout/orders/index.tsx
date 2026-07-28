@@ -3,7 +3,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { ArrowDown, ArrowUp, Search } from "lucide-react"
 import { useMemo, useState } from "react"
 
-import { OrdersService } from "@/client"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { StatusBadge } from "@/components/Common/StatusBadge"
 import { AddOrder } from "@/components/Orders/AddOrder"
@@ -26,7 +25,10 @@ import {
   PRIORITY_LABELS,
   PRIORITY_TEXT_CLASSES,
 } from "@/lib/mes"
-import { getOrdersQueryOptions } from "@/queries/mes"
+import {
+  getOrderStatusCountsQueryOptions,
+  getOrdersQueryOptions,
+} from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/orders/")({
   component: OrdersPage,
@@ -103,11 +105,7 @@ function OrdersPage() {
     ...getOrdersQueryOptions({ status, search: debounced }),
     placeholderData: keepPreviousData,
   })
-  const { data: counts } = useQuery({
-    queryKey: ["orders", "status-counts"],
-    queryFn: () => OrdersService.readOrderStatusCounts(),
-    refetchInterval: 30_000,
-  })
+  const { data: counts } = useQuery(getOrderStatusCountsQueryOptions())
   const tabCount = (value: string) =>
     value === ""
       ? Object.values(counts ?? {}).reduce((a, b) => a + b, 0)
