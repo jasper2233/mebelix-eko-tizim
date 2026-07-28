@@ -253,7 +253,9 @@ function MatrixCell({
       <span
         className="num inline-flex min-w-11 justify-center rounded-sm px-1.5 py-0.5 text-xs font-bold"
         style={{
-          color,
+          // Matn to'qroq variantda: sof post rangi o'z tinti ustida 3.65-5.11:1
+          // berardi va aksariyat kombinatsiya AA dan o'tmasdi.
+          color: `color-mix(in srgb, ${color} 78%, black)`,
           backgroundColor: `color-mix(in srgb, ${color} ${complete ? 22 : 10}%, white)`,
         }}
       >

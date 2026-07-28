@@ -145,6 +145,9 @@ function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
     <p
       data-slot="form-message"
       id={formMessageId}
+      // Validatsiya xatosi ekran o'quvchiga e'lon qilinsin: maydon fokusda
+      // bo'lmasa aria-describedby o'qilmaydi va xato jimgina qolardi.
+      role={error ? "alert" : undefined}
       className={cn("text-destructive text-sm", className)}
       {...props}
     >

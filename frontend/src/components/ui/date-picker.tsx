@@ -50,31 +50,36 @@ export function DatePicker({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          aria-label={ariaLabel}
-          className={cn(
-            "justify-start gap-2 font-normal",
-            !value && "text-muted-foreground",
-            className,
-          )}
-        >
-          <CalendarDays className="size-4 shrink-0 opacity-70" />
-          <span className="num">{value ? display(value) : placeholder}</span>
-          {value && (
-            <X
-              className="ml-auto size-3.5 opacity-50 hover:opacity-100"
-              onClick={(e) => {
-                e.stopPropagation()
-                onChange("")
-              }}
-              aria-label="Tozalash"
-            />
-          )}
-        </Button>
-      </PopoverTrigger>
+      {/* Tozalash tugmasi trigger'dan TASHQARIDA: avval u `<Button>` ichidagi
+          onClick'li `<svg>` edi — tugma ichida tugma (yaroqsiz HTML), tab bilan
+          yetib bo'lmasdi va nishoni 14px edi. */}
+      <div className={cn("relative flex items-center", className)}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            aria-label={ariaLabel}
+            className={cn(
+              "w-full justify-start gap-2 font-normal",
+              !value && "text-muted-foreground",
+              value && "pr-10",
+            )}
+          >
+            <CalendarDays className="size-4 shrink-0 opacity-70" />
+            <span className="num">{value ? display(value) : placeholder}</span>
+          </Button>
+        </PopoverTrigger>
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            aria-label="Sanani tozalash"
+            className="absolute right-1 inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+          >
+            <X className="size-4" />
+          </button>
+        )}
+      </div>
       <PopoverContent className="w-auto">
         <DayPicker
           mode="single"

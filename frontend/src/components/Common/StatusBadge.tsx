@@ -6,7 +6,10 @@ export function StatusBadge({ status }: { status: string }) {
     <span
       className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide"
       style={{
-        color,
+        // Matn to'qroq variantda: sof status rangi o'z 12% tinti ustida
+        // 4.09-4.27:1 berardi (draft, review, completed AA dan o'tmasdi).
+        // Nuqta esa sof rangda qoladi — u status identifikatori.
+        color: `color-mix(in srgb, ${color} 78%, black)`,
         backgroundColor: `color-mix(in srgb, ${color} 12%, white)`,
       }}
     >

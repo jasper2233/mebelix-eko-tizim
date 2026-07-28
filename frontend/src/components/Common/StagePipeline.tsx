@@ -36,10 +36,10 @@ export function StagePipeline({ stages }: { stages: StageCell[] }) {
                   backgroundColor: `color-mix(in srgb, ${color} 38%, white)`,
                 }}
               />
-              <span
-                className="num relative flex h-full items-center justify-center text-[9px] font-bold"
-                style={{ color }}
-              >
+              {/* Raqam post rangida emas, --foreground da: post rangi o'z tinti
+                  ustida atigi 2.89-3.12:1 berardi. Bosqich identifikatsiyasini
+                  katak foni va to'ldirgich rangi allaqachon tashiydi. */}
+              <span className="num relative flex h-full items-center justify-center text-[10px] font-bold text-foreground">
                 {complete ? "✓" : `${s.done}/${s.total}`}
               </span>
             </div>

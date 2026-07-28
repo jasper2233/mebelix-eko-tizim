@@ -629,14 +629,17 @@ function TerminalPage() {
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Tarix
                   </span>
-                  <span className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground">
+                  {/* Sensorli ekran: butun yorliq bosiladigan maydon va
+                      balandligi 44px — Switch'ning o'zi 18x32px edi, qo'lqopli
+                      barmoq bilan tegib bo'lmasdi. */}
+                  <label className="-my-2 flex h-11 cursor-pointer items-center gap-2 px-1 text-xs font-semibold text-muted-foreground">
                     Faqat xatolar
                     <Switch
                       checked={errorsOnly}
                       onCheckedChange={setErrorsOnly}
                       aria-label="Faqat xatolar"
                     />
-                  </span>
+                  </label>
                 </div>
                 <ul className="min-h-0 flex-1 overflow-y-auto text-sm">
                   {visibleHistory.map((h) => (

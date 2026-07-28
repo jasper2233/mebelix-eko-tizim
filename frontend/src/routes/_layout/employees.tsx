@@ -129,7 +129,7 @@ function EmployeeFields({
         render={({ field }) => (
           <FormItem>
             <FormLabel>Qaysi postlarda ishlaydi</FormLabel>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {(posts ?? []).map((p) => (
                 <div
                   key={p.id}
@@ -497,7 +497,7 @@ function BadgeDialog({
   if (!employee) return null
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-xs text-center">
+      <DialogContent className="print-only max-w-xs text-center">
         <DialogHeader>
           <DialogTitle>{employee.full_name}</DialogTitle>
           <DialogDescription>
@@ -510,7 +510,7 @@ function BadgeDialog({
         <div className="num text-xs text-muted-foreground">
           {employee.badge_id}
         </div>
-        <DialogFooter className="flex-col gap-2 sm:flex-col">
+        <DialogFooter className="print-hide flex-col gap-2 sm:flex-col">
           <Button variant="outline" onClick={() => window.print()}>
             Chop etish
           </Button>

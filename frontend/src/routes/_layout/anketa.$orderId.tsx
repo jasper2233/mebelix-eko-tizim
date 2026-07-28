@@ -500,6 +500,7 @@ function AnketaPage() {
                           value={w.length}
                           disabled={!canEdit}
                           onChange={(v) => setWall("length", v)}
+                          aria-label={`${letter} devor — uzunligi (mm)`}
                         />
                         <span className="shrink-0 text-muted-foreground text-xs">
                           bal
@@ -508,6 +509,7 @@ function AnketaPage() {
                           value={w.height}
                           disabled={!canEdit}
                           onChange={(v) => setWall("height", v)}
+                          aria-label={`${letter} devor — balandligi (mm)`}
                         />
                       </div>
                     )
@@ -573,6 +575,7 @@ function AnketaPage() {
                                 disabled={!canEdit}
                                 integer={true}
                                 onChange={(v) => setMod({ width: v })}
+                                aria-label={`${mi + 1}-modul — eni (mm)`}
                               />
                             </td>
                             <td className="py-1 pr-1">
@@ -581,6 +584,7 @@ function AnketaPage() {
                                 disabled={!canEdit}
                                 integer={true}
                                 onChange={(v) => setMod({ depth: v })}
+                                aria-label={`${mi + 1}-modul — chuqurligi (mm)`}
                               />
                             </td>
                             <td className="py-1 pr-1">
@@ -589,6 +593,7 @@ function AnketaPage() {
                                 disabled={!canEdit}
                                 integer={true}
                                 onChange={(v) => setMod({ height: v })}
+                                aria-label={`${mi + 1}-modul — balandligi (mm)`}
                               />
                             </td>
                             <td className="py-1 pr-1">
@@ -597,6 +602,7 @@ function AnketaPage() {
                                 disabled={!canEdit}
                                 integer={true}
                                 onChange={(v) => setMod({ count: v })}
+                                aria-label={`${mi + 1}-modul — soni`}
                               />
                             </td>
                             <td className="py-1 pr-1">
@@ -1140,17 +1146,22 @@ function NumInput({
   onChange,
   placeholder,
   integer = false,
+  "aria-label": ariaLabel,
 }: {
   value: number | null | undefined
   disabled?: boolean
   onChange: (v: number | null) => void
   placeholder?: string
   integer?: boolean
+  /** O'lchov varag'idagi maydonlarda ko'rinadigan `<label>` yo'q (jadval
+   *  kataklari), shuning uchun nom shu yerdan beriladi. */
+  "aria-label"?: string
 }) {
   const [raw, setRaw] = useState<string | null>(null)
   return (
     <Input
       inputMode={integer ? "numeric" : "decimal"}
+      aria-label={ariaLabel}
       // raqamlar bir xil kenglikda va o'ngga tekis — ustunni ko'z bilan qo'shish mumkin
       className="num text-right"
       placeholder={placeholder}

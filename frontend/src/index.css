@@ -57,7 +57,9 @@
   --radius: 0.625rem;
   /* Brand aksentlari: login/cutmap oltin chiziqlar, to'q navy fon */
   --brand-gold: #eaa83c;
-  --brand-gold-deep: #b8862f; /* oq fonda o'qiladigan to'q oltin */
+  /* Oq fonda matn uchun to'q oltin. #b8862f edi — 11px yozuvda atigi 3.24:1,
+     ya'ni WCAG AA (4.5:1) dan o'tmasdi; #8a6420 bilan 5.35:1. */
+  --brand-gold-deep: #8a6420;
   --brand-navy-deep: #16233a;
   --background: #ffffff;
   /* Kiosk ekranlarining "qog'oz" foni: kartalar oq, fon salqin kulrang bo'lib
@@ -122,7 +124,7 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-[#f4f6f9] text-foreground;
+    @apply bg-surface text-foreground;
   }
   button,
   [role="button"] {
@@ -148,6 +150,23 @@
   }
   body {
     background: white;
+  }
+
+  /* Beyjik chop etish: dialogda "Chop etish" bosilganda ortidagi hodimlar
+     jadvali ham chiqib ketardi. `.print-only` bo'lsa — faqat o'sha dialog. */
+  body:has(.print-only) > *:not(:has(.print-only)) {
+    display: none !important;
+  }
+  [data-slot="dialog-overlay"],
+  .print-only [data-slot="dialog-close"] {
+    display: none !important;
+  }
+  .print-only {
+    position: static !important;
+    max-width: none !important;
+    transform: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
   }
 }
 
@@ -179,5 +198,16 @@
   .mx-fade {
     opacity: 1;
     animation: none;
+  }
+  /* Login animatsiyasidan tashqari qolgan hammasi ham hurmat qilinsin:
+     Radix dialog/sheet/select ochilish-yopilishi, tw-animate-css va
+     progress bar o'tishlari. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
