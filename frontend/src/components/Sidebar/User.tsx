@@ -28,7 +28,7 @@ function UserInfo({ fullName, phone }: UserInfoProps) {
   return (
     <div className="flex items-center gap-2.5 w-full min-w-0">
       <Avatar className="size-8">
-        <AvatarFallback className="bg-[#f0a52f] font-semibold text-[#1c2b42]">
+        <AvatarFallback className="bg-sidebar-primary font-semibold text-sidebar-primary-foreground">
           {getInitials(fullName || "User")}
         </AvatarFallback>
       </Avatar>

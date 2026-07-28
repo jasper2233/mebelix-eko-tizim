@@ -37,6 +37,7 @@ import useCurrentUser from "@/hooks/useCurrentUser"
 import useCustomToast from "@/hooks/useCustomToast"
 import { useMesWs } from "@/hooks/useMesWs"
 import {
+  deadlineTone,
   formatDate,
   formatSize,
   OPERATOR_ROLES,
@@ -308,7 +309,7 @@ function TerminalPage() {
   const visibleHistory = errorsOnly ? history.filter((h) => !h.ok) : history
 
   return (
-    <div className="flex h-dvh flex-col bg-[#eef1f5]">
+    <div className="flex h-dvh flex-col bg-surface">
       {/* Majburiy to'liq ekran: kiosk tartibi — to'liq ekranga o'tmaguncha ish yo'q.
           requestFullscreen user-gesture talab qiladi, shuning uchun tugma. */}
       {!fullscreen && !locked && (
@@ -682,18 +683,6 @@ function TerminalPage() {
       />
     </div>
   )
-}
-
-// Muddat ohangi: o'tgan = qizil, bugun = amber
-function deadlineTone(value?: string | null): "overdue" | "today" | "" {
-  if (!value) return ""
-  const d = new Date(value)
-  const today = new Date()
-  d.setHours(0, 0, 0, 0)
-  today.setHours(0, 0, 0, 0)
-  if (d < today) return "overdue"
-  if (d.getTime() === today.getTime()) return "today"
-  return ""
 }
 
 function OrderPicker({ onPick }: { onPick: (orderId: number) => void }) {

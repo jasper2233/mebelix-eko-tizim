@@ -111,15 +111,36 @@ export function formatDate(value: string | null | undefined): string {
   return `${p2(d.getDate())}.${p2(d.getMonth() + 1)}.${d.getFullYear()}`
 }
 
+/**
+ * Muddat ohangi: o'tgan = qizil, bugun = amber.
+ * Kun aniqligida solishtiriladi — `deadline` backend'da `date` tipida keladi va
+ * `new Date("2026-07-28")` UTC yarim tuni bo'lgani uchun xom solishtirish
+ * Toshkentda soat 05:00 dan keyin bugungi buyurtmani "o'tgan" deb ko'rsatardi.
+ */
+export function deadlineTone(value?: string | null): "overdue" | "today" | "" {
+  if (!value) return ""
+  const d = new Date(value)
+  const today = new Date()
+  d.setHours(0, 0, 0, 0)
+  today.setHours(0, 0, 0, 0)
+  if (d < today) return "overdue"
+  if (d.getTime() === today.getTime()) return "today"
+  return ""
+}
+
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return "—"
   const d = new Date(value)
   return `${p2(d.getDate())}.${p2(d.getMonth() + 1)}.${d.getFullYear()} ${p2(d.getHours())}:${p2(d.getMinutes())}`
 }
 
+// Formatter bir marta quriladi — Intl.NumberFormat konstruktori qimmat, reestrda
+// esa har qatorda ikki marta chaqiriladi.
+const moneyFormat = new Intl.NumberFormat("uz-Latn-UZ")
+
 export function formatMoney(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === "") return "—"
-  return `${new Intl.NumberFormat("uz-Latn-UZ").format(Number(value))} so'm`
+  return `${moneyFormat.format(Number(value))} so'm`
 }
 
 export function formatSize(

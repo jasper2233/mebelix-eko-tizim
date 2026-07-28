@@ -42,6 +42,7 @@ import {
   type Option,
   WALL_LETTERS,
 } from "@/lib/anketa"
+import { cn } from "@/lib/utils"
 import { getOrderQueryOptions } from "@/queries/mes"
 import { handleError } from "@/utils"
 
@@ -95,21 +96,25 @@ function AnketaPage() {
     )
   }, [order])
 
+  // Avtosaqlash: menejer bilmasdan chiqib ketsa ham ma'lumot yo'qolmaydi.
+  // Anketa o'zi qoralama — alohida "chop etish" bosqichi yo'q.
+  const surveyRef = useRef(survey)
+  surveyRef.current = survey
+
   const save = useMutation({
     mutationFn: (body: OrderSurvey) =>
       OrdersService.saveOrderSurvey({ orderId: id, requestBody: body }),
-    onSuccess: () => {
-      setDirty(false)
+    onSuccess: (_data, body) => {
+      // Faqat yuborilgan nusxa hali ham joriy bo'lsa "toza" deb belgilaymiz.
+      // Aks holda saqlash uchayotganda yozilgan matn dirty=false tufayli
+      // kutayotgan taymer bilan birga yo'qolardi (jimgina ma'lumot yo'qotish).
+      if (surveyRef.current === body) setDirty(false)
       setSavedAt(new Date().toLocaleTimeString("uz-UZ", { timeStyle: "short" }))
       queryClient.invalidateQueries({ queryKey: ["orders", id] })
     },
     onError: handleError(showErrorToast),
   })
 
-  // Avtosaqlash: menejer bilmasdan chiqib ketsa ham ma'lumot yo'qolmaydi.
-  // Anketa o'zi qoralama — alohida "chop etish" bosqichi yo'q.
-  const surveyRef = useRef(survey)
-  surveyRef.current = survey
   const dirtyRef = useRef(dirty)
   dirtyRef.current = dirty
 
@@ -668,14 +673,24 @@ function AnketaPage() {
       {canEdit && (
         <div className="-mx-6 md:-mx-8 -mb-6 md:-mb-8 sticky bottom-0 z-10 mt-5 border-t bg-background/95 px-6 py-3 backdrop-blur md:px-8">
           <div className="flex items-center justify-end gap-3">
-            <span className="text-muted-foreground text-sm">
+            <span
+              className={cn(
+                "text-sm",
+                save.isError
+                  ? "font-medium text-destructive"
+                  : "text-muted-foreground",
+              )}
+              role={save.isError ? "alert" : undefined}
+            >
               {save.isPending
                 ? "Saqlanmoqda..."
-                : dirty
-                  ? "O'zgarishlar avtomatik saqlanadi"
-                  : savedAt
-                    ? `Saqlandi ${savedAt}`
-                    : "Hammasi saqlangan"}
+                : save.isError
+                  ? "Saqlanmadi — qayta urinib ko'ring"
+                  : dirty
+                    ? "O'zgarishlar avtomatik saqlanadi"
+                    : savedAt
+                      ? `Saqlandi ${savedAt}`
+                      : "Hammasi saqlangan"}
             </span>
             <LoadingButton
               loading={save.isPending}

@@ -17,7 +17,7 @@ type TabloPost = {
 }
 
 import { useMesWs } from "@/hooks/useMesWs"
-import { formatDate, POST_COLORS } from "@/lib/mes"
+import { deadlineTone, formatDate, POST_COLORS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { getMachinesQueryOptions } from "@/queries/mes"
 import { getCurrentUserQueryOptions } from "@/queries/users"
@@ -54,13 +54,23 @@ const DRILL_POSTS = [
   "STOLYARKA",
 ] as const
 
+/** Soat alohida komponentda: sekundlik tick butun matritsani emas, shu yaprоqni yangilaydi. */
+function Clock() {
+  const [t, setT] = useState(() => new Date().toLocaleTimeString("uz-Latn-UZ"))
+  useEffect(() => {
+    const i = setInterval(
+      () => setT(new Date().toLocaleTimeString("uz-Latn-UZ")),
+      1000,
+    )
+    return () => clearInterval(i)
+  }, [])
+  return <div className="num text-5xl font-black tabular-nums">{t}</div>
+}
+
 function TabloPage() {
   const queryClient = useQueryClient()
   const [mode, setMode] = useState<Mode>("foiz")
   const [drill, setDrill] = useState<number | null>(null)
-  const [clock, setClock] = useState(() =>
-    new Date().toLocaleTimeString("uz-Latn-UZ"),
-  )
 
   const { data: me } = useQuery(getCurrentUserQueryOptions())
   const { data: machines } = useQuery({
@@ -85,16 +95,9 @@ function TabloPage() {
   )
 
   useEffect(() => {
-    const t = setInterval(
-      () => setClock(new Date().toLocaleTimeString("uz-Latn-UZ")),
-      1000,
-    )
     // Auto-refresh har 5 daqiqada (TZ 9.7) — kesh muammolarini oldini oladi
     const reload = setTimeout(() => window.location.reload(), 5 * 60_000)
-    return () => {
-      clearInterval(t)
-      clearTimeout(reload)
-    }
+    return () => clearTimeout(reload)
   }, [])
 
   const myMachine = machines?.find((m) => m.id === me?.machine_id)
@@ -110,11 +113,11 @@ function TabloPage() {
     )
 
   return (
-    <div className="flex h-dvh flex-col bg-[#f4f6f9] text-[#1c2b42]">
-      <header className="flex items-center gap-4 border-b border-border bg-white px-5 py-2.5 shadow-sm">
-        <img src="/assets/logo/icon-gold.png" alt="" className="h-8" />
-        <span className="text-lg font-black tracking-tight">MebeliX</span>
-        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+    <div className="flex h-dvh flex-col bg-surface text-foreground">
+      <header className="flex items-center gap-4 border-b border-border bg-card px-5 py-2.5 shadow-sm">
+        <img src="/assets/logo/icon-gold.png" alt="" className="h-12" />
+        <span className="text-3xl font-black tracking-tight">MebeliX</span>
+        <span className="text-xl font-bold uppercase tracking-widest text-muted-foreground">
           {mode === "hajm"
             ? "Hajm nazorati"
             : mode === "soni"
@@ -122,20 +125,20 @@ function TabloPage() {
               : "Foiz nazorati"}
         </span>
         {myMachine && (
-          <span className="rounded bg-secondary px-2 py-1 text-xs font-bold">
+          <span className="rounded bg-secondary px-3 py-1.5 text-xl font-bold">
             JORIY NUQTA: {myMachine.name}
           </span>
         )}
-        <div className="mx-auto flex gap-1">
+        <div className="mx-auto flex gap-2">
           {(["hajm", "soni", "foiz"] as Mode[]).map((m) => (
             <button
               type="button"
               key={m}
               onClick={() => setMode(m)}
               className={cn(
-                "rounded px-3 py-1 text-xs font-black uppercase",
+                "rounded px-4 py-2 text-xl font-black uppercase",
                 mode === m
-                  ? "bg-[#f0a52f] text-[#1c2b42]"
+                  ? "bg-(--brand-gold) text-foreground"
                   : "bg-secondary hover:bg-accent",
               )}
             >
@@ -145,48 +148,53 @@ function TabloPage() {
         </div>
         <span
           className={cn(
-            "size-2.5 rounded-full",
+            "size-4 rounded-full",
             online ? "bg-green-500" : "bg-red-500",
           )}
         />
         {!online && (
-          <span className="text-xs font-bold text-red-600">OFFLINE</span>
+          <span className="text-xl font-bold text-red-600">OFFLINE</span>
         )}
-        <div className="num text-2xl font-black">{clock}</div>
+        <Clock />
       </header>
 
       <main className="min-h-0 flex-1 overflow-auto p-4">
         {isLoading ? (
-          <p className="p-8 text-center text-muted-foreground">
+          <p className="p-8 text-center text-3xl text-muted-foreground">
             Yuklanmoqda...
           </p>
         ) : (
-          <table className="w-full border-separate border-spacing-1">
+          <table className="w-full border-separate border-spacing-2">
             <thead>
-              <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              <tr className="text-2xl uppercase tracking-wider text-muted-foreground">
                 <th className="px-2 text-left">№ / Buyurtma</th>
                 <th className="px-2 text-left">Topshirish sanasi</th>
-                {(data?.posts as TabloPost[] | undefined)?.map((p) => (
-                  <th
-                    key={p.id}
-                    className={cn(
-                      "px-2 pb-1 text-center",
-                      contextPostId && p.id !== contextPostId && "opacity-40",
-                    )}
-                    style={{ color: POST_COLORS[p.code] }}
-                  >
-                    {p.code}
-                  </th>
-                ))}
+                {(data?.posts as TabloPost[] | undefined)?.map((p) => {
+                  // Kontekst rejimida boshqa ustunlar RANG bilan susayadi, opacity bilan emas —
+                  // opacity-40 oq fonda kontrastni 1.85:1 ga tushirib, uzoqdan o'qib bo'lmas qilardi.
+                  const dim = Boolean(contextPostId && p.id !== contextPostId)
+                  return (
+                    <th
+                      key={p.id}
+                      className={cn(
+                        "px-2 pb-1 text-center",
+                        dim && "text-muted-foreground",
+                      )}
+                      style={dim ? undefined : { color: POST_COLORS[p.code] }}
+                    >
+                      {p.code}
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>
               {data && data.orders.length > 0 && (
                 <tr>
-                  <td className="rounded-l-lg bg-[#2f496e] px-3 py-2 text-xs font-black uppercase tracking-wider text-white">
+                  <td className="rounded-l-lg bg-primary px-3 py-3 text-2xl font-black uppercase tracking-wider text-primary-foreground">
                     Jami hajm
                   </td>
-                  <td className="bg-[#2f496e]/90" />
+                  <td className="bg-primary/90" />
                   {(data.posts as TabloPost[]).map((p) => {
                     let done = 0
                     let total = 0
@@ -212,7 +220,7 @@ function TabloPage() {
                     return (
                       <td
                         key={p.id}
-                        className="num bg-[#2f496e] px-2 py-2 text-center text-xs font-black text-white"
+                        className="num bg-primary px-2 py-3 text-center text-2xl font-black text-primary-foreground"
                       >
                         {total ? label : "—"}
                       </td>
@@ -226,18 +234,18 @@ function TabloPage() {
                   onClick={() => setDrill(o.id)}
                   className="cursor-pointer"
                 >
-                  <td className="rounded-l-lg bg-white px-3 py-2.5 shadow-sm">
-                    <span className="num mr-2 text-muted-foreground/70">
+                  <td className="rounded-l-lg bg-card px-3 py-3 shadow-sm">
+                    <span className="num mr-2 text-xl text-muted-foreground">
                       {idx + 1}
                     </span>
-                    <span className="font-bold">{o.number}</span>
+                    <span className="text-3xl font-bold">{o.number}</span>
                     {o.name && (
-                      <span className="ml-2 hidden text-xs text-muted-foreground xl:inline">
+                      <span className="ml-2 hidden text-xl text-muted-foreground xl:inline">
                         {o.name}
                       </span>
                     )}
                   </td>
-                  <td className="num bg-amber-100 px-3 py-2.5 text-sm font-semibold text-amber-800">
+                  <td className="num bg-amber-100 px-3 py-3 text-2xl font-semibold text-amber-800">
                     {formatDate(o.deadline)}
                   </td>
                   {(data.posts as TabloPost[]).map((p) => (
@@ -257,7 +265,7 @@ function TabloPage() {
                 <tr>
                   <td
                     colSpan={2 + (data?.posts.length ?? 0)}
-                    className="p-12 text-center text-muted-foreground/70"
+                    className="p-12 text-center text-3xl text-muted-foreground"
                   >
                     Aktiv buyurtmalar yo'q
                   </td>
@@ -293,12 +301,7 @@ function TabloCell({
 }) {
   if (!stage?.total) {
     return (
-      <td
-        className={cn(
-          "bg-white px-2 py-2.5 text-center text-muted-foreground/40 shadow-sm",
-          dim && "opacity-40",
-        )}
-      >
+      <td className="bg-card px-2 py-3 text-center text-2xl text-muted-foreground shadow-sm">
         —
       </td>
     )
@@ -306,10 +309,7 @@ function TabloCell({
   const pct = Math.round((stage.done / stage.total) * 1000) / 10
   const complete = stage.done >= stage.total
   const overdue =
-    !complete &&
-    deadline != null &&
-    new Date(deadline) < new Date() &&
-    stage.done === 0
+    !complete && deadlineTone(deadline) === "overdue" && stage.done === 0
 
   let label: string
   if (mode === "hajm")
@@ -320,36 +320,43 @@ function TabloCell({
   return (
     <td
       className={cn(
-        "relative overflow-hidden rounded px-2 py-2.5 text-center align-middle",
-        dim && "opacity-40",
+        "relative overflow-hidden rounded px-2 py-3 text-center align-middle",
         complete
           ? "bg-green-100"
           : overdue
             ? "bg-red-100"
-            : "bg-white shadow-sm",
+            : "bg-card shadow-sm",
       )}
     >
+      {/* Kontekst rejimida faqat progress to'ldirgichi susayadi — raqam to'liq
+          kontrastda qoladi, aks holda 4 metrdan o'qib bo'lmasdi. */}
       {!complete && (
         <span
           className="absolute inset-y-0 left-0 transition-all duration-1000"
           style={{
             width: `${pct}%`,
             backgroundColor: color
-              ? `color-mix(in srgb, ${color} 22%, transparent)`
+              ? `color-mix(in srgb, ${color} ${dim ? 8 : 22}%, transparent)`
               : "rgba(0,0,0,0.06)",
           }}
         />
       )}
       <span
         className={cn(
-          "num relative text-sm font-black",
-          complete ? "text-green-700" : overdue ? "text-red-700" : "",
+          "num relative text-4xl font-black tabular-nums",
+          complete
+            ? "text-green-700"
+            : overdue
+              ? "text-red-700"
+              : dim
+                ? "text-muted-foreground"
+                : "",
         )}
       >
         {complete ? "✓" : label}
       </span>
       {overdue && (
-        <span className="relative block text-[9px] font-bold text-red-700">
+        <span className="relative block text-lg font-bold text-red-700">
           BOSHLANMADI
         </span>
       )}
@@ -372,20 +379,20 @@ function TabloOrderDrill({
     refetchInterval: 30_000,
   })
   return (
-    <div className="flex h-dvh flex-col bg-[#f4f6f9] text-[#1c2b42]">
-      <header className="flex items-center gap-4 border-b border-border bg-white px-5 py-3 shadow-sm">
-        <span className="text-lg font-black">{data?.number ?? ""}</span>
-        <span className="text-sm text-muted-foreground">
+    <div className="flex h-dvh flex-col bg-surface text-foreground">
+      <header className="flex items-center gap-4 border-b border-border bg-card px-5 py-3 shadow-sm">
+        <span className="text-4xl font-black">{data?.number ?? ""}</span>
+        <span className="text-2xl text-muted-foreground">
           {data?.name ?? ""}
         </span>
-        <span className="ml-auto text-xs font-bold uppercase tracking-widest text-muted-foreground">
+        <span className="ml-auto text-xl font-bold uppercase tracking-widest text-muted-foreground">
           Soni nazorati
         </span>
       </header>
       <main className="min-h-0 flex-1 overflow-auto p-4">
-        <table className="w-full border-separate border-spacing-1">
+        <table className="w-full border-separate border-spacing-2">
           <thead>
-            <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            <tr className="text-2xl uppercase tracking-wider text-muted-foreground">
               <th className="px-2 text-left">Detal</th>
               <th className="px-2 text-center">Soni</th>
               {DRILL_POSTS.map((c) => (
@@ -402,13 +409,13 @@ function TabloOrderDrill({
           <tbody>
             {data?.parts.map((p) => (
               <tr key={p.part_id}>
-                <td className="rounded-l-lg bg-white px-3 py-2 shadow-sm">
-                  <b className="num">{p.code}</b>{" "}
-                  <span className="text-xs text-muted-foreground">
+                <td className="rounded-l-lg bg-card px-3 py-3 shadow-sm">
+                  <b className="num text-3xl">{p.code}</b>{" "}
+                  <span className="text-xl text-muted-foreground">
                     {p.name}
                   </span>
                 </td>
-                <td className="num bg-white px-2 py-2 text-center font-bold shadow-sm">
+                <td className="num bg-card px-2 py-3 text-center text-3xl font-bold shadow-sm">
                   {p.count}
                 </td>
                 {DRILL_POSTS.map((c) => (
@@ -429,7 +436,7 @@ function TabloOrderDrill({
       <button
         type="button"
         onClick={onBack}
-        className="m-4 self-start rounded-lg bg-secondary px-6 py-3 text-sm font-black uppercase hover:bg-accent"
+        className="m-4 self-start rounded-lg bg-secondary px-8 py-4 text-2xl font-black uppercase hover:bg-accent"
       >
         ← Ortda
       </button>
