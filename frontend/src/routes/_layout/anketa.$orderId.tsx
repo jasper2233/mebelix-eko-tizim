@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
 import { Button } from "@/components/ui/button"
+import { cardSurface } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DatePicker } from "@/components/ui/date-picker"
 import {
@@ -433,7 +434,7 @@ function AnketaPage() {
           </Section>
 
           {/* O'lchov varag'i — zamerdan keyin to'ldiriladi, shuning uchun yopiq turadi */}
-          <details className="rounded-xl border bg-card">
+          <details className={cn(cardSurface)}>
             <summary className="cursor-pointer px-4 py-3 font-semibold">
               <span className="mr-2 text-muted-foreground">8</span>
               O'lchov varag'i{" "}
@@ -1191,7 +1192,7 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-xl border bg-card p-4">
+    <section className={cn(cardSurface, "p-4")}>
       <h3 className="mb-3 text-base font-semibold">
         {n && <span className="mr-2 text-muted-foreground">{n}</span>}
         {title}

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 
 import { type OrderDetail, OrdersService } from "@/client"
+import { Card } from "@/components/ui/card"
 import { LoadingButton } from "@/components/ui/loading-button"
 import {
   Select,
@@ -65,7 +66,7 @@ export function MachineAssign({
   if (!choiceposts.length) return null
 
   return (
-    <div className="mb-6 rounded-xl border bg-card p-4">
+    <Card className="mb-6 p-4">
       <h2 className="mb-3 text-base font-semibold">Stanok tanlovi</h2>
       <div className="flex flex-wrap items-end gap-4">
         {choiceposts.map((post) => {
@@ -112,6 +113,6 @@ export function MachineAssign({
           Biriktirish
         </LoadingButton>
       </div>
-    </div>
+    </Card>
   )
 }

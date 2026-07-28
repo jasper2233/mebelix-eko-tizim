@@ -5,13 +5,24 @@ import { useCallback } from "react"
 
 import { ReportsService } from "@/client"
 import { PageHeader } from "@/components/Common/PageHeader"
+import { PostBadge } from "@/components/Common/PostBadge"
 import { SectionTitle } from "@/components/Common/SectionTitle"
 import { StagePipeline } from "@/components/Common/StagePipeline"
 import { StatusBadge } from "@/components/Common/StatusBadge"
+import { Badge } from "@/components/ui/badge"
+import { cardSurface } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import useCurrentUser from "@/hooks/useCurrentUser"
 import { useMesWs } from "@/hooks/useMesWs"
-import { formatDate, MACHINE_STATUS_LABELS, POST_COLORS } from "@/lib/mes"
+import { formatDate, MACHINE_STATUS_LABELS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import {
   getMachinesQueryOptions,
@@ -92,61 +103,94 @@ function Dashboard() {
         }
       />
 
-      {/* Stanoklar (TZ 10.2.1) */}
+      {/* Stanoklar (TZ 10.2.1) — jadval, karta emas: beshta bir xil tuzilishli
+          obyekt, har birida 3-5 raqam. Kartalar geterogen yoki rasm/amal talab
+          qiladigan narsalar uchun; bir xil ustunli raqamlar solishtiriladi,
+          ya'ni jadval zichroq va skanerlanadigan. Kartalar teng balandlikka
+          cho'zilib, oxirgi qatorda yolg'iz element qoldirardi. */}
       <SectionTitle>Stanoklar</SectionTitle>
       {machinesLoading ? (
-        <Skeleton className="h-28 w-full" />
-      ) : (
-        <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {machines?.map((m) => {
-            const post = postById.get(m.post_id)
-            const color = post ? POST_COLORS[post.code] : "var(--primary)"
-            return (
-              <div
-                key={m.id}
-                className="rounded-xl border bg-card p-4"
-                style={{ borderTop: `3px solid ${color}` }}
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="font-bold">{m.name}</div>
-                    <div className="text-xs italic text-muted-foreground">
-                      {post?.name ?? ""}
-                    </div>
-                  </div>
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-[10px] font-bold",
-                      m.status === "active"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-100 text-gray-500",
-                    )}
-                  >
-                    {MACHINE_STATUS_LABELS[m.status]}
-                  </span>
-                </div>
-                {m.capacity != null && (
-                  <div className="num mt-2 text-xs text-muted-foreground">
-                    Quvvat: <b>{m.capacity}</b>{" "}
-                    {m.capacity_unit === "m2_per_hour"
-                      ? "m²/soat"
-                      : m.capacity_unit === "meter_per_hour"
-                        ? "m/soat"
-                        : "dona/soat"}
-                  </div>
-                )}
-                <MachineQueue
-                  stat={stats?.machines.find((x) => x.machine_id === m.id)}
-                />
-              </div>
-            )
-          })}
-          {!machines?.length && (
-            <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-              Stanoklar hali qo'shilmagan.
-            </p>
-          )}
+        <Skeleton className="mb-8 h-40 w-full" />
+      ) : machines?.length ? (
+        <div className="mb-8 overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Stanok</TableHead>
+                <TableHead>Post</TableHead>
+                <TableHead className="text-right">Quvvat</TableHead>
+                <TableHead className="text-right">Navbatda</TableHead>
+                <TableHead className="text-right">Bugun</TableHead>
+                <TableHead className="text-right">Tugash</TableHead>
+                <TableHead>Holat</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {machines.map((m) => {
+                const post = postById.get(m.post_id)
+                const stat = stats?.machines.find((x) => x.machine_id === m.id)
+                return (
+                  <TableRow key={m.id}>
+                    <TableCell className="font-semibold">{m.name}</TableCell>
+                    <TableCell>
+                      {post ? <PostBadge code={post.code} /> : "—"}
+                    </TableCell>
+                    <TableCell className="num text-right text-muted-foreground">
+                      {m.capacity != null
+                        ? `${m.capacity} ${
+                            m.capacity_unit === "m2_per_hour"
+                              ? "m²/soat"
+                              : m.capacity_unit === "meter_per_hour"
+                                ? "m/soat"
+                                : "dona/soat"
+                          }`
+                        : "—"}
+                    </TableCell>
+                    {/* Navbat — sahifadagi asosiy signal, shuning uchun eng katta */}
+                    <TableCell className="num text-right">
+                      {stat ? (
+                        <>
+                          <span className="text-lg font-bold">
+                            {stat.queue_scans}
+                          </span>
+                          {stat.queue_volume > 0 && (
+                            <span className="ml-1 text-xs text-muted-foreground">
+                              ~{stat.queue_volume} {stat.unit}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell className="num text-right">
+                      {stat?.today_scans ?? "—"}
+                    </TableCell>
+                    {/* TZ 4.3: tugatish_vaqti = navbatdagi_yuk / capacity */}
+                    <TableCell className="num text-right font-bold text-primary">
+                      {stat?.forecast_hours != null
+                        ? `~${stat.forecast_hours} soat`
+                        : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          m.status === "active" ? "default" : "secondary"
+                        }
+                      >
+                        {MACHINE_STATUS_LABELS[m.status]}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
         </div>
+      ) : (
+        <p className="mb-8 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+          Stanoklar hali qo'shilmagan — "Stanoklar" bo'limidan qo'shing.
+        </p>
       )}
 
       {/* Aktiv buyurtmalar progressi (TZ 10.2.2) */}
@@ -160,7 +204,10 @@ function Dashboard() {
               key={o.id}
               to="/orders/$orderId"
               params={{ orderId: String(o.id) }}
-              className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-3 hover:border-primary/50"
+              className={cn(
+                cardSurface,
+                "flex flex-wrap items-center gap-3 p-3 hover:border-primary/50",
+              )}
             >
               <div className="min-w-[140px]">
                 <div className="font-bold">{o.number}</div>
@@ -196,44 +243,6 @@ function Dashboard() {
           Hozircha ishlab chiqarishda buyurtma yo'q.
         </p>
       )}
-    </div>
-  )
-}
-
-function MachineQueue({
-  stat,
-}: {
-  stat?: {
-    queue_scans: number
-    queue_volume: number
-    unit: string
-    forecast_hours: number | null
-    today_scans: number
-  }
-}) {
-  if (!stat) return null
-  return (
-    <div className="num mt-2 space-y-0.5 border-t pt-2 text-xs">
-      <div>
-        Navbatda: <b>{stat.queue_scans}</b> scan
-        {stat.queue_volume > 0 && (
-          <span className="text-muted-foreground">
-            {" "}
-            (~{stat.queue_volume} {stat.unit})
-          </span>
-        )}
-      </div>
-      <div className="flex justify-between">
-        <span>
-          Bugun: <b>{stat.today_scans}</b>
-        </span>
-        {/* TZ 4.3: tugatish_vaqti = navbatdagi_yuk / capacity */}
-        {stat.forecast_hours != null && (
-          <span className="font-bold text-primary">
-            ~ {stat.forecast_hours} SOAT
-          </span>
-        )}
-      </div>
     </div>
   )
 }

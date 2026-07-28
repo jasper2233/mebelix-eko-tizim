@@ -54,23 +54,18 @@ function Layout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="relative">
-        {/* overflow-hidden faqat shu dekor uchun — SidebarInset'da bo'lsa sahifalardagi
-            sticky panellarni o'ldiradi */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <img
-            src="/assets/logo/icon-navy.png"
-            alt=""
-            aria-hidden="true"
-            className="absolute -right-20 -bottom-20 w-[36rem] opacity-[0.06] select-none"
-          />
-        </div>
+      <SidebarInset>
         <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 md:hidden">
           <SidebarTrigger className="-ml-1 text-muted-foreground" />
           {sectionTitle && <span className="font-medium">{sectionTitle}</span>}
         </header>
         <main className="flex-1 p-6 md:p-8">
-          <Outlet />
+          {/* Kenglik chegarasi: busiz 2560px monitorda kontent ~2280px ga
+              yoyilib, jadval ustunlari orasi o'qib bo'lmas darajada uzoqlashardi.
+              1568px va undan tor ekranlarda hech narsa o'zgarmaydi. */}
+          <div className="mx-auto w-full max-w-[1600px]">
+            <Outlet />
+          </div>
         </main>
       </SidebarInset>
     </SidebarProvider>

@@ -315,9 +315,12 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
   )
 }
 
-function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
+// shadcn buni `<main>` qilib beradi, lekin u sahifa qobig'i: ichida mobil
+// header (banner) ham, kontent ham turadi. `<main>` ni kontentning o'ziga
+// qoldiramiz — aks holda hujjatda ikkita `main` landmark bo'lardi.
+function SidebarInset({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <main
+    <div
       data-slot="sidebar-inset"
       className={cn(
         "bg-transparent relative flex w-full flex-1 flex-col",

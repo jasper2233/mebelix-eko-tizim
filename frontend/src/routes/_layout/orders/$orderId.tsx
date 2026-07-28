@@ -21,6 +21,7 @@ import { EditOrder } from "@/components/Orders/EditOrder"
 import { MachineAssign } from "@/components/Orders/MachineAssign"
 import { OrderMatrix } from "@/components/Orders/OrderMatrix"
 import { Button } from "@/components/ui/button"
+import { Card, cardSurface } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,7 @@ import {
   formatMoney,
   PRIORITY_LABELS,
 } from "@/lib/mes"
+import { cn } from "@/lib/utils"
 import { getOrderQueryOptions } from "@/queries/mes"
 import { extractErrorMessage, handleError } from "@/utils"
 
@@ -269,7 +271,7 @@ function OrderDetailPage() {
         </div>
       )}
 
-      <div className="mb-6 grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <Card className="mb-6 grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
         <Meta label="Holat" value={<StatusBadge status={order.status} />} />
         <Meta label="Mijoz" value={order.client_name} />
         <Meta label="Topshirish sanasi" value={formatDate(order.deadline)} />
@@ -322,7 +324,7 @@ function OrderDetailPage() {
             value={formatDateTime(order.delivered_at)}
           />
         )}
-      </div>
+      </Card>
 
       {isManager && editableStatus && order.project_uuid && (
         <MachineAssign order={order} onSaved={invalidate} />
@@ -334,7 +336,7 @@ function OrderDetailPage() {
       {(order.files ?? []).length > 0 && (
         <div className="mt-8">
           <h2 className="mb-2 text-base font-semibold">Fayllar</h2>
-          <ul className="divide-y rounded-xl border bg-card">
+          <ul className={cn(cardSurface, "divide-y")}>
             {(order.files ?? []).map((f) => (
               <li
                 key={f.id}
