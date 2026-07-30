@@ -17,6 +17,22 @@ from .xnc import merge_xnc_ops, parse_xnc_program
 
 _EDGE_SIDES = ("l", "r", "t", "b")
 
+# GibLab'da 9 xil operatsiya turi bor ("+Операция" ro'yxati). Biz uchtasini o'qiymiz
+# (CS, EL, XNC). Qolganlari ataylab o'tkazib yuboriladi, lekin ikkitasi tashqarida:
+#   LB — GibLab yorliq shablonlari; tizim o'z yorlig'ini chiqaradi (TZ 5.2.8).
+#   O  — furnitura komplektatsiyasi; sanoqlar `typeId="simple"` goodlarining o'zida bor,
+#        ya'ni material registriga baribir tushadi.
+# Qolgan to'rttasi HAQIQIY ishlab chiqarish bosqichi va import qilinmaydi — ular
+# faylda uchrasa texnolog buni bilishi shart, aks holda bosqich jimgina yo'qoladi.
+_HANDLED_OPS = {"CS", "EL", "XNC"}
+_IGNORED_OPS = {"LB", "O"}
+_OP_NAMES = {
+    "CL": "погонажный раскрой (profil kesish)",
+    "CN": "нестинговый раскрой (CNC nesting)",
+    "SP": "обработка поверхности (yuza ishlovi)",
+    "GR": "пазование (paz)",
+}
+
 
 def _f(el: ET.Element, attr: str) -> float | None:
     raw = el.get(attr)
@@ -213,7 +229,18 @@ def parse_project(content: bytes) -> ParsedProject:
             code = op_el.get("code") or ""
             xnc_ops_by_part.setdefault(pid, []).append(parse_xnc_program(code, program))
 
-        # LB (label settings) is informational only — the system prints its own labels (TZ 5.2.8).
+    unhandled = sorted(
+        {
+            t
+            for op_el in operations
+            if (t := op_el.get("typeId") or "") and t not in _HANDLED_OPS and t not in _IGNORED_OPS
+        }
+    )
+    if unhandled:
+        names = ", ".join(f"{t} — {_OP_NAMES.get(t) or 'nomaʼlum tur'}" for t in unhandled)
+        project.warnings.append(
+            f"Faylda import qilinmaydigan operatsiya bor: {names}. O'sha bosqich detallari vazifa ro'yxatiga tushmaydi."
+        )
 
     for pid, ops in xnc_ops_by_part.items():
         target = part_by_file_id.get(pid)

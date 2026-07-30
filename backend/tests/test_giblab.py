@@ -301,6 +301,36 @@ def test_hardware_goods() -> None:
     print("furnitura (typeId=simple) OK")
 
 
+def test_unhandled_operation_warning() -> None:
+    """GibLab'da 9 xil operatsiya turi bor; biz CS/EL/XNC ni o'qiymiz. CL (profil kesish)
+    kabi haqiqiy bosqich import qilinmaydi — texnolog buni bilishi shart. LB (yorliq) va
+    O (furnitura komplektatsiyasi) esa ataylab jim o'tkaziladi."""
+
+    def build(ops: str) -> bytes:
+        return (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            '<project version="21052101">'
+            '<good typeId="product" id="1" code="42" name="M" count="1">'
+            '<part id="1" code="A1" name="bok" dl="700" dw="500" count="1"/>'
+            "</good>" + ops + "</project>"
+        ).encode()
+
+    def warned(xml: bytes) -> list[str]:
+        return [w for w in parse_project(xml).warnings if "operatsiya bor" in w]
+
+    # CL — ogohlantiriladi va turi nomi bilan atalaadi
+    hit = warned(build('<operation typeId="CL" id="5"><part id="1"/></operation>'))
+    assert len(hit) == 1 and "CL" in hit[0] and "profil" in hit[0]
+
+    # LB va O — jim (yorliqni o'zimiz chiqaramiz, furnitura goodlardan keladi)
+    assert warned(build('<operation typeId="LB" id="5"/><operation typeId="O" id="6"/>')) == []
+
+    # Bir necha noma'lum tur — bitta ogohlantirishda jamlanadi
+    hit = warned(build('<operation typeId="CL" id="5"/><operation typeId="GR" id="6"/>'))
+    assert len(hit) == 1 and "CL" in hit[0] and "GR" in hit[0]
+    print("o'qilmagan operatsiya ogohlantirishi OK")
+
+
 if __name__ == "__main__":
     test_blob_decoder()
     test_parser_and_routes()
@@ -310,4 +340,5 @@ if __name__ == "__main__":
     test_old_export_without_part_codes()
     test_negative_dimensions()
     test_hardware_goods()
+    test_unhandled_operation_warning()
     print("ALL GIBLAB TESTS PASSED")
