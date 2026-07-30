@@ -33,6 +33,16 @@ class OrderRead(BaseModel):
     cancel_reason: str | None
 
 
+class MaterialUsageItem(BaseModel):
+    """ingest.py material_usage yozuvi: GibLab fayldan avtomatik registr."""
+
+    name: str
+    code: str | None = None
+    kind: str  # "sheet" | "band" | "hardware"
+    count: float | None = None
+    unit: str
+
+
 class OrderFileRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -52,6 +62,9 @@ class OrderDetail(OrderRead):
     project_uuid: str | None
     project_loaded_at: datetime | None
     survey: dict[str, Any] | None = None  # mijoz anketasi (OrderSurvey), texnolog o'qiydi
+    # GibLab fayldan avtomatik material registri: sheet (list), band (kromka, metr),
+    # hardware (furnitura, dona). Furnituralar tabida ko'rsatiladi.
+    material_usage: list[MaterialUsageItem] = []
     files: list[OrderFileRead] = []
     parts_count: int = 0
     instances_count: int = 0

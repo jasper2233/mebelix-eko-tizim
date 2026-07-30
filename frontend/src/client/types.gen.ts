@@ -305,6 +305,17 @@ export type MaterialUpdate = {
     glossiness?: (string | null);
 };
 
+/**
+ * ingest.py material_usage yozuvi: GibLab fayldan avtomatik registr.
+ */
+export type MaterialUsageItem = {
+    name: string;
+    code?: (string | null);
+    kind: string;
+    count?: (number | null);
+    unit: string;
+};
+
 export type MaterialUsageRow = {
     name: string;
     kind: string;
@@ -352,9 +363,6 @@ export type MatrixPartEdit = {
     };
 };
 
-/**
- * Generic message response schema
- */
 export type Message = {
     message: string;
 };
@@ -406,6 +414,7 @@ export type OrderDetail = {
     survey?: ({
     [key: string]: unknown;
 } | null);
+    material_usage?: Array<MaterialUsageItem>;
     files?: Array<OrderFileRead>;
     parts_count?: number;
     instances_count?: number;
@@ -1117,6 +1126,12 @@ export type UploadOrderProjectData = {
 };
 
 export type UploadOrderProjectResponse = (Message);
+
+export type DownloadOrderScxZipData = {
+    orderId: number;
+};
+
+export type DownloadOrderScxZipResponse = (unknown);
 
 export type DownloadOrderFileData = {
     fileId: number;

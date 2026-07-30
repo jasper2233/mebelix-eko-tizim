@@ -32,6 +32,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import useCurrentUser from "@/hooks/useCurrentUser"
 import useCustomToast from "@/hooks/useCustomToast"
 import {
@@ -145,6 +146,10 @@ function OrderDetailPage() {
   const editableStatus =
     order.status === "draft" || order.status === "technical_review"
   const scxFiles = (order.files ?? []).filter((f) => f.kind === "scx")
+  // GibLab fayldagi typeId="simple" goodlar: petlya, yevrovint, dasta... (dona)
+  const hardware = (order.material_usage ?? []).filter(
+    (m) => m.kind === "hardware",
+  )
 
   return (
     <div>
@@ -333,8 +338,52 @@ function OrderDetailPage() {
         <MachineAssign order={order} onSaved={invalidate} />
       )}
 
-      <h2 className="mb-2 text-base font-semibold">Detallar matritsasi</h2>
-      <OrderMatrix orderId={id} editable={isTexnolog && editableStatus} />
+      {hardware.length > 0 && isTexnolog ? (
+        <Tabs defaultValue="matrix">
+          <TabsList>
+            <TabsTrigger value="matrix">Detallar matritsasi</TabsTrigger>
+            <TabsTrigger value="hardware">
+              Furnituralar ({hardware.length})
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="matrix">
+            <OrderMatrix orderId={id} editable={isTexnolog && editableStatus} />
+          </TabsContent>
+          <TabsContent value="hardware">
+            <div className={cn(cardSurface, "overflow-x-auto")}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-xs text-muted-foreground">
+                    <th className="px-4 py-2 font-medium">Kod</th>
+                    <th className="px-4 py-2 font-medium">Nomi</th>
+                    <th className="px-4 py-2 text-right font-medium">Soni</th>
+                    <th className="px-4 py-2 font-medium">Birlik</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {hardware.map((m, i) => (
+                    <tr key={i} className="border-b last:border-0">
+                      <td className="num px-4 py-2 text-xs">{m.code ?? "—"}</td>
+                      <td className="px-4 py-2 font-medium">{m.name}</td>
+                      <td className="num px-4 py-2 text-right font-semibold">
+                        {m.count}
+                      </td>
+                      <td className="px-4 py-2 text-xs text-muted-foreground">
+                        {m.unit}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <>
+          <h2 className="mb-2 text-base font-semibold">Detallar matritsasi</h2>
+          <OrderMatrix orderId={id} editable={isTexnolog && editableStatus} />
+        </>
+      )}
 
       {(order.files ?? []).length > 0 && (
         <div className="mt-8">

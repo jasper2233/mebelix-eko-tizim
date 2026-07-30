@@ -39,6 +39,7 @@ export function OrderMatrix({
   )
   const { data: posts } = useQuery(getPostsQueryOptions())
   const [editMode, setEditMode] = useState(false)
+  const [query, setQuery] = useState("")
   const [stageEdits, setStageEdits] = useState<StageEdits>({})
   const [noteEdits, setNoteEdits] = useState<NoteEdits>({})
   const queryClient = useQueryClient()
@@ -90,8 +91,30 @@ export function OrderMatrix({
   const hasEdits =
     Object.keys(stageEdits).length > 0 || Object.keys(noteEdits).length > 0
 
+  const q = query.trim().toLowerCase()
+  const visibleParts = q
+    ? matrix.parts.filter((p) =>
+        `${p.product_code}_${p.code} ${p.name}`.toLowerCase().includes(q),
+      )
+    : matrix.parts
+
   return (
     <div>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Input
+            className="h-8 w-56 text-sm"
+            placeholder="Qidirish: kod yoki nom..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <span className="whitespace-nowrap text-xs text-muted-foreground">
+            {q
+              ? `${visibleParts.length} / ${matrix.parts.length} detal`
+              : `${matrix.parts.length} detal`}
+          </span>
+        </div>
+      </div>
       {editable && (
         <div className="mb-3 flex items-center justify-end gap-2">
           {editMode ? (
@@ -127,9 +150,12 @@ export function OrderMatrix({
           )}
         </div>
       )}
-      <div className="overflow-x-auto">
+      {/* Balandlik chegaralangan: uzun buyurtmada butun sahifa emas, jadval o'zi
+          aylanadi, sarlavha esa yopishqoq — prisadkachi qaysi ustun ekanini yo'qotmaydi.
+          Scroll konteyner — Table'ning o'z o'rami (data-slot), aks holda sticky ishlamaydi */}
+      <div className="[&_[data-slot=table-container]]:max-h-[70vh] [&_[data-slot=table-container]]:overflow-y-auto">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-10 bg-background shadow-[0_1px_0_var(--border)]">
             <TableRow>
               <TableHead className="min-w-[180px]">Detal</TableHead>
               <TableHead>O'lchami</TableHead>
@@ -147,7 +173,7 @@ export function OrderMatrix({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {matrix.parts.map((part) => (
+            {visibleParts.map((part) => (
               <TableRow key={part.id}>
                 <TableCell>
                   <span className="font-medium">
