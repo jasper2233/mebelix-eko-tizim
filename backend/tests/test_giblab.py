@@ -302,6 +302,33 @@ def test_hardware_goods() -> None:
     print("furnitura (typeId=simple) OK")
 
 
+def test_allowance_warning() -> None:
+    """Ishlov qo'shimchasi (припуск) GibLab kartasida punktir chiziq bilan chiziladi
+    (help/question/stock.html); bizning xarita chizmaydi. Nolga teng bo'lmasa ogohlantiramiz —
+    aks holda arrachi qo'shimchani yo'qotib kesadi. Har detalda ham, umumiy ham bo'lishi mumkin."""
+
+    def build(part_extra: str = "", op: str = "") -> bytes:
+        return (
+            '<project version="1">'
+            '<good typeId="product" id="1" code="42" name="M" count="1">'
+            f'<part id="1" code="A1" dl="700" dw="500" count="1"{part_extra}/>'
+            "</good>" + op + "</project>"
+        ).encode()
+
+    def hits(xml: bytes) -> list[str]:
+        return [w for w in parse_project(xml).warnings if "qo'shimchasi" in w]
+
+    assert hits(build()) == []  # qo'shimchasiz — jim
+    assert hits(build(' allowanceT="0" allowanceB="0"')) == []  # nol — jim
+
+    per_part = hits(build(' allowanceT="5"'))
+    assert len(per_part) == 1 and "1 detalda" in per_part[0]
+
+    overall = hits(build(op='<operation typeId="CS" id="2" cAllowanceWorkpiece="3"/>'))
+    assert len(overall) == 1 and "3.0 mm" in overall[0]
+    print("ishlov qo'shimchasi ogohlantirishi OK")
+
+
 def test_unknown_xnc_tag_warning() -> None:
     """GibLab XNC dasturi spetsifikatsiyasida <ma> (yoy) va <xy> (koordinata boshi) ham bor;
     biz ularni hisoblamaymiz. Jimgina tashlash xavfli — <xy> e'tiborsiz qolsa undan keyingi
@@ -381,4 +408,5 @@ if __name__ == "__main__":
     test_hardware_goods()
     test_unhandled_operation_warning()
     test_unknown_xnc_tag_warning()
+    test_allowance_warning()
     print("ALL GIBLAB TESTS PASSED")

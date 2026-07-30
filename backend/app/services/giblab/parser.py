@@ -116,6 +116,79 @@ def _build_part(p: ET.Element, product: ParsedProduct, seen: set[str], warnings:
     )
 
 
+def _allowance_warning(products_goods: list[ET.Element], operations: list[ET.Element]) -> str | None:
+    """Ishlov qo'shimchasi (припуск) bo'lsa ogohlantirish matni, aks holda None.
+
+    GibLab uni PILLA o'lchamiga qo'shadi va kesish xaritasida PUNKTIR chiziq bilan
+    ko'rsatadi (help/question/stock.html). Bizning xarita punktir chizmaydi — ya'ni qo'shimcha
+    bo'lsa arrachi detal chizig'iga qarab kesib qo'shimchani yo'qotadi. Korpusdagi 8 faylda
+    hammasi nol, shuning uchun chizish qo'shilmadi; nolga teng bo'lmasa xabar beramiz.
+    """
+    per_part = sum(
+        1
+        for g in products_goods
+        for pe in g.findall("part")
+        if any((_f(pe, f"allowance{side}") or 0) > 0 for side in ("T", "B", "L", "R"))
+    )
+    overall = max((_f(op, "cAllowanceWorkpiece") or 0) for op in operations) if operations else 0.0
+    if not per_part and overall <= 0:
+        return None
+    detail = f"{per_part} detalda" if per_part else f"umumiy {overall} mm"
+    return (
+        f"Faylda ishlov qo'shimchasi bor ({detail}). Kesish xaritasida u punktir chiziq bilan "
+        f"ko'rsatilmaydi — arrachi o'lchamni GibLab kartasi bilan solishtirishi kerak."
+    )
+
+
+def _advisories(
+    products_goods: list[ET.Element],
+    operations: list[ET.Element],
+    xnc_ops_by_part: dict[int, list],
+) -> list[str]:
+    """Faylning o'zi haqidagi xabarlar: import qilinmagan yoki chizilmagan narsalar.
+
+    Bu tekshiruvlar parse natijasiga ta'sir qilmaydi — ular texnologga faylda nima borligini
+    aytadi, aks holda bosqich yoki o'lcham jimgina yo'qoladi.
+    """
+    out: list[str] = []
+
+    if (msg := _allowance_warning(products_goods, operations)) is not None:
+        out.append(msg)
+
+    # CL: arrachiga ketmaydi, lekin texnolog profillarni ta'minlashi uchun bilishi shart.
+    cl_ops = [op for op in operations if op.get("typeId") == "CL"]
+    if cl_ops:
+        cl_parts = sum(len(op.findall("part")) for op in cl_ops)
+        stock = sorted({raw for op in cl_ops if (raw := op.get("l"))})
+        lengths = f", zagotovka {'/'.join(stock)} mm" if stock else ""
+        out.append(
+            f"Profil kesish (CL): {len(cl_ops)} operatsiya, {cl_parts} detal{lengths}. "
+            f"Sexda kesilmaydi — profillar tayyor holda ta'minlanadi, arrachi ro'yxatiga tushmaydi."
+        )
+
+    unhandled = sorted(
+        {
+            t
+            for op_el in operations
+            if (t := op_el.get("typeId") or "") and t not in _HANDLED_OPS and t not in _IGNORED_OPS
+        }
+    )
+    if unhandled:
+        names = ", ".join(f"{t} — {_OP_NAMES.get(t) or 'nomaʼlum tur'}" for t in unhandled)
+        out.append(
+            f"Faylda import qilinmaydigan operatsiya bor: {names}. O'sha bosqich detallari vazifa ro'yxatiga tushmaydi."
+        )
+
+    unknown_xnc = sorted({t for ops in xnc_ops_by_part.values() for op in ops for t in op.unknown_tags})
+    if unknown_xnc:
+        out.append(
+            f"XNC dasturida o'qilmagan teg: {', '.join(unknown_xnc)}. "
+            f"O'sha ishlov yorliq va teshik xaritasida ko'rinmaydi — texnolog tekshirishi kerak."
+        )
+
+    return out
+
+
 def parse_project(content: bytes) -> ParsedProject:
     try:
         root = ET.fromstring(content)
@@ -234,36 +307,7 @@ def parse_project(content: bytes) -> ParsedProject:
             code = op_el.get("code") or ""
             xnc_ops_by_part.setdefault(pid, []).append(parse_xnc_program(code, program))
 
-    # CL: arrachiga ketmaydi, lekin texnolog profillarni ta'minlashi uchun bilishi shart.
-    cl_ops = [op for op in operations if op.get("typeId") == "CL"]
-    if cl_ops:
-        cl_parts = sum(len(op.findall("part")) for op in cl_ops)
-        stock = sorted({raw for op in cl_ops if (raw := op.get("l"))})
-        lengths = f", zagotovka {'/'.join(stock)} mm" if stock else ""
-        project.warnings.append(
-            f"Profil kesish (CL): {len(cl_ops)} operatsiya, {cl_parts} detal{lengths}. "
-            f"Sexda kesilmaydi — profillar tayyor holda ta'minlanadi, arrachi ro'yxatiga tushmaydi."
-        )
-
-    unhandled = sorted(
-        {
-            t
-            for op_el in operations
-            if (t := op_el.get("typeId") or "") and t not in _HANDLED_OPS and t not in _IGNORED_OPS
-        }
-    )
-    if unhandled:
-        names = ", ".join(f"{t} — {_OP_NAMES.get(t) or 'nomaʼlum tur'}" for t in unhandled)
-        project.warnings.append(
-            f"Faylda import qilinmaydigan operatsiya bor: {names}. O'sha bosqich detallari vazifa ro'yxatiga tushmaydi."
-        )
-
-    unknown_xnc = sorted({t for ops in xnc_ops_by_part.values() for op in ops for t in op.unknown_tags})
-    if unknown_xnc:
-        project.warnings.append(
-            f"XNC dasturida o'qilmagan teg: {', '.join(unknown_xnc)}. "
-            f"O'sha ishlov yorliq va teshik xaritasida ko'rinmaydi — texnolog tekshirishi kerak."
-        )
+    project.warnings.extend(_advisories(products_goods, operations, xnc_ops_by_part))
 
     for pid, ops in xnc_ops_by_part.items():
         target = part_by_file_id.get(pid)
