@@ -25,7 +25,7 @@ class XncOp:
     """One <operation typeId="XNC"> after program XML is parsed. A part has at most two (TZ 5.2.7)."""
 
     code: str
-    side2: bool  # code ends with _2 → back side
+    side2: bool  # back side — `side` attribute of the operation, code suffix only as fallback
     dx: float
     dy: float
     dz: float
@@ -34,6 +34,9 @@ class XncOp:
     grooves: list[dict[str, Any]] = field(default_factory=list)  # {x1, y1, x2, y2, dp, t}
     mills: list[list[dict[str, Any]]] = field(default_factory=list)  # contours: [{op, x, y, cx, cy, dir, dp}]
     unknown_tags: set[str] = field(default_factory=set)  # dasturda o'qilmagan teglar (ogohlantirish uchun)
+    # Ogohlantirish uchun: qirra teshigi qalinlik markazida emas yoki butun dastur
+    # aylantirilgan/aks ettirilgan (`turn`/`mirHor`/`mirVert`) — ikkisi ham geometriyani o'zgartiradi.
+    notes: set[str] = field(default_factory=set)
 
 
 @dataclass

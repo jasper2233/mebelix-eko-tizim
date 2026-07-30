@@ -228,6 +228,30 @@ def _advisories(
             f"to'liq miqdorni ishlab chiqaradi — texnolog miqdorni tekshirishi kerak."
         )
 
+    # `turn` (0/1/2/3 = 0/90/180/270°), `mirHor`, `mirVert` BUTUN dasturni o'zgartiradi. Biz
+    # koordinatalarni dasturdan qanday bo'lsa shundayligicha olamiz, ya'ni bunday operatsiyada
+    # teshiklar boshqa joyga tushardi va buni hech kim sezmasdi. Korpusdagi 505 dasturda
+    # `turn=0`, `mirHor=false`, `mirVert=false` — shuning uchun ogohlantirish yetarli.
+    transformed = sorted(
+        {
+            op_el.get("code") or f"#{op_el.get('id')}"
+            for op_el in operations
+            if op_el.get("typeId") == "XNC"
+            and (
+                (op_el.get("turn") or "0") not in ("0", "")
+                or "true" in (op_el.get("mirHor", ""), op_el.get("mirVert", ""))
+            )
+        }
+    )
+    if transformed:
+        out.append(
+            f"XNC dasturi aylantirilgan yoki aks ettirilgan (turn/mirHor/mirVert): {', '.join(transformed[:5])}. "
+            f"Teshik koordinatalari o'zgarmagan holda olinadi — SCX faylni CNC'da tekshirish shart."
+        )
+
+    notes = sorted({n for ops in xnc_ops_by_part.values() for op in ops for n in op.notes})
+    out.extend(f"XNC: {n}." for n in notes)
+
     unknown_xnc = sorted({t for ops in xnc_ops_by_part.values() for op in ops for t in op.unknown_tags})
     if unknown_xnc:
         out.append(
@@ -354,7 +378,7 @@ def parse_project(content: bytes) -> ParsedProject:
                 continue
             pid = int(stub_el.get("id", 0))
             code = op_el.get("code") or ""
-            xnc_ops_by_part.setdefault(pid, []).append(parse_xnc_program(code, program))
+            xnc_ops_by_part.setdefault(pid, []).append(parse_xnc_program(code, program, op_el.get("side")))
 
     project.warnings.extend(_advisories(products_goods, operations, xnc_ops_by_part))
 
@@ -369,6 +393,15 @@ def parse_project(content: bytes) -> ParsedProject:
     has_blob = any(c.data_blob for c in project.cut_ops)
     if has_blob and project.uuid:
         project.generation = "processed"
+        # Optimallashtirilgan faylda ham blobsiz kesish operatsiyasi bo'lishi mumkin: texnolog
+        # bir materialni optimallashtirmagan. `build_cutmap` uni jimgina o'tkazib yuboradi
+        # (nusxa tekshiruvi ham 0 ni sanamaydi), lekin detallari arrachiga baribir tushadi —
+        # ya'ni vazifa bor, xarita yo'q. Faqat shu materialni aytamiz, fayl rad etilmaydi.
+        unmapped = [c.material_name or f"operatsiya #{c.op_id}" for c in project.cut_ops if not c.data_blob]
+        if unmapped:
+            project.warnings.append(
+                "Kesish xaritasi yo'q material: " + ", ".join(unmapped) + " — GibLab'da optimallashtirilmagan."
+            )
     else:
         project.generation = "template"
 

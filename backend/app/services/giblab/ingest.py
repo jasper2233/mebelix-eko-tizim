@@ -214,9 +214,18 @@ async def ingest_project(
                     )
                 )
 
-            # SCX per XNC operation (TZ 5.6.5)
+            # SCX per XNC operation (TZ 5.6.5). Nom `{mahsulot}_{detal}` + orqa tomonga `_2`;
+            # bitta tomonda ikkitadan ko'p dastur bo'lsa (GibLab yorliqda XNC1..XNC5 ni taklif
+            # qiladi) nom takrorlanib, fayl jimgina o'chib ketardi — CNC dasturi yo'qoladi.
+            used_names: set[str] = set()
             for op in pp.xnc_ops:
                 filename = scx_filename(pp, op)
+                if filename in used_names:
+                    stem, seq = filename[:-4], 3
+                    while f"{stem}_{seq}.scx" in used_names:
+                        seq += 1
+                    filename = f"{stem}_{seq}.scx"
+                used_names.add(filename)
                 content = generate_scx(pp, op)
                 (scx_dir / filename).write_text(content, encoding="utf-8")
                 db.add(

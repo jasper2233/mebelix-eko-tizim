@@ -587,6 +587,83 @@ def test_giblab_default_kerf_and_trim() -> None:
     print("GibLab standart pila/torsovka qiymatlari OK")
 
 
+def test_unmapped_material_warning() -> None:
+    """Optimallashtirilgan faylda blobsiz kesish operatsiyasi bo'lsa (bir material
+    optimallashtirilmagan) detallari arrachiga tushadi, xaritasi esa yo'q. Xarita quruvchi
+    uni jimgina o'tkazib yuboradi, shuning uchun materialni nomi bilan aytamiz."""
+    blob = make_blob()
+    two_cs = (
+        f'<operation typeId="CS" id="6" tool1="2" cTrimL="2" cTrimW="2" data="{blob}">'
+        '<material id="5" count="2"/><part id="1"/><part id="3"/></operation>'
+        '<operation typeId="CS" id="7" tool1="2"><material id="12" count="1"/></operation>'
+    )
+    xml = make_project_xml(blob).decode()
+    xml = xml.replace("</project>", '<good typeId="sheet" id="12" name="XDF 3mm" t="3"/>' + two_cs + "</project>")
+    project = parse_project(xml.encode())
+    assert project.generation == "processed"
+    hits = [w for w in project.warnings if "Kesish xaritasi yo'q" in w]
+    assert len(hits) == 1 and "XDF 3mm" in hits[0] and "LDSP OQ GLYANETS" not in hits[0]
+    print("xaritasiz material ogohlantirishi OK")
+
+
+def test_xnc_side_attribute() -> None:
+    """Tomonni operatsiyaning `side` atributi belgilaydi (spetsifikatsiya: default true =
+    litsevaya, eski eksportda `1`/`0`). Kod suffiksi faqat zaxira: korpusda orqa tomon `x2`
+    bilan ham tugaydi, hatto old va orqa dasturning kodi aynan bir xil ham bo'ladi — o'shanda
+    ikkalasi bitta SCX nomiga yozilib biri o'chib ketardi."""
+    prog = '<program dx="1000" dy="500" dz="16"><tool name="B8" d="8"/><bf x="34" y="70" dp="12" name="B8"/></program>'
+    assert parse_xnc_program("A_1", prog, "true").side2 is False
+    assert parse_xnc_program("A_1", prog, "1").side2 is False  # eski eksport shakli
+    assert parse_xnc_program("A_1", prog, "false").side2 is True  # kod suffiksi yo'q, lekin orqa
+    assert parse_xnc_program("0000x006x2", prog, "false").side2 is True
+    assert parse_xnc_program("A_2", prog).side2 is True  # `side` yo'q -> zaxira suffiks
+    assert parse_xnc_program("A_1", prog).side2 is False
+
+    # Bir xil kodli old+orqa juftlik (korpusdagi 3052_Hikmat holati): SCX nomlari farq qilishi shart
+    xml = (
+        '<project version="1">'
+        '<good typeId="product" id="1" code="42" name="M" count="1">'
+        '<part id="2" code="A1" name="bok" dl="1000" dw="500" count="1"/>'
+        "</good>"
+        f'<operation typeId="XNC" id="7" code="X" side="false" program={quoteattr(prog)}><part id="2"/></operation>'
+        f'<operation typeId="XNC" id="8" code="X" side="true" program={quoteattr(prog)}><part id="2"/></operation>'
+        "</project>"
+    ).encode()
+    part = next(iter(parse_project(xml).all_parts))
+    assert [scx_filename(part, o) for o in part.xnc_ops] == ["42_A1.scx", "42_A1_2.scx"]
+    print("XNC tomoni `side` dan olinadi OK")
+
+
+def test_geometry_change_warnings() -> None:
+    """Geometriyani jimgina o'zgartiradigan ikki holat ogohlantiriladi: butun dasturni
+    aylantirish/aks ettirish (`turn`/`mirHor`/`mirVert`) va qirra teshigining qalinlik
+    markazidan chetlashishi (`m`/`z` talqini korpusda tekshirilmagan)."""
+    prog = '<program dx="1000" dy="500" dz="16"><tool name="B8" d="8"/><bl y="70" z="{z}" dp="34" name="B8"/></program>'
+
+    def build(op_extra: str = "", z: str = "8") -> bytes:
+        body = prog.format(z=z)
+        return (
+            '<project version="1">'
+            '<good typeId="product" id="1" code="42" name="M" count="1">'
+            '<part id="2" code="A1" name="bok" dl="1000" dw="500" count="1"/>'
+            "</good>"
+            f'<operation typeId="XNC" id="7" code="X"{op_extra} program={quoteattr(body)}>'
+            '<part id="2"/></operation>'
+            "</project>"
+        ).encode()
+
+    assert [w for w in parse_project(build()).warnings if "XNC" in w] == []  # markazda + burilishsiz
+
+    turned = [w for w in parse_project(build(' turn="1"')).warnings if "aylantirilgan" in w]
+    assert len(turned) == 1 and "X" in turned[0]
+    assert [w for w in parse_project(build(' mirVert="true"')).warnings if "aks ettirilgan" in w]
+    assert [w for w in parse_project(build(' turn="0" mirHor="false"')).warnings if "aylantirilgan" in w] == []
+
+    off = [w for w in parse_project(build(z="12")).warnings if "markazida emas" in w]
+    assert len(off) == 1
+    print("geometriya o'zgarishi ogohlantirishlari OK")
+
+
 if __name__ == "__main__":
     test_blob_decoder()
     test_parser_and_routes()
@@ -607,4 +684,7 @@ if __name__ == "__main__":
     test_groove_endpoint_default()
     test_edge_material_fallback()
     test_giblab_default_kerf_and_trim()
+    test_unmapped_material_warning()
+    test_xnc_side_attribute()
+    test_geometry_change_warnings()
     print("ALL GIBLAB TESTS PASSED")

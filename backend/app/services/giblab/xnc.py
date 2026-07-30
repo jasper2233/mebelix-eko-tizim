@@ -84,6 +84,13 @@ def _add_edge_bores(el: ET.Element, side: str, op: XncOp, num: _Num, tools: dict
     pos = num(el, "x") if side in ("t", "b") else num(el, "y")
     dp = num(el, "dp")
     z = num(el, "z", dz / 2)
+    # `m` (Середина по Z, default true) teshik qalinlik markazida ekanini bildiradi, `z` esa
+    # "koordinata / markazdan siljish" deb ta'riflangan. Korpusdagi 1185 qirra teshigida `m=true`
+    # va `z` aynan dz/2 — ikki talqin bir xil natija beradi, biz `z` ni absolyut olamiz. Markazdan
+    # chetlashgan holat korpusda yo'q: qaysi talqin ekani noaniq, shuning uchun jimgina noto'g'ri
+    # balandlikda burg'ulamasdan texnologni ogohlantiramiz.
+    if abs(z - dz / 2) > 0.01:
+        op.notes.add("qirra teshigi qalinlik markazida emas — balandligini tekshirish kerak")
     d = _tool_diameter(el.get("name"), tools) or 0.0
     n_holes, step, _vertical = _hole_array(el, num)
     for i in range(n_holes):
@@ -107,7 +114,10 @@ def _groove(el: ET.Element, num: _Num) -> dict[str, Any]:
     }
 
 
-def parse_xnc_program(code: str, program_xml: str) -> XncOp:
+_BACK_SIDE = {"false", "0"}
+
+
+def parse_xnc_program(code: str, program_xml: str, side: str | None = None) -> XncOp:
     try:
         root = ET.fromstring(program_xml)
     except ET.ParseError as exc:
@@ -131,7 +141,13 @@ def parse_xnc_program(code: str, program_xml: str) -> XncOp:
     }
 
     tools: dict[str, float] = {}
-    op = XncOp(code=code, side2=code.endswith("_2"), dx=dx, dy=dy, dz=dz)
+    # Tomonning YAGONA ishonchli manbasi — operatsiyaning `side` atributi (spetsifikatsiya:
+    # default true = litsevaya). Eski eksport uni `1`/`0` deb yozadi. Kod suffiksi endi faqat
+    # zaxira: korpusda `2001_Nukriddin` orqa tomonni `x2` bilan tugatadi (`_2` emas), ya'ni 26
+    # dastur old tomon deb belgilanardi; `3052_Hikmat` da esa old va orqa dasturning kodi AYNAN
+    # bir xil bo'lib, ikkalasi bitta SCX nomiga yozilib biri o'chib ketardi.
+    side2 = side.strip().lower() in _BACK_SIDE if side is not None else code.endswith("_2")
+    op = XncOp(code=code, side2=side2, dx=dx, dy=dy, dz=dz)
     current_contour: list[dict[str, Any]] = []
 
     # Spetsifikatsiya (help/format_ru.html, "XNC программа"): dp/ac/as/z/x/y kabi
