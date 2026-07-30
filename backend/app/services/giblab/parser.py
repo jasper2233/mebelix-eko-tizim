@@ -179,6 +179,24 @@ def _advisories(
             f"Faylda import qilinmaydigan operatsiya bor: {names}. O'sha bosqich detallari vazifa ro'yxatiga tushmaydi."
         )
 
+    # Korpusda detalda ko'pi bilan 2 ta XNC bor; ko'pi bo'lsa skan sonlari kutilmagan
+    # bo'lishi mumkin (stage_sides har operatsiyaga +1 beradi), shuning uchun aytamiz.
+    many_xnc = sum(1 for ops in xnc_ops_by_part.values() if len(ops) > 2)
+    if many_xnc:
+        out.append(
+            f"{many_xnc} detalda 2 tadan ko'p XNC operatsiya bor. Hammasi saqlandi, lekin "
+            f"skan sonini texnolog tekshirishi kerak (har operatsiya bir skan talab qiladi)."
+        )
+
+    # minusCount — omborda tayyor turgan nusxalar (GibLab "Минус количество", 12.05.21).
+    # GibLab ularni kesishga qo'ymaydi, biz esa `count` bo'yicha hammasini ishlab chiqaramiz.
+    minus = sum(1 for g in products_goods for pe in g.findall("part") if (_f(pe, "minusCount") or 0) > 0)
+    if minus:
+        out.append(
+            f"{minus} detalda 'minus miqdor' bor (omborda tayyor nusxalar). Tizim baribir "
+            f"to'liq miqdorni ishlab chiqaradi — texnolog miqdorni tekshirishi kerak."
+        )
+
     unknown_xnc = sorted({t for ops in xnc_ops_by_part.values() for op in ops for t in op.unknown_tags})
     if unknown_xnc:
         out.append(

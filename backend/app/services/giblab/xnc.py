@@ -176,8 +176,13 @@ def parse_xnc_program(code: str, program_xml: str) -> XncOp:
 
 
 def merge_xnc_ops(ops: list[XncOp]) -> list[XncOp]:
-    """A part may carry at most TWO XNC operations (325 corpus cases) — both must be kept;
-    'last one wins' is a forbidden bug (TZ 5.2.7). Order: base side first, then _2."""
-    if len(ops) > 2:
-        raise ParseError(f"Detalda {len(ops)} ta XNC operatsiya — ko'pi bilan 2 bo'lishi kerak")
-    return sorted(ops, key=lambda o: o.side2)
+    """Detalning BARCHA XNC operatsiyalari saqlanadi; 'oxirgisi yutadi' — taqiqlangan
+    xato (TZ 5.2.7). Tartib: asosiy tomon, keyin _2.
+
+    Korpusda ko'pi bilan ikkita uchraydi, lekin GibLab ko'proq beradi: yorliq shabloni
+    XNC1..XNC5 maydonlarini taklif qiladi (help/labels_ru.html). Ilgari bu yerda ikkitadan
+    ko'pi uchun ParseError bor edi — ya'ni uch tomoni ishlanadigan detal bo'lsa BUTUN fayl
+    import bo'lmasdi. Cheklov TZ talabi emas, korpus kuzatuvidan qotib qolgan edi.
+    `stage_sides()` N ta operatsiyani baribir to'g'ri sanaydi (har biri +1 skan).
+    """
+    return sorted(ops, key=lambda o: (o.side2, o.code))

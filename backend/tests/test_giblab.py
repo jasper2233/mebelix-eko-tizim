@@ -10,8 +10,9 @@ from xml.sax.saxutils import quoteattr
 from app.services.giblab import parse_project
 from app.services.giblab.csblob import decode_cs_blob
 from app.services.giblab.cutmap import build_cutmap
+from app.services.giblab.models import XncOp
 from app.services.giblab.scx import generate_scx, scx_filename
-from app.services.giblab.xnc import parse_xnc_program
+from app.services.giblab.xnc import merge_xnc_ops, parse_xnc_program
 
 
 def make_blob() -> str:
@@ -302,6 +303,55 @@ def test_hardware_goods() -> None:
     print("furnitura (typeId=simple) OK")
 
 
+def test_many_xnc_ops_kept() -> None:
+    """GibLab detalga 2 tadan ko'p ishlov dasturi berishi mumkin (yorliq shabloni XNC1..XNC5
+    maydonlarini taklif qiladi). Ilgari parser 2 tadan ko'pini ko'rsa BUTUN faylni rad etardi —
+    ya'ni uch tomoni ishlanadigan detal import bo'lmasdi. Endi hammasi saqlanadi + advisory."""
+    ops = [XncOp(code=f"42_A1_{i}", side2=(i == 2), dx=700, dy=500, dz=16) for i in range(3)]
+    kept = merge_xnc_ops(ops)
+    assert len(kept) == 3  # birortasi yo'qolmaydi
+    assert [o.code for o in kept] == ["42_A1_0", "42_A1_1", "42_A1_2"]  # barqaror tartib
+
+    prog = (
+        '<program dx="700" dy="500" dz="16"><tool name="Bore8" d="8"/>'
+        '<bf x="10" y="10" dp="12" name="Bore8"/></program>'
+    )
+    ops_xml = "".join(
+        f'<operation typeId="XNC" id="{10 + i}" code="42_A1{"_2" if i == 1 else ""}" '
+        f'program={quoteattr(prog)}><part id="1"/></operation>'
+        for i in range(3)
+    )
+    xml = (
+        '<project version="23051701">'
+        '<good typeId="product" id="1" code="42" name="M" count="1">'
+        '<part id="1" code="A1" dl="700" dw="500" count="1"/>'
+        "</good>" + ops_xml + "</project>"
+    ).encode()
+    project = parse_project(xml)
+    assert len(project.all_parts[0].xnc_ops) == 3
+    assert project.all_parts[0].stage_sides() == {"PRISADKA": 3}  # har operatsiya bir skan
+    assert any("XNC operatsiya bor" in w for w in project.warnings)
+    print("2 tadan ko'p XNC saqlanadi OK")
+
+
+def test_minus_count_warning() -> None:
+    """minusCount — omborda tayyor turgan nusxalar (GibLab "Минус количество"). GibLab ularni
+    kesishga qo'ymaydi, biz esa count bo'yicha hammasini ishlab chiqaramiz — shuning uchun
+    texnologga aytamiz. Korpusda hamma joyda nol."""
+
+    def build(extra: str) -> bytes:
+        return (
+            '<project version="1"><good typeId="product" id="1" code="42" name="M" count="1">'
+            f'<part id="1" code="A1" dl="700" dw="500" count="5"{extra}/>'
+            "</good></project>"
+        ).encode()
+
+    assert [w for w in parse_project(build(' minusCount="0"')).warnings if "minus miqdor" in w] == []
+    hit = [w for w in parse_project(build(' minusCount="2"')).warnings if "minus miqdor" in w]
+    assert len(hit) == 1 and "1 detalda" in hit[0]
+    print("minus miqdor ogohlantirishi OK")
+
+
 def test_allowance_warning() -> None:
     """Ishlov qo'shimchasi (припуск) GibLab kartasida punktir chiziq bilan chiziladi
     (help/question/stock.html); bizning xarita chizmaydi. Nolga teng bo'lmasa ogohlantiramiz —
@@ -409,4 +459,6 @@ if __name__ == "__main__":
     test_unhandled_operation_warning()
     test_unknown_xnc_tag_warning()
     test_allowance_warning()
+    test_many_xnc_ops_kept()
+    test_minus_count_warning()
     print("ALL GIBLAB TESTS PASSED")

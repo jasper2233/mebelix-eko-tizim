@@ -13,6 +13,7 @@ Loyihaning to'liq texnik hujjatlari. Har bir fayl o'z subsystemidagi **har bir m
 | [07-infra-devops.md](07-infra-devops.md) | Docker Compose (local/prod), Dockerfilelar, Caddy, nginx, Makefile, scriptlar (deploy, serverda saqlanadigan shifrlangan kunlik backup), pre-commit, CI/CD (ghcr.io image build, avto-deploy, avto-rollback, Telegram notify), **chop etish infratuzilmasi (bridge-agent + GoDEX G500-U)**, env variablelar jadvali |
 | [08-packages.md](08-packages.md) | Paket versiyalari, upgrade tarixi, bridge-agent bog'liqliklari (manifestsiz), tizim darajasidagi bog'liqliklar (OS shriftlari), ataylab ushlab qolingan versiyalar (ceilinglar) va yangilash yo'llari |
 | [09-mes-domain.md](09-mes-domain.md) | MES domen qatlami (TT implementatsiyasi): data model, GibLab parser (CS blob, SCX), scan engine, real-time, buyurtma anketasi, yorliq chop etish (PNG, USB GoDEX), API xaritasi, frontend tuzilishi |
+| [10-giblab-reference.md](10-giblab-reference.md) | Manba tizim GibLab: interfeys tuzilishi, `.project` fayl formati (tovarlar, detal/zagotovka/qoldiq, uch juft o'lcham, o'lcham kiritish rejimlari), to'qqiz operatsiya turi, XNC dasturi teglari, sozlamalar (katalog, postprotsessorlar, yorliq shablonlari), 1C qoldiq integratsiyasi, parser nimani o'qiydi va nima uchun ogohlantiradi |
 | [Mebelix_MES_TZ_v2.2.docx](Mebelix_MES_TZ_v2.2.docx) | Texnik Topshiriq (TT) — talablarning yagona manbasi |
 
 ## Yangilab borish
