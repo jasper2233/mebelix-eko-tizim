@@ -112,15 +112,24 @@ def decode_cs_blob(b64: str) -> list[BlobPattern]:
         if nr < 1:
             raise ParseError(f"CS blob: {idx + 1}-patternda yozuvlar yo'q.")
 
-        slot_depth, slot_type, slot_value, _slot_qty, _slot_pid = _parse_record(raw, dims + 117)
+        slot = _parse_record(raw, dims + 117)
+        slot_depth, slot_type, slot_value = slot[0], slot[1], slot[2]
         # Root axis (TZ 5.7.3): null slot (type=1, v=0) → horizontal first cuts;
         # a depth-1 trim record → vertical, and the slot IS the leading 2mm trim.
+        # Torsovkasiz vertikal xaritada (205-korpus: XDF listlar) yetakchi qirqim yo'q —
+        # slot birinchi HAQIQIY yozuvning o'zi (polosa/detal/qoldiq) bo'lib keladi; uni
+        # daraxtga birinchi bo'lib qo'shamiz, aks holda birinchi polosa butunlay yo'qolardi.
+        slot_rec = None
         if slot_type == 1 and slot_value == 0:
             root_vertical = False
             leading_trim = None
         elif slot_depth == 1 and slot_type == 1:
             root_vertical = True
             leading_trim = slot_value
+        elif slot_depth == 1 and slot_type in (2, 3, 4):
+            root_vertical = True
+            leading_trim = None
+            slot_rec = slot
         else:
             raise ParseError(f"CS blob: {idx + 1}-pattern root-o'q sloti noma'lum (tag turi {slot_type}).")
 
@@ -129,6 +138,8 @@ def decode_cs_blob(b64: str) -> list[BlobPattern]:
         if end > len(raw):
             raise ParseError(f"CS blob qisqa: {idx + 1}-pattern yozuvlari sig'maydi.")
         flat = [_parse_record(raw, rec_off + 15 * j) for j in range(nr - 1)]
+        if slot_rec is not None:
+            flat.insert(0, slot_rec)
 
         patterns.append(
             BlobPattern(

@@ -660,33 +660,46 @@ def test_numeric_booleans() -> None:
 
 
 def test_geometry_change_warnings() -> None:
-    """Geometriyani jimgina o'zgartiradigan ikki holat ogohlantiriladi: butun dasturni
-    aylantirish/aks ettirish (`turn`/`mirHor`/`mirVert`) va qirra teshigining qalinlik
-    markazidan chetlashishi (`m`/`z` talqini korpusda tekshirilmagan)."""
-    prog = '<program dx="1000" dy="500" dz="16"><tool name="B8" d="8"/><bl y="70" z="{z}" dp="34" name="B8"/></program>'
+    """`turn`/`mirHor`/`mirVert` butun dasturni o'zgartiradi — biz koordinatalarni
+    o'zgartirmaymiz, shuning uchun ogohlantiriladi (205-korpusda 2 real fayl bor)."""
+    prog = '<program dx="1000" dy="500" dz="16"><tool name="B8" d="8"/><bl y="70" z="8" dp="34" name="B8"/></program>'
 
-    def build(op_extra: str = "", z: str = "8") -> bytes:
-        body = prog.format(z=z)
+    def build(op_extra: str = "") -> bytes:
         return (
             '<project version="1">'
             '<good typeId="product" id="1" code="42" name="M" count="1">'
             '<part id="2" code="A1" name="bok" dl="1000" dw="500" count="1"/>'
             "</good>"
-            f'<operation typeId="XNC" id="7" code="X"{op_extra} program={quoteattr(body)}>'
+            f'<operation typeId="XNC" id="7" code="X"{op_extra} program={quoteattr(prog)}>'
             '<part id="2"/></operation>'
             "</project>"
         ).encode()
 
-    assert [w for w in parse_project(build()).warnings if "XNC" in w] == []  # markazda + burilishsiz
+    assert [w for w in parse_project(build()).warnings if "XNC" in w] == []  # burilishsiz — jim
 
     turned = [w for w in parse_project(build(' turn="1"')).warnings if "aylantirilgan" in w]
     assert len(turned) == 1 and "X" in turned[0]
     assert [w for w in parse_project(build(' mirVert="true"')).warnings if "aks ettirilgan" in w]
     assert [w for w in parse_project(build(' turn="0" mirHor="false"')).warnings if "aylantirilgan" in w] == []
-
-    off = [w for w in parse_project(build(z="12")).warnings if "markazida emas" in w]
-    assert len(off) == 1
     print("geometriya o'zgarishi ogohlantirishlari OK")
+
+
+def test_edge_bore_z_middle() -> None:
+    """`m` (Середина по Z, default true): true -> teshik markazda, `z` e'tiborsiz; false -> `z`
+    absolyut. 205-korpus isboti: `m=false` faqat markazdan chetlashganda yoziladi, `m=true` da
+    esa `z=16 dz=16` (yuzada — imkonsiz) ham uchraydi. Ilgari `z` doim absolyut olinardi —
+    32 mm qo'shqavat plitada markaz o'rniga 8 mm da burg'ulanardi (310 real teshik)."""
+
+    def z_of(attrs: str, dz: str = "32") -> float:
+        prog = f'<program dx="1000" dy="500" dz="{dz}"><tool name="B8" d="8"/><bl y="70" {attrs} dp="34" name="B8"/>'
+        return parse_xnc_program("t", prog + "</program>").edge_bores[0]["z"]
+
+    assert z_of('z="8"') == 16.0  # m yo'q = true -> markaz, z e'tiborsiz
+    assert z_of('z="8" m="true"') == 16.0
+    assert z_of('z="16"', dz="16") == 8.0  # korpusdagi imkonsiz holat -> markaz
+    assert z_of('z="7.5" m="false"', dz="16") == 7.5  # m=false -> absolyut
+    assert z_of('m="false"', dz="16") == 8.0  # z yozilmagan -> dz/2 zaxira
+    print("qirra teshigi balandligi (m/z) OK")
 
 
 if __name__ == "__main__":
@@ -713,4 +726,5 @@ if __name__ == "__main__":
     test_xnc_side_attribute()
     test_numeric_booleans()
     test_geometry_change_warnings()
+    test_edge_bore_z_middle()
     print("ALL GIBLAB TESTS PASSED")

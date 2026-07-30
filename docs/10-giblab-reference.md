@@ -328,6 +328,16 @@ CS operatsiyasida `<part>` ro'yxati bor, lekin **ro'yxatda bo'lish joylashtirilg
 bildirmaydi**: `usedCount="0"` bo'lsa GibLab uni ataylab joylashtirmagan (material yetmagan
 yoki dizayner chiqarib tashlagan). `kuxniya.project` da uchta shunday detal bor.
 
+**Mahsulot soni ko'paytmasi.** `<part count>` — BITTA mahsulotdagi soni; buyurtmadagi jami =
+u × `<good typeId="product" count>`. Xarita jami nusxani joylashtiradi: 205-korpusda
+`count="3"` li mahsulotning 3 detali xaritada 9 katak. 8-faylli korpusda mahsulot soni doim 1
+edi, shuning uchun bu ko'rinmagan — 7 faylda xarita mos kelmay fayl rad etilardi.
+
+**Slot torsovkasiz xaritada.** Blob slotining uchinchi ko'rinishi (205-korpusdagi XDF listlar,
+torsovkasiz kesilgan): slot `type=2/3/4` — u yetakchi qirqim emas, **birinchi haqiqiy yozuvning
+o'zi** (polosa/detal/qoldiq); vertikal boshlanish, daraxtga birinchi bo'lib qo'shiladi. Aks
+holda birinchi polosa butun detallari bilan yo'qolardi.
+
 **Blobsiz kesish operatsiyasi.** Optimallashtirilmagan faylda `data` umuman bo'lmaydi (korpusdagi
 ikki eski faylda 10 ta shunday CS bor) — bunda fayl `template` deb belgilanadi va arra
 marshruti qurilmaydi. Lekin optimallashtirilgan faylda ham bitta materialni optimallashtirmaslik
@@ -423,11 +433,12 @@ buzilmaslik uchun ogohlantirish qo'shilgan.
 umumiy "oldingi qiymat" merosidan farq qiladi. Parser atribut borligini alohida tekshiradi,
 aks holda ikkinchi paz birinchisining oxirigacha cho'zilib detalni kesib yuborardi.
 
-**Qirra teshigining balandligi.** `m` (Середина по Z, default `true`) teshik qalinlik
-markazida ekanini bildiradi, `z` esa spetsifikatsiyada "koordinata / markazdan siljish" deb
-ta'riflangan — ya'ni ikki xil talqin mumkin. Korpusdagi **1185 qirra teshigida ham `m="true"`
-va `z` aynan `dz/2`** (16 mm listda 8), shuning uchun ikki talqin bir xil natija beradi va
-parser `z` ni absolyut oladi. Markazdan chetlashgan holat uchrasa ogohlantiriladi.
+**Qirra teshigining balandligi.** `m` (Середина по Z, default `true`): `true` → teshik
+qalinlik **markazida**, `z` e'tiborsiz; `false` → `z` **absolyut** balandlik. 205-korpus buni
+bir ma'noda isbotlaydi: `m="false"` faqat markazdan chetlashganda yoziladi (z=7.5, 8.5, 10,
+2.5...), `m="true"` da esa `z=16 dz=16` (yuzaning o'zida — fizik imkonsiz) ham uchraydi, ya'ni
+GibLab `m=true` da `z` ni o'qimaydi. Eng katta real holat: 32 mm qo'shqavat plitada `z=8
+m=true` — 310 teshik markazda (16 mm) burg'ulanadi, 8 mm da emas.
 
 **O'qilmagan element atributlari:**
 

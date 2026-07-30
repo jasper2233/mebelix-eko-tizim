@@ -83,14 +83,13 @@ def _add_edge_bores(el: ET.Element, side: str, op: XncOp, num: _Num, tools: dict
     # bt/bb carry x; bl/br carry y — only the along-edge coordinate exists (TZ 5.5)
     pos = num(el, "x") if side in ("t", "b") else num(el, "y")
     dp = num(el, "dp")
-    z = num(el, "z", dz / 2)
-    # `m` (Середина по Z, default true) teshik qalinlik markazida ekanini bildiradi, `z` esa
-    # "koordinata / markazdan siljish" deb ta'riflangan. Korpusdagi 1185 qirra teshigida `m=true`
-    # va `z` aynan dz/2 — ikki talqin bir xil natija beradi, biz `z` ni absolyut olamiz. Markazdan
-    # chetlashgan holat korpusda yo'q: qaysi talqin ekani noaniq, shuning uchun jimgina noto'g'ri
-    # balandlikda burg'ulamasdan texnologni ogohlantiramiz.
-    if abs(z - dz / 2) > 0.01:
-        op.notes.add("qirra teshigi qalinlik markazida emas — balandligini tekshirish kerak")
+    # `m` (Середина по Z, default true): true -> teshik qalinlik MARKAZIDA, `z` e'tiborsiz;
+    # false -> `z` absolyut balandlik. 205-korpus buni bir ma'noda ko'rsatadi: `m=false` faqat
+    # markazdan chetlashganda yoziladi (z=7.5/8.5/10...), `m=true` da esa `z=16 dz=16` (yuzada —
+    # imkonsiz) ham uchraydi, ya'ni GibLab uni o'qimaydi. Ilgari `z` doim absolyut olinardi —
+    # 32 mm qo'shqavat plitada (310 teshik) markaz o'rniga 8 mm da burg'ulanardi.
+    z_raw = num(el, "z", dz / 2)  # meros zanjiri uchun baribir o'qiymiz
+    z = dz / 2 if xml_bool(el.get("m"), True) else z_raw
     d = _tool_diameter(el.get("name"), tools) or 0.0
     n_holes, step, _vertical = _hole_array(el, num)
     for i in range(n_holes):

@@ -130,7 +130,11 @@ def _build_part(p: ET.Element, product: ParsedProduct, seen: set[str], warnings:
         product_code=product.code,
         code=code,
         name=p.get("name", code),
-        count=_i(p, "count", 1),
+        # `<part count>` — BITTA mahsulotdagi soni; buyurtmadagi jami = u × mahsulot soni.
+        # GibLab xaritasi ham jami nusxani joylashtiradi (205-korpus: `count="3"` li mahsulotda
+        # 3 detal -> xaritada 9 katak). Ilgari ko'paytirilmasdi — mahsulot soni >1 faylda
+        # xarita mos kelmay RAD ETILARDI, o'tgan taqdirda ham kam ishlab chiqarilardi.
+        count=_i(p, "count", 1) * max(product.count, 1),
         length=length,
         width=width,
         saw_length=_f(p, "jl"),
@@ -258,9 +262,6 @@ def _advisories(
             f"XNC dasturi aylantirilgan yoki aks ettirilgan (turn/mirHor/mirVert): {', '.join(transformed[:5])}. "
             f"Teshik koordinatalari o'zgarmagan holda olinadi — SCX faylni CNC'da tekshirish shart."
         )
-
-    notes = sorted({n for ops in xnc_ops_by_part.values() for op in ops for n in op.notes})
-    out.extend(f"XNC: {n}." for n in notes)
 
     unknown_xnc = sorted({t for ops in xnc_ops_by_part.values() for op in ops for t in op.unknown_tags})
     if unknown_xnc:
