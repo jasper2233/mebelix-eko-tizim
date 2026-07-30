@@ -50,6 +50,16 @@ XML. Kodlash e'londa ko'rsatiladi (`UTF-8` yoki `windows-1251`). Ildiz — `<pro
 `23051701` = 2023-05-17. Korpusda ikkala versiya ham bor va ular **turlicha yozadi** —
 2021 buildi detal kodlarini umuman bermaydi.
 
+`<project>` atributlari: `version`, `currency`, **`date`** (tayyorlik sanasi, default bugun),
+`description`, `costOperation`, `costMaterial`, `cost`. Real fayllarda bundan tashqari
+`name` va `project.uuid` ham bor (spetsifikatsiyada yo'q, lekin biz ikkalasiga tayanamiz —
+`uuid` fayl o'zligining yagona barqaror belgisi).
+
+`product` goodida esa `orderDate`, `date`, `phone1`, `phone2`, `description` va `program`
+(parametrik dastur) bor. **Biz o'qimaymiz:** buyurtma sanasi, mijoz va telefon menejer
+kiritadigan ma'lumot, GibLab nusxasi eskirgan bo'lishi mumkin. Dizayner ularni to'ldirsa,
+buyurtma formasini oldindan to'ldirish imkoniyati bor (hozircha ishlatilmaydi).
+
 ### 2.1 Tovarlar — `<good typeId="...">`
 
 Bitta teg, oltita turdagi ma'lumot uchun:
@@ -60,8 +70,18 @@ Bitta teg, oltita turdagi ma'lumot uchun:
 | `sheet` | Listli material. `l`/`w`/`t` (default 2750×1830×18), `count` | ✅ material registri |
 | `band` | Pogonaj material — kromka lentasi, profil, quvur. `w`/`t`, `count` metrda | ✅ material registri |
 | `simple` | **Furnitura**: petlya, yevrovint, dasta, napravlyayushiye. `unit`, `count`, `cost` | ✅ material registri (`hardware`) |
-| `tool.cutting` | Kesish dastgohi sozlamalari. **`swSawthick` — pilla qalinligi (kerf)** | ✅ faqat kerf |
-| `tool.edgeline` | Kromkalash dastgohi. `elRestSide` | ✅ faqat `elRestSide` |
+| `tool.cutting` | Kesish dastgohi sozlamalari. **`swSawthick` — pilla qalinligi (kerf), default 4.4 mm** | ✅ faqat kerf |
+| `tool.edgeline` | Kromkalash dastgohi. `elRestSide`, **`elWidthPreJoint` — prifugovka kengligi** | ✅ faqat `elRestSide` |
+
+`tool.cutting` ning qolgan atributlari (`swPackageHeight`, `swMaxturns`, `swSort`,
+`swSortInBand`, `swComplexBand`, `swMinSizeBand`, `swMaxSizeBand`, `swMaxLengthBand`,
+`swMinPruning`) — **optimizator sozlamalari**: GibLab xaritani ular bilan hisoblagan. Biz
+xaritani qayta hisoblamaymiz, shuning uchun o'qilmaydi. Korpusda eski eksportda `tool.cutting`
+butunlay bo'sh keladi — o'shanda kerf spetsifikatsiyadagi standart 4.4 mm bo'ladi
+(ilgari bu yerda 3.0 turardi, ya'ni arrachiga GibLab ishlatganidan boshqa raqam ko'rinardi).
+
+`elWidthPreJoint` — §2.2 dagi `l/w` → `jl/jw` farqini tushuntiruvchi qiymat: kromkalash
+dastgohi har tomondan shuncha mm oladi. Korpusda hamma joyda 1 mm.
 
 `simple` goodlari sexning **`goods.xls`** katalogidan keladi (Настройки → Каталог товаров).
 Katalog ustunlari: ID, ota-ID, papka, kod, nom, o'lchov birligi, narx, ombor, rasm, qalinlik,
@@ -126,7 +146,15 @@ Tomonlar: `t`/`b` — **uzunlik bo'ylab**, `l`/`r` — **kenglik bo'ylab**.
 | `minusCount` | Omborda tayyor turgan nusxalar | GibLab ularni kesishga qo'ymaydi, biz `count` bo'yicha hammasini ishlab chiqaramiz → ogohlantiramiz |
 | `description` | Izoh **va/yoki ishlov dasturi kodi**: `#nom` — yuz tomon, `##nom` — orqa tomon, bo'shliqsiz | Shablon kutubxonasidan ishlov. Bunday holatda faylda XNC operatsiyasi bo'lmaydi va butun ishlov yo'qoladi → ogohlantiramiz. Korpusda ishlatilmagan |
 | `dbId` | Ombor qoldig'ining 1C dagi ID'si | 1C integratsiyasi ishlatilsa paydo bo'ladi. Korpusda yo'q |
-| `usedCount` | Ishlatilgan miqdor | Qoldiq inventarizatsiyasi uchun |
+| `usedCount` | Ishlatilgan miqdor | Qoldiq inventarizatsiyasi uchun. Korpusda 595 detalda bor |
+| `cTrimL` / `cTrimW` / `cTrimEL` / `cTrimEW` | **Faqat list/polosa uchun**: shu listning o'z torsovkasi. Manfiy (default −1) → operatsiyaning qiymati ishlatiladi | Bir listning torsovkasi boshqacha bo'lsa xarita sarlavhasidagi raqam shu list uchun xato bo'ladi. Korpusda ishlatilmagan |
+| `groupInBlock` / `groupInBlockMC` / `groupInBlockMaxC` | Detallarni blokka guruhlash | Optimizator sozlamasi. Korpusda yo'q |
+
+**Deloviy qoldiqlar — ishlatilmagan imkoniyat.** Korpusda 13 ta `waste="true" business="true"`
+`<part>` bor va ular hammasi `good[typeId=sheet]` ichida yashaydi (detal ro'yxatiga tushmaydi,
+soxta vazifa yaratmaydi). Ular GibLab'ning "shu kesishdan 688×1166 foydali qoldiq chiqadi"
+degan xabari. Sklad moduli ularni qabul qilsa qoldiq hisobi avtomatlashadi — 1C protokoli
+(§6) aynan shu ma'lumot bilan ishlaydi.
 
 ---
 
@@ -150,6 +178,30 @@ GibLab "+Операция" ro'yxatida **to'qqiz tur** taklif qiladi:
 da 1 ta — ularning `<part>` lari `X1..X32` kodli alyuminiy profillar, 3200 mm zagotovkadan
 kesiladi va listda umuman joylashtirilmaydi.
 
+Har operatsiyada bo'ladigan umumiy atributlar: `id`, `typeId`, `typeName` (ko'rinadigan nom),
+`description`, `costOperation`/`costMaterial`/`costTotal`, **`owner`** (operatsiya mahsulotga
+yoki proyektga tegishli), `printable`, `startNewPage`. Oxirgi uchtasi chop etish sozlamasi;
+`owner` korpusda yozilmaydi va bizning EL simvol biriktirish barcha mahsulotlarni ko'rib
+chiqadi, ya'ni egasidan qat'i nazar to'g'ri ishlaydi.
+
+### 3.0 Operatsiya materiali — `<material>`
+
+`id` (goodga havola), `count` (miqdor) va **`used`** (operatsiyadagi vazifasi). Spetsifikatsiya
+`used="base"` uchun ikki ma'no beradi:
+
+- **kesishda** — asosiy listli material;
+- **kromkalashda** — облицовочная лента, ya'ni **kley emas, lentaning o'zi**.
+
+Shuning uchun parser materialni tartib bo'yicha emas, `used="base"` bo'yicha tanlaydi.
+Korpusda kesish/kromkalash operatsiyalarida material doim bitta (`used` ham yozilmagan);
+bittadan ko'p material faqat `O` (komplektatsiya) da uchraydi — 8/10/37 tagacha.
+
+Kromka lentasining nomi odatda detalning `el{tomon}Mat` atributida bo'ladi, **lekin har doim
+emas**: korpusdagi 779 kromkalangan qirradan 112 tasida u yozilmagan. Ikkisi ham bor bo'lgan
+667 holatda EL operatsiyasining bazaviy materiali bilan **nomlar aynan bir xil**, shuning
+uchun yozilmagan holatda operatsiyadan olinadi — aks holda yorliqdagi lenta katakchasi bo'sh
+chiqib, kromkachi qaysi lentani olishini bilmasdi.
+
 ### 3.1 CS — kesish xaritasi
 
 `data` atributi — **base64, shifrlanmagan big-endian binar blob**. Ichida naqshlar (patterns),
@@ -158,7 +210,10 @@ har birida daraxt ko'rinishidagi kesish yozuvlari. `csblob.py` uni ochadi.
 Muhim tushunchalar:
 
 - **Кратность (`mult`)** — bitta naqsh necha marta takrorlanadi. Xaritada `C:2` deb ko'rinadi
-- **Torsovka** (`cTrimL`, `cTrimW`) — listning chetidan olinadigan qirqim, default 2 mm
+- **Torsovka** (`cTrimL`, `cTrimW`) — listning chetidan olinadigan qirqim, **spetsifikatsiya
+  bo'yicha default 10 mm** (sexning fayllarida doim 2 mm yozilgan; eski eksportda umuman yo'q).
+  `cTrimEL`/`cTrimEW` — pastdan va o'ngdan minimal chekinish, manfiy bo'lsa `cTrimL`/`cTrimW`
+  ishlatiladi
 - **Deloviy qoldiq** — `waste="true" business="true"` bo'lgan `<part>`; foydali o'lchami
   ta'rifda, xom o'lchami `rl`/`rw` da
 - **`cPartCount`** — joylashtirilgan katakchalar soni; parser buni blob bilan solishtiradi
@@ -167,12 +222,63 @@ CS operatsiyasida `<part>` ro'yxati bor, lekin **ro'yxatda bo'lish joylashtirilg
 bildirmaydi**: `usedCount="0"` bo'lsa GibLab uni ataylab joylashtirmagan (material yetmagan
 yoki dizayner chiqarib tashlagan). `kuxniya.project` da uchta shunday detal bor.
 
+**Blobsiz kesish operatsiyasi.** Optimallashtirilmagan faylda `data` umuman bo'lmaydi (korpusdagi
+ikki eski faylda 10 ta shunday CS bor) — bunda fayl `template` deb belgilanadi va arra
+marshruti qurilmaydi. Lekin optimallashtirilgan faylda ham bitta materialni optimallashtirmaslik
+mumkin: o'shanda uning detallari arrachiga tushib, xaritasi bo'lmaydi. Xarita quruvchi bunday
+operatsiyani jimgina o'tkazib yuboradi (nusxa tekshiruvi nolni sanamaydi), shuning uchun parser
+materialni **nomi bilan** aytadi.
+
+**`draw` — xaritaning ikkinchi ko'rinishi.** `cSaveDrawCut="true"` bo'lsa GibLab xaritani
+blobdan tashqari **o'qiladigan XML** ko'rinishida ham yozadi:
+
+| Teg | Nima | Atributlar |
+|---|---|---|
+| `p` | Kesish kartasi | `l` list uzunligi, `w` kengligi, `c` listlar soni, `cm` izoh, `sheetId`, `tl`/`tw` torsovka |
+| `c` | Rez | `x`, `y`, `l`, `w` |
+| `d` | Detal | `x`, `y`, `l`, `w`, `id` (detalga havola) |
+| `r` | Qoldiq | `x`, `y`, `l`, `w`, `id` |
+
+Koordinatalar absolyut, ya'ni bu blobni ochmasdan xarita qurish uchun yetarli. Korpusdagi
+8 faylda `cSaveDrawCut` doim `false` va `draw` hech qayerda yo'q, shuning uchun parser uni
+o'qimaydi — blob yagona manba.
+
+Boshqa optimizator sozlamalari: `csDirectCut` (birinchi rez yo'nalishi: 0 ixtiyoriy, 1 uzunlik
+bo'ylab, 2 kenglik bo'ylab, 3/4 afzal ko'rilgan), `csTexture` (tekstura hisobga olinadi,
+default true), `cFillRep`, `cMinDimRegWaste1/2`, `cBusinessWaste`, `cTrimWaster`,
+`cMinDimDetail` — hammasi GibLab xaritani qanday hisoblaganini bildiradi, natijaga emas.
+`*P` bilan tugagan statistikalar (`cTrimLengthP`, `cPartCountP`, ...) — karta shakllangunga
+qadar **oldindan hisob**; biz yakuniy qiymatlarni olamiz.
+
 ### 3.2 XNC — ishlov dasturi
 
 `program` atributi — ichki XML hujjat (HTML-escape qilingan). Ba'zi eksportlarda
 `<program>` alohida bola element sifatida keladi.
 
 Ildiz atributlari: `dx`/`dy`/`dz` (yangi) yoki `l`/`w`/`thick` (eski).
+
+**Operatsiya darajasidagi atributlar** — bular butun dasturga ta'sir qiladi:
+
+| Atribut | Nima | Bizda |
+|---|---|---|
+| `side` | Detal tomoni, default `true` = yuz tomon. Eski eksport `1`/`0` deb yozadi | ✅ **tomonning yagona manbasi** |
+| `turn` | Burilish: 0=0°, 1=90°, 2=180°, 3=270° | ❌ ogohlantirish |
+| `mirHor` / `mirVert` | Gorizontal / vertikal aks ettirish | ❌ ogohlantirish |
+| `bySizeDetail` | Koordinatalar detal o'lchamiga nisbatan | korpusda 505/505 `true`; dastur `dx/dy` si detal o'lchamiga 501 holatda aynan teng |
+| `count` | Detallar soni (detalga bog'langan bo'lsa detal sonidan olinadi) | detal sonini `<part>` dan olamiz |
+| `code` | Dastur kodi | ✅ SCX nomi va identifikatsiya |
+| `price*` / `count*` / `cost*` | Teshik/freza/rez narxi va soni | ❌ narx hisobi yo'q |
+
+`side` ni o'qish shart edi, chunki kod suffiksi (`_2`) ishonchsiz:
+
+- `2001_Nukriddin.project` — orqa tomon kodlari `x2` bilan tugaydi (`_2` emas): 26 dastur
+  yuz tomon deb belgilanardi;
+- `3052_Hikmat.project` — yuz va orqa dasturning kodi **aynan bir xil**: 10 detalda ikkalasi
+  bitta SCX nomiga yozilib, biri o'chib ketardi.
+
+`turn`/`mirHor`/`mirVert` korpusdagi 505 dasturda ham standart holatda (0 / false / false).
+Ular ishlatilsa koordinatalarni o'zgartirmaymiz, ya'ni teshiklar boshqa joyga tushardi —
+shuning uchun jimgina xato chiqarish o'rniga ogohlantiriladi.
 
 Spetsifikatsiyadagi element to'plami:
 
@@ -206,6 +312,30 @@ ataylab o'chirgan teshik chizilib SCX'ga ham tushardi.
 `xy` alohida xavfli: u koordinata boshini belgilaydi, ya'ni e'tiborsiz qolsa undan keyingi
 **barcha teshik joylari xato** bo'ladi. Korpusda ikkalasi ham uchramaydi, lekin jimgina
 buzilmaslik uchun ogohlantirish qo'shilgan.
+
+**Pazning oxiri.** `gr` da `x2`/`y2` yozilmasa **shu elementning** `x1`/`y1` i olinadi — bu
+umumiy "oldingi qiymat" merosidan farq qiladi. Parser atribut borligini alohida tekshiradi,
+aks holda ikkinchi paz birinchisining oxirigacha cho'zilib detalni kesib yuborardi.
+
+**Qirra teshigining balandligi.** `m` (Середина по Z, default `true`) teshik qalinlik
+markazida ekanini bildiradi, `z` esa spetsifikatsiyada "koordinata / markazdan siljish" deb
+ta'riflangan — ya'ni ikki xil talqin mumkin. Korpusdagi **1185 qirra teshigida ham `m="true"`
+va `z` aynan `dz/2`** (16 mm listda 8), shuning uchun ikki talqin bir xil natija beradi va
+parser `z` ni absolyut oladi. Markazdan chetlashgan holat uchrasa ogohlantiriladi.
+
+**O'qilmagan element atributlari:**
+
+| Atribut | Nima | Nega o'qilmaydi |
+|---|---|---|
+| `comment` (barcha elementlarda) | Dizaynerning izohi, masalan `LED PAZ (H-4 G-5 dx-0)` | Ko'rsatadigan joy yo'q. Operator ekraniga chiqarish — kelajakdagi imkoniyat (korpusda 180 pazda va 44 frezada bor) |
+| `ms.sdp` / `ms.sxy` | Chuqurlik va gorizontal qadam (bir necha o'tishda frezalash) | Dastgoh ishi; SCX konturni bir marta beradi. Korpusda `sxy` 32 marta, `sdp` yo'q |
+| `ms.c` / `gr.c` | Radius korreksiyasi (0=markaz, 1=o'ng, 2=chap) | Korpusda `gr.c` 180 pazda ham **0 = markaz bo'yicha**, ya'ni bizning taxminimizga mos. `ms.c` esa SCX ga o'tadi |
+| `ms.in` / `ms.out` | Kirish/chiqish turi | Dastgoh sozlamasi (korpusda 99 marta) |
+| `ma.r` / `ma.dir` | Yoy radiusi (manfiy → yo'nalish teskari) va yo'nalishi | `ma` umuman o'qilmaydi — ogohlantirish |
+| `ml.dp` / `mac.dp` | Segmentning o'z chuqurligi | GibLab hech qachon yozmaydi (korpusda 354 `ml` va 25 `mac` da ham yo'q); chuqurlik `ms.dp` dan |
+
+**Spetsifikatsiyada yo'q atribut:** `gr.p` — korpusdagi 28 pazda (hammasi `3052_Hikmat` dagi
+"LED PAZ") bor va doim `0`. Hujjatlashtirilmagan, o'zgarmas — e'tiborsiz qoldirilgan.
 
 **Standart konstantalar.** Yangi eksport ularni `<var>` bilan e'lon qiladi, eski (2021 buildi)
 esa e'lonsiz ishlatadi. Qiymatlar korpusda hamma joyda bir xil:
@@ -318,9 +448,35 @@ profil kesish (`CL` — sexda bunday post yo'q).
 | Detalda 2 tadan ko'p XNC | hammasi saqlandi, skan sonini tekshirish kerak |
 | `description` da `#kod` | ishlov shablon nomi bilan berilgan, o'qilmaydi |
 | Xaritada joyi yo'q detal | arrachi ro'yxatiga tushmaydi |
+| `turn`/`mirHor`/`mirVert` | dastur aylantirilgan/aks ettirilgan, koordinatalar o'zgarmaydi |
+| Qirra teshigi markazda emas | `m`/`z` talqini tekshirilmagan, balandligini tasdiqlash kerak |
+| Blobsiz kesish operatsiyasi | material optimallashtirilmagan, xaritasi yo'q |
 
 Bu xabarlar fayl yuklanganda menejerga ko'rsatiladi va audit logga yoziladi
 (`POST /orders/{id}/project`).
+
+### 7.1 Qamrov — spetsifikatsiyadagi 289 atribut
+
+Rasmiy hujjat (`help/format_ru.html`) 31 blokda 289 atribut ta'riflaydi. Ulardan **131 tasi
+o'qiladi**, 158 tasi ataylab tashlanadi. Tashlanganlar to'rt guruhga bo'linadi:
+
+| Guruh | Nechta | Nega |
+|---|---|---|
+| Narx va qiymat (`cost*`, `price*`, `cCost*`, `elCost`, `spCost`, `grCost`) | ~45 | Sex narxni MebeliX'dan tashqarida hisoblaydi |
+| Optimizator sozlamalari (`sw*`, `cs*`, `cMinDim*`, `cFillRep`, `elRound*`, `elCalcMat`, `sp*`) | ~40 | GibLab xaritani ular bilan hisoblagan; biz **natijani** iste'mol qilamiz, qayta hisoblamaymiz |
+| Oldindan hisob (`*P` bilan tugaganlar) va `cCPF` | ~10 | Karta shakllangunga qadar taxmin; yakuniy qiymatlar bor |
+| Chop etish va maket (`LB` bo'limi, `printable`, `startNewPage`, `cSaveDrawCut`, `margin`, `border`) | ~25 | Tizim o'z yorlig'i va hujjatlarini chiqaradi |
+
+Qolganlari — `comment`, `owner`, `typeName`, `usedCount`, `groupInBlock*`, per-list torsovka,
+`draw`, `GR`/`SP` operatsiya parametrlari (`grWidth`, `grDepth`, `grOffset`, `grOffsetIncl`,
+`grSawthick`, `grCuttingLength`) — **korpusda ishlatilmagan yoki ko'rsatadigan joyi yo'q**;
+har biri yuqoridagi jadvallarda alohida izohlangan. `GR` paydo bo'lsa uning `grWidth`/`grDepth`/
+`grOffset` i to'g'ridan-to'g'ri PAZ bosqichiga geometriya beradi — hozir esa faqat ogohlantirish.
+
+`EL` operatsiyasidan `elSymbol` (xarita simvoli) o'qiladi; `elColor` (simvol rangi) va
+`elLineMark` (markirovka chizig'i) o'qilmaydi — bizning xaritada kromka o'z uslubida
+chiziladi. `elLength` (kromkalash uzunligi) ham o'qilmaydi: lenta sarfini material
+registridan olamiz.
 
 ---
 
