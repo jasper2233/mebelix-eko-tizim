@@ -32,6 +32,14 @@ import {
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import useCurrentUser from "@/hooks/useCurrentUser"
 import useCustomToast from "@/hooks/useCustomToast"
@@ -146,10 +154,15 @@ function OrderDetailPage() {
   const editableStatus =
     order.status === "draft" || order.status === "technical_review"
   const scxFiles = (order.files ?? []).filter((f) => f.kind === "scx")
-  // GibLab fayldagi typeId="simple" goodlar: petlya, yevrovint, dasta... (dona)
-  const hardware = (order.material_usage ?? []).filter(
-    (m) => m.kind === "hardware",
-  )
+  // GibLab fayldagi typeId="simple" goodlar: petlya, yevrovint, dasta... (dona).
+  // SKU kodlilar oldin: kodsizlar orasida dizaynerning 3D-model qoldiqlari ham
+  // uchraydi ("Вычитание тел", "Гнутая") — haqiqiy furnitura ustun tursin.
+  const hardware = (order.material_usage ?? [])
+    .filter((m) => m.kind === "hardware")
+    .sort(
+      (a, b) =>
+        (a.code ? 0 : 1) - (b.code ? 0 : 1) || a.name.localeCompare(b.name),
+    )
 
   return (
     <div>
@@ -350,32 +363,32 @@ function OrderDetailPage() {
             <OrderMatrix orderId={id} editable={isTexnolog && editableStatus} />
           </TabsContent>
           <TabsContent value="hardware">
-            <div className={cn(cardSurface, "overflow-x-auto")}>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-xs text-muted-foreground">
-                    <th className="px-4 py-2 font-medium">Kod</th>
-                    <th className="px-4 py-2 font-medium">Nomi</th>
-                    <th className="px-4 py-2 text-right font-medium">Soni</th>
-                    <th className="px-4 py-2 font-medium">Birlik</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {hardware.map((m, i) => (
-                    <tr key={i} className="border-b last:border-0">
-                      <td className="num px-4 py-2 text-xs">{m.code ?? "—"}</td>
-                      <td className="px-4 py-2 font-medium">{m.name}</td>
-                      <td className="num px-4 py-2 text-right font-semibold">
-                        {m.count}
-                      </td>
-                      <td className="px-4 py-2 text-xs text-muted-foreground">
-                        {m.unit}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-36">Kod</TableHead>
+                  <TableHead>Nomi</TableHead>
+                  <TableHead className="w-24 text-right">Soni</TableHead>
+                  <TableHead className="w-20">Birlik</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {hardware.map((m, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="num text-xs text-muted-foreground">
+                      {m.code ?? "—"}
+                    </TableCell>
+                    <TableCell className="font-medium">{m.name}</TableCell>
+                    <TableCell className="num text-right font-semibold">
+                      {m.count}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {m.unit}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </TabsContent>
         </Tabs>
       ) : (

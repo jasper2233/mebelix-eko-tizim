@@ -100,7 +100,9 @@ export function OrderMatrix({
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between gap-2">
+      {/* Bitta boshqaruv qatori: chapda qidiruv + hisob, o'ngda marshrut tugmalari —
+          ikki alohida qator vertikal joyni isrof qilib, chetlarni notekis qilardi */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Input
             className="h-8 w-56 text-sm"
@@ -114,11 +116,9 @@ export function OrderMatrix({
               : `${matrix.parts.length} detal`}
           </span>
         </div>
-      </div>
-      {editable && (
-        <div className="mb-3 flex items-center justify-end gap-2">
-          {editMode ? (
-            <>
+        {editable &&
+          (editMode ? (
+            <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
                 size="sm"
@@ -138,7 +138,7 @@ export function OrderMatrix({
               >
                 Saqlash
               </LoadingButton>
-            </>
+            </div>
           ) : (
             <Button
               variant="outline"
@@ -147,9 +147,8 @@ export function OrderMatrix({
             >
               <Pencil /> Marshrutni tahrirlash
             </Button>
-          )}
-        </div>
-      )}
+          ))}
+      </div>
       {/* Balandlik chegaralangan: uzun buyurtmada butun sahifa emas, jadval o'zi
           aylanadi, sarlavha esa yopishqoq — prisadkachi qaysi ustun ekanini yo'qotmaydi.
           Scroll konteyner — Table'ning o'z o'rami (data-slot), aks holda sticky ishlamaydi */}
