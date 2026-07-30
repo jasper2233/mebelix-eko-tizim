@@ -258,6 +258,13 @@ def parse_project(content: bytes) -> ParsedProject:
             f"Faylda import qilinmaydigan operatsiya bor: {names}. O'sha bosqich detallari vazifa ro'yxatiga tushmaydi."
         )
 
+    unknown_xnc = sorted({t for ops in xnc_ops_by_part.values() for op in ops for t in op.unknown_tags})
+    if unknown_xnc:
+        project.warnings.append(
+            f"XNC dasturida o'qilmagan teg: {', '.join(unknown_xnc)}. "
+            f"O'sha ishlov yorliq va teshik xaritasida ko'rinmaydi — texnolog tekshirishi kerak."
+        )
+
     for pid, ops in xnc_ops_by_part.items():
         target = part_by_file_id.get(pid)
         if target is None:

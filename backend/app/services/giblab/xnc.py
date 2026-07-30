@@ -10,6 +10,12 @@ from .models import ParseError, XncOp
 _EXPR_RE = re.compile(r"^[\w\s+\-*/().]+$")
 _NAME_DIGITS = re.compile(r"(\d+(?:\.\d+)?)")
 
+# GibLab spetsifikatsiyasi (help/format_ru.html) XNC dasturi uchun shu teglarni beradi:
+# program, tool, bf, bl, br, bt, bb, ms, ml, ma, mac, gr, xy (+ real fayllarda var, oq, oh).
+# Biz `ma` (yoy bo'ylab frezalash) va `xy` (koordinata boshi) ni HISOBLAMAYMIZ — korpusdagi
+# 8 faylda ular umuman uchramaydi. Uchrasa quyidagi `else` shoxi ularni yig'adi va parser
+# ogohlantiradi, ya'ni jimgina buzilmaydi.
+
 
 def _eval_expr(expr: str, env: dict[str, float]) -> float:
     """Evaluate a coordinate/depth expression like 'dz+3' or 'dx-34' against dx/dy/dz + vars."""
@@ -160,6 +166,11 @@ def parse_xnc_program(code: str, program_xml: str) -> XncOp:
                     "t": num(el, "t", 4),
                 }
             )
+        else:
+            # Bilmagan tegni jimgina tashlash xavfli: masalan <xy> (koordinata boshi)
+            # e'tiborsiz qolsa undan keyingi BARCHA teshik joylari xato hisoblanadi.
+            # Yig'ib olamiz, parser bir marta ogohlantiradi.
+            op.unknown_tags.add(tag)
 
     return op
 

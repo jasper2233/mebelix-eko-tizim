@@ -11,6 +11,7 @@ from app.services.giblab import parse_project
 from app.services.giblab.csblob import decode_cs_blob
 from app.services.giblab.cutmap import build_cutmap
 from app.services.giblab.scx import generate_scx, scx_filename
+from app.services.giblab.xnc import parse_xnc_program
 
 
 def make_blob() -> str:
@@ -301,6 +302,36 @@ def test_hardware_goods() -> None:
     print("furnitura (typeId=simple) OK")
 
 
+def test_unknown_xnc_tag_warning() -> None:
+    """GibLab XNC dasturi spetsifikatsiyasida <ma> (yoy) va <xy> (koordinata boshi) ham bor;
+    biz ularni hisoblamaymiz. Jimgina tashlash xavfli — <xy> e'tiborsiz qolsa undan keyingi
+    barcha teshik joylari xato bo'ladi. Shuning uchun ogohlantirish chiqadi."""
+    program = (
+        '<program dx="1000" dy="500" dz="16">'
+        '<tool name="Bore8" d="8"/>'
+        '<xy x="10" y="20"/>'
+        '<bf x="34" y="70" dp="12" name="Bore8"/>'
+        "</program>"
+    )
+    op = parse_xnc_program("t_001", program)
+    assert sorted(op.unknown_tags) == ["xy"]
+    assert len(op.bores) == 1  # bilgan teglar baribir o'qiladi
+
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<project version="23051701">'
+        '<good typeId="product" id="1" code="42" name="M" count="1">'
+        '<part id="1" code="A1" name="bok" dl="1000" dw="500" count="1"/>'
+        "</good>"
+        f'<operation typeId="XNC" id="3" code="42_A1" program={quoteattr(program)}>'
+        '<part id="1"/></operation>'
+        "</project>"
+    ).encode()
+    hits = [w for w in parse_project(xml).warnings if "XNC dasturida o'qilmagan teg" in w]
+    assert len(hits) == 1 and "xy" in hits[0]
+    print("noma'lum XNC teg ogohlantirishi OK")
+
+
 def test_unhandled_operation_warning() -> None:
     """GibLab'da 9 xil operatsiya turi bor; biz CS/EL/XNC ni o'qiymiz. GR/CN/SP kabi
     haqiqiy bosqich import qilinmaydi — texnolog buni bilishi shart. LB (yorliq),
@@ -349,4 +380,5 @@ if __name__ == "__main__":
     test_negative_dimensions()
     test_hardware_goods()
     test_unhandled_operation_warning()
+    test_unknown_xnc_tag_warning()
     print("ALL GIBLAB TESTS PASSED")
