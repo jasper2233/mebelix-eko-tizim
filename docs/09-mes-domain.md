@@ -40,6 +40,15 @@ Holat: **2026-07-28**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Barcha fazalar impl
 | `parser.py` | .project XML (to'la parser, regex YO'Q; cp1251/UTF-8; PROCESSED/TEMPLATE avlodlar; kontekstli id qidiruv); takror detal kodlari deterministik rename (`code`, `code-2`, …) + o'zbekcha warning — QR/SCX kaliti unikal qoladi |
 | `xnc.py` | XNC program parse (atribut yoki bola element), xavfsiz ifoda hisoblash (`dz+3`), max 2 op merge |
 | `csblob.py` | CS `data` blob dekoderi: big-endian, 15B yozuvlar, guillotine daraxt, dims+117 root-o'q sloti, 5.7.4 self-check |
+**O'lcham juftliklari (GibLab veb-ilovasida tekshirilgan).** Faylda har detalning
+uch juft o'lchami bo'ladi: `dl/dw` — tayyor detal (kromka bilan), `jl/jw` — zagotovka
+(kromkalanadigan tomonda tasma qalinligicha kichik), `cl/cw` — korpusda `dl/dw` bilan
+bir xil. GibLab'ning **o'z kesish xaritasi ham `dl/dw` ni joylashtiradi**, shuning uchun
+bizning xarita va yorlig'imiz ham shu o'lchamni ko'rsatadi — manba tizim bilan mos.
+`jl/jw` `Part.saw_length/saw_width` da saqlanadi (ko'rsatilmaydi). GibLab'da o'lcham
+kiritish rejimi ("Режимы ввода деталей") uchta: zagotovka, tayyor detal (kromka bilan),
+prifugovkadan keyin (kromkasiz) — shu sozlama `dl/dw` ma'nosini belgilaydi.
+
 | `cutmap.py` | Vizual model (5.7.5): sheets/parts/cuts + holes overlay, rot/eW/eH, atxot foydali o'lcham, instance↔katakcha binding; har list uchun root-strip o'lcham zanjiri `dims` (ax/a/b/v, ≥10mm poloslar, GibSaw uslubi) — cutmap JSONida saqlanadi, terminal SVG chizadi |
 | `scx.py` | SCX generatsiya: **Y_scx = Width − y_program**; `_2` ikkinchi tomon; Face kodlari qisman kalibr talab (`ponytail:`) |
 | `ingest.py` | DBga yozish: products/parts/instances/routes/materials/fayllar/cutmap/material_usage; qayta yuklash to'liq almashtiradi |
