@@ -19,7 +19,7 @@ import {
   RotateCw,
 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { renderToStaticMarkup } from "react-dom/server"
 
@@ -125,6 +125,7 @@ export function CutmapView({
   registerPrint,
   statsContainer,
   toolbarContainer,
+  focusPartKey,
 }: {
   orderId: number
   onBack: () => void
@@ -135,6 +136,8 @@ export function CutmapView({
   statsContainer?: HTMLElement | null
   /** Toolbar tugmalari shu elementga portal qilinadi (terminal chap ustuni); yo'q bo'lsa o'z ustunida */
   toolbarContainer?: HTMLElement | null
+  /** Matritsadan sakrash: shu kalitli detalning listi ochilib, katakchasi belgilanadi */
+  focusPartKey?: string
 }) {
   const { data, isLoading } = useQuery(getCutmapQueryOptions(orderId, admin))
   // GibLab uslubi: bitta sahifa (material tablar + list grid), list -> xarita
@@ -153,6 +156,27 @@ export function CutmapView({
     zout: () => void
     reset: () => void
   } | null>(null)
+
+  // Matritsadan kelgan "xaritada ko'rsat" sakrashi: ma'lumot kelgach detalning
+  // birinchi katakchasini topib, o'sha material + listni ochamiz va belgilaymiz.
+  useEffect(() => {
+    if (!focusPartKey || !data?.model) return
+    const mats = (data.model as any).materials ?? []
+    for (let mi = 0; mi < mats.length; mi++) {
+      const shs = mats[mi].sheets ?? []
+      for (let si = 0; si < shs.length; si++) {
+        const hit = (shs[si].parts ?? []).find(
+          (p: any) => !p.waste && p.key === focusPartKey,
+        )
+        if (hit) {
+          setMaterialIdx(mi)
+          setSheetIdxRaw(si)
+          setMarkedCell(hit.cell)
+          return
+        }
+      }
+    }
+  }, [focusPartKey, data])
 
   // Chap qatordagi Chop etish: belgilangan detalning navbatdagi nusxasi
   // to'g'ridan-to'g'ri GoDEX navbatiga ketadi (dialog yo'q)

@@ -2,7 +2,8 @@
 // Read mode: progress cells. Edit mode (texnolog, pre-production): stage toggles + notes.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Pencil, X } from "lucide-react"
+import { Link } from "@tanstack/react-router"
+import { Map as MapIcon, Pencil, X } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { OrdersService, type PostRead } from "@/client"
@@ -175,8 +176,20 @@ export function OrderMatrix({
             {visibleParts.map((part) => (
               <TableRow key={part.id}>
                 <TableCell>
-                  <span className="font-medium">
-                    {part.product_code}_{part.code}
+                  <span className="flex items-center gap-1.5">
+                    <span className="font-medium">
+                      {part.product_code}_{part.code}
+                    </span>
+                    {/* Xaritada ko'rsat: detalning listi ochilib, katakchasi belgilanadi */}
+                    <Link
+                      to="/cutmap/$orderId"
+                      params={{ orderId: String(orderId) }}
+                      search={{ part: `${part.product_code}_${part.code}` }}
+                      className="text-muted-foreground/50 hover:text-primary"
+                      title="Kesish xaritasida ko'rsatish"
+                    >
+                      <MapIcon className="size-3.5" />
+                    </Link>
                   </span>
                   <span className="block max-w-[220px] truncate text-xs text-muted-foreground">
                     {part.name}

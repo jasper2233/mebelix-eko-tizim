@@ -11,10 +11,14 @@ import { Button } from "@/components/ui/button"
 export const Route = createFileRoute("/_layout/cutmap/$orderId")({
   component: AdminCutmapPage,
   head: () => ({ meta: [{ title: "Kesish xaritasi | MebeliX" }] }),
+  // ?part=305201_01_014 — matritsadan "xaritada ko'rsat" sakrashi
+  validateSearch: (s: Record<string, unknown>): { part?: string } =>
+    typeof s.part === "string" && s.part ? { part: s.part } : {},
 })
 
 function AdminCutmapPage() {
   const { orderId } = Route.useParams()
+  const { part } = Route.useSearch()
   const navigate = useNavigate()
   const printRef = useRef<(() => void) | null>(null)
 
@@ -41,6 +45,7 @@ function AdminCutmapPage() {
         <CutmapView
           orderId={Number(orderId)}
           admin
+          focusPartKey={part}
           onBack={() =>
             navigate({ to: "/orders/$orderId", params: { orderId } })
           }
