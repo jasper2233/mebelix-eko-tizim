@@ -306,6 +306,59 @@ export function CutmapView({
     </div>
   ) : null
 
+  // Web (admin) boshqaruvi: sichqonchaga mo'ljallangan ixcham qator — chapdagi
+  // 76px sensor ustuni 17" terminal uchun, webda u joy yeb qiyshiq ko'rinardi.
+  const webToolbar =
+    admin && sheetIdx !== null ? (
+      <div className="flex items-center gap-1.5">
+        <Button variant="outline" size="sm" onClick={() => setSheetIdx(null)}>
+          <ArrowLeft /> Listlar
+        </Button>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          disabled={sheetIdx === 0}
+          onClick={() => setSheetIdx(sheetIdx - 1)}
+          title="Oldingi list"
+        >
+          <ChevronUp />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          disabled={sheetIdx >= sheets.length - 1}
+          onClick={() => setSheetIdx(sheetIdx + 1)}
+          title="Keyingi list"
+        >
+          <ChevronDown />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          onClick={() => zoomApi.current?.zin()}
+          title="Kattalashtirish"
+        >
+          <Plus />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          onClick={() => zoomApi.current?.zout()}
+          title="Kichiklashtirish"
+        >
+          <Minus />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          onClick={() => zoomApi.current?.reset()}
+          title="To'liq ko'rinish"
+        >
+          <Maximize2 />
+        </Button>
+      </div>
+    ) : null
+
   const toolbarButtons = (
     <>
       <TBtn
@@ -373,14 +426,19 @@ export function CutmapView({
           admin sahifada o'z ustunida */}
       {toolbarContainer ? (
         createPortal(toolbarButtons, toolbarContainer)
-      ) : (
+      ) : admin ? null : (
         <div className="flex w-[76px] shrink-0 flex-col gap-2">
           {toolbarButtons}
         </div>
       )}
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-        {!statsContainer && statsRow}
+        {!statsContainer && (statsRow || webToolbar) && (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {statsRow ?? <span />}
+            {webToolbar}
+          </div>
+        )}
         {sheetIdx === null ? (
           /* Jadval sahifasi: material tablar + list grid (GibLab #matlist + #grid) */
           <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border bg-white p-4">
