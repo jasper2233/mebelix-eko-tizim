@@ -18,16 +18,22 @@ from .xnc import merge_xnc_ops, parse_xnc_program
 _EDGE_SIDES = ("l", "r", "t", "b")
 
 # GibLab'da 9 xil operatsiya turi bor ("+Операция" ro'yxati). Biz uchtasini o'qiymiz
-# (CS, EL, XNC). Qolganlari ataylab o'tkazib yuboriladi, lekin ikkitasi tashqarida:
+# (CS, EL, XNC), uchtasi ataylab jim o'tkaziladi:
 #   LB — GibLab yorliq shablonlari; tizim o'z yorlig'ini chiqaradi (TZ 5.2.8).
 #   O  — furnitura komplektatsiyasi; sanoqlar `typeId="simple"` goodlarining o'zida bor,
 #        ya'ni material registriga baribir tushadi.
-# Qolgan to'rttasi HAQIQIY ishlab chiqarish bosqichi va import qilinmaydi — ular
-# faylda uchrasa texnolog buni bilishi shart, aks holda bosqich jimgina yo'qoladi.
+#   CL — погонажный раскрой (profil kesish). Sexda profil kesish posti YO'Q: alyuminiy
+#        profillar tayyor holda keladi. Ogohlantirish bermaymiz, chunki u har kupe
+#        faylida chiqib hech qanday harakat talab qilmaydi — bunday shovqin odamni
+#        ogohlantirishga e'tibor bermaslikka o'rgatadi. Bu detallar baribir "kesish
+#        xaritasida joyi yo'q" ogohlantirishiga tushadi (ingest.py) — texnolog uchun
+#        kerakli qismi shu. Profil kesish posti paydo bo'lsa: CL ni bu ro'yxatdan
+#        chiqarish + yangi PostCode kerak.
+# Qolgan uchtasi HAQIQIY bosqich va import qilinmaydi — ular faylda uchrasa texnolog
+# buni bilishi shart, aks holda bosqich jimgina yo'qoladi.
 _HANDLED_OPS = {"CS", "EL", "XNC"}
-_IGNORED_OPS = {"LB", "O"}
+_IGNORED_OPS = {"LB", "O", "CL"}
 _OP_NAMES = {
-    "CL": "погонажный раскрой (profil kesish)",
     "CN": "нестинговый раскрой (CNC nesting)",
     "SP": "обработка поверхности (yuza ishlovi)",
     "GR": "пазование (paz)",

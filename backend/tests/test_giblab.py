@@ -302,9 +302,9 @@ def test_hardware_goods() -> None:
 
 
 def test_unhandled_operation_warning() -> None:
-    """GibLab'da 9 xil operatsiya turi bor; biz CS/EL/XNC ni o'qiymiz. CL (profil kesish)
-    kabi haqiqiy bosqich import qilinmaydi — texnolog buni bilishi shart. LB (yorliq) va
-    O (furnitura komplektatsiyasi) esa ataylab jim o'tkaziladi."""
+    """GibLab'da 9 xil operatsiya turi bor; biz CS/EL/XNC ni o'qiymiz. GR/CN/SP kabi
+    haqiqiy bosqich import qilinmaydi — texnolog buni bilishi shart. LB (yorliq),
+    O (furnitura) va CL (profil kesish — sexda bunday post yo'q) ataylab jim."""
 
     def build(ops: str) -> bytes:
         return (
@@ -318,16 +318,18 @@ def test_unhandled_operation_warning() -> None:
     def warned(xml: bytes) -> list[str]:
         return [w for w in parse_project(xml).warnings if "operatsiya bor" in w]
 
-    # CL — ogohlantiriladi va turi nomi bilan atalaadi
-    hit = warned(build('<operation typeId="CL" id="5"><part id="1"/></operation>'))
-    assert len(hit) == 1 and "CL" in hit[0] and "profil" in hit[0]
+    # GR — ogohlantiriladi va turi nomi bilan ataladi
+    hit = warned(build('<operation typeId="GR" id="5"><part id="1"/></operation>'))
+    assert len(hit) == 1 and "GR" in hit[0] and "paz" in hit[0]
 
-    # LB va O — jim (yorliqni o'zimiz chiqaramiz, furnitura goodlardan keladi)
-    assert warned(build('<operation typeId="LB" id="5"/><operation typeId="O" id="6"/>')) == []
+    # LB, O, CL — jim (yorliqni o'zimiz chiqaramiz, furnitura goodlardan keladi,
+    # profil kesish posti sexda yo'q)
+    quiet = '<operation typeId="LB" id="5"/><operation typeId="O" id="6"/><operation typeId="CL" id="7"/>'
+    assert warned(build(quiet)) == []
 
     # Bir necha noma'lum tur — bitta ogohlantirishda jamlanadi
-    hit = warned(build('<operation typeId="CL" id="5"/><operation typeId="GR" id="6"/>'))
-    assert len(hit) == 1 and "CL" in hit[0] and "GR" in hit[0]
+    hit = warned(build('<operation typeId="CN" id="5"/><operation typeId="GR" id="6"/>'))
+    assert len(hit) == 1 and "CN" in hit[0] and "GR" in hit[0]
     print("o'qilmagan operatsiya ogohlantirishi OK")
 
 
