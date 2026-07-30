@@ -105,9 +105,71 @@ butunlay bo'sh keladi — o'shanda kerf spetsifikatsiyadagi standart 4.4 mm bo'l
 `elWidthPreJoint` — §2.2 dagi `l/w` → `jl/jw` farqini tushuntiruvchi qiymat: kromkalash
 dastgohi har tomondan shuncha mm oladi. Korpusda hamma joyda 1 mm.
 
-`simple` goodlari sexning **`goods.xls`** katalogidan keladi (Настройки → Каталог товаров).
-Katalog ustunlari: ID, ota-ID, papka, kod, nom, o'lchov birligi, narx, ombor, rasm, qalinlik,
-uzunlik, kenglik. Ya'ni furnitura kodlari (`FNK100`, `PR teks 0`) haqiqiy SKU.
+### 2.1.1 `goods.xls` — sexning haqiqiy katalogi
+
+Настройки → Каталог товаров. Sexdagi nusxa tekshirildi (`uploads/goods.xls`, BIFF/OLE2,
+226 KB, 2 varaq). `Лист1` — katalogning o'zi, `A1:L888`:
+
+| Ustun | Nima |
+|---|---|
+| `id` | Yozuv identifikatori |
+| `paren_id` | Ota yozuv — katalog **iyerarxik** |
+| `isfolder` | `1` = papka, `0`/bo'sh = tovar |
+| `code` | **SKU** (`110083`, `КРМ1009`, `FB49`) |
+| `name` | Nom (`Ясень`, `Кромка ПВХ ... 1х19 мм 101`) |
+| `unit` | `шт` (list) yoki `м` (kromka) |
+| `price` | **Sexda bo'sh — narx yuritilmaydi** |
+| `Толщина` / `Длина` / `Ширина` | Qalinlik / uzunlik / kenglik |
+
+Oxirgi ikki ustun bo'sh (GibLab interfeysi ombor va rasm ustunlarini ham ko'rsatadi, sexning
+faylida ular yo'q).
+
+Tarkibi: **885 yozuv — 16 papka, 869 tovar**, ikki ildiz bo'limda:
+
+- `Листовой материал` — 588 tovar (Cleaf, EGGER, Khat décor; 2800×2070 va 2750×1830; 16/18 mm)
+- `Кромочные материалы` — 281 tovar (PVX kromka, `t=1`, `w=19` yoki `28`)
+
+**Furnitura katalogda yo'q.** Ya'ni `simple` goodlari boshqa joydan (dizayner qo'lda) keladi —
+faqat materiallar va kromka katalogdan olinadi. 812 tovarda kod bor, 57 tasida yo'q, ikki kod
+(`UA01`, `B073`) takrorlanadi — kod yagona kalit deb qabul qilib bo'lmaydi.
+
+**Sex katalogga yaqinda o'tgan.** Kodlarni loyiha fayllari bilan solishtirish:
+
+| Fayl | Materiali katalogda topildi |
+|---|---|
+| `1160.project` (2026-07-30, 23051701) | **2/2** — `code="110083" name="Ясень"`, `code="КРМ1009"` |
+| eski 8 fayl | 3/107 — dizayner lotincha nom yozgan (`LDSP DUB VATAN TEKSTURA`), kod bo'sh |
+
+Shu sababli `material_usage` ga `code` ham yoziladi: katalog ishlatilgandan keyin barqaror
+kalit **nom emas, kod**. Material hisoboti hozir `(name, kind)` bo'yicha yig'adi — bir material
+eski va yangi nom bilan ikki qatorga bo'linadi. Kod bo'yicha yig'ishga o'tish tarixiy
+hisobotlarni o'zgartiradi, shuning uchun alohida qaror talab qiladi.
+
+### 2.1.2 Yangi eksportda qo'shilgan atributlar (spetsifikatsiyada yo'q)
+
+`1160.project` (2026-07-30, build 23051701) rasmiy hujjatdan keyin qo'shilgan 13 atribut
+yozadi — hammasi optimizator sozlamasi yoki qo'shimcha statistika:
+
+| Element | Atribut | Izoh |
+|---|---|---|
+| `tool.cutting` | `swSawthickDiv`, `swTrimIncludeSaw` | Ajratuvchi pilla qalinligi (−1 = ishlatilmaydi), torsovka pilla qalinligini o'z ichiga oladimi |
+| `CS` | `cCombiningParts`, `cGroupParts`, `cMaxPartsOnPattern`, `cPrefLargePacket`, `cSortPatterns` | Joylashtirish sozlamalari |
+| `CS` | `cTrimWaste` | Spetsifikatsiyada `cTrimWaster` deb yozilgan — nomi o'zgargan |
+| `CS` | `cPartsAmountP` | Spetsifikatsiyada `cPartAmountP` (`s` siz) |
+| `CS` | `cutLength`, `cutCount` | **Yangi murakkab format:** `"0=92.86;1=9.06;2=83.8;"` — `0=` jami, `1=`/`2=` ikki yo'nalish (9.06 + 83.8 = 92.86 ✓). `cTrimLength`/`cTrimCount` esa mult bilan kengaytirilgan jami (176.66 / 177) |
+| `EL` | `elMinDimDetail`, `elPreMillingEqual` | Minimal kromkalanadigan o'lcham, prifugovka bir xilmi |
+
+`CS` operatsiyasi bundan tashqari listning `l`/`w`/`t` sini ham takrorlaydi (biz o'lchamlarni
+blobdan olamiz).
+
+**Mantiqiy qiymatlar ikki xil yoziladi.** Shu bitta faylda `csTexture="true"` yonida
+`cCostByItem="1"` turadi. Shuning uchun parser `true`/`1` ni ham, `false`/`0` ni ham tushunadi
+(`models.xml_bool`) — ilgari `enable="0"` bo'lsa GibLab o'chirgan teshik teshilardi, `av="1"`
+bo'lsa teshik qatori noto'g'ri yo'nalishda chizilardi.
+
+**Detal kodi majburiy emas — yangi eksportda ham.** `1160.project` da `<part>` larda `code`
+yo'q (mahsulot nomi "01"), ya'ni bu eski buildga xos hodisa emas. Parser tartib raqamidan
+kod beradi (`001`, `002`) va ogohlantiradi; QR va SCX nomlari shu raqamga bog'lanadi.
 
 ### 2.2 `<part>` — detal, zagotovka yoki qoldiq
 

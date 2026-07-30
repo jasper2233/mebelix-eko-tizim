@@ -634,6 +634,31 @@ def test_xnc_side_attribute() -> None:
     print("XNC tomoni `side` dan olinadi OK")
 
 
+def test_numeric_booleans() -> None:
+    """GibLab mantiqiy qiymatni `true`/`false` ham, `1`/`0` ham yozadi — bitta faylda ikkisi
+    birga (`1160.project`: `csTexture="true"` yonida `cCostByItem="1"`). Faqat `"true"` ni
+    tekshirish `enable="0"` da o'chirilgan teshikni teshib qo'yardi."""
+    prog = (
+        '<program dx="1000" dy="500" dz="16"><tool name="B8" d="8"/>'
+        '<bf x="10" y="10" dp="12" enable="0" name="B8"/>'
+        '<bf x="50" y="10" dp="12" ac="3" as="32" av="1" name="B8"/>'
+        "</program>"
+    )
+    op = parse_xnc_program("t", prog, "0")
+    assert op.side2 is True  # side="0" = orqa tomon
+    assert [b["x"] for b in op.bores] == [50.0, 50.0, 50.0]  # enable="0" o'tkazildi
+    assert [b["y"] for b in op.bores] == [10.0, 42.0, 74.0]  # av="1" = vertikal qator
+
+    xml = (
+        b'<project version="1">'
+        b'<good typeId="product" id="1" code="42" name="M" count="1">'
+        b'<part id="2" code="A1" name="bok" dl="700" dw="500" count="1" txt="1"/>'
+        b"</good></project>"
+    )
+    assert next(iter(parse_project(xml).all_parts)).txt is True
+    print("raqamli mantiqiy qiymatlar OK")
+
+
 def test_geometry_change_warnings() -> None:
     """Geometriyani jimgina o'zgartiradigan ikki holat ogohlantiriladi: butun dasturni
     aylantirish/aks ettirish (`turn`/`mirHor`/`mirVert`) va qirra teshigining qalinlik
@@ -686,5 +711,6 @@ if __name__ == "__main__":
     test_giblab_default_kerf_and_trim()
     test_unmapped_material_warning()
     test_xnc_side_attribute()
+    test_numeric_booleans()
     test_geometry_change_warnings()
     print("ALL GIBLAB TESTS PASSED")

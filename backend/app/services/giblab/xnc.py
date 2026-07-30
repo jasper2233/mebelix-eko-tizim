@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 from collections.abc import Callable
 from typing import Any
 
-from .models import ParseError, XncOp
+from .models import ParseError, XncOp, xml_bool
 
 # Safe arithmetic: numbers, identifiers (dz, throughBoreDepth...), + - * / ( ) . and spaces only.
 _EXPR_RE = re.compile(r"^[\w\s+\-*/().]+$")
@@ -58,7 +58,7 @@ def _hole_array(el: ET.Element, num: _Num) -> tuple[int, float, bool]:
     step = num(el, "as", 0.0)
     if count < 2 or step <= 0:
         return 1, 0.0, False
-    return count, step, el.get("av") == "true"
+    return count, step, xml_bool(el.get("av"))
 
 
 def _add_face_bores(el: ET.Element, op: XncOp, num: _Num, tools: dict[str, float], dz: float) -> None:
@@ -114,9 +114,6 @@ def _groove(el: ET.Element, num: _Num) -> dict[str, Any]:
     }
 
 
-_BACK_SIDE = {"false", "0"}
-
-
 def parse_xnc_program(code: str, program_xml: str, side: str | None = None) -> XncOp:
     try:
         root = ET.fromstring(program_xml)
@@ -146,7 +143,7 @@ def parse_xnc_program(code: str, program_xml: str, side: str | None = None) -> X
     # zaxira: korpusda `2001_Nukriddin` orqa tomonni `x2` bilan tugatadi (`_2` emas), ya'ni 26
     # dastur old tomon deb belgilanardi; `3052_Hikmat` da esa old va orqa dasturning kodi AYNAN
     # bir xil bo'lib, ikkalasi bitta SCX nomiga yozilib biri o'chib ketardi.
-    side2 = side.strip().lower() in _BACK_SIDE if side is not None else code.endswith("_2")
+    side2 = not xml_bool(side, True) if side is not None else code.endswith("_2")
     op = XncOp(code=code, side2=side2, dx=dx, dy=dy, dz=dz)
     current_contour: list[dict[str, Any]] = []
 
@@ -173,7 +170,7 @@ def parse_xnc_program(code: str, program_xml: str, side: str | None = None) -> X
         tag = el.tag
         # `enable="false"` — element o'chirilgan (default true). Uni bajarsak GibLab
         # ataylab o'chirgan teshik/pazni chizib, SCX'ga ham qo'shib qo'yardik.
-        if el.get("enable") == "false":
+        if not xml_bool(el.get("enable"), True):
             continue
         if tag == "tool":
             name, d = el.get("name"), el.get("d")
@@ -215,7 +212,7 @@ def parse_xnc_program(code: str, program_xml: str, side: str | None = None) -> X
                         "y": num(el, "y"),
                         "cx": num(el, "cx"),
                         "cy": num(el, "cy"),
-                        "dir": el.get("dir") == "true",
+                        "dir": xml_bool(el.get("dir")),
                     }
                 )
         # oq/oh (saw/groove tools of old generation) intentionally map to grooves too

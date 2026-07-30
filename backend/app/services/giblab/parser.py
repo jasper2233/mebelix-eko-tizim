@@ -12,7 +12,15 @@ Hard rules from the 205-file corpus analysis:
 
 import xml.etree.ElementTree as ET
 
-from .models import CutOperation, ParsedMaterial, ParsedPart, ParsedProduct, ParsedProject, ParseError
+from .models import (
+    CutOperation,
+    ParsedMaterial,
+    ParsedPart,
+    ParsedProduct,
+    ParsedProject,
+    ParseError,
+    xml_bool,
+)
 from .xnc import merge_xnc_ops, parse_xnc_program
 
 _EDGE_SIDES = ("l", "r", "t", "b")
@@ -83,14 +91,15 @@ def _build_part(p: ET.Element, product: ParsedProduct, seen: set[str], warnings:
     """Bitta <part> elementidan ParsedPart. Kod va o'lcham shu yerda normallashtiriladi."""
     code = p.get("code") or p.get("part.code") or ""
     if not code:
-        # Eski GibLab eksporti (version 21052101) detal kodini umuman yozmaydi —
-        # nomida kod o'rniga "№" turadi. Tartib raqamidan beramiz: GibLab'ning
-        # o'z sxemasi ham shu (yangi eksportda code = "{blok}_{part.position}").
+        # GibLab detal kodini TALAB QILMAYDI: eski eksport (21052101) uni umuman yozmaydi,
+        # yangi eksportda ham dizayner bermasligi mumkin (1160.project, 23051701 buildi —
+        # kod yo'q, nomi "01"). Tartib raqamidan beramiz: GibLab'ning o'z sxemasi ham shu
+        # (kod berilganda u "{blok}_{part.position}" ko'rinishida bo'ladi).
         code = f"{len(product.parts) + 1:03d}"
         if len(product.parts) == 0:
             warnings.append(
-                f"{product.code}: faylda detal kodlari yo'q (eski GibLab eksporti) — "
-                f"tartib raqami bo'yicha berildi (001, 002, ...)."
+                f"{product.code}: faylda detal kodlari yo'q — tartib raqami bo'yicha berildi "
+                f"(001, 002, ...). QR va SCX nomlari shu raqamga bog'lanadi."
             )
     code = _dedupe_part_code(code, seen, product.code, warnings)
     seen.add(code)
@@ -127,7 +136,7 @@ def _build_part(p: ET.Element, product: ParsedProduct, seen: set[str], warnings:
         saw_length=_f(p, "jl"),
         saw_width=_f(p, "jw"),
         thickness=None,  # CS materialidan quyida to'ldiriladi
-        txt=p.get("txt") == "true",
+        txt=xml_bool(p.get("txt")),
         material_name=None,
         edges=edges,
     )
@@ -239,7 +248,8 @@ def _advisories(
             if op_el.get("typeId") == "XNC"
             and (
                 (op_el.get("turn") or "0") not in ("0", "")
-                or "true" in (op_el.get("mirHor", ""), op_el.get("mirVert", ""))
+                or xml_bool(op_el.get("mirHor"))
+                or xml_bool(op_el.get("mirVert"))
             )
         }
     )
@@ -474,7 +484,7 @@ def _parse_cs_operation(
                 "rl": _f(sp, "rl") or 0.0,
                 "rw": _f(sp, "rw") or 0.0,
             }
-            if sp.get("waste") == "true":
+            if xml_bool(sp.get("waste")):
                 cut.waste_parts[spid] = entry
             else:
                 cut.stock_parts[spid] = entry

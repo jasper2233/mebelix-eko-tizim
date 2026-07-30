@@ -241,8 +241,12 @@ async def ingest_project(
                 )
 
     # --- order metadata ---
+    # `code` — sexning `goods.xls` katalogidagi SKU. Parser uni o'qiydi, lekin bu yerda
+    # tushib qolardi: sklad va material hisoboti faqat nomni ko'rardi. Sex katalogga
+    # o'tgandan keyin (yangi eksportlarda `code="110083"`, `code="КРМ1009"`) nom emas, kod
+    # barqaror kalit. Eski fayllarda `code` yo'q — o'shanda `None` bo'lib qoladi.
     order.material_usage = [
-        {"name": m.name, "kind": m.kind, "count": m.count, "unit": _USAGE_UNITS[m.kind]}
+        {"name": m.name, "code": m.code, "kind": m.kind, "count": m.count, "unit": _USAGE_UNITS[m.kind]}
         for m in project.materials
         if m.count
     ]

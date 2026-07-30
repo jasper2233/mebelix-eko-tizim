@@ -8,6 +8,16 @@ class ParseError(ValueError):
     """User-facing parse failure; message is shown to the texnolog (Uzbek)."""
 
 
+def xml_bool(raw: str | None, default: bool = False) -> bool:
+    """GibLab mantiqiy qiymatni `true`/`false` ham, `1`/`0` ham yozadi — bitta faylda ikkisi
+    birga uchraydi (`csTexture="true"` yonida `cCostByItem="1"`, XNC da `side="1"`). Faqat
+    `"true"` ni tekshirish yetmaydi: `enable="0"` bo'lsa GibLab o'chirgan teshik teshilib,
+    `av="1"` bo'lsa teshik qatori noto'g'ri yo'nalishda chizilardi."""
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("true", "1")
+
+
 @dataclass
 class ParsedMaterial:
     good_id: int
