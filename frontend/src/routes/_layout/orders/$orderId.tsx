@@ -144,6 +144,7 @@ function OrderDetailPage() {
 
   const editableStatus =
     order.status === "draft" || order.status === "technical_review"
+  const scxFiles = (order.files ?? []).filter((f) => f.kind === "scx")
 
   return (
     <div>
@@ -339,24 +340,63 @@ function OrderDetailPage() {
         <div className="mt-8">
           <h2 className="mb-2 text-base font-semibold">Fayllar</h2>
           <ul className={cn(cardSurface, "divide-y")}>
-            {(order.files ?? []).map((f) => (
-              <li
-                key={f.id}
-                className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm"
-              >
-                <span className="truncate font-medium">{f.filename}</span>
-                <span className="text-xs uppercase text-muted-foreground">
-                  {f.kind}
-                </span>
-                <a
-                  className="shrink-0 text-primary hover:underline"
-                  href={`${OpenAPI.BASE}/api/v1/orders/${id}/files/${f.id}`}
-                  download
+            {(order.files ?? [])
+              .filter((f) => f.kind !== "scx")
+              .map((f) => (
+                <li
+                  key={f.id}
+                  className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm"
                 >
-                  Yuklab olish
-                </a>
+                  <span className="truncate font-medium">{f.filename}</span>
+                  <span className="text-xs uppercase text-muted-foreground">
+                    {f.kind}
+                  </span>
+                  <a
+                    className="shrink-0 text-primary hover:underline"
+                    href={`${OpenAPI.BASE}/api/v1/orders/${id}/files/${f.id}`}
+                    download
+                  >
+                    Yuklab olish
+                  </a>
+                </li>
+              ))}
+            {scxFiles.length > 0 && (
+              <li className="px-4 py-2.5 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-medium">
+                    SCX dasturlari ({scxFiles.length} ta)
+                  </span>
+                  <span className="text-xs uppercase text-muted-foreground">
+                    prisadka
+                  </span>
+                  <a
+                    className="shrink-0 font-medium text-primary hover:underline"
+                    href={`${OpenAPI.BASE}/api/v1/orders/${id}/files/scx.zip`}
+                    download
+                  >
+                    Hammasini yuklab olish (ZIP)
+                  </a>
+                </div>
+                <details className="mt-1.5">
+                  <summary className="cursor-pointer text-xs text-muted-foreground">
+                    Ro'yxatni ko'rsatish
+                  </summary>
+                  <ul className="mt-1 grid gap-x-6 gap-y-0.5 sm:grid-cols-2 lg:grid-cols-3">
+                    {scxFiles.map((f) => (
+                      <li key={f.id} className="truncate text-xs">
+                        <a
+                          className="text-primary hover:underline"
+                          href={`${OpenAPI.BASE}/api/v1/orders/${id}/files/${f.id}`}
+                          download
+                        >
+                          {f.filename}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               </li>
-            ))}
+            )}
           </ul>
         </div>
       )}

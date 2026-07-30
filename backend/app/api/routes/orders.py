@@ -1,10 +1,12 @@
 import contextlib
+import io
+import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import APIRouter, Form, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -806,6 +808,42 @@ async def upload_order_project(
         if len(warnings) > 3:
             text += f" | va yana {len(warnings) - 3} ta (audit logda to'liq)"
     return Message(message=text)
+
+
+@router.get("/{order_id}/files/scx.zip", operation_id="download_order_scx_zip")
+async def download_order_scx_zip(db: SessionDep, _: StaffReadUser, order_id: int) -> Response:
+    """Barcha SCX dasturlarini bitta arxivda berish — prisadkachi stanokka bittalab emas,
+    bitta ZIP ko'chiradi. Fayllar kichik (bir necha KB), xotirada yig'ish yetarli."""
+    order = await db.get(Order, order_id)
+    if order is None or order.is_deleted:
+        raise NotFoundException("Buyurtma topilmadi.")
+    rows = (
+        (
+            await db.execute(
+                select(OrderFile).where(
+                    OrderFile.order_id == order_id,
+                    OrderFile.kind == FileKind.SCX,
+                    OrderFile.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not rows:
+        raise NotFoundException("SCX fayllar topilmadi.")
+    upload_root = Path(settings.UPLOAD_DIR).resolve()
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for row in rows:
+            full_path = upload_root / row.path
+            if full_path.is_file():
+                zf.write(full_path, row.filename)
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{order.number}_scx.zip"'},
+    )
 
 
 @router.get("/{order_id}/files/{file_id}", operation_id="download_order_file")
