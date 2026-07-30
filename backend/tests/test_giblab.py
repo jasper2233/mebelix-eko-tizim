@@ -322,10 +322,16 @@ def test_unhandled_operation_warning() -> None:
     hit = warned(build('<operation typeId="GR" id="5"><part id="1"/></operation>'))
     assert len(hit) == 1 and "GR" in hit[0] and "paz" in hit[0]
 
-    # LB, O, CL — jim (yorliqni o'zimiz chiqaramiz, furnitura goodlardan keladi,
-    # profil kesish posti sexda yo'q)
-    quiet = '<operation typeId="LB" id="5"/><operation typeId="O" id="6"/><operation typeId="CL" id="7"/>'
-    assert warned(build(quiet)) == []
+    # LB va O — butunlay jim (yorliqni o'zimiz chiqaramiz, furnitura goodlardan keladi)
+    assert warned(build('<operation typeId="LB" id="5"/><operation typeId="O" id="6"/>')) == []
+
+    # CL — "import qilinmaydi" ogohlantirishi CHIQMAYDI, lekin borligi MA'LUMOT sifatida
+    # yoziladi: texnolog profillarni ta'minlashi kerak, arrachi esa ularni ko'rmasligi kerak
+    cl = build('<operation typeId="CL" id="5" l="3200"><part id="1"/><part id="2"/></operation>')
+    assert warned(cl) == []
+    info = [w for w in parse_project(cl).warnings if "Profil kesish" in w]
+    assert len(info) == 1
+    assert "2 detal" in info[0] and "3200" in info[0] and "arrachi" in info[0]
 
     # Bir necha noma'lum tur — bitta ogohlantirishda jamlanadi
     hit = warned(build('<operation typeId="CN" id="5"/><operation typeId="GR" id="6"/>'))

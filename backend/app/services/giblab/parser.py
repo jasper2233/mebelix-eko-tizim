@@ -22,15 +22,14 @@ _EDGE_SIDES = ("l", "r", "t", "b")
 #   LB — GibLab yorliq shablonlari; tizim o'z yorlig'ini chiqaradi (TZ 5.2.8).
 #   O  — furnitura komplektatsiyasi; sanoqlar `typeId="simple"` goodlarining o'zida bor,
 #        ya'ni material registriga baribir tushadi.
-#   CL — погонажный раскрой (profil kesish). Sexda profil kesish posti YO'Q: alyuminiy
-#        profillar tayyor holda keladi. Ogohlantirish bermaymiz, chunki u har kupe
-#        faylida chiqib hech qanday harakat talab qilmaydi — bunday shovqin odamni
-#        ogohlantirishga e'tibor bermaslikka o'rgatadi. Bu detallar baribir "kesish
-#        xaritasida joyi yo'q" ogohlantirishiga tushadi (ingest.py) — texnolog uchun
-#        kerakli qismi shu. Profil kesish posti paydo bo'lsa: CL ni bu ro'yxatdan
-#        chiqarish + yangi PostCode kerak.
-# Qolgan uchtasi HAQIQIY bosqich va import qilinmaydi — ular faylda uchrasa texnolog
-# buni bilishi shart, aks holda bosqich jimgina yo'qoladi.
+# CL — погонажный раскрой (profil kesish) alohida holat: uning detallari arrachiga
+# BERILMAYDI (sexda profil kesish posti yo'q, profillar tayyor keladi), lekin faylda
+# borligi texnologga ma'lum bo'lishi kerak — u profillarni ta'minlashni bilishi shart.
+# Shuning uchun ogohlantirish emas, MA'LUMOT yoziladi: nechta operatsiya, nechta detal
+# va zagotovka uzunligi. Profil kesish posti paydo bo'lsa: CL detallarini marshrutga
+# qo'shish + yangi PostCode kerak.
+# Qolgan uchtasi (CN, SP, GR) HAQIQIY bosqich va import qilinmaydi — ular faylda
+# uchrasa texnolog buni bilishi shart, aks holda bosqich jimgina yo'qoladi.
 _HANDLED_OPS = {"CS", "EL", "XNC"}
 _IGNORED_OPS = {"LB", "O", "CL"}
 _OP_NAMES = {
@@ -234,6 +233,17 @@ def parse_project(content: bytes) -> ParsedProject:
             pid = int(stub_el.get("id", 0))
             code = op_el.get("code") or ""
             xnc_ops_by_part.setdefault(pid, []).append(parse_xnc_program(code, program))
+
+    # CL: arrachiga ketmaydi, lekin texnolog profillarni ta'minlashi uchun bilishi shart.
+    cl_ops = [op for op in operations if op.get("typeId") == "CL"]
+    if cl_ops:
+        cl_parts = sum(len(op.findall("part")) for op in cl_ops)
+        stock = sorted({raw for op in cl_ops if (raw := op.get("l"))})
+        lengths = f", zagotovka {'/'.join(stock)} mm" if stock else ""
+        project.warnings.append(
+            f"Profil kesish (CL): {len(cl_ops)} operatsiya, {cl_parts} detal{lengths}. "
+            f"Sexda kesilmaydi — profillar tayyor holda ta'minlanadi, arrachi ro'yxatiga tushmaydi."
+        )
 
     unhandled = sorted(
         {
