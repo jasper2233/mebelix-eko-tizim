@@ -303,6 +303,48 @@ def test_hardware_goods() -> None:
     print("furnitura (typeId=simple) OK")
 
 
+def test_size_mode_fallback() -> None:
+    """Spetsifikatsiya to'rt juft o'lcham beradi va qaysi biri majburiy ekanini cSizeMode
+    belgilaydi (0=l/w, 1=dl/dw, 2=jl/jw; cl/cw — pilla o'lchami, majburiy emas).
+    Ilgari parser faqat l/w va dl/dw ni bilardi — 2-rejimdagi fayl o'lchamsiz detal berardi."""
+
+    def one(attrs: str) -> tuple[float | None, float | None]:
+        xml = (
+            '<project version="1"><good typeId="product" id="1" code="42" name="M" count="1">'
+            f'<part id="1" code="A1" count="1"{attrs}/></good></project>'
+        ).encode()
+        part = parse_project(xml).all_parts[0]
+        return part.length, part.width
+
+    assert one(' l="700" w="500"') == (700.0, 500.0)  # cSizeMode=0
+    assert one(' dl="701" dw="501"') == (701.0, 501.0)  # cSizeMode=1
+    assert one(' cl="702" cw="502"') == (702.0, 502.0)  # pilla o'lchami
+    assert one(' jl="703" jw="503"') == (703.0, 503.0)  # cSizeMode=2 — ilgari None edi
+    # Zanjir tartibi: l/w eng ustun
+    assert one(' l="700" w="500" dl="9" dw="9" jl="8" jw="8"') == (700.0, 500.0)
+    print("o'lcham zanjiri (cSizeMode) OK")
+
+
+def test_template_machining_warning() -> None:
+    """`description` ishlov dasturi kodini saqlashi mumkin: #nom (yuz) yoki ##nom (orqa).
+    Bunday holatda faylda XNC operatsiyasi bo'lmaydi va butun ishlov yo'qoladi."""
+
+    def build(desc: str) -> bytes:
+        return (
+            '<project version="1"><good typeId="product" id="1" code="42" name="M" count="1">'
+            f'<part id="1" code="A1" dl="700" dw="500" count="1" description="{desc}"/>'
+            "</good></project>"
+        ).encode()
+
+    def hits(xml: bytes) -> list[str]:
+        return [w for w in parse_project(xml).warnings if "shablon nomi" in w]
+
+    assert hits(build("oddiy izoh")) == []  # oddiy izoh — jim
+    assert len(hits(build("#PETLYA35"))) == 1  # yuz tomon
+    assert len(hits(build("##PAZ4"))) == 1  # orqa tomon
+    print("shablon-ishlov ogohlantirishi OK")
+
+
 def test_many_xnc_ops_kept() -> None:
     """GibLab detalga 2 tadan ko'p ishlov dasturi berishi mumkin (yorliq shabloni XNC1..XNC5
     maydonlarini taklif qiladi). Ilgari parser 2 tadan ko'pini ko'rsa BUTUN faylni rad etardi —
@@ -459,6 +501,8 @@ if __name__ == "__main__":
     test_unhandled_operation_warning()
     test_unknown_xnc_tag_warning()
     test_allowance_warning()
+    test_size_mode_fallback()
+    test_template_machining_warning()
     test_many_xnc_ops_kept()
     test_minus_count_warning()
     print("ALL GIBLAB TESTS PASSED")

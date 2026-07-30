@@ -91,8 +91,16 @@ def _build_part(p: ET.Element, product: ParsedProduct, seen: set[str], warnings:
         if p.get(f"el{side}") is not None:
             edges[side] = {"mat": p.get(f"el{side}Mat"), "symbol": None}
 
-    length = _f(p, "l") or _f(p, "dl")
-    width = _f(p, "w") or _f(p, "dw")
+    # Spetsifikatsiya (help/format_ru.html) to'rt juft o'lcham beradi va qaysi biri MAJBURIY
+    # ekanini CS operatsiyasining `cSizeMode` i belgilaydi:
+    #   cSizeMode=0 -> l/w   (zagotovka)
+    #   cSizeMode=1 -> dl/dw (tayyor detal; korpusdagi 8 faylda hammasi shu)
+    #   cSizeMode=2 -> jl/jw (prifugovkadan keyingi zagotovka)
+    #   cl/cw       -> pilla o'lchami, majburiy emas
+    # Zanjir bilan olamiz, aks holda 2-rejimdagi fayl o'lchamsiz detal berishi mumkin.
+    # Korpusda cl/cw doim dl/dw ga teng (560 detal), ya'ni ko'rsatilgan o'lcham = pilla o'lchami.
+    length = _f(p, "l") or _f(p, "dl") or _f(p, "cl") or _f(p, "jl")
+    width = _f(p, "w") or _f(p, "dw") or _f(p, "cw") or _f(p, "jw")
     # Manfiy o'lcham fizik ma'noga ega emas — GibLab uni ba'zi X-profillarga bayroq
     # sifatida qo'yadi. Modul olamiz, aks holda hisobotlarda maydon manfiy chiqadi.
     if (length or 0) < 0 or (width or 0) < 0:
@@ -186,6 +194,20 @@ def _advisories(
         out.append(
             f"{many_xnc} detalda 2 tadan ko'p XNC operatsiya bor. Hammasi saqlandi, lekin "
             f"skan sonini texnolog tekshirishi kerak (har operatsiya bir skan talab qiladi)."
+        )
+
+    # `description` faqat izoh emas: u ishlov dasturi kodini ham saqlashi mumkin —
+    # `#nom` (yuz tomon) yoki `##nom` (orqa tomon), XNC shablon kutubxonasidan
+    # (Настройки -> Папка XNC шаблонов). Bunday holatda faylda XNC operatsiyasi
+    # BO'LMAYDI va biz butun ishlovni yo'qotamiz: teshik ham, PRISADKA/PAZ/ROVER
+    # bosqichi ham chiqmaydi. Korpusda ishlatilmagan.
+    tpl_xnc = sum(
+        1 for g in products_goods for pe in g.findall("part") if (pe.get("description") or "").lstrip().startswith("#")
+    )
+    if tpl_xnc:
+        out.append(
+            f"{tpl_xnc} detalda ishlov shablon nomi bilan berilgan (description dagi #kod). "
+            f"Shablon kutubxonasi o'qilmaydi — teshik va ishlov bosqichlari chiqmaydi."
         )
 
     # minusCount — omborda tayyor turgan nusxalar (GibLab "Минус количество", 12.05.21).

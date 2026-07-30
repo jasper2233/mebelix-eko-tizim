@@ -72,16 +72,30 @@ uzunlik, kenglik. Ya'ni furnitura kodlari (`FNK100`, `PR teks 0`) haqiqiy SKU.
 **Bitta teg uch narsa uchun.** Farqi atributlarda: `waste="true"` → qoldiq,
 qo'shimcha `business="true"` → deloviy qoldiq (qayta ishlatiladi), `sheetId` → qaysi listdan.
 
-**Uch juft o'lcham** (eng ko'p chalkashtiradigan joy):
+**To'rt juft o'lcham** (eng ko'p chalkashtiradigan joy). Qaysi biri MAJBURIY ekanini
+CS operatsiyasining `cSizeMode` atributi belgilaydi:
 
-| Juftlik | Ma'nosi |
-|---|---|
-| `dl` / `dw` | Tayyor detal — kromka bilan |
-| `jl` / `jw` | **Pilla o'lchami** (zagotovka) |
-| `cl` / `cw` | Korpusda `dl/dw` bilan bir xil |
+| Juftlik | Ma'nosi | Majburiy |
+|---|---|---|
+| `l` / `w` | Zagotovka o'lchami | `cSizeMode=0` |
+| `dl` / `dw` | Tayyor detal — kromka bilan | `cSizeMode=1` |
+| `jl` / `jw` | Prifugovkadan **keyingi** zagotovka | `cSizeMode=2` |
+| `cl` / `cw` | **Pilla o'lchami** (arra nimani kesadi) | majburiy emas |
 
-Bu juftliklar orasidagi munosabat **o'lcham kiritish rejimiga** bog'liq
-(Настройки → Режимы ввода деталей):
+Korpusdagi 8 faylda `cSizeMode="1"`, ya'ni `dl/dw` asosiy. Va 560 detal bo'yicha
+**`cl/cw` doim `dl/dw` ga teng** — shu sababli bizning ko'rsatayotgan o'lcham amalda
+pilla o'lchamiga mos tushadi.
+
+Parser zanjir bilan oladi: `l/w` → `dl/dw` → `cl/cw` → `jl/jw`. Zanjir kerak, chunki
+2-rejimdagi faylda faqat `jl/jw` bo'lishi mumkin va aks holda detal o'lchamsiz qolardi.
+`jl/jw` `Part.saw_length/saw_width` da saqlanadi — nomi chalg'itadi, u aslida
+"prifugovkadan keyingi zagotovka", pilla o'lchami emas.
+
+Fizik ketma-ketlik (kuxniya.project, kromka 1 mm):
+arra `cl`=2230 kesadi → prifugovka 1 mm oladi (`jl`=2229) → kromka 1 mm qo'shadi
+(`dl`=2230 tayyor).
+
+Rejimlar orasidagi munosabat (Настройки → Режимы ввода деталей):
 
 | Rejim | Pilla o'lchami |
 |---|---|
@@ -89,19 +103,19 @@ Bu juftliklar orasidagi munosabat **o'lcham kiritish rejimiga** bog'liq
 | Detal bo'yicha (kromka bilan) | prifugovkaga oshadi, kromka qalinligiga kamayadi |
 | Prifugovkadan keyin (kromkasiz) | prifugovkaga oshadi |
 
-Korpusdagi fayllar ikkinchi rejimda kiritilgan: `kuxniya.project` da kromkalanadigan tomonda
-`jw` = `dw` − 1 mm (kromka 1 mm).
+**Muhim:** GibLab o'z kesish xaritasiga `cl/cw` (= `dl/dw`) ni joylashtiradi. Bizning xarita
+katakchalari blob qiymatlaridan olinadi (`cutmap.py`, `node.value`) — ya'ni GibLab nima
+joylashtirgan bo'lsa shuni ko'rsatamiz. Manba tizim bilan farq yo'q.
 
-**Muhim:** GibLab o'z kesish xaritasiga `dl/dw` ni joylashtiradi, `jl/jw` ni emas
-(140 farqli detal bo'yicha tekshirilgan). Bizning xarita katakchalari blob qiymatlaridan
-olinadi (`cutmap.py`, `node.value`) — ya'ni GibLab nima joylashtirgan bo'lsa shuni ko'rsatamiz.
-Manba tizim bilan farq yo'q. `jl/jw` `Part.saw_length/saw_width` da saqlanadi.
+`txt="true"` — tekstura qulfi: detalni listli kesishda **aylantirib bo'lmaydi**.
+`business="true"` — deloviy qoldiq: qayta ishlatiladi va **material sarfiga kirmaydi**.
 
 **Kromka tomon bo'yicha:** `elt` / `elb` / `ell` / `elr` — qiymati `@operation#N` ko'rinishida
 EL operatsiyasiga havola; `eltMat` va boshqalar — lenta materiali nomi.
+Tomonlar: `t`/`b` — **uzunlik bo'ylab**, `l`/`r` — **kenglik bo'ylab**.
 
 **Paz tomon bo'yicha:** `grt` / `grb` / `grl` / `grr` — GR operatsiyasiga havola,
-`grts`/`grbs`/`grls`/`grrs` — mantiqiy bayroq. **Biz o'qimaymiz** — pazni XNC dasturi ichidagi
+`grts`/`grbs`/`grls`/`grrs` — qaysi tomondan (yuz=true, orqa=false). **Biz o'qimaymiz** — pazni XNC dasturi ichidagi
 `<gr>` elementlaridan aniqlaymiz. GR operatsiyasi ishlatilsa ogohlantirish chiqadi.
 
 **O'qilmagan, lekin bilib turish kerak:**
@@ -110,7 +124,7 @@ EL operatsiyasiga havola; `eltMat` va boshqalar — lenta materiali nomi.
 |---|---|---|
 | `allowanceT/B/L/R` | Ishlov qo'shimchasi tomon bo'yicha | Pilla o'lchamiga qo'shiladi, GibLab kartada **punktir chiziq** bilan chizadi. Bizda punktir yo'q → nolga teng bo'lmasa ogohlantiramiz |
 | `minusCount` | Omborda tayyor turgan nusxalar | GibLab ularni kesishga qo'ymaydi, biz `count` bo'yicha hammasini ishlab chiqaramiz → ogohlantiramiz |
-| `description` | Detal izohi | `Part.note` ni to'ldirishga yaroqli. Korpusda hamma joyda bo'sh |
+| `description` | Izoh **va/yoki ishlov dasturi kodi**: `#nom` — yuz tomon, `##nom` — orqa tomon, bo'shliqsiz | Shablon kutubxonasidan ishlov. Bunday holatda faylda XNC operatsiyasi bo'lmaydi va butun ishlov yo'qoladi → ogohlantiramiz. Korpusda ishlatilmagan |
 | `dbId` | Ombor qoldig'ining 1C dagi ID'si | 1C integratsiyasi ishlatilsa paydo bo'ladi. Korpusda yo'q |
 | `usedCount` | Ishlatilgan miqdor | Qoldiq inventarizatsiyasi uchun |
 
@@ -289,6 +303,7 @@ profil kesish (`CL` — sexda bunday post yo'q).
 | `CN`/`SP`/`GR` operatsiyasi | import qilinmaydi, bosqich yo'qoladi |
 | XNC da noma'lum teg (`ma`, `xy`) | o'sha ishlov ko'rinmaydi |
 | Detalda 2 tadan ko'p XNC | hammasi saqlandi, skan sonini tekshirish kerak |
+| `description` da `#kod` | ishlov shablon nomi bilan berilgan, o'qilmaydi |
 | Xaritada joyi yo'q detal | arrachi ro'yxatiga tushmaydi |
 
 Bu xabarlar fayl yuklanganda menejerga ko'rsatiladi va audit logga yoziladi
