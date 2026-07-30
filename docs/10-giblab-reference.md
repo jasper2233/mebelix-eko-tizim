@@ -145,6 +145,16 @@ kalit **nom emas, kod**. Material hisoboti hozir `(name, kind)` bo'yicha yig'adi
 eski va yangi nom bilan ikki qatorga bo'linadi. Kod bo'yicha yig'ishga o'tish tarixiy
 hisobotlarni o'zgartiradi, shuning uchun alohida qaror talab qiladi.
 
+Ikkinchi varaq (`Лист3`) — katalogni `dict_goods(id, parent_id, isfolder, code, name, unit,
+thickness, length, width)` jadvaliga yuklaydigan **SQL-INSERT generatori** (formulali 5 qator,
+`unit='м2'`). Ya'ni katalog qandaydir tashqi bazaga ham import qilinadi; MebeliX uchun
+ahamiyati yo'q, lekin ustun sxemasi `Лист1` niki bilan bir xil ekanini tasdiqlaydi.
+
+**O'lchov birliklari.** Fayllarda `unit` deyarli yozilmaydi (57 material goodidan 50 tasida
+bo'sh), shuning uchun `material_usage` birligi turdan olinadi: `sheet → list` (fayldagi `шт`),
+`band → metr` (fayldagi `м`; 1160 da 284 m), `hardware → dona` (fayldagi `шт`). Uchchala
+moslik 1160.project bilan tekshirilgan.
+
 ### 2.1.2 Yangi eksportda qo'shilgan atributlar (spetsifikatsiyada yo'q)
 
 `1160.project` (2026-07-30, build 23051701) rasmiy hujjatdan keyin qo'shilgan 13 atribut
