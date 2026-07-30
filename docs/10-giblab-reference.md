@@ -46,6 +46,28 @@ qiymat chiqadi.
 
 XML. Kodlash e'londa ko'rsatiladi (`UTF-8` yoki `windows-1251`). Ildiz — `<project>`.
 
+**Element daraxti** (spetsifikatsiyaning "Дочерние элементы" bo'limlari):
+
+```
+<project>
+├── <good typeId="product">        → <part>  — Detallar
+│        typeId="sheet"           → <part>  — Zagotovka va qoldiqlar
+│        typeId="band"            → <part>  — Zagotovka va qoldiqlar
+│        typeId="simple" | "tool.cutting" | "tool.edgeline"   — bolasi yo'q
+└── <operation>
+     ├── <part>      — `id` bo'yicha good ichidagi detalga HAVOLA
+     └── <material>  — good ga havola + operatsiyadagi vazifasi (`used`)
+```
+
+Ya'ni `<part>` **ikki xil vazifada** uchraydi: goodning ichida — ta'rif, operatsiya ichida —
+havola. Parser detallarni faqat `typeId="product"` goodlaridan oladi. Korpusdagi taqsimot:
+643 `part` mahsulotlarda, 41 tasi listlarda, 4 tasi pogonaj materiallarda.
+
+**Zaxira zagotovka konventsiyasi:** `count="10000"` — cheksiz zaxira, `usedCount` — necha dona
+ishlatilgan. Korpusdagi 4 pogonaj zagotovkasi (`l=3200` alyuminiy profil, quvur, LMDF)
+`usedCount="0"` — ya'ni CL hech qachon optimallashtirilmagan; ular detal emas, shuning uchun
+arrachiga tushmaydi.
+
 `version` atributi — **build sanasi** `YYMMDDNN` ko'rinishida: `21052101` = 2021-05-21,
 `23051701` = 2023-05-17. Korpusda ikkala versiya ham bor va ular **turlicha yozadi** —
 2021 buildi detal kodlarini umuman bermaydi.
@@ -101,6 +123,18 @@ CS operatsiyasining `cSizeMode` atributi belgilaydi:
 | `dl` / `dw` | Tayyor detal — kromka bilan | `cSizeMode=1` |
 | `jl` / `jw` | Prifugovkadan **keyingi** zagotovka | `cSizeMode=2` |
 | `cl` / `cw` | **Pilla o'lchami** (arra nimani kesadi) | majburiy emas |
+
+Rasmiy misol (`help/format_ru.html`, `example1.png`) buni ochiq yozadi — har rejimda fayl
+**faqat shu juftlikni** saqlashi mumkin:
+
+```
+cSizeMode=0   <part l="Длина заготовки"                  w="Ширина заготовки"/>
+cSizeMode=1   <part dl="Длина гот. детали"               dw="Ширина гот. детали"/>
+cSizeMode=2   <part jl="Длина заготовки после прифуговки" jw="Ширина ... после прифуговки"/>
+```
+
+Shu sababli parser zanjirsiz ishlamaydi: 0-rejimdagi faylda `dl` yo'q, 2-rejimda esa `l` ham,
+`dl` ham bo'lmasligi mumkin.
 
 Korpusdagi 8 faylda `cSizeMode="1"`, ya'ni `dl/dw` asosiy. Va 560 detal bo'yicha
 **`cl/cw` doim `dl/dw` ga teng** — shu sababli bizning ko'rsatayotgan o'lcham amalda
