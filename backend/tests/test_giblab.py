@@ -275,6 +275,32 @@ def test_negative_dimensions() -> None:
     print("manfiy o'lcham normallashtirish OK")
 
 
+def test_hardware_goods() -> None:
+    """typeId="simple" — furnitura (petlya, yevrovint...). Faqat furnitura qo'yilgan
+    eksportlarda bo'ladi; ilgari parser uni umuman o'qimasdi va material registrida
+    "Furnitura" bo'limi doim bo'sh turardi."""
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<project version="21052101">'
+        '<good typeId="product" id="1" code="4210" name="Model2" count="1">'
+        '<part id="1" code="A1" name="bok" dl="700" dw="500" count="1"/>'
+        "</good>"
+        '<good typeId="sheet" id="5" name="LDSP OQ" t="16" l="2750" w="1830" count="2"/>'
+        '<good typeId="simple" id="7" code="PR teks 0" name="Petlya ROBUST" unit="шт" count="14"/>'
+        '<good typeId="simple" id="8" name="Yevrovint" unit="шт" count="72"/>'
+        "</project>"
+    ).encode()
+    project = parse_project(xml)
+
+    hw = [m for m in project.materials if m.kind == "hardware"]
+    assert len(hw) == 2
+    assert (hw[0].code, hw[0].name, hw[0].count) == ("PR teks 0", "Petlya ROBUST", 14.0)
+    assert hw[1].code is None and hw[1].count == 72.0  # kodsiz furnitura ham o'tadi
+    # Furnitura listga joylashtirilmaydi — detal bo'lib qolmasligi shart
+    assert [p.code for p in project.all_parts] == ["A1"]
+    print("furnitura (typeId=simple) OK")
+
+
 if __name__ == "__main__":
     test_blob_decoder()
     test_parser_and_routes()
@@ -283,4 +309,5 @@ if __name__ == "__main__":
     test_windows_1251_template()
     test_old_export_without_part_codes()
     test_negative_dimensions()
+    test_hardware_goods()
     print("ALL GIBLAB TESTS PASSED")

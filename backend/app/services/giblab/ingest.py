@@ -58,10 +58,19 @@ async def wipe_previous_parse(db: AsyncSession, order: Order, upload_root: Path)
             logger.warning("Eski faylni o'chirib bo'lmadi: %s", f.path)
 
 
+_MATERIAL_TYPES = {
+    "sheet": MaterialType.SHEET,
+    "band": MaterialType.BAND,
+    "hardware": MaterialType.HARDWARE,
+}
+# Sarf birligi: list va kromkada faylda `unit` yo'q, furnitura esa doim 'шт' beradi.
+_USAGE_UNITS = {"sheet": "list", "band": "metr", "hardware": "dona"}
+
+
 async def _upsert_materials(db: AsyncSession, project: ParsedProject) -> None:
     """New materials appear automatically when a project references them (TZ 4.5)."""
     for mat in project.materials:
-        mtype = MaterialType.SHEET if mat.kind == "sheet" else MaterialType.BAND
+        mtype = _MATERIAL_TYPES[mat.kind]
         exists = (
             await db.execute(
                 select(Material).where(
@@ -224,7 +233,7 @@ async def ingest_project(
 
     # --- order metadata ---
     order.material_usage = [
-        {"name": m.name, "kind": m.kind, "count": m.count, "unit": "list" if m.kind == "sheet" else "metr"}
+        {"name": m.name, "kind": m.kind, "count": m.count, "unit": _USAGE_UNITS[m.kind]}
         for m in project.materials
         if m.count
     ]

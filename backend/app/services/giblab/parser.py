@@ -112,6 +112,10 @@ def parse_project(content: bytes) -> ParsedProject:
 
     sheets = {int(g.get("id", 0)): g for g in goods if g.get("typeId") == "sheet"}
     bands = {int(g.get("id", 0)): g for g in goods if g.get("typeId") == "band"}
+    # typeId="simple" — furnitura (petlya, yevrovint, dasta, napravlyayushiye...).
+    # Faqat furnitura qo'yilgan eksportlarda uchraydi va listga joylashtirilmaydi:
+    # bu yerda u faqat material registriga va sarf hisobiga tushadi.
+    hardware = [g for g in goods if g.get("typeId") == "simple"]
     cutting_tools = {int(g.get("id", 0)): g for g in goods if g.get("typeId") == "tool.cutting"}
     edge_tools = [g for g in goods if g.get("typeId") == "tool.edgeline"]
 
@@ -148,6 +152,16 @@ def parse_project(content: bytes) -> ParsedProject:
                 code=g.get("code"),
                 thickness=_f(g, "t"),
                 width=_f(g, "w"),
+                count=_f(g, "count"),
+            )
+        )
+    for g in hardware:
+        project.materials.append(
+            ParsedMaterial(
+                good_id=int(g.get("id", 0)),
+                kind="hardware",
+                name=g.get("name", "Furnitura"),
+                code=g.get("code"),
                 count=_f(g, "count"),
             )
         )

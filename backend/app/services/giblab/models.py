@@ -11,7 +11,7 @@ class ParseError(ValueError):
 @dataclass
 class ParsedMaterial:
     good_id: int
-    kind: str  # "sheet" | "band"
+    kind: str  # "sheet" | "band" | "hardware"
     name: str
     code: str | None = None
     thickness: float | None = None
