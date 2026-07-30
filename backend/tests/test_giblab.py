@@ -530,6 +530,63 @@ def test_unhandled_operation_warning() -> None:
     print("o'qilmagan operatsiya ogohlantirishi OK")
 
 
+def test_groove_endpoint_default() -> None:
+    """Spetsifikatsiya: pazning `x2`/`y2` yozilmasa SHU elementning `x1`/`y1` i olinadi.
+    Umumiy "oldingi qiymat" merosi bu yerda ishlamaydi — aks holda ikkinchi paz birinchisining
+    oxirigacha cho'zilib, detal kesib yuborilardi."""
+    prog = (
+        '<program dx="1000" dy="500" dz="16">'
+        '<gr x1="100" y1="50" x2="900" y2="50" dp="8" t="4"/>'
+        '<gr x1="200" y1="80" dp="8" t="4"/>'
+        "</program>"
+    )
+    a, b = parse_xnc_program("t", prog).grooves
+    assert (a["x1"], a["y1"], a["x2"], a["y2"]) == (100.0, 50.0, 900.0, 50.0)
+    assert (b["x1"], b["y1"], b["x2"], b["y2"]) == (200.0, 80.0, 200.0, 80.0)
+    print("paz oxiri o'z x1/y1 dan olinadi OK")
+
+
+def test_edge_material_fallback() -> None:
+    """Detalda `el{side}Mat` yozilmasligi mumkin (korpusda 779 qirradan 112 tasi) — o'shanda
+    lenta nomini EL operatsiyasining bazaviy materialidan olamiz. Kromkalashda `used="base"`
+    KLEY emas, LENTA ni bildiradi (spetsifikatsiya), shuning uchun tartib emas, `used` muhim."""
+    xml = (
+        b'<project version="1">'
+        b'<good typeId="band" id="9" name="06-19 SASNA" w="22" t="0.4"/>'
+        b'<good typeId="band" id="8" name="KLEY" w="22" t="0.4"/>'
+        b'<good typeId="product" id="1" code="42" name="M" count="1">'
+        b'<part id="2" code="A1" dl="700" dw="500" count="1" elt="@operation#5" elb="@operation#5" elbMat="QO\'LDA"/>'
+        b"</good>"
+        b'<operation typeId="EL" id="5" elSymbol="A">'
+        b'<material id="8" count="1"/><material id="9" count="1" used="base"/>'
+        b"</operation>"
+        b"</project>"
+    )
+    part = next(iter(parse_project(xml).all_parts))
+    assert part.edges["t"] == {"mat": "06-19 SASNA", "symbol": "A"}  # bo'sh edi -> lentadan
+    assert part.edges["b"] == {"mat": "QO'LDA", "symbol": "A"}  # yozilgani ustun turadi
+    print("qirra lentasi zaxira yo'li OK")
+
+
+def test_giblab_default_kerf_and_trim() -> None:
+    """Eski eksportda `tool.cutting` bo'sh, CS da `cTrimL/cTrimW` yo'q. Zaxira qiymatlar
+    GibLab standarti bo'lishi kerak (pila 4.4 mm, torsovka 10 mm) — aks holda arrachiga
+    GibLab optimallashtirganidan boshqa raqam ko'rsatilardi."""
+    xml = (
+        b'<project version="21052101">'
+        b'<good typeId="tool.cutting" id="2"/>'
+        b'<good typeId="sheet" id="3" t="16" name="LDSP"/>'
+        b'<good typeId="product" id="1" code="42" name="M" count="1">'
+        b'<part id="4" code="A1" dl="700" dw="500" count="1"/>'
+        b"</good>"
+        b'<operation typeId="CS" id="5" tool1="2"><material id="3" count="1"/><part id="4"/></operation>'
+        b"</project>"
+    )
+    cut = parse_project(xml).cut_ops[0]
+    assert (cut.kerf, cut.trim_l, cut.trim_w) == (4.4, 10.0, 10.0)
+    print("GibLab standart pila/torsovka qiymatlari OK")
+
+
 if __name__ == "__main__":
     test_blob_decoder()
     test_parser_and_routes()
@@ -547,4 +604,7 @@ if __name__ == "__main__":
     test_template_machining_warning()
     test_many_xnc_ops_kept()
     test_minus_count_warning()
+    test_groove_endpoint_default()
+    test_edge_material_fallback()
+    test_giblab_default_kerf_and_trim()
     print("ALL GIBLAB TESTS PASSED")

@@ -57,6 +57,15 @@ def _i(el: ET.Element, attr: str, default: int = 0) -> int:
         return default
 
 
+def _base_material(op_el: ET.Element) -> ET.Element | None:
+    """Operatsiyaning ASOSIY materiali. Spetsifikatsiya `<material used="base">` bilan kesishdagi
+    asosiy listni belgilaydi; korpusda kesish operatsiyasida material doim bitta (`used` ham
+    yozilmagan), lekin bittadan ko'p bo'lsa birinchisini olish list nomini butun xarita bo'yicha
+    xato ko'rsatardi."""
+    mats = op_el.findall("material")
+    return next((m for m in mats if m.get("used") == "base"), mats[0] if mats else None)
+
+
 def _dedupe_part_code(code: str, seen: set[str], product_code: str, warnings: list[str]) -> str:
     """Real exports repeat codes (e.g. the same product good twice) — rename deterministically
     so the durable key productCode_partCode stays unique (QR, SCX)."""
@@ -329,7 +338,7 @@ def parse_project(content: bytes) -> ParsedProject:
             label_counter = _parse_cs_operation(op_el, sheets, cutting_tools, part_by_file_id, project, label_counter)
 
         elif type_id == "EL":
-            _apply_el_symbols(op_el, products_goods, part_by_file_id)
+            _apply_el_symbols(op_el, products_goods, part_by_file_id, bands)
 
         elif type_id == "XNC":
             stub_el = op_el.find("part")
@@ -376,7 +385,7 @@ def _parse_cs_operation(
 ) -> int:
     """One CS = one sheet material (TZ 5.2.5). Returns the advanced file-global label counter."""
     tool = cutting_tools.get(_i(op_el, "tool1"))
-    material_el = op_el.find("material")
+    material_el = _base_material(op_el)
     mat_gid = int(material_el.get("id", 0)) if material_el is not None else 0
     sheet = sheets.get(mat_gid)
     stats = {
@@ -399,9 +408,16 @@ def _parse_cs_operation(
         material_good_id=mat_gid,
         material_name=sheet.get("name", "") if sheet is not None else "",
         thickness=_f(sheet, "t") if sheet is not None else None,
-        kerf=(_f(tool, "swSawthick") if tool is not None else None) or 3.0,  # the ONLY kerf source (TZ 5.3.4)
-        trim_l=(_f(op_el, "cTrimL") or 2.0),
-        trim_w=(_f(op_el, "cTrimW") or 2.0),
+        # Yagona kerf manbasi (TZ 5.3.4). Yozilmasa GibLab o'zining standarti — 4.4 mm — bilan
+        # optimallashtirgan (spetsifikatsiya, `swSawthick`), shuning uchun zaxira qiymat ham 4.4:
+        # eski eksportda (`tool.cutting` bo'sh) arrachiga 3.0 deb yolg'on ko'rsatilardi.
+        kerf=(_f(tool, "swSawthick") if tool is not None else None) or 4.4,
+        # Torsovka. Zaxira qiymatlar spetsifikatsiyadagi GibLab standarti (10 mm) — ilgari bu
+        # yerda korpusdan olingan 2.0 turardi, ya'ni atribut yozilmagan faylda arrachi 2 mm
+        # ko'rib, GibLab esa 10 mm bilan optimallashtirgan bo'lardi. Geometriyaga ta'sir qilmaydi
+        # (torsovka blobdan, type=1), faqat xarita sarlavhasida ko'rsatiladi.
+        trim_l=(_f(op_el, "cTrimL") or 10.0),
+        trim_w=(_f(op_el, "cTrimW") or 10.0),
         stats=stats,
         data_blob=op_el.get("data") or None,
     )
@@ -437,11 +453,18 @@ def _apply_el_symbols(
     op_el: ET.Element,
     products_goods: list[ET.Element],
     part_by_file_id: dict[int, ParsedPart],
+    bands: dict[int, ET.Element],
 ) -> None:
     """Attach the EL map symbol to every referencing part edge — part attrs point back
     via el{side}="@operation#N" (TZ 5.1.2)."""
     symbol = op_el.get("elSymbol")
-    if not symbol:
+    # Kromkalash operatsiyasida `used="base"` KLEY emas, LENTA ni bildiradi (spetsifikatsiya).
+    # Detalning `el{side}Mat` i yozilmasligi mumkin (korpusda 779 qirradan 21 tasi) — o'shanda
+    # yorliqdagi lenta katakchasi bo'sh chiqib, kromkachi qaysi lentani olishini bilmasdi.
+    mat_el = _base_material(op_el)
+    band = bands.get(int(mat_el.get("id", 0))) if mat_el is not None else None
+    band_name = band.get("name") if band is not None else None
+    if not symbol and not band_name:
         return
     op_id = _i(op_el, "id")
     for g in products_goods:
@@ -451,4 +474,8 @@ def _apply_el_symbols(
                 continue
             for side in _EDGE_SIDES:
                 if p.get(f"el{side}") == f"@operation#{op_id}" and side in ref_part.edges:
-                    ref_part.edges[side]["symbol"] = symbol
+                    edge = ref_part.edges[side]
+                    if symbol:
+                        edge["symbol"] = symbol
+                    if not edge.get("mat") and band_name:
+                        edge["mat"] = band_name
