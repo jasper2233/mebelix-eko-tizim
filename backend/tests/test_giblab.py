@@ -421,6 +421,47 @@ def test_allowance_warning() -> None:
     print("ishlov qo'shimchasi ogohlantirishi OK")
 
 
+def test_hole_arrays_and_inheritance() -> None:
+    """XNC dasturining uch xususiyati (help/format_ru.html, "XNC программа"):
+    1. `ac`/`as`/`av` — bitta element teshik QATORINI bildiradi (32 mm javon teshiklari).
+    2. `enable="false"` — element o'chirilgan, bajarilmaydi.
+    3. Atribut yozilmasa OLDINGI qiymat olinadi; ilgari bu ParseError berardi."""
+
+    def prog(body: str) -> str:
+        return f'<program dx="1000" dy="500" dz="16"><tool name="Bore8" d="8"/>{body}</program>'
+
+    # Vertikal qator: y bo'ylab qadam
+    op = parse_xnc_program("t", prog('<bf x="37" y="100" dp="12" ac="8" as="32" av="true" name="Bore8"/>'))
+    assert len(op.bores) == 8
+    assert [b["y"] for b in op.bores] == [100.0 + 32 * i for i in range(8)]
+    assert all(b["x"] == 37.0 for b in op.bores)  # vertikalda x o'zgarmaydi
+
+    # Gorizontal qator (korpusdagi av=false): x bo'ylab
+    op = parse_xnc_program("t", prog('<bf x="37" y="100" dp="12" ac="3" as="32" av="false" name="Bore8"/>'))
+    assert [b["x"] for b in op.bores] == [37.0, 69.0, 101.0]
+
+    # ac=1 — korpusdagi holat, bitta teshik (regressiya himoyasi)
+    assert len(parse_xnc_program("t", prog('<bf x="37" y="100" dp="12" ac="1" name="Bore8"/>')).bores) == 1
+
+    # Qadam berilmasa qator yasamaymiz
+    assert len(parse_xnc_program("t", prog('<bf x="37" y="100" dp="12" ac="5" name="Bore8"/>')).bores) == 1
+
+    # enable="false" — o'tkazib yuboriladi
+    two = '<bf x="1" y="1" dp="12" enable="false" name="Bore8"/><bf x="2" y="2" dp="12" name="Bore8"/>'
+    op = parse_xnc_program("t", prog(two))
+    assert [b["x"] for b in op.bores] == [2.0]
+
+    # Meros: ikkinchi teshikda dp yo'q -> oldingi qiymat (ilgari ParseError edi)
+    op = parse_xnc_program("t", prog('<bf x="10" y="10" dp="12" name="Bore8"/><bf x="50" y="10" name="Bore8"/>'))
+    assert [b["dp"] for b in op.bores] == [12.0, 12.0]
+
+    # Qirra teshiklari qatori — chet bo'ylab yagona o'q
+    op = parse_xnc_program("t", prog('<bl y="50" dp="34" ac="4" as="64" name="Bore8"/>'))
+    assert [b["pos"] for b in op.edge_bores] == [50.0, 114.0, 178.0, 242.0]
+    assert all(b["side"] == "l" for b in op.edge_bores)
+    print("teshik qatori + enable + atribut merosi OK")
+
+
 def test_unknown_xnc_tag_warning() -> None:
     """GibLab XNC dasturi spetsifikatsiyasida <ma> (yoy) va <xy> (koordinata boshi) ham bor;
     biz ularni hisoblamaymiz. Jimgina tashlash xavfli — <xy> e'tiborsiz qolsa undan keyingi
@@ -499,6 +540,7 @@ if __name__ == "__main__":
     test_negative_dimensions()
     test_hardware_goods()
     test_unhandled_operation_warning()
+    test_hole_arrays_and_inheritance()
     test_unknown_xnc_tag_warning()
     test_allowance_warning()
     test_size_mode_fallback()

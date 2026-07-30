@@ -180,8 +180,8 @@ Spetsifikatsiyadagi element to'plami:
 |---|---|---|
 | `tool` | Asbob (`name`, `d` — diametr) | ✅ |
 | `var` | O'zgaruvchi e'loni (`name`, `expr`) | ✅ |
-| `bf` | Frontal teshik | ✅ |
-| `bt` / `bb` / `bl` / `br` | Qirra teshigi (tepa/past/chap/o'ng) | ✅ |
+| `bf` | Frontal teshik (`ac`/`as`/`av` bilan qator bo'lishi mumkin) | ✅ qator kengaytiriladi |
+| `bt` / `bb` / `bl` / `br` | Qirra teshigi (tepa/past/chap/o'ng); qator chet bo'ylab | ✅ qator kengaytiriladi |
 | `gr` | Paz | ✅ |
 | `ms` | Freza kirish nuqtasi | ✅ |
 | `ml` | To'g'ri chiziq bo'ylab frezalash | ✅ |
@@ -189,6 +189,19 @@ Spetsifikatsiyadagi element to'plami:
 | `ma` | Yoy bo'ylab frezalash | ❌ ogohlantirish |
 | `xy` | **Koordinata boshi** | ❌ ogohlantirish |
 | `oq` / `oh` | Eski avlod arra/paz asboblari | ✅ (pazga o'giriladi) |
+
+**Atribut merosi.** Spetsifikatsiya aniq aytadi: `dp`, `ac`, `as`, `z`, `x`, `y` kabi atribut
+**yozilmasa "oldingi qiymat" olinadi**. Parser buni teg bo'yicha yuritadi (pazning chuqurligi
+keyingi teshikka o'tib ketmasligi uchun). Ilgari `dp` yo'q bo'lsa ParseError chiqib **butun
+fayl rad etilardi**.
+
+**Teshik qatori.** `ac` (soni), `as` (qadam), `av` (vertikal=true / gorizontal=false) —
+bitta element **teshik qatorini** bildiradi. 32 mm javon teshiklari aynan shunday beriladi.
+Korpusda `ac` doim 1 (3382 holat), lekin qator ishlatilsa ilgari bitta teshik chizilardi va
+**SCX faylga ham bittasi tushardi** — ya'ni dastgoh kam teshik teshardi. Endi kengaytiriladi.
+
+**`enable="false"`** — element o'chirilgan (default `true`). Ilgari o'qilmasdi, ya'ni GibLab
+ataylab o'chirgan teshik chizilib SCX'ga ham tushardi.
 
 `xy` alohida xavfli: u koordinata boshini belgilaydi, ya'ni e'tiborsiz qolsa undan keyingi
 **barcha teshik joylari xato** bo'ladi. Korpusda ikkalasi ham uchramaydi, lekin jimgina

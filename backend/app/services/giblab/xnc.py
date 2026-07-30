@@ -2,6 +2,7 @@
 
 import re
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 from typing import Any
 
 from .models import ParseError, XncOp
@@ -9,6 +10,8 @@ from .models import ParseError, XncOp
 # Safe arithmetic: numbers, identifiers (dz, throughBoreDepth...), + - * / ( ) . and spaces only.
 _EXPR_RE = re.compile(r"^[\w\s+\-*/().]+$")
 _NAME_DIGITS = re.compile(r"(\d+(?:\.\d+)?)")
+
+_EDGE_TAGS = {"bt": "t", "bb": "b", "bl": "l", "br": "r"}
 
 # GibLab spetsifikatsiyasi (help/format_ru.html) XNC dasturi uchun shu teglarni beradi:
 # program, tool, bf, bl, br, bt, bb, ms, ml, ma, mac, gr, xy (+ real fayllarda var, oq, oh).
@@ -43,6 +46,51 @@ def _tool_diameter(name: str | None, tools: dict[str, float]) -> float | None:
     return float(m.group(1)) if m else None
 
 
+_Num = Callable[..., float]
+
+
+def _hole_array(el: ET.Element, num: _Num) -> tuple[int, float, bool]:
+    """`ac` (soni), `as` (qadam), `av` (vertikal=true) — bitta element teshik QATORINI
+    bildiradi; 32 mm javon teshiklari aynan shunday beriladi. Qadam bo'lmasa qator yo'q.
+    Korpusda `ac` doim 1 (3382 holat), lekin qator ishlatilsa ilgari bitta teshik
+    chizilardi va SCX'ga ham bittasi tushardi."""
+    count = int(num(el, "ac", 1))
+    step = num(el, "as", 0.0)
+    if count < 2 or step <= 0:
+        return 1, 0.0, False
+    return count, step, el.get("av") == "true"
+
+
+def _add_face_bores(el: ET.Element, op: XncOp, num: _Num, tools: dict[str, float], dz: float) -> None:
+    dp = num(el, "dp")
+    bx, by = num(el, "x"), num(el, "y")
+    n_holes, step, vertical = _hole_array(el, num)
+    d = _tool_diameter(el.get("name"), tools) or 0.0
+    for i in range(n_holes):
+        shift = step * i
+        op.bores.append(
+            {
+                "x": bx + (0.0 if vertical else shift),
+                "y": by + (shift if vertical else 0.0),
+                "d": d,
+                "dp": dp,
+                "thru": dp >= dz,
+            }
+        )
+
+
+def _add_edge_bores(el: ET.Element, side: str, op: XncOp, num: _Num, tools: dict[str, float], dz: float) -> None:
+    # bt/bb carry x; bl/br carry y — only the along-edge coordinate exists (TZ 5.5)
+    pos = num(el, "x") if side in ("t", "b") else num(el, "y")
+    dp = num(el, "dp")
+    z = num(el, "z", dz / 2)
+    d = _tool_diameter(el.get("name"), tools) or 0.0
+    n_holes, step, _vertical = _hole_array(el, num)
+    for i in range(n_holes):
+        # Chetda yagona o'q bor — qator shu o'q bo'ylab ketadi
+        op.edge_bores.append({"side": side, "pos": pos + step * i, "z": z, "d": d, "dp": dp, "thru": False})
+
+
 def parse_xnc_program(code: str, program_xml: str) -> XncOp:
     try:
         root = ET.fromstring(program_xml)
@@ -70,16 +118,31 @@ def parse_xnc_program(code: str, program_xml: str) -> XncOp:
     op = XncOp(code=code, side2=code.endswith("_2"), dx=dx, dy=dy, dz=dz)
     current_contour: list[dict[str, Any]] = []
 
+    # Spetsifikatsiya (help/format_ru.html, "XNC программа"): dp/ac/as/z/x/y kabi
+    # atribut YOZILMASA "oldingi qiymat" olinadi. Meros TEG bo'yicha yuritiladi —
+    # aks holda pazning chuqurligi keyingi teshikka o'tib ketardi. Korpusda meros
+    # ishlatilmagan (burg'ulashda dp/x/y doim yozilgan), lekin ilgali bu yerda
+    # ParseError bor edi: merosli fayl BUTUNLAY rad etilardi.
+    last: dict[tuple[str, str], float] = {}
+
     def num(el: ET.Element, attr: str, default: float | None = None) -> float:
         raw = el.get(attr)
         if raw is None:
+            if (el.tag, attr) in last:
+                return last[(el.tag, attr)]
             if default is None:
                 raise ParseError(f"XNC ({code}): <{el.tag}> da {attr} yo'q")
             return default
-        return _eval_expr(raw, env)
+        value = _eval_expr(raw, env)
+        last[(el.tag, attr)] = value
+        return value
 
     for el in root:
         tag = el.tag
+        # `enable="false"` — element o'chirilgan (default true). Uni bajarsak GibLab
+        # ataylab o'chirgan teshik/pazni chizib, SCX'ga ham qo'shib qo'yardik.
+        if el.get("enable") == "false":
+            continue
         if tag == "tool":
             name, d = el.get("name"), el.get("d")
             if name and d:
@@ -89,31 +152,9 @@ def parse_xnc_program(code: str, program_xml: str) -> XncOp:
             if name and expr:
                 env[name] = _eval_expr(expr, env)
         elif tag == "bf":
-            dp = num(el, "dp")
-            op.bores.append(
-                {
-                    "x": num(el, "x"),
-                    "y": num(el, "y"),
-                    "d": _tool_diameter(el.get("name"), tools) or 0.0,
-                    "dp": dp,
-                    "thru": dp >= dz,
-                }
-            )
-        elif tag in ("bt", "bb", "bl", "br"):
-            side = {"bt": "t", "bb": "b", "bl": "l", "br": "r"}[tag]
-            # bt/bb carry x; bl/br carry y — only the along-edge coordinate exists (TZ 5.5)
-            pos = num(el, "x") if tag in ("bt", "bb") else num(el, "y")
-            dp = num(el, "dp")
-            op.edge_bores.append(
-                {
-                    "side": side,
-                    "pos": pos,
-                    "z": num(el, "z", dz / 2),
-                    "d": _tool_diameter(el.get("name"), tools) or 0.0,
-                    "dp": dp,
-                    "thru": False,
-                }
-            )
+            _add_face_bores(el, op, num, tools, dz)
+        elif tag in _EDGE_TAGS:
+            _add_edge_bores(el, _EDGE_TAGS[tag], op, num, tools, dz)
         elif tag == "gr":
             op.grooves.append(
                 {
