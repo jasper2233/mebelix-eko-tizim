@@ -159,8 +159,12 @@ export function CutmapView({
 
   // Matritsadan kelgan "xaritada ko'rsat" sakrashi: ma'lumot kelgach detalning
   // birinchi katakchasini topib, o'sha material + listni ochamiz va belgilaymiz.
+  // BIR MARTA: aks holda har refetch (60s interval, fokus) foydalanuvchi qaysi
+  // listga o'tgan bo'lsa ham uni qaytarib uloqtirardi.
+  const focusApplied = useRef(false)
   useEffect(() => {
-    if (!focusPartKey || !data?.model) return
+    if (!focusPartKey || !data?.model || focusApplied.current) return
+    focusApplied.current = true
     const mats = (data.model as any).materials ?? []
     for (let mi = 0; mi < mats.length; mi++) {
       const shs = mats[mi].sheets ?? []
@@ -278,7 +282,9 @@ export function CutmapView({
   // — hech qachon o'ramaydi, header balandligi o'smaydi, eni ~400px
   // Header info: list nomi (ochiq bo'lsa) + 3x3 statlar — bitta portalda
   const statsRow = material ? (
-    <div className="mx-auto flex w-fit items-center gap-6">
+    <div
+      className={`flex w-fit items-center gap-6 ${statsContainer ? "mx-auto" : ""}`}
+    >
       {sheet && (
         <div className="whitespace-nowrap text-base font-black">
           №{sheet.no} —{" "}
@@ -356,6 +362,31 @@ export function CutmapView({
         >
           <Maximize2 />
         </Button>
+      </div>
+    ) : null
+
+  // Webda ochiq xarita ustida materiallar ko'rinmay qolardi (tablar faqat grid
+  // sahifasida) — ixcham qator: bosilsa o'sha materialning list gridi ochiladi.
+  const webMaterialTabs =
+    admin && sheetIdx !== null && materials.length > 1 ? (
+      <div className="flex items-center gap-1.5 overflow-x-auto">
+        {materials.map((m: Material, i: number) => (
+          <Button
+            key={m.name}
+            size="sm"
+            variant={i === materialIdx ? "default" : "outline"}
+            className="max-w-56 shrink-0"
+            onClick={() => {
+              setMaterialIdx(i)
+              setSheetIdx(null)
+            }}
+          >
+            <span className="truncate">{m.name}</span>
+            <span className="num ml-1 text-xs opacity-70">
+              {m.sheets.filter(sheetDone).length}/{m.sheets.length}
+            </span>
+          </Button>
+        ))}
       </div>
     ) : null
 
@@ -439,6 +470,7 @@ export function CutmapView({
             {webToolbar}
           </div>
         )}
+        {webMaterialTabs}
         {sheetIdx === null ? (
           /* Jadval sahifasi: material tablar + list grid (GibLab #matlist + #grid) */
           <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border bg-white p-4">
