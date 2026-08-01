@@ -9,7 +9,7 @@ Holat: **2026-07-28**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Barcha fazalar impl
 | Jadval | Mazmun | TT |
 |---|---|---|
 | `organization` | Tenant (bitta: Mebelix), sxema multi-tenant tayyor | 4.1 |
-| `post` | 6 bosqich: ARRA→STOLYARKA (unit, order_index, flaglar), seed `app/commands/seed_defaults.py` | 4.4 |
+| `post` | 7 bosqich: ARRA→KROMKA→OVAL→PRISADKA→PAZ→ROVER→STOLYARKA (unit, order_index, flaglar), seed `app/commands/seed_defaults.py` — idempotent, order_index'ni mavjud bazalarda ham sinxronlaydi. OVAL fayldan avto-aniqlanmaydi: texnolog matritsada belgilaydi (route `per_instance=1`) | 4.4 |
 | `machine` | Stanok (post FK, IP, capacity, holat) | 4.3 |
 | `employee` | Beyjik egasi (badge_id UUID partial-unique, assigned_post_ids JSONB) | 4.2 |
 | `client` | Mijoz (jismoniy/yuridik, INN) | 4.6 |
@@ -23,12 +23,12 @@ Holat: **2026-07-28**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Barcha fazalar impl
 | `audit_log` | Kim-qachon-nima (`crud/audit.py: log_action`, tranzaksiya ichida) | 10.11 |
 | `bridge_agent` | Printerli kompyuterdagi chop etish agenti: `name`, `token_hash` (sha256, unique), bir martalik `pair_code` + `pair_expires_at` (15 daqiqa), `last_seen_at` (panelda Onlayn/Oflayn); migratsiya `d5e81a24c3b7` | 2.2.2 |
 
-`user` jadvaliga qo'shildi: `role` (`UserRole`, 12 a'zo) + `machine_id`. Rollar ikki guruh
+`user` jadvaliga qo'shildi: `role` (`UserRole`, 13 a'zo) + `machine_id`. Rollar ikki guruh
 (`app/models/enums.py`):
 
 - staff/qurilma: admin, director, manager, texnolog, terminal, tablo — terminal/TABLO qurilma
   akkauntlari stanokka biriktiriladi (TT 8.1 variant B);
-- post-operator: arrachi, kromkachi, prisadkachi, pazchi, roverchi, stolyar — `POST_ROLES`
+- post-operator: arrachi, kromkachi, ovalchi, prisadkachi, pazchi, roverchi, stolyar — `POST_ROLES`
   mapping orqali postga bog'lanadi (ARRACHI→ARRA … STOLYAR→STOLYARKA); o'z akkaunti bilan kiradi,
   **stanok biriktirish ham, beyjik ham shart emas** (login = smena, §3 ga qarang).
 
@@ -115,6 +115,8 @@ Zanjir (terminal → printer) — GoDEX G500-U faqat USB, tarmoq porti yo'q, shu
 
 ```
 terminal (POST /terminal/labels/{instance_id})   → label_printed_at + ws "label.printed"
+  (DELETE o'sha path — chekni bekor qilish: label_printed_at=None + ws "label.cancelled";
+   ARRA UI'da chiqarilgan katak yashil="kesildi", qayta chop etish bekor qilishdan keyingina)
   → arq task print_label (app/tasks/__init__.py)
      · render_label_png → LPUSH mes:print:queue = {type, instance_id, png(base64)}
   → /ws/bridge (per-agent token auth: Bearer → sha256 bridge_agent.token_hash; Redis brpop + ack;
@@ -143,8 +145,8 @@ O'rnatish qadamlari: [07-infra-devops.md](07-infra-devops.md) → "Chop etish in
 |---|---|---|
 | `clients/employees/machines/posts/materials` | CRUD + qidiruv | rol-based (`api/deps.py: require_roles`) |
 | `orders` | lifecycle (`/confirm`, `/start`, …) + `/status-counts` + `/upload` + `/matrix` + `/machines` + `/cutmap` + `/files/{id}` + `/survey` + `/survey/photos[/{file_id}]` | o'qish: manager/texnolog/director (`StaffReadUser`); yozish: manager/texnolog (+admin/superuser); anketa yozuvi: `ManagerUser` |
-| `scans` | POST scan, DELETE undo, `/recent` | terminal + 6 operator rol |
-| `terminal` | `/context`, `/session`, `/session/end`, `/tasks`, `/orders` (loyiha kartalari: done/total agregat), `/orders/{id}/cutmap`, `/labels/{id}` (GoDEX navbat), `/labels/{id}.png`, `/files/{id}` | terminal + 6 operator rol; stanok/post konteksti (`_terminal_ctx` → `TerminalCtx`) har route'ga alohida qo'yiladi — yorliq/fayl route'lariga ataylab emas, ular stanoksiz ham ishlaydi |
+| `scans` | POST scan, DELETE undo, `/recent` | terminal + 7 operator rol |
+| `terminal` | `/context`, `/session`, `/session/end`, `/tasks`, `/orders` (loyiha kartalari: done/total post semantikasida — ARRA: chek∪skan, KROMKA: detal bo'yicha), `/orders/{id}/cutmap`, `/orders/{id}/kromka` (KROMKA/OVAL sahifasi), `/orders/{id}/prisadka` (detallar + SCX fayllar), `/qr/{qr}/order` (QR→buyurtma), `/labels/{id}` POST (GoDEX navbat) / DELETE (chekni bekor qilish, manager/texnolog ham), `/labels/{id}.png`, `/files/{id}` | terminal + 7 operator rol; stanok/post konteksti (`_terminal_ctx` → `TerminalCtx`) har route'ga alohida qo'yiladi — yorliq/fayl route'lariga ataylab emas, ular stanoksiz ham ishlaydi |
 | `tablo` | `/matrix`, `/orders/{id}` | istalgan auth |
 | `reports` | `/productivity`, `/orders`, `/materials` (+`?format=xlsx`), `/dashboard` | manager/director/admin |
 | `audit-logs` | filtrli ro'yxat | staff |
@@ -224,7 +226,7 @@ direktor ham ko'radi.
 ## 7. Frontend tuzilishi
 
 - Dizayn tokenlar: `src/index.css` (post/status ranglari, `.num`, print CSS); domen konstantalar `src/lib/mes.ts`.
-- Imzo komponent: `Common/StagePipeline` — 6 bosqich zanjiri (dashboard, buyurtma qatorlari).
+- Imzo komponent: `Common/StagePipeline` — post zanjiri (dinamik, dashboard va buyurtma qatorlari).
 - Routelar: `_layout/*` admin modullar (orders, clients, employees, machines, materials, reports,
   transactions, printers, admin, settings, cutmap.$orderId, `anketa.$orderId`), `/terminal`, `/tablo`
   (JAMI HAJM + rejimlar + drill-down + jonli soat). Yon menyu sarlavhalari
@@ -237,15 +239,26 @@ direktor ham ko'radi.
   (`loaded` ref) — aks holda refetch menejer yozayotgan matn ustiga tushadi.
 - Buyurtma kartasi (`orders/$orderId.tsx`): `.project` uchun drag&drop zona (kengaytma tekshiriladi,
   boshqasiga xato toast) va anketaga o'tish tugmasi.
-- `/terminal` (17" touch UX) drill-down: loyiha kartalari (`GET /terminal/orders` — priority badge,
-  ARRA progress, deadline) → materiallar ro'yxati (har material bo'yicha bajarilgan list soni) →
-  listlar → to'liq ekran xarita. Chizish `Terminal/CutmapView` + `Terminal/SheetSvg` (detallar,
-  teshiklar, o'lcham zanjirlari, zoom/swipe); `printAllMaps` — har list A4 landscape. Qo'shimcha:
-  majburiy to'liq ekran overlay, lock overlay (tasodifiy touch himoyasi, scan to'xtaydi), operator
-  logout, bir xil QR uchun 2 s cooldown (TT 8.4.4), yangi build uchun har 5 daqiqada `/` HEAD ETag
-  tekshiruvi va xavfsiz paytda (xarita yopiq + 2 daqiqa skan yo'q) avto-reload.
+- `/terminal` post bo'yicha sahifalar (hammasi picker: `GET /terminal/orders` kartalari):
+  · **ARRA** — materiallar → listlar → to'liq ekran xarita (`Terminal/CutmapView` +
+    `Terminal/SheetSvg`; `printAllMaps` — har list A4 landscape). Chek chiqarilgan katak YASHIL
+    ("kesildi"); qayta chop etish bloklanadi; long press (~600ms) + tasdiq dialogi chekni bekor
+    qiladi (admin webdagi xaritada — kartochkadagi tugma).
+  · **KROMKA** (`Terminal/KromkaView`) — ikki panel: chapda arradan chiqqan detallar
+    (tugaganlari yashil, pastda), o'ngda "Jarayonda" (2+ tomonli, boshlangan, tugamagan).
+    Har skan darhol yoziladi (tomon = skan, `per_instance`); bir QR uchun 5 s to'siq;
+    picker'da skan qilinsa proyekt o'zi ochiladi (`/qr/{qr}/order`); begona detalga aniq xato.
+  · **OVAL** — o'sha KromkaView `oval` rejimda: bir panel, har detal BITTA skan.
+  · **PRISADKA** (`Terminal/PrisadkaView`) — detallar + SCX fayllar; "Hammasini yuklab olish"
+    File System Access API bilan BIR MARTA tanlangan papkaga (IndexedDB'da saqlanadi,
+    `lib/scxDir.ts`) proyekt nomli subpapka ochib yozadi; har skandagi avto-SCX ham o'sha yerga.
+  · qolgan postlar — vazifalar jadvali (tasks).
+  Umumiy: majburiy to'liq ekran overlay, lock overlay, operator logout, 2 s umumiy QR cooldown
+  (TT 8.4.4), skan chizig'i 15 s da o'zi yo'qoladi, skan inputi fokussiz ham QR ni tutadi
+  (birinchi tugmada fokus), yangi build uchun har 5 daqiqada `/` HEAD ETag tekshiruvi va xavfsiz
+  paytda avto-reload.
 - WS hook: `hooks/useMesWs.ts` (reconnect + heartbeat + online flag).
-- Rol-marshrutlash: `_layout.tsx` beforeLoad — terminal va 6 operator rol → `/terminal`,
+- Rol-marshrutlash: `_layout.tsx` beforeLoad — terminal va 7 operator rol → `/terminal`,
   tablo → `/tablo` (qurilma/operator akkauntlar admin panelga kira olmaydi).
 
 ## 8. Sozlamalar (yangi env)
