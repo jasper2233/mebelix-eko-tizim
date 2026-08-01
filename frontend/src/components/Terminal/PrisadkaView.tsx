@@ -63,17 +63,26 @@ export function PrisadkaView({
         let dir = await getSavedDir(true)
         if (!dir) dir = await pickDir()
         if (!dir) return // bekor qilindi
+        // Har proyekt o'z papkasiga: "1007 Yangibozor" kabi — fayllar aralashmaydi
+        const info = data as
+          | { project_name?: string | null; order_number?: string }
+          | undefined
+        const folder = (info?.project_name || info?.order_number || "scx")
+          // Windows fayl tizimida taqiqlangan belgilar
+          .replace(/[\\/:*?"<>|]/g, "_")
+          .trim()
+        const sub = await dir.getDirectoryHandle(folder, { create: true })
         let ok = 0
         for (const f of allFiles) {
           try {
-            await saveScxToDir(dir, f.id, f.filename)
+            await saveScxToDir(sub, f.id, f.filename)
             ok++
           } catch {
             /* bittasi yiqilsa qolganlari davom etadi */
           }
         }
         if (ok === allFiles.length)
-          showSuccessToast(`${ok} ta SCX "${dir.name}" papkasiga saqlandi`)
+          showSuccessToast(`${ok} ta SCX "${dir.name}/${folder}" ga saqlandi`)
         else
           showErrorToast(
             `${ok}/${allFiles.length} saqlandi — qolganlarini qayta urining.`,

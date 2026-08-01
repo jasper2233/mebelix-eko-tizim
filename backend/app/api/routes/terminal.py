@@ -522,6 +522,7 @@ async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int
     return {
         "order_id": order.id,
         "order_number": order.number,
+        "project_name": order.project_name,
         "parts": [
             {
                 "part_id": part.id,

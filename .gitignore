@@ -55,3 +55,6 @@ chek/
 
 # Serverdagi shifrlangan DB backuplar (scripts/backup.sh)
 backups/
+
+# terminal SCX test papkasi
+/scx/
