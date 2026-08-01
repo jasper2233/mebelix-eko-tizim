@@ -103,6 +103,9 @@ export const getTerminalContextQueryOptions = () =>
   queryOptions({
     queryKey: ["terminal", "context"],
     queryFn: () => TerminalService.readTerminalContext(),
+    // Xato holatda (masalan postda stanok yo'q) admin tuzatgach terminal
+    // o'zi tiklansin — operator sahifani qayta ochishni bilmasligi mumkin
+    refetchInterval: 30_000,
   })
 
 export const getTerminalTasksQueryOptions = () =>

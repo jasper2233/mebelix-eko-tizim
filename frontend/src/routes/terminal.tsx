@@ -87,9 +87,11 @@ type LastScan =
 function TerminalPage() {
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
-  const { data: ctx, isLoading: ctxLoading } = useQuery(
-    getTerminalContextQueryOptions(),
-  )
+  const {
+    data: ctx,
+    isLoading: ctxLoading,
+    error: ctxError,
+  } = useQuery(getTerminalContextQueryOptions())
   const {
     data: tasks,
     isLoading: tasksLoading,
@@ -598,6 +600,18 @@ function TerminalPage() {
         </div>
         {ctxLoading && !ctx ? (
           <Skeleton className="h-full flex-1" />
+        ) : !ctx && ctxError ? (
+          /* Kontekst xatosi (masalan postda stanok yo'q) yutilmasin — sabab
+             ekranda tursin, aks holda "hech nima chiqmayapti" bo'lib qoladi */
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+            <WifiOff className="size-12 text-destructive/60" />
+            <div className="max-w-md text-lg font-bold text-destructive">
+              {detailMessage(ctxError)}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Muammo hal bo'lgach sahifa o'zi yangilanadi.
+            </p>
+          </div>
         ) : ctx?.post_code === "ARRA" ? (
           <div
             className={cn(
