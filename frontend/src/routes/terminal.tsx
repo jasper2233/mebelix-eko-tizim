@@ -326,9 +326,9 @@ function TerminalPage() {
       })
       return
     }
-    // KROMKA: har skan darhol yoziladi, lekin BIR detal orasida 5s to'siq —
+    // KROMKA/OVAL: har skan darhol yoziladi, lekin BIR detal orasida 5s to'siq —
     // skanner ikki marta o'qib yuborsa bitta tomon ikki marta sanalib ketmasin
-    if (ctx?.post_code === "KROMKA") {
+    if (ctx?.post_code === "KROMKA" || ctx?.post_code === "OVAL") {
       const kNow = Date.now()
       const kLast = cooldownRef.current.get(value)
       if (kLast && kNow - kLast < 5000) {
@@ -624,8 +624,9 @@ function TerminalPage() {
               )}
             </div>
           </div>
-        ) : ctx?.post_code === "KROMKA" ? (
-          /* KROMKA: proyekt ro'yxati → kromkali detallar ro'yxati (tomon-progress) */
+        ) : ctx?.post_code === "KROMKA" || ctx?.post_code === "OVAL" ? (
+          /* KROMKA/OVAL: proyekt ro'yxati → detallar ro'yxati (tomon-progress;
+             OVAL'da har detal 1 skan, Jarayonda paneli yo'q) */
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
             {scanStrip}
             <div className="min-h-0 flex-1">
@@ -636,6 +637,7 @@ function TerminalPage() {
                   registerScan={(fn) => {
                     kromkaScanRef.current = fn
                   }}
+                  oval={ctx?.post_code === "OVAL"}
                 />
               ) : (
                 <OrderPicker

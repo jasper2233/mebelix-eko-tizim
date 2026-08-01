@@ -52,6 +52,7 @@ export const PRIORITY_BADGE_CLASSES: Record<string, string> = {
 export const POST_COLORS: Record<string, string> = {
   ARRA: "var(--post-arra)",
   KROMKA: "var(--post-kromka)",
+  OVAL: "var(--post-oval)",
   PRISADKA: "var(--post-prisadka)",
   PAZ: "var(--post-paz)",
   ROVER: "var(--post-rover)",
@@ -69,6 +70,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   tablo: "TABLO",
   arrachi: "Arrachi",
   kromkachi: "Kromkachi",
+  ovalchi: "Oval kromkachi",
   prisadkachi: "Prisadkachi",
   pazchi: "Pazchi",
   roverchi: "Roverchi",
@@ -79,6 +81,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 export const OPERATOR_ROLES = [
   "arrachi",
   "kromkachi",
+  "ovalchi",
   "prisadkachi",
   "pazchi",
   "roverchi",

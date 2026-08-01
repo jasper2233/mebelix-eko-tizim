@@ -570,7 +570,7 @@ export type Paginated_UserRead_ = {
     count: number;
 };
 
-export type PostCode = 'ARRA' | 'KROMKA' | 'PRISADKA' | 'PAZ' | 'ROVER' | 'STOLYARKA';
+export type PostCode = 'ARRA' | 'KROMKA' | 'OVAL' | 'PRISADKA' | 'PAZ' | 'ROVER' | 'STOLYARKA';
 
 export type PostRead = {
     id: number;
@@ -848,7 +848,7 @@ export type UserRead = {
     machine_id?: (number | null);
 };
 
-export type UserRole = 'admin' | 'director' | 'manager' | 'texnolog' | 'terminal' | 'tablo' | 'arrachi' | 'kromkachi' | 'prisadkachi' | 'pazchi' | 'roverchi' | 'stolyar';
+export type UserRole = 'admin' | 'director' | 'manager' | 'texnolog' | 'terminal' | 'tablo' | 'arrachi' | 'kromkachi' | 'ovalchi' | 'prisadkachi' | 'pazchi' | 'roverchi' | 'stolyar';
 
 /**
  * Body for `PATCH /users/me` — self-update only.

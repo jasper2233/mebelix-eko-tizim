@@ -1393,8 +1393,8 @@ export class TerminalService {
     
     /**
      * Read Terminal Kromka
-     * KROMKA sahifasi: buyurtmaning faqat kromkali detallari, har nusxada tomon-progress
-     * (0/4 → 4/4) va arradan o'tganlik (chek chiqarilgan yoki ARRA skan bor).
+     * KROMKA/OVAL sahifasi: buyurtmaning shu postdagi detallari, har nusxada tomon-progress
+     * (OVAL'da 0/1) va arradan o'tganlik (chek chiqarilgan yoki ARRA skan bor).
      * @param data The data for the request.
      * @param data.orderId
      * @returns KromkaOrderState Successful Response

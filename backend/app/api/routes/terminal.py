@@ -366,11 +366,11 @@ async def resolve_terminal_qr(db: SessionDep, user: TerminalUser, qr_text: str) 
 
 @router.get("/orders/{order_id}/kromka", response_model=KromkaOrderState, operation_id="read_terminal_kromka")
 async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) -> KromkaOrderState:
-    """KROMKA sahifasi: buyurtmaning faqat kromkali detallari, har nusxada tomon-progress
-    (0/4 → 4/4) va arradan o'tganlik (chek chiqarilgan yoki ARRA skan bor)."""
+    """KROMKA/OVAL sahifasi: buyurtmaning shu postdagi detallari, har nusxada tomon-progress
+    (OVAL'da 0/1) va arradan o'tganlik (chek chiqarilgan yoki ARRA skan bor)."""
     machine, post = ctx
-    if post.code != PostCode.KROMKA:
-        raise HTTPException(status_code=403, detail="Bu sahifa faqat KROMKA postida ko'rsatiladi.")
+    if post.code not in (PostCode.KROMKA, PostCode.OVAL):
+        raise HTTPException(status_code=403, detail="Bu sahifa faqat KROMKA yoki OVAL postida ko'rsatiladi.")
 
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
 

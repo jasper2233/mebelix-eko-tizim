@@ -33,9 +33,19 @@ POSTS: list[dict[str, object]] = [
         "icon": "band",
     },
     {
+        # Oval (egri) kromka: fayldan avto-aniqlanmaydi — texnolog matritsada
+        # belgilaydi (route per_instance=1, bitta skan = bosqich tugadi)
+        "code": PostCode.OVAL,
+        "name": "Oval kromka",
+        "order_index": 3,
+        "unit": PostUnit.METER,
+        "color": "#0d9488",
+        "icon": "band",
+    },
+    {
         "code": PostCode.PRISADKA,
         "name": "Prisadka",
-        "order_index": 3,
+        "order_index": 4,
         "unit": PostUnit.PIECE,
         "color": "#7c3aed",
         "icon": "drill",
@@ -43,7 +53,7 @@ POSTS: list[dict[str, object]] = [
     {
         "code": PostCode.PAZ,
         "name": "Paz",
-        "order_index": 4,
+        "order_index": 5,
         "unit": PostUnit.METER,
         "requires_assignment_choice": True,
         "color": "#b45309",
@@ -52,7 +62,7 @@ POSTS: list[dict[str, object]] = [
     {
         "code": PostCode.ROVER,
         "name": "Rover",
-        "order_index": 5,
+        "order_index": 6,
         "unit": PostUnit.PIECE,
         "requires_assignment_choice": True,
         "color": "#be185d",
@@ -61,7 +71,7 @@ POSTS: list[dict[str, object]] = [
     {
         "code": PostCode.STOLYARKA,
         "name": "Stolyarka",
-        "order_index": 6,
+        "order_index": 7,
         "unit": PostUnit.PIECE,
         "color": "#15803d",
         "icon": "assembly",
@@ -76,11 +86,17 @@ async def seed_defaults() -> None:
             db.add(Organization(name="Mebelix"))
             logger.info("Default organization created")
 
-        existing = {p.code for p in (await db.execute(select(Post))).scalars()}
+        existing = {p.code: p for p in (await db.execute(select(Post))).scalars()}
         for data in POSTS:
-            if data["code"] not in existing:
+            post = existing.get(data["code"])  # type: ignore[arg-type]
+            if post is None:
                 db.add(Post(**data))  # type: ignore[arg-type]
                 logger.info("Post %s created", data["code"])
+            elif post.order_index != data["order_index"]:
+                # Yangi post qo'shilganda tartib siljiydi (masalan OVAL=3) —
+                # mavjud bazalarda ham sinxronlanadi
+                post.order_index = data["order_index"]  # type: ignore[assignment]
+                logger.info("Post %s order_index -> %s", data["code"], data["order_index"])
 
         await db.commit()
 

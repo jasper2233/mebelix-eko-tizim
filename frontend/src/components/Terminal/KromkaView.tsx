@@ -47,12 +47,15 @@ export function KromkaView({
   orderId,
   onBack,
   registerScan,
+  oval = false,
 }: {
   orderId: number
   onBack: () => void
   /** Skan oldidan tekshiruv: null = yozish mumkin, "NOTFOUND" = bu proyektda
    * yo'q, boshqa string = foydalanuvchiga ko'rsatiladigan xato. */
   registerScan?: (fn: ((qr: string) => string | null) | null) => void
+  /** OVAL post: har detal 1 skan — Jarayonda paneli va tomonlar ustuni ortiqcha */
+  oval?: boolean
 }) {
   const { data, isLoading } = useQuery({
     queryKey: ["terminal", "kromka", orderId],
@@ -70,7 +73,9 @@ export function KromkaView({
       if (!inst) continue
       if (!inst.arra_passed) return "Bu detal hali arradan chiqmagan."
       if (inst.done >= p.sides)
-        return "Bu detalning kromkasi allaqachon tugagan."
+        return oval
+          ? "Bu detalning oval kromkasi allaqachon tugagan."
+          : "Bu detalning kromkasi allaqachon tugagan."
       return null
     }
     return "NOTFOUND"
@@ -122,7 +127,7 @@ export function KromkaView({
           </Button>
           <div className="text-lg font-black">{data?.order_number}</div>
           <div className="num ml-auto text-base">
-            Tomonlar: <b>{totDone}</b>/<b>{totReq}</b>
+            {oval ? "Detallar" : "Tomonlar"}: <b>{totDone}</b>/<b>{totReq}</b>
           </div>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -132,7 +137,7 @@ export function KromkaView({
                 <th className="px-4 py-2.5">Kod</th>
                 <th className="px-4 py-2.5">Nomi</th>
                 <th className="px-4 py-2.5">O'lchami</th>
-                <th className="px-4 py-2.5">Kromka</th>
+                {!oval && <th className="px-4 py-2.5">Kromka</th>}
                 <th className="px-4 py-2.5 text-right">Holat</th>
               </tr>
             </thead>
@@ -154,14 +159,16 @@ export function KromkaView({
                     <td className="num whitespace-nowrap px-4 py-3 text-sm">
                       {formatSize(p.length, p.width, p.thickness)}
                     </td>
-                    <td className="px-4 py-3 text-sm">
-                      <b>{p.sides} tomon</b>
-                      <span className="ml-1.5 text-muted-foreground">
-                        {Object.keys(p.edges)
-                          .map((k) => SIDE_LABELS[k] ?? k)
-                          .join(", ")}
-                      </span>
-                    </td>
+                    {!oval && (
+                      <td className="px-4 py-3 text-sm">
+                        <b>{p.sides} tomon</b>
+                        <span className="ml-1.5 text-muted-foreground">
+                          {Object.keys(p.edges)
+                            .map((k) => SIDE_LABELS[k] ?? k)
+                            .join(", ")}
+                        </span>
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-right">
                       <div className="flex flex-wrap items-center justify-end gap-1.5">
                         {p.instances.map((i) => (
@@ -182,7 +189,11 @@ export function KromkaView({
                                 №{i.instance_no}
                               </span>
                             )}
-                            {i.done >= p.sides ? "✓" : `${i.done}/${p.sides}`}
+                            {i.done >= p.sides
+                              ? "✓"
+                              : oval
+                                ? "–"
+                                : `${i.done}/${p.sides}`}
                           </span>
                         ))}
                       </div>
@@ -193,7 +204,7 @@ export function KromkaView({
               {!leftParts.length && (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={oval ? 4 : 5}
                     className="h-32 text-center text-muted-foreground"
                   >
                     Arradan kelgan detal yo'q
@@ -205,50 +216,53 @@ export function KromkaView({
         </div>
       </div>
 
-      {/* O'NG: Jarayonda — 2+ tomonli, boshlangan, tugamagan */}
-      <div className="flex min-w-0 flex-1 flex-col rounded-xl border bg-white">
-        <div className="border-b px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          Jarayonda{" "}
-          {inProgress.length > 0 && (
-            <span className="num ml-1 rounded-sm bg-amber-100 px-1.5 py-0.5 text-amber-700">
-              {inProgress.length}
-            </span>
-          )}
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {inProgress.map(({ part, inst }) => (
-            <div
-              key={inst.instance_id}
-              className="flex items-center gap-3 border-b px-4 py-3 last:border-0"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="num truncate text-base font-semibold">
-                  {part.code}
-                  {part.instances.length > 1 && (
-                    <span className="ml-1.5 text-xs text-muted-foreground">
-                      №{inst.instance_no}
-                    </span>
-                  )}
-                </div>
-                <div className="truncate text-xs text-muted-foreground">
-                  {part.name} ·{" "}
-                  {formatSize(part.length, part.width, part.thickness)}
-                </div>
-              </div>
-              <span className="num shrink-0 rounded-md bg-amber-100 px-3 py-1.5 text-xl font-black text-amber-700">
-                {inst.done}/{part.sides}
+      {/* O'NG: Jarayonda — 2+ tomonli, boshlangan, tugamagan. OVAL'da panel
+          yo'q: har detal bitta skanda tugaydi, jarayon bo'lmaydi */}
+      {oval ? null : (
+        <div className="flex min-w-0 flex-1 flex-col rounded-xl border bg-white">
+          <div className="border-b px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Jarayonda{" "}
+            {inProgress.length > 0 && (
+              <span className="num ml-1 rounded-sm bg-amber-100 px-1.5 py-0.5 text-amber-700">
+                {inProgress.length}
               </span>
-            </div>
-          ))}
-          {!inProgress.length && (
-            <p className="p-4 text-sm text-muted-foreground">
-              Jarayonda detal yo'q. QR skan qilinsa hisob darhol yoziladi: 1
-              tomonlisi shu zahoti yashil bo'ladi, ko'p tomonlisi tugaguncha shu
-              yerda turadi.
-            </p>
-          )}
+            )}
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {inProgress.map(({ part, inst }) => (
+              <div
+                key={inst.instance_id}
+                className="flex items-center gap-3 border-b px-4 py-3 last:border-0"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="num truncate text-base font-semibold">
+                    {part.code}
+                    {part.instances.length > 1 && (
+                      <span className="ml-1.5 text-xs text-muted-foreground">
+                        №{inst.instance_no}
+                      </span>
+                    )}
+                  </div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {part.name} ·{" "}
+                    {formatSize(part.length, part.width, part.thickness)}
+                  </div>
+                </div>
+                <span className="num shrink-0 rounded-md bg-amber-100 px-3 py-1.5 text-xl font-black text-amber-700">
+                  {inst.done}/{part.sides}
+                </span>
+              </div>
+            ))}
+            {!inProgress.length && (
+              <p className="p-4 text-sm text-muted-foreground">
+                Jarayonda detal yo'q. QR skan qilinsa hisob darhol yoziladi: 1
+                tomonlisi shu zahoti yashil bo'ladi, ko'p tomonlisi tugaguncha
+                shu yerda turadi.
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

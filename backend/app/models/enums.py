@@ -17,6 +17,7 @@ class UserRole(StrEnum):
     TABLO = "tablo"
     ARRACHI = "arrachi"
     KROMKACHI = "kromkachi"
+    OVALCHI = "ovalchi"
     PRISADKACHI = "prisadkachi"
     PAZCHI = "pazchi"
     ROVERCHI = "roverchi"
@@ -26,6 +27,7 @@ class UserRole(StrEnum):
 class PostCode(StrEnum):
     ARRA = "ARRA"
     KROMKA = "KROMKA"
+    OVAL = "OVAL"  # oval (egri) kromka — alohida post, texnolog matritsada belgilaydi
     PRISADKA = "PRISADKA"
     PAZ = "PAZ"
     ROVER = "ROVER"
@@ -37,6 +39,7 @@ class PostCode(StrEnum):
 POST_ROLES: dict[UserRole, PostCode] = {
     UserRole.ARRACHI: PostCode.ARRA,
     UserRole.KROMKACHI: PostCode.KROMKA,
+    UserRole.OVALCHI: PostCode.OVAL,
     UserRole.PRISADKACHI: PostCode.PRISADKA,
     UserRole.PAZCHI: PostCode.PAZ,
     UserRole.ROVERCHI: PostCode.ROVER,
