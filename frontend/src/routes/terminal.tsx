@@ -333,9 +333,21 @@ function TerminalPage() {
         const err = kromkaScanRef.current(value)
         if (err === "NOTFOUND") {
           playError()
-          showErrorToast(
-            "Bu detal ochiq proyektda topilmadi. Yorliqni tekshiring.",
-          )
+          // Qaysi proyektga tegishli ekanini aniqlab, aniq xato ko'rsatamiz
+          TerminalService.resolveTerminalQr({ qrText: value })
+            .then((r) => {
+              const res = r as { order_id: number; order_number: string }
+              showErrorToast(
+                res.order_id === mapOrderId
+                  ? "Bu detal kromka bosqichiga kirmaydi."
+                  : `Bu detal bu proyektga tegishli emas — ${res.order_number} proyektining detali.`,
+              )
+            })
+            .catch(() =>
+              showErrorToast(
+                "Bu detal hech bir aktiv proyektda topilmadi. Yorliqni tekshiring.",
+              ),
+            )
           return
         }
         if (err) {
