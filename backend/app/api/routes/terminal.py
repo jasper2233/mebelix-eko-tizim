@@ -246,6 +246,30 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[dict]:
             .order_by(priority_rank, Order.deadline.asc().nulls_last(), Order.id)
         )
     ).all()
+
+    # ARRA'da "bajarildi" = chek chiqarilgan YOKI skan qilingan nusxa (kartadagi
+    # foiz xarita bilan bir xil o'lchov bo'lsin). Boshqa postlarda faqat skan.
+    printed_by_order: dict[int, int] = {}
+    if post.code == PostCode.ARRA:
+        printed_by_order = dict(
+            (
+                await db.execute(
+                    select(PartInstance.order_id, func.count(func.distinct(PartInstance.id)))
+                    .outerjoin(
+                        Scan,
+                        (Scan.instance_id == PartInstance.id)
+                        & (Scan.post_id == post.id)
+                        & (Scan.is_cancelled == False)  # noqa: E712
+                        & (Scan.is_deleted == False),  # noqa: E712
+                    )
+                    .where(
+                        PartInstance.is_deleted == False,  # noqa: E712
+                        (PartInstance.label_printed_at.isnot(None)) | (Scan.id.isnot(None)),
+                    )
+                    .group_by(PartInstance.order_id)
+                )
+            ).all()
+        )
     return [
         {
             "id": o.id,
@@ -253,7 +277,7 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[dict]:
             "project_name": o.project_name,
             "deadline": o.deadline,
             "priority": o.priority,
-            "done": int(done or 0),
+            "done": printed_by_order.get(o.id, 0) if post.code == PostCode.ARRA else int(done or 0),
             "total": int(total or 0),
             # karta uchun: arrachi plita bo'yicha partiyalab kesadi
             "materials": [m["name"] for m in o.material_usage if m.get("kind") == "sheet"],
