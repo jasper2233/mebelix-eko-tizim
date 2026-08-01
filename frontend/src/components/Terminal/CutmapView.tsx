@@ -167,6 +167,14 @@ export function CutmapView({
   const [selected, setSelected] = useState<SheetPart | null>(null)
   // Bosilgan detal kartochka yopilgach ham moviy belgilangan qoladi
   const [markedCell, setMarkedCell] = useState<number | null>(null)
+  // Long press: bekor qilishdan avval tasdiq — qo'lqopda tasodifiy bosib
+  // turish ham bo'ladi, chekni indamay o'chirish xavfli
+  const [cancelTarget, setCancelTarget] = useState<{
+    num: number
+    name: string
+    qr_text: string
+    instance_id: number
+  } | null>(null)
   // GibLab toolbar zoom API (SheetSvg ro'yxatdan o'tkazadi)
   const zoomApi = useRef<{
     zin: () => void
@@ -556,7 +564,7 @@ export function CutmapView({
                     ? undefined
                     : (part) => {
                         // Noto'g'ri detal cheki chiqib ketgan: oxirgi chiqarilgan
-                        // (hali skan qilinmagan) nusxa bekor bo'ladi, katak apelsinga qaytadi
+                        // (hali skan qilinmagan) nusxa tasdiqdan keyin bekor bo'ladi
                         const insts =
                           instancesByCell.get(`${sheet.no}:${part.cell}`) ?? []
                         const last = insts
@@ -567,7 +575,13 @@ export function CutmapView({
                             ),
                           )
                           .pop()
-                        if (last) cancelMutation.mutate(last.instance_id)
+                        if (last)
+                          setCancelTarget({
+                            num: part.num ?? part.id,
+                            name: part.name,
+                            qr_text: last.qr_text,
+                            instance_id: last.instance_id,
+                          })
                       }
                 }
                 selectedCell={markedCell}
@@ -596,6 +610,50 @@ export function CutmapView({
         admin={admin}
         holes={holes}
       />
+
+      {/* Long press tasdiq dialogi — qo'lqopga mos katta tugmalar */}
+      <Dialog
+        open={cancelTarget !== null}
+        onOpenChange={(v) => !v && setCancelTarget(null)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Chekni bekor qilasizmi?</DialogTitle>
+          </DialogHeader>
+          {cancelTarget && (
+            <p className="text-base">
+              №{cancelTarget.num} — {cancelTarget.name}{" "}
+              <span className="num text-muted-foreground">
+                ({cancelTarget.qr_text})
+              </span>
+              <br />
+              Katak chop etilmagan holatga qaytadi.
+            </p>
+          )}
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              className="h-14 flex-1 text-base font-bold"
+              onClick={() => setCancelTarget(null)}
+            >
+              Yo'q
+            </Button>
+            <LoadingButton
+              variant="destructive"
+              className="h-14 flex-1 text-base font-bold"
+              loading={cancelMutation.isPending}
+              onClick={() => {
+                if (!cancelTarget) return
+                cancelMutation.mutate(cancelTarget.instance_id, {
+                  onSuccess: () => setCancelTarget(null),
+                })
+              }}
+            >
+              Ha, bekor qilinsin
+            </LoadingButton>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
