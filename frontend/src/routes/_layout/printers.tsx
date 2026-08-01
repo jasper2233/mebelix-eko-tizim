@@ -57,7 +57,8 @@ function PrintersPage() {
   const { data: agents, isLoading } = useQuery({
     queryKey: ["bridge-agents"],
     queryFn: () => BridgeAgentsService.readBridgeAgents(),
-    refetchInterval: 60_000,
+    // Ulanish holati o'rnatish paytida kuzatiladi — 10s bilan deyarli jonli
+    refetchInterval: 10_000,
   })
 
   return (
@@ -167,9 +168,9 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
       <TableCell className="font-medium">{agent.name}</TableCell>
       <TableCell>
         {online ? (
-          <Badge>Onlayn</Badge>
+          <Badge>Ulandi</Badge>
         ) : agent.paired ? (
-          <Badge variant="secondary">Oflayn</Badge>
+          <Badge variant="secondary">Uzilgan</Badge>
         ) : agent.pair_code ? (
           <Badge variant="outline">Kod kutilmoqda</Badge>
         ) : (
