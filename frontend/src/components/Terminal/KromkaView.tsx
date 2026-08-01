@@ -174,7 +174,7 @@ export function KromkaView({
   return (
     <div className="flex h-full min-h-0 gap-3">
       {/* CHAP: arradan kelgan, kromkasi tugamagan detallar */}
-      <div className="flex min-w-0 flex-[3] flex-col rounded-xl border bg-white">
+      <div className="flex min-w-0 flex-1 flex-col rounded-xl border bg-white">
         <div className="flex items-center gap-3 border-b px-4 py-2">
           <Button
             variant="outline"
@@ -268,7 +268,7 @@ export function KromkaView({
       </div>
 
       {/* O'NG: tanlanganlar + TASDIQLASH */}
-      <div className="flex w-[380px] shrink-0 flex-col rounded-xl border bg-white">
+      <div className="flex min-w-0 flex-1 flex-col rounded-xl border bg-white">
         <div className="border-b px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
           Tanlanganlar{" "}
           {stagedTotal > 0 && (
