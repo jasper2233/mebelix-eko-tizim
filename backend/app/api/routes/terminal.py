@@ -270,24 +270,34 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[dict]:
                 )
             ).all()
         )
-    return [
-        {
-            "id": o.id,
-            "number": o.number,
-            "project_name": o.project_name,
-            "deadline": o.deadline,
-            "priority": o.priority,
-            "done": printed_by_order.get(o.id, 0) if post.code == PostCode.ARRA else int(done or 0),
-            "total": int(total or 0),
-            # karta uchun: arrachi plita bo'yicha partiyalab kesadi
-            "materials": [m["name"] for m in o.material_usage if m.get("kind") == "sheet"],
-            "sheets_total": sum(
-                int(s.get("mult") or 1) for mat in (o.cutmap or {}).get("materials", []) for s in mat.get("sheets", [])
-            ),
-            "has_cutmap": o.cutmap is not None,
-        }
-        for o, done, total in rows
-    ]
+    result = []
+    for o, done, total in rows:
+        done_val = printed_by_order.get(o.id, 0) if post.code == PostCode.ARRA else int(done or 0)
+        total_val = int(total or 0)
+        # Hamma detali chiqarilgan proyekt arrachi ro'yxatini band qilmasin —
+        # kesish tugagan, qolgani keyingi postlarning ishi
+        if post.code == PostCode.ARRA and total_val > 0 and done_val >= total_val:
+            continue
+        result.append(
+            {
+                "id": o.id,
+                "number": o.number,
+                "project_name": o.project_name,
+                "deadline": o.deadline,
+                "priority": o.priority,
+                "done": done_val,
+                "total": total_val,
+                # karta uchun: arrachi plita bo'yicha partiyalab kesadi
+                "materials": [m["name"] for m in o.material_usage if m.get("kind") == "sheet"],
+                "sheets_total": sum(
+                    int(s.get("mult") or 1)
+                    for mat in (o.cutmap or {}).get("materials", [])
+                    for s in mat.get("sheets", [])
+                ),
+                "has_cutmap": o.cutmap is not None,
+            }
+        )
+    return result
 
 
 @router.get("/orders/{order_id}/cutmap", response_model=CutmapState, operation_id="read_terminal_cutmap")
