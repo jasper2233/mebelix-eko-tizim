@@ -49,6 +49,38 @@ class TaskRow(BaseModel):
     edges: dict[str, Any] = {}
 
 
+class KromkaInstance(BaseModel):
+    """Bitta fizik nusxa KROMKA nazarida: nechta tomoni yopishtirilgan, arradan o'tganmi."""
+
+    instance_id: int
+    instance_no: int
+    qr_text: str
+    done: int  # shu nusxada bajarilgan kromka skanlari (tomonlar)
+    arra_passed: bool  # chek chiqarilgan yoki ARRA skan bor — kesilgan hisoblanadi
+
+
+class KromkaPartRow(BaseModel):
+    part_id: int
+    code: str  # productCode_partCode
+    name: str
+    length: float | None
+    width: float | None
+    thickness: float | None
+    sides: int  # har nusxa uchun kerakli skanlar = kromkalanadigan tomonlar
+    edges: dict[str, Any] = {}
+    total_done: int
+    total_required: int
+    instances: list[KromkaInstance] = []
+
+
+class KromkaOrderState(BaseModel):
+    """KROMKA post sahifasi (proyekt ochilganda): faqat kromkali detallar."""
+
+    order_id: int
+    order_number: str
+    parts: list[KromkaPartRow]
+
+
 class ScanRequest(BaseModel):
     qr_text: Annotated[str, Field(min_length=3, max_length=120)]
     client_event_id: Annotated[str, Field(min_length=8, max_length=64)]  # client UUID (TZ 8.4.4)

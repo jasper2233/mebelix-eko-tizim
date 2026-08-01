@@ -41,6 +41,9 @@ from app.schemas.terminal import (
     BadgeStart,
     CutmapInstanceState,
     CutmapState,
+    KromkaInstance,
+    KromkaOrderState,
+    KromkaPartRow,
     SessionRead,
     TaskRow,
     TerminalContext,
@@ -298,6 +301,117 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[dict]:
             }
         )
     return result
+
+
+@router.get("/orders/{order_id}/kromka", response_model=KromkaOrderState, operation_id="read_terminal_kromka")
+async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) -> KromkaOrderState:
+    """KROMKA sahifasi: buyurtmaning faqat kromkali detallari, har nusxada tomon-progress
+    (0/4 → 4/4) va arradan o'tganlik (chek chiqarilgan yoki ARRA skan bor)."""
+    machine, post = ctx
+    if post.code != PostCode.KROMKA:
+        raise HTTPException(status_code=403, detail="Bu sahifa faqat KROMKA postida ko'rsatiladi.")
+
+    order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
+
+    rows = (
+        await db.execute(
+            select(PartRoute, Part, Product.code)
+            .join(Part, Part.id == PartRoute.part_id)
+            .join(Product, Product.id == Part.product_id)
+            .where(
+                PartRoute.order_id == order.id,
+                PartRoute.post_id == post.id,
+                PartRoute.is_enabled == True,  # noqa: E712
+                PartRoute.is_deleted == False,  # noqa: E712
+                (PartRoute.machine_id == machine.id) | (PartRoute.machine_id.is_(None)),
+            )
+            .order_by(Part.code)
+        )
+    ).all()
+
+    instances = (
+        (
+            await db.execute(
+                select(PartInstance)
+                .where(
+                    PartInstance.order_id == order.id,
+                    PartInstance.is_deleted == False,  # noqa: E712
+                )
+                .order_by(PartInstance.part_id, PartInstance.instance_no)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    kromka_done: dict[int, int] = dict(
+        (
+            await db.execute(
+                select(Scan.instance_id, func.count(Scan.id))
+                .where(
+                    Scan.order_id == order.id,
+                    Scan.post_id == post.id,
+                    Scan.is_cancelled == False,  # noqa: E712
+                    Scan.is_deleted == False,  # noqa: E712
+                )
+                .group_by(Scan.instance_id)
+            )
+        ).all()
+    )
+
+    arra_post_id = (
+        await db.execute(select(Post.id).where(Post.code == PostCode.ARRA, Post.is_deleted == False))  # noqa: E712
+    ).scalar_one_or_none()
+    arra_scanned: set[int] = set()
+    if arra_post_id is not None:
+        arra_scanned = set(
+            (
+                await db.execute(
+                    select(Scan.instance_id).where(
+                        Scan.order_id == order.id,
+                        Scan.post_id == arra_post_id,
+                        Scan.is_cancelled == False,  # noqa: E712
+                        Scan.is_deleted == False,  # noqa: E712
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    by_part: dict[int, list[PartInstance]] = {}
+    for i in instances:
+        by_part.setdefault(i.part_id, []).append(i)
+
+    return KromkaOrderState(
+        order_id=order.id,
+        order_number=order.number,
+        parts=[
+            KromkaPartRow(
+                part_id=part.id,
+                code=f"{product_code}_{part.code}",
+                name=part.name,
+                length=part.length,
+                width=part.width,
+                thickness=part.thickness,
+                sides=route.per_instance,
+                edges=part.edges,
+                total_done=route.total_done,
+                total_required=route.total_required,
+                instances=[
+                    KromkaInstance(
+                        instance_id=i.id,
+                        instance_no=i.instance_no,
+                        qr_text=i.qr_text,
+                        done=int(kromka_done.get(i.id, 0)),
+                        arra_passed=i.label_printed_at is not None or i.id in arra_scanned,
+                    )
+                    for i in by_part.get(part.id, [])
+                ],
+            )
+            for route, part, product_code in rows
+        ],
+    )
 
 
 @router.get("/orders/{order_id}/cutmap", response_model=CutmapState, operation_id="read_terminal_cutmap")

@@ -193,6 +193,42 @@ export type HTTPValidationError = {
 };
 
 /**
+ * Bitta fizik nusxa KROMKA nazarida: nechta tomoni yopishtirilgan, arradan o'tganmi.
+ */
+export type KromkaInstance = {
+    instance_id: number;
+    instance_no: number;
+    qr_text: string;
+    done: number;
+    arra_passed: boolean;
+};
+
+/**
+ * KROMKA post sahifasi (proyekt ochilganda): faqat kromkali detallar.
+ */
+export type KromkaOrderState = {
+    order_id: number;
+    order_number: string;
+    parts: Array<KromkaPartRow>;
+};
+
+export type KromkaPartRow = {
+    part_id: number;
+    code: string;
+    name: string;
+    length: (number | null);
+    width: (number | null);
+    thickness: (number | null);
+    sides: number;
+    edges?: {
+        [key: string]: unknown;
+    };
+    total_done: number;
+    total_required: number;
+    instances?: Array<KromkaInstance>;
+};
+
+/**
  * Manager's machine choice per post before production start (TZ 6.4).
  */
 export type MachineAssignments = {
@@ -1222,6 +1258,12 @@ export type ReadTerminalTasksResponse = (Array<TaskRow>);
 export type ReadTerminalOrdersResponse = (Array<{
     [key: string]: unknown;
 }>);
+
+export type ReadTerminalKromkaData = {
+    orderId: number;
+};
+
+export type ReadTerminalKromkaResponse = (KromkaOrderState);
 
 export type ReadTerminalCutmapData = {
     orderId: number;

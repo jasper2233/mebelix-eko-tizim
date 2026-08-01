@@ -30,6 +30,7 @@ import {
   playWarning,
 } from "@/components/Terminal/audio"
 import { CutmapView, TBtn } from "@/components/Terminal/CutmapView"
+import { KromkaView } from "@/components/Terminal/KromkaView"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
@@ -328,6 +329,46 @@ function TerminalPage() {
     : "var(--primary)"
   const visibleHistory = errorsOnly ? history.filter((h) => !h.ok) : history
 
+  // Oxirgi skan + BEKOR QILISH chizig'i — ARRA va KROMKA sahifalari baham ko'radi
+  const scanStrip = lastScan && (
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-xl border-2 px-4 py-2",
+        lastScan.kind === "ok"
+          ? "border-green-500 bg-green-50"
+          : "border-red-500 bg-red-50",
+      )}
+    >
+      {lastScan.kind === "ok" ? (
+        <>
+          <span className="num text-xl font-black text-green-700">
+            {lastScan.code}
+          </span>
+          <span className="text-base text-green-800">
+            Qoldiq: <b>{lastScan.qoldiq}</b>
+          </span>
+        </>
+      ) : (
+        <>
+          <span className="text-lg font-black text-red-700">
+            {lastScan.code}
+          </span>
+          <span className="truncate text-base text-red-800">
+            {lastScan.message}
+          </span>
+        </>
+      )}
+      <Button
+        variant="destructive"
+        className="ml-auto h-12 shrink-0 px-4 text-sm font-black"
+        disabled={!canUndo}
+        onClick={() => setUndoOpen(true)}
+      >
+        <Undo2 /> BEKOR QILISH
+      </Button>
+    </div>
+  )
+
   return (
     <div className="flex h-dvh flex-col bg-surface">
       {/* Majburiy to'liq ekran: kiosk tartibi — to'liq ekranga o'tmaguncha ish yo'q.
@@ -482,44 +523,7 @@ function TerminalPage() {
             )}
           >
             {/* Oxirgi skan + BEKOR QILISH — arra shovqinida ovozga ishonib bo'lmaydi */}
-            {lastScan && (
-              <div
-                className={cn(
-                  "flex items-center gap-3 rounded-xl border-2 px-4 py-2",
-                  lastScan.kind === "ok"
-                    ? "border-green-500 bg-green-50"
-                    : "border-red-500 bg-red-50",
-                )}
-              >
-                {lastScan.kind === "ok" ? (
-                  <>
-                    <span className="num text-xl font-black text-green-700">
-                      {lastScan.code}
-                    </span>
-                    <span className="text-base text-green-800">
-                      Qoldiq: <b>{lastScan.qoldiq}</b>
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-lg font-black text-red-700">
-                      {lastScan.code}
-                    </span>
-                    <span className="truncate text-base text-red-800">
-                      {lastScan.message}
-                    </span>
-                  </>
-                )}
-                <Button
-                  variant="destructive"
-                  className="ml-auto h-12 shrink-0 px-4 text-sm font-black"
-                  disabled={!canUndo}
-                  onClick={() => setUndoOpen(true)}
-                >
-                  <Undo2 /> BEKOR QILISH
-                </Button>
-              </div>
-            )}
+            {scanStrip}
             <div className="min-h-0 flex-1">
               {mapOrderId ? (
                 <CutmapView
@@ -530,6 +534,25 @@ function TerminalPage() {
                 />
               ) : (
                 <OrderPicker onPick={setMapOrderId} />
+              )}
+            </div>
+          </div>
+        ) : ctx?.post_code === "KROMKA" ? (
+          /* KROMKA: proyekt ro'yxati → kromkali detallar ro'yxati (tomon-progress) */
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+            {scanStrip}
+            <div className="min-h-0 flex-1">
+              {mapOrderId ? (
+                <KromkaView
+                  orderId={mapOrderId}
+                  onBack={() => setMapOrderId(null)}
+                />
+              ) : (
+                <OrderPicker
+                  onPick={setMapOrderId}
+                  title="Proyektlar — detallar uchun proyektni tanlang"
+                  showCutmapBadge={false}
+                />
               )}
             </div>
           </div>
@@ -743,7 +766,15 @@ function TerminalPage() {
   )
 }
 
-function OrderPicker({ onPick }: { onPick: (orderId: number) => void }) {
+function OrderPicker({
+  onPick,
+  title = "Proyektlar — xarita uchun proyektni tanlang",
+  showCutmapBadge = true,
+}: {
+  onPick: (orderId: number) => void
+  title?: string
+  showCutmapBadge?: boolean
+}) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["terminal", "orders"],
     queryFn: () => TerminalService.readTerminalOrders(),
@@ -765,7 +796,7 @@ function OrderPicker({ onPick }: { onPick: (orderId: number) => void }) {
     | undefined
   return (
     <div className="h-full overflow-y-auto rounded-xl border bg-white p-4">
-      <SectionTitle>Proyektlar — xarita uchun proyektni tanlang</SectionTitle>
+      <SectionTitle>{title}</SectionTitle>
       {isError && (
         <div className="mb-3 rounded-lg border-2 border-red-500 bg-red-50 px-4 py-3 text-base font-bold text-red-700">
           Yuklashda xato — qayta urinilmoqda...
@@ -855,7 +886,7 @@ function OrderPicker({ onPick }: { onPick: (orderId: number) => void }) {
                   {tone === "overdue" && " · KECHIKKAN"}
                   {tone === "today" && " · BUGUN"}
                 </div>
-                {o.has_cutmap === false && (
+                {showCutmapBadge && o.has_cutmap === false && (
                   <span className="mt-1.5 inline-block rounded-sm bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">
                     XARITA YO'Q
                   </span>
