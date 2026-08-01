@@ -273,10 +273,48 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[dict]:
                 )
             ).all()
         )
+    # KROMKA kartasida hisob DETAL bo'yicha (tomon emas): nusxaning hamma tomoni
+    # skan qilingan bo'lsa — qilingan; jami = kromkali nusxalar soni
+    kromka_counts: dict[int, tuple[int, int]] = {}
+    if post.code == PostCode.KROMKA:
+        scans_sq = (
+            select(Scan.instance_id, func.count(Scan.id).label("cnt"))
+            .where(
+                Scan.post_id == post.id,
+                Scan.is_cancelled == False,  # noqa: E712
+                Scan.is_deleted == False,  # noqa: E712
+            )
+            .group_by(Scan.instance_id)
+            .subquery()
+        )
+        kromka_counts = {
+            oid: (int(d or 0), int(t or 0))
+            for oid, t, d in (
+                await db.execute(
+                    select(
+                        PartInstance.order_id,
+                        func.count(PartInstance.id),
+                        func.sum(case((func.coalesce(scans_sq.c.cnt, 0) >= PartRoute.per_instance, 1), else_=0)),
+                    )
+                    .join(
+                        PartRoute,
+                        (PartRoute.part_id == PartInstance.part_id)
+                        & (PartRoute.post_id == post.id)
+                        & (PartRoute.is_enabled == True)  # noqa: E712
+                        & (PartRoute.is_deleted == False),  # noqa: E712
+                    )
+                    .outerjoin(scans_sq, scans_sq.c.instance_id == PartInstance.id)
+                    .where(PartInstance.is_deleted == False)  # noqa: E712
+                    .group_by(PartInstance.order_id)
+                )
+            ).all()
+        }
     result = []
     for o, done, total in rows:
         done_val = printed_by_order.get(o.id, 0) if post.code == PostCode.ARRA else int(done or 0)
         total_val = int(total or 0)
+        if post.code == PostCode.KROMKA:
+            done_val, total_val = kromka_counts.get(o.id, (0, 0))
         # Hamma detali chiqarilgan proyekt arrachi ro'yxatini band qilmasin —
         # kesish tugagan, qolgani keyingi postlarning ishi
         if post.code == PostCode.ARRA and total_val > 0 and done_val >= total_val:
