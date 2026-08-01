@@ -403,6 +403,14 @@ function TerminalPage() {
     return () => clearTimeout(t)
   }, [lastScan])
   const canUndo = lastScan?.kind === "ok" && now - lastScan.at < 60_000
+
+  // Skan chizig'i 15s dan keyin o'zi yo'qoladi — ekranni band qilib turmasin;
+  // har yangi skan taymerni qaytadan boshlaydi
+  useEffect(() => {
+    if (!lastScan) return
+    const t = setTimeout(() => setLastScan(null), 15_000)
+    return () => clearTimeout(t)
+  }, [lastScan])
   const postColor = ctx
     ? (POST_COLORS[ctx.post_code] ?? "var(--primary)")
     : "var(--primary)"
