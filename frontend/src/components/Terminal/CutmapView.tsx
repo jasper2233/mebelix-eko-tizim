@@ -211,6 +211,7 @@ export function CutmapView({
   // to'g'ridan-to'g'ri GoDEX navbatiga ketadi (dialog yo'q)
   const printMutation = usePrintLabel()
   const cancelMutation = useCancelLabel()
+  const { showErrorToast } = useCustomToast()
 
   const instancesByCell = useMemo(() => {
     const map = new Map<string, NonNullable<typeof data>["instances"]>()
@@ -288,7 +289,9 @@ export function CutmapView({
   const markedInsts = markedPart
     ? (instancesByCell.get(`${sheet.no}:${markedPart.cell}`) ?? [])
     : []
-  const nextInstance = markedInsts.find((i) => !isCut(i)) ?? markedInsts[0]
+  // Fallback YO'Q: hammasi chiqarilgan bo'lsa qayta chop etilmaydi —
+  // avval long press bilan bekor qilinadi (dublikat chek oqimni buzadi)
+  const nextInstance = markedInsts.find((i) => !isCut(i))
 
   const statPairs: Array<[string, string | number]> = [
     ["Listlar", `${listTot}−${listDn}=${listTot - listDn}`],
@@ -438,9 +441,13 @@ export function CutmapView({
       <TBtn
         label="Chop etish"
         tone={nextInstance ? "success" : "default"}
-        disabled={!nextInstance || printMutation.isPending}
+        disabled={!markedInsts.length || printMutation.isPending}
         onClick={() =>
-          nextInstance && printMutation.mutate(nextInstance.instance_id)
+          nextInstance
+            ? printMutation.mutate(nextInstance.instance_id)
+            : showErrorToast(
+                "Bu detal chiqarilgan. Qaytadan chiqarish uchun katakni bosib turib chekni bekor qiling.",
+              )
         }
       >
         <Printer />
