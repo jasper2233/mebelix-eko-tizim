@@ -1235,6 +1235,12 @@ export type PrintInstanceLabelData = {
 
 export type PrintInstanceLabelResponse = (Message);
 
+export type CancelInstanceLabelData = {
+    instanceId: number;
+};
+
+export type CancelInstanceLabelResponse = (Message);
+
 export type RenderInstanceLabelData = {
     instanceId: number;
 };

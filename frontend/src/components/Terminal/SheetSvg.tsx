@@ -11,6 +11,8 @@ type Sheet = any
 // Xarita paneli kulrang (oq emas) — yorug' sexda ko'z qamashtirmaydi, detallar ajralib turadi
 const PART_FILL = "#e88b00"
 const PART_SELECTED = "#2596be"
+// Chek chiqarilgan yoki skan qilingan katak — "kesildi" yashili (TZ 7.1.7)
+const PART_DONE = "#6cb56e"
 
 // --- GibSaw render qoidalari (GibLabViewer'dan portlangan, foto-tekshirilgan) ---
 
@@ -66,6 +68,7 @@ export function SheetSvg({
   holes,
   instancesByCell,
   onSelect,
+  onLongPress,
   selectedCell,
   thumbnail = false,
   registerZoom,
@@ -75,6 +78,8 @@ export function SheetSvg({
   holes: Record<string, any>
   instancesByCell: Map<string, any[]>
   onSelect: (part: SheetPart) => void
+  /** Uzoq bosish (~600ms): chekni bekor qilish — noto'g'ri chiqarilgan yorliq */
+  onLongPress?: (part: SheetPart) => void
   selectedCell: number | null
   /** Mini preview (material kartasi): interaktivsiz, scroll bloklamaydi */
   thumbnail?: boolean
@@ -104,6 +109,14 @@ export function SheetSvg({
   const ptsRef = useRef(new Map<number, { x: number; y: number }>())
   const pinchRef = useRef<number | null>(null)
   const swipeRef = useRef<{ x: number; y: number; t: number } | null>(null)
+  // Long press (chekni bekor qilish): taymer + boshlang'ich nuqta; barmoq
+  // siljisa/ko'tarilsa bekor. Otilgach keyingi click yutiladi (tanlash ochilmasin)
+  const lpRef = useRef<{ t: number; x: number; y: number } | null>(null)
+  const lpFiredRef = useRef(false)
+  const cancelLP = () => {
+    if (lpRef.current) clearTimeout(lpRef.current.t)
+    lpRef.current = null
+  }
 
   // Assimetrik ramka: dims zanjiri faqat tepada/chapda — o'ng/past minimal (bo'sh joy qolmasin)
   const base = { x: -PAD, y: -PAD, w: L + PAD + 28, h: W + PAD + 28 }
@@ -159,6 +172,7 @@ export function SheetSvg({
     // qilib, detal <g> onClick'ini o'ldiradi (tanlash ishlamay qoladi)
     ptsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     if (ptsRef.current.size === 2) {
+      cancelLP()
       panRef.current = null
       swipeRef.current = null
       const [a, c] = [...ptsRef.current.values()]
@@ -173,6 +187,8 @@ export function SheetSvg({
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     if (ptsRef.current.has(e.pointerId))
       ptsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    const lp = lpRef.current
+    if (lp && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > 12) cancelLP()
     const svg = svgRef.current
     if (!svg) return
     if (ptsRef.current.size === 2 && pinchRef.current) {
@@ -199,6 +215,7 @@ export function SheetSvg({
     )
   }
   const onPointerEnd = (e: React.PointerEvent<SVGSVGElement>) => {
+    cancelLP()
     const sw = swipeRef.current
     if (sw && ptsRef.current.size === 1) {
       const dx = e.clientX - sw.x
@@ -238,7 +255,8 @@ export function SheetSvg({
 
   const partNodes = (sheet.parts as SheetPart[]).map((p) => {
     const insts = instancesByCell.get(`${sheet.no}:${p.cell}`) ?? []
-    const doneCount = insts.filter((i) => i.done).length
+    // "Kesildi" = skan QILINGAN yoki chek chiqarilgan (arrachi chop etish bilan belgilaydi)
+    const doneCount = insts.filter((i) => i.done || i.label_printed_at).length
     const allDone = !p.waste && insts.length > 0 && doneCount === insts.length
     const selected = selectedCell === p.cell
     // 128px balandlikdagi kartochka preview'ida teshiklar, tekstura chiziqlari,
@@ -246,7 +264,13 @@ export function SheetSvg({
     // SVG tugunlariga aylanardi: 12 listli materialda ~6000 ortiqcha tugun va
     // har detal uchun yozuv-to'qnashuv algoritmi. Thumbnail'da ular chizilmaydi.
     const H = thumbnail ? undefined : holes[String(p.id)]
-    const fill = p.waste ? "url(#zebra)" : selected ? PART_SELECTED : PART_FILL
+    const fill = p.waste
+      ? "url(#zebra)"
+      : selected
+        ? PART_SELECTED
+        : allDone
+          ? PART_DONE
+          : PART_FILL
 
     // thumbnail'da yozuvlar umuman hisoblanmaydi — pickSpot to'qnashuv qidiruvi
     // har detal uchun bir necha nomzod joyni tekshiradi, natijasi esa 128px da
@@ -475,7 +499,7 @@ export function SheetSvg({
             x={p.x + wv - fs * 0.6}
             y={p.y + fs * 0.85}
             fontSize={fs}
-            fill="#33aa33"
+            fill="#ffffff"
             fontWeight="700"
           >
             ✓
@@ -488,9 +512,31 @@ export function SheetSvg({
       // biome-ignore lint/a11y/noStaticElementInteractions: SVG katakcha — 17" touch target (TZ 7.1.7)
       <g
         key={p.cell}
-        onClick={() => !p.waste && onSelect(p)}
+        onClick={() => {
+          // Long press otilgan bo'lsa keyingi click yutiladi — tanlash ochilmasin
+          if (lpFiredRef.current) {
+            lpFiredRef.current = false
+            return
+          }
+          if (!p.waste) onSelect(p)
+        }}
+        onPointerDown={
+          !p.waste && !thumbnail && onLongPress
+            ? (e) => {
+                lpFiredRef.current = false
+                cancelLP()
+                lpRef.current = {
+                  t: window.setTimeout(() => {
+                    lpFiredRef.current = true
+                    onLongPress(p)
+                  }, 600),
+                  x: e.clientX,
+                  y: e.clientY,
+                }
+              }
+            : undefined
+        }
         className={p.waste ? undefined : "cursor-pointer"}
-        opacity={allDone ? 0.55 : 1}
       >
         <rect
           x={p.x}
@@ -627,6 +673,7 @@ export function SheetSvg({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerEnd}
       onPointerCancel={onPointerEnd}
+      onContextMenu={(e) => onLongPress && e.preventDefault()}
     >
       <title>Kesish xaritasi</title>
       <defs>

@@ -341,6 +341,19 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     return Message(message=f"Yorliq chop etishga yuborildi: {instance.qr_text}")
 
 
+@router.delete("/labels/{instance_id}", response_model=Message, operation_id="cancel_instance_label")
+async def cancel_instance_label(db: SessionDep, user: TerminalUser, instance_id: int) -> Message:
+    """Chekni bekor qilish (long press): arrachi noto'g'ri detal yorlig'ini chiqarib yuborgan bo'lsa,
+    katakni chop etilmagan holatga qaytaradi. Skan qilingan (kesilgan) nusxaga ta'sir qilmaydi."""
+    instance = await db.get(PartInstance, instance_id)
+    if instance is None or instance.is_deleted:
+        raise NotFoundException("Nusxa topilmadi.")
+    instance.label_printed_at = None
+    await db.commit()
+    await ws_manager.publish("label.cancelled", {"instance_id": instance_id, "qr_text": instance.qr_text})
+    return Message(message=f"Yorliq bekor qilindi: {instance.qr_text}")
+
+
 @router.get("/labels/{instance_id}.png", operation_id="render_instance_label")
 async def render_instance_label(db: SessionDep, user: TerminalUser, instance_id: int) -> Response:
     """Yorliqning PNG ko'rinishi — brauzerdan istalgan printerga chop etish uchun (GoDEX shart emas)."""

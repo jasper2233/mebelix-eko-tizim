@@ -70,6 +70,23 @@ function usePrintLabel() {
   })
 }
 
+// Noto'g'ri chiqarilgan chekni bekor qilish (long press) — katak apelsinga qaytadi
+function useCancelLabel() {
+  const queryClient = useQueryClient()
+  const { showSuccessToast, showErrorToast } = useCustomToast()
+  return useMutation({
+    mutationFn: (instanceId: number) =>
+      TerminalService.cancelInstanceLabel({ instanceId }),
+    onSuccess: (r) => showSuccessToast(r.message),
+    onError: handleError(showErrorToast),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: ["terminal", "cutmap"] }),
+  })
+}
+
+// Arrachi nazarida "kesildi": ARRA skan bor YOKI chek chiqarilgan
+const isCut = (i: any) => i.done || !!i.label_printed_at
+
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)
 }
@@ -185,6 +202,7 @@ export function CutmapView({
   // Chap qatordagi Chop etish: belgilangan detalning navbatdagi nusxasi
   // to'g'ridan-to'g'ri GoDEX navbatiga ketadi (dialog yo'q)
   const printMutation = usePrintLabel()
+  const cancelMutation = useCancelLabel()
 
   const instancesByCell = useMemo(() => {
     const map = new Map<string, NonNullable<typeof data>["instances"]>()
@@ -229,7 +247,7 @@ export function CutmapView({
     if (!cells.length) return false
     return cells.every((p) => {
       const insts = instancesByCell.get(`${s.no}:${p.cell}`) ?? []
-      return insts.length > 0 && insts.every((i) => i.done)
+      return insts.length > 0 && insts.every(isCut)
     })
   }
 
@@ -249,7 +267,7 @@ export function CutmapView({
     for (const p of s.parts as SheetPart[]) {
       if (p.waste) continue
       detDn += (instancesByCell.get(`${s.no}:${p.cell}`) ?? []).filter(
-        (i) => i.done,
+        isCut,
       ).length
     }
   }
@@ -262,7 +280,7 @@ export function CutmapView({
   const markedInsts = markedPart
     ? (instancesByCell.get(`${sheet.no}:${markedPart.cell}`) ?? [])
     : []
-  const nextInstance = markedInsts.find((i) => !i.done) ?? markedInsts[0]
+  const nextInstance = markedInsts.find((i) => !isCut(i)) ?? markedInsts[0]
 
   const statPairs: Array<[string, string | number]> = [
     ["Listlar", `${listTot}−${listDn}=${listTot - listDn}`],
@@ -533,6 +551,25 @@ export function CutmapView({
                   if (admin) setSelected(part)
                   setMarkedCell(part.cell)
                 }}
+                onLongPress={
+                  admin
+                    ? undefined
+                    : (part) => {
+                        // Noto'g'ri detal cheki chiqib ketgan: oxirgi chiqarilgan
+                        // (hali skan qilinmagan) nusxa bekor bo'ladi, katak apelsinga qaytadi
+                        const insts =
+                          instancesByCell.get(`${sheet.no}:${part.cell}`) ?? []
+                        const last = insts
+                          .filter((i) => i.label_printed_at && !i.done)
+                          .sort((a, b) =>
+                            String(a.label_printed_at).localeCompare(
+                              String(b.label_printed_at),
+                            ),
+                          )
+                          .pop()
+                        if (last) cancelMutation.mutate(last.instance_id)
+                      }
+                }
                 selectedCell={markedCell}
                 registerZoom={(a) => {
                   zoomApi.current = a
@@ -804,9 +841,13 @@ function PartCard({
             >
               <span className="num">
                 {inst.qr_text}{" "}
-                {inst.done && (
+                {inst.done ? (
                   <span className="font-bold text-green-700">✓ kesildi</span>
-                )}
+                ) : inst.label_printed_at ? (
+                  <span className="font-bold text-green-600">
+                    ✓ chek chiqarilgan
+                  </span>
+                ) : null}
               </span>
               {!admin && (
                 <LoadingButton
