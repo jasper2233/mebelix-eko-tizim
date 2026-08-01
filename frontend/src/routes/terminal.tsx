@@ -148,6 +148,15 @@ function TerminalPage() {
     ),
   )
 
+  // Kiosk qoidasi: sensorda long press Chrome kontekst menyusini ochmasin —
+  // butun terminal sahifasida o'chiriladi (bekor qilish long press'i shu tufayli
+  // xalaqitsiz ishlaydi). Admin web sahifalariga ta'sir qilmaydi.
+  useEffect(() => {
+    const block = (e: Event) => e.preventDefault()
+    document.addEventListener("contextmenu", block)
+    return () => document.removeEventListener("contextmenu", block)
+  }, [])
+
   useEffect(() => {
     const mq = window.matchMedia("(display-mode: fullscreen)")
     const onFs = () => setFullscreen(!!document.fullscreenElement || mq.matches)
