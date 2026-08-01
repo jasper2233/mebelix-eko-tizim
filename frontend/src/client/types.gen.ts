@@ -1259,6 +1259,14 @@ export type ReadTerminalOrdersResponse = (Array<{
     [key: string]: unknown;
 }>);
 
+export type ResolveTerminalQrData = {
+    qrText: string;
+};
+
+export type ResolveTerminalQrResponse = ({
+    [key: string]: unknown;
+});
+
 export type ReadTerminalKromkaData = {
     orderId: number;
 };

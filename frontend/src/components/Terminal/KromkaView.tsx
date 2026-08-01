@@ -50,12 +50,17 @@ export function KromkaView({
   orderId,
   onBack,
   registerScan,
+  initialQr,
+  onInitialQrApplied,
 }: {
   orderId: number
   onBack: () => void
   /** Terminal skan inputi KROMKA rejimida QR'ni shu yerga uzatadi.
    * false qaytsa — QR bu proyektda topilmadi (terminal xato ko'rsatadi). */
   registerScan?: (fn: ((qr: string) => boolean) | null) => void
+  /** Picker'da skan qilingan QR — sahifa ochilgach avtomatik tanlanadi */
+  initialQr?: string | null
+  onInitialQrApplied?: () => void
 }) {
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
@@ -101,6 +106,15 @@ export function KromkaView({
     registerScan?.((qr) => stageRef.current(qr))
     return () => registerScan?.(null)
   }, [registerScan])
+
+  // Picker'dan kelgan QR: ma'lumot yuklangach BIR MARTA tanlanadi
+  const initApplied = useRef(false)
+  useEffect(() => {
+    if (!initialQr || !data || initApplied.current) return
+    initApplied.current = true
+    stageRef.current(initialQr)
+    onInitialQrApplied?.()
+  }, [initialQr, data, onInitialQrApplied])
 
   const confirmMutation = useMutation({
     mutationFn: async () => {

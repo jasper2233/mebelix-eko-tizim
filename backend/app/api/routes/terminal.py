@@ -303,6 +303,29 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[dict]:
     return result
 
 
+@router.get("/qr/{qr_text}/order", response_model=dict, operation_id="resolve_terminal_qr")
+async def resolve_terminal_qr(db: SessionDep, user: TerminalUser, qr_text: str) -> dict:
+    """Proyekt ro'yxatida turib QR skan qilinsa — qaysi buyurtmaga tegishli ekanini topadi
+    (terminal o'sha proyekt sahifasini ochib yuboradi)."""
+    order_id = (
+        await db.execute(
+            select(PartInstance.order_id)
+            .join(Order, Order.id == PartInstance.order_id)
+            .where(
+                PartInstance.qr_text == qr_text.strip(),
+                PartInstance.is_deleted == False,  # noqa: E712
+                Order.is_deleted == False,  # noqa: E712
+                Order.status == OrderStatus.PRODUCTION,
+            )
+            .order_by(Order.id.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if order_id is None:
+        raise NotFoundException("Bu QR uchun aktiv buyurtma topilmadi.")
+    return {"order_id": order_id}
+
+
 @router.get("/orders/{order_id}/kromka", response_model=KromkaOrderState, operation_id="read_terminal_kromka")
 async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) -> KromkaOrderState:
     """KROMKA sahifasi: buyurtmaning faqat kromkali detallari, har nusxada tomon-progress

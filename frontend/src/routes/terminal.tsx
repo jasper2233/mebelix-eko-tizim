@@ -126,6 +126,8 @@ function TerminalPage() {
   // KROMKA rejimida QR to'g'ridan-to'g'ri yozilmaydi — KromkaView'dagi
   // "tanlanganlar" ro'yxatiga tushadi, TASDIQLASH bosilgach yoziladi
   const kromkaScanRef = useRef<((qr: string) => boolean) | null>(null)
+  // Picker ochiq turganda skan qilingan QR: proyekt ochilgach avtomatik tanlanadi
+  const [kromkaInitialQr, setKromkaInitialQr] = useState<string | null>(null)
 
   const { online } = useMesWs(
     useCallback(
@@ -308,17 +310,27 @@ function TerminalPage() {
     }
     // KROMKA: bir QR 4 tomon uchun ketma-ket skan qilinadi — cooldownsiz,
     // to'g'ridan-to'g'ri tanlash ro'yxatiga
-    if (
-      ctx?.post_code === "KROMKA" &&
-      mapOrderId !== null &&
-      kromkaScanRef.current
-    ) {
-      if (!kromkaScanRef.current(value)) {
-        playError()
-        showErrorToast(
-          "Bu detal ochiq proyektda topilmadi. Yorliqni tekshiring.",
-        )
+    if (ctx?.post_code === "KROMKA") {
+      if (mapOrderId !== null && kromkaScanRef.current) {
+        if (!kromkaScanRef.current(value)) {
+          playError()
+          showErrorToast(
+            "Bu detal ochiq proyektda topilmadi. Yorliqni tekshiring.",
+          )
+        }
+        return
       }
+      // Picker ochiq: QR qaysi proyektga tegishli — o'sha proyekt ochiladi,
+      // detal esa tanlanganlarga o'zi tushadi
+      TerminalService.resolveTerminalQr({ qrText: value })
+        .then((r) => {
+          setKromkaInitialQr(value)
+          setMapOrderId((r as { order_id: number }).order_id)
+        })
+        .catch(() => {
+          playError()
+          showErrorToast("Bu QR uchun aktiv proyekt topilmadi.")
+        })
       return
     }
     // 2s cooldown (TZ 8.4.4): bir xil QR bir terminalda — duplikat, neytral signal
@@ -563,10 +575,15 @@ function TerminalPage() {
               {mapOrderId ? (
                 <KromkaView
                   orderId={mapOrderId}
-                  onBack={() => setMapOrderId(null)}
+                  onBack={() => {
+                    setMapOrderId(null)
+                    setKromkaInitialQr(null)
+                  }}
                   registerScan={(fn) => {
                     kromkaScanRef.current = fn
                   }}
+                  initialQr={kromkaInitialQr}
+                  onInitialQrApplied={() => setKromkaInitialQr(null)}
                 />
               ) : (
                 <OrderPicker
