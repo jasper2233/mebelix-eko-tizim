@@ -491,21 +491,6 @@ export function SheetSvg({
           </text>,
         )
       }
-      if (allDone) {
-        const fs = Math.max(34, Math.min(80, Math.min(wv, hv) / 3))
-        labels.push(
-          <text
-            key={`d${p.cell}`}
-            x={p.x + wv - fs * 0.6}
-            y={p.y + fs * 0.85}
-            fontSize={fs}
-            fill="#ffffff"
-            fontWeight="700"
-          >
-            ✓
-          </text>,
-        )
-      }
     }
 
     return (

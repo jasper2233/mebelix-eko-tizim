@@ -505,9 +505,7 @@ export function CutmapView({
                     key={s.no}
                     onClick={() => setSheetIdx(i)}
                     className={`rounded-xl border-2 px-4 py-3 text-left transition-all hover:border-primary active:scale-[0.98] active:border-primary ${
-                      done
-                        ? "border-green-500/60 bg-green-50/50 text-muted-foreground"
-                        : ""
+                      done ? "border-green-600 bg-green-500 text-white" : ""
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -516,12 +514,15 @@ export function CutmapView({
                         {s.L}×{s.W}
                       </span>
                       {(s.mult || 1) > 1 && (
-                        <span className="num rounded-sm bg-primary/10 px-2 py-0.5 text-sm font-bold text-primary">
+                        <span
+                          className={`num rounded-sm px-2 py-0.5 text-sm font-bold ${
+                            done
+                              ? "bg-white/25 text-white"
+                              : "bg-primary/10 text-primary"
+                          }`}
+                        >
                           ×{s.mult}
                         </span>
-                      )}
-                      {done && (
-                        <span className="text-xl text-green-600">✓</span>
                       )}
                     </div>
                     {/* Mini xarita — kichik preview, bosishga xalaqit bermaydi */}
