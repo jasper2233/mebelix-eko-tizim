@@ -375,9 +375,16 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     return Message(message=f"Yorliq chop etishga yuborildi: {instance.qr_text}")
 
 
+# Bekor qilishga admin webdagi xarita egalari ham kiradi: proyekt ro'yxatdan
+# tushib bo'lgach arrachi xaritani ocholmaydi — oxirgi xato chekni texnolog tuzatadi
+LabelCancelUser = Annotated[
+    User, Depends(require_roles(UserRole.TERMINAL, *POST_ROLES, UserRole.MANAGER, UserRole.TEXNOLOG))
+]
+
+
 @router.delete("/labels/{instance_id}", response_model=Message, operation_id="cancel_instance_label")
-async def cancel_instance_label(db: SessionDep, user: TerminalUser, instance_id: int) -> Message:
-    """Chekni bekor qilish (long press): arrachi noto'g'ri detal yorlig'ini chiqarib yuborgan bo'lsa,
+async def cancel_instance_label(db: SessionDep, user: LabelCancelUser, instance_id: int) -> Message:
+    """Chekni bekor qilish (long press / admin xarita): noto'g'ri chiqarilgan yorliq
     katakni chop etilmagan holatga qaytaradi. Skan qilingan (kesilgan) nusxaga ta'sir qilmaydi."""
     instance = await db.get(PartInstance, instance_id)
     if instance is None or instance.is_deleted:

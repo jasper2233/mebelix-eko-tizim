@@ -79,8 +79,11 @@ function useCancelLabel() {
       TerminalService.cancelInstanceLabel({ instanceId }),
     onSuccess: (r) => showSuccessToast(r.message),
     onError: handleError(showErrorToast),
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: ["terminal", "cutmap"] }),
+    onSettled: () => {
+      // Terminal (arrachi long press) ham, admin xarita (texnolog tugmasi) ham yangilansin
+      queryClient.invalidateQueries({ queryKey: ["terminal", "cutmap"] })
+      queryClient.invalidateQueries({ queryKey: ["admin", "cutmap"] })
+    },
   })
 }
 
@@ -855,6 +858,7 @@ function PartCard({
   holes: Record<string, any>
 }) {
   const printMutation = usePrintLabel()
+  const cancelMutation = useCancelLabel()
 
   if (!part || part.waste) return null
   const insts = instancesByCell.get(`${sheetNo}:${part.cell}`) ?? []
@@ -930,6 +934,18 @@ function PartCard({
                   }}
                 >
                   <Printer /> YORLIQ CHOP ETISH
+                </LoadingButton>
+              )}
+              {/* Texnolog xato chekni shu yerdan tuzatadi — proyekt ARRA
+                  ro'yxatidan tushib bo'lgach arrachi xaritani ocholmaydi */}
+              {admin && inst.label_printed_at && !inst.done && (
+                <LoadingButton
+                  variant="destructive"
+                  size="sm"
+                  loading={cancelMutation.isPending}
+                  onClick={() => cancelMutation.mutate(inst.instance_id)}
+                >
+                  Chekni bekor qilish
                 </LoadingButton>
               )}
             </div>
