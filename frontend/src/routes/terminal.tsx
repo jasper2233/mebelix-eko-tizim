@@ -189,14 +189,34 @@ function TerminalPage() {
     return () => clearInterval(t)
   }, [updateReady, mapOrderId, lastScan])
 
-  // Avto-skan: input doim fokusda (TZ 8.4.1); xarita yopilganda darhol qaytadi
+  // Avto-skan: input doim fokusda (TZ 8.4.1). Faqat ARRA xaritasi ochiqda
+  // o'chadi (input yashirin) — KROMKA proyekt sahifasida skan doim ishlashi kerak
+  const scanInputHidden = ctx?.post_code === "ARRA" && mapOrderId !== null
   useEffect(() => {
-    if (!scanOn || locked || mapOrderId !== null) return
+    if (!scanOn || locked || scanInputHidden) return
     const focus = () => inputRef.current?.focus()
     focus()
     const t = setInterval(focus, 2000)
     return () => clearInterval(t)
-  }, [scanOn, locked, mapOrderId])
+  }, [scanOn, locked, scanInputHidden])
+
+  // Skaner fokussiz yozsa ham yo'qolmasin: birinchi tugma bosilishida input
+  // fokusga olinadi — belgi o'sha yerga tushadi (2s intervalgacha kutilmaydi)
+  useEffect(() => {
+    if (!scanOn || locked || scanInputHidden) return
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement
+      if (
+        t === inputRef.current ||
+        t.tagName === "INPUT" ||
+        t.tagName === "TEXTAREA"
+      )
+        return
+      if (e.key.length === 1 || e.key === "Enter") inputRef.current?.focus()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [scanOn, locked, scanInputHidden])
 
   const pushHistory = (entry: {
     id: number
@@ -341,7 +361,7 @@ function TerminalPage() {
     scanMutation.mutate(value)
   }
 
-  const mapOpen = ctx?.post_code === "ARRA" && mapOrderId !== null
+  const mapOpen = scanInputHidden
   // BEKOR QILISH oynasi 60 s (TZ 8.6). Vaqtga bog'liq bo'lgani uchun taymer
   // kerak: busiz tugma muddat o'tgach ham yoqilgan ko'rinib turardi va
   // bosilganda server rad etardi.
