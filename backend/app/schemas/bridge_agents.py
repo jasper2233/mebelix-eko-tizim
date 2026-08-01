@@ -15,10 +15,24 @@ class BridgeAgentRead(BaseModel):
     pair_expires_at: datetime | None
     last_seen_at: datetime | None
     created_at: datetime
+    # Skan-forvard: stanok skaneri MES'ga shu stanok nomidan yoziladi
+    machine_id: int | None = None
+    machine_name: str | None = None
 
 
 class BridgeAgentCreate(BaseModel):
     name: Annotated[str, Field(min_length=2, max_length=100, examples=["Arrachi monoblok"])]
+
+
+class BridgeAgentUpdate(BaseModel):
+    """Hozircha faqat stanok bog'lami o'zgaradi."""
+
+    machine_id: int | None = None
+
+
+class BridgeScanRequest(BaseModel):
+    qr_text: Annotated[str, Field(min_length=3, max_length=120)]
+    client_event_id: Annotated[str, Field(min_length=8, max_length=64)]
 
 
 class BridgePairRequest(BaseModel):

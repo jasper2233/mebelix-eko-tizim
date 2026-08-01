@@ -846,6 +846,117 @@ async def download_order_scx_zip(db: SessionDep, _: StaffReadUser, order_id: int
     )
 
 
+@router.post("/{order_id}/scx/regenerate", response_model=Message, operation_id="regenerate_order_scx")
+async def regenerate_order_scx(db: SessionDep, current_user: TexnologUser, order_id: int, request: Request) -> Message:
+    """SCX fayllarni saqlangan .project'dan qayta yaratish — eski buyurtmalarni yangi
+    nomlashga (har nusxa = QR nomli fayl, Nanxing skan mosligi) o'tkazadi. Detallar,
+    marshrutlar va skanlarga TEGILMAYDI."""
+    from app.services.giblab.scx import build_scx_files
+
+    order = await _get_order(db, order_id)
+    upload_root = Path(settings.UPLOAD_DIR).resolve()
+
+    project_row = (
+        await db.execute(
+            select(OrderFile)
+            .where(
+                OrderFile.order_id == order.id,
+                OrderFile.kind == FileKind.PROJECT,
+                OrderFile.is_deleted == False,  # noqa: E712
+            )
+            .order_by(OrderFile.id.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if project_row is None or not (upload_root / project_row.path).is_file():
+        raise NotFoundException(".project fayli diskda topilmadi — qayta yaratib bo'lmaydi.")
+
+    try:
+        project = parse_project((upload_root / project_row.path).read_bytes())
+    except ParseError as exc:
+        raise HTTPException(status_code=422, detail=f"Fayl o'qilmadi: {exc}") from None
+
+    # Mavjud detallar (matritsada soni o'zgargan bo'lishi mumkin — QR'lar bazadan olinadi)
+    parts_by_key: dict[str, Part] = {
+        f"{product_code}_{part.code}": part
+        for part, product_code in (
+            await db.execute(
+                select(Part, Product.code)
+                .join(Product, Product.id == Part.product_id)
+                .where(Part.order_id == order.id, Part.is_deleted == False)  # noqa: E712
+            )
+        ).all()
+    }
+    qr_by_part: dict[int, list[str]] = {}
+    for inst in (
+        (
+            await db.execute(
+                select(PartInstance)
+                .where(PartInstance.order_id == order.id, PartInstance.is_deleted == False)  # noqa: E712
+                .order_by(PartInstance.part_id, PartInstance.instance_no)
+            )
+        )
+        .scalars()
+        .all()
+    ):
+        qr_by_part.setdefault(inst.part_id, []).append(inst.qr_text)
+
+    # Eski SCX yozuvlari va fayllari yo'qoladi
+    now = datetime.now(UTC)
+    old_files = (
+        (
+            await db.execute(
+                select(OrderFile).where(
+                    OrderFile.order_id == order.id,
+                    OrderFile.kind == FileKind.SCX,
+                    OrderFile.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for f in old_files:
+        f.is_deleted = True
+        f.deleted_at = now
+        (upload_root / f.path).unlink(missing_ok=True)
+
+    scx_dir = upload_root / "scx" / str(order.id)
+    scx_dir.mkdir(parents=True, exist_ok=True)
+    created = 0
+    for pp in project.all_parts:
+        part = parts_by_key.get(pp.key)
+        if part is None or not pp.xnc_ops:
+            continue
+        for filename, content, meta in build_scx_files(pp, qr_by_part.get(part.id, [])):
+            (scx_dir / filename).write_text(content, encoding="utf-8")
+            db.add(
+                OrderFile(
+                    order_id=order.id,
+                    part_id=part.id,
+                    kind=FileKind.SCX,
+                    path=str((scx_dir / filename).relative_to(upload_root)),
+                    filename=filename,
+                    size=len(content.encode()),
+                    meta=meta,
+                )
+            )
+            created += 1
+
+    log_action(
+        db,
+        module="orders",
+        action="scx_regenerated",
+        user_id=current_user.id,
+        entity_type="order",
+        entity_id=order.id,
+        message=f"SCX qayta yaratildi: {created} ta fayl ({order.number})",
+        ip=request.client.host if request.client else None,
+    )
+    await db.commit()
+    return Message(message=f"{created} ta SCX fayl qayta yaratildi — endi nomlar nusxa QR'i bilan.")
+
+
 @router.get("/{order_id}/files/{file_id}", operation_id="download_order_file")
 async def download_order_file(db: SessionDep, _: StaffReadUser, order_id: int, file_id: int) -> FileResponse:
     """Download a stored file (project / SCX / document)."""

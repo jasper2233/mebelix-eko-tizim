@@ -24,3 +24,6 @@ class BridgeAgent(BaseModel):
     pair_code: Mapped[str | None] = mapped_column(String(16), default=None, index=True, kw_only=True)
     pair_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
+    # Skan-forvard (TZ 12.5): stanok skaneri agent orqali MES'ga ham yozilsin —
+    # skan qaysi stanok/post nomidan yozilishini shu bog'lash hal qiladi
+    machine_id: Mapped[int | None] = mapped_column(ForeignKey("machine.id"), default=None, kw_only=True)

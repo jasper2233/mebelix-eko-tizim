@@ -15,7 +15,7 @@ from app.models.enums import FileKind, MaterialType, PostCode, ProjectGeneration
 
 from .cutmap import build_cutmap
 from .models import ParsedProject
-from .scx import generate_scx, scx_filename
+from .scx import build_scx_files
 
 logger = logging.getLogger(__name__)
 
@@ -214,19 +214,9 @@ async def ingest_project(
                     )
                 )
 
-            # SCX per XNC operation (TZ 5.6.5). Nom `{mahsulot}_{detal}` + orqa tomonga `_2`;
-            # bitta tomonda ikkitadan ko'p dastur bo'lsa (GibLab yorliqda XNC1..XNC5 ni taklif
-            # qiladi) nom takrorlanib, fayl jimgina o'chib ketardi — CNC dasturi yo'qoladi.
-            used_names: set[str] = set()
-            for op in pp.xnc_ops:
-                filename = scx_filename(pp, op)
-                if filename in used_names:
-                    stem, seq = filename[:-4], 3
-                    while f"{stem}_{seq}.scx" in used_names:
-                        seq += 1
-                    filename = f"{stem}_{seq}.scx"
-                used_names.add(filename)
-                content = generate_scx(pp, op)
+            # SCX (TZ 5.6.5 / 12.5): old tomon — har nusxaga alohida fayl (nom/ID = QR,
+            # Nanxing skaneri to'g'ridan-to'g'ri topadi), orqa `_2` — bitta fayl.
+            for filename, content, meta in build_scx_files(pp, [f"{pp.key}_{n}" for n in range(1, pp.count + 1)]):
                 (scx_dir / filename).write_text(content, encoding="utf-8")
                 db.add(
                     OrderFile(
@@ -236,7 +226,7 @@ async def ingest_project(
                         path=str((scx_dir / filename).relative_to(upload_root)),
                         filename=filename,
                         size=len(content.encode()),
-                        meta={"side2": op.side2, "code": op.code},
+                        meta=meta,
                     )
                 )
 

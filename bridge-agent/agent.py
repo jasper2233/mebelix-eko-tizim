@@ -304,6 +304,9 @@ MES_URL = os.environ.get("MES_URL", "ws://localhost:8000")
 BRIDGE_TOKEN = os.environ.get("BRIDGE_TOKEN", "")
 PRINTER_NAME = os.environ.get("PRINTER_NAME", "") or _detect_printer()
 QUEUE_FILE = Path(os.environ.get("QUEUE_FILE", "print-queue.jsonl"))
+# Skan-forvard (TZ 12.5): stanok skaneri (klaviatura-HID) terganini MES'ga ham
+# yuborish. SCAN_FORWARD=0 o'chiradi; pynput bo'lmasa o'zi jim o'chadi.
+SCAN_FORWARD = os.environ.get("SCAN_FORWARD", "1") != "0"
 
 # Yangi job kelganda flusher darhol uyg'onadi (5s siklni kutmaydi)
 FLUSH_EVENT = asyncio.Event()
@@ -488,12 +491,84 @@ async def uplink() -> None:
             await asyncio.sleep(5)
 
 
+def start_scan_forward() -> None:
+    """Stanok skaneri o'qiganini MES'ga ham yuboradi (TZ 12.5).
+
+    Skaner klaviatura kabi teradi: juda tez ketma-ket belgilar + Enter = skan
+    (odam terishi bunday tez emas — 50ms/belgi chegarasi ajratib beradi).
+    Passiv kuzatuv: Nanxing dasturi belgilarni avvalgidek oladi, biz nusxasini
+    /bridge-agents/scan ga yuboramiz — bitta fizik skan ikkala tizimga tushadi."""
+    if not SCAN_FORWARD:
+        return
+    try:
+        from pynput import keyboard
+    except ImportError:
+        log.info("pynput o'rnatilmagan — skan-forvard o'chiq")
+        return
+
+    import json as _json
+    import re
+    import threading
+    import time as _time
+    import urllib.error
+    import urllib.request
+    from uuid import uuid4
+
+    scan_re = re.compile(r"^[0-9A-Za-z_\-]{6,64}$")
+    http = MES_URL.replace("wss://", "https://", 1).replace("ws://", "http://", 1).rstrip("/")
+    buf: list[str] = []
+    first = [0.0]
+    last = [0.0]
+
+    def send(qr: str) -> None:
+        req = urllib.request.Request(
+            f"{http}/api/v1/bridge-agents/scan",
+            data=_json.dumps({"qr_text": qr, "client_event_id": uuid4().hex}).encode(),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {BRIDGE_TOKEN}",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10):
+                log.info("Skan-forvard OK: %s", qr)
+        except urllib.error.HTTPError as exc:
+            detail = ""
+            with contextlib.suppress(Exception):
+                detail = str(_json.loads(exc.read()).get("detail", ""))
+            log.warning("Skan-forvard rad (%s): %s — %s", exc.code, qr, detail)
+        except OSError as exc:
+            log.warning("Skan-forvard ulanish xatosi: %s", exc)
+
+    def on_press(key: object) -> None:
+        now = _time.monotonic()
+        if now - last[0] > 0.25:
+            buf.clear()
+            first[0] = now
+        last[0] = now
+        if key == keyboard.Key.enter:
+            s = "".join(buf)
+            n = len(s)
+            buf.clear()
+            # skanerga xos tezlik: o'rtacha <50ms/belgi; odam terishi bundan sekin
+            if n >= 6 and scan_re.match(s) and (last[0] - first[0]) / n < 0.05:
+                threading.Thread(target=send, args=(s,), daemon=True).start()
+            return
+        ch = getattr(key, "char", None)
+        if ch:
+            buf.append(ch)
+
+    keyboard.Listener(on_press=on_press, daemon=True).start()
+    log.info("Skan-forvard yoqildi — skaner o'qigani MES'ga ham boradi")
+
+
 async def main() -> None:
     if not BRIDGE_TOKEN:
         raise SystemExit(
             "Token yo'q — agentni ishga tushirib admin paneldagi ulanish kodini kiriting"
         )
     log.info("Printer: %s", PRINTER_NAME or "TOPILMADI — GoDEX drayverini o'rnating")
+    start_scan_forward()
     await asyncio.gather(uplink(), flusher())
 
 

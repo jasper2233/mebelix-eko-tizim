@@ -17,8 +17,13 @@ _EDGE_BORE_FACE = {"l": "4", "r": "2", "t": "1", "b": "3"}
 _EDGE_BAND_FACE = {"l": "1", "r": "2", "t": "3", "b": "4"}
 
 
-def generate_scx(part: ParsedPart, op: XncOp) -> str:
-    """Build one SCX document for one XNC operation of one part."""
+def generate_scx(part: ParsedPart, op: XncOp, panel_id: str | None = None) -> str:
+    """Build one SCX document for one XNC operation of one part.
+
+    panel_id — Nanxing "Сканир" qidiruvi Panel ID bo'yicha ishlaydi: old tomon
+    fayllari nusxa QR'i bilan nomlanadi (100701_02_003_1) va ID ham shu bo'ladi,
+    shunda yorliq skaneri faylni to'g'ridan-to'g'ri topadi (TZ 12.5).
+    """
     length, width, thick = op.dx, op.dy, op.dz
 
     root = ET.Element("Root", {"Cad": "Built in GibLab", "version": "2.0"})
@@ -27,7 +32,7 @@ def generate_scx(part: ParsedPart, op: XncOp) -> str:
         panels,
         "Panel",
         {
-            "ID": op.code or part.key,
+            "ID": panel_id or op.code or part.key,
             "Length": _n(length),
             "Width": _n(width),
             "Thickness": _n(thick),
@@ -142,6 +147,40 @@ def scx_filename(part: ParsedPart, op: XncOp) -> str:
     """{productCode}_{partCode}.scx; the second side gets the _2 suffix (TZ 5.6.5)."""
     suffix = "_2" if op.side2 else ""
     return f"{part.product_code}_{part.code}{suffix}.scx"
+
+
+def build_scx_files(part: ParsedPart, qr_texts: list[str]) -> list[tuple[str, str, dict]]:
+    """Bitta detalning barcha SCX fayllari: (filename, content, meta) ro'yxati.
+
+    Old tomon: HAR NUSXAGA alohida fayl, nomi va Panel ID = nusxa QR'i
+    (100701_02_003_1.scx) — Nanxing skaneri yorliqdagi QR bilan faylni
+    to'g'ridan-to'g'ri topadi. Orqa (_2) tomon skanerdan chaqirilmaydi —
+    unga avvalgidek bitta umumiy fayl.
+
+    Nom takrorlansa (bir tomonda bir nechta XNC dasturi) _3, _4 qo'shiladi —
+    fayl jimgina bosilib ketmasin (CNC dasturi yo'qolardi).
+    """
+    out: list[tuple[str, str, dict]] = []
+    used: set[str] = set()
+
+    def uniq(name: str) -> str:
+        if name in used:
+            stem, seq = name[:-4], 3
+            while f"{stem}_{seq}.scx" in used:
+                seq += 1
+            name = f"{stem}_{seq}.scx"
+        used.add(name)
+        return name
+
+    for op in part.xnc_ops:
+        if op.side2:
+            fn = uniq(scx_filename(part, op))
+            out.append((fn, generate_scx(part, op), {"side2": True, "code": op.code}))
+        else:
+            for qr in qr_texts:
+                fn = uniq(f"{qr}.scx")
+                out.append((fn, generate_scx(part, op, panel_id=qr), {"side2": False, "code": op.code, "qr": qr}))
+    return out
 
 
 def _n(value: float | int) -> str:

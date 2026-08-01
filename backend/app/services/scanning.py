@@ -183,7 +183,22 @@ async def record_scan(
     """Validate and register one work unit. Caller commits and publishes outcome.events."""
     machine, post = await resolve_terminal(db, user)
     session = await active_session(db, user, machine)
+    return await record_scan_at(
+        db, machine=machine, post=post, session=session, qr_text=qr_text, client_event_id=client_event_id
+    )
 
+
+async def record_scan_at(
+    db: AsyncSession,
+    *,
+    machine: Machine,
+    post: Post,
+    session: WorkSession,
+    qr_text: str,
+    client_event_id: str,
+) -> ScanOutcome:
+    """Core yozuv — kontekst tayyor bo'lganda. Terminal (user orqali) ham,
+    bridge-agent skan-forvardi (stanok bog'lami orqali) ham shu yo'ldan o'tadi."""
     qr = qr_text.strip()
     if not _QR_RE.match(qr):
         raise ScanRejected("E002", "QR kodi noto'g'ri formatda. Yorliqni qaytadan chop eting.")

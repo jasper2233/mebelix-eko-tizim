@@ -29,6 +29,13 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -40,6 +47,7 @@ import {
 } from "@/components/ui/table"
 import useCustomToast from "@/hooks/useCustomToast"
 import { formatDateTime } from "@/lib/mes"
+import { getMachinesQueryOptions } from "@/queries/mes"
 import { handleError } from "@/utils"
 
 export const Route = createFileRoute("/_layout/printers")({
@@ -107,6 +115,7 @@ function PrintersPage() {
                 <TableHead>Nomi</TableHead>
                 <TableHead>Holat</TableHead>
                 <TableHead>Ulanish kodi</TableHead>
+                <TableHead>Stanok (skan-forvard)</TableHead>
                 <TableHead>Oxirgi ulanish</TableHead>
                 <TableHead className="w-24" />
               </TableRow>
@@ -117,7 +126,7 @@ function PrintersPage() {
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={6}
                     className="h-24 text-center text-muted-foreground"
                   >
                     Agentlar yo'q. "Yangi agent" bilan ulanish kodi yarating.
@@ -136,8 +145,20 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
   const [confirm, setConfirm] = useState<"code" | "delete" | null>(null)
+  const { data: machines } = useQuery(getMachinesQueryOptions())
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: ["bridge-agents"] })
+
+  const linkMachine = useMutation({
+    mutationFn: (machineId: number | null) =>
+      BridgeAgentsService.updateBridgeAgent({
+        agentId: agent.id,
+        requestBody: { machine_id: machineId },
+      }),
+    onSuccess: () => showSuccessToast("Stanok bog'landi"),
+    onError: handleError(showErrorToast),
+    onSettled: refresh,
+  })
 
   const regen = useMutation({
     mutationFn: () =>
@@ -185,6 +206,27 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
         ) : (
           <span className="text-muted-foreground">—</span>
         )}
+      </TableCell>
+      <TableCell>
+        {/* Skan-forvard: stanok skaneri o'qigan QR MES'ga shu stanok nomidan yoziladi */}
+        <Select
+          value={agent.machine_id ? String(agent.machine_id) : "none"}
+          onValueChange={(v) =>
+            linkMachine.mutate(v === "none" ? null : Number(v))
+          }
+        >
+          <SelectTrigger className="h-9 w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">— bog'lanmagan</SelectItem>
+            {machines?.map((m) => (
+              <SelectItem key={m.id} value={String(m.id)}>
+                {m.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </TableCell>
       <TableCell className="text-muted-foreground">
         {seen ? formatDateTime(agent.last_seen_at) : "Hali ulanmagan"}

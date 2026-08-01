@@ -141,6 +141,14 @@ function OrderDetailPage() {
     onError: handleError(showErrorToast),
     onSettled: invalidate,
   })
+  // Eski buyurtmalarni yangi SCX nomlashga (nusxa QR = fayl nomi, Nanxing skan
+  // mosligi) o'tkazish — .project saqlangan bo'lsa bir bosishda
+  const regenScx = useMutation({
+    mutationFn: () => OrdersService.regenerateOrderScx({ orderId: id }),
+    onSuccess: (r) => showSuccessToast(r.message),
+    onError: handleError(showErrorToast),
+    onSettled: invalidate,
+  })
 
   if (isError)
     return (
@@ -431,6 +439,19 @@ function OrderDetailPage() {
                   <span className="text-xs uppercase text-muted-foreground">
                     prisadka
                   </span>
+                  {isTexnolog && (
+                    <button
+                      type="button"
+                      className="shrink-0 text-xs text-muted-foreground hover:text-primary hover:underline disabled:opacity-50"
+                      disabled={regenScx.isPending}
+                      title="Fayllarni nusxa QR'i bilan qayta nomlash (Nanxing skan mosligi)"
+                      onClick={() => regenScx.mutate()}
+                    >
+                      {regenScx.isPending
+                        ? "Yaratilmoqda..."
+                        : "Qayta yaratish"}
+                    </button>
+                  )}
                   <a
                     className="shrink-0 font-medium text-primary hover:underline"
                     href={`${OpenAPI.BASE}/api/v1/orders/${id}/files/scx.zip`}

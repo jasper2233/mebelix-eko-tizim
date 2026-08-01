@@ -54,6 +54,15 @@ export type BridgeAgentRead = {
     pair_expires_at: (string | null);
     last_seen_at: (string | null);
     created_at: string;
+    machine_id?: (number | null);
+    machine_name?: (string | null);
+};
+
+/**
+ * Hozircha faqat stanok bog'lami o'zgaradi.
+ */
+export type BridgeAgentUpdate = {
+    machine_id?: (number | null);
 };
 
 export type BridgePairRequest = {
@@ -66,6 +75,11 @@ export type BridgePairRequest = {
 export type BridgePairResponse = {
     token: string;
     name: string;
+};
+
+export type BridgeScanRequest = {
+    qr_text: string;
+    client_event_id: string;
 };
 
 export type CapacityUnit = 'm2_per_hour' | 'meter_per_hour' | 'units_per_hour';
@@ -892,11 +906,12 @@ export type CreateBridgeAgentData = {
 
 export type CreateBridgeAgentResponse = (BridgeAgentRead);
 
-export type RegenerateBridgeCodeData = {
+export type UpdateBridgeAgentData = {
     agentId: number;
+    requestBody: BridgeAgentUpdate;
 };
 
-export type RegenerateBridgeCodeResponse = (BridgeAgentRead);
+export type UpdateBridgeAgentResponse = (BridgeAgentRead);
 
 export type DeleteBridgeAgentData = {
     agentId: number;
@@ -904,11 +919,24 @@ export type DeleteBridgeAgentData = {
 
 export type DeleteBridgeAgentResponse = (Message);
 
+export type RegenerateBridgeCodeData = {
+    agentId: number;
+};
+
+export type RegenerateBridgeCodeResponse = (BridgeAgentRead);
+
 export type PairBridgeAgentData = {
     requestBody: BridgePairRequest;
 };
 
 export type PairBridgeAgentResponse = (BridgePairResponse);
+
+export type BridgeScanData = {
+    authorization?: string;
+    requestBody: BridgeScanRequest;
+};
+
+export type BridgeScanResponse = (ScanResult);
 
 export type DownloadBridgeAgentResponse = (unknown);
 
@@ -1168,6 +1196,12 @@ export type DownloadOrderScxZipData = {
 };
 
 export type DownloadOrderScxZipResponse = (unknown);
+
+export type RegenerateOrderScxData = {
+    orderId: number;
+};
+
+export type RegenerateOrderScxResponse = (Message);
 
 export type DownloadOrderFileData = {
     fileId: number;

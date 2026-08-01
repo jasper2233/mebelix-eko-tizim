@@ -14,25 +14,31 @@ admin endpointlar esa har biri AdminUser bilan o'zi himoyalanadi.
 
 import hashlib
 import secrets
+import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import FileResponse
-from sqlalchemy import update
+from sqlalchemy import select, update
 
 from app.api.deps import AdminUser, SessionDep
 from app.core.config import settings
 from app.core.exceptions import NotFoundException
+from app.core.ws import ws_manager
 from app.crud import crud_bridge_agents, log_action
-from app.models import BridgeAgent
+from app.models import BridgeAgent, Machine, Post
 from app.schemas.bridge_agents import (
     BridgeAgentCreate,
     BridgeAgentRead,
+    BridgeAgentUpdate,
     BridgePairRequest,
     BridgePairResponse,
+    BridgeScanRequest,
 )
 from app.schemas.common import Message
+from app.schemas.terminal import ScanResult
+from app.services.scanning import ScanRejected, latest_active_session, record_scan_at
 
 router = APIRouter(prefix="/bridge-agents", tags=["bridge-agents"])
 
@@ -47,7 +53,7 @@ def _new_code() -> str:
     return "".join(secrets.choice(_CODE_ALPHABET) for _ in range(_CODE_LEN))
 
 
-def _read(agent: BridgeAgent) -> BridgeAgentRead:
+def _read(agent: BridgeAgent, machine_name: str | None = None) -> BridgeAgentRead:
     alive = (
         agent.pair_code is not None and agent.pair_expires_at is not None and agent.pair_expires_at > datetime.now(UTC)
     )
@@ -59,13 +65,49 @@ def _read(agent: BridgeAgent) -> BridgeAgentRead:
         pair_expires_at=agent.pair_expires_at if alive else None,
         last_seen_at=agent.last_seen_at,
         created_at=agent.created_at,
+        machine_id=agent.machine_id,
+        machine_name=machine_name,
     )
 
 
 @router.get("/", response_model=list[BridgeAgentRead], operation_id="read_bridge_agents")
 async def read_bridge_agents(db: SessionDep, _: AdminUser) -> list[BridgeAgentRead]:
     agents, _total = await crud_bridge_agents.get_multi(db, limit=100)
-    return [_read(a) for a in agents]
+    machines = {
+        m.id: m.name
+        for m in (await db.execute(select(Machine).where(Machine.is_deleted == False))).scalars()  # noqa: E712
+    }
+    return [_read(a, machines.get(a.machine_id) if a.machine_id else None) for a in agents]
+
+
+@router.patch("/{agent_id}", response_model=BridgeAgentRead, operation_id="update_bridge_agent")
+async def update_bridge_agent(
+    db: SessionDep, current_user: AdminUser, agent_id: int, body: BridgeAgentUpdate, request: Request
+) -> BridgeAgentRead:
+    """Agentni stanokka bog'lash — skan-forvard shu stanok/post nomidan yoziladi."""
+    agent = await crud_bridge_agents.get(db, id=agent_id)
+    if agent is None:
+        raise NotFoundException("Agent topilmadi.")
+    machine_name: str | None = None
+    if body.machine_id is not None:
+        machine = await db.get(Machine, body.machine_id)
+        if machine is None or machine.is_deleted:
+            raise NotFoundException("Stanok topilmadi.")
+        machine_name = machine.name
+    agent.machine_id = body.machine_id
+    log_action(
+        db,
+        module="bridge_agents",
+        action="machine_linked",
+        user_id=current_user.id,
+        entity_type="bridge_agent",
+        entity_id=agent.id,
+        message=f"Agent stanokka bog'landi: {agent.name} -> {machine_name or '—'}",
+        ip=request.client.host if request.client else None,
+    )
+    await db.commit()
+    await db.refresh(agent)
+    return _read(agent, machine_name)
 
 
 @router.post("/", response_model=BridgeAgentRead, status_code=201, operation_id="create_bridge_agent")
@@ -182,6 +224,82 @@ async def pair_bridge_agent(db: SessionDep, body: BridgePairRequest, request: Re
     )
     await db.commit()
     return BridgePairResponse(token=token, name=row.name)
+
+
+@router.post("/scan", response_model=ScanResult, operation_id="bridge_scan")
+async def bridge_scan(
+    db: SessionDep,
+    body: BridgeScanRequest,
+    authorization: str = Header(default=""),
+) -> ScanResult:
+    """Skan-forvard (TZ 12.5): stanok skaneri o'qigan QR agent orqali MES'ga ham yoziladi.
+
+    Auth — agentning doimiy tokeni (Bearer). Skan agentga bog'langan stanokning
+    AKTIV sessiyasi nomidan yoziladi (monoblokda operator kirgan bo'lishi shart) —
+    hisob-kitob odatdagi skan bilan bir xil yo'ldan o'tadi.
+    """
+    token = authorization.removeprefix("Bearer ").strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Token yo'q.")
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    agent = (
+        await db.execute(
+            select(BridgeAgent).where(
+                BridgeAgent.token_hash == token_hash,
+                BridgeAgent.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).scalar_one_or_none()
+    if agent is None:
+        raise HTTPException(status_code=401, detail="Token bekor qilingan.")
+    if agent.machine_id is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Agent stanokka bog'lanmagan — admin panelda Printer agentlar bo'limida stanok tanlang.",
+        )
+    machine = await db.get(Machine, agent.machine_id)
+    if machine is None or machine.is_deleted:
+        raise HTTPException(status_code=409, detail="Bog'langan stanok topilmadi.")
+    post = await db.get(Post, machine.post_id)
+    if post is None:
+        raise HTTPException(status_code=409, detail="Stanok posti topilmadi.")
+    session = await latest_active_session(db, machine.id)
+    if session is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Terminalda aktiv sessiya yo'q — operator monoblokda tizimga kirgan bo'lishi kerak.",
+        )
+
+    try:
+        outcome = await record_scan_at(
+            db,
+            machine=machine,
+            post=post,
+            session=session,
+            qr_text=body.qr_text,
+            client_event_id=body.client_event_id or uuid.uuid4().hex,
+        )
+    except ScanRejected as exc:
+        await db.rollback()
+        raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
+
+    await db.commit()
+    for event in outcome.events:
+        await ws_manager.publish(
+            event["type"], event["payload"], post_id=event.get("post_id"), machine_id=event.get("machine_id")
+        )
+    return ScanResult(
+        scan_id=outcome.scan.id,
+        duplicate=outcome.duplicate,
+        qr_text=outcome.instance.qr_text,
+        part_code=outcome.instance.qr_text.rsplit("_", 1)[0],
+        part_name=outcome.part.name,
+        instance_no=outcome.instance.instance_no,
+        qoldiq=outcome.qoldiq,
+        scx_file_ids=outcome.scx_file_ids,
+        order_stage_completed=outcome.order_stage_completed,
+        order_completed=outcome.order_completed,
+    )
 
 
 @router.get("/download", operation_id="download_bridge_agent")

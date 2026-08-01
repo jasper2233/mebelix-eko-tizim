@@ -85,3 +85,25 @@ deploy uni ko'chirmaydi; `uploads_data` volume tufayli joyida qoladi.
 
 Eslatma: SCX fayllar bridge orqali o'tmaydi — ular stanok kompyuterida brauzer
 orqali yuklab olinadi (TZ 12.5).
+
+## Skan-forvard (TZ 12.5) — bitta skan, ikkala tizim
+
+Stanok (Nanxing) kompyuterida agent o'rnatilgan bo'lsa, skaner o'qigan QR:
+
+1. odatdagidek Nanxing dasturining Scan maydoniga tushadi (fayl ochiladi);
+2. agent buni PASSIV kuzatib, nusxasini `POST /api/v1/bridge-agents/scan` ga
+   yuboradi — MES'da prisadka skani yoziladi, panel jonli yangilanadi.
+
+Ishlashi uchun:
+
+- admin panel > Printer agentlar > agentga **stanok bog'lanadi** (skan shu
+  stanokning aktiv sessiyasi nomidan yoziladi — operator monoblokda kirgan
+  bo'lishi shart);
+- `pip install pynput` (exe yig'ilganda kiritiladi); `SCAN_FORWARD=0` o'chiradi;
+- skaner-klaviatura aniqlanishi: 6+ belgi, har belgi <50ms, Enter bilan
+  tugaydi — odam terishi bu tezlikka tushmaydi.
+
+**MUHIM — klaviatura layouti:** skaner HID-klaviatura, `_` belgisi layoutga
+bog'liq. Stanok kompyuterida faqat **ENG (US)** layout qoldiring (Win+Space
+bilan tekshiring), aks holda `100701_02_003_1` o'rniga buzilgan matn tushadi —
+ham Nanxing, ham MES topa olmaydi.
