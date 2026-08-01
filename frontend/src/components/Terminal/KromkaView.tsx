@@ -82,14 +82,19 @@ export function KromkaView({
 
   if (isLoading) return <Skeleton className="h-full w-full" />
 
-  // Chap: arradan chiqqan nusxalar — tugaganlari ham yashil bo'lib qoladi
+  // Chap: arradan chiqqan nusxalar — tugaganlari yashil bo'lib PASTGA tushadi,
+  // qilinmaganlari tepada (kromkachi navbatdagi ishni tepadan oladi)
   const leftParts = parts
     .map((p) => ({
       ...p,
       instances: p.instances.filter((i) => i.arra_passed),
     }))
     .filter((p) => p.instances.length > 0)
-    .sort((a, b) => a.code.localeCompare(b.code))
+    .sort((a, b) => {
+      const fin = (p: KPart) =>
+        p.instances.every((i) => i.done >= p.sides) ? 1 : 0
+      return fin(a) - fin(b) || a.code.localeCompare(b.code)
+    })
 
   // O'ng "Jarayonda": faqat 2+ tomonli, boshlangan-u tugamagan nusxalar
   const inProgress = parts
