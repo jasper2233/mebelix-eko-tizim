@@ -123,6 +123,9 @@ function TerminalPage() {
   const [toolbarEl, setToolbarEl] = useState<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const cooldownRef = useRef<Map<string, number>>(new Map())
+  // KROMKA rejimida QR to'g'ridan-to'g'ri yozilmaydi — KromkaView'dagi
+  // "tanlanganlar" ro'yxatiga tushadi, TASDIQLASH bosilgach yoziladi
+  const kromkaScanRef = useRef<((qr: string) => boolean) | null>(null)
 
   const { online } = useMesWs(
     useCallback(
@@ -301,6 +304,21 @@ function TerminalPage() {
         message: "Aloqa yo'q, qaytadan urining",
         at: Date.now(),
       })
+      return
+    }
+    // KROMKA: bir QR 4 tomon uchun ketma-ket skan qilinadi — cooldownsiz,
+    // to'g'ridan-to'g'ri tanlash ro'yxatiga
+    if (
+      ctx?.post_code === "KROMKA" &&
+      mapOrderId !== null &&
+      kromkaScanRef.current
+    ) {
+      if (!kromkaScanRef.current(value)) {
+        playError()
+        showErrorToast(
+          "Bu detal ochiq proyektda topilmadi. Yorliqni tekshiring.",
+        )
+      }
       return
     }
     // 2s cooldown (TZ 8.4.4): bir xil QR bir terminalda — duplikat, neytral signal
@@ -546,6 +564,9 @@ function TerminalPage() {
                 <KromkaView
                   orderId={mapOrderId}
                   onBack={() => setMapOrderId(null)}
+                  registerScan={(fn) => {
+                    kromkaScanRef.current = fn
+                  }}
                 />
               ) : (
                 <OrderPicker
