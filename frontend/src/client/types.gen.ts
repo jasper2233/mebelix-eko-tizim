@@ -1273,6 +1273,14 @@ export type ReadTerminalKromkaData = {
 
 export type ReadTerminalKromkaResponse = (KromkaOrderState);
 
+export type ReadTerminalPrisadkaData = {
+    orderId: number;
+};
+
+export type ReadTerminalPrisadkaResponse = ({
+    [key: string]: unknown;
+});
+
 export type ReadTerminalCutmapData = {
     orderId: number;
 };

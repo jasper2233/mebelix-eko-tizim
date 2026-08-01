@@ -16,7 +16,6 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import {
   ApiError,
-  OpenAPI,
   type ScanResult,
   ScansService,
   TerminalService,
@@ -31,6 +30,7 @@ import {
 } from "@/components/Terminal/audio"
 import { CutmapView, TBtn } from "@/components/Terminal/CutmapView"
 import { KromkaView } from "@/components/Terminal/KromkaView"
+import { PrisadkaView } from "@/components/Terminal/PrisadkaView"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
@@ -47,6 +47,7 @@ import {
   PRIORITY_BADGE_CLASSES,
   PRIORITY_LABELS,
 } from "@/lib/mes"
+import { downloadScx } from "@/lib/scxDir"
 import { cn } from "@/lib/utils"
 import {
   getTerminalContextQueryOptions,
@@ -269,13 +270,9 @@ function TerminalPage() {
       })
       queryClient.invalidateQueries({ queryKey: ["terminal"] })
       if (r.order_completed) showSuccessToast("Buyurtma to'liq tayyor bo'ldi!")
-      // SCX fayllar har scanda qaytadan (TZ 12.5): CNC postlarda avtomatik yuklab olish
-      for (const fid of r.scx_file_ids ?? []) {
-        const a = document.createElement("a")
-        a.href = `${OpenAPI.BASE}/api/v1/terminal/files/${fid}`
-        a.download = ""
-        a.click()
-      }
+      // SCX fayllar har scanda qaytadan (TZ 12.5): saqlangan papka bo'lsa o'sha
+      // yerga, bo'lmasa brauzer Downloads
+      for (const fid of r.scx_file_ids ?? []) downloadScx(fid)
     },
     onError: (err) => {
       const { code, message } = detailParts(err)
@@ -621,6 +618,25 @@ function TerminalPage() {
                 />
               ) : (
                 <OrderPicker onPick={setMapOrderId} />
+              )}
+            </div>
+          </div>
+        ) : ctx?.post_code === "PRISADKA" ? (
+          /* PRISADKA: proyekt ro'yxati → detallar + SCX fayllarni papkaga yuklab olish */
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+            {scanStrip}
+            <div className="min-h-0 flex-1">
+              {mapOrderId ? (
+                <PrisadkaView
+                  orderId={mapOrderId}
+                  onBack={() => setMapOrderId(null)}
+                />
+              ) : (
+                <OrderPicker
+                  onPick={setMapOrderId}
+                  title="Proyektlar — detallar uchun proyektni tanlang"
+                  showCutmapBadge={false}
+                />
               )}
             </div>
           </div>

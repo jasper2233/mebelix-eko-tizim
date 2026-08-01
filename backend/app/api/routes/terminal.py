@@ -29,6 +29,7 @@ from app.models import (
 from app.models.enums import (
     POST_ROLES,
     EmployeeStatus,
+    FileKind,
     OrderPriority,
     OrderStatus,
     PostCode,
@@ -473,6 +474,69 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
             for route, part, product_code in rows
         ],
     )
+
+
+@router.get("/orders/{order_id}/prisadka", response_model=dict, operation_id="read_terminal_prisadka")
+async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int) -> dict:
+    """PRISADKA sahifasi: buyurtmaning prisadka detallari + har detalning SCX fayllari
+    (stanok kompyuteriga yuklab olish uchun, TZ 12.5)."""
+    machine, post = ctx
+    if post.code != PostCode.PRISADKA:
+        raise HTTPException(status_code=403, detail="Bu sahifa faqat PRISADKA postida ko'rsatiladi.")
+
+    order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
+
+    rows = (
+        await db.execute(
+            select(PartRoute, Part, Product.code)
+            .join(Part, Part.id == PartRoute.part_id)
+            .join(Product, Product.id == Part.product_id)
+            .where(
+                PartRoute.order_id == order.id,
+                PartRoute.post_id == post.id,
+                PartRoute.is_enabled == True,  # noqa: E712
+                PartRoute.is_deleted == False,  # noqa: E712
+                (PartRoute.machine_id == machine.id) | (PartRoute.machine_id.is_(None)),
+            )
+            .order_by(Part.code)
+        )
+    ).all()
+
+    files_by_part: dict[int, list[dict]] = {}
+    for f in (
+        (
+            await db.execute(
+                select(OrderFile).where(
+                    OrderFile.order_id == order.id,
+                    OrderFile.kind == FileKind.SCX,
+                    OrderFile.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    ):
+        if f.part_id is not None:
+            files_by_part.setdefault(f.part_id, []).append({"id": f.id, "filename": f.filename})
+
+    return {
+        "order_id": order.id,
+        "order_number": order.number,
+        "parts": [
+            {
+                "part_id": part.id,
+                "code": f"{product_code}_{part.code}",
+                "name": part.name,
+                "length": part.length,
+                "width": part.width,
+                "thickness": part.thickness,
+                "done": route.total_done,
+                "total": route.total_required,
+                "files": files_by_part.get(part.id, []),
+            }
+            for route, part, product_code in rows
+        ],
+    }
 
 
 @router.get("/orders/{order_id}/cutmap", response_model=CutmapState, operation_id="read_terminal_cutmap")
