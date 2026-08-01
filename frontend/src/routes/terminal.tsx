@@ -326,9 +326,18 @@ function TerminalPage() {
       })
       return
     }
-    // KROMKA: har skan darhol yoziladi (bir QR 4 tomon uchun ketma-ket —
-    // cooldownsiz), yozishdan oldin lokal tekshiruv
+    // KROMKA: har skan darhol yoziladi, lekin BIR detal orasida 5s to'siq —
+    // skanner ikki marta o'qib yuborsa bitta tomon ikki marta sanalib ketmasin
     if (ctx?.post_code === "KROMKA") {
+      const kNow = Date.now()
+      const kLast = cooldownRef.current.get(value)
+      if (kLast && kNow - kLast < 5000) {
+        playWarning()
+        showErrorToast(
+          "Shu detal endigina skan qilindi — 5 soniyadan keyin qayta urining.",
+        )
+        return
+      }
       if (mapOrderId !== null && kromkaScanRef.current) {
         const err = kromkaScanRef.current(value)
         if (err === "NOTFOUND") {
@@ -355,6 +364,7 @@ function TerminalPage() {
           showErrorToast(err)
           return
         }
+        cooldownRef.current.set(value, kNow)
         scanMutation.mutate(value)
         return
       }
@@ -363,6 +373,7 @@ function TerminalPage() {
       TerminalService.resolveTerminalQr({ qrText: value })
         .then((r) => {
           setMapOrderId((r as { order_id: number }).order_id)
+          cooldownRef.current.set(value, Date.now())
           scanMutation.mutate(value)
         })
         .catch(() => {
