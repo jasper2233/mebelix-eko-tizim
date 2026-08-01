@@ -123,11 +123,9 @@ function TerminalPage() {
   const [toolbarEl, setToolbarEl] = useState<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const cooldownRef = useRef<Map<string, number>>(new Map())
-  // KROMKA rejimida QR to'g'ridan-to'g'ri yozilmaydi — KromkaView'dagi
-  // "tanlanganlar" ro'yxatiga tushadi, TASDIQLASH bosilgach yoziladi
-  const kromkaScanRef = useRef<((qr: string) => boolean) | null>(null)
-  // Picker ochiq turganda skan qilingan QR: proyekt ochilgach avtomatik tanlanadi
-  const [kromkaInitialQr, setKromkaInitialQr] = useState<string | null>(null)
+  // KROMKA: yozishdan oldin lokal tekshiruv (arradan chiqqanmi, tugamaganmi) —
+  // null = yozish mumkin, "NOTFOUND" = bu proyektda yo'q, boshqa = xato matni
+  const kromkaScanRef = useRef<((qr: string) => string | null) | null>(null)
 
   const { online } = useMesWs(
     useCallback(
@@ -328,24 +326,32 @@ function TerminalPage() {
       })
       return
     }
-    // KROMKA: bir QR 4 tomon uchun ketma-ket skan qilinadi — cooldownsiz,
-    // to'g'ridan-to'g'ri tanlash ro'yxatiga
+    // KROMKA: har skan darhol yoziladi (bir QR 4 tomon uchun ketma-ket —
+    // cooldownsiz), yozishdan oldin lokal tekshiruv
     if (ctx?.post_code === "KROMKA") {
       if (mapOrderId !== null && kromkaScanRef.current) {
-        if (!kromkaScanRef.current(value)) {
+        const err = kromkaScanRef.current(value)
+        if (err === "NOTFOUND") {
           playError()
           showErrorToast(
             "Bu detal ochiq proyektda topilmadi. Yorliqni tekshiring.",
           )
+          return
         }
+        if (err) {
+          playError()
+          showErrorToast(err)
+          return
+        }
+        scanMutation.mutate(value)
         return
       }
-      // Picker ochiq: QR qaysi proyektga tegishli — o'sha proyekt ochiladi,
-      // detal esa tanlanganlarga o'zi tushadi
+      // Picker ochiq: QR qaysi proyektga tegishli — o'sha proyekt ochiladi
+      // va skan darhol yoziladi
       TerminalService.resolveTerminalQr({ qrText: value })
         .then((r) => {
-          setKromkaInitialQr(value)
           setMapOrderId((r as { order_id: number }).order_id)
+          scanMutation.mutate(value)
         })
         .catch(() => {
           playError()
@@ -595,15 +601,10 @@ function TerminalPage() {
               {mapOrderId ? (
                 <KromkaView
                   orderId={mapOrderId}
-                  onBack={() => {
-                    setMapOrderId(null)
-                    setKromkaInitialQr(null)
-                  }}
+                  onBack={() => setMapOrderId(null)}
                   registerScan={(fn) => {
                     kromkaScanRef.current = fn
                   }}
-                  initialQr={kromkaInitialQr}
-                  onInitialQrApplied={() => setKromkaInitialQr(null)}
                 />
               ) : (
                 <OrderPicker

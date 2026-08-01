@@ -1,19 +1,16 @@
 // KROMKA post sahifasi — ikki panel (TZ 7.2):
-// chapda arradan chiqqan, kromkasi tugamagan detallar; QR skan (yoki chipni bosish)
-// detalni o'ngdagi "tanlanganlar" ro'yxatiga oladi — hech narsa hali yozilmaydi.
-// TASDIQLASH bosilgandagina skanlar serverga yoziladi (har tomon = bitta skan).
-// Noto'g'ri detal qo'shilib qolsa X bilan chapga qaytariladi — iz qolmaydi.
+// chapda arradan chiqqan kromkali detallar: har skan darhol yoziladi, 1 tomonli
+// detal bitta skanda yashil bo'ladi, tugaganlari yashil bo'lib ro'yxatda qoladi.
+// O'ngda "Jarayonda" — faqat 2+ tomonli, kamida 1 tomoni skan qilingan, hali
+// tugamagan detallar. Xato skan BEKOR QILISH (60s) bilan qaytariladi.
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, X } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { ArrowLeft } from "lucide-react"
+import { useEffect, useRef } from "react"
 
-import { ScansService, TerminalService } from "@/client"
-import { playError, playSuccess } from "@/components/Terminal/audio"
+import { TerminalService } from "@/client"
 import { Button } from "@/components/ui/button"
-import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
-import useCustomToast from "@/hooks/useCustomToast"
 import { formatSize } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 
@@ -50,144 +47,65 @@ export function KromkaView({
   orderId,
   onBack,
   registerScan,
-  initialQr,
-  onInitialQrApplied,
 }: {
   orderId: number
   onBack: () => void
-  /** Terminal skan inputi KROMKA rejimida QR'ni shu yerga uzatadi.
-   * false qaytsa — QR bu proyektda topilmadi (terminal xato ko'rsatadi). */
-  registerScan?: (fn: ((qr: string) => boolean) | null) => void
-  /** Picker'da skan qilingan QR — sahifa ochilgach avtomatik tanlanadi */
-  initialQr?: string | null
-  onInitialQrApplied?: () => void
+  /** Skan oldidan tekshiruv: null = yozish mumkin, "NOTFOUND" = bu proyektda
+   * yo'q, boshqa string = foydalanuvchiga ko'rsatiladigan xato. */
+  registerScan?: (fn: ((qr: string) => string | null) | null) => void
 }) {
-  const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
   const { data, isLoading } = useQuery({
     queryKey: ["terminal", "kromka", orderId],
     queryFn: () => TerminalService.readTerminalKromka({ orderId }),
     refetchInterval: 30_000,
   })
-  // qr_text -> tanlangan (hali yozilmagan) tomonlar soni
-  const [staged, setStaged] = useState<Record<string, number>>({})
 
   const parts = (data?.parts ?? []) as KPart[]
 
-  // Skan handleri har renderda yangi data ko'radi, lekin terminal ro'yxatdan
-  // bir marta o'tkazadi — shu uchun ref orqali
-  const stageRef = useRef<(qr: string) => boolean>(() => false)
-  stageRef.current = (qr: string): boolean => {
+  // Tekshiruv har renderda yangi data ko'radi, terminal esa bir marta ro'yxatga oladi
+  const checkRef = useRef<(qr: string) => string | null>(() => "NOTFOUND")
+  checkRef.current = (qr: string): string | null => {
     for (const p of parts) {
       const inst = p.instances.find((i) => i.qr_text === qr)
       if (!inst) continue
-      if (!inst.arra_passed) {
-        playError()
-        showErrorToast("Bu detal hali arradan chiqmagan.")
-        return true
-      }
-      const pending = staged[qr] ?? 0
-      if (inst.done + pending >= p.sides) {
-        playError()
-        showErrorToast(
-          pending > 0
-            ? "Bu detalning hamma tomoni allaqachon tanlangan."
-            : "Bu detalning kromkasi allaqachon tugagan.",
-        )
-        return true
-      }
-      playSuccess()
-      setStaged((prev) => ({ ...prev, [qr]: pending + 1 }))
-      return true
+      if (!inst.arra_passed) return "Bu detal hali arradan chiqmagan."
+      if (inst.done >= p.sides)
+        return "Bu detalning kromkasi allaqachon tugagan."
+      return null
     }
-    return false
+    return "NOTFOUND"
   }
   useEffect(() => {
-    registerScan?.((qr) => stageRef.current(qr))
+    registerScan?.((qr) => checkRef.current(qr))
     return () => registerScan?.(null)
   }, [registerScan])
 
-  // Picker'dan kelgan QR: ma'lumot yuklangach BIR MARTA tanlanadi
-  const initApplied = useRef(false)
-  useEffect(() => {
-    if (!initialQr || !data || initApplied.current) return
-    initApplied.current = true
-    stageRef.current(initialQr)
-    onInitialQrApplied?.()
-  }, [initialQr, data, onInitialQrApplied])
-
-  const confirmMutation = useMutation({
-    mutationFn: async () => {
-      // Har tomon = bitta skan yozuvi (mavjud /scans oqimi, backend o'zgarmagan)
-      let ok = 0
-      let fail = 0
-      for (const [qr, n] of Object.entries(staged)) {
-        for (let k = 0; k < n; k++) {
-          try {
-            await ScansService.recordScan({
-              requestBody: {
-                qr_text: qr,
-                client_event_id: crypto.randomUUID(),
-              },
-            })
-            ok++
-          } catch {
-            fail++
-          }
-        }
-      }
-      return { ok, fail }
-    },
-    onSuccess: ({ ok, fail }) => {
-      if (ok) {
-        playSuccess()
-        showSuccessToast(`${ok} tomon tasdiqlandi`)
-      }
-      if (fail) {
-        playError()
-        showErrorToast(
-          `${fail} tomon yozilmadi — ro'yxat yangilandi, qayta urining.`,
-        )
-      }
-      setStaged({})
-      queryClient.invalidateQueries({ queryKey: ["terminal"] })
-    },
-  })
-
   if (isLoading) return <Skeleton className="h-full w-full" />
 
-  // Chap ro'yxat: faqat arradan chiqqan va kromkasi TUGAMAGAN nusxalar.
-  // Tugamaguncha ro'yxatda qoladi (tanlangani ham ko'rinib turadi).
+  // Chap: arradan chiqqan nusxalar — tugaganlari ham yashil bo'lib qoladi
   const leftParts = parts
     .map((p) => ({
       ...p,
-      instances: p.instances.filter((i) => i.arra_passed && i.done < p.sides),
+      instances: p.instances.filter((i) => i.arra_passed),
     }))
     .filter((p) => p.instances.length > 0)
     .sort((a, b) => a.code.localeCompare(b.code))
 
-  const stagedRows = Object.entries(staged)
-    .map(([qr, n]) => {
-      for (const p of parts) {
-        const inst = p.instances.find((i) => i.qr_text === qr)
-        if (inst) return { qr, n, part: p, inst }
-      }
-      return null
-    })
-    .filter(Boolean) as Array<{
-    qr: string
-    n: number
-    part: KPart
-    inst: KInstance
-  }>
-  const stagedTotal = stagedRows.reduce((s, r) => s + r.n, 0)
+  // O'ng "Jarayonda": faqat 2+ tomonli, boshlangan-u tugamagan nusxalar
+  const inProgress = parts
+    .flatMap((p) =>
+      p.instances
+        .filter((i) => p.sides >= 2 && i.done > 0 && i.done < p.sides)
+        .map((i) => ({ part: p, inst: i })),
+    )
+    .sort((a, b) => a.part.code.localeCompare(b.part.code))
 
   const totDone = parts.reduce((s, p) => s + p.total_done, 0)
   const totReq = parts.reduce((s, p) => s + p.total_required, 0)
 
   return (
     <div className="flex h-full min-h-0 gap-3">
-      {/* CHAP: arradan kelgan, kromkasi tugamagan detallar */}
+      {/* CHAP: arradan kelgan detallar, progress joyida ko'rinadi */}
       <div className="flex min-w-0 flex-1 flex-col rounded-xl border bg-white">
         <div className="flex items-center gap-3 border-b px-4 py-2">
           <Button
@@ -214,39 +132,44 @@ export function KromkaView({
               </tr>
             </thead>
             <tbody>
-              {leftParts.map((p) => (
-                <tr key={p.part_id} className="border-b last:border-0">
-                  <td className="num px-4 py-3 font-semibold">{p.code}</td>
-                  <td className="max-w-[200px] truncate px-4 py-3">{p.name}</td>
-                  <td className="num whitespace-nowrap px-4 py-3 text-sm">
-                    {formatSize(p.length, p.width, p.thickness)}
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    <b>{p.sides} tomon</b>
-                    <span className="ml-1.5 text-muted-foreground">
-                      {Object.keys(p.edges)
-                        .map((k) => SIDE_LABELS[k] ?? k)
-                        .join(", ")}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {/* Chip bosilsa ham tanlanadi — QR o'qilmay qolgan holat uchun */}
-                    <div className="flex flex-wrap items-center justify-end gap-1.5">
-                      {p.instances.map((i) => {
-                        const pending = staged[i.qr_text] ?? 0
-                        return (
-                          <button
-                            type="button"
+              {leftParts.map((p) => {
+                const finished = p.instances.every((i) => i.done >= p.sides)
+                return (
+                  <tr
+                    key={p.part_id}
+                    className={cn(
+                      "border-b last:border-0",
+                      finished && "bg-green-50",
+                    )}
+                  >
+                    <td className="num px-4 py-3 font-semibold">{p.code}</td>
+                    <td className="max-w-[200px] truncate px-4 py-3">
+                      {p.name}
+                    </td>
+                    <td className="num whitespace-nowrap px-4 py-3 text-sm">
+                      {formatSize(p.length, p.width, p.thickness)}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <b>{p.sides} tomon</b>
+                      <span className="ml-1.5 text-muted-foreground">
+                        {Object.keys(p.edges)
+                          .map((k) => SIDE_LABELS[k] ?? k)
+                          .join(", ")}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
+                        {p.instances.map((i) => (
+                          <span
                             key={i.instance_id}
                             title={i.qr_text}
-                            onClick={() => stageRef.current(i.qr_text)}
                             className={cn(
-                              "num rounded-md px-2.5 py-1.5 text-lg font-black transition-all active:scale-95",
-                              pending > 0
-                                ? "bg-amber-500 text-white"
+                              "num rounded-md px-2.5 py-1 text-lg font-black",
+                              i.done >= p.sides
+                                ? "bg-green-600 text-white"
                                 : i.done > 0
                                   ? "bg-amber-100 text-amber-700"
-                                  : "bg-primary/10 text-primary",
+                                  : "bg-muted text-muted-foreground",
                             )}
                           >
                             {p.instances.length > 1 && (
@@ -254,25 +177,21 @@ export function KromkaView({
                                 №{i.instance_no}
                               </span>
                             )}
-                            {i.done}/{p.sides}
-                            {pending > 0 && (
-                              <span className="ml-1 text-sm">+{pending}</span>
-                            )}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                            {i.done >= p.sides ? "✓" : `${i.done}/${p.sides}`}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
               {!leftParts.length && (
                 <tr>
                   <td
                     colSpan={5}
                     className="h-32 text-center text-muted-foreground"
                   >
-                    Arradan kelgan detal yo'q — hammasi tugagan yoki hali
-                    kesilmagan
+                    Arradan kelgan detal yo'q
                   </td>
                 </tr>
               )}
@@ -281,60 +200,48 @@ export function KromkaView({
         </div>
       </div>
 
-      {/* O'NG: tanlanganlar + TASDIQLASH */}
+      {/* O'NG: Jarayonda — 2+ tomonli, boshlangan, tugamagan */}
       <div className="flex min-w-0 flex-1 flex-col rounded-xl border bg-white">
         <div className="border-b px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          Tanlanganlar{" "}
-          {stagedTotal > 0 && (
-            <span className="num ml-1 rounded-sm bg-primary/10 px-1.5 py-0.5 text-primary">
-              {stagedTotal} tomon
+          Jarayonda{" "}
+          {inProgress.length > 0 && (
+            <span className="num ml-1 rounded-sm bg-amber-100 px-1.5 py-0.5 text-amber-700">
+              {inProgress.length}
             </span>
           )}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {stagedRows.map((r) => (
+          {inProgress.map(({ part, inst }) => (
             <div
-              key={r.qr}
-              className="flex items-center gap-2 border-b px-3 py-2.5 last:border-0"
+              key={inst.instance_id}
+              className="flex items-center gap-3 border-b px-4 py-3 last:border-0"
             >
               <div className="min-w-0 flex-1">
-                <div className="num truncate font-semibold">{r.part.code}</div>
+                <div className="num truncate text-base font-semibold">
+                  {part.code}
+                  {part.instances.length > 1 && (
+                    <span className="ml-1.5 text-xs text-muted-foreground">
+                      №{inst.instance_no}
+                    </span>
+                  )}
+                </div>
                 <div className="truncate text-xs text-muted-foreground">
-                  {r.part.name}
-                  {r.part.instances.length > 1 && ` · №${r.inst.instance_no}`}
+                  {part.name} ·{" "}
+                  {formatSize(part.length, part.width, part.thickness)}
                 </div>
               </div>
-              <span className="num shrink-0 rounded-md bg-amber-100 px-2.5 py-1 text-base font-black text-amber-700">
-                +{r.n}
+              <span className="num shrink-0 rounded-md bg-amber-100 px-3 py-1.5 text-xl font-black text-amber-700">
+                {inst.done}/{part.sides}
               </span>
-              {/* Noto'g'ri skan: hech narsa yozilmagan — shunchaki chapga qaytadi */}
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-11 shrink-0 text-destructive hover:bg-destructive/10"
-                title="Bekor qilish — chapga qaytarish"
-                onClick={() => setStaged(({ [r.qr]: _, ...rest }) => rest)}
-              >
-                <X />
-              </Button>
             </div>
           ))}
-          {!stagedRows.length && (
+          {!inProgress.length && (
             <p className="p-4 text-sm text-muted-foreground">
-              QR skan qiling yoki chapdagi detalni bosing — shu yerga
-              qo'shiladi. Tasdiqlamaguncha hech narsa yozilmaydi.
+              Jarayonda detal yo'q. QR skan qilinsa hisob darhol yoziladi: 1
+              tomonlisi shu zahoti yashil bo'ladi, ko'p tomonlisi tugaguncha shu
+              yerda turadi.
             </p>
           )}
-        </div>
-        <div className="border-t p-3">
-          <LoadingButton
-            className="h-16 w-full bg-green-600 text-lg font-black hover:bg-green-700"
-            disabled={stagedTotal === 0}
-            loading={confirmMutation.isPending}
-            onClick={() => confirmMutation.mutate()}
-          >
-            TASDIQLASH{stagedTotal > 0 ? ` — ${stagedTotal} tomon` : ""}
-          </LoadingButton>
         </div>
       </div>
     </div>
