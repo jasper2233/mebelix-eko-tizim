@@ -88,7 +88,8 @@ async def seed_defaults() -> None:
 
         existing = {p.code: p for p in (await db.execute(select(Post))).scalars()}
         for data in POSTS:
-            post = existing.get(data["code"])  # type: ignore[arg-type]
+            code: PostCode = data["code"]  # type: ignore[assignment]
+            post = existing.get(code)
             if post is None:
                 db.add(Post(**data))  # type: ignore[arg-type]
                 logger.info("Post %s created", data["code"])

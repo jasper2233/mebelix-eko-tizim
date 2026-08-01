@@ -272,7 +272,9 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[dict]:
                     )
                     .group_by(PartInstance.order_id)
                 )
-            ).all()
+            )
+            .tuples()
+            .all()
         )
     # KROMKA kartasida hisob DETAL bo'yicha (tomon emas): nusxaning hamma tomoni
     # skan qilingan bo'lsa — qilingan; jami = kromkali nusxalar soni
@@ -418,7 +420,9 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
                 )
                 .group_by(Scan.instance_id)
             )
-        ).all()
+        )
+        .tuples()
+        .all()
     )
 
     arra_post_id = (
