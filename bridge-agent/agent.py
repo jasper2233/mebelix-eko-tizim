@@ -267,9 +267,19 @@ def _pair() -> None:
             error = str(exc)
             log.warning("Ulanmadi: %s", error)
 
-    (CONFIG_DIR / ".env").write_text(
-        f"MES_URL={url}\nBRIDGE_TOKEN={token}\n", encoding="utf-8"
-    )
+    env_body = f"MES_URL={url}\nBRIDGE_TOKEN={token}\n"
+    (CONFIG_DIR / ".env").write_text(env_body, encoding="utf-8")
+    # Exe yonida qo'lda qo'yilgan .env bo'lsa u ham yangilanadi: o'qish tartibida
+    # u APPDATA'dan USTUN turadi — eski (bekor qilingan) tokenli nusxasi qolsa
+    # har yonganda o'sha yuklanib, dialog aylanasiga olib borardi
+    _exe_env = (
+        Path(sys.executable).parent
+        if getattr(sys, "frozen", False)
+        else Path(__file__).resolve().parent
+    ) / ".env"
+    if _exe_env.exists():
+        with contextlib.suppress(OSError):
+            _exe_env.write_text(env_body, encoding="utf-8")
     os.environ["MES_URL"] = url
     os.environ["BRIDGE_TOKEN"] = token
     _register_autostart()
@@ -569,12 +579,14 @@ def start_scan_forward() -> None:
     from uuid import uuid4
 
     scan_re = re.compile(r"^[0-9A-Za-z_\-]{6,64}$")
-    http = MES_URL.replace("wss://", "https://", 1).replace("ws://", "http://", 1).rstrip("/")
     buf: list[str] = []
     first = [0.0]
     last = [0.0]
 
     def send(qr: str) -> None:
+        # MES_URL har chaqiruvda o'qiladi: re-pairing manzilni almashtirgan
+        # bo'lsa skan-forvard ham yangi serverga yozsin
+        http = MES_URL.replace("wss://", "https://", 1).replace("ws://", "http://", 1).rstrip("/")
         req = urllib.request.Request(
             f"{http}/api/v1/bridge-agents/scan",
             data=_json.dumps({"qr_text": qr, "client_event_id": uuid4().hex}).encode(),
