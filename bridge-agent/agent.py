@@ -41,6 +41,10 @@ for _stream in (sys.stdout, sys.stderr):
     with contextlib.suppress(Exception):
         _stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
 
+# Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
+# yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
+AGENT_VERSION = "1.1.0"
+
 # O'rnatish konfiguratsiyasi shu yerda saqlanadi (exe qayerdan ishlatilishidan qat'i nazar)
 CONFIG_DIR = Path(os.environ.get("APPDATA", str(Path.home()))) / "MebelixAgent"
 LOG_FILE = CONFIG_DIR / "agent.log"
@@ -500,7 +504,12 @@ async def uplink() -> None:
         # (_repair) yangi qiymat darhol ishlatilsin.
         # Token Authorization headerda - URL query'da emas (server loglariga tushmasin)
         url = f"{MES_URL.rstrip('/')}/api/v1/ws/bridge"
-        kwargs = {_HDR_KW: {"Authorization": f"Bearer {BRIDGE_TOKEN}"}}
+        kwargs = {
+            _HDR_KW: {
+                "Authorization": f"Bearer {BRIDGE_TOKEN}",
+                "X-Agent-Version": AGENT_VERSION,
+            }
+        }
         try:
             async with websockets.connect(url, ping_interval=30, **kwargs) as ws:
                 log.info("Serverga ulandi: %s", MES_URL)
@@ -633,6 +642,7 @@ async def main() -> None:
         raise SystemExit(
             "Token yo'q — agentni ishga tushirib admin paneldagi ulanish kodini kiriting"
         )
+    log.info("MebeliX agent v%s", AGENT_VERSION)
     log.info("Printer: %s", PRINTER_NAME or "TOPILMADI — GoDEX drayverini o'rnating")
     start_scan_forward()
     await asyncio.gather(uplink(), flusher())

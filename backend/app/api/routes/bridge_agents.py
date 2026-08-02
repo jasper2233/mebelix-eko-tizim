@@ -67,6 +67,7 @@ def _read(agent: BridgeAgent, machine_name: str | None = None) -> BridgeAgentRea
         created_at=agent.created_at,
         machine_id=agent.machine_id,
         machine_name=machine_name,
+        version=agent.version,
     )
 
 

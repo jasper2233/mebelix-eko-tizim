@@ -189,7 +189,13 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
       <TableCell className="font-medium">{agent.name}</TableCell>
       <TableCell>
         {online ? (
-          <Badge>Ulandi</Badge>
+          <span className="inline-flex items-center gap-1.5">
+            <Badge>Ulandi</Badge>
+            {/* null = eski (versiyasiz) exe — yangilash kerakligi darhol ko'rinadi */}
+            <span className="num text-xs text-muted-foreground">
+              {agent.version ? `v${agent.version}` : "eski exe"}
+            </span>
+          </span>
         ) : agent.paired ? (
           <Badge variant="secondary">Uzilgan</Badge>
         ) : agent.pair_code ? (

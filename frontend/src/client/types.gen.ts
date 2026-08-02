@@ -56,6 +56,7 @@ export type BridgeAgentRead = {
     created_at: string;
     machine_id?: (number | null);
     machine_name?: (string | null);
+    version?: (string | null);
 };
 
 /**

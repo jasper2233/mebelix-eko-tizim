@@ -74,6 +74,7 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
     """
     if not token:
         token = websocket.headers.get("authorization", "").removeprefix("Bearer ").strip()
+    agent_version = websocket.headers.get("x-agent-version", "").strip()[:20] or None
     agent_id: int | None = None
     token_hash: str | None = None
     # bytes solishtirish: non-ASCII tokenda compare_digest(str) TypeError beradi
@@ -109,7 +110,7 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
                         BridgeAgent.token_hash == token_hash,
                         BridgeAgent.is_deleted == False,  # noqa: E712
                     )
-                    .values(last_seen_at=datetime.now(UTC))
+                    .values(last_seen_at=datetime.now(UTC), version=agent_version)
                     .returning(BridgeAgent.id)
                 )
                 alive = res.first() is not None

@@ -27,3 +27,6 @@ class BridgeAgent(BaseModel):
     # Skan-forvard (TZ 12.5): stanok skaneri agent orqali MES'ga ham yozilsin —
     # skan qaysi stanok/post nomidan yozilishini shu bog'lash hal qiladi
     machine_id: Mapped[int | None] = mapped_column(ForeignKey("machine.id"), default=None, kw_only=True)
+    # Agent exe versiyasi (WS handshake'dagi X-Agent-Version) — admin paneldan
+    # qaysi kompyuterda eski exe qolganini ko'rish uchun; null = eski (headersiz) agent
+    version: Mapped[str | None] = mapped_column(String(20), default=None, kw_only=True)

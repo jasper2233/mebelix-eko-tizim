@@ -18,6 +18,8 @@ class BridgeAgentRead(BaseModel):
     # Skan-forvard: stanok skaneri MES'ga shu stanok nomidan yoziladi
     machine_id: int | None = None
     machine_name: str | None = None
+    # Agent exe versiyasi (oxirgi ulanishdan); null = eski (headersiz) exe
+    version: str | None = None
 
 
 class BridgeAgentCreate(BaseModel):
