@@ -149,14 +149,15 @@ export function PrisadkaView({
           Bajarildi: <b className="text-foreground">{totDone}</b>/{totReq}
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {/* Sensorli ekranda hover yo'q — ikonka yoniga yozuv shart */}
           {dirSupported() && (
             <Button
               variant="outline"
-              className="h-12 px-3"
+              className="h-12 px-3 font-bold"
               title="SCX papkasini almashtirish"
               onClick={changeDir}
             >
-              <FolderCog />
+              <FolderCog /> Papka
             </Button>
           )}
           <LoadingButton
