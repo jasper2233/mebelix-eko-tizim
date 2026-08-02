@@ -302,6 +302,17 @@ async def bridge_scan(
         await db.rollback()
         raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
 
+    if not outcome.duplicate:
+        log_action(
+            db,
+            module="scan",
+            action="recorded",
+            employee_id=outcome.scan.employee_id,
+            entity_type="scan",
+            entity_id=outcome.scan.id,
+            message=f"Skan (stanok, {agent.name}): {outcome.instance.qr_text} — {outcome.part.name}",
+            meta={"post_id": outcome.scan.post_id, "machine_id": outcome.scan.machine_id, "agent_id": agent.id},
+        )
     await db.commit()
     for event in outcome.events:
         await ws_manager.publish(

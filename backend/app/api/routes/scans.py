@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from app.api.deps import SessionDep, require_roles
 from app.core.ws import ws_manager
+from app.crud import log_action
 from app.models import Part, PartInstance, Scan, WorkSession
 from app.models.enums import POST_ROLES, SessionStatus, UserRole
 from app.models.user import User
@@ -26,6 +27,18 @@ async def record_scan_endpoint(db: SessionDep, user: TerminalUser, body: ScanReq
         await db.rollback()
         raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
 
+    if not outcome.duplicate:
+        log_action(
+            db,
+            module="scan",
+            action="recorded",
+            user_id=user.id,
+            employee_id=outcome.scan.employee_id,
+            entity_type="scan",
+            entity_id=outcome.scan.id,
+            message=f"Skan: {outcome.instance.qr_text} — {outcome.part.name}",
+            meta={"post_id": outcome.scan.post_id, "machine_id": outcome.scan.machine_id},
+        )
     await db.commit()
     for event in outcome.events:
         await ws_manager.publish(
@@ -52,6 +65,18 @@ async def cancel_scan_endpoint(db: SessionDep, user: TerminalUser, scan_id: int)
     except ScanRejected as exc:
         await db.rollback()
         raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
+    cancelled_instance = await db.get(PartInstance, scan.instance_id)
+    log_action(
+        db,
+        module="scan",
+        action="cancelled",
+        user_id=user.id,
+        employee_id=scan.employee_id,
+        entity_type="scan",
+        entity_id=scan.id,
+        message=f"Skan bekor qilindi: {cancelled_instance.qr_text if cancelled_instance else scan.instance_id}",
+        meta={"post_id": scan.post_id, "machine_id": scan.machine_id},
+    )
     await db.commit()
     for event in events:
         await ws_manager.publish(

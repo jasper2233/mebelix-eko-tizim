@@ -14,6 +14,7 @@ export class AuditService {
      * @param data.module
      * @param data.action
      * @param data.userId
+     * @param data.q
      * @param data.dateFrom
      * @param data.dateTo
      * @returns Paginated_AuditLogRead_ Successful Response
@@ -29,6 +30,7 @@ export class AuditService {
                 module: data.module,
                 action: data.action,
                 user_id: data.userId,
+                q: data.q,
                 date_from: data.dateFrom,
                 date_to: data.dateTo
             },

@@ -14,6 +14,8 @@ export type AuditLogRead = {
     };
     ip: (string | null);
     created_at: string;
+    user_name?: (string | null);
+    employee_name?: (string | null);
 };
 
 export type BadgeStart = {
@@ -896,6 +898,7 @@ export type ReadAuditLogsData = {
     dateTo?: (string | null);
     limit?: number;
     module?: (string | null);
+    q?: (string | null);
     skip?: number;
     userId?: (number | null);
 };
