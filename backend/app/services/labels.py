@@ -217,14 +217,16 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
         except OSError:
             text(35, 9.4, "С", 3.2, bold=True)
 
-    # Material va sana pastda
+    # Material pastda; oxirgi qator BITTA: chapda N/nusxa, o'ngda sana-vaqt.
+    # Ikki qator paytida oxirgisi (y 56.2 + 2.9 ≈ 59mm) yorliq pastki chetiga
+    # tushib, termal printerda yeyilardi — endi 55.7mm da tugaydi (4mm zaxira)
     text(5, 49, d.material[:24], 2.9, bold=True)
-    text(5, 53, d.printed_at.strftime("%Y.%m.%d %H:%M"), 2.7)
     n = f"N{d.label_num}" if d.label_num else ""
     copy = f"{d.instance_no}/{d.count}" if d.instance_no else ""
     tail = f"{n} {copy}".strip()
     if tail:
-        text(5, 56.2, tail, 2.9, bold=True)
+        text(5, 52.8, tail, 2.9, bold=True)
+    text(52, 53.2, d.printed_at.strftime("%Y.%m.%d %H:%M"), 2.5, anchor="ra")
 
     # ============ O'NG USTUN (x 56..78) ============
     # QR tepada — to'liq nusxa kodi (skan oqimi)
