@@ -43,7 +43,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.1.0"
+AGENT_VERSION = "1.2.0"
 
 # O'rnatish konfiguratsiyasi shu yerda saqlanadi (exe qayerdan ishlatilishidan qat'i nazar)
 CONFIG_DIR = Path(os.environ.get("APPDATA", str(Path.home()))) / "MebelixAgent"
@@ -490,6 +490,33 @@ def _repair() -> None:
     MES_URL = os.environ.get("MES_URL", MES_URL)
 
 
+_connected_once = False
+
+
+def _notify_connected() -> None:
+    """Birinchi muvaffaqiyatli ulanishda 5 soniyalik xabar (o'zi yopiladi) —
+    monoblok yonganda arrachi agent tayyorligini shu yerdan biladi; bosish
+    shart emas, ish oqimini to'smaydi. Alohida threadda: asyncio loop
+    (flusher/uplink) bloklanmasin."""
+    import ctypes
+    import threading
+
+    def show() -> None:
+        with contextlib.suppress(Exception):
+            # MessageBoxTimeoutW — timeout bilan yopiladigan MessageBox
+            # (XP dan beri bor); topilmasa xabar shunchaki chiqmaydi, log yetadi
+            ctypes.windll.user32.MessageBoxTimeoutW(  # type: ignore[attr-defined]
+                0,
+                f"Printer agenti serverga ulandi (v{AGENT_VERSION}).\nChek chiqarishga tayyor.",
+                "MebeliX",
+                0x00000040 | 0x00040000,  # MB_ICONINFORMATION | MB_TOPMOST
+                0,
+                5000,  # 5 soniyada o'zi yopiladi
+            )
+
+    threading.Thread(target=show, daemon=True).start()
+
+
 async def uplink() -> None:
     """Serverga doimiy outbound ulanish; uzilsa 5s backoff bilan qayta ulanadi.
 
@@ -514,6 +541,10 @@ async def uplink() -> None:
             async with websockets.connect(url, ping_interval=30, **kwargs) as ws:
                 log.info("Serverga ulandi: %s", MES_URL)
                 reject_streak = 0
+                global _connected_once
+                if not _connected_once:
+                    _connected_once = True
+                    _notify_connected()
                 async for raw in ws:
                     try:
                         msg = json.loads(raw)
