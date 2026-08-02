@@ -57,7 +57,6 @@ Marshrut qoidalari (5.4): ARRA har doim (per_instance=1); KROMKA = ell/elr/elt/e
 PRISADKA = bf/bt/bb/bl/br; PAZ = gr; ROVER = ms/ml/mac — XNC bosqichlarda per_instance = shu
 element bor op soni (`_2` → 2). STOLYARKA — texnolog qo'lda (matrix PATCH).
 
-Test: `uv run python -m tests.test_giblab` — sintetik blob enkoderi bilan assert-based.
 
 ## 3. Scan engine (`app/services/scanning.py`)
 

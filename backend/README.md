@@ -46,7 +46,6 @@ make worker         # uv --project backend run arq app.core.worker.WorkerSetting
 ## Test, lint, migratsiya
 
 ```bash
-cd backend && uv run python -m tests.test_giblab   # GibLab parser test to'plami (CI dagi bilan bir xil)
 make lint                                          # ruff check + mypy app
 make format                                        # ruff format + ruff check --fix
 make migrate                                       # alembic upgrade head

@@ -603,5 +603,5 @@ registridan olamiz.
 - Blob: `csblob.py` (base64 binar), `cutmap.py` (vizual model + instance↔katakcha binding)
 - Ishlov: `xnc.py` (dastur XML), `scx.py` (CNC fayl generatsiyasi)
 - DB'ga yozish: `ingest.py` (mahsulot/detal/nusxa/marshrut, material registri, sarf hisobi)
-- Testlar: `backend/tests/test_giblab.py` — sintetik fayllar, korpus fayllari repoda yo'q
+- Korpus fayllari repoda yo'q — parser o'zgarishida real .project fayllarga qarshi qo'lda tekshiriladi
 - Domen tomoni: `docs/09-mes-domain.md`, API: `docs/03-backend-api.md`
