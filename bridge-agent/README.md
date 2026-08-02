@@ -43,7 +43,7 @@ Odatda qo'lda hech narsa yozilmaydi — birinchi ulanish ikkalasini ham to'ldira
 | `MES_URL` | server manzili (`wss://mes.mebelix.uz` yoki `ws://host:8000`) |
 | `BRIDGE_TOKEN` | ulanishda olingan doimiy token (har agentda o'ziniki) |
 | `PRINTER_NAME` | printer nomini qo'lda berish (avto-topish o'rniga) |
-| `QUEUE_FILE` | lokal navbat fayli (default `./print-queue.jsonl`) |
+| `QUEUE_FILE` | lokal navbat fayli (default `%APPDATA%\MebelixAgent\print-queue.jsonl` — avtostartda ishchi papka System32 bo'lgani uchun nisbiy yo'l ishlamaydi) |
 
 ## Ishlash tartibi
 
@@ -59,10 +59,13 @@ Ack kelmasa yoki ulanish uzilsa job navbatga qaytadi — yorliq yo'qolmaydi.
 
 ## Muammolar
 
-Admin panelda "yangi kod" yoki "bekor qilish" bosilsa server ulanishni rad etadi.
-Agent buni o'zi payqaydi: saqlangan tokenni o'chirib, sozlash oynasini qayta
+Admin panelda "yangi kod" yoki "bekor qilish" bosilsa server ulanishni **HTTP
+401/403** bilan rad etadi. Agent buni o'zi payqaydi: 401/403 KETMA-KET 3 marta
+kelgandagina (~15 soniya) saqlangan tokenni o'chirib, sozlash oynasini qayta
 ochadi — yangi kodni kiritsangiz ishlashda davom etadi. Oyna bekor qilinsa agent
-to'xtaydi.
+to'xtaydi. Boshqa har qanday xato (deploy paytidagi 502, kompyuter yonganda
+tarmoq hali tik turmagani, server qayta yonayotgani) tokenni O'CHIRMAYDI —
+agent 5 soniyalik interval bilan jimgina qayta ulanadi, dialog ochilmaydi.
 
 Chek chiqmasa birinchi qaraydigan joy — admin paneldagi holat. **Oflayn** bo'lsa
 agent ishlamayapti: `agent.log` ni oching. Muhimi, bu paytda ham hech narsa

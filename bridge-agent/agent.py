@@ -20,7 +20,7 @@ Env sozlamalari (ixtiyoriy, pairing o'zi to'ldiradi):
     MES_URL       — server manzili (wss://... yoki ws://host:8000)
     BRIDGE_TOKEN  — token (pairing bergan yoki serverdagi umumiy token)
     PRINTER_NAME  — printer nomini qo'lda berish (avto-topish o'rniga)
-    QUEUE_FILE    — lokal navbat fayli (default ./print-queue.jsonl)
+    QUEUE_FILE    — lokal navbat fayli (default %APPDATA%\MebelixAgent\print-queue.jsonl)
 """
 
 import asyncio
@@ -303,7 +303,19 @@ _pair()
 MES_URL = os.environ.get("MES_URL", "ws://localhost:8000")
 BRIDGE_TOKEN = os.environ.get("BRIDGE_TOKEN", "")
 PRINTER_NAME = os.environ.get("PRINTER_NAME", "") or _detect_printer()
-QUEUE_FILE = Path(os.environ.get("QUEUE_FILE", "print-queue.jsonl"))
+# Default %APPDATA%\MebelixAgent ichida: avtostartda ishchi papka System32 bo'ladi —
+# u yerga yozib bo'lmaydi va navbat fayli jimgina yo'qolardi
+QUEUE_FILE = Path(os.environ.get("QUEUE_FILE") or (CONFIG_DIR / "print-queue.jsonl"))
+
+# Eski o'rnatish migratsiyasi: exe yonidagi qadimgi navbat faylida kutayotgan
+# joblar bo'lsa yangi joyga ko'chiriladi — yorliq yo'qolmasin
+_legacy_queue = (
+    Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
+) / "print-queue.jsonl"
+if "QUEUE_FILE" not in os.environ and _legacy_queue.is_file() and not QUEUE_FILE.exists():
+    with contextlib.suppress(OSError):
+        _legacy_queue.replace(QUEUE_FILE)
+        log.info("Eski navbat fayli ko'chirildi: %s", QUEUE_FILE)
 # Skan-forvard (TZ 12.5): stanok skaneri (klaviatura-HID) terganini MES'ga ham
 # yuborish. SCAN_FORWARD=0 o'chiradi; pynput bo'lmasa o'zi jim o'chadi.
 SCAN_FORWARD = os.environ.get("SCAN_FORWARD", "1") != "0"
@@ -439,6 +451,14 @@ _REJECTED: tuple[type[Exception], ...] = (
 )
 
 
+def _handshake_status(exc: Exception) -> int | None:
+    """Handshake HTTP kodi: v14 InvalidStatus.response.status_code, v13 .status_code."""
+    resp = getattr(exc, "response", None)
+    if resp is not None:
+        return getattr(resp, "status_code", None)
+    return getattr(exc, "status_code", None)
+
+
 def _repair() -> None:
     """Token bekor qilingan (admin "yangi kod" yoki "o'chirish" bosgan): saqlangan
     sozlamani tozalab, yangi kod so'raymiz. Busiz foydalanuvchi .env ni qo'lda
@@ -447,8 +467,9 @@ def _repair() -> None:
     qo'ymaydi). Bekor qilinsa agent to'xtaydi."""
     global BRIDGE_TOKEN, MES_URL
 
-    with contextlib.suppress(OSError):
-        (CONFIG_DIR / ".env").unlink()
+    # .env ATAYIN o'chirilmaydi: muvaffaqiyatli pairing uni baribir qayta yozadi,
+    # dialog bekor qilinsa/agent o'chirilsa esa eski holat saqlanib qoladi
+    # (token baribir bekor — keyingi ishga tushishda yana so'raladi)
     os.environ.pop("BRIDGE_TOKEN", None)
     _pair()
     BRIDGE_TOKEN = os.environ.get("BRIDGE_TOKEN", "")
@@ -456,7 +477,14 @@ def _repair() -> None:
 
 
 async def uplink() -> None:
-    """Serverga doimiy outbound ulanish; uzilsa 5s backoff bilan qayta ulanadi."""
+    """Serverga doimiy outbound ulanish; uzilsa 5s backoff bilan qayta ulanadi.
+
+    Token FAQAT server 401/403 bilan KETMA-KET 3 marta rad etgandagina bekor
+    hisoblanadi (webda "yangi kod"/"o'chirish" — server shunda 403 qaytaradi).
+    Boshqa har qanday holat (deploy paytidagi 502/503, monoblok yonganda tarmoq
+    hali tik turmagani, server qayta yonayotgani) — oddiy qayta urinish: saqlangan
+    kod O'CHIRILMAYDI, dialog ochilmaydi."""
+    reject_streak = 0
     while True:
         # Har urinishda qayta o'qiladi: token bekor qilinib qayta ulangan bo'lsa
         # (_repair) yangi qiymat darhol ishlatilsin.
@@ -466,6 +494,7 @@ async def uplink() -> None:
         try:
             async with websockets.connect(url, ping_interval=30, **kwargs) as ws:
                 log.info("Serverga ulandi: %s", MES_URL)
+                reject_streak = 0
                 async for raw in ws:
                     try:
                         msg = json.loads(raw)
@@ -484,9 +513,34 @@ async def uplink() -> None:
                             msg.get("instance_id"),
                         )
         except _REJECTED as exc:
-            log.error("Server ulanishni rad etdi (%s) - token bekor qilingan", exc)
-            _repair()
+            status = _handshake_status(exc)
+            if status in (401, 403):
+                reject_streak += 1
+                if reject_streak >= 3:
+                    log.error(
+                        "Server %d marta rad etdi (HTTP %s) - token bekor qilingan",
+                        reject_streak,
+                        status,
+                    )
+                    reject_streak = 0
+                    _repair()
+                    continue
+                log.warning(
+                    "Handshake rad etildi (HTTP %s, %d/3) — 5s dan keyin qayta urinish",
+                    status,
+                    reject_streak,
+                )
+            else:
+                # 5xx / redirect / g'alati javob — server yoki tarmoq holati,
+                # token aybdor emas; streak ham nolga — "ketma-ket" chin bo'lsin
+                reject_streak = 0
+                log.warning(
+                    "Handshake muvaffaqiyatsiz (HTTP %s) — 5s dan keyin qayta urinish",
+                    status,
+                )
+            await asyncio.sleep(5)
         except Exception as exc:
+            reject_streak = 0
             log.warning("Ulanish uzildi (%s) — 5s dan keyin qayta urinish", exc)
             await asyncio.sleep(5)
 
