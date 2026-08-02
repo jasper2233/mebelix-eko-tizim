@@ -11,6 +11,7 @@ import { type AuditLogRead, AuditService } from "@/client"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { DatePicker } from "@/components/ui/date-picker"
 import {
   Dialog,
   DialogContent,
@@ -116,11 +117,11 @@ function LogsPage() {
             onChange={(e) => setFilter(() => setSearch(e.target.value))}
           />
         </div>
-        <input
-          type="date"
-          className="h-9 rounded-md border bg-transparent px-3 text-sm"
+        <DatePicker
           value={day}
-          onChange={(e) => setFilter(() => setDay(e.target.value))}
+          onChange={(v) => setFilter(() => setDay(v))}
+          placeholder="Sana bo'yicha"
+          className="h-9"
         />
         {(module || search || day) && (
           <Button
