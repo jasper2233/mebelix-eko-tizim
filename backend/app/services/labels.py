@@ -164,7 +164,9 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
     product_code = d.part_code.split("_", 1)[0]
     text(26, 1.5, "Formatka", 2.8)
     text(26, 4.8, product_code[:7], 3.7, bold=True)
-    text(5, 9.5, d.part_code[:18], 2.7)
+    # To'liq nusxa ID (= QR matni = SCX fayl nomi): prisadkachi chekdagi yozuv
+    # bilan stanokdagi faylni bevosita solishtira oladi
+    text(5, 9.5, d.qr_text[:20], 2.7)
 
     # Loyiha (limit 26: kattaroq shriftda eskiz chizig'iga yetmasin)
     text(5, 13.5, d.project_name[:26], 3.3, bold=True)
