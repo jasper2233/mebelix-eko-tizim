@@ -317,7 +317,8 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   (8 dot/mm → 640×480 px). `draw.fontmode = "1"` (antialiasing yo'q) va yakuniy
   `convert("L").point(v < 160)` — chiqish sof 1-bit, drayver dither qilmasin.
   Maket: chap ustunda logo (`app/assets/label-logo.png`), `Formatka` + zakaz kodi,
-  detal kodi, loyiha nomi, 2×2 kromka katakchalari (tagchiziqli), katta
+  to'liq nusxa ID (QR matni va SCX fayl nomi bilan aynan bir xil satr),
+  loyiha nomi, 2×2 kromka katakchalari (tagchiziqli), katta
   `L x W = count`, `N_nom`, XNC belgilari (`П` paz, `Ф` freza, teshik uchun
   `app/assets/label-icon-drill.png` ikonkasi), material va sana; o'ng ustunda QR
   (`qrcode`, `instance.qr_text`) va vertikal detal eskizi.

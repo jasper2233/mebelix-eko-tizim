@@ -506,7 +506,7 @@ GibLab shabloniga qo'yiladigan maydonlar (109 ta), guruhlar bo'yicha:
 - **Ishlov**: `XNC1..XNC5` + `xncSide1..5` + `xncBSD1..5`
 
 MebeliX o'z yorlig'ini chiqaradi (TZ 5.2.8, `services/labels.py`): 80×60 mm, 203 dpi, 1-bit
-termoprinter uchun. Ichida QR (`{productCode}_{partCode}` — yagona nusxa suffikssiz, takrorlanganda `_{n}`), detal kodi va nomi, buyurtma,
+termoprinter uchun. Ichida QR (`{productCode}_{partCode}` — yagona nusxa suffikssiz, takrorlanganda `_{n}`), matn qatorida ham xuddi shu to'liq nusxa ID (QR va SCX nomi bilan bir xil), detal nomi, buyurtma,
 material, o'lcham, qalinlik, kromka belgilari, teshik eskizi va burg'u ikonkasi.
 
 Sabab: GibLab yorlig'i skan qilinadigan QR bermaydi va MebeliX'ning bosqichma-bosqich

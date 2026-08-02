@@ -290,7 +290,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida, alohida app header/foot
 
 ### `frontend/src/components/Terminal/PrisadkaView.tsx`
 
-**Maqsadi:** PRISADKA sahifasi (TZ 12.5): detallar + SCX fayllari, "Hammasini yuklab olish" tugmasi. `lib/scxDir.ts` bilan: File System Access API `showDirectoryPicker` BIR MARTA — tanlangan papka IndexedDB'da (`mebelix-terminal/kv/scx-dir`), keyingi yuklab olishlar so'roqsiz; papka ichida proyekt nomli subpapka (`project_name`, taqiqlangan belgilar `_` ga) ochilib fayllar shu yerga yoziladi. API bo'lmasa `<a download>` fallback. Har skandagi avto-SCX (`downloadScx`) ham saqlangan papkaga tushadi.
+**Maqsadi:** PRISADKA sahifasi (TZ 12.5): detallar + SCX fayllari, "Hammasini yuklab olish" tugmasi. `lib/scxDir.ts` bilan: File System Access API `showDirectoryPicker` BIR MARTA — tanlangan papka IndexedDB'da (`mebelix-terminal/kv/scx-dir`), keyingi yuklab olishlar so'roqsiz; papka ichida proyekt nomli subpapka (`project_name`, taqiqlangan belgilar `_` ga) ochilib fayllar shu yerga yoziladi. API bo'lmasa `<a download>` fallback. Har skandagi avto-SCX (`downloadScx`) ham saqlangan papkaga tushadi. Yuklab olishda tugmada jonli progress ("Yuklanmoqda… 12/81"); papka tugmasi yozuvli ("Papka" — sensorli ekranda hover yo'q). Jadval ish-navbat tartibida: qilinmaganlar tepada, tugaganlar (✓ yashil) pastda; oxirgi skan bo'lgan qator 6 s amber pulsatsiya bilan ajralib turadi (`done` oshgani ref orqali aniqlanadi — lokal skan ham, stanokdan skan-forvard ham).
 
 ### `frontend/src/components/Terminal/audio.ts`
 
