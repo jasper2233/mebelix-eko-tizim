@@ -17,8 +17,8 @@ from app.core.config import settings
 from app.core.db import local_session
 from app.core.security import ACCESS_COOKIE_NAME
 from app.core.ws import WsClient, ws_manager
-from app.models import BridgeAgent, Machine
-from app.models.enums import UserRole
+from app.models import BridgeAgent, Machine, Post
+from app.models.enums import POST_ROLES, UserRole
 from app.tasks import PRINT_QUEUE_KEY
 
 router = APIRouter()
@@ -41,6 +41,14 @@ async def ws_events(websocket: WebSocket, token: str | None = None) -> None:
         if user.machine_id is not None:
             machine = await db.get(Machine, user.machine_id)
             post_id = machine.post_id if machine else None
+        elif (post_code := POST_ROLES.get(UserRole(user.role))) is not None:
+            # Operator rol (prisadkachi, kromkachi, ...): stanok biriktirilmagan —
+            # post roldan olinadi, aks holda postga nishonlangan scan.recorded
+            # eventlari yetib bormay jonli yangilanish ishlamaydi
+            post = (
+                await db.execute(select(Post).where(Post.code == post_code, Post.is_deleted == False))  # noqa: E712
+            ).scalar_one_or_none()
+            post_id = post.id if post else None
 
     client = WsClient(
         socket=websocket,
