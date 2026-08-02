@@ -59,3 +59,8 @@ backups/
 # terminal SCX test papkasi
 /scx/
 /stanok rasmlar/
+
+# pyinstaller artefaktlari
+bridge-agent/build/
+bridge-agent/dist/
+bridge-agent/*.spec
