@@ -923,12 +923,15 @@ async def regenerate_order_scx(db: SessionDep, current_user: TexnologUser, order
 
     scx_dir = upload_root / "scx" / str(order.id)
     scx_dir.mkdir(parents=True, exist_ok=True)
+    plate_by_name = {m.name: m.thickness for m in project.materials if m.kind == "sheet" and m.thickness}
     created = 0
     for pp in project.all_parts:
         part = parts_by_key.get(pp.key)
         if part is None or not pp.xnc_ops:
             continue
-        for filename, content, meta in build_scx_files(pp, qr_by_part.get(part.id, [])):
+        for filename, content, meta in build_scx_files(
+            pp, qr_by_part.get(part.id, []), plate_thickness=plate_by_name.get(pp.material_name or "")
+        ):
             (scx_dir / filename).write_text(content, encoding="utf-8")
             db.add(
                 OrderFile(

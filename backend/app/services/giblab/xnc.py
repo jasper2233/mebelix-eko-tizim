@@ -235,6 +235,54 @@ def parse_xnc_program(code: str, program_xml: str, side: str | None = None) -> X
     return op
 
 
+def apply_mirror(op: XncOp, mir_hor: bool, mir_vert: bool) -> None:
+    """Operatsiyadagi mirHor/mirVert ni geometriyaga QO'LLAYDI (TZ 5.6.4).
+
+    GibLab bunday dasturni eksportda aks ettirib chiqaradi — biz ham parse
+    bosqichida normallashtiramiz, shunda SCX, yorliq va kesish xaritasi
+    teshiklari bir xil (to'g'ri) koordinatada bo'ladi. mirHor: x' = dx − x,
+    qirralar l↔r; mirVert: y' = dy − y, qirralar t↔b; yoy yo'nalishi har
+    aks ettirishda teskarilanadi.
+    """
+    if not (mir_hor or mir_vert):
+        return
+    L, W = op.dx, op.dy
+
+    def mx(x: float) -> float:
+        return L - x if mir_hor else x
+
+    def my(y: float) -> float:
+        return W - y if mir_vert else y
+
+    for b in op.bores:
+        b["x"], b["y"] = mx(b["x"]), my(b["y"])
+    side_map: dict[str, str] = {}
+    if mir_hor:
+        side_map.update({"l": "r", "r": "l"})
+    if mir_vert:
+        side_map.update({"t": "b", "b": "t"})
+    for b in op.edge_bores:
+        side = b["side"]
+        b["side"] = side_map.get(side, side)
+        # pos o'qi: l/r uchun y bo'ylab, t/b uchun x bo'ylab
+        if side in ("t", "b"):
+            b["pos"] = mx(b["pos"])
+        else:
+            b["pos"] = my(b["pos"])
+    for g in op.grooves:
+        g["x1"], g["x2"] = mx(g["x1"]), mx(g["x2"])
+        g["y1"], g["y2"] = my(g["y1"]), my(g["y2"])
+    flip_dir = mir_hor != mir_vert  # bitta aks ettirish orientatsiyani teskarilaydi
+    for contour in op.mills:
+        for seg in contour:
+            if "x" in seg:
+                seg["x"], seg["y"] = mx(seg["x"]), my(seg["y"])
+            if seg.get("op") == "mac":
+                seg["cx"], seg["cy"] = mx(seg["cx"]), my(seg["cy"])
+                if flip_dir:
+                    seg["dir"] = not bool(seg["dir"])
+
+
 def merge_xnc_ops(ops: list[XncOp]) -> list[XncOp]:
     """Detalning BARCHA XNC operatsiyalari saqlanadi; 'oxirgisi yutadi' — taqiqlangan
     xato (TZ 5.2.7). Tartib: asosiy tomon, keyin _2.

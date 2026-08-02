@@ -11,7 +11,7 @@ from app.services.giblab import parse_project
 from app.services.giblab.csblob import decode_cs_blob
 from app.services.giblab.cutmap import build_cutmap
 from app.services.giblab.models import XncOp
-from app.services.giblab.scx import generate_scx, scx_filename
+from app.services.giblab.scx import build_scx_files, generate_scx
 from app.services.giblab.xnc import merge_xnc_ops, parse_xnc_program
 
 
@@ -186,18 +186,18 @@ def test_cutmap() -> None:
 def test_scx() -> None:
     project = parse_project(make_project_xml(make_blob()))
     part_a = project.all_parts[0]
-    op1, op2 = part_a.xnc_ops
-    assert scx_filename(part_a, op1) == "301401_01_001.scx"
-    assert scx_filename(part_a, op2) == "301401_01_001_2.scx"
+    assert len(part_a.xnc_ops) == 2  # old + orqa dastur
 
-    scx = generate_scx(part_a, op1)
+    # Hamma dastur BITTA faylga: orqa yuza Face="6" bilan (Scx-korpus konvensiyasi)
+    scx = generate_scx(part_a, part_a.xnc_ops, panel_id="301401_01_001_1")
+    assert 'ID="301401_01_001_1"' in scx
     assert 'Length="1000"' in scx and 'Width="500"' in scx and 'Thickness="16"' in scx
+    assert 'MachiningPoint="1"' in scx and 'IsGenCode="2"' in scx
     # Y_scx = Width − y_program: bf y=70 → 430 (TZ 5.6.3)
     assert 'Y="430"' in scx
-    # edge bore bl y=70 → Face="4", X="0", Y="430", Z="8"
-    assert 'Face="4" Type="1" Diameter="8" Depth="34" X="0" Y="430" Z="8"' in scx.replace("\n", " ").replace(
-        "  ", " "
-    ) or ('Face="4"' in scx and 'Depth="34"' in scx)
+    # qirra teshigi: l → Face="4" (korpus: l=4, r=3, t=1, b=2)
+    assert 'Face="4"' in scx and 'Depth="34"' in scx
+    assert 'Face="6"' in scx  # orqa dastur yuza teshigi shu faylda
     assert "<Edge " in scx  # edge group present (2 banded sides)
     print("scx OK")
 
@@ -630,7 +630,11 @@ def test_xnc_side_attribute() -> None:
         "</project>"
     ).encode()
     part = next(iter(parse_project(xml).all_parts))
-    assert [scx_filename(part, o) for o in part.xnc_ops] == ["42_A1.scx", "42_A1_2.scx"]
+    assert [o.side2 for o in part.xnc_ops] == [False, True]
+    # Endi ikkala tomon BITTA nusxa-fayliga birlashadi (orqa Face=6) — nom to'qnashuvi yo'q
+    files = build_scx_files(part, ["42_A1_1"])
+    assert [f[0] for f in files] == ["42_A1_1.scx"]
+    assert 'Face="6"' in files[0][1]
     print("XNC tomoni `side` dan olinadi OK")
 
 

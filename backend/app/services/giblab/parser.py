@@ -21,7 +21,7 @@ from .models import (
     ParseError,
     xml_bool,
 )
-from .xnc import merge_xnc_ops, parse_xnc_program
+from .xnc import apply_mirror, merge_xnc_ops, parse_xnc_program
 
 _EDGE_SIDES = ("l", "r", "t", "b")
 
@@ -241,26 +241,20 @@ def _advisories(
             f"to'liq miqdorni ishlab chiqaradi — texnolog miqdorni tekshirishi kerak."
         )
 
-    # `turn` (0/1/2/3 = 0/90/180/270°), `mirHor`, `mirVert` BUTUN dasturni o'zgartiradi. Biz
-    # koordinatalarni dasturdan qanday bo'lsa shundayligicha olamiz, ya'ni bunday operatsiyada
-    # teshiklar boshqa joyga tushardi va buni hech kim sezmasdi. Korpusdagi 505 dasturda
-    # `turn=0`, `mirHor=false`, `mirVert=false` — shuning uchun ogohlantirish yetarli.
+    # `mirHor`/`mirVert` endi parse bosqichida geometriyaga QO'LLANADI (apply_mirror).
+    # `turn` (0/1/2/3 = 0/90/180/270°) esa hali qo'llanmaydi — korpusda uchramagan,
+    # uchrasa ogohlantiramiz: bunday dasturda teshiklar boshqa joyga tushadi.
     transformed = sorted(
         {
             op_el.get("code") or f"#{op_el.get('id')}"
             for op_el in operations
-            if op_el.get("typeId") == "XNC"
-            and (
-                (op_el.get("turn") or "0") not in ("0", "")
-                or xml_bool(op_el.get("mirHor"))
-                or xml_bool(op_el.get("mirVert"))
-            )
+            if op_el.get("typeId") == "XNC" and (op_el.get("turn") or "0") not in ("0", "")
         }
     )
     if transformed:
         out.append(
-            f"XNC dasturi aylantirilgan yoki aks ettirilgan (turn/mirHor/mirVert): {', '.join(transformed[:5])}. "
-            f"Teshik koordinatalari o'zgarmagan holda olinadi — SCX faylni CNC'da tekshirish shart."
+            f"XNC dasturi aylantirilgan (turn≠0): {', '.join(transformed[:5])}. "
+            f"Aylantirish qo'llanmaydi — SCX faylni CNC'da tekshirish shart."
         )
 
     unknown_xnc = sorted({t for ops in xnc_ops_by_part.values() for op in ops for t in op.unknown_tags})
@@ -389,7 +383,11 @@ def parse_project(content: bytes) -> ParsedProject:
                 continue
             pid = int(stub_el.get("id", 0))
             code = op_el.get("code") or ""
-            xnc_ops_by_part.setdefault(pid, []).append(parse_xnc_program(code, program, op_el.get("side")))
+            op = parse_xnc_program(code, program, op_el.get("side"))
+            # mirHor/mirVert geometriyaga darhol qo'llanadi (TZ 5.6.4) — SCX,
+            # yorliq va xarita bir xil to'g'ri koordinatani ko'radi
+            apply_mirror(op, xml_bool(op_el.get("mirHor")), xml_bool(op_el.get("mirVert")))
+            xnc_ops_by_part.setdefault(pid, []).append(op)
 
     project.warnings.extend(_advisories(products_goods, operations, xnc_ops_by_part))
 

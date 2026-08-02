@@ -127,6 +127,11 @@ async def ingest_project(
     scx_dir = upload_root / "scx" / str(order.id)
     scx_dir.mkdir(parents=True, exist_ok=True)
 
+    # Plita qalinligi material nomi bo'yicha — qo'shqavat detal SCX'i uchun (scx.py)
+    _plate_thickness: dict[str, float] = {
+        m.name: m.thickness for m in project.materials if m.kind == "sheet" and m.thickness
+    }
+
     # --- products, parts, instances, routes, scx ---
     bindings_by_key: dict[str, list[Any]] = {}
     if cutmap:
@@ -214,9 +219,13 @@ async def ingest_project(
                     )
                 )
 
-            # SCX (TZ 5.6.5 / 12.5): old tomon — har nusxaga alohida fayl (nom/ID = QR,
-            # Nanxing skaneri to'g'ridan-to'g'ri topadi), orqa `_2` — bitta fayl.
-            for filename, content, meta in build_scx_files(pp, [f"{pp.key}_{n}" for n in range(1, pp.count + 1)]):
+            # SCX (TZ 5.6.5 / 12.5): har nusxaga bitta TO'LIQ fayl (old + orqa Face=6
+            # birlashgan, nom/ID = QR — Nanxing skaneri to'g'ridan-to'g'ri topadi).
+            # plate: qo'shqavat detalda (32mm) eksport qalinligi plita bo'yicha
+            plate = _plate_thickness.get(pp.material_name or "")
+            for filename, content, meta in build_scx_files(
+                pp, [f"{pp.key}_{n}" for n in range(1, pp.count + 1)], plate_thickness=plate
+            ):
                 (scx_dir / filename).write_text(content, encoding="utf-8")
                 db.add(
                     OrderFile(

@@ -91,6 +91,7 @@ async def regen_order(db: AsyncSession, order: Order, upload_root: Path) -> str:
 
     written = 0
     unmatched: list[str] = []
+    plate_by_name = {m.name: m.thickness for m in project.materials if m.kind == "sheet" and m.thickness}
     for prod in project.products:
         for pp in prod.parts:
             if not pp.xnc_ops:
@@ -100,7 +101,9 @@ async def regen_order(db: AsyncSession, order: Order, upload_root: Path) -> str:
                 unmatched.append(f"{prod.code}_{pp.code}")
                 continue
             qr_texts = [f"{pp.key}_{n}" for n in range(1, pp.count + 1)]
-            for filename, content, meta in build_scx_files(pp, qr_texts):
+            for filename, content, meta in build_scx_files(
+                pp, qr_texts, plate_thickness=plate_by_name.get(pp.material_name or "")
+            ):
                 (scx_dir / filename).write_text(content, encoding="utf-8")
                 db.add(
                     OrderFile(
