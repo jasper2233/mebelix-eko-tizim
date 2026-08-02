@@ -50,7 +50,7 @@ kiritish rejimi ("Режимы ввода деталей") uchta: zagotovka, tay
 prifugovkadan keyin (kromkasiz) — shu sozlama `dl/dw` ma'nosini belgilaydi.
 
 | `cutmap.py` | Vizual model (5.7.5): sheets/parts/cuts + holes overlay, rot/eW/eH, atxot foydali o'lcham, instance↔katakcha binding; har list uchun root-strip o'lcham zanjiri `dims` (ax/a/b/v, ≥10mm poloslar, GibSaw uslubi) — cutmap JSONida saqlanadi, terminal SVG chizadi |
-| `scx.py` | SCX generatsiya: **Y_scx = Width − y_program**; `_2` ikkinchi tomon; Face kodlari qisman kalibr talab (`ponytail:`) |
+| `scx.py` | SCX generatsiya — Nanxing haqiqiy konvensiyasi (Scx-korpusdan, 87 proyekt): Y=Width−y; qirra Face l4/r3/t1/b2; orqa dastur Face=6 bilan bitta faylda; 32mm qo'shqavat 16/Z÷2; freza kompensatsiyalangan yo'l. To'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §7.2 |
 | `ingest.py` | DBga yozish: products/parts/instances/routes/materials/fayllar/cutmap/material_usage; qayta yuklash to'liq almashtiradi |
 
 Marshrut qoidalari (5.4): ARRA har doim (per_instance=1); KROMKA = ell/elr/elt/elb soni;

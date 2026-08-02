@@ -565,7 +565,7 @@ profil kesish (`CL` — sexda bunday post yo'q).
 | Detalda 2 tadan ko'p XNC | hammasi saqlandi, skan sonini tekshirish kerak |
 | `description` da `#kod` | ishlov shablon nomi bilan berilgan, o'qilmaydi |
 | Xaritada joyi yo'q detal | arrachi ro'yxatiga tushmaydi |
-| `turn`/`mirHor`/`mirVert` | dastur aylantirilgan/aks ettirilgan, koordinatalar o'zgarmaydi |
+| `turn` ≠ 0 | dastur aylantirilgan — aylantirish qo'llanmaydi, CNC'da tekshirish shart (`mirHor`/`mirVert` esa parse'da geometriyaga QO'LLANADI — `xnc.apply_mirror`) |
 | Qirra teshigi markazda emas | `m`/`z` talqini tekshirilmagan, balandligini tasdiqlash kerak |
 | Blobsiz kesish operatsiyasi | material optimallashtirilmagan, xaritasi yo'q |
 
@@ -594,6 +594,29 @@ har biri yuqoridagi jadvallarda alohida izohlangan. `GR` paydo bo'lsa uning `grW
 `elLineMark` (markirovka chizig'i) o'qilmaydi — bizning xaritada kromka o'z uslubida
 chiziladi. `elLength` (kromkalash uzunligi) ham o'qilmaydi: lenta sarfini material
 registridan olamiz.
+
+---
+
+## 7.2 SCX eksport konvensiyasi (`scx.py`)
+
+Qoidalar `D:\MebeliX\Scx` korpusidan keltirilgan (87 proyekt, 5286 etalon fayl; 10500 qirra
+teshigi, 218 freza ovoz bergan) — GibLab'ning JORIY eksporti bilan semantik bir xil, sexdagi
+Nanxing aynan shu formatni yeydi. 71/86 papka 100% mos; qolganlari .project fayl versiyasi
+eksportdan farq qilgan holatlar (dizayner keyin o'zgartirgan), generator xatosi emas.
+
+| Element | Qoida |
+|---|---|
+| Yuza teshik (Face 5) | `Y = Width − y_program`, X o'zgarmaydi |
+| Qirra teshik Face | l→4, r→3, t→1, b→2; l/r: X=0/Length, Y=Width−pos; t: X=pos **Y=Width**; b: X=pos **Y=0** |
+| Kromka lenta Face | qirra bilan bir xil (l4 r3 t1 b2); Edge'da `Pre_Milling`, `X`, `Y` atributlari |
+| Orqa (`_2`) dastur | ALOHIDA FAYL EMAS — yuza elementlari `Face="6"` bilan asosiy nusxa-fayliga (transform old bilan bir xil `x, W−y`) |
+| Qo'shqavat 32mm | eksport qalinligi 16, qirra Z ikki baravar kichik, yuza chuqurlik −16 (faqat dz=32; 18/26/40 o'zgarmaydi) |
+| Freza (Type 3) | KOMPENSATSIYALANGAN asbob-markazi yo'li: `ms.c`=2 harakatga chapga r, `c`=1 o'ngga, yoy radiusi mos o'zgaradi; `<Lines><Line Angle=…>` formati (Angle=0 chiziq, ±N yoy sweep'i); `c`=0 xom; panel cheti bo'ylab trim xom + `ToolOffset=右` |
+| Atributlar | Machining'da ketma-ket `ID` (1000+) va `IsGenCode="2"`, Panel'da `MachiningPoint="1"` |
+| Fayl nomi | har nusxaga bitta to'liq fayl, nom/Panel ID = nusxa QR (`100701_02_003_1.scx`) — Nanxing skaneri to'g'ridan topadi |
+
+Eski buyurtmalar fayllari diskda eski konvensiyada qolgan bo'lsa — buyurtma sahifasidagi
+"SCX qayta yaratish" tugmasi (`POST /orders/{id}/scx/regenerate`).
 
 ---
 
