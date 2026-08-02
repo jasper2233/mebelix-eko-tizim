@@ -300,6 +300,15 @@ async def bridge_scan(
         )
     except ScanRejected as exc:
         await db.rollback()
+        # Stanokdagi rad etilgan skan operatorga ko'rinmaydi — hech bo'lmasa logda qolsin
+        log_action(
+            db,
+            module="scan",
+            action="rejected",
+            message=f"Skan rad etildi (stanok, {agent.name}): {body.qr_text} — {exc.message}",
+            meta={"code": exc.code, "agent_id": agent.id},
+        )
+        await db.commit()
         raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
 
     if not outcome.duplicate:

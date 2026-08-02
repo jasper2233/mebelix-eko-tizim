@@ -25,6 +25,16 @@ async def record_scan_endpoint(db: SessionDep, user: TerminalUser, body: ScanReq
         outcome = await record_scan(db, user=user, qr_text=body.qr_text, client_event_id=body.client_event_id)
     except ScanRejected as exc:
         await db.rollback()
+        # Rad etilgan urinish ham logga: kim nimani qayta/noto'g'ri skan qilganini ko'rish uchun
+        log_action(
+            db,
+            module="scan",
+            action="rejected",
+            user_id=user.id,
+            message=f"Skan rad etildi: {body.qr_text} — {exc.message}",
+            meta={"code": exc.code},
+        )
+        await db.commit()
         raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
 
     if not outcome.duplicate:
