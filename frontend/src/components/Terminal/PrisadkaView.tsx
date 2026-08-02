@@ -43,7 +43,8 @@ export function PrisadkaView({
     queryFn: () => TerminalService.readTerminalPrisadka({ orderId }),
     refetchInterval: 30_000,
   })
-  const [downloading, setDownloading] = useState(false)
+  // null = yuklanmayapti; son = nechta fayl saqlandi (tugmada jonli 12/69)
+  const [progress, setProgress] = useState<number | null>(null)
 
   if (isLoading) return <Skeleton className="h-full w-full" />
 
@@ -55,7 +56,7 @@ export function PrisadkaView({
 
   const downloadAll = async () => {
     if (!allFiles.length) return
-    setDownloading(true)
+    setProgress(0)
     try {
       if (dirSupported()) {
         // BIR MARTA so'raladi: saqlangan papka bo'lsa ruxsatini yangilaymiz,
@@ -77,6 +78,7 @@ export function PrisadkaView({
           try {
             await saveScxToDir(sub, f.id, f.filename)
             ok++
+            setProgress(ok)
           } catch {
             /* bittasi yiqilsa qolganlari davom etadi */
           }
@@ -89,17 +91,20 @@ export function PrisadkaView({
           )
       } else {
         // Eski brauzer: oddiy Downloads
+        let n = 0
         for (const f of allFiles) {
           const a = document.createElement("a")
           a.href = `${OpenAPI.BASE}/api/v1/terminal/files/${f.id}`
           a.download = ""
           a.click()
+          n++
+          setProgress(n)
           await new Promise((r) => setTimeout(r, 300))
         }
         showSuccessToast(`${allFiles.length} ta SCX yuklab olindi`)
       }
     } finally {
-      setDownloading(false)
+      setProgress(null)
     }
   }
 
@@ -137,11 +142,19 @@ export function PrisadkaView({
           )}
           <LoadingButton
             className="h-12 px-5 text-base font-bold"
-            loading={downloading}
+            loading={progress !== null}
             disabled={!allFiles.length}
             onClick={downloadAll}
           >
-            <HardDriveDownload /> Hammasini yuklab olish ({allFiles.length})
+            {progress !== null ? (
+              <span className="num">
+                Yuklanmoqda… {progress}/{allFiles.length}
+              </span>
+            ) : (
+              <>
+                <HardDriveDownload /> Hammasini yuklab olish ({allFiles.length})
+              </>
+            )}
           </LoadingButton>
         </div>
       </div>
