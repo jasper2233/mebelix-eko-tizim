@@ -9,7 +9,6 @@ import axios from "axios"
 import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
 import { ApiError, LoginService, OpenAPI } from "./client"
-import { Toaster } from "./components/ui/sonner"
 import "./index.css"
 import { routeTree } from "./routeTree.gen"
 
@@ -79,7 +78,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
-      <Toaster richColors closeButton />
     </QueryClientProvider>
   </StrictMode>,
 )
