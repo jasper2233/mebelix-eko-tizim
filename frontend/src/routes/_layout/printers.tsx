@@ -147,6 +147,11 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
   const [confirm, setConfirm] = useState<"code" | "delete" | null>(null)
+  // Stanok almashinuvi tasdiq bilan: noto'g'ri tanlov keyingi barcha skan-forvard
+  // skanlarini BOSHQA post nomidan yozadi — jimgina o'tib ketmasin
+  const [pendingMachine, setPendingMachine] = useState<number | null | "unset">(
+    "unset",
+  )
   const { data: machines } = useQuery(getMachinesQueryOptions())
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: ["bridge-agents"] })
@@ -157,10 +162,17 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
         agentId: agent.id,
         requestBody: { machine_id: machineId },
       }),
-    onSuccess: () => showSuccessToast("Stanok bog'landi"),
+    onSuccess: () => {
+      showSuccessToast("Stanok bog'landi")
+      setPendingMachine("unset")
+    },
     onError: handleError(showErrorToast),
     onSettled: refresh,
   })
+  const pendingName =
+    pendingMachine !== "unset" && pendingMachine !== null
+      ? (machines?.find((m) => m.id === pendingMachine)?.name ?? "?")
+      : null
 
   const regen = useMutation({
     mutationFn: () =>
@@ -219,9 +231,10 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
         {/* Skan-forvard: stanok skaneri o'qigan QR MES'ga shu stanok nomidan yoziladi */}
         <Select
           value={agent.machine_id ? String(agent.machine_id) : "none"}
-          onValueChange={(v) =>
-            linkMachine.mutate(v === "none" ? null : Number(v))
-          }
+          onValueChange={(v) => {
+            const next = v === "none" ? null : Number(v)
+            if (next !== (agent.machine_id ?? null)) setPendingMachine(next)
+          }}
         >
           <SelectTrigger className="h-9 w-44">
             <SelectValue />
@@ -235,6 +248,25 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
             ))}
           </SelectContent>
         </Select>
+        <ConfirmDialog
+          open={pendingMachine !== "unset"}
+          onOpenChange={(v) => !v && setPendingMachine("unset")}
+          title={
+            pendingName
+              ? `${pendingName} stanogiga bog'lansinmi?`
+              : "Stanok bog'lanishi olib tashlansinmi?"
+          }
+          description={
+            pendingName
+              ? `${agent.name} kompyuteridagi skaner o'qigan QR endi "${pendingName}" nomidan yoziladi. Noto'g'ri stanok tanlansa skanlar boshqa postga yozilib ketadi.`
+              : `${agent.name} skan-forvardi o'chadi — skaner o'qigan QR MES'ga yozilmaydi (Nanxing'da ochilaveradi).`
+          }
+          confirmText={pendingName ? "Bog'lash" : "Olib tashlash"}
+          loading={linkMachine.isPending}
+          onConfirm={() => {
+            if (pendingMachine !== "unset") linkMachine.mutate(pendingMachine)
+          }}
+        />
       </TableCell>
       <TableCell className="text-muted-foreground">
         {seen ? formatDateTime(agent.last_seen_at) : "Hali ulanmagan"}
