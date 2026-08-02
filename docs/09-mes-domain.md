@@ -15,7 +15,7 @@ Holat: **2026-07-28**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Barcha fazalar impl
 | `client` | Mijoz (jismoniy/yuridik, INN) | 4.6 |
 | `material` | Katalog — .project fayldan avtomatik to'ladi | 4.5 |
 | `order` | B-YYYY-NNN, status DRAFT→…→DELIVERED/CANCELLED; `amount` + `advance_payment` Numeric(14,2) (boshlang'ich to'lov, migratsiya `7d2c9f5e1b3a`); `cutmap` JSONB (5.7.5 modeli), `machine_assignments`, `material_usage`; `survey` JSONB — mijoz anketasi + o'lchov varag'i (migratsiya `a91c7d34f6e2`, §6.2) | 6 |
-| `product`/`part`/`part_instance` | Fayl tarkibi; instance QR = `productCode_partCode_n`, kesish xaritasi katakchasiga bog'langan (pattern_no, cell_index) | 5.8 |
+| `product`/`part`/`part_instance` | Fayl tarkibi; instance QR = `productCode_partCode` (yagona nusxa) / `productCode_partCode_n` (takror), kesish xaritasi katakchasiga bog'langan (pattern_no, cell_index) | 5.8 |
 | `part_route` | Detal × post: per_instance (KROMKA tomonlar), total_required/done — QOLDIQ shu yerda | 5.4 |
 | `scan` | Muvaffaqiyatli ish birligi; `client_event_id` UNIQUE (idempotency), bekor qilish belgisi | 8.4 |
 | `work_session` | Smena (beyjik → sessiya) | 8.2 |

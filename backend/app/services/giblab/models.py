@@ -69,6 +69,12 @@ class ParsedPart:
         return f"{self.product_code}_{self.code}"
 
     @property
+    def qr_texts(self) -> list[str]:
+        """Nusxa QR'lari (TZ 5.8): yagona nusxa suffikssiz — chekdagi kod, QR va SCX fayl
+        nomi bir xil bo'ladi (Nanxing skan mosligi); takrorlanganda _1.._n."""
+        return [self.key] if self.count == 1 else [f"{self.key}_{n}" for n in range(1, self.count + 1)]
+
+    @property
     def kromka_sides(self) -> int:
         return len(self.edges)
 

@@ -570,14 +570,22 @@ async def _resize_instances(db: SessionDep, part: Part, new_count: int) -> None:
         .all()
     )
     existing = {i.instance_no: i for i in instances}
+    key = f"{product_code}_{part.code}"
+    # QR konvensiyasi (TZ 5.8): yagona nusxa suffikssiz, ko'p nusxada _1.._n.
+    # Count o'zgarganda BARCHA tirik nusxalar qayta normallanadi (1↔N o'tishda
+    # eski QR konvensiyaga zid qolib ketmasin) — bosqich pre-production,
+    # yorliqlar hali chop etilmagan.
     for n in range(1, new_count + 1):
-        if n not in existing:
+        qr = key if new_count == 1 else f"{key}_{n}"
+        if n in existing:
+            existing[n].qr_text = qr
+        else:
             db.add(
                 PartInstance(
                     order_id=part.order_id,
                     part_id=part.id,
                     instance_no=n,
-                    qr_text=f"{product_code}_{part.code}_{n}",
+                    qr_text=qr,
                 )
             )
     now = datetime.now(UTC)

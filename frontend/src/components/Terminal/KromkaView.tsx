@@ -67,16 +67,20 @@ export function KromkaView({
 
   // Tekshiruv har renderda yangi data ko'radi, terminal esa bir marta ro'yxatga oladi
   const checkRef = useRef<(qr: string) => string | null>(() => "NOTFOUND")
-  checkRef.current = (qr: string): string | null => {
-    for (const p of parts) {
-      const inst = p.instances.find((i) => i.qr_text === qr)
-      if (!inst) continue
-      if (!inst.arra_passed) return "Bu detal hali arradan chiqmagan."
-      if (inst.done >= p.sides)
-        return oval
-          ? "Bu detalning oval kromkasi allaqachon tugagan."
-          : "Bu detalning kromkasi allaqachon tugagan."
-      return null
+  checkRef.current = (raw: string): string | null => {
+    // Eski yorliqlar: migratsiyadan oldin yagona nusxa ham `_1` bilan chop etilgan
+    const candidates = raw.endsWith("_1") ? [raw, raw.slice(0, -2)] : [raw]
+    for (const qr of candidates) {
+      for (const p of parts) {
+        const inst = p.instances.find((i) => i.qr_text === qr)
+        if (!inst) continue
+        if (!inst.arra_passed) return "Bu detal hali arradan chiqmagan."
+        if (inst.done >= p.sides)
+          return oval
+            ? "Bu detalning oval kromkasi allaqachon tugagan."
+            : "Bu detalning kromkasi allaqachon tugagan."
+        return null
+      }
     }
     return "NOTFOUND"
   }

@@ -39,6 +39,7 @@ class LabelData:
 async def load_label_data(db: "AsyncSession", instance_id: int) -> LabelData | None:
     """Bitta nusxa uchun yorliq ma'lumotini DB'dan yig'adi (print task va PNG endpoint uchun umumiy)."""
     from app.models import Order, Part, PartInstance
+    from app.services.scanning import qr_part_code
 
     instance = await db.get(PartInstance, instance_id)
     if instance is None:
@@ -69,7 +70,7 @@ async def load_label_data(db: "AsyncSession", instance_id: int) -> LabelData | N
 
     return LabelData(
         qr_text=instance.qr_text,
-        part_code=instance.qr_text.rsplit("_", 1)[0],
+        part_code=qr_part_code(instance.qr_text, part.count),
         part_name=part.name,
         project_name=order.project_name or order.number,
         order_number=order.number,

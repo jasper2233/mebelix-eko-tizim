@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.2/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.3/schema.json",
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "files": {
     "includes": [
@@ -10,7 +10,8 @@
       "!**/src/routeTree.gen.ts",
       "!**/src/client/**/*",
       "!**/public/**/*",
-      "!**/src/index.css"
+      "!**/src/index.css",
+      "!**/openapi.json"
     ]
   },
   "linter": {

@@ -11,7 +11,7 @@ from app.models import Part, PartInstance, Scan, WorkSession
 from app.models.enums import POST_ROLES, SessionStatus, UserRole
 from app.models.user import User
 from app.schemas.terminal import ScanHistoryItem, ScanRequest, ScanResult
-from app.services.scanning import ScanRejected, cancel_scan, record_scan
+from app.services.scanning import ScanRejected, cancel_scan, qr_part_code, record_scan
 
 router = APIRouter(prefix="/scans", tags=["scans"])
 
@@ -35,7 +35,7 @@ async def record_scan_endpoint(db: SessionDep, user: TerminalUser, body: ScanReq
         scan_id=outcome.scan.id,
         duplicate=outcome.duplicate,
         qr_text=outcome.instance.qr_text,
-        part_code=outcome.instance.qr_text.rsplit("_", 1)[0],
+        part_code=qr_part_code(outcome.instance.qr_text, outcome.part.count),
         part_name=outcome.part.name,
         instance_no=outcome.instance.instance_no,
         qoldiq=outcome.qoldiq,
@@ -58,10 +58,11 @@ async def cancel_scan_endpoint(db: SessionDep, user: TerminalUser, scan_id: int)
             event["type"], event["payload"], post_id=event.get("post_id"), machine_id=event.get("machine_id")
         )
     instance = await db.get(PartInstance, scan.instance_id)
+    part = await db.get(Part, scan.part_id)
     item = ScanHistoryItem.model_validate(scan)
-    if instance:
+    if instance and part:
         item.qr_text = instance.qr_text
-        item.part_code = instance.qr_text.rsplit("_", 1)[0]
+        item.part_code = qr_part_code(instance.qr_text, part.count)
     return item
 
 
@@ -84,7 +85,7 @@ async def read_recent_scans(db: SessionDep, user: TerminalUser, limit: int = 50)
         return []
     rows = (
         await db.execute(
-            select(Scan, PartInstance.qr_text, Part.name)
+            select(Scan, PartInstance.qr_text, Part.count)
             .join(PartInstance, PartInstance.id == Scan.instance_id)
             .join(Part, Part.id == Scan.part_id)
             .where(Scan.session_id == session.id, Scan.is_deleted == False)  # noqa: E712
@@ -93,9 +94,9 @@ async def read_recent_scans(db: SessionDep, user: TerminalUser, limit: int = 50)
         )
     ).all()
     items = []
-    for scan, qr_text, _name in rows:
+    for scan, qr_text, count in rows:
         item = ScanHistoryItem.model_validate(scan)
         item.qr_text = qr_text
-        item.part_code = qr_text.rsplit("_", 1)[0]
+        item.part_code = qr_part_code(qr_text, count)
         items.append(item)
     return items

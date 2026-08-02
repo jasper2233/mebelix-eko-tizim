@@ -35,7 +35,7 @@ from app.schemas.bridge_agents import (
 )
 from app.schemas.common import Message
 from app.schemas.terminal import ScanResult
-from app.services.scanning import ScanRejected, latest_active_session, record_scan_at
+from app.services.scanning import ScanRejected, latest_active_session, qr_part_code, record_scan_at
 
 router = APIRouter(prefix="/bridge-agents", tags=["bridge-agents"])
 
@@ -292,7 +292,7 @@ async def bridge_scan(
         scan_id=outcome.scan.id,
         duplicate=outcome.duplicate,
         qr_text=outcome.instance.qr_text,
-        part_code=outcome.instance.qr_text.rsplit("_", 1)[0],
+        part_code=qr_part_code(outcome.instance.qr_text, outcome.part.count),
         part_name=outcome.part.name,
         instance_no=outcome.instance.instance_no,
         qoldiq=outcome.qoldiq,

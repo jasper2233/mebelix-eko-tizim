@@ -506,7 +506,7 @@ GibLab shabloniga qo'yiladigan maydonlar (109 ta), guruhlar bo'yicha:
 - **Ishlov**: `XNC1..XNC5` + `xncSide1..5` + `xncBSD1..5`
 
 MebeliX o'z yorlig'ini chiqaradi (TZ 5.2.8, `services/labels.py`): 80×60 mm, 203 dpi, 1-bit
-termoprinter uchun. Ichida QR (`{productCode}_{partCode}_{n}`), detal kodi va nomi, buyurtma,
+termoprinter uchun. Ichida QR (`{productCode}_{partCode}` — yagona nusxa suffikssiz, takrorlanganda `_{n}`), detal kodi va nomi, buyurtma,
 material, o'lcham, qalinlik, kromka belgilari, teshik eskizi va burg'u ikonkasi.
 
 Sabab: GibLab yorlig'i skan qilinadigan QR bermaydi va MebeliX'ning bosqichma-bosqich
@@ -613,7 +613,7 @@ eksportdan farq qilgan holatlar (dizayner keyin o'zgartirgan), generator xatosi 
 | Qo'shqavat 32mm | eksport qalinligi 16, qirra Z ikki baravar kichik, yuza chuqurlik −16 (faqat dz=32; 18/26/40 o'zgarmaydi) |
 | Freza (Type 3) | KOMPENSATSIYALANGAN asbob-markazi yo'li: `ms.c`=2 harakatga chapga r, `c`=1 o'ngga, yoy radiusi mos o'zgaradi; `<Lines><Line Angle=…>` formati (Angle=0 chiziq, ±N yoy sweep'i); `c`=0 xom; panel cheti bo'ylab trim xom + `ToolOffset=右` |
 | Atributlar | Machining'da ketma-ket `ID` (1000+) va `IsGenCode="2"`, Panel'da `MachiningPoint="1"` |
-| Fayl nomi | har nusxaga bitta to'liq fayl, nom/Panel ID = nusxa QR (`100701_02_003_1.scx`) — Nanxing skaneri to'g'ridan topadi |
+| Fayl nomi | har nusxaga bitta to'liq fayl, nom/Panel ID = nusxa QR — yagona nusxada suffikssiz (`100701_02_003.scx`), takrorlanganda `_1.._n` (`100701_02_003_1.scx`) — Nanxing skaneri va chekdagi kod bir xil |
 
 Eski buyurtmalar fayllari diskda eski konvensiyada qolgan bo'lsa — buyurtma sahifasidagi
 "SCX qayta yaratish" tugmasi (`POST /orders/{id}/scx/regenerate`).

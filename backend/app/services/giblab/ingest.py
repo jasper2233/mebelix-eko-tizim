@@ -189,7 +189,7 @@ async def ingest_project(
                         order_id=order.id,
                         part_id=part.id,
                         instance_no=n,
-                        qr_text=f"{pp.key}_{n}",
+                        qr_text=pp.qr_texts[n - 1],
                         pattern_no=binding.pattern_no if binding else None,
                         cell_index=binding.cell_index if binding else None,
                     )
@@ -223,9 +223,7 @@ async def ingest_project(
             # birlashgan, nom/ID = QR — Nanxing skaneri to'g'ridan-to'g'ri topadi).
             # plate: qo'shqavat detalda (32mm) eksport qalinligi plita bo'yicha
             plate = _plate_thickness.get(pp.material_name or "")
-            for filename, content, meta in build_scx_files(
-                pp, [f"{pp.key}_{n}" for n in range(1, pp.count + 1)], plate_thickness=plate
-            ):
+            for filename, content, meta in build_scx_files(pp, pp.qr_texts, plate_thickness=plate):
                 (scx_dir / filename).write_text(content, encoding="utf-8")
                 db.add(
                     OrderFile(

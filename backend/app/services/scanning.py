@@ -19,7 +19,12 @@ from app.models import Employee, Machine, Order, OrderFile, Part, PartInstance, 
 from app.models.enums import POST_ROLES, EmployeeStatus, FileKind, OrderStatus, PostCode, SessionStatus, UserRole
 from app.models.user import User
 
-_QR_RE = re.compile(r"^.+_.+_\d+$")  # {productCode}_{partCode}_{n} (TZ 5.8)
+_QR_RE = re.compile(r"^.+_.+$")  # {productCode}_{partCode}[_{n}] — yagona nusxada suffiks yo'q (TZ 5.8)
+
+
+def qr_part_code(qr: str, count: int) -> str:
+    """Nusxa QR'idan detal kodi: yagona nusxada QR = kodning o'zi, takrorlanganda _n olib tashlanadi."""
+    return qr if count == 1 else qr.rsplit("_", 1)[0]
 
 
 class ScanRejected(Exception):
@@ -218,20 +223,25 @@ async def record_scan_at(
             duplicate=True,
         )
 
-    # Locate the copy among live orders.
-    row = (
-        await db.execute(
-            select(PartInstance, Order)
-            .join(Order, Order.id == PartInstance.order_id)
-            .where(
-                PartInstance.qr_text == qr,
-                PartInstance.is_deleted == False,  # noqa: E712
-                Order.is_deleted == False,  # noqa: E712
-                Order.status.in_([OrderStatus.PRODUCTION, OrderStatus.CANCELLED]),
+    # Locate the copy among live orders. Eski chop etilgan yorliqlar (migratsiyadan
+    # oldin yagona nusxa ham `_1` bilan chiqqan) uchun suffikssiz variant ham sinaladi.
+    row = None
+    for cand in [qr, qr[:-2]] if qr.endswith("_1") else [qr]:
+        row = (
+            await db.execute(
+                select(PartInstance, Order)
+                .join(Order, Order.id == PartInstance.order_id)
+                .where(
+                    PartInstance.qr_text == cand,
+                    PartInstance.is_deleted == False,  # noqa: E712
+                    Order.is_deleted == False,  # noqa: E712
+                    Order.status.in_([OrderStatus.PRODUCTION, OrderStatus.CANCELLED]),
+                )
+                .order_by(Order.id.desc())
             )
-            .order_by(Order.id.desc())
-        )
-    ).first()
+        ).first()
+        if row is not None:
+            break
     if row is None:
         raise ScanRejected("E001", "Bu detal uchun tugallanmagan plan topilmadi. Yorliqni tekshiring.")
     instance, order = row
@@ -329,7 +339,7 @@ async def record_scan_at(
                 "order_id": order.id,
                 "order_number": order.number,
                 "part_id": part.id,
-                "part_code": f"{qr.rsplit('_', 1)[0]}",
+                "part_code": qr_part_code(instance.qr_text, part.count),
                 "instance_no": instance.instance_no,
                 "post_id": post.id,
                 "machine_id": machine.id,
