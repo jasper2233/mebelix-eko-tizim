@@ -49,8 +49,9 @@ export function PrisadkaView({
   const parts = ((data as { parts?: PPart[] } | undefined)?.parts ??
     []) as PPart[]
 
-  // Oxirgi skan bo'lgan qator bir necha soniya ajralib tursin: done oshgan
-  // detal aniqlanadi (lokal skan ham, stanokdan skan-forvard ham shu yerga tushadi)
+  // Oxirgi skan bo'lgan qator KEYINGI skangacha ajralib turadi va avtomatik
+  // ko'rinishga keladi — prisadkachi oddiy monitorda, sichqoncha bilan qidirmasin.
+  // done oshgan detal aniqlanadi (lokal skan ham, stanokdan skan-forvard ham)
   const prevDoneRef = useRef<Map<number, number>>(new Map())
   const [flashId, setFlashId] = useState<number | null>(null)
   useEffect(() => {
@@ -63,7 +64,12 @@ export function PrisadkaView({
     prevDoneRef.current = new Map(parts.map((p) => [p.part_id, p.done]))
     if (changed !== null) {
       setFlashId(changed)
-      const t = setTimeout(() => setFlashId(null), 6000)
+      // Saralash qatorni siljitadi — yangi render joylashgach scroll qilamiz
+      const t = setTimeout(() => {
+        document
+          .getElementById(`pv-row-${changed}`)
+          ?.scrollIntoView({ block: "center", behavior: "smooth" })
+      }, 150)
       return () => clearTimeout(t)
     }
   }, [parts])
@@ -200,10 +206,11 @@ export function PrisadkaView({
                 return (
                   <tr
                     key={p.part_id}
+                    id={`pv-row-${p.part_id}`}
                     className={cn(
                       "border-b last:border-0",
                       flashId === p.part_id
-                        ? "animate-pulse bg-amber-100"
+                        ? "bg-amber-100 ring-2 ring-inset ring-amber-400"
                         : finished && "bg-green-50",
                     )}
                   >
