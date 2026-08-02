@@ -65,6 +65,7 @@ def _read(agent: BridgeAgent, machine_name: str | None = None) -> BridgeAgentRea
         machine_id=agent.machine_id,
         machine_name=machine_name,
         version=agent.version,
+        can_print=agent.can_print,
     )
 
 
@@ -82,29 +83,47 @@ async def read_bridge_agents(db: SessionDep, _: AdminUser) -> list[BridgeAgentRe
 async def update_bridge_agent(
     db: SessionDep, current_user: AdminUser, agent_id: int, body: BridgeAgentUpdate, request: Request
 ) -> BridgeAgentRead:
-    """Agentni stanokka bog'lash — skan-forvard shu stanok/post nomidan yoziladi."""
+    """Stanok bog'lash (skan-forvard) va chek-chiqarish belgisi. Maydonlar
+    alohida yuboriladi — berilmagani tegilmaydi (exclude_unset)."""
     agent = await crud_bridge_agents.get(db, id=agent_id)
     if agent is None:
         raise NotFoundException("Agent topilmadi.")
+    sent = body.model_dump(exclude_unset=True)
     machine_name: str | None = None
-    if body.machine_id is not None:
-        machine = await db.get(Machine, body.machine_id)
-        if machine is None or machine.is_deleted:
-            raise NotFoundException("Stanok topilmadi.")
-        machine_name = machine.name
-    agent.machine_id = body.machine_id
-    log_action(
-        db,
-        module="bridge_agents",
-        action="machine_linked",
-        user_id=current_user.id,
-        entity_type="bridge_agent",
-        entity_id=agent.id,
-        message=f"Agent stanokka bog'landi: {agent.name} -> {machine_name or '—'}",
-        ip=request.client.host if request.client else None,
-    )
+    if "machine_id" in sent:
+        if body.machine_id is not None:
+            machine = await db.get(Machine, body.machine_id)
+            if machine is None or machine.is_deleted:
+                raise NotFoundException("Stanok topilmadi.")
+            machine_name = machine.name
+        agent.machine_id = body.machine_id
+        log_action(
+            db,
+            module="bridge_agents",
+            action="machine_linked",
+            user_id=current_user.id,
+            entity_type="bridge_agent",
+            entity_id=agent.id,
+            message=f"Agent stanokka bog'landi: {agent.name} -> {machine_name or '—'}",
+            ip=request.client.host if request.client else None,
+        )
+    if body.can_print is not None:
+        agent.can_print = body.can_print
+        log_action(
+            db,
+            module="bridge_agents",
+            action="can_print_changed",
+            user_id=current_user.id,
+            entity_type="bridge_agent",
+            entity_id=agent.id,
+            message=f"Chek chiqarish: {agent.name} -> {'ha' if body.can_print else 'yoq'}",
+            ip=request.client.host if request.client else None,
+        )
     await db.commit()
     await db.refresh(agent)
+    if machine_name is None and agent.machine_id is not None:
+        m = await db.get(Machine, agent.machine_id)
+        machine_name = m.name if m else None
     return _read(agent, machine_name)
 
 

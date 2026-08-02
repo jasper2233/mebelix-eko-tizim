@@ -30,3 +30,7 @@ class BridgeAgent(BaseModel):
     # Agent exe versiyasi (WS handshake'dagi X-Agent-Version) — admin paneldan
     # qaysi kompyuterda eski exe qolganini ko'rish uchun; null = eski (headersiz) agent
     version: Mapped[str | None] = mapped_column(String(20), default=None, kw_only=True)
+    # False = printersiz kompyuter (masalan Nanxing skan-forvard stansiyasi):
+    # chek navbatidan ish OLMAYDI — aks holda umumiy navbatdan chek "o'g'irlab"
+    # lokalida qoldiradi va yorliq chiqmay qoladi
+    can_print: Mapped[bool] = mapped_column(default=True, kw_only=True)

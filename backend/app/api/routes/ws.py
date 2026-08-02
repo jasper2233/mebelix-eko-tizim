@@ -77,28 +77,32 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
     agent_version = websocket.headers.get("x-agent-version", "").strip()[:20] or None
     agent_id: int | None = None
     token_hash: str | None = None
+    can_print = True
     # bytes solishtirish: non-ASCII tokenda compare_digest(str) TypeError beradi
     legacy = bool(settings.BRIDGE_TOKEN) and secrets.compare_digest(token.encode(), settings.BRIDGE_TOKEN.encode())
     if not legacy:
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         async with local_session() as db:
-            agent_id = (
+            row = (
                 await db.execute(
-                    select(BridgeAgent.id).where(
+                    select(BridgeAgent.id, BridgeAgent.can_print).where(
                         BridgeAgent.token_hash == token_hash,
                         BridgeAgent.is_deleted == False,  # noqa: E712
                     )
                 )
-            ).scalar_one_or_none()
-        if agent_id is None:
+            ).first()
+        if row is None:
             await websocket.close(code=4401)
             return
+        agent_id, can_print = row
     await websocket.accept()
 
     async def touch_agent() -> bool:
-        """last_seen_at yangilaydi (paneldagi "Onlayn"). False = token bekor qilingan
-        (revoke yoki yangi kod) — ulanish yopilishi kerak. DB xatosi ulanishni
-        YIQITMAYDI: qo'lda turgan print job yo'qolmasin."""
+        """last_seen_at yangilaydi (paneldagi "Onlayn") va can_print'ni yangilab oladi
+        (admin belgini o'zgartirsa ~5 daqiqada kuchga kiradi). False = token bekor
+        qilingan (revoke yoki yangi kod) — ulanish yopilishi kerak. DB xatosi
+        ulanishni YIQITMAYDI: qo'lda turgan print job yo'qolmasin."""
+        nonlocal can_print
         if agent_id is None:  # legacy umumiy token — jadvalda qatori yo'q
             return True
         with contextlib.suppress(Exception):
@@ -111,11 +115,14 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
                         BridgeAgent.is_deleted == False,  # noqa: E712
                     )
                     .values(last_seen_at=datetime.now(UTC), version=agent_version)
-                    .returning(BridgeAgent.id)
+                    .returning(BridgeAgent.can_print)
                 )
-                alive = res.first() is not None
+                row = res.first()
                 await db.commit()
-                return alive
+                if row is None:
+                    return False
+                can_print = row[0]
+                return True
         return True
 
     if not await touch_agent():
@@ -128,7 +135,13 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
     redis = AsyncRedis.from_url(settings.REDIS_URL)
     try:
         while True:
-            popped = await redis.brpop([PRINT_QUEUE_KEY], timeout=5)
+            if can_print:
+                popped = await redis.brpop([PRINT_QUEUE_KEY], timeout=5)
+            else:
+                # Printersiz stansiya (skan-forvard): navbatdan chek OLMAYDI —
+                # aks holda umumiy navbatdan chekni "o'g'irlab" lokalida qoldiradi
+                popped = None
+                await asyncio.sleep(5)
             now = asyncio.get_event_loop().time()
             if now - last_touch > 300:  # har 5 daqiqada — DB'ga ortiqcha yuk bo'lmasin
                 if not await touch_agent():

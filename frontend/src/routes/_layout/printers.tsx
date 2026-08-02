@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Switch } from "@/components/ui/switch"
 import {
   Table,
   TableBody,
@@ -118,6 +119,7 @@ function PrintersPage() {
                 <TableHead>Holat</TableHead>
                 <TableHead>Ulanish kodi</TableHead>
                 <TableHead>Stanok (skan-forvard)</TableHead>
+                <TableHead>Chek chiqarish</TableHead>
                 <TableHead>Oxirgi ulanish</TableHead>
                 <TableHead className="w-24" />
               </TableRow>
@@ -128,7 +130,7 @@ function PrintersPage() {
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={7}
                     className="h-24 text-center text-muted-foreground"
                   >
                     Agentlar yo'q. "Yangi agent" bilan ulanish kodi yarating.
@@ -152,9 +154,26 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
   const [pendingMachine, setPendingMachine] = useState<number | null | "unset">(
     "unset",
   )
+  // Chek chiqarish belgisi ham tasdiq bilan: printersiz kompyuterda yoqilsa
+  // umumiy navbatdan chek "o'g'irlanadi", printerlida o'chirilsa chek to'xtaydi
+  const [pendingPrint, setPendingPrint] = useState<boolean | null>(null)
   const { data: machines } = useQuery(getMachinesQueryOptions())
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: ["bridge-agents"] })
+
+  const togglePrint = useMutation({
+    mutationFn: (v: boolean) =>
+      BridgeAgentsService.updateBridgeAgent({
+        agentId: agent.id,
+        requestBody: { can_print: v },
+      }),
+    onSuccess: () => {
+      showSuccessToast("Saqlandi")
+      setPendingPrint(null)
+    },
+    onError: handleError(showErrorToast),
+    onSettled: refresh,
+  })
 
   const linkMachine = useMutation({
     mutationFn: (machineId: number | null) =>
@@ -265,6 +284,32 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
           loading={linkMachine.isPending}
           onConfirm={() => {
             if (pendingMachine !== "unset") linkMachine.mutate(pendingMachine)
+          }}
+        />
+      </TableCell>
+      <TableCell>
+        <Switch
+          checked={agent.can_print}
+          onCheckedChange={(v) => setPendingPrint(v)}
+          aria-label="Chek chiqarish"
+        />
+        <ConfirmDialog
+          open={pendingPrint !== null}
+          onOpenChange={(v) => !v && setPendingPrint(null)}
+          title={
+            pendingPrint
+              ? "Chek chiqarish yoqilsinmi?"
+              : "Chek chiqarish o'chirilsinmi?"
+          }
+          description={
+            pendingPrint
+              ? `${agent.name} chek navbatidan ish oladi. Bu kompyuterda GoDEX printer ulangan bo'lishi SHART — aks holda cheklar shu yerga tushib, printerli agentga yetib bormaydi.`
+              : `${agent.name} chek navbatidan ish olmaydi — faqat skan-forvard va holat uchun ulanadi (printersiz stansiya uchun to'g'ri). Ulangan agentda ~5 daqiqada kuchga kiradi.`
+          }
+          confirmText={pendingPrint ? "Yoqish" : "O'chirish"}
+          loading={togglePrint.isPending}
+          onConfirm={() => {
+            if (pendingPrint !== null) togglePrint.mutate(pendingPrint)
           }}
         />
       </TableCell>

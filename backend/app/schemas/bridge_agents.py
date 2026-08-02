@@ -20,6 +20,8 @@ class BridgeAgentRead(BaseModel):
     machine_name: str | None = None
     # Agent exe versiyasi (oxirgi ulanishdan); null = eski (headersiz) exe
     version: str | None = None
+    # False = printersiz stansiya (skan-forvard) — chek navbatidan ish olmaydi
+    can_print: bool = True
 
 
 class BridgeAgentCreate(BaseModel):
@@ -27,9 +29,11 @@ class BridgeAgentCreate(BaseModel):
 
 
 class BridgeAgentUpdate(BaseModel):
-    """Hozircha faqat stanok bog'lami o'zgaradi."""
+    """Stanok bog'lami va chek-chiqarish belgisi. can_print=None = tegilmaydi
+    (machine_id'da None "olib tashlash" degani, shuning uchun sentinel farqli)."""
 
     machine_id: int | None = None
+    can_print: bool | None = None
 
 
 class BridgeScanRequest(BaseModel):

@@ -57,13 +57,16 @@ export type BridgeAgentRead = {
     machine_id?: (number | null);
     machine_name?: (string | null);
     version?: (string | null);
+    can_print?: boolean;
 };
 
 /**
- * Hozircha faqat stanok bog'lami o'zgaradi.
+ * Stanok bog'lami va chek-chiqarish belgisi. can_print=None = tegilmaydi
+ * (machine_id'da None "olib tashlash" degani, shuning uchun sentinel farqli).
  */
 export type BridgeAgentUpdate = {
     machine_id?: (number | null);
+    can_print?: (boolean | null);
 };
 
 export type BridgePairRequest = {

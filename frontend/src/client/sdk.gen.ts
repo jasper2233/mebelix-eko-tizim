@@ -73,7 +73,8 @@ export class BridgeAgentsService {
     
     /**
      * Update Bridge Agent
-     * Agentni stanokka bog'lash — skan-forvard shu stanok/post nomidan yoziladi.
+     * Stanok bog'lash (skan-forvard) va chek-chiqarish belgisi. Maydonlar
+     * alohida yuboriladi — berilmagani tegilmaydi (exclude_unset).
      * @param data The data for the request.
      * @param data.agentId
      * @param data.requestBody
