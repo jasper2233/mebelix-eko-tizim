@@ -1,12 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { Download, KeyRound, Plus, Trash2 } from "lucide-react"
+import { KeyRound, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { type BridgeAgentRead, BridgeAgentsService, OpenAPI } from "@/client"
+import { type BridgeAgentRead, BridgeAgentsService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { Badge } from "@/components/ui/badge"
@@ -74,19 +74,7 @@ function PrintersPage() {
       <PageHeader
         title="Printer agentlar"
         description="Chek printerlari — ulanish kodi bilan o'rnatiladi, serverga kirish shart emas"
-        actions={
-          <div className="flex gap-2">
-            <Button asChild variant="outline">
-              <a
-                href={`${OpenAPI.BASE}/api/v1/bridge-agents/download`}
-                download="mebelix-agent.exe"
-              >
-                <Download /> Agentni yuklab olish
-              </a>
-            </Button>
-            <AddAgent />
-          </div>
-        }
+        actions={<AddAgent />}
       />
 
       <div className="mb-4 rounded-lg border bg-card p-4 text-sm">
@@ -99,8 +87,8 @@ function PrintersPage() {
           </li>
           <li>"Yangi agent" bilan kod oling</li>
           <li>
-            "Agentni yuklab olish" → faylni oching → kodni kiriting. Shundan
-            keyin agent fonda ishlaydi va kompyuter yonganda o'zi tushadi
+            mebelix-agent.exe ni ishga tushirib kodni kiriting. Shundan keyin
+            agent fonda ishlaydi va kompyuter yonganda o'zi tushadi
           </li>
         </ol>
       </div>

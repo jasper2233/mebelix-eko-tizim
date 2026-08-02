@@ -13,8 +13,9 @@ terminallariga hech narsa kerak emas (ular brauzerdan tugmani bosadi).
 
 1. GoDEX drayverini o'rnating (printer USB ulangan holda). Agent printerni
    nomidan o'zi topadi ("godex" qidiradi) — sozlash shart emas.
-2. Admin panel > **Printer agentlar** > "Agentni yuklab olish" — `mebelix-agent.exe`
-   yuklanadi (`GET /api/v1/bridge-agents/download`). Python ham, `pip` ham kerak emas.
+2. `mebelix-agent.exe` ni printerli kompyuterga ko'chiring (qo'lda tarqatiladi —
+   flashka yoki lokal tarmoq; panel ichidagi yuklab olish tugmasi olib tashlangan,
+   chunki serverda eski nusxa qolib adashtirardi). Python ham, `pip` ham kerak emas.
 3. O'sha sahifada "Yangi agent" 8 belgili bir martalik kod beradi (masalan
    `P7HJ-N46U`) — 15 daqiqa amal qiladi.
 4. Exe'ni ishga tushiring — kichik oyna chiqadi, ikkita maydon: server manzili

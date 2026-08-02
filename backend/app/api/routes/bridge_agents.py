@@ -16,14 +16,11 @@ import hashlib
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 
 from fastapi import APIRouter, Header, HTTPException, Request
-from fastapi.responses import FileResponse
 from sqlalchemy import select, update
 
 from app.api.deps import AdminUser, SessionDep
-from app.core.config import settings
 from app.core.exceptions import NotFoundException
 from app.core.ws import ws_manager
 from app.crud import crud_bridge_agents, log_action
@@ -303,12 +300,6 @@ async def bridge_scan(
     )
 
 
-@router.get("/download", operation_id="download_bridge_agent")
-async def download_bridge_agent() -> FileResponse:
-    """Agent dasturi (Windows exe). Sir saqlamaydi — hamma mijozga bir xil fayl,
-    shuning uchun auth talab qilinmaydi (monoblok brauzerida sessiya bo'lmasligi mumkin).
-    Yangi versiya: exe'ni uploads/agent/ ga qo'yish kifoya."""
-    path = Path(settings.UPLOAD_DIR).resolve() / "agent" / "mebelix-agent.exe"
-    if not path.is_file():
-        raise NotFoundException("Agent fayli serverga hali yuklanmagan.")
-    return FileResponse(path, filename="mebelix-agent.exe", media_type="application/octet-stream")
+# "Agentni yuklab olish" endpointi olib tashlangan (2026-08-02): u diskdagi
+# eski exe'ni berib adashtirardi — deploy uploads/ ni yangilamaydi. Agent exe
+# qo'lda tarqatiladi (bridge-agent/README.md).

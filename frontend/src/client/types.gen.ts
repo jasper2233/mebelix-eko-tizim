@@ -939,8 +939,6 @@ export type BridgeScanData = {
 
 export type BridgeScanResponse = (ScanResult);
 
-export type DownloadBridgeAgentResponse = (unknown);
-
 export type ReadClientsData = {
     limit?: number;
     search?: (string | null);
