@@ -239,13 +239,9 @@ export function KromkaView({
                 className="flex items-center gap-3 border-b px-4 py-3 last:border-0"
               >
                 <div className="min-w-0 flex-1">
+                  {/* To'liq nusxa ID — chekdagi satr bilan aynan bir xil */}
                   <div className="num truncate text-base font-semibold">
-                    {part.code}
-                    {part.instances.length > 1 && (
-                      <span className="ml-1.5 text-xs text-muted-foreground">
-                        №{inst.instance_no}
-                      </span>
-                    )}
+                    {inst.qr_text}
                   </div>
                   <div className="truncate text-xs text-muted-foreground">
                     {part.name} ·{" "}

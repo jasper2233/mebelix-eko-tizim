@@ -266,16 +266,17 @@ function TerminalPage() {
       }),
     onSuccess: (r: ScanResult) => {
       playSuccess()
+      // Chek/QR/SCX bilan bir xil satr — operator solishtirganda adashmasin
       setLastScan({
         kind: "ok",
-        code: r.part_code,
+        code: r.qr_text,
         qoldiq: r.qoldiq,
         scanId: r.scan_id,
         at: Date.now(),
       })
       pushHistory({
         id: r.scan_id,
-        code: `${r.part_code} (${r.instance_no})`,
+        code: r.qr_text,
         ok: true,
         note: `Qoldiq: ${r.qoldiq}`,
       })
