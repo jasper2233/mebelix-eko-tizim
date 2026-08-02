@@ -221,6 +221,8 @@ async def pair_bridge_agent(db: SessionDep, body: BridgePairRequest, request: Re
         ip=request.client.host if request.client else None,
     )
     await db.commit()
+    # Kod terilishi bilan admin sahifasi darhol yangilanadi (pollingni kutmasdan)
+    await ws_manager.publish("bridge.paired", {"agent_id": row.id})
     return BridgePairResponse(token=token, name=row.name)
 
 

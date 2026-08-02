@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { KeyRound, Plus, Trash2 } from "lucide-react"
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
@@ -46,6 +46,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import useCustomToast from "@/hooks/useCustomToast"
+import { useMesWs } from "@/hooks/useMesWs"
 import { formatDateTime } from "@/lib/mes"
 import { getMachinesQueryOptions } from "@/queries/mes"
 import { handleError } from "@/utils"
@@ -62,12 +63,25 @@ const ONLINE_MS = 6 * 60 * 1000
 const fmtCode = (c: string) => `${c.slice(0, 4)}-${c.slice(4)}`
 
 function PrintersPage() {
+  const queryClient = useQueryClient()
   const { data: agents, isLoading } = useQuery({
     queryKey: ["bridge-agents"],
     queryFn: () => BridgeAgentsService.readBridgeAgents(),
-    // Ulanish holati o'rnatish paytida kuzatiladi — 10s bilan deyarli jonli
+    // WS asosiy signal; 10s polling — zaxira (WS uzilib qolgan holat uchun)
     refetchInterval: 10_000,
   })
+  // Jonli holat: agent kod terib ulanishi bilan (bridge.paired/connected)
+  // sahifa DARHOL yangilanadi — pollingni kutmasdan
+  useMesWs(
+    useCallback(
+      (event) => {
+        if (event.type.startsWith("bridge.")) {
+          queryClient.invalidateQueries({ queryKey: ["bridge-agents"] })
+        }
+      },
+      [queryClient],
+    ),
+  )
 
   return (
     <div>
