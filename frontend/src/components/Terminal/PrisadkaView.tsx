@@ -6,7 +6,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft, FolderCog, HardDriveDownload } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { OpenAPI, TerminalService } from "@/client"
 import { Button } from "@/components/ui/button"
@@ -46,10 +46,29 @@ export function PrisadkaView({
   // null = yuklanmayapti; son = nechta fayl saqlandi (tugmada jonli 12/69)
   const [progress, setProgress] = useState<number | null>(null)
 
-  if (isLoading) return <Skeleton className="h-full w-full" />
-
   const parts = ((data as { parts?: PPart[] } | undefined)?.parts ??
     []) as PPart[]
+
+  // Oxirgi skan bo'lgan qator bir necha soniya ajralib tursin: done oshgan
+  // detal aniqlanadi (lokal skan ham, stanokdan skan-forvard ham shu yerga tushadi)
+  const prevDoneRef = useRef<Map<number, number>>(new Map())
+  const [flashId, setFlashId] = useState<number | null>(null)
+  useEffect(() => {
+    const prev = prevDoneRef.current
+    let changed: number | null = null
+    for (const p of parts) {
+      const old = prev.get(p.part_id)
+      if (old !== undefined && p.done > old) changed = p.part_id
+    }
+    prevDoneRef.current = new Map(parts.map((p) => [p.part_id, p.done]))
+    if (changed !== null) {
+      setFlashId(changed)
+      const t = setTimeout(() => setFlashId(null), 6000)
+      return () => clearTimeout(t)
+    }
+  }, [parts])
+
+  if (isLoading) return <Skeleton className="h-full w-full" />
   const allFiles = parts.flatMap((p) => p.files)
   const totDone = parts.reduce((s, p) => s + p.done, 0)
   const totReq = parts.reduce((s, p) => s + p.total, 0)
@@ -170,41 +189,50 @@ export function PrisadkaView({
             </tr>
           </thead>
           <tbody>
-            {parts.map((p) => {
-              const finished = p.done >= p.total
-              return (
-                <tr
-                  key={p.part_id}
-                  className={cn(
-                    "border-b last:border-0",
-                    finished && "bg-green-50",
-                  )}
-                >
-                  <td className="num px-4 py-3 font-semibold">{p.code}</td>
-                  <td className="max-w-[200px] truncate px-4 py-3">{p.name}</td>
-                  <td className="num whitespace-nowrap px-4 py-3 text-sm">
-                    {formatSize(p.length, p.width, p.thickness)}
-                  </td>
-                  <td className="num px-4 py-3 text-sm text-muted-foreground">
-                    {p.files.map((f) => f.filename).join(", ") || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <span
-                      className={cn(
-                        "num rounded-md px-2.5 py-1 text-lg font-black",
-                        finished
-                          ? "bg-green-600 text-white"
-                          : p.done > 0
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {finished ? "✓" : `${p.done}/${p.total}`}
-                    </span>
-                  </td>
-                </tr>
+            {/* Ish-navbat: qilinmaganlar tepada, tugaganlar (✓) pastga tushadi */}
+            {[...parts]
+              .sort(
+                (a, b) => Number(a.done >= a.total) - Number(b.done >= b.total),
               )
-            })}
+              .map((p) => {
+                const finished = p.done >= p.total
+                return (
+                  <tr
+                    key={p.part_id}
+                    className={cn(
+                      "border-b last:border-0",
+                      flashId === p.part_id
+                        ? "animate-pulse bg-amber-100"
+                        : finished && "bg-green-50",
+                    )}
+                  >
+                    <td className="num px-4 py-3 font-semibold">{p.code}</td>
+                    <td className="max-w-[200px] truncate px-4 py-3">
+                      {p.name}
+                    </td>
+                    <td className="num whitespace-nowrap px-4 py-3 text-sm">
+                      {formatSize(p.length, p.width, p.thickness)}
+                    </td>
+                    <td className="num px-4 py-3 text-sm text-muted-foreground">
+                      {p.files.map((f) => f.filename).join(", ") || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span
+                        className={cn(
+                          "num rounded-md px-2.5 py-1 text-lg font-black",
+                          finished
+                            ? "bg-green-600 text-white"
+                            : p.done > 0
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {finished ? "✓" : `${p.done}/${p.total}`}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
             {!parts.length && (
               <tr>
                 <td
