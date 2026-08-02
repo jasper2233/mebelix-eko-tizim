@@ -529,6 +529,39 @@ async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int
         if f.part_id is not None:
             files_by_part.setdefault(f.part_id, []).append({"id": f.id, "filename": f.filename})
 
+    # Har nusxaning shu postdagi holati: 2/4 ko'rsatishning o'zi QAYSI nusxalar
+    # qolganini aytmaydi — fayl (nomi = nusxa QR'i) yashil/kulrang bo'lib ko'rsatadi
+    scan_counts = dict(
+        (
+            await db.execute(
+                select(Scan.instance_id, func.count(Scan.id))
+                .where(
+                    Scan.order_id == order.id,
+                    Scan.post_id == post.id,
+                    Scan.is_cancelled == False,  # noqa: E712
+                    Scan.is_deleted == False,  # noqa: E712
+                )
+                .group_by(Scan.instance_id)
+            )
+        )
+        .tuples()
+        .all()
+    )
+    insts_by_part: dict[int, list[PartInstance]] = {}
+    for inst in (
+        (
+            await db.execute(
+                select(PartInstance).where(
+                    PartInstance.order_id == order.id,
+                    PartInstance.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    ):
+        insts_by_part.setdefault(inst.part_id, []).append(inst)
+
     return {
         "order_id": order.id,
         "order_number": order.number,
@@ -544,6 +577,10 @@ async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int
                 "done": route.total_done,
                 "total": route.total_required,
                 "files": files_by_part.get(part.id, []),
+                # Skan tugagan nusxalar QR'lari (fayl nomi bilan mos) — UI rang beradi
+                "done_qrs": [
+                    i.qr_text for i in insts_by_part.get(part.id, []) if scan_counts.get(i.id, 0) >= route.per_instance
+                ],
             }
             for route, part, product_code in rows
         ],

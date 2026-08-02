@@ -28,6 +28,8 @@ type PPart = {
   done: number
   total: number
   files: PFile[]
+  // Skan tugagan nusxalar QR'lari (fayl nomi = QR + .scx) — qaysi nusxa qolganini ko'rsatish
+  done_qrs?: string[]
 }
 
 export function PrisadkaView({
@@ -221,8 +223,34 @@ export function PrisadkaView({
                     <td className="num whitespace-nowrap px-4 py-3 text-sm">
                       {formatSize(p.length, p.width, p.thickness)}
                     </td>
-                    <td className="num px-4 py-3 text-sm text-muted-foreground">
-                      {p.files.map((f) => f.filename).join(", ") || "—"}
+                    <td className="px-4 py-3 text-sm">
+                      {/* Har fayl = bitta nusxa: skan qilingani yashil — 2/4 da
+                          aynan qaysi nusxalar qolganini shu yerdan ko'radi */}
+                      {p.files.length ? (
+                        <div className="flex flex-wrap gap-1">
+                          {p.files.map((f) => {
+                            const ok = p.done_qrs?.includes(
+                              f.filename.replace(/\.scx$/i, ""),
+                            )
+                            return (
+                              <span
+                                key={f.id}
+                                className={cn(
+                                  "num rounded px-1.5 py-0.5",
+                                  ok
+                                    ? "bg-green-100 font-semibold text-green-700"
+                                    : "text-muted-foreground",
+                                )}
+                              >
+                                {f.filename}
+                                {ok && " ✓"}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <span
