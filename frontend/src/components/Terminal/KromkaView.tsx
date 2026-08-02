@@ -6,7 +6,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft } from "lucide-react"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { TerminalService } from "@/client"
 import { Button } from "@/components/ui/button"
@@ -89,6 +89,31 @@ export function KromkaView({
     return () => registerScan?.(null)
   }, [registerScan])
 
+  // Oxirgi skan bo'lgan detal qatori KEYINGI skangacha ajralib turadi va
+  // chap ro'yxatda avtomatik ko'rinishga keladi (prisadka bilan bir xil mexanizm)
+  const prevDoneRef = useRef<Map<number, number>>(new Map())
+  const [flashId, setFlashId] = useState<number | null>(null)
+  useEffect(() => {
+    const doneOf = (p: KPart) => p.instances.reduce((s, i) => s + i.done, 0)
+    const prev = prevDoneRef.current
+    let changed: number | null = null
+    for (const p of parts) {
+      const old = prev.get(p.part_id)
+      if (old !== undefined && doneOf(p) > old) changed = p.part_id
+    }
+    prevDoneRef.current = new Map(parts.map((p) => [p.part_id, doneOf(p)]))
+    if (changed !== null) {
+      setFlashId(changed)
+      // Saralash qatorni siljitadi — yangi render joylashgach scroll qilamiz
+      const t = setTimeout(() => {
+        document
+          .getElementById(`kv-row-${changed}`)
+          ?.scrollIntoView({ block: "center", behavior: "smooth" })
+      }, 150)
+      return () => clearTimeout(t)
+    }
+  }, [parts])
+
   if (isLoading) return <Skeleton className="h-full w-full" />
 
   // Chap: arradan chiqqan nusxalar — tugaganlari yashil bo'lib PASTGA tushadi,
@@ -151,9 +176,12 @@ export function KromkaView({
                 return (
                   <tr
                     key={p.part_id}
+                    id={`kv-row-${p.part_id}`}
                     className={cn(
                       "border-b last:border-0",
-                      finished && "bg-green-50",
+                      flashId === p.part_id
+                        ? "bg-amber-100 ring-2 ring-inset ring-amber-400"
+                        : finished && "bg-green-50",
                     )}
                   >
                     <td className="num px-4 py-3 font-semibold">{p.code}</td>

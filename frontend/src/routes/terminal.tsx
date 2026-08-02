@@ -102,6 +102,10 @@ function TerminalPage() {
   const isOperator = OPERATOR_ROLES.includes(currentUser?.role as never)
 
   const [scanOn, setScanOn] = useState(true)
+  // Skan bo'lgan vazifa qatori KEYINGI skangacha ajralib turadi + avto-scroll
+  // (prisadka/kromka bilan bir xil mexanizm — qoldiq kamaygan qator aniqlanadi)
+  const prevQoldiqRef = useRef<Map<string, number>>(new Map())
+  const [taskFlash, setTaskFlash] = useState<string | null>(null)
   const [locked, setLocked] = useState(false)
   const [mapOrderId, setMapOrderId] = useState<number | null>(null)
   const [lastScan, setLastScan] = useState<LastScan>(null)
@@ -227,6 +231,29 @@ function TerminalPage() {
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [scanOn, locked, scanInputHidden])
+
+  useEffect(() => {
+    const list = tasks ?? []
+    const prev = prevQoldiqRef.current
+    let changed: string | null = null
+    for (const t of list) {
+      const k = `${t.order_id}-${t.part_id}`
+      const old = prev.get(k)
+      if (old !== undefined && t.qoldiq < old) changed = k
+    }
+    prevQoldiqRef.current = new Map(
+      list.map((t) => [`${t.order_id}-${t.part_id}`, t.qoldiq]),
+    )
+    if (changed !== null) {
+      setTaskFlash(changed)
+      const timer = setTimeout(() => {
+        document
+          .getElementById(`task-row-${changed}`)
+          ?.scrollIntoView({ block: "center", behavior: "smooth" })
+      }, 150)
+      return () => clearTimeout(timer)
+    }
+  }, [tasks])
 
   const pushHistory = (entry: {
     id: number
@@ -711,7 +738,12 @@ function TerminalPage() {
                       tasks.map((t) => (
                         <tr
                           key={`${t.order_id}-${t.part_id}`}
-                          className="border-b last:border-0"
+                          id={`task-row-${t.order_id}-${t.part_id}`}
+                          className={cn(
+                            "border-b last:border-0",
+                            taskFlash === `${t.order_id}-${t.part_id}` &&
+                              "bg-amber-100 ring-2 ring-inset ring-amber-400",
+                          )}
                         >
                           <td className="num px-4 py-3.5 font-semibold">
                             {t.code}
