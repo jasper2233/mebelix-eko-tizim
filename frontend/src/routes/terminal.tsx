@@ -661,8 +661,9 @@ function TerminalPage() {
               )}
             </div>
           </div>
-        ) : ctx?.post_code === "PRISADKA" ? (
-          /* PRISADKA: proyekt ro'yxati → detallar + SCX fayllarni papkaga yuklab olish */
+        ) : ["PRISADKA", "PAZ", "ROVER"].includes(ctx?.post_code ?? "") ? (
+          /* CNC postlar (PRISADKA/PAZ/ROVER): proyekt ro'yxati → detallar + SCX
+             fayllar; ROVER'da arra'siz detalga QR chiqarish ham shu sahifada */
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
             {scanStrip}
             <div className="min-h-0 flex-1">

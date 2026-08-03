@@ -497,11 +497,13 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
 
 @router.get("/orders/{order_id}/prisadka", response_model=dict, operation_id="read_terminal_prisadka")
 async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int) -> dict:
-    """PRISADKA sahifasi: buyurtmaning prisadka detallari + har detalning SCX fayllari
-    (stanok kompyuteriga yuklab olish uchun, TZ 12.5)."""
+    """CNC post sahifasi (PRISADKA/PAZ/ROVER): shu postga tegishli detallar +
+    SCX fayllari (stanok kompyuteriga yuklab olish uchun, TZ 12.5). ROVER'da
+    jarayon arradan EMAS, roverdan boshlanishi ham mumkin — shunday detallarga
+    QR chekni shu sahifadan chiqarish uchun arra_route belgisi ham beriladi."""
     machine, post = ctx
-    if post.code != PostCode.PRISADKA:
-        raise HTTPException(status_code=403, detail="Bu sahifa faqat PRISADKA postida ko'rsatiladi.")
+    if post.code not in (PostCode.PRISADKA, PostCode.PAZ, PostCode.ROVER):
+        raise HTTPException(status_code=403, detail="Bu sahifa faqat CNC postlarida (PRISADKA/PAZ/ROVER) ko'rsatiladi.")
 
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
 
@@ -571,6 +573,26 @@ async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int
     ):
         insts_by_part.setdefault(inst.part_id, []).append(inst)
 
+    # ROVER'da jarayon arradan boshlanmasligi mumkin: marshrutida ARRA yo'q
+    # detalning QR cheki shu sahifadan chiqariladi. ARRA'li detalga bu yerdan
+    # chek chiqarish TAQIQ — arra statistikasi ("chek chiqarilgan = kesilgan")
+    # buzilardi, chek arrachi tomonidan chiqadi.
+    arra_part_ids = {
+        pid
+        for (pid,) in (
+            await db.execute(
+                select(PartRoute.part_id)
+                .join(Post, Post.id == PartRoute.post_id)
+                .where(
+                    PartRoute.order_id == order.id,
+                    Post.code == PostCode.ARRA,
+                    PartRoute.is_enabled == True,  # noqa: E712
+                    PartRoute.is_deleted == False,  # noqa: E712
+                )
+            )
+        ).all()
+    }
+
     return {
         "order_id": order.id,
         "order_number": order.number,
@@ -586,9 +608,20 @@ async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int
                 "done": route.total_done,
                 "total": route.total_required,
                 "files": files_by_part.get(part.id, []),
+                "arra_route": part.id in arra_part_ids,
                 # Skan tugagan nusxalar QR'lari (fayl nomi bilan mos) — UI rang beradi
                 "done_qrs": [
                     i.qr_text for i in insts_by_part.get(part.id, []) if scan_counts.get(i.id, 0) >= route.per_instance
+                ],
+                # Nusxa darajasi: QR chiqarish tugmasi va holat uchun
+                "instances": [
+                    {
+                        "instance_id": i.id,
+                        "qr_text": i.qr_text,
+                        "label_printed": i.label_printed_at is not None,
+                        "done": scan_counts.get(i.id, 0) >= route.per_instance,
+                    }
+                    for i in sorted(insts_by_part.get(part.id, []), key=lambda i: i.instance_no)
                 ],
             }
             for route, part, product_code in rows

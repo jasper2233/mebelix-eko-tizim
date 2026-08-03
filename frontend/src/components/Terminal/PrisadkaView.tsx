@@ -4,8 +4,8 @@
 // saqlanadi, keyingi safar so'ralmaydi. Skan oqimi odatdagidek (har skanda
 // o'sha detal SCX'i ham avtomatik tushadi).
 
-import { useQuery } from "@tanstack/react-query"
-import { ArrowLeft, FolderCog, HardDriveDownload } from "lucide-react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { ArrowLeft, FolderCog, HardDriveDownload, Printer } from "lucide-react"
 import { useState } from "react"
 
 import { OpenAPI, TerminalService } from "@/client"
@@ -23,8 +23,15 @@ import {
   saveScxToDir,
 } from "@/lib/scxDir"
 import { cn } from "@/lib/utils"
+import { handleError } from "@/utils"
 
 type PFile = { id: number; filename: string }
+type PInstance = {
+  instance_id: number
+  qr_text: string
+  label_printed: boolean
+  done: boolean
+}
 type PPart = {
   part_id: number
   code: string
@@ -35,8 +42,11 @@ type PPart = {
   done: number
   total: number
   files: PFile[]
+  // Marshrutida ARRA bormi: bo'lsa QR chekni arrachi chiqaradi, bu yerdan taqiq
+  arra_route?: boolean
   // Skan tugagan nusxalar QR'lari (fayl nomi = QR + .scx) — qaysi nusxa qolganini ko'rsatish
   done_qrs?: string[]
+  instances?: PInstance[]
 }
 
 export function PrisadkaView({
@@ -47,10 +57,21 @@ export function PrisadkaView({
   onBack: () => void
 }) {
   const { showSuccessToast, showErrorToast } = useCustomToast()
+  const queryClient = useQueryClient()
   const { data, isLoading } = useQuery({
     queryKey: ["terminal", "prisadka", orderId],
     queryFn: () => TerminalService.readTerminalPrisadka({ orderId }),
     refetchInterval: 30_000,
+  })
+  // ROVER'da jarayon shu postdan boshlanishi mumkin (marshrutda ARRA yo'q) —
+  // QR chek shu yerdan chiqariladi; keyin skan bilan ish yakunlanadi
+  const printLabel = useMutation({
+    mutationFn: (instanceId: number) =>
+      TerminalService.printInstanceLabel({ instanceId }),
+    onSuccess: (r) => showSuccessToast(r.message),
+    onError: handleError(showErrorToast),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: ["terminal", "prisadka"] }),
   })
   // null = yuklanmayapti; son = nechta fayl saqlandi (tugmada jonli 12/69)
   const [progress, setProgress] = useState<number | null>(null)
@@ -182,7 +203,7 @@ export function PrisadkaView({
               <th className="px-4 py-2.5">Kod</th>
               <th className="px-4 py-2.5">Nomi</th>
               <th className="px-4 py-2.5">O'lchami</th>
-              <th className="px-4 py-2.5">SCX fayllar</th>
+              <th className="px-4 py-2.5">Nusxalar (SCX)</th>
               <th className="px-4 py-2.5 text-right">Bajarildi</th>
             </tr>
           </thead>
@@ -213,9 +234,44 @@ export function PrisadkaView({
                       {formatSize(p.length, p.width, p.thickness)}
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      {/* Har fayl = bitta nusxa: skan qilingani yashil — 2/4 da
-                          aynan qaysi nusxalar qolganini shu yerdan ko'radi */}
-                      {p.files.length ? (
+                      {/* Har chip = bitta nusxa (nom = QR = SCX fayl nomi):
+                          yashil ✓ — skan tugagan, amber — chek chiqqan (skan
+                          kutilmoqda), kulrang — boshlanmagan. Marshrutida ARRA
+                          bo'lmagan detalga (jarayon shu postdan boshlanadi)
+                          printer tugmasi bilan QR chek shu yerdan chiqariladi */}
+                      {(p.instances?.length ?? 0) > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {(p.instances ?? []).map((i) => (
+                            <span
+                              key={i.instance_id}
+                              className={cn(
+                                "num inline-flex items-center gap-1 rounded px-1.5 py-0.5",
+                                i.done
+                                  ? "bg-green-100 font-semibold text-green-700"
+                                  : i.label_printed
+                                    ? "bg-amber-100 text-amber-700"
+                                    : "text-muted-foreground",
+                              )}
+                            >
+                              {i.qr_text}
+                              {i.done && " ✓"}
+                              {!i.done && !i.label_printed && !p.arra_route && (
+                                <button
+                                  type="button"
+                                  title="QR chek chiqarish"
+                                  disabled={printLabel.isPending}
+                                  onClick={() =>
+                                    printLabel.mutate(i.instance_id)
+                                  }
+                                  className="rounded border px-1.5 py-0.5 text-foreground hover:bg-secondary"
+                                >
+                                  <Printer className="size-3.5" />
+                                </button>
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                      ) : p.files.length ? (
                         <div className="flex flex-wrap gap-1">
                           {p.files.map((f) => {
                             const ok = p.done_qrs?.includes(
