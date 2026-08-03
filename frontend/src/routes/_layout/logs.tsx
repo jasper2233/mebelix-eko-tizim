@@ -45,12 +45,14 @@ const PAGE = 50
 const CATEGORIES: { key: string; label: string }[] = [
   { key: "scan", label: "Skan" },
   { key: "print", label: "Chek" },
+  { key: "sessions", label: "Smenalar" },
   { key: "orders", label: "Buyurtmalar" },
   { key: "bridge_agents", label: "Printer agentlar" },
   { key: "employees", label: "Hodimlar" },
   { key: "clients", label: "Mijozlar" },
   { key: "materials", label: "Materiallar" },
   { key: "machines", label: "Stanoklar" },
+  { key: "posts", label: "Postlar" },
 ]
 const CATEGORY_LABELS = Object.fromEntries(
   CATEGORIES.map((c) => [c.key, c.label]),
@@ -74,6 +76,15 @@ const ACTION_LABELS: Record<string, string> = {
   matrix_edited: "matritsa tahrirlandi",
   code_regenerated: "yangi ulanish kodi",
   paired: "ulandi",
+  badge_regenerated: "beyjik qayta yaratildi",
+  survey_saved: "anketa saqlandi",
+  survey_photo_added: "anketa rasmi qo'shildi",
+  survey_photo_deleted: "anketa rasmi o'chirildi",
+  delivered: "topshirildi",
+  confirmed: "tasdiqlandi",
+  production_started: "ishlab chiqarishga uzatildi",
+  machines_assigned: "stanoklar biriktirildi",
+  project_uploaded: "fayl yuklandi",
 }
 
 function LogsPage() {
