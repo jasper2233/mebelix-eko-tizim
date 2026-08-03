@@ -35,7 +35,13 @@ from app.schemas.bridge_agents import (
 )
 from app.schemas.common import Message
 from app.schemas.terminal import ScanResult
-from app.services.scanning import ScanRejected, latest_active_session, qr_part_code, record_scan_at
+from app.services.scanning import (
+    ScanRejected,
+    expire_if_stale,
+    latest_active_session,
+    qr_part_code,
+    record_scan_at,
+)
 
 router = APIRouter(prefix="/bridge-agents", tags=["bridge-agents"])
 
@@ -282,7 +288,8 @@ async def bridge_scan(
     post = await db.get(Post, machine.post_id)
     if post is None:
         raise HTTPException(status_code=409, detail="Stanok posti topilmadi.")
-    session = await latest_active_session(db, machine.id)
+    # Terminal bilan bir xil qoida: 12 soatlik smena muddati stanok skanida ham amal qiladi
+    session = await expire_if_stale(db, await latest_active_session(db, machine.id))
     if session is None:
         raise HTTPException(
             status_code=409,

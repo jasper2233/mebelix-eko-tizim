@@ -385,7 +385,8 @@ function TabloOrderDrill({
           {data?.name ?? ""}
         </span>
         <span className="ml-auto text-xl font-bold uppercase tracking-widest text-muted-foreground">
-          Soni nazorati
+          {/* Hujayralar bilan bir xil rejim (hajm drill'da soni'ga tushadi) */}
+          {mode === "foiz" ? "Foiz nazorati" : "Soni nazorati"}
         </span>
       </header>
       <main className="min-h-0 flex-1 overflow-auto p-4">

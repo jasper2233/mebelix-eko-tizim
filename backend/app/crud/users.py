@@ -30,8 +30,8 @@ class CRUDUser(BaseCRUD[User]):
     async def create(self, db: AsyncSession, user_create: UserCreate) -> User:
         """Create a new user with hashed password. Caller should pre-check phone/username uniqueness."""
         hashed_password = await get_password_hash(user_create.password)
-        user_data = user_create.model_dump(exclude={"password", "name"})
-        db_user = User(**user_data, hashed_password=hashed_password, name=user_create.name)
+        user_data = user_create.model_dump(exclude={"password"})
+        db_user = User(**user_data, hashed_password=hashed_password)
         db.add(db_user)
         try:
             await db.commit()

@@ -40,6 +40,9 @@ class UserRead(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+    # ATAYLAB str (boshqa Read sxemalarda int): JWT `sub` ham str — frontend
+    # currentUser.id ni token bilan solishtiradi; int'ga o'tkazish client'dagi
+    # barcha id taqqoslashlarni sindiradi, foydasi yo'q
     id: Annotated[str, BeforeValidator(lambda v: str(v)), Field(examples=["1"])]
     name: Annotated[str | None, _NAME_FIELD]
     username: Annotated[str, Field(min_length=2, max_length=20, pattern=r"^[a-z0-9]+$", examples=["userson"])]

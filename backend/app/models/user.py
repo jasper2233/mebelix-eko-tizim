@@ -15,7 +15,7 @@ class User(BaseModel):
         Index("ix_user_phone", "phone", unique=True, postgresql_where=text("NOT is_deleted")),
     )
 
-    name: Mapped[str | None] = mapped_column(String(30), kw_only=True)
+    name: Mapped[str | None] = mapped_column(String(30), default=None, kw_only=True)
     username: Mapped[str] = mapped_column(String(20), kw_only=True)
     # E.164 Uzbek mobile: '+998' + 9 digits = 13 chars total. Stored canonical, no spaces.
     phone: Mapped[str] = mapped_column(String(13), kw_only=True)

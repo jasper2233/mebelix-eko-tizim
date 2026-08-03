@@ -1,5 +1,6 @@
 from datetime import date, datetime, time
 from typing import Annotated, Any
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, ConfigDict
@@ -55,10 +56,13 @@ async def read_audit_logs(
         query = query.where(AuditLog.user_id == user_id)
     if q:
         query = query.where(AuditLog.message.ilike(f"%{q.strip()}%"))
+    # Kun chegarasi Toshkent vaqtida (reports.py bilan bir xil) — naive datetime
+    # UTC deb ketib "bugun" filtri 00:00-05:00 dagi yozuvlarni yo'qotardi
+    tashkent = ZoneInfo("Asia/Tashkent")
     if date_from is not None:
-        query = query.where(AuditLog.created_at >= datetime.combine(date_from, time.min))
+        query = query.where(AuditLog.created_at >= datetime.combine(date_from, time.min, tzinfo=tashkent))
     if date_to is not None:
-        query = query.where(AuditLog.created_at <= datetime.combine(date_to, time.max))
+        query = query.where(AuditLog.created_at <= datetime.combine(date_to, time.max, tzinfo=tashkent))
 
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
     rows = (

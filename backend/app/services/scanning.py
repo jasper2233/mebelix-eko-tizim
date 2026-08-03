@@ -125,22 +125,30 @@ async def latest_active_session(db: AsyncSession, machine_id: int) -> WorkSessio
     ).scalar_one_or_none()
 
 
+async def expire_if_stale(db: AsyncSession, session: WorkSession | None) -> WorkSession | None:
+    """12 soatlik smena muddati (TZ 8.5 E005): o'tgan bo'lsa yopib None qaytaradi.
+    Terminal ham, stanok skan-forvardi ham SHU tekshiruvdan o'tadi."""
+    if session is None:
+        return None
+    started = session.created_at if session.created_at.tzinfo else session.created_at.replace(tzinfo=UTC)
+    if datetime.now(UTC) - started > timedelta(hours=settings.SESSION_MAX_HOURS):
+        session.status = SessionStatus.ENDED
+        session.ended_at = datetime.now(UTC)
+        await db.flush()
+        return None
+    return session
+
+
 async def active_session(db: AsyncSession, user: User, machine: Machine) -> WorkSession:
     session = await latest_active_session(db, machine.id)
 
     # 12-hour shift timeout (TZ 8.5 E005)
-    if session is not None:
-        started = session.created_at if session.created_at.tzinfo else session.created_at.replace(tzinfo=UTC)
-        if datetime.now(UTC) - started > timedelta(hours=settings.SESSION_MAX_HOURS):
-            session.status = SessionStatus.ENDED
-            session.ended_at = datetime.now(UTC)
-            await db.flush()
-            session = None
-            if POST_ROLES.get(UserRole(user.role)) is None:
-                raise ScanRejected(
-                    "E005",
-                    f"Sessiya muddati tugadi ({settings.SESSION_MAX_HOURS} soat). Beyjikni qaytadan scan qiling.",
-                )
+    if session is not None and (session := await expire_if_stale(db, session)) is None:
+        if POST_ROLES.get(UserRole(user.role)) is None:
+            raise ScanRejected(
+                "E005",
+                f"Sessiya muddati tugadi ({settings.SESSION_MAX_HOURS} soat). Beyjikni qaytadan scan qiling.",
+            )
 
     # Operator role: the login IS the shift — open/take over the session automatically.
     if POST_ROLES.get(UserRole(user.role)) is not None:

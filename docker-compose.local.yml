@@ -7,7 +7,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-fastapi_db}
     ports:
-      - "5432:5432"
+      # Faqat loopback: dev mashina sex tarmog'ida — default parolli Postgres
+      # butun tarmoqqa ochilib qolmasin
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -20,7 +22,8 @@ services:
     image: redis:7-alpine
     restart: always
     ports:
-      - "6379:6379"
+      # Faqat loopback: parolsiz Redis tarmoqqa ochilmasin
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:

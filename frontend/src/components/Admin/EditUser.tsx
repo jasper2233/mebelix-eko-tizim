@@ -1,11 +1,16 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Pencil } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { type UserAdminUpdate, type UserRead, UsersService } from "@/client"
+import {
+  type UserAdminUpdate,
+  type UserRead,
+  type UserRole,
+  UsersService,
+} from "@/client"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -28,12 +33,21 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import useCustomToast from "@/hooks/useCustomToast"
+import { ROLE_LABELS } from "@/lib/mes"
 import {
   optionalNameSchema,
   optionalPasswordSchema,
   phoneSchema,
 } from "@/lib/validation"
+import { getMachinesQueryOptions } from "@/queries/mes"
 import { handleError } from "@/utils"
 
 const formSchema = z
@@ -42,8 +56,14 @@ const formSchema = z
     name: optionalNameSchema,
     password: optionalPasswordSchema,
     confirm_password: z.string().optional(),
+    role: z.enum(Object.keys(ROLE_LABELS) as [UserRole, ...UserRole[]]),
+    machine_id: z.string().optional(),
     is_superuser: z.boolean().optional(),
     is_active: z.boolean().optional(),
+  })
+  .refine((d) => !["terminal", "tablo"].includes(d.role) || d.machine_id, {
+    message: "Terminal/TABLO uchun stanok tanlang",
+    path: ["machine_id"],
   })
   .refine((data) => !data.password || data.password === data.confirm_password, {
     message: "Parollar mos emas",
@@ -62,6 +82,7 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
 
+  const { data: machines } = useQuery(getMachinesQueryOptions())
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
@@ -69,6 +90,8 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
     defaultValues: {
       phone: user.phone,
       name: user.name ?? undefined,
+      role: user.role,
+      machine_id: user.machine_id ? String(user.machine_id) : "",
       is_superuser: user.is_superuser,
       is_active: user.is_active,
     },
@@ -95,6 +118,12 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
     const payload: UserAdminUpdate = {
       phone: data.phone,
       name: data.name,
+      role: data.role,
+      // Stanok faqat terminal/tablo uchun; boshqa rolga o'tishda bog'lam uziladi
+      machine_id:
+        ["terminal", "tablo"].includes(data.role) && data.machine_id
+          ? Number(data.machine_id)
+          : null,
       is_superuser: data.is_superuser,
       is_active: data.is_active,
     }
@@ -185,6 +214,63 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Rol</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.entries(ROLE_LABELS).map(([v, l]) => (
+                          <SelectItem key={v} value={v}>
+                            {l}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {["terminal", "tablo"].includes(form.watch("role")) && (
+                <FormField
+                  control={form.control}
+                  name="machine_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Stanok <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <Select
+                        value={field.value ?? ""}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Stanokni tanlang" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {(machines ?? []).map((m) => (
+                            <SelectItem key={m.id} value={String(m.id)}>
+                              {m.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}

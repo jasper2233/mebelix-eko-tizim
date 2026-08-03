@@ -14,7 +14,12 @@ cd "$(dirname "$0")/.."
 TAG="${TAG:?TAG majburiy (masalan, git sha)}"
 STABLE_FILE=".stable_tag"
 COMPOSE="docker compose -f docker-compose.prod.yml"
-SMOKE_URL="${SMOKE_URL:-http://127.0.0.1:8200/api/v1/ready}"
+# Smoke manzili .env dagi CADDY_HTTP_BIND bilan bitta manbadan — qotirilgan 8200
+# port bind default 80 bo'lgan o'rnatishda har deployni yolg'ondan yiqitardi
+BIND="$(grep -E '^CADDY_HTTP_BIND=' .env 2>/dev/null | tail -1 | cut -d= -f2- || true)"
+BIND="${BIND:-80}"
+case "$BIND" in *:*) ;; *) BIND="127.0.0.1:${BIND}" ;; esac
+SMOKE_URL="${SMOKE_URL:-http://${BIND}/api/v1/ready}"
 
 smoke() {
     for _ in $(seq 1 30); do

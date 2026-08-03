@@ -205,17 +205,21 @@ def parse_xnc_program(code: str, program_xml: str, side: str | None = None) -> X
                 op.mills.append(current_contour)
             current_contour.append({"op": "ml", "x": num(el, "x"), "y": num(el, "y")})
         elif tag == "mac":
-            if current_contour:
-                current_contour.append(
-                    {
-                        "op": "mac",
-                        "x": num(el, "x"),
-                        "y": num(el, "y"),
-                        "cx": num(el, "cx"),
-                        "cy": num(el, "cy"),
-                        "dir": xml_bool(el.get("dir")),
-                    }
-                )
+            if not current_contour:
+                # ml bilan bir xil siyosat: kontur boshlanmagan bo'lsa sintetik
+                # boshlanish — yoy jimgina yo'qolmasin ("hech narsa jim yo'qolmaydi")
+                current_contour = [{"op": "ms", "x": 0.0, "y": 0.0, "dp": dz, "c": None, "d": 0.0}]
+                op.mills.append(current_contour)
+            current_contour.append(
+                {
+                    "op": "mac",
+                    "x": num(el, "x"),
+                    "y": num(el, "y"),
+                    "cx": num(el, "cx"),
+                    "cy": num(el, "cy"),
+                    "dir": xml_bool(el.get("dir")),
+                }
+            )
         # oq/oh (saw/groove tools of old generation) intentionally map to grooves too
         elif tag in ("oq", "oh"):
             op.grooves.append(
