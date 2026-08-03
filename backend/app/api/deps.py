@@ -18,6 +18,12 @@ SessionDep = Annotated[AsyncSession, Depends(async_get_db)]
 _oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/login/access-token", auto_error=False)
 
 
+def client_ip(request: Request) -> str | None:
+    """log_action uchun mijoz IP — BITTA joyda. Kelajakda proxy ortida
+    X-Forwarded-For o'qish kerak bo'lsa faqat shu funksiya o'zgaradi."""
+    return request.client.host if request.client else None
+
+
 def _extract_token(request: Request, bearer_token: str | None) -> str | None:
     """Prefer the explicit Authorization header over the cookie fallback."""
     return bearer_token or request.cookies.get(ACCESS_COOKIE_NAME)

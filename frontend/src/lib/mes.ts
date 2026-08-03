@@ -114,6 +114,11 @@ export function formatDate(value: string | null | undefined): string {
   return `${p2(d.getDate())}.${p2(d.getMonth() + 1)}.${d.getFullYear()}`
 }
 
+/** Arrachi nazarida "kesildi": ARRA skan bor YOKI chek chiqarilgan.
+ * CutmapView va SheetSvg SHU predikatdan foydalanadi — ta'rif bitta joyda. */
+export const isCut = (i: { done?: boolean; label_printed_at?: unknown }) =>
+  Boolean(i.done || i.label_printed_at)
+
 /**
  * Muddat ohangi: o'tgan = qizil, bugun = amber.
  * Kun aniqligida solishtiriladi — `deadline` backend'da `date` tipida keladi va

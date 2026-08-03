@@ -38,6 +38,7 @@ import useAuth from "@/hooks/useAuth"
 import useCurrentUser from "@/hooks/useCurrentUser"
 import useCustomToast from "@/hooks/useCustomToast"
 import { useMesWs } from "@/hooks/useMesWs"
+import { useScanFlash } from "@/hooks/useScanFlash"
 import {
   deadlineTone,
   formatDate,
@@ -53,6 +54,7 @@ import {
   getTerminalContextQueryOptions,
   getTerminalTasksQueryOptions,
 } from "@/queries/mes"
+import { detailMessage, detailParts } from "@/utils"
 
 export const Route = createFileRoute("/terminal")({
   component: TerminalPage,
@@ -105,10 +107,13 @@ function TerminalPage() {
   // Oxirgi skan URINISHI vaqti (muvaffaqiyat ham, xato ham) — avto-reload
   // "tinchlik" o'lchovi; lastScan holatidan farqli, 15s da tozalanmaydi
   const lastScanAtRef = useRef(0)
-  // Skan bo'lgan vazifa qatori KEYINGI skangacha ajralib turadi + avto-scroll
-  // (prisadka/kromka bilan bir xil mexanizm — qoldiq kamaygan qator aniqlanadi)
-  const prevQoldiqRef = useRef<Map<string, number>>(new Map())
-  const [taskFlash, setTaskFlash] = useState<string | null>(null)
+  // Skan bo'lgan vazifa qatori keyingi skangacha ajralib turadi + avto-scroll
+  const taskFlash = useScanFlash(
+    tasks ?? [],
+    (t) => `${t.order_id}-${t.part_id}`,
+    (t) => t.qoldiq,
+    "task-row-",
+  )
   const [locked, setLocked] = useState(false)
   const [mapOrderId, setMapOrderId] = useState<number | null>(null)
   const [lastScan, setLastScan] = useState<LastScan>(null)
@@ -236,29 +241,6 @@ function TerminalPage() {
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [scanOn, locked, scanInputHidden])
-
-  useEffect(() => {
-    const list = tasks ?? []
-    const prev = prevQoldiqRef.current
-    let changed: string | null = null
-    for (const t of list) {
-      const k = `${t.order_id}-${t.part_id}`
-      const old = prev.get(k)
-      if (old !== undefined && t.qoldiq < old) changed = k
-    }
-    prevQoldiqRef.current = new Map(
-      list.map((t) => [`${t.order_id}-${t.part_id}`, t.qoldiq]),
-    )
-    if (changed !== null) {
-      setTaskFlash(changed)
-      const timer = setTimeout(() => {
-        document
-          .getElementById(`task-row-${changed}`)
-          ?.scrollIntoView({ block: "center", behavior: "smooth" })
-      }, 150)
-      return () => clearTimeout(timer)
-    }
-  }, [tasks])
 
   const pushHistory = (entry: {
     id: number
@@ -1074,21 +1056,4 @@ function OrderPicker({
       )}
     </div>
   )
-}
-
-function detailParts(err: unknown): { code: string; message: string } {
-  const detail = (
-    err as { body?: { detail?: { code?: string; message?: string } | string } }
-  )?.body?.detail
-  if (typeof detail === "object" && detail)
-    return { code: detail.code ?? "XATO", message: detail.message ?? "" }
-  return {
-    code: "XATO",
-    message: typeof detail === "string" ? detail : "Xatolik yuz berdi",
-  }
-}
-
-function detailMessage(err: unknown): string {
-  const { code, message } = detailParts(err)
-  return message ? `${code}: ${message}` : code
 }

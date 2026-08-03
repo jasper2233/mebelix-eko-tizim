@@ -109,12 +109,8 @@ async def update_password_me(
 
 @router.delete("/me", response_model=dict[str, str], operation_id="delete_user_me")
 async def delete_user_me(current_user: CurrentUser, db: SessionDep) -> dict[str, str]:
-    if current_user.is_superuser:
-        raise ForbiddenException(
-            "Adminlar o'z hisobini o'zlari o'chira olmaydilar. Iltimos, boshqa adminga murojaat qiling."
-        )
-    await crud_users.delete(db=db, id=current_user.id)
-    return {"message": "Foydalanuvchi muvaffaqiyatli o'chirildi"}
+    """erase_user'ning o'z-o'ziga qisqartmasi — qoidalar bitta joyda tursin."""
+    return await erase_user(current_user.id, current_user, db)
 
 
 @router.get("/{user_id}", response_model=UserRead, operation_id="read_user_by_id")

@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import ManagerUser, SessionDep, StaffReadUser, TexnologUser
+from app.api.deps import ManagerUser, SessionDep, StaffReadUser, TexnologUser, client_ip
 from app.core.config import settings
 from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
 from app.core.ws import ws_manager
@@ -43,10 +43,6 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 _EDITABLE_STATUSES = (OrderStatus.DRAFT, OrderStatus.TECHNICAL_REVIEW)
 
 
-def _client_ip(request: Request) -> str | None:
-    return request.client.host if request.client else None
-
-
 def _hidden_statuses(user: User) -> set[OrderStatus]:
     """Texnolog navbatiga tushmagan holatlar: qoralama (hali tasdiqlanmagan,
     tijoriy bosqich) va bekor qilinganlar. Buyurtma texnologga confirm'dan
@@ -57,10 +53,7 @@ def _hidden_statuses(user: User) -> set[OrderStatus]:
 
 
 async def _get_order(db: SessionDep, order_id: int) -> Order:
-    order = await crud_orders.get(db, id=order_id)
-    if order is None:
-        raise NotFoundException("Buyurtma topilmadi.")
-    return order
+    return await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
 
 
 def _order_read(order: Order, client_name: str) -> OrderRead:
@@ -96,7 +89,7 @@ async def create_order(db: SessionDep, current_user: ManagerUser, body: OrderCre
         entity_type="order",
         entity_id=order.id,
         message=f"Buyurtma yaratildi: {order.number}",
-        ip=_client_ip(request),
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(order)
@@ -213,7 +206,7 @@ async def update_order(
         user_id=current_user.id,
         entity_type="order",
         entity_id=order.id,
-        ip=_client_ip(request),
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(order)
@@ -265,7 +258,7 @@ async def save_order_survey(
         entity_type="order",
         entity_id=order.id,
         message=f"Anketa saqlandi: {len(body.rooms)} ta xona",
-        ip=_client_ip(request),
+        ip=client_ip(request),
     )
     await db.commit()
     return Message(message="Anketa saqlandi.")
@@ -340,7 +333,7 @@ async def upload_room_photo(
         entity_type="order",
         entity_id=order_id,
         message=f"Anketaga rasm qo'shildi: {row.filename}",
-        ip=_client_ip(request),
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(row)
@@ -376,7 +369,7 @@ async def delete_room_photo(
         entity_type="order",
         entity_id=order_id,
         message=f"Anketa rasmi o'chirildi: {row.filename}",
-        ip=_client_ip(request),
+        ip=client_ip(request),
     )
     await db.commit()
     return Message(message="Rasm o'chirildi.")
@@ -402,7 +395,7 @@ async def cancel_order(
         entity_type="order",
         entity_id=order.id,
         message=f"Buyurtma bekor qilindi: {body.reason}",
-        ip=_client_ip(request),
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(order)
@@ -428,7 +421,7 @@ async def deliver_order(db: SessionDep, current_user: ManagerUser, order_id: int
         entity_type="order",
         entity_id=order.id,
         message=f"Buyurtma topshirildi: {order.number}",
-        ip=_client_ip(request),
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(order)
@@ -548,7 +541,7 @@ async def edit_order_matrix(
         entity_type="order",
         entity_id=order_id,
         message=f"Texnolog matritsani tahrirladi ({len(body.edits)} detal)",
-        ip=_client_ip(request),
+        ip=client_ip(request),
     )
     await db.commit()
     return await read_order_matrix(db, current_user, order_id)
@@ -646,7 +639,7 @@ async def assign_order_machines(
         entity_type="order",
         entity_id=order.id,
         meta={"assignments": order.machine_assignments},
-        ip=_client_ip(request),
+        ip=client_ip(request),
     )
     await db.commit()
     return Message(message="Stanoklar biriktirildi.")
@@ -670,7 +663,7 @@ async def confirm_order(db: SessionDep, current_user: ManagerUser, order_id: int
         entity_type="order",
         entity_id=order.id,
         message="Manager buyurtmani tasdiqlab texnologga uzatdi",
-        ip=_client_ip(request),
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(order)
@@ -744,7 +737,7 @@ async def start_order_production(
         entity_type="order",
         entity_id=order.id,
         message=f"Buyurtma ishlab chiqarishga uzatildi: {order.number}",
-        ip=_client_ip(request),
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(order)
@@ -803,7 +796,7 @@ async def upload_order_project(
         entity_id=order.id,
         message=f"Project fayl yuklandi: {file.filename}",
         meta=summary,
-        ip=_client_ip(request),
+        ip=client_ip(request),
     )
     await db.commit()
     warnings = summary["warnings"]
@@ -822,9 +815,7 @@ async def upload_order_project(
 async def download_order_scx_zip(db: SessionDep, _: StaffReadUser, order_id: int) -> Response:
     """Barcha SCX dasturlarini bitta arxivda berish — prisadkachi stanokka bittalab emas,
     bitta ZIP ko'chiradi. Fayllar kichik (bir necha KB), xotirada yig'ish yetarli."""
-    order = await db.get(Order, order_id)
-    if order is None or order.is_deleted:
-        raise NotFoundException("Buyurtma topilmadi.")
+    order = await _get_order(db, order_id)
     rows = (
         (
             await db.execute(
@@ -962,7 +953,7 @@ async def regenerate_order_scx(db: SessionDep, current_user: TexnologUser, order
         entity_type="order",
         entity_id=order.id,
         message=f"SCX qayta yaratildi: {created} ta fayl ({order.number})",
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await db.commit()
     return Message(message=f"{created} ta SCX fayl qayta yaratildi — endi nomlar nusxa QR'i bilan.")

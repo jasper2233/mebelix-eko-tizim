@@ -6,13 +6,14 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft, FolderCog, HardDriveDownload } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
 
 import { OpenAPI, TerminalService } from "@/client"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import useCustomToast from "@/hooks/useCustomToast"
+import { useScanFlash } from "@/hooks/useScanFlash"
 import { formatSize } from "@/lib/mes"
 import {
   dirSupported,
@@ -57,30 +58,13 @@ export function PrisadkaView({
   const parts = ((data as { parts?: PPart[] } | undefined)?.parts ??
     []) as PPart[]
 
-  // Oxirgi skan bo'lgan qator KEYINGI skangacha ajralib turadi va avtomatik
-  // ko'rinishga keladi — prisadkachi oddiy monitorda, sichqoncha bilan qidirmasin.
-  // done oshgan detal aniqlanadi (lokal skan ham, stanokdan skan-forvard ham)
-  const prevDoneRef = useRef<Map<number, number>>(new Map())
-  const [flashId, setFlashId] = useState<number | null>(null)
-  useEffect(() => {
-    const prev = prevDoneRef.current
-    let changed: number | null = null
-    for (const p of parts) {
-      const old = prev.get(p.part_id)
-      if (old !== undefined && p.done > old) changed = p.part_id
-    }
-    prevDoneRef.current = new Map(parts.map((p) => [p.part_id, p.done]))
-    if (changed !== null) {
-      setFlashId(changed)
-      // Saralash qatorni siljitadi — yangi render joylashgach scroll qilamiz
-      const t = setTimeout(() => {
-        document
-          .getElementById(`pv-row-${changed}`)
-          ?.scrollIntoView({ block: "center", behavior: "smooth" })
-      }, 150)
-      return () => clearTimeout(t)
-    }
-  }, [parts])
+  // Oxirgi skan bo'lgan qator keyingi skangacha ajralib turadi + avto-scroll
+  const flashId = useScanFlash(
+    parts,
+    (p) => p.part_id,
+    (p) => p.done,
+    "pv-row-",
+  )
 
   if (isLoading) return <Skeleton className="h-full w-full" />
   const allFiles = parts.flatMap((p) => p.files)

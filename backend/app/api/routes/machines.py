@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
 
-from app.api.deps import AdminUser, CurrentUser, SessionDep
+from app.api.deps import AdminUser, CurrentUser, SessionDep, client_ip
 from app.core.exceptions import NotFoundException
 from app.crud import crud_machines, crud_posts, log_action
 from app.models import Machine
@@ -32,7 +32,7 @@ async def create_machine(db: SessionDep, current_user: AdminUser, body: MachineC
         entity_type="machine",
         entity_id=machine.id,
         message=f"Stanok qo'shildi: {machine.name}",
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(machine)
@@ -61,7 +61,7 @@ async def update_machine(
         user_id=current_user.id,
         entity_type="machine",
         entity_id=machine.id,
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(machine)
@@ -79,7 +79,7 @@ async def delete_machine(db: SessionDep, current_user: AdminUser, machine_id: in
         entity_type="machine",
         entity_id=machine.id,
         message=f"Stanok o'chirildi: {machine.name}",
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await crud_machines.delete(db, id=machine_id)
     return Message(message="Stanok o'chirildi.")

@@ -6,11 +6,12 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef } from "react"
 
 import { TerminalService } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useScanFlash } from "@/hooks/useScanFlash"
 import { formatSize } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 
@@ -89,30 +90,13 @@ export function KromkaView({
     return () => registerScan?.(null)
   }, [registerScan])
 
-  // Oxirgi skan bo'lgan detal qatori KEYINGI skangacha ajralib turadi va
-  // chap ro'yxatda avtomatik ko'rinishga keladi (prisadka bilan bir xil mexanizm)
-  const prevDoneRef = useRef<Map<number, number>>(new Map())
-  const [flashId, setFlashId] = useState<number | null>(null)
-  useEffect(() => {
-    const doneOf = (p: KPart) => p.instances.reduce((s, i) => s + i.done, 0)
-    const prev = prevDoneRef.current
-    let changed: number | null = null
-    for (const p of parts) {
-      const old = prev.get(p.part_id)
-      if (old !== undefined && doneOf(p) > old) changed = p.part_id
-    }
-    prevDoneRef.current = new Map(parts.map((p) => [p.part_id, doneOf(p)]))
-    if (changed !== null) {
-      setFlashId(changed)
-      // Saralash qatorni siljitadi — yangi render joylashgach scroll qilamiz
-      const t = setTimeout(() => {
-        document
-          .getElementById(`kv-row-${changed}`)
-          ?.scrollIntoView({ block: "center", behavior: "smooth" })
-      }, 150)
-      return () => clearTimeout(t)
-    }
-  }, [parts])
+  // Oxirgi skan bo'lgan detal qatori keyingi skangacha ajralib turadi + avto-scroll
+  const flashId = useScanFlash(
+    parts,
+    (p) => p.part_id,
+    (p) => p.instances.reduce((s, i) => s + i.done, 0),
+    "kv-row-",
+  )
 
   if (isLoading) return <Skeleton className="h-full w-full" />
 

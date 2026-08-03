@@ -4,7 +4,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Query, Request
 from sqlalchemy import func, or_, select
 
-from app.api.deps import AdminUser, SessionDep, StaffReadUser
+from app.api.deps import AdminUser, SessionDep, StaffReadUser, client_ip
 from app.core.config import settings
 from app.core.exceptions import NotFoundException
 from app.crud import crud_employees, crud_posts, log_action
@@ -61,7 +61,7 @@ async def create_employee(db: SessionDep, current_user: AdminUser, body: Employe
         entity_type="employee",
         entity_id=employee.id,
         message=f"Hodim qo'shildi: {employee.full_name}",
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(employee)
@@ -90,7 +90,7 @@ async def update_employee(
         user_id=current_user.id,
         entity_type="employee",
         entity_id=employee.id,
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(employee)
@@ -112,7 +112,7 @@ async def regenerate_badge(db: SessionDep, current_user: AdminUser, employee_id:
         entity_id=employee.id,
         message="Beyjik yangilandi (eskisi bloklandi)",
         meta={"old_badge": old_badge},
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(employee)
@@ -130,7 +130,7 @@ async def delete_employee(db: SessionDep, current_user: AdminUser, employee_id: 
         entity_type="employee",
         entity_id=employee.id,
         message=f"Hodim o'chirildi: {employee.full_name}",
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await crud_employees.delete(db, id=employee_id)
     return Message(message="Hodim o'chirildi.")

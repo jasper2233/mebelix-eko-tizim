@@ -29,6 +29,31 @@ export function extractErrorMessage(err: ApiError): string {
     : "Xatolik yuz berdi. Qayta urinib ko'ring."
 }
 
+/** MES tuzilmali xato konverti {code, message} ni ajratadi (skan/terminal oqimi).
+ * extractErrorMessage'dan farqi: code ALOHIDA kerak bo'lganda (E001 ga qarab ovoz). */
+export function detailParts(err: unknown): { code: string; message: string } {
+  if (err instanceof AxiosError && err.code === AxiosError.ERR_NETWORK) {
+    return {
+      code: "TARMOQ",
+      message: "Tarmoq xatosi — internet aloqasini tekshiring",
+    }
+  }
+  const detail = (
+    err as { body?: { detail?: { code?: string; message?: string } | string } }
+  )?.body?.detail
+  if (typeof detail === "object" && detail)
+    return { code: detail.code ?? "XATO", message: detail.message ?? "" }
+  return {
+    code: "XATO",
+    message: typeof detail === "string" ? detail : "Xatolik yuz berdi",
+  }
+}
+
+export function detailMessage(err: unknown): string {
+  const { code, message } = detailParts(err)
+  return message ? `${code}: ${message}` : code
+}
+
 type ToastFn = (message: string) => void
 
 /** Usage: `onError: handleError(showErrorToast)`. */

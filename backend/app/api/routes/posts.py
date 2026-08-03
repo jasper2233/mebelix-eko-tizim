@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 from sqlalchemy import select
 
-from app.api.deps import AdminUser, CurrentUser, SessionDep
+from app.api.deps import AdminUser, CurrentUser, SessionDep, client_ip
 from app.crud import crud_posts, log_action
 from app.models import Post
 from app.schemas.posts import PostRead, PostUpdate
@@ -33,7 +33,7 @@ async def update_post(
         user_id=current_user.id,
         entity_type="post",
         entity_id=post.id,
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(post)

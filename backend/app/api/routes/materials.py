@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Query, Request
 from sqlalchemy import func, or_, select
 
-from app.api.deps import CurrentUser, SessionDep, TexnologUser
+from app.api.deps import CurrentUser, SessionDep, TexnologUser, client_ip
 from app.core.config import settings
 from app.core.exceptions import DuplicateValueException
 from app.crud import crud_materials, log_action
@@ -53,7 +53,7 @@ async def create_material(
         entity_type="material",
         entity_id=material.id,
         message=f"Material qo'shildi: {material.name}",
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(material)
@@ -74,7 +74,7 @@ async def update_material(
         user_id=current_user.id,
         entity_type="material",
         entity_id=material.id,
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(material)
@@ -92,7 +92,7 @@ async def delete_material(db: SessionDep, current_user: TexnologUser, material_i
         entity_type="material",
         entity_id=material.id,
         message=f"Material o'chirildi: {material.name}",
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await crud_materials.delete(db, id=material_id)
     return Message(message="Material o'chirildi.")

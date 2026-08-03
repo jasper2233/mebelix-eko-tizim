@@ -40,6 +40,7 @@ import {
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import useCustomToast from "@/hooks/useCustomToast"
+import { isCut } from "@/lib/mes"
 import { handleError } from "@/utils"
 
 type SheetPart = any
@@ -86,9 +87,6 @@ function useCancelLabel() {
     },
   })
 }
-
-// Arrachi nazarida "kesildi": ARRA skan bor YOKI chek chiqarilgan
-const isCut = (i: any) => i.done || !!i.label_printed_at
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)

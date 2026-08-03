@@ -8,7 +8,10 @@ mode — only after THE SAME copy finished post N−1. Other copies never interf
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from app.schemas.terminal import ScanResult
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -401,6 +404,58 @@ async def record_scan_at(
                 }
             )
     return outcome
+
+
+async def finalize_scan(
+    db: AsyncSession,
+    outcome: ScanOutcome,
+    *,
+    user_id: int | None = None,
+    source: str = "",
+    agent_id: int | None = None,
+) -> "ScanResult":
+    """Muvaffaqiyatli skanning YAKUNI — log + commit + WS publish + ScanResult.
+    Terminal (scans.py) va stanok skan-forvardi (bridge_agents.py) aynan shu
+    yo'ldan o'tadi: ikki nusxa drift bergani uchun bitta joyga yig'ildi."""
+    from app.core.ws import ws_manager
+    from app.crud import log_action
+    from app.schemas.terminal import ScanResult
+
+    if not outcome.duplicate:
+        meta: dict[str, Any] = {"post_id": outcome.scan.post_id, "machine_id": outcome.scan.machine_id}
+        if agent_id is not None:
+            meta["agent_id"] = agent_id
+        log_action(
+            db,
+            module="scan",
+            action="recorded",
+            user_id=user_id,
+            employee_id=outcome.scan.employee_id,
+            entity_type="scan",
+            entity_id=outcome.scan.id,
+            message=f"Skan{source}: {outcome.instance.qr_text} — {outcome.part.name}",
+            meta=meta,
+        )
+    # Avto-SCX proyekt papkasiga tushishi uchun (downloadScx subpapka nomi)
+    order = await db.get(Order, outcome.scan.order_id)
+    await db.commit()
+    for event in outcome.events:
+        await ws_manager.publish(
+            event["type"], event["payload"], post_id=event.get("post_id"), machine_id=event.get("machine_id")
+        )
+    return ScanResult(
+        scan_id=outcome.scan.id,
+        duplicate=outcome.duplicate,
+        qr_text=outcome.instance.qr_text,
+        part_code=qr_part_code(outcome.instance.qr_text, outcome.part.count),
+        part_name=outcome.part.name,
+        instance_no=outcome.instance.instance_no,
+        qoldiq=outcome.qoldiq,
+        scx_file_ids=outcome.scx_file_ids,
+        project_name=(order.project_name or order.number) if order else None,
+        order_stage_completed=outcome.order_stage_completed,
+        order_completed=outcome.order_completed,
+    )
 
 
 async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Scan, list[dict[str, Any]]]:

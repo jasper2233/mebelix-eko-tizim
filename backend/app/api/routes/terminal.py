@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from sqlalchemy import case, func, select
 
-from app.api.deps import SessionDep, require_roles
+from app.api.deps import SessionDep, client_ip, require_roles
 from app.core.config import settings
 from app.core.exceptions import NotFoundException
 from app.core.ws import ws_manager
@@ -142,7 +142,7 @@ async def start_terminal_session(
         entity_type="session",
         entity_id=session.id,
         message=f"Smena boshlandi: {employee.full_name} — {machine.name}",
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(session)
@@ -169,7 +169,7 @@ async def end_terminal_session(db: SessionDep, user: TerminalUser, ctx: Terminal
         employee_id=session.employee_id,
         entity_type="session",
         entity_id=session.id,
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await db.commit()
     await ws_manager.publish("session.ended", {"session_id": session.id, "machine_id": machine.id})

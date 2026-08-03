@@ -4,7 +4,7 @@ from fastapi import APIRouter, Query, Request
 from sqlalchemy import func, or_, select
 from sqlalchemy.sql import Subquery
 
-from app.api.deps import ManagerUser, SessionDep, StaffReadUser
+from app.api.deps import ManagerUser, SessionDep, StaffReadUser, client_ip
 from app.core.config import settings
 from app.core.exceptions import DuplicateValueException
 from app.crud import crud_clients, log_action
@@ -84,7 +84,7 @@ async def create_client(db: SessionDep, current_user: ManagerUser, body: ClientC
         entity_type="client",
         entity_id=client.id,
         message=f"Mijoz yaratildi: {client.full_name}",
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(client)
@@ -122,7 +122,7 @@ async def update_client(
         user_id=current_user.id,
         entity_type="client",
         entity_id=client.id,
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(client)
@@ -140,7 +140,7 @@ async def delete_client(db: SessionDep, current_user: ManagerUser, client_id: in
         entity_type="client",
         entity_id=client.id,
         message=f"Mijoz o'chirildi: {client.full_name}",
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await crud_clients.delete(db, id=client_id)
     return Message(message="Mijoz o'chirildi.")

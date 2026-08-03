@@ -8,11 +8,11 @@ from sqlalchemy import select
 from app.api.deps import SessionDep, require_roles
 from app.core.ws import ws_manager
 from app.crud import log_action
-from app.models import Order, Part, PartInstance, Scan, WorkSession
+from app.models import Part, PartInstance, Scan, WorkSession
 from app.models.enums import POST_ROLES, SessionStatus, UserRole
 from app.models.user import User
 from app.schemas.terminal import ScanHistoryItem, ScanRequest, ScanResult
-from app.services.scanning import ScanRejected, cancel_scan, qr_part_code, record_scan
+from app.services.scanning import ScanRejected, cancel_scan, finalize_scan, qr_part_code, record_scan
 
 router = APIRouter(prefix="/scans", tags=["scans"])
 
@@ -37,38 +37,7 @@ async def record_scan_endpoint(db: SessionDep, user: TerminalUser, body: ScanReq
         await db.commit()
         raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
 
-    if not outcome.duplicate:
-        log_action(
-            db,
-            module="scan",
-            action="recorded",
-            user_id=user.id,
-            employee_id=outcome.scan.employee_id,
-            entity_type="scan",
-            entity_id=outcome.scan.id,
-            message=f"Skan: {outcome.instance.qr_text} — {outcome.part.name}",
-            meta={"post_id": outcome.scan.post_id, "machine_id": outcome.scan.machine_id},
-        )
-    await db.commit()
-    for event in outcome.events:
-        await ws_manager.publish(
-            event["type"], event["payload"], post_id=event.get("post_id"), machine_id=event.get("machine_id")
-        )
-    # Avto-SCX proyekt papkasiga tushsin: "Hammasini yuklab olish" bilan bir joy
-    order = await db.get(Order, outcome.scan.order_id)
-    return ScanResult(
-        scan_id=outcome.scan.id,
-        duplicate=outcome.duplicate,
-        qr_text=outcome.instance.qr_text,
-        part_code=qr_part_code(outcome.instance.qr_text, outcome.part.count),
-        part_name=outcome.part.name,
-        instance_no=outcome.instance.instance_no,
-        qoldiq=outcome.qoldiq,
-        scx_file_ids=outcome.scx_file_ids,
-        project_name=(order.project_name or order.number) if order else None,
-        order_stage_completed=outcome.order_stage_completed,
-        order_completed=outcome.order_completed,
-    )
+    return await finalize_scan(db, outcome, user_id=user.id)
 
 
 @router.delete("/{scan_id}", response_model=ScanHistoryItem, operation_id="cancel_scan")

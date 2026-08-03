@@ -4,6 +4,8 @@
 
 import { useEffect, useRef, useState } from "react"
 
+import { isCut } from "@/lib/mes"
+
 type SheetPart = any
 type Sheet = any
 
@@ -255,8 +257,8 @@ export function SheetSvg({
 
   const partNodes = (sheet.parts as SheetPart[]).map((p) => {
     const insts = instancesByCell.get(`${sheet.no}:${p.cell}`) ?? []
-    // "Kesildi" = skan QILINGAN yoki chek chiqarilgan (arrachi chop etish bilan belgilaydi)
-    const doneCount = insts.filter((i) => i.done || i.label_printed_at).length
+    // "Kesildi" ta'rifi CutmapView.isCut da — bitta manba
+    const doneCount = insts.filter(isCut).length
     const allDone = !p.waste && insts.length > 0 && doneCount === insts.length
     const selected = selectedCell === p.cell
     // 128px balandlikdagi kartochka preview'ida teshiklar, tekstura chiziqlari,

@@ -30,8 +30,7 @@ from xml.dom import minidom
 from .models import ParsedPart, XncOp
 
 # Korpus ovozlari (derive_conv): l:3988, r:3730, t:1435, b:1323 — qarshi ovoz <0.5%
-_EDGE_BORE_FACE = {"l": "4", "r": "3", "t": "1", "b": "2"}
-_EDGE_BAND_FACE = {"l": "4", "r": "3", "t": "1", "b": "2"}
+_EDGE_FACE = {"l": "4", "r": "3", "t": "1", "b": "2"}  # bore ham, band ham bir xil Face
 
 
 def generate_scx(
@@ -88,7 +87,7 @@ def generate_scx(
                     group,
                     "Edge",
                     {
-                        "Face": _EDGE_BAND_FACE[side],
+                        "Face": _EDGE_FACE[side],
                         "Thickness": "1.0",
                         "CentralAngle": "0",
                         "Pre_Milling": "1.0",
@@ -124,7 +123,7 @@ def generate_scx(
                 z = thick - z  # orqa dasturda Z orqa yuzadan o'lchanadi
             _mach(
                 {
-                    "Face": _EDGE_BORE_FACE[side],
+                    "Face": _EDGE_FACE[side],
                     "Type": "1",
                     "Diameter": _n(b["d"]),
                     "Depth": _n(b["dp"]),

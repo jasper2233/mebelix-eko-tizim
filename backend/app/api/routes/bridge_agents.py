@@ -20,7 +20,7 @@ from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, Header, HTTPException, Request
 from sqlalchemy import select, update
 
-from app.api.deps import AdminUser, SessionDep
+from app.api.deps import AdminUser, SessionDep, client_ip
 from app.core.exceptions import NotFoundException
 from app.core.ws import ws_manager
 from app.crud import crud_bridge_agents, log_action
@@ -38,8 +38,8 @@ from app.schemas.terminal import ScanResult
 from app.services.scanning import (
     ScanRejected,
     expire_if_stale,
+    finalize_scan,
     latest_active_session,
-    qr_part_code,
     record_scan_at,
 )
 
@@ -111,7 +111,7 @@ async def update_bridge_agent(
             entity_type="bridge_agent",
             entity_id=agent.id,
             message=f"Agent stanokka bog'landi: {agent.name} -> {machine_name or '—'}",
-            ip=request.client.host if request.client else None,
+            ip=client_ip(request),
         )
     if body.can_print is not None:
         agent.can_print = body.can_print
@@ -123,7 +123,7 @@ async def update_bridge_agent(
             entity_type="bridge_agent",
             entity_id=agent.id,
             message=f"Chek chiqarish: {agent.name} -> {'ha' if body.can_print else 'yoq'}",
-            ip=request.client.host if request.client else None,
+            ip=client_ip(request),
         )
     await db.commit()
     await db.refresh(agent)
@@ -148,7 +148,7 @@ async def create_bridge_agent(
         entity_type="bridge_agent",
         entity_id=agent.id,
         message=f"Agent yaratildi, ulanish kodi berildi: {agent.name}",
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(agent)
@@ -177,7 +177,7 @@ async def regenerate_bridge_code(
         entity_type="bridge_agent",
         entity_id=agent.id,
         message=f"Yangi ulanish kodi: {agent.name} (eski token bekor)",
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(agent)
@@ -197,7 +197,7 @@ async def delete_bridge_agent(db: SessionDep, current_user: AdminUser, agent_id:
         entity_type="bridge_agent",
         entity_id=agent.id,
         message=f"Agent bekor qilindi: {agent.name}",
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await crud_bridge_agents.delete(db, id=agent_id)
     return Message(message="Agent bekor qilindi — ulanish endi rad etiladi.")
@@ -243,7 +243,7 @@ async def pair_bridge_agent(db: SessionDep, body: BridgePairRequest, request: Re
         entity_type="bridge_agent",
         entity_id=row.id,
         message=f"Agent ulandi (pairing): {row.name}",
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request),
     )
     await db.commit()
     # Kod terilishi bilan admin sahifasi darhol yangilanadi (pollingni kutmasdan)
@@ -318,34 +318,7 @@ async def bridge_scan(
         await db.commit()
         raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
 
-    if not outcome.duplicate:
-        log_action(
-            db,
-            module="scan",
-            action="recorded",
-            employee_id=outcome.scan.employee_id,
-            entity_type="scan",
-            entity_id=outcome.scan.id,
-            message=f"Skan (stanok, {agent.name}): {outcome.instance.qr_text} — {outcome.part.name}",
-            meta={"post_id": outcome.scan.post_id, "machine_id": outcome.scan.machine_id, "agent_id": agent.id},
-        )
-    await db.commit()
-    for event in outcome.events:
-        await ws_manager.publish(
-            event["type"], event["payload"], post_id=event.get("post_id"), machine_id=event.get("machine_id")
-        )
-    return ScanResult(
-        scan_id=outcome.scan.id,
-        duplicate=outcome.duplicate,
-        qr_text=outcome.instance.qr_text,
-        part_code=qr_part_code(outcome.instance.qr_text, outcome.part.count),
-        part_name=outcome.part.name,
-        instance_no=outcome.instance.instance_no,
-        qoldiq=outcome.qoldiq,
-        scx_file_ids=outcome.scx_file_ids,
-        order_stage_completed=outcome.order_stage_completed,
-        order_completed=outcome.order_completed,
-    )
+    return await finalize_scan(db, outcome, source=f" (stanok, {agent.name})", agent_id=agent.id)
 
 
 # "Agentni yuklab olish" endpointi olib tashlangan (2026-08-02): u diskdagi
