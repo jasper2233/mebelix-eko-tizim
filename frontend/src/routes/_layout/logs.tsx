@@ -8,6 +8,7 @@ import { Search, X } from "lucide-react"
 import { useState } from "react"
 
 import { type AuditLogRead, AuditService, BridgeAgentsService } from "@/client"
+import { ErrorScreen } from "@/components/Common/ErrorScreen"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -29,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import useCurrentUser from "@/hooks/useCurrentUser"
 import { useDebounced } from "@/hooks/useDebounced"
 import { formatDateTime } from "@/lib/mes"
 import { getMachinesQueryOptions, getPostsQueryOptions } from "@/queries/mes"
@@ -88,6 +90,9 @@ const ACTION_LABELS: Record<string, string> = {
 }
 
 function LogsPage() {
+  // Faqat admin: sidebar yashirsa ham URL bilan to'g'ridan kirish yopiq
+  // (backend /audit-logs endpointi keng — uni Tranzaksiyalar sahifasi ham ishlatadi)
+  const { currentUser } = useCurrentUser()
   const [module, setModule] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [day, setDay] = useState("") // yyyy-mm-dd (native date input)
@@ -131,6 +136,14 @@ function LogsPage() {
     fn()
     setPage(0)
   }
+
+  const isAdmin = Boolean(
+    currentUser?.is_superuser || currentUser?.role === "admin",
+  )
+  if (!isAdmin)
+    return currentUser ? (
+      <ErrorScreen code="403" message="Bu sahifa faqat admin uchun." />
+    ) : null
 
   return (
     <div>
