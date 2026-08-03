@@ -7,19 +7,14 @@ ENV UV_LINK_MODE=copy
 
 WORKDIR /app/backend
 
-# Install dependencies first (for better layer caching)
+# FAQAT bog'liqliklar — loyiha venv'ga O'RNATILMAYDI (app PYTHONPATH orqali
+# ishlaydi). Shunda venv qatlami faqat uv.lock'ga bog'liq: kod o'zgarganda
+# ~380MB qatlam qayta qurilmaydi va server har deployda uni qayta tortmaydi
+# (1 vCPU'da aynan shu pull+extract deployni sekinlashtirardi).
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=backend/uv.lock,target=uv.lock \
     --mount=type=bind,source=backend/pyproject.toml,target=pyproject.toml \
     uv sync --frozen --no-install-project
-
-# Copy only what the backend image needs (frontend/docs would bust the layer cache for nothing)
-COPY backend /app/backend
-COPY scripts /app/scripts
-
-# Install the project
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-editable
 
 # --------- Final Stage ---------
 FROM python:3.13-slim-bookworm
@@ -35,10 +30,11 @@ RUN groupadd --gid 1000 app \
 
 WORKDIR /app
 
-# Copy the virtual environment and backend code
+# Venv (barqaror qatlam — faqat lock o'zgarsa yangilanadi), keyin kod (kichik,
+# har deployda o'zgaradigan qatlamlar OXIRIDA tursin)
 COPY --from=builder --chown=app:app /app/backend/.venv /app/backend/.venv
-COPY --from=builder --chown=app:app /app/backend /app/backend
-COPY --from=builder --chown=app:app /app/scripts /app/scripts
+COPY --chown=app:app backend /app/backend
+COPY --chown=app:app scripts /app/scripts
 
 # Ensure the virtual environment is in the PATH
 ENV PATH="/app/backend/.venv/bin:$PATH"

@@ -11,6 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
       - name: Install
         run: uv --project backend sync --all-groups
       - name: Lint (ruff)
@@ -41,8 +44,10 @@ jobs:
     # Image'lar shu yerda quriladi va ghcr.io ga yuboriladi. Prod serveri 1 vCPU /
     # 2 GB — u yerda build qilish saytni sekinlashtirardi va CI qilgan ishni
     # takrorlardi. Server endi faqat tayyor image'ni tortadi.
+    # Lint bilan PARALLEL yuradi (deploy baribir ikkalasini kutadi) — ketma-ket
+    # kutish har deployga 1-2 daqiqa qo'shardi; lint yiqilsa deploy skip bo'ladi,
+    # ortiqcha image esa delete-package-versions bilan baribir tozalanadi.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [backend, frontend]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -97,7 +102,7 @@ jobs:
   deploy:
     # main'ga push + CI yashil bo'lsa prodga chiqadi (mes.mebelix.uz)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [images]
+    needs: [backend, frontend, images]
     runs-on: ubuntu-latest
     permissions:
       contents: read
