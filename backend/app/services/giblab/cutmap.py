@@ -158,75 +158,71 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
             "sheets": [],
         }
 
-        material_placed = 0  # part cells (har jismoniy list alohida), compared to cPartCount below
+        material_placed = 0  # part cells × mult, compared to cPartCount below
         for pat in patterns:
+            pattern_no += 1
             cells, cuts, dims = _place_pattern(pat)
-            # Takror naqsh (mult=8) BITTA "×8" karta emas — 8 ta ALOHIDA list karta
-            # bo'ladi: har listning o'z katagi, o'z nusxasi, o'z chek holati.
-            # Aks holda arrachi qaysi listni kesganini xaritada ajrata olmasdi.
-            for _rep in range(max(pat.mult, 1)):
-                pattern_no += 1
-                sheet: dict[str, Any] = {
-                    "no": pattern_no,
-                    "L": pat.length,
-                    "W": pat.width,
-                    "mult": 1,
-                    "parts": [],
-                    "dims": dims,  # root strip chain (GibSaw style)
-                    "cuts": cuts,
+            sheet: dict[str, Any] = {
+                "no": pattern_no,
+                "L": pat.length,
+                "W": pat.width,
+                "mult": pat.mult,
+                "parts": [],
+                "dims": dims,  # root strip chain (GibSaw style)
+                "cuts": cuts,
+            }
+            cell_index = 0
+            for cell in cells:
+                cell_index += 1
+                entry: dict[str, Any] = {
+                    "cell": cell_index,
+                    "x": round(cell["x"], 2),
+                    "y": round(cell["y"], 2),
+                    "w": round(cell["w"], 2),
+                    "h": round(cell["h"], 2),
                 }
-                cell_index = 0
-                for cell in cells:
-                    cell_index += 1
-                    entry: dict[str, Any] = {
-                        "cell": cell_index,
-                        "x": round(cell["x"], 2),
-                        "y": round(cell["y"], 2),
-                        "w": round(cell["w"], 2),
-                        "h": round(cell["h"], 2),
-                    }
-                    if cell["waste"]:
-                        wdef = cut.waste_parts.get(cell["part_id"])
-                        if wdef:  # useful size from the definition, not the raw cut (TZ 5.2.3)
-                            entry["w"], entry["h"] = wdef["l"], wdef["w"]
-                        entry.update({"id": cell["part_id"], "qty": 0, "waste": True, "name": "atxot"})
-                    else:
-                        part = parts_by_file_id.get(cell["part_id"])
-                        if part is None:
-                            if _rep == 0:
-                                result.problems.append(
-                                    f"{cut.material_name}: blob noma'lum detalga ishora qiladi (id={cell['part_id']})"
-                                )
-                            continue
-                        material_placed += 1
-                        rot = (
-                            part.length is not None
-                            and part.width is not None
-                            and part.length != part.width
-                            and abs(cell["w"] - part.width) < 1.5
-                            and abs(cell["h"] - part.length) < 1.5
+                if cell["waste"]:
+                    wdef = cut.waste_parts.get(cell["part_id"])
+                    if wdef:  # useful size from the definition, not the raw cut (TZ 5.2.3)
+                        entry["w"], entry["h"] = wdef["l"], wdef["w"]
+                    entry.update({"id": cell["part_id"], "qty": 0, "waste": True, "name": "atxot"})
+                else:
+                    part = parts_by_file_id.get(cell["part_id"])
+                    if part is None:
+                        result.problems.append(
+                            f"{cut.material_name}: blob noma'lum detalga ishora qiladi (id={cell['part_id']})"
                         )
-                        e_w, e_h = _edge_markers(part, rot)
-                        entry.update(
-                            {
-                                "id": part.file_part_id,
-                                "key": part.key,
-                                "num": part.label_num,
-                                "name": part.name,
-                                "rot": rot,
-                                "qty": 1,
-                                "waste": False,
-                                "eW": e_w,
-                                "eH": e_h,
-                                "txt": part.txt,
-                            }
-                        )
+                        continue
+                    material_placed += pat.mult
+                    rot = (
+                        part.length is not None
+                        and part.width is not None
+                        and part.length != part.width
+                        and abs(cell["w"] - part.width) < 1.5
+                        and abs(cell["h"] - part.length) < 1.5
+                    )
+                    e_w, e_h = _edge_markers(part, rot)
+                    entry.update(
+                        {
+                            "id": part.file_part_id,
+                            "key": part.key,
+                            "num": part.label_num,
+                            "name": part.name,
+                            "rot": rot,
+                            "qty": 1,
+                            "waste": False,
+                            "eW": e_w,
+                            "eH": e_h,
+                            "txt": part.txt,
+                        }
+                    )
+                    for _rep in range(pat.mult):  # one physical copy per sheet repetition
                         instance_counters[part.key] = instance_counters.get(part.key, 0) + 1
                         result.bindings.append(
                             InstanceCell(part_key=part.key, pattern_no=pattern_no, cell_index=cell_index)
                         )
-                    sheet["parts"].append(entry)
-                material["sheets"].append(sheet)
+                sheet["parts"].append(entry)
+            material["sheets"].append(sheet)
 
         expected = int(cut.stats.get("cPartCount") or 0)
         if expected and material_placed != expected:

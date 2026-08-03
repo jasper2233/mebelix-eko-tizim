@@ -107,7 +107,7 @@ function printAllMaps(
       m.sheets.map(
         (s: Sheet) => `
         <section>
-          <h2>${escapeHtml(m.name)} | №${s.no} — ${s.L} × ${s.W} mm${(s.mult || 1) > 1 ? ` × ${s.mult} list` : ""}</h2>
+          <h2>${escapeHtml(m.name)} | №${s.no} — ${s.L} × ${s.W} mm × ${s.mult || 1} list</h2>
           ${renderToStaticMarkup(
             <SheetSvg
               sheet={s}
@@ -321,11 +321,9 @@ export function CutmapView({
           <span className="num">
             {sheet.L} × {sheet.W} mm
           </span>
-          {(sheet.mult || 1) > 1 && (
-            <span className="num ml-2 rounded-sm bg-secondary px-1.5 py-0.5 text-xs">
-              × {sheet.mult} list
-            </span>
-          )}
+          <span className="num ml-2 rounded-sm bg-secondary px-1.5 py-0.5 text-xs">
+            × {sheet.mult} list
+          </span>
           <div className="truncate text-xs font-normal text-muted-foreground">
             {material.name}
           </div>
