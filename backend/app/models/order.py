@@ -41,7 +41,7 @@ class Order(BaseModel):
 
     # Cut map visual model (TZ 5.7.5) built from CS data blob; rendered by ARRA terminal.
     cutmap: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None, kw_only=True)
-    # Material consumption from the project file (TZ 11.3): [{name, kind, count, unit}]
+    # Material consumption from the project file (TZ 11.3): [{name, code, kind, count, unit}]
     material_usage: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default_factory=list, kw_only=True)
     # Manager's machine choice per post: {"PAZ": 3, "ROVER": 5} (TZ 6.4.1)
     machine_assignments: Mapped[dict[str, int]] = mapped_column(JSONB, default_factory=dict, kw_only=True)

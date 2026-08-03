@@ -83,10 +83,6 @@ qo'ysa chek chiqmay qoladi. Oynasiz rejimda `sys.stdout` yo'q — shuning uchun
 hamma narsa `agent.log` ga yoziladi, foydalanuvchiga esa faqat messagebox orqali
 gapiriladi.
 
-So'ng `dist/mebelix-agent.exe` ni serverdagi `uploads/agent/` ga ko'chiring —
-"Agentni yuklab olish" o'sha fayldan beradi. Binar repo'da yo'q (gitignore),
-deploy uni ko'chirmaydi; `uploads_data` volume tufayli joyida qoladi.
-
 Eslatma: SCX fayllar bridge orqali o'tmaydi — ular stanok kompyuterida brauzer
 orqali yuklab olinadi (TZ 12.5).
 

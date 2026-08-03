@@ -87,17 +87,18 @@ Tekshiruv: `npm run build` (tsc + vite) ✅ · `bash scripts/generate-client.sh`
 
 ## Bridge-agent bog'liqliklari (manifestsiz)
 
-`bridge-agent/` da `pyproject.toml` ham, `requirements.txt` ham **yo'q**. Uchta runtime paket agent `mebelix-agent.exe` ichiga PyInstaller bilan yig'iladi (`pyinstaller --onefile --noconsole --name mebelix-agent agent.py`) — sexdagi kompyuterga na Python, na `pip`, na alohida paket o'rnatiladi. `pyinstaller`ning o'zi faqat **build-time** asbob (dasturchi mashinasida), runtime bog'liqlik emas va hech qaysi manifestda yozilmagan.
+`bridge-agent/` da `pyproject.toml` ham, `requirements.txt` ham **yo'q**. To'rtta runtime paket agent `mebelix-agent.exe` ichiga PyInstaller bilan yig'iladi (`pyinstaller --onefile --noconsole --name mebelix-agent agent.py`) — sexdagi kompyuterga na Python, na `pip`, na alohida paket o'rnatiladi. `pyinstaller`ning o'zi faqat **build-time** asbob (dasturchi mashinasida), runtime bog'liqlik emas va hech qaysi manifestda yozilmagan.
 
 | Paket | Nima uchun |
 | --- | --- |
 | websockets | `uplink()` — serverga outbound WS (`/api/v1/ws/bridge`), modul darajasidagi yagona tashqi import |
 | pywin32 | `win32print` — `_detect_printer()` da printerni topish va `_print_png_gdi()` da DEVMODE; `win32gui`, `win32ui`, `win32con` — GDI konteksti; `win32api`+`win32event`+`winerror` — `_single_instance()` mutexi |
 | pillow | `PIL.Image`, `PIL.ImageWin` — serverdan kelgan base64 PNG'ni GDI kontekstiga chizish |
+| pynput | `start_scan_forward()` — stanok skanerining klaviatura kirishini passiv kuzatib `/bridge-agents/scan` ga forvard qilish. Ixtiyoriy: o'rnatilmagan bo'lsa faqat skan-forvard jim o'chadi, chop etish ishlayveradi |
 
-Uchtasi ham kerak: chiqish yo'li bitta — `_print_png_gdi()` (Windows drayveri, DEVMODE'da qog'oz 80×60 mm ga majburlanadi). `pywin32` va `pillow` importlari funksiya ichida, lekin ularsiz `send_to_printer()` ishlamaydi, ya'ni agent amalda Windows'ga bog'langan.
+Birinchi uchtasi majburiy: chiqish yo'li bitta — `_print_png_gdi()` (Windows drayveri, DEVMODE'da qog'oz 80×60 mm ga majburlanadi). `pywin32` va `pillow` importlari funksiya ichida, lekin ularsiz `send_to_printer()` ishlamaydi, ya'ni agent amalda Windows'ga bog'langan.
 
-Printer nomi sozlanmaydi: `_detect_printer()` `win32print.EnumPrinters()` bilan nomida "godex" bor lokal printerni qidiradi, `PRINTER_NAME` env faqat qo'lda override uchun. Agent env'lari to'liq ro'yxati — `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME` (ixtiyoriy), `QUEUE_FILE`.
+Printer nomi sozlanmaydi: `_detect_printer()` `win32print.EnumPrinters()` bilan nomida "godex" bor lokal printerni qidiradi, `PRINTER_NAME` env faqat qo'lda override uchun. Agent env'lari to'liq ro'yxati — `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME` (ixtiyoriy), `QUEUE_FILE`, `SCAN_FORWARD` (default yoqiq, `0` o'chiradi).
 
 Agent faqat printer ulangan kompyuterga o'rnatiladi. Menejer, texnolog va boshqa post terminallarida hech qanday paket kerak emas — ular brauzerdan tugmani bosadi.
 
@@ -160,4 +161,4 @@ bash scripts/generate-client.sh
 
 `npm outdated` major bump ko'rsatsa — `package.json` dagi caret versiyani qo'lda ko'tarish kerak (caret major'dan o'tkazmaydi). Yuqoridagi 3 ceiling'ni tekshirishni unutmang.
 
-Bridge-agent bu siklga kirmaydi: uning `websockets` / `pywin32` / `pillow` versiyalari exe yig'ilgan paytdagi dasturchi muhitidan keladi, lock fayli yo'q. Yangilash = paketlarni yangilab exe'ni qayta yig'ish va serverdagi `backend/uploads/agent/mebelix-agent.exe` ni almashtirish.
+Bridge-agent bu siklga kirmaydi: uning `websockets` / `pywin32` / `pillow` / `pynput` versiyalari exe yig'ilgan paytdagi dasturchi muhitidan keladi, lock fayli yo'q. Yangilash = paketlarni yangilab exe'ni qayta yig'ish va yangi `mebelix-agent.exe` ni printerli kompyuterlarga qo'lda tarqatish (flashka/lokal tarmoq — panel ichidagi yuklab olish olib tashlangan).

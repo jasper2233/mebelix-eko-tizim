@@ -32,12 +32,12 @@ class BaseModel(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
 
 ### 1.2 `backend/app/models/enums.py` — Domen enumlari
 
-`db_enum(enum_cls, length=30)` helper — **VARCHAR-backed** SQLAlchemy `Enum` (`native_enum=False`): yangi a'zo qo'shilganda PG native enum ALTER'i kerak emas (masalan, `UserRole` ga 6 operator roli migratsiyasiz qo'shilgan). Faylda **14 ta StrEnum**:
+`db_enum(enum_cls, length=30)` helper — **VARCHAR-backed** SQLAlchemy `Enum` (`native_enum=False`): yangi a'zo qo'shilganda PG native enum ALTER'i kerak emas (masalan, `UserRole` ga 7 operator roli migratsiyasiz qo'shilgan). Faylda **14 ta StrEnum**:
 
 | Enum | A'zolar |
 |---|---|
-| `UserRole` | 12 ta: 6 xodim/qurilma (`admin`, `director`, `manager`, `texnolog`, `terminal`, `tablo`) + 6 operator (`arrachi`, `kromkachi`, `prisadkachi`, `pazchi`, `roverchi`, `stolyar`) |
-| `PostCode` | `ARRA`, `KROMKA`, `PRISADKA`, `PAZ`, `ROVER`, `STOLYARKA` |
+| `UserRole` | 13 ta: 6 xodim/qurilma (`admin`, `director`, `manager`, `texnolog`, `terminal`, `tablo`) + 7 operator (`arrachi`, `kromkachi`, `ovalchi`, `prisadkachi`, `pazchi`, `roverchi`, `stolyar`) |
+| `PostCode` | `ARRA`, `KROMKA`, `OVAL`, `PRISADKA`, `PAZ`, `ROVER`, `STOLYARKA` |
 | `PostUnit` | `m2`, `meter`, `piece` |
 | `MachineStatus` | `active`, `inactive`, `repair` |
 | `CapacityUnit` | `m2_per_hour`, `meter_per_hour`, `units_per_hour` |
@@ -51,7 +51,7 @@ class BaseModel(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
 | `FileKind` | `project`, `scx`, `label_pdf`, `document` |
 | `SessionStatus` | `active`, `ended` |
 
-`POST_ROLES: dict[UserRole, PostCode]` — 6 operator rolini o'z postiga bog'laydi (`ARRACHI→ARRA`, `KROMKACHI→KROMKA`, `PRISADKACHI→PRISADKA`, `PAZCHI→PAZ`, `ROVERCHI→ROVER`, `STOLYAR→STOLYARKA`). Operator rollari o'z akkaunti bilan kiradi va o'z postining terminalini ko'radi — stanok binding'i va badge talab qilinmaydi (`TERMINAL` qurilma akkauntlaridan farqli).
+`POST_ROLES: dict[UserRole, PostCode]` — 7 operator rolini o'z postiga bog'laydi (`ARRACHI→ARRA`, `KROMKACHI→KROMKA`, `OVALCHI→OVAL`, `PRISADKACHI→PRISADKA`, `PAZCHI→PAZ`, `ROVERCHI→ROVER`, `STOLYAR→STOLYARKA`). Operator rollari o'z akkaunti bilan kiradi va o'z postining terminalini ko'radi — stanok binding'i va badge talab qilinmaydi (`TERMINAL` qurilma akkauntlaridan farqli).
 
 ### 1.3 `backend/app/models/user.py` — User modeli
 
@@ -97,12 +97,12 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
 |---|---|---|---|
 | `Organization` | `organization.py` | `name(100)`, `logo_url`, `address`, `phones` **JSONB** (list), `currency` (`"UZS"`), `timezone` (`"Asia/Tashkent"`), `settings` **JSONB** | — |
 | `Client` | `client.py` | `organization_id`, `full_name(150)`, `client_type` (`ClientType`, default `individual`), `phone`/`phone_alt(13)`, `address`, `inn(20)`, `notes` | — (`orders_count` saqlanmaydi — query'da hisoblanadi) |
-| `Employee` | `employee.py` | `organization_id`, `full_name(100)`, `badge_id(36)` (badge QR — registrda `uuid4()`; operator rolidagi foydalanuvchi birinchi skanida `services/scanning.py: operator_employee` `user-{user_id}` badge bilan ko'zgu qatorni avtomatik yaratadi — `docs/09-mes-domain.md` §3), `phone`, `passport_id`, `position`, `status` (`EmployeeStatus`), `photo_url`, `assigned_post_ids` **JSONB** (int list — join-table o'rniga, maks. 6 post), `hired_date` | PARTIAL UNIQUE `ix_employee_badge_id`. Yo'qolgan badge: qator saqlanadi, `badge_id` almashtiriladi — scan tarixi buzilmaydi |
+| `Employee` | `employee.py` | `organization_id`, `full_name(100)`, `badge_id(36)` (badge QR — registrda `uuid4()`; operator rolidagi foydalanuvchi birinchi skanida `services/scanning.py: operator_employee` `user-{user_id}` badge bilan ko'zgu qatorni avtomatik yaratadi — `docs/09-mes-domain.md` §3), `phone`, `passport_id`, `position`, `status` (`EmployeeStatus`), `photo_url`, `assigned_post_ids` **JSONB** (int list — join-table o'rniga, maks. 7 post), `hired_date` | PARTIAL UNIQUE `ix_employee_badge_id`. Yo'qolgan badge: qator saqlanadi, `badge_id` almashtiriladi — scan tarixi buzilmaydi |
 | `Material` | `material.py` | `organization_id`, `name(150)`, `code`, `type` (`MaterialType`), `thickness`/`width`/`length`, `default_supplier`, `price_per_unit Numeric(14,2)`, `color`, `glossiness` | PARTIAL UNIQUE `ix_material_name_type` (`name`, `type`). `.project` fayllardan avtomatik to'ldiriladi |
-| `Post` | `post.py` | `organization_id`, `code` (`PostCode`), `name(50)`, `order_index`, `unit` (`PostUnit`), `requires_qr_print`, `auto_skip_if_empty` (default `True`), `requires_assignment_choice`, `icon`, `color` | PARTIAL UNIQUE `ix_post_code`. 6 bosqichli ishlab chiqarish zanjiri (TZ 4.4) |
+| `Post` | `post.py` | `organization_id`, `code` (`PostCode`), `name(50)`, `order_index`, `unit` (`PostUnit`), `requires_assignment_choice`, `icon`, `color` (`requires_qr_print`/`auto_skip_if_empty` olib tashlangan — hech qayerda o'qilmasdi, `e8b1c6d94f27` da drop) | PARTIAL UNIQUE `ix_post_code`. 7 bosqichli ishlab chiqarish zanjiri (TZ 4.4) |
 | `Machine` | `machine.py` | `organization_id`, `post_id` FK (index), `name(100)`, `ip_address(45)`, `mac_address(17)`, `capacity` + `capacity_unit` (`CapacityUnit`), `status` (`MachineStatus`), `icon_url`, `serial_number`, `installed_date` | IP — terminal/TABLO kontekstini aniqlash uchun (TZ 4.3) |
 | `AuditLog` | `audit.py` | `user_id` FK NULL (index), `employee_id` FK NULL, `module(50)`, `action(50)`, `entity_type`, `entity_id`, `message`, `meta` **JSONB**, `ip(45)` | `created_at` = hodisa vaqti (TZ 10.11) |
-| `BridgeAgent` | `bridge_agent.py` | `organization_id`, `name(100)` (qaysi kompyuter/post — admin panelda ko'rinadi), `token_hash(64)` (doimiy tokenning sha256'si; NULL = hali ulanmagan), `pair_code(16)` (8 belgili bir martalik kod), `pair_expires_at` (kod TTL — 15 daqiqa), `last_seen_at` | UNIQUE `ix_bridge_agent_token_hash`; `ix_bridge_agent_pair_code`. Har printerli kompyuterga bitta qator; bekor qilish — soft delete (1.4.2-bo'lim) |
+| `BridgeAgent` | `bridge_agent.py` | `organization_id`, `name(100)` (qaysi kompyuter/post — admin panelda ko'rinadi), `token_hash(64)` (doimiy tokenning sha256'si; NULL = hali ulanmagan), `pair_code(16)` (8 belgili bir martalik kod), `pair_expires_at` (kod TTL — 15 daqiqa), `last_seen_at`, `machine_id` FK NULL (skan-forvard: agent skani qaysi stanok nomidan yoziladi), `version(20)` (agent exe versiyasi — WS `X-Agent-Version` headeridan), `can_print` (default `True`; `False` = printersiz skan-forvard stansiyasi — chek navbatidan ish olmaydi) | UNIQUE `ix_bridge_agent_token_hash`; `ix_bridge_agent_pair_code`. Har printerli kompyuterga bitta qator; bekor qilish — soft delete (1.4.2-bo'lim) |
 
 **Buyurtma modellari** (`order.py` — 6 klass):
 
@@ -187,7 +187,7 @@ Har bir registr moduli standart uchlik (`*Read` / `*Create` / `*Update`) beradi:
 | `employees.py` | `EmployeeRead`, `EmployeeCreate`, `EmployeeUpdate` | `badge_id` **faqat server tomonda** generatsiya qilinadi (UUID) — `EmployeeCreate` da yo'q; `assigned_post_ids: list[int]` |
 | `machines.py` | `MachineRead`, `MachineCreate`, `MachineUpdate` | `post_id` majburiy; `capacity` `gt=0`; `capacity_unit`/`status` enumlar |
 | `materials.py` | `MaterialRead`, `MaterialCreate`, `MaterialUpdate` | `type: MaterialType` faqat create'da (update'da o'zgartirilmaydi); o'lchamlar `gt=0`, `price_per_unit ge=0` |
-| `posts.py` | `PostRead`, `PostUpdate` | Create yo'q — 6 postlik zanjir qat'iy (TZ 4.4), faqat prezentatsion/xulq maydonlari tahrirlanadi (`name`, `order_index`, `auto_skip_if_empty`, `requires_assignment_choice`, `icon`, `color`) |
+| `posts.py` | `PostRead`, `PostUpdate` | Create yo'q — 7 postlik zanjir qat'iy (TZ 4.4), faqat prezentatsion/xulq maydonlari tahrirlanadi (`name`, `order_index`, `requires_assignment_choice`, `icon`, `color`) |
 
 ### 2.4 `backend/app/schemas/orders.py` — Buyurtma schemalari
 
@@ -362,7 +362,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 
 ### 4.4 Versiyalar zanjiri — `backend/app/migrations/versions/`
 
-7 ta migratsiya, head: `d5e81a24c3b7`.
+12 ta migratsiya, head: `e8b1c6d94f27`.
 
 | # | Revision | Fayl | Nima qiladi |
 |---|---|---|---|
@@ -373,10 +373,15 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 | 5 | `7d2c9f5e1b3a` | `7d2c9f5e1b3a_order_advance_payment.py` | `order.advance_payment Numeric(14,2)` NULL — to'lov oqimi maydoni |
 | 6 | `a91c7d34f6e2` | `a91c7d34f6e2_order_survey.py` | `order.survey JSONB` NULL — mijoz anketasi va o'lchov varag'i (xonalar bo'yicha) |
 | 7 | `d5e81a24c3b7` | `d5e81a24c3b7_bridge_agent_pairing.py` | **`bridge_agent`** jadvali (printer agentlari: ulanish kodi + token xeshi) + 3 indeks: UNIQUE `ix_bridge_agent_token_hash`, `ix_bridge_agent_pair_code`, `ix_bridge_agent_is_deleted` (1.4.2-bo'lim) |
+| 8 | `f4b8c2a91e55` | `f4b8c2a91e55_bridge_agent_machine.py` | `bridge_agent.machine_id` FK NULL — skan-forvard: agent skani qaysi stanok nomidan yoziladi |
+| 9 | `a7c3e9d12f04` | `a7c3e9d12f04_bridge_agent_version.py` | `bridge_agent.version(20)` NULL — agent exe versiyasi (WS `X-Agent-Version` headeridan) |
+| 10 | `c9e5b2a41d78` | `c9e5b2a41d78_single_copy_qr_no_suffix.py` | Data-migratsiya: `count=1` detallarda `qr_text` dagi `_1` suffiksi olib tashlanadi — chek/QR/SCX nomi bir xil (Nanxing mosligi); downgrade yo'q |
+| 11 | `d4f7a8c25e91` | `d4f7a8c25e91_bridge_agent_can_print.py` | `bridge_agent.can_print` NOT NULL (server_default `true`) — printersiz agent chek navbatidan ish olmaydi |
+| 12 | `e8b1c6d94f27` | `e8b1c6d94f27_hot_path_indexes.py` | Issiq yo'l indekslari: PARTIAL `ix_part_instance_qr_text` (`WHERE NOT is_deleted`), `ix_audit_log_module_action`, `ix_audit_log_created_at`; `post.requires_qr_print`/`auto_skip_if_empty` drop |
 
 Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kind=DOCUMENT` + `meta` JSONB bilan ishlatiladi (1.4.1-bo'lim).
 
-Eslatma: `1393a241b793` dagi `user.role` enum'i 6 qiymat bilan yaratilgan; keyinchalik 6 operator roli faqat Python enum'ga qo'shildi — ustun VARCHAR bo'lgani uchun (`db_enum`, `native_enum=False`) DB migratsiyasi kerak bo'lmadi.
+Eslatma: `1393a241b793` dagi `user.role` enum'i 6 qiymat bilan yaratilgan; keyinchalik 7 operator roli faqat Python enum'ga qo'shildi — ustun VARCHAR bo'lgani uchun (`db_enum`, `native_enum=False`) DB migratsiyasi kerak bo'lmadi.
 
 ---
 
@@ -393,10 +398,10 @@ Idempotent bootstrap skript — birinchi admin foydalanuvchini yaratadi (`python
 
 ### 5.2 `backend/app/commands/seed_defaults.py`
 
-Idempotent bootstrap — default tashkilot va 6 ishlab chiqarish postini yaratadi (`python -m app.commands.seed_defaults`, prestart/setup scriptlardan chaqiriladi):
+Idempotent bootstrap — default tashkilot va 7 ishlab chiqarish postini yaratadi (`python -m app.commands.seed_defaults`, prestart/setup scriptlardan chaqiriladi):
 
 - Tashkilot: `select(Organization).limit(1)` — DB'da **birorta ham** tashkilot bo'lmasa `Organization(name="Mebelix")` yaratadi.
-- Postlar: mavjud `code` lar to'plami bilan solishtirib, yetishmaganlarini `POSTS` ro'yxatidan qo'shadi — 6 post (`ARRA`…`STOLYARKA`) `order_index` 1–6, `unit` (m2/meter/piece), `color`/`icon` va xulq flaglari bilan: `ARRA` — `requires_qr_print=True`, `PAZ` va `ROVER` — `requires_assignment_choice=True`.
+- Postlar: mavjud `code` lar to'plami bilan solishtirib, yetishmaganlarini `POSTS` ro'yxatidan qo'shadi — 7 post (`ARRA`…`STOLYARKA`, `OVAL` 3-o'rinda) `order_index` 1–7, `unit` (m2/meter/piece), `color`/`icon` bilan; `PAZ` va `ROVER` — `requires_assignment_choice=True`. Mavjud postning `order_index` i ro'yxatdan farq qilsa sinxronlanadi (yangi post qo'shilganda tartib siljiydi).
 
 `backend/app/commands/__init__.py` — bo'sh (faqat package marker).
 
@@ -429,7 +434,7 @@ Terminal "Chop etish"
 
 `/ws/bridge` (`backend/app/api/routes/ws.py`) jobni ack (`{"ok": true}`) kelmasa `rpush` bilan navbatga qaytaradi — yorliq yo'qolmaydi. Auth **per-agent**: token `Authorization: Bearer` headerda keladi (query param eski agentlar uchun fallback), sha256 xeshi bo'yicha tirik `bridge_agent` qatori qidiriladi — topilmasa 4401. Serverda sozlama kerak emas, printer admin paneldan ulanadi (1.4.2-bo'lim). `settings.BRIDGE_TOKEN` faqat **legacy** back-compat sifatida qoldi: bo'sh bo'lsa e'tiborga olinmaydi, to'ldirilgan bo'lsa eski umumiy tokenli agent ham o'tadi (bunday ulanishning jadvalda qatori yo'q — `last_seen_at` yangilanmaydi, panelda ham ko'rinmaydi).
 
-Bridge-agent (`bridge-agent/agent.py`) faqat printer ulangan kompyuterga o'rnatiladi — menejer, texnolog va boshqa post terminallariga hech narsa kerak emas. Birinchi ishga tushganda `_pair()` sozlash oynasini ochadi (`_pair_dialog()` — tkinter, server manzili + ulanish kodi; tkinter bo'lmasa `_pair_console()` zaxirasi), `_exchange()` kodni tokenga almashtiradi va `%APPDATA%\MebelixAgent\.env` ga yozadi — token allaqachon bo'lsa oyna umuman ochilmaydi. Ulangandan keyin `_register_autostart()` agentni `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` ga yozadi, exe esa `--noconsole` bilan qurilgan — kompyuter yonganda oynasiz fonda o'zi tushadi. Exe'ning o'zi `GET /api/v1/bridge-agents/download` dan olinadi. Printerni `_detect_printer()` avtomatik topadi (nomida `godex` bor Windows printeri); env'lari: `MES_URL`, `BRIDGE_TOKEN` (pairing to'ldiradi), `PRINTER_NAME` (ixtiyoriy, qo'lda override), `QUEUE_FILE`.
+Bridge-agent (`bridge-agent/agent.py`) faqat printer ulangan kompyuterga o'rnatiladi — menejer, texnolog va boshqa post terminallariga hech narsa kerak emas. Birinchi ishga tushganda `_pair()` sozlash oynasini ochadi (`_pair_dialog()` — tkinter, server manzili + ulanish kodi; tkinter bo'lmasa `_pair_console()` zaxirasi), `_exchange()` kodni tokenga almashtiradi va `%APPDATA%\MebelixAgent\.env` ga yozadi — token allaqachon bo'lsa oyna umuman ochilmaydi. Ulangandan keyin `_register_autostart()` agentni `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` ga yozadi, exe esa `--noconsole` bilan qurilgan — kompyuter yonganda oynasiz fonda o'zi tushadi. Exe qo'lda tarqatiladi (server download endpointi yo'q). Printerni `_detect_printer()` avtomatik topadi (nomida `godex` bor Windows printeri); env'lari: `MES_URL`, `BRIDGE_TOKEN` (pairing to'ldiradi), `PRINTER_NAME` (ixtiyoriy, qo'lda override), `QUEUE_FILE`.
 
 ```python
 all_tasks = [print_label]

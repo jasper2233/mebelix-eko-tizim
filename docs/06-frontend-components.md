@@ -99,7 +99,11 @@ if (data.password) payload.password = data.password
 
 ### `frontend/src/components/Common/ErrorComponent.tsx`
 
-**Maqsadi:** routerning global xato ekrani ("Xato / Voy!" + "Xatolik yuz berdi..." matni + "Bosh sahifaga" tugmasi, `Link to="/"`).
+**Maqsadi:** routerning global xato ekrani — `ErrorScreen` ga delegatsiya (`code="Xato"`, "Xatolik yuz berdi..." matni).
+
+### `frontend/src/components/Common/ErrorScreen.tsx`
+
+**Maqsadi:** xato/404 ekranlarining umumiy maketi (`code` + "Voy!" + `message` + "Bosh sahifaga" tugmasi, `Link to="/"`) — ikki nusxa layout drift bermasin. `ErrorComponent` va `NotFound` shundan quriladi.
 
 ### `frontend/src/components/Common/Footer.tsx`
 
@@ -107,11 +111,23 @@ if (data.password) payload.password = data.password
 
 ### `frontend/src/components/Common/NotFound.tsx`
 
-**Maqsadi:** 404 ekrani — `ErrorComponent` bilan bir xil tuzilish, "404 / Voy!" + "Siz qidirayotgan sahifa topilmadi." matni. Router'ning `notFoundComponent` sifatida ulanadi.
+**Maqsadi:** 404 ekrani — `ErrorScreen` ga delegatsiya ("404 / Voy!" + "Siz qidirayotgan sahifa topilmadi." matni). Router'ning `notFoundComponent` sifatida ulanadi.
 
 ### `frontend/src/components/Common/PageHeader.tsx`
 
 **Maqsadi:** sahifa sarlavhasi — `title`, ixtiyoriy `description` va o'ng tomonda `actions` slot. Deyarli barcha `_layout` sahifalarida ishlatiladi (dashboard, orders ro'yxati va sahifasi, clients, employees, machines, materials, reports, transactions, printers, anketa — 11 ta sahifa); istisno — `admin.tsx` va `settings.tsx` sarlavhani o'zi qo'lda (`<h1>`) chizadi, `cutmap.$orderId.tsx` da esa sarlavha umuman yo'q (to'liq ekran).
+
+### `frontend/src/components/Common/PostBadge.tsx`
+
+**Maqsadi:** bosqich (post) kodi chipi (ARRA, KROMKA, ...) — `POST_COLORS` asosida, matn post rangining to'qroq variantida (`color-mix ... 78%, black` — WCAG AA kontrasti, sof rang tint fonda o'tmasdi). Avval `employees.tsx` va `machines.tsx` da qo'lda takrorlangan edi.
+
+### `frontend/src/components/Common/QueryError.tsx`
+
+**Maqsadi:** so'rov yiqilganda ko'rsatiladigan `role="alert"` bloki — xato matni + ixtiyoriy "Qayta urinish" tugmasi (`onRetry`). Busiz sahifalar xato holatida abadiy skeletonda qotib qolardi.
+
+### `frontend/src/components/Common/SectionTitle.tsx`
+
+**Maqsadi:** sahifa ichidagi bo'lim sarlavhasi (`h2`, uppercase muted) — ierarxiya: `PageHeader` (h1) > `SectionTitle` (h2) > panel sarlavhalari (h3); avval bir daraja to'rt xil yozilgan edi.
 
 ### `frontend/src/components/Common/StagePipeline.tsx`
 
@@ -180,7 +196,7 @@ Buyurtma anketasi (mijoz so'rovnomasi + o'lchov varag'i) komponentlari `componen
 - Avtosaqlash: har tahrirdan 1.5s keyin (`dirty` bo'lsa va `canEdit` bo'lsa) `save.mutate`; `beforeunload` da ogohlantirish, unmount'da fire-and-forget `saveOrderSurvey`.
 - `canEdit = is_superuser || role === "admin" | "manager"` — faqat ular formani ko'radi; qolganlar (texnolog/direktor) `RoomSummary` jamlanmasini ko'radi.
 - Xonalar tab tugmalari (`r.name || "Xona N"`), "Xona qo'shish", xona o'chirish `ConfirmDialog` orqali (rasmlar ham o'chadi — backend `save_order_survey` da yetim rasmlarni tozalaydi).
-- Pastda sticky saqlash paneli: holat matni ("Saqlanmoqda..." / "O'zgarishlar avtomatik saqlanadi" / "Saqlandi HH:MM" / "Hammasi saqlangan") + `LoadingButton`. Manfiy margin (`-mx-6 md:-mx-8`) bilan main padding'i qoplanadi; `sticky` ishlashi uchun `routes/_layout.tsx` da `overflow-hidden` `SidebarInset`dan dekor konteyneriga ko'chirilgan.
+- Pastda sticky saqlash paneli: holat matni ("Saqlanmoqda..." / "O'zgarishlar avtomatik saqlanadi" / "Saqlandi HH:MM" / "Hammasi saqlangan") + `LoadingButton`. Manfiy margin (`-mx-6 md:-mx-8`) bilan main padding'i qoplanadi; suvbelgi va dekor konteyner olib tashlangach `routes/_layout.tsx` da `overflow-hidden` umuman yo'q — `sticky` to'siqsiz ishlaydi.
 
 **Bo'limlar (qog'oz anketa raqamlari bilan):** 1 Xona va rasmlar · 2 Qanday mebel kerak · 3 Xonadagi shakli va o'lchamlari · 4 Korpus materiali · 5 Fasad materiali · 6 Furnitura va qo'shimcha xizmat · 7 Qo'shimcha izoh · 8 O'lchov varag'i (`<details>` ichida yopiq — zamerdan keyin usta to'ldiradi: o'lchov sanasi/ustasi, A–E devor uzunlik/balandligi, modullar jadvali, umumiy pm/balandlik).
 
@@ -224,7 +240,8 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida, alohida app header/foot
 
 **Maqsadi:** ilovaning asosiy yon paneli — brend, navigatsiya va foydalanuvchi menyusini yig'adi.
 
-- `navItems(role, isSuperuser)` funksiyasi (TZ 3.7 rollar-modullar matritsasi) 11 tagacha punkt quradi (`admin = is_superuser || role === "admin"`): Boshqaruv paneli `/` va LIVE Tablo `/tablo` — hammaga; Buyurtmalar `/orders`, Stanoklar `/machines`, Materiallar `/materials` — admin/manager/texnolog/director; Mijozlar `/clients`, Hodimlar `/employees`, Hisobotlar `/reports` — admin/manager/director; Tranzaksiyalar `/transactions` — admin/director; Foydalanuvchilar `/admin` va Printer agentlar `/printers` (`Printer` ikonkasi) — faqat admin. **Rolga qarab navigatsiya**.
+- `navItems(role, isSuperuser)` funksiyasi (TZ 3.7 rollar-modullar matritsasi) 12 tagacha punkt quradi (`admin = is_superuser || role === "admin"`): Boshqaruv paneli `/` va LIVE Tablo `/tablo` — hammaga; Buyurtmalar `/orders`, Stanoklar `/machines`, Materiallar `/materials` — admin/manager/texnolog/director; Mijozlar `/clients`, Hodimlar `/employees`, Hisobotlar `/reports` — admin/manager/director; Tranzaksiyalar `/transactions` — admin/director; Foydalanuvchilar `/admin`, Printer agentlar `/printers` (`Printer` ikonkasi) va Loglar `/logs` (`ScrollText` ikonkasi) — faqat admin. **Rolga qarab navigatsiya**.
+- Buyurtmalar bandida jonli badge — faol buyurtmalar soni (delivered/cancelled dan boshqa statuslar yig'indisi): `getOrderStatusCountsQueryOptions()` reyestr sahifasi bilan AYNAN bitta query key'da, TanStack dedupe qiladi — sidebar qo'shimcha so'rov qo'shmaydi; `enabled` faqat `/orders` bandi ko'rinadigan rollarda.
 - `<Sidebar collapsible="icon">`: yig'ilganda faqat ikonkalar qoladi. Header'da `Link to="/"` (logo `icon-gold.png` + "MebeliX" yozuvi, yig'ilganda `group-data-[collapsible=icon]:hidden` bilan yashiriladi) va `SidebarTrigger` (yig'ilgan railda yolg'iz qoladi).
 - `SidebarContent` → `Main items={items}`; `SidebarFooter` → `User user={currentUser}`.
 
@@ -234,7 +251,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida, alohida app header/foot
 
 **Maqsadi:** navigatsiya menyusi ro'yxati.
 
-- Eksport: `type Item = { icon: LucideIcon; title: string; path: string }` va `Main({ items })`.
+- Eksport: `type Item = { icon: LucideIcon; title: string; path: string; badge?: number }` va `Main({ items })`; `badge` bo'lsa (0 emas) band yonida `SidebarMenuBadge` chiqadi.
 - `useRouterState()` dan `currentPath` olinib `isActive = currentPath === item.path` aniqlanadi; aktiv bandda chapdan 3px oltin chiziq: `data-[active=true]:shadow-[inset_3px_0_0_0_var(--sidebar-primary)]`.
 - Har band `SidebarMenuButton tooltip={item.title} asChild` ichida `RouterLink`; mobil rejimda bosilganda `setOpenMobile(false)` bilan panel yopiladi.
 
@@ -286,11 +303,11 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida, alohida app header/foot
 
 ### `frontend/src/components/Terminal/KromkaView.tsx`
 
-**Maqsadi:** KROMKA/OVAL post sahifasi. Ikki panel: chapda arradan chiqqan (`arra_passed`), kromkasi tugamagan detallar (tugaganlari yashil bo'lib pastga tushadi), o'ngda "Jarayonda" — 2+ tomonli, boshlangan-u tugamagan nusxalar. Har skan darhol yoziladi (tomon = skan); `registerScan` prop orqali terminalga lokal tekshiruv beradi (`null` = yozish mumkin, `"NOTFOUND"` = bu proyektda yo'q, boshqa string = xato matni: arradan chiqmagan / allaqachon tugagan). `oval` prop: bir panel, tomonlar ustuni yo'q, har detal bitta skan. Ma'lumot: `readTerminalKromka` (`refetchInterval: 30_000` + har skanda invalidatsiya).
+**Maqsadi:** KROMKA/OVAL post sahifasi. Ikki panel: chapda arradan chiqqan (`arra_passed`), kromkasi tugamagan detallar (tugaganlari yashil bo'lib pastga tushadi), o'ngda "Jarayonda" — 2+ tomonli, boshlangan-u tugamagan nusxalar. Har skan darhol yoziladi (tomon = skan); `registerScan` prop orqali terminalga lokal tekshiruv beradi (`null` = yozish mumkin, `"NOTFOUND"` = bu proyektda yo'q, boshqa string = xato matni: arradan chiqmagan / allaqachon tugagan). `oval` prop: bir panel, tomonlar ustuni yo'q, har detal bitta skan. Oxirgi skan bo'lgan qator keyingi skangacha ajralib turadi + markazga avto-scroll (`useScanFlash` hooki — xuddi shu mexanizm `routes/terminal.tsx` vazifalar jadvalida ham). Ma'lumot: `readTerminalKromka` (`refetchInterval: 30_000` + har skanda invalidatsiya).
 
 ### `frontend/src/components/Terminal/PrisadkaView.tsx`
 
-**Maqsadi:** PRISADKA sahifasi (TZ 12.5): detallar + SCX fayllari, "Hammasini yuklab olish" tugmasi. `lib/scxDir.ts` bilan: File System Access API `showDirectoryPicker` BIR MARTA — tanlangan papka IndexedDB'da (`mebelix-terminal/kv/scx-dir`), keyingi yuklab olishlar so'roqsiz; papka ichida proyekt nomli subpapka (`project_name`, taqiqlangan belgilar `_` ga) ochilib fayllar shu yerga yoziladi. API bo'lmasa `<a download>` fallback. Har skandagi avto-SCX (`downloadScx`) ham saqlangan papkaga tushadi. Yuklab olishda tugmada jonli progress ("Yuklanmoqda… 12/81"); papka tugmasi yozuvli ("Papka" — sensorli ekranda hover yo'q). Jadval ish-navbat tartibida: qilinmaganlar tepada, tugaganlar (✓ yashil) pastda; oxirgi skan bo'lgan qator 6 s amber pulsatsiya bilan ajralib turadi (`done` oshgani ref orqali aniqlanadi — lokal skan ham, stanokdan skan-forvard ham).
+**Maqsadi:** PRISADKA sahifasi (TZ 12.5): detallar + SCX fayllari, "Hammasini yuklab olish" tugmasi. `lib/scxDir.ts` bilan: File System Access API `showDirectoryPicker` BIR MARTA — tanlangan papka IndexedDB'da (`mebelix-terminal/kv/scx-dir`), keyingi yuklab olishlar so'roqsiz; papka ichida proyekt nomli subpapka (`project_name`, taqiqlangan belgilar `_` ga) ochilib fayllar shu yerga yoziladi. API bo'lmasa `<a download>` fallback. Har skandagi avto-SCX (`downloadScx`) ham saqlangan papkaga tushadi. Yuklab olishda tugmada jonli progress ("Yuklanmoqda… 12/81"); papka tugmasi yozuvli ("Papka" — sensorli ekranda hover yo'q). Jadval ish-navbat tartibida: qilinmaganlar tepada, tugaganlar (✓ yashil) pastda; oxirgi skan bo'lgan qator KEYINGI skangacha amber ajralib turadi va markazga avto-scroll bo'ladi (`useScanFlash` hooki — `done` o'zgargan qatorni topadi: lokal skan ham, stanokdan skan-forvard ham). Har SCX fayl chipi bitta nusxaga mos (fayl nomi = QR): QR'i `done_qrs` da bo'lsa chip yashil ✓ — operator qaysi nusxalar qolganini ko'radi.
 
 ### `frontend/src/components/Terminal/audio.ts`
 
@@ -330,13 +347,14 @@ Superuser bu bo'limni ko'rmaydi: `routes/_layout/settings.tsx` da `is_superuser`
 
 ## ui komponentlari — `frontend/src/components/ui/`
 
-shadcn/ui asosidagi 24 ta primitiv. Ko'pchiligi standart generatsiya; quyidagi jadvalda qaysilari o'zgartirilgani ko'rsatilgan.
+shadcn/ui asosidagi 25 ta primitiv. Ko'pchiligi standart generatsiya; quyidagi jadvalda qaysilari o'zgartirilgani ko'rsatilgan.
 
 | Fayl | Komponent(lar) | Asos | Custom o'zgartirish |
 |---|---|---|---|
 | `avatar.tsx` | Avatar, AvatarImage, AvatarFallback | Radix Avatar | Yo'q (standart) |
 | `badge.tsx` | Badge, badgeVariants | cva | Deyarli standart (`rounded-full` shakl) |
 | `button.tsx` | Button, buttonVariants | cva + Slot | **Qo'shimcha o'lchamlar**: `icon-sm` (size-8), `icon-lg` (size-10) |
+| `card.tsx` | Card, `cardSurface` konstanta | native div | **Soddalashtirilgan custom**: faqat yuza (`rounded-xl border bg-card`), shadcn'ning 5 qismli Header/Title/... API'si ataylab yo'q; `<ul>`/`<details>` kabi teglar uchun `cardSurface` klassi ham eksport |
 | `checkbox.tsx` | Checkbox | Radix Checkbox | Yo'q |
 | `date-picker.tsx` | DatePicker | react-day-picker + Popover | **To'liq custom** (pastda) |
 | `dialog.tsx` | Dialog, DialogContent, DialogHeader/Footer/Title/Description, ... | Radix Dialog | Yo'q (`showCloseButton` prop — yangi shadcn standarti) |

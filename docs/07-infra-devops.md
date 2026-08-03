@@ -126,7 +126,8 @@ Backend yuklangan fayllarni diskka yozadi (`backend/app/core/config.py`: `UPLOAD
 | `projects/` | yuklangan GibLab `.project` fayllari | `upload_order_project` |
 | `scx/` | SCX/CNC fayllari | orders route'lari |
 | `survey/{order_id}/` | anketa xona rasmlari, nomi `{uuid4().hex}{ext}` | `upload_room_photo` (`POST /orders/{id}/survey/photos`) |
-| `agent/mebelix-agent.exe` | printer agentining Windows build'i | qo'lda qo'yiladi (deploy emas); `download_bridge_agent` tarqatadi |
+
+(`agent/` katalogi endi ishlatilmaydi — `mebelix-agent.exe` serverdan tarqatilmaydi, qo'lda ko'chiriladi; pastdagi "Agent o'rnatish" bo'limi.)
 
 DB'da faqat nisbiy yo'l saqlanadi (`OrderFile.path`), o'qishda `Path(settings.UPLOAD_DIR).resolve() / row.path` bilan qayta yig'iladi.
 
@@ -201,7 +202,7 @@ Ikkala composeda ham `api` command zanjirining birinchi qismi. Uch qadam: `alemb
 
 ### `scripts/deploy.sh` — prod deploy avto-rollback bilan
 
-CI chaqiradi: `TAG=<git sha> REGISTRY=ghcr.io/<owner> bash scripts/deploy.sh`. Oqim: `docker compose pull` — serverda build yo'q, tayyor image ghcr.io dan tortiladi (yiqilsa eski stack joyida qoladi) → yangi `TAG` ga switch (`docker compose up -d`) → smoke. Smoke `SMOKE_URL` ga uradi (default `http://127.0.0.1:8200/api/v1/ready`) — `/api/v1/ready` DB+Redis'ni tekshiruvchi readiness probe (`/api/v1/health` dan farqli, u faqat process tirikligini aytadi); CI'ning public smoke'i ham shu endpointga uradi. Smoke o'tsa `TAG` `.stable_tag` fayliga yoziladi va eski image'lar tozalanadi (joriy + oldingi stable qoladi); yiqilsa `.stable_tag` dagi oxirgi barqaror tag'ga avto-rollback qilinadi. Rollback **serverda oldingi image hali turganiga** tayanadi — aynan shu tozalash qadami buni kafolatlaydi (joriy tag va oldingi stable tag hech qachon o'chirilmaydi).
+CI chaqiradi: `TAG=<git sha> REGISTRY=ghcr.io/<owner> bash scripts/deploy.sh`. Oqim: `docker compose pull` — serverda build yo'q, tayyor image ghcr.io dan tortiladi (yiqilsa eski stack joyida qoladi) → yangi `TAG` ga switch (`docker compose up -d`) → smoke. Smoke `SMOKE_URL` ga uradi — default manzil `.env` dagi `CADDY_HTTP_BIND` dan yig'iladi (`http://<bind>/api/v1/ready`; qiymat faqat port bo'lsa oldiga `127.0.0.1:` qo'shiladi, `.env` da yo'q bo'lsa `80`) — qotirilgan `8200` port bind default `80` bo'lgan o'rnatishda har deployni yolg'ondan yiqitardi. `/api/v1/ready` DB+Redis'ni tekshiruvchi readiness probe (`/api/v1/health` dan farqli, u faqat process tirikligini aytadi); CI'ning public smoke'i ham shu endpointga uradi. Smoke o'tsa `TAG` `.stable_tag` fayliga yoziladi va eski image'lar tozalanadi (joriy + oldingi stable qoladi); yiqilsa `.stable_tag` dagi oxirgi barqaror tag'ga avto-rollback qilinadi. Rollback **serverda oldingi image hali turganiga** tayanadi — aynan shu tozalash qadami buni kafolatlaydi (joriy tag va oldingi stable tag hech qachon o'chirilmaydi).
 
 Tozalash `docker images --format '{{.Repository}}:{{.Tag}}' | grep 'mebelix-mes-'` bilan ishlaydi, `--filter=reference='mebelix-mes-*'` bilan emas: docker glob'i `/` dan o'tmaydi, ya'ni `ghcr.io/<owner>/mebelix-mes-*` nomlariga u hech qachon mos kelmasdi va eski image'lar to'planib qolardi. Natija o'sha `grep -vE ":(TAG|STABLE)$"` filtridan o'tkaziladi. **Muhim qoida: rollback DB'ni pastga tushirmaydi — migratsiyalar additive bo'lishi shart** (ustun/jadval qo'shish; eski kod yangi ustunlarga chidashi kerak).
 
@@ -262,7 +263,7 @@ Avval serverda bitta umumiy `BRIDGE_TOKEN` bo'lardi va uni har printerli mashina
 Oqim:
 
 1. **Kod.** Admin panelda "Yangi agent" → `bridge_agent` qatori yaratiladi va 8 belgili **bir martalik kod** beriladi (`P7HJ-N46U` ko'rinishida ko'rsatiladi), muddati **15 daqiqa** (`PAIR_TTL`). Alifboda `I/L/O/0/1` yo'q — kodni telefonda aytganda adashilmaydi; 31⁸ ≈ 8.5e11 kombinatsiya 15 daqiqalik oynada brute-force'ni ma'nosiz qiladi.
-2. **Almashtirish.** Agent kodni `POST /api/v1/bridge-agents/pair` ga yuboradi va **muddatsiz token** oladi (`secrets.token_hex(24)`). Bazada faqat `sha256` xesh saqlanadi, kod esa o'chiriladi. UPDATE atomik — bitta kodni ikki kompyuter bir vaqtda yuborsa faqat bittasi yutadi. Kod noto'g'ri yoki eskirgan bo'lsa bitta umumiy xato qaytadi (kod umuman bor-yo'qligi oshkor qilinmaydi). `/pair` — ochiq endpoint, chunki agentda sessiya yo'q; `GET /download` ham ataylab ochiq (exe hamma uchun bir xil fayl, sir saqlamaydi, monoblok brauzerida esa sessiya bo'lmasligi mumkin). Qolgan `bridge-agents` endpointlari (`GET /`, `POST /`, `POST /{id}/code`, `DELETE /{id}`) `AdminUser` bilan yopiq.
+2. **Almashtirish.** Agent kodni `POST /api/v1/bridge-agents/pair` ga yuboradi va **muddatsiz token** oladi (`secrets.token_hex(24)`). Bazada faqat `sha256` xesh saqlanadi, kod esa o'chiriladi. UPDATE atomik — bitta kodni ikki kompyuter bir vaqtda yuborsa faqat bittasi yutadi. Kod noto'g'ri yoki eskirgan bo'lsa bitta umumiy xato qaytadi (kod umuman bor-yo'qligi oshkor qilinmaydi). `/pair` — ochiq endpoint, chunki agentda sessiya yo'q; `POST /scan` (skan-forvard) agent tokeni bilan ishlaydi. Qolgan `bridge-agents` endpointlari (`GET /`, `POST /`, `PATCH /{id}`, `POST /{id}/code`, `DELETE /{id}`) `AdminUser` bilan yopiq.
 3. **Ulanish.** `/ws/bridge` tokenni **`Authorization: Bearer`** headeridan oladi (URL query'da emas — server access-loglariga tushmasin); `?token=` query eski agentlar uchun fallback bo'lib qolgan. Token avval legacy `settings.BRIDGE_TOKEN` bilan `secrets.compare_digest` orqali solishtiriladi (bytes'da — non-ASCII tokenda `str` solishtirish `TypeError` beradi), mos kelmasa `sha256` bo'yicha `bridge_agent` jadvalidan qidiriladi. Ikkovi ham topilmasa WebSocket `code=4401` bilan yopiladi.
 
 `settings.BRIDGE_TOKEN` endi **ixtiyoriy legacy back-compat** — bo'sh bo'lsa ham chop etish to'liq ishlaydi. Yangi o'rnatishlarda uni umuman to'ldirmaslik kerak.
@@ -271,7 +272,7 @@ Oqim:
 
 ### Admin panel — "Printer agentlar"
 
-`frontend/src/routes/_layout/printers.tsx`, faqat admin. Sahifada: exe yuklab olish tugmasi, uch qatorli o'rnatish yo'riqnomasi va agentlar jadvali — nomi, holati, joriy ulanish kodi, oxirgi ulanish vaqti, amallar.
+`frontend/src/routes/_layout/printers.tsx`, faqat admin. Sahifada: uch qatorli o'rnatish yo'riqnomasi (yuklab olish tugmasi yo'q — exe qo'lda tarqatiladi) va agentlar jadvali — nomi (versiyasi bilan), holati, joriy ulanish kodi, stanok bog'lami (skan-forvard), chek chiqarish ruxsati, oxirgi ulanish vaqti, amallar.
 
 | Holat | Qachon |
 |---|---|
@@ -329,7 +330,7 @@ Printer xatosi ushlanadi va `False` qaytariladi — job navbatda qoladi, yo'qolm
 Faqat printer USB bilan ulangan Windows kompyuterga (sexdagi terminal monoblokning o'zi ham bo'ladi). Hammasi brauzerdan bajariladi — serverga SSH kirish, server `.env` ini tahrirlash yoki sex routerida biror port ochish **kerak emas** (ulanish baribir chiquvchi). Qadamlar (`bridge-agent/README.md`):
 
 1. **GoDEX drayverini o'rnatish** — printer USB'ga ulangan holda. Agent printerni nomidan o'zi topadi, boshqa sozlash yo'q.
-2. **Agentni yuklab olish** — admin panel > "Printer agentlar" > "Agentni yuklab olish": `mebelix-agent.exe` tushadi (`GET /api/v1/bridge-agents/download`). Python, `pip`, kutubxonalar — hech biri kerak emas, hammasi exe ichida.
+2. **Exe'ni ko'chirish** — `mebelix-agent.exe` qo'lda tarqatiladi (flashka yoki lokal tarmoq; paneldagi yuklab olish tugmasi va `GET /download` endpointi olib tashlangan — serverda eski nusxa qolib adashtirardi). Python, `pip`, kutubxonalar — hech biri kerak emas, hammasi exe ichida.
 3. **Ulanish kodini olish** — o'sha sahifada "Yangi agent", kompyuterga nom beriladi va 8 belgili bir martalik kod chiqadi (masalan `P7HJ-N46U`), 15 daqiqa amal qiladi.
 4. **Exe'ni ishga tushirish** — kichik oyna chiqadi: server manzili (default `wss://mes.mebelix.uz`) va ulanish kodi. "Ulash" bosilgach kod doimiy tokenga almashtiriladi va `%APPDATA%\MebelixAgent\.env` ga saqlanadi. Kod noto'g'ri bo'lsa oyna xato matni bilan qayta ochiladi — dasturni qayta ishga tushirish shart emas. Kod muddati o'tishi allaqachon ulangan agentga ta'sir qilmaydi.
 
@@ -348,7 +349,8 @@ Agent sozlamalari (bular **server `.env`** ida emas — printerli mashinada, `%A
 | `MES_URL` | `ws://localhost:8000` | server manzili; agent oxiriga `/api/v1/ws/bridge` qo'shadi. Pairing paytida `https://`/`http://`/sxemasiz manzil ham qabul qilinadi va `wss://`/`ws://` ga normallashtiriladi (TLS'siz manzilga ogohlantirish chiqadi) |
 | `BRIDGE_TOKEN` | — | pairing bergan doimiy token; bo'sh bo'lsa agent `SystemExit` bilan to'xtaydi ("ulanish kodini kiriting") |
 | `PRINTER_NAME` | avto-topish (`godex`) | printer nomini qo'lda berish — faqat avto-topish mos kelmaganda |
-| `QUEUE_FILE` | `./print-queue.jsonl` | lokal durable navbat fayli |
+| `QUEUE_FILE` | `%APPDATA%\MebelixAgent\print-queue.jsonl` | lokal durable navbat fayli (avtostartda ishchi papka System32 — nisbiy yo'l ishlamaydi) |
+| `SCAN_FORWARD` | `1` (yoqiq) | stanok skanerini passiv kuzatib MES'ga forvard qilish; `0` o'chiradi |
 
 Navbat fayli `.gitignore` da (`bridge-agent/print-queue.jsonl`).
 
@@ -360,15 +362,9 @@ Navbat fayli `.gitignore` da (`bridge-agent/print-queue.jsonl`).
 pyinstaller --onefile --noconsole --name mebelix-agent agent.py
 ```
 
-Natijadagi `mebelix-agent.exe` serverda `uploads/agent/` ga qo'yiladi — panel o'sha yerdagi faylni tarqatadi. Bu yo'l `.gitignore` da, ya'ni **binar repoda saqlanmaydi** va deploy uni ko'chirmaydi; serverga bir marta qo'lda yuklanadi:
+Natijadagi `mebelix-agent.exe` **qo'lda tarqatiladi** — flashka yoki lokal tarmoq orqali printerli kompyuterlarga ko'chiriladi. Serverdan tarqatish yo'q: `GET /download` endpointi olib tashlangan (serverda eski nusxa qolib adashtirardi), binar repoda ham saqlanmaydi. Paneldagi versiya belgisi (handshake'dagi `X-Agent-Version` → `bridge_agent.version`) qaysi mashinada eski exe qolganini ko'rsatadi.
 
-```bash
-docker compose -f docker-compose.prod.yml cp mebelix-agent.exe api:/app/backend/uploads/agent/
-```
-
-`uploads_data` volume tufayli fayl keyingi deploylarda joyida qoladi — yangi versiya chiqqandagina qayta yuklanadi.
-
-Eslatma: SCX/CNC fayllar bridge orqali **o'tmaydi** — ular stanok kompyuterida brauzer orqali yuklab olinadi (TZ 12.5). Bridge faqat yorliq chop etish uchun.
+Eslatma: SCX/CNC fayllar bridge orqali **o'tmaydi** — ular stanok kompyuterida brauzer orqali yuklab olinadi (TZ 12.5). Bridge yorliq chop etishdan tashqari **skan-forvard** ham qiladi: stanok kompyuterida skaner-klaviaturani `pynput` bilan passiv kuzatadi (6+ belgi, har belgi <50ms, Enter bilan tugaydi — odam terishi bu tezlikka tushmaydi) va nusxasini `POST /api/v1/bridge-agents/scan` ga yuboradi — bitta fizik skan Nanxing'ga ham, MES'ga ham tushadi. Buning uchun admin panelda agentga **stanok bog'lanadi** (`PATCH /bridge-agents/{id}`, `machine_id`); `SCAN_FORWARD=0` o'chiradi.
 
 ---
 
@@ -396,7 +392,7 @@ Eslatma: SCX/CNC fayllar bridge orqali **o'tmaydi** — ular stanok kompyuterida
 | `backend` | `astral-sh/setup-uv` → `uv --project backend sync --all-groups` → `ruff check app` + `ruff format --check app` → `mypy app` |
 | `frontend` | `actions/setup-node` (versiya `frontend/.nvmrc` dan, npm cache) → `npm ci` → `npx biome ci .` → `npm run build` (`tsc && vite build`) |
 | `images` | faqat `main` ga push + ikkala job yashil bo'lsa (`needs: [backend, frontend]`), `permissions: packages: write`. Ikki elementli matritsa: `backend` (context `.`, `./backend/Dockerfile`) va `frontend` (context `./frontend`, `./frontend/Dockerfile`, build-arglar `VITE_API_URL=` va `VITE_API_TIMEOUT_MS=30000`). `docker/setup-buildx-action` → `docker/login-action` (ghcr.io, `GITHUB_TOKEN`) → `docker/build-push-action@v6`, GitHub Actions qatlam keshi bilan (`cache-from`/`cache-to: type=gha, scope=<name>`). Teglar: `ghcr.io/<owner>/mebelix-mes-backend:<git sha>` va `...-frontend:<git sha>` |
-| `deploy` | faqat `main` ga push + `images` yashil bo'lsa (`needs: [images]`), `permissions: packages: read`; `concurrency: prod-deploy` (parallel deploy yo'q). Qadamlar: SSH key setup → `rsync` kodni `root@DEPLOY_HOST:/opt/mebelix-mes` ga (`.git`/`node_modules`/`.venv`/`__pycache__`/`dist`/`uploads`/`.env`/`backups` exclude — oxirgi uchtasi serverdagi secretlar, yuklangan fayllar va DB nusxalari `--delete` ostida qolib ketmasligi uchun) → serverni ghcr'ga login qilish → `ssh` orqali `TAG=<git sha> REGISTRY=ghcr.io/<owner> bash scripts/deploy.sh` → public smoke `https://mes.mebelix.uz/api/v1/ready` (nginx/TLS yo'li orqali). Secrets: `DEPLOY_SSH_KEY`, `DEPLOY_HOST` |
+| `deploy` | faqat `main` ga push + `images` yashil bo'lsa (`needs: [images]`), `permissions: packages: read`; `concurrency: prod-deploy` (parallel deploy yo'q). Qadamlar: SSH key setup → `rsync` kodni `root@DEPLOY_HOST:/opt/mebelix-mes` ga (`.git`/`node_modules`/`.venv`/`__pycache__`/`dist`/`uploads`/`.env`/`backups`/`.stable_tag`/`.backup.env` exclude — serverdagi secretlar, yuklangan fayllar, DB nusxalari, avto-rollback tayanchi va Telegram backup sozlamasi `--delete` ostida qolib ketmasligi uchun) → serverni ghcr'ga login qilish → `ssh` orqali `TAG=<git sha> REGISTRY=ghcr.io/<owner> bash scripts/deploy.sh` → public smoke `https://mes.mebelix.uz/api/v1/ready` (nginx/TLS yo'li orqali). Secrets: `DEPLOY_SSH_KEY`, `DEPLOY_HOST` |
 | `notify` | `if: always() && push && ref == main`, `needs: [backend, frontend, images, deploy]` — Telegram xabari. Secrets: `TG_BOT_TOKEN`, `TG_CHAT_ID` |
 
 **Nega image'lar CI'da quriladi.** Avval ularni prod serverning o'zi build qilardi. Server 1 vCPU / 2 GB RAM — build jonli saytni sekinlashtirardi va CI allaqachon bajargan ishni takrorlardi. Endi build GitHub Actions runnerida bo'ladi, server esa faqat tortadi.
@@ -474,7 +470,7 @@ Bitta qoida: `* text=auto eol=lf` — barcha matn fayllar LF line-ending bilan n
 
 ### `.gitignore`
 
-Standart Python artefaktlari (`__pycache__`, `*.py[cod]`, `build/`, `dist/` — setuptools/buildout davridan qolgan `egg`/`sdist`/`tox` naqshlari olib tashlandi: loyiha uv + hatchling'da, ular hech qachon paydo bo'lmaydi), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. MES runtime artefaktlari ham ignore: `backend/uploads/` (`projects/`, `scx/`, `survey/` — yuklangan fayllar va anketa xona rasmlari, hamda `agent/mebelix-agent.exe` — binar repoda saqlanmaydi), `bridge-agent/print-queue.jsonl` (agent'ning durable print navbati), `frontend/openapi.json`, serverdagi shifrlangan DB nusxalari uchun `backups/` (`scripts/backup.sh`), hamda lokal sex ma'lumotlari — `uploads/` (repo root'da: `.project`/SCX namunalari) va `chek/` (namuna yorliq fotolari, `labels.py` maketi shulardan olingan). PyInstaller'ning `bridge-agent/build/` va `bridge-agent/dist/` kataloglari alohida qoida talab qilmaydi — umumiy `build/` / `dist/` naqshlari ularni istalgan chuqurlikda tutadi. E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
+Standart Python artefaktlari (`__pycache__`, `*.py[cod]`, `build/`, `dist/` — setuptools/buildout davridan qolgan `egg`/`sdist`/`tox` naqshlari olib tashlandi: loyiha uv + hatchling'da, ular hech qachon paydo bo'lmaydi), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. MES runtime artefaktlari ham ignore: `backend/uploads/` (`projects/`, `scx/`, `survey/` — yuklangan fayllar va anketa xona rasmlari), `bridge-agent/print-queue.jsonl` (agent'ning durable print navbati), `frontend/openapi.json`, serverdagi shifrlangan DB nusxalari uchun `backups/` (`scripts/backup.sh`), hamda lokal sex ma'lumotlari — `uploads/` (repo root'da: `.project`/SCX namunalari) va `chek/` (namuna yorliq fotolari, `labels.py` maketi shulardan olingan). PyInstaller'ning `bridge-agent/build/` va `bridge-agent/dist/` kataloglari alohida qoida talab qilmaydi — umumiy `build/` / `dist/` naqshlari ularni istalgan chuqurlikda tutadi. E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
 
 ---
 
@@ -507,4 +503,4 @@ Frontend dev qo'llanmasi: nvm/fnm bilan Node o'rnatish, `npm install` + `npm run
 - `.github/workflows/ci.yml` → `backend/pyproject.toml` (uv sync, ruff/mypy), `frontend/.nvmrc` + `frontend/package-lock.json` (Node versiya va npm cache), `backend/Dockerfile` + `frontend/Dockerfile` → ghcr.io (`images` job), `scripts/deploy.sh` (deploy job — `TAG` + `REGISTRY`), Telegram secrets (notify job).
 - `scripts/generate-client.sh` → backend OpenAPI spec → `frontend/src/client/` (frontend va backend orasidagi kontrakt sinxronizatsiyasi).
 - Chop etish zanjiri: `backend/app/api/routes/terminal.py` (`POST /terminal/labels/{id}`) → `backend/app/tasks/__init__.py` (`print_label`) → `backend/app/services/labels.py` (`load_label_data` + `render_label_png` + `backend/app/assets/label-*.png`) → Redis `mes:print:queue` → `backend/app/api/routes/ws.py` (`/ws/bridge`, `Authorization: Bearer`) → `bridge-agent/agent.py` (`_print_png_gdi`) → USB GoDEX.
-- Agent autentifikatsiyasi: `frontend/src/routes/_layout/printers.tsx` → `backend/app/api/routes/bridge_agents.py` (kod berish, `/pair`, `/download`) → `bridge_agent` jadvali (`token_hash`, `last_seen_at`) → `backend/app/api/routes/ws.py` (`ws_bridge`, `touch_agent`) → `%APPDATA%\MebelixAgent\.env`.
+- Agent autentifikatsiyasi: `frontend/src/routes/_layout/printers.tsx` → `backend/app/api/routes/bridge_agents.py` (kod berish, `/pair`, `/scan`) → `bridge_agent` jadvali (`token_hash`, `last_seen_at`) → `backend/app/api/routes/ws.py` (`ws_bridge`, `touch_agent`) → `%APPDATA%\MebelixAgent\.env`.

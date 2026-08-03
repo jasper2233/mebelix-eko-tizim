@@ -107,7 +107,7 @@ router.include_router(bridge_agents_router)  # /pair ochiq bo'lishi shart
 router.include_router(ws_router)  # WebSocket auth endpoint ichida
 ```
 
-Ya'ni auth ikki qatlamda: router darajasida `get_current_user` (login bo'lganlik), endpoint darajasida esa `deps.py` dagi rol aliaslari (kim nima qila oladi). Ikki istisno: `ws_router` — WebSocket'da HTTP dependency ishlamaydi, shuning uchun autentifikatsiya har endpoint ichida bajariladi (quyida `ws.py` bo'limi); `bridge_agents_router` — `/pair` va `/download` sessiyasiz kompyuterdan chaqiriladi, shuning uchun butun router himoyasiz ulanadi va admin endpointlarning har biri `AdminUser` bilan o'zini himoyalaydi.
+Ya'ni auth ikki qatlamda: router darajasida `get_current_user` (login bo'lganlik), endpoint darajasida esa `deps.py` dagi rol aliaslari (kim nima qila oladi). Ikki istisno: `ws_router` — WebSocket'da HTTP dependency ishlamaydi, shuning uchun autentifikatsiya har endpoint ichida bajariladi (quyida `ws.py` bo'limi); `bridge_agents_router` — `/pair` va `/scan` sessiyasiz kompyuterdan chaqiriladi, shuning uchun butun router himoyasiz ulanadi va admin endpointlarning har biri `AdminUser` bilan o'zini himoyalaydi.
 
 **Bog'lanishlar:** `backend/app/api/deps.py` va barcha route fayllar.
 
@@ -239,7 +239,7 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 
 ## `backend/app/api/routes/posts.py` — Ishlab chiqarish postlari
 
-**Maqsadi:** 6 ta belgilangan post (ARRA…STOLYARKA) — ular `seed_defaults` komandasi bilan yaratiladi, shuning uchun API'da create/delete YO'Q, faqat o'qish va sozlash.
+**Maqsadi:** 7 ta belgilangan post (ARRA, KROMKA, OVAL, PRISADKA, PAZ, ROVER, STOLYARKA; OVAL `order_index=3`) — ular `seed_defaults` komandasi bilan yaratiladi, shuning uchun API'da create/delete YO'Q, faqat o'qish va sozlash.
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
@@ -267,7 +267,7 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 
 ## `backend/app/api/routes/orders.py` — Buyurtmalar (hayot sikli, matritsa, fayllar)
 
-**Maqsadi:** Eng katta route moduli (18 endpoint) — buyurtma hayot sikli TZ 6 bo'yicha: `DRAFT → TECHNICAL_REVIEW → PRODUCTION → COMPLETED → DELIVERED` (+ istalgan bosqichda `CANCELLED`). Tahrirlash cheklovlari `_EDITABLE_STATUSES = (DRAFT, TECHNICAL_REVIEW)` atrofida qurilgan.
+**Maqsadi:** Eng katta route moduli (20 endpoint) — buyurtma hayot sikli TZ 6 bo'yicha: `DRAFT → TECHNICAL_REVIEW → PRODUCTION → COMPLETED → DELIVERED` (+ istalgan bosqichda `CANCELLED`). Tahrirlash cheklovlari `_EDITABLE_STATUSES = (DRAFT, TECHNICAL_REVIEW)` atrofida qurilgan.
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
@@ -288,6 +288,8 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | POST | `/api/v1/orders/{id}/cancel` | `ManagerUser` | Bekor qilish (TZ 6.5): istalgan bosqichda (DELIVERED/CANCELLED dan tashqari); sabab majburiy; skan tarixi audit uchun saqlanadi; WS `order.cancelled` — terminallar vazifalarni DARHOL tashlaydi |
 | POST | `/api/v1/orders/{id}/deliver` | `ManagerUser` | TOPSHIRILDI (TZ 10.3): faqat `COMPLETED → DELIVERED`; `delivered_at` avtomatik; WS `order.delivered` |
 | GET | `/api/v1/orders/{id}/files/{file_id}` | `StaffReadUser` | Saqlangan faylni yuklab olish (project/SCX/hujjat), `FileResponse`; `media_type`: PROJECT/SCX uchun `application/xml`, qolganlari uchun `meta["content_type"]` (yo'q bo'lsa `application/octet-stream`) — anketa rasmlari `<img>` da ko'rsatilishi uchun shart |
+| GET | `/api/v1/orders/{id}/files/scx.zip` | `StaffReadUser` | Barcha SCX fayllar bitta ZIP arxivda (`{number}_scx.zip`) — prisadkachi stanokka bittalab emas, bitta arxiv ko'chiradi; SCX yo'q bo'lsa 404 |
+| POST | `/api/v1/orders/{id}/scx/regenerate` | `TexnologUser` | SCX fayllarni saqlangan `.project`dan qayta yaratadi (eski buyurtmani yangi nomlashga o'tkazish: har nusxa = QR nomli fayl); detallar/marshrutlar/skanlarga TEGILMAYDI; `.project` diskda bo'lmasa 404 |
 | GET | `/api/v1/orders/{id}/cutmap` | `StaffReadUser` | Kesish xaritasi holati (TZ 10.3) — admin-panel ko'rinishi va brauzer-print; terminal bilan umumiy `build_cutmap_state` (ARRA posti) |
 
 Barcha mutatsiyalar `log_action` bilan audit qilinadi. `.project` parser qoidalari va cutmap tafsilotlari — `docs/09-mes-domain.md`.
@@ -329,9 +331,9 @@ Yuklash cheklovlari (`orders.py` dagi konstantalar):
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
-| GET | `/api/v1/audit-logs/` | `StaffReadUser` | `Paginated[AuditLogRead]`; filtrlar: `module`, `action`, `user_id`, `date_from`, `date_to` |
+| GET | `/api/v1/audit-logs/` | `StaffReadUser` | `Paginated[AuditLogRead]`; filtrlar: `module`, `action`, `user_id`, `q` (xabar bo'yicha `ilike` qidiruv), `date_from`/`date_to` — kun chegaralari Asia/Tashkent vaqtida (naive-UTC bo'lsa "bugun" filtri 00:00–05:00 yozuvlarni yo'qotardi) |
 
-`AuditLogRead` shu faylda lokal e'lon qilingan: user/employee, modul, amal, entity, xabar, `meta` (JSON), IP, vaqt.
+`AuditLogRead` shu faylda lokal e'lon qilingan: user/employee, modul, amal, entity, xabar, `meta` (JSON), IP, vaqt, hamda `user_name`/`employee_name` ("kim" ustuni uchun `outerjoin` orqali — alohida so'rovsiz).
 
 **Bog'lanishlar:** `backend/app/models` (`AuditLog`), `backend/app/crud` (`log_action` — yozuvchi tomon).
 
@@ -386,7 +388,7 @@ Agent tomoni (`bridge-agent/agent.py`) — bitta chiqish yo'li: `send_to_printer
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
-| POST | `/api/v1/scans/` | terminal/operator | `record_scan` chaqiradi; rad etilsa rollback + 422 `{code, message}` (**E001–E006** xato kodlari); muvaffaqiyatda WS eventlar publish qilinadi; javob `ScanResult`: `scan_id`, `duplicate`, `qoldiq`, `scx_file_ids`, `order_stage_completed`, `order_completed` va detal ma'lumotlari |
+| POST | `/api/v1/scans/` | terminal/operator | `record_scan` chaqiradi; rad etilsa rollback + 422 `{code, message}` (**E001–E006** xato kodlari); muvaffaqiyatda WS eventlar publish qilinadi; javob `ScanResult`: `scan_id`, `duplicate`, `qoldiq`, `scx_file_ids`, `project_name` (avto-SCX proyekt nomli papkaga tushishi uchun), `order_stage_completed`, `order_completed` va detal ma'lumotlari; har skan (rad etilgani ham) `scan` modulida audit logga yoziladi |
 | DELETE | `/api/v1/scans/{scan_id}` | terminal/operator | Skanni bekor qilish (undo) — `cancel_scan`; hisoblagichlar qaytariladi, WS eventlar publish qilinadi |
 | GET | `/api/v1/scans/recent` | terminal/operator | TARIX bloki (TZ 8.3.3): faqat JORIY sessiyaning oxirgi 50 ta yozuvi |
 
@@ -432,12 +434,13 @@ Router `/api/v1/bridge-agents` prefiksi bilan **himoyasiz** ulanadi (`/pair` cha
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
-| GET | `/api/v1/bridge-agents/` | `AdminUser` | Agentlar ro'yxati (`BridgeAgentRead`: `id`, `name`, `paired`, `pair_code`, `pair_expires_at`, `last_seen_at`, `created_at`); `pair_code` faqat muddati o'tmagan bo'lsa qaytariladi, aks holda `null` |
+| GET | `/api/v1/bridge-agents/` | `AdminUser` | Agentlar ro'yxati (`BridgeAgentRead`: `id`, `name`, `paired`, `pair_code`, `pair_expires_at`, `last_seen_at`, `created_at`, `machine_id`, `machine_name`, `version`, `can_print`); `pair_code` faqat muddati o'tmagan bo'lsa qaytariladi, aks holda `null` |
+| PATCH | `/api/v1/bridge-agents/{id}` | `AdminUser` | Stanok bog'lash (`machine_id` — skan-forvard uchun) va chek-chiqarish belgisi (`can_print`); maydonlar alohida yuboriladi (`exclude_unset` — berilmagani tegilmaydi); audit `machine_linked` / `can_print_changed` |
 | POST | `/api/v1/bridge-agents/` | `AdminUser` | 201; agent yaratiladi va **bir martalik 8 belgili ulanish kodi** beriladi (`PAIR_TTL` = 15 daqiqa); audit `created` |
 | POST | `/api/v1/bridge-agents/{id}/code` | `AdminUser` | Yangi ulanish kodi (kod eskirgan yoki kompyuter almashgan holat); `token_hash` tozalanadi — eski kompyuter keyingi ulanishda rad etiladi; audit `code_regenerated` |
 | DELETE | `/api/v1/bridge-agents/{id}` | `AdminUser` | Soft-delete; jonli WebSocket ham uziladi (`touch_agent()` 5 daqiqada bir tekshiradi); audit `deleted` |
-| POST | `/api/v1/bridge-agents/pair` | **Yo'q (ochiq)** | Agent bir martalik kodni doimiy tokenga almashtiradi; javob `BridgePairResponse` (`token`, `name`); audit `paired` (`user_id=None`) |
-| GET | `/api/v1/bridge-agents/download` | **Yo'q (ochiq)** | Windows agent dasturi — `uploads/agent/mebelix-agent.exe`, `FileResponse`; fayl yuklanmagan bo'lsa 404 |
+| POST | `/api/v1/bridge-agents/pair` | **Yo'q (ochiq)** | Agent bir martalik kodni doimiy tokenga almashtiradi; javob `BridgePairResponse` (`token`, `name`); audit `paired` (`user_id=None`); WS `bridge.paired` — admin sahifasi pollingsiz yangilanadi |
+| POST | `/api/v1/bridge-agents/scan` | Agent tokeni (`Authorization: Bearer`) | Skan-forvard (TZ 12.5): stanok skaneri o'qigan QR agent orqali MES'ga yoziladi — agentga bog'langan stanokning AKTIV sessiyasi nomidan (`record_scan_at` + `finalize_scan`, odatdagi skan yo'li); stanok bog'lanmagan / sessiya yo'q — 409; rad etilgan skan ham `scan`/`rejected` audit logga tushadi, javob `ScanResult` |
 
 **Ulanish kodi:** `_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"` — I/L/O/0/1 yo'q, telefonda aytganda adashtirmaydi. 31 belgi × 8 uzunlik (`_CODE_LEN = 8`) = 31⁸ ≈ 8.5·10¹¹ kombinatsiya, 15 daqiqalik oynada brute-force amalda imkonsiz.
 
@@ -448,7 +451,7 @@ Router `/api/v1/bridge-agents` prefiksi bilan **himoyasiz** ulanadi (`/pair` cha
 - Kirishda `-` va bo'shliqlar olib tashlanadi, harflar katta registrga o'tkaziladi (qo'lda kiritishga bardosh).
 - Token `secrets.token_hex(24)` bilan yaratiladi va **faqat shu javobda** beriladi; bazada `token_hash` sifatida sha256 xeshi qoladi.
 
-`/download` auth talab qilmaydi: fayl hamma mijozga bir xil, hech qanday sir saqlamaydi, monoblok brauzerida esa sessiya bo'lmasligi mumkin. Yangi versiya chiqarish — exe'ni `uploads/agent/` ga qo'yish.
+Agent exe'ni yuklab olish endpointi YO'Q (2026-08-02 da olib tashlangan — diskdagi eski exe'ni berib adashtirardi): exe qo'lda tarqatiladi (`bridge-agent/README.md`).
 
 **Agent tomoni** (`bridge-agent/agent.py`): PyInstaller onefile `mebelix-agent.exe` — sex kompyuteriga Python o'rnatish shart emas. `_load_dotenv()` config'ni shu tartibda o'qiydi: env var > exe yonidagi `.env` > `%APPDATA%\MebelixAgent\.env`. `_pair()` (import paytida chaqiriladi) birinchi ishga tushishda kichik tkinter oynasi (`_pair_dialog()`) orqali server manzili va ulanish kodini so'raydi, `_exchange()` ularni `POST /pair` ga yuboradi va olingan tokenni `%APPDATA%\MebelixAgent\.env` ga yozadi; kod noto'g'ri bo'lsa oyna xato matni bilan qayta ochiladi. `BRIDGE_TOKEN` allaqachon bor bo'lsa `_pair()` darhol qaytadi — hech narsa so'ralmaydi; aks holda oyna har doim ochiladi, `stdin` tty bo'lishi shart emas (exe `--noconsole` bilan quriladi, konsol umuman yo'q). Faqat tkinter ishlamagan muhitda (dev/Linux) `_pair_console()` zaxira sifatida ishlaydi, u ham kod ololmasa `SystemExit("Ulanish bekor qilindi.")` — agent jim davom etmaydi, xato oynasini ko'rsatib to'xtaydi. Qolgan hammasi o'zgarmagan — printer avto-topiladi, `print-queue.jsonl` durable navbat, `_print_png_gdi` chiqish yo'li.
 
@@ -462,8 +465,8 @@ Router `/api/v1/bridge-agents` prefiksi bilan **himoyasiz** ulanadi (`/pair` cha
 
 | Endpoint | Auth | Izoh |
 |---|---|---|
-| WS `/api/v1/ws/events` | `?token=` query yoki access cookie | Brauzer klientlari (TZ 2.3). Token HTTP oqimidagi bilan bir xil funksiya — `deps.resolve_user` — orqali tekshiriladi (`verify_token` + `is_active` + `token_version`); muvaffaqiyatsiz bo'lsa **4401** kod bilan yopiladi. Klient scope'i rol bo'yicha: TERMINAL→`terminal`, TABLO→`tablo`, qolganlar→`dashboard`; `user.machine_id` dan post/stanok scope aniqlanadi. Heartbeat (TZ 2.3.2): klientning har qanday xabariga `{"type": "pong"}` |
-| WS `/api/v1/ws/bridge` | `Authorization: Bearer <token>` header (fallback: `?token=` query) → `bridge_agent.token_hash` (sha256) yoki legacy `settings.BRIDGE_TOKEN` (`secrets.compare_digest`) | Sex tarmog'idagi bridge-agent uplink'i (TZ 2.2.2 — USB GoDEX'da chop etadi). Ulanish CHIQUVCHI: agent o'zi ulanadi, sex routerida port ochilmaydi. Token headerda keladi — server access-loglariga tushmasin; `?token=` eski agentlar uchun qoldirilgan. Avval legacy umumiy `BRIDGE_TOKEN` bilan solishtiriladi (bytes'da — non-ASCII tokenda `compare_digest(str)` TypeError beradi), mos kelmasa token sha256 xeshi bo'yicha `bridge_agent` jadvalidan qidiriladi; topilmasa 4401. `BRIDGE_TOKEN` default bo'sh, `bool(settings.BRIDGE_TOKEN)` guard esa shu holda legacy yo'lni butunlay o'chiradi — aks holda bo'sh token bo'sh sozlama bilan mos kelib, hamma ulana olardi. Ulangandan keyin `touch_agent()` har 300 sekundda `last_seen_at` ni yangilaydi va agent hali tirikligini qayta tekshiradi — agent o'chirilgan yoki yangi kod berilgan bo'lsa ulanish 4401 bilan yopiladi, qo'lda turgan ish esa navbatga QAYTARILADI (revoke jonli ulanishni ~5 daqiqa ichida uzadi). DB xatosi ulanishni yiqitmaydi. Redis `mes:print:queue` ro'yxatidan `brpop` (5s timeout) bilan ishlarni oladi va agentga yuboradi (job JSON: `type`, `instance_id`, `png` — base64 PNG); agent ishni lokal `print-queue.jsonl` ga yozgach 15s ichida `{"ok": true}` bilan ack qilishi shart — ack kelmasa yoki uzilsa ish `rpush` bilan navbatga QAYTARILADI (hech bir ish yo'qolmaydi); bo'sh navbatda `{"type": "ping"}` heartbeat va 10s ichida javob kutiladi |
+| WS `/api/v1/ws/events` | `?token=` query yoki access cookie | Brauzer klientlari (TZ 2.3). Token HTTP oqimidagi bilan bir xil funksiya — `deps.resolve_user` — orqali tekshiriladi (`verify_token` + `is_active` + `token_version`); muvaffaqiyatsiz bo'lsa **4401** kod bilan yopiladi. Klient scope'i rol bo'yicha: TERMINAL va operator rollar (POST_ROLES)→`terminal`, TABLO→`tablo`, qolganlar→`dashboard`; post/stanok scope `user.machine_id` dan, operator rollarda esa `machine_id` bo'lmasa post rolning o'zidan (`POST_ROLES` → `Post.code`) aniqlanadi — aks holda postga nishonlangan `scan.recorded` eventlari yetib bormasdi. Heartbeat (TZ 2.3.2): klientning har qanday xabariga `{"type": "pong"}` |
+| WS `/api/v1/ws/bridge` | `Authorization: Bearer <token>` header (fallback: `?token=` query) → `bridge_agent.token_hash` (sha256) yoki legacy `settings.BRIDGE_TOKEN` (`secrets.compare_digest`) | Sex tarmog'idagi bridge-agent uplink'i (TZ 2.2.2 — USB GoDEX'da chop etadi). Ulanish CHIQUVCHI: agent o'zi ulanadi, sex routerida port ochilmaydi. Token headerda keladi — server access-loglariga tushmasin; `?token=` eski agentlar uchun qoldirilgan. Avval legacy umumiy `BRIDGE_TOKEN` bilan solishtiriladi (bytes'da — non-ASCII tokenda `compare_digest(str)` TypeError beradi), mos kelmasa token sha256 xeshi bo'yicha `bridge_agent` jadvalidan qidiriladi; topilmasa 4401. `BRIDGE_TOKEN` default bo'sh, `bool(settings.BRIDGE_TOKEN)` guard esa shu holda legacy yo'lni butunlay o'chiradi — aks holda bo'sh token bo'sh sozlama bilan mos kelib, hamma ulana olardi. Ulanishda `X-Agent-Version` header `bridge_agent.version` ustuniga yoziladi; ulanish/uzilish `bridge.connected`/`bridge.disconnected` eventlari bilan panelga tarqatiladi (pairing esa `bridge.paired`). Chop etish ishlari faqat `can_print=True` agentga beriladi — `can_print=False` agent ulanib turadi (skan-forvard uchun), lekin print navbatidan ish olmaydi. Ulangandan keyin `touch_agent()` har 300 sekundda `last_seen_at` ni yangilaydi, `can_print`ni qayta o'qiydi va agent hali tirikligini qayta tekshiradi — agent o'chirilgan yoki yangi kod berilgan bo'lsa ulanish 4401 bilan yopiladi, qo'lda turgan ish esa navbatga QAYTARILADI (revoke jonli ulanishni ~5 daqiqa ichida uzadi). DB xatosi ulanishni yiqitmaydi. Redis `mes:print:queue` ro'yxatidan `brpop` (5s timeout) bilan ishlarni oladi va agentga yuboradi (job JSON: `type`, `instance_id`, `png` — base64 PNG); agent ishni lokal `print-queue.jsonl` ga yozgach 15s ichida `{"ok": true}` bilan ack qilishi shart — ack kelmasa yoki uzilsa ish `rpush` bilan navbatga QAYTARILADI (hech bir ish yo'qolmaydi); bo'sh navbatda `{"type": "ping"}` heartbeat va 10s ichida javob kutiladi |
 
 Server → klient eventlarni `app/core/ws.py` dagi `ws_manager` tarqatadi: `order.*`, `session.*`, skan eventlari, `label.printed` — mutatsion HTTP endpointlar publish qiladi.
 
