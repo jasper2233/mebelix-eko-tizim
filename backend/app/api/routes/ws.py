@@ -50,9 +50,13 @@ async def ws_events(websocket: WebSocket, token: str | None = None) -> None:
             ).scalar_one_or_none()
             post_id = post.id if post else None
 
+    # Operator rollar ham "terminal" scope — aks holda dashboard'ga tushib HAMMA
+    # postning eventini olar, yuqoridagi post_id filtri esa umuman ishlamasdi
+    role = UserRole(user.role)
+    scope = _SCOPE_BY_ROLE.get(role) or ("terminal" if role in POST_ROLES else "dashboard")
     client = WsClient(
         socket=websocket,
-        scope=_SCOPE_BY_ROLE.get(user.role, "dashboard"),
+        scope=scope,
         post_id=post_id,
         machine_id=user.machine_id,
     )
@@ -169,10 +173,27 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
             _key, raw = popped
             job = raw.decode() if isinstance(raw, bytes) else raw
             try:
+                # 10s dan KECH kelgan ping-javob soketda qolib keyingi jobning
+                # ack'i bo'lib o'qilardi (eski agent pingga ham {"ok":true} beradi)
+                # — job diskka yozilmasdan "yetkazildi" hisoblanib yo'qolardi.
+                # Jo'natishdan oldin eskirgan javoblar tashlab yuboriladi.
+                with contextlib.suppress(TimeoutError):
+                    while True:
+                        await asyncio.wait_for(websocket.receive_text(), timeout=0.05)
                 await websocket.send_text(job)
-                ack = await asyncio.wait_for(websocket.receive_text(), timeout=15)
-                if not json.loads(ack).get("ok"):
-                    raise ValueError("bridge nak")
+                # Yangi agent pingga {"type":"pong"} qaytaradi — ack kutishda
+                # bunday xabarlar o'tkazib yuboriladi
+                deadline = asyncio.get_event_loop().time() + 15
+                while True:
+                    left = deadline - asyncio.get_event_loop().time()
+                    if left <= 0:
+                        raise TimeoutError("bridge ack timeout")
+                    ack = json.loads(await asyncio.wait_for(websocket.receive_text(), timeout=left))
+                    if ack.get("type") == "pong":
+                        continue
+                    if not ack.get("ok"):
+                        raise ValueError("bridge nak")
+                    break
             except Exception:
                 await redis.rpush(PRINT_QUEUE_KEY, job)  # requeue — job is never lost
                 raise

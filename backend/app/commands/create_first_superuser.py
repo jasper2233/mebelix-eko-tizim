@@ -17,7 +17,8 @@ async def create_first_user(session: AsyncSession) -> None:
     phone = settings.ADMIN_PHONE
     username = settings.ADMIN_USERNAME
 
-    query = select(User).filter_by(phone=phone)
+    # Soft-delete qilingan eski admin qatori yangi seed'ni bloklamasin
+    query = select(User).filter_by(phone=phone, is_deleted=False)
     result = await session.execute(query)
     user = result.scalar_one_or_none()
 

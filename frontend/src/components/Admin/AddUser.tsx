@@ -106,7 +106,12 @@ const AddUser = () => {
   const onSubmit = (data: FormData) => {
     mutation.mutate({
       ...data,
-      machine_id: data.machine_id ? Number(data.machine_id) : null,
+      // Stanok faqat terminal/tablo rollarga tegishli — rol keyin almashtirilsa
+      // yashirin qolgan tanlov ofis rolga ham jo'nab ketmasin
+      machine_id:
+        ["terminal", "tablo"].includes(data.role) && data.machine_id
+          ? Number(data.machine_id)
+          : null,
     } as unknown as UserCreate)
   }
 

@@ -1,6 +1,6 @@
 from typing import Any
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -11,6 +11,12 @@ class AuditLog(BaseModel):
     """System audit trail (TZ 10.11): who did what, when. created_at = event time."""
 
     __tablename__ = "audit_log"
+
+    # Loglar sahifasi filtrlari — eng tez o'suvchi jadvalda seq scan bo'lmasin
+    __table_args__ = (
+        Index("ix_audit_log_module_action", "module", "action"),
+        Index("ix_audit_log_created_at", "created_at"),
+    )
 
     user_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, index=True, kw_only=True)
     employee_id: Mapped[int | None] = mapped_column(ForeignKey("employee.id"), default=None, kw_only=True)

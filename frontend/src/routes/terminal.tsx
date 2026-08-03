@@ -102,6 +102,9 @@ function TerminalPage() {
   const isOperator = OPERATOR_ROLES.includes(currentUser?.role as never)
 
   const [scanOn, setScanOn] = useState(true)
+  // Oxirgi skan URINISHI vaqti (muvaffaqiyat ham, xato ham) — avto-reload
+  // "tinchlik" o'lchovi; lastScan holatidan farqli, 15s da tozalanmaydi
+  const lastScanAtRef = useRef(0)
   // Skan bo'lgan vazifa qatori KEYINGI skangacha ajralib turadi + avto-scroll
   // (prisadka/kromka bilan bir xil mexanizm — qoldiq kamaygan qator aniqlanadi)
   const prevQoldiqRef = useRef<Map<string, number>>(new Map())
@@ -195,13 +198,15 @@ function TerminalPage() {
   useEffect(() => {
     if (!updateReady) return
     const tryReload = () => {
-      const quiet = !lastScan || Date.now() - lastScan.at > 120_000
+      // lastScan holati 15s da o'zi tozalanadi — "2 daqiqa tinchlik" o'lchovi
+      // uchun alohida ref: aks holda reload oxirgi skandan 15s keyinoq bo'lardi
+      const quiet = Date.now() - lastScanAtRef.current > 120_000
       if (mapOrderId === null && quiet) window.location.reload()
     }
     tryReload()
     const t = setInterval(tryReload, 30_000)
     return () => clearInterval(t)
-  }, [updateReady, mapOrderId, lastScan])
+  }, [updateReady, mapOrderId])
 
   // Avto-skan: input doim fokusda (TZ 8.4.1). Faqat ARRA xaritasi ochiqda
   // o'chadi (input yashirin) — KROMKA proyekt sahifasida skan doim ishlashi kerak
@@ -293,6 +298,7 @@ function TerminalPage() {
       }),
     onSuccess: (r: ScanResult) => {
       playSuccess()
+      lastScanAtRef.current = Date.now()
       // Chek/QR/SCX bilan bir xil satr — operator solishtirganda adashmasin
       setLastScan({
         kind: "ok",
@@ -314,6 +320,7 @@ function TerminalPage() {
       for (const fid of r.scx_file_ids ?? []) downloadScx(fid, r.project_name)
     },
     onError: (err) => {
+      lastScanAtRef.current = Date.now()
       const { code, message } = detailParts(err)
       if (code === "E001" && message.includes("yakunlangan")) playWarning()
       else playError()

@@ -27,7 +27,9 @@ def _eval_expr(expr: str, env: dict[str, float]) -> float:
         return float(expr)
     except ValueError:
         pass
-    if not _EXPR_RE.match(expr):
+    # `**` charset'dan o'tadi ("* *") — 9**9**9 kabi ifoda eval'da workerni
+    # osiltirib qo'yardi (DoS). Arifmetikada daraja ishlatilmaydi — taqiq.
+    if not _EXPR_RE.match(expr) or "**" in expr:
         raise ParseError(f"XNC ifodasi xavfsiz emas: {expr!r}")
     try:
         return float(eval(expr, {"__builtins__": {}}, env))  # noqa: S307 — charset-whitelisted arithmetic

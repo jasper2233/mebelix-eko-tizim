@@ -101,6 +101,8 @@ class PartInstance(BaseModel):
 
     __table_args__ = (
         Index("ix_part_instance_order_qr", "order_id", "qr_text", unique=True, postgresql_where=text("NOT is_deleted")),
+        # Skan lookup aynan qr_text bo'yicha — issiq yo'l seq scan bo'lmasin
+        Index("ix_part_instance_qr_text", "qr_text", postgresql_where=text("NOT is_deleted")),
     )
 
     order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), index=True, kw_only=True)

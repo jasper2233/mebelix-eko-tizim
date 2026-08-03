@@ -25,10 +25,13 @@ def _derive_username_from_phone(phone: str) -> str:
     return phone.lstrip("+")
 
 
+_NULLABLE_FIELDS = ("name", "machine_id")  # null = qiymatni olib tashlash (stanok bog'lamini uzish)
+
+
 def _drop_forbidden_nulls(update_data: dict) -> dict:
-    """PATCH bodies may carry explicit `null`s; only `name` is genuinely nullable — the rest would
-    hit NOT NULL columns and 500."""
-    return {k: v for k, v in update_data.items() if v is not None or k == "name"}
+    """PATCH bodies may carry explicit `null`s; faqat haqiqatan nullable ustunlar
+    null qabul qiladi — qolganlari NOT NULL ustunga tushib 500 berardi."""
+    return {k: v for k, v in update_data.items() if v is not None or k in _NULLABLE_FIELDS}
 
 
 @router.post("/", response_model=UserRead, status_code=201, operation_id="create_user")

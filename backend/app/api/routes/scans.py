@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 
 from app.api.deps import SessionDep, require_roles
@@ -105,7 +105,9 @@ async def cancel_scan_endpoint(db: SessionDep, user: TerminalUser, scan_id: int)
 
 
 @router.get("/recent", response_model=list[ScanHistoryItem], operation_id="read_recent_scans")
-async def read_recent_scans(db: SessionDep, user: TerminalUser, limit: int = 50) -> list[ScanHistoryItem]:
+async def read_recent_scans(
+    db: SessionDep, user: TerminalUser, limit: Annotated[int, Query(ge=1, le=50)] = 50
+) -> list[ScanHistoryItem]:
     """TARIX block (TZ 8.3.3): last 50 entries of the CURRENT session only."""
     session = (
         await db.execute(
@@ -128,7 +130,7 @@ async def read_recent_scans(db: SessionDep, user: TerminalUser, limit: int = 50)
             .join(Part, Part.id == Scan.part_id)
             .where(Scan.session_id == session.id, Scan.is_deleted == False)  # noqa: E712
             .order_by(Scan.id.desc())
-            .limit(min(limit, 50))
+            .limit(limit)
         )
     ).all()
     items = []

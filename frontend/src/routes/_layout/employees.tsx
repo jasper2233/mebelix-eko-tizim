@@ -495,21 +495,22 @@ function BadgeDialog({
   })
 
   if (!employee) return null
+  // Yangi beyjik yaratilgach dialog YANGI QR ko'rsatishi shart — prop'dagi
+  // eski snapshot bekor qilingan beyjikni chop ettirib yuborardi
+  const emp = regen.data ?? employee
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="print-only max-w-xs text-center">
         <DialogHeader>
-          <DialogTitle>{employee.full_name}</DialogTitle>
+          <DialogTitle>{emp.full_name}</DialogTitle>
           <DialogDescription>
             Beyjik QR — chop etib hodimga bering
           </DialogDescription>
         </DialogHeader>
         <div className="mx-auto rounded-xl border p-4">
-          <QRCodeSVG value={employee.badge_id} size={180} />
+          <QRCodeSVG value={emp.badge_id} size={180} />
         </div>
-        <div className="num text-xs text-muted-foreground">
-          {employee.badge_id}
-        </div>
+        <div className="num text-xs text-muted-foreground">{emp.badge_id}</div>
         <DialogFooter className="print-hide flex-col gap-2 sm:flex-col">
           <Button variant="outline" onClick={() => window.print()}>
             Chop etish

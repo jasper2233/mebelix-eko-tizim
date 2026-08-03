@@ -15,6 +15,7 @@ from app.models.enums import FileKind, MaterialType, PostCode, ProjectGeneration
 
 from .cutmap import build_cutmap
 from .models import ParsedProject
+from .parser import ParseError
 from .scx import build_scx_files
 
 logger = logging.getLogger(__name__)
@@ -103,6 +104,22 @@ async def ingest_project(
     upload_root: Path,
 ) -> dict[str, Any]:
     """Create all DB rows + files for a parsed PROCESSED project. Caller commits."""
+    # Yuklangan fayl nomi yo'l qismisiz saqlanadi — "../" bilan uploads tashqarisiga
+    # yozishning oldi olinadi
+    original_filename = Path(original_filename).name or "project.project"
+
+    # QR to'qnashuvini OLDINDAN aniqlash: masalan "010" (2 nusxa) va "010_2" kodli
+    # detal bir xil QR beradi — unique indeks 500 bermasin, do'stona xato bersin
+    qr_owner: dict[str, str] = {}
+    for pp in project.all_parts:
+        for qr in pp.qr_texts:
+            if qr in qr_owner:
+                raise ParseError(
+                    f"Detal ID to'qnashuvi: {qr} ham {qr_owner[qr]}, ham {pp.key} uchun chiqdi. "
+                    "GibLab'da detal kodlarini tekshiring."
+                )
+            qr_owner[qr] = pp.key
+
     posts = {p.code: p for p in (await db.execute(select(Post))).scalars()}
 
     cutmap = build_cutmap(project) if any(c.data_blob for c in project.cut_ops) else None

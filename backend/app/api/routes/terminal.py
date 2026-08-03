@@ -251,10 +251,14 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[dict]:
         )
     ).all()
 
+    # Agregatlar faqat ro'yxatdagi buyurtmalar bo'yicha — filtrisiz butun bazadagi
+    # BARCHA nusxa/skan tarixi har so'rovda qayta hisoblanardi
+    order_ids = [o.id for o, *_ in rows]
+
     # ARRA'da "bajarildi" = chek chiqarilgan YOKI skan qilingan nusxa (kartadagi
     # foiz xarita bilan bir xil o'lchov bo'lsin). Boshqa postlarda faqat skan.
     printed_by_order: dict[int, int] = {}
-    if post.code == PostCode.ARRA:
+    if post.code == PostCode.ARRA and order_ids:
         printed_by_order = dict(
             (
                 await db.execute(
@@ -267,6 +271,7 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[dict]:
                         & (Scan.is_deleted == False),  # noqa: E712
                     )
                     .where(
+                        PartInstance.order_id.in_(order_ids),
                         PartInstance.is_deleted == False,  # noqa: E712
                         (PartInstance.label_printed_at.isnot(None)) | (Scan.id.isnot(None)),
                     )
@@ -279,10 +284,11 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[dict]:
     # KROMKA kartasida hisob DETAL bo'yicha (tomon emas): nusxaning hamma tomoni
     # skan qilingan bo'lsa — qilingan; jami = kromkali nusxalar soni
     kromka_counts: dict[int, tuple[int, int]] = {}
-    if post.code == PostCode.KROMKA:
+    if post.code == PostCode.KROMKA and order_ids:
         scans_sq = (
             select(Scan.instance_id, func.count(Scan.id).label("cnt"))
             .where(
+                Scan.order_id.in_(order_ids),
                 Scan.post_id == post.id,
                 Scan.is_cancelled == False,  # noqa: E712
                 Scan.is_deleted == False,  # noqa: E712
@@ -307,7 +313,10 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[dict]:
                         & (PartRoute.is_deleted == False),  # noqa: E712
                     )
                     .outerjoin(scans_sq, scans_sq.c.instance_id == PartInstance.id)
-                    .where(PartInstance.is_deleted == False)  # noqa: E712
+                    .where(
+                        PartInstance.order_id.in_(order_ids),
+                        PartInstance.is_deleted == False,  # noqa: E712
+                    )
                     .group_by(PartInstance.order_id)
                 )
             ).all()

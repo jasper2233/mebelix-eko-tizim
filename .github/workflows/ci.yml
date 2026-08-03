@@ -115,10 +115,13 @@ jobs:
           ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
       - name: Sync code
         run: |
+          # .stable_tag/.backup.env serverda yashaydi — --delete ularni o'chirsa
+          # avto-rollback tayanchi va Telegram backup sozlamasi yo'qoladi
           rsync -az --delete \
             --exclude .git --exclude node_modules --exclude .venv \
             --exclude __pycache__ --exclude dist --exclude uploads \
             --exclude .env --exclude backups \
+            --exclude .stable_tag --exclude .backup.env \
             ./ "root@${{ secrets.DEPLOY_HOST }}:/opt/mebelix-mes/"
       - name: Registry login (serverda)
         # Paketlar private — server ghcr'dan tortish uchun autentifikatsiya qiladi.

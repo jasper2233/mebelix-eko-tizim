@@ -102,6 +102,10 @@ def _build_part(p: ET.Element, product: ParsedProduct, seen: set[str], warnings:
                 f"{product.code}: faylda detal kodlari yo'q — tartib raqami bo'yicha berildi "
                 f"(001, 002, ...). QR va SCX nomlari shu raqamga bog'lanadi."
             )
+    # Kod fayl nomi va yo'l qismiga aylanadi (QR = SCX nomi) — yo'l belgilariga
+    # ruxsat yo'q, aks holda uploads tashqarisiga yozish mumkin bo'lardi
+    if re.search(r"[\\/]|\.\.", code):
+        raise ParseError(f"Detal kodida taqiqlangan belgi: {code!r} ({product.code})")
     code = _dedupe_part_code(code, seen, product.code, warnings)
     seen.add(code)
 
@@ -348,9 +352,12 @@ def parse_project(content: bytes) -> ParsedProject:
     part_by_file_id: dict[int, ParsedPart] = {}
     part_code_seen: dict[str, set[str]] = {}
     for g in products_goods:
+        product_code = g.get("code") or g.get("name") or "PRODUCT"
+        if re.search(r"[\\/]|\.\.", product_code):
+            raise ParseError(f"Mahsulot kodida taqiqlangan belgi: {product_code!r}")
         product = ParsedProduct(
             file_good_id=int(g.get("id", 0)),
-            code=g.get("code") or g.get("name") or "PRODUCT",
+            code=product_code,
             name=g.get("name", ""),
             count=_i(g, "count", 1),
             import_source=g.get("product.import"),

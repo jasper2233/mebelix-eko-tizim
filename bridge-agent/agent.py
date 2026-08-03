@@ -271,8 +271,21 @@ def _pair() -> None:
             error = str(exc)
             log.warning("Ulanmadi: %s", error)
 
-    env_body = f"MES_URL={url}\nBRIDGE_TOKEN={token}\n"
-    (CONFIG_DIR / ".env").write_text(env_body, encoding="utf-8")
+    def _rewrite_env(path: Path) -> None:
+        """MES_URL/BRIDGE_TOKEN yangilanadi, qo'lda yozilgan boshqa kalitlar
+        (PRINTER_NAME, QUEUE_FILE, SCAN_FORWARD...) SAQLANADI — aks holda
+        re-pair'dan keyin nostandart nomli printer chek chiqarmay qolardi."""
+        kept: list[str] = []
+        if path.exists():
+            with contextlib.suppress(OSError):
+                for line in path.read_text(encoding="utf-8").splitlines():
+                    key = line.split("=", 1)[0].strip()
+                    if line.strip() and key not in ("MES_URL", "BRIDGE_TOKEN"):
+                        kept.append(line)
+        body = "\n".join([f"MES_URL={url}", f"BRIDGE_TOKEN={token}", *kept]) + "\n"
+        path.write_text(body, encoding="utf-8")
+
+    _rewrite_env(CONFIG_DIR / ".env")
     # Exe yonida qo'lda qo'yilgan .env bo'lsa u ham yangilanadi: o'qish tartibida
     # u APPDATA'dan USTUN turadi — eski (bekor qilingan) tokenli nusxasi qolsa
     # har yonganda o'sha yuklanib, dialog aylanasiga olib borardi
@@ -283,7 +296,7 @@ def _pair() -> None:
     ) / ".env"
     if _exe_env.exists():
         with contextlib.suppress(OSError):
-            _exe_env.write_text(env_body, encoding="utf-8")
+            _rewrite_env(_exe_env)
     os.environ["MES_URL"] = url
     os.environ["BRIDGE_TOKEN"] = token
     _register_autostart()
@@ -551,7 +564,9 @@ async def uplink() -> None:
                     except json.JSONDecodeError:
                         continue
                     if msg.get("type") == "ping":
-                        await ws.send(json.dumps({"ok": True}))
+                        # pong != job-ack: {"ok":true} yuborilsa kechikkan javob
+                        # serverda keyingi jobning ack'i deb o'qilishi mumkin edi
+                        await ws.send(json.dumps({"type": "pong"}))
                         continue
                     if msg.get("type") == "print":
                         # Avval diskka — keyin ack. Server ackdan keyin jobni unutadi (TZ 2.2.2).
