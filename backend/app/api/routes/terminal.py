@@ -49,7 +49,14 @@ from app.schemas.terminal import (
     TaskRow,
     TerminalContext,
 )
-from app.services.scanning import ScanRejected, active_session, latest_active_session, resolve_terminal
+from app.services.scanning import (
+    ScanRejected,
+    active_session,
+    finalize_scan,
+    latest_active_session,
+    record_scan_at,
+    resolve_terminal,
+)
 
 router = APIRouter(prefix="/terminal", tags=["terminal"])
 
@@ -710,6 +717,42 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     if queue.pool is not None:
         await queue.pool.enqueue_job("print_label", instance_id)
     await ws_manager.publish("label.printed", {"instance_id": instance_id, "qr_text": instance.qr_text})
+
+    # ROVER oqimi: marshrutida ARRA bo'lmagan detal roverning O'ZIDA kesiladi —
+    # chop etish ish bajarildi degani (ARRA'dagi "chek = kesildi" bilan bir xil),
+    # alohida skan qadami ortiqcha. Skan yozuvi ham yoziladi: statistika, tablo
+    # va ish haqi hisoblari oddiy oqim bilan bir xil qoladi. Rad etilsa (masalan
+    # qat'iy tartibda oldingi bosqich tugamagan) chek baribir chiqqan bo'ladi —
+    # operator keyin skan bilan yakunlaydi.
+    if POST_ROLES.get(UserRole(user.role)) == PostCode.ROVER:
+        arra_route = (
+            await db.execute(
+                select(PartRoute.id)
+                .join(Post, Post.id == PartRoute.post_id)
+                .where(
+                    PartRoute.part_id == instance.part_id,
+                    Post.code == PostCode.ARRA,
+                    PartRoute.is_enabled == True,  # noqa: E712
+                    PartRoute.is_deleted == False,  # noqa: E712
+                )
+            )
+        ).first()
+        if arra_route is None:
+            try:
+                machine, post = await resolve_terminal(db, user)
+                session = await active_session(db, user, machine)
+                outcome = await record_scan_at(
+                    db,
+                    machine=machine,
+                    post=post,
+                    session=session,
+                    qr_text=instance.qr_text,
+                    client_event_id=f"rvprint-{instance.id}",
+                )
+                await finalize_scan(db, outcome, user_id=user.id, source=" (rover, chop etish bilan)")
+            except ScanRejected:
+                await db.rollback()
+
     return Message(message=f"Yorliq chop etishga yuborildi: {instance.qr_text}")
 
 

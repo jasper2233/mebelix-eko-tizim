@@ -253,23 +253,18 @@ export function PrisadkaView({
                       {formatSize(p.length, p.width, p.thickness)}
                     </td>
                     <td className="px-4 py-3 text-right">
+                      {/* Ikki holat yetadi: rover-first detalda chop etish o'zi
+                          "bajarildi" (server avto-skan yozadi), arra detalida
+                          QR o'zi bilan keladi — skan bilan yakunlanadi */}
                       <span
                         className={cn(
                           "rounded-md px-2.5 py-1 text-sm font-bold",
                           i.done
                             ? "bg-green-600 text-white"
-                            : i.label_printed
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-muted text-muted-foreground",
+                            : "bg-muted text-muted-foreground",
                         )}
                       >
-                        {i.done
-                          ? "✓ Bajarildi"
-                          : i.label_printed
-                            ? "Skan kutilmoqda"
-                            : p.arra_route
-                              ? "Chek arrada chiqadi"
-                              : "Chek chiqarilmagan"}
+                        {i.done ? "✓ Bajarildi" : "Bajarilmagan"}
                       </span>
                     </td>
                   </tr>
