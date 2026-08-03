@@ -13,8 +13,10 @@ type Sheet = any
 // Xarita paneli kulrang (oq emas) — yorug' sexda ko'z qamashtirmaydi, detallar ajralib turadi
 const PART_FILL = "#e88b00"
 const PART_SELECTED = "#2596be"
-// Chek chiqarilgan yoki skan qilingan katak — "kesildi" yashili (TZ 7.1.7)
-const PART_DONE = "#6cb56e"
+// Chek chiqarilgan yoki skan qilingan katak — "kesildi" yashili (TZ 7.1.7).
+// Tailwind green-500: tizimning qolgan "bajarildi" belgilari (list kartasi,
+// kromka/prisadka chiplari) bilan bitta ton — xarita ajralib qolmasin
+const PART_DONE = "#22c55e"
 
 // --- GibSaw render qoidalari (GibLabViewer'dan portlangan, foto-tekshirilgan) ---
 
