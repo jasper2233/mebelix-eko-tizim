@@ -7,7 +7,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { Search, X } from "lucide-react"
 import { useState } from "react"
 
-import { type AuditLogRead, AuditService } from "@/client"
+import { type AuditLogRead, AuditService, BridgeAgentsService } from "@/client"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/table"
 import { useDebounced } from "@/hooks/useDebounced"
 import { formatDateTime } from "@/lib/mes"
-import { cn } from "@/lib/utils"
+import { getMachinesQueryOptions, getPostsQueryOptions } from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/logs")({
   component: LogsPage,
@@ -56,6 +56,26 @@ const CATEGORY_LABELS = Object.fromEntries(
   CATEGORIES.map((c) => [c.key, c.label]),
 )
 
+// Amal slug'lari — odam tilida (yangi amal qo'shilsa shu yerga bitta qator)
+const ACTION_LABELS: Record<string, string> = {
+  recorded: "yozildi",
+  rejected: "rad etildi",
+  cancelled: "bekor qilindi",
+  label_sent: "chek yuborildi",
+  label_cancelled: "chek bekor qilindi",
+  created: "yaratildi",
+  updated: "o'zgartirildi",
+  deleted: "o'chirildi",
+  started: "boshlandi",
+  ended: "tugadi",
+  machine_linked: "stanok bog'landi",
+  can_print_changed: "chek chiqarish o'zgardi",
+  scx_regenerated: "SCX qayta yaratildi",
+  matrix_edited: "matritsa tahrirlandi",
+  code_regenerated: "yangi ulanish kodi",
+  paired: "ulandi",
+}
+
 function LogsPage() {
   const [module, setModule] = useState<string | null>(null)
   const [search, setSearch] = useState("")
@@ -79,6 +99,22 @@ function LogsPage() {
   const rows = data?.data ?? []
   const total = data?.count ?? 0
   const pages = Math.max(1, Math.ceil(total / PAGE))
+
+  // Dialogda meta'dagi raw ID'lar o'rniga nomlar: post/stanok/agent lug'atlari
+  // (kichik ro'yxatlar, keshda turadi — har ochilishda so'rov ketmaydi)
+  const { data: posts } = useQuery(getPostsQueryOptions())
+  const { data: machines } = useQuery(getMachinesQueryOptions())
+  const { data: agents } = useQuery({
+    queryKey: ["bridge-agents"],
+    queryFn: () => BridgeAgentsService.readBridgeAgents(),
+    staleTime: 5 * 60_000,
+  })
+  const postName = (id: number) =>
+    posts?.find((p) => p.id === id)?.name ?? `post #${id}`
+  const machineName = (id: number) =>
+    machines?.find((m) => m.id === id)?.name ?? `stanok #${id}`
+  const agentName = (id: number) =>
+    agents?.find((a) => a.id === id)?.name ?? `agent #${id}`
 
   const setFilter = (fn: () => void) => {
     fn()
@@ -176,7 +212,7 @@ function LogsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="max-w-[480px] truncate">
-                      {r.message || r.action}
+                      {r.message || (ACTION_LABELS[r.action] ?? r.action)}
                     </TableCell>
                   </TableRow>
                 ))
@@ -226,42 +262,59 @@ function LogsPage() {
             <>
               <DialogHeader>
                 <DialogTitle>
-                  {CATEGORY_LABELS[detail.module] ?? detail.module} ·{" "}
-                  {detail.action}
+                  {CATEGORY_LABELS[detail.module] ?? detail.module} —{" "}
+                  {ACTION_LABELS[detail.action] ?? detail.action}
                 </DialogTitle>
                 <DialogDescription>
                   {formatDateTime(detail.created_at)}
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-2 text-sm">
-                <p>{detail.message || "—"}</p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
+              <div className="space-y-3 text-sm">
+                <p className="font-medium">{detail.message || "—"}</p>
+                <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-muted-foreground">
                   <span>Kim:</span>
                   <span className="text-foreground">
                     {detail.user_name || detail.employee_name || "—"}
                   </span>
-                  <span>Obyekt:</span>
-                  <span className="text-foreground">
-                    {detail.entity_type
-                      ? `${detail.entity_type} #${detail.entity_id}`
-                      : "—"}
-                  </span>
-                  <span>IP:</span>
-                  <span className="num text-foreground">
-                    {detail.ip || "—"}
-                  </span>
-                  <span>Log ID:</span>
-                  <span className="num text-foreground">#{detail.id}</span>
+                  {detail.meta?.post_id != null && (
+                    <>
+                      <span>Post:</span>
+                      <span className="text-foreground">
+                        {postName(Number(detail.meta.post_id))}
+                      </span>
+                    </>
+                  )}
+                  {detail.meta?.machine_id != null && (
+                    <>
+                      <span>Stanok:</span>
+                      <span className="text-foreground">
+                        {machineName(Number(detail.meta.machine_id))}
+                      </span>
+                    </>
+                  )}
+                  {detail.meta?.agent_id != null && (
+                    <>
+                      <span>Agent:</span>
+                      <span className="text-foreground">
+                        {agentName(Number(detail.meta.agent_id))}
+                      </span>
+                    </>
+                  )}
+                  {typeof detail.meta?.code === "string" && (
+                    <>
+                      <span>Xato kodi:</span>
+                      <span className="num text-foreground">
+                        {detail.meta.code}
+                      </span>
+                    </>
+                  )}
+                  {detail.ip && (
+                    <>
+                      <span>IP:</span>
+                      <span className="num text-foreground">{detail.ip}</span>
+                    </>
+                  )}
                 </div>
-                {Object.keys(detail.meta ?? {}).length > 0 && (
-                  <pre
-                    className={cn(
-                      "num overflow-x-auto rounded-md bg-muted p-2 text-xs",
-                    )}
-                  >
-                    {JSON.stringify(detail.meta, null, 2)}
-                  </pre>
-                )}
               </div>
             </>
           )}

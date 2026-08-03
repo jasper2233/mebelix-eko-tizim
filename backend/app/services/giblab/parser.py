@@ -10,6 +10,7 @@ Hard rules from the 205-file corpus analysis:
 - part@id is NOT stable across files; the durable key is productCode_partCode (+ project.uuid).
 """
 
+import re
 import xml.etree.ElementTree as ET
 
 from .models import (
@@ -125,11 +126,16 @@ def _build_part(p: ET.Element, product: ParsedProduct, seen: set[str], warnings:
         warnings.append(f"{product.code}/{code}: faylda manfiy o'lcham ({length}x{width}) — moduli olindi.")
         length, width = abs(length or 0), abs(width or 0)
 
+    # GibLab nom shablonining ochilmagan plceholderlari ("№ bok $1,2,3$") displey
+    # nomni ifloslaydi — $...$ bloklari olib tashlanadi. Kod/ID'larga tegilmaydi.
+    raw_name = p.get("name") or code
+    clean_name = re.sub(r"\$[^$]*\$", "", raw_name).strip() or code
+
     return ParsedPart(
         file_part_id=int(p.get("id", 0)),
         product_code=product.code,
         code=code,
-        name=p.get("name", code),
+        name=clean_name,
         # `<part count>` — BITTA mahsulotdagi soni; buyurtmadagi jami = u × mahsulot soni.
         # GibLab xaritasi ham jami nusxani joylashtiradi (205-korpus: `count="3"` li mahsulotda
         # 3 detal -> xaritada 9 katak). Ilgari ko'paytirilmasdi — mahsulot soni >1 faylda
