@@ -95,6 +95,8 @@ class ScanResult(BaseModel):
     instance_no: int
     qoldiq: int  # remaining for this part at this post after the scan
     scx_file_ids: list[int] = []  # served on EVERY scan for CNC posts (TZ 12.5)
+    # Avto-SCX proyekt nomli papkaga tushishi uchun (downloadScx subpapka nomi)
+    project_name: str | None = None
     order_stage_completed: bool = False
     order_completed: bool = False
 

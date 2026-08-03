@@ -41,6 +41,11 @@ export function dirSupported(): boolean {
   return "showDirectoryPicker" in window
 }
 
+/** Proyekt nomidan papka nomi: Windows'da taqiqlangan belgilar almashtiriladi */
+export function projectFolder(name: string): string {
+  return name.replace(/[\\/:*?"<>|]/g, "_").trim()
+}
+
 /** Saqlangan papka (ruxsati tekshirilgan holda); yo'q yoki ruxsat berilmagan — null */
 export async function getSavedDir(
   requestIfNeeded: boolean,
@@ -102,13 +107,22 @@ export async function saveScxToDir(
   return name
 }
 
-/** Bitta SCX: saqlangan papka bo'lsa o'sha yerga, bo'lmasa brauzer Downloads */
-export async function downloadScx(fileId: number): Promise<void> {
+/** Bitta SCX: saqlangan papkaga — folder berilsa proyekt nomli subpapkaga
+ * ("Hammasini yuklab olish" bilan BIR joy); papka yo'q — brauzer Downloads */
+export async function downloadScx(
+  fileId: number,
+  folder?: string | null,
+): Promise<void> {
   if (dirSupported()) {
     const dir = await getSavedDir(false)
     if (dir) {
       try {
-        await saveScxToDir(dir, fileId)
+        const target = folder
+          ? await dir.getDirectoryHandle(projectFolder(folder), {
+              create: true,
+            })
+          : dir
+        await saveScxToDir(target, fileId)
         return
       } catch {
         /* papka o'chirilgan bo'lishi mumkin — quyidagi fallback */

@@ -14,7 +14,13 @@ import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import useCustomToast from "@/hooks/useCustomToast"
 import { formatSize } from "@/lib/mes"
-import { dirSupported, getSavedDir, pickDir, saveScxToDir } from "@/lib/scxDir"
+import {
+  dirSupported,
+  getSavedDir,
+  pickDir,
+  projectFolder,
+  saveScxToDir,
+} from "@/lib/scxDir"
 import { cn } from "@/lib/utils"
 
 type PFile = { id: number; filename: string }
@@ -95,10 +101,9 @@ export function PrisadkaView({
         const info = data as
           | { project_name?: string | null; order_number?: string }
           | undefined
-        const folder = (info?.project_name || info?.order_number || "scx")
-          // Windows fayl tizimida taqiqlangan belgilar
-          .replace(/[\\/:*?"<>|]/g, "_")
-          .trim()
+        const folder = projectFolder(
+          info?.project_name || info?.order_number || "scx",
+        )
         const sub = await dir.getDirectoryHandle(folder, { create: true })
         let ok = 0
         for (const f of allFiles) {

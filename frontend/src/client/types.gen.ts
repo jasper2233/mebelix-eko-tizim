@@ -675,6 +675,7 @@ export type ScanResult = {
     instance_no: number;
     qoldiq: number;
     scx_file_ids?: Array<number>;
+    project_name?: (string | null);
     order_stage_completed?: boolean;
     order_completed?: boolean;
 };

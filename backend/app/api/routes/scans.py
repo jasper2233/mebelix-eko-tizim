@@ -8,7 +8,7 @@ from sqlalchemy import select
 from app.api.deps import SessionDep, require_roles
 from app.core.ws import ws_manager
 from app.crud import log_action
-from app.models import Part, PartInstance, Scan, WorkSession
+from app.models import Order, Part, PartInstance, Scan, WorkSession
 from app.models.enums import POST_ROLES, SessionStatus, UserRole
 from app.models.user import User
 from app.schemas.terminal import ScanHistoryItem, ScanRequest, ScanResult
@@ -54,6 +54,8 @@ async def record_scan_endpoint(db: SessionDep, user: TerminalUser, body: ScanReq
         await ws_manager.publish(
             event["type"], event["payload"], post_id=event.get("post_id"), machine_id=event.get("machine_id")
         )
+    # Avto-SCX proyekt papkasiga tushsin: "Hammasini yuklab olish" bilan bir joy
+    order = await db.get(Order, outcome.scan.order_id)
     return ScanResult(
         scan_id=outcome.scan.id,
         duplicate=outcome.duplicate,
@@ -63,6 +65,7 @@ async def record_scan_endpoint(db: SessionDep, user: TerminalUser, body: ScanReq
         instance_no=outcome.instance.instance_no,
         qoldiq=outcome.qoldiq,
         scx_file_ids=outcome.scx_file_ids,
+        project_name=(order.project_name or order.number) if order else None,
         order_stage_completed=outcome.order_stage_completed,
         order_completed=outcome.order_completed,
     )

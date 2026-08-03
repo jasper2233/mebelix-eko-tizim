@@ -309,9 +309,9 @@ function TerminalPage() {
       })
       queryClient.invalidateQueries({ queryKey: ["terminal"] })
       if (r.order_completed) showSuccessToast("Buyurtma to'liq tayyor bo'ldi!")
-      // SCX fayllar har scanda qaytadan (TZ 12.5): saqlangan papka bo'lsa o'sha
-      // yerga, bo'lmasa brauzer Downloads
-      for (const fid of r.scx_file_ids ?? []) downloadScx(fid)
+      // SCX fayllar har scanda qaytadan (TZ 12.5): saqlangan papkadagi PROYEKT
+      // nomli subpapkaga ("Hammasini yuklab olish" bilan bir joy)
+      for (const fid of r.scx_file_ids ?? []) downloadScx(fid, r.project_name)
     },
     onError: (err) => {
       const { code, message } = detailParts(err)
