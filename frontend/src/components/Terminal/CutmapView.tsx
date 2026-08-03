@@ -107,7 +107,7 @@ function printAllMaps(
       m.sheets.map(
         (s: Sheet) => `
         <section>
-          <h2>${escapeHtml(m.name)} | №${s.no} — ${s.L} × ${s.W} mm × ${s.mult || 1} list</h2>
+          <h2>${escapeHtml(m.name)} | №${s.disp ?? s.no} — ${s.L} × ${s.W} mm</h2>
           ${renderToStaticMarkup(
             <SheetSvg
               sheet={s}
@@ -183,31 +183,6 @@ export function CutmapView({
     reset: () => void
   } | null>(null)
 
-  // Matritsadan kelgan "xaritada ko'rsat" sakrashi: ma'lumot kelgach detalning
-  // birinchi katakchasini topib, o'sha material + listni ochamiz va belgilaymiz.
-  // BIR MARTA: aks holda har refetch (60s interval, fokus) foydalanuvchi qaysi
-  // listga o'tgan bo'lsa ham uni qaytarib uloqtirardi.
-  const focusApplied = useRef(false)
-  useEffect(() => {
-    if (!focusPartKey || !data?.model || focusApplied.current) return
-    focusApplied.current = true
-    const mats = (data.model as any).materials ?? []
-    for (let mi = 0; mi < mats.length; mi++) {
-      const shs = mats[mi].sheets ?? []
-      for (let si = 0; si < shs.length; si++) {
-        const hit = (shs[si].parts ?? []).find(
-          (p: any) => !p.waste && p.key === focusPartKey,
-        )
-        if (hit) {
-          setMaterialIdx(mi)
-          setSheetIdxRaw(si)
-          setMarkedCell(hit.cell)
-          return
-        }
-      }
-    }
-  }, [focusPartKey, data])
-
   // Chap qatordagi Chop etish: belgilangan detalning navbatdagi nusxasi
   // to'g'ridan-to'g'ri GoDEX navbatiga ketadi (dialog yo'q)
   const printMutation = usePrintLabel()
@@ -225,6 +200,67 @@ export function CutmapView({
     }
     return map
   }, [data])
+
+  // HAR JISMONIY LIST ALOHIDA KARTA: mult>1 naqsh render paytida nusxalarga
+  // yoyiladi — har karta faqat O'Z nusxalarini ko'radi (katak holati listga xos).
+  // Bazadagi eski (yig'ilgan) xaritalar uchun ham ishlaydi — backend o'zgarmagan,
+  // binding (pattern_no, cell_index) semantikasi buzilmaydi.
+  const { expMaterials, cellInsts } = useMemo(() => {
+    const view = new Map<string, NonNullable<typeof data>["instances"]>()
+    const mats = (((data?.model as any)?.materials ?? []) as any[]).map(
+      (m: any) => {
+        let disp = 0
+        const sheets = ((m.sheets ?? []) as any[]).flatMap((s: any) => {
+          const mult = s.mult || 1
+          return Array.from({ length: mult }, (_, k) => {
+            disp += 1
+            const no = mult > 1 ? `${s.no}c${k + 1}` : s.no
+            for (const p of s.parts ?? []) {
+              if (p.waste) continue
+              const all = instancesByCell.get(`${s.no}:${p.cell}`) ?? []
+              // Barqaror taqsimot: k-karta har katakning k-nusxasini oladi
+              const sorted = [...all].sort(
+                (a, b) =>
+                  (a.instance_no ?? 0) - (b.instance_no ?? 0) ||
+                  a.instance_id - b.instance_id,
+              )
+              view.set(
+                `${no}:${p.cell}`,
+                mult > 1 ? sorted.slice(k, k + 1) : sorted,
+              )
+            }
+            return { ...s, no, disp, mult: 1 }
+          })
+        })
+        return { ...m, sheets }
+      },
+    )
+    return { expMaterials: mats, cellInsts: view }
+  }, [data, instancesByCell])
+
+  // Matritsadan kelgan "xaritada ko'rsat" sakrashi: ma'lumot kelgach detalning
+  // birinchi katakchasini topib, o'sha material + listni ochamiz va belgilaymiz.
+  // BIR MARTA: aks holda har refetch (60s interval, fokus) foydalanuvchi qaysi
+  // listga o'tgan bo'lsa ham uni qaytarib uloqtirardi.
+  const focusApplied = useRef(false)
+  useEffect(() => {
+    if (!focusPartKey || !data?.model || focusApplied.current) return
+    focusApplied.current = true
+    for (let mi = 0; mi < expMaterials.length; mi++) {
+      const shs = expMaterials[mi].sheets ?? []
+      for (let si = 0; si < shs.length; si++) {
+        const hit = (shs[si].parts ?? []).find(
+          (p: any) => !p.waste && p.key === focusPartKey,
+        )
+        if (hit) {
+          setMaterialIdx(mi)
+          setSheetIdxRaw(si)
+          setMarkedCell(hit.cell)
+          return
+        }
+      }
+    }
+  }, [focusPartKey, data, expMaterials])
 
   if (isLoading) return <Skeleton className="h-full w-full" />
   if (!data?.model) {
@@ -246,7 +282,7 @@ export function CutmapView({
   }
 
   const model = data.model as any
-  const materials: Material[] = model.materials ?? []
+  const materials: Material[] = expMaterials
   const material = materials[materialIdx]
   const sheets: Sheet[] = material?.sheets ?? []
   const sheet = sheetIdx !== null ? sheets[sheetIdx] : undefined
@@ -256,13 +292,13 @@ export function CutmapView({
     const cells = (s.parts as SheetPart[]).filter((p) => !p.waste)
     if (!cells.length) return false
     return cells.every((p) => {
-      const insts = instancesByCell.get(`${s.no}:${p.cell}`) ?? []
+      const insts = cellInsts.get(`${s.no}:${p.cell}`) ?? []
       return insts.length > 0 && insts.every(isCut)
     })
   }
 
   registerPrint?.(() =>
-    printAllMaps(data.order_number, materials, holes, instancesByCell),
+    printAllMaps(data.order_number, materials, holes, cellInsts),
   )
 
   // Material statistikasi — ixcham bir qator (terminalda SKAN ON qatoriga portal,
@@ -276,9 +312,7 @@ export function CutmapView({
   for (const s of sheets) {
     for (const p of s.parts as SheetPart[]) {
       if (p.waste) continue
-      detDn += (instancesByCell.get(`${s.no}:${p.cell}`) ?? []).filter(
-        isCut,
-      ).length
+      detDn += (cellInsts.get(`${s.no}:${p.cell}`) ?? []).filter(isCut).length
     }
   }
   const markedPart =
@@ -288,7 +322,7 @@ export function CutmapView({
         )
       : undefined
   const markedInsts = markedPart
-    ? (instancesByCell.get(`${sheet.no}:${markedPart.cell}`) ?? [])
+    ? (cellInsts.get(`${sheet.no}:${markedPart.cell}`) ?? [])
     : []
   // Fallback YO'Q: hammasi chiqarilgan bo'lsa qayta chop etilmaydi —
   // avval long press bilan bekor qilinadi (dublikat chek oqimni buzadi)
@@ -317,12 +351,9 @@ export function CutmapView({
     >
       {sheet && (
         <div className="whitespace-nowrap text-base font-black">
-          №{sheet.no} —{" "}
+          №{sheet.disp ?? sheet.no} —{" "}
           <span className="num">
             {sheet.L} × {sheet.W} mm
-          </span>
-          <span className="num ml-2 rounded-sm bg-secondary px-1.5 py-0.5 text-xs">
-            × {sheet.mult} list
           </span>
           <div className="truncate text-xs font-normal text-muted-foreground">
             {material.name}
@@ -517,7 +548,9 @@ export function CutmapView({
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="num text-xl font-black">№{s.no}</span>
+                      <span className="num text-xl font-black">
+                        №{s.disp ?? s.no}
+                      </span>
                       <span className="num flex-1 text-base">
                         {s.L}×{s.W}
                       </span>
@@ -538,7 +571,7 @@ export function CutmapView({
                       <SheetSvg
                         sheet={s}
                         holes={holes}
-                        instancesByCell={instancesByCell}
+                        instancesByCell={cellInsts}
                         onSelect={() => {}}
                         selectedCell={null}
                         thumbnail
@@ -561,7 +594,7 @@ export function CutmapView({
               <SheetSvg
                 sheet={sheet}
                 holes={holes}
-                instancesByCell={instancesByCell}
+                instancesByCell={cellInsts}
                 onSelect={(part) => {
                   // Terminalda tap faqat belgilaydi — chop etish chap qatordan;
                   // admin (texnolog) esa QR kartochkani ko'radi
@@ -575,7 +608,7 @@ export function CutmapView({
                         // Noto'g'ri detal cheki chiqib ketgan: oxirgi chiqarilgan
                         // (hali skan qilinmagan) nusxa tasdiqdan keyin bekor bo'ladi
                         const insts =
-                          instancesByCell.get(`${sheet.no}:${part.cell}`) ?? []
+                          cellInsts.get(`${sheet.no}:${part.cell}`) ?? []
                         const last = insts
                           .filter((i) => i.label_printed_at && !i.done)
                           .sort((a, b) =>
@@ -614,7 +647,7 @@ export function CutmapView({
       <PartCard
         part={selected}
         sheetNo={sheet?.no}
-        instancesByCell={instancesByCell}
+        instancesByCell={cellInsts}
         onClose={() => setSelected(null)}
         admin={admin}
         holes={holes}
