@@ -245,7 +245,15 @@ export function PrisadkaView({
                           : i.done && "bg-green-50",
                     )}
                   >
-                    <td className="num px-4 py-3 font-semibold">{i.qr_text}</td>
+                    <td className="num px-4 py-3 font-semibold">
+                      {i.qr_text}
+                      {/* Jarayon roverdan boshlanadi — chekni shu yerda operator chiqaradi */}
+                      {!p.arra_route && (
+                        <span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-xs font-bold text-blue-700">
+                          Roverdan boshlanadi
+                        </span>
+                      )}
+                    </td>
                     <td className="max-w-[240px] truncate px-4 py-3">
                       {p.name}
                     </td>
