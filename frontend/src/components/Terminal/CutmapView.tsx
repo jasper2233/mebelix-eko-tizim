@@ -378,9 +378,6 @@ export function CutmapView({
   const webToolbar =
     admin && sheetIdx !== null ? (
       <div className="flex items-center gap-1.5">
-        <Button variant="outline" size="sm" onClick={() => setSheetIdx(null)}>
-          <ArrowLeft /> Listlar
-        </Button>
         <Button
           variant="outline"
           size="icon-sm"
@@ -506,7 +503,16 @@ export function CutmapView({
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
         {!statsContainer && (statsRow || webToolbar) && (
           <div className="flex flex-wrap items-center justify-between gap-2">
-            {statsRow ?? <span />}
+            <div className="flex items-center gap-3">
+              {/* Orqaga-navigatsiya CHAPDA: "Listlar" o'ngda turganda odam
+                  odatiy chapdagi "← Buyurtma"ni bosib sahifadan chiqib ketardi */}
+              {admin && sheetIdx !== null && (
+                <Button size="sm" onClick={() => setSheetIdx(null)}>
+                  <ArrowLeft /> Listlar ro'yxati
+                </Button>
+              )}
+              {statsRow ?? <span />}
+            </div>
             {webToolbar}
           </div>
         )}
