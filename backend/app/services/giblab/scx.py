@@ -239,7 +239,6 @@ def build_scx_files(
     """
     if not part.xnc_ops:
         return []
-    content = None
     out: list[tuple[str, str, dict]] = []
     codes = [op.code for op in part.xnc_ops]
     for qr in qr_texts:

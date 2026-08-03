@@ -20,7 +20,6 @@ POSTS: list[dict[str, object]] = [
         "name": "Arra",
         "order_index": 1,
         "unit": PostUnit.M2,
-        "requires_qr_print": True,
         "color": "#c2410c",
         "icon": "saw",
     },

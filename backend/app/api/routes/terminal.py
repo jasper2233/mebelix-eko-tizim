@@ -657,8 +657,6 @@ async def build_cutmap_state(db: SessionDep, order: Order, arra_post_id: int) ->
 @router.post("/labels/{instance_id}", response_model=Message, operation_id="print_instance_label")
 async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: int) -> Message:
     """YORLIQ CHOP ETISH (TZ 7.1.4): on-demand, per selected cell. Queued to the bridge-agent."""
-    from app.crud import log_action
-
     instance = await db.get(PartInstance, instance_id)
     if instance is None or instance.is_deleted:
         raise NotFoundException("Nusxa topilmadi.")
@@ -693,8 +691,6 @@ LabelCancelUser = Annotated[
 async def cancel_instance_label(db: SessionDep, user: LabelCancelUser, instance_id: int) -> Message:
     """Chekni bekor qilish (long press / admin xarita): noto'g'ri chiqarilgan yorliq
     katakni chop etilmagan holatga qaytaradi. Skan qilingan (kesilgan) nusxaga ta'sir qilmaydi."""
-    from app.crud import log_action
-
     instance = await db.get(PartInstance, instance_id)
     if instance is None or instance.is_deleted:
         raise NotFoundException("Nusxa topilmadi.")

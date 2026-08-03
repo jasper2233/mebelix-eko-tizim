@@ -598,8 +598,6 @@ export type PostRead = {
     name: string;
     order_index: number;
     unit: PostUnit;
-    requires_qr_print: boolean;
-    auto_skip_if_empty: boolean;
     requires_assignment_choice: boolean;
     icon: (string | null);
     color: (string | null);
@@ -613,7 +611,6 @@ export type PostUnit = 'm2' | 'meter' | 'piece';
 export type PostUpdate = {
     name?: (string | null);
     order_index?: (number | null);
-    auto_skip_if_empty?: (boolean | null);
     requires_assignment_choice?: (boolean | null);
     icon?: (string | null);
     color?: (string | null);

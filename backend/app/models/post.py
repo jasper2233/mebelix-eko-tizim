@@ -17,8 +17,8 @@ class Post(BaseModel):
     name: Mapped[str] = mapped_column(String(50), kw_only=True)
     order_index: Mapped[int] = mapped_column(kw_only=True)
     unit: Mapped[PostUnit] = mapped_column(db_enum(PostUnit), kw_only=True)
-    requires_qr_print: Mapped[bool] = mapped_column(default=False, kw_only=True)
-    auto_skip_if_empty: Mapped[bool] = mapped_column(default=True, kw_only=True)
+    # requires_qr_print/auto_skip_if_empty olib tashlandi: hech qayerda o'qilmasdi —
+    # ARRA chek-oqimi post.code bilan aniqlanadi (e8b1... keyingi migratsiyada drop)
     requires_assignment_choice: Mapped[bool] = mapped_column(default=False, kw_only=True)
     icon: Mapped[str | None] = mapped_column(String(50), default=None, kw_only=True)
     color: Mapped[str | None] = mapped_column(String(20), default=None, kw_only=True)

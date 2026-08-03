@@ -23,7 +23,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { renderToStaticMarkup } from "react-dom/server"
 
-import { OpenAPI, OrdersService, TerminalService } from "@/client"
+import { OrdersService, TerminalService } from "@/client"
 import {
   edgeBoreRect,
   edgeLocalXY,
@@ -857,7 +857,8 @@ function PartCard({
   admin?: boolean
   holes: Record<string, any>
 }) {
-  const printMutation = usePrintLabel()
+  // PartCard faqat admin xaritada ochiladi (onSelect if(admin)) — terminal
+  // chop etish chap toolbar orqali; shuning uchun bu yerda print mutatsiyasi yo'q
   const cancelMutation = useCancelLabel()
 
   if (!part || part.waste) return null
@@ -919,23 +920,6 @@ function PartCard({
                   </span>
                 ) : null}
               </span>
-              {!admin && (
-                <LoadingButton
-                  className="h-12 px-4 text-base font-bold"
-                  loading={printMutation.isPending}
-                  onClick={() => {
-                    // PNG yangi tabda — brauzerdan istalgan printerga chop etiladi;
-                    // parallel ravishda GoDEX navbatiga ham yuboriladi (bridge ulangan bo'lsa)
-                    window.open(
-                      `${OpenAPI.BASE}/api/v1/terminal/labels/${inst.instance_id}.png`,
-                      "_blank",
-                    )
-                    printMutation.mutate(inst.instance_id)
-                  }}
-                >
-                  <Printer /> YORLIQ CHOP ETISH
-                </LoadingButton>
-              )}
               {/* Texnolog xato chekni shu yerdan tuzatadi — proyekt ARRA
                   ro'yxatidan tushib bo'lgach arrachi xaritani ocholmaydi */}
               {admin && inst.label_printed_at && !inst.done && (

@@ -59,7 +59,8 @@ const UserInformation = () => {
     },
     onError: handleError(showErrorToast),
     onSettled: () => {
-      queryClient.invalidateQueries()
+      // Faqat profil keshi — kalitsiz chaqiruv BUTUN ilova querylarini qayta so'rardi
+      queryClient.invalidateQueries({ queryKey: ["currentUser"] })
     },
   })
 
