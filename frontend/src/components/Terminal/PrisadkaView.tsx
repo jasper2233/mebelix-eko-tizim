@@ -7,6 +7,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, FolderCog, HardDriveDownload, Printer } from "lucide-react"
 import { useState } from "react"
+import { createPortal } from "react-dom"
 
 import { OpenAPI, TerminalService } from "@/client"
 import { TBtn } from "@/components/Terminal/CutmapView"
@@ -54,11 +55,15 @@ export function PrisadkaView({
   orderId,
   onBack,
   showScx = true,
+  toolbarContainer,
 }: {
   orderId: number
   onBack: () => void
   /** ROVER: SCX fayllar kerak emas — yuklab olish/Papka va fayl nomlari yashirin */
   showScx?: boolean
+  /** ROVER Chop etish tugmasi terminalning umumiy chap ustuniga (Qulflash
+   * ustiga) portal qilinadi — alohida ikkinchi ustun ochilmasin */
+  toolbarContainer?: HTMLElement | null
 }) {
   const { showSuccessToast, showErrorToast } = useCustomToast()
   const queryClient = useQueryClient()
@@ -179,18 +184,26 @@ export function PrisadkaView({
         Number(a.i.done) - Number(b.i.done) ||
         a.i.qr_text.localeCompare(b.i.qr_text),
     )
+    const printBtn = (
+      <TBtn
+        label="Chop etish"
+        tone={canPrint ? "success" : "default"}
+        disabled={!canPrint || printLabel.isPending}
+        onClick={() => sel && printLabel.mutate(sel.i.instance_id)}
+      >
+        <Printer />
+      </TBtn>
+    )
     return (
       <div className="flex h-full min-h-0 gap-3">
-        <div className="flex w-[76px] shrink-0 flex-col gap-2">
-          <TBtn
-            label="Chop etish"
-            tone={canPrint ? "success" : "default"}
-            disabled={!canPrint || printLabel.isPending}
-            onClick={() => sel && printLabel.mutate(sel.i.instance_id)}
-          >
-            <Printer />
-          </TBtn>
-        </div>
+        {/* Tugma terminalning umumiy chap ustunida, Qulflash tepasida turadi */}
+        {toolbarContainer ? (
+          createPortal(printBtn, toolbarContainer)
+        ) : (
+          <div className="flex w-[68px] shrink-0 flex-col gap-2">
+            {printBtn}
+          </div>
+        )}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border bg-white">
           <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2">
             <Button

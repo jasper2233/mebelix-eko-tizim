@@ -674,6 +674,7 @@ function TerminalPage() {
                   orderId={mapOrderId}
                   onBack={() => setMapOrderId(null)}
                   showScx={ctx?.post_code !== "ROVER"}
+                  toolbarContainer={toolbarEl}
                 />
               ) : (
                 <OrderPicker
