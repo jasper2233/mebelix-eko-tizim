@@ -249,8 +249,11 @@ export function PrisadkaView({
                       {i.qr_text}
                       {/* Jarayon roverdan boshlanadi — chekni shu yerda operator chiqaradi */}
                       {!p.arra_route && (
-                        <span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-xs font-bold text-blue-700">
-                          Roverdan boshlanadi
+                        <span
+                          title="Jarayon roverdan boshlanadi — chek shu yerda chiqariladi"
+                          className="ml-2 inline-flex rounded bg-blue-100 p-1 align-middle text-blue-700"
+                        >
+                          <Printer className="size-4" />
                         </span>
                       )}
                     </td>
