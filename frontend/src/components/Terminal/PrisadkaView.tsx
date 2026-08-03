@@ -9,6 +9,7 @@ import { ArrowLeft, FolderCog, HardDriveDownload, Printer } from "lucide-react"
 import { useState } from "react"
 
 import { OpenAPI, TerminalService } from "@/client"
+import { TBtn } from "@/components/Terminal/CutmapView"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -78,6 +79,8 @@ export function PrisadkaView({
   })
   // null = yuklanmayapti; son = nechta fayl saqlandi (tugmada jonli 12/69)
   const [progress, setProgress] = useState<number | null>(null)
+  // ROVER rejimi: qator (nusxa) tanlanadi, chop etish chapdagi katta tugmada
+  const [selectedId, setSelectedId] = useState<number | null>(null)
 
   const parts = ((data as { parts?: PPart[] } | undefined)?.parts ??
     []) as PPart[]
@@ -88,6 +91,17 @@ export function PrisadkaView({
     (p) => p.part_id,
     (p) => p.done,
     "pv-row-",
+  )
+
+  // ROVER: har jismoniy nusxa alohida qator
+  const instRows = parts.flatMap((p) =>
+    (p.instances ?? []).map((i) => ({ p, i })),
+  )
+  const instFlash = useScanFlash(
+    instRows,
+    (r) => r.i.instance_id,
+    (r) => Number(r.i.done),
+    "pv-inst-",
   )
 
   if (isLoading) return <Skeleton className="h-full w-full" />
@@ -151,6 +165,118 @@ export function PrisadkaView({
   const changeDir = async () => {
     const dir = await pickDir()
     if (dir) showSuccessToast(`SCX papkasi: ${dir.name}`)
+  }
+
+  // ROVER rejimi: har nusxa ALOHIDA qator; qator tanlanadi, chop etish
+  // chapdagi katta tugmada (ARRA terminal bilan bir xil ishlash naqshi —
+  // sensor uchun katta nishon, chip ichidagi mayda tugma emas)
+  if (!showScx) {
+    const sel = instRows.find((r) => r.i.instance_id === selectedId) ?? null
+    const canPrint =
+      !!sel && !sel.i.done && !sel.i.label_printed && !sel.p.arra_route
+    const sorted = [...instRows].sort(
+      (a, b) =>
+        Number(a.i.done) - Number(b.i.done) ||
+        a.i.qr_text.localeCompare(b.i.qr_text),
+    )
+    return (
+      <div className="flex h-full min-h-0 gap-3">
+        <div className="flex w-[76px] shrink-0 flex-col gap-2">
+          <TBtn
+            label="Chop etish"
+            tone={canPrint ? "success" : "default"}
+            disabled={!canPrint || printLabel.isPending}
+            onClick={() => sel && printLabel.mutate(sel.i.instance_id)}
+          >
+            <Printer />
+          </TBtn>
+        </div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border bg-white">
+          <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2">
+            <Button
+              variant="outline"
+              className="h-12 px-4 text-base font-bold"
+              onClick={onBack}
+            >
+              <ArrowLeft /> Orqaga
+            </Button>
+            <div className="text-lg font-black">
+              {(data as { order_number?: string } | undefined)?.order_number}
+            </div>
+            <div className="num text-base text-muted-foreground">
+              Bajarildi: <b className="text-foreground">{totDone}</b>/{totReq}
+            </div>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <table className="w-full text-base">
+              <thead className="sticky top-0 z-10 bg-muted/80 text-left text-xs uppercase tracking-wider text-muted-foreground backdrop-blur">
+                <tr>
+                  <th className="px-4 py-2.5">Nusxa ID</th>
+                  <th className="px-4 py-2.5">Nomi</th>
+                  <th className="px-4 py-2.5">O'lchami</th>
+                  <th className="px-4 py-2.5 text-right">Holat</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map(({ p, i }) => (
+                  <tr
+                    key={i.instance_id}
+                    id={`pv-inst-${i.instance_id}`}
+                    onClick={() => setSelectedId(i.instance_id)}
+                    className={cn(
+                      "cursor-pointer border-b last:border-0",
+                      selectedId === i.instance_id
+                        ? "bg-primary/10 ring-2 ring-inset ring-primary"
+                        : instFlash === i.instance_id
+                          ? "bg-amber-100 ring-2 ring-inset ring-amber-400"
+                          : i.done && "bg-green-50",
+                    )}
+                  >
+                    <td className="num px-4 py-3 font-semibold">{i.qr_text}</td>
+                    <td className="max-w-[240px] truncate px-4 py-3">
+                      {p.name}
+                    </td>
+                    <td className="num whitespace-nowrap px-4 py-3 text-sm">
+                      {formatSize(p.length, p.width, p.thickness)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span
+                        className={cn(
+                          "rounded-md px-2.5 py-1 text-sm font-bold",
+                          i.done
+                            ? "bg-green-600 text-white"
+                            : i.label_printed
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {i.done
+                          ? "✓ Bajarildi"
+                          : i.label_printed
+                            ? "Skan kutilmoqda"
+                            : p.arra_route
+                              ? "Chek arrada chiqadi"
+                              : "Chek chiqarilmagan"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {!sorted.length && (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="h-32 text-center text-muted-foreground"
+                    >
+                      Bu buyurtmada bu postga detal yo'q
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
