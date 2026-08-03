@@ -52,9 +52,12 @@ type PPart = {
 export function PrisadkaView({
   orderId,
   onBack,
+  showScx = true,
 }: {
   orderId: number
   onBack: () => void
+  /** ROVER: SCX fayllar kerak emas — yuklab olish/Papka va fayl nomlari yashirin */
+  showScx?: boolean
 }) {
   const { showSuccessToast, showErrorToast } = useCustomToast()
   const queryClient = useQueryClient()
@@ -166,35 +169,38 @@ export function PrisadkaView({
         <div className="num text-base text-muted-foreground">
           Bajarildi: <b className="text-foreground">{totDone}</b>/{totReq}
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          {/* Sensorli ekranda hover yo'q — ikonka yoniga yozuv shart */}
-          {dirSupported() && (
-            <Button
-              variant="outline"
-              className="h-12 px-3 font-bold"
-              title="SCX papkasini almashtirish"
-              onClick={changeDir}
-            >
-              <FolderCog /> Papka
-            </Button>
-          )}
-          <LoadingButton
-            className="h-12 px-5 text-base font-bold"
-            loading={progress !== null}
-            disabled={!allFiles.length}
-            onClick={downloadAll}
-          >
-            {progress !== null ? (
-              <span className="num">
-                Yuklanmoqda… {progress}/{allFiles.length}
-              </span>
-            ) : (
-              <>
-                <HardDriveDownload /> Hammasini yuklab olish ({allFiles.length})
-              </>
+        {showScx && (
+          <div className="ml-auto flex items-center gap-2">
+            {/* Sensorli ekranda hover yo'q — ikonka yoniga yozuv shart */}
+            {dirSupported() && (
+              <Button
+                variant="outline"
+                className="h-12 px-3 font-bold"
+                title="SCX papkasini almashtirish"
+                onClick={changeDir}
+              >
+                <FolderCog /> Papka
+              </Button>
             )}
-          </LoadingButton>
-        </div>
+            <LoadingButton
+              className="h-12 px-5 text-base font-bold"
+              loading={progress !== null}
+              disabled={!allFiles.length}
+              onClick={downloadAll}
+            >
+              {progress !== null ? (
+                <span className="num">
+                  Yuklanmoqda… {progress}/{allFiles.length}
+                </span>
+              ) : (
+                <>
+                  <HardDriveDownload /> Hammasini yuklab olish (
+                  {allFiles.length})
+                </>
+              )}
+            </LoadingButton>
+          </div>
+        )}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <table className="w-full text-base">
@@ -203,7 +209,9 @@ export function PrisadkaView({
               <th className="px-4 py-2.5">Kod</th>
               <th className="px-4 py-2.5">Nomi</th>
               <th className="px-4 py-2.5">O'lchami</th>
-              <th className="px-4 py-2.5">Nusxalar (SCX)</th>
+              <th className="px-4 py-2.5">
+                {showScx ? "Nusxalar (SCX)" : "Nusxalar"}
+              </th>
               <th className="px-4 py-2.5 text-right">Bajarildi</th>
             </tr>
           </thead>

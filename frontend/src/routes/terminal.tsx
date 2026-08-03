@@ -298,8 +298,10 @@ function TerminalPage() {
       queryClient.invalidateQueries({ queryKey: ["terminal"] })
       if (r.order_completed) showSuccessToast("Buyurtma to'liq tayyor bo'ldi!")
       // SCX fayllar har scanda qaytadan (TZ 12.5): saqlangan papkadagi PROYEKT
-      // nomli subpapkaga ("Hammasini yuklab olish" bilan bir joy)
-      for (const fid of r.scx_file_ids ?? []) downloadScx(fid, r.project_name)
+      // nomli subpapkaga ("Hammasini yuklab olish" bilan bir joy).
+      // ROVER'ga SCX kerak emas — avto-yuklash ham o'chiq
+      if (ctx?.post_code !== "ROVER")
+        for (const fid of r.scx_file_ids ?? []) downloadScx(fid, r.project_name)
     },
     onError: (err) => {
       lastScanAtRef.current = Date.now()
@@ -671,6 +673,7 @@ function TerminalPage() {
                 <PrisadkaView
                   orderId={mapOrderId}
                   onBack={() => setMapOrderId(null)}
+                  showScx={ctx?.post_code !== "ROVER"}
                 />
               ) : (
                 <OrderPicker
