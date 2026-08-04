@@ -9,6 +9,7 @@ import { ArrowLeft } from "lucide-react"
 import { useEffect, useRef } from "react"
 
 import { TerminalService } from "@/client"
+import { OperationChips } from "@/components/Common/OperationChips"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useScanFlash } from "@/hooks/useScanFlash"
@@ -169,8 +170,12 @@ export function KromkaView({
                     )}
                   >
                     <td className="num px-4 py-3 font-semibold">{p.code}</td>
-                    <td className="max-w-[200px] truncate px-4 py-3">
-                      {p.name}
+                    <td className="max-w-[240px] px-4 py-3">
+                      <div className="truncate">{p.name}</div>
+                      <OperationChips
+                        name={p.name}
+                        postCode={oval ? "OVAL" : "KROMKA"}
+                      />
                     </td>
                     <td className="num whitespace-nowrap px-4 py-3 text-sm">
                       {formatSize(p.length, p.width, p.thickness)}

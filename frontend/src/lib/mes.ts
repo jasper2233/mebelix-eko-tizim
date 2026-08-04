@@ -59,6 +59,52 @@ export const POST_COLORS: Record<string, string> = {
   BOYOQ: "var(--post-boyoq)",
 }
 
+// Sexning "Jarayon uchun kodlar" jadvali — backend `PROCESS_POSTS`
+// (services/giblab/models.py) bilan bir xil bo'lishi shart. Bu yerda faqat
+// KO'RSATISH uchun: marshrutni backend quradi, frontend esa operatorga qaysi
+// AMAL ekanini aytadi. Noma'lum kodda chip umuman chiqmaydi (xato nom emas).
+const PROCESS_OPS: Record<number, { name: string; post: string }> = {
+  1: { name: "Raspil", post: "ARRA" },
+  2: { name: "45° kesish", post: "ARRA" },
+  3: { name: "Kromka", post: "KROMKA" },
+  4: { name: "Fasat kromka", post: "KROMKA" },
+  5: { name: "Oval kromka", post: "OVAL" },
+  6: { name: "Prisadka", post: "PRISADKA" },
+  7: { name: "Rover", post: "ROVER" },
+  8: { name: "Bo'yoq", post: "BOYOQ" },
+  9: { name: "Baget", post: "STOLYARKA" },
+  10: { name: "Utalshonka", post: "STOLYARKA" },
+  11: { name: "G petlya o'ngdan", post: "STOLYARKA" },
+  12: { name: "G petlya chapdan", post: "STOLYARKA" },
+  13: { name: "V petlya o'ngdan", post: "STOLYARKA" },
+  14: { name: "V petlya chapdan", post: "STOLYARKA" },
+}
+
+// Bitta postga bir nechta amal tushadigan postlar. Faqat shularda amal nomi
+// kerak: roverda yagona amal bor, uni yozish ekran sarlavhasini takrorlash edi.
+const MULTI_OP_POSTS = new Set(
+  Object.values(PROCESS_OPS)
+    .map((o) => o.post)
+    .filter((p, _i, all) => all.filter((x) => x === p).length > 1),
+)
+
+/**
+ * Detal nomidagi marshrut ro'yxatidan ("eshik {7;11;8}") SHU POSTGA tegishli
+ * amal nomlari.
+ *
+ * Kodlar postga ko'pdan-birga tushadi — stolyarkada oltita amal bitta postda.
+ * Bu bo'lmasa operator `{7;11;8}` ni ko'rib, 11 = "G petlya o'ngdan" ekanini
+ * yoddan bilishi kerak edi; noto'g'ri petlya esa eshikni brak qiladi.
+ */
+export function partOperations(name: string, postCode: string): string[] {
+  if (!MULTI_OP_POSTS.has(postCode)) return []
+  return [...name.matchAll(/\{([^{}]*)\}/g)]
+    .flatMap((m) => m[1].split(/[;,.\s]+/))
+    .map((t) => PROCESS_OPS[Number(t)])
+    .filter((op) => op?.post === postCode)
+    .map((op) => op.name)
+}
+
 // Rollar manbasi — backend enum'i (generatsiya qilingan UserRole); yorliq
 // yozilmagan yangi rol build'ni yiqitadi
 export const ROLE_LABELS: Record<UserRole, string> = {

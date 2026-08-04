@@ -22,6 +22,7 @@ import {
   UsersService,
 } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
+import { OperationChips } from "@/components/Common/OperationChips"
 import { SectionTitle } from "@/components/Common/SectionTitle"
 import {
   playError,
@@ -753,8 +754,12 @@ function TerminalPage() {
                           <td className="num px-4 py-3.5 font-semibold">
                             {t.code}
                           </td>
-                          <td className="max-w-[240px] truncate px-4 py-3.5">
-                            {t.name}
+                          <td className="max-w-[280px] px-4 py-3.5">
+                            <div className="truncate">{t.name}</div>
+                            <OperationChips
+                              name={t.name}
+                              postCode={ctx?.post_code}
+                            />
                           </td>
                           <td className="num px-4 py-3.5 text-sm">
                             {formatSize(t.length, t.width, t.thickness)}
