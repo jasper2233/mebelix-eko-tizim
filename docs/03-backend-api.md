@@ -405,7 +405,7 @@ Skan qabul qilish qoidalari (marshrut/ketma-ketlik tekshiruvi, dublikat, E001–
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
-| GET | `/api/v1/tablo/matrix` | login (har qanday) | `TabloMatrix`: postlar ro'yxati + PRODUCTION va COMPLETED buyurtmalar; har katak `StageAgg` — done/total va post birligidagi hajm (`part_volume`: m²/metr/dona) |
+| GET | `/api/v1/tablo/matrix` | login (har qanday) | `TabloMatrix`: postlar ro'yxati + PRODUCTION buyurtmalar va oxirgi `COMPLETED_WINDOW` (30 kun) ichida yakunlanganlar; har katak `StageAgg` — done/total va post birligidagi hajm (`part_volume`: m²/metr/dona). **Chegara shart**: COMPLETED holatdan faqat manager qo'lda "topshirildi" bosgandagina chiqiladi, ya'ni chegarasiz har bir unutilgan buyurtma taxtada abadiy qolib, sex ekranini sekinlashtirardi (o'lchov: 100 buyurtmada 28 ms → 1.9 s). Marshrutlar ORM obyekti sifatida emas, faqat kerakli ustunlar bilan o'qiladi |
 | GET | `/api/v1/tablo/orders/{id}` | login (har qanday) | Drill-down (TZ 9.5 SONI NAZORATI): har detal × bosqich done/total |
 
 **Bog'lanishlar:** `backend/app/services/metrics.py` (`part_volume`), `backend/app/models` (`Order`, `PartRoute`, `Post`).

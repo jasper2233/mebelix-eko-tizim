@@ -218,7 +218,9 @@ direktor ham ko'radi.
 
 - `app/services/metrics.py: part_volume()` — TT 9.3.1 HAJM matematikasi (ARRA m², KROMKA metr,
   qolganlari dona; PAZ metrlari hozircha dona bilan approksimatsiya — paz uzunligi saqlanmaydi),
-  reports va tablo uchun umumiy.
+  reports va tablo uchun umumiy. `Part` obyektini emas, `length`/`width`/`count`/`edges`
+  qiymatlarini oladi — TABLO o'n minglab marshrutni ORM obyekti sifatida qurmay,
+  faqat shu to'rt ustunni tanlab olishi uchun (o'lchov: 669 ms → 175 ms).
 - `app/services/excel.py: xlsx_response()` — openpyxl bilan bitta varaqli .xlsx stream
   (reports `?format=xlsx` orqasida).
 

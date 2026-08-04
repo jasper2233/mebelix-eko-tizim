@@ -1,19 +1,25 @@
 """TABLO data API (TZ 9): orders × stages live matrix. Read-only, any authenticated device."""
 
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import or_, select
+from sqlalchemy.orm import defer
 
 from app.api.deps import CurrentUser, SessionDep
 from app.crud import crud_orders
-from app.models import Order, Part, PartRoute, Post, Product
+from app.models import ORDER_FAT_COLUMNS, Order, Part, PartRoute, Post, Product
 from app.models.enums import OrderStatus
 from app.services.metrics import part_volume
 
 router = APIRouter(prefix="/tablo", tags=["tablo"])
+
+# Yakunlangan buyurtma taxtada shuncha kun turadi. Chegarasiz qoldirilsa
+# "topshirildi" bosilmagan har bir buyurtma abadiy qolib, sex ekrani yildan
+# yilga sekinlashardi (o'lchov: 100 buyurtmada 28 ms -> 1.9 s).
+COMPLETED_WINDOW = timedelta(days=30)
 
 
 class StageAgg(BaseModel):
@@ -51,7 +57,12 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
         (
             await db.execute(
                 select(Order)
+                .options(*(defer(c) for c in ORDER_FAT_COLUMNS))
                 .where(
+                    or_(
+                        Order.status == OrderStatus.PRODUCTION,
+                        Order.completed_at >= datetime.now(UTC) - COMPLETED_WINDOW,
+                    ),
                     Order.status.in_([OrderStatus.PRODUCTION, OrderStatus.COMPLETED]),
                     Order.is_deleted == False,  # noqa: E712
                 )
@@ -65,9 +76,20 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
         return TabloMatrix(posts=[_post_dict(p) for p in posts], orders=[])
 
     order_ids = [o.id for o in orders]
+    # ORM obyektlari emas, faqat kerakli ustunlar: butun sex bo'yicha o'n minglab
+    # marshrut yig'iladi, natija esa har postga bir nechta raqam (669 ms -> 175 ms)
     routes = (
         await db.execute(
-            select(PartRoute, Part)
+            select(
+                PartRoute.order_id,
+                PartRoute.post_id,
+                PartRoute.total_done,
+                PartRoute.total_required,
+                Part.length,
+                Part.width,
+                Part.count.label("part_count"),  # Row.count band — Sequence metodi
+                Part.edges,
+            )
             .join(Part, Part.id == PartRoute.part_id)
             .where(
                 PartRoute.order_id.in_(order_ids),
@@ -78,19 +100,19 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
     ).all()
 
     agg: dict[tuple[int, int], StageAgg] = {}
-    for route, part in routes:
-        key = (route.order_id, route.post_id)
-        post = posts_by_id[route.post_id]
+    for row in routes:
+        key = (row.order_id, row.post_id)
+        post = posts_by_id[row.post_id]
         entry = agg.get(key)
         if entry is None:
-            entry = StageAgg(post_id=route.post_id, done=0, total=0, volume_total=0.0, volume_done=0.0)
+            entry = StageAgg(post_id=row.post_id, done=0, total=0, volume_total=0.0, volume_done=0.0)
             agg[key] = entry
-        entry.done += route.total_done
-        entry.total += route.total_required
-        vol = part_volume(part, str(post.code))
+        entry.done += row.total_done
+        entry.total += row.total_required
+        vol = part_volume(str(post.code), length=row.length, width=row.width, count=row.part_count, edges=row.edges)
         entry.volume_total += vol
-        if route.total_required:
-            entry.volume_done += vol * (route.total_done / route.total_required)
+        if row.total_required:
+            entry.volume_done += vol * (row.total_done / row.total_required)
 
     rows = [
         TabloOrderRow(

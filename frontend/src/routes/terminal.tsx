@@ -81,6 +81,11 @@ export const Route = createFileRoute("/terminal")({
 const BADGE_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+// Bu postlarning o'z ko'rinishi bor (quyidagi shoxlar: kesish xaritasi, CNC
+// detallar, kromka). Yangi maxsus ko'rinish qo'shilsa — postni shu yerga ham
+// qo'shing, aks holda uning terminali keraksiz vazifa so'rovini yuboraveradi.
+const OWN_VIEW_POSTS = ["ARRA", "PRISADKA", "PAZ", "ROVER", "KROMKA", "OVAL"]
+
 type LastScan =
   | { kind: "ok"; code: string; qoldiq: number; scanId: number; at: number }
   | { kind: "error"; code: string; message: string; at: number }
@@ -98,7 +103,13 @@ function TerminalPage() {
     data: tasks,
     isLoading: tasksLoading,
     isError: tasksError,
-  } = useQuery(getTerminalTasksQueryOptions())
+  } = useQuery({
+    ...getTerminalTasksQueryOptions(),
+    // Umumiy vazifalar ro'yxati faqat o'z ko'rinishiga ega bo'lmagan postda
+    // (STOLYARKA) chiziladi — pastdagi shoxlarga qarang. Bu shartsiz so'rov
+    // 7 terminalning HAMMASIDA 30 soniyada bir ketardi, ko'rsatilmasa ham.
+    enabled: !!ctx && !OWN_VIEW_POSTS.includes(ctx.post_code),
+  })
   const { currentUser } = useCurrentUser()
   const { logout } = useAuth()
   const isOperator = OPERATOR_ROLES.includes(currentUser?.role as never)

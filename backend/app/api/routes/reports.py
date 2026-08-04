@@ -12,9 +12,21 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import func, select
+from sqlalchemy.orm import defer
 
 from app.api.deps import SessionDep, require_roles
-from app.models import Client, Employee, Machine, Order, Part, PartRoute, Post, Scan
+from app.models import (
+    ORDER_FAT_COLUMNS,
+    PART_FAT_COLUMNS,
+    Client,
+    Employee,
+    Machine,
+    Order,
+    Part,
+    PartRoute,
+    Post,
+    Scan,
+)
 from app.models.enums import OrderStatus, UserRole
 from app.models.user import User
 from app.services.excel import xlsx_response
@@ -146,6 +158,7 @@ async def report_orders(
         await db.execute(
             select(Order, Client.full_name)
             .join(Client, Client.id == Order.client_id)
+            .options(*(defer(c) for c in ORDER_FAT_COLUMNS))
             .where(Order.created_at.between(start, end), Order.is_deleted == False)  # noqa: E712
             .order_by(Order.id.desc())
         )
@@ -309,6 +322,9 @@ async def report_dashboard(db: SessionDep, _: ReportsUser) -> DashboardStats:
             select(PartRoute, Part)
             .join(Part, Part.id == PartRoute.part_id)
             .join(Order, Order.id == PartRoute.order_id)
+            # part_volume faqat length/width/count/edges o'qiydi — qolgan JSONB
+            # ustunlar bekorga uzatilardi (navbat butun ishlab chiqarish bo'yicha)
+            .options(*(defer(c) for c in PART_FAT_COLUMNS))
             .where(
                 Order.status == OrderStatus.PRODUCTION,
                 Order.is_deleted == False,  # noqa: E712
@@ -325,7 +341,9 @@ async def report_dashboard(db: SessionDep, _: ReportsUser) -> DashboardStats:
         if post is None:
             continue
         remaining = route.total_required - route.total_done
-        vol = part_volume(part, str(post.code)) * (remaining / route.total_required if route.total_required else 0)
+        vol = part_volume(str(post.code), length=part.length, width=part.width, count=part.count, edges=part.edges) * (
+            remaining / route.total_required if route.total_required else 0
+        )
         if route.machine_id is not None and route.machine_id in queue:
             targets = [route.machine_id]
         else:

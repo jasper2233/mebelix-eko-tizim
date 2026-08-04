@@ -10,13 +10,25 @@ from fastapi import APIRouter, Form, HTTPException, Query, Request, Response, Up
 from fastapi.responses import FileResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import defer
 
 from app.api.deps import ManagerUser, SessionDep, StaffReadUser, TexnologUser, client_ip
 from app.core.config import settings
 from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
 from app.core.ws import ws_manager
 from app.crud import crud_clients, crud_orders, log_action
-from app.models import Client, Machine, Order, OrderFile, Part, PartInstance, PartRoute, Post, Product
+from app.models import (
+    ORDER_FAT_COLUMNS,
+    Client,
+    Machine,
+    Order,
+    OrderFile,
+    Part,
+    PartInstance,
+    PartRoute,
+    Post,
+    Product,
+)
 from app.models.enums import FileKind, OrderStatus, PostCode, RouteSource, UserRole
 from app.models.user import User
 from app.schemas.common import Message, Paginated
@@ -107,7 +119,12 @@ async def read_orders(
     search: str | None = None,
 ) -> Paginated[OrderRead]:
     query = (
-        select(Order, Client.full_name).join(Client, Client.id == Order.client_id).where(Order.is_deleted == False)  # noqa: E712
+        select(Order, Client.full_name)
+        .join(Client, Client.id == Order.client_id)
+        # Reestrda kesish xaritasi/anketa ko'rsatilmaydi (OrderRead da ular yo'q),
+        # lekin ular o'qilib, uzatilib, parse qilinib tashlanardi: 284 ms -> 5 ms
+        .options(*(defer(c) for c in ORDER_FAT_COLUMNS))
+        .where(Order.is_deleted == False)  # noqa: E712
     )
     hidden = _hidden_statuses(current_user)
     if hidden:

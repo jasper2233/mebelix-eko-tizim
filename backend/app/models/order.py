@@ -57,6 +57,14 @@ class Order(BaseModel):
     cancelled_by_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
 
 
+#: Ro'yxat/hisobot so'rovlarida KERAK EMAS bo'lgan og'ir JSONB ustunlar.
+#: `defer()` bilan qoldiriladi — busiz 100 ta buyurtma reestri 2.2 MB kesish
+#: xaritasini bazadan tortib, Python'da parse qilib, keyin tashlab yuborardi
+#: (o'lchov: 284 ms -> 5 ms). Buyurtma kartochkasida ular baribir kerak,
+#: shuning uchun ustunlar emas, faqat SHU so'rovlar cheklanadi.
+ORDER_FAT_COLUMNS = (Order.cutmap, Order.survey, Order.material_usage, Order.machine_assignments)
+
+
 class Product(BaseModel):
     """Furniture item inside an order — <good typeId="product"> (TZ 5.2.2)."""
 
@@ -92,6 +100,12 @@ class Part(BaseModel):
     # Merged XNC summary: {"bores": N, "edge_bores": N, "grooves": N, "mills": N, "sides": 1|2}
     xnc_summary: Mapped[dict[str, Any]] = mapped_column(JSONB, default_factory=dict, kw_only=True)
     note: Mapped[str | None] = mapped_column(Text, default=None, kw_only=True)  # texnolog izohi
+
+
+#: TABLO va dashboard navbati faqat hajm hisoblaydi (metrics.part_volume:
+#: length/width/count/edges). Bu ikkitasi butun ishlab chiqarish bo'yicha
+#: o'qilib, tashlab yuborilardi. `edges` KERAK — u bu ro'yxatda yo'q.
+PART_FAT_COLUMNS = (Part.xnc_summary, Part.note)
 
 
 class PartInstance(BaseModel):
@@ -143,7 +157,8 @@ class OrderFile(BaseModel):
     __tablename__ = "order_file"
 
     order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), index=True, kw_only=True)
-    part_id: Mapped[int | None] = mapped_column(ForeignKey("part.id"), default=None, kw_only=True)
+    # Har CNC skanida detalning SCX fayli shu ustun bo'yicha qidiriladi (scanning.py)
+    part_id: Mapped[int | None] = mapped_column(ForeignKey("part.id"), index=True, default=None, kw_only=True)
     kind: Mapped[FileKind] = mapped_column(db_enum(FileKind), kw_only=True)
     path: Mapped[str] = mapped_column(String(500), kw_only=True)
     filename: Mapped[str] = mapped_column(String(255), kw_only=True)
