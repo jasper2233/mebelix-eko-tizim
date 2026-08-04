@@ -36,8 +36,8 @@ class BaseModel(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
 
 | Enum | A'zolar |
 |---|---|
-| `UserRole` | 13 ta: 6 xodim/qurilma (`admin`, `director`, `manager`, `texnolog`, `terminal`, `tablo`) + 7 operator (`arrachi`, `kromkachi`, `ovalchi`, `prisadkachi`, `pazchi`, `roverchi`, `stolyar`) |
-| `PostCode` | `ARRA`, `KROMKA`, `OVAL`, `PRISADKA`, `PAZ`, `ROVER`, `STOLYARKA` |
+| `UserRole` | 13 ta: 6 xodim/qurilma (`admin`, `director`, `manager`, `texnolog`, `terminal`, `tablo`) + 7 operator (`arrachi`, `kromkachi`, `ovalchi`, `prisadkachi`, `roverchi`, `stolyar`, `boyoqchi`) |
+| `PostCode` | `ARRA`, `KROMKA`, `OVAL`, `PRISADKA`, `ROVER`, `STOLYARKA`, `BOYOQ` (PAZ olib tashlangan — paz ham frezer stanogida, ya'ni ROVER postida kesiladi) |
 | `PostUnit` | `m2`, `meter`, `piece` |
 | `MachineStatus` | `active`, `inactive`, `repair` |
 | `CapacityUnit` | `m2_per_hour`, `meter_per_hour`, `units_per_hour` |
@@ -51,7 +51,7 @@ class BaseModel(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
 | `FileKind` | `project`, `scx`, `label_pdf`, `document` |
 | `SessionStatus` | `active`, `ended` |
 
-`POST_ROLES: dict[UserRole, PostCode]` — 7 operator rolini o'z postiga bog'laydi (`ARRACHI→ARRA`, `KROMKACHI→KROMKA`, `OVALCHI→OVAL`, `PRISADKACHI→PRISADKA`, `PAZCHI→PAZ`, `ROVERCHI→ROVER`, `STOLYAR→STOLYARKA`). Operator rollari o'z akkaunti bilan kiradi va o'z postining terminalini ko'radi — stanok binding'i va badge talab qilinmaydi (`TERMINAL` qurilma akkauntlaridan farqli).
+`POST_ROLES: dict[UserRole, PostCode]` — 7 operator rolini o'z postiga bog'laydi (`ARRACHI→ARRA`, `KROMKACHI→KROMKA`, `OVALCHI→OVAL`, `PRISADKACHI→PRISADKA`, `ROVERCHI→ROVER`, `STOLYAR→STOLYARKA`, `BOYOQCHI→BOYOQ`). Operator rollari o'z akkaunti bilan kiradi va o'z postining terminalini ko'radi — stanok binding'i va badge talab qilinmaydi (`TERMINAL` qurilma akkauntlaridan farqli).
 
 ### 1.3 `backend/app/models/user.py` — User modeli
 
@@ -108,7 +108,7 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
 
 | Model / jadval | Muhim ustunlar | Unikal/muhim indekslar |
 |---|---|---|
-| `Order` | `number(20)` (`B-2026-001`, avto), `client_id` FK (index), `status` (`OrderStatus`, default `draft`, index), `priority` (`OrderPriority`), `deadline`, `amount Numeric(14,2)`, `advance_payment Numeric(14,2)` (boshlang'ich to'lov — manager buyurtma ochishda kiritadi), `notes`, `created_by_id` FK user; `.project` metadata: `project_uuid/name/generation/loaded_at`; **JSONB**: `cutmap` (kesish xaritasi vizual modeli, TZ 5.7.5), `material_usage` (default `[]` — `[{name, kind, count, unit}]`, TZ 11.3), `machine_assignments` (default `{}` — `{"PAZ": 3, "ROVER": 5}`, TZ 6.4.1), `survey` (mijoz anketasi + o'lchov varag'i, NULL — sxema `schemas/orders.OrderSurvey`, 2.4.1-bo'lim); lifecycle: `production_started_at`, `completed_at`, `delivered_at`, `cancelled_at`, `cancel_reason`, `cancelled_by_id` | PARTIAL UNIQUE `ix_order_number` |
+| `Order` | `number(20)` (`B-2026-001`, avto), `client_id` FK (index), `status` (`OrderStatus`, default `draft`, index), `priority` (`OrderPriority`), `deadline`, `amount Numeric(14,2)`, `advance_payment Numeric(14,2)` (boshlang'ich to'lov — manager buyurtma ochishda kiritadi), `notes`, `created_by_id` FK user; `.project` metadata: `project_uuid/name/generation/loaded_at`; **JSONB**: `cutmap` (kesish xaritasi vizual modeli, TZ 5.7.5), `material_usage` (default `[]` — `[{name, kind, count, unit}]`, TZ 11.3), `machine_assignments` (default `{}` — `{"ROVER": 5}`, TZ 6.4.1), `survey` (mijoz anketasi + o'lchov varag'i, NULL — sxema `schemas/orders.OrderSurvey`, 2.4.1-bo'lim); lifecycle: `production_started_at`, `completed_at`, `delivered_at`, `cancelled_at`, `cancel_reason`, `cancelled_by_id` | PARTIAL UNIQUE `ix_order_number` |
 | `Product` | `order_id` FK (index), `code(50)`, `name(255)`, `count`, `import_source` | `<good typeId="product">` (TZ 5.2.2) |
 | `Part` | `order_id`/`product_id` FK (index), `code(50)` (masalan `01_002`), `name`, `count`, o'lchamlar `length/width/thickness` + `saw_length/saw_width` (jl/jw), `txt` (tekstura qulfi), `material_name(150)`, `label_num`; **JSONB**: `edges` (tomon bo'yicha kromka: `{"l": {"mat": ..., "symbol": "A"}, ...}`), `xnc_summary` (`{"bores", "edge_bores", "grooves", "mills", "sides"}`); `note` (texnolog izohi) | Barqaror kalit: `productCode_partCode` (TZ 5.8) |
 | `PartInstance` | `order_id`/`part_id` FK (index), `instance_no` (1..count), `qr_text(120)`, `pattern_no`/`cell_index` (kesish xaritasi katagi, TZ 7.1.4), `label_printed_at` | **PARTIAL UNIQUE `ix_part_instance_order_qr` (`order_id`, `qr_text`) `WHERE NOT is_deleted`** — QR = `productCode_partCode` (yagona nusxa, suffikssiz) yoki `productCode_partCode_n` (takrorlanganda) |
@@ -362,7 +362,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 
 ### 4.4 Versiyalar zanjiri — `backend/app/migrations/versions/`
 
-12 ta migratsiya, head: `e8b1c6d94f27`.
+14 ta migratsiya, head: `b3e9a1d76c42`.
 
 | # | Revision | Fayl | Nima qiladi |
 |---|---|---|---|
@@ -378,6 +378,8 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 | 10 | `c9e5b2a41d78` | `c9e5b2a41d78_single_copy_qr_no_suffix.py` | Data-migratsiya: `count=1` detallarda `qr_text` dagi `_1` suffiksi olib tashlanadi — chek/QR/SCX nomi bir xil (Nanxing mosligi); downgrade yo'q |
 | 11 | `d4f7a8c25e91` | `d4f7a8c25e91_bridge_agent_can_print.py` | `bridge_agent.can_print` NOT NULL (server_default `true`) — printersiz agent chek navbatidan ish olmaydi |
 | 12 | `e8b1c6d94f27` | `e8b1c6d94f27_hot_path_indexes.py` | Issiq yo'l indekslari: PARTIAL `ix_part_instance_qr_text` (`WHERE NOT is_deleted`), `ix_audit_log_module_action`, `ix_audit_log_created_at`; `post.requires_qr_print`/`auto_skip_if_empty` drop |
+| 13 | `a7d3f1c48b26` | `a7d3f1c48b26_scan_created_at_orderfile_part.py` | Yana ikki issiq yo'l indeksi: `ix_scan_created_at` (dashboard "bugungi skanlar" har 60 s da so'raydi), `ix_order_file_part_id` (CNC skanida detalning SCX fayli shu ustun bo'yicha qidiriladi) |
+| 14 | `b3e9a1d76c42` | `b3e9a1d76c42_remove_paz_add_boyoq.py` | **PAZ posti olib tashlanadi, `BOYOQ` qo'shiladi.** Sxema o'zgarmaydi (`post.code` — VARCHAR), lekin ma'lumot **HARD DELETE** qilinadi: `select(Post)` filtrsiz chaqiriladi (prestart'dagi `seed_defaults`, orders/reports/tablo/ingest) va enumda yo'q kod bazada qolsa SQLAlchemy `LookupError` beradi — konteyner ko'tarilmay qoladi. Ketma-ketlik: `pazchi` userlar → `roverchi`, `order.machine_assignments` dan `"PAZ"` kaliti olib tashlanadi, PAZ skan/marshrut/smenalari o'chiriladi, PAZ stanoklariga havolalar `NULL` ga tushiriladi (FK sug'urtasi), stanoklar va postning o'zi o'chiriladi, `BOYOQ` qatori qo'yiladi. Downgrade qaytarmaydi (faqat `BOYOQ` ni oladi) |
 
 Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kind=DOCUMENT` + `meta` JSONB bilan ishlatiladi (1.4.1-bo'lim).
 
@@ -401,7 +403,7 @@ Idempotent bootstrap skript — birinchi admin foydalanuvchini yaratadi (`python
 Idempotent bootstrap — default tashkilot va 7 ishlab chiqarish postini yaratadi (`python -m app.commands.seed_defaults`, prestart/setup scriptlardan chaqiriladi):
 
 - Tashkilot: `select(Organization).limit(1)` — DB'da **birorta ham** tashkilot bo'lmasa `Organization(name="Mebelix")` yaratadi.
-- Postlar: mavjud `code` lar to'plami bilan solishtirib, yetishmaganlarini `POSTS` ro'yxatidan qo'shadi — 7 post (`ARRA`…`STOLYARKA`, `OVAL` 3-o'rinda) `order_index` 1–7, `unit` (m2/meter/piece), `color`/`icon` bilan; `PAZ` va `ROVER` — `requires_assignment_choice=True`. Mavjud postning `order_index` i ro'yxatdan farq qilsa sinxronlanadi (yangi post qo'shilganda tartib siljiydi).
+- Postlar: mavjud `code` lar to'plami bilan solishtirib, yetishmaganlarini `POSTS` ro'yxatidan qo'shadi — 7 post (`ARRA`…`BOYOQ`, `OVAL` 3-o'rinda) `order_index` 1–8, `unit` (m2/meter/piece), `color`/`icon` bilan; faqat `ROVER` — `requires_assignment_choice=True` (bo'yoq kamerasi bitta, tanlash shart emas). **`order_index` 5 ataylab bo'sh** — olib tashlangan `PAZ` o'rni: tartib faqat nisbiy ishlatiladi, qayta raqamlash esa mavjud bazalarda bekorga siljish beradi. Mavjud postning `order_index` i ro'yxatdan farq qilsa sinxronlanadi (yangi post qo'shilganda tartib siljiydi).
 
 `backend/app/commands/__init__.py` — bo'sh (faqat package marker).
 

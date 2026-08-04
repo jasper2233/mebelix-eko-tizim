@@ -9,7 +9,7 @@ Holat: **2026-07-28**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Barcha fazalar impl
 | Jadval | Mazmun | TT |
 |---|---|---|
 | `organization` | Tenant (bitta: Mebelix), sxema multi-tenant tayyor | 4.1 |
-| `post` | 7 bosqich: ARRA→KROMKA→OVAL→PRISADKA→PAZ→ROVER→STOLYARKA (unit, order_index, flaglar), seed `app/commands/seed_defaults.py` — idempotent, order_index'ni mavjud bazalarda ham sinxronlaydi. OVAL fayldan avto-aniqlanmaydi: texnolog matritsada belgilaydi (route `per_instance=1`) | 4.4 |
+| `post` | 7 bosqich: ARRA→KROMKA→OVAL→PRISADKA→ROVER→STOLYARKA→BO'YOQ (unit, order_index, flaglar), seed `app/commands/seed_defaults.py` — idempotent, order_index'ni mavjud bazalarda ham sinxronlaydi. `order_index` 5 bo'sh: eski PAZ posti olib tashlangan (paz ham frezer stanogida, ya'ni ROVER da kesiladi), qayta raqamlash mavjud bazalarda bekorga siljish beradi. OVAL fayldan avto-aniqlanmaydi: texnolog matritsada belgilaydi (route `per_instance=1`) | 4.4 |
 | `machine` | Stanok (post FK, IP, capacity, holat) | 4.3 |
 | `employee` | Beyjik egasi (badge_id UUID partial-unique, assigned_post_ids JSONB) | 4.2 |
 | `client` | Mijoz (jismoniy/yuridik, INN) | 4.6 |
@@ -28,16 +28,16 @@ Holat: **2026-07-28**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Barcha fazalar impl
 
 - staff/qurilma: admin, director, manager, texnolog, terminal, tablo — terminal/TABLO qurilma
   akkauntlari stanokka biriktiriladi (TT 8.1 variant B);
-- post-operator: arrachi, kromkachi, ovalchi, prisadkachi, pazchi, roverchi, stolyar — `POST_ROLES`
-  mapping orqali postga bog'lanadi (ARRACHI→ARRA … STOLYAR→STOLYARKA); o'z akkaunti bilan kiradi,
+- post-operator: arrachi, kromkachi, ovalchi, prisadkachi, roverchi, stolyar, boyoqchi — `POST_ROLES`
+  mapping orqali postga bog'lanadi (ARRACHI→ARRA … BOYOQCHI→BOYOQ); o'z akkaunti bilan kiradi,
   **stanok biriktirish ham, beyjik ham shart emas** (login = smena, §3 ga qarang).
 
 ## 2. GibLab parser (`app/services/giblab/`)
 
 | Fayl | Vazifa |
 |---|---|
-| `models.py` | Parse natijasi dataclasslari (ORM emas): `ParsedProject/Product/Part`, `XncOp`, `ParsedMaterial`, `CutOperation` + `ParseError` (matni to'g'ridan texnologga ko'rsatiladi) |
-| `parser.py` | .project XML (to'la parser, regex YO'Q; cp1251/UTF-8; PROCESSED/TEMPLATE avlodlar; kontekstli id qidiruv); takror detal kodlari deterministik rename (`code`, `code-2`, …) + o'zbekcha warning — QR/SCX kaliti unikal qoladi |
+| `models.py` | Parse natijasi dataclasslari (ORM emas): `ParsedProject/Product/Part`, `XncOp`, `ParsedMaterial`, `CutOperation` + `ParseError` (matni to'g'ridan texnologga ko'rsatiladi); `PROCESS_POSTS` — sexning "Jarayon uchun kodlar" jadvali (jarayon kodi → post kodi, quyida) |
+| `parser.py` | .project XML (to'la parser, regex YO'Q; cp1251/UTF-8; PROCESSED/TEMPLATE avlodlar; kontekstli id qidiruv); takror detal kodlari deterministik rename (`code`, `code-2`, …) + o'zbekcha warning — QR/SCX kaliti unikal qoladi; detal nomidan qo'lda yozilgan marshrut (`_process_codes` → `ParsedPart.process_codes`, `_custom_route_warnings`) |
 | `xnc.py` | XNC program parse (atribut yoki bola element), xavfsiz ifoda hisoblash (`dz+3`), max 2 op merge |
 | `csblob.py` | CS `data` blob dekoderi: big-endian, 15B yozuvlar, guillotine daraxt, dims+117 root-o'q sloti, 5.7.4 self-check |
 **O'lcham juftliklari (GibLab veb-ilovasida tekshirilgan).** Faylda har detalning
@@ -53,9 +53,31 @@ prifugovkadan keyin (kromkasiz) — shu sozlama `dl/dw` ma'nosini belgilaydi.
 | `scx.py` | SCX generatsiya — Nanxing haqiqiy konvensiyasi (Scx-korpusdan, 87 proyekt): Y=Width−y; qirra Face l4/r3/t1/b2; orqa dastur Face=6 bilan bitta faylda; 32mm qo'shqavat 16/Z÷2; freza kompensatsiyalangan yo'l. To'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §7.2 |
 | `ingest.py` | DBga yozish: products/parts/instances/routes/materials/fayllar/cutmap/material_usage; qayta yuklash to'liq almashtiradi |
 
-Marshrut qoidalari (5.4): ARRA har doim (per_instance=1); KROMKA = ell/elr/elt/elb soni;
-PRISADKA = bf/bt/bb/bl/br; PAZ = gr; ROVER = ms/ml/mac — XNC bosqichlarda per_instance = shu
-element bor op soni (`_2` → 2). STOLYARKA — texnolog qo'lda (matrix PATCH).
+Marshrut qoidalari (5.4): ARRA — listda joyi bor detalga (per_instance=1); KROMKA = ell/elr/elt/elb soni;
+PRISADKA = bf/bt/bb/bl/br; ROVER = gr yoki ms/ml/mac — paz ham frezer stanogida kesiladi va
+bitta XNC operatsiyasida paz ham, freza ham bo'lsa bu BITTA o'tish, ya'ni BITTA skan; XNC
+bosqichlarda per_instance = shu element bor op soni (`_2` → 2). STOLYARKA va BO'YOQ — texnolog
+qo'lda (matrix PATCH) yoki quyidagi nom-marshruti orqali.
+
+**Noodatiy detal — marshrut detal NOMIDA.** Texnolog GibLab'da detal nomiga figurali qavs
+ichida jarayon kodlarini yozadi: `eshik {7;11;8}` = rover → G petlya o'ngdan (stolyarka) →
+bo'yoq. Ajratgichlar: `;` `.` `,` va bo'shliq; bir necha blok bo'lsa ketma-ket qo'shiladi.
+Kodlar `PROCESS_POSTS` (`giblab/models.py`) orqali postga o'giriladi — to'liq jadval:
+[10-giblab-reference.md](10-giblab-reference.md) §2.3. Qoidalar:
+
+- Ro'yxat bo'lsa **marshrut ayni shu**: fayldan chiqadigan bosqichlar (listdagi joyi bo'yicha
+  ARRA, qirralar bo'yicha KROMKA, XNC bosqichlari) BUTUNLAY hisobga olinmaydi. **ARRA ham
+  avtomatik qo'shilmaydi** — jarayon roverdan (yoki boshqa postdan) boshlanishi mumkin, tayyor
+  zagotovkaga arra vazifasi berilsa arrachi kesa olmaydigan soxta ish paydo bo'lardi.
+- `per_instance`: KROMKA da qirralar soni (skan qirra bo'yicha sanaladi), qolgan postlarda
+  bitta o'tish = bitta skan. Bitta post bir necha marta uchrasa (`{3;3}`) qo'shiladi —
+  `UNIQUE(part_id, post_id)` indeksi bor, ya'ni takroriy tashrif kattaroq `per_instance` bo'lib
+  ifodalanadi.
+- Qavs matni **displey nomida qoladi**: kodlar postga ko'p-birga tushadi (1 va 2 → ARRA,
+  3 va 4 → KROMKA, 9..14 → STOLYARKA), shuning uchun qaysi amal ekanini faqat nom ko'rsatadi
+  (`{11}` = G petlya o'ngdan, `{13}` = V petlya o'ngdan).
+- Sozlanmagan post uchrasa `ingest.py` toza `ParseError` (422) beradi: `posts` lug'ati post
+  KODI (matn) bo'yicha tuziladi, `PostCode(...)` ga o'girilmaydi — aks holda `ValueError` → 500.
 
 
 ## 3. Scan engine (`app/services/scanning.py`)
@@ -217,7 +239,8 @@ direktor ham ko'radi.
 ### Hisobot yordamchilari
 
 - `app/services/metrics.py: part_volume()` — TT 9.3.1 HAJM matematikasi (ARRA m², KROMKA metr,
-  qolganlari dona; PAZ metrlari hozircha dona bilan approksimatsiya — paz uzunligi saqlanmaydi),
+  qolganlari dona; OVAL birligi metr bo'lsa ham dona bilan approksimatsiya — egri qirraning
+  uzunligi detal bo'yicha saqlanmaydi),
   reports va tablo uchun umumiy. `Part` obyektini emas, `length`/`width`/`count`/`edges`
   qiymatlarini oladi — TABLO o'n minglab marshrutni ORM obyekti sifatida qurmay,
   faqat shu to'rt ustunni tanlab olishi uchun (o'lchov: 669 ms → 175 ms).
@@ -250,10 +273,10 @@ direktor ham ko'radi.
     Har skan darhol yoziladi (tomon = skan, `per_instance`); bir QR uchun 5 s to'siq;
     picker'da skan qilinsa proyekt o'zi ochiladi (`/qr/{qr}/order`); begona detalga aniq xato.
   · **OVAL** — o'sha KromkaView `oval` rejimda: bir panel, har detal BITTA skan.
-  · **PRISADKA** (`Terminal/PrisadkaView`) — detallar + SCX fayllar; "Hammasini yuklab olish"
+  · **PRISADKA / ROVER** (`Terminal/PrisadkaView`) — detallar + SCX fayllar; "Hammasini yuklab olish"
     File System Access API bilan BIR MARTA tanlangan papkaga (IndexedDB'da saqlanadi,
     `lib/scxDir.ts`) proyekt nomli subpapka ochib yozadi; har skandagi avto-SCX ham o'sha yerga.
-  · qolgan postlar — vazifalar jadvali (tasks).
+  · qolgan postlar (STOLYARKA, BO'YOQ) — vazifalar jadvali (tasks).
   Umumiy: majburiy to'liq ekran overlay, lock overlay, operator logout, 2 s umumiy QR cooldown
   (TT 8.4.4), skan chizig'i 15 s da o'zi yo'qoladi, skan inputi fokussiz ham QR ni tutadi
   (birinchi tugmada fokus), yangi build uchun har 5 daqiqada `/` HEAD ETag tekshiruvi va xavfsiz

@@ -74,7 +74,7 @@ Muhim xavfsizlik detali: `resolve_user` da `user.token_version != token_data.tok
 | `StaffReadUser` | `require_roles(MANAGER, TEXNOLOG, DIRECTOR)` | ofis rollari uchun umumiy read-only ro'yxatlar |
 | `AdminUser` | `require_roles()` | hech kim — faqat admin/superuser |
 
-Terminal oqimida esa route fayllar o'zi lokal alias tuzadi: `TerminalUser = require_roles(UserRole.TERMINAL, *POST_ROLES)` (`terminal.py`, `scans.py`) — maxsus terminal akkauntlar va 7 ta operator roli (arrachi, kromkachi, ovalchi, prisadkachi, pazchi, roverchi, stolyar). Chek bekor qilish endpointi kengroq: `LabelCancelUser` = terminal/operator + manager/texnolog.
+Terminal oqimida esa route fayllar o'zi lokal alias tuzadi: `TerminalUser = require_roles(UserRole.TERMINAL, *POST_ROLES)` (`terminal.py`, `scans.py`) — maxsus terminal akkauntlar va 7 ta operator roli (arrachi, kromkachi, ovalchi, prisadkachi, roverchi, stolyar, boyoqchi). Chek bekor qilish endpointi kengroq: `LabelCancelUser` = terminal/operator + manager/texnolog.
 
 **Bog'lanishlar:** `backend/app/core/db.py` (`async_get_db`), `backend/app/core/security.py` (`verify_token`, `TokenType`, `ACCESS_COOKIE_NAME`), `backend/app/core/exceptions.py`, `backend/app/crud` (`crud_users`), `backend/app/models/user.py`, `backend/app/models/enums.py` (`UserRole`).
 
@@ -239,7 +239,7 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 
 ## `backend/app/api/routes/posts.py` — Ishlab chiqarish postlari
 
-**Maqsadi:** 7 ta belgilangan post (ARRA, KROMKA, OVAL, PRISADKA, PAZ, ROVER, STOLYARKA; OVAL `order_index=3`) — ular `seed_defaults` komandasi bilan yaratiladi, shuning uchun API'da create/delete YO'Q, faqat o'qish va sozlash.
+**Maqsadi:** 7 ta belgilangan post (ARRA, KROMKA, OVAL, PRISADKA, ROVER, STOLYARKA, BOYOQ; OVAL `order_index=3`, ROVER 6 — 5-tartib olib tashlangan PAZ dan bo'sh qolgan) — ular `seed_defaults` komandasi bilan yaratiladi, shuning uchun API'da create/delete YO'Q, faqat o'qish va sozlash.
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
@@ -349,10 +349,10 @@ Yuklash cheklovlari (`orders.py` dagi konstantalar):
 | POST | `/api/v1/terminal/session` | terminal/operator | Beyjik skan smenani ochadi (TZ 8.2.2); xatolar 422 `{code: "E006", message}` — beyjik topilmadi / nofaol / hodim bu postga biriktirilmagan; bitta terminalda bitta aktiv sessiya — yangi beyjik eskisini yopadi; WS `session.started` |
 | POST | `/api/v1/terminal/session/end` | terminal/operator | Smenani yakunlaydi; aktiv sessiya bo'lmasa 404; WS `session.ended` |
 | GET | `/api/v1/terminal/tasks` | terminal/operator | NAVBATDAGI VAZIFALAR (TZ 8.3.2): faqat shu post/stanok, QOLDIQ > 0, PRODUCTION buyurtmalar, muddat (deadline) tartibida |
-| GET | `/api/v1/terminal/orders` | terminal/operator | Shu postga tegishli aktiv buyurtmalar (post sahifalari tanlagichi). Tartib: prioritet (`URGENT→HIGH→MEDIUM→LOW`, `priority_rank` `case()`), keyin deadline (nulls oxirida), keyin id. `/tasks` bilan bir xil stanok filtri. `done`/`total` post semantikasida: ARRA — chek chiqarilgan YOKI skan qilingan nusxalar (hammasi chiqarilgan buyurtma ro'yxatdan TUSHADI); KROMKA — detal bo'yicha (nusxaning hamma tomoni skan bo'lsa "qilingan"); boshqa postlarda skan yig'indisi. Kartada `materials`, `sheets_total`, `has_cutmap` |
+| GET | `/api/v1/terminal/orders` | terminal/operator | Shu postga tegishli aktiv buyurtmalar (post sahifalari tanlagichi). Tartib: prioritet (`URGENT→HIGH→MEDIUM→LOW`, `priority_rank` `case()`), keyin deadline (nulls oxirida), keyin id. `/tasks` bilan bir xil stanok filtri. `done`/`total` post semantikasida: ARRA — chek chiqarilgan YOKI skan qilingan nusxalar, **faqat ARRA marshruti bor detallar bo'yicha** (aks holda arradan o'tmaydigan detalning cheki — masalan roverchi o'zi chiqargani — arra hisobini jamidan oshirib yuborardi va listlar hali kesilmagan proyekt ro'yxatdan yo'qolardi); hammasi chiqarilgan buyurtma ro'yxatdan TUSHADI; KROMKA — detal bo'yicha (nusxaning hamma tomoni skan bo'lsa "qilingan"); boshqa postlarda skan yig'indisi. Kartada `materials`, `sheets_total`, `has_cutmap` |
 | GET | `/api/v1/terminal/orders/{id}/cutmap` | terminal/operator | ARRA kesish xaritasi (TZ 7.1.7); ARRA bo'lmagan postda 403; katak holati serverda — terminal qayta yonganda saqlanib qoladi |
 | GET | `/api/v1/terminal/orders/{id}/kromka` | terminal/operator | KROMKA/OVAL sahifasi (boshqa postda 403): shu post marshrutidagi detallar, har nusxada `done` (post skanlari) / `sides` (`per_instance`), `arra_passed` (chek chiqarilgan yoki ARRA skan bor) |
-| GET | `/api/v1/terminal/orders/{id}/prisadka` | terminal/operator | PRISADKA sahifasi (boshqa postda 403): detallar + har detalning SCX fayllari (`{id, filename}`), `project_name` (frontend shu nom bilan papka ochadi) |
+| GET | `/api/v1/terminal/orders/{id}/prisadka` | terminal/operator | CNC sahifasi — PRISADKA va ROVER (boshqa postda 403): detallar + har detalning SCX fayllari (`{id, filename}`), `project_name` (frontend shu nom bilan papka ochadi) |
 | GET | `/api/v1/terminal/qr/{qr_text}/order` | terminal/operator | QR qaysi PRODUCTION buyurtmaga tegishligini topadi — `{order_id, order_number}`; picker'da skan qilinsa terminal o'sha proyektni o'zi ochadi |
 | POST | `/api/v1/terminal/labels/{instance_id}` | terminal/operator | YORLIQ CHOP ETISH (TZ 7.1.4): ARQ `print_label` navbatiga qo'yiladi (bridge-agent/GoDEX); `label_printed_at` belgilanadi; WS `label.printed`. ARRA UI'da chiqarilgan katak YASHIL = "kesildi"; qayta chop etish frontendda bloklanadi (avval bekor qilish kerak) |
 | DELETE | `/api/v1/terminal/labels/{instance_id}` | terminal/operator + manager/texnolog | Chekni bekor qilish: `label_printed_at = None`, WS `label.cancelled`. Terminalda long press (~600ms) + tasdiq dialogi; admin webdagi xaritada detal kartochkasidagi tugma (proyekt ARRA ro'yxatidan tushib bo'lgach arrachi xaritani ocholmaydi — oxirgi xato chekni texnolog tuzatadi). Skan qilingan nusxaga tegmaydi |

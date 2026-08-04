@@ -262,6 +262,52 @@ soxta vazifa yaratmaydi). Ular GibLab'ning "shu kesishdan 688×1166 foydali qold
 degan xabari. Sklad moduli ularni qabul qilsa qoldiq hisobi avtomatlashadi — 1C protokoli
 (§6) aynan shu ma'lumot bilan ishlaydi.
 
+### 2.3 Detal nomi — GibLab shabloni va sexning marshrut kodlari
+
+**GibLab nom shabloni to'ldirilmasa nomda qoladi.** Dizayner detal nomini shablon bilan
+beradi va to'ldirilmagan o'rin nomda `$...$` bo'lib qoladi: `uploads/projects/2001_Nukriddin.project`
+da `№ tom $1,2,3$`, `№ bok $1,2,3$`, `tr $1,2,3$` va h.k. (prod bazasida 29 detal qatorida bor).
+Parser displey nomidan `$...$` bloklarini olib tashlaydi (`parser.py`, `clean_name`) — kod va
+ID'larga tegilmaydi.
+
+**Sexning marshrut kodlari — FIGURALI qavsda.** Texnolog noodatiy detalning marshrutini
+detal nomiga yozadi: `eshik {7;11;8}`. Ajratgichlar: `;` `.` `,` va bo'shliq; bir necha blok
+bo'lsa ketma-ket qo'shiladi. Jadval — `PROCESS_POSTS` (`backend/app/services/giblab/models.py`),
+sexdagi "Jarayon uchun kodlar" varag'idan:
+
+| Kod | Jarayon | Post |
+|---|---|---|
+| 1 | Raspil | ARRA |
+| 2 | 45° kesish | ARRA |
+| 3 | Kromka | KROMKA |
+| 4 | Fasat kromka | KROMKA |
+| 5 | Oval kromka | OVAL |
+| 6 | Prisadka | PRISADKA |
+| 7 | Rover | ROVER |
+| 8 | Bo'yoq | BOYOQ |
+| 9 | Baget | STOLYARKA |
+| 10 | Utalshonka | STOLYARKA |
+| 11 | G petlya o'ngdan | STOLYARKA |
+| 12 | G petlya chapdan | STOLYARKA |
+| 13 | V petlya o'ngdan | STOLYARKA |
+| 14 | V petlya chapdan | STOLYARKA |
+
+Paz uchun kod yo'q — paz alohida post emas, u frezer stanogida (ROVER) kesiladi.
+
+**Nega faqat `{...}`, `$...$` emas.** GibLab shablonining qoldig'i aynan `$1,2,3$` ko'rinishida
+keladi (yuqoridagi misollar). `$` ni ham marshrut deb o'qisak, oddiy detal jimgina boshqa
+stanoklarga yuborilardi — shuning uchun `$...$` ATAYLAB qo'llab-quvvatlanmaydi va marshrut
+`$...$` tozalangandan KEYIN o'qiladi (`_process_codes`), ya'ni shablon qoldig'i hech qachon
+marshrutga aylanmaydi.
+
+**Validatsiya — hammasi yoki hech narsa.** Bitta token raqam bo'lmasa yoki jadvalda bunday
+kod bo'lmasa BUTUN ro'yxat rad etiladi va detal odatdagi fayl bosqichlari bilan ketadi.
+Yarim o'qilgan marshrut detalni bilintirmay bosqichdan chiqarib yuborardi; rad etilgani esa
+matritsada ko'rinib turadi va ogohlantirish ham beriladi.
+
+Marshrutning o'zi qanday qurilishi (fayl bosqichlari BUTUNLAY almashtiriladi, ARRA avtomatik
+qo'shilmaydi, `per_instance` hisobi, qavs matni nomda qolishi) — [09-mes-domain.md](09-mes-domain.md) §2.
+
 ---
 
 ## 3. Operatsiyalar — `<operation typeId="...">`
@@ -272,13 +318,13 @@ GibLab "+Операция" ro'yxatida **to'qqiz tur** taklif qiladi:
 |---|---|---|
 | `CS` | Листовой раскрой — listni kesish | ✅ kesish xaritasi + yorliq raqamlari |
 | `EL` | Кромкооблицовка — kromkalash | ✅ kromka simvoli va materiali |
-| `XNC` | Обработка — CNC ishlov | ✅ teshik, paz, freza → PRISADKA/PAZ/ROVER bosqichlari |
+| `XNC` | Обработка — CNC ishlov | ✅ teshik → PRISADKA, paz va freza → ROVER bosqichi |
 | `O` | Комплектация — furnitura komplekti | ataylab jim: sanoqlar `simple` goodlarida bor |
 | `LB` | Этикетки — yorliq shablonlari | ataylab jim: tizim o'z yorlig'ini chiqaradi (TZ 5.2.8) |
 | `CL` | Погонажный раскрой — profil kesish | ataylab jim + **ma'lumot yoziladi**: sexda profil kesish posti yo'q, profillar tayyor keladi |
 | `CN` | Нестинговый раскрой — CNC nesting | ❌ ogohlantirish. GibLab'ga 2021-05 da qo'shilgan |
 | `SP` | Обработка поверхности — yuza ishlovi | ❌ ogohlantirish |
-| `GR` | Пазование — paz | ❌ ogohlantirish (PAZ bosqichi XNC dan aniqlanadi) |
+| `GR` | Пазование — paz | ❌ ogohlantirish (paz XNC dan aniqlanadi, ROVER bosqichiga tushadi) |
 
 `CN`, `SP`, `GR` korpusda umuman uchramaydi. `CL` esa `kupe.project` da 3 ta, `TV_zonakupe`
 da 1 ta — ularning `<part>` lari `X1..X32` kodli alyuminiy profillar, 3200 mm zagotovkadan
@@ -544,7 +590,8 @@ inventarizatsiyasi kimda turishi (GibLab yoki MebeliX) alohida qaror talab qilad
 
 **O'qiymiz:** mahsulot va detallar, o'lchamlar, kromka (tomon + material + simvol), material
 registri (list/kromka/furnitura), kesish xaritasi (naqsh, kratlik, katakcha, deloviy qoldiq,
-o'lcham zanjiri), teshik/paz/freza (XNC), yorliq raqami, SCX generatsiyasi.
+o'lcham zanjiri), teshik/paz/freza (XNC), yorliq raqami, SCX generatsiyasi, detal nomidagi
+marshrut kodlari (§2.3).
 
 **Ataylab e'tiborsiz:** GibLab yorliq shablonlari (`LB`), optimizatsiya va narx parametrlari
 (GibLab ichida ishlaydi, biz natijasini iste'mol qilamiz), arra postprotsessorlari,
@@ -568,6 +615,11 @@ profil kesish (`CL` — sexda bunday post yo'q).
 | `turn` ≠ 0 | dastur aylantirilgan — aylantirish qo'llanmaydi, CNC'da tekshirish shart (`mirHor`/`mirVert` esa parse'da geometriyaga QO'LLANADI — `xnc.apply_mirror`) |
 | Qirra teshigi markazda emas | `m`/`z` talqini tekshirilmagan, balandligini tasdiqlash kerak |
 | Blobsiz kesish operatsiyasi | material optimallashtirilmagan, xaritasi yo'q |
+| Nomdan olingan marshrut (§2.3) | N detalning marshruti nomdagi ro'yxatdan olindi, ular uchun fayl bosqichlari hisobga olinmadi |
+| Nomdagi qavs o'qilmadi | qaysi detallar ekani sanaladi; qavs ichida faqat 1–14 oralig'idagi kodlar bo'lishi kerak |
+
+Oxirgi ikkitasi — `_custom_route_warnings`, ataylab **yig'ma**: yuklash javobida ogohlantirishlarning
+faqat dastlabki bir nechtasi ko'rsatiladi, har detalga bittadan yozilsa qolgani ko'rinmay ketardi.
 
 Bu xabarlar fayl yuklanganda menejerga ko'rsatiladi va audit logga yoziladi
 (`POST /orders/{id}/project`).
@@ -588,7 +640,7 @@ Qolganlari — `comment`, `owner`, `typeName`, `usedCount`, `groupInBlock*`, per
 `draw`, `GR`/`SP` operatsiya parametrlari (`grWidth`, `grDepth`, `grOffset`, `grOffsetIncl`,
 `grSawthick`, `grCuttingLength`) — **korpusda ishlatilmagan yoki ko'rsatadigan joyi yo'q**;
 har biri yuqoridagi jadvallarda alohida izohlangan. `GR` paydo bo'lsa uning `grWidth`/`grDepth`/
-`grOffset` i to'g'ridan-to'g'ri PAZ bosqichiga geometriya beradi — hozir esa faqat ogohlantirish.
+`grOffset` i to'g'ridan-to'g'ri ROVER bosqichiga geometriya beradi — hozir esa faqat ogohlantirish.
 
 `EL` operatsiyasidan `elSymbol` (xarita simvoli) o'qiladi; `elColor` (simvol rangi) va
 `elLineMark` (markirovka chizig'i) o'qilmaydi — bizning xaritada kromka o'z uslubida

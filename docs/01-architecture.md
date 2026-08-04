@@ -11,8 +11,8 @@ tablo, reports, bridge-agents, ws), **17 ta ORM model**
 (Order/Product/Part/PartInstance/PartRoute, Client, Employee, Machine, Post,
 Material, Scan/WorkSession, AuditLog, BridgeAgent va h.k.) va
 **13 ta `UserRole`** (admin, director, manager, texnolog, terminal, tablo + 7 ta
-post operatori roli: arrachi, kromkachi, ovalchi, prisadkachi, pazchi, roverchi,
-stolyar).
+post operatori roli: arrachi, kromkachi, ovalchi, prisadkachi, roverchi,
+stolyar, boyoqchi).
 Domen tafsilotlari uchun [09-mes-domain.md](./09-mes-domain.md) ga qarang.
 
 Barcha UI matnlari va API xato xabarlari **o'zbek tilida**; telefon raqamlari
