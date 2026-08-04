@@ -1,7 +1,6 @@
 import { queryOptions } from "@tanstack/react-query"
 
 import {
-  AuditService,
   ClientsService,
   EmployeesService,
   MachinesService,
@@ -84,19 +83,6 @@ export const getOrderMatrixQueryOptions = (orderId: number) =>
   queryOptions({
     queryKey: ["orders", orderId, "matrix"],
     queryFn: () => OrdersService.readOrderMatrix({ orderId }),
-  })
-
-export const getAuditLogsQueryOptions = (
-  opts: { module?: string; page?: number } = {},
-) =>
-  queryOptions({
-    queryKey: ["audit", opts.module ?? "", opts.page ?? 0],
-    queryFn: () =>
-      AuditService.readAuditLogs({
-        module: opts.module || undefined,
-        skip: (opts.page ?? 0) * PAGE,
-        limit: PAGE,
-      }),
   })
 
 export const getTerminalContextQueryOptions = () =>

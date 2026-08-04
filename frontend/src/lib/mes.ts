@@ -77,7 +77,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   stolyar: "Stolyar",
 }
 
-// Sahifa huquqi BITTA joyda: sidebar menyusi ham, route guard ham shu uchtasini
+// Sahifa huquqi BITTA joyda: sidebar menyusi ham, route guard ham shu ikkisini
 // ishlatadi. Ilgari ikkalasi alohida yozilgani uchun "menyuda ko'rinadi, ochsang
 // bosh sahifaga uloqtiradi" holati chiqib qolgandi.
 // Rol nomi UserRole (backend enum'i) dan: rol qayta nomlansa solishtirish
@@ -85,12 +85,9 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 type RoleUser = { role?: UserRole | null; is_superuser?: boolean | null }
 /** Foydalanuvchilarni boshqarish — telefon raqamlar ochiladi (backend SuperUserDep) */
 export const isSuperuser = (u?: RoleUser | null) => Boolean(u?.is_superuser)
-/** Tizim sozlamalari: printer agentlar, loglar (backend AdminUser) */
+/** Tizim sozlamalari: printer agentlar, loglar/audit izi (backend AdminUser) */
 export const isAdmin = (u?: RoleUser | null) =>
   Boolean(u?.is_superuser || u?.role === "admin")
-/** Audit izi — rahbariyat ko'radi (backend DirectorUser) */
-export const isAdminOrDirector = (u?: RoleUser | null) =>
-  isAdmin(u) || u?.role === "director"
 
 // Operator rollar — o'z posti terminalini ko'radi (stanok/beyjik shart emas)
 export const OPERATOR_ROLES = [

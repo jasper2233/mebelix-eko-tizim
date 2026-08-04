@@ -21,7 +21,6 @@ const sectionTitles: Record<string, string> = {
   "/employees": "Hodimlar",
   "/machines": "Stanoklar",
   "/materials": "Materiallar",
-  "/transactions": "Tranzaksiyalar",
   "/reports": "Hisobotlar",
   "/admin": "Foydalanuvchilar",
   "/printers": "Printer agentlar",

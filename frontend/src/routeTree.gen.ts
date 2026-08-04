@@ -14,7 +14,6 @@ import { Route as TabloRouteImport } from './routes/tablo'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
-import { Route as LayoutTransactionsRouteImport } from './routes/_layout/transactions'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutReportsRouteImport } from './routes/_layout/reports'
 import { Route as LayoutPrintersRouteImport } from './routes/_layout/printers'
@@ -51,11 +50,6 @@ const LayoutRoute = LayoutRouteImport.update({
 const LayoutIndexRoute = LayoutIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutTransactionsRoute = LayoutTransactionsRouteImport.update({
-  id: '/transactions',
-  path: '/transactions',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
@@ -138,7 +132,6 @@ export interface FileRoutesByFullPath {
   '/printers': typeof LayoutPrintersRoute
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
-  '/transactions': typeof LayoutTransactionsRoute
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
@@ -157,7 +150,6 @@ export interface FileRoutesByTo {
   '/printers': typeof LayoutPrintersRoute
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
-  '/transactions': typeof LayoutTransactionsRoute
   '/': typeof LayoutIndexRoute
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
@@ -179,7 +171,6 @@ export interface FileRoutesById {
   '/_layout/printers': typeof LayoutPrintersRoute
   '/_layout/reports': typeof LayoutReportsRoute
   '/_layout/settings': typeof LayoutSettingsRoute
-  '/_layout/transactions': typeof LayoutTransactionsRoute
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/_layout/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
@@ -202,7 +193,6 @@ export interface FileRouteTypes {
     | '/printers'
     | '/reports'
     | '/settings'
-    | '/transactions'
     | '/anketa/$orderId'
     | '/cutmap/$orderId'
     | '/orders/$orderId'
@@ -221,7 +211,6 @@ export interface FileRouteTypes {
     | '/printers'
     | '/reports'
     | '/settings'
-    | '/transactions'
     | '/'
     | '/anketa/$orderId'
     | '/cutmap/$orderId'
@@ -242,7 +231,6 @@ export interface FileRouteTypes {
     | '/_layout/printers'
     | '/_layout/reports'
     | '/_layout/settings'
-    | '/_layout/transactions'
     | '/_layout/'
     | '/_layout/anketa/$orderId'
     | '/_layout/cutmap/$orderId'
@@ -292,13 +280,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof LayoutIndexRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/transactions': {
-      id: '/_layout/transactions'
-      path: '/transactions'
-      fullPath: '/transactions'
-      preLoaderRoute: typeof LayoutTransactionsRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/settings': {
@@ -405,7 +386,6 @@ interface LayoutRouteChildren {
   LayoutPrintersRoute: typeof LayoutPrintersRoute
   LayoutReportsRoute: typeof LayoutReportsRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
-  LayoutTransactionsRoute: typeof LayoutTransactionsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
   LayoutAnketaOrderIdRoute: typeof LayoutAnketaOrderIdRoute
   LayoutCutmapOrderIdRoute: typeof LayoutCutmapOrderIdRoute
@@ -423,7 +403,6 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutPrintersRoute: LayoutPrintersRoute,
   LayoutReportsRoute: LayoutReportsRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
-  LayoutTransactionsRoute: LayoutTransactionsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
   LayoutAnketaOrderIdRoute: LayoutAnketaOrderIdRoute,
   LayoutCutmapOrderIdRoute: LayoutCutmapOrderIdRoute,

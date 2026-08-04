@@ -4,7 +4,6 @@ import {
   BarChart3,
   ClipboardList,
   Factory,
-  History,
   Home,
   IdCard,
   Layers,
@@ -23,7 +22,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import useCurrentUser from "@/hooks/useCurrentUser"
-import { isAdmin, isAdminOrDirector, isSuperuser } from "@/lib/mes"
+import { isAdmin, isSuperuser } from "@/lib/mes"
 import { getOrderStatusCountsQueryOptions } from "@/queries/mes"
 import { type Item, Main } from "./Main"
 import { User } from "./User"
@@ -63,13 +62,6 @@ function navItems(user: UserRead | null | undefined): Item[] {
     items.push({ icon: BarChart3, title: "Hisobotlar", path: "/reports" })
   }
   items.push({ icon: Tv, title: "LIVE Tablo", path: "/tablo" })
-  if (isAdminOrDirector(user)) {
-    items.push({
-      icon: History,
-      title: "Tranzaksiyalar",
-      path: "/transactions",
-    })
-  }
   // Foydalanuvchilar ro'yxati barcha telefon raqamlarni ochadi — backend uni
   // faqat superuser'ga beradi, shuning uchun menyu ham shu shartda
   if (isSuperuser(user)) {

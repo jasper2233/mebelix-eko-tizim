@@ -148,7 +148,7 @@ O'rnatish qadamlari: [07-infra-devops.md](07-infra-devops.md) → "Chop etish in
 | `terminal` | `/context`, `/session`, `/session/end`, `/tasks`, `/orders` (loyiha kartalari: done/total post semantikasida — ARRA: chek∪skan, KROMKA: detal bo'yicha), `/orders/{id}/cutmap`, `/orders/{id}/kromka` (KROMKA/OVAL sahifasi), `/orders/{id}/prisadka` (detallar + SCX fayllar), `/qr/{qr}/order` (QR→buyurtma), `/labels/{id}` POST (GoDEX navbat) / DELETE (chekni bekor qilish, manager/texnolog ham), `/labels/{id}.png`, `/files/{id}` | terminal + 7 operator rol; stanok/post konteksti (`_terminal_ctx` → `TerminalCtx`) har route'ga alohida qo'yiladi — yorliq/fayl route'lariga ataylab emas, ular stanoksiz ham ishlaydi |
 | `tablo` | `/matrix`, `/orders/{id}` | istalgan auth |
 | `reports` | `/productivity`, `/orders`, `/materials` (+`?format=xlsx`), `/dashboard` | manager/director/admin |
-| `audit-logs` | filtrli ro'yxat | direktor + admin (`DirectorUser`) — butun tizim audit izi, manager/texnologga berilmaydi |
+| `audit-logs` | filtrli ro'yxat | faqat admin (`AdminUser`, TZ 10.11) — butun tizim audit izi; direktor ishlab chiqarish ko'rsatkichlarini `/reports` dan oladi |
 | `bridge-agents` | ro'yxat/yaratish, `/{id}/code` (yangi ulanish kodi), `/{id}` DELETE, `/pair`, `/download` | admin (`AdminUser`); `/pair` va `/download` ochiq — router global auth'siz ulanadi |
 
 ### Buyurtma lifecycle va to'lovlar
@@ -229,9 +229,9 @@ direktor ham ko'radi.
 - Dizayn tokenlar: `src/index.css` (post/status ranglari, `.num`, print CSS); domen konstantalar `src/lib/mes.ts`.
 - Imzo komponent: `Common/StagePipeline` — post zanjiri (dinamik, dashboard va buyurtma qatorlari).
 - Routelar: `_layout/*` admin modullar (orders, clients, employees, machines, materials, reports,
-  transactions, printers, admin, settings, cutmap.$orderId, `anketa.$orderId`), `/terminal`, `/tablo`
+  logs, printers, admin, settings, cutmap.$orderId, `anketa.$orderId`), `/terminal`, `/tablo`
   (JAMI HAJM + rejimlar + drill-down + jonli soat). Yon menyu sarlavhalari
-  (`_layout.tsx: sectionTitles`) — 10 ta.
+  (`_layout.tsx: sectionTitles`) — 11 ta.
 - Anketa UI: `_layout/anketa.$orderId.tsx` — xonalar tab bilan almashadi, 7 ta bo'lim + yopiladigan
   "O'lchov varag'i". Yozish huquqi `is_superuser || admin || manager`; boshqa rollarga forma emas,
   `RoomSummary` — o'qish uchun jamlanma (matn nusxa olinadi). Avtosaqlash: har tahrirdan 1.5 s
