@@ -80,7 +80,9 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 // Sahifa huquqi BITTA joyda: sidebar menyusi ham, route guard ham shu uchtasini
 // ishlatadi. Ilgari ikkalasi alohida yozilgani uchun "menyuda ko'rinadi, ochsang
 // bosh sahifaga uloqtiradi" holati chiqib qolgandi.
-type RoleUser = { role?: string | null; is_superuser?: boolean | null }
+// Rol nomi UserRole (backend enum'i) dan: rol qayta nomlansa solishtirish
+// jimgina "false" bo'lib qolmasin — ROLE_LABELS kabi build yiqilsin
+type RoleUser = { role?: UserRole | null; is_superuser?: boolean | null }
 /** Foydalanuvchilarni boshqarish — telefon raqamlar ochiladi (backend SuperUserDep) */
 export const isSuperuser = (u?: RoleUser | null) => Boolean(u?.is_superuser)
 /** Tizim sozlamalari: printer agentlar, loglar (backend AdminUser) */

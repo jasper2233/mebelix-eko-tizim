@@ -148,7 +148,7 @@ O'rnatish qadamlari: [07-infra-devops.md](07-infra-devops.md) → "Chop etish in
 | `terminal` | `/context`, `/session`, `/session/end`, `/tasks`, `/orders` (loyiha kartalari: done/total post semantikasida — ARRA: chek∪skan, KROMKA: detal bo'yicha), `/orders/{id}/cutmap`, `/orders/{id}/kromka` (KROMKA/OVAL sahifasi), `/orders/{id}/prisadka` (detallar + SCX fayllar), `/qr/{qr}/order` (QR→buyurtma), `/labels/{id}` POST (GoDEX navbat) / DELETE (chekni bekor qilish, manager/texnolog ham), `/labels/{id}.png`, `/files/{id}` | terminal + 7 operator rol; stanok/post konteksti (`_terminal_ctx` → `TerminalCtx`) har route'ga alohida qo'yiladi — yorliq/fayl route'lariga ataylab emas, ular stanoksiz ham ishlaydi |
 | `tablo` | `/matrix`, `/orders/{id}` | istalgan auth |
 | `reports` | `/productivity`, `/orders`, `/materials` (+`?format=xlsx`), `/dashboard` | manager/director/admin |
-| `audit-logs` | filtrli ro'yxat | staff |
+| `audit-logs` | filtrli ro'yxat | direktor + admin (`DirectorUser`) — butun tizim audit izi, manager/texnologga berilmaydi |
 | `bridge-agents` | ro'yxat/yaratish, `/{id}/code` (yangi ulanish kodi), `/{id}` DELETE, `/pair`, `/download` | admin (`AdminUser`); `/pair` va `/download` ochiq — router global auth'siz ulanadi |
 
 ### Buyurtma lifecycle va to'lovlar

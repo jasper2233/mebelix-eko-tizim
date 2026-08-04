@@ -72,6 +72,7 @@ Muhim xavfsizlik detali: `resolve_user` da `user.token_version != token_data.tok
 | `TexnologUser` | `require_roles(TEXNOLOG)` | texnolog |
 | `ManagerOrTexnolog` | `require_roles(MANAGER, TEXNOLOG)` | manager yoki texnolog |
 | `StaffReadUser` | `require_roles(MANAGER, TEXNOLOG, DIRECTOR)` | ofis rollari uchun umumiy read-only ro'yxatlar |
+| `DirectorUser` | `require_roles(DIRECTOR)` | direktor — butun tizim audit izi (`/audit-logs`) |
 | `AdminUser` | `require_roles()` | hech kim — faqat admin/superuser |
 
 Terminal oqimida esa route fayllar o'zi lokal alias tuzadi: `TerminalUser = require_roles(UserRole.TERMINAL, *POST_ROLES)` (`terminal.py`, `scans.py`) — maxsus terminal akkauntlar va 7 ta operator roli (arrachi, kromkachi, ovalchi, prisadkachi, pazchi, roverchi, stolyar). Chek bekor qilish endpointi kengroq: `LabelCancelUser` = terminal/operator + manager/texnolog.
@@ -331,7 +332,7 @@ Yuklash cheklovlari (`orders.py` dagi konstantalar):
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
-| GET | `/api/v1/audit-logs/` | `StaffReadUser` | `Paginated[AuditLogRead]`; filtrlar: `module`, `action`, `user_id`, `q` (xabar bo'yicha `ilike` qidiruv), `date_from`/`date_to` — kun chegaralari Asia/Tashkent vaqtida (naive-UTC bo'lsa "bugun" filtri 00:00–05:00 yozuvlarni yo'qotardi) |
+| GET | `/api/v1/audit-logs/` | `DirectorUser` | `Paginated[AuditLogRead]`; filtrlar: `module`, `action`, `user_id`, `q` (xabar bo'yicha `ilike` qidiruv), `date_from`/`date_to` — kun chegaralari Asia/Tashkent vaqtida (naive-UTC bo'lsa "bugun" filtri 00:00–05:00 yozuvlarni yo'qotardi) |
 
 `AuditLogRead` shu faylda lokal e'lon qilingan: user/employee, modul, amal, entity, xabar, `meta` (JSON), IP, vaqt, hamda `user_name`/`employee_name` ("kim" ustuni uchun `outerjoin` orqali — alohida so'rovsiz).
 
@@ -477,7 +478,7 @@ Server → klient eventlarni `app/core/ws.py` dagi `ws_manager` tarqatadi: `orde
 ## Umumiy naqshlar (patterns)
 
 - **Auth ikki kanalda:** `Authorization: Bearer` header (ustuvor) yoki `httpOnly` access cookie — `deps._extract_token`. WebSocket'da esa `?token=` query yoki cookie, xato — 4401.
-- **Rol-guruh avtorizatsiyasi:** `require_roles` aliaslari (`ManagerUser`, `TexnologUser`, `StaffReadUser`, `AdminUser`, terminal oqimida `TerminalUser`) — superuser va ADMIN har doim o'tadi; deyarli har MES endpoint shulardan birini ishlatadi.
+- **Rol-guruh avtorizatsiyasi:** `require_roles` aliaslari (`ManagerUser`, `TexnologUser`, `StaffReadUser`, `DirectorUser`, `AdminUser`, terminal oqimida `TerminalUser`) — superuser va ADMIN har doim o'tadi; deyarli har MES endpoint shulardan birini ishlatadi.
 - **Token bekor qilish:** `token_version` — DB'dagi qiymat token payload'idagi qiymat bilan mos kelmasa 401; logout versiyani oshiradi.
 - **Refresh rotatsiyasi:** har `POST /login/refresh` da access va refresh ikkalasi qayta beriladi; eski refresh token `jti`si Redis'da belgilanadi (one-time-use), replay aniqlansa `token_version` bump bilan butun sessiya bekor qilinadi.
 - **Rate limiting:** `RateLimit` dependency — login endpointida (`LOGIN_RATE_LIMIT_*`).
