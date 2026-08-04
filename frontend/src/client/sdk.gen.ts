@@ -1478,8 +1478,10 @@ export class TerminalService {
     
     /**
      * Read Terminal Prisadka
-     * PRISADKA sahifasi: buyurtmaning prisadka detallari + har detalning SCX fayllari
-     * (stanok kompyuteriga yuklab olish uchun, TZ 12.5).
+     * CNC post sahifasi (PRISADKA/ROVER): shu postga tegishli detallar +
+     * SCX fayllari (stanok kompyuteriga yuklab olish uchun, TZ 12.5). ROVER'da
+     * jarayon arradan EMAS, roverdan boshlanishi ham mumkin — shunday detallarga
+     * QR chekni shu sahifadan chiqarish uchun arra_route belgisi ham beriladi.
      * @param data The data for the request.
      * @param data.orderId
      * @returns unknown Successful Response
@@ -1663,6 +1665,7 @@ export class UsersService {
     
     /**
      * Delete User Me
+     * erase_user'ning o'z-o'ziga qisqartmasi — qoidalar bitta joyda tursin.
      * @returns string Successful Response
      * @throws ApiError
      */

@@ -327,7 +327,7 @@ async def record_scan_at(
     )
 
     # SCX served on EVERY scan at CNC posts (TZ 12.5).
-    if post.code in (PostCode.PRISADKA, PostCode.PAZ, PostCode.ROVER):
+    if post.code in (PostCode.PRISADKA, PostCode.ROVER):
         files = (
             (
                 await db.execute(

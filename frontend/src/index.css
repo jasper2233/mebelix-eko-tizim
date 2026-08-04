@@ -107,14 +107,14 @@
    Post va status ranglari ikki AYRIM semantik oila: post = qaysi bosqich,
    status = buyurtma holati. Ular bir qatorda birga ko'rinadi (reestrda
    StatusBadge + StagePipeline), shuning uchun bir xil qiymat bo'lmasligi kerak —
-   avval --post-paz == --status-review va --post-stolyarka == --status-completed
+   avval --post-boyoq == --status-review va --post-stolyarka == --status-completed
    bayt-baytiga bir xil edi, ya'ni yashil chip "tugadi" degan ma'noni ham berardi. */
 :root {
   --post-arra: #c2410c;
   --post-kromka: #0e7490;
   --post-oval: #0d9488; /* teal-600 — to'g'ri kromkaning ko'k-ferozasidan ajralib turadi */
   --post-prisadka: #7c3aed;
-  --post-paz: #a16207; /* yellow-700 — review'ning amber-700 idan ajratilgan */
+  --post-boyoq: #a16207; /* yellow-700 — review'ning amber-700 idan ajratilgan (eski paz rangi) */
   --post-rover: #be185d;
   --post-stolyarka: #4d7c0f; /* lime-700 — completed'ning green-700 idan ajratilgan */
   --status-draft: #64748b;

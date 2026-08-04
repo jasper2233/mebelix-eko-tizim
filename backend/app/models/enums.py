@@ -19,9 +19,9 @@ class UserRole(StrEnum):
     KROMKACHI = "kromkachi"
     OVALCHI = "ovalchi"
     PRISADKACHI = "prisadkachi"
-    PAZCHI = "pazchi"
     ROVERCHI = "roverchi"
     STOLYAR = "stolyar"
+    BOYOQCHI = "boyoqchi"
 
 
 class PostCode(StrEnum):
@@ -29,9 +29,11 @@ class PostCode(StrEnum):
     KROMKA = "KROMKA"
     OVAL = "OVAL"  # oval (egri) kromka — alohida post, texnolog matritsada belgilaydi
     PRISADKA = "PRISADKA"
-    PAZ = "PAZ"
+    # PAZ olib tashlandi: paz ham frezer stanogida kesiladi, ya'ni ROVER postida.
+    # order_index 5 bo'sh qoldirildi — qayta raqamlash hech narsa bermaydi.
     ROVER = "ROVER"
     STOLYARKA = "STOLYARKA"
+    BOYOQ = "BOYOQ"
 
 
 # Operator roles log in with their own account and see their post's terminal —
@@ -41,9 +43,9 @@ POST_ROLES: dict[UserRole, PostCode] = {
     UserRole.KROMKACHI: PostCode.KROMKA,
     UserRole.OVALCHI: PostCode.OVAL,
     UserRole.PRISADKACHI: PostCode.PRISADKA,
-    UserRole.PAZCHI: PostCode.PAZ,
     UserRole.ROVERCHI: PostCode.ROVER,
     UserRole.STOLYAR: PostCode.STOLYARKA,
+    UserRole.BOYOQCHI: PostCode.BOYOQ,
 }
 
 

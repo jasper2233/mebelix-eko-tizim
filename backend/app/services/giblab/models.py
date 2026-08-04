@@ -18,6 +18,28 @@ def xml_bool(raw: str | None, default: bool = False) -> bool:
     return raw.strip().lower() in ("true", "1")
 
 
+#: Sexning "Jarayon uchun kodlar" jadvali: jarayon kodi -> post kodi.
+#: Texnolog noodatiy detal nomiga shu raqamlarni yozadi: "eshik {7;11;8}".
+#: Bir nechta jarayon bitta postga tushadi (45° kesish ham arrada, 6 xil
+#: stolyarka amali ham bitta postda) — qaysi amal ekani detal NOMIDA qoladi.
+PROCESS_POSTS: dict[int, str] = {
+    1: "ARRA",  # Raspil
+    2: "ARRA",  # 45° kesiladigan detallar
+    3: "KROMKA",  # Kromka
+    4: "KROMKA",  # Fasat kromka
+    5: "OVAL",  # Oval kromka
+    6: "PRISADKA",  # Prisadka
+    7: "ROVER",  # Rover
+    8: "BOYOQ",  # Bo'yoq
+    9: "STOLYARKA",  # Baget
+    10: "STOLYARKA",  # Utalshonka
+    11: "STOLYARKA",  # G petlya o'ngdan
+    12: "STOLYARKA",  # G petlya chapdan
+    13: "STOLYARKA",  # V petlya o'ngdan
+    14: "STOLYARKA",  # V petlya chapdan
+}
+
+
 @dataclass
 class ParsedMaterial:
     good_id: int
@@ -63,6 +85,9 @@ class ParsedPart:
     edges: dict[str, dict[str, Any]]  # side(l/r/t/b) -> {"mat": name, "symbol": A}
     label_num: int | None = None  # CS stub order, file-global 1-based
     xnc_ops: list[XncOp] = field(default_factory=list)
+    #: Texnolog detal nomiga qo'lda yozgan marshrut: "eshik {7;11;8}" -> [7, 11, 8].
+    #: Bo'sh bo'lmasa — MARSHRUT SHU, fayldagi bosqichlar hisobga olinmaydi.
+    process_codes: list[int] = field(default_factory=list)
 
     @property
     def key(self) -> str:
@@ -106,9 +131,9 @@ class ParsedPart:
         for op in self.xnc_ops:
             if op.bores or op.edge_bores:
                 result["PRISADKA"] = result.get("PRISADKA", 0) + 1
-            if op.grooves:
-                result["PAZ"] = result.get("PAZ", 0) + 1
-            if op.mills:
+            # PAZ posti olib tashlandi — paz ham frezer stanogida kesiladi.
+            # `or`: bitta operatsiyada paz ham, freza ham bo'lsa BITTA o'tish, bitta skan.
+            if op.grooves or op.mills:
                 result["ROVER"] = result.get("ROVER", 0) + 1
         return result
 

@@ -84,7 +84,7 @@ const BADGE_RE =
 // Bu postlarning o'z ko'rinishi bor (quyidagi shoxlar: kesish xaritasi, CNC
 // detallar, kromka). Yangi maxsus ko'rinish qo'shilsa — postni shu yerga ham
 // qo'shing, aks holda uning terminali keraksiz vazifa so'rovini yuboraveradi.
-const OWN_VIEW_POSTS = ["ARRA", "PRISADKA", "PAZ", "ROVER", "KROMKA", "OVAL"]
+const OWN_VIEW_POSTS = ["ARRA", "PRISADKA", "ROVER", "KROMKA", "OVAL"]
 
 type LastScan =
   | { kind: "ok"; code: string; qoldiq: number; scanId: number; at: number }
@@ -674,8 +674,8 @@ function TerminalPage() {
               )}
             </div>
           </div>
-        ) : ["PRISADKA", "PAZ", "ROVER"].includes(ctx?.post_code ?? "") ? (
-          /* CNC postlar (PRISADKA/PAZ/ROVER): proyekt ro'yxati → detallar + SCX
+        ) : ["PRISADKA", "ROVER"].includes(ctx?.post_code ?? "") ? (
+          /* CNC postlar (PRISADKA/ROVER): proyekt ro'yxati → detallar + SCX
              fayllar; ROVER'da arra'siz detalga QR chiqarish ham shu sahifada */
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
             {scanStrip}

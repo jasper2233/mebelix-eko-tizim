@@ -14,7 +14,7 @@ from app.models import Material, Order, OrderFile, Part, PartInstance, PartRoute
 from app.models.enums import FileKind, MaterialType, PostCode, ProjectGeneration, RouteSource
 
 from .cutmap import build_cutmap
-from .models import ParsedProject
+from .models import PROCESS_POSTS, ParsedProject
 from .parser import ParseError
 from .scx import build_scx_files
 
@@ -120,7 +120,9 @@ async def ingest_project(
                 )
             qr_owner[qr] = pp.key
 
-    posts = {p.code: p for p in (await db.execute(select(Post))).scalars()}
+    # Kalit — matn: marshrut kodlari ham matn (PROCESS_POSTS), va noma'lum post
+    # `get()` da None beradi (enumga aylantirilsa ValueError -> 500 bo'lardi)
+    posts = {str(p.code): p for p in (await db.execute(select(Post))).scalars()}
 
     cutmap = build_cutmap(project) if any(c.data_blob for c in project.cut_ops) else None
 
@@ -213,23 +215,41 @@ async def ingest_project(
                 )
                 instances_created += 1
 
-            # routes (TZ 5.4): ARRA (kesish) — faqat listdan kesiladigan detalga;
-            # KROMKA — qirralari bo'yicha; XNC bosqichlari — dastur mazmunidan.
-            # Optimizatsiya qilingan faylda materiali ham, yorliq raqami ham yo'q detal
-            # umuman listga joylashtirilmagan (masalan kupe alyuminiy profillari) —
-            # unga ARRA vazifasi berilsa arrachi kesa olmaydigan soxta ish paydo bo'ladi.
-            sheet_part = project.generation != "processed" or pp.material_name or pp.label_num is not None
-            stage_per_instance: dict[PostCode, int] = {PostCode.ARRA: 1} if sheet_part else {}
-            if pp.kromka_sides:
-                stage_per_instance[PostCode.KROMKA] = pp.kromka_sides
-            for code_str, sides in pp.stage_sides().items():
-                stage_per_instance[PostCode(code_str)] = sides
+            # Marshrut (TZ 5.4) ikki manbadan: NOODATIY detalda — nomdagi ro'yxatdan,
+            # qolganlarida — fayl mazmunidan.
+            # Kalit post KODI (matn): noma'lum post `posts.get()` da None beradi va
+            # tushunarli xato chiqadi; `PostCode(...)` bo'lsa ValueError -> 500 bo'lardi.
+            stage_per_instance: dict[str, int] = {}
+            if pp.process_codes:
+                # Texnolog nomga yozgan ro'yxat ("eshik {7;11;8}") fayldagi bosqichlarni
+                # BUTUNLAY almashtiradi — arra ham avtomatik qo'shilmaydi, chunki jarayon
+                # roverdan yoki boshqa postdan boshlanishi mumkin.
+                for code in pp.process_codes:
+                    post_code = PROCESS_POSTS[code]
+                    # Kromka skanlari QIRRA bo'yicha sanaladi (terminalda "tomonlar",
+                    # ish haqi metrda) — boshqa postlarda bitta o'tish = bitta skan.
+                    per = (pp.kromka_sides or 1) if post_code == PostCode.KROMKA else 1
+                    stage_per_instance[post_code] = stage_per_instance.get(post_code, 0) + per
+            else:
+                # ARRA — faqat listdan kesiladigan detalga. Optimizatsiya qilingan faylda
+                # materiali ham, yorliq raqami ham yo'q detal umuman listga joylashtirilmagan
+                # (masalan kupe alyuminiy profillari) — unga ARRA vazifasi berilsa arrachi
+                # kesa olmaydigan soxta ish paydo bo'lardi.
+                sheet_part = project.generation != "processed" or pp.material_name or pp.label_num is not None
+                if sheet_part:
+                    stage_per_instance[PostCode.ARRA] = 1
+                if pp.kromka_sides:
+                    stage_per_instance[PostCode.KROMKA] = pp.kromka_sides
+                stage_per_instance.update(pp.stage_sides())
             for post_code, per_instance in stage_per_instance.items():
+                post = posts.get(post_code)
+                if post is None:
+                    raise ParseError(f"Post sozlanmagan: {post_code}. Administratorga murojaat qiling.")
                 db.add(
                     PartRoute(
                         order_id=order.id,
                         part_id=part.id,
-                        post_id=posts[post_code].id,
+                        post_id=post.id,
                         source=RouteSource.AUTO,
                         per_instance=per_instance,
                         total_required=pp.count * per_instance,

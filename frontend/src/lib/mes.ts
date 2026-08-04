@@ -54,9 +54,9 @@ export const POST_COLORS: Record<string, string> = {
   KROMKA: "var(--post-kromka)",
   OVAL: "var(--post-oval)",
   PRISADKA: "var(--post-prisadka)",
-  PAZ: "var(--post-paz)",
   ROVER: "var(--post-rover)",
   STOLYARKA: "var(--post-stolyarka)",
+  BOYOQ: "var(--post-boyoq)",
 }
 
 // Rollar manbasi — backend enum'i (generatsiya qilingan UserRole); yorliq
@@ -72,9 +72,9 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   kromkachi: "Kromkachi",
   ovalchi: "Oval kromkachi",
   prisadkachi: "Prisadkachi",
-  pazchi: "Pazchi",
   roverchi: "Roverchi",
   stolyar: "Stolyar",
+  boyoqchi: "Bo'yoqchi",
 }
 
 // Sahifa huquqi BITTA joyda: sidebar menyusi ham, route guard ham shu ikkisini
@@ -95,9 +95,9 @@ export const OPERATOR_ROLES = [
   "kromkachi",
   "ovalchi",
   "prisadkachi",
-  "pazchi",
   "roverchi",
   "stolyar",
+  "boyoqchi",
 ] as const
 
 export const EMPLOYEE_STATUS_LABELS: Record<string, string> = {

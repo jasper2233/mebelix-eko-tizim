@@ -270,6 +270,17 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[dict]:
             (
                 await db.execute(
                     select(PartInstance.order_id, func.count(func.distinct(PartInstance.id)))
+                    # Faqat ARRA marshruti BOR detallar: aks holda arradan o'tmaydigan
+                    # detalning cheki (masalan roverchi o'zi chiqargani) arra hisobini
+                    # shishirib, jami'dan oshib ketardi va proyekt arrachi ro'yxatidan
+                    # yo'qolardi — listlar hali kesilmagan bo'lsa ham.
+                    .join(
+                        PartRoute,
+                        (PartRoute.part_id == PartInstance.part_id)
+                        & (PartRoute.post_id == post.id)
+                        & (PartRoute.is_enabled == True)  # noqa: E712
+                        & (PartRoute.is_deleted == False),  # noqa: E712
+                    )
                     .outerjoin(
                         Scan,
                         (Scan.instance_id == PartInstance.id)
@@ -504,13 +515,13 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
 
 @router.get("/orders/{order_id}/prisadka", response_model=dict, operation_id="read_terminal_prisadka")
 async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int) -> dict:
-    """CNC post sahifasi (PRISADKA/PAZ/ROVER): shu postga tegishli detallar +
+    """CNC post sahifasi (PRISADKA/ROVER): shu postga tegishli detallar +
     SCX fayllari (stanok kompyuteriga yuklab olish uchun, TZ 12.5). ROVER'da
     jarayon arradan EMAS, roverdan boshlanishi ham mumkin — shunday detallarga
     QR chekni shu sahifadan chiqarish uchun arra_route belgisi ham beriladi."""
     machine, post = ctx
-    if post.code not in (PostCode.PRISADKA, PostCode.PAZ, PostCode.ROVER):
-        raise HTTPException(status_code=403, detail="Bu sahifa faqat CNC postlarida (PRISADKA/PAZ/ROVER) ko'rsatiladi.")
+    if post.code not in (PostCode.PRISADKA, PostCode.ROVER):
+        raise HTTPException(status_code=403, detail="Bu sahifa faqat CNC postlarida (PRISADKA/ROVER) ko'rsatiladi.")
 
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
 

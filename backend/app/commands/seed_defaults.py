@@ -49,15 +49,8 @@ POSTS: list[dict[str, object]] = [
         "color": "#7c3aed",
         "icon": "drill",
     },
-    {
-        "code": PostCode.PAZ,
-        "name": "Paz",
-        "order_index": 5,
-        "unit": PostUnit.METER,
-        "requires_assignment_choice": True,
-        "color": "#b45309",
-        "icon": "groove",
-    },
+    # order_index 5 (eski PAZ) ataylab bo'sh: tartib faqat nisbiy ishlatiladi,
+    # qayta raqamlash esa mavjud bazalarda bekorga siljish beradi.
     {
         "code": PostCode.ROVER,
         "name": "Rover",
@@ -74,6 +67,16 @@ POSTS: list[dict[str, object]] = [
         "unit": PostUnit.PIECE,
         "color": "#15803d",
         "icon": "assembly",
+    },
+    # Bo'yoq oxirgi bosqich: haqiqiy marshrut {7;11;8} = rover -> petlya (stolyarka) -> bo'yoq.
+    # Stanok tanlash shart emas — bo'yoq kamerasi bitta, terminalda umumiy vazifalar ro'yxati.
+    {
+        "code": PostCode.BOYOQ,
+        "name": "Bo'yoq",
+        "order_index": 8,
+        "unit": PostUnit.PIECE,
+        "color": "#a16207",
+        "icon": "paint",
     },
 ]
 
