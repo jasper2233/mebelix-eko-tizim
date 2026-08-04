@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import useCustomToast from "@/hooks/useCustomToast"
-import { formatSize, POST_COLORS } from "@/lib/mes"
+import { formatSize, isCustomRoute, POST_COLORS } from "@/lib/mes"
 import { getOrderMatrixQueryOptions, getPostsQueryOptions } from "@/queries/mes"
 import { handleError } from "@/utils"
 
@@ -194,6 +194,16 @@ export function OrderMatrix({
                   <span className="block max-w-[220px] truncate text-xs text-muted-foreground">
                     {part.name}
                   </span>
+                  {/* Marshrut detal NOMIDAN olingan — qo'ldagi belgi keyingi
+                      yuklashda yo'qoladi, chunki fayl marshrutni qayta quradi */}
+                  {isCustomRoute(part.name) && (
+                    <span
+                      className="mt-0.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-2xs font-bold text-amber-900"
+                      title="Marshrut detal nomidagi kodlardan olingan. Bu yerda belgilagan o'zgarish faylni qayta yuklaganda yo'qoladi — marshrutni GibLab'da nomdan tuzating."
+                    >
+                      Marshrut nomdan
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell className="num whitespace-nowrap text-xs">
                   {formatSize(part.length, part.width, part.thickness)}

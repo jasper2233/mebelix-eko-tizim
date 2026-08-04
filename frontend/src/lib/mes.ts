@@ -88,6 +88,13 @@ const MULTI_OP_POSTS = new Set(
     .filter((p, _i, all) => all.filter((x) => x === p).length > 1),
 )
 
+/** Detal marshruti nomdagi kodlardan olinganmi (backend `process_codes`). */
+export function isCustomRoute(name: string): boolean {
+  return [...name.matchAll(/\{([^{}]*)\}/g)]
+    .flatMap((m) => m[1].split(/[;,.\s]+/))
+    .some((t) => t !== "" && Number(t) in PROCESS_OPS)
+}
+
 /**
  * Detal nomidagi marshrut ro'yxatidan ("eshik {7;11;8}") SHU POSTGA tegishli
  * amal nomlari.
