@@ -48,12 +48,16 @@ import {
 } from "@/components/ui/table"
 import useCustomToast from "@/hooks/useCustomToast"
 import { useMesWs } from "@/hooks/useMesWs"
-import { formatDateTime } from "@/lib/mes"
+import { requireAccess } from "@/lib/guards"
+import { formatDateTime, isAdmin } from "@/lib/mes"
 import { getMachinesQueryOptions } from "@/queries/mes"
 import { handleError } from "@/utils"
 
 export const Route = createFileRoute("/_layout/printers")({
   component: PrintersPage,
+  // Backend ham AdminUser talab qiladi — guardsiz admin bo'lmagan odam bo'sh
+  // jadval ko'rib, 403 qaytaradigan endpointni har 10 soniyada so'rab turardi.
+  beforeLoad: requireAccess(isAdmin),
   head: () => ({ meta: [{ title: "Printer agentlar | MebeliX" }] }),
 })
 

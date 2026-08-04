@@ -1,8 +1,8 @@
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { createFileRoute, redirect } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
 import { Suspense } from "react"
 
-import { type UserRead, UsersService } from "@/client"
+import type { UserRead } from "@/client"
 import AddUser from "@/components/Admin/AddUser"
 import { UserActionsMenu } from "@/components/Admin/UserActionsMenu"
 import { PageHeader } from "@/components/Common/PageHeader"
@@ -17,19 +17,15 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import useCurrentUser from "@/hooks/useCurrentUser"
-import { ROLE_LABELS } from "@/lib/mes"
+import { requireAccess } from "@/lib/guards"
+import { isSuperuser, ROLE_LABELS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { getUsersQueryOptions } from "@/queries/users"
 
 export const Route = createFileRoute("/_layout/admin")({
   component: Admin,
-  beforeLoad: async () => {
-    // Sahifa superuser'lar uchun — backend ham endi ro'yxatni faqat superuser'ga beradi.
-    const user = await UsersService.readUserMe()
-    if (!user.is_superuser) {
-      throw redirect({ to: "/" })
-    }
-  },
+  // Sahifa superuser'lar uchun — backend ham ro'yxatni faqat superuser'ga beradi.
+  beforeLoad: requireAccess(isSuperuser),
   head: () => ({
     meta: [
       {

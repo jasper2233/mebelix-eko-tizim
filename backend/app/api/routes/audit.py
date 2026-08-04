@@ -6,7 +6,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import func, select
 
-from app.api.deps import SessionDep, StaffReadUser
+from app.api.deps import DirectorUser, SessionDep
 from app.core.config import settings
 from app.models import AuditLog, Employee
 from app.models.user import User
@@ -37,7 +37,8 @@ class AuditLogRead(BaseModel):
 @router.get("/", response_model=Paginated[AuditLogRead], operation_id="read_audit_logs")
 async def read_audit_logs(
     db: SessionDep,
-    _: StaffReadUser,
+    # Butun tizimning audit izi — manager/texnolog ko'rmaydi (faqat direktor + admin)
+    _: DirectorUser,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=settings.MAX_PAGE_SIZE)] = settings.DEFAULT_PAGE_SIZE,
     module: str | None = None,

@@ -14,7 +14,7 @@ import {
   UserRound,
   Users,
 } from "lucide-react"
-
+import type { UserRead } from "@/client"
 import {
   Sidebar,
   SidebarContent,
@@ -23,13 +23,17 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import useCurrentUser from "@/hooks/useCurrentUser"
+import { isAdmin, isAdminOrDirector, isSuperuser } from "@/lib/mes"
 import { getOrderStatusCountsQueryOptions } from "@/queries/mes"
 import { type Item, Main } from "./Main"
 import { User } from "./User"
 
-// Rolga qarab navigatsiya (TZ 3.7 rollar-modullar matritsasi)
-function navItems(role: string | undefined, isSuperuser: boolean): Item[] {
-  const admin = isSuperuser || role === "admin"
+// Rolga qarab navigatsiya (TZ 3.7 rollar-modullar matritsasi).
+// Huquq predikatlari route guard'lari bilan BIR XIL manbadan (lib/mes) —
+// menyuda ko'rinib, ochilganda qaytarib yuboradigan sahifa bo'lmasligi uchun.
+function navItems(user: UserRead | null | undefined): Item[] {
+  const role = user?.role
+  const admin = isAdmin(user)
   const items: Item[] = [{ icon: Home, title: "Boshqaruv paneli", path: "/" }]
 
   if (
@@ -59,15 +63,19 @@ function navItems(role: string | undefined, isSuperuser: boolean): Item[] {
     items.push({ icon: BarChart3, title: "Hisobotlar", path: "/reports" })
   }
   items.push({ icon: Tv, title: "LIVE Tablo", path: "/tablo" })
-  if (admin || role === "director") {
+  if (isAdminOrDirector(user)) {
     items.push({
       icon: History,
       title: "Tranzaksiyalar",
       path: "/transactions",
     })
   }
-  if (admin) {
+  // Foydalanuvchilar ro'yxati barcha telefon raqamlarni ochadi — backend uni
+  // faqat superuser'ga beradi, shuning uchun menyu ham shu shartda
+  if (isSuperuser(user)) {
     items.push({ icon: Users, title: "Foydalanuvchilar", path: "/admin" })
+  }
+  if (admin) {
     items.push({ icon: Printer, title: "Printer agentlar", path: "/printers" })
     items.push({ icon: ScrollText, title: "Loglar", path: "/logs" })
   }
@@ -79,7 +87,7 @@ const TERMINAL_STATUSES = ["delivered", "cancelled"]
 
 export function AppSidebar() {
   const { currentUser } = useCurrentUser()
-  const items = navItems(currentUser?.role, Boolean(currentUser?.is_superuser))
+  const items = navItems(currentUser)
 
   // Reyestr sahifasi ham AYNAN shu kalitni ishlatadi — TanStack dedupe qiladi,
   // ya'ni sidebar qo'shimcha so'rov qo'shmaydi.

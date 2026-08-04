@@ -85,4 +85,5 @@ ManagerOrTexnolog = Annotated[User, Depends(require_roles(UserRole.MANAGER, User
 StaffReadUser = Annotated[
     User, Depends(require_roles(UserRole.MANAGER, UserRole.TEXNOLOG, UserRole.DIRECTOR))
 ]  # read-only lists shared by office roles
+DirectorUser = Annotated[User, Depends(require_roles(UserRole.DIRECTOR))]  # audit trail: director + admin
 AdminUser = Annotated[User, Depends(require_roles())]  # admin/superuser only

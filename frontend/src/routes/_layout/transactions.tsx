@@ -13,11 +13,15 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { formatDateTime } from "@/lib/mes"
+import { requireAccess } from "@/lib/guards"
+import { formatDateTime, isAdminOrDirector } from "@/lib/mes"
 import { getAuditLogsQueryOptions } from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/transactions")({
   component: TransactionsPage,
+  // Butun tizimning audit izi — sidebar allaqachon admin/direktorga cheklagan,
+  // lekin guardsiz manager URL ni qo'lda yozib kiraverardi.
+  beforeLoad: requireAccess(isAdminOrDirector),
   head: () => ({ meta: [{ title: "Tranzaksiyalar | MebeliX" }] }),
 })
 
