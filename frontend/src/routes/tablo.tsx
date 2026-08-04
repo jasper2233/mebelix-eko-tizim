@@ -1,4 +1,4 @@
-﻿// TABLO (TZ 9): sex zalidagi TV ekran â€” buyurtmalar Ã— bosqichlar jonli matritsasi.
+// TABLO (TZ 9): sex zalidagi TV ekran — buyurtmalar × bosqichlar jonli matritsasi.
 // Rejimlar: HAJM / SONI / FOIZ. Kontekst-aware: tablo user stanogi ustuni ajratiladi.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -42,12 +42,12 @@ export const Route = createFileRoute("/tablo")({
 type Mode = "hajm" | "soni" | "foiz"
 
 const UNIT_LABELS: Record<string, string> = {
-  m2: "mÂ²",
+  m2: "m²",
   meter: "m",
   piece: "dona",
 }
 
-/** Soat alohida komponentda: sekundlik tick butun matritsani emas, shu yaprÐ¾qni yangilaydi. */
+/** Soat alohida komponentda: sekundlik tick butun matritsani emas, shu yaproqni yangilaydi. */
 function Clock() {
   const [t, setT] = useState(() => new Date().toLocaleTimeString("uz-Latn-UZ"))
   useEffect(() => {
@@ -84,7 +84,7 @@ function TabloPage() {
   )
 
   useEffect(() => {
-    // Auto-refresh har 5 daqiqada (TZ 9.7) â€” kesh muammolarini oldini oladi
+    // Auto-refresh har 5 daqiqada (TZ 9.7) — kesh muammolarini oldini oladi
     const reload = setTimeout(() => window.location.reload(), 5 * 60_000)
     return () => clearTimeout(reload)
   }, [])
@@ -156,10 +156,10 @@ function TabloPage() {
           <table className="w-full border-separate border-spacing-2">
             <thead>
               <tr className="text-2xl uppercase tracking-wider text-muted-foreground">
-                <th className="px-2 text-left">â„– / Buyurtma</th>
+                <th className="px-2 text-left">№ / Buyurtma</th>
                 <th className="px-2 text-left">Topshirish sanasi</th>
                 {(data?.posts as TabloPost[] | undefined)?.map((p) => {
-                  // Kontekst rejimida boshqa ustunlar RANG bilan susayadi, opacity bilan emas â€”
+                  // Kontekst rejimida boshqa ustunlar RANG bilan susayadi, opacity bilan emas —
                   // opacity-40 oq fonda kontrastni 1.85:1 ga tushirib, uzoqdan o'qib bo'lmas qilardi.
                   const dim = Boolean(contextPostId && p.id !== contextPostId)
                   return (
@@ -205,13 +205,13 @@ function TabloPage() {
                           ? `${done} / ${total}`
                           : total
                             ? `${Math.round((done / total) * 1000) / 10}%`
-                            : "â€”"
+                            : "—"
                     return (
                       <td
                         key={p.id}
                         className="num bg-primary px-2 py-3 text-center text-2xl font-black text-primary-foreground"
                       >
-                        {total ? label : "â€”"}
+                        {total ? label : "—"}
                       </td>
                     )
                   })}
@@ -291,7 +291,7 @@ function TabloCell({
   if (!stage?.total) {
     return (
       <td className="bg-card px-2 py-3 text-center text-2xl text-muted-foreground shadow-sm">
-        â€”
+        —
       </td>
     )
   }
@@ -317,7 +317,7 @@ function TabloCell({
             : "bg-card shadow-sm",
       )}
     >
-      {/* Kontekst rejimida faqat progress to'ldirgichi susayadi â€” raqam to'liq
+      {/* Kontekst rejimida faqat progress to'ldirgichi susayadi — raqam to'liq
           kontrastda qoladi, aks holda 4 metrdan o'qib bo'lmasdi. */}
       {!complete && (
         <span
@@ -342,7 +342,7 @@ function TabloCell({
                 : "",
         )}
       >
-        {complete ? "âœ“" : label}
+        {complete ? "✓" : label}
       </span>
       {overdue && (
         <span className="relative block text-lg font-bold text-red-700">
@@ -367,7 +367,7 @@ function TabloOrderDrill({
     queryFn: () => TabloService.readTabloOrder({ orderId }),
     refetchInterval: 30_000,
   })
-  // Ustunlar matritsa postlaridan (order_index tartibida) â€” qotirilgan ro'yxat
+  // Ustunlar matritsa postlaridan (order_index tartibida) — qotirilgan ro'yxat
   // OVAL kabi yangi postni ko'rsatmay qolardi
   const { data: matrix } = useQuery(getTabloMatrixQueryOptions())
   const drillPosts =
@@ -433,7 +433,7 @@ function TabloOrderDrill({
         onClick={onBack}
         className="m-4 self-start rounded-lg bg-secondary px-8 py-4 text-2xl font-black uppercase hover:bg-accent"
       >
-        â† Ortda
+        ← Ortda
       </button>
     </div>
   )
