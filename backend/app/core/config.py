@@ -1,8 +1,13 @@
 import os
 from enum import StrEnum
+from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from pydantic import SecretStr, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Sex mahalliy vaqti — hisobot/audit kunlari va chek timestamp'lari shu zonada (TZ 10.4).
+TASHKENT_TZ = ZoneInfo("Asia/Tashkent")
 
 # Defaults referenced both by `Settings` field defaults and by the production-readiness validator below.
 _DEFAULT_SECRET_KEY = "secret-key-change-in-production"
@@ -131,3 +136,8 @@ def _validate_production_settings(s: Settings) -> None:
 
 settings = Settings()
 _validate_production_settings(settings)
+
+
+def upload_root() -> Path:
+    """UPLOAD_DIR absolyut root'i — path traversal tekshiruvlari shu qiymatga nisbatan."""
+    return Path(settings.UPLOAD_DIR).resolve()

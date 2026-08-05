@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from collections.abc import AsyncGenerator, Callable
-from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
+from contextlib import asynccontextmanager
 from typing import Any
 
 import anyio
@@ -18,6 +18,7 @@ from sqlalchemy import text
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.api.deps import get_current_superuser
+from app.core.logger import setup_logging
 from app.core.middleware import RequestLoggingMiddleware
 from app.core.utils.rate_limit import rate_limiter
 from app.core.ws import ws_manager
@@ -84,25 +85,6 @@ async def check_redis_connection() -> None:
     await _retry_async("Redis connection", _probe)
 
 
-# -------------- Redis pools --------------
-async def create_redis_queue_pool() -> None:
-    queue.pool = await create_pool(ArqRedisSettings(host=settings.REDIS_HOST, port=settings.REDIS_PORT))
-
-
-async def close_redis_queue_pool() -> None:
-    if queue.pool is not None:
-        await queue.pool.aclose()  # type: ignore
-
-
-async def create_redis_rate_limit_pool() -> None:
-    rate_limiter.initialize(settings.REDIS_URL)
-
-
-async def close_redis_rate_limit_pool() -> None:
-    if rate_limiter.client is not None:
-        await rate_limiter.client.aclose()  # type: ignore[attr-defined]
-
-
 # -------------- thread pool --------------
 def set_threadpool_tokens() -> None:
     """Raise AnyIO's thread-pool size (`THREADPOOL_TOKENS`) so blocking calls don't queue behind each other."""
@@ -110,31 +92,29 @@ def set_threadpool_tokens() -> None:
 
 
 # -------------- application factory --------------
-def lifespan_factory(settings: Settings) -> Callable[[FastAPI], _AsyncGeneratorContextManager[Any]]:
-    """Build the app lifespan: open Redis pools, verify connections, then yield. Closes pools on shutdown."""
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator:
+    """Open Redis pools, verify connections, then yield. Closes pools on shutdown."""
+    set_threadpool_tokens()
+    ws_redis: AsyncRedis | None = None
+    try:
+        queue.pool = await create_pool(ArqRedisSettings(host=settings.REDIS_HOST, port=settings.REDIS_PORT))
+        rate_limiter.initialize(settings.REDIS_URL)
+        await check_redis_connection()
+        # Real-time bridge (TZ 2.3): cross-worker WS fan-out over Redis pub/sub.
+        ws_redis = AsyncRedis.from_url(settings.REDIS_URL)
+        await ws_manager.start_listener(ws_redis)
 
-    @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncGenerator:
-        set_threadpool_tokens()
-        ws_redis: AsyncRedis | None = None
-        try:
-            await create_redis_queue_pool()
-            await create_redis_rate_limit_pool()
-            await check_redis_connection()
-            # Real-time bridge (TZ 2.3): cross-worker WS fan-out over Redis pub/sub.
-            ws_redis = AsyncRedis.from_url(settings.REDIS_URL)
-            await ws_manager.start_listener(ws_redis)
-
-            await check_database_connection()
-            yield
-        finally:
-            await ws_manager.stop_listener()
-            if ws_redis is not None:
-                await ws_redis.close()
-            await close_redis_queue_pool()
-            await close_redis_rate_limit_pool()
-
-    return lifespan
+        await check_database_connection()
+        yield
+    finally:
+        await ws_manager.stop_listener()
+        if ws_redis is not None:
+            await ws_redis.close()
+        if queue.pool is not None:
+            await queue.pool.aclose()  # type: ignore
+        if rate_limiter.client is not None:
+            await rate_limiter.client.aclose()  # type: ignore[attr-defined]
 
 
 def _install_docs_router(application: FastAPI, settings: Settings) -> None:
@@ -166,6 +146,7 @@ def create_application(
     **kwargs: Any,
 ) -> FastAPI:
     """Build the FastAPI app: metadata, lifespan, middleware (CORS + request logging), and env-conditional docs."""
+    setup_logging()
     kwargs.update(
         title=settings.APP_NAME,
         description="MebeliX API",
@@ -175,7 +156,7 @@ def create_application(
         openapi_url=None,
     )
 
-    application = FastAPI(lifespan=lifespan_factory(settings), **kwargs)
+    application = FastAPI(lifespan=lifespan, **kwargs)
     application.include_router(router)
     application.add_middleware(RequestLoggingMiddleware)
     application.add_middleware(

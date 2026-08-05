@@ -1,4 +1,4 @@
-"""Idempotent bootstrap: default organization and the 6 production posts (TZ 4.4).
+"""Idempotent bootstrap: default organization and the 7 production posts (TZ 4.4).
 
 Run: python -m app.commands.seed_defaults (called from prestart/setup scripts).
 """
@@ -12,6 +12,7 @@ from app.core.db import local_session
 from app.models import Organization, Post
 from app.models.enums import PostCode, PostUnit
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 POSTS: list[dict[str, object]] = [

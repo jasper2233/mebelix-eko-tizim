@@ -1,6 +1,4 @@
 import asyncio
-import importlib
-import pkgutil
 from logging.config import fileConfig
 
 from alembic import context
@@ -24,13 +22,9 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 
-def import_models(package_name: str) -> None:
-    package = importlib.import_module(package_name)
-    for _, module_name, _ in pkgutil.walk_packages(package.__path__, package.__name__ + "."):
-        importlib.import_module(module_name)
+# app/models/__init__.py barcha jadval modullarini statik import qiladi — metadata shu bilan to'ladi.
+import app.models  # noqa: F401, E402
 
-
-import_models("app.models")
 target_metadata = Base.metadata
 
 

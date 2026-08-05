@@ -1,10 +1,10 @@
+import logging
 from datetime import UTC, datetime
 
 from fastapi import Request
-from redis.asyncio import ConnectionPool, Redis
+from redis.asyncio import Redis
 
 from app.core.exceptions import RateLimitException
-from app.core.logger import logging
 
 logger = logging.getLogger(__name__)
 
@@ -12,13 +12,11 @@ logger = logging.getLogger(__name__)
 class RateLimiter:
     """Holds the shared Redis client used by `RateLimit`. Use the module-level `rate_limiter` instance."""
 
-    pool: ConnectionPool | None = None
     client: Redis | None = None
 
     def initialize(self, redis_url: str) -> None:
-        if self.pool is None:
-            self.pool = ConnectionPool.from_url(redis_url)
-            self.client = Redis(connection_pool=self.pool)
+        if self.client is None:
+            self.client = Redis.from_url(redis_url)
 
     async def is_rate_limited(self, key: str, limit: int, period: int) -> bool:
         if self.client is None:

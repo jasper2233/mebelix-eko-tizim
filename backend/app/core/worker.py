@@ -4,6 +4,7 @@ import logging
 from arq.connections import RedisSettings
 from arq.worker import Worker
 
+from app.core.logger import setup_logging
 from app.core.setup import check_database_connection
 from app.tasks import all_tasks
 
@@ -16,6 +17,7 @@ try:
 except ImportError:  # uvloop is Linux/macOS only; Windows dev runs on the default loop
     pass
 
+setup_logging()  # arq worker entrypoint — JSON logging, xuddi app protsessidagidek
 logger = logging.getLogger(__name__)
 
 
