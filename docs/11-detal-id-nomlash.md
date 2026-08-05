@@ -4,6 +4,10 @@ Chekdagi yozuv, QR mazmuni, SCX fayl nomi, bazadagi `qr_text` va barcha UI
 sahifalar — **hammasi bitta satr**. Bu Nanxing skan mosligi (skaner o'qigan
 matn = fayl nomi) va operator adashmasligi uchun qat'iy qoida.
 
+Bitta istisno: chekdagi odam o'qiydigan matn qatori 20 belgiga qisqartiriladi
+(`labels.py` — `d.qr_text[:20]`); QR, SCX nomi va baza (`String(120)`) esa
+to'liq satrni saqlaydi. Oddiy raqamli kodlarda farq sezilmaydi.
+
 ## Tuzilishi
 
 ```
@@ -13,8 +17,8 @@ matn = fayl nomi) va operator adashmasligi uchun qat'iy qoida.
 
 | Qism | Qayerdan | Ma'nosi |
 | --- | --- | --- |
-| `100701` | .project dagi mahsulot `code` | buyurtma ichidagi mahsulot (masalan 1007-buyurtma, 01-shkaf) |
-| `03_002` | .project dagi detal `code` (GibLab sxemasi `{blok}_{pozitsiya}`) | detal turi |
+| `100701` | .project dagi mahsulot `code` (bo'lmasa `name`, u ham bo'lmasa `PRODUCT`) | buyurtma ichidagi mahsulot (masalan 1007-buyurtma, 01-shkaf) |
+| `03_002` | .project dagi detal `code` (GibLab sxemasi `{blok}_{pozitsiya}`); faylda kod bo'lmasa parser tartib raqami beradi (`001`, `002`, ...) va ogohlantiradi | detal turi |
 | `-2` | parser qo'shadi (`_dedupe_part_code`) | fayl NUQSONI belgisi: bitta mahsulotda IKKI detal bir xil kod bilan kelgan — ikkinchisi `-2` (uchinchisi `-3`, ...). Bu BOSHQA detal, nusxa emas: odatda ko'zgu juftlik (chap/o'ng bok — teshiklari qarama-qarshi) yoki kromka tomoni farqli juftlik |
 | `_n` | ingest (`ParsedPart.qr_texts`) | nusxa raqami — FAQAT detal 1 dan ko'p nusxada bo'lsa (`_1.._count`). Yagona nusxada suffiks YO'Q |
 
@@ -36,12 +40,24 @@ matn = fayl nomi) va operator adashmasligi uchun qat'iy qoida.
 - `-2` ni `_2` qilib bo'lmaydi: `100701_01_010_2` "2-nusxa"mi yoki "2-detal"mi —
   ajratib bo'lmay qoladi, baza unique indeksi ham to'qnashadi.
 
+## Himoya tekshiruvlari
+
+- **Yo'l belgilariga taqiq**: detal yoki mahsulot kodida `\`, `/` yoki `..`
+  bo'lsa parse `ParseError` bilan to'xtaydi ("... taqiqlangan belgi") — ID SCX
+  fayl nomiga aylanadi, uploads tashqarisiga yozib bo'lmasin (`parser.py`).
+- **ID to'qnashuvini oldindan aniqlash**: ikki HAR XIL detal bir xil QR bersa
+  (masalan `010` kodli 2 nusxa va `010_2` kodli detal), ingest unique-indeks
+  500 xatosi o'rniga do'stona `ParseError` beradi: "Detal ID to'qnashuvi: ..."
+  (`ingest.py ingest_project`).
+- **Skan format darvozasi**: `scanning.py` dagi `_QR_RE = ^.+_.+$` — kamida
+  bitta `_` bo'lmagan QR bazaga murojaatdan oldin `E002` bilan rad etiladi.
+
 ## Qoida qo'llanadigan joylar (hammasida aynan bir satr)
 
 | Joy | Manba kod |
 | --- | --- |
 | Bazadagi `part_instance.qr_text` | `ingest.py` (`ParsedPart.qr_texts`), matritsada son o'zgarsa `orders.py _resize_instances` |
-| Chekdagi matn qatori va QR | `services/labels.py` (`qr_text` / `qr_part_code`) |
+| Chekdagi matn qatori va QR | `services/labels.py` (`qr_text`; `qr_part_code` — `scanning.py` dan import) |
 | SCX fayl nomi va ichidagi Panel ID | `services/giblab/scx.py` (`build_scx_files`, nomlar bazadagi QR'lardan) |
 | Skan tekshiruvi | `services/scanning.py` (aynan moslik; eski `_1` yorliqlar uchun fallback) |
 | Terminal UI (banner, tarix, kromka, prisadka) | `qr_text` to'g'ridan ko'rsatiladi, hech qayerda parse qilinmaydi |
@@ -49,6 +65,10 @@ matn = fayl nomi) va operator adashmasligi uchun qat'iy qoida.
 Eski konvensiya (2026-08-02 gacha): yagona nusxada ham `_1` yozilardi.
 Migratsiya `c9e5b2a41d78` mavjud bazani yangi qoidaga o'tkazgan; o'shagacha
 chop etilgan `_1` li yorliqlarni skan qilish fallback bilan ishlayveradi.
+Eski buyurtmalarning SCX fayllarini yangi nomlarga o'tkazish uchun
+`POST /orders/{order_id}/scx/regenerate` (texnolog huquqi) bor — fayllarni
+bazadagi QR'lardan qayta quradi (`orders.py regenerate_order_scx`, ingest
+bilan umumiy `write_and_register_scx` helperi orqali).
 
 ## Merge qilinmasligi haqida
 

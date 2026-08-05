@@ -93,7 +93,7 @@ Bitta teg, oltita turdagi ma'lumot uchun:
 | `band` | Pogonaj material — kromka lentasi, profil, quvur. `w`/`t`, `count` metrda | ✅ material registri |
 | `simple` | **Furnitura**: petlya, yevrovint, dasta, napravlyayushiye. `unit`, `count`, `cost` | ✅ material registri (`hardware`) |
 | `tool.cutting` | Kesish dastgohi sozlamalari. **`swSawthick` — pilla qalinligi (kerf), default 4.4 mm** | ✅ faqat kerf |
-| `tool.edgeline` | Kromkalash dastgohi. `elRestSide`, **`elWidthPreJoint` — prifugovka kengligi** | ✅ faqat `elRestSide` |
+| `tool.edgeline` | Kromkalash dastgohi. `elRestSide`, **`elWidthPreJoint` — prifugovka kengligi** | ❌ o'qilmaydi (qiymati hech qayerda ishlatilmasdi, 2026-08-05 da olib tashlandi) |
 
 `tool.cutting` ning qolgan atributlari (`swPackageHeight`, `swMaxturns`, `swSort`,
 `swSortInBand`, `swComplexBand`, `swMinSizeBand`, `swMaxSizeBand`, `swMaxLengthBand`,
@@ -214,8 +214,9 @@ pilla o'lchamiga mos tushadi.
 
 Parser zanjir bilan oladi: `l/w` → `dl/dw` → `cl/cw` → `jl/jw`. Zanjir kerak, chunki
 2-rejimdagi faylda faqat `jl/jw` bo'lishi mumkin va aks holda detal o'lchamsiz qolardi.
-`jl/jw` `Part.saw_length/saw_width` da saqlanadi — nomi chalg'itadi, u aslida
-"prifugovkadan keyingi zagotovka", pilla o'lchami emas.
+`jl/jw` alohida saqlanmaydi — u faqat zanjirning oxirgi zaxira qadami (ilgari
+`part.saw_length/saw_width` ustunlarida turardi; hech qayerda o'qilmagani uchun
+2026-08-05 migratsiyasida olib tashlangan).
 
 Fizik ketma-ketlik (kuxniya.project, kromka 1 mm):
 arra `cl`=2230 kesadi → prifugovka 1 mm oladi (`jl`=2229) → kromka 1 mm qo'shadi
@@ -367,8 +368,12 @@ Muhim tushunchalar:
   `cTrimEL`/`cTrimEW` — pastdan va o'ngdan minimal chekinish, manfiy bo'lsa `cTrimL`/`cTrimW`
   ishlatiladi
 - **Deloviy qoldiq** — `waste="true" business="true"` bo'lgan `<part>`; foydali o'lchami
-  ta'rifda, xom o'lchami `rl`/`rw` da
-- **`cPartCount`** — joylashtirilgan katakchalar soni; parser buni blob bilan solishtiradi
+  ta'rifda, xom o'lchami `rl`/`rw` da (parser `rl`/`rw` ni o'qimaydi)
+- **`cPartCount`** — joylashtirilgan katakchalar soni. Parser blobni yettita statistika
+  (`cMaterialCount`, `cPartCount`, `cCountPackets`, `cWasteAmount`, `cPartAmount`,
+  `cTrimLength`, `cTrimCount`) bilan solishtiradi (`csblob.self_check`); mos kelmasa
+  **butun fayl rad etiladi** — `ParseError("Kesish xaritasi mos kelmadi: ...")`,
+  dastlabki 5 muammo sanab beriladi (`cutmap.py`)
 
 CS operatsiyasida `<part>` ro'yxati bor, lekin **ro'yxatda bo'lish joylashtirilganini
 bildirmaydi**: `usedCount="0"` bo'lsa GibLab uni ataylab joylashtirmagan (material yetmagan
@@ -385,8 +390,10 @@ o'zi** (polosa/detal/qoldiq); vertikal boshlanish, daraxtga birinchi bo'lib qo's
 holda birinchi polosa butun detallari bilan yo'qolardi.
 
 **Blobsiz kesish operatsiyasi.** Optimallashtirilmagan faylda `data` umuman bo'lmaydi (korpusdagi
-ikki eski faylda 10 ta shunday CS bor) — bunda fayl `template` deb belgilanadi va arra
-marshruti qurilmaydi. Lekin optimallashtirilgan faylda ham bitta materialni optimallashtirmaslik
+ikki eski faylda 10 ta shunday CS bor) — bunda fayl `template` deb belgilanadi va yuklashda
+HTTP 422 bilan **rad etiladi** ("Bu fayl GibLabda hali optimizatsiya qilinmagan..." —
+`orders.py`, upload). `processed` bo'lishi uchun blob bilan birga `project.uuid` ham bo'lishi
+shart (`parser.py`). Lekin optimallashtirilgan faylda ham bitta materialni optimallashtirmaslik
 mumkin: o'shanda uning detallari arrachiga tushib, xaritasi bo'lmaydi. Xarita quruvchi bunday
 operatsiyani jimgina o'tkazib yuboradi (nusxa tekshiruvi nolni sanamaydi), shuning uchun parser
 materialni **nomi bilan** aytadi.
@@ -404,6 +411,11 @@ blobdan tashqari **o'qiladigan XML** ko'rinishida ham yozadi:
 Koordinatalar absolyut, ya'ni bu blobni ochmasdan xarita qurish uchun yetarli. Korpusdagi
 8 faylda `cSaveDrawCut` doim `false` va `draw` hech qayerda yo'q, shuning uchun parser uni
 o'qimaydi — blob yagona manba.
+
+**Teshiklar xarita modelida.** Har detalning XNC dasturlari birlashtirilib (dublikatlar
+olib tashlanadi, `merged_machining`) xarita modeliga `holes` bo'limi sifatida yoziladi
+(`cutmap.py`). Bitta manbani ARRA terminal xaritasi (`CutmapView`/`SheetSvg`) ham,
+yorliqdagi teshik eskizi (`labels.py`) ham o'qiydi.
 
 Boshqa optimizator sozlamalari: `csDirectCut` (birinchi rez yo'nalishi: 0 ixtiyoriy, 1 uzunlik
 bo'ylab, 2 kenglik bo'ylab, 3/4 afzal ko'rilgan), `csTexture` (tekstura hisobga olinadi,
@@ -425,7 +437,7 @@ Ildiz atributlari: `dx`/`dy`/`dz` (yangi) yoki `l`/`w`/`thick` (eski).
 |---|---|---|
 | `side` | Detal tomoni, default `true` = yuz tomon. Eski eksport `1`/`0` deb yozadi | ✅ **tomonning yagona manbasi** |
 | `turn` | Burilish: 0=0°, 1=90°, 2=180°, 3=270° | ❌ ogohlantirish |
-| `mirHor` / `mirVert` | Gorizontal / vertikal aks ettirish | ❌ ogohlantirish |
+| `mirHor` / `mirVert` | Gorizontal / vertikal aks ettirish | ✅ geometriyaga qo'llanadi (`xnc.apply_mirror`) |
 | `bySizeDetail` | Koordinatalar detal o'lchamiga nisbatan | korpusda 505/505 `true`; dastur `dx/dy` si detal o'lchamiga 501 holatda aynan teng |
 | `count` | Detallar soni (detalga bog'langan bo'lsa detal sonidan olinadi) | detal sonini `<part>` dan olamiz |
 | `code` | Dastur kodi | ✅ SCX nomi va identifikatsiya |
@@ -511,6 +523,11 @@ contMillDepth    = dz            # kontur bo'ylab frezalash
 
 Parser ularni oldindan qo'yadi; fayl `<var>` bilan e'lon qilsa u ustun keladi.
 
+Ifodalar (`dz+3` kabi) faqat oq ro'yxatdagi arifmetika bilan hisoblanadi: raqam,
+identifikator, `+ - * / ( ) .`; `**` alohida taqiqlangan (`9**9**9` workerni osiltirib
+qo'yardi — DoS himoyasi). Xavfsiz bo'lmagan yoki hisoblab bo'lmaydigan ifoda `ParseError`
+beradi va fayl rad etiladi (`xnc.py`, `_eval_expr`).
+
 **Nechta dastur bo'lishi mumkin?** Korpusda detalga ko'pi bilan ikkita. Lekin GibLab ko'proq
 beradi — yorliq shabloni `XNC1..XNC5` maydonlarini taklif qiladi. Shuning uchun parser
 sonini cheklamaydi: hammasini saqlaydi va ikkitadan ko'p bo'lsa ogohlantiradi
@@ -552,7 +569,7 @@ GibLab shabloniga qo'yiladigan maydonlar (109 ta), guruhlar bo'yicha:
 - **Ishlov**: `XNC1..XNC5` + `xncSide1..5` + `xncBSD1..5`
 
 MebeliX o'z yorlig'ini chiqaradi (TZ 5.2.8, `services/labels.py`): 80×60 mm, 203 dpi, 1-bit
-termoprinter uchun. Ichida QR (`{productCode}_{partCode}` — yagona nusxa suffikssiz, takrorlanganda `_{n}`), matn qatorida ham xuddi shu to'liq nusxa ID (QR va SCX nomi bilan bir xil), detal nomi, buyurtma,
+termoprinter uchun. Ichida QR (`{productCode}_{partCode}` — yagona nusxa suffikssiz, takrorlanganda `_{n}`), matn qatorida ham shu nusxa ID (QR va SCX nomi bilan bir xil satr; matn qatori 20 belgigacha qisqartiriladi, QR to'liq — [11-detal-id-nomlash.md](11-detal-id-nomlash.md)), detal nomi, buyurtma,
 material, o'lcham, qalinlik, kromka belgilari, teshik eskizi va burg'u ikonkasi.
 
 Sabab: GibLab yorlig'i skan qilinadigan QR bermaydi va MebeliX'ning bosqichma-bosqich
@@ -613,7 +630,6 @@ profil kesish (`CL` — sexda bunday post yo'q).
 | `description` da `#kod` | ishlov shablon nomi bilan berilgan, o'qilmaydi |
 | Xaritada joyi yo'q detal | arrachi ro'yxatiga tushmaydi |
 | `turn` ≠ 0 | dastur aylantirilgan — aylantirish qo'llanmaydi, CNC'da tekshirish shart (`mirHor`/`mirVert` esa parse'da geometriyaga QO'LLANADI — `xnc.apply_mirror`) |
-| Qirra teshigi markazda emas | `m`/`z` talqini tekshirilmagan, balandligini tasdiqlash kerak |
 | Blobsiz kesish operatsiyasi | material optimallashtirilmagan, xaritasi yo'q |
 | Nomdan olingan marshrut (§2.3) | N detalning marshruti nomdagi ro'yxatdan olindi, ular uchun fayl bosqichlari hisobga olinmadi |
 | Nomdagi qavs o'qilmadi | qaysi detallar ekani sanaladi; qavs ichida faqat 1–14 oralig'idagi kodlar bo'lishi kerak |
@@ -621,13 +637,26 @@ profil kesish (`CL` — sexda bunday post yo'q).
 Oxirgi ikkitasi — `_custom_route_warnings`, ataylab **yig'ma**: yuklash javobida ogohlantirishlarning
 faqat dastlabki bir nechtasi ko'rsatiladi, har detalga bittadan yozilsa qolgani ko'rinmay ketardi.
 
-Bu xabarlar fayl yuklanganda menejerga ko'rsatiladi va audit logga yoziladi
-(`POST /orders/{id}/project`).
+Bu xabarlar yuklash javobida ko'rsatiladi (dastlabki 3 tasi, qolgani soni bilan) va
+to'liq ro'yxat audit logga yoziladi (`POST /orders/{id}/upload`).
+
+**Fayl butunlay rad etiladigan holatlar** (`ParseError` → HTTP 422, ogohlantirish emas):
+
+- optimallashtirilmagan (`template`) fayl — §3.1;
+- kesish xaritasi blob statistikasiga mos kelmasa — §3.1;
+- ikki detal bir xil nusxa QR bersa (masalan `010` ×2 nusxa va `010_2` kodli detal) —
+  `ingest.py` buni yozishdan OLDIN tekshiradi, unique-indeks 500 o'rniga do'stona xato;
+- detal yoki mahsulot kodida `/`, `\` yoki `..` bo'lsa (`parser.py`) — kod QR/SCX fayl
+  nomiga aylanadi, yo'l belgilari uploads tashqarisiga yozishga olib borardi; yuklangan
+  fayl nomi ham faqat basename bilan saqlanadi (`ingest.py`);
+- XNC ifodasi xavfsiz bo'lmasa yoki hisoblanmasa — §3.2.
 
 ### 7.1 Qamrov — spetsifikatsiyadagi 289 atribut
 
-Rasmiy hujjat (`help/format_ru.html`) 31 blokda 289 atribut ta'riflaydi. Ulardan **131 tasi
-o'qiladi**, 158 tasi ataylab tashlanadi. Tashlanganlar to'rt guruhga bo'linadi:
+Rasmiy hujjat (`help/format_ru.html`) 31 blokda 289 atribut ta'riflaydi. Ulardan yarmiga
+yaqini o'qiladi, qolgani ataylab tashlanadi (2026-08-05 refactor'ida o'qilib-u hech qayerda
+ishlatilmaydigan maydonlar — `elRestSide`, `rl`/`rw`, `currency`, `version` — o'qishdan ham
+olib tashlandi). Tashlanganlar to'rt guruhga bo'linadi:
 
 | Guruh | Nechta | Nega |
 |---|---|---|
@@ -662,21 +691,25 @@ eksportdan farq qilgan holatlar (dizayner keyin o'zgartirgan), generator xatosi 
 | Qirra teshik Face | l→4, r→3, t→1, b→2; l/r: X=0/Length, Y=Width−pos; t: X=pos **Y=Width**; b: X=pos **Y=0** |
 | Kromka lenta Face | qirra bilan bir xil (l4 r3 t1 b2); Edge'da `Pre_Milling`, `X`, `Y` atributlari |
 | Orqa (`_2`) dastur | ALOHIDA FAYL EMAS — yuza elementlari `Face="6"` bilan asosiy nusxa-fayliga (transform old bilan bir xil `x, W−y`) |
-| Qo'shqavat 32mm | eksport qalinligi 16, qirra Z ikki baravar kichik, yuza chuqurlik −16 (faqat dz=32; 18/26/40 o'zgarmaydi) |
+| Qo'shqavat (2×plita) | eksport qalinligi plita bo'yicha (32→16), qirra Z ikki baravar kichik, yuza chuqurlik bir qatlamga kamayadi (35→19). Shart: dz ≈ 2×plita qalinligi (material bo'yicha, `ingest` dan) YOKI dz≈32; 18/26/40 o'zgarmaydi |
 | Freza (Type 3) | KOMPENSATSIYALANGAN asbob-markazi yo'li: `ms.c`=2 harakatga chapga r, `c`=1 o'ngga, yoy radiusi mos o'zgaradi; `<Lines><Line Angle=…>` formati (Angle=0 chiziq, ±N yoy sweep'i); `c`=0 xom; panel cheti bo'ylab trim xom + `ToolOffset=右` |
 | Atributlar | Machining'da ketma-ket `ID` (1000+) va `IsGenCode="2"`, Panel'da `MachiningPoint="1"` |
 | Fayl nomi | har nusxaga bitta to'liq fayl, nom/Panel ID = nusxa QR — yagona nusxada suffikssiz (`100701_02_003.scx`), takrorlanganda `_1.._n` (`100701_02_003_1.scx`) — Nanxing skaneri va chekdagi kod bir xil |
 
 Eski buyurtmalar fayllari diskda eski konvensiyada qolgan bo'lsa — buyurtma sahifasidagi
-"SCX qayta yaratish" tugmasi (`POST /orders/{id}/scx/regenerate`).
+"SCX qayta yaratish" tugmasi (`POST /orders/{id}/scx/regenerate`). Birinchi yuklash ham,
+qayta yaratish ham bitta yo'ldan o'tadi — `ingest.write_and_register_scx()` (fayl nomi/joyi
+va `OrderFile` maydonlari bir joyda).
 
 ---
 
 ## 8. Bog'lanishlar
 
 - Parser: `backend/app/services/giblab/parser.py` (tovarlar, detallar, operatsiyalar, advisory)
-- Blob: `csblob.py` (base64 binar), `cutmap.py` (vizual model + instance↔katakcha binding)
+- Umumiy modellar: `models.py` (`ParsedProject`/`ParsedPart`, `PROCESS_POSTS`, `xml_bool`, `ParseError`)
+- Blob: `csblob.py` (base64 binar + `self_check`), `cutmap.py` (vizual model + instance↔katakcha binding + `holes`)
 - Ishlov: `xnc.py` (dastur XML), `scx.py` (CNC fayl generatsiyasi)
-- DB'ga yozish: `ingest.py` (mahsulot/detal/nusxa/marshrut, material registri, sarf hisobi)
+- DB'ga yozish: `ingest.py` (mahsulot/detal/nusxa/marshrut, material registri, sarf hisobi, SCX yozish)
+- Paket tashqariga faqat ikki nom beradi: `ParseError` va `parse_project` (`giblab/__init__.py`)
 - Korpus fayllari repoda yo'q — parser o'zgarishida real .project fayllarga qarshi qo'lda tekshiriladi
 - Domen tomoni: `docs/09-mes-domain.md`, API: `docs/03-backend-api.md`

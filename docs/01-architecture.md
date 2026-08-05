@@ -25,7 +25,7 @@ MebeliX-Mes-System/
 ├── backend/          # FastAPI ilova (app/api, app/core, app/models, app/services, app/assets, ...)
 ├── frontend/         # Vite + React SPA (src/routes, src/components, src/client, ...)
 ├── bridge-agent/     # Tsex agenti (agent.py) — print joblarni USB GoDEX printerga yuboradi
-│                     #   (Windows drayveri orqali PNG; faqat printerli kompyuterda)
+│                     #   (Windows drayveri orqali PNG) va stanok skanerini MES'ga forvard qiladi
 │                     #   mebelix-agent.exe bo'lib yig'iladi, panel kodi bilan ulanadi (pairing)
 ├── caddy/            # Caddy reverse proxy konfiguratsiyasi (prod)
 ├── scripts/          # setup.sh, prestart.sh, generate-client.sh, deploy.sh (TAG deploy + avto-rollback),
@@ -88,7 +88,7 @@ MebeliX-Mes-System/
 ```mermaid
 flowchart LR
     B[Browser<br/>React SPA]
-    G[bridge-agent<br/>printerli kompyuter]
+    G[bridge-agent<br/>tsex kompyuteri]
     PR[GoDEX G500-U<br/>yorliq printeri, USB]
 
     subgraph Prod stack
@@ -103,6 +103,7 @@ flowchart LR
     B -->|HTTPS| C
     B <-->|"WS /api/v1/ws/events"| C
     G <-->|"outbound WS /api/v1/ws/bridge"| C
+    G -->|"POST /api/v1/bridge-agents/scan<br/>(skan-forvard, TZ 12.5)"| C
     G -->|"PNG -> Windows GDI<br/>(USB)"| PR
     C -->|"/api*, /docs*, /redoc*, /openapi.json"| A
     C -->|"/metrics (faqat private IP)"| A
@@ -142,7 +143,7 @@ Asosiy nuqtalar:
   Windows drayveri orqali USB GoDEX'ga chiqadi. G500-U'da tarmoq porti yo'q,
   shuning uchun yagona transport shu. Batafsil:
   [4.3](#43-yorliq-chop-etish-zanjiri).
-- **Uchta Redis ulanishi**: ARQ job queue pool, rate limiting pool va WebSocket
+- **Uchta Redis ulanishi**: ARQ job queue pool, rate limiting klienti va WebSocket
   pub/sub uchun alohida `ws_redis` (`AsyncRedis.from_url`, `mes:events` kanali —
   gunicorn worker'lar orasida `ws_manager` fan-out'ini ta'minlaydi). Startup'dagi
   retry'li probe faqat birinchi ikkitasini tekshiradi (fail-fast boot); rate limit
@@ -213,20 +214,19 @@ Browser (React)                FastAPI                        PostgreSQL
 - Router ierarxiyasi: `/api` root → `/v1` agregator; auth **router darajasida**
   qo'llanadi (`health`, `login` ochiq; `logout`, `users` va 11 ta MES routeri
   `get_current_user` ortida; `ws` va `bridge-agents` routerlari auth'ni o'zlari
-  hal qiladi — `bridge-agents` da `/pair` va `/download` ochiq bo'lishi shart,
-  qolgan admin endpointlar esa har biri `AdminUser` bilan himoyalangan).
-- Frontend'da route guard'lar `beforeLoad`da `UsersService.readUserMe()` bilan
-  ishlaydi: `_layout.tsx` himoyalangan sahifalarni qo'riqlaydi va rolga qarab
-  yo'naltiradi — `terminal` va operator rollari (`arrachi`...`stolyar`) →
-  `/terminal`, `tablo` → `/tablo` (qurilma/operator akkauntlari admin panelga
-  kirmaydi); `login.tsx` teskari guard bilan sessiyali foydalanuvchini `/`ga
-  qaytaradi.
+  hal qiladi — `bridge-agents` da `/pair` ochiq bo'lishi shart, `/scan` agentning
+  Bearer tokeni bilan, qolgan admin endpointlar esa har biri `AdminUser` bilan
+  himoyalangan).
+- Frontend'da route guard'lar `beforeLoad`da ishlaydi (`src/lib/guards.ts`):
+  `requireAuth()` (`UsersService.readUserMe()`, 401 → `/login`) —
+  `_layout.tsx`, `terminal.tsx`, `tablo.tsx` da; rolga bog'liq sahifalar
+  (clients, employees, machines, materials, reports) `requireAccess(...)`
+  bilan. `_layout.tsx` rolga qarab yo'naltiradi — `terminal` va operator
+  rollari (`arrachi`...`boyoqchi`) → `/terminal`, `tablo` → `/tablo`
+  (qurilma/operator akkauntlari admin panelga kirmaydi); `login.tsx` teskari
+  guard bilan sessiyali foydalanuvchini `/`ga qaytaradi.
 - Parallel so'rovlarda 401 kelsa, interceptor ularni navbatga qo'yib bitta refresh
   bilan hal qiladi.
-- `_layout.tsx` qobig'ida fon logotipi dekoratsiyasi alohida
-  `absolute inset-0 overflow-hidden` konteynerga ko'chirilgan. Avval
-  `overflow-hidden` `SidebarInset`ning o'zida edi va u ichki sahifalardagi
-  `sticky` panellarni ishlamay qoldirardi.
 
 ### 4.3 Yorliq chop etish zanjiri
 
@@ -269,10 +269,21 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
 - Printer AVTO-TOPILADI: `_detect_printer()` `win32print.EnumPrinters` ro'yxatidan
   nomida `godex` bor lokal printerni oladi — drayver o'rnatilsa bas, sozlash
   shart emas. `PRINTER_NAME` faqat qo'lda override uchun. Agent env'lari:
-  `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME` (ixtiyoriy), `QUEUE_FILE`;
+  `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME` (ixtiyoriy), `QUEUE_FILE`,
+  `SCAN_FORWARD` (default yoqiq, `0` o'chiradi);
   `_load_dotenv()` ularni shu tartibda o'qiydi: env var > exe yonidagi `.env` >
   `%APPDATA%\MebelixAgent\.env`.
-- Agent FAQAT printer ulangan kompyuterga o'rnatiladi; avtostartni agentning o'zi
+- **Skan-forvard (TZ 12.5)**: agent stanok skanerining (klaviatura-HID)
+  terganini passiv kuzatadi (`start_scan_forward()`, pynput listener; juda tez
+  ketma-ket belgilar + Enter = skan, <50 ms/belgi chegarasi odam terishidan
+  ajratadi) va nusxasini `POST /api/v1/bridge-agents/scan` ga agent Bearer
+  tokeni bilan yuboradi — bitta fizik skan Nanxing'ga ham, MES'ga ham tushadi.
+  Server skanni agentga bog'langan stanok (`BridgeAgent.machine_id`, admin
+  `PATCH /bridge-agents/{id}` bilan bog'laydi) va o'sha stanokning terminaldagi
+  AKTIV sessiyasi nomidan yozadi (`record_scan_at`) — hisob-kitob odatdagi skan
+  bilan bir xil; rad etilgan skan `log_rejected_scan()` bilan audit logga tushadi.
+- Agent printerli kompyuterga yoki printersiz skan-forvard stansiyasiga
+  (masalan Nanxing, `can_print=false`) o'rnatiladi; avtostartni agentning o'zi
   qo'yadi — ulangandan keyin `_register_autostart()` exe yo'lini
   `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` dagi `MebelixAgent`
   qiymatiga yozadi (admin huquqi kerak emas, Task Scheduler ishlatilmaydi).
@@ -293,32 +304,43 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
 - `bridge_agent` jadvali (`app/models/bridge_agent.py`, migratsiya
   `d5e81a24c3b7`): `organization_id`, `name`, `token_hash` (tokenning sha256'i,
   unique — token o'zi faqat pair javobida bir marta ko'rinadi), `pair_code`,
-  `pair_expires_at`, `last_seen_at`.
+  `pair_expires_at`, `last_seen_at`; keyingi migratsiyalarda qo'shilgan:
+  `machine_id` (skan-forvard stanok bog'lash, `f4b8c2a91e55`), `version`
+  (agent exe versiyasi, `a7c3e9d12f04`) va `can_print` (`d4f7a8c25e91`).
 - `/bridge-agents` routeri (`app/api/routes/bridge_agents.py`): `GET /` ro'yxat,
-  `POST /` yangi agent + kod, `POST /{id}/code` yangi kod (`token_hash` tozalanadi
+  `POST /` yangi agent + kod, `PATCH /{id}` stanok bog'lash va `can_print`
+  belgisi, `POST /{id}/code` yangi kod (`token_hash` tozalanadi
   — eski kompyuter bekor bo'ladi), `DELETE /{id}` soft-delete — barchasi
   `AdminUser`. `POST /pair` OCHIQ: atomik `UPDATE ... RETURNING` bilan bitta kodni
   ikki kompyuter bir vaqtda ishlata olmaydi, xato esa yagona umumiy matn — kod
-  bor-yo'qligi oshkor bo'lmaydi. `GET /download` ham OCHIQ (auth yo'q) —
-  `uploads/agent/mebelix-agent.exe` ni beradi: fayl hamma mijoz uchun bir xil,
-  sir saqlamaydi, tsex monoblokida esa sessiya bo'lmasligi mumkin.
+  bor-yo'qligi oshkor bo'lmaydi. `POST /scan` — skan-forvard (auth: agentning
+  Bearer tokeni). Agentni yuklab olish endpointi olib tashlangan — exe qo'lda
+  tarqatiladi (`bridge-agent/README.md`).
 - `/ws/bridge` tokenni `Authorization: Bearer` headerdan oladi (server
   access-loglariga tushmasin; `?token=` eski agentlar uchun fallback). Legacy
   `settings.BRIDGE_TOKEN` `compare_digest` bilan hamon qabul qilinadi; aks holda
-  sha256 xesh `bridge_agent` da qidiriladi, topilmasa ulanish 4401 bilan yopiladi.
-  `touch_agent()` har 300 s da `last_seen_at` ni yangilaydi va agent hali tirikligini
-  qayta tekshiradi — bekor qilingan bo'lsa jonli ulanish ham uziladi (maks ~5 daqiqa
-  kechikish) va qo'ldagi job navbatga qaytariladi.
+  sha256 xesh `bridge_agent` da qidiriladi, topilmasa ulanish 4401
+  (`WS_CLOSE_UNAUTHORIZED`) bilan yopiladi. Handshake'dagi `X-Agent-Version`
+  headeri `BridgeAgent.version` ga yoziladi — admin panelda qaysi kompyuterda
+  eski exe qolgani ko'rinadi. `can_print=false` agent chek navbatidan ish
+  OLMAYDI (aks holda umumiy navbatdan chekni "o'g'irlab" lokalida qoldirardi).
+  `touch_agent()` har 300 s da `last_seen_at` ni yangilaydi, `can_print` ni
+  qayta o'qiydi va agent hali tirikligini qayta tekshiradi — bekor qilingan
+  bo'lsa jonli ulanish ham uziladi (maks ~5 daqiqa kechikish) va qo'ldagi job
+  navbatga qaytariladi.
 - Tsex kompyuteriga Python ham, pip ham, SSH ham, serverdagi `.env` tahriri ham
-  KERAK EMAS: agent PyInstaller onefile `mebelix-agent.exe` (~16 MB) bo'lib
-  yig'iladi — admin uni paneldan yuklab oladi, ishga tushiradi va kodni yozadi.
+  KERAK EMAS: agent PyInstaller onefile `mebelix-agent.exe` bo'lib yig'iladi —
+  exe qo'lda tarqatiladi (`bridge-agent/README.md`), ishga tushiriladi va
+  admin panel bergan kod kiritiladi.
   Frontend tomoni: `frontend/src/routes/_layout/printers.tsx` ("Printer agentlar")
   va sidebar yozuvi.
 - `render_label_png()` (`app/services/labels.py`) — 80×60 mm, 203 dpi
   (8 dot/mm → 640×480 px). `draw.fontmode = "1"` (antialiasing yo'q) va yakuniy
   `convert("L").point(v < 160)` — chiqish sof 1-bit, drayver dither qilmasin.
   Maket: chap ustunda logo (`app/assets/label-logo.png`), `Formatka` + zakaz kodi,
-  to'liq nusxa ID (QR matni va SCX fayl nomi bilan aynan bir xil satr),
+  nusxa ID (QR matni va SCX fayl nomi bilan bir xil satr; matn qatori 20 belgigacha
+  qisqartiriladi — `d.qr_text[:20]`, QR esa to'liq satrni saqlaydi,
+  [11-detal-id-nomlash.md](./11-detal-id-nomlash.md)),
   loyiha nomi, 2×2 kromka katakchalari (tagchiziqli), katta
   `L x W = count`, `N_nom`, XNC belgilari (`П` paz, `Ф` freza, teshik uchun
   `app/assets/label-icon-drill.png` ikonkasi), material va sana; o'ng ustunda QR
@@ -410,13 +432,15 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
 | [07-infra-devops.md](./07-infra-devops.md) | Infra: local/prod Docker Compose stacklar, Caddy auto-HTTPS routing, multi-stage Dockerfile'lar (uv / node→nginx), prestart migratsiyalar, Makefile targetlar, pre-commit hooks. |
 | [08-packages.md](./08-packages.md) | Dependency snapshot: backend/frontend paket versiyalari va ataylab ushlab qolingan ceiling'lar (redis, openapi-ts, typescript). |
 | [09-mes-domain.md](./09-mes-domain.md) | MES domeni: data model, GibLab parser, scan engine, cutmap, chop etish, terminal/tablo/reports API va frontend tuzilishi. |
+| [10-giblab-reference.md](./10-giblab-reference.md) | GibLab manba tizim ma'lumotnomasi: `.project` fayl formati, ma'lumot modeli, operatsiya turlari — parser nimaga tayanishini asoslaydi. |
+| [11-detal-id-nomlash.md](./11-detal-id-nomlash.md) | Detal ID nomlash qoidasi: chek, QR, SCX fayl nomi va `qr_text` — hammasi bitta satr (Nanxing skan mosligi). |
 
 ## 6. Kod yozish konventsiyalari
 
 Sifat nazorati ikki qatlamda: **pre-commit hooks** (`.pre-commit-config.yaml`,
 `make install-hooks` bilan o'rnatiladi) va **GitHub Actions CI**
 (`.github/workflows/ci.yml`, `main`ga push va har PR'da): `backend` job — ruff
-check/format, mypy, GibLab parser testlari; `frontend` job — `biome ci` va
+check/format va mypy; `frontend` job — `biome ci` va
 `tsc + vite build`; `images` job — ikkala image'ni qurib `ghcr.io` ga
 yuboradi (matritsa, GHA layer keshi bilan); `deploy` job — yashil `main`
 push'da kod `/opt/mebelix-mes`ga rsync qilinadi, server ghcr'ga login

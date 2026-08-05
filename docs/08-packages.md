@@ -1,9 +1,11 @@
 # 08 — Paketlar va versiyalar
 
-Holat: **2026-07-27** tekshiruvi (oxirgi to'liq upgrade: 2026-07-09). Barcha paketlar 2026-07-09 dagi eng so'ngi stable versiyaga ko'tarilgan (quyidagi 3 ta ataylab qilingan istisno bilan).
+Holat: **2026-08-05** tekshiruvi (oxirgi to'liq upgrade: 2026-07-09). Barcha paketlar 2026-07-09 dagi eng so'ngi stable versiyaga ko'tarilgan (quyidagi 3 ta ataylab qilingan istisno bilan). 2026-08-05 dagi katta refaktor manifestlarga tegmadi — oxirgi manifest o'zgarishi 2026-07-27.
 
-**2026-07-27 tekshiruvi:** oxirgi upgrade'dan keyin manifestlar uch marta o'zgardi va uchalasi ham **kamaytirish** bo'ldi — bitta ham yangi npm/PyPI paketi qo'shilmagan:
+**Manifest tarixi (upgrade'dan keyin):** manifestlar besh marta o'zgardi — avval ikkita qo'shish (2026-07-10), keyin uchta kamaytirish (2026-07-27):
 
+- `26e00af` — MES core bilan `openpyxl` (runtime, Excel eksport) va dev'ga `types-openpyxl` + `websockets` qo'shildi;
+- `b5ee41d` — yorliq chop etish uchun `tzdata`/`pillow`/`qrcode` (pastdagi jadval), frontend'ga `@radix-ui/react-popover` va `react-day-picker`;
 - `4306a42` — `websockets` dev group'dan asosiy `dependencies` ga ko'chirildi (pastda alohida bo'lim);
 - `87d23ab` — `httpx` va `uuid6` runtime'dan, `types-redis` dev'dan chiqarildi (kod ularni hech qayerda import qilmasdi); `uv.lock` 71 → **63** paketga tushdi (`certifi`, `httpcore`, `types-cffi`, `types-pyopenssl`, `types-setuptools` transitiv bo'lib birga ketdi);
 - `a916088` — `@tanstack/react-table` o'chirildi (`Common/DataTable.tsx` va `Admin/columns.tsx` bilan birga; `admin.tsx` endi oddiy `<Table>` chizadi), `backend/pyproject.toml` dagi `license` kaliti ham olib tashlandi.
@@ -43,6 +45,8 @@ Asosiy paketlar (yangilangandan keyin):
 
 Tekshiruv: `uv run ruff check .` ✅ · `uv run mypy app` ✅ (93 fayl) · `import app.main` ✅
 
+Jadvalda ko'rsatilmagan, lekin manifestda e'lon qilingan runtime paketlar (lock versiyalari bilan): `openpyxl` 3.1.5 — Excel eksport (`app/services/excel.py`; dev'da `types-openpyxl`), `pydantic-settings` 2.14.2 — `app/core/config.py` dagi `Settings`, `python-multipart` 0.0.32 — fayl yuklash (FastAPI `UploadFile`/`Form`, `orders.py`), `prometheus-fastapi-instrumentator` 8.0.2 — `/metrics` (`app/core/setup.py`), `uvloop` 0.22.1 — faqat `sys_platform != 'win32'`, `greenlet` 3.5.3 — SQLAlchemy async uchun.
+
 **2026-07-10 (b5ee41d) da qo'shilganlar** — yorliq chop etish (label-printing) feature uchun yangi runtime dependency'lar:
 
 | Paket | Constraint | Lock | Izoh |
@@ -55,7 +59,7 @@ Bu uchtasining **haqiqiy ishlatilishi** (99cebc3 dagi `render_label_png()` qayta
 
 - **pillow** — `Image`, `ImageDraw`, `ImageFont`, `render_label_png()` ichida. 80×60 mm, 203 dpi → 640×480 px; `draw.fontmode = "1"` bilan antialiasing o'chirilgan (termoprinter 1-bit, aks holda drayver dither qiladi). Shu funksiya `backend/app/assets/label-logo.png` va `label-icon-drill.png` fayllarini ham ochadi.
 - **qrcode** — `qrcode.make(d.qr_text, box_size=..., border=0)` shu funksiya ichida. Pillow o'rnatilgani uchun PIL image qaytaradi va to'g'ridan-to'g'ri yorliq rasmiga joylashtiriladi.
-- **tzdata** — `zoneinfo.ZoneInfo("Asia/Tashkent")`, `load_label_data()` da `printed_at` qiymati uchun (modul darajasidagi import).
+- **tzdata** — `ZoneInfo("Asia/Tashkent")` uchun IANA ma'lumoti (Windows'da tizimda yo'q). 2026-08-05 dan konstanta bitta joyda — `app.core.config.TASHKENT_TZ`; `labels.py` uni `printed_at` uchun import qiladi (`load_label_data()`), `audit.py` va `reports.py` ham shu konstantani ishlatadi.
 
 `labels.py` ning butun tashqi yuzasi shu uchtaga tayanadi: `LabelData`, `load_label_data()`, `_n()`, `render_label_png()` — boshqa paket talab qilmaydi. `print_label` taski (`backend/app/tasks/__init__.py`) PNG'ni base64 qilib Redis navbatiga (`mes:print:queue`) qo'yadi, job JSON'i `{"type", "instance_id", "png"}` — printer dialekti generatsiya qilinmaydi, shuning uchun task tomonda ham qo'shimcha bog'liqlik yo'q.
 
@@ -83,7 +87,7 @@ Asosiy paketlar (yangilangandan keyin):
 
 Tekshiruv: `npm run build` (tsc + vite) ✅ · `bash scripts/generate-client.sh` ✅ (client qayta generate qilindi, build o'tdi)
 
-**2026-07-27:** `frontend/src` dagi barcha tashqi importlar (29 ta modul) `package.json` da e'lon qilingan — e'lon qilinmagan (phantom) bog'liqlik yo'q va aksincha, ishlatilmay qolgan paket ham yo'q. Jadvalda ko'rsatilmagan, lekin ishlatiladigan runtime paketlar: `qrcode.react` 4.2.0 (`components/Terminal/CutmapView.tsx`, `routes/_layout/employees.tsx`), `react-day-picker` 10.0.1 (`ui/date-picker`, anketa sanalarida), `sonner` 2.0.7 (`ui/sonner`, `useCustomToast`, `main.tsx`). `ui/textarea.tsx` — xom `<textarea>` ustidagi wrapper, Radix paketi talab qilmaydi; `SheetSvg.tsx` faqat React va inline SVG ishlatadi (chizma kutubxonasi yo'q).
+**2026-08-05 tekshiruvi:** `frontend/src` dagi barcha TS/TSX tashqi importlar (29 ta modul) `package.json` da e'lon qilingan — e'lon qilinmagan (phantom) bog'liqlik yo'q va aksincha, ishlatilmay qolgan paket ham yo'q. Ikki paket TS importisiz, faqat CSS orqali keladi: `@fontsource-variable/archivo` 5.2.8 va `tw-animate-css` 1.4.0 (dev) — `src/index.css` boshidagi `@import` qatorlari; `tailwindcss`/`@tailwindcss/vite` ham CSS/vite-config tomonda, shuning uchun 29 talik hisobga kirmaydi. Jadvalda ko'rsatilmagan, lekin ishlatiladigan runtime paketlar: `qrcode.react` 4.2.0 (`components/Terminal/CutmapView.tsx`, `routes/_layout/employees.tsx`), `react-day-picker` 10.0.1 (`ui/date-picker` — anketa, hisobot va log sanalarida), `sonner` 2.0.7 (`ui/sonner`, `Toaster` `routes/__root.tsx` da mount qilinadi; `useCustomToast` 2026-08-05 da o'chirilgan — komponentlar to'g'ridan-to'g'ri `toast.success/error` chaqiradi). `ui/textarea.tsx` — xom `<textarea>` ustidagi wrapper, Radix paketi talab qilmaydi; `Terminal/SheetSvg.tsx` faqat React va inline SVG ishlatadi (chizma kutubxonasi yo'q).
 
 ## Bridge-agent bog'liqliklari (manifestsiz)
 
@@ -91,12 +95,14 @@ Tekshiruv: `npm run build` (tsc + vite) ✅ · `bash scripts/generate-client.sh`
 
 | Paket | Nima uchun |
 | --- | --- |
-| websockets | `uplink()` — serverga outbound WS (`/api/v1/ws/bridge`), modul darajasidagi yagona tashqi import |
+| websockets | `uplink()` — serverga outbound WS (`/api/v1/ws/bridge`), modul darajasidagi yagona tashqi import. **>=14 talab** — v13/14 shim 2026-08-05 da olib tashlandi, README'dagi build qatori `pip install "websockets>=14" ...` |
 | pywin32 | `win32print` — `_detect_printer()` da printerni topish va `_print_png_gdi()` da DEVMODE; `win32gui`, `win32ui`, `win32con` — GDI konteksti; `win32api`+`win32event`+`winerror` — `_single_instance()` mutexi |
 | pillow | `PIL.Image`, `PIL.ImageWin` — serverdan kelgan base64 PNG'ni GDI kontekstiga chizish |
 | pynput | `start_scan_forward()` — stanok skanerining klaviatura kirishini passiv kuzatib `/bridge-agents/scan` ga forvard qilish. Ixtiyoriy: o'rnatilmagan bo'lsa faqat skan-forvard jim o'chadi, chop etish ishlayveradi |
 
 Birinchi uchtasi majburiy: chiqish yo'li bitta — `_print_png_gdi()` (Windows drayveri, DEVMODE'da qog'oz 80×60 mm ga majburlanadi). `pywin32` va `pillow` importlari funksiya ichida, lekin ularsiz `send_to_printer()` ishlamaydi, ya'ni agent amalda Windows'ga bog'langan.
+
+Pip paketlardan tashqari exe **tkinter/Tcl-Tk** ga ham tayanadi (stdlib, lekin Tcl/Tk runtime'ini PyInstaller exe'ga qo'shadi): pairing oynasi `_pair_dialog()` va `_alert()` messageboxlari shu bilan chiziladi; tkinter bo'lmasa pairing konsolga (`_pair_console()`) tushadi, `_alert()` esa jim log bilan kifoyalanadi. `_notify_connected()` dagi "serverga ulandi" xabari esa `ctypes.windll.user32.MessageBoxTimeoutW` (stdlib `ctypes`) bilan chiqadi.
 
 Printer nomi sozlanmaydi: `_detect_printer()` `win32print.EnumPrinters()` bilan nomida "godex" bor lokal printerni qidiradi, `PRINTER_NAME` env faqat qo'lda override uchun. Agent env'lari to'liq ro'yxati — `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME` (ixtiyoriy), `QUEUE_FILE`, `SCAN_FORWARD` (default yoqiq, `0` o'chiradi).
 
@@ -161,4 +167,4 @@ bash scripts/generate-client.sh
 
 `npm outdated` major bump ko'rsatsa — `package.json` dagi caret versiyani qo'lda ko'tarish kerak (caret major'dan o'tkazmaydi). Yuqoridagi 3 ceiling'ni tekshirishni unutmang.
 
-Bridge-agent bu siklga kirmaydi: uning `websockets` / `pywin32` / `pillow` / `pynput` versiyalari exe yig'ilgan paytdagi dasturchi muhitidan keladi, lock fayli yo'q. Yangilash = paketlarni yangilab exe'ni qayta yig'ish va yangi `mebelix-agent.exe` ni printerli kompyuterlarga qo'lda tarqatish (flashka/lokal tarmoq — panel ichidagi yuklab olish olib tashlangan).
+Bridge-agent bu siklga kirmaydi: uning `websockets` (>=14) / `pywin32` / `pillow` / `pynput` versiyalari exe yig'ilgan paytdagi dasturchi muhitidan keladi, lock fayli yo'q. Yangilash = paketlarni yangilab exe'ni qayta yig'ish va yangi `mebelix-agent.exe` ni printerli kompyuterlarga qo'lda tarqatish (flashka/lokal tarmoq — panel ichidagi yuklab olish olib tashlangan). Har agent kod o'zgarishida `agent.py` dagi `AGENT_VERSION` qo'lda +1 qilinadi (hozir 1.2.1) — u WS headerida (`X-Agent-Version`) serverga boradi va admin paneldagi Printerlar sahifasida qaysi exe ishlayotgani ko'rinadi.

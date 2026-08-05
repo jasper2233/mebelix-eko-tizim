@@ -1,6 +1,6 @@
 # 09 — MES domen qatlami (TT bo'yicha implementatsiya)
 
-Holat: **2026-07-28**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Barcha fazalar implementatsiya qilingan — alohida `TODO.md` yuritilmaydi, holat shu hujjatlar to'plami va git tarixidan o'qiladi.
+Holat: **2026-08-05**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Barcha fazalar implementatsiya qilingan — alohida `TODO.md` yuritilmaydi, holat shu hujjatlar to'plami va git tarixidan o'qiladi.
 
 ## 1. Data model (`app/models/`)
 
@@ -12,7 +12,7 @@ Holat: **2026-07-28**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Barcha fazalar impl
 | `post` | 7 bosqich: ARRA→KROMKA→OVAL→PRISADKA→ROVER→STOLYARKA→BO'YOQ (unit, order_index, flaglar), seed `app/commands/seed_defaults.py` — idempotent, order_index'ni mavjud bazalarda ham sinxronlaydi. `order_index` 5 bo'sh: eski PAZ posti olib tashlangan (paz ham frezer stanogida, ya'ni ROVER da kesiladi), qayta raqamlash mavjud bazalarda bekorga siljish beradi. OVAL fayldan avto-aniqlanmaydi: texnolog matritsada belgilaydi (route `per_instance=1`) | 4.4 |
 | `machine` | Stanok (post FK, IP, capacity, holat) | 4.3 |
 | `employee` | Beyjik egasi (badge_id UUID partial-unique, assigned_post_ids JSONB) | 4.2 |
-| `client` | Mijoz (jismoniy/yuridik, INN) | 4.6 |
+| `client` | Mijoz (FIO, telefonlar, manzil, izoh; `client_type`/`inn` o'lik ustunlar sifatida olib tashlangan — migratsiya `c7f2d84a91b3`) | 4.6 |
 | `material` | Katalog — .project fayldan avtomatik to'ladi | 4.5 |
 | `order` | B-YYYY-NNN, status DRAFT→…→DELIVERED/CANCELLED; `amount` + `advance_payment` Numeric(14,2) (boshlang'ich to'lov, migratsiya `7d2c9f5e1b3a`); `cutmap` JSONB (5.7.5 modeli), `machine_assignments`, `material_usage`; `survey` JSONB — mijoz anketasi + o'lchov varag'i (migratsiya `a91c7d34f6e2`, §6.2) | 6 |
 | `product`/`part`/`part_instance` | Fayl tarkibi; instance QR = `productCode_partCode` (yagona nusxa) / `productCode_partCode_n` (takror), kesish xaritasi katakchasiga bog'langan (pattern_no, cell_index) | 5.8 |
@@ -21,7 +21,7 @@ Holat: **2026-07-28**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Barcha fazalar impl
 | `work_session` | Smena (beyjik → sessiya) | 8.2 |
 | `order_file` | project / scx / hujjatlar (diskda `UPLOAD_DIR` ostida); `meta` JSONB — anketa xona rasmlari uchun `{"room_id", "content_type"}` | 2.4.3 |
 | `audit_log` | Kim-qachon-nima (`crud/audit.py: log_action`, tranzaksiya ichida) | 10.11 |
-| `bridge_agent` | Printerli kompyuterdagi chop etish agenti: `name`, `token_hash` (sha256, unique), bir martalik `pair_code` + `pair_expires_at` (15 daqiqa), `last_seen_at` (panelda Onlayn/Oflayn); migratsiya `d5e81a24c3b7` | 2.2.2 |
+| `bridge_agent` | Printerli kompyuterdagi chop etish agenti: `name`, `token_hash` (sha256, unique), bir martalik `pair_code` + `pair_expires_at` (15 daqiqa), `last_seen_at` (panelda Onlayn/Oflayn); migratsiya `d5e81a24c3b7`. Qo'shimcha: `machine_id` — skan-forvard bog'lash (`f4b8c2a91e55`), `version` — agent exe versiyasi, WS handshake `X-Agent-Version` dan (`a7c3e9d12f04`), `can_print` — False bo'lsa printersiz stansiya chek navbatidan job olmaydi (`d4f7a8c25e91`) | 2.2.2 |
 
 `user` jadvaliga qo'shildi: `role` (`UserRole`, 13 a'zo) + `machine_id`. Rollar ikki guruh
 (`app/models/enums.py`):
@@ -45,13 +45,15 @@ uch juft o'lchami bo'ladi: `dl/dw` — tayyor detal (kromka bilan), `jl/jw` — 
 (kromkalanadigan tomonda tasma qalinligicha kichik), `cl/cw` — korpusda `dl/dw` bilan
 bir xil. GibLab'ning **o'z kesish xaritasi ham `dl/dw` ni joylashtiradi**, shuning uchun
 bizning xarita va yorlig'imiz ham shu o'lchamni ko'rsatadi — manba tizim bilan mos.
-`jl/jw` `Part.saw_length/saw_width` da saqlanadi (ko'rsatilmaydi). GibLab'da o'lcham
+`jl/jw` bazada saqlanmaydi (o'lik `part.saw_length/saw_width` ustunlari `c7f2d84a91b3`
+migratsiyasida olib tashlangan); parser o'lchamni `l → dl → cl → jl` zanjiri bilan
+oladi (`cSizeMode` qaysi juft majburiyligini belgilaydi). GibLab'da o'lcham
 kiritish rejimi ("Режимы ввода деталей") uchta: zagotovka, tayyor detal (kromka bilan),
 prifugovkadan keyin (kromkasiz) — shu sozlama `dl/dw` ma'nosini belgilaydi.
 
 | `cutmap.py` | Vizual model (5.7.5): sheets/parts/cuts + holes overlay, rot/eW/eH, atxot foydali o'lcham, instance↔katakcha binding; har list uchun root-strip o'lcham zanjiri `dims` (ax/a/b/v, ≥10mm poloslar, GibSaw uslubi) — cutmap JSONida saqlanadi, terminal SVG chizadi |
 | `scx.py` | SCX generatsiya — Nanxing haqiqiy konvensiyasi (Scx-korpusdan, 87 proyekt): Y=Width−y; qirra Face l4/r3/t1/b2; orqa dastur Face=6 bilan bitta faylda; 32mm qo'shqavat 16/Z÷2; freza kompensatsiyalangan yo'l. To'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §7.2 |
-| `ingest.py` | DBga yozish: products/parts/instances/routes/materials/fayllar/cutmap/material_usage; qayta yuklash to'liq almashtiradi |
+| `ingest.py` | DBga yozish: products/parts/instances/routes/materials/fayllar/cutmap/material_usage; qayta yuklash to'liq almashtiradi; SCX fayl yozish+ro'yxatga olish `write_and_register_scx()` helperda — `/orders/{id}/scx/regenerate` ham shundan foydalanadi |
 
 Marshrut qoidalari (5.4): ARRA — listda joyi bor detalga (per_instance=1); KROMKA = ell/elr/elt/elb soni;
 PRISADKA = bf/bt/bb/bl/br; ROVER = gr yoki ms/ml/mac — paz ham frezer stanogida kesiladi va
@@ -74,8 +76,10 @@ Kodlar `PROCESS_POSTS` (`giblab/models.py`) orqali postga o'giriladi — to'liq 
   `UNIQUE(part_id, post_id)` indeksi bor, ya'ni takroriy tashrif kattaroq `per_instance` bo'lib
   ifodalanadi.
 - Qavs matni **displey nomida qoladi**: kodlar postga ko'p-birga tushadi (1 va 2 → ARRA,
-  3 va 4 → KROMKA, 9..14 → STOLYARKA), shuning uchun qaysi amal ekanini faqat nom ko'rsatadi
-  (`{11}` = G petlya o'ngdan, `{13}` = V petlya o'ngdan).
+  3 va 4 → KROMKA, 9..14 → STOLYARKA), qaysi amal ekanini nom saqlaydi. Frontend buni
+  o'qiy oladi: terminal amal NOMINI chip bilan ko'rsatadi (`Common/OperationChips.tsx`,
+  `lib/mes.ts: PROCESS_OPS`/`partOperations` — `{11}` → "G petlya o'ngdan"), matritsada
+  noodatiy detal qatorida "Marshrut nomdan" belgisi bor (`Orders/OrderMatrix.tsx`).
 - Sozlanmagan post uchrasa `ingest.py` toza `ParseError` (422) beradi: `posts` lug'ati post
   KODI (matn) bo'yicha tuziladi, `PostCode(...)` ga o'girilmaydi — aks holda `ValueError` → 500.
 
@@ -96,6 +100,11 @@ tushishi mumkin). Employee mirror avto-yaratiladi (`badge_id = "user-<id>"`) —
 attributsiyasi beyjiksiz saqlanadi. **Login = smena**: sessiya avtomatik ochiladi/qayta ochiladi
 (beyjik scan talab qilinmaydi); TERMINAL qurilma akkauntida esa avvalgidek beyjik shart (E005/E006).
 
+Rad etilgan skan yakuni umumiy helperda — `log_rejected_scan()` (rollback + audit-log
+`module=scan, action=rejected` + commit): terminal (`scans.py`) ham, stanok skan-forvardi
+(`bridge_agents.py`) ham shu yo'ldan o'tadi, ya'ni operator ko'rmagan rad ham Loglar
+sahifasida qoladi. `GET /scans/recent` endpointi olib tashlangan.
+
 ## 4. Real-time (`app/core/ws.py`, `api/routes/ws.py`)
 
 - `/ws/events` — brauzer klientlar: JWT (cookie yoki `?token=`); rol → scope (terminal/tablo/dashboard),
@@ -104,9 +113,18 @@ attributsiyasi beyjiksiz saqlanadi. **Login = smena**: sessiya avtomatik ochilad
   ochiladi (flag yo'q), publish xato bersa lokal yetkazishga tushadi.
 - `/ws/bridge` — sex bridge-agenti (per-agent pairing tokeni: `Authorization: Bearer` header, sha256
   → `bridge_agent.token_hash`; umumiy `BRIDGE_TOKEN` faqat legacy moslik): Redis `mes:print:queue`
-  dan chop etish joblarini oladi, ack qilinmagan job qayta navbatga qaytadi. `touch_agent()` har
-  5 daqiqada `last_seen_at` ni yangilaydi — token bekor qilingan bo'lsa jonli ulanish 4401 bilan
-  uziladi, qo'ldagi job navbatga qaytadi.
+  dan chop etish joblarini oladi, ack qilinmagan job qayta navbatga qaytadi. `can_print=False`
+  agent (printersiz skan-forvard stansiyasi) navbatdan job OLMAYDI — brpop o'rniga sleep, aks
+  holda u umumiy navbatdan chekni "o'g'irlab" lokalida qoldirardi. `touch_agent()` har
+  5 daqiqada `last_seen_at` (va `can_print` ni) yangilaydi — token bekor qilingan bo'lsa jonli
+  ulanish 4401 (`WS_CLOSE_UNAUTHORIZED`) bilan uziladi, qo'ldagi job navbatga qaytadi.
+- **Skan-forvard (TZ 12.5)** — stanokning o'z skaneri o'qigan QR MES'ga ham yoziladi: agent
+  klaviatura kiritishini tinglaydi (`pynput`; `SCAN_FORWARD=0` o'chiradi, pynput bo'lmasa jim
+  o'chadi) va QR ko'rinishidagi tez terilgan qatorni `POST /bridge-agents/scan` ga agent tokeni
+  bilan yuboradi. Skan agentga bog'langan stanok (`PATCH /bridge-agents/{id}` — `machine_id`,
+  admin panel) AKTIV terminal sessiyasi nomidan yoziladi (`record_scan_at` — hisob-kitob odatdagi
+  skan bilan bir xil); sessiya yo'q/stanok bog'lanmagan bo'lsa 409, rad etilgan skan audit logga
+  tushadi (`log_rejected_scan`).
 
 ## 5. Yorliq chop etish (TT 12.3 / 13.2)
 
@@ -148,6 +166,12 @@ terminal (POST /terminal/labels/{instance_id})   → label_printed_at + ws "labe
 `GET /terminal/labels/{instance_id}.png` — o'sha `render_label_png()` chiqishi to'g'ridan brauzerga;
 worker ham, GoDEX ham, bridge-agent ham shart emas.
 
+**ROVER'da chop etish = bajarildi.** Marshrutida ARRA bo'lmagan detal (noodatiy nom-marshrut)
+roverning o'zida kesiladi — roverchi chek chiqarganda `POST /terminal/labels/{id}` avto-skan ham
+yozadi (`record_scan`, `client_event_id="rvprint-{instance_id}"`): statistika/tablo/ish haqi oddiy
+oqim bilan bir xil qoladi. Skan rad etilsa (masalan `STRICT_STAGE_ORDER` da oldingi bosqich
+tugamagan) chek baribir chiqadi — operator keyin oddiy skan bilan yakunlaydi.
+
 `bridge-agent/agent.py` — sexdagi mustaqil servis (websockets + pywin32 + Pillow): outbound WS,
 lokal JSONL navbat `QUEUE_FILE` (printer/internet uzilganda yo'qotmaydi), flusher **event-driven** —
 `FLUSH_EVENT` bilan darhol uyg'onadi, 5 s faqat zaxira timeout. `send_to_printer(png_b64)` bitta
@@ -165,13 +189,13 @@ O'rnatish qadamlari: [07-infra-devops.md](07-infra-devops.md) → "Chop etish in
 | Router | Prefix | Kirish |
 |---|---|---|
 | `clients/employees/machines/posts/materials` | CRUD + qidiruv | rol-based (`api/deps.py: require_roles`) |
-| `orders` | lifecycle (`/confirm`, `/start`, …) + `/status-counts` + `/upload` + `/matrix` + `/machines` + `/cutmap` + `/files/{id}` + `/survey` + `/survey/photos[/{file_id}]` | o'qish: manager/texnolog/director (`StaffReadUser`); yozish: manager/texnolog (+admin/superuser); anketa yozuvi: `ManagerUser` |
-| `scans` | POST scan, DELETE undo, `/recent` | terminal + 7 operator rol |
-| `terminal` | `/context`, `/session`, `/session/end`, `/tasks`, `/orders` (loyiha kartalari: done/total post semantikasida — ARRA: chek∪skan, KROMKA: detal bo'yicha), `/orders/{id}/cutmap`, `/orders/{id}/kromka` (KROMKA/OVAL sahifasi), `/orders/{id}/prisadka` (detallar + SCX fayllar), `/qr/{qr}/order` (QR→buyurtma), `/labels/{id}` POST (GoDEX navbat) / DELETE (chekni bekor qilish, manager/texnolog ham), `/labels/{id}.png`, `/files/{id}` | terminal + 7 operator rol; stanok/post konteksti (`_terminal_ctx` → `TerminalCtx`) har route'ga alohida qo'yiladi — yorliq/fayl route'lariga ataylab emas, ular stanoksiz ham ishlaydi |
+| `orders` | lifecycle (`/confirm`, `/start`, …) + `/status-counts` + `/upload` + `/matrix` + `/machines` + `/cutmap` + `/files/{id}` + `/files/scx.zip` (barcha SCX bitta arxivda, `StaffReadUser`) + `/scx/regenerate` (SCX qayta generatsiya, `TexnologUser`; `write_and_register_scx` — ingest bilan umumiy helper) + `/survey` + `/survey/photos[/{file_id}]` | o'qish: manager/texnolog/director (`StaffReadUser`); yozish: manager/texnolog (+admin/superuser); anketa yozuvi: `ManagerUser` |
+| `scans` | POST scan, DELETE undo (`/recent` olib tashlangan) | terminal + 7 operator rol |
+| `terminal` | `/context`, `/session`, `/session/end`, `/tasks`, `/orders` (loyiha kartalari: done/total post semantikasida — ARRA: chek∪skan, KROMKA: detal bo'yicha), `/orders/{id}/cutmap`, `/orders/{id}/kromka` (KROMKA/OVAL sahifasi), `/orders/{id}/prisadka` (detallar + SCX fayllar), `/qr/{qr}/order` (QR→buyurtma), `/labels/{id}` POST (GoDEX navbat) / DELETE (chekni bekor qilish, manager/texnolog ham), `/labels/{id}.png`, `/files/{id}` | terminal + 7 operator rol; stanok/post konteksti (`_terminal_ctx` → `TerminalCtx`) har route'ga alohida qo'yiladi — yorliq/fayl route'lariga ataylab emas, ular stanoksiz ham ishlaydi; javoblar typed (`app/schemas/terminal.py`: `TerminalOrderCard`, `QrOrderRef`, `Kromka*`/`Prisadka*` modellari — `list[dict]` yo'q) |
 | `tablo` | `/matrix`, `/orders/{id}` | istalgan auth |
 | `reports` | `/productivity`, `/orders`, `/materials` (+`?format=xlsx`), `/dashboard` | manager/director/admin |
-| `audit-logs` | filtrli ro'yxat | faqat admin (`AdminUser`, TZ 10.11) — butun tizim audit izi; direktor ishlab chiqarish ko'rsatkichlarini `/reports` dan oladi |
-| `bridge-agents` | ro'yxat/yaratish, `/{id}/code` (yangi ulanish kodi), `/{id}` DELETE, `/pair`, `/download` | admin (`AdminUser`); `/pair` va `/download` ochiq — router global auth'siz ulanadi |
+| `audit-logs` | filtrli ro'yxat (11 modul: users/orders/scan/print/sessions/bridge_agents/…; rad etilgan skanlar ham — `module=scan, action=rejected`, §3) | faqat admin (`AdminUser`, TZ 10.11) — butun tizim audit izi; direktor ishlab chiqarish ko'rsatkichlarini `/reports` dan oladi |
+| `bridge-agents` | ro'yxat/yaratish, `/{id}` PATCH (stanok bog'lash + `can_print`), `/{id}/code` (yangi ulanish kodi), `/{id}` DELETE, `/pair`, `/scan` (skan-forvard, §4) | admin (`AdminUser`); `/pair` ochiq (router global auth'siz), `/scan` agent tokeni bilan. `/download` olib tashlangan (2026-08-02) — exe qo'lda tarqatiladi (`bridge-agent/README.md`) |
 
 ### Buyurtma lifecycle va to'lovlar
 
@@ -246,6 +270,11 @@ direktor ham ko'radi.
   faqat shu to'rt ustunni tanlab olishi uchun (o'lchov: 669 ms → 175 ms).
 - `app/services/excel.py: xlsx_response()` — openpyxl bilan bitta varaqli .xlsx stream
   (reports `?format=xlsx` orqasida).
+- Og'ir JSONB ustunlar ro'yxat so'rovlarida `defer()` bilan qoldiriladi:
+  `ORDER_FAT_COLUMNS` (cutmap/survey/material_usage/machine_assignments) va
+  `PART_FAT_COLUMNS` (xnc_summary/note) — `app/models/order.py` (o'lchov: reestr
+  284 ms → 5 ms). Skan issiq yo'li uchun `qr_text` partial indeksi
+  (`ix_part_instance_qr_text`, migratsiya `e8b1c6d94f27`).
 
 ## 7. Frontend tuzilishi
 
@@ -253,8 +282,9 @@ direktor ham ko'radi.
 - Imzo komponent: `Common/StagePipeline` — post zanjiri (dinamik, dashboard va buyurtma qatorlari).
 - Routelar: `_layout/*` admin modullar (orders, clients, employees, machines, materials, reports,
   logs, printers, admin, settings, cutmap.$orderId, `anketa.$orderId`), `/terminal`, `/tablo`
-  (JAMI HAJM + rejimlar + drill-down + jonli soat). Yon menyu sarlavhalari
-  (`_layout.tsx: sectionTitles`) — 11 ta.
+  (JAMI HAJM + rejimlar + drill-down + jonli soat). Yon menyu — `Sidebar/AppSidebar.tsx:
+  NAV_ITEMS` (11 band); mobil sarlavhalar (`_layout.tsx: sectionTitles`) shu ro'yxatdan
+  + `/settings`.
 - Anketa UI: `_layout/anketa.$orderId.tsx` — xonalar tab bilan almashadi, 7 ta bo'lim + yopiladigan
   "O'lchov varag'i". Yozish huquqi `is_superuser || admin || manager`; boshqa rollarga forma emas,
   `RoomSummary` — o'qish uchun jamlanma (matn nusxa olinadi). Avtosaqlash: har tahrirdan 1.5 s
@@ -273,17 +303,22 @@ direktor ham ko'radi.
     Har skan darhol yoziladi (tomon = skan, `per_instance`); bir QR uchun 5 s to'siq;
     picker'da skan qilinsa proyekt o'zi ochiladi (`/qr/{qr}/order`); begona detalga aniq xato.
   · **OVAL** — o'sha KromkaView `oval` rejimda: bir panel, har detal BITTA skan.
-  · **PRISADKA / ROVER** (`Terminal/PrisadkaView`) — detallar + SCX fayllar; "Hammasini yuklab olish"
+  · **PRISADKA** (`Terminal/PrisadkaView`) — detallar + SCX fayllar; "Hammasini yuklab olish"
     File System Access API bilan BIR MARTA tanlangan papkaga (IndexedDB'da saqlanadi,
     `lib/scxDir.ts`) proyekt nomli subpapka ochib yozadi; har skandagi avto-SCX ham o'sha yerga.
+  · **ROVER** — o'sha PrisadkaView, lekin SCX butunlay yashirin (`showScx=false`, avto-yuklash
+    ham o'chiq — roverga SCX kerak emas): har jismoniy nusxa ALOHIDA qator, chap ustunda katta
+    "Chop etish" tugmasi (`Terminal/usePrintLabel.ts`); marshrutida ARRA bo'lmagan detalda chek
+    chiqarish avto-skan yozadi (§5 "ROVER'da chop etish = bajarildi").
   · qolgan postlar (STOLYARKA, BO'YOQ) — vazifalar jadvali (tasks).
   Umumiy: majburiy to'liq ekran overlay, lock overlay, operator logout, 2 s umumiy QR cooldown
   (TT 8.4.4), skan chizig'i 15 s da o'zi yo'qoladi, skan inputi fokussiz ham QR ni tutadi
   (birinchi tugmada fokus), yangi build uchun har 5 daqiqada `/` HEAD ETag tekshiruvi va xavfsiz
   paytda avto-reload.
 - WS hook: `hooks/useMesWs.ts` (reconnect + heartbeat + online flag).
-- Rol-marshrutlash: `_layout.tsx` beforeLoad — terminal va 7 operator rol → `/terminal`,
-  tablo → `/tablo` (qurilma/operator akkauntlar admin panelga kira olmaydi).
+- Rol-marshrutlash: `_layout.tsx` beforeLoad (`lib/guards.ts: requireAuth`) — terminal va
+  7 operator rol → `/terminal`, tablo → `/tablo` (qurilma/operator akkauntlar admin panelga
+  kira olmaydi).
 
 ## 8. Sozlamalar (yangi env)
 
@@ -295,4 +330,7 @@ agentlar uchun to'ldiriladi.
 Bridge-agent (`bridge-agent/agent.py`, backend settings'ida emas — o'z env'i): `MES_URL`
 (default `ws://localhost:8000`), `BRIDGE_TOKEN` (pairing bergan per-agent token — birinchi ishga
 tushishda `%APPDATA%\MebelixAgent\.env` ga o'zi yoziladi; qo'lda berish faqat legacy holat), `PRINTER_NAME`
-(ixtiyoriy — avto-topish o'rniga qo'lda), `QUEUE_FILE` (default `print-queue.jsonl`).
+(ixtiyoriy — avto-topish o'rniga qo'lda), `QUEUE_FILE` (default
+`%APPDATA%\MebelixAgent\print-queue.jsonl` — avtostartda ishchi papka System32 bo'lgani uchun;
+exe yonidagi eski fayl birinchi ishga tushishda bir marta ko'chiriladi), `SCAN_FORWARD`
+(default yoqiq; `0` — stanok skanerini MES'ga forvard qilish o'chadi, §4).

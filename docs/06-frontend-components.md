@@ -1,34 +1,42 @@
-# Frontend Components (Admin, Clients, Common, Orders, Anketa, Pending, Sidebar, Terminal, UserSettings, ui)
+# Frontend Components (Admin, Clients, Common, Orders, Anketa, Sidebar, Terminal, UserSettings, ui)
 
-Ushbu hujjat `frontend/src/components/` katalogidagi React komponentlarini va anketa sahifasi ichidagi komponentlarni (`routes/_layout/anketa.$orderId.tsx`) qamrab oladi. Stack: React + TypeScript, TanStack Router/Query, react-hook-form + zod, shadcn/ui (Radix UI + Tailwind CSS 4). Barcha komponentlar backend bilan avtomatik generatsiya qilingan `@/client` (UsersService, ClientsService, OrdersService, TerminalService va model turlari) orqali gaplashadi; umumiy query'lar `@/queries/mes` dagi `queryOptions` fabrikalarida (getClients/getMachines/getPosts/getOrderMatrixQueryOptions va h.k.), domen konstantalari `@/lib/mes` da (ROLE_LABELS, PRIORITY_LABELS, PRIORITY_DOT_CLASSES/PRIORITY_TEXT_CLASSES/PRIORITY_BADGE_CLASSES — prioritet ranglari yagona manbadan, POST_COLORS, ORDER_STATUS_LABELS/COLORS, formatSize), buyurtma anketasi variantlari `@/lib/anketa` da; toast xabarlari `useCustomToast` hooki, xatoliklar `handleError` utiliti orqali ko'rsatiladi.
+Ushbu hujjat `frontend/src/components/` katalogidagi React komponentlarini va anketa sahifasi ichidagi komponentlarni (`routes/_layout/anketa.$orderId.tsx`) qamrab oladi. Stack: React + TypeScript, TanStack Router/Query, react-hook-form + zod, shadcn/ui (Radix UI + Tailwind CSS 4). Barcha komponentlar backend bilan avtomatik generatsiya qilingan `@/client` (UsersService, ClientsService, OrdersService, TerminalService va model turlari) orqali gaplashadi; umumiy query'lar `@/queries/mes` dagi `queryOptions` fabrikalarida (getClients/getMachines/getPosts/getOrderMatrixQueryOptions va h.k.), domen konstantalari `@/lib/mes` da (ROLE_LABELS, PRIORITY_LABELS, PRIORITY_DOT_CLASSES/PRIORITY_TEXT_CLASSES/PRIORITY_BADGE_CLASSES — prioritet ranglari yagona manbadan, POST_COLORS, ORDER_STATUS_LABELS/COLORS, chipColors/mixTint — chip rang formulasi, isCut, formatSize), buyurtma anketasi variantlari `@/lib/anketa` da; toast xabarlari to'g'ridan-to'g'ri sonner `toast.success/error` (`useCustomToast` hooki o'chirilgan), xatoliklar `handleError` utiliti orqali (`onError: handleError` — curry emas); takrorlanuvchi toast+xato+invalidatsiya triosi `@/queries/mes` dagi `crudCallbacks()` da.
 
-Umumiy naqsh (pattern): **forma → zod schema → react-hook-form → useMutation → @/client servisi → toast + query invalidation**. Barcha ko'rinadigan UI matnlari o'zbek tilida; shadcn primitivlaridan qolgan ekran o'quvchi uchun yashirin matnlar hozircha inglizcha (`sidebar.tsx` — "Collapse/Open Sidebar", mobil sidebar sr-only sarlavhasi "Sidebar"/"Displays the mobile sidebar."; `dialog.tsx`/`sheet.tsx` — sr-only "Close"; `password-input.tsx` — aria-label "Show/Hide password").
+Umumiy naqsh (pattern): **forma → zod schema → react-hook-form → useMutation → @/client servisi → toast + query invalidation**. Barcha ko'rinadigan UI matnlari o'zbek tilida; shadcn primitivlaridagi ekran o'quvchi matnlari ham o'zbekchalashtirilgan (`sidebar.tsx` trigger — "Menyuni yig'ish/Menyuni ochish", mobil sidebar sr-only tavsifi "Mobil yon menyu"; `dialog.tsx`/`sheet.tsx` — sr-only "Yopish"; `password-input.tsx` — aria-label "Parolni yashirish/ko'rsatish"); faqat mobil sidebar sr-only sarlavhasi "Sidebar" inglizcha qolgan.
 
 ---
 
 ## Admin komponentlari — `frontend/src/components/Admin/`
 
-Admin panel (`/admin` route) uchun foydalanuvchilarni CRUD boshqarish komponentlari. Jadvalning o'zi route faylida — `routes/_layout/admin.tsx` dagi lokal `UserRow` oddiy `ui/table` qatorini chizadi (clients.tsx/employees.tsx bilan bir xil naqsh); sahifalash yo'q, `getUsersQueryOptions` barcha sahifalarni bitta ro'yxatga yig'adi.
+Admin panel (`/admin` route, guard: `requireAccess(isSuperuser)`) uchun foydalanuvchilarni CRUD boshqarish komponentlari. Jadvalning o'zi route faylida — `routes/_layout/admin.tsx` dagi lokal `UserRow` oddiy `ui/table` qatorini chizadi (clients.tsx/employees.tsx bilan bir xil naqsh; joriy foydalanuvchi qatorida "Siz" badge); sahifalash yo'q, `getUsersQueryOptions` barcha sahifalarni bitta ro'yxatga yig'adi. Yuklanish holati — `isLoading` + `Skeleton` (avvalgi `Pending/PendingUsers` skeleton komponenti va Suspense naqshi o'chirilgan). Add/Edit dialoglarining umumiy yadrosi — `UserForm.tsx`.
+
+### `frontend/src/components/Admin/UserForm.tsx`
+
+**Maqsadi:** AddUser va EditUser uchun umumiy forma yadrosi — schema va maydonlar bir joyda (avval har dialogda ~320 qatordan takrorlangan edi).
+
+- Eksportlar: `buildUserFormSchema(requirePassword)` — zod: `phone` (`phoneSchema`), `name` (`optionalNameSchema`), `password` (Add'da `passwordSchema`, Edit'da `optionalPasswordSchema` — bo'sh qoldirilsa parol o'zgarmaydi), `confirm_password`, `role` (`z.enum(Object.keys(ROLE_LABELS))` — 13 rol yagona manbadan, generatsiya qilingan `UserRole` tipida), `machine_id` (ixtiyoriy), `is_superuser`, `is_active`; ikkita `.refine()`: stanokka bog'liq rolga stanok majburiy ("Terminal/TABLO uchun stanok tanlang") va parollar mosligi ("Parollar mos emas").
+- `UserFormFields({ form, passwordRequired })` — 8 maydonli grid: rol `Select` `ROLE_LABELS` (`@/lib/mes`) dan to'ldiriladi; rol stanokka bog'liq bo'lsa shartli "Stanok" `Select` chiqadi (`getMachinesQueryOptions()` — `@/queries/mes`).
+- `isMachineBoundRole(role)` — `MACHINE_BOUND_ROLES` (`@/lib/mes`, terminal/tablo) asosidagi predikat; ikkala dialog submitda ham shundan foydalanadi.
 
 ### `frontend/src/components/Admin/AddUser.tsx`
 
 **Maqsadi:** yangi foydalanuvchi yaratish dialogi (o'zining trigger tugmasi bilan).
 
-- `formSchema` — zod: `phone` (`phoneSchema`), `name` (`optionalNameSchema`), `password` (`passwordSchema`), `confirm_password`, `role` (`z.enum(Object.keys(ROLE_LABELS))` — 13 rol yagona manbadan, generatsiya qilingan `UserRole` tipida), `machine_id` (ixtiyoriy), `is_superuser`, `is_active`; ikkita `.refine()`: terminal/tablo roliga stanok majburiy ("Terminal/TABLO uchun stanok tanlang") va parollar mosligi ("Parollar mos emas").
+- Schema `buildUserFormSchema(true)` (parol majburiy) + maydonlar `UserFormFields` — ikkalasi `UserForm.tsx` dan.
 - Default qiymatlar: `role: "manager"`, `is_superuser: false`, `is_active: true` — yangi foydalanuvchi darhol tizimga kira oladi.
-- Rol `Select` `ROLE_LABELS` (`@/lib/mes`) dan to'ldiriladi; rol terminal yoki tablo bo'lsa shartli "Stanok" `Select` chiqadi (`getMachinesQueryOptions()` — `@/queries/mes`); submitda `machine_id` `Number` ga o'giriladi (bo'sh bo'lsa `null`).
+- Submitda `machine_id` faqat stanokka bog'liq rolda (`isMachineBoundRole`) `Number` ga o'giriladi, aks holda `null` — rol keyin almashtirilsa yashirin qolgan stanok tanlovi ofis rolga jo'nab ketmaydi.
 - Mutation: `UsersService.createUser({ requestBody })`; muvaffaqiyatda toast, forma reset, dialog yopiladi; `onSettled` da `["users"]` query invalidatsiya qilinadi.
 - Forma `mode: "onBlur"` rejimida validatsiya qiladi; trigger — `<Plus /> Foydalanuvchi qo'shish` tugmasi.
 - Submit tugmasi `LoadingButton` (`loading={mutation.isPending}`).
 
-**Bog'lanishlar:** `@/lib/validation` (schema'lar), `@/lib/mes` (ROLE_LABELS), `@/queries/mes` (getMachinesQueryOptions), `@/hooks/useCustomToast`, `@/utils` (`handleError`), ui: `dialog`, `form`, `input`, `select`, `checkbox`, `button`, `loading-button`. Admin route sahifasidan chaqiriladi.
+**Bog'lanishlar:** `Admin/UserForm` (schema + maydonlar), sonner `toast`, `@/utils` (`handleError`), ui: `dialog`, `form`, `button`, `loading-button`. Admin route sahifasidan chaqiriladi.
 
 ### `frontend/src/components/Admin/DeleteUser.tsx`
 
 **Maqsadi:** foydalanuvchini o'chirish — dropdown menu bandi + tasdiqlash dialogi.
 
 - Props: `{ id: string; onSuccess: () => void }`.
-- Mutation: `UsersService.deleteUser({ userId: Number.parseInt(id, 10) })`; muvaffaqiyatda toast, dialog yopiladi, `onSuccess()` (ota-menuni yopish); `onSettled` da **barcha** querylar invalidatsiya qilinadi (`invalidateQueries()` argumentsiz).
+- Mutation: `UsersService.deleteUser({ userId: Number.parseInt(id, 10) })`; muvaffaqiyatda toast, dialog yopiladi, `onSuccess()` (ota-menuni yopish); `onSettled` da `["users"]` queryi invalidatsiya qilinadi.
 - `DropdownMenuItem variant="destructive"` da `onSelect={(e) => e.preventDefault()}` — menyu yopilib dialog ochilishini ta'minlaydi.
 - Dialog UI to'liq `Common/ConfirmDialog` orqali (`destructive`, `confirmText="O'chirish"`); description matni soft-delete'ga mos — foydalanuvchi **o'chirilgan deb belgilanadi** va tizimga kira olmaydi (ma'lumotlar butunlay o'chirilmaydi).
 
@@ -37,11 +45,15 @@ Admin panel (`/admin` route) uchun foydalanuvchilarni CRUD boshqarish komponentl
 **Maqsadi:** mavjud foydalanuvchini tahrirlash dialogi (dropdown menu bandi ichidan ochiladi).
 
 - Props: `{ user: UserRead; onSuccess: () => void }`.
-- `formSchema` `AddUser` dan farqi: `password` — `optionalPasswordSchema` (bo'sh qoldirilsa parol o'zgarmaydi), refine faqat parol kiritilganda mosligini tekshiradi.
-- `onSubmit` da `UserAdminUpdate` payload quriladi; `password` faqat kiritilgan bo'lsa qo'shiladi:
+- Schema `buildUserFormSchema(false)` (`UserForm.tsx`): `password` — `optionalPasswordSchema` (bo'sh qoldirilsa parol o'zgarmaydi), refine faqat parol kiritilganda mosligini tekshiradi.
+- `onSubmit` da to'liq `UserAdminUpdate` payload quriladi (rol va stanok ham tahrirlanadi); `password` faqat kiritilgan bo'lsa qo'shiladi:
 
 ```ts
-const payload: UserAdminUpdate = { phone, name, is_superuser, is_active }
+const payload: UserAdminUpdate = {
+  phone, name, role,
+  machine_id: isMachineBoundRole(role) && machine_id ? Number(machine_id) : null,
+  is_superuser, is_active,
+}
 if (data.password) payload.password = data.password
 ```
 
@@ -65,13 +77,13 @@ if (data.password) payload.password = data.password
 
 - zod: `full_name` (min 2 belgi), `phone`/`phone_alt` (`optionalFormattedPhoneSchema`), `address`, `notes`; telefon inputlari yozish paytida `formatUzPhone` bilan "+998 90 123-45-67" ko'rinishida maskalanadi (placeholder esa "+998 90 123 45 67"); submitda `optionalFormattedPhoneSchema` probel/chiziqchalarni olib tashlab kanonik `+998901234567` ga o'tkazadi.
 - Props: `trigger?` (default "+ Yangi mijoz" tugmasi o'rniga istalgan React node) va `onCreated?(client)` — `Clients/ClientCombobox` popover footeri shulardan foydalanib mijozni inline yaratadi va combobox'da avtomatik tanlaydi.
-- Mutation: `ClientsService.createClient`; muvaffaqiyatda toast, reset, dialog yopilib `onCreated?.(client)` chaqiriladi; `["clients"]` invalidatsiyasi.
+- Mutation: `ClientsService.createClient` (`crudCallbacks` triosi — toast + xato + `["clients"]` invalidatsiyasi); muvaffaqiyatda reset, dialog yopilib `onCreated?.(client)` chaqiriladi.
 
 ### `frontend/src/components/Clients/ClientCombobox.tsx`
 
 **Maqsadi:** server-qidiruvli mijoz tanlagich — ro'yxat backend `?search=` bilan filtrlanadi, mijozlar soni mingga yetsa ham ishlaydi.
 
-- Qidiruv 300ms debounce bilan `getClientsQueryOptions(search)` ga uzatiladi (`enabled: open`); ArrowUp/ArrowDown/Enter klaviatura navigatsiyasi.
+- Qidiruv 300ms debounce (`useDebounced` hooki) bilan `getClientsQueryOptions(search)` ga uzatiladi (`enabled: open`); ArrowUp/ArrowDown/Enter klaviatura navigatsiyasi.
 - Dialog ichida ishlashi uchun `Popover` `modal` rejimda; `onOpenAutoFocus` da Radix avto-fokusi bekor qilinib, fokus qidiruv inputiga beriladi.
 - Props: `value`/`onChange`, `initialLabel?` (tanlangan mijoz nomi tashqaridan kelganda, masalan EditOrder), `disabled?`.
 - Popover footerida inline `AddClient` ("Yangi mijoz qo'shish" ghost tugma trigger, `onCreated` yangi mijozni avtomatik tanlaydi). `Orders/AddOrder` va `Orders/EditOrder` da ishlatiladi.
@@ -95,7 +107,11 @@ if (data.password) payload.password = data.password
 - Props: `open`, `onOpenChange`, `title`, `description?`, `confirmText?` (default "Tasdiqlash"), `cancelText?` (default "Bekor qilish"), `destructive?`, `loading?`, `onConfirm`.
 - Tasdiqlash tugmasi `LoadingButton` (`variant={destructive ? "destructive" : "default"}`); ikkala tugma ham `h-11 px-5` — 44px minimal barmoq o'lchami terminal (touch) va admin uchun bir xil.
 
-**Foydalanuvchilari:** `Admin/DeleteUser.tsx`, `UserSettings/DeleteAccount.tsx`, `routes/_layout/orders/$orderId.tsx`, `routes/_layout/anketa.$orderId.tsx` (xona o'chirish), `routes/_layout/employees.tsx`, `routes/_layout/printers.tsx` (agentga yangi kod berish va agentni bekor qilish — ikkita dialog), `routes/terminal.tsx`.
+**Foydalanuvchilari:** `Admin/DeleteUser.tsx`, `UserSettings/DeleteAccount.tsx`, `routes/_layout/orders/$orderId.tsx`, `routes/_layout/anketa.$orderId.tsx` (xona o'chirish), `routes/_layout/employees.tsx`, `routes/_layout/printers.tsx` (stanok bog'lash/uzish, chek chiqarish `can_print` switch'i, agentga yangi kod berish va agentni bekor qilish — to'rtta dialog), `routes/terminal.tsx`.
+
+### `frontend/src/components/Common/EmptyRow.tsx`
+
+**Maqsadi:** jadvalning bo'sh holati qatori (`colSpan` + markazlangan muted xabar — "topilmadi / hali yo'q") — har reyestrda qo'lda takrorlanadigan `TableRow`+`TableCell` naqshi bitta joyda. 8 ta reyestr sahifasida ishlatiladi (clients, employees, logs, machines, reports, materials, printers, orders ro'yxati).
 
 ### `frontend/src/components/Common/ErrorComponent.tsx`
 
@@ -113,17 +129,28 @@ if (data.password) payload.password = data.password
 
 **Maqsadi:** 404 ekrani — `ErrorScreen` ga delegatsiya ("404 / Voy!" + "Siz qidirayotgan sahifa topilmadi." matni). Router'ning `notFoundComponent` sifatida ulanadi.
 
+### `frontend/src/components/Common/OperationChips.tsx`
+
+**Maqsadi:** noodatiy detal nomidagi `{kodlar}` marshrutidan SHU POSTGA tegishli AMAL nomlari chiplari ("eshik {7;11;8}" → "G petlya o'ngdan") — amber chip; chipsiz operator raqamni yoddan tarjima qilishi kerak edi.
+
+- `partOperations(name, postCode)` (`@/lib/mes`) dan quriladi — `PROCESS_OPS` jadvali (14 kod, backend `PROCESS_POSTS` bilan bir xil bo'lishi shart) kodni amal nomi + postga o'giradi; faqat ko'p amalli postlarda chip chiqadi (bitta amalli postda — rover, bo'yoq — hech narsa chizilmaydi, post nomi ekran sarlavhasida turibdi).
+- Ishlatilish joylari: `Terminal/KromkaView` va `routes/terminal.tsx` vazifalar jadvali.
+
 ### `frontend/src/components/Common/PageHeader.tsx`
 
-**Maqsadi:** sahifa sarlavhasi — `title`, ixtiyoriy `description` va o'ng tomonda `actions` slot. Deyarli barcha `_layout` sahifalarida ishlatiladi (dashboard, orders ro'yxati va sahifasi, clients, employees, machines, materials, reports, logs, printers, anketa — 11 ta sahifa); istisno — `admin.tsx` va `settings.tsx` sarlavhani o'zi qo'lda (`<h1>`) chizadi, `cutmap.$orderId.tsx` da esa sarlavha umuman yo'q (to'liq ekran).
+**Maqsadi:** sahifa sarlavhasi — `title`, ixtiyoriy `description` va o'ng tomonda `actions` slot. Barcha `_layout` sahifalarida ishlatiladi (dashboard, orders ro'yxati va sahifasi, clients, employees, machines, materials, reports, logs, printers, anketa, admin, settings — 13 ta sahifa); yagona istisno — `cutmap.$orderId.tsx`, unda sarlavha umuman yo'q (to'liq ekran).
 
 ### `frontend/src/components/Common/PostBadge.tsx`
 
-**Maqsadi:** bosqich (post) kodi chipi (ARRA, KROMKA, ...) — `POST_COLORS` asosida, matn post rangining to'qroq variantida (`color-mix ... 78%, black` — WCAG AA kontrasti, sof rang tint fonda o'tmasdi). Avval `employees.tsx` va `machines.tsx` da qo'lda takrorlangan edi.
+**Maqsadi:** bosqich (post) kodi chipi (ARRA, KROMKA, ...) — `POST_COLORS` + `chipColors(color, 12)` (`@/lib/mes`) asosida: matn post rangining to'qroq variantida (`78%, black` — WCAG AA kontrasti, sof rang tint fonda o'tmasdi), fon 12% oq tint. Avval `employees.tsx` va `machines.tsx` da qo'lda takrorlangan edi.
 
 ### `frontend/src/components/Common/QueryError.tsx`
 
 **Maqsadi:** so'rov yiqilganda ko'rsatiladigan `role="alert"` bloki — xato matni + ixtiyoriy "Qayta urinish" tugmasi (`onRetry`). Busiz sahifalar xato holatida abadiy skeletonda qotib qolardi.
+
+### `frontend/src/components/Common/SearchInput.tsx`
+
+**Maqsadi:** ichida `Search` ikonkasi bo'lgan qidiruv maydoni (`value`/`onChange`/`placeholder`/`className`) — reyestr sahifalarida (clients, employees, orders ro'yxati, materials, logs) qo'lda takrorlanadigan `relative` div + absolyut ikonka + `pl-8` Input naqshi bitta joyda; kenglik/joylashuv `className` orqali chaqiruvchidan.
 
 ### `frontend/src/components/Common/SectionTitle.tsx`
 
@@ -131,9 +158,9 @@ if (data.password) payload.password = data.password
 
 ### `frontend/src/components/Common/StagePipeline.tsx`
 
-**Maqsadi:** 6 bosqichli ishlab chiqarish pipeline'i (TZ 4.4) — ulangan progress kataklar zanjiri, loyihaning "signature" vizual elementi.
+**Maqsadi:** ishlab chiqarish pipeline'i (TZ 4.4) — ulangan progress kataklar zanjiri, loyihaning "signature" vizual elementi. Kataklar data-driven (`stages` propidan), hozir bazada 7 post (PAZ olib tashlangan, BOYOQ qo'shilgan).
 
-- Props: yagona `stages: StageCell[]` (`{ code, done, total }`); har katak (`h-6 w-12`) `POST_COLORS[code]` rangida (`color-mix` fon + foizli progress chizig'i), ichida `done/total`, tugallanganda "✓"; kataklar orasida ulovchi chiziqcha, `title` da `KOD: done/total (N%)`.
+- Props: yagona `stages: StageCell[]` (`{ code, done, total }`); har katak (`h-6 w-12`) `POST_COLORS[code]` rangida (`mixTint` fon + foizli progress chizig'i), ichida `done/total` (`--foreground` rangda — post rangi o'z tinti ustida AA dan o'tmasdi), tugallanganda "✓"; kataklar orasida ulovchi chiziqcha, `title` da `KOD: done/total (N%)`.
 - Dashboard'da (`routes/_layout/index.tsx`) ishlatiladi; xuddi shu vizual grammatika `Orders/OrderMatrix` va TABLO ekranida takrorlanadi.
 
 ### `frontend/src/components/Common/StatusBadge.tsx`
@@ -177,16 +204,19 @@ Buyurtma sahifalari (`/orders`, `/orders/$orderId`) uchun dialog va jadval kompo
 
 ### `frontend/src/components/Orders/OrderMatrix.tsx`
 
-**Maqsadi:** texnolog matritsasi (TZ 6.3.3) — qatorlar: detallar, ustunlar: 6 post.
+**Maqsadi:** texnolog matritsasi (TZ 6.3.3) — qatorlar: detallar, ustunlar: postlar (`getPostsQueryOptions` — hozir bazada 7 post).
 
-- O'qish rejimida har katak `total_done/total_required` progress (`POST_COLORS`, tugallanganda "✓"), o'chirilgan bosqich "—"; `editable` bo'lsa "Marshrutni tahrirlash" rejimi: bosqich checkboxlari (ARRA majburiy — TZ 5.4.1, checkbox locked) + izoh inputlari, `OrdersService.editOrderMatrix` ga batch saqlanadi.
+- O'qish rejimida har katak `total_done/total_required` progress (`POST_COLORS`, tugallanganda "✓"), o'chirilgan bosqich "—"; `editable` bo'lsa "Marshrutni tahrirlash" rejimi: bosqich checkboxlari (ARRA majburiy — TZ 5.4.1, checkbox locked) + izoh inputlari, `OrdersService.editOrderMatrix` ga batch saqlanadi (`crudCallbacks`).
+- Boshqaruv qatorida detal qidiruvi ("Qidirish: kod yoki nom...") va `N / M detal` hisobi; jadval balandligi 70vh bilan chegaralangan, sarlavha sticky.
+- Har detal kodi yonida Map-ikonka — `/cutmap/$orderId?part=...` havolasi: kesish xaritasida detalning listi ochilib katagi belgilanadi (`CutmapView` `focusPartKey` oqimi).
+- Nomida `{kodlar}` marshruti bo'lgan detalda amber "Marshrut nomdan" belgisi (`isCustomRoute` — bu yerda belgilangan o'zgarish faylni qayta yuklaganda yo'qoladi, marshrut GibLab'da nomdan tuzatiladi).
 - Ma'lumot: `getOrderMatrixQueryOptions(orderId)`; o'lchamlar `formatSize` (`@/lib/mes`) bilan.
 
 ---
 
 ## Anketa komponentlari — `frontend/src/routes/_layout/anketa.$orderId.tsx`
 
-Buyurtma anketasi (mijoz so'rovnomasi + o'lchov varag'i) komponentlari `components/` da emas, sahifa faylining o'zida (~1340 qator) — faqat shu sahifada ishlatiladi. Variantlar katalogi alohida: `frontend/src/lib/anketa.ts`.
+Buyurtma anketasi (mijoz so'rovnomasi + o'lchov varag'i) komponentlari `components/` da emas, sahifa faylining o'zida (~1400 qator) — faqat shu sahifada ishlatiladi. Variantlar katalogi alohida: `frontend/src/lib/anketa.ts`.
 
 **Ma'lumot oqimi:** `Order.survey` (JSONB) — `OrderSurvey { version, measured_at, measured_by, rooms[] }`; xona `SurveyRoom` (materiallar, o'lchamlar, `walls: SurveyWall[]`, `modules: SurveyModule[]`). Saqlash `OrdersService.saveOrderSurvey` (`PUT /orders/{id}/survey`); xona rasmlari JSON'da emas, `OrderFile(kind=DOCUMENT, meta.room_id)` da (`OrdersService.uploadRoomPhoto` / `deleteRoomPhoto`) — shuning uchun avtosaqlash bilan aralashmaydi.
 
@@ -223,25 +253,16 @@ Anketa variantlari katalogi — bazaga faqat `value` kodlari yoziladi, matnlar s
 
 ---
 
-## Pending — `frontend/src/components/Pending/PendingUsers.tsx`
-
-**Maqsadi:** foydalanuvchilar jadvali yuklanayotganda ko'rsatiladigan skeleton holati.
-
-- Haqiqiy jadval bilan bir xil sarlavhalar (To'liq ism, Telefon, Rol, Holat, sr-only Amallar) va 5 ta qator; har katakda mos o'lchamli `Skeleton` (badge uchun `rounded-full`, holat nuqtasi uchun `size-2` va h.k.) — layout shift bo'lmasligi uchun `routes/_layout/admin.tsx` dagi `UserRow` tuzilishini aks ettiradi.
-- Admin sahifasida `useSuspenseQuery` ishlatilgani uchun `<Suspense fallback={<PendingUsers />}>` sifatida render qilinadi (`isLoading` tekshiruvi emas).
-
----
-
 ## Sidebar komponentlari — `frontend/src/components/Sidebar/`
 
-Claude.com uslubidagi yon panel: trigger sidebar ichida, alohida app header/footer yo'q (qarang: commit tarixi).
+Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app header/footer yo'q, mobil rejimda esa `routes/_layout.tsx` da yupqa header bor (`h-12`, `md:hidden`) — `SidebarTrigger` + joriy bo'lim sarlavhasi (`sectionTitles` — `NAV_ITEMS` dan quriladi).
 
 ### `frontend/src/components/Sidebar/AppSidebar.tsx`
 
 **Maqsadi:** ilovaning asosiy yon paneli — brend, navigatsiya va foydalanuvchi menyusini yig'adi.
 
-- `navItems(user)` funksiyasi (TZ 3.7 rollar-modullar matritsasi) 11 tagacha punkt quradi. Huquq predikatlari `@/lib/mes` dan — `isAdmin` / `isSuperuser`; **route guard'lar ham AYNAN shularni ishlatadi** (`lib/guards.requireAccess`), ya'ni menyuda ko'rinadigan sahifa albatta ochiladi. Bandlar: Boshqaruv paneli `/` va LIVE Tablo `/tablo` — hammaga; Buyurtmalar `/orders`, Stanoklar `/machines`, Materiallar `/materials` — admin/manager/texnolog/director; Mijozlar `/clients`, Hodimlar `/employees`, Hisobotlar `/reports` — admin/manager/director; Printer agentlar `/printers` (`Printer` ikonkasi) va Loglar `/logs` (`ScrollText` ikonkasi) — `isAdmin` (superuser yoki `role === "admin"`); Foydalanuvchilar `/admin` — **faqat `isSuperuser`**, chunki ro'yxat barcha telefon raqamlarni ochadi va backend ham uni faqat superuser'ga beradi. **Rolga qarab navigatsiya**.
-- Buyurtmalar bandida jonli badge — faol buyurtmalar soni (delivered/cancelled dan boshqa statuslar yig'indisi): `getOrderStatusCountsQueryOptions()` reyestr sahifasi bilan AYNAN bitta query key'da, TanStack dedupe qiladi — sidebar qo'shimcha so'rov qo'shmaydi; `enabled` faqat `/orders` bandi ko'rinadigan rollarda.
+- Modul darajasidagi `NAV_ITEMS` ro'yxati (TZ 3.7 rollar-modullar matritsasi, eksport — `routes/_layout.tsx` mobil sarlavhalari ham shu ro'yxatdan) 11 tagacha punkt beradi, har bandda `show(user)` predikati. Huquq predikatlari `@/lib/mes` dan — `isProductionStaff` / `isManagement` / `isAdmin` / `isSuperuser`; **route guard'lar ham AYNAN shularni ishlatadi** (`lib/guards.requireAccess`), ya'ni menyuda ko'rinadigan sahifa albatta ochiladi. Bandlar: Boshqaruv paneli `/` va LIVE Tablo `/tablo` — hammaga; Buyurtmalar `/orders`, Stanoklar `/machines`, Materiallar `/materials` — `isProductionStaff` (boshqaruv + texnolog); Mijozlar `/clients`, Hodimlar `/employees`, Hisobotlar `/reports` — `isManagement` (admin/manager/direktor); Printer agentlar `/printers` (`Printer` ikonkasi) va Loglar `/logs` (`ScrollText` ikonkasi) — `isAdmin` (superuser yoki `role === "admin"`); Foydalanuvchilar `/admin` — **faqat `isSuperuser`**, chunki ro'yxat barcha telefon raqamlarni ochadi va backend ham uni faqat superuser'ga beradi. **Rolga qarab navigatsiya**.
+- Buyurtmalar bandida jonli badge — faol buyurtmalar soni (`TERMINAL_STATUSES` — delivered/cancelled — dan boshqa statuslar yig'indisi): `getOrderStatusCountsQueryOptions()` reyestr sahifasi bilan AYNAN bitta query key'da, TanStack dedupe qiladi — sidebar qo'shimcha so'rov qo'shmaydi; `enabled` faqat `/orders` bandi ko'rinadigan rollarda.
 - `<Sidebar collapsible="icon">`: yig'ilganda faqat ikonkalar qoladi. Header'da `Link to="/"` (logo `icon-gold.png` + "MebeliX" yozuvi, yig'ilganda `group-data-[collapsible=icon]:hidden` bilan yashiriladi) va `SidebarTrigger` (yig'ilgan railda yolg'iz qoladi).
 - `SidebarContent` → `Main items={items}`; `SidebarFooter` → `User user={currentUser}`.
 
@@ -252,41 +273,40 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida, alohida app header/foot
 **Maqsadi:** navigatsiya menyusi ro'yxati.
 
 - Eksport: `type Item = { icon: LucideIcon; title: string; path: string; badge?: number }` va `Main({ items })`; `badge` bo'lsa (0 emas) band yonida `SidebarMenuBadge` chiqadi.
-- `useRouterState()` dan `currentPath` olinib `isActive = currentPath === item.path` aniqlanadi; aktiv bandda chapdan 3px oltin chiziq: `data-[active=true]:shadow-[inset_3px_0_0_0_var(--sidebar-primary)]`.
+- `useRouterState()` dan `currentPath` olinib `isActive = currentPath === item.path` aniqlanadi; aktiv bandda chapdan 3px oltin chiziq `before:` pseudo-element bilan (`data-[active=true]:before:...w-[3px]...before:bg-sidebar-primary`) va ikonka `text-sidebar-primary` ga o'tadi — inset soya tugmaning rounded burchaklarida qirqilib ko'rinmasdi.
 - Har band `SidebarMenuButton tooltip={item.title} asChild` ichida `RouterLink`; mobil rejimda bosilganda `setOpenMobile(false)` bilan panel yopiladi.
 
 ### `frontend/src/components/Sidebar/User.tsx`
 
 **Maqsadi:** sidebar footeridagi foydalanuvchi kartasi va dropdown menyusi.
 
-- Ichki `UserInfo({ fullName, phone })` — brend ranglaridagi `Avatar` (`bg-[#f0a52f]` oltin fon, `#1c2b42` navy matn) + `getInitials()` (`@/utils`) initsiallari, ism va telefon.
-- `User({ user })`: `user` bo'lmasa `null`. `SidebarMenuButton size="lg"` trigger → `DropdownMenu` (`side`: mobil bo'lsa "bottom", aks holda "right"): `DropdownMenuLabel` da yana `UserInfo`, so'ng "Sozlamalar" (`RouterLink to="/settings"`) va "Chiqish" (`useAuth().logout()`).
-- Kamchilik sifatida qayd: `user: any` tipi ishlatilgan (`UserRead` emas).
+- Ichki `UserInfo({ fullName, phone })` — tema tokenlaridagi `Avatar` (`bg-sidebar-primary` oltin fon, `text-sidebar-primary-foreground` matn) + `getInitials()` (`@/utils`) initsiallari, ism va telefon.
+- `User({ user }: { user?: UserRead | null })`: `user` bo'lmasa `null`. `SidebarMenuButton size="lg"` trigger → `DropdownMenu` (`side`: mobil bo'lsa "bottom", aks holda "right"): `DropdownMenuLabel` da yana `UserInfo`, so'ng "Sozlamalar" (`RouterLink to="/settings"`) va "Chiqish" (`useAuth().logout()`).
 
 ---
 
 ## Terminal komponentlari — `frontend/src/components/Terminal/`
 
-### `frontend/src/components/Terminal/CutmapView.tsx` (~755 qator)
+### `frontend/src/components/Terminal/CutmapView.tsx` (~965 qator)
 
 **Maqsadi:** ARRA kesish xaritasi (TZ 7.1.7) — GibSaw/GibLab uslubidagi ekran, GibCut litsenziyasi o'rnini bosadi. `routes/terminal.tsx` (operator) va `routes/_layout/cutmap.$orderId.tsx` (admin) ishlatadi; `admin` prop'ga qarab `OrdersService.readOrderCutmap` yoki `TerminalService.readTerminalCutmap` (`refetchInterval: 60_000`).
 
-**Props:** `orderId`, `onBack`, `admin?`, `registerPrint?(fn)`, `statsContainer?: HTMLElement | null`, `toolbarContainer?: HTMLElement | null`.
+**Props:** `orderId`, `onBack`, `admin?`, `registerPrint?(fn)`, `statsContainer?: HTMLElement | null`, `toolbarContainer?: HTMLElement | null`, `focusPartKey?: string` — matritsadagi Map-havoladan (`/cutmap/$orderId?part=...`) kelganda detalning listini ochib katakni belgilaydi.
 
-- **Drill-down oqim (bitta sahifa, ikki holat):** `sheetIdx === null` bo'lsa jadval sahifasi — material tablari (bitta qator, `overflow-x-auto`, har tabda `bajarilgan/jami` list hisobi) + listlar gridi (`sm:grid-cols-3 lg:grid-cols-4`); har list kartochkasida №, `L×W`, `×mult` badge, tugallanganda ✓ va `SheetSvg thumbnail` mini-xaritasi. List bosilsa — to'liq maydonli xarita.
-- **Portal joylashuv:** `statsContainer` berilsa material statistikasi `createPortal` bilan terminal headeriga, `toolbarContainer` berilsa chap toolbar tugmalari terminalning umumiy chap ustuniga ko'chiriladi; berilmasa (admin sahifa) o'z joyida — stats xarita ustida, toolbar `w-[76px]` ustunda qoladi.
-- **Statistika qatori (`statsRow`):** GibSaw uslubidagi qat'iy 3 qator × 3 ustun grid — Listlar / Detallar (`jami−bajarilgan=qoldiq` formatida), Atxot (`ko`), Rez m (`dr`), Rezlar (`kr`), To'ldirish (`fill`, %), Arra (`kerf`), Tirim uz. (`trimL`), Tirim en (`trimW`). Xarita ochiq bo'lsa yonida `№N — L × W mm`, `× k list` va material nomi.
-- **Chap toolbar** (`TBtn` tugmalari): Orqaga (xarita ochiq bo'lsa listlar jadvaliga, aks holda `onBack()`), Oldingi/Keyingi list, Katta/Kichik/To'liq (`SheetSvg` `registerZoom` bergan `zin/zout/reset`), Chop etish — belgilangan detalning navbatdagi CHIQARILMAGAN nusxasini GoDEX navbatiga yuboradi (dialogsiz); hammasi chiqarilgan bo'lsa yozilmaydi, "avval bekor qiling" xabari. Chop etish mutatsiyasi modul darajasidagi `usePrintLabel()` hookida, bekor qilish `useCancelLabel()` da (`cancelInstanceLabel`, ikkala kesh — terminal va admin — invalidatsiyasi).
-- **Chek chiqarilgan = kesildi:** modul darajasidagi `isCut(i)` — ARRA skan BOR yoki `label_printed_at` bor; statlar, list kartalari va kataklar shu o'lchovda. Xato chek: katakni long press (~600ms) — tasdiq dialogi ("Ha, bekor qilinsin" / "Yo'q"), skan qilingan nusxa himoyada. Hamma detali chiqarilgan list kartasi butun yashil.
+- **Drill-down oqim (bitta sahifa, ikki holat):** `sheetIdx === null` bo'lsa jadval sahifasi — material tablari (bitta qator, `overflow-x-auto`, har tabda `bajarilgan/jami` list hisobi) + listlar gridi (`sm:grid-cols-3 lg:grid-cols-4`); har list kartochkasida №, `L×W`, tugallanganda ✓ va `SheetSvg thumbnail` mini-xaritasi. `mult>1` naqshlar render paytida HAR JISMONIY LIST uchun alohida kartaga yoyiladi (№ `3c1` ko'rinishida) — ×mult badge yo'q. List bosilsa — to'liq maydonli xarita.
+- **Portal joylashuv:** `statsContainer` berilsa material statistikasi `createPortal` bilan terminal headeriga, `toolbarContainer` berilsa chap toolbar tugmalari terminalning umumiy chap ustuniga ko'chiriladi; portal berilmasa terminal rejimida toolbar `w-[76px]` ustunda qoladi, admin rejimida esa 76px ustun umuman chizilmaydi — o'rniga sichqonchaga mo'ljallangan ixcham `webToolbar` icon-qatori (oldingi/keyingi list, zoom +/−/to'liq) va "Listlar ro'yxati" tugmasi, stats xarita ustida.
+- **Statistika qatori (`statsRow`):** GibSaw uslubidagi qat'iy 3 qator × 3 ustun grid — Listlar / Detallar (`jami−bajarilgan=qoldiq` formatida), Atxot (`ko`), Rez m (`dr`), Rezlar (`kr`), To'ldirish (`fill`, %), Arra (`kerf`), Tirim uz. (`trimL`), Tirim en (`trimW`). Xarita ochiq bo'lsa yonida `№N — L × W mm` (N — yoyilgan raqam, `disp ?? no`) va material nomi.
+- **Chap toolbar** (`TBtn` tugmalari): Orqaga (xarita ochiq bo'lsa listlar jadvaliga, aks holda `onBack()`), Oldingi/Keyingi list, Katta/Kichik/To'liq (`SheetSvg` `registerZoom` bergan `zin/zout/reset`), Chop etish — belgilangan detalning navbatdagi CHIQARILMAGAN nusxasini GoDEX navbatiga yuboradi (dialogsiz); hammasi chiqarilgan bo'lsa yozilmaydi, "avval bekor qiling" xabari. Chop etish mutatsiyasi umumiy `usePrintLabel("cutmap")` hookida (`Terminal/usePrintLabel.ts` — PrisadkaView bilan baham ko'riladi), bekor qilish modul darajasidagi `useCancelLabel()` da (`cancelInstanceLabel`, ikkala kesh — terminal va admin — invalidatsiyasi).
+- **Chek chiqarilgan = kesildi:** `isCut(i)` (`@/lib/mes` dan import — SheetSvg ham shu predikatni ishlatadi) — ARRA skan BOR yoki `label_printed_at` bor; statlar, list kartalari va kataklar shu o'lchovda. Xato chek: katakni long press (~600ms) — tasdiq dialogi ("Ha, bekor qilinsin" / "Yo'q"), skan qilingan nusxa himoyada. Hamma detali chiqarilgan list kartasi butun yashil.
 - **Tanlash semantikasi:** xaritada detal bosilsa `markedCell` moviy bo'lib qoladi (kartochka yopilgandan keyin ham) — terminalda tap faqat belgilaydi, chop etish chap toolbardan; `admin` bo'lsa qo'shimcha ravishda `PartCard` dialogi ochiladi.
 - `instancesByCell` — `useMemo` bilan `pattern_no:cell_index` kalitli Map; `sheetDone(s)` list to'liq kesilganini (har bir waste bo'lmagan katakning barcha instansiyalari `done`) hisoblaydi.
 - **Eksportlar:** `CutmapView` va `TBtn` — `TBtn` (ikonka + `text-[10px]` yozuv, `h-16`, `TBTN_TONES`: default/primary/warn/danger/success) `routes/terminal.tsx` da ham skan/sessiya tugmalari uchun ishlatiladi.
 - `PartPreview` — tanlangan detal mini-chizmasi (276×190 viewBox): o'lcham strelkalari, `holes` dan yuza (`bores`) va qirra (`edge`) teshiklari masshtablangan holda, aylantirilgan detalda ⟳.
-- `PartCard` dialogi: `PartPreview`, katta QR (`qrcode.react` `QRCodeSVG`, `next.qr_text`), o'lcham/kromka/yorliq raqami, instansiyalar ro'yxati (`✓ kesildi` / `✓ chek chiqarilgan`) va `h-12` "Yopish" tugmasi. Admin rejimida chiqarilgan (skan qilinmagan) nusxa yonida qizil "Chekni bekor qilish" — proyekt ARRA ro'yxatidan tushib bo'lgach texnolog xato chekni shu yerdan tuzatadi. Dialogdagi "YORLIQ CHOP ETISH" tugmasi (PNG'ni `${OpenAPI.BASE}/api/v1/terminal/labels/{instance_id}.png` da yangi tabda ochadi + parallel `printInstanceLabel` bilan GoDEX navbatiga yuboradi) `!admin` shartida — PartCard esa faqat `admin` rejimida ochilgani uchun amalda ko'rinmaydi (terminalda chop etish yo'li — chap toolbardagi "Chop etish").
-- `printAllMaps` — barcha xaritalarni chop etish: `renderToStaticMarkup(<SheetSvg .../>)` bilan yangi oynaga yoziladi, har list o'z A4 landscape sahifasida (`@page size: A4 landscape`), "Material | №N — L × W mm × k list" sarlavhasi bilan; sahifadagi "PDF / Chop etish" tugmasiga `registerPrint` prop orqali ulanadi. `escapeHtml` bilan nom/raqam ekranlanadi.
+- `PartCard` dialogi: `PartPreview`, katta QR (`qrcode.react` `QRCodeSVG`, `next.qr_text`), o'lcham/kromka/yorliq raqami, instansiyalar ro'yxati (`✓ kesildi` / `✓ chek chiqarilgan`) va `h-12` "Yopish" tugmasi. Chiqarilgan (skan qilinmagan) nusxa yonida qizil "Chekni bekor qilish" (`admin` shartida) — proyekt ARRA ro'yxatidan tushib bo'lgach texnolog xato chekni shu yerdan tuzatadi. PartCard faqat admin rejimida ochiladi va unda chop etish tugmasi yo'q — terminalda chop etish yo'li chap toolbardagi "Chop etish".
+- `printAllMaps` — barcha xaritalarni chop etish: `renderToStaticMarkup(<SheetSvg .../>)` bilan yangi oynaga yoziladi, har list o'z A4 landscape sahifasida (`@page size: A4 landscape`), "Material | №N — L × W mm" sarlavhasi bilan (listlar jismoniy nusxalarga yoyilgani uchun `× k list` yo'q); sahifadagi "PDF / Chop etish" tugmasiga `registerPrint` prop orqali ulanadi. `escapeHtml` bilan nom/raqam ekranlanadi.
 - Xarita mavjud bo'lmasa (`data.model` yo'q — fayl GibLabda optimizatsiya qilinmagan, TEMPLATE) tushuntirish matni + "Orqaga" tugmasi.
 
-### `frontend/src/components/Terminal/SheetSvg.tsx` (~655 qator)
+### `frontend/src/components/Terminal/SheetSvg.tsx` (~710 qator)
 
 **Maqsadi:** bitta listning to'liq SVG renderi — GibLabViewer'dan portlangan render qoidalari. `CutmapView` (interaktiv, thumbnail va print oqimi) ishlatadi.
 
@@ -299,15 +319,23 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida, alohida app header/foot
 - **Tekstura yo'nalishi:** `p.txt` bo'lsa (va detal >60×40) matn ortida 3 ta gorizontal chiziq.
 - **Teshiklar haqiqiy masshtabda:** `H.bores` — radiusi `d/2` doiralar, `H.edge` — `edgeBoreRect` to'rtburchaklari; hammasi `#fafafa` to'ldirish, `#202020` kontur.
 - **O'lcham zanjirlari** (`sheet.dims`, `ax: "X"|"Y"`): chetda strelka, ichki chegarada kesim davomi + ✕ belgisi, o'rtada 44px qiymat; `PAD = 110` bilan viewBox'da siqilmaydi (assimetrik ramka — zanjir faqat tepa/chapda).
-- Barcha nusxalari "kesilgan" (skan yoki chek chiqarilgan) katak YASHIL (`#6cb56e`) to'ldiriladi — belgisiz; `onLongPress` prop berilsa katakni ~600ms bosib turish uni chaqiradi (12px siljish yoki pinch bekor qiladi, keyingi click yutiladi) — CutmapView bekor qilish dialogi uchun. `thumbnail` rejimda `pointer-events-none`.
+- Barcha nusxalari "kesilgan" (skan yoki chek chiqarilgan — `isCut`, `@/lib/mes`) katak YASHIL (`PART_DONE = "#22c55e"`, Tailwind green-500 — tizimdagi boshqa "bajarildi" belgilari bilan bir ton) to'ldiriladi — belgisiz; `onLongPress` prop berilsa katakni ~600ms bosib turish uni chaqiradi (12px siljish yoki pinch bekor qiladi, keyingi click yutiladi) — CutmapView bekor qilish dialogi uchun. `thumbnail` rejimda `pointer-events-none`.
 
 ### `frontend/src/components/Terminal/KromkaView.tsx`
 
-**Maqsadi:** KROMKA/OVAL post sahifasi. Ikki panel: chapda arradan chiqqan (`arra_passed`), kromkasi tugamagan detallar (tugaganlari yashil bo'lib pastga tushadi), o'ngda "Jarayonda" — 2+ tomonli, boshlangan-u tugamagan nusxalar. Har skan darhol yoziladi (tomon = skan); `registerScan` prop orqali terminalga lokal tekshiruv beradi (`null` = yozish mumkin, `"NOTFOUND"` = bu proyektda yo'q, boshqa string = xato matni: arradan chiqmagan / allaqachon tugagan). `oval` prop: bir panel, tomonlar ustuni yo'q, har detal bitta skan. Oxirgi skan bo'lgan qator keyingi skangacha ajralib turadi + markazga avto-scroll (`useScanFlash` hooki — xuddi shu mexanizm `routes/terminal.tsx` vazifalar jadvalida ham). Ma'lumot: `readTerminalKromka` (`refetchInterval: 30_000` + har skanda invalidatsiya).
+**Maqsadi:** KROMKA/OVAL post sahifasi. Ikki panel: chapda arradan chiqqan (`arra_passed`), kromkasi tugamagan detallar (tugaganlari yashil bo'lib pastga tushadi), o'ngda "Jarayonda" — 2+ tomonli, boshlangan-u tugamagan nusxalar. Detal nomi ostida `Common/OperationChips` — noodatiy marshrutli detalda shu postga tegishli amal nomi chiplari (postCode: `oval ? "OVAL" : "KROMKA"`). Har skan darhol yoziladi (tomon = skan); `registerScan` prop orqali terminalga lokal tekshiruv beradi (`null` = yozish mumkin, `"NOTFOUND"` = bu proyektda yo'q, boshqa string = xato matni: arradan chiqmagan / allaqachon tugagan). `oval` prop: bir panel, tomonlar ustuni yo'q, har detal bitta skan. Oxirgi skan bo'lgan qator keyingi skangacha ajralib turadi + markazga avto-scroll (`useScanFlash` hooki — xuddi shu mexanizm `routes/terminal.tsx` vazifalar jadvalida ham). Ma'lumot: `readTerminalKromka` (`refetchInterval: 30_000` + har skanda invalidatsiya).
 
 ### `frontend/src/components/Terminal/PrisadkaView.tsx`
 
-**Maqsadi:** PRISADKA sahifasi (TZ 12.5): detallar + SCX fayllari, "Hammasini yuklab olish" tugmasi. `lib/scxDir.ts` bilan: File System Access API `showDirectoryPicker` BIR MARTA — tanlangan papka IndexedDB'da (`mebelix-terminal/kv/scx-dir`), keyingi yuklab olishlar so'roqsiz; papka ichida proyekt nomli subpapka (`project_name`, taqiqlangan belgilar `_` ga) ochilib fayllar shu yerga yoziladi. API bo'lmasa `<a download>` fallback. Har skandagi avto-SCX (`downloadScx`) ham saqlangan papkaga tushadi. Yuklab olishda tugmada jonli progress ("Yuklanmoqda… 12/81"); papka tugmasi yozuvli ("Papka" — sensorli ekranda hover yo'q). Jadval ish-navbat tartibida: qilinmaganlar tepada, tugaganlar (✓ yashil) pastda; oxirgi skan bo'lgan qator KEYINGI skangacha amber ajralib turadi va markazga avto-scroll bo'ladi (`useScanFlash` hooki — `done` o'zgargan qatorni topadi: lokal skan ham, stanokdan skan-forvard ham). Har SCX fayl chipi bitta nusxaga mos (fayl nomi = QR): QR'i `done_qrs` da bo'lsa chip yashil ✓ — operator qaysi nusxalar qolganini ko'radi.
+**Maqsadi:** PRISADKA va ROVER post sahifasi (TZ 12.5): detallar + SCX fayllari, "Hammasini yuklab olish" tugmasi. Props: `orderId`, `onBack`, `showScx?` (default `true`; `routes/terminal.tsx` ROVER postida `false` beradi — SCX fayllar kerak emas), `toolbarContainer?` (ROVER "Chop etish" tugmasi terminalning umumiy chap ustuniga portal qilinadi). Ma'lumot: `readTerminalPrisadka` (`refetchInterval: 30_000`).
+
+- SCX oqimi (`showScx`): `lib/scxDir.ts` bilan — File System Access API `showDirectoryPicker` BIR MARTA, tanlangan papka IndexedDB'da (`mebelix-terminal/kv/scx-dir`), keyingi yuklab olishlar so'roqsiz; papka ichida proyekt nomli subpapka (`project_name`, taqiqlangan belgilar `_` ga) ochilib fayllar shu yerga yoziladi (URL — `scxFileUrl(id)`). API bo'lmasa `<a download>` fallback. Har skandagi avto-SCX ham saqlangan papkaga tushadi. Yuklab olishda tugmada jonli progress ("Yuklanmoqda… 12/81"); papka tugmasi yozuvli ("Papka" — sensorli ekranda hover yo'q).
+- Jadval ish-navbat tartibida: qilinmaganlar tepada, tugaganlar (✓ yashil) pastda; oxirgi skan bo'lgan qator KEYINGI skangacha amber ajralib turadi va markazga avto-scroll bo'ladi (`useScanFlash` hooki — `done` o'zgargan qatorni topadi: lokal skan ham, stanokdan skan-forvard ham). Har SCX fayl chipi bitta nusxaga mos (fayl nomi = QR): QR'i `done_qrs` da bo'lsa chip yashil ✓ — operator qaysi nusxalar qolganini ko'radi.
+- **QR chekni chiqarish** (`usePrintLabel("prisadka")`): marshrutida ARRA bo'lmagan (`arra_route=false`) detal jarayonni shu postdan boshlaydi — cheki shu yerdan chiqariladi. ROVER rejimida (`showScx=false`) qator (nusxa) tanlanadi va chapdagi katta "Chop etish" `TBtn` (portal) bosiladi; PRISADKA rejimida chek chiqarish tugmasi instansiya chipining ichida (printer ikonkasi, faqat `!done && !label_printed && !arra_route` nusxalarda).
+
+### `frontend/src/components/Terminal/usePrintLabel.ts`
+
+**Maqsadi:** yorliq chop etish mutatsiyasi — `CutmapView` (ARRA xaritasi) va `PrisadkaView` (ROVER/PRISADKA) baham ko'radi: `TerminalService.printInstanceLabel` + toast + `handleError`; `scope` ("cutmap" | "prisadka") qaysi terminal keshi (`["terminal", scope]`) yangilanishini belgilaydi.
 
 ### `frontend/src/components/Terminal/audio.ts`
 
@@ -324,7 +352,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida, alohida app header/foot
 **Maqsadi:** profil ma'lumotlari (ism, telefon) — ko'rish/tahrirlash rejimi almashinadigan forma.
 
 - `editMode` state: o'qish rejimida qiymatlar `<p>` sifatida (bo'sh ism — "N/A"), "Tahrirlash" tugmasi; tahrirlash rejimida `Input` lar, "Saqlash" (`disabled={!form.formState.isDirty}`) va "Bekor qilish" (`form.reset()` + rejimdan chiqish).
-- `onSubmit` faqat o'zgargan maydonlarni `UserUpdate` payloadga qo'shadi va `UsersService.updateUserMe` ni chaqiradi; muvaffaqiyatda `form.reset(form.getValues())` va barcha querylar invalidatsiyasi.
+- `onSubmit` faqat o'zgargan maydonlarni `UserUpdate` payloadga qo'shadi va `UsersService.updateUserMe` ni chaqiradi; muvaffaqiyatda `form.reset(form.getValues())` va `["currentUser"]` invalidatsiyasi (kalitsiz chaqiruv butun ilova querylarini qayta so'rardi).
 
 ### `frontend/src/components/UserSettings/ChangePassword.tsx`
 
@@ -362,8 +390,8 @@ shadcn/ui asosidagi 25 ta primitiv. Ko'pchiligi standart generatsiya; quyidagi j
 | `form.tsx` | Form, FormField, FormItem/Label/Control/Message, useFormField | react-hook-form + Radix Label | Yo'q |
 | `input.tsx` | Input | native `<input>` | Yo'q |
 | `label.tsx` | Label | Radix Label | Yo'q |
-| `loading-button.tsx` | LoadingButton (`ButtonProps` — fayl ichida, eksport emas) | cva (button nusxasi) | **To'liq custom** (pastda) |
-| `password-input.tsx` | PasswordInput | native `<input>` + Button | **To'liq custom** (pastda) |
+| `loading-button.tsx` | LoadingButton (`ButtonProps` — fayl ichida, eksport emas) | `buttonVariants` (button.tsx dan import) | **To'liq custom** (pastda) |
+| `password-input.tsx` | PasswordInput | `Input` + Button | **To'liq custom** (pastda) |
 | `popover.tsx` | Popover, PopoverTrigger, PopoverContent | Radix Popover | Deyarli standart (`rounded-xl`, `p-3`, `align="start"`) |
 | `select.tsx` | Select, SelectTrigger/Content/Item/..., 10 ta eksport | Radix Select | Yo'q |
 | `separator.tsx` | Separator | Radix Separator | Yo'q |
@@ -371,7 +399,7 @@ shadcn/ui asosidagi 25 ta primitiv. Ko'pchiligi standart generatsiya; quyidagi j
 | `sidebar.tsx` | 24 ta eksport: SidebarProvider, Sidebar, SidebarTrigger, SidebarMenu*, useSidebar, ... | shadcn sidebar block | **Ha, o'zgartirilgan** (pastda) |
 | `skeleton.tsx` | Skeleton | div + animate-pulse | Yo'q |
 | `sonner.tsx` | Toaster | sonner kutubxonasi | **Kichik custom**: `theme="light"` qattiq belgilangan (next-themes yo'q), lucide ikonkalar to'plami (success/info/warning/error/loading), CSS o'zgaruvchilar mapping'i |
-| `switch.tsx` | Switch | Radix Switch | Yo'q (terminaldagi "Faqat xatolar" filtri va `employees.tsx` hodim dialogidagi AKTIV/NOFAOL almashtirgichi) |
+| `switch.tsx` | Switch | Radix Switch | Yo'q (terminaldagi "Faqat xatolar" filtri, `employees.tsx` hodim dialogidagi AKTIV/NOFAOL va `printers.tsx` dagi chek chiqarish `can_print` almashtirgichi) |
 | `table.tsx` | Table, TableHeader/Body/Footer/Row/Head/Cell/Caption | native table | **Stil custom**: konteyner `rounded-lg border`, TableHeader `bg-muted/50`, TableHead `h-11 text-xs font-semibold uppercase tracking-wider`, TableCell `px-4 py-3 whitespace-nowrap` |
 | `tabs.tsx` | Tabs, TabsList, TabsTrigger, TabsContent | Radix Tabs | Yo'q |
 | `textarea.tsx` | Textarea | native `<textarea>` | Yo'q (standart shadcn; anketa "Qo'shimcha izoh" maydoni uchun qo'shilgan) |
@@ -382,7 +410,7 @@ shadcn/ui asosidagi 25 ta primitiv. Ko'pchiligi standart generatsiya; quyidagi j
 Eng katta ui fayl (~740 qator, 24 eksport). shadcn'ning rasmiy sidebar blokiga asoslangan, quyidagi o'zgarishlar bilan:
 
 - **Cookie'dan boshlang'ich holatni o'qish**: standart shadcn faqat cookie'ga *yozadi*; bu yerda `getInitialOpen()` funksiyasi `sidebar_state` cookie'sini o'qib, sahifa yangilanganda ochiq/yopiq holatni tiklaydi (`useState(getInitialOpen)` lazy initializer).
-- `SidebarTrigger` sr-only matni dinamik: `open ? "Collapse Sidebar" : "Open Sidebar"`.
+- `SidebarTrigger` sr-only matni dinamik va o'zbekcha: `open ? "Menyuni yig'ish" : "Menyuni ochish"`; mobil `Sheet` ning sr-only sarlavhasi "Sidebar" (inglizcha qolgan), tavsifi "Mobil yon menyu".
 - `sidebarMenuButtonVariants` o'lchamlari brendga moslangan: `default: "h-8 text-sm rounded-lg"`, `lg: "... rounded-xl data-[state=closed]:rounded-lg"`.
 - `SidebarHeader` (`p-2 pb-3`) va `SidebarFooter` (`gap-3 p-2`) padding'lari sozlangan; `SidebarInset` `bg-transparent`.
 - Muhim konstantalar: `SIDEBAR_WIDTH = "16rem"`, `SIDEBAR_WIDTH_ICON = "3rem"`, `SIDEBAR_WIDTH_MOBILE = "18rem"`, klaviatura yorlig'i **Ctrl/Cmd+B** (`SIDEBAR_KEYBOARD_SHORTCUT = "b"`).
@@ -390,7 +418,7 @@ Eng katta ui fayl (~740 qator, 24 eksport). shadcn'ning rasmiy sidebar blokiga a
 
 ### `frontend/src/components/ui/loading-button.tsx` (custom)
 
-shadcn'da yo'q, loyihaga qo'shilgan komponent. `button.tsx` dagi `buttonVariants` nusxasini o'zida saqlaydi va ustiga `loading` prop qo'shadi. **Nusxa allaqachon ajralib ketgan:** `loading-button.tsx` da `icon-sm`/`icon-lg` o'lchamlari yo'q (`<LoadingButton size="icon-sm">` TypeScript xatosi beradi), `default`/`destructive`/`secondary` variantlarida esa `button.tsx` da bo'lmagan `shadow-xs` bor — ikkalasini bir manbaga birlashtirish yoki qo'lda sinxronlash kerak.
+shadcn'da yo'q, loyihaga qo'shilgan komponent. `buttonVariants` ni `button.tsx` dan import qiladi (BITTA manba — avvalgi copy-paste nusxa divergensiya bergani uchun birlashtirilgan; `icon-sm`/`icon-lg` o'lchamlari ham ishlaydi) va ustiga `loading` prop qo'shadi.
 
 ```tsx
 function LoadingButton({ loading = false, disabled, asChild = false, ... }: ButtonProps)
@@ -401,11 +429,11 @@ Barcha mutation submit tugmalarida ishlatiladi (AddUser, EditUser, AddClient, Ad
 
 ### `frontend/src/components/ui/password-input.tsx` (custom)
 
-shadcn'da yo'q. `Input` stillari bilan bir xil native `<input>` (`pr-10` bilan), o'ng tomonida ghost `Button` — `Eye`/`EyeOff` ikonkasi bilan parolni ko'rsatish/yashirish (`showPassword` state, `type` almashadi). `error?: string` prop → `aria-invalid`. `React.forwardRef` bilan react-hook-form'ga mos. `UserSettings/ChangePassword.tsx` va `routes/login.tsx` da ishlatiladi (Admin formalarida esa oddiy `Input type="password"`).
+shadcn'da yo'q. `ui/input` ni compose qiladi (`pr-10` bilan), o'ng tomonida ghost `Button size="icon-sm"` — `Eye`/`EyeOff` ikonkasi bilan parolni ko'rsatish/yashirish (`showPassword` state, `type` almashadi; aria-label "Parolni yashirish/ko'rsatish"). `React.ComponentProps<"input">` propslarini o'tkazadi (forwardRef yo'q — React 19 uslubi); `aria-invalid` ni chaqiruvchi o'zi uzatadi. `UserSettings/ChangePassword.tsx` va `routes/login.tsx` da ishlatiladi (Admin formalarida esa oddiy `Input type="password"`).
 
 ### `frontend/src/components/ui/date-picker.tsx` (custom)
 
-shadcn'da yo'q, to'liq loyihaga yozilgan o'zbekcha sana tanlagich: `react-day-picker` (`uz` locale) + `Popover`. Qiymati form/API bilan mos `"YYYY-MM-DD"` satr, ko'rinishi `DD.MM.YYYY`; trigger tugmada tanlangach "X" tozalash ikonkasi, kalendar ostida "Bugun"/"Tozalash" tugmalari. Props: `value`, `onChange`, `placeholder?`, `className?` (trigger tugma kengligi uchun — masalan anketada `w-full`), `aria-label?` (`<Field>` ichida ko'rinadigan label bo'lmaganda). Buyurtma deadline'i (`Orders/AddOrder`, `Orders/EditOrder`), hisobot oralig'i (`routes/_layout/reports.tsx`) va anketa o'lchov sanasi uchun ishlatiladi.
+shadcn'da yo'q, to'liq loyihaga yozilgan o'zbekcha sana tanlagich: `react-day-picker` (`uz` locale) + `Popover`. Qiymati form/API bilan mos `"YYYY-MM-DD"` satr, ko'rinishi `DD.MM.YYYY`; tanlangach trigger yonida ALOHIDA "X" tozalash tugmasi (aria-label "Sanani tozalash" — trigger ichida emas: tugma ichida tugma yaroqsiz HTML edi, tab bilan yetib bo'lmasdi), kalendar ostida "Bugun"/"Tozalash" tugmalari. Props: `value`, `onChange`, `placeholder?`, `className?` (trigger tugma kengligi uchun — masalan anketada `w-full`), `aria-label?` (`<Field>` ichida ko'rinadigan label bo'lmaganda). Buyurtma deadline'i (`Orders/AddOrder`, `Orders/EditOrder`), hisobot oralig'i (`routes/_layout/reports.tsx`) va anketa o'lchov sanasi uchun ishlatiladi.
 
 ---
 
@@ -414,14 +442,16 @@ shadcn'da yo'q, to'liq loyihaga yozilgan o'zbekcha sana tanlagich: `react-day-pi
 ```
 routes (_layout sahifalar)                      routes (terminal / cutmap)
   ├─ PageHeader / StatusBadge / StagePipeline     ├─ CutmapView + TBtn
-  ├─ AddOrder / EditOrder ─ orderForm             │    ├─ SheetSvg (zoom/pan/swipe,
-  │        ├─ ClientCombobox                      │    │    dims, teshiklar, thumbnail)
-  │        └─ AddClient (inline)                  │    └─ PartCard → PartPreview + QR
-  ├─ MachineAssign / OrderMatrix                  └─ audio (playSuccess/Error/Warning)
-  ├─ AddUser
-  ├─ admin.tsx: ui/table + UserRow (sahifalashsiz)
-  │    └─ UserActionsMenu ─ EditUser / DeleteUser ─ ConfirmDialog
-  └─ PendingUsers (skeleton)
+  ├─ SearchInput / EmptyRow / QueryError          │    ├─ SheetSvg (zoom/pan/swipe,
+  ├─ AddOrder / EditOrder ─ orderForm             │    │    dims, teshiklar, thumbnail)
+  │        ├─ ClientCombobox                      │    └─ PartCard → PartPreview + QR
+  │        └─ AddClient (inline)                  ├─ KromkaView / PrisadkaView
+  ├─ MachineAssign / OrderMatrix                  │    ├─ OperationChips
+  └─ admin.tsx: ui/table + UserRow                │    └─ usePrintLabel
+       │    (isLoading → Skeleton)                └─ audio (playSuccess/Error/Warning)
+       ├─ AddUser ─┐
+       └─ UserActionsMenu ─ EditUser ─┴─ UserForm (umumiy schema+maydonlar)
+                          └ DeleteUser ─ ConfirmDialog
 
 routes/_layout/anketa.$orderId (sahifa ichidagi komponentlar)
   ├─ Section / Field / Num / NumInput / CheckGrid / Choice / ShapeChoice
@@ -431,19 +461,22 @@ routes/_layout/anketa.$orderId (sahifa ichidagi komponentlar)
 
 routes (settings)                               routes (__root / layout)
   ├─ UserInformation                              ├─ SidebarProvider (ui/sidebar)
-  ├─ ChangePassword                               ├─ AppSidebar
-  └─ DeleteAccount                                │    ├─ Main (navItems, rolga qarab)
+  ├─ ChangePassword                               ├─ AppSidebar (NAV_ITEMS eksporti)
+  └─ DeleteAccount                                │    ├─ Main (rolga qarab bandlar)
        └─ ConfirmDialog                           │    └─ User (avatar + logout)
                                                   └─ NotFound / ErrorComponent
 
 Tashqi bog'liqliklar: @/client (UsersService, ClientsService, OrdersService, TerminalService va
 User*/Client*/Order*/Post* model turlari), @/queries/mes (getClients/getMachines/getPosts/
-getOrderMatrixQueryOptions/getOrderQueryOptions va h.k.),
+getOrderMatrixQueryOptions/getOrderQueryOptions va h.k.; PAGE_SIZE, crudCallbacks),
 @/queries/users (getUsersQueryOptions — barcha sahifalarni bitta ro'yxatga yig'adi, `admin.tsx`;
 getCurrentUserQueryOptions — `useCurrentUser` va `tablo.tsx` shundan foydalanadi), @/lib/mes (ROLE_LABELS, PRIORITY_LABELS,
 PRIORITY_DOT_CLASSES/PRIORITY_TEXT_CLASSES/PRIORITY_BADGE_CLASSES, POST_COLORS,
-ORDER_STATUS_LABELS/COLORS, formatSize),
-@/hooks (useAuth, useCurrentUser, useCustomToast, useMobile),
+ORDER_STATUS_LABELS/COLORS, chipColors/mixTint, isCut, PROCESS_OPS asosidagi
+partOperations/isCustomRoute, isAdmin/isSuperuser/isManagement/isProductionStaff,
+MACHINE_BOUND_ROLES, TERMINAL_STATUSES, formatSize),
+@/hooks (useAuth, useCurrentUser, useMobile, useDebounced, useScanFlash), sonner (toast),
 @/lib/validation (zod schema'lar, formatMoneyInput, formatUzPhone), @/lib/utils (cn),
-@/lib/anketa (variant kataloglari, labelOf/labelsOf), @/utils (handleError, getInitials).
+@/lib/anketa (variant kataloglari, labelOf/labelsOf), @/lib/scxDir (papka + scxFileUrl),
+@/utils (handleError, getInitials).
 ```

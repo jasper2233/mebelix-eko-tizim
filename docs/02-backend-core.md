@@ -77,6 +77,7 @@ app = create_application(router=router, settings=settings)
 | Env / CORS | `ENVIRONMENT`, `CORS_ORIGINS=["http://localhost:5173"]`, `CORS_METHODS`, `CORS_HEADERS` |
 
 - Computed field'lar: `POSTGRES_URI` (`user:pass@host:port/db`) va `REDIS_URL` (`redis://host:port`).
+- Modul darajasidagi eksportlar: `TASHKENT_TZ = ZoneInfo("Asia/Tashkent")` — sex mahalliy vaqti, hisobot/audit kunlari va chek timestamp'lari shu zonada (TZ 10.4; `audit.py`, `reports.py`, `terminal.py`, `orders.py` route'lari va `services/labels.py` ishlatadi); `upload_root()` — `UPLOAD_DIR`ning absolyut `Path` ildizi, path-traversal tekshiruvlari shu qiymatga nisbatan (`orders.py`, `terminal.py` ishlatadi).
 - `_validate_production_settings(s)` — **har qanday non-LOCAL muhitda (STAGING ham, PRODUCTION ham) xavfsiz bo'lmagan default'lar bilan boot qilishni rad etadi** (faqat LOCAL o'tkazib yuboriladi): `SECRET_KEY`, `ADMIN_PASSWORD`, `POSTGRES_PASSWORD`, `ADMIN_PHONE` placeholder qiymatda qolgan bo'lsa `RuntimeError` ko'taradi. Modul import bo'lganda darhol ishlaydi (birinchi so'rovda emas, startup'da).
 - Modul oxirida global singleton: `settings = Settings()`.
 
@@ -138,9 +139,9 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 **Maqsadi:** 12-factor uslubidagi structured JSON logging — process o'zi log fayl yozmaydi, hamma narsa stdout'ga bir qatorli JSON sifatida chiqadi.
 
 - `JsonFormatter(logging.Formatter)` — har bir log record'ni `{"timestamp", "level", "logger", "message"}` + mavjud bo'lsa `_EXTRA_FIELDS` (`request_id`, `method`, `path`, `status_code`, `duration_ms`) va `exc_info` bilan JSON'ga aylantiradi.
-- `setup_logging(level=logging.INFO)` — root logger'ga stdout handler o'rnatadi. **Modul import bo'lishi bilan avtomatik chaqiriladi** (fayl oxirida `setup_logging()`).
+- `setup_logging(level=logging.INFO)` — root logger handlerlarini stdout JSON handler bilan **almashtiradi** (`root.handlers = [handler]`). Import-time side-effect yo'q — har bir uzoq yashovchi entrypoint uni **explicit** chaqiradi: `create_application()` (`setup.py`) va arq worker (`core/worker.py`, modul yuklanishida). CLI komandalar (`commands/seed_defaults.py`, `commands/create_first_superuser.py`) esa oddiy `logging.basicConfig(level=INFO)` bilan kifoyalanadi.
 
-**Bog'lanishlar:** `middleware.py` yozadigan `extra` maydonlar aynan `_EXTRA_FIELDS` bilan mos keladi; `utils/rate_limit.py` bu modul orqali `logging`ni import qiladi (side-effect: JSON logging faollashadi).
+**Bog'lanishlar:** `middleware.py` yozadigan `extra` maydonlar aynan `_EXTRA_FIELDS` bilan mos keladi; `setup.py` va `worker.py` `setup_logging`ni chaqiradi.
 
 ---
 
@@ -189,22 +190,22 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 - `_retry_async(label, fn)` — startup probe'lar uchun retry helper: `STARTUP_RETRY_MAX_ATTEMPTS` (5) marta urinadi, orasida `STARTUP_RETRY_DELAY_SECONDS` (2s) kutadi; `CancelledError`/`KeyboardInterrupt` darhol yuqoriga uzatiladi.
 - `check_database_connection()` — engine orqali `SELECT 1` probe (retry bilan).
 - `check_redis_connection()` — ochilgan Redis klientlarni (`queue.pool`, `rate_limiter.client`) ping qiladi (retry bilan) va qaysilari tekshirilganini logga yozadi.
-- Redis pool boshqaruvi: `create_redis_queue_pool()` (arq `create_pool` → `queue.pool`), `close_redis_queue_pool()`, `create_redis_rate_limit_pool()` (`rate_limiter.initialize(settings.REDIS_URL)`), `close_redis_rate_limit_pool()`.
 - `set_threadpool_tokens()` — AnyIO thread-pool hajmini `THREADPOOL_TOKENS`ga ko'taradi (bloklovchi chaqiriqlar navbatda turib qolmasligi uchun).
-- `lifespan_factory(settings)` — `@asynccontextmanager` lifespan quradi: threadpool → Redis pool'lar (navbat + rate limit) + ping → **WS real-time ko'prik**: alohida Redis klient ochilib `ws_manager.start_listener(...)` ishga tushiriladi (`core/ws.py`) → DB probe → `yield` → `finally`da WS listener to'xtatiladi, WS Redis klienti va pool'lar yopiladi. Hech qanday shart yo'q — Redis ilovaning majburiy bog'liqligi, ko'tarilmasa startup probe'da yiqiladi.
+- `lifespan(app)` — modul darajasidagi `@asynccontextmanager` (avvalgi `lifespan_factory` va alohida create/close pool wrapper funksiyalari inline qilingan): threadpool → arq navbat pool (`queue.pool = await create_pool(...)`) + `rate_limiter.initialize(settings.REDIS_URL)` + ping → **WS real-time ko'prik**: alohida Redis klient ochilib `ws_manager.start_listener(...)` ishga tushiriladi (`core/ws.py`) → DB probe → `yield` → `finally`da WS listener to'xtatiladi, WS Redis klienti, `queue.pool` va `rate_limiter.client` yopiladi. Hech qanday shart yo'q — Redis ilovaning majburiy bog'liqligi, ko'tarilmasa startup probe'da yiqiladi.
 - `_install_docs_router(application, settings)` — docs siyosati:
   - **production**: docs umuman yo'q;
   - **staging**: `/docs`, `/redoc`, `/openapi.json` faqat superuser uchun (`Depends(get_current_superuser)`);
   - **local**: ochiq.
 - `create_application(router, settings, **kwargs) -> FastAPI` — asosiy factory:
-  1. FastAPI metadata — `title` `settings.APP_NAME`dan, `description` (`"MebeliX API"`) esa literal (settings'dan emas; `license_info` yo'q — repo litsenziyasiz); **built-in docs har doim o'chiriladi** (`docs_url=None` va h.k.) — o'rniga shartli router o'rnatiladi.
-  2. `lifespan_factory(settings)` bilan `FastAPI(...)` yaratadi va berilgan `router`ni ulaydi.
-  3. Middleware'lar: `RequestLoggingMiddleware`, `CORSMiddleware` (`allow_credentials=True` — cookie-auth uchun zarur), `ProxyHeadersMiddleware` (`FORWARDED_ALLOW_IPS` bilan) — busiz `request.client.host` har doim proxy IP bo'lib, barcha foydalanuvchilar bitta rate-limit bucket'iga tushib qolardi.
-  4. `_install_metrics()` va `_install_docs_router()`.
+  1. `setup_logging()` — JSON logging shu yerda faollashadi (import side-effect emas).
+  2. FastAPI metadata — `title` `settings.APP_NAME`dan, `description` (`"MebeliX API"`) esa literal (settings'dan emas; `license_info` yo'q — repo litsenziyasiz); **built-in docs har doim o'chiriladi** (`docs_url=None` va h.k.) — o'rniga shartli router o'rnatiladi.
+  3. Modul darajasidagi `lifespan` bilan `FastAPI(...)` yaratadi va berilgan `router`ni ulaydi.
+  4. Middleware'lar: `RequestLoggingMiddleware`, `CORSMiddleware` (`allow_credentials=True` — cookie-auth uchun zarur), `ProxyHeadersMiddleware` (`FORWARDED_ALLOW_IPS` bilan) — busiz `request.client.host` har doim proxy IP bo'lib, barcha foydalanuvchilar bitta rate-limit bucket'iga tushib qolardi.
+  5. `_install_metrics()` va `_install_docs_router()`.
 - `NON_BUSINESS_PATHS = ["/metrics", "/api/v1/health", "/api/v1/ready"]` — metrics'dan ham, access-log'dan ham chiqarib tashlanadigan pathlar (yagona manba — single source of truth).
 - `_install_metrics(application)` — `prometheus_fastapi_instrumentator` orqali `/metrics` endpoint (gzip, schema'da ko'rinmaydi). Endpoint autentifikatsiyasiz — production'da Caddy darajasida cheklash nazarda tutilgan.
 
-**Bog'lanishlar:** `config.py`, `db.py`, `middleware.py`, `ws.py` (`ws_manager`), `utils/queue.py`, `utils/rate_limit.py`, `backend/app/api/deps.py` (`get_current_superuser`); `main.py` va `worker.py` bu modulni ishlatadi.
+**Bog'lanishlar:** `config.py`, `db.py`, `logger.py` (`setup_logging`), `middleware.py`, `ws.py` (`ws_manager`), `utils/queue.py`, `utils/rate_limit.py`, `backend/app/api/deps.py` (`get_current_superuser`); `main.py` va `worker.py` bu modulni ishlatadi.
 
 ---
 
@@ -214,7 +215,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 
 **Muhim elementlar:**
 
-- Modul yuklanishida `uvloop` event loop policy o'rnatiladi (Linux/macOS; Windows'da `ImportError` jim o'tkaziladi).
+- Modul yuklanishida `uvloop` event loop policy o'rnatiladi (Linux/macOS; Windows'da `ImportError` jim o'tkaziladi) va `setup_logging()` chaqiriladi — worker protsessi ham app protsessidagidek JSON log yozadi.
 - `startup(ctx)` — worker startida `check_database_connection()` probe'ni bajaradi (retry bilan).
 - `shutdown(ctx)` — log yozadi.
 - `WorkerSettings` klassi:
@@ -250,7 +251,7 @@ terminal → POST /api/v1/terminal/labels/{instance_id}
   → label_printed_at yoziladi + ws_manager.publish("label.printed", ...)
   → queue.pool.enqueue_job("print_label", instance_id)
   → arq worker: render_label_png → LPUSH mes:print:queue
-  → /ws/bridge (per-agent token auth; BRPOP + ack talab qiladi, ack kelmasa RPUSH bilan qaytariladi)
+  → /ws/bridge (per-agent token auth; faqat can_print=True agent BRPOP qiladi; ack talab qilinadi, ack kelmasa RPUSH bilan qaytariladi)
   → bridge-agent → print-queue.jsonl (durable) → Windows GDI (_print_png_gdi) → USB GoDEX G500-U
 ```
 
@@ -258,9 +259,11 @@ Bridge-agent faqat printer ulangan kompyuterga o'rnatiladi va GoDEX printerini n
 
 **`/ws/bridge` autentifikatsiyasi — per-agent pairing.** Admin panel har bir printerli kompyuter uchun 8 belgili bir martalik ulanish kodi beradi (alifboda I/L/O/0/1 yo'q — telefonda aytganda adashtirmaydi; TTL 15 daqiqa). Agent birinchi ishga tushganda kodni ochiq `POST /api/v1/bridge-agents/pair` endpointi orqali doimiy tokenga almashtiradi; bazada tokenning faqat sha256 xeshi qoladi (`bridge_agent.token_hash`, unikal) — token o'zi bir marta, pair javobida beriladi.
 
-Ulanishda token `Authorization: Bearer` headerda keladi (server access-loglariga tushmasligi uchun; `?token=` query eski agentlar uchun fallback). Tekshiruv tartibi: avval legacy `settings.BRIDGE_TOKEN` bilan `secrets.compare_digest` orqali solishtiriladi, mos kelmasa token sha256'si bo'yicha `bridge_agent` jadvalidan qidiriladi; topilmasa socket 4401 bilan yopiladi. Ulanish davomida har 300 soniyada `touch_agent()` ishlaydi — `last_seen_at`ni yangilaydi (paneldagi "Onlayn") va shu bilan birga agent qatori hali borligini tekshiradi: admin bekor qilgan bo'lsa jonli ulanish ham 4401 bilan uziladi, qo'lda turgan job esa `rpush` bilan navbatga qaytariladi — yo'qolmaydi.
+Ulanishda token `Authorization: Bearer` headerda keladi (server access-loglariga tushmasligi uchun; `?token=` query eski agentlar uchun fallback). Tekshiruv tartibi: avval legacy `settings.BRIDGE_TOKEN` bilan `secrets.compare_digest` orqali solishtiriladi, mos kelmasa token sha256'si bo'yicha `bridge_agent` jadvalidan qidiriladi; topilmasa socket `WS_CLOSE_UNAUTHORIZED` (4401) bilan yopiladi. Handshake'dagi `X-Agent-Version` header agent exe versiyasi sifatida saqlanadi. Ulanish davomida har 300 soniyada `touch_agent()` ishlaydi — `last_seen_at`ni yangilaydi (paneldagi "Onlayn"), `version`ni yozadi va `can_print`ni qayta o'qiydi (admin belgini o'zgartirsa ~5 daqiqada kuchga kiradi); agent qatori yo'q bo'lsa (admin bekor qilgan) jonli ulanish ham 4401 bilan uziladi, qo'lda turgan job esa `rpush` bilan navbatga qaytariladi — yo'qolmaydi. Ulanish/uzilish/pairing panelga `bridge.connected` / `bridge.disconnected` / `bridge.paired` eventlari bilan (`ws_manager.publish`) tarqatiladi — admin "Printerlar" sahifasi pollingsiz yangilanadi.
 
-**Bog'liq fayllar (core'dan tashqarida):** `backend/app/models/bridge_agent.py` (`bridge_agent` jadvali: `organization_id`, `name`, `token_hash`, `pair_code`, `pair_expires_at`, `last_seen_at`), migratsiya `d5e81a24c3b7`, `backend/app/crud/__init__.py` (`crud_bridge_agents` — `BaseCRUD[BridgeAgent]`, o'z moduli yo'q), `backend/app/schemas/bridge_agents.py`, `backend/app/api/routes/bridge_agents.py`.
+**Skan-forvard va printersiz stansiyalar (TZ 12.5).** `bridge_agent.machine_id` agentni stanokka bog'laydi: stanok skaneri o'qigan QR agent orqali `POST /api/v1/bridge-agents/scan` endpointiga (agent tokeni bilan) yuboriladi va bog'langan stanokning terminalidagi AKTIV sessiya nomidan odatdagi skan yo'li bilan yoziladi. `can_print=False` agent (masalan, Nanxing skan-forvard stansiyasi — printeri yo'q) ulanib turadi, lekin `mes:print:queue`dan ish OLMAYDI: BRPOP o'rniga 5s uxlaydi — aks holda umumiy navbatdan chekni "o'g'irlab" lokalida qoldirardi. Ikkala maydonni admin `PATCH /api/v1/bridge-agents/{id}` bilan boshqaradi (endpoint tafsilotlari: `docs/03-backend-api.md`).
+
+**Bog'liq fayllar (core'dan tashqarida):** `backend/app/models/bridge_agent.py` (`bridge_agent` jadvali: `organization_id`, `name`, `token_hash`, `pair_code`, `pair_expires_at`, `last_seen_at`, `machine_id` (FK `machine.id`, skan-forvard), `version` (agent exe versiyasi), `can_print` (default `True`)), migratsiyalar `d5e81a24c3b7` (pairing), `f4b8c2a91e55` (machine), `a7c3e9d12f04` (version), `d4f7a8c25e91` (can_print), `backend/app/crud/__init__.py` (`crud_bridge_agents` — `BaseCRUD[BridgeAgent]`, o'z moduli yo'q), `backend/app/schemas/bridge_agents.py`, `backend/app/api/routes/bridge_agents.py`.
 
 ---
 
@@ -300,14 +303,14 @@ Pool `setup.py`dagi lifespan'da (`create_redis_queue_pool`) to'ldiriladi va shut
 **Muhim elementlar:**
 
 - `RateLimiter` klassi (modul-darajali singleton `rate_limiter`):
-  - `initialize(redis_url)` — `ConnectionPool.from_url` + `Redis` klient yaratadi (idempotent: pool bor bo'lsa qayta yaratmaydi).
+  - `initialize(redis_url)` — `Redis.from_url(redis_url)` bilan klient yaratadi (idempotent: klient bor bo'lsa qayta yaratmaydi).
   - `is_rate_limited(key, limit, period) -> bool` — `INCR` + birinchi urinishda `EXPIRE`; hisob `limit`dan oshsa `True`. **Fail-closed**: Redis xatosi bo'lsa ham, klient `None` bo'lsa ham `True` qaytaradi (so'rov 429 oladi, xato loglanadi) — Redis yiqilishi brute-force himoyasini jimgina o'chirib qo'ymasligi uchun. Klient `None` bo'lishi normal holat emas: lifespan doim `initialize()` qiladi.
 - `RateLimit(limit, period)` — endpoint dependency (callable klass):
   - Kalit: `ratelimit:{ip}:{path}:{window_start}` — fixed-window algoritmi (`window_start = timestamp - timestamp % period`).
   - Limit oshsa `RateLimitException` (429, o'zbekcha xabar) ko'taradi.
   - `ip` `request.client.host`dan olinadi — shuning uchun `setup.py`dagi `ProxyHeadersMiddleware` muhim (aks holda hamma bitta bucket'da bo'lardi).
 
-**Bog'lanishlar:** `exceptions.py` (`RateLimitException`), `logger.py`; `setup.py` lifecycle'ni boshqaradi; login kabi endpointlar `Depends(RateLimit(...))` orqali ishlatadi (`LOGIN_RATE_LIMIT_ATTEMPTS`/`PERIOD` sozlamalari bilan).
+**Bog'lanishlar:** `exceptions.py` (`RateLimitException`); `setup.py` lifecycle'ni boshqaradi; login kabi endpointlar `Depends(RateLimit(...))` orqali ishlatadi (`LOGIN_RATE_LIMIT_ATTEMPTS`/`PERIOD` sozlamalari bilan). Logging oddiy `import logging` orqali — `logger.py`ga bog'liq emas.
 
 ---
 

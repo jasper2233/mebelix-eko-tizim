@@ -53,6 +53,7 @@ Asosiy elementlar:
 | Nomi | Turi | Vazifasi |
 |---|---|---|
 | `SessionDep` | `Annotated[AsyncSession, Depends(async_get_db)]` | Har bir so'rov uchun async DB session |
+| `client_ip(request)` | funksiya | Audit log uchun mijoz IP'si BITTA joyda (`request.client.host`); kelajakda proxy ortida `X-Forwarded-For` o'qish kerak bo'lsa faqat shu funksiya o'zgaradi — deyarli barcha route modullar import qiladi |
 | `_oauth2_scheme` | `OAuth2PasswordBearer(tokenUrl="/api/v1/login/access-token", auto_error=False)` | Bearer token'ni ixtiyoriy o'qiydi; `auto_error=False` — header bo'lmasa 401 bermaydi, cookie fallback ishlaydi |
 | `_extract_token(request, bearer_token)` | funksiya | Avval `Authorization` header, keyin `ACCESS_COOKIE_NAME` cookie'dan token oladi |
 | `resolve_user(db, token)` | async funksiya | `verify_token(token, TokenType.ACCESS)` bilan tekshiradi, `crud_users.get(db, id=token_data.user_id)` orqali foydalanuvchini ID bo'yicha topadi; `is_active` va `token_version` mosligini tekshiradi. Ochiq nom — `ws.py` ham shu funksiyani chaqiradi |
@@ -70,7 +71,6 @@ Muhim xavfsizlik detali: `resolve_user` da `user.token_version != token_data.tok
 |---|---|---|
 | `ManagerUser` | `require_roles(MANAGER)` | manager |
 | `TexnologUser` | `require_roles(TEXNOLOG)` | texnolog |
-| `ManagerOrTexnolog` | `require_roles(MANAGER, TEXNOLOG)` | manager yoki texnolog |
 | `StaffReadUser` | `require_roles(MANAGER, TEXNOLOG, DIRECTOR)` | ofis rollari uchun umumiy read-only ro'yxatlar |
 | `AdminUser` | `require_roles()` | hech kim — faqat admin/superuser |
 
@@ -139,7 +139,7 @@ Muhim yordamchi: `_issue_token_pair(response, user) -> str` — payload `{"sub":
 | POST | `/api/v1/login/access-token` | Yo'q (rate limit: `_LOGIN_RATE_LIMIT`) | `OAuth2PasswordRequestForm` (username — username yoki telefon, password) | `Token` (`access_token`, `token_type: "bearer"`) | `crud_users.authenticate` orqali tekshiradi; noto'g'ri bo'lsa yoki `is_active=False` bo'lsa 401 |
 | POST | `/api/v1/login/refresh` | Refresh cookie (`REFRESH_COOKIE_NAME`) | Cookie'dan refresh token | `{"access_token", "token_type"}` | Refresh token'ni `verify_token(TokenType.REFRESH)` bilan tekshiradi, `token_version` mosligini tasdiqlaydi va **ikkala tokenni ham rotatsiya qiladi**; har bir refresh token **one-time-use** (quyida) |
 
-Refresh token one-time-use mexanizmi: har bir muvaffaqiyatli refresh'dan so'ng token'ning `jti`si Redis'da (`auth:refresh:used:<jti>` kaliti, `rate_limiter.client` orqali, TTL = `REFRESH_MAX_AGE`) "ishlatilgan" deb belgilanadi (`_mark_refresh_token_used`). Ishlatilgan `jti` bilan qayta so'rov (replay) kelsa — cookie o'g'irlangan yoki client buzilgan deb hisoblanadi: foydalanuvchining `token_version`i oshiriladi va **butun sessiya bekor qilinadi** (401 "Token bekor qilingan."). Redis pool lifespan'da shartsiz ochiladi (o'chirish sozlamasi yo'q), shuning uchun `rate_limiter.client is None` faqat lifespan'siz kontekstda uchraydi — o'sha holatda tekshiruv o'tkazib yuboriladi.
+Refresh token one-time-use mexanizmi: har bir muvaffaqiyatli refresh'dan so'ng token'ning `jti`si Redis'da (`auth:refresh:used:<jti>` kaliti, `rate_limiter.client` orqali, TTL = `REFRESH_MAX_AGE`) "ishlatilgan" deb belgilanadi (`_mark_refresh_token_used`). Ishlatilgan `jti` bilan qayta so'rov (replay) kelsa — cookie o'g'irlangan yoki client buzilgan deb hisoblanadi: foydalanuvchining `token_version`i oshiriladi va **butun sessiya bekor qilinadi** (401 "Token bekor qilingan."). Redis klienti lifespan'da shartsiz ochiladi (`rate_limiter.initialize(settings.REDIS_URL)`, o'chirish sozlamasi yo'q), shuning uchun `rate_limiter.client is None` faqat lifespan'siz kontekstda uchraydi — o'sha holatda tekshiruv o'tkazib yuboriladi.
 
 Brute-force himoyasi: `RateLimit(limit=settings.LOGIN_RATE_LIMIT_ATTEMPTS, period=settings.LOGIN_RATE_LIMIT_PERIOD)` dependency sifatida `access-token` endpointiga qo'llangan.
 
@@ -153,7 +153,7 @@ Brute-force himoyasi: `RateLimit(limit=settings.LOGIN_RATE_LIMIT_ATTEMPTS, perio
 
 | Method | Path | Auth | Request | Response | Tavsif |
 |---|---|---|---|---|---|
-| POST | `/api/v1/logout` | Ha (`CurrentUser`) | — | `{"message": "Tizimdan muvaffaqiyatli chiqildi"}` | `crud_users.increment_token_version` + `clear_auth_cookies(response)` |
+| POST | `/api/v1/logout` | Ha (`CurrentUser`) | — | `Message` — "Tizimdan muvaffaqiyatli chiqildi" | `crud_users.increment_token_version` + `clear_auth_cookies(response)` |
 
 **Bog'lanishlar:** `backend/app/api/deps.py`, `backend/app/core/security.py` (`clear_auth_cookies`), `backend/app/crud`.
 
@@ -168,7 +168,9 @@ Ro'yxat javobi umumiy `Paginated[UserRead]` sxemasida (`app/schemas/common.py`) 
 Yordamchi funksiyalar:
 - `_ensure_unique(db, *, phone, username, current)` — telefon/username boshqa foydalanuvchida band bo'lsa `DuplicateValueException`.
 - `_derive_username_from_phone(phone)` — `+998901234567` → `998901234567`; username berilmasa telefondan hosil qilinadi, kollisiya bo'lsa `...1`, `...2` suffiks qo'shiladi.
-- `_drop_forbidden_nulls(update_data)` — PATCH body'dagi explicit `null` qiymatlarni filtrlaydi: faqat `name` haqiqatan nullable, qolganlari NOT NULL ustunlarga tegib 500 berardi.
+- `_drop_forbidden_nulls(update_data)` — PATCH body'dagi explicit `null` qiymatlarni filtrlaydi: faqat `_NULLABLE_FIELDS = ("name", "machine_id")` null qabul qiladi (`machine_id: null` — stanok bog'lamini uzish), qolganlari NOT NULL ustunlarga tegib 500 berardi.
+
+Barcha mutatsiyalar (yaratish, admin-yangilash, parol almashtirish, o'chirish) `log_action` bilan audit qilinadi (`module="users"`); xabar javoblari `Message` sxemasida, "topilmadi" holatlari `crud_users.get_or_404` orqali.
 
 | Method | Path | Auth | Request | Response | Tavsif |
 |---|---|---|---|---|---|
@@ -289,7 +291,7 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | POST | `/api/v1/orders/{id}/deliver` | `ManagerUser` | TOPSHIRILDI (TZ 10.3): faqat `COMPLETED → DELIVERED`; `delivered_at` avtomatik; WS `order.delivered` |
 | GET | `/api/v1/orders/{id}/files/{file_id}` | `StaffReadUser` | Saqlangan faylni yuklab olish (project/SCX/hujjat), `FileResponse`; `media_type`: PROJECT/SCX uchun `application/xml`, qolganlari uchun `meta["content_type"]` (yo'q bo'lsa `application/octet-stream`) — anketa rasmlari `<img>` da ko'rsatilishi uchun shart |
 | GET | `/api/v1/orders/{id}/files/scx.zip` | `StaffReadUser` | Barcha SCX fayllar bitta ZIP arxivda (`{number}_scx.zip`) — prisadkachi stanokka bittalab emas, bitta arxiv ko'chiradi; SCX yo'q bo'lsa 404 |
-| POST | `/api/v1/orders/{id}/scx/regenerate` | `TexnologUser` | SCX fayllarni saqlangan `.project`dan qayta yaratadi (eski buyurtmani yangi nomlashga o'tkazish: har nusxa = QR nomli fayl); detallar/marshrutlar/skanlarga TEGILMAYDI; `.project` diskda bo'lmasa 404 |
+| POST | `/api/v1/orders/{id}/scx/regenerate` | `TexnologUser` | SCX fayllarni saqlangan `.project`dan qayta yaratadi (eski buyurtmani yangi nomlashga o'tkazish: har nusxa = QR nomli fayl; yozish `write_and_register_scx` — ingest bilan umumiy helper); detallar/marshrutlar/skanlarga TEGILMAYDI; `.project` diskda bo'lmasa 404 |
 | GET | `/api/v1/orders/{id}/cutmap` | `StaffReadUser` | Kesish xaritasi holati (TZ 10.3) — admin-panel ko'rinishi va brauzer-print; terminal bilan umumiy `build_cutmap_state` (ARRA posti) |
 
 Barcha mutatsiyalar `log_action` bilan audit qilinadi. `.project` parser qoidalari va cutmap tafsilotlari — `docs/09-mes-domain.md`.
@@ -321,7 +323,7 @@ Yuklash cheklovlari (`orders.py` dagi konstantalar):
 
 **Yetim rasm tozalash:** `save_order_survey` anketani yozgach, `room_id`si kelgan `rooms` ro'yxatida yo'q bo'lgan `DOCUMENT` fayllarni topadi (JSONB `meta ? 'room_id'` + `meta->>'room_id' NOT IN (...)`), diskdan `unlink` qiladi (`OSError` yutiladi) va `is_deleted`/`deleted_at` belgilaydi. Ya'ni xona anketadan olib tashlansa uning rasmlari ham yo'qoladi.
 
-**Bog'lanishlar:** `backend/app/schemas/orders.py`, `backend/app/models/order.py` (`Order.survey`), `backend/app/services/giblab` (`parse_project`, `ingest_project`, `wipe_previous_parse`), `backend/app/core/ws.py` (`ws_manager`), `backend/app/api/routes/terminal.py` (`build_cutmap_state`), frontend tomoni: `frontend/src/routes/_layout/anketa.$orderId.tsx`, `frontend/src/lib/anketa.ts`.
+**Bog'lanishlar:** `backend/app/schemas/orders.py`, `backend/app/models/order.py` (`Order.survey`), `backend/app/services/giblab` (`ParseError`, `parse_project`; `ingest.py` dan `ingest_project`, `wipe_previous_parse`, `write_and_register_scx`), `backend/app/core/ws.py` (`ws_manager`), `backend/app/api/routes/terminal.py` (`build_cutmap_state`), frontend tomoni: `frontend/src/routes/_layout/anketa.$orderId.tsx`, `frontend/src/lib/anketa.ts`.
 
 ---
 
@@ -331,17 +333,17 @@ Yuklash cheklovlari (`orders.py` dagi konstantalar):
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
-| GET | `/api/v1/audit-logs/` | `AdminUser` | `Paginated[AuditLogRead]`; filtrlar: `module`, `action`, `user_id`, `q` (xabar bo'yicha `ilike` qidiruv), `date_from`/`date_to` — kun chegaralari Asia/Tashkent vaqtida (naive-UTC bo'lsa "bugun" filtri 00:00–05:00 yozuvlarni yo'qotardi) |
+| GET | `/api/v1/audit-logs/` | `AdminUser` | `Paginated[AuditLogRead]`; filtrlar: `module`, `action`, `user_id`, `q` (xabar bo'yicha `ilike` qidiruv), `date_from`/`date_to` — kun chegaralari Asia/Tashkent vaqtida (`TASHKENT_TZ`; naive-UTC bo'lsa "bugun" filtri 00:00–05:00 yozuvlarni yo'qotardi) |
 
-`AuditLogRead` shu faylda lokal e'lon qilingan: user/employee, modul, amal, entity, xabar, `meta` (JSON), IP, vaqt, hamda `user_name`/`employee_name` ("kim" ustuni uchun `outerjoin` orqali — alohida so'rovsiz).
+`AuditLogRead` sxemasi `backend/app/schemas/audit.py` da: user/employee, modul, amal, entity, xabar, `meta` (JSON), IP, vaqt, hamda `user_name`/`employee_name` ("kim" ustuni uchun `outerjoin` orqali — alohida so'rovsiz).
 
-**Bog'lanishlar:** `backend/app/models` (`AuditLog`), `backend/app/crud` (`log_action` — yozuvchi tomon).
+**Bog'lanishlar:** `backend/app/schemas/audit.py`, `backend/app/models` (`AuditLog`), `backend/app/crud` (`log_action` — yozuvchi tomon), `backend/app/core/config.py` (`TASHKENT_TZ`).
 
 ---
 
 ## `backend/app/api/routes/terminal.py` — Operator terminali (TZ 8)
 
-**Maqsadi:** Sexdagi 17" touch-terminal API: kontekst, beyjik-smena, vazifalar navbati, ARRA kesish xaritasi, yorliq chop etish, SCX fayllar. Barcha endpointlar `require_roles(UserRole.TERMINAL, *POST_ROLES)` ortida. Stanok+post konteksti `TerminalCtx` dependency'si orqali keladi (`_terminal_ctx` → `resolve_terminal`, `ScanRejected` → 422 `{code, message}`) — u faqat kontekstga muhtoj route'larga qo'yilgan, yorliq va fayl route'lariga ATAYLAB emas: stanoksiz terminal foydalanuvchisi ham yorliq chop eta olishi kerak. `resolve_terminal` operator rollarida postni rolning o'zidan oladi (stanok — `user.machine_id`, bo'lmasa postning birinchi stanogi), TERMINAL akkauntda esa `user.machine_id`dan.
+**Maqsadi:** Sexdagi 17" touch-terminal API: kontekst, beyjik-smena, vazifalar navbati, ARRA kesish xaritasi, yorliq chop etish, SCX fayllar. Barcha endpointlar `require_roles(UserRole.TERMINAL, *POST_ROLES)` ortida. Stanok+post konteksti `TerminalCtx` dependency'si orqali keladi (`_terminal_ctx` → `resolve_terminal`, `ScanRejected` → 422 `{code, message}` — `_scan_error()` helper) — u faqat kontekstga muhtoj route'larga qo'yilgan, yorliq va fayl route'lariga ATAYLAB emas: stanoksiz terminal foydalanuvchisi ham yorliq chop eta olishi kerak. `resolve_terminal` operator rollarida postni rolning o'zidan oladi (stanok — `user.machine_id`, bo'lmasa postning birinchi stanogi), TERMINAL akkauntda esa `user.machine_id`dan.
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
@@ -349,12 +351,12 @@ Yuklash cheklovlari (`orders.py` dagi konstantalar):
 | POST | `/api/v1/terminal/session` | terminal/operator | Beyjik skan smenani ochadi (TZ 8.2.2); xatolar 422 `{code: "E006", message}` — beyjik topilmadi / nofaol / hodim bu postga biriktirilmagan; bitta terminalda bitta aktiv sessiya — yangi beyjik eskisini yopadi; WS `session.started` |
 | POST | `/api/v1/terminal/session/end` | terminal/operator | Smenani yakunlaydi; aktiv sessiya bo'lmasa 404; WS `session.ended` |
 | GET | `/api/v1/terminal/tasks` | terminal/operator | NAVBATDAGI VAZIFALAR (TZ 8.3.2): faqat shu post/stanok, QOLDIQ > 0, PRODUCTION buyurtmalar, muddat (deadline) tartibida |
-| GET | `/api/v1/terminal/orders` | terminal/operator | Shu postga tegishli aktiv buyurtmalar (post sahifalari tanlagichi). Tartib: prioritet (`URGENT→HIGH→MEDIUM→LOW`, `priority_rank` `case()`), keyin deadline (nulls oxirida), keyin id. `/tasks` bilan bir xil stanok filtri. `done`/`total` post semantikasida: ARRA — chek chiqarilgan YOKI skan qilingan nusxalar, **faqat ARRA marshruti bor detallar bo'yicha** (aks holda arradan o'tmaydigan detalning cheki — masalan roverchi o'zi chiqargani — arra hisobini jamidan oshirib yuborardi va listlar hali kesilmagan proyekt ro'yxatdan yo'qolardi); hammasi chiqarilgan buyurtma ro'yxatdan TUSHADI; KROMKA — detal bo'yicha (nusxaning hamma tomoni skan bo'lsa "qilingan"); boshqa postlarda skan yig'indisi. Kartada `materials`, `sheets_total`, `has_cutmap` |
+| GET | `/api/v1/terminal/orders` | terminal/operator | Shu postga tegishli aktiv buyurtmalar (post sahifalari tanlagichi). Tartib: prioritet (`URGENT→HIGH→MEDIUM→LOW`, `priority_rank` `case()`), keyin deadline (nulls oxirida), keyin id. `/tasks` bilan bir xil stanok filtri. `done`/`total` post semantikasida: ARRA — chek chiqarilgan YOKI skan qilingan nusxalar, **faqat ARRA marshruti bor detallar bo'yicha** (aks holda arradan o'tmaydigan detalning cheki — masalan roverchi o'zi chiqargani — arra hisobini jamidan oshirib yuborardi va listlar hali kesilmagan proyekt ro'yxatdan yo'qolardi); hammasi chiqarilgan buyurtma ro'yxatdan TUSHADI; KROMKA — detal bo'yicha (nusxaning hamma tomoni skan bo'lsa "qilingan"); boshqa postlarda skan yig'indisi. Kartada (`TerminalOrderCard`) `materials`, `sheets_total`, `has_cutmap` |
 | GET | `/api/v1/terminal/orders/{id}/cutmap` | terminal/operator | ARRA kesish xaritasi (TZ 7.1.7); ARRA bo'lmagan postda 403; katak holati serverda — terminal qayta yonganda saqlanib qoladi |
 | GET | `/api/v1/terminal/orders/{id}/kromka` | terminal/operator | KROMKA/OVAL sahifasi (boshqa postda 403): shu post marshrutidagi detallar, har nusxada `done` (post skanlari) / `sides` (`per_instance`), `arra_passed` (chek chiqarilgan yoki ARRA skan bor) |
-| GET | `/api/v1/terminal/orders/{id}/prisadka` | terminal/operator | CNC sahifasi — PRISADKA va ROVER (boshqa postda 403): detallar + har detalning SCX fayllari (`{id, filename}`), `project_name` (frontend shu nom bilan papka ochadi) |
-| GET | `/api/v1/terminal/qr/{qr_text}/order` | terminal/operator | QR qaysi PRODUCTION buyurtmaga tegishligini topadi — `{order_id, order_number}`; picker'da skan qilinsa terminal o'sha proyektni o'zi ochadi |
-| POST | `/api/v1/terminal/labels/{instance_id}` | terminal/operator | YORLIQ CHOP ETISH (TZ 7.1.4): ARQ `print_label` navbatiga qo'yiladi (bridge-agent/GoDEX); `label_printed_at` belgilanadi; WS `label.printed`. ARRA UI'da chiqarilgan katak YASHIL = "kesildi"; qayta chop etish frontendda bloklanadi (avval bekor qilish kerak) |
+| GET | `/api/v1/terminal/orders/{id}/prisadka` | terminal/operator | CNC sahifasi — PRISADKA va ROVER (boshqa postda 403), javob `PrisadkaOrderState`: detallar + har detalning SCX fayllari (`PrisadkaFile {id, filename}`), `arra_route` (marshrutida yoqilgan ARRA bormi — yo'q bo'lsa QR chek shu sahifadan chiqariladi, roverdan boshlanadigan oqim), `done_qrs` (shu postda to'liq skan qilingan nusxalar QR'lari), `instances` (`PrisadkaInstance`: `instance_id`/`qr_text`/`label_printed`/`done`), `project_name` (frontend shu nom bilan papka ochadi) |
+| GET | `/api/v1/terminal/qr/{qr_text}/order` | terminal/operator | QR qaysi PRODUCTION buyurtmaga tegishligini topadi — `QrOrderRef` (`order_id`, `order_number`); picker'da skan qilinsa terminal o'sha proyektni o'zi ochadi |
+| POST | `/api/v1/terminal/labels/{instance_id}` | terminal/operator | YORLIQ CHOP ETISH (TZ 7.1.4): ARQ `print_label` navbatiga qo'yiladi (bridge-agent/GoDEX); `label_printed_at` belgilanadi; WS `label.printed`. ARRA UI'da chiqarilgan katak YASHIL = "kesildi"; qayta chop etish frontendda bloklanadi (avval bekor qilish kerak). ROVER oqimi: roverchi marshrutida ARRA bo'lmagan detal chekini chiqarsa, shu so'rovda skan ham avto-yoziladi (`record_scan` + `finalize_scan`, `client_event_id="rvprint-<id>"`, manba " (rover, chop etish bilan)") — rover-boshlanadigan detalda chop etish = kesish; skan rad etilsa (`ScanRejected`) jim rollback, chek baribir chiqadi |
 | DELETE | `/api/v1/terminal/labels/{instance_id}` | terminal/operator + manager/texnolog | Chekni bekor qilish: `label_printed_at = None`, WS `label.cancelled`. Terminalda long press (~600ms) + tasdiq dialogi; admin webdagi xaritada detal kartochkasidagi tugma (proyekt ARRA ro'yxatidan tushib bo'lgach arrachi xaritani ocholmaydi — oxirgi xato chekni texnolog tuzatadi). Skan qilingan nusxaga tegmaydi |
 | GET | `/api/v1/terminal/labels/{instance_id}.png` | terminal/operator | Yorliqning PNG ko'rinishi (`load_label_data` + `render_label_png`) — brauzerdan istalgan printerga chop etish uchun (GoDEX shart emas); `Response(media_type="image/png")` |
 | GET | `/api/v1/terminal/files/{file_id}` | terminal/operator | SCX faylni stanok brauzeriga yuklab olish (TZ 12.5) — har safar yangidan beriladi |
@@ -376,9 +378,9 @@ GoDEX G500-U faqat USB bilan ulanadi — printerda tarmoq porti yo'q, shuning uc
 
 `print_label` qaytaradigan qiymatlar: `queued:<id>` (Redis navbatiga qo'yildi), `skip:<id>` (nusxa topilmadi), `lost:<id>` (arq kontekstida Redis yo'q).
 
-Agent tomoni (`bridge-agent/agent.py`) — bitta chiqish yo'li: `send_to_printer(png_b64)` → `_print_png_gdi` — PNG Windows drayveri orqali chiziladi (win32ui + PIL, DEVMODE 80×60 mm ga majburlanadi). Printer avtomatik topiladi: `_detect_printer()` nomida "godex" bor lokal Windows printerini qidiradi, `PRINTER_NAME` env faqat qo'lda override uchun. Agent env'lari: `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME` (ixtiyoriy), `QUEUE_FILE`. Agent faqat printer ulangan kompyuterga o'rnatiladi — menejer, texnolog va boshqa post terminallariga hech narsa kerak emas.
+Agent tomoni (`bridge-agent/agent.py`) — bitta chiqish yo'li: `send_to_printer(png_b64)` → `_print_png_gdi` — PNG Windows drayveri orqali chiziladi (win32ui + PIL, DEVMODE 80×60 mm ga majburlanadi). Printer avtomatik topiladi: `_detect_printer()` nomida "godex" bor lokal Windows printerini qidiradi, `PRINTER_NAME` env faqat qo'lda override uchun. Agent env'lari: `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME` (ixtiyoriy), `QUEUE_FILE`, `SCAN_FORWARD` (default `1`; `0` — skan-forvard tinglovchisini o'chiradi). Agent faqat printer ulangan kompyuterga o'rnatiladi — menejer, texnolog va boshqa post terminallariga hech narsa kerak emas.
 
-**Bog'lanishlar:** `backend/app/schemas/terminal.py`, `backend/app/services/scanning.py` (`resolve_terminal`, `active_session`, `latest_active_session`, `ScanRejected`), `backend/app/services/labels.py` (`LabelData`, `load_label_data`, `_n`, `render_label_png` — 80×60 mm, 203 dpi, 1-bit), `backend/app/tasks` (`print_label`, `PRINT_QUEUE_KEY`), `backend/app/core/ws.py`, `bridge-agent/agent.py`.
+**Bog'lanishlar:** `backend/app/schemas/terminal.py`, `backend/app/services/scanning.py` (`resolve_terminal`, `active_session`, `latest_active_session`, `record_scan`, `finalize_scan`, `ScanRejected`), `backend/app/services/labels.py` (`LabelData`, `load_label_data`, `_n`, `render_label_png` — 80×60 mm, 203 dpi, 1-bit), `backend/app/tasks` (`print_label`, `PRINT_QUEUE_KEY`), `backend/app/core/ws.py`, `bridge-agent/agent.py`.
 
 ---
 
@@ -388,13 +390,12 @@ Agent tomoni (`bridge-agent/agent.py`) — bitta chiqish yo'li: `send_to_printer
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
-| POST | `/api/v1/scans/` | terminal/operator | `record_scan` chaqiradi; rad etilsa rollback + 422 `{code, message}` (**E001–E006** xato kodlari); muvaffaqiyatda WS eventlar publish qilinadi; javob `ScanResult`: `scan_id`, `duplicate`, `qoldiq`, `scx_file_ids`, `project_name` (avto-SCX proyekt nomli papkaga tushishi uchun), `order_stage_completed`, `order_completed` va detal ma'lumotlari; har skan (rad etilgani ham) `scan` modulida audit logga yoziladi |
-| DELETE | `/api/v1/scans/{scan_id}` | terminal/operator | Skanni bekor qilish (undo) — `cancel_scan`; hisoblagichlar qaytariladi, WS eventlar publish qilinadi |
-| GET | `/api/v1/scans/recent` | terminal/operator | TARIX bloki (TZ 8.3.3): faqat JORIY sessiyaning oxirgi 50 ta yozuvi |
+| POST | `/api/v1/scans/` | terminal/operator | `record_scan` chaqiradi; rad etilsa 422 `{code, message}` (**E001–E006** xato kodlari); muvaffaqiyatda WS eventlar publish qilinadi; javob `ScanResult`: `scan_id`, `duplicate`, `qoldiq`, `scx_file_ids`, `project_name` (avto-SCX proyekt nomli papkaga tushishi uchun), `order_stage_completed`, `order_completed` va detal ma'lumotlari; rad etilgan urinish ham `log_rejected_scan` helper (`services/scanning.py`) orqali `scan` modulida audit logga yoziladi |
+| DELETE | `/api/v1/scans/{scan_id}` | terminal/operator | Skanni bekor qilish (undo) — `cancel_scan`; hisoblagichlar qaytariladi, WS eventlar publish qilinadi; javob `ScanHistoryItem` |
 
 Skan qabul qilish qoidalari (marshrut/ketma-ketlik tekshiruvi, dublikat, E001–E006 kodlarining ma'nosi) — `docs/09-mes-domain.md` da batafsil.
 
-**Bog'lanishlar:** `backend/app/services/scanning.py` (`record_scan`, `cancel_scan`, `ScanRejected`), `backend/app/schemas/terminal.py` (`ScanRequest`, `ScanResult`, `ScanHistoryItem`), `backend/app/core/ws.py`.
+**Bog'lanishlar:** `backend/app/services/scanning.py` (`record_scan`, `cancel_scan`, `finalize_scan`, `log_rejected_scan`, `ScanRejected`), `backend/app/schemas/terminal.py` (`ScanRequest`, `ScanResult`, `ScanHistoryItem`), `backend/app/core/ws.py`.
 
 ---
 
@@ -407,13 +408,15 @@ Skan qabul qilish qoidalari (marshrut/ketma-ketlik tekshiruvi, dublikat, E001–
 | GET | `/api/v1/tablo/matrix` | login (har qanday) | `TabloMatrix`: postlar ro'yxati + PRODUCTION buyurtmalar va oxirgi `COMPLETED_WINDOW` (30 kun) ichida yakunlanganlar; har katak `StageAgg` — done/total va post birligidagi hajm (`part_volume`: m²/metr/dona). **Chegara shart**: COMPLETED holatdan faqat manager qo'lda "topshirildi" bosgandagina chiqiladi, ya'ni chegarasiz har bir unutilgan buyurtma taxtada abadiy qolib, sex ekranini sekinlashtirardi (o'lchov: 100 buyurtmada 28 ms → 1.9 s). Marshrutlar ORM obyekti sifatida emas, faqat kerakli ustunlar bilan o'qiladi |
 | GET | `/api/v1/tablo/orders/{id}` | login (har qanday) | Drill-down (TZ 9.5 SONI NAZORATI): har detal × bosqich done/total |
 
-**Bog'lanishlar:** `backend/app/services/metrics.py` (`part_volume`), `backend/app/models` (`Order`, `PartRoute`, `Post`).
+Javob sxemalari `backend/app/schemas/tablo.py` da: `TabloMatrix` (`posts` — typed `TabloPostCol` ro'yxati), `TabloOrderRow`, `StageAgg`, `TabloOrderDetail`, `TabloPartRow`.
+
+**Bog'lanishlar:** `backend/app/schemas/tablo.py`, `backend/app/services/metrics.py` (`part_volume`), `backend/app/models` (`Order`, `PartRoute`, `Post`).
 
 ---
 
 ## `backend/app/api/routes/reports.py` — Hisobotlar (TZ 11) va dashboard statistikasi
 
-**Maqsadi:** Boshqaruv hisobotlari. Rol: `require_roles(MANAGER, DIRECTOR)` (admin/superuser har doim o'tadi). Uch hisobot default JSON qaytaradi, `?format=xlsx` bilan Excel fayl stream qilinadi (TZ 11.4, `services/excel.xlsx_response`). Sana oralig'i berilmasa — oxirgi 30 kun, chegaralar Asia/Tashkent bo'yicha inklyuziv kunlar.
+**Maqsadi:** Boshqaruv hisobotlari. Rol: `require_roles(MANAGER, DIRECTOR)` (admin/superuser har doim o'tadi). Uch hisobot default JSON qaytaradi, `?format=xlsx` bilan Excel fayl stream qilinadi (TZ 11.4, `services/excel.xlsx_response`). Sana oralig'i berilmasa — oxirgi 30 kun, chegaralar Asia/Tashkent bo'yicha inklyuziv kunlar (`TASHKENT_TZ`, `app/core/config.py`). Javob sxemalari `backend/app/schemas/reports.py` da (8 model: `ProductivityReport`, `OrdersReport`, `MaterialsReport`, `DashboardStats` va ularning qator modellari).
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
@@ -422,7 +425,7 @@ Skan qabul qilish qoidalari (marshrut/ketma-ketlik tekshiruvi, dublikat, E001–
 | GET | `/api/v1/reports/materials` | manager/direktor | Material sarfi (TZ 11.3): `Order.material_usage` JSONB'dan agregatsiya (`project_loaded_at` oralig'ida, CANCELLED chiqariladi); `?format=xlsx` |
 | GET | `/api/v1/reports/dashboard` | manager/direktor | Dashboard (TZ 10.2.1): har stanok uchun navbat (qolgan skanlar/hajm), quvvat va prognoz soatlar (TZ 4.3: navbat/quvvat), bugungi skanlar; faqat JSON |
 
-**Bog'lanishlar:** `backend/app/services/excel.py` (`xlsx_response`), `backend/app/services/metrics.py` (`part_volume`).
+**Bog'lanishlar:** `backend/app/schemas/reports.py`, `backend/app/services/excel.py` (`xlsx_response`), `backend/app/services/metrics.py` (`part_volume`).
 
 ---
 
@@ -440,7 +443,7 @@ Router `/api/v1/bridge-agents` prefiksi bilan **himoyasiz** ulanadi (`/pair` cha
 | POST | `/api/v1/bridge-agents/{id}/code` | `AdminUser` | Yangi ulanish kodi (kod eskirgan yoki kompyuter almashgan holat); `token_hash` tozalanadi — eski kompyuter keyingi ulanishda rad etiladi; audit `code_regenerated` |
 | DELETE | `/api/v1/bridge-agents/{id}` | `AdminUser` | Soft-delete; jonli WebSocket ham uziladi (`touch_agent()` 5 daqiqada bir tekshiradi); audit `deleted` |
 | POST | `/api/v1/bridge-agents/pair` | **Yo'q (ochiq)** | Agent bir martalik kodni doimiy tokenga almashtiradi; javob `BridgePairResponse` (`token`, `name`); audit `paired` (`user_id=None`); WS `bridge.paired` — admin sahifasi pollingsiz yangilanadi |
-| POST | `/api/v1/bridge-agents/scan` | Agent tokeni (`Authorization: Bearer`) | Skan-forvard (TZ 12.5): stanok skaneri o'qigan QR agent orqali MES'ga yoziladi — agentga bog'langan stanokning AKTIV sessiyasi nomidan (`record_scan_at` + `finalize_scan`, odatdagi skan yo'li); stanok bog'lanmagan / sessiya yo'q — 409; rad etilgan skan ham `scan`/`rejected` audit logga tushadi, javob `ScanResult` |
+| POST | `/api/v1/bridge-agents/scan` | Agent tokeni (`Authorization: Bearer`) | Skan-forvard (TZ 12.5): stanok skaneri o'qigan QR agent orqali MES'ga yoziladi — agentga bog'langan stanokning AKTIV sessiyasi nomidan (`record_scan_at` + `finalize_scan`, odatdagi skan yo'li); stanok bog'lanmagan / sessiya yo'q — 409; sessiya terminal bilan bir xil `expire_if_stale` tekshiruvidan o'tadi — 12 soatdan (`SESSION_MAX_HOURS`) eskirgan smena yopiladi va 409 qaytadi; rad etilgan skan ham `log_rejected_scan` bilan `scan`/`rejected` audit logga tushadi, javob `ScanResult` |
 
 **Ulanish kodi:** `_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"` — I/L/O/0/1 yo'q, telefonda aytganda adashtirmaydi. 31 belgi × 8 uzunlik (`_CODE_LEN = 8`) = 31⁸ ≈ 8.5·10¹¹ kombinatsiya, 15 daqiqalik oynada brute-force amalda imkonsiz.
 
@@ -455,6 +458,8 @@ Agent exe'ni yuklab olish endpointi YO'Q (2026-08-02 da olib tashlangan — disk
 
 **Agent tomoni** (`bridge-agent/agent.py`): PyInstaller onefile `mebelix-agent.exe` — sex kompyuteriga Python o'rnatish shart emas. `_load_dotenv()` config'ni shu tartibda o'qiydi: env var > exe yonidagi `.env` > `%APPDATA%\MebelixAgent\.env`. `_pair()` (import paytida chaqiriladi) birinchi ishga tushishda kichik tkinter oynasi (`_pair_dialog()`) orqali server manzili va ulanish kodini so'raydi, `_exchange()` ularni `POST /pair` ga yuboradi va olingan tokenni `%APPDATA%\MebelixAgent\.env` ga yozadi; kod noto'g'ri bo'lsa oyna xato matni bilan qayta ochiladi. `BRIDGE_TOKEN` allaqachon bor bo'lsa `_pair()` darhol qaytadi — hech narsa so'ralmaydi; aks holda oyna har doim ochiladi, `stdin` tty bo'lishi shart emas (exe `--noconsole` bilan quriladi, konsol umuman yo'q). Faqat tkinter ishlamagan muhitda (dev/Linux) `_pair_console()` zaxira sifatida ishlaydi, u ham kod ololmasa `SystemExit("Ulanish bekor qilindi.")` — agent jim davom etmaydi, xato oynasini ko'rsatib to'xtaydi. Qolgan hammasi o'zgarmagan — printer avto-topiladi, `print-queue.jsonl` durable navbat, `_print_png_gdi` chiqish yo'li.
 
+**Skan-forvard klienti ham agentning o'zida** (TZ 12.5 ning ikkinchi yarmi): `pynput` klaviatura tinglovchisi stanok skanerining wedge kiritishini ushlaydi (Enter bilan yakunlangan 6–64 belgili satr, belgi tezligi <50 ms — odam terishi bunday tez emas) va uni agent tokeni bilan `POST /bridge-agents/scan` ga yuboradi. `SCAN_FORWARD=0` env o'chiradi; `pynput` o'rnatilmagan bo'lsa o'zi jim o'chadi.
+
 **Bog'lanishlar:** `backend/app/schemas/bridge_agents.py` (`BridgeAgentCreate`, `BridgeAgentRead`, `BridgePairRequest`, `BridgePairResponse`), `backend/app/models/bridge_agent.py` (`BridgeAgent`), migratsiya `backend/app/migrations/versions/d5e81a24c3b7_bridge_agent_pairing.py`, `backend/app/crud` (`crud_bridge_agents`, `log_action`), `backend/app/api/routes/ws.py` (`/ws/bridge` shu tokenni tanidi), `bridge-agent/agent.py`.
 
 ---
@@ -465,7 +470,7 @@ Agent exe'ni yuklab olish endpointi YO'Q (2026-08-02 da olib tashlangan — disk
 
 | Endpoint | Auth | Izoh |
 |---|---|---|
-| WS `/api/v1/ws/events` | `?token=` query yoki access cookie | Brauzer klientlari (TZ 2.3). Token HTTP oqimidagi bilan bir xil funksiya — `deps.resolve_user` — orqali tekshiriladi (`verify_token` + `is_active` + `token_version`); muvaffaqiyatsiz bo'lsa **4401** kod bilan yopiladi. Klient scope'i rol bo'yicha: TERMINAL va operator rollar (POST_ROLES)→`terminal`, TABLO→`tablo`, qolganlar→`dashboard`; post/stanok scope `user.machine_id` dan, operator rollarda esa `machine_id` bo'lmasa post rolning o'zidan (`POST_ROLES` → `Post.code`) aniqlanadi — aks holda postga nishonlangan `scan.recorded` eventlari yetib bormasdi. Heartbeat (TZ 2.3.2): klientning har qanday xabariga `{"type": "pong"}` |
+| WS `/api/v1/ws/events` | `?token=` query yoki access cookie | Brauzer klientlari (TZ 2.3). Token HTTP oqimidagi bilan bir xil funksiya — `deps.resolve_user` — orqali tekshiriladi (`verify_token` + `is_active` + `token_version`); muvaffaqiyatsiz bo'lsa **4401** (`WS_CLOSE_UNAUTHORIZED` konstantasi) kod bilan yopiladi. Klient scope'i rol bo'yicha: TERMINAL va operator rollar (POST_ROLES)→`terminal`, TABLO→`tablo`, qolganlar→`dashboard`; post/stanok scope `user.machine_id` dan, operator rollarda esa `machine_id` bo'lmasa post rolning o'zidan (`POST_ROLES` → `Post.code`) aniqlanadi — aks holda postga nishonlangan `scan.recorded` eventlari yetib bormasdi. Heartbeat (TZ 2.3.2): klientning har qanday xabariga `{"type": "pong"}` |
 | WS `/api/v1/ws/bridge` | `Authorization: Bearer <token>` header (fallback: `?token=` query) → `bridge_agent.token_hash` (sha256) yoki legacy `settings.BRIDGE_TOKEN` (`secrets.compare_digest`) | Sex tarmog'idagi bridge-agent uplink'i (TZ 2.2.2 — USB GoDEX'da chop etadi). Ulanish CHIQUVCHI: agent o'zi ulanadi, sex routerida port ochilmaydi. Token headerda keladi — server access-loglariga tushmasin; `?token=` eski agentlar uchun qoldirilgan. Avval legacy umumiy `BRIDGE_TOKEN` bilan solishtiriladi (bytes'da — non-ASCII tokenda `compare_digest(str)` TypeError beradi), mos kelmasa token sha256 xeshi bo'yicha `bridge_agent` jadvalidan qidiriladi; topilmasa 4401. `BRIDGE_TOKEN` default bo'sh, `bool(settings.BRIDGE_TOKEN)` guard esa shu holda legacy yo'lni butunlay o'chiradi — aks holda bo'sh token bo'sh sozlama bilan mos kelib, hamma ulana olardi. Ulanishda `X-Agent-Version` header `bridge_agent.version` ustuniga yoziladi; ulanish/uzilish `bridge.connected`/`bridge.disconnected` eventlari bilan panelga tarqatiladi (pairing esa `bridge.paired`). Chop etish ishlari faqat `can_print=True` agentga beriladi — `can_print=False` agent ulanib turadi (skan-forvard uchun), lekin print navbatidan ish olmaydi. Ulangandan keyin `touch_agent()` har 300 sekundda `last_seen_at` ni yangilaydi, `can_print`ni qayta o'qiydi va agent hali tirikligini qayta tekshiradi — agent o'chirilgan yoki yangi kod berilgan bo'lsa ulanish 4401 bilan yopiladi, qo'lda turgan ish esa navbatga QAYTARILADI (revoke jonli ulanishni ~5 daqiqa ichida uzadi). DB xatosi ulanishni yiqitmaydi. Redis `mes:print:queue` ro'yxatidan `brpop` (5s timeout) bilan ishlarni oladi va agentga yuboradi (job JSON: `type`, `instance_id`, `png` — base64 PNG); agent ishni lokal `print-queue.jsonl` ga yozgach 15s ichida `{"ok": true}` bilan ack qilishi shart — ack kelmasa yoki uzilsa ish `rpush` bilan navbatga QAYTARILADI (hech bir ish yo'qolmaydi); bo'sh navbatda `{"type": "ping"}` heartbeat va 10s ichida javob kutiladi |
 
 Server → klient eventlarni `app/core/ws.py` dagi `ws_manager` tarqatadi: `order.*`, `session.*`, skan eventlari, `label.printed` — mutatsion HTTP endpointlar publish qiladi.
@@ -482,8 +487,8 @@ Server → klient eventlarni `app/core/ws.py` dagi `ws_manager` tarqatadi: `orde
 - **Refresh rotatsiyasi:** har `POST /login/refresh` da access va refresh ikkalasi qayta beriladi; eski refresh token `jti`si Redis'da belgilanadi (one-time-use), replay aniqlansa `token_version` bump bilan butun sessiya bekor qilinadi.
 - **Rate limiting:** `RateLimit` dependency — login endpointida (`LOGIN_RATE_LIMIT_*`).
 - **Paginatsiya:** `skip`/`limit` query parametrlari, chegaralar `settings.DEFAULT_PAGE_SIZE` / `settings.MAX_PAGE_SIZE` dan; ro'yxat javoblari `app/schemas/common.py` dagi generik `Paginated[T]` (`{data, count}`) sxemasida, oddiy tasdiqlar `Message` da.
-- **Fayl yuklash:** `UploadFile` qabul qiladigan endpointlar (`/orders/{id}/upload` — `.project`, `/orders/{id}/survey/photos` — xona rasmi) kengaytma/MIME va hajmni endpoint ichida tekshiradi, xato 422; fayl `settings.UPLOAD_DIR` ostiga yoziladi, bazada `OrderFile` qatori qoladi (yo'l — nisbiy).
-- **Audit:** deyarli barcha mutatsion endpointlar (clients/employees/machines/posts/materials/orders/terminal) o'z tranzaksiyasida `crud.log_action` chaqiradi — modul, amal, foydalanuvchi, entity, `meta`, IP yoziladi; o'qish `GET /api/v1/audit-logs/` orqali.
+- **Fayl yuklash:** `UploadFile` qabul qiladigan endpointlar (`/orders/{id}/upload` — `.project`, `/orders/{id}/survey/photos` — xona rasmi) kengaytma/MIME va hajmni endpoint ichida tekshiradi, xato 422; fayl `settings.UPLOAD_DIR` ostiga yoziladi (absolyut root — `upload_root()`, `app/core/config.py`), bazada `OrderFile` qatori qoladi (yo'l — nisbiy).
+- **Audit:** deyarli barcha mutatsion endpointlar (users/clients/employees/machines/posts/materials/orders/terminal) o'z tranzaksiyasida `crud.log_action` chaqiradi — modul, amal, foydalanuvchi, entity, `meta`, IP (`deps.client_ip`) yoziladi; o'qish `GET /api/v1/audit-logs/` orqali.
 - **Real-time eventlar:** mutatsion endpointlar `ws_manager.publish` orqali WS eventlar tarqatadi (`order.*`, `session.*`, skan eventlari, `label.printed`) — terminallar, TABLO va dashboard jonli yangilanadi.
-- **Xatoliklar:** `backend/app/core/exceptions.py` dagi maxsus exception'lar (`UnauthorizedException` 401, `ForbiddenException` 403, `NotFoundException` 404, `DuplicateValueException` 409) — xabarlar o'zbek tilida. "Topilmadi" holati odatda qo'lda yozilmaydi: `BaseCRUD.get_or_404(db, "Mijoz topilmadi.", id=...)` o'zi `NotFoundException` ko'taradi. Terminal/skan oqimida esa 422 `{code, message}` formati (E001–E006 kodlari). `E007` ("Aloqa yo'q") server kodi emas — WS uzilganda terminal frontendi lokal hosil qiladi (`frontend/src/routes/terminal.tsx`), so'rov serverga umuman ketmaydi.
+- **Xatoliklar:** `backend/app/core/exceptions.py` dagi maxsus exception'lar (`UnauthorizedException` 401, `ForbiddenException` 403, `NotFoundException` 404, `DuplicateValueException` 409, `RateLimitException` 429) — xabarlar o'zbek tilida. "Topilmadi" holati odatda qo'lda yozilmaydi: `BaseCRUD.get_or_404(db, "Mijoz topilmadi.", id=...)` o'zi `NotFoundException` ko'taradi. Terminal/skan oqimida esa 422 `{code, message}` formati (E001–E006 kodlari). `E007` ("Aloqa yo'q") server kodi emas — WS uzilganda terminal frontendi lokal hosil qiladi (`frontend/src/routes/terminal.tsx`), so'rov serverga umuman ketmaydi.
 - **OpenAPI barqarorligi:** biznes endpointlarning barchasida aniq `operation_id` berilgan (frontend client generatsiyasi uchun qulay); istisno — `health.py` dagi `/health` va `/ready` probalari (FastAPI avtomatik nom beradi).

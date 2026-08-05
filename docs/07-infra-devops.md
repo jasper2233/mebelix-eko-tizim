@@ -8,7 +8,7 @@ Stack ikki rejimda ishlaydi:
 
 | Rejim | Compose fayl | Kirish nuqtasi | App server | TLS |
 |---|---|---|---|---|
-| Lokal (dev) | `docker-compose.local.yml` | portlar to'g'ridan-to'g'ri hostga ochiq (`8000`, `3000`, `5432`, `6379`) | `uvicorn --reload` | yo'q |
+| Lokal (dev) | `docker-compose.local.yml` | `8000`/`3000` hostga ochiq; `5432`/`6379` faqat loopback (`127.0.0.1`) | `uvicorn --reload` | yo'q |
 | Production | `docker-compose.prod.yml` | faqat Caddy (default `:80`/`:443`; `CADDY_HTTP_BIND`/`CADDY_HTTPS_BIND` bilan o'zgartiriladi); `api`/`frontend` faqat `expose`, `db`/`redis` umuman port ochmaydi | `gunicorn` + `UvicornWorker` | Caddy auto-HTTPS (Let's Encrypt) |
 
 Servislar: `db` (PostgreSQL 15), `redis` (Redis 7, ARQ queue + rate limit), `api` (FastAPI), `worker` (ARQ background worker), `frontend` (Vite build + nginx), production'da qo'shimcha `caddy` (reverse proxy + TLS).
@@ -37,14 +37,14 @@ make run-frontend   # vite dev server                (http://localhost:5173)
 make worker         # ARQ background worker
 ```
 
-Bu rejimda `POSTGRES_SERVER=localhost` va `REDIS_HOST=localhost` bo'lishi kerak (`.env.example` dagi default). DB/Redis'ni konteynerdan olish mumkin: `docker-compose.local.yml` ular portlarini hostga ochadi (`5432`, `6379`). `frontend/README.md` ham aynan shu workflow'ni tavsiya qiladi — Docker image'ni har o'zgarishda qayta build qilish samarasiz, live reload bilan lokal server yaxshiroq.
+Bu rejimda `POSTGRES_SERVER=localhost` va `REDIS_HOST=localhost` bo'lishi kerak (`.env.example` dagi default). DB/Redis'ni konteynerdan olish mumkin: `docker-compose.local.yml` ular portlarini faqat loopback'ka ochadi (`127.0.0.1:5432`, `127.0.0.1:6379` — dev mashina sex tarmog'ida bo'lgani uchun default parolli Postgres/parolsiz Redis tarmoqqa chiqmaydi). `frontend/README.md` ham aynan shu workflow'ni tavsiya qiladi — Docker image'ni har o'zgarishda qayta build qilish samarasiz, live reload bilan lokal server yaxshiroq.
 
 ### 2-yo'l: konteynerlashgan dev — `docker-compose.local.yml`
 
 `make docker-local` → `docker compose -f docker-compose.local.yml up -d`. Xususiyatlari:
 
-- **`db`** — `postgres:15-alpine`, `postgres_data` named volume, `pg_isready` healthcheck, port `5432:5432` hostga ochiq. Credentiallar defaultli: `${POSTGRES_USER:-postgres}` va h.k.
-- **`redis`** — `redis:7-alpine`, `redis_data` volume, `redis-cli ping` healthcheck, port `6379:6379`.
+- **`db`** — `postgres:15-alpine`, `postgres_data` named volume, `pg_isready` healthcheck, port `127.0.0.1:5432:5432` — faqat loopback. Credentiallar defaultli: `${POSTGRES_USER:-postgres}` va h.k.
+- **`redis`** — `redis:7-alpine`, `redis_data` volume, `redis-cli ping` healthcheck, port `127.0.0.1:6379:6379` (faqat loopback).
 - **`api`** — `backend/Dockerfile` dan build (context = repo root). Command:
   ```
   bash -c "/app/scripts/prestart.sh && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
@@ -64,7 +64,7 @@ Lokal composeda Caddy yo'q — frontend nginx'i to'g'ridan-to'g'ri `3000` portda
 | `setup` | `scripts/setup.sh` + `install-hooks` |
 | `install` / `frontend-install` | `uv sync` / `npm install` |
 | `run-backend` / `run-frontend` / `worker` | dev serverlar va ARQ worker |
-| `lint` / `format` | `ruff check` + `mypy app` / `ruff format` + `ruff check --fix` |
+| `lint` / `format` | `ruff check app` + `ruff format --check app` + `mypy app` (`backend/` dan, CI bilan aynan bir xil) / `ruff format` + `ruff check --fix` |
 | `frontend-lint` / `frontend-build` | `npm run lint` (biome) / `npm run build` |
 | `frontend-gen` | `scripts/generate-client.sh` — OpenAPI → TS client |
 | `migrate` / `makemigrations m="msg"` | `alembic upgrade head` / `alembic revision --autogenerate` |
@@ -88,7 +88,7 @@ Lokaldan asosiy farqlar:
   ```
   `--forwarded-allow-ips` flag sifatida beriladi, chunki gunicorn `FORWARDED_ALLOW_IPS` env'ini ham o'qiydi va pydantic'ning JSON list formati (`'["*"]'`) uni yiqitadi. `env_file: .env` orqali to'liq konfiguratsiya, `POSTGRES_SERVER=db` / `REDIS_HOST=redis` override. `restart: always`. Healthcheck: `curl -f http://localhost:8000/api/v1/health` (`start_period: 40s`) — `caddy` shu healthcheck'ka tayanadi.
 - **`db` / `redis`** credentiallari defaultsiz — `.env` da majburiy (`${POSTGRES_USER}` va h.k.).
-- **`frontend`** `VITE_API_URL=""` (bo'sh string) bilan build qilinadi — generatsiyalangan SDK yo'llari allaqachon `/api/v1` bilan boshlanadi, shuning uchun bo'sh base same-origin so'rovlar beradi va ularni Caddy backendga proxy qiladi (avvalgi `/api` qiymati so'rovlarni `/api/api/v1` ga aylantirib 404 berardi). `VITE_*` build-arglar (`VITE_API_URL=` va `VITE_API_TIMEOUT_MS=30000`) endi compose faylida emas, CI'ning `images` job'ida beriladi — prod uchun ular belgilanadigan yagona joy. Healthcheck `wget --spider http://127.0.0.1/` ga qadalgan — konteyner ichida `localhost` `::1` ga ketadi, nginx esa faqat IPv4 tinglaydi.
+- **`frontend`** `VITE_API_URL=""` (bo'sh string) bilan build qilinadi — generatsiyalangan SDK yo'llari allaqachon `/api/v1` bilan boshlanadi, shuning uchun bo'sh base same-origin so'rovlar beradi va ularni Caddy backendga proxy qiladi (avvalgi `/api` qiymati so'rovlarni `/api/api/v1` ga aylantirib 404 berardi). `VITE_*` build-arglar (`VITE_API_URL=` va `VITE_API_TIMEOUT_MS=30000`) endi compose faylida emas, CI'ning `images` job'ida beriladi — prod uchun ular belgilanadigan yagona joy. Compose'da alohida healthcheck yo'q — image'ning o'z `HEALTHCHECK`i (`frontend/Dockerfile`: `wget --spider http://127.0.0.1/`) yagona manba.
 - **`caddy`** — `caddy:2-alpine`, `./caddy/Caddyfile` read-only mount, `caddy_data` (TLS sertifikatlar) va `caddy_config` volumelari. `SITE_ADDRESS` env (default `:80`). `depends_on`: `api` `service_healthy`, `frontend` `service_started` — Caddy backend tayyor bo'lgandan keyingina start oladi. Healthcheck `http://localhost:8080/healthz` orqali — Caddyfile'dagi alohida `:8080` health blokiga (asosiy `:80` emas, chunki `SITE_ADDRESS` domen bo'lganda `:80` HTTPS'ga avto-redirect qiladi).
 
 Ishga tushirish: `.env` ni production qiymatlar bilan to'ldirish (ayniqsa `SECRET_KEY`, `POSTGRES_PASSWORD`, `ADMIN_PASSWORD`, `SITE_ADDRESS`, `ENVIRONMENT=production`), so'ng `make docker-prod`. Image'lar ghcr.io dan tortilgani uchun (paketlar private) server oldindan `docker login ghcr.io` qilgan bo'lishi kerak — CI buni deploy oldidan avtomatik bajaradi.
@@ -129,7 +129,7 @@ Backend yuklangan fayllarni diskka yozadi (`backend/app/core/config.py`: `UPLOAD
 
 (`agent/` katalogi endi ishlatilmaydi — `mebelix-agent.exe` serverdan tarqatilmaydi, qo'lda ko'chiriladi; pastdagi "Agent o'rnatish" bo'limi.)
 
-DB'da faqat nisbiy yo'l saqlanadi (`OrderFile.path`), o'qishda `Path(settings.UPLOAD_DIR).resolve() / row.path` bilan qayta yig'iladi.
+DB'da faqat nisbiy yo'l saqlanadi (`OrderFile.path`), o'qishda `upload_root() / row.path` bilan qayta yig'iladi (`upload_root()` — `app/core/config.py` dagi helper: `Path(settings.UPLOAD_DIR).resolve()`, path-traversal tekshiruvlari ham shu root'ga nisbatan).
 
 **Prod'da doimiylik:** `docker-compose.prod.yml` da `api` xizmati `uploads_data` named volume'ini `/app/backend/uploads` ga mount qiladi. Volume bo'lmaganda fayllar konteyner qatlamida qolar va **har deploy'da (yangi image + konteyner almashishi) yo'qolar edi** — DB'dagi `OrderFile` yozuvlari qolib, fayl yo'q bo'lardi (`download_order_file` "Fayl diskda topilmadi" beradi). `worker` ga mount berilmagan: arq tasklari (`print_label`) faylga tegmaydi, yorliq DB ma'lumotidan chiziladi — `UPLOAD_DIR` ni faqat `api` route'lari o'qiydi.
 
@@ -147,10 +147,10 @@ Blok ichida: security headerlar (`X-Frame-Options SAMEORIGIN`, `X-Content-Type-O
 
 | Handle | Upstream | Izoh |
 |---|---|---|
-| `/api*` | `api:8000` | `Host`, `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto` headerlar bilan |
+| `/api*` | `api:8000` | faqat `X-Real-IP` header_up — `Host` passthrough va `X-Forwarded-For`/`X-Forwarded-Proto` ni Caddy `reverse_proxy` o'zi default qo'yadi |
 | `/docs*`, `/redoc*`, `/openapi.json` | `api:8000` | API hujjatlari |
 | `/metrics` | `api:8000` yoki `403` | Prometheus — `remote_ip private_ranges` matcher: faqat private tarmoq IP'laridan proxy qilinadi, boshqa hammaga `403 Forbidden` |
-| qolgani (`handle {}`) | `frontend:80` | SPA, forwarded headerlar bilan |
+| qolgani (`handle {}`) | `frontend:80` | SPA, `X-Real-IP` bilan |
 
 Asosiy site blokidan tashqari alohida **`:8080` bloki** bor — `respond /healthz "OK" 200`. Bu Docker healthcheck uchun doimiy plain-HTTP endpoint: `SITE_ADDRESS` domenga o'tib asosiy blok TLS'ga ko'chganda ham ishlayveradi.
 
@@ -172,15 +172,15 @@ Frontend konteyneri ichida nginx `:80` da:
 
 ### `backend/Dockerfile` — multi-stage, uv asosida
 
-1. **Builder stage** — `ghcr.io/astral-sh/uv:python3.13-bookworm-slim`. `UV_COMPILE_BYTECODE=1`, `UV_LINK_MODE=copy`. Layer caching uchun avval faqat `uv.lock` + `pyproject.toml` bind-mount bilan `uv sync --frozen --no-install-project` (cache mount `/root/.cache/uv`), keyin faqat kerakli kod — `COPY backend /app/backend` + `COPY scripts /app/scripts` (avvalgi `COPY . /app` o'rniga: frontend/docs o'zgarishlari backend layer cache'ini bekorga buzmasligi uchun) — va `uv sync --frozen --no-editable`.
-2. **Final stage** — `python:3.13-slim-bookworm`. Healthcheck uchun `curl`, yorliq PNG'si TTF shriftda chiqishi uchun `fonts-liberation` o'rnatiladi. Xavfsizlik uchun **non-root `app` user** (uid/gid 1000). Builderdan `/app/backend/.venv`, `/app/backend`, `/app/scripts` ko'chiriladi. `PATH` ga venv qo'shiladi, `PYTHONPATH=/app/backend`. Default `CMD` — `uvicorn app.main:app --host 0.0.0.0 --port 8000`, lekin ikkala compose ham buni override qiladi (dev: reload'li uvicorn; prod: gunicorn; worker: arq).
+1. **Builder stage** — `ghcr.io/astral-sh/uv:python3.13-bookworm-slim`. `UV_COMPILE_BYTECODE=1`, `UV_LINK_MODE=copy`. **Faqat bog'liqliklar** o'rnatiladi: `uv.lock` + `pyproject.toml` bind-mount bilan `uv sync --frozen --no-install-project` (cache mount `/root/.cache/uv`). Loyihaning o'zi venv'ga o'rnatilmaydi (app `PYTHONPATH` orqali ishlaydi) — shunda venv qatlami faqat `uv.lock` ga bog'liq: kod o'zgarganda ~380 MB qatlam qayta qurilmaydi va server har deployda uni qayta tortmaydi.
+2. **Final stage** — `python:3.13-slim-bookworm`. Healthcheck uchun `curl`, yorliq PNG'si TTF shriftda chiqishi uchun `fonts-liberation` o'rnatiladi. Xavfsizlik uchun **non-root `app` user** (uid/gid 1000). Builderdan faqat `/app/backend/.venv` ko'chiriladi; `backend` va `scripts` esa to'g'ridan-to'g'ri build kontekstidan `COPY --chown=app:app` qilinadi — tez-tez o'zgaradigan kod qatlamlari oxirida tursin. `PATH` ga venv qo'shiladi, `PYTHONPATH=/app/backend`. Default `CMD` — `uvicorn app.main:app --host 0.0.0.0 --port 8000`, lekin ikkala compose ham buni override qiladi (dev: reload'li uvicorn; prod: gunicorn; worker: arq).
 
 Muhim: build context — **repo root** (`context: .`), chunki image'ga `scripts/` ham kiradi (`prestart.sh` shu yerdan ishlaydi).
 
 ### `frontend/Dockerfile` — multi-stage, Node → nginx
 
 1. **build-stage** — `node:24-alpine` (versiya `frontend/.nvmrc` dagi `24` bilan mos). `package*.json` avval ko'chiriladi → `npm ci` (layer caching), keyin kod. `ARG VITE_API_URL` va `ARG VITE_API_TIMEOUT_MS` (default `30000`) build vaqtida env'ga aylanadi — Vite build'ga statik ravishda "pishiriladi" (shuning uchun lokal compose va CI'ning `images` job'i turli `VITE_API_URL` bilan alohida build qiladi). `npm run build` → `tsc && vite build` → `dist/`.
-2. **Runtime** — `nginx:1.29-alpine`. Default config o'chiriladi, `dist/` → `/usr/share/nginx/html`, `nginx/index.conf` → `default.conf`. `HEALTHCHECK` — `wget --spider http://localhost/` (prod compose buni `http://127.0.0.1/` bilan override qiladi — nginx faqat IPv4 tinglaydi).
+2. **Runtime** — `nginx:1.29-alpine`. Default config o'chiriladi, `dist/` → `/usr/share/nginx/html`, `nginx/index.conf` → `default.conf`. `HEALTHCHECK` — `wget --spider http://127.0.0.1/` (`localhost` `::1` ga resolve bo'lib IPv4-only nginx'da unhealthy berardi); prod compose bu healthcheck'ni takrorlamaydi — image'niki yagona manba.
 
 ---
 
@@ -190,11 +190,11 @@ Barcha `scripts/*.sh` fayllar git'da **executable (mode 100755)** saqlanadi. Bu 
 
 ### `scripts/setup.sh` — bir martalik lokal setup
 
-`make setup` chaqiradi. `set -e` bilan: (1) `uv` o'rnatilganini tekshiradi, yo'q bo'lsa xato bilan chiqadi; (2) `.env` bo'lmasa `.env.example` dan nusxa oladi; (3) `uv --project backend sync`; (4) `alembic upgrade head`; (5) `python -m app.commands.create_first_superuser` (`.env` dagi `ADMIN_*` qiymatlaridan); (6) `python -m app.commands.seed_defaults` — default organizatsiya va 6 ta ishlab chiqarish posti. `Makefile` dagi `setup` targeti bundan keyin `install-hooks` (pre-commit) ni ham bajaradi.
+`make setup` chaqiradi. `set -e` bilan: (1) `uv` o'rnatilganini tekshiradi, yo'q bo'lsa xato bilan chiqadi; (2) `.env` bo'lmasa `.env.example` dan nusxa oladi; (3) `uv --project backend sync`; (4) `alembic upgrade head`; (5) `python -m app.commands.create_first_superuser` (`.env` dagi `ADMIN_*` qiymatlaridan); (6) `python -m app.commands.seed_defaults` — default organizatsiya va 7 ta ishlab chiqarish posti. `Makefile` dagi `setup` targeti bundan keyin `install-hooks` (pre-commit) ni ham bajaradi.
 
 ### `scripts/prestart.sh` — konteyner startidan oldingi bosqich
 
-Ikkala composeda ham `api` command zanjirining birinchi qismi. Uch qadam: `alembic.ini` mavjud bo'lsa `python -m alembic upgrade head`, so'ng `python -m app.commands.create_first_superuser`, oxirida `python -m app.commands.seed_defaults` (default organizatsiya va 6 ta ishlab chiqarish postini idempotent seed qiladi). Shu tufayli konteyner har startda schema'ni head'ga keltiradi, admin user va default org/postlar mavjudligini kafolatlaydi. `worker` servisi buni ishlatmaydi (migratsiyani `api` ga qoldiradi).
+Ikkala composeda ham `api` command zanjirining birinchi qismi. Uch qadam: `alembic.ini` mavjud bo'lsa `python -m alembic upgrade head`, so'ng `python -m app.commands.create_first_superuser`, oxirida `python -m app.commands.seed_defaults` (default organizatsiya va 7 ta ishlab chiqarish postini idempotent seed qiladi; yangi post qo'shilganda mavjud bazalarda `order_index` ham sinxronlanadi). Shu tufayli konteyner har startda schema'ni head'ga keltiradi, admin user va default org/postlar mavjudligini kafolatlaydi. `worker` servisi buni ishlatmaydi (migratsiyani `api` ga qoldiradi).
 
 ### `scripts/generate-client.sh` — OpenAPI → TypeScript client
 
@@ -254,7 +254,8 @@ Zanjirning har bo'g'inida jobni yo'qotmaslik choralari bor:
 - **Agent tomonda.** `uplink()` jobni avval `local_enqueue()` bilan diskka yozadi (`print-queue.jsonl`, JSONL append), **keyin** ack yuboradi. Ya'ni server jobni faqat u sexdagi diskda turgani aniq bo'lgach unutadi — agent yoki kompyuter o'chsa ham job saqlanadi.
 - **Printer o'chiq bo'lsa.** `flusher()` navbatni ketma-ket chiqaradi; birinchi muvaffaqiyatsiz jobda to'xtaydi va **qolgan barchasini** `local_rewrite()` bilan faylga qaytarib yozadi (tartib buzilmaydi), keyin `"Printer kutilmoqda — navbatda N ta yorliq"` deb log yozadi.
 - **Bo'sh vaqtda.** Agent oddiy holatda 5 sekundda bir sikl uradi, lekin yangi job kelganda `FLUSH_EVENT.set()` flusher'ni **darhol** uyg'otadi — kutish yo'q.
-- **Yarim-ochiq TCP.** Server jobsiz 5 sekunddan keyin `{"type": "ping"}` yuboradi va javob kutadi; agent unga `{"ok": true}` bilan javob beradi. Sex tarmog'ida "o'lgan" ulanish tez aniqlanadi. Agent tomonda `websockets.connect(..., ping_interval=30)`, uzilganda 5s backoff bilan qayta ulanish.
+- **Yarim-ochiq TCP.** Server jobsiz 5 sekunddan keyin `{"type": "ping"}` yuboradi va javob kutadi; agent unga `{"type": "pong"}` qaytaradi (job-ack bilan bir xil `{"ok": true}` **emas** — kechikkan ping-javob keyingi jobning ack'i deb o'qilib ketmasin). Server ack kutishda `pong` xabarlarini o'tkazib yuboradi va job jo'natishdan oldin soketda qolgan eskirgan javoblarni drain qiladi; pingga `{"ok": true}` qaytarish faqat eski agentlarda qolgan. Sex tarmog'ida "o'lgan" ulanish tez aniqlanadi. Agent tomonda `websockets.connect(..., ping_interval=30)`, uzilganda 5s backoff bilan qayta ulanish.
+- **Printersiz stansiya (`can_print` o'chiq).** Chek chiqarish ruxsati o'chirilgan agent (masalan faqat skan-forvard uchun ulangan stanok kompyuteri) umumiy navbatdan `brpop` **qilmaydi** — aks holda jobni "o'g'irlab", chiqara olmay lokalida qoldirardi (`ws_bridge`, `backend/app/api/routes/ws.py`). `touch_agent` har 5 daqiqada `can_print` ni ham qayta o'qiydi, ya'ni admin paneldagi belgi jonli ulanishda ~5 daqiqada kuchga kiradi.
 
 ### Autentifikatsiya — har agent uchun alohida token (pairing)
 
@@ -334,13 +335,13 @@ Faqat printer USB bilan ulangan Windows kompyuterga (sexdagi terminal monoblokni
 3. **Ulanish kodini olish** — o'sha sahifada "Yangi agent", kompyuterga nom beriladi va 8 belgili bir martalik kod chiqadi (masalan `P7HJ-N46U`), 15 daqiqa amal qiladi.
 4. **Exe'ni ishga tushirish** — kichik oyna chiqadi: server manzili (default `wss://mes.mebelix.uz`) va ulanish kodi. "Ulash" bosilgach kod doimiy tokenga almashtiriladi va `%APPDATA%\MebelixAgent\.env` ga saqlanadi. Kod noto'g'ri bo'lsa oyna xato matni bilan qayta ochiladi — dasturni qayta ishga tushirish shart emas. Kod muddati o'tishi allaqachon ulangan agentga ta'sir qilmaydi.
 
-Beshinchi qadam yo'q: agent birinchi ulanishda o'zini `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` ga yozadi, ya'ni kompyuter yonganda o'zi tushadi (admin huquqi kerak emas, faqat shu foydalanuvchi uchun). Exe `--noconsole` bilan qurilgani uchun **hech qanday oyna ko'rinmaydi** — yopib qo'yish mumkin bo'lgan konsol yo'q.
+Beshinchi qadam yo'q: agent birinchi ulanishda o'zini `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` ga yozadi, ya'ni kompyuter yonganda o'zi tushadi (admin huquqi kerak emas, faqat shu foydalanuvchi uchun). Exe `--noconsole` bilan qurilgani uchun doimiy oyna yo'q — yopib qo'yish mumkin bo'lgan konsol ko'rinmaydi. Yagona istisno: har ishga tushishdagi **birinchi muvaffaqiyatli ulanishda** 5 soniyada o'zi yopiladigan "Printer agenti serverga ulandi" xabari chiqadi (`MessageBoxTimeoutW`, bosish shart emas) — monoblok yonganda arrachi agent tayyorligini shundan biladi.
 
 Ishlayotganini admin paneldagi **Onlayn** belgisi bildiradi. Diagnostika `%APPDATA%\MebelixAgent\agent.log` da (`RotatingFileHandler`, 1 MB x 3): `Printer: Godex G500` va `Serverga ulandi` — tayyor; `Printer: TOPILMADI` — GoDEX drayveri yo'q.
 
 Ikkinchi nusxa ishga tushmaydi — `win32event.CreateMutex` bilan singleton. Oyna ko'rinmagani uchun foydalanuvchi "ishlayaptimi?" deb exe'ni qayta bosishi tabiiy; ikki agent bir printerga ulansa navbat ular orasida bo'linib ketardi.
 
-Token bekor qilinganda (admin "yangi kod" yoki "o'chirish" bosgan) handshake `403`/`4401` bilan rad etiladi. Agent buni payqab saqlangan `.env` ni o'chiradi va sozlash oynasini qayta ochadi — yangi kod kiritilsa ishlashda davom etadi, bekor qilinsa to'xtaydi. Aks holda foydalanuvchi `.env` ni qo'lda o'chirib, avval fon jarayonini Task Manager'dan yopishga majbur bo'lardi.
+Token bekor qilinganda (admin "yangi kod" yoki "o'chirish" bosgan) handshake `403`/`4401` bilan rad etiladi. Agent tokenni faqat **ketma-ket 3 ta** 401/403 raddan keyin bekor deb hisoblaydi (`reject_streak`; deploy paytidagi 502/503 yoki tarmoq uzilishi kabi transient xato tokenni o'chirmaydi) va sozlash oynasini qayta ochadi — yangi kod kiritilsa ishlashda davom etadi, bekor qilinsa to'xtaydi. Saqlangan `.env` fayl o'chirilmaydi: muvaffaqiyatli pairing uni baribir qayta yozadi. Bu mexanizmsiz foydalanuvchi `.env` ni qo'lda o'chirib, avval fon jarayonini Task Manager'dan yopishga majbur bo'lardi.
 
 Agent sozlamalari (bular **server `.env`** ida emas — printerli mashinada, `%APPDATA%\MebelixAgent\.env` da). O'qish tartibi: **env o'zgaruvchi > exe yonidagi `.env` > `%APPDATA%\MebelixAgent\.env`**. Odatda qo'lda hech narsa yozilmaydi — birinchi ulanish `MES_URL` va `BRIDGE_TOKEN` ni o'zi to'ldiradi.
 
@@ -349,7 +350,7 @@ Agent sozlamalari (bular **server `.env`** ida emas — printerli mashinada, `%A
 | `MES_URL` | `ws://localhost:8000` | server manzili; agent oxiriga `/api/v1/ws/bridge` qo'shadi. Pairing paytida `https://`/`http://`/sxemasiz manzil ham qabul qilinadi va `wss://`/`ws://` ga normallashtiriladi (TLS'siz manzilga ogohlantirish chiqadi) |
 | `BRIDGE_TOKEN` | — | pairing bergan doimiy token; bo'sh bo'lsa agent `SystemExit` bilan to'xtaydi ("ulanish kodini kiriting") |
 | `PRINTER_NAME` | avto-topish (`godex`) | printer nomini qo'lda berish — faqat avto-topish mos kelmaganda |
-| `QUEUE_FILE` | `%APPDATA%\MebelixAgent\print-queue.jsonl` | lokal durable navbat fayli (avtostartda ishchi papka System32 — nisbiy yo'l ishlamaydi) |
+| `QUEUE_FILE` | `%APPDATA%\MebelixAgent\print-queue.jsonl` | lokal durable navbat fayli (avtostartda ishchi papka System32 — nisbiy yo'l ishlamaydi); eski o'rnatishlardagi exe yonidagi navbat fayli birinchi ishga tushishda avtomatik shu yerga ko'chiriladi |
 | `SCAN_FORWARD` | `1` (yoqiq) | stanok skanerini passiv kuzatib MES'ga forvard qilish; `0` o'chiradi |
 
 Navbat fayli `.gitignore` da (`bridge-agent/print-queue.jsonl`).
@@ -359,8 +360,11 @@ Navbat fayli `.gitignore` da (`bridge-agent/print-queue.jsonl`).
 `bridge-agent/` katalogida:
 
 ```bash
+pip install "websockets>=14" pywin32 pillow pynput pyinstaller
 pyinstaller --onefile --noconsole --name mebelix-agent agent.py
 ```
+
+`websockets>=14` majburiy — agent kodi v14+ API'siga (`additional_headers`) yozilgan, eski v13 shim olib tashlangan; v13 bilan yig'ilgan exe serverga ulanolmaydi. Joriy `AGENT_VERSION` — `1.2.1`.
 
 Natijadagi `mebelix-agent.exe` **qo'lda tarqatiladi** — flashka yoki lokal tarmoq orqali printerli kompyuterlarga ko'chiriladi. Serverdan tarqatish yo'q: `GET /download` endpointi olib tashlangan (serverda eski nusxa qolib adashtirardi), binar repoda ham saqlanmaydi. Paneldagi versiya belgisi (handshake'dagi `X-Agent-Version` → `bridge_agent.version`) qaysi mashinada eski exe qolganini ko'rsatadi.
 
@@ -377,7 +381,7 @@ Eslatma: SCX/CNC fayllar bridge orqali **o'tmaydi** — ular stanok kompyuterida
 | Hook | Manba | Vazifasi |
 |---|---|---|
 | `check-added-large-files`, `check-toml`, `check-yaml --unsafe` | `pre-commit-hooks` v5.0.0 | umumiy sanitariya |
-| `ruff --fix`, `ruff-format` | `ruff-pre-commit` v0.13.0 | Python lint + format |
+| `ruff --fix`, `ruff-format` | `ruff-pre-commit` v0.15.20 (`backend/uv.lock` dagi ruff bilan bir xil versiya) | Python lint + format |
 | `mypy` (local, `language: system`) | `uv --directory backend run mypy app` | type check — loyiha venv'i kerakligi uchun local hook (`make install` prereq) |
 | `biome-check` (local) | `cd frontend && npx --no-install biome check ...` | frontend lint — `frontend/biome.json` ni olishi uchun `frontend/` dan ishlaydi (`npm install` prereq) |
 
@@ -385,14 +389,14 @@ Eslatma: SCX/CNC fayllar bridge orqali **o'tmaydi** — ular stanok kompyuterida
 
 ### `.github/workflows/ci.yml` — GitHub Actions
 
-`main` ga push va har bir pull request'da ishga tushadi; beshta job — `backend` va `frontend` parallel, `images` ularga bog'liq, `deploy` — `images` ga, `notify` — hammasiga:
+`main` ga push va har bir pull request'da ishga tushadi; beshta job — `backend`, `frontend` va `images` parallel (`images` lint joblarini kutmaydi), `deploy` — uchchalasiga (`needs: [backend, frontend, images]`), `notify` — hammasiga:
 
 | Job | Qadamlar |
 |---|---|
 | `backend` | `astral-sh/setup-uv` → `uv --project backend sync --all-groups` → `ruff check app` + `ruff format --check app` → `mypy app` |
 | `frontend` | `actions/setup-node` (versiya `frontend/.nvmrc` dan, npm cache) → `npm ci` → `npx biome ci .` → `npm run build` (`tsc && vite build`) |
-| `images` | faqat `main` ga push + ikkala job yashil bo'lsa (`needs: [backend, frontend]`), `permissions: packages: write`. Ikki elementli matritsa: `backend` (context `.`, `./backend/Dockerfile`) va `frontend` (context `./frontend`, `./frontend/Dockerfile`, build-arglar `VITE_API_URL=` va `VITE_API_TIMEOUT_MS=30000`). `docker/setup-buildx-action` → `docker/login-action` (ghcr.io, `GITHUB_TOKEN`) → `docker/build-push-action@v6`, GitHub Actions qatlam keshi bilan (`cache-from`/`cache-to: type=gha, scope=<name>`). Teglar: `ghcr.io/<owner>/mebelix-mes-backend:<git sha>` va `...-frontend:<git sha>` |
-| `deploy` | faqat `main` ga push + `images` yashil bo'lsa (`needs: [images]`), `permissions: packages: read`; `concurrency: prod-deploy` (parallel deploy yo'q). Qadamlar: SSH key setup → `rsync` kodni `root@DEPLOY_HOST:/opt/mebelix-mes` ga (`.git`/`node_modules`/`.venv`/`__pycache__`/`dist`/`uploads`/`.env`/`backups`/`.stable_tag`/`.backup.env` exclude — serverdagi secretlar, yuklangan fayllar, DB nusxalari, avto-rollback tayanchi va Telegram backup sozlamasi `--delete` ostida qolib ketmasligi uchun) → serverni ghcr'ga login qilish → `ssh` orqali `TAG=<git sha> REGISTRY=ghcr.io/<owner> bash scripts/deploy.sh` → public smoke `https://mes.mebelix.uz/api/v1/ready` (nginx/TLS yo'li orqali). Secrets: `DEPLOY_SSH_KEY`, `DEPLOY_HOST` |
+| `images` | faqat `main` ga push; lint joblariga bog'liq emas — ular bilan **parallel** yuradi (ketma-ket kutish har deployga 1–2 daqiqa qo'shardi; lint yiqilsa `deploy` baribir skip bo'ladi, ortiqcha image'ni `delete-package-versions` tozalaydi). `permissions: packages: write`. Ikki elementli matritsa: `backend` (context `.`, `./backend/Dockerfile`) va `frontend` (context `./frontend`, `./frontend/Dockerfile`, build-arglar `VITE_API_URL=` va `VITE_API_TIMEOUT_MS=30000`). `docker/setup-buildx-action` → `docker/login-action` (ghcr.io, `GITHUB_TOKEN`) → `docker/build-push-action@v6`, GitHub Actions qatlam keshi bilan (`cache-from`/`cache-to: type=gha, scope=<name>`). Teglar: `ghcr.io/<owner>/mebelix-mes-backend:<git sha>` va `...-frontend:<git sha>` |
+| `deploy` | faqat `main` ga push + uchchala job yashil bo'lsa (`needs: [backend, frontend, images]`), `permissions: packages: read`; `concurrency: prod-deploy` (parallel deploy yo'q). Qadamlar: SSH key setup → `rsync` kodni `root@DEPLOY_HOST:/opt/mebelix-mes` ga (`.git`/`node_modules`/`.venv`/`__pycache__`/`dist`/`uploads`/`.env`/`backups`/`.stable_tag`/`.backup.env` exclude — serverdagi secretlar, yuklangan fayllar, DB nusxalari, avto-rollback tayanchi va Telegram backup sozlamasi `--delete` ostida qolib ketmasligi uchun) → serverni ghcr'ga login qilish → `ssh` orqali `TAG=<git sha> REGISTRY=ghcr.io/<owner> bash scripts/deploy.sh` → public smoke `https://mes.mebelix.uz/api/v1/ready` (nginx/TLS yo'li orqali). Secrets: `DEPLOY_SSH_KEY`, `DEPLOY_HOST` |
 | `notify` | `if: always() && push && ref == main`, `needs: [backend, frontend, images, deploy]` — Telegram xabari. Secrets: `TG_BOT_TOKEN`, `TG_CHAT_ID` |
 
 **Nega image'lar CI'da quriladi.** Avval ularni prod serverning o'zi build qilardi. Server 1 vCPU / 2 GB RAM — build jonli saytni sekinlashtirardi va CI allaqachon bajargan ishni takrorlardi. Endi build GitHub Actions runnerida bo'ladi, server esa faqat tortadi.
@@ -431,7 +435,7 @@ Ya'ni sifat nazorati ikki qatlamli: lokalda pre-commit + `make lint`, remote'da 
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` | `postgres` / `postgres` | DB credentiallar (prod composeda defaultsiz — majburiy) |
 | `POSTGRES_SERVER` | `localhost` | Docker'da `db` (compose override qiladi) |
 | `POSTGRES_PORT` | `5432` | DB port |
-| `POSTGRES_DB` | `fastapi` | DB nomi |
+| `POSTGRES_DB` | `fastapi_db` | DB nomi (eski o'rnatishlarda `fastapi` bo'lishi mumkin — mavjud `.env` dagi qiymat saqlanadi) |
 | `DB_POOL_SIZE` / `DB_MAX_OVERFLOW` | `10` / `20` | SQLAlchemy pool sozlamalari |
 | `REDIS_HOST` | `localhost` | Docker'da `redis` |
 | `REDIS_PORT` | `6379` | Redis port |
@@ -452,7 +456,7 @@ Eslatma: chop etishga tegishli **majburiy** server sozlamasi yo'q. `BRIDGE_TOKEN
 
 Eslatma: Redis navbati va rate-limitini o'chiradigan flag yo'q — pool'lar lifespan'da so'zsiz ochiladi, `RateLimiter` esa client bo'lmaganda **fail-closed** ishlaydi (so'rov rad etiladi). Umumiy (login'dan tashqari) rate limit sozlamasi ham yo'q.
 
-Eslatma: `CADDY_HTTP_BIND` / `CADDY_HTTPS_BIND` `.env.example` da yo'q — ular `docker-compose.prod.yml` dagi compose-level substitutsiyalar (defaultlari `80` / `443`); behind-nginx rejimida `.env` ga qo'lda qo'shiladi. `TAG` va `REGISTRY` ham shu kategoriyada — compose-level substitutsiyalar (defaultlari `latest` va `ghcr.io/dshukriddinov`), CI ularni git sha va `ghcr.io/<owner>` bilan beradi.
+Eslatma: `CADDY_HTTP_BIND` / `CADDY_HTTPS_BIND` `.env.example` da izohga olingan holda turadi — `docker-compose.prod.yml` dagi compose-level substitutsiyalar (defaultlari `80` / `443`); behind-nginx rejimida izohdan chiqarilib loopback qiymat beriladi, `scripts/deploy.sh` smoke manzilini ham aynan shu `CADDY_HTTP_BIND` dan yig'adi. `TAG` va `REGISTRY` esa `.env.example` da yo'q — compose-level substitutsiyalar (defaultlari `latest` va `ghcr.io/dshukriddinov`), CI ularni git sha va `ghcr.io/<owner>` bilan beradi.
 
 ---
 
@@ -460,9 +464,9 @@ Eslatma: `CADDY_HTTP_BIND` / `CADDY_HTTPS_BIND` `.env.example` da yo'q — ular 
 
 ### `.dockerignore`
 
-Backend build contexti (repo root) uchun denylist. Chiqariladi: `.git`, barcha `.env` va `.venv` lar, `__pycache__`, `.mypy_cache`, `.ruff_cache`, `docker-compose*.yml`, hamda backend image'iga umuman kirmaydigan yirik kataloglar — `bridge-agent`, `frontend`, `docs`, `design` (logo masterlari, 411 KB — kontekstning 39% i edi), `uploads`, `backups`, `caddy`. `backend/Dockerfile` baribir faqat `backend` va `scripts` ni `COPY` qiladi, qolgani daemon'ga behuda uzatilardi (~43 MB). Shu bilan secretlar ham image'ga tushmaydi.
+Backend build contexti (repo root) uchun denylist. Chiqariladi: `.git`, barcha `.env` va `.venv` lar, `__pycache__`, `.mypy_cache`, `.ruff_cache`, `docker-compose*.yml`, hamda backend image'iga umuman kirmaydigan yirik kataloglar — `bridge-agent`, `frontend`, `docs`, `design` (logo masterlari, 411 KB — kontekstning 39% i edi), `uploads`, `backend/uploads` (dev mashinadagi runtime yuklamalar `COPY backend` bilan image'ga tushmasin), `backups`, `caddy`, va lokal ish papkalari — `stanok rasmlar`, `scx`, `chek`. `backend/Dockerfile` baribir faqat `backend` va `scripts` ni `COPY` qiladi, qolgani daemon'ga behuda uzatilardi (~43 MB). Shu bilan secretlar ham image'ga tushmaydi.
 
-Frontend'ning o'z konteksti (`./frontend`) va o'z `frontend/.dockerignore` i bor — ikki qator: `node_modules`, `dist`.
+Frontend'ning o'z konteksti (`./frontend`) va o'z `frontend/.dockerignore` i bor: `node_modules`, `dist`, `.env`, `.env.*` (dev'ning lokal `.env` fayllari image va Vite bundle env'iga sizmasin).
 
 ### `.gitattributes`
 
@@ -470,7 +474,7 @@ Bitta qoida: `* text=auto eol=lf` — barcha matn fayllar LF line-ending bilan n
 
 ### `.gitignore`
 
-Standart Python artefaktlari (`__pycache__`, `*.py[cod]`, `build/`, `dist/` — setuptools/buildout davridan qolgan `egg`/`sdist`/`tox` naqshlari olib tashlandi: loyiha uv + hatchling'da, ular hech qachon paydo bo'lmaydi), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. MES runtime artefaktlari ham ignore: `backend/uploads/` (`projects/`, `scx/`, `survey/` — yuklangan fayllar va anketa xona rasmlari), `bridge-agent/print-queue.jsonl` (agent'ning durable print navbati), `frontend/openapi.json`, serverdagi shifrlangan DB nusxalari uchun `backups/` (`scripts/backup.sh`), hamda lokal sex ma'lumotlari — `uploads/` (repo root'da: `.project`/SCX namunalari) va `chek/` (namuna yorliq fotolari, `labels.py` maketi shulardan olingan). PyInstaller'ning `bridge-agent/build/` va `bridge-agent/dist/` kataloglari alohida qoida talab qilmaydi — umumiy `build/` / `dist/` naqshlari ularni istalgan chuqurlikda tutadi. E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
+Standart Python artefaktlari (`__pycache__`, `*.py[cod]`, `build/`, `dist/` — setuptools/buildout davridan qolgan `egg`/`sdist`/`tox` naqshlari olib tashlandi: loyiha uv + hatchling'da, ular hech qachon paydo bo'lmaydi), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. MES runtime artefaktlari ham ignore: `backend/uploads/` (`projects/`, `scx/`, `survey/` — yuklangan fayllar va anketa xona rasmlari), `bridge-agent/print-queue.jsonl` (agent'ning durable print navbati), `frontend/openapi.json`, serverdagi shifrlangan DB nusxalari uchun `backups/` (`scripts/backup.sh`), hamda lokal sex ma'lumotlari — `uploads/` (repo root'da: `.project`/SCX namunalari), `chek/` (namuna yorliq fotolari, `labels.py` maketi shulardan olingan), `/scx/` va `/stanok rasmlar/` (terminal SCX test papkalari). PyInstaller'ning `bridge-agent/build/` va `bridge-agent/dist/` kataloglari alohida qoida talab qilmaydi — umumiy `build/` / `dist/` naqshlari ularni istalgan chuqurlikda tutadi (spec fayli uchun esa alohida `bridge-agent/*.spec` qoidasi bor). E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
 
 ---
 
@@ -478,7 +482,7 @@ Standart Python artefaktlari (`__pycache__`, `*.py[cod]`, `build/`, `dist/` — 
 
 ### `backend/pyproject.toml`
 
-`mebelix-backend` 0.1.0, `requires-python >=3.11, <3.14`, build-backend `hatchling` (faqat `app/` package). Runtime dependencylar (21 ta): `fastapi`, `uvicorn` + `uvloop` (uvloop faqat non-Windows), `websockets`, `gunicorn`, `SQLAlchemy` 2 + `asyncpg` + `greenlet` + `alembic`, `pydantic[email]`/`pydantic-settings`, `pyjwt[crypto]` + `bcrypt`, `redis` + `arq` (queue/worker), `prometheus-fastapi-instrumentator` (metrics), `python-multipart` (fayl yuklash: `.project`, SCX, anketa rasmlari), `openpyxl` (Excel), `pillow` + `qrcode` (`render_label_png` — yorliq PNG), `tzdata` (`ZoneInfo("Asia/Tashkent")` yorliq sanasi uchun). `websockets` aynan runtime dependency: uvicorn `[standard]` extra'siz o'rnatilgan (`wsproto` ham yo'q), ya'ni `/ws/events` va `/ws/bridge` transporti shu paketga tayanadi — dev groupda qolsa prod image'da WebSocket ishlamasdi. Dev group — to'rtta: `mypy`, `ruff`, `pre-commit`, `types-openpyxl`. Tooling konfiguratsiyasi shu faylda: **ruff** (`target-version py311`, line-length 120, `F/E/W/C/UP/I` rulesetlar, `__init__.py` da unused/star import istisno) va **mypy** (`python_version 3.11`, `app.*` uchun `disallow_untyped_defs = true`).
+`mebelix-backend` 0.1.0, `requires-python >=3.11, <3.14`, build-backend `hatchling` (faqat `app/` package). Runtime dependencylar (21 ta): `fastapi`, `uvicorn` + `uvloop` (uvloop faqat non-Windows), `websockets`, `gunicorn`, `SQLAlchemy` 2 + `asyncpg` + `greenlet` + `alembic`, `pydantic[email]`/`pydantic-settings`, `pyjwt[crypto]` + `bcrypt`, `redis` + `arq` (queue/worker), `prometheus-fastapi-instrumentator` (metrics), `python-multipart` (fayl yuklash: `.project`, SCX, anketa rasmlari), `openpyxl` (Excel), `pillow` + `qrcode` (`render_label_png` — yorliq PNG), `tzdata` (`TASHKENT_TZ = ZoneInfo("Asia/Tashkent")` — `app/core/config.py`; yorliq sanasi va audit/hisobot sana filtrlari). `websockets` aynan runtime dependency: uvicorn `[standard]` extra'siz o'rnatilgan (`wsproto` ham yo'q), ya'ni `/ws/events` va `/ws/bridge` transporti shu paketga tayanadi — dev groupda qolsa prod image'da WebSocket ishlamasdi. Dev group — to'rtta: `mypy`, `ruff`, `pre-commit`, `types-openpyxl`. Tooling konfiguratsiyasi shu faylda: **ruff** (`target-version py311`, line-length 120, `F/E/W/C/UP/I` rulesetlar, `__init__.py` da unused/star import istisno) va **mypy** (`python_version 3.11`, `app.*` uchun `disallow_untyped_defs = true`).
 
 ### `frontend/package.json` va `frontend/.nvmrc`
 
