@@ -26,15 +26,19 @@ interface UserInfoProps {
 
 function UserInfo({ fullName, phone }: UserInfoProps) {
   return (
-    <div className="flex items-center gap-2.5 w-full min-w-0">
-      <Avatar className="size-8">
+    <div className="flex w-full min-w-0 items-center gap-2.5">
+      <Avatar className="size-8 shrink-0">
         <AvatarFallback className="bg-sidebar-primary font-semibold text-sidebar-primary-foreground">
           {getInitials(fullName || "Foydalanuvchi")}
         </AvatarFallback>
       </Avatar>
-      <div className="flex flex-col items-start min-w-0">
-        <p className="text-sm font-medium truncate w-full">{fullName}</p>
-        <p className="text-xs opacity-70 truncate w-full">{phone}</p>
+      {/* Yig'ilgan rejimda tugma 32px ga qisqaradi — matn ustuni yashirilmasa
+          avatar o'sha qutidan toshib chiqib, `ml-auto` chevron uning ustiga
+          tushardi. Portal ichidagi dropdown nusxasiga bu qoida tegmaydi
+          (sidebar `group`i ajdod emas), ya'ni menyuda ism ko'rinaveradi. */}
+      <div className="flex min-w-0 flex-col items-start group-data-[collapsible=icon]:hidden">
+        <p className="w-full truncate text-sm font-medium">{fullName}</p>
+        <p className="w-full truncate text-xs opacity-70">{phone}</p>
       </div>
     </div>
   )
@@ -65,7 +69,7 @@ export function User({ user }: { user?: UserRead | null }) {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <UserInfo fullName={user?.name} phone={user?.phone} />
-              <ChevronsUpDown className="ml-auto size-4 opacity-70" />
+              <ChevronsUpDown className="ml-auto size-4 opacity-70 group-data-[collapsible=icon]:hidden" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent

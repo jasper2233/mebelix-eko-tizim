@@ -89,6 +89,11 @@ function TabloPage() {
   return (
     <div className="flex h-dvh flex-col bg-surface text-foreground">
       <header className="flex items-center gap-4 border-b border-border bg-card px-5 py-2.5 shadow-sm">
+        {/* Ataylab to'liq logo (logo-gold) EMAS: bu yerda fon oq, oltin yozuv
+            esa oq fonda 2.09:1 kontrast beradi — 5 metrdan o'qib bo'lmaydi.
+            Shuning uchun belgi oltin (grafika, kontrast talabidan ozod), yozuv
+            esa navy matn sifatida chiziladi. To'liq logoga o'tish uchun navy
+            variantli fayl (logo-navy.png) kerak. */}
         <img src="/assets/logo/icon-gold.png" alt="" className="h-12" />
         <span className="text-3xl font-black tracking-tight">MebeliX</span>
         {myMachine && (
