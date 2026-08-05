@@ -50,8 +50,8 @@ frontend-gen: ## Generate frontend client from OpenAPI spec
 	./scripts/generate-client.sh
 
 .PHONY: lint
-lint: ## Run linting checks (ruff and mypy)
-	uv --project backend run ruff check .
+lint: ## Run linting checks (ruff check + format check + mypy, CI bilan bir xil)
+	cd backend && uv run ruff check app && uv run ruff format --check app
 	cd backend && uv run mypy app
 
 .PHONY: format

@@ -11,7 +11,8 @@ repos:
           - --unsafe
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.13.0
+    # backend/uv.lock dagi ruff bilan bir xil versiya (ruff-pre-commit teglari ruff relizlarini aks ettiradi)
+    rev: v0.15.20
     hooks:
       - id: ruff
         args: [--fix]

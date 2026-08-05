@@ -1,2 +1,5 @@
 node_modules
 dist
+# dev'ning lokal .env fayllari image'ga va Vite bundle env'iga sizmasin
+.env
+.env.*

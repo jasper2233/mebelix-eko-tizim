@@ -14,12 +14,11 @@
 	encode gzip
 
 	# Backend API routes
+	# Host passthrough, X-Forwarded-For va X-Forwarded-Proto'ni Caddy reverse_proxy
+	# o'zi qo'yadi — faqat default bo'lmagan X-Real-IP qoladi.
 	handle /api* {
 		reverse_proxy api:8000 {
-			header_up Host {host}
 			header_up X-Real-IP {remote_host}
-			header_up X-Forwarded-For {remote_host}
-			header_up X-Forwarded-Proto {scheme}
 		}
 	}
 
@@ -51,10 +50,7 @@
 	# Frontend application
 	handle {
 		reverse_proxy frontend:80 {
-			header_up Host {host}
 			header_up X-Real-IP {remote_host}
-			header_up X-Forwarded-For {remote_host}
-			header_up X-Forwarded-Proto {scheme}
 		}
 	}
 }

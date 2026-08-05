@@ -12,6 +12,8 @@ frontend
 docs
 design
 uploads
+# dev mashinadagi runtime yuklamalar image ichiga tushmasin (COPY backend /app/backend)
+backend/uploads
 backups
 caddy
 # lokal ish papkalari — build kontekstiga behuda yuklanmasin
