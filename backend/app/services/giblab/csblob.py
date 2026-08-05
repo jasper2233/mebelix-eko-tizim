@@ -45,15 +45,12 @@ class BlobPattern:
     mult: int
     length: float
     width: float
-    stock_part_id: int
     part_count: int
     waste_area: float
     part_area: float
-    waste_count: int
     packets: int
     cut_length_m: float
     cut_count: int
-    filling: float
     root_axis_vertical: bool  # True → first cuts are vertical (along X)
     leading_trim: float | None  # slot-encoded 2mm trim (not repeated in the stream)
     records: list[BlobRecord] = field(default_factory=list)  # depth-1 roots (tree built)
@@ -146,15 +143,12 @@ def decode_cs_blob(b64: str) -> list[BlobPattern]:
                 mult=_u32(raw, off),
                 length=_f64(raw, dims),
                 width=_f64(raw, dims + 8),
-                stock_part_id=_u32(raw, dims + 16),
                 part_count=_u32(raw, dims + 53),
                 waste_area=_f64(raw, dims + 57),
                 part_area=_f64(raw, dims + 69),
-                waste_count=_u32(raw, dims + 77),
                 packets=_u32(raw, dims + 89),
                 cut_length_m=_f64(raw, dims + 93),
                 cut_count=_u32(raw, dims + 101),
-                filling=_f64(raw, dims + 105),
                 root_axis_vertical=root_vertical,
                 leading_trim=leading_trim,
                 records=_build_tree(flat),

@@ -7,15 +7,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Material, Order, OrderFile, Part, PartInstance, PartRoute, Post, Product
-from app.models.enums import FileKind, MaterialType, PostCode, ProjectGeneration, RouteSource
+from app.models.enums import FileKind, MaterialType, PostCode, RouteSource
 
 from .cutmap import build_cutmap
-from .models import PROCESS_POSTS, ParsedProject
-from .parser import ParseError
+from .models import PROCESS_POSTS, ParsedPart, ParsedProject, ParseError
 from .scx import build_scx_files
 
 logger = logging.getLogger(__name__)
@@ -25,45 +24,26 @@ async def wipe_previous_parse(db: AsyncSession, order: Order, upload_root: Path)
     """Re-upload replaces everything derived from the old file (TZ 6.3.1)."""
     now = datetime.now(UTC)
     for model in (Product, Part, PartInstance, PartRoute):
-        rows = (
-            (
-                await db.execute(
-                    select(model).where(model.order_id == order.id, model.is_deleted == False)  # noqa: E712
-                )
-            )
-            .scalars()
-            .all()
+        await db.execute(
+            update(model)
+            .where(model.order_id == order.id, model.is_deleted == False)  # noqa: E712
+            .values(is_deleted=True, deleted_at=now)
         )
-        for row in rows:
-            row.is_deleted = True
-            row.deleted_at = now
-    files = (
-        (
-            await db.execute(
-                select(OrderFile).where(
-                    OrderFile.order_id == order.id,
-                    OrderFile.kind.in_([FileKind.PROJECT, FileKind.SCX]),
-                    OrderFile.is_deleted == False,  # noqa: E712
-                )
-            )
-        )
-        .scalars()
-        .all()
+    # Fayllarda yo'l ham kerak (diskdan o'chirish uchun) — avval yo'llar, keyin bulk UPDATE
+    file_where = (
+        OrderFile.order_id == order.id,
+        OrderFile.kind.in_([FileKind.PROJECT, FileKind.SCX]),
+        OrderFile.is_deleted == False,  # noqa: E712
     )
-    for f in files:
-        f.is_deleted = True
-        f.deleted_at = now
+    paths = (await db.execute(select(OrderFile.path).where(*file_where))).scalars().all()
+    await db.execute(update(OrderFile).where(*file_where).values(is_deleted=True, deleted_at=now))
+    for path in paths:
         try:
-            (upload_root / f.path).unlink(missing_ok=True)
+            (upload_root / path).unlink(missing_ok=True)
         except OSError:
-            logger.warning("Eski faylni o'chirib bo'lmadi: %s", f.path)
+            logger.warning("Eski faylni o'chirib bo'lmadi: %s", path)
 
 
-_MATERIAL_TYPES = {
-    "sheet": MaterialType.SHEET,
-    "band": MaterialType.BAND,
-    "hardware": MaterialType.HARDWARE,
-}
 # Sarf birligi: list va kromkada faylda `unit` yo'q, furnitura esa doim 'шт' beradi.
 _USAGE_UNITS = {"sheet": "list", "band": "metr", "hardware": "dona"}
 
@@ -71,7 +51,7 @@ _USAGE_UNITS = {"sheet": "list", "band": "metr", "hardware": "dona"}
 async def _upsert_materials(db: AsyncSession, project: ParsedProject) -> None:
     """New materials appear automatically when a project references them (TZ 4.5)."""
     for mat in project.materials:
-        mtype = _MATERIAL_TYPES[mat.kind]
+        mtype = MaterialType(mat.kind)
         exists = (
             await db.execute(
                 select(Material).where(
@@ -93,6 +73,40 @@ async def _upsert_materials(db: AsyncSession, project: ParsedProject) -> None:
                 )
             )
             await db.flush()
+
+
+def write_and_register_scx(
+    db: AsyncSession,
+    order_id: int,
+    part_id: int,
+    pp: ParsedPart,
+    qr_texts: list[str],
+    upload_root: Path,
+    plate_thickness: float | None = None,
+) -> int:
+    """SCX fayllarni diskka yozib, har biriga OrderFile qatori qo'shadi (TZ 5.6.5 / 12.5).
+
+    Ham birinchi ingest, ham "SCX qayta yaratish" (orders.regenerate_order_scx) shu yo'ldan
+    o'tadi — fayl nomi/joyi va OrderFile maydonlari bir joyda. Nechta fayl yaratilgani qaytadi.
+    """
+    scx_dir = upload_root / "scx" / str(order_id)
+    scx_dir.mkdir(parents=True, exist_ok=True)
+    created = 0
+    for filename, content, meta in build_scx_files(pp, qr_texts, plate_thickness=plate_thickness):
+        (scx_dir / filename).write_text(content, encoding="utf-8")
+        db.add(
+            OrderFile(
+                order_id=order_id,
+                part_id=part_id,
+                kind=FileKind.SCX,
+                path=str((scx_dir / filename).relative_to(upload_root)),
+                filename=filename,
+                size=len(content.encode()),
+                meta=meta,
+            )
+        )
+        created += 1
+    return created
 
 
 async def ingest_project(
@@ -143,9 +157,6 @@ async def ingest_project(
         )
     )
 
-    scx_dir = upload_root / "scx" / str(order.id)
-    scx_dir.mkdir(parents=True, exist_ok=True)
-
     # Plita qalinligi material nomi bo'yicha — qo'shqavat detal SCX'i uchun (scx.py)
     _plate_thickness: dict[str, float] = {
         m.name: m.thickness for m in project.materials if m.kind == "sheet" and m.thickness
@@ -165,7 +176,6 @@ async def ingest_project(
             code=parsed_product.code,
             name=parsed_product.name,
             count=parsed_product.count,
-            import_source=parsed_product.import_source,
         )
         db.add(product)
         await db.flush()
@@ -181,8 +191,6 @@ async def ingest_project(
                 length=pp.length,
                 width=pp.width,
                 thickness=pp.thickness,
-                saw_length=pp.saw_length,
-                saw_width=pp.saw_width,
                 txt=pp.txt,
                 material_name=pp.material_name,
                 label_num=pp.label_num,
@@ -260,19 +268,7 @@ async def ingest_project(
             # birlashgan, nom/ID = QR — Nanxing skaneri to'g'ridan-to'g'ri topadi).
             # plate: qo'shqavat detalda (32mm) eksport qalinligi plita bo'yicha
             plate = _plate_thickness.get(pp.material_name or "")
-            for filename, content, meta in build_scx_files(pp, pp.qr_texts, plate_thickness=plate):
-                (scx_dir / filename).write_text(content, encoding="utf-8")
-                db.add(
-                    OrderFile(
-                        order_id=order.id,
-                        part_id=part.id,
-                        kind=FileKind.SCX,
-                        path=str((scx_dir / filename).relative_to(upload_root)),
-                        filename=filename,
-                        size=len(content.encode()),
-                        meta=meta,
-                    )
-                )
+            write_and_register_scx(db, order.id, part.id, pp, pp.qr_texts, upload_root, plate_thickness=plate)
 
     # --- order metadata ---
     # `code` — sexning `goods.xls` katalogidagi SKU. Parser uni o'qiydi, lekin bu yerda
@@ -286,7 +282,6 @@ async def ingest_project(
     ]
     order.project_uuid = project.uuid
     order.project_name = project.name
-    order.project_generation = ProjectGeneration(project.generation)
     order.project_loaded_at = datetime.now(UTC)
     order.cutmap = cutmap.model if cutmap else None
 

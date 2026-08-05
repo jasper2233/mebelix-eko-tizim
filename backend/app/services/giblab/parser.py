@@ -187,8 +187,6 @@ def _build_part(p: ET.Element, product: ParsedProduct, seen: set[str], warnings:
         count=_i(p, "count", 1) * max(product.count, 1),
         length=length,
         width=width,
-        saw_length=_f(p, "jl"),
-        saw_width=_f(p, "jw"),
         thickness=None,  # CS materialidan quyida to'ldiriladi
         txt=xml_bool(p.get("txt")),
         material_name=None,
@@ -341,23 +339,17 @@ def parse_project(content: bytes) -> ParsedProject:
     # bu yerda u faqat material registriga va sarf hisobiga tushadi.
     hardware = [g for g in goods if g.get("typeId") == "simple"]
     cutting_tools = {int(g.get("id", 0)): g for g in goods if g.get("typeId") == "tool.cutting"}
-    edge_tools = [g for g in goods if g.get("typeId") == "tool.edgeline"]
 
     project = ParsedProject(
         uuid=root.get("project.uuid"),
         name=root.get("name"),
         generation="template",  # upgraded below if CS data is present
-        currency=root.get("currency"),
-        version=root.get("version"),
     )
-    if edge_tools:
-        project.edge_rest_side = _f(edge_tools[0], "elRestSide") or 30.0
 
     # --- materials (auto-registry, TZ 4.5) ---
     for gid, g in sheets.items():
         project.materials.append(
             ParsedMaterial(
-                good_id=gid,
                 kind="sheet",
                 name=g.get("name", f"Sheet {gid}"),
                 code=g.get("code"),
@@ -370,7 +362,6 @@ def parse_project(content: bytes) -> ParsedProject:
     for gid, g in bands.items():
         project.materials.append(
             ParsedMaterial(
-                good_id=gid,
                 kind="band",
                 name=g.get("name", f"Band {gid}"),
                 code=g.get("code"),
@@ -382,7 +373,6 @@ def parse_project(content: bytes) -> ParsedProject:
     for g in hardware:
         project.materials.append(
             ParsedMaterial(
-                good_id=int(g.get("id", 0)),
                 kind="hardware",
                 name=g.get("name", "Furnitura"),
                 code=g.get("code"),
@@ -398,11 +388,9 @@ def parse_project(content: bytes) -> ParsedProject:
         if re.search(r"[\\/]|\.\.", product_code):
             raise ParseError(f"Mahsulot kodida taqiqlangan belgi: {product_code!r}")
         product = ParsedProduct(
-            file_good_id=int(g.get("id", 0)),
             code=product_code,
             name=g.get("name", ""),
             count=_i(g, "count", 1),
-            import_source=g.get("product.import"),
         )
         seen = part_code_seen.setdefault(product.code, set())
         for p in g.findall("part"):
@@ -495,7 +483,6 @@ def _parse_cs_operation(
             "cWasteCount",
             "cWasteAmount",
             "cPartAmount",
-            "cMaterialAmount",
             "cCountPackets",
             "cTrimLength",
             "cTrimCount",
@@ -504,7 +491,6 @@ def _parse_cs_operation(
     }
     cut = CutOperation(
         op_id=_i(op_el, "id"),
-        material_good_id=mat_gid,
         material_name=sheet.get("name", "") if sheet is not None else "",
         thickness=_f(sheet, "t") if sheet is not None else None,
         # Yagona kerf manbasi (TZ 5.3.4). Yozilmasa GibLab o'zining standarti — 4.4 mm — bilan
@@ -523,27 +509,20 @@ def _parse_cs_operation(
     # Stub order = GibSaw label number (1-based, file-global) — TZ 5.2.3/5.8.
     for stub in op_el.findall("part"):
         pid = int(stub.get("id", 0))
-        cut.stub_part_ids.append(pid)
         label_counter += 1
         ref_part = part_by_file_id.get(pid)
         if ref_part is not None:
             ref_part.label_num = label_counter
             ref_part.material_name = cut.material_name
             ref_part.thickness = cut.thickness
-    # Stock + registered waste part defs live INSIDE the sheet good (TZ 5.2.3).
+    # Registered waste part defs live INSIDE the sheet good (TZ 5.2.3).
     if sheet is not None:
         for sp in sheet.findall("part"):
-            spid = int(sp.get("id", 0))
-            entry = {
-                "l": _f(sp, "l") or _f(sp, "dl") or 0.0,
-                "w": _f(sp, "w") or _f(sp, "dw") or 0.0,
-                "rl": _f(sp, "rl") or 0.0,
-                "rw": _f(sp, "rw") or 0.0,
-            }
             if xml_bool(sp.get("waste")):
-                cut.waste_parts[spid] = entry
-            else:
-                cut.stock_parts[spid] = entry
+                cut.waste_parts[int(sp.get("id", 0))] = {
+                    "l": _f(sp, "l") or _f(sp, "dl") or 0.0,
+                    "w": _f(sp, "w") or _f(sp, "dw") or 0.0,
+                }
     project.cut_ops.append(cut)
     return label_counter
 

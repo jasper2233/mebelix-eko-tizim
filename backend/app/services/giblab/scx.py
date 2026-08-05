@@ -246,6 +246,18 @@ def build_scx_files(
     return out
 
 
+def _arc_sweep_deg(p0: tuple[float, float], p1: tuple[float, float], cx: float, cy: float, ccw: bool) -> float:
+    """Yoy sweep burchagi eksport belgisida (gradus): CCW sweep manfiy Angle bilan yoziladi (korpus)."""
+    th0 = math.atan2(p0[1] - cy, p0[0] - cx)
+    th1 = math.atan2(p1[1] - cy, p1[0] - cx)
+    sweep = th1 - th0
+    if ccw and sweep < 0:
+        sweep += 2 * math.pi
+    if not ccw and sweep > 0:
+        sweep -= 2 * math.pi
+    return -math.degrees(sweep)
+
+
 def _raw_segments(contour: list[dict], width: float) -> list[tuple[float, float, float]]:
     """Kompensatsiyasiz yo'l — eksport tekisligida (x, Width−y), yoy sweep bilan."""
     out: list[tuple[float, float, float]] = []
@@ -255,14 +267,7 @@ def _raw_segments(contour: list[dict], width: float) -> list[tuple[float, float,
         if seg["op"] == "mac":
             cx, cy = seg["cx"], width - seg["cy"]
             ccw = not bool(seg["dir"])
-            th0 = math.atan2(prev[1] - cy, prev[0] - cx)
-            th1 = math.atan2(pt[1] - cy, pt[0] - cx)
-            sweep = th1 - th0
-            if ccw and sweep < 0:
-                sweep += 2 * math.pi
-            if not ccw and sweep > 0:
-                sweep -= 2 * math.pi
-            out.append((pt[0], pt[1], -math.degrees(sweep)))
+            out.append((pt[0], pt[1], _arc_sweep_deg(prev, pt, cx, cy, ccw)))
         else:
             out.append((pt[0], pt[1], 0.0))
         prev = pt
@@ -311,15 +316,7 @@ def _offset_contour(
             a1 = (cx + (p1[0] - cx) * k, cy + (p1[1] - cy) * k)
             out_pts[i] = a0
             out_pts[i + 1] = a1
-            th0 = math.atan2(p0[1] - cy, p0[0] - cx)
-            th1 = math.atan2(p1[1] - cy, p1[0] - cx)
-            sweep = th1 - th0
-            if ccw and sweep < 0:
-                sweep += 2 * math.pi
-            if not ccw and sweep > 0:
-                sweep -= 2 * math.pi
-            # korpus belgisi: CCW sweep manfiy Angle bilan yoziladi
-            angles.append(-math.degrees(sweep))
+            angles.append(_arc_sweep_deg(p0, p1, cx, cy, ccw))
         else:
             nx, ny = left_normal(p1[0] - p0[0], p1[1] - p0[1])
             off = (sign * radius * nx, sign * radius * ny)

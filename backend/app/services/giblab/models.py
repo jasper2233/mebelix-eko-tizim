@@ -42,7 +42,6 @@ PROCESS_POSTS: dict[int, str] = {
 
 @dataclass
 class ParsedMaterial:
-    good_id: int
     kind: str  # "sheet" | "band" | "hardware"
     name: str
     code: str | None = None
@@ -77,8 +76,6 @@ class ParsedPart:
     count: int
     length: float | None  # l (finished)
     width: float | None  # w
-    saw_length: float | None  # jl
-    saw_width: float | None  # jw
     thickness: float | None  # sheet t
     txt: bool
     material_name: str | None  # sheet good name
@@ -140,11 +137,9 @@ class ParsedPart:
 
 @dataclass
 class ParsedProduct:
-    file_good_id: int
     code: str
     name: str
     count: int
-    import_source: str | None
     parts: list[ParsedPart] = field(default_factory=list)
 
 
@@ -153,7 +148,6 @@ class CutOperation:
     """CS operation: one per sheet material (TZ 5.2.5)."""
 
     op_id: int
-    material_good_id: int
     material_name: str
     thickness: float | None
     kerf: float  # tool.cutting swSawthick — the ONLY source (TZ 5.3.4)
@@ -161,9 +155,7 @@ class CutOperation:
     trim_w: float
     stats: dict[str, float]  # cPartCount, cMaterialCount, cWasteAmount, ... (GibSaw indicators)
     data_blob: str | None  # base64; None on TEMPLATE files
-    stub_part_ids: list[int] = field(default_factory=list)  # order = label number
     waste_parts: dict[int, dict[str, float]] = field(default_factory=dict)  # waste part defs by id
-    stock_parts: dict[int, dict[str, float]] = field(default_factory=dict)
 
 
 @dataclass
@@ -171,12 +163,9 @@ class ParsedProject:
     uuid: str | None
     name: str | None
     generation: str  # "processed" | "template"
-    currency: str | None
-    version: str | None
     products: list[ParsedProduct] = field(default_factory=list)
     materials: list[ParsedMaterial] = field(default_factory=list)
     cut_ops: list[CutOperation] = field(default_factory=list)
-    edge_rest_side: float = 30.0  # tool.edgeline elRestSide
     warnings: list[str] = field(default_factory=list)
 
     @property
