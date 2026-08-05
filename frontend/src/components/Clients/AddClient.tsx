@@ -89,9 +89,7 @@ export function AddClient({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Yangi mijoz</DialogTitle>
-          <DialogDescription>
-            Mijoz ma'lumotlarini kiriting (TZ 4.6)
-          </DialogDescription>
+          <DialogDescription>Mijoz ma'lumotlarini kiriting</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form

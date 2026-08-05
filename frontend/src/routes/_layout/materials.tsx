@@ -45,7 +45,7 @@ function MaterialsPage() {
     <div>
       <PageHeader
         title="Materiallar"
-        description="Project fayllardan avtomatik to'ldiriladi (TZ 4.5)"
+        description="Project fayllardan avtomatik to'ldiriladi"
       />
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Tabs value={type} onValueChange={setType}>

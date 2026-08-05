@@ -105,18 +105,19 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-4 group-data-[collapsible=icon]:px-2">
         <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-3">
-          {/* Yig'ilgan rejimda faqat YOZUV yashirinadi, belgi qoladi. Avval
-              `hidden` butun havolaga qo'yilgani uchun icon rejimida logo ham,
-              bosh sahifaga havola ham yo'qolib, panel nomsiz qolardi. */}
-          <Link to="/" className="flex min-w-0 items-center gap-2.5">
+          {/* Ochiq rejimda to'liq logo (login bilan bir xil brend), yig'ilganda
+              faqat belgi — havola har ikkala rejimda bosh sahifaga olib boradi. */}
+          <Link to="/" className="flex min-w-0 items-center">
+            <img
+              src="/assets/logo/logo-gold.png"
+              alt="MebeliX — bosh sahifa"
+              className="h-9 w-auto group-data-[collapsible=icon]:hidden"
+            />
             <img
               src="/assets/logo/icon-gold.png"
               alt="MebeliX — bosh sahifa"
-              className="h-8 w-auto shrink-0"
+              className="hidden h-8 w-auto group-data-[collapsible=icon]:block"
             />
-            <span className="text-lg font-bold tracking-tight text-white group-data-[collapsible=icon]:hidden">
-              MebeliX
-            </span>
           </Link>
           <SidebarTrigger className="ml-auto text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:ml-0" />
         </div>
