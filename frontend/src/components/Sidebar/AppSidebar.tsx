@@ -104,22 +104,23 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-4 group-data-[collapsible=icon]:px-2">
-        <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-3">
-          {/* Ochiq rejimda to'liq logo (login bilan bir xil brend), yig'ilganda
-              faqat belgi — havola har ikkala rejimda bosh sahifaga olib boradi. */}
-          <Link to="/" className="flex min-w-0 items-center">
+        <div className="flex items-center gap-2.5">
+          {/* Ochiq rejimda to'liq logo (login ekrani bilan bir xil brend).
+              Yig'ilgan rejimda brend butunlay yashiriladi: 48px ustunning
+              yagona vazifasi — navigatsiya zichligi, brend esa tab sarlavhasi,
+              favicon va login ekranida qoladi. Bosh sahifa havolasi yo'qolmaydi
+              — "Boshqaruv paneli" bandi menyuning birinchi qatorida. */}
+          <Link
+            to="/"
+            className="flex min-w-0 items-center group-data-[collapsible=icon]:hidden"
+          >
             <img
               src="/assets/logo/logo-gold.png"
               alt="MebeliX — bosh sahifa"
-              className="h-9 w-auto group-data-[collapsible=icon]:hidden"
-            />
-            <img
-              src="/assets/logo/icon-gold.png"
-              alt="MebeliX — bosh sahifa"
-              className="hidden h-8 w-auto group-data-[collapsible=icon]:block"
+              className="h-9 w-auto"
             />
           </Link>
-          <SidebarTrigger className="ml-auto text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:ml-0" />
+          <SidebarTrigger className="ml-auto text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:mx-auto" />
         </div>
       </SidebarHeader>
       <SidebarContent>

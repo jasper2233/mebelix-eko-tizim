@@ -47,8 +47,12 @@ function Layout() {
         <main className="flex-1 p-6 md:p-8">
           {/* Kenglik chegarasi: busiz 2560px monitorda kontent ~2280px ga
               yoyilib, jadval ustunlari orasi o'qib bo'lmas darajada uzoqlashardi.
-              1568px va undan tor ekranlarda hech narsa o'zgarmaydi. */}
-          <div className="mx-auto w-full max-w-[1600px]">
+              1800px tanlangan: 1600 bo'lganda 1920px monitorda menyuni yig'ish
+              kontentga BIR PIKSEL ham qo'shmasdi (1920−256−64 = 1600, ya'ni
+              ochiq holatda ham chegaraga tegib turardi) — yig'ish faqat bo'sh
+              joyni qayta taqsimlardi. 1800 bilan 1920px ekranda yig'ish ~200px
+              beradi, 2560px da esa yoyilish baribir to'xtatiladi. */}
+          <div className="mx-auto w-full max-w-[1800px]">
             <Outlet />
           </div>
         </main>
