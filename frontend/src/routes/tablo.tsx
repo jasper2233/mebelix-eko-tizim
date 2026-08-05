@@ -4,7 +4,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { TabloService } from "@/client"
 import { useMesWs } from "@/hooks/useMesWs"
@@ -33,10 +33,22 @@ const UNIT_LABELS: Record<string, string> = {
   piece: "dona",
 }
 
+const MODES: Mode[] = ["hajm", "soni", "foiz"]
+const MODE_KEY = "tablo-mode"
+
 function TabloPage() {
   const queryClient = useQueryClient()
-  const [mode, setMode] = useState<Mode>("foiz")
+  // Rejim saqlanadi: sexda tanlangan ko'rinish sahifa yangilanganda ham
+  // (deploy reload, TV qayta yoqilishi) o'zgarmasin.
+  const [mode, setMode] = useState<Mode>(() => {
+    const saved = localStorage.getItem(MODE_KEY) as Mode | null
+    return saved && MODES.includes(saved) ? saved : "foiz"
+  })
   const [drill, setDrill] = useState<number | null>(null)
+
+  useEffect(() => {
+    localStorage.setItem(MODE_KEY, mode)
+  }, [mode])
 
   const { data: me } = useQuery(getCurrentUserQueryOptions())
   const { data: machines } = useQuery({
@@ -56,11 +68,28 @@ function TabloPage() {
     ),
   )
 
+  // WS uzilib qayta ulanganda oradagi hodisalar o'tkazib yuborilgan bo'ladi —
+  // 60s pollingni kutmasdan darhol to'liq yangilanadi.
+  const wasOnline = useRef(online)
   useEffect(() => {
-    // Auto-refresh har 5 daqiqada (TZ 9.7) — kesh muammolarini oldini oladi
-    const reload = setTimeout(() => window.location.reload(), 5 * 60_000)
+    if (online && !wasOnline.current) {
+      queryClient.invalidateQueries({ queryKey: ["tablo"] })
+    }
+    wasOnline.current = online
+  }, [online, queryClient])
+
+  // Sahifani qayta yuklash MA'LUMOT yangiligi uchun EMAS — buni WS push va
+  // 60s polling (getTabloMatrixQueryOptions) ta'minlaydi. Yagona vazifasi:
+  // deploydan keyin yangi bundle'ni olish, chunki devordagi TV hech qachon
+  // qo'lda yangilanmaydi. Avval 5 daqiqada bir edi: har safar oq ekran
+  // chaqnab, ochilgan detal ro'yxati yopilib, tanlangan rejim ham "foiz" ga
+  // qaytib ketardi. Endi soatiga bir marta va faqat hech kim detal
+  // ro'yxatini ochmagan paytda.
+  useEffect(() => {
+    if (drill !== null) return
+    const reload = setTimeout(() => window.location.reload(), 60 * 60_000)
     return () => clearTimeout(reload)
-  }, [])
+  }, [drill])
 
   const myMachine = machines?.find((m) => m.id === me?.machine_id)
   const contextPostId = myMachine?.post_id ?? null
