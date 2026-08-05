@@ -32,6 +32,8 @@ import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
+# websockets>=14 shart: additional_headers= va InvalidStatus.response.status_code
+# API'si ishlatiladi (exe hozir 16.x bilan yig'iladi — README'dagi install qatori)
 import websockets
 import websockets.exceptions
 
@@ -43,11 +45,22 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.2.0"
+AGENT_VERSION = "1.2.1"
 
 # O'rnatish konfiguratsiyasi shu yerda saqlanadi (exe qayerdan ishlatilishidan qat'i nazar)
 CONFIG_DIR = Path(os.environ.get("APPDATA", str(Path.home()))) / "MebelixAgent"
 LOG_FILE = CONFIG_DIR / "agent.log"
+
+# Exe (PyInstaller frozen) yoki dev-skript turgan katalog — yonidagi .env va
+# eski navbat fayli shu yerdan qidiriladi
+BASE_DIR = (
+    Path(sys.executable).parent
+    if getattr(sys, "frozen", False)
+    else Path(__file__).resolve().parent
+)
+
+# Pairing oynasi/konsolida taklif qilinadigan server manzili
+DEFAULT_SERVER_URL = "wss://mes.mebelix.uz"
 
 # Agent oynasiz ishlaydi — nima bo'layotganini bilishning yagona yo'li shu fayl.
 # 1 MB x 3: yillar davomida ishlaydi, disk to'lib ketmaydi.
@@ -67,12 +80,7 @@ log = logging.getLogger("bridge-agent")
 
 def _load_dotenv() -> None:
     r"""Config o'qish tartibi: env var > exe yonidagi .env > %APPDATA%\MebelixAgent\.env."""
-    base = (
-        Path(sys.executable).parent
-        if getattr(sys, "frozen", False)
-        else Path(__file__).resolve().parent
-    )
-    for env_file in (base / ".env", CONFIG_DIR / ".env"):
+    for env_file in (BASE_DIR / ".env", CONFIG_DIR / ".env"):
         if not env_file.exists():
             continue
         for line in env_file.read_text(encoding="utf-8-sig").splitlines():
@@ -146,12 +154,11 @@ class _PairError(Exception):
 def _exchange(url: str, code: str) -> tuple[str, str, str]:
     """Bir martalik kodni doimiy tokenga almashtiradi.
     Qaytaradi: (normallashgan ws url, token, agent nomi)."""
-    import json as _json
     import urllib.error
     import urllib.request
 
     # Sxema normalizatsiyasi: https://, http://, sxemasiz - hammasi qabul qilinadi
-    url = url.strip().rstrip("/") or "wss://mes.mebelix.uz"
+    url = url.strip().rstrip("/") or DEFAULT_SERVER_URL
     if "://" not in url:
         url = "wss://" + url
     url = url.replace("https://", "wss://", 1).replace("http://", "ws://", 1)
@@ -164,17 +171,17 @@ def _exchange(url: str, code: str) -> tuple[str, str, str]:
 
     req = urllib.request.Request(
         f"{http}/api/v1/bridge-agents/pair",
-        data=_json.dumps({"code": code}).encode(),
+        data=json.dumps({"code": code}).encode(),
         headers={"Content-Type": "application/json"},
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
-            data = _json.loads(resp.read())
+            data = json.loads(resp.read())
             return url, data["token"], data["name"]
     except urllib.error.HTTPError as exc:
         detail = ""
         with contextlib.suppress(Exception):
-            detail = _json.loads(exc.read()).get("detail", "")
+            detail = json.loads(exc.read()).get("detail", "")
         raise _PairError(detail or f"Server rad etdi: {exc}") from None
     except OSError:
         raise _PairError(
@@ -208,7 +215,7 @@ def _pair_dialog(error: str = "") -> tuple[str, str] | None:
     ttk.Label(frm, text="Server manzili").grid(
         column=0, row=2, sticky="w", padx=(0, 10)
     )
-    url_var = tk.StringVar(value="wss://mes.mebelix.uz")
+    url_var = tk.StringVar(value=DEFAULT_SERVER_URL)
     ttk.Entry(frm, textvariable=url_var, width=32).grid(column=1, row=2, pady=4)
 
     ttk.Label(frm, text="Ulanish kodi").grid(column=0, row=3, sticky="w", padx=(0, 10))
@@ -243,7 +250,7 @@ def _pair_console() -> tuple[str, str] | None:
     if not sys.stdin or not sys.stdin.isatty():
         return None
     try:
-        url = input("Server manzili [Enter = wss://mes.mebelix.uz]: ").strip()
+        url = input(f"Server manzili [Enter = {DEFAULT_SERVER_URL}]: ").strip()
         code = input("Ulanish kodi: ").strip()
     except (EOFError, KeyboardInterrupt):
         return None
@@ -289,11 +296,7 @@ def _pair() -> None:
     # Exe yonida qo'lda qo'yilgan .env bo'lsa u ham yangilanadi: o'qish tartibida
     # u APPDATA'dan USTUN turadi — eski (bekor qilingan) tokenli nusxasi qolsa
     # har yonganda o'sha yuklanib, dialog aylanasiga olib borardi
-    _exe_env = (
-        Path(sys.executable).parent
-        if getattr(sys, "frozen", False)
-        else Path(__file__).resolve().parent
-    ) / ".env"
+    _exe_env = BASE_DIR / ".env"
     if _exe_env.exists():
         with contextlib.suppress(OSError):
             _rewrite_env(_exe_env)
@@ -336,9 +339,7 @@ QUEUE_FILE = Path(os.environ.get("QUEUE_FILE") or (CONFIG_DIR / "print-queue.jso
 
 # Eski o'rnatish migratsiyasi: exe yonidagi qadimgi navbat faylida kutayotgan
 # joblar bo'lsa yangi joyga ko'chiriladi — yorliq yo'qolmasin
-_legacy_queue = (
-    Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
-) / "print-queue.jsonl"
+_legacy_queue = BASE_DIR / "print-queue.jsonl"
 if "QUEUE_FILE" not in os.environ and _legacy_queue.is_file() and not QUEUE_FILE.exists():
     with contextlib.suppress(OSError):
         _legacy_queue.replace(QUEUE_FILE)
@@ -464,28 +465,6 @@ async def flusher() -> None:
         FLUSH_EVENT.clear()
 
 
-# v14+ additional_headers, eski v13- extra_headers
-_HDR_KW = (
-    "additional_headers"
-    if int(websockets.__version__.split(".")[0]) >= 14
-    else "extra_headers"
-)
-# Rad etilgan handshake (403) — v14+ InvalidStatus, eski v13- InvalidStatusCode
-_REJECTED: tuple[type[Exception], ...] = (
-    (websockets.exceptions.InvalidStatus,)
-    if hasattr(websockets.exceptions, "InvalidStatus")
-    else (websockets.exceptions.InvalidStatusCode,)
-)
-
-
-def _handshake_status(exc: Exception) -> int | None:
-    """Handshake HTTP kodi: v14 InvalidStatus.response.status_code, v13 .status_code."""
-    resp = getattr(exc, "response", None)
-    if resp is not None:
-        return getattr(resp, "status_code", None)
-    return getattr(exc, "status_code", None)
-
-
 def _repair() -> None:
     """Token bekor qilingan (admin "yangi kod" yoki "o'chirish" bosgan): saqlangan
     sozlamani tozalab, yangi kod so'raymiz. Busiz foydalanuvchi .env ni qo'lda
@@ -544,14 +523,14 @@ async def uplink() -> None:
         # (_repair) yangi qiymat darhol ishlatilsin.
         # Token Authorization headerda - URL query'da emas (server loglariga tushmasin)
         url = f"{MES_URL.rstrip('/')}/api/v1/ws/bridge"
-        kwargs = {
-            _HDR_KW: {
-                "Authorization": f"Bearer {BRIDGE_TOKEN}",
-                "X-Agent-Version": AGENT_VERSION,
-            }
+        headers = {
+            "Authorization": f"Bearer {BRIDGE_TOKEN}",
+            "X-Agent-Version": AGENT_VERSION,
         }
         try:
-            async with websockets.connect(url, ping_interval=30, **kwargs) as ws:
+            async with websockets.connect(
+                url, ping_interval=30, additional_headers=headers
+            ) as ws:
                 log.info("Serverga ulandi: %s", MES_URL)
                 reject_streak = 0
                 global _connected_once
@@ -577,8 +556,8 @@ async def uplink() -> None:
                             "Print job qabul qilindi: instance %s",
                             msg.get("instance_id"),
                         )
-        except _REJECTED as exc:
-            status = _handshake_status(exc)
+        except websockets.exceptions.InvalidStatus as exc:
+            status = exc.response.status_code
             if status in (401, 403):
                 reject_streak += 1
                 if reject_streak >= 3:
@@ -625,7 +604,6 @@ def start_scan_forward() -> None:
         log.info("pynput o'rnatilmagan — skan-forvard o'chiq")
         return
 
-    import json as _json
     import re
     import threading
     import time as _time
@@ -644,7 +622,7 @@ def start_scan_forward() -> None:
         http = MES_URL.replace("wss://", "https://", 1).replace("ws://", "http://", 1).rstrip("/")
         req = urllib.request.Request(
             f"{http}/api/v1/bridge-agents/scan",
-            data=_json.dumps({"qr_text": qr, "client_event_id": uuid4().hex}).encode(),
+            data=json.dumps({"qr_text": qr, "client_event_id": uuid4().hex}).encode(),
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {BRIDGE_TOKEN}",
@@ -656,7 +634,7 @@ def start_scan_forward() -> None:
         except urllib.error.HTTPError as exc:
             detail = ""
             with contextlib.suppress(Exception):
-                detail = str(_json.loads(exc.read()).get("detail", ""))
+                detail = str(json.loads(exc.read()).get("detail", ""))
             log.warning("Skan-forvard rad (%s): %s — %s", exc.code, qr, detail)
         except OSError as exc:
             log.warning("Skan-forvard ulanish xatosi: %s", exc)

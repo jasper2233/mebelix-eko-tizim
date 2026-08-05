@@ -75,8 +75,14 @@ yo'qolmaydi — yorliqlar Redis navbatida turadi va agent qaytishi bilan chiqadi
 ## Dasturchi uchun: exe yig'ish
 
 ```bash
+pip install "websockets>=14" pywin32 pillow pynput pyinstaller
 pyinstaller --onefile --noconsole --name mebelix-agent agent.py
 ```
+
+`websockets>=14` majburiy: agent kodi v14+ API'siga yozilgan
+(`additional_headers=`, `InvalidStatus.response.status_code`) — eski v13 bilan
+yig'ilgan exe serverga ulanolmaydi. `pyinstaller` faqat build-time asbob,
+runtime'da kerak emas.
 
 `--noconsole` muhim: usiz qora konsol oynasi ochiq turadi va uni kimdir yopib
 qo'ysa chek chiqmay qoladi. Oynasiz rejimda `sys.stdout` yo'q — shuning uchun
