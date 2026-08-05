@@ -6,7 +6,7 @@ from .enums import PostCode, PostUnit, db_enum
 
 
 class Post(BaseModel):
-    """Production stage (TZ 4.4): ARRA, KROMKA, PRISADKA, PAZ, ROVER, STOLYARKA."""
+    """Production stage (TZ 4.4): ARRA, KROMKA, OVAL, PRISADKA, ROVER, STOLYARKA, BOYOQ."""
 
     __tablename__ = "post"
 

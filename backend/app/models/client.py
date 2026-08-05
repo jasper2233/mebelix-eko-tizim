@@ -2,7 +2,6 @@ from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import BaseModel
-from .enums import ClientType, db_enum
 
 
 class Client(BaseModel):
@@ -12,9 +11,7 @@ class Client(BaseModel):
 
     organization_id: Mapped[int] = mapped_column(ForeignKey("organization.id"), default=1, kw_only=True)
     full_name: Mapped[str] = mapped_column(String(150), kw_only=True)
-    client_type: Mapped[ClientType] = mapped_column(db_enum(ClientType), default=ClientType.INDIVIDUAL, kw_only=True)
     phone: Mapped[str | None] = mapped_column(String(13), default=None, kw_only=True)
     phone_alt: Mapped[str | None] = mapped_column(String(13), default=None, kw_only=True)
     address: Mapped[str | None] = mapped_column(String(255), default=None, kw_only=True)
-    inn: Mapped[str | None] = mapped_column(String(20), default=None, kw_only=True)
     notes: Mapped[str | None] = mapped_column(Text, default=None, kw_only=True)

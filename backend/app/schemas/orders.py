@@ -4,7 +4,7 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.enums import FileKind, OrderPriority, OrderStatus, PostCode, ProjectGeneration, RouteSource
+from app.models.enums import FileKind, OrderPriority, OrderStatus, PostCode, RouteSource
 
 
 class OrderRead(BaseModel):
@@ -23,7 +23,6 @@ class OrderRead(BaseModel):
     advance_payment: Decimal | None
     notes: str | None
     project_name: str | None
-    project_generation: ProjectGeneration | None
     created_at: datetime
     updated_at: datetime | None
     production_started_at: datetime | None

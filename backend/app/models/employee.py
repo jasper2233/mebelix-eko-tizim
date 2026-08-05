@@ -1,6 +1,4 @@
-from datetime import date
-
-from sqlalchemy import Date, ForeignKey, Index, String, text
+from sqlalchemy import ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -21,10 +19,7 @@ class Employee(BaseModel):
     # the badge_id is replaced but history (scans FK employee.id) stays intact.
     badge_id: Mapped[str] = mapped_column(String(36), kw_only=True)
     phone: Mapped[str | None] = mapped_column(String(13), default=None, kw_only=True)
-    passport_id: Mapped[str | None] = mapped_column(String(20), default=None, kw_only=True)
     position: Mapped[str | None] = mapped_column(String(50), default=None, kw_only=True)
     status: Mapped[EmployeeStatus] = mapped_column(db_enum(EmployeeStatus), default=EmployeeStatus.ACTIVE, kw_only=True)
-    photo_url: Mapped[str | None] = mapped_column(String(500), default=None, kw_only=True)
     # ponytail: JSONB int list instead of a join table — read-heavy, tiny cardinality (max 6 posts)
     assigned_post_ids: Mapped[list[int]] = mapped_column(JSONB, default_factory=list, kw_only=True)
-    hired_date: Mapped[date | None] = mapped_column(Date, default=None, kw_only=True)

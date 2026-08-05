@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import BaseModel
-from .enums import FileKind, OrderPriority, OrderStatus, ProjectGeneration, RouteSource, db_enum
+from .enums import FileKind, OrderPriority, OrderStatus, RouteSource, db_enum
 
 
 class Order(BaseModel):
@@ -34,16 +34,13 @@ class Order(BaseModel):
     # .project file metadata (set by texnolog upload; file name is informational only, TZ 6.2.2)
     project_uuid: Mapped[str | None] = mapped_column(String(64), default=None, kw_only=True)
     project_name: Mapped[str | None] = mapped_column(String(255), default=None, kw_only=True)
-    project_generation: Mapped[ProjectGeneration | None] = mapped_column(
-        db_enum(ProjectGeneration), default=None, kw_only=True
-    )
     project_loaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
 
     # Cut map visual model (TZ 5.7.5) built from CS data blob; rendered by ARRA terminal.
     cutmap: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None, kw_only=True)
     # Material consumption from the project file (TZ 11.3): [{name, code, kind, count, unit}]
     material_usage: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default_factory=list, kw_only=True)
-    # Manager's machine choice per post: {"PAZ": 3, "ROVER": 5} (TZ 6.4.1)
+    # Manager's machine choice per post: {"PRISADKA": 3, "ROVER": 5} (TZ 6.4.1)
     machine_assignments: Mapped[dict[str, int]] = mapped_column(JSONB, default_factory=dict, kw_only=True)
     # Mijoz anketasi + o'lchov varag'i, xonalar bo'yicha (qog'oz forma o'rniga).
     # Manager to'ldiradi, texnolog o'qiydi va shunga qarab dizayn yasaydi. Sxema: schemas/orders.OrderSurvey
@@ -74,7 +71,6 @@ class Product(BaseModel):
     code: Mapped[str] = mapped_column(String(50), kw_only=True)  # e.g. 301401
     name: Mapped[str] = mapped_column(String(255), kw_only=True)
     count: Mapped[int] = mapped_column(default=1, kw_only=True)
-    import_source: Mapped[str | None] = mapped_column(String(50), default=None, kw_only=True)  # product.import
 
 
 class Part(BaseModel):
@@ -90,8 +86,6 @@ class Part(BaseModel):
     length: Mapped[float | None] = mapped_column(default=None, kw_only=True)  # l, mm (finished)
     width: Mapped[float | None] = mapped_column(default=None, kw_only=True)  # w, mm
     thickness: Mapped[float | None] = mapped_column(default=None, kw_only=True)  # from sheet good t
-    saw_length: Mapped[float | None] = mapped_column(default=None, kw_only=True)  # jl
-    saw_width: Mapped[float | None] = mapped_column(default=None, kw_only=True)  # jw
     txt: Mapped[bool] = mapped_column(default=False, kw_only=True)  # texture lock
     material_name: Mapped[str | None] = mapped_column(String(150), default=None, kw_only=True)  # sheet good
     label_num: Mapped[int | None] = mapped_column(default=None, kw_only=True)  # CS stub order, 1-based

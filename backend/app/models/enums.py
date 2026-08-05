@@ -72,11 +72,6 @@ class EmployeeStatus(StrEnum):
     INACTIVE = "inactive"
 
 
-class ClientType(StrEnum):
-    INDIVIDUAL = "individual"
-    LEGAL = "legal"
-
-
 class MaterialType(StrEnum):
     SHEET = "sheet"
     BAND = "band"
@@ -97,11 +92,6 @@ class OrderPriority(StrEnum):
     MEDIUM = "medium"
     HIGH = "high"
     URGENT = "urgent"
-
-
-class ProjectGeneration(StrEnum):
-    PROCESSED = "processed"
-    TEMPLATE = "template"
 
 
 class RouteSource(StrEnum):
