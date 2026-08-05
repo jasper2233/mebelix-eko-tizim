@@ -239,6 +239,7 @@ function AnketaPage() {
       {/* Upakovka — butun buyurtmaga tegishli, bitta xonaga emas, shuning uchun
           raqamlangan xona bo'limlaridan tashqarida, xona tanlagichdan keyin. */}
       {canEdit && (
+        // biome-ignore lint/a11y/noLabelWithoutControl: Checkbox (Radix) ichida — butun katak bosiladi
         <label
           className={cn(
             cardSurface,
