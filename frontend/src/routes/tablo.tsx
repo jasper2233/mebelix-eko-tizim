@@ -3,6 +3,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
+import { ArrowLeft } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 
 import { TabloService } from "@/client"
@@ -118,13 +119,17 @@ function TabloPage() {
         {/* Panelga qaytish faqat odam foydalanuvchiga: `tablo` roli qurilma
             akkaunti, u boshqa sahifaga kira olmaydi (_layout uni shu yerga
             qaytaradi). Busiz admin sidebar'dagi "LIVE Tablo" dan kelib
-            to'liq ekranda qamalib qolardi — faqat brauzer tugmasi qutqarardi. */}
+            to'liq ekranda qamalib qolardi — faqat brauzer tugmasi qutqarardi.
+            Uslub — reestr/anketa/xarita sahifalaridagi qaytish havolasi bilan
+            bir xil (muted matn + ArrowLeft), to'ldirilgan chip EMAS: chip
+            ko'rinishi rejim tugmalari (HAJM/SONI/FOIZ) bilan bir xil bo'lib,
+            chiqish havolasi rejim tanlagichning to'rtinchi bandiday o'qilardi. */}
         {me && me.role !== "tablo" && (
           <Link
             to="/"
-            className="rounded-sm bg-secondary px-4 py-2 text-xl font-bold uppercase outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-95"
+            className="inline-flex items-center gap-1.5 rounded-sm text-base font-semibold text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
-            ← Panel
+            <ArrowLeft className="size-5" /> Boshqaruv paneli
           </Link>
         )}
       </header>
@@ -434,9 +439,9 @@ function TabloOrderDrill({
       <button
         type="button"
         onClick={onBack}
-        className="m-4 self-start rounded-lg bg-secondary px-8 py-4 text-2xl font-black uppercase outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-95"
+        className="m-4 inline-flex self-start items-center gap-2 rounded-lg bg-secondary px-8 py-4 text-2xl font-black uppercase outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-95"
       >
-        ← Orqaga
+        <ArrowLeft className="size-7" /> Orqaga
       </button>
     </div>
   )
