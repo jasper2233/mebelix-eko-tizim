@@ -43,8 +43,9 @@ function CutmapArt() {
           letterSpacing="0.08em"
           {...label(1.2)}
         >
+          {/* 2440x1220 list tik turgan holatda: qisqa tomon tepada */}
           <text x="345" y="38" textAnchor="middle">
-            2440
+            1220
           </text>
           <text
             x="16"
@@ -52,7 +53,7 @@ function CutmapArt() {
             textAnchor="middle"
             transform="rotate(-90 16 524)"
           >
-            1220
+            2440
           </text>
         </g>
 

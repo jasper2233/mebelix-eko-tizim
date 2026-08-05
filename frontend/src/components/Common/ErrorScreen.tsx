@@ -14,7 +14,6 @@ export function ErrorScreen({
       <span className="mb-4 text-6xl font-bold leading-none md:text-8xl">
         {code}
       </span>
-      <span className="mb-2 text-2xl font-bold">Voy!</span>
       <p className="mb-4 text-center text-lg text-muted-foreground">
         {message}
       </p>

@@ -85,12 +85,7 @@ function Dashboard() {
   return (
     <div>
       <PageHeader
-        // Ism hali yuklanmaganda "Salom, !" chiqmasin
-        title={
-          currentUser?.name || currentUser?.username
-            ? `Salom, ${currentUser.name || currentUser.username}!`
-            : "Boshqaruv paneli"
-        }
+        title="Boshqaruv paneli"
         description="Ishlab chiqarish holati — jonli"
         actions={
           <span
@@ -102,7 +97,7 @@ function Dashboard() {
             )}
           >
             <Activity className="size-3.5" />
-            {online ? "LIVE MONITORING" : "OFFLINE"}
+            {online ? "JONLI" : "ALOQA YO'Q"}
           </span>
         }
       />

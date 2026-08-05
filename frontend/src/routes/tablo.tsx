@@ -91,13 +91,6 @@ function TabloPage() {
       <header className="flex items-center gap-4 border-b border-border bg-card px-5 py-2.5 shadow-sm">
         <img src="/assets/logo/icon-gold.png" alt="" className="h-12" />
         <span className="text-3xl font-black tracking-tight">MebeliX</span>
-        <span className="text-xl font-bold uppercase tracking-widest text-muted-foreground">
-          {mode === "hajm"
-            ? "Hajm nazorati"
-            : mode === "soni"
-              ? "Soni nazorati"
-              : "Foiz nazorati"}
-        </span>
         {myMachine && (
           <span className="rounded-sm bg-secondary px-3 py-1.5 text-xl font-bold">
             JORIY NUQTA: {myMachine.name}
@@ -166,7 +159,7 @@ function TabloPage() {
               {data && data.orders.length > 0 && (
                 <tr>
                   <td className="rounded-l-lg bg-primary px-3 py-3 text-2xl font-black uppercase tracking-wider text-primary-foreground">
-                    Jami hajm
+                    Jami
                   </td>
                   <td className="bg-primary/90" />
                   {data.posts.map((p) => {
@@ -219,7 +212,17 @@ function TabloPage() {
                       </span>
                     )}
                   </td>
-                  <td className="num bg-amber-100 px-3 py-3 text-2xl font-semibold text-amber-800">
+                  {/* Muddat toni signal: hammasi amber bo'lsa amber hech narsa anglatmaydi */}
+                  <td
+                    className={cn(
+                      "num px-3 py-3 text-2xl font-semibold",
+                      deadlineTone(o.deadline) === "overdue"
+                        ? "bg-red-100 text-red-800"
+                        : deadlineTone(o.deadline) === "today"
+                          ? "bg-amber-100 text-amber-800"
+                          : "text-muted-foreground",
+                    )}
+                  >
                     {formatDate(o.deadline)}
                   </td>
                   {data.posts.map((p) => (
@@ -417,7 +420,7 @@ function TabloOrderDrill({
         onClick={onBack}
         className="m-4 self-start rounded-lg bg-secondary px-8 py-4 text-2xl font-black uppercase hover:bg-accent"
       >
-        ← Ortda
+        ← Orqaga
       </button>
     </div>
   )

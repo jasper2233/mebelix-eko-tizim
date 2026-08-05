@@ -127,14 +127,7 @@ function ProductivityTable({ params }: { params: RangeParams }) {
                 <TableCell className="num text-muted-foreground">
                   {i + 1}
                 </TableCell>
-                <TableCell className="font-medium">
-                  {e.full_name}
-                  {i === 0 && (
-                    <span className="ml-2 rounded-sm bg-amber-100 px-1.5 py-0.5 text-2xs font-bold text-amber-800">
-                      TOP
-                    </span>
-                  )}
-                </TableCell>
+                <TableCell className="font-medium">{e.full_name}</TableCell>
                 <TableCell>{e.position ?? "—"}</TableCell>
                 <TableCell className="num text-right font-bold">
                   {e.total_scans}

@@ -751,8 +751,19 @@ function TerminalPage() {
                           <td className="num px-4 py-3.5 text-sm">
                             {formatSize(t.length, t.width, t.thickness)}
                           </td>
-                          <td className="num px-4 py-3.5 text-sm">
+                          <td
+                            className={`num px-4 py-3.5 text-sm ${
+                              deadlineTone(t.deadline) === "overdue"
+                                ? "font-bold text-red-600"
+                                : deadlineTone(t.deadline) === "today"
+                                  ? "font-bold text-amber-600"
+                                  : ""
+                            }`}
+                          >
                             {formatDate(t.deadline)}
+                            {deadlineTone(t.deadline) === "overdue" &&
+                              " · KECHIKKAN"}
+                            {deadlineTone(t.deadline) === "today" && " · BUGUN"}
                           </td>
                           <td className="num px-4 py-3.5 text-right text-3xl font-black text-primary">
                             {t.qoldiq}

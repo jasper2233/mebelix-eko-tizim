@@ -206,7 +206,7 @@ function Sidebar({
           side={side}
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>Sidebar</SheetTitle>
+            <SheetTitle>Yon menyu</SheetTitle>
             <SheetDescription>Mobil yon menyu</SheetDescription>
           </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>

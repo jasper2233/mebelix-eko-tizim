@@ -1,5 +1,6 @@
 {
-  "name": "frontend",
+  "name": "mebelix-mes-frontend",
+  "description": "MebeliX MES — sex boshqaruv tizimi frontendi",
   "private": true,
   "version": "0.0.0",
   "type": "module",

@@ -110,7 +110,7 @@ export const UserInformation = () => {
                       !field.value && "text-muted-foreground",
                     )}
                   >
-                    {field.value || "N/A"}
+                    {field.value || "—"}
                   </p>
                 </FormItem>
               )
