@@ -86,7 +86,9 @@ function AnketaPage() {
   const [active, setActive] = useState(0)
   const [dirty, setDirty] = useState(false)
   const [savedAt, setSavedAt] = useState<string | null>(null)
-  const [removeOpen, setRemoveOpen] = useState(false)
+  // Qaysi xona o'chirilmoqda — faol xona emas: pilldagi × istalgan xonani
+  // oldindan tanlamasdan o'chira oladi.
+  const [removeIdx, setRemoveIdx] = useState<number | null>(null)
 
   // Serverdan FAQAT BIR MARTA yuklanadi. Aks holda saqlashdan keyingi refetch
   // menejer yozayotgan matn ustiga tushadi.
@@ -215,20 +217,44 @@ function AnketaPage() {
 
       {/* Xona tanlash + qo'shish */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        {rooms.map((r, i) => (
-          <button
-            key={r.id}
-            type="button"
-            onClick={() => setActive(i)}
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 ${
-              i === active
-                ? "border-primary bg-primary text-primary-foreground"
-                : "bg-card hover:border-primary/50"
-            }`}
-          >
-            {r.name || `Xona ${i + 1}`}
-          </button>
-        ))}
+        {rooms.map((r, i) => {
+          const label = r.name || `Xona ${i + 1}`
+          // O'chirish pilldagi × da: obyekt va uni o'chirish tugmasi bir joyda
+          // (brauzer tablari naqshi). Bitta xona qolganda × yo'q — anketa
+          // xonasiz ma'nosiz. Ichma-ich <button> bo'lmasligi uchun pill
+          // konteyner div, ichida ikkita alohida tugma.
+          const canRemove = canEdit && rooms.length > 1
+          return (
+            <div
+              key={r.id}
+              className={`flex items-center rounded-lg border text-sm font-medium transition-colors ${
+                i === active
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "bg-card hover:border-primary/50"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => setActive(i)}
+                className={`rounded-l-lg py-2 pl-4 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 ${
+                  canRemove ? "pr-2" : "rounded-r-lg pr-4"
+                }`}
+              >
+                {label}
+              </button>
+              {canRemove && (
+                <button
+                  type="button"
+                  aria-label={`${label} — o'chirish`}
+                  onClick={() => setRemoveIdx(i)}
+                  className="rounded-r-lg py-2 pr-2.5 pl-1 opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
+            </div>
+          )
+        })}
         {canEdit && (
           <Button variant="outline" onClick={addRoom}>
             <Plus /> Xona qo'shish
@@ -292,15 +318,6 @@ function AnketaPage() {
                     onChange={(e) => patch({ name: e.target.value })}
                   />
                 </Field>
-                {canEdit && rooms.length > 1 && (
-                  <Button
-                    variant="ghost"
-                    className="-ml-3 text-destructive"
-                    onClick={() => setRemoveOpen(true)}
-                  >
-                    <Trash2 /> Bu xonani o'chirish
-                  </Button>
-                )}
               </div>
               <RoomPhotos
                 orderId={id}
@@ -706,15 +723,15 @@ function AnketaPage() {
       {/* Xona o'chirish qaytarilmaydi: avtosaqlash 1.5s da serverga yozadi va
           backend shu xonaning rasmlarini diskdan ham o'chiradi */}
       <ConfirmDialog
-        open={removeOpen}
-        onOpenChange={setRemoveOpen}
-        title={`${room?.name || `Xona ${active + 1}`} o'chirilsinmi?`}
+        open={removeIdx !== null}
+        onOpenChange={(open) => !open && setRemoveIdx(null)}
+        title={`${(removeIdx !== null && rooms[removeIdx]?.name) || `Xona ${(removeIdx ?? 0) + 1}`} o'chirilsinmi?`}
         description="Shu xonaning materiali, o'lchamlari, modullari va rasmlari o'chadi. Qaytarib bo'lmaydi."
         confirmText="O'chirish"
         destructive
         onConfirm={() => {
-          removeRoom(active)
-          setRemoveOpen(false)
+          if (removeIdx !== null) removeRoom(removeIdx)
+          setRemoveIdx(null)
         }}
       />
 
