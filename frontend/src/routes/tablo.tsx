@@ -322,6 +322,20 @@ function TabloCell({
   color?: string
   deadline?: string | null
 }) {
+  // Skan kelib qiymat oshganda katak bir marta yashil uriladi (kamayishda —
+  // skan bekor qilinganda — urilmaydi: bu tuzatish, yutuq emas).
+  const done = stage?.done ?? 0
+  const prevDone = useRef(done)
+  const [flash, setFlash] = useState(false)
+  useEffect(() => {
+    const grew = done > prevDone.current
+    prevDone.current = done
+    if (!grew) return
+    setFlash(true)
+    const t = setTimeout(() => setFlash(false), 900)
+    return () => clearTimeout(t)
+  }, [done])
+
   if (!stage?.total) {
     return (
       <td className="bg-card px-2 py-3 text-center text-2xl text-muted-foreground shadow-sm">
@@ -349,6 +363,7 @@ function TabloCell({
           : overdue
             ? "bg-red-100"
             : "bg-card shadow-sm",
+        flash && "animate-cell-flash",
       )}
     >
       {/* Kontekst rejimida faqat progress to'ldirgichi susayadi — raqam to'liq

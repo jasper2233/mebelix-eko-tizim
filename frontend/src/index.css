@@ -186,6 +186,24 @@
   }
 }
 
+/* TABLO: katak qiymati oshganda qisqa yashil urish. Devordagi ekranda 5
+   metrdan turib 7×N matritsada bitta raqamning o'zgarishini payqab bo'lmaydi —
+   chetki ko'rish ilib oladigan yagona signal shu. DOIMIY (ambient) animatsiya
+   emas: hech narsa o'zgarmasa, hech narsa harakatlanmaydi. `box-shadow: inset`
+   ishlatiladi — katakning o'z foni (oq / yashil / qizil) ham, ustidagi raqam
+   ham tegilmaydi, faqat ular orasiga rang qo'yiladi. */
+@keyframes mx-cell-flash {
+  from {
+    box-shadow: inset 0 0 0 9999px rgba(34, 197, 94, 0.5);
+  }
+  to {
+    box-shadow: inset 0 0 0 9999px rgba(34, 197, 94, 0);
+  }
+}
+.animate-cell-flash {
+  animation: mx-cell-flash 0.9s ease-out 1;
+}
+
 /* Login cutmap art (AuthLayout) */
 @keyframes mx-draw {
   to {
