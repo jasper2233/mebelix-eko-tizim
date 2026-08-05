@@ -84,7 +84,7 @@ function SortHead({
       <button
         type="button"
         onClick={() => onToggle(k)}
-        className="inline-flex items-center gap-1 hover:text-foreground"
+        className="inline-flex items-center gap-1 rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       >
         {label}
         {activeSort &&
@@ -172,7 +172,7 @@ function OrdersPage() {
       />
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Tabs value={status} onValueChange={setStatus}>
-          <TabsList className="h-9 flex-wrap">
+          <TabsList className="h-auto min-h-9 flex-wrap">
             {visibleTabs.map((t) => (
               <TabsTrigger key={t.value} value={t.value} className="text-xs">
                 {t.label}
@@ -258,14 +258,19 @@ function OrdersPage() {
                       >
                         {o.number}
                         {o.project_name && (
-                          <span className="block text-xs font-normal text-muted-foreground">
+                          <span className="block max-w-[220px] truncate text-xs font-normal text-muted-foreground">
                             {o.project_name}
                           </span>
                         )}
                       </Link>
                     </TableCell>
-                    <TableCell>{o.client_name}</TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell
+                      className="max-w-[240px] truncate"
+                      title={o.client_name}
+                    >
+                      {o.client_name}
+                    </TableCell>
+                    <TableCell className="num text-muted-foreground">
                       {formatDate(o.created_at)}
                     </TableCell>
                     <TableCell className="num">

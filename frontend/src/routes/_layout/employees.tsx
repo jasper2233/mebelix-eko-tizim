@@ -198,12 +198,14 @@ function EmployeesPage() {
         description="Sex ishchilari — beyjik QR orqali aniqlanadi"
         actions={admin ? <AddEmployee /> : undefined}
       />
-      <SearchInput
-        className="mb-4 max-w-sm"
-        placeholder="F.I.Sh yoki beyjik"
-        value={search}
-        onChange={setSearch}
-      />
+      <div className="mb-4 flex">
+        <SearchInput
+          className="ml-auto w-full max-w-xs"
+          placeholder="F.I.Sh yoki beyjik"
+          value={search}
+          onChange={setSearch}
+        />
+      </div>
       {isLoading ? (
         <Skeleton className="h-64 w-full" />
       ) : isError ? (
@@ -344,7 +346,7 @@ function EditEmployee({
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Hodimni tahrirlash</DialogTitle>
           <DialogDescription>{employee.full_name}</DialogDescription>
@@ -454,7 +456,7 @@ function AddEmployee() {
           <Plus /> Hodim qo'shish
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Yangi hodim</DialogTitle>
           <DialogDescription>

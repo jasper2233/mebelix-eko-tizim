@@ -341,7 +341,7 @@ export function PrisadkaView({
                     )}
                   >
                     <td className="num px-4 py-3 font-semibold">{p.code}</td>
-                    <td className="max-w-[200px] truncate px-4 py-3">
+                    <td className="max-w-[240px] truncate px-4 py-3">
                       {p.name}
                     </td>
                     <td className="num whitespace-nowrap px-4 py-3 text-sm">
@@ -359,7 +359,7 @@ export function PrisadkaView({
                             <span
                               key={i.instance_id}
                               className={cn(
-                                "num inline-flex items-center gap-1 rounded px-1.5 py-0.5",
+                                "num inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5",
                                 i.done
                                   ? "bg-green-100 font-semibold text-green-700"
                                   : i.label_printed
@@ -377,9 +377,9 @@ export function PrisadkaView({
                                   onClick={() =>
                                     printLabel.mutate(i.instance_id)
                                   }
-                                  className="rounded border px-1.5 py-0.5 text-foreground hover:bg-secondary"
+                                  className="inline-flex h-9 items-center rounded border px-2.5 text-foreground hover:bg-secondary"
                                 >
-                                  <Printer className="size-3.5" />
+                                  <Printer className="size-4" />
                                 </button>
                               )}
                             </span>
@@ -395,7 +395,7 @@ export function PrisadkaView({
                               <span
                                 key={f.id}
                                 className={cn(
-                                  "num rounded px-1.5 py-0.5",
+                                  "num rounded-sm px-1.5 py-0.5",
                                   ok
                                     ? "bg-green-100 font-semibold text-green-700"
                                     : "text-muted-foreground",

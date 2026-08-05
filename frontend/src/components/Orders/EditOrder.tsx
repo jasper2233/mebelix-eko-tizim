@@ -82,7 +82,7 @@ export function EditOrder({
           <Pencil /> Tahrirlash
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{order.number} — tahrirlash</DialogTitle>
         </DialogHeader>

@@ -23,7 +23,7 @@ function AdminCutmapPage() {
   const printRef = useRef<(() => void) | null>(null)
 
   return (
-    <div className="flex h-[calc(100dvh-6rem)] flex-col">
+    <div className="flex h-[calc(100dvh-6rem)] flex-col md:h-[calc(100dvh-4rem)]">
       <div className="print-hide mb-3 flex items-center gap-2">
         <Link
           to="/orders/$orderId"

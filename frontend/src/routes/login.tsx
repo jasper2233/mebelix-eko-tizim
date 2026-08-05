@@ -144,7 +144,7 @@ function Login() {
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage className="text-xs" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -164,7 +164,7 @@ function Login() {
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage className="text-xs" />
+                  <FormMessage />
                 </FormItem>
               )}
             />

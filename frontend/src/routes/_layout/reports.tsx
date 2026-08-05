@@ -129,7 +129,7 @@ function ProductivityTable({ params }: { params: RangeParams }) {
                 </TableCell>
                 <TableCell className="font-medium">{e.full_name}</TableCell>
                 <TableCell>{e.position ?? "—"}</TableCell>
-                <TableCell className="num text-right font-bold">
+                <TableCell className="num text-right font-semibold">
                   {e.total_scans}
                 </TableCell>
                 <TableCell className="num text-right">
@@ -174,7 +174,12 @@ function OrdersTable({ params }: { params: RangeParams }) {
             data.rows.map((r) => (
               <TableRow key={r.number}>
                 <TableCell className="font-semibold">{r.number}</TableCell>
-                <TableCell>{r.client_name}</TableCell>
+                <TableCell
+                  className="max-w-[220px] truncate"
+                  title={r.client_name}
+                >
+                  {r.client_name}
+                </TableCell>
                 <TableCell>
                   <StatusBadge status={r.status} />
                 </TableCell>
@@ -186,10 +191,10 @@ function OrdersTable({ params }: { params: RangeParams }) {
                     </span>
                   )}
                 </TableCell>
-                <TableCell className="num text-xs">
+                <TableCell className="num">
                   {formatDateTime(r.completed_at)}
                 </TableCell>
-                <TableCell className="num text-xs">
+                <TableCell className="num">
                   {formatDateTime(r.delivered_at)}
                 </TableCell>
                 <TableCell className="max-w-[220px] truncate text-xs text-muted-foreground">
@@ -231,7 +236,7 @@ function MaterialsTable({ params }: { params: RangeParams }) {
               <TableRow key={`${r.name}-${r.kind}`}>
                 <TableCell className="font-medium">{r.name}</TableCell>
                 <TableCell>{r.kind === "sheet" ? "List" : "Kromka"}</TableCell>
-                <TableCell className="num text-right font-bold">
+                <TableCell className="num text-right font-semibold">
                   {Math.round(r.total * 100) / 100}
                 </TableCell>
                 <TableCell>{r.unit}</TableCell>

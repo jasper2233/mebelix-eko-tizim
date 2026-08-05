@@ -103,7 +103,7 @@ function TabloPage() {
               key={m}
               onClick={() => setMode(m)}
               className={cn(
-                "rounded-sm px-4 py-2 text-xl font-black uppercase",
+                "rounded-sm px-4 py-2 text-xl font-black uppercase outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-95",
                 mode === m
                   ? "bg-(--brand-gold) text-foreground"
                   : "bg-secondary hover:bg-accent",
@@ -134,8 +134,12 @@ function TabloPage() {
           <table className="w-full border-separate border-spacing-2">
             <thead>
               <tr className="text-2xl uppercase tracking-wider text-muted-foreground">
-                <th className="px-2 text-left">№ / Buyurtma</th>
-                <th className="px-2 text-left">Topshirish sanasi</th>
+                <th className="sticky top-0 z-10 bg-surface px-2 text-left">
+                  № / Buyurtma
+                </th>
+                <th className="sticky top-0 z-10 bg-surface px-2 text-left">
+                  Topshirish sanasi
+                </th>
                 {data?.posts.map((p) => {
                   // Kontekst rejimida boshqa ustunlar RANG bilan susayadi, opacity bilan emas —
                   // opacity-40 oq fonda kontrastni 1.85:1 ga tushirib, uzoqdan o'qib bo'lmas qilardi.
@@ -144,7 +148,7 @@ function TabloPage() {
                     <th
                       key={p.id}
                       className={cn(
-                        "px-2 pb-1 text-center",
+                        "sticky top-0 z-10 bg-surface px-2 pb-1 text-center",
                         dim && "text-muted-foreground",
                       )}
                       style={dim ? undefined : { color: POST_COLORS[p.code] }}
@@ -199,7 +203,11 @@ function TabloPage() {
                 <tr
                   key={o.id}
                   onClick={() => setDrill(o.id)}
-                  className="cursor-pointer"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") setDrill(o.id)
+                  }}
+                  className="cursor-pointer hover:bg-accent"
                 >
                   <td className="rounded-l-lg bg-card px-3 py-3 shadow-sm">
                     <span className="num mr-2 text-xl text-muted-foreground">
@@ -375,12 +383,16 @@ function TabloOrderDrill({
         <table className="w-full border-separate border-spacing-2">
           <thead>
             <tr className="text-2xl uppercase tracking-wider text-muted-foreground">
-              <th className="px-2 text-left">Detal</th>
-              <th className="px-2 text-center">Soni</th>
+              <th className="sticky top-0 z-10 bg-surface px-2 text-left">
+                Detal
+              </th>
+              <th className="sticky top-0 z-10 bg-surface px-2 text-center">
+                Soni
+              </th>
               {drillPosts.map((c) => (
                 <th
                   key={c}
-                  className="px-2 text-center"
+                  className="sticky top-0 z-10 bg-surface px-2 text-center"
                   style={{ color: POST_COLORS[c] }}
                 >
                   {c}
@@ -418,7 +430,7 @@ function TabloOrderDrill({
       <button
         type="button"
         onClick={onBack}
-        className="m-4 self-start rounded-lg bg-secondary px-8 py-4 text-2xl font-black uppercase hover:bg-accent"
+        className="m-4 self-start rounded-lg bg-secondary px-8 py-4 text-2xl font-black uppercase outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-95"
       >
         ← Orqaga
       </button>

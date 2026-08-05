@@ -43,12 +43,14 @@ function ClientsPage() {
         description="Buyurtmachilar reestri"
         actions={<AddClient />}
       />
-      <SearchInput
-        className="mb-4 max-w-sm"
-        placeholder="Ism yoki telefon bo'yicha qidirish"
-        value={search}
-        onChange={setSearch}
-      />
+      <div className="mb-4 flex">
+        <SearchInput
+          className="ml-auto w-full max-w-xs"
+          placeholder="Ism yoki telefon bo'yicha qidirish"
+          value={search}
+          onChange={setSearch}
+        />
+      </div>
       {isLoading ? (
         <Skeleton className="h-64 w-full" />
       ) : isError ? (
@@ -69,7 +71,12 @@ function ClientsPage() {
               {data?.data.length ? (
                 data.data.map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.full_name}</TableCell>
+                    <TableCell
+                      className="max-w-[220px] truncate font-medium"
+                      title={c.full_name}
+                    >
+                      {c.full_name}
+                    </TableCell>
                     <TableCell className="num">{c.phone ?? "—"}</TableCell>
                     <TableCell className="max-w-[240px] truncate">
                       {c.address ?? "—"}
@@ -77,7 +84,7 @@ function ClientsPage() {
                     <TableCell className="num text-right font-semibold">
                       {c.orders_count}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="num text-muted-foreground">
                       {formatDate(c.created_at)}
                     </TableCell>
                   </TableRow>

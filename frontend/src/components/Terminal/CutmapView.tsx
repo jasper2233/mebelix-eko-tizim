@@ -341,11 +341,13 @@ export function CutmapView({
       className={`flex w-fit items-center gap-6 ${statsContainer ? "mx-auto" : ""}`}
     >
       {sheet && (
-        <div className="whitespace-nowrap text-base font-black">
-          №{sheet.disp ?? sheet.no} —{" "}
-          <span className="num">
-            {sheet.L} × {sheet.W} mm
-          </span>
+        <div className="min-w-0 max-w-[320px] text-base font-black">
+          <div className="whitespace-nowrap">
+            №{sheet.disp ?? sheet.no} —{" "}
+            <span className="num">
+              {sheet.L} × {sheet.W} mm
+            </span>
+          </div>
           <div className="truncate text-xs font-normal text-muted-foreground">
             {material.name}
           </div>
@@ -540,8 +542,10 @@ export function CutmapView({
                     type="button"
                     key={s.no}
                     onClick={() => setSheetIdx(i)}
-                    className={`rounded-xl border-2 px-4 py-3 text-left transition-all hover:border-primary active:scale-[0.98] active:border-primary ${
-                      done ? "border-green-600 bg-green-500 text-white" : ""
+                    className={`rounded-xl border-2 px-4 py-3 text-left outline-none transition-all hover:border-primary focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.98] active:border-primary ${
+                      done
+                        ? "border-green-500/60 bg-green-50 text-green-700"
+                        : ""
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -716,7 +720,7 @@ export function TBtn({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`flex h-16 w-full flex-col items-center justify-center gap-1 rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-40 [&_svg]:size-6 ${TBTN_TONES[tone]}`}
+      className={`flex h-16 w-full flex-col items-center justify-center gap-1 rounded-xl shadow-sm outline-none transition-all focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-95 disabled:opacity-40 [&_svg]:size-6 ${TBTN_TONES[tone]}`}
     >
       {children}
       <span className="text-2xs font-bold leading-none">{label}</span>

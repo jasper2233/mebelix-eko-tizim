@@ -17,6 +17,7 @@ import { OpenAPI, OrdersService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
+import { SectionTitle } from "@/components/Common/SectionTitle"
 import { StatusBadge } from "@/components/Common/StatusBadge"
 import { EditOrder } from "@/components/Orders/EditOrder"
 import { MachineAssign } from "@/components/Orders/MachineAssign"
@@ -397,14 +398,14 @@ function OrderDetailPage() {
         </Tabs>
       ) : (
         <>
-          <h2 className="mb-2 text-base font-semibold">Detallar matritsasi</h2>
+          <SectionTitle>Detallar matritsasi</SectionTitle>
           <OrderMatrix orderId={id} editable={isTexnolog && editableStatus} />
         </>
       )}
 
       {(order.files ?? []).length > 0 && (
         <div className="mt-8">
-          <h2 className="mb-2 text-base font-semibold">Fayllar</h2>
+          <SectionTitle>Fayllar</SectionTitle>
           <ul className={cn(cardSurface, "divide-y")}>
             {(order.files ?? [])
               .filter((f) => f.kind !== "scx")
@@ -438,7 +439,7 @@ function OrderDetailPage() {
                   {isTexnolog && (
                     <button
                       type="button"
-                      className="shrink-0 text-xs text-muted-foreground hover:text-primary hover:underline disabled:opacity-50"
+                      className="shrink-0 rounded-sm text-xs text-muted-foreground hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
                       disabled={regenScx.isPending}
                       title="Fayllarni nusxa QR'i bilan qayta nomlash (Nanxing skan mosligi)"
                       onClick={() => regenScx.mutate()}
@@ -491,7 +492,7 @@ function OrderDetailPage() {
       />
 
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Buyurtmani bekor qilish</DialogTitle>
           </DialogHeader>

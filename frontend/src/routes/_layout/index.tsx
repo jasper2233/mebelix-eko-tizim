@@ -130,7 +130,7 @@ function Dashboard() {
                 const stat = stats?.machines.find((x) => x.machine_id === m.id)
                 return (
                   <TableRow key={m.id}>
-                    <TableCell className="font-semibold">{m.name}</TableCell>
+                    <TableCell className="font-medium">{m.name}</TableCell>
                     <TableCell>
                       {post ? <PostBadge code={post.code} /> : "—"}
                     </TableCell>

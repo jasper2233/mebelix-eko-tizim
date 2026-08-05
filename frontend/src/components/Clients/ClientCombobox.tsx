@@ -107,7 +107,7 @@ export function ClientCombobox({
             <Loader2 className="absolute right-4 top-4.5 size-4 animate-spin text-muted-foreground" />
           )}
         </div>
-        <div className="max-h-64 overflow-y-auto p-1">
+        <div role="listbox" className="max-h-64 overflow-y-auto p-1">
           {items.length === 0 && isFetching && (
             <p className="px-2 py-6 text-center text-sm text-muted-foreground">
               Qidirilmoqda…
@@ -124,10 +124,12 @@ export function ClientCombobox({
             <button
               key={c.id}
               type="button"
+              role="option"
+              aria-selected={String(c.id) === value}
               onClick={() => select(String(c.id), c.full_name)}
               onMouseEnter={() => setActive(i)}
               className={cn(
-                "flex w-full items-center justify-between gap-2 rounded-sm px-2 py-2 text-left text-sm",
+                "flex w-full items-center justify-between gap-2 rounded-sm px-2 py-2 text-left text-sm focus-visible:bg-accent",
                 i === active && "bg-accent",
               )}
             >

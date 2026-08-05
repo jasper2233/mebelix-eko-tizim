@@ -51,7 +51,7 @@ function UserRow({ user, isMe }: { user: UserRead; isMe: boolean }) {
           )}
         </div>
       </TableCell>
-      <TableCell className="text-muted-foreground">{user.phone}</TableCell>
+      <TableCell className="num text-muted-foreground">{user.phone}</TableCell>
       <TableCell>
         <Badge
           variant={
@@ -66,7 +66,7 @@ function UserRow({ user, isMe }: { user: UserRead; isMe: boolean }) {
           <span
             className={cn(
               "size-2 rounded-full",
-              user.is_active ? "bg-green-500" : "bg-gray-400",
+              user.is_active ? "bg-green-500" : "bg-muted-foreground/50",
             )}
           />
           <span className={user.is_active ? "" : "text-muted-foreground"}>
@@ -130,7 +130,7 @@ function UsersTable() {
 
 function Admin() {
   return (
-    <div className="flex flex-col gap-6">
+    <div>
       <PageHeader
         title="Foydalanuvchilar"
         description="Foydalanuvchi hisoblari va huquqlarini boshqaring"

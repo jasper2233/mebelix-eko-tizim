@@ -30,7 +30,7 @@ function UserSettings() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div>
       <PageHeader
         title="Foydalanuvchi sozlamalari"
         description="Hisobingiz sozlamalari va parametrlarini boshqaring"

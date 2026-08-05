@@ -185,7 +185,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
           src="/assets/logo/icon-navy.png"
           alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute -right-14 -bottom-14 w-96 opacity-[0.05] select-none lg:hidden"
+          className="pointer-events-none absolute -right-14 -bottom-14 w-96 opacity-5 select-none lg:hidden"
         />
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-md">{children}</div>

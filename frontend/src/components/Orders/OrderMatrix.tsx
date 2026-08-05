@@ -85,7 +85,7 @@ export function OrderMatrix({
   if (isLoading) return <Skeleton className="h-48 w-full" />
   if (!matrix?.parts.length) {
     return (
-      <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+      <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
         Detallar yo'q — avval .project fayl yuklanishi kerak.
       </p>
     )
@@ -200,7 +200,7 @@ export function OrderMatrix({
                       yuklashda yo'qoladi, chunki fayl marshrutni qayta quradi */}
                   {isCustomRoute(part.name) && (
                     <span
-                      className="mt-0.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-2xs font-bold text-amber-900"
+                      className="mt-0.5 inline-block rounded-sm bg-amber-100 px-1.5 py-0.5 text-2xs font-bold text-amber-900"
                       title="Marshrut detal nomidagi kodlardan olingan. Bu yerda belgilagan o'zgarish faylni qayta yuklaganda yo'qoladi — marshrutni GibLab'da nomdan tuzating."
                     >
                       Marshrut nomdan

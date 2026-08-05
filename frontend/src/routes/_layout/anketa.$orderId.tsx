@@ -220,7 +220,7 @@ function AnketaPage() {
             key={r.id}
             type="button"
             onClick={() => setActive(i)}
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+            className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 ${
               i === active
                 ? "border-primary bg-primary text-primary-foreground"
                 : "bg-card hover:border-primary/50"
@@ -526,7 +526,7 @@ function AnketaPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[720px] border-collapse text-sm">
                     <thead>
-                      <tr className="border-b text-left text-muted-foreground text-xs">
+                      <tr className="border-b text-left text-muted-foreground text-xs font-semibold uppercase tracking-wider">
                         <th className="w-8 py-2">№</th>
                         <th className="py-2">Modul / bo'lim</th>
                         <th className="w-20 py-2">Devor</th>
@@ -623,6 +623,7 @@ function AnketaPage() {
                                   variant="ghost"
                                   size="icon"
                                   className="text-destructive"
+                                  aria-label={`${m.name || `${mi + 1}-modul`} — o'chirish`}
                                   onClick={() =>
                                     patch({
                                       modules: (room.modules ?? []).filter(
@@ -806,7 +807,7 @@ function RoomPhotos({
           <span className="text-xs">(mijoz ko'rsatgan taxminiy ko'rinish)</span>
         </span>
         {photos.length > 0 && (
-          <span className="text-muted-foreground text-xs tabular-nums">
+          <span className="text-muted-foreground text-xs num">
             {photos.length}/{MAX_PHOTOS}
           </span>
         )}
@@ -858,7 +859,7 @@ function RoomPhotos({
                   type="button"
                   aria-label={`${p.filename} — o'chirish`}
                   onClick={() => setToRemove(p)}
-                  className="absolute top-1 right-1 rounded-full border bg-background/90 p-1.5 text-destructive shadow-sm backdrop-blur"
+                  className="absolute top-1 right-1 rounded-full border bg-background/90 p-1.5 text-destructive shadow-sm backdrop-blur focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
                 >
                   <X className="size-4" />
                 </button>
@@ -881,8 +882,9 @@ function RoomPhotos({
               />
               <button
                 type="button"
+                disabled={upload.isPending}
                 onClick={() => input.current?.click()}
-                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-md border border-dashed p-1 text-center text-muted-foreground text-xs transition-colors hover:border-primary/60 hover:text-foreground"
+                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-md border border-dashed p-1 text-center text-muted-foreground text-xs transition-colors hover:border-primary/60 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 disabled:opacity-50"
               >
                 {upload.isPending ? (
                   "Yuklanmoqda..."
@@ -974,7 +976,7 @@ function RoomSummary({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[700px] border-collapse text-sm">
               <thead>
-                <tr className="border-b text-left text-muted-foreground text-xs">
+                <tr className="border-b text-left text-muted-foreground text-xs font-semibold uppercase tracking-wider">
                   <th className="w-8 py-2">№</th>
                   <th className="py-2">Nomi</th>
                   <th className="w-16 py-2">Devor</th>
@@ -991,18 +993,10 @@ function RoomSummary({
                     <td className="py-2 text-muted-foreground">{i + 1}</td>
                     <td className="py-2 font-medium">{m.name || "—"}</td>
                     <td className="py-2">{m.wall || "—"}</td>
-                    <td className="py-2 text-right tabular-nums">
-                      {m.width ?? "—"}
-                    </td>
-                    <td className="py-2 text-right tabular-nums">
-                      {m.depth ?? "—"}
-                    </td>
-                    <td className="py-2 text-right tabular-nums">
-                      {m.height ?? "—"}
-                    </td>
-                    <td className="py-2 text-right tabular-nums">
-                      {m.count ?? "—"}
-                    </td>
+                    <td className="py-2 text-right num">{m.width ?? "—"}</td>
+                    <td className="py-2 text-right num">{m.depth ?? "—"}</td>
+                    <td className="py-2 text-right num">{m.height ?? "—"}</td>
+                    <td className="py-2 text-right num">{m.count ?? "—"}</td>
                     <td className="py-2 text-muted-foreground">
                       {m.note || ""}
                     </td>
@@ -1220,7 +1214,7 @@ function Field({
     // pastga surar edi (input va tugmalar bir qatorda turmasdi). Bo'shliqni ota beradi.
     // biome-ignore lint/a11y/noLabelWithoutControl: input children orqali keladi — bosilganda fokus oladi
     <label className="block">
-      <span className="mb-1 block min-h-5 leading-5 text-muted-foreground text-sm">
+      <span className="mb-1 block min-h-5 leading-5 text-muted-foreground text-sm font-medium">
         {label}
       </span>
       {children}
@@ -1316,7 +1310,7 @@ function ShapeChoice({
             aria-pressed={on}
             onClick={() => onChange(on ? null : o.value)}
             // Tanlangan holat Choice bilan AYNAN bir xil token — sahifada bitta grammatika
-            className={`flex flex-col items-center gap-2 rounded-md border p-3 text-sm shadow-xs transition-colors ${
+            className={`flex flex-col items-center gap-2 rounded-md border p-3 text-sm shadow-xs transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 ${
               on
                 ? "border-primary bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:border-primary/40 hover:text-foreground"
@@ -1382,9 +1376,10 @@ function Choice({
           key={o.value}
           type="button"
           disabled={disabled}
+          aria-pressed={value === o.value}
           onClick={() => onChange(value === o.value ? null : o.value)}
           // h-9 — Input bilan bir xil balandlik, yonma-yon turganda qator buzilmaydi
-          className={`inline-flex h-9 items-center rounded-md border px-3 text-sm shadow-xs transition-colors ${
+          className={`inline-flex h-9 items-center rounded-md border px-3 text-sm shadow-xs transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 ${
             value === o.value
               ? "border-primary bg-primary text-primary-foreground"
               : "hover:border-primary/40"

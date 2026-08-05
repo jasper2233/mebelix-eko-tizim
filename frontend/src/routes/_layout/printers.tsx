@@ -105,7 +105,7 @@ function PrintersPage() {
         actions={<AddAgent />}
       />
 
-      <div className="mb-4 rounded-lg border bg-card p-4 text-sm">
+      <div className="mb-4 rounded-xl border bg-card p-4 text-sm">
         <p className="mb-1 font-medium">
           O'rnatish — printer ulangan kompyuterda
         </p>

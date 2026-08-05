@@ -41,15 +41,15 @@ export const PRIORITY_DOT_CLASSES: Record<string, string> = {
 export const PRIORITY_TEXT_CLASSES: Record<string, string> = {
   low: "text-muted-foreground",
   medium: "text-muted-foreground",
-  high: "font-semibold text-orange-600",
+  high: "font-semibold text-orange-700",
   urgent: "font-bold text-red-600",
 }
 
 export const PRIORITY_BADGE_CLASSES: Record<string, string> = {
   low: "bg-muted text-muted-foreground",
   medium: "bg-muted text-muted-foreground",
-  high: "bg-orange-500 text-white",
-  urgent: "bg-red-500 text-white",
+  high: "bg-orange-600 text-white",
+  urgent: "bg-red-600 text-white",
 }
 
 export const POST_COLORS: Record<string, string> = {

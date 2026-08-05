@@ -146,7 +146,7 @@ function LogsPage() {
         description="Kim qachon nima qilgani — skan, chek va boshqa amallar tarixi"
       />
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         {[{ key: null as string | null, label: "Hammasi" }, ...CATEGORIES].map(
           (c) => (
             <Button
@@ -161,9 +161,9 @@ function LogsPage() {
         )}
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <SearchInput
-          className="w-72"
+          className="w-full max-w-xs"
           placeholder="Xabar bo'yicha qidirish..."
           value={search}
           onChange={(v) => setFilter(() => setSearch(v))}
@@ -199,48 +199,54 @@ function LogsPage() {
       ) : isError ? (
         <QueryError onRetry={() => refetch()} />
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-40">Vaqt</TableHead>
-                <TableHead className="w-40">Kim</TableHead>
-                <TableHead className="w-36">Kategoriya</TableHead>
-                <TableHead>Xabar</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.length ? (
-                rows.map((r) => (
-                  <TableRow
-                    key={r.id}
-                    className="cursor-pointer"
-                    onClick={() => setDetail(r)}
-                  >
-                    <TableCell className="num whitespace-nowrap text-muted-foreground">
-                      {formatDateTime(r.created_at)}
-                    </TableCell>
-                    <TableCell className="max-w-40 truncate">
-                      {r.user_name || r.employee_name || "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {CATEGORY_LABELS[r.module] ?? r.module}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="max-w-[480px] truncate">
-                      {r.message || (ACTION_LABELS[r.action] ?? r.action)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <EmptyRow colSpan={4}>
-                  Tanlangan filtr bo'yicha log topilmadi
-                </EmptyRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-40">Vaqt</TableHead>
+              <TableHead className="w-40">Kim</TableHead>
+              <TableHead className="w-36">Kategoriya</TableHead>
+              <TableHead>Xabar</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length ? (
+              rows.map((r) => (
+                <TableRow
+                  key={r.id}
+                  className="cursor-pointer focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+                  tabIndex={0}
+                  role="button"
+                  onClick={() => setDetail(r)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      setDetail(r)
+                    }
+                  }}
+                >
+                  <TableCell className="num whitespace-nowrap text-muted-foreground">
+                    {formatDateTime(r.created_at)}
+                  </TableCell>
+                  <TableCell className="max-w-40 truncate">
+                    {r.user_name || r.employee_name || "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {CATEGORY_LABELS[r.module] ?? r.module}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="max-w-[480px] truncate">
+                    {r.message || (ACTION_LABELS[r.action] ?? r.action)}
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <EmptyRow colSpan={4}>
+                Tanlangan filtr bo'yicha log topilmadi
+              </EmptyRow>
+            )}
+          </TableBody>
+        </Table>
       )}
 
       <div className="mt-3 flex items-center justify-end gap-2">

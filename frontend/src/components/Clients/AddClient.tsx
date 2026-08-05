@@ -86,7 +86,7 @@ export function AddClient({
       <DialogTrigger asChild>
         {trigger ?? <Button>+ Yangi mijoz</Button>}
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Yangi mijoz</DialogTitle>
           <DialogDescription>

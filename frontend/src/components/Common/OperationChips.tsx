@@ -22,7 +22,7 @@ export function OperationChips({
       {ops.map((op) => (
         <span
           key={op}
-          className="rounded bg-amber-100 px-1.5 py-0.5 text-sm font-bold text-amber-900"
+          className="rounded-sm bg-amber-100 px-1.5 py-0.5 text-sm font-bold text-amber-900"
         >
           {op}
         </span>

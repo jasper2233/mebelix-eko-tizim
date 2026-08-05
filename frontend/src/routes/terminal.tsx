@@ -518,7 +518,7 @@ function TerminalPage() {
         </div>
       )}
       {/* Header (TZ 8.3.1) */}
-      <header className="flex items-center gap-4 border-b bg-white px-4 py-2 shadow-sm">
+      <header className="flex items-center gap-4 border-b bg-card px-4 py-2 shadow-sm">
         {/* Arrachi tilida bitta identitet: stanok nomi (post rangida) — "post/uskuna"
             taksonomiyasi olib tashlandi, ism yonidagi chipda */}
         <div
@@ -529,7 +529,7 @@ function TerminalPage() {
         </div>
 
         {/* Sessiya — ixcham chip (alohida qator o'rniga, vertikal joy tejaladi) */}
-        <div className="hidden shrink-0 items-center gap-1.5 rounded-full border bg-white px-3 py-1.5 text-sm md:flex">
+        <div className="hidden shrink-0 items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm md:flex">
           <UserRound className="size-4 text-muted-foreground" />
           {ctx?.session ? (
             <>
@@ -557,7 +557,7 @@ function TerminalPage() {
           <input
             ref={inputRef}
             disabled={!scanOn || locked || mapOpen}
-            className="h-12 w-full rounded-lg border-2 border-primary/40 bg-white pl-10 pr-4 font-mono text-base outline-none focus:border-primary disabled:bg-muted"
+            className="h-12 w-full rounded-lg border-2 border-primary/40 bg-card pl-10 pr-4 font-mono text-base outline-none focus:border-primary disabled:bg-muted"
             placeholder={
               ctx?.session ? "QR scan qiling..." : "Beyjik QR scan qiling..."
             }
@@ -711,7 +711,7 @@ function TerminalPage() {
         ) : (
           <>
             {/* Vazifalar (70%) */}
-            <section className="flex min-h-0 flex-[7] flex-col rounded-xl border bg-white">
+            <section className="flex min-h-0 flex-[7] flex-col rounded-xl border bg-card">
               <div className="border-b px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Navbatdagi vazifalar
               </div>
@@ -738,25 +738,25 @@ function TerminalPage() {
                               "bg-amber-100 ring-2 ring-inset ring-amber-400",
                           )}
                         >
-                          <td className="num px-4 py-3.5 font-semibold">
+                          <td className="num px-4 py-3 font-semibold">
                             {t.code}
                           </td>
-                          <td className="max-w-[280px] px-4 py-3.5">
+                          <td className="max-w-[240px] px-4 py-3">
                             <div className="truncate">{t.name}</div>
                             <OperationChips
                               name={t.name}
                               postCode={ctx?.post_code}
                             />
                           </td>
-                          <td className="num px-4 py-3.5 text-sm">
+                          <td className="num px-4 py-3 text-sm">
                             {formatSize(t.length, t.width, t.thickness)}
                           </td>
                           <td
-                            className={`num px-4 py-3.5 text-sm ${
+                            className={`num px-4 py-3 text-sm ${
                               deadlineTone(t.deadline) === "overdue"
                                 ? "font-bold text-red-600"
                                 : deadlineTone(t.deadline) === "today"
-                                  ? "font-bold text-amber-600"
+                                  ? "font-bold text-amber-700"
                                   : ""
                             }`}
                           >
@@ -765,7 +765,7 @@ function TerminalPage() {
                               " · KECHIKKAN"}
                             {deadlineTone(t.deadline) === "today" && " · BUGUN"}
                           </td>
-                          <td className="num px-4 py-3.5 text-right text-3xl font-black text-primary">
+                          <td className="num px-4 py-3 text-right text-3xl font-black text-primary">
                             {t.qoldiq}
                           </td>
                         </tr>
@@ -806,7 +806,7 @@ function TerminalPage() {
                   lastScan?.kind === "ok" &&
                     "animate-pulse-once border-green-500 bg-green-50",
                   lastScan?.kind === "error" && "border-red-500 bg-red-50",
-                  !lastScan && "bg-white",
+                  !lastScan && "bg-card",
                 )}
               >
                 <div className="text-2xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -837,7 +837,7 @@ function TerminalPage() {
                 )}
               </div>
 
-              <div className="flex min-h-0 flex-1 flex-col rounded-xl border bg-white">
+              <div className="flex min-h-0 flex-1 flex-col rounded-xl border bg-card">
                 <div className="flex items-center justify-between border-b px-3 py-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Tarix
@@ -954,7 +954,7 @@ function OrderPicker({
     refetchInterval: 30_000,
   })
   return (
-    <div className="h-full overflow-y-auto rounded-xl border bg-white p-4">
+    <div className="h-full overflow-y-auto rounded-xl border bg-card p-4">
       <SectionTitle>{title}</SectionTitle>
       {isError && (
         <div className="mb-3 rounded-lg border-2 border-red-500 bg-red-50 px-4 py-3 text-base font-bold text-red-700">
@@ -980,7 +980,7 @@ function OrderPicker({
                 type="button"
                 key={o.id}
                 onClick={() => onPick(o.id)}
-                className={`rounded-xl border-2 p-4 text-left transition-all hover:border-primary active:scale-[0.98] active:border-primary ${
+                className={`rounded-xl border-2 p-4 text-left outline-none transition-all hover:border-primary focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.98] active:border-primary ${
                   finished ? "border-green-500/60 bg-green-50/50" : ""
                 }`}
               >
@@ -1037,7 +1037,7 @@ function OrderPicker({
                     tone === "overdue"
                       ? "text-red-600"
                       : tone === "today"
-                        ? "text-amber-600"
+                        ? "text-amber-700"
                         : ""
                   }`}
                 >
