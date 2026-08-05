@@ -236,6 +236,33 @@ function AnketaPage() {
         )}
       </div>
 
+      {/* Upakovka — butun buyurtmaga tegishli, bitta xonaga emas, shuning uchun
+          raqamlangan xona bo'limlaridan tashqarida, xona tanlagichdan keyin. */}
+      {canEdit && (
+        <label
+          className={cn(
+            cardSurface,
+            "mb-4 flex cursor-pointer items-start gap-3 p-4",
+          )}
+        >
+          <Checkbox
+            checked={survey.packaging ?? false}
+            onCheckedChange={(v) => {
+              setSurvey((s) => ({ ...s, packaging: v === true }))
+              setDirty(true)
+            }}
+          />
+          <span>
+            <span className="font-medium text-sm">
+              To'liq loyihani upakovka qilish
+            </span>
+            <span className="block text-muted-foreground text-sm">
+              Tayyor mahsulot yetkazishdan oldin qadoqlanadi
+            </span>
+          </span>
+        </label>
+      )}
+
       {/* Texnolog/direktor: forma emas, o'qish uchun jamlanma — matn nusxa olinadi */}
       {room && !canEdit && (
         <RoomSummary
@@ -1053,6 +1080,7 @@ function RoomSummary({
                 ? `${survey.measured_at}${survey.measured_by ? ` — ${survey.measured_by}` : ""}`
                 : "",
             ],
+            ["Upakovka", survey.packaging ? "Kerak" : ""],
           ]}
         />
       </Section>

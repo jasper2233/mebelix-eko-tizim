@@ -180,6 +180,9 @@ class OrderSurvey(BaseModel):
     version: int = 1
     measured_at: date | None = None  # o'lchov sanasi
     measured_by: Annotated[str, Field(max_length=120)] = ""  # o'lchagan usta
+    # Butun loyihaga tegishli, xonaga emas — shuning uchun room ichida emas, shu yerda.
+    # Migratsiya kerak emas: survey — JSONB, eski yozuvlarda default False bo'ladi.
+    packaging: bool = False  # tayyor mahsulot yetkazishdan oldin qadoqlanadimi
     rooms: Annotated[list[SurveyRoom], Field(max_length=10)] = []
 
 

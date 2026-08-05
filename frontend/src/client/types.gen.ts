@@ -517,6 +517,7 @@ export type OrderSurvey = {
     version?: number;
     measured_at?: (string | null);
     measured_by?: string;
+    packaging?: boolean;
     rooms?: Array<SurveyRoom>;
 };
 
