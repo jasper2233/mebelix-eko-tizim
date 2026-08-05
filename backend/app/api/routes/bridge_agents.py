@@ -40,6 +40,7 @@ from app.services.scanning import (
     expire_if_stale,
     finalize_scan,
     latest_active_session,
+    log_rejected_scan,
     record_scan_at,
 )
 
@@ -91,9 +92,7 @@ async def update_bridge_agent(
 ) -> BridgeAgentRead:
     """Stanok bog'lash (skan-forvard) va chek-chiqarish belgisi. Maydonlar
     alohida yuboriladi — berilmagani tegilmaydi (exclude_unset)."""
-    agent = await crud_bridge_agents.get(db, id=agent_id)
-    if agent is None:
-        raise NotFoundException("Agent topilmadi.")
+    agent = await crud_bridge_agents.get_or_404(db, "Agent topilmadi.", id=agent_id)
     sent = body.model_dump(exclude_unset=True)
     machine_name: str | None = None
     if "machine_id" in sent:
@@ -163,9 +162,7 @@ async def regenerate_bridge_code(
 
     Eski token bekor bo'ladi — o'sha kompyuter keyingi ulanishda rad etiladi.
     """
-    agent = await crud_bridge_agents.get(db, id=agent_id)
-    if agent is None:
-        raise NotFoundException("Agent topilmadi.")
+    agent = await crud_bridge_agents.get_or_404(db, "Agent topilmadi.", id=agent_id)
     agent.token_hash = None
     agent.pair_code = _new_code()
     agent.pair_expires_at = datetime.now(UTC) + PAIR_TTL
@@ -186,9 +183,7 @@ async def regenerate_bridge_code(
 
 @router.delete("/{agent_id}", response_model=Message, operation_id="delete_bridge_agent")
 async def delete_bridge_agent(db: SessionDep, current_user: AdminUser, agent_id: int, request: Request) -> Message:
-    agent = await crud_bridge_agents.get(db, id=agent_id)
-    if agent is None:
-        raise NotFoundException("Agent topilmadi.")
+    agent = await crud_bridge_agents.get_or_404(db, "Agent topilmadi.", id=agent_id)
     log_action(
         db,
         module="bridge_agents",
@@ -306,16 +301,10 @@ async def bridge_scan(
             client_event_id=body.client_event_id or uuid.uuid4().hex,
         )
     except ScanRejected as exc:
-        await db.rollback()
         # Stanokdagi rad etilgan skan operatorga ko'rinmaydi — hech bo'lmasa logda qolsin
-        log_action(
-            db,
-            module="scan",
-            action="rejected",
-            message=f"Skan rad etildi (stanok, {agent.name}): {body.qr_text} — {exc.message}",
-            meta={"code": exc.code, "agent_id": agent.id},
+        await log_rejected_scan(
+            db, exc, body.qr_text, source=f" (stanok, {agent.name})", meta_extra={"agent_id": agent.id}
         )
-        await db.commit()
         raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
 
     return await finalize_scan(db, outcome, source=f" (stanok, {agent.name})", agent_id=agent.id)

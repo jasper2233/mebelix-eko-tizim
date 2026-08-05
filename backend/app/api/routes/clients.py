@@ -2,7 +2,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query, Request
 from sqlalchemy import func, or_, select
-from sqlalchemy.sql import Subquery
 
 from app.api.deps import ManagerUser, SessionDep, StaffReadUser, client_ip
 from app.core.config import settings
@@ -15,15 +14,6 @@ from app.schemas.common import Message, Paginated
 router = APIRouter(prefix="/clients", tags=["clients"])
 
 
-def _orders_count_subq() -> Subquery:
-    return (
-        select(Order.client_id, func.count(Order.id).label("orders_count"))
-        .where(Order.is_deleted == False)  # noqa: E712
-        .group_by(Order.client_id)
-        .subquery()
-    )
-
-
 @router.get("/", response_model=Paginated[ClientRead], operation_id="read_clients")
 async def read_clients(
     db: SessionDep,
@@ -32,7 +22,12 @@ async def read_clients(
     limit: Annotated[int, Query(ge=1, le=settings.MAX_PAGE_SIZE)] = settings.DEFAULT_PAGE_SIZE,
     search: str | None = None,
 ) -> Paginated[ClientRead]:
-    counts = _orders_count_subq()
+    counts = (
+        select(Order.client_id, func.count(Order.id).label("orders_count"))
+        .where(Order.is_deleted == False)  # noqa: E712
+        .group_by(Order.client_id)
+        .subquery()
+    )
     query = (
         select(Client, func.coalesce(counts.c.orders_count, 0))
         .outerjoin(counts, counts.c.client_id == Client.id)

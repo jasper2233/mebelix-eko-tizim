@@ -1,10 +1,8 @@
 """TABLO data API (TZ 9): orders × stages live matrix. Read-only, any authenticated device."""
 
-from datetime import UTC, date, datetime, timedelta
-from typing import Any
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter
-from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.orm import defer
 
@@ -12,6 +10,7 @@ from app.api.deps import CurrentUser, SessionDep
 from app.crud import crud_orders
 from app.models import ORDER_FAT_COLUMNS, Order, Part, PartRoute, Post, Product
 from app.models.enums import OrderStatus
+from app.schemas.tablo import StageAgg, TabloMatrix, TabloOrderDetail, TabloOrderRow, TabloPartRow, TabloPostCol
 from app.services.metrics import part_volume
 
 router = APIRouter(prefix="/tablo", tags=["tablo"])
@@ -20,28 +19,6 @@ router = APIRouter(prefix="/tablo", tags=["tablo"])
 # "topshirildi" bosilmagan har bir buyurtma abadiy qolib, sex ekrani yildan
 # yilga sekinlashardi (o'lchov: 100 buyurtmada 28 ms -> 1.9 s).
 COMPLETED_WINDOW = timedelta(days=30)
-
-
-class StageAgg(BaseModel):
-    post_id: int
-    done: int
-    total: int
-    volume_total: float  # unit amount (m² / meter / dona) per post unit
-    volume_done: float
-
-
-class TabloOrderRow(BaseModel):
-    id: int
-    number: str
-    name: str | None
-    deadline: date | None
-    status: str
-    stages: dict[str, StageAgg]  # keyed by post code
-
-
-class TabloMatrix(BaseModel):
-    posts: list[dict[str, Any]]
-    orders: list[TabloOrderRow]
 
 
 @router.get("/matrix", response_model=TabloMatrix, operation_id="read_tablo_matrix")
@@ -73,7 +50,7 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
         .all()
     )
     if not orders:
-        return TabloMatrix(posts=[_post_dict(p) for p in posts], orders=[])
+        return TabloMatrix(posts=[_post_col(p) for p in posts], orders=[])
 
     order_ids = [o.id for o in orders]
     # ORM obyektlari emas, faqat kerakli ustunlar: butun sex bo'yicha o'n minglab
@@ -125,22 +102,7 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
         )
         for o in orders
     ]
-    return TabloMatrix(posts=[_post_dict(p) for p in posts], orders=rows)
-
-
-class TabloPartRow(BaseModel):
-    part_id: int
-    code: str
-    name: str
-    count: int
-    stages: dict[str, StageAgg]
-
-
-class TabloOrderDetail(BaseModel):
-    id: int
-    number: str
-    name: str | None
-    parts: list[TabloPartRow]
+    return TabloMatrix(posts=[_post_col(p) for p in posts], orders=rows)
 
 
 @router.get("/orders/{order_id}", response_model=TabloOrderDetail, operation_id="read_tablo_order")
@@ -180,12 +142,12 @@ async def read_tablo_order(db: SessionDep, _: CurrentUser, order_id: int) -> Tab
     return TabloOrderDetail(id=order.id, number=order.number, name=order.project_name, parts=list(parts.values()))
 
 
-def _post_dict(p: Post) -> dict[str, Any]:
-    return {
-        "id": p.id,
-        "code": str(p.code),
-        "name": p.name,
-        "unit": str(p.unit),
-        "color": p.color,
-        "order_index": p.order_index,
-    }
+def _post_col(p: Post) -> TabloPostCol:
+    return TabloPostCol(
+        id=p.id,
+        code=str(p.code),
+        name=p.name,
+        unit=str(p.unit),
+        color=p.color,
+        order_index=p.order_index,
+    )

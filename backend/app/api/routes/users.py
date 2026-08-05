@@ -1,12 +1,14 @@
-from fastapi import APIRouter, Query
+from typing import Annotated
 
-from app.api.deps import CurrentUser, SessionDep, SuperUserDep
+from fastapi import APIRouter, Query, Request
+
+from app.api.deps import CurrentUser, SessionDep, SuperUserDep, client_ip
 from app.core.config import settings
-from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
+from app.core.exceptions import DuplicateValueException, ForbiddenException
 from app.core.security import get_password_hash, verify_password
-from app.crud import crud_users
+from app.crud import crud_users, log_action
 from app.models.user import User
-from app.schemas.common import Paginated
+from app.schemas.common import Message, Paginated
 from app.schemas.users import UpdatePassword, UserAdminUpdate, UserCreate, UserRead, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -35,10 +37,11 @@ def _drop_forbidden_nulls(update_data: dict) -> dict:
 
 
 @router.post("/", response_model=UserRead, status_code=201, operation_id="create_user")
-async def write_user(
+async def create_user(
     user: UserCreate,
     current_user: SuperUserDep,
     db: SessionDep,
+    request: Request,
 ) -> UserRead:
     """Create a new user (superuser only). If `username` is omitted, derive one from the phone digits."""
     if await crud_users.exists(db=db, phone=user.phone):
@@ -57,6 +60,18 @@ async def write_user(
         user.username = username
 
     created_user = await crud_users.create(db=db, user_create=user)
+    log_action(
+        db,
+        module="users",
+        action="created",
+        user_id=current_user.id,
+        entity_type="user",
+        entity_id=created_user.id,
+        message=f"Foydalanuvchi yaratildi: {created_user.username}",
+        ip=client_ip(request),
+    )
+    await db.commit()
+    await db.refresh(created_user)
     return UserRead.model_validate(created_user)
 
 
@@ -64,8 +79,8 @@ async def write_user(
 async def read_users(
     current_user: SuperUserDep,
     db: SessionDep,
-    skip: int = Query(default=0, ge=0),
-    limit: int = Query(default=settings.DEFAULT_PAGE_SIZE, ge=1, le=settings.MAX_PAGE_SIZE),
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=settings.MAX_PAGE_SIZE)] = settings.DEFAULT_PAGE_SIZE,
 ) -> Paginated[UserRead]:
     """List users with pagination (superuser only — the list exposes every phone number)."""
     rows, total = await crud_users.get_multi(db=db, offset=skip, limit=limit)
@@ -87,15 +102,18 @@ async def update_user_me(
     await _ensure_unique(db, phone=values.phone, username=values.username, current=current_user)
     update_data = _drop_forbidden_nulls(values.model_dump(exclude_unset=True))
     updated_user = await crud_users.update(db=db, db_user=current_user, user_update=update_data)
+    await db.commit()
+    await db.refresh(updated_user)
     return UserRead.model_validate(updated_user)
 
 
-@router.patch("/me/password", response_model=dict[str, str], operation_id="update_password_me")
+@router.patch("/me/password", response_model=Message, operation_id="update_password_me")
 async def update_password_me(
     body: UpdatePassword,
     current_user: CurrentUser,
     db: SessionDep,
-) -> dict[str, str]:
+    request: Request,
+) -> Message:
     if not await verify_password(body.current_password, current_user.hashed_password):
         raise ForbiddenException("Joriy parol noto'g'ri")
     if body.current_password == body.new_password:
@@ -104,13 +122,24 @@ async def update_password_me(
     await crud_users.update(
         db=db, db_user=current_user, user_update={"hashed_password": await get_password_hash(body.new_password)}
     )
-    return {"message": "Parol muvaffaqiyatli yangilandi"}
+    log_action(
+        db,
+        module="users",
+        action="updated",
+        user_id=current_user.id,
+        entity_type="user",
+        entity_id=current_user.id,
+        message="Parol o'zgartirildi",  # parol materiali loglanmaydi
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return Message(message="Parol muvaffaqiyatli yangilandi")
 
 
-@router.delete("/me", response_model=dict[str, str], operation_id="delete_user_me")
-async def delete_user_me(current_user: CurrentUser, db: SessionDep) -> dict[str, str]:
-    """erase_user'ning o'z-o'ziga qisqartmasi — qoidalar bitta joyda tursin."""
-    return await erase_user(current_user.id, current_user, db)
+@router.delete("/me", response_model=Message, operation_id="delete_user_me")
+async def delete_user_me(current_user: CurrentUser, db: SessionDep, request: Request) -> Message:
+    """delete_user'ning o'z-o'ziga qisqartmasi — qoidalar bitta joyda tursin."""
+    return await delete_user(current_user.id, current_user, db, request)
 
 
 @router.get("/{user_id}", response_model=UserRead, operation_id="read_user_by_id")
@@ -118,40 +147,47 @@ async def read_user_by_id(user_id: int, current_user: CurrentUser, db: SessionDe
     """Read a user by id — only the user themselves or a superuser (phone numbers are private)."""
     if not current_user.is_superuser and user_id != current_user.id:
         raise ForbiddenException("Sizda yetarli huquq yo'q.")
-    db_user = await crud_users.get(db=db, id=user_id)
-    if db_user is None:
-        raise NotFoundException("Foydalanuvchi topilmadi")
+    db_user = await crud_users.get_or_404(db, "Foydalanuvchi topilmadi", id=user_id)
     return UserRead.model_validate(db_user)
 
 
 @router.patch("/{user_id}", response_model=UserRead, operation_id="update_user")
-async def patch_user(
+async def update_user(
     values: UserAdminUpdate,
     user_id: int,
     current_user: SuperUserDep,
     db: SessionDep,
+    request: Request,
 ) -> UserRead:
     """Update any user (superuser only). Self-updates should go through `PATCH /users/me`."""
-    db_user = await crud_users.get(db=db, id=user_id)
-    if db_user is None:
-        raise NotFoundException("Foydalanuvchi topilmadi")
+    db_user = await crud_users.get_or_404(db, "Foydalanuvchi topilmadi", id=user_id)
 
     await _ensure_unique(db, phone=values.phone, username=values.username, current=db_user)
     update_data = _drop_forbidden_nulls(values.model_dump(exclude_unset=True))
     updated_user = await crud_users.update(db=db, db_user=db_user, user_update=update_data)
+    log_action(
+        db,
+        module="users",
+        action="updated",
+        user_id=current_user.id,
+        entity_type="user",
+        entity_id=db_user.id,
+        ip=client_ip(request),
+    )
+    await db.commit()
+    await db.refresh(updated_user)
     return UserRead.model_validate(updated_user)
 
 
-@router.delete("/{user_id}", operation_id="delete_user")
-async def erase_user(
+@router.delete("/{user_id}", response_model=Message, operation_id="delete_user")
+async def delete_user(
     user_id: int,
     current_user: CurrentUser,
     db: SessionDep,
-) -> dict[str, str]:
+    request: Request,
+) -> Message:
     """Soft-delete a user. Allowed for the user themselves or any superuser."""
-    db_user = await crud_users.get(db=db, id=user_id)
-    if not db_user:
-        raise NotFoundException("Foydalanuvchi topilmadi")
+    db_user = await crud_users.get_or_404(db, "Foydalanuvchi topilmadi", id=user_id)
     if not current_user.is_superuser and user_id != current_user.id:
         raise ForbiddenException()
     if current_user.is_superuser and user_id == current_user.id:
@@ -159,5 +195,15 @@ async def erase_user(
             "Adminlar o'z hisobini o'zlari o'chira olmaydilar. Iltimos, boshqa adminga murojaat qiling."
         )
 
-    await crud_users.delete(db=db, id=user_id)
-    return {"message": "Foydalanuvchi o'chirildi"}
+    log_action(
+        db,
+        module="users",
+        action="deleted",
+        user_id=current_user.id,
+        entity_type="user",
+        entity_id=db_user.id,
+        message=f"Foydalanuvchi o'chirildi: {db_user.username}",
+        ip=client_ip(request),
+    )
+    await crud_users.delete(db=db, id=user_id)  # BaseCRUD.delete o'zi commit qiladi — audit ham shu bilan saqlanadi
+    return Message(message="Foydalanuvchi o'chirildi")

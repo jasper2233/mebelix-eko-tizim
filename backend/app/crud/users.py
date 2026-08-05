@@ -28,18 +28,20 @@ class CRUDUser(BaseCRUD[User]):
         return await self.get(db, username=identifier)
 
     async def create(self, db: AsyncSession, user_create: UserCreate) -> User:
-        """Create a new user with hashed password. Caller should pre-check phone/username uniqueness."""
+        """Create a new user with hashed password. Caller should pre-check phone/username uniqueness.
+
+        Tranzaksiya route'niki: bu yerda faqat flush — commit chaqiruvchi zimmasida.
+        """
         hashed_password = await get_password_hash(user_create.password)
         user_data = user_create.model_dump(exclude={"password"})
         db_user = User(**user_data, hashed_password=hashed_password)
         db.add(db_user)
         try:
-            await db.commit()
+            await db.flush()  # INSERT shu yerda ketadi — unique to'qnashuv ham shu yerda chiqadi
         except IntegrityError:
             # Race with a concurrent create/update — the exists() pre-check can't prevent this.
             await db.rollback()
             raise DuplicateValueException("Telefon yoki foydalanuvchi nomi allaqachon band")
-        await db.refresh(db_user)
         return db_user
 
     async def update(
@@ -48,7 +50,7 @@ class CRUDUser(BaseCRUD[User]):
         db_user: User,
         user_update: UserUpdate | dict[str, Any],
     ) -> User:
-        """Update user fields. Only fields present in `user_update` are touched."""
+        """Update user fields. Only fields present in `user_update` are touched. Commit chaqiruvchi zimmasida."""
         if isinstance(user_update, dict):
             update_data = user_update
         else:
@@ -62,11 +64,10 @@ class CRUDUser(BaseCRUD[User]):
 
         db.add(db_user)
         try:
-            await db.commit()
+            await db.flush()  # UPDATE shu yerda ketadi — unique to'qnashuv ham shu yerda chiqadi
         except IntegrityError:
             await db.rollback()
             raise DuplicateValueException("Telefon yoki foydalanuvchi nomi allaqachon band")
-        await db.refresh(db_user)
         return db_user
 
     async def authenticate(
@@ -86,11 +87,13 @@ class CRUDUser(BaseCRUD[User]):
         return db_user
 
     async def increment_token_version(self, db: AsyncSession, user: User) -> User:
-        """Increment `token_version`, which invalidates every outstanding access/refresh token."""
+        """Increment `token_version`, which invalidates every outstanding access/refresh token.
+
+        Commit chaqiruvchi zimmasida — bu yerda faqat flush.
+        """
         user.token_version += 1
         db.add(user)
-        await db.commit()
-        await db.refresh(user)
+        await db.flush()
         return user
 
 

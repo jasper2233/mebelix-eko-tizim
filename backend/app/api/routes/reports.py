@@ -6,15 +6,14 @@ Access: manager/director/admin (TZ 3.7).
 
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Annotated, Literal
-from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import defer
 
 from app.api.deps import SessionDep, require_roles
+from app.core.config import TASHKENT_TZ
 from app.models import (
     ORDER_FAT_COLUMNS,
     PART_FAT_COLUMNS,
@@ -29,6 +28,16 @@ from app.models import (
 )
 from app.models.enums import OrderStatus, UserRole
 from app.models.user import User
+from app.schemas.reports import (
+    DashboardStats,
+    EmployeeProductivity,
+    MachineStat,
+    MaterialsReport,
+    MaterialUsageRow,
+    OrderReportRow,
+    OrdersReport,
+    ProductivityReport,
+)
 from app.services.excel import xlsx_response
 from app.services.metrics import part_volume
 
@@ -36,35 +45,17 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 
 ReportsUser = Annotated[User, Depends(require_roles(UserRole.MANAGER, UserRole.DIRECTOR))]
 
-_TASHKENT = ZoneInfo("Asia/Tashkent")
-
 
 def _range(date_from: date | None, date_to: date | None) -> tuple[datetime, datetime]:
     """Default: last 30 days. Bounds are inclusive local (Asia/Tashkent) days."""
-    end_day = date_to or datetime.now(_TASHKENT).date()
+    end_day = date_to or datetime.now(TASHKENT_TZ).date()
     start_day = date_from or (end_day - timedelta(days=30))
-    start = datetime.combine(start_day, time.min, tzinfo=_TASHKENT)
-    end = datetime.combine(end_day, time.max, tzinfo=_TASHKENT)
+    start = datetime.combine(start_day, time.min, tzinfo=TASHKENT_TZ)
+    end = datetime.combine(end_day, time.max, tzinfo=TASHKENT_TZ)
     return start, end
 
 
 # ---------- 11.1.1 Hodim mahsuldorligi ----------
-
-
-class EmployeeProductivity(BaseModel):
-    employee_id: int
-    full_name: str
-    position: str | None
-    total_scans: int
-    active_days: int
-    per_day: float
-    per_hour: float  # scans / distinct active hours — crude but honest
-
-
-class ProductivityReport(BaseModel):
-    date_from: date
-    date_to: date
-    employees: list[EmployeeProductivity]
 
 
 @router.get("/productivity", operation_id="report_productivity", response_model=ProductivityReport)
@@ -76,8 +67,8 @@ async def report_productivity(
     format: Annotated[Literal["json", "xlsx"], Query()] = "json",
 ) -> ProductivityReport | StreamingResponse:
     start, end = _range(date_from, date_to)
-    day = func.date_trunc("day", func.timezone(_TASHKENT.key, Scan.created_at))
-    hour = func.date_trunc("hour", func.timezone(_TASHKENT.key, Scan.created_at))
+    day = func.date_trunc("day", func.timezone(TASHKENT_TZ.key, Scan.created_at))
+    hour = func.date_trunc("hour", func.timezone(TASHKENT_TZ.key, Scan.created_at))
     rows = (
         await db.execute(
             select(
@@ -125,25 +116,6 @@ async def report_productivity(
 # ---------- 11.2 Buyurtmalar holati ----------
 
 
-class OrderReportRow(BaseModel):
-    number: str
-    client_name: str
-    status: str
-    created_at: datetime
-    deadline: date | None
-    production_started_at: datetime | None
-    completed_at: datetime | None
-    delivered_at: datetime | None
-    overdue: bool
-    cancel_reason: str | None
-
-
-class OrdersReport(BaseModel):
-    date_from: date
-    date_to: date
-    rows: list[OrderReportRow]
-
-
 @router.get("/orders", operation_id="report_orders", response_model=OrdersReport)
 async def report_orders(
     db: SessionDep,
@@ -153,7 +125,7 @@ async def report_orders(
     format: Annotated[Literal["json", "xlsx"], Query()] = "json",
 ) -> OrdersReport | StreamingResponse:
     start, end = _range(date_from, date_to)
-    today = datetime.now(_TASHKENT).date()
+    today = datetime.now(TASHKENT_TZ).date()
     rows = (
         await db.execute(
             select(Order, Client.full_name)
@@ -221,20 +193,6 @@ async def report_orders(
 # ---------- 11.3 Material sarfi ----------
 
 
-class MaterialUsageRow(BaseModel):
-    name: str
-    kind: str
-    unit: str
-    total: float
-    orders: int
-
-
-class MaterialsReport(BaseModel):
-    date_from: date
-    date_to: date
-    rows: list[MaterialUsageRow]
-
-
 @router.get("/materials", operation_id="report_materials", response_model=MaterialsReport)
 async def report_materials(
     db: SessionDep,
@@ -282,23 +240,6 @@ async def report_materials(
 
 
 # ---------- 10.2.1 Dashboard: stanok yuklamasi + prognoz ----------
-
-
-class MachineStat(BaseModel):
-    machine_id: int
-    name: str
-    post_code: str
-    status: str
-    queue_scans: int  # remaining scans routed to this machine
-    queue_volume: float  # in the post's unit
-    unit: str
-    capacity: float | None
-    forecast_hours: float | None  # TZ 4.3: navbatdagi_yuk / capacity
-    today_scans: int
-
-
-class DashboardStats(BaseModel):
-    machines: list[MachineStat]
 
 
 @router.get("/dashboard", operation_id="report_dashboard")
@@ -355,7 +296,7 @@ async def report_dashboard(db: SessionDep, _: ReportsUser) -> DashboardStats:
             queue[mid]["scans"] += remaining
             queue[mid]["volume"] += vol
 
-    today_start = datetime.combine(datetime.now(_TASHKENT).date(), time.min, tzinfo=_TASHKENT).astimezone(UTC)
+    today_start = datetime.combine(datetime.now(TASHKENT_TZ).date(), time.min, tzinfo=TASHKENT_TZ).astimezone(UTC)
     today_rows = (
         await db.execute(
             select(Scan.machine_id, func.count(Scan.id))

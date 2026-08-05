@@ -2,10 +2,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import SessionDep
 from app.core.config import settings
-from app.core.db import async_get_db
 from app.core.exceptions import UnauthorizedException
 from app.core.security import (
     ACCESS_COOKIE_NAME,
@@ -66,7 +65,7 @@ async def _mark_refresh_token_used(jti: str) -> None:
 async def login_for_access_token(
     response: Response,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: Annotated[AsyncSession, Depends(async_get_db)],
+    db: SessionDep,
 ) -> dict[str, str]:
     user = await crud_users.authenticate(db=db, username_or_phone=form_data.username, password=form_data.password)
     if not user:
@@ -82,7 +81,7 @@ async def login_for_access_token(
 async def refresh_access_token(
     request: Request,
     response: Response,
-    db: Annotated[AsyncSession, Depends(async_get_db)],
+    db: SessionDep,
 ) -> dict[str, str]:
     refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)
     if not refresh_token:
@@ -98,6 +97,7 @@ async def refresh_access_token(
         user = await crud_users.get(db=db, id=token_data.user_id)
         if user is not None:
             await crud_users.increment_token_version(db=db, user=user)
+            await db.commit()  # revoke pastdagi raise'dan oldin saqlansin — aks holda rollback bo'lardi
         raise UnauthorizedException("Token bekor qilingan.")
 
     user = await crud_users.get(db=db, id=token_data.user_id)

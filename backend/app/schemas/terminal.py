@@ -3,7 +3,7 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.enums import PostCode, SessionStatus
+from app.models.enums import OrderPriority, PostCode, SessionStatus
 
 
 class BadgeStart(BaseModel):
@@ -49,6 +49,28 @@ class TaskRow(BaseModel):
     edges: dict[str, Any] = {}
 
 
+class TerminalOrderCard(BaseModel):
+    """Terminal proyekt tanlagichi kartasi (/terminal/orders): done/total post turiga moslangan."""
+
+    id: int
+    number: str
+    project_name: str | None
+    deadline: date | None
+    priority: OrderPriority
+    done: int
+    total: int
+    materials: list[str] = []  # karta uchun: arrachi plita bo'yicha partiyalab kesadi
+    sheets_total: int
+    has_cutmap: bool
+
+
+class QrOrderRef(BaseModel):
+    """QR qaysi aktiv buyurtmaga tegishli (/terminal/qr/{qr}/order) — terminal o'sha sahifani ochadi."""
+
+    order_id: int
+    order_number: str
+
+
 class KromkaInstance(BaseModel):
     """Bitta fizik nusxa KROMKA nazarida: nechta tomoni yopishtirilgan, arradan o'tganmi."""
 
@@ -79,6 +101,46 @@ class KromkaOrderState(BaseModel):
     order_id: int
     order_number: str
     parts: list[KromkaPartRow]
+
+
+class PrisadkaFile(BaseModel):
+    """Detalning SCX fayli — stanok kompyuteriga yuklab olish uchun (TZ 12.5)."""
+
+    id: int
+    filename: str
+
+
+class PrisadkaInstance(BaseModel):
+    """Nusxa darajasi: QR chiqarish tugmasi va holat uchun."""
+
+    instance_id: int
+    qr_text: str
+    label_printed: bool
+    done: bool
+
+
+class PrisadkaPartRow(BaseModel):
+    part_id: int
+    code: str  # productCode_partCode
+    name: str
+    length: float | None
+    width: float | None
+    thickness: float | None
+    done: int
+    total: int
+    files: list[PrisadkaFile] = []
+    arra_route: bool  # marshrutida ARRA bormi — bo'lmasa QR chek shu sahifadan chiqadi (ROVER)
+    done_qrs: list[str] = []  # skan tugagan nusxalar QR'lari (fayl nomi bilan mos) — UI rang beradi
+    instances: list[PrisadkaInstance] = []
+
+
+class PrisadkaOrderState(BaseModel):
+    """CNC post sahifasi (PRISADKA/ROVER): shu postga tegishli detallar + SCX fayllari."""
+
+    order_id: int
+    order_number: str
+    project_name: str | None
+    parts: list[PrisadkaPartRow]
 
 
 class ScanRequest(BaseModel):

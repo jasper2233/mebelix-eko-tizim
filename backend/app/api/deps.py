@@ -81,7 +81,6 @@ def require_roles(*roles: UserRole) -> Callable[..., Coroutine[Any, Any, User]]:
 # Common role groups (TZ 3.7 role/module matrix)
 ManagerUser = Annotated[User, Depends(require_roles(UserRole.MANAGER))]
 TexnologUser = Annotated[User, Depends(require_roles(UserRole.TEXNOLOG))]
-ManagerOrTexnolog = Annotated[User, Depends(require_roles(UserRole.MANAGER, UserRole.TEXNOLOG))]
 StaffReadUser = Annotated[
     User, Depends(require_roles(UserRole.MANAGER, UserRole.TEXNOLOG, UserRole.DIRECTOR))
 ]  # read-only lists shared by office roles

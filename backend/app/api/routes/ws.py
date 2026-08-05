@@ -23,6 +23,8 @@ from app.tasks import PRINT_QUEUE_KEY
 
 router = APIRouter()
 
+WS_CLOSE_UNAUTHORIZED = 4401  # custom "unauthorized" close code (4000–4999 — application-defined)
+
 _SCOPE_BY_ROLE = {
     UserRole.TERMINAL: "terminal",
     UserRole.TABLO: "tablo",
@@ -35,7 +37,7 @@ async def ws_events(websocket: WebSocket, token: str | None = None) -> None:
     async with local_session() as db:
         user = await resolve_user(db, raw_token) if raw_token else None
         if user is None:
-            await websocket.close(code=4401)
+            await websocket.close(code=WS_CLOSE_UNAUTHORIZED)
             return
         post_id = None
         if user.machine_id is not None:
@@ -104,7 +106,7 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
                 )
             ).first()
         if row is None:
-            await websocket.close(code=4401)
+            await websocket.close(code=WS_CLOSE_UNAUTHORIZED)
             return
         agent_id, can_print = row
     await websocket.accept()
@@ -138,7 +140,7 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
         return True
 
     if not await touch_agent():
-        await websocket.close(code=4401)
+        await websocket.close(code=WS_CLOSE_UNAUTHORIZED)
         return
     # Admin "Printerlar" sahifasi darhol "Ulandi" ko'rsatsin — 10s pollingni kutmasdan
     await ws_manager.publish("bridge.connected", {"agent_id": agent_id})
@@ -161,7 +163,7 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
                     # Qo'lda turgan job navbatga qaytadi — yo'qolmaydi.
                     if popped is not None:
                         await redis.rpush(PRINT_QUEUE_KEY, popped[1])
-                    await websocket.close(code=4401)
+                    await websocket.close(code=WS_CLOSE_UNAUTHORIZED)
                     return
                 last_touch = now
             if popped is None:

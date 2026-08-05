@@ -2,17 +2,23 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import SessionDep, require_roles
 from app.core.ws import ws_manager
 from app.crud import log_action
-from app.models import Part, PartInstance, Scan, WorkSession
-from app.models.enums import POST_ROLES, SessionStatus, UserRole
+from app.models import Part, PartInstance
+from app.models.enums import POST_ROLES, UserRole
 from app.models.user import User
 from app.schemas.terminal import ScanHistoryItem, ScanRequest, ScanResult
-from app.services.scanning import ScanRejected, cancel_scan, finalize_scan, qr_part_code, record_scan
+from app.services.scanning import (
+    ScanRejected,
+    cancel_scan,
+    finalize_scan,
+    log_rejected_scan,
+    qr_part_code,
+    record_scan,
+)
 
 router = APIRouter(prefix="/scans", tags=["scans"])
 
@@ -24,17 +30,8 @@ async def record_scan_endpoint(db: SessionDep, user: TerminalUser, body: ScanReq
     try:
         outcome = await record_scan(db, user=user, qr_text=body.qr_text, client_event_id=body.client_event_id)
     except ScanRejected as exc:
-        await db.rollback()
         # Rad etilgan urinish ham logga: kim nimani qayta/noto'g'ri skan qilganini ko'rish uchun
-        log_action(
-            db,
-            module="scan",
-            action="rejected",
-            user_id=user.id,
-            message=f"Skan rad etildi: {body.qr_text} — {exc.message}",
-            meta={"code": exc.code},
-        )
-        await db.commit()
+        await log_rejected_scan(db, exc, body.qr_text, user_id=user.id)
         raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
 
     return await finalize_scan(db, outcome, user_id=user.id)
@@ -71,41 +68,3 @@ async def cancel_scan_endpoint(db: SessionDep, user: TerminalUser, scan_id: int)
         item.qr_text = instance.qr_text
         item.part_code = qr_part_code(instance.qr_text, part.count)
     return item
-
-
-@router.get("/recent", response_model=list[ScanHistoryItem], operation_id="read_recent_scans")
-async def read_recent_scans(
-    db: SessionDep, user: TerminalUser, limit: Annotated[int, Query(ge=1, le=50)] = 50
-) -> list[ScanHistoryItem]:
-    """TARIX block (TZ 8.3.3): last 50 entries of the CURRENT session only."""
-    session = (
-        await db.execute(
-            select(WorkSession)
-            .where(
-                WorkSession.user_id == user.id,
-                WorkSession.status == SessionStatus.ACTIVE,
-                WorkSession.is_deleted == False,  # noqa: E712
-            )
-            .order_by(WorkSession.id.desc())
-            .limit(1)
-        )
-    ).scalar_one_or_none()
-    if session is None:
-        return []
-    rows = (
-        await db.execute(
-            select(Scan, PartInstance.qr_text, Part.count)
-            .join(PartInstance, PartInstance.id == Scan.instance_id)
-            .join(Part, Part.id == Scan.part_id)
-            .where(Scan.session_id == session.id, Scan.is_deleted == False)  # noqa: E712
-            .order_by(Scan.id.desc())
-            .limit(limit)
-        )
-    ).all()
-    items = []
-    for scan, qr_text, count in rows:
-        item = ScanHistoryItem.model_validate(scan)
-        item.qr_text = qr_text
-        item.part_code = qr_part_code(qr_text, count)
-        items.append(item)
-    return items

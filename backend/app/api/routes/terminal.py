@@ -1,16 +1,16 @@
 """Operator terminal API (TZ 8): context, badge sessions, task queue, ARRA cut map, files."""
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse
-from sqlalchemy import case, func, select
+from sqlalchemy import Row, case, func, select
 
 from app.api.deps import SessionDep, client_ip, require_roles
-from app.core.config import settings
-from app.core.exceptions import NotFoundException
+from app.core.config import upload_root
+from app.core.exceptions import ForbiddenException, NotFoundException
 from app.core.ws import ws_manager
 from app.crud import crud_orders, log_action
 from app.models import (
@@ -45,16 +45,22 @@ from app.schemas.terminal import (
     KromkaInstance,
     KromkaOrderState,
     KromkaPartRow,
+    PrisadkaFile,
+    PrisadkaInstance,
+    PrisadkaOrderState,
+    PrisadkaPartRow,
+    QrOrderRef,
     SessionRead,
     TaskRow,
     TerminalContext,
+    TerminalOrderCard,
 )
 from app.services.scanning import (
     ScanRejected,
     active_session,
     finalize_scan,
     latest_active_session,
-    record_scan_at,
+    record_scan,
     resolve_terminal,
 )
 
@@ -63,13 +69,18 @@ router = APIRouter(prefix="/terminal", tags=["terminal"])
 TerminalUser = Annotated[User, Depends(require_roles(UserRole.TERMINAL, *POST_ROLES))]
 
 
+def _scan_error(code: str, message: str) -> HTTPException:
+    """TZ 8.5 xato dialogi shakli: {code, message} — ScanRejected bilan bir xil JSON payload."""
+    return HTTPException(status_code=422, detail={"code": code, "message": message})
+
+
 async def _terminal_ctx(db: SessionDep, user: TerminalUser) -> tuple[Machine, Post]:
     """Stanok + post. Faqat shu ikkisiga muhtoj route'larga qo'yiladi — router darajasida EMAS:
     yorliq/fayl route'lari stanoksiz terminal foydalanuvchisi uchun ham ishlashi kerak."""
     try:
         return await resolve_terminal(db, user)
     except ScanRejected as exc:
-        raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
+        raise _scan_error(exc.code, exc.message) from None
 
 
 TerminalCtx = Annotated[tuple[Machine, Post], Depends(_terminal_ctx)]
@@ -120,16 +131,11 @@ async def start_terminal_session(
         )
     ).scalar_one_or_none()
     if employee is None:
-        raise HTTPException(status_code=422, detail={"code": "E006", "message": "Beyjik topilmadi."})
+        raise _scan_error("E006", "Beyjik topilmadi.")
     if employee.status != EmployeeStatus.ACTIVE:
-        raise HTTPException(
-            status_code=422, detail={"code": "E006", "message": "Beyjik nofaol. Adminga murojaat qiling."}
-        )
+        raise _scan_error("E006", "Beyjik nofaol. Adminga murojaat qiling.")
     if post.id not in employee.assigned_post_ids:
-        raise HTTPException(
-            status_code=422,
-            detail={"code": "E006", "message": f"{employee.full_name} bu postda ishlay olmaydi ({post.name})."},
-        )
+        raise _scan_error("E006", f"{employee.full_name} bu postda ishlay olmaydi ({post.name}).")
 
     # One active session per terminal: a new badge closes the previous shift.
     previous = await latest_active_session(db, machine.id)
@@ -225,8 +231,8 @@ async def read_terminal_tasks(db: SessionDep, ctx: TerminalCtx) -> list[TaskRow]
     ]
 
 
-@router.get("/orders", response_model=list[dict], operation_id="read_terminal_orders")
-async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[dict]:
+@router.get("/orders", response_model=list[TerminalOrderCard], operation_id="read_terminal_orders")
+async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[TerminalOrderCard]:
     """Active orders relevant to this terminal (for the ARRA map order picker)."""
     machine, post = ctx
     # SHOSHILINCH tepada tursin: prioritet birinchi, keyin deadline (nulls oxirida)
@@ -339,7 +345,7 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[dict]:
                 )
             ).all()
         }
-    result = []
+    result: list[TerminalOrderCard] = []
     for o, done, total in rows:
         done_val = printed_by_order.get(o.id, 0) if post.code == PostCode.ARRA else int(done or 0)
         total_val = int(total or 0)
@@ -350,29 +356,29 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[dict]:
         if post.code == PostCode.ARRA and total_val > 0 and done_val >= total_val:
             continue
         result.append(
-            {
-                "id": o.id,
-                "number": o.number,
-                "project_name": o.project_name,
-                "deadline": o.deadline,
-                "priority": o.priority,
-                "done": done_val,
-                "total": total_val,
+            TerminalOrderCard(
+                id=o.id,
+                number=o.number,
+                project_name=o.project_name,
+                deadline=o.deadline,
+                priority=o.priority,
+                done=done_val,
+                total=total_val,
                 # karta uchun: arrachi plita bo'yicha partiyalab kesadi
-                "materials": [m["name"] for m in o.material_usage if m.get("kind") == "sheet"],
-                "sheets_total": sum(
+                materials=[m["name"] for m in o.material_usage if m.get("kind") == "sheet"],
+                sheets_total=sum(
                     int(s.get("mult") or 1)
                     for mat in (o.cutmap or {}).get("materials", [])
                     for s in mat.get("sheets", [])
                 ),
-                "has_cutmap": o.cutmap is not None,
-            }
+                has_cutmap=o.cutmap is not None,
+            )
         )
     return result
 
 
-@router.get("/qr/{qr_text}/order", response_model=dict, operation_id="resolve_terminal_qr")
-async def resolve_terminal_qr(db: SessionDep, user: TerminalUser, qr_text: str) -> dict:
+@router.get("/qr/{qr_text}/order", response_model=QrOrderRef, operation_id="resolve_terminal_qr")
+async def resolve_terminal_qr(db: SessionDep, user: TerminalUser, qr_text: str) -> QrOrderRef:
     """Proyekt ro'yxatida turib QR skan qilinsa — qaysi buyurtmaga tegishli ekanini topadi
     (terminal o'sha proyekt sahifasini ochib yuboradi)."""
     qr = qr_text.strip()
@@ -397,57 +403,40 @@ async def resolve_terminal_qr(db: SessionDep, user: TerminalUser, qr_text: str) 
             break
     if row is None:
         raise NotFoundException("Bu QR uchun aktiv buyurtma topilmadi.")
-    return {"order_id": row.order_id, "order_number": row.number}
+    return QrOrderRef(order_id=row.order_id, order_number=row.number)
 
 
-@router.get("/orders/{order_id}/kromka", response_model=KromkaOrderState, operation_id="read_terminal_kromka")
-async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) -> KromkaOrderState:
-    """KROMKA/OVAL sahifasi: buyurtmaning shu postdagi detallari, har nusxada tomon-progress
-    (OVAL'da 0/1) va arradan o'tganlik (chek chiqarilgan yoki ARRA skan bor)."""
-    machine, post = ctx
-    if post.code not in (PostCode.KROMKA, PostCode.OVAL):
-        raise HTTPException(status_code=403, detail="Bu sahifa faqat KROMKA yoki OVAL postida ko'rsatiladi.")
-
-    order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
-
-    rows = (
+async def _post_route_rows(
+    db: SessionDep, order_id: int, post_id: int, machine_id: int
+) -> Sequence[Row[tuple[PartRoute, Part, str]]]:
+    """Buyurtmaning shu post(+stanok)dagi marshrutlari: (PartRoute, Part, product_code) qatorlar.
+    KROMKA va CNC sahifalari bir xil so'rovni ishlatadi."""
+    return (
         await db.execute(
             select(PartRoute, Part, Product.code)
             .join(Part, Part.id == PartRoute.part_id)
             .join(Product, Product.id == Part.product_id)
             .where(
-                PartRoute.order_id == order.id,
-                PartRoute.post_id == post.id,
+                PartRoute.order_id == order_id,
+                PartRoute.post_id == post_id,
                 PartRoute.is_enabled == True,  # noqa: E712
                 PartRoute.is_deleted == False,  # noqa: E712
-                (PartRoute.machine_id == machine.id) | (PartRoute.machine_id.is_(None)),
+                (PartRoute.machine_id == machine_id) | (PartRoute.machine_id.is_(None)),
             )
             .order_by(Part.code)
         )
     ).all()
 
-    instances = (
-        (
-            await db.execute(
-                select(PartInstance)
-                .where(
-                    PartInstance.order_id == order.id,
-                    PartInstance.is_deleted == False,  # noqa: E712
-                )
-                .order_by(PartInstance.part_id, PartInstance.instance_no)
-            )
-        )
-        .scalars()
-        .all()
-    )
 
-    kromka_done: dict[int, int] = dict(
+async def _post_scan_counts(db: SessionDep, order_id: int, post_id: int) -> dict[int, int]:
+    """Har nusxaning shu postdagi haqiqiy (bekor qilinmagan) skanlari soni: {instance_id: count}."""
+    return dict(
         (
             await db.execute(
                 select(Scan.instance_id, func.count(Scan.id))
                 .where(
-                    Scan.order_id == order.id,
-                    Scan.post_id == post.id,
+                    Scan.order_id == order_id,
+                    Scan.post_id == post_id,
                     Scan.is_cancelled == False,  # noqa: E712
                     Scan.is_deleted == False,  # noqa: E712
                 )
@@ -457,6 +446,41 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
         .tuples()
         .all()
     )
+
+
+async def _order_instances_by_part(db: SessionDep, order_id: int) -> dict[int, list[PartInstance]]:
+    """Buyurtmaning jonli nusxalari detal bo'yicha guruhlangan, instance_no tartibida."""
+    by_part: dict[int, list[PartInstance]] = {}
+    for inst in (
+        (
+            await db.execute(
+                select(PartInstance)
+                .where(
+                    PartInstance.order_id == order_id,
+                    PartInstance.is_deleted == False,  # noqa: E712
+                )
+                .order_by(PartInstance.part_id, PartInstance.instance_no)
+            )
+        )
+        .scalars()
+        .all()
+    ):
+        by_part.setdefault(inst.part_id, []).append(inst)
+    return by_part
+
+
+@router.get("/orders/{order_id}/kromka", response_model=KromkaOrderState, operation_id="read_terminal_kromka")
+async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) -> KromkaOrderState:
+    """KROMKA/OVAL sahifasi: buyurtmaning shu postdagi detallari, har nusxada tomon-progress
+    (OVAL'da 0/1) va arradan o'tganlik (chek chiqarilgan yoki ARRA skan bor)."""
+    machine, post = ctx
+    if post.code not in (PostCode.KROMKA, PostCode.OVAL):
+        raise ForbiddenException("Bu sahifa faqat KROMKA yoki OVAL postida ko'rsatiladi.")
+
+    order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
+
+    rows = await _post_route_rows(db, order.id, post.id, machine.id)
+    kromka_done = await _post_scan_counts(db, order.id, post.id)
 
     arra_post_id = (
         await db.execute(select(Post.id).where(Post.code == PostCode.ARRA, Post.is_deleted == False))  # noqa: E712
@@ -478,9 +502,7 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
             .all()
         )
 
-    by_part: dict[int, list[PartInstance]] = {}
-    for i in instances:
-        by_part.setdefault(i.part_id, []).append(i)
+    by_part = await _order_instances_by_part(db, order.id)
 
     return KromkaOrderState(
         order_id=order.id,
@@ -513,35 +535,21 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
     )
 
 
-@router.get("/orders/{order_id}/prisadka", response_model=dict, operation_id="read_terminal_prisadka")
-async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int) -> dict:
+@router.get("/orders/{order_id}/prisadka", response_model=PrisadkaOrderState, operation_id="read_terminal_prisadka")
+async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int) -> PrisadkaOrderState:
     """CNC post sahifasi (PRISADKA/ROVER): shu postga tegishli detallar +
     SCX fayllari (stanok kompyuteriga yuklab olish uchun, TZ 12.5). ROVER'da
     jarayon arradan EMAS, roverdan boshlanishi ham mumkin — shunday detallarga
     QR chekni shu sahifadan chiqarish uchun arra_route belgisi ham beriladi."""
     machine, post = ctx
     if post.code not in (PostCode.PRISADKA, PostCode.ROVER):
-        raise HTTPException(status_code=403, detail="Bu sahifa faqat CNC postlarida (PRISADKA/ROVER) ko'rsatiladi.")
+        raise ForbiddenException("Bu sahifa faqat CNC postlarida (PRISADKA/ROVER) ko'rsatiladi.")
 
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
 
-    rows = (
-        await db.execute(
-            select(PartRoute, Part, Product.code)
-            .join(Part, Part.id == PartRoute.part_id)
-            .join(Product, Product.id == Part.product_id)
-            .where(
-                PartRoute.order_id == order.id,
-                PartRoute.post_id == post.id,
-                PartRoute.is_enabled == True,  # noqa: E712
-                PartRoute.is_deleted == False,  # noqa: E712
-                (PartRoute.machine_id == machine.id) | (PartRoute.machine_id.is_(None)),
-            )
-            .order_by(Part.code)
-        )
-    ).all()
+    rows = await _post_route_rows(db, order.id, post.id, machine.id)
 
-    files_by_part: dict[int, list[dict]] = {}
+    files_by_part: dict[int, list[PrisadkaFile]] = {}
     for f in (
         (
             await db.execute(
@@ -556,40 +564,12 @@ async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int
         .all()
     ):
         if f.part_id is not None:
-            files_by_part.setdefault(f.part_id, []).append({"id": f.id, "filename": f.filename})
+            files_by_part.setdefault(f.part_id, []).append(PrisadkaFile(id=f.id, filename=f.filename))
 
     # Har nusxaning shu postdagi holati: 2/4 ko'rsatishning o'zi QAYSI nusxalar
     # qolganini aytmaydi — fayl (nomi = nusxa QR'i) yashil/kulrang bo'lib ko'rsatadi
-    scan_counts = dict(
-        (
-            await db.execute(
-                select(Scan.instance_id, func.count(Scan.id))
-                .where(
-                    Scan.order_id == order.id,
-                    Scan.post_id == post.id,
-                    Scan.is_cancelled == False,  # noqa: E712
-                    Scan.is_deleted == False,  # noqa: E712
-                )
-                .group_by(Scan.instance_id)
-            )
-        )
-        .tuples()
-        .all()
-    )
-    insts_by_part: dict[int, list[PartInstance]] = {}
-    for inst in (
-        (
-            await db.execute(
-                select(PartInstance).where(
-                    PartInstance.order_id == order.id,
-                    PartInstance.is_deleted == False,  # noqa: E712
-                )
-            )
-        )
-        .scalars()
-        .all()
-    ):
-        insts_by_part.setdefault(inst.part_id, []).append(inst)
+    scan_counts = await _post_scan_counts(db, order.id, post.id)
+    insts_by_part = await _order_instances_by_part(db, order.id)
 
     # ROVER'da jarayon arradan boshlanmasligi mumkin: marshrutida ARRA yo'q
     # detalning QR cheki shu sahifadan chiqariladi. ARRA'li detalga bu yerdan
@@ -611,40 +591,40 @@ async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int
         ).all()
     }
 
-    return {
-        "order_id": order.id,
-        "order_number": order.number,
-        "project_name": order.project_name,
-        "parts": [
-            {
-                "part_id": part.id,
-                "code": f"{product_code}_{part.code}",
-                "name": part.name,
-                "length": part.length,
-                "width": part.width,
-                "thickness": part.thickness,
-                "done": route.total_done,
-                "total": route.total_required,
-                "files": files_by_part.get(part.id, []),
-                "arra_route": part.id in arra_part_ids,
+    return PrisadkaOrderState(
+        order_id=order.id,
+        order_number=order.number,
+        project_name=order.project_name,
+        parts=[
+            PrisadkaPartRow(
+                part_id=part.id,
+                code=f"{product_code}_{part.code}",
+                name=part.name,
+                length=part.length,
+                width=part.width,
+                thickness=part.thickness,
+                done=route.total_done,
+                total=route.total_required,
+                files=files_by_part.get(part.id, []),
+                arra_route=part.id in arra_part_ids,
                 # Skan tugagan nusxalar QR'lari (fayl nomi bilan mos) — UI rang beradi
-                "done_qrs": [
+                done_qrs=[
                     i.qr_text for i in insts_by_part.get(part.id, []) if scan_counts.get(i.id, 0) >= route.per_instance
                 ],
-                # Nusxa darajasi: QR chiqarish tugmasi va holat uchun
-                "instances": [
-                    {
-                        "instance_id": i.id,
-                        "qr_text": i.qr_text,
-                        "label_printed": i.label_printed_at is not None,
-                        "done": scan_counts.get(i.id, 0) >= route.per_instance,
-                    }
-                    for i in sorted(insts_by_part.get(part.id, []), key=lambda i: i.instance_no)
+                # Nusxa darajasi: QR chiqarish tugmasi va holat uchun (helper instance_no bo'yicha saralaydi)
+                instances=[
+                    PrisadkaInstance(
+                        instance_id=i.id,
+                        qr_text=i.qr_text,
+                        label_printed=i.label_printed_at is not None,
+                        done=scan_counts.get(i.id, 0) >= route.per_instance,
+                    )
+                    for i in insts_by_part.get(part.id, [])
                 ],
-            }
+            )
             for route, part, product_code in rows
         ],
-    }
+    )
 
 
 @router.get("/orders/{order_id}/cutmap", response_model=CutmapState, operation_id="read_terminal_cutmap")
@@ -652,7 +632,7 @@ async def read_terminal_cutmap(db: SessionDep, ctx: TerminalCtx, order_id: int) 
     """ARRA cut-map screen (TZ 7.1.7). Cell state survives terminal restarts — it lives here."""
     _machine, post = ctx
     if post.code != PostCode.ARRA:
-        raise HTTPException(status_code=403, detail="Kesish xaritasi faqat ARRA postida ko'rsatiladi.")
+        raise ForbiddenException("Kesish xaritasi faqat ARRA postida ko'rsatiladi.")
 
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
     return await build_cutmap_state(db, order, post.id)
@@ -750,15 +730,8 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
         ).first()
         if arra_route is None:
             try:
-                machine, post = await resolve_terminal(db, user)
-                session = await active_session(db, user, machine)
-                outcome = await record_scan_at(
-                    db,
-                    machine=machine,
-                    post=post,
-                    session=session,
-                    qr_text=instance.qr_text,
-                    client_event_id=f"rvprint-{instance.id}",
+                outcome = await record_scan(
+                    db, user=user, qr_text=instance.qr_text, client_event_id=f"rvprint-{instance.id}"
                 )
                 await finalize_scan(db, outcome, user_id=user.id, source=" (rover, chop etish bilan)")
             except ScanRejected:
@@ -817,7 +790,7 @@ async def download_terminal_file(db: SessionDep, user: TerminalUser, file_id: in
     ).scalar_one_or_none()
     if row is None:
         raise NotFoundException("Fayl topilmadi.")
-    full_path = Path(settings.UPLOAD_DIR).resolve() / row.path
+    full_path = upload_root() / row.path
     if not full_path.is_file():
         raise NotFoundException("Fayl diskda topilmadi.")
     return FileResponse(full_path, filename=row.filename, media_type="application/xml")

@@ -2,7 +2,6 @@ import contextlib
 import io
 import zipfile
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Annotated
 from uuid import uuid4
 
@@ -13,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import defer
 
 from app.api.deps import ManagerUser, SessionDep, StaffReadUser, TexnologUser, client_ip
-from app.core.config import settings
+from app.core.config import settings, upload_root
 from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
 from app.core.ws import ws_manager
 from app.crud import crud_clients, crud_orders, log_action
@@ -48,7 +47,7 @@ from app.schemas.orders import (
 )
 from app.schemas.terminal import CutmapState
 from app.services.giblab import ParseError, parse_project
-from app.services.giblab.ingest import ingest_project, wipe_previous_parse
+from app.services.giblab.ingest import ingest_project, wipe_previous_parse, write_and_register_scx
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -72,6 +71,12 @@ def _order_read(order: Order, client_name: str) -> OrderRead:
     item = OrderRead.model_validate(order)
     item.client_name = client_name
     return item
+
+
+async def _order_read_with_client(db: SessionDep, order: Order) -> OrderRead:
+    """Javob uchun mijoz nomini qo'shib beradi (soft-deleted mijozda bo'sh satr)."""
+    client = await crud_clients.get(db, id=order.client_id)
+    return _order_read(order, client.full_name if client else "")
 
 
 @router.post("/", response_model=OrderRead, status_code=201, operation_id="create_order")
@@ -227,8 +232,7 @@ async def update_order(
     )
     await db.commit()
     await db.refresh(order)
-    client = await crud_clients.get(db, id=order.client_id)
-    return _order_read(order, client.full_name if client else "")
+    return await _order_read_with_client(db, order)
 
 
 @router.put("/{order_id}/survey", response_model=Message, operation_id="save_order_survey")
@@ -263,7 +267,7 @@ async def save_order_survey(
     )
     for f in orphans:
         with contextlib.suppress(OSError):
-            (Path(settings.UPLOAD_DIR).resolve() / f.path).unlink()
+            (upload_root() / f.path).unlink()
         f.is_deleted = True
         f.deleted_at = datetime.now(UTC)
 
@@ -328,7 +332,7 @@ async def upload_room_photo(
         )
 
     rel = f"survey/{order_id}/{uuid4().hex}{ext}"
-    full = Path(settings.UPLOAD_DIR).resolve() / rel
+    full = upload_root() / rel
     full.parent.mkdir(parents=True, exist_ok=True)
     full.write_bytes(content)
 
@@ -375,7 +379,7 @@ async def delete_room_photo(
         raise NotFoundException("Rasm topilmadi.")
     # Diskdagi fayl ham o'chadi — anketa rasmlari tarix uchun saqlanmaydi
     with contextlib.suppress(OSError):
-        (Path(settings.UPLOAD_DIR).resolve() / row.path).unlink()
+        (upload_root() / row.path).unlink()
     row.is_deleted = True
     row.deleted_at = datetime.now(UTC)
     log_action(
@@ -418,8 +422,7 @@ async def cancel_order(
     await db.refresh(order)
     # Terminals drop the tasks IMMEDIATELY (TZ 6.5) — real-time, all posts.
     await ws_manager.publish("order.cancelled", {"order_id": order.id, "order_number": order.number})
-    client = await crud_clients.get(db, id=order.client_id)
-    return _order_read(order, client.full_name if client else "")
+    return await _order_read_with_client(db, order)
 
 
 @router.post("/{order_id}/deliver", response_model=OrderRead, operation_id="deliver_order")
@@ -443,8 +446,7 @@ async def deliver_order(db: SessionDep, current_user: ManagerUser, order_id: int
     await db.commit()
     await db.refresh(order)
     await ws_manager.publish("order.delivered", {"order_id": order.id, "order_number": order.number})
-    client = await crud_clients.get(db, id=order.client_id)
-    return _order_read(order, client.full_name if client else "")
+    return await _order_read_with_client(db, order)
 
 
 @router.get("/{order_id}/matrix", response_model=OrderMatrix, operation_id="read_order_matrix")
@@ -684,8 +686,7 @@ async def confirm_order(db: SessionDep, current_user: ManagerUser, order_id: int
     )
     await db.commit()
     await db.refresh(order)
-    client = await crud_clients.get(db, id=order.client_id)
-    return _order_read(order, client.full_name if client else "")
+    return await _order_read_with_client(db, order)
 
 
 @router.post("/{order_id}/start", response_model=OrderRead, operation_id="start_order_production")
@@ -759,8 +760,7 @@ async def start_order_production(
     await db.commit()
     await db.refresh(order)
     await ws_manager.publish("order.started", {"order_id": order.id, "order_number": order.number})
-    client = await crud_clients.get(db, id=order.client_id)
-    return _order_read(order, client.full_name if client else "")
+    return await _order_read_with_client(db, order)
 
 
 @router.post("/{order_id}/upload", response_model=Message, operation_id="upload_order_project")
@@ -796,10 +796,10 @@ async def upload_order_project(
             ),
         )
 
-    upload_root = Path(settings.UPLOAD_DIR).resolve()
-    await wipe_previous_parse(db, order, upload_root)
+    root = upload_root()
+    await wipe_previous_parse(db, order, root)
     try:
-        summary = await ingest_project(db, order, project, content, file.filename or "project.project", upload_root)
+        summary = await ingest_project(db, order, project, content, file.filename or "project.project", root)
     except ParseError as exc:
         await db.rollback()
         raise HTTPException(status_code=422, detail=str(exc)) from None
@@ -848,11 +848,11 @@ async def download_order_scx_zip(db: SessionDep, _: StaffReadUser, order_id: int
     )
     if not rows:
         raise NotFoundException("SCX fayllar topilmadi.")
-    upload_root = Path(settings.UPLOAD_DIR).resolve()
+    root = upload_root()
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for row in rows:
-            full_path = upload_root / row.path
+            full_path = root / row.path
             if full_path.is_file():
                 zf.write(full_path, row.filename)
     return Response(
@@ -867,10 +867,8 @@ async def regenerate_order_scx(db: SessionDep, current_user: TexnologUser, order
     """SCX fayllarni saqlangan .project'dan qayta yaratish — eski buyurtmalarni yangi
     nomlashga (har nusxa = QR nomli fayl, Nanxing skan mosligi) o'tkazadi. Detallar,
     marshrutlar va skanlarga TEGILMAYDI."""
-    from app.services.giblab.scx import build_scx_files
-
     order = await _get_order(db, order_id)
-    upload_root = Path(settings.UPLOAD_DIR).resolve()
+    root = upload_root()
 
     project_row = (
         await db.execute(
@@ -884,11 +882,11 @@ async def regenerate_order_scx(db: SessionDep, current_user: TexnologUser, order
             .limit(1)
         )
     ).scalar_one_or_none()
-    if project_row is None or not (upload_root / project_row.path).is_file():
+    if project_row is None or not (root / project_row.path).is_file():
         raise NotFoundException(".project fayli diskda topilmadi — qayta yaratib bo'lmaydi.")
 
     try:
-        project = parse_project((upload_root / project_row.path).read_bytes())
+        project = parse_project((root / project_row.path).read_bytes())
     except ParseError as exc:
         raise HTTPException(status_code=422, detail=f"Fayl o'qilmadi: {exc}") from None
 
@@ -935,32 +933,23 @@ async def regenerate_order_scx(db: SessionDep, current_user: TexnologUser, order
     for f in old_files:
         f.is_deleted = True
         f.deleted_at = now
-        (upload_root / f.path).unlink(missing_ok=True)
+        (root / f.path).unlink(missing_ok=True)
 
-    scx_dir = upload_root / "scx" / str(order.id)
-    scx_dir.mkdir(parents=True, exist_ok=True)
     plate_by_name = {m.name: m.thickness for m in project.materials if m.kind == "sheet" and m.thickness}
     created = 0
     for pp in project.all_parts:
         part = parts_by_key.get(pp.key)
         if part is None or not pp.xnc_ops:
             continue
-        for filename, content, meta in build_scx_files(
-            pp, qr_by_part.get(part.id, []), plate_thickness=plate_by_name.get(pp.material_name or "")
-        ):
-            (scx_dir / filename).write_text(content, encoding="utf-8")
-            db.add(
-                OrderFile(
-                    order_id=order.id,
-                    part_id=part.id,
-                    kind=FileKind.SCX,
-                    path=str((scx_dir / filename).relative_to(upload_root)),
-                    filename=filename,
-                    size=len(content.encode()),
-                    meta=meta,
-                )
-            )
-            created += 1
+        created += write_and_register_scx(
+            db,
+            order.id,
+            part.id,
+            pp,
+            qr_by_part.get(part.id, []),
+            root,
+            plate_thickness=plate_by_name.get(pp.material_name or ""),
+        )
 
     log_action(
         db,
@@ -990,7 +979,7 @@ async def download_order_file(db: SessionDep, _: StaffReadUser, order_id: int, f
     ).scalar_one_or_none()
     if row is None:
         raise NotFoundException("Fayl topilmadi.")
-    full_path = Path(settings.UPLOAD_DIR).resolve() / row.path
+    full_path = upload_root() / row.path
     if not full_path.is_file():
         raise NotFoundException("Fayl diskda topilmadi.")
     if row.kind in (FileKind.PROJECT, FileKind.SCX):

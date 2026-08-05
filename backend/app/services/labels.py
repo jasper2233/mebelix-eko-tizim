@@ -8,7 +8,8 @@ asoslangan. EZPL yo'q: G500-U'da tarmoq porti yo'q, RAW dialekt kerak emas.
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
-from zoneinfo import ZoneInfo
+
+from app.core.config import TASHKENT_TZ
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -83,7 +84,7 @@ async def load_label_data(db: "AsyncSession", instance_id: int) -> LabelData | N
         edges=part.edges,
         xnc_summary=part.xnc_summary,
         label_num=part.label_num,
-        printed_at=datetime.now(UTC).astimezone(ZoneInfo("Asia/Tashkent")),
+        printed_at=datetime.now(UTC).astimezone(TASHKENT_TZ),
         holes=holes,
         texture=part.txt,
     )
@@ -91,6 +92,14 @@ async def load_label_data(db: "AsyncSession", instance_id: int) -> LabelData | N
 
 def _n(v: float) -> str:
     return str(int(v)) if float(v).is_integer() else f"{v:g}"
+
+
+_BW_THRESHOLD = 160  # chek pechati qoraligi — GoDEX uchun sozlanadigan yagona nuqta
+
+
+def _bw(v: int) -> int:
+    """Image.point uchun binarizatsiya: har piksel sof qora yoki oq."""
+    return 0 if v < _BW_THRESHOLD else 255
 
 
 # --- PNG render: GibSaw shablonlari asosidagi maket (80x60mm), mm-koordinatalarda ---
@@ -154,7 +163,7 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
     # Logo — Universal.lbl dan ajratilgan, threshold qilingan
     logo_path = Path(__file__).resolve().parents[1] / "assets" / "label-logo.png"
     try:
-        logo = Image.open(logo_path).convert("L").point(lambda v: 0 if v < 160 else 255).convert("RGB")
+        logo = Image.open(logo_path).convert("L").point(_bw).convert("RGB")
         lw = 22 * mm
         lh = int(lw * logo.height / logo.width)
         img.paste(logo.resize((lw, lh)), (3 * mm, int(1 * mm)))
@@ -215,7 +224,7 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
             raw = Image.open(drill_path)
             flat = Image.new("RGB", raw.size, "white")
             flat.paste(raw, mask=raw.getchannel("A") if "A" in raw.getbands() else None)
-            icon = flat.convert("L").point(lambda v: 0 if v < 160 else 255).convert("RGB").resize((isz, isz))
+            icon = flat.convert("L").point(_bw).convert("RGB").resize((isz, isz))
             img.paste(icon, (int(35 * mm), int(9.4 * mm)))
         except OSError:
             text(35, 9.4, "С", 3.2, bold=True)
@@ -333,5 +342,5 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
 
     buf = _io.BytesIO()
     # Yakuniy 1-bit: har piksel sof qora yoki oq
-    img.convert("L").point(lambda v: 0 if v < 160 else 255, "1").save(buf, format="PNG")
+    img.convert("L").point(_bw, "1").save(buf, format="PNG")
     return buf.getvalue()

@@ -458,6 +458,32 @@ async def finalize_scan(
     )
 
 
+async def log_rejected_scan(
+    db: AsyncSession,
+    exc: ScanRejected,
+    qr_text: str,
+    *,
+    user_id: int | None = None,
+    source: str = "",
+    meta_extra: dict[str, Any] | None = None,
+) -> None:
+    """Rad etilgan skan YAKUNI — rollback + audit-log + commit.
+    Terminal (scans.py) va stanok skan-forvardi (bridge_agents.py) bir xil blokni
+    takrorlardi; HTTPException(422) esa har bir chaqiruv joyining o'zida qoladi."""
+    from app.crud import log_action
+
+    await db.rollback()
+    log_action(
+        db,
+        module="scan",
+        action="rejected",
+        user_id=user_id,
+        message=f"Skan rad etildi{source}: {qr_text} — {exc.message}",
+        meta={"code": exc.code, **(meta_extra or {})},
+    )
+    await db.commit()
+
+
 async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Scan, list[dict[str, Any]]]:
     """BEKOR QILISH (TZ 8.6): only the last N seconds, same terminal session."""
     machine, post = await resolve_terminal(db, user)
