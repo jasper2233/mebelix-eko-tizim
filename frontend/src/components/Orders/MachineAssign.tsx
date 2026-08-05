@@ -13,10 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import useCustomToast from "@/hooks/useCustomToast"
 import { POST_COLORS } from "@/lib/mes"
-import { getMachinesQueryOptions, getPostsQueryOptions } from "@/queries/mes"
-import { handleError } from "@/utils"
+import {
+  crudCallbacks,
+  getMachinesQueryOptions,
+  getPostsQueryOptions,
+} from "@/queries/mes"
 
 export function MachineAssign({
   order,
@@ -35,8 +37,12 @@ export function MachineAssign({
       ]),
     ),
   )
-  const { showSuccessToast, showErrorToast } = useCustomToast()
   const queryClient = useQueryClient()
+  const cb = crudCallbacks(
+    queryClient,
+    ["orders", order.id],
+    "Stanoklar biriktirildi",
+  )
 
   const choiceposts = (posts ?? [])
     .filter((p) => p.requires_assignment_choice)
@@ -54,13 +60,11 @@ export function MachineAssign({
           ) as never,
         },
       }),
+    ...cb,
     onSuccess: () => {
-      showSuccessToast("Stanoklar biriktirildi")
+      cb.onSuccess()
       onSaved()
     },
-    onError: handleError(showErrorToast),
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: ["orders", order.id] }),
   })
 
   if (!choiceposts.length) return null

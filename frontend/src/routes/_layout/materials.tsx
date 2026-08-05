@@ -1,11 +1,12 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { Search } from "lucide-react"
 import { useState } from "react"
 
+import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
+import { QueryError } from "@/components/Common/QueryError"
+import { SearchInput } from "@/components/Common/SearchInput"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -17,11 +18,14 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounced } from "@/hooks/useDebounced"
-import { MATERIAL_TYPE_LABELS } from "@/lib/mes"
+import { requireAccess } from "@/lib/guards"
+import { isProductionStaff, MATERIAL_TYPE_LABELS } from "@/lib/mes"
 import { getMaterialsQueryOptions } from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/materials")({
   component: MaterialsPage,
+  // Sidebar ko'rinishi bilan bir xil rollar to'plami (lib/mes)
+  beforeLoad: requireAccess(isProductionStaff),
   head: () => ({ meta: [{ title: "Materiallar | MebeliX" }] }),
 })
 
@@ -29,7 +33,7 @@ function MaterialsPage() {
   const [search, setSearch] = useState("")
   const [type, setType] = useState("")
   const debounced = useDebounced(search.trim())
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     ...getMaterialsQueryOptions(
       debounced,
       (type || undefined) as "sheet" | "band" | "hardware" | undefined,
@@ -52,18 +56,17 @@ function MaterialsPage() {
             <TabsTrigger value="hardware">Furnitura</TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="relative ml-auto w-full max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Nomi yoki kodi"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
-          />
-        </div>
+        <SearchInput
+          className="ml-auto w-full max-w-xs"
+          placeholder="Nomi yoki kodi"
+          value={search}
+          onChange={setSearch}
+        />
       </div>
       {isLoading ? (
         <Skeleton className="h-64 w-full" />
+      ) : isError ? (
+        <QueryError onRetry={() => refetch()} />
       ) : (
         <div className="overflow-x-auto">
           <Table>
@@ -102,15 +105,10 @@ function MaterialsPage() {
                   </TableRow>
                 ))
               ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    Materiallar hali yo'q — birinchi .project fayl yuklanganda
-                    avtomatik qo'shiladi.
-                  </TableCell>
-                </TableRow>
+                <EmptyRow colSpan={5}>
+                  Materiallar hali yo'q — birinchi .project fayl yuklanganda
+                  avtomatik qo'shiladi.
+                </EmptyRow>
               )}
             </TableBody>
           </Table>

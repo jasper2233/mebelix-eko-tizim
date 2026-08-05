@@ -41,6 +41,11 @@ export function dirSupported(): boolean {
   return "showDirectoryPicker" in window
 }
 
+/** SCX faylni yuklab olish URL'i — endpoint manzili BITTA joyda */
+export function scxFileUrl(id: number): string {
+  return `${OpenAPI.BASE}/api/v1/terminal/files/${id}`
+}
+
 /** Proyekt nomidan papka nomi: Windows'da taqiqlangan belgilar almashtiriladi */
 export function projectFolder(name: string): string {
   return name.replace(/[\\/:*?"<>|]/g, "_").trim()
@@ -84,13 +89,13 @@ export async function pickDir(): Promise<FileSystemDirectoryHandle | null> {
   }
 }
 
-/** SCX faylni serverdan olib papkaga yozadi; papka yo'q bo'lsa false */
+/** SCX faylni serverdan olib papkaga yozadi; yozilgan fayl nomini qaytaradi (xatoda throw) */
 export async function saveScxToDir(
   dir: FileSystemDirectoryHandle,
   fileId: number,
   filename?: string,
 ): Promise<string> {
-  const resp = await fetch(`${OpenAPI.BASE}/api/v1/terminal/files/${fileId}`, {
+  const resp = await fetch(scxFileUrl(fileId), {
     credentials: "include",
   })
   if (!resp.ok) throw new Error(`Fayl ${fileId}: HTTP ${resp.status}`)
@@ -130,7 +135,7 @@ export async function downloadScx(
     }
   }
   const a = document.createElement("a")
-  a.href = `${OpenAPI.BASE}/api/v1/terminal/files/${fileId}`
+  a.href = scxFileUrl(fileId)
   a.download = ""
   a.click()
 }

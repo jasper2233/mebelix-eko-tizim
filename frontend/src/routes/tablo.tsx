@@ -2,21 +2,12 @@
 // Rejimlar: HAJM / SONI / FOIZ. Kontekst-aware: tablo user stanogi ustuni ajratiladi.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { createFileRoute, redirect } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
 import { useCallback, useEffect, useState } from "react"
 
-import { ApiError, TabloService, UsersService } from "@/client"
-
-type TabloPost = {
-  id: number
-  code: string
-  name: string
-  unit: string
-  color?: string
-  order_index: number
-}
-
+import { TabloService } from "@/client"
 import { useMesWs } from "@/hooks/useMesWs"
+import { requireAuth } from "@/lib/guards"
 import { deadlineTone, formatDate, POST_COLORS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import {
@@ -29,13 +20,7 @@ export const Route = createFileRoute("/tablo")({
   component: TabloPage,
   head: () => ({ meta: [{ title: "TABLO | MebeliX" }] }),
   beforeLoad: async () => {
-    try {
-      await UsersService.readUserMe()
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401)
-        throw redirect({ to: "/login" })
-      throw err
-    }
+    await requireAuth()
   },
 })
 
@@ -158,7 +143,7 @@ function TabloPage() {
               <tr className="text-2xl uppercase tracking-wider text-muted-foreground">
                 <th className="px-2 text-left">№ / Buyurtma</th>
                 <th className="px-2 text-left">Topshirish sanasi</th>
-                {(data?.posts as TabloPost[] | undefined)?.map((p) => {
+                {data?.posts.map((p) => {
                   // Kontekst rejimida boshqa ustunlar RANG bilan susayadi, opacity bilan emas —
                   // opacity-40 oq fonda kontrastni 1.85:1 ga tushirib, uzoqdan o'qib bo'lmas qilardi.
                   const dim = Boolean(contextPostId && p.id !== contextPostId)
@@ -184,7 +169,7 @@ function TabloPage() {
                     Jami hajm
                   </td>
                   <td className="bg-primary/90" />
-                  {(data.posts as TabloPost[]).map((p) => {
+                  {data.posts.map((p) => {
                     let done = 0
                     let total = 0
                     let vDone = 0
@@ -237,7 +222,7 @@ function TabloPage() {
                   <td className="num bg-amber-100 px-3 py-3 text-2xl font-semibold text-amber-800">
                     {formatDate(o.deadline)}
                   </td>
-                  {(data.posts as TabloPost[]).map((p) => (
+                  {data.posts.map((p) => (
                     <TabloCell
                       key={p.id}
                       stage={o.stages[p.code]}
@@ -370,8 +355,7 @@ function TabloOrderDrill({
   // Ustunlar matritsa postlaridan (order_index tartibida) — qotirilgan ro'yxat
   // OVAL kabi yangi postni ko'rsatmay qolardi
   const { data: matrix } = useQuery(getTabloMatrixQueryOptions())
-  const drillPosts =
-    (matrix?.posts as TabloPost[] | undefined)?.map((p) => p.code) ?? []
+  const drillPosts = matrix?.posts.map((p) => p.code) ?? []
   return (
     <div className="flex h-dvh flex-col bg-surface text-foreground">
       <header className="flex items-center gap-4 border-b border-border bg-card px-5 py-3 shadow-sm">

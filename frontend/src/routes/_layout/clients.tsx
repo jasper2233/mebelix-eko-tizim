@@ -1,11 +1,12 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { Search } from "lucide-react"
 import { useState } from "react"
 
 import { AddClient } from "@/components/Clients/AddClient"
+import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
-import { Input } from "@/components/ui/input"
+import { QueryError } from "@/components/Common/QueryError"
+import { SearchInput } from "@/components/Common/SearchInput"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -16,18 +17,21 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useDebounced } from "@/hooks/useDebounced"
-import { formatDate } from "@/lib/mes"
+import { requireAccess } from "@/lib/guards"
+import { formatDate, isManagement } from "@/lib/mes"
 import { getClientsQueryOptions } from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/clients")({
   component: ClientsPage,
+  // Sidebar ko'rinishi bilan bir xil rollar to'plami (lib/mes)
+  beforeLoad: requireAccess(isManagement),
   head: () => ({ meta: [{ title: "Mijozlar | MebeliX" }] }),
 })
 
 function ClientsPage() {
   const [search, setSearch] = useState("")
   const debounced = useDebounced(search.trim())
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     ...getClientsQueryOptions(debounced),
     placeholderData: keepPreviousData,
   })
@@ -39,17 +43,16 @@ function ClientsPage() {
         description="Buyurtmachilar reestri"
         actions={<AddClient />}
       />
-      <div className="mb-4 relative max-w-sm">
-        <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-        <Input
-          placeholder="Ism yoki telefon bo'yicha qidirish"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-8"
-        />
-      </div>
+      <SearchInput
+        className="mb-4 max-w-sm"
+        placeholder="Ism yoki telefon bo'yicha qidirish"
+        value={search}
+        onChange={setSearch}
+      />
       {isLoading ? (
         <Skeleton className="h-64 w-full" />
+      ) : isError ? (
+        <QueryError onRetry={() => refetch()} />
       ) : (
         <div className="overflow-x-auto">
           <Table>
@@ -80,16 +83,11 @@ function ClientsPage() {
                   </TableRow>
                 ))
               ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    {debounced
-                      ? `"${debounced}" bo'yicha mijoz topilmadi.`
-                      : "Hali mijoz yo'q — \"+ Yangi mijoz\" bilan qo'shing."}
-                  </TableCell>
-                </TableRow>
+                <EmptyRow colSpan={5}>
+                  {debounced
+                    ? `"${debounced}" bo'yicha mijoz topilmadi.`
+                    : "Hali mijoz yo'q — \"+ Yangi mijoz\" bilan qo'shing."}
+                </EmptyRow>
               )}
             </TableBody>
           </Table>

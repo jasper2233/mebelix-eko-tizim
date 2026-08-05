@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { PageHeader } from "@/components/Common/PageHeader"
-import ChangePassword from "@/components/UserSettings/ChangePassword"
-import DeleteAccount from "@/components/UserSettings/DeleteAccount"
-import UserInformation from "@/components/UserSettings/UserInformation"
+import { ChangePassword } from "@/components/UserSettings/ChangePassword"
+import { DeleteAccount } from "@/components/UserSettings/DeleteAccount"
+import { UserInformation } from "@/components/UserSettings/UserInformation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import useCurrentUser from "@/hooks/useCurrentUser"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
 
 const tabsConfig = [
   { value: "my-profile", title: "Profilim", component: UserInformation },
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_layout/settings")({
   head: () => ({
     meta: [
       {
-        title: "Sozlamalar - MebeliX",
+        title: "Sozlamalar | MebeliX",
       },
     ],
   }),

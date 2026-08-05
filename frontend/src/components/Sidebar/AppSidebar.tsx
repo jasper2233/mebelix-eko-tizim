@@ -21,8 +21,14 @@ import {
   SidebarHeader,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import useCurrentUser from "@/hooks/useCurrentUser"
-import { isAdmin, isSuperuser } from "@/lib/mes"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
+import {
+  isAdmin,
+  isManagement,
+  isProductionStaff,
+  isSuperuser,
+  TERMINAL_STATUSES,
+} from "@/lib/mes"
 import { getOrderStatusCountsQueryOptions } from "@/queries/mes"
 import { type Item, Main } from "./Main"
 import { User } from "./User"
@@ -30,56 +36,53 @@ import { User } from "./User"
 // Rolga qarab navigatsiya (TZ 3.7 rollar-modullar matritsasi).
 // Huquq predikatlari route guard'lari bilan BIR XIL manbadan (lib/mes) —
 // menyuda ko'rinib, ochilganda qaytarib yuboradigan sahifa bo'lmasligi uchun.
-function navItems(user: UserRead | null | undefined): Item[] {
-  const role = user?.role
-  const admin = isAdmin(user)
-  const items: Item[] = [{ icon: Home, title: "Boshqaruv paneli", path: "/" }]
-
-  if (
-    admin ||
-    role === "manager" ||
-    role === "texnolog" ||
-    role === "director"
-  ) {
-    items.push({ icon: ClipboardList, title: "Buyurtmalar", path: "/orders" })
-  }
-  if (admin || role === "manager" || role === "director") {
-    items.push({ icon: UserRound, title: "Mijozlar", path: "/clients" })
-  }
-  if (admin || role === "manager" || role === "director") {
-    items.push({ icon: IdCard, title: "Hodimlar", path: "/employees" })
-  }
-  if (
-    admin ||
-    role === "manager" ||
-    role === "texnolog" ||
-    role === "director"
-  ) {
-    items.push({ icon: Factory, title: "Stanoklar", path: "/machines" })
-    items.push({ icon: Layers, title: "Materiallar", path: "/materials" })
-  }
-  if (admin || role === "manager" || role === "director") {
-    items.push({ icon: BarChart3, title: "Hisobotlar", path: "/reports" })
-  }
-  items.push({ icon: Tv, title: "LIVE Tablo", path: "/tablo" })
+// _layout.tsx mobil sarlavhalari ham SHU ro'yxatdan olinadi.
+export const NAV_ITEMS: (Item & {
+  show: (user: UserRead | null | undefined) => boolean
+})[] = [
+  { icon: Home, title: "Boshqaruv paneli", path: "/", show: () => true },
+  {
+    icon: ClipboardList,
+    title: "Buyurtmalar",
+    path: "/orders",
+    show: isProductionStaff,
+  },
+  { icon: UserRound, title: "Mijozlar", path: "/clients", show: isManagement },
+  { icon: IdCard, title: "Hodimlar", path: "/employees", show: isManagement },
+  {
+    icon: Factory,
+    title: "Stanoklar",
+    path: "/machines",
+    show: isProductionStaff,
+  },
+  {
+    icon: Layers,
+    title: "Materiallar",
+    path: "/materials",
+    show: isProductionStaff,
+  },
+  {
+    icon: BarChart3,
+    title: "Hisobotlar",
+    path: "/reports",
+    show: isManagement,
+  },
+  { icon: Tv, title: "LIVE Tablo", path: "/tablo", show: () => true },
   // Foydalanuvchilar ro'yxati barcha telefon raqamlarni ochadi — backend uni
   // faqat superuser'ga beradi, shuning uchun menyu ham shu shartda
-  if (isSuperuser(user)) {
-    items.push({ icon: Users, title: "Foydalanuvchilar", path: "/admin" })
-  }
-  if (admin) {
-    items.push({ icon: Printer, title: "Printer agentlar", path: "/printers" })
-    items.push({ icon: ScrollText, title: "Loglar", path: "/logs" })
-  }
-  return items
-}
-
-// Terminal holatlar: yakunlangan ish sanoqqa kirmaydi
-const TERMINAL_STATUSES = ["delivered", "cancelled"]
+  { icon: Users, title: "Foydalanuvchilar", path: "/admin", show: isSuperuser },
+  {
+    icon: Printer,
+    title: "Printer agentlar",
+    path: "/printers",
+    show: isAdmin,
+  },
+  { icon: ScrollText, title: "Loglar", path: "/logs", show: isAdmin },
+]
 
 export function AppSidebar() {
   const { currentUser } = useCurrentUser()
-  const items = navItems(currentUser)
+  const items = NAV_ITEMS.filter((i) => i.show(currentUser))
 
   // Reyestr sahifasi ham AYNAN shu kalitni ishlatadi — TanStack dedupe qiladi,
   // ya'ni sidebar qo'shimcha so'rov qo'shmaydi.
@@ -89,7 +92,9 @@ export function AppSidebar() {
     enabled: canSeeOrders,
   })
   const activeOrders = Object.entries(counts ?? {})
-    .filter(([status]) => !TERMINAL_STATUSES.includes(status))
+    .filter(
+      ([status]) => !(TERMINAL_STATUSES as readonly string[]).includes(status),
+    )
     .reduce((sum, [, n]) => sum + n, 0)
 
   const withBadges = items.map((i) =>
@@ -125,5 +130,3 @@ export function AppSidebar() {
     </Sidebar>
   )
 }
-
-export default AppSidebar

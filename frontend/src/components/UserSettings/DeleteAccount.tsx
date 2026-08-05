@@ -1,27 +1,26 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
+import { toast } from "sonner"
 
 import { UsersService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { Button } from "@/components/ui/button"
-import useAuth from "@/hooks/useAuth"
-import useCustomToast from "@/hooks/useCustomToast"
+import { useAuth } from "@/hooks/useAuth"
 import { handleError } from "@/utils"
 
-const DeleteAccount = () => {
+export const DeleteAccount = () => {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
   const { logout } = useAuth()
 
   const mutation = useMutation({
     mutationFn: () => UsersService.deleteUserMe(),
     onSuccess: () => {
-      showSuccessToast("Hisobingiz muvaffaqiyatli o'chirildi")
+      toast.success("Hisobingiz muvaffaqiyatli o'chirildi")
       setOpen(false)
       logout()
     },
-    onError: handleError(showErrorToast),
+    onError: handleError,
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["currentUser"] })
     },
@@ -62,5 +61,3 @@ const DeleteAccount = () => {
     </div>
   )
 }
-
-export default DeleteAccount

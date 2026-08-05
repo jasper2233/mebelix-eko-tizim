@@ -7,8 +7,10 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import { MachinesService } from "@/client"
+import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { PostBadge } from "@/components/Common/PostBadge"
+import { QueryError } from "@/components/Common/QueryError"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -45,22 +47,32 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import useCurrentUser from "@/hooks/useCurrentUser"
-import useCustomToast from "@/hooks/useCustomToast"
-import { MACHINE_STATUS_LABELS } from "@/lib/mes"
-import { getMachinesQueryOptions, getPostsQueryOptions } from "@/queries/mes"
-import { handleError } from "@/utils"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
+import { requireAccess } from "@/lib/guards"
+import { isAdmin, isProductionStaff, MACHINE_STATUS_LABELS } from "@/lib/mes"
+import {
+  crudCallbacks,
+  getMachinesQueryOptions,
+  getPostsQueryOptions,
+} from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/machines")({
   component: MachinesPage,
+  // Sidebar ko'rinishi bilan bir xil rollar to'plami (lib/mes)
+  beforeLoad: requireAccess(isProductionStaff),
   head: () => ({ meta: [{ title: "Stanoklar | MebeliX" }] }),
 })
 
 function MachinesPage() {
-  const { data: machines, isLoading } = useQuery(getMachinesQueryOptions())
+  const {
+    data: machines,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery(getMachinesQueryOptions())
   const { data: posts } = useQuery(getPostsQueryOptions())
   const { currentUser } = useCurrentUser()
-  const isAdmin = currentUser?.is_superuser || currentUser?.role === "admin"
+  const admin = isAdmin(currentUser)
   const postById = new Map((posts ?? []).map((p) => [p.id, p]))
 
   return (
@@ -68,10 +80,12 @@ function MachinesPage() {
       <PageHeader
         title="Stanoklar"
         description="Postlar zanjiri bo'yicha jihozlar"
-        actions={isAdmin ? <AddMachine /> : undefined}
+        actions={admin ? <AddMachine /> : undefined}
       />
       {isLoading ? (
         <Skeleton className="h-64 w-full" />
+      ) : isError ? (
+        <QueryError onRetry={() => refetch()} />
       ) : (
         <div className="overflow-x-auto">
           <Table>
@@ -105,14 +119,7 @@ function MachinesPage() {
                   )
                 })
               ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={3}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    Stanoklar yo'q.
-                  </TableCell>
-                </TableRow>
+                <EmptyRow colSpan={3}>Stanoklar yo'q.</EmptyRow>
               )}
             </TableBody>
           </Table>
@@ -131,7 +138,7 @@ function AddMachine() {
   const [open, setOpen] = useState(false)
   const { data: posts } = useQuery(getPostsQueryOptions())
   const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
+  const cb = crudCallbacks(queryClient, ["machines"], "Stanok qo'shildi")
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -146,13 +153,12 @@ function AddMachine() {
           post_id: Number(data.post_id),
         },
       }),
+    ...cb,
     onSuccess: () => {
-      showSuccessToast("Stanok qo'shildi")
+      cb.onSuccess()
       form.reset()
       setOpen(false)
     },
-    onError: handleError(showErrorToast),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["machines"] }),
   })
 
   return (

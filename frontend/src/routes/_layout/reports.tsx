@@ -6,7 +6,9 @@ import { Download } from "lucide-react"
 import { useState } from "react"
 
 import { OpenAPI, ReportsService } from "@/client"
+import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
+import { QueryError } from "@/components/Common/QueryError"
 import { StatusBadge } from "@/components/Common/StatusBadge"
 import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
@@ -20,10 +22,13 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { formatDate, formatDateTime } from "@/lib/mes"
+import { requireAccess } from "@/lib/guards"
+import { formatDate, formatDateTime, isManagement } from "@/lib/mes"
 
 export const Route = createFileRoute("/_layout/reports")({
   component: ReportsPage,
+  // Sidebar ko'rinishi bilan bir xil rollar to'plami (lib/mes)
+  beforeLoad: requireAccess(isManagement),
   head: () => ({ meta: [{ title: "Hisobotlar | MebeliX" }] }),
 })
 
@@ -95,11 +100,12 @@ function ReportsPage() {
 type RangeParams = { dateFrom?: string; dateTo?: string }
 
 function ProductivityTable({ params }: { params: RangeParams }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["reports", "productivity", params],
     queryFn: () => ReportsService.reportProductivity(params),
   })
   if (isLoading) return <Skeleton className="h-64 w-full" />
+  if (isError) return <QueryError onRetry={() => refetch()} />
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -141,14 +147,7 @@ function ProductivityTable({ params }: { params: RangeParams }) {
               </TableRow>
             ))
           ) : (
-            <TableRow>
-              <TableCell
-                colSpan={7}
-                className="h-24 text-center text-muted-foreground"
-              >
-                Tanlangan davrda scanlar yo'q.
-              </TableCell>
-            </TableRow>
+            <EmptyRow colSpan={7}>Tanlangan davrda scanlar yo'q.</EmptyRow>
           )}
         </TableBody>
       </Table>
@@ -157,11 +156,12 @@ function ProductivityTable({ params }: { params: RangeParams }) {
 }
 
 function OrdersTable({ params }: { params: RangeParams }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["reports", "orders", params],
     queryFn: () => ReportsService.reportOrders(params),
   })
   if (isLoading) return <Skeleton className="h-64 w-full" />
+  if (isError) return <QueryError onRetry={() => refetch()} />
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -205,14 +205,7 @@ function OrdersTable({ params }: { params: RangeParams }) {
               </TableRow>
             ))
           ) : (
-            <TableRow>
-              <TableCell
-                colSpan={7}
-                className="h-24 text-center text-muted-foreground"
-              >
-                Tanlangan davrda buyurtmalar yo'q.
-              </TableCell>
-            </TableRow>
+            <EmptyRow colSpan={7}>Tanlangan davrda buyurtmalar yo'q.</EmptyRow>
           )}
         </TableBody>
       </Table>
@@ -221,11 +214,12 @@ function OrdersTable({ params }: { params: RangeParams }) {
 }
 
 function MaterialsTable({ params }: { params: RangeParams }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["reports", "materials", params],
     queryFn: () => ReportsService.reportMaterials(params),
   })
   if (isLoading) return <Skeleton className="h-64 w-full" />
+  if (isError) return <QueryError onRetry={() => refetch()} />
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -252,15 +246,10 @@ function MaterialsTable({ params }: { params: RangeParams }) {
               </TableRow>
             ))
           ) : (
-            <TableRow>
-              <TableCell
-                colSpan={5}
-                className="h-24 text-center text-muted-foreground"
-              >
-                Tanlangan davrda material sarfi yo'q (fayl yuklangan buyurtmalar
-                hisobga olinadi).
-              </TableCell>
-            </TableRow>
+            <EmptyRow colSpan={5}>
+              Tanlangan davrda material sarfi yo'q (fayl yuklangan buyurtmalar
+              hisobga olinadi).
+            </EmptyRow>
           )}
         </TableBody>
       </Table>

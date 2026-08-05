@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { Plus } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
+import { toast } from "sonner"
 
 import { OrdersService } from "@/client"
 import { ClientCombobox } from "@/components/Clients/ClientCombobox"
@@ -33,14 +34,12 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
-import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
 export function AddOrder() {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -58,7 +57,7 @@ export function AddOrder() {
     mutationFn: (data: FormValues) =>
       OrdersService.createOrder({ requestBody: toRequestBody(data) }),
     onSuccess: (order) => {
-      showSuccessToast(`Buyurtma yaratildi: ${order.number}`)
+      toast.success(`Buyurtma yaratildi: ${order.number}`)
       form.reset()
       setOpen(false)
       navigate({
@@ -66,7 +65,7 @@ export function AddOrder() {
         params: { orderId: String(order.id) },
       })
     },
-    onError: handleError(showErrorToast),
+    onError: handleError,
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["orders"] }),
   })
 

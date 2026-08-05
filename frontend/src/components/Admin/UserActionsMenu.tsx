@@ -8,9 +8,9 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import useCurrentUser from "@/hooks/useCurrentUser"
-import DeleteUser from "./DeleteUser"
-import EditUser from "./EditUser"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
+import { DeleteUser } from "./DeleteUser"
+import { EditUser } from "./EditUser"
 
 interface UserActionsMenuProps {
   user: UserRead

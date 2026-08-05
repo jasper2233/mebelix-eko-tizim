@@ -1,4 +1,5 @@
 import { AxiosError } from "axios"
+import { toast } from "sonner"
 import type { ApiError } from "./client"
 
 export function extractErrorMessage(err: ApiError): string {
@@ -54,14 +55,10 @@ export function detailMessage(err: unknown): string {
   return message ? `${code}: ${message}` : code
 }
 
-type ToastFn = (message: string) => void
-
-/** Usage: `onError: handleError(showErrorToast)`. */
-export const handleError =
-  (showToast: ToastFn) =>
-  (err: ApiError): void => {
-    showToast(extractErrorMessage(err))
-  }
+/** Mutatsiya xatosi toast bilan ko'rsatiladi. Usage: `onError: handleError`. */
+export const handleError = (err: ApiError): void => {
+  toast.error(extractErrorMessage(err))
+}
 
 export const getInitials = (name: string): string => {
   return name

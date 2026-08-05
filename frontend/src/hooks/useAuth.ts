@@ -6,7 +6,7 @@ import {
   LoginService,
 } from "@/client"
 
-const useAuth = () => {
+export const useAuth = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -34,5 +34,3 @@ const useAuth = () => {
     logout,
   }
 }
-
-export default useAuth

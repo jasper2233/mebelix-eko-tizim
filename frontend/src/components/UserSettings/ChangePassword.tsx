@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
+import { toast } from "sonner"
 import { z } from "zod"
 
 import { type UpdatePassword, UsersService } from "@/client"
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/form"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
-import useCustomToast from "@/hooks/useCustomToast"
 import { passwordSchema } from "@/lib/validation"
 import { handleError } from "@/utils"
 
@@ -31,8 +31,7 @@ const formSchema = z
 
 type FormData = z.infer<typeof formSchema>
 
-const ChangePassword = () => {
-  const { showSuccessToast, showErrorToast } = useCustomToast()
+export const ChangePassword = () => {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onSubmit",
@@ -48,10 +47,10 @@ const ChangePassword = () => {
     mutationFn: (data: UpdatePassword) =>
       UsersService.updatePasswordMe({ requestBody: data }),
     onSuccess: () => {
-      showSuccessToast("Parol muvaffaqiyatli yangilandi")
+      toast.success("Parol muvaffaqiyatli yangilandi")
       form.reset()
     },
-    onError: handleError(showErrorToast),
+    onError: handleError,
   })
 
   const onSubmit = async (data: FormData) => {
@@ -132,5 +131,3 @@ const ChangePassword = () => {
     </div>
   )
 }
-
-export default ChangePassword

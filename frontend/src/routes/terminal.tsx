@@ -13,14 +13,9 @@ import {
   WifiOff,
 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
 
-import {
-  ApiError,
-  type ScanResult,
-  ScansService,
-  TerminalService,
-  UsersService,
-} from "@/client"
+import { type ScanResult, ScansService, TerminalService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { OperationChips } from "@/components/Common/OperationChips"
 import { SectionTitle } from "@/components/Common/SectionTitle"
@@ -35,11 +30,11 @@ import { PrisadkaView } from "@/components/Terminal/PrisadkaView"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
-import useAuth from "@/hooks/useAuth"
-import useCurrentUser from "@/hooks/useCurrentUser"
-import useCustomToast from "@/hooks/useCustomToast"
+import { useAuth } from "@/hooks/useAuth"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useMesWs } from "@/hooks/useMesWs"
 import { useScanFlash } from "@/hooks/useScanFlash"
+import { requireAuth } from "@/lib/guards"
 import {
   deadlineTone,
   formatDate,
@@ -61,20 +56,14 @@ export const Route = createFileRoute("/terminal")({
   component: TerminalPage,
   head: () => ({ meta: [{ title: "Terminal | MebeliX" }] }),
   beforeLoad: async () => {
-    try {
-      const me = await UsersService.readUserMe()
-      if (
-        me.role !== "terminal" &&
-        me.role !== "admin" &&
-        !me.is_superuser &&
-        !OPERATOR_ROLES.includes(me.role as never)
-      ) {
-        throw redirect({ to: "/" })
-      }
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401)
-        throw redirect({ to: "/login" })
-      throw err
+    const me = await requireAuth()
+    if (
+      me.role !== "terminal" &&
+      me.role !== "admin" &&
+      !me.is_superuser &&
+      !OPERATOR_ROLES.includes(me.role as never)
+    ) {
+      throw redirect({ to: "/" })
     }
   },
 })
@@ -94,7 +83,6 @@ type LastScan =
 
 function TerminalPage() {
   const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
   const {
     data: ctx,
     isLoading: ctxLoading,
@@ -274,14 +262,14 @@ function TerminalPage() {
       }),
     onSuccess: (s) => {
       playSuccess()
-      showSuccessToast(`Sessiya ochildi: ${s.employee_name}`)
+      toast.success(`Sessiya ochildi: ${s.employee_name}`)
       // Faqat kontekst: sessiya ochilishi vazifalar ro'yxatini ham, kesish
       // xaritasini ham o'zgartirmaydi (["terminal"] prefiksi cutmap'ni ham olardi)
       queryClient.invalidateQueries({ queryKey: ["terminal", "context"] })
     },
     onError: (err) => {
       playError()
-      showErrorToast(detailMessage(err))
+      toast.error(detailMessage(err))
     },
   })
 
@@ -308,7 +296,7 @@ function TerminalPage() {
         note: `Qoldiq: ${r.qoldiq}`,
       })
       queryClient.invalidateQueries({ queryKey: ["terminal"] })
-      if (r.order_completed) showSuccessToast("Buyurtma to'liq tayyor bo'ldi!")
+      if (r.order_completed) toast.success("Buyurtma to'liq tayyor bo'ldi!")
       // SCX fayllar har scanda qaytadan (TZ 12.5): saqlangan papkadagi PROYEKT
       // nomli subpapkaga ("Hammasini yuklab olish" bilan bir joy).
       // ROVER'ga SCX kerak emas — avto-yuklash ham o'chiq
@@ -321,7 +309,7 @@ function TerminalPage() {
       if (code === "E001" && message.includes("yakunlangan")) playWarning()
       else playError()
       // Shovqinli sexda ovoz yetarli emas — xato toast bilan ham ko'rsatiladi
-      showErrorToast(detailMessage(err))
+      toast.error(detailMessage(err))
       setLastScan({ kind: "error", code, message, at: Date.now() })
       pushHistory({ id: Date.now(), code: message, ok: false, note: code })
     },
@@ -331,13 +319,13 @@ function TerminalPage() {
     mutationFn: (scanId: number) => ScansService.cancelScan({ scanId }),
     onSuccess: () => {
       playWarning()
-      showSuccessToast("Oxirgi scan bekor qilindi")
+      toast.success("Oxirgi scan bekor qilindi")
       setUndoOpen(false)
       setLastScan(null)
       queryClient.invalidateQueries({ queryKey: ["terminal"] })
     },
     onError: (err) => {
-      showErrorToast(detailMessage(err))
+      toast.error(detailMessage(err))
       setUndoOpen(false)
     },
   })
@@ -372,7 +360,7 @@ function TerminalPage() {
       const kLast = cooldownRef.current.get(value)
       if (kLast && kNow - kLast < 5000) {
         playWarning()
-        showErrorToast(
+        toast.error(
           "Shu detal endigina skan qilindi — 5 soniyadan keyin qayta urining.",
         )
         return
@@ -384,15 +372,14 @@ function TerminalPage() {
           // Qaysi proyektga tegishli ekanini aniqlab, aniq xato ko'rsatamiz
           TerminalService.resolveTerminalQr({ qrText: value })
             .then((r) => {
-              const res = r as { order_id: number; order_number: string }
-              showErrorToast(
-                res.order_id === mapOrderId
+              toast.error(
+                r.order_id === mapOrderId
                   ? "Bu detal kromka bosqichiga kirmaydi."
-                  : `Bu detal bu proyektga tegishli emas — ${res.order_number} proyektining detali.`,
+                  : `Bu detal bu proyektga tegishli emas — ${r.order_number} proyektining detali.`,
               )
             })
             .catch(() =>
-              showErrorToast(
+              toast.error(
                 "Bu detal hech bir aktiv proyektda topilmadi. Yorliqni tekshiring.",
               ),
             )
@@ -400,7 +387,7 @@ function TerminalPage() {
         }
         if (err) {
           playError()
-          showErrorToast(err)
+          toast.error(err)
           return
         }
         cooldownRef.current.set(value, kNow)
@@ -411,13 +398,13 @@ function TerminalPage() {
       // va skan darhol yoziladi
       TerminalService.resolveTerminalQr({ qrText: value })
         .then((r) => {
-          setMapOrderId((r as { order_id: number }).order_id)
+          setMapOrderId(r.order_id)
           cooldownRef.current.set(value, Date.now())
           scanMutation.mutate(value)
         })
         .catch(() => {
           playError()
-          showErrorToast("Bu QR uchun aktiv proyekt topilmadi.")
+          toast.error("Bu QR uchun aktiv proyekt topilmadi.")
         })
       return
     }
@@ -844,9 +831,6 @@ function TerminalPage() {
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Tarix
                   </span>
-                  {/* Sensorli ekran: butun yorliq bosiladigan maydon va
-                      balandligi 44px — Switch'ning o'zi 18x32px edi, qo'lqopli
-                      barmoq bilan tegib bo'lmasdi. */}
                   <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
                     Faqat xatolar
                     {/* Sensorli ekran: ko'rinish o'zgarmaydi, lekin bosiladigan
@@ -914,7 +898,7 @@ function TerminalPage() {
           endSession.mutate(undefined, {
             onSuccess: () => {
               setEndOpen(false)
-              showSuccessToast("Smena yakunlandi")
+              toast.success("Smena yakunlandi")
             },
           })
         }
@@ -949,25 +933,15 @@ function OrderPicker({
   title?: string
   showCutmapBadge?: boolean
 }) {
-  const { data, isLoading, isError } = useQuery({
+  const {
+    data: orders,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["terminal", "orders"],
     queryFn: () => TerminalService.readTerminalOrders(),
     refetchInterval: 30_000,
   })
-  const orders = data as
-    | Array<{
-        id: number
-        number: string
-        project_name?: string
-        deadline?: string
-        priority?: string
-        done?: number
-        total?: number
-        materials?: string[]
-        sheets_total?: number
-        has_cutmap?: boolean
-      }>
-    | undefined
   return (
     <div className="h-full overflow-y-auto rounded-xl border bg-white p-4">
       <SectionTitle>{title}</SectionTitle>

@@ -11,6 +11,7 @@ import {
   XCircle,
 } from "lucide-react"
 import { useRef, useState } from "react"
+import { toast } from "sonner"
 
 import { OpenAPI, OrdersService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
@@ -41,16 +42,18 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import useCurrentUser from "@/hooks/useCurrentUser"
-import useCustomToast from "@/hooks/useCustomToast"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
 import {
   formatDate,
   formatDateTime,
   formatMoney,
+  isAdmin,
   PRIORITY_LABELS,
+  remainingPayment,
+  TERMINAL_STATUSES,
 } from "@/lib/mes"
 import { cn } from "@/lib/utils"
-import { getOrderQueryOptions } from "@/queries/mes"
+import { crudCallbacks, getOrderQueryOptions } from "@/queries/mes"
 import { extractErrorMessage, handleError } from "@/utils"
 
 export const Route = createFileRoute("/_layout/orders/$orderId")({
@@ -69,7 +72,6 @@ function OrderDetailPage() {
     refetch,
   } = useQuery(getOrderQueryOptions(id))
   const { currentUser } = useCurrentUser()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
   const fileInput = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
@@ -78,14 +80,15 @@ function OrderDetailPage() {
   const [cancelReason, setCancelReason] = useState("")
 
   const role = currentUser?.role
-  const isAdmin = currentUser?.is_superuser || role === "admin"
-  const isManager = isAdmin || role === "manager"
-  const isTexnolog = isAdmin || role === "texnolog"
+  const admin = isAdmin(currentUser)
+  const isManager = admin || role === "manager"
+  const isTexnolog = admin || role === "texnolog"
 
   // ["orders"] prefiksi ["orders", id] va ["orders", id, "matrix"] ni ham
   // qamraydi — qolgan ikki chaqiruv ortiqcha edi.
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["orders"] })
+  const cb = (msg: string) => crudCallbacks(queryClient, ["orders"], msg)
 
   const upload = async (file: File) => {
     setUploading(true)
@@ -96,10 +99,10 @@ function OrderDetailPage() {
       })
       // Server javobida detal soni va tahlil ogohlantirishlari bor (kodsiz detal,
       // takroriy kod, xaritada joyi yo'q detal) — ilgari ular ko'rsatilmasdi.
-      showSuccessToast(res.message)
+      toast.success(res.message)
       invalidate()
     } catch (err) {
-      showErrorToast(extractErrorMessage(err as never))
+      toast.error(extractErrorMessage(err as never))
     } finally {
       setUploading(false)
       if (fileInput.current) fileInput.current.value = ""
@@ -108,45 +111,40 @@ function OrderDetailPage() {
 
   const confirm = useMutation({
     mutationFn: () => OrdersService.confirmOrder({ orderId: id }),
-    onSuccess: () =>
-      showSuccessToast("Buyurtma tasdiqlandi — texnologga uzatildi"),
-    onError: handleError(showErrorToast),
-    onSettled: invalidate,
+    ...cb("Buyurtma tasdiqlandi — texnologga uzatildi"),
   })
   const start = useMutation({
     mutationFn: () => OrdersService.startOrderProduction({ orderId: id }),
-    onSuccess: () => showSuccessToast("Ishlab chiqarishga uzatildi"),
-    onError: handleError(showErrorToast),
-    onSettled: invalidate,
+    ...cb("Ishlab chiqarishga uzatildi"),
   })
+  const deliverCb = cb("Buyurtma topshirildi")
   const deliver = useMutation({
     mutationFn: () => OrdersService.deliverOrder({ orderId: id }),
+    ...deliverCb,
     onSuccess: () => {
-      showSuccessToast("Buyurtma topshirildi")
+      deliverCb.onSuccess()
       setDeliverOpen(false)
     },
-    onError: handleError(showErrorToast),
-    onSettled: invalidate,
   })
+  const cancelCb = cb("Buyurtma bekor qilindi")
   const cancel = useMutation({
     mutationFn: () =>
       OrdersService.cancelOrder({
         orderId: id,
         requestBody: { reason: cancelReason },
       }),
+    ...cancelCb,
     onSuccess: () => {
-      showSuccessToast("Buyurtma bekor qilindi")
+      cancelCb.onSuccess()
       setCancelOpen(false)
     },
-    onError: handleError(showErrorToast),
-    onSettled: invalidate,
   })
   // Eski buyurtmalarni yangi SCX nomlashga (nusxa QR = fayl nomi, Nanxing skan
   // mosligi) o'tkazish — .project saqlangan bo'lsa bir bosishda
   const regenScx = useMutation({
     mutationFn: () => OrdersService.regenerateOrderScx({ orderId: id }),
-    onSuccess: (r) => showSuccessToast(r.message),
-    onError: handleError(showErrorToast),
+    onSuccess: (r) => toast.success(r.message),
+    onError: handleError,
     onSettled: invalidate,
   })
 
@@ -190,9 +188,9 @@ function OrderDetailPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {isManager &&
-              !["delivered", "cancelled"].includes(order.status) && (
-                <EditOrder order={order} onSaved={invalidate} />
-              )}
+              !(TERMINAL_STATUSES as readonly string[]).includes(
+                order.status,
+              ) && <EditOrder order={order} onSaved={invalidate} />}
             {isManager && order.status === "draft" && (
               <LoadingButton
                 loading={confirm.isPending}
@@ -249,7 +247,9 @@ function OrderDetailPage() {
               </Button>
             )}
             {isManager &&
-              !["delivered", "cancelled"].includes(order.status) && (
+              !(TERMINAL_STATUSES as readonly string[]).includes(
+                order.status,
+              ) && (
                 <Button
                   variant="destructive"
                   onClick={() => setCancelOpen(true)}
@@ -276,7 +276,7 @@ function OrderDetailPage() {
             const f = e.dataTransfer.files?.[0]
             if (!f) return
             if (!f.name.endsWith(".project")) {
-              showErrorToast("Faqat .project fayl qabul qilinadi")
+              toast.error("Faqat .project fayl qabul qilinadi")
               return
             }
             upload(f)
@@ -316,11 +316,7 @@ function OrderDetailPage() {
         <Meta
           label="Qoldiq to'lov"
           value={
-            order.amount != null
-              ? formatMoney(
-                  Number(order.amount) - Number(order.advance_payment ?? 0),
-                )
-              : "—"
+            order.amount != null ? formatMoney(remainingPayment(order)) : "—"
           }
         />
         <Meta

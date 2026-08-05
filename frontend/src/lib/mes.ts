@@ -20,6 +20,9 @@ export const ORDER_STATUS_COLORS: Record<string, string> = {
   cancelled: "var(--status-cancelled)",
 }
 
+// Terminal (yakuniy) holatlar: yakunlangan ish sanoqqa kirmaydi
+export const TERMINAL_STATUSES = ["delivered", "cancelled"] as const
+
 export const PRIORITY_LABELS: Record<string, string> = {
   low: "Past",
   medium: "O'rta",
@@ -58,6 +61,22 @@ export const POST_COLORS: Record<string, string> = {
   STOLYARKA: "var(--post-stolyarka)",
   BOYOQ: "var(--post-boyoq)",
 }
+
+/** Rangning oq bilan `pct`% tinti — chip/katak fonlari uchun. */
+export const mixTint = (color: string, pct: number) =>
+  `color-mix(in srgb, ${color} ${pct}%, white)`
+
+/**
+ * Chip rang formulasi (WCAG AA): matn rangning to'qroq variantida, fon oq tint.
+ * Sof rang o'z tinti ustida atigi 4.25-4.35:1 berardi — matn ham, fon ham bir
+ * tondan olingani uchun. `78%, black` bilan nisbat 6.18-7.01:1 ga chiqadi va
+ * chipning yengil ko'rinishi saqlanadi. Ilgari PostBadge/StatusBadge/OrderMatrix
+ * shu satrni alohida-alohida takrorlardi; fon foizini komponent o'zi tanlaydi.
+ */
+export const chipColors = (color: string, bgPct: number) => ({
+  color: `color-mix(in srgb, ${color} 78%, black)`,
+  backgroundColor: mixTint(color, bgPct),
+})
 
 // Sexning "Jarayon uchun kodlar" jadvali — backend `PROCESS_POSTS`
 // (services/giblab/models.py) bilan bir xil bo'lishi shart. Bu yerda faqat
@@ -141,6 +160,16 @@ export const isSuperuser = (u?: RoleUser | null) => Boolean(u?.is_superuser)
 /** Tizim sozlamalari: printer agentlar, loglar/audit izi (backend AdminUser) */
 export const isAdmin = (u?: RoleUser | null) =>
   Boolean(u?.is_superuser || u?.role === "admin")
+/** Boshqaruv sahifalari (mijozlar, hodimlar, hisobotlar): admin + manager + direktor */
+export const isManagement = (u?: RoleUser | null) =>
+  isAdmin(u) || u?.role === "manager" || u?.role === "director"
+/** Ishlab chiqarish sahifalari (buyurtmalar, stanoklar, materiallar): boshqaruv + texnolog */
+export const isProductionStaff = (u?: RoleUser | null) =>
+  isManagement(u) || u?.role === "texnolog"
+
+// Stanok bog'lami MAJBURIY rollar — qurilma akkauntlari (Admin dialoglarida
+// rol tanlovi, machine_id validatsiyasi va bog'lamni uzish shu ro'yxatdan)
+export const MACHINE_BOUND_ROLES = ["terminal", "tablo"] as const
 
 // Operator rollar — o'z posti terminalini ko'radi (stanok/beyjik shart emas)
 export const OPERATOR_ROLES = [
@@ -162,6 +191,13 @@ export const MACHINE_STATUS_LABELS: Record<string, string> = {
   active: "AKTIV",
   inactive: "NOAKTIV",
   repair: "TA'MIRDA",
+}
+
+// Kalitlar — backend `CapacityUnit` enum'i (generatsiya qilingan tip)
+export const CAPACITY_UNIT_LABELS: Record<string, string> = {
+  m2_per_hour: "m²/soat",
+  meter_per_hour: "m/soat",
+  units_per_hour: "dona/soat",
 }
 
 export const MATERIAL_TYPE_LABELS: Record<string, string> = {
@@ -215,6 +251,13 @@ export function formatMoney(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === "") return "—"
   return `${moneyFormat.format(Number(value))} so'm`
 }
+
+/** Qoldiq to'lov = umumiy narx − boshlang'ich to'lov. `amount` yo'qligini
+ * ("—" ko'rsatishni) chaqiruvchi o'zi tekshiradi. */
+export const remainingPayment = (o: {
+  amount?: string | number | null
+  advance_payment?: string | number | null
+}) => Number(o.amount) - Number(o.advance_payment ?? 0)
 
 export function formatSize(
   l?: number | null,

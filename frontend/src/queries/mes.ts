@@ -1,6 +1,8 @@
-import { queryOptions } from "@tanstack/react-query"
+import { type QueryClient, queryOptions } from "@tanstack/react-query"
+import { toast } from "sonner"
 
 import {
+  BridgeAgentsService,
   ClientsService,
   EmployeesService,
   MachinesService,
@@ -10,9 +12,10 @@ import {
   TabloService,
   TerminalService,
 } from "@/client"
+import { handleError } from "@/utils"
 
 // Small reference sets are fetched whole; registries pull up to the backend max page.
-const PAGE = 100
+export const PAGE_SIZE = 100 // backend MAX_PAGE_SIZE
 
 export const getPostsQueryOptions = () =>
   queryOptions({
@@ -32,7 +35,10 @@ export const getClientsQueryOptions = (search?: string) =>
   queryOptions({
     queryKey: ["clients", search ?? ""],
     queryFn: () =>
-      ClientsService.readClients({ search: search || undefined, limit: PAGE }),
+      ClientsService.readClients({
+        search: search || undefined,
+        limit: PAGE_SIZE,
+      }),
   })
 
 export const getEmployeesQueryOptions = (search?: string) =>
@@ -41,7 +47,7 @@ export const getEmployeesQueryOptions = (search?: string) =>
     queryFn: () =>
       EmployeesService.readEmployees({
         search: search || undefined,
-        limit: PAGE,
+        limit: PAGE_SIZE,
       }),
   })
 
@@ -55,7 +61,7 @@ export const getMaterialsQueryOptions = (
       MaterialsService.readMaterials({
         search: search || undefined,
         type,
-        limit: PAGE,
+        limit: PAGE_SIZE,
       }),
   })
 
@@ -68,8 +74,8 @@ export const getOrdersQueryOptions = (
       OrdersService.readOrders({
         status: (opts.status as never) || undefined,
         search: opts.search || undefined,
-        skip: (opts.page ?? 0) * PAGE,
-        limit: PAGE,
+        skip: (opts.page ?? 0) * PAGE_SIZE,
+        limit: PAGE_SIZE,
       }),
   })
 
@@ -118,3 +124,31 @@ export const getOrderStatusCountsQueryOptions = () =>
     queryFn: () => OrdersService.readOrderStatusCounts(),
     refetchInterval: 30_000,
   })
+
+/** Printer agentlar — loglar sahifasi lug'at sifatida, printers sahifasi jonli
+ *  ro'yxat sifatida ishlatadi. staleTime/refetchInterval har sahifaning o'zida
+ *  (spread bilan): lug'atga 5 daqiqa kesh, jonli ro'yxatga 10s polling kerak. */
+export const getBridgeAgentsQueryOptions = () =>
+  queryOptions({
+    queryKey: ["bridge-agents"],
+    queryFn: () => BridgeAgentsService.readBridgeAgents(),
+  })
+
+/**
+ * CRUD mutatsiya callback triosi: muvaffaqiyat toast'i + xato toast'i +
+ * keshni yangilash. Har dialogda qo'lda takrorlanadigan naqsh BITTA joyda.
+ *
+ * Dialog yopish kabi qo'shimcha ish chaqiruvchida:
+ * `onSuccess: () => { cb.onSuccess(); onClose() }` tarzida o'raladi.
+ */
+export function crudCallbacks(
+  queryClient: QueryClient,
+  queryKey: unknown[],
+  successMsg: string,
+) {
+  return {
+    onSuccess: () => toast.success(successMsg),
+    onError: handleError,
+    onSettled: () => queryClient.invalidateQueries({ queryKey }),
+  }
+}

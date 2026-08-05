@@ -25,9 +25,8 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
-import useCustomToast from "@/hooks/useCustomToast"
 import { formatUzPhone, optionalFormattedPhoneSchema } from "@/lib/validation"
-import { handleError } from "@/utils"
+import { crudCallbacks } from "@/queries/mes"
 
 const formSchema = z.object({
   full_name: z.string().trim().min(2, "Kamida 2 belgi").max(150),
@@ -48,7 +47,7 @@ export function AddClient({
 }) {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
+  const cb = crudCallbacks(queryClient, ["clients"], "Mijoz qo'shildi")
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -73,14 +72,13 @@ export function AddClient({
           notes: data.notes || null,
         },
       }),
+    ...cb,
     onSuccess: (client) => {
-      showSuccessToast("Mijoz qo'shildi")
+      cb.onSuccess()
       form.reset()
       setOpen(false)
       onCreated?.(client)
     },
-    onError: handleError(showErrorToast),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["clients"] }),
   })
 
   return (

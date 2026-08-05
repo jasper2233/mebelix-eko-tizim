@@ -5,46 +5,30 @@ import {
   useRouterState,
 } from "@tanstack/react-router"
 
-import { ApiError, UsersService } from "@/client"
-import AppSidebar from "@/components/Sidebar/AppSidebar"
+import { AppSidebar, NAV_ITEMS } from "@/components/Sidebar/AppSidebar"
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { requireAuth } from "@/lib/guards"
 import { OPERATOR_ROLES } from "@/lib/mes"
 
+// Mobil sarlavhalar sidebar menyusi bilan BITTA manbadan (NAV_ITEMS) —
+// "/settings" menyuda yo'q (foydalanuvchi dropdown'ida), alohida qo'shiladi.
 const sectionTitles: Record<string, string> = {
-  "/": "Boshqaruv paneli",
-  "/orders": "Buyurtmalar",
-  "/clients": "Mijozlar",
-  "/employees": "Hodimlar",
-  "/machines": "Stanoklar",
-  "/materials": "Materiallar",
-  "/reports": "Hisobotlar",
-  "/admin": "Foydalanuvchilar",
-  "/printers": "Printer agentlar",
-  "/logs": "Loglar",
+  ...Object.fromEntries(NAV_ITEMS.map((i) => [i.path, i.title])),
   "/settings": "Sozlamalar",
 }
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
   beforeLoad: async () => {
-    try {
-      const me = await UsersService.readUserMe()
-      // Qurilma akkauntlari va operatorlar admin panelga kirmaydi — o'z ekraniga (TZ 3.4/3.5)
-      if (me.role === "terminal" || OPERATOR_ROLES.includes(me.role as never))
-        throw redirect({ to: "/terminal" })
-      if (me.role === "tablo") throw redirect({ to: "/tablo" })
-    } catch (err) {
-      // Faqat 401 login'ga yo'naltiradi — tarmoq uzilishi/5xx da sessiyani o'ldirmaymiz,
-      // xato errorComponent'da ko'rinadi.
-      if (err instanceof ApiError && err.status === 401) {
-        throw redirect({ to: "/login" })
-      }
-      throw err
-    }
+    const me = await requireAuth()
+    // Qurilma akkauntlari va operatorlar admin panelga kirmaydi — o'z ekraniga (TZ 3.4/3.5)
+    if (me.role === "terminal" || OPERATOR_ROLES.includes(me.role as never))
+      throw redirect({ to: "/terminal" })
+    if (me.role === "tablo") throw redirect({ to: "/tablo" })
   },
 })
 
@@ -72,5 +56,3 @@ function Layout() {
     </SidebarProvider>
   )
 }
-
-export default Layout

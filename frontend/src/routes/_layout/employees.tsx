@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { IdCard, Pencil, Plus, Search, Trash2 } from "lucide-react"
+import { IdCard, Pencil, Plus, Trash2 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { useState } from "react"
 import { type Control, useForm } from "react-hook-form"
@@ -14,8 +14,11 @@ import { z } from "zod"
 
 import { type EmployeeRead, EmployeesService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
+import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { PostBadge } from "@/components/Common/PostBadge"
+import { QueryError } from "@/components/Common/QueryError"
+import { SearchInput } from "@/components/Common/SearchInput"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -48,16 +51,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import useCurrentUser from "@/hooks/useCurrentUser"
-import useCustomToast from "@/hooks/useCustomToast"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useDebounced } from "@/hooks/useDebounced"
-import { EMPLOYEE_STATUS_LABELS, POST_COLORS } from "@/lib/mes"
+import { requireAccess } from "@/lib/guards"
+import {
+  EMPLOYEE_STATUS_LABELS,
+  isAdmin,
+  isManagement,
+  POST_COLORS,
+} from "@/lib/mes"
 import { PHONE_PATTERN } from "@/lib/validation"
-import { getEmployeesQueryOptions, getPostsQueryOptions } from "@/queries/mes"
-import { handleError } from "@/utils"
+import {
+  crudCallbacks,
+  getEmployeesQueryOptions,
+  getPostsQueryOptions,
+} from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/employees")({
   component: EmployeesPage,
+  // Sidebar ko'rinishi bilan bir xil rollar to'plami (lib/mes)
+  beforeLoad: requireAccess(isManagement),
   head: () => ({ meta: [{ title: "Hodimlar | MebeliX" }] }),
 })
 
@@ -169,13 +182,13 @@ function EmployeesPage() {
   const [editFor, setEditFor] = useState<EmployeeRead | null>(null)
   const [deleteFor, setDeleteFor] = useState<EmployeeRead | null>(null)
   const debounced = useDebounced(search.trim())
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     ...getEmployeesQueryOptions(debounced),
     placeholderData: keepPreviousData,
   })
   const { data: posts } = useQuery(getPostsQueryOptions())
   const { currentUser } = useCurrentUser()
-  const isAdmin = currentUser?.is_superuser || currentUser?.role === "admin"
+  const admin = isAdmin(currentUser)
   const postById = new Map((posts ?? []).map((p) => [p.id, p]))
 
   return (
@@ -183,19 +196,18 @@ function EmployeesPage() {
       <PageHeader
         title="Hodimlar"
         description="Sex ishchilari — beyjik QR orqali aniqlanadi"
-        actions={isAdmin ? <AddEmployee /> : undefined}
+        actions={admin ? <AddEmployee /> : undefined}
       />
-      <div className="mb-4 relative max-w-sm">
-        <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-        <Input
-          placeholder="F.I.Sh yoki beyjik"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-8"
-        />
-      </div>
+      <SearchInput
+        className="mb-4 max-w-sm"
+        placeholder="F.I.Sh yoki beyjik"
+        value={search}
+        onChange={setSearch}
+      />
       {isLoading ? (
         <Skeleton className="h-64 w-full" />
+      ) : isError ? (
+        <QueryError onRetry={() => refetch()} />
       ) : (
         <div className="overflow-x-auto">
           <Table>
@@ -241,7 +253,7 @@ function EmployeesPage() {
                         >
                           <IdCard /> Beyjik
                         </Button>
-                        {isAdmin && (
+                        {admin && (
                           <>
                             <Button
                               variant="ghost"
@@ -267,16 +279,11 @@ function EmployeesPage() {
                   </TableRow>
                 ))
               ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    {debounced
-                      ? `"${debounced}" bo'yicha hodim topilmadi.`
-                      : "Hali hodim yo'q — \"Hodim qo'shish\" bilan qo'shing."}
-                  </TableCell>
-                </TableRow>
+                <EmptyRow colSpan={5}>
+                  {debounced
+                    ? `"${debounced}" bo'yicha hodim topilmadi.`
+                    : "Hali hodim yo'q — \"Hodim qo'shish\" bilan qo'shing."}
+                </EmptyRow>
               )}
             </TableBody>
           </Table>
@@ -285,7 +292,7 @@ function EmployeesPage() {
       <BadgeDialog
         employee={badgeFor}
         onClose={() => setBadgeFor(null)}
-        isAdmin={Boolean(isAdmin)}
+        isAdmin={admin}
       />
       {editFor && (
         <EditEmployee employee={editFor} onClose={() => setEditFor(null)} />
@@ -303,7 +310,7 @@ function EditEmployee({
   onClose: () => void
 }) {
   const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
+  const cb = crudCallbacks(queryClient, ["employees"], "Hodim yangilandi")
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -328,12 +335,11 @@ function EditEmployee({
           status: active ? "active" : "inactive",
         },
       }),
+    ...cb,
     onSuccess: () => {
-      showSuccessToast("Hodim yangilandi")
+      cb.onSuccess()
       onClose()
     },
-    onError: handleError(showErrorToast),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["employees"] }),
   })
 
   return (
@@ -376,16 +382,15 @@ function DeleteEmployee({
   onClose: () => void
 }) {
   const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
+  const cb = crudCallbacks(queryClient, ["employees"], "Hodim o'chirildi")
   const mutation = useMutation({
     mutationFn: (id: number) =>
       EmployeesService.deleteEmployee({ employeeId: id }),
+    ...cb,
     onSuccess: () => {
-      showSuccessToast("Hodim o'chirildi")
+      cb.onSuccess()
       onClose()
     },
-    onError: handleError(showErrorToast),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["employees"] }),
   })
   return (
     <ConfirmDialog
@@ -408,7 +413,11 @@ function DeleteEmployee({
 function AddEmployee() {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
+  const cb = crudCallbacks(
+    queryClient,
+    ["employees"],
+    "Hodim qo'shildi — beyjik QR tayyor",
+  )
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -430,13 +439,12 @@ function AddEmployee() {
           assigned_post_ids: data.assigned_post_ids,
         },
       }),
+    ...cb,
     onSuccess: () => {
-      showSuccessToast("Hodim qo'shildi — beyjik QR tayyor")
+      cb.onSuccess()
       form.reset()
       setOpen(false)
     },
-    onError: handleError(showErrorToast),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["employees"] }),
   })
 
   return (
@@ -481,17 +489,20 @@ function BadgeDialog({
   isAdmin: boolean
 }) {
   const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
+  const cb = crudCallbacks(
+    queryClient,
+    ["employees"],
+    "Yangi beyjik tayyor — chop etib bering",
+  )
   const [confirmRegen, setConfirmRegen] = useState(false)
   const regen = useMutation({
     mutationFn: (id: number) =>
       EmployeesService.regenerateBadge({ employeeId: id }),
+    ...cb,
     onSuccess: () => {
       setConfirmRegen(false)
-      showSuccessToast("Yangi beyjik tayyor — chop etib bering")
+      cb.onSuccess()
     },
-    onError: handleError(showErrorToast),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["employees"] }),
   })
 
   if (!employee) return null

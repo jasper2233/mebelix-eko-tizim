@@ -6,8 +6,8 @@ import {
   useRouterState,
 } from "@tanstack/react-router"
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools"
-import ErrorComponent from "@/components/Common/ErrorComponent"
-import NotFound from "@/components/Common/NotFound"
+import { ErrorComponent } from "@/components/Common/ErrorComponent"
+import { NotFound } from "@/components/Common/NotFound"
 import { Toaster } from "@/components/ui/sonner"
 
 // Sex ekranida (terminal/tablo) toast MARKAZ-TEPADA va katta shriftda —

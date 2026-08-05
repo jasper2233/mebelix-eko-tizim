@@ -20,9 +20,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import useCurrentUser from "@/hooks/useCurrentUser"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useMesWs } from "@/hooks/useMesWs"
-import { formatDate, MACHINE_STATUS_LABELS } from "@/lib/mes"
+import {
+  CAPACITY_UNIT_LABELS,
+  formatDate,
+  MACHINE_STATUS_LABELS,
+} from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import {
   getMachinesQueryOptions,
@@ -137,13 +141,7 @@ function Dashboard() {
                     </TableCell>
                     <TableCell className="num text-right text-muted-foreground">
                       {m.capacity != null
-                        ? `${m.capacity} ${
-                            m.capacity_unit === "m2_per_hour"
-                              ? "m²/soat"
-                              : m.capacity_unit === "meter_per_hour"
-                                ? "m/soat"
-                                : "dona/soat"
-                          }`
+                        ? `${m.capacity} ${CAPACITY_UNIT_LABELS[m.capacity_unit ?? "units_per_hour"]}`
                         : "—"}
                     </TableCell>
                     {/* Navbat — sahifadagi asosiy signal, shuning uchun eng katta */}

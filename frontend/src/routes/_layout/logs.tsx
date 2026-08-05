@@ -4,11 +4,14 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { Search, X } from "lucide-react"
+import { X } from "lucide-react"
 import { useState } from "react"
 
-import { type AuditLogRead, AuditService, BridgeAgentsService } from "@/client"
+import { type AuditLogRead, AuditService } from "@/client"
+import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
+import { QueryError } from "@/components/Common/QueryError"
+import { SearchInput } from "@/components/Common/SearchInput"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
@@ -19,7 +22,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -32,7 +34,11 @@ import {
 import { useDebounced } from "@/hooks/useDebounced"
 import { requireAccess } from "@/lib/guards"
 import { formatDateTime, isAdmin } from "@/lib/mes"
-import { getMachinesQueryOptions, getPostsQueryOptions } from "@/queries/mes"
+import {
+  getBridgeAgentsQueryOptions,
+  getMachinesQueryOptions,
+  getPostsQueryOptions,
+} from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/logs")({
   component: LogsPage,
@@ -97,7 +103,7 @@ function LogsPage() {
   const [detail, setDetail] = useState<AuditLogRead | null>(null)
   const q = useDebounced(search, 400)
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["audit-logs", module ?? "", q, day, page],
     queryFn: () =>
       AuditService.readAuditLogs({
@@ -118,8 +124,7 @@ function LogsPage() {
   const { data: posts } = useQuery(getPostsQueryOptions())
   const { data: machines } = useQuery(getMachinesQueryOptions())
   const { data: agents } = useQuery({
-    queryKey: ["bridge-agents"],
-    queryFn: () => BridgeAgentsService.readBridgeAgents(),
+    ...getBridgeAgentsQueryOptions(),
     staleTime: 5 * 60_000,
   })
   const postName = (id: number) =>
@@ -157,15 +162,12 @@ function LogsPage() {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="relative w-72">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-          <Input
-            className="pl-8"
-            placeholder="Xabar bo'yicha qidirish..."
-            value={search}
-            onChange={(e) => setFilter(() => setSearch(e.target.value))}
-          />
-        </div>
+        <SearchInput
+          className="w-72"
+          placeholder="Xabar bo'yicha qidirish..."
+          value={search}
+          onChange={(v) => setFilter(() => setSearch(v))}
+        />
         <DatePicker
           value={day}
           onChange={(v) => setFilter(() => setDay(v))}
@@ -194,6 +196,8 @@ function LogsPage() {
 
       {isLoading ? (
         <Skeleton className="h-64 w-full" />
+      ) : isError ? (
+        <QueryError onRetry={() => refetch()} />
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <Table>
@@ -230,14 +234,9 @@ function LogsPage() {
                   </TableRow>
                 ))
               ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={4}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    Tanlangan filtr bo'yicha log topilmadi
-                  </TableCell>
-                </TableRow>
+                <EmptyRow colSpan={4}>
+                  Tanlangan filtr bo'yicha log topilmadi
+                </EmptyRow>
               )}
             </TableBody>
           </Table>

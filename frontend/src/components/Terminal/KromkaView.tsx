@@ -6,7 +6,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft } from "lucide-react"
-import { useEffect, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 
 import { TerminalService } from "@/client"
 import { OperationChips } from "@/components/Common/OperationChips"
@@ -15,27 +15,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useScanFlash } from "@/hooks/useScanFlash"
 import { formatSize } from "@/lib/mes"
 import { cn } from "@/lib/utils"
-
-type KInstance = {
-  instance_id: number
-  instance_no: number
-  qr_text: string
-  done: number
-  arra_passed: boolean
-}
-type KPart = {
-  part_id: number
-  code: string
-  name: string
-  length: number | null
-  width: number | null
-  thickness: number | null
-  sides: number
-  edges: Record<string, unknown>
-  total_done: number
-  total_required: number
-  instances: KInstance[]
-}
 
 // GibLab qirra kalitlari — kromkachi tiliga (yorliqdagi bilan bir xil qisqartma)
 const SIDE_LABELS: Record<string, string> = {
@@ -65,7 +44,17 @@ export function KromkaView({
     refetchInterval: 30_000,
   })
 
-  const parts = (data?.parts ?? []) as KPart[]
+  // KromkaPartRow'da edges/instances sxemada ixtiyoriy — bir joyda normallashtiramiz,
+  // quyida hamma joyda oddiy massiv/obyekt sifatida ishlatiladi
+  const parts = useMemo(
+    () =>
+      (data?.parts ?? []).map((p) => ({
+        ...p,
+        edges: p.edges ?? {},
+        instances: p.instances ?? [],
+      })),
+    [data],
+  )
 
   // Tekshiruv har renderda yangi data ko'radi, terminal esa bir marta ro'yxatga oladi
   const checkRef = useRef<(qr: string) => string | null>(() => "NOTFOUND")
@@ -110,7 +99,7 @@ export function KromkaView({
     }))
     .filter((p) => p.instances.length > 0)
     .sort((a, b) => {
-      const fin = (p: KPart) =>
+      const fin = (p: typeof a) =>
         p.instances.every((i) => i.done >= p.sides) ? 1 : 0
       return fin(a) - fin(b) || a.code.localeCompare(b.code)
     })

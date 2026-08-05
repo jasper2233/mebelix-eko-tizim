@@ -1,13 +1,12 @@
-import { useSuspenseQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { Suspense } from "react"
 
 import type { UserRead } from "@/client"
-import AddUser from "@/components/Admin/AddUser"
+import { AddUser } from "@/components/Admin/AddUser"
 import { UserActionsMenu } from "@/components/Admin/UserActionsMenu"
 import { PageHeader } from "@/components/Common/PageHeader"
-import PendingUsers from "@/components/Pending/PendingUsers"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
   TableBody,
@@ -16,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import useCurrentUser from "@/hooks/useCurrentUser"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { requireAccess } from "@/lib/guards"
 import { isSuperuser, ROLE_LABELS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
@@ -29,7 +28,7 @@ export const Route = createFileRoute("/_layout/admin")({
   head: () => ({
     meta: [
       {
-        title: "Foydalanuvchilar - MebeliX",
+        title: "Foydalanuvchilar | MebeliX",
       },
     ],
   }),
@@ -84,11 +83,13 @@ function UserRow({ user, isMe }: { user: UserRead; isMe: boolean }) {
   )
 }
 
-function UsersTableContent() {
+function UsersTable() {
   const { currentUser } = useCurrentUser()
-  const { data: users } = useSuspenseQuery(getUsersQueryOptions())
+  const { data: users, isLoading } = useQuery(getUsersQueryOptions())
 
-  return (
+  return isLoading ? (
+    <Skeleton className="h-64 w-full" />
+  ) : (
     // Sahifalash yo'q: getUsersQueryOptions barcha sahifalarni bitta ro'yxatga
     // yig'adi va zavodda foydalanuvchilar o'nlab. Boshqa registrlar ham shunday.
     <Table>
@@ -104,7 +105,7 @@ function UsersTableContent() {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {users.data.length ? (
+        {users?.data.length ? (
           users.data.map((user: UserRead) => (
             <UserRow
               key={user.id}
@@ -124,14 +125,6 @@ function UsersTableContent() {
         )}
       </TableBody>
     </Table>
-  )
-}
-
-function UsersTable() {
-  return (
-    <Suspense fallback={<PendingUsers />}>
-      <UsersTableContent />
-    </Suspense>
   )
 }
 

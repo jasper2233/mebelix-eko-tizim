@@ -1,9 +1,11 @@
-import { UsersService } from "@/client"
+import { queryOptions } from "@tanstack/react-query"
 
-const PAGE_SIZE = 100 // backend MAX_PAGE_SIZE
+import { type UserRead, UsersService } from "@/client"
+import { PAGE_SIZE } from "./mes"
 
-export function getUsersQueryOptions() {
-  return {
+export const getUsersQueryOptions = () =>
+  queryOptions({
+    queryKey: ["users"],
     // ponytail: hamma sahifalarni yig'ib olamiz — jadval client-side. Foydalanuvchilar
     // minglab bo'lsa, server-side paginatsiyaga (skip/limit + pageCount) o'tish kerak.
     queryFn: async () => {
@@ -19,13 +21,12 @@ export function getUsersQueryOptions() {
       }
       return { data, count: first.count }
     },
-    queryKey: ["users"] as const,
-  }
-}
+  })
 
-export function getCurrentUserQueryOptions() {
-  return {
-    queryFn: UsersService.readUserMe,
-    queryKey: ["currentUser"] as const,
-  }
-}
+export const getCurrentUserQueryOptions = () =>
+  queryOptions({
+    // Tip aniq `UserRead | null`: useCurrentUser 401 da null bilan ishlaydi —
+    // teglangan queryKey (queryOptions) o'sha kengroq tip bilan mos kelsin
+    queryKey: ["currentUser"],
+    queryFn: (): Promise<UserRead | null> => UsersService.readUserMe(),
+  })

@@ -1,7 +1,7 @@
 // Signature element: the 6-stage production pipeline (TZ 4.4) rendered as connected
 // stage cells.
 
-import { POST_COLORS } from "@/lib/mes"
+import { mixTint, POST_COLORS } from "@/lib/mes"
 
 type StageCell = {
   code: string
@@ -24,16 +24,14 @@ export function StagePipeline({ stages }: { stages: StageCell[] }) {
             {i > 0 && <div className="h-px w-1.5 bg-border" />}
             <div
               className="relative h-6 w-12 overflow-hidden rounded-sm"
-              style={{
-                backgroundColor: `color-mix(in srgb, ${color} 14%, white)`,
-              }}
+              style={{ backgroundColor: mixTint(color, 14) }}
               title={`${s.code}: ${s.done}/${s.total} (${pct}%)`}
             >
               <div
                 className="absolute inset-y-0 left-0 transition-all duration-500"
                 style={{
                   width: `${pct}%`,
-                  backgroundColor: `color-mix(in srgb, ${color} 38%, white)`,
+                  backgroundColor: mixTint(color, 38),
                 }}
               />
               {/* Raqam post rangida emas, --foreground da: post rangi o'z tinti

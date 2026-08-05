@@ -1,12 +1,18 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Plus } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { type UserCreate, type UserRole, UsersService } from "@/client"
+import { toast } from "sonner"
+
+import { type UserCreate, UsersService } from "@/client"
+import {
+  buildUserFormSchema,
+  isMachineBoundRole,
+  type UserFormData,
+  UserFormFields,
+} from "@/components/Admin/UserForm"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogClose,
@@ -17,63 +23,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
+import { Form } from "@/components/ui/form"
 import { LoadingButton } from "@/components/ui/loading-button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-
-import useCustomToast from "@/hooks/useCustomToast"
-import { ROLE_LABELS } from "@/lib/mes"
-import {
-  optionalNameSchema,
-  passwordSchema,
-  phoneSchema,
-} from "@/lib/validation"
-import { getMachinesQueryOptions } from "@/queries/mes"
 import { handleError } from "@/utils"
 
-const formSchema = z
-  .object({
-    phone: phoneSchema,
-    name: optionalNameSchema,
-    password: passwordSchema,
-    confirm_password: z.string().min(1, { message: "Parolni tasdiqlang" }),
-    role: z.enum(Object.keys(ROLE_LABELS) as [UserRole, ...UserRole[]]),
-    machine_id: z.string().optional(),
-    is_superuser: z.boolean(),
-    is_active: z.boolean(),
-  })
-  .refine((d) => !["terminal", "tablo"].includes(d.role) || d.machine_id, {
-    message: "Terminal/TABLO uchun stanok tanlang",
-    path: ["machine_id"],
-  })
-  .refine((data) => data.password === data.confirm_password, {
-    message: "Parollar mos emas",
-    path: ["confirm_password"],
-  })
+const formSchema = buildUserFormSchema(true)
 
-type FormData = z.infer<typeof formSchema>
-
-const AddUser = () => {
+export function AddUser() {
   const [isOpen, setIsOpen] = useState(false)
   const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
 
-  const { data: machines } = useQuery(getMachinesQueryOptions())
-  const form = useForm<FormData>({
+  const form = useForm<UserFormData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
     criteriaMode: "all",
@@ -93,26 +53,32 @@ const AddUser = () => {
     mutationFn: (data: UserCreate) =>
       UsersService.createUser({ requestBody: data }),
     onSuccess: () => {
-      showSuccessToast("Foydalanuvchi muvaffaqiyatli yaratildi")
+      toast.success("Foydalanuvchi muvaffaqiyatli yaratildi")
       form.reset()
       setIsOpen(false)
     },
-    onError: handleError(showErrorToast),
+    onError: handleError,
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] })
     },
   })
 
-  const onSubmit = (data: FormData) => {
+  const onSubmit = (data: UserFormData) => {
     mutation.mutate({
-      ...data,
+      phone: data.phone,
+      name: data.name,
+      // Sxema parolni majburiy qiladi — "??" faqat tip uchun
+      password: data.password ?? "",
+      role: data.role,
       // Stanok faqat terminal/tablo rollarga tegishli — rol keyin almashtirilsa
       // yashirin qolgan tanlov ofis rolga ham jo'nab ketmasin
       machine_id:
-        ["terminal", "tablo"].includes(data.role) && data.machine_id
+        isMachineBoundRole(data.role) && data.machine_id
           ? Number(data.machine_id)
           : null,
-    } as unknown as UserCreate)
+      is_superuser: data.is_superuser,
+      is_active: data.is_active,
+    })
   }
 
   return (
@@ -132,176 +98,7 @@ const AddUser = () => {
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            <div className="grid gap-4 py-4">
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Telefon <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="+998901234567"
-                        type="tel"
-                        {...field}
-                        required
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>To'liq ism</FormLabel>
-                    <FormControl>
-                      <Input placeholder="To'liq ism" type="text" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Parol o'rnatish{" "}
-                      <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Parol"
-                        type="password"
-                        {...field}
-                        required
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="confirm_password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Parolni tasdiqlash{" "}
-                      <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Parol"
-                        type="password"
-                        {...field}
-                        required
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Rol</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.entries(ROLE_LABELS).map(([v, l]) => (
-                          <SelectItem key={v} value={v}>
-                            {l}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {["terminal", "tablo"].includes(form.watch("role")) && (
-                <FormField
-                  control={form.control}
-                  name="machine_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Stanok <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <Select
-                        value={field.value ?? ""}
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Stanokni tanlang" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {(machines ?? []).map((m) => (
-                            <SelectItem key={m.id} value={String(m.id)}>
-                              {m.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              <FormField
-                control={form.control}
-                name="is_superuser"
-                render={({ field }) => (
-                  <FormItem className="flex items-center gap-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormLabel className="font-normal">Admin?</FormLabel>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="is_active"
-                render={({ field }) => (
-                  <FormItem className="flex items-center gap-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormLabel className="font-normal">Faol?</FormLabel>
-                  </FormItem>
-                )}
-              />
-            </div>
-
+            <UserFormFields form={form} passwordRequired />
             <DialogFooter>
               <DialogClose asChild>
                 <Button variant="outline" disabled={mutation.isPending}>
@@ -318,5 +115,3 @@ const AddUser = () => {
     </Dialog>
   )
 }
-
-export default AddUser

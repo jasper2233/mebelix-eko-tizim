@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
-import useAuth from "@/hooks/useAuth"
+import { useAuth } from "@/hooks/useAuth"
 import { extractErrorMessage } from "@/utils"
 
 // Sxema modul darajasida EMAS, funksiya ichida: `routeTree.gen.ts` marshrut
@@ -50,7 +50,7 @@ export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       {
-        title: "Kirish - MebeliX",
+        title: "Kirish | MebeliX",
       },
     ],
   }),

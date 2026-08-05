@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
+import { toast } from "sonner"
 import { z } from "zod"
 
 import { UsersService, type UserUpdate } from "@/client"
@@ -16,8 +17,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
-import useCurrentUser from "@/hooks/useCurrentUser"
-import useCustomToast from "@/hooks/useCustomToast"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { cn } from "@/lib/utils"
 import { optionalNameSchema, phoneSchema } from "@/lib/validation"
 import { handleError } from "@/utils"
@@ -29,9 +29,8 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>
 
-const UserInformation = () => {
+export const UserInformation = () => {
   const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
   const [editMode, setEditMode] = useState(false)
   const { currentUser } = useCurrentUser()
 
@@ -53,11 +52,11 @@ const UserInformation = () => {
     mutationFn: (data: UserUpdate) =>
       UsersService.updateUserMe({ requestBody: data }),
     onSuccess: () => {
-      showSuccessToast("Foydalanuvchi muvaffaqiyatli yangilandi")
+      toast.success("Foydalanuvchi muvaffaqiyatli yangilandi")
       form.reset(form.getValues())
       toggleEditMode()
     },
-    onError: handleError(showErrorToast),
+    onError: handleError,
     onSettled: () => {
       // Faqat profil keshi — kalitsiz chaqiruv BUTUN ilova querylarini qayta so'rardi
       queryClient.invalidateQueries({ queryKey: ["currentUser"] })
@@ -169,5 +168,3 @@ const UserInformation = () => {
     </div>
   )
 }
-
-export default UserInformation

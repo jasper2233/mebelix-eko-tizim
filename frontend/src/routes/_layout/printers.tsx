@@ -8,7 +8,9 @@ import { z } from "zod"
 
 import { type BridgeAgentRead, BridgeAgentsService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
+import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
+import { QueryError } from "@/components/Common/QueryError"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -46,11 +48,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import useCustomToast from "@/hooks/useCustomToast"
 import { useMesWs } from "@/hooks/useMesWs"
 import { requireAccess } from "@/lib/guards"
 import { formatDateTime, isAdmin } from "@/lib/mes"
-import { getMachinesQueryOptions } from "@/queries/mes"
+import {
+  crudCallbacks,
+  getBridgeAgentsQueryOptions,
+  getMachinesQueryOptions,
+} from "@/queries/mes"
 import { handleError } from "@/utils"
 
 export const Route = createFileRoute("/_layout/printers")({
@@ -69,9 +74,13 @@ const fmtCode = (c: string) => `${c.slice(0, 4)}-${c.slice(4)}`
 
 function PrintersPage() {
   const queryClient = useQueryClient()
-  const { data: agents, isLoading } = useQuery({
-    queryKey: ["bridge-agents"],
-    queryFn: () => BridgeAgentsService.readBridgeAgents(),
+  const {
+    data: agents,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    ...getBridgeAgentsQueryOptions(),
     // WS asosiy signal; 10s polling — zaxira (WS uzilib qolgan holat uchun)
     refetchInterval: 10_000,
   })
@@ -114,6 +123,8 @@ function PrintersPage() {
 
       {isLoading ? (
         <Skeleton className="h-64 w-full" />
+      ) : isError ? (
+        <QueryError onRetry={() => refetch()} />
       ) : (
         <div className="overflow-x-auto">
           <Table>
@@ -132,14 +143,9 @@ function PrintersPage() {
               {agents?.length ? (
                 agents.map((a) => <AgentRow key={a.id} agent={a} />)
               ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    Agentlar yo'q. "Yangi agent" bilan ulanish kodi yarating.
-                  </TableCell>
-                </TableRow>
+                <EmptyRow colSpan={7}>
+                  Agentlar yo'q. "Yangi agent" bilan ulanish kodi yarating.
+                </EmptyRow>
               )}
             </TableBody>
           </Table>
@@ -151,7 +157,6 @@ function PrintersPage() {
 
 function AgentRow({ agent }: { agent: BridgeAgentRead }) {
   const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
   const [confirm, setConfirm] = useState<"code" | "delete" | null>(null)
   // Stanok almashinuvi tasdiq bilan: noto'g'ri tanlov keyingi barcha skan-forvard
   // skanlarini BOSHQA post nomidan yozadi — jimgina o'tib ketmasin
@@ -162,60 +167,59 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
   // umumiy navbatdan chek "o'g'irlanadi", printerlida o'chirilsa chek to'xtaydi
   const [pendingPrint, setPendingPrint] = useState<boolean | null>(null)
   const { data: machines } = useQuery(getMachinesQueryOptions())
-  const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: ["bridge-agents"] })
+  const cb = (msg: string) => crudCallbacks(queryClient, ["bridge-agents"], msg)
 
+  const printCb = cb("Saqlandi")
   const togglePrint = useMutation({
     mutationFn: (v: boolean) =>
       BridgeAgentsService.updateBridgeAgent({
         agentId: agent.id,
         requestBody: { can_print: v },
       }),
+    ...printCb,
     onSuccess: () => {
-      showSuccessToast("Saqlandi")
+      printCb.onSuccess()
       setPendingPrint(null)
     },
-    onError: handleError(showErrorToast),
-    onSettled: refresh,
   })
 
+  const linkCb = cb("Stanok bog'landi")
   const linkMachine = useMutation({
     mutationFn: (machineId: number | null) =>
       BridgeAgentsService.updateBridgeAgent({
         agentId: agent.id,
         requestBody: { machine_id: machineId },
       }),
+    ...linkCb,
     onSuccess: () => {
-      showSuccessToast("Stanok bog'landi")
+      linkCb.onSuccess()
       setPendingMachine("unset")
     },
-    onError: handleError(showErrorToast),
-    onSettled: refresh,
   })
   const pendingName =
     pendingMachine !== "unset" && pendingMachine !== null
       ? (machines?.find((m) => m.id === pendingMachine)?.name ?? "?")
       : null
 
+  const regenCb = cb("Yangi ulanish kodi yaratildi")
   const regen = useMutation({
     mutationFn: () =>
       BridgeAgentsService.regenerateBridgeCode({ agentId: agent.id }),
+    ...regenCb,
     onSuccess: () => {
-      showSuccessToast("Yangi ulanish kodi yaratildi")
+      regenCb.onSuccess()
       setConfirm(null)
     },
-    onError: handleError(showErrorToast),
-    onSettled: refresh,
   })
+  const removeCb = cb("Agent bekor qilindi")
   const remove = useMutation({
     mutationFn: () =>
       BridgeAgentsService.deleteBridgeAgent({ agentId: agent.id }),
+    ...removeCb,
     onSuccess: () => {
-      showSuccessToast("Agent bekor qilindi")
+      removeCb.onSuccess()
       setConfirm(null)
     },
-    onError: handleError(showErrorToast),
-    onSettled: refresh,
   })
 
   const seen = agent.last_seen_at ? new Date(agent.last_seen_at) : null
@@ -373,7 +377,6 @@ function AddAgent() {
   const [open, setOpen] = useState(false)
   const [created, setCreated] = useState<BridgeAgentRead | null>(null)
   const queryClient = useQueryClient()
-  const { showErrorToast } = useCustomToast()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -389,7 +392,7 @@ function AddAgent() {
       setCreated(agent)
       form.reset()
     },
-    onError: handleError(showErrorToast),
+    onError: handleError,
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: ["bridge-agents"] }),
   })

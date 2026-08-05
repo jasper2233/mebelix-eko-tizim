@@ -22,14 +22,20 @@ import { QRCodeSVG } from "qrcode.react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { renderToStaticMarkup } from "react-dom/server"
+import { toast } from "sonner"
 
-import { OrdersService, TerminalService } from "@/client"
+import {
+  type CutmapInstanceState,
+  OrdersService,
+  TerminalService,
+} from "@/client"
 import {
   edgeBoreRect,
   edgeLocalXY,
   holeXY,
   SheetSvg,
 } from "@/components/Terminal/SheetSvg"
+import { usePrintLabel } from "@/components/Terminal/usePrintLabel"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -39,10 +45,11 @@ import {
 } from "@/components/ui/dialog"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
-import useCustomToast from "@/hooks/useCustomToast"
 import { isCut } from "@/lib/mes"
 import { handleError } from "@/utils"
 
+// Kesish xaritasi modeli (order.cutmap JSON) server tomonda tiplashtirilmagan
+// (CutmapState.model = {[k: string]: unknown} | null) — lokal any'lar shu sababli
 type SheetPart = any
 type Sheet = any
 type Material = any
@@ -57,29 +64,14 @@ const getCutmapQueryOptions = (orderId: number, admin: boolean) =>
     refetchInterval: 60_000,
   })
 
-// Yorliq chop etish — CutmapView va PartCard bir xil shartnomadan foydalanadi
-function usePrintLabel() {
-  const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
-  return useMutation({
-    mutationFn: (instanceId: number) =>
-      TerminalService.printInstanceLabel({ instanceId }),
-    onSuccess: (r) => showSuccessToast(r.message),
-    onError: handleError(showErrorToast),
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: ["terminal", "cutmap"] }),
-  })
-}
-
 // Noto'g'ri chiqarilgan chekni bekor qilish (long press) — katak apelsinga qaytadi
 function useCancelLabel() {
   const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
   return useMutation({
     mutationFn: (instanceId: number) =>
       TerminalService.cancelInstanceLabel({ instanceId }),
-    onSuccess: (r) => showSuccessToast(r.message),
-    onError: handleError(showErrorToast),
+    onSuccess: (r) => toast.success(r.message),
+    onError: handleError,
     onSettled: () => {
       // Terminal (arrachi long press) ham, admin xarita (texnolog tugmasi) ham yangilansin
       queryClient.invalidateQueries({ queryKey: ["terminal", "cutmap"] })
@@ -98,7 +90,7 @@ function printAllMaps(
   orderNumber: string,
   materials: Material[],
   holes: Record<string, any>,
-  instancesByCell: Map<string, any[]>,
+  instancesByCell: Map<string, CutmapInstanceState[]>,
 ) {
   const w = window.open("", "_blank", "width=1000,height=800")
   if (!w) return
@@ -185,12 +177,11 @@ export function CutmapView({
 
   // Chap qatordagi Chop etish: belgilangan detalning navbatdagi nusxasi
   // to'g'ridan-to'g'ri GoDEX navbatiga ketadi (dialog yo'q)
-  const printMutation = usePrintLabel()
+  const printMutation = usePrintLabel("cutmap")
   const cancelMutation = useCancelLabel()
-  const { showErrorToast } = useCustomToast()
 
   const instancesByCell = useMemo(() => {
-    const map = new Map<string, NonNullable<typeof data>["instances"]>()
+    const map = new Map<string, CutmapInstanceState[]>()
     for (const inst of data?.instances ?? []) {
       if (inst.pattern_no == null) continue
       const key = `${inst.pattern_no}:${inst.cell_index}`
@@ -206,7 +197,7 @@ export function CutmapView({
   // Bazadagi eski (yig'ilgan) xaritalar uchun ham ishlaydi — backend o'zgarmagan,
   // binding (pattern_no, cell_index) semantikasi buzilmaydi.
   const { expMaterials, cellInsts } = useMemo(() => {
-    const view = new Map<string, NonNullable<typeof data>["instances"]>()
+    const view = new Map<string, CutmapInstanceState[]>()
     const mats = (((data?.model as any)?.materials ?? []) as any[]).map(
       (m: any) => {
         let disp = 0
@@ -474,7 +465,7 @@ export function CutmapView({
         onClick={() =>
           nextInstance
             ? printMutation.mutate(nextInstance.instance_id)
-            : showErrorToast(
+            : toast.error(
                 "Bu detal chiqarilgan. Qaytadan chiqarish uchun katakni bosib turib chekni bekor qiling.",
               )
         }
@@ -495,7 +486,7 @@ export function CutmapView({
       {toolbarContainer ? (
         createPortal(toolbarButtons, toolbarContainer)
       ) : admin ? null : (
-        <div className="flex w-[76px] shrink-0 flex-col gap-2">
+        <div className="flex w-[68px] shrink-0 flex-col gap-2">
           {toolbarButtons}
         </div>
       )}
@@ -560,17 +551,6 @@ export function CutmapView({
                       <span className="num flex-1 text-base">
                         {s.L}×{s.W}
                       </span>
-                      {(s.mult || 1) > 1 && (
-                        <span
-                          className={`num rounded-sm px-2 py-0.5 text-sm font-bold ${
-                            done
-                              ? "bg-white/25 text-white"
-                              : "bg-primary/10 text-primary"
-                          }`}
-                        >
-                          ×{s.mult}
-                        </span>
-                      )}
                     </div>
                     {/* Mini xarita — kichik preview, bosishga xalaqit bermaydi */}
                     <div className="pointer-events-none mt-2 h-32 overflow-hidden rounded-lg border bg-slate-100 p-1">
@@ -889,7 +869,7 @@ function PartCard({
 }: {
   part: SheetPart | null
   sheetNo?: number
-  instancesByCell: Map<string, any[]>
+  instancesByCell: Map<string, CutmapInstanceState[]>
   onClose: () => void
   admin?: boolean
   holes: Record<string, any>

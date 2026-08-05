@@ -34,9 +34,8 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
-import useCustomToast from "@/hooks/useCustomToast"
 import { formatMoneyInput } from "@/lib/validation"
-import { handleError } from "@/utils"
+import { crudCallbacks } from "@/queries/mes"
 
 export function EditOrder({
   order,
@@ -47,7 +46,7 @@ export function EditOrder({
 }) {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
+  const cb = crudCallbacks(queryClient, ["orders"], "Buyurtma yangilandi")
   const isDraft = order.status === "draft"
 
   const form = useForm<FormValues>({
@@ -68,13 +67,12 @@ export function EditOrder({
         orderId: order.id,
         requestBody: toRequestBody(data),
       }),
+    ...cb,
     onSuccess: () => {
-      showSuccessToast("Buyurtma yangilandi")
+      cb.onSuccess()
       setOpen(false)
       onSaved()
     },
-    onError: handleError(showErrorToast),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["orders"] }),
   })
 
   return (

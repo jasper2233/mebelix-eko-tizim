@@ -16,7 +16,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import useAuth from "@/hooks/useAuth"
+import { useAuth } from "@/hooks/useAuth"
 import { getInitials } from "@/utils"
 
 interface UserInfoProps {

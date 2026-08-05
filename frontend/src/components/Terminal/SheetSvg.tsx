@@ -259,7 +259,7 @@ export function SheetSvg({
 
   const partNodes = (sheet.parts as SheetPart[]).map((p) => {
     const insts = instancesByCell.get(`${sheet.no}:${p.cell}`) ?? []
-    // "Kesildi" ta'rifi CutmapView.isCut da — bitta manba
+    // "Kesildi" ta'rifi @/lib/mes'dagi isCut da — bitta manba
     const doneCount = insts.filter(isCut).length
     const allDone = !p.waste && insts.length > 0 && doneCount === insts.length
     const selected = selectedCell === p.cell

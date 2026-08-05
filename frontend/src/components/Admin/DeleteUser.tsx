@@ -1,11 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Trash2 } from "lucide-react"
 import { useState } from "react"
+import { toast } from "sonner"
 
 import { UsersService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
-import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
 interface DeleteUserProps {
@@ -13,20 +13,19 @@ interface DeleteUserProps {
   onSuccess: () => void
 }
 
-const DeleteUser = ({ id, onSuccess }: DeleteUserProps) => {
+export function DeleteUser({ id, onSuccess }: DeleteUserProps) {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
 
   const mutation = useMutation({
     mutationFn: () =>
       UsersService.deleteUser({ userId: Number.parseInt(id, 10) }),
     onSuccess: () => {
-      showSuccessToast("Foydalanuvchi muvaffaqiyatli o'chirildi")
+      toast.success("Foydalanuvchi muvaffaqiyatli o'chirildi")
       setOpen(false)
       onSuccess()
     },
-    onError: handleError(showErrorToast),
+    onError: handleError,
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] })
     },
@@ -60,5 +59,3 @@ const DeleteUser = ({ id, onSuccess }: DeleteUserProps) => {
     </>
   )
 }
-
-export default DeleteUser

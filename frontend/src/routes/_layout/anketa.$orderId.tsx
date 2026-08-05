@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { ArrowLeft, ImagePlus, Plus, Save, Trash2, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
 
 import {
   OpenAPI,
@@ -28,8 +29,7 @@ import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
-import useCurrentUser from "@/hooks/useCurrentUser"
-import useCustomToast from "@/hooks/useCustomToast"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
 import {
   CORPUS_MATERIALS,
   CORPUS_THICKNESS,
@@ -77,7 +77,6 @@ function AnketaPage() {
     refetch,
   } = useQuery(getOrderQueryOptions(id))
   const { currentUser } = useCurrentUser()
-  const { showErrorToast } = useCustomToast()
 
   const role = currentUser?.role
   const canEdit =
@@ -116,10 +115,12 @@ function AnketaPage() {
       // Aks holda saqlash uchayotganda yozilgan matn dirty=false tufayli
       // kutayotgan taymer bilan birga yo'qolardi (jimgina ma'lumot yo'qotish).
       if (surveyRef.current === body) setDirty(false)
-      setSavedAt(new Date().toLocaleTimeString("uz-UZ", { timeStyle: "short" }))
+      setSavedAt(
+        new Date().toLocaleTimeString("uz-Latn-UZ", { timeStyle: "short" }),
+      )
       queryClient.invalidateQueries({ queryKey: ["orders", id] })
     },
-    onError: handleError(showErrorToast),
+    onError: handleError,
   })
 
   const dirtyRef = useRef(dirty)
@@ -743,7 +744,6 @@ function RoomPhotos({
   canEdit: boolean
 }) {
   const queryClient = useQueryClient()
-  const { showErrorToast } = useCustomToast()
   const input = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [preview, setPreview] = useState<OrderFileRead | null>(null)
@@ -758,7 +758,7 @@ function RoomPhotos({
         formData: { room_id: roomId, file: file as unknown as string },
       }),
     onSuccess: refresh,
-    onError: handleError(showErrorToast),
+    onError: handleError,
   })
   const remove = useMutation({
     mutationFn: (fileId: number) =>
@@ -767,7 +767,7 @@ function RoomPhotos({
       setToRemove(null)
       refresh()
     },
-    onError: handleError(showErrorToast),
+    onError: handleError,
   })
 
   // Serverga bormasdan tekshiramiz — menejer xatoni darhol ko'rsin
@@ -776,15 +776,15 @@ function RoomPhotos({
     let free = MAX_PHOTOS - photos.length
     for (const f of list) {
       if (!f.type.startsWith("image/")) {
-        showErrorToast(`${f.name}: faqat rasm qo'shish mumkin`)
+        toast.error(`${f.name}: faqat rasm qo'shish mumkin`)
         continue
       }
       if (f.size > MAX_PHOTO_MB * 1024 * 1024) {
-        showErrorToast(`${f.name}: ${MAX_PHOTO_MB} MB dan katta`)
+        toast.error(`${f.name}: ${MAX_PHOTO_MB} MB dan katta`)
         continue
       }
       if (free <= 0) {
-        showErrorToast(`Bitta xonaga ${MAX_PHOTOS} tadan ko'p rasm sig'maydi`)
+        toast.error(`Bitta xonaga ${MAX_PHOTOS} tadan ko'p rasm sig'maydi`)
         break
       }
       free--

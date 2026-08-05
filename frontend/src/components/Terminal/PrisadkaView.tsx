@@ -4,17 +4,18 @@
 // saqlanadi, keyingi safar so'ralmaydi. Skan oqimi odatdagidek (har skanda
 // o'sha detal SCX'i ham avtomatik tushadi).
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft, FolderCog, HardDriveDownload, Printer } from "lucide-react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { createPortal } from "react-dom"
+import { toast } from "sonner"
 
-import { OpenAPI, TerminalService } from "@/client"
+import { TerminalService } from "@/client"
 import { TBtn } from "@/components/Terminal/CutmapView"
+import { usePrintLabel } from "@/components/Terminal/usePrintLabel"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
-import useCustomToast from "@/hooks/useCustomToast"
 import { useScanFlash } from "@/hooks/useScanFlash"
 import { formatSize } from "@/lib/mes"
 import {
@@ -23,33 +24,9 @@ import {
   pickDir,
   projectFolder,
   saveScxToDir,
+  scxFileUrl,
 } from "@/lib/scxDir"
 import { cn } from "@/lib/utils"
-import { handleError } from "@/utils"
-
-type PFile = { id: number; filename: string }
-type PInstance = {
-  instance_id: number
-  qr_text: string
-  label_printed: boolean
-  done: boolean
-}
-type PPart = {
-  part_id: number
-  code: string
-  name: string
-  length: number | null
-  width: number | null
-  thickness: number | null
-  done: number
-  total: number
-  files: PFile[]
-  // Marshrutida ARRA bormi: bo'lsa QR chekni arrachi chiqaradi, bu yerdan taqiq
-  arra_route?: boolean
-  // Skan tugagan nusxalar QR'lari (fayl nomi = QR + .scx) — qaysi nusxa qolganini ko'rsatish
-  done_qrs?: string[]
-  instances?: PInstance[]
-}
 
 export function PrisadkaView({
   orderId,
@@ -65,8 +42,6 @@ export function PrisadkaView({
    * ustiga) portal qilinadi — alohida ikkinchi ustun ochilmasin */
   toolbarContainer?: HTMLElement | null
 }) {
-  const { showSuccessToast, showErrorToast } = useCustomToast()
-  const queryClient = useQueryClient()
   const { data, isLoading } = useQuery({
     queryKey: ["terminal", "prisadka", orderId],
     queryFn: () => TerminalService.readTerminalPrisadka({ orderId }),
@@ -74,21 +49,17 @@ export function PrisadkaView({
   })
   // ROVER'da jarayon shu postdan boshlanishi mumkin (marshrutda ARRA yo'q) —
   // QR chek shu yerdan chiqariladi; keyin skan bilan ish yakunlanadi
-  const printLabel = useMutation({
-    mutationFn: (instanceId: number) =>
-      TerminalService.printInstanceLabel({ instanceId }),
-    onSuccess: (r) => showSuccessToast(r.message),
-    onError: handleError(showErrorToast),
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: ["terminal", "prisadka"] }),
-  })
+  const printLabel = usePrintLabel("prisadka")
   // null = yuklanmayapti; son = nechta fayl saqlandi (tugmada jonli 12/69)
   const [progress, setProgress] = useState<number | null>(null)
   // ROVER rejimi: qator (nusxa) tanlanadi, chop etish chapdagi katta tugmada
   const [selectedId, setSelectedId] = useState<number | null>(null)
 
-  const parts = ((data as { parts?: PPart[] } | undefined)?.parts ??
-    []) as PPart[]
+  // PrisadkaPartRow'da files sxemada ixtiyoriy — bir joyda normallashtiramiz
+  const parts = useMemo(
+    () => (data?.parts ?? []).map((p) => ({ ...p, files: p.files ?? [] })),
+    [data],
+  )
 
   // Oxirgi skan bo'lgan qator keyingi skangacha ajralib turadi + avto-scroll
   const flashId = useScanFlash(
@@ -125,11 +96,8 @@ export function PrisadkaView({
         if (!dir) dir = await pickDir()
         if (!dir) return // bekor qilindi
         // Har proyekt o'z papkasiga: "1007 Yangibozor" kabi — fayllar aralashmaydi
-        const info = data as
-          | { project_name?: string | null; order_number?: string }
-          | undefined
         const folder = projectFolder(
-          info?.project_name || info?.order_number || "scx",
+          data?.project_name || data?.order_number || "scx",
         )
         const sub = await dir.getDirectoryHandle(folder, { create: true })
         let ok = 0
@@ -143,9 +111,9 @@ export function PrisadkaView({
           }
         }
         if (ok === allFiles.length)
-          showSuccessToast(`${ok} ta SCX "${dir.name}/${folder}" ga saqlandi`)
+          toast.success(`${ok} ta SCX "${dir.name}/${folder}" ga saqlandi`)
         else
-          showErrorToast(
+          toast.error(
             `${ok}/${allFiles.length} saqlandi — qolganlarini qayta urining.`,
           )
       } else {
@@ -153,14 +121,14 @@ export function PrisadkaView({
         let n = 0
         for (const f of allFiles) {
           const a = document.createElement("a")
-          a.href = `${OpenAPI.BASE}/api/v1/terminal/files/${f.id}`
+          a.href = scxFileUrl(f.id)
           a.download = ""
           a.click()
           n++
           setProgress(n)
           await new Promise((r) => setTimeout(r, 300))
         }
-        showSuccessToast(`${allFiles.length} ta SCX yuklab olindi`)
+        toast.success(`${allFiles.length} ta SCX yuklab olindi`)
       }
     } finally {
       setProgress(null)
@@ -169,7 +137,7 @@ export function PrisadkaView({
 
   const changeDir = async () => {
     const dir = await pickDir()
-    if (dir) showSuccessToast(`SCX papkasi: ${dir.name}`)
+    if (dir) toast.success(`SCX papkasi: ${dir.name}`)
   }
 
   // ROVER rejimi: har nusxa ALOHIDA qator; qator tanlanadi, chop etish
@@ -213,9 +181,7 @@ export function PrisadkaView({
             >
               <ArrowLeft /> Orqaga
             </Button>
-            <div className="text-lg font-black">
-              {(data as { order_number?: string } | undefined)?.order_number}
-            </div>
+            <div className="text-lg font-black">{data?.order_number}</div>
             <div className="num text-base text-muted-foreground">
               Bajarildi: <b className="text-foreground">{totDone}</b>/{totReq}
             </div>
@@ -308,44 +274,39 @@ export function PrisadkaView({
         >
           <ArrowLeft /> Orqaga
         </Button>
-        <div className="text-lg font-black">
-          {(data as { order_number?: string } | undefined)?.order_number}
-        </div>
+        <div className="text-lg font-black">{data?.order_number}</div>
         <div className="num text-base text-muted-foreground">
           Bajarildi: <b className="text-foreground">{totDone}</b>/{totReq}
         </div>
-        {showScx && (
-          <div className="ml-auto flex items-center gap-2">
-            {/* Sensorli ekranda hover yo'q — ikonka yoniga yozuv shart */}
-            {dirSupported() && (
-              <Button
-                variant="outline"
-                className="h-12 px-3 font-bold"
-                title="SCX papkasini almashtirish"
-                onClick={changeDir}
-              >
-                <FolderCog /> Papka
-              </Button>
-            )}
-            <LoadingButton
-              className="h-12 px-5 text-base font-bold"
-              loading={progress !== null}
-              disabled={!allFiles.length}
-              onClick={downloadAll}
+        <div className="ml-auto flex items-center gap-2">
+          {/* Sensorli ekranda hover yo'q — ikonka yoniga yozuv shart */}
+          {dirSupported() && (
+            <Button
+              variant="outline"
+              className="h-12 px-3 font-bold"
+              title="SCX papkasini almashtirish"
+              onClick={changeDir}
             >
-              {progress !== null ? (
-                <span className="num">
-                  Yuklanmoqda… {progress}/{allFiles.length}
-                </span>
-              ) : (
-                <>
-                  <HardDriveDownload /> Hammasini yuklab olish (
-                  {allFiles.length})
-                </>
-              )}
-            </LoadingButton>
-          </div>
-        )}
+              <FolderCog /> Papka
+            </Button>
+          )}
+          <LoadingButton
+            className="h-12 px-5 text-base font-bold"
+            loading={progress !== null}
+            disabled={!allFiles.length}
+            onClick={downloadAll}
+          >
+            {progress !== null ? (
+              <span className="num">
+                Yuklanmoqda… {progress}/{allFiles.length}
+              </span>
+            ) : (
+              <>
+                <HardDriveDownload /> Hammasini yuklab olish ({allFiles.length})
+              </>
+            )}
+          </LoadingButton>
+        </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <table className="w-full text-base">

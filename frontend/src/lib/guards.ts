@@ -1,6 +1,24 @@
 import { redirect } from "@tanstack/react-router"
 
-import { type UserRead, UsersService } from "@/client"
+import { ApiError, type UserRead, UsersService } from "@/client"
+
+/**
+ * Autentifikatsiya guard'i (`beforeLoad`): 401 — login sahifasiga.
+ *
+ * Faqat 401 login'ga yo'naltiradi — tarmoq uzilishi/5xx da sessiyani
+ * o'ldirmaymiz, xato errorComponent'da ko'rinadi. Foydalanuvchini qaytaradi:
+ * rolga qarab qo'shimcha yo'naltirish (terminal/tablo) chaqiruvchining ishi.
+ */
+export async function requireAuth(): Promise<UserRead> {
+  try {
+    return await UsersService.readUserMe()
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      throw redirect({ to: "/login" })
+    }
+    throw err
+  }
+}
 
 /**
  * Route guard: huquq yetmasa bosh sahifaga qaytaradi.

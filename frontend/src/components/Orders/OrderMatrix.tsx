@@ -20,10 +20,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import useCustomToast from "@/hooks/useCustomToast"
 import { formatSize, isCustomRoute, POST_COLORS } from "@/lib/mes"
-import { getOrderMatrixQueryOptions, getPostsQueryOptions } from "@/queries/mes"
-import { handleError } from "@/utils"
+import {
+  crudCallbacks,
+  getOrderMatrixQueryOptions,
+  getPostsQueryOptions,
+} from "@/queries/mes"
 
 type StageEdits = Record<number, Record<number, boolean>> // part_id -> post_id -> enabled
 type NoteEdits = Record<number, string>
@@ -44,7 +46,11 @@ export function OrderMatrix({
   const [stageEdits, setStageEdits] = useState<StageEdits>({})
   const [noteEdits, setNoteEdits] = useState<NoteEdits>({})
   const queryClient = useQueryClient()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
+  const cb = crudCallbacks(
+    queryClient,
+    ["orders", orderId, "matrix"],
+    "Matritsa saqlandi",
+  )
 
   const sortedPosts = useMemo(
     () => (posts ?? []).slice().sort((a, b) => a.order_index - b.order_index),
@@ -67,17 +73,13 @@ export function OrderMatrix({
         },
       })
     },
+    ...cb,
     onSuccess: () => {
-      showSuccessToast("Matritsa saqlandi")
+      cb.onSuccess()
       setEditMode(false)
       setStageEdits({})
       setNoteEdits({})
     },
-    onError: handleError(showErrorToast),
-    onSettled: () =>
-      queryClient.invalidateQueries({
-        queryKey: ["orders", orderId, "matrix"],
-      }),
   })
 
   if (isLoading) return <Skeleton className="h-48 w-full" />

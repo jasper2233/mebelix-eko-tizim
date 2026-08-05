@@ -1,12 +1,13 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { ArrowDown, ArrowUp, Search } from "lucide-react"
+import { ArrowDown, ArrowUp } from "lucide-react"
 import { useMemo, useState } from "react"
 
+import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
+import { SearchInput } from "@/components/Common/SearchInput"
 import { StatusBadge } from "@/components/Common/StatusBadge"
 import { AddOrder } from "@/components/Orders/AddOrder"
-import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -17,13 +18,14 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import useCurrentUser from "@/hooks/useCurrentUser"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useDebounced } from "@/hooks/useDebounced"
 import {
   formatDate,
   formatMoney,
   PRIORITY_LABELS,
   PRIORITY_TEXT_CLASSES,
+  remainingPayment,
 } from "@/lib/mes"
 import {
   getOrderStatusCountsQueryOptions,
@@ -139,7 +141,7 @@ function OrdersPage() {
           return o.amount != null ? Number(o.amount) : Number.NEGATIVE_INFINITY
         case "left":
           return o.amount != null
-            ? Number(o.amount) - Number(o.advance_payment ?? 0)
+            ? remainingPayment(o)
             : Number.NEGATIVE_INFINITY
       }
     }
@@ -183,15 +185,12 @@ function OrdersPage() {
             ))}
           </TabsList>
         </Tabs>
-        <div className="relative ml-auto w-full max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Raqam, nom yoki mijoz"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
-          />
-        </div>
+        <SearchInput
+          className="ml-auto w-full max-w-xs"
+          placeholder="Raqam, nom yoki mijoz"
+          value={search}
+          onChange={setSearch}
+        />
       </div>
       {isLoading ? (
         <Skeleton className="h-64 w-full" />
@@ -287,9 +286,7 @@ function OrdersPage() {
                     </TableCell>
                     <TableCell className="num text-right">
                       {o.amount != null
-                        ? formatMoney(
-                            Number(o.amount) - Number(o.advance_payment ?? 0),
-                          )
+                        ? formatMoney(remainingPayment(o))
                         : "—"}
                     </TableCell>
                     <TableCell>
@@ -298,18 +295,13 @@ function OrdersPage() {
                   </TableRow>
                 ))
               ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={8}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    {debounced
-                      ? `"${debounced}" bo'yicha buyurtma topilmadi.`
-                      : status
-                        ? "Bu holatda buyurtma yo'q."
-                        : 'Hali buyurtma yo\'q — birinchisini "Yangi buyurtma" bilan oching.'}
-                  </TableCell>
-                </TableRow>
+                <EmptyRow colSpan={8}>
+                  {debounced
+                    ? `"${debounced}" bo'yicha buyurtma topilmadi.`
+                    : status
+                      ? "Bu holatda buyurtma yo'q."
+                      : 'Hali buyurtma yo\'q — birinchisini "Yangi buyurtma" bilan oching.'}
+                </EmptyRow>
               )}
             </TableBody>
           </Table>

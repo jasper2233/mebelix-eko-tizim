@@ -15,5 +15,3 @@ export function useDebounced<T>(value: T, delay = 300): T {
   }, [value, delay])
   return debounced
 }
-
-export default useDebounced
