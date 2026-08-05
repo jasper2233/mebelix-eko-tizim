@@ -66,6 +66,17 @@ const newRoom = (n: number): SurveyRoom => ({
 
 const emptyModule = (): SurveyModule => ({ name: "" })
 
+/** Butun buyurtmaga tegishli xizmatlar — xonaga bo'linmaydi: sex bitta
+ *  .project fayl ustida ishlaydi, logistika bitta mashinada olib ketadi. */
+const ORDER_SERVICES = [
+  { key: "packaging", label: "Upakovka qilish" },
+  { key: "delivery", label: "Yetkazib berish" },
+  { key: "installation", label: "O'rnatish (montaj)" },
+] as const satisfies readonly {
+  key: keyof OrderSurvey
+  label: string
+}[]
+
 function AnketaPage() {
   const { orderId } = Route.useParams()
   const id = Number(orderId)
@@ -97,11 +108,27 @@ function AnketaPage() {
     if (!order || loaded.current) return
     loaded.current = true
     const saved = order.survey as OrderSurvey | null
-    setSurvey(
-      saved?.rooms?.length
-        ? saved
-        : { version: 1, measured_by: "", rooms: [newRoom(1)] },
-    )
+    if (!saved?.rooms?.length) {
+      setSurvey({ version: 1, measured_by: "", rooms: [newRoom(1)] })
+      return
+    }
+    // Eski anketalarda "yetkazish"/"montaj" xona ichidagi extra_services da
+    // edi. Ular buyurtma darajasiga ko'chirildi: biror xonada belgilangan
+    // bo'lsa — buyurtma bayrog'ini yoqamiz va xona ro'yxatidan olib tashlaymiz.
+    // Avtosaqlash keyingi tahrirda yangi shaklni yozadi; ma'lumot yo'qolmaydi.
+    const hasLegacy = (code: string) =>
+      saved.rooms?.some((r) => (r.extra_services ?? []).includes(code))
+    setSurvey({
+      ...saved,
+      delivery: saved.delivery || hasLegacy("yetkazish"),
+      installation: saved.installation || hasLegacy("montaj"),
+      rooms: saved.rooms.map((r) => ({
+        ...r,
+        extra_services: (r.extra_services ?? []).filter(
+          (s) => s !== "yetkazish" && s !== "montaj",
+        ),
+      })),
+    })
   }, [order])
 
   // Avtosaqlash: menejer bilmasdan chiqib ketsa ham ma'lumot yo'qolmaydi.
@@ -262,32 +289,55 @@ function AnketaPage() {
         )}
       </div>
 
-      {/* Upakovka — butun buyurtmaga tegishli, bitta xonaga emas, shuning uchun
-          raqamlangan xona bo'limlaridan tashqarida, xona tanlagichdan keyin. */}
+      {/* Buyurtma darajasi: sex bitta .project fayl ustida ishlaydi va xona
+          degan tushunchani ko'rmaydi, logistika ham butun buyurtmani bitta
+          mashinada olib ketadi. Shuning uchun bu maydonlar raqamlangan xona
+          bo'limlaridan TASHQARIDA — xona almashganda o'zgarmaydi. */}
       {canEdit && (
-        // biome-ignore lint/a11y/noLabelWithoutControl: Checkbox (Radix) ichida — butun katak bosiladi
-        <label
-          className={cn(
-            cardSurface,
-            "mb-4 flex cursor-pointer items-start gap-3 p-4",
-          )}
-        >
-          <Checkbox
-            checked={survey.packaging ?? false}
-            onCheckedChange={(v) => {
-              setSurvey((s) => ({ ...s, packaging: v === true }))
-              setDirty(true)
-            }}
-          />
-          <span>
-            <span className="font-medium text-sm">
-              To'liq loyihani upakovka qilish
-            </span>
-            <span className="block text-muted-foreground text-sm">
-              Tayyor mahsulot yetkazishdan oldin qadoqlanadi
-            </span>
-          </span>
-        </label>
+        <div className={cn(cardSurface, "mb-4 p-4")}>
+          <div className="mb-3 font-semibold text-sm">Butun buyurtma uchun</div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {ORDER_SERVICES.map((svc) => (
+              // biome-ignore lint/a11y/noLabelWithoutControl: Checkbox (Radix) ichida — butun katak bosiladi
+              <label
+                key={svc.key}
+                className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors hover:border-primary/40"
+              >
+                <Checkbox
+                  checked={survey[svc.key] ?? false}
+                  onCheckedChange={(v) => {
+                    setSurvey((s) => ({ ...s, [svc.key]: v === true }))
+                    setDirty(true)
+                  }}
+                />
+                {svc.label}
+              </label>
+            ))}
+          </div>
+          <div className="mt-3 grid items-start gap-3 sm:grid-cols-2">
+            <Field label="O'lchov sanasi">
+              <DatePicker
+                value={survey.measured_at ?? ""}
+                className="w-full"
+                aria-label="O'lchov sanasi"
+                onChange={(v) => {
+                  setSurvey((s) => ({ ...s, measured_at: v || null }))
+                  setDirty(true)
+                }}
+              />
+            </Field>
+            <Field label="O'lchagan usta">
+              <Input
+                value={survey.measured_by ?? ""}
+                maxLength={120}
+                onChange={(e) => {
+                  setSurvey((s) => ({ ...s, measured_by: e.target.value }))
+                  setDirty(true)
+                }}
+              />
+            </Field>
+          </div>
+        </div>
       )}
 
       {/* Texnolog/direktor: forma emas, o'qish uchun jamlanma — matn nusxa olinadi */}
@@ -489,31 +539,10 @@ function AnketaPage() {
               </span>
             </summary>
             <div className="space-y-5 border-t p-4">
-              <div className="grid items-start gap-3 sm:grid-cols-2">
-                <Field label="O'lchov sanasi">
-                  <DatePicker
-                    value={survey.measured_at ?? ""}
-                    className="w-full"
-                    aria-label="O'lchov sanasi"
-                    onChange={(v) => {
-                      setSurvey((s) => ({ ...s, measured_at: v || null }))
-                      setDirty(true)
-                    }}
-                  />
-                </Field>
-                <Field label="O'lchagan usta">
-                  <Input
-                    value={survey.measured_by ?? ""}
-                    maxLength={120}
-                    disabled={!canEdit}
-                    onChange={(e) => {
-                      setSurvey((s) => ({ ...s, measured_by: e.target.value }))
-                      setDirty(true)
-                    }}
-                  />
-                </Field>
-              </div>
-
+              {/* O'lchov sanasi/ustasi bu yerda EMAS: ular butun buyurtmaga
+                  tegishli va yuqoridagi "Butun buyurtma uchun" blokida.
+                  Avval shu xona bo'limida turgani uchun menejer 3-xonada
+                  turib o'zgartirsa, jimgina butun buyurtma uchun o'zgarardi. */}
               <div>
                 <div className="mb-2 font-medium text-sm">
                   Devor o'lchamlari (mm) — A dan soat yo'nalishi bo'yicha
@@ -1098,7 +1127,12 @@ function RoomSummary({
                 ? `${survey.measured_at}${survey.measured_by ? ` — ${survey.measured_by}` : ""}`
                 : "",
             ],
-            ["Upakovka", survey.packaging ? "Kerak" : ""],
+            [
+              "Buyurtma bo'yicha",
+              ORDER_SERVICES.filter((s) => survey[s.key])
+                .map((s) => s.label)
+                .join(", "),
+            ],
           ]}
         />
       </Section>

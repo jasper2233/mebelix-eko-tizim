@@ -180,9 +180,13 @@ class OrderSurvey(BaseModel):
     version: int = 1
     measured_at: date | None = None  # o'lchov sanasi
     measured_by: Annotated[str, Field(max_length=120)] = ""  # o'lchagan usta
-    # Butun loyihaga tegishli, xonaga emas — shuning uchun room ichida emas, shu yerda.
-    # Migratsiya kerak emas: survey — JSONB, eski yozuvlarda default False bo'ladi.
+    # Sex va logistika BUYURTMA ustida ishlaydi — xona degan tushuncha ularga
+    # yetib bormaydi (bitta .project fayl butun buyurtmaga yuklanadi). Shuning
+    # uchun quyidagilar room ichida emas, shu yerda. Migratsiya kerak emas:
+    # survey — JSONB, eski yozuvlarda default False.
     packaging: bool = False  # tayyor mahsulot yetkazishdan oldin qadoqlanadimi
+    delivery: bool = False  # bitta mashina, bitta manzil — xonaga bo'linmaydi
+    installation: bool = False  # bitta brigada, bitta tashrif
     rooms: Annotated[list[SurveyRoom], Field(max_length=10)] = []
 
 

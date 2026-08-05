@@ -67,14 +67,14 @@ export const HARDWARE_LEVELS: Option[] = [
   { value: "premium", label: "Premium" },
 ]
 
-/** 7-bo'lim: qo'shimcha xizmatlar */
+/** 7-bo'lim: xona jihozlari — har xonada alohida bo'lishi mumkin.
+ *  Yetkazib berish va montaj bu ro'yxatda EMAS: ular butun buyurtmaga tegishli
+ *  (bitta mashina, bitta brigada), shuning uchun OrderSurvey darajasida. */
 export const EXTRA_SERVICES: Option[] = [
   { value: "led", label: "LED yoritish" },
   { value: "rozetka", label: "Rozetka bloki" },
   { value: "organayzer", label: "Ichki tortmalar (organayzer)" },
   { value: "oyna", label: "Oyna / ko'zgu" },
-  { value: "yetkazish", label: "Yetkazib berish" },
-  { value: "montaj", label: "O'rnatish (montaj)" },
 ]
 
 /** O'lchov varag'i: devor harflari (A dan soat yo'nalishi bo'yicha) */
