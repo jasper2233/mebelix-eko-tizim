@@ -2,7 +2,7 @@
 // Rejimlar: HAJM / SONI / FOIZ. Kontekst-aware: tablo user stanogi ustuni ajratiladi.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { useCallback, useEffect, useState } from "react"
 
 import { TabloService } from "@/client"
@@ -30,19 +30,6 @@ const UNIT_LABELS: Record<string, string> = {
   m2: "m²",
   meter: "m",
   piece: "dona",
-}
-
-/** Soat alohida komponentda: sekundlik tick butun matritsani emas, shu yaproqni yangilaydi. */
-function Clock() {
-  const [t, setT] = useState(() => new Date().toLocaleTimeString("uz-Latn-UZ"))
-  useEffect(() => {
-    const i = setInterval(
-      () => setT(new Date().toLocaleTimeString("uz-Latn-UZ")),
-      1000,
-    )
-    return () => clearInterval(i)
-  }, [])
-  return <div className="num text-5xl font-black tabular-nums">{t}</div>
 }
 
 function TabloPage() {
@@ -88,14 +75,14 @@ function TabloPage() {
 
   return (
     <div className="flex h-dvh flex-col bg-surface text-foreground">
-      <header className="flex items-center gap-4 border-b border-border bg-card px-5 py-2.5 shadow-sm">
+      <header className="flex items-center gap-4 border-b border-border bg-card px-5 py-2 shadow-sm">
         {/* Brend sidebar va login bilan bitta manbadan — to'liq logo.
-            h-16: logoda yozuv balandligi butun rasmning ~26% i, ya'ni h-12 da
-            "MEBELIX" atigi 12px bo'lib TV masofasidan yo'qolardi. */}
+            Sarlavha devordagi ekranda faqat chrome: balandligi matritsadan
+            olingan joy, shuning uchun logo h-12 dan oshmaydi. */}
         <img
           src="/assets/logo/logo-gold.png"
           alt="MebeliX"
-          className="h-16 w-auto shrink-0"
+          className="h-12 w-auto shrink-0"
         />
         {myMachine && (
           <span className="rounded-sm bg-secondary px-3 py-1.5 text-xl font-bold">
@@ -128,7 +115,18 @@ function TabloPage() {
         {!online && (
           <span className="text-xl font-bold text-red-600">OFFLINE</span>
         )}
-        <Clock />
+        {/* Panelga qaytish faqat odam foydalanuvchiga: `tablo` roli qurilma
+            akkaunti, u boshqa sahifaga kira olmaydi (_layout uni shu yerga
+            qaytaradi). Busiz admin sidebar'dagi "LIVE Tablo" dan kelib
+            to'liq ekranda qamalib qolardi — faqat brauzer tugmasi qutqarardi. */}
+        {me && me.role !== "tablo" && (
+          <Link
+            to="/"
+            className="rounded-sm bg-secondary px-4 py-2 text-xl font-bold uppercase outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-95"
+          >
+            ← Panel
+          </Link>
+        )}
       </header>
 
       <main className="min-h-0 flex-1 overflow-auto p-4">
