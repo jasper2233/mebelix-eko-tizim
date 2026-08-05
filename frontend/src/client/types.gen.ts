@@ -92,36 +92,28 @@ export type CapacityUnit = 'm2_per_hour' | 'meter_per_hour' | 'units_per_hour';
 
 export type ClientCreate = {
     full_name: string;
-    client_type?: ClientType;
     phone?: (string | null);
     phone_alt?: (string | null);
     address?: (string | null);
-    inn?: (string | null);
     notes?: (string | null);
 };
 
 export type ClientRead = {
     id: number;
     full_name: string;
-    client_type: ClientType;
     phone: (string | null);
     phone_alt: (string | null);
     address: (string | null);
-    inn: (string | null);
     notes: (string | null);
     created_at: string;
     orders_count?: number;
 };
 
-export type ClientType = 'individual' | 'legal';
-
 export type ClientUpdate = {
     full_name?: (string | null);
-    client_type?: (ClientType | null);
     phone?: (string | null);
     phone_alt?: (string | null);
     address?: (string | null);
-    inn?: (string | null);
     notes?: (string | null);
 };
 
@@ -154,12 +146,9 @@ export type DashboardStats = {
 export type EmployeeCreate = {
     full_name: string;
     phone?: (string | null);
-    passport_id?: (string | null);
     position?: (string | null);
     status?: EmployeeStatus;
-    photo_url?: (string | null);
     assigned_post_ids?: Array<number>;
-    hired_date?: (string | null);
 };
 
 export type EmployeeProductivity = {
@@ -177,12 +166,9 @@ export type EmployeeRead = {
     full_name: string;
     badge_id: string;
     phone: (string | null);
-    passport_id: (string | null);
     position: (string | null);
     status: EmployeeStatus;
-    photo_url: (string | null);
     assigned_post_ids: Array<number>;
-    hired_date: (string | null);
     created_at: string;
 };
 
@@ -191,12 +177,9 @@ export type EmployeeStatus = 'active' | 'inactive';
 export type EmployeeUpdate = {
     full_name?: (string | null);
     phone?: (string | null);
-    passport_id?: (string | null);
     position?: (string | null);
     status?: (EmployeeStatus | null);
-    photo_url?: (string | null);
     assigned_post_ids?: (Array<number> | null);
-    hired_date?: (string | null);
 };
 
 export type FileKind = 'project' | 'scx' | 'label_pdf' | 'document';
@@ -261,13 +244,9 @@ export type MachineCreate = {
     post_id: number;
     name: string;
     ip_address?: (string | null);
-    mac_address?: (string | null);
     capacity?: (number | null);
     capacity_unit?: (CapacityUnit | null);
     status?: MachineStatus;
-    icon_url?: (string | null);
-    serial_number?: (string | null);
-    installed_date?: (string | null);
 };
 
 export type MachineRead = {
@@ -275,13 +254,9 @@ export type MachineRead = {
     post_id: number;
     name: string;
     ip_address: (string | null);
-    mac_address: (string | null);
     capacity: (number | null);
     capacity_unit: (CapacityUnit | null);
     status: MachineStatus;
-    icon_url: (string | null);
-    serial_number: (string | null);
-    installed_date: (string | null);
     created_at: string;
 };
 
@@ -304,13 +279,9 @@ export type MachineUpdate = {
     post_id?: (number | null);
     name?: (string | null);
     ip_address?: (string | null);
-    mac_address?: (string | null);
     capacity?: (number | null);
     capacity_unit?: (CapacityUnit | null);
     status?: (MachineStatus | null);
-    icon_url?: (string | null);
-    serial_number?: (string | null);
-    installed_date?: (string | null);
 };
 
 export type MaterialCreate = {
@@ -454,7 +425,6 @@ export type OrderDetail = {
     advance_payment: (string | null);
     notes: (string | null);
     project_name: (string | null);
-    project_generation: (ProjectGeneration | null);
     created_at: string;
     updated_at: (string | null);
     production_started_at: (string | null);
@@ -510,7 +480,6 @@ export type OrderRead = {
     advance_payment: (string | null);
     notes: (string | null);
     project_name: (string | null);
-    project_generation: (ProjectGeneration | null);
     created_at: string;
     updated_at: (string | null);
     production_started_at: (string | null);
@@ -606,7 +575,7 @@ export type PostRead = {
 export type PostUnit = 'm2' | 'meter' | 'piece';
 
 /**
- * The 6-post chain is fixed (TZ 4.4); only presentation/behavior fields are editable.
+ * The 7-post chain is fixed (TZ 4.4); only presentation/behavior fields are editable.
  */
 export type PostUpdate = {
     name?: (string | null);
@@ -616,13 +585,62 @@ export type PostUpdate = {
     color?: (string | null);
 };
 
+/**
+ * Detalning SCX fayli — stanok kompyuteriga yuklab olish uchun (TZ 12.5).
+ */
+export type PrisadkaFile = {
+    id: number;
+    filename: string;
+};
+
+/**
+ * Nusxa darajasi: QR chiqarish tugmasi va holat uchun.
+ */
+export type PrisadkaInstance = {
+    instance_id: number;
+    qr_text: string;
+    label_printed: boolean;
+    done: boolean;
+};
+
+/**
+ * CNC post sahifasi (PRISADKA/ROVER): shu postga tegishli detallar + SCX fayllari.
+ */
+export type PrisadkaOrderState = {
+    order_id: number;
+    order_number: string;
+    project_name: (string | null);
+    parts: Array<PrisadkaPartRow>;
+};
+
+export type PrisadkaPartRow = {
+    part_id: number;
+    code: string;
+    name: string;
+    length: (number | null);
+    width: (number | null);
+    thickness: (number | null);
+    done: number;
+    total: number;
+    files?: Array<PrisadkaFile>;
+    arra_route: boolean;
+    done_qrs?: Array<string>;
+    instances?: Array<PrisadkaInstance>;
+};
+
 export type ProductivityReport = {
     date_from: string;
     date_to: string;
     employees: Array<EmployeeProductivity>;
 };
 
-export type ProjectGeneration = 'processed' | 'template';
+/**
+ * QR qaysi aktiv buyurtmaga tegishli (/terminal/qr/{qr}/order) — terminal o'sha sahifani ochadi.
+ */
+export type QrOrderRef = {
+    order_id: number;
+    order_number: string;
+};
 
 export type ReadyCheck = {
     status: string;
@@ -751,9 +769,7 @@ export type SurveyWall = {
 };
 
 export type TabloMatrix = {
-    posts: Array<{
-        [key: string]: unknown;
-    }>;
+    posts: Array<TabloPostCol>;
     orders: Array<TabloOrderRow>;
 };
 
@@ -786,6 +802,18 @@ export type TabloPartRow = {
 };
 
 /**
+ * Matritsa ustuni — post metadatasi (frontend ustun sarlavhalari shu bilan chiziladi).
+ */
+export type TabloPostCol = {
+    id: number;
+    code: string;
+    name: string;
+    unit: string;
+    color: (string | null);
+    order_index: number;
+};
+
+/**
  * One aggregated row in NAVBATDAGI VAZIFALAR (TZ 8.3.2).
  */
 export type TaskRow = {
@@ -812,6 +840,22 @@ export type TerminalContext = {
     post_code: PostCode;
     post_name: string;
     session?: (SessionRead | null);
+};
+
+/**
+ * Terminal proyekt tanlagichi kartasi (/terminal/orders): done/total post turiga moslangan.
+ */
+export type TerminalOrderCard = {
+    id: number;
+    number: string;
+    project_name: (string | null);
+    deadline: (string | null);
+    priority: OrderPriority;
+    done: number;
+    total: number;
+    materials?: Array<string>;
+    sheets_total: number;
+    has_cutmap: boolean;
 };
 
 export type Token = {
@@ -1030,9 +1074,7 @@ export type RefreshAccessTokenResponse = ({
     [key: string]: string;
 });
 
-export type LogoutResponse = ({
-    [key: string]: string;
-});
+export type LogoutResponse = (Message);
 
 export type ReadMachinesResponse = (Array<MachineRead>);
 
@@ -1266,12 +1308,6 @@ export type CancelScanData = {
 
 export type CancelScanResponse = (ScanHistoryItem);
 
-export type ReadRecentScansData = {
-    limit?: number;
-};
-
-export type ReadRecentScansResponse = (Array<ScanHistoryItem>);
-
 export type ReadTabloMatrixResponse = (TabloMatrix);
 
 export type ReadTabloOrderData = {
@@ -1292,17 +1328,13 @@ export type EndTerminalSessionResponse = (Message);
 
 export type ReadTerminalTasksResponse = (Array<TaskRow>);
 
-export type ReadTerminalOrdersResponse = (Array<{
-    [key: string]: unknown;
-}>);
+export type ReadTerminalOrdersResponse = (Array<TerminalOrderCard>);
 
 export type ResolveTerminalQrData = {
     qrText: string;
 };
 
-export type ResolveTerminalQrResponse = ({
-    [key: string]: unknown;
-});
+export type ResolveTerminalQrResponse = (QrOrderRef);
 
 export type ReadTerminalKromkaData = {
     orderId: number;
@@ -1314,9 +1346,7 @@ export type ReadTerminalPrisadkaData = {
     orderId: number;
 };
 
-export type ReadTerminalPrisadkaResponse = ({
-    [key: string]: unknown;
-});
+export type ReadTerminalPrisadkaResponse = (PrisadkaOrderState);
 
 export type ReadTerminalCutmapData = {
     orderId: number;
@@ -1363,9 +1393,7 @@ export type ReadUsersResponse = (Paginated_UserRead_);
 
 export type ReadUserMeResponse = (UserRead);
 
-export type DeleteUserMeResponse = ({
-    [key: string]: string;
-});
+export type DeleteUserMeResponse = (Message);
 
 export type UpdateUserMeData = {
     requestBody: UserUpdate;
@@ -1377,9 +1405,7 @@ export type UpdatePasswordMeData = {
     requestBody: UpdatePassword;
 };
 
-export type UpdatePasswordMeResponse = ({
-    [key: string]: string;
-});
+export type UpdatePasswordMeResponse = (Message);
 
 export type ReadUserByIdData = {
     userId: number;
@@ -1398,6 +1424,4 @@ export type DeleteUserData = {
     userId: number;
 };
 
-export type DeleteUserResponse = ({
-    [key: string]: string;
-});
+export type DeleteUserResponse = (Message);

@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { ReadAuditLogsData, ReadAuditLogsResponse, ReadBridgeAgentsResponse, CreateBridgeAgentData, CreateBridgeAgentResponse, UpdateBridgeAgentData, UpdateBridgeAgentResponse, DeleteBridgeAgentData, DeleteBridgeAgentResponse, RegenerateBridgeCodeData, RegenerateBridgeCodeResponse, PairBridgeAgentData, PairBridgeAgentResponse, BridgeScanData, BridgeScanResponse, ReadClientsData, ReadClientsResponse, CreateClientData, CreateClientResponse, ReadClientData, ReadClientResponse, UpdateClientData, UpdateClientResponse, DeleteClientData, DeleteClientResponse, ReadEmployeesData, ReadEmployeesResponse, CreateEmployeeData, CreateEmployeeResponse, ReadEmployeeData, ReadEmployeeResponse, UpdateEmployeeData, UpdateEmployeeResponse, DeleteEmployeeData, DeleteEmployeeResponse, RegenerateBadgeData, RegenerateBadgeResponse, HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, RefreshAccessTokenResponse, LogoutResponse, ReadMachinesResponse, CreateMachineData, CreateMachineResponse, ReadMachineData, ReadMachineResponse, UpdateMachineData, UpdateMachineResponse, DeleteMachineData, DeleteMachineResponse, ReadMaterialsData, ReadMaterialsResponse, CreateMaterialData, CreateMaterialResponse, UpdateMaterialData, UpdateMaterialResponse, DeleteMaterialData, DeleteMaterialResponse, CreateOrderData, CreateOrderResponse, ReadOrdersData, ReadOrdersResponse, ReadOrderStatusCountsResponse, ReadOrderData, ReadOrderResponse, UpdateOrderData, UpdateOrderResponse, SaveOrderSurveyData, SaveOrderSurveyResponse, UploadRoomPhotoData, UploadRoomPhotoResponse, DeleteRoomPhotoData, DeleteRoomPhotoResponse, CancelOrderData, CancelOrderResponse, DeliverOrderData, DeliverOrderResponse, ReadOrderMatrixData, ReadOrderMatrixResponse, EditOrderMatrixData, EditOrderMatrixResponse, AssignOrderMachinesData, AssignOrderMachinesResponse, ConfirmOrderData, ConfirmOrderResponse, StartOrderProductionData, StartOrderProductionResponse, UploadOrderProjectData, UploadOrderProjectResponse, DownloadOrderScxZipData, DownloadOrderScxZipResponse, RegenerateOrderScxData, RegenerateOrderScxResponse, DownloadOrderFileData, DownloadOrderFileResponse, ReadOrderCutmapData, ReadOrderCutmapResponse, ReadPostsResponse, UpdatePostData, UpdatePostResponse, ReportProductivityData, ReportProductivityResponse, ReportOrdersData, ReportOrdersResponse, ReportMaterialsData, ReportMaterialsResponse, ReportDashboardResponse, RecordScanData, RecordScanResponse, CancelScanData, CancelScanResponse, ReadRecentScansData, ReadRecentScansResponse, ReadTabloMatrixResponse, ReadTabloOrderData, ReadTabloOrderResponse, ReadTerminalContextResponse, StartTerminalSessionData, StartTerminalSessionResponse, EndTerminalSessionResponse, ReadTerminalTasksResponse, ReadTerminalOrdersResponse, ResolveTerminalQrData, ResolveTerminalQrResponse, ReadTerminalKromkaData, ReadTerminalKromkaResponse, ReadTerminalPrisadkaData, ReadTerminalPrisadkaResponse, ReadTerminalCutmapData, ReadTerminalCutmapResponse, PrintInstanceLabelData, PrintInstanceLabelResponse, CancelInstanceLabelData, CancelInstanceLabelResponse, RenderInstanceLabelData, RenderInstanceLabelResponse, DownloadTerminalFileData, DownloadTerminalFileResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
+import type { ReadAuditLogsData, ReadAuditLogsResponse, ReadBridgeAgentsResponse, CreateBridgeAgentData, CreateBridgeAgentResponse, UpdateBridgeAgentData, UpdateBridgeAgentResponse, DeleteBridgeAgentData, DeleteBridgeAgentResponse, RegenerateBridgeCodeData, RegenerateBridgeCodeResponse, PairBridgeAgentData, PairBridgeAgentResponse, BridgeScanData, BridgeScanResponse, ReadClientsData, ReadClientsResponse, CreateClientData, CreateClientResponse, ReadClientData, ReadClientResponse, UpdateClientData, UpdateClientResponse, DeleteClientData, DeleteClientResponse, ReadEmployeesData, ReadEmployeesResponse, CreateEmployeeData, CreateEmployeeResponse, ReadEmployeeData, ReadEmployeeResponse, UpdateEmployeeData, UpdateEmployeeResponse, DeleteEmployeeData, DeleteEmployeeResponse, RegenerateBadgeData, RegenerateBadgeResponse, HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, RefreshAccessTokenResponse, LogoutResponse, ReadMachinesResponse, CreateMachineData, CreateMachineResponse, ReadMachineData, ReadMachineResponse, UpdateMachineData, UpdateMachineResponse, DeleteMachineData, DeleteMachineResponse, ReadMaterialsData, ReadMaterialsResponse, CreateMaterialData, CreateMaterialResponse, UpdateMaterialData, UpdateMaterialResponse, DeleteMaterialData, DeleteMaterialResponse, CreateOrderData, CreateOrderResponse, ReadOrdersData, ReadOrdersResponse, ReadOrderStatusCountsResponse, ReadOrderData, ReadOrderResponse, UpdateOrderData, UpdateOrderResponse, SaveOrderSurveyData, SaveOrderSurveyResponse, UploadRoomPhotoData, UploadRoomPhotoResponse, DeleteRoomPhotoData, DeleteRoomPhotoResponse, CancelOrderData, CancelOrderResponse, DeliverOrderData, DeliverOrderResponse, ReadOrderMatrixData, ReadOrderMatrixResponse, EditOrderMatrixData, EditOrderMatrixResponse, AssignOrderMachinesData, AssignOrderMachinesResponse, ConfirmOrderData, ConfirmOrderResponse, StartOrderProductionData, StartOrderProductionResponse, UploadOrderProjectData, UploadOrderProjectResponse, DownloadOrderScxZipData, DownloadOrderScxZipResponse, RegenerateOrderScxData, RegenerateOrderScxResponse, DownloadOrderFileData, DownloadOrderFileResponse, ReadOrderCutmapData, ReadOrderCutmapResponse, ReadPostsResponse, UpdatePostData, UpdatePostResponse, ReportProductivityData, ReportProductivityResponse, ReportOrdersData, ReportOrdersResponse, ReportMaterialsData, ReportMaterialsResponse, ReportDashboardResponse, RecordScanData, RecordScanResponse, CancelScanData, CancelScanResponse, ReadTabloMatrixResponse, ReadTabloOrderData, ReadTabloOrderResponse, ReadTerminalContextResponse, StartTerminalSessionData, StartTerminalSessionResponse, EndTerminalSessionResponse, ReadTerminalTasksResponse, ReadTerminalOrdersResponse, ResolveTerminalQrData, ResolveTerminalQrResponse, ReadTerminalKromkaData, ReadTerminalKromkaResponse, ReadTerminalPrisadkaData, ReadTerminalPrisadkaResponse, ReadTerminalCutmapData, ReadTerminalCutmapResponse, PrintInstanceLabelData, PrintInstanceLabelResponse, CancelInstanceLabelData, CancelInstanceLabelResponse, RenderInstanceLabelData, RenderInstanceLabelResponse, DownloadTerminalFileData, DownloadTerminalFileResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
 
 export class AuditService {
     /**
@@ -496,7 +496,7 @@ export class LoginService {
     /**
      * Logout
      * Log the user out by bumping `token_version`, which invalidates every outstanding access/refresh token.
-     * @returns string Successful Response
+     * @returns Message Successful Response
      * @throws ApiError
      */
     public static logout(): CancelablePromise<LogoutResponse> {
@@ -1303,27 +1303,6 @@ export class ScansService {
             }
         });
     }
-    
-    /**
-     * Read Recent Scans
-     * TARIX block (TZ 8.3.3): last 50 entries of the CURRENT session only.
-     * @param data The data for the request.
-     * @param data.limit
-     * @returns ScanHistoryItem Successful Response
-     * @throws ApiError
-     */
-    public static readRecentScans(data: ReadRecentScansData = {}): CancelablePromise<ReadRecentScansResponse> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/scans/recent',
-            query: {
-                limit: data.limit
-            },
-            errors: {
-                422: 'Validation Error'
-            }
-        });
-    }
 }
 
 export class TabloService {
@@ -1422,7 +1401,7 @@ export class TerminalService {
     /**
      * Read Terminal Orders
      * Active orders relevant to this terminal (for the ARRA map order picker).
-     * @returns unknown Successful Response
+     * @returns TerminalOrderCard Successful Response
      * @throws ApiError
      */
     public static readTerminalOrders(): CancelablePromise<ReadTerminalOrdersResponse> {
@@ -1438,7 +1417,7 @@ export class TerminalService {
      * (terminal o'sha proyekt sahifasini ochib yuboradi).
      * @param data The data for the request.
      * @param data.qrText
-     * @returns unknown Successful Response
+     * @returns QrOrderRef Successful Response
      * @throws ApiError
      */
     public static resolveTerminalQr(data: ResolveTerminalQrData): CancelablePromise<ResolveTerminalQrResponse> {
@@ -1484,7 +1463,7 @@ export class TerminalService {
      * QR chekni shu sahifadan chiqarish uchun arra_route belgisi ham beriladi.
      * @param data The data for the request.
      * @param data.orderId
-     * @returns unknown Successful Response
+     * @returns PrisadkaOrderState Successful Response
      * @throws ApiError
      */
     public static readTerminalPrisadka(data: ReadTerminalPrisadkaData): CancelablePromise<ReadTerminalPrisadkaResponse> {
@@ -1609,7 +1588,7 @@ export class TerminalService {
 
 export class UsersService {
     /**
-     * Write User
+     * Create User
      * Create a new user (superuser only). If `username` is omitted, derive one from the phone digits.
      * @param data The data for the request.
      * @param data.requestBody
@@ -1665,8 +1644,8 @@ export class UsersService {
     
     /**
      * Delete User Me
-     * erase_user'ning o'z-o'ziga qisqartmasi — qoidalar bitta joyda tursin.
-     * @returns string Successful Response
+     * delete_user'ning o'z-o'ziga qisqartmasi — qoidalar bitta joyda tursin.
+     * @returns Message Successful Response
      * @throws ApiError
      */
     public static deleteUserMe(): CancelablePromise<DeleteUserMeResponse> {
@@ -1700,7 +1679,7 @@ export class UsersService {
      * Update Password Me
      * @param data The data for the request.
      * @param data.requestBody
-     * @returns string Successful Response
+     * @returns Message Successful Response
      * @throws ApiError
      */
     public static updatePasswordMe(data: UpdatePasswordMeData): CancelablePromise<UpdatePasswordMeResponse> {
@@ -1737,7 +1716,7 @@ export class UsersService {
     }
     
     /**
-     * Patch User
+     * Update User
      * Update any user (superuser only). Self-updates should go through `PATCH /users/me`.
      * @param data The data for the request.
      * @param data.userId
@@ -1761,11 +1740,11 @@ export class UsersService {
     }
     
     /**
-     * Erase User
+     * Delete User
      * Soft-delete a user. Allowed for the user themselves or any superuser.
      * @param data The data for the request.
      * @param data.userId
-     * @returns string Successful Response
+     * @returns Message Successful Response
      * @throws ApiError
      */
     public static deleteUser(data: DeleteUserData): CancelablePromise<DeleteUserResponse> {
