@@ -16,7 +16,6 @@ Loyihaning to'liq texnik hujjatlari. Har bir fayl o'z subsystemidagi **har bir m
 | [10-giblab-reference.md](10-giblab-reference.md) | Manba tizim GibLab: interfeys tuzilishi, `.project` fayl formati (tovarlar, detal/zagotovka/qoldiq, uch juft o'lcham, o'lcham kiritish rejimlari), to'qqiz operatsiya turi, XNC dasturi teglari, sozlamalar (katalog, postprotsessorlar, yorliq shablonlari), 1C qoldiq integratsiyasi, parser nimani o'qiydi va nima uchun ogohlantiradi |
 | [11-detal-id-nomlash.md](11-detal-id-nomlash.md) | Detal ID qoidasi: `{mahsulot}_{kod}[-N][_n]` — chek = QR = SCX nomi; `-N` kod to'qnashuvi (boshqa detal), `_n` nusxa raqami; qo'llanadigan joylar va misollar |
 | [nanxing-calibration/](nanxing-calibration/README.md) | Nanxing MH2026 Face-kod kalibratsiya to'plami — **arxiv**: `FACE_1.scx`…`FACE_6.scx` test fayllari va stanokda o'tkazish yo'riqnomasi (`scx.py` dagi Face jadvali korpusdan keltirilgan, protsedura faqat stanok yana e'tiroz bildirsa kerak bo'ladi) |
-| [Mebelix_MES_TZ_v2.2.docx](Mebelix_MES_TZ_v2.2.docx) | Texnik Topshiriq (TT) — talablarning yagona manbasi |
 
 ## Yangilab borish
 

@@ -1,6 +1,7 @@
 # 09 — MES domen qatlami (TT bo'yicha implementatsiya)
 
-Holat: **2026-08-06**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Barcha fazalar implementatsiya qilingan — alohida `TODO.md` yuritilmaydi, holat shu hujjatlar to'plami va git tarixidan o'qiladi.
+Holat: **2026-08-06**. TT (Texnik Topshiriq) repodan tashqarida yuritiladi — quyidagi `TZ x.y` havolalari
+uning bo'lim raqamlari. Barcha fazalar implementatsiya qilingan — alohida `TODO.md` yuritilmaydi, holat shu hujjatlar to'plami va git tarixidan o'qiladi.
 
 ## 1. Data model (`app/models/`)
 
