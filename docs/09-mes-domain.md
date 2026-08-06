@@ -1,6 +1,6 @@
 # 09 — MES domen qatlami (TT bo'yicha implementatsiya)
 
-Holat: **2026-08-05**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Barcha fazalar implementatsiya qilingan — alohida `TODO.md` yuritilmaydi, holat shu hujjatlar to'plami va git tarixidan o'qiladi.
+Holat: **2026-08-06**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Barcha fazalar implementatsiya qilingan — alohida `TODO.md` yuritilmaydi, holat shu hujjatlar to'plami va git tarixidan o'qiladi.
 
 ## 1. Data model (`app/models/`)
 
@@ -21,7 +21,7 @@ Holat: **2026-08-05**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Barcha fazalar impl
 | `work_session` | Smena (beyjik → sessiya) | 8.2 |
 | `order_file` | project / scx / hujjatlar (diskda `UPLOAD_DIR` ostida); `meta` JSONB — anketa xona rasmlari uchun `{"room_id", "content_type"}` | 2.4.3 |
 | `audit_log` | Kim-qachon-nima (`crud/audit.py: log_action`, tranzaksiya ichida) | 10.11 |
-| `bridge_agent` | Printerli kompyuterdagi chop etish agenti: `name`, `token_hash` (sha256, unique), bir martalik `pair_code` + `pair_expires_at` (15 daqiqa), `last_seen_at` (panelda Onlayn/Oflayn); migratsiya `d5e81a24c3b7`. Qo'shimcha: `machine_id` — skan-forvard bog'lash (`f4b8c2a91e55`), `version` — agent exe versiyasi, WS handshake `X-Agent-Version` dan (`a7c3e9d12f04`), `can_print` — False bo'lsa printersiz stansiya chek navbatidan job olmaydi (`d4f7a8c25e91`) | 2.2.2 |
+| `bridge_agent` | Printerli kompyuterdagi chop etish agenti: `name`, `token_hash` (sha256, unique), bir martalik `pair_code` + `pair_expires_at` (15 daqiqa), `last_seen_at` (panelda "Ulandi"/"Uzilgan"); migratsiya `d5e81a24c3b7`. Qo'shimcha: `machine_id` — skan-forvard bog'lash (`f4b8c2a91e55`), `version` — agent exe versiyasi, WS handshake `X-Agent-Version` dan (`a7c3e9d12f04`), `can_print` — False bo'lsa printersiz stansiya chek navbatidan job olmaydi (`d4f7a8c25e91`) | 2.2.2 |
 
 `user` jadvaliga qo'shildi: `role` (`UserRole`, 13 a'zo) + `machine_id`. Rollar ikki guruh
 (`app/models/enums.py`):
@@ -38,8 +38,12 @@ Holat: **2026-08-05**. TT manba: `Mebelix_MES_TZ_v2.2.docx`. Barcha fazalar impl
 |---|---|
 | `models.py` | Parse natijasi dataclasslari (ORM emas): `ParsedProject/Product/Part`, `XncOp`, `ParsedMaterial`, `CutOperation` + `ParseError` (matni to'g'ridan texnologga ko'rsatiladi); `PROCESS_POSTS` — sexning "Jarayon uchun kodlar" jadvali (jarayon kodi → post kodi, quyida) |
 | `parser.py` | .project XML (to'la parser, regex YO'Q; cp1251/UTF-8; PROCESSED/TEMPLATE avlodlar; kontekstli id qidiruv); takror detal kodlari deterministik rename (`code`, `code-2`, …) + o'zbekcha warning — QR/SCX kaliti unikal qoladi; detal nomidan qo'lda yozilgan marshrut (`_process_codes` → `ParsedPart.process_codes`, `_custom_route_warnings`) |
-| `xnc.py` | XNC program parse (atribut yoki bola element), xavfsiz ifoda hisoblash (`dz+3`), max 2 op merge |
+| `xnc.py` | XNC program parse (atribut yoki bola element), xavfsiz ifoda hisoblash (`dz+3`), `merge_xnc_ops` — BARCHA operatsiyalar saqlanadi, (`side2`, `code`) bo'yicha tartiblanadi, soni cheklanmaydi (`parser.py` 2 tadan ko'pi uchun faqat ogohlantiradi) |
 | `csblob.py` | CS `data` blob dekoderi: big-endian, 15B yozuvlar, guillotine daraxt, dims+117 root-o'q sloti, 5.7.4 self-check |
+| `cutmap.py` | Vizual model (5.7.5): sheets/parts/cuts + holes overlay, rot/eW/eH, atxot foydali o'lcham, instance↔katakcha binding; har list uchun root-strip o'lcham zanjiri `dims` (ax/a/b/v, ≥10mm poloslar, GibSaw uslubi) — cutmap JSONida saqlanadi, terminal SVG chizadi |
+| `scx.py` | SCX generatsiya — Nanxing haqiqiy konvensiyasi (Scx-korpusdan, 87 proyekt): Y=Width−y; qirra Face l4/r3/t1/b2; orqa dastur Face=6 bilan bitta faylda; 32mm qo'shqavat 16/Z÷2; freza kompensatsiyalangan yo'l. To'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §7.2 |
+| `ingest.py` | DBga yozish: products/parts/instances/routes/materials/fayllar/cutmap/material_usage; qayta yuklash to'liq almashtiradi; SCX fayl yozish+ro'yxatga olish `write_and_register_scx()` helperda — `/orders/{id}/scx/regenerate` ham shundan foydalanadi |
+
 **O'lcham juftliklari (GibLab veb-ilovasida tekshirilgan).** Faylda har detalning
 uch juft o'lchami bo'ladi: `dl/dw` — tayyor detal (kromka bilan), `jl/jw` — zagotovka
 (kromkalanadigan tomonda tasma qalinligicha kichik), `cl/cw` — korpusda `dl/dw` bilan
@@ -50,10 +54,6 @@ migratsiyasida olib tashlangan); parser o'lchamni `l → dl → cl → jl` zanji
 oladi (`cSizeMode` qaysi juft majburiyligini belgilaydi). GibLab'da o'lcham
 kiritish rejimi ("Режимы ввода деталей") uchta: zagotovka, tayyor detal (kromka bilan),
 prifugovkadan keyin (kromkasiz) — shu sozlama `dl/dw` ma'nosini belgilaydi.
-
-| `cutmap.py` | Vizual model (5.7.5): sheets/parts/cuts + holes overlay, rot/eW/eH, atxot foydali o'lcham, instance↔katakcha binding; har list uchun root-strip o'lcham zanjiri `dims` (ax/a/b/v, ≥10mm poloslar, GibSaw uslubi) — cutmap JSONida saqlanadi, terminal SVG chizadi |
-| `scx.py` | SCX generatsiya — Nanxing haqiqiy konvensiyasi (Scx-korpusdan, 87 proyekt): Y=Width−y; qirra Face l4/r3/t1/b2; orqa dastur Face=6 bilan bitta faylda; 32mm qo'shqavat 16/Z÷2; freza kompensatsiyalangan yo'l. To'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §7.2 |
-| `ingest.py` | DBga yozish: products/parts/instances/routes/materials/fayllar/cutmap/material_usage; qayta yuklash to'liq almashtiradi; SCX fayl yozish+ro'yxatga olish `write_and_register_scx()` helperda — `/orders/{id}/scx/regenerate` ham shundan foydalanadi |
 
 Marshrut qoidalari (5.4): ARRA — listda joyi bor detalga (per_instance=1); KROMKA = ell/elr/elt/elb soni;
 PRISADKA = bf/bt/bb/bl/br; ROVER = gr yoki ms/ml/mac — paz ham frezer stanogida kesiladi va
@@ -225,7 +225,7 @@ Sxema `app/schemas/orders.py`:
 
 | Model | Mazmun |
 |---|---|
-| `OrderSurvey` | `version`, `measured_at` (o'lchov sanasi), `measured_by` (o'lchagan usta), `rooms` (max 10) |
+| `OrderSurvey` | `version`, `measured_at` (o'lchov sanasi), `measured_by` (o'lchagan usta), `packaging`/`delivery`/`installation` — buyurtma darajasidagi bayroqlar (sex bitta `.project` fayl ustida ishlaydi, logistika butun buyurtmani bitta mashinada olib ketadi: xona degan tushuncha ularga yetib bormaydi), `rooms` (max 10) |
 | `SurveyRoom` | `id` (frontend beradigan barqaror kalit) + `name`; 2-bo'lim `furniture_types`/`furniture_other`; 3-bo'lim `shape`, `room_length/width/height`, `furniture_wall_length`; 4-bo'lim `corpus_materials`, `corpus_color`, `corpus_thickness`, `corpus_note`; 5-bo'lim `facade_materials`, `facade_color`, `countertop`, `facade_note`; 6-7 `hardware_level`, `extra_services`; 8 `note`; o'lchov varag'i `walls`, `modules`, `total_running_meters`, `total_height` |
 | `SurveyWall` | A bo'limi: `letter` (A..E), `length`, `height` — max 8 ta |
 | `SurveyModule` | B bo'limi: `name`, `wall`, `width`/`depth`/`height`, `count`, `note` — max 40 ta |
@@ -237,7 +237,10 @@ matnga aylantirish faqat `frontend/src/lib/anketa.ts` da (`FURNITURE_TYPES`, `LA
 `CORPUS_MATERIALS`, `CORPUS_THICKNESS`, `FACADE_MATERIALS`, `COUNTERTOPS`, `HARDWARE_LEVELS`,
 `EXTRA_SERVICES`, `WALL_LETTERS` + `labelOf`/`labelsOf`) — yangi variant qo'shilganda migratsiya
 kerak emas, saqlangan tarix ham buzilmaydi. Mijoz ma'lumotlari `client` da, narx/avans/muddat
-`order` da — anketada takrorlanmaydi.
+`order` da — anketada takrorlanmaydi. Eski anketalarda `yetkazish`/`montaj` xona
+`extra_services` ida edi: forma ochilganda ular buyurtma bayroqlariga ko'chiriladi va xona
+ro'yxatidan olib tashlanadi (`_layout/anketa.$orderId.tsx`), keyingi avtosaqlash yangi
+shaklni yozadi — migratsiya kerak emas.
 
 Endpointlar (`app/api/routes/orders.py`, hammasi `ManagerUser`):
 
@@ -282,15 +285,29 @@ direktor ham ko'radi.
 - Imzo komponent: `Common/StagePipeline` — post zanjiri (dinamik, dashboard va buyurtma qatorlari).
 - Routelar: `_layout/*` admin modullar (orders, clients, employees, machines, materials, reports,
   logs, printers, admin, settings, cutmap.$orderId, `anketa.$orderId`), `/terminal`, `/tablo`
-  (JAMI HAJM + rejimlar + drill-down + jonli soat). Yon menyu — `Sidebar/AppSidebar.tsx:
-  NAV_ITEMS` (11 band); mobil sarlavhalar (`_layout.tsx: sectionTitles`) shu ro'yxatdan
-  + `/settings`.
-- Anketa UI: `_layout/anketa.$orderId.tsx` — xonalar tab bilan almashadi, 7 ta bo'lim + yopiladigan
-  "O'lchov varag'i". Yozish huquqi `is_superuser || admin || manager`; boshqa rollarga forma emas,
+  ("Jami" yig'indi qatori + rejimlar + drill-down; sarlavhada brend logo, stanokka bog'langan
+  tablo akkauntida "JORIY NUQTA" chipi, onlayn indikatori va tablo bo'lmagan rollarga "Boshqaruv
+  paneli" havolasi). "Jami" qatori hajmga bog'lanmagan — katakchalari tanlangan rejimga ergashadi:
+  hajm — `X / Y` post birligida (m²/m/dona), soni — `done / total`, foiz — `%`. Tanlangan rejim
+  `localStorage` da (`tablo-mode`) — TV qayta yoqilganda ham saqlanadi; yangi bundle uchun qayta
+  yuklash soatiga bir marta va faqat drill-down yopiq bo'lganda. Katak qiymati OSHGANDA bir marta
+  0.9 s yashil uriladi (`animate-cell-flash` / `@keyframes mx-cell-flash`, `src/index.css`) —
+  devordagi ekranda o'zgargan raqamni ilib oladigan yagona signal; kamayishda (skan bekor
+  qilinganda) urilmaydi. Yon menyu — `Sidebar/AppSidebar.tsx: NAV_ITEMS` (11 band); mobil
+  sarlavhalar (`_layout.tsx: sectionTitles`) shu ro'yxatdan + `/settings`.
+- Anketa UI: `_layout/anketa.$orderId.tsx` — xonalar pill bilan almashadi, 7 ta bo'lim + yopiladigan
+  "O'lchov varag'i". Xona pillidagi × uni o'chiradi (tasdiq dialogi bilan; bitta xona qolganda ×
+  yo'q). Xona pillari bilan raqamlangan bo'limlar orasida — bo'limlardan TASHQARIDA — "Butun
+  buyurtma uchun" bloki (butun karta `canEdit` ostida: o'qish huquqidagi rollar uni ko'rmaydi):
+  `ORDER_SERVICES` belgilari (Upakovka qilish / Yetkazib berish / O'rnatish (montaj)) va o'lchov
+  sanasi + o'lchagan usta; xona almashganda o'zgarmaydi. `RoomSummary` da ikki alohida qator:
+  "O'lchov" (sana — usta) va "Buyurtma bo'yicha" (tanlangan xizmatlar). Yozish huquqi
+  `is_superuser || admin || manager`; boshqa rollarga forma emas,
   `RoomSummary` — o'qish uchun jamlanma (matn nusxa olinadi). Avtosaqlash: har tahrirdan 1.5 s
-  keyin `PUT /survey` (alohida "saqlash" bosqichi yo'q), `beforeunload` ogohlantirish +
-  unmount'da fire-and-forget saqlash. Server javobi formaga **bir marta** yuklanadi
-  (`loaded` ref) — aks holda refetch menejer yozayotgan matn ustiga tushadi.
+  keyin `PUT /survey` (qo'lda saqlash shart emas — pastdagi yopishqoq panelda holat va ixtiyoriy
+  "Saqlash" tugmasi), `beforeunload` ogohlantirish + unmount'da fire-and-forget saqlash. Server
+  javobi formaga **bir marta** yuklanadi (`loaded` ref) — aks holda refetch menejer yozayotgan
+  matn ustiga tushadi.
 - Buyurtma kartasi (`orders/$orderId.tsx`): `.project` uchun drag&drop zona (kengaytma tekshiriladi,
   boshqasiga xato toast) va anketaga o'tish tugmasi.
 - `/terminal` post bo'yicha sahifalar (hammasi picker: `GET /terminal/orders` kartalari):

@@ -140,7 +140,7 @@ Ilgari barcha printerlar server `.env` idagi **bitta** `BRIDGE_TOKEN` bilan ishl
 - Admin panel yangi agent yaratadi → **8 belgili bir martalik kod** (`pair_code` + `pair_expires_at` = 15 daqiqa). Alfavitda `I/L/O/0/1` yo'q — kodni telefonda aytganda adashtirmaydi (`backend/app/api/routes/bridge_agents.py`).
 - Agent kodni `POST /api/v1/bridge-agents/pair` orqali doimiy tokenga almashtiradi. Almashtirish **atomik `UPDATE ... RETURNING`** (`pair_code` mos + muddati o'tmagan) — bitta kodni ikki kompyuter yuborsa faqat bittasi yutadi, kod darhol `NULL` ga tushadi.
 - Bazada faqat `token_hash` (sha256, UNIQUE) saqlanadi; tokenning o'zi bir marta — pair javobida — beriladi va agent uni `%APPDATA%\MebelixAgent\.env` ga yozadi.
-- `last_seen_at` ni `/ws/bridge` har 5 daqiqada yangilaydi (DB'ga ortiqcha yuk bo'lmasin) — panel shundan **Onlayn/Oflayn** ni ko'rsatadi.
+- `last_seen_at` ni `/ws/bridge` har 5 daqiqada yangilaydi (DB'ga ortiqcha yuk bo'lmasin) — panel shundan **Ulandi/Uzilgan** ni ko'rsatadi.
 - Bekor qilish — soft delete (`BaseCRUD.delete`): keyingi ulanish 4401 bilan rad etiladi, jonli ulanish esa navbatdagi tekshiruvda (maks. ~5 daqiqa) uziladi va qo'lda turgan job navbatga qaytadi. Yangi kod berish (`POST /bridge-agents/{id}/code`) `token_hash` ni ham tozalaydi — eski kompyuter shu zahoti kesiladi. Bittasini bekor qilish qolgan printerlarga tegmaydi.
 
 ### 1.5 `backend/app/models/__init__.py`
@@ -201,10 +201,10 @@ Har bir registr moduli standart uchlik (`*Read` / `*Create` / `*Update`) beradi:
 | `OrderUpdate` | Hammasi optional (shu jumladan `advance_payment`) |
 | `OrderCancel` | `reason` (3–500 belgi, majburiy) |
 | `MachineAssignments` | `assignments: dict[PostCode, int]` — ishlab chiqarishdan oldin post-boshiga stanok tanlovi (TZ 6.4) |
-| `RouteCell` | Matritsa katagi (part × post): `post_id`, `source`, `is_enabled`, `per_instance`, `total_required`, `total_done`, `machine_id` |
+| `RouteCell` | Matritsa katagi (part × post): `id` (`part_route` qatori id'si), `post_id`, `source`, `is_enabled`, `per_instance`, `total_required`, `total_done`, `machine_id` |
 | `MatrixPart` | Matritsa qatori: part o'lchamlari + `edges`/`xnc_summary` + `routes: list[RouteCell]` |
 | `OrderMatrix` | `order_id` + `parts: list[MatrixPart]` |
-| `MatrixPartEdit` | Texnolog bitta part qatorini tahrirlaydi (TZ 6.3.3): `note`, `count` (1–1000), `stages: dict[int, bool]` (post_id → yoqilgan) |
+| `MatrixPartEdit` | Texnolog bitta part qatorini tahrirlaydi (TZ 6.3.3): `part_id` (majburiy — qaysi matritsa qatori tahrirlanayotgani), `note`, `count` (1–1000), `stages: dict[int, bool]` (post_id → yoqilgan) |
 | `MatrixEdit` | `edits: list[MatrixPartEdit]` — batch wrapper |
 | `OrderSurvey`, `SurveyRoom`, `SurveyWall`, `SurveyModule` | Mijoz anketasi + o'lchov varag'i — 2.4.1-bo'lim |
 
@@ -221,7 +221,12 @@ Mijoz ismi/telefoni `Client` da, narx/avans/muddat `Order` da — anketada takro
 | `version` | `int` | default `1` — sxema evolyutsiyasi uchun |
 | `measured_at` | `date \| None` | o'lchov sanasi |
 | `measured_by` | `str` | ≤120 — o'lchagan usta |
+| `packaging` | `bool` | default `False` — yetkazishdan oldin qadoqlash |
+| `delivery` | `bool` | default `False` — bitta mashina, bitta manzil |
+| `installation` | `bool` | default `False` — bitta brigada, bitta tashrif |
 | `rooms` | `list[SurveyRoom]` | ≤10 |
+
+`packaging`/`delivery`/`installation` **buyurtma darajasida**, xona ichida emas: sex va logistikaga xona degan tushuncha yetib bormaydi (bitta `.project` fayl butun buyurtmaga yuklanadi). `survey` — JSONB, shuning uchun migratsiya kerak emas: eski yozuvlarda bu kalitlar umuman yo'q (o'qishda xom dict qaytadi, `OrderSurvey` bo'yicha qayta validatsiya yo'q) va frontend ularni belgilanmagan deb oladi; `delivery`/`installation` esa xonalardagi eski `yetkazish`/`montaj` kodlaridan qayta tiklanadi (`frontend/src/routes/_layout/anketa.$orderId.tsx`).
 
 **`SurveyRoom`** — har xona alohida to'ldiriladi (`extra="ignore"`). `id` — frontend beradigan barqaror kalit (≤40), xona rasmlari shu `id` ga bog'lanadi (1.4.1-bo'lim).
 
@@ -241,7 +246,7 @@ Mijoz ismi/telefoni `Client` da, narx/avans/muddat `Order` da — anketada takro
 
 Barcha mm-o'lchamlar umumiy alias orqali: `_Mm = Annotated[float | None, Field(default=None, ge=0, le=50_000)]` — anketa tashqi kirish, chegarasiz bitta so'rov JSONB'ni to'ldirib yuborardi. Ro'yxat maydonlarida `Field(max_length=...)` element sonini cheklaydi.
 
-**Variant kodlari** (`ldsp`, `mdf`, `akril`, `led`, `montaj`, `burchak`, ...) bazaga **kod** sifatida yoziladi; matnga aylantirish faqat `frontend/src/lib/anketa.ts` katalogida (`FURNITURE_TYPES`, `LAYOUT_SHAPES`, `CORPUS_MATERIALS`, `CORPUS_THICKNESS`, `FACADE_MATERIALS`, `COUNTERTOPS`, `HARDWARE_LEVELS`, `EXTRA_SERVICES`, `WALL_LETTERS` + `labelOf`/`labelsOf`). Backend ro'yxatni qat'iy tekshirmaydi — yangi variant qo'shilganda migratsiya ham, backend o'zgarishi ham kerak emas, eski qatorlarda saqlangan kod ham buzilmaydi.
+**Variant kodlari** (`ldsp`, `mdf`, `akril`, `led`, `rozetka`, `burchak`, ...) bazaga **kod** sifatida yoziladi; matnga aylantirish faqat `frontend/src/lib/anketa.ts` katalogida (`FURNITURE_TYPES`, `LAYOUT_SHAPES`, `CORPUS_MATERIALS`, `CORPUS_THICKNESS`, `FACADE_MATERIALS`, `COUNTERTOPS`, `HARDWARE_LEVELS`, `EXTRA_SERVICES`, `WALL_LETTERS` + `labelOf`/`labelsOf`). Backend ro'yxatni qat'iy tekshirmaydi — yangi variant qo'shilganda migratsiya ham, backend o'zgarishi ham kerak emas, eski qatorlarda saqlangan kod ham buzilmaydi.
 
 ### 2.5 `backend/app/schemas/terminal.py` — Terminal/skan schemalari
 

@@ -1,14 +1,15 @@
 # 08 — Paketlar va versiyalar
 
-Holat: **2026-08-05** tekshiruvi (oxirgi to'liq upgrade: 2026-07-09). Barcha paketlar 2026-07-09 dagi eng so'ngi stable versiyaga ko'tarilgan (quyidagi 3 ta ataylab qilingan istisno bilan). 2026-08-05 dagi katta refaktor manifestlarga tegmadi — oxirgi manifest o'zgarishi 2026-07-27.
+Holat: **2026-08-06** tekshiruvi (oxirgi to'liq upgrade: 2026-07-09). Barcha paketlar 2026-07-09 dagi eng so'ngi stable versiyaga ko'tarilgan (quyidagi 3 ta ataylab qilingan istisno bilan). 2026-08-05 dagi katta refaktor manifestlarning faqat **metadatasiga** tegdi — bog'liqliklar ro'yxati 2026-07-27 dan beri o'zgarmagan.
 
-**Manifest tarixi (upgrade'dan keyin):** manifestlar besh marta o'zgardi — avval ikkita qo'shish (2026-07-10), keyin uchta kamaytirish (2026-07-27):
+**Manifest tarixi (upgrade'dan keyin):** manifestlar olti marta o'zgardi — avval ikkita qo'shish (2026-07-10), keyin uchta kamaytirish (2026-07-27), oxirida bitta metadata tahriri (2026-08-05):
 
 - `26e00af` — MES core bilan `openpyxl` (runtime, Excel eksport) va dev'ga `types-openpyxl` + `websockets` qo'shildi;
 - `b5ee41d` — yorliq chop etish uchun `tzdata`/`pillow`/`qrcode` (pastdagi jadval), frontend'ga `@radix-ui/react-popover` va `react-day-picker`;
 - `4306a42` — `websockets` dev group'dan asosiy `dependencies` ga ko'chirildi (pastda alohida bo'lim);
 - `87d23ab` — `httpx` va `uuid6` runtime'dan, `types-redis` dev'dan chiqarildi (kod ularni hech qayerda import qilmasdi); `uv.lock` 71 → **63** paketga tushdi (`certifi`, `httpcore`, `types-cffi`, `types-pyopenssl`, `types-setuptools` transitiv bo'lib birga ketdi);
-- `a916088` — `@tanstack/react-table` o'chirildi (`Common/DataTable.tsx` va `Admin/columns.tsx` bilan birga; `admin.tsx` endi oddiy `<Table>` chizadi), `backend/pyproject.toml` dagi `license` kaliti ham olib tashlandi.
+- `a916088` — `@tanstack/react-table` o'chirildi (`Common/DataTable.tsx` va `Admin/columns.tsx` bilan birga; `admin.tsx` endi oddiy `<Table>` chizadi), `backend/pyproject.toml` dagi `license` kaliti ham olib tashlandi;
+- `a4f7f21` — `frontend/package.json` da `name` `frontend` → `mebelix-mes-frontend` bo'ldi va yangi `description` kaliti qo'shildi; bog'liqliklarning o'ziga tegilmadi (yagona metadata o'zgarishi).
 
 Yangi bog'liqliklar faqat manifestdan **tashqarida** paydo bo'ldi va ikkalasi ham quyida alohida bo'limlarda yozilgan:
 
@@ -35,7 +36,7 @@ Asosiy paketlar (yangilangandan keyin):
 | sqlalchemy | 2.0.51 | latest |
 | alembic | 1.18.5 | latest |
 | asyncpg | 0.31.0 | latest |
-| **redis** | **5.3.1** | ⚠️ 8.0.1 mavjud, lekin `arq` bloklaydi (pastga qarang) |
+| **redis** | **5.3.1** | ⚠️ 8.1.0 mavjud, lekin `arq` bloklaydi (pastga qarang) |
 | arq | 0.28.0 | latest |
 | pyjwt | 2.13.0 | latest |
 | bcrypt | 5.0.0 | latest |
@@ -43,7 +44,7 @@ Asosiy paketlar (yangilangandan keyin):
 | ruff (dev) | 0.15.20 | latest |
 | pre-commit (dev) | 4.6.0 | latest |
 
-Tekshiruv: `uv run ruff check .` ✅ · `uv run mypy app` ✅ (93 fayl) · `import app.main` ✅
+Tekshiruv: `uv run ruff check .` ✅ · `uv run mypy app` ✅ (104 fayl) · `import app.main` ✅
 
 Jadvalda ko'rsatilmagan, lekin manifestda e'lon qilingan runtime paketlar (lock versiyalari bilan): `openpyxl` 3.1.5 — Excel eksport (`app/services/excel.py`; dev'da `types-openpyxl`), `pydantic-settings` 2.14.2 — `app/core/config.py` dagi `Settings`, `python-multipart` 0.0.32 — fayl yuklash (FastAPI `UploadFile`/`Form`, `orders.py`), `prometheus-fastapi-instrumentator` 8.0.2 — `/metrics` (`app/core/setup.py`), `uvloop` 0.22.1 — faqat `sys_platform != 'win32'`, `greenlet` 3.5.3 — SQLAlchemy async uchun.
 
@@ -59,9 +60,9 @@ Bu uchtasining **haqiqiy ishlatilishi** (99cebc3 dagi `render_label_png()` qayta
 
 - **pillow** — `Image`, `ImageDraw`, `ImageFont`, `render_label_png()` ichida. 80×60 mm, 203 dpi → 640×480 px; `draw.fontmode = "1"` bilan antialiasing o'chirilgan (termoprinter 1-bit, aks holda drayver dither qiladi). Shu funksiya `backend/app/assets/label-logo.png` va `label-icon-drill.png` fayllarini ham ochadi.
 - **qrcode** — `qrcode.make(d.qr_text, box_size=..., border=0)` shu funksiya ichida. Pillow o'rnatilgani uchun PIL image qaytaradi va to'g'ridan-to'g'ri yorliq rasmiga joylashtiriladi.
-- **tzdata** — `ZoneInfo("Asia/Tashkent")` uchun IANA ma'lumoti (Windows'da tizimda yo'q). 2026-08-05 dan konstanta bitta joyda — `app.core.config.TASHKENT_TZ`; `labels.py` uni `printed_at` uchun import qiladi (`load_label_data()`), `audit.py` va `reports.py` ham shu konstantani ishlatadi.
+- **tzdata** — `ZoneInfo("Asia/Tashkent")` uchun IANA ma'lumoti (Windows'da tizimda yo'q). 2026-08-05 dan konstanta bitta joyda — `app.core.config.TASHKENT_TZ`; `labels.py` uni `printed_at` uchun import qiladi (`load_label_data()`), `app/api/routes/audit.py` va `app/api/routes/reports.py` ham shu konstantani ishlatadi.
 
-`labels.py` ning butun tashqi yuzasi shu uchtaga tayanadi: `LabelData`, `load_label_data()`, `_n()`, `render_label_png()` — boshqa paket talab qilmaydi. `print_label` taski (`backend/app/tasks/__init__.py`) PNG'ni base64 qilib Redis navbatiga (`mes:print:queue`) qo'yadi, job JSON'i `{"type", "instance_id", "png"}` — printer dialekti generatsiya qilinmaydi, shuning uchun task tomonda ham qo'shimcha bog'liqlik yo'q.
+`labels.py` ning butun tashqi yuzasi shu uchtaga tayanadi: `LabelData`, `load_label_data()`, `_n()`, `_bw()`, `render_label_png()` — boshqa paket talab qilmaydi. `print_label` taski (`backend/app/tasks/__init__.py`) PNG'ni base64 qilib Redis navbatiga (`mes:print:queue`) qo'yadi, job JSON'i `{"type", "instance_id", "png"}` — printer dialekti generatsiya qilinmaydi, shuning uchun task tomonda ham qo'shimcha bog'liqlik yo'q.
 
 `websockets>=16.0` asosiy `dependencies` da, garchi `backend/app` ichida hech qayerda `import` qilinmasa ham (repo bo'yicha yagona `import websockets` — `bridge-agent/agent.py` da). Sabab: `uvicorn` 0.51.0 `[standard]` extra'siz o'rnatilgan (lock'da bog'liqliklari faqat `click` + `h11`), `wsproto` esa umuman yo'q — ya'ni `/ws/events` va `/ws/bridge` uchun WebSocket transporti aynan shu paket. Dev group'da tursa `uv sync --no-dev` bilan yig'ilgan image'da TABLO ham, yorliq chop etish ham jimgina o'lardi; shuning uchun `pyproject.toml` da qator ustiga izoh yozib qo'yilgan.
 
@@ -125,7 +126,7 @@ Yorliq rasm assetlari — `backend/app/assets/label-logo.png`, `label-icon-drill
 
 ## Ataylab ushlab qolingan versiyalar (ceilinglar)
 
-### 1. redis 5.3.1 (latest: 8.0.1)
+### 1. redis 5.3.1 (latest: 8.1.0)
 
 `arq` (task queue, latest 0.28.0) `redis[hiredis]<6,>=4.2.0` talab qiladi. redis 5.3.1 — shu constraint ichidagi maksimum.
 
@@ -135,7 +136,7 @@ Yorliq rasm assetlari — `backend/app/assets/label-logo.png`, `label-icon-drill
 
 `openapi-ts.config.ts` `legacy/axios` client ishlatadi (`OpenAPI` config obyekti, `ApiError`, `CancelablePromise`, `*Service` klasslari — butun frontend shu API'ga qurilgan). **0.87.0 da legacy clientlar butunlay olib tashlangan** — 0.99.0 bilan `legacy/axios` jimgina 0 fayl generate qiladi (0.99 sinab ko'rildi: `src/client` bo'shab qoldi, qaytarildi). 0.86.12 — legacy clientni qo'llaydigan eng so'ngi versiya.
 
-⚠️ **Security eslatma:** 0.86.12 ichidagi `handlebars` transitive dependency'sida npm audit 2 ta vulnerability ko'rsatadi (1 high, 1 critical). Bu **faqat dev-time code-generator** — production bundlega kirmaydi, input esa o'zimizning `openapi.json`. Xavf past, lekin quyidagi migratsiya bilan butunlay yo'qoladi.
+⚠️ **Security eslatma:** `npm audit` jami 3 ta vulnerability ko'rsatadi (2 high + 1 critical), shundan ikkitasi shu ceiling'dan keladi: transitive `handlebars` (critical) va `@hey-api/openapi-ts` ning **o'ziga** qarshi advisory (high — `buildClientParams` shablonida noma'lum `$<slot>___proto__` kaliti orqali prototip zanjirini almashtirish; npm uni `via` da o'z advisory'si + `handlebars` bilan ko'rsatadi). Ikkalasi ham **faqat dev-time code-generator** ichida — production bundlega kirmaydi, input esa o'zimizning `openapi.json`. Xavf past, lekin quyidagi migratsiya bilan butunlay yo'qoladi. Uchinchi topilma — `postcss` (high, `sourceMappingURL` orqali path traversal) — `vite` zanjiridan keladi va bu ceiling'ga aloqasi yo'q.
 
 **Yangilash yo'li:** `legacy/axios` dan modern `@hey-api/client-axios` pluginiga migratsiya:
 

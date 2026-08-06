@@ -6,7 +6,8 @@ sozlamalar va integratsiyalar. Maqsad — parser nimaga tayanishini va nimani at
 qoldirishini asoslash.
 
 Manba: `giblab.com` veb-ilovasi va uning `Справка` bo'limi (`/help/*.html`), 2026-07-27 holati.
-Rasmiy format spetsifikatsiyasi: `/help/format_ru.html` — 31 jadval, 445 atribut.
+Rasmiy format spetsifikatsiyasi: `/help/format_ru.html` — 31 jadval, 445 atribut qatori
+(§7.1 dagi 289 — boshqacha sanalgan raqam, ikkalasi to'g'ridan-to'g'ri solishtirilmaydi).
 Bizning tomonimiz: `backend/app/services/giblab/` (parser, cutmap, csblob, xnc, scx, ingest).
 
 ---
@@ -33,8 +34,9 @@ Operatsiya tafsiloti to'rt tabdan iborat: **Параметры** (material va ke
 
 "Изделия" jadvalida mahsulotning `Код` maydoni bo'sh bo'lishi mumkin, "Детали" jadvalida esa
 "Наименование" ustuni butunlay bo'sh qolishi mumkin. GibLab bunga to'sqinlik qilmaydi va
-eksportga ham bo'sh yozadi. Bizning korpusdagi to'rtta fayl aynan shunday — detal kodlari yo'q,
-nomida kod o'rniga `№` belgisi turadi.
+eksportga ham bo'sh yozadi. Korpusdagi to'rtta faylda kodsiz detal bor: `2001_Nukriddin` da
+hammasi (52/52), qolganlarida qisman — `kupe` 38/70, `kuxniya` 22/191, `TV_zonakupe` 47/49.
+Nomida kod o'rniga `№` belgisi faqat `2001_Nukriddin` da turadi (52 tadan 48 tasida).
 
 Shu sababli parser kodsiz detalga tartib raqamidan kod beradi (`001`, `002`, ...) va
 ogohlantirish yozadi. Kod GibLab'da to'ldirilsa yorliqda `312001_01_003 bok` kabi ma'noli
@@ -108,7 +110,7 @@ dastgohi har tomondan shuncha mm oladi. Korpusda hamma joyda 1 mm.
 ### 2.1.1 `goods.xls` — sexning haqiqiy katalogi
 
 Настройки → Каталог товаров. Sexdagi nusxa tekshirildi (`uploads/goods.xls`, BIFF/OLE2,
-226 KB, 2 varaq). `Лист1` — katalogning o'zi, `A1:L888`:
+226 KB, 2 varaq). `Лист1` — katalogning o'zi, `A1:K888`:
 
 | Ustun | Nima |
 |---|---|
@@ -121,8 +123,10 @@ dastgohi har tomondan shuncha mm oladi. Korpusda hamma joyda 1 mm.
 | `price` | **Sexda bo'sh — narx yuritilmaydi** |
 | `Толщина` / `Длина` / `Ширина` | Qalinlik / uzunlik / kenglik |
 
-Oxirgi ikki ustun bo'sh (GibLab interfeysi ombor va rasm ustunlarini ham ko'rsatadi, sexning
-faylida ular yo'q).
+GibLab interfeysi ombor va rasm ustunlarini ham ko'rsatadi — sexning faylida ular yo'q.
+Nomlangan o'nta ustundan keyin sarlavhasiz o'n birinchi ustun (`K`) turadi: unda bitta
+tasodifiy qiymat bor (603-qatorda `<tool.edgeline elWidthPreJoint="1"/>` — katalogga
+adashib tushgan XML bo'lagi), qolgani bo'sh.
 
 Tarkibi: **885 yozuv — 16 papka, 869 tovar**, ikki ildiz bo'limda:
 
@@ -138,7 +142,7 @@ faqat materiallar va kromka katalogdan olinadi. 812 tovarda kod bor, 57 tasida y
 | Fayl | Materiali katalogda topildi |
 |---|---|
 | `1160.project` (2026-07-30, 23051701) | **2/2** — `code="110083" name="Ясень"`, `code="КРМ1009"` |
-| eski 8 fayl | 3/107 — dizayner lotincha nom yozgan (`LDSP DUB VATAN TEKSTURA`), kod bo'sh |
+| eski 8 fayl | 1/105 — dizayner lotincha nom yozgan (`LDSP DUB VATAN TEKSTURA`), kod bo'sh |
 
 Shu sababli `material_usage` ga `code` ham yoziladi: katalog ishlatilgandan keyin barqaror
 kalit **nom emas, kod**. Material hisoboti hozir `(name, kind)` bo'yicha yig'adi — bir material
@@ -150,10 +154,11 @@ thickness, length, width)` jadvaliga yuklaydigan **SQL-INSERT generatori** (form
 `unit='м2'`). Ya'ni katalog qandaydir tashqi bazaga ham import qilinadi; MebeliX uchun
 ahamiyati yo'q, lekin ustun sxemasi `Лист1` niki bilan bir xil ekanini tasdiqlaydi.
 
-**O'lchov birliklari.** Fayllarda `unit` deyarli yozilmaydi (57 material goodidan 50 tasida
-bo'sh), shuning uchun `material_usage` birligi turdan olinadi: `sheet → list` (fayldagi `шт`),
-`band → metr` (fayldagi `м`; 1160 da 284 m), `hardware → dona` (fayldagi `шт`). Uchchala
-moslik 1160.project bilan tekshirilgan.
+**O'lchov birliklari.** Fayllarda `unit` deyarli yozilmaydi (korpusdagi 105 material goodidan
+50 tasida — barcha `sheet` va `band` da — bo'sh; furnitura esa doim `шт` beradi), shuning uchun
+`material_usage` birligi turdan olinadi: `sheet → list` (fayldagi `шт`),
+`band → metr` (fayldagi `м`; 1160 da 284 m), `hardware → dona` (fayldagi `шт`). List va kromka
+mosligi 1160.project bilan, furnitura birligi korpusdagi 55 `simple` goodi bilan tekshirilgan.
 
 ### 2.1.2 Yangi eksportda qo'shilgan atributlar (spetsifikatsiyada yo'q)
 
@@ -435,7 +440,7 @@ Ildiz atributlari: `dx`/`dy`/`dz` (yangi) yoki `l`/`w`/`thick` (eski).
 
 | Atribut | Nima | Bizda |
 |---|---|---|
-| `side` | Detal tomoni, default `true` = yuz tomon. Eski eksport `1`/`0` deb yozadi | ✅ **tomonning yagona manbasi** |
+| `side` | Detal tomoni, default `true` = yuz tomon. Eski eksport `1`/`0` deb yozadi | ✅ **tomonning asosiy manbasi** (yozilmasa — kod suffiksi) |
 | `turn` | Burilish: 0=0°, 1=90°, 2=180°, 3=270° | ❌ ogohlantirish |
 | `mirHor` / `mirVert` | Gorizontal / vertikal aks ettirish | ✅ geometriyaga qo'llanadi (`xnc.apply_mirror`) |
 | `bySizeDetail` | Koordinatalar detal o'lchamiga nisbatan | korpusda 505/505 `true`; dastur `dx/dy` si detal o'lchamiga 501 holatda aynan teng |
@@ -445,10 +450,15 @@ Ildiz atributlari: `dx`/`dy`/`dz` (yangi) yoki `l`/`w`/`thick` (eski).
 
 `side` ni o'qish shart edi, chunki kod suffiksi (`_2`) ishonchsiz:
 
-- `2001_Nukriddin.project` — orqa tomon kodlari `x2` bilan tugaydi (`_2` emas): 26 dastur
+- `2001_Nukriddin.project` — orqa tomon kodlari `x2` bilan tugaydi (`_2` emas): 16 dastur
   yuz tomon deb belgilanardi;
 - `3052_Hikmat.project` — yuz va orqa dasturning kodi **aynan bir xil**: 10 detalda ikkalasi
   bitta SCX nomiga yozilib, biri o'chib ketardi.
+
+Suffiks shunga qaramay **zaxira** bo'lib qoldi: operatsiyada `side` atributi bo'lmasa tomon
+baribir kod oxiridagi `_2` bo'yicha aniqlanadi (`xnc.py`, `parse_xnc_program`). Korpusdagi
+505 dasturning hammasida `side` bor, ya'ni bu zaxira qadam faqat boshqa eksportlarda
+ishga tushadi.
 
 `turn`/`mirHor`/`mirVert` korpusdagi 505 dasturda ham standart holatda (0 / false / false).
 Ular ishlatilsa koordinatalarni o'zgartirmaymiz, ya'ni teshiklar boshqa joyga tushardi —
@@ -509,8 +519,9 @@ m=true` — 310 teshik markazda (16 mm) burg'ulanadi, 8 mm da emas.
 | `ma.r` / `ma.dir` | Yoy radiusi (manfiy → yo'nalish teskari) va yo'nalishi | `ma` umuman o'qilmaydi — ogohlantirish |
 | `ml.dp` / `mac.dp` | Segmentning o'z chuqurligi | GibLab hech qachon yozmaydi (korpusda 354 `ml` va 25 `mac` da ham yo'q); chuqurlik `ms.dp` dan |
 
-**Spetsifikatsiyada yo'q atribut:** `gr.p` — korpusdagi 28 pazda (hammasi `3052_Hikmat` dagi
-"LED PAZ") bor va doim `0`. Hujjatlashtirilmagan, o'zgarmas — e'tiborsiz qoldirilgan.
+**Spetsifikatsiyada yo'q atribut:** `gr.p` — korpusdagi 28 pazda (hammasi `3052_Hikmat` da:
+20 tasi "LED PAZ", 8 tasi "bok paz") bor va doim `0`. Hujjatlashtirilmagan, o'zgarmas —
+e'tiborsiz qoldirilgan.
 
 **Standart konstantalar.** Yangi eksport ularni `<var>` bilan e'lon qiladi, eski (2021 buildi)
 esa e'lonsiz ishlatadi. Qiymatlar korpusda hamma joyda bir xil:
@@ -614,7 +625,7 @@ marshrut kodlari (§2.3).
 (GibLab ichida ishlaydi, biz natijasini iste'mol qilamiz), arra postprotsessorlari,
 profil kesish (`CL` — sexda bunday post yo'q).
 
-**Ogohlantirish beradigan holatlar** (`parser.py: _advisories`, `ingest.py`):
+**Ogohlantirish beradigan holatlar** (`parser.py`, `ingest.py`):
 
 | Holat | Xabar |
 |---|---|
@@ -627,12 +638,19 @@ profil kesish (`CL` — sexda bunday post yo'q).
 | `CN`/`SP`/`GR` operatsiyasi | import qilinmaydi, bosqich yo'qoladi |
 | XNC da noma'lum teg (`ma`, `xy`) | o'sha ishlov ko'rinmaydi |
 | Detalda 2 tadan ko'p XNC | hammasi saqlandi, skan sonini tekshirish kerak |
+| XNC operatsiya noma'lum detalga ishora qiladi | shu dasturning BUTUN ishlovi (teshik, paz, freza) detalga biriktirilmaydi va yo'qoladi |
 | `description` da `#kod` | ishlov shablon nomi bilan berilgan, o'qilmaydi |
 | Xaritada joyi yo'q detal | arrachi ro'yxatiga tushmaydi |
 | `turn` ≠ 0 | dastur aylantirilgan — aylantirish qo'llanmaydi, CNC'da tekshirish shart (`mirHor`/`mirVert` esa parse'da geometriyaga QO'LLANADI — `xnc.apply_mirror`) |
 | Blobsiz kesish operatsiyasi | material optimallashtirilmagan, xaritasi yo'q |
 | Nomdan olingan marshrut (§2.3) | N detalning marshruti nomdagi ro'yxatdan olindi, ular uchun fayl bosqichlari hisobga olinmadi |
 | Nomdagi qavs o'qilmadi | qaysi detallar ekani sanaladi; qavs ichida faqat 1–14 oralig'idagi kodlar bo'lishi kerak |
+
+Yarmi — 16 qatordan 8 tasi — `_advisories` da yig'iladi, qolgani boshqa joylarda: dastlabki
+uchtasi detal qurilishida yoziladi (`_build_part`, `_dedupe_part_code`), "Blobsiz kesish
+operatsiyasi" — `parse_project` generatsiyani aniqlaganda, "XNC operatsiya noma'lum detalga
+ishora qiladi" — dasturlar detalga biriktirilayotganda (`parse_project`, `merge_xnc_ops` dan
+oldin), "Xaritada joyi yo'q detal" esa xarita qurilgandan keyin `ingest.py` da.
 
 Oxirgi ikkitasi — `_custom_route_warnings`, ataylab **yig'ma**: yuklash javobida ogohlantirishlarning
 faqat dastlabki bir nechtasi ko'rsatiladi, har detalga bittadan yozilsa qolgani ko'rinmay ketardi.
@@ -678,7 +696,7 @@ registridan olamiz.
 
 ---
 
-## 7.2 SCX eksport konvensiyasi (`scx.py`)
+### 7.2 SCX eksport konvensiyasi (`scx.py`)
 
 Qoidalar `D:\MebeliX\Scx` korpusidan keltirilgan (87 proyekt, 5286 etalon fayl; 10500 qirra
 teshigi, 218 freza ovoz bergan) — GibLab'ning JORIY eksporti bilan semantik bir xil, sexdagi
@@ -710,6 +728,13 @@ va `OrderFile` maydonlari bir joyda).
 - Blob: `csblob.py` (base64 binar + `self_check`), `cutmap.py` (vizual model + instance↔katakcha binding + `holes`)
 - Ishlov: `xnc.py` (dastur XML), `scx.py` (CNC fayl generatsiyasi)
 - DB'ga yozish: `ingest.py` (mahsulot/detal/nusxa/marshrut, material registri, sarf hisobi, SCX yozish)
-- Paket tashqariga faqat ikki nom beradi: `ParseError` va `parse_project` (`giblab/__init__.py`)
-- Korpus fayllari repoda yo'q — parser o'zgarishida real .project fayllarga qarshi qo'lda tekshiriladi
+- `giblab/__init__.py` faqat ikki nom eksport qiladi: `ParseError` va `parse_project`; `ingest`
+  funksiyalari (`ingest_project`, `wipe_previous_parse`, `write_and_register_scx`) submoduldan
+  to'g'ridan-to'g'ri olinadi (`orders.py`)
+- Korpus fayllari git'ga tushmaydi (`.gitignore`: `uploads/`), lekin lokal `uploads/projects/`
+  da turadi — parser o'zgarishida real .project fayllarga qarshi qo'lda tekshiriladi
+- Hujjatdagi sanoqlar SAKKIZTA fayl bo'yicha o'lchangan: `01 shkaf`, `02 kitob javon`,
+  `1007 Yangibozor`, `2001_Nukriddin`, `3052_Hikmat`, `kupe`, `kuxniya`, `TV_zonakupe`
+  (yangi eksport — `uploads/1160.project` — alohida ko'rsatiladi). Papkada turgan
+  `4273_Dilmurod.project` bu sanoqqa kirmaydi — u qo'shilsa hamma raqam o'zgaradi
 - Domen tomoni: `docs/09-mes-domain.md`, API: `docs/03-backend-api.md`

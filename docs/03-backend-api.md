@@ -306,10 +306,14 @@ Qog'oz forma o'rniga. Menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
 
 | Sxema | Maydonlar | Chegaralar |
 |---|---|---|
-| `OrderSurvey` | `version` (default 1), `measured_at` (o'lchov sanasi), `measured_by`, `rooms` | `rooms` ≤ 10; `measured_by` ≤ 120 belgi |
+| `OrderSurvey` | `version` (default 1), `measured_at` (o'lchov sanasi), `measured_by`, `packaging`/`delivery`/`installation` (buyurtma darajasidagi bayroqlar, har biri default `False`), `rooms` | `rooms` ≤ 10; `measured_by` ≤ 120 belgi |
 | `SurveyRoom` | `id` (frontend beradigan barqaror kalit), `name`, `furniture_types`/`furniture_other`, `shape` + `room_length`/`room_width`/`room_height`/`furniture_wall_length`, `corpus_materials`/`corpus_color`/`corpus_thickness`/`corpus_note`, `facade_materials`/`facade_color`/`countertop`/`facade_note`, `hardware_level`, `extra_services`, `note`, `walls`, `modules`, `total_running_meters`, `total_height` | `id` ≤ 40; `furniture_types` ≤ 20 element; material/xizmat ro'yxatlari ≤ 10; `note` ≤ 1000; `walls` ≤ 8; `modules` ≤ 40; `total_running_meters` 0..1000 |
 | `SurveyWall` | `letter` (A..E), `length`, `height` | o'lchamlar mm da, `_Mm` = 0..50 000 |
 | `SurveyModule` | `name`, `wall`, `width` (eni), `depth` (chuqurlik), `height`, `count`, `note` | `count` 1..999; `note` ≤ 200; o'lchamlar `_Mm` |
+
+`packaging`/`delivery`/`installation` xona ichida emas, buyurtma darajasida: sex va logistika butun buyurtma ustida ishlaydi (bitta mashina, bitta brigada), xona degan tushuncha ularga yetib bormaydi. Migratsiya kerak emas (`survey` — JSONB), lekin eski yozuvda bu kalitlar javobda umuman ko'rinmaydi: o'qish yo'li `OrderDetail.survey` ni xom dict sifatida beradi va `OrderSurvey` orqali qayta validatsiya qilmaydi — default `False` faqat YOZISHDA (yoki frontendda) paydo bo'ladi. `packaging` uchun eski ekvivalent yo'q; `delivery`/`installation` esa ilgari xona ichida, `extra_services` dagi `yetkazish`/`montaj` kodlari edi — anketa sahifasi yuklashda ularni buyurtma bayrog'iga ko'taradi va xona ro'yxatidan olib tashlaydi.
+
+**Diqqat — to'liq almashtirish oqibati:** `OrderSurvey` ning har bir maydonida default bor, shuning uchun body'da tushib qolgan kalit uchun 422 CHIQMAYDI — maydon jimgina defaultiga (bayroqlar uchun `False`) qaytadi; `model_config = ConfigDict(extra="ignore")` esa boshqa narsani qiladi: noto'g'ri nomlangan yoki notanish kalitni indamay tashlab yuboradi. Klient har saqlashda anketaning butun holatini (shu jumladan bu uch bayroqni) qaytarib yuborishi shart.
 
 Variant kodlari (`ldsp`, `mdf`, `akril`…) backend'da qat'iy ro'yxat emas — matnga aylantirish `frontend/src/lib/anketa.ts` da; yangi variant qo'shishda migratsiya kerak emas. Mijoz ma'lumotlari `Client` da, narx/avans/muddat `Order` da — anketada takrorlanmaydi.
 

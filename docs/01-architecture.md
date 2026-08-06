@@ -220,8 +220,11 @@ Browser (React)                FastAPI                        PostgreSQL
 - Frontend'da route guard'lar `beforeLoad`da ishlaydi (`src/lib/guards.ts`):
   `requireAuth()` (`UsersService.readUserMe()`, 401 → `/login`) —
   `_layout.tsx`, `terminal.tsx`, `tablo.tsx` da; rolga bog'liq sahifalar
-  (clients, employees, machines, materials, reports) `requireAccess(...)`
-  bilan. `_layout.tsx` rolga qarab yo'naltiradi — `terminal` va operator
+  `requireAccess(<predikat>)` bilan, predikatlar `src/lib/mes.ts` da:
+  `isManagement` (clients, employees, reports), `isProductionStaff` (machines,
+  materials), `isAdmin` (logs, printers), `isSuperuser` (admin) — sidebar
+  (`NAV_ITEMS.show`) ham aynan shu predikatlarni ishlatadi.
+  `_layout.tsx` rolga qarab yo'naltiradi — `terminal` va operator
   rollari (`arrachi`...`boyoqchi`) → `/terminal`, `tablo` → `/tablo`
   (qurilma/operator akkauntlari admin panelga kirmaydi); `login.tsx` teskari
   guard bilan sessiyali foydalanuvchini `/`ga qaytaradi.
@@ -362,11 +365,23 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
   `a91c7d34f6e2_order_survey.py`) ga yoziladi. `DELIVERED`/`CANCELLED` statusda
   403. Audit: `survey_saved`.
 - Sxema `app/schemas/orders.py`: `OrderSurvey` (`version`, `measured_at`,
-  `measured_by`, `rooms` ≤10) → `SurveyRoom` (mebel turlari, shakl, xona
-  o'lchamlari, korpus/fasad materiali, stol usti, furnitura darajasi, qo'shimcha
-  xizmatlar, izoh) → `walls` ≤8 (`SurveyWall`) va `modules` ≤40 (`SurveyModule`).
+  `measured_by`, `packaging`, `delivery`, `installation`, `rooms` ≤10) →
+  `SurveyRoom` (mebel turlari, shakl, xona o'lchamlari, korpus/fasad materiali,
+  stol usti, furnitura darajasi, qo'shimcha xizmatlar, izoh) → `walls` ≤8
+  (`SurveyWall`) va `modules` ≤40 (`SurveyModule`).
   Har bir mm maydoni `ge=0, le=50_000` bilan chegaralangan — bitta so'rov bazani
   to'ldirib yubormasin. `OrderDetail.survey` orqali o'qiladi.
+- `yetkazish`/`montaj` `SurveyRoom.extra_services` dan CHIQARILDI va buyurtma
+  darajasidagi `delivery`/`installation` bayroqlariga ko'chirildi; `packaging`
+  esa butunlay yangi maydon — u hech qachon xona xizmati bo'lmagan. Sababi
+  bitta: tsex bitta `.project` fayl ustida ishlaydi, logistika ham butun
+  buyurtmani bitta mashinada olib ketadi — bu ishlarga xona degan tushuncha
+  yetib bormaydi. `survey` — JSONB, shuning uchun migratsiya kerak emas: eski
+  yozuvda bu kalitlar shunchaki yo'q (o'qishda xom dict qaytadi), default
+  `False` esa yozishda paydo bo'ladi. Eski anketalar sahifa yuklanganda
+  ko'chiriladi — biror xonada `yetkazish`/`montaj` belgilangan bo'lsa buyurtma
+  bayrog'i yoqiladi va kod xona ro'yxatidan olib tashlanadi
+  (`anketa.$orderId.tsx`, `loaded` effekti).
 - Variant kodlari (`ldsp`, `akril`, `led`…) bazada, matnlari faqat
   `frontend/src/lib/anketa.ts` da — katalog o'zgarsa saqlangan tarix buzilmaydi
   va migratsiya kerak emas.
@@ -389,6 +404,15 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
   (`loaded` ref) — saqlashdan keyingi refetch menejer yozayotgan matn ustiga
   tushmasin. Admin/manager formani ko'radi, qolgan rollar `RoomSummary` jamlanmasini.
   Kirish nuqtasi — buyurtma kartasidagi "Anketa" tugmasi.
+- Raqamlangan xona bo'limlaridan YUQORIDA — "Butun buyurtma uchun" kartasi:
+  `ORDER_SERVICES` uchta belgisi ("Upakovka qilish", "Yetkazib berish",
+  "O'rnatish (montaj)") va o'lchov maydonlari (`measured_at`, `measured_by`).
+  Bu ikki maydon ataylab xona ichidagi "O'lchov varag'i" bo'limidan olib
+  chiqilgan: menejer 3-xonada turib o'zgartirsa, jimgina butun buyurtma uchun
+  o'zgarardi.
+- Xona o'chirish — tab pilli ichidagi `×` tugmasi (`ConfirmDialog` bilan
+  tasdiqlanadi, rasmlar ham o'chadi); bitta xona qolganda `×` ko'rinmaydi —
+  anketa xonasiz ma'nosiz.
 - Yangi UI primitivi: `frontend/src/components/ui/textarea.tsx`.
 
 ### 4.5 Arrachi terminali: kesish xaritasi

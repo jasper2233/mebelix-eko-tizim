@@ -269,16 +269,16 @@ Oqim:
 
 `settings.BRIDGE_TOKEN` endi **ixtiyoriy legacy back-compat** — bo'sh bo'lsa ham chop etish to'liq ishlaydi. Yangi o'rnatishlarda uni umuman to'ldirmaslik kerak.
 
-**Bekor qilish (revoke) darhol emas, lekin kafolatli.** Ulanish davomida `touch_agent()` har **300 sekundda** `last_seen_at` ni yangilaydi (paneldagi "Onlayn" indikatorining manbai) va shu UPDATE'ning o'zi agent hali mavjudligini qayta tekshiradi: `token_hash` mos kelmasa yoki qator o'chirilgan bo'lsa `RETURNING` bo'sh qaytadi. Ya'ni bekor qilingan agentning **jonli** ulanishi ham 5 daqiqa ichida `4401` bilan uziladi, qo'lida turgan job esa Redis navbatiga `rpush` bilan qaytariladi — yo'qolmaydi. DB xatosi ulanishni **yiqitmaydi** (jobni saqlab qolish ustuvor).
+**Bekor qilish (revoke) darhol emas, lekin kafolatli.** Ulanish davomida `touch_agent()` har **300 sekundda** `last_seen_at` ni yangilaydi (paneldagi "Ulandi" indikatorining manbai) va shu UPDATE'ning o'zi agent hali mavjudligini qayta tekshiradi: `token_hash` mos kelmasa yoki qator o'chirilgan bo'lsa `RETURNING` bo'sh qaytadi. Ya'ni bekor qilingan agentning **jonli** ulanishi ham 5 daqiqa ichida `4401` bilan uziladi, qo'lida turgan job esa Redis navbatiga `rpush` bilan qaytariladi — yo'qolmaydi. DB xatosi ulanishni **yiqitmaydi** (jobni saqlab qolish ustuvor).
 
 ### Admin panel — "Printer agentlar"
 
-`frontend/src/routes/_layout/printers.tsx`, faqat admin. Sahifada: uch qatorli o'rnatish yo'riqnomasi (yuklab olish tugmasi yo'q — exe qo'lda tarqatiladi) va agentlar jadvali — nomi (versiyasi bilan), holati, joriy ulanish kodi, stanok bog'lami (skan-forvard), chek chiqarish ruxsati, oxirgi ulanish vaqti, amallar.
+`frontend/src/routes/_layout/printers.tsx`, faqat admin. Sahifada: uch qatorli o'rnatish yo'riqnomasi (yuklab olish tugmasi yo'q — exe qo'lda tarqatiladi) va agentlar jadvali — nomi, holati (faqat ulangan agentda yonida versiya belgisi), joriy ulanish kodi, stanok bog'lami (skan-forvard), chek chiqarish ruxsati, oxirgi ulanish vaqti, amallar.
 
 | Holat | Qachon |
 |---|---|
-| `Onlayn` | `last_seen_at` 6 daqiqadan yangi (server 5 daqiqada bir yangilaydi — bitta sikl zaxira) |
-| `Oflayn` | ulangan (token bor), lekin oxirgi 6 daqiqada ko'rinmadi |
+| `Ulandi` | `last_seen_at` 6 daqiqadan yangi (server 5 daqiqada bir yangilaydi — bitta sikl zaxira); yonida versiya belgisi — `v<versiya>`, versiyasiz eski exe'da `eski exe` |
+| `Uzilgan` | ulangan (token bor), lekin oxirgi 6 daqiqada ko'rinmadi |
 | `Kod kutilmoqda` | kod berilgan, agent hali ulanmagan |
 | `Kod muddati o'tgan` | 15 daqiqa o'tdi, agent ulanmadi — "yangi kod" kerak |
 
@@ -337,7 +337,7 @@ Faqat printer USB bilan ulangan Windows kompyuterga (sexdagi terminal monoblokni
 
 Beshinchi qadam yo'q: agent birinchi ulanishda o'zini `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` ga yozadi, ya'ni kompyuter yonganda o'zi tushadi (admin huquqi kerak emas, faqat shu foydalanuvchi uchun). Exe `--noconsole` bilan qurilgani uchun doimiy oyna yo'q — yopib qo'yish mumkin bo'lgan konsol ko'rinmaydi. Yagona istisno: har ishga tushishdagi **birinchi muvaffaqiyatli ulanishda** 5 soniyada o'zi yopiladigan "Printer agenti serverga ulandi" xabari chiqadi (`MessageBoxTimeoutW`, bosish shart emas) — monoblok yonganda arrachi agent tayyorligini shundan biladi.
 
-Ishlayotganini admin paneldagi **Onlayn** belgisi bildiradi. Diagnostika `%APPDATA%\MebelixAgent\agent.log` da (`RotatingFileHandler`, 1 MB x 3): `Printer: Godex G500` va `Serverga ulandi` — tayyor; `Printer: TOPILMADI` — GoDEX drayveri yo'q.
+Ishlayotganini admin paneldagi **Ulandi** belgisi bildiradi. Diagnostika `%APPDATA%\MebelixAgent\agent.log` da (`RotatingFileHandler`, 1 MB x 3): `Printer: Godex G500` va `Serverga ulandi` — tayyor; `Printer: TOPILMADI` — GoDEX drayveri yo'q.
 
 Ikkinchi nusxa ishga tushmaydi — `win32event.CreateMutex` bilan singleton. Oyna ko'rinmagani uchun foydalanuvchi "ishlayaptimi?" deb exe'ni qayta bosishi tabiiy; ikki agent bir printerga ulansa navbat ular orasida bo'linib ketardi.
 
@@ -348,7 +348,7 @@ Agent sozlamalari (bular **server `.env`** ida emas — printerli mashinada, `%A
 | Env | Default | Tavsif |
 |---|---|---|
 | `MES_URL` | `ws://localhost:8000` | server manzili; agent oxiriga `/api/v1/ws/bridge` qo'shadi. Pairing paytida `https://`/`http://`/sxemasiz manzil ham qabul qilinadi va `wss://`/`ws://` ga normallashtiriladi (TLS'siz manzilga ogohlantirish chiqadi) |
-| `BRIDGE_TOKEN` | — | pairing bergan doimiy token; bo'sh bo'lsa agent `SystemExit` bilan to'xtaydi ("ulanish kodini kiriting") |
+| `BRIDGE_TOKEN` | — | pairing bergan doimiy token; bo'sh bo'lsa agent ishga tushishda pairing oynasini ochadi (`_pair()`) va faqat foydalanuvchi bekor qilganda `SystemExit` bilan to'xtaydi |
 | `PRINTER_NAME` | avto-topish (`godex`) | printer nomini qo'lda berish — faqat avto-topish mos kelmaganda |
 | `QUEUE_FILE` | `%APPDATA%\MebelixAgent\print-queue.jsonl` | lokal durable navbat fayli (avtostartda ishchi papka System32 — nisbiy yo'l ishlamaydi); eski o'rnatishlardagi exe yonidagi navbat fayli birinchi ishga tushishda avtomatik shu yerga ko'chiriladi |
 | `SCAN_FORWARD` | `1` (yoqiq) | stanok skanerini passiv kuzatib MES'ga forvard qilish; `0` o'chiradi |
@@ -368,7 +368,7 @@ pyinstaller --onefile --noconsole --name mebelix-agent agent.py
 
 Natijadagi `mebelix-agent.exe` **qo'lda tarqatiladi** — flashka yoki lokal tarmoq orqali printerli kompyuterlarga ko'chiriladi. Serverdan tarqatish yo'q: `GET /download` endpointi olib tashlangan (serverda eski nusxa qolib adashtirardi), binar repoda ham saqlanmaydi. Paneldagi versiya belgisi (handshake'dagi `X-Agent-Version` → `bridge_agent.version`) qaysi mashinada eski exe qolganini ko'rsatadi.
 
-Eslatma: SCX/CNC fayllar bridge orqali **o'tmaydi** — ular stanok kompyuterida brauzer orqali yuklab olinadi (TZ 12.5). Bridge yorliq chop etishdan tashqari **skan-forvard** ham qiladi: stanok kompyuterida skaner-klaviaturani `pynput` bilan passiv kuzatadi (6+ belgi, har belgi <50ms, Enter bilan tugaydi — odam terishi bu tezlikka tushmaydi) va nusxasini `POST /api/v1/bridge-agents/scan` ga yuboradi — bitta fizik skan Nanxing'ga ham, MES'ga ham tushadi. Buning uchun admin panelda agentga **stanok bog'lanadi** (`PATCH /bridge-agents/{id}`, `machine_id`); `SCAN_FORWARD=0` o'chiradi.
+Eslatma: SCX/CNC fayllar bridge orqali **o'tmaydi** — ular stanok kompyuterida brauzer orqali yuklab olinadi (TZ 12.5). Bridge yorliq chop etishdan tashqari **skan-forvard** ham qiladi: stanok kompyuterida skaner-klaviaturani `pynput` bilan passiv kuzatadi (6+ belgi, o'rtacha <50 ms/belgi, Enter bilan tugaydi — odam terishi bu tezlikka tushmaydi) va nusxasini `POST /api/v1/bridge-agents/scan` ga yuboradi — bitta fizik skan Nanxing'ga ham, MES'ga ham tushadi. Buning uchun admin panelda agentga **stanok bog'lanadi** (`PATCH /bridge-agents/{id}`, `machine_id`); `SCAN_FORWARD=0` o'chiradi.
 
 ---
 

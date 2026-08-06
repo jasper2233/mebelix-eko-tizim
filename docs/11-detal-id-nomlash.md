@@ -58,9 +58,9 @@ to'liq satrni saqlaydi. Oddiy raqamli kodlarda farq sezilmaydi.
 | --- | --- |
 | Bazadagi `part_instance.qr_text` | `ingest.py` (`ParsedPart.qr_texts`), matritsada son o'zgarsa `orders.py _resize_instances` |
 | Chekdagi matn qatori va QR | `services/labels.py` (`qr_text`; `qr_part_code` — `scanning.py` dan import) |
-| SCX fayl nomi va ichidagi Panel ID | `services/giblab/scx.py` (`build_scx_files`, nomlar bazadagi QR'lardan) |
+| SCX fayl nomi va ichidagi Panel ID | `services/giblab/scx.py` (`build_scx_files`; nomlar ingestda parser bergan `qr_texts`dan, qayta yaratishda bazadagi QR'lardan) |
 | Skan tekshiruvi | `services/scanning.py` (aynan moslik; eski `_1` yorliqlar uchun fallback) |
-| Terminal UI (banner, tarix, kromka, prisadka) | `qr_text` to'g'ridan ko'rsatiladi, hech qayerda parse qilinmaydi |
+| Terminal UI (banner, tarix, arra, kromka, prisadka) | `qr_text` to'g'ridan ko'rsatiladi, qismlarga ajratilmaydi; yagona istisno — `KromkaView` skan matnidan oxirgi `_1` ni kesib ham sinaydi (backend fallbackining frontend nusxasi) |
 
 Eski konvensiya (2026-08-02 gacha): yagona nusxada ham `_1` yozilardi.
 Migratsiya `c9e5b2a41d78` mavjud bazani yangi qoidaga o'tkazgan; o'shagacha

@@ -26,7 +26,7 @@ terminallariga hech narsa kerak emas (ular brauzerdan tugmani bosadi).
 
 Shundan keyin **oyna umuman ko'rinmaydi**: agent fonda ishlaydi va kompyuter
 yonganda o'zi tushadi (birinchi ulanishda `HKCU\...\Run` ga yoziladi, admin
-huquqi kerak emas). Ishlayotganini admin paneldagi **Onlayn** belgisi bildiradi;
+huquqi kerak emas). Ishlayotganini admin paneldagi **Ulandi** belgisi bildiradi;
 tafsilotlar `%APPDATA%\MebelixAgent\agent.log` da (1 MB x 3 rotatsiya).
 
 Kod muddati o'tishi ulangan agentga ta'sir qilmaydi — token muddatsiz.
@@ -68,7 +68,7 @@ to'xtaydi. Boshqa har qanday xato (deploy paytidagi 502, kompyuter yonganda
 tarmoq hali tik turmagani, server qayta yonayotgani) tokenni O'CHIRMAYDI —
 agent 5 soniyalik interval bilan jimgina qayta ulanadi, dialog ochilmaydi.
 
-Chek chiqmasa birinchi qaraydigan joy — admin paneldagi holat. **Oflayn** bo'lsa
+Chek chiqmasa birinchi qaraydigan joy — admin paneldagi holat. **Uzilgan** bo'lsa
 agent ishlamayapti: `agent.log` ni oching. Muhimi, bu paytda ham hech narsa
 yo'qolmaydi — yorliqlar Redis navbatida turadi va agent qaytishi bilan chiqadi.
 
