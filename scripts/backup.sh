@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Kunlik DB backup -> shifrlangan .sql.gz.enc -> serverda saqlanadi (+ ixtiyoriy Telegram).
-# Cron (server): 0 2 * * * bash /opt/mebelix-mes/scripts/backup.sh >> /var/log/mebelix-backup.log 2>&1
+# Cron (server, UTC): 0 18 * * * bash /opt/mebelix-mes/scripts/backup.sh >> /var/log/mebelix-backup.log 2>&1
+#   18:00 UTC = 23:00 Toshkent — ish kuni tugagach, kunning o'z sanasi bilan.
 #
 # Shifr: openssl aes-256-cbc -pbkdf2, parol = .env dagi ADMIN_PASSWORD.
 # Ochish: openssl enc -d -aes-256-cbc -pbkdf2 -in FILE.sql.gz.enc | gunzip > dump.sql
@@ -21,7 +22,10 @@ set +a
 # repo bilan tenglashtiradi, ya'ni repoda yo'q katalogni o'chirib yuboradi.
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/mebelix}"
 KEEP_DAYS="${BACKUP_KEEP_DAYS:-14}"
-STAMP=$(date +%F)
+# Sana Toshkent bo'yicha: server UTC'da yuradi, backup esa ish kuni oxirida olinadi.
+# `date +%F` bo'lsa cron soati bir oz surilishi bilan fayl nomi bir kun orqaga
+# tushib qolardi (23:00 Toshkent = 18:00 UTC — hozircha bir xil kun, lekin chegara yaqin).
+STAMP=$(TZ=Asia/Tashkent date +%F)
 FILE="${BACKUP_DIR}/mebelix-${STAMP}.sql.gz.enc"
 
 mkdir -p "$BACKUP_DIR"

@@ -128,6 +128,21 @@ jobs:
             --exclude .env --exclude backups \
             --exclude .stable_tag --exclude .backup.env \
             ./ "root@${{ secrets.DEPLOY_HOST }}:/opt/mebelix-mes/"
+      - name: Backup Telegram sozlamasi (serverda)
+        # Kunlik backup (`scripts/backup.sh`) nusxani deploy xabarlari ketadigan
+        # AYNAN SHU botga yuboradi — pastdagi `notify` job'i bilan bir xil sirlar.
+        # Fayl serverda yashaydi (rsync uni ataylab chetlab o'tadi) va har deployda
+        # shu yerdan yangilanadi, ya'ni tokenni qo'lda ko'chirish kerak emas.
+        # Qiymatlar env orqali va ssh STDIN ga: serverdagi ham, runnerdagi ham
+        # process ro'yxatiga tushmasin. `umask 077` -> fayl 600 bo'lib yaraladi.
+        env:
+          TG_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TG_CHAT_ID }}
+        run: |
+          printf 'TG_BOT_TOKEN=%s\nTG_CHAT_ID=%s\n' "$TG_TOKEN" "$TG_CHAT" |
+            ssh "root@${{ secrets.DEPLOY_HOST }}" \
+              "umask 077 && cat > /opt/mebelix-mes/.backup.env"
+
       - name: Registry login (serverda)
         # Paketlar private — server ghcr'dan tortish uchun autentifikatsiya qiladi.
         # Token stdin orqali uzatiladi (buyruq argumentida emas: serverdagi process
