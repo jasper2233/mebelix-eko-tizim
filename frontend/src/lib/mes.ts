@@ -107,12 +107,27 @@ const MULTI_OP_POSTS = new Set(
     .filter((p, _i, all) => all.filter((x) => x === p).length > 1),
 )
 
-/** Detal marshruti nomdagi kodlardan olinganmi (backend `process_codes`). */
-export function isCustomRoute(name: string): boolean {
-  return [...name.matchAll(/\{([^{}]*)\}/g)]
-    .flatMap((m) => m[1].split(/[;,.\s]+/))
-    .some((t) => t !== "" && Number(t) in PROCESS_OPS)
+/**
+ * Detal nomidagi marshrut kodlari — backend `_process_codes` ning AYNAN nusxasi:
+ * ajratgich faqat `;` (atrofidagi bo'shliq e'tiborsiz) va bitta token noto'g'ri
+ * bo'lsa BUTUN ro'yxat rad etiladi. Ikkisi ajralib qolsa UI "marshrut nomdan"
+ * deb ko'rsatadi-yu, backend fayl bosqichlarini ishlatadi — texnolog buni
+ * yuklash ogohlantirishini o'qimaguncha bilmaydi.
+ */
+function routeCodes(name: string): number[] {
+  const tokens = [...name.matchAll(/\{([^{}]*)\}/g)]
+    .flatMap((m) => m[1].split(";"))
+    .map((t) => t.trim())
+    .filter(Boolean)
+  if (!tokens.length) return []
+  const codes = tokens.map(Number)
+  return codes.every((n) => Number.isInteger(n) && n in PROCESS_OPS)
+    ? codes
+    : []
 }
+
+/** Detal marshruti nomdagi kodlardan olinganmi (backend `process_codes`). */
+export const isCustomRoute = (name: string) => routeCodes(name).length > 0
 
 /**
  * Detal nomidagi marshrut ro'yxatidan ("eshik {7;11;8}") SHU POSTGA tegishli
@@ -124,9 +139,8 @@ export function isCustomRoute(name: string): boolean {
  */
 export function partOperations(name: string, postCode: string): string[] {
   if (!MULTI_OP_POSTS.has(postCode)) return []
-  return [...name.matchAll(/\{([^{}]*)\}/g)]
-    .flatMap((m) => m[1].split(/[;,.\s]+/))
-    .map((t) => PROCESS_OPS[Number(t)])
+  return routeCodes(name)
+    .map((c) => PROCESS_OPS[c])
     .filter((op) => op?.post === postCode)
     .map((op) => op.name)
 }

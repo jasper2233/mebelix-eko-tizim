@@ -92,15 +92,15 @@ def _dedupe_part_code(code: str, seen: set[str], product_code: str, warnings: li
 def _process_codes(name: str) -> list[int]:
     """Detal nomidagi figurali qavs — texnolog qo'lda yozgan MARSHRUT: "eshik {7;11;8}".
 
-    Faqat `{...}`. `$...$` ATAYLAB qo'llab-quvvatlanmaydi: GibLab nom shablonining
-    to'ldirilmagan qoldig'i aynan shu ko'rinishda keladi ("№ tom $1,2,3$") va uni
-    marshrut deb o'qish oddiy detalni jimgina boshqa stanoklarga yuborardi.
+    Ro'yxat TARTIBLI: birinchi kod — jarayon boshlanadigan post, oxirgisi — tugaydigani.
+    Ajratgich FAQAT `;` (kodlar atrofidagi bo'shliq e'tiborsiz): nuqta va vergul ataylab
+    qabul qilinmaydi — sexdagi yagona yozuv shakli buzilmasin.
 
     Bitta token noto'g'ri bo'lsa BUTUN ro'yxat rad etiladi — yarim o'qilgan marshrut
     detalni bilintirmay bosqichdan chiqarib yuborardi; rad etilsa detal odatdagi
     fayl bosqichlari bilan ketadi va matritsada ko'rinib turadi (ogohlantirish ham beriladi).
     """
-    tokens = [t for block in re.findall(r"\{([^{}]*)\}", name) for t in re.split(r"[;,.\s]+", block) if t]
+    tokens = [t.strip() for block in re.findall(r"\{([^{}]*)\}", name) for t in block.split(";") if t.strip()]
     if not tokens or not all(t.isdigit() and int(t) in PROCESS_POSTS for t in tokens):
         return []
     return [int(t) for t in tokens]
@@ -123,7 +123,8 @@ def _custom_route_warnings(parts: list[ParsedPart]) -> list[str]:
         more = f" va yana {len(bad) - 5} ta" if len(bad) > 5 else ""
         out.append(
             f"{len(bad)} detal nomidagi qavs marshrut sifatida o'qilmadi: {', '.join(bad[:5])}{more}. "
-            f"Qavs ichida faqat 1-{max(PROCESS_POSTS)} oralig'idagi kodlar bo'lishi kerak."
+            f"Qavs ichida faqat 1-{max(PROCESS_POSTS)} oralig'idagi kodlar, `;` bilan ajratilgan "
+            f"bo'lishi kerak (masalan {{7;11;8}})."
         )
     return out
 
@@ -170,16 +171,13 @@ def _build_part(p: ET.Element, product: ParsedProduct, seen: set[str], warnings:
         warnings.append(f"{product.code}/{code}: faylda manfiy o'lcham ({length}x{width}) — moduli olindi.")
         length, width = abs(length or 0), abs(width or 0)
 
-    # GibLab nom shablonining ochilmagan plceholderlari ("№ bok $1,2,3$") displey
-    # nomni ifloslaydi — $...$ bloklari olib tashlanadi. Kod/ID'larga tegilmaydi.
-    raw_name = p.get("name") or code
-    clean_name = re.sub(r"\$[^$]*\$", "", raw_name).strip() or code
+    name = (p.get("name") or "").strip() or code
 
     return ParsedPart(
         file_part_id=int(p.get("id", 0)),
         product_code=product.code,
         code=code,
-        name=clean_name,
+        name=name,
         # `<part count>` — BITTA mahsulotdagi soni; buyurtmadagi jami = u × mahsulot soni.
         # GibLab xaritasi ham jami nusxani joylashtiradi (205-korpus: `count="3"` li mahsulotda
         # 3 detal -> xaritada 9 katak). Ilgari ko'paytirilmasdi — mahsulot soni >1 faylda
@@ -191,8 +189,7 @@ def _build_part(p: ET.Element, product: ParsedProduct, seen: set[str], warnings:
         txt=xml_bool(p.get("txt")),
         material_name=None,
         edges=edges,
-        # Qavs $...$ tozalangandan KEYIN o'qiladi — GibLab shabloni marshrut bo'lib qolmasin
-        process_codes=_process_codes(clean_name),
+        process_codes=_process_codes(name),
     )
 
 

@@ -268,18 +268,23 @@ soxta vazifa yaratmaydi). Ular GibLab'ning "shu kesishdan 688×1166 foydali qold
 degan xabari. Sklad moduli ularni qabul qilsa qoldiq hisobi avtomatlashadi — 1C protokoli
 (§6) aynan shu ma'lumot bilan ishlaydi.
 
-### 2.3 Detal nomi — GibLab shabloni va sexning marshrut kodlari
-
-**GibLab nom shabloni to'ldirilmasa nomda qoladi.** Dizayner detal nomini shablon bilan
-beradi va to'ldirilmagan o'rin nomda `$...$` bo'lib qoladi: `uploads/projects/2001_Nukriddin.project`
-da `№ tom $1,2,3$`, `№ bok $1,2,3$`, `tr $1,2,3$` va h.k. (prod bazasida 29 detal qatorida bor).
-Parser displey nomidan `$...$` bloklarini olib tashlaydi (`parser.py`, `clean_name`) — kod va
-ID'larga tegilmaydi.
+### 2.3 Detal nomi — sexning marshrut kodlari
 
 **Sexning marshrut kodlari — FIGURALI qavsda.** Texnolog noodatiy detalning marshrutini
-detal nomiga yozadi: `eshik {7;11;8}`. Ajratgichlar: `;` `.` `,` va bo'shliq; bir necha blok
-bo'lsa ketma-ket qo'shiladi. Jadval — `PROCESS_POSTS` (`backend/app/services/giblab/models.py`),
-sexdagi "Jarayon uchun kodlar" varag'idan:
+detal nomiga yozadi: `eshik {7;11;8}`. **Ajratgich — nuqtali vergul (`;`).** Ro'yxat
+TARTIBLI: birinchi kod — jarayon boshlanadigan post, oxirgisi — tugaydigani. Odatdagi
+detal arradan boshlanadi, `{...}` li detal esa qavsdagi BIRINCHI postdan — masalan
+`{7;8}` roverda kesilib bo'yoqda tugaydi, arraga umuman tushmaydi.
+
+Ajratgich sifatida **faqat `;`** qabul qilinadi (kodlar atrofidagi bo'shliq e'tiborsiz:
+`{7; 8}` ham o'qiladi). Nuqta va vergul ATAYLAB qabul qilinmaydi — sexda yagona yozuv
+shakli qolsin; noto'g'ri yozilgan qavs rad etiladi va texnologga ogohlantirish chiqadi.
+Bir necha blok bo'lsa ketma-ket qo'shiladi.
+
+Kodlar jadvalining manbasi — sexning "Jarayon uchun kodlar" varag'i (repoda saqlanmaydi,
+sexda yuritiladi). Quyidagi jadval va `PROCESS_POSTS`
+(`backend/app/services/giblab/models.py`) aynan shunga mos; sexda kod o'zgarsa
+ikkalasi birga yangilanadi. Ziddiyat chiqsa — bajariladigan manba `PROCESS_POSTS`.
 
 | Kod | Jarayon | Post |
 |---|---|---|
@@ -299,12 +304,6 @@ sexdagi "Jarayon uchun kodlar" varag'idan:
 | 14 | V petlya chapdan | STOLYARKA |
 
 Paz uchun kod yo'q — paz alohida post emas, u frezer stanogida (ROVER) kesiladi.
-
-**Nega faqat `{...}`, `$...$` emas.** GibLab shablonining qoldig'i aynan `$1,2,3$` ko'rinishida
-keladi (yuqoridagi misollar). `$` ni ham marshrut deb o'qisak, oddiy detal jimgina boshqa
-stanoklarga yuborilardi — shuning uchun `$...$` ATAYLAB qo'llab-quvvatlanmaydi va marshrut
-`$...$` tozalangandan KEYIN o'qiladi (`_process_codes`), ya'ni shablon qoldig'i hech qachon
-marshrutga aylanmaydi.
 
 **Validatsiya — hammasi yoki hech narsa.** Bitta token raqam bo'lmasa yoki jadvalda bunday
 kod bo'lmasa BUTUN ro'yxat rad etiladi va detal odatdagi fayl bosqichlari bilan ketadi.
