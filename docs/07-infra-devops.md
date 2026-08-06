@@ -206,13 +206,20 @@ CI chaqiradi: `TAG=<git sha> REGISTRY=ghcr.io/<owner> bash scripts/deploy.sh`. O
 
 Tozalash `docker images --format '{{.Repository}}:{{.Tag}}' | grep 'mebelix-mes-'` bilan ishlaydi, `--filter=reference='mebelix-mes-*'` bilan emas: docker glob'i `/` dan o'tmaydi, ya'ni `ghcr.io/<owner>/mebelix-mes-*` nomlariga u hech qachon mos kelmasdi va eski image'lar to'planib qolardi. Natija o'sha `grep -vE ":(TAG|STABLE)$"` filtridan o'tkaziladi. **Muhim qoida: rollback DB'ni pastga tushirmaydi — migratsiyalar additive bo'lishi shart** (ustun/jadval qo'shish; eski kod yangi ustunlarga chidashi kerak).
 
-### `scripts/backup.sh` — kunlik shifrlangan DB backup
+### `scripts/backup.sh` — kunlik shifrlangan backup (DB + yuklangan fayllar)
 
 Server cron'ida kunlik ishlaydi (`0 18 * * *` — server UTC'da, ya'ni **23:00 Toshkent**: ish kuni tugagach). Fayl nomidagi sana ham Toshkent bo'yicha olinadi (`TZ=Asia/Tashkent date +%F`), aks holda cron soati bir oz surilsa nom bir kun orqaga tushib qolardi. Oqim: `pg_dump` (prod composedagi `db` konteyneri ichida) | `gzip` | `openssl aes-256-cbc -pbkdf2` (parol — `.env` dagi `ADMIN_PASSWORD`) → natija **serverdagi `/var/backups/mebelix/mebelix-YYYY-MM-DD.sql.gz.enc`** fayliga yoziladi — ataylab **deploy daraxtidan tashqarida**: CI `rsync --delete` bilan `/opt/mebelix-mes` ni repo bilan tenglashtiradi va repoda yo'q katalogni o'chirib yuborardi (backuplar aynan shu tarzda yo'qolgan edi). So'ng ikkita nazorat: fayl 1000 baytdan kichik bo'lsa dump yiqilgan deb hisoblanadi (fayl o'chiriladi, script `exit 1`), va `BACKUP_KEEP_DAYS` (default `14`) kundan eski nusxalar `find … -delete` bilan tozalanadi. Katalogni `BACKUP_DIR` (default `/var/backups/mebelix`), saqlash muddatini `BACKUP_KEEP_DAYS` o'zgartiradi — ikkalasi ham `.env.example` da yo'q, kerak bo'lsa `.env` ga qo'lda qo'shiladi. Repo ichidagi `backups/` `.gitignore` da qoladi (kimdir `BACKUP_DIR` ni nisbiy yo'lga qaytarsa ham).
 
 Telegram — **tashqi nusxa**: `.backup.env` da `TG_BOT_TOKEN` va `TG_CHAT_ID` bo'lsa fayl document sifatida ham yuboriladi, bo'lmasa script "Telegram sozlanmagan" deb yozib normal tugaydi; bu faylni **CI deploy job'i yozadi** (`Backup Telegram sozlamasi (serverda)` qadami) — deploy xabarlari ketadigan `notify` job'i bilan aynan bir xil sirlardan, ya'ni backup va deploy xabarlari bitta botga tushadi va tokenni qo'lda ko'chirish kerak emas; yuborish yiqilsa ogohlantirish chiqadi, lekin lokal backup joyida. Diskka yozish asosiy yo'l ekani ataylab: Telegram yagona yo'l bo'lganda `.backup.env` yo'qligi butun scriptni yiqitib, 15 kecha davomida birorta backup olinmagan edi.
 
-Ochish: `openssl enc -d -aes-256-cbc -pbkdf2 -in FILE.sql.gz.enc | gunzip > dump.sql`.
+**Yuklangan fayllar ham backup qilinadi** (`mebelix-uploads-YYYY-MM-DD.tar.gz.enc`): `api` konteyneri ichidan `tar -cz -C /app/backend uploads`, `agent/` chiqarilgan holda (u ma'lumot emas — qo'lda ko'chiriladigan 19 MB exe, backupni sakkiz barobar shishirardi). Bu ataylab **best-effort** qadam: yiqilsa (masalan `api` o'chik bo'lsa) script to'xtamaydi, chunki DB dumpi allaqachon olingan va yuborilgan. Kerakligi sababi — DB'da faqat nisbiy yo'l saqlanadi (`OrderFile.path`), ya'ni DB dumpi **yolg'iz o'zi buyurtmani tiklamaydi**: `.project`, SCX va anketa rasmlarisiz buyurtma kartochkasi "Fayl diskda topilmadi" beradi.
+
+Ochish:
+
+```bash
+openssl enc -d -aes-256-cbc -pbkdf2 -in FILE.sql.gz.enc | gunzip > dump.sql   # DB
+openssl enc -d -aes-256-cbc -pbkdf2 -in FILE.tar.gz.enc | tar -xz            # fayllar
+```
 
 ---
 
