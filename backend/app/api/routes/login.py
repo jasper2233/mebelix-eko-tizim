@@ -44,7 +44,7 @@ def _issue_token_pair(response: Response, user: User) -> str:
 
 
 async def _is_refresh_token_used(jti: str) -> bool:
-    if rate_limiter.client is None:  # Redis disabled by config — rotation check is off by choice.
+    if rate_limiter.client is None:  # No lifespan (tests/scripts) — Redis is always on in the app.
         return False
     return bool(await rate_limiter.client.exists(_USED_JTI_PREFIX + jti))
 

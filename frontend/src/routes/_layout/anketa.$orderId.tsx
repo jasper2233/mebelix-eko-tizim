@@ -66,7 +66,7 @@ const newRoom = (n: number): SurveyRoom => ({
 
 const emptyModule = (): SurveyModule => ({ name: "" })
 
-/** Butun buyurtmaga tegishli xizmatlar — xonaga bo'linmaydi: sex bitta
+/** Butun buyurtmaga tegishli xizmatlar — xonaga bo'linmaydi: tsex bitta
  *  .project fayl ustida ishlaydi, logistika bitta mashinada olib ketadi. */
 const ORDER_SERVICES = [
   { key: "packaging", label: "Upakovka qilish" },
@@ -289,7 +289,7 @@ function AnketaPage() {
         )}
       </div>
 
-      {/* Buyurtma darajasi: sex bitta .project fayl ustida ishlaydi va xona
+      {/* Buyurtma darajasi: tsex bitta .project fayl ustida ishlaydi va xona
           degan tushunchani ko'rmaydi, logistika ham butun buyurtmani bitta
           mashinada olib ketadi. Shuning uchun bu maydonlar raqamlangan xona
           bo'limlaridan TASHQARIDA — xona almashganda o'zgarmaydi. */}

@@ -112,7 +112,7 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
     await websocket.accept()
 
     async def touch_agent() -> bool:
-        """last_seen_at yangilaydi (paneldagi "Onlayn") va can_print'ni yangilab oladi
+        """last_seen_at yangilaydi (paneldagi "Ulandi") va can_print'ni yangilab oladi
         (admin belgini o'zgartirsa ~5 daqiqada kuchga kiradi). False = token bekor
         qilingan (revoke yoki yangi kod) — ulanish yopilishi kerak. DB xatosi
         ulanishni YIQITMAYDI: qo'lda turgan print job yo'qolmasin."""

@@ -158,11 +158,11 @@ class SurveyRoom(BaseModel):
     countertop: Annotated[str | None, Field(default=None, max_length=20)] = None
     facade_note: Annotated[str, Field(max_length=300)] = ""
 
-    # 6-7. Furnitura va qo'shimcha xizmatlar
+    # 6. Furnitura va qo'shimcha xizmatlar
     hardware_level: Annotated[str | None, Field(default=None, max_length=20)] = None
     extra_services: Annotated[list[str], Field(max_length=10)] = []
 
-    # 8. Izoh
+    # 7. Izoh
     note: Annotated[str, Field(max_length=1000)] = ""
 
     # O'lchov varag'i (zamerdan keyin to'ldiriladi)
@@ -180,10 +180,12 @@ class OrderSurvey(BaseModel):
     version: int = 1
     measured_at: date | None = None  # o'lchov sanasi
     measured_by: Annotated[str, Field(max_length=120)] = ""  # o'lchagan usta
-    # Sex va logistika BUYURTMA ustida ishlaydi — xona degan tushuncha ularga
+    # Tsex va logistika BUYURTMA ustida ishlaydi — xona degan tushuncha ularga
     # yetib bormaydi (bitta .project fayl butun buyurtmaga yuklanadi). Shuning
     # uchun quyidagilar room ichida emas, shu yerda. Migratsiya kerak emas:
-    # survey — JSONB, eski yozuvlarda default False.
+    # survey — JSONB. Diqqat: default False FAQAT yozishda (bu sxema orqali
+    # validatsiyada) qo'llanadi — o'qishda `OrderDetail.survey` xom dict qaytadi,
+    # ya'ni eski yozuvda bu kalitlar javobda umuman bo'lmaydi.
     packaging: bool = False  # tayyor mahsulot yetkazishdan oldin qadoqlanadimi
     delivery: bool = False  # bitta mashina, bitta manzil — xonaga bo'linmaydi
     installation: bool = False  # bitta brigada, bitta tashrif

@@ -26,7 +26,9 @@ class User(BaseModel):
     token_version: Mapped[int] = mapped_column(default=0, server_default="0", kw_only=True)
 
     # TZ 3: admin/director/manager/texnolog are people; terminal/tablo are device accounts
-    # bound to a machine (TZ 8.1 variant B). Operators are NOT users — they are employees (badge).
+    # bound to a machine (TZ 8.1 variant B). Operators (arrachi..boyoqchi) are users too —
+    # POST_ROLES maps each to its post and `scanning.operator_employee` mirrors an Employee row,
+    # so scans keep their payroll attribution without a badge.
     role: Mapped[UserRole] = mapped_column(
         db_enum(UserRole), default=UserRole.ADMIN, server_default="admin", kw_only=True
     )

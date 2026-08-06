@@ -11,7 +11,7 @@ O'rnatish (faqat printer ulangan kompyuterda):
     mebelix-agent.exe ni ishga tushiring - kichik oyna server manzili va admin
     paneldagi ulanish kodini so'raydi. Shundan keyin oyna umuman ko'rinmaydi:
     agent fonda ishlaydi, kompyuter yonganda o'zi tushadi (avtostart), holati esa
-    admin panelda Onlayn/Oflayn bo'lib ko'rinadi.
+    admin panelda Ulandi/Uzilgan bo'lib ko'rinadi.
     Sozlama: %APPDATA%\MebelixAgent\.env, loglar: %APPDATA%\MebelixAgent\agent.log
 
 Printer avto-topiladi (nomida "godex" bor Windows printeri) — sozlash shart emas.

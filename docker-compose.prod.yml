@@ -50,7 +50,7 @@ services:
     expose:
       - "8000"
     volumes:
-      # Yuklangan fayllar (.project, SCX, anketa xona rasmlari, agent exe) konteyner
+      # Yuklangan fayllar (.project, SCX, anketa xona rasmlari) konteyner
       # ichida turadi — volumesiz har deploy yangi konteyner bilan o'chib ketardi.
       - uploads_data:/app/backend/uploads
     env_file:

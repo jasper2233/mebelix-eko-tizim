@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class LabelData:
-    qr_text: str  # productCode_partCode_n — unique per copy (TZ 5.8)
+    qr_text: str  # productCode_partCode[_n] — `_n` only when count > 1 (TZ 5.8)
     part_code: str  # productCode_partCode (chek: "4202_8")
     part_name: str
     project_name: str

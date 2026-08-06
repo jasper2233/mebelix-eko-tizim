@@ -141,7 +141,7 @@ def parse_xnc_program(code: str, program_xml: str, side: str | None = None) -> X
     tools: dict[str, float] = {}
     # Tomonning YAGONA ishonchli manbasi — operatsiyaning `side` atributi (spetsifikatsiya:
     # default true = litsevaya). Eski eksport uni `1`/`0` deb yozadi. Kod suffiksi endi faqat
-    # zaxira: korpusda `2001_Nukriddin` orqa tomonni `x2` bilan tugatadi (`_2` emas), ya'ni 26
+    # zaxira: korpusda `2001_Nukriddin` orqa tomonni `x2` bilan tugatadi (`_2` emas), ya'ni 16
     # dastur old tomon deb belgilanardi; `3052_Hikmat` da esa old va orqa dasturning kodi AYNAN
     # bir xil bo'lib, ikkalasi bitta SCX nomiga yozilib biri o'chib ketardi.
     side2 = not xml_bool(side, True) if side is not None else code.endswith("_2")
@@ -151,7 +151,7 @@ def parse_xnc_program(code: str, program_xml: str, side: str | None = None) -> X
     # Spetsifikatsiya (help/format_ru.html, "XNC программа"): dp/ac/as/z/x/y kabi
     # atribut YOZILMASA "oldingi qiymat" olinadi. Meros TEG bo'yicha yuritiladi —
     # aks holda pazning chuqurligi keyingi teshikka o'tib ketardi. Korpusda meros
-    # ishlatilmagan (burg'ulashda dp/x/y doim yozilgan), lekin ilgali bu yerda
+    # ishlatilmagan (burg'ulashda dp/x/y doim yozilgan), lekin ilgari bu yerda
     # ParseError bor edi: merosli fayl BUTUNLAY rad etilardi.
     last: dict[tuple[str, str], float] = {}
 

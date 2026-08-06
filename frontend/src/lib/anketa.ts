@@ -67,7 +67,7 @@ export const HARDWARE_LEVELS: Option[] = [
   { value: "premium", label: "Premium" },
 ]
 
-/** 7-bo'lim: xona jihozlari — har xonada alohida bo'lishi mumkin.
+/** 6-bo'lim: xona jihozlari — har xonada alohida bo'lishi mumkin.
  *  Yetkazib berish va montaj bu ro'yxatda EMAS: ular butun buyurtmaga tegishli
  *  (bitta mashina, bitta brigada), shuning uchun OrderSurvey darajasida. */
 export const EXTRA_SERVICES: Option[] = [
@@ -85,7 +85,7 @@ export function labelOf(options: Option[], value: string): string {
   return options.find((o) => o.value === value)?.label ?? value
 }
 
-/** Kodlar ro'yxatini o'qiladigan matnga: ["led","montaj"] -> "LED yoritish, O'rnatish (montaj)" */
+/** Kodlar ro'yxatini o'qiladigan matnga: ["led","oyna"] -> "LED yoritish, Oyna / ko'zgu" */
 export function labelsOf(
   options: Option[],
   values: string[] | undefined,

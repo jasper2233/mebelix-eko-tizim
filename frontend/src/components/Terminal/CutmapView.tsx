@@ -367,7 +367,7 @@ export function CutmapView({
   ) : null
 
   // Web (admin) boshqaruvi: sichqonchaga mo'ljallangan ixcham qator — chapdagi
-  // 76px sensor ustuni 17" terminal uchun, webda u joy yeb qiyshiq ko'rinardi.
+  // 68px sensor ustuni 17" terminal uchun, webda u joy yeb qiyshiq ko'rinardi.
   const webToolbar =
     admin && sheetIdx !== null ? (
       <div className="flex items-center gap-1.5">

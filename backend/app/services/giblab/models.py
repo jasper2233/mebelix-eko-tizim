@@ -53,7 +53,8 @@ class ParsedMaterial:
 
 @dataclass
 class XncOp:
-    """One <operation typeId="XNC"> after program XML is parsed. A part has at most two (TZ 5.2.7)."""
+    """One <operation typeId="XNC"> after program XML is parsed. Usually two (front + back), but
+    GibLab writes more (XNC1..XNC5) — `merge_xnc_ops` keeps them all, `parser` only warns."""
 
     code: str
     side2: bool  # back side — `side` attribute of the operation, code suffix only as fallback
@@ -101,7 +102,7 @@ class ParsedPart:
         return len(self.edges)
 
     def merged_machining(self) -> XncOp | None:
-        """Union of both XNC sides for the holes overlay; duplicate bores removed (TZ 5.7.5)."""
+        """Union of ALL XNC ops (not just two) for the holes overlay; duplicate bores removed (TZ 5.7.5)."""
         if not self.xnc_ops:
             return None
         base = XncOp(code=self.key, side2=False, dx=self.xnc_ops[0].dx, dy=self.xnc_ops[0].dy, dz=self.xnc_ops[0].dz)

@@ -14,8 +14,9 @@ type Sheet = any
 const PART_FILL = "#e88b00"
 const PART_SELECTED = "#2596be"
 // Chek chiqarilgan yoki skan qilingan katak — "kesildi" yashili (TZ 7.1.7).
-// Tailwind green-500: tizimning qolgan "bajarildi" belgilari (list kartasi,
-// kromka/prisadka chiplari) bilan bitta ton — xarita ajralib qolmasin
+// Tailwind green-500: kromka/prisadka nusxa chiplari (green-600) bilan bir
+// oilada — xarita ajralib qolmasin. List kartasi endi yengil tint
+// (green-50 fon, green-700 matn): to'ldirilgan katak SVG'da undan to'q
 const PART_DONE = "#22c55e"
 
 // --- GibSaw render qoidalari (GibLabViewer'dan portlangan, foto-tekshirilgan) ---

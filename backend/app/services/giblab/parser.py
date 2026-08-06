@@ -537,7 +537,7 @@ def _apply_el_symbols(
     via el{side}="@operation#N" (TZ 5.1.2)."""
     symbol = op_el.get("elSymbol")
     # Kromkalash operatsiyasida `used="base"` KLEY emas, LENTA ni bildiradi (spetsifikatsiya).
-    # Detalning `el{side}Mat` i yozilmasligi mumkin (korpusda 779 qirradan 21 tasi) — o'shanda
+    # Detalning `el{side}Mat` i yozilmasligi mumkin (korpusda 779 qirradan 112 tasi) — o'shanda
     # yorliqdagi lenta katakchasi bo'sh chiqib, kromkachi qaysi lentani olishini bilmasdi.
     mat_el = _base_material(op_el)
     band = bands.get(int(mat_el.get("id", 0))) if mat_el is not None else None
