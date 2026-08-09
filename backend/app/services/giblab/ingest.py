@@ -333,9 +333,8 @@ async def ingest_project(
             # Rover/stolyarka/bo'yoq bu yerdan CHIQMAYDI: roverdan chiqqan detal keyin
             # bo'yalishi mumkinligini fayl bilmaydi — texnolog uni "nostandart" deb
             # belgilab, marshrutini o'zi chizadi.
-            # Kalit post KODI (matn): noma'lum post `posts.get()` da None beradi va
-            # tushunarli xato chiqadi; `PostCode(...)` bo'lsa ValueError -> 500 bo'lardi.
-            steps: list[tuple[int, str, int]] = []
+            # Post noma'lum bo'lsa `posts.get()` None beradi va tushunarli xato chiqadi.
+            steps: list[tuple[int, PostCode, int]] = []
             # ARRA — faqat listdan kesiladigan detalga. Optimizatsiya qilingan faylda
             # materiali ham, yorliq raqami ham yo'q detal umuman listga joylashtirilmagan
             # (masalan kupe alyuminiy profillari) — unga ARRA vazifasi berilsa arrachi

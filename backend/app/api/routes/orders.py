@@ -649,7 +649,7 @@ async def _set_custom_route(
         .values(is_deleted=True, deleted_at=datetime.now(UTC))
     )
     edge_count = len(part.edges) or 1
-    seen: set[str] = set()
+    seen: set[PostCode] = set()
     for seq, code in enumerate(codes, start=1):
         post_code = PROCESS_POSTS[code]
         post = by_code.get(post_code)

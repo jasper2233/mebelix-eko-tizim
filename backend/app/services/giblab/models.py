@@ -3,6 +3,8 @@
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.models.enums import PostCode
+
 
 class ParseError(ValueError):
     """User-facing parse failure; message is shown to the texnolog (Uzbek)."""
@@ -19,30 +21,30 @@ def xml_bool(raw: str | None, default: bool = False) -> bool:
 
 
 #: Sexning "Jarayon uchun kodlar" jadvali: jarayon kodi -> post kodi.
-#: Texnolog noodatiy detal nomiga shu raqamlarni yozadi: "eshik {7;11;8}".
 #: Bir nechta jarayon bitta postga tushadi (45° kesish ham arrada, 6 xil
-#: stolyarka amali ham bitta postda) — qaysi amal ekani detal NOMIDA qoladi.
-PROCESS_POSTS: dict[int, str] = {
-    1: "ARRA",  # Raspil
-    2: "ARRA",  # 45° kesiladigan detallar
-    3: "KROMKA",  # Kromka
-    4: "KROMKA",  # Fasat kromka
-    5: "OVAL",  # Oval kromka
-    6: "PRISADKA",  # Prisadka
-    7: "ROVER",  # Rover
-    8: "BOYOQ",  # Bo'yoq
-    9: "STOLYARKA",  # Baget
-    10: "STOLYARKA",  # Utalshonka
-    11: "STOLYARKA",  # G petlya o'ngdan
-    12: "STOLYARKA",  # G petlya chapdan
-    13: "STOLYARKA",  # V petlya o'ngdan
-    14: "STOLYARKA",  # V petlya chapdan
+#: stolyarka amali ham bitta postda) — qaysi amal ekanini `PartRoute.process_code`
+#: saqlaydi, post kodining o'zi yetarli emas.
+PROCESS_POSTS: dict[int, PostCode] = {
+    1: PostCode.ARRA,  # Raspil
+    2: PostCode.ARRA,  # 45° kesiladigan detallar
+    3: PostCode.KROMKA,  # Kromka
+    4: PostCode.KROMKA,  # Fasat kromka
+    5: PostCode.OVAL,  # Oval kromka
+    6: PostCode.PRISADKA,  # Prisadka
+    7: PostCode.ROVER,  # Rover
+    8: PostCode.BOYOQ,  # Bo'yoq
+    9: PostCode.STOLYARKA,  # Baget
+    10: PostCode.STOLYARKA,  # Utalshonka
+    11: PostCode.STOLYARKA,  # G petlya o'ngdan
+    12: PostCode.STOLYARKA,  # G petlya chapdan
+    13: PostCode.STOLYARKA,  # V petlya o'ngdan
+    14: PostCode.STOLYARKA,  # V petlya chapdan
 }
 
 #: Post -> shu postning ODATDAGI jarayon kodi. Bitta postda bir necha amal bo'lgani uchun
 #: (STOLYARKA da 6 ta, KROMKA da 2 ta) faqat post nomidan kod tiklab bo'lmaydi — bu jadval
 #: aniq amal tanlanmagan holat uchun zaxira qiymat beradi.
-DEFAULT_PROCESS_CODE: dict[str, int] = {}
+DEFAULT_PROCESS_CODE: dict[PostCode, int] = {}
 for _code, _post in PROCESS_POSTS.items():
     DEFAULT_PROCESS_CODE.setdefault(_post, _code)
 
@@ -127,17 +129,17 @@ class ParsedPart:
             base.mills.extend(op.mills)
         return base
 
-    def stage_sides(self) -> dict[str, int]:
+    def stage_sides(self) -> dict[PostCode, int]:
         """post_code -> per-instance scan count for XNC stages (TZ 5.4.3, 7.3.3).
 
         FAQAT PRISADKA. Paz/freza uchun ROVER bosqichi ATAYLAB yaratilmaydi: roverdan
         chiqqan detal keyin bo'yalishi ham mumkin, ya'ni marshruti fayldan chiqarib
         bo'lmaydi. Bunday detalni texnolog "nostandart" deb belgilab, marshrutini
         o'zi chizadi. Paz/freza geometriyasi baribir SCX ga va yorliq eskiziga ketadi."""
-        result: dict[str, int] = {}
+        result: dict[PostCode, int] = {}
         for op in self.xnc_ops:
             if op.bores or op.edge_bores:
-                result["PRISADKA"] = result.get("PRISADKA", 0) + 1
+                result[PostCode.PRISADKA] = result.get(PostCode.PRISADKA, 0) + 1
         return result
 
 
