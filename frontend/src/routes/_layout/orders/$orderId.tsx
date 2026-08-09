@@ -19,6 +19,7 @@ import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
 import { SectionTitle } from "@/components/Common/SectionTitle"
 import { StatusBadge } from "@/components/Common/StatusBadge"
+import { CustomRoutes } from "@/components/Orders/CustomRoutes"
 import { EditOrder } from "@/components/Orders/EditOrder"
 import { MachineAssign } from "@/components/Orders/MachineAssign"
 import { OrderMatrix } from "@/components/Orders/OrderMatrix"
@@ -54,7 +55,11 @@ import {
   TERMINAL_STATUSES,
 } from "@/lib/mes"
 import { cn } from "@/lib/utils"
-import { crudCallbacks, getOrderQueryOptions } from "@/queries/mes"
+import {
+  crudCallbacks,
+  getOrderMatrixQueryOptions,
+  getOrderQueryOptions,
+} from "@/queries/mes"
 import { extractErrorMessage, handleError } from "@/utils"
 
 export const Route = createFileRoute("/_layout/orders/$orderId")({
@@ -164,6 +169,13 @@ function OrderDetailPage() {
   // GibLab fayldagi typeId="simple" goodlar: petlya, yevrovint, dasta... (dona).
   // SKU kodlilar oldin: kodsizlar orasida dizaynerning 3D-model qoldiqlari ham
   // uchraydi ("Вычитание тел", "Гнутая") — haqiqiy furnitura ustun tursin.
+  // Matritsa allaqachon yuklangan bo'lsa tab yorlig'ida son ko'rinadi (TanStack
+  // dedupe qiladi — qo'shimcha so'rov ketmaydi).
+  const customCount = (
+    queryClient.getQueryData(getOrderMatrixQueryOptions(id).queryKey)?.parts ??
+    []
+  ).filter((p) => p.is_custom).length
+
   const hardware = (order.material_usage ?? [])
     .filter((m) => m.kind === "hardware")
     .sort(
@@ -356,16 +368,27 @@ function OrderDetailPage() {
         <MachineAssign order={order} onSaved={invalidate} />
       )}
 
-      {hardware.length > 0 && isTexnolog ? (
+      {isTexnolog ? (
         <Tabs defaultValue="matrix">
           <TabsList>
             <TabsTrigger value="matrix">Detallar matritsasi</TabsTrigger>
-            <TabsTrigger value="hardware">
-              Furnituralar ({hardware.length})
+            <TabsTrigger value="custom">
+              Nostandart detallar{customCount ? ` (${customCount})` : ""}
             </TabsTrigger>
+            {hardware.length > 0 && (
+              <TabsTrigger value="hardware">
+                Furnituralar ({hardware.length})
+              </TabsTrigger>
+            )}
           </TabsList>
           <TabsContent value="matrix">
             <OrderMatrix orderId={id} editable={isTexnolog && editableStatus} />
+          </TabsContent>
+          <TabsContent value="custom">
+            <CustomRoutes
+              orderId={id}
+              editable={isTexnolog && editableStatus}
+            />
           </TabsContent>
           <TabsContent value="hardware">
             <Table>

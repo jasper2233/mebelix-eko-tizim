@@ -131,10 +131,11 @@ if (data.password) payload.password = data.password
 
 ### `frontend/src/components/Common/OperationChips.tsx`
 
-**Maqsadi:** noodatiy detal nomidagi `{kodlar}` marshrutidan SHU POSTGA tegishli AMAL nomlari chiplari ("eshik {7;11;8}" → "G petlya o'ngdan") — amber chip; chipsiz operator raqamni yoddan tarjima qilishi kerak edi.
+**Maqsadi:** marshrut QADAMINING amal nomi chipi (kod 11 → "G petlya o'ngdan") — amber chip; chipsiz operator raqamni yoddan tarjima qilishi kerak edi, va noto'g'ri petlya eshikni brak qiladi.
 
-- `partOperations(name, postCode)` (`@/lib/mes`) dan quriladi — `PROCESS_OPS` jadvali (14 kod, backend `PROCESS_POSTS` bilan bir xil bo'lishi shart) kodni amal nomi + postga o'giradi; faqat ko'p amalli postlarda chip chiqadi (bitta amalli postda — rover, bo'yoq — hech narsa chizilmaydi, post nomi ekran sarlavhasida turibdi).
-- Ishlatilish joylari: `Terminal/KromkaView` va `routes/terminal.tsx` vazifalar jadvali.
+- Props: `processCode: number | null | undefined` va `postCode: string | null | undefined`. Kod endi detal NOMIDAN o'qilmaydi — nomdagi `{kodlar}` sintaksisi butunlay olib tashlangan; `process_code` marshrut qadamining o'zida saqlanadi va backend uni `TaskRow`/`KromkaPartRow` da beradi.
+- `PROCESS_OPS` (`@/lib/mes` dan import — 14 kod, backend `PROCESS_POSTS` bilan bir xil bo'lishi shart) kodni amal nomi + postga o'giradi. Chip chizilmaydi, agar: kod noma'lum bo'lsa (xato nom emas, hech nima), kod boshqa postga tegishli bo'lsa yoki post bitta amalli bo'lsa (prisadka, rover, oval, bo'yoq — post nomi ekran sarlavhasida turibdi). Ya'ni chip faqat ARRA, KROMKA va STOLYARKA da ko'rinadi.
+- Ishlatilish joylari: `Terminal/KromkaView` (`postCode={oval ? "OVAL" : "KROMKA"}`) va `routes/terminal.tsx` vazifalar jadvali (`postCode={ctx?.post_code}`).
 
 ### `frontend/src/components/Common/PageHeader.tsx`
 
@@ -204,13 +205,25 @@ Buyurtma sahifalari (`/orders`, `/orders/$orderId`) uchun dialog va jadval kompo
 
 ### `frontend/src/components/Orders/OrderMatrix.tsx`
 
-**Maqsadi:** texnolog matritsasi (TZ 6.3.3) — qatorlar: detallar, ustunlar: postlar (`getPostsQueryOptions` — hozir bazada 7 post).
+**Maqsadi:** texnolog matritsasi (TZ 6.3.3) — qatorlar: detallar, ustunlar: STANDART detalning postlari, ya'ni `getPostsQueryOptions` ro'yxati `STANDARD_MATRIX_POSTS` (`@/lib/mes` — ARRA, KROMKA, PRISADKA) bo'yicha filtrlanadi. Rover/stolyarka/bo'yoq/oval ustunlari olib tashlangan: fayldan avtomatik marshrut faqat shu uch postni beradi (roverdan chiqqan detal keyin bo'yalishi mumkinligini fayl bilmaydi), qolgani hech qachon to'lmaydigan bo'sh ustun bo'lib turardi — ular endi "Nostandart detallar" tabida qo'lda chiziladi.
 
-- O'qish rejimida har katak `total_done/total_required` progress (`POST_COLORS`, tugallanganda "✓"), o'chirilgan bosqich "—"; `editable` bo'lsa "Marshrutni tahrirlash" rejimi: bosqich checkboxlari (ARRA majburiy — TZ 5.4.1, checkbox locked) + izoh inputlari, `OrdersService.editOrderMatrix` ga batch saqlanadi (`crudCallbacks`).
+- O'qish rejimida har katak `total_done/total_required` progress (`POST_COLORS`, tugallanganda "✓"), o'chirilgan bosqich "—". Bitta post marshrutda BIR NECHA MARTA kelishi mumkin (kromka → prisadka → yana kromka), shuning uchun katak shu postdagi barcha qadamlarning yig'indisini ko'rsatadi.
+- `editable` bo'lsa "Marshrutni tahrirlash" rejimi: bosqich checkboxlari + izoh inputlari + "Nostandart" katakchasi, hammasi bitta `OrdersService.editOrderMatrix` batchida saqlanadi (`crudCallbacks`). Checkbox locked bo'ladi ikki holatda: ARRA (standart detalda majburiy — TZ 5.4.1) va detal nostandart bo'lsa (uning marshruti bu yerda emas, alohida tabda chiziladi).
+- **"Nostandart" ustuni** (post ustunlaridan keyin): o'qish rejimida amber "✓" yoki "—", tahrirlashda `Checkbox` → `MatrixPartEdit.is_custom`. Belgilangan detal fayldan avtomatik marshrut olmaydi (mavjud avtomatik qadamlar yumshoq o'chadi, bayroq qaytarilsa aynan tiklanadi), marshrutini texnolog `Orders/CustomRoutes` da chizadi.
 - Boshqaruv qatorida detal qidiruvi ("Qidirish: kod yoki nom...") va `N / M detal` hisobi; jadval balandligi 70vh bilan chegaralangan, sarlavha sticky.
 - Har detal kodi yonida Map-ikonka — `/cutmap/$orderId?part=...` havolasi: kesish xaritasida detalning listi ochilib katagi belgilanadi (`CutmapView` `focusPartKey` oqimi).
-- Nomida `{kodlar}` marshruti bo'lgan detalda amber "Marshrut nomdan" belgisi (`isCustomRoute` — bu yerda belgilangan o'zgarish faylni qayta yuklaganda yo'qoladi, marshrut GibLab'da nomdan tuzatiladi).
+- `part.is_custom` bo'lsa detal nomi ostida amber belgi — "Nostandart · N qadam" yoki (marshrut hali chizilmagan bo'lsa) "Nostandart · marshrut yo'q", `title` da tushuntirish.
 - Ma'lumot: `getOrderMatrixQueryOptions(orderId)`; o'lchamlar `formatSize` (`@/lib/mes`) bilan.
+
+### `frontend/src/components/Orders/CustomRoutes.tsx`
+
+**Maqsadi:** "Nostandart detallar" tabi (TZ 6.3.3) — matritsada `is_custom` deb belgilangan detallarning marshrutini texnolog QO'LDA chizadi. Fayl bunday detalning yo'lini bilmaydi (nomdagi `{kodlar}` sintaksisi olib tashlangan, marshrut endi detal nomiga umuman bog'liq emas), shuning uchun yagona manba — texnologning shu ekrandagi tanlovi.
+
+- Props: `{ orderId: number; editable: boolean }`. Ma'lumot — `OrderMatrix` bilan AYNAN bitta query (`getOrderMatrixQueryOptions(orderId)`, TanStack dedupe qiladi), `parts.filter(p => p.is_custom)`; nostandart detal bo'lmasa tushuntirish matni chiqadi ("Detallar matritsasida 'Nostandart' ustunidan belgilang").
+- Har detal kartochkasida `PROCESS_OPS` ning 14 kodi tugma bo'lib chiziladi (`title` da `kod · POST`). Tugma bosilsa kod marshrut oxiriga QO'SHILADI va tanlangan tartibda raqamlanadi (1, 2, 3...); bitta jarayonni qayta bosish yangi qadam beradi (kromka → prisadka → yana kromka — shuning uchun tugmada `1,3` kabi bir necha raqam turishi mumkin), OXIRGI qadamni bosish esa uni bekor qiladi. O'ng tomonda joriy marshrut `7 / 11 / 8` ko'rinishida.
+- Validatsiya: marshrut bo'sh bo'lmasligi va `ROUTE_START_POSTS` (`@/lib/mes` — ARRA yoki ROVER) dan boshlanishi shart — chek shu birinchi postda chiqadi. Buzilgan detal kartochkasi qizil ramkada, tepada nechta ekani sanaladi, "Saqlash" tugmasi bloklanadi (backend ham marshrutsiz detalni ishlab chiqarishga o'tkazmaydi).
+- Tahrirlar `draft` state'da (`part_id -> kodlar massivi`) yig'iladi, faqat tegilgan detallar; saqlash — `OrdersService.editOrderMatrix` (`edits[].route_codes`, `stages: {}`), muvaffaqiyatda `draft` tozalanadi. `editable=false` bo'lsa tugmalar `disabled`, saqlash paneli umuman chizilmaydi (ko'rish rejimi).
+- `routes/_layout/orders/$orderId.tsx` da texnolog uchun DOIM ikkinchi tab sifatida turadi ("Nostandart detallar (N)").
 
 ---
 
@@ -314,7 +327,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 **Props:** `sheet`, `holes`, `instancesByCell`, `onSelect(part)`, `selectedCell`, `thumbnail?`, `registerZoom?({zin,zout,reset})`, `onSwipe?("next"|"prev")`.
 
 - **Eksport qilingan geometriya yordamchilari** (`CutmapView/PartPreview` ham ishlatadi): `holeXY(part, H, bx, by)` — teshik lokal koordinatasini katakka o'giradi (`p.rot` da o'q almashinuvi, oynasiz), `edgeLocalXY(H, side, pos)` — qirra teshigining lokal nuqtasi (t/b/l/r), `edgeBoreRect(part, cx, cy, d, dp)` — eng yaqin chetdan ichkariga to'rtburchak (uzunligi = burg'u chuqurligi).
-- **Ranglar/qoidalar:** barcha detallar `#e88b00` (to'q apelsin), tanlangani `#2596be`; atxot va list foni `zebra` pattern (`patternTransform rotate(45)`); kesim chiziqlari (`sheet.cuts`) qora `#242424`; yozuvlar halo'siz (to'q apelsin fonda kerak emas).
+- **Ranglar/qoidalar:** barcha detallar `#e88b00` (to'q apelsin), tanlangani `#2596be`, marshrutida ARRA bo'lmagan detal esa kulrang (`PART_CUSTOM = "#9aa4b2"` — barcha nusxalarida `custom` bayrog'i; u roverda kesiladi, arrachi uni kesmaydi va skani ham qabul qilinmaydi); atxot va list foni `zebra` pattern (`patternTransform rotate(45)`); kesim chiziqlari (`sheet.cuts`) qora `#242424`; yozuvlar halo'siz (to'q apelsin fonda kerak emas).
 - **Zoom/pan/swipe (Pointer Events):** g'ildirak zoom kursor nuqtasiga (native `wheel` listener, `passive: false`), bir barmoq pan (zoomda) yoki gorizontal swipe → `onSwipe` bilan list almashtirish (>80px, <600ms), ikki barmoqli pinch. `setPointerCapture` **ataylab ishlatilmaydi** — u keyingi `click`ni SVG'ga retarget qilib detal tanlashni o'ldiradi. G'ildirak, pinch va toolbar tugmalari bitta `zoomAt(f, ax, ay)` yordamchisiga tushadi (tugmalar markaz atrofida 1.5x, `zoomBy`), zoom chegarasi ham shu yerda — `base.w/14`; `viewBox` `base` dan kichik bo'lsagina `vb` state saqlanadi, list almashsa (`sheet.no`) tiklanadi.
 - **Yozuv joylashtirish:** har detal uchun eni/bo'yi (kromka kodlari bilan: `p.eH`/`p.eW`) va nom (`№num nom`, aylantirilganda ⟳, ko'p nusxada `done/total`) yoziladi; shrift o'lchami detal o'lchamidan hisoblanadi (cap 42 / 110), joy yetmasa faqat raqam qoladi yoki yozuv olib tashlanadi. Teshiklardan `obstacles` ro'yxati yig'ilib, har yozuv uchun bir necha nomzod joydan teshiksiz birinchisi tanlanadi (`pickSpot`) — tanlangan joy keyingi yozuvlarga ham to'siq, shuning uchun yozuvlar bir-birining va teshiklarning ustiga tushmaydi.
 - **Tekstura yo'nalishi:** `p.txt` bo'lsa (va detal >60×40) matn ortida 3 ta gorizontal chiziq.
@@ -440,7 +453,7 @@ routes (_layout sahifalar)                      routes (terminal / cutmap)
   ├─ AddOrder / EditOrder ─ orderForm             │    │    dims, teshiklar, thumbnail)
   │        ├─ ClientCombobox                      │    └─ PartCard → PartPreview + QR
   │        └─ AddClient (inline)                  ├─ KromkaView / PrisadkaView
-  ├─ MachineAssign / OrderMatrix                  │    ├─ OperationChips
+  ├─ MachineAssign / OrderMatrix / CustomRoutes   │    ├─ OperationChips
   └─ admin.tsx: ui/table + UserRow                │    └─ usePrintLabel
        │    (isLoading → Skeleton)                └─ audio (playSuccess/Error/Warning)
        ├─ AddUser ─┐
@@ -466,8 +479,9 @@ getOrderMatrixQueryOptions/getOrderQueryOptions va h.k.; PAGE_SIZE, crudCallback
 @/queries/users (getUsersQueryOptions — barcha sahifalarni bitta ro'yxatga yig'adi, `admin.tsx`;
 getCurrentUserQueryOptions — `useCurrentUser` va `tablo.tsx` shundan foydalanadi), @/lib/mes (ROLE_LABELS, PRIORITY_LABELS,
 PRIORITY_DOT_CLASSES/PRIORITY_TEXT_CLASSES/PRIORITY_BADGE_CLASSES, POST_COLORS,
-ORDER_STATUS_LABELS/COLORS, chipColors/mixTint, isCut, PROCESS_OPS asosidagi
-partOperations/isCustomRoute, isAdmin/isSuperuser/isManagement/isProductionStaff,
+ORDER_STATUS_LABELS/COLORS, chipColors/mixTint, isCut, PROCESS_OPS (14 amal kodi →
+nom+post; OperationChips va CustomRoutes ishlatadi), STANDARD_MATRIX_POSTS,
+ROUTE_START_POSTS, isAdmin/isSuperuser/isManagement/isProductionStaff,
 MACHINE_BOUND_ROLES, TERMINAL_STATUSES, formatSize),
 @/hooks (useAuth, useCurrentUser, useMobile, useDebounced, useScanFlash), sonner (toast),
 @/lib/validation (zod schema'lar, formatMoneyInput, formatUzPhone), @/lib/utils (cn),

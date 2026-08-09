@@ -132,13 +132,24 @@ async def read_tablo_order(db: SessionDep, _: CurrentUser, order_id: int) -> Tab
                 part_id=part.id, code=f"{product_code}_{part.code}", name=part.name, count=part.count, stages={}
             )
             parts[part.id] = row
-        row.stages[str(posts[route.post_id].code)] = StageAgg(
-            post_id=route.post_id,
-            done=route.total_done,
-            total=route.total_required,
-            volume_total=float(route.total_required),
-            volume_done=float(route.total_done),
-        )
+        # Bitta post marshrutda takrorlanishi mumkin (kromka -> prisadka -> kromka).
+        # Katakcha post bo'yicha bo'lgani uchun qadamlar QO'SHILADI — aks holda
+        # oxirgi qadam oldingisining ustiga yozilib, bajarilgan ish yo'qolardi.
+        key = str(posts[route.post_id].code)
+        agg = row.stages.get(key)
+        if agg is None:
+            row.stages[key] = StageAgg(
+                post_id=route.post_id,
+                done=route.total_done,
+                total=route.total_required,
+                volume_total=float(route.total_required),
+                volume_done=float(route.total_done),
+            )
+        else:
+            agg.done += route.total_done
+            agg.total += route.total_required
+            agg.volume_total += float(route.total_required)
+            agg.volume_done += float(route.total_done)
     return TabloOrderDetail(id=order.id, number=order.number, name=order.project_name, parts=list(parts.values()))
 
 

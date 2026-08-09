@@ -18,6 +18,9 @@ const PART_SELECTED = "#2596be"
 // oilada — xarita ajralib qolmasin. List kartasi endi yengil tint
 // (green-50 fon, green-700 matn): to'ldirilgan katak SVG'da undan to'q
 const PART_DONE = "#22c55e"
+// Marshrutida ARRA yo'q — detal roverda kesiladi. Arrachi uni kesmaydi, skani ham
+// qabul qilinmaydi; kulrang bo'lib turadi va yozuvi "ROVER" deb belgilanadi.
+const PART_CUSTOM = "#9aa4b2"
 
 // --- GibSaw render qoidalari (GibLabViewer'dan portlangan, foto-tekshirilgan) ---
 
@@ -269,13 +272,16 @@ export function SheetSvg({
     // SVG tugunlariga aylanardi: 12 listli materialda ~6000 ortiqcha tugun va
     // har detal uchun yozuv-to'qnashuv algoritmi. Thumbnail'da ular chizilmaydi.
     const H = thumbnail ? undefined : holes[String(p.id)]
+    const custom = !p.waste && insts.length > 0 && insts.every((i) => i.custom)
     const fill = p.waste
       ? "url(#zebra)"
       : selected
         ? PART_SELECTED
-        : allDone
-          ? PART_DONE
-          : PART_FILL
+        : custom
+          ? PART_CUSTOM
+          : allDone
+            ? PART_DONE
+            : PART_FILL
 
     // thumbnail'da yozuvlar umuman hisoblanmaydi — pickSpot to'qnashuv qidiruvi
     // har detal uchun bir necha nomzod joyni tekshiradi, natijasi esa 128px da

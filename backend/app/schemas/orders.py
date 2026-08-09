@@ -205,6 +205,8 @@ class RouteCell(BaseModel):
 
     id: int
     post_id: int
+    seq: int  # marshrutdagi o'rni, 1 dan
+    process_code: int  # 1..14, aynan qaysi amal (STOLYARKA da 6 xil bor)
     source: RouteSource
     is_enabled: bool
     per_instance: int
@@ -228,6 +230,7 @@ class MatrixPart(BaseModel):
     edges: dict[str, Any]
     xnc_summary: dict[str, Any]
     note: str | None
+    is_custom: bool
     routes: list[RouteCell]
 
 
@@ -244,6 +247,13 @@ class MatrixPartEdit(BaseModel):
     count: int | None = Field(default=None, ge=1, le=1000)
     # post_id -> enabled; STOLYARKA toggling and disabling auto-detected stages
     stages: dict[int, bool] = {}
+    #: Nostandart bayrog'i. `True` qilinsa fayldan kelgan avtomatik marshrut o'chadi va
+    #: texnolog `route_codes` bilan o'zi chizadi; `False` qilinsa qo'lda chizilgani o'chib,
+    #: fayl bo'yicha standart marshrut tiklanadi.
+    is_custom: bool | None = None
+    #: Nostandart detal marshruti — jarayon kodlari TARTIB bilan (masalan [7, 11, 8]).
+    #: Kod takrorlanishi mumkin ([3, 6, 3]). Bo'sh ro'yxat marshrutni tozalaydi.
+    route_codes: list[int] | None = None
 
 
 class MatrixEdit(BaseModel):

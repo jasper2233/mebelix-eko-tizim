@@ -1,32 +1,32 @@
-import { partOperations } from "@/lib/mes"
+import { PROCESS_OPS } from "@/lib/mes"
 
 /**
- * Noodatiy detalning SHU POSTDAGI amali: "eshik {7;11;8}" → "G petlya o'ngdan".
+ * Marshrut qadamining AMAL nomi: kod 11 → "G petlya o'ngdan".
  *
- * Kodlar postga ko'pdan-birga tushadi (stolyarkada oltita amal, arrada oddiy va
- * 45° kesish) — chipsiz operator raqamni yoddan tarjima qilishi kerak edi, va
- * noto'g'ri petlya eshikni brak qiladi. Bitta amalli postda (rover, bo'yoq)
- * hech narsa chizilmaydi: post nomi ekran sarlavhasida turibdi.
+ * Kodlar postga ko'pdan-birga tushadi (stolyarkada oltita amal, kromkada uchta,
+ * arrada oddiy va 45° kesish) — chipsiz operator raqamni yoddan tarjima qilishi
+ * kerak edi, va noto'g'ri petlya eshikni brak qiladi. Bitta amalli postda
+ * (rover, bo'yoq, prisadka) hech narsa chizilmaydi: post nomi ekran
+ * sarlavhasida turibdi.
  */
 export function OperationChips({
-  name,
+  processCode,
   postCode,
 }: {
-  name: string
+  processCode: number | null | undefined
   postCode: string | null | undefined
 }) {
-  const ops = postCode ? partOperations(name, postCode) : []
-  if (!ops.length) return null
+  const op = processCode == null ? undefined : PROCESS_OPS[processCode]
+  // Post uchun yagona amal bo'lsa chip ortiqcha — sarlavhani takrorlaydi
+  const many =
+    op &&
+    Object.values(PROCESS_OPS).filter((o) => o.post === op.post).length > 1
+  if (!op || !many || (postCode && op.post !== postCode)) return null
   return (
     <div className="mt-1 flex flex-wrap gap-1">
-      {ops.map((op) => (
-        <span
-          key={op}
-          className="rounded-sm bg-amber-100 px-1.5 py-0.5 text-sm font-bold text-amber-900"
-        >
-          {op}
-        </span>
-      ))}
+      <span className="rounded-sm bg-amber-100 px-1.5 py-0.5 text-sm font-bold text-amber-900">
+        {op.name}
+      </span>
     </div>
   )
 }

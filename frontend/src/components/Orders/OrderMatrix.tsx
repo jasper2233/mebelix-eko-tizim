@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { formatSize, isCustomRoute, POST_COLORS } from "@/lib/mes"
+import { formatSize, POST_COLORS, STANDARD_MATRIX_POSTS } from "@/lib/mes"
 import {
   crudCallbacks,
   getOrderMatrixQueryOptions,
@@ -29,6 +29,7 @@ import {
 
 type StageEdits = Record<number, Record<number, boolean>> // part_id -> post_id -> enabled
 type NoteEdits = Record<number, string>
+type CustomEdits = Record<number, boolean> // part_id -> nostandart
 
 export function OrderMatrix({
   orderId,
@@ -45,6 +46,7 @@ export function OrderMatrix({
   const [query, setQuery] = useState("")
   const [stageEdits, setStageEdits] = useState<StageEdits>({})
   const [noteEdits, setNoteEdits] = useState<NoteEdits>({})
+  const [customEdits, setCustomEdits] = useState<CustomEdits>({})
   const queryClient = useQueryClient()
   const cb = crudCallbacks(
     queryClient,
@@ -52,15 +54,24 @@ export function OrderMatrix({
     "Matritsa saqlandi",
   )
 
+  // Faqat standart detalning postlari. Qolganlari nostandart tabda chiziladi —
+  // matritsada ular hech qachon to'lmaydigan bo'sh ustun bo'lib turardi.
   const sortedPosts = useMemo(
-    () => (posts ?? []).slice().sort((a, b) => a.order_index - b.order_index),
+    () =>
+      (posts ?? [])
+        .filter((p) => STANDARD_MATRIX_POSTS.includes(p.code))
+        .sort((a, b) => a.order_index - b.order_index),
     [posts],
   )
 
   const mutation = useMutation({
     mutationFn: () => {
       const partIds = new Set(
-        [...Object.keys(stageEdits), ...Object.keys(noteEdits)].map(Number),
+        [
+          ...Object.keys(stageEdits),
+          ...Object.keys(noteEdits),
+          ...Object.keys(customEdits),
+        ].map(Number),
       )
       return OrdersService.editOrderMatrix({
         orderId,
@@ -69,6 +80,7 @@ export function OrderMatrix({
             part_id: partId,
             note: noteEdits[partId] ?? null,
             stages: stageEdits[partId] ?? {},
+            is_custom: customEdits[partId] ?? null,
           })),
         },
       })
@@ -79,6 +91,7 @@ export function OrderMatrix({
       setEditMode(false)
       setStageEdits({})
       setNoteEdits({})
+      setCustomEdits({})
     },
   })
 
@@ -92,7 +105,9 @@ export function OrderMatrix({
   }
 
   const hasEdits =
-    Object.keys(stageEdits).length > 0 || Object.keys(noteEdits).length > 0
+    Object.keys(stageEdits).length > 0 ||
+    Object.keys(noteEdits).length > 0 ||
+    Object.keys(customEdits).length > 0
 
   const q = query.trim().toLowerCase()
   const visibleParts = q
@@ -129,6 +144,7 @@ export function OrderMatrix({
                   setEditMode(false)
                   setStageEdits({})
                   setNoteEdits({})
+                  setCustomEdits({})
                 }}
               >
                 <X /> Bekor qilish
@@ -171,6 +187,7 @@ export function OrderMatrix({
                   {p.code}
                 </TableHead>
               ))}
+              <TableHead className="text-center">Nostandart</TableHead>
               <TableHead>Izoh</TableHead>
             </TableRow>
           </TableHeader>
@@ -196,14 +213,14 @@ export function OrderMatrix({
                   <span className="block max-w-[220px] truncate text-xs text-muted-foreground">
                     {part.name}
                   </span>
-                  {/* Marshrut detal NOMIDAN olingan — qo'ldagi belgi keyingi
-                      yuklashda yo'qoladi, chunki fayl marshrutni qayta quradi */}
-                  {isCustomRoute(part.name) && (
+                  {part.is_custom && (
                     <span
                       className="mt-0.5 inline-block rounded-sm bg-amber-100 px-1.5 py-0.5 text-2xs font-bold text-amber-900"
-                      title="Marshrut detal nomidagi kodlardan olingan. Bu yerda belgilagan o'zgarish faylni qayta yuklaganda yo'qoladi — marshrutni GibLab'da nomdan tuzating."
+                      title="Marshrutini texnolog qo'lda chizadi — Nostandart detallar tabida."
                     >
-                      Marshrut nomdan
+                      {part.routes.length
+                        ? `Nostandart · ${part.routes.length} qadam`
+                        : "Nostandart · marshrut yo'q"}
                     </span>
                   )}
                 </TableCell>
@@ -219,10 +236,29 @@ export function OrderMatrix({
                     part={part}
                     post={post}
                     editMode={editMode}
+                    isCustom={customEdits[part.id] ?? part.is_custom}
                     stageEdits={stageEdits}
                     setStageEdits={setStageEdits}
                   />
                 ))}
+                <TableCell className="text-center">
+                  {editMode ? (
+                    <Checkbox
+                      checked={customEdits[part.id] ?? part.is_custom}
+                      onCheckedChange={(v) =>
+                        setCustomEdits((prev) => ({
+                          ...prev,
+                          [part.id]: v === true,
+                        }))
+                      }
+                      aria-label={`${part.code} nostandart`}
+                    />
+                  ) : part.is_custom ? (
+                    <span className="font-bold text-amber-700">✓</span>
+                  ) : (
+                    <span className="text-muted-foreground/40">—</span>
+                  )}
+                </TableCell>
                 <TableCell>
                   {editMode ? (
                     <Input
@@ -259,22 +295,31 @@ function MatrixCell({
   part,
   post,
   editMode,
+  isCustom,
   stageEdits,
   setStageEdits,
 }: {
   part: MatrixPartData
   post: PostRead
   editMode: boolean
+  /** Tahrirdagi holat (serverdagi emas): checkbox belgilangan zahoti katakchalar
+   *  qulflansin — aks holda bitta saqlashda is_custom va stages birga ketib,
+   *  backend qo'lda chizilgan marshrutga tegib qo'yardi. */
+  isCustom: boolean
   stageEdits: StageEdits
   setStageEdits: React.Dispatch<React.SetStateAction<StageEdits>>
 }) {
-  const route = part.routes.find((r) => r.post_id === post.id)
+  // Post marshrutda takrorlanishi mumkin (kromka -> prisadka -> kromka) —
+  // katakcha shu postdagi BARCHA qadamlarni birga ko'rsatadi.
+  const steps = part.routes.filter((r) => r.post_id === post.id && r.is_enabled)
   const color = POST_COLORS[post.code] ?? "var(--status-draft)"
   const edited = stageEdits[part.id]?.[post.id]
-  const enabled = edited ?? (route ? route.is_enabled : false)
+  const enabled = edited ?? steps.length > 0
 
   if (editMode) {
-    const locked = post.code === "ARRA" // majburiy bosqich (TZ 5.4.1)
+    // Nostandart detalning marshruti alohida tabda chiziladi — bu yerda tegilmaydi.
+    // ARRA standart detal uchun majburiy (TZ 5.4.1).
+    const locked = isCustom || post.code === "ARRA"
     return (
       <TableCell className="text-center">
         <Checkbox
@@ -292,11 +337,18 @@ function MatrixCell({
     )
   }
 
-  if (!route?.is_enabled) {
+  if (!steps.length) {
     return (
       <TableCell className="text-center text-muted-foreground/40">—</TableCell>
     )
   }
+  const route = steps.reduce(
+    (acc, s) => ({
+      total_done: acc.total_done + s.total_done,
+      total_required: acc.total_required + s.total_required,
+    }),
+    { total_done: 0, total_required: 0 },
+  )
   const complete = route.total_done >= route.total_required
   return (
     <TableCell className="text-center">

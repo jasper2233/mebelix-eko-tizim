@@ -346,7 +346,9 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   [11-detal-id-nomlash.md](./11-detal-id-nomlash.md)),
   loyiha nomi, 2×2 kromka katakchalari (tagchiziqli), katta
   `L x W = count`, `N_nom`, XNC belgilari (`П` paz, `Ф` freza, teshik uchun
-  `app/assets/label-icon-drill.png` ikonkasi), material va sana; o'ng ustunda QR
+  `app/assets/label-icon-drill.png` ikonkasi), **marshrut qatori**
+  (`Marshrut: 7/11/8` — jarayon kodlari `seq` tartibida, y=45.3 mm; detal NOMIGA
+  qo'shilmaydi, chunki nom 24 belgida kesiladi), material va sana; o'ng ustunda QR
   (`qrcode`, `instance.qr_text`) va vertikal detal eskizi.
 - Eskizda kromka konturdan 1 mm tashqarida qalin chiziq bilan, `part.txt` bo'lsa
   tekstura chiziqlari, va cutmap'dan HAQIQIY teshiklar: `load_label_data()`
@@ -438,7 +440,9 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
   detallar, kesim chiziqlari, teshiklar (`holeXY`, `edgeLocalXY`, `edgeBoreRect`),
   o'lchamlar zanjiri, zoom/pan/swipe; `thumbnail` rejimida interaktivsiz va
   scrollni bloklamaydi. Xarita ham, list kartalaridagi preview ham shu bitta
-  komponentni ishlatadi.
+  komponentni ishlatadi. Marshrutida ARRA yo'q detal (nostandart marshrut —
+  `CutmapInstanceState.custom`) kulrang (`PART_CUSTOM = "#9aa4b2"`) chiziladi:
+  arrachi uni kesmaydi, aks holda kesib bo'lib "plan topilmadi" xatosini olardi.
 - `GET /terminal/orders` javobi karta uchun kengaydi: `materials` (`sheet` turidagi
   plita nomlari), `sheets_total`, `has_cutmap`. Tartib — prioritet (URGENT birinchi)
   → `deadline` (nulls oxirida) → `id`; boshqa stanokka biriktirilgan `PartRoute`lar

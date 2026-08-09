@@ -730,7 +730,7 @@ function TerminalPage() {
                     {tasks?.length ? (
                       tasks.map((t) => (
                         <tr
-                          key={`${t.order_id}-${t.part_id}`}
+                          key={t.route_id}
                           id={`task-row-${t.order_id}-${t.part_id}`}
                           className={cn(
                             "border-b last:border-0",
@@ -744,7 +744,7 @@ function TerminalPage() {
                           <td className="max-w-[240px] px-4 py-3">
                             <div className="truncate">{t.name}</div>
                             <OperationChips
-                              name={t.name}
+                              processCode={t.process_code}
                               postCode={ctx?.post_code}
                             />
                           </td>

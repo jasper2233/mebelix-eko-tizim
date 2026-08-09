@@ -5,7 +5,7 @@ orqali chiqaradi. Maket MES PRO chekiga (chek/IMG_4925.JPG) va GibSaw shablonlar
 asoslangan. EZPL yo'q: G500-U'da tarmoq porti yo'q, RAW dialekt kerak emas.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -35,11 +35,16 @@ class LabelData:
     # Haqiqiy teshiklar (cutmap'dan): {"l","w","bores":[{x,y,d,thru}],"edge":[{side,pos,d,dp}]}
     holes: dict[str, Any] | None = None
     texture: bool = False  # tekstura yo'nalishi qulflangan (uzunlik bo'ylab)
+    #: Marshrut jarayon kodlari tartib bilan ("7/11/8"). Detal NOMIGA qo'shilmaydi —
+    #: nom 24 belgida kesiladi va marshrut jimgina yo'qolardi.
+    route_codes: list[int] = field(default_factory=list)
 
 
 async def load_label_data(db: "AsyncSession", instance_id: int) -> LabelData | None:
     """Bitta nusxa uchun yorliq ma'lumotini DB'dan yig'adi (print task va PNG endpoint uchun umumiy)."""
-    from app.models import Order, Part, PartInstance
+    from sqlalchemy import select
+
+    from app.models import Order, Part, PartInstance, PartRoute
     from app.services.scanning import qr_part_code
 
     instance = await db.get(PartInstance, instance_id)
@@ -69,7 +74,24 @@ async def load_label_data(db: "AsyncSession", instance_id: int) -> LabelData | N
         if cell:
             holes = order.cutmap.get("holes", {}).get(str(cell.get("id")))
 
+    route_codes = list(
+        (
+            await db.execute(
+                select(PartRoute.process_code)
+                .where(
+                    PartRoute.part_id == part.id,
+                    PartRoute.is_enabled == True,  # noqa: E712
+                    PartRoute.is_deleted == False,  # noqa: E712
+                )
+                .order_by(PartRoute.seq)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
     return LabelData(
+        route_codes=route_codes,
         qr_text=instance.qr_text,
         part_code=qr_part_code(instance.qr_text, part.count),
         part_name=part.name,
@@ -228,6 +250,11 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
             img.paste(icon, (int(35 * mm), int(9.4 * mm)))
         except OSError:
             text(35, 9.4, "С", 3.2, bold=True)
+
+    # Marshrut — ALOHIDA qator (nomga qo'shilsa 24 belgi kesimida yo'qolardi).
+    # Kodlar sexning "Jarayon uchun kodlar" jadvalidagi raqamlar.
+    if d.route_codes:
+        text(5, 45.3, "Marshrut: " + "/".join(str(c) for c in d.route_codes), 2.9, bold=True)
 
     # Material pastda; oxirgi qator BITTA: chapda N/nusxa, o'ngda sana-vaqt.
     # Ikki qator paytida oxirgisi (y 56.2 + 2.9 ≈ 59mm) yorliq pastki chetiga

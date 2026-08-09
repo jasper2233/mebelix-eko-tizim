@@ -35,6 +35,8 @@ class Scan(BaseModel):
         Index("ix_scan_client_event_id", "client_event_id", unique=True),
         Index("ix_scan_order_post", "order_id", "post_id"),
         Index("ix_scan_instance_post", "instance_id", "post_id", postgresql_where=text("NOT is_cancelled")),
+        # Skan hisobi QADAM bo'yicha sanaladi (`scanning._scans_done`) — issiq yo'l
+        Index("ix_scan_instance_route", "instance_id", "route_id"),
         # Dashboard "bugungi skanlar" hisoblagichi har 60 soniyada shu ustunni
         # so'raydi; indekssiz butun jadval skanerlanardi, ya'ni narx tarix
         # o'sgani sari ortardi (natija esa har doim bir kunlik).

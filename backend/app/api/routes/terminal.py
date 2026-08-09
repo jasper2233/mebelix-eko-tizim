@@ -215,6 +215,7 @@ async def read_terminal_tasks(db: SessionDep, ctx: TerminalCtx) -> list[TaskRow]
     return [
         TaskRow(
             part_id=part.id,
+            route_id=route.id,
             order_id=order.id,
             order_number=order.number,
             deadline=order.deadline,
@@ -226,6 +227,7 @@ async def read_terminal_tasks(db: SessionDep, ctx: TerminalCtx) -> list[TaskRow]
             qoldiq=route.total_required - route.total_done,
             total=route.total_required,
             edges=part.edges,
+            process_code=route.process_code,
         )
         for route, part, order, product_code in rows
     ]
@@ -320,6 +322,19 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
             .group_by(Scan.instance_id)
             .subquery()
         )
+        # Kromka marshrutda ikki marta bo'lishi mumkin (kromka -> prisadka -> kromka):
+        # detalga to'g'ridan-to'g'ri JOIN qilinsa nusxa ikki marta sanalardi. Shuning
+        # uchun avval qadamlar detal bo'yicha yig'iladi — bitta detal, bitta qator.
+        need_sq = (
+            select(PartRoute.part_id.label("part_id"), func.sum(PartRoute.per_instance).label("need"))
+            .where(
+                PartRoute.post_id == post.id,
+                PartRoute.is_enabled == True,  # noqa: E712
+                PartRoute.is_deleted == False,  # noqa: E712
+            )
+            .group_by(PartRoute.part_id)
+            .subquery()
+        )
         kromka_counts = {
             oid: (int(d or 0), int(t or 0))
             for oid, t, d in (
@@ -327,15 +342,9 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
                     select(
                         PartInstance.order_id,
                         func.count(PartInstance.id),
-                        func.sum(case((func.coalesce(scans_sq.c.cnt, 0) >= PartRoute.per_instance, 1), else_=0)),
+                        func.sum(case((func.coalesce(scans_sq.c.cnt, 0) >= need_sq.c.need, 1), else_=0)),
                     )
-                    .join(
-                        PartRoute,
-                        (PartRoute.part_id == PartInstance.part_id)
-                        & (PartRoute.post_id == post.id)
-                        & (PartRoute.is_enabled == True)  # noqa: E712
-                        & (PartRoute.is_deleted == False),  # noqa: E712
-                    )
+                    .join(need_sq, need_sq.c.part_id == PartInstance.part_id)
                     .outerjoin(scans_sq, scans_sq.c.instance_id == PartInstance.id)
                     .where(
                         PartInstance.order_id.in_(order_ids),
@@ -423,29 +432,34 @@ async def _post_route_rows(
                 PartRoute.is_deleted == False,  # noqa: E712
                 (PartRoute.machine_id == machine_id) | (PartRoute.machine_id.is_(None)),
             )
-            .order_by(Part.code)
+            .order_by(Part.code, PartRoute.seq)
         )
     ).all()
 
 
-async def _post_scan_counts(db: SessionDep, order_id: int, post_id: int) -> dict[int, int]:
-    """Har nusxaning shu postdagi haqiqiy (bekor qilinmagan) skanlari soni: {instance_id: count}."""
-    return dict(
+async def _post_scan_counts(db: SessionDep, order_id: int, post_id: int) -> dict[tuple[int, int], int]:
+    """Har nusxaning shu postdagi haqiqiy skanlari QADAM bo'yicha: {(instance_id, route_id): count}.
+
+    Kalit qadam (route_id) — post emas: bitta post marshrutda ikki marta bo'lsa
+    (kromka -> prisadka -> yana kromka) birinchi o'tishning skanlari ikkinchisini
+    ham "bajarildi" qilib ko'rsatardi va operator qaytib kelmasdi."""
+    rows = (
         (
             await db.execute(
-                select(Scan.instance_id, func.count(Scan.id))
+                select(Scan.instance_id, Scan.route_id, func.count(Scan.id))
                 .where(
                     Scan.order_id == order_id,
                     Scan.post_id == post_id,
                     Scan.is_cancelled == False,  # noqa: E712
                     Scan.is_deleted == False,  # noqa: E712
                 )
-                .group_by(Scan.instance_id)
+                .group_by(Scan.instance_id, Scan.route_id)
             )
         )
         .tuples()
         .all()
     )
+    return {(instance_id, route_id): count for instance_id, route_id, count in rows}
 
 
 async def _order_instances_by_part(db: SessionDep, order_id: int) -> dict[int, list[PartInstance]]:
@@ -510,6 +524,7 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
         parts=[
             KromkaPartRow(
                 part_id=part.id,
+                route_id=route.id,
                 code=f"{product_code}_{part.code}",
                 name=part.name,
                 length=part.length,
@@ -517,6 +532,7 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
                 thickness=part.thickness,
                 sides=route.per_instance,
                 edges=part.edges,
+                process_code=route.process_code,
                 total_done=route.total_done,
                 total_required=route.total_required,
                 instances=[
@@ -524,7 +540,7 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
                         instance_id=i.id,
                         instance_no=i.instance_no,
                         qr_text=i.qr_text,
-                        done=int(kromka_done.get(i.id, 0)),
+                        done=int(kromka_done.get((i.id, route.id), 0)),
                         arra_passed=i.label_printed_at is not None or i.id in arra_scanned,
                     )
                     for i in by_part.get(part.id, [])
@@ -598,6 +614,7 @@ async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int
         parts=[
             PrisadkaPartRow(
                 part_id=part.id,
+                route_id=route.id,
                 code=f"{product_code}_{part.code}",
                 name=part.name,
                 length=part.length,
@@ -609,7 +626,9 @@ async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int
                 arra_route=part.id in arra_part_ids,
                 # Skan tugagan nusxalar QR'lari (fayl nomi bilan mos) — UI rang beradi
                 done_qrs=[
-                    i.qr_text for i in insts_by_part.get(part.id, []) if scan_counts.get(i.id, 0) >= route.per_instance
+                    i.qr_text
+                    for i in insts_by_part.get(part.id, [])
+                    if scan_counts.get((i.id, route.id), 0) >= route.per_instance
                 ],
                 # Nusxa darajasi: QR chiqarish tugmasi va holat uchun (helper instance_no bo'yicha saralaydi)
                 instances=[
@@ -617,7 +636,7 @@ async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int
                         instance_id=i.id,
                         qr_text=i.qr_text,
                         label_printed=i.label_printed_at is not None,
-                        done=scan_counts.get(i.id, 0) >= route.per_instance,
+                        done=scan_counts.get((i.id, route.id), 0) >= route.per_instance,
                     )
                     for i in insts_by_part.get(part.id, [])
                 ],
@@ -640,6 +659,22 @@ async def read_terminal_cutmap(db: SessionDep, ctx: TerminalCtx, order_id: int) 
 
 async def build_cutmap_state(db: SessionDep, order: Order, arra_post_id: int) -> CutmapState:
     """Shared by the ARRA terminal (7.1.7) and the admin panel view (10.3)."""
+    # Marshrutida ARRA bor detallar. Xaritada boshqalari ham turadi (GibLab ularni
+    # listga joylashtirgan), lekin arrachi ularni kesmaydi — belgilanib ko'rsatiladi.
+    cut_here = set(
+        (
+            await db.execute(
+                select(PartRoute.part_id).where(
+                    PartRoute.order_id == order.id,
+                    PartRoute.post_id == arra_post_id,
+                    PartRoute.is_enabled == True,  # noqa: E712
+                    PartRoute.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
     instances = (
         (
             await db.execute(
@@ -679,6 +714,7 @@ async def build_cutmap_state(db: SessionDep, order: Order, arra_post_id: int) ->
                 cell_index=i.cell_index,
                 done=i.id in done_ids,
                 label_printed_at=i.label_printed_at,
+                custom=i.part_id not in cut_here,
             )
             for i in instances
         ],
@@ -709,13 +745,21 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
         await queue.pool.enqueue_job("print_label", instance_id)
     await ws_manager.publish("label.printed", {"instance_id": instance_id, "qr_text": instance.qr_text})
 
-    # ROVER oqimi: marshrutida ARRA bo'lmagan detal roverning O'ZIDA kesiladi —
-    # chop etish ish bajarildi degani (ARRA'dagi "chek = kesildi" bilan bir xil),
-    # alohida skan qadami ortiqcha. Skan yozuvi ham yoziladi: statistika, tablo
-    # va ish haqi hisoblari oddiy oqim bilan bir xil qoladi. Rad etilsa (masalan
-    # qat'iy tartibda oldingi bosqich tugamagan) chek baribir chiqqan bo'ladi —
-    # operator keyin skan bilan yakunlaydi.
-    if POST_ROLES.get(UserRole(user.role)) == PostCode.ROVER:
+    # "CHEK = ISH BAJARILDI" — kesish postlarida chop etishning o'zi bosqichni yopadi.
+    # ARRA'da arrachi xaritada katakni bosib chek chiqaradi va alohida skan qilmaydi
+    # (xarita ochiqda terminalning skan maydoni ham yashirin). ROVER'da esa marshruti
+    # arradan boshlanmagan detal roverning O'ZIDA kesiladi.
+    #
+    # Skan yozuvisiz `PartRoute.total_done` hech qachon o'smaydi: buyurtma COMPLETED
+    # bo'lmaydi va qat'iy tartibda KEYINGI postlarning hammasi E004 bilan rad etiladi.
+    # Shuning uchun chop etish shu yerda skan ham yozadi — "bajarildi" ta'rifi
+    # hamma joyda (total_done, TABLO, ish haqi, tartib nazorati) bitta bo'lsin.
+    # Rad etilsa (oldingi bosqich tugamagan) chek baribir chiqqan bo'ladi — operator
+    # keyin qo'lda skan bilan yakunlaydi.
+    _, print_post = await resolve_terminal(db, user)
+    cut_by_print = print_post.code == PostCode.ARRA
+    if not cut_by_print and print_post.code == PostCode.ROVER:
+        # Roverda faqat arradan o'tmaydigan detal uchun: qolganini arrachi kesgan
         arra_route = (
             await db.execute(
                 select(PartRoute.id)
@@ -728,14 +772,15 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
                 )
             )
         ).first()
-        if arra_route is None:
-            try:
-                outcome = await record_scan(
-                    db, user=user, qr_text=instance.qr_text, client_event_id=f"rvprint-{instance.id}"
-                )
-                await finalize_scan(db, outcome, user_id=user.id, source=" (rover, chop etish bilan)")
-            except ScanRejected:
-                await db.rollback()
+        cut_by_print = arra_route is None
+    if cut_by_print:
+        try:
+            outcome = await record_scan(
+                db, user=user, qr_text=instance.qr_text, client_event_id=f"cutprint-{instance.id}"
+            )
+            await finalize_scan(db, outcome, user_id=user.id, source=" (chek chiqarish bilan)")
+        except ScanRejected:
+            await db.rollback()
 
     return Message(message=f"Yorliq chop etishga yuborildi: {instance.qr_text}")
 

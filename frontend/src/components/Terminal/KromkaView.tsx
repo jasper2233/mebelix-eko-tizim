@@ -149,7 +149,7 @@ export function KromkaView({
                 const finished = p.instances.every((i) => i.done >= p.sides)
                 return (
                   <tr
-                    key={p.part_id}
+                    key={p.route_id}
                     id={`kv-row-${p.part_id}`}
                     className={cn(
                       "border-b last:border-0",
@@ -162,7 +162,7 @@ export function KromkaView({
                     <td className="max-w-[240px] px-4 py-3">
                       <div className="truncate">{p.name}</div>
                       <OperationChips
-                        name={p.name}
+                        processCode={p.process_code}
                         postCode={oval ? "OVAL" : "KROMKA"}
                       />
                     </td>

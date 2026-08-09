@@ -20,6 +20,111 @@ from .scx import build_scx_files
 logger = logging.getLogger(__name__)
 
 
+async def snapshot_custom_routes(db: AsyncSession, order: Order) -> dict[tuple[str, str], tuple[bool, list[int]]]:
+    """Qo'lda kiritilgan marshrutlarni `(mahsulot kodi, detal kodi)` bo'yicha eslab qolish.
+
+    Qayta yuklash eski parse'ni butunlay o'chiradi — texnolog yuzlab detalga chizgan
+    marshrut ham yo'qolardi. Kalit sifatida detal KODI olinadi: u fayl ichidagi ID'dan
+    farqli o'laroq qayta eksportda ham o'zgarmaydi (TZ 5.8).
+
+    Nostandart detallar ham, matritsadan qo'lda qadam qo'shilgan STANDART detallar ham
+    olinadi — ikkalasi ham fayldan tiklanmaydi. Bayroqning o'zi ham saqlanadi."""
+    rows = (
+        await db.execute(
+            select(Product.code, Part.code, Part.is_custom, PartRoute.process_code)
+            .join(Part, Part.product_id == Product.id)
+            .join(PartRoute, PartRoute.part_id == Part.id)
+            .where(
+                Part.order_id == order.id,
+                Part.is_deleted == False,  # noqa: E712
+                PartRoute.source == RouteSource.MANUAL,
+                PartRoute.is_deleted == False,  # noqa: E712
+            )
+            .order_by(Product.code, Part.code, PartRoute.seq)
+        )
+    ).tuples()
+    saved: dict[tuple[str, str], tuple[bool, list[int]]] = {}
+    for product_code, part_code, is_custom, process_code in rows:
+        entry = saved.setdefault((product_code, part_code), (is_custom, []))
+        entry[1].append(process_code)
+    return saved
+
+
+async def restore_custom_routes(
+    db: AsyncSession, order: Order, saved: dict[tuple[str, str], tuple[bool, list[int]]]
+) -> tuple[int, list[str]]:
+    """Saqlangan marshrutlarni yangi detallarga qaytarish. Qaytadi: (tiklangan, yo'qolgan)."""
+    if not saved:
+        return 0, []
+    posts = {p.code: p for p in (await db.execute(select(Post))).scalars()}
+    posts_by_id = {p.id: p.code for p in posts.values()}
+    parts = (
+        await db.execute(
+            select(Product.code, Part)
+            .join(Part, Part.product_id == Product.id)
+            .where(Part.order_id == order.id, Part.is_deleted == False)  # noqa: E712
+        )
+    ).tuples()
+    by_key = {(product_code, part.code): part for product_code, part in parts}
+
+    restored = 0
+    for key, entry in saved.items():
+        was_custom, codes = entry
+        part = by_key.get(key)
+        if part is None:
+            continue
+        part.is_custom = was_custom
+        if was_custom:
+            # Nostandart detalda marshrut TO'LIQ qo'lda — fayldan qurilgani o'chadi
+            await db.execute(
+                update(PartRoute)
+                .where(PartRoute.part_id == part.id, PartRoute.is_deleted == False)  # noqa: E712
+                .values(is_deleted=True, deleted_at=datetime.now(UTC))
+            )
+            start_seq, seen = 1, set()
+        else:
+            # Standart detalda qo'lda qo'shilgan qadam fayl qadamlariga QO'SHIMCHA edi
+            # (matritsadagi tugma) — fayl qadamlari joyida qoladi, bular ketidan tushadi.
+            live = (
+                (
+                    await db.execute(
+                        select(PartRoute).where(
+                            PartRoute.part_id == part.id,
+                            PartRoute.is_deleted == False,  # noqa: E712
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            start_seq = max((r.seq for r in live), default=0) + 1
+            seen = {posts_by_id[r.post_id] for r in live if r.post_id in posts_by_id}
+        edge_count = len(part.edges) or 1
+        for offset, code in enumerate(codes):
+            post_code = PROCESS_POSTS[code]
+            post = posts.get(post_code)
+            if post is None:
+                raise ParseError(f"Post sozlanmagan: {post_code}. Administratorga murojaat qiling.")
+            first_edge_pass = post_code in (PostCode.KROMKA, PostCode.OVAL) and post_code not in seen
+            seen.add(post_code)
+            per = edge_count if first_edge_pass else 1
+            db.add(
+                PartRoute(
+                    order_id=order.id,
+                    part_id=part.id,
+                    post_id=post.id,
+                    seq=start_seq + offset,
+                    process_code=code,
+                    source=RouteSource.MANUAL,
+                    per_instance=per,
+                    total_required=part.count * per,
+                )
+            )
+        restored += 1
+    lost = [f"{p}_{c}" for (p, c) in saved if (p, c) not in by_key]
+    return restored, lost
+
+
 async def wipe_previous_parse(db: AsyncSession, order: Order, upload_root: Path) -> None:
     """Re-upload replaces everything derived from the old file (TZ 6.3.1)."""
     now = datetime.now(UTC)
@@ -223,33 +328,26 @@ async def ingest_project(
                 )
                 instances_created += 1
 
-            # Marshrut (TZ 5.4) ikki manbadan: NOODATIY detalda — nomdagi ro'yxatdan,
-            # qolganlarida — fayl mazmunidan.
+            # STANDART marshrut (TZ 5.4) — faqat fayl mazmunidan. Qadamlar TARTIBLI:
+            # (process_code, post_code, per_instance); tartib skan navbatini belgilaydi.
+            # Rover/stolyarka/bo'yoq bu yerdan CHIQMAYDI: roverdan chiqqan detal keyin
+            # bo'yalishi mumkinligini fayl bilmaydi — texnolog uni "nostandart" deb
+            # belgilab, marshrutini o'zi chizadi.
             # Kalit post KODI (matn): noma'lum post `posts.get()` da None beradi va
             # tushunarli xato chiqadi; `PostCode(...)` bo'lsa ValueError -> 500 bo'lardi.
-            stage_per_instance: dict[str, int] = {}
-            if pp.process_codes:
-                # Texnolog nomga yozgan ro'yxat ("eshik {7;11;8}") fayldagi bosqichlarni
-                # BUTUNLAY almashtiradi — arra ham avtomatik qo'shilmaydi, chunki jarayon
-                # roverdan yoki boshqa postdan boshlanishi mumkin.
-                for code in pp.process_codes:
-                    post_code = PROCESS_POSTS[code]
-                    # Kromka skanlari QIRRA bo'yicha sanaladi (terminalda "tomonlar",
-                    # ish haqi metrda) — boshqa postlarda bitta o'tish = bitta skan.
-                    per = (pp.kromka_sides or 1) if post_code == PostCode.KROMKA else 1
-                    stage_per_instance[post_code] = stage_per_instance.get(post_code, 0) + per
-            else:
-                # ARRA — faqat listdan kesiladigan detalga. Optimizatsiya qilingan faylda
-                # materiali ham, yorliq raqami ham yo'q detal umuman listga joylashtirilmagan
-                # (masalan kupe alyuminiy profillari) — unga ARRA vazifasi berilsa arrachi
-                # kesa olmaydigan soxta ish paydo bo'lardi.
-                sheet_part = project.generation != "processed" or pp.material_name or pp.label_num is not None
-                if sheet_part:
-                    stage_per_instance[PostCode.ARRA] = 1
-                if pp.kromka_sides:
-                    stage_per_instance[PostCode.KROMKA] = pp.kromka_sides
-                stage_per_instance.update(pp.stage_sides())
-            for post_code, per_instance in stage_per_instance.items():
+            steps: list[tuple[int, str, int]] = []
+            # ARRA — faqat listdan kesiladigan detalga. Optimizatsiya qilingan faylda
+            # materiali ham, yorliq raqami ham yo'q detal umuman listga joylashtirilmagan
+            # (masalan kupe alyuminiy profillari) — unga ARRA vazifasi berilsa arrachi
+            # kesa olmaydigan soxta ish paydo bo'lardi.
+            sheet_part = project.generation != "processed" or pp.material_name or pp.label_num is not None
+            if sheet_part:
+                steps.append((1, PostCode.ARRA, 1))  # 1 = Raspil
+            if pp.kromka_sides:
+                steps.append((3, PostCode.KROMKA, pp.kromka_sides))  # 3 = Kromka
+            for post_code, per_instance in pp.stage_sides().items():  # faqat PRISADKA
+                steps.append((6, post_code, per_instance))  # 6 = Prisadka
+            for seq, (process_code, post_code, per_instance) in enumerate(steps, start=1):
                 post = posts.get(post_code)
                 if post is None:
                     raise ParseError(f"Post sozlanmagan: {post_code}. Administratorga murojaat qiling.")
@@ -258,6 +356,8 @@ async def ingest_project(
                         order_id=order.id,
                         part_id=part.id,
                         post_id=post.id,
+                        seq=seq,
+                        process_code=process_code,
                         source=RouteSource.AUTO,
                         per_instance=per_instance,
                         total_required=pp.count * per_instance,

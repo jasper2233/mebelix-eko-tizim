@@ -36,6 +36,10 @@ class TaskRow(BaseModel):
     """One aggregated row in NAVBATDAGI VAZIFALAR (TZ 8.3.2)."""
 
     part_id: int
+    #: Marshrut QADAMI. Bitta detal bir postda ikki marta bo'lishi mumkin —
+    #: ro'yxat kaliti detal emas, qadam bo'lishi kerak (aks holda React qatorlarni
+    #: aralashtirib yuboradi va ikki qator bir xil holatni ko'rsatadi).
+    route_id: int
     order_id: int
     order_number: str
     deadline: date | None
@@ -47,6 +51,10 @@ class TaskRow(BaseModel):
     qoldiq: int  # remaining scans at this post
     total: int
     edges: dict[str, Any] = {}
+    #: Marshrutdagi aynan shu qadamning jarayon kodi (1..14). Bitta postda bir
+    #: nechta amal bor (STOLYARKA da olti xil) — operator qaysi biri kerakligini
+    #: shundan biladi; noto'g'ri petlya eshikni brak qiladi.
+    process_code: int
 
 
 class TerminalOrderCard(BaseModel):
@@ -83,6 +91,7 @@ class KromkaInstance(BaseModel):
 
 class KromkaPartRow(BaseModel):
     part_id: int
+    route_id: int  # marshrut qadami — ro'yxat kaliti
     code: str  # productCode_partCode
     name: str
     length: float | None
@@ -90,6 +99,7 @@ class KromkaPartRow(BaseModel):
     thickness: float | None
     sides: int  # har nusxa uchun kerakli skanlar = kromkalanadigan tomonlar
     edges: dict[str, Any] = {}
+    process_code: int  # 3 = Kromka, 4 = Fasat kromka, 5 = Oval kromka
     total_done: int
     total_required: int
     instances: list[KromkaInstance] = []
@@ -121,6 +131,7 @@ class PrisadkaInstance(BaseModel):
 
 class PrisadkaPartRow(BaseModel):
     part_id: int
+    route_id: int  # marshrut qadami — ro'yxat kaliti
     code: str  # productCode_partCode
     name: str
     length: float | None
@@ -181,6 +192,10 @@ class CutmapInstanceState(BaseModel):
     cell_index: int | None
     done: bool
     label_printed_at: datetime | None
+    #: Marshrutida ARRA yo'q — detal roverda kesiladi. Arrachi uni kesmaydi va
+    #: skan ham qilolmaydi; xaritada boshqa rang bilan belgilanadi, aks holda
+    #: kesib, keyin "plan topilmadi" xatosini olardi.
+    custom: bool = False
 
 
 class CutmapState(BaseModel):

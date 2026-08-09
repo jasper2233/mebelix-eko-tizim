@@ -69,7 +69,9 @@ class Settings(BaseSettings):
     MAX_PROJECT_FILE_SIZE: int = 50 * 1024 * 1024  # .project files in the corpus are < 5 MB
 
     # === Production floor (TZ 7–8) ===
-    STRICT_STAGE_ORDER: bool = False  # E004: block scan until the previous stage is done (optional, TZ 7.2.5)
+    # E004: detalning O'Z marshrutidagi oldingi qadam tugamaguncha skan qabul qilinmaydi.
+    # Sexda tartib qat'iy — operator o'tkazib yubora olmaydi (TZ 7.2.5).
+    STRICT_STAGE_ORDER: bool = True
     SESSION_MAX_HOURS: int = 12  # operator shift timeout (TZ 8.5 E005)
     SCAN_UNDO_SECONDS: int = 60  # BEKOR QILISH window (TZ 8.6)
 

@@ -94,6 +94,10 @@ class Part(BaseModel):
     # Merged XNC summary: {"bores": N, "edge_bores": N, "grooves": N, "mills": N, "sides": 1|2}
     xnc_summary: Mapped[dict[str, Any]] = mapped_column(JSONB, default_factory=dict, kw_only=True)
     note: Mapped[str | None] = mapped_column(Text, default=None, kw_only=True)  # texnolog izohi
+    #: Nostandart detal: marshrutini texnolog QO'LDA chizadi (Nostandart detallar tabi).
+    #: Fayldan avtomatik marshrut olmaydi — roverdan chiqqan detal keyin bo'yalishi
+    #: mumkinligi kabi holatlarni fayl bilmaydi. Standart detal: ARRA + kromka + prisadka.
+    is_custom: Mapped[bool] = mapped_column(default=False, index=True, kw_only=True)
 
 
 #: TABLO va dashboard navbati faqat hajm hisoblaydi (metrics.part_volume:
@@ -124,18 +128,30 @@ class PartInstance(BaseModel):
 
 
 class PartRoute(BaseModel):
-    """Route entry: part must pass this post. Denormalized counters for fast QOLDIQ (TZ 5.4)."""
+    """Marshrutning BITTA qadami: detal shu postdan shu navbatda o'tadi.
+    QOLDIQ tez chiqishi uchun hisoblagichlar denormalizatsiya qilingan (TZ 5.4).
+
+    Bitta post marshrutda BIR NECHA MARTA uchrashi mumkin (kromka -> prisadka -> kromka),
+    shuning uchun yagonalik `(part_id, seq)` bo'yicha — post bo'yicha EMAS."""
 
     __tablename__ = "part_route"
 
     __table_args__ = (
-        Index("ix_part_route_part_post", "part_id", "post_id", unique=True, postgresql_where=text("NOT is_deleted")),
+        Index("ix_part_route_part_seq", "part_id", "seq", unique=True, postgresql_where=text("NOT is_deleted")),
+        # Skan va terminal ro'yxatlari post bo'yicha qidiradi — yagona emas, faqat tezlik uchun
+        Index("ix_part_route_part_post", "part_id", "post_id"),
         Index("ix_part_route_order_post", "order_id", "post_id"),
     )
 
     order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), kw_only=True)
     part_id: Mapped[int] = mapped_column(ForeignKey("part.id"), kw_only=True)
     post_id: Mapped[int] = mapped_column(ForeignKey("post.id"), kw_only=True)
+    #: Marshrutdagi o'rni, 1 dan boshlanadi. Skan tartibi AYNAN shu bo'yicha tekshiriladi
+    #: (postlarning global tartibi bilan emas — nostandart marshrut uni buzadi).
+    seq: Mapped[int] = mapped_column(kw_only=True)
+    #: Jarayon kodi 1..14 (PROCESS_POSTS). Post o'zi yetarli emas: STOLYARKA da 6 xil amal,
+    #: KROMKA da 2 xil bor — operator qaysi biri kerakligini shu koddan biladi.
+    process_code: Mapped[int] = mapped_column(kw_only=True)
     machine_id: Mapped[int | None] = mapped_column(ForeignKey("machine.id"), default=None, kw_only=True)
     source: Mapped[RouteSource] = mapped_column(db_enum(RouteSource), default=RouteSource.AUTO, kw_only=True)
     is_enabled: Mapped[bool] = mapped_column(default=True, kw_only=True)  # texnolog can switch off

@@ -39,6 +39,13 @@ PROCESS_POSTS: dict[int, str] = {
     14: "STOLYARKA",  # V petlya chapdan
 }
 
+#: Post -> shu postning ODATDAGI jarayon kodi. Bitta postda bir necha amal bo'lgani uchun
+#: (STOLYARKA da 6 ta, KROMKA da 2 ta) faqat post nomidan kod tiklab bo'lmaydi — bu jadval
+#: aniq amal tanlanmagan holat uchun zaxira qiymat beradi.
+DEFAULT_PROCESS_CODE: dict[str, int] = {}
+for _code, _post in PROCESS_POSTS.items():
+    DEFAULT_PROCESS_CODE.setdefault(_post, _code)
+
 
 @dataclass
 class ParsedMaterial:
@@ -83,9 +90,6 @@ class ParsedPart:
     edges: dict[str, dict[str, Any]]  # side(l/r/t/b) -> {"mat": name, "symbol": A}
     label_num: int | None = None  # CS stub order, file-global 1-based
     xnc_ops: list[XncOp] = field(default_factory=list)
-    #: Texnolog detal nomiga qo'lda yozgan marshrut: "eshik {7;11;8}" -> [7, 11, 8].
-    #: Bo'sh bo'lmasa — MARSHRUT SHU, fayldagi bosqichlar hisobga olinmaydi.
-    process_codes: list[int] = field(default_factory=list)
 
     @property
     def key(self) -> str:
@@ -124,15 +128,16 @@ class ParsedPart:
         return base
 
     def stage_sides(self) -> dict[str, int]:
-        """post_code -> per-instance scan count for XNC stages (TZ 5.4.3, 7.3.3)."""
+        """post_code -> per-instance scan count for XNC stages (TZ 5.4.3, 7.3.3).
+
+        FAQAT PRISADKA. Paz/freza uchun ROVER bosqichi ATAYLAB yaratilmaydi: roverdan
+        chiqqan detal keyin bo'yalishi ham mumkin, ya'ni marshruti fayldan chiqarib
+        bo'lmaydi. Bunday detalni texnolog "nostandart" deb belgilab, marshrutini
+        o'zi chizadi. Paz/freza geometriyasi baribir SCX ga va yorliq eskiziga ketadi."""
         result: dict[str, int] = {}
         for op in self.xnc_ops:
             if op.bores or op.edge_bores:
                 result["PRISADKA"] = result.get("PRISADKA", 0) + 1
-            # PAZ posti olib tashlandi — paz ham frezer stanogida kesiladi.
-            # `or`: bitta operatsiyada paz ham, freza ham bo'lsa BITTA o'tish, bitta skan.
-            if op.grooves or op.mills:
-                result["ROVER"] = result.get("ROVER", 0) + 1
         return result
 
 

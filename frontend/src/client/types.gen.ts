@@ -125,6 +125,7 @@ export type CutmapInstanceState = {
     cell_index: (number | null);
     done: boolean;
     label_printed_at: (string | null);
+    custom?: boolean;
 };
 
 /**
@@ -217,6 +218,7 @@ export type KromkaOrderState = {
 
 export type KromkaPartRow = {
     part_id: number;
+    route_id: number;
     code: string;
     name: string;
     length: (number | null);
@@ -226,6 +228,7 @@ export type KromkaPartRow = {
     edges?: {
         [key: string]: unknown;
     };
+    process_code: number;
     total_done: number;
     total_required: number;
     instances?: Array<KromkaInstance>;
@@ -375,6 +378,7 @@ export type MatrixPart = {
         [key: string]: unknown;
     };
     note: (string | null);
+    is_custom: boolean;
     routes: Array<RouteCell>;
 };
 
@@ -388,6 +392,8 @@ export type MatrixPartEdit = {
     stages?: {
         [key: string]: boolean;
     };
+    is_custom?: (boolean | null);
+    route_codes?: (Array<number> | null);
 };
 
 export type Message = {
@@ -618,6 +624,7 @@ export type PrisadkaOrderState = {
 
 export type PrisadkaPartRow = {
     part_id: number;
+    route_id: number;
     code: string;
     name: string;
     length: (number | null);
@@ -661,6 +668,8 @@ export type ReadyCheck = {
 export type RouteCell = {
     id: number;
     post_id: number;
+    seq: number;
+    process_code: number;
     source: RouteSource;
     is_enabled: boolean;
     per_instance: number;
@@ -821,6 +830,7 @@ export type TabloPostCol = {
  */
 export type TaskRow = {
     part_id: number;
+    route_id: number;
     order_id: number;
     order_number: string;
     deadline: (string | null);
@@ -834,6 +844,7 @@ export type TaskRow = {
     edges?: {
         [key: string]: unknown;
     };
+    process_code: number;
 };
 
 export type TerminalContext = {

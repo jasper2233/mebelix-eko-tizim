@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from app.schemas.terminal import ScanResult
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -176,12 +176,15 @@ async def active_session(db: AsyncSession, user: User, machine: Machine) -> Work
     return session
 
 
-async def _scans_done(db: AsyncSession, instance_id: int, post_id: int) -> int:
+async def _scans_done(db: AsyncSession, instance_id: int, route_id: int) -> int:
+    """Shu NUSXA shu QADAMDA necha marta skanlangan. Kalit `route_id` — post emas:
+    bitta post marshrutda ikki marta bo'lsa (kromka -> prisadka -> kromka) qadamlar
+    hisobi aralashib ketardi."""
     return (
         await db.execute(
             select(func.count(Scan.id)).where(
                 Scan.instance_id == instance_id,
-                Scan.post_id == post_id,
+                Scan.route_id == route_id,
                 Scan.is_cancelled == False,  # noqa: E712
                 Scan.is_deleted == False,  # noqa: E712
             )
@@ -262,43 +265,57 @@ async def record_scan_at(
     part = await db.get(Part, instance.part_id)
     assert part is not None
 
-    route = (
-        await db.execute(
-            select(PartRoute).where(
-                PartRoute.part_id == part.id,
-                PartRoute.post_id == post.id,
-                PartRoute.is_enabled == True,  # noqa: E712
-                PartRoute.is_deleted == False,  # noqa: E712
+    # Shu postdagi qadamlar navbat bo'yicha: birinchi TUGALLANMAGANI shu skanniki.
+    # Post marshrutda takrorlanishi mumkin, shuning uchun bitta qator kutilmaydi.
+    steps = (
+        (
+            await db.execute(
+                select(PartRoute)
+                .where(
+                    PartRoute.part_id == part.id,
+                    PartRoute.post_id == post.id,
+                    PartRoute.is_enabled == True,  # noqa: E712
+                    PartRoute.is_deleted == False,  # noqa: E712
+                )
+                .order_by(PartRoute.seq)
             )
         )
-    ).scalar_one_or_none()
-    if route is None:
+        .scalars()
+        .all()
+    )
+    if not steps:
         raise ScanRejected("E001", "Bu post bu detal marshrutida yo'q. Yorliqni tekshiring.")
+
+    route = None
+    for step in steps:
+        if await _scans_done(db, instance.id, step.id) < step.per_instance:
+            route = step
+            break
+    if route is None:
+        raise ScanRejected("E001", "Bu detal allaqachon yakunlangan.")
     if route.machine_id is not None and route.machine_id != machine.id:
         raise ScanRejected("E001", "Bu detal boshqa stanokka biriktirilgan.")
 
-    done = await _scans_done(db, instance.id, post.id)
-    if done >= route.per_instance:
-        raise ScanRejected("E001", "Bu detal allaqachon yakunlangan.")
-
-    # Optional strict pipeline order (TZ 7.2.5 / 8.5 E004) — per-instance check.
+    # Qat'iy tartib (TZ 7.2.5 / 8.5 E004): postlarning global tartibi emas, detalning
+    # O'Z marshruti bo'yicha — nostandart marshrut roverdan boshlanishi mumkin.
     if settings.STRICT_STAGE_ORDER:
-        earlier_routes = (
+        pending = (
             await db.execute(
                 select(PartRoute)
-                .join(Post, Post.id == PartRoute.post_id)
                 .where(
                     PartRoute.part_id == part.id,
                     PartRoute.is_enabled == True,  # noqa: E712
                     PartRoute.is_deleted == False,  # noqa: E712
-                    Post.order_index < post.order_index,
+                    PartRoute.seq < route.seq,
                 )
+                .order_by(PartRoute.seq)
             )
         ).scalars()
-        for prev_route in earlier_routes:
-            prev_done = await _scans_done(db, instance.id, prev_route.post_id)
-            if prev_done < prev_route.per_instance:
-                raise ScanRejected("E004", "Oldingi bosqich yakunlanmagan. Avval oldingi bosqichni yakunlang.")
+        for prev in pending:
+            if await _scans_done(db, instance.id, prev.id) < prev.per_instance:
+                prev_post = await db.get(Post, prev.post_id)
+                nom = prev_post.name if prev_post is not None else f"{prev.seq}-qadam"
+                raise ScanRejected("E004", f"Navbat: avval {nom}. Oldingi bosqich yakunlanmagan.")
 
     scan = Scan(
         order_id=order.id,
@@ -312,7 +329,11 @@ async def record_scan_at(
         client_event_id=client_event_id,
     )
     db.add(scan)
-    route.total_done += 1
+    # Inkrement SQL tomonda: ikki terminal bir vaqtda skanlasa Python tomonda
+    # o'qib-yozish (`+= 1`) bittasini yo'qotardi va qadam `total_required` ga
+    # hech qachon yetmasdi — buyurtma abadiy "tugamagan" bo'lib qolardi.
+    await db.execute(update(PartRoute).where(PartRoute.id == route.id).values(total_done=PartRoute.total_done + 1))
+    await db.refresh(route, ["total_done"])
     try:
         await db.flush()
     except IntegrityError:  # client_event_id race — treat as replay
@@ -501,8 +522,14 @@ async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Sc
     scan.is_cancelled = True
     scan.cancelled_at = datetime.now(UTC)
     route = await db.get(PartRoute, scan.route_id)
-    if route is not None and route.total_done > 0:
-        route.total_done -= 1
+    if route is not None:
+        # Kamaytirish ham SQL tomonda — parallel skan/bekor qilishda drift bo'lmasin
+        await db.execute(
+            update(PartRoute)
+            .where(PartRoute.id == route.id, PartRoute.total_done > 0)
+            .values(total_done=PartRoute.total_done - 1)
+        )
+        await db.refresh(route, ["total_done"])
 
     order = await db.get(Order, scan.order_id)
     events: list[dict[str, Any]] = [

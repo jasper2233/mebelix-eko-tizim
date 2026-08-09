@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import defer
 
@@ -47,7 +47,14 @@ from app.schemas.orders import (
 )
 from app.schemas.terminal import CutmapState
 from app.services.giblab import ParseError, parse_project
-from app.services.giblab.ingest import ingest_project, wipe_previous_parse, write_and_register_scx
+from app.services.giblab.ingest import (
+    ingest_project,
+    restore_custom_routes,
+    snapshot_custom_routes,
+    wipe_previous_parse,
+    write_and_register_scx,
+)
+from app.services.giblab.models import DEFAULT_PROCESS_CODE, PROCESS_POSTS
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -490,7 +497,8 @@ async def read_order_matrix(db: SessionDep, _: StaffReadUser, order_id: int) -> 
             edges=part.edges,
             xnc_summary=part.xnc_summary,
             note=part.note,
-            routes=routes_by_part.get(part.id, []),
+            is_custom=part.is_custom,
+            routes=sorted(routes_by_part.get(part.id, []), key=lambda c: c.seq),
         )
         for part, product_code in rows
     ]
@@ -523,34 +531,74 @@ async def edit_order_matrix(
         if edit.count is not None and edit.count != part.count:
             await _resize_instances(db, part, edit.count)
 
+        # Nostandart bayrog'i marshrut manbasini almashtiradi. Avtomatik qadamlar
+        # o'chirilmaydi — YUMSHOQ o'chiriladi, bayroq qaytarilsa aynan tiklanadi
+        # (fayl ma'lumotidan qayta hisoblash taxminiy bo'lardi).
+        if edit.is_custom is not None and edit.is_custom != part.is_custom:
+            part.is_custom = edit.is_custom
+            drop, restore = (
+                (RouteSource.AUTO, RouteSource.MANUAL) if edit.is_custom else (RouteSource.MANUAL, RouteSource.AUTO)
+            )
+            await db.execute(
+                update(PartRoute)
+                .where(PartRoute.part_id == part.id, PartRoute.source == drop, PartRoute.is_deleted == False)  # noqa: E712
+                .values(is_deleted=True, deleted_at=datetime.now(UTC))
+            )
+            await db.execute(
+                update(PartRoute)
+                .where(PartRoute.part_id == part.id, PartRoute.source == restore, PartRoute.is_deleted == True)  # noqa: E712
+                .values(is_deleted=False, deleted_at=None)
+            )
+
+        if edit.route_codes is not None:
+            if not part.is_custom:
+                raise ForbiddenException("Marshrutni faqat nostandart detalga qo'lda chizish mumkin.")
+            await _set_custom_route(db, order_id, part, edit.route_codes, posts)
+
         for post_id, enabled in edit.stages.items():
             post = posts.get(post_id)
             if post is None:
                 raise NotFoundException(f"Post topilmadi: {post_id}")
-            if post.code == PostCode.ARRA and not enabled:
-                raise ForbiddenException("ARRA bosqichini o'chirib bo'lmaydi — har detal uchun majburiy.")
-            route = (
-                await db.execute(
-                    select(PartRoute).where(
-                        PartRoute.part_id == part.id,
-                        PartRoute.post_id == post_id,
-                        PartRoute.is_deleted == False,  # noqa: E712
+            if post.code == PostCode.ARRA and not enabled and not part.is_custom:
+                raise ForbiddenException("ARRA bosqichini o'chirib bo'lmaydi — har standart detal uchun majburiy.")
+            # Bitta post marshrutda takrorlanishi mumkin — bu yerdagi tugma HAMMA
+            # qadamni birga yoqadi/o'chiradi (qadam-baqadam tahrir nostandart tabda).
+            steps = (
+                (
+                    await db.execute(
+                        select(PartRoute).where(
+                            PartRoute.part_id == part.id,
+                            PartRoute.post_id == post_id,
+                            PartRoute.is_deleted == False,  # noqa: E712
+                        )
                     )
                 )
-            ).scalar_one_or_none()
-            if route is None and enabled:
+                .scalars()
+                .all()
+            )
+            if not steps and enabled:
+                next_seq = (
+                    await db.execute(
+                        select(func.coalesce(func.max(PartRoute.seq), 0) + 1).where(
+                            PartRoute.part_id == part.id,
+                            PartRoute.is_deleted == False,  # noqa: E712
+                        )
+                    )
+                ).scalar_one()
                 db.add(
                     PartRoute(
                         order_id=order_id,
                         part_id=part.id,
                         post_id=post_id,
+                        seq=next_seq,
+                        process_code=DEFAULT_PROCESS_CODE[post.code],
                         source=RouteSource.MANUAL,
                         per_instance=1,
                         total_required=part.count,
                     )
                 )
-            elif route is not None:
-                route.is_enabled = enabled
+            for step in steps:
+                step.is_enabled = enabled
 
     log_action(
         db,
@@ -564,6 +612,64 @@ async def edit_order_matrix(
     )
     await db.commit()
     return await read_order_matrix(db, current_user, order_id)
+
+
+#: Nostandart marshrut faqat shu postlardan boshlanadi: detal yo arrada kesiladi,
+#: yo roverda. Ikkalasi ham chek chiqaradi — boshqa post boshlansa detalda QR bo'lmaydi.
+_ROUTE_START_POSTS = (PostCode.ARRA, PostCode.ROVER)
+
+
+async def _set_custom_route(
+    db: SessionDep, order_id: int, part: Part, codes: list[int], posts: dict[int, Post]
+) -> None:
+    """Nostandart detal marshrutini jarayon kodlari ro'yxatidan qayta quradi.
+
+    Ro'yxat TARTIBLI va kod takrorlanishi mumkin ([3, 6, 3] — kromkaga qaytish).
+    Kromka/oval BIRINCHI kelganda qirralar soni marta skanlanadi, takrorida bitta."""
+    for code in codes:
+        if code not in PROCESS_POSTS:
+            raise ForbiddenException(f"Noma'lum jarayon kodi: {code}. Ruxsat etilgan: 1–14.")
+    if codes and PROCESS_POSTS[codes[0]] not in _ROUTE_START_POSTS:
+        raise ForbiddenException("Marshrut faqat Arra yoki Rover'dan boshlanadi — chek o'sha yerda chiqadi.")
+
+    by_code = {p.code: p for p in posts.values()}
+    # Eski QO'LDA chizilgan qadamlar BUTUNLAY o'chiriladi: ular almashtirilyapti,
+    # tarix emas (tahrir faqat ishlab chiqarishgacha — bu qatorlarga skan yo'q).
+    # Yumshoq o'chirilsa avlodlar to'planib qolardi va bayroq standartga qaytarilib
+    # yana yoqilganda HAMMASI birdan tiklanib `(part_id, seq)` yagonaligini buzardi.
+    await db.execute(delete(PartRoute).where(PartRoute.part_id == part.id, PartRoute.source == RouteSource.MANUAL))
+    # Fayldan kelgan qadamlar esa yumshoq o'chadi — detal standartga qaytsa tiklanadi.
+    await db.execute(
+        update(PartRoute)
+        .where(
+            PartRoute.part_id == part.id,
+            PartRoute.source == RouteSource.AUTO,
+            PartRoute.is_deleted == False,  # noqa: E712
+        )
+        .values(is_deleted=True, deleted_at=datetime.now(UTC))
+    )
+    edge_count = len(part.edges) or 1
+    seen: set[str] = set()
+    for seq, code in enumerate(codes, start=1):
+        post_code = PROCESS_POSTS[code]
+        post = by_code.get(post_code)
+        if post is None:
+            raise NotFoundException(f"Post sozlanmagan: {post_code}. Administratorga murojaat qiling.")
+        first_edge_pass = post_code in (PostCode.KROMKA, PostCode.OVAL) and post_code not in seen
+        seen.add(post_code)
+        per_instance = edge_count if first_edge_pass else 1
+        db.add(
+            PartRoute(
+                order_id=order_id,
+                part_id=part.id,
+                post_id=post.id,
+                seq=seq,
+                process_code=code,
+                source=RouteSource.MANUAL,
+                per_instance=per_instance,
+                total_required=part.count * per_instance,
+            )
+        )
 
 
 async def _resize_instances(db: SessionDep, part: Part, new_count: int) -> None:
@@ -607,18 +713,10 @@ async def _resize_instances(db: SessionDep, part: Part, new_count: int) -> None:
             inst.deleted_at = now
 
     part.count = new_count
-    routes = (
-        (
-            await db.execute(
-                select(PartRoute).where(
-                    PartRoute.part_id == part.id,
-                    PartRoute.is_deleted == False,  # noqa: E712
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
+    # YUMSHOQ o'chirilganlari ham yangilanadi: nostandart bayrog'i qaytarilganda
+    # o'sha qatorlar tiklanadi va eski `total_required` bilan tirilsa navbat,
+    # QOLDIQ va TABLO foizlari buzilardi.
+    routes = (await db.execute(select(PartRoute).where(PartRoute.part_id == part.id))).scalars().all()
     for route in routes:
         route.total_required = new_count * route.per_instance
 
@@ -699,6 +797,65 @@ async def start_order_production(
         raise ForbiddenException("Buyurtma avval tasdiqlangan bo'lishi kerak.")
     if order.project_uuid is None:
         raise ForbiddenException("Texnolog hali .project fayl biriktirmagan.")
+
+    # Marshrutsiz detal jimgina ishlab chiqarilmay qolardi: u terminalda ham, TABLOda ham
+    # ko'rinmaydi va buyurtma usiz "tayyor" bo'ladi. Shuning uchun bu yerda to'xtatiladi.
+    routeless = (
+        (
+            await db.execute(
+                select(Product.code, Part.code)
+                .join(Product, Product.id == Part.product_id)
+                .outerjoin(
+                    PartRoute,
+                    (PartRoute.part_id == Part.id)
+                    & (PartRoute.is_enabled == True)  # noqa: E712
+                    & (PartRoute.is_deleted == False),  # noqa: E712
+                )
+                .where(Part.order_id == order_id, Part.is_deleted == False)  # noqa: E712
+                .group_by(Product.code, Part.code)
+                .having(func.count(PartRoute.id) == 0)
+                .order_by(Product.code, Part.code)
+            )
+        )
+        .tuples()
+        .all()
+    )
+    if routeless:
+        names = ", ".join(f"{pc}_{code}" for pc, code in routeless[:5])
+        more = f" va yana {len(routeless) - 5} ta" if len(routeless) > 5 else ""
+        raise ForbiddenException(f"Marshruti berilmagan detallar bor: {names}{more}. Texnologga qaytaring.")
+
+    # Marshrutning BIRINCHI qadami arra yoki roverda bo'lishi shart — chek o'sha
+    # postda chiqadi. Boshqa postdan boshlansa detalga QR chiqmaydi va u butun
+    # oqimdan tushib qoladi (matritsadagi tugma bilan ham shunday holat yasash mumkin).
+    steps = (
+        (
+            await db.execute(
+                select(Product.code, Part.code, PartRoute.seq, Post.code)
+                .join(Product, Product.id == Part.product_id)
+                .join(PartRoute, PartRoute.part_id == Part.id)
+                .join(Post, Post.id == PartRoute.post_id)
+                .where(
+                    Part.order_id == order_id,
+                    Part.is_deleted == False,  # noqa: E712
+                    PartRoute.is_enabled == True,  # noqa: E712
+                    PartRoute.is_deleted == False,  # noqa: E712
+                )
+                .order_by(Product.code, Part.code, PartRoute.seq)
+            )
+        )
+        .tuples()
+        .all()
+    )
+    first_post: dict[str, str] = {}
+    for product_code, part_code, _seq, post_code in steps:  # seq bo'yicha saralangan — birinchisi qoladi
+        first_post.setdefault(f"{product_code}_{part_code}", post_code)
+    bad_start = [name for name, post_code in first_post.items() if post_code not in _ROUTE_START_POSTS]
+    if bad_start:
+        names = ", ".join(bad_start[:5]) + (f" va yana {len(bad_start) - 5} ta" if len(bad_start) > 5 else "")
+        raise ForbiddenException(
+            f"Marshruti Arra yoki Rover'dan boshlanmagan detallar bor: {names}. Ularga chek chiqmaydi."
+        )
 
     # Posts with several machines and requires_assignment_choice must be assigned.
     posts = {p.id: p for p in (await db.execute(select(Post))).scalars()}
@@ -797,12 +954,21 @@ async def upload_order_project(
         )
 
     root = upload_root()
+    # Qo'lda chizilgan marshrutlar fayldan kelmaydi — qayta yuklashda ular bilan birga
+    # yo'qolib ketmasligi uchun detal kodi bo'yicha saqlab turiladi.
+    saved_routes = await snapshot_custom_routes(db, order)
     await wipe_previous_parse(db, order, root)
     try:
         summary = await ingest_project(db, order, project, content, file.filename or "project.project", root)
+        restored, lost = await restore_custom_routes(db, order, saved_routes)
     except ParseError as exc:
         await db.rollback()
         raise HTTPException(status_code=422, detail=str(exc)) from None
+    if restored:
+        summary["warnings"].append(f"{restored} nostandart detalning qo'lda chizilgan marshruti tiklandi.")
+    if lost:
+        names = ", ".join(lost[:5]) + (f" va yana {len(lost) - 5} ta" if len(lost) > 5 else "")
+        summary["warnings"].append(f"Yangi faylda topilmagani uchun marshruti yo'qolgan detallar: {names}")
 
     log_action(
         db,

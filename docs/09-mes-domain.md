@@ -16,8 +16,8 @@ uning bo'lim raqamlari. Barcha fazalar implementatsiya qilingan — alohida `TOD
 | `client` | Mijoz (FIO, telefonlar, manzil, izoh; `client_type`/`inn` o'lik ustunlar sifatida olib tashlangan — migratsiya `c7f2d84a91b3`) | 4.6 |
 | `material` | Katalog — .project fayldan avtomatik to'ladi | 4.5 |
 | `order` | B-YYYY-NNN, status DRAFT→…→DELIVERED/CANCELLED; `amount` + `advance_payment` Numeric(14,2) (boshlang'ich to'lov, migratsiya `7d2c9f5e1b3a`); `cutmap` JSONB (5.7.5 modeli), `machine_assignments`, `material_usage`; `survey` JSONB — mijoz anketasi + o'lchov varag'i (migratsiya `a91c7d34f6e2`, §6.2) | 6 |
-| `product`/`part`/`part_instance` | Fayl tarkibi; instance QR = `productCode_partCode` (yagona nusxa) / `productCode_partCode_n` (takror), kesish xaritasi katakchasiga bog'langan (pattern_no, cell_index) | 5.8 |
-| `part_route` | Detal × post: per_instance (KROMKA tomonlar), total_required/done — QOLDIQ shu yerda | 5.4 |
+| `product`/`part`/`part_instance` | Fayl tarkibi; instance QR = `productCode_partCode` (yagona nusxa) / `productCode_partCode_n` (takror), kesish xaritasi katakchasiga bog'langan (pattern_no, cell_index); `part.is_custom` — nostandart detal bayrog'i (marshrutini texnolog qo'lda chizadi, migratsiya `e7c4b208af13`) | 5.8 |
+| `part_route` | Marshrutning BITTA QADAMI: `seq` (tartib, 1 dan) + post + `process_code` (1..14 — aynan qaysi amal) + per_instance (KROMKA tomonlar), total_required/done — QOLDIQ shu yerda. Yagonalik `(part_id, seq)` bo'yicha (`ix_part_route_part_seq`), post bo'yicha EMAS: bitta post marshrutda bir necha marta uchrashi mumkin (kromka → prisadka → yana kromka). Migratsiya `d5a1c93b70e2` | 5.4 |
 | `scan` | Muvaffaqiyatli ish birligi; `client_event_id` UNIQUE (idempotency), bekor qilish belgisi | 8.4 |
 | `work_session` | Smena (beyjik → sessiya) | 8.2 |
 | `order_file` | project / scx / hujjatlar (diskda `UPLOAD_DIR` ostida); `meta` JSONB — anketa xona rasmlari uchun `{"room_id", "content_type"}` | 2.4.3 |
@@ -38,12 +38,12 @@ uning bo'lim raqamlari. Barcha fazalar implementatsiya qilingan — alohida `TOD
 | Fayl | Vazifa |
 |---|---|
 | `models.py` | Parse natijasi dataclasslari (ORM emas): `ParsedProject/Product/Part`, `XncOp`, `ParsedMaterial`, `CutOperation` + `ParseError` (matni to'g'ridan texnologga ko'rsatiladi); `PROCESS_POSTS` — sexning "Jarayon uchun kodlar" jadvali (jarayon kodi → post kodi, quyida) |
-| `parser.py` | .project XML (to'la parser, regex YO'Q; cp1251/UTF-8; PROCESSED/TEMPLATE avlodlar; kontekstli id qidiruv); takror detal kodlari deterministik rename (`code`, `code-2`, …) + o'zbekcha warning — QR/SCX kaliti unikal qoladi; detal nomidan qo'lda yozilgan marshrut (`_process_codes` → `ParsedPart.process_codes`, `_custom_route_warnings`) |
+| `parser.py` | .project XML (to'la parser, regex YO'Q; cp1251/UTF-8; PROCESSED/TEMPLATE avlodlar; kontekstli id qidiruv); takror detal kodlari deterministik rename (`code`, `code-2`, …) + o'zbekcha warning — QR/SCX kaliti unikal qoladi. Detal NOMI marshrutga umuman ta'sir qilmaydi: eski `{7;11;8}` figurali qavs kodlari butunlay olib tashlangan, marshrut endi bazadagi tartibli qadamlar (quyida) |
 | `xnc.py` | XNC program parse (atribut yoki bola element), xavfsiz ifoda hisoblash (`dz+3`), `merge_xnc_ops` — BARCHA operatsiyalar saqlanadi, (`side2`, `code`) bo'yicha tartiblanadi, soni cheklanmaydi (`parser.py` 2 tadan ko'pi uchun faqat ogohlantiradi) |
 | `csblob.py` | CS `data` blob dekoderi: big-endian, 15B yozuvlar, guillotine daraxt, dims+117 root-o'q sloti, 5.7.4 self-check |
 | `cutmap.py` | Vizual model (5.7.5): sheets/parts/cuts + holes overlay, rot/eW/eH, atxot foydali o'lcham, instance↔katakcha binding; har list uchun root-strip o'lcham zanjiri `dims` (ax/a/b/v, ≥10mm poloslar, GibSaw uslubi) — cutmap JSONida saqlanadi, terminal SVG chizadi |
 | `scx.py` | SCX generatsiya — Nanxing haqiqiy konvensiyasi (Scx-korpusdan, 87 proyekt): Y=Width−y; qirra Face l4/r3/t1/b2; orqa dastur Face=6 bilan bitta faylda; 32mm qo'shqavat 16/Z÷2; freza kompensatsiyalangan yo'l. To'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §7.2 |
-| `ingest.py` | DBga yozish: products/parts/instances/routes/materials/fayllar/cutmap/material_usage; qayta yuklash to'liq almashtiradi; SCX fayl yozish+ro'yxatga olish `write_and_register_scx()` helperda — `/orders/{id}/scx/regenerate` ham shundan foydalanadi |
+| `ingest.py` | DBga yozish: products/parts/instances/routes/materials/fayllar/cutmap/material_usage; qayta yuklash to'liq almashtiradi, LEKIN qo'lda chizilgan marshrutlar `snapshot_custom_routes`/`restore_custom_routes` bilan saqlanib tiklanadi (quyida); SCX fayl yozish+ro'yxatga olish `write_and_register_scx()` helperda — `/orders/{id}/scx/regenerate` ham shundan foydalanadi |
 
 **O'lcham juftliklari (GibLab veb-ilovasida tekshirilgan).** Faylda har detalning
 uch juft o'lchami bo'ladi: `dl/dw` — tayyor detal (kromka bilan), `jl/jw` — zagotovka
@@ -56,41 +56,60 @@ oladi (`cSizeMode` qaysi juft majburiyligini belgilaydi). GibLab'da o'lcham
 kiritish rejimi ("Режимы ввода деталей") uchta: zagotovka, tayyor detal (kromka bilan),
 prifugovkadan keyin (kromkasiz) — shu sozlama `dl/dw` ma'nosini belgilaydi.
 
-Marshrut qoidalari (5.4): ARRA — listda joyi bor detalga (per_instance=1); KROMKA = ell/elr/elt/elb soni;
-PRISADKA = bf/bt/bb/bl/br; ROVER = gr yoki ms/ml/mac — paz ham frezer stanogida kesiladi va
-bitta XNC operatsiyasida paz ham, freza ham bo'lsa bu BITTA o'tish, ya'ni BITTA skan; XNC
-bosqichlarda per_instance = shu element bor op soni (`_2` → 2). STOLYARKA va BO'YOQ — texnolog
-qo'lda (matrix PATCH) yoki quyidagi nom-marshruti orqali.
+**Standart marshrut (5.4) — fayldan chiqadigan uchta qadam, shu TARTIBDA:** ARRA (kod 1, listda
+joyi bor detalga, per_instance=1) → KROMKA (kod 3, per_instance = ell/elr/elt/elb soni) →
+PRISADKA (kod 6, bf/bt/bb/bl/br bo'lsa; per_instance = shu element bor XNC op soni, `_2` → 2).
+Boshqa hech narsa avtomatik chiqmaydi.
 
-**Noodatiy detal — marshrut detal NOMIDA.** Texnolog GibLab'da detal nomiga figurali qavs
-ichida jarayon kodlarini yozadi: `eshik {7;11;8}` = rover → G petlya o'ngdan (stolyarka) →
-bo'yoq. Ajratgichlar: `;` `.` `,` va bo'shliq; bir necha blok bo'lsa ketma-ket qo'shiladi.
-Kodlar `PROCESS_POSTS` (`giblab/models.py`) orqali postga o'giriladi — to'liq jadval:
-[10-giblab-reference.md](10-giblab-reference.md) §2.3. Qoidalar:
+Paz/freza uchun ROVER bosqichi **ataylab yaratilmaydi** (`ParsedPart.stage_sides()` endi FAQAT
+prisadka qaytaradi): roverdan chiqqan detal keyin bo'yalishi ham, stolyarkaga ketishi ham mumkin —
+buni fayl bilmaydi, ya'ni taxmin qilingan marshrut noto'g'ri bo'lardi. Paz/freza geometriyasi
+baribir SCX ga va yorliq eskiziga ketadi, faqat marshrut qadami bo'lmaydi. ROVER, STOLYARKA va
+BO'YOQ marshrutga faqat texnolog qo'li bilan tushadi.
 
-- Ro'yxat bo'lsa **marshrut ayni shu**: fayldan chiqadigan bosqichlar (listdagi joyi bo'yicha
-  ARRA, qirralar bo'yicha KROMKA, XNC bosqichlari) BUTUNLAY hisobga olinmaydi. **ARRA ham
-  avtomatik qo'shilmaydi** — jarayon roverdan (yoki boshqa postdan) boshlanishi mumkin, tayyor
-  zagotovkaga arra vazifasi berilsa arrachi kesa olmaydigan soxta ish paydo bo'lardi.
-- `per_instance`: KROMKA da qirralar soni (skan qirra bo'yicha sanaladi), qolgan postlarda
-  bitta o'tish = bitta skan. Bitta post bir necha marta uchrasa (`{3;3}`) qo'shiladi —
-  `UNIQUE(part_id, post_id)` indeksi bor, ya'ni takroriy tashrif kattaroq `per_instance` bo'lib
-  ifodalanadi.
-- Qavs matni **displey nomida qoladi**: kodlar postga ko'p-birga tushadi (1 va 2 → ARRA,
-  3 va 4 → KROMKA, 9..14 → STOLYARKA), qaysi amal ekanini nom saqlaydi. Frontend buni
-  o'qiy oladi: terminal amal NOMINI chip bilan ko'rsatadi (`Common/OperationChips.tsx`,
-  `lib/mes.ts: PROCESS_OPS`/`partOperations` — `{11}` → "G petlya o'ngdan"), matritsada
-  noodatiy detal qatorida "Marshrut nomdan" belgisi bor (`Orders/OrderMatrix.tsx`).
+**Nostandart detal — marshrutni texnolog chizadi.** Eski "marshrut detal NOMIDA" (`eshik {7;11;8}`)
+mexanizmi butunlay olib tashlangan: nom qaytadan shunchaki nom, marshrut esa `part_route` da
+tartibli qadamlar. Jarayon kodi → post o'girish `PROCESS_POSTS` (`giblab/models.py`) da qoladi —
+to'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §2.3. Qoidalar:
+
+- Bayroq `Part.is_custom` — texnolog detallar matritsasidagi "Nostandart" checkbox bilan qo'yadi.
+  Yoqilganda fayldan kelgan `AUTO` qadamlar YUMSHOQ o'chiriladi, bayroq qaytarilganda AYNAN
+  tiklanadi (`orders.py: edit_order_matrix`) — fayl ma'lumotidan qayta hisoblash taxminiy bo'lardi.
+- Marshrutning o'zi alohida **"Nostandart detallar" tabida** chiziladi
+  (`Orders/CustomRoutes.tsx`): texnolog jarayonlarni bosadi, ular tanlangan tartibda 1, 2, 3…
+  raqamlanadi va bitta kodni **takror tanlash mumkin** ([3, 6, 3] — kromkaga qaytish). Yo'l:
+  `PATCH /orders/{id}/matrix` → `MatrixPartEdit.route_codes` → `_set_custom_route()` (eski
+  qadamlar yumshoq o'chadi, ro'yxat qaytadan quriladi).
+- **Marshrut faqat ARRA yoki ROVER'dan boshlanadi** (`_ROUTE_START_POSTS`, frontendda
+  `ROUTE_START_POSTS`) — QR cheki aynan shu ikki postda chiqadi, boshqasidan boshlansa detal
+  yorliqsiz qolardi.
+- `per_instance`: KROMKA/OVAL marshrutda **BIRINCHI** kelganda qirralar soni marta skanlanadi
+  (skan qirra bo'yicha sanaladi), TAKROR kelganda bitta. Qolgan postlarda bitta o'tish = bitta skan.
+- Qaysi amal ekanini endi nom emas, qadamning **`process_code`** i saqlaydi (kodlar postga
+  ko'p-birga tushadi: 1 va 2 → ARRA, 3 va 4 → KROMKA, 9..14 → STOLYARKA). Terminal amal NOMINI
+  chip bilan ko'rsatadi (`Common/OperationChips.tsx` — `processCode` + `postCode` qabul qiladi,
+  `lib/mes.ts: PROCESS_OPS`; bitta amalli postda — rover, bo'yoq, prisadka — chip chizilmaydi,
+  post nomi sarlavhada turibdi).
 - Sozlanmagan post uchrasa `ingest.py` toza `ParseError` (422) beradi: `posts` lug'ati post
   KODI (matn) bo'yicha tuziladi, `PostCode(...)` ga o'girilmaydi — aks holda `ValueError` → 500.
+- **Qayta yuklash marshrutni yo'qotmaydi.** `.project` qayta yuklanishidan oldin
+  `snapshot_custom_routes()` qo'lda chizilgan (`MANUAL`) qadamlarni `(mahsulot kodi, detal kodi)`
+  kaliti bilan eslab qoladi — detal kodi fayl ichidagi `part@id` dan farqli o'laroq qayta
+  eksportda ham o'zgarmaydi. Ingest'dan keyin `restore_custom_routes()` ularni aynan shu tartibda
+  tiklaydi va `is_custom` ni qaytaradi; yangi faylda topilmagan detallar warning'da sanaladi.
 
 
 ## 3. Scan engine (`app/services/scanning.py`)
 
-Instance-level nazorat: QR → aktiv PRODUCTION buyurtma → route (post+stanok mosligi) →
-per-instance limit → yozish + `total_done++`. Xatolar TT 8.5 kodlari bilan (`{"code": "E00x",
+Instance-level nazorat: QR → aktiv PRODUCTION buyurtma → shu postdagi marshrut QADAMLARI (`seq`
+bo'yicha) → eng kichik `seq` li TUGALLANMAGAN qadam + stanok mosligi → per-instance limit →
+yozish + `total_done++`. Hisob POST emas, QADAM bo'yicha: `_scans_done(db, instance_id, route_id)`
+kaliti `route_id` — bitta post marshrutda ikki marta bo'lsa (kromka → prisadka → kromka) post
+bo'yicha sanash hisobni aralashtirib yuborardi. Xatolar TT 8.5 kodlari bilan (`{"code": "E00x",
 "message": ...}` 422 detail). Idempotency: `client_event_id` UNIQUE — takror so'rov `duplicate:true`
-bilan muvaffaqiyat. `STRICT_STAGE_ORDER=true` bo'lsa E004 (oldingi bosqich shu nusxada tugamagan).
+bilan muvaffaqiyat. `STRICT_STAGE_ORDER` (endi default **yoqiq**) — E004: tekshiruv postlarning
+global tartibidan emas, detalning O'Z marshruti bo'yicha: `seq` i kichik qadamlar shu nusxada
+tugamaguncha keyingisi rad etiladi, xabar navbatdagi post nomini aytadi.
 60s ichida bekor qilish; COMPLETED regress. Bosqich tugashi → `order.stage_completed`, hammasi →
 `COMPLETED` + `order.completed`.
 
@@ -133,7 +152,8 @@ sahifasida qoladi. `GET /scans/recent` endpointi olib tashlangan.
 `render_label_png`. Yagona chiqish — PNG rasm; `LabelData` maydonlari: qr_text, part_code,
 part_name, project_name (`order.project_name or order.number`), order_number, material, l/w/t, count,
 instance_no, edges, xnc_summary, label_num, printed_at (Asia/Tashkent — yorliq pastida sana bo'lib
-chiqadi), **holes**, **texture**. `holes` — `order.cutmap` dan shu detal katakchasi bo'yicha
+chiqadi), **holes**, **texture**, **route_codes** (marshrut jarayon kodlari `seq` tartibida).
+`holes` — `order.cutmap` dan shu detal katakchasi bo'yicha
 (`part.label_num` → cutmap `parts[].num` → `cutmap.holes[cell.id]`).
 
 **`render_label_png(d, scale=1)` — asosiy maket** (GibSaw `mebelix.lbl` uslubi). 80×60 mm,
@@ -143,6 +163,8 @@ chiqadi), **holes**, **texture**. `holes` — `order.cutmap` dan shu detal katak
 - chap ustun: `assets/label-logo.png` (threshold 160), `Formatka` + product kodi, detal kaliti,
   loyiha nomi, kromka materiallari 2×2 (t/l/b/r, tagchiziq bilan), markazda katta `L x W = soni`,
   `N_detal nomi`, П/Ф belgilari (paz/freza), teshik bo'lsa `assets/label-icon-drill.png` ikonkasi,
+  marshrut ALOHIDA qatorda (`Marshrut: 7/11/8`, y=45.3mm — detal NOMIGA qo'shilmaydi, chunki nom
+  24 belgida kesiladi va marshrut jimgina yo'qolardi),
   pastda material + sana + `N{label_num} {instance_no}/{count}`;
 - o'ng ustun: QR (`qrcode`, `d.qr_text`) tepada, ostida **vertikal detal eskizi** — ingichka kontur,
   kromka konturdan 1 mm tashqarida qalin chiziq, `texture` bo'lsa uzunlik bo'ylab 3 chiziq,
@@ -167,8 +189,8 @@ terminal (POST /terminal/labels/{instance_id})   → label_printed_at + ws "labe
 `GET /terminal/labels/{instance_id}.png` — o'sha `render_label_png()` chiqishi to'g'ridan brauzerga;
 worker ham, GoDEX ham, bridge-agent ham shart emas.
 
-**ROVER'da chop etish = bajarildi.** Marshrutida ARRA bo'lmagan detal (noodatiy nom-marshrut)
-roverning o'zida kesiladi — roverchi chek chiqarganda `POST /terminal/labels/{id}` avto-skan ham
+**ROVER'da chop etish = bajarildi.** Marshrutida ARRA bo'lmagan detal (nostandart, marshruti
+roverdan boshlanadi) roverning o'zida kesiladi — roverchi chek chiqarganda `POST /terminal/labels/{id}` avto-skan ham
 yozadi (`record_scan`, `client_event_id="rvprint-{instance_id}"`): statistika/tablo/ish haqi oddiy
 oqim bilan bir xil qoladi. Skan rad etilsa (masalan `STRICT_STAGE_ORDER` da oldingi bosqich
 tugamagan) chek baribir chiqadi — operator keyin oddiy skan bilan yakunlaydi.
@@ -208,7 +230,9 @@ ham bor; aks holda `template`), va `upload_order_project` TEMPLATE faylni **422*
 "Bu fayl GibLabda hali optimizatsiya qilinmagan…". Bundan oldin kengaytma (`.project`) va hajm
 (`MAX_PROJECT_FILE_SIZE`) tekshiriladi.
 `POST /{id}/start` (TECHNICAL_REVIEW → PRODUCTION) `.project` biriktirilgan bo'lishini va
-`requires_assignment_choice` postlar uchun `machine_assignments` ni talab qiladi.
+`requires_assignment_choice` postlar uchun `machine_assignments` ni talab qiladi; **marshrutsiz
+detal qolgan bo'lsa rad etadi** — u terminalda ham, TABLOda ham ko'rinmay, buyurtma usiz "tayyor"
+bo'lib qolardi.
 `GET /orders/status-counts` — registr tablari uchun har status bo'yicha son. Frontendda
 qoldiq to'lov = `amount − advance_payment`, `advance ≤ amount` validatsiyasi bilan.
 
@@ -310,11 +334,17 @@ direktor ham ko'radi.
   javobi formaga **bir marta** yuklanadi (`loaded` ref) — aks holda refetch menejer yozayotgan
   matn ustiga tushadi.
 - Buyurtma kartasi (`orders/$orderId.tsx`): `.project` uchun drag&drop zona (kengaytma tekshiriladi,
-  boshqasiga xato toast) va anketaga o'tish tugmasi.
+  boshqasiga xato toast) va anketaga o'tish tugmasi. Texnolog uchun DOIM tablar: "Detallar
+  matritsasi" / "Nostandart detallar (N)" / "Furnituralar" (agar bor bo'lsa). Matritsa ustunlari
+  faqat ARRA/KROMKA/PRISADKA (`STANDARD_MATRIX_POSTS`) + "Nostandart" checkbox ustuni; nostandart
+  qatorda "Nostandart · N qadam" belgisi (marshrut yo'q bo'lsa — "Nostandart · marshrut yo'q").
+  Katakcha shu postdagi HAMMA qadamni birga yoqadi/o'chiradi — qadam-baqadam tahrir nostandart
+  tabda (`Orders/CustomRoutes.tsx`).
 - `/terminal` post bo'yicha sahifalar (hammasi picker: `GET /terminal/orders` kartalari):
   · **ARRA** — materiallar → listlar → to'liq ekran xarita (`Terminal/CutmapView` +
-    `Terminal/SheetSvg`; `printAllMaps` — har list A4 landscape). Chek chiqarilgan katak YASHIL
-    ("kesildi"); qayta chop etish bloklanadi; long press (~600ms) + tasdiq dialogi chekni bekor
+    `Terminal/SheetSvg`; `printAllMaps` — har list A4 landscape). Marshrutida ARRA bo'lmagan detal
+    xaritada KULRANG (`CutmapInstanceState.custom`, `PART_CUSTOM`) — GibLab uni listga joylashtirgan,
+    lekin arrachi kesmaydi. Chek chiqarilgan katak YASHIL ("kesildi"); qayta chop etish bloklanadi; long press (~600ms) + tasdiq dialogi chekni bekor
     qiladi (admin webdagi xaritada — kartochkadagi tugma).
   · **KROMKA** (`Terminal/KromkaView`) — ikki panel: chapda arradan chiqqan detallar
     (tugaganlari yashil, pastda), o'ngda "Jarayonda" (2+ tomonli, boshlangan, tugamagan).

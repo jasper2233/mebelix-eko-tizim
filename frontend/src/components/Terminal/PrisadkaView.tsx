@@ -331,7 +331,7 @@ export function PrisadkaView({
                 const finished = p.done >= p.total
                 return (
                   <tr
-                    key={p.part_id}
+                    key={p.route_id}
                     id={`pv-row-${p.part_id}`}
                     className={cn(
                       "border-b last:border-0",

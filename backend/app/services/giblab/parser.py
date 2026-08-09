@@ -14,7 +14,6 @@ import re
 import xml.etree.ElementTree as ET
 
 from .models import (
-    PROCESS_POSTS,
     CutOperation,
     ParsedMaterial,
     ParsedPart,
@@ -89,46 +88,6 @@ def _dedupe_part_code(code: str, seen: set[str], product_code: str, warnings: li
     return renamed
 
 
-def _process_codes(name: str) -> list[int]:
-    """Detal nomidagi figurali qavs — texnolog qo'lda yozgan MARSHRUT: "eshik {7;11;8}".
-
-    Ro'yxat TARTIBLI: birinchi kod — jarayon boshlanadigan post, oxirgisi — tugaydigani.
-    Ajratgich FAQAT `;` (kodlar atrofidagi bo'shliq e'tiborsiz): nuqta va vergul ataylab
-    qabul qilinmaydi — sexdagi yagona yozuv shakli buzilmasin.
-
-    Bitta token noto'g'ri bo'lsa BUTUN ro'yxat rad etiladi — yarim o'qilgan marshrut
-    detalni bilintirmay bosqichdan chiqarib yuborardi; rad etilsa detal odatdagi
-    fayl bosqichlari bilan ketadi va matritsada ko'rinib turadi (ogohlantirish ham beriladi).
-    """
-    tokens = [t.strip() for block in re.findall(r"\{([^{}]*)\}", name) for t in block.split(";") if t.strip()]
-    if not tokens or not all(t.isdigit() and int(t) in PROCESS_POSTS for t in tokens):
-        return []
-    return [int(t) for t in tokens]
-
-
-def _custom_route_warnings(parts: list[ParsedPart]) -> list[str]:
-    """Noodatiy marshrutlar haqida ikkita YIG'MA ogohlantirish (har detalga bittadan emas —
-    yuklash javobida faqat dastlabki bir nechtasi ko'rsatiladi)."""
-    out: list[str] = []
-    custom = [p for p in parts if p.process_codes]
-    if custom:
-        out.append(
-            f"{len(custom)} detalning marshruti nomdagi ro'yxatdan olindi (masalan {custom[0].name!r}) — "
-            f"ular uchun fayldagi bosqichlar hisobga olinmadi."
-        )
-    # Qavs bor, lekin o'qilmadi = xato yozuv. Jimgina o'tkazib yuborilsa texnolog
-    # marshrut berdim deb o'ylaydi, detal esa eski bosqichlar bilan ketaveradi.
-    bad = [f"{p.code} ({p.name})" for p in parts if "{" in p.name and not p.process_codes]
-    if bad:
-        more = f" va yana {len(bad) - 5} ta" if len(bad) > 5 else ""
-        out.append(
-            f"{len(bad)} detal nomidagi qavs marshrut sifatida o'qilmadi: {', '.join(bad[:5])}{more}. "
-            f"Qavs ichida faqat 1-{max(PROCESS_POSTS)} oralig'idagi kodlar, `;` bilan ajratilgan "
-            f"bo'lishi kerak (masalan {{7;11;8}})."
-        )
-    return out
-
-
 def _build_part(p: ET.Element, product: ParsedProduct, seen: set[str], warnings: list[str]) -> ParsedPart:
     """Bitta <part> elementidan ParsedPart. Kod va o'lcham shu yerda normallashtiriladi."""
     code = p.get("code") or p.get("part.code") or ""
@@ -189,7 +148,6 @@ def _build_part(p: ET.Element, product: ParsedProduct, seen: set[str], warnings:
         txt=xml_bool(p.get("txt")),
         material_name=None,
         edges=edges,
-        process_codes=_process_codes(name),
     )
 
 
@@ -395,8 +353,6 @@ def parse_project(content: bytes) -> ParsedProject:
             product.parts.append(part)
             part_by_file_id[part.file_part_id] = part
         project.products.append(product)
-
-    project.warnings.extend(_custom_route_warnings(project.all_parts))
 
     # --- operations ---
     label_counter = 0  # file-global: matches GibSaw print order (TZ 5.8)

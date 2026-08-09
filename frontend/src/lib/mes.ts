@@ -82,7 +82,7 @@ export const chipColors = (color: string, bgPct: number) => ({
 // (services/giblab/models.py) bilan bir xil bo'lishi shart. Bu yerda faqat
 // KO'RSATISH uchun: marshrutni backend quradi, frontend esa operatorga qaysi
 // AMAL ekanini aytadi. Noma'lum kodda chip umuman chiqmaydi (xato nom emas).
-const PROCESS_OPS: Record<number, { name: string; post: string }> = {
+export const PROCESS_OPS: Record<number, { name: string; post: string }> = {
   1: { name: "Raspil", post: "ARRA" },
   2: { name: "45° kesish", post: "ARRA" },
   3: { name: "Kromka", post: "KROMKA" },
@@ -99,51 +99,16 @@ const PROCESS_OPS: Record<number, { name: string; post: string }> = {
   14: { name: "V petlya chapdan", post: "STOLYARKA" },
 }
 
-// Bitta postga bir nechta amal tushadigan postlar. Faqat shularda amal nomi
-// kerak: roverda yagona amal bor, uni yozish ekran sarlavhasini takrorlash edi.
-const MULTI_OP_POSTS = new Set(
-  Object.values(PROCESS_OPS)
-    .map((o) => o.post)
-    .filter((p, _i, all) => all.filter((x) => x === p).length > 1),
-)
-
 /**
- * Detal nomidagi marshrut kodlari — backend `_process_codes` ning AYNAN nusxasi:
- * ajratgich faqat `;` (atrofidagi bo'shliq e'tiborsiz) va bitta token noto'g'ri
- * bo'lsa BUTUN ro'yxat rad etiladi. Ikkisi ajralib qolsa UI "marshrut nomdan"
- * deb ko'rsatadi-yu, backend fayl bosqichlarini ishlatadi — texnolog buni
- * yuklash ogohlantirishini o'qimaguncha bilmaydi.
+ * Detallar matritsasida ko'rinadigan postlar — STANDART detalning butun yo'li.
+ * Rover, stolyarka, bo'yoq va oval kromka faylga qarab avtomatik berilmaydi:
+ * roverdan chiqqan detal keyin bo'yalishi mumkinligini fayl bilmaydi. Ular
+ * "Nostandart detallar" tabida qo'lda chiziladi.
  */
-function routeCodes(name: string): number[] {
-  const tokens = [...name.matchAll(/\{([^{}]*)\}/g)]
-    .flatMap((m) => m[1].split(";"))
-    .map((t) => t.trim())
-    .filter(Boolean)
-  if (!tokens.length) return []
-  const codes = tokens.map(Number)
-  return codes.every((n) => Number.isInteger(n) && n in PROCESS_OPS)
-    ? codes
-    : []
-}
+export const STANDARD_MATRIX_POSTS = ["ARRA", "KROMKA", "PRISADKA"]
 
-/** Detal marshruti nomdagi kodlardan olinganmi (backend `process_codes`). */
-export const isCustomRoute = (name: string) => routeCodes(name).length > 0
-
-/**
- * Detal nomidagi marshrut ro'yxatidan ("eshik {7;11;8}") SHU POSTGA tegishli
- * amal nomlari.
- *
- * Kodlar postga ko'pdan-birga tushadi — stolyarkada oltita amal bitta postda.
- * Bu bo'lmasa operator `{7;11;8}` ni ko'rib, 11 = "G petlya o'ngdan" ekanini
- * yoddan bilishi kerak edi; noto'g'ri petlya esa eshikni brak qiladi.
- */
-export function partOperations(name: string, postCode: string): string[] {
-  if (!MULTI_OP_POSTS.has(postCode)) return []
-  return routeCodes(name)
-    .map((c) => PROCESS_OPS[c])
-    .filter((op) => op?.post === postCode)
-    .map((op) => op.name)
-}
+/** Nostandart marshrut faqat shulardan boshlanadi — chek o'sha postda chiqadi. */
+export const ROUTE_START_POSTS = ["ARRA", "ROVER"]
 
 // Rollar manbasi — backend enum'i (generatsiya qilingan UserRole); yorliq
 // yozilmagan yangi rol build'ni yiqitadi

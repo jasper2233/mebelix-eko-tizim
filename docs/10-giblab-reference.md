@@ -268,23 +268,33 @@ soxta vazifa yaratmaydi). Ular GibLab'ning "shu kesishdan 688×1166 foydali qold
 degan xabari. Sklad moduli ularni qabul qilsa qoldiq hisobi avtomatlashadi — 1C protokoli
 (§6) aynan shu ma'lumot bilan ishlaydi.
 
-### 2.3 Detal nomi — sexning marshrut kodlari
+### 2.3 Detal nomi va jarayon kodlari
 
-**Sexning marshrut kodlari — FIGURALI qavsda.** Texnolog noodatiy detalning marshrutini
-detal nomiga yozadi: `eshik {7;11;8}`. **Ajratgich — nuqtali vergul (`;`).** Ro'yxat
-TARTIBLI: birinchi kod — jarayon boshlanadigan post, oxirgisi — tugaydigani. Odatdagi
-detal arradan boshlanadi, `{...}` li detal esa qavsdagi BIRINCHI postdan — masalan
-`{7;8}` roverda kesilib bo'yoqda tugaydi, arraga umuman tushmaydi.
+**Detal nomi — faqat nom.** `name` atributi qanday bo'lsa shunday olinadi (bo'sh bo'lsa
+kod qo'yiladi — `parser.py`, `_build_part`) va marshrutga **umuman ta'sir qilmaydi**.
+Ilgari bu yerda figurali qavs sintaksisi turardi (`eshik {7;11;8}` — nomdagi kodlar
+fayl bosqichlarini butunlay almashtirardi); u **butunlay olib tashlandi**. Sabab: marshrut
+ko'rinmas yozuv qoidasiga bog'lanib qolardi — bitta noto'g'ri belgi butun ro'yxatni rad
+etardi, to'g'ri yozilgani esa detalni matritsada bilintirmay arradan chiqarib yuborardi.
+Endi marshrut faqat MES ichida, ko'rinadigan joyda beriladi.
 
-Ajratgich sifatida **faqat `;`** qabul qilinadi (kodlar atrofidagi bo'shliq e'tiborsiz:
-`{7; 8}` ham o'qiladi). Nuqta va vergul ATAYLAB qabul qilinmaydi — sexda yagona yozuv
-shakli qolsin; noto'g'ri yozilgan qavs rad etiladi va texnologga ogohlantirish chiqadi.
-Bir necha blok bo'lsa ketma-ket qo'shiladi.
+**Fayldan chiqadigan marshrut — STANDART va qisqa** (`ingest.py`): ARRA (kod 1, listga
+joylashtirilgan detalga) + KROMKA (kod 3, qirralar soni bo'yicha) + PRISADKA (kod 6, XNC da
+teshik bo'lsa). Paz va freza ROVER bosqichini **yaratmaydi**: roverdan chiqqan detal keyin
+bo'yalishi ham mumkinligini fayl bilmaydi, ya'ni marshrutni fayldan taxmin qilib bo'lmaydi.
+Paz/freza geometriyasi baribir SCX ga va yorliq eskiziga ketadi.
 
-Kodlar jadvalining manbasi — sexning "Jarayon uchun kodlar" varag'i (repoda saqlanmaydi,
-sexda yuritiladi). Quyidagi jadval va `PROCESS_POSTS`
-(`backend/app/services/giblab/models.py`) aynan shunga mos; sexda kod o'zgarsa
-ikkalasi birga yangilanadi. Ziddiyat chiqsa — bajariladigan manba `PROCESS_POSTS`.
+**Standartdan chetga chiqadigan hamma narsa — MES ichida.** Texnolog detallar matritsasida
+detalni "Nostandart" deb belgilaydi (`Part.is_custom`), so'ng "Nostandart detallar" tabida
+jarayonlarni **bosgan tartibda** marshrut chiziladi (1, 2, 3, ...). Bitta post takror kelishi
+mumkin — kromka → prisadka → yana kromka. Marshrutning o'zi qanday saqlanishi (`seq` +
+`process_code`, `per_instance` hisobi, skan navbati) — [09-mes-domain.md](09-mes-domain.md) §2.
+
+**Shuning uchun jarayon kodlari jadvali qoladi** — u endi fayldan emas, nostandart tabidan
+o'qiladi: tugmalar ro'yxati ham, `PartRoute.process_code` ham aynan shu raqamlar. Manbasi —
+sexning "Jarayon uchun kodlar" varag'i (repoda saqlanmaydi, sexda yuritiladi). Quyidagi
+jadval va `PROCESS_POSTS` (`backend/app/services/giblab/models.py`) aynan shunga mos; sexda
+kod o'zgarsa ikkalasi birga yangilanadi. Ziddiyat chiqsa — bajariladigan manba `PROCESS_POSTS`.
 
 | Kod | Jarayon | Post |
 |---|---|---|
@@ -305,13 +315,10 @@ ikkalasi birga yangilanadi. Ziddiyat chiqsa — bajariladigan manba `PROCESS_POS
 
 Paz uchun kod yo'q — paz alohida post emas, u frezer stanogida (ROVER) kesiladi.
 
-**Validatsiya — hammasi yoki hech narsa.** Bitta token raqam bo'lmasa yoki jadvalda bunday
-kod bo'lmasa BUTUN ro'yxat rad etiladi va detal odatdagi fayl bosqichlari bilan ketadi.
-Yarim o'qilgan marshrut detalni bilintirmay bosqichdan chiqarib yuborardi; rad etilgani esa
-matritsada ko'rinib turadi va ogohlantirish ham beriladi.
-
-Marshrutning o'zi qanday qurilishi (fayl bosqichlari BUTUNLAY almashtiriladi, ARRA avtomatik
-qo'shilmaydi, `per_instance` hisobi, qavs matni nomda qolishi) — [09-mes-domain.md](09-mes-domain.md) §2.
+**Kod postdan ko'ra aniqroq.** Bitta post bir necha kodga to'g'ri keladi (STOLYARKA da
+oltita amal, KROMKA da ikkita), shuning uchun marshrut qadami postni ham, kodni ham saqlaydi
+(`PartRoute.post_id` + `process_code`) — aks holda "baget" bilan "G petlya o'ngdan" bir xil
+ko'rinardi va yorliqdagi marshrut qatori ("Marshrut: 7/11/8") ma'nosini yo'qotardi.
 
 ---
 
@@ -323,13 +330,13 @@ GibLab "+Операция" ro'yxatida **to'qqiz tur** taklif qiladi:
 |---|---|---|
 | `CS` | Листовой раскрой — listni kesish | ✅ kesish xaritasi + yorliq raqamlari |
 | `EL` | Кромкооблицовка — kromkalash | ✅ kromka simvoli va materiali |
-| `XNC` | Обработка — CNC ishlov | ✅ teshik → PRISADKA, paz va freza → ROVER bosqichi |
+| `XNC` | Обработка — CNC ishlov | ✅ teshik → PRISADKA bosqichi; paz va freza faqat SCX va yorliq eskizida (bosqich yaratmaydi — §2.3) |
 | `O` | Комплектация — furnitura komplekti | ataylab jim: sanoqlar `simple` goodlarida bor |
 | `LB` | Этикетки — yorliq shablonlari | ataylab jim: tizim o'z yorlig'ini chiqaradi (TZ 5.2.8) |
 | `CL` | Погонажный раскрой — profil kesish | ataylab jim + **ma'lumot yoziladi**: sexda profil kesish posti yo'q, profillar tayyor keladi |
 | `CN` | Нестинговый раскрой — CNC nesting | ❌ ogohlantirish. GibLab'ga 2021-05 da qo'shilgan |
 | `SP` | Обработка поверхности — yuza ishlovi | ❌ ogohlantirish |
-| `GR` | Пазование — paz | ❌ ogohlantirish (paz XNC dan aniqlanadi, ROVER bosqichiga tushadi) |
+| `GR` | Пазование — paz | ❌ ogohlantirish (paz XNC dan aniqlanadi, lekin bosqich yaratmaydi) |
 
 `CN`, `SP`, `GR` korpusda umuman uchramaydi. `CL` esa `kupe.project` da 3 ta, `TV_zonakupe`
 da 1 ta — ularning `<part>` lari `X1..X32` kodli alyuminiy profillar, 3200 mm zagotovkadan
@@ -541,7 +548,8 @@ beradi va fayl rad etiladi (`xnc.py`, `_eval_expr`).
 **Nechta dastur bo'lishi mumkin?** Korpusda detalga ko'pi bilan ikkita. Lekin GibLab ko'proq
 beradi — yorliq shabloni `XNC1..XNC5` maydonlarini taklif qiladi. Shuning uchun parser
 sonini cheklamaydi: hammasini saqlaydi va ikkitadan ko'p bo'lsa ogohlantiradi
-(`stage_sides()` har operatsiyaga bir skan beradi).
+(`stage_sides()` teshigi bor har operatsiyaga bitta PRISADKA skani beradi — paz/freza
+esa marshrut qadamini umuman yaratmaydi, §3.7).
 
 ---
 
@@ -580,7 +588,9 @@ GibLab shabloniga qo'yiladigan maydonlar (109 ta), guruhlar bo'yicha:
 
 MebeliX o'z yorlig'ini chiqaradi (TZ 5.2.8, `services/labels.py`): 80×60 mm, 203 dpi, 1-bit
 termoprinter uchun. Ichida QR (`{productCode}_{partCode}` — yagona nusxa suffikssiz, takrorlanganda `_{n}`), matn qatorida ham shu nusxa ID (QR va SCX nomi bilan bir xil satr; matn qatori 20 belgigacha qisqartiriladi, QR to'liq — [11-detal-id-nomlash.md](11-detal-id-nomlash.md)), detal nomi, buyurtma,
-material, o'lcham, qalinlik, kromka belgilari, teshik eskizi va burg'u ikonkasi.
+material, o'lcham, qalinlik, kromka belgilari, teshik eskizi, burg'u ikonkasi va marshrut
+qatori (`Marshrut: 7/11/8` — jarayon kodlari tartib bilan, §2.3; nomga qo'shilmaydi, chunki
+nom 24 belgida kesiladi va marshrut jimgina yo'qolardi).
 
 Sabab: GibLab yorlig'i skan qilinadigan QR bermaydi va MebeliX'ning bosqichma-bosqich
 kuzatuvi aynan shu QR ga tayanadi.
@@ -617,14 +627,14 @@ inventarizatsiyasi kimda turishi (GibLab yoki MebeliX) alohida qaror talab qilad
 
 **O'qiymiz:** mahsulot va detallar, o'lchamlar, kromka (tomon + material + simvol), material
 registri (list/kromka/furnitura), kesish xaritasi (naqsh, kratlik, katakcha, deloviy qoldiq,
-o'lcham zanjiri), teshik/paz/freza (XNC), yorliq raqami, SCX generatsiyasi, detal nomidagi
-marshrut kodlari (§2.3).
+o'lcham zanjiri), teshik/paz/freza (XNC), yorliq raqami, SCX generatsiyasi.
 
 **Ataylab e'tiborsiz:** GibLab yorliq shablonlari (`LB`), optimizatsiya va narx parametrlari
 (GibLab ichida ishlaydi, biz natijasini iste'mol qilamiz), arra postprotsessorlari,
-profil kesish (`CL` — sexda bunday post yo'q).
+profil kesish (`CL` — sexda bunday post yo'q), detal NOMI (u marshrutga ta'sir qilmaydi —
+§2.3).
 
-**Ogohlantirish beradigan holatlar** (`parser.py`, `ingest.py`):
+**Ogohlantirish beradigan holatlar** (`parser.py`, `ingest.py`, `orders.py`):
 
 | Holat | Xabar |
 |---|---|
@@ -642,8 +652,8 @@ profil kesish (`CL` — sexda bunday post yo'q).
 | Xaritada joyi yo'q detal | arrachi ro'yxatiga tushmaydi |
 | `turn` ≠ 0 | dastur aylantirilgan — aylantirish qo'llanmaydi, CNC'da tekshirish shart (`mirHor`/`mirVert` esa parse'da geometriyaga QO'LLANADI — `xnc.apply_mirror`) |
 | Blobsiz kesish operatsiyasi | material optimallashtirilmagan, xaritasi yo'q |
-| Nomdan olingan marshrut (§2.3) | N detalning marshruti nomdagi ro'yxatdan olindi, ular uchun fayl bosqichlari hisobga olinmadi |
-| Nomdagi qavs o'qilmadi | qaysi detallar ekani sanaladi; qavs ichida faqat 1–14 oralig'idagi kodlar bo'lishi kerak |
+| Nostandart marshrut tiklandi | qayta yuklashda N detalning qo'lda chizilgan marshruti qaytarildi |
+| Marshruti yo'qolgan detal | qo'lda marshrut chizilgan detal yangi faylda topilmadi — kodlari sanab beriladi |
 
 Yarmi — 16 qatordan 8 tasi — `_advisories` da yig'iladi, qolgani boshqa joylarda: dastlabki
 uchtasi detal qurilishida yoziladi (`_build_part`, `_dedupe_part_code`), "Blobsiz kesish
@@ -651,8 +661,10 @@ operatsiyasi" — `parse_project` generatsiyani aniqlaganda, "XNC operatsiya nom
 ishora qiladi" — dasturlar detalga biriktirilayotganda (`parse_project`, `merge_xnc_ops` dan
 oldin), "Xaritada joyi yo'q detal" esa xarita qurilgandan keyin `ingest.py` da.
 
-Oxirgi ikkitasi — `_custom_route_warnings`, ataylab **yig'ma**: yuklash javobida ogohlantirishlarning
-faqat dastlabki bir nechtasi ko'rsatiladi, har detalga bittadan yozilsa qolgani ko'rinmay ketardi.
+Oxirgi ikkitasi parse'dan tashqarida: ular qo'lda chizilgan marshrutlarni qayta yuklashda
+saqlab tiklaydigan qadamdan chiqadi (`ingest.snapshot_custom_routes` / `restore_custom_routes`,
+xabarni `orders.py` upload handleri yozadi). Ikkalasi ham ataylab **yig'ma** — har detalga
+bitta xabar yozilsa, javobda faqat dastlabki bir nechtasi ko'rinib qolgani yo'qolardi.
 
 Bu xabarlar yuklash javobida ko'rsatiladi (dastlabki 3 tasi, qolgani soni bilan) va
 to'liq ro'yxat audit logga yoziladi (`POST /orders/{id}/upload`).
@@ -686,7 +698,8 @@ Qolganlari — `comment`, `owner`, `typeName`, `usedCount`, `groupInBlock*`, per
 `draw`, `GR`/`SP` operatsiya parametrlari (`grWidth`, `grDepth`, `grOffset`, `grOffsetIncl`,
 `grSawthick`, `grCuttingLength`) — **korpusda ishlatilmagan yoki ko'rsatadigan joyi yo'q**;
 har biri yuqoridagi jadvallarda alohida izohlangan. `GR` paydo bo'lsa uning `grWidth`/`grDepth`/
-`grOffset` i to'g'ridan-to'g'ri ROVER bosqichiga geometriya beradi — hozir esa faqat ogohlantirish.
+`grOffset` i paz geometriyasini to'g'ridan-to'g'ri berardi (hozir paz faqat XNC dan o'qiladi) —
+hozircha esa faqat ogohlantirish.
 
 `EL` operatsiyasidan `elSymbol` (xarita simvoli) o'qiladi; `elColor` (simvol rangi) va
 `elLineMark` (markirovka chizig'i) o'qilmaydi — bizning xaritada kromka o'z uslubida
