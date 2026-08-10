@@ -14,7 +14,7 @@ Admin panel (`/admin` route, guard: `requireAccess(isSuperuser)`) uchun foydalan
 
 **Maqsadi:** AddUser va EditUser uchun umumiy forma yadrosi — schema va maydonlar bir joyda (avval har dialogda ~320 qatordan takrorlangan edi).
 
-- Eksportlar: `buildUserFormSchema(requirePassword)` — zod: `phone` (`phoneSchema`), `name` (`optionalNameSchema`), `password` (Add'da `passwordSchema`, Edit'da `optionalPasswordSchema` — bo'sh qoldirilsa parol o'zgarmaydi), `confirm_password`, `role` (`z.enum(Object.keys(ROLE_LABELS))` — 13 rol yagona manbadan, generatsiya qilingan `UserRole` tipida), `machine_id` (ixtiyoriy), `is_superuser`, `is_active`; ikkita `.refine()`: stanokka bog'liq rolga stanok majburiy ("Terminal/TABLO uchun stanok tanlang") va parollar mosligi ("Parollar mos emas").
+- Eksportlar: `buildUserFormSchema(requirePassword)` — zod: `phone` (`phoneSchema`), `name` (`optionalNameSchema`), `password` (Add'da `passwordSchema`, Edit'da `optionalPasswordSchema` — bo'sh qoldirilsa parol o'zgarmaydi), `confirm_password`, `role` (`z.enum(Object.keys(ROLE_LABELS))` — 15 rol yagona manbadan, generatsiya qilingan `UserRole` tipida), `machine_id` (ixtiyoriy), `is_superuser`, `is_active`; ikkita `.refine()`: stanokka bog'liq rolga stanok majburiy ("Terminal/TABLO uchun stanok tanlang") va parollar mosligi ("Parollar mos emas").
 - `UserFormFields({ form, passwordRequired })` — 8 maydonli grid: rol `Select` `ROLE_LABELS` (`@/lib/mes`) dan to'ldiriladi; rol stanokka bog'liq bo'lsa shartli "Stanok" `Select` chiqadi (`getMachinesQueryOptions()` — `@/queries/mes`).
 - `isMachineBoundRole(role)` — `MACHINE_BOUND_ROLES` (`@/lib/mes`, terminal/tablo) asosidagi predikat; ikkala dialog submitda ham shundan foydalanadi.
 
@@ -346,6 +346,27 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 - SCX oqimi (`showScx`): `lib/scxDir.ts` bilan — File System Access API `showDirectoryPicker` BIR MARTA, tanlangan papka IndexedDB'da (`mebelix-terminal/kv/scx-dir`), keyingi yuklab olishlar so'roqsiz; papka ichida proyekt nomli subpapka (`project_name`, taqiqlangan belgilar `_` ga) ochilib fayllar shu yerga yoziladi (URL — `scxFileUrl(id)`). API bo'lmasa `<a download>` fallback. Har skandagi avto-SCX ham saqlangan papkaga tushadi. Yuklab olishda tugmada jonli progress ("Yuklanmoqda… 12/81"); papka tugmasi yozuvli ("Papka" — sensorli ekranda hover yo'q).
 - Jadval ish-navbat tartibida: qilinmaganlar tepada, tugaganlar (✓ yashil) pastda; oxirgi skan bo'lgan qator KEYINGI skangacha amber ajralib turadi va markazga avto-scroll bo'ladi (`useScanFlash` hooki — `done` o'zgargan qatorni topadi: lokal skan ham, stanokdan skan-forvard ham). Har SCX fayl chipi bitta nusxaga mos (fayl nomi = QR): QR'i `done_qrs` da bo'lsa chip yashil ✓ — operator qaysi nusxalar qolganini ko'radi.
 - **QR chekni chiqarish** (`usePrintLabel("prisadka")`): marshrutida ARRA bo'lmagan (`arra_route=false`) detal jarayonni shu postdan boshlaydi — cheki shu yerdan chiqariladi. ROVER rejimida (`showScx=false`) qator (nusxa) tanlanadi va chapdagi katta "Chop etish" `TBtn` (portal) bosiladi; PRISADKA rejimida chek chiqarish tugmasi instansiya chipining ichida (printer ikonkasi, faqat `!done && !label_printed && !arra_route` nusxalarda).
+
+### `frontend/src/components/Terminal/PostQueueView.tsx`
+
+**Maqsadi:** BOYOQ va STOLYARKA post sahifasi — NUSXA darajasidagi navbat (`readTerminalPostQueue`, `refetchInterval: 30_000`). Umumiy "Navbatdagi vazifalar" jadvali detal darajasida agregat berardi ("qoldiq 6/6") va navbatni hisobga olmasdi: operator hali arradan chiqmagan detalni ko'rib, skanerlab E004 olardi.
+
+- Uch guruh: **kelgan** (`ready && !done`) — asosiy ish ro'yxati; **bajarilgan** (`done`, yashil ✓); yetib KELMAGANLARI ro'yxatda umuman ko'rsatilmaydi, faqat "yana N detal sexda" satri (ularni skanerlab bo'lmaydi, izlash ham vaqt yo'qotish).
+- Sarlavhalar postga moslanadi (`LABELS`: BOYOQ → "Bo'yashga kelgan"/"Bo'yalgan", STOLYARKA → "Stolyarkaga kelgan"/"Bajarilgan").
+- Qatorda: QR (yirik), detal nomi, **material** (bo'yoqchi uchun bu RANG — amber), texnolog izohi, `Common/OperationChips` (stolyarkada olti xil amal, noto'g'ri petlya eshikni brak qiladi), yig'ma buyum biriktirilgan mayda detallari (`+ 01_007 ×2`), o'lcham va oxirgi bajarilgan bosqich.
+- Skan alohida yo'l talab qilmaydi — terminalning umumiy skan mutatsiyasidan o'tadi, qator `done` bo'lib pastga tushadi.
+
+### `frontend/src/components/Terminal/UpakovkaView.tsx`
+
+**Maqsadi:** QADOQLASH post sahifasi. Chapda ochiq qadoq (kod, detallar soni, `~kg` — taxminiy, bloklamaydi), o'ngda "Qadoqlanmagan" va "Yakunlangan". Oqim: "Qadoq yaratish" → detallarni birma-bir skanerlash → "Qadoqni yakunlash" (chek QR bilan chiqadi). Har qatorda o'chirish tugmasi — xato skan qaytariladi va UPAKOVKA skani ham bekor bo'ladi. `registerScan` prop orqali terminalga skan qabul qiluvchi beradi: detal qaysi QADOQqa tushishini faqat shu ekran biladi.
+
+### `frontend/src/components/Terminal/OmborView.tsx`
+
+**Maqsadi:** OMBOR post sahifasi, ikki tab (ikki xil ish bir ekranda aralashmasin).
+
+- **Qabul** — omborga yetib kelganlar (qadoq kodi bilan), skan `PK-...` bo'lsa qadoq ichidagi hammasini birdan qabul qiladi. Pastda "Sexda" ro'yxati: har detalga ishi TUGAGAN post yozilgan (`stage`) — omborchi buyumni aynan o'sha yerdan topadi.
+- **Topshirish** — qadoqlangan buyurtmada har qadoq alohida (to'liq qabul qilinmagani bloklangan), qadoqsizda bitta "Buyurtmani topshirish" tugmasi.
+- `registerScan` aktiv tabga qarab qabul yoki topshirishga yo'naltiradi.
 
 ### `frontend/src/components/Terminal/usePrintLabel.ts`
 

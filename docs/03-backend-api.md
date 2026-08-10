@@ -74,7 +74,7 @@ Muhim xavfsizlik detali: `resolve_user` da `user.token_version != token_data.tok
 | `StaffReadUser` | `require_roles(MANAGER, TEXNOLOG, DIRECTOR)` | ofis rollari uchun umumiy read-only ro'yxatlar |
 | `AdminUser` | `require_roles()` | hech kim — faqat admin/superuser |
 
-Terminal oqimida esa route fayllar o'zi lokal alias tuzadi: `TerminalUser = require_roles(UserRole.TERMINAL, *POST_ROLES)` (`terminal.py`, `scans.py`) — maxsus terminal akkauntlar va 7 ta operator roli (arrachi, kromkachi, ovalchi, prisadkachi, roverchi, stolyar, boyoqchi). Chek bekor qilish endpointi kengroq: `LabelCancelUser` = terminal/operator + manager/texnolog.
+Terminal oqimida esa route fayllar o'zi lokal alias tuzadi: `TerminalUser = require_roles(UserRole.TERMINAL, *POST_ROLES)` (`terminal.py`, `scans.py`) — maxsus terminal akkauntlar va 9 ta operator roli (arrachi, kromkachi, ovalchi, prisadkachi, roverchi, stolyar, boyoqchi, upakovkachi, omborchi). Chek bekor qilish endpointi kengroq: `LabelCancelUser` = terminal/operator + manager/texnolog.
 
 **Bog'lanishlar:** `backend/app/core/db.py` (`async_get_db`), `backend/app/core/security.py` (`verify_token`, `TokenType`, `ACCESS_COOKIE_NAME`), `backend/app/core/exceptions.py`, `backend/app/crud` (`crud_users`), `backend/app/models/user.py`, `backend/app/models/enums.py` (`UserRole`).
 
@@ -98,6 +98,8 @@ router.include_router(machines_router, dependencies=_protected)
 router.include_router(posts_router, dependencies=_protected)
 router.include_router(materials_router, dependencies=_protected)
 router.include_router(orders_router, dependencies=_protected)
+router.include_router(pachka_router, dependencies=_protected)   # qadoqlash
+router.include_router(ombor_router, dependencies=_protected)    # tayyor mahsulot ombori
 router.include_router(audit_router, dependencies=_protected)
 router.include_router(terminal_router, dependencies=_protected)
 router.include_router(scans_router, dependencies=_protected)
@@ -379,6 +381,7 @@ Yuklash cheklovlari (`orders.py` dagi konstantalar):
 | GET | `/api/v1/terminal/orders/{id}/cutmap` | terminal/operator | ARRA kesish xaritasi (TZ 7.1.7); ARRA bo'lmagan postda 403; katak holati serverda — terminal qayta yonganda saqlanib qoladi. `CutmapInstanceState.custom` — detal NOSTANDART (`Part.is_custom`): marshrutini texnolog qo'lda chizgan va u arradan boshlanmasligi mumkin, shuning uchun xaritada binafsha chiqadi (chek chiqarilgach yashil) |
 | GET | `/api/v1/terminal/orders/{id}/kromka` | terminal/operator | KROMKA/OVAL sahifasi (boshqa postda 403): shu post marshrutidagi qadamlar, har nusxada `done` (post skanlari) / `sides` (`per_instance` — post marshrutda birinchi kelganda qirralar soni, takrorida 1), `process_code` (3 — kromka, 4 — fasat kromka, 5 — oval), `arra_passed` (chek chiqarilgan yoki ARRA skan bor) |
 | GET | `/api/v1/terminal/orders/{id}/prisadka` | terminal/operator | CNC sahifasi — PRISADKA va ROVER (boshqa postda 403), javob `PrisadkaOrderState`: detallar + har detalning SCX fayllari (`PrisadkaFile {id, filename}`), `arra_route` (marshrutida yoqilgan ARRA bormi — yo'q bo'lsa QR chek shu sahifadan chiqariladi, roverdan boshlanadigan oqim), `done_qrs` (shu postda to'liq skan qilingan nusxalar QR'lari), `instances` (`PrisadkaInstance`: `instance_id`/`qr_text`/`label_printed`/`done`), `project_name` (frontend shu nom bilan papka ochadi) |
+| GET | `/api/v1/terminal/orders/{id}/queue` | terminal/operator | POST NAVBATI nusxa darajasida (BOYOQ, STOLYARKA) — `PostQueueState`. Postga bog'lanmagan: kontekstdagi postni oladi. Har nusxada `ready` (oldingi qadamlar shu NUSXADA tugadimi — `pachka.instance_stages`), `stage` (ishi TUGAGAN post nomi — detal jismonan qayerda turibdi), `done` (shu qadam yopilgan), `material` (bo'yoqchi uchun RANG), `note` (texnolog izohi), `process_code` (stolyarkada olti xil amal) va `assembly` (yig'ma buyumga biriktirilgan mayda detallar). Frontend `ready=false` qatorlarni KO'RSATMAYDI — ularni skanerlab bo'lmaydi (E004) |
 | GET | `/api/v1/terminal/qr/{qr_text}/order` | terminal/operator | QR qaysi PRODUCTION buyurtmaga tegishligini topadi — `QrOrderRef` (`order_id`, `order_number`); picker'da skan qilinsa terminal o'sha proyektni o'zi ochadi |
 | POST | `/api/v1/terminal/labels/{instance_id}` | terminal/operator | YORLIQ CHOP ETISH (TZ 7.1.4): ARQ `print_label` navbatiga qo'yiladi (bridge-agent/GoDEX); `label_printed_at` belgilanadi; WS `label.printed`. ARRA UI'da chiqarilgan katak YASHIL = "kesildi"; qayta chop etish frontendda bloklanadi (avval bekor qilish kerak). **KESISH POSTLARIDA CHOP ETISH = SKAN**: ARRA'da doim, ROVER'da esa detalning marshrutida ARRA bo'lmasa, shu so'rovda skan ham avto-yoziladi (`record_scan` + `finalize_scan`, `client_event_id="cutprint-<id>"`, manba " (chek chiqarish bilan)"). Busiz `PartRoute.total_done` o'smasdi: buyurtma COMPLETED bo'lmasdi va qat'iy tartibda keyingi POSTLARNING HAMMASI E004 bilan rad etilardi (arrachi xarita ochiqda alohida skan qilmaydi — skan maydoni yashirin). Skan rad etilsa (`ScanRejected`) jim rollback, chek baribir chiqadi |
 | DELETE | `/api/v1/terminal/labels/{instance_id}` | terminal/operator + manager/texnolog | Chekni bekor qilish: `label_printed_at = None`, WS `label.cancelled`. Chop etish YOZGAN skan ham bekor qilinadi (`client_event_id` `cutprint-`/`rvprint-` bo'yicha tanlanadi) va `total_done` qaytariladi — aks holda katak yashil bo'lib qolar, qadam hisobi esa oshgan holida qolardi; operator QO'LDA qilgan skanga tegilmaydi. Terminalda long press (~600ms) + tasdiq dialogi; admin webdagi xaritada detal kartochkasidagi tugma (proyekt ARRA ro'yxatidan tushib bo'lgach arrachi xaritani ocholmaydi — oxirgi xato chekni texnolog tuzatadi). UI sharti faqat `label_printed_at` — chop etish skan yozgani uchun `done` doim true bo'ladi |
@@ -405,6 +408,41 @@ GoDEX G500-U faqat USB bilan ulanadi — printerda tarmoq porti yo'q, shuning uc
 Agent tomoni (`bridge-agent/agent.py`) — bitta chiqish yo'li: `send_to_printer(png_b64)` → `_print_png_gdi` — PNG Windows drayveri orqali chiziladi (win32ui + PIL, DEVMODE 80×60 mm ga majburlanadi). Printer avtomatik topiladi: `_detect_printer()` nomida "godex" bor lokal Windows printerini qidiradi, `PRINTER_NAME` env faqat qo'lda override uchun. Agent env'lari: `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME` (ixtiyoriy), `QUEUE_FILE`, `SCAN_FORWARD` (default `1`; `0` — skan-forvard tinglovchisini o'chiradi). Agent faqat printer ulangan kompyuterga o'rnatiladi — menejer, texnolog va boshqa post terminallariga hech narsa kerak emas.
 
 **Bog'lanishlar:** `backend/app/schemas/terminal.py`, `backend/app/services/scanning.py` (`resolve_terminal`, `active_session`, `latest_active_session`, `record_scan`, `finalize_scan`, `ScanRejected`), `backend/app/services/labels.py` (`LabelData`, `load_label_data`, `_n`, `render_label_png` — 80×60 mm, 203 dpi, 1-bit), `backend/app/tasks` (`print_label`, `PRINT_QUEUE_KEY`), `backend/app/core/ws.py`, `bridge-agent/agent.py`.
+
+---
+
+## `backend/app/api/routes/pachka.py` — Qadoqlash (Upakovka)
+
+**Maqsadi:** Qadoq yaratish, detallarni qadoqqa skanerlash, yakunlash. Kontekst `PackCtx`
+(`_pack_ctx`) — faqat UPAKOVKA postida ochiladi, boshqa postda 403. Qadoqni ALGORITM emas,
+qadoqlovchi yig'adi: tizim taxminiy og'irlikni (`DENSITY = 700.0` kg/m³ × hajm) faqat KO'RSATADI.
+
+| Metod | Path | Izoh |
+|---|---|---|
+| GET | `/api/v1/pachka/orders/{id}` | Qadoqlash holati: qadoqlar (tarkib + og'irlik) va hali qadoqlanmagan nusxalar (`ready` — `instance_stages` bo'yicha, tayyorlari tepada) |
+| POST | `/api/v1/pachka/orders/{id}` | Yangi qadoq. Kod `PK-{buyurtma}-{NN}` — O'CHIRILGANLAR ham sanaladi, aks holda eski chek bilan yangi qadoq bir xil QR berardi |
+| POST | `/api/v1/pachka/{id}/scan` | Detalni qadoqqa. Bu AYNI PAYTDA marshrutning UPAKOVKA qadami (`record_scan_at`, `client_event_id="pack-{pachka}-{instance}"`) — qat'iy tartib shu yerda ham ishlaydi, ya'ni yopiq qadoq ichida chala detal bo'lishi mumkin emas. Boshqa buyurtma detali / allaqachon qadoqlangan nusxa 422 |
+| DELETE | `/api/v1/pachka/{id}/items/{instance_id}` | Xato skanni qaytarish: nusxa qadoqdan chiqadi VA UPAKOVKA skani bekor bo'ladi (`total_done--`) — aks holda detal boshqa qadoqqa tushib ikki marta sanalardi |
+| POST | `/api/v1/pachka/{id}/close` | Yakunlash: status CLOSED + arq `print_pachka_label`. Bo'sh qadoq yakunlanmaydi |
+
+`instance_stages(db, order, post)` shu faylda — qadoqlash, ombor va post navbati ekranlari
+uchun umumiy (09-mes-domain.md §3.2).
+
+---
+
+## `backend/app/api/routes/ombor.py` — Tayyor mahsulot ombori
+
+**Maqsadi:** Marshrutning ENG OXIRGI qadami — QABUL va TOPSHIRISH. Kontekst `WhCtx` (`_wh_ctx`),
+faqat OMBOR postida.
+
+| Metod | Path | Izoh |
+|---|---|---|
+| GET | `/api/v1/ombor/orders/{id}` | Qadoqlar (`accepted_count`/`item_count`, `shipped_at`), qabul qilinmagan nusxalar (`ready` + `stage` — ishi TUGAGAN post, omborchi detalni o'sha yerdan topadi), `packaging`, `total`/`accepted` |
+| POST | `/api/v1/ombor/orders/{id}/accept` | QABUL. QR `PK-` bilan boshlansa — qadoq: ichidagi HAMMA nusxa bitta skanda qabul qilinadi (omborchi qadoqni ochmaydi); aks holda bitta detal. Ochiq (yakunlanmagan) qadoq qabul qilinmaydi. `client_event_id="wh-{order}-{qr}"` — idempotent |
+| POST | `/api/v1/ombor/orders/{id}/ship` | Qadoqni mijozga topshirish (QR skani yoki ro'yxatdagi tugma — ikkisi ham kod yuboradi). To'liq qabul qilinmagan qadoq topshirilmaydi: aks holda detal omborga kirmasdan chiqib ketardi |
+| POST | `/api/v1/ombor/orders/{id}/deliver` | Butun buyurtmani topshirish — qadoqsiz buyurtma uchun. Qabul qilinmagan detal yoki topshirilmagan qadoq bo'lsa 403 |
+
+Hammasi qabul qilinib topshirilgach buyurtma `DELIVERED` bo'ladi (`_deliver_if_done`).
 
 ---
 

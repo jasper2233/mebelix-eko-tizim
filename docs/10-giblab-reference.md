@@ -312,8 +312,18 @@ kod o'zgarsa ikkalasi birga yangilanadi. Ziddiyat chiqsa — bajariladigan manba
 | 12 | G petlya chapdan | STOLYARKA |
 | 13 | V petlya o'ngdan | STOLYARKA |
 | 14 | V petlya chapdan | STOLYARKA |
+| 15 | Qadoqlash | UPAKOVKA |
+| 16 | Omborga qabul | OMBOR |
 
 Paz uchun kod yo'q — paz alohida post emas, u frezer stanogida (ROVER) kesiladi.
+
+**15 va 16 sexning varag'ida yo'q** — ular jarayon emas, marshrutning oxirgi bosqichlari va
+texnolog ularni TANLAMAYDI: qadoqlashni anketadagi "Upakovka qilish" bayrog'i qo'shadi, ombor
+esa har marshrutga majburiy oxirgi qadam bo'lib tushadi (`ingest.py`, `orders._set_custom_route`).
+Kod baribir kerak, chunki har marshrut qadami `process_code` saqlaydi. Frontend tanlagichi
+(`Orders/CustomRoutes.tsx`) bu ikkisini ro'yxatdan chiqarib tashlaydi — aks holda ikkita manba
+paydo bo'lardi. Saqlangan marshrutga ham kirmaydi (`TAIL_CODES`): qayta yuklashda dum o'zi
+qo'shiladi, saqlansa har yuklashda ikkilanib borardi.
 
 **Kod postdan ko'ra aniqroq.** Bitta post bir necha kodga to'g'ri keladi (STOLYARKA da
 oltita amal, KROMKA da ikkita), shuning uchun marshrut qadami postni ham, kodni ham saqlaydi
@@ -590,7 +600,9 @@ MebeliX o'z yorlig'ini chiqaradi (TZ 5.2.8, `services/labels.py`): 80×60 mm, 20
 termoprinter uchun. Ichida QR (`{productCode}_{partCode}` — yagona nusxa suffikssiz, takrorlanganda `_{n}`), matn qatorida ham shu nusxa ID (QR va SCX nomi bilan bir xil satr; matn qatori 20 belgigacha qisqartiriladi, QR to'liq — [11-detal-id-nomlash.md](11-detal-id-nomlash.md)), detal nomi, buyurtma,
 material, o'lcham, qalinlik, kromka belgilari, teshik eskizi, burg'u ikonkasi va marshrut
 qatori (`Marshrut: 7/11/8` — jarayon kodlari tartib bilan, §2.3; nomga qo'shilmaydi, chunki
-nom 24 belgida kesiladi va marshrut jimgina yo'qolardi).
+nom 24 belgida kesiladi va marshrut jimgina yo'qolardi). Marshrut satri **faqat nostandart
+detalda** chiqadi (`Part.is_custom`): standart detalning yo'li oldindan ma'lum va chekda joyni
+behuda band qilardi.
 
 Sabab: GibLab yorlig'i skan qilinadigan QR bermaydi va MebeliX'ning bosqichma-bosqich
 kuzatuvi aynan shu QR ga tayanadi.

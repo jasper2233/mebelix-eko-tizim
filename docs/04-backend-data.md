@@ -6,7 +6,7 @@ Bu hujjat MebeliX MES backend'ining ma'lumotlar qatlamini qamrab oladi: SQLAlche
 API routes  →  schemas (validation)  →  crud (biznes DB-operatsiyalar)  →  models (ORM)  →  PostgreSQL
 ```
 
-Domen modeli to'liq MES sohasini qamrab oladi: **17 jadval** — `user` + 16 MES jadvali (`organization`, `client`, `employee`, `material`, `post`, `machine`, `audit_log`, `order`, `work_session`, `product`, `part`, `order_file`, `part_instance`, `part_route`, `scan`, `bridge_agent`). Shablondan qolgan demo `Item` moduli to'liq olib tashlangan.
+Domen modeli to'liq MES sohasini qamrab oladi: **19 jadval** — `user` + 18 MES jadvali (`organization`, `client`, `employee`, `material`, `post`, `machine`, `audit_log`, `order`, `work_session`, `product`, `part`, `order_file`, `part_instance`, `part_route`, `scan`, `bridge_agent`, `pachka`, `pachka_item`). Shablondan qolgan demo `Item` moduli to'liq olib tashlangan.
 
 ---
 
@@ -32,7 +32,7 @@ class BaseModel(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
 
 ### 1.2 `backend/app/models/enums.py` — Domen enumlari
 
-`db_enum(enum_cls, length=30)` helper — **VARCHAR-backed** SQLAlchemy `Enum` (`native_enum=False`): yangi a'zo qo'shilganda PG native enum ALTER'i kerak emas (masalan, `UserRole` ga 7 operator roli migratsiyasiz qo'shilgan). Faylda **12 ta StrEnum** (`ClientType` va `ProjectGeneration` o'lik ustunlar bilan birga olib tashlangan — `c7f2d84a91b3`):
+`db_enum(enum_cls, length=30)` helper — **VARCHAR-backed** SQLAlchemy `Enum` (`native_enum=False`): yangi a'zo qo'shilganda PG native enum ALTER'i kerak emas (masalan, `UserRole` ga 9 operator roli migratsiyasiz qo'shilgan). Faylda **12 ta StrEnum** (`ClientType` va `ProjectGeneration` o'lik ustunlar bilan birga olib tashlangan — `c7f2d84a91b3`):
 
 | Enum | A'zolar |
 |---|---|
@@ -49,7 +49,7 @@ class BaseModel(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
 | `FileKind` | `project`, `scx`, `label_pdf`, `document` |
 | `SessionStatus` | `active`, `ended` |
 
-`POST_ROLES: dict[UserRole, PostCode]` — 7 operator rolini o'z postiga bog'laydi (`ARRACHI→ARRA`, `KROMKACHI→KROMKA`, `OVALCHI→OVAL`, `PRISADKACHI→PRISADKA`, `ROVERCHI→ROVER`, `STOLYAR→STOLYARKA`, `BOYOQCHI→BOYOQ`). Operator rollari o'z akkaunti bilan kiradi va o'z postining terminalini ko'radi — stanok binding'i va badge talab qilinmaydi (`TERMINAL` qurilma akkauntlaridan farqli).
+`POST_ROLES: dict[UserRole, PostCode]` — 9 operator rolini o'z postiga bog'laydi (`ARRACHI→ARRA`, `KROMKACHI→KROMKA`, `OVALCHI→OVAL`, `PRISADKACHI→PRISADKA`, `ROVERCHI→ROVER`, `STOLYAR→STOLYARKA`, `BOYOQCHI→BOYOQ`, `UPAKOVKACHI→UPAKOVKA`, `OMBORCHI→OMBOR`). Operator rollari o'z akkaunti bilan kiradi va o'z postining terminalini ko'radi — stanok binding'i va badge talab qilinmaydi (`TERMINAL` qurilma akkauntlaridan farqli).
 
 ### 1.3 `backend/app/models/user.py` — User modeli
 
@@ -108,10 +108,17 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
 |---|---|---|
 | `Order` | `number(20)` (`B-2026-001`, avto), `client_id` FK (index), `status` (`OrderStatus`, default `draft`, index), `priority` (`OrderPriority`), `deadline`, `amount Numeric(14,2)`, `advance_payment Numeric(14,2)` (boshlang'ich to'lov — manager buyurtma ochishda kiritadi), `notes`, `created_by_id` FK user; `.project` metadata: `project_uuid/name/loaded_at` (`project_generation` — `c7f2d84a91b3` da drop); **JSONB**: `cutmap` (kesish xaritasi vizual modeli, TZ 5.7.5), `material_usage` (default `[]` — `[{name, code, kind, count, unit}]`, TZ 11.3), `machine_assignments` (default `{}` — `{"ROVER": 5}`, TZ 6.4.1), `survey` (mijoz anketasi + o'lchov varag'i, NULL — sxema `schemas/orders.OrderSurvey`, 2.4.1-bo'lim); lifecycle: `production_started_at`, `completed_at`, `delivered_at`, `cancelled_at`, `cancel_reason`, `cancelled_by_id` | PARTIAL UNIQUE `ix_order_number` |
 | `Product` | `order_id` FK (index), `code(50)`, `name(255)`, `count` (`import_source` — `c7f2d84a91b3` da drop) | `<good typeId="product">` (TZ 5.2.2) |
-| `Part` | `order_id`/`product_id` FK (index), `code(50)` (masalan `01_002`), `name`, `count`, o'lchamlar `length/width/thickness` (`saw_length/saw_width` — `c7f2d84a91b3` da drop), `txt` (tekstura qulfi), `material_name(150)`, `label_num`; **JSONB**: `edges` (tomon bo'yicha kromka: `{"l": {"mat": ..., "symbol": "A"}, ...}`), `xnc_summary` (`{"bores", "edge_bores", "grooves", "mills", "sides"}`); `note` (texnolog izohi), `is_custom` (nostandart bayrog'i, index) | Barqaror kalit: `productCode_partCode` (TZ 5.8). `is_custom=True` — detal fayldan avtomatik marshrut OLMAYDI: texnolog uni "Nostandart detallar" tabida qo'lda chizadi (`e7c4b208af13`) |
+| `Part` | `order_id`/`product_id` FK (index), `code(50)` (masalan `01_002`), `name`, `count`, o'lchamlar `length/width/thickness` (`saw_length/saw_width` — `c7f2d84a91b3` da drop), `txt` (tekstura qulfi), `material_name(150)`, `label_num`; **JSONB**: `edges` (tomon bo'yicha kromka: `{"l": {"mat": ..., "symbol": "A"}, ...}`), `xnc_summary` (`{"bores", "edge_bores", "grooves", "mills", "sides"}`); `note` (texnolog izohi), `is_custom` (nostandart bayrog'i, index), `assembly_parent_id` FK NULL → `part.id` (index) | Barqaror kalit: `productCode_partCode` (TZ 5.8). `is_custom=True` — detal fayldan avtomatik marshrut OLMAYDI: texnolog uni "Nostandart detallar" tabida qo'lda chizadi (`e7c4b208af13`). `assembly_parent_id` — YIG'MA BUYUM (`c9d4e2f81a70`): mayda detal stolyarkada asosiy detalga yopishtiriladi, uning marshruti birikish qadamida TUGAYDI (qadoqlash/ombor dumi qo'shilmaydi) va asosiy detal skani uni ham yopadi. Bir pog'ona — biriktirilgan detalning o'zi asosiy bo'la olmaydi |
 | `PartInstance` | `order_id`/`part_id` FK (index), `instance_no` (1..count), `qr_text(120)`, `pattern_no`/`cell_index` (kesish xaritasi katagi, TZ 7.1.4), `label_printed_at` | **PARTIAL UNIQUE `ix_part_instance_order_qr` (`order_id`, `qr_text`) `WHERE NOT is_deleted`** — QR = `productCode_partCode` (yagona nusxa, suffikssiz) yoki `productCode_partCode_n` (takrorlanganda) |
 | `PartRoute` | Marshrutning BITTA qadami: `order_id`/`part_id`/`post_id` FK, `seq` (marshrutdagi o'rni, 1 dan), `process_code` (1..14 — aynan qaysi amal), `machine_id` FK NULL, `source` (`RouteSource`), `is_enabled` (texnolog o'chira oladi), `per_instance` (qadamdagi skan soni: KROMKA/OVAL birinchi kelganda — tomonlar soni, takror kelganda 1), `total_required` = count × per_instance, `total_done` | **PARTIAL UNIQUE `ix_part_route_part_seq` (`part_id`, `seq`) `WHERE NOT is_deleted`**; `ix_part_route_part_post` (`part_id`, `post_id`) — endi YAGONA EMAS, faqat qidiruv uchun; `ix_part_route_order_post`. Denormalizatsiyalangan hisoblagichlar — tez QOLDIQ (TZ 5.4) |
 | `OrderFile` | `order_id` FK (index), `part_id` FK NULL, `kind` (`FileKind`), `path(500)`, `filename(255)`, `size`, `meta` **JSONB** (default `{}`) | Yuklangan `.project`, part-boshiga `.scx`, label PDF, hujjatlar. Anketa xona rasmlari ham shu yerda: `kind=DOCUMENT` + `meta={"room_id": ..., "content_type": ...}` — alohida jadval/migratsiyasiz (1.4.1-bo'lim) |
+
+**Qadoq modellari** (`pachka.py`, migratsiya `7e2e0ae9f7f3`):
+
+| Model / jadval | Muhim ustunlar | Unikal/muhim indekslar |
+|---|---|---|
+| `Pachka` | `order_id` FK (index), `code(40)` (`PK-B-2026-014-03` — chekdagi QR matni), `status` (`PachkaStatus`: open → closed → shipped, index), `closed_at`, `shipped_at` (ombordan chiqarilgan payt), `created_by_id` FK user | PARTIAL UNIQUE `ix_pachka_code`; `ix_pachka_order_status`. Kod tartib raqami O'CHIRILGANLARNI ham sanaydi — qayta ishlatilsa eski chek bilan yangi qadoq bir xil QR berardi |
+| `PachkaItem` | `pachka_id`/`instance_id` FK | **PARTIAL UNIQUE `ix_pachka_item_instance` `WHERE NOT is_deleted`** — bitta nusxa faqat bitta qadoqda; ikki qadoqqa tushsa ombor hisobi ikki marta chiqarilardi. Ochiq qadoqdan chiqarish — yumshoq o'chirish |
 
 **Marshrut = tartibli qadamlar ketma-ketligi** (`d5a1c93b70e2`) — ilgari `part_route` tartibsiz post to'plami edi:
 
@@ -138,7 +145,7 @@ Xona surati uchun yangi jadval qo'shilmagan: `OrderFile` qatori `kind=FileKind.D
 | Model / jadval | Muhim ustunlar | Unikal/muhim indekslar |
 |---|---|---|
 | `WorkSession` | `employee_id` FK (index), `user_id` FK NULL (sessiyani ochgan akkaunt — TERMINAL qurilmasi yoki operator), `machine_id` FK NULL, `post_id` FK, `status` (`SessionStatus`, index), `ended_at` | TERMINAL qurilma akkauntida smena badge skani bilan ochiladi (TZ 8.2); operator rolida (`POST_ROLES`) login-ning o'zi smena — `services/scanning.py: active_session` sessiyani avtomatik ochadi/egallaydi va `user_id` ga operator user'ini yozadi. `SESSION_MAX_HOURS` (12 soat) dan oshgan smena avtomatik ENDED bo'ladi. `created_at` = boshlanish vaqti |
-| `Scan` | `order_id`/`part_id`/`instance_id`/`route_id`/`post_id` FK, `machine_id` FK NULL, `employee_id` FK (index), `session_id` FK (index), `client_event_id(64)`, `is_cancelled`, `cancelled_at` | UNIQUE `ix_scan_client_event_id` (idempotentlik — network replay rad etiladi, TZ 8.4.4); `ix_scan_order_post`; PARTIAL `ix_scan_instance_post` (`WHERE NOT is_cancelled`). Bekor qilingan skan auditda qoladi, hisoblagich qayta oshiriladi |
+| `Scan` | `order_id`/`part_id`/`instance_id`/`route_id`/`post_id` FK, `machine_id` FK NULL, `employee_id` FK (index), `session_id` FK (index), `client_event_id(64)`, `is_cancelled`, `cancelled_at`, `parent_scan_id` FK NULL → `scan.id` (index) | `parent_scan_id` — YIG'MA BUYUM: asosiy detal skani biriktirilgan mayda detallarga ham skan yozadi, hosila qatorlar shu ustun orqali bog'lanadi va bekor qilinganda birga bekor bo'ladi (`c9d4e2f81a70`). UNIQUE `ix_scan_client_event_id` (idempotentlik — network replay rad etiladi, TZ 8.4.4); `ix_scan_order_post`; PARTIAL `ix_scan_instance_post` (`WHERE NOT is_cancelled`). Bekor qilingan skan auditda qoladi, hisoblagich qayta oshiriladi |
 
 #### 1.4.2 `bridge_agent` — har printerga o'z tokeni (pairing)
 
@@ -152,7 +159,7 @@ Ilgari barcha printerlar server `.env` idagi **bitta** `BRIDGE_TOKEN` bilan ishl
 
 ### 1.5 `backend/app/models/__init__.py`
 
-`__all__` da 19 nom: 17 model klassi — `AuditLog`, `BridgeAgent`, `Client`, `Employee`, `Machine`, `Material`, `Order`, `OrderFile`, `Organization`, `Part`, `PartInstance`, `PartRoute`, `Post`, `Product`, `Scan`, `User`, `WorkSession` — hamda `ORDER_FAT_COLUMNS`/`PART_FAT_COLUMNS` defer-tuple'lari (1.4-bo'lim). Alembic `env.py` ham endi shu faylga tayanadi: statik `import app.models` metadata'ni to'ldiradi (avvalgi `pkgutil.walk_packages` dinamik importi olib tashlangan) — yangi model fayli qo'shilsa uni `__init__.py` ga import qilish shart.
+`__all__` da 21 nom: 19 model klassi — `AuditLog`, `BridgeAgent`, `Client`, `Employee`, `Machine`, `Material`, `Order`, `OrderFile`, `Organization`, `Pachka`, `PachkaItem`, `Part`, `PartInstance`, `PartRoute`, `Post`, `Product`, `Scan`, `User`, `WorkSession` — hamda `ORDER_FAT_COLUMNS`/`PART_FAT_COLUMNS` defer-tuple'lari (1.4-bo'lim). Alembic `env.py` ham endi shu faylga tayanadi: statik `import app.models` metadata'ni to'ldiradi (avvalgi `pkgutil.walk_packages` dinamik importi olib tashlangan) — yangi model fayli qo'shilsa uni `__init__.py` ga import qilish shart.
 
 ---
 
@@ -384,7 +391,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 
 ### 4.4 Versiyalar zanjiri — `backend/app/migrations/versions/`
 
-17 ta migratsiya, head: `e7c4b208af13`.
+21 ta migratsiya, head: `c9d4e2f81a70`.
 
 | # | Revision | Fayl | Nima qiladi |
 |---|---|---|---|
@@ -405,10 +412,14 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 | 15 | `c7f2d84a91b3` | `c7f2d84a91b3_drop_dead_columns.py` | **19 o'lik (faqat yoziladigan, hech qayerda o'qilmaydigan) ustun DROP** (2026-08-05 to'liq audit): `part.saw_length/saw_width`, `product.import_source`, `order.project_generation`, `organization` profil maydonlari (6 ta), `machine.mac_address/icon_url/serial_number/installed_date`, `employee.passport_id/photo_url/hired_date`, `client.client_type/inn`. `client_type`/`project_generation` VARCHAR + CHECK bo'lgani uchun constraint ustun bilan birga o'chadi; mos Pydantic fieldlar va `ClientType`/`ProjectGeneration` enumlari ham olib tashlangan. Downgrade ustunlarni 1393a241b793 dagi tiplar bilan qaytaradi (NOT NULL'larga server_default qo'shib) |
 | 16 | `d5a1c93b70e2` | `d5a1c93b70e2_part_route_seq.py` | **Marshrut qadamlari**: `part_route.seq` va `part_route.process_code` NOT NULL (server_default vaqtincha, backfill'dan keyin olib tashlanadi). Backfill: `seq` — har detal ichida `post.order_index` bo'yicha `row_number()`, `process_code` — post uchun odatdagi kod (`giblab/models.py: DEFAULT_PROCESS_CODE`). Indekslar: yagona `ix_part_route_part_post` DROP → yangi PARTIAL UNIQUE `ix_part_route_part_seq` (`part_id`, `seq`) + yagona **emas** `ix_part_route_part_post` qayta yaratiladi; `ix_scan_instance_route` qo'shiladi (skan hisobi endi post emas, qadam bo'yicha — `scanning._scans_done`) |
 | 17 | `e7c4b208af13` | `e7c4b208af13_part_is_custom.py` | `part.is_custom` NOT NULL (server_default `false`, keyin olib tashlanadi) + `ix_part_is_custom`. Nostandart detal fayldan avtomatik marshrut olmaydi — texnolog qo'lda chizadi |
+| 18 | `f1b6d0c73a25` | `f1b6d0c73a25_upakovka_post.py` | **QADOQLASH posti** (`UPAKOVKA`, `order_index` 9, unit `m2` — ish haqi kvadratura bo'yicha). Sxema o'zgarmaydi (`post.code` VARCHAR), faqat qator qo'shiladi. Marshrutga anketadagi "Upakovka qilish" bayrog'i qo'shadi |
+| 19 | `7e2e0ae9f7f3` | `7e2e0ae9f7f3_pachka.py` | **`pachka` va `pachka_item`** jadvallari: qadoq kodi (PARTIAL UNIQUE `ix_pachka_code`), holat, yopilgan/jo'natilgan vaqt; tarkib — bitta nusxa faqat bitta qadoqda (PARTIAL UNIQUE `ix_pachka_item_instance`) |
+| 20 | `a3f8d61c9b04` | `a3f8d61c9b04_ombor_post.py` | **OMBOR posti** (`order_index` 10, unit `piece`) — marshrutning ENG OXIRGI qadami, har detalda. Qadoqsiz buyurtmada omborchi har detalni skanerlab qabul qiladi, qadoqlanganda qadoq QR'i ichidagi hammasini birdan yopadi |
+| 21 | `c9d4e2f81a70` | `c9d4e2f81a70_assembly_parent.py` | **Yig'ma buyum**: `part.assembly_parent_id` FK → `part.id` (+ `ix_part_assembly_parent_id`) va `scan.parent_scan_id` FK → `scan.id` (+ `ix_scan_parent_scan_id`). Mayda detal stolyarkada asosiy detalga yopishtiriladi; asosiy detal skani hosila skanlarni yozadi va bekor qilinganda birga qaytaradi (09-mes-domain.md §3.1) |
 
 Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kind=DOCUMENT` + `meta` JSONB bilan ishlatiladi (1.4.1-bo'lim).
 
-Eslatma: `1393a241b793` dagi `user.role` enum'i 6 qiymat bilan yaratilgan; keyinchalik 7 operator roli faqat Python enum'ga qo'shildi — ustun VARCHAR bo'lgani uchun (`db_enum`, `native_enum=False`) DB migratsiyasi kerak bo'lmadi.
+Eslatma: `1393a241b793` dagi `user.role` enum'i 6 qiymat bilan yaratilgan; keyinchalik 9 operator roli faqat Python enum'ga qo'shildi — ustun VARCHAR bo'lgani uchun (`db_enum`, `native_enum=False`) DB migratsiyasi kerak bo'lmadi.
 
 ---
 
