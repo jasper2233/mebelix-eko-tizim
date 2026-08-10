@@ -18,12 +18,12 @@ const PART_SELECTED = "#2596be"
 // oilada — xarita ajralib qolmasin. List kartasi endi yengil tint
 // (green-50 fon, green-700 matn): to'ldirilgan katak SVG'da undan to'q
 const PART_DONE = "#22c55e"
-// Nostandart detal — marshrutini texnolog qo'lda chizgan. PUSHTI: sariq
+// Nostandart detal — marshrutini texnolog qo'lda chizgan. OCH QIZIL: sariq
 // (odatdagi), yashil (kesilgan) va ko'k (tanlangan) dan bir qarashda ajralib
-// turadi. Chegara ham pushti bo'ladi — tanlanganda yoki kesilganda fon rangi
-// almashadi, belgi esa yo'qolmasligi kerak.
-const PART_CUSTOM = "#e8639f"
-const PART_CUSTOM_EDGE = "#b0186a"
+// turadi. Chegara to'q qizil — tanlanganda yoki kesilganda fon rangi almashadi,
+// belgi esa yo'qolmasligi kerak.
+const PART_CUSTOM = "#f0736e"
+const PART_CUSTOM_EDGE = "#c62828"
 
 // --- GibSaw render qoidalari (GibLabViewer'dan portlangan, foto-tekshirilgan) ---
 
