@@ -400,6 +400,46 @@ export type Message = {
     message: string;
 };
 
+/**
+ * OMBOR post sahifasi: qabul (skan) va topshirish tablari uchun bitta holat.
+ */
+export type OmborOrderState = {
+    order_id: number;
+    order_number: string;
+    project_name: (string | null);
+    order_status: OrderStatus;
+    packaging: boolean;
+    total: number;
+    accepted: number;
+    pachkas?: Array<OmborPachkaRow>;
+    pending?: Array<OmborPending>;
+};
+
+/**
+ * Ombordagi qadoq: qabul qilingani va topshirilgani shu qatordan ko'rinadi.
+ */
+export type OmborPachkaRow = {
+    id: number;
+    code: string;
+    status: PachkaStatus;
+    item_count: number;
+    accepted_count: number;
+    weight_kg: number;
+    shipped_at: (string | null);
+};
+
+/**
+ * Omborga hali qabul qilinmagan nusxa.
+ */
+export type OmborPending = {
+    instance_id: number;
+    qr_text: string;
+    part_code: string;
+    part_name: string;
+    pachka_code: (string | null);
+    ready: boolean;
+};
+
 export type OrderCancel = {
     reason: string;
 };
@@ -1198,6 +1238,32 @@ export type DeleteMaterialData = {
 };
 
 export type DeleteMaterialResponse = (Message);
+
+export type ReadOmborOrderData = {
+    orderId: number;
+};
+
+export type ReadOmborOrderResponse = (OmborOrderState);
+
+export type AcceptIntoOmborData = {
+    orderId: number;
+    requestBody: PachkaScan;
+};
+
+export type AcceptIntoOmborResponse = (OmborOrderState);
+
+export type ShipPachkaData = {
+    orderId: number;
+    requestBody: PachkaScan;
+};
+
+export type ShipPachkaResponse = (OmborOrderState);
+
+export type DeliverOmborOrderData = {
+    orderId: number;
+};
+
+export type DeliverOmborOrderResponse = (Message);
 
 export type CreateOrderData = {
     requestBody: OrderCreate;

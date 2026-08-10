@@ -26,6 +26,7 @@ import {
 } from "@/components/Terminal/audio"
 import { CutmapView, TBtn } from "@/components/Terminal/CutmapView"
 import { KromkaView } from "@/components/Terminal/KromkaView"
+import { OmborView } from "@/components/Terminal/OmborView"
 import { PrisadkaView } from "@/components/Terminal/PrisadkaView"
 import { UpakovkaView } from "@/components/Terminal/UpakovkaView"
 import { Button } from "@/components/ui/button"
@@ -82,6 +83,7 @@ const OWN_VIEW_POSTS = [
   "KROMKA",
   "OVAL",
   "UPAKOVKA",
+  "OMBOR",
 ]
 
 type LastScan =
@@ -149,9 +151,10 @@ function TerminalPage() {
   // KROMKA: yozishdan oldin lokal tekshiruv (arradan chiqqanmi, tugamaganmi) —
   // null = yozish mumkin, "NOTFOUND" = bu proyektda yo'q, boshqa = xato matni
   const kromkaScanRef = useRef<((qr: string) => string | null) | null>(null)
-  // Qadoqlash: skanni UpakovkaView o'zi yozadi (detal ochiq QADOQqa tushadi),
-  // shuning uchun terminalning umumiy skan mutatsiyasi chetlab o'tiladi.
-  const packScanRef = useRef<((qr: string) => void) | null>(null)
+  // Qadoqlash/ombor: skanni ekranning o'zi yozadi — detal qaysi QADOQqa
+  // tushishini yoki qabulmi/topshirishmi ekanini faqat o'sha ekran biladi.
+  // Qadoq QR'i (`PK-...`) umumiy yo'ldan o'tsa "QR noto'g'ri" bo'lib rad etilardi.
+  const viewScanRef = useRef<((qr: string) => void) | null>(null)
 
   const { online } = useMesWs(
     useCallback(
@@ -364,6 +367,15 @@ function TerminalPage() {
       })
       return
     }
+    // O'z skan yo'li bor ekran ochiq (qadoqlash, ombor) — skan o'shanga ketadi
+    if (viewScanRef.current) {
+      const vNow = Date.now()
+      const vLast = cooldownRef.current.get(value)
+      if (vLast && vNow - vLast < 2000) return
+      cooldownRef.current.set(value, vNow)
+      viewScanRef.current(value)
+      return
+    }
     // KROMKA/OVAL: har skan darhol yoziladi, lekin BIR detal orasida 5s to'siq —
     // skanner ikki marta o'qib yuborsa bitta tomon ikki marta sanalib ketmasin
     if (ctx?.post_code === "KROMKA" || ctx?.post_code === "OVAL") {
@@ -374,11 +386,6 @@ function TerminalPage() {
         toast.error(
           "Shu detal endigina skan qilindi — 5 soniyadan keyin qayta urining.",
         )
-        return
-      }
-      if (packScanRef.current) {
-        cooldownRef.current.set(value, kNow)
-        packScanRef.current(value)
         return
       }
       if (mapOrderId !== null && kromkaScanRef.current) {
@@ -710,13 +717,35 @@ function TerminalPage() {
                   orderId={mapOrderId}
                   onBack={() => setMapOrderId(null)}
                   registerScan={(fn) => {
-                    packScanRef.current = fn
+                    viewScanRef.current = fn
                   }}
                 />
               ) : (
                 <OrderPicker
                   onPick={setMapOrderId}
                   title="Proyektlar — qadoqlash uchun proyektni tanlang"
+                  showCutmapBadge={false}
+                />
+              )}
+            </div>
+          </div>
+        ) : ctx?.post_code === "OMBOR" ? (
+          /* OMBOR: proyekt ro'yxati → qabul va topshirish tablari */
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+            {scanStrip}
+            <div className="min-h-0 flex-1">
+              {mapOrderId ? (
+                <OmborView
+                  orderId={mapOrderId}
+                  onBack={() => setMapOrderId(null)}
+                  registerScan={(fn) => {
+                    viewScanRef.current = fn
+                  }}
+                />
+              ) : (
+                <OrderPicker
+                  onPick={setMapOrderId}
+                  title="Proyektlar — ombor uchun proyektni tanlang"
                   showCutmapBadge={false}
                 />
               )}

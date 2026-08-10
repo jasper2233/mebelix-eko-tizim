@@ -3,7 +3,7 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.enums import OrderPriority, PachkaStatus, PostCode, SessionStatus
+from app.models.enums import OrderPriority, OrderStatus, PachkaStatus, PostCode, SessionStatus
 
 
 class BadgeStart(BaseModel):
@@ -252,3 +252,40 @@ class UpakovkaOrderState(BaseModel):
 
 class PachkaScan(BaseModel):
     qr_text: Annotated[str, Field(min_length=3, max_length=120)]
+
+
+class OmborPachkaRow(BaseModel):
+    """Ombordagi qadoq: qabul qilingani va topshirilgani shu qatordan ko'rinadi."""
+
+    id: int
+    code: str
+    status: PachkaStatus
+    item_count: int
+    accepted_count: int  # ichidagi nechta nusxa omborga qabul qilingan
+    weight_kg: float
+    shipped_at: datetime | None
+
+
+class OmborPending(BaseModel):
+    """Omborga hali qabul qilinmagan nusxa."""
+
+    instance_id: int
+    qr_text: str
+    part_code: str
+    part_name: str
+    pachka_code: str | None  # qaysi qadoq ichida — qadoqsiz buyurtmada None
+    ready: bool  # oldingi bosqichlar tugaganmi (tugamagan bo'lsa qabul rad etiladi)
+
+
+class OmborOrderState(BaseModel):
+    """OMBOR post sahifasi: qabul (skan) va topshirish tablari uchun bitta holat."""
+
+    order_id: int
+    order_number: str
+    project_name: str | None
+    order_status: OrderStatus
+    packaging: bool  # marshrutda UPAKOVKA bormi — topshirish qadoq bo'yicha ketadi
+    total: int
+    accepted: int
+    pachkas: list[OmborPachkaRow] = []
+    pending: list[OmborPending] = []
