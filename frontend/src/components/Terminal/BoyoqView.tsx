@@ -107,28 +107,14 @@ export function BoyoqView({
           </table>
         )}
 
-        {/* Hali kelmaganlar: ishi TUGAGAN post yoziladi — qayerda turgani ko'rinsin */}
+        {/* Bo'yoqqa YETIB KELMAGAN detal ro'yxatda ko'rsatilmaydi: uni skanerlab
+            bo'lmaydi (E004) va bo'yoqchi uni izlab vaqt yo'qotardi. Faqat nechta
+            detal yo'lda ekani yoziladi. */}
         {!!waiting.length && (
-          <>
-            <div className="border-y bg-muted/40 px-4 py-2 text-sm font-bold text-muted-foreground">
-              Sexda <span className="num">({waiting.length})</span>
-            </div>
-            <table className="w-full text-sm text-muted-foreground">
-              <tbody>
-                {waiting.map((r) => (
-                  <tr key={r.instance_id} className="border-b last:border-0">
-                    <td className="num px-4 py-1.5">{r.qr_text}</td>
-                    <td className="max-w-[260px] truncate px-4 py-1.5">
-                      {r.part_name}
-                    </td>
-                    <td className="px-4 py-1.5 text-right font-semibold text-amber-700">
-                      {r.stage || "hali kesilmagan"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
+          <div className="border-t px-4 py-2 text-sm text-muted-foreground">
+            Yana <span className="num font-semibold">{waiting.length}</span>{" "}
+            detal sexda — bo'yoq bosqichiga yetib kelgach shu ro'yxatda chiqadi.
+          </div>
         )}
 
         {!!done.length && (
