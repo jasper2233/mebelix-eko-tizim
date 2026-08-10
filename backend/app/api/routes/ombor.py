@@ -164,8 +164,8 @@ async def _state(db: SessionDep, order: Order, post: Post) -> OmborOrderState:
                 part_code=f"{product_code}_{part.code}",
                 part_name=part.name,
                 pachka_code=pachka.code if pachka else None,
-                ready=stages.get(instance.id) == "",
-                stage=stages.get(instance.id) or "",
+                ready=stages.get(instance.id, (False, ""))[0],
+                stage=stages.get(instance.id, (False, ""))[1],
             )
         )
     # Omborga yetib kelganlari tepada: omborchi ish ro'yxati aynan shular.

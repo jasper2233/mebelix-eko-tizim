@@ -82,14 +82,10 @@ export function OmborView({
   const delivered = data?.order_status === "delivered"
   const shipped = pachkas.filter((p) => p.shipped_at)
   // Omborchining ISH ro'yxati — faqat oxirgi bosqichdan o'tib kelganlar.
-  // Qolganlari hali sexda: ular alohida, qaysi postda turgani bilan ko'rsatiladi.
+  // Qolganlari hali sexda; har biriga ishi TUGAGAN post yoziladi, ya'ni
+  // omborchi detalni jismonan qaysi postdan olishini biladi.
   const arrived = pending.filter((p) => p.ready)
   const inShop = pending.filter((p) => !p.ready)
-  const byStage = inShop.reduce<Record<string, number>>((acc, p) => {
-    const k = p.stage || "sexda"
-    acc[k] = (acc[k] ?? 0) + 1
-    return acc
-  }, {})
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl border bg-white">
@@ -164,8 +160,9 @@ export function OmborView({
                     <td className="num px-4 py-2.5 text-sm font-semibold text-blue-800">
                       {p.pachka_code ?? ""}
                     </td>
-                    <td className="px-4 py-2.5 text-right text-sm text-muted-foreground">
-                      qabul kutilmoqda
+                    {/* Detal shu postdan keyin turibdi — omborchi o'sha yerdan oladi */}
+                    <td className="px-4 py-2.5 text-right text-sm font-semibold">
+                      {p.stage}
                     </td>
                   </tr>
                 ))}
@@ -176,18 +173,8 @@ export function OmborView({
           {/* Hali sexdagilar: qaysi postda turgani yozilgan — omborchi qidirib yurmasin */}
           {!!inShop.length && (
             <div className="mt-3 border-t">
-              <div className="flex flex-wrap items-center gap-2 px-4 py-2">
-                <span className="text-sm font-bold text-muted-foreground">
-                  Sexda ({inShop.length}):
-                </span>
-                {Object.entries(byStage).map(([stage, n]) => (
-                  <span
-                    key={stage}
-                    className="num rounded-sm bg-muted px-2 py-0.5 text-sm font-semibold"
-                  >
-                    {stage} — {n}
-                  </span>
-                ))}
+              <div className="px-4 py-2 text-sm font-bold text-muted-foreground">
+                Sexda <span className="num">({inShop.length})</span>
               </div>
               <table className="w-full text-sm text-muted-foreground">
                 <tbody>
@@ -198,7 +185,7 @@ export function OmborView({
                         {p.part_name}
                       </td>
                       <td className="px-4 py-1.5 text-right font-semibold text-amber-700">
-                        {p.stage || "sexda"}
+                        {p.stage || "hali kesilmagan"}
                       </td>
                     </tr>
                   ))}

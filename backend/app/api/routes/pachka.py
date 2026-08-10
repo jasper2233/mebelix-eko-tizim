@@ -59,15 +59,16 @@ async def _pack_ctx(db: SessionDep, user: PackUser) -> tuple[Machine, Post]:
 PackCtx = Annotated[tuple[Machine, Post], Depends(_pack_ctx)]
 
 
-async def instance_stages(db: SessionDep, order: Order, post: Post) -> dict[int, str]:
-    """Har NUSXA uchun: shu postgacha bo'lgan qadamlar tugadimi, tugamagan bo'lsa qayerda turibdi.
+async def instance_stages(db: SessionDep, order: Order, post: Post) -> dict[int, tuple[bool, str]]:
+    """Har NUSXA uchun: `(shu postga tayyormi, OXIRGI bajarilgan bosqich nomi)`.
 
-    Qaytadi: `instance_id -> bosqich nomi`, bo'sh satr = shu postga tayyor.
-    Faqat marshrutida shu post bor nusxalar kiradi.
+    Bosqich nomi — ishi TUGAGAN post, kutilayotgani emas: detal jismonan o'sha
+    postdan keyin turadi, omborchi uni aynan o'sha yerdan topib oladi. Hali
+    hech qanday qadami bajarilmagan nusxada bo'sh satr qaytadi.
 
     Hisob NUSXA bo'yicha, detal bo'yicha emas: 4 nusxali detalning bittasi
     qadoqlansa, detal jami hali tugamagan bo'ladi — lekin o'sha bitta nusxa
-    omborga tayyor. Detal darajasida sanaganda u "sexda" bo'lib qolar edi va
+    omborga tayyor. Detal darajasida sanaganda u sexda qolib ketardi va
     omborchi qadoqlangan buyumni ro'yxatdan topa olmasdi.
     """
     routes = list(
@@ -104,7 +105,7 @@ async def instance_stages(db: SessionDep, order: Order, post: Post) -> dict[int,
     }
     post_names = {p.id: p.name for p in (await db.execute(select(Post))).scalars()}
 
-    stages: dict[int, str] = {}
+    stages: dict[int, tuple[bool, str]] = {}
     for instance_id, part_id in (
         await db.execute(
             select(PartInstance.id, PartInstance.part_id).where(
@@ -117,11 +118,11 @@ async def instance_stages(db: SessionDep, order: Order, post: Post) -> dict[int,
         target = next((s for s in steps if s.post_id == post.id), None)
         if target is None:
             continue
-        stuck = next(
-            (s for s in steps if s.seq < target.seq and counts.get((instance_id, s.id), 0) < s.per_instance),
-            None,
-        )
-        stages[instance_id] = "" if stuck is None else post_names.get(stuck.post_id, "")
+        before = [s for s in steps if s.seq < target.seq]
+        done = [s for s in before if counts.get((instance_id, s.id), 0) >= s.per_instance]
+        ready = len(done) == len(before)
+        last = post_names.get(done[-1].post_id, "") if done else ""
+        stages[instance_id] = (ready, last)
     return stages
 
 
@@ -200,7 +201,7 @@ async def _state(db: SessionDep, order: Order, post: Post) -> UpakovkaOrderState
                 qr_text=instance.qr_text,
                 part_code=f"{product_code}_{part.code}",
                 part_name=part.name,
-                ready=stages.get(instance.id) == "",
+                ready=stages.get(instance.id, (False, ""))[0],
             )
         )
     pending.sort(key=lambda p: (not p.ready, p.part_code))
