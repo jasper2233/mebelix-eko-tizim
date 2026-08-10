@@ -345,10 +345,10 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   qisqartiriladi — `d.qr_text[:20]`, QR esa to'liq satrni saqlaydi,
   [11-detal-id-nomlash.md](./11-detal-id-nomlash.md)),
   loyiha nomi, 2×2 kromka katakchalari (tagchiziqli), katta
-  `L x W = count`, `N_nom`, XNC belgilari (`П` paz, `Ф` freza, teshik uchun
-  `app/assets/label-icon-drill.png` ikonkasi), **marshrut qatori**
-  (`Marshrut: 7/11/8` — jarayon kodlari `seq` tartibida, y=45.3 mm; detal NOMIGA
-  qo'shilmaydi, chunki nom 24 belgida kesiladi), material va sana; o'ng ustunda QR
+  `L x W = count`, `N_nom`, teshik bo'lsa `app/assets/label-icon-drill.png`
+  ikonkasi, **marshrut qatori** (`Marshrut: 7/11/8` — jarayon kodlari `seq`
+  tartibida, y=41.5 mm; detal NOMIGA qo'shilmaydi, chunki nom 24 belgida
+  kesiladi), material va sana; o'ng ustunda QR
   (`qrcode`, `instance.qr_text`) va vertikal detal eskizi.
 - Eskizda kromka konturdan 1 mm tashqarida qalin chiziq bilan, `part.txt` bo'lsa
   tekstura chiziqlari, va cutmap'dan HAQIQIY teshiklar: `load_label_data()`
@@ -440,9 +440,13 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
   detallar, kesim chiziqlari, teshiklar (`holeXY`, `edgeLocalXY`, `edgeBoreRect`),
   o'lchamlar zanjiri, zoom/pan/swipe; `thumbnail` rejimida interaktivsiz va
   scrollni bloklamaydi. Xarita ham, list kartalaridagi preview ham shu bitta
-  komponentni ishlatadi. Marshrutida ARRA yo'q detal (nostandart marshrut —
-  `CutmapInstanceState.custom`) kulrang (`PART_CUSTOM = "#9aa4b2"`) chiziladi:
-  arrachi uni kesmaydi, aks holda kesib bo'lib "plan topilmadi" xatosini olardi.
+  komponentni ishlatadi. NOSTANDART detal (`Part.is_custom` →
+  `CutmapInstanceState.custom`) kesilmagan holatda binafsha
+  (`PART_CUSTOM = "#a78bfa"`) — marshrutini texnolog qo'lda chizgan, ya'ni u
+  arradan boshlanmasligi ham mumkin. Chek chiqarilgach odatdagidek YASHIL
+  bo'ladi (`allDone` fondan ustun), chek bekor qilinsa yana binafshaga qaytadi;
+  chegara barcha detallarda bir xil. Qizil va pushti ATAYLAB ishlatilmagan:
+  qizil `--status-cancelled`, pushti esa `--post-rover` rangi.
 - `GET /terminal/orders` javobi karta uchun kengaydi: `materials` (`sheet` turidagi
   plita nomlari), `sheets_total`, `has_cutmap`. Tartib — prioritet (URGENT birinchi)
   → `deadline` (nulls oxirida) → `id`; boshqa stanokka biriktirilgan `PartRoute`lar

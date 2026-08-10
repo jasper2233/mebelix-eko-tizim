@@ -90,13 +90,19 @@ to'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §2.3. Qoidalar:
   chip bilan ko'rsatadi (`Common/OperationChips.tsx` — `processCode` + `postCode` qabul qiladi,
   `lib/mes.ts: PROCESS_OPS`; bitta amalli postda — rover, bo'yoq, prisadka — chip chizilmaydi,
   post nomi sarlavhada turibdi).
-- Sozlanmagan post uchrasa `ingest.py` toza `ParseError` (422) beradi: `posts` lug'ati post
-  KODI (matn) bo'yicha tuziladi, `PostCode(...)` ga o'girilmaydi — aks holda `ValueError` → 500.
+- Sozlanmagan post uchrasa `ingest.py` toza `ParseError` (422) beradi: `posts` lug'ati post kodi
+  bo'yicha tuziladi va `posts.get()` topmasa `None` qaytaradi — `PostCode(...)` chaqirilsa
+  `ValueError` → 500 bo'lardi. `PROCESS_POSTS` qiymatlari `PostCode` enum'i (StrEnum, ya'ni
+  qiymat baribir o'sha satr) — post lug'atlari ham shu kalit bilan tuziladi.
 - **Qayta yuklash marshrutni yo'qotmaydi.** `.project` qayta yuklanishidan oldin
-  `snapshot_custom_routes()` qo'lda chizilgan (`MANUAL`) qadamlarni `(mahsulot kodi, detal kodi)`
+  `snapshot_custom_routes()` qo'lda kiritilgan (`MANUAL`) qadamlarni `(mahsulot kodi, detal kodi)`
   kaliti bilan eslab qoladi — detal kodi fayl ichidagi `part@id` dan farqli o'laroq qayta
-  eksportda ham o'zgarmaydi. Ingest'dan keyin `restore_custom_routes()` ularni aynan shu tartibda
-  tiklaydi va `is_custom` ni qaytaradi; yangi faylda topilmagan detallar warning'da sanaladi.
+  eksportda ham o'zgarmaydi. Nostandart detallar ham, matritsadan qo'lda qadam qo'shilgan
+  STANDART detallar ham olinadi (`is_custom` bayrog'i bilan birga). Ingest'dan keyin
+  `restore_custom_routes()` ularni tiklaydi: nostandart detalda marshrut TO'LIQ qo'lda, ya'ni
+  fayldan qurilgani o'chadi; standart detalda esa qo'lda qo'shilgan qadam fayl qadamlariga
+  QO'SHIMCHA edi — fayl qadamlari joyida qoladi, saqlanganlari ketidan tushadi. Yangi faylda
+  topilmagan detallar warning'da sanaladi.
 
 
 ## 3. Scan engine (`app/services/scanning.py`)
@@ -105,7 +111,10 @@ Instance-level nazorat: QR → aktiv PRODUCTION buyurtma → shu postdagi marshr
 bo'yicha) → eng kichik `seq` li TUGALLANMAGAN qadam + stanok mosligi → per-instance limit →
 yozish + `total_done++`. Hisob POST emas, QADAM bo'yicha: `_scans_done(db, instance_id, route_id)`
 kaliti `route_id` — bitta post marshrutda ikki marta bo'lsa (kromka → prisadka → kromka) post
-bo'yicha sanash hisobni aralashtirib yuborardi. Xatolar TT 8.5 kodlari bilan (`{"code": "E00x",
+bo'yicha sanash hisobni aralashtirib yuborardi. `total_done` SQL tomonda oshiriladi/kamaytiriladi
+(`UPDATE ... SET total_done = total_done ± 1`): Python tomondagi o'qib-yozish ikki terminal bir
+vaqtda skanlaganda bitta inkrementni yo'qotardi va qadam `total_required` ga hech qachon
+yetmasdi — buyurtmani faqat bazani qo'lda tuzatib yopish mumkin bo'lardi. Xatolar TT 8.5 kodlari bilan (`{"code": "E00x",
 "message": ...}` 422 detail). Idempotency: `client_event_id` UNIQUE — takror so'rov `duplicate:true`
 bilan muvaffaqiyat. `STRICT_STAGE_ORDER` (endi default **yoqiq**) — E004: tekshiruv postlarning
 global tartibidan emas, detalning O'Z marshruti bo'yicha: `seq` i kichik qadamlar shu nusxada
@@ -162,8 +171,8 @@ chiqadi), **holes**, **texture**, **route_codes** (marshrut jarayon kodlari `seq
 
 - chap ustun: `assets/label-logo.png` (threshold 160), `Formatka` + product kodi, detal kaliti,
   loyiha nomi, kromka materiallari 2×2 (t/l/b/r, tagchiziq bilan), markazda katta `L x W = soni`,
-  `N_detal nomi`, П/Ф belgilari (paz/freza), teshik bo'lsa `assets/label-icon-drill.png` ikonkasi,
-  marshrut ALOHIDA qatorda (`Marshrut: 7/11/8`, y=45.3mm — detal NOMIGA qo'shilmaydi, chunki nom
+  `N_detal nomi`, teshik bo'lsa `assets/label-icon-drill.png` ikonkasi,
+  marshrut ALOHIDA qatorda (`Marshrut: 7/11/8`, y=41.5mm — detal NOMIGA qo'shilmaydi, chunki nom
   24 belgida kesiladi va marshrut jimgina yo'qolardi),
   pastda material + sana + `N{label_num} {instance_no}/{count}`;
 - o'ng ustun: QR (`qrcode`, `d.qr_text`) tepada, ostida **vertikal detal eskizi** — ingichka kontur,
@@ -189,11 +198,17 @@ terminal (POST /terminal/labels/{instance_id})   → label_printed_at + ws "labe
 `GET /terminal/labels/{instance_id}.png` — o'sha `render_label_png()` chiqishi to'g'ridan brauzerga;
 worker ham, GoDEX ham, bridge-agent ham shart emas.
 
-**ROVER'da chop etish = bajarildi.** Marshrutida ARRA bo'lmagan detal (nostandart, marshruti
-roverdan boshlanadi) roverning o'zida kesiladi — roverchi chek chiqarganda `POST /terminal/labels/{id}` avto-skan ham
-yozadi (`record_scan`, `client_event_id="rvprint-{instance_id}"`): statistika/tablo/ish haqi oddiy
-oqim bilan bir xil qoladi. Skan rad etilsa (masalan `STRICT_STAGE_ORDER` da oldingi bosqich
-tugamagan) chek baribir chiqadi — operator keyin oddiy skan bilan yakunlaydi.
+**KESISH POSTLARIDA CHOP ETISH = BAJARILDI.** ARRA'da arrachi xaritada katakni bosib chek
+chiqaradi va alohida skan qilmaydi (xarita ochiqda terminalning skan maydoni yashirin);
+ROVER'da esa marshrutida ARRA bo'lmagan detal roverning o'zida kesiladi. Ikkala holatda ham
+`POST /terminal/labels/{id}` avto-skan yozadi (`record_scan`,
+`client_event_id="cutprint-{instance_id}"`). Busiz `PartRoute.total_done` hech qachon
+o'smasdi: buyurtma COMPLETED bo'lmasdi va qat'iy tartibda KEYINGI postlarning hammasi E004
+bilan rad etilardi. Skan rad etilsa (oldingi bosqich tugamagan) chek baribir chiqadi —
+operator keyin oddiy skan bilan yakunlaydi.
+
+Chekni bekor qilish (`DELETE /terminal/labels/{id}`) shu avto-skanni ham bekor qiladi va
+`total_done` ni qaytaradi; operator qo'lda qilgan skanga tegilmaydi.
 
 `bridge-agent/agent.py` — sexdagi mustaqil servis (websockets + pywin32 + Pillow): outbound WS,
 lokal JSONL navbat `QUEUE_FILE` (printer/internet uzilganda yo'qotmaydi), flusher **event-driven** —
@@ -342,10 +357,12 @@ direktor ham ko'radi.
   tabda (`Orders/CustomRoutes.tsx`).
 - `/terminal` post bo'yicha sahifalar (hammasi picker: `GET /terminal/orders` kartalari):
   · **ARRA** — materiallar → listlar → to'liq ekran xarita (`Terminal/CutmapView` +
-    `Terminal/SheetSvg`; `printAllMaps` — har list A4 landscape). Marshrutida ARRA bo'lmagan detal
-    xaritada KULRANG (`CutmapInstanceState.custom`, `PART_CUSTOM`) — GibLab uni listga joylashtirgan,
-    lekin arrachi kesmaydi. Chek chiqarilgan katak YASHIL ("kesildi"); qayta chop etish bloklanadi; long press (~600ms) + tasdiq dialogi chekni bekor
-    qiladi (admin webdagi xaritada — kartochkadagi tugma).
+    `Terminal/SheetSvg`; `printAllMaps` — har list A4 landscape). NOSTANDART detal xaritada
+    BINAFSHA (`CutmapInstanceState.custom` ← `Part.is_custom`, `PART_CUSTOM`) — marshrutini
+    texnolog qo'lda chizgan, u arradan boshlanmasligi ham mumkin. Chek chiqarilgan katak YASHIL
+    ("kesildi") — nostandart detal ham; qayta chop etish bloklanadi; long press (~600ms) + tasdiq
+    dialogi chekni bekor qiladi va katak o'z rangiga qaytadi (admin webdagi xaritada —
+    kartochkadagi tugma).
   · **KROMKA** (`Terminal/KromkaView`) — ikki panel: chapda arradan chiqqan detallar
     (tugaganlari yashil, pastda), o'ngda "Jarayonda" (2+ tomonli, boshlangan, tugamagan).
     Har skan darhol yoziladi (tomon = skan, `per_instance`); bir QR uchun 5 s to'siq;

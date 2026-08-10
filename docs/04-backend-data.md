@@ -262,11 +262,11 @@ Barcha mm-o'lchamlar umumiy alias orqali: `_Mm = Annotated[float | None, Field(d
 | `BadgeStart` | `badge_id` (8–36 belgi) — badge skani bilan smena ochish |
 | `SessionRead` | Sessiya: `employee_id` + join qilinadigan `employee_name`, `machine_id`, `post_id`, `status`, `ended_at` |
 | `TerminalContext` | Terminal konteksti: stanok + post ma'lumotlari + aktiv `session` |
-| `TaskRow` | NAVBATDAGI VAZIFALAR qatori (TZ 8.3.2): part o'lchamlari, `qoldiq` (shu postdagi qolgan skanlar), `total`, `edges` |
+| `TaskRow` | NAVBATDAGI VAZIFALAR qatori (TZ 8.3.2): part o'lchamlari, `qoldiq` (shu postdagi qolgan skanlar), `total`, `edges`, `process_code` (qaysi amal) va **`route_id`** — qator marshrutning bitta QADAMI, ro'yxat kaliti detal emas, qadam bo'lishi shart (bitta detal bir postga ikki marta kelsa React qatorlarni aralashtirib yuborardi) |
 | `TerminalOrderCard` | Terminal proyekt tanlagichi kartasi (`/terminal/orders`): `done`/`total` post turiga moslangan, `materials` (arrachi partiyalab kesadi), `sheets_total`, `has_cutmap` |
 | `QrOrderRef` | QR qaysi aktiv buyurtmaga tegishli (`/terminal/qr/{qr}/order`): `order_id` + `order_number` |
-| `KromkaInstance`, `KromkaPartRow`, `KromkaOrderState` | KROMKA post sahifasi: har nusxaning `done` (yopishtirilgan tomonlar) + `arra_passed` flagi; qator darajasida `sides`, `total_done`/`total_required` |
-| `PrisadkaFile`, `PrisadkaInstance`, `PrisadkaPartRow`, `PrisadkaOrderState` | CNC post sahifasi (PRISADKA/ROVER): detallar + SCX fayllar (TZ 12.5), `arra_route` (marshrutda ARRA yo'q bo'lsa QR chek shu sahifadan), `done_qrs`, nusxa darajasida `label_printed`/`done` |
+| `KromkaInstance`, `KromkaPartRow`, `KromkaOrderState` | KROMKA post sahifasi: har nusxaning `done` (yopishtirilgan tomonlar) + `arra_passed` flagi; qator darajasida `sides`, `total_done`/`total_required`, `process_code`, `route_id`. Nusxaning `done` hisobi QADAM bo'yicha (`_post_scan_counts` → `{(instance_id, route_id): count}`) — post bo'yicha sanalsa takror kromka o'tishida birinchi o'tishning skanlari ikkinchisini ham "bajarildi" qilib ko'rsatardi |
+| `PrisadkaFile`, `PrisadkaInstance`, `PrisadkaPartRow`, `PrisadkaOrderState` | CNC post sahifasi (PRISADKA/ROVER): detallar + SCX fayllar (TZ 12.5), `arra_route` (marshrutda ARRA yo'q bo'lsa QR chek shu sahifadan), `done_qrs`, `route_id`, nusxa darajasida `label_printed`/`done` (hisob qadam bo'yicha) |
 | `ScanRequest` | `qr_text` + `client_event_id` (klient UUID — idempotentlik, TZ 8.4.4) |
 | `ScanResult` | `scan_id`, `duplicate` (replay — xato emas), part ma'lumotlari, yangi `qoldiq`, `scx_file_ids` (CNC postlar uchun har skanda, TZ 12.5), `project_name` (avto-SCX proyekt nomli subpapkaga tushishi uchun), `order_stage_completed`/`order_completed` flaglar |
 | `ScanHistoryItem` | Skan tarixi qatori (`is_cancelled` bilan) |
