@@ -79,6 +79,27 @@ POSTS: list[dict[str, object]] = [
         "color": "#a16207",
         "icon": "paint",
     },
+    # Qadoqlash — bo'yoqdan keyingi oxirgi bosqich. Birligi m2: ish haqi
+    # qadoqlangan detallar kvadraturasi bo'yicha hisoblanadi.
+    {
+        "code": PostCode.UPAKOVKA,
+        "name": "Qadoqlash",
+        "order_index": 9,
+        "unit": PostUnit.M2,
+        "color": "#0369a1",
+        "icon": "package",
+    },
+    # Ombor — eng oxirgi qadam, HAR buyurtmada (qadoqlangan ham, qadoqlanmagan ham).
+    # Omborchi qabul qilmaguncha detal "tayyor" hisoblanmaydi: shu tufayli oxirgi
+    # postda qolib ketgan detal ro'yxatda ko'rinib turadi.
+    {
+        "code": PostCode.OMBOR,
+        "name": "Ombor",
+        "order_index": 10,
+        "unit": PostUnit.PIECE,
+        "color": "#7c2d12",
+        "icon": "warehouse",
+    },
 ]
 
 

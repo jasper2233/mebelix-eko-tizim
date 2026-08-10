@@ -60,6 +60,8 @@ export const POST_COLORS: Record<string, string> = {
   ROVER: "var(--post-rover)",
   STOLYARKA: "var(--post-stolyarka)",
   BOYOQ: "var(--post-boyoq)",
+  UPAKOVKA: "var(--post-upakovka)",
+  OMBOR: "var(--post-ombor)",
 }
 
 /** Rangning oq bilan `pct`% tinti — chip/katak fonlari uchun. */
@@ -97,6 +99,10 @@ export const PROCESS_OPS: Record<number, { name: string; post: string }> = {
   12: { name: "G petlya chapdan", post: "STOLYARKA" },
   13: { name: "V petlya o'ngdan", post: "STOLYARKA" },
   14: { name: "V petlya chapdan", post: "STOLYARKA" },
+  // Qadoqlash texnolog tanlaydigan jarayon emas — anketadagi bayroq qo'shadi.
+  // Bu yerda faqat NOM uchun (chek marshruti, terminal chipi).
+  15: { name: "Qadoqlash", post: "UPAKOVKA" },
+  16: { name: "Omborga qabul", post: "OMBOR" },
 }
 
 /**
@@ -126,6 +132,8 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   roverchi: "Roverchi",
   stolyar: "Stolyar",
   boyoqchi: "Bo'yoqchi",
+  upakovkachi: "Qadoqlovchi",
+  omborchi: "Omborchi",
 }
 
 // Sahifa huquqi BITTA joyda: sidebar menyusi ham, route guard ham shu ikkisini
@@ -159,6 +167,8 @@ export const OPERATOR_ROLES = [
   "roverchi",
   "stolyar",
   "boyoqchi",
+  "upakovkachi",
+  "omborchi",
 ] as const
 
 export const EMPLOYEE_STATUS_LABELS: Record<string, string> = {

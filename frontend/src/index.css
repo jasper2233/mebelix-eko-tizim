@@ -107,6 +107,8 @@
   --post-boyoq: #a16207; /* yellow-700 — review'ning amber-700 idan ajratilgan (eski paz rangi) */
   --post-rover: #be185d;
   --post-stolyarka: #4d7c0f; /* lime-700 — completed'ning green-700 idan ajratilgan */
+  --post-upakovka: #0369a1; /* sky-700 — qadoqlash; production'ning blue-700 idan to'qroq */
+  --post-ombor: #7c2d12; /* orange-900 — ombor; arraning #c2410c idan to'qroq */
   --status-draft: #64748b;
   --status-review: #b45309;
   --status-production: #1d4ed8;

@@ -57,6 +57,9 @@ async def restore_custom_routes(
     if not saved:
         return 0, []
     posts = {p.code: p for p in (await db.execute(select(Post))).scalars()}
+    # Anketadagi "Upakovka qilish" xizmati (manager kelishadi) — marshrutga
+    # qadoqlash qadamini qo'shadimi. `survey` JSONB, eski yozuvda kalit umuman yo'q.
+    packaging = bool((order.survey or {}).get("packaging"))
     posts_by_id = {p.id: p.code for p in posts.values()}
     parts = (
         await db.execute(
@@ -120,6 +123,27 @@ async def restore_custom_routes(
                     total_required=part.count * per,
                 )
             )
+        # Nostandart detalning marshruti to'liq qayta yozilgani uchun qadoqlash va
+        # ombor qadamlari shu yerda tiklanadi (standart detalda ular AUTO bo'lib qoladi).
+        if was_custom:
+            tail = [(15, PostCode.UPAKOVKA)] if packaging else []
+            tail.append((16, PostCode.OMBOR))
+            for offset, (code, post_code) in enumerate(tail):
+                post = posts.get(post_code)
+                if post is None:
+                    raise ParseError(f"Post sozlanmagan: {post_code}. Administratorga murojaat qiling.")
+                db.add(
+                    PartRoute(
+                        order_id=order.id,
+                        part_id=part.id,
+                        post_id=post.id,
+                        seq=start_seq + len(codes) + offset,
+                        process_code=code,
+                        source=RouteSource.MANUAL,
+                        per_instance=1,
+                        total_required=part.count,
+                    )
+                )
         restored += 1
     lost = [f"{p}_{c}" for (p, c) in saved if (p, c) not in by_key]
     return restored, lost
@@ -242,6 +266,9 @@ async def ingest_project(
     # Kalit — matn: marshrut kodlari ham matn (PROCESS_POSTS), va noma'lum post
     # `get()` da None beradi (enumga aylantirilsa ValueError -> 500 bo'lardi)
     posts = {str(p.code): p for p in (await db.execute(select(Post))).scalars()}
+    # Anketadagi "Upakovka qilish" xizmati — marshrutga qadoqlash qadamini
+    # qo'shadimi. `survey` JSONB, eski yozuvda kalit umuman bo'lmasligi mumkin.
+    packaging = bool((order.survey or {}).get("packaging"))
 
     cutmap = build_cutmap(project) if any(c.data_blob for c in project.cut_ops) else None
 
@@ -346,6 +373,13 @@ async def ingest_project(
                 steps.append((3, PostCode.KROMKA, pp.kromka_sides))  # 3 = Kromka
             for post_code, per_instance in pp.stage_sides().items():  # faqat PRISADKA
                 steps.append((6, post_code, per_instance))  # 6 = Prisadka
+            # Qadoqlash — anketada belgilangan bo'lsa HAMMA detalga oxirgi qadam.
+            # Qisman qadoqlash yo'q: buyurtma yo butunlay qadoqlanadi, yo yo'q.
+            if packaging:
+                steps.append((15, PostCode.UPAKOVKA, 1))
+            # Ombor — eng oxirgi qadam, qadoqlangan-qadoqlanmaganidan qat'i nazar.
+            # Omborchi qabul qilmaguncha detal tugallanmagan bo'lib turadi.
+            steps.append((16, PostCode.OMBOR, 1))
             for seq, (process_code, post_code, per_instance) in enumerate(steps, start=1):
                 post = posts.get(post_code)
                 if post is None:

@@ -22,6 +22,8 @@ class UserRole(StrEnum):
     ROVERCHI = "roverchi"
     STOLYAR = "stolyar"
     BOYOQCHI = "boyoqchi"
+    UPAKOVKACHI = "upakovkachi"
+    OMBORCHI = "omborchi"
 
 
 class PostCode(StrEnum):
@@ -34,6 +36,13 @@ class PostCode(StrEnum):
     ROVER = "ROVER"
     STOLYARKA = "STOLYARKA"
     BOYOQ = "BOYOQ"
+    #: Qadoqlash — oxirgi bosqich. Marshrutga anketadagi `packaging` bayrog'i
+    #: bo'yicha qo'shiladi (buyurtma qadoqlansa — HAMMA detalga).
+    UPAKOVKA = "UPAKOVKA"
+    #: Tayyor mahsulot ombori — marshrutning ENG OXIRGI qadami, har detalda.
+    #: Omborchi qabul qilganda yopiladi: qadoqsiz buyurtmada detal QR'i bilan,
+    #: qadoqlanganda esa qadoq QR'i bitta skanda ichidagi hammasini yopadi.
+    OMBOR = "OMBOR"
 
 
 # Operator roles log in with their own account and see their post's terminal —
@@ -46,7 +55,17 @@ POST_ROLES: dict[UserRole, PostCode] = {
     UserRole.ROVERCHI: PostCode.ROVER,
     UserRole.STOLYAR: PostCode.STOLYARKA,
     UserRole.BOYOQCHI: PostCode.BOYOQ,
+    UserRole.UPAKOVKACHI: PostCode.UPAKOVKA,
+    UserRole.OMBORCHI: PostCode.OMBOR,
 }
+
+
+class PachkaStatus(StrEnum):
+    """Qadoq holati: ochiq (detal qo'shiladi) -> yopiq (chek chiqadi) -> jo'natildi."""
+
+    OPEN = "open"
+    CLOSED = "closed"
+    SHIPPED = "shipped"
 
 
 class PostUnit(StrEnum):

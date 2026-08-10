@@ -515,6 +515,9 @@ async def edit_order_matrix(
         raise ForbiddenException("Matritsani faqat ishlab chiqarishga uzatilgunga qadar o'zgartirish mumkin.")
 
     posts = {p.id: p for p in (await db.execute(select(Post))).scalars()}
+    # Anketadagi "Upakovka qilish" — qo'lda chizilgan marshrutga ham qadoqlash
+    # qadamini qo'shadi (buyurtma qadoqlansa HAMMA detal qadoqlanadi).
+    packaging = bool((order.survey or {}).get("packaging"))
 
     for edit in body.edits:
         part = (
@@ -553,7 +556,7 @@ async def edit_order_matrix(
         if edit.route_codes is not None:
             if not part.is_custom:
                 raise ForbiddenException("Marshrutni faqat nostandart detalga qo'lda chizish mumkin.")
-            await _set_custom_route(db, order_id, part, edit.route_codes, posts)
+            await _set_custom_route(db, order_id, part, edit.route_codes, posts, packaging)
 
         for post_id, enabled in edit.stages.items():
             post = posts.get(post_id)
@@ -620,7 +623,7 @@ _ROUTE_START_POSTS = (PostCode.ARRA, PostCode.ROVER)
 
 
 async def _set_custom_route(
-    db: SessionDep, order_id: int, part: Part, codes: list[int], posts: dict[int, Post]
+    db: SessionDep, order_id: int, part: Part, codes: list[int], posts: dict[int, Post], packaging: bool
 ) -> None:
     """Nostandart detal marshrutini jarayon kodlari ro'yxatidan qayta quradi.
 
@@ -670,6 +673,27 @@ async def _set_custom_route(
                 total_required=part.count * per_instance,
             )
         )
+    # Qadoqlash va ombor — texnolog tanlamaydi. Qadoqlashni anketadagi bayroq
+    # qo'shadi, ombor esa HAR doim oxirgi qadam bo'ladi.
+    if codes:
+        tail = [(15, PostCode.UPAKOVKA)] if packaging else []
+        tail.append((16, PostCode.OMBOR))
+        for offset, (code, post_code) in enumerate(tail):
+            post = by_code.get(post_code)
+            if post is None:
+                raise NotFoundException(f"Post sozlanmagan: {post_code}. Administratorga murojaat qiling.")
+            db.add(
+                PartRoute(
+                    order_id=order_id,
+                    part_id=part.id,
+                    post_id=post.id,
+                    seq=len(codes) + 1 + offset,
+                    process_code=code,
+                    source=RouteSource.MANUAL,
+                    per_instance=1,
+                    total_required=part.count,
+                )
+            )
 
 
 async def _resize_instances(db: SessionDep, part: Part, new_count: int) -> None:

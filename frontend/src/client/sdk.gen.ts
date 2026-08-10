@@ -1524,7 +1524,7 @@ export class TerminalService {
     /**
      * Cancel Instance Label
      * Chekni bekor qilish (long press / admin xarita): noto'g'ri chiqarilgan yorliq
-     * katakni chop etilmagan holatga qaytaradi. Skan qilingan (kesilgan) nusxaga ta'sir qilmaydi.
+     * katakni chop etilmagan holatga qaytaradi.
      * @param data The data for the request.
      * @param data.instanceId
      * @returns Message Successful Response

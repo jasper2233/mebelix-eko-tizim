@@ -367,3 +367,88 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
     # Yakuniy 1-bit: har piksel sof qora yoki oq
     img.convert("L").point(_bw, "1").save(buf, format="PNG")
     return buf.getvalue()
+
+
+@dataclass
+class PachkaLabelData:
+    """Qadoq chekining ma'lumoti (TZ Upakovka).
+
+    Detal yorlig'idan farqli: bu yerda eskiz, kromka va teshik yo'q — qadoq
+    ichiga qaralmaydi, u yopiq. Skanerlanganda tizim tarkibni ko'rsatadi.
+    """
+
+    code: str  # PK-B-2026-014-03 — QR matni ham, ko'rinadigan kod ham
+    order_number: str
+    project_name: str  # GibLab fayl nomi (3139_Farhod) — bo'sh bo'lishi mumkin
+    part_count: int
+    printed_at: datetime
+
+
+def render_pachka_label_png(d: PachkaLabelData, scale: int = 1) -> bytes:
+    """80x60mm qadoq cheki PNG (203 dpi) — detal yorlig'i bilan bir xil o'lcham
+    va bir xil printer zanjiri (bridge-agent + GoDEX).
+
+    Maket ataylab siyrak: qadoq omborda va yuklashda uzoqdan o'qiladi, shuning
+    uchun QR katta va kod yirik shriftda. Og'irlik chiqarilmaydi — tizim uni
+    faqat qadoqlash ekranida taxminiy ko'rsatadi, chekda aniq raqamdek
+    ko'rinib, xato ishonch berardi.
+    """
+    import io as _io
+    from pathlib import Path
+
+    import qrcode
+    from PIL import Image, ImageDraw, ImageFont
+
+    mm = 8 * scale
+    W, H = 80 * mm, 60 * mm
+    img = Image.new("RGB", (W, H), "white")
+    draw = ImageDraw.Draw(img)
+    draw.fontmode = "1"
+
+    def font(size_mm: float, bold: bool = False) -> Any:
+        for path in _FONT_BOLD if bold else _FONT_REGULAR:
+            try:
+                return ImageFont.truetype(path, int(size_mm * mm))
+            except OSError:
+                continue
+        return ImageFont.load_default()
+
+    def text(x: float, y: float, t: str, size_mm: float, bold: bool = False, anchor: str = "la") -> None:
+        draw.text((x * mm, y * mm), t, fill="black", font=font(size_mm, bold), anchor=anchor)
+
+    logo_path = Path(__file__).resolve().parents[1] / "assets" / "label-logo.png"
+    try:
+        logo = Image.open(logo_path).convert("L").point(_bw).convert("RGB")
+        lw = 24 * mm
+        lh = int(lw * logo.height / logo.width)
+        img.paste(logo.resize((lw, lh)), (4 * mm, int(2 * mm)))
+    except OSError:
+        text(5, 2, "MEBELIX", 4.5, bold=True)
+
+    text(5, 13, "QADOQ", 3.2, bold=True)
+    # Kod chap ustunga (x 5..46) sig'ishi kerak — o'ngda QR turibdi. 16 belgili
+    # `PK-B-2026-014-03` 4.6 mm da ~40 mm oladi; kattaroq shriftda QR ustiga chiqardi.
+    text(5, 17, d.code[:18], 4.6, bold=True)
+
+    # Ajratuvchi chiziq — kod bloki bilan tafsilotlar orasida
+    draw.line((int(5 * mm), int(26.5 * mm), int(46 * mm), int(26.5 * mm)), fill="black", width=max(2, scale))
+
+    text(5, 29, "Buyurtma", 2.9)
+    text(5, 32.5, d.order_number[:18], 4.4, bold=True)
+    if d.project_name:
+        text(5, 39.5, "Loyiha", 2.9)
+        text(5, 43, d.project_name[:18], 4.4, bold=True)
+
+    text(5, 50.5, "Detallar soni", 2.9)
+    text(5, 54, str(d.part_count), 4.4, bold=True)
+    text(46, 55.5, d.printed_at.strftime("%Y.%m.%d %H:%M"), 2.5, anchor="ra")
+
+    # QR o'ngda, katta: ombor va yuklashda uzoqdan skanerlanadi
+    qr = qrcode.make(d.code, box_size=max(1, scale * 2), border=0)
+    qr_px = 28 * mm
+    img.paste(qr.get_image().convert("RGB").resize((qr_px, qr_px)), (48 * mm, 4 * mm))
+    text(62, 34.5, d.code[:22], 2.5, anchor="ma")
+
+    buf = _io.BytesIO()
+    img.convert("L").point(_bw, "1").save(buf, format="PNG")
+    return buf.getvalue()

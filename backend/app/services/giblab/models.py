@@ -39,6 +39,11 @@ PROCESS_POSTS: dict[int, PostCode] = {
     12: PostCode.STOLYARKA,  # G petlya chapdan
     13: PostCode.STOLYARKA,  # V petlya o'ngdan
     14: PostCode.STOLYARKA,  # V petlya chapdan
+    #: Qadoqlash sexning varag'ida yo'q — u jarayon emas, oxirgi bosqich.
+    #: Kod kerak, chunki har marshrut qadami `process_code` saqlaydi; texnolog
+    #: uni qo'lda tanlamaydi (anketadagi bayroq qo'shadi).
+    15: PostCode.UPAKOVKA,  # Qadoqlash
+    16: PostCode.OMBOR,  # Omborga qabul
 }
 
 #: Post -> shu postning ODATDAGI jarayon kodi. Bitta postda bir necha amal bo'lgani uchun

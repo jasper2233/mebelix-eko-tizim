@@ -15,6 +15,7 @@ from .order import (
     Product,
 )
 from .organization import Organization
+from .pachka import Pachka, PachkaItem
 from .post import Post
 from .scan import Scan, WorkSession
 from .user import User
@@ -31,6 +32,8 @@ __all__ = [
     "Order",
     "OrderFile",
     "Organization",
+    "Pachka",
+    "PachkaItem",
     "Part",
     "PartInstance",
     "PartRoute",

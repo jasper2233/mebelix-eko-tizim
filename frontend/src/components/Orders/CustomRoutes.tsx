@@ -13,8 +13,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { formatSize, PROCESS_OPS, ROUTE_START_POSTS } from "@/lib/mes"
 import { crudCallbacks, getOrderMatrixQueryOptions } from "@/queries/mes"
 
+// Qadoqlash (15) va ombor (16) ro'yxatda YO'Q: ularni texnolog tanlamaydi — qadoqlashni anketadagi "Upakovka
+// qilish" bayrog'i yoqilgan bo'lsa backend har detalga oxirgi qadam qilib o'zi
+// qo'shadi. Tugma qo'yilsa ikkita manba paydo bo'lardi.
 const CODES = Object.keys(PROCESS_OPS)
   .map(Number)
+  .filter((c) => !["UPAKOVKA", "OMBOR"].includes(PROCESS_OPS[c].post))
   .sort((a, b) => a - b)
 
 export function CustomRoutes({

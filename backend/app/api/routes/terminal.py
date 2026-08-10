@@ -756,7 +756,13 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     # hamma joyda (total_done, TABLO, ish haqi, tartib nazorati) bitta bo'lsin.
     # Rad etilsa (oldingi bosqich tugamagan) chek baribir chiqqan bo'ladi — operator
     # keyin qo'lda skan bilan yakunlaydi.
-    _, print_post = await resolve_terminal(db, user)
+    # Post aniqlanmasa (stanok biriktirilmagan terminal) chek baribir chiqqan
+    # bo'ladi — bu yerda faqat avto-skan o'tkazib yuboriladi. Ilgari himoyasiz edi
+    # va chop etish so'rovi 500 bilan tugardi.
+    try:
+        _, print_post = await resolve_terminal(db, user)
+    except ScanRejected:
+        return Message(message=f"Yorliq chop etishga yuborildi: {instance.qr_text}")
     cut_by_print = print_post.code == PostCode.ARRA
     if not cut_by_print and print_post.code == PostCode.ROVER:
         # Roverda faqat arradan o'tmaydigan detal uchun: qolganini arrachi kesgan
