@@ -21,12 +21,10 @@ const PART_DONE = "#22c55e"
 // Nostandart detal — marshrutini texnolog qo'lda chizgan. Kesilmagan holatda
 // sariq o'rniga BINAFSHA turadi, chek chiqarilgach odatdagidek YASHIL bo'ladi,
 // chek bekor qilinsa yana binafshaga qaytadi (`allDone` fondan ustun).
-// Chegara esa doim binafsha — yashil yoki ko'k fonda ham turi ko'rinib tursin.
 //
 // Nega binafsha: qizil "bekor qilingan" (--status-cancelled), pushti esa ROVER
 // postining rangi (--post-rover) — ikkalasi ham noto'g'ri ma'no berardi.
-const PART_CUSTOM = "#8b5cf6"
-const PART_CUSTOM_EDGE = "#6d28d9"
+const PART_CUSTOM = "#a78bfa"
 
 // --- GibSaw render qoidalari (GibLabViewer'dan portlangan, foto-tekshirilgan) ---
 
@@ -549,8 +547,8 @@ export function SheetSvg({
           width={p.w}
           height={p.h}
           fill={fill}
-          stroke={custom ? PART_CUSTOM_EDGE : "#242424"}
-          strokeWidth={custom ? 9 : 3}
+          stroke="#242424"
+          strokeWidth="3"
           strokeDasharray={p.waste ? "16 11" : undefined}
         />
         {/* yuza teshiklari — haqiqiy masshtab: katta sverlo katta doira (GibSaw) */}
