@@ -18,9 +18,10 @@ const PART_SELECTED = "#2596be"
 // oilada — xarita ajralib qolmasin. List kartasi endi yengil tint
 // (green-50 fon, green-700 matn): to'ldirilgan katak SVG'da undan to'q
 const PART_DONE = "#22c55e"
-// Marshrutida ARRA yo'q — detal roverda kesiladi. Arrachi uni kesmaydi, skani ham
-// qabul qilinmaydi; kulrang bo'lib turadi va yozuvi "ROVER" deb belgilanadi.
-const PART_CUSTOM = "#9aa4b2"
+// Marshrutida ARRA yo'q — nostandart detal, roverda kesiladi. Arrachi uni kesmaydi
+// va skani ham qabul qilinmaydi. PUSHTI: sariq (odatdagi), yashil (kesilgan) va
+// ko'k (tanlangan) dan bir qarashda ajralib turadi.
+const PART_CUSTOM = "#e8639f"
 
 // --- GibSaw render qoidalari (GibLabViewer'dan portlangan, foto-tekshirilgan) ---
 

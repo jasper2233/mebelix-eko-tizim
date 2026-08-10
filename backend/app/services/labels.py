@@ -229,14 +229,11 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
     label_name = f"{d.label_num}_{d.part_name}" if d.label_num else d.part_name
     text(5, 36.5, label_name[:24], 3.3, bold=True)
 
-    # XNC belgilari (GibSaw grafic_images): П=paz, Ф=freza, teshik — sverlo ikonkasi
-    icons = []
+    # XNC belgilari (GibSaw grafic_images): П=paz, teshik — sverlo ikonkasi.
+    # Ф (freza) olib tashlandi: freza marshrutga ta'sir qilmaydi (ROVER bosqichi
+    # fayldan avtomatik chiqmaydi), ya'ni belgi chekda ish ko'rsatmasdi.
     if d.xnc_summary.get("grooves"):
-        icons.append("П")
-    if d.xnc_summary.get("mills"):
-        icons.append("Ф")
-    if icons:
-        text(5, 41.5, " ".join(icons), 3.4, bold=True)
+        text(5, 41.5, "П", 3.4, bold=True)
     if d.xnc_summary.get("bores") or d.xnc_summary.get("edge_bores"):
         # Sverlo ikonkasi zakaz ID ("Formatka 305201") tagida — detal kodi (~x27
         # gacha), loyiha (y13.5+) va QR (x40+) oralig'idagi bo'sh joyda
