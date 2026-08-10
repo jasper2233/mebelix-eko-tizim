@@ -74,21 +74,26 @@ async def load_label_data(db: "AsyncSession", instance_id: int) -> LabelData | N
         if cell:
             holes = order.cutmap.get("holes", {}).get(str(cell.get("id")))
 
-    route_codes = list(
-        (
-            await db.execute(
-                select(PartRoute.process_code)
-                .where(
-                    PartRoute.part_id == part.id,
-                    PartRoute.is_enabled == True,  # noqa: E712
-                    PartRoute.is_deleted == False,  # noqa: E712
+    # Marshrut faqat NOSTANDART detalda chiqadi: uni texnolog qo'lda chizgan va
+    # operator qaysi bosqichdan keyin qayerga yuborishni chekdan bilishi kerak.
+    # Standart detalda marshrut oldindan ma'lum — chekni behuda band qilardi.
+    route_codes: list[int] = []
+    if part.is_custom:
+        route_codes = list(
+            (
+                await db.execute(
+                    select(PartRoute.process_code)
+                    .where(
+                        PartRoute.part_id == part.id,
+                        PartRoute.is_enabled == True,  # noqa: E712
+                        PartRoute.is_deleted == False,  # noqa: E712
+                    )
+                    .order_by(PartRoute.seq)
                 )
-                .order_by(PartRoute.seq)
             )
+            .scalars()
+            .all()
         )
-        .scalars()
-        .all()
-    )
 
     return LabelData(
         route_codes=route_codes,
