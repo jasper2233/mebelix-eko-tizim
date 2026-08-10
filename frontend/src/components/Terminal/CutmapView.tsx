@@ -599,8 +599,11 @@ export function CutmapView({
                         // (hali skan qilinmagan) nusxa tasdiqdan keyin bekor bo'ladi
                         const insts =
                           cellInsts.get(`${sheet.no}:${part.cell}`) ?? []
+                        // Faqat `label_printed_at`: kesish postida chek chiqarish
+                        // skan ham yozadi, ya'ni `done` DOIM true bo'ladi va
+                        // `!i.done` sharti long press'ni butunlay o'lik qilardi.
                         const last = insts
-                          .filter((i) => i.label_printed_at && !i.done)
+                          .filter((i) => i.label_printed_at)
                           .sort((a, b) =>
                             String(a.label_printed_at).localeCompare(
                               String(b.label_printed_at),
@@ -943,7 +946,7 @@ function PartCard({
               </span>
               {/* Texnolog xato chekni shu yerdan tuzatadi — proyekt ARRA
                   ro'yxatidan tushib bo'lgach arrachi xaritani ocholmaydi */}
-              {admin && inst.label_printed_at && !inst.done && (
+              {admin && inst.label_printed_at && (
                 <LoadingButton
                   variant="destructive"
                   size="sm"

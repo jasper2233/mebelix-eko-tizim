@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse
-from sqlalchemy import Row, case, func, select
+from sqlalchemy import Row, case, func, select, update
 
 from app.api.deps import SessionDep, client_ip, require_roles
 from app.core.config import upload_root
@@ -795,11 +795,38 @@ LabelCancelUser = Annotated[
 @router.delete("/labels/{instance_id}", response_model=Message, operation_id="cancel_instance_label")
 async def cancel_instance_label(db: SessionDep, user: LabelCancelUser, instance_id: int) -> Message:
     """Chekni bekor qilish (long press / admin xarita): noto'g'ri chiqarilgan yorliq
-    katakni chop etilmagan holatga qaytaradi. Skan qilingan (kesilgan) nusxaga ta'sir qilmaydi."""
+    katakni chop etilmagan holatga qaytaradi."""
     instance = await db.get(PartInstance, instance_id)
     if instance is None or instance.is_deleted:
         raise NotFoundException("Nusxa topilmadi.")
     instance.label_printed_at = None
+
+    # Kesish postlarida chek chiqarish skan ham yozadi ("chek = kesildi"), shuning
+    # uchun bekor qilish o'sha skanni ham qaytarishi shart — aks holda katak yashil
+    # bo'lib qolar va qadam hisobi (`total_done`) oshgan holida qolardi. Faqat
+    # chop etish yozgan skan bekor bo'ladi: operator qo'lda qilgan skanga tegilmaydi.
+    auto_scans = (
+        (
+            await db.execute(
+                select(Scan).where(
+                    Scan.instance_id == instance.id,
+                    Scan.client_event_id.in_([f"cutprint-{instance.id}", f"rvprint-{instance.id}"]),
+                    Scan.is_cancelled == False,  # noqa: E712
+                    Scan.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for scan in auto_scans:
+        scan.is_cancelled = True
+        scan.cancelled_at = datetime.now(UTC)
+        await db.execute(
+            update(PartRoute)
+            .where(PartRoute.id == scan.route_id, PartRoute.total_done > 0)
+            .values(total_done=PartRoute.total_done - 1)
+        )
     log_action(
         db,
         module="print",
