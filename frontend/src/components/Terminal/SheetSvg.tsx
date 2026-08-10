@@ -18,12 +18,15 @@ const PART_SELECTED = "#2596be"
 // oilada — xarita ajralib qolmasin. List kartasi endi yengil tint
 // (green-50 fon, green-700 matn): to'ldirilgan katak SVG'da undan to'q
 const PART_DONE = "#22c55e"
-// Nostandart detal — marshrutini texnolog qo'lda chizgan. OCH QIZIL: sariq
-// (odatdagi), yashil (kesilgan) va ko'k (tanlangan) dan bir qarashda ajralib
-// turadi. Chegara to'q qizil — tanlanganda yoki kesilganda fon rangi almashadi,
-// belgi esa yo'qolmasligi kerak.
-const PART_CUSTOM = "#f0736e"
-const PART_CUSTOM_EDGE = "#c62828"
+// Nostandart detal — marshrutini texnolog qo'lda chizgan. Kesilmagan holatda
+// sariq o'rniga BINAFSHA turadi, chek chiqarilgach odatdagidek YASHIL bo'ladi,
+// chek bekor qilinsa yana binafshaga qaytadi (`allDone` fondan ustun).
+// Chegara esa doim binafsha — yashil yoki ko'k fonda ham turi ko'rinib tursin.
+//
+// Nega binafsha: qizil "bekor qilingan" (--status-cancelled), pushti esa ROVER
+// postining rangi (--post-rover) — ikkalasi ham noto'g'ri ma'no berardi.
+const PART_CUSTOM = "#8b5cf6"
+const PART_CUSTOM_EDGE = "#6d28d9"
 
 // --- GibSaw render qoidalari (GibLabViewer'dan portlangan, foto-tekshirilgan) ---
 
@@ -276,14 +279,17 @@ export function SheetSvg({
     // har detal uchun yozuv-to'qnashuv algoritmi. Thumbnail'da ular chizilmaydi.
     const H = thumbnail ? undefined : holes[String(p.id)]
     const custom = !p.waste && insts.length > 0 && insts.every((i) => i.custom)
+    // `allDone` `custom` dan USTUN: chek chiqarilgan nostandart detal ham yashil
+    // bo'ladi (arrachi uchun "kesildi" belgisi hamma detalda bir xil), bekor
+    // qilinsa `allDone` yana false bo'lib o'z rangiga qaytadi.
     const fill = p.waste
       ? "url(#zebra)"
       : selected
         ? PART_SELECTED
-        : custom
-          ? PART_CUSTOM
-          : allDone
-            ? PART_DONE
+        : allDone
+          ? PART_DONE
+          : custom
+            ? PART_CUSTOM
             : PART_FILL
 
     // thumbnail'da yozuvlar umuman hisoblanmaydi — pickSpot to'qnashuv qidiruvi
