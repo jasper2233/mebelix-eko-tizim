@@ -27,6 +27,7 @@ import {
 import { CutmapView, TBtn } from "@/components/Terminal/CutmapView"
 import { KromkaView } from "@/components/Terminal/KromkaView"
 import { PrisadkaView } from "@/components/Terminal/PrisadkaView"
+import { UpakovkaView } from "@/components/Terminal/UpakovkaView"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
@@ -74,7 +75,14 @@ const BADGE_RE =
 // Bu postlarning o'z ko'rinishi bor (quyidagi shoxlar: kesish xaritasi, CNC
 // detallar, kromka). Yangi maxsus ko'rinish qo'shilsa — postni shu yerga ham
 // qo'shing, aks holda uning terminali keraksiz vazifa so'rovini yuboraveradi.
-const OWN_VIEW_POSTS = ["ARRA", "PRISADKA", "ROVER", "KROMKA", "OVAL"]
+const OWN_VIEW_POSTS = [
+  "ARRA",
+  "PRISADKA",
+  "ROVER",
+  "KROMKA",
+  "OVAL",
+  "UPAKOVKA",
+]
 
 type LastScan =
   | { kind: "ok"; code: string; qoldiq: number; scanId: number; at: number }
@@ -141,6 +149,9 @@ function TerminalPage() {
   // KROMKA: yozishdan oldin lokal tekshiruv (arradan chiqqanmi, tugamaganmi) —
   // null = yozish mumkin, "NOTFOUND" = bu proyektda yo'q, boshqa = xato matni
   const kromkaScanRef = useRef<((qr: string) => string | null) | null>(null)
+  // Qadoqlash: skanni UpakovkaView o'zi yozadi (detal ochiq QADOQqa tushadi),
+  // shuning uchun terminalning umumiy skan mutatsiyasi chetlab o'tiladi.
+  const packScanRef = useRef<((qr: string) => void) | null>(null)
 
   const { online } = useMesWs(
     useCallback(
@@ -363,6 +374,11 @@ function TerminalPage() {
         toast.error(
           "Shu detal endigina skan qilindi — 5 soniyadan keyin qayta urining.",
         )
+        return
+      }
+      if (packScanRef.current) {
+        cooldownRef.current.set(value, kNow)
+        packScanRef.current(value)
         return
       }
       if (mapOrderId !== null && kromkaScanRef.current) {
@@ -679,6 +695,28 @@ function TerminalPage() {
                 <OrderPicker
                   onPick={setMapOrderId}
                   title="Proyektlar — detallar uchun proyektni tanlang"
+                  showCutmapBadge={false}
+                />
+              )}
+            </div>
+          </div>
+        ) : ctx?.post_code === "UPAKOVKA" ? (
+          /* QADOQLASH: proyekt ro'yxati → qadoq yig'ish ekrani */
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+            {scanStrip}
+            <div className="min-h-0 flex-1">
+              {mapOrderId ? (
+                <UpakovkaView
+                  orderId={mapOrderId}
+                  onBack={() => setMapOrderId(null)}
+                  registerScan={(fn) => {
+                    packScanRef.current = fn
+                  }}
+                />
+              ) : (
+                <OrderPicker
+                  onPick={setMapOrderId}
+                  title="Proyektlar — qadoqlash uchun proyektni tanlang"
                   showCutmapBadge={false}
                 />
               )}

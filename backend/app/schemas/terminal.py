@@ -3,7 +3,7 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.enums import OrderPriority, PostCode, SessionStatus
+from app.models.enums import OrderPriority, PachkaStatus, PostCode, SessionStatus
 
 
 class BadgeStart(BaseModel):
@@ -206,3 +206,49 @@ class CutmapState(BaseModel):
     order_number: str
     model: dict[str, Any] | None
     instances: list[CutmapInstanceState]
+
+
+class PachkaItemRow(BaseModel):
+    """Qadoq ichidagi bitta nusxa."""
+
+    instance_id: int
+    qr_text: str
+    part_code: str  # productCode_partCode
+    part_name: str
+    length: float | None
+    width: float | None
+    thickness: float | None
+    weight_kg: float  # taxminiy: hajm × zichlik
+
+
+class PachkaRow(BaseModel):
+    id: int
+    code: str
+    status: PachkaStatus
+    items: list[PachkaItemRow] = []
+    weight_kg: float = 0  # taxminiy jami — faqat KO'RSATILADI, hech narsani bloklamaydi
+
+
+class UpakovkaPending(BaseModel):
+    """Qadoqlanmagan tayyor detal: qadoqlovchi nimani yig'ish kerakligini shundan biladi."""
+
+    instance_id: int
+    qr_text: str
+    part_code: str
+    part_name: str
+    ready: bool  # oldingi bosqichlar tugaganmi (tugamagan bo'lsa skan rad etiladi)
+
+
+class UpakovkaOrderState(BaseModel):
+    """UPAKOVKA post sahifasi: ochiq qadoqlar, yopilganlari va qolgan detallar."""
+
+    order_id: int
+    order_number: str
+    project_name: str | None
+    density: float  # kg/m3 — taxminiy og'irlik shundan hisoblanadi
+    pachkas: list[PachkaRow] = []
+    pending: list[UpakovkaPending] = []
+
+
+class PachkaScan(BaseModel):
+    qr_text: Annotated[str, Field(min_length=3, max_length=120)]

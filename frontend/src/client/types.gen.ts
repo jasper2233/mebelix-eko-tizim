@@ -538,6 +538,37 @@ export type OrderUpdate = {
     notes?: (string | null);
 };
 
+/**
+ * Qadoq ichidagi bitta nusxa.
+ */
+export type PachkaItemRow = {
+    instance_id: number;
+    qr_text: string;
+    part_code: string;
+    part_name: string;
+    length: (number | null);
+    width: (number | null);
+    thickness: (number | null);
+    weight_kg: number;
+};
+
+export type PachkaRow = {
+    id: number;
+    code: string;
+    status: PachkaStatus;
+    items?: Array<PachkaItemRow>;
+    weight_kg?: number;
+};
+
+export type PachkaScan = {
+    qr_text: string;
+};
+
+/**
+ * Qadoq holati: ochiq (detal qo'shiladi) -> yopiq (chek chiqadi) -> jo'natildi.
+ */
+export type PachkaStatus = 'open' | 'closed' | 'shipped';
+
 export type Paginated_AuditLogRead_ = {
     data: Array<AuditLogRead>;
     count: number;
@@ -875,6 +906,29 @@ export type TerminalOrderCard = {
 export type Token = {
     access_token: string;
     token_type: string;
+};
+
+/**
+ * UPAKOVKA post sahifasi: ochiq qadoqlar, yopilganlari va qolgan detallar.
+ */
+export type UpakovkaOrderState = {
+    order_id: number;
+    order_number: string;
+    project_name: (string | null);
+    density: number;
+    pachkas?: Array<PachkaRow>;
+    pending?: Array<UpakovkaPending>;
+};
+
+/**
+ * Qadoqlanmagan tayyor detal: qadoqlovchi nimani yig'ish kerakligini shundan biladi.
+ */
+export type UpakovkaPending = {
+    instance_id: number;
+    qr_text: string;
+    part_code: string;
+    part_name: string;
+    ready: boolean;
 };
 
 export type UpdatePassword = {
@@ -1274,6 +1328,38 @@ export type ReadOrderCutmapData = {
 };
 
 export type ReadOrderCutmapResponse = (CutmapState);
+
+export type ReadUpakovkaOrderData = {
+    orderId: number;
+};
+
+export type ReadUpakovkaOrderResponse = (UpakovkaOrderState);
+
+export type CreatePachkaData = {
+    orderId: number;
+};
+
+export type CreatePachkaResponse = (UpakovkaOrderState);
+
+export type ScanIntoPachkaData = {
+    pachkaId: number;
+    requestBody: PachkaScan;
+};
+
+export type ScanIntoPachkaResponse = (UpakovkaOrderState);
+
+export type RemoveFromPachkaData = {
+    instanceId: number;
+    pachkaId: number;
+};
+
+export type RemoveFromPachkaResponse = (UpakovkaOrderState);
+
+export type ClosePachkaData = {
+    pachkaId: number;
+};
+
+export type ClosePachkaResponse = (Message);
 
 export type ReadPostsResponse = (Array<PostRead>);
 

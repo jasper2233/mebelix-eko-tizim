@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { ReadAuditLogsData, ReadAuditLogsResponse, ReadBridgeAgentsResponse, CreateBridgeAgentData, CreateBridgeAgentResponse, UpdateBridgeAgentData, UpdateBridgeAgentResponse, DeleteBridgeAgentData, DeleteBridgeAgentResponse, RegenerateBridgeCodeData, RegenerateBridgeCodeResponse, PairBridgeAgentData, PairBridgeAgentResponse, BridgeScanData, BridgeScanResponse, ReadClientsData, ReadClientsResponse, CreateClientData, CreateClientResponse, ReadClientData, ReadClientResponse, UpdateClientData, UpdateClientResponse, DeleteClientData, DeleteClientResponse, ReadEmployeesData, ReadEmployeesResponse, CreateEmployeeData, CreateEmployeeResponse, ReadEmployeeData, ReadEmployeeResponse, UpdateEmployeeData, UpdateEmployeeResponse, DeleteEmployeeData, DeleteEmployeeResponse, RegenerateBadgeData, RegenerateBadgeResponse, HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, RefreshAccessTokenResponse, LogoutResponse, ReadMachinesResponse, CreateMachineData, CreateMachineResponse, ReadMachineData, ReadMachineResponse, UpdateMachineData, UpdateMachineResponse, DeleteMachineData, DeleteMachineResponse, ReadMaterialsData, ReadMaterialsResponse, CreateMaterialData, CreateMaterialResponse, UpdateMaterialData, UpdateMaterialResponse, DeleteMaterialData, DeleteMaterialResponse, CreateOrderData, CreateOrderResponse, ReadOrdersData, ReadOrdersResponse, ReadOrderStatusCountsResponse, ReadOrderData, ReadOrderResponse, UpdateOrderData, UpdateOrderResponse, SaveOrderSurveyData, SaveOrderSurveyResponse, UploadRoomPhotoData, UploadRoomPhotoResponse, DeleteRoomPhotoData, DeleteRoomPhotoResponse, CancelOrderData, CancelOrderResponse, DeliverOrderData, DeliverOrderResponse, ReadOrderMatrixData, ReadOrderMatrixResponse, EditOrderMatrixData, EditOrderMatrixResponse, AssignOrderMachinesData, AssignOrderMachinesResponse, ConfirmOrderData, ConfirmOrderResponse, StartOrderProductionData, StartOrderProductionResponse, UploadOrderProjectData, UploadOrderProjectResponse, DownloadOrderScxZipData, DownloadOrderScxZipResponse, RegenerateOrderScxData, RegenerateOrderScxResponse, DownloadOrderFileData, DownloadOrderFileResponse, ReadOrderCutmapData, ReadOrderCutmapResponse, ReadPostsResponse, UpdatePostData, UpdatePostResponse, ReportProductivityData, ReportProductivityResponse, ReportOrdersData, ReportOrdersResponse, ReportMaterialsData, ReportMaterialsResponse, ReportDashboardResponse, RecordScanData, RecordScanResponse, CancelScanData, CancelScanResponse, ReadTabloMatrixResponse, ReadTabloOrderData, ReadTabloOrderResponse, ReadTerminalContextResponse, StartTerminalSessionData, StartTerminalSessionResponse, EndTerminalSessionResponse, ReadTerminalTasksResponse, ReadTerminalOrdersResponse, ResolveTerminalQrData, ResolveTerminalQrResponse, ReadTerminalKromkaData, ReadTerminalKromkaResponse, ReadTerminalPrisadkaData, ReadTerminalPrisadkaResponse, ReadTerminalCutmapData, ReadTerminalCutmapResponse, PrintInstanceLabelData, PrintInstanceLabelResponse, CancelInstanceLabelData, CancelInstanceLabelResponse, RenderInstanceLabelData, RenderInstanceLabelResponse, DownloadTerminalFileData, DownloadTerminalFileResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
+import type { ReadAuditLogsData, ReadAuditLogsResponse, ReadBridgeAgentsResponse, CreateBridgeAgentData, CreateBridgeAgentResponse, UpdateBridgeAgentData, UpdateBridgeAgentResponse, DeleteBridgeAgentData, DeleteBridgeAgentResponse, RegenerateBridgeCodeData, RegenerateBridgeCodeResponse, PairBridgeAgentData, PairBridgeAgentResponse, BridgeScanData, BridgeScanResponse, ReadClientsData, ReadClientsResponse, CreateClientData, CreateClientResponse, ReadClientData, ReadClientResponse, UpdateClientData, UpdateClientResponse, DeleteClientData, DeleteClientResponse, ReadEmployeesData, ReadEmployeesResponse, CreateEmployeeData, CreateEmployeeResponse, ReadEmployeeData, ReadEmployeeResponse, UpdateEmployeeData, UpdateEmployeeResponse, DeleteEmployeeData, DeleteEmployeeResponse, RegenerateBadgeData, RegenerateBadgeResponse, HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, RefreshAccessTokenResponse, LogoutResponse, ReadMachinesResponse, CreateMachineData, CreateMachineResponse, ReadMachineData, ReadMachineResponse, UpdateMachineData, UpdateMachineResponse, DeleteMachineData, DeleteMachineResponse, ReadMaterialsData, ReadMaterialsResponse, CreateMaterialData, CreateMaterialResponse, UpdateMaterialData, UpdateMaterialResponse, DeleteMaterialData, DeleteMaterialResponse, CreateOrderData, CreateOrderResponse, ReadOrdersData, ReadOrdersResponse, ReadOrderStatusCountsResponse, ReadOrderData, ReadOrderResponse, UpdateOrderData, UpdateOrderResponse, SaveOrderSurveyData, SaveOrderSurveyResponse, UploadRoomPhotoData, UploadRoomPhotoResponse, DeleteRoomPhotoData, DeleteRoomPhotoResponse, CancelOrderData, CancelOrderResponse, DeliverOrderData, DeliverOrderResponse, ReadOrderMatrixData, ReadOrderMatrixResponse, EditOrderMatrixData, EditOrderMatrixResponse, AssignOrderMachinesData, AssignOrderMachinesResponse, ConfirmOrderData, ConfirmOrderResponse, StartOrderProductionData, StartOrderProductionResponse, UploadOrderProjectData, UploadOrderProjectResponse, DownloadOrderScxZipData, DownloadOrderScxZipResponse, RegenerateOrderScxData, RegenerateOrderScxResponse, DownloadOrderFileData, DownloadOrderFileResponse, ReadOrderCutmapData, ReadOrderCutmapResponse, ReadUpakovkaOrderData, ReadUpakovkaOrderResponse, CreatePachkaData, CreatePachkaResponse, ScanIntoPachkaData, ScanIntoPachkaResponse, RemoveFromPachkaData, RemoveFromPachkaResponse, ClosePachkaData, ClosePachkaResponse, ReadPostsResponse, UpdatePostData, UpdatePostResponse, ReportProductivityData, ReportProductivityResponse, ReportOrdersData, ReportOrdersResponse, ReportMaterialsData, ReportMaterialsResponse, ReportDashboardResponse, RecordScanData, RecordScanResponse, CancelScanData, CancelScanResponse, ReadTabloMatrixResponse, ReadTabloOrderData, ReadTabloOrderResponse, ReadTerminalContextResponse, StartTerminalSessionData, StartTerminalSessionResponse, EndTerminalSessionResponse, ReadTerminalTasksResponse, ReadTerminalOrdersResponse, ResolveTerminalQrData, ResolveTerminalQrResponse, ReadTerminalKromkaData, ReadTerminalKromkaResponse, ReadTerminalPrisadkaData, ReadTerminalPrisadkaResponse, ReadTerminalCutmapData, ReadTerminalCutmapResponse, PrintInstanceLabelData, PrintInstanceLabelResponse, CancelInstanceLabelData, CancelInstanceLabelResponse, RenderInstanceLabelData, RenderInstanceLabelResponse, DownloadTerminalFileData, DownloadTerminalFileResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
 
 export class AuditService {
     /**
@@ -1133,6 +1133,122 @@ export class OrdersService {
             url: '/api/v1/orders/{order_id}/cutmap',
             path: {
                 order_id: data.orderId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class PachkaService {
+    /**
+     * Read Upakovka Order
+     * Qadoqlash sahifasi: buyurtmaning qadoqlari va qolgan detallari.
+     * @param data The data for the request.
+     * @param data.orderId
+     * @returns UpakovkaOrderState Successful Response
+     * @throws ApiError
+     */
+    public static readUpakovkaOrder(data: ReadUpakovkaOrderData): CancelablePromise<ReadUpakovkaOrderResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/pachka/orders/{order_id}',
+            path: {
+                order_id: data.orderId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Create Pachka
+     * Yangi qadoq ochish. Kod `PK-{buyurtma}-{NN}` — chekdagi QR matni ham shu.
+     * @param data The data for the request.
+     * @param data.orderId
+     * @returns UpakovkaOrderState Successful Response
+     * @throws ApiError
+     */
+    public static createPachka(data: CreatePachkaData): CancelablePromise<CreatePachkaResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/pachka/orders/{order_id}',
+            path: {
+                order_id: data.orderId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Scan Into Pachka
+     * Detalni qadoqqa skanerlash — bu AYNI PAYTDA marshrutning UPAKOVKA qadami.
+     *
+     * Skanni odatdagi dvijok yozadi, ya'ni qat'iy tartib shu yerda ham ishlaydi:
+     * oldingi bosqichi tugamagan detal qadoqqa tushmaydi. Shu tufayli yopiq qadoq
+     * ichida chala detal bo'lishi mumkin emas — omborchi ochib tekshirmaydi.
+     * @param data The data for the request.
+     * @param data.pachkaId
+     * @param data.requestBody
+     * @returns UpakovkaOrderState Successful Response
+     * @throws ApiError
+     */
+    public static scanIntoPachka(data: ScanIntoPachkaData): CancelablePromise<ScanIntoPachkaResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/pachka/{pachka_id}/scan',
+            path: {
+                pachka_id: data.pachkaId
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Remove From Pachka
+     * Xato skanni qaytarish: nusxa qadoqdan chiqadi va UPAKOVKA skani bekor bo'ladi.
+     * @param data The data for the request.
+     * @param data.pachkaId
+     * @param data.instanceId
+     * @returns UpakovkaOrderState Successful Response
+     * @throws ApiError
+     */
+    public static removeFromPachka(data: RemoveFromPachkaData): CancelablePromise<RemoveFromPachkaResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/pachka/{pachka_id}/items/{instance_id}',
+            path: {
+                pachka_id: data.pachkaId,
+                instance_id: data.instanceId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Close Pachka
+     * Qadoqni yakunlash: yopiladi va cheki chop etishga yuboriladi.
+     * @param data The data for the request.
+     * @param data.pachkaId
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static closePachka(data: ClosePachkaData): CancelablePromise<ClosePachkaResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/pachka/{pachka_id}/close',
+            path: {
+                pachka_id: data.pachkaId
             },
             errors: {
                 422: 'Validation Error'
