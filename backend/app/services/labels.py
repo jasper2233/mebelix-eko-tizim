@@ -229,11 +229,10 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
     label_name = f"{d.label_num}_{d.part_name}" if d.label_num else d.part_name
     text(5, 36.5, label_name[:24], 3.3, bold=True)
 
-    # XNC belgilari (GibSaw grafic_images): П=paz, teshik — sverlo ikonkasi.
-    # Ф (freza) olib tashlandi: freza marshrutga ta'sir qilmaydi (ROVER bosqichi
-    # fayldan avtomatik chiqmaydi), ya'ni belgi chekda ish ko'rsatmasdi.
-    if d.xnc_summary.get("grooves"):
-        text(5, 41.5, "П", 3.4, bold=True)
+    # Paz (П) va freza (Ф) belgilari olib tashlandi: ikkalasi ham marshrutga ta'sir
+    # qilmaydi (ROVER bosqichi fayldan avtomatik yaratilmaydi), ya'ni operatorga
+    # hech qanday ish ko'rsatmasdi. Teshik esa PRISADKA bosqichini beradi —
+    # sverlo ikonkasi qoladi.
     if d.xnc_summary.get("bores") or d.xnc_summary.get("edge_bores"):
         # Sverlo ikonkasi zakaz ID ("Formatka 305201") tagida — detal kodi (~x27
         # gacha), loyiha (y13.5+) va QR (x40+) oralig'idagi bo'sh joyda
@@ -251,7 +250,7 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
     # Marshrut — ALOHIDA qator (nomga qo'shilsa 24 belgi kesimida yo'qolardi).
     # Kodlar sexning "Jarayon uchun kodlar" jadvalidagi raqamlar.
     if d.route_codes:
-        text(5, 45.3, "Marshrut: " + "/".join(str(c) for c in d.route_codes), 2.9, bold=True)
+        text(5, 41.5, "Marshrut: " + "/".join(str(c) for c in d.route_codes), 2.9, bold=True)
 
     # Material pastda; oxirgi qator BITTA: chapda N/nusxa, o'ngda sana-vaqt.
     # Ikki qator paytida oxirgisi (y 56.2 + 2.9 ≈ 59mm) yorliq pastki chetiga
