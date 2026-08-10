@@ -192,9 +192,10 @@ class CutmapInstanceState(BaseModel):
     cell_index: int | None
     done: bool
     label_printed_at: datetime | None
-    #: Marshrutida ARRA yo'q — detal roverda kesiladi. Arrachi uni kesmaydi va
-    #: skan ham qilolmaydi; xaritada boshqa rang bilan belgilanadi, aks holda
-    #: kesib, keyin "plan topilmadi" xatosini olardi.
+    #: Nostandart detal (`Part.is_custom`) — marshrutini texnolog qo'lda chizgan.
+    #: Xaritada pushti bo'lib turadi: arrachi uni odatdagi detal deb o'ylamasin,
+    #: chunki marshruti arradan boshlanmasligi ham mumkin (o'shanda skan qabul
+    #: qilinmaydi va arrachi "plan topilmadi" xatosiga uchrardi).
     custom: bool = False
 
 

@@ -659,16 +659,16 @@ async def read_terminal_cutmap(db: SessionDep, ctx: TerminalCtx, order_id: int) 
 
 async def build_cutmap_state(db: SessionDep, order: Order, arra_post_id: int) -> CutmapState:
     """Shared by the ARRA terminal (7.1.7) and the admin panel view (10.3)."""
-    # Marshrutida ARRA bor detallar. Xaritada boshqalari ham turadi (GibLab ularni
-    # listga joylashtirgan), lekin arrachi ularni kesmaydi — belgilanib ko'rsatiladi.
-    cut_here = set(
+    # Nostandart detallar — marshrutini texnolog qo'lda chizgan. Ular xaritada
+    # boshqa rang bilan turadi: arrachi ularni odatdagi detal deb o'ylab qo'ymasin
+    # (marshruti arradan boshlanmasligi ham mumkin, o'shanda skan qabul qilinmaydi).
+    custom_parts = set(
         (
             await db.execute(
-                select(PartRoute.part_id).where(
-                    PartRoute.order_id == order.id,
-                    PartRoute.post_id == arra_post_id,
-                    PartRoute.is_enabled == True,  # noqa: E712
-                    PartRoute.is_deleted == False,  # noqa: E712
+                select(Part.id).where(
+                    Part.order_id == order.id,
+                    Part.is_custom == True,  # noqa: E712
+                    Part.is_deleted == False,  # noqa: E712
                 )
             )
         )
@@ -714,7 +714,7 @@ async def build_cutmap_state(db: SessionDep, order: Order, arra_post_id: int) ->
                 cell_index=i.cell_index,
                 done=i.id in done_ids,
                 label_printed_at=i.label_printed_at,
-                custom=i.part_id not in cut_here,
+                custom=i.part_id in custom_parts,
             )
             for i in instances
         ],
