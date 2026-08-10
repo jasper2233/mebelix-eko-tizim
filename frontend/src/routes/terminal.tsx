@@ -24,10 +24,10 @@ import {
   playSuccess,
   playWarning,
 } from "@/components/Terminal/audio"
-import { BoyoqView } from "@/components/Terminal/BoyoqView"
 import { CutmapView, TBtn } from "@/components/Terminal/CutmapView"
 import { KromkaView } from "@/components/Terminal/KromkaView"
 import { OmborView } from "@/components/Terminal/OmborView"
+import { PostQueueView } from "@/components/Terminal/PostQueueView"
 import { PrisadkaView } from "@/components/Terminal/PrisadkaView"
 import { UpakovkaView } from "@/components/Terminal/UpakovkaView"
 import { Button } from "@/components/ui/button"
@@ -86,6 +86,7 @@ const OWN_VIEW_POSTS = [
   "UPAKOVKA",
   "OMBOR",
   "BOYOQ",
+  "STOLYARKA",
 ]
 
 type LastScan =
@@ -731,20 +732,20 @@ function TerminalPage() {
               )}
             </div>
           </div>
-        ) : ctx?.post_code === "BOYOQ" ? (
-          /* BOYOQ: proyekt ro'yxati -> bo'yashga kelgan nusxalar */
+        ) : ["BOYOQ", "STOLYARKA"].includes(ctx?.post_code ?? "") ? (
+          /* BOYOQ / STOLYARKA: proyekt ro'yxati -> shu postga yetib kelgan nusxalar */
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
             {scanStrip}
             <div className="min-h-0 flex-1">
               {mapOrderId ? (
-                <BoyoqView
+                <PostQueueView
                   orderId={mapOrderId}
                   onBack={() => setMapOrderId(null)}
                 />
               ) : (
                 <OrderPicker
                   onPick={setMapOrderId}
-                  title="Proyektlar — bo'yash uchun proyektni tanlang"
+                  title="Proyektlar — ish uchun proyektni tanlang"
                   showCutmapBadge={false}
                 />
               )}
