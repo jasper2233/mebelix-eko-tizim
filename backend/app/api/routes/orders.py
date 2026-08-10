@@ -2,7 +2,7 @@ import contextlib
 import io
 import zipfile
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Form, HTTPException, Query, Request, Response, UploadFile
@@ -54,7 +54,7 @@ from app.services.giblab.ingest import (
     wipe_previous_parse,
     write_and_register_scx,
 )
-from app.services.giblab.models import DEFAULT_PROCESS_CODE, PROCESS_POSTS
+from app.services.giblab.models import DEFAULT_PROCESS_CODE, PROCESS_NAMES, PROCESS_POSTS, TAIL_CODES
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -483,6 +483,13 @@ async def read_order_matrix(db: SessionDep, _: StaffReadUser, order_id: int) -> 
     for r in routes:
         routes_by_part.setdefault(r.part_id, []).append(RouteCell.model_validate(r))
 
+    children: dict[int, list[dict[str, Any]]] = {}
+    for part, product_code in rows:
+        if part.assembly_parent_id is not None:
+            children.setdefault(part.assembly_parent_id, []).append(
+                {"part_id": part.id, "code": f"{product_code}_{part.code}", "count": part.count}
+            )
+
     parts = [
         MatrixPart(
             id=part.id,
@@ -498,6 +505,8 @@ async def read_order_matrix(db: SessionDep, _: StaffReadUser, order_id: int) -> 
             xnc_summary=part.xnc_summary,
             note=part.note,
             is_custom=part.is_custom,
+            assembly_parent_id=part.assembly_parent_id,
+            assembly_children=children.get(part.id, []),
             routes=sorted(routes_by_part.get(part.id, []), key=lambda c: c.seq),
         )
         for part, product_code in rows
@@ -553,10 +562,22 @@ async def edit_order_matrix(
                 .values(is_deleted=False, deleted_at=None)
             )
 
+        # Biriktirish marshrutdan OLDIN o'rnatiladi: `_set_custom_route` dumni
+        # (qadoqlash/ombor) shu bayroqqa qarab qo'shadi yoki qo'shmaydi.
+        parent_changed = "assembly_parent_id" in edit.model_fields_set
+        if parent_changed:
+            await _set_assembly_parent(db, part, edit.assembly_parent_id)
+
         if edit.route_codes is not None:
             if not part.is_custom:
                 raise ForbiddenException("Marshrutni faqat nostandart detalga qo'lda chizish mumkin.")
             await _set_custom_route(db, order_id, part, edit.route_codes, posts, packaging)
+        elif parent_changed and part.is_custom:
+            # Marshrut o'zgarmadi, lekin dum o'zgardi — mavjud kodlardan qayta quramiz
+            await _set_custom_route(db, order_id, part, await _route_codes(db, part), posts, packaging)
+
+        if parent_changed and part.assembly_parent_id is not None:
+            await _check_assembly_match(db, part)
 
         for post_id, enabled in edit.stages.items():
             post = posts.get(post_id)
@@ -622,6 +643,80 @@ async def edit_order_matrix(
 _ROUTE_START_POSTS = (PostCode.ARRA, PostCode.ROVER)
 
 
+async def _route_codes(db: SessionDep, part: Part) -> list[int]:
+    """Detalning HOZIRGI marshruti jarayon kodlari (dumsiz), tartib bilan."""
+    codes = (
+        (
+            await db.execute(
+                select(PartRoute.process_code)
+                .where(
+                    PartRoute.part_id == part.id,
+                    PartRoute.is_deleted == False,  # noqa: E712
+                )
+                .order_by(PartRoute.seq)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return [c for c in codes if c not in TAIL_CODES]
+
+
+async def _set_assembly_parent(db: SessionDep, part: Part, parent_id: int | None) -> None:
+    """Mayda detalni asosiy detalga biriktiradi (yoki bog'lamni uzadi).
+
+    Bir pog'ona: biriktirilgan detalning o'zi asosiy bo'la olmaydi va aksincha —
+    zanjirda kimning skani kimni yopishi tushunarsiz bo'lib qolardi."""
+    if parent_id is None:
+        part.assembly_parent_id = None
+        return
+    if parent_id == part.id:
+        raise ForbiddenException("Detalni o'ziga biriktirib bo'lmaydi.")
+    parent = (
+        await db.execute(
+            select(Part).where(
+                Part.id == parent_id,
+                Part.order_id == part.order_id,
+                Part.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).scalar_one_or_none()
+    if parent is None:
+        raise NotFoundException("Asosiy detal topilmadi (boshqa buyurtmaga tegishli bo'lishi mumkin).")
+    if parent.assembly_parent_id is not None:
+        raise ForbiddenException(f"{parent.code} o'zi boshqa detalga biriktirilgan — zanjir bo'lmaydi.")
+    has_children = (
+        await db.execute(
+            select(func.count())
+            .select_from(Part)
+            .where(
+                Part.assembly_parent_id == part.id,
+                Part.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).scalar_one()
+    if has_children:
+        raise ForbiddenException(f"{part.code} ga mayda detallar biriktirilgan — avval ularni ajrating.")
+    part.assembly_parent_id = parent_id
+
+
+async def _check_assembly_match(db: SessionDep, part: Part) -> None:
+    """Birikish nuqtasi: mayda detalning OXIRGI amali asosiy detal marshrutida ham bo'lishi shart.
+
+    Aynan o'sha qadamda asosiy detal skanerlanadi va mayda detal ham yopiladi.
+    Mos kelmasa birikish hech qachon ro'y bermasdi va mayda detal marshrutda osilib qolardi."""
+    mine = await _route_codes(db, part)
+    if not mine:
+        return  # marshrut hali chizilmagan — ishlab chiqarishga uzatishda baribir bloklanadi
+    parent = await db.get(Part, part.assembly_parent_id)
+    assert parent is not None
+    if mine[-1] not in await _route_codes(db, parent):
+        op = PROCESS_NAMES.get(mine[-1], str(mine[-1]))
+        raise ForbiddenException(
+            f"{parent.code} marshrutida «{op}» yo'q — birikish shu amalda bo'ladi, avval uni qo'shing."
+        )
+
+
 async def _set_custom_route(
     db: SessionDep, order_id: int, part: Part, codes: list[int], posts: dict[int, Post], packaging: bool
 ) -> None:
@@ -675,7 +770,10 @@ async def _set_custom_route(
         )
     # Qadoqlash va ombor — texnolog tanlamaydi. Qadoqlashni anketadagi bayroq
     # qo'shadi, ombor esa HAR doim oxirgi qadam bo'ladi.
-    if codes:
+    # Biriktirilgan MAYDA detalga dum QO'SHILMAYDI: u asosiy detalga yopishib
+    # yaxlit buyumga aylanadi, ya'ni alohida qadoqlanmaydi va omborga alohida
+    # kirmaydi — aks holda qadoqlovchi mavjud bo'lmagan detalni qidirardi.
+    if codes and part.assembly_parent_id is None:
         tail = [(15, PostCode.UPAKOVKA)] if packaging else []
         tail.append((16, PostCode.OMBOR))
         for offset, (code, post_code) in enumerate(tail):

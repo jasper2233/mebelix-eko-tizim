@@ -55,6 +55,9 @@ class TaskRow(BaseModel):
     #: nechta amal bor (STOLYARKA da olti xil) — operator qaysi biri kerakligini
     #: shundan biladi; noto'g'ri petlya eshikni brak qiladi.
     process_code: int
+    #: Yig'ma buyum: shu qadamda yopishtiriladigan mayda detallar ("01_007 ×2").
+    #: Operator nimani yig'ib kelishini shundan biladi — ular alohida skanerlanmaydi.
+    assembly: list[str] = []
 
 
 class TerminalOrderCard(BaseModel):

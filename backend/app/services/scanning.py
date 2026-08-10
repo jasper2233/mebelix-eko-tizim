@@ -192,6 +192,115 @@ async def _scans_done(db: AsyncSession, instance_id: int, route_id: int) -> int:
     ).scalar_one()
 
 
+async def _close_assembly_children(
+    db: AsyncSession,
+    *,
+    scan: Scan,
+    part: Part,
+    post: Post,
+    route: PartRoute,
+    session: WorkSession,
+    machine: Machine,
+) -> None:
+    """Asosiy detal skani unga biriktirilgan MAYDA detallarni ham yopadi.
+
+    Mayda detal marshruti aynan birikish qadamida tugaydi (`orders._set_custom_route`
+    unga qadoqlash/ombor dumini qo'shmaydi), shuning uchun birikish nuqtasi — mayda
+    detalning OXIRGI qadami. U shu postda bo'lsa, bu skan o'sha qadamni yopadi.
+
+    Chala detaldan yaxlit buyum yig'ib bo'lmaydi: mayda detalning oldingi bosqichi
+    tugamagan bo'lsa butun skan rad etiladi (E004), ya'ni asosiy detal ham o'tmaydi.
+    """
+    children = (
+        (
+            await db.execute(
+                select(Part).where(
+                    Part.assembly_parent_id == part.id,
+                    Part.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not children:
+        return
+    # Asosiy detalning shu qadamdagi OXIRGI nusxasi qolgan maydalarning hammasini
+    # yopadi: sonlar bo'linmasa (5 mayda / 2 asosiy) qoldiq osilib qolmasin.
+    last_parent_scan = route.total_done >= route.total_required
+
+    for child in children:
+        steps = list(
+            (
+                await db.execute(
+                    select(PartRoute)
+                    .where(
+                        PartRoute.part_id == child.id,
+                        PartRoute.is_enabled == True,  # noqa: E712
+                        PartRoute.is_deleted == False,  # noqa: E712
+                    )
+                    .order_by(PartRoute.seq)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if not steps or steps[-1].post_id != post.id:
+            continue  # birikish boshqa postda (yoki marshrut chizilmagan)
+        merge = steps[-1]
+
+        open_instances = []
+        for inst in (
+            (
+                await db.execute(
+                    select(PartInstance)
+                    .where(
+                        PartInstance.part_id == child.id,
+                        PartInstance.is_deleted == False,  # noqa: E712
+                    )
+                    .order_by(PartInstance.instance_no)
+                )
+            )
+            .scalars()
+            .all()
+        ):
+            if await _scans_done(db, inst.id, merge.id) < merge.per_instance:
+                open_instances.append(inst)
+        if not open_instances:
+            continue
+
+        per_parent = max(1, child.count // part.count) if part.count else len(open_instances)
+        take = open_instances if last_parent_scan else open_instances[:per_parent]
+
+        for inst in take:
+            for prev in steps[:-1]:
+                if await _scans_done(db, inst.id, prev.id) < prev.per_instance:
+                    prev_post = await db.get(Post, prev.post_id)
+                    nom = prev_post.name if prev_post is not None else f"{prev.seq}-qadam"
+                    raise ScanRejected(
+                        "E004",
+                        f"Mayda detal {inst.qr_text} hali {nom} bosqichidan o'tmagan — yig'ib bo'lmaydi.",
+                    )
+            db.add(
+                Scan(
+                    order_id=child.order_id,
+                    part_id=child.id,
+                    instance_id=inst.id,
+                    route_id=merge.id,
+                    post_id=post.id,
+                    machine_id=machine.id,
+                    employee_id=session.employee_id,
+                    session_id=session.id,
+                    client_event_id=f"asm-{scan.id}-{inst.id}",
+                    parent_scan_id=scan.id,
+                )
+            )
+            await db.execute(
+                update(PartRoute).where(PartRoute.id == merge.id).values(total_done=PartRoute.total_done + 1)
+            )
+    await db.flush()
+
+
 async def record_scan(
     db: AsyncSession,
     *,
@@ -339,6 +448,10 @@ async def record_scan_at(
     except IntegrityError:  # client_event_id race — treat as replay
         await db.rollback()
         raise ScanRejected("E001", "Takroriy scan aniqlandi. Qayta urining.") from None
+
+    # Yig'ma buyum: shu qadamda asosiy detalga mayda detallar yopishtiriladi.
+    # Ular alohida skanerlanmaydi — asosiy detalning skani ularnikini ham yopadi.
+    await _close_assembly_children(db, scan=scan, part=part, post=post, route=route, session=session, machine=machine)
 
     outcome = ScanOutcome(
         scan=scan,
@@ -521,6 +634,30 @@ async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Sc
 
     scan.is_cancelled = True
     scan.cancelled_at = datetime.now(UTC)
+    # Yig'ma buyum: shu skan mayda detallarni ham yopgan bo'lsa, ular birga qaytadi —
+    # aks holda asosiy detal qaytib, maydalari yopiq qolib ketardi.
+    derived = (
+        (
+            await db.execute(
+                select(Scan).where(
+                    Scan.parent_scan_id == scan.id,
+                    Scan.is_cancelled == False,  # noqa: E712
+                    Scan.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for child_scan in derived:
+        child_scan.is_cancelled = True
+        child_scan.cancelled_at = scan.cancelled_at
+        await db.execute(
+            update(PartRoute)
+            .where(PartRoute.id == child_scan.route_id, PartRoute.total_done > 0)
+            .values(total_done=PartRoute.total_done - 1)
+        )
+
     route = await db.get(PartRoute, scan.route_id)
     if route is not None:
         # Kamaytirish ham SQL tomonda — parallel skan/bekor qilishda drift bo'lmasin

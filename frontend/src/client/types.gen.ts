@@ -379,6 +379,10 @@ export type MatrixPart = {
     };
     note: (string | null);
     is_custom: boolean;
+    assembly_parent_id?: (number | null);
+    assembly_children?: Array<{
+        [key: string]: unknown;
+    }>;
     routes: Array<RouteCell>;
 };
 
@@ -394,6 +398,7 @@ export type MatrixPartEdit = {
     };
     is_custom?: (boolean | null);
     route_codes?: (Array<number> | null);
+    assembly_parent_id?: (number | null);
 };
 
 export type Message = {
@@ -916,6 +921,7 @@ export type TaskRow = {
         [key: string]: unknown;
     };
     process_code: number;
+    assembly?: Array<string>;
 };
 
 export type TerminalContext = {

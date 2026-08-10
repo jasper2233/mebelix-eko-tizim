@@ -14,13 +14,17 @@ from app.models import Material, Order, OrderFile, Part, PartInstance, PartRoute
 from app.models.enums import FileKind, MaterialType, PostCode, RouteSource
 
 from .cutmap import build_cutmap
-from .models import PROCESS_POSTS, ParsedPart, ParsedProject, ParseError
+from .models import PROCESS_POSTS, TAIL_CODES, ParsedPart, ParsedProject, ParseError
 from .scx import build_scx_files
 
 logger = logging.getLogger(__name__)
 
 
-async def snapshot_custom_routes(db: AsyncSession, order: Order) -> dict[tuple[str, str], tuple[bool, list[int]]]:
+#: `(mahsulot kodi, detal kodi)` -> (nostandart bayrog'i, jarayon kodlari, asosiy detal kaliti)
+RouteSnapshot = dict[tuple[str, str], tuple[bool, list[int], tuple[str, str] | None]]
+
+
+async def snapshot_custom_routes(db: AsyncSession, order: Order) -> RouteSnapshot:
     """Qo'lda kiritilgan marshrutlarni `(mahsulot kodi, detal kodi)` bo'yicha eslab qolish.
 
     Qayta yuklash eski parse'ni butunlay o'chiradi — texnolog yuzlab detalga chizgan
@@ -29,9 +33,37 @@ async def snapshot_custom_routes(db: AsyncSession, order: Order) -> dict[tuple[s
 
     Nostandart detallar ham, matritsadan qo'lda qadam qo'shilgan STANDART detallar ham
     olinadi — ikkalasi ham fayldan tiklanmaydi. Bayroqning o'zi ham saqlanadi."""
+    # Yig'ma bog'lam ham eslab qolinadi: id qayta yuklashda o'zgaradi, shuning
+    # uchun asosiy detal ham KOD bilan yoziladi.
+    keys = {
+        part_id: (product_code, part_code)
+        for part_id, product_code, part_code in (
+            await db.execute(
+                select(Part.id, Product.code, Part.code)
+                .join(Product, Product.id == Part.product_id)
+                .where(
+                    Part.order_id == order.id,
+                    Part.is_deleted == False,  # noqa: E712
+                )
+            )
+        ).tuples()
+    }
+    parents: dict[int, tuple[str, str] | None] = {
+        part_id: keys.get(parent_id) if parent_id is not None else None
+        for part_id, parent_id in (
+            await db.execute(
+                select(Part.id, Part.assembly_parent_id).where(
+                    Part.order_id == order.id,
+                    Part.assembly_parent_id.is_not(None),
+                    Part.is_deleted == False,  # noqa: E712
+                )
+            )
+        ).tuples()
+    }
+
     rows = (
         await db.execute(
-            select(Product.code, Part.code, Part.is_custom, PartRoute.process_code)
+            select(Part.id, Product.code, Part.code, Part.is_custom, PartRoute.process_code)
             .join(Part, Part.product_id == Product.id)
             .join(PartRoute, PartRoute.part_id == Part.id)
             .where(
@@ -43,16 +75,17 @@ async def snapshot_custom_routes(db: AsyncSession, order: Order) -> dict[tuple[s
             .order_by(Product.code, Part.code, PartRoute.seq)
         )
     ).tuples()
-    saved: dict[tuple[str, str], tuple[bool, list[int]]] = {}
-    for product_code, part_code, is_custom, process_code in rows:
-        entry = saved.setdefault((product_code, part_code), (is_custom, []))
-        entry[1].append(process_code)
+    saved: RouteSnapshot = {}
+    for part_id, product_code, part_code, is_custom, process_code in rows:
+        entry = saved.setdefault((product_code, part_code), (is_custom, [], parents.get(part_id)))
+        # Dum (qadoqlash/ombor) saqlanmaydi — tiklashda o'zi qo'shiladi. Saqlansa
+        # har qayta yuklashda ikkilanib borardi: ... UPAKOVKA OMBOR UPAKOVKA OMBOR.
+        if process_code not in TAIL_CODES:
+            entry[1].append(process_code)
     return saved
 
 
-async def restore_custom_routes(
-    db: AsyncSession, order: Order, saved: dict[tuple[str, str], tuple[bool, list[int]]]
-) -> tuple[int, list[str]]:
+async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnapshot) -> tuple[int, list[str]]:
     """Saqlangan marshrutlarni yangi detallarga qaytarish. Qaytadi: (tiklangan, yo'qolgan)."""
     if not saved:
         return 0, []
@@ -70,9 +103,18 @@ async def restore_custom_routes(
     ).tuples()
     by_key = {(product_code, part.code): part for product_code, part in parts}
 
+    # Yig'ma bog'lamlar marshrutdan OLDIN tiklanadi: dum (qadoqlash/ombor)
+    # biriktirilgan detalga qo'shilmasligi shu bayroqqa qarab hal bo'ladi.
+    for key, entry in saved.items():
+        part, parent_key = by_key.get(key), entry[2]
+        if part is None:
+            continue
+        parent = by_key.get(parent_key) if parent_key else None
+        part.assembly_parent_id = parent.id if parent is not None else None
+
     restored = 0
     for key, entry in saved.items():
-        was_custom, codes = entry
+        was_custom, codes = entry[0], entry[1]
         part = by_key.get(key)
         if part is None:
             continue
@@ -125,7 +167,9 @@ async def restore_custom_routes(
             )
         # Nostandart detalning marshruti to'liq qayta yozilgani uchun qadoqlash va
         # ombor qadamlari shu yerda tiklanadi (standart detalda ular AUTO bo'lib qoladi).
-        if was_custom:
+        # Biriktirilgan MAYDA detalga dum qo'shilmaydi — u asosiy detalga
+        # yopishib yaxlit buyumga aylanadi (orders._set_custom_route bilan bir xil qoida).
+        if was_custom and part.assembly_parent_id is None:
             tail = [(15, PostCode.UPAKOVKA)] if packaging else []
             tail.append((16, PostCode.OMBOR))
             for offset, (code, post_code) in enumerate(tail):

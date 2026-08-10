@@ -98,6 +98,14 @@ class Part(BaseModel):
     #: Fayldan avtomatik marshrut olmaydi — roverdan chiqqan detal keyin bo'yalishi
     #: mumkinligi kabi holatlarni fayl bilmaydi. Standart detal: ARRA + kromka + prisadka.
     is_custom: Mapped[bool] = mapped_column(default=False, index=True, kw_only=True)
+    #: Yig'ma buyum: bu MAYDA detal qaysi ASOSIY detalga biriktiriladi (stolyarkada
+    #: yopishtiriladi va yaxlit buyumga aylanadi). Biriktirilgan detalning marshruti
+    #: aynan birikish qadamida TUGAYDI — undan keyin qadoqlash ham, ombor ham faqat
+    #: asosiy detalga tegishli, chunki alohida detal endi mavjud emas.
+    #: Asosiy detalning skani biriktirilganlarnikini ham yopadi (scanning.py).
+    assembly_parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("part.id"), default=None, index=True, kw_only=True
+    )
 
 
 #: TABLO va dashboard navbati faqat hajm hisoblaydi (metrics.part_volume:

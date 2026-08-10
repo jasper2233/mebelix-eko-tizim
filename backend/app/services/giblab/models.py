@@ -46,6 +46,33 @@ PROCESS_POSTS: dict[int, PostCode] = {
     16: PostCode.OMBOR,  # Omborga qabul
 }
 
+#: Marshrut DUMI — texnolog tanlamaydigan, tizim qo'shadigan qadamlar.
+#: Ular saqlangan marshrutga kirmaydi: qayta yuklashda qaytadan qo'shiladi
+#: (aks holda har yuklashda ikkilanib borardi).
+TAIL_CODES = (15, 16)
+
+#: Jarayon nomlari — xato matnlarida raqam o'rniga amal nomi chiqishi uchun
+#: ("«Utalshonka» yo'q" — texnolog qaysi tugmani bosishini biladi). Frontenddagi
+#: `PROCESS_OPS` bilan bir xil ro'yxat.
+PROCESS_NAMES: dict[int, str] = {
+    1: "Raspil",
+    2: "45° kesish",
+    3: "Kromka",
+    4: "Fasat kromka",
+    5: "Oval kromka",
+    6: "Prisadka",
+    7: "Rover",
+    8: "Bo'yoq",
+    9: "Baget",
+    10: "Utalshonka",
+    11: "G petlya o'ngdan",
+    12: "G petlya chapdan",
+    13: "V petlya o'ngdan",
+    14: "V petlya chapdan",
+    15: "Qadoqlash",
+    16: "Omborga qabul",
+}
+
 #: Post -> shu postning ODATDAGI jarayon kodi. Bitta postda bir necha amal bo'lgani uchun
 #: (STOLYARKA da 6 ta, KROMKA da 2 ta) faqat post nomidan kod tiklab bo'lmaydi — bu jadval
 #: aniq amal tanlanmagan holat uchun zaxira qiymat beradi.

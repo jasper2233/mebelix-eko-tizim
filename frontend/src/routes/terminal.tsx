@@ -814,6 +814,14 @@ function TerminalPage() {
                               processCode={t.process_code}
                               postCode={ctx?.post_code}
                             />
+                            {/* Yig'ma buyum: shu qadamda yopishtiriladigan mayda
+                                detallar. Ular alohida skanerlanmaydi — asosiy
+                                detalning skani ularnikini ham yopadi. */}
+                            {!!t.assembly?.length && (
+                              <div className="num mt-1 text-sm font-semibold text-blue-800">
+                                + {t.assembly.join(", ")}
+                              </div>
+                            )}
                           </td>
                           <td className="num px-4 py-3 text-sm">
                             {formatSize(t.length, t.width, t.thickness)}

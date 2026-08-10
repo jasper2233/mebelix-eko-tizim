@@ -33,6 +33,8 @@ export function CustomRoutes({
   )
   // part_id -> jarayon kodlari TARTIB bilan. Faqat tegilgan detallar bu yerda.
   const [draft, setDraft] = useState<Record<number, number[]>>({})
+  // part_id -> asosiy detal id (0 = biriktirilmagan). Faqat tegilganlar.
+  const [parents, setParents] = useState<Record<number, number>>({})
   const queryClient = useQueryClient()
   const cb = crudCallbacks(
     queryClient,
@@ -41,21 +43,31 @@ export function CustomRoutes({
   )
 
   const mutation = useMutation({
-    mutationFn: () =>
-      OrdersService.editOrderMatrix({
+    mutationFn: () => {
+      const ids = new Set([...Object.keys(draft), ...Object.keys(parents)])
+      return OrdersService.editOrderMatrix({
         orderId,
         requestBody: {
-          edits: Object.entries(draft).map(([partId, codes]) => ({
-            part_id: Number(partId),
-            stages: {},
-            route_codes: codes,
-          })),
+          edits: [...ids].map((id) => {
+            const partId = Number(id)
+            return {
+              part_id: partId,
+              stages: {},
+              ...(draft[partId] ? { route_codes: draft[partId] } : {}),
+              // 0 = "biriktirilmagan": maydon yuborilsa backend bog'lamni uzadi
+              ...(partId in parents
+                ? { assembly_parent_id: parents[partId] || null }
+                : {}),
+            }
+          }),
         },
-      }),
+      })
+    },
     ...cb,
     onSuccess: () => {
       cb.onSuccess()
       setDraft({})
+      setParents({})
     },
   })
 
@@ -84,7 +96,10 @@ export function CustomRoutes({
     setDraft((prev) => ({ ...prev, [partId]: next }))
   }
 
-  const dirty = Object.keys(draft).length > 0
+  const parentOf = (partId: number, saved: number | null | undefined) =>
+    partId in parents ? parents[partId] : (saved ?? 0)
+
+  const dirty = Object.keys(draft).length + Object.keys(parents).length > 0
   const badRoute = (codes: number[]) =>
     codes.length === 0 ||
     !ROUTE_START_POSTS.includes(PROCESS_OPS[codes[0]]?.post)
@@ -185,6 +200,66 @@ export function CustomRoutes({
                   )
                 })}
               </div>
+
+              {/* Yig'ma buyum: mayda detal asosiy detalga yopishtiriladi. Biriktirilsa
+                  uning marshruti shu amalda TUGAYDI — qadoqlash/ombor faqat asosiyda. */}
+              {(() => {
+                const parentId = parentOf(part.id, part.assembly_parent_id)
+                const mine = codes[codes.length - 1]
+                const kids = part.assembly_children ?? []
+                if (kids.length)
+                  return (
+                    <div className="mt-2 border-t pt-2 text-xs text-muted-foreground">
+                      Asosiy detal —{" "}
+                      <b className="text-foreground">
+                        {kids.map((k) => `${k.code} ×${k.count}`).join(", ")}
+                      </b>{" "}
+                      biriktirilgan
+                    </div>
+                  )
+                const options = parts.filter(
+                  (o) =>
+                    o.id !== part.id &&
+                    !o.assembly_parent_id &&
+                    codesOf(o.id, o.routes).includes(mine),
+                )
+                return (
+                  <div className="mt-2 flex flex-wrap items-center gap-2 border-t pt-2">
+                    <span className="text-xs text-muted-foreground">
+                      Asosiy detalga biriktirish:
+                    </span>
+                    <select
+                      disabled={!editable || !mine}
+                      value={parentId}
+                      onChange={(e) =>
+                        setParents((prev) => ({
+                          ...prev,
+                          [part.id]: Number(e.target.value),
+                        }))
+                      }
+                      className="h-8 rounded-md border bg-background px-2 text-xs disabled:opacity-50"
+                    >
+                      <option value={0}>— biriktirilmagan —</option>
+                      {options.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.product_code}_{o.code} · {o.name}
+                        </option>
+                      ))}
+                    </select>
+                    {!!parentId && (
+                      <span className="text-xs text-amber-700">
+                        Marshrut {PROCESS_OPS[mine]?.name} da tugaydi —
+                        qadoqlash va ombor asosiy detalda
+                      </span>
+                    )}
+                    {!mine && (
+                      <span className="text-xs text-muted-foreground">
+                        avval marshrutni chizing
+                      </span>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           )
         })}

@@ -212,10 +212,52 @@ async def read_terminal_tasks(db: SessionDep, ctx: TerminalCtx) -> list[TaskRow]
         )
     ).all()
 
+    # Yig'ma buyum: asosiy detal qatorida unga yopishtiriladigan maydalar ko'rinadi.
+    # Maydalarning O'ZI ro'yxatda alohida vazifa bo'lib chiqmaydi — ular asosiy
+    # detal skani bilan yopiladi, ya'ni operator ularni skanerlamaydi.
+    part_ids = {part.id for _r, part, _o, _pc in rows}
+    children: dict[int, list[str]] = {}
+    if part_ids:
+        for child, product_code in (
+            await db.execute(
+                select(Part, Product.code)
+                .join(Product, Product.id == Part.product_id)
+                .where(
+                    Part.assembly_parent_id.in_(part_ids),
+                    Part.is_deleted == False,  # noqa: E712
+                )
+                .order_by(Part.code)
+            )
+        ).all():
+            assert child.assembly_parent_id is not None
+            children.setdefault(child.assembly_parent_id, []).append(f"{product_code}_{child.code} ×{child.count}")
+
+    # Mayda detalning BIRIKISH qadami (oxirgisi) ro'yxatdan chiqariladi: uni
+    # operator skanerlamaydi. Undan oldingi qadamlari (arra, kromka) qoladi.
+    last_step: dict[int, tuple[int, int]] = {}  # part_id -> (route_id, seq)
+    for rid, pid, seq in (
+        await db.execute(
+            select(PartRoute.id, PartRoute.part_id, PartRoute.seq)
+            .join(Part, Part.id == PartRoute.part_id)
+            .where(
+                PartRoute.order_id.in_({order.id for _r, _p, order, _pc in rows}),
+                Part.assembly_parent_id.is_not(None),
+                Part.is_deleted == False,  # noqa: E712
+                PartRoute.is_enabled == True,  # noqa: E712
+                PartRoute.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).all():
+        if pid not in last_step or seq > last_step[pid][1]:
+            last_step[pid] = (rid, seq)
+    merge_route_ids = {rid for rid, _seq in last_step.values()}
+    rows = [r for r in rows if r[0].id not in merge_route_ids]
+
     return [
         TaskRow(
             part_id=part.id,
             route_id=route.id,
+            assembly=children.get(part.id, []),
             order_id=order.id,
             order_number=order.number,
             deadline=order.deadline,

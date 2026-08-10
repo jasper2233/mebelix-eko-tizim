@@ -231,6 +231,10 @@ class MatrixPart(BaseModel):
     xnc_summary: dict[str, Any]
     note: str | None
     is_custom: bool
+    #: Bu detal biriktirilgan ASOSIY detal (stolyarkada yaxlit buyumga aylanadi).
+    assembly_parent_id: int | None = None
+    #: Bunga biriktirilgan mayda detallar: [{"part_id", "code", "count"}] — UI ro'yxati.
+    assembly_children: list[dict[str, Any]] = []
     routes: list[RouteCell]
 
 
@@ -254,6 +258,9 @@ class MatrixPartEdit(BaseModel):
     #: Nostandart detal marshruti — jarayon kodlari TARTIB bilan (masalan [7, 11, 8]).
     #: Kod takrorlanishi mumkin ([3, 6, 3]). Bo'sh ro'yxat marshrutni tozalaydi.
     route_codes: list[int] | None = None
+    #: Yig'ma buyum: bu detal qaysi ASOSIY detalga biriktiriladi. `None` yuborilsa
+    #: bog'lam uziladi. Maydon umuman yuborilmasa tegilmaydi (`model_fields_set`).
+    assembly_parent_id: int | None = None
 
 
 class MatrixEdit(BaseModel):

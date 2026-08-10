@@ -52,5 +52,8 @@ class Scan(BaseModel):
     employee_id: Mapped[int] = mapped_column(ForeignKey("employee.id"), index=True, kw_only=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("work_session.id"), index=True, kw_only=True)
     client_event_id: Mapped[str | None] = mapped_column(String(64), default=None, kw_only=True)
+    #: Yig'ma buyum: asosiy detal skani biriktirilgan MAYDA detallarga ham skan yozadi.
+    #: Hosila qatorlar shu ustun orqali bog'lanadi — bekor qilinganda birga bekor bo'ladi.
+    parent_scan_id: Mapped[int | None] = mapped_column(ForeignKey("scan.id"), default=None, index=True, kw_only=True)
     is_cancelled: Mapped[bool] = mapped_column(default=False, kw_only=True)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
