@@ -18,10 +18,12 @@ const PART_SELECTED = "#2596be"
 // oilada — xarita ajralib qolmasin. List kartasi endi yengil tint
 // (green-50 fon, green-700 matn): to'ldirilgan katak SVG'da undan to'q
 const PART_DONE = "#22c55e"
-// Marshrutida ARRA yo'q — nostandart detal, roverda kesiladi. Arrachi uni kesmaydi
-// va skani ham qabul qilinmaydi. PUSHTI: sariq (odatdagi), yashil (kesilgan) va
-// ko'k (tanlangan) dan bir qarashda ajralib turadi.
+// Nostandart detal — marshrutini texnolog qo'lda chizgan. PUSHTI: sariq
+// (odatdagi), yashil (kesilgan) va ko'k (tanlangan) dan bir qarashda ajralib
+// turadi. Chegara ham pushti bo'ladi — tanlanganda yoki kesilganda fon rangi
+// almashadi, belgi esa yo'qolmasligi kerak.
 const PART_CUSTOM = "#e8639f"
+const PART_CUSTOM_EDGE = "#b0186a"
 
 // --- GibSaw render qoidalari (GibLabViewer'dan portlangan, foto-tekshirilgan) ---
 
@@ -541,8 +543,8 @@ export function SheetSvg({
           width={p.w}
           height={p.h}
           fill={fill}
-          stroke="#242424"
-          strokeWidth="3"
+          stroke={custom ? PART_CUSTOM_EDGE : "#242424"}
+          strokeWidth={custom ? 9 : 3}
           strokeDasharray={p.waste ? "16 11" : undefined}
         />
         {/* yuza teshiklari — haqiqiy masshtab: katta sverlo katta doira (GibSaw) */}
