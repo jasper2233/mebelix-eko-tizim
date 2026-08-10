@@ -647,6 +647,40 @@ export type Paginated_UserRead_ = {
 
 export type PostCode = 'ARRA' | 'KROMKA' | 'OVAL' | 'PRISADKA' | 'ROVER' | 'STOLYARKA' | 'BOYOQ' | 'UPAKOVKA' | 'OMBOR';
 
+/**
+ * Bitta NUSXA post navbatida (BOYOQ, keyinchalik STOLYARKA ham).
+ *
+ * Nusxa darajasida, chunki ish har bir buyumda alohida bajariladi: bo'yoqchi
+ * oltita eshikning to'rttasini bo'yab, qolganini ertaga qilishi mumkin.
+ */
+export type PostQueueRow = {
+    instance_id: number;
+    qr_text: string;
+    part_code: string;
+    part_name: string;
+    length: (number | null);
+    width: (number | null);
+    thickness: (number | null);
+    material: (string | null);
+    note: (string | null);
+    process_code: number;
+    ready: boolean;
+    stage: string;
+    done: boolean;
+    assembly?: Array<string>;
+};
+
+/**
+ * Post navbati sahifasi: proyekt tanlangach shu post uchun kelgan nusxalar.
+ */
+export type PostQueueState = {
+    order_id: number;
+    order_number: string;
+    project_name: (string | null);
+    post_code: PostCode;
+    rows: Array<PostQueueRow>;
+};
+
 export type PostRead = {
     id: number;
     code: PostCode;
@@ -1526,6 +1560,12 @@ export type ReadTerminalCutmapData = {
 };
 
 export type ReadTerminalCutmapResponse = (CutmapState);
+
+export type ReadTerminalPostQueueData = {
+    orderId: number;
+};
+
+export type ReadTerminalPostQueueResponse = (PostQueueState);
 
 export type PrintInstanceLabelData = {
     instanceId: number;

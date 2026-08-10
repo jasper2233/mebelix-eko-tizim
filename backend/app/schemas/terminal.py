@@ -211,6 +211,40 @@ class CutmapState(BaseModel):
     instances: list[CutmapInstanceState]
 
 
+class PostQueueRow(BaseModel):
+    """Bitta NUSXA post navbatida (BOYOQ, keyinchalik STOLYARKA ham).
+
+    Nusxa darajasida, chunki ish har bir buyumda alohida bajariladi: bo'yoqchi
+    oltita eshikning to'rttasini bo'yab, qolganini ertaga qilishi mumkin.
+    """
+
+    instance_id: int
+    qr_text: str
+    part_code: str  # productCode_partCode
+    part_name: str
+    length: float | None
+    width: float | None
+    thickness: float | None
+    #: Material nomi — bo'yoqchi uchun bu RANG. Busiz u nimaga bo'yashini bilmaydi.
+    material: str | None
+    note: str | None  # texnolog izohi
+    process_code: int
+    ready: bool  # oldingi bosqichlar tugadimi (tugamagan bo'lsa skan rad etiladi)
+    stage: str  # oxirgi bajarilgan post nomi — detal hozir qayerda turibdi
+    done: bool  # shu postdagi qadam yopilgan
+    assembly: list[str] = []  # yig'ma buyum: biriktirilgan mayda detallar
+
+
+class PostQueueState(BaseModel):
+    """Post navbati sahifasi: proyekt tanlangach shu post uchun kelgan nusxalar."""
+
+    order_id: int
+    order_number: str
+    project_name: str | None
+    post_code: PostCode
+    rows: list[PostQueueRow]
+
+
 class PachkaItemRow(BaseModel):
     """Qadoq ichidagi bitta nusxa."""
 

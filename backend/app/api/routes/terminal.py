@@ -45,6 +45,8 @@ from app.schemas.terminal import (
     KromkaInstance,
     KromkaOrderState,
     KromkaPartRow,
+    PostQueueRow,
+    PostQueueState,
     PrisadkaFile,
     PrisadkaInstance,
     PrisadkaOrderState,
@@ -697,6 +699,109 @@ async def read_terminal_cutmap(db: SessionDep, ctx: TerminalCtx, order_id: int) 
 
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
     return await build_cutmap_state(db, order, post.id)
+
+
+@router.get("/orders/{order_id}/queue", response_model=PostQueueState, operation_id="read_terminal_post_queue")
+async def read_terminal_post_queue(db: SessionDep, ctx: TerminalCtx, order_id: int) -> PostQueueState:
+    """Post navbati NUSXA darajasida (BOYOQ): kelganlar, kutilayotganlar, bajarilganlar.
+
+    Umumiy "Navbatdagi vazifalar" ro'yxati detal darajasida agregat berardi
+    ("qoldiq 6/6") — bo'yoqchi qaysi buyumni bo'yaganini undan bilib bo'lmasdi.
+    Bu yerda har nusxa alohida qator: skan qilinganda o'sha qator ro'yxatdan
+    chiqadi. Material ham beriladi — bo'yoqchi uchun bu RANG.
+    """
+    from .pachka import instance_stages
+
+    _machine, post = ctx
+    order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
+    stages = await instance_stages(db, order, post)
+
+    rows = (
+        await db.execute(
+            select(PartInstance, Part, Product.code, PartRoute)
+            .join(Part, Part.id == PartInstance.part_id)
+            .join(Product, Product.id == Part.product_id)
+            .join(
+                PartRoute,
+                (PartRoute.part_id == Part.id)
+                & (PartRoute.post_id == post.id)
+                & (PartRoute.is_enabled == True)  # noqa: E712
+                & (PartRoute.is_deleted == False),  # noqa: E712
+            )
+            .where(
+                PartInstance.order_id == order.id,
+                PartInstance.is_deleted == False,  # noqa: E712
+            )
+            .order_by(Product.code, Part.code, PartInstance.instance_no)
+        )
+    ).all()
+    if not rows:
+        return PostQueueState(
+            order_id=order.id,
+            order_number=order.number,
+            project_name=order.project_name,
+            post_code=post.code,
+            rows=[],
+        )
+
+    counts = {
+        (instance_id, route_id): n
+        for instance_id, route_id, n in (
+            await db.execute(
+                select(Scan.instance_id, Scan.route_id, func.count())
+                .where(
+                    Scan.order_id == order.id,
+                    Scan.post_id == post.id,
+                    Scan.is_cancelled == False,  # noqa: E712
+                    Scan.is_deleted == False,  # noqa: E712
+                )
+                .group_by(Scan.instance_id, Scan.route_id)
+            )
+        ).all()
+    }
+    children: dict[int, list[str]] = {}
+    for child, product_code in (
+        await db.execute(
+            select(Part, Product.code)
+            .join(Product, Product.id == Part.product_id)
+            .where(
+                Part.assembly_parent_id.in_({p.id for _i, p, _pc, _r in rows}),
+                Part.is_deleted == False,  # noqa: E712
+            )
+            .order_by(Part.code)
+        )
+    ).all():
+        assert child.assembly_parent_id is not None
+        children.setdefault(child.assembly_parent_id, []).append(f"{product_code}_{child.code} ×{child.count}")
+
+    out = [
+        PostQueueRow(
+            instance_id=instance.id,
+            qr_text=instance.qr_text,
+            part_code=f"{product_code}_{part.code}",
+            part_name=part.name,
+            length=part.length,
+            width=part.width,
+            thickness=part.thickness,
+            material=part.material_name,
+            note=part.note,
+            process_code=route.process_code,
+            ready=stages.get(instance.id, (False, ""))[0],
+            stage=stages.get(instance.id, (False, ""))[1],
+            done=counts.get((instance.id, route.id), 0) >= route.per_instance,
+            assembly=children.get(part.id, []),
+        )
+        for instance, part, product_code, route in rows
+    ]
+    # Ishga tayyorlari tepada, bajarilganlari pastda — bo'yoqchi tepadan ishlaydi.
+    out.sort(key=lambda r: (r.done, not r.ready, r.part_code, r.qr_text))
+    return PostQueueState(
+        order_id=order.id,
+        order_number=order.number,
+        project_name=order.project_name,
+        post_code=post.code,
+        rows=out,
+    )
 
 
 async def build_cutmap_state(db: SessionDep, order: Order, arra_post_id: int) -> CutmapState:
