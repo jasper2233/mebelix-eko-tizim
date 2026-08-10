@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { cn } from "@/lib/utils"
 import { detailMessage } from "@/utils"
 
 export function OmborView({
@@ -82,6 +81,15 @@ export function OmborView({
   const pachkas = data?.pachkas ?? []
   const delivered = data?.order_status === "delivered"
   const shipped = pachkas.filter((p) => p.shipped_at)
+  // Omborchining ISH ro'yxati — faqat oxirgi bosqichdan o'tib kelganlar.
+  // Qolganlari hali sexda: ular alohida, qaysi postda turgani bilan ko'rsatiladi.
+  const arrived = pending.filter((p) => p.ready)
+  const inShop = pending.filter((p) => !p.ready)
+  const byStage = inShop.reduce<Record<string, number>>((acc, p) => {
+    const k = p.stage || "sexda"
+    acc[k] = (acc[k] ?? 0) + 1
+    return acc
+  }, {})
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl border bg-white">
@@ -120,7 +128,7 @@ export function OmborView({
       >
         <TabsList className="mx-4 mt-3 h-12 w-fit">
           <TabsTrigger value="qabul" className="h-10 px-6 text-base font-bold">
-            <PackageCheck /> Qabul ({pending.length})
+            <PackageCheck /> Qabul ({arrived.length})
           </TabsTrigger>
           <TabsTrigger
             value="topshirish"
@@ -132,14 +140,20 @@ export function OmborView({
 
         {/* QABUL: skanerlanmagan nusxalar. Qadoq QR'i bittada hammasini yopadi. */}
         <TabsContent value="qabul" className="min-h-0 flex-1 overflow-y-auto">
-          {!pending.length ? (
-            <div className="p-8 text-center text-lg font-bold text-green-700">
-              Hammasi qabul qilindi.
+          {!arrived.length ? (
+            <div className="p-8 text-center text-lg font-bold">
+              {pending.length ? (
+                <span className="text-amber-700">
+                  Omborga yetib kelgan detal yo'q — hammasi hali sexda.
+                </span>
+              ) : (
+                <span className="text-green-700">Hammasi qabul qilindi.</span>
+              )}
             </div>
           ) : (
             <table className="w-full text-base">
               <tbody>
-                {pending.map((p) => (
+                {arrived.map((p) => (
                   <tr key={p.instance_id} className="border-b last:border-0">
                     <td className="num px-4 py-2.5 font-semibold">
                       {p.qr_text}
@@ -147,22 +161,50 @@ export function OmborView({
                     <td className="max-w-[280px] truncate px-4 py-2.5">
                       {p.part_name}
                     </td>
-                    <td className="num px-4 py-2.5 text-sm text-muted-foreground">
+                    <td className="num px-4 py-2.5 text-sm font-semibold text-blue-800">
                       {p.pachka_code ?? ""}
                     </td>
-                    <td
-                      className={cn(
-                        "px-4 py-2.5 text-right text-sm",
-                        p.ready ? "text-muted-foreground" : "text-amber-700",
-                      )}
-                    >
-                      {/* Tayyor emas = oldingi post tugatmagan; skan rad etiladi */}
-                      {p.ready ? "kutilmoqda" : "sexda"}
+                    <td className="px-4 py-2.5 text-right text-sm text-muted-foreground">
+                      qabul kutilmoqda
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          )}
+
+          {/* Hali sexdagilar: qaysi postda turgani yozilgan — omborchi qidirib yurmasin */}
+          {!!inShop.length && (
+            <div className="mt-3 border-t">
+              <div className="flex flex-wrap items-center gap-2 px-4 py-2">
+                <span className="text-sm font-bold text-muted-foreground">
+                  Sexda ({inShop.length}):
+                </span>
+                {Object.entries(byStage).map(([stage, n]) => (
+                  <span
+                    key={stage}
+                    className="num rounded-sm bg-muted px-2 py-0.5 text-sm font-semibold"
+                  >
+                    {stage} — {n}
+                  </span>
+                ))}
+              </div>
+              <table className="w-full text-sm text-muted-foreground">
+                <tbody>
+                  {inShop.map((p) => (
+                    <tr key={p.instance_id} className="border-b last:border-0">
+                      <td className="num px-4 py-1.5">{p.qr_text}</td>
+                      <td className="max-w-[280px] truncate px-4 py-1.5">
+                        {p.part_name}
+                      </td>
+                      <td className="px-4 py-1.5 text-right font-semibold text-amber-700">
+                        {p.stage || "sexda"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </TabsContent>
 

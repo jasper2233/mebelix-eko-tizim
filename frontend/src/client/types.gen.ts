@@ -443,6 +443,7 @@ export type OmborPending = {
     part_name: string;
     pachka_code: (string | null);
     ready: boolean;
+    stage?: string;
 };
 
 export type OrderCancel = {

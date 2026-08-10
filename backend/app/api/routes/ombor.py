@@ -34,7 +34,7 @@ from app.schemas.terminal import (
 )
 from app.services.scanning import ScanRejected, active_session, record_scan_at, resolve_terminal
 
-from .pachka import _weight
+from .pachka import _weight, instance_stages
 
 router = APIRouter(prefix="/ombor", tags=["ombor"])
 
@@ -76,14 +76,8 @@ async def _state(db: SessionDep, order: Order, post: Post) -> OmborOrderState:
         by_part.setdefault(r.part_id, []).append(r)
     packaging = any(r.process_code == 15 for r in routes)  # 15 = Qadoqlash
 
-    #: Qaysi detal omborga tayyor: OMBOR dan oldingi hamma qadam yopilganmi.
-    ready_parts: set[int] = set()
-    for part_id, steps in by_part.items():
-        wh = next((s for s in steps if s.post_id == post.id), None)
-        if wh is None:
-            continue
-        if all(s.total_done >= s.total_required for s in steps if s.seq < wh.seq):
-            ready_parts.add(part_id)
+    #: Har NUSXA uchun: omborga yetib keldimi, kelmagan bo'lsa qaysi postda turibdi.
+    stages = await instance_stages(db, order, post)
 
     accepted: set[int] = set(
         (
@@ -170,9 +164,12 @@ async def _state(db: SessionDep, order: Order, post: Post) -> OmborOrderState:
                 part_code=f"{product_code}_{part.code}",
                 part_name=part.name,
                 pachka_code=pachka.code if pachka else None,
-                ready=part.id in ready_parts,
+                ready=stages.get(instance.id) == "",
+                stage=stages.get(instance.id) or "",
             )
         )
+    # Omborga yetib kelganlari tepada: omborchi ish ro'yxati aynan shular.
+    pending.sort(key=lambda p: (not p.ready, p.stage, p.part_code))
     for pid, row in pachkas.items():
         row.weight_kg = round(weights.get(pid, 0.0), 1)
 

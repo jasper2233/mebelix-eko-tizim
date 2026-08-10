@@ -16,7 +16,7 @@ from app.api.deps import SessionDep, require_roles
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.core.ws import ws_manager
 from app.crud import crud_orders, log_action
-from app.models import Machine, Order, Pachka, PachkaItem, Part, PartInstance, PartRoute, Post, Product
+from app.models import Machine, Order, Pachka, PachkaItem, Part, PartInstance, PartRoute, Post, Product, Scan
 from app.models.enums import POST_ROLES, PachkaStatus, PostCode, UserRole
 from app.models.user import User
 from app.schemas.common import Message
@@ -57,6 +57,72 @@ async def _pack_ctx(db: SessionDep, user: PackUser) -> tuple[Machine, Post]:
 
 
 PackCtx = Annotated[tuple[Machine, Post], Depends(_pack_ctx)]
+
+
+async def instance_stages(db: SessionDep, order: Order, post: Post) -> dict[int, str]:
+    """Har NUSXA uchun: shu postgacha bo'lgan qadamlar tugadimi, tugamagan bo'lsa qayerda turibdi.
+
+    Qaytadi: `instance_id -> bosqich nomi`, bo'sh satr = shu postga tayyor.
+    Faqat marshrutida shu post bor nusxalar kiradi.
+
+    Hisob NUSXA bo'yicha, detal bo'yicha emas: 4 nusxali detalning bittasi
+    qadoqlansa, detal jami hali tugamagan bo'ladi — lekin o'sha bitta nusxa
+    omborga tayyor. Detal darajasida sanaganda u "sexda" bo'lib qolar edi va
+    omborchi qadoqlangan buyumni ro'yxatdan topa olmasdi.
+    """
+    routes = list(
+        (
+            await db.execute(
+                select(PartRoute).where(
+                    PartRoute.order_id == order.id,
+                    PartRoute.is_enabled == True,  # noqa: E712
+                    PartRoute.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    by_part: dict[int, list[PartRoute]] = {}
+    for r in routes:
+        by_part.setdefault(r.part_id, []).append(r)
+
+    # Bitta agregat so'rov: (nusxa, qadam) -> nechta skan
+    counts = {
+        (instance_id, route_id): n
+        for instance_id, route_id, n in (
+            await db.execute(
+                select(Scan.instance_id, Scan.route_id, func.count())
+                .where(
+                    Scan.order_id == order.id,
+                    Scan.is_cancelled == False,  # noqa: E712
+                    Scan.is_deleted == False,  # noqa: E712
+                )
+                .group_by(Scan.instance_id, Scan.route_id)
+            )
+        ).all()
+    }
+    post_names = {p.id: p.name for p in (await db.execute(select(Post))).scalars()}
+
+    stages: dict[int, str] = {}
+    for instance_id, part_id in (
+        await db.execute(
+            select(PartInstance.id, PartInstance.part_id).where(
+                PartInstance.order_id == order.id,
+                PartInstance.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).all():
+        steps = sorted(by_part.get(part_id, []), key=lambda s: s.seq)
+        target = next((s for s in steps if s.post_id == post.id), None)
+        if target is None:
+            continue
+        stuck = next(
+            (s for s in steps if s.seq < target.seq and counts.get((instance_id, s.id), 0) < s.per_instance),
+            None,
+        )
+        stages[instance_id] = "" if stuck is None else post_names.get(stuck.post_id, "")
+    return stages
 
 
 async def _state(db: SessionDep, order: Order, post: Post) -> UpakovkaOrderState:
@@ -123,32 +189,21 @@ async def _state(db: SessionDep, order: Order, post: Post) -> UpakovkaOrderState
         )
     ).all()
 
+    stages = await instance_stages(db, order, post)
     pending: list[UpakovkaPending] = []
-    for instance, part, product_code, seq in pending_rows:
+    for instance, part, product_code, _seq in pending_rows:
         if instance.id in packed:
             continue
-        done_before = (
-            await db.execute(
-                select(func.count())
-                .select_from(PartRoute)
-                .where(
-                    PartRoute.part_id == part.id,
-                    PartRoute.seq < seq,
-                    PartRoute.is_enabled == True,  # noqa: E712
-                    PartRoute.is_deleted == False,  # noqa: E712
-                    PartRoute.total_done < PartRoute.total_required,
-                )
-            )
-        ).scalar_one()
         pending.append(
             UpakovkaPending(
                 instance_id=instance.id,
                 qr_text=instance.qr_text,
                 part_code=f"{product_code}_{part.code}",
                 part_name=part.name,
-                ready=done_before == 0,
+                ready=stages.get(instance.id) == "",
             )
         )
+    pending.sort(key=lambda p: (not p.ready, p.part_code))
 
     return UpakovkaOrderState(
         order_id=order.id,
