@@ -186,10 +186,11 @@ function Login() {
             </svg>
           </div>
 
-          {/* Sahifaning ASOSIY yo'li. Kunlik kirishlarning deyarli hammasi
-              beyjik (har smena, har operator), parol esa kuniga bir-ikki ofis
-              xodimi — shuning uchun forma emas, shu birinchi turadi. */}
-          <BadgePrompt pending={badge.isPending} compact={showPassword} />
+          {/* Beyjik — sahifaning ASOSIY yo'li. Gap chastotada emas (skan ikkala
+              holatda ham tinglanadi), BELGIDA: monoblokka kelgan odam forma
+              ko'rsa terishga urinadi, chizilgan beyjik esa "kartani ko'taring"
+              deydi. */}
+          {!showPassword && <BadgePrompt pending={badge.isPending} />}
 
           {!!badgeError && (
             <div
@@ -197,23 +198,6 @@ function Login() {
               className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
             >
               {badgeError}
-            </div>
-          )}
-
-          {/* Parol yo'li yopiq turadi, lekin YASHIRIN emas: ofis xodimi uni
-              darhol ko'radi, operator esa formani umuman o'qimaydi. Ajratgich
-              chizig'i shu ikkinchi yo'l ekanini aytadi — aks holda yozuv
-              beyjik blokining bir qismidek osilib turardi. */}
-          {!showPassword && (
-            <div className="flex flex-col items-center gap-3 border-t pt-5">
-              <Button
-                type="button"
-                variant="ghost"
-                className="text-muted-foreground"
-                onClick={() => setShowPassword(true)}
-              >
-                Parol bilan kirish
-              </Button>
             </div>
           )}
 
@@ -281,6 +265,20 @@ function Login() {
               </LoadingButton>
             </div>
           )}
+
+          {/* Ikkinchi yo'l HAR IKKALA holatda bir joyda — pastda, ajratgich
+              ostida. Almashtirish qaytariladi: ilgari parolga o'tgan odam
+              beyjikka qayta olmasdi. */}
+          <div className="flex flex-col items-center border-t pt-5">
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-muted-foreground"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? "Beyjik bilan kirish" : "Parol bilan kirish"}
+            </Button>
+          </div>
         </form>
       </Form>
 

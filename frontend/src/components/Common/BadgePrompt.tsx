@@ -15,22 +15,10 @@ const GOLD = "var(--brand-gold-deep)"
 
 export function BadgePrompt({
   pending,
-  compact,
 }: {
   /** Skan yuborildi — javob kutilmoqda */
   pending: boolean
-  /** Parol formasi ochiq: karta o'rniga bitta qator qoladi */
-  compact?: boolean
 }) {
-  if (compact)
-    return (
-      <p className="text-sm text-muted-foreground">
-        {pending
-          ? "Beyjik tekshirilmoqda..."
-          : "Beyjikni skanerlasangiz ham kiradi — parol shart emas."}
-      </p>
-    )
-
   return (
     <div className="flex flex-col items-center gap-4 py-2">
       <BadgeCard pending={pending} />
