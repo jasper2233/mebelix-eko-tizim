@@ -149,6 +149,10 @@ function TerminalPage() {
   const [statsEl, setStatsEl] = useState<HTMLDivElement | null>(null)
   // Xarita toolbari chap ustunga portal qilinadi (CutmapView toolbarContainer)
   const [toolbarEl, setToolbarEl] = useState<HTMLDivElement | null>(null)
+  // ROVER: detallar ro'yxati (SCX/chek) va kesish xaritasi. Xaritada FAQAT
+  // roverning listlari — marshruti arradan boshlanmagan detallar butun listni
+  // frezerda kesish bilan chiqadi, ya'ni joylashuv roverchiga ham kerak.
+  const [roverMap, setRoverMap] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const cooldownRef = useRef<Map<string, number>>(new Map())
   // KROMKA: yozishdan oldin lokal tekshiruv (arradan chiqqanmi, tugamaganmi) —
@@ -682,6 +686,7 @@ function TerminalPage() {
                   onBack={() => setMapOrderId(null)}
                   statsContainer={statsEl}
                   toolbarContainer={toolbarEl}
+                  postCode={ctx?.post_code}
                 />
               ) : (
                 <OrderPicker onPick={setMapOrderId} />
@@ -693,8 +698,35 @@ function TerminalPage() {
              fayllar; ROVER'da arra'siz detalga QR chiqarish ham shu sahifada */
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
             {scanStrip}
+            {/* ROVER: detallar / kesish xaritasi almashtirgichi */}
+            {ctx?.post_code === "ROVER" && mapOrderId !== null && (
+              <div className="flex gap-2">
+                {(
+                  [
+                    ["Detallar", false],
+                    ["Kesish xaritasi", true],
+                  ] as const
+                ).map(([label, val]) => (
+                  <Button
+                    key={label}
+                    variant={roverMap === val ? "default" : "outline"}
+                    className="h-11 px-5 text-base font-bold"
+                    onClick={() => setRoverMap(val)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            )}
             <div className="min-h-0 flex-1">
-              {mapOrderId ? (
+              {mapOrderId && ctx?.post_code === "ROVER" && roverMap ? (
+                <CutmapView
+                  orderId={mapOrderId}
+                  onBack={() => setRoverMap(false)}
+                  statsContainer={statsEl}
+                  postCode={ctx?.post_code}
+                />
+              ) : mapOrderId ? (
                 <PrisadkaView
                   orderId={mapOrderId}
                   onBack={() => setMapOrderId(null)}

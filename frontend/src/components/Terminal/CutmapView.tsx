@@ -136,10 +136,16 @@ export function CutmapView({
   statsContainer,
   toolbarContainer,
   focusPartKey,
+  postCode = "ARRA",
 }: {
   orderId: number
   onBack: () => void
   admin?: boolean
+  /** Qaysi post ochgan. Listning EGASI marshrutdan aniqlanadi (giyotina kesimi
+   *  listni chetdan chetgacha kesadi — bitta katakni chetlab o'tib bo'lmaydi,
+   *  ya'ni list yo butunlay arraniki, yo butunlay roverniki):
+   *  ARRA — roverning listlari xira va yozuv bilan; ROVER — faqat o'ziniki. */
+  postCode?: string
   /** Sahifa tepasidagi "PDF / Chop etish" tugmasi shu funksiyani chaqiradi (barcha xaritalar). */
   registerPrint?: (fn: () => void) => void
   /** Material statistikasi shu elementga portal qilinadi (terminal header); yo'q bo'lsa xarita panelida qoladi */
@@ -229,6 +235,35 @@ export function CutmapView({
     return { expMaterials: mats, cellInsts: view }
   }, [data, instancesByCell])
 
+  // Listning egasi: hamma katagi marshrutida ARRA qadami YO'Q detallardan iborat
+  // bo'lsa — list roverniki (frezer butun listni o'zi kesadi).
+  const materials: Material[] = useMemo(() => {
+    const isRover = (s: any) => {
+      const cells = ((s.parts ?? []) as SheetPart[]).filter((p) => !p.waste)
+      if (!cells.length) return false
+      const insts = cells.flatMap(
+        (p) => cellInsts.get(`${s.no}:${p.cell}`) ?? [],
+      )
+      return insts.length > 0 && insts.every((i) => i.arra_route === false)
+    }
+    const mats = (expMaterials as any[]).map((m) => {
+      const sheets = (m.sheets ?? []).map((s: any) => ({
+        ...s,
+        rover: isRover(s),
+      }))
+      return {
+        ...m,
+        sheets,
+        rover: sheets.length > 0 && sheets.every((s: any) => s.rover),
+      }
+    })
+    // Roverchi FAQAT o'z listlarini ko'radi; arrachi hammasini, begonasi xira
+    if (postCode !== "ROVER") return mats as Material[]
+    return mats
+      .map((m) => ({ ...m, sheets: m.sheets.filter((s: any) => s.rover) }))
+      .filter((m) => m.sheets.length > 0) as Material[]
+  }, [expMaterials, cellInsts, postCode])
+
   // Matritsadan kelgan "xaritada ko'rsat" sakrashi: ma'lumot kelgach detalning
   // birinchi katakchasini topib, o'sha material + listni ochamiz va belgilaymiz.
   // BIR MARTA: aks holda har refetch (60s interval, fokus) foydalanuvchi qaysi
@@ -273,7 +308,6 @@ export function CutmapView({
   }
 
   const model = data.model as any
-  const materials: Material[] = expMaterials
   const material = materials[materialIdx]
   const sheets: Sheet[] = material?.sheets ?? []
   const sheet = sheetIdx !== null ? sheets[sheetIdx] : undefined
@@ -517,19 +551,30 @@ export function CutmapView({
               {materials.map((m: Material, i: number) => {
                 const mdone = m.sheets.filter(sheetDone).length
                 const active = i === materialIdx
+                // Arrachida rover materiali xira + yozuv bilan: bir qarashda
+                // "bu meniki emas" ko'rinsin, kataklarni bittalab bosmasin
+                const foreign = (m as any).rover && postCode !== "ROVER"
                 return (
                   <Button
                     key={m.name}
                     variant={active ? "default" : "outline"}
-                    className="h-12 max-w-xs shrink-0 px-4 text-base"
+                    className={`h-12 max-w-xs shrink-0 px-4 text-base ${
+                      foreign ? "border-dashed opacity-50" : ""
+                    }`}
                     onClick={() => setMaterialIdx(i)}
                   >
                     <span className="truncate">{m.name}</span>
-                    <span
-                      className={`num ml-1 text-xs ${active ? "opacity-80" : "text-muted-foreground"}`}
-                    >
-                      {mdone}/{m.sheets.length}
-                    </span>
+                    {foreign ? (
+                      <span className="ml-1 shrink-0 rounded-sm bg-muted px-1.5 py-0.5 text-2xs font-black uppercase">
+                        Roverdan boshlanadi
+                      </span>
+                    ) : (
+                      <span
+                        className={`num ml-1 text-xs ${active ? "opacity-80" : "text-muted-foreground"}`}
+                      >
+                        {mdone}/{m.sheets.length}
+                      </span>
+                    )}
                   </Button>
                 )
               })}
@@ -537,15 +582,18 @@ export function CutmapView({
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {sheets.map((s: Sheet, i: number) => {
                 const done = sheetDone(s)
+                const foreign = (s as any).rover && postCode !== "ROVER"
                 return (
                   <button
                     type="button"
                     key={s.no}
                     onClick={() => setSheetIdx(i)}
                     className={`rounded-xl border-2 px-4 py-3 text-left outline-none transition-all hover:border-primary focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.98] active:border-primary ${
-                      done
-                        ? "border-green-500/60 bg-green-50 text-green-700"
-                        : ""
+                      foreign
+                        ? "border-dashed opacity-45"
+                        : done
+                          ? "border-green-500/60 bg-green-50 text-green-700"
+                          : ""
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -556,6 +604,11 @@ export function CutmapView({
                         {s.L}×{s.W}
                       </span>
                     </div>
+                    {foreign && (
+                      <div className="mt-1 text-sm font-bold uppercase text-muted-foreground">
+                        Roverdan boshlanadi
+                      </div>
+                    )}
                     {/* Mini xarita — kichik preview, bosishga xalaqit bermaydi */}
                     <div className="pointer-events-none mt-2 h-32 overflow-hidden rounded-lg border bg-slate-100 p-1">
                       <SheetSvg
@@ -580,6 +633,12 @@ export function CutmapView({
               toolbarContainer ? "" : "rounded-xl border p-1"
             }`}
           >
+            {/* Begona list ochilgan bo'lsa — chalkashmasin: chek ham bloklangan */}
+            {(sheet as any)?.rover && postCode !== "ROVER" && (
+              <div className="absolute inset-x-0 top-0 z-10 bg-amber-100/95 px-4 py-2 text-center text-base font-black text-amber-900">
+                Bu list roverdan boshlanadi — kesish frezerda
+              </div>
+            )}
             <div className="h-full w-full">
               <SheetSvg
                 sheet={sheet}

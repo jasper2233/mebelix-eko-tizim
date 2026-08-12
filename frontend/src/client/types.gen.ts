@@ -126,6 +126,7 @@ export type CutmapInstanceState = {
     done: boolean;
     label_printed_at: (string | null);
     custom?: boolean;
+    arra_route?: boolean;
 };
 
 /**

@@ -200,6 +200,12 @@ class CutmapInstanceState(BaseModel):
     #: chunki marshruti arradan boshlanmasligi ham mumkin (o'shanda skan qabul
     #: qilinmaydi va arrachi "plan topilmadi" xatosiga uchrardi).
     custom: bool = False
+    #: Detal marshrutida yoqilgan ARRA qadami bormi. Listning EGASI shundan
+    #: aniqlanadi: giyotina kesimi listni chetdan chetgacha kesadi, ya'ni bitta
+    #: katakni chetlab o'tib bo'lmaydi — list yo butunlay arraniki, yo butunlay
+    #: roverniki (rover butun listni o'zi nesting bilan kesadi). Arrachida
+    #: roverning listlari xira, roverchida esa faqat o'ziniki ko'rinadi.
+    arra_route: bool = True
 
 
 class CutmapState(BaseModel):

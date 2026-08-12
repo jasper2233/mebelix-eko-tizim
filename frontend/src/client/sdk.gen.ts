@@ -1692,7 +1692,11 @@ export class TerminalService {
     
     /**
      * Read Terminal Cutmap
-     * ARRA cut-map screen (TZ 7.1.7). Cell state survives terminal restarts — it lives here.
+     * Kesish xaritasi (TZ 7.1.7). Katak holati serverda — terminal qayta yonganda saqlanadi.
+     *
+     * ROVER ham ochadi: marshruti arradan boshlanmagan detallar butun listni frezerda
+     * kesish bilan chiqadi, ya'ni roverchiga ham joylashuv kerak. Har post O'Z skanlarini
+     * ko'radi (`done`), listlarni esa frontend `arra_route` bo'yicha ajratadi.
      * @param data The data for the request.
      * @param data.orderId
      * @returns CutmapState Successful Response

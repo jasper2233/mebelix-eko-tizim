@@ -692,10 +692,15 @@ async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int
 
 @router.get("/orders/{order_id}/cutmap", response_model=CutmapState, operation_id="read_terminal_cutmap")
 async def read_terminal_cutmap(db: SessionDep, ctx: TerminalCtx, order_id: int) -> CutmapState:
-    """ARRA cut-map screen (TZ 7.1.7). Cell state survives terminal restarts — it lives here."""
+    """Kesish xaritasi (TZ 7.1.7). Katak holati serverda — terminal qayta yonganda saqlanadi.
+
+    ROVER ham ochadi: marshruti arradan boshlanmagan detallar butun listni frezerda
+    kesish bilan chiqadi, ya'ni roverchiga ham joylashuv kerak. Har post O'Z skanlarini
+    ko'radi (`done`), listlarni esa frontend `arra_route` bo'yicha ajratadi.
+    """
     _machine, post = ctx
-    if post.code != PostCode.ARRA:
-        raise ForbiddenException("Kesish xaritasi faqat ARRA postida ko'rsatiladi.")
+    if post.code not in (PostCode.ARRA, PostCode.ROVER):
+        raise ForbiddenException("Kesish xaritasi faqat arra va rover postida ko'rsatiladi.")
 
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
     return await build_cutmap_state(db, order, post.id)
@@ -804,8 +809,11 @@ async def read_terminal_post_queue(db: SessionDep, ctx: TerminalCtx, order_id: i
     )
 
 
-async def build_cutmap_state(db: SessionDep, order: Order, arra_post_id: int) -> CutmapState:
-    """Shared by the ARRA terminal (7.1.7) and the admin panel view (10.3)."""
+async def build_cutmap_state(db: SessionDep, order: Order, post_id: int) -> CutmapState:
+    """ARRA terminali (7.1.7), ROVER terminali va admin paneldagi ko'rinish (10.3) uchun umumiy.
+
+    `done` — SHU postdagi skanlar bo'yicha: roverchi o'z listida o'zi kesganini ko'radi.
+    """
     # Nostandart detallar — marshrutini texnolog qo'lda chizgan. Ular xaritada
     # boshqa rang bilan turadi: arrachi ularni odatdagi detal deb o'ylab qo'ymasin
     # (marshruti arradan boshlanmasligi ham mumkin, o'shanda skan qabul qilinmaydi).
@@ -839,9 +847,26 @@ async def build_cutmap_state(db: SessionDep, order: Order, arra_post_id: int) ->
             await db.execute(
                 select(Scan.instance_id).where(
                     Scan.order_id == order.id,
-                    Scan.post_id == arra_post_id,
+                    Scan.post_id == post_id,
                     Scan.is_cancelled == False,  # noqa: E712
                     Scan.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    # Marshrutida ARRA qadami bor detallar — listning egasini shundan aniqlaymiz
+    arra_parts = set(
+        (
+            await db.execute(
+                select(PartRoute.part_id)
+                .join(Post, Post.id == PartRoute.post_id)
+                .where(
+                    PartRoute.order_id == order.id,
+                    Post.code == PostCode.ARRA,
+                    PartRoute.is_enabled == True,  # noqa: E712
+                    PartRoute.is_deleted == False,  # noqa: E712
                 )
             )
         )
@@ -862,6 +887,7 @@ async def build_cutmap_state(db: SessionDep, order: Order, arra_post_id: int) ->
                 done=i.id in done_ids,
                 label_printed_at=i.label_printed_at,
                 custom=i.part_id in custom_parts,
+                arra_route=i.part_id in arra_parts,
             )
             for i in instances
         ],
@@ -874,6 +900,31 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     instance = await db.get(PartInstance, instance_id)
     if instance is None or instance.is_deleted:
         raise NotFoundException("Nusxa topilmadi.")
+
+    # Post aniqlanmasa (stanoksiz terminal) tekshiruvsiz chiqadi — yorliq ko'rish uchun
+    try:
+        _, print_post = await resolve_terminal(db, user)
+    except ScanRejected:
+        print_post = None
+    arra_route = (
+        await db.execute(
+            select(PartRoute.id)
+            .join(Post, Post.id == PartRoute.post_id)
+            .where(
+                PartRoute.part_id == instance.part_id,
+                Post.code == PostCode.ARRA,
+                PartRoute.is_enabled == True,  # noqa: E712
+                PartRoute.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).first()
+    # Marshruti arradan boshlanmagan detal arrachiga TEGISHLI EMAS: uning listini
+    # frezer butunlay o'zi kesadi. Ilgari chek jimgina chiqar, skan esa E001 bilan
+    # yutilar edi — katak "kesildi" bo'lib yashil qolar, roverchining chek tugmasi
+    # esa `label_printed` sababli yo'qolardi va u qo'lda skanerlashga majbur bo'lardi.
+    if print_post is not None and print_post.code == PostCode.ARRA and arra_route is None:
+        raise _scan_error("E001", "Bu detal roverda kesiladi — chekni rover terminalidan chiqaring.")
+
     instance.label_printed_at = datetime.now(UTC)
     log_action(
         db,
@@ -906,26 +957,10 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     # Post aniqlanmasa (stanok biriktirilmagan terminal) chek baribir chiqqan
     # bo'ladi — bu yerda faqat avto-skan o'tkazib yuboriladi. Ilgari himoyasiz edi
     # va chop etish so'rovi 500 bilan tugardi.
-    try:
-        _, print_post = await resolve_terminal(db, user)
-    except ScanRejected:
+    if print_post is None:
         return Message(message=f"Yorliq chop etishga yuborildi: {instance.qr_text}")
-    cut_by_print = print_post.code == PostCode.ARRA
-    if not cut_by_print and print_post.code == PostCode.ROVER:
-        # Roverda faqat arradan o'tmaydigan detal uchun: qolganini arrachi kesgan
-        arra_route = (
-            await db.execute(
-                select(PartRoute.id)
-                .join(Post, Post.id == PartRoute.post_id)
-                .where(
-                    PartRoute.part_id == instance.part_id,
-                    Post.code == PostCode.ARRA,
-                    PartRoute.is_enabled == True,  # noqa: E712
-                    PartRoute.is_deleted == False,  # noqa: E712
-                )
-            )
-        ).first()
-        cut_by_print = arra_route is None
+    # ARRA'da doim; ROVER'da esa faqat arradan o'tmaydigan detal uchun (qolganini arrachi kesgan)
+    cut_by_print = print_post.code == PostCode.ARRA or (print_post.code == PostCode.ROVER and arra_route is None)
     if cut_by_print:
         try:
             outcome = await record_scan(
