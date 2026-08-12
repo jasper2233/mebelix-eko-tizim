@@ -28,6 +28,7 @@ const KROMKA_COOLDOWN_MS = 5000
 export function useTerminalScan({
   postCode,
   online,
+  locked,
   mapOrderId,
   viewScanRef,
   kromkaScanRef,
@@ -38,6 +39,8 @@ export function useTerminalScan({
 }: {
   postCode?: string
   online: boolean
+  /** Ekran qulflangan: faqat beyjik o'tadi, qolgan skanlar e'tiborsiz */
+  locked: boolean
   mapOrderId: number | null
   /** Ekran o'zi yozadigan skan (qadoqlash, ombor) */
   viewScanRef: RefObject<((qr: string) => void) | null>
@@ -64,6 +67,14 @@ export function useTerminalScan({
     if (!value) return
     if (BADGE_RE.test(value)) {
       onBadge(value)
+      return
+    }
+    // Qulf ochilishi FAQAT beyjik bilan (yuqorida). Qolgan skanlar qulf ostida
+    // yo'qoladi — detal skani ekran yopiqligini bilmagan operatorda hisobga
+    // tushib ketmasin.
+    if (locked) {
+      playWarning()
+      toast.error("Ekran qulflangan — beyjikni skanerlang")
       return
     }
     if (!online) {

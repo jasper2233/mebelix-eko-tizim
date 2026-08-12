@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button"
 export function KioskOverlays({
   fullscreen,
   locked,
-  onUnlock,
+  onLogout,
 }: {
   fullscreen: boolean
   locked: boolean
-  onUnlock: () => void
+  /** Beyjiksiz hisob (operator roli) qulf ostida qolib ketmasin — chiqish yo'li */
+  onLogout: () => void
 }) {
   return (
     <>
@@ -26,13 +27,18 @@ export function KioskOverlays({
           onAction={() => document.documentElement.requestFullscreen()}
         />
       )}
-      {/* Qulf ekrani: tasodifiy tegishlardan himoya */}
+      {/* Qulf ekrani. Tugma bilan ochilmaydi: qulf tasodifiy tegishdan ham,
+          begona odamdan ham himoya — kalit BEYJIK. Skan maydoni qulf ostida
+          ham fokusda turadi, beyjik skani ekranni ochadi va smenani o'ziga
+          oladi (odatdagi sessiya oqimi). */}
       {locked && (
         <Overlay
           icon={<Lock className="size-16 opacity-80" />}
           title="Ekran qulflangan"
-          action="Ochish"
-          onAction={onUnlock}
+          hint="Ochish uchun beyjikni skanerlang"
+          action="Chiqish"
+          actionVariant="ghost"
+          onAction={onLogout}
           className="z-50"
         />
       )}
@@ -43,13 +49,17 @@ export function KioskOverlays({
 function Overlay({
   icon,
   title,
+  hint,
   action,
+  actionVariant = "secondary",
   onAction,
   className = "z-40",
 }: {
   icon: React.ReactNode
   title: string
+  hint?: string
   action: string
+  actionVariant?: "secondary" | "ghost"
   onAction: () => void
   className?: string
 }) {
@@ -59,10 +69,15 @@ function Overlay({
     >
       {icon}
       <div className="text-2xl font-black">{title}</div>
+      {hint && <div className="text-lg text-white/70">{hint}</div>}
       <Button
         size="lg"
-        variant="secondary"
-        className="h-14 px-10 text-lg font-bold"
+        variant={actionVariant}
+        className={
+          actionVariant === "ghost"
+            ? "h-12 px-8 text-base text-white/60 hover:bg-white/10 hover:text-white"
+            : "h-14 px-10 text-lg font-bold"
+        }
         onClick={onAction}
       >
         {action}

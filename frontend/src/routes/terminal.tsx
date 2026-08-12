@@ -135,7 +135,8 @@ function TerminalPage() {
   // Avto-skan: input doim fokusda (TZ 8.4.1). Faqat ARRA xaritasi ochiqda
   // o'chadi (input yashirin) — KROMKA proyekt sahifasida skan doim ishlashi kerak
   const scanInputHidden = ctx?.post_code === "ARRA" && mapOrderId !== null
-  useScanFocus(scanOn && !locked && !scanInputHidden, inputRef)
+  // Qulf ostida ham fokus kerak: qulfning kaliti — beyjik skani
+  useScanFocus(scanOn && !scanInputHidden, inputRef)
 
   const badgeMutation = useMutation({
     mutationFn: (badge: string) =>
@@ -144,6 +145,7 @@ function TerminalPage() {
       }),
     onSuccess: (s) => {
       playSuccess()
+      setLocked(false) // beyjik — qulfning kaliti
       toast.success(`Sessiya ochildi: ${s.employee_name}`)
       // Faqat kontekst: sessiya ochilishi vazifalar ro'yxatini ham, kesish
       // xaritasini ham o'zgartirmaydi (["terminal"] prefiksi cutmap'ni ham olardi)
@@ -217,6 +219,7 @@ function TerminalPage() {
   const handleSubmit = useTerminalScan({
     postCode: ctx?.post_code,
     online,
+    locked,
     mapOrderId,
     viewScanRef,
     kromkaScanRef,
@@ -272,7 +275,7 @@ function TerminalPage() {
       <KioskOverlays
         fullscreen={fullscreen}
         locked={locked}
-        onUnlock={() => setLocked(false)}
+        onLogout={() => logout()}
       />
       {/* Header (TZ 8.3.1) */}
       <header className="flex items-center gap-4 border-b bg-card px-4 py-2 shadow-sm">
@@ -313,7 +316,7 @@ function TerminalPage() {
           <ScanLine className="absolute left-3 top-2.5 size-5 text-muted-foreground" />
           <input
             ref={inputRef}
-            disabled={!scanOn || locked || mapOpen}
+            disabled={!scanOn || mapOpen}
             className="h-12 w-full rounded-lg border-2 border-primary/40 bg-card pl-10 pr-4 font-mono text-base outline-none focus:border-primary disabled:bg-muted"
             placeholder={
               ctx?.session ? "QR scan qiling..." : "Beyjik QR scan qiling..."
