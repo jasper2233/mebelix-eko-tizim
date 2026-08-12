@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import {
   Expand,
+  Grid2x2,
   Lock,
   LogOut,
   ScanLine,
@@ -128,7 +129,13 @@ function TerminalPage() {
     "task-row-",
   )
   const [locked, setLocked] = useState(false)
-  const [mapOrderId, setMapOrderId] = useState<number | null>(null)
+  // ROVER: detallar ro'yxati (SCX/chek) va kesish xaritasi almashtirgichi
+  const [roverMap, setRoverMap] = useState(false)
+  const [mapOrderId, setMapOrderIdRaw] = useState<number | null>(null)
+  const setMapOrderId = (v: number | null) => {
+    setMapOrderIdRaw(v)
+    if (v === null) setRoverMap(false) // keyingi proyekt detallardan boshlansin
+  }
   const [lastScan, setLastScan] = useState<LastScan>(null)
   const [history, setHistory] = useState<
     Array<{ id: number; code: string; ok: boolean; note: string; time: string }>
@@ -149,10 +156,6 @@ function TerminalPage() {
   const [statsEl, setStatsEl] = useState<HTMLDivElement | null>(null)
   // Xarita toolbari chap ustunga portal qilinadi (CutmapView toolbarContainer)
   const [toolbarEl, setToolbarEl] = useState<HTMLDivElement | null>(null)
-  // ROVER: detallar ro'yxati (SCX/chek) va kesish xaritasi. Xaritada FAQAT
-  // roverning listlari — marshruti arradan boshlanmagan detallar butun listni
-  // frezerda kesish bilan chiqadi, ya'ni joylashuv roverchiga ham kerak.
-  const [roverMap, setRoverMap] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const cooldownRef = useRef<Map<string, number>>(new Map())
   // KROMKA: yozishdan oldin lokal tekshiruv (arradan chiqqanmi, tugamaganmi) —
@@ -628,6 +631,14 @@ function TerminalPage() {
       <main className="flex min-h-0 flex-1 gap-1.5 p-3 pl-1.5">
         {/* Chap ustun: xarita toolbari (portal) tepada, qulf/chiqish doim pastda */}
         <div className="flex w-[68px] shrink-0 flex-col gap-2">
+          {/* ROVER: detallar <-> kesish xaritasi. Terminalning barcha amallari
+              shu 68px chap ustunda — xarita toolbari ham shu yerga portal
+              qilinadi, ya'ni ikkita vertikal qator paydo bo'lmaydi. */}
+          {ctx?.post_code === "ROVER" && mapOrderId !== null && !roverMap && (
+            <TBtn label="Xarita" onClick={() => setRoverMap(true)}>
+              <Grid2x2 />
+            </TBtn>
+          )}
           <div
             ref={setToolbarEl}
             className="flex flex-col gap-2 empty:hidden"
@@ -698,31 +709,12 @@ function TerminalPage() {
              fayllar; ROVER'da arra'siz detalga QR chiqarish ham shu sahifada */
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
             {scanStrip}
-            {/* ROVER: detallar / kesish xaritasi almashtirgichi */}
-            {ctx?.post_code === "ROVER" && mapOrderId !== null && (
-              <div className="flex gap-2">
-                {(
-                  [
-                    ["Detallar", false],
-                    ["Kesish xaritasi", true],
-                  ] as const
-                ).map(([label, val]) => (
-                  <Button
-                    key={label}
-                    variant={roverMap === val ? "default" : "outline"}
-                    className="h-11 px-5 text-base font-bold"
-                    onClick={() => setRoverMap(val)}
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </div>
-            )}
             <div className="min-h-0 flex-1">
               {mapOrderId && ctx?.post_code === "ROVER" && roverMap ? (
                 <CutmapView
                   orderId={mapOrderId}
                   onBack={() => setRoverMap(false)}
+                  toolbarContainer={toolbarEl}
                   postCode={ctx?.post_code}
                 />
               ) : mapOrderId ? (
