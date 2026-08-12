@@ -256,11 +256,12 @@ export function PrisadkaView({
                     onPointerCancel={holdEnd}
                     className={cn(
                       "cursor-pointer border-b last:border-0",
-                      selectedId === i.instance_id
-                        ? "bg-primary/10 ring-2 ring-inset ring-primary"
-                        : instFlash === i.instance_id
-                          ? "bg-amber-100 ring-2 ring-inset ring-amber-400"
-                          : i.done && "bg-green-50",
+                      i.done && "bg-green-50",
+                      selectedId === i.instance_id &&
+                        "bg-primary/10 ring-2 ring-inset ring-primary",
+                      // Xatcho'p tanlov bilan birga ko'rinadi — boshqa o'q
+                      instFlash === i.instance_id &&
+                        "border-l-4 border-l-primary",
                     )}
                   >
                     <td className="num px-4 py-3 font-semibold">
@@ -448,9 +449,9 @@ export function PrisadkaView({
                     id={`pv-row-${p.part_id}`}
                     className={cn(
                       "border-b last:border-0",
-                      flashId === p.part_id
-                        ? "bg-amber-100 ring-2 ring-inset ring-amber-400"
-                        : finished && "bg-green-50",
+                      finished && "bg-green-50",
+                      // Xatcho'p: holat rangini bosmaydi, chap chetda turadi
+                      flashId === p.part_id && "border-l-4 border-l-primary",
                     )}
                   >
                     <td className="num px-4 py-3 font-semibold">{p.code}</td>

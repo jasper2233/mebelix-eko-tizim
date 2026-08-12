@@ -153,9 +153,9 @@ export function KromkaView({
                     id={`kv-row-${p.part_id}`}
                     className={cn(
                       "border-b last:border-0",
-                      flashId === p.part_id
-                        ? "bg-amber-100 ring-2 ring-inset ring-amber-400"
-                        : finished && "bg-green-50",
+                      finished && "bg-green-50",
+                      // Xatcho'p: holat rangini bosmaydi, chap chetda turadi
+                      flashId === p.part_id && "border-l-4 border-l-primary",
                     )}
                   >
                     <td className="num px-4 py-3 font-semibold">{p.code}</td>

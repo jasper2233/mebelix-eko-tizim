@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState } from "react"
 
 /**
- * Oxirgi skan bo'lgan qator KEYINGI skangacha ajralib turadi va avtomatik
- * markazga scroll bo'ladi — operator sichqoncha bilan qidirmasin.
- * Bitta mexanizm uch joyda (prisadka, kromka, vazifalar) ishlaydi: items
- * yangilanganda hisobi O'ZGARGAN element flash oladi (skan ham, bekor ham).
+ * Oxirgi skan bo'lgan qatorni belgilaydi va uni markazga scroll qiladi.
+ *
+ * Belgi vaqt bo'yicha o'chmaydi — bu bildirishnoma emas, XATCHO'P: operator
+ * skanerlagach detalni olib stanokka boradi, bir necha daqiqadan keyin
+ * qaytadi va 100 qatorli ro'yxatda qayerda qolganini shu belgidan topadi.
+ * Bir necha soniyada so'nsa, qaytganida ro'yxat bir xil ko'rinib qolardi.
+ *
+ * Belgi qatorning HOLAT rangini almashtirmasligi kerak (bajarilgan qator
+ * yashil qolaveradi) — u boshqa o'q: "siz shu yerda edingiz". Chizilishi
+ * chaqiruvchida: chap chetdagi yo'g'on chiziq.
+ *
  * Qator DOM id'si: `${rowIdPrefix}${key}`.
  */
 export function useScanFlash<T>(
