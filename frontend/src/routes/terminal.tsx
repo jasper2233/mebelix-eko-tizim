@@ -4,12 +4,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import {
-  Expand,
   Grid2x2,
   Lock,
   LogOut,
   ScanLine,
-  Undo2,
   UserRound,
   WifiOff,
 } from "lucide-react"
@@ -18,18 +16,25 @@ import { toast } from "sonner"
 
 import { type ScanResult, ScansService, TerminalService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
-import { SectionTitle } from "@/components/Common/SectionTitle"
 import {
   playError,
   playSuccess,
   playWarning,
 } from "@/components/Terminal/audio"
 import { CutmapView, TBtn } from "@/components/Terminal/CutmapView"
+import { KioskOverlays } from "@/components/Terminal/KioskOverlays"
 import { KromkaView } from "@/components/Terminal/KromkaView"
 import { OmborView } from "@/components/Terminal/OmborView"
+import { OrderPicker } from "@/components/Terminal/OrderPicker"
 import { PostQueueView } from "@/components/Terminal/PostQueueView"
 import { PrisadkaView } from "@/components/Terminal/PrisadkaView"
+import { type LastScan, ScanStrip } from "@/components/Terminal/ScanStrip"
 import { UpakovkaView } from "@/components/Terminal/UpakovkaView"
+import {
+  QUIET_MS,
+  useKioskShell,
+  useScanFocus,
+} from "@/components/Terminal/useKiosk"
 import { useTerminalScan } from "@/components/Terminal/useTerminalScan"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -37,14 +42,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useMesWs } from "@/hooks/useMesWs"
 import { requireAuth } from "@/lib/guards"
-import {
-  deadlineTone,
-  formatDate,
-  OPERATOR_ROLES,
-  POST_COLORS,
-  PRIORITY_BADGE_CLASSES,
-  PRIORITY_LABELS,
-} from "@/lib/mes"
+import { OPERATOR_ROLES, POST_COLORS } from "@/lib/mes"
 import { downloadScx } from "@/lib/scxDir"
 import { cn } from "@/lib/utils"
 import { getTerminalContextQueryOptions } from "@/queries/mes"
@@ -65,11 +63,6 @@ export const Route = createFileRoute("/terminal")({
     }
   },
 })
-
-type LastScan =
-  | { kind: "ok"; code: string; qoldiq: number; scanId: number; at: number }
-  | { kind: "error"; code: string; message: string; at: number }
-  | null
 
 function TerminalPage() {
   const queryClient = useQueryClient()
@@ -98,14 +91,11 @@ function TerminalPage() {
   const [undoOpen, setUndoOpen] = useState(false)
   const [logoutOpen, setLogoutOpen] = useState(false)
   const [endOpen, setEndOpen] = useState(false)
-  // Kiosk to'liq ekran: Fullscreen API YOKI chrome --kiosk / PWA (display-mode)
-  const [fullscreen, setFullscreen] = useState(
-    () =>
-      !!document.fullscreenElement ||
-      window.matchMedia("(display-mode: fullscreen)").matches,
+  // Kiosk qobig'i: to'liq ekran holati + yangi build chiqqanda avto-reload.
+  // "Xavfsiz payt" = xarita yopiq va oxirgi skan urinishidan 2 daqiqa o'tgan.
+  const fullscreen = useKioskShell(
+    () => mapOrderId === null && Date.now() - lastScanAtRef.current > QUIET_MS,
   )
-  // Yangi build chiqdi — xavfsiz paytda avto-reload
-  const [updateReady, setUpdateReady] = useState(false)
   // Xarita statlari header ichiga portal qilinadi (CutmapView statsContainer)
   const [statsEl, setStatsEl] = useState<HTMLDivElement | null>(null)
   // Xarita toolbari chap ustunga portal qilinadi (CutmapView toolbarContainer)
@@ -137,87 +127,10 @@ function TerminalPage() {
     ),
   )
 
-  // Kiosk qoidasi: sensorda long press Chrome kontekst menyusini ochmasin —
-  // butun terminal sahifasida o'chiriladi (bekor qilish long press'i shu tufayli
-  // xalaqitsiz ishlaydi). Admin web sahifalariga ta'sir qilmaydi.
-  useEffect(() => {
-    const block = (e: Event) => e.preventDefault()
-    document.addEventListener("contextmenu", block)
-    return () => document.removeEventListener("contextmenu", block)
-  }, [])
-
-  useEffect(() => {
-    const mq = window.matchMedia("(display-mode: fullscreen)")
-    const onFs = () => setFullscreen(!!document.fullscreenElement || mq.matches)
-    document.addEventListener("fullscreenchange", onFs)
-    mq.addEventListener("change", onFs)
-    return () => {
-      document.removeEventListener("fullscreenchange", onFs)
-      mq.removeEventListener("change", onFs)
-    }
-  }, [])
-
-  // Deploy'dan keyin yangi build: index.html ETag o'zgarsa belgilab qo'yamiz,
-  // xavfsiz paytda (xarita yopiq, 2 daqiqa skan yo'q) o'zi reload qiladi.
-  useEffect(() => {
-    if (import.meta.env.DEV) return // Vite ETag'i o'zgaruvchan — dev'da reload sikli bo'ladi
-    let etag: string | null = null
-    const check = async () => {
-      try {
-        const r = await fetch("/", { method: "HEAD", cache: "no-store" })
-        const e = r.headers.get("etag")
-        if (etag === null) etag = e
-        else if (e && e !== etag) setUpdateReady(true)
-      } catch {
-        /* oflayn — keyingi urinishda */
-      }
-    }
-    check()
-    const t = setInterval(check, 5 * 60_000)
-    return () => clearInterval(t)
-  }, [])
-
-  useEffect(() => {
-    if (!updateReady) return
-    const tryReload = () => {
-      // lastScan holati 15s da o'zi tozalanadi — "2 daqiqa tinchlik" o'lchovi
-      // uchun alohida ref: aks holda reload oxirgi skandan 15s keyinoq bo'lardi
-      const quiet = Date.now() - lastScanAtRef.current > 120_000
-      if (mapOrderId === null && quiet) window.location.reload()
-    }
-    tryReload()
-    const t = setInterval(tryReload, 30_000)
-    return () => clearInterval(t)
-  }, [updateReady, mapOrderId])
-
   // Avto-skan: input doim fokusda (TZ 8.4.1). Faqat ARRA xaritasi ochiqda
   // o'chadi (input yashirin) — KROMKA proyekt sahifasida skan doim ishlashi kerak
   const scanInputHidden = ctx?.post_code === "ARRA" && mapOrderId !== null
-  useEffect(() => {
-    if (!scanOn || locked || scanInputHidden) return
-    const focus = () => inputRef.current?.focus()
-    focus()
-    const t = setInterval(focus, 2000)
-    return () => clearInterval(t)
-  }, [scanOn, locked, scanInputHidden])
-
-  // Skaner fokussiz yozsa ham yo'qolmasin: birinchi tugma bosilishida input
-  // fokusga olinadi — belgi o'sha yerga tushadi (2s intervalgacha kutilmaydi)
-  useEffect(() => {
-    if (!scanOn || locked || scanInputHidden) return
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement
-      if (
-        t === inputRef.current ||
-        t.tagName === "INPUT" ||
-        t.tagName === "TEXTAREA"
-      )
-        return
-      if (e.key.length === 1 || e.key === "Enter") inputRef.current?.focus()
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [scanOn, locked, scanInputHidden])
+  useScanFocus(scanOn && !locked && !scanInputHidden, inputRef)
 
   const badgeMutation = useMutation({
     mutationFn: (badge: string) =>
@@ -338,81 +251,21 @@ function TerminalPage() {
     ? (POST_COLORS[ctx.post_code] ?? "var(--primary)")
     : "var(--primary)"
 
-  // Oxirgi skan + BEKOR QILISH chizig'i — ARRA va KROMKA sahifalari baham ko'radi
-  const scanStrip = lastScan && (
-    <div
-      className={cn(
-        "flex items-center gap-3 rounded-xl border-2 px-4 py-2",
-        lastScan.kind === "ok"
-          ? "border-green-500 bg-green-50"
-          : "border-red-500 bg-red-50",
-      )}
-    >
-      {lastScan.kind === "ok" ? (
-        <>
-          <span className="num text-xl font-black text-green-700">
-            {lastScan.code}
-          </span>
-          <span className="text-base text-green-800">
-            Qoldiq: <b>{lastScan.qoldiq}</b>
-          </span>
-        </>
-      ) : (
-        <>
-          <span className="text-lg font-black text-red-700">
-            {lastScan.code}
-          </span>
-          <span className="truncate text-base text-red-800">
-            {lastScan.message}
-          </span>
-        </>
-      )}
-      <Button
-        variant="destructive"
-        className="ml-auto h-12 shrink-0 px-4 text-sm font-black"
-        disabled={!canUndo}
-        onClick={() => setUndoOpen(true)}
-      >
-        <Undo2 /> BEKOR QILISH
-      </Button>
-    </div>
+  const scanStrip = (
+    <ScanStrip
+      scan={lastScan}
+      canUndo={canUndo}
+      onUndo={() => setUndoOpen(true)}
+    />
   )
 
   return (
     <div className="flex h-dvh flex-col bg-surface">
-      {/* Majburiy to'liq ekran: kiosk tartibi — to'liq ekranga o'tmaguncha ish yo'q.
-          requestFullscreen user-gesture talab qiladi, shuning uchun tugma. */}
-      {!fullscreen && !locked && (
-        <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-6 bg-slate-900/95 text-white">
-          <Expand className="size-16 opacity-80" />
-          <div className="text-2xl font-black">
-            Terminal to'liq ekranda ishlaydi
-          </div>
-          <Button
-            size="lg"
-            variant="secondary"
-            className="h-14 px-10 text-lg font-bold"
-            onClick={() => document.documentElement.requestFullscreen()}
-          >
-            To'liq ekranga o'tish
-          </Button>
-        </div>
-      )}
-      {/* Qulf ekrani: tasodifiy tegishlardan himoya */}
-      {locked && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-slate-900/95 text-white">
-          <Lock className="size-16 opacity-80" />
-          <div className="text-2xl font-black">Ekran qulflangan</div>
-          <Button
-            size="lg"
-            variant="secondary"
-            className="h-14 px-10 text-lg font-bold"
-            onClick={() => setLocked(false)}
-          >
-            Ochish
-          </Button>
-        </div>
-      )}
+      <KioskOverlays
+        fullscreen={fullscreen}
+        locked={locked}
+        onUnlock={() => setLocked(false)}
+      />
       {/* Header (TZ 8.3.1) */}
       <header className="flex items-center gap-4 border-b bg-card px-4 py-2 shadow-sm">
         {/* Arrachi tilida bitta identitet: stanok nomi (post rangida) — "post/uskuna"
@@ -744,135 +597,6 @@ function PostScreen({
     >
       {strip}
       <div className="min-h-0 flex-1">{children}</div>
-    </div>
-  )
-}
-
-function OrderPicker({
-  onPick,
-  title = "Proyektlar — xarita uchun proyektni tanlang",
-  showCutmapBadge = true,
-}: {
-  onPick: (orderId: number) => void
-  title?: string
-  showCutmapBadge?: boolean
-}) {
-  const {
-    data: orders,
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ["terminal", "orders"],
-    queryFn: () => TerminalService.readTerminalOrders(),
-    refetchInterval: 30_000,
-  })
-  return (
-    <div className="h-full overflow-y-auto rounded-xl border bg-card p-4">
-      <SectionTitle>{title}</SectionTitle>
-      {isError && (
-        <div className="mb-3 rounded-lg border-2 border-red-500 bg-red-50 px-4 py-3 text-base font-bold text-red-700">
-          Yuklashda xato — qayta urinilmoqda...
-        </div>
-      )}
-      {isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-44 rounded-xl" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {orders?.map((o) => {
-            const total = o.total ?? 0
-            const done = o.done ?? 0
-            const pct = total ? Math.round((done / total) * 100) : 0
-            const finished = total > 0 && done >= total
-            const tone = deadlineTone(o.deadline)
-            return (
-              <button
-                type="button"
-                key={o.id}
-                onClick={() => onPick(o.id)}
-                className={`rounded-xl border-2 p-4 text-left outline-none transition-all hover:border-primary focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.98] active:border-primary ${
-                  finished ? "border-green-500/60 bg-green-50/50" : ""
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-base font-black">{o.number}</div>
-                    <div className="truncate text-sm text-muted-foreground">
-                      {o.project_name ?? ""}
-                    </div>
-                  </div>
-                  {o.priority && (
-                    <span
-                      className={`shrink-0 rounded-sm px-2 py-0.5 text-sm font-black ${
-                        PRIORITY_BADGE_CLASSES[o.priority] ??
-                        "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {PRIORITY_LABELS[o.priority] ?? o.priority}
-                    </span>
-                  )}
-                </div>
-                {/* Material — arrachi arradagi plita bo'yicha partiyalab kesadi */}
-                {!!o.materials?.length && (
-                  <div className="mt-1 truncate text-sm font-semibold">
-                    {o.materials.join(" · ")}
-                  </div>
-                )}
-                {/* ARRA bo'yicha bajarilish: kesilgan nusxalar / jami */}
-                <div className="mt-2">
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={`h-full rounded-full ${finished ? "bg-green-500" : "bg-primary"}`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <div className="num mt-1 flex items-end justify-between">
-                    {finished ? (
-                      <span className="text-xl font-black text-green-600">
-                        ✓ 100%
-                      </span>
-                    ) : (
-                      <span className="text-xl font-black text-primary">
-                        Qoldiq: {total - done}
-                      </span>
-                    )}
-                    <span className="text-sm text-muted-foreground">
-                      {done}/{total} detal
-                      {o.sheets_total ? ` · ${o.sheets_total} list` : ""}
-                    </span>
-                  </div>
-                </div>
-                <div
-                  className={`num mt-1.5 text-base font-bold ${
-                    tone === "overdue"
-                      ? "text-red-600"
-                      : tone === "today"
-                        ? "text-amber-700"
-                        : ""
-                  }`}
-                >
-                  {formatDate(o.deadline)}
-                  {tone === "overdue" && " · KECHIKKAN"}
-                  {tone === "today" && " · BUGUN"}
-                </div>
-                {showCutmapBadge && o.has_cutmap === false && (
-                  <span className="mt-1.5 inline-block rounded-sm bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">
-                    XARITA YO'Q
-                  </span>
-                )}
-              </button>
-            )
-          })}
-          {!isError && !orders?.length && (
-            <p className="text-sm text-muted-foreground">
-              Aktiv buyurtmalar yo'q
-            </p>
-          )}
-        </div>
-      )}
     </div>
   )
 }

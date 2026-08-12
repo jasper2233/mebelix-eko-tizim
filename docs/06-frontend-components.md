@@ -368,6 +368,26 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 - **Topshirish** — qadoqlangan buyurtmada har qadoq alohida (to'liq qabul qilinmagani bloklangan), qadoqsizda bitta "Buyurtmani topshirish" tugmasi.
 - `registerScan` aktiv tabga qarab qabul yoki topshirishga yo'naltiradi.
 
+### `frontend/src/components/Terminal/OrderPicker.tsx`
+
+**Maqsadi:** proyekt tanlagichi — HAMMA post sahifasi shundan boshlanadi. Kartada raqam, loyiha nomi, prioritet badge'i, materiallar, `done/total` progress va qoldiq, listlar soni, muddat rangi. `done/total` va `sheets_total` post semantikasida (backend `/terminal/orders` hisoblaydi: ARRA — chek∪skan, o'z listlari; KROMKA — detal bo'yicha). Props: `onPick`, `title?`, `showCutmapBadge?`.
+
+### `frontend/src/components/Terminal/ScanStrip.tsx`
+
+**Maqsadi:** oxirgi skan natijasi + BEKOR QILISH tugmasi, har post ekranining tepasida (`PostScreen` orqali). Sex shovqinida ovoz signaliga ishonib bo'lmaydi. `LastScan` tipi ham shu yerda eksport qilinadi. Props: `scan`, `canUndo` (60 s oynasi — taymer chaqiruvchida), `onUndo`.
+
+### `frontend/src/components/Terminal/KioskOverlays.tsx`
+
+**Maqsadi:** ikkita to'siq ekrani — majburiy to'liq ekran (`requestFullscreen` user-gesture talab qiladi, shuning uchun tugma) va qulf. Ikkalasi bitta ichki `Overlay` maketidan.
+
+### `frontend/src/components/Terminal/useKiosk.ts`
+
+**Maqsadi:** kiosk qobig'i. `useKioskShell(canReload)` — kontekst menyusini o'chirish (sensorda long press chekni bekor qilish uchun kerak), to'liq ekran holati (Fullscreen API yoki `display-mode`), yangi build tekshiruvi (`/` HEAD ETag, 5 daqiqada) va XAVFSIZ paytda avto-reload (`canReload()` — xarita yopiq va `QUIET_MS`=2 daqiqa skan bo'lmagan). `useScanFocus(enabled, inputRef)` — avto-skan inputini fokusda ushlash (2 s interval) va fokussiz terilgan birinchi belgida fokusni qaytarish.
+
+### `frontend/src/components/Terminal/useTerminalScan.ts`
+
+**Maqsadi:** skan yo'naltirgichi — bitta QR to'rt manzilga ketishi mumkin: beyjik UUID → smena; ekranning o'z sinki (`viewScanRef` — qadoqlash/ombor, chunki detal qaysi qadoqqa tushishini faqat o'sha ekran biladi va qadoq QR'i `PK-...` umumiy yo'lda rad etilardi); KROMKA/OVAL lokal tekshiruvi (`kromkaScanRef`, 5 s to'siq, picker ochiq bo'lsa `/qr/{qr}/order` bilan proyektni o'zi ochadi); qolgani umumiy skan (2 s duplikat to'sig'i).
+
 ### `frontend/src/components/Terminal/usePrintLabel.ts`
 
 **Maqsadi:** yorliq chop etish mutatsiyasi — `CutmapView` (ARRA xaritasi) va `PrisadkaView` (ROVER/PRISADKA) baham ko'radi: `TerminalService.printInstanceLabel` + toast + `handleError`; `scope` ("cutmap" | "prisadka") qaysi terminal keshi (`["terminal", scope]`) yangilanishini belgilaydi.
