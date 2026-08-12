@@ -5,7 +5,13 @@
 // o'sha detal SCX'i ham avtomatik tushadi).
 
 import { useQuery } from "@tanstack/react-query"
-import { ArrowLeft, FolderCog, HardDriveDownload, Printer } from "lucide-react"
+import {
+  ArrowLeft,
+  FolderCog,
+  HardDriveDownload,
+  Map as MapIcon,
+  Printer,
+} from "lucide-react"
 import { useMemo, useState } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
@@ -33,11 +39,15 @@ export function PrisadkaView({
   onBack,
   showScx = true,
   toolbarContainer,
+  onShowOnMap,
 }: {
   orderId: number
   onBack: () => void
   /** ROVER: SCX fayllar kerak emas — yuklab olish/Papka va fayl nomlari yashirin */
   showScx?: boolean
+  /** ROVER: detalni kesish xaritasida ochish (faqat o'z listidagi detallarda —
+   *  arradan kelgani rover xaritasida umuman yo'q) */
+  onShowOnMap?: (partCode: string) => void
   /** ROVER Chop etish tugmasi terminalning umumiy chap ustuniga (Qulflash
    * ustiga) portal qilinadi — alohida ikkinchi ustun ochilmasin */
   toolbarContainer?: HTMLElement | null
@@ -213,15 +223,25 @@ export function PrisadkaView({
                   >
                     <td className="num px-4 py-3 font-semibold">
                       {i.qr_text}
-                      {/* Chek qayerda chiqadi. Ilgari bu yerda printer ikonkasi
-                          turardi: u tugmaga o'xshardi-yu bosilmasdi (sensorli
-                          ekranda tuzoq), qolaversa rover ro'yxatida deyarli hamma
-                          qatorda bir xil ikonka takrorlanardi. Chop etish amali
-                          chap ustundagi katta tugmada. */}
-                      {!p.arra_route && (
-                        <span className="ml-2 text-sm font-normal text-muted-foreground">
-                          chek shu yerda
-                        </span>
+                      {/* Marshruti roverdan boshlangan detal — uni ROVER o'z
+                          listidan kesadi. Ikonka bosilsa xarita o'sha katak
+                          belgilangan holda ochiladi: 20 detalli listda uni
+                          qidirib topguncha ancha vaqt ketardi. Ikonkaning
+                          BORLIGI ayni paytda "chek shu yerda chiqadi" degani —
+                          arradan kelgan detalda u yo'q. */}
+                      {!p.arra_route && onShowOnMap && (
+                        <button
+                          type="button"
+                          title="Kesish xaritasida ko'rsatish"
+                          aria-label={`${i.qr_text} — kesish xaritasida ko'rsatish`}
+                          className="ml-2 inline-flex size-8 items-center justify-center rounded-md align-middle text-muted-foreground hover:bg-muted hover:text-primary"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onShowOnMap(p.code)
+                          }}
+                        >
+                          <MapIcon className="size-5" />
+                        </button>
                       )}
                     </td>
                     <td className="max-w-[240px] truncate px-4 py-3">

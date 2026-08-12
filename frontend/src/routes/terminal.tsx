@@ -82,10 +82,15 @@ function TerminalPage() {
   const [locked, setLocked] = useState(false)
   // ROVER: detallar ro'yxati (SCX/chek) va kesish xaritasi almashtirgichi
   const [roverMap, setRoverMap] = useState(false)
+  // Ro'yxatdagi xarita ikonkasi: xarita shu detal belgilangan holda ochiladi
+  const [focusPart, setFocusPart] = useState<string | undefined>(undefined)
   const [mapOrderId, setMapOrderIdRaw] = useState<number | null>(null)
   const setMapOrderId = (v: number | null) => {
     setMapOrderIdRaw(v)
-    if (v === null) setRoverMap(false) // keyingi proyekt detallardan boshlansin
+    if (v === null) {
+      setRoverMap(false) // keyingi proyekt detallardan boshlansin
+      setFocusPart(undefined)
+    }
   }
   const [lastScan, setLastScan] = useState<LastScan>(null)
   const [undoOpen, setUndoOpen] = useState(false)
@@ -424,6 +429,7 @@ function TerminalPage() {
                 onBack={() => setRoverMap(false)}
                 toolbarContainer={toolbarEl}
                 postCode={ctx?.post_code}
+                focusPartKey={focusPart}
               />
             ) : mapOrderId ? (
               <PrisadkaView
@@ -431,6 +437,14 @@ function TerminalPage() {
                 onBack={() => setMapOrderId(null)}
                 showScx={ctx?.post_code !== "ROVER"}
                 toolbarContainer={toolbarEl}
+                onShowOnMap={
+                  ctx?.post_code === "ROVER"
+                    ? (partCode) => {
+                        setFocusPart(partCode)
+                        setRoverMap(true)
+                      }
+                    : undefined
+                }
               />
             ) : (
               <OrderPicker

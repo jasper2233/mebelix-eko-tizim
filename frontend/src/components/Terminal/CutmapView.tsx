@@ -284,10 +284,14 @@ export function CutmapView({
   // birinchi katakchasini topib, o'sha material + listni ochamiz va belgilaymiz.
   // BIR MARTA: aks holda har refetch (60s interval, fokus) foydalanuvchi qaysi
   // listga o'tgan bo'lsa ham uni qaytarib uloqtirardi.
-  const focusApplied = useRef(false)
+  // Kalit BO'YICHA: har refetch (60s, fokus) sakrashni qaytarmasin, lekin
+  // operator boshqa detalga sakrasa qayta ishlasin — roverchi ro'yxatdan
+  // ketma-ket bir nechta detalni xaritada ochib ko'radi.
+  const focusApplied = useRef<string | undefined>(undefined)
   useEffect(() => {
-    if (!focusPartKey || !data?.model || focusApplied.current) return
-    focusApplied.current = true
+    if (!focusPartKey || !data?.model || focusApplied.current === focusPartKey)
+      return
+    focusApplied.current = focusPartKey
     for (let mi = 0; mi < materials.length; mi++) {
       const shs = materials[mi].sheets ?? []
       for (let si = 0; si < shs.length; si++) {
