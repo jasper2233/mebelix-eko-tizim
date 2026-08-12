@@ -372,6 +372,14 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 
 **Maqsadi:** proyekt tanlagichi — HAMMA post sahifasi shundan boshlanadi. Kartada raqam, loyiha nomi, prioritet badge'i, materiallar, `done/total` progress va qoldiq, listlar soni, muddat rangi. `done/total` va `sheets_total` post semantikasida (backend `/terminal/orders` hisoblaydi: ARRA — chek∪skan, o'z listlari; KROMKA — detal bo'yicha). Props: `onPick`, `title?`, `showCutmapBadge?`.
 
+### `frontend/src/components/Terminal/PostProgress.tsx`
+
+**Maqsadi:** post ekranining yagona UZOQDAN o'qiladigan raqami — qancha ish qoldi. Beshta ekran (kromka, prisadka, rover, post navbati, ombor) shu bitta komponentdan foydalanadi.
+
+- O'lcham sanoat HMI qoidasidan: qulay o'qish masofasi ≈ harf balandligi × 150…200. 17" monoblokda piksel qadami ~0.26 mm, ya'ni `text-base` (16px) ≈ 3 mm ≈ 0.5 m (operator terminalga borishi kerak edi), `text-5xl` (48px) ≈ 9 mm ≈ 1.5 m. Qolgan hamma narsa — qatorlar, o'lchamlar, kodlar — qo'l uzunligida o'qiladi va kattalashtirilmaydi.
+- Raqam **qoldiq**, "bajarildi" emas: operatorning savoli "yana qancha qoldi?", `4/25` dan uni hisoblab olish qo'lqopda va arra shovqinida ortiqcha ish. Bajarilgan/jami kichik shriftda yonida (kontekst).
+- Hammasi bajarilganda raqam o'rniga yashil **TAYYOR**.
+
 ### `frontend/src/components/Terminal/ScanStrip.tsx`
 
 **Maqsadi:** oxirgi skan natijasi + BEKOR QILISH tugmasi, har post ekranining tepasida (`PostScreen` orqali). Sex shovqinida ovoz signaliga ishonib bo'lmaydi. `LastScan` tipi ham shu yerda eksport qilinadi. Props: `scan`, `canUndo` (60 s oynasi — taymer chaqiruvchida), `onUndo`.

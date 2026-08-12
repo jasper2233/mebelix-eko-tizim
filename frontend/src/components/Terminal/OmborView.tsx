@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
 import { OmborService } from "@/client"
+import { PostProgress } from "@/components/Terminal/PostProgress"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -107,9 +108,11 @@ export function OmborView({
             </div>
           )}
         </div>
-        <div className="num ml-auto text-base">
-          Qabul: <b>{data?.accepted ?? 0}</b>/{data?.total ?? 0}
-        </div>
+        <PostProgress
+          className="ml-auto"
+          done={data?.accepted ?? 0}
+          total={data?.total ?? 0}
+        />
         {delivered && (
           <span className="rounded-sm bg-green-100 px-2 py-1 text-sm font-black text-green-700">
             TOPSHIRILGAN

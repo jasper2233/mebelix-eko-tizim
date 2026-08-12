@@ -18,6 +18,7 @@ import { toast } from "sonner"
 
 import { TerminalService } from "@/client"
 import { TBtn } from "@/components/Terminal/CutmapView"
+import { PostProgress } from "@/components/Terminal/PostProgress"
 import {
   useCancelLabel,
   usePrintLabel,
@@ -222,15 +223,13 @@ export function PrisadkaView({
               <ArrowLeft /> Orqaga
             </Button>
             <div className="text-lg font-black">{data?.order_number}</div>
-            <div className="num text-base text-muted-foreground">
-              Bajarildi: <b className="text-foreground">{totDone}</b>/{totReq}
-            </div>
             {/* Imo-ishora ko'rinmas — ISHORASI bir marta, jadval tepasida.
                 Har qatorga takrorlansa 15 marta bir xil yozuv bo'lardi va
                 holat badge'i bilan zid o'qilardi. */}
-            <div className="ml-auto text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground">
               Chekni bekor qilish: qatorni bosib turing
             </div>
+            <PostProgress className="ml-auto" done={totDone} total={totReq} />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             <table className="w-full text-base">
@@ -391,10 +390,8 @@ export function PrisadkaView({
           <ArrowLeft /> Orqaga
         </Button>
         <div className="text-lg font-black">{data?.order_number}</div>
-        <div className="num text-base text-muted-foreground">
-          Bajarildi: <b className="text-foreground">{totDone}</b>/{totReq}
-        </div>
-        <div className="ml-auto flex items-center gap-2">
+        <PostProgress className="ml-auto" done={totDone} total={totReq} />
+        <div className="flex items-center gap-2">
           {/* Sensorli ekranda hover yo'q — ikonka yoniga yozuv shart */}
           {dirSupported() && (
             <Button

@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef } from "react"
 
 import { TerminalService } from "@/client"
 import { OperationChips } from "@/components/Common/OperationChips"
+import { PostProgress } from "@/components/Terminal/PostProgress"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useScanFlash } from "@/hooks/useScanFlash"
@@ -129,9 +130,7 @@ export function KromkaView({
             <ArrowLeft /> Orqaga
           </Button>
           <div className="text-lg font-black">{data?.order_number}</div>
-          <div className="num ml-auto text-base">
-            {oval ? "Detallar" : "Tomonlar"}: <b>{totDone}</b>/<b>{totReq}</b>
-          </div>
+          <PostProgress className="ml-auto" done={totDone} total={totReq} />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
           <table className="w-full text-base">

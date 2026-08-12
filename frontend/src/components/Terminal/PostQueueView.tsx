@@ -11,6 +11,7 @@ import { ArrowLeft, Check } from "lucide-react"
 
 import { TerminalService } from "@/client"
 import { OperationChips } from "@/components/Common/OperationChips"
+import { PostProgress } from "@/components/Terminal/PostProgress"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatSize } from "@/lib/mes"
@@ -66,9 +67,11 @@ export function PostQueueView({
             </div>
           )}
         </div>
-        <div className="num ml-auto text-base">
-          {label.done}: <b>{done.length}</b>/{rows.length}
-        </div>
+        <PostProgress
+          className="ml-auto"
+          done={done.length}
+          total={rows.length}
+        />
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
