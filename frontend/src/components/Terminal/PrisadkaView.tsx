@@ -12,14 +12,23 @@ import {
   Map as MapIcon,
   Printer,
 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
 
 import { TerminalService } from "@/client"
 import { TBtn } from "@/components/Terminal/CutmapView"
-import { usePrintLabel } from "@/components/Terminal/usePrintLabel"
+import {
+  useCancelLabel,
+  usePrintLabel,
+} from "@/components/Terminal/usePrintLabel"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useScanFlash } from "@/hooks/useScanFlash"
@@ -60,6 +69,27 @@ export function PrisadkaView({
   // ROVER'da jarayon shu postdan boshlanishi mumkin (marshrutda ARRA yo'q) —
   // QR chek shu yerdan chiqariladi; keyin skan bilan ish yakunlanadi
   const printLabel = usePrintLabel("prisadka")
+  const cancelLabel = useCancelLabel()
+  // Noto'g'ri chiqarilgan chek: uzoq bosish (~600ms) + tasdiq — ARRA xaritasidagi
+  // bilan bir xil imo-ishora, operator bitta odatni o'rganadi. Tugma qilinmadi:
+  // qatorlar tor va tasodifiy bosish chop etilgan chekni o'chirib yuborardi.
+  const [cancelTarget, setCancelTarget] = useState<{
+    instance_id: number
+    qr_text: string
+    name: string
+  } | null>(null)
+  const pressRef = useRef<number | null>(null)
+  const holdStart = (t: {
+    instance_id: number
+    qr_text: string
+    name: string
+  }) => {
+    pressRef.current = window.setTimeout(() => setCancelTarget(t), 600)
+  }
+  const holdEnd = () => {
+    if (pressRef.current !== null) window.clearTimeout(pressRef.current)
+    pressRef.current = null
+  }
   // null = yuklanmayapti; son = nechta fayl saqlandi (tugmada jonli 12/69)
   const [progress, setProgress] = useState<number | null>(null)
   // ROVER rejimi: qator (nusxa) tanlanadi, chop etish chapdagi katta tugmada
@@ -212,6 +242,18 @@ export function PrisadkaView({
                     key={i.instance_id}
                     id={`pv-inst-${i.instance_id}`}
                     onClick={() => setSelectedId(i.instance_id)}
+                    // Chek chiqarilgan nusxada uzoq bosish uni bekor qiladi
+                    onPointerDown={() =>
+                      i.label_printed &&
+                      holdStart({
+                        instance_id: i.instance_id,
+                        qr_text: i.qr_text,
+                        name: p.name,
+                      })
+                    }
+                    onPointerUp={holdEnd}
+                    onPointerLeave={holdEnd}
+                    onPointerCancel={holdEnd}
                     className={cn(
                       "cursor-pointer border-b last:border-0",
                       selectedId === i.instance_id
@@ -264,6 +306,13 @@ export function PrisadkaView({
                       >
                         {i.done ? "✓ Bajarildi" : "Bajarilmagan"}
                       </span>
+                      {/* Uzoq bosish bilan bekor qilinadi — imo-ishora ko'rinmas
+                          bo'lgani uchun bitta ishora qoldiriladi */}
+                      {i.label_printed && (
+                        <div className="mt-0.5 text-2xs text-muted-foreground">
+                          chek chiqarilgan · bosib turing
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -281,6 +330,49 @@ export function PrisadkaView({
             </table>
           </div>
         </div>
+        {/* Long press tasdiq dialogi — ARRA xaritasidagi bilan bir xil matn */}
+        <Dialog
+          open={cancelTarget !== null}
+          onOpenChange={(v) => !v && setCancelTarget(null)}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Chekni bekor qilasizmi?</DialogTitle>
+            </DialogHeader>
+            {cancelTarget && (
+              <p className="text-base">
+                {cancelTarget.name}{" "}
+                <span className="num text-muted-foreground">
+                  ({cancelTarget.qr_text})
+                </span>
+                <br />
+                Detal chop etilmagan holatga qaytadi, bosqich hisobi tiklanadi.
+              </p>
+            )}
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="h-14 flex-1 text-base font-bold"
+                onClick={() => setCancelTarget(null)}
+              >
+                Yo'q
+              </Button>
+              <LoadingButton
+                variant="destructive"
+                className="h-14 flex-1 text-base font-bold"
+                loading={cancelLabel.isPending}
+                onClick={() => {
+                  if (!cancelTarget) return
+                  cancelLabel.mutate(cancelTarget.instance_id, {
+                    onSuccess: () => setCancelTarget(null),
+                  })
+                }}
+              >
+                Ha, bekor qilinsin
+              </LoadingButton>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     )
   }

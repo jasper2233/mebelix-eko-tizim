@@ -2,12 +2,7 @@
 // list kartochkalari, to'liq list SVG (detallar, kesim chiziqlari, teshiklar overlay),
 // detal kartochkasi (katta QR + YORLIQ CHOP ETISH). GibCut litsenziyasi o'rnini bosadi.
 
-import {
-  queryOptions,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query"
+import { queryOptions, useQuery } from "@tanstack/react-query"
 import {
   ArrowLeft,
   ChevronDown,
@@ -35,7 +30,10 @@ import {
   holeXY,
   SheetSvg,
 } from "@/components/Terminal/SheetSvg"
-import { usePrintLabel } from "@/components/Terminal/usePrintLabel"
+import {
+  useCancelLabel,
+  usePrintLabel,
+} from "@/components/Terminal/usePrintLabel"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -46,7 +44,6 @@ import {
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { isCut } from "@/lib/mes"
-import { handleError } from "@/utils"
 
 // Kesish xaritasi modeli (order.cutmap JSON) server tomonda tiplashtirilmagan
 // (CutmapState.model = {[k: string]: unknown} | null) — lokal any'lar shu sababli
@@ -63,22 +60,6 @@ const getCutmapQueryOptions = (orderId: number, admin: boolean) =>
         : TerminalService.readTerminalCutmap({ orderId }),
     refetchInterval: 60_000,
   })
-
-// Noto'g'ri chiqarilgan chekni bekor qilish (long press) — katak apelsinga qaytadi
-function useCancelLabel() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (instanceId: number) =>
-      TerminalService.cancelInstanceLabel({ instanceId }),
-    onSuccess: (r) => toast.success(r.message),
-    onError: handleError,
-    onSettled: () => {
-      // Terminal (arrachi long press) ham, admin xarita (texnolog tugmasi) ham yangilansin
-      queryClient.invalidateQueries({ queryKey: ["terminal", "cutmap"] })
-      queryClient.invalidateQueries({ queryKey: ["admin", "cutmap"] })
-    },
-  })
-}
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)
