@@ -396,7 +396,11 @@ export function CutmapView({
     ["Tirim uz.", material?.trimL ?? "—"],
     ["Tirim en", material?.trimW ?? "—"],
   ]
-  const statPairs = sheetIdx === null ? [...workPairs, ...planPairs] : workPairs
+  // Admin (texnolog) sahifasida hammasi qoladi: u optimizatsiyani BAHOLAYDI,
+  // ya'ni atxot va to'ldirish uning ish raqamlari; ekran ham sichqonchali,
+  // keng. Terminalda esa xarita ochilganda faqat ish raqamlari.
+  const fullStats = admin || sheetIdx === null
+  const statPairs = fullStats ? [...workPairs, ...planPairs] : workPairs
   // GibSaw uslubi: 3 qator × 3 ustun qat'iy blok (KK/KD/KO | DR/KR/PZ | TP/TD/TSh)
   // — hech qachon o'ramaydi, header balandligi o'smaydi, eni ~400px
   // Header info: list nomi (ochiq bo'lsa) + 3x3 statlar — bitta portalda
@@ -417,7 +421,7 @@ export function CutmapView({
           </div>
         </div>
       )}
-      {sheetIdx === null ? (
+      {fullStats ? (
         <div
           className="num grid w-fit grid-flow-col grid-rows-3 text-xs leading-[1.4]"
           style={{ columnGap: "18px" }}
