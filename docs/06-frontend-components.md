@@ -360,11 +360,11 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 
 **Maqsadi:** QADOQLASH post sahifasi. Chapda ochiq qadoq (kod, detallar soni, `~kg` — taxminiy, bloklamaydi), o'ngda "Qadoqlanmagan" va "Yakunlangan". Oqim: "Qadoq yaratish" → detallarni birma-bir skanerlash → "Qadoqni yakunlash" (chek QR bilan chiqadi). Har qatorda o'chirish tugmasi — xato skan qaytariladi va UPAKOVKA skani ham bekor bo'ladi. `registerScan` prop orqali terminalga skan qabul qiluvchi beradi: detal qaysi QADOQqa tushishini faqat shu ekran biladi.
 
-### `frontend/src/components/Terminal/OmborView.tsx`
+### `frontend/src/components/Terminal/TmoView.tsx`
 
-**Maqsadi:** OMBOR post sahifasi, ikki tab (ikki xil ish bir ekranda aralashmasin).
+**Maqsadi:** TMO post sahifasi, ikki tab (ikki xil ish bir ekranda aralashmasin).
 
-- **Qabul** — omborga yetib kelganlar (qadoq kodi bilan), skan `PK-...` bo'lsa qadoq ichidagi hammasini birdan qabul qiladi. Pastda "Sexda" ro'yxati: har detalga ishi TUGAGAN post yozilgan (`stage`) — omborchi buyumni aynan o'sha yerdan topadi.
+- **Qabul** — TMO ga yetib kelganlar (qadoq kodi bilan), skan `PK-...` bo'lsa qadoq ichidagi hammasini birdan qabul qiladi. Pastda "Sexda" ro'yxati: har detalga ishi TUGAGAN post yozilgan (`stage`) — omborchi buyumni aynan o'sha yerdan topadi.
 - **Topshirish** — qadoqlangan buyurtmada har qadoq alohida (to'liq qabul qilinmagani bloklangan), qadoqsizda bitta "Buyurtmani topshirish" tugmasi.
 - `registerScan` aktiv tabga qarab qabul yoki topshirishga yo'naltiradi.
 
@@ -374,7 +374,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 
 ### `frontend/src/components/Terminal/PostProgress.tsx`
 
-**Maqsadi:** post ekranining yagona UZOQDAN o'qiladigan raqami — qancha ish qoldi. Beshta ekran (kromka, prisadka, rover, post navbati, ombor) shu bitta komponentdan foydalanadi.
+**Maqsadi:** post ekranining yagona UZOQDAN o'qiladigan raqami — qancha ish qoldi. Beshta ekran (kromka, prisadka, rover, post navbati, TMO) shu bitta komponentdan foydalanadi.
 
 - O'lcham sanoat HMI qoidasidan: qulay o'qish masofasi ≈ harf balandligi × 150…200. 17" monoblokda piksel qadami ~0.26 mm, ya'ni `text-base` (16px) ≈ 3 mm ≈ 0.5 m (operator terminalga borishi kerak edi), `text-5xl` (48px) ≈ 9 mm ≈ 1.5 m. Qolgan hamma narsa — qatorlar, o'lchamlar, kodlar — qo'l uzunligida o'qiladi va kattalashtirilmaydi.
 - Raqam **qoldiq**, "bajarildi" emas: operatorning savoli "yana qancha qoldi?", `4/25` dan uni hisoblab olish qo'lqopda va arra shovqinida ortiqcha ish. Bajarilgan/jami kichik shriftda yonida (kontekst).
@@ -394,7 +394,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 
 ### `frontend/src/components/Terminal/useTerminalScan.ts`
 
-**Maqsadi:** skan yo'naltirgichi — bitta QR to'rt manzilga ketishi mumkin: beyjik UUID → smena; ekranning o'z sinki (`viewScanRef` — qadoqlash/ombor, chunki detal qaysi qadoqqa tushishini faqat o'sha ekran biladi va qadoq QR'i `PK-...` umumiy yo'lda rad etilardi); KROMKA/OVAL lokal tekshiruvi (`kromkaScanRef`, 5 s to'siq, picker ochiq bo'lsa `/qr/{qr}/order` bilan proyektni o'zi ochadi); qolgani umumiy skan (2 s duplikat to'sig'i).
+**Maqsadi:** skan yo'naltirgichi — bitta QR to'rt manzilga ketishi mumkin: beyjik UUID → smena; ekranning o'z sinki (`viewScanRef` — qadoqlash/TMO, chunki detal qaysi qadoqqa tushishini faqat o'sha ekran biladi va qadoq QR'i `PK-...` umumiy yo'lda rad etilardi); KROMKA/OVAL lokal tekshiruvi (`kromkaScanRef`, 5 s to'siq, picker ochiq bo'lsa `/qr/{qr}/order` bilan proyektni o'zi ochadi); qolgani umumiy skan (2 s duplikat to'sig'i).
 
 ### `frontend/src/components/Terminal/usePrintLabel.ts`
 

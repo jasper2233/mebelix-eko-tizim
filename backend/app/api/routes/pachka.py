@@ -68,7 +68,7 @@ async def instance_stages(db: SessionDep, order: Order, post: Post) -> dict[int,
 
     Hisob NUSXA bo'yicha, detal bo'yicha emas: 4 nusxali detalning bittasi
     qadoqlansa, detal jami hali tugamagan bo'ladi — lekin o'sha bitta nusxa
-    omborga tayyor. Detal darajasida sanaganda u sexda qolib ketardi va
+    TMO ga tayyor. Detal darajasida sanaganda u sexda qolib ketardi va
     omborchi qadoqlangan buyumni ro'yxatdan topa olmasdi.
     """
     routes = list(
@@ -230,7 +230,7 @@ async def create_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, order_id: 
     _machine, post = ctx
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
     # Tartib raqami O'CHIRILGANLARNI ham sanaydi: kod qayta ishlatilsa eski chek
-    # bilan yangi qadoq bir xil QR beradi va omborda chalkashlik chiqadi.
+    # bilan yangi qadoq bir xil QR beradi va TMO da chalkashlik chiqadi.
     used = (await db.execute(select(func.count()).select_from(Pachka).where(Pachka.order_id == order.id))).scalar_one()
     pachka = Pachka(order_id=order.id, code=f"PK-{order.number}-{used + 1:02d}", created_by_id=user.id)
     db.add(pachka)

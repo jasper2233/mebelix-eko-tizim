@@ -43,7 +43,7 @@ PROCESS_POSTS: dict[int, PostCode] = {
     #: Kod kerak, chunki har marshrut qadami `process_code` saqlaydi; texnolog
     #: uni qo'lda tanlamaydi (anketadagi bayroq qo'shadi).
     15: PostCode.UPAKOVKA,  # Qadoqlash
-    16: PostCode.OMBOR,  # Omborga qabul
+    16: PostCode.TMO,  # TMO qabuli
 }
 
 #: Marshrut DUMI — texnolog tanlamaydigan, tizim qo'shadigan qadamlar.
@@ -70,7 +70,7 @@ PROCESS_NAMES: dict[int, str] = {
     13: "V petlya o'ngdan",
     14: "V petlya chapdan",
     15: "Qadoqlash",
-    16: "Omborga qabul",
+    16: "TMO qabuli",
 }
 
 #: Post -> shu postning ODATDAGI jarayon kodi. Bitta postda bir necha amal bo'lgani uchun

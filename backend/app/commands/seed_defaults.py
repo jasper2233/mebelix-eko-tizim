@@ -89,12 +89,12 @@ POSTS: list[dict[str, object]] = [
         "color": "#0369a1",
         "icon": "package",
     },
-    # Ombor — eng oxirgi qadam, HAR buyurtmada (qadoqlangan ham, qadoqlanmagan ham).
-    # Omborchi qabul qilmaguncha detal "tayyor" hisoblanmaydi: shu tufayli oxirgi
-    # postda qolib ketgan detal ro'yxatda ko'rinib turadi.
+    # TMO (Tayyor Mahsulot Ombori) — eng oxirgi qadam, HAR buyurtmada (qadoqlangan
+    # ham, qadoqlanmagan ham). Omborchi qabul qilmaguncha detal "tayyor" hisoblanmaydi:
+    # shu tufayli oxirgi postda qolib ketgan detal ro'yxatda ko'rinib turadi.
     {
-        "code": PostCode.OMBOR,
-        "name": "Ombor",
+        "code": PostCode.TMO,
+        "name": "TMO",
         "order_index": 10,
         "unit": PostUnit.PIECE,
         "color": "#7c2d12",

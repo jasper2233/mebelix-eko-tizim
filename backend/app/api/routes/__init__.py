@@ -11,7 +11,6 @@ from .login import router as login_router
 from .logout import router as logout_router
 from .machines import router as machines_router
 from .materials import router as materials_router
-from .ombor import router as ombor_router
 from .orders import router as orders_router
 from .pachka import router as pachka_router
 from .posts import router as posts_router
@@ -19,6 +18,7 @@ from .reports import router as reports_router
 from .scans import router as scans_router
 from .tablo import router as tablo_router
 from .terminal import router as terminal_router
+from .tmo import router as tmo_router
 from .users import router as users_router
 from .ws import router as ws_router
 
@@ -36,7 +36,7 @@ router.include_router(posts_router, dependencies=_protected)
 router.include_router(materials_router, dependencies=_protected)
 router.include_router(orders_router, dependencies=_protected)
 router.include_router(pachka_router, dependencies=_protected)
-router.include_router(ombor_router, dependencies=_protected)
+router.include_router(tmo_router, dependencies=_protected)
 router.include_router(audit_router, dependencies=_protected)
 router.include_router(terminal_router, dependencies=_protected)
 router.include_router(scans_router, dependencies=_protected)

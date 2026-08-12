@@ -446,47 +446,6 @@ export type Message = {
     message: string;
 };
 
-/**
- * OMBOR post sahifasi: qabul (skan) va topshirish tablari uchun bitta holat.
- */
-export type OmborOrderState = {
-    order_id: number;
-    order_number: string;
-    project_name: (string | null);
-    order_status: OrderStatus;
-    packaging: boolean;
-    total: number;
-    accepted: number;
-    pachkas?: Array<OmborPachkaRow>;
-    pending?: Array<OmborPending>;
-};
-
-/**
- * Ombordagi qadoq: qabul qilingani va topshirilgani shu qatordan ko'rinadi.
- */
-export type OmborPachkaRow = {
-    id: number;
-    code: string;
-    status: PachkaStatus;
-    item_count: number;
-    accepted_count: number;
-    weight_kg: number;
-    shipped_at: (string | null);
-};
-
-/**
- * Omborga hali qabul qilinmagan nusxa.
- */
-export type OmborPending = {
-    instance_id: number;
-    qr_text: string;
-    part_code: string;
-    part_name: string;
-    pachka_code: (string | null);
-    ready: boolean;
-    stage?: string;
-};
-
 export type OrderCancel = {
     reason: string;
 };
@@ -686,7 +645,7 @@ export type Paginated_UserRead_ = {
     count: number;
 };
 
-export type PostCode = 'ARRA' | 'KROMKA' | 'OVAL' | 'PRISADKA' | 'ROVER' | 'STOLYARKA' | 'BOYOQ' | 'UPAKOVKA' | 'OMBOR';
+export type PostCode = 'ARRA' | 'KROMKA' | 'OVAL' | 'PRISADKA' | 'ROVER' | 'STOLYARKA' | 'BOYOQ' | 'UPAKOVKA' | 'TMO';
 
 /**
  * Bitta NUSXA post navbatida (BOYOQ, keyinchalik STOLYARKA ham).
@@ -1000,6 +959,47 @@ export type TerminalOrderCard = {
     materials?: Array<string>;
     sheets_total: number;
     has_cutmap: boolean;
+};
+
+/**
+ * TMO post sahifasi: qabul (skan) va topshirish tablari uchun bitta holat.
+ */
+export type TmoOrderState = {
+    order_id: number;
+    order_number: string;
+    project_name: (string | null);
+    order_status: OrderStatus;
+    packaging: boolean;
+    total: number;
+    accepted: number;
+    pachkas?: Array<TmoPachkaRow>;
+    pending?: Array<TmoPending>;
+};
+
+/**
+ * TMO dagi qadoq: qabul qilingani va topshirilgani shu qatordan ko'rinadi.
+ */
+export type TmoPachkaRow = {
+    id: number;
+    code: string;
+    status: PachkaStatus;
+    item_count: number;
+    accepted_count: number;
+    weight_kg: number;
+    shipped_at: (string | null);
+};
+
+/**
+ * TMO ga hali qabul qilinmagan nusxa.
+ */
+export type TmoPending = {
+    instance_id: number;
+    qr_text: string;
+    part_code: string;
+    part_name: string;
+    pachka_code: (string | null);
+    ready: boolean;
+    stage?: string;
 };
 
 export type Token = {
@@ -1316,32 +1316,6 @@ export type DeleteMaterialData = {
 
 export type DeleteMaterialResponse = (Message);
 
-export type ReadOmborOrderData = {
-    orderId: number;
-};
-
-export type ReadOmborOrderResponse = (OmborOrderState);
-
-export type AcceptIntoOmborData = {
-    orderId: number;
-    requestBody: PachkaScan;
-};
-
-export type AcceptIntoOmborResponse = (OmborOrderState);
-
-export type ShipPachkaData = {
-    orderId: number;
-    requestBody: PachkaScan;
-};
-
-export type ShipPachkaResponse = (OmborOrderState);
-
-export type DeliverOmborOrderData = {
-    orderId: number;
-};
-
-export type DeliverOmborOrderResponse = (Message);
-
 export type CreateOrderData = {
     requestBody: OrderCreate;
 };
@@ -1624,6 +1598,32 @@ export type DownloadTerminalFileData = {
 };
 
 export type DownloadTerminalFileResponse = (unknown);
+
+export type ReadTmoOrderData = {
+    orderId: number;
+};
+
+export type ReadTmoOrderResponse = (TmoOrderState);
+
+export type AcceptIntoTmoData = {
+    orderId: number;
+    requestBody: PachkaScan;
+};
+
+export type AcceptIntoTmoResponse = (TmoOrderState);
+
+export type ShipPachkaData = {
+    orderId: number;
+    requestBody: PachkaScan;
+};
+
+export type ShipPachkaResponse = (TmoOrderState);
+
+export type DeliverTmoOrderData = {
+    orderId: number;
+};
+
+export type DeliverTmoOrderResponse = (Message);
 
 export type CreateUserData = {
     requestBody: UserCreate;

@@ -1,4 +1,4 @@
-// OMBOR post sahifasi: tayyor mahsulot ombori — marshrutning oxirgi qadami.
+// TMO (Tayyor Mahsulot Ombori) post sahifasi — marshrutning oxirgi qadami.
 //
 // Ikki tab, chunki ikki xil ish: QABUL (kelganini skanerlash) va TOPSHIRISH
 // (mijozga berish). Bir ekranda aralashsa omborchi tasodifan topshirilmagan
@@ -9,7 +9,7 @@ import { ArrowLeft, PackageCheck, Truck } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
-import { OmborService } from "@/client"
+import { TmoService } from "@/client"
 import { PostProgress } from "@/components/Terminal/PostProgress"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { detailMessage } from "@/utils"
 
-export function OmborView({
+export function TmoView({
   orderId,
   onBack,
   registerScan,
@@ -31,23 +31,23 @@ export function OmborView({
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<"qabul" | "topshirish">("qabul")
   const { data, isLoading } = useQuery({
-    queryKey: ["terminal", "ombor", orderId],
-    queryFn: () => OmborService.readOmborOrder({ orderId }),
+    queryKey: ["terminal", "tmo", orderId],
+    queryFn: () => TmoService.readTmoOrder({ orderId }),
     refetchInterval: 30_000,
   })
 
   const put = (d: typeof data) =>
-    queryClient.setQueryData(["terminal", "ombor", orderId], d)
+    queryClient.setQueryData(["terminal", "tmo", orderId], d)
 
   const accept = useMutation({
     mutationFn: (qr: string) =>
-      OmborService.acceptIntoOmbor({ orderId, requestBody: { qr_text: qr } }),
+      TmoService.acceptIntoTmo({ orderId, requestBody: { qr_text: qr } }),
     onSuccess: put,
     onError: (e) => toast.error(detailMessage(e)),
   })
   const ship = useMutation({
     mutationFn: (code: string) =>
-      OmborService.shipPachka({ orderId, requestBody: { qr_text: code } }),
+      TmoService.shipPachka({ orderId, requestBody: { qr_text: code } }),
     onSuccess: (d) => {
       put(d)
       toast.success("Qadoq topshirildi")
@@ -55,10 +55,10 @@ export function OmborView({
     onError: (e) => toast.error(detailMessage(e)),
   })
   const deliver = useMutation({
-    mutationFn: () => OmborService.deliverOmborOrder({ orderId }),
+    mutationFn: () => TmoService.deliverTmoOrder({ orderId }),
     onSuccess: (r) => {
       toast.success(r.message)
-      queryClient.invalidateQueries({ queryKey: ["terminal", "ombor"] })
+      queryClient.invalidateQueries({ queryKey: ["terminal", "tmo"] })
     },
     onError: (e) => toast.error(detailMessage(e)),
   })
@@ -143,7 +143,7 @@ export function OmborView({
             <div className="p-8 text-center text-lg font-bold">
               {pending.length ? (
                 <span className="text-amber-700">
-                  Omborga yetib kelgan detal yo'q — hammasi hali sexda.
+                  TMO ga yetib kelgan detal yo'q — hammasi hali sexda.
                 </span>
               ) : (
                 <span className="text-green-700">Hammasi qabul qilindi.</span>

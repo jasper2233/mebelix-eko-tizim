@@ -100,7 +100,7 @@ class Part(BaseModel):
     is_custom: Mapped[bool] = mapped_column(default=False, index=True, kw_only=True)
     #: Yig'ma buyum: bu MAYDA detal qaysi ASOSIY detalga biriktiriladi (stolyarkada
     #: yopishtiriladi va yaxlit buyumga aylanadi). Biriktirilgan detalning marshruti
-    #: aynan birikish qadamida TUGAYDI — undan keyin qadoqlash ham, ombor ham faqat
+    #: aynan birikish qadamida TUGAYDI — undan keyin qadoqlash ham, TMO ham faqat
     #: asosiy detalga tegishli, chunki alohida detal endi mavjud emas.
     #: Asosiy detalning skani biriktirilganlarnikini ham yopadi (scanning.py).
     assembly_parent_id: Mapped[int | None] = mapped_column(

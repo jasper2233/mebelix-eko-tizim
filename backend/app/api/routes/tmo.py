@@ -1,9 +1,9 @@
-"""Tayyor mahsulot ombori API (marshrutning ENG OXIRGI qadami).
+"""TMO — Tayyor Mahsulot Ombori API (marshrutning ENG OXIRGI qadami).
 
 Ikki ish: QABUL va TOPSHIRISH.
 
 QABUL — omborchi kelgan narsani skanerlaydi va u ro'yxatga tushadi. Bu ayni
-paytda marshrutning OMBOR qadami: shu skansiz detal "oxirgi postda qolib
+paytda marshrutning TMO qadami: shu skansiz detal "oxirgi postda qolib
 ketgan" bo'lib qolaverardi va buyurtma hech qachon yopilmasdi. Qadoqlangan
 buyurtmada bitta qadoq QR'i ichidagi HAMMA nusxani birdaniga qabul qiladi —
 omborchi qadoqni ochib har detalni skanerlamaydi.
@@ -27,16 +27,16 @@ from app.models.enums import POST_ROLES, OrderStatus, PachkaStatus, PostCode, Us
 from app.models.user import User
 from app.schemas.common import Message
 from app.schemas.terminal import (
-    OmborOrderState,
-    OmborPachkaRow,
-    OmborPending,
     PachkaScan,
+    TmoOrderState,
+    TmoPachkaRow,
+    TmoPending,
 )
 from app.services.scanning import ScanRejected, active_session, record_scan_at, resolve_terminal
 
 from .pachka import _weight, instance_stages
 
-router = APIRouter(prefix="/ombor", tags=["ombor"])
+router = APIRouter(prefix="/tmo", tags=["tmo"])
 
 WhUser = Annotated[User, Depends(require_roles(UserRole.TERMINAL, *POST_ROLES))]
 
@@ -46,16 +46,16 @@ async def _wh_ctx(db: SessionDep, user: WhUser) -> tuple[Machine, Post]:
         machine, post = await resolve_terminal(db, user)
     except ScanRejected as exc:
         raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
-    if post.code != PostCode.OMBOR:
-        raise ForbiddenException("Bu sahifa faqat ombor postida ochiladi.")
+    if post.code != PostCode.TMO:
+        raise ForbiddenException("Bu sahifa faqat TMO postida ochiladi.")
     return machine, post
 
 
 WhCtx = Annotated[tuple[Machine, Post], Depends(_wh_ctx)]
 
 
-async def _state(db: SessionDep, order: Order, post: Post) -> OmborOrderState:
-    """Buyurtmaning ombor holati: qadoqlar, qabul qilinmagan nusxalar, hisob."""
+async def _state(db: SessionDep, order: Order, post: Post) -> TmoOrderState:
+    """Buyurtmaning TMO holati: qadoqlar, qabul qilinmagan nusxalar, hisob."""
     # Butun buyurtmaning marshruti bir so'rovda — `ready` ni har nusxa uchun
     # alohida COUNT bilan hisoblasak 100 detalga 100 so'rov ketardi.
     routes = list(
@@ -76,7 +76,7 @@ async def _state(db: SessionDep, order: Order, post: Post) -> OmborOrderState:
         by_part.setdefault(r.part_id, []).append(r)
     packaging = any(r.process_code == 15 for r in routes)  # 15 = Qadoqlash
 
-    #: Har NUSXA uchun: omborga yetib keldimi, kelmagan bo'lsa qaysi postda turibdi.
+    #: Har NUSXA uchun: TMO ga yetib keldimi, kelmagan bo'lsa qaysi postda turibdi.
     stages = await instance_stages(db, order, post)
 
     accepted: set[int] = set(
@@ -110,12 +110,12 @@ async def _state(db: SessionDep, order: Order, post: Post) -> OmborOrderState:
             .order_by(Pachka.id)
         )
     ).all()
-    pachkas: dict[int, OmborPachkaRow] = {}
+    pachkas: dict[int, TmoPachkaRow] = {}
     weights: dict[int, float] = {}
     for pachka, instance_id in pachka_rows:
         row = pachkas.get(pachka.id)
         if row is None:
-            row = OmborPachkaRow(
+            row = TmoPachkaRow(
                 id=pachka.id,
                 code=pachka.code,
                 status=pachka.status,
@@ -146,11 +146,11 @@ async def _state(db: SessionDep, order: Order, post: Post) -> OmborOrderState:
         )
     ).all()
 
-    pending: list[OmborPending] = []
+    pending: list[TmoPending] = []
     total = 0
     for instance, part, product_code in instances:
         if part.id not in by_part or not any(s.post_id == post.id for s in by_part[part.id]):
-            continue  # marshrutida ombor qadami yo'q (eski buyurtma)
+            continue  # marshrutida TMO qadami yo'q (eski buyurtma)
         total += 1
         pachka = in_pachka.get(instance.id)
         if pachka is not None:
@@ -158,7 +158,7 @@ async def _state(db: SessionDep, order: Order, post: Post) -> OmborOrderState:
         if instance.id in accepted:
             continue
         pending.append(
-            OmborPending(
+            TmoPending(
                 instance_id=instance.id,
                 qr_text=instance.qr_text,
                 part_code=f"{product_code}_{part.code}",
@@ -168,12 +168,12 @@ async def _state(db: SessionDep, order: Order, post: Post) -> OmborOrderState:
                 stage=stages.get(instance.id, (False, ""))[1],
             )
         )
-    # Omborga yetib kelganlari tepada: omborchi ish ro'yxati aynan shular.
+    # TMO ga yetib kelganlari tepada: omborchi ish ro'yxati aynan shular.
     pending.sort(key=lambda p: (not p.ready, p.stage, p.part_code))
     for pid, row in pachkas.items():
         row.weight_kg = round(weights.get(pid, 0.0), 1)
 
-    return OmborOrderState(
+    return TmoOrderState(
         order_id=order.id,
         order_number=order.number,
         project_name=order.project_name,
@@ -186,9 +186,9 @@ async def _state(db: SessionDep, order: Order, post: Post) -> OmborOrderState:
     )
 
 
-@router.get("/orders/{order_id}", response_model=OmborOrderState, operation_id="read_ombor_order")
-async def read_ombor_order(db: SessionDep, ctx: WhCtx, order_id: int) -> OmborOrderState:
-    """Ombor sahifasi: qadoqlar, qabul qilinmagan nusxalar, topshirish holati."""
+@router.get("/orders/{order_id}", response_model=TmoOrderState, operation_id="read_tmo_order")
+async def read_tmo_order(db: SessionDep, ctx: WhCtx, order_id: int) -> TmoOrderState:
+    """TMO sahifasi: qadoqlar, qabul qilinmagan nusxalar, topshirish holati."""
     _machine, post = ctx
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
     return await _state(db, order, post)
@@ -213,11 +213,9 @@ async def _pachka_by_code(db: SessionDep, order: Order, code: str) -> Pachka:
     return pachka
 
 
-@router.post("/orders/{order_id}/accept", response_model=OmborOrderState, operation_id="accept_into_ombor")
-async def accept_into_ombor(
-    db: SessionDep, user: WhUser, ctx: WhCtx, order_id: int, body: PachkaScan
-) -> OmborOrderState:
-    """Omborga qabul qilish. QR ikki xil bo'ladi:
+@router.post("/orders/{order_id}/accept", response_model=TmoOrderState, operation_id="accept_into_tmo")
+async def accept_into_tmo(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: int, body: PachkaScan) -> TmoOrderState:
+    """TMO ga qabul qilish. QR ikki xil bo'ladi:
 
     `PK-...` — qadoq: ichidagi HAMMA nusxa bitta skanda qabul qilinadi.
     Boshqasi — bitta detal nusxasi (qadoqlanmagan buyurtma).
@@ -248,7 +246,7 @@ async def accept_into_ombor(
         note = f"Qadoq qabul qilindi: {pachka.code} ({len(qrs)} detal)"
     else:
         qrs = [qr]
-        note = f"Omborga qabul qilindi: {qr}"
+        note = f"TMO ga qabul qilindi: {qr}"
 
     for one in qrs:
         try:
@@ -266,7 +264,7 @@ async def accept_into_ombor(
 
     log_action(
         db,
-        module="ombor",
+        module="tmo",
         action="accepted",
         user_id=user.id,
         entity_type="order",
@@ -274,11 +272,11 @@ async def accept_into_ombor(
         message=note,
     )
     await db.commit()
-    await ws_manager.publish("ombor.accepted", {"order_id": order.id, "qr_text": qr})
+    await ws_manager.publish("tmo.accepted", {"order_id": order.id, "qr_text": qr})
     return await _state(db, order, post)
 
 
-def _deliver_if_done(order: Order, state: OmborOrderState) -> None:
+def _deliver_if_done(order: Order, state: TmoOrderState) -> None:
     """Hammasi qabul qilinib topshirilgan bo'lsa — buyurtma yopiladi."""
     if state.pending or order.status == OrderStatus.DELIVERED:
         return
@@ -288,8 +286,8 @@ def _deliver_if_done(order: Order, state: OmborOrderState) -> None:
     order.delivered_at = datetime.now(UTC)
 
 
-@router.post("/orders/{order_id}/ship", response_model=OmborOrderState, operation_id="ship_pachka")
-async def ship_pachka(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: int, body: PachkaScan) -> OmborOrderState:
+@router.post("/orders/{order_id}/ship", response_model=TmoOrderState, operation_id="ship_pachka")
+async def ship_pachka(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: int, body: PachkaScan) -> TmoOrderState:
     """Qadoqni mijozga topshirish — QR skani yoki ro'yxatdagi tugma (ikkalasi ham kod yuboradi)."""
     _machine, post = ctx
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
@@ -299,7 +297,7 @@ async def ship_pachka(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: int, b
 
     state = await _state(db, order, post)
     row = next((p for p in state.pachkas if p.id == pachka.id), None)
-    # Qabul qilinmagan qadoqni topshirib bo'lmaydi: aks holda detal omborga
+    # Qabul qilinmagan qadoqni topshirib bo'lmaydi: aks holda detal TMO ga
     # kirmasdan chiqib ketardi va marshrut oxirgi qadamida osilib qolardi.
     if row is None or row.accepted_count < row.item_count:
         raise ForbiddenException(f"{pachka.code} to'liq qabul qilinmagan — avval skanerlang.")
@@ -311,7 +309,7 @@ async def ship_pachka(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: int, b
     _deliver_if_done(order, state)
     log_action(
         db,
-        module="ombor",
+        module="tmo",
         action="shipped",
         user_id=user.id,
         entity_type="pachka",
@@ -319,12 +317,12 @@ async def ship_pachka(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: int, b
         message=f"Qadoq topshirildi: {pachka.code}",
     )
     await db.commit()
-    await ws_manager.publish("ombor.shipped", {"order_id": order.id, "code": pachka.code})
+    await ws_manager.publish("tmo.shipped", {"order_id": order.id, "code": pachka.code})
     return await _state(db, order, post)
 
 
-@router.post("/orders/{order_id}/deliver", response_model=Message, operation_id="deliver_ombor_order")
-async def deliver_ombor_order(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: int) -> Message:
+@router.post("/orders/{order_id}/deliver", response_model=Message, operation_id="deliver_tmo_order")
+async def deliver_tmo_order(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: int) -> Message:
     """Butun buyurtmani topshirish — qadoqsiz buyurtma uchun (qadoqlanganda har qadoq alohida)."""
     _machine, post = ctx
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
@@ -332,7 +330,7 @@ async def deliver_ombor_order(db: SessionDep, user: WhUser, ctx: WhCtx, order_id
         raise ForbiddenException("Buyurtma allaqachon topshirilgan.")
     state = await _state(db, order, post)
     if state.pending:
-        raise ForbiddenException(f"{len(state.pending)} detal hali omborga qabul qilinmagan.")
+        raise ForbiddenException(f"{len(state.pending)} detal hali TMO ga qabul qilinmagan.")
     unshipped = [p for p in state.pachkas if p.shipped_at is None]
     if unshipped:
         raise ForbiddenException(f"{len(unshipped)} qadoq topshirilmagan — avval ularni topshiring.")
@@ -341,7 +339,7 @@ async def deliver_ombor_order(db: SessionDep, user: WhUser, ctx: WhCtx, order_id
     order.delivered_at = datetime.now(UTC)
     log_action(
         db,
-        module="ombor",
+        module="tmo",
         action="delivered",
         user_id=user.id,
         entity_type="order",
@@ -349,5 +347,5 @@ async def deliver_ombor_order(db: SessionDep, user: WhUser, ctx: WhCtx, order_id
         message=f"Buyurtma topshirildi: {order.number} ({state.total} detal)",
     )
     await db.commit()
-    await ws_manager.publish("ombor.delivered", {"order_id": order.id})
+    await ws_manager.publish("tmo.delivered", {"order_id": order.id})
     return Message(message=f"Buyurtma topshirildi: {order.number}")

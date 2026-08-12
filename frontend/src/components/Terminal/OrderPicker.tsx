@@ -1,5 +1,5 @@
 // Proyekt tanlagichi: post sahifalari shundan boshlanadi (ARRA xaritasi, CNC
-// detallari, kromka, bo'yoq/stolyarka navbati, qadoqlash, ombor).
+// detallari, kromka, bo'yoq/stolyarka navbati, qadoqlash, TMO).
 // `done/total` post semantikasida — backend `/terminal/orders` hisoblaydi.
 
 import { useQuery } from "@tanstack/react-query"

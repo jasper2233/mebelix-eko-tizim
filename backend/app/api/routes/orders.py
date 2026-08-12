@@ -563,7 +563,7 @@ async def edit_order_matrix(
             )
 
         # Biriktirish marshrutdan OLDIN o'rnatiladi: `_set_custom_route` dumni
-        # (qadoqlash/ombor) shu bayroqqa qarab qo'shadi yoki qo'shmaydi.
+        # (qadoqlash/TMO) shu bayroqqa qarab qo'shadi yoki qo'shmaydi.
         parent_changed = "assembly_parent_id" in edit.model_fields_set
         if parent_changed:
             await _set_assembly_parent(db, part, edit.assembly_parent_id)
@@ -768,14 +768,14 @@ async def _set_custom_route(
                 total_required=part.count * per_instance,
             )
         )
-    # Qadoqlash va ombor — texnolog tanlamaydi. Qadoqlashni anketadagi bayroq
-    # qo'shadi, ombor esa HAR doim oxirgi qadam bo'ladi.
+    # Qadoqlash va TMO — texnolog tanlamaydi. Qadoqlashni anketadagi bayroq
+    # qo'shadi, TMO esa HAR doim oxirgi qadam bo'ladi.
     # Biriktirilgan MAYDA detalga dum QO'SHILMAYDI: u asosiy detalga yopishib
-    # yaxlit buyumga aylanadi, ya'ni alohida qadoqlanmaydi va omborga alohida
+    # yaxlit buyumga aylanadi, ya'ni alohida qadoqlanmaydi va TMO ga alohida
     # kirmaydi — aks holda qadoqlovchi mavjud bo'lmagan detalni qidirardi.
     if codes and part.assembly_parent_id is None:
         tail = [(15, PostCode.UPAKOVKA)] if packaging else []
-        tail.append((16, PostCode.OMBOR))
+        tail.append((16, PostCode.TMO))
         for offset, (code, post_code) in enumerate(tail):
             post = by_code.get(post_code)
             if post is None:

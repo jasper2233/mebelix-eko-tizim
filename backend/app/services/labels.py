@@ -393,7 +393,7 @@ def render_pachka_label_png(d: PachkaLabelData, scale: int = 1) -> bytes:
     """80x60mm qadoq cheki PNG (203 dpi) — detal yorlig'i bilan bir xil o'lcham
     va bir xil printer zanjiri (bridge-agent + GoDEX).
 
-    Maket ataylab siyrak: qadoq omborda va yuklashda uzoqdan o'qiladi, shuning
+    Maket ataylab siyrak: qadoq TMO da va yuklashda uzoqdan o'qiladi, shuning
     uchun QR katta va kod yirik shriftda. Og'irlik chiqarilmaydi — tizim uni
     faqat qadoqlash ekranida taxminiy ko'rsatadi, chekda aniq raqamdek
     ko'rinib, xato ishonch berardi.
@@ -448,7 +448,7 @@ def render_pachka_label_png(d: PachkaLabelData, scale: int = 1) -> bytes:
     text(5, 54, str(d.part_count), 4.4, bold=True)
     text(46, 55.5, d.printed_at.strftime("%Y.%m.%d %H:%M"), 2.5, anchor="ra")
 
-    # QR o'ngda, katta: ombor va yuklashda uzoqdan skanerlanadi
+    # QR o'ngda, katta: TMO va yuklashda uzoqdan skanerlanadi
     qr = qrcode.make(d.code, box_size=max(1, scale * 2), border=0)
     qr_px = 28 * mm
     img.paste(qr.get_image().convert("RGB").resize((qr_px, qr_px)), (48 * mm, 4 * mm))

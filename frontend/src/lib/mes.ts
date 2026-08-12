@@ -61,7 +61,7 @@ export const POST_COLORS: Record<string, string> = {
   STOLYARKA: "var(--post-stolyarka)",
   BOYOQ: "var(--post-boyoq)",
   UPAKOVKA: "var(--post-upakovka)",
-  OMBOR: "var(--post-ombor)",
+  TMO: "var(--post-tmo)",
 }
 
 /** Rangning oq bilan `pct`% tinti — chip/katak fonlari uchun. */
@@ -102,7 +102,7 @@ export const PROCESS_OPS: Record<number, { name: string; post: string }> = {
   // Qadoqlash texnolog tanlaydigan jarayon emas — anketadagi bayroq qo'shadi.
   // Bu yerda faqat NOM uchun (chek marshruti, terminal chipi).
   15: { name: "Qadoqlash", post: "UPAKOVKA" },
-  16: { name: "Omborga qabul", post: "OMBOR" },
+  16: { name: "TMO qabuli", post: "TMO" },
 }
 
 /**

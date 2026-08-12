@@ -99,7 +99,7 @@ router.include_router(posts_router, dependencies=_protected)
 router.include_router(materials_router, dependencies=_protected)
 router.include_router(orders_router, dependencies=_protected)
 router.include_router(pachka_router, dependencies=_protected)   # qadoqlash
-router.include_router(ombor_router, dependencies=_protected)    # tayyor mahsulot ombori
+router.include_router(tmo_router, dependencies=_protected)      # TMO — tayyor mahsulot ombori
 router.include_router(audit_router, dependencies=_protected)
 router.include_router(terminal_router, dependencies=_protected)
 router.include_router(scans_router, dependencies=_protected)
@@ -438,22 +438,22 @@ qadoqlovchi yig'adi: tizim taxminiy og'irlikni (`DENSITY = 700.0` kg/m³ × hajm
 | DELETE | `/api/v1/pachka/{id}/items/{instance_id}` | Xato skanni qaytarish: nusxa qadoqdan chiqadi VA UPAKOVKA skani bekor bo'ladi (`total_done--`) — aks holda detal boshqa qadoqqa tushib ikki marta sanalardi |
 | POST | `/api/v1/pachka/{id}/close` | Yakunlash: status CLOSED + arq `print_pachka_label`. Bo'sh qadoq yakunlanmaydi |
 
-`instance_stages(db, order, post)` shu faylda — qadoqlash, ombor va post navbati ekranlari
+`instance_stages(db, order, post)` shu faylda — qadoqlash, TMO va post navbati ekranlari
 uchun umumiy (09-mes-domain.md §3.2).
 
 ---
 
-## `backend/app/api/routes/ombor.py` — Tayyor mahsulot ombori
+## `backend/app/api/routes/tmo.py` — TMO (Tayyor Mahsulot Ombori)
 
 **Maqsadi:** Marshrutning ENG OXIRGI qadami — QABUL va TOPSHIRISH. Kontekst `WhCtx` (`_wh_ctx`),
-faqat OMBOR postida.
+faqat TMO postida.
 
 | Metod | Path | Izoh |
 |---|---|---|
-| GET | `/api/v1/ombor/orders/{id}` | Qadoqlar (`accepted_count`/`item_count`, `shipped_at`), qabul qilinmagan nusxalar (`ready` + `stage` — ishi TUGAGAN post, omborchi detalni o'sha yerdan topadi), `packaging`, `total`/`accepted` |
-| POST | `/api/v1/ombor/orders/{id}/accept` | QABUL. QR `PK-` bilan boshlansa — qadoq: ichidagi HAMMA nusxa bitta skanda qabul qilinadi (omborchi qadoqni ochmaydi); aks holda bitta detal. Ochiq (yakunlanmagan) qadoq qabul qilinmaydi. `client_event_id="wh-{order}-{qr}"` — idempotent |
-| POST | `/api/v1/ombor/orders/{id}/ship` | Qadoqni mijozga topshirish (QR skani yoki ro'yxatdagi tugma — ikkisi ham kod yuboradi). To'liq qabul qilinmagan qadoq topshirilmaydi: aks holda detal omborga kirmasdan chiqib ketardi |
-| POST | `/api/v1/ombor/orders/{id}/deliver` | Butun buyurtmani topshirish — qadoqsiz buyurtma uchun. Qabul qilinmagan detal yoki topshirilmagan qadoq bo'lsa 403 |
+| GET | `/api/v1/tmo/orders/{id}` | Qadoqlar (`accepted_count`/`item_count`, `shipped_at`), qabul qilinmagan nusxalar (`ready` + `stage` — ishi TUGAGAN post, omborchi detalni o'sha yerdan topadi), `packaging`, `total`/`accepted` |
+| POST | `/api/v1/tmo/orders/{id}/accept` | QABUL. QR `PK-` bilan boshlansa — qadoq: ichidagi HAMMA nusxa bitta skanda qabul qilinadi (omborchi qadoqni ochmaydi); aks holda bitta detal. Ochiq (yakunlanmagan) qadoq qabul qilinmaydi. `client_event_id="wh-{order}-{qr}"` — idempotent |
+| POST | `/api/v1/tmo/orders/{id}/ship` | Qadoqni mijozga topshirish (QR skani yoki ro'yxatdagi tugma — ikkisi ham kod yuboradi). To'liq qabul qilinmagan qadoq topshirilmaydi: aks holda detal TMO ga kirmasdan chiqib ketardi |
+| POST | `/api/v1/tmo/orders/{id}/deliver` | Butun buyurtmani topshirish — qadoqsiz buyurtma uchun. Qabul qilinmagan detal yoki topshirilmagan qadoq bo'lsa 403 |
 
 Hammasi qabul qilinib topshirilgach buyurtma `DELIVERED` bo'ladi (`_deliver_if_done`).
 

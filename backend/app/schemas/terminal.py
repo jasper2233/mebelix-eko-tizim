@@ -269,20 +269,20 @@ class PachkaScan(BaseModel):
     qr_text: Annotated[str, Field(min_length=3, max_length=120)]
 
 
-class OmborPachkaRow(BaseModel):
-    """Ombordagi qadoq: qabul qilingani va topshirilgani shu qatordan ko'rinadi."""
+class TmoPachkaRow(BaseModel):
+    """TMO dagi qadoq: qabul qilingani va topshirilgani shu qatordan ko'rinadi."""
 
     id: int
     code: str
     status: PachkaStatus
     item_count: int
-    accepted_count: int  # ichidagi nechta nusxa omborga qabul qilingan
+    accepted_count: int  # ichidagi nechta nusxa TMO ga qabul qilingan
     weight_kg: float
     shipped_at: datetime | None
 
 
-class OmborPending(BaseModel):
-    """Omborga hali qabul qilinmagan nusxa."""
+class TmoPending(BaseModel):
+    """TMO ga hali qabul qilinmagan nusxa."""
 
     instance_id: int
     qr_text: str
@@ -296,8 +296,8 @@ class OmborPending(BaseModel):
     stage: str = ""
 
 
-class OmborOrderState(BaseModel):
-    """OMBOR post sahifasi: qabul (skan) va topshirish tablari uchun bitta holat."""
+class TmoOrderState(BaseModel):
+    """TMO post sahifasi: qabul (skan) va topshirish tablari uchun bitta holat."""
 
     order_id: int
     order_number: str
@@ -306,5 +306,5 @@ class OmborOrderState(BaseModel):
     packaging: bool  # marshrutda UPAKOVKA bormi — topshirish qadoq bo'yicha ketadi
     total: int
     accepted: int
-    pachkas: list[OmborPachkaRow] = []
-    pending: list[OmborPending] = []
+    pachkas: list[TmoPachkaRow] = []
+    pending: list[TmoPending] = []

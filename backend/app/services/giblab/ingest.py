@@ -78,8 +78,8 @@ async def snapshot_custom_routes(db: AsyncSession, order: Order) -> RouteSnapsho
     saved: RouteSnapshot = {}
     for part_id, product_code, part_code, is_custom, process_code in rows:
         entry = saved.setdefault((product_code, part_code), (is_custom, [], parents.get(part_id)))
-        # Dum (qadoqlash/ombor) saqlanmaydi — tiklashda o'zi qo'shiladi. Saqlansa
-        # har qayta yuklashda ikkilanib borardi: ... UPAKOVKA OMBOR UPAKOVKA OMBOR.
+        # Dum (qadoqlash/TMO) saqlanmaydi — tiklashda o'zi qo'shiladi. Saqlansa
+        # har qayta yuklashda ikkilanib borardi: ... UPAKOVKA TMO UPAKOVKA TMO.
         if process_code not in TAIL_CODES:
             entry[1].append(process_code)
     return saved
@@ -103,7 +103,7 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
     ).tuples()
     by_key = {(product_code, part.code): part for product_code, part in parts}
 
-    # Yig'ma bog'lamlar marshrutdan OLDIN tiklanadi: dum (qadoqlash/ombor)
+    # Yig'ma bog'lamlar marshrutdan OLDIN tiklanadi: dum (qadoqlash/TMO)
     # biriktirilgan detalga qo'shilmasligi shu bayroqqa qarab hal bo'ladi.
     for key, entry in saved.items():
         part, parent_key = by_key.get(key), entry[2]
@@ -166,12 +166,12 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
                 )
             )
         # Nostandart detalning marshruti to'liq qayta yozilgani uchun qadoqlash va
-        # ombor qadamlari shu yerda tiklanadi (standart detalda ular AUTO bo'lib qoladi).
+        # TMO qadamlari shu yerda tiklanadi (standart detalda ular AUTO bo'lib qoladi).
         # Biriktirilgan MAYDA detalga dum qo'shilmaydi — u asosiy detalga
         # yopishib yaxlit buyumga aylanadi (orders._set_custom_route bilan bir xil qoida).
         if was_custom and part.assembly_parent_id is None:
             tail = [(15, PostCode.UPAKOVKA)] if packaging else []
-            tail.append((16, PostCode.OMBOR))
+            tail.append((16, PostCode.TMO))
             for offset, (code, post_code) in enumerate(tail):
                 post = posts.get(post_code)
                 if post is None:
@@ -421,9 +421,9 @@ async def ingest_project(
             # Qisman qadoqlash yo'q: buyurtma yo butunlay qadoqlanadi, yo yo'q.
             if packaging:
                 steps.append((15, PostCode.UPAKOVKA, 1))
-            # Ombor — eng oxirgi qadam, qadoqlangan-qadoqlanmaganidan qat'i nazar.
+            # TMO — eng oxirgi qadam, qadoqlangan-qadoqlanmaganidan qat'i nazar.
             # Omborchi qabul qilmaguncha detal tugallanmagan bo'lib turadi.
-            steps.append((16, PostCode.OMBOR, 1))
+            steps.append((16, PostCode.TMO, 1))
             for seq, (process_code, post_code, per_instance) in enumerate(steps, start=1):
                 post = posts.get(post_code)
                 if post is None:

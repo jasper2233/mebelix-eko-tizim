@@ -313,12 +313,12 @@ kod o'zgarsa ikkalasi birga yangilanadi. Ziddiyat chiqsa — bajariladigan manba
 | 13 | V petlya o'ngdan | STOLYARKA |
 | 14 | V petlya chapdan | STOLYARKA |
 | 15 | Qadoqlash | UPAKOVKA |
-| 16 | Omborga qabul | OMBOR |
+| 16 | TMO qabuli | TMO |
 
 Paz uchun kod yo'q — paz alohida post emas, u frezer stanogida (ROVER) kesiladi.
 
 **15 va 16 sexning varag'ida yo'q** — ular jarayon emas, marshrutning oxirgi bosqichlari va
-texnolog ularni TANLAMAYDI: qadoqlashni anketadagi "Upakovka qilish" bayrog'i qo'shadi, ombor
+texnolog ularni TANLAMAYDI: qadoqlashni anketadagi "Upakovka qilish" bayrog'i qo'shadi, TMO
 esa har marshrutga majburiy oxirgi qadam bo'lib tushadi (`ingest.py`, `orders._set_custom_route`).
 Kod baribir kerak, chunki har marshrut qadami `process_code` saqlaydi. Frontend tanlagichi
 (`Orders/CustomRoutes.tsx`) bu ikkisini ro'yxatdan chiqarib tashlaydi — aks holda ikkita manba

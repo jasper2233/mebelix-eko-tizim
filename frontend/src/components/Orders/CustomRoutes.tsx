@@ -13,12 +13,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { formatSize, PROCESS_OPS, ROUTE_START_POSTS } from "@/lib/mes"
 import { crudCallbacks, getOrderMatrixQueryOptions } from "@/queries/mes"
 
-// Qadoqlash (15) va ombor (16) ro'yxatda YO'Q: ularni texnolog tanlamaydi — qadoqlashni anketadagi "Upakovka
+// Qadoqlash (15) va TMO (16) ro'yxatda YO'Q: ularni texnolog tanlamaydi — qadoqlashni anketadagi "Upakovka
 // qilish" bayrog'i yoqilgan bo'lsa backend har detalga oxirgi qadam qilib o'zi
 // qo'shadi. Tugma qo'yilsa ikkita manba paydo bo'lardi.
 const CODES = Object.keys(PROCESS_OPS)
   .map(Number)
-  .filter((c) => !["UPAKOVKA", "OMBOR"].includes(PROCESS_OPS[c].post))
+  .filter((c) => !["UPAKOVKA", "TMO"].includes(PROCESS_OPS[c].post))
   .sort((a, b) => a - b)
 
 export function CustomRoutes({
@@ -202,7 +202,7 @@ export function CustomRoutes({
               </div>
 
               {/* Yig'ma buyum: mayda detal asosiy detalga yopishtiriladi. Biriktirilsa
-                  uning marshruti shu amalda TUGAYDI — qadoqlash/ombor faqat asosiyda. */}
+                  uning marshruti shu amalda TUGAYDI — qadoqlash/TMO faqat asosiyda. */}
               {(() => {
                 const parentId = parentOf(part.id, part.assembly_parent_id)
                 const mine = codes[codes.length - 1]
@@ -249,7 +249,7 @@ export function CustomRoutes({
                     {!!parentId && (
                       <span className="text-xs text-amber-700">
                         Marshrut {PROCESS_OPS[mine]?.name} da tugaydi —
-                        qadoqlash va ombor asosiy detalda
+                        qadoqlash va TMO asosiy detalda
                       </span>
                     )}
                     {!mine && (

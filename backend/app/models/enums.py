@@ -39,10 +39,10 @@ class PostCode(StrEnum):
     #: Qadoqlash — oxirgi bosqich. Marshrutga anketadagi `packaging` bayrog'i
     #: bo'yicha qo'shiladi (buyurtma qadoqlansa — HAMMA detalga).
     UPAKOVKA = "UPAKOVKA"
-    #: Tayyor mahsulot ombori — marshrutning ENG OXIRGI qadami, har detalda.
+    #: TMO — Tayyor Mahsulot Ombori, marshrutning ENG OXIRGI qadami, har detalda.
     #: Omborchi qabul qilganda yopiladi: qadoqsiz buyurtmada detal QR'i bilan,
     #: qadoqlanganda esa qadoq QR'i bitta skanda ichidagi hammasini yopadi.
-    OMBOR = "OMBOR"
+    TMO = "TMO"
 
 
 # Operator roles log in with their own account and see their post's terminal —
@@ -56,7 +56,8 @@ POST_ROLES: dict[UserRole, PostCode] = {
     UserRole.STOLYAR: PostCode.STOLYARKA,
     UserRole.BOYOQCHI: PostCode.BOYOQ,
     UserRole.UPAKOVKACHI: PostCode.UPAKOVKA,
-    UserRole.OMBORCHI: PostCode.OMBOR,
+    # Rol nomi "omborchi" bo'lib qoladi: TMO — JOYNING nomi, omborchi — ODAMNING kasbi
+    UserRole.OMBORCHI: PostCode.TMO,
 }
 
 

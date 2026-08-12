@@ -2,7 +2,7 @@
 // Qoidalar terminal maketidan ajratilgan — bu domen mantiqi, joylashuv emas.
 //
 //   1. Beyjik UUID          -> smena ochish
-//   2. Ekranning o'z sinki  -> qadoqlash/ombor (detal qaysi qadoqqa tushishini,
+//   2. Ekranning o'z sinki  -> qadoqlash/TMO (detal qaysi qadoqqa tushishini,
 //                              qabulmi yoki topshirishmi ekanini faqat o'sha
 //                              ekran biladi; qadoq QR'i `PK-...` umumiy yo'lda
 //                              "QR noto'g'ri formatda" bo'lib rad etilardi)
@@ -42,7 +42,7 @@ export function useTerminalScan({
   /** Ekran qulflangan: faqat beyjik o'tadi, qolgan skanlar e'tiborsiz */
   locked: boolean
   mapOrderId: number | null
-  /** Ekran o'zi yozadigan skan (qadoqlash, ombor) */
+  /** Ekran o'zi yozadigan skan (qadoqlash, TMO) */
   viewScanRef: RefObject<((qr: string) => void) | null>
   /** KROMKA lokal tekshiruvi: null = yozish mumkin, "NOTFOUND" = bu proyektda
    *  yo'q, boshqa satr = ko'rsatiladigan xato */

@@ -24,11 +24,11 @@ import {
 import { CutmapView, TBtn } from "@/components/Terminal/CutmapView"
 import { KioskOverlays } from "@/components/Terminal/KioskOverlays"
 import { KromkaView } from "@/components/Terminal/KromkaView"
-import { OmborView } from "@/components/Terminal/OmborView"
 import { OrderPicker } from "@/components/Terminal/OrderPicker"
 import { PostQueueView } from "@/components/Terminal/PostQueueView"
 import { PrisadkaView } from "@/components/Terminal/PrisadkaView"
 import { type LastScan, ScanStrip } from "@/components/Terminal/ScanStrip"
+import { TmoView } from "@/components/Terminal/TmoView"
 import { UpakovkaView } from "@/components/Terminal/UpakovkaView"
 import {
   QUIET_MS,
@@ -109,7 +109,7 @@ function TerminalPage() {
   // KROMKA: yozishdan oldin lokal tekshiruv (arradan chiqqanmi, tugamaganmi) —
   // null = yozish mumkin, "NOTFOUND" = bu proyektda yo'q, boshqa = xato matni
   const kromkaScanRef = useRef<((qr: string) => string | null) | null>(null)
-  // Qadoqlash/ombor: skanni ekranning o'zi yozadi — detal qaysi QADOQqa
+  // Qadoqlash/TMO: skanni ekranning o'zi yozadi — detal qaysi QADOQqa
   // tushishini yoki qabulmi/topshirishmi ekanini faqat o'sha ekran biladi.
   // Qadoq QR'i (`PK-...`) umumiy yo'ldan o'tsa "QR noto'g'ri" bo'lib rad etilardi.
   const viewScanRef = useRef<((qr: string) => void) | null>(null)
@@ -495,11 +495,11 @@ function TerminalPage() {
               />
             )}
           </PostScreen>
-        ) : ctx?.post_code === "OMBOR" ? (
-          /* OMBOR: proyekt ro'yxati → qabul va topshirish tablari */
+        ) : ctx?.post_code === "TMO" ? (
+          /* TMO: proyekt ro'yxati → qabul va topshirish tablari */
           <PostScreen strip={scanStrip}>
             {mapOrderId ? (
-              <OmborView
+              <TmoView
                 orderId={mapOrderId}
                 onBack={() => setMapOrderId(null)}
                 registerScan={(fn) => {
@@ -509,7 +509,7 @@ function TerminalPage() {
             ) : (
               <OrderPicker
                 onPick={setMapOrderId}
-                title="Proyektlar — ombor uchun proyektni tanlang"
+                title="Proyektlar — TMO uchun proyektni tanlang"
                 showCutmapBadge={false}
               />
             )}

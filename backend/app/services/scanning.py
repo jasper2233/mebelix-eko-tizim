@@ -264,7 +264,7 @@ async def _close_assembly_children(
     """Asosiy detal skani unga biriktirilgan MAYDA detallarni ham yopadi.
 
     Mayda detal marshruti aynan birikish qadamida tugaydi (`orders._set_custom_route`
-    unga qadoqlash/ombor dumini qo'shmaydi), shuning uchun birikish nuqtasi — mayda
+    unga qadoqlash/TMO dumini qo'shmaydi), shuning uchun birikish nuqtasi — mayda
     detalning OXIRGI qadami. U shu postda bo'lsa, bu skan o'sha qadamni yopadi.
 
     Chala detaldan yaxlit buyum yig'ib bo'lmaydi: mayda detalning oldingi bosqichi

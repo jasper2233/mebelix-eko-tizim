@@ -33,7 +33,7 @@ class Pachka(BaseModel):
         db_enum(PachkaStatus), default=PachkaStatus.OPEN, index=True, kw_only=True
     )
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
-    #: Ombordan chiqarilgan payt: bitta QR skani ichidagi HAMMA detalni chiqaradi.
+    #: TMO dan chiqarilgan payt: bitta QR skani ichidagi HAMMA detalni chiqaradi.
     shipped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
 
@@ -41,7 +41,7 @@ class Pachka(BaseModel):
 class PachkaItem(BaseModel):
     """Qadoq tarkibi: bitta detal NUSXASI bitta qadoqda bo'ladi.
 
-    Yagonalik nusxa bo'yicha — bir nusxa ikki qadoqqa tushib qolsa ombor hisobi
+    Yagonalik nusxa bo'yicha — bir nusxa ikki qadoqqa tushib qolsa TMO hisobi
     ikki marta chiqarilardi. Ochiq qadoqdan chiqarish — qatorni yumshoq o'chirish.
     """
 
