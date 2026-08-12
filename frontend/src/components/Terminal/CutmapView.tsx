@@ -19,7 +19,7 @@ import {
   RotateCw,
 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { renderToStaticMarkup } from "react-dom/server"
 import { toast } from "sonner"
@@ -257,12 +257,28 @@ export function CutmapView({
         rover: sheets.length > 0 && sheets.every((s: any) => s.rover),
       }
     })
-    // Roverchi FAQAT o'z listlarini ko'radi; arrachi hammasini, begonasi xira
-    if (postCode !== "ROVER") return mats as Material[]
+    // Admin (texnolog) rejasini fayl tartibida ko'radi: uning "o'z listi" degan
+    // tushunchasi yo'q, marshrutni matritsa va nostandart tabidan tekshiradi.
+    if (admin) return mats as Material[]
+    // Roverchi FAQAT o'z listlarini ko'radi
+    if (postCode === "ROVER") {
+      return mats
+        .map((m) => ({ ...m, sheets: m.sheets.filter((s: any) => s.rover) }))
+        .filter((m) => m.sheets.length > 0) as Material[]
+    }
+    // Arrachida: O'ZINIKI OLDINDA. Materiallar fayl tartibida keladi va rover
+    // materiali birinchi bo'lishi mumkin (prodda aynan shunday) — u holda xarita
+    // ochilishi bilan birinchi ko'rinadigan narsa begona listlar bo'lardi.
+    // Har material ichida ham o'z listlari tepada.
     return mats
-      .map((m) => ({ ...m, sheets: m.sheets.filter((s: any) => s.rover) }))
-      .filter((m) => m.sheets.length > 0) as Material[]
-  }, [expMaterials, cellInsts, postCode])
+      .map((m) => ({
+        ...m,
+        sheets: [...m.sheets].sort(
+          (a: any, b: any) => Number(a.rover) - Number(b.rover),
+        ),
+      }))
+      .sort((a, b) => Number(a.rover) - Number(b.rover)) as Material[]
+  }, [expMaterials, cellInsts, postCode, admin])
 
   // Matritsadan kelgan "xaritada ko'rsat" sakrashi: ma'lumot kelgach detalning
   // birinchi katakchasini topib, o'sha material + listni ochamiz va belgilaymiz.
@@ -272,8 +288,8 @@ export function CutmapView({
   useEffect(() => {
     if (!focusPartKey || !data?.model || focusApplied.current) return
     focusApplied.current = true
-    for (let mi = 0; mi < expMaterials.length; mi++) {
-      const shs = expMaterials[mi].sheets ?? []
+    for (let mi = 0; mi < materials.length; mi++) {
+      const shs = materials[mi].sheets ?? []
       for (let si = 0; si < shs.length; si++) {
         const hit = (shs[si].parts ?? []).find(
           (p: any) => !p.waste && p.key === focusPartKey,
@@ -286,7 +302,7 @@ export function CutmapView({
         }
       }
     }
-  }, [focusPartKey, data, expMaterials])
+  }, [focusPartKey, data, materials])
 
   if (isLoading) return <Skeleton className="h-full w-full" />
   if (!data?.model) {
@@ -551,76 +567,92 @@ export function CutmapView({
               {materials.map((m: Material, i: number) => {
                 const mdone = m.sheets.filter(sheetDone).length
                 const active = i === materialIdx
-                // Arrachida rover materiali xira + yozuv bilan: bir qarashda
-                // "bu meniki emas" ko'rinsin, kataklarni bittalab bosmasin
-                const foreign = (m as any).rover && postCode !== "ROVER"
+                // Begona material — o'ziniki emas. Xiralashtirmaymiz (17" kioskda
+                // kontrast birinchi bo'lib yo'qoladi) va yangi rang qo'shmaymiz
+                // (ekranda yashil/binafsha/ko'k allaqachon band): tartib va MATN
+                // ishlaydi — o'ziniki oldinda, begonasida hisoblagich o'rniga so'z.
+                const foreign =
+                  !admin && (m as any).rover && postCode !== "ROVER"
+                const firstForeign =
+                  foreign && i > 0 && !(materials[i - 1] as any)?.rover
                 return (
-                  <Button
+                  <div
                     key={m.name}
-                    variant={active ? "default" : "outline"}
-                    className={`h-12 max-w-xs shrink-0 px-4 text-base ${
-                      foreign ? "border-dashed opacity-50" : ""
-                    }`}
-                    onClick={() => setMaterialIdx(i)}
+                    className={`flex shrink-0 items-center ${firstForeign ? "ml-4 border-l pl-4" : ""}`}
                   >
-                    <span className="truncate">{m.name}</span>
-                    {foreign ? (
-                      <span className="ml-1 shrink-0 rounded-sm bg-muted px-1.5 py-0.5 text-2xs font-black uppercase">
-                        Roverdan boshlanadi
-                      </span>
-                    ) : (
+                    <Button
+                      variant={active ? "default" : "outline"}
+                      className="h-12 max-w-xs px-4 text-base"
+                      onClick={() => setMaterialIdx(i)}
+                    >
+                      <span className="truncate">{m.name}</span>
                       <span
-                        className={`num ml-1 text-xs ${active ? "opacity-80" : "text-muted-foreground"}`}
+                        className={`ml-1 shrink-0 ${active ? "opacity-80" : "text-muted-foreground"} ${foreign ? "text-sm" : "num text-xs"}`}
                       >
-                        {mdone}/{m.sheets.length}
+                        {foreign ? "roverda" : `${mdone}/${m.sheets.length}`}
                       </span>
-                    )}
-                  </Button>
+                    </Button>
+                  </div>
                 )
               })}
             </div>
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {sheets.map((s: Sheet, i: number) => {
+                // Aralash material — texnolog xatosi bo'lishi mumkin (bir listda
+                // ikki xil egalik bo'lmaydi, lekin bir MATERIALDA bo'lishi mumkin)
+                const mixedOwners =
+                  !admin &&
+                  postCode !== "ROVER" &&
+                  sheets.some((x: Sheet) => (x as any).rover) &&
+                  sheets.some((x: Sheet) => !(x as any).rover)
                 const done = sheetDone(s)
-                const foreign = (s as any).rover && postCode !== "ROVER"
+                const foreign =
+                  !admin && (s as any).rover && postCode !== "ROVER"
+                // Ajratuvchi FAQAT aralash materialda va FAQAT begona guruh
+                // tepasida: o'ziniki oldinda turgani uchun "sizning listlaringiz"
+                // deb takrorlash ortiqcha — chiziqdan tepasi baribir uniki.
+                const divider =
+                  mixedOwners && foreign && !(sheets[i - 1] as any)?.rover
                 return (
-                  <button
-                    type="button"
-                    key={s.no}
-                    onClick={() => setSheetIdx(i)}
-                    className={`rounded-xl border-2 px-4 py-3 text-left outline-none transition-all hover:border-primary focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.98] active:border-primary ${
-                      foreign
-                        ? "border-dashed opacity-45"
-                        : done
-                          ? "border-green-500/60 bg-green-50 text-green-700"
-                          : ""
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="num text-xl font-black">
-                        №{s.disp ?? s.no}
-                      </span>
-                      <span className="num flex-1 text-base">
-                        {s.L}×{s.W}
-                      </span>
-                    </div>
-                    {foreign && (
-                      <div className="mt-1 text-sm font-bold uppercase text-muted-foreground">
-                        Roverdan boshlanadi
+                  <Fragment key={s.no}>
+                    {divider && (
+                      <div className="col-span-full mt-2 flex items-baseline gap-2 border-t pt-3 text-base text-muted-foreground">
+                        Roverda kesiladi
+                        <span className="num text-sm">
+                          {sheets.filter((x: Sheet) => (x as any).rover).length}
+                        </span>
                       </div>
                     )}
-                    {/* Mini xarita — kichik preview, bosishga xalaqit bermaydi */}
-                    <div className="pointer-events-none mt-2 h-32 overflow-hidden rounded-lg border bg-slate-100 p-1">
-                      <SheetSvg
-                        sheet={s}
-                        holes={holes}
-                        instancesByCell={cellInsts}
-                        onSelect={() => {}}
-                        selectedCell={null}
-                        thumbnail
-                      />
-                    </div>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setSheetIdx(i)}
+                      className={`rounded-xl border-2 px-4 py-3 text-left outline-none transition-all hover:border-primary focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.98] active:border-primary ${
+                        done && !foreign
+                          ? "border-green-500/60 bg-green-50 text-green-700"
+                          : ""
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="num text-xl font-black">
+                          №{s.disp ?? s.no}
+                        </span>
+                        <span className="num flex-1 text-base">
+                          {s.L}×{s.W}
+                        </span>
+                      </div>
+                      {/* Mini xarita — kichik preview, bosishga xalaqit bermaydi */}
+                      <div className="pointer-events-none mt-2 h-32 overflow-hidden rounded-lg border bg-slate-100 p-1">
+                        <SheetSvg
+                          sheet={s}
+                          holes={holes}
+                          instancesByCell={cellInsts}
+                          onSelect={() => {}}
+                          selectedCell={null}
+                          thumbnail
+                        />
+                      </div>
+                    </button>
+                  </Fragment>
                 )
               })}
             </div>
@@ -633,10 +665,11 @@ export function CutmapView({
               toolbarContainer ? "" : "rounded-xl border p-1"
             }`}
           >
-            {/* Begona list ochilgan bo'lsa — chalkashmasin: chek ham bloklangan */}
-            {(sheet as any)?.rover && postCode !== "ROVER" && (
-              <div className="absolute inset-x-0 top-0 z-10 bg-amber-100/95 px-4 py-2 text-center text-base font-black text-amber-900">
-                Bu list roverdan boshlanadi — kesish frezerda
+            {/* Ataylab ochgan — qichqirish shart emas, bitta jumla yetadi.
+                Chek baribir bloklangan (backend aniq xato qaytaradi). */}
+            {!admin && (sheet as any)?.rover && postCode !== "ROVER" && (
+              <div className="absolute inset-x-0 top-0 z-10 bg-white/90 px-4 py-1.5 text-center text-base text-muted-foreground">
+                Bu listni rover kesadi
               </div>
             )}
             <div className="h-full w-full">

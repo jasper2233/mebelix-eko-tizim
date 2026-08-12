@@ -723,7 +723,6 @@ function TerminalPage() {
                 <CutmapView
                   orderId={mapOrderId}
                   onBack={() => setRoverMap(false)}
-                  statsContainer={statsEl}
                   postCode={ctx?.post_code}
                 />
               ) : mapOrderId ? (
