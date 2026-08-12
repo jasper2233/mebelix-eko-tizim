@@ -526,10 +526,15 @@ function BadgeDialog({
             Beyjik QR — chop etib hodimga bering
           </DialogDescription>
         </DialogHeader>
-        <div className="mx-auto rounded-xl border p-4">
-          <QRCodeSVG value={emp.badge_id} size={180} />
+        <div className="badge-qr mx-auto rounded-xl border p-4">
+          {/* `marginSize` — QR standartining "tinch zonasi" (4 modul). v4 da u
+              sukut bo'yicha 0: qog'ozda beyjik kichraytirilganda QR chetiga
+              yaqin narsa tushsa skaner o'qimay qolardi. */}
+          <QRCodeSVG value={emp.badge_id} size={180} marginSize={4} />
         </div>
-        <div className="num text-xs text-muted-foreground">{emp.badge_id}</div>
+        <div className="badge-id num text-xs text-muted-foreground">
+          {emp.badge_id}
+        </div>
         <DialogFooter className="print-hide flex-col gap-2 sm:flex-col">
           <Button variant="outline" onClick={() => window.print()}>
             Chop etish

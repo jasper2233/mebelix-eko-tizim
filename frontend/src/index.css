@@ -163,24 +163,58 @@
   .print-only [data-slot="dialog-close"] {
     display: none !important;
   }
-  /* Beyjikning qog'ozdagi o'lchami: 80mm — odatdagi beyjik cho'ntagiga tushadi
-     va A4 dan qirqib olinadi. Kenglik cheklanmasa dialog butun sahifaga
-     yoyilib, ism chap burchakda, QR o'rtada qolib ketardi. */
+  /* Beyjik 80×60 mm — detal yorliqlari bilan bir xil blank, ya'ni sexda bitta
+     xil qog'oz ishlatiladi. Nomlangan `@page` FAQAT beyjikka tegadi: global
+     `@page` bo'lsa istalgan sahifani Ctrl+P qilganda ham 80×60 chiqardi. */
+  @page badge {
+    size: 80mm 60mm;
+    margin: 0;
+  }
   .print-only {
+    page: badge;
     position: static !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
     width: 80mm !important;
+    height: 60mm !important;
     max-width: none !important;
-    margin: 10mm auto !important;
+    margin: 0 !important;
+    padding: 3mm !important;
+    gap: 1.5mm !important;
+    overflow: hidden !important;
     /* `translate` ALOHIDA yozilishi shart: Tailwind v4 markazlashni
        `translate: -50% -50%` bilan beradi, uni `transform: none` qaytarmaydi —
        beyjik yarim o'lchamga siljib, qog'oz chetidan chiqib ketardi. */
     transform: none !important;
     translate: none !important;
     border: 0 !important;
+    border-radius: 0 !important;
     box-shadow: none !important;
   }
   .print-only [data-slot="dialog-header"] {
     text-align: center !important;
+    gap: 0 !important;
+  }
+  /* Ism — beyjikda uzoqdan o'qiladigan yagona narsa */
+  .print-only [data-slot="dialog-title"] {
+    font-size: 4.5mm !important;
+    line-height: 1.15 !important;
+  }
+  /* Ramka va ichki bo'shliq ekran uchun; qog'ozda ular QR joyini yeydi
+     (tinch zona endi QR ning o'zida — `marginSize`) */
+  .print-only .badge-qr {
+    border: 0 !important;
+    padding: 0 !important;
+  }
+  .print-only .badge-qr svg {
+    width: 34mm !important;
+    height: 34mm !important;
+  }
+  .print-only .badge-id {
+    font-size: 2.4mm !important;
+    line-height: 1 !important;
   }
 }
 
