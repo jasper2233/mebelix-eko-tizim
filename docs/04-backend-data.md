@@ -49,7 +49,7 @@ class BaseModel(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
 | `FileKind` | `project`, `scx`, `label_pdf`, `document` |
 | `SessionStatus` | `active`, `ended` |
 
-`POST_ROLES: dict[UserRole, PostCode]` — 9 operator rolini o'z postiga bog'laydi (`ARRACHI→ARRA`, `KROMKACHI→KROMKA`, `OVALCHI→OVAL`, `PRISADKACHI→PRISADKA`, `ROVERCHI→ROVER`, `STOLYAR→STOLYARKA`, `BOYOQCHI→BOYOQ`, `UPAKOVKACHI→UPAKOVKA`, `OMBORCHI→TMO` (rol nomi odamning kasbi, TMO — joyning nomi)). Operator rollari o'z akkaunti bilan kiradi va o'z postining terminalini ko'radi — stanok binding'i va badge talab qilinmaydi (`TERMINAL` qurilma akkauntlaridan farqli).
+`POST_ROLES: dict[UserRole, PostCode]` — 9 operator rolini o'z postiga bog'laydi (`ARRACHI→ARRA`, `KROMKACHI→KROMKA`, `OVALCHI→OVAL`, `PRISADKACHI→PRISADKA`, `ROVERCHI→ROVER`, `STOLYAR→STOLYARKA`, `BOYOQCHI→BOYOQ`, `UPAKOVKACHI→UPAKOVKA`, `OMBORCHI→TMO` (rol kodi odamning kasbi; ekran yozuvi "TMO omborchisi" — materiallar ombori omborchisidan farqlanadi)). Operator rollari o'z akkaunti bilan kiradi va o'z postining terminalini ko'radi — stanok binding'i va badge talab qilinmaydi (`TERMINAL` qurilma akkauntlaridan farqli).
 
 ### 1.3 `backend/app/models/user.py` — User modeli
 

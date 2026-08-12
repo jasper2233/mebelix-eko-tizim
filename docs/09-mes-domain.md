@@ -33,7 +33,20 @@ uning bo'lim raqamlari. Barcha fazalar implementatsiya qilingan — alohida `TOD
 - post-operator: arrachi, kromkachi, ovalchi, prisadkachi, roverchi, stolyar, boyoqchi,
   **upakovkachi**, **omborchi** — `POST_ROLES` mapping orqali postga bog'lanadi (ARRACHI→ARRA …
   OMBORCHI→TMO); o'z akkaunti bilan kiradi, **stanok biriktirish ham, beyjik ham shart emas**
-  (login = smena, §3 ga qarang).
+  (login = smena, §3 ga qarang). `omborchi` rol KODI o'zgarmaydi (odamning kasbi), ekranda
+  esa "TMO omborchisi" — materiallar ombori omborchisidan farqi ko'rinib tursin.
+
+### 1.1 Atamalar (kelishilgan — kodda ham, ekranda ham shu)
+
+| Atama | Nima | Nima EMAS |
+|---|---|---|
+| **TMO** | Tayyor Mahsulot Ombori — marshrutning oxirgi posti (`PostCode.TMO`) | "Ombor", "sklad", "tayyor mahsulot skladi" |
+| **Materiallar ombori** | Xomashyo va qoldiqlar ombori (hozircha alohida modul yo'q — `/materials` bu KATALOG, qoldiq hisobi emas) | "Ombor", "sklad" |
+| **Qadoqlash bo'limi** | `PostCode.UPAKOVKA` — marshrutning oddiy posti | "Upakovka ombori" — bunday ombor yo'q |
+
+Yolg'iz "Ombor" va "sklad" ishlatilmaydi: sexda ikkita ombor bor, nomsiz atalganda
+qaysi biri ekani yo'qoladi. Boshqa tizimning ombori haqida yozilganda kimniki ekani
+aytiladi ("GibLab ombori") — 10-giblab-reference.md dagidek.
 
 ## 2. GibLab parser (`app/services/giblab/`)
 

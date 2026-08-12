@@ -237,12 +237,12 @@ def _advisories(
             f"Shablon kutubxonasi o'qilmaydi — teshik va ishlov bosqichlari chiqmaydi."
         )
 
-    # minusCount — omborda tayyor turgan nusxalar (GibLab "Минус количество", 12.05.21).
+    # minusCount — allaqachon tayyor turgan nusxalar (GibLab "Минус количество", 12.05.21).
     # GibLab ularni kesishga qo'ymaydi, biz esa `count` bo'yicha hammasini ishlab chiqaramiz.
     minus = sum(1 for g in products_goods for pe in g.findall("part") if (_f(pe, "minusCount") or 0) > 0)
     if minus:
         out.append(
-            f"{minus} detalda 'minus miqdor' bor (omborda tayyor nusxalar). Tizim baribir "
+            f"{minus} detalda 'minus miqdor' bor (allaqachon tayyor nusxalar). Tizim baribir "
             f"to'liq miqdorni ishlab chiqaradi — texnolog miqdorni tekshirishi kerak."
         )
 

@@ -123,7 +123,7 @@ dastgohi har tomondan shuncha mm oladi. Korpusda hamma joyda 1 mm.
 | `price` | **Sexda bo'sh — narx yuritilmaydi** |
 | `Толщина` / `Длина` / `Ширина` | Qalinlik / uzunlik / kenglik |
 
-GibLab interfeysi ombor va rasm ustunlarini ham ko'rsatadi — sexning faylida ular yo'q.
+GibLab interfeysi o'z ombor va rasm ustunlarini ham ko'rsatadi — sexning faylida ular yo'q.
 Nomlangan o'nta ustundan keyin sarlavhasiz o'n birinchi ustun (`K`) turadi: unda bitta
 tasodifiy qiymat bor (603-qatorda `<tool.edgeline elWidthPreJoint="1"/>` — katalogga
 adashib tushgan XML bo'lagi), qolgani bo'sh.
@@ -255,9 +255,9 @@ Tomonlar: `t`/`b` — **uzunlik bo'ylab**, `l`/`r` — **kenglik bo'ylab**.
 | Atribut | Nima | Nega muhim |
 |---|---|---|
 | `allowanceT/B/L/R` | Ishlov qo'shimchasi tomon bo'yicha | Pilla o'lchamiga qo'shiladi, GibLab kartada **punktir chiziq** bilan chizadi. Bizda punktir yo'q → nolga teng bo'lmasa ogohlantiramiz |
-| `minusCount` | Omborda tayyor turgan nusxalar | GibLab ularni kesishga qo'ymaydi, biz `count` bo'yicha hammasini ishlab chiqaramiz → ogohlantiramiz |
+| `minusCount` | Allaqachon tayyor turgan nusxalar | GibLab ularni kesishga qo'ymaydi, biz `count` bo'yicha hammasini ishlab chiqaramiz → ogohlantiramiz |
 | `description` | Izoh **va/yoki ishlov dasturi kodi**: `#nom` — yuz tomon, `##nom` — orqa tomon, bo'shliqsiz | Shablon kutubxonasidan ishlov. Bunday holatda faylda XNC operatsiyasi bo'lmaydi va butun ishlov yo'qoladi → ogohlantiramiz. Korpusda ishlatilmagan |
-| `dbId` | Ombor qoldig'ining 1C dagi ID'si | 1C integratsiyasi ishlatilsa paydo bo'ladi. Korpusda yo'q |
+| `dbId` | GibLab qoldig'ining 1C dagi ID'si | 1C integratsiyasi ishlatilsa paydo bo'ladi. Korpusda yo'q |
 | `usedCount` | Ishlatilgan miqdor | Qoldiq inventarizatsiyasi uchun. Korpusda 595 detalda bor |
 | `cTrimL` / `cTrimW` / `cTrimEL` / `cTrimEW` | **Faqat list/polosa uchun**: shu listning o'z torsovkasi. Manfiy (default −1) → operatsiyaning qiymati ishlatiladi | Bir listning torsovkasi boshqacha bo'lsa xarita sarlavhasidagi raqam shu list uchun xato bo'ladi. Korpusda ishlatilmagan |
 | `groupInBlock` / `groupInBlockMC` / `groupInBlockMaxC` | Detallarni blokka guruhlash | Optimizator sozlamasi. Korpusda yo'q |
@@ -265,7 +265,7 @@ Tomonlar: `t`/`b` — **uzunlik bo'ylab**, `l`/`r` — **kenglik bo'ylab**.
 **Deloviy qoldiqlar — ishlatilmagan imkoniyat.** Korpusda 13 ta `waste="true" business="true"`
 `<part>` bor va ular hammasi `good[typeId=sheet]` ichida yashaydi (detal ro'yxatiga tushmaydi,
 soxta vazifa yaratmaydi). Ular GibLab'ning "shu kesishdan 688×1166 foydali qoldiq chiqadi"
-degan xabari. Sklad moduli ularni qabul qilsa qoldiq hisobi avtomatlashadi — 1C protokoli
+degan xabari. Materiallar ombori moduli ularni qabul qilsa qoldiq hisobi avtomatlashadi — 1C protokoli
 (§6) aynan shu ma'lumot bilan ishlaydi.
 
 ### 2.3 Detal nomi va jarayon kodlari
@@ -623,9 +623,9 @@ GibLab HTTP POST orqali uch amal bajaradi:
 
 | Turi | Nima |
 |---|---|
-| `load` | Omborda qanday qoldiqlar borligini so'raydi |
+| `load` | GibLab omborida qanday qoldiqlar borligini so'raydi |
 | `report` | Qaysi qoldiqlar ishlatilganini xabar qiladi |
-| `save` | Kesishdan chiqqan yangi qoldiqlarni omborga qaytaradi |
+| `save` | Kesishdan chiqqan yangi qoldiqlarni GibLab omboriga qaytaradi |
 
 Javob formati: `id, uzunlik, kenglik, miqdor [, izoh]` — har qatorda bir tur qoldiq.
 Qoldiq ID'si XML'da **`dbId`** atributida saqlanadi.

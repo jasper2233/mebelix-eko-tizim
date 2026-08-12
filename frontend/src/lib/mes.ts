@@ -133,7 +133,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   stolyar: "Stolyar",
   boyoqchi: "Bo'yoqchi",
   upakovkachi: "Qadoqlovchi",
-  omborchi: "Omborchi",
+  omborchi: "TMO omborchisi",
 }
 
 // Sahifa huquqi BITTA joyda: sidebar menyusi ham, route guard ham shu ikkisini

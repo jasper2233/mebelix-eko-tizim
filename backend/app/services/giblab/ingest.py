@@ -449,7 +449,7 @@ async def ingest_project(
 
     # --- order metadata ---
     # `code` — sexning `goods.xls` katalogidagi SKU. Parser uni o'qiydi, lekin bu yerda
-    # tushib qolardi: sklad va material hisoboti faqat nomni ko'rardi. Sex katalogga
+    # tushib qolardi: materiallar ombori va material hisoboti faqat nomni ko'rardi. Sex katalogga
     # o'tgandan keyin (yangi eksportlarda `code="110083"`, `code="КРМ1009"`) nom emas, kod
     # barqaror kalit. Eski fayllarda `code` yo'q — o'shanda `None` bo'lib qoladi.
     order.material_usage = [

@@ -40,8 +40,13 @@ class PostCode(StrEnum):
     #: bo'yicha qo'shiladi (buyurtma qadoqlansa — HAMMA detalga).
     UPAKOVKA = "UPAKOVKA"
     #: TMO — Tayyor Mahsulot Ombori, marshrutning ENG OXIRGI qadami, har detalda.
-    #: Omborchi qabul qilganda yopiladi: qadoqsiz buyurtmada detal QR'i bilan,
+    #: Qabul qilinganda yopiladi: qadoqsiz buyurtmada detal QR'i bilan,
     #: qadoqlanganda esa qadoq QR'i bitta skanda ichidagi hammasini yopadi.
+    #:
+    #: ATAMA QOIDASI (kelishilgan): sexda IKKITA ombor bor va ikkalasi ham o'z
+    #: nomi bilan ataladi — MATERIALLAR OMBORI va TMO. Yolg'iz "Ombor" ham,
+    #: "sklad" ham ishlatilmaydi: qaysi biri ekani yo'qoladi. UPAKOVKA esa
+    #: ombor emas — QADOQLASH BO'LIMI, ya'ni marshrutning oddiy posti.
     TMO = "TMO"
 
 
@@ -56,7 +61,8 @@ POST_ROLES: dict[UserRole, PostCode] = {
     UserRole.STOLYAR: PostCode.STOLYARKA,
     UserRole.BOYOQCHI: PostCode.BOYOQ,
     UserRole.UPAKOVKACHI: PostCode.UPAKOVKA,
-    # Rol nomi "omborchi" bo'lib qoladi: TMO — JOYNING nomi, omborchi — ODAMNING kasbi
+    # Rol kodi "omborchi" bo'lib qoladi (ODAMNING kasbi), lekin ekranda "TMO
+    # omborchisi" — materiallar ombori omborchisidan farqi ko'rinib tursin
     UserRole.OMBORCHI: PostCode.TMO,
 }
 
