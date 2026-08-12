@@ -124,6 +124,34 @@ tugamaguncha keyingisi rad etiladi, xabar navbatdagi post nomini aytadi.
 60s ichida bekor qilish; COMPLETED regress. Bosqich tugashi → `order.stage_completed`, hammasi →
 `COMPLETED` + `order.completed`.
 
+### 3.0 Xato kodlari (TT 8.5)
+
+Rad etilgan skan `422 {"code": "E00x", "message": "..."}` qaytaradi. **Kod kim
+harakat qilishini aytadi, matn esa nima qilishini** — matn tahrirlanadi, kod
+barqaror qoladi, shuning uchun mantiq (terminal ovozi, hisobot guruhlashi)
+faqat kodga tayanadi. Ilgari terminal o'zbekcha xabardan "yakunlangan" bo'lagini
+qidirardi — matn tahrirlanishi bilan jimgina buziladigan bog'lanish.
+
+| Kod | Ma'nosi | Kim tuzatadi |
+|---|---|---|
+| `E001` | Detal/plan mos kelmadi: bu QR bo'yicha tugallanmagan plan yo'q, bu post detal marshrutida yo'q, detal boshqa stanokka biriktirilgan, detal roverda kesiladi | Operator — chekni va postni tekshiradi |
+| `E002` | QR formati buzuq (`_` yo'q) | Operator — chekni qayta chop etadi |
+| `E003` | Buyurtma bekor qilingan | Manager |
+| `E004` | Navbat buzildi: shu NUSXAda oldingi qadam tugamagan (`STRICT_STAGE_ORDER`); xabar navbatdagi post nomini aytadi | Operator — oldingi postni kutadi |
+| `E005` | Aktiv sessiya yo'q yoki `SESSION_MAX_HOURS` (12 soat) o'tgan | Operator — beyjikni skanerlaydi |
+| `E006` | Beyjik: topilmadi / nofaol / hodim bu postga biriktirilmagan | Admin yoki hodim |
+| `E007` | Aloqa yo'q — **server kodi emas**, WS uzilganda terminal frontendi o'zi hosil qiladi, so'rov serverga umuman ketmaydi | — |
+| `E008` | Ish allaqachon bajarilgan (shu nusxaning shu postdagi qadamlari to'lgan). Xato emas — terminal neytral ogohlantirish ovozini beradi | Hech kim — takror skan |
+| `E009` | SOZLAMA xatosi: post topilmadi, postda stanok yo'q, terminalga stanok biriktirilmagan | **Admin** — operator hech narsa qila olmaydi |
+
+`E008` va `E009` 2026-08-12 da `E001` dan ajratildi: u 12 xil sababni qamrab
+olgani uchun kod amalda hech narsa bildirmasdi va mijoz matn qidirishga majbur
+edi. `E001`–`E006` raqamlari TT dan kelgan, tegilmagan.
+
+Rad etilgan urinish `log_rejected_scan()` orqali audit logga yoziladi
+(`module=scan, action=rejected`, `meta={"code": ...}`) — hisobotda kod bo'yicha
+guruhlash shundan ishlaydi.
+
 Operator-rol oqimi (`resolve_terminal` / `operator_employee` / `active_session`): arrachi…stolyar
 uchun post roldan aniqlanadi (`POST_ROLES`); stanok — `user.machine_id`, bo'lmasa postning birinchi
 o'chirilmagan stanogi (faqat soft-delete tekshiriladi, holat emas — NOAKTIV/TA'MIRDA stanok ham

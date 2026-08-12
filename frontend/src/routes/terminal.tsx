@@ -182,7 +182,10 @@ function TerminalPage() {
     onError: (err) => {
       lastScanAtRef.current = Date.now()
       const { code, message } = detailParts(err)
-      if (code === "E001" && message.includes("yakunlangan")) playWarning()
+      // Ovoz KOD bo'yicha tanlanadi, matn bo'yicha emas: ilgari o'zbekcha
+      // xabardan "yakunlangan" bo'lagi qidirilardi va matn tahrirlansa jimgina
+      // buzilardi. E008 — ish allaqachon bajarilgan, bu xato emas: neytral signal.
+      if (code === "E008") playWarning()
       else playError()
       // Shovqinli sexda ovoz yetarli emas — xato toast bilan ham ko'rsatiladi
       toast.error(detailMessage(err))

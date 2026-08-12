@@ -31,7 +31,22 @@ def qr_part_code(qr: str, count: int) -> str:
 
 
 class ScanRejected(Exception):
-    """TZ 8.5 error dialog: code (E001..E006) + Uzbek message."""
+    """Skan xatosi: kod + o'zbekcha xabar (TZ 8.5 dialogi, 422 detail).
+
+    KOD KIM HARAKAT QILISHINI aytadi — matn beqaror (tahrirlanadi), kod barqaror:
+    frontend ovozni, hisobot esa guruhlashni shunga qarab tanlaydi.
+
+      E001  detal/plan mos kelmadi — operator chekni tekshiradi
+      E002  QR formati buzuq — chek qayta chop etiladi
+      E003  buyurtma bekor qilingan — manager
+      E004  navbat buzildi — oldingi bosqichni kutish kerak
+      E005  sessiya yo'q yoki muddati tugagan — beyjik
+      E006  beyjik muammosi — admin/hodim
+      E008  ish allaqachon bajarilgan — xato emas, ogohlantirish
+      E009  SOZLAMA xatosi (post/stanok yo'q) — admin tuzatadi, operator emas
+
+    E007 server kodi emas: aloqa uzilganda terminal frontendi o'zi hosil qiladi.
+    """
 
     def __init__(self, code: str, message: str):
         self.code = code
@@ -60,7 +75,7 @@ async def resolve_terminal(db: AsyncSession, user: User) -> tuple[Machine, Post]
             await db.execute(select(Post).where(Post.code == post_code, Post.is_deleted == False))  # noqa: E712
         ).scalar_one_or_none()
         if post is None:
-            raise ScanRejected("E001", f"{post_code} posti topilmadi. Admin postlarni sozlashi kerak.")
+            raise ScanRejected("E009", f"{post_code} posti topilmadi. Admin postlarni sozlashi kerak.")
         machine = None
         if user.machine_id is not None:
             machine = await db.get(Machine, user.machine_id)
@@ -75,17 +90,17 @@ async def resolve_terminal(db: AsyncSession, user: User) -> tuple[Machine, Post]
                 )
             ).scalar_one_or_none()
         if machine is None:
-            raise ScanRejected("E001", f"{post.name} postida stanok yo'q. Admin stanok qo'shishi kerak.")
+            raise ScanRejected("E009", f"{post.name} postida stanok yo'q. Admin stanok qo'shishi kerak.")
         return machine, post
 
     if user.machine_id is None:
-        raise ScanRejected("E001", "Terminal foydalanuvchisiga stanok biriktirilmagan.")
+        raise ScanRejected("E009", "Terminal foydalanuvchisiga stanok biriktirilmagan.")
     machine = await db.get(Machine, user.machine_id)
     if machine is None or machine.is_deleted:
-        raise ScanRejected("E001", "Terminal stanogi topilmadi.")
+        raise ScanRejected("E009", "Terminal stanogi topilmadi.")
     post = await db.get(Post, machine.post_id)
     if post is None:
-        raise ScanRejected("E001", "Stanok posti topilmadi.")
+        raise ScanRejected("E009", "Stanok posti topilmadi.")
     return machine, post
 
 
@@ -401,7 +416,7 @@ async def record_scan_at(
             route = step
             break
     if route is None:
-        raise ScanRejected("E001", "Bu detal allaqachon yakunlangan.")
+        raise ScanRejected("E008", "Bu detal allaqachon yakunlangan.")
     if route.machine_id is not None and route.machine_id != machine.id:
         raise ScanRejected("E001", "Bu detal boshqa stanokka biriktirilgan.")
 
