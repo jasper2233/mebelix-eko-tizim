@@ -277,6 +277,19 @@ async def read_terminal_tasks(db: SessionDep, ctx: TerminalCtx) -> list[TaskRow]
     ]
 
 
+def _own_sheets(order: Order, own_nos: set[int] | None) -> int:
+    """Kartadagi "N list" — SHU postniki. `mult` (bir naqsh necha marta kesiladi) sanaladi.
+
+    `own_nos=None` — post kesish posti emas (kromka, prisadka...), hamma list sanaladi.
+    """
+    return sum(
+        int(s.get("mult") or 1)
+        for mat in (order.cutmap or {}).get("materials", [])
+        for s in mat.get("sheets", [])
+        if own_nos is None or s.get("no") in own_nos
+    )
+
+
 @router.get("/orders", response_model=list[TerminalOrderCard], operation_id="read_terminal_orders")
 async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[TerminalOrderCard]:
     """Active orders relevant to this terminal (for the ARRA map order picker)."""
@@ -351,6 +364,42 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
             .tuples()
             .all()
         )
+    # Kartadagi "N list" faqat SHU postnikini sanashi kerak. Giyotina kesimi listni
+    # chetdan chetgacha kesadi, ya'ni listning egasi bitta: yo arra (detallar
+    # marshrutida ARRA qadami bor), yo rover (butun listni frezer kesadi).
+    # Ilgari hamma list sanalardi — arrachi kartada "7 list" ko'rar, o'ziniki esa
+    # 3 ta bo'lar va reja noto'g'ri chamalanardi.
+    own_sheet_nos: dict[int, set[int]] | None = None
+    if post.code in (PostCode.ARRA, PostCode.ROVER) and order_ids:
+        arra_parts = (
+            select(PartRoute.part_id)
+            .join(Post, Post.id == PartRoute.post_id)
+            .where(
+                PartRoute.order_id.in_(order_ids),
+                Post.code == PostCode.ARRA,
+                PartRoute.is_enabled == True,  # noqa: E712
+                PartRoute.is_deleted == False,  # noqa: E712
+            )
+            .scalar_subquery()
+        )
+        seen: dict[int, dict[int, set[bool]]] = {}
+        for oid, pattern_no, has_arra in (
+            await db.execute(
+                select(
+                    PartInstance.order_id,
+                    PartInstance.pattern_no,
+                    PartInstance.part_id.in_(arra_parts),
+                ).where(
+                    PartInstance.order_id.in_(order_ids),
+                    PartInstance.pattern_no.isnot(None),
+                    PartInstance.is_deleted == False,  # noqa: E712
+                )
+            )
+        ).all():
+            seen.setdefault(oid, {}).setdefault(pattern_no, set()).add(bool(has_arra))
+        mine = post.code == PostCode.ARRA
+        own_sheet_nos = {oid: {no for no, flags in sheets.items() if flags == {mine}} for oid, sheets in seen.items()}
+
     # KROMKA kartasida hisob DETAL bo'yicha (tomon emas): nusxaning hamma tomoni
     # skan qilingan bo'lsa — qilingan; jami = kromkali nusxalar soni
     kromka_counts: dict[int, tuple[int, int]] = {}
@@ -419,11 +468,7 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
                 total=total_val,
                 # karta uchun: arrachi plita bo'yicha partiyalab kesadi
                 materials=[m["name"] for m in o.material_usage if m.get("kind") == "sheet"],
-                sheets_total=sum(
-                    int(s.get("mult") or 1)
-                    for mat in (o.cutmap or {}).get("materials", [])
-                    for s in mat.get("sheets", [])
-                ),
+                sheets_total=_own_sheets(o, own_sheet_nos.get(o.id) if own_sheet_nos is not None else None),
                 has_cutmap=o.cutmap is not None,
             )
         )
