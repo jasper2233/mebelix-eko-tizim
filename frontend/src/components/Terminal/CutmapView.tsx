@@ -352,11 +352,17 @@ export function CutmapView({
   const listDn = sheets
     .filter(sheetDone)
     .reduce((a: number, s: Sheet) => a + (s.mult || 1), 0)
-  const detTot = Number(material?.kd) || 0
+  // Jami detal KO'RINAYOTGAN listlardan sanaladi, fayldagi `kd` dan emas: `kd`
+  // butun materialning yig'indisi va u filtrni bilmaydi — roverchi o'z listlarini
+  // ko'rib turib arraning detallari qo'shilgan jamini o'qib qolardi. Kengaytirilgan
+  // listlarda `mult` allaqachon nusxalarga yoyilgan, ya'ni son `kd` bilan bir xil
+  // chiqadi (LDSP: 39 katak + 17 takror = 56 = kd).
+  let detTot = 0
   let detDn = 0
   for (const s of sheets) {
     for (const p of s.parts as SheetPart[]) {
       if (p.waste) continue
+      detTot += 1
       detDn += (cellInsts.get(`${s.no}:${p.cell}`) ?? []).filter(isCut).length
     }
   }
