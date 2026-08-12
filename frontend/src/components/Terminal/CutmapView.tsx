@@ -373,9 +373,18 @@ export function CutmapView({
   // avval long press bilan bekor qilinadi (dublikat chek oqimni buzadi)
   const nextInstance = markedInsts.find((i) => !isCut(i))
 
-  const statPairs: Array<[string, string | number]> = [
+  // Ikki guruh. BIRINCHISI — operator ish paytida qaraydigan raqamlar: nechta
+  // list va nechta detal qoldi. QOLGANLARI — GibLab optimizatsiyasining sifat
+  // ko'rsatkichlari (atxot, rez, to'ldirish) va stanok sozlamalari (arra kesimi,
+  // tirim): ular ishlab chiqarishgacha hal bo'lgan, kesish paytida hech narsani
+  // o'zgartirmaydi. Shuning uchun xarita ochilganda faqat birinchi ikkitasi
+  // ko'rinadi — sarlavhada joy tor va 2 metrdan o'qilishi kerak; qolganlari
+  // listlar jadvalida, joy bor yerda turaveradi.
+  const workPairs: Array<[string, string | number]> = [
     ["Listlar", `${listTot}−${listDn}=${listTot - listDn}`],
     ["Detallar", `${detTot}−${detDn}=${detTot - detDn}`],
+  ]
+  const planPairs: Array<[string, string | number]> = [
     ["Atxot", material?.ko ?? "—"],
     ["Rez, m", material?.dr?.toFixed?.(1) ?? material?.dr ?? "—"],
     ["Rezlar", material?.kr ?? "—"],
@@ -387,6 +396,7 @@ export function CutmapView({
     ["Tirim uz.", material?.trimL ?? "—"],
     ["Tirim en", material?.trimW ?? "—"],
   ]
+  const statPairs = sheetIdx === null ? [...workPairs, ...planPairs] : workPairs
   // GibSaw uslubi: 3 qator × 3 ustun qat'iy blok (KK/KD/KO | DR/KR/PZ | TP/TD/TSh)
   // — hech qachon o'ramaydi, header balandligi o'smaydi, eni ~400px
   // Header info: list nomi (ochiq bo'lsa) + 3x3 statlar — bitta portalda
@@ -407,16 +417,27 @@ export function CutmapView({
           </div>
         </div>
       )}
-      <div
-        className="num grid w-fit grid-flow-col grid-rows-3 text-xs leading-[1.4]"
-        style={{ columnGap: "18px" }}
-      >
-        {statPairs.map(([l, v]) => (
-          <span key={l} className="whitespace-nowrap">
-            <span className="text-muted-foreground">{l}:</span> <b>{v}</b>
-          </span>
-        ))}
-      </div>
+      {sheetIdx === null ? (
+        <div
+          className="num grid w-fit grid-flow-col grid-rows-3 text-xs leading-[1.4]"
+          style={{ columnGap: "18px" }}
+        >
+          {statPairs.map(([l, v]) => (
+            <span key={l} className="whitespace-nowrap">
+              <span className="text-muted-foreground">{l}:</span> <b>{v}</b>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className="num flex items-center gap-5 text-base">
+          {statPairs.map(([l, v]) => (
+            <span key={l} className="whitespace-nowrap">
+              <span className="text-muted-foreground">{l}:</span>{" "}
+              <b className="text-lg">{v}</b>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   ) : null
 
