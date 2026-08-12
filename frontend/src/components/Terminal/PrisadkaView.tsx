@@ -225,6 +225,12 @@ export function PrisadkaView({
             <div className="num text-base text-muted-foreground">
               Bajarildi: <b className="text-foreground">{totDone}</b>/{totReq}
             </div>
+            {/* Imo-ishora ko'rinmas — ISHORASI bir marta, jadval tepasida.
+                Har qatorga takrorlansa 15 marta bir xil yozuv bo'lardi va
+                holat badge'i bilan zid o'qilardi. */}
+            <div className="ml-auto text-sm text-muted-foreground">
+              Chekni bekor qilish: qatorni bosib turing
+            </div>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             <table className="w-full text-base">
@@ -294,26 +300,27 @@ export function PrisadkaView({
                       {formatSize(p.length, p.width, p.thickness)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {/* Ikki holat yetadi: rover-first detalda chop etish o'zi
-                          "bajarildi" (server avto-skan yozadi), arra detalida
-                          QR o'zi bilan keladi — skan bilan yakunlanadi */}
+                      {/* Uch holat, bitta joyda. O'rtadagisi ilgari yashirin edi:
+                          badge "Bajarilmagan" der, ostida esa "chek chiqarilgan"
+                          yozuvi turardi — ikkalasi bir-biriga zid o'qilardi.
+                          Odatda roverda chek chiqarish skan ham yozadi, ya'ni
+                          bu holat skan rad etilgandagina qoladi. */}
                       <span
                         className={cn(
                           "rounded-md px-2.5 py-1 text-sm font-bold",
                           i.done
                             ? "bg-green-600 text-white"
-                            : "bg-muted text-muted-foreground",
+                            : i.label_printed
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-muted text-muted-foreground",
                         )}
                       >
-                        {i.done ? "✓ Bajarildi" : "Bajarilmagan"}
+                        {i.done
+                          ? "✓ Bajarildi"
+                          : i.label_printed
+                            ? "Chek chiqarilgan"
+                            : "Bajarilmagan"}
                       </span>
-                      {/* Uzoq bosish bilan bekor qilinadi — imo-ishora ko'rinmas
-                          bo'lgani uchun bitta ishora qoldiriladi */}
-                      {i.label_printed && (
-                        <div className="mt-0.5 text-2xs text-muted-foreground">
-                          chek chiqarilgan · bosib turing
-                        </div>
-                      )}
                     </td>
                   </tr>
                 ))}
