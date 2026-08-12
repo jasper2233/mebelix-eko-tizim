@@ -140,26 +140,26 @@ Muhim yordamchi: `_issue_token_pair(response, user) -> str` — payload `{"sub":
 |---|---|---|---|---|---|
 | POST | `/api/v1/login/access-token` | Yo'q (rate limit: `_LOGIN_RATE_LIMIT`) | `OAuth2PasswordRequestForm` (username — username yoki telefon, password) | `Token` (`access_token`, `token_type: "bearer"`) | `crud_users.authenticate` orqali tekshiradi; noto'g'ri bo'lsa yoki `is_active=False` bo'lsa 401 |
 | POST | `/api/v1/login/refresh` | Refresh cookie (`REFRESH_COOKIE_NAME`) | Cookie'dan refresh token | `{"access_token", "token_type"}` | Refresh token'ni `verify_token(TokenType.REFRESH)` bilan tekshiradi, `token_version` mosligini tasdiqlaydi va **ikkala tokenni ham rotatsiya qiladi**; har bir refresh token **one-time-use** (quyida) |
-| POST | `/api/v1/login/device` | Yo'q | `DevicePairRequest` (`code`) | `DevicePairResponse` (`token`, `machine_name`, `post_name`) | Monoblokni stanokka bog'laydi: bir martalik kodni doimiy qurilma tokeniga almashtiradi. Atomik `UPDATE ... RETURNING` — bitta kod ikki qurilmaga tushmaydi; kod yo'q/eskirgan bo'lsa 400. Kod printer agentiniki bo'lsa xato matni shuni aytadi (ikkala kod ham 8 belgili) |
-| POST | `/api/v1/login/badge` | Yo'q (rate limit: `_BADGE_RATE_LIMIT`) | `BadgeLoginRequest` (`badge_id`, `device_token`) | `BadgeLoginResponse` (`Token` + `employee_name`, `machine_name`, `post_name`) | Sexdagi kirish: qurilma tokeni stanokni, beyjik hodimni tasdiqlaydi. Smenani ochadi (`open_badge_session`) va stanok hisobiga token juftligini beradi |
+| POST | `/api/v1/login/badge` | Yo'q (rate limit: `_BADGE_RATE_LIMIT`) | `BadgeLoginRequest` (`badge_id`, ixtiyoriy `post_id`) | `BadgeLoginResponse` (`Token` + `employee_name`, `machine_name`, `post_name`) | Sexdagi kirish: beyjik skani, parolsiz. Post beyjik egasining biriktirilgan postlaridan chiqadi; bir nechtasi bo'lsa **409** + `{"code": "POST_CHOICE", "employee_name", "posts": [...]}` (monoblok tanlash oynasini ko'rsatadi va `post_id` bilan qayta yuboradi). Smenani ochadi (`open_badge_session`) |
 
 ### Beyjik bilan kirish (parolsiz sex terminali)
 
-Operator login/parol termaydi — monoblok bir marta stanokka bog'lanadi, keyin beyjik skani kirishga aylanadi.
+Operator login/parol termaydi — beyjik skani kirishga aylanadi. **Hech qanday o'rnatish qadami yo'q:** kirish sahifasi ochilib turgan istalgan brauzerda skan ishlaydi.
 
-1. Admin: `POST /api/v1/machines/{id}/pair-code` → 8 belgili kod (15 daqiqa, bir marta ishlaydi). Kod `machine.pair_code` da; eski `token_hash` bekor bo'ladi.
-2. Monoblok: kirish sahifasida "Terminalni bog'lash" → `POST /login/device` → doimiy token (`localStorage["mx.device"]`, sha256 xeshi `machine.token_hash` da).
-3. Operator: beyjikni skanerlaydi → `POST /login/badge`.
+Beyjik ikkala savolga javob beradi — KIM va QAYERDA:
 
-**Nega ikki omil kerak:** beyjik QR qog'ozda — suratga olsa bo'ladi. Qurilma tokeni uni sexga bog'laydi: tokensiz brauzerda beyjik hech nima ochmaydi. Shu sababli beyjik chegarasi kengroq (`30/60s`): 122-bitli UUID'ni brute-force qilib bo'lmaydi, tor chegara esa smena almashuvida butun sexni (bitta tashqi IP) qulflab qo'yardi.
+1. `badge_id` → `employee` (nofaol beyjik va noma'lum beyjik 401).
+2. `employee.assigned_post_ids` → post. Bitta bo'lsa so'ralmaydi; bir nechta bo'lsa 409 + ro'yxat, hodim monoblokda tanlaydi (`_badge_post`).
+3. Post → stanok: `_post_machine` postning birinchi o'chirilmagan stanogini oladi — `resolve_terminal` operator rolida aynan shunday tanlaydi, ya'ni ikkalasi bir xil javob beradi.
+4. `_terminal_user(machine, post)` — kirish qaysi hisob nomidan yoziladi: shu stanokka biriktirilgan **TERMINAL** hisobi, bo'lmasa post roli hisobi (`POST_ROLES`). Ikkala yo'l ham `resolve_terminal` bilan BIR XIL postga olib keladi (biri stanok, ikkinchisi rol orqali) — aks holda operator boshqa postning ekranida paydo bo'lardi. Hisob KIM ishlayotganini bildirmaydi — u beyjik ochgan `work_session` da.
 
-`_terminal_user(machine, post)` — qurilma qaysi hisob nomidan ishlashini tanlaydi: avval shu stanokka biriktirilgani, keyin TERMINAL roli, oxirida post roli (`POST_ROLES`). Hisob KIM ishlayotganini bildirmaydi — u beyjik ochgan `work_session` da.
+**Xavfsizlik (ataylab tanlangan, 2026-08-12).** Beyjik — yagona omil: QR qog'ozda, nusxa olingan bo'lsa istalgan qurilmadan kirsa bo'ladi. Qurilma bog'lash varianti ko'rib chiqilib rad etildi — sexda parol/kod terish smena almashuvini sekinlashtiradi va amalda umumiy akkauntga olib keladi, ya'ni ish haqi atributsiyasini butunlay yo'qotadi. O'rniga: hisob imtiyozi tor (terminal ekranlari, admin paneli emas), har kirish audit logga tushadi, beyjik `employee.status` bilan darhol bekor qilinadi. Chegara `30/60s` — 122-bitli UUID'ni brute-force qilib bo'lmaydi, tor chegara esa smena almashuvida butun sexni (bitta tashqi IP) qulflab qo'yardi.
 
 Refresh token one-time-use mexanizmi: har bir muvaffaqiyatli refresh'dan so'ng token'ning `jti`si Redis'da (`auth:refresh:used:<jti>` kaliti, `rate_limiter.client` orqali, TTL = `REFRESH_MAX_AGE`) "ishlatilgan" deb belgilanadi (`_mark_refresh_token_used`). Ishlatilgan `jti` bilan qayta so'rov (replay) kelsa — cookie o'g'irlangan yoki client buzilgan deb hisoblanadi: foydalanuvchining `token_version`i oshiriladi va **butun sessiya bekor qilinadi** (401 "Token bekor qilingan."). Redis klienti lifespan'da shartsiz ochiladi (`rate_limiter.initialize(settings.REDIS_URL)`, o'chirish sozlamasi yo'q), shuning uchun `rate_limiter.client is None` faqat lifespan'siz kontekstda uchraydi — o'sha holatda tekshiruv o'tkazib yuboriladi.
 
 Brute-force himoyasi: `RateLimit(limit=settings.LOGIN_RATE_LIMIT_ATTEMPTS, period=settings.LOGIN_RATE_LIMIT_PERIOD)` dependency sifatida `access-token` endpointiga qo'llangan. Beyjik endpointida alohida `_BADGE_RATE_LIMIT = RateLimit(30, 60)` (kalit `ratelimit:{ip}:{path}:{oyna}` — yo'l bo'yicha ajralgan, parol chegarasini yemaydi).
 
-**Bog'lanishlar:** `backend/app/core/security.py` (token yaratish/tekshirish, cookie helper'lar), `backend/app/core/utils/rate_limit.py` (`RateLimit`, `rate_limiter`), `backend/app/crud` (`crud_users.authenticate`, `get`, `increment_token_version`), `backend/app/schemas/auth.py` (`Token`, `DevicePair*`, `BadgeLogin*`), `backend/app/services/scanning.py` (`badge_employee`, `open_badge_session`), `backend/app/core/config.py`.
+**Bog'lanishlar:** `backend/app/core/security.py` (token yaratish/tekshirish, cookie helper'lar), `backend/app/core/utils/rate_limit.py` (`RateLimit`, `rate_limiter`), `backend/app/crud` (`crud_users.authenticate`, `get`, `increment_token_version`), `backend/app/schemas/auth.py` (`Token`, `BadgeLogin*`, `BadgePostOption`), `backend/app/services/scanning.py` (`open_badge_session`), `backend/app/core/config.py`.
 
 ---
 

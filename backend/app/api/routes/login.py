@@ -1,11 +1,8 @@
-import hashlib
-import secrets
-from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import select, update
+from sqlalchemy import select
 
 from app.api.deps import SessionDep, client_ip
 from app.core.config import settings
@@ -24,25 +21,19 @@ from app.core.security import (
 from app.core.utils.rate_limit import RateLimit, rate_limiter
 from app.core.ws import ws_manager
 from app.crud import crud_users, log_action
-from app.models import BridgeAgent, Machine, Post
-from app.models.enums import POST_ROLES, UserRole
+from app.models import Employee, Machine, Post
+from app.models.enums import POST_ROLES, EmployeeStatus, UserRole
 from app.models.user import User
-from app.schemas.auth import (
-    BadgeLoginRequest,
-    BadgeLoginResponse,
-    DevicePairRequest,
-    DevicePairResponse,
-    Token,
-)
-from app.services.scanning import ScanRejected, badge_employee, open_badge_session
+from app.schemas.auth import BadgeLoginRequest, BadgeLoginResponse, BadgePostOption, Token
+from app.services.scanning import open_badge_session
 
 router = APIRouter(prefix="/login", tags=["login"])
 
 # Brute-force defence — tunable via LOGIN_RATE_LIMIT_ATTEMPTS / LOGIN_RATE_LIMIT_PERIOD.
 _LOGIN_RATE_LIMIT = RateLimit(limit=settings.LOGIN_RATE_LIMIT_ATTEMPTS, period=settings.LOGIN_RATE_LIMIT_PERIOD)
-# Beyjikda chegara kengroq: parolni topish mumkin, 122-bitli UUID'ni esa yo'q —
-# ustiga qurilma tokeni ham kerak. Tor chegara esa zarar qilardi: smena
-# almashuvida ketma-ket skanlar butun sexni (bitta tashqi IP) qulflab qo'yardi.
+# Beyjikda chegara kengroq: parolni topish mumkin, 122-bitli UUID'ni esa yo'q.
+# Tor chegara esa zarar qilardi — smena almashuvida ketma-ket skanlar butun sexni
+# (bitta tashqi IP) qulflab qo'yardi.
 _BADGE_RATE_LIMIT = RateLimit(limit=30, period=60)
 
 ACCESS_MAX_AGE = ACCESS_TOKEN_EXPIRE_MINUTES * 60
@@ -95,104 +86,107 @@ async def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/device", response_model=DevicePairResponse, operation_id="pair_terminal_device")
-async def pair_terminal_device(db: SessionDep, body: DevicePairRequest, request: Request) -> DevicePairResponse:
-    """OCHIQ endpoint: monoblok bir martalik kodni doimiy qurilma tokeniga almashtiradi.
+async def _badge_post(db: SessionDep, employee: Employee, post_id: int | None) -> Post:
+    """Beyjik egasi qaysi postda ishlaydi.
 
-    Atomik UPDATE — bitta kod ikki qurilmaga tushmaydi. Kod noto'g'ri yoki eskirgani
-    bir xil xato bilan qaytadi (kod bor-yo'qligi oshkor bo'lmaydi).
+    Post BEYJIKDAN chiqadi: hodim biriktirilgan postlar ro'yxati bitta bo'lsa
+    tanlash so'ralmaydi, bir nechtasi bo'lsa monoblok tanlash oynasini ko'rsatadi
+    (409 + ro'yxat).
     """
-    code = body.code.replace("-", "").replace(" ", "").upper()
-    token = secrets.token_hex(24)
-    row = (
-        await db.execute(
-            update(Machine)
-            .where(
-                Machine.pair_code == code,
-                Machine.is_deleted == False,  # noqa: E712
-                Machine.pair_expires_at > datetime.now(UTC),
-            )
-            .values(token_hash=hashlib.sha256(token.encode()).hexdigest(), pair_code=None, pair_expires_at=None)
-            .returning(Machine.id, Machine.name, Machine.post_id)
-        )
-    ).first()
-    if row is None:
-        await db.rollback()
-        # Admin panelda ikkita ulanish kodi bor va ikkalasi ham 8 belgili. Printer
-        # agentiniki bu yerga terilsa "kod noto'g'ri" deyish adashtirardi — kod
-        # to'g'ri, joyi noto'g'ri. Faqat XATO yo'lida so'raladi.
-        agent = (
+    posts = list(
+        (
             await db.execute(
-                select(BridgeAgent.name).where(
-                    BridgeAgent.pair_code == code,
-                    BridgeAgent.is_deleted == False,  # noqa: E712
-                    BridgeAgent.pair_expires_at > datetime.now(UTC),
+                select(Post)
+                .where(
+                    Post.id.in_(employee.assigned_post_ids or []),
+                    Post.is_deleted == False,  # noqa: E712
                 )
+                .order_by(Post.order_index)
             )
-        ).scalar_one_or_none()
-        if agent is not None:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Bu kod printer agenti uchun ({agent}). Terminal kodi Stanoklar sahifasidan olinadi.",
-            )
-        raise HTTPException(status_code=400, detail="Ulanish kodi noto'g'ri yoki muddati o'tgan.")
-    post = await db.get(Post, row.post_id)
-    log_action(
-        db,
-        module="machines",
-        action="device_paired",
-        user_id=None,
-        entity_type="machine",
-        entity_id=row.id,
-        message=f"Terminal qurilmasi bog'landi: {row.name}",
-        ip=client_ip(request),
+        )
+        .scalars()
+        .all()
     )
-    await db.commit()
-    await ws_manager.publish("machine.paired", {"machine_id": row.id})
-    return DevicePairResponse(token=token, machine_name=row.name, post_name=post.name if post else "")
+    if not posts:
+        raise UnauthorizedException(f"{employee.full_name} biror postga biriktirilmagan. Adminga murojaat qiling.")
+    if post_id is not None:
+        chosen = next((p for p in posts if p.id == post_id), None)
+        if chosen is None:
+            raise UnauthorizedException(f"{employee.full_name} bu postda ishlay olmaydi.")
+        return chosen
+    if len(posts) > 1:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "POST_CHOICE",
+                "employee_name": employee.full_name,
+                "posts": [BadgePostOption(id=p.id, code=p.code, name=p.name).model_dump() for p in posts],
+            },
+        )
+    return posts[0]
 
 
-async def _device_machine(db: SessionDep, device_token: str) -> tuple[Machine, Post]:
+async def _post_machine(db: SessionDep, post: Post) -> Machine:
+    """Postning stanogi. Bir nechta bo'lsa birinchisi — `resolve_terminal` ham
+    operator rolida aynan shunday tanlaydi, ya'ni ikkalasi bir xil javob beradi."""
     machine = (
         await db.execute(
-            select(Machine).where(
-                Machine.token_hash == hashlib.sha256(device_token.encode()).hexdigest(),
+            select(Machine)
+            .where(
+                Machine.post_id == post.id,
                 Machine.is_deleted == False,  # noqa: E712
             )
+            .order_by(Machine.id)
+            .limit(1)
         )
     ).scalar_one_or_none()
     if machine is None:
-        raise UnauthorizedException("Qurilma bog'lanmagan. Adminga murojaat qiling.")
-    post = await db.get(Post, machine.post_id)
-    if post is None:
-        raise UnauthorizedException("Stanok posti topilmadi.")
-    return machine, post
+        raise UnauthorizedException(f"{post.name} postida stanok yo'q. Admin stanok qo'shishi kerak.")
+    return machine
 
 
 async def _terminal_user(db: SessionDep, machine: Machine, post: Post) -> User:
-    """Qurilma qaysi hisob nomidan ishlaydi.
+    """Kirish qaysi hisob nomidan yoziladi.
 
-    Avval shu stanokka biriktirilgan hisob, bo'lmasa post rolidagi hisob (prodda
-    operator hisoblari stanoksiz turibdi). Hisob hech qaysi hodimni bildirmaydi —
-    KIM ishlayotgani beyjik ochgan smenada.
+    Ikki manba, shu tartibda: shu stanokka biriktirilgan TERMINAL hisobi, bo'lmasa
+    post rolidagi hisob. Ikkalasi ham `resolve_terminal` bilan BIR XIL postga
+    olib keladi (biri stanok orqali, ikkinchisi rol orqali) — aks holda operator
+    boshqa postning ekranida paydo bo'lardi.
+
+    Hisob hech qaysi hodimni bildirmaydi — KIM ishlayotgani beyjik ochgan smenada.
     """
-    post_role = next((r for r, code in POST_ROLES.items() if code == post.code), None)
-    roles = [UserRole.TERMINAL, *([post_role] if post_role else [])]
     user = (
         await db.execute(
             select(User)
             .where(
-                User.role.in_(roles),
+                User.role == UserRole.TERMINAL,
+                User.machine_id == machine.id,
                 User.is_active == True,  # noqa: E712
                 User.is_deleted == False,  # noqa: E712
             )
-            # Stanokka biriktirilgani ustun, keyin TERMINAL roli
-            .order_by((User.machine_id == machine.id).desc(), (User.role == UserRole.TERMINAL).desc(), User.id)
+            .order_by(User.id)
             .limit(1)
         )
     ).scalar_one_or_none()
+    if user is not None:
+        return user
+
+    post_role = next((r for r, code in POST_ROLES.items() if code == post.code), None)
+    if post_role is not None:
+        user = (
+            await db.execute(
+                select(User)
+                .where(
+                    User.role == post_role,
+                    User.is_active == True,  # noqa: E712
+                    User.is_deleted == False,  # noqa: E712
+                )
+                .order_by(User.id)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
     if user is None:
-        raise UnauthorizedException(f"{machine.name} uchun terminal hisobi yo'q. Admin hisob yaratishi kerak.")
+        raise UnauthorizedException(f"{post.name} uchun terminal hisobi yo'q. Admin hisob yaratishi kerak.")
     return user
 
 
@@ -205,16 +199,34 @@ async def _terminal_user(db: SessionDep, machine: Machine, post: Post) -> User:
 async def login_with_badge(
     response: Response, db: SessionDep, body: BadgeLoginRequest, request: Request
 ) -> BadgeLoginResponse:
-    """Sexdagi kirish: bog'langan qurilma + beyjik skani, parolsiz.
+    """Sexdagi kirish: beyjik skani, parolsiz.
 
-    Ikki omil: token qurilmani (sexda turibdi), beyjik hodimni tasdiqlaydi. Beyjik
-    QR qog'ozda — yolg'iz o'zi hech qayerdan kira olmaydi.
+    Beyjik ham KIMLIGINI, ham QAYERDA ishlashini aytadi: post hodimning
+    biriktirilgan postlaridan chiqadi (bir nechtasi bo'lsa 409 + tanlash ro'yxati).
+
+    XAVFSIZLIK: beyjik yagona omil, ya'ni QR qog'ozdan nusxa olingan bo'lsa
+    istalgan qurilmadan kirsa bo'ladi. Bu ataylab tanlangan (2026-08-12): sexda
+    parol terish smena almashuvini sekinlashtiradi va amalda umumiy akkauntga
+    olib keladi. Buning o'rniga hisob imtiyozi tor (terminal ekranlari, admin
+    paneli emas) va har kirish audit logga tushadi.
     """
-    machine, post = await _device_machine(db, body.device_token)
-    try:
-        employee = await badge_employee(db, body.badge_id, post)
-    except ScanRejected as exc:
-        raise UnauthorizedException(exc.message) from None
+    employee = (
+        await db.execute(
+            select(Employee).where(
+                Employee.badge_id == body.badge_id.strip(),
+                Employee.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).scalar_one_or_none()
+    if employee is None:
+        raise UnauthorizedException("Beyjik topilmadi.")
+    if employee.status != EmployeeStatus.ACTIVE:
+        raise UnauthorizedException("Beyjik nofaol. Adminga murojaat qiling.")
+
+    # Postga biriktirilganini `_badge_post` tekshiradi (terminaldagi `badge_employee`
+    # bilan bir xil qoida, faqat u yerda post ma'lum, bu yerda esa aniqlanadi).
+    post = await _badge_post(db, employee, body.post_id)
+    machine = await _post_machine(db, post)
     user = await _terminal_user(db, machine, post)
 
     session = await open_badge_session(db, user=user, machine=machine, post=post, employee=employee)

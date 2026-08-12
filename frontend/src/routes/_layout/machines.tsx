@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { KeyRound, Plus } from "lucide-react"
+import { Plus } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -94,9 +94,6 @@ function MachinesPage() {
                 <TableHead>Stanok</TableHead>
                 <TableHead>Post</TableHead>
                 <TableHead>Holat</TableHead>
-                {/* Monoblok shu stanokka bog'langanmi — operator beyjik bilan
-                    kirishi shunga bog'liq */}
-                <TableHead>Terminal</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -118,74 +115,17 @@ function MachinesPage() {
                           {MACHINE_STATUS_LABELS[m.status]}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={
-                              m.paired
-                                ? "text-sm font-semibold text-green-700"
-                                : "text-sm text-muted-foreground"
-                            }
-                          >
-                            {m.paired ? "Bog'langan" : "Bog'lanmagan"}
-                          </span>
-                          {admin && <PairTerminal id={m.id} name={m.name} />}
-                        </div>
-                      </TableCell>
                     </TableRow>
                   )
                 })
               ) : (
-                <EmptyRow colSpan={4}>Stanoklar yo'q.</EmptyRow>
+                <EmptyRow colSpan={3}>Stanoklar yo'q.</EmptyRow>
               )}
             </TableBody>
           </Table>
         </div>
       )}
     </div>
-  )
-}
-
-// Monoblokni stanokka bog'lash kodi. Kod ro'yxatda saqlanmaydi va qayta
-// ko'rsatilmaydi — o'rnatuvchi uni darhol monoblokka teradi, kerak bo'lsa
-// yangisi olinadi. Yangi kod eski qurilmani bekor qiladi (monoblok almashganda).
-function PairTerminal({ id, name }: { id: number; name: string }) {
-  const queryClient = useQueryClient()
-  const [code, setCode] = useState<string | null>(null)
-  const mutation = useMutation({
-    mutationFn: () =>
-      MachinesService.regenerateMachinePairCode({ machineId: id }),
-    onSuccess: (r) => {
-      setCode(r.code)
-      queryClient.invalidateQueries({ queryKey: ["machines"] })
-    },
-  })
-
-  return (
-    <>
-      <LoadingButton
-        size="sm"
-        variant="outline"
-        loading={mutation.isPending}
-        onClick={() => mutation.mutate()}
-      >
-        <KeyRound /> Ulanish kodi
-      </LoadingButton>
-      <Dialog open={!!code} onOpenChange={(o) => !o && setCode(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{name} — ulanish kodi</DialogTitle>
-          </DialogHeader>
-          <p className="num rounded-lg border-2 border-dashed py-6 text-center text-4xl font-black tracking-[0.3em]">
-            {code}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Monoblokning kirish sahifasida "Terminalni bog'lash" ni bosing va
-            shu kodni tering. Kod 15 daqiqa amal qiladi va bir marta ishlaydi.
-          </p>
-        </DialogContent>
-      </Dialog>
-    </>
   )
 }
 

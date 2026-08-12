@@ -1,16 +1,21 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation } from "@tanstack/react-query"
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
-import { KeyRound, Loader2, ScanLine } from "lucide-react"
-import { useRef, useState } from "react"
+import { Loader2, ScanLine } from "lucide-react"
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import type { Body_login_access_token as AccessToken, ApiError } from "@/client"
 import { LoginService, UsersService } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
-import { useScanFocus } from "@/components/Terminal/useKiosk"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Form,
   FormControl,
@@ -23,7 +28,7 @@ import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
 import { useAuth } from "@/hooks/useAuth"
-import { pairedDevice, savePairedDevice } from "@/lib/device"
+import { useBadgeScan } from "@/hooks/useBadgeScan"
 import { extractErrorMessage } from "@/utils"
 
 // Sxema modul darajasida EMAS, funksiya ichida: `routeTree.gen.ts` marshrut
@@ -61,214 +66,49 @@ export const Route = createFileRoute("/login")({
   }),
 })
 
-/** Sexdagi bog'langan monoblok beyjik ekranidan boshlaydi, ofis — paroldan. */
-type View = "badge" | "password" | "pair"
+type PostChoice = { id: number; code: string; name: string }
 
 function Login() {
-  const [device, setDevice] = useState(pairedDevice)
-  const [view, setView] = useState<View>(() =>
-    pairedDevice() ? "badge" : "password",
-  )
-
-  if (view === "badge" && device)
-    return <BadgeLogin device={device} onPassword={() => setView("password")} />
-  if (view === "pair")
-    return (
-      <PairDevice
-        onPaired={(d) => {
-          setDevice(d)
-          setView("badge")
-        }}
-        onCancel={() => setView("password")}
-      />
-    )
-  return (
-    <PasswordLogin
-      onBadge={device ? () => setView("badge") : undefined}
-      onPair={() => setView("pair")}
-    />
-  )
-}
-
-// Sexdagi kirish. Ekranda bitta ish bor — beyjikni skanerlash, shuning uchun
-// bitta yozuv va bitta katta belgi. Input ko'rinmaydi (skaner klaviatura kabi
-// yozadi), lekin doim fokusda: `useScanFocus` terminaldagi bilan bir xil qoida.
-function BadgeLogin({
-  device,
-  onPassword,
-}: {
-  device: NonNullable<ReturnType<typeof pairedDevice>>
-  onPassword: () => void
-}) {
   const navigate = useNavigate()
-  const inputRef = useRef<HTMLInputElement>(null)
+  const { loginMutation } = useAuth()
+  const [formSchema] = useState(makeFormSchema)
+  // Bir nechta postga biriktirilgan hodim: server 409 bilan ro'yxat qaytaradi
+  const [choice, setChoice] = useState<{
+    badgeId: string
+    employeeName: string
+    posts: PostChoice[]
+  } | null>(null)
+
   const badge = useMutation({
-    mutationFn: (badgeId: string) =>
+    mutationFn: (v: { badgeId: string; postId?: number }) =>
       LoginService.loginWithBadge({
-        requestBody: { badge_id: badgeId, device_token: device.token },
+        requestBody: { badge_id: v.badgeId, post_id: v.postId ?? null },
       }),
-    onSuccess: () => navigate({ to: "/" }),
-  })
-  useScanFocus(!badge.isPending, inputRef)
-
-  return (
-    <AuthLayout>
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-1.5">
-          <p className="text-2xs font-medium uppercase tracking-[0.3em] text-(--brand-gold-deep)">
-            {device.postName || "MebeliX MES"}
-          </p>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Beyjikni skanerlang
-          </h1>
-          <p className="text-muted-foreground">{device.machineName}</p>
-        </div>
-
-        <div className="flex flex-col items-center gap-4 rounded-xl border-2 border-dashed border-primary/30 py-10">
-          {badge.isPending ? (
-            <Loader2 className="size-16 animate-spin text-primary" />
-          ) : (
-            <ScanLine className="size-16 text-primary/70" />
-          )}
-          <p className="text-lg font-bold">
-            {badge.isPending
-              ? "Tekshirilmoqda..."
-              : "Beyjik QR — skanerga tuting"}
-          </p>
-        </div>
-
-        {/* Skaner yozadigan yagona maydon. Ko'rinmaydi: operator hech nima
-            termaydi, ko'rinsa faqat chalg'itardi. */}
-        <input
-          ref={inputRef}
-          className="sr-only"
-          aria-label="Beyjik QR"
-          onKeyDown={(e) => {
-            if (e.key !== "Enter") return
-            const el = e.target as HTMLInputElement
-            const value = el.value.trim()
-            el.value = ""
-            if (value) badge.mutate(value)
-          }}
-        />
-
-        {badge.isError && (
-          <div
-            role="alert"
-            className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
-          >
-            {extractErrorMessage(badge.error as ApiError)}
-          </div>
-        )}
-
-        {/* Ofis xodimi shu monoblokka kirishi kerak bo'lganda */}
-        <Button
-          variant="ghost"
-          className="text-muted-foreground"
-          onClick={onPassword}
-        >
-          <KeyRound /> Parol bilan kirish
-        </Button>
-      </div>
-    </AuthLayout>
-  )
-}
-
-// Bir martalik kod monoblokni stanokka bog'laydi. Admin panelda "Ulanish kodi"
-// bosilib, kod shu yerga teriladi — bir marta, o'rnatishda.
-function PairDevice({
-  onPaired,
-  onCancel,
-}: {
-  onPaired: (d: NonNullable<ReturnType<typeof pairedDevice>>) => void
-  onCancel: () => void
-}) {
-  const [code, setCode] = useState("")
-  const pair = useMutation({
-    mutationFn: (value: string) =>
-      LoginService.pairTerminalDevice({ requestBody: { code: value } }),
-    onSuccess: (r) => {
-      const d = {
-        token: r.token,
-        machineName: r.machine_name,
-        postName: r.post_name,
+    onSuccess: () => {
+      setChoice(null)
+      navigate({ to: "/" })
+    },
+    onError: (e, v) => {
+      // 409 detali OBYEKT bo'ladi (odatdagi xatolarda — satr): hodim bir nechta
+      // postga biriktirilgan, qaysi biriga kirayotganini o'zi tanlaydi.
+      const { detail } = ((e as ApiError)?.body ?? {}) as {
+        detail?: { code?: string; employee_name?: string; posts?: PostChoice[] }
       }
-      savePairedDevice(d)
-      onPaired(d)
+      if (detail?.code === "POST_CHOICE")
+        setChoice({
+          badgeId: v.badgeId,
+          employeeName: detail.employee_name ?? "",
+          posts: detail.posts ?? [],
+        })
     },
   })
 
-  return (
-    <AuthLayout>
-      <form
-        className="flex flex-col gap-6"
-        onSubmit={(e) => {
-          e.preventDefault()
-          if (code.trim() && !pair.isPending) pair.mutate(code.trim())
-        }}
-      >
-        <div className="flex flex-col gap-1.5">
-          <p className="text-2xs font-medium uppercase tracking-[0.3em] text-(--brand-gold-deep)">
-            MebeliX MES
-          </p>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Terminalni bog'lash
-          </h1>
-          {/* Qaysi sahifa ekani ATAYLAB yozilgan: admin panelda ikkita ulanish
-              kodi bor (Stanoklar — terminal, Printer agentlar — printerli
-              kompyuter) va ikkalasi ham 8 belgili. */}
-          <p className="text-muted-foreground">
-            Admin panelning <b>Stanoklar</b> sahifasida shu stanok qatoridagi{" "}
-            <b>Ulanish kodi</b> tugmasini bosing va kodni bu yerga tering. Bir
-            marta — shundan keyin monoblokda beyjik bilan kiriladi.
-          </p>
-        </div>
+  // Beyjik butun sahifada tinglanadi: ofis xodimi parolni terayotganda ham
+  // fokus tortilmaydi, sexdagi operator esa hech nima bosmasdan skanerlaydi.
+  useBadgeScan((badgeId) => {
+    if (!badge.isPending) badge.mutate({ badgeId })
+  })
 
-        <Input
-          autoFocus
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-          placeholder="Masalan: K7M2PQTX"
-          maxLength={16}
-          className="num h-14 text-center text-2xl font-black tracking-[0.35em]"
-        />
-
-        {pair.isError && (
-          <div
-            role="alert"
-            className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
-          >
-            {extractErrorMessage(pair.error as ApiError)}
-          </div>
-        )}
-
-        <div className="grid gap-2">
-          <LoadingButton
-            type="submit"
-            className="h-11 text-base"
-            loading={pair.isPending}
-            disabled={!code.trim()}
-          >
-            Bog'lash
-          </LoadingButton>
-          <Button variant="ghost" type="button" onClick={onCancel}>
-            Bekor qilish
-          </Button>
-        </div>
-      </form>
-    </AuthLayout>
-  )
-}
-
-function PasswordLogin({
-  onBadge,
-  onPair,
-}: {
-  onBadge?: () => void
-  onPair: () => void
-}) {
-  const { loginMutation } = useAuth()
-  const [formSchema] = useState(makeFormSchema)
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
@@ -294,6 +134,9 @@ function PasswordLogin({
     loginMutation.mutate({ ...data, username })
   }
 
+  const badgeError =
+    badge.isError && !choice ? extractErrorMessage(badge.error as ApiError) : ""
+
   return (
     <AuthLayout>
       <Form {...form}>
@@ -309,7 +152,7 @@ function PasswordLogin({
               Tizimga kirish
             </h1>
             <p className="text-muted-foreground">
-              Davom etish uchun ma'lumotlaringizni kiriting
+              Sexda — beyjikni skanerlang. Ofisda — foydalanuvchi nomi va parol.
             </p>
             {/* Chap paneldagi o'lcham chizig'ining aks-sadosi */}
             <svg
@@ -344,6 +187,31 @@ function PasswordLogin({
               />
             </svg>
           </div>
+
+          {/* Beyjik yo'li ko'rinib tursin: operator nima qilishini bilsin, ofis
+              xodimi esa buni o'ziga tegishli emasligini darhol tushunsin. Bu
+              tugma emas — skaner o'zi ishlaydi, bu yerda faqat holat ko'rinadi. */}
+          <div className="flex items-center gap-3 rounded-lg border border-dashed border-primary/40 px-4 py-3">
+            {badge.isPending ? (
+              <Loader2 className="size-6 shrink-0 animate-spin text-primary" />
+            ) : (
+              <ScanLine className="size-6 shrink-0 text-primary/70" />
+            )}
+            <p className="text-sm font-semibold">
+              {badge.isPending
+                ? "Beyjik tekshirilmoqda..."
+                : "Beyjikni skanerga tuting — parol shart emas"}
+            </p>
+          </div>
+
+          {!!badgeError && (
+            <div
+              role="alert"
+              className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
+            >
+              {badgeError}
+            </div>
+          )}
 
           <div className="grid gap-4">
             <FormField
@@ -405,21 +273,33 @@ function PasswordLogin({
             >
               Kirish
             </LoadingButton>
-
-            {/* Sexdagi monoblok: bog'langan bo'lsa beyjikka qaytish, bo'lmasa
-                o'rnatishda bir marta bog'lash */}
-            <Button
-              variant="ghost"
-              type="button"
-              className="text-muted-foreground"
-              onClick={onBadge ?? onPair}
-            >
-              <ScanLine />
-              {onBadge ? "Beyjik bilan kirish" : "Terminalni bog'lash"}
-            </Button>
           </div>
         </form>
       </Form>
+
+      {/* Bir nechta postga biriktirilgan hodim qaysi biriga kirayotganini aytadi */}
+      <Dialog open={!!choice} onOpenChange={(o) => !o && setChoice(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{choice?.employeeName} — qaysi postda?</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-2">
+            {choice?.posts.map((p) => (
+              <Button
+                key={p.id}
+                variant="outline"
+                className="h-14 justify-start text-base font-bold"
+                disabled={badge.isPending}
+                onClick={() =>
+                  badge.mutate({ badgeId: choice.badgeId, postId: p.id })
+                }
+              >
+                {p.name}
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </AuthLayout>
   )
 }

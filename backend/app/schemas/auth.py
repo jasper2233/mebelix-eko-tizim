@@ -6,23 +6,19 @@ class Token(BaseModel):
     token_type: str
 
 
-class DevicePairRequest(BaseModel):
-    """Monoblokni stanokka bog'lash: admin bergan bir martalik kod."""
-
-    code: str = Field(min_length=4, max_length=16)
-
-
-class DevicePairResponse(BaseModel):
-    token: str
-    machine_name: str
-    post_name: str
-
-
 class BadgeLoginRequest(BaseModel):
-    """Bog'langan qurilmada beyjik skani = kirish. Token qurilmani, beyjik hodimni tasdiqlaydi."""
+    """Beyjik skani = kirish. Post beyjik egasining biriktirilgan postlaridan aniqlanadi."""
 
     badge_id: str = Field(min_length=1, max_length=36)
-    device_token: str = Field(min_length=8, max_length=64)
+    #: Hodim bir nechta postga biriktirilgan bo'lsa qaysi biriga kirayotgani.
+    #: Bittasida bo'lsa berilmaydi — server o'zi tanlaydi.
+    post_id: int | None = None
+
+
+class BadgePostOption(BaseModel):
+    id: int
+    code: str
+    name: str
 
 
 class BadgeLoginResponse(Token):

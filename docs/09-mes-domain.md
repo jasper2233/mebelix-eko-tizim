@@ -179,29 +179,36 @@ va ish haqi ko'zgu hodimga yozilardi.
 
 ### 3.0.1 Beyjik bilan kirish (sexda parol yo'q)
 
-Operator login/parol termaydi. Monoblok bir marta stanokka bog'lanadi, keyin beyjik skani kirishga
-aylanadi:
+Operator login/parol termaydi va **hech qanday o'rnatish qadami yo'q**: kirish sahifasi ochilib
+turgan istalgan brauzerda beyjik skani kirishga aylanadi.
 
-| Qadam | Kim | Nima |
-|---|---|---|
-| 1 | Admin | **Stanoklar** sahifasi → stanok qatori → "Terminal" ustuni → "Ulanish kodi": 8 belgili kod, 15 daqiqa, bir marta ishlaydi |
-| 2 | O'rnatuvchi | Monoblok kirish sahifasida "Terminalni bog'lash" → kod → doimiy qurilma tokeni (`localStorage["mx.device"]`) |
-| 3 | Operator | Beyjikni skanerlaydi → kiradi, smena ochiladi |
+Beyjik ikkala savolga javob beradi — KIM va QAYERDA (`login.py`):
 
-**Ikki omil, ikkalasi ham kerak.** Beyjik QR qog'ozda — uni suratga olsa bo'ladi, ya'ni yolg'iz
-o'zi parol bo'la olmaydi. Qurilma tokeni beyjikni SEXGA bog'laydi: bog'lanmagan brauzerda beyjik
-hech nima ochmaydi. Token sha256 xesh ko'rinishida `machine.token_hash` da, muddatsiz; yangi
-ulanish kodi eskisini bekor qiladi (monoblok almashtirilganda).
+| Qadam | Nima |
+|---|---|
+| 1 | `badge_id` → `employee`. Noma'lum yoki nofaol beyjik — 401 |
+| 2 | `employee.assigned_post_ids` → post (`_badge_post`). Bitta bo'lsa so'ralmaydi; bir nechta bo'lsa **409 + ro'yxat**, hodim monoblokda tanlaydi |
+| 3 | Post → stanok (`_post_machine`): postning birinchi o'chirilmagan stanogi — `resolve_terminal` ham operator rolida aynan shunday tanlaydi |
+| 4 | `_terminal_user`: shu stanokka biriktirilgan TERMINAL hisobi, bo'lmasa post roli hisobi. **Hisob KIM ishlayotganini bildirmaydi** — u beyjik ochgan `work_session` da |
 
-Qurilma qaysi hisob nomidan ishlashini `login._terminal_user` tanlaydi: shu stanokka biriktirilgan
-hisob → TERMINAL roli → post roli. **Hisob KIM ishlayotganini bildirmaydi** — u beyjik ochgan
-`work_session` da; ish haqi va mahsuldorlik o'sha yerdan hisoblanadi.
+3- va 4-qadam ataylab `resolve_terminal` bilan bir xil javob berishi kerak: aks holda operator
+kirgandan keyin BOSHQA postning ekranida paydo bo'lardi.
 
-**Ikkita ulanish kodi bir-biriga o'xshaydi:** Stanoklar (terminal monoblogi) va Printer agentlar
-(printerli kompyuter) — ikkalasi ham 8 belgili, bir alifbodan. Shuning uchun `/login/device`
-XATO yo'lida kodni bridge-agent kodlari bilan ham solishtiradi va aniq aytadi: "Bu kod printer
-agenti uchun (<nom>). Terminal kodi Stanoklar sahifasidan olinadi." Faqat SELECT — agentning
-kodi bu yerda sarflanmaydi.
+**Xavfsizlik — ataylab qilingan tanlov (2026-08-12).** Beyjik yagona omil: QR qog'ozda va nusxa
+olingan bo'lsa istalgan qurilmadan kirsa bo'ladi. Qurilma bog'lash (monoblokni stanokka bir
+martalik kod bilan bog'lash) qurilib, keyin OLIB TASHLANDI — sexda kod/parol terish smena
+almashuvini sekinlashtiradi va amalda umumiy akkauntga olib keladi, ya'ni ish haqi atributsiyasini
+butunlay yo'qotadi. Buning o'rniga:
+
+- hisob imtiyozi tor — terminal ekranlari, admin paneli emas;
+- har kirish audit logga tushadi (`module=sessions, action=started`);
+- beyjik `employee.status` bilan darhol bekor qilinadi;
+- chegara `30/60s` (`_BADGE_RATE_LIMIT`) — 122-bitli UUID brute-force qilinmaydi, tor chegara esa
+  smena almashuvida butun sexni (bitta tashqi IP) qulflab qo'yardi.
+
+Frontendda skan **fokusni tortmaydi** (`hooks/useBadgeScan`): login sahifasida ofis xodimi ayni
+paytda parol terayotgan bo'lishi mumkin. Skanerni odamdan tezlik ajratadi — belgilar orasi
+120 ms dan oshsa bufer tozalanadi.
 
 ### 3.1 Yig'ma buyum (stolyarkada bir nechta detal birikadi)
 
