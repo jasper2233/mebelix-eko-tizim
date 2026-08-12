@@ -396,10 +396,13 @@ export function CutmapView({
     ["Tirim uz.", material?.trimL ?? "—"],
     ["Tirim en", material?.trimW ?? "—"],
   ]
-  // Admin (texnolog) sahifasida hammasi qoladi: u optimizatsiyani BAHOLAYDI,
-  // ya'ni atxot va to'ldirish uning ish raqamlari; ekran ham sichqonchali,
-  // keng. Terminalda esa xarita ochilganda faqat ish raqamlari.
-  const fullStats = admin || sheetIdx === null
+  // Reja ko'rsatkichlari KIMNIKI: ular arra optimizatsiyasi haqida — atxot,
+  // to'ldirish, rez (texnolog baholaydi) va arra kesimi, tirim (arrachining
+  // stanok sozlamalari). ROVERCHIGA ulardan bittasi ham tegishli emas: u
+  // frezerda kesadi, arra pichog'i ham, tirimi ham uniki emas. Shuning uchun
+  // roverda ular umuman ko'rsatilmaydi.
+  const planStatsOwner = admin || postCode !== "ROVER"
+  const fullStats = planStatsOwner && (admin || sheetIdx === null)
   const statPairs = fullStats ? [...workPairs, ...planPairs] : workPairs
   // GibSaw uslubi: 3 qator × 3 ustun qat'iy blok (KK/KD/KO | DR/KR/PZ | TP/TD/TSh)
   // — hech qachon o'ramaydi, header balandligi o'smaydi, eni ~400px
