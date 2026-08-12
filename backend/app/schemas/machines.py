@@ -17,6 +17,20 @@ class MachineRead(BaseModel):
     capacity_unit: CapacityUnit | None
     status: MachineStatus
     created_at: datetime
+    # Monoblok shu stanokka bog'langanmi (beyjik bilan kirish shundan keyin ishlaydi).
+    # Ulanish kodi bu yerda YO'Q: ro'yxatni har bir foydalanuvchi o'qiydi, kod esa
+    # qo'lga tushsa begona qurilmani bog'lash imkonini berardi — u faqat admin
+    # so'ragan javobda bir marta chiqadi (MachinePairCode).
+    paired: bool = False
+
+
+class MachinePairCode(BaseModel):
+    """Bir martalik ulanish kodi — faqat adminga, faqat so'ralganda."""
+
+    machine_id: int
+    machine_name: str
+    code: str
+    expires_at: datetime
 
 
 class MachineCreate(BaseModel):

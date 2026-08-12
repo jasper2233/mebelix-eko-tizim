@@ -18,6 +18,22 @@ export type AuditLogRead = {
     employee_name?: (string | null);
 };
 
+/**
+ * Bog'langan qurilmada beyjik skani = kirish. Token qurilmani, beyjik hodimni tasdiqlaydi.
+ */
+export type BadgeLoginRequest = {
+    badge_id: string;
+    device_token: string;
+};
+
+export type BadgeLoginResponse = {
+    access_token: string;
+    token_type: string;
+    employee_name: string;
+    machine_name: string;
+    post_name: string;
+};
+
 export type BadgeStart = {
     badge_id: string;
 };
@@ -145,6 +161,19 @@ export type DashboardStats = {
     machines: Array<MachineStat>;
 };
 
+/**
+ * Monoblokni stanokka bog'lash: admin bergan bir martalik kod.
+ */
+export type DevicePairRequest = {
+    code: string;
+};
+
+export type DevicePairResponse = {
+    token: string;
+    machine_name: string;
+    post_name: string;
+};
+
 export type EmployeeCreate = {
     full_name: string;
     phone?: (string | null);
@@ -253,6 +282,16 @@ export type MachineCreate = {
     status?: MachineStatus;
 };
 
+/**
+ * Bir martalik ulanish kodi — faqat adminga, faqat so'ralganda.
+ */
+export type MachinePairCode = {
+    machine_id: number;
+    machine_name: string;
+    code: string;
+    expires_at: string;
+};
+
 export type MachineRead = {
     id: number;
     post_id: number;
@@ -262,6 +301,7 @@ export type MachineRead = {
     capacity_unit: (CapacityUnit | null);
     status: MachineStatus;
     created_at: string;
+    paired?: boolean;
 };
 
 export type MachineStat = {
@@ -1197,6 +1237,18 @@ export type LoginAccessTokenData = {
 
 export type LoginAccessTokenResponse = (Token);
 
+export type PairTerminalDeviceData = {
+    requestBody: DevicePairRequest;
+};
+
+export type PairTerminalDeviceResponse = (DevicePairResponse);
+
+export type LoginWithBadgeData = {
+    requestBody: BadgeLoginRequest;
+};
+
+export type LoginWithBadgeResponse = (BadgeLoginResponse);
+
 export type RefreshAccessTokenResponse = ({
     [key: string]: string;
 });
@@ -1229,6 +1281,12 @@ export type DeleteMachineData = {
 };
 
 export type DeleteMachineResponse = (Message);
+
+export type RegenerateMachinePairCodeData = {
+    machineId: number;
+};
+
+export type RegenerateMachinePairCodeResponse = (MachinePairCode);
 
 export type ReadMaterialsData = {
     limit?: number;

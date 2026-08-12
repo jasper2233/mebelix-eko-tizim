@@ -1,3 +1,6 @@
+import secrets
+from datetime import UTC, datetime, timedelta
+
 from fastapi import APIRouter, Request
 
 from app.api.deps import AdminUser, CurrentUser, SessionDep, client_ip
@@ -5,9 +8,13 @@ from app.core.exceptions import NotFoundException
 from app.crud import crud_machines, crud_posts, log_action
 from app.models import Machine
 from app.schemas.common import Message
-from app.schemas.machines import MachineCreate, MachineRead, MachineUpdate
+from app.schemas.machines import MachineCreate, MachinePairCode, MachineRead, MachineUpdate
 
 router = APIRouter(prefix="/machines", tags=["machines"])
+
+# Bridge-agent pairing bilan bir xil: I/L/O/0/1 yo'q — kodni og'zaki aytganda adashtirmaydi
+_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+PAIR_TTL = timedelta(minutes=15)
 
 
 @router.get("/", response_model=list[MachineRead], operation_id="read_machines")
@@ -66,6 +73,39 @@ async def update_machine(
     await db.commit()
     await db.refresh(machine)
     return machine
+
+
+@router.post("/{machine_id}/pair-code", response_model=MachinePairCode, operation_id="regenerate_machine_pair_code")
+async def regenerate_machine_pair_code(
+    db: SessionDep, current_user: AdminUser, machine_id: int, request: Request
+) -> MachinePairCode:
+    """Monoblokni shu stanokka bog'lash uchun bir martalik kod (15 daqiqa).
+
+    Eski qurilma tokeni bekor bo'ladi: monoblok almashtirilganda eskisi keyingi
+    kirishda rad etiladi. Bog'langan qurilmada operator beyjik bilan kiradi.
+    """
+    machine = await crud_machines.get_or_404(db, "Stanok topilmadi.", id=machine_id)
+    machine.token_hash = None
+    machine.pair_code = "".join(secrets.choice(_CODE_ALPHABET) for _ in range(8))
+    machine.pair_expires_at = datetime.now(UTC) + PAIR_TTL
+    log_action(
+        db,
+        module="machines",
+        action="pair_code_issued",
+        user_id=current_user.id,
+        entity_type="machine",
+        entity_id=machine.id,
+        message=f"Terminal ulanish kodi berildi: {machine.name} (eski qurilma bekor)",
+        ip=client_ip(request),
+    )
+    await db.commit()
+    await db.refresh(machine)
+    return MachinePairCode(
+        machine_id=machine.id,
+        machine_name=machine.name,
+        code=machine.pair_code or "",
+        expires_at=machine.pair_expires_at or datetime.now(UTC),
+    )
 
 
 @router.delete("/{machine_id}", response_model=Message, operation_id="delete_machine")

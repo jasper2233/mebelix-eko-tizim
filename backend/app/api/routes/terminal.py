@@ -28,7 +28,6 @@ from app.models import (
 )
 from app.models.enums import (
     POST_ROLES,
-    EmployeeStatus,
     FileKind,
     OrderPriority,
     OrderStatus,
@@ -59,8 +58,10 @@ from app.schemas.terminal import (
 from app.services.scanning import (
     ScanRejected,
     active_session,
+    badge_employee,
     finalize_scan,
     latest_active_session,
+    open_badge_session,
     record_scan,
     resolve_terminal,
 )
@@ -123,30 +124,11 @@ async def start_terminal_session(
 ) -> SessionRead:
     """Badge scan opens the shift (TZ 8.2.2)."""
     machine, post = ctx
-    employee = (
-        await db.execute(
-            select(Employee).where(
-                Employee.badge_id == body.badge_id.strip(),
-                Employee.is_deleted == False,  # noqa: E712
-            )
-        )
-    ).scalar_one_or_none()
-    if employee is None:
-        raise _scan_error("E006", "Beyjik topilmadi.")
-    if employee.status != EmployeeStatus.ACTIVE:
-        raise _scan_error("E006", "Beyjik nofaol. Adminga murojaat qiling.")
-    if post.id not in employee.assigned_post_ids:
-        raise _scan_error("E006", f"{employee.full_name} bu postda ishlay olmaydi ({post.name}).")
-
-    # One active session per terminal: a new badge closes the previous shift.
-    previous = await latest_active_session(db, machine.id)
-    if previous is not None:
-        previous.status = SessionStatus.ENDED
-        previous.ended_at = datetime.now(UTC)
-
-    session = WorkSession(employee_id=employee.id, user_id=user.id, machine_id=machine.id, post_id=post.id)
-    db.add(session)
-    await db.flush()
+    try:
+        employee = await badge_employee(db, body.badge_id, post)
+    except ScanRejected as exc:
+        raise _scan_error(exc.code, exc.message) from None
+    session = await open_badge_session(db, user=user, machine=machine, post=post, employee=employee)
     log_action(
         db,
         module="sessions",

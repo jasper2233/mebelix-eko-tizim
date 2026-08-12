@@ -159,6 +159,31 @@ tushishi mumkin). Employee mirror avto-yaratiladi (`badge_id = "user-<id>"`) —
 attributsiyasi beyjiksiz saqlanadi. **Login = smena**: sessiya avtomatik ochiladi/qayta ochiladi
 (beyjik scan talab qilinmaydi); TERMINAL qurilma akkauntida esa avvalgidek beyjik shart (E005/E006).
 
+Bitta istisno bilan: agar stanokda smena HAQIQIY beyjik bilan ochilgan bo'lsa (`is_mirror_badge`
+false, ya'ni `badge_id` `user-` bilan boshlanmaydi), operator hisobi uni egallab olmaydi. Beyjik
+bilan kirishda (§3.0.1) hisob umumiy — stanokniki, ish esa beyjik egasiniki; egallab olsak skanlar
+va ish haqi ko'zgu hodimga yozilardi.
+
+### 3.0.1 Beyjik bilan kirish (sexda parol yo'q)
+
+Operator login/parol termaydi. Monoblok bir marta stanokka bog'lanadi, keyin beyjik skani kirishga
+aylanadi:
+
+| Qadam | Kim | Nima |
+|---|---|---|
+| 1 | Admin | Stanoklar sahifasida "Ulanish kodi" — 8 belgili kod, 15 daqiqa, bir marta ishlaydi |
+| 2 | O'rnatuvchi | Monoblok kirish sahifasida "Terminalni bog'lash" → kod → doimiy qurilma tokeni (`localStorage["mx.device"]`) |
+| 3 | Operator | Beyjikni skanerlaydi → kiradi, smena ochiladi |
+
+**Ikki omil, ikkalasi ham kerak.** Beyjik QR qog'ozda — uni suratga olsa bo'ladi, ya'ni yolg'iz
+o'zi parol bo'la olmaydi. Qurilma tokeni beyjikni SEXGA bog'laydi: bog'lanmagan brauzerda beyjik
+hech nima ochmaydi. Token sha256 xesh ko'rinishida `machine.token_hash` da, muddatsiz; yangi
+ulanish kodi eskisini bekor qiladi (monoblok almashtirilganda).
+
+Qurilma qaysi hisob nomidan ishlashini `login._terminal_user` tanlaydi: shu stanokka biriktirilgan
+hisob → TERMINAL roli → post roli. **Hisob KIM ishlayotganini bildirmaydi** — u beyjik ochgan
+`work_session` da; ish haqi va mahsuldorlik o'sha yerdan hisoblanadi.
+
 ### 3.1 Yig'ma buyum (stolyarkada bir nechta detal birikadi)
 
 Stolyarkada mayda detallar asosiy detalga yopishtirilib **yaxlit buyum** bo'ladi. Texnolog

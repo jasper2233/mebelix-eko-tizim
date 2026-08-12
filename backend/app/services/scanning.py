@@ -104,6 +104,11 @@ async def resolve_terminal(db: AsyncSession, user: User) -> tuple[Machine, Post]
     return machine, post
 
 
+def is_mirror_badge(badge_id: str) -> bool:
+    """`user-N` — beyjiksiz operator hisobining ko'zgusi, jismoniy beyjik EMAS."""
+    return badge_id.startswith("user-")
+
+
 async def operator_employee(db: AsyncSession, user: User, post_id: int) -> Employee:
     """Auto-provisioned Employee mirror for operator-role users, so scans, sessions and
     productivity reports keep their employee attribution without a badge."""
@@ -125,6 +130,39 @@ async def operator_employee(db: AsyncSession, user: User, post_id: int) -> Emplo
     elif post_id not in employee.assigned_post_ids:
         employee.assigned_post_ids = [*employee.assigned_post_ids, post_id]
     return employee
+
+
+async def badge_employee(db: AsyncSession, badge_id: str, post: Post) -> Employee:
+    """Beyjik QR -> hodim. Postga biriktirilmagan hodim shu terminalda ishlay olmaydi."""
+    employee = (
+        await db.execute(
+            select(Employee).where(
+                Employee.badge_id == badge_id.strip(),
+                Employee.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).scalar_one_or_none()
+    if employee is None:
+        raise ScanRejected("E006", "Beyjik topilmadi.")
+    if employee.status != EmployeeStatus.ACTIVE:
+        raise ScanRejected("E006", "Beyjik nofaol. Adminga murojaat qiling.")
+    if post.id not in employee.assigned_post_ids:
+        raise ScanRejected("E006", f"{employee.full_name} bu postda ishlay olmaydi ({post.name}).")
+    return employee
+
+
+async def open_badge_session(
+    db: AsyncSession, *, user: User, machine: Machine, post: Post, employee: Employee
+) -> WorkSession:
+    """Beyjik smenani ochadi (TZ 8.2.2). Stanokda bitta ochiq smena: yangi beyjik eskisini yopadi."""
+    previous = await latest_active_session(db, machine.id)
+    if previous is not None:
+        previous.status = SessionStatus.ENDED
+        previous.ended_at = datetime.now(UTC)
+    session = WorkSession(employee_id=employee.id, user_id=user.id, machine_id=machine.id, post_id=post.id)
+    db.add(session)
+    await db.flush()
+    return session
 
 
 async def latest_active_session(db: AsyncSession, machine_id: int) -> WorkSession | None:
@@ -172,6 +210,12 @@ async def active_session(db: AsyncSession, user: User, machine: Machine) -> Work
     if POST_ROLES.get(UserRole(user.role)) is not None:
         employee = await operator_employee(db, user, machine.post_id)
         if session is not None and session.employee_id != employee.id:
+            # ...LEKIN haqiqiy beyjik ochgan smena egallab olinmaydi. Beyjik bilan
+            # kirishda hisob umumiy (stanokniki), ish esa beyjik egasiniki: ko'zguga
+            # o'tkazib yuborsak skanlar va ish haqi boshqa odamga yozilardi.
+            holder = await db.get(Employee, session.employee_id)
+            if holder is not None and not is_mirror_badge(holder.badge_id):
+                return session
             session.status = SessionStatus.ENDED
             session.ended_at = datetime.now(UTC)
             session = None

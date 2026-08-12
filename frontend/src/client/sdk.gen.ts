@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { ReadAuditLogsData, ReadAuditLogsResponse, ReadBridgeAgentsResponse, CreateBridgeAgentData, CreateBridgeAgentResponse, UpdateBridgeAgentData, UpdateBridgeAgentResponse, DeleteBridgeAgentData, DeleteBridgeAgentResponse, RegenerateBridgeCodeData, RegenerateBridgeCodeResponse, PairBridgeAgentData, PairBridgeAgentResponse, BridgeScanData, BridgeScanResponse, ReadClientsData, ReadClientsResponse, CreateClientData, CreateClientResponse, ReadClientData, ReadClientResponse, UpdateClientData, UpdateClientResponse, DeleteClientData, DeleteClientResponse, ReadEmployeesData, ReadEmployeesResponse, CreateEmployeeData, CreateEmployeeResponse, ReadEmployeeData, ReadEmployeeResponse, UpdateEmployeeData, UpdateEmployeeResponse, DeleteEmployeeData, DeleteEmployeeResponse, RegenerateBadgeData, RegenerateBadgeResponse, HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, RefreshAccessTokenResponse, LogoutResponse, ReadMachinesResponse, CreateMachineData, CreateMachineResponse, ReadMachineData, ReadMachineResponse, UpdateMachineData, UpdateMachineResponse, DeleteMachineData, DeleteMachineResponse, ReadMaterialsData, ReadMaterialsResponse, CreateMaterialData, CreateMaterialResponse, UpdateMaterialData, UpdateMaterialResponse, DeleteMaterialData, DeleteMaterialResponse, ReadOmborOrderData, ReadOmborOrderResponse, AcceptIntoOmborData, AcceptIntoOmborResponse, ShipPachkaData, ShipPachkaResponse, DeliverOmborOrderData, DeliverOmborOrderResponse, CreateOrderData, CreateOrderResponse, ReadOrdersData, ReadOrdersResponse, ReadOrderStatusCountsResponse, ReadOrderData, ReadOrderResponse, UpdateOrderData, UpdateOrderResponse, SaveOrderSurveyData, SaveOrderSurveyResponse, UploadRoomPhotoData, UploadRoomPhotoResponse, DeleteRoomPhotoData, DeleteRoomPhotoResponse, CancelOrderData, CancelOrderResponse, DeliverOrderData, DeliverOrderResponse, ReadOrderMatrixData, ReadOrderMatrixResponse, EditOrderMatrixData, EditOrderMatrixResponse, AssignOrderMachinesData, AssignOrderMachinesResponse, ConfirmOrderData, ConfirmOrderResponse, StartOrderProductionData, StartOrderProductionResponse, UploadOrderProjectData, UploadOrderProjectResponse, DownloadOrderScxZipData, DownloadOrderScxZipResponse, RegenerateOrderScxData, RegenerateOrderScxResponse, DownloadOrderFileData, DownloadOrderFileResponse, ReadOrderCutmapData, ReadOrderCutmapResponse, ReadUpakovkaOrderData, ReadUpakovkaOrderResponse, CreatePachkaData, CreatePachkaResponse, ScanIntoPachkaData, ScanIntoPachkaResponse, RemoveFromPachkaData, RemoveFromPachkaResponse, ClosePachkaData, ClosePachkaResponse, ReadPostsResponse, UpdatePostData, UpdatePostResponse, ReportProductivityData, ReportProductivityResponse, ReportOrdersData, ReportOrdersResponse, ReportMaterialsData, ReportMaterialsResponse, ReportDashboardResponse, RecordScanData, RecordScanResponse, CancelScanData, CancelScanResponse, ReadTabloMatrixResponse, ReadTabloOrderData, ReadTabloOrderResponse, ReadTerminalContextResponse, StartTerminalSessionData, StartTerminalSessionResponse, EndTerminalSessionResponse, ReadTerminalOrdersResponse, ResolveTerminalQrData, ResolveTerminalQrResponse, ReadTerminalKromkaData, ReadTerminalKromkaResponse, ReadTerminalPrisadkaData, ReadTerminalPrisadkaResponse, ReadTerminalCutmapData, ReadTerminalCutmapResponse, ReadTerminalPostQueueData, ReadTerminalPostQueueResponse, PrintInstanceLabelData, PrintInstanceLabelResponse, CancelInstanceLabelData, CancelInstanceLabelResponse, RenderInstanceLabelData, RenderInstanceLabelResponse, DownloadTerminalFileData, DownloadTerminalFileResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
+import type { ReadAuditLogsData, ReadAuditLogsResponse, ReadBridgeAgentsResponse, CreateBridgeAgentData, CreateBridgeAgentResponse, UpdateBridgeAgentData, UpdateBridgeAgentResponse, DeleteBridgeAgentData, DeleteBridgeAgentResponse, RegenerateBridgeCodeData, RegenerateBridgeCodeResponse, PairBridgeAgentData, PairBridgeAgentResponse, BridgeScanData, BridgeScanResponse, ReadClientsData, ReadClientsResponse, CreateClientData, CreateClientResponse, ReadClientData, ReadClientResponse, UpdateClientData, UpdateClientResponse, DeleteClientData, DeleteClientResponse, ReadEmployeesData, ReadEmployeesResponse, CreateEmployeeData, CreateEmployeeResponse, ReadEmployeeData, ReadEmployeeResponse, UpdateEmployeeData, UpdateEmployeeResponse, DeleteEmployeeData, DeleteEmployeeResponse, RegenerateBadgeData, RegenerateBadgeResponse, HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, PairTerminalDeviceData, PairTerminalDeviceResponse, LoginWithBadgeData, LoginWithBadgeResponse, RefreshAccessTokenResponse, LogoutResponse, ReadMachinesResponse, CreateMachineData, CreateMachineResponse, ReadMachineData, ReadMachineResponse, UpdateMachineData, UpdateMachineResponse, DeleteMachineData, DeleteMachineResponse, RegenerateMachinePairCodeData, RegenerateMachinePairCodeResponse, ReadMaterialsData, ReadMaterialsResponse, CreateMaterialData, CreateMaterialResponse, UpdateMaterialData, UpdateMaterialResponse, DeleteMaterialData, DeleteMaterialResponse, ReadOmborOrderData, ReadOmborOrderResponse, AcceptIntoOmborData, AcceptIntoOmborResponse, ShipPachkaData, ShipPachkaResponse, DeliverOmborOrderData, DeliverOmborOrderResponse, CreateOrderData, CreateOrderResponse, ReadOrdersData, ReadOrdersResponse, ReadOrderStatusCountsResponse, ReadOrderData, ReadOrderResponse, UpdateOrderData, UpdateOrderResponse, SaveOrderSurveyData, SaveOrderSurveyResponse, UploadRoomPhotoData, UploadRoomPhotoResponse, DeleteRoomPhotoData, DeleteRoomPhotoResponse, CancelOrderData, CancelOrderResponse, DeliverOrderData, DeliverOrderResponse, ReadOrderMatrixData, ReadOrderMatrixResponse, EditOrderMatrixData, EditOrderMatrixResponse, AssignOrderMachinesData, AssignOrderMachinesResponse, ConfirmOrderData, ConfirmOrderResponse, StartOrderProductionData, StartOrderProductionResponse, UploadOrderProjectData, UploadOrderProjectResponse, DownloadOrderScxZipData, DownloadOrderScxZipResponse, RegenerateOrderScxData, RegenerateOrderScxResponse, DownloadOrderFileData, DownloadOrderFileResponse, ReadOrderCutmapData, ReadOrderCutmapResponse, ReadUpakovkaOrderData, ReadUpakovkaOrderResponse, CreatePachkaData, CreatePachkaResponse, ScanIntoPachkaData, ScanIntoPachkaResponse, RemoveFromPachkaData, RemoveFromPachkaResponse, ClosePachkaData, ClosePachkaResponse, ReadPostsResponse, UpdatePostData, UpdatePostResponse, ReportProductivityData, ReportProductivityResponse, ReportOrdersData, ReportOrdersResponse, ReportMaterialsData, ReportMaterialsResponse, ReportDashboardResponse, RecordScanData, RecordScanResponse, CancelScanData, CancelScanResponse, ReadTabloMatrixResponse, ReadTabloOrderData, ReadTabloOrderResponse, ReadTerminalContextResponse, StartTerminalSessionData, StartTerminalSessionResponse, EndTerminalSessionResponse, ReadTerminalOrdersResponse, ResolveTerminalQrData, ResolveTerminalQrResponse, ReadTerminalKromkaData, ReadTerminalKromkaResponse, ReadTerminalPrisadkaData, ReadTerminalPrisadkaResponse, ReadTerminalCutmapData, ReadTerminalCutmapResponse, ReadTerminalPostQueueData, ReadTerminalPostQueueResponse, PrintInstanceLabelData, PrintInstanceLabelResponse, CancelInstanceLabelData, CancelInstanceLabelResponse, RenderInstanceLabelData, RenderInstanceLabelResponse, DownloadTerminalFileData, DownloadTerminalFileResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
 
 export class AuditService {
     /**
@@ -482,6 +482,52 @@ export class LoginService {
     }
     
     /**
+     * Pair Terminal Device
+     * OCHIQ endpoint: monoblok bir martalik kodni doimiy qurilma tokeniga almashtiradi.
+     *
+     * Atomik UPDATE — bitta kod ikki qurilmaga tushmaydi. Kod noto'g'ri yoki eskirgani
+     * bir xil xato bilan qaytadi (kod bor-yo'qligi oshkor bo'lmaydi).
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns DevicePairResponse Successful Response
+     * @throws ApiError
+     */
+    public static pairTerminalDevice(data: PairTerminalDeviceData): CancelablePromise<PairTerminalDeviceResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/login/device',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Login With Badge
+     * Sexdagi kirish: bog'langan qurilma + beyjik skani, parolsiz.
+     *
+     * Ikki omil: token qurilmani (sexda turibdi), beyjik hodimni tasdiqlaydi. Beyjik
+     * QR qog'ozda — yolg'iz o'zi hech qayerdan kira olmaydi.
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns BadgeLoginResponse Successful Response
+     * @throws ApiError
+     */
+    public static loginWithBadge(data: LoginWithBadgeData): CancelablePromise<LoginWithBadgeResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/login/badge',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
      * Refresh Access Token
      * @returns string Successful Response
      * @throws ApiError
@@ -594,6 +640,30 @@ export class MachinesService {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/machines/{machine_id}',
+            path: {
+                machine_id: data.machineId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Regenerate Machine Pair Code
+     * Monoblokni shu stanokka bog'lash uchun bir martalik kod (15 daqiqa).
+     *
+     * Eski qurilma tokeni bekor bo'ladi: monoblok almashtirilganda eskisi keyingi
+     * kirishda rad etiladi. Bog'langan qurilmada operator beyjik bilan kiradi.
+     * @param data The data for the request.
+     * @param data.machineId
+     * @returns MachinePairCode Successful Response
+     * @throws ApiError
+     */
+    public static regenerateMachinePairCode(data: RegenerateMachinePairCodeData): CancelablePromise<RegenerateMachinePairCodeResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/machines/{machine_id}/pair-code',
             path: {
                 machine_id: data.machineId
             },
