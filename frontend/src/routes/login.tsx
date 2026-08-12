@@ -71,7 +71,17 @@ function Login() {
 
   const onSubmit = (data: FormData) => {
     if (loginMutation.isPending) return
-    loginMutation.mutate(data)
+    // Maydon IKKI xil qiymat qabul qiladi: foydalanuvchi nomi yoki telefon.
+    // Shuning uchun bu yerda yozish paytida formatlash YO'Q — `formatUzPhone`
+    // harflarni tashlab yuborardi va "admin" deb yozib bo'lmasdi.
+    // Faqat yuborishdan oldin tozalaymiz: qiymat telefonga o'xshasa (faqat
+    // +, raqam, bo'shliq, tire) ajratgichlar olib tashlanadi — shunda
+    // "+998 90 123-45-67" ko'rinishida joylashtirilgan raqam ham ishlaydi.
+    // Foydalanuvchi nomiga tegilmaydi: unda boshqa belgilar bor.
+    const username = /^\+?[\d\s-]+$/.test(data.username.trim())
+      ? data.username.replace(/[\s-]+/g, "")
+      : data.username.trim()
+    loginMutation.mutate({ ...data, username })
   }
 
   return (
@@ -134,7 +144,7 @@ function Login() {
                   <FormLabel>Foydalanuvchi nomi yoki telefon</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="foydalanuvchi nomi yoki +998901234567"
+                      placeholder="foydalanuvchi nomi yoki +998 90 123-45-67"
                       type="text"
                       autoComplete="username"
                       // Terminal va ofisda har kirishda ortiqcha bosish bo'lmasin
