@@ -300,26 +300,21 @@ export function PrisadkaView({
                       {formatSize(p.length, p.width, p.thickness)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {/* Uch holat, bitta joyda. O'rtadagisi ilgari yashirin edi:
-                          badge "Bajarilmagan" der, ostida esa "chek chiqarilgan"
-                          yozuvi turardi — ikkalasi bir-biriga zid o'qilardi.
-                          Odatda roverda chek chiqarish skan ham yozadi, ya'ni
-                          bu holat skan rad etilgandagina qoladi. */}
+                      {/* Holat IKKILIK — boshqa hamma ekranda ham shunday
+                          (kromka, post navbati, kesish xaritasi). `label_printed`
+                          holat emas: u NUSXANING bayrog'i va arradan kelgan
+                          detalda allaqachon rost bo'ladi, ya'ni "chek chiqarilgan"
+                          deb yozish oddiy kutayotgan qatorlarga ham tegib,
+                          hech qanday ma'no bermasdi. */}
                       <span
                         className={cn(
                           "rounded-md px-2.5 py-1 text-sm font-bold",
                           i.done
                             ? "bg-green-600 text-white"
-                            : i.label_printed
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-muted text-muted-foreground",
+                            : "bg-muted text-muted-foreground",
                         )}
                       >
-                        {i.done
-                          ? "✓ Bajarildi"
-                          : i.label_printed
-                            ? "Chek chiqarilgan"
-                            : "Bajarilmagan"}
+                        {i.done ? "✓ Bajarildi" : "Bajarilmagan"}
                       </span>
                     </td>
                   </tr>
