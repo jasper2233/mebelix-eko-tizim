@@ -8,7 +8,7 @@ qoladi (`post.id` tegilmaydi, FK'lar buzilmaydi).
 turini o'zgartirish shart emas — qatorni UPDATE qilish yetarli.
 
 Revision ID: f2a08c47b6d1
-Revises: c9d4e2f81a70
+Revises: d5b71c0a9e34
 """
 
 from collections.abc import Sequence
@@ -16,7 +16,7 @@ from collections.abc import Sequence
 from alembic import op
 
 revision: str = "f2a08c47b6d1"
-down_revision: str | None = "c9d4e2f81a70"
+down_revision: str | None = "d5b71c0a9e34"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

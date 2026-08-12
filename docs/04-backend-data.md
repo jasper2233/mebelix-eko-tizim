@@ -417,7 +417,9 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 | 20 | `a3f8d61c9b04` | `a3f8d61c9b04_ombor_post.py` | **TMO posti** (`order_index` 10, unit `piece`; `f2a08c47b6d1` da `OMBOR` dan nomlandi) — marshrutning ENG OXIRGI qadami, har detalda. Qadoqsiz buyurtmada omborchi har detalni skanerlab qabul qiladi, qadoqlanganda qadoq QR'i ichidagi hammasini birdan yopadi |
 | 21 | `c9d4e2f81a70` | `c9d4e2f81a70_assembly_parent.py` | **Yig'ma buyum**: `part.assembly_parent_id` FK → `part.id` (+ `ix_part_assembly_parent_id`) va `scan.parent_scan_id` FK → `scan.id` (+ `ix_scan_parent_scan_id`). Mayda detal stolyarkada asosiy detalga yopishtiriladi; asosiy detal skani hosila skanlarni yozadi va bekor qilinganda birga qaytaradi (09-mes-domain.md §3.1) |
 
-| 22 | `f2a08c47b6d1` | `f2a08c47b6d1_ombor_post_tmo_deb_nomlandi.py` | **`OMBOR` → `TMO`** (Tayyor Mahsulot Ombori) — kelishilgan atama. Faqat NOM: `UPDATE post SET code='TMO', name='TMO'`; `post.id` tegilmaydi, marshrut/skan/hisoblagichlar o'z joyida qoladi |
+| 22 | `d5b71c0a9e34` | `d5b71c0a9e34_machine_device_pairing.py` | **Terminal qurilmasini bog'lash** — `machine.pair_code(8)`, `pair_expires_at`, `token_hash(64)`. **BEKOR QILINGAN**: `b83e1f7a25c9` ustunlarni olib tashlaydi. Fayl zanjirda qoladi, chunki u tarqalib bo'lgan — o'chirilsa alembic o'z holatini topa olmasdi ("Can't locate revision") |
+| 23 | `f2a08c47b6d1` | `f2a08c47b6d1_ombor_post_tmo_deb_nomlandi.py` | **`OMBOR` → `TMO`** (Tayyor Mahsulot Ombori) — kelishilgan atama. Faqat NOM: `UPDATE post SET code='TMO', name='TMO'`; `post.id` tegilmaydi, marshrut/skan/hisoblagichlar o'z joyida qoladi |
+| 24 | `b83e1f7a25c9` | `b83e1f7a25c9_qurilma_boglash_olib_tashlandi.py` | **Qurilma bog'lash olib tashlandi**: `machine` dagi uchta ustun va ikkita indeks `DROP ... IF EXISTS` bilan. Sexdagi kirish uchun faqat beyjik skani kerak (09-mes-domain.md §3.0.1) |
 
 Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kind=DOCUMENT` + `meta` JSONB bilan ishlatiladi (1.4.1-bo'lim).
 
