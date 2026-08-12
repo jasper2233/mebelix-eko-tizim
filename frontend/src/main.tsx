@@ -25,11 +25,14 @@ axios.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
+    // `/login/*` chetlab o'tiladi: u yerdagi 401 "sessiya eskirdi" emas, "kirish
+    // ma'lumoti noto'g'ri" degani. Refresh urinilsa, uning o'z xatosi asl
+    // xabarni bosib qolardi — beyjik skanerlagan operator "Beyjik topilmadi"
+    // o'rniga "Yangilash tokeni topilmadi" ni ko'rardi.
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      !originalRequest.url?.includes("/login/refresh") &&
-      !originalRequest.url?.includes("/login/access-token")
+      !originalRequest.url?.includes("/login/")
     ) {
       originalRequest._retry = true
       // Server sets the new access_token cookie in the response automatically.

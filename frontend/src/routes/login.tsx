@@ -1,7 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation } from "@tanstack/react-query"
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
-import { Loader2, ScanLine } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -9,6 +8,7 @@ import { z } from "zod"
 import type { Body_login_access_token as AccessToken, ApiError } from "@/client"
 import { LoginService, UsersService } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
+import { BadgePrompt } from "@/components/Common/BadgePrompt"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -72,6 +72,7 @@ function Login() {
   const navigate = useNavigate()
   const { loginMutation } = useAuth()
   const [formSchema] = useState(makeFormSchema)
+  const [showPassword, setShowPassword] = useState(false)
   // Bir nechta postga biriktirilgan hodim: server 409 bilan ro'yxat qaytaradi
   const [choice, setChoice] = useState<{
     badgeId: string
@@ -144,16 +145,13 @@ function Login() {
           onSubmit={form.handleSubmit(onSubmit)}
           className="flex flex-col gap-6"
         >
-          <div className="flex flex-col gap-1.5">
+          {/* Markazlashgan: sexdagi monoblokka kelgan odamning ko'zi markazga
+              tushadi va u yerda bitta ish turadi — beyjikni skanerlash. */}
+          <div className="flex flex-col items-center gap-1.5">
             <p className="text-2xs font-medium uppercase tracking-[0.3em] text-(--brand-gold-deep)">
               MebeliX MES
             </p>
-            <h1 className="text-3xl font-bold tracking-tight">
-              Tizimga kirish
-            </h1>
-            <p className="text-muted-foreground">
-              Sexda — beyjikni skanerlang. Ofisda — foydalanuvchi nomi va parol.
-            </p>
+            <h1 className="text-3xl font-bold tracking-tight">Kirish</h1>
             {/* Chap paneldagi o'lcham chizig'ining aks-sadosi */}
             <svg
               width="96"
@@ -188,21 +186,10 @@ function Login() {
             </svg>
           </div>
 
-          {/* Beyjik yo'li ko'rinib tursin: operator nima qilishini bilsin, ofis
-              xodimi esa buni o'ziga tegishli emasligini darhol tushunsin. Bu
-              tugma emas — skaner o'zi ishlaydi, bu yerda faqat holat ko'rinadi. */}
-          <div className="flex items-center gap-3 rounded-lg border border-dashed border-primary/40 px-4 py-3">
-            {badge.isPending ? (
-              <Loader2 className="size-6 shrink-0 animate-spin text-primary" />
-            ) : (
-              <ScanLine className="size-6 shrink-0 text-primary/70" />
-            )}
-            <p className="text-sm font-semibold">
-              {badge.isPending
-                ? "Beyjik tekshirilmoqda..."
-                : "Beyjikni skanerga tuting — parol shart emas"}
-            </p>
-          </div>
+          {/* Sahifaning ASOSIY yo'li. Kunlik kirishlarning deyarli hammasi
+              beyjik (har smena, har operator), parol esa kuniga bir-ikki ofis
+              xodimi — shuning uchun forma emas, shu birinchi turadi. */}
+          <BadgePrompt pending={badge.isPending} compact={showPassword} />
 
           {!!badgeError && (
             <div
@@ -213,67 +200,87 @@ function Login() {
             </div>
           )}
 
-          <div className="grid gap-4">
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Foydalanuvchi nomi yoki telefon</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="foydalanuvchi nomi yoki +998 90 123-45-67"
-                      type="text"
-                      autoComplete="username"
-                      // Terminal va ofisda har kirishda ortiqcha bosish bo'lmasin
-                      // (boshqa formalar ham birinchi maydonga fokus beradi)
-                      autoFocus
-                      className="h-11"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex items-center">
-                    <FormLabel>Parol</FormLabel>
-                  </div>
-                  <FormControl>
-                    <PasswordInput
-                      placeholder="Parol"
-                      className="h-11"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {loginMutation.isError && (
-              <div
-                role="alert"
-                className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
+          {/* Parol yo'li yopiq turadi, lekin YASHIRIN emas: ofis xodimi uni
+              darhol ko'radi, operator esa formani umuman o'qimaydi. Ajratgich
+              chizig'i shu ikkinchi yo'l ekanini aytadi — aks holda yozuv
+              beyjik blokining bir qismidek osilib turardi. */}
+          {!showPassword && (
+            <div className="flex flex-col items-center gap-3 border-t pt-5">
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-muted-foreground"
+                onClick={() => setShowPassword(true)}
               >
-                {extractErrorMessage(loginMutation.error as ApiError)}
-              </div>
-            )}
+                Parol bilan kirish
+              </Button>
+            </div>
+          )}
 
-            <LoadingButton
-              type="submit"
-              className="h-11 text-base"
-              loading={loginMutation.isPending}
-            >
-              Kirish
-            </LoadingButton>
-          </div>
+          {showPassword && (
+            <div className="grid gap-4">
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Foydalanuvchi nomi yoki telefon</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="foydalanuvchi nomi yoki +998 90 123-45-67"
+                        type="text"
+                        autoComplete="username"
+                        // `autoFocus` YO'Q: forma tugma bosilganda ochiladi,
+                        // fokus esa darhol tugmaga qaytib `onBlur` tekshiruvini
+                        // ishga tushirardi — foydalanuvchi bitta ham harf
+                        // yozmasdan "majburiy" xatosini ko'rardi.
+                        className="h-11"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center">
+                      <FormLabel>Parol</FormLabel>
+                    </div>
+                    <FormControl>
+                      <PasswordInput
+                        placeholder="Parol"
+                        className="h-11"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {loginMutation.isError && (
+                <div
+                  role="alert"
+                  className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
+                >
+                  {extractErrorMessage(loginMutation.error as ApiError)}
+                </div>
+              )}
+
+              <LoadingButton
+                type="submit"
+                className="h-11 text-base"
+                loading={loginMutation.isPending}
+              >
+                Kirish
+              </LoadingButton>
+            </div>
+          )}
         </form>
       </Form>
 
