@@ -12,6 +12,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import {
   Select,
   SelectContent,
@@ -136,9 +137,8 @@ export function UserFormFields({
               )}
             </FormLabel>
             <FormControl>
-              <Input
+              <PasswordInput
                 placeholder="Parol"
-                type="password"
                 {...field}
                 required={passwordRequired}
               />
@@ -163,9 +163,8 @@ export function UserFormFields({
               )}
             </FormLabel>
             <FormControl>
-              <Input
+              <PasswordInput
                 placeholder="Parol"
-                type="password"
                 {...field}
                 required={passwordRequired}
               />
