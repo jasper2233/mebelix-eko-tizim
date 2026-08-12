@@ -24,7 +24,7 @@ from app.core.security import (
 from app.core.utils.rate_limit import RateLimit, rate_limiter
 from app.core.ws import ws_manager
 from app.crud import crud_users, log_action
-from app.models import Machine, Post
+from app.models import BridgeAgent, Machine, Post
 from app.models.enums import POST_ROLES, UserRole
 from app.models.user import User
 from app.schemas.auth import (
@@ -118,6 +118,23 @@ async def pair_terminal_device(db: SessionDep, body: DevicePairRequest, request:
     ).first()
     if row is None:
         await db.rollback()
+        # Admin panelda ikkita ulanish kodi bor va ikkalasi ham 8 belgili. Printer
+        # agentiniki bu yerga terilsa "kod noto'g'ri" deyish adashtirardi — kod
+        # to'g'ri, joyi noto'g'ri. Faqat XATO yo'lida so'raladi.
+        agent = (
+            await db.execute(
+                select(BridgeAgent.name).where(
+                    BridgeAgent.pair_code == code,
+                    BridgeAgent.is_deleted == False,  # noqa: E712
+                    BridgeAgent.pair_expires_at > datetime.now(UTC),
+                )
+            )
+        ).scalar_one_or_none()
+        if agent is not None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Bu kod printer agenti uchun ({agent}). Terminal kodi Stanoklar sahifasidan olinadi.",
+            )
         raise HTTPException(status_code=400, detail="Ulanish kodi noto'g'ri yoki muddati o'tgan.")
     post = await db.get(Post, row.post_id)
     log_action(

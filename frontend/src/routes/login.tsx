@@ -214,9 +214,13 @@ function PairDevice({
           <h1 className="text-3xl font-bold tracking-tight">
             Terminalni bog'lash
           </h1>
+          {/* Qaysi sahifa ekani ATAYLAB yozilgan: admin panelda ikkita ulanish
+              kodi bor (Stanoklar — terminal, Printer agentlar — printerli
+              kompyuter) va ikkalasi ham 8 belgili. */}
           <p className="text-muted-foreground">
-            Admin panelda stanok uchun ulanish kodini oling va shu yerga tering.
-            Bir marta — shundan keyin bu monoblokda beyjik bilan kiriladi.
+            Admin panelning <b>Stanoklar</b> sahifasida shu stanok qatoridagi{" "}
+            <b>Ulanish kodi</b> tugmasini bosing va kodni bu yerga tering. Bir
+            marta — shundan keyin monoblokda beyjik bilan kiriladi.
           </p>
         </div>
 

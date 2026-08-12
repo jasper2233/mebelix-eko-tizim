@@ -175,7 +175,7 @@ Ro'yxat sahifalarida umumiy naqsh: qidiruv maydoni `Common/SearchInput`, so'rov 
 
 Sahifa uchta ko'rinishga bo'lingan (`View = "badge" | "password" | "pair"`), boshlang'ich ko'rinishni `lib/device.pairedDevice()` hal qiladi — sexdagi bog'langan monoblok beyjikdan, ofis kompyuteri paroldan boshlaydi:
 - **`BadgeLogin`** — sexdagi kirish. Ekranda bitta ish bor: beyjikni skanerlash. Input `sr-only` (skaner klaviatura kabi yozadi, operator hech nima termaydi) va `useScanFocus` bilan doim fokusda — terminaldagi bilan bir xil qoida. Enter'da `LoginService.loginWithBadge({badge_id, device_token})`, muvaffaqiyatda `/` ga. Pastda "Parol bilan kirish" — ofis xodimi shu monoblokka kirishi kerak bo'lganda.
-- **`PairDevice`** — o'rnatishda bir marta: admin bergan 8 belgili kod → `LoginService.pairTerminalDevice` → token `localStorage["mx.device"]` ga (`savePairedDevice`).
+- **`PairDevice`** — o'rnatishda bir marta: Stanoklar sahifasidagi 8 belgili kod → `LoginService.pairTerminalDevice` → token `localStorage["mx.device"]` ga (`savePairedDevice`). Matn qaysi sahifa ekanini ATAYLAB aytadi: admin panelda ikkita ulanish kodi bor (Stanoklar va Printer agentlar), ikkalasi ham 8 belgili.
 - **`PasswordLogin`** — avvalgi forma; pastida bog'langan qurilmada "Beyjik bilan kirish", bog'lanmaganda "Terminalni bog'lash".
 
 `frontend/src/lib/device.ts` — qurilma tokeni saqlagichi (`pairedDevice`/`savePairedDevice`/`clearPairedDevice`). `localStorage`, sessiya emas: token qurilmaga tegishli va monoblok o'chib yonganda ham qolishi kerak. Buzilgan yozuv "bog'lanmagan qurilma" deb o'qiladi.

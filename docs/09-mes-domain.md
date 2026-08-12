@@ -184,7 +184,7 @@ aylanadi:
 
 | Qadam | Kim | Nima |
 |---|---|---|
-| 1 | Admin | Stanoklar sahifasida "Ulanish kodi" — 8 belgili kod, 15 daqiqa, bir marta ishlaydi |
+| 1 | Admin | **Stanoklar** sahifasi → stanok qatori → "Terminal" ustuni → "Ulanish kodi": 8 belgili kod, 15 daqiqa, bir marta ishlaydi |
 | 2 | O'rnatuvchi | Monoblok kirish sahifasida "Terminalni bog'lash" → kod → doimiy qurilma tokeni (`localStorage["mx.device"]`) |
 | 3 | Operator | Beyjikni skanerlaydi → kiradi, smena ochiladi |
 
@@ -196,6 +196,12 @@ ulanish kodi eskisini bekor qiladi (monoblok almashtirilganda).
 Qurilma qaysi hisob nomidan ishlashini `login._terminal_user` tanlaydi: shu stanokka biriktirilgan
 hisob → TERMINAL roli → post roli. **Hisob KIM ishlayotganini bildirmaydi** — u beyjik ochgan
 `work_session` da; ish haqi va mahsuldorlik o'sha yerdan hisoblanadi.
+
+**Ikkita ulanish kodi bir-biriga o'xshaydi:** Stanoklar (terminal monoblogi) va Printer agentlar
+(printerli kompyuter) — ikkalasi ham 8 belgili, bir alifbodan. Shuning uchun `/login/device`
+XATO yo'lida kodni bridge-agent kodlari bilan ham solishtiradi va aniq aytadi: "Bu kod printer
+agenti uchun (<nom>). Terminal kodi Stanoklar sahifasidan olinadi." Faqat SELECT — agentning
+kodi bu yerda sarflanmaydi.
 
 ### 3.1 Yig'ma buyum (stolyarkada bir nechta detal birikadi)
 
