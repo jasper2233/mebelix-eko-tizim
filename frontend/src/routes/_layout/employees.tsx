@@ -521,7 +521,8 @@ function BadgeDialog({
       <DialogContent className="print-only max-w-xs text-center">
         <DialogHeader>
           <DialogTitle>{emp.full_name}</DialogTitle>
-          <DialogDescription>
+          {/* Bu ADMINGA ko'rsatma — beyjikning o'ziga bosilmaydi */}
+          <DialogDescription className="print-hide">
             Beyjik QR — chop etib hodimga bering
           </DialogDescription>
         </DialogHeader>

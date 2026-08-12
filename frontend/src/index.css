@@ -151,20 +151,36 @@
   }
 
   /* Beyjik chop etish: dialogda "Chop etish" bosilganda ortidagi hodimlar
-     jadvali ham chiqib ketardi. `.print-only` bo'lsa — faqat o'sha dialog. */
-  body:has(.print-only) > *:not(:has(.print-only)) {
+     jadvali ham chiqib ketardi. `.print-only` bo'lsa — faqat o'sha dialog.
+     `:not(.print-only)` SHART: Radix dialogni to'g'ridan-to'g'ri `body` bolasi
+     qilib chizadi va klass o'sha elementning O'ZIDA turadi. `:has()` esa faqat
+     ichkariga qaraydi — element o'zini o'zi ichiga olmaydi, natijada dialog
+     ham yashirinib, qog'oz butunlay bo'sh chiqardi. */
+  body:has(.print-only) > *:not(:has(.print-only)):not(.print-only) {
     display: none !important;
   }
   [data-slot="dialog-overlay"],
   .print-only [data-slot="dialog-close"] {
     display: none !important;
   }
+  /* Beyjikning qog'ozdagi o'lchami: 80mm — odatdagi beyjik cho'ntagiga tushadi
+     va A4 dan qirqib olinadi. Kenglik cheklanmasa dialog butun sahifaga
+     yoyilib, ism chap burchakda, QR o'rtada qolib ketardi. */
   .print-only {
     position: static !important;
+    width: 80mm !important;
     max-width: none !important;
+    margin: 10mm auto !important;
+    /* `translate` ALOHIDA yozilishi shart: Tailwind v4 markazlashni
+       `translate: -50% -50%` bilan beradi, uni `transform: none` qaytarmaydi —
+       beyjik yarim o'lchamga siljib, qog'oz chetidan chiqib ketardi. */
     transform: none !important;
+    translate: none !important;
     border: 0 !important;
     box-shadow: none !important;
+  }
+  .print-only [data-slot="dialog-header"] {
+    text-align: center !important;
   }
 }
 
