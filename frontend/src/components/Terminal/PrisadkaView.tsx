@@ -190,7 +190,7 @@ export function PrisadkaView({
             <table className="w-full text-base">
               <thead className="sticky top-0 z-10 bg-muted/80 text-left text-xs uppercase tracking-wider text-muted-foreground backdrop-blur">
                 <tr>
-                  <th className="px-4 py-2.5">Nusxa ID</th>
+                  <th className="px-4 py-2.5">Detal ID</th>
                   <th className="px-4 py-2.5">Nomi</th>
                   <th className="px-4 py-2.5">O'lchami</th>
                   <th className="px-4 py-2.5 text-right">Holat</th>
@@ -213,13 +213,14 @@ export function PrisadkaView({
                   >
                     <td className="num px-4 py-3 font-semibold">
                       {i.qr_text}
-                      {/* Jarayon roverdan boshlanadi — chekni shu yerda operator chiqaradi */}
+                      {/* Chek qayerda chiqadi. Ilgari bu yerda printer ikonkasi
+                          turardi: u tugmaga o'xshardi-yu bosilmasdi (sensorli
+                          ekranda tuzoq), qolaversa rover ro'yxatida deyarli hamma
+                          qatorda bir xil ikonka takrorlanardi. Chop etish amali
+                          chap ustundagi katta tugmada. */}
                       {!p.arra_route && (
-                        <span
-                          title="Jarayon roverdan boshlanadi — chek shu yerda chiqariladi"
-                          className="ml-2 inline-flex rounded bg-blue-100 p-1 align-middle text-blue-700"
-                        >
-                          <Printer className="size-4" />
+                        <span className="ml-2 text-sm font-normal text-muted-foreground">
+                          chek shu yerda
                         </span>
                       )}
                     </td>

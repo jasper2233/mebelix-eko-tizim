@@ -1003,7 +1003,7 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     # bo'ladi — bu yerda faqat avto-skan o'tkazib yuboriladi. Ilgari himoyasiz edi
     # va chop etish so'rovi 500 bilan tugardi.
     if print_post is None:
-        return Message(message=f"Yorliq chop etishga yuborildi: {instance.qr_text}")
+        return Message(message=f"Chek chop etishga yuborildi: {instance.qr_text}")
     # ARRA'da doim; ROVER'da esa faqat arradan o'tmaydigan detal uchun (qolganini arrachi kesgan)
     cut_by_print = print_post.code == PostCode.ARRA or (print_post.code == PostCode.ROVER and arra_route is None)
     if cut_by_print:
@@ -1015,7 +1015,7 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
         except ScanRejected:
             await db.rollback()
 
-    return Message(message=f"Yorliq chop etishga yuborildi: {instance.qr_text}")
+    return Message(message=f"Chek chop etishga yuborildi: {instance.qr_text}")
 
 
 # Bekor qilishga admin webdagi xarita egalari ham kiradi: proyekt ro'yxatdan
@@ -1071,7 +1071,7 @@ async def cancel_instance_label(db: SessionDep, user: LabelCancelUser, instance_
     )
     await db.commit()
     await ws_manager.publish("label.cancelled", {"instance_id": instance_id, "qr_text": instance.qr_text})
-    return Message(message=f"Yorliq bekor qilindi: {instance.qr_text}")
+    return Message(message=f"Chek bekor qilindi: {instance.qr_text}")
 
 
 @router.get("/labels/{instance_id}.png", operation_id="render_instance_label")

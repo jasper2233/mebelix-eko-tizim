@@ -413,7 +413,7 @@ function TerminalPage() {
             })
             .catch(() =>
               toast.error(
-                "Bu detal hech bir aktiv proyektda topilmadi. Yorliqni tekshiring.",
+                "Bu detal hech bir aktiv proyektda topilmadi. Chekni tekshiring.",
               ),
             )
           return

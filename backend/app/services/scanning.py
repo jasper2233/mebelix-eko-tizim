@@ -329,7 +329,7 @@ async def record_scan_at(
     bridge-agent skan-forvardi (stanok bog'lami orqali) ham shu yo'ldan o'tadi."""
     qr = qr_text.strip()
     if not _QR_RE.match(qr):
-        raise ScanRejected("E002", "QR kodi noto'g'ri formatda. Yorliqni qaytadan chop eting.")
+        raise ScanRejected("E002", "QR kodi noto'g'ri formatda. Chekni qaytadan chop eting.")
 
     # Idempotent replay (network retry): same client_event_id → same success, no recount.
     existing = (await db.execute(select(Scan).where(Scan.client_event_id == client_event_id))).scalar_one_or_none()
@@ -366,7 +366,7 @@ async def record_scan_at(
         if row is not None:
             break
     if row is None:
-        raise ScanRejected("E001", "Bu detal uchun tugallanmagan plan topilmadi. Yorliqni tekshiring.")
+        raise ScanRejected("E001", "Bu detal uchun tugallanmagan plan topilmadi. Chekni tekshiring.")
     instance, order = row
     if order.status == OrderStatus.CANCELLED:
         raise ScanRejected("E003", "Buyurtma bekor qilingan. Managerga murojaat qiling.")
@@ -393,7 +393,7 @@ async def record_scan_at(
         .all()
     )
     if not steps:
-        raise ScanRejected("E001", "Bu post bu detal marshrutida yo'q. Yorliqni tekshiring.")
+        raise ScanRejected("E001", "Bu post bu detal marshrutida yo'q. Chekni tekshiring.")
 
     route = None
     for step in steps:
