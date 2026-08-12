@@ -921,8 +921,15 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     cut_by_print = print_post.code == PostCode.ARRA or (print_post.code == PostCode.ROVER and arra_route is None)
     if cut_by_print:
         try:
+            # Har chop etish ALOHIDA hodisa: `cutprint-{id}` doimiy bo'lganda
+            # chek bekor qilinib qayta chiqarilsa, idempotentlik tekshiruvi eski
+            # (bekor qilingan) qatorni topib `duplicate` qaytarardi — yangi skan
+            # yozilmas, `total_done` o'smas, holat "Bajarilmagan" bo'lib qolardi.
             outcome = await record_scan(
-                db, user=user, qr_text=instance.qr_text, client_event_id=f"cutprint-{instance.id}"
+                db,
+                user=user,
+                qr_text=instance.qr_text,
+                client_event_id=f"cutprint-{instance.id}-{int(datetime.now(UTC).timestamp())}",
             )
             await finalize_scan(db, outcome, user_id=user.id, source=" (chek chiqarish bilan)")
         except ScanRejected:
@@ -956,7 +963,11 @@ async def cancel_instance_label(db: SessionDep, user: LabelCancelUser, instance_
             await db.execute(
                 select(Scan).where(
                     Scan.instance_id == instance.id,
-                    Scan.client_event_id.in_([f"cutprint-{instance.id}", f"rvprint-{instance.id}"]),
+                    # Eski shakl (`cutprint-12`) ham, yangisi (`cutprint-12-1755…`)
+                    # ham: har chop etish o'z hodisa nomi bilan yoziladi
+                    Scan.client_event_id.in_([f"cutprint-{instance.id}", f"rvprint-{instance.id}"])
+                    | Scan.client_event_id.like(f"cutprint-{instance.id}-%")
+                    | Scan.client_event_id.like(f"rvprint-{instance.id}-%"),
                     Scan.is_cancelled == False,  # noqa: E712
                     Scan.is_deleted == False,  # noqa: E712
                 )
