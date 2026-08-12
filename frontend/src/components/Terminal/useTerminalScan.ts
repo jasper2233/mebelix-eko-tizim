@@ -1,0 +1,136 @@
+// Terminalning SKAN YO'NALTIRGICHI: bitta QR to'rt xil manzilga ketishi mumkin.
+// Qoidalar terminal maketidan ajratilgan — bu domen mantiqi, joylashuv emas.
+//
+//   1. Beyjik UUID          -> smena ochish
+//   2. Ekranning o'z sinki  -> qadoqlash/ombor (detal qaysi qadoqqa tushishini,
+//                              qabulmi yoki topshirishmi ekanini faqat o'sha
+//                              ekran biladi; qadoq QR'i `PK-...` umumiy yo'lda
+//                              "QR noto'g'ri formatda" bo'lib rad etilardi)
+//   3. KROMKA/OVAL          -> yozishdan oldin lokal tekshiruv + 5s to'siq
+//   4. Qolgani               -> umumiy skan (2s duplikat to'sig'i)
+
+import type { RefObject } from "react"
+import { useRef } from "react"
+import { toast } from "sonner"
+
+import { TerminalService } from "@/client"
+import { playError, playWarning } from "@/components/Terminal/audio"
+
+const BADGE_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Bir xil QR ikki marta o'qilganda: umumiy to'siq 2s, kromkada 5s.
+ *  Kromkada tomon = skan, ya'ni skanerning takror o'qishi bitta tomonni ikki
+ *  marta sanab yuborardi. */
+const COOLDOWN_MS = 2000
+const KROMKA_COOLDOWN_MS = 5000
+
+export function useTerminalScan({
+  postCode,
+  online,
+  mapOrderId,
+  viewScanRef,
+  kromkaScanRef,
+  onBadge,
+  onScan,
+  onOffline,
+  openOrder,
+}: {
+  postCode?: string
+  online: boolean
+  mapOrderId: number | null
+  /** Ekran o'zi yozadigan skan (qadoqlash, ombor) */
+  viewScanRef: RefObject<((qr: string) => void) | null>
+  /** KROMKA lokal tekshiruvi: null = yozish mumkin, "NOTFOUND" = bu proyektda
+   *  yo'q, boshqa satr = ko'rsatiladigan xato */
+  kromkaScanRef: RefObject<((qr: string) => string | null) | null>
+  onBadge: (badgeId: string) => void
+  onScan: (qr: string) => void
+  onOffline: () => void
+  openOrder: (orderId: number) => void
+}) {
+  const cooldownRef = useRef<Map<string, number>>(new Map())
+
+  const cooled = (qr: string, ms: number) => {
+    const now = Date.now()
+    const last = cooldownRef.current.get(qr)
+    if (last && now - last < ms) return true
+    cooldownRef.current.set(qr, now)
+    return false
+  }
+
+  return (raw: string) => {
+    const value = raw.trim()
+    if (!value) return
+    if (BADGE_RE.test(value)) {
+      onBadge(value)
+      return
+    }
+    if (!online) {
+      onOffline()
+      return
+    }
+    if (viewScanRef.current) {
+      if (cooled(value, COOLDOWN_MS)) return
+      viewScanRef.current(value)
+      return
+    }
+
+    if (postCode !== "KROMKA" && postCode !== "OVAL") {
+      if (cooled(value, COOLDOWN_MS)) return
+      onScan(value)
+      return
+    }
+
+    // KROMKA/OVAL: har skan darhol yoziladi, lekin bir detal orasida 5s to'siq
+    const last = cooldownRef.current.get(value)
+    if (last && Date.now() - last < KROMKA_COOLDOWN_MS) {
+      playWarning()
+      toast.error(
+        "Shu detal endigina skan qilindi — 5 soniyadan keyin qayta urining.",
+      )
+      return
+    }
+    if (mapOrderId !== null && kromkaScanRef.current) {
+      const err = kromkaScanRef.current(value)
+      if (err === "NOTFOUND") {
+        playError()
+        // Qaysi proyektga tegishli ekanini aniqlab, aniq xato ko'rsatamiz
+        TerminalService.resolveTerminalQr({ qrText: value })
+          .then((r) =>
+            toast.error(
+              r.order_id === mapOrderId
+                ? "Bu detal kromka bosqichiga kirmaydi."
+                : `Bu detal bu proyektga tegishli emas — ${r.order_number} proyektining detali.`,
+            ),
+          )
+          .catch(() =>
+            toast.error(
+              "Bu detal hech bir aktiv proyektda topilmadi. Chekni tekshiring.",
+            ),
+          )
+        return
+      }
+      if (err) {
+        playError()
+        toast.error(err)
+        return
+      }
+      cooldownRef.current.set(value, Date.now())
+      onScan(value)
+      return
+    }
+    // Picker ochiq: QR qaysi proyektga tegishli — o'sha proyekt ochiladi va
+    // skan darhol yoziladi
+    TerminalService.resolveTerminalQr({ qrText: value })
+      .then((r) => {
+        openOrder(r.order_id)
+        cooldownRef.current.set(value, Date.now())
+        onScan(value)
+      })
+      .catch(() => {
+        playError()
+        toast.error("Bu QR uchun aktiv proyekt topilmadi.")
+      })
+  }
+}

@@ -937,29 +937,6 @@ export type TabloPostCol = {
     order_index: number;
 };
 
-/**
- * One aggregated row in NAVBATDAGI VAZIFALAR (TZ 8.3.2).
- */
-export type TaskRow = {
-    part_id: number;
-    route_id: number;
-    order_id: number;
-    order_number: string;
-    deadline: (string | null);
-    code: string;
-    name: string;
-    length: (number | null);
-    width: (number | null);
-    thickness: (number | null);
-    qoldiq: number;
-    total: number;
-    edges?: {
-        [key: string]: unknown;
-    };
-    process_code: number;
-    assembly?: Array<string>;
-};
-
 export type TerminalContext = {
     machine_id: number;
     machine_name: string;
@@ -1533,8 +1510,6 @@ export type StartTerminalSessionData = {
 export type StartTerminalSessionResponse = (SessionRead);
 
 export type EndTerminalSessionResponse = (Message);
-
-export type ReadTerminalTasksResponse = (Array<TaskRow>);
 
 export type ReadTerminalOrdersResponse = (Array<TerminalOrderCard>);
 

@@ -135,7 +135,7 @@ if (data.password) payload.password = data.password
 
 - Props: `processCode: number | null | undefined` va `postCode: string | null | undefined`. Kod endi detal NOMIDAN o'qilmaydi — nomdagi `{kodlar}` sintaksisi butunlay olib tashlangan; `process_code` marshrut qadamining o'zida saqlanadi va backend uni `TaskRow`/`KromkaPartRow` da beradi.
 - `PROCESS_OPS` (`@/lib/mes` dan import — 14 kod, backend `PROCESS_POSTS` bilan bir xil bo'lishi shart) kodni amal nomi + postga o'giradi. Chip chizilmaydi, agar: kod noma'lum bo'lsa (xato nom emas, hech nima), kod boshqa postga tegishli bo'lsa yoki post bitta amalli bo'lsa (prisadka, rover, oval, bo'yoq — post nomi ekran sarlavhasida turibdi). Ya'ni chip faqat ARRA, KROMKA va STOLYARKA da ko'rinadi.
-- Ishlatilish joylari: `Terminal/KromkaView` (`postCode={oval ? "OVAL" : "KROMKA"}`) va `routes/terminal.tsx` vazifalar jadvali (`postCode={ctx?.post_code}`).
+- Ishlatilish joylari: `Terminal/KromkaView` (`postCode={oval ? "OVAL" : "KROMKA"}`) va `Terminal/PostQueueView` (`postCode={data?.post_code}`).
 
 ### `frontend/src/components/Common/PageHeader.tsx`
 
@@ -337,7 +337,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 
 ### `frontend/src/components/Terminal/KromkaView.tsx`
 
-**Maqsadi:** KROMKA/OVAL post sahifasi. Ikki panel: chapda arradan chiqqan (`arra_passed`), kromkasi tugamagan detallar (tugaganlari yashil bo'lib pastga tushadi), o'ngda "Jarayonda" — 2+ tomonli, boshlangan-u tugamagan nusxalar. Detal nomi ostida `Common/OperationChips` — noodatiy marshrutli detalda shu postga tegishli amal nomi chiplari (postCode: `oval ? "OVAL" : "KROMKA"`). Har skan darhol yoziladi (tomon = skan); `registerScan` prop orqali terminalga lokal tekshiruv beradi (`null` = yozish mumkin, `"NOTFOUND"` = bu proyektda yo'q, boshqa string = xato matni: arradan chiqmagan / allaqachon tugagan). `oval` prop: bir panel, tomonlar ustuni yo'q, har detal bitta skan. Oxirgi skan bo'lgan qator keyingi skangacha ajralib turadi + markazga avto-scroll (`useScanFlash` hooki — xuddi shu mexanizm `routes/terminal.tsx` vazifalar jadvalida ham). Ma'lumot: `readTerminalKromka` (`refetchInterval: 30_000` + har skanda invalidatsiya).
+**Maqsadi:** KROMKA/OVAL post sahifasi. Ikki panel: chapda arradan chiqqan (`arra_passed`), kromkasi tugamagan detallar (tugaganlari yashil bo'lib pastga tushadi), o'ngda "Jarayonda" — 2+ tomonli, boshlangan-u tugamagan nusxalar. Detal nomi ostida `Common/OperationChips` — noodatiy marshrutli detalda shu postga tegishli amal nomi chiplari (postCode: `oval ? "OVAL" : "KROMKA"`). Har skan darhol yoziladi (tomon = skan); `registerScan` prop orqali terminalga lokal tekshiruv beradi (`null` = yozish mumkin, `"NOTFOUND"` = bu proyektda yo'q, boshqa string = xato matni: arradan chiqmagan / allaqachon tugagan). `oval` prop: bir panel, tomonlar ustuni yo'q, har detal bitta skan. Oxirgi skan bo'lgan qator keyingi skangacha ajralib turadi + markazga avto-scroll (`useScanFlash` hooki — xuddi shu mexanizm `PrisadkaView` da ham). Ma'lumot: `readTerminalKromka` (`refetchInterval: 30_000` + har skanda invalidatsiya).
 
 ### `frontend/src/components/Terminal/PrisadkaView.tsx`
 

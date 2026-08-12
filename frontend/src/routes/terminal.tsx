@@ -18,7 +18,6 @@ import { toast } from "sonner"
 
 import { type ScanResult, ScansService, TerminalService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
-import { OperationChips } from "@/components/Common/OperationChips"
 import { SectionTitle } from "@/components/Common/SectionTitle"
 import {
   playError,
@@ -31,18 +30,16 @@ import { OmborView } from "@/components/Terminal/OmborView"
 import { PostQueueView } from "@/components/Terminal/PostQueueView"
 import { PrisadkaView } from "@/components/Terminal/PrisadkaView"
 import { UpakovkaView } from "@/components/Terminal/UpakovkaView"
+import { useTerminalScan } from "@/components/Terminal/useTerminalScan"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Switch } from "@/components/ui/switch"
 import { useAuth } from "@/hooks/useAuth"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useMesWs } from "@/hooks/useMesWs"
-import { useScanFlash } from "@/hooks/useScanFlash"
 import { requireAuth } from "@/lib/guards"
 import {
   deadlineTone,
   formatDate,
-  formatSize,
   OPERATOR_ROLES,
   POST_COLORS,
   PRIORITY_BADGE_CLASSES,
@@ -50,10 +47,7 @@ import {
 } from "@/lib/mes"
 import { downloadScx } from "@/lib/scxDir"
 import { cn } from "@/lib/utils"
-import {
-  getTerminalContextQueryOptions,
-  getTerminalTasksQueryOptions,
-} from "@/queries/mes"
+import { getTerminalContextQueryOptions } from "@/queries/mes"
 import { detailMessage, detailParts } from "@/utils"
 
 export const Route = createFileRoute("/terminal")({
@@ -72,24 +66,6 @@ export const Route = createFileRoute("/terminal")({
   },
 })
 
-const BADGE_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-// Bu postlarning o'z ko'rinishi bor (quyidagi shoxlar: kesish xaritasi, CNC
-// detallar, kromka). Yangi maxsus ko'rinish qo'shilsa — postni shu yerga ham
-// qo'shing, aks holda uning terminali keraksiz vazifa so'rovini yuboraveradi.
-const OWN_VIEW_POSTS = [
-  "ARRA",
-  "PRISADKA",
-  "ROVER",
-  "KROMKA",
-  "OVAL",
-  "UPAKOVKA",
-  "OMBOR",
-  "BOYOQ",
-  "STOLYARKA",
-]
-
 type LastScan =
   | { kind: "ok"; code: string; qoldiq: number; scanId: number; at: number }
   | { kind: "error"; code: string; message: string; at: number }
@@ -102,17 +78,6 @@ function TerminalPage() {
     isLoading: ctxLoading,
     error: ctxError,
   } = useQuery(getTerminalContextQueryOptions())
-  const {
-    data: tasks,
-    isLoading: tasksLoading,
-    isError: tasksError,
-  } = useQuery({
-    ...getTerminalTasksQueryOptions(),
-    // Umumiy vazifalar ro'yxati faqat o'z ko'rinishiga ega bo'lmagan postda
-    // (STOLYARKA) chiziladi — pastdagi shoxlarga qarang. Bu shartsiz so'rov
-    // 7 terminalning HAMMASIDA 30 soniyada bir ketardi, ko'rsatilmasa ham.
-    enabled: !!ctx && !OWN_VIEW_POSTS.includes(ctx.post_code),
-  })
   const { currentUser } = useCurrentUser()
   const { logout } = useAuth()
   const isOperator = OPERATOR_ROLES.includes(currentUser?.role as never)
@@ -121,13 +86,6 @@ function TerminalPage() {
   // Oxirgi skan URINISHI vaqti (muvaffaqiyat ham, xato ham) — avto-reload
   // "tinchlik" o'lchovi; lastScan holatidan farqli, 15s da tozalanmaydi
   const lastScanAtRef = useRef(0)
-  // Skan bo'lgan vazifa qatori keyingi skangacha ajralib turadi + avto-scroll
-  const taskFlash = useScanFlash(
-    tasks ?? [],
-    (t) => `${t.order_id}-${t.part_id}`,
-    (t) => t.qoldiq,
-    "task-row-",
-  )
   const [locked, setLocked] = useState(false)
   // ROVER: detallar ro'yxati (SCX/chek) va kesish xaritasi almashtirgichi
   const [roverMap, setRoverMap] = useState(false)
@@ -137,10 +95,6 @@ function TerminalPage() {
     if (v === null) setRoverMap(false) // keyingi proyekt detallardan boshlansin
   }
   const [lastScan, setLastScan] = useState<LastScan>(null)
-  const [history, setHistory] = useState<
-    Array<{ id: number; code: string; ok: boolean; note: string; time: string }>
-  >([])
-  const [errorsOnly, setErrorsOnly] = useState(false)
   const [undoOpen, setUndoOpen] = useState(false)
   const [logoutOpen, setLogoutOpen] = useState(false)
   const [endOpen, setEndOpen] = useState(false)
@@ -157,7 +111,6 @@ function TerminalPage() {
   // Xarita toolbari chap ustunga portal qilinadi (CutmapView toolbarContainer)
   const [toolbarEl, setToolbarEl] = useState<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const cooldownRef = useRef<Map<string, number>>(new Map())
   // KROMKA: yozishdan oldin lokal tekshiruv (arradan chiqqanmi, tugamaganmi) —
   // null = yozish mumkin, "NOTFOUND" = bu proyektda yo'q, boshqa = xato matni
   const kromkaScanRef = useRef<((qr: string) => string | null) | null>(null)
@@ -266,19 +219,6 @@ function TerminalPage() {
     return () => window.removeEventListener("keydown", onKey)
   }, [scanOn, locked, scanInputHidden])
 
-  const pushHistory = (entry: {
-    id: number
-    code: string
-    ok: boolean
-    note: string
-  }) =>
-    setHistory((prev) =>
-      [
-        { ...entry, time: new Date().toLocaleTimeString("uz-Latn-UZ") },
-        ...prev,
-      ].slice(0, 50),
-    )
-
   const badgeMutation = useMutation({
     mutationFn: (badge: string) =>
       TerminalService.startTerminalSession({
@@ -313,12 +253,6 @@ function TerminalPage() {
         scanId: r.scan_id,
         at: Date.now(),
       })
-      pushHistory({
-        id: r.scan_id,
-        code: r.qr_text,
-        ok: true,
-        note: `Qoldiq: ${r.qoldiq}`,
-      })
       queryClient.invalidateQueries({ queryKey: ["terminal"] })
       if (r.order_completed) toast.success("Buyurtma to'liq tayyor bo'ldi!")
       // SCX fayllar har scanda qaytadan (TZ 12.5): saqlangan papkadagi PROYEKT
@@ -335,7 +269,6 @@ function TerminalPage() {
       // Shovqinli sexda ovoz yetarli emas — xato toast bilan ham ko'rsatiladi
       toast.error(detailMessage(err))
       setLastScan({ kind: "error", code, message, at: Date.now() })
-      pushHistory({ id: Date.now(), code: message, ok: false, note: code })
     },
   })
 
@@ -360,14 +293,15 @@ function TerminalPage() {
       queryClient.invalidateQueries({ queryKey: ["terminal", "context"] }),
   })
 
-  const handleSubmit = (raw: string) => {
-    const value = raw.trim()
-    if (!value) return
-    if (BADGE_RE.test(value)) {
-      badgeMutation.mutate(value)
-      return
-    }
-    if (!online) {
+  const handleSubmit = useTerminalScan({
+    postCode: ctx?.post_code,
+    online,
+    mapOrderId,
+    viewScanRef,
+    kromkaScanRef,
+    onBadge: (badge) => badgeMutation.mutate(badge),
+    onScan: (qr) => scanMutation.mutate(qr),
+    onOffline: () => {
       playError()
       setLastScan({
         kind: "error",
@@ -375,79 +309,9 @@ function TerminalPage() {
         message: "Aloqa yo'q, qaytadan urining",
         at: Date.now(),
       })
-      return
-    }
-    // O'z skan yo'li bor ekran ochiq (qadoqlash, ombor) — skan o'shanga ketadi
-    if (viewScanRef.current) {
-      const vNow = Date.now()
-      const vLast = cooldownRef.current.get(value)
-      if (vLast && vNow - vLast < 2000) return
-      cooldownRef.current.set(value, vNow)
-      viewScanRef.current(value)
-      return
-    }
-    // KROMKA/OVAL: har skan darhol yoziladi, lekin BIR detal orasida 5s to'siq —
-    // skanner ikki marta o'qib yuborsa bitta tomon ikki marta sanalib ketmasin
-    if (ctx?.post_code === "KROMKA" || ctx?.post_code === "OVAL") {
-      const kNow = Date.now()
-      const kLast = cooldownRef.current.get(value)
-      if (kLast && kNow - kLast < 5000) {
-        playWarning()
-        toast.error(
-          "Shu detal endigina skan qilindi — 5 soniyadan keyin qayta urining.",
-        )
-        return
-      }
-      if (mapOrderId !== null && kromkaScanRef.current) {
-        const err = kromkaScanRef.current(value)
-        if (err === "NOTFOUND") {
-          playError()
-          // Qaysi proyektga tegishli ekanini aniqlab, aniq xato ko'rsatamiz
-          TerminalService.resolveTerminalQr({ qrText: value })
-            .then((r) => {
-              toast.error(
-                r.order_id === mapOrderId
-                  ? "Bu detal kromka bosqichiga kirmaydi."
-                  : `Bu detal bu proyektga tegishli emas — ${r.order_number} proyektining detali.`,
-              )
-            })
-            .catch(() =>
-              toast.error(
-                "Bu detal hech bir aktiv proyektda topilmadi. Chekni tekshiring.",
-              ),
-            )
-          return
-        }
-        if (err) {
-          playError()
-          toast.error(err)
-          return
-        }
-        cooldownRef.current.set(value, kNow)
-        scanMutation.mutate(value)
-        return
-      }
-      // Picker ochiq: QR qaysi proyektga tegishli — o'sha proyekt ochiladi
-      // va skan darhol yoziladi
-      TerminalService.resolveTerminalQr({ qrText: value })
-        .then((r) => {
-          setMapOrderId(r.order_id)
-          cooldownRef.current.set(value, Date.now())
-          scanMutation.mutate(value)
-        })
-        .catch(() => {
-          playError()
-          toast.error("Bu QR uchun aktiv proyekt topilmadi.")
-        })
-      return
-    }
-    // 2s cooldown (TZ 8.4.4): bir xil QR bir terminalda — duplikat, neytral signal
-    const now = Date.now()
-    const last = cooldownRef.current.get(value)
-    if (last && now - last < 2000) return
-    cooldownRef.current.set(value, now)
-    scanMutation.mutate(value)
-  }
+    },
+    openOrder: setMapOrderId,
+  })
 
   const mapOpen = scanInputHidden
   // BEKOR QILISH oynasi 60 s (TZ 8.6). Vaqtga bog'liq bo'lgani uchun taymer
@@ -473,7 +337,6 @@ function TerminalPage() {
   const postColor = ctx
     ? (POST_COLORS[ctx.post_code] ?? "var(--primary)")
     : "var(--primary)"
-  const visibleHistory = errorsOnly ? history.filter((h) => !h.ok) : history
 
   // Oxirgi skan + BEKOR QILISH chizig'i — ARRA va KROMKA sahifalari baham ko'radi
   const scanStrip = lastScan && (
@@ -681,330 +544,139 @@ function TerminalPage() {
             </p>
           </div>
         ) : ctx?.post_code === "ARRA" ? (
-          <div
-            className={cn(
-              "flex min-h-0 min-w-0 flex-1 flex-col gap-3",
-              // Xarita ochiqda tepa/past/o'ng paddingga yopishadi — xarita kattaroq
-              mapOpen && "-my-3 -mr-3",
-            )}
+          <PostScreen
+            strip={scanStrip}
+            // Xarita ochiqda tepa/past/o'ng paddingga yopishadi — xarita kattaroq
+            className={cn(mapOpen && "-my-3 -mr-3")}
           >
-            {/* Oxirgi skan + BEKOR QILISH — arra shovqinida ovozga ishonib bo'lmaydi */}
-            {scanStrip}
-            <div className="min-h-0 flex-1">
-              {mapOrderId ? (
-                <CutmapView
-                  orderId={mapOrderId}
-                  onBack={() => setMapOrderId(null)}
-                  statsContainer={statsEl}
-                  toolbarContainer={toolbarEl}
-                  postCode={ctx?.post_code}
-                />
-              ) : (
-                <OrderPicker onPick={setMapOrderId} />
-              )}
-            </div>
-          </div>
+            {mapOrderId ? (
+              <CutmapView
+                orderId={mapOrderId}
+                onBack={() => setMapOrderId(null)}
+                statsContainer={statsEl}
+                toolbarContainer={toolbarEl}
+                postCode={ctx?.post_code}
+              />
+            ) : (
+              <OrderPicker onPick={setMapOrderId} />
+            )}
+          </PostScreen>
         ) : ["PRISADKA", "ROVER"].includes(ctx?.post_code ?? "") ? (
           /* CNC postlar (PRISADKA/ROVER): proyekt ro'yxati → detallar + SCX
              fayllar; ROVER'da arra'siz detalga QR chiqarish ham shu sahifada */
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-            {scanStrip}
-            <div className="min-h-0 flex-1">
-              {mapOrderId && ctx?.post_code === "ROVER" && roverMap ? (
-                <CutmapView
-                  orderId={mapOrderId}
-                  onBack={() => setRoverMap(false)}
-                  toolbarContainer={toolbarEl}
-                  postCode={ctx?.post_code}
-                />
-              ) : mapOrderId ? (
-                <PrisadkaView
-                  orderId={mapOrderId}
-                  onBack={() => setMapOrderId(null)}
-                  showScx={ctx?.post_code !== "ROVER"}
-                  toolbarContainer={toolbarEl}
-                />
-              ) : (
-                <OrderPicker
-                  onPick={setMapOrderId}
-                  title="Proyektlar — detallar uchun proyektni tanlang"
-                  showCutmapBadge={false}
-                />
-              )}
-            </div>
-          </div>
+          <PostScreen strip={scanStrip}>
+            {mapOrderId && ctx?.post_code === "ROVER" && roverMap ? (
+              <CutmapView
+                orderId={mapOrderId}
+                onBack={() => setRoverMap(false)}
+                toolbarContainer={toolbarEl}
+                postCode={ctx?.post_code}
+              />
+            ) : mapOrderId ? (
+              <PrisadkaView
+                orderId={mapOrderId}
+                onBack={() => setMapOrderId(null)}
+                showScx={ctx?.post_code !== "ROVER"}
+                toolbarContainer={toolbarEl}
+              />
+            ) : (
+              <OrderPicker
+                onPick={setMapOrderId}
+                title="Proyektlar — detallar uchun proyektni tanlang"
+                showCutmapBadge={false}
+              />
+            )}
+          </PostScreen>
         ) : ctx?.post_code === "UPAKOVKA" ? (
           /* QADOQLASH: proyekt ro'yxati → qadoq yig'ish ekrani */
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-            {scanStrip}
-            <div className="min-h-0 flex-1">
-              {mapOrderId ? (
-                <UpakovkaView
-                  orderId={mapOrderId}
-                  onBack={() => setMapOrderId(null)}
-                  registerScan={(fn) => {
-                    viewScanRef.current = fn
-                  }}
-                />
-              ) : (
-                <OrderPicker
-                  onPick={setMapOrderId}
-                  title="Proyektlar — qadoqlash uchun proyektni tanlang"
-                  showCutmapBadge={false}
-                />
-              )}
-            </div>
-          </div>
+          <PostScreen strip={scanStrip}>
+            {mapOrderId ? (
+              <UpakovkaView
+                orderId={mapOrderId}
+                onBack={() => setMapOrderId(null)}
+                registerScan={(fn) => {
+                  viewScanRef.current = fn
+                }}
+              />
+            ) : (
+              <OrderPicker
+                onPick={setMapOrderId}
+                title="Proyektlar — qadoqlash uchun proyektni tanlang"
+                showCutmapBadge={false}
+              />
+            )}
+          </PostScreen>
         ) : ["BOYOQ", "STOLYARKA"].includes(ctx?.post_code ?? "") ? (
           /* BOYOQ / STOLYARKA: proyekt ro'yxati -> shu postga yetib kelgan nusxalar */
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-            {scanStrip}
-            <div className="min-h-0 flex-1">
-              {mapOrderId ? (
-                <PostQueueView
-                  orderId={mapOrderId}
-                  onBack={() => setMapOrderId(null)}
-                />
-              ) : (
-                <OrderPicker
-                  onPick={setMapOrderId}
-                  title="Proyektlar — ish uchun proyektni tanlang"
-                  showCutmapBadge={false}
-                />
-              )}
-            </div>
-          </div>
+          <PostScreen strip={scanStrip}>
+            {mapOrderId ? (
+              <PostQueueView
+                orderId={mapOrderId}
+                onBack={() => setMapOrderId(null)}
+              />
+            ) : (
+              <OrderPicker
+                onPick={setMapOrderId}
+                title="Proyektlar — ish uchun proyektni tanlang"
+                showCutmapBadge={false}
+              />
+            )}
+          </PostScreen>
         ) : ctx?.post_code === "OMBOR" ? (
           /* OMBOR: proyekt ro'yxati → qabul va topshirish tablari */
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-            {scanStrip}
-            <div className="min-h-0 flex-1">
-              {mapOrderId ? (
-                <OmborView
-                  orderId={mapOrderId}
-                  onBack={() => setMapOrderId(null)}
-                  registerScan={(fn) => {
-                    viewScanRef.current = fn
-                  }}
-                />
-              ) : (
-                <OrderPicker
-                  onPick={setMapOrderId}
-                  title="Proyektlar — ombor uchun proyektni tanlang"
-                  showCutmapBadge={false}
-                />
-              )}
-            </div>
-          </div>
+          <PostScreen strip={scanStrip}>
+            {mapOrderId ? (
+              <OmborView
+                orderId={mapOrderId}
+                onBack={() => setMapOrderId(null)}
+                registerScan={(fn) => {
+                  viewScanRef.current = fn
+                }}
+              />
+            ) : (
+              <OrderPicker
+                onPick={setMapOrderId}
+                title="Proyektlar — ombor uchun proyektni tanlang"
+                showCutmapBadge={false}
+              />
+            )}
+          </PostScreen>
         ) : ctx?.post_code === "KROMKA" || ctx?.post_code === "OVAL" ? (
           /* KROMKA/OVAL: proyekt ro'yxati → detallar ro'yxati (tomon-progress;
              OVAL'da har detal 1 skan, Jarayonda paneli yo'q) */
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-            {scanStrip}
-            <div className="min-h-0 flex-1">
-              {mapOrderId ? (
-                <KromkaView
-                  orderId={mapOrderId}
-                  onBack={() => setMapOrderId(null)}
-                  registerScan={(fn) => {
-                    kromkaScanRef.current = fn
-                  }}
-                  oval={ctx?.post_code === "OVAL"}
-                />
-              ) : (
-                <OrderPicker
-                  onPick={setMapOrderId}
-                  title="Proyektlar — detallar uchun proyektni tanlang"
-                  showCutmapBadge={false}
-                />
-              )}
-            </div>
-          </div>
+          <PostScreen strip={scanStrip}>
+            {mapOrderId ? (
+              <KromkaView
+                orderId={mapOrderId}
+                onBack={() => setMapOrderId(null)}
+                registerScan={(fn) => {
+                  kromkaScanRef.current = fn
+                }}
+                oval={ctx?.post_code === "OVAL"}
+              />
+            ) : (
+              <OrderPicker
+                onPick={setMapOrderId}
+                title="Proyektlar — detallar uchun proyektni tanlang"
+                showCutmapBadge={false}
+              />
+            )}
+          </PostScreen>
         ) : (
-          <>
-            {/* Vazifalar (70%) */}
-            <section className="flex min-h-0 flex-[7] flex-col rounded-xl border bg-card">
-              <div className="border-b px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Navbatdagi vazifalar
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                <table className="w-full text-base">
-                  <thead className="sticky top-0 bg-muted/80 text-left text-xs uppercase tracking-wider text-muted-foreground backdrop-blur">
-                    <tr>
-                      <th className="px-4 py-2.5">Kod</th>
-                      <th className="px-4 py-2.5">Nomi</th>
-                      <th className="px-4 py-2.5">O'lchamlari</th>
-                      <th className="px-4 py-2.5">Topshirish sanasi</th>
-                      <th className="px-4 py-2.5 text-right">Qoldiq</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tasks?.length ? (
-                      tasks.map((t) => (
-                        <tr
-                          key={t.route_id}
-                          id={`task-row-${t.order_id}-${t.part_id}`}
-                          className={cn(
-                            "border-b last:border-0",
-                            taskFlash === `${t.order_id}-${t.part_id}` &&
-                              "bg-amber-100 ring-2 ring-inset ring-amber-400",
-                          )}
-                        >
-                          <td className="num px-4 py-3 font-semibold">
-                            {t.code}
-                          </td>
-                          <td className="max-w-[240px] px-4 py-3">
-                            <div className="truncate">{t.name}</div>
-                            <OperationChips
-                              processCode={t.process_code}
-                              postCode={ctx?.post_code}
-                            />
-                            {/* Yig'ma buyum: shu qadamda yopishtiriladigan mayda
-                                detallar. Ular alohida skanerlanmaydi — asosiy
-                                detalning skani ularnikini ham yopadi. */}
-                            {!!t.assembly?.length && (
-                              <div className="num mt-1 text-sm font-semibold text-blue-800">
-                                + {t.assembly.join(", ")}
-                              </div>
-                            )}
-                          </td>
-                          <td className="num px-4 py-3 text-sm">
-                            {formatSize(t.length, t.width, t.thickness)}
-                          </td>
-                          <td
-                            className={`num px-4 py-3 text-sm ${
-                              deadlineTone(t.deadline) === "overdue"
-                                ? "font-bold text-red-600"
-                                : deadlineTone(t.deadline) === "today"
-                                  ? "font-bold text-amber-700"
-                                  : ""
-                            }`}
-                          >
-                            {formatDate(t.deadline)}
-                            {deadlineTone(t.deadline) === "overdue" &&
-                              " · KECHIKKAN"}
-                            {deadlineTone(t.deadline) === "today" && " · BUGUN"}
-                          </td>
-                          <td className="num px-4 py-3 text-right text-3xl font-black text-primary">
-                            {t.qoldiq}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td
-                          colSpan={5}
-                          className={cn(
-                            "h-32 text-center",
-                            tasksError
-                              ? "font-bold text-destructive"
-                              : "text-muted-foreground",
-                          )}
-                        >
-                          {tasksLoading
-                            ? "Yuklanmoqda..."
-                            : tasksError
-                              ? "Vazifalarni olishda xatolik — aloqani tekshiring"
-                              : "Bu postda navbatdagi vazifa yo'q"}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            {/* O'ng panel (30%) */}
-            <section className="flex min-h-0 flex-[3] flex-col gap-3">
-              <div
-                // key: har yangi skanda element qayta yaratiladi, aks holda
-                // animatsiya faqat birinchi marta ishlab, ketma-ket skanlarda
-                // umuman ko'rinmasdi
-                key={lastScan?.at ?? "bosh"}
-                className={cn(
-                  "rounded-xl border-2 p-4 text-center transition-colors",
-                  lastScan?.kind === "ok" &&
-                    "animate-pulse-once border-green-500 bg-green-50",
-                  lastScan?.kind === "error" && "border-red-500 bg-red-50",
-                  !lastScan && "bg-card",
-                )}
-              >
-                <div className="text-2xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Oxirgi skan
-                </div>
-                {lastScan ? (
-                  lastScan.kind === "ok" ? (
-                    <>
-                      <div className="num mt-1 text-2xl font-black text-green-700">
-                        {lastScan.code}
-                      </div>
-                      <div className="text-sm text-green-800">
-                        Qoldiq: {lastScan.qoldiq}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="mt-1 text-lg font-black text-red-700">
-                        {lastScan.code}
-                      </div>
-                      <div className="text-xs text-red-800">
-                        {lastScan.message}
-                      </div>
-                    </>
-                  )
-                ) : (
-                  <div className="mt-1 text-2xl text-muted-foreground">---</div>
-                )}
-              </div>
-
-              <div className="flex min-h-0 flex-1 flex-col rounded-xl border bg-card">
-                <div className="flex items-center justify-between border-b px-3 py-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Tarix
-                  </span>
-                  <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-                    Faqat xatolar
-                    {/* Sensorli ekran: ko'rinish o'zgarmaydi, lekin bosiladigan
-                        maydon pseudo-element bilan 44px ga kengaytiriladi —
-                        Switch'ning o'zi 18x32px, qo'lqopli barmoq tegmaydi. */}
-                    <Switch
-                      checked={errorsOnly}
-                      onCheckedChange={setErrorsOnly}
-                      aria-label="Faqat xatolar"
-                      className="relative after:absolute after:-inset-3 after:content-['']"
-                    />
-                  </span>
-                </div>
-                <ul className="min-h-0 flex-1 overflow-y-auto text-sm">
-                  {visibleHistory.map((h) => (
-                    <li
-                      key={`${h.id}-${h.time}`}
-                      className={cn(
-                        "border-b px-3 py-1.5 last:border-0",
-                        h.ok ? "text-muted-foreground" : "text-red-600",
-                      )}
-                    >
-                      <span className="num font-semibold">{h.code}</span> —{" "}
-                      {h.note} — {h.time}
-                    </li>
-                  ))}
-                  {!visibleHistory.length && (
-                    <li className="p-3 text-muted-foreground">Bo'sh</li>
-                  )}
-                </ul>
-              </div>
-
-              <Button
-                variant="destructive"
-                size="lg"
-                className="h-14 text-base font-black"
-                disabled={!canUndo}
-                onClick={() => setUndoOpen(true)}
-              >
-                <Undo2 /> BEKOR QILISH
-              </Button>
-            </section>
-          </>
+          /* Bu shoxga tushish uchun postning O'Z ekrani bo'lmasligi kerak.
+             Hozir 9 postning HAMMASIDA o'z ekrani bor — bu faqat kelajakda
+             yangi post qo'shilib, ekrani unutilgan holat uchun sug'urta. Ilgari bu
+             yerda umumiy "Navbatdagi vazifalar" jadvali turardi: u detal
+             darajasidagi agregat berardi va navbatni hisobga olmasdi, shuning
+             uchun har post o'z ekraniga ko'chirilgan va jadval o'lik qolgan. */
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+            <div className="text-lg font-bold">
+              {ctx?.post_name} posti uchun ekran sozlanmagan
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Dasturchiga murojaat qiling.
+            </p>
+          </div>
         )}
       </main>
 
@@ -1051,6 +723,27 @@ function TerminalPage() {
           lastScan?.kind === "ok" && undoMutation.mutate(lastScan.scanId)
         }
       />
+    </div>
+  )
+}
+
+/** Har post ekranining bir xil o'rami: tepada oxirgi skan chizig'i, ostida
+ *  ekranning o'zi. Oltita shoxda bir xil markup takrorlanardi. */
+function PostScreen({
+  strip,
+  className,
+  children,
+}: {
+  strip: React.ReactNode
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div
+      className={cn("flex min-h-0 min-w-0 flex-1 flex-col gap-3", className)}
+    >
+      {strip}
+      <div className="min-h-0 flex-1">{children}</div>
     </div>
   )
 }

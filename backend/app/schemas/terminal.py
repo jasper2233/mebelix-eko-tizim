@@ -32,34 +32,6 @@ class TerminalContext(BaseModel):
     session: SessionRead | None = None
 
 
-class TaskRow(BaseModel):
-    """One aggregated row in NAVBATDAGI VAZIFALAR (TZ 8.3.2)."""
-
-    part_id: int
-    #: Marshrut QADAMI. Bitta detal bir postda ikki marta bo'lishi mumkin —
-    #: ro'yxat kaliti detal emas, qadam bo'lishi kerak (aks holda React qatorlarni
-    #: aralashtirib yuboradi va ikki qator bir xil holatni ko'rsatadi).
-    route_id: int
-    order_id: int
-    order_number: str
-    deadline: date | None
-    code: str  # productCode_partCode
-    name: str
-    length: float | None
-    width: float | None
-    thickness: float | None
-    qoldiq: int  # remaining scans at this post
-    total: int
-    edges: dict[str, Any] = {}
-    #: Marshrutdagi aynan shu qadamning jarayon kodi (1..14). Bitta postda bir
-    #: nechta amal bor (STOLYARKA da olti xil) — operator qaysi biri kerakligini
-    #: shundan biladi; noto'g'ri petlya eshikni brak qiladi.
-    process_code: int
-    #: Yig'ma buyum: shu qadamda yopishtiriladigan mayda detallar ("01_007 ×2").
-    #: Operator nimani yig'ib kelishini shundan biladi — ular alohida skanerlanmaydi.
-    assembly: list[str] = []
-
-
 class TerminalOrderCard(BaseModel):
     """Terminal proyekt tanlagichi kartasi (/terminal/orders): done/total post turiga moslangan."""
 

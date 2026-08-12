@@ -100,13 +100,6 @@ export const getTerminalContextQueryOptions = () =>
     refetchInterval: 30_000,
   })
 
-export const getTerminalTasksQueryOptions = () =>
-  queryOptions({
-    queryKey: ["terminal", "tasks"],
-    queryFn: () => TerminalService.readTerminalTasks(),
-    refetchInterval: 30_000, // WS is the primary trigger; this is the safety net
-  })
-
 /** TABLO matritsasi — /tablo va boshqaruv paneli ikkalasi ham shu bitta so'rovdan
  *  oziqlanadi (avval har birida alohida yozilgan edi). */
 export const getTabloMatrixQueryOptions = () =>
