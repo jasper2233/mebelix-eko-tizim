@@ -25,6 +25,7 @@ import {
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { Form } from "@/components/ui/form"
 import { LoadingButton } from "@/components/ui/loading-button"
+import { formatUzPhone } from "@/lib/validation"
 import { handleError } from "@/utils"
 
 const formSchema = buildUserFormSchema(false)
@@ -43,7 +44,7 @@ export function EditUser({ user, onSuccess }: EditUserProps) {
     mode: "onBlur",
     criteriaMode: "all",
     defaultValues: {
-      phone: user.phone,
+      phone: formatUzPhone(user.phone),
       name: user.name ?? undefined,
       role: user.role,
       machine_id: user.machine_id ? String(user.machine_id) : "",

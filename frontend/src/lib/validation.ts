@@ -41,6 +41,14 @@ export const optionalFormattedPhoneSchema = z
   .transform((v) => v.replace(/[\s-]+/g, ""))
   .refine((v) => v === "" || PHONE_PATTERN.test(v), { message: PHONE_INVALID })
 
+/** O'shaning MAJBURIY varianti — login identifikatori (user) va shunga o'xshash
+ *  maydonlar uchun: bo'sh qoldirib bo'lmaydi. */
+export const formattedPhoneSchema = z
+  .string()
+  .transform((v) => v.replace(/[\s-]+/g, ""))
+  .refine((v) => v !== "", { message: "Telefon majburiy" })
+  .refine((v) => v === "" || PHONE_PATTERN.test(v), { message: PHONE_INVALID })
+
 /** Ko'rinishdagi "+998" prefiksini tashlab, faqat abonent raqamining 9 ta raqamini qaytaradi. */
 function phoneDigits(s: string): string {
   let t = s.trim()

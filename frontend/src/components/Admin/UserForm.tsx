@@ -22,10 +22,11 @@ import {
 } from "@/components/ui/select"
 import { MACHINE_BOUND_ROLES, ROLE_LABELS } from "@/lib/mes"
 import {
+  formattedPhoneSchema,
+  formatUzPhone,
   optionalNameSchema,
   optionalPasswordSchema,
   passwordSchema,
-  phoneSchema,
 } from "@/lib/validation"
 import { getMachinesQueryOptions } from "@/queries/mes"
 
@@ -53,7 +54,7 @@ export function buildUserFormSchema(
 ): z.ZodType<UserFormData, UserFormData> {
   return z
     .object({
-      phone: phoneSchema,
+      phone: formattedPhoneSchema,
       name: optionalNameSchema,
       password: requirePassword ? passwordSchema : optionalPasswordSchema,
       confirm_password: requirePassword
@@ -97,9 +98,13 @@ export function UserFormFields({
             </FormLabel>
             <FormControl>
               <Input
-                placeholder="+998901234567"
+                placeholder="+998 90 123-45-67"
                 type="tel"
+                inputMode="numeric"
                 {...field}
+                onChange={(e) =>
+                  field.onChange(formatUzPhone(e.target.value, field.value))
+                }
                 required
               />
             </FormControl>

@@ -19,12 +19,16 @@ import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { cn } from "@/lib/utils"
-import { optionalNameSchema, phoneSchema } from "@/lib/validation"
+import {
+  formattedPhoneSchema,
+  formatUzPhone,
+  optionalNameSchema,
+} from "@/lib/validation"
 import { handleError } from "@/utils"
 
 const formSchema = z.object({
   name: optionalNameSchema,
-  phone: phoneSchema,
+  phone: formattedPhoneSchema,
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -40,7 +44,7 @@ export const UserInformation = () => {
     criteriaMode: "all",
     defaultValues: {
       name: currentUser?.name ?? undefined,
-      phone: currentUser?.phone,
+      phone: formatUzPhone(currentUser?.phone ?? ""),
     },
   })
 
@@ -125,7 +129,17 @@ export const UserInformation = () => {
                 <FormItem>
                   <FormLabel>Telefon</FormLabel>
                   <FormControl>
-                    <Input type="tel" {...field} />
+                    <Input
+                      type="tel"
+                      inputMode="numeric"
+                      placeholder="+998 90 123-45-67"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(
+                          formatUzPhone(e.target.value, field.value),
+                        )
+                      }
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

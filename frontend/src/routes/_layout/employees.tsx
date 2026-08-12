@@ -60,7 +60,7 @@ import {
   isManagement,
   POST_COLORS,
 } from "@/lib/mes"
-import { PHONE_PATTERN } from "@/lib/validation"
+import { formatUzPhone, optionalFormattedPhoneSchema } from "@/lib/validation"
 import {
   crudCallbacks,
   getEmployeesQueryOptions,
@@ -76,10 +76,7 @@ export const Route = createFileRoute("/_layout/employees")({
 
 const formSchema = z.object({
   full_name: z.string().trim().min(2, "Kamida 2 belgi").max(100),
-  phone: z
-    .string()
-    .regex(PHONE_PATTERN, "+998XXXXXXXXX formatida")
-    .or(z.literal("")),
+  phone: optionalFormattedPhoneSchema,
   position: z.string().max(50).optional(),
   assigned_post_ids: z.array(z.number()).min(1, "Kamida bitta post tanlang"),
 })
@@ -117,7 +114,15 @@ function EmployeeFields({
             <FormItem>
               <FormLabel>Telefon</FormLabel>
               <FormControl>
-                <Input {...field} placeholder="+998..." />
+                <Input
+                  {...field}
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="+998 90 123-45-67"
+                  onChange={(e) =>
+                    field.onChange(formatUzPhone(e.target.value, field.value))
+                  }
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -318,7 +323,7 @@ function EditEmployee({
     resolver: zodResolver(formSchema),
     defaultValues: {
       full_name: employee.full_name,
-      phone: employee.phone ?? "",
+      phone: formatUzPhone(employee.phone ?? ""),
       position: employee.position ?? "",
       assigned_post_ids: employee.assigned_post_ids,
     },
