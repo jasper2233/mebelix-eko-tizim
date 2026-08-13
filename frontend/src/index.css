@@ -164,14 +164,20 @@
     display: none !important;
   }
   /* Beyjik 80×60 mm — detal yorliqlari bilan bir xil blank, ya'ni sexda bitta
-     xil qog'oz ishlatiladi. Varaq O'LCHAMI bu yerda EMAS: nomlangan
-     `@page badge` ni Chrome parse qiladi (tekshirildi: Chrome 151 da
-     `page: badge` hisoblangan uslubda ko'rinadi), lekin hujjatga bitta varaq
-     o'lchamini qo'llash cheklovi bor va o'lcham e'tiborsiz qolishi mumkin.
-     Shuning uchun o'lchamni `employees.tsx` chop etish paytida vaqtincha
-     nomsiz `@page` bilan beradi — global qoldirilsa ilovaning istalgan
-     sahifasini Ctrl+P qilganda ham 80×60 chiqarib yuborardi. */
+     xil qog'oz ishlatiladi.
+     NOMLANGAN `@page`: o'lcham faqat `page: badge` yozilgan elementga tegadi,
+     ilovaning boshqa sahifasini Ctrl+P qilganda odatdagi qog'oz qoladi.
+     Ishlashi headless Chrome bilan haqiqiy PDF chiqarib tekshirildi —
+     MediaBox 227.04 x 169.92 pt = 80.1 x 59.9 mm.
+     JS bilan chop etish paytida qo'yish varianti sinaldi va RAD ETILDI: stilni
+     olib tashlash taymeri chop etish oynasi ochiq turganda ishlab ketardi va
+     operator qog'oz o'lchamini o'zgartirganda oyna @page siz qayta chizilardi. */
+  @page badge {
+    size: 80mm 60mm;
+    margin: 0;
+  }
   .print-only {
+    page: badge;
     position: static !important;
     display: flex !important;
     flex-direction: column !important;
@@ -184,23 +190,39 @@
     padding: 3mm !important;
     gap: 1.5mm !important;
     overflow: hidden !important;
-    /* `translate` ALOHIDA yozilishi shart: Tailwind v4 markazlashni
-       `translate: -50% -50%` bilan beradi, uni `transform: none` qaytarmaydi —
-       beyjik yarim o'lchamga siljib, qog'oz chetidan chiqib ketardi. */
     transform: none !important;
-    translate: none !important;
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
+  }
+  /* AJRATILGAN qoida bo'lishi SHART. Tailwind v4 markazlashni alohida
+     `translate: -50% -50%` xossasi bilan beradi va uni `transform: none`
+     qaytarmaydi. Yuqoridagi qoida ichiga yozilsa esa minifikator uni
+     `transform` ichiga qo'shib, butunlay yo'qotadi — build chiqishida faqat
+     `transform:translate(0)!important` qolardi va beyjik yarim o'lchamga
+     siljib qog'ozdan chiqib ketardi (chiqarilgan PDF da o'lchandi).
+     Boshqa selektor = boshqa qoida = qo'shib bo'lmaydi. */
+  [data-slot="dialog-content"].print-only {
+    translate: none !important;
+    rotate: none !important;
+    scale: none !important;
   }
   .print-only [data-slot="dialog-header"] {
     text-align: center !important;
     gap: 0 !important;
   }
-  /* Ism — beyjikda uzoqdan o'qiladigan yagona narsa */
+  /* Ism — beyjikda uzoqdan o'qiladigan yagona narsa. IKKI QATOR bilan
+     cheklangan: 60mm ga ikkitasi sig'adi, uchinchisi qo'shilsa flex markazi
+     kontentni ikki tomondan qirqadi va beyjik ID butunlay yo'qolardi — ya'ni
+     QR o'qilmasa qo'lda kiritish uchun hech nima qolmasdi. */
   .print-only [data-slot="dialog-title"] {
     font-size: 4.5mm !important;
     line-height: 1.15 !important;
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden !important;
   }
   /* Ramka va ichki bo'shliq ekran uchun; qog'ozda ular QR joyini yeydi
      (tinch zona endi QR ning o'zida — `marginSize`) */
@@ -208,13 +230,21 @@
     border: 0 !important;
     padding: 0 !important;
   }
+  /* `display: block` — inline SVG ostida shrift tayanchi ~2mm bo'sh joy
+     qoldirardi, ya'ni QR bloki 34mm emas, 36mm bo'lib turardi */
   .print-only .badge-qr svg {
+    display: block !important;
     width: 34mm !important;
     height: 34mm !important;
   }
+  /* QORA, kulrang emas: bu satr — QR o'qilmagandagi yagona zaxira, uni
+     omborchi qo'lda teradi. Ekrandagi `text-muted-foreground` qog'ozda,
+     ayniqsa toner tejaydigan printerda, deyarli ko'rinmasdi. */
   .print-only .badge-id {
     font-size: 2.4mm !important;
     line-height: 1 !important;
+    color: #000 !important;
+    letter-spacing: 0 !important;
   }
 }
 
