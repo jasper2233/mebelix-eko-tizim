@@ -109,6 +109,18 @@ def is_mirror_badge(badge_id: str) -> bool:
     return badge_id.startswith("user-")
 
 
+#: Ko'zgu beyjik BILAN KIRIB BO'LMAYDI. `user-N` dagi N — foydalanuvchi ID'si,
+#: ya'ni kichik butun son: uni terib ko'rish bilan istalgan operator nomidan
+#: kirsa bo'lardi. U hech qachon skanerlanadigan beyjik bo'lish uchun emas, ish
+#: haqi atributsiyasi uchun yaratilgan (`operator_employee`).
+MIRROR_BADGE_MSG = "Bu hodimga haqiqiy beyjik chiqarilmagan. Admin beyjik chiqarishi kerak."
+
+
+def reject_mirror_badge(employee: Employee) -> None:
+    if is_mirror_badge(employee.badge_id):
+        raise ScanRejected("E006", MIRROR_BADGE_MSG)
+
+
 async def operator_employee(db: AsyncSession, user: User, post_id: int) -> Employee:
     """Auto-provisioned Employee mirror for operator-role users, so scans, sessions and
     productivity reports keep their employee attribution without a badge."""
@@ -144,6 +156,7 @@ async def badge_employee(db: AsyncSession, badge_id: str, post: Post) -> Employe
     ).scalar_one_or_none()
     if employee is None:
         raise ScanRejected("E006", "Beyjik topilmadi.")
+    reject_mirror_badge(employee)
     if employee.status != EmployeeStatus.ACTIVE:
         raise ScanRejected("E006", "Beyjik nofaol. Adminga murojaat qiling.")
     if post.id not in employee.assigned_post_ids:

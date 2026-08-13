@@ -154,6 +154,13 @@ export const isManagement = (u?: RoleUser | null) =>
 export const isProductionStaff = (u?: RoleUser | null) =>
   isManagement(u) || u?.role === "texnolog"
 
+/** `user-N` — operator hisobining KO'ZGU hodim yozuvi (`operator_employee`),
+ *  jismoniy beyjik emas. U ish haqi atributsiyasi uchun; chop etilmaydi va u
+ *  bilan kirib bo'lmaydi (backend `reject_mirror_badge` bilan rad etadi —
+ *  N kichik butun son, ya'ni terib ko'rsa topilardi). */
+export const isMirrorBadge = (badgeId?: string | null) =>
+  Boolean(badgeId?.startsWith("user-"))
+
 // Stanok bog'lami MAJBURIY rollar — qurilma akkauntlari (Admin dialoglarida
 // rol tanlovi, machine_id validatsiyasi va bog'lamni uzish shu ro'yxatdan)
 export const MACHINE_BOUND_ROLES = ["terminal", "tablo"] as const

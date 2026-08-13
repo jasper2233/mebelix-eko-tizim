@@ -58,6 +58,7 @@ import {
   EMPLOYEE_STATUS_LABELS,
   isAdmin,
   isManagement,
+  isMirrorBadge,
   POST_COLORS,
 } from "@/lib/mes"
 import { formatUzPhone, optionalFormattedPhoneSchema } from "@/lib/validation"
@@ -252,14 +253,23 @@ function EmployeesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setBadgeFor(e)}
-                        >
-                          <IdCard /> Beyjik
-                        </Button>
+                      <div className="flex items-center gap-1.5">
+                        {/* Ko'zgu yozuvda beyjik YO'Q: `user-N` — operator
+                            hisobining ichki kaliti, uni chop etib bo'lmaydi va
+                            u bilan kirib ham bo'lmaydi (server rad etadi). */}
+                        {isMirrorBadge(e.badge_id) ? (
+                          <span className="text-xs text-muted-foreground">
+                            Beyjik chiqarilmagan
+                          </span>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setBadgeFor(e)}
+                          >
+                            <IdCard /> Beyjik
+                          </Button>
+                        )}
                         {admin && (
                           <>
                             <Button

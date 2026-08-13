@@ -152,7 +152,7 @@ qidirardi — matn tahrirlanishi bilan jimgina buziladigan bog'lanish.
 | `E003` | Buyurtma bekor qilingan | Manager |
 | `E004` | Navbat buzildi: shu NUSXAda oldingi qadam tugamagan (`STRICT_STAGE_ORDER`); xabar navbatdagi post nomini aytadi | Operator — oldingi postni kutadi |
 | `E005` | Aktiv sessiya yo'q yoki `SESSION_MAX_HOURS` (12 soat) o'tgan | Operator — beyjikni skanerlaydi |
-| `E006` | Beyjik: topilmadi / nofaol / hodim bu postga biriktirilmagan | Admin yoki hodim |
+| `E006` | Beyjik: topilmadi / nofaol / hodim bu postga biriktirilmagan / KO'ZGU beyjik (`user-N`) | Admin yoki hodim |
 | `E007` | Aloqa yo'q — **server kodi emas**, WS uzilganda terminal frontendi o'zi hosil qiladi, so'rov serverga umuman ketmaydi | — |
 | `E008` | Ish allaqachon bajarilgan (shu nusxaning shu postdagi qadamlari to'lgan). Xato emas — terminal neytral ogohlantirish ovozini beradi | Hech kim — takror skan |
 | `E009` | SOZLAMA xatosi: post topilmadi, postda stanok yo'q, terminalga stanok biriktirilmagan | **Admin** — operator hech narsa qila olmaydi |
@@ -193,6 +193,17 @@ Beyjik ikkala savolga javob beradi — KIM va QAYERDA (`login.py`):
 
 3- va 4-qadam ataylab `resolve_terminal` bilan bir xil javob berishi kerak: aks holda operator
 kirgandan keyin BOSHQA postning ekranida paydo bo'lardi.
+
+**KO'ZGU BEYJIK BILAN KIRIB BO'LMAYDI.** `operator_employee` yaratadigan `user-N` yozuvi
+beyjik EMAS — u parol bilan kiradigan operator hisobining ish haqi atributsiyasi uchun ichki
+kalit. `N` — foydalanuvchi ID'si, ya'ni kichik butun son: agar u ham kirish kaliti bo'lganida,
+`user-4`…`user-12` ni terib ko'rish bilan istalgan operator nomidan kirsa bo'lardi (jismoniy
+beyjik ham, uning surati ham kerak bo'lmasdi). `reject_mirror_badge` ikkala yo'lni ham to'sadi:
+`/login/badge` va terminaldagi smena ochish (`badge_employee`). Ko'zgu yozuvga beyjik QAYTA BERISH
+ham bloklangan (`employees.regenerate_badge`): `operator_employee` uni aynan `user-{id}` bo'yicha
+topadi, UUID ga almashtirilsa keyingi parol bilan kirishda IKKINCHI hodim yozuvi yaratilib, ish
+haqi ikkiga bo'linardi. Hodimlar ro'yxatida bunday yozuvda "Beyjik" tugmasi o'rniga "Beyjik
+chiqarilmagan" yozuvi turadi (`lib/mes: isMirrorBadge`).
 
 **Xavfsizlik — ataylab qilingan tanlov (2026-08-12).** Beyjik yagona omil: QR qog'ozda va nusxa
 olingan bo'lsa istalgan qurilmadan kirsa bo'ladi. Qurilma bog'lash (monoblokni stanokka bir

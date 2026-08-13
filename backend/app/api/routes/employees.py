@@ -6,12 +6,13 @@ from sqlalchemy import func, or_, select
 
 from app.api.deps import AdminUser, SessionDep, StaffReadUser, client_ip
 from app.core.config import settings
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import ForbiddenException, NotFoundException
 from app.crud import crud_employees, crud_posts, log_action
 from app.models import Employee
 from app.models.enums import EmployeeStatus
 from app.schemas.common import Message, Paginated
 from app.schemas.employees import EmployeeCreate, EmployeeRead, EmployeeUpdate
+from app.services.scanning import is_mirror_badge
 
 router = APIRouter(prefix="/employees", tags=["employees"])
 
@@ -101,6 +102,14 @@ async def update_employee(
 async def regenerate_badge(db: SessionDep, current_user: AdminUser, employee_id: int, request: Request) -> Employee:
     """Lost badge (TZ 4.2): old badge stops working immediately, history stays on the same employee."""
     employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
+    # Ko'zgu yozuvga (`user-N`) beyjik berib bo'lmaydi: `operator_employee` uni
+    # AYNAN shu badge_id bo'yicha topadi, UUID ga almashtirilsa keyingi parol
+    # bilan kirishda IKKINCHI hodim yozuvi yaratilib, ish haqi ikkiga bo'linardi.
+    if is_mirror_badge(employee.badge_id):
+        raise ForbiddenException(
+            f"{employee.full_name} — operator hisobining ko'zgusi, unga beyjik chiqarilmaydi. "
+            "Beyjik kerak bo'lsa alohida hodim yozuvi qo'shing."
+        )
     old_badge = employee.badge_id
     employee.badge_id = str(uuid4())
     log_action(

@@ -25,7 +25,7 @@ from app.models import Employee, Machine, Post
 from app.models.enums import POST_ROLES, EmployeeStatus, UserRole
 from app.models.user import User
 from app.schemas.auth import BadgeLoginRequest, BadgeLoginResponse, BadgePostOption, Token
-from app.services.scanning import open_badge_session
+from app.services.scanning import MIRROR_BADGE_MSG, is_mirror_badge, open_badge_session
 
 router = APIRouter(prefix="/login", tags=["login"])
 
@@ -220,6 +220,10 @@ async def login_with_badge(
     ).scalar_one_or_none()
     if employee is None:
         raise UnauthorizedException("Beyjik topilmadi.")
+    # `user-N` ko'zgusi bilan kirib bo'lmaydi: N — kichik butun son, uni terib
+    # ko'rish bilan istalgan operator nomidan kirsa bo'lardi (MIRROR_BADGE_MSG)
+    if is_mirror_badge(employee.badge_id):
+        raise UnauthorizedException(MIRROR_BADGE_MSG)
     if employee.status != EmployeeStatus.ACTIVE:
         raise UnauthorizedException("Beyjik nofaol. Adminga murojaat qiling.")
 
