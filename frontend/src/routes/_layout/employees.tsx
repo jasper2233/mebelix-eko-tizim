@@ -296,11 +296,19 @@ function EmployeesPage() {
           </Table>
         </div>
       )}
-      <BadgeDialog
-        employee={badgeFor}
-        onClose={() => setBadgeFor(null)}
-        isAdmin={admin}
-      />
+      {/* `key` SHART: dialog ichidagi "yangi beyjik" mutatsiyasi holati komponent
+          bilan yashaydi. Kalitsiz u doim o'rnatilgan turardi va bir hodimga
+          beyjik qayta berilgach, KEYINGI hodimning dialogida ham o'sha eski
+          javob ko'rsatilardi (`regen.data ?? employee`) — ya'ni boshqa odamning
+          ismi va QR'i chop etilardi. */}
+      {badgeFor && (
+        <BadgeDialog
+          key={badgeFor.id}
+          employee={badgeFor}
+          onClose={() => setBadgeFor(null)}
+          isAdmin={admin}
+        />
+      )}
       {editFor && (
         <EditEmployee employee={editFor} onClose={() => setEditFor(null)} />
       )}
@@ -532,9 +540,19 @@ function BadgeDialog({
               yaqin narsa tushsa skaner o'qimay qolardi. */}
           <QRCodeSVG value={emp.badge_id} size={180} marginSize={4} />
         </div>
-        <div className="badge-id num text-xs text-muted-foreground">
+        {/* Beyjik ID qog'ozga BOSILMAYDI: hodim uchun u ma'nosiz raqam, QR
+            o'qilmasa uni qo'lda kiritadigan joy ham yo'q. Ekranda qoladi —
+            adminga hodimni aniqlash uchun kerak bo'ladi. */}
+        <div className="print-hide num text-xs text-muted-foreground">
           {emp.badge_id}
         </div>
+        {/* Qog'ozda ID o'rniga LAVOZIM: bu hodim ham, uni ko'rgan odam ham
+            o'qiy oladigan yagona qo'shimcha ma'lumot. */}
+        {emp.position && (
+          <div className="badge-role text-xs font-semibold uppercase tracking-wider">
+            {emp.position}
+          </div>
+        )}
         <DialogFooter className="print-hide flex-col gap-2 sm:flex-col">
           <Button variant="outline" onClick={() => window.print()}>
             Chop etish
