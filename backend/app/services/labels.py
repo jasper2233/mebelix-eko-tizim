@@ -524,9 +524,9 @@ def render_badge_png(d: BadgeLabelData, scale: int = 1) -> bytes:
     if len("".join(lines)) < len(d.full_name.replace(" ", "")):
         lines[-1] = lines[-1].rstrip() + "…"
 
-    # Ism bloki PASTGA tekislanadi (y=21mm): bir qatorli ham, ikki qatorli ham
+    # Ism bloki PASTGA tekislanadi (y=20mm): bir qatorli ham, ikki qatorli ham
     # QR bilan orasidagi masofa bir xil bo'ladi
-    top = 21 - len(lines) * 5.8
+    top = 20 - len(lines) * 5.8
     # Lavozim ismning USTIGA yopishadi — ular bitta blok. Qat'iy y da qoldirilsa
     # bir qatorli ismda orada katta bo'shliq qolib, ikkisi ajralib ko'rinardi.
     if d.position:
@@ -540,10 +540,13 @@ def render_badge_png(d: BadgeLabelData, scale: int = 1) -> bytes:
     for i, line in enumerate(lines):
         draw.text((W // 2, int((top + i * 5.8) * mm)), line, fill="black", font=name_font, anchor="ma")
 
-    # QR QAT'IY o'rinda: 34mm, gorizontal markazda
+    # QR QAT'IY o'rinda: 31mm, gorizontal markazda. O'lcham va y ism blokidan
+    # ham, qog'oz chetidan ham 4.5mm oq qoldiradi — UUID QR'i 29 modul, ya'ni
+    # modul 1.07mm va bo'shliq 4.2 modul. QR standarti 4 modul tinch zona talab
+    # qiladi; 34mm da tepada atigi 1.7 modul qolib, ism QR'ga yopishardi.
     qr = qrcode.make(d.badge_id, box_size=max(1, scale * 2), border=0)
-    qr_px = 34 * mm
-    img.paste(qr.get_image().convert("RGB").resize((qr_px, qr_px)), ((W - qr_px) // 2, 23 * mm))
+    qr_px = 31 * mm
+    img.paste(qr.get_image().convert("RGB").resize((qr_px, qr_px)), ((W - qr_px) // 2, int(24.5 * mm)))
 
     buf = _io.BytesIO()
     img.convert("L").point(_bw, "1").save(buf, format="PNG")
