@@ -291,7 +291,7 @@ class TmoPending(BaseModel):
     pachka_code: str | None  # qaysi qadoq ichida — qadoqsiz buyurtmada None
     ready: bool  # oldingi bosqichlar tugaganmi (tugamagan bo'lsa qabul rad etiladi)
     #: Tayyor bo'lmasa — detal HOZIR qaysi bosqichda turibdi ("Kromka", "Prisadka").
-    #: Omborchiga "sexda" degan umumiy so'z hech narsa bermaydi: u buyumni qidirib
+    #: Omborchiga "tsexda" degan umumiy so'z hech narsa bermaydi: u buyumni qidirib
     #: qaysi postga borishni bilishi kerak.
     stage: str = ""
 

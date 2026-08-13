@@ -105,7 +105,7 @@ function Login() {
   })
 
   // Beyjik butun sahifada tinglanadi: ofis xodimi parolni terayotganda ham
-  // fokus tortilmaydi, sexdagi operator esa hech nima bosmasdan skanerlaydi.
+  // fokus tortilmaydi, tsexdagi operator esa hech nima bosmasdan skanerlaydi.
   useBadgeScan((badgeId) => {
     if (!badge.isPending) badge.mutate({ badgeId })
   })
@@ -145,7 +145,7 @@ function Login() {
           onSubmit={form.handleSubmit(onSubmit)}
           className="flex flex-col gap-6"
         >
-          {/* Markazlashgan: sexdagi monoblokka kelgan odamning ko'zi markazga
+          {/* Markazlashgan: tsexdagi monoblokka kelgan odamning ko'zi markazga
               tushadi va u yerda bitta ish turadi — beyjikni skanerlash. */}
           <div className="flex flex-col items-center gap-1.5">
             <p className="text-2xs font-medium uppercase tracking-[0.3em] text-(--brand-gold-deep)">

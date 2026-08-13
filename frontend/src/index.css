@@ -151,7 +151,7 @@
   }
 }
 
-/* Muvaffaqiyatli skan tasdig'i: sexda operator ekranga qaramay ishlaydi,
+/* Muvaffaqiyatli skan tasdig'i: tsexda operator ekranga qaramay ishlaydi,
    qisqa yashil urish "qabul qilindi" ni chetki ko'rish bilan ham bildiradi.
    Klass terminal.tsx da ishlatilardi, lekin hech qayerda aniqlanmagan edi. */
 @keyframes mx-pulse-once {

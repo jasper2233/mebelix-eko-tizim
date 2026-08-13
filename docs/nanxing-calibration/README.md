@@ -5,7 +5,7 @@
 > 10500 qirra teshigi; commit `a633b28`): `backend/app/services/giblab/scx.py`
 > dagi yagona `_EDGE_FACE = {l→4, r→3, t→1, b→2}` jadvali qirra teshigi uchun
 > ham, kromka lenta uchun ham ishlaydi; to'rttala tomon korpus-tasdiqli
-> (qarshi ovoz <0.5%). Eksport GibLab'niki bilan semantik bir xil — sexdagi
+> (qarshi ovoz <0.5%). Eksport GibLab'niki bilan semantik bir xil — tsexdagi
 > Nanxing shu formatni qabul qiladi. Eski `_EDGE_BORE_FACE`/`_EDGE_BAND_FACE`
 > jadvallari o'chirilgan (qiymatlar ham o'zgargan: r 2→3, b 3→2).
 

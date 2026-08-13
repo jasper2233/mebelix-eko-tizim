@@ -1,5 +1,5 @@
 // Oxirgi skan natijasi + BEKOR QILISH. Har post ekranining tepasida turadi:
-// sex shovqinida ovoz signaliga ishonib bo'lmaydi, natija ko'rinib turishi kerak.
+// tsex shovqinida ovoz signaliga ishonib bo'lmaydi, natija ko'rinib turishi kerak.
 
 import { Undo2 } from "lucide-react"
 

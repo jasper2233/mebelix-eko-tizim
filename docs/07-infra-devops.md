@@ -1,6 +1,6 @@
 # 07 — Infra & DevOps (Docker, Caddy, Makefile, scripts, chop etish, CI hooks)
 
-Bu hujjat MebeliX MES loyihasining infratuzilma va DevOps qatlamini tavsiflaydi: Docker Compose stacklari (lokal va production), backend/frontend Dockerfile'lar, Caddy reverse proxy, nginx static server, `Makefile` buyruqlari, yordamchi scriptlar, sexdagi chop etish infratuzilmasi (bridge-agent + GoDEX), pre-commit hooklar, CI/CD va environment konfiguratsiyasi.
+Bu hujjat MebeliX MES loyihasining infratuzilma va DevOps qatlamini tavsiflaydi: Docker Compose stacklari (lokal va production), backend/frontend Dockerfile'lar, Caddy reverse proxy, nginx static server, `Makefile` buyruqlari, yordamchi scriptlar, tsexdagi chop etish infratuzilmasi (bridge-agent + GoDEX), pre-commit hooklar, CI/CD va environment konfiguratsiyasi.
 
 ## Umumiy arxitektura
 
@@ -37,7 +37,7 @@ make run-frontend   # vite dev server                (http://localhost:5173)
 make worker         # ARQ background worker
 ```
 
-Bu rejimda `POSTGRES_SERVER=localhost` va `REDIS_HOST=localhost` bo'lishi kerak (`.env.example` dagi default). DB/Redis'ni konteynerdan olish mumkin: `docker-compose.local.yml` ular portlarini faqat loopback'ka ochadi (`127.0.0.1:5432`, `127.0.0.1:6379` — dev mashina sex tarmog'ida bo'lgani uchun default parolli Postgres/parolsiz Redis tarmoqqa chiqmaydi). `frontend/README.md` ham aynan shu workflow'ni tavsiya qiladi — Docker image'ni har o'zgarishda qayta build qilish samarasiz, live reload bilan lokal server yaxshiroq.
+Bu rejimda `POSTGRES_SERVER=localhost` va `REDIS_HOST=localhost` bo'lishi kerak (`.env.example` dagi default). DB/Redis'ni konteynerdan olish mumkin: `docker-compose.local.yml` ular portlarini faqat loopback'ka ochadi (`127.0.0.1:5432`, `127.0.0.1:6379` — dev mashina tsex tarmog'ida bo'lgani uchun default parolli Postgres/parolsiz Redis tarmoqqa chiqmaydi). `frontend/README.md` ham aynan shu workflow'ni tavsiya qiladi — Docker image'ni har o'zgarishda qayta build qilish samarasiz, live reload bilan lokal server yaxshiroq.
 
 ### 2-yo'l: konteynerlashgan dev — `docker-compose.local.yml`
 
@@ -225,7 +225,7 @@ openssl enc -d -aes-256-cbc -pbkdf2 -in FILE.tar.gz.enc | tar -xz            # f
 
 ## Chop etish infratuzilmasi — bridge-agent va GoDEX G500-U
 
-Printer sexda, server esa masofada (`mes.mebelix.uz`) turadi. GoDEX G500-U **faqat USB** — unda tarmoq porti umuman yo'q, ya'ni printerga IP orqali murojaat qilish imkoni yo'q. Shuning uchun oraliqda **bridge-agent** — printer ulangan kompyuterda ishlaydigan, serverga **chiquvchi** (outbound) WebSocket ochadigan servis. Manbasi bitta Python fayl (`bridge-agent/agent.py`), sexga esa u **Windows exe** (`mebelix-agent.exe`) sifatida boradi — o'rnatiladigan mashinada Python ham, kutubxona ham kerak emas. Sex tarmog'ida hech qanday port ochilmaydi, oq IP kerak emas.
+Printer tsexda, server esa masofada (`mes.mebelix.uz`) turadi. GoDEX G500-U **faqat USB** — unda tarmoq porti umuman yo'q, ya'ni printerga IP orqali murojaat qilish imkoni yo'q. Shuning uchun oraliqda **bridge-agent** — printer ulangan kompyuterda ishlaydigan, serverga **chiquvchi** (outbound) WebSocket ochadigan servis. Manbasi bitta Python fayl (`bridge-agent/agent.py`), tsexga esa u **Windows exe** (`mebelix-agent.exe`) sifatida boradi — o'rnatiladigan mashinada Python ham, kutubxona ham kerak emas. Tsex tarmog'ida hech qanday port ochilmaydi, oq IP kerak emas.
 
 Agent faqat **printer ulangan bitta kompyuterga** o'rnatiladi; menejer, texnolog va boshqa post terminallariga hech narsa kerak emas — ular brauzerdan tugmani bosadi.
 
@@ -246,7 +246,7 @@ Terminal (arrachi)
   GET /api/v1/ws/bridge  (Authorization: Bearer …)     (backend/app/api/routes/ws.py)
     brpop("mes:print:queue", 5) → send → ack kutish → yo'q bo'lsa rpush (qaytarib qo'yish)
           ↓
-  bridge-agent (sex)                                   (bridge-agent/agent.py)
+  bridge-agent (tsex)                                   (bridge-agent/agent.py)
     uplink() → local_enqueue(job) → ack → FLUSH_EVENT.set()
     flusher() → send_to_printer(png)                   → Windows GDI → USB GoDEX
 ```
@@ -258,10 +258,10 @@ Job'ning Redis'dagi kaliti — `PRINT_QUEUE_KEY = "mes:print:queue"` (`backend/a
 Zanjirning har bo'g'inida jobni yo'qotmaslik choralari bor:
 
 - **Server → agent.** `ws_bridge` jobni `brpop` bilan Redis'dan **oladi** (ya'ni navbatdan chiqadi), keyin yuboradi va `{"ok": true}` ack kutadi (`asyncio.wait_for`, 15s). Ack kelmasa yoki `ok` false bo'lsa — `rpush` bilan navbatga **qaytariladi**, ulanish esa uziladi.
-- **Agent tomonda.** `uplink()` jobni avval `local_enqueue()` bilan diskka yozadi (`print-queue.jsonl`, JSONL append), **keyin** ack yuboradi. Ya'ni server jobni faqat u sexdagi diskda turgani aniq bo'lgach unutadi — agent yoki kompyuter o'chsa ham job saqlanadi.
+- **Agent tomonda.** `uplink()` jobni avval `local_enqueue()` bilan diskka yozadi (`print-queue.jsonl`, JSONL append), **keyin** ack yuboradi. Ya'ni server jobni faqat u tsexdagi diskda turgani aniq bo'lgach unutadi — agent yoki kompyuter o'chsa ham job saqlanadi.
 - **Printer o'chiq bo'lsa.** `flusher()` navbatni ketma-ket chiqaradi; birinchi muvaffaqiyatsiz jobda to'xtaydi va **qolgan barchasini** `local_rewrite()` bilan faylga qaytarib yozadi (tartib buzilmaydi), keyin `"Printer kutilmoqda — navbatda N ta yorliq"` deb log yozadi.
 - **Bo'sh vaqtda.** Agent oddiy holatda 5 sekundda bir sikl uradi, lekin yangi job kelganda `FLUSH_EVENT.set()` flusher'ni **darhol** uyg'otadi — kutish yo'q.
-- **Yarim-ochiq TCP.** Server jobsiz 5 sekunddan keyin `{"type": "ping"}` yuboradi va javob kutadi; agent unga `{"type": "pong"}` qaytaradi (job-ack bilan bir xil `{"ok": true}` **emas** — kechikkan ping-javob keyingi jobning ack'i deb o'qilib ketmasin). Server ack kutishda `pong` xabarlarini o'tkazib yuboradi va job jo'natishdan oldin soketda qolgan eskirgan javoblarni drain qiladi; pingga `{"ok": true}` qaytarish faqat eski agentlarda qolgan. Sex tarmog'ida "o'lgan" ulanish tez aniqlanadi. Agent tomonda `websockets.connect(..., ping_interval=30)`, uzilganda 5s backoff bilan qayta ulanish.
+- **Yarim-ochiq TCP.** Server jobsiz 5 sekunddan keyin `{"type": "ping"}` yuboradi va javob kutadi; agent unga `{"type": "pong"}` qaytaradi (job-ack bilan bir xil `{"ok": true}` **emas** — kechikkan ping-javob keyingi jobning ack'i deb o'qilib ketmasin). Server ack kutishda `pong` xabarlarini o'tkazib yuboradi va job jo'natishdan oldin soketda qolgan eskirgan javoblarni drain qiladi; pingga `{"ok": true}` qaytarish faqat eski agentlarda qolgan. Tsex tarmog'ida "o'lgan" ulanish tez aniqlanadi. Agent tomonda `websockets.connect(..., ping_interval=30)`, uzilganda 5s backoff bilan qayta ulanish.
 - **Printersiz stansiya (`can_print` o'chiq).** Chek chiqarish ruxsati o'chirilgan agent (masalan faqat skan-forvard uchun ulangan stanok kompyuteri) umumiy navbatdan `brpop` **qilmaydi** — aks holda jobni "o'g'irlab", chiqara olmay lokalida qoldirardi (`ws_bridge`, `backend/app/api/routes/ws.py`). `touch_agent` har 5 daqiqada `can_print` ni ham qayta o'qiydi, ya'ni admin paneldagi belgi jonli ulanishda ~5 daqiqada kuchga kiradi.
 
 ### Autentifikatsiya — har agent uchun alohida token (pairing)
@@ -335,7 +335,7 @@ Printer xatosi ushlanadi va `False` qaytariladi — job navbatda qoladi, yo'qolm
 
 ### Agent o'rnatish
 
-Faqat printer USB bilan ulangan Windows kompyuterga (sexdagi terminal monoblokning o'zi ham bo'ladi). Hammasi brauzerdan bajariladi — serverga SSH kirish, server `.env` ini tahrirlash yoki sex routerida biror port ochish **kerak emas** (ulanish baribir chiquvchi). Qadamlar (`bridge-agent/README.md`):
+Faqat printer USB bilan ulangan Windows kompyuterga (tsexdagi terminal monoblokning o'zi ham bo'ladi). Hammasi brauzerdan bajariladi — serverga SSH kirish, server `.env` ini tahrirlash yoki tsex routerida biror port ochish **kerak emas** (ulanish baribir chiquvchi). Qadamlar (`bridge-agent/README.md`):
 
 1. **GoDEX drayverini o'rnatish** — printer USB'ga ulangan holda. Agent printerni nomidan o'zi topadi, boshqa sozlash yo'q.
 2. **Exe'ni ko'chirish** — `mebelix-agent.exe` qo'lda tarqatiladi (flashka yoki lokal tarmoq; paneldagi yuklab olish tugmasi va `GET /download` endpointi olib tashlangan — serverda eski nusxa qolib adashtirardi). Python, `pip`, kutubxonalar — hech biri kerak emas, hammasi exe ichida.
@@ -481,7 +481,7 @@ Bitta qoida: `* text=auto eol=lf` — barcha matn fayllar LF line-ending bilan n
 
 ### `.gitignore`
 
-Standart Python artefaktlari (`__pycache__`, `*.py[cod]`, `build/`, `dist/` — setuptools/buildout davridan qolgan `egg`/`sdist`/`tox` naqshlari olib tashlandi: loyiha uv + hatchling'da, ular hech qachon paydo bo'lmaydi), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. MES runtime artefaktlari ham ignore: `backend/uploads/` (`projects/`, `scx/`, `survey/` — yuklangan fayllar va anketa xona rasmlari), `bridge-agent/print-queue.jsonl` (agent'ning durable print navbati), `frontend/openapi.json`, serverdagi shifrlangan DB nusxalari uchun `backups/` (`scripts/backup.sh`), hamda lokal sex ma'lumotlari — `uploads/` (repo root'da: `.project`/SCX namunalari), `chek/` (namuna yorliq fotolari, `labels.py` maketi shulardan olingan), `/scx/` va `/stanok rasmlar/` (terminal SCX test papkalari). PyInstaller'ning `bridge-agent/build/` va `bridge-agent/dist/` kataloglari alohida qoida talab qilmaydi — umumiy `build/` / `dist/` naqshlari ularni istalgan chuqurlikda tutadi (spec fayli uchun esa alohida `bridge-agent/*.spec` qoidasi bor). E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
+Standart Python artefaktlari (`__pycache__`, `*.py[cod]`, `build/`, `dist/` — setuptools/buildout davridan qolgan `egg`/`sdist`/`tox` naqshlari olib tashlandi: loyiha uv + hatchling'da, ular hech qachon paydo bo'lmaydi), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. MES runtime artefaktlari ham ignore: `backend/uploads/` (`projects/`, `scx/`, `survey/` — yuklangan fayllar va anketa xona rasmlari), `bridge-agent/print-queue.jsonl` (agent'ning durable print navbati), `frontend/openapi.json`, serverdagi shifrlangan DB nusxalari uchun `backups/` (`scripts/backup.sh`), hamda lokal tsex ma'lumotlari — `uploads/` (repo root'da: `.project`/SCX namunalari), `chek/` (namuna yorliq fotolari, `labels.py` maketi shulardan olingan), `/scx/` va `/stanok rasmlar/` (terminal SCX test papkalari). PyInstaller'ning `bridge-agent/build/` va `bridge-agent/dist/` kataloglari alohida qoida talab qilmaydi — umumiy `build/` / `dist/` naqshlari ularni istalgan chuqurlikda tutadi (spec fayli uchun esa alohida `bridge-agent/*.spec` qoidasi bor). E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
 
 ---
 

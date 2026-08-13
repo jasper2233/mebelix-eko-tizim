@@ -68,7 +68,7 @@ async def instance_stages(db: SessionDep, order: Order, post: Post) -> dict[int,
 
     Hisob NUSXA bo'yicha, detal bo'yicha emas: 4 nusxali detalning bittasi
     qadoqlansa, detal jami hali tugamagan bo'ladi — lekin o'sha bitta nusxa
-    TMO ga tayyor. Detal darajasida sanaganda u sexda qolib ketardi va
+    TMO ga tayyor. Detal darajasida sanaganda u tsexda qolib ketardi va
     omborchi qadoqlangan buyumni ro'yxatdan topa olmasdi.
     """
     routes = list(

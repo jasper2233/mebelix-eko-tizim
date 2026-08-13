@@ -1,4 +1,4 @@
-// TABLO (TZ 9): sex zalidagi TV ekran — buyurtmalar × bosqichlar jonli matritsasi.
+// TABLO (TZ 9): tsex zalidagi TV ekran — buyurtmalar × bosqichlar jonli matritsasi.
 // Rejimlar: HAJM / SONI / FOIZ. Kontekst-aware: tablo user stanogi ustuni ajratiladi.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -38,7 +38,7 @@ const MODE_KEY = "tablo-mode"
 
 function TabloPage() {
   const queryClient = useQueryClient()
-  // Rejim saqlanadi: sexda tanlangan ko'rinish sahifa yangilanganda ham
+  // Rejim saqlanadi: tsexda tanlangan ko'rinish sahifa yangilanganda ham
   // (deploy reload, TV qayta yoqilishi) o'zgarmasin.
   const [mode, setMode] = useState<Mode>(() => {
     const saved = localStorage.getItem(MODE_KEY) as Mode | null

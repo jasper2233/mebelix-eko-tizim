@@ -32,7 +32,7 @@ _EDGE_SIDES = ("l", "r", "t", "b")
 #   O  — furnitura komplektatsiyasi; sanoqlar `typeId="simple"` goodlarining o'zida bor,
 #        ya'ni material registriga baribir tushadi.
 # CL — погонажный раскрой (profil kesish) alohida holat: uning detallari arrachiga
-# BERILMAYDI (sexda profil kesish posti yo'q, profillar tayyor keladi), lekin faylda
+# BERILMAYDI (tsexda profil kesish posti yo'q, profillar tayyor keladi), lekin faylda
 # borligi texnologga ma'lum bo'lishi kerak — u profillarni ta'minlashni bilishi shart.
 # Shuning uchun ogohlantirish emas, MA'LUMOT yoziladi: nechta operatsiya, nechta detal
 # va zagotovka uzunligi. Profil kesish posti paydo bo'lsa: CL detallarini marshrutga
@@ -198,7 +198,7 @@ def _advisories(
         lengths = f", zagotovka {'/'.join(stock)} mm" if stock else ""
         out.append(
             f"Profil kesish (CL): {len(cl_ops)} operatsiya, {cl_parts} detal{lengths}. "
-            f"Sexda kesilmaydi — profillar tayyor holda ta'minlanadi, arrachi ro'yxatiga tushmaydi."
+            f"Tsexda kesilmaydi — profillar tayyor holda ta'minlanadi, arrachi ro'yxatiga tushmaydi."
         )
 
     unhandled = sorted(

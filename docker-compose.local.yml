@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-fastapi_db}
     ports:
-      # Faqat loopback: dev mashina sex tarmog'ida — default parolli Postgres
+      # Faqat loopback: dev mashina tsex tarmog'ida — default parolli Postgres
       # butun tarmoqqa ochilib qolmasin
       - "127.0.0.1:5432:5432"
     volumes:

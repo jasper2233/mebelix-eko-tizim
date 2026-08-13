@@ -10,7 +10,7 @@ type SheetPart = any
 type Sheet = any
 
 // Barcha detallar bir xil to'q apelsin; tanlangani moviy bo'lib ajraladi.
-// Xarita paneli kulrang (oq emas) — yorug' sexda ko'z qamashtirmaydi, detallar ajralib turadi
+// Xarita paneli kulrang (oq emas) — yorug' tsexda ko'z qamashtirmaydi, detallar ajralib turadi
 const PART_FILL = "#e88b00"
 const PART_SELECTED = "#2596be"
 // Chek chiqarilgan yoki skan qilingan katak — "kesildi" yashili (TZ 7.1.7).

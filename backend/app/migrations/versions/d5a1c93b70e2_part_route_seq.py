@@ -1,7 +1,7 @@
 """Marshrut qadamlari: PartRoute ga `seq` va `process_code`.
 
 Ilgari marshrut tartibsiz to'plam edi — `(part_id, post_id)` yagona indeksi bitta postni
-marshrutda faqat BIR MARTA ko'rsatishga majbur qilardi. Sexda esa detal kromkadan
+marshrutda faqat BIR MARTA ko'rsatishga majbur qilardi. Tsexda esa detal kromkadan
 prisadkaga o'tib yana kromkaga qaytishi mumkin, ya'ni takror qadam kerak. Ustiga skan
 tartibi postlarning global tartibidan o'qilardi — nostandart marshrut (roverdan
 boshlanadigan) uni buzardi.

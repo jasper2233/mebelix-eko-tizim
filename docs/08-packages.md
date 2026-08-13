@@ -92,7 +92,7 @@ Tekshiruv: `npm run build` (tsc + vite) ✅ · `bash scripts/generate-client.sh`
 
 ## Bridge-agent bog'liqliklari (manifestsiz)
 
-`bridge-agent/` da `pyproject.toml` ham, `requirements.txt` ham **yo'q**. To'rtta runtime paket agent `mebelix-agent.exe` ichiga PyInstaller bilan yig'iladi (`pyinstaller --onefile --noconsole --name mebelix-agent agent.py`) — sexdagi kompyuterga na Python, na `pip`, na alohida paket o'rnatiladi. `pyinstaller`ning o'zi faqat **build-time** asbob (dasturchi mashinasida), runtime bog'liqlik emas va hech qaysi manifestda yozilmagan.
+`bridge-agent/` da `pyproject.toml` ham, `requirements.txt` ham **yo'q**. To'rtta runtime paket agent `mebelix-agent.exe` ichiga PyInstaller bilan yig'iladi (`pyinstaller --onefile --noconsole --name mebelix-agent agent.py`) — tsexdagi kompyuterga na Python, na `pip`, na alohida paket o'rnatiladi. `pyinstaller`ning o'zi faqat **build-time** asbob (dasturchi mashinasida), runtime bog'liqlik emas va hech qaysi manifestda yozilmagan.
 
 | Paket | Nima uchun |
 | --- | --- |

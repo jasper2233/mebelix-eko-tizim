@@ -253,7 +253,7 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
             text(35, 9.4, "С", 3.2, bold=True)
 
     # Marshrut — ALOHIDA qator (nomga qo'shilsa 24 belgi kesimida yo'qolardi).
-    # Kodlar sexning "Jarayon uchun kodlar" jadvalidagi raqamlar.
+    # Kodlar tsexning "Jarayon uchun kodlar" jadvalidagi raqamlar.
     if d.route_codes:
         text(5, 41.5, "Marshrut: " + "/".join(str(c) for c in d.route_codes), 2.9, bold=True)
 

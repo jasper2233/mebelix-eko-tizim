@@ -80,7 +80,7 @@ export const chipColors = (color: string, bgPct: number) => ({
   backgroundColor: mixTint(color, bgPct),
 })
 
-// Sexning "Jarayon uchun kodlar" jadvali — backend `PROCESS_POSTS`
+// Tsexning "Jarayon uchun kodlar" jadvali — backend `PROCESS_POSTS`
 // (services/giblab/models.py) bilan bir xil bo'lishi shart. Bu yerda faqat
 // KO'RSATISH uchun: marshrutni backend quradi, frontend esa operatorga qaysi
 // AMAL ekanini aytadi. Noma'lum kodda chip umuman chiqmaydi (xato nom emas).

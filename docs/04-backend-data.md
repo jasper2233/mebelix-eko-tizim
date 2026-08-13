@@ -240,7 +240,7 @@ Mijoz ismi/telefoni `Client` da, narx/avans/muddat `Order` da — anketada takro
 | `installation` | `bool` | default `False` — bitta brigada, bitta tashrif |
 | `rooms` | `list[SurveyRoom]` | ≤10 |
 
-`packaging`/`delivery`/`installation` **buyurtma darajasida**, xona ichida emas: sex va logistikaga xona degan tushuncha yetib bormaydi (bitta `.project` fayl butun buyurtmaga yuklanadi). `survey` — JSONB, shuning uchun migratsiya kerak emas: eski yozuvlarda bu kalitlar umuman yo'q (o'qishda xom dict qaytadi, `OrderSurvey` bo'yicha qayta validatsiya yo'q) va frontend ularni belgilanmagan deb oladi; `delivery`/`installation` esa xonalardagi eski `yetkazish`/`montaj` kodlaridan qayta tiklanadi (`frontend/src/routes/_layout/anketa.$orderId.tsx`).
+`packaging`/`delivery`/`installation` **buyurtma darajasida**, xona ichida emas: tsex va logistikaga xona degan tushuncha yetib bormaydi (bitta `.project` fayl butun buyurtmaga yuklanadi). `survey` — JSONB, shuning uchun migratsiya kerak emas: eski yozuvlarda bu kalitlar umuman yo'q (o'qishda xom dict qaytadi, `OrderSurvey` bo'yicha qayta validatsiya yo'q) va frontend ularni belgilanmagan deb oladi; `delivery`/`installation` esa xonalardagi eski `yetkazish`/`montaj` kodlaridan qayta tiklanadi (`frontend/src/routes/_layout/anketa.$orderId.tsx`).
 
 **`SurveyRoom`** — har xona alohida to'ldiriladi (`extra="ignore"`). `id` — frontend beradigan barqaror kalit (≤40), xona rasmlari shu `id` ga bog'lanadi (1.4.1-bo'lim).
 
@@ -419,8 +419,8 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 
 | 22 | `d5b71c0a9e34` | `d5b71c0a9e34_machine_device_pairing.py` | **Terminal qurilmasini bog'lash** — `machine.pair_code(8)`, `pair_expires_at`, `token_hash(64)`. **BEKOR QILINGAN**: `b83e1f7a25c9` ustunlarni olib tashlaydi. Fayl zanjirda qoladi, chunki u tarqalib bo'lgan — o'chirilsa alembic o'z holatini topa olmasdi ("Can't locate revision") |
 | 23 | `f2a08c47b6d1` | `f2a08c47b6d1_ombor_post_tmo_deb_nomlandi.py` | **`OMBOR` → `TMO`** (Tayyor Mahsulot Ombori) — kelishilgan atama. Faqat NOM: `UPDATE post SET code='TMO', name='TMO'`; `post.id` tegilmaydi, marshrut/skan/hisoblagichlar o'z joyida qoladi |
-| 24 | `b83e1f7a25c9` | `b83e1f7a25c9_qurilma_boglash_olib_tashlandi.py` | **Qurilma bog'lash olib tashlandi**: `machine` dagi uchta ustun va ikkita indeks `DROP ... IF EXISTS` bilan. Sexdagi kirish uchun faqat beyjik skani kerak (09-mes-domain.md §3.0.1) |
-| 25 | `d1c4e7a90b52` | `d1c4e7a90b52_employee_user_link.py` | **`employee.user_id`** FK + PARTIAL UNIQUE `ix_employee_user_id`; `user-N` beyjiklar `user_id` ga ko'chirilib, `badge_id` `gen_random_uuid()` ga almashtiriladi. Sexdagi HAR hodimda haqiqiy beyjik bo'lishi uchun (09-mes-domain.md §3.0.1). `employee.id` tegilmaydi — skan va ish haqi tarixi joyida qoladi |
+| 24 | `b83e1f7a25c9` | `b83e1f7a25c9_qurilma_boglash_olib_tashlandi.py` | **Qurilma bog'lash olib tashlandi**: `machine` dagi uchta ustun va ikkita indeks `DROP ... IF EXISTS` bilan. Tsexdagi kirish uchun faqat beyjik skani kerak (09-mes-domain.md §3.0.1) |
+| 25 | `d1c4e7a90b52` | `d1c4e7a90b52_employee_user_link.py` | **`employee.user_id`** FK + PARTIAL UNIQUE `ix_employee_user_id`; `user-N` beyjiklar `user_id` ga ko'chirilib, `badge_id` `gen_random_uuid()` ga almashtiriladi. Tsexdagi HAR hodimda haqiqiy beyjik bo'lishi uchun (09-mes-domain.md §3.0.1). `employee.id` tegilmaydi — skan va ish haqi tarixi joyida qoladi |
 
 Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kind=DOCUMENT` + `meta` JSONB bilan ishlatiladi (1.4.1-bo'lim).
 

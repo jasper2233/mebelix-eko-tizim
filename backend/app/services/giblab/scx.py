@@ -2,7 +2,7 @@
 
 Konvensiya D:\\MebeliX\\Scx korpusidan keltirilgan (87 proyekt, 10500 qirra
 teshigi, 509-ovozlik Face6 transformi): GibLab'ning joriy eksporti bilan
-semantik bir xil — sexdagi Nanxing aynan shu formatni yeydi.
+semantik bir xil — tsexdagi Nanxing aynan shu formatni yeydi.
 
 - Yuza (Face 5): Y_scx = Width − y_program; X o'zgarmaydi.
 - Qirra teshik Face: l→4, r→3, t→1, b→2. l/r: X=0/Length, Y=Width−pos;

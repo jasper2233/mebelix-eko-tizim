@@ -1,6 +1,6 @@
 """Qurilma bog'lash olib tashlandi — beyjik yolg'iz kifoya.
 
-`d5b71c0a9e34` qo'shgan uchta ustun endi ishlatilmaydi: sexda kirish uchun
+`d5b71c0a9e34` qo'shgan uchta ustun endi ishlatilmaydi: tsexda kirish uchun
 faqat beyjik skani kerak, monoblokni stanokka bog'lash qadami bekor qilindi.
 
 Nega add-keyin-drop juftligi qoldi: `d5b71c0a9e34` allaqachon tarqalgan va

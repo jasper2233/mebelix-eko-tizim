@@ -134,7 +134,7 @@ export function PostQueueView({
         {!!waiting.length && (
           <div className="border-t px-4 py-2 text-sm text-muted-foreground">
             Yana <span className="num font-semibold">{waiting.length}</span>{" "}
-            detal sexda — shu bosqichga yetib kelgach ro'yxatda chiqadi.
+            detal tsexda — shu bosqichga yetib kelgach ro'yxatda chiqadi.
           </div>
         )}
 

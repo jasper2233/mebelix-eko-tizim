@@ -50,7 +50,7 @@ const TABS = [
   { value: "draft", label: "Qoralama" },
   { value: "technical_review", label: "Texnologda" },
   { value: "production", label: "Jarayonda" },
-  { value: "completed", label: "Tayyor (sexda)" },
+  { value: "completed", label: "Tayyor (tsexda)" },
   { value: "delivered", label: "Topshirilgan" },
   { value: "cancelled", label: "Bekor qilingan" },
 ]

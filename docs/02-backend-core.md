@@ -77,7 +77,7 @@ app = create_application(router=router, settings=settings)
 | Env / CORS | `ENVIRONMENT`, `CORS_ORIGINS=["http://localhost:5173"]`, `CORS_METHODS`, `CORS_HEADERS` |
 
 - Computed field'lar: `POSTGRES_URI` (`user:pass@host:port/db`) va `REDIS_URL` (`redis://host:port`).
-- Modul darajasidagi eksportlar: `TASHKENT_TZ = ZoneInfo("Asia/Tashkent")` — sex mahalliy vaqti, hisobot/audit kunlari va chek timestamp'lari shu zonada (TZ 10.4; `audit.py`, `reports.py` route'lari va `services/labels.py` ishlatadi); `upload_root()` — `UPLOAD_DIR`ning absolyut `Path` ildizi, path-traversal tekshiruvlari shu qiymatga nisbatan (`orders.py`, `terminal.py` ishlatadi).
+- Modul darajasidagi eksportlar: `TASHKENT_TZ = ZoneInfo("Asia/Tashkent")` — tsex mahalliy vaqti, hisobot/audit kunlari va chek timestamp'lari shu zonada (TZ 10.4; `audit.py`, `reports.py` route'lari va `services/labels.py` ishlatadi); `upload_root()` — `UPLOAD_DIR`ning absolyut `Path` ildizi, path-traversal tekshiruvlari shu qiymatga nisbatan (`orders.py`, `terminal.py` ishlatadi).
 - `_validate_production_settings(s)` — **har qanday non-LOCAL muhitda (STAGING ham, PRODUCTION ham) xavfsiz bo'lmagan default'lar bilan boot qilishni rad etadi** (faqat LOCAL o'tkazib yuboriladi): `SECRET_KEY`, `ADMIN_PASSWORD`, `POSTGRES_PASSWORD`, `ADMIN_PHONE` placeholder qiymatda qolgan bo'lsa `RuntimeError` ko'taradi. Modul import bo'lganda darhol ishlaydi (birinchi so'rovda emas, startup'da).
 - Modul oxirida global singleton: `settings = Settings()`.
 
@@ -255,7 +255,7 @@ terminal → POST /api/v1/terminal/labels/{instance_id}
   → bridge-agent → print-queue.jsonl (durable) → Windows GDI (_print_png_gdi) → USB GoDEX G500-U
 ```
 
-Bridge-agent faqat printer ulangan kompyuterga o'rnatiladi va GoDEX printerini nomidan o'zi topadi (`_detect_printer`, nomida "godex" bor Windows printeri); `PRINTER_NAME` env faqat qo'lda override uchun. Sexdagi kompyuterda `mebelix-agent.exe` (PyInstaller onefile) ishlaydi — Python ham, pip ham, serverdagi `.env` tahriri ham kerak emas. Menejer, texnolog va boshqa terminallarga hech narsa o'rnatilmaydi — ular brauzerdan tugmani bosadi.
+Bridge-agent faqat printer ulangan kompyuterga o'rnatiladi va GoDEX printerini nomidan o'zi topadi (`_detect_printer`, nomida "godex" bor Windows printeri); `PRINTER_NAME` env faqat qo'lda override uchun. Tsexdagi kompyuterda `mebelix-agent.exe` (PyInstaller onefile) ishlaydi — Python ham, pip ham, serverdagi `.env` tahriri ham kerak emas. Menejer, texnolog va boshqa terminallarga hech narsa o'rnatilmaydi — ular brauzerdan tugmani bosadi.
 
 **`/ws/bridge` autentifikatsiyasi — per-agent pairing.** Admin panel har bir printerli kompyuter uchun 8 belgili bir martalik ulanish kodi beradi (alifboda I/L/O/0/1 yo'q — telefonda aytganda adashtirmaydi; TTL 15 daqiqa). Agent birinchi ishga tushganda kodni ochiq `POST /api/v1/bridge-agents/pair` endpointi orqali doimiy tokenga almashtiradi; bazada tokenning faqat sha256 xeshi qoladi (`bridge_agent.token_hash`, unikal) — token o'zi bir marta, pair javobida beriladi.
 

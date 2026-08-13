@@ -508,13 +508,13 @@ export class LoginService {
     
     /**
      * Login With Badge
-     * Sexdagi kirish: beyjik skani, parolsiz.
+     * Tsexdagi kirish: beyjik skani, parolsiz.
      *
      * Beyjik ham KIMLIGINI, ham QAYERDA ishlashini aytadi: post hodimning
      * biriktirilgan postlaridan chiqadi (bir nechtasi bo'lsa 409 + tanlash ro'yxati).
      *
      * XAVFSIZLIK: beyjik yagona omil, ya'ni QR qog'ozdan nusxa olingan bo'lsa
-     * istalgan qurilmadan kirsa bo'ladi. Bu ataylab tanlangan (2026-08-12): sexda
+     * istalgan qurilmadan kirsa bo'ladi. Bu ataylab tanlangan (2026-08-12): tsexda
      * parol terish smena almashuvini sekinlashtiradi va amalda umumiy akkauntga
      * olib keladi. Buning o'rniga hisob imtiyozi tor (terminal ekranlari, admin
      * paneli emas) va har kirish audit logga tushadi.

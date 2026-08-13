@@ -20,7 +20,7 @@ def xml_bool(raw: str | None, default: bool = False) -> bool:
     return raw.strip().lower() in ("true", "1")
 
 
-#: Sexning "Jarayon uchun kodlar" jadvali: jarayon kodi -> post kodi.
+#: Tsexning "Jarayon uchun kodlar" jadvali: jarayon kodi -> post kodi.
 #: Bir nechta jarayon bitta postga tushadi (45° kesish ham arrada, 6 xil
 #: stolyarka amali ham bitta postda) — qaysi amal ekanini `PartRoute.process_code`
 #: saqlaydi, post kodining o'zi yetarli emas.
@@ -39,7 +39,7 @@ PROCESS_POSTS: dict[int, PostCode] = {
     12: PostCode.STOLYARKA,  # G petlya chapdan
     13: PostCode.STOLYARKA,  # V petlya o'ngdan
     14: PostCode.STOLYARKA,  # V petlya chapdan
-    #: Qadoqlash sexning varag'ida yo'q — u jarayon emas, oxirgi bosqich.
+    #: Qadoqlash tsexning varag'ida yo'q — u jarayon emas, oxirgi bosqich.
     #: Kod kerak, chunki har marshrut qadami `process_code` saqlaydi; texnolog
     #: uni qo'lda tanlamaydi (anketadagi bayroq qo'shadi).
     15: PostCode.UPAKOVKA,  # Qadoqlash

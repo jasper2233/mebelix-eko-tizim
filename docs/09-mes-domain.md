@@ -44,7 +44,7 @@ uning bo'lim raqamlari. Barcha fazalar implementatsiya qilingan — alohida `TOD
 | **Materiallar ombori** | Xomashyo va qoldiqlar ombori (hozircha alohida modul yo'q — `/materials` bu KATALOG, qoldiq hisobi emas) | "Ombor", "sklad" |
 | **Qadoqlash bo'limi** | `PostCode.UPAKOVKA` — marshrutning oddiy posti | "Upakovka ombori" — bunday ombor yo'q |
 
-Yolg'iz "Ombor" va "sklad" ishlatilmaydi: sexda ikkita ombor bor, nomsiz atalganda
+Yolg'iz "Ombor" va "sklad" ishlatilmaydi: tsexda ikkita ombor bor, nomsiz atalganda
 qaysi biri ekani yo'qoladi. Boshqa tizimning ombori haqida yozilganda kimniki ekani
 aytiladi ("GibLab ombori") — 10-giblab-reference.md dagidek.
 
@@ -52,7 +52,7 @@ aytiladi ("GibLab ombori") — 10-giblab-reference.md dagidek.
 
 | Fayl | Vazifa |
 |---|---|
-| `models.py` | Parse natijasi dataclasslari (ORM emas): `ParsedProject/Product/Part`, `XncOp`, `ParsedMaterial`, `CutOperation` + `ParseError` (matni to'g'ridan texnologga ko'rsatiladi); `PROCESS_POSTS` — sexning "Jarayon uchun kodlar" jadvali (jarayon kodi → post kodi, quyida) |
+| `models.py` | Parse natijasi dataclasslari (ORM emas): `ParsedProject/Product/Part`, `XncOp`, `ParsedMaterial`, `CutOperation` + `ParseError` (matni to'g'ridan texnologga ko'rsatiladi); `PROCESS_POSTS` — tsexning "Jarayon uchun kodlar" jadvali (jarayon kodi → post kodi, quyida) |
 | `parser.py` | .project XML (to'la parser, regex YO'Q; cp1251/UTF-8; PROCESSED/TEMPLATE avlodlar; kontekstli id qidiruv); takror detal kodlari deterministik rename (`code`, `code-2`, …) + o'zbekcha warning — QR/SCX kaliti unikal qoladi. Detal NOMI marshrutga umuman ta'sir qilmaydi: eski `{7;11;8}` figurali qavs kodlari butunlay olib tashlangan, marshrut endi bazadagi tartibli qadamlar (quyida) |
 | `xnc.py` | XNC program parse (atribut yoki bola element), xavfsiz ifoda hisoblash (`dz+3`), `merge_xnc_ops` — BARCHA operatsiyalar saqlanadi, (`side2`, `code`) bo'yicha tartiblanadi, soni cheklanmaydi (`parser.py` 2 tadan ko'pi uchun faqat ogohlantiradi) |
 | `csblob.py` | CS `data` blob dekoderi: big-endian, 15B yozuvlar, guillotine daraxt, dims+117 root-o'q sloti, 5.7.4 self-check |
@@ -181,7 +181,7 @@ egasining ismi turadi, ya'ni jimgina o'tib ketmaydi. Beyjik
 bilan kirishda (§3.0.1) hisob umumiy — stanokniki, ish esa beyjik egasiniki; egallab olsak skanlar
 va ish haqi boshqa hodimga yozilardi.
 
-### 3.0.1 Beyjik bilan kirish (sexda parol yo'q)
+### 3.0.1 Beyjik bilan kirish (tsexda parol yo'q)
 
 Operator login/parol termaydi va **hech qanday o'rnatish qadami yo'q**: kirish sahifasi ochilib
 turgan istalgan brauzerda beyjik skani kirishga aylanadi.
@@ -199,7 +199,7 @@ Beyjik ikkala savolga javob beradi — KIM va QAYERDA (`login.py`):
 kirgandan keyin BOSHQA postning ekranida paydo bo'lardi.
 
 **SEXDAGI HAR HODIMDA BEYJIK BOR.** Admin beyjiksiz — u mes.mebelix.uz ga login/parol bilan
-kiradi; beyjik faqat sexda ishlaydiganlarga. Shuning uchun `Hodimlar` ro'yxatidagi HAR bir yozuvga
+kiradi; beyjik faqat tsexda ishlaydiganlarga. Shuning uchun `Hodimlar` ro'yxatidagi HAR bir yozuvga
 beyjik chiqariladi.
 
 Ilgari parol bilan kiradigan operator hisobiga `operator_employee` "ko'zgu" hodim yozuvi yaratardi
@@ -215,7 +215,7 @@ tegilmaydi, ya'ni skanlar va ish haqi tarixi o'z joyida qoladi.
 
 **Xavfsizlik — ataylab qilingan tanlov (2026-08-12).** Beyjik yagona omil: QR qog'ozda va nusxa
 olingan bo'lsa istalgan qurilmadan kirsa bo'ladi. Qurilma bog'lash (monoblokni stanokka bir
-martalik kod bilan bog'lash) qurilib, keyin OLIB TASHLANDI — sexda kod/parol terish smena
+martalik kod bilan bog'lash) qurilib, keyin OLIB TASHLANDI — tsexda kod/parol terish smena
 almashuvini sekinlashtiradi va amalda umumiy akkauntga olib keladi, ya'ni ish haqi atributsiyasini
 butunlay yo'qotadi. Buning o'rniga:
 
@@ -223,7 +223,7 @@ butunlay yo'qotadi. Buning o'rniga:
 - har kirish audit logga tushadi (`module=sessions, action=started`);
 - beyjik `employee.status` bilan darhol bekor qilinadi;
 - chegara `30/60s` (`_BADGE_RATE_LIMIT`) — 122-bitli UUID brute-force qilinmaydi, tor chegara esa
-  smena almashuvida butun sexni (bitta tashqi IP) qulflab qo'yardi.
+  smena almashuvida butun tsexni (bitta tashqi IP) qulflab qo'yardi.
 
 Frontendda skan **fokusni tortmaydi** (`hooks/useBadgeScan`): login sahifasida ofis xodimi ayni
 paytda parol terayotgan bo'lishi mumkin. Skanerni odamdan tezlik ajratadi — belgilar orasi
@@ -255,7 +255,7 @@ nomi)`. Bitta agregat so'rov (`Scan` bo'yicha `(instance_id, route_id)` guruhlas
 
 Hisob NUSXA bo'yicha, detal bo'yicha EMAS: 4 nusxali detalning bittasi qadoqlansa,
 `total_done >= total_required` hali bajarilmaydi — lekin o'sha bitta nusxa TMO ga tayyor. Detal
-darajasida sanaganda qadoqlangan buyum TMO ro'yxatida "sexda" bo'lib qolar va omborchi uni topa
+darajasida sanaganda qadoqlangan buyum TMO ro'yxatida "tsexda" bo'lib qolar va omborchi uni topa
 olmasdi. Bosqich nomi sifatida **ishi TUGAGAN** post beriladi (kutilayotgani emas): detal jismonan
 o'sha postdan keyin turadi va aynan o'sha yerdan olinadi.
 
@@ -272,7 +272,7 @@ sahifasida qoladi. `GET /scans/recent` endpointi olib tashlangan.
   post/stanok bo'yicha filtrlash; `ping`→`pong` heartbeat.
 - Fan-out Redis pub/sub (`mes:events`) orqali — gunicorn workerlar orasida; pool lifespan'da doim
   ochiladi (flag yo'q), publish xato bersa lokal yetkazishga tushadi.
-- `/ws/bridge` — sex bridge-agenti (per-agent pairing tokeni: `Authorization: Bearer` header, sha256
+- `/ws/bridge` — tsex bridge-agenti (per-agent pairing tokeni: `Authorization: Bearer` header, sha256
   → `bridge_agent.token_hash`; umumiy `BRIDGE_TOKEN` faqat legacy moslik): Redis `mes:print:queue`
   dan chop etish joblarini oladi, ack qilinmagan job qayta navbatga qaytadi. `can_print=False`
   agent (printersiz skan-forvard stansiyasi) navbatdan job OLMAYDI — brpop o'rniga sleep, aks
@@ -351,7 +351,7 @@ operator keyin oddiy skan bilan yakunlaydi.
 Chekni bekor qilish (`DELETE /terminal/labels/{id}`) shu avto-skanni ham bekor qiladi va
 `total_done` ni qaytaradi; operator qo'lda qilgan skanga tegilmaydi.
 
-`bridge-agent/agent.py` — sexdagi mustaqil servis (websockets + pywin32 + Pillow): outbound WS,
+`bridge-agent/agent.py` — tsexdagi mustaqil servis (websockets + pywin32 + Pillow): outbound WS,
 lokal JSONL navbat `QUEUE_FILE` (printer/internet uzilganda yo'qotmaydi), flusher **event-driven** —
 `FLUSH_EVENT` bilan darhol uyg'onadi, 5 s faqat zaxira timeout. `send_to_printer(png_b64)` bitta
 yo'l: `_print_png_gdi()` — jobdagi PNG Windows drayveri orqali, DEVMODE'da qog'oz 80×60 mm ga
@@ -408,7 +408,7 @@ Sxema `app/schemas/orders.py`:
 
 | Model | Mazmun |
 |---|---|
-| `OrderSurvey` | `version`, `measured_at` (o'lchov sanasi), `measured_by` (o'lchagan usta), `packaging`/`delivery`/`installation` — buyurtma darajasidagi bayroqlar (sex bitta `.project` fayl ustida ishlaydi, logistika butun buyurtmani bitta mashinada olib ketadi: xona degan tushuncha ularga yetib bormaydi), `rooms` (max 10) |
+| `OrderSurvey` | `version`, `measured_at` (o'lchov sanasi), `measured_by` (o'lchagan usta), `packaging`/`delivery`/`installation` — buyurtma darajasidagi bayroqlar (tsex bitta `.project` fayl ustida ishlaydi, logistika butun buyurtmani bitta mashinada olib ketadi: xona degan tushuncha ularga yetib bormaydi), `rooms` (max 10) |
 | `SurveyRoom` | `id` (frontend beradigan barqaror kalit) + `name`; 2-bo'lim `furniture_types`/`furniture_other`; 3-bo'lim `shape`, `room_length/width/height`, `furniture_wall_length`; 4-bo'lim `corpus_materials`, `corpus_color`, `corpus_thickness`, `corpus_note`; 5-bo'lim `facade_materials`, `facade_color`, `countertop`, `facade_note`; 6-7 `hardware_level`, `extra_services`; 8 `note`; o'lchov varag'i `walls`, `modules`, `total_running_meters`, `total_height` |
 | `SurveyWall` | A bo'limi: `letter` (A..E), `length`, `height` — max 8 ta |
 | `SurveyModule` | B bo'limi: `name`, `wall`, `width`/`depth`/`height`, `count`, `note` — max 40 ta |
@@ -521,7 +521,7 @@ direktor ham ko'radi.
   · **BO'YOQ / STOLYARKA** (`Terminal/PostQueueView`, `GET /orders/{id}/queue`) — NUSXA
     darajasidagi navbat: "kelgan" (oldingi bosqichi tugagan) → skan → "bajarilgan". Yetib
     KELMAGAN detal ro'yxatda ko'rsatilmaydi (uni skanerlab bo'lmaydi, E004 chiqadi) — faqat
-    "yana N detal sexda" satri. Qatorda material (bo'yoqchi uchun bu RANG), texnolog izohi,
+    "yana N detal tsexda" satri. Qatorda material (bo'yoqchi uchun bu RANG), texnolog izohi,
     amal chipi (stolyarkada olti xil amal) va yig'ma buyum bo'lsa biriktirilgan mayda detallar.
     Sarlavhalar postga moslanadi (`LABELS`).
   · **QADOQLASH** (`Terminal/UpakovkaView`) — "Qadoq yaratish" → detallarni birma-bir
@@ -529,7 +529,7 @@ direktor ham ko'radi.
     belgilaydi; tizim faqat taxminiy og'irlikni KO'RSATADI (hajm × 700 kg/m³) va hech narsani
     bloklamaydi. Bloklanadigan yagona narsa — marshrut tartibi.
   · **TMO** (`Terminal/TmoView`) — ikki tab. **Qabul**: TMO ga yetib kelganlar (qadoq kodi
-    bilan), qadoq QR'i bitta skanda ichidagi hammasini qabul qiladi; pastda "Sexda" ro'yxati,
+    bilan), qadoq QR'i bitta skanda ichidagi hammasini qabul qiladi; pastda "Tsexda" ro'yxati,
     har detalga ishi TUGAGAN post yozilgan (omborchi uni o'sha yerdan topadi). **Topshirish**:
     qadoqlangan buyurtmada har qadoq alohida (to'liq qabul qilinmagani topshirilmaydi),
     qadoqsizda butun buyurtma; hammasi topshirilgach buyurtma DELIVERED.

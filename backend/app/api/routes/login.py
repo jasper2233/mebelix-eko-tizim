@@ -32,7 +32,7 @@ router = APIRouter(prefix="/login", tags=["login"])
 # Brute-force defence — tunable via LOGIN_RATE_LIMIT_ATTEMPTS / LOGIN_RATE_LIMIT_PERIOD.
 _LOGIN_RATE_LIMIT = RateLimit(limit=settings.LOGIN_RATE_LIMIT_ATTEMPTS, period=settings.LOGIN_RATE_LIMIT_PERIOD)
 # Beyjikda chegara kengroq: parolni topish mumkin, 122-bitli UUID'ni esa yo'q.
-# Tor chegara esa zarar qilardi — smena almashuvida ketma-ket skanlar butun sexni
+# Tor chegara esa zarar qilardi — smena almashuvida ketma-ket skanlar butun tsexni
 # (bitta tashqi IP) qulflab qo'yardi.
 _BADGE_RATE_LIMIT = RateLimit(limit=30, period=60)
 
@@ -81,12 +81,12 @@ async def login_for_access_token(
         raise UnauthorizedException("Foydalanuvchi nomi, telefon yoki parol noto'g'ri.")
     if not user.is_active:
         raise UnauthorizedException("Foydalanuvchi faol emas")
-    # Sexda kirish yo'li BITTA — beyjik. Har postda bitta operator hisobi bor,
+    # Tsexda kirish yo'li BITTA — beyjik. Har postda bitta operator hisobi bor,
     # ya'ni parol butun smenaga ma'lum: u bilan kirilsa smena "arrachi" mirror
     # hodimiga ochilib, skan va ish haqi haqiqiy odamga emas, o'shanga yozilardi.
-    # Ustiga u istalgan joydan ishlardi — sexdan tashqarida ham skan qilinardi.
+    # Ustiga u istalgan joydan ishlardi — tsexdan tashqarida ham skan qilinardi.
     if POST_ROLES.get(UserRole(user.role)) is not None:
-        raise UnauthorizedException("Sexda beyjik bilan kiriladi.")
+        raise UnauthorizedException("Tsexda beyjik bilan kiriladi.")
 
     access_token = _issue_token_pair(response, user)
     return {"access_token": access_token, "token_type": "bearer"}
@@ -205,13 +205,13 @@ async def _terminal_user(db: SessionDep, machine: Machine, post: Post) -> User:
 async def login_with_badge(
     response: Response, db: SessionDep, body: BadgeLoginRequest, request: Request
 ) -> BadgeLoginResponse:
-    """Sexdagi kirish: beyjik skani, parolsiz.
+    """Tsexdagi kirish: beyjik skani, parolsiz.
 
     Beyjik ham KIMLIGINI, ham QAYERDA ishlashini aytadi: post hodimning
     biriktirilgan postlaridan chiqadi (bir nechtasi bo'lsa 409 + tanlash ro'yxati).
 
     XAVFSIZLIK: beyjik yagona omil, ya'ni QR qog'ozdan nusxa olingan bo'lsa
-    istalgan qurilmadan kirsa bo'ladi. Bu ataylab tanlangan (2026-08-12): sexda
+    istalgan qurilmadan kirsa bo'ladi. Bu ataylab tanlangan (2026-08-12): tsexda
     parol terish smena almashuvini sekinlashtiradi va amalda umumiy akkauntga
     olib keladi. Buning o'rniga hisob imtiyozi tor (terminal ekranlari, admin
     paneli emas) va har kirish audit logga tushadi.

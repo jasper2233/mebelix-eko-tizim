@@ -5,7 +5,7 @@ buyruqlarini olib, **GoDEX G500-U (USB)** printerga Windows drayveri orqali
 chiqaradi. Internet yoki printer uzilganda buyruqlar `print-queue.jsonl` faylida
 saqlanadi va aloqa tiklangach avtomatik bajariladi — yorliq yo'qolmaydi.
 
-Serverga CHIQUVCHI WebSocket bilan ulanadi — sex routerida port ochilmaydi.
+Serverga CHIQUVCHI WebSocket bilan ulanadi — tsex routerida port ochilmaydi.
 Faqat printer ulangan kompyuterga o'rnatiladi; menejer, texnolog va boshqa post
 terminallariga hech narsa kerak emas (ular brauzerdan tugmani bosadi).
 

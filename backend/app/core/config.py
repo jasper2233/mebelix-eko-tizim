@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 from pydantic import SecretStr, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Sex mahalliy vaqti — hisobot/audit kunlari va chek timestamp'lari shu zonada (TZ 10.4).
+# Tsex mahalliy vaqti — hisobot/audit kunlari va chek timestamp'lari shu zonada (TZ 10.4).
 TASHKENT_TZ = ZoneInfo("Asia/Tashkent")
 
 # Defaults referenced both by `Settings` field defaults and by the production-readiness validator below.
@@ -70,7 +70,7 @@ class Settings(BaseSettings):
 
     # === Production floor (TZ 7–8) ===
     # E004: detalning O'Z marshrutidagi oldingi qadam tugamaguncha skan qabul qilinmaydi.
-    # Sexda tartib qat'iy — operator o'tkazib yubora olmaydi (TZ 7.2.5).
+    # Tsexda tartib qat'iy — operator o'tkazib yubora olmaydi (TZ 7.2.5).
     STRICT_STAGE_ORDER: bool = True
     SESSION_MAX_HOURS: int = 12  # operator shift timeout (TZ 8.5 E005)
     SCAN_UNDO_SECONDS: int = 60  # BEKOR QILISH window (TZ 8.6)

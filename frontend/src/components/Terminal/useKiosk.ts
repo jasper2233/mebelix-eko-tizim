@@ -1,4 +1,4 @@
-// Kiosk qobig'i: sexdagi monoblok terminal odatdagi veb-sahifa kabi tutmasligi
+// Kiosk qobig'i: tsexdagi monoblok terminal odatdagi veb-sahifa kabi tutmasligi
 // kerak. Bu yerda uch narsa — kontekst menyusi, to'liq ekran holati va yangi
 // build chiqqanda XAVFSIZ paytda qayta yuklash.
 

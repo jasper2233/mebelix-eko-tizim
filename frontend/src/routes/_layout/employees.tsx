@@ -202,7 +202,7 @@ function EmployeesPage() {
     <div>
       <PageHeader
         title="Hodimlar"
-        description="Sex ishchilari — beyjik QR orqali aniqlanadi"
+        description="Tsex ishchilari — beyjik QR orqali aniqlanadi"
         actions={admin ? <AddEmployee /> : undefined}
       />
       <div className="mb-4 flex">

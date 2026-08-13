@@ -43,7 +43,7 @@ class PostCode(StrEnum):
     #: Qabul qilinganda yopiladi: qadoqsiz buyurtmada detal QR'i bilan,
     #: qadoqlanganda esa qadoq QR'i bitta skanda ichidagi hammasini yopadi.
     #:
-    #: ATAMA QOIDASI (kelishilgan): sexda IKKITA ombor bor va ikkalasi ham o'z
+    #: ATAMA QOIDASI (kelishilgan): tsexda IKKITA ombor bor va ikkalasi ham o'z
     #: nomi bilan ataladi — MATERIALLAR OMBORI va TMO. Yolg'iz "Ombor" ham,
     #: "sklad" ham ishlatilmaydi: qaysi biri ekani yo'qoladi. UPAKOVKA esa
     #: ombor emas — QADOQLASH BO'LIMI, ya'ni marshrutning oddiy posti.

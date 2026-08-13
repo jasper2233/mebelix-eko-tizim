@@ -1,5 +1,5 @@
 // Terminalning ikkita to'siq ekrani. Ikkalasi ham butun ekranni yopadi va bitta
-// katta tugmadan iborat — sexda qo'lqop bilan bosiladi.
+// katta tugmadan iborat — tsexda qo'lqop bilan bosiladi.
 
 import { Expand, Lock } from "lucide-react"
 

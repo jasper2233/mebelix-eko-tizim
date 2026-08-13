@@ -107,9 +107,9 @@ butunlay bo'sh keladi — o'shanda kerf spetsifikatsiyadagi standart 4.4 mm bo'l
 `elWidthPreJoint` — §2.2 dagi `l/w` → `jl/jw` farqini tushuntiruvchi qiymat: kromkalash
 dastgohi har tomondan shuncha mm oladi. Korpusda hamma joyda 1 mm.
 
-### 2.1.1 `goods.xls` — sexning haqiqiy katalogi
+### 2.1.1 `goods.xls` — tsexning haqiqiy katalogi
 
-Настройки → Каталог товаров. Sexdagi nusxa tekshirildi (`uploads/goods.xls`, BIFF/OLE2,
+Настройки → Каталог товаров. Tsexdagi nusxa tekshirildi (`uploads/goods.xls`, BIFF/OLE2,
 226 KB, 2 varaq). `Лист1` — katalogning o'zi, `A1:K888`:
 
 | Ustun | Nima |
@@ -120,10 +120,10 @@ dastgohi har tomondan shuncha mm oladi. Korpusda hamma joyda 1 mm.
 | `code` | **SKU** (`110083`, `КРМ1009`, `FB49`) |
 | `name` | Nom (`Ясень`, `Кромка ПВХ ... 1х19 мм 101`) |
 | `unit` | `шт` (list) yoki `м` (kromka) |
-| `price` | **Sexda bo'sh — narx yuritilmaydi** |
+| `price` | **Tsexda bo'sh — narx yuritilmaydi** |
 | `Толщина` / `Длина` / `Ширина` | Qalinlik / uzunlik / kenglik |
 
-GibLab interfeysi o'z ombor va rasm ustunlarini ham ko'rsatadi — sexning faylida ular yo'q.
+GibLab interfeysi o'z ombor va rasm ustunlarini ham ko'rsatadi — tsexning faylida ular yo'q.
 Nomlangan o'nta ustundan keyin sarlavhasiz o'n birinchi ustun (`K`) turadi: unda bitta
 tasodifiy qiymat bor (603-qatorda `<tool.edgeline elWidthPreJoint="1"/>` — katalogga
 adashib tushgan XML bo'lagi), qolgani bo'sh.
@@ -137,7 +137,7 @@ Tarkibi: **885 yozuv — 16 papka, 869 tovar**, ikki ildiz bo'limda:
 faqat materiallar va kromka katalogdan olinadi. 812 tovarda kod bor, 57 tasida yo'q, ikki kod
 (`UA01`, `B073`) takrorlanadi — kod yagona kalit deb qabul qilib bo'lmaydi.
 
-**Sex katalogga yaqinda o'tgan.** Kodlarni loyiha fayllari bilan solishtirish:
+**Tsex katalogga yaqinda o'tgan.** Kodlarni loyiha fayllari bilan solishtirish:
 
 | Fayl | Materiali katalogda topildi |
 |---|---|
@@ -292,8 +292,8 @@ mumkin — kromka → prisadka → yana kromka. Marshrutning o'zi qanday saqlani
 
 **Shuning uchun jarayon kodlari jadvali qoladi** — u endi fayldan emas, nostandart tabidan
 o'qiladi: tugmalar ro'yxati ham, `PartRoute.process_code` ham aynan shu raqamlar. Manbasi —
-sexning "Jarayon uchun kodlar" varag'i (repoda saqlanmaydi, sexda yuritiladi). Quyidagi
-jadval va `PROCESS_POSTS` (`backend/app/services/giblab/models.py`) aynan shunga mos; sexda
+tsexning "Jarayon uchun kodlar" varag'i (repoda saqlanmaydi, tsexda yuritiladi). Quyidagi
+jadval va `PROCESS_POSTS` (`backend/app/services/giblab/models.py`) aynan shunga mos; tsexda
 kod o'zgarsa ikkalasi birga yangilanadi. Ziddiyat chiqsa — bajariladigan manba `PROCESS_POSTS`.
 
 | Kod | Jarayon | Post |
@@ -317,7 +317,7 @@ kod o'zgarsa ikkalasi birga yangilanadi. Ziddiyat chiqsa — bajariladigan manba
 
 Paz uchun kod yo'q — paz alohida post emas, u frezer stanogida (ROVER) kesiladi.
 
-**15 va 16 sexning varag'ida yo'q** — ular jarayon emas, marshrutning oxirgi bosqichlari va
+**15 va 16 tsexning varag'ida yo'q** — ular jarayon emas, marshrutning oxirgi bosqichlari va
 texnolog ularni TANLAMAYDI: qadoqlashni anketadagi "Upakovka qilish" bayrog'i qo'shadi, TMO
 esa har marshrutga majburiy oxirgi qadam bo'lib tushadi (`ingest.py`, `orders._set_custom_route`).
 Kod baribir kerak, chunki har marshrut qadami `process_code` saqlaydi. Frontend tanlagichi
@@ -343,7 +343,7 @@ GibLab "+Операция" ro'yxatida **to'qqiz tur** taklif qiladi:
 | `XNC` | Обработка — CNC ishlov | ✅ teshik → PRISADKA bosqichi; paz va freza faqat SCX va yorliq eskizida (bosqich yaratmaydi — §2.3) |
 | `O` | Комплектация — furnitura komplekti | ataylab jim: sanoqlar `simple` goodlarida bor |
 | `LB` | Этикетки — yorliq shablonlari | ataylab jim: tizim o'z yorlig'ini chiqaradi (TZ 5.2.8) |
-| `CL` | Погонажный раскрой — profil kesish | ataylab jim + **ma'lumot yoziladi**: sexda profil kesish posti yo'q, profillar tayyor keladi |
+| `CL` | Погонажный раскрой — profil kesish | ataylab jim + **ma'lumot yoziladi**: tsexda profil kesish posti yo'q, profillar tayyor keladi |
 | `CN` | Нестинговый раскрой — CNC nesting | ❌ ogohlantirish. GibLab'ga 2021-05 da qo'shilgan |
 | `SP` | Обработка поверхности — yuza ishlovi | ❌ ogohlantirish |
 | `GR` | Пазование — paz | ❌ ogohlantirish (paz XNC dan aniqlanadi, lekin bosqich yaratmaydi) |
@@ -385,7 +385,7 @@ Muhim tushunchalar:
 
 - **Кратность (`mult`)** — bitta naqsh necha marta takrorlanadi. Xaritada `C:2` deb ko'rinadi
 - **Torsovka** (`cTrimL`, `cTrimW`) — listning chetidan olinadigan qirqim, **spetsifikatsiya
-  bo'yicha default 10 mm** (sexning fayllarida doim 2 mm yozilgan; eski eksportda umuman yo'q).
+  bo'yicha default 10 mm** (tsexning fayllarida doim 2 mm yozilgan; eski eksportda umuman yo'q).
   `cTrimEL`/`cTrimEW` — pastdan va o'ngdan minimal chekinish, manfiy bo'lsa `cTrimL`/`cTrimW`
   ishlatiladi
 - **Deloviy qoldiq** — `waste="true" business="true"` bo'lgan `<part>`; foydali o'lchami
@@ -630,7 +630,7 @@ GibLab HTTP POST orqali uch amal bajaradi:
 Javob formati: `id, uzunlik, kenglik, miqdor [, izoh]` — har qatorda bir tur qoldiq.
 Qoldiq ID'si XML'da **`dbId`** atributida saqlanadi.
 
-Sex 1C ishlatmaydi — korpusda `dbId` yo'q. Agar mijoz 1C bilan ishlasa, qoldiq
+Tsex 1C ishlatmaydi — korpusda `dbId` yo'q. Agar mijoz 1C bilan ishlasa, qoldiq
 inventarizatsiyasi kimda turishi (GibLab yoki MebeliX) alohida qaror talab qiladi.
 
 ---
@@ -643,7 +643,7 @@ o'lcham zanjiri), teshik/paz/freza (XNC), yorliq raqami, SCX generatsiyasi.
 
 **Ataylab e'tiborsiz:** GibLab yorliq shablonlari (`LB`), optimizatsiya va narx parametrlari
 (GibLab ichida ishlaydi, biz natijasini iste'mol qilamiz), arra postprotsessorlari,
-profil kesish (`CL` — sexda bunday post yo'q), detal NOMI (u marshrutga ta'sir qilmaydi —
+profil kesish (`CL` — tsexda bunday post yo'q), detal NOMI (u marshrutga ta'sir qilmaydi —
 §2.3).
 
 **Ogohlantirish beradigan holatlar** (`parser.py`, `ingest.py`, `orders.py`):
@@ -701,7 +701,7 @@ olib tashlandi). Tashlanganlar to'rt guruhga bo'linadi:
 
 | Guruh | Nechta | Nega |
 |---|---|---|
-| Narx va qiymat (`cost*`, `price*`, `cCost*`, `elCost`, `spCost`, `grCost`) | ~45 | Sex narxni MebeliX'dan tashqarida hisoblaydi |
+| Narx va qiymat (`cost*`, `price*`, `cCost*`, `elCost`, `spCost`, `grCost`) | ~45 | Tsex narxni MebeliX'dan tashqarida hisoblaydi |
 | Optimizator sozlamalari (`sw*`, `cs*`, `cMinDim*`, `cFillRep`, `elRound*`, `elCalcMat`, `sp*`) | ~40 | GibLab xaritani ular bilan hisoblagan; biz **natijani** iste'mol qilamiz, qayta hisoblamaymiz |
 | Oldindan hisob (`*P` bilan tugaganlar) va `cCPF` | ~10 | Karta shakllangunga qadar taxmin; yakuniy qiymatlar bor |
 | Chop etish va maket (`LB` bo'limi, `printable`, `startNewPage`, `cSaveDrawCut`, `margin`, `border`) | ~25 | Tizim o'z yorlig'i va hujjatlarini chiqaradi |
@@ -723,7 +723,7 @@ registridan olamiz.
 ### 7.2 SCX eksport konvensiyasi (`scx.py`)
 
 Qoidalar `D:\MebeliX\Scx` korpusidan keltirilgan (87 proyekt, 5286 etalon fayl; 10500 qirra
-teshigi, 218 freza ovoz bergan) — GibLab'ning JORIY eksporti bilan semantik bir xil, sexdagi
+teshigi, 218 freza ovoz bergan) — GibLab'ning JORIY eksporti bilan semantik bir xil, tsexdagi
 Nanxing aynan shu formatni yeydi. 71/86 papka 100% mos; qolganlari .project fayl versiyasi
 eksportdan farq qilgan holatlar (dizayner keyin o'zgartirgan), generator xatosi emas.
 

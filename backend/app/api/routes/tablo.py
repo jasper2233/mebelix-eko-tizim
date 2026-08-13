@@ -16,7 +16,7 @@ from app.services.metrics import part_volume
 router = APIRouter(prefix="/tablo", tags=["tablo"])
 
 # Yakunlangan buyurtma taxtada shuncha kun turadi. Chegarasiz qoldirilsa
-# "topshirildi" bosilmagan har bir buyurtma abadiy qolib, sex ekrani yildan
+# "topshirildi" bosilmagan har bir buyurtma abadiy qolib, tsex ekrani yildan
 # yilga sekinlashardi (o'lchov: 100 buyurtmada 28 ms -> 1.9 s).
 COMPLETED_WINDOW = timedelta(days=30)
 
@@ -53,7 +53,7 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
         return TabloMatrix(posts=[_post_col(p) for p in posts], orders=[])
 
     order_ids = [o.id for o in orders]
-    # ORM obyektlari emas, faqat kerakli ustunlar: butun sex bo'yicha o'n minglab
+    # ORM obyektlari emas, faqat kerakli ustunlar: butun tsex bo'yicha o'n minglab
     # marshrut yig'iladi, natija esa har postga bir nechta raqam (669 ms -> 175 ms)
     routes = (
         await db.execute(

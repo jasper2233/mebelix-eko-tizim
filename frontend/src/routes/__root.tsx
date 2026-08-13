@@ -10,7 +10,7 @@ import { ErrorComponent } from "@/components/Common/ErrorComponent"
 import { NotFound } from "@/components/Common/NotFound"
 import { Toaster } from "@/components/ui/sonner"
 
-// Sex ekranida (terminal/tablo) toast MARKAZ-TEPADA va katta shriftda —
+// Tsex ekranida (terminal/tablo) toast MARKAZ-TEPADA va katta shriftda —
 // operator monitordan 2-3 metr narida turadi, burchakdagi mayda yozuvni
 // o'qiy olmaydi (HMI amaliyoti). Ofis sahifalarida odatdagi burchak qoladi.
 function AppToaster() {

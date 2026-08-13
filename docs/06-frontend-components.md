@@ -239,7 +239,7 @@ Buyurtma anketasi (mijoz so'rovnomasi + o'lchov varag'i) komponentlari `componen
 - Avtosaqlash: har tahrirdan 1.5s keyin (`dirty` bo'lsa va `canEdit` bo'lsa) `save.mutate`; `beforeunload` da ogohlantirish, unmount'da fire-and-forget `saveOrderSurvey`.
 - `canEdit = is_superuser || role === "admin" | "manager"` — faqat ular formani ko'radi; qolganlar (texnolog/direktor) `RoomSummary` jamlanmasini ko'radi.
 - Xonalar tab pill'lari: har pill — `div` konteyner, ichida xona nomi tugmasi (`r.name || "Xona N"`) va undan alohida `×` o'chirish tugmasi (`aria-label` "{nom} — o'chirish"; faqat `canEdit && rooms.length > 1` da chiziladi — ichma-ich `<button>` bo'lmasligi uchun ikkitasi alohida). `×` bosilsa `removeIdx` (`number | null`) belgilanadi va `ConfirmDialog` ochiladi — istalgan xona oldindan tanlanmasdan o'chiriladi (rasmlar ham o'chadi — backend `save_order_survey` da yetim rasmlarni tozalaydi). Yonida "Xona qo'shish" tugmasi.
-- "Butun buyurtma uchun" kartasi (faqat `canEdit`, raqamlangan xona bo'limlaridan tepada): `ORDER_SERVICES` katakchalari — Upakovka qilish (`packaging`), Yetkazib berish (`delivery`), O'rnatish (montaj) (`installation`) — hamda o'lchov sanasi (`DatePicker`) va o'lchagan usta. Bular xonaga bo'linmaydi: sex bitta `.project` fayl ustida ishlaydi, logistika butun buyurtmani bitta mashinada olib ketadi. Yuklashda eski anketalar migratsiya qilinadi — biror xonaning `extra_services` da `yetkazish`/`montaj` bo'lsa, buyurtma bayrog'i yoqiladi va kod xona ro'yxatidan olib tashlanadi (avtosaqlash keyingi tahrirda yangi shaklni yozadi).
+- "Butun buyurtma uchun" kartasi (faqat `canEdit`, raqamlangan xona bo'limlaridan tepada): `ORDER_SERVICES` katakchalari — Upakovka qilish (`packaging`), Yetkazib berish (`delivery`), O'rnatish (montaj) (`installation`) — hamda o'lchov sanasi (`DatePicker`) va o'lchagan usta. Bular xonaga bo'linmaydi: tsex bitta `.project` fayl ustida ishlaydi, logistika butun buyurtmani bitta mashinada olib ketadi. Yuklashda eski anketalar migratsiya qilinadi — biror xonaning `extra_services` da `yetkazish`/`montaj` bo'lsa, buyurtma bayrog'i yoqiladi va kod xona ro'yxatidan olib tashlanadi (avtosaqlash keyingi tahrirda yangi shaklni yozadi).
 - Pastda sticky saqlash paneli: holat matni ("Saqlanmoqda..." / "Saqlanmadi — qayta urinib ko'ring" — `role="alert"` + `text-destructive` / "O'zgarishlar avtomatik saqlanadi" / "Saqlandi HH:MM" / "Hammasi saqlangan") + `LoadingButton`. Manfiy margin (`-mx-6 md:-mx-8`) bilan main padding'i qoplanadi; suvbelgi va dekor konteyner olib tashlangach `routes/_layout.tsx` da `overflow-hidden` umuman yo'q — `sticky` to'siqsiz ishlaydi.
 
 **Bo'limlar (qog'oz anketa raqamlari bilan):** 1 Xona va rasmlar · 2 Qanday mebel kerak · 3 Xonadagi shakli va o'lchamlari · 4 Korpus materiali · 5 Fasad materiali · 6 Furnitura va qo'shimcha xizmat · 7 Qo'shimcha izoh · 8 O'lchov varag'i (`<details>` ichida yopiq — zamerdan keyin usta to'ldiradi: A–E devor uzunlik/balandligi, modullar jadvali, umumiy pm/balandlik; o'lchov sanasi/ustasi bu yerda emas — ular "Butun buyurtma uchun" blokida).
@@ -351,7 +351,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 
 **Maqsadi:** BOYOQ va STOLYARKA post sahifasi — NUSXA darajasidagi navbat (`readTerminalPostQueue`, `refetchInterval: 30_000`). Umumiy "Navbatdagi vazifalar" jadvali detal darajasida agregat berardi ("qoldiq 6/6") va navbatni hisobga olmasdi: operator hali arradan chiqmagan detalni ko'rib, skanerlab E004 olardi.
 
-- Uch guruh: **kelgan** (`ready && !done`) — asosiy ish ro'yxati; **bajarilgan** (`done`, yashil ✓); yetib KELMAGANLARI ro'yxatda umuman ko'rsatilmaydi, faqat "yana N detal sexda" satri (ularni skanerlab bo'lmaydi, izlash ham vaqt yo'qotish).
+- Uch guruh: **kelgan** (`ready && !done`) — asosiy ish ro'yxati; **bajarilgan** (`done`, yashil ✓); yetib KELMAGANLARI ro'yxatda umuman ko'rsatilmaydi, faqat "yana N detal tsexda" satri (ularni skanerlab bo'lmaydi, izlash ham vaqt yo'qotish).
 - Sarlavhalar postga moslanadi (`LABELS`: BOYOQ → "Bo'yashga kelgan"/"Bo'yalgan", STOLYARKA → "Stolyarkaga kelgan"/"Bajarilgan").
 - Qatorda: QR (yirik), detal nomi, **material** (bo'yoqchi uchun bu RANG — amber), texnolog izohi, `Common/OperationChips` (stolyarkada olti xil amal, noto'g'ri petlya eshikni brak qiladi), yig'ma buyum biriktirilgan mayda detallari (`+ 01_007 ×2`), o'lcham va oxirgi bajarilgan bosqich.
 - Skan alohida yo'l talab qilmaydi — terminalning umumiy skan mutatsiyasidan o'tadi, qator `done` bo'lib pastga tushadi.
@@ -364,7 +364,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 
 **Maqsadi:** TMO post sahifasi, ikki tab (ikki xil ish bir ekranda aralashmasin).
 
-- **Qabul** — TMO ga yetib kelganlar (qadoq kodi bilan), skan `PK-...` bo'lsa qadoq ichidagi hammasini birdan qabul qiladi. Pastda "Sexda" ro'yxati: har detalga ishi TUGAGAN post yozilgan (`stage`) — omborchi buyumni aynan o'sha yerdan topadi.
+- **Qabul** — TMO ga yetib kelganlar (qadoq kodi bilan), skan `PK-...` bo'lsa qadoq ichidagi hammasini birdan qabul qiladi. Pastda "Tsexda" ro'yxati: har detalga ishi TUGAGAN post yozilgan (`stage`) — omborchi buyumni aynan o'sha yerdan topadi.
 - **Topshirish** — qadoqlangan buyurtmada har qadoq alohida (to'liq qabul qilinmagani bloklangan), qadoqsizda bitta "Buyurtmani topshirish" tugmasi.
 - `registerScan` aktiv tabga qarab qabul yoki topshirishga yo'naltiradi.
 
@@ -382,7 +382,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 
 ### `frontend/src/components/Terminal/ScanStrip.tsx`
 
-**Maqsadi:** oxirgi skan natijasi + BEKOR QILISH tugmasi, har post ekranining tepasida (`PostScreen` orqali). Sex shovqinida ovoz signaliga ishonib bo'lmaydi. `LastScan` tipi ham shu yerda eksport qilinadi. Props: `scan`, `canUndo` (60 s oynasi — taymer chaqiruvchida), `onUndo`.
+**Maqsadi:** oxirgi skan natijasi + BEKOR QILISH tugmasi, har post ekranining tepasida (`PostScreen` orqali). Tsex shovqinida ovoz signaliga ishonib bo'lmaydi. `LastScan` tipi ham shu yerda eksport qilinadi. Props: `scan`, `canUndo` (60 s oynasi — taymer chaqiruvchida), `onUndo`.
 
 ### `frontend/src/components/Terminal/KioskOverlays.tsx`
 
@@ -402,7 +402,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 
 ### `frontend/src/components/Terminal/audio.ts`
 
-**Maqsadi:** skan ovoz signallari (TZ 8.4.3, sex shovqinida majburiy) — WebAudio, internetsiz ishlaydi: `playSuccess` (600 Hz qisqa), `playError` (200 Hz uzun), `playWarning` (2×800 Hz). `routes/terminal.tsx` da skan natijasiga qarab chalinadi.
+**Maqsadi:** skan ovoz signallari (TZ 8.4.3, tsex shovqinida majburiy) — WebAudio, internetsiz ishlaydi: `playSuccess` (600 Hz qisqa), `playError` (200 Hz uzun), `playWarning` (2×800 Hz). `routes/terminal.tsx` da skan natijasiga qarab chalinadi.
 
 ---
 

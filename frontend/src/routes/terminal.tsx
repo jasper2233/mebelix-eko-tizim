@@ -189,7 +189,7 @@ function TerminalPage() {
       // buzilardi. E008 — ish allaqachon bajarilgan, bu xato emas: neytral signal.
       if (code === "E008") playWarning()
       else playError()
-      // Shovqinli sexda ovoz yetarli emas — xato toast bilan ham ko'rsatiladi
+      // Shovqinli tsexda ovoz yetarli emas — xato toast bilan ham ko'rsatiladi
       toast.error(detailMessage(err))
       setLastScan({ kind: "error", code, message, at: Date.now() })
     },

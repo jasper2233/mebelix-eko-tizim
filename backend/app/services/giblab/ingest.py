@@ -448,8 +448,8 @@ async def ingest_project(
             write_and_register_scx(db, order.id, part.id, pp, pp.qr_texts, upload_root, plate_thickness=plate)
 
     # --- order metadata ---
-    # `code` — sexning `goods.xls` katalogidagi SKU. Parser uni o'qiydi, lekin bu yerda
-    # tushib qolardi: materiallar ombori va material hisoboti faqat nomni ko'rardi. Sex katalogga
+    # `code` — tsexning `goods.xls` katalogidagi SKU. Parser uni o'qiydi, lekin bu yerda
+    # tushib qolardi: materiallar ombori va material hisoboti faqat nomni ko'rardi. Tsex katalogga
     # o'tgandan keyin (yangi eksportlarda `code="110083"`, `code="КРМ1009"`) nom emas, kod
     # barqaror kalit. Eski fayllarda `code` yo'q — o'shanda `None` bo'lib qoladi.
     order.material_usage = [

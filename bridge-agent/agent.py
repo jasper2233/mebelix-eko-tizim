@@ -3,7 +3,7 @@ r"""MebeliX bridge-agent (TZ 2.2.2) — printerli kompyuterdagi yengil servis.
 
 Masofaviy serverga CHIQUVCHI (outbound) WebSocket bilan ulanadi, chop etish
 buyruqlarini qabul qiladi va GoDEX G500-U (USB) printerga Windows drayveri
-orqali chiqaradi. Chiquvchi ulanish — sex routerida hech narsa ochilmaydi.
+orqali chiqaradi. Chiquvchi ulanish — tsex routerida hech narsa ochilmaydi.
 Internet yoki printer uzilganda buyruqlar lokal diskda (JSONL) saqlanadi va
 aloqa tiklangach bajariladi — hech bir yorliq yo'qolmaydi.
 

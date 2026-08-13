@@ -9,7 +9,7 @@ Stack: FastAPI + PostgreSQL + Redis / React + Vite / Docker Compose + Caddy.
 - Bir martalik: `cp .env.example .env` (`api` va `worker` uni `env_file` orqali majburiy o'qiydi)
 - Backend: [backend/README.md](backend/README.md)
 - Frontend: [frontend/README.md](frontend/README.md)
-- Printer agenti (sexdagi, printer ulangan kompyuter): [bridge-agent/README.md](bridge-agent/README.md)
+- Printer agenti (tsexdagi, printer ulangan kompyuter): [bridge-agent/README.md](bridge-agent/README.md)
 - Hammasi konteynerda: `make docker-local`
 
 ## Hujjatlar

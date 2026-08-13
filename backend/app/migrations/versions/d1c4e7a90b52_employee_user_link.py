@@ -8,7 +8,7 @@ Ilgari bog'lam `badge_id = "user-{user.id}"` orqali edi. Ikki muammosi bor edi:
 2. Bunday hodimga haqiqiy beyjik chiqarish bog'lamni UZARDI: `operator_employee`
    uni topolmay ikkinchi hodim yozuvi yaratardi va ish haqi ikkiga bo'linardi.
 
-Endi bog'lam alohida `user_id` ustunida, `badge_id` esa erkin — sexda ishlaydigan
+Endi bog'lam alohida `user_id` ustunida, `badge_id` esa erkin — tsexda ishlaydigan
 HAR bir hodimga haqiqiy beyjik chiqariladi.
 
 Migratsiya `user-N` yozuvlarini topib, `user_id` ni to'ldiradi va beyjikni yangi

@@ -119,7 +119,7 @@ async def operator_employee(db: AsyncSession, user: User, post_id: int) -> Emplo
         )
     ).scalar_one_or_none()
     if employee is None:
-        # Yangi yozuv DARHOL haqiqiy beyjik oladi: sexdagi har hodimda beyjik
+        # Yangi yozuv DARHOL haqiqiy beyjik oladi: tsexdagi har hodimda beyjik
         # bo'lishi kerak, admin uni ro'yxatdan chop etadi
         employee = Employee(
             full_name=user.name or user.username,

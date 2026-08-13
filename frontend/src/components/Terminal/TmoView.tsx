@@ -83,7 +83,7 @@ export function TmoView({
   const delivered = data?.order_status === "delivered"
   const shipped = pachkas.filter((p) => p.shipped_at)
   // Omborchining ISH ro'yxati — faqat oxirgi bosqichdan o'tib kelganlar.
-  // Qolganlari hali sexda; har biriga ishi TUGAGAN post yoziladi, ya'ni
+  // Qolganlari hali tsexda; har biriga ishi TUGAGAN post yoziladi, ya'ni
   // omborchi detalni jismonan qaysi postdan olishini biladi.
   const arrived = pending.filter((p) => p.ready)
   const inShop = pending.filter((p) => !p.ready)
@@ -143,7 +143,7 @@ export function TmoView({
             <div className="p-8 text-center text-lg font-bold">
               {pending.length ? (
                 <span className="text-amber-700">
-                  TMO ga yetib kelgan detal yo'q — hammasi hali sexda.
+                  TMO ga yetib kelgan detal yo'q — hammasi hali tsexda.
                 </span>
               ) : (
                 <span className="text-green-700">Hammasi qabul qilindi.</span>
@@ -173,11 +173,11 @@ export function TmoView({
             </table>
           )}
 
-          {/* Hali sexdagilar: qaysi postda turgani yozilgan — omborchi qidirib yurmasin */}
+          {/* Hali tsexdagilar: qaysi postda turgani yozilgan — omborchi qidirib yurmasin */}
           {!!inShop.length && (
             <div className="mt-3 border-t">
               <div className="px-4 py-2 text-sm font-bold text-muted-foreground">
-                Sexda <span className="num">({inShop.length})</span>
+                Tsexda <span className="num">({inShop.length})</span>
               </div>
               <table className="w-full text-sm text-muted-foreground">
                 <tbody>
