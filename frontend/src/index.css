@@ -190,11 +190,11 @@
     height: 60mm !important;
     max-width: none !important;
     margin: 0 !important;
-    /* KALIBROVKA: kontent yuqoridan 12mm dan boshlanadi. Printerning yuqori
-       chekkasi bosmaydi va QR tepasi qirqilib qolardi. Printer almashsa yoki
-       blank boshqacha tushsa — SHU birinchi raqamni o'zgartiring.
-       Zaxira: ikki qatorli ism bilan ham kontent ~59.8mm da tugaydi. */
-    padding: 12mm 3mm 2mm !important;
+    /* KALIBROVKA: kontent yuqoridan 8mm dan boshlanadi. Endi tepada matn
+       (lavozim + ism) turadi, ya'ni QR o'zi ~18mm dan pastda — printerning
+       bosmaydigan yuqori chekkasidan ancha uzoq. Printer almashsa yoki blank
+       boshqacha tushsa — SHU birinchi raqamni o'zgartiring. */
+    padding: 8mm 3mm 2mm !important;
     gap: 1.5mm !important;
     overflow: hidden !important;
     transform: none !important;
@@ -239,20 +239,21 @@
   }
   /* `display: block` — inline SVG ostida shrift tayanchi ~2mm bo'sh joy
      qoldirardi, ya'ni QR bloki 34mm emas, 36mm bo'lib turardi */
-  /* 30mm: ikki qatorli uzun ism bilan ham pastda ~2mm zaxira qoladi (printer
-     pastki chetni ham qirqishi mumkin). Skanerlash uchun bemalol — 37 modulli
-     QR da modul ~0.8mm, skanerlar 0.33mm dan boshlab o'qiydi. */
+  /* 34mm — joy tepadagi matn blokidan bo'shadi. Ikki qatorli uzun ism bilan
+     ham kontent ~58.7mm da tugaydi, ya'ni pastda zaxira bor. */
   .print-only .badge-qr svg {
     display: block !important;
-    width: 30mm !important;
-    height: 30mm !important;
+    width: 34mm !important;
+    height: 34mm !important;
   }
-  /* Lavozim — QORA, kulrang emas: qog'ozda, ayniqsa toner tejaydigan
-     printerda, kulrang deyarli ko'rinmasdi. */
+  /* Lavozim ism USTIDA, kichikroq shriftda — ikkalasi bitta blok.
+     QORA, kulrang emas: qog'ozda, ayniqsa toner tejaydigan printerda,
+     kulrang deyarli ko'rinmasdi. */
   .print-only .badge-role {
     font-size: 2.8mm !important;
-    line-height: 1 !important;
+    line-height: 1.2 !important;
     color: #000 !important;
+    margin-bottom: 0.8mm !important;
   }
 }
 

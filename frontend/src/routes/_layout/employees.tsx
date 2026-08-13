@@ -528,6 +528,14 @@ function BadgeDialog({
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="print-only max-w-xs text-center">
         <DialogHeader>
+          {/* Lavozim ISMDAN OLDIN, kichik shriftda: beyjikda avval "kim
+              lavozimda", keyin "kim" o'qiladi. Ikkalasi bitta blok — orasida
+              bo'shliq yo'q, chunki ular bitta ma'noni beradi. */}
+          {emp.position && (
+            <div className="badge-role text-2xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              {emp.position}
+            </div>
+          )}
           <DialogTitle>{emp.full_name}</DialogTitle>
           {/* Bu ADMINGA ko'rsatma — beyjikning o'ziga bosilmaydi */}
           <DialogDescription className="print-hide">
@@ -546,13 +554,6 @@ function BadgeDialog({
         <div className="print-hide num text-xs text-muted-foreground">
           {emp.badge_id}
         </div>
-        {/* Qog'ozda ID o'rniga LAVOZIM: bu hodim ham, uni ko'rgan odam ham
-            o'qiy oladigan yagona qo'shimcha ma'lumot. */}
-        {emp.position && (
-          <div className="badge-role text-xs font-semibold uppercase tracking-wider">
-            {emp.position}
-          </div>
-        )}
         <DialogFooter className="print-hide flex-col gap-2 sm:flex-col">
           <Button variant="outline" onClick={() => window.print()}>
             Chop etish
