@@ -3,18 +3,16 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import {
-  Grid2x2,
-  Lock,
-  LogOut,
-  ScanLine,
-  UserRound,
-  WifiOff,
-} from "lucide-react"
+import { Grid2x2, Lock, LogOut, ScanLine, WifiOff } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
-import { type ScanResult, ScansService, TerminalService } from "@/client"
+import {
+  type ScanResult,
+  ScansService,
+  type SessionRead,
+  TerminalService,
+} from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import {
   playError,
@@ -28,6 +26,7 @@ import { OrderPicker } from "@/components/Terminal/OrderPicker"
 import { PostQueueView } from "@/components/Terminal/PostQueueView"
 import { PrisadkaView } from "@/components/Terminal/PrisadkaView"
 import { type LastScan, ScanStrip } from "@/components/Terminal/ScanStrip"
+import { CrewChips, ShiftGate } from "@/components/Terminal/ShiftGate"
 import { TmoView } from "@/components/Terminal/TmoView"
 import { UpakovkaView } from "@/components/Terminal/UpakovkaView"
 import {
@@ -95,7 +94,9 @@ function TerminalPage() {
   const [lastScan, setLastScan] = useState<LastScan>(null)
   const [undoOpen, setUndoOpen] = useState(false)
   const [logoutOpen, setLogoutOpen] = useState(false)
-  const [endOpen, setEndOpen] = useState(false)
+  // Yakunlanayotgan smena — brigadada kim ekani muhim (biri ketib, ikkinchisi
+  // qolishi odatiy hol)
+  const [endFor, setEndFor] = useState<SessionRead | null>(null)
   // Kiosk qobig'i: to'liq ekran holati + yangi build chiqqanda avto-reload.
   // "Xavfsiz payt" = xarita yopiq va oxirgi skan urinishidan 2 daqiqa o'tgan.
   const fullscreen = useKioskShell(
@@ -138,15 +139,21 @@ function TerminalPage() {
   // Qulf ostida ham fokus kerak: qulfning kaliti — beyjik skani
   useScanFocus(scanOn && !scanInputHidden, inputRef)
 
-  const badgeMutation = useMutation({
-    mutationFn: (badge: string) =>
+  // Smenaga QO'SHILISH rejimi: "+ Qo'shish" bosilgach keyingi tanlov brigadani
+  // almashtirmaydi, ustiga qo'shadi. Sukut — almashtirish: ketayotgan odam
+  // yakunlashni unutsa, keyingi kirish eski smenani yopadi (xavfsiz tomon).
+  const [joining, setJoining] = useState(false)
+
+  const startShift = useMutation({
+    mutationFn: (v: { badge_id?: string; employee_id?: number }) =>
       TerminalService.startTerminalSession({
-        requestBody: { badge_id: badge },
+        requestBody: { ...v, join: joining },
       }),
     onSuccess: (s) => {
       playSuccess()
       setLocked(false) // beyjik — qulfning kaliti
-      toast.success(`Sessiya ochildi: ${s.employee_name}`)
+      setJoining(false)
+      toast.success(`Smena ochildi: ${s.employee_name}`)
       // Faqat kontekst: sessiya ochilishi vazifalar ro'yxatini ham, kesish
       // xaritasini ham o'zgartirmaydi (["terminal"] prefiksi cutmap'ni ham olardi)
       queryClient.invalidateQueries({ queryKey: ["terminal", "context"] })
@@ -211,7 +218,8 @@ function TerminalPage() {
   })
 
   const endSession = useMutation({
-    mutationFn: () => TerminalService.endTerminalSession(),
+    mutationFn: (employeeId?: number) =>
+      TerminalService.endTerminalSession({ employeeId }),
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: ["terminal", "context"] }),
   })
@@ -223,7 +231,7 @@ function TerminalPage() {
     mapOrderId,
     viewScanRef,
     kromkaScanRef,
-    onBadge: (badge) => badgeMutation.mutate(badge),
+    onBadge: (badge) => startShift.mutate({ badge_id: badge }),
     onScan: (qr) => scanMutation.mutate(qr),
     onOffline: () => {
       playError()
@@ -235,6 +243,17 @@ function TerminalPage() {
       })
     },
     openOrder: setMapOrderId,
+  })
+
+  // Ro'yxat FAQAT smena ochilmagan yoki qo'shish so'ralganda kerak — ish
+  // ketayotganda terminal uni bekorga so'ramasin.
+  const crew = ctx?.crew ?? []
+  const gateOpen = !!ctx && (!crew.length || joining)
+  const { data: shiftEmployees } = useQuery({
+    queryKey: ["terminal", "employees"],
+    queryFn: () => TerminalService.readTerminalEmployees(),
+    enabled: gateOpen,
+    staleTime: 60_000,
   })
 
   const mapOpen = scanInputHidden
@@ -277,6 +296,15 @@ function TerminalPage() {
         locked={locked}
         onLogout={() => logout()}
       />
+      {/* Smena ochilmaguncha ish maydoni o'rniga ismlar turadi — alohida oqim
+          emas, bitta to'siq. Qulf va to'liq ekran to'siqlari ustunroq. */}
+      {gateOpen && fullscreen && !locked && (
+        <ShiftGate
+          employees={shiftEmployees ?? []}
+          pending={startShift.isPending}
+          onStart={(employee_id) => startShift.mutate({ employee_id })}
+        />
+      )}
       {/* Header (TZ 8.3.1) */}
       <header className="flex items-center gap-4 border-b bg-card px-4 py-2 shadow-sm">
         {/* Arrachi tilida bitta identitet: stanok nomi (post rangida) — "post/uskuna"
@@ -288,23 +316,13 @@ function TerminalPage() {
           {ctx?.machine_name ?? ctx?.post_name?.toUpperCase() ?? "—"}
         </div>
 
-        {/* Sessiya — ixcham chip (alohida qator o'rniga, vertikal joy tejaladi) */}
-        <div className="hidden shrink-0 items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm md:flex">
-          <UserRound className="size-4 text-muted-foreground" />
-          {ctx?.session ? (
-            <>
-              <span className="size-2 rounded-full bg-green-500" />
-              <b className="max-w-40 truncate">{ctx.session.employee_name}</b>
-            </>
-          ) : (
-            <>
-              <span className="size-2 rounded-full bg-amber-500" />
-              <span className="text-muted-foreground">
-                Beyjik QR scan qiling
-              </span>
-            </>
-          )}
-        </div>
+        {/* Brigada — ixcham chiplar (alohida qator o'rniga, vertikal joy tejaladi).
+            Ismni bosish o'sha odamning smenasini yakunlaydi. */}
+        <CrewChips
+          crew={crew}
+          onEnd={setEndFor}
+          onAdd={() => setJoining(true)}
+        />
 
         {/* Xarita ochiq bo'lsa skan o'rnini ixcham material statlari egallaydi */}
         <div
@@ -319,7 +337,7 @@ function TerminalPage() {
             disabled={!scanOn || mapOpen}
             className="h-12 w-full rounded-lg border-2 border-primary/40 bg-card pl-10 pr-4 font-mono text-base outline-none focus:border-primary disabled:bg-muted"
             placeholder={
-              ctx?.session ? "QR scan qiling..." : "Beyjik QR scan qiling..."
+              crew.length ? "QR scan qiling..." : "Beyjik QR scan qiling..."
             }
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -374,19 +392,22 @@ function TerminalPage() {
             <TBtn label="Qulflash" tone="warn" onClick={() => setLocked(true)}>
               <Lock />
             </TBtn>
-            {isOperator ? (
+            {/* Smena ochiq ekan — yakunlash; brigada bo'sh bo'lgandagina
+                qurilmadan chiqish ko'rinadi (beyjik bilan kirgan operator
+                hisobi qulf ostida qolib ketmasin). */}
+            {crew.length ? (
+              <TBtn
+                label="Yakunlash"
+                tone="danger"
+                onClick={() => setEndFor(crew[0] ?? null)}
+              >
+                <LogOut />
+              </TBtn>
+            ) : isOperator ? (
               <TBtn
                 label="Chiqish"
                 tone="danger"
                 onClick={() => setLogoutOpen(true)}
-              >
-                <LogOut />
-              </TBtn>
-            ) : ctx?.session ? (
-              <TBtn
-                label="Yakunlash"
-                tone="danger"
-                onClick={() => setEndOpen(true)}
               >
                 <LogOut />
               </TBtn>
@@ -563,17 +584,18 @@ function TerminalPage() {
         onConfirm={() => logout()}
       />
       <ConfirmDialog
-        open={endOpen}
-        onOpenChange={setEndOpen}
+        open={!!endFor}
+        onOpenChange={(v) => !v && setEndFor(null)}
         title="Smenani yakunlash"
-        description={`${ctx?.session?.employee_name ?? "Hodim"} smenasi yopiladi. Ishni davom ettirish uchun beyjikni qaytadan scan qilish kerak bo'ladi.`}
+        description={`${endFor?.employee_name ?? "Hodim"} smenasi yopiladi. Brigadaning qolgani ishlayveradi.`}
         confirmText="Yakunlash"
         destructive
         loading={endSession.isPending}
         onConfirm={() =>
-          endSession.mutate(undefined, {
+          endFor &&
+          endSession.mutate(endFor.employee_id, {
             onSuccess: () => {
-              setEndOpen(false)
+              setEndFor(null)
               toast.success("Smena yakunlandi")
             },
           })

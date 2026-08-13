@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { IdCard, KeyRound, Pencil, Plus, Printer, Trash2 } from "lucide-react"
+import { IdCard, Pencil, Plus, Printer, Trash2 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { useState } from "react"
 import { type Control, useForm } from "react-hook-form"
@@ -188,7 +188,6 @@ function EmployeesPage() {
   const [badgeFor, setBadgeFor] = useState<EmployeeRead | null>(null)
   const [editFor, setEditFor] = useState<EmployeeRead | null>(null)
   const [deleteFor, setDeleteFor] = useState<EmployeeRead | null>(null)
-  const [pinFor, setPinFor] = useState<EmployeeRead | null>(null)
   const debounced = useDebounced(search.trim())
   const { data, isLoading, isError, refetch } = useQuery({
     ...getEmployeesQueryOptions(debounced),
@@ -266,18 +265,6 @@ function EmployeesPage() {
                         {admin && (
                           <>
                             <Button
-                              variant={e.has_pin ? "secondary" : "ghost"}
-                              size="sm"
-                              title={
-                                e.has_pin
-                                  ? "Kirish kodi o'rnatilgan"
-                                  : "Kirish kodi (skaneri yo'q post uchun)"
-                              }
-                              onClick={() => setPinFor(e)}
-                            >
-                              <KeyRound />
-                            </Button>
-                            <Button
                               variant="ghost"
                               size="sm"
                               title="Tahrirlash"
@@ -326,13 +313,6 @@ function EmployeesPage() {
       )}
       {editFor && (
         <EditEmployee employee={editFor} onClose={() => setEditFor(null)} />
-      )}
-      {pinFor && (
-        <PinDialog
-          key={pinFor.id}
-          employee={pinFor}
-          onClose={() => setPinFor(null)}
-        />
       )}
       <DeleteEmployee employee={deleteFor} onClose={() => setDeleteFor(null)} />
     </div>
@@ -444,82 +424,6 @@ function DeleteEmployee({
       loading={mutation.isPending}
       onConfirm={() => employee && mutation.mutate(employee.id)}
     />
-  )
-}
-
-/** Kirish kodi — beyjikning MUQOBILI, o'rnini bosuvchisi emas. Skaneri yo'q
- * postda (ARRA: u yerda chek chiqarish skanning o'zi, ya'ni skaner faqat kirish
- * uchun sotib olinardi) hodim monoblokda ismini bosib 4 raqam teradi. Kimlik
- * baribir SHU hodim yozuvi — skan va ish haqi ikkala yo'lda bir xil.
- *
- * Kimga kerakligini ADMIN hal qiladi, kod emas: hech qayerda rol qattiq
- * yozilmagan, ya'ni ertaga arraga skaner olinsa yoki bo'yoqda buzilsa dastur
- * tegilmaydi. */
-function PinDialog({
-  employee,
-  onClose,
-}: {
-  employee: EmployeeRead
-  onClose: () => void
-}) {
-  const [code, setCode] = useState("")
-  const queryClient = useQueryClient()
-  const cb = crudCallbacks(queryClient, ["employees"], "Kod yangilandi")
-  const mutation = useMutation({
-    mutationFn: (pin: string | null) =>
-      EmployeesService.setEmployeePin({
-        employeeId: employee.id,
-        requestBody: { pin },
-      }),
-    ...cb,
-    onSuccess: () => {
-      cb.onSuccess()
-      onClose()
-    },
-  })
-  const valid = /^\d{4}$/.test(code)
-
-  return (
-    <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>{employee.full_name} — kirish kodi</DialogTitle>
-          <DialogDescription>
-            Skaneri yo'q postda hodim monoblokda ismini bosib shu 4 raqamni
-            teradi. Beyjik baribir ishlayveradi.
-          </DialogDescription>
-        </DialogHeader>
-        <Input
-          value={code}
-          onChange={(ev) =>
-            setCode(ev.target.value.replace(/\D/g, "").slice(0, 4))
-          }
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder="4 raqam"
-          className="h-12 text-center text-2xl tracking-[0.5em]"
-        />
-        <DialogFooter className="gap-2 sm:justify-between">
-          {employee.has_pin && (
-            <LoadingButton
-              variant="ghost"
-              className="text-destructive"
-              loading={mutation.isPending && !code}
-              onClick={() => mutation.mutate(null)}
-            >
-              Kodni o'chirish
-            </LoadingButton>
-          )}
-          <LoadingButton
-            disabled={!valid}
-            loading={mutation.isPending && !!code}
-            onClick={() => mutation.mutate(code)}
-          >
-            Saqlash
-          </LoadingButton>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }
 

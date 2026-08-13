@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { ReadAuditLogsData, ReadAuditLogsResponse, ReadBridgeAgentsResponse, CreateBridgeAgentData, CreateBridgeAgentResponse, UpdateBridgeAgentData, UpdateBridgeAgentResponse, DeleteBridgeAgentData, DeleteBridgeAgentResponse, RegenerateBridgeCodeData, RegenerateBridgeCodeResponse, PairBridgeAgentData, PairBridgeAgentResponse, BridgeScanData, BridgeScanResponse, ReadClientsData, ReadClientsResponse, CreateClientData, CreateClientResponse, ReadClientData, ReadClientResponse, UpdateClientData, UpdateClientResponse, DeleteClientData, DeleteClientResponse, ReadEmployeesData, ReadEmployeesResponse, CreateEmployeeData, CreateEmployeeResponse, ReadEmployeeData, ReadEmployeeResponse, UpdateEmployeeData, UpdateEmployeeResponse, DeleteEmployeeData, DeleteEmployeeResponse, RegenerateBadgeData, RegenerateBadgeResponse, PrintEmployeeBadgeData, PrintEmployeeBadgeResponse, SetEmployeePinData, SetEmployeePinResponse, HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, LoginWithBadgeData, LoginWithBadgeResponse, ListPinEmployeesResponse, LoginWithPinData, LoginWithPinResponse, RefreshAccessTokenResponse, LogoutResponse, ReadMachinesResponse, CreateMachineData, CreateMachineResponse, ReadMachineData, ReadMachineResponse, UpdateMachineData, UpdateMachineResponse, DeleteMachineData, DeleteMachineResponse, ReadMaterialsData, ReadMaterialsResponse, CreateMaterialData, CreateMaterialResponse, UpdateMaterialData, UpdateMaterialResponse, DeleteMaterialData, DeleteMaterialResponse, CreateOrderData, CreateOrderResponse, ReadOrdersData, ReadOrdersResponse, ReadOrderStatusCountsResponse, ReadOrderData, ReadOrderResponse, UpdateOrderData, UpdateOrderResponse, SaveOrderSurveyData, SaveOrderSurveyResponse, UploadRoomPhotoData, UploadRoomPhotoResponse, DeleteRoomPhotoData, DeleteRoomPhotoResponse, CancelOrderData, CancelOrderResponse, DeliverOrderData, DeliverOrderResponse, ReadOrderMatrixData, ReadOrderMatrixResponse, EditOrderMatrixData, EditOrderMatrixResponse, AssignOrderMachinesData, AssignOrderMachinesResponse, ConfirmOrderData, ConfirmOrderResponse, StartOrderProductionData, StartOrderProductionResponse, UploadOrderProjectData, UploadOrderProjectResponse, DownloadOrderScxZipData, DownloadOrderScxZipResponse, RegenerateOrderScxData, RegenerateOrderScxResponse, DownloadOrderFileData, DownloadOrderFileResponse, ReadOrderCutmapData, ReadOrderCutmapResponse, ReadUpakovkaOrderData, ReadUpakovkaOrderResponse, CreatePachkaData, CreatePachkaResponse, ScanIntoPachkaData, ScanIntoPachkaResponse, RemoveFromPachkaData, RemoveFromPachkaResponse, ClosePachkaData, ClosePachkaResponse, ReadPostsResponse, UpdatePostData, UpdatePostResponse, ReportProductivityData, ReportProductivityResponse, ReportOrdersData, ReportOrdersResponse, ReportMaterialsData, ReportMaterialsResponse, ReportDashboardResponse, RecordScanData, RecordScanResponse, CancelScanData, CancelScanResponse, ReadTabloMatrixResponse, ReadTabloOrderData, ReadTabloOrderResponse, ReadTerminalContextResponse, StartTerminalSessionData, StartTerminalSessionResponse, EndTerminalSessionResponse, ReadTerminalOrdersResponse, ResolveTerminalQrData, ResolveTerminalQrResponse, ReadTerminalKromkaData, ReadTerminalKromkaResponse, ReadTerminalPrisadkaData, ReadTerminalPrisadkaResponse, ReadTerminalCutmapData, ReadTerminalCutmapResponse, ReadTerminalPostQueueData, ReadTerminalPostQueueResponse, PrintInstanceLabelData, PrintInstanceLabelResponse, CancelInstanceLabelData, CancelInstanceLabelResponse, RenderInstanceLabelData, RenderInstanceLabelResponse, DownloadTerminalFileData, DownloadTerminalFileResponse, ReadTmoOrderData, ReadTmoOrderResponse, AcceptIntoTmoData, AcceptIntoTmoResponse, ShipPachkaData, ShipPachkaResponse, DeliverTmoOrderData, DeliverTmoOrderResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
+import type { ReadAuditLogsData, ReadAuditLogsResponse, ReadBridgeAgentsResponse, CreateBridgeAgentData, CreateBridgeAgentResponse, UpdateBridgeAgentData, UpdateBridgeAgentResponse, DeleteBridgeAgentData, DeleteBridgeAgentResponse, RegenerateBridgeCodeData, RegenerateBridgeCodeResponse, PairBridgeAgentData, PairBridgeAgentResponse, BridgeScanData, BridgeScanResponse, ReadClientsData, ReadClientsResponse, CreateClientData, CreateClientResponse, ReadClientData, ReadClientResponse, UpdateClientData, UpdateClientResponse, DeleteClientData, DeleteClientResponse, ReadEmployeesData, ReadEmployeesResponse, CreateEmployeeData, CreateEmployeeResponse, ReadEmployeeData, ReadEmployeeResponse, UpdateEmployeeData, UpdateEmployeeResponse, DeleteEmployeeData, DeleteEmployeeResponse, RegenerateBadgeData, RegenerateBadgeResponse, PrintEmployeeBadgeData, PrintEmployeeBadgeResponse, HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, LoginWithBadgeData, LoginWithBadgeResponse, RefreshAccessTokenResponse, LogoutResponse, ReadMachinesResponse, CreateMachineData, CreateMachineResponse, ReadMachineData, ReadMachineResponse, UpdateMachineData, UpdateMachineResponse, DeleteMachineData, DeleteMachineResponse, ReadMaterialsData, ReadMaterialsResponse, CreateMaterialData, CreateMaterialResponse, UpdateMaterialData, UpdateMaterialResponse, DeleteMaterialData, DeleteMaterialResponse, CreateOrderData, CreateOrderResponse, ReadOrdersData, ReadOrdersResponse, ReadOrderStatusCountsResponse, ReadOrderData, ReadOrderResponse, UpdateOrderData, UpdateOrderResponse, SaveOrderSurveyData, SaveOrderSurveyResponse, UploadRoomPhotoData, UploadRoomPhotoResponse, DeleteRoomPhotoData, DeleteRoomPhotoResponse, CancelOrderData, CancelOrderResponse, DeliverOrderData, DeliverOrderResponse, ReadOrderMatrixData, ReadOrderMatrixResponse, EditOrderMatrixData, EditOrderMatrixResponse, AssignOrderMachinesData, AssignOrderMachinesResponse, ConfirmOrderData, ConfirmOrderResponse, StartOrderProductionData, StartOrderProductionResponse, UploadOrderProjectData, UploadOrderProjectResponse, DownloadOrderScxZipData, DownloadOrderScxZipResponse, RegenerateOrderScxData, RegenerateOrderScxResponse, DownloadOrderFileData, DownloadOrderFileResponse, ReadOrderCutmapData, ReadOrderCutmapResponse, ReadUpakovkaOrderData, ReadUpakovkaOrderResponse, CreatePachkaData, CreatePachkaResponse, ScanIntoPachkaData, ScanIntoPachkaResponse, RemoveFromPachkaData, RemoveFromPachkaResponse, ClosePachkaData, ClosePachkaResponse, ReadPostsResponse, UpdatePostData, UpdatePostResponse, ReportProductivityData, ReportProductivityResponse, ReportOrdersData, ReportOrdersResponse, ReportMaterialsData, ReportMaterialsResponse, ReportDashboardResponse, RecordScanData, RecordScanResponse, CancelScanData, CancelScanResponse, ReadTabloMatrixResponse, ReadTabloOrderData, ReadTabloOrderResponse, ReadTerminalContextResponse, ReadTerminalEmployeesResponse, StartTerminalSessionData, StartTerminalSessionResponse, EndTerminalSessionData, EndTerminalSessionResponse, ReadTerminalOrdersResponse, ResolveTerminalQrData, ResolveTerminalQrResponse, ReadTerminalKromkaData, ReadTerminalKromkaResponse, ReadTerminalPrisadkaData, ReadTerminalPrisadkaResponse, ReadTerminalCutmapData, ReadTerminalCutmapResponse, ReadTerminalPostQueueData, ReadTerminalPostQueueResponse, PrintInstanceLabelData, PrintInstanceLabelResponse, CancelInstanceLabelData, CancelInstanceLabelResponse, RenderInstanceLabelData, RenderInstanceLabelResponse, DownloadTerminalFileData, DownloadTerminalFileResponse, ReadTmoOrderData, ReadTmoOrderResponse, AcceptIntoTmoData, AcceptIntoTmoResponse, ShipPachkaData, ShipPachkaResponse, DeliverTmoOrderData, DeliverTmoOrderResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
 
 export class AuditService {
     /**
@@ -452,34 +452,6 @@ export class EmployeesService {
             }
         });
     }
-    
-    /**
-     * Set Employee Pin
-     * Hodimga shaxsiy PIN o'rnatadi yoki o'chiradi (`pin: null`).
-     *
-     * PIN beyjikning MUQOBILI: skaneri yo'q postda (ARRA — u yerda chek chiqarish
-     * skanning o'zi) hodim monoblokda ismini bosib kod teradi. Kimgadir PIN kerakligini
-     * ADMIN hal qiladi, kod emas — hech qayerda rol qattiq yozilmagan.
-     * @param data The data for the request.
-     * @param data.employeeId
-     * @param data.requestBody
-     * @returns Message Successful Response
-     * @throws ApiError
-     */
-    public static setEmployeePin(data: SetEmployeePinData): CancelablePromise<SetEmployeePinResponse> {
-        return __request(OpenAPI, {
-            method: 'PUT',
-            url: '/api/v1/employees/{employee_id}/pin',
-            path: {
-                employee_id: data.employeeId
-            },
-            body: data.requestBody,
-            mediaType: 'application/json',
-            errors: {
-                422: 'Validation Error'
-            }
-        });
-    }
 }
 
 export class HealthService {
@@ -551,53 +523,6 @@ export class LoginService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/login/badge',
-            body: data.requestBody,
-            mediaType: 'application/json',
-            errors: {
-                422: 'Validation Error'
-            }
-        });
-    }
-    
-    /**
-     * List Pin Employees
-     * Monoblokdagi tanlov ro'yxati — PIN o'rnatilgan faol hodimlar.
-     *
-     * Autentifikatsiyasiz: kirish sahifasi bu ro'yxatni kirishdan OLDIN ko'rsatishi
-     * kerak. Chiqadigan ma'lumot ism va lavozim bilan cheklangan — kirish uchun
-     * PIN'ning o'zi kerak. Ro'yxat qisqa: PIN faqat skaneri yo'q postdagilarga
-     * qo'yiladi, qolganlar beyjik bilan kiradi va bu yerda umuman ko'rinmaydi.
-     * @returns PinEmployee Successful Response
-     * @throws ApiError
-     */
-    public static listPinEmployees(): CancelablePromise<ListPinEmployeesResponse> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/login/pin/employees'
-        });
-    }
-    
-    /**
-     * Login With Pin
-     * Skaneri yo'q postda kirish: ism + shaxsiy PIN. Natijasi beyjik bilan bir xil.
-     *
-     * NEGA rol paroli emas: `arrachi` paroli butun smenaga ma'lum bo'lgan BITTA hisob,
-     * ya'ni kim ishlaganini yo'qotadi. PIN esa hodimga tegishli — ish haqi atributsiyasi
-     * beyjik bilan bir xil aniqlikda qoladi.
-     *
-     * Kuchi cheklangan va bu ataylab: monoblokda teriladi, yonidagi odam ko'rib qolishi
-     * mumkin. U tasodifiy noto'g'ri atributsiyani to'xtatadi, ataylab kuzatgan odamni
-     * emas — beyjik ham xuddi shunday (QR qog'ozda, nusxa olsa bo'ladi). Shuning uchun
-     * xato terish soni cheklanadi: 5 marta xato — 5 daqiqa blok.
-     * @param data The data for the request.
-     * @param data.requestBody
-     * @returns BadgeLoginResponse Successful Response
-     * @throws ApiError
-     */
-    public static loginWithPin(data: LoginWithPinData): CancelablePromise<LoginWithPinResponse> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/v1/login/pin',
             body: data.requestBody,
             mediaType: 'application/json',
             errors: {
@@ -1595,8 +1520,30 @@ export class TerminalService {
     }
     
     /**
+     * Read Terminal Employees
+     * Shu postda ishlaydigan faol hodimlar — "Kim ishlayapti?" ro'yxati.
+     *
+     * Monoblok allaqachon TERMINAL hisobi bilan kirgan, ya'ni bu ro'yxat ochiq emas.
+     * Ismni bosish AUTENTIFIKATSIYA emas, ATRIBUTSIYA: qurilma tanitilgan, endi kim
+     * ishlayotgani yozib qo'yiladi. Skaneri bor postda beyjik ham shu ishni bajaradi,
+     * faqat bitta harakat bilan.
+     * @returns TerminalEmployee Successful Response
+     * @throws ApiError
+     */
+    public static readTerminalEmployees(): CancelablePromise<ReadTerminalEmployeesResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/terminal/employees'
+        });
+    }
+    
+    /**
      * Start Terminal Session
-     * Badge scan opens the shift (TZ 8.2.2).
+     * Smenani boshlaydi: beyjik skani (`badge_id`) yoki ismni bosish (`employee_id`).
+     *
+     * `join=true` — brigadaga QO'SHILISH (ARRA da ikki kishi birga ishlaydi). Sukut
+     * bo'yicha esa almashtiradi: ketayotgan odam chiqishni unutsa, keyingi kirish
+     * eski smenani yopadi.
      * @param data The data for the request.
      * @param data.requestBody
      * @returns SessionRead Successful Response
@@ -1616,13 +1563,23 @@ export class TerminalService {
     
     /**
      * End Terminal Session
+     * Smenani yakunlaydi. `employee_id` berilsa FAQAT o'shaniki — brigadaning
+     * qolgani ishlayveradi (biri ketib, ikkinchisi qolishi odatiy hol).
+     * @param data The data for the request.
+     * @param data.employeeId
      * @returns Message Successful Response
      * @throws ApiError
      */
-    public static endTerminalSession(): CancelablePromise<EndTerminalSessionResponse> {
+    public static endTerminalSession(data: EndTerminalSessionData = {}): CancelablePromise<EndTerminalSessionResponse> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/v1/terminal/session/end'
+            url: '/api/v1/terminal/session/end',
+            query: {
+                employee_id: data.employeeId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
         });
     }
     

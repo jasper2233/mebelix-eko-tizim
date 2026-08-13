@@ -34,10 +34,6 @@ export type BadgeLoginResponse = {
     post_name: string;
 };
 
-export type BadgeStart = {
-    badge_id: string;
-};
-
 export type Body_login_access_token = {
     grant_type?: (string | null);
     username: string;
@@ -169,13 +165,6 @@ export type EmployeeCreate = {
     assigned_post_ids?: Array<number>;
 };
 
-/**
- * PIN o'rnatish yoki o'chirish (`null` — o'chiradi).
- */
-export type EmployeePinUpdate = {
-    pin?: (string | null);
-};
-
 export type EmployeeProductivity = {
     employee_id: number;
     full_name: string;
@@ -194,7 +183,6 @@ export type EmployeeRead = {
     position: (string | null);
     status: EmployeeStatus;
     assigned_post_ids: Array<number>;
-    has_pin: boolean;
     created_at: string;
 };
 
@@ -629,24 +617,6 @@ export type Paginated_UserRead_ = {
     count: number;
 };
 
-/**
- * Kirish sahifasidagi tanlov tugmasi. FAQAT PIN o'rnatilgan faol hodimlar.
- */
-export type PinEmployee = {
-    id: number;
-    full_name: string;
-    position: (string | null);
-};
-
-/**
- * Skaneri yo'q postda kirish: monoblokda ism bosiladi + 4-6 raqamli shaxsiy kod.
- */
-export type PinLoginRequest = {
-    employee_id: number;
-    pin: string;
-    post_id?: (number | null);
-};
-
 export type PostCode = 'ARRA' | 'KROMKA' | 'OVAL' | 'PRISADKA' | 'ROVER' | 'STOLYARKA' | 'BOYOQ' | 'UPAKOVKA' | 'TMO';
 
 /**
@@ -833,6 +803,19 @@ export type SessionRead = {
 
 export type SessionStatus = 'active' | 'ended';
 
+/**
+ * Smenani boshlash — IKKI yo'l, natijasi bir xil.
+ *
+ * `badge_id` — skaneri bor postda bitta harakat. `employee_id` — ekrandagi
+ * ro'yxatdan ismni bosish (ARRA da skaner yo'q: u yerda chek chiqarish skanning
+ * o'zi, ya'ni skaner faqat kirish uchun sotib olinardi).
+ */
+export type ShiftStart = {
+    badge_id?: (string | null);
+    employee_id?: (number | null);
+    join?: boolean;
+};
+
 export type StageAgg = {
     post_id: number;
     done: number;
@@ -944,7 +927,16 @@ export type TerminalContext = {
     post_id: number;
     post_code: PostCode;
     post_name: string;
-    session?: (SessionRead | null);
+    crew?: Array<SessionRead>;
+};
+
+/**
+ * "Kim ishlayapti?" ro'yxatidagi tugma.
+ */
+export type TerminalEmployee = {
+    id: number;
+    full_name: string;
+    position: (string | null);
 };
 
 /**
@@ -1235,13 +1227,6 @@ export type PrintEmployeeBadgeData = {
 
 export type PrintEmployeeBadgeResponse = (Message);
 
-export type SetEmployeePinData = {
-    employeeId: number;
-    requestBody: EmployeePinUpdate;
-};
-
-export type SetEmployeePinResponse = (Message);
-
 export type HealthApiV1HealthGetResponse = (HealthCheck);
 
 export type ReadyApiV1ReadyGetResponse = (ReadyCheck);
@@ -1257,14 +1242,6 @@ export type LoginWithBadgeData = {
 };
 
 export type LoginWithBadgeResponse = (BadgeLoginResponse);
-
-export type ListPinEmployeesResponse = (Array<PinEmployee>);
-
-export type LoginWithPinData = {
-    requestBody: PinLoginRequest;
-};
-
-export type LoginWithPinResponse = (BadgeLoginResponse);
 
 export type RefreshAccessTokenResponse = ({
     [key: string]: string;
@@ -1546,11 +1523,17 @@ export type ReadTabloOrderResponse = (TabloOrderDetail);
 
 export type ReadTerminalContextResponse = (TerminalContext);
 
+export type ReadTerminalEmployeesResponse = (Array<TerminalEmployee>);
+
 export type StartTerminalSessionData = {
-    requestBody: BadgeStart;
+    requestBody: ShiftStart;
 };
 
 export type StartTerminalSessionResponse = (SessionRead);
+
+export type EndTerminalSessionData = {
+    employeeId?: (number | null);
+};
 
 export type EndTerminalSessionResponse = (Message);
 

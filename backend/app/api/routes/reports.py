@@ -9,8 +9,8 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
-from sqlalchemy.orm import defer
+from sqlalchemy import and_, func, or_, select
+from sqlalchemy.orm import aliased, defer
 
 from app.api.deps import SessionDep, require_roles
 from app.core.config import TASHKENT_TZ
@@ -25,6 +25,7 @@ from app.models import (
     PartRoute,
     Post,
     Scan,
+    WorkSession,
 )
 from app.models.enums import OrderStatus, UserRole
 from app.models.user import User
@@ -67,26 +68,57 @@ async def report_productivity(
     format: Annotated[Literal["json", "xlsx"], Query()] = "json",
 ) -> ProductivityReport | StreamingResponse:
     start, end = _range(date_from, date_to)
-    day = func.date_trunc("day", func.timezone(TASHKENT_TZ.key, Scan.created_at))
-    hour = func.date_trunc("hour", func.timezone(TASHKENT_TZ.key, Scan.created_at))
+
+    # Brigada: bitta stanokda ikki kishi ishlashi mumkin (ARRA — biri varaqni
+    # beradi, ikkinchisi detalni oladi) va detalni qaysi biri olganini bilishning
+    # iloji yo'q. Skan qatorida bitta `employee_id` bor — u LANGAR smena egasi,
+    # ya'ni uni sanash ishni butunlay bitta odamga yozardi. Shuning uchun hisob
+    # skan VAQTIDA ochiq bo'lgan smenalar bo'yicha yuritiladi va har skan ular
+    # orasida TENG bo'linadi: zavod bir ishga bir marta to'laydi.
+    #
+    # LEFT JOIN ataylab: `scan.machine_id` NULL bo'lishi mumkin (stanoksiz yozuv),
+    # o'shanda mos smena topilmaydi va skan hisobdan tushib qolardi — bunday holda
+    # `COALESCE` uni eski yo'l bilan `scan.employee_id` ga yozadi, brigada = 1.
+    ws = aliased(WorkSession)
+    member = (
+        select(
+            Scan.created_at.label("at"),
+            func.coalesce(ws.employee_id, Scan.employee_id).label("employee_id"),
+            func.count().over(partition_by=Scan.id).label("crew_size"),
+        )
+        .outerjoin(
+            ws,
+            and_(
+                ws.machine_id == Scan.machine_id,
+                ws.is_deleted == False,  # noqa: E712
+                ws.created_at <= Scan.created_at,
+                or_(ws.ended_at.is_(None), ws.ended_at >= Scan.created_at),
+            ),
+        )
+        .where(
+            Scan.created_at.between(start, end),
+            Scan.is_cancelled == False,  # noqa: E712
+            Scan.is_deleted == False,  # noqa: E712
+        )
+        .subquery()
+    )
+
+    day = func.date_trunc("day", func.timezone(TASHKENT_TZ.key, member.c.at))
+    hour = func.date_trunc("hour", func.timezone(TASHKENT_TZ.key, member.c.at))
+    credited = func.sum(1.0 / member.c.crew_size)
     rows = (
         await db.execute(
             select(
                 Employee.id,
                 Employee.full_name,
                 Employee.position,
-                func.count(Scan.id),
+                credited,
                 func.count(func.distinct(day)),
                 func.count(func.distinct(hour)),
             )
-            .join(Scan, Scan.employee_id == Employee.id)
-            .where(
-                Scan.created_at.between(start, end),
-                Scan.is_cancelled == False,  # noqa: E712
-                Scan.is_deleted == False,  # noqa: E712
-            )
+            .join(member, member.c.employee_id == Employee.id)
             .group_by(Employee.id, Employee.full_name, Employee.position)
-            .order_by(func.count(Scan.id).desc())
+            .order_by(credited.desc())
         )
     ).all()
 
@@ -95,10 +127,10 @@ async def report_productivity(
             employee_id=eid,
             full_name=name,
             position=position,
-            total_scans=total,
+            total_scans=round(float(total), 1),
             active_days=days,
-            per_day=round(total / days, 1) if days else 0.0,
-            per_hour=round(total / hours, 1) if hours else 0.0,
+            per_day=round(float(total) / days, 1) if days else 0.0,
+            per_hour=round(float(total) / hours, 1) if hours else 0.0,
         )
         for eid, name, position, total, days, hours in rows
     ]

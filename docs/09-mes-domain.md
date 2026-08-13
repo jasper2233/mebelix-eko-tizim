@@ -169,17 +169,51 @@ Operator-rol oqimi (`resolve_terminal` / `active_session`): arrachi…omborchi u
 aniqlanadi (`POST_ROLES`); stanok — `user.machine_id`, bo'lmasa postning birinchi o'chirilmagan
 stanogi (faqat soft-delete tekshiriladi, holat emas — NOAKTIV/TA'MIRDA stanok ham tushishi mumkin).
 
-**Smena YAGONA yo'l bilan ochiladi — beyjik skani** (`open_badge_session`). `active_session` hech
-qachon smena ochmaydi: sessiya yo'q bo'lsa E005, muddati o'tgan bo'lsa ham E005, smena egasi nofaol
-bo'lsa E006. Bu TERMINAL qurilma hisobiga ham, post-rol hisobiga ham bir xil tegishli.
+**Smena YAGONA joyda ochiladi — terminalda** (`open_badge_session`): beyjik skani yoki ekrandagi
+"Kim ishlayapti?" ro'yxatidan ismni bosish. `active_session` hech qachon smena ochmaydi: brigada
+bo'sh bo'lsa E005, smena egasi nofaol bo'lsa E006.
+
+**QURILMA ≠ ODAM.** Monoblok TERMINAL hisobi bilan BIR MARTA, o'rnatishda kiradi va boshqa hech
+qachon parol termaydi — tsexda klaviatura yo'q, qurilma tokeni 90 kunlik va har ishlatilganda
+yangilanadi (`DEVICE_REFRESH_TOKEN_EXPIRE_DAYS`). Kim ishlayotgani esa HAR smenada yoziladi. Bu
+ikkisini bir narsa deb qarash eng qimmat xato bo'lardi: "bir marta kirib eslab qolsin" degan yechim
+qurilmani tanitadi, lekin ertaga boshqa odam kelganda hamma skan kechagi odamga yozilib ketardi.
+
+Ismni bosish AUTENTIFIKATSIYA emas, **ATRIBUTSIYA**: qurilma allaqachon tanitilgan va ekran tsex
+ichida, stanok yonida turibdi, ya'ni sir so'rashning ma'nosi yo'q — uzoqdan hech kim tegolmaydi.
+Shu sabab PIN kodi qurilib, keyin OLIB TASHLANDI: u 4 raqamni hamma oldida terishni talab qilardi,
+ya'ni kuzatib turgan odamdan himoya qilmasdi — himoya qilmaydigan narsani himoya qilardi.
 
 Ilgari post rollari uchun "login = smena" shoxi bor edi: `operator_employee` hisobga soxta hodim
 yozuvi yaratib ("Arrachi", "Omborchi" — ismi rol nomi) smenani o'sha nomdan ochardi. Post rollari
-parol bilan kira olmagach (§3.0.2) u shox smena ocholmay qoldi — beyjik logini o'sha hisob nomidan
-kelsa ham, smenani beyjik ochadi — va butunlay olib tashlandi. `c7e2b4f81d39` mavjud mirror
-yozuvlarni NOFAOL qiladi va ularning ochiq smenalarini yopadi; yozuvlar O'CHIRILMAYDI — ularda
-haqiqiy skan tarixi bor. Natijada **`Hodimlar` = odamlar, `Foydalanuvchilar` = loginlar** va ular
-kesishmaydi.
+parol bilan kira olmagach (§3.0.2) u shox smena ocholmay qoldi va butunlay olib tashlandi.
+`c7e2b4f81d39` mavjud mirror yozuvlarni NOFAOL qiladi va ularning ochiq smenalarini yopadi;
+yozuvlar O'CHIRILMAYDI — ularda haqiqiy skan tarixi bor. Natijada **`Hodimlar` = odamlar,
+`Foydalanuvchilar` = loginlar** va ular kesishmaydi.
+
+#### Brigada — bitta stanokda ikki kishi
+
+ARRA da ikki kishi birga ishlaydi: biri varaqni beradi, ikkinchisi detalni oladi va taxlaydi.
+Detalni qaysi biri olganini bilishning **iloji yo'q** — ish qo'shma, ya'ni har skanda operator
+tanlashni so'rash soxta ma'lumot berardi.
+
+Shuning uchun stanokda bir nechta ochiq smena bo'lishi mumkin (`crew_sessions`):
+
+| Amal | Natija |
+|---|---|
+| beyjik / ism (sukut) | brigadani ALMASHTIRADI — ochiq smenalar yopiladi |
+| `join=true` ("+ Qo'shish") | brigadaga QO'SHILADI |
+| `/session/end?employee_id=` | FAQAT o'sha odamniki yopiladi, qolgani ishlayveradi |
+
+Almashtirish ATAYLAB sukut: ketayotgan odam yakunlashni unutsa, keyingi kirish eski smenani yopadi
+— unutish xavfsiz tomonga og'adi. Qo'shilish esa ataylab so'raladi, aks holda ikkalasiga ham jimgina
+ish yozilib ketardi.
+
+Ish haqi va mahsuldorlik: skan qatorida bitta `employee_id` bor (LANGAR smena egasi), shuning uchun
+hisobot uni SANAMAYDI — har skan o'z VAQTIDA ochiq bo'lgan smenalar orasida teng bo'linadi
+(`reports.py`, `count() OVER (PARTITION BY scan.id)`). Ikki kishi birga ishlagan skan har biriga
+0.5 yoziladi: zavod bir ishga bir marta to'laydi. `scan.machine_id` NULL bo'lsa (stanoksiz yozuv)
+`COALESCE` uni eski yo'l bilan `scan.employee_id` ga yozadi — skan hisobdan tushib qolmasin.
 
 ### 3.0.1 Beyjik bilan kirish (tsexda parol yo'q)
 
@@ -205,34 +239,6 @@ beyjik chiqariladi.
 `employee.user_id` ustuni (`d1c4e7a90b52`) endi ARXIV: u eski mirror yozuvlarni belgilaydi
 (o'chirish taqiqlanadi — skan tarixi ularda) va kelajakda ishchi ayni paytda menejer ham bo'lsa
 ishlatiladi. Yangi hodim qo'shganda foydalanuvchi tanlanmaydi: tsexdagi ishchi login qilmaydi.
-
-#### PIN — beyjikning muqobili (skaneri yo'q post)
-
-Beyjik kimlikning YAGONA tashuvchisi bo'lib qolgan edi, ya'ni QR skaneri yo'q postda
-kirish imkonsiz. ARRA aynan shunday: u yerda chek chiqarish skanning o'zi
-(`cutprint`), shuning uchun skaner qo'yilmagan — faqat kirish uchun uni sotib olish
-keraksiz xarajat bo'lardi.
-
-`employee.pin_hash` (`a5f39c81e0b7`) — o'sha kimlikning IKKINCHI tashuvchisi. Monoblokda
-hodim ismini bosadi va **qat'iy 4 raqam** teradi; oxirgi raqam kirishni o'zi boshlaydi,
-tasdiqlash tugmasi yo'q. Sensorli ekranda raqam paneli — klaviatura kerak emas.
-
-Muhimi: `POST /login/pin` va `POST /login/badge` kimlik aniqlangandan keyin AYNAN bir
-funksiyadan o'tadi (`_open_shift`), ya'ni smena, skan va ish haqi atributsiyasi kirish
-usuliga bog'liq emas.
-
-**Nega rol paroli emas.** `arrachi` paroli — butun smenaga ma'lum BITTA hisob: kim
-ishlaganini yo'qotadi. PIN esa ODAMGA tegishli, ya'ni atributsiya beyjik bilan bir xil
-aniqlikda qoladi. Va hech qayerda rol qattiq yozilmagan: PIN har hodimda bo'lishi
-mumkin, kimga kerakligini admin hal qiladi. Arraga skaner olinsa yoki bo'yoqda skaner
-buzilsa — dastur tegilmaydi.
-
-**Kuchi cheklangan va bu ataylab.** 4 raqam monoblokda, hamma oldida teriladi.
-U tasodifiy noto'g'ri atributsiyani to'xtatadi, ataylab kuzatib turgan odamni emas —
-beyjik ham xuddi shunday (QR qog'ozda, nusxa olsa bo'ladi). Kuchni uzunlik emas,
-urinishlar chegarasi beradi: 5 xato — 5 daqiqa blok, Redis'da HODIM bo'yicha
-(`auth:pin:fail:<id>`). IP bo'yicha emas: butun tsex bitta tashqi IP ostida turadi,
-ya'ni IP chegarasi yonidagi odamning to'g'ri kodini ham bloklardi.
 
 **Xavfsizlik — ataylab qilingan tanlov (2026-08-12).** Beyjik yagona omil: QR qog'ozda va nusxa
 olingan bo'lsa istalgan qurilmadan kirsa bo'ladi. Qurilma bog'lash (monoblokni stanokka bir

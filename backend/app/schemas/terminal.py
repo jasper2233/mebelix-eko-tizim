@@ -6,8 +6,29 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.models.enums import OrderPriority, OrderStatus, PachkaStatus, PostCode, SessionStatus
 
 
-class BadgeStart(BaseModel):
-    badge_id: Annotated[str, Field(min_length=8, max_length=36)]
+class ShiftStart(BaseModel):
+    """Smenani boshlash — IKKI yo'l, natijasi bir xil.
+
+    `badge_id` — skaneri bor postda bitta harakat. `employee_id` — ekrandagi
+    ro'yxatdan ismni bosish (ARRA da skaner yo'q: u yerda chek chiqarish skanning
+    o'zi, ya'ni skaner faqat kirish uchun sotib olinardi).
+    """
+
+    badge_id: Annotated[str | None, Field(default=None, min_length=8, max_length=36)]
+    employee_id: int | None = None
+    #: Brigadaga QO'SHILISH. Sukut `False` — almashtiradi (chiqishni unutish
+    #: xavfsiz tomonga og'sin).
+    join: bool = False
+
+
+class TerminalEmployee(BaseModel):
+    """ "Kim ishlayapti?" ro'yxatidagi tugma."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    full_name: str
+    position: str | None
 
 
 class SessionRead(BaseModel):
@@ -29,7 +50,9 @@ class TerminalContext(BaseModel):
     post_id: int
     post_code: PostCode
     post_name: str
-    session: SessionRead | None = None
+    #: Brigada — stanokdagi OCHIQ smenalar (ARRA da ikki kishi birga ishlaydi).
+    #: Bo'sh ro'yxat: hali hech kim smenani boshlamagan.
+    crew: list[SessionRead] = []
 
 
 class TerminalOrderCard(BaseModel):

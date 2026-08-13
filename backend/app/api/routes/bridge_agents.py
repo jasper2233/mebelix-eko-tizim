@@ -37,9 +37,8 @@ from app.schemas.common import Message
 from app.schemas.terminal import ScanResult
 from app.services.scanning import (
     ScanRejected,
-    expire_if_stale,
+    crew_sessions,
     finalize_scan,
-    latest_active_session,
     log_rejected_scan,
     record_scan_at,
 )
@@ -283,8 +282,11 @@ async def bridge_scan(
     post = await db.get(Post, machine.post_id)
     if post is None:
         raise HTTPException(status_code=409, detail="Stanok posti topilmadi.")
-    # Terminal bilan bir xil qoida: 12 soatlik smena muddati stanok skanida ham amal qiladi
-    session = await expire_if_stale(db, await latest_active_session(db, machine.id))
+    # Terminal bilan bir xil qoida: 12 soatlik smena muddati stanok skanida ham
+    # amal qiladi (`crew_sessions` muddati o'tganini o'zi yopadi). Brigadadan
+    # LANGAR smena olinadi — `active_session` ham aynan shunday tanlaydi.
+    crew = await crew_sessions(db, machine.id)
+    session = crew[0] if crew else None
     if session is None:
         raise HTTPException(
             status_code=409,

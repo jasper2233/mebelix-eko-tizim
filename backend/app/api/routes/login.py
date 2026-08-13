@@ -16,7 +16,6 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     set_auth_cookie,
-    verify_password,
     verify_token,
 )
 from app.core.utils.rate_limit import RateLimit, rate_limiter
@@ -25,14 +24,7 @@ from app.crud import crud_users, log_action
 from app.models import Employee, Machine, Post
 from app.models.enums import POST_ROLES, EmployeeStatus, UserRole
 from app.models.user import User
-from app.schemas.auth import (
-    BadgeLoginRequest,
-    BadgeLoginResponse,
-    BadgePostOption,
-    PinEmployee,
-    PinLoginRequest,
-    Token,
-)
+from app.schemas.auth import BadgeLoginRequest, BadgeLoginResponse, BadgePostOption, Token
 from app.services.scanning import open_badge_session
 
 router = APIRouter(prefix="/login", tags=["login"])
@@ -49,44 +41,21 @@ REFRESH_MAX_AGE = REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
 
 _USED_JTI_PREFIX = "auth:refresh:used:"
 
-# PIN 4-6 raqam, ya'ni beyjikning 122 bitiga nisbatan zaif. Chegara Redis'da
-# HODIM bo'yicha sanaladi (IP bo'yicha emas): butun tsex bitta tashqi IP ostida
-# turadi, ya'ni IP chegarasi yonidagi odamning to'g'ri kodini ham bloklardi.
-_PIN_FAIL_PREFIX = "auth:pin:fail:"
-_PIN_MAX_FAILURES = 5
-_PIN_LOCK_MINUTES = 5
-
-
-async def _pin_locked(employee_id: int) -> bool:
-    if rate_limiter.client is None:
-        return False
-    fails = await rate_limiter.client.get(_PIN_FAIL_PREFIX + str(employee_id))
-    return int(fails or 0) >= _PIN_MAX_FAILURES
-
-
-async def _register_pin_failure(employee_id: int) -> int:
-    """Xato urinishni sanaydi, qolgan urinishlar sonini qaytaradi."""
-    if rate_limiter.client is None:
-        return _PIN_MAX_FAILURES
-    key = _PIN_FAIL_PREFIX + str(employee_id)
-    fails = await rate_limiter.client.incr(key)
-    # Muddat HAR xatoda yangilanadi: sekin terib chiqishga urinsa oyna surilib boradi.
-    await rate_limiter.client.expire(key, _PIN_LOCK_MINUTES * 60)
-    return max(0, _PIN_MAX_FAILURES - int(fails))
-
-
-async def _clear_pin_failures(employee_id: int) -> None:
-    if rate_limiter.client is not None:
-        await rate_limiter.client.delete(_PIN_FAIL_PREFIX + str(employee_id))
-
 
 def _issue_token_pair(response: Response, user: User) -> str:
-    """Generate access+refresh tokens and set both as httpOnly cookies. Returns the access token."""
+    """Generate access+refresh tokens and set both as httpOnly cookies. Returns the access token.
+
+    Qurilma hisoblari (TERMINAL, TABLO) uzun refresh oladi: monoblokda klaviatura
+    yo'q va u parolni FAQAT o'rnatishda bir marta teradi. Odam hisoblarida muddat
+    qisqa qoladi — o'g'irlangan cookie oynasi kengaymasin.
+    """
     payload = {"sub": str(user.id), "token_version": user.token_version}
+    device = UserRole(user.role) in (UserRole.TERMINAL, UserRole.TABLO)
+    days = settings.DEVICE_REFRESH_TOKEN_EXPIRE_DAYS if device else REFRESH_TOKEN_EXPIRE_DAYS
     access_token = create_access_token(data=payload)
-    refresh_token = create_refresh_token(data=payload)
+    refresh_token = create_refresh_token(data=payload, days=days)
     set_auth_cookie(response, ACCESS_COOKIE_NAME, access_token, ACCESS_MAX_AGE)
-    set_auth_cookie(response, REFRESH_COOKIE_NAME, refresh_token, REFRESH_MAX_AGE)
+    set_auth_cookie(response, REFRESH_COOKIE_NAME, refresh_token, days * 24 * 60 * 60)
     return access_token
 
 
@@ -234,52 +203,6 @@ async def _terminal_user(db: SessionDep, machine: Machine, post: Post) -> User:
     return user
 
 
-async def _open_shift(
-    db: SessionDep,
-    response: Response,
-    request: Request,
-    *,
-    employee: Employee,
-    post_id: int | None,
-    how: str,
-) -> BadgeLoginResponse:
-    """Kimlik aniqlangandan keyingi umumiy qism — beyjik va PIN uchun BIR XIL.
-
-    Kirish usuli faqat "kim" degan savolga javob beradi; undan keyin smena, audit
-    va token har ikkalasida aynan bir yo'ldan o'tadi, ya'ni skan va ish haqi
-    atributsiyasi usulga bog'liq emas.
-    """
-    post = await _badge_post(db, employee, post_id)
-    machine = await _post_machine(db, post)
-    user = await _terminal_user(db, machine, post)
-
-    session = await open_badge_session(db, user=user, machine=machine, post=post, employee=employee)
-    log_action(
-        db,
-        module="sessions",
-        action="started",
-        user_id=user.id,
-        employee_id=employee.id,
-        entity_type="session",
-        entity_id=session.id,
-        message=f"{how} bilan kirish: {employee.full_name} — {machine.name}",
-        ip=client_ip(request),
-    )
-    await db.commit()
-    await ws_manager.publish(
-        "session.started",
-        {"session_id": session.id, "employee": employee.full_name, "machine_id": machine.id, "post_id": post.id},
-    )
-    access_token = _issue_token_pair(response, user)
-    return BadgeLoginResponse(
-        access_token=access_token,
-        token_type="bearer",
-        employee_name=employee.full_name,
-        machine_name=machine.name,
-        post_name=post.name,
-    )
-
-
 @router.post(
     "/badge",
     response_model=BadgeLoginResponse,
@@ -315,68 +238,35 @@ async def login_with_badge(
 
     # Postga biriktirilganini `_badge_post` tekshiradi (terminaldagi `badge_employee`
     # bilan bir xil qoida, faqat u yerda post ma'lum, bu yerda esa aniqlanadi).
-    return await _open_shift(db, response, request, employee=employee, post_id=body.post_id, how="Beyjik")
+    post = await _badge_post(db, employee, body.post_id)
+    machine = await _post_machine(db, post)
+    user = await _terminal_user(db, machine, post)
 
-
-@router.get("/pin/employees", response_model=list[PinEmployee], operation_id="list_pin_employees")
-async def list_pin_employees(db: SessionDep) -> list[Employee]:
-    """Monoblokdagi tanlov ro'yxati — PIN o'rnatilgan faol hodimlar.
-
-    Autentifikatsiyasiz: kirish sahifasi bu ro'yxatni kirishdan OLDIN ko'rsatishi
-    kerak. Chiqadigan ma'lumot ism va lavozim bilan cheklangan — kirish uchun
-    PIN'ning o'zi kerak. Ro'yxat qisqa: PIN faqat skaneri yo'q postdagilarga
-    qo'yiladi, qolganlar beyjik bilan kiradi va bu yerda umuman ko'rinmaydi.
-    """
-    return list(
-        (
-            await db.execute(
-                select(Employee)
-                .where(
-                    Employee.pin_hash.is_not(None),
-                    Employee.status == EmployeeStatus.ACTIVE,
-                    Employee.is_deleted == False,  # noqa: E712
-                )
-                .order_by(Employee.full_name)
-            )
-        )
-        .scalars()
-        .all()
+    session = await open_badge_session(db, user=user, machine=machine, post=post, employee=employee)
+    log_action(
+        db,
+        module="sessions",
+        action="started",
+        user_id=user.id,
+        employee_id=employee.id,
+        entity_type="session",
+        entity_id=session.id,
+        message=f"Beyjik bilan kirish: {employee.full_name} — {machine.name}",
+        ip=client_ip(request),
     )
-
-
-@router.post(
-    "/pin",
-    response_model=BadgeLoginResponse,
-    operation_id="login_with_pin",
-    dependencies=[Depends(_BADGE_RATE_LIMIT)],
-)
-async def login_with_pin(
-    response: Response, db: SessionDep, body: PinLoginRequest, request: Request
-) -> BadgeLoginResponse:
-    """Skaneri yo'q postda kirish: ism + shaxsiy PIN. Natijasi beyjik bilan bir xil.
-
-    NEGA rol paroli emas: `arrachi` paroli butun smenaga ma'lum bo'lgan BITTA hisob,
-    ya'ni kim ishlaganini yo'qotadi. PIN esa hodimga tegishli — ish haqi atributsiyasi
-    beyjik bilan bir xil aniqlikda qoladi.
-
-    Kuchi cheklangan va bu ataylab: monoblokda teriladi, yonidagi odam ko'rib qolishi
-    mumkin. U tasodifiy noto'g'ri atributsiyani to'xtatadi, ataylab kuzatgan odamni
-    emas — beyjik ham xuddi shunday (QR qog'ozda, nusxa olsa bo'ladi). Shuning uchun
-    xato terish soni cheklanadi: 5 marta xato — 5 daqiqa blok.
-    """
-    employee = await db.get(Employee, body.employee_id)
-    if employee is None or employee.is_deleted or employee.pin_hash is None:
-        raise UnauthorizedException("Hodim topilmadi.")
-    if employee.status != EmployeeStatus.ACTIVE:
-        raise UnauthorizedException("Hodim nofaol. Adminga murojaat qiling.")
-    if await _pin_locked(employee.id):
-        raise UnauthorizedException(f"Kod {_PIN_MAX_FAILURES} marta xato terildi. {_PIN_LOCK_MINUTES} daqiqa kuting.")
-    if not await verify_password(body.pin, employee.pin_hash):
-        left = await _register_pin_failure(employee.id)
-        raise UnauthorizedException(f"Kod noto'g'ri. {left} ta urinish qoldi.")
-
-    await _clear_pin_failures(employee.id)
-    return await _open_shift(db, response, request, employee=employee, post_id=body.post_id, how="PIN")
+    await db.commit()
+    await ws_manager.publish(
+        "session.started",
+        {"session_id": session.id, "employee": employee.full_name, "machine_id": machine.id, "post_id": post.id},
+    )
+    access_token = _issue_token_pair(response, user)
+    return BadgeLoginResponse(
+        access_token=access_token,
+        token_type="bearer",
+        employee_name=employee.full_name,
+        machine_name=machine.name,
+        post_name=post.name,
+    )
 
 
 @router.post("/refresh", operation_id="refresh_access_token")

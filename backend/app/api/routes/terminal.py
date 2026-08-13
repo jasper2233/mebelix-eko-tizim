@@ -28,17 +28,16 @@ from app.models import (
 )
 from app.models.enums import (
     POST_ROLES,
+    EmployeeStatus,
     FileKind,
     OrderPriority,
     OrderStatus,
     PostCode,
-    SessionStatus,
     UserRole,
 )
 from app.models.user import User
 from app.schemas.common import Message
 from app.schemas.terminal import (
-    BadgeStart,
     CutmapInstanceState,
     CutmapState,
     KromkaInstance,
@@ -52,15 +51,17 @@ from app.schemas.terminal import (
     PrisadkaPartRow,
     QrOrderRef,
     SessionRead,
+    ShiftStart,
     TerminalContext,
+    TerminalEmployee,
     TerminalOrderCard,
 )
 from app.services.scanning import (
     ScanRejected,
-    active_session,
     badge_employee,
+    crew_sessions,
+    end_session,
     finalize_scan,
-    latest_active_session,
     open_badge_session,
     record_scan,
     resolve_terminal,
@@ -104,31 +105,65 @@ async def read_terminal_context(db: SessionDep, user: TerminalUser, ctx: Termina
         post_code=post.code,
         post_name=post.name,
     )
-    session: WorkSession | None
-    if UserRole(user.role) in POST_ROLES:
-        # Operator role: login is the shift — session opens automatically, no badge.
-        session = await active_session(db, machine)
-        await db.commit()
-        await db.refresh(session)
-    else:
-        session = await latest_active_session(db, machine.id)
-    if session is not None:
+    for session in await crew_sessions(db, machine.id):
         employee = await db.get(Employee, session.employee_id)
-        out.session = _session_read(session, employee.full_name if employee else "")
+        out.crew.append(_session_read(session, employee.full_name if employee else ""))
+    # `crew_sessions` muddati o'tgan smenalarni yopadi — o'sha yozuv saqlanishi kerak
+    await db.commit()
     return out
+
+
+@router.get("/employees", response_model=list[TerminalEmployee], operation_id="read_terminal_employees")
+async def read_terminal_employees(db: SessionDep, _: TerminalUser, ctx: TerminalCtx) -> list[Employee]:
+    """Shu postda ishlaydigan faol hodimlar — "Kim ishlayapti?" ro'yxati.
+
+    Monoblok allaqachon TERMINAL hisobi bilan kirgan, ya'ni bu ro'yxat ochiq emas.
+    Ismni bosish AUTENTIFIKATSIYA emas, ATRIBUTSIYA: qurilma tanitilgan, endi kim
+    ishlayotgani yozib qo'yiladi. Skaneri bor postda beyjik ham shu ishni bajaradi,
+    faqat bitta harakat bilan.
+    """
+    _machine, post = ctx
+    rows = (
+        await db.execute(
+            select(Employee)
+            .where(
+                Employee.status == EmployeeStatus.ACTIVE,
+                Employee.is_deleted == False,  # noqa: E712
+                Employee.assigned_post_ids.contains([post.id]),
+            )
+            .order_by(Employee.full_name)
+        )
+    ).scalars()
+    return list(rows)
 
 
 @router.post("/session", response_model=SessionRead, operation_id="start_terminal_session")
 async def start_terminal_session(
-    db: SessionDep, user: TerminalUser, ctx: TerminalCtx, body: BadgeStart, request: Request
+    db: SessionDep, user: TerminalUser, ctx: TerminalCtx, body: ShiftStart, request: Request
 ) -> SessionRead:
-    """Badge scan opens the shift (TZ 8.2.2)."""
+    """Smenani boshlaydi: beyjik skani (`badge_id`) yoki ismni bosish (`employee_id`).
+
+    `join=true` — brigadaga QO'SHILISH (ARRA da ikki kishi birga ishlaydi). Sukut
+    bo'yicha esa almashtiradi: ketayotgan odam chiqishni unutsa, keyingi kirish
+    eski smenani yopadi.
+    """
     machine, post = ctx
-    try:
-        employee = await badge_employee(db, body.badge_id, post)
-    except ScanRejected as exc:
-        raise _scan_error(exc.code, exc.message) from None
-    session = await open_badge_session(db, user=user, machine=machine, post=post, employee=employee)
+    if body.badge_id:
+        try:
+            employee = await badge_employee(db, body.badge_id, post)
+        except ScanRejected as exc:
+            raise _scan_error(exc.code, exc.message) from None
+    elif body.employee_id is not None:
+        found = await db.get(Employee, body.employee_id)
+        if found is None or found.is_deleted or found.status != EmployeeStatus.ACTIVE:
+            raise NotFoundException("Hodim topilmadi yoki nofaol.")
+        employee = found
+        if post.id not in employee.assigned_post_ids:
+            raise _scan_error("E006", f"{employee.full_name} bu postda ishlay olmaydi ({post.name}).")
+    else:
+        raise NotFoundException("Hodim ko'rsatilmagan.")
+
+    session = await open_badge_session(db, user=user, machine=machine, post=post, employee=employee, join=body.join)
     log_action(
         db,
         module="sessions",
@@ -150,26 +185,33 @@ async def start_terminal_session(
 
 
 @router.post("/session/end", response_model=Message, operation_id="end_terminal_session")
-async def end_terminal_session(db: SessionDep, user: TerminalUser, ctx: TerminalCtx, request: Request) -> Message:
+async def end_terminal_session(
+    db: SessionDep, user: TerminalUser, ctx: TerminalCtx, request: Request, employee_id: int | None = None
+) -> Message:
+    """Smenani yakunlaydi. `employee_id` berilsa FAQAT o'shaniki — brigadaning
+    qolgani ishlayveradi (biri ketib, ikkinchisi qolishi odatiy hol)."""
     machine, _post = ctx
-    session = await latest_active_session(db, machine.id)
-    if session is None:
-        raise NotFoundException("Aktiv sessiya yo'q.")
-    session.status = SessionStatus.ENDED
-    session.ended_at = datetime.now(UTC)
-    log_action(
-        db,
-        module="sessions",
-        action="ended",
-        user_id=user.id,
-        employee_id=session.employee_id,
-        entity_type="session",
-        entity_id=session.id,
-        ip=client_ip(request),
-    )
+    crew = await crew_sessions(db, machine.id)
+    if employee_id is not None:
+        crew = [s for s in crew if s.employee_id == employee_id]
+    if not crew:
+        raise NotFoundException("Aktiv smena yo'q.")
+    for session in crew:
+        await end_session(db, session)
+        log_action(
+            db,
+            module="sessions",
+            action="ended",
+            user_id=user.id,
+            employee_id=session.employee_id,
+            entity_type="session",
+            entity_id=session.id,
+            ip=client_ip(request),
+        )
     await db.commit()
-    await ws_manager.publish("session.ended", {"session_id": session.id, "machine_id": machine.id})
-    return Message(message="Sessiya yakunlandi.")
+    for session in crew:
+        await ws_manager.publish("session.ended", {"session_id": session.id, "machine_id": machine.id})
+    return Message(message="Smena yakunlandi.")
 
 
 def _own_sheets(order: Order, own_nos: set[int] | None) -> int:

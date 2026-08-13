@@ -124,33 +124,71 @@ async def badge_employee(db: AsyncSession, badge_id: str, post: Post) -> Employe
 
 
 async def open_badge_session(
-    db: AsyncSession, *, user: User, machine: Machine, post: Post, employee: Employee
+    db: AsyncSession, *, user: User, machine: Machine, post: Post, employee: Employee, join: bool = False
 ) -> WorkSession:
-    """Beyjik smenani ochadi (TZ 8.2.2). Stanokda bitta ochiq smena: yangi beyjik eskisini yopadi."""
-    previous = await latest_active_session(db, machine.id)
-    if previous is not None:
-        previous.status = SessionStatus.ENDED
-        previous.ended_at = datetime.now(UTC)
+    """Smenani ochadi (TZ 8.2.2) — beyjik skani ham, ismni bosish ham shu yerga keladi.
+
+    `join=False` (sukut) BRIGADANI ALMASHTIRADI: stanokdagi ochiq smenalar yopiladi.
+    Bu ataylab sukut: ketayotgan odam "chiqish" ni bosishni unutsa, keyingi kirish
+    eski smenani yopib qo'yadi — ya'ni unutish xavfsiz tomonga og'adi. Qo'shilish
+    esa `join=True` bilan ATAYLAB so'raladi ("+ Qo'shish"), aks holda ikkalasiga
+    ham jimgina ish yozilib ketardi.
+
+    Bir odamni ikki marta qo'shib bo'lmaydi: mavjud smenasi qaytariladi.
+    """
+    crew = await crew_sessions(db, machine.id)
+    mine = next((s for s in crew if s.employee_id == employee.id), None)
+    if mine is not None:
+        return mine
+    if not join:
+        now = datetime.now(UTC)
+        for previous in crew:
+            previous.status = SessionStatus.ENDED
+            previous.ended_at = now
     session = WorkSession(employee_id=employee.id, user_id=user.id, machine_id=machine.id, post_id=post.id)
     db.add(session)
     await db.flush()
     return session
 
 
-async def latest_active_session(db: AsyncSession, machine_id: int) -> WorkSession | None:
-    """Shu stanokdagi ochiq smena (eng oxirgisi)."""
-    return (
-        await db.execute(
-            select(WorkSession)
-            .where(
-                WorkSession.machine_id == machine_id,
-                WorkSession.status == SessionStatus.ACTIVE,
-                WorkSession.is_deleted == False,  # noqa: E712
+async def end_session(db: AsyncSession, session: WorkSession) -> None:
+    session.status = SessionStatus.ENDED
+    session.ended_at = datetime.now(UTC)
+    await db.flush()
+
+
+async def crew_sessions(db: AsyncSession, machine_id: int) -> list[WorkSession]:
+    """Stanokdagi OCHIQ smenalar — brigada, ochilish tartibida.
+
+    "Bitta stanok = bitta smena" farazi noto'g'ri edi: ARRA da ikki kishi birga
+    ishlaydi (biri varaqni beradi, ikkinchisi detalni oladi va taxlaydi) va detalni
+    qaysi biri olganini bilishning ILOJI YO'Q — ish qo'shma. Ilgari ikkinchi kirish
+    birinchisining smenasini jimgina yopardi, ya'ni undan keyingi hamma skan bitta
+    odamga yozilardi.
+
+    Muddati o'tganlari shu yerda yopiladi, ya'ni chaqiruvchi faqat tirik smenalarni
+    ko'radi.
+    """
+    rows = list(
+        (
+            await db.execute(
+                select(WorkSession)
+                .where(
+                    WorkSession.machine_id == machine_id,
+                    WorkSession.status == SessionStatus.ACTIVE,
+                    WorkSession.is_deleted == False,  # noqa: E712
+                )
+                .order_by(WorkSession.id)
             )
-            .order_by(WorkSession.id.desc())
-            .limit(1)
         )
-    ).scalar_one_or_none()
+        .scalars()
+        .all()
+    )
+    live = []
+    for row in rows:
+        if await expire_if_stale(db, row) is not None:
+            live.append(row)
+    return live
 
 
 async def expire_if_stale(db: AsyncSession, session: WorkSession | None) -> WorkSession | None:
@@ -160,36 +198,31 @@ async def expire_if_stale(db: AsyncSession, session: WorkSession | None) -> Work
         return None
     started = session.created_at if session.created_at.tzinfo else session.created_at.replace(tzinfo=UTC)
     if datetime.now(UTC) - started > timedelta(hours=settings.SESSION_MAX_HOURS):
-        session.status = SessionStatus.ENDED
-        session.ended_at = datetime.now(UTC)
-        await db.flush()
+        await end_session(db, session)
         return None
     return session
 
 
 async def active_session(db: AsyncSession, machine: Machine) -> WorkSession:
-    """Skan qaysi smenaga yoziladi.
+    """Skan qaysi smenaga yoziladi — brigadaning BIRINCHI (smenani ochgan) a'zosi.
 
-    Smena YAGONA yo'l bilan ochiladi — beyjik skani (`open_badge_session`).
-    Ilgari post rollari uchun "login = smena" shoxi bor edi: u hisobga soxta
-    hodim yozuvi yaratib ("arrachi", "omborchi") smenani o'sha nomdan ochardi.
-    Post rollari parol bilan kira olmagach (`login.py`) u shox smena ocholmay
-    qoldi — beyjik logini o'sha hisob nomidan kelsa ham, smenani beyjik ochadi.
+    Skan qatorida bitta `employee_id` bor, brigadada esa bir necha odam. Kim aynan
+    shu detalni olganini bilib bo'lmaydi, shuning uchun skan langar smenaga
+    yoziladi, ish haqi va mahsuldorlik esa skan VAQTIDA ochiq bo'lgan smenalar
+    orasida bo'linadi (`reports.py`).
+
+    Smena YAGONA yo'l bilan ochiladi — terminalda beyjik skani yoki ismni bosish
+    (`open_badge_session`). Ilgari post rollari uchun "login = smena" shoxi bor
+    edi: u hisobga soxta hodim yozuvi yaratib ("arrachi", "omborchi") smenani o'sha
+    nomdan ochardi va olib tashlandi (`c7e2b4f81d39`).
     """
-    session = await latest_active_session(db, machine.id)
-
-    # 12-hour shift timeout (TZ 8.5 E005)
-    if session is not None and (session := await expire_if_stale(db, session)) is None:
-        raise ScanRejected(
-            "E005",
-            f"Sessiya muddati tugadi ({settings.SESSION_MAX_HOURS} soat). Beyjikni qaytadan scan qiling.",
-        )
-
-    if session is None:
-        raise ScanRejected("E005", "Aktiv sessiya yo'q. Beyjikni scan qiling.")
+    crew = await crew_sessions(db, machine.id)
+    if not crew:
+        raise ScanRejected("E005", "Aktiv smena yo'q. Terminalda ismingizni bosing yoki beyjikni scan qiling.")
+    session = crew[0]
     employee = await db.get(Employee, session.employee_id)
     if employee is None or employee.status != EmployeeStatus.ACTIVE:
-        raise ScanRejected("E006", "Beyjik nofaol. Adminga murojaat qiling.")
+        raise ScanRejected("E006", "Hodim nofaol. Adminga murojaat qiling.")
     return session
 
 

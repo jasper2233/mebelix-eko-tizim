@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    # Monoblok/TABLO qurilmasi bir marta, o'rnatishda kiradi va boshqa hech qachon
+    # parol termaydi — tsexda klaviatura yo'q. Token har ishlatilganda yangilanadi,
+    # ya'ni har kuni ishlaydigan qurilma hech qachon chiqmaydi; uzun muddat esa
+    # ta'til yoki uzoq to'xtashdan keyin ham qayta kirish kerak bo'lmasligi uchun.
+    DEVICE_REFRESH_TOKEN_EXPIRE_DAYS: int = 90
     BCRYPT_ROUNDS: int = 12
 
     # === PostgreSQL ===

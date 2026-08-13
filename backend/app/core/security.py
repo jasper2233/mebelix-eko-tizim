@@ -50,10 +50,10 @@ def create_access_token(data: dict[str, Any]) -> str:
     return _create_token(data, TokenType.ACCESS, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
 
 
-def create_refresh_token(data: dict[str, Any]) -> str:
+def create_refresh_token(data: dict[str, Any], days: int | None = None) -> str:
     # `jti` makes every refresh token unique, so it can be marked as used after one rotation.
     payload = {**data, "jti": uuid.uuid4().hex}
-    return _create_token(payload, TokenType.REFRESH, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+    return _create_token(payload, TokenType.REFRESH, timedelta(days=days or REFRESH_TOKEN_EXPIRE_DAYS))
 
 
 def verify_token(token: str, expected_token_type: TokenType) -> TokenData | None:
