@@ -9,6 +9,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 if TYPE_CHECKING:
     from app.schemas.terminal import ScanResult
@@ -104,36 +105,26 @@ async def resolve_terminal(db: AsyncSession, user: User) -> tuple[Machine, Post]
     return machine, post
 
 
-def is_mirror_badge(badge_id: str) -> bool:
-    """`user-N` — beyjiksiz operator hisobining ko'zgusi, jismoniy beyjik EMAS."""
-    return badge_id.startswith("user-")
-
-
-#: Ko'zgu beyjik BILAN KIRIB BO'LMAYDI. `user-N` dagi N — foydalanuvchi ID'si,
-#: ya'ni kichik butun son: uni terib ko'rish bilan istalgan operator nomidan
-#: kirsa bo'lardi. U hech qachon skanerlanadigan beyjik bo'lish uchun emas, ish
-#: haqi atributsiyasi uchun yaratilgan (`operator_employee`).
-MIRROR_BADGE_MSG = "Bu hodimga haqiqiy beyjik chiqarilmagan. Admin beyjik chiqarishi kerak."
-
-
-def reject_mirror_badge(employee: Employee) -> None:
-    if is_mirror_badge(employee.badge_id):
-        raise ScanRejected("E006", MIRROR_BADGE_MSG)
-
-
 async def operator_employee(db: AsyncSession, user: User, post_id: int) -> Employee:
-    """Auto-provisioned Employee mirror for operator-role users, so scans, sessions and
-    productivity reports keep their employee attribution without a badge."""
-    badge = f"user-{user.id}"  # ponytail: avoids a user_id FK migration; badge_id is unique and 36 chars
+    """Parol bilan kiradigan operator hisobining hodim yozuvi — skan, smena va
+    mahsuldorlik atributsiyasi shu yozuvga tushadi.
+
+    Bog'lam `user_id` orqali, `badge_id` orqali EMAS (`d1c4e7a90b52`): beyjik
+    erkin qolishi kerak, aks holda hodimga haqiqiy beyjik chiqarish bog'lamni
+    uzib, ikkinchi yozuv yaratardi va ish haqi ikkiga bo'linardi.
+    """
     employee = (
         await db.execute(
-            select(Employee).where(Employee.badge_id == badge, Employee.is_deleted == False)  # noqa: E712
+            select(Employee).where(Employee.user_id == user.id, Employee.is_deleted == False)  # noqa: E712
         )
     ).scalar_one_or_none()
     if employee is None:
+        # Yangi yozuv DARHOL haqiqiy beyjik oladi: sexdagi har hodimda beyjik
+        # bo'lishi kerak, admin uni ro'yxatdan chop etadi
         employee = Employee(
             full_name=user.name or user.username,
-            badge_id=badge,
+            badge_id=str(uuid4()),
+            user_id=user.id,
             position=str(user.role),
             assigned_post_ids=[post_id],
         )
@@ -156,7 +147,6 @@ async def badge_employee(db: AsyncSession, badge_id: str, post: Post) -> Employe
     ).scalar_one_or_none()
     if employee is None:
         raise ScanRejected("E006", "Beyjik topilmadi.")
-    reject_mirror_badge(employee)
     if employee.status != EmployeeStatus.ACTIVE:
         raise ScanRejected("E006", "Beyjik nofaol. Adminga murojaat qiling.")
     if post.id not in employee.assigned_post_ids:
@@ -172,7 +162,13 @@ async def open_badge_session(
     if previous is not None:
         previous.status = SessionStatus.ENDED
         previous.ended_at = datetime.now(UTC)
-    session = WorkSession(employee_id=employee.id, user_id=user.id, machine_id=machine.id, post_id=post.id)
+    session = WorkSession(
+        employee_id=employee.id,
+        user_id=user.id,
+        machine_id=machine.id,
+        post_id=post.id,
+        opened_by_badge=True,
+    )
     db.add(session)
     await db.flush()
     return session
@@ -223,12 +219,17 @@ async def active_session(db: AsyncSession, user: User, machine: Machine) -> Work
     if POST_ROLES.get(UserRole(user.role)) is not None:
         employee = await operator_employee(db, user, machine.post_id)
         if session is not None and session.employee_id != employee.id:
-            # ...LEKIN haqiqiy beyjik ochgan smena egallab olinmaydi. Beyjik bilan
-            # kirishda hisob umumiy (stanokniki), ish esa beyjik egasiniki: ko'zguga
-            # o'tkazib yuborsak skanlar va ish haqi boshqa odamga yozilardi.
-            holder = await db.get(Employee, session.employee_id)
-            if holder is not None and not is_mirror_badge(holder.badge_id):
-                return session
+            if session.opened_by_badge:
+                # BEYJIK ochgan smena — TEGILMAYDI. Aks holda beyjik egasining
+                # skanlari va ish haqi parol bilan kirgan odamga yozilardi.
+                # Holati buzilgan bo'lsa (hodim o'chirilgan/nofaol) yopamiz —
+                # beyjik shoxobchasidagi qoida bilan bir xil.
+                holder = await db.get(Employee, session.employee_id)
+                if holder is not None and not holder.is_deleted and holder.status == EmployeeStatus.ACTIVE:
+                    return session
+            # Boshqa PAROL hisobining smenasi: stanokka endi shu odam keldi,
+            # smena unga o'tadi. (Ilgari bu `user-N` beyjik naqshi bilan
+            # taxmin qilinardi; naqsh yo'qolgach `opened_by_badge` aniq belgisi.)
             session.status = SessionStatus.ENDED
             session.ended_at = datetime.now(UTC)
             session = None

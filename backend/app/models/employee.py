@@ -11,10 +11,19 @@ class Employee(BaseModel):
 
     __tablename__ = "employee"
 
-    __table_args__ = (Index("ix_employee_badge_id", "badge_id", unique=True, postgresql_where=text("NOT is_deleted")),)
+    __table_args__ = (
+        Index("ix_employee_badge_id", "badge_id", unique=True, postgresql_where=text("NOT is_deleted")),
+        Index("ix_employee_user_id", "user_id", unique=True, postgresql_where=text("NOT is_deleted")),
+    )
 
     organization_id: Mapped[int] = mapped_column(ForeignKey("organization.id"), default=1, kw_only=True)
     full_name: Mapped[str] = mapped_column(String(100), kw_only=True)
+    # Parol bilan kiradigan operator hisobiga bog'lam (`operator_employee`).
+    # NEGA `badge_id` EMAS: ilgari bog'lam `badge_id = "user-{id}"` orqali edi, ya'ni
+    # hodimga haqiqiy beyjik chiqarish uni UZIB qo'yardi — keyingi kirishda ikkinchi
+    # hodim yozuvi yaratilib, ish haqi ikkiga bo'linardi. Endi beyjik ERKIN: har
+    # hodimga chiqarsa bo'ladi (`d1c4e7a90b52`).
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
     # Badge QR payload, UUID format. Lost badge → row kept, badge blocked, new employee row NOT created:
     # the badge_id is replaced but history (scans FK employee.id) stays intact.
     badge_id: Mapped[str] = mapped_column(String(36), kw_only=True)

@@ -12,7 +12,6 @@ from app.models import Employee
 from app.models.enums import EmployeeStatus
 from app.schemas.common import Message, Paginated
 from app.schemas.employees import EmployeeCreate, EmployeeRead, EmployeeUpdate
-from app.services.scanning import is_mirror_badge
 
 router = APIRouter(prefix="/employees", tags=["employees"])
 
@@ -102,14 +101,6 @@ async def update_employee(
 async def regenerate_badge(db: SessionDep, current_user: AdminUser, employee_id: int, request: Request) -> Employee:
     """Lost badge (TZ 4.2): old badge stops working immediately, history stays on the same employee."""
     employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
-    # Ko'zgu yozuvga (`user-N`) beyjik berib bo'lmaydi: `operator_employee` uni
-    # AYNAN shu badge_id bo'yicha topadi, UUID ga almashtirilsa keyingi parol
-    # bilan kirishda IKKINCHI hodim yozuvi yaratilib, ish haqi ikkiga bo'linardi.
-    if is_mirror_badge(employee.badge_id):
-        raise ForbiddenException(
-            f"{employee.full_name} — operator hisobining ko'zgusi, unga beyjik chiqarilmaydi. "
-            "Beyjik kerak bo'lsa alohida hodim yozuvi qo'shing."
-        )
     old_badge = employee.badge_id
     employee.badge_id = str(uuid4())
     log_action(
@@ -131,6 +122,14 @@ async def regenerate_badge(db: SessionDep, current_user: AdminUser, employee_id:
 @router.delete("/{employee_id}", response_model=Message, operation_id="delete_employee")
 async def delete_employee(db: SessionDep, current_user: AdminUser, employee_id: int, request: Request) -> Message:
     employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
+    # Operator hisobiga bog'langan yozuvni o'chirib bo'lmaydi: `operator_employee`
+    # uni topolmay YANGI qator yaratardi va o'sha odamning ish haqi ikkiga
+    # bo'linardi (eski skanlar o'chirilgan qatorda qolib ketardi).
+    if employee.user_id is not None:
+        raise ForbiddenException(
+            f"{employee.full_name} operator hisobiga bog'langan — o'chirib bo'lmaydi. "
+            "Ishdan bo'shagan bo'lsa holatini NOFAOL qiling yoki hisobini o'chiring."
+        )
     log_action(
         db,
         module="employees",

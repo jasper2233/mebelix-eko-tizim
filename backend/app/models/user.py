@@ -27,8 +27,9 @@ class User(BaseModel):
 
     # TZ 3: admin/director/manager/texnolog are people; terminal/tablo are device accounts
     # bound to a machine (TZ 8.1 variant B). Operators (arrachi..boyoqchi) are users too —
-    # POST_ROLES maps each to its post and `scanning.operator_employee` mirrors an Employee row,
-    # so scans keep their payroll attribution without a badge.
+    # POST_ROLES maps each to its post and `scanning.operator_employee` creates/links an Employee
+    # row via `employee.user_id` (d1c4e7a90b52), so scans keep their payroll attribution. That row
+    # gets a real UUID badge like any other worker — the admin prints it from the Employees page.
     role: Mapped[UserRole] = mapped_column(
         db_enum(UserRole), default=UserRole.ADMIN, server_default="admin", kw_only=True
     )

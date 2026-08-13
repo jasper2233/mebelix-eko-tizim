@@ -152,7 +152,7 @@ qidirardi — matn tahrirlanishi bilan jimgina buziladigan bog'lanish.
 | `E003` | Buyurtma bekor qilingan | Manager |
 | `E004` | Navbat buzildi: shu NUSXAda oldingi qadam tugamagan (`STRICT_STAGE_ORDER`); xabar navbatdagi post nomini aytadi | Operator — oldingi postni kutadi |
 | `E005` | Aktiv sessiya yo'q yoki `SESSION_MAX_HOURS` (12 soat) o'tgan | Operator — beyjikni skanerlaydi |
-| `E006` | Beyjik: topilmadi / nofaol / hodim bu postga biriktirilmagan / KO'ZGU beyjik (`user-N`) | Admin yoki hodim |
+| `E006` | Beyjik: topilmadi / nofaol / hodim bu postga biriktirilmagan | Admin yoki hodim |
 | `E007` | Aloqa yo'q — **server kodi emas**, WS uzilganda terminal frontendi o'zi hosil qiladi, so'rov serverga umuman ketmaydi | — |
 | `E008` | Ish allaqachon bajarilgan (shu nusxaning shu postdagi qadamlari to'lgan). Xato emas — terminal neytral ogohlantirish ovozini beradi | Hech kim — takror skan |
 | `E009` | SOZLAMA xatosi: post topilmadi, postda stanok yo'q, terminalga stanok biriktirilmagan | **Admin** — operator hech narsa qila olmaydi |
@@ -168,14 +168,18 @@ guruhlash shundan ishlaydi.
 Operator-rol oqimi (`resolve_terminal` / `operator_employee` / `active_session`): arrachi…stolyar
 uchun post roldan aniqlanadi (`POST_ROLES`); stanok — `user.machine_id`, bo'lmasa postning birinchi
 o'chirilmagan stanogi (faqat soft-delete tekshiriladi, holat emas — NOAKTIV/TA'MIRDA stanok ham
-tushishi mumkin). Employee mirror avto-yaratiladi (`badge_id = "user-<id>"`) — scan/mahsuldorlik
-attributsiyasi beyjiksiz saqlanadi. **Login = smena**: sessiya avtomatik ochiladi/qayta ochiladi
+tushishi mumkin). Hodim yozuvi avto-yaratiladi va hisobga `employee.user_id` bilan bog'lanadi
+(`d1c4e7a90b52`) — scan/mahsuldorlik attributsiyasi shu yozuvga tushadi; beyjik esa DARHOL
+haqiqiy UUID bo'ladi, ya'ni admin uni ro'yxatdan chop etib bera oladi. **Login = smena**: sessiya avtomatik ochiladi/qayta ochiladi
 (beyjik scan talab qilinmaydi); TERMINAL qurilma akkauntida esa avvalgidek beyjik shart (E005/E006).
 
-Bitta istisno bilan: agar stanokda smena HAQIQIY beyjik bilan ochilgan bo'lsa (`is_mirror_badge`
-false, ya'ni `badge_id` `user-` bilan boshlanmaydi), operator hisobi uni egallab olmaydi. Beyjik
+Bitta istisno bilan: **beyjik ochgan** smena egallab olinmaydi (`work_session.opened_by_badge`,
+`d1c4e7a90b52`) — aks holda beyjik egasining skanlari va ish haqi parol bilan kirgan odamga
+yozilardi. Boshqa PAROL hisobi ochgan smena esa o'tadi: stanokka endi shu odam kelgan. Bu farq
+ilgari `user-N` beyjik naqshi bilan taxmin qilinardi; ko'zgular haqiqiy beyjikka o'tgach naqsh
+yo'qoldi va uning o'rniga aniq belgi saqlanadigan bo'ldi. Beyjik
 bilan kirishda (§3.0.1) hisob umumiy — stanokniki, ish esa beyjik egasiniki; egallab olsak skanlar
-va ish haqi ko'zgu hodimga yozilardi.
+va ish haqi boshqa hodimga yozilardi.
 
 ### 3.0.1 Beyjik bilan kirish (sexda parol yo'q)
 
@@ -194,16 +198,20 @@ Beyjik ikkala savolga javob beradi — KIM va QAYERDA (`login.py`):
 3- va 4-qadam ataylab `resolve_terminal` bilan bir xil javob berishi kerak: aks holda operator
 kirgandan keyin BOSHQA postning ekranida paydo bo'lardi.
 
-**KO'ZGU BEYJIK BILAN KIRIB BO'LMAYDI.** `operator_employee` yaratadigan `user-N` yozuvi
-beyjik EMAS — u parol bilan kiradigan operator hisobining ish haqi atributsiyasi uchun ichki
-kalit. `N` — foydalanuvchi ID'si, ya'ni kichik butun son: agar u ham kirish kaliti bo'lganida,
-`user-4`…`user-12` ni terib ko'rish bilan istalgan operator nomidan kirsa bo'lardi (jismoniy
-beyjik ham, uning surati ham kerak bo'lmasdi). `reject_mirror_badge` ikkala yo'lni ham to'sadi:
-`/login/badge` va terminaldagi smena ochish (`badge_employee`). Ko'zgu yozuvga beyjik QAYTA BERISH
-ham bloklangan (`employees.regenerate_badge`): `operator_employee` uni aynan `user-{id}` bo'yicha
-topadi, UUID ga almashtirilsa keyingi parol bilan kirishda IKKINCHI hodim yozuvi yaratilib, ish
-haqi ikkiga bo'linardi. Hodimlar ro'yxatida bunday yozuvda "Beyjik" tugmasi o'rniga "Beyjik
-chiqarilmagan" yozuvi turadi (`lib/mes: isMirrorBadge`).
+**SEXDAGI HAR HODIMDA BEYJIK BOR.** Admin beyjiksiz — u mes.mebelix.uz ga login/parol bilan
+kiradi; beyjik faqat sexda ishlaydiganlarga. Shuning uchun `Hodimlar` ro'yxatidagi HAR bir yozuvga
+beyjik chiqariladi.
+
+Ilgari parol bilan kiradigan operator hisobiga `operator_employee` "ko'zgu" hodim yozuvi yaratardi
+va bog'lam `badge_id = "user-{user.id}"` orqali edi. Ikki muammosi bor edi: `user-N` skanerlanadigan
+beyjikka aylanib qolgandi (N kichik butun son — terib ko'rish bilan istalgan operator nomidan kirsa
+bo'lardi), va bunday hodimga haqiqiy beyjik chiqarish bog'lamni uzib, ikkinchi yozuv yaratardi
+(ish haqi ikkiga bo'linardi).
+
+Endi bog'lam alohida **`employee.user_id`** ustunida (`d1c4e7a90b52`), `badge_id` esa erkin:
+`operator_employee` yangi yozuvni DARHOL haqiqiy UUID beyjik bilan yaratadi. Migratsiya mavjud
+`user-N` yozuvlarini `user_id` ga ko'chirib, beyjikni UUID ga almashtiradi — `employee.id`
+tegilmaydi, ya'ni skanlar va ish haqi tarixi o'z joyida qoladi.
 
 **Xavfsizlik — ataylab qilingan tanlov (2026-08-12).** Beyjik yagona omil: QR qog'ozda va nusxa
 olingan bo'lsa istalgan qurilmadan kirsa bo'ladi. Qurilma bog'lash (monoblokni stanokka bir

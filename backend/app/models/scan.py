@@ -20,6 +20,13 @@ class WorkSession(BaseModel):
         db_enum(SessionStatus), default=SessionStatus.ACTIVE, index=True, kw_only=True
     )
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
+    #: Smenani BEYJIK ochganmi (`open_badge_session`) yoki parol bilan kirish
+    #: (`active_session`). Bu farq ish haqiga tegadi: parol bilan kirgan operator
+    #: BOSHQA parol hisobining smenasini egallaydi (stanokka u kelgan), lekin
+    #: beyjik ochgan smenaga TEGMAYDI — aks holda beyjik egasining skanlari
+    #: boshqa odamga yozilardi. Ilgari bu `user-N` beyjik naqshi bilan
+    #: taxmin qilinardi; ko'zgular haqiqiy beyjikka o'tgach naqsh yo'qoldi.
+    opened_by_badge: Mapped[bool] = mapped_column(default=False, server_default="false", kw_only=True)
 
 
 class Scan(BaseModel):
