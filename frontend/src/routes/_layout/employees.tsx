@@ -486,6 +486,30 @@ function AddEmployee() {
   )
 }
 
+/** Beyjikni 80×60 mm blankka chop etadi — detal yorliqlari bilan bir xil qog'oz.
+ *
+ *  Varaq o'lchami CSS da DOIMIY turmaydi: `@page` ni faqat shu bosishda beramiz
+ *  va chop etish tugashi bilan olib tashlaymiz. Ikki sabab:
+ *    1. Nomlangan `@page badge` ishonchsiz — Chrome uni parse qiladi, lekin
+ *       hujjatga bitta varaq o'lchami qo'llash cheklovi bor.
+ *    2. Doimiy global `@page` esa ilovaning istalgan sahifasini Ctrl+P qilganda
+ *       ham 80×60 chiqarib yuborardi.
+ */
+function printBadge() {
+  const style = document.createElement("style")
+  style.textContent = "@page { size: 80mm 60mm; margin: 0 }"
+  document.head.appendChild(style)
+  const cleanup = () => {
+    style.remove()
+    window.removeEventListener("afterprint", cleanup)
+    clearTimeout(safety)
+  }
+  // `afterprint` bekor qilinganda ham keladi; taymer — u umuman kelmagan holat uchun
+  const safety = setTimeout(cleanup, 60_000)
+  window.addEventListener("afterprint", cleanup)
+  window.print()
+}
+
 function BadgeDialog({
   employee,
   onClose,
@@ -536,7 +560,7 @@ function BadgeDialog({
           {emp.badge_id}
         </div>
         <DialogFooter className="print-hide flex-col gap-2 sm:flex-col">
-          <Button variant="outline" onClick={() => window.print()}>
+          <Button variant="outline" onClick={printBadge}>
             Chop etish
           </Button>
           {isAdmin && (

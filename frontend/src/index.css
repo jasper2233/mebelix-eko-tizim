@@ -164,14 +164,14 @@
     display: none !important;
   }
   /* Beyjik 80×60 mm — detal yorliqlari bilan bir xil blank, ya'ni sexda bitta
-     xil qog'oz ishlatiladi. Nomlangan `@page` FAQAT beyjikka tegadi: global
-     `@page` bo'lsa istalgan sahifani Ctrl+P qilganda ham 80×60 chiqardi. */
-  @page badge {
-    size: 80mm 60mm;
-    margin: 0;
-  }
+     xil qog'oz ishlatiladi. Varaq O'LCHAMI bu yerda EMAS: nomlangan
+     `@page badge` ni Chrome parse qiladi (tekshirildi: Chrome 151 da
+     `page: badge` hisoblangan uslubda ko'rinadi), lekin hujjatga bitta varaq
+     o'lchamini qo'llash cheklovi bor va o'lcham e'tiborsiz qolishi mumkin.
+     Shuning uchun o'lchamni `employees.tsx` chop etish paytida vaqtincha
+     nomsiz `@page` bilan beradi — global qoldirilsa ilovaning istalgan
+     sahifasini Ctrl+P qilganda ham 80×60 chiqarib yuborardi. */
   .print-only {
-    page: badge;
     position: static !important;
     display: flex !important;
     flex-direction: column !important;
