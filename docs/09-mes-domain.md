@@ -173,11 +173,11 @@ tushishi mumkin). Hodim yozuvi avto-yaratiladi va hisobga `employee.user_id` bil
 haqiqiy UUID bo'ladi, ya'ni admin uni ro'yxatdan chop etib bera oladi. **Login = smena**: sessiya avtomatik ochiladi/qayta ochiladi
 (beyjik scan talab qilinmaydi); TERMINAL qurilma akkauntida esa avvalgidek beyjik shart (E005/E006).
 
-Bitta istisno bilan: **beyjik ochgan** smena egallab olinmaydi (`work_session.opened_by_badge`,
-`d1c4e7a90b52`) — aks holda beyjik egasining skanlari va ish haqi parol bilan kirgan odamga
-yozilardi. Boshqa PAROL hisobi ochgan smena esa o'tadi: stanokka endi shu odam kelgan. Bu farq
-ilgari `user-N` beyjik naqshi bilan taxmin qilinardi; ko'zgular haqiqiy beyjikka o'tgach naqsh
-yo'qoldi va uning o'rniga aniq belgi saqlanadigan bo'ldi. Beyjik
+Bitta istisno bilan: stanokda BOSHQA hodimning smenasi ochiq bo'lsa, operator hisobi uni egallab
+olmaydi — skanlar va ish haqi o'sha hodimda qolishi kerak. Har postda BITTA operator hisobi bor,
+ya'ni parol bilan kirish har doim o'z hodimini ochadi va boshqa hodim faqat beyjik skanidan kelib
+chiqadi. Bir postga ikkinchi hisob qo'shilsa bu faraz buziladi — lekin terminal sarlavhasida smena
+egasining ismi turadi, ya'ni jimgina o'tib ketmaydi. Beyjik
 bilan kirishda (§3.0.1) hisob umumiy — stanokniki, ish esa beyjik egasiniki; egallab olsak skanlar
 va ish haqi boshqa hodimga yozilardi.
 

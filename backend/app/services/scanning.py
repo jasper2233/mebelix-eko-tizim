@@ -162,13 +162,7 @@ async def open_badge_session(
     if previous is not None:
         previous.status = SessionStatus.ENDED
         previous.ended_at = datetime.now(UTC)
-    session = WorkSession(
-        employee_id=employee.id,
-        user_id=user.id,
-        machine_id=machine.id,
-        post_id=post.id,
-        opened_by_badge=True,
-    )
+    session = WorkSession(employee_id=employee.id, user_id=user.id, machine_id=machine.id, post_id=post.id)
     db.add(session)
     await db.flush()
     return session
@@ -219,20 +213,13 @@ async def active_session(db: AsyncSession, user: User, machine: Machine) -> Work
     if POST_ROLES.get(UserRole(user.role)) is not None:
         employee = await operator_employee(db, user, machine.post_id)
         if session is not None and session.employee_id != employee.id:
-            if session.opened_by_badge:
-                # BEYJIK ochgan smena — TEGILMAYDI. Aks holda beyjik egasining
-                # skanlari va ish haqi parol bilan kirgan odamga yozilardi.
-                # Holati buzilgan bo'lsa (hodim o'chirilgan/nofaol) yopamiz —
-                # beyjik shoxobchasidagi qoida bilan bir xil.
-                holder = await db.get(Employee, session.employee_id)
-                if holder is not None and not holder.is_deleted and holder.status == EmployeeStatus.ACTIVE:
-                    return session
-            # Boshqa PAROL hisobining smenasi: stanokka endi shu odam keldi,
-            # smena unga o'tadi. (Ilgari bu `user-N` beyjik naqshi bilan
-            # taxmin qilinardi; naqsh yo'qolgach `opened_by_badge` aniq belgisi.)
-            session.status = SessionStatus.ENDED
-            session.ended_at = datetime.now(UTC)
-            session = None
+            # BOSHQA hodimning smenasi — TEGILMAYDI: skanlar va ish haqi uning
+            # egasida qolishi kerak. Har postda BITTA operator hisobi bor, ya'ni
+            # parol bilan kirish har doim o'z hodimini ochadi va boshqa hodim
+            # faqat beyjik skanidan kelib chiqadi. Bir postga ikkinchi hisob
+            # qo'shilsa bu faraz buziladi — lekin terminal sarlavhasida smena
+            # egasining ismi turadi, ya'ni jimgina o'tib ketmaydi.
+            return session
         if session is None:
             session = WorkSession(
                 employee_id=employee.id, user_id=user.id, machine_id=machine.id, post_id=machine.post_id

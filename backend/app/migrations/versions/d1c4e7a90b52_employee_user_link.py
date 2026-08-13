@@ -31,14 +31,6 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # Smenani beyjik ochganmi — ish haqi uchun MUHIM farq (`active_session`).
-    # Ilgari bu `user-N` beyjik naqshi bilan taxmin qilinardi; naqsh yo'qolgani
-    # uchun endi aniq belgi saqlanadi.
-    op.add_column(
-        "work_session",
-        sa.Column("opened_by_badge", sa.Boolean(), nullable=False, server_default=sa.text("false")),
-    )
-
     op.add_column("employee", sa.Column("user_id", sa.Integer(), nullable=True))
     op.create_foreign_key("fk_employee_user_id", "employee", "user", ["user_id"], ["id"])
     op.create_index(
@@ -81,4 +73,3 @@ def downgrade() -> None:
     op.drop_index("ix_employee_user_id", table_name="employee")
     op.drop_constraint("fk_employee_user_id", "employee", type_="foreignkey")
     op.drop_column("employee", "user_id")
-    op.drop_column("work_session", "opened_by_badge")
