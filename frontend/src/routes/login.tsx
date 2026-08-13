@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
@@ -9,6 +9,7 @@ import type { Body_login_access_token as AccessToken, ApiError } from "@/client"
 import { LoginService, UsersService } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
 import { BadgePrompt } from "@/components/Common/BadgePrompt"
+import { type PinEmployeeOption, PinPad } from "@/components/Common/PinPad"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -68,17 +69,59 @@ export const Route = createFileRoute("/login")({
 
 type PostChoice = { id: number; code: string; name: string }
 
+/** Kirish usuli. Beyjik — asosiy yo'l; PIN — skaneri yo'q post uchun (ARRA);
+ * parol — ofis (admin/manager/texnolog), tsexda ishlamaydi. */
+type Mode = "badge" | "pin" | "password"
+
+const MODE_LABELS: Record<Mode, string> = {
+  badge: "Beyjik bilan kirish",
+  pin: "Kod bilan kirish",
+  password: "Parol bilan kirish",
+}
+
+/** 409 POST_CHOICE dan keyin qaysi usul bilan qayta urinish kerakligi. Beyjikda
+ * QR matni, PIN'da esa hodim + terilgan kod saqlanadi. */
+type Pending =
+  | { via: "badge"; badgeId: string }
+  | { via: "pin"; employeeId: number; pin: string }
+
 function Login() {
   const navigate = useNavigate()
   const { loginMutation } = useAuth()
   const [formSchema] = useState(makeFormSchema)
-  const [showPassword, setShowPassword] = useState(false)
+  const [mode, setMode] = useState<Mode>("badge")
+  const [employee, setEmployee] = useState<PinEmployeeOption | null>(null)
+  const [digits, setDigits] = useState("")
   // Bir nechta postga biriktirilgan hodim: server 409 bilan ro'yxat qaytaradi
   const [choice, setChoice] = useState<{
-    badgeId: string
+    pending: Pending
     employeeName: string
     posts: PostChoice[]
   } | null>(null)
+
+  // Ro'yxat FAQAT kod rejimida so'raladi: beyjik yo'lida u hech qachon
+  // ko'rinmaydi, ya'ni monoblok uni bekorga yuklamasin.
+  const { data: pinEmployees } = useQuery({
+    queryKey: ["pin-employees"],
+    queryFn: () => LoginService.listPinEmployees(),
+    enabled: mode === "pin",
+    staleTime: 60_000,
+  })
+
+  // 409 detali OBYEKT bo'ladi (odatdagi xatolarda — satr): hodim bir nechta
+  // postga biriktirilgan, qaysi biriga kirayotganini o'zi tanlaydi. Ikkala
+  // usulda ham bir xil, faqat qayta urinish ma'lumoti farq qiladi.
+  const postChoice = (e: unknown, pending: Pending) => {
+    const { detail } = ((e as ApiError)?.body ?? {}) as {
+      detail?: { code?: string; employee_name?: string; posts?: PostChoice[] }
+    }
+    if (detail?.code === "POST_CHOICE")
+      setChoice({
+        pending,
+        employeeName: detail.employee_name ?? "",
+        posts: detail.posts ?? [],
+      })
+  }
 
   const badge = useMutation({
     mutationFn: (v: { badgeId: string; postId?: number }) =>
@@ -89,18 +132,25 @@ function Login() {
       setChoice(null)
       navigate({ to: "/" })
     },
+    onError: (e, v) => postChoice(e, { via: "badge", badgeId: v.badgeId }),
+  })
+
+  const pin = useMutation({
+    mutationFn: (v: { employeeId: number; pin: string; postId?: number }) =>
+      LoginService.loginWithPin({
+        requestBody: {
+          employee_id: v.employeeId,
+          pin: v.pin,
+          post_id: v.postId ?? null,
+        },
+      }),
+    onSuccess: () => {
+      setChoice(null)
+      navigate({ to: "/" })
+    },
     onError: (e, v) => {
-      // 409 detali OBYEKT bo'ladi (odatdagi xatolarda — satr): hodim bir nechta
-      // postga biriktirilgan, qaysi biriga kirayotganini o'zi tanlaydi.
-      const { detail } = ((e as ApiError)?.body ?? {}) as {
-        detail?: { code?: string; employee_name?: string; posts?: PostChoice[] }
-      }
-      if (detail?.code === "POST_CHOICE")
-        setChoice({
-          badgeId: v.badgeId,
-          employeeName: detail.employee_name ?? "",
-          posts: detail.posts ?? [],
-        })
+      setDigits("")
+      postChoice(e, { via: "pin", employeeId: v.employeeId, pin: v.pin })
     },
   })
 
@@ -190,7 +240,30 @@ function Login() {
               holatda ham tinglanadi), BELGIDA: monoblokka kelgan odam forma
               ko'rsa terishga urinadi, chizilgan beyjik esa "kartani ko'taring"
               deydi. */}
-          {!showPassword && <BadgePrompt pending={badge.isPending} />}
+          {mode === "badge" && <BadgePrompt pending={badge.isPending} />}
+
+          {mode === "pin" && (
+            <PinPad
+              employees={pinEmployees ?? []}
+              selected={employee}
+              onSelect={(e) => {
+                setEmployee(e)
+                setDigits("")
+                pin.reset()
+              }}
+              digits={digits}
+              onDigits={setDigits}
+              onComplete={(code) =>
+                employee && pin.mutate({ employeeId: employee.id, pin: code })
+              }
+              pending={pin.isPending}
+              error={
+                pin.isError && !choice
+                  ? extractErrorMessage(pin.error as ApiError)
+                  : ""
+              }
+            />
+          )}
 
           {!!badgeError && (
             <div
@@ -201,7 +274,7 @@ function Login() {
             </div>
           )}
 
-          {showPassword && (
+          {mode === "password" && (
             <div className="grid gap-4">
               <FormField
                 control={form.control}
@@ -266,18 +339,27 @@ function Login() {
             </div>
           )}
 
-          {/* Ikkinchi yo'l HAR IKKALA holatda bir joyda — pastda, ajratgich
-              ostida. Almashtirish qaytariladi: ilgari parolga o'tgan odam
-              beyjikka qayta olmasdi. */}
-          <div className="flex flex-col items-center border-t pt-5">
-            <Button
-              type="button"
-              variant="ghost"
-              className="text-muted-foreground"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? "Beyjik bilan kirish" : "Parol bilan kirish"}
-            </Button>
+          {/* Boshqa yo'llar HAR DOIM bir joyda — pastda, ajratgich ostida.
+              Almashtirish qaytariladi: ilgari parolga o'tgan odam beyjikka
+              qayta olmasdi. */}
+          <div className="flex flex-wrap items-center justify-center gap-1 border-t pt-5">
+            {(["badge", "pin", "password"] as const)
+              .filter((m) => m !== mode)
+              .map((m) => (
+                <Button
+                  key={m}
+                  type="button"
+                  variant="ghost"
+                  className="text-muted-foreground"
+                  onClick={() => {
+                    setMode(m)
+                    setEmployee(null)
+                    setDigits("")
+                  }}
+                >
+                  {MODE_LABELS[m]}
+                </Button>
+              ))}
           </div>
         </form>
       </Form>
@@ -294,9 +376,18 @@ function Login() {
                 key={p.id}
                 variant="outline"
                 className="h-14 justify-start text-base font-bold"
-                disabled={badge.isPending}
+                disabled={badge.isPending || pin.isPending}
                 onClick={() =>
-                  badge.mutate({ badgeId: choice.badgeId, postId: p.id })
+                  choice.pending.via === "badge"
+                    ? badge.mutate({
+                        badgeId: choice.pending.badgeId,
+                        postId: p.id,
+                      })
+                    : pin.mutate({
+                        employeeId: choice.pending.employeeId,
+                        pin: choice.pending.pin,
+                        postId: p.id,
+                      })
                 }
               >
                 {p.name}

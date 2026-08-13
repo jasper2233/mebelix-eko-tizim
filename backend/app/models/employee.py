@@ -32,3 +32,12 @@ class Employee(BaseModel):
     status: Mapped[EmployeeStatus] = mapped_column(db_enum(EmployeeStatus), default=EmployeeStatus.ACTIVE, kw_only=True)
     # ponytail: JSONB int list instead of a join table — read-heavy, tiny cardinality (max 6 posts)
     assigned_post_ids: Mapped[list[int]] = mapped_column(JSONB, default_factory=list, kw_only=True)
+    # Beyjikning MUQOBILI, o'rnini bosuvchisi emas: skaneri yo'q postda (ARRA — u
+    # yerda chek chiqarish skanning o'zi) hodim monoblokda ismini bosib 4 raqam
+    # teradi (qat'iy 4 raqam). Kimlik baribir SHU hodim yozuvi, ya'ni skan va ish haqi atributsiyasi
+    # ikkala yo'lda bir xil. Rolga emas ODAMGA bog'langan — post qattiq yozilmaydi.
+    pin_hash: Mapped[str | None] = mapped_column(String(60), default=None, kw_only=True)
+
+    @property
+    def has_pin(self) -> bool:
+        return self.pin_hash is not None

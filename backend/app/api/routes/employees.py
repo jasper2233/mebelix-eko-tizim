@@ -7,11 +7,12 @@ from sqlalchemy import func, or_, select
 from app.api.deps import AdminUser, SessionDep, StaffReadUser, client_ip
 from app.core.config import settings
 from app.core.exceptions import ForbiddenException, NotFoundException
+from app.core.security import get_password_hash
 from app.crud import crud_employees, crud_posts, log_action
 from app.models import Employee
 from app.models.enums import EmployeeStatus
 from app.schemas.common import Message, Paginated
-from app.schemas.employees import EmployeeCreate, EmployeeRead, EmployeeUpdate
+from app.schemas.employees import EmployeeCreate, EmployeePinUpdate, EmployeeRead, EmployeeUpdate
 
 router = APIRouter(prefix="/employees", tags=["employees"])
 
@@ -140,6 +141,33 @@ async def print_employee_badge(db: SessionDep, current_user: AdminUser, employee
     )
     await db.commit()
     return Message(message=f"{employee.full_name} beyjigi printerga yuborildi.")
+
+
+@router.put("/{employee_id}/pin", response_model=Message, operation_id="set_employee_pin")
+async def set_employee_pin(
+    db: SessionDep, current_user: AdminUser, employee_id: int, body: EmployeePinUpdate, request: Request
+) -> Message:
+    """Hodimga shaxsiy PIN o'rnatadi yoki o'chiradi (`pin: null`).
+
+    PIN beyjikning MUQOBILI: skaneri yo'q postda (ARRA — u yerda chek chiqarish
+    skanning o'zi) hodim monoblokda ismini bosib kod teradi. Kimgadir PIN kerakligini
+    ADMIN hal qiladi, kod emas — hech qayerda rol qattiq yozilmagan.
+    """
+    employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
+    employee.pin_hash = await get_password_hash(body.pin) if body.pin else None
+    what = "o'rnatildi" if body.pin else "o'chirildi"
+    log_action(
+        db,
+        module="employees",
+        action="pin_set" if body.pin else "pin_cleared",
+        user_id=current_user.id,
+        entity_type="employee",
+        entity_id=employee.id,
+        message=f"PIN {what}: {employee.full_name}",
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return Message(message=f"{employee.full_name} uchun PIN {what}.")
 
 
 @router.delete("/{employee_id}", response_model=Message, operation_id="delete_employee")

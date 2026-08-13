@@ -206,6 +206,34 @@ beyjik chiqariladi.
 (o'chirish taqiqlanadi — skan tarixi ularda) va kelajakda ishchi ayni paytda menejer ham bo'lsa
 ishlatiladi. Yangi hodim qo'shganda foydalanuvchi tanlanmaydi: tsexdagi ishchi login qilmaydi.
 
+#### PIN — beyjikning muqobili (skaneri yo'q post)
+
+Beyjik kimlikning YAGONA tashuvchisi bo'lib qolgan edi, ya'ni QR skaneri yo'q postda
+kirish imkonsiz. ARRA aynan shunday: u yerda chek chiqarish skanning o'zi
+(`cutprint`), shuning uchun skaner qo'yilmagan — faqat kirish uchun uni sotib olish
+keraksiz xarajat bo'lardi.
+
+`employee.pin_hash` (`a5f39c81e0b7`) — o'sha kimlikning IKKINCHI tashuvchisi. Monoblokda
+hodim ismini bosadi va **qat'iy 4 raqam** teradi; oxirgi raqam kirishni o'zi boshlaydi,
+tasdiqlash tugmasi yo'q. Sensorli ekranda raqam paneli — klaviatura kerak emas.
+
+Muhimi: `POST /login/pin` va `POST /login/badge` kimlik aniqlangandan keyin AYNAN bir
+funksiyadan o'tadi (`_open_shift`), ya'ni smena, skan va ish haqi atributsiyasi kirish
+usuliga bog'liq emas.
+
+**Nega rol paroli emas.** `arrachi` paroli — butun smenaga ma'lum BITTA hisob: kim
+ishlaganini yo'qotadi. PIN esa ODAMGA tegishli, ya'ni atributsiya beyjik bilan bir xil
+aniqlikda qoladi. Va hech qayerda rol qattiq yozilmagan: PIN har hodimda bo'lishi
+mumkin, kimga kerakligini admin hal qiladi. Arraga skaner olinsa yoki bo'yoqda skaner
+buzilsa — dastur tegilmaydi.
+
+**Kuchi cheklangan va bu ataylab.** 4 raqam monoblokda, hamma oldida teriladi.
+U tasodifiy noto'g'ri atributsiyani to'xtatadi, ataylab kuzatib turgan odamni emas —
+beyjik ham xuddi shunday (QR qog'ozda, nusxa olsa bo'ladi). Kuchni uzunlik emas,
+urinishlar chegarasi beradi: 5 xato — 5 daqiqa blok, Redis'da HODIM bo'yicha
+(`auth:pin:fail:<id>`). IP bo'yicha emas: butun tsex bitta tashqi IP ostida turadi,
+ya'ni IP chegarasi yonidagi odamning to'g'ri kodini ham bloklardi.
+
 **Xavfsizlik — ataylab qilingan tanlov (2026-08-12).** Beyjik yagona omil: QR qog'ozda va nusxa
 olingan bo'lsa istalgan qurilmadan kirsa bo'ladi. Qurilma bog'lash (monoblokni stanokka bir
 martalik kod bilan bog'lash) qurilib, keyin OLIB TASHLANDI — tsexda kod/parol terish smena

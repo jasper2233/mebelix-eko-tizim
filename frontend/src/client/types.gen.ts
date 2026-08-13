@@ -169,6 +169,13 @@ export type EmployeeCreate = {
     assigned_post_ids?: Array<number>;
 };
 
+/**
+ * PIN o'rnatish yoki o'chirish (`null` — o'chiradi).
+ */
+export type EmployeePinUpdate = {
+    pin?: (string | null);
+};
+
 export type EmployeeProductivity = {
     employee_id: number;
     full_name: string;
@@ -187,6 +194,7 @@ export type EmployeeRead = {
     position: (string | null);
     status: EmployeeStatus;
     assigned_post_ids: Array<number>;
+    has_pin: boolean;
     created_at: string;
 };
 
@@ -619,6 +627,24 @@ export type Paginated_OrderRead_ = {
 export type Paginated_UserRead_ = {
     data: Array<UserRead>;
     count: number;
+};
+
+/**
+ * Kirish sahifasidagi tanlov tugmasi. FAQAT PIN o'rnatilgan faol hodimlar.
+ */
+export type PinEmployee = {
+    id: number;
+    full_name: string;
+    position: (string | null);
+};
+
+/**
+ * Skaneri yo'q postda kirish: monoblokda ism bosiladi + 4-6 raqamli shaxsiy kod.
+ */
+export type PinLoginRequest = {
+    employee_id: number;
+    pin: string;
+    post_id?: (number | null);
 };
 
 export type PostCode = 'ARRA' | 'KROMKA' | 'OVAL' | 'PRISADKA' | 'ROVER' | 'STOLYARKA' | 'BOYOQ' | 'UPAKOVKA' | 'TMO';
@@ -1209,6 +1235,13 @@ export type PrintEmployeeBadgeData = {
 
 export type PrintEmployeeBadgeResponse = (Message);
 
+export type SetEmployeePinData = {
+    employeeId: number;
+    requestBody: EmployeePinUpdate;
+};
+
+export type SetEmployeePinResponse = (Message);
+
 export type HealthApiV1HealthGetResponse = (HealthCheck);
 
 export type ReadyApiV1ReadyGetResponse = (ReadyCheck);
@@ -1224,6 +1257,14 @@ export type LoginWithBadgeData = {
 };
 
 export type LoginWithBadgeResponse = (BadgeLoginResponse);
+
+export type ListPinEmployeesResponse = (Array<PinEmployee>);
+
+export type LoginWithPinData = {
+    requestBody: PinLoginRequest;
+};
+
+export type LoginWithPinResponse = (BadgeLoginResponse);
 
 export type RefreshAccessTokenResponse = ({
     [key: string]: string;

@@ -15,6 +15,22 @@ class BadgeLoginRequest(BaseModel):
     post_id: int | None = None
 
 
+class PinLoginRequest(BaseModel):
+    """Skaneri yo'q postda kirish: monoblokda ism bosiladi + 4-6 raqamli shaxsiy kod."""
+
+    employee_id: int
+    pin: str = Field(min_length=4, max_length=4)
+    post_id: int | None = None
+
+
+class PinEmployee(BaseModel):
+    """Kirish sahifasidagi tanlov tugmasi. FAQAT PIN o'rnatilgan faol hodimlar."""
+
+    id: int
+    full_name: str
+    position: str | None
+
+
 class BadgePostOption(BaseModel):
     id: int
     code: str
