@@ -26,10 +26,11 @@ class User(BaseModel):
     token_version: Mapped[int] = mapped_column(default=0, server_default="0", kw_only=True)
 
     # TZ 3: admin/director/manager/texnolog are people; terminal/tablo are device accounts
-    # bound to a machine (TZ 8.1 variant B). Operators (arrachi..boyoqchi) are users too —
-    # POST_ROLES maps each to its post and `scanning.operator_employee` creates/links an Employee
-    # row via `employee.user_id` (d1c4e7a90b52), so scans keep their payroll attribution. That row
-    # gets a real UUID badge like any other worker — the admin prints it from the Employees page.
+    # bound to a machine (TZ 8.1 variant B). The POST_ROLES accounts (arrachi..omborchi) are
+    # NOT people: password login is closed for them (`login.py`) and exactly one exists per
+    # post. They only carry the badge session — `_terminal_user` picks one when the machine
+    # has no TERMINAL account, and `WorkSession.user_id` points at it. WHO is working comes
+    # from the badge, i.e. from `Employee`; the two tables no longer overlap.
     role: Mapped[UserRole] = mapped_column(
         db_enum(UserRole), default=UserRole.ADMIN, server_default="admin", kw_only=True
     )

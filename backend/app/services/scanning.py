@@ -9,7 +9,6 @@ import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
-from uuid import uuid4
 
 if TYPE_CHECKING:
     from app.schemas.terminal import ScanResult
@@ -105,36 +104,6 @@ async def resolve_terminal(db: AsyncSession, user: User) -> tuple[Machine, Post]
     return machine, post
 
 
-async def operator_employee(db: AsyncSession, user: User, post_id: int) -> Employee:
-    """Parol bilan kiradigan operator hisobining hodim yozuvi — skan, smena va
-    mahsuldorlik atributsiyasi shu yozuvga tushadi.
-
-    Bog'lam `user_id` orqali, `badge_id` orqali EMAS (`d1c4e7a90b52`): beyjik
-    erkin qolishi kerak, aks holda hodimga haqiqiy beyjik chiqarish bog'lamni
-    uzib, ikkinchi yozuv yaratardi va ish haqi ikkiga bo'linardi.
-    """
-    employee = (
-        await db.execute(
-            select(Employee).where(Employee.user_id == user.id, Employee.is_deleted == False)  # noqa: E712
-        )
-    ).scalar_one_or_none()
-    if employee is None:
-        # Yangi yozuv DARHOL haqiqiy beyjik oladi: tsexdagi har hodimda beyjik
-        # bo'lishi kerak, admin uni ro'yxatdan chop etadi
-        employee = Employee(
-            full_name=user.name or user.username,
-            badge_id=str(uuid4()),
-            user_id=user.id,
-            position=str(user.role),
-            assigned_post_ids=[post_id],
-        )
-        db.add(employee)
-        await db.flush()
-    elif post_id not in employee.assigned_post_ids:
-        employee.assigned_post_ids = [*employee.assigned_post_ids, post_id]
-    return employee
-
-
 async def badge_employee(db: AsyncSession, badge_id: str, post: Post) -> Employee:
     """Beyjik QR -> hodim. Postga biriktirilmagan hodim shu terminalda ishlay olmaydi."""
     employee = (
@@ -198,40 +167,28 @@ async def expire_if_stale(db: AsyncSession, session: WorkSession | None) -> Work
     return session
 
 
-async def active_session(db: AsyncSession, user: User, machine: Machine) -> WorkSession:
+async def active_session(db: AsyncSession, machine: Machine) -> WorkSession:
+    """Skan qaysi smenaga yoziladi.
+
+    Smena YAGONA yo'l bilan ochiladi — beyjik skani (`open_badge_session`).
+    Ilgari post rollari uchun "login = smena" shoxi bor edi: u hisobga soxta
+    hodim yozuvi yaratib ("arrachi", "omborchi") smenani o'sha nomdan ochardi.
+    Post rollari parol bilan kira olmagach (`login.py`) u shox smena ocholmay
+    qoldi — beyjik logini o'sha hisob nomidan kelsa ham, smenani beyjik ochadi.
+    """
     session = await latest_active_session(db, machine.id)
 
     # 12-hour shift timeout (TZ 8.5 E005)
     if session is not None and (session := await expire_if_stale(db, session)) is None:
-        if POST_ROLES.get(UserRole(user.role)) is None:
-            raise ScanRejected(
-                "E005",
-                f"Sessiya muddati tugadi ({settings.SESSION_MAX_HOURS} soat). Beyjikni qaytadan scan qiling.",
-            )
-
-    # Operator role: the login IS the shift — open/take over the session automatically.
-    if POST_ROLES.get(UserRole(user.role)) is not None:
-        employee = await operator_employee(db, user, machine.post_id)
-        if session is not None and session.employee_id != employee.id:
-            # BOSHQA hodimning smenasi — TEGILMAYDI: skanlar va ish haqi uning
-            # egasida qolishi kerak. Har postda BITTA operator hisobi bor, ya'ni
-            # parol bilan kirish har doim o'z hodimini ochadi va boshqa hodim
-            # faqat beyjik skanidan kelib chiqadi. Bir postga ikkinchi hisob
-            # qo'shilsa bu faraz buziladi — lekin terminal sarlavhasida smena
-            # egasining ismi turadi, ya'ni jimgina o'tib ketmaydi.
-            return session
-        if session is None:
-            session = WorkSession(
-                employee_id=employee.id, user_id=user.id, machine_id=machine.id, post_id=machine.post_id
-            )
-            db.add(session)
-            await db.flush()
-        return session
+        raise ScanRejected(
+            "E005",
+            f"Sessiya muddati tugadi ({settings.SESSION_MAX_HOURS} soat). Beyjikni qaytadan scan qiling.",
+        )
 
     if session is None:
         raise ScanRejected("E005", "Aktiv sessiya yo'q. Beyjikni scan qiling.")
-    badge_employee = await db.get(Employee, session.employee_id)
-    if badge_employee is None or badge_employee.status != EmployeeStatus.ACTIVE:
+    employee = await db.get(Employee, session.employee_id)
+    if employee is None or employee.status != EmployeeStatus.ACTIVE:
         raise ScanRejected("E006", "Beyjik nofaol. Adminga murojaat qiling.")
     return session
 
@@ -370,7 +327,7 @@ async def record_scan(
 ) -> ScanOutcome:
     """Validate and register one work unit. Caller commits and publishes outcome.events."""
     machine, post = await resolve_terminal(db, user)
-    session = await active_session(db, user, machine)
+    session = await active_session(db, machine)
     return await record_scan_at(
         db, machine=machine, post=post, session=session, qr_text=qr_text, client_event_id=client_event_id
     )
@@ -680,8 +637,8 @@ async def log_rejected_scan(
 
 async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Scan, list[dict[str, Any]]]:
     """BEKOR QILISH (TZ 8.6): only the last N seconds, same terminal session."""
-    machine, post = await resolve_terminal(db, user)
-    session = await active_session(db, user, machine)
+    machine, _ = await resolve_terminal(db, user)
+    session = await active_session(db, machine)
 
     scan = await db.get(Scan, scan_id)
     if scan is None or scan.is_deleted or scan.session_id != session.id:

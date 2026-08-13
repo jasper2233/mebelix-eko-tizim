@@ -145,13 +145,13 @@ async def print_employee_badge(db: SessionDep, current_user: AdminUser, employee
 @router.delete("/{employee_id}", response_model=Message, operation_id="delete_employee")
 async def delete_employee(db: SessionDep, current_user: AdminUser, employee_id: int, request: Request) -> Message:
     employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
-    # Operator hisobiga bog'langan yozuvni o'chirib bo'lmaydi: `operator_employee`
-    # uni topolmay YANGI qator yaratardi va o'sha odamning ish haqi ikkiga
-    # bo'linardi (eski skanlar o'chirilgan qatorda qolib ketardi).
+    # `user_id` li yozuvlar — eski avtomat mirror'lar ("arrachi", "omborchi").
+    # Ular arxiv: yangi mirror yaratilmaydi (`c7e2b4f81d39`), lekin ularda
+    # haqiqiy skan tarixi bor va o'chirilsa mahsuldorlik hisobotidan tushardi.
     if employee.user_id is not None:
         raise ForbiddenException(
-            f"{employee.full_name} operator hisobiga bog'langan — o'chirib bo'lmaydi. "
-            "Ishdan bo'shagan bo'lsa holatini NOFAOL qiling yoki hisobini o'chiring."
+            f"{employee.full_name} — eski operator hisobi yozuvi, o'chirib bo'lmaydi: "
+            "unda skan tarixi bor. U allaqachon NOFAOL va ro'yxatda faqat tarix uchun turibdi."
         )
     log_action(
         db,

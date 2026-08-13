@@ -303,7 +303,7 @@ async def scan_into_pachka(
             detail={"code": "E001", "message": f"Bu detal allaqachon {name} ichida."},
         )
 
-    session = await active_session(db, user, machine)
+    session = await active_session(db, machine)
     try:
         await record_scan_at(
             db,

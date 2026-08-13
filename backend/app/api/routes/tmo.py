@@ -223,7 +223,7 @@ async def accept_into_tmo(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: in
     machine, post = ctx
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
     qr = body.qr_text.strip()
-    session = await active_session(db, user, machine)
+    session = await active_session(db, machine)
 
     if qr.upper().startswith("PK-"):
         pachka = await _pachka_by_code(db, order, qr)

@@ -18,11 +18,11 @@ class Employee(BaseModel):
 
     organization_id: Mapped[int] = mapped_column(ForeignKey("organization.id"), default=1, kw_only=True)
     full_name: Mapped[str] = mapped_column(String(100), kw_only=True)
-    # Parol bilan kiradigan operator hisobiga bog'lam (`operator_employee`).
-    # NEGA `badge_id` EMAS: ilgari bog'lam `badge_id = "user-{id}"` orqali edi, ya'ni
-    # hodimga haqiqiy beyjik chiqarish uni UZIB qo'yardi — keyingi kirishda ikkinchi
-    # hodim yozuvi yaratilib, ish haqi ikkiga bo'linardi. Endi beyjik ERKIN: har
-    # hodimga chiqarsa bo'ladi (`d1c4e7a90b52`).
+    # ARXIV: eski avtomat mirror yozuvlarining post-rol hisobiga bog'lami. Yangi
+    # mirror yaratilmaydi (`c7e2b4f81d39`) — tsexdagi ishchi login qilmaydi, ya'ni
+    # HODIM va FOYDALANUVCHI kesishmaydi. Ustun qoladi: mavjud qatorlar shu orqali
+    # ajratiladi (o'chirish taqiqlanadi, skan tarixi ularda) va kelajakda ishchi
+    # ayni paytda menejer ham bo'lsa shu bog'lam ishlatiladi.
     user_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
     # Badge QR payload, UUID format. Lost badge → row kept, badge blocked, new employee row NOT created:
     # the badge_id is replaced but history (scans FK employee.id) stays intact.

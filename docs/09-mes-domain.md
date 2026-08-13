@@ -165,21 +165,21 @@ Rad etilgan urinish `log_rejected_scan()` orqali audit logga yoziladi
 (`module=scan, action=rejected`, `meta={"code": ...}`) — hisobotda kod bo'yicha
 guruhlash shundan ishlaydi.
 
-Operator-rol oqimi (`resolve_terminal` / `operator_employee` / `active_session`): arrachi…stolyar
-uchun post roldan aniqlanadi (`POST_ROLES`); stanok — `user.machine_id`, bo'lmasa postning birinchi
-o'chirilmagan stanogi (faqat soft-delete tekshiriladi, holat emas — NOAKTIV/TA'MIRDA stanok ham
-tushishi mumkin). Hodim yozuvi avto-yaratiladi va hisobga `employee.user_id` bilan bog'lanadi
-(`d1c4e7a90b52`) — scan/mahsuldorlik attributsiyasi shu yozuvga tushadi; beyjik esa DARHOL
-haqiqiy UUID bo'ladi, ya'ni admin uni ro'yxatdan chop etib bera oladi. **Login = smena**: sessiya avtomatik ochiladi/qayta ochiladi
-(beyjik scan talab qilinmaydi); TERMINAL qurilma akkauntida esa avvalgidek beyjik shart (E005/E006).
+Operator-rol oqimi (`resolve_terminal` / `active_session`): arrachi…omborchi uchun post roldan
+aniqlanadi (`POST_ROLES`); stanok — `user.machine_id`, bo'lmasa postning birinchi o'chirilmagan
+stanogi (faqat soft-delete tekshiriladi, holat emas — NOAKTIV/TA'MIRDA stanok ham tushishi mumkin).
 
-Bitta istisno bilan: stanokda BOSHQA hodimning smenasi ochiq bo'lsa, operator hisobi uni egallab
-olmaydi — skanlar va ish haqi o'sha hodimda qolishi kerak. Har postda BITTA operator hisobi bor,
-ya'ni parol bilan kirish har doim o'z hodimini ochadi va boshqa hodim faqat beyjik skanidan kelib
-chiqadi. Bir postga ikkinchi hisob qo'shilsa bu faraz buziladi — lekin terminal sarlavhasida smena
-egasining ismi turadi, ya'ni jimgina o'tib ketmaydi. Beyjik
-bilan kirishda (§3.0.1) hisob umumiy — stanokniki, ish esa beyjik egasiniki; egallab olsak skanlar
-va ish haqi boshqa hodimga yozilardi.
+**Smena YAGONA yo'l bilan ochiladi — beyjik skani** (`open_badge_session`). `active_session` hech
+qachon smena ochmaydi: sessiya yo'q bo'lsa E005, muddati o'tgan bo'lsa ham E005, smena egasi nofaol
+bo'lsa E006. Bu TERMINAL qurilma hisobiga ham, post-rol hisobiga ham bir xil tegishli.
+
+Ilgari post rollari uchun "login = smena" shoxi bor edi: `operator_employee` hisobga soxta hodim
+yozuvi yaratib ("Arrachi", "Omborchi" — ismi rol nomi) smenani o'sha nomdan ochardi. Post rollari
+parol bilan kira olmagach (§3.0.2) u shox smena ocholmay qoldi — beyjik logini o'sha hisob nomidan
+kelsa ham, smenani beyjik ochadi — va butunlay olib tashlandi. `c7e2b4f81d39` mavjud mirror
+yozuvlarni NOFAOL qiladi va ularning ochiq smenalarini yopadi; yozuvlar O'CHIRILMAYDI — ularda
+haqiqiy skan tarixi bor. Natijada **`Hodimlar` = odamlar, `Foydalanuvchilar` = loginlar** va ular
+kesishmaydi.
 
 ### 3.0.1 Beyjik bilan kirish (tsexda parol yo'q)
 
@@ -202,16 +202,9 @@ kirgandan keyin BOSHQA postning ekranida paydo bo'lardi.
 kiradi; beyjik faqat tsexda ishlaydiganlarga. Shuning uchun `Hodimlar` ro'yxatidagi HAR bir yozuvga
 beyjik chiqariladi.
 
-Ilgari parol bilan kiradigan operator hisobiga `operator_employee` "ko'zgu" hodim yozuvi yaratardi
-va bog'lam `badge_id = "user-{user.id}"` orqali edi. Ikki muammosi bor edi: `user-N` skanerlanadigan
-beyjikka aylanib qolgandi (N kichik butun son — terib ko'rish bilan istalgan operator nomidan kirsa
-bo'lardi), va bunday hodimga haqiqiy beyjik chiqarish bog'lamni uzib, ikkinchi yozuv yaratardi
-(ish haqi ikkiga bo'linardi).
-
-Endi bog'lam alohida **`employee.user_id`** ustunida (`d1c4e7a90b52`), `badge_id` esa erkin:
-`operator_employee` yangi yozuvni DARHOL haqiqiy UUID beyjik bilan yaratadi. Migratsiya mavjud
-`user-N` yozuvlarini `user_id` ga ko'chirib, beyjikni UUID ga almashtiradi — `employee.id`
-tegilmaydi, ya'ni skanlar va ish haqi tarixi o'z joyida qoladi.
+`employee.user_id` ustuni (`d1c4e7a90b52`) endi ARXIV: u eski mirror yozuvlarni belgilaydi
+(o'chirish taqiqlanadi — skan tarixi ularda) va kelajakda ishchi ayni paytda menejer ham bo'lsa
+ishlatiladi. Yangi hodim qo'shganda foydalanuvchi tanlanmaydi: tsexdagi ishchi login qilmaydi.
 
 **Xavfsizlik — ataylab qilingan tanlov (2026-08-12).** Beyjik yagona omil: QR qog'ozda va nusxa
 olingan bo'lsa istalgan qurilmadan kirsa bo'ladi. Qurilma bog'lash (monoblokni stanokka bir

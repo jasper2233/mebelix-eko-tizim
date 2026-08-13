@@ -107,7 +107,7 @@ async def read_terminal_context(db: SessionDep, user: TerminalUser, ctx: Termina
     session: WorkSession | None
     if UserRole(user.role) in POST_ROLES:
         # Operator role: login is the shift — session opens automatically, no badge.
-        session = await active_session(db, user, machine)
+        session = await active_session(db, machine)
         await db.commit()
         await db.refresh(session)
     else:
