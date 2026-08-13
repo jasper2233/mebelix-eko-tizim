@@ -119,6 +119,34 @@ async def regenerate_badge(db: SessionDep, current_user: AdminUser, employee_id:
     return employee
 
 
+@router.post("/{employee_id}/print", response_model=Message, operation_id="print_employee_badge")
+async def print_employee_badge(db: SessionDep, current_user: AdminUser, employee_id: int, request: Request) -> Message:
+    """Beyjikni chop etish navbatiga qo'yadi — detal cheki bilan bir xil zanjir.
+
+    Brauzerdan chop etish TASHLANDI: u Windows drayveridagi saqlangan qog'oz
+    o'lchamiga tayanardi. `bridge-agent` esa har chop etishda DEVMODE bilan
+    qog'ozni 80×60 ga majburlaydi, ya'ni printer sozlamasi ahamiyatsiz.
+    """
+    employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
+    from app.core.utils import queue
+
+    if queue.pool is None:
+        raise ForbiddenException("Chop etish navbati ishlamayapti. Adminga murojaat qiling.")
+    await queue.pool.enqueue_job("print_badge", employee.id)
+    log_action(
+        db,
+        module="print",
+        action="badge_queued",
+        user_id=current_user.id,
+        entity_type="employee",
+        entity_id=employee.id,
+        message=f"Beyjik chop etishga yuborildi: {employee.full_name}",
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return Message(message=f"{employee.full_name} beyjigi printerga yuborildi.")
+
+
 @router.delete("/{employee_id}", response_model=Message, operation_id="delete_employee")
 async def delete_employee(db: SessionDep, current_user: AdminUser, employee_id: int, request: Request) -> Message:
     employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)

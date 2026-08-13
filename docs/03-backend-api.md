@@ -233,6 +233,7 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | GET | `/api/v1/employees/{id}` | `StaffReadUser` | Topilmasa 404 |
 | PATCH | `/api/v1/employees/{id}` | `AdminUser` | `assigned_post_ids` o'zgarsa qayta validatsiya |
 | POST | `/api/v1/employees/{id}/badge` | `AdminUser` | Beyjik yo'qolganda (TZ 4.2): yangi `uuid4` beriladi — eskisi darhol ishlamay qoladi, tarix shu hodimda qoladi; eski beyjik audit `meta`sida saqlanadi |
+| POST | `/api/v1/employees/{id}/print` | Admin | — | `Message` | Beyjikni chop etish navbatiga qo'yadi (`print_badge` arq task -> Redis `mes:print:queue` -> bridge-agent -> GoDEX). Brauzerdan chop etish TASHLANDI: u drayverdagi saqlangan qog'oz o'lchamiga tayanardi, agent esa DEVMODE bilan 80×60 ni majburlaydi |
 | DELETE | `/api/v1/employees/{id}` | `AdminUser` | Soft-delete |
 
 **Bog'lanishlar:** `backend/app/schemas/employees.py`, `backend/app/crud` (`crud_employees`, `crud_posts`, `log_action`), `backend/app/models/enums.py` (`EmployeeStatus`).

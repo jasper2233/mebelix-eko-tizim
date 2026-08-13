@@ -1203,6 +1203,12 @@ export type RegenerateBadgeData = {
 
 export type RegenerateBadgeResponse = (EmployeeRead);
 
+export type PrintEmployeeBadgeData = {
+    employeeId: number;
+};
+
+export type PrintEmployeeBadgeResponse = (Message);
+
 export type HealthApiV1HealthGetResponse = (HealthCheck);
 
 export type ReadyApiV1ReadyGetResponse = (ReadyCheck);

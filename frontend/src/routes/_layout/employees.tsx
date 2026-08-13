@@ -6,10 +6,11 @@ import {
   useQueryClient,
 } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { IdCard, Pencil, Plus, Trash2 } from "lucide-react"
+import { IdCard, Pencil, Plus, Printer, Trash2 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { useState } from "react"
 import { type Control, useForm } from "react-hook-form"
+import { toast } from "sonner"
 import { z } from "zod"
 
 import { type EmployeeRead, EmployeesService } from "@/client"
@@ -66,6 +67,7 @@ import {
   getEmployeesQueryOptions,
   getPostsQueryOptions,
 } from "@/queries/mes"
+import { detailMessage } from "@/utils"
 
 export const Route = createFileRoute("/_layout/employees")({
   component: EmployeesPage,
@@ -510,6 +512,16 @@ function BadgeDialog({
     "Yangi beyjik tayyor — chop etib bering",
   )
   const [confirmRegen, setConfirmRegen] = useState(false)
+  // Beyjik GoDEX'ga chiqadi — detal cheki bilan bir xil zanjir (server PNG
+  // chizadi -> Redis navbati -> bridge-agent). Brauzerdan `window.print()`
+  // TASHLANDI: u Windows drayveridagi saqlangan qog'oz o'lchamiga tayanardi va
+  // u 80x60 bo'lmaganda beyjik yorliqqa mos tushmasdi.
+  const print = useMutation({
+    mutationFn: (id: number) =>
+      EmployeesService.printEmployeeBadge({ employeeId: id }),
+    onSuccess: (r) => toast.success(r.message),
+    onError: (e) => toast.error(detailMessage(e)),
+  })
   const regen = useMutation({
     mutationFn: (id: number) =>
       EmployeesService.regenerateBadge({ employeeId: id }),
@@ -526,23 +538,23 @@ function BadgeDialog({
   const emp = regen.data ?? employee
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="print-only max-w-xs text-center">
+      <DialogContent className="max-w-xs text-center">
         <DialogHeader>
           {/* Lavozim ISMDAN OLDIN, kichik shriftda: beyjikda avval "kim
               lavozimda", keyin "kim" o'qiladi. Ikkalasi bitta blok — orasida
               bo'shliq yo'q, chunki ular bitta ma'noni beradi. */}
           {emp.position && (
-            <div className="badge-role text-2xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            <div className="text-2xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               {emp.position}
             </div>
           )}
           <DialogTitle>{emp.full_name}</DialogTitle>
           {/* Bu ADMINGA ko'rsatma — beyjikning o'ziga bosilmaydi */}
-          <DialogDescription className="print-hide">
+          <DialogDescription>
             Beyjik QR — chop etib hodimga bering
           </DialogDescription>
         </DialogHeader>
-        <div className="badge-qr mx-auto rounded-xl border p-4">
+        <div className="mx-auto rounded-xl border p-4">
           {/* `marginSize` — QR standartining "tinch zonasi" (4 modul). v4 da u
               sukut bo'yicha 0: qog'ozda beyjik kichraytirilganda QR chetiga
               yaqin narsa tushsa skaner o'qimay qolardi. */}
@@ -551,13 +563,15 @@ function BadgeDialog({
         {/* Beyjik ID qog'ozga BOSILMAYDI: hodim uchun u ma'nosiz raqam, QR
             o'qilmasa uni qo'lda kiritadigan joy ham yo'q. Ekranda qoladi —
             adminga hodimni aniqlash uchun kerak bo'ladi. */}
-        <div className="print-hide num text-xs text-muted-foreground">
-          {emp.badge_id}
-        </div>
-        <DialogFooter className="print-hide flex-col gap-2 sm:flex-col">
-          <Button variant="outline" onClick={() => window.print()}>
-            Chop etish
-          </Button>
+        <div className="num text-xs text-muted-foreground">{emp.badge_id}</div>
+        <DialogFooter className="flex-col gap-2 sm:flex-col">
+          <LoadingButton
+            variant="outline"
+            loading={print.isPending}
+            onClick={() => print.mutate(emp.id)}
+          >
+            <Printer /> Chop etish
+          </LoadingButton>
           {isAdmin && (
             <LoadingButton
               variant="destructive"

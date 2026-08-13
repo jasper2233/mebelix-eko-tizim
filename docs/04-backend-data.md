@@ -457,6 +457,7 @@ Idempotent bootstrap — default tashkilot va 7 ishlab chiqarish postini yaratad
 | Task | Vazifasi |
 |---|---|
 | `print_label(ctx, instance_id)` | Bitta fizik nusxa uchun yorliq PNG'ini render qilib chop etish navbatiga qo'yadi (TZ 7.1.4) |
+| `print_badge(ctx, employee_id)` | Hodim beyjigini (`render_badge_png` — lavozim + ism + QR, 80×60 mm) shu navbatga qo'yadi. Beyjik brauzerdan chop etilmaydi: agent DEVMODE bilan qog'ozni majburlaydi, drayver sozlamasi ahamiyatsiz |
 
 `print_label` oqimi:
 
@@ -480,7 +481,7 @@ Terminal "Chop etish"
 Bridge-agent (`bridge-agent/agent.py`) faqat printer ulangan kompyuterga o'rnatiladi — menejer, texnolog va boshqa post terminallariga hech narsa kerak emas. Birinchi ishga tushganda `_pair()` sozlash oynasini ochadi (`_pair_dialog()` — tkinter, server manzili + ulanish kodi; tkinter bo'lmasa `_pair_console()` zaxirasi), `_exchange()` kodni tokenga almashtiradi va `%APPDATA%\MebelixAgent\.env` ga yozadi — token allaqachon bo'lsa oyna umuman ochilmaydi. Ulangandan keyin `_register_autostart()` agentni `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` ga yozadi, exe esa `--noconsole` bilan qurilgan — kompyuter yonganda oynasiz fonda o'zi tushadi. Exe qo'lda tarqatiladi (server download endpointi yo'q). Printerni `_detect_printer()` avtomatik topadi (nomida `godex` bor Windows printeri); env'lari: `MES_URL`, `BRIDGE_TOKEN` (pairing to'ldiradi), `PRINTER_NAME` (ixtiyoriy, qo'lda override), `QUEUE_FILE`, `SCAN_FORWARD` (default yoqilgan; `0` — klaviatura-skaner forvardini o'chiradi). Pairing `.env` ni qayta yozganda faqat `MES_URL`/`BRIDGE_TOKEN` yangilanadi — qo'lda yozilgan qolgan kalitlar saqlanadi.
 
 ```python
-all_tasks = [print_label]
+all_tasks = [print_label, print_pachka_label, print_badge]
 ```
 
 Worker konfiguratsiyasi (ARQ `WorkerSettings`) ro'yxatni `all_tasks` dan oladi; yangi task qo'shilganda shu ro'yxatga kiritilishi kerak. ARQ konvensiyasi: birinchi argument worker context (`ctx`).

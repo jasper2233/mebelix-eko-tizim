@@ -457,3 +457,94 @@ def render_pachka_label_png(d: PachkaLabelData, scale: int = 1) -> bytes:
     buf = _io.BytesIO()
     img.convert("L").point(_bw, "1").save(buf, format="PNG")
     return buf.getvalue()
+
+
+@dataclass
+class BadgeLabelData:
+    """Hodim beyjigi — 80×60 mm, detal cheki bilan bir xil blank va bir xil zanjir."""
+
+    full_name: str
+    position: str  # lavozim; bo'sh bo'lishi mumkin
+    badge_id: str  # QR matni (UUID)
+
+
+def render_badge_png(d: BadgeLabelData, scale: int = 1) -> bytes:
+    """80×60 mm hodim beyjigi PNG (203 dpi).
+
+    Brauzerdan chop etish TASHLANDI: u Windows drayveridagi SAQLANGAN qog'oz
+    o'lchamiga tayanardi va u 80×60 bo'lishi shart emas — sahifa yorliqqa mos
+    tushmay, kontent ikkiga bo'linib ketardi. Detal cheki esa hech qachon
+    drayverga qaramagan: `bridge-agent` har chop etishda DEVMODE bilan qog'ozni
+    80×60 ga majburlaydi. Beyjik endi o'sha zanjirdan o'tadi.
+
+    Maket: lavozim (kichik) → ism (katta) → QR. QR o'rni QAT'IY — ism bir yoki
+    ikki qatorga tushishidan qat'i nazar u bir joyda turadi, ya'ni skaner uchun
+    beyjiklar bir xil.
+    """
+    import io as _io
+
+    import qrcode
+    from PIL import Image, ImageDraw, ImageFont
+
+    mm = 8 * scale
+    W, H = 80 * mm, 60 * mm
+    img = Image.new("RGB", (W, H), "white")
+    draw = ImageDraw.Draw(img)
+    draw.fontmode = "1"
+
+    def font(size_mm: float, bold: bool = False) -> Any:
+        for path in _FONT_BOLD if bold else _FONT_REGULAR:
+            try:
+                return ImageFont.truetype(path, int(size_mm * mm))
+            except OSError:
+                continue
+        return ImageFont.load_default()
+
+    name_font = font(5.5, bold=True)
+    # Ism ikki qatorgacha o'raladi, uchinchisi "…" bilan kesiladi: uzun o'zbek
+    # ismlari (F.I.Sh + otasining ismi) 80mm ga sig'maydi.
+    max_px = 72 * mm
+    lines: list[str] = []
+    current = ""
+    for word in d.full_name.split():
+        trial = f"{current} {word}".strip()
+        if not current or draw.textlength(trial, font=name_font) <= max_px:
+            current = trial
+            continue
+        lines.append(current)
+        current = word
+        if len(lines) == 2:
+            break
+    if current and len(lines) < 2:
+        lines.append(current)
+    if not lines:
+        lines = [d.full_name[:20]]
+    while len(lines[-1]) > 1 and draw.textlength(lines[-1], font=name_font) > max_px:
+        lines[-1] = lines[-1][:-1]
+    if len("".join(lines)) < len(d.full_name.replace(" ", "")):
+        lines[-1] = lines[-1].rstrip() + "…"
+
+    # Ism bloki PASTGA tekislanadi (y=21mm): bir qatorli ham, ikki qatorli ham
+    # QR bilan orasidagi masofa bir xil bo'ladi
+    top = 21 - len(lines) * 5.8
+    # Lavozim ismning USTIGA yopishadi — ular bitta blok. Qat'iy y da qoldirilsa
+    # bir qatorli ismda orada katta bo'shliq qolib, ikkisi ajralib ko'rinardi.
+    if d.position:
+        draw.text(
+            (W // 2, int((top - 4.2) * mm)),
+            d.position.upper()[:28],
+            fill="black",
+            font=font(3.2, bold=True),
+            anchor="ma",
+        )
+    for i, line in enumerate(lines):
+        draw.text((W // 2, int((top + i * 5.8) * mm)), line, fill="black", font=name_font, anchor="ma")
+
+    # QR QAT'IY o'rinda: 34mm, gorizontal markazda
+    qr = qrcode.make(d.badge_id, box_size=max(1, scale * 2), border=0)
+    qr_px = 34 * mm
+    img.paste(qr.get_image().convert("RGB").resize((qr_px, qr_px)), ((W - qr_px) // 2, 23 * mm))
+
+    buf = _io.BytesIO()
+    img.convert("L").point(_bw, "1").save(buf, format="PNG")
+    return buf.getvalue()

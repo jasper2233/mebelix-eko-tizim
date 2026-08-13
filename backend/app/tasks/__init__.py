@@ -77,4 +77,37 @@ async def print_pachka_label(ctx: dict[str, Any], pachka_id: int) -> str:
     return f"lost:{pachka_id}"
 
 
-all_tasks = [print_label, print_pachka_label]
+async def print_badge(ctx: dict[str, Any], employee_id: int) -> str:
+    """Hodim beyjigini chizib navbatga qo'yadi — detal cheki bilan bir xil zanjir.
+
+    Brauzerdan chop etish o'rniga: u drayverdagi saqlangan qog'oz o'lchamiga
+    tayanardi va 80x60 bo'lmasa kontent yorliqqa mos tushmasdi.
+    """
+    from app.models import Employee
+    from app.services.labels import BadgeLabelData, render_badge_png
+
+    async with local_session() as db:
+        employee = await db.get(Employee, employee_id)
+        if employee is None or employee.is_deleted:
+            return f"skip:{employee_id}"
+        png_b64 = base64.b64encode(
+            render_badge_png(
+                BadgeLabelData(
+                    full_name=employee.full_name,
+                    position=employee.position or "",
+                    badge_id=employee.badge_id,
+                )
+            )
+        ).decode()
+
+    redis = ctx.get("redis")
+    if redis is not None:
+        job = json.dumps({"type": "print", "instance_id": employee_id, "png": png_b64})
+        await redis.lpush(PRINT_QUEUE_KEY, job)
+        return f"queued:{employee_id}"
+
+    logger.error("Beyjik %s uchun Redis navbati mavjud emas", employee_id)
+    return f"lost:{employee_id}"
+
+
+all_tasks = [print_label, print_pachka_label, print_badge]
