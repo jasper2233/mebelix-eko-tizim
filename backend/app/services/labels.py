@@ -471,12 +471,6 @@ class BadgeLabelData:
 def render_badge_png(d: BadgeLabelData, scale: int = 1) -> bytes:
     """80×60 mm hodim beyjigi PNG (203 dpi).
 
-    Brauzerdan chop etish TASHLANDI: u Windows drayveridagi SAQLANGAN qog'oz
-    o'lchamiga tayanardi va u 80×60 bo'lishi shart emas — sahifa yorliqqa mos
-    tushmay, kontent ikkiga bo'linib ketardi. Detal cheki esa hech qachon
-    drayverga qaramagan: `bridge-agent` har chop etishda DEVMODE bilan qog'ozni
-    80×60 ga majburlaydi. Beyjik endi o'sha zanjirdan o'tadi.
-
     Maket: lavozim (kichik) → ism (katta) → QR. QR o'rni QAT'IY — ism bir yoki
     ikki qatorga tushishidan qat'i nazar u bir joyda turadi, ya'ni skaner uchun
     beyjiklar bir xil.
@@ -540,10 +534,10 @@ def render_badge_png(d: BadgeLabelData, scale: int = 1) -> bytes:
     for i, line in enumerate(lines):
         draw.text((W // 2, int((top + i * 5.8) * mm)), line, fill="black", font=name_font, anchor="ma")
 
-    # QR QAT'IY o'rinda: 31mm, gorizontal markazda. O'lcham va y ism blokidan
-    # ham, qog'oz chetidan ham 4.5mm oq qoldiradi — UUID QR'i 29 modul, ya'ni
-    # modul 1.07mm va bo'shliq 4.2 modul. QR standarti 4 modul tinch zona talab
-    # qiladi; 34mm da tepada atigi 1.7 modul qolib, ism QR'ga yopishardi.
+    # QR QAT'IY o'rinda, markazda. 31mm dan KATTA qilinmasin: UUID QR'i 29
+    # modul, ya'ni 31mm da modul 1.07mm va atrofdagi 4.5mm oq aynan standart
+    # talab qiladigan 4 modul tinch zona. 34mm da tepada 1.7 modul qolib,
+    # ism QR'ga yopishardi.
     qr = qrcode.make(d.badge_id, box_size=max(1, scale * 2), border=0)
     qr_px = 31 * mm
     img.paste(qr.get_image().convert("RGB").resize((qr_px, qr_px)), ((W - qr_px) // 2, int(24.5 * mm)))

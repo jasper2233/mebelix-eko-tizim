@@ -121,12 +121,7 @@ async def regenerate_badge(db: SessionDep, current_user: AdminUser, employee_id:
 
 @router.post("/{employee_id}/print", response_model=Message, operation_id="print_employee_badge")
 async def print_employee_badge(db: SessionDep, current_user: AdminUser, employee_id: int, request: Request) -> Message:
-    """Beyjikni chop etish navbatiga qo'yadi — detal cheki bilan bir xil zanjir.
-
-    Brauzerdan chop etish TASHLANDI: u Windows drayveridagi saqlangan qog'oz
-    o'lchamiga tayanardi. `bridge-agent` esa har chop etishda DEVMODE bilan
-    qog'ozni 80×60 ga majburlaydi, ya'ni printer sozlamasi ahamiyatsiz.
-    """
+    """Beyjikni chop etish navbatiga qo'yadi — detal cheki bilan bir xil zanjir."""
     employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
     from app.core.utils import queue
 

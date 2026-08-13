@@ -512,10 +512,6 @@ function BadgeDialog({
     "Yangi beyjik tayyor — chop etib bering",
   )
   const [confirmRegen, setConfirmRegen] = useState(false)
-  // Beyjik GoDEX'ga chiqadi — detal cheki bilan bir xil zanjir (server PNG
-  // chizadi -> Redis navbati -> bridge-agent). Brauzerdan `window.print()`
-  // TASHLANDI: u Windows drayveridagi saqlangan qog'oz o'lchamiga tayanardi va
-  // u 80x60 bo'lmaganda beyjik yorliqqa mos tushmasdi.
   const print = useMutation({
     mutationFn: (id: number) =>
       EmployeesService.printEmployeeBadge({ employeeId: id }),
