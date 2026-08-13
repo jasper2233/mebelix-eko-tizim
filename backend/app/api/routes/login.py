@@ -81,6 +81,12 @@ async def login_for_access_token(
         raise UnauthorizedException("Foydalanuvchi nomi, telefon yoki parol noto'g'ri.")
     if not user.is_active:
         raise UnauthorizedException("Foydalanuvchi faol emas")
+    # Sexda kirish yo'li BITTA — beyjik. Har postda bitta operator hisobi bor,
+    # ya'ni parol butun smenaga ma'lum: u bilan kirilsa smena "arrachi" mirror
+    # hodimiga ochilib, skan va ish haqi haqiqiy odamga emas, o'shanga yozilardi.
+    # Ustiga u istalgan joydan ishlardi — sexdan tashqarida ham skan qilinardi.
+    if POST_ROLES.get(UserRole(user.role)) is not None:
+        raise UnauthorizedException("Sexda beyjik bilan kiriladi.")
 
     access_token = _issue_token_pair(response, user)
     return {"access_token": access_token, "token_type": "bearer"}
