@@ -850,7 +850,7 @@ export type StockGroup = {
 };
 
 export type StockItemCreate = {
-    code: string;
+    code?: (string | null);
     catalog: StockCatalog;
     group_code: string;
     group_name: string;

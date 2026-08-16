@@ -5,7 +5,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { Minus, Plus, TriangleAlert } from "lucide-react"
+import { Minus, Pencil, Plus, Trash2, TriangleAlert } from "lucide-react"
 import { useState } from "react"
 
 import { type StockItemRead, StockService } from "@/client"
@@ -13,6 +13,13 @@ import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
 import { SearchInput } from "@/components/Common/SearchInput"
+import {
+  DeleteItem,
+  ItemDialog,
+  num,
+  qty,
+  uzs,
+} from "@/components/Stock/StockDialogs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -35,9 +42,10 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useDebounced } from "@/hooks/useDebounced"
 import { requireAccess } from "@/lib/guards"
-import { isProductionStaff } from "@/lib/mes"
+import { isManagement, isProductionStaff } from "@/lib/mes"
 import {
   crudCallbacks,
   getStockGroupsQueryOptions,
@@ -51,15 +59,6 @@ export const Route = createFileRoute("/_layout/ombor")({
   head: () => ({ meta: [{ title: "Materiallar ombori | MebeliX" }] }),
 })
 
-const num = (v: string | number | null | undefined) => Number(v ?? 0)
-const uzs = (v: string | number | null | undefined) =>
-  num(v).toLocaleString("ru-RU")
-/** Qoldiq butun bo'lsa kasrsiz: 174 dona "174.000" bo'lib ko'rinmasin */
-const qty = (v: string | number) =>
-  Number.isInteger(num(v))
-    ? String(num(v))
-    : num(v).toFixed(3).replace(/0+$/, "")
-
 const isLow = (i: StockItemRead) =>
   num(i.min_qty) > 0 && num(i.qty) < num(i.min_qty)
 
@@ -69,7 +68,11 @@ function OmborPage() {
   const [group, setGroup] = useState("")
   const [low, setLow] = useState(false)
   const [moveFor, setMoveFor] = useState<StockItemRead | null>(null)
+  const [editFor, setEditFor] = useState<StockItemRead | null>(null)
+  const [deleteFor, setDeleteFor] = useState<StockItemRead | null>(null)
   const debounced = useDebounced(search.trim())
+  const { currentUser } = useCurrentUser()
+  const canEdit = isManagement(currentUser)
 
   const { data, isLoading, isError, refetch } = useQuery({
     ...getStockQueryOptions({
@@ -93,6 +96,7 @@ function OmborPage() {
       <PageHeader
         title="Materiallar ombori"
         description="Xomashyo va furnitura qoldig'i — TMO dan ayrim"
+        actions={canEdit ? <ItemDialog groups={groups ?? []} /> : undefined}
       />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
@@ -217,14 +221,37 @@ function OmborPage() {
                     <TableCell className="num text-right">
                       {i.sale_uzs ? uzs(i.sale_uzs) : "—"}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setMoveFor(i)}
-                      >
-                        Kirim / Chiqim
-                      </Button>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setMoveFor(i)}
+                        >
+                          Kirim / Chiqim
+                        </Button>
+                        {canEdit && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title="Tahrirlash"
+                              onClick={() => setEditFor(i)}
+                            >
+                              <Pencil />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive"
+                              title="O'chirish"
+                              onClick={() => setDeleteFor(i)}
+                            >
+                              <Trash2 />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -247,6 +274,15 @@ function OmborPage() {
           onClose={() => setMoveFor(null)}
         />
       )}
+      {editFor && (
+        <ItemDialog
+          key={editFor.id}
+          groups={groups ?? []}
+          item={editFor}
+          onClose={() => setEditFor(null)}
+        />
+      )}
+      <DeleteItem item={deleteFor} onClose={() => setDeleteFor(null)} />
     </div>
   )
 }

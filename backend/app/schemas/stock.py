@@ -49,7 +49,10 @@ class StockSummary(BaseModel):
 class StockItemCreate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    code: str = Field(min_length=3, max_length=20, examples=["F-RC-001-01"])
+    #: Bo'sh qoldirilsa server o'zi beradi: guruhdagi eng katta model raqami + 1
+    #: (`F-RC-032-01`). Mavjud modelning yangi VARIANTI kerak bo'lsa (masalan
+    #: o'sha ruchkaning boshqa rangi) kod qo'lda yoziladi — `F-RC-001-04`.
+    code: str | None = Field(default=None, min_length=3, max_length=20, examples=["F-RC-001-04"])
     catalog: StockCatalog
     group_code: str = Field(min_length=1, max_length=4)
     group_name: str = Field(min_length=1, max_length=60)

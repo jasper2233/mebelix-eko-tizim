@@ -103,14 +103,31 @@ async def read_stock_groups(db: SessionDep, _: StaffReadUser) -> list[StockGroup
     ]
 
 
+async def _next_code(db: SessionDep, catalog: StockCatalog, group_code: str) -> str:
+    """Guruhdagi keyingi bo'sh kod: `F-RC-032-01`.
+
+    Excel katalogida "Keyingi bo'sh model kodi" ustuni bor va uni odam qo'lda
+    yuritardi — bu yerda o'sha ish serverga o'tdi, ya'ni yangi pozitsiya
+    qo'shayotgan odam kod o'ylab topmaydi va ikki kishi bir vaqtda qo'shsa
+    unique indeks ikkinchisini rad etadi (jimgina ustiga yozilmaydi).
+    """
+    prefix = f"{catalog.value}-{group_code}-"
+    codes = (await db.execute(select(StockItem.code).where(StockItem.code.startswith(prefix)))).scalars().all()
+    used = {int(part) for c in codes if (part := c.split("-")[2] if len(c.split("-")) > 2 else "").isdigit()}
+    return f"{prefix}{max(used, default=0) + 1:03d}-01"
+
+
 @router.post("/", response_model=StockItemRead, status_code=201, operation_id="create_stock_item")
 async def create_stock_item(
     db: SessionDep, current_user: ManagerUser, body: StockItemCreate, request: Request
 ) -> StockItem:
-    exists = (await db.execute(select(StockItem.id).where(StockItem.code == body.code, _VISIBLE))).scalar_one_or_none()
+    data = body.model_dump()
+    group_code = data["group_code"] = data["group_code"].upper()
+    code = data["code"] = data["code"] or await _next_code(db, body.catalog, group_code)
+    exists = (await db.execute(select(StockItem.id).where(StockItem.code == code, _VISIBLE))).scalar_one_or_none()
     if exists is not None:
-        raise DuplicateValueException(f"{body.code} kodi band.")
-    item = StockItem(**body.model_dump())
+        raise DuplicateValueException(f"{code} kodi band.")
+    item = StockItem(**data)
     db.add(item)
     await db.flush()
     log_action(

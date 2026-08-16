@@ -289,7 +289,7 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | GET | `/api/v1/stock/` | Ro'yxat: `search` (nom yoki kod), `catalog` (F/M), `group_code`, `low=true` (min zaxiradan pastdagilar) |
 | GET | `/api/v1/stock/summary` | Sahifa tepasidagi uchta raqam: pozitsiya soni, tugayaptilar, qoldiqning XARID narxidagi qiymati |
 | GET | `/api/v1/stock/groups` | Filtr chiplari — guruh, pozitsiya soni, tugayaptilar soni. Alohida jadval yo'q: 28 guruh pozitsiyalarning o'zidan yig'iladi |
-| POST | `/api/v1/stock/` | Yangi pozitsiya (kod band bo'lsa 409) |
+| POST | `/api/v1/stock/` | Yangi pozitsiya. **`code` IXTIYORIY**: bo'sh bo'lsa server beradi — guruhdagi eng katta model raqami + 1 (`F-RC-032-01`). Excel katalogida "Keyingi bo'sh model kodi" ustunini odam qo'lda yuritardi, o'sha ish serverga o'tdi va ikki kishi bir vaqtda qo'shsa unique indeks ikkinchisini rad etadi. Mavjud MODELNING yangi varianti kerak bo'lsa (o'sha ruchkaning boshqa rangi) kod qo'lda beriladi — `F-RC-001-04`. Kod band bo'lsa 409 |
 | PATCH | `/api/v1/stock/{id}` | Nom, o'lcham, min zaxira, narx |
 | POST | `/api/v1/stock/{id}/move` | **KIRIM / CHIQIM** — `delta` (musbat/manfiy) va izoh. Qoldiqni to'g'ridan-to'g'ri yozish EMAS: omborchi "20 ta keldi" deb o'ylaydi va delta bir vaqtda ikki kishi yozganda ham yo'qolmaydi. Manfiyga tushirsa 409. Alohida harakatlar jadvali YO'Q — har o'zgarish audit logga tushadi (`module=stock, action=move`, `meta` da delta/before/after/note) |
 | DELETE | `/api/v1/stock/{id}` | Soft-delete |
