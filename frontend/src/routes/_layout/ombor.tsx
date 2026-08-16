@@ -15,6 +15,7 @@ import { QueryError } from "@/components/Common/QueryError"
 import { SearchInput } from "@/components/Common/SearchInput"
 import {
   DeleteItem,
+  ImportCatalog,
   ItemDialog,
   num,
   qty,
@@ -96,7 +97,14 @@ function OmborPage() {
       <PageHeader
         title="Materiallar ombori"
         description="Xomashyo va furnitura qoldig'i — TMO dan ayrim"
-        actions={canEdit ? <ItemDialog groups={groups ?? []} /> : undefined}
+        actions={
+          canEdit ? (
+            <div className="flex gap-2">
+              <ImportCatalog />
+              <ItemDialog groups={groups ?? []} />
+            </div>
+          ) : undefined
+        }
       />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-3">

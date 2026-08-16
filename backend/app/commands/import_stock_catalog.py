@@ -20,14 +20,18 @@ import asyncio
 import logging
 import sys
 from decimal import Decimal, InvalidOperation
+from io import BytesIO
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 
 from app.core.db import local_session
 from app.models import StockItem
 from app.models.enums import StockCatalog
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -98,10 +102,13 @@ def _num(value: Any) -> Decimal | None:
         return None
 
 
-def _rows(path: Path) -> list[dict[str, Any]]:
+def read_rows(source: Path | BytesIO) -> list[dict[str, Any]]:
+    """Excel -> pozitsiyalar ro'yxati. Manba fayl yo'li ham, bayt oqimi ham
+    bo'lishi mumkin: buyruq diskdan o'qiydi, endpoint esa yuklangan faylni
+    diskka yozmasdan to'g'ridan-to'g'ri beradi."""
     import openpyxl
 
-    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    wb = openpyxl.load_workbook(source, read_only=True, data_only=True)
     out: list[dict[str, Any]] = []
     for sheet, mapping in SHEETS.items():
         if sheet not in wb.sheetnames:
@@ -130,56 +137,65 @@ def _rows(path: Path) -> list[dict[str, Any]]:
     return out
 
 
+async def upsert(db: "AsyncSession", rows: list[dict[str, Any]]) -> tuple[int, int]:
+    """Kod bo'yicha qo'shadi/yangilaydi. Qaytaradi: (qo'shildi, yangilandi).
+
+    Tranzaksiyani CHAQIRUVCHI yopadi — buyruq o'z sessiyasida, endpoint esa
+    so'rov sessiyasida ishlaydi.
+    """
+    rows_db = (
+        (await db.execute(select(StockItem).where(StockItem.is_deleted == False)))  # noqa: E712
+        .scalars()
+        .all()
+    )
+    existing = {i.code: i for i in rows_db}
+    added = updated = 0
+    for row in rows:
+        item = existing.get(row["code"])
+        if item is None:
+            db.add(
+                StockItem(
+                    code=row["code"],
+                    catalog=row["catalog"],
+                    group_code=row.get("group_code") or row["code"].split("-")[1],
+                    group_name=row.get("group_name") or "—",
+                    name=row.get("name") or row["code"],
+                    variant=row.get("variant"),
+                    size=row.get("size"),
+                    unit=row.get("unit"),
+                    qty=row.get("qty") or Decimal(0),
+                    min_qty=row.get("min_qty") or Decimal(0),
+                    purchase_usd=row.get("purchase_usd"),
+                    purchase_uzs=row.get("purchase_uzs"),
+                    sale_uzs=row.get("sale_uzs"),
+                    note=row.get("note"),
+                )
+            )
+            added += 1
+            continue
+        # QOLDIQQA TEGILMAYDI: uni omborchi tizimda yuritadi, Excel esa
+        # bir marta boshlang'ich holat berib, keyin eskirib qoladi.
+        item.group_name = row.get("group_name") or item.group_name
+        item.name = row.get("name") or item.name
+        item.variant = row.get("variant")
+        item.size = row.get("size")
+        item.unit = row.get("unit")
+        item.min_qty = row.get("min_qty") or item.min_qty
+        item.purchase_usd = row.get("purchase_usd")
+        item.purchase_uzs = row.get("purchase_uzs")
+        item.sale_uzs = row.get("sale_uzs")
+        item.note = row.get("note")
+        updated += 1
+    return added, updated
+
+
 async def run(path: Path) -> None:
-    rows = _rows(path)
+    rows = read_rows(path)
     if not rows:
         logger.error("Katalog bo'sh: %s", path)
         return
-
     async with local_session() as db:
-        rows_db = (
-            (await db.execute(select(StockItem).where(StockItem.is_deleted == False)))  # noqa: E712
-            .scalars()
-            .all()
-        )
-        existing = {i.code: i for i in rows_db}
-        added = updated = 0
-        for row in rows:
-            item = existing.get(row["code"])
-            if item is None:
-                db.add(
-                    StockItem(
-                        code=row["code"],
-                        catalog=row["catalog"],
-                        group_code=row.get("group_code") or row["code"].split("-")[1],
-                        group_name=row.get("group_name") or "—",
-                        name=row.get("name") or row["code"],
-                        variant=row.get("variant"),
-                        size=row.get("size"),
-                        unit=row.get("unit"),
-                        qty=row.get("qty") or Decimal(0),
-                        min_qty=row.get("min_qty") or Decimal(0),
-                        purchase_usd=row.get("purchase_usd"),
-                        purchase_uzs=row.get("purchase_uzs"),
-                        sale_uzs=row.get("sale_uzs"),
-                        note=row.get("note"),
-                    )
-                )
-                added += 1
-                continue
-            # QOLDIQQA TEGILMAYDI: uni omborchi tizimda yuritadi, Excel esa
-            # bir marta boshlang'ich holat berib, keyin eskirib qoladi.
-            item.group_name = row.get("group_name") or item.group_name
-            item.name = row.get("name") or item.name
-            item.variant = row.get("variant")
-            item.size = row.get("size")
-            item.unit = row.get("unit")
-            item.min_qty = row.get("min_qty") or item.min_qty
-            item.purchase_usd = row.get("purchase_usd")
-            item.purchase_uzs = row.get("purchase_uzs")
-            item.sale_uzs = row.get("sale_uzs")
-            item.note = row.get("note")
-            updated += 1
+        added, updated = await upsert(db, rows)
         await db.commit()
     logger.info("Tayyor: %d qo'shildi, %d yangilandi (jami %d)", added, updated, len(rows))
 

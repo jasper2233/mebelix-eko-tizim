@@ -7,9 +7,10 @@ odatdagi admin qobig'idagi jadval (sensorli kiosk emas).
 """
 
 from decimal import Decimal
+from io import BytesIO
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, UploadFile
 from sqlalchemy import func, or_, select
 
 from app.api.deps import ManagerUser, SessionDep, StaffReadUser, client_ip
@@ -197,6 +198,50 @@ async def move_stock_item(
     await db.commit()
     await db.refresh(item)
     return item
+
+
+@router.post("/import", response_model=Message, operation_id="import_stock_catalog")
+async def import_catalog(db: SessionDep, current_user: ManagerUser, file: UploadFile, request: Request) -> Message:
+    """Katalogni Excel'dan yuklash — BRAUZERDAN, serverga kirmasdan.
+
+    Xuddi shu ish `python -m app.commands.import_stock_catalog` buyrug'i bilan
+    ham bajariladi, lekin katalog vaqti-vaqti bilan yangilanadi va uni har safar
+    server terminaliga kirib yuklash real ish emas — ayniqsa tizim boshqa
+    zavodga o'rnatilganda, u yerda shell umuman bo'lmaydi.
+
+    Fayl DISKKA YOZILMAYDI: u bir martalik manba, saqlanadigan narsa —
+    pozitsiyalar. Idempotent: qty faqat yangi pozitsiyada yoziladi.
+    """
+    from app.commands.import_stock_catalog import read_rows, upsert
+
+    if not (file.filename or "").lower().endswith((".xlsx", ".xlsm")):
+        raise HTTPException(status_code=422, detail="Faqat .xlsx fayl qabul qilinadi.")
+    content = await file.read()
+    if len(content) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=422, detail="Fayl 20 MB dan katta.")
+    try:
+        rows = read_rows(BytesIO(content))
+    except Exception as exc:  # noqa: BLE001 — buzuq fayl 500 emas, tushunarli xabar bersin
+        raise HTTPException(status_code=422, detail=f"Faylni o'qib bo'lmadi: {exc}") from None
+    if not rows:
+        raise HTTPException(
+            status_code=422,
+            detail="Katalog topilmadi. Faylda 'Furnitura' va 'Materiallar' varaqlari bo'lishi kerak.",
+        )
+
+    added, updated = await upsert(db, rows)
+    log_action(
+        db,
+        module="stock",
+        action="imported",
+        user_id=current_user.id,
+        entity_type="stock_item",
+        message=f"Katalog yuklandi: {added} qo'shildi, {updated} yangilandi ({file.filename})",
+        meta={"added": added, "updated": updated, "rows": len(rows)},
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return Message(message=f"{added} ta yangi, {updated} ta yangilandi.")
 
 
 @router.delete("/{item_id}", response_model=Message, operation_id="delete_stock_item")

@@ -34,6 +34,10 @@ export type BadgeLoginResponse = {
     post_name: string;
 };
 
+export type Body_import_stock_catalog = {
+    file: string;
+};
+
 export type Body_login_access_token = {
     grant_type?: (string | null);
     username: string;
@@ -1648,6 +1652,12 @@ export type MoveStockItemData = {
 };
 
 export type MoveStockItemResponse = (StockItemRead);
+
+export type ImportStockCatalogData = {
+    formData: Body_import_stock_catalog;
+};
+
+export type ImportStockCatalogResponse = (Message);
 
 export type ReadTabloMatrixResponse = (TabloMatrix);
 
