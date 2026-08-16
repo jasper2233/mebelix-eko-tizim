@@ -24,6 +24,12 @@ class UserRole(StrEnum):
     BOYOQCHI = "boyoqchi"
     UPAKOVKACHI = "upakovkachi"
     OMBORCHI = "omborchi"
+    #: MATERIALLAR OMBORI xodimi — `omborchi` dan boshqa odam va boshqa joy.
+    #: `omborchi` marshrutning oxirgi posti TMO da tayyor mahsulot qabul qiladi,
+    #: bu esa xomashyo va furnitura qoldig'ini yuritadi. `POST_ROLES` ga ATAYLAB
+    #: kirmaydi: uning posti yo'q, terminali yo'q, beyjigi ham shart emas —
+    #: monoblokda emas, oddiy kompyuterda parol bilan ishlaydi.
+    MATERIAL_OMBORCHI = "material_omborchi"
 
 
 class PostCode(StrEnum):

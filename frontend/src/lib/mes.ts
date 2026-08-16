@@ -134,6 +134,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   boyoqchi: "Bo'yoqchi",
   upakovkachi: "Qadoqlovchi",
   omborchi: "TMO omborchisi",
+  material_omborchi: "Materiallar omborchisi",
 }
 
 // Sahifa huquqi BITTA joyda: sidebar menyusi ham, route guard ham shu ikkisini
@@ -153,6 +154,11 @@ export const isManagement = (u?: RoleUser | null) =>
 /** Ishlab chiqarish sahifalari (buyurtmalar, stanoklar, materiallar): boshqaruv + texnolog */
 export const isProductionStaff = (u?: RoleUser | null) =>
   isManagement(u) || u?.role === "texnolog"
+/** Materiallar ombori — qoldiqni yuritadigan xodim + ofis (u yo'qligida ish
+ * to'xtamasin). `omborchi` bu yerda EMAS: u TMO da tayyor mahsulot qabul
+ * qiladi va monoblokda ishlaydi, bu esa boshqa odam va boshqa joy. */
+export const isStockStaff = (u?: RoleUser | null) =>
+  isProductionStaff(u) || u?.role === "material_omborchi"
 
 // Stanok bog'lami MAJBURIY rollar — qurilma akkauntlari (Admin dialoglarida
 // rol tanlovi, machine_id validatsiyasi va bog'lamni uzish shu ro'yxatdan)

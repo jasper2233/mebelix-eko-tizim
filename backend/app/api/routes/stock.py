@@ -13,7 +13,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, Request, UploadFile
 from sqlalchemy import func, or_, select
 
-from app.api.deps import ManagerUser, SessionDep, StaffReadUser, client_ip
+from app.api.deps import SessionDep, StockUser, client_ip
 from app.core.config import settings
 from app.core.exceptions import DuplicateValueException
 from app.crud import crud_stock_items, log_action
@@ -39,7 +39,7 @@ _VISIBLE = StockItem.is_deleted == False  # noqa: E712
 @router.get("/", response_model=Paginated[StockItemRead], operation_id="read_stock_items")
 async def read_stock_items(
     db: SessionDep,
-    _: StaffReadUser,
+    _: StockUser,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=settings.MAX_PAGE_SIZE)] = settings.DEFAULT_PAGE_SIZE,
     search: str | None = None,
@@ -65,7 +65,7 @@ async def read_stock_items(
 
 
 @router.get("/summary", response_model=StockSummary, operation_id="read_stock_summary")
-async def read_stock_summary(db: SessionDep, _: StaffReadUser) -> StockSummary:
+async def read_stock_summary(db: SessionDep, _: StockUser) -> StockSummary:
     """Sahifa tepasidagi uchta raqam. Qiymat XARID narxida — ombor qancha pul
     turibdi degan savolga sotuv narxi javob bermaydi."""
     row = (
@@ -81,7 +81,7 @@ async def read_stock_summary(db: SessionDep, _: StaffReadUser) -> StockSummary:
 
 
 @router.get("/groups", response_model=list[StockGroup], operation_id="read_stock_groups")
-async def read_stock_groups(db: SessionDep, _: StaffReadUser) -> list[StockGroup]:
+async def read_stock_groups(db: SessionDep, _: StockUser) -> list[StockGroup]:
     """Filtr chiplari. Guruhlar katalogdan keladi (`F-RC` = Ruchkalar), ya'ni
     alohida jadval kerak emas — 28 ta guruh pozitsiyalarning o'zidan yig'iladi."""
     rows = (
@@ -120,7 +120,7 @@ async def _next_code(db: SessionDep, catalog: StockCatalog, group_code: str) -> 
 
 @router.post("/", response_model=StockItemRead, status_code=201, operation_id="create_stock_item")
 async def create_stock_item(
-    db: SessionDep, current_user: ManagerUser, body: StockItemCreate, request: Request
+    db: SessionDep, current_user: StockUser, body: StockItemCreate, request: Request
 ) -> StockItem:
     data = body.model_dump()
     group_code = data["group_code"] = data["group_code"].upper()
@@ -147,7 +147,7 @@ async def create_stock_item(
 
 @router.patch("/{item_id}", response_model=StockItemRead, operation_id="update_stock_item")
 async def update_stock_item(
-    db: SessionDep, current_user: ManagerUser, item_id: int, body: StockItemUpdate, request: Request
+    db: SessionDep, current_user: StockUser, item_id: int, body: StockItemUpdate, request: Request
 ) -> StockItem:
     item = await crud_stock_items.get_or_404(db, "Pozitsiya topilmadi.", id=item_id)
     changes = body.model_dump(exclude_unset=True)
@@ -171,7 +171,7 @@ async def update_stock_item(
 
 @router.post("/{item_id}/move", response_model=StockItemRead, operation_id="move_stock_item")
 async def move_stock_item(
-    db: SessionDep, current_user: ManagerUser, item_id: int, body: StockMove, request: Request
+    db: SessionDep, current_user: StockUser, item_id: int, body: StockMove, request: Request
 ) -> StockItem:
     """KIRIM / CHIQIM. Alohida harakatlar jadvali YO'Q — har o'zgarish audit logga
     tushadi (`module=stock, action=move`), ya'ni "kim, qachon, qancha" savoliga
@@ -201,7 +201,7 @@ async def move_stock_item(
 
 
 @router.post("/import", response_model=Message, operation_id="import_stock_catalog")
-async def import_catalog(db: SessionDep, current_user: ManagerUser, file: UploadFile, request: Request) -> Message:
+async def import_catalog(db: SessionDep, current_user: StockUser, file: UploadFile, request: Request) -> Message:
     """Katalogni Excel'dan yuklash — BRAUZERDAN, serverga kirmasdan.
 
     Xuddi shu ish `python -m app.commands.import_stock_catalog` buyrug'i bilan
@@ -245,7 +245,7 @@ async def import_catalog(db: SessionDep, current_user: ManagerUser, file: Upload
 
 
 @router.delete("/{item_id}", response_model=Message, operation_id="delete_stock_item")
-async def delete_stock_item(db: SessionDep, current_user: ManagerUser, item_id: int, request: Request) -> Message:
+async def delete_stock_item(db: SessionDep, current_user: StockUser, item_id: int, request: Request) -> Message:
     item = await crud_stock_items.get_or_404(db, "Pozitsiya topilmadi.", id=item_id)
     log_action(
         db,

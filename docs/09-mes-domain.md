@@ -41,6 +41,7 @@ uning bo'lim raqamlari. Barcha fazalar implementatsiya qilingan — alohida `TOD
 | Atama | Nima | Nima EMAS |
 |---|---|---|
 | **TMO** | Tayyor Mahsulot Ombori — marshrutning oxirgi posti (`PostCode.TMO`) | "Ombor", "sklad", "tayyor mahsulot skladi" |
+| **Materiallar omborchisi** | `UserRole.MATERIAL_OMBORCHI` — xomashyo va furnitura qoldig'ini yuritadi, oddiy kompyuterda parol bilan. `POST_ROLES` ga KIRMAYDI: posti ham, terminali ham, beyjigi ham yo'q | `omborchi` — u BOSHQA odam: TMO da tayyor mahsulot qabul qiladi, monoblokda beyjik bilan |
 | **Materiallar ombori** | Xomashyo va furnitura qoldig'i — `/ombor` sahifasi va `stock_item` jadvali (`b4d1e79c53a8`). `/materials` esa BOSHQA narsa: GibLab `.project` dan avtomat to'ladigan ishlab chiqarish katalogi, qoldiq hisobi emas | "Ombor", "sklad" |
 | **Qadoqlash bo'limi** | `PostCode.UPAKOVKA` — marshrutning oddiy posti | "Upakovka ombori" — bunday ombor yo'q |
 

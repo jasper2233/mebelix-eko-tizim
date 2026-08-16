@@ -29,6 +29,9 @@ export const Route = createFileRoute("/_layout")({
     if (me.role === "terminal" || OPERATOR_ROLES.includes(me.role as never))
       throw redirect({ to: "/terminal" })
     if (me.role === "tablo") throw redirect({ to: "/tablo" })
+    // Materiallar omborchisi admin panelda faqat bitta sahifani ko'radi —
+    // bosh sahifadagi hisobotlar unga yopiq, ya'ni u yerda bo'sh ekran chiqardi
+    if (me.role === "material_omborchi") throw redirect({ to: "/ombor" })
   },
 })
 

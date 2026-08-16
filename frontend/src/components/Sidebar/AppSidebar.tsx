@@ -27,6 +27,7 @@ import {
   isAdmin,
   isManagement,
   isProductionStaff,
+  isStockStaff,
   isSuperuser,
   TERMINAL_STATUSES,
 } from "@/lib/mes"
@@ -64,7 +65,7 @@ export const NAV_ITEMS: (Item & {
   },
   // Materiallar ombori — `/materials` dan AYRIM: u GibLab fayllaridan avtomat
   // to'ladigan ishlab chiqarish katalogi, bu esa omborchi yuritadigan qoldiq
-  { icon: Boxes, title: "Ombor", path: "/ombor", show: isProductionStaff },
+  { icon: Boxes, title: "Ombor", path: "/ombor", show: isStockStaff },
   {
     icon: BarChart3,
     title: "Hisobotlar",

@@ -85,3 +85,8 @@ StaffReadUser = Annotated[
     User, Depends(require_roles(UserRole.MANAGER, UserRole.TEXNOLOG, UserRole.DIRECTOR))
 ]  # read-only lists shared by office roles
 AdminUser = Annotated[User, Depends(require_roles())]  # admin/superuser only
+# Materiallar ombori: qoldiqni MATERIAL_OMBORCHI yuritadi, ofis rollari ko'radi
+# va tuzatadi (u yo'qligida ish to'xtamasin)
+StockUser = Annotated[
+    User, Depends(require_roles(UserRole.MATERIAL_OMBORCHI, UserRole.MANAGER, UserRole.TEXNOLOG, UserRole.DIRECTOR))
+]

@@ -46,7 +46,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useDebounced } from "@/hooks/useDebounced"
 import { requireAccess } from "@/lib/guards"
-import { isManagement, isProductionStaff } from "@/lib/mes"
+import { isManagement, isStockStaff } from "@/lib/mes"
 import {
   crudCallbacks,
   getStockGroupsQueryOptions,
@@ -56,7 +56,7 @@ import {
 
 export const Route = createFileRoute("/_layout/ombor")({
   component: OmborPage,
-  beforeLoad: requireAccess(isProductionStaff),
+  beforeLoad: requireAccess(isStockStaff),
   head: () => ({ meta: [{ title: "Materiallar ombori | MebeliX" }] }),
 })
 

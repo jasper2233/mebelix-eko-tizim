@@ -282,7 +282,7 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 
 ### `/api/v1/stock` — Materiallar ombori (`routes/stock.py`)
 
-**Maqsadi:** omborchi yuritadigan katalog: kod, qoldiq, minimal zaxira, narx. `Material` dan AYRIM jadval (`stock_item`) — u GibLab `.project` faylidan avtomat to'ladi va har yuklashda qayta yoziladi, ya'ni qoldiq va narx u yerda tura olmaydi; furnitura esa `.project` da umuman uchramaydi. O'qish `StaffReadUser`, yozish `ManagerUser`.
+**Maqsadi:** omborchi yuritadigan katalog: kod, qoldiq, minimal zaxira, narx. `Material` dan AYRIM jadval (`stock_item`) — u GibLab `.project` faylidan avtomat to'ladi va har yuklashda qayta yoziladi, ya'ni qoldiq va narx u yerda tura olmaydi; furnitura esa `.project` da umuman uchramaydi. Huquq: `StockUser` — `material_omborchi` (qoldiqni yuritadigan xodim) + manager/texnolog/direktor (u yo'qligida ish to'xtamasin). `omborchi` bu yerda YO'Q: u TMO ning odami, monoblokda ishlaydi.
 
 | Method | Path | Nima qiladi |
 |---|---|---|

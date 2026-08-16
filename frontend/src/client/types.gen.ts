@@ -1170,7 +1170,7 @@ export type UserRead = {
     machine_id?: (number | null);
 };
 
-export type UserRole = 'admin' | 'director' | 'manager' | 'texnolog' | 'terminal' | 'tablo' | 'arrachi' | 'kromkachi' | 'ovalchi' | 'prisadkachi' | 'roverchi' | 'stolyar' | 'boyoqchi' | 'upakovkachi' | 'omborchi';
+export type UserRole = 'admin' | 'director' | 'manager' | 'texnolog' | 'terminal' | 'tablo' | 'arrachi' | 'kromkachi' | 'ovalchi' | 'prisadkachi' | 'roverchi' | 'stolyar' | 'boyoqchi' | 'upakovkachi' | 'omborchi' | 'material_omborchi';
 
 /**
  * Body for `PATCH /users/me` — self-update only.
