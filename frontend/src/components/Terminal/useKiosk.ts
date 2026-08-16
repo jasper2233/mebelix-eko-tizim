@@ -101,7 +101,8 @@ export function useScanFocus(
         t.tagName === "TEXTAREA"
       )
         return
-      if (e.key.length === 1 || e.key === "Enter") inputRef.current?.focus()
+      // `e.key` bo'lmasligi mumkin (avtoto'ldirish, IME) — `useBadgeScan` dagi bilan bir xil sabab
+      if (e.key?.length === 1 || e.key === "Enter") inputRef.current?.focus()
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)

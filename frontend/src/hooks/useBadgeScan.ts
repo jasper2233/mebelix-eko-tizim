@@ -35,7 +35,11 @@ export function useBadgeScan(onBadge: (badgeId: string) => void) {
         if (BADGE_RE.test(value)) handler.current(value)
         return
       }
-      if (e.key.length === 1) buffer += e.key
+      // `e.key` HAR DOIM ham bo'lmaydi: brauzer avtoto'ldirishi (parol menejeri)
+      // va ba'zi IME'lar `key` siz sintetik keydown yuboradi. Tekshiruvsiz bu
+      // butun tinglagichni yiqitardi — login sahifasida parol avtoto'lganda
+      // konsolda "Cannot read properties of undefined (reading 'length')".
+      if (e.key?.length === 1) buffer += e.key
     }
 
     window.addEventListener("keydown", onKey)
