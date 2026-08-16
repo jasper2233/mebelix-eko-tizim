@@ -280,6 +280,23 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | PATCH | `/api/v1/materials/{id}` | `TexnologUser` | Yangilash |
 | DELETE | `/api/v1/materials/{id}` | `TexnologUser` | Soft-delete |
 
+### `/api/v1/stock` — Materiallar ombori (`routes/stock.py`)
+
+**Maqsadi:** omborchi yuritadigan katalog: kod, qoldiq, minimal zaxira, narx. `Material` dan AYRIM jadval (`stock_item`) — u GibLab `.project` faylidan avtomat to'ladi va har yuklashda qayta yoziladi, ya'ni qoldiq va narx u yerda tura olmaydi; furnitura esa `.project` da umuman uchramaydi. O'qish `StaffReadUser`, yozish `ManagerUser`.
+
+| Method | Path | Nima qiladi |
+|---|---|---|
+| GET | `/api/v1/stock/` | Ro'yxat: `search` (nom yoki kod), `catalog` (F/M), `group_code`, `low=true` (min zaxiradan pastdagilar) |
+| GET | `/api/v1/stock/summary` | Sahifa tepasidagi uchta raqam: pozitsiya soni, tugayaptilar, qoldiqning XARID narxidagi qiymati |
+| GET | `/api/v1/stock/groups` | Filtr chiplari — guruh, pozitsiya soni, tugayaptilar soni. Alohida jadval yo'q: 28 guruh pozitsiyalarning o'zidan yig'iladi |
+| POST | `/api/v1/stock/` | Yangi pozitsiya (kod band bo'lsa 409) |
+| PATCH | `/api/v1/stock/{id}` | Nom, o'lcham, min zaxira, narx |
+| POST | `/api/v1/stock/{id}/move` | **KIRIM / CHIQIM** — `delta` (musbat/manfiy) va izoh. Qoldiqni to'g'ridan-to'g'ri yozish EMAS: omborchi "20 ta keldi" deb o'ylaydi va delta bir vaqtda ikki kishi yozganda ham yo'qolmaydi. Manfiyga tushirsa 409. Alohida harakatlar jadvali YO'Q — har o'zgarish audit logga tushadi (`module=stock, action=move`, `meta` da delta/before/after/note) |
+| DELETE | `/api/v1/stock/{id}` | Soft-delete |
+
+**Katalogni yuklash:** `python -m app.commands.import_stock_catalog ["fayl.xlsx"]` — `uploads/Umumiy maxsulotlar kataligi.xlsx` dan 638 pozitsiya (464 furnitura + 174 material). `Xizmatlar` varag'i OLINMAYDI: xizmatning qoldig'i bo'lmaydi. Idempotent — kod bo'yicha topilsa nom va narx yangilanadi, **`qty` esa faqat yangi pozitsiyada yoziladi**: mavjud qoldiqni omborchi tizimda yuritadi va qayta import uni Excel'dagi eski raqamga qaytarmasligi kerak. Ustunlar tartib raqamiga emas SARLAVHAGA qarab olinadi.
+
+
 **Bog'lanishlar:** `backend/app/schemas/materials.py`, `backend/app/crud` (`crud_materials`, `log_action`), `backend/app/models/enums.py` (`MaterialType`).
 
 ---

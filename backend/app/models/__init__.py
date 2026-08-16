@@ -18,6 +18,7 @@ from .organization import Organization
 from .pachka import Pachka, PachkaItem
 from .post import Post
 from .scan import Scan, WorkSession
+from .stock import StockItem
 from .user import User
 
 __all__ = [
@@ -29,6 +30,7 @@ __all__ = [
     "Employee",
     "Machine",
     "Material",
+    "StockItem",
     "Order",
     "OrderFile",
     "Organization",

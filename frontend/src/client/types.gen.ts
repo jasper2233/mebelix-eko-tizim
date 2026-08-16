@@ -612,6 +612,11 @@ export type Paginated_OrderRead_ = {
     count: number;
 };
 
+export type Paginated_StockItemRead_ = {
+    data: Array<StockItemRead>;
+    count: number;
+};
+
 export type Paginated_UserRead_ = {
     data: Array<UserRead>;
     count: number;
@@ -822,6 +827,96 @@ export type StageAgg = {
     total: number;
     volume_total: number;
     volume_done: number;
+};
+
+/**
+ * Materiallar ombori katalogi (`K-GG-MMM-VV` kodining birinchi bo'lagi).
+ *
+ * Yuklangan yagona katalogda uchinchi bo'lim ham bor — X (xizmatlar), lekin u
+ * OMBORGA kirmaydi: xizmatning qoldig'i bo'lmaydi. Kerak bo'lsa narx ro'yxati
+ * sifatida alohida joyda ochiladi.
+ */
+export type StockCatalog = 'F' | 'M';
+
+/**
+ * Filtr chipi: guruh va undagi pozitsiyalar soni.
+ */
+export type StockGroup = {
+    catalog: StockCatalog;
+    group_code: string;
+    group_name: string;
+    items: number;
+    low: number;
+};
+
+export type StockItemCreate = {
+    code: string;
+    catalog: StockCatalog;
+    group_code: string;
+    group_name: string;
+    name: string;
+    variant?: (string | null);
+    size?: (string | null);
+    unit?: (string | null);
+    qty?: (number | string);
+    min_qty?: (number | string);
+    purchase_usd?: (number | string | null);
+    purchase_uzs?: (number | string | null);
+    sale_uzs?: (number | string | null);
+    note?: (string | null);
+};
+
+export type StockItemRead = {
+    id: number;
+    code: string;
+    catalog: StockCatalog;
+    group_code: string;
+    group_name: string;
+    name: string;
+    variant: (string | null);
+    size: (string | null);
+    unit: (string | null);
+    qty: string;
+    min_qty: string;
+    purchase_usd: (string | null);
+    purchase_uzs: (string | null);
+    sale_uzs: (string | null);
+    note: (string | null);
+    created_at: string;
+};
+
+export type StockItemUpdate = {
+    name?: (string | null);
+    variant?: (string | null);
+    size?: (string | null);
+    unit?: (string | null);
+    qty?: (number | string | null);
+    min_qty?: (number | string | null);
+    purchase_usd?: (number | string | null);
+    purchase_uzs?: (number | string | null);
+    sale_uzs?: (number | string | null);
+    note?: (string | null);
+};
+
+/**
+ * KIRIM / CHIQIM — qoldiqni to'g'ridan-to'g'ri yozish o'rniga o'zgarish miqdori.
+ *
+ * Nega delta: omborchi "20 ta keldi" deb o'ylaydi, "endi 174 ta bo'ldi" deb
+ * emas. Ikki kishi bir vaqtda yozsa ham delta yo'qolmaydi, absolyut qiymat esa
+ * bir-birini bosib ketardi.
+ */
+export type StockMove = {
+    delta: (number | string);
+    note?: (string | null);
+};
+
+/**
+ * Sahifa tepasidagi raqamlar — omborchi birinchi shu uchtasiga qaraydi.
+ */
+export type StockSummary = {
+    items: number;
+    low: number;
+    value_uzs: string;
 };
 
 /**
@@ -1512,6 +1607,47 @@ export type CancelScanData = {
 };
 
 export type CancelScanResponse = (ScanHistoryItem);
+
+export type ReadStockItemsData = {
+    catalog?: (StockCatalog | null);
+    groupCode?: (string | null);
+    limit?: number;
+    low?: boolean;
+    search?: (string | null);
+    skip?: number;
+};
+
+export type ReadStockItemsResponse = (Paginated_StockItemRead_);
+
+export type CreateStockItemData = {
+    requestBody: StockItemCreate;
+};
+
+export type CreateStockItemResponse = (StockItemRead);
+
+export type ReadStockSummaryResponse = (StockSummary);
+
+export type ReadStockGroupsResponse = (Array<StockGroup>);
+
+export type UpdateStockItemData = {
+    itemId: number;
+    requestBody: StockItemUpdate;
+};
+
+export type UpdateStockItemResponse = (StockItemRead);
+
+export type DeleteStockItemData = {
+    itemId: number;
+};
+
+export type DeleteStockItemResponse = (Message);
+
+export type MoveStockItemData = {
+    itemId: number;
+    requestBody: StockMove;
+};
+
+export type MoveStockItemResponse = (StockItemRead);
 
 export type ReadTabloMatrixResponse = (TabloMatrix);
 

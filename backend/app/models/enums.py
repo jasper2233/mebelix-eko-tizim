@@ -98,6 +98,18 @@ class EmployeeStatus(StrEnum):
     INACTIVE = "inactive"
 
 
+class StockCatalog(StrEnum):
+    """Materiallar ombori katalogi (`K-GG-MMM-VV` kodining birinchi bo'lagi).
+
+    Yuklangan yagona katalogda uchinchi bo'lim ham bor — X (xizmatlar), lekin u
+    OMBORGA kirmaydi: xizmatning qoldig'i bo'lmaydi. Kerak bo'lsa narx ro'yxati
+    sifatida alohida joyda ochiladi.
+    """
+
+    FURNITURA = "F"
+    MATERIAL = "M"
+
+
 class MaterialType(StrEnum):
     SHEET = "sheet"
     BAND = "band"

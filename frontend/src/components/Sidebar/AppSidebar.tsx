@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import {
   BarChart3,
+  Boxes,
   ClipboardList,
   Factory,
   Home,
@@ -61,6 +62,9 @@ export const NAV_ITEMS: (Item & {
     path: "/materials",
     show: isProductionStaff,
   },
+  // Materiallar ombori — `/materials` dan AYRIM: u GibLab fayllaridan avtomat
+  // to'ladigan ishlab chiqarish katalogi, bu esa omborchi yuritadigan qoldiq
+  { icon: Boxes, title: "Ombor", path: "/ombor", show: isProductionStaff },
   {
     icon: BarChart3,
     title: "Hisobotlar",

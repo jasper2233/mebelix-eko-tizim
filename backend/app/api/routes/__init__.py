@@ -16,6 +16,7 @@ from .pachka import router as pachka_router
 from .posts import router as posts_router
 from .reports import router as reports_router
 from .scans import router as scans_router
+from .stock import router as stock_router
 from .tablo import router as tablo_router
 from .terminal import router as terminal_router
 from .tmo import router as tmo_router
@@ -34,6 +35,7 @@ router.include_router(employees_router, dependencies=_protected)
 router.include_router(machines_router, dependencies=_protected)
 router.include_router(posts_router, dependencies=_protected)
 router.include_router(materials_router, dependencies=_protected)
+router.include_router(stock_router, dependencies=_protected)
 router.include_router(orders_router, dependencies=_protected)
 router.include_router(pachka_router, dependencies=_protected)
 router.include_router(tmo_router, dependencies=_protected)

@@ -17,6 +17,7 @@ import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutReportsRouteImport } from './routes/_layout/reports'
 import { Route as LayoutPrintersRouteImport } from './routes/_layout/printers'
+import { Route as LayoutOmborRouteImport } from './routes/_layout/ombor'
 import { Route as LayoutMaterialsRouteImport } from './routes/_layout/materials'
 import { Route as LayoutMachinesRouteImport } from './routes/_layout/machines'
 import { Route as LayoutLogsRouteImport } from './routes/_layout/logs'
@@ -65,6 +66,11 @@ const LayoutReportsRoute = LayoutReportsRouteImport.update({
 const LayoutPrintersRoute = LayoutPrintersRouteImport.update({
   id: '/printers',
   path: '/printers',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutOmborRoute = LayoutOmborRouteImport.update({
+  id: '/ombor',
+  path: '/ombor',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutMaterialsRoute = LayoutMaterialsRouteImport.update({
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/logs': typeof LayoutLogsRoute
   '/machines': typeof LayoutMachinesRoute
   '/materials': typeof LayoutMaterialsRoute
+  '/ombor': typeof LayoutOmborRoute
   '/printers': typeof LayoutPrintersRoute
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
@@ -147,6 +154,7 @@ export interface FileRoutesByTo {
   '/logs': typeof LayoutLogsRoute
   '/machines': typeof LayoutMachinesRoute
   '/materials': typeof LayoutMaterialsRoute
+  '/ombor': typeof LayoutOmborRoute
   '/printers': typeof LayoutPrintersRoute
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   '/_layout/logs': typeof LayoutLogsRoute
   '/_layout/machines': typeof LayoutMachinesRoute
   '/_layout/materials': typeof LayoutMaterialsRoute
+  '/_layout/ombor': typeof LayoutOmborRoute
   '/_layout/printers': typeof LayoutPrintersRoute
   '/_layout/reports': typeof LayoutReportsRoute
   '/_layout/settings': typeof LayoutSettingsRoute
@@ -190,6 +199,7 @@ export interface FileRouteTypes {
     | '/logs'
     | '/machines'
     | '/materials'
+    | '/ombor'
     | '/printers'
     | '/reports'
     | '/settings'
@@ -208,6 +218,7 @@ export interface FileRouteTypes {
     | '/logs'
     | '/machines'
     | '/materials'
+    | '/ombor'
     | '/printers'
     | '/reports'
     | '/settings'
@@ -228,6 +239,7 @@ export interface FileRouteTypes {
     | '/_layout/logs'
     | '/_layout/machines'
     | '/_layout/materials'
+    | '/_layout/ombor'
     | '/_layout/printers'
     | '/_layout/reports'
     | '/_layout/settings'
@@ -301,6 +313,13 @@ declare module '@tanstack/react-router' {
       path: '/printers'
       fullPath: '/printers'
       preLoaderRoute: typeof LayoutPrintersRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/ombor': {
+      id: '/_layout/ombor'
+      path: '/ombor'
+      fullPath: '/ombor'
+      preLoaderRoute: typeof LayoutOmborRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/materials': {
@@ -383,6 +402,7 @@ interface LayoutRouteChildren {
   LayoutLogsRoute: typeof LayoutLogsRoute
   LayoutMachinesRoute: typeof LayoutMachinesRoute
   LayoutMaterialsRoute: typeof LayoutMaterialsRoute
+  LayoutOmborRoute: typeof LayoutOmborRoute
   LayoutPrintersRoute: typeof LayoutPrintersRoute
   LayoutReportsRoute: typeof LayoutReportsRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
@@ -400,6 +420,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutLogsRoute: LayoutLogsRoute,
   LayoutMachinesRoute: LayoutMachinesRoute,
   LayoutMaterialsRoute: LayoutMaterialsRoute,
+  LayoutOmborRoute: LayoutOmborRoute,
   LayoutPrintersRoute: LayoutPrintersRoute,
   LayoutReportsRoute: LayoutReportsRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,

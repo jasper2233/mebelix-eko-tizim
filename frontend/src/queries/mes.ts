@@ -9,6 +9,7 @@ import {
   MaterialsService,
   OrdersService,
   PostsService,
+  StockService,
   TabloService,
   TerminalService,
 } from "@/client"
@@ -134,6 +135,45 @@ export const getBridgeAgentsQueryOptions = () =>
  * Dialog yopish kabi qo'shimcha ish chaqiruvchida:
  * `onSuccess: () => { cb.onSuccess(); onClose() }` tarzida o'raladi.
  */
+/** Materiallar ombori. Guruh chiplari va tepadagi raqamlar AYRIM so'rovlar:
+ * ular sahifalashdan mustaqil — 638 pozitsiyaning 100 tasi ko'rinib turganda
+ * ham "12 ta pozitsiya tugayapti" butun ombor bo'yicha bo'lishi kerak. */
+export const getStockQueryOptions = (opts: {
+  search?: string
+  catalog?: "F" | "M"
+  groupCode?: string
+  low?: boolean
+}) =>
+  queryOptions({
+    queryKey: [
+      "stock",
+      opts.search ?? "",
+      opts.catalog ?? "",
+      opts.groupCode ?? "",
+      opts.low ?? false,
+    ],
+    queryFn: () =>
+      StockService.readStockItems({
+        search: opts.search || undefined,
+        catalog: opts.catalog,
+        groupCode: opts.groupCode || undefined,
+        low: opts.low || undefined,
+        limit: PAGE_SIZE,
+      }),
+  })
+
+export const getStockGroupsQueryOptions = () =>
+  queryOptions({
+    queryKey: ["stock", "groups"],
+    queryFn: () => StockService.readStockGroups(),
+  })
+
+export const getStockSummaryQueryOptions = () =>
+  queryOptions({
+    queryKey: ["stock", "summary"],
+    queryFn: () => StockService.readStockSummary(),
+  })
+
 export function crudCallbacks(
   queryClient: QueryClient,
   queryKey: unknown[],

@@ -41,7 +41,7 @@ uning bo'lim raqamlari. Barcha fazalar implementatsiya qilingan — alohida `TOD
 | Atama | Nima | Nima EMAS |
 |---|---|---|
 | **TMO** | Tayyor Mahsulot Ombori — marshrutning oxirgi posti (`PostCode.TMO`) | "Ombor", "sklad", "tayyor mahsulot skladi" |
-| **Materiallar ombori** | Xomashyo va qoldiqlar ombori (hozircha alohida modul yo'q — `/materials` bu KATALOG, qoldiq hisobi emas) | "Ombor", "sklad" |
+| **Materiallar ombori** | Xomashyo va furnitura qoldig'i — `/ombor` sahifasi va `stock_item` jadvali (`b4d1e79c53a8`). `/materials` esa BOSHQA narsa: GibLab `.project` dan avtomat to'ladigan ishlab chiqarish katalogi, qoldiq hisobi emas | "Ombor", "sklad" |
 | **Qadoqlash bo'limi** | `PostCode.UPAKOVKA` — marshrutning oddiy posti | "Upakovka ombori" — bunday ombor yo'q |
 
 Yolg'iz "Ombor" va "sklad" ishlatilmaydi: tsexda ikkita ombor bor, nomsiz atalganda
