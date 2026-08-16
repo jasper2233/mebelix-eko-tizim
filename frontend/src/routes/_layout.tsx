@@ -23,15 +23,24 @@ const sectionTitles: Record<string, string> = {
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     const me = await requireAuth()
     // Qurilma akkauntlari va operatorlar admin panelga kirmaydi — o'z ekraniga (TZ 3.4/3.5)
     if (me.role === "terminal" || OPERATOR_ROLES.includes(me.role as never))
       throw redirect({ to: "/terminal" })
     if (me.role === "tablo") throw redirect({ to: "/tablo" })
     // Materiallar omborchisi admin panelda faqat bitta sahifani ko'radi —
-    // bosh sahifadagi hisobotlar unga yopiq, ya'ni u yerda bo'sh ekran chiqardi
-    if (me.role === "material_omborchi") throw redirect({ to: "/ombor" })
+    // bosh sahifadagi hisobotlar unga yopiq, ya'ni u yerda bo'sh ekran chiqardi.
+    //
+    // PATHNAME TEKSHIRUVI SHART: `/ombor` ham SHU layout ostida, ya'ni unga
+    // o'tish yana shu `beforeLoad` ni ishga tushiradi. Tekshiruvsiz bu cheksiz
+    // redirect halqasi bo'lib, sahifa oq qolardi va renderer qotardi.
+    // `terminal`/`tablo` da bunday muammo yo'q — ular layoutdan TASHQARIDA.
+    if (
+      me.role === "material_omborchi" &&
+      !location.pathname.startsWith("/ombor")
+    )
+      throw redirect({ to: "/ombor" })
   },
 })
 
