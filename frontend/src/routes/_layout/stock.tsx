@@ -52,6 +52,9 @@ const isLow = (i: StockItemRead) =>
 function StockPage() {
   const [search, setSearch] = useState("")
   const [catalog, setCatalog] = useState("")
+  // Guruh KATALOG bilan birga saqlanadi ("F|AK"): guruh kodi faqat katalog
+  // ichida noyob — `AK` ham "Aksessuar va dekor" (F), ham "Akril fasad" (M).
+  // Faqat kodni yuborish ikkala guruhning qatorlarini aralashtirib yuborardi.
   const [group, setGroup] = useState("")
   const [low, setLow] = useState(false)
   const [page, setPage] = useState(0)
@@ -72,8 +75,11 @@ function StockPage() {
   const { data, isLoading, isError, refetch } = useQuery({
     ...getStockQueryOptions({
       search: debounced,
-      catalog: (catalog || undefined) as "F" | "M" | undefined,
-      groupCode: group,
+      catalog: ((group ? group.split("|")[0] : catalog) || undefined) as
+        | "F"
+        | "M"
+        | undefined,
+      groupCode: group ? group.split("|")[1] : "",
       low,
       page,
     }),
@@ -221,7 +227,7 @@ function StockPage() {
             emptyLabel="Barcha guruh"
             placeholder="Barcha guruh"
             options={visibleGroups.map((g) => ({
-              value: g.group_code,
+              value: `${g.catalog}|${g.group_code}`,
               label: g.group_name,
               hint:
                 g.low > 0
