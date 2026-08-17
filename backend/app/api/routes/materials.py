@@ -12,7 +12,11 @@ from app.models.enums import MaterialType
 from app.schemas.common import Message, Paginated
 from app.schemas.materials import MaterialCreate, MaterialRead, MaterialUpdate
 
-router = APIRouter(prefix="/materials", tags=["materials"])
+# Yo'l "material-catalog", jadval esa "material": bu KATALOG, ombor qoldig'i emas.
+# `/materials` va `/stock` yonma-yon turganda ikkalasi bir xil narsaga o'xshardi —
+# aslida birinchisi GibLab `.project` dan AVTOMAT to'ladi va ingest uni har
+# yuklashda qayta yozadi, ikkinchisini esa omborchi yuritadi.
+router = APIRouter(prefix="/material-catalog", tags=["material-catalog"])
 
 
 @router.get("/", response_model=Paginated[MaterialRead], operation_id="read_materials")

@@ -22,11 +22,11 @@ import { requireAccess } from "@/lib/guards"
 import { isProductionStaff, MATERIAL_TYPE_LABELS } from "@/lib/mes"
 import { getMaterialsQueryOptions } from "@/queries/mes"
 
-export const Route = createFileRoute("/_layout/materials")({
+export const Route = createFileRoute("/_layout/material-catalog")({
   component: MaterialsPage,
   // Sidebar ko'rinishi bilan bir xil rollar to'plami (lib/mes)
   beforeLoad: requireAccess(isProductionStaff),
-  head: () => ({ meta: [{ title: "Materiallar | MebeliX" }] }),
+  head: () => ({ meta: [{ title: "Material katalogi | MebeliX" }] }),
 })
 
 function MaterialsPage() {
@@ -44,7 +44,7 @@ function MaterialsPage() {
   return (
     <div>
       <PageHeader
-        title="Materiallar"
+        title="Material katalogi"
         description="Project fayllardan avtomatik to'ldiriladi"
       />
       <div className="mb-4 flex flex-wrap items-center gap-3">

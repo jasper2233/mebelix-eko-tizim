@@ -18,7 +18,7 @@ import { Route as LayoutStockRouteImport } from './routes/_layout/stock'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutReportsRouteImport } from './routes/_layout/reports'
 import { Route as LayoutPrintersRouteImport } from './routes/_layout/printers'
-import { Route as LayoutMaterialsRouteImport } from './routes/_layout/materials'
+import { Route as LayoutMaterialCatalogRouteImport } from './routes/_layout/material-catalog'
 import { Route as LayoutMachinesRouteImport } from './routes/_layout/machines'
 import { Route as LayoutLogsRouteImport } from './routes/_layout/logs'
 import { Route as LayoutEmployeesRouteImport } from './routes/_layout/employees'
@@ -73,9 +73,9 @@ const LayoutPrintersRoute = LayoutPrintersRouteImport.update({
   path: '/printers',
   getParentRoute: () => LayoutRoute,
 } as any)
-const LayoutMaterialsRoute = LayoutMaterialsRouteImport.update({
-  id: '/materials',
-  path: '/materials',
+const LayoutMaterialCatalogRoute = LayoutMaterialCatalogRouteImport.update({
+  id: '/material-catalog',
+  path: '/material-catalog',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutMachinesRoute = LayoutMachinesRouteImport.update({
@@ -134,7 +134,7 @@ export interface FileRoutesByFullPath {
   '/employees': typeof LayoutEmployeesRoute
   '/logs': typeof LayoutLogsRoute
   '/machines': typeof LayoutMachinesRoute
-  '/materials': typeof LayoutMaterialsRoute
+  '/material-catalog': typeof LayoutMaterialCatalogRoute
   '/printers': typeof LayoutPrintersRoute
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
@@ -153,7 +153,7 @@ export interface FileRoutesByTo {
   '/employees': typeof LayoutEmployeesRoute
   '/logs': typeof LayoutLogsRoute
   '/machines': typeof LayoutMachinesRoute
-  '/materials': typeof LayoutMaterialsRoute
+  '/material-catalog': typeof LayoutMaterialCatalogRoute
   '/printers': typeof LayoutPrintersRoute
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
@@ -175,7 +175,7 @@ export interface FileRoutesById {
   '/_layout/employees': typeof LayoutEmployeesRoute
   '/_layout/logs': typeof LayoutLogsRoute
   '/_layout/machines': typeof LayoutMachinesRoute
-  '/_layout/materials': typeof LayoutMaterialsRoute
+  '/_layout/material-catalog': typeof LayoutMaterialCatalogRoute
   '/_layout/printers': typeof LayoutPrintersRoute
   '/_layout/reports': typeof LayoutReportsRoute
   '/_layout/settings': typeof LayoutSettingsRoute
@@ -198,7 +198,7 @@ export interface FileRouteTypes {
     | '/employees'
     | '/logs'
     | '/machines'
-    | '/materials'
+    | '/material-catalog'
     | '/printers'
     | '/reports'
     | '/settings'
@@ -217,7 +217,7 @@ export interface FileRouteTypes {
     | '/employees'
     | '/logs'
     | '/machines'
-    | '/materials'
+    | '/material-catalog'
     | '/printers'
     | '/reports'
     | '/settings'
@@ -238,7 +238,7 @@ export interface FileRouteTypes {
     | '/_layout/employees'
     | '/_layout/logs'
     | '/_layout/machines'
-    | '/_layout/materials'
+    | '/_layout/material-catalog'
     | '/_layout/printers'
     | '/_layout/reports'
     | '/_layout/settings'
@@ -322,11 +322,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutPrintersRouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/_layout/materials': {
-      id: '/_layout/materials'
-      path: '/materials'
-      fullPath: '/materials'
-      preLoaderRoute: typeof LayoutMaterialsRouteImport
+    '/_layout/material-catalog': {
+      id: '/_layout/material-catalog'
+      path: '/material-catalog'
+      fullPath: '/material-catalog'
+      preLoaderRoute: typeof LayoutMaterialCatalogRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/machines': {
@@ -401,7 +401,7 @@ interface LayoutRouteChildren {
   LayoutEmployeesRoute: typeof LayoutEmployeesRoute
   LayoutLogsRoute: typeof LayoutLogsRoute
   LayoutMachinesRoute: typeof LayoutMachinesRoute
-  LayoutMaterialsRoute: typeof LayoutMaterialsRoute
+  LayoutMaterialCatalogRoute: typeof LayoutMaterialCatalogRoute
   LayoutPrintersRoute: typeof LayoutPrintersRoute
   LayoutReportsRoute: typeof LayoutReportsRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
@@ -419,7 +419,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutEmployeesRoute: LayoutEmployeesRoute,
   LayoutLogsRoute: LayoutLogsRoute,
   LayoutMachinesRoute: LayoutMachinesRoute,
-  LayoutMaterialsRoute: LayoutMaterialsRoute,
+  LayoutMaterialCatalogRoute: LayoutMaterialCatalogRoute,
   LayoutPrintersRoute: LayoutPrintersRoute,
   LayoutReportsRoute: LayoutReportsRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,

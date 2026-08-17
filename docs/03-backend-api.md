@@ -275,10 +275,10 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
-| GET | `/api/v1/materials/` | login (har qanday) | Paginatsiya; `search` — nom/kod; `type` filtri (`MaterialType`) |
-| POST | `/api/v1/materials/` | `TexnologUser` | 201; nom+tur dublikati bo'lsa 409 |
-| PATCH | `/api/v1/materials/{id}` | `TexnologUser` | Yangilash |
-| DELETE | `/api/v1/materials/{id}` | `TexnologUser` | Soft-delete |
+| GET | `/api/v1/material-catalog/` | login (har qanday) | Paginatsiya; `search` — nom/kod; `type` filtri (`MaterialType`) |
+| POST | `/api/v1/material-catalog/` | `TexnologUser` | 201; nom+tur dublikati bo'lsa 409 |
+| PATCH | `/api/v1/material-catalog/{id}` | `TexnologUser` | Yangilash |
+| DELETE | `/api/v1/material-catalog/{id}` | `TexnologUser` | Soft-delete |
 
 ### `/api/v1/stock` — Materiallar ombori (`routes/stock.py`)
 

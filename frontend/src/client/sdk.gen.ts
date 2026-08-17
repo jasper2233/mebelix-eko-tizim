@@ -654,7 +654,7 @@ export class MachinesService {
     }
 }
 
-export class MaterialsService {
+export class MaterialCatalogService {
     /**
      * Read Materials
      * @param data The data for the request.
@@ -668,7 +668,7 @@ export class MaterialsService {
     public static readMaterials(data: ReadMaterialsData = {}): CancelablePromise<ReadMaterialsResponse> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/v1/materials/',
+            url: '/api/v1/material-catalog/',
             query: {
                 skip: data.skip,
                 limit: data.limit,
@@ -691,7 +691,7 @@ export class MaterialsService {
     public static createMaterial(data: CreateMaterialData): CancelablePromise<CreateMaterialResponse> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/v1/materials/',
+            url: '/api/v1/material-catalog/',
             body: data.requestBody,
             mediaType: 'application/json',
             errors: {
@@ -711,7 +711,7 @@ export class MaterialsService {
     public static updateMaterial(data: UpdateMaterialData): CancelablePromise<UpdateMaterialResponse> {
         return __request(OpenAPI, {
             method: 'PATCH',
-            url: '/api/v1/materials/{material_id}',
+            url: '/api/v1/material-catalog/{material_id}',
             path: {
                 material_id: data.materialId
             },
@@ -733,7 +733,7 @@ export class MaterialsService {
     public static deleteMaterial(data: DeleteMaterialData): CancelablePromise<DeleteMaterialResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
-            url: '/api/v1/materials/{material_id}',
+            url: '/api/v1/material-catalog/{material_id}',
             path: {
                 material_id: data.materialId
             },

@@ -66,7 +66,7 @@ export const NAV_ITEMS: (Item & {
   {
     icon: Layers,
     title: "Material katalogi",
-    path: "/materials",
+    path: "/material-catalog",
     show: isProductionStaff,
   },
   // Materiallar ombori — `/materials` dan AYRIM: u GibLab fayllaridan avtomat
