@@ -152,11 +152,6 @@ function StockPage() {
             {summary?.items ?? "—"} pozitsiya · ombor qiymati{" "}
             <span className="num">{uzs(summary?.value_uzs)}</span> so'm
           </span>
-          <span className="w-full text-2xs uppercase tracking-wider text-muted-foreground">
-            {low
-              ? "faqat shular ko'rsatilmoqda — bekor qilish uchun bosing"
-              : "ro'yxatni ochish uchun bosing"}
-          </span>
         </button>
 
         <div className="mb-3 flex flex-wrap items-center gap-3">
