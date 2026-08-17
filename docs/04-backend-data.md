@@ -426,6 +426,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 | 27 | `c9a3e15d84b6` | `c9a3e15d84b6_ombor_harakatlari_sotuv_tolov.py` | **Ombor harakati, sotuv, to'lov**: `stock_move` / `sale` / `payment` jadvallari — qarz hisobi bilan (2-daraja pul hisobi) |
 | 28 | `d2b71f4c86e9` | `d2b71f4c86e9_material_katalogi_olib_tashlandi.py` | **`material` jadvali olib tashlandi** — GibLab katalogi sahifasi bilan birga. Jadvalga birorta FK yo'q edi; material sarfi `Order.material_usage` dan, yorliq/kesish xaritasi `Part.material_name` dan hisoblanadi. Downgrade faqat TUZILMANI tiklaydi (mazmun `.project` qayta yuklanganda o'zi paydo bo'lardi) |
 | 29 | `a7c40e29b168` | `a7c40e29b168_tmo_ish_markazi_nomi.py` | TMO ish markazi **`01 OMBOR` → `01 TMO`** — yolg'iz "Ombor" atamasi ishlatilmaydi (09-mes-domain.md §1.1). Faqat NOM: `machine.id` tegilmaydi |
+| 30 | `e5b83c04d7a1` | `e5b83c04d7a1_audit_modul_nomlarini_birlashtirish.py` | **Audit modul nomlari birlashtirildi**: `audit_log.module` da `ombor` → `tmo` (174 qator) va `materials` → `stock`. Modul qayta nomlanganda eski qiymat qolib ketgan edi — loglar sahifasidagi filtr eski yozuvlarni umuman ko'rsatmasdi. Faqat TASNIF: `message`/`action`/`meta` tegilmaydi. Downgrade to'liq emas (`materials` dagi `updated` qatorlari ajratilmaydi) |
 
 Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kind=DOCUMENT` + `meta` JSONB bilan ishlatiladi (1.4.1-bo'lim).
 

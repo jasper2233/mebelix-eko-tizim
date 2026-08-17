@@ -166,7 +166,7 @@ Ikkita variant SINALDI VA RAD ETILDI. (1) Uchta teng statistika kartasi + alohid
 | `/reports` | `reports.tsx` | Hisobotlar (TZ 11, guard: `isManagement`): Mahsuldorlik / Buyurtmalar / Material sarfi tab'lari, `DatePicker` sana oralig'i, Excel eksport (`GET /api/v1/reports/{kind}?format=xlsx`) |
 | `/admin` | `admin.tsx` | Foydalanuvchilar boshqaruvi (superuser guard, quyida) |
 | `/printers` | `printers.tsx` | Printer agentlar — ulanish kodlari, jonli holat (WS), versiya, ish markazi bog'lash (`requireAccess(isAdmin)` guard'i, quyida) |
-| `/logs` | `logs.tsx` | Loglar (`requireAccess(isAdmin)` guard'i) — audit jurnal: kategoriya tugmalari, xabar bo'yicha qidiruv (`useDebounced` 400ms), `DatePicker` sana filtri, 50 talik sahifalash; qator bosilsa detal dialogi (post/ish markazi/agent ID'lari lug'atdan nomga aylantiriladi) |
+| `/logs` | `logs.tsx` | Loglar (`requireAccess(isAdmin)` guard'i) — audit jurnal: kategoriya tugmalari (13 modul — backenddagi `module="..."` qiymatlari bilan bir xil; eski `ombor`/`materials` nomlari `e5b83c04d7a1` da `tmo`/`stock` ga birlashtirildi), xabar bo'yicha qidiruv (`useDebounced` 400ms), `DatePicker` sana filtri, 50 talik sahifalash; qator bosilsa detal dialogi (post/ish markazi/agent ID'lari lug'atdan nomga aylantiriladi) |
 | `/settings` | `settings.tsx` | Foydalanuvchi sozlamalari (quyida) |
 
 Ro'yxat sahifalarida umumiy naqsh: qidiruv maydoni `Common/SearchInput`, so'rov xatosida `Common/QueryError` (qayta urinish tugmasi bilan), bo'sh ro'yxatda `Common/EmptyRow` (komponent tafsilotlari `docs/06-frontend-components.md`da).

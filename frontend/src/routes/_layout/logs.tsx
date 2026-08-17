@@ -48,17 +48,21 @@ export const Route = createFileRoute("/_layout/logs")({
 
 const PAGE = 50
 
-// Kategoriyalar = log_action module qiymatlari. Yangi modul qo'shilsa shu
-// ro'yxatga bitta qator qo'shiladi — sahifaning qolgan qismi o'zgarmaydi.
+// Kategoriyalar = log_action module qiymatlari. Manba — backendda `module="..."`
+// (grep bilan topiladi); yangi modul qo'shilsa shu ro'yxatga bitta qator qo'shiladi.
+// Ro'yxat to'liq bo'lishi SHART: yo'q modul yozuvlari faqat filtrsiz ko'rinadi.
 const CATEGORIES: { key: string; label: string }[] = [
   { key: "scan", label: "Skan" },
   { key: "print", label: "Chek" },
   { key: "sessions", label: "Smenalar" },
   { key: "orders", label: "Buyurtmalar" },
+  { key: "pachka", label: "Pachkalar" },
+  { key: "tmo", label: "TMO" },
+  { key: "stock", label: "Materiallar ombori" },
   { key: "bridge_agents", label: "Printer agentlar" },
   { key: "employees", label: "Hodimlar" },
+  { key: "users", label: "Foydalanuvchilar" },
   { key: "clients", label: "Mijozlar" },
-  { key: "materials", label: "Materiallar" },
   { key: "machines", label: "Ish markazlari" },
   { key: "posts", label: "Postlar" },
 ]
@@ -93,6 +97,14 @@ const ACTION_LABELS: Record<string, string> = {
   production_started: "ishlab chiqarishga uzatildi",
   machines_assigned: "ish markazlari biriktirildi",
   project_uploaded: "fayl yuklandi",
+  accepted: "TMO ga qabul qilindi",
+  shipped: "yuklab jo'natildi",
+  closed: "yopildi",
+  item_removed: "pachkadan olindi",
+  badge_queued: "beyjik chop etishga yuborildi",
+  move: "ombor harakati",
+  sale: "sotildi",
+  payment: "to'lov qabul qilindi",
 }
 
 function LogsPage() {
