@@ -185,7 +185,6 @@ type FormState = {
   status: string
   capacity: string
   capacity_unit: string
-  ip_address: string
 }
 
 function MachineDialog({
@@ -204,7 +203,6 @@ function MachineDialog({
     status: machine?.status ?? "active",
     capacity: machine?.capacity != null ? String(machine.capacity) : "",
     capacity_unit: machine?.capacity_unit ?? "",
-    ip_address: machine?.ip_address ?? "",
   })
   const set = (key: keyof FormState, value: string) =>
     setForm((f) => ({ ...f, [key]: value }))
@@ -228,7 +226,6 @@ function MachineDialog({
               MachineRead["capacity_unit"]
             >)
           : null,
-        ip_address: form.ip_address.trim() || null,
       }
       return editing
         ? MachinesService.updateMachine({
@@ -326,14 +323,6 @@ function MachineDialog({
               />
             </Field>
           </div>
-          <Field label="IP manzil">
-            <Input
-              value={form.ip_address}
-              onChange={(e) => set("ip_address", e.target.value)}
-              placeholder="192.168.1.50 — majburiy emas"
-              maxLength={45}
-            />
-          </Field>
         </div>
 
         <DialogFooter>

@@ -12,7 +12,6 @@ class MachineRead(BaseModel):
     id: int
     post_id: int
     name: str
-    ip_address: str | None
     capacity: float | None
     capacity_unit: CapacityUnit | None
     status: MachineStatus
@@ -24,7 +23,6 @@ class MachineCreate(BaseModel):
 
     post_id: int
     name: Annotated[str, Field(min_length=2, max_length=100, examples=["01 ARRA"])]
-    ip_address: str | None = Field(default=None, max_length=45)
     capacity: float | None = Field(default=None, gt=0)
     capacity_unit: CapacityUnit | None = None
     status: MachineStatus = MachineStatus.ACTIVE
@@ -35,7 +33,6 @@ class MachineUpdate(BaseModel):
 
     post_id: int | None = None
     name: Annotated[str | None, Field(min_length=2, max_length=100, default=None)]
-    ip_address: str | None = Field(default=None, max_length=45)
     capacity: float | None = Field(default=None, gt=0)
     capacity_unit: CapacityUnit | None = None
     status: MachineStatus | None = None

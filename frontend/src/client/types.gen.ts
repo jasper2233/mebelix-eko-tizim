@@ -259,7 +259,6 @@ export type MachineAssignments = {
 export type MachineCreate = {
     post_id: number;
     name: string;
-    ip_address?: (string | null);
     capacity?: (number | null);
     capacity_unit?: (CapacityUnit | null);
     status?: MachineStatus;
@@ -269,7 +268,6 @@ export type MachineRead = {
     id: number;
     post_id: number;
     name: string;
-    ip_address: (string | null);
     capacity: (number | null);
     capacity_unit: (CapacityUnit | null);
     status: MachineStatus;
@@ -305,7 +303,6 @@ export type MachineStatus = 'active' | 'inactive' | 'repair';
 export type MachineUpdate = {
     post_id?: (number | null);
     name?: (string | null);
-    ip_address?: (string | null);
     capacity?: (number | null);
     capacity_unit?: (CapacityUnit | null);
     status?: (MachineStatus | null);
