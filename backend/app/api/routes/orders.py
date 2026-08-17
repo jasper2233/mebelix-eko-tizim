@@ -850,7 +850,7 @@ async def assign_order_machines(
     """Manager picks a machine per post where several exist (TZ 6.4.1)."""
     order = await _get_order(db, order_id)
     if order.status not in _EDITABLE_STATUSES:
-        raise ForbiddenException("Stanok tanlovi faqat ishlab chiqarishga uzatilgunga qadar mumkin.")
+        raise ForbiddenException("Ish markazi tanlovi faqat ishlab chiqarishga uzatilgunga qadar mumkin.")
 
     posts_by_code = {p.code: p for p in (await db.execute(select(Post))).scalars()}
     for post_code, machine_id in body.assignments.items():
@@ -867,7 +867,7 @@ async def assign_order_machines(
             )
         ).scalar_one_or_none()
         if machine is None:
-            raise NotFoundException(f"{post_code} postida {machine_id} stanok topilmadi.")
+            raise NotFoundException(f"{post_code} postida {machine_id} ish markazi topilmadi.")
 
     order.machine_assignments = {str(k): v for k, v in body.assignments.items()}
     log_action(
@@ -881,7 +881,7 @@ async def assign_order_machines(
         ip=client_ip(request),
     )
     await db.commit()
-    return Message(message="Stanoklar biriktirildi.")
+    return Message(message="Ish markazlari biriktirildi.")
 
 
 @router.post("/{order_id}/confirm", response_model=OrderRead, operation_id="confirm_order")
@@ -1002,7 +1002,7 @@ async def start_order_production(
         if posts[pid].requires_assignment_choice and str(posts[pid].code) not in order.machine_assignments
     ]
     if missing:
-        raise ForbiddenException(f"Stanok tanlanmagan postlar: {', '.join(missing)}")
+        raise ForbiddenException(f"Ish markazi tanlanmagan postlar: {', '.join(missing)}")
 
     # Stamp the chosen machine on route rows so terminals filter by machine.
     for pid in used_post_ids:

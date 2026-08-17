@@ -70,7 +70,7 @@ POSTS: list[dict[str, object]] = [
         "icon": "assembly",
     },
     # Bo'yoq oxirgi bosqich: haqiqiy marshrut {7;11;8} = rover -> petlya (stolyarka) -> bo'yoq.
-    # Stanok tanlash shart emas — bo'yoq kamerasi bitta, terminalda umumiy vazifalar ro'yxati.
+    # Ish markazi tanlash shart emas — bo'yoq kamerasi bitta, terminalda umumiy vazifalar ro'yxati.
     {
         "code": PostCode.BOYOQ,
         "name": "Bo'yoq",

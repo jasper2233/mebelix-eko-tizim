@@ -281,8 +281,8 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   ketma-ket belgilar + Enter = skan, <50 ms/belgi chegarasi odam terishidan
   ajratadi) va nusxasini `POST /api/v1/bridge-agents/scan` ga agent Bearer
   tokeni bilan yuboradi — bitta fizik skan Nanxing'ga ham, MES'ga ham tushadi.
-  Server skanni agentga bog'langan stanok (`BridgeAgent.machine_id`, admin
-  `PATCH /bridge-agents/{id}` bilan bog'laydi) va o'sha stanokning terminaldagi
+  Server skanni agentga bog'langan ish markazi (`BridgeAgent.machine_id`, admin
+  `PATCH /bridge-agents/{id}` bilan bog'laydi) va o'sha ish markazining terminaldagi
   AKTIV sessiyasi nomidan yozadi (`record_scan_at`) — hisob-kitob odatdagi skan
   bilan bir xil; rad etilgan skan `log_rejected_scan()` bilan audit logga tushadi.
 - Agent printerli kompyuterga yoki printersiz skan-forvard stansiyasiga
@@ -308,10 +308,10 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   `d5e81a24c3b7`): `organization_id`, `name`, `token_hash` (tokenning sha256'i,
   unique — token o'zi faqat pair javobida bir marta ko'rinadi), `pair_code`,
   `pair_expires_at`, `last_seen_at`; keyingi migratsiyalarda qo'shilgan:
-  `machine_id` (skan-forvard stanok bog'lash, `f4b8c2a91e55`), `version`
+  `machine_id` (skan-forvard ish markazi bog'lash, `f4b8c2a91e55`), `version`
   (agent exe versiyasi, `a7c3e9d12f04`) va `can_print` (`d4f7a8c25e91`).
 - `/bridge-agents` routeri (`app/api/routes/bridge_agents.py`): `GET /` ro'yxat,
-  `POST /` yangi agent + kod, `PATCH /{id}` stanok bog'lash va `can_print`
+  `POST /` yangi agent + kod, `PATCH /{id}` ish markazi bog'lash va `can_print`
   belgisi, `POST /{id}/code` yangi kod (`token_hash` tozalanadi
   — eski kompyuter bekor bo'ladi), `DELETE /{id}` soft-delete — barchasi
   `AdminUser`. `POST /pair` OCHIQ: atomik `UPDATE ... RETURNING` bilan bitta kodni
@@ -449,7 +449,7 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
   qizil `--status-cancelled`, pushti esa `--post-rover` rangi.
 - `GET /terminal/orders` javobi karta uchun kengaydi: `materials` (`sheet` turidagi
   plita nomlari), `sheets_total`, `has_cutmap`. Tartib — prioritet (URGENT birinchi)
-  → `deadline` (nulls oxirida) → `id`; boshqa stanokka biriktirilgan `PartRoute`lar
+  → `deadline` (nulls oxirida) → `id`; boshqa ish markaziga biriktirilgan `PartRoute`lar
   bu terminalda ko'rinmaydi (`/tasks` bilan bir xil filtr).
 
 ## 5. Hujjatlar xaritasi

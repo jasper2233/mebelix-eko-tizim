@@ -54,7 +54,7 @@ export function ShiftGate({
   )
 }
 
-/** Sarlavhadagi brigada. Ikki kishi bir stanokda ishlashi mumkin va detalni
+/** Sarlavhadagi brigada. Ikki kishi bir ish markazida ishlashi mumkin va detalni
  * qaysi biri olganini bilib bo'lmaydi — shuning uchun ish ular orasida
  * bo'linadi. Ismlar doim ko'rinib turadi: ketgan odam o'chirishni unutsa,
  * qolgani begona ismni ko'radi va bosib qo'yadi — eng arzon nazorat. */

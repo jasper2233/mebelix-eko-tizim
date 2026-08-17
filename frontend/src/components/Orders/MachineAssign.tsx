@@ -1,4 +1,4 @@
-// Stanok tanlovi (TZ 6.4.1): posts with several machines get an explicit manager choice.
+// Ish markazi tanlovi (TZ 6.4.1): posts with several machines get an explicit manager choice.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
@@ -41,7 +41,7 @@ export function MachineAssign({
   const cb = crudCallbacks(
     queryClient,
     ["orders", order.id],
-    "Stanoklar biriktirildi",
+    "Ish markazlari biriktirildi",
   )
 
   const choiceposts = (posts ?? [])
@@ -71,7 +71,7 @@ export function MachineAssign({
 
   return (
     <Card className="mb-6 p-4">
-      <h2 className="mb-3 text-base font-semibold">Stanok tanlovi</h2>
+      <h2 className="mb-3 text-base font-semibold">Ish markazi tanlovi</h2>
       <div className="flex flex-wrap items-end gap-4">
         {choiceposts.map((post) => {
           const options = (machines ?? []).filter(
@@ -94,7 +94,9 @@ export function MachineAssign({
                 <SelectTrigger className="w-full">
                   <SelectValue
                     placeholder={
-                      options.length ? "Stanokni tanlang" : "Stanok yo'q"
+                      options.length
+                        ? "Ish markazini tanlang"
+                        : "Ish markazi yo'q"
                     }
                   />
                 </SelectTrigger>

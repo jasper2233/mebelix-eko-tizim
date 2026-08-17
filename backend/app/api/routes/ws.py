@@ -44,7 +44,7 @@ async def ws_events(websocket: WebSocket, token: str | None = None) -> None:
             machine = await db.get(Machine, user.machine_id)
             post_id = machine.post_id if machine else None
         elif (post_code := POST_ROLES.get(UserRole(user.role))) is not None:
-            # Operator rol (prisadkachi, kromkachi, ...): stanok biriktirilmagan —
+            # Operator rol (prisadkachi, kromkachi, ...): ish markazi biriktirilmagan —
             # post roldan olinadi, aks holda postga nishonlangan scan.recorded
             # eventlari yetib bormay jonli yangilanish ishlamaydi
             post = (

@@ -64,7 +64,7 @@ class MaterialsReport(BaseModel):
     rows: list[MaterialUsageRow]
 
 
-# ---------- 10.2.1 Dashboard: stanok yuklamasi + prognoz ----------
+# ---------- 10.2.1 Dashboard: ish markazi yuklamasi + prognoz ----------
 
 
 class MachineStat(BaseModel):

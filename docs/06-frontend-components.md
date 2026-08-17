@@ -14,8 +14,8 @@ Admin panel (`/admin` route, guard: `requireAccess(isSuperuser)`) uchun foydalan
 
 **Maqsadi:** AddUser va EditUser uchun umumiy forma yadrosi — schema va maydonlar bir joyda (avval har dialogda ~320 qatordan takrorlangan edi).
 
-- Eksportlar: `buildUserFormSchema(requirePassword)` — zod: `phone` (`phoneSchema`), `name` (`optionalNameSchema`), `password` (Add'da `passwordSchema`, Edit'da `optionalPasswordSchema` — bo'sh qoldirilsa parol o'zgarmaydi), `confirm_password`, `role` (`z.enum(Object.keys(ROLE_LABELS))` — 15 rol yagona manbadan, generatsiya qilingan `UserRole` tipida), `machine_id` (ixtiyoriy), `is_superuser`, `is_active`; ikkita `.refine()`: stanokka bog'liq rolga stanok majburiy ("Terminal/TABLO uchun stanok tanlang") va parollar mosligi ("Parollar mos emas").
-- `UserFormFields({ form, passwordRequired })` — 8 maydonli grid: rol `Select` `ROLE_LABELS` (`@/lib/mes`) dan to'ldiriladi; rol stanokka bog'liq bo'lsa shartli "Stanok" `Select` chiqadi (`getMachinesQueryOptions()` — `@/queries/mes`).
+- Eksportlar: `buildUserFormSchema(requirePassword)` — zod: `phone` (`phoneSchema`), `name` (`optionalNameSchema`), `password` (Add'da `passwordSchema`, Edit'da `optionalPasswordSchema` — bo'sh qoldirilsa parol o'zgarmaydi), `confirm_password`, `role` (`z.enum(Object.keys(ROLE_LABELS))` — 15 rol yagona manbadan, generatsiya qilingan `UserRole` tipida), `machine_id` (ixtiyoriy), `is_superuser`, `is_active`; ikkita `.refine()`: ish markaziga bog'liq rolga ish markazi majburiy ("Terminal/TABLO uchun ish markazi tanlang") va parollar mosligi ("Parollar mos emas").
+- `UserFormFields({ form, passwordRequired })` — 8 maydonli grid: rol `Select` `ROLE_LABELS` (`@/lib/mes`) dan to'ldiriladi; rol ish markaziga bog'liq bo'lsa shartli "Ish markazi" `Select` chiqadi (`getMachinesQueryOptions()` — `@/queries/mes`).
 - `isMachineBoundRole(role)` — `MACHINE_BOUND_ROLES` (`@/lib/mes`, terminal/tablo) asosidagi predikat; ikkala dialog submitda ham shundan foydalanadi.
 
 ### `frontend/src/components/Admin/AddUser.tsx`
@@ -24,7 +24,7 @@ Admin panel (`/admin` route, guard: `requireAccess(isSuperuser)`) uchun foydalan
 
 - Schema `buildUserFormSchema(true)` (parol majburiy) + maydonlar `UserFormFields` — ikkalasi `UserForm.tsx` dan.
 - Default qiymatlar: `role: "manager"`, `is_superuser: false`, `is_active: true` — yangi foydalanuvchi darhol tizimga kira oladi.
-- Submitda `machine_id` faqat stanokka bog'liq rolda (`isMachineBoundRole`) `Number` ga o'giriladi, aks holda `null` — rol keyin almashtirilsa yashirin qolgan stanok tanlovi ofis rolga jo'nab ketmaydi.
+- Submitda `machine_id` faqat ish markaziga bog'liq rolda (`isMachineBoundRole`) `Number` ga o'giriladi, aks holda `null` — rol keyin almashtirilsa yashirin qolgan ish markazi tanlovi ofis rolga jo'nab ketmaydi.
 - Mutation: `UsersService.createUser({ requestBody })`; muvaffaqiyatda toast, forma reset, dialog yopiladi; `onSettled` da `["users"]` query invalidatsiya qilinadi.
 - Forma `mode: "onBlur"` rejimida validatsiya qiladi; trigger — `<Plus /> Foydalanuvchi qo'shish` tugmasi.
 - Submit tugmasi `LoadingButton` (`loading={mutation.isPending}`).
@@ -46,7 +46,7 @@ Admin panel (`/admin` route, guard: `requireAccess(isSuperuser)`) uchun foydalan
 
 - Props: `{ user: UserRead; onSuccess: () => void }`.
 - Schema `buildUserFormSchema(false)` (`UserForm.tsx`): `password` — `optionalPasswordSchema` (bo'sh qoldirilsa parol o'zgarmaydi), refine faqat parol kiritilganda mosligini tekshiradi.
-- `onSubmit` da to'liq `UserAdminUpdate` payload quriladi (rol va stanok ham tahrirlanadi); `password` faqat kiritilgan bo'lsa qo'shiladi:
+- `onSubmit` da to'liq `UserAdminUpdate` payload quriladi (rol va ish markazi ham tahrirlanadi); `password` faqat kiritilgan bo'lsa qo'shiladi:
 
 ```ts
 const payload: UserAdminUpdate = {
@@ -107,7 +107,7 @@ if (data.password) payload.password = data.password
 - Props: `open`, `onOpenChange`, `title`, `description?`, `confirmText?` (default "Tasdiqlash"), `cancelText?` (default "Bekor qilish"), `destructive?`, `loading?`, `onConfirm`.
 - Tasdiqlash tugmasi `LoadingButton` (`variant={destructive ? "destructive" : "default"}`); ikkala tugma ham `h-11 px-5` — 44px minimal barmoq o'lchami terminal (touch) va admin uchun bir xil.
 
-**Foydalanuvchilari:** `Admin/DeleteUser.tsx`, `routes/_layout/orders/$orderId.tsx`, `routes/_layout/anketa.$orderId.tsx` (xona o'chirish), `routes/_layout/employees.tsx`, `routes/_layout/printers.tsx` (stanok bog'lash/uzish, chek chiqarish `can_print` switch'i, agentga yangi kod berish va agentni bekor qilish — to'rtta dialog), `routes/terminal.tsx`.
+**Foydalanuvchilari:** `Admin/DeleteUser.tsx`, `routes/_layout/orders/$orderId.tsx`, `routes/_layout/anketa.$orderId.tsx` (xona o'chirish), `routes/_layout/employees.tsx`, `routes/_layout/printers.tsx` (ish markazi bog'lash/uzish, chek chiqarish `can_print` switch'i, agentga yangi kod berish va agentni bekor qilish — to'rtta dialog), `routes/terminal.tsx`.
 
 ### `frontend/src/components/Common/EmptyRow.tsx`
 
@@ -143,7 +143,7 @@ if (data.password) payload.password = data.password
 
 ### `frontend/src/components/Common/PostBadge.tsx`
 
-**Maqsadi:** bosqich (post) kodi chipi (ARRA, KROMKA, ...) — `POST_COLORS` + `chipColors(color, 12)` (`@/lib/mes`) asosida: matn post rangining to'qroq variantida (`78%, black` — WCAG AA kontrasti, sof rang tint fonda o'tmasdi), fon 12% oq tint. Avval `employees.tsx` va `machines.tsx` da qo'lda takrorlangan edi.
+**Maqsadi:** bosqich (post) kodi chipi (ARRA, KROMKA, ...) — `POST_COLORS` + `chipColors(color, 12)` (`@/lib/mes`) asosida: matn post rangining to'qroq variantida (`78%, black` — WCAG AA kontrasti, sof rang tint fonda o'tmasdi), fon 12% oq tint. Avval `employees.tsx` va `work-centers.tsx` da qo'lda takrorlangan edi.
 
 ### `frontend/src/components/Common/QueryError.tsx`
 
@@ -199,9 +199,9 @@ Buyurtma sahifalari (`/orders`, `/orders/$orderId`) uchun dialog va jadval kompo
 
 ### `frontend/src/components/Orders/MachineAssign.tsx`
 
-**Maqsadi:** stanok tanlovi paneli (TZ 6.4.1) — `requires_assignment_choice` bo'lgan postlar uchun aniq manager tanlovi.
+**Maqsadi:** ish markazi tanlovi paneli (TZ 6.4.1) — `requires_assignment_choice` bo'lgan postlar uchun aniq manager tanlovi.
 
-- Har post uchun `POST_COLORS` rangli sarlavha + faol stanoklar selecti (`getPostsQueryOptions` + `getMachinesQueryOptions`); `OrdersService.assignOrderMachines` ga saqlanadi; tanlov talab qiluvchi post bo'lmasa `null` qaytaradi.
+- Har post uchun `POST_COLORS` rangli sarlavha + faol ish markazlari selecti (`getPostsQueryOptions` + `getMachinesQueryOptions`); `OrdersService.assignOrderMachines` ga saqlanadi; tanlov talab qiluvchi post bo'lmasa `null` qaytaradi.
 
 ### `frontend/src/components/Orders/OrderMatrix.tsx`
 
@@ -278,7 +278,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 
 **Maqsadi:** ilovaning asosiy yon paneli — brend, navigatsiya va foydalanuvchi menyusini yig'adi.
 
-- Modul darajasidagi `NAV_ITEMS` ro'yxati (TZ 3.7 rollar-modullar matritsasi, eksport — `routes/_layout.tsx` mobil sarlavhalari ham shu ro'yxatdan) 11 tagacha punkt beradi, har bandda `show(user)` predikati. Huquq predikatlari `@/lib/mes` dan — `isProductionStaff` / `isManagement` / `isAdmin` / `isSuperuser`; **route guard'lar ham AYNAN shularni ishlatadi** (`lib/guards.requireAccess`), ya'ni menyuda ko'rinadigan sahifa albatta ochiladi. Bandlar: Boshqaruv paneli `/` va LIVE Tablo `/tablo` — hammaga; Buyurtmalar `/orders`, Stanoklar `/machines`, Materiallar `/materials` — `isProductionStaff` (boshqaruv + texnolog); Mijozlar `/clients`, Hodimlar `/employees`, Hisobotlar `/reports` — `isManagement` (admin/manager/direktor); Printer agentlar `/printers` (`Printer` ikonkasi) va Loglar `/logs` (`ScrollText` ikonkasi) — `isAdmin` (superuser yoki `role === "admin"`); Foydalanuvchilar `/admin` — **faqat `isSuperuser`**, chunki ro'yxat barcha telefon raqamlarni ochadi va backend ham uni faqat superuser'ga beradi. **Rolga qarab navigatsiya**.
+- Modul darajasidagi `NAV_ITEMS` ro'yxati (TZ 3.7 rollar-modullar matritsasi, eksport — `routes/_layout.tsx` mobil sarlavhalari ham shu ro'yxatdan) 10 tagacha punkt beradi, har bandda `show(user)` predikati. Huquq predikatlari `@/lib/mes` dan — `isProductionStaff` / `isManagement` / `isAdmin` / `isSuperuser`; **route guard'lar ham AYNAN shularni ishlatadi** (`lib/guards.requireAccess`), ya'ni menyuda ko'rinadigan sahifa albatta ochiladi. Bandlar: Boshqaruv paneli `/` va LIVE Tablo `/tablo` — hammaga; Buyurtmalar `/orders`, Ish markazlari `/work-centers` — `isProductionStaff` (boshqaruv + texnolog); Mijozlar `/clients`, Hodimlar `/employees`, Hisobotlar `/reports` — `isManagement` (admin/manager/direktor); Printer agentlar `/printers` (`Printer` ikonkasi) va Loglar `/logs` (`ScrollText` ikonkasi) — `isAdmin` (superuser yoki `role === "admin"`); Foydalanuvchilar `/admin` — **faqat `isSuperuser`**, chunki ro'yxat barcha telefon raqamlarni ochadi va backend ham uni faqat superuser'ga beradi. **Rolga qarab navigatsiya**.
 - Buyurtmalar bandida jonli badge — faol buyurtmalar soni (`TERMINAL_STATUSES` — delivered/cancelled — dan boshqa statuslar yig'indisi): `getOrderStatusCountsQueryOptions()` reyestr sahifasi bilan AYNAN bitta query key'da, TanStack dedupe qiladi — sidebar qo'shimcha so'rov qo'shmaydi; `enabled` faqat `/orders` bandi ko'rinadigan rollarda.
 - `<Sidebar collapsible="icon">`: yig'ilganda faqat ikonkalar qoladi. Header'da `Link to="/"` — ichida faqat to'liq logo (`/assets/logo/logo-gold.png`, `h-9 w-auto`, `alt="MebeliX — bosh sahifa"`; login ekrani bilan bir xil brend), matn tuguni yo'q. Yig'ilganda BUTUN havola `group-data-[collapsible=icon]:hidden` bilan yashiriladi — brend tab sarlavhasi, favicon va login ekranida qoladi, bosh sahifa havolasi esa menyuning birinchi qatorida ("Boshqaruv paneli"). `SidebarTrigger` yig'ilgan railda `group-data-[collapsible=icon]:mx-auto` bilan markazga tushadi.
 - `SidebarContent` → `Main items={items}`; `SidebarFooter` → `User user={currentUser}`.
@@ -347,7 +347,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 **Maqsadi:** PRISADKA va ROVER post sahifasi (TZ 12.5): detallar + SCX fayllari, "Hammasini yuklab olish" tugmasi. Props: `orderId`, `onBack`, `showScx?` (default `true`; `routes/terminal.tsx` ROVER postida `false` beradi — SCX fayllar kerak emas), `toolbarContainer?` (ROVER "Chop etish" tugmasi terminalning umumiy chap ustuniga portal qilinadi). Ma'lumot: `readTerminalPrisadka` (`refetchInterval: 30_000`).
 
 - SCX oqimi (`showScx`): `lib/scxDir.ts` bilan — File System Access API `showDirectoryPicker` BIR MARTA, tanlangan papka IndexedDB'da (`mebelix-terminal/kv/scx-dir`), keyingi yuklab olishlar so'roqsiz; papka ichida proyekt nomli subpapka (`project_name`, taqiqlangan belgilar `_` ga) ochilib fayllar shu yerga yoziladi (URL — `scxFileUrl(id)`). API bo'lmasa `<a download>` fallback. Har skandagi avto-SCX ham saqlangan papkaga tushadi. Yuklab olishda tugmada jonli progress ("Yuklanmoqda… 12/81"); papka tugmasi yozuvli ("Papka" — sensorli ekranda hover yo'q).
-- Jadval ish-navbat tartibida: qilinmaganlar tepada, tugaganlar (✓ yashil) pastda; oxirgi skan bo'lgan qator KEYINGI skangacha amber ajralib turadi va markazga avto-scroll bo'ladi (`useScanFlash` hooki — `done` o'zgargan qatorni topadi: lokal skan ham, stanokdan skan-forvard ham). Har SCX fayl chipi bitta nusxaga mos (fayl nomi = QR): QR'i `done_qrs` da bo'lsa chip yashil ✓ — operator qaysi nusxalar qolganini ko'radi.
+- Jadval ish-navbat tartibida: qilinmaganlar tepada, tugaganlar (✓ yashil) pastda; oxirgi skan bo'lgan qator KEYINGI skangacha amber ajralib turadi va markazga avto-scroll bo'ladi (`useScanFlash` hooki — `done` o'zgargan qatorni topadi: lokal skan ham, ish markazidan skan-forvard ham). Har SCX fayl chipi bitta nusxaga mos (fayl nomi = QR): QR'i `done_qrs` da bo'lsa chip yashil ✓ — operator qaysi nusxalar qolganini ko'radi.
 - **QR chekni chiqarish** (`usePrintLabel("prisadka")`): marshrutida ARRA bo'lmagan (`arra_route=false`) detal jarayonni shu postdan boshlaydi — cheki shu yerdan chiqariladi. ROVER rejimida (`showScx=false`) qator (nusxa) tanlanadi va chapdagi katta "Chop etish" `TBtn` (portal) bosiladi; PRISADKA rejimida chek chiqarish tugmasi instansiya chipining ichida (printer ikonkasi, faqat `!done && !label_printed && !arra_route` nusxalarda).
 
 ### `frontend/src/components/Terminal/PostQueueView.tsx`
@@ -484,7 +484,7 @@ function LoadingButton({ loading = false, disabled, asChild = false, ... }: Butt
 // loading=true -> disabled + <Loader2 className="mr-2 h-5 w-5 animate-spin" />
 ```
 
-Barcha mutation submit tugmalarida ishlatiladi (AddUser, EditUser, AddClient, AddOrder, EditOrder, MachineAssign, OrderMatrix, CutmapView, ConfirmDialog, ChangePassword, UserInformation, login formasi, anketa saqlash paneli, employees hodim formalari, machines stanok formasi, buyurtma sahifasi amallari, printers agent qo'shish formasi) va uzoq davom etadigan amallarda — `PrisadkaView` dagi SCX "Hammasini yuklab olish" tugmasi jonli progress yozuvi bilan ("Yuklanmoqda… 12/81").
+Barcha mutation submit tugmalarida ishlatiladi (AddUser, EditUser, AddClient, AddOrder, EditOrder, MachineAssign, OrderMatrix, CutmapView, ConfirmDialog, ChangePassword, UserInformation, login formasi, anketa saqlash paneli, employees hodim formalari, machines ish markazi formasi, buyurtma sahifasi amallari, printers agent qo'shish formasi) va uzoq davom etadigan amallarda — `PrisadkaView` dagi SCX "Hammasini yuklab olish" tugmasi jonli progress yozuvi bilan ("Yuklanmoqda… 12/81").
 
 ### `frontend/src/components/ui/password-input.tsx` (custom)
 

@@ -280,7 +280,7 @@ Oqim:
 
 ### Admin panel — "Printer agentlar"
 
-`frontend/src/routes/_layout/printers.tsx`, faqat admin. Sahifada: uch qatorli o'rnatish yo'riqnomasi (yuklab olish tugmasi yo'q — exe qo'lda tarqatiladi) va agentlar jadvali — nomi, holati (faqat ulangan agentda yonida versiya belgisi), joriy ulanish kodi, stanok bog'lami (skan-forvard), chek chiqarish ruxsati, oxirgi ulanish vaqti, amallar.
+`frontend/src/routes/_layout/printers.tsx`, faqat admin. Sahifada: uch qatorli o'rnatish yo'riqnomasi (yuklab olish tugmasi yo'q — exe qo'lda tarqatiladi) va agentlar jadvali — nomi, holati (faqat ulangan agentda yonida versiya belgisi), joriy ulanish kodi, ish markazi bog'lami (skan-forvard), chek chiqarish ruxsati, oxirgi ulanish vaqti, amallar.
 
 | Holat | Qachon |
 |---|---|
@@ -375,7 +375,7 @@ pyinstaller --onefile --noconsole --name mebelix-agent agent.py
 
 Natijadagi `mebelix-agent.exe` **qo'lda tarqatiladi** — flashka yoki lokal tarmoq orqali printerli kompyuterlarga ko'chiriladi. Serverdan tarqatish yo'q: `GET /download` endpointi olib tashlangan (serverda eski nusxa qolib adashtirardi), binar repoda ham saqlanmaydi. Paneldagi versiya belgisi (handshake'dagi `X-Agent-Version` → `bridge_agent.version`) qaysi mashinada eski exe qolganini ko'rsatadi.
 
-Eslatma: SCX/CNC fayllar bridge orqali **o'tmaydi** — ular stanok kompyuterida brauzer orqali yuklab olinadi (TZ 12.5). Bridge yorliq chop etishdan tashqari **skan-forvard** ham qiladi: stanok kompyuterida skaner-klaviaturani `pynput` bilan passiv kuzatadi (6+ belgi, o'rtacha <50 ms/belgi, Enter bilan tugaydi — odam terishi bu tezlikka tushmaydi) va nusxasini `POST /api/v1/bridge-agents/scan` ga yuboradi — bitta fizik skan Nanxing'ga ham, MES'ga ham tushadi. Buning uchun admin panelda agentga **stanok bog'lanadi** (`PATCH /bridge-agents/{id}`, `machine_id`); `SCAN_FORWARD=0` o'chiradi.
+Eslatma: SCX/CNC fayllar bridge orqali **o'tmaydi** — ular stanok kompyuterida brauzer orqali yuklab olinadi (TZ 12.5). Bridge yorliq chop etishdan tashqari **skan-forvard** ham qiladi: stanok kompyuterida skaner-klaviaturani `pynput` bilan passiv kuzatadi (6+ belgi, o'rtacha <50 ms/belgi, Enter bilan tugaydi — odam terishi bu tezlikka tushmaydi) va nusxasini `POST /api/v1/bridge-agents/scan` ga yuboradi — bitta fizik skan Nanxing'ga ham, MES'ga ham tushadi. Buning uchun admin panelda agentga **ish markazi bog'lanadi** (`PATCH /bridge-agents/{id}`, `machine_id`); `SCAN_FORWARD=0` o'chiradi.
 
 ---
 
@@ -471,7 +471,7 @@ Eslatma: `CADDY_HTTP_BIND` / `CADDY_HTTPS_BIND` `.env.example` da izohga olingan
 
 ### `.dockerignore`
 
-Backend build contexti (repo root) uchun denylist. Chiqariladi: `.git`, barcha `.env` va `.venv` lar, `__pycache__`, `.mypy_cache`, `.ruff_cache`, `docker-compose*.yml`, hamda backend image'iga umuman kirmaydigan yirik kataloglar — `bridge-agent`, `frontend`, `docs`, `design` (logo masterlari, 411 KB — kontekstning 39% i edi), `uploads`, `backend/uploads` (dev mashinadagi runtime yuklamalar `COPY backend` bilan image'ga tushmasin), `backups`, `caddy`, va lokal ish papkalari — `stanok rasmlar`, `scx`, `chek`. `backend/Dockerfile` baribir faqat `backend` va `scripts` ni `COPY` qiladi, qolgani daemon'ga behuda uzatilardi (~43 MB). Shu bilan secretlar ham image'ga tushmaydi.
+Backend build contexti (repo root) uchun denylist. Chiqariladi: `.git`, barcha `.env` va `.venv` lar, `__pycache__`, `.mypy_cache`, `.ruff_cache`, `docker-compose*.yml`, hamda backend image'iga umuman kirmaydigan yirik kataloglar — `bridge-agent`, `frontend`, `docs`, `design` (logo masterlari, 411 KB — kontekstning 39% i edi), `uploads`, `backend/uploads` (dev mashinadagi runtime yuklamalar `COPY backend` bilan image'ga tushmasin), `backups`, `caddy`, va lokal ish papkalari — `ish markazi rasmlar`, `scx`, `chek`. `backend/Dockerfile` baribir faqat `backend` va `scripts` ni `COPY` qiladi, qolgani daemon'ga behuda uzatilardi (~43 MB). Shu bilan secretlar ham image'ga tushmaydi.
 
 Frontend'ning o'z konteksti (`./frontend`) va o'z `frontend/.dockerignore` i bor: `node_modules`, `dist`, `.env`, `.env.*` (dev'ning lokal `.env` fayllari image va Vite bundle env'iga sizmasin).
 
@@ -481,7 +481,7 @@ Bitta qoida: `* text=auto eol=lf` — barcha matn fayllar LF line-ending bilan n
 
 ### `.gitignore`
 
-Standart Python artefaktlari (`__pycache__`, `*.py[cod]`, `build/`, `dist/` — setuptools/buildout davridan qolgan `egg`/`sdist`/`tox` naqshlari olib tashlandi: loyiha uv + hatchling'da, ular hech qachon paydo bo'lmaydi), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. MES runtime artefaktlari ham ignore: `backend/uploads/` (`projects/`, `scx/`, `survey/` — yuklangan fayllar va anketa xona rasmlari), `bridge-agent/print-queue.jsonl` (agent'ning durable print navbati), `frontend/openapi.json`, serverdagi shifrlangan DB nusxalari uchun `backups/` (`scripts/backup.sh`), hamda lokal tsex ma'lumotlari — `uploads/` (repo root'da: `.project`/SCX namunalari), `chek/` (namuna yorliq fotolari, `labels.py` maketi shulardan olingan), `/scx/` va `/stanok rasmlar/` (terminal SCX test papkalari). PyInstaller'ning `bridge-agent/build/` va `bridge-agent/dist/` kataloglari alohida qoida talab qilmaydi — umumiy `build/` / `dist/` naqshlari ularni istalgan chuqurlikda tutadi (spec fayli uchun esa alohida `bridge-agent/*.spec` qoidasi bor). E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
+Standart Python artefaktlari (`__pycache__`, `*.py[cod]`, `build/`, `dist/` — setuptools/buildout davridan qolgan `egg`/`sdist`/`tox` naqshlari olib tashlandi: loyiha uv + hatchling'da, ular hech qachon paydo bo'lmaydi), virtualenvlar (`.venv`, `backend/.venv`), **`.env` fayllar** (secretlar repoga tushmaydi), test/lint cache (`.mypy_cache`, `.ruff_cache`, `.coverage`), IDE fayllari (`.vscode/*` lekin `settings.json`/`launch.json`/`extensions.json` istisno), `backend/app/logs/*.log`. MES runtime artefaktlari ham ignore: `backend/uploads/` (`projects/`, `scx/`, `survey/` — yuklangan fayllar va anketa xona rasmlari), `bridge-agent/print-queue.jsonl` (agent'ning durable print navbati), `frontend/openapi.json`, serverdagi shifrlangan DB nusxalari uchun `backups/` (`scripts/backup.sh`), hamda lokal tsex ma'lumotlari — `uploads/` (repo root'da: `.project`/SCX namunalari), `chek/` (namuna yorliq fotolari, `labels.py` maketi shulardan olingan), `/scx/` va `/ish markazi rasmlar/` (terminal SCX test papkalari). PyInstaller'ning `bridge-agent/build/` va `bridge-agent/dist/` kataloglari alohida qoida talab qilmaydi — umumiy `build/` / `dist/` naqshlari ularni istalgan chuqurlikda tutadi (spec fayli uchun esa alohida `bridge-agent/*.spec` qoidasi bor). E'tiborli nuqta: `**/lib/` ignore qilinadi, lekin `!frontend/src/lib/` istisno (shadcn util katalogi).
 
 ---
 

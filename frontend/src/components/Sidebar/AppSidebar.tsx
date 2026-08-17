@@ -58,12 +58,10 @@ export const NAV_ITEMS: (Item & {
   { icon: IdCard, title: "Hodimlar", path: "/employees", show: isManagement },
   {
     icon: Factory,
-    title: "Stanoklar",
-    path: "/machines",
+    title: "Ish markazlari",
+    path: "/work-centers",
     show: isProductionStaff,
   },
-  // Materiallar ombori — `/materials` dan AYRIM: u GibLab fayllaridan avtomat
-  // to'ladigan ishlab chiqarish katalogi, bu esa omborchi yuritadigan qoldiq
   {
     icon: Boxes,
     title: "Materiallar ombori",

@@ -30,7 +30,7 @@ import {
 } from "@/lib/validation"
 import { getMachinesQueryOptions } from "@/queries/mes"
 
-/** Rol stanokka bog'langanmi — terminal/TABLO uchun stanok tanlash majburiy. */
+/** Rol ish markaziga bog'langanmi — terminal/TABLO uchun tanlash majburiy. */
 export const isMachineBoundRole = (role: UserRole) =>
   (MACHINE_BOUND_ROLES as readonly UserRole[]).includes(role)
 
@@ -66,7 +66,7 @@ export function buildUserFormSchema(
       is_active: z.boolean(),
     })
     .refine((d) => !isMachineBoundRole(d.role) || d.machine_id, {
-      message: "Terminal/TABLO uchun stanok tanlang",
+      message: "Terminal/TABLO uchun ish markazini tanlang",
       path: ["machine_id"],
     })
     .refine(
@@ -211,12 +211,12 @@ export function UserFormFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                Stanok <span className="text-destructive">*</span>
+                Ish markazi <span className="text-destructive">*</span>
               </FormLabel>
               <Select value={field.value ?? ""} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Stanokni tanlang" />
+                    <SelectValue placeholder="Ish markazini tanlang" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>

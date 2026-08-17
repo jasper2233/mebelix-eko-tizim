@@ -27,7 +27,7 @@ def _derive_username_from_phone(phone: str) -> str:
     return phone.lstrip("+")
 
 
-_NULLABLE_FIELDS = ("name", "machine_id")  # null = qiymatni olib tashlash (stanok bog'lamini uzish)
+_NULLABLE_FIELDS = ("name", "machine_id")  # null = qiymatni olib tashlash (ish markazi bog'lamini uzish)
 
 
 def _drop_forbidden_nulls(update_data: dict) -> dict:

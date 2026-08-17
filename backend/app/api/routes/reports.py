@@ -69,14 +69,14 @@ async def report_productivity(
 ) -> ProductivityReport | StreamingResponse:
     start, end = _range(date_from, date_to)
 
-    # Brigada: bitta stanokda ikki kishi ishlashi mumkin (ARRA — biri varaqni
+    # Brigada: bitta ish markazida ikki kishi ishlashi mumkin (ARRA — biri varaqni
     # beradi, ikkinchisi detalni oladi) va detalni qaysi biri olganini bilishning
     # iloji yo'q. Skan qatorida bitta `employee_id` bor — u LANGAR smena egasi,
     # ya'ni uni sanash ishni butunlay bitta odamga yozardi. Shuning uchun hisob
     # skan VAQTIDA ochiq bo'lgan smenalar bo'yicha yuritiladi va har skan ular
     # orasida TENG bo'linadi: zavod bir ishga bir marta to'laydi.
     #
-    # LEFT JOIN ataylab: `scan.machine_id` NULL bo'lishi mumkin (stanoksiz yozuv),
+    # LEFT JOIN ataylab: `scan.machine_id` NULL bo'lishi mumkin (ish markazisiz yozuv),
     # o'shanda mos smena topilmaydi va skan hisobdan tushib qolardi — bunday holda
     # `COALESCE` uni eski yo'l bilan `scan.employee_id` ga yozadi, brigada = 1.
     ws = aliased(WorkSession)
@@ -271,7 +271,7 @@ async def report_materials(
     return report
 
 
-# ---------- 10.2.1 Dashboard: stanok yuklamasi + prognoz ----------
+# ---------- 10.2.1 Dashboard: ish markazi yuklamasi + prognoz ----------
 
 
 @router.get("/dashboard", operation_id="report_dashboard")

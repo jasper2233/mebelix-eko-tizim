@@ -89,7 +89,7 @@ async def read_bridge_agents(db: SessionDep, _: AdminUser) -> list[BridgeAgentRe
 async def update_bridge_agent(
     db: SessionDep, current_user: AdminUser, agent_id: int, body: BridgeAgentUpdate, request: Request
 ) -> BridgeAgentRead:
-    """Stanok bog'lash (skan-forvard) va chek-chiqarish belgisi. Maydonlar
+    """Ish markazi bog'lash (skan-forvard) va chek-chiqarish belgisi. Maydonlar
     alohida yuboriladi — berilmagani tegilmaydi (exclude_unset)."""
     agent = await crud_bridge_agents.get_or_404(db, "Agent topilmadi.", id=agent_id)
     sent = body.model_dump(exclude_unset=True)
@@ -98,7 +98,7 @@ async def update_bridge_agent(
         if body.machine_id is not None:
             machine = await db.get(Machine, body.machine_id)
             if machine is None or machine.is_deleted:
-                raise NotFoundException("Stanok topilmadi.")
+                raise NotFoundException("Ish markazi topilmadi.")
             machine_name = machine.name
         agent.machine_id = body.machine_id
         log_action(
@@ -108,7 +108,7 @@ async def update_bridge_agent(
             user_id=current_user.id,
             entity_type="bridge_agent",
             entity_id=agent.id,
-            message=f"Agent stanokka bog'landi: {agent.name} -> {machine_name or '—'}",
+            message=f"Agent ish markaziga bog'landi: {agent.name} -> {machine_name or '—'}",
             ip=client_ip(request),
         )
     if body.can_print is not None:
@@ -253,7 +253,7 @@ async def bridge_scan(
 ) -> ScanResult:
     """Skan-forvard (TZ 12.5): stanok skaneri o'qigan QR agent orqali MES'ga ham yoziladi.
 
-    Auth — agentning doimiy tokeni (Bearer). Skan agentga bog'langan stanokning
+    Auth — agentning doimiy tokeni (Bearer). Skan agentga bog'langan ish markazining
     AKTIV sessiyasi nomidan yoziladi (monoblokda operator kirgan bo'lishi shart) —
     hisob-kitob odatdagi skan bilan bir xil yo'ldan o'tadi.
     """
@@ -274,14 +274,14 @@ async def bridge_scan(
     if agent.machine_id is None:
         raise HTTPException(
             status_code=409,
-            detail="Agent stanokka bog'lanmagan — admin panelda Printer agentlar bo'limida stanok tanlang.",
+            detail="Agent ish markaziga bog'lanmagan — admin panelda Printer agentlar bo'limida tanlang.",
         )
     machine = await db.get(Machine, agent.machine_id)
     if machine is None or machine.is_deleted:
-        raise HTTPException(status_code=409, detail="Bog'langan stanok topilmadi.")
+        raise HTTPException(status_code=409, detail="Bog'langan ish markazi topilmadi.")
     post = await db.get(Post, machine.post_id)
     if post is None:
-        raise HTTPException(status_code=409, detail="Stanok posti topilmadi.")
+        raise HTTPException(status_code=409, detail="Ish markazining posti topilmadi.")
     # Terminal bilan bir xil qoida: 12 soatlik smena muddati stanok skanida ham
     # amal qiladi (`crew_sessions` muddati o'tganini o'zi yopadi). Brigadadan
     # LANGAR smena olinadi — `active_session` ham aynan shunday tanlaydi.

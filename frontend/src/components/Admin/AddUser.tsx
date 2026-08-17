@@ -70,7 +70,7 @@ export function AddUser() {
       // Sxema parolni majburiy qiladi — "??" faqat tip uchun
       password: data.password ?? "",
       role: data.role,
-      // Stanok faqat terminal/tablo rollarga tegishli — rol keyin almashtirilsa
+      // Ish markazi faqat terminal/tablo rollarga tegishli — rol keyin almashtirilsa
       // yashirin qolgan tanlov ofis rolga ham jo'nab ketmasin
       machine_id:
         isMachineBoundRole(data.role) && data.machine_id

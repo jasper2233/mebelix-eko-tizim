@@ -102,12 +102,12 @@ function Dashboard() {
         }
       />
 
-      {/* Stanoklar (TZ 10.2.1) — jadval, karta emas: beshta bir xil tuzilishli
+      {/* Ish markazlari (TZ 10.2.1) — jadval, karta emas: beshta bir xil tuzilishli
           obyekt, har birida 3-5 raqam. Kartalar geterogen yoki rasm/amal talab
           qiladigan narsalar uchun; bir xil ustunli raqamlar solishtiriladi,
           ya'ni jadval zichroq va skanerlanadigan. Kartalar teng balandlikka
           cho'zilib, oxirgi qatorda yolg'iz element qoldirardi. */}
-      <SectionTitle>Stanoklar</SectionTitle>
+      <SectionTitle>Ish markazlari</SectionTitle>
       {machinesLoading ? (
         <Skeleton className="mb-8 h-40 w-full" />
       ) : machines?.length ? (
@@ -115,7 +115,7 @@ function Dashboard() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Stanok</TableHead>
+                <TableHead>Ish markazi</TableHead>
                 <TableHead>Post</TableHead>
                 <TableHead className="text-right">Quvvat</TableHead>
                 <TableHead className="text-right">Navbatda</TableHead>
@@ -182,7 +182,8 @@ function Dashboard() {
         </div>
       ) : (
         <p className="mb-8 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-          Stanoklar hali qo'shilmagan — "Stanoklar" bo'limidan qo'shing.
+          Ish markazlari hali qo'shilmagan — "Ish markazlari" bo'limidan
+          qo'shing.
         </p>
       )}
 

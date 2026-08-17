@@ -43,7 +43,7 @@ class ScanRejected(Exception):
       E005  sessiya yo'q yoki muddati tugagan — beyjik
       E006  beyjik muammosi — admin/hodim
       E008  ish allaqachon bajarilgan — xato emas, ogohlantirish
-      E009  SOZLAMA xatosi (post/stanok yo'q) — admin tuzatadi, operator emas
+      E009  SOZLAMA xatosi (post/ish markazi yo'q) — admin tuzatadi, operator emas
 
     E007 server kodi emas: aloqa uzilganda terminal frontendi o'zi hosil qiladi.
     """
@@ -90,17 +90,17 @@ async def resolve_terminal(db: AsyncSession, user: User) -> tuple[Machine, Post]
                 )
             ).scalar_one_or_none()
         if machine is None:
-            raise ScanRejected("E009", f"{post.name} postida stanok yo'q. Admin stanok qo'shishi kerak.")
+            raise ScanRejected("E009", f"{post.name} postida ish markazi yo'q. Admin ish markazi qo'shishi kerak.")
         return machine, post
 
     if user.machine_id is None:
-        raise ScanRejected("E009", "Terminal foydalanuvchisiga stanok biriktirilmagan.")
+        raise ScanRejected("E009", "Terminal foydalanuvchisiga ish markazi biriktirilmagan.")
     machine = await db.get(Machine, user.machine_id)
     if machine is None or machine.is_deleted:
         raise ScanRejected("E009", "Terminal stanogi topilmadi.")
     post = await db.get(Post, machine.post_id)
     if post is None:
-        raise ScanRejected("E009", "Stanok posti topilmadi.")
+        raise ScanRejected("E009", "Ish markazining posti topilmadi.")
     return machine, post
 
 
@@ -128,7 +128,7 @@ async def open_badge_session(
 ) -> WorkSession:
     """Smenani ochadi (TZ 8.2.2) — beyjik skani ham, ismni bosish ham shu yerga keladi.
 
-    `join=False` (sukut) BRIGADANI ALMASHTIRADI: stanokdagi ochiq smenalar yopiladi.
+    `join=False` (sukut) BRIGADANI ALMASHTIRADI: ish markazidagi ochiq smenalar yopiladi.
     Bu ataylab sukut: ketayotgan odam "chiqish" ni bosishni unutsa, keyingi kirish
     eski smenani yopib qo'yadi — ya'ni unutish xavfsiz tomonga og'adi. Qo'shilish
     esa `join=True` bilan ATAYLAB so'raladi ("+ Qo'shish"), aks holda ikkalasiga
@@ -158,9 +158,9 @@ async def end_session(db: AsyncSession, session: WorkSession) -> None:
 
 
 async def crew_sessions(db: AsyncSession, machine_id: int) -> list[WorkSession]:
-    """Stanokdagi OCHIQ smenalar — brigada, ochilish tartibida.
+    """Ish markazidagi OCHIQ smenalar — brigada, ochilish tartibida.
 
-    "Bitta stanok = bitta smena" farazi noto'g'ri edi: ARRA da ikki kishi birga
+    "Bitta ish markazi = bitta smena" farazi noto'g'ri edi: ARRA da ikki kishi birga
     ishlaydi (biri varaqni beradi, ikkinchisi detalni oladi va taxlaydi) va detalni
     qaysi biri olganini bilishning ILOJI YO'Q — ish qo'shma. Ilgari ikkinchi kirish
     birinchisining smenasini jimgina yopardi, ya'ni undan keyingi hamma skan bitta
@@ -453,7 +453,7 @@ async def record_scan_at(
     if route is None:
         raise ScanRejected("E008", "Bu detal allaqachon yakunlangan.")
     if route.machine_id is not None and route.machine_id != machine.id:
-        raise ScanRejected("E001", "Bu detal boshqa stanokka biriktirilgan.")
+        raise ScanRejected("E001", "Bu detal boshqa ish markaziga biriktirilgan.")
 
     # Qat'iy tartib (TZ 7.2.5 / 8.5 E004): postlarning global tartibi emas, detalning
     # O'Z marshruti bo'yicha — nostandart marshrut roverdan boshlanishi mumkin.

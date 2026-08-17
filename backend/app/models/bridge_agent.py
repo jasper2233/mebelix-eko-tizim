@@ -25,7 +25,7 @@ class BridgeAgent(BaseModel):
     pair_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
     # Skan-forvard (TZ 12.5): stanok skaneri agent orqali MES'ga ham yozilsin —
-    # skan qaysi stanok/post nomidan yozilishini shu bog'lash hal qiladi
+    # skan qaysi ish markazi/post nomidan yozilishini shu bog'lash hal qiladi
     machine_id: Mapped[int | None] = mapped_column(ForeignKey("machine.id"), default=None, kw_only=True)
     # Agent exe versiyasi (WS handshake'dagi X-Agent-Version) — admin paneldan
     # qaysi kompyuterda eski exe qolganini ko'rish uchun; null = eski (headersiz) agent

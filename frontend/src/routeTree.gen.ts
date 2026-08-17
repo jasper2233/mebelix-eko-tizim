@@ -14,11 +14,11 @@ import { Route as TabloRouteImport } from './routes/tablo'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
+import { Route as LayoutWorkCentersRouteImport } from './routes/_layout/work-centers'
 import { Route as LayoutStockRouteImport } from './routes/_layout/stock'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutReportsRouteImport } from './routes/_layout/reports'
 import { Route as LayoutPrintersRouteImport } from './routes/_layout/printers'
-import { Route as LayoutMachinesRouteImport } from './routes/_layout/machines'
 import { Route as LayoutLogsRouteImport } from './routes/_layout/logs'
 import { Route as LayoutEmployeesRouteImport } from './routes/_layout/employees'
 import { Route as LayoutClientsRouteImport } from './routes/_layout/clients'
@@ -52,6 +52,11 @@ const LayoutIndexRoute = LayoutIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutWorkCentersRoute = LayoutWorkCentersRouteImport.update({
+  id: '/work-centers',
+  path: '/work-centers',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutStockRoute = LayoutStockRouteImport.update({
   id: '/stock',
   path: '/stock',
@@ -70,11 +75,6 @@ const LayoutReportsRoute = LayoutReportsRouteImport.update({
 const LayoutPrintersRoute = LayoutPrintersRouteImport.update({
   id: '/printers',
   path: '/printers',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutMachinesRoute = LayoutMachinesRouteImport.update({
-  id: '/machines',
-  path: '/machines',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutLogsRoute = LayoutLogsRouteImport.update({
@@ -127,11 +127,11 @@ export interface FileRoutesByFullPath {
   '/clients': typeof LayoutClientsRoute
   '/employees': typeof LayoutEmployeesRoute
   '/logs': typeof LayoutLogsRoute
-  '/machines': typeof LayoutMachinesRoute
   '/printers': typeof LayoutPrintersRoute
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
   '/stock': typeof LayoutStockRoute
+  '/work-centers': typeof LayoutWorkCentersRoute
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
@@ -145,11 +145,11 @@ export interface FileRoutesByTo {
   '/clients': typeof LayoutClientsRoute
   '/employees': typeof LayoutEmployeesRoute
   '/logs': typeof LayoutLogsRoute
-  '/machines': typeof LayoutMachinesRoute
   '/printers': typeof LayoutPrintersRoute
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
   '/stock': typeof LayoutStockRoute
+  '/work-centers': typeof LayoutWorkCentersRoute
   '/': typeof LayoutIndexRoute
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
@@ -166,11 +166,11 @@ export interface FileRoutesById {
   '/_layout/clients': typeof LayoutClientsRoute
   '/_layout/employees': typeof LayoutEmployeesRoute
   '/_layout/logs': typeof LayoutLogsRoute
-  '/_layout/machines': typeof LayoutMachinesRoute
   '/_layout/printers': typeof LayoutPrintersRoute
   '/_layout/reports': typeof LayoutReportsRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/stock': typeof LayoutStockRoute
+  '/_layout/work-centers': typeof LayoutWorkCentersRoute
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/_layout/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
@@ -188,11 +188,11 @@ export interface FileRouteTypes {
     | '/clients'
     | '/employees'
     | '/logs'
-    | '/machines'
     | '/printers'
     | '/reports'
     | '/settings'
     | '/stock'
+    | '/work-centers'
     | '/anketa/$orderId'
     | '/cutmap/$orderId'
     | '/orders/$orderId'
@@ -206,11 +206,11 @@ export interface FileRouteTypes {
     | '/clients'
     | '/employees'
     | '/logs'
-    | '/machines'
     | '/printers'
     | '/reports'
     | '/settings'
     | '/stock'
+    | '/work-centers'
     | '/'
     | '/anketa/$orderId'
     | '/cutmap/$orderId'
@@ -226,11 +226,11 @@ export interface FileRouteTypes {
     | '/_layout/clients'
     | '/_layout/employees'
     | '/_layout/logs'
-    | '/_layout/machines'
     | '/_layout/printers'
     | '/_layout/reports'
     | '/_layout/settings'
     | '/_layout/stock'
+    | '/_layout/work-centers'
     | '/_layout/'
     | '/_layout/anketa/$orderId'
     | '/_layout/cutmap/$orderId'
@@ -282,6 +282,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutIndexRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/work-centers': {
+      id: '/_layout/work-centers'
+      path: '/work-centers'
+      fullPath: '/work-centers'
+      preLoaderRoute: typeof LayoutWorkCentersRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/stock': {
       id: '/_layout/stock'
       path: '/stock'
@@ -308,13 +315,6 @@ declare module '@tanstack/react-router' {
       path: '/printers'
       fullPath: '/printers'
       preLoaderRoute: typeof LayoutPrintersRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/machines': {
-      id: '/_layout/machines'
-      path: '/machines'
-      fullPath: '/machines'
-      preLoaderRoute: typeof LayoutMachinesRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/logs': {
@@ -381,11 +381,11 @@ interface LayoutRouteChildren {
   LayoutClientsRoute: typeof LayoutClientsRoute
   LayoutEmployeesRoute: typeof LayoutEmployeesRoute
   LayoutLogsRoute: typeof LayoutLogsRoute
-  LayoutMachinesRoute: typeof LayoutMachinesRoute
   LayoutPrintersRoute: typeof LayoutPrintersRoute
   LayoutReportsRoute: typeof LayoutReportsRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutStockRoute: typeof LayoutStockRoute
+  LayoutWorkCentersRoute: typeof LayoutWorkCentersRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
   LayoutAnketaOrderIdRoute: typeof LayoutAnketaOrderIdRoute
   LayoutCutmapOrderIdRoute: typeof LayoutCutmapOrderIdRoute
@@ -398,11 +398,11 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutClientsRoute: LayoutClientsRoute,
   LayoutEmployeesRoute: LayoutEmployeesRoute,
   LayoutLogsRoute: LayoutLogsRoute,
-  LayoutMachinesRoute: LayoutMachinesRoute,
   LayoutPrintersRoute: LayoutPrintersRoute,
   LayoutReportsRoute: LayoutReportsRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutStockRoute: LayoutStockRoute,
+  LayoutWorkCentersRoute: LayoutWorkCentersRoute,
   LayoutIndexRoute: LayoutIndexRoute,
   LayoutAnketaOrderIdRoute: LayoutAnketaOrderIdRoute,
   LayoutCutmapOrderIdRoute: LayoutCutmapOrderIdRoute,

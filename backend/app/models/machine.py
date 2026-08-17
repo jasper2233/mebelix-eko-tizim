@@ -6,7 +6,12 @@ from .enums import CapacityUnit, MachineStatus, db_enum
 
 
 class Machine(BaseModel):
-    """Concrete equipment bound to a post (TZ 4.3).
+    """Work center bound to a post (TZ 4.3) — UI da "Ish markazi".
+
+    Not necessarily a machine tool: ARRA/KROMKA/OVAL/PRISADKA/ROVER have real
+    equipment, STOLYARKA/BOYOQ/UPAKOVKA/TMO are crew + monoblok only. The class
+    and table keep the legacy `machine` name because scan/work_session/part_route/
+    user/bridge_agent all carry `machine_id` FKs.
 
     Terminal/TABLO context comes from user.machine_id; ip_address is informational only.
     """

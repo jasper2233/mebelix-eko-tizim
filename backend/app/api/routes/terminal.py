@@ -78,8 +78,8 @@ def _scan_error(code: str, message: str) -> HTTPException:
 
 
 async def _terminal_ctx(db: SessionDep, user: TerminalUser) -> tuple[Machine, Post]:
-    """Stanok + post. Faqat shu ikkisiga muhtoj route'larga qo'yiladi — router darajasida EMAS:
-    yorliq/fayl route'lari stanoksiz terminal foydalanuvchisi uchun ham ishlashi kerak."""
+    """Ish markazi + post. Faqat shu ikkisiga muhtoj route'larga qo'yiladi — router darajasida EMAS:
+    yorliq/fayl route'lari ish markazisiz terminal foydalanuvchisi uchun ham ishlashi kerak."""
     try:
         return await resolve_terminal(db, user)
     except ScanRejected as exc:
@@ -252,7 +252,7 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
                 PartRoute.post_id == post.id,
                 PartRoute.is_enabled == True,  # noqa: E712
                 PartRoute.is_deleted == False,  # noqa: E712
-                # boshqa stanokka biriktirilgan yo'nalishlar bu terminalda ko'rinmasin (/tasks bilan bir xil)
+                # boshqa ish markaziga biriktirilgan yo'nalishlar bu terminalda ko'rinmasin (/tasks bilan bir xil)
                 (PartRoute.machine_id == machine.id) | (PartRoute.machine_id.is_(None)),
             )
             .group_by(Order.id)
@@ -444,7 +444,7 @@ async def resolve_terminal_qr(db: SessionDep, user: TerminalUser, qr_text: str) 
 async def _post_route_rows(
     db: SessionDep, order_id: int, post_id: int, machine_id: int
 ) -> Sequence[Row[tuple[PartRoute, Part, str]]]:
-    """Buyurtmaning shu post(+stanok)dagi marshrutlari: (PartRoute, Part, product_code) qatorlar.
+    """Buyurtmaning shu post(+ish markazi)dagi marshrutlari: (PartRoute, Part, product_code) qatorlar.
     KROMKA va CNC sahifalari bir xil so'rovni ishlatadi."""
     return (
         await db.execute(
@@ -883,7 +883,7 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     if instance is None or instance.is_deleted:
         raise NotFoundException("Nusxa topilmadi.")
 
-    # Post aniqlanmasa (stanoksiz terminal) tekshiruvsiz chiqadi — yorliq ko'rish uchun
+    # Post aniqlanmasa (ish markazi yo'q terminal) tekshiruvsiz chiqadi — yorliq ko'rish uchun
     try:
         _, print_post = await resolve_terminal(db, user)
     except ScanRejected:
@@ -936,7 +936,7 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     # hamma joyda (total_done, TABLO, ish haqi, tartib nazorati) bitta bo'lsin.
     # Rad etilsa (oldingi bosqich tugamagan) chek baribir chiqqan bo'ladi — operator
     # keyin qo'lda skan bilan yakunlaydi.
-    # Post aniqlanmasa (stanok biriktirilmagan terminal) chek baribir chiqqan
+    # Post aniqlanmasa (ish markazi biriktirilmagan terminal) chek baribir chiqqan
     # bo'ladi — bu yerda faqat avto-skan o'tkazib yuboriladi. Ilgari himoyasiz edi
     # va chop etish so'rovi 500 bilan tugardi.
     if print_post is None:

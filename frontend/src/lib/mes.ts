@@ -151,7 +151,7 @@ export const isAdmin = (u?: RoleUser | null) =>
 /** Boshqaruv sahifalari (mijozlar, hodimlar, hisobotlar): admin + manager + direktor */
 export const isManagement = (u?: RoleUser | null) =>
   isAdmin(u) || u?.role === "manager" || u?.role === "director"
-/** Ishlab chiqarish sahifalari (buyurtmalar, stanoklar, materiallar): boshqaruv + texnolog */
+/** Ishlab chiqarish sahifalari (buyurtmalar, ish markazlari, ombor): boshqaruv + texnolog */
 export const isProductionStaff = (u?: RoleUser | null) =>
   isManagement(u) || u?.role === "texnolog"
 /** Materiallar ombori — qoldiqni yuritadigan xodim + ofis (u yo'qligida ish
@@ -165,11 +165,11 @@ export const isStockStaff = (u?: RoleUser | null) =>
 export const isStockOnly = (u?: RoleUser | null) =>
   u?.role === "material_omborchi"
 
-// Stanok bog'lami MAJBURIY rollar — qurilma akkauntlari (Admin dialoglarida
+// Ish markazi bog'lami MAJBURIY rollar — qurilma akkauntlari (Admin dialoglarida
 // rol tanlovi, machine_id validatsiyasi va bog'lamni uzish shu ro'yxatdan)
 export const MACHINE_BOUND_ROLES = ["terminal", "tablo"] as const
 
-// Operator rollar — o'z posti terminalini ko'radi (stanok/beyjik shart emas)
+// Operator rollar — o'z posti terminalini ko'radi (ish markazi/beyjik shart emas)
 export const OPERATOR_ROLES = [
   "arrachi",
   "kromkachi",
@@ -199,7 +199,6 @@ export const CAPACITY_UNIT_LABELS: Record<string, string> = {
   meter_per_hour: "m/soat",
   units_per_hour: "dona/soat",
 }
-
 
 // Hamma joyda bir xil: kun.oy.yil (brauzer locale'iga bog'liq emas)
 const p2 = (n: number) => String(n).padStart(2, "0")

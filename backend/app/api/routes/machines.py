@@ -31,7 +31,7 @@ async def create_machine(db: SessionDep, current_user: AdminUser, body: MachineC
         user_id=current_user.id,
         entity_type="machine",
         entity_id=machine.id,
-        message=f"Stanok qo'shildi: {machine.name}",
+        message=f"Ish markazi qo'shildi: {machine.name}",
         ip=client_ip(request),
     )
     await db.commit()
@@ -41,14 +41,14 @@ async def create_machine(db: SessionDep, current_user: AdminUser, body: MachineC
 
 @router.get("/{machine_id}", response_model=MachineRead, operation_id="read_machine")
 async def read_machine(db: SessionDep, _: CurrentUser, machine_id: int) -> Machine:
-    return await crud_machines.get_or_404(db, "Stanok topilmadi.", id=machine_id)
+    return await crud_machines.get_or_404(db, "Ish markazi topilmadi.", id=machine_id)
 
 
 @router.patch("/{machine_id}", response_model=MachineRead, operation_id="update_machine")
 async def update_machine(
     db: SessionDep, current_user: AdminUser, machine_id: int, body: MachineUpdate, request: Request
 ) -> Machine:
-    machine = await crud_machines.get_or_404(db, "Stanok topilmadi.", id=machine_id)
+    machine = await crud_machines.get_or_404(db, "Ish markazi topilmadi.", id=machine_id)
     update_data = body.model_dump(exclude_unset=True)
     if "post_id" in update_data and await crud_posts.get(db, id=update_data["post_id"]) is None:
         raise NotFoundException("Post topilmadi.")
@@ -70,7 +70,7 @@ async def update_machine(
 
 @router.delete("/{machine_id}", response_model=Message, operation_id="delete_machine")
 async def delete_machine(db: SessionDep, current_user: AdminUser, machine_id: int, request: Request) -> Message:
-    machine = await crud_machines.get_or_404(db, "Stanok topilmadi.", id=machine_id)
+    machine = await crud_machines.get_or_404(db, "Ish markazi topilmadi.", id=machine_id)
     log_action(
         db,
         module="machines",
@@ -78,8 +78,8 @@ async def delete_machine(db: SessionDep, current_user: AdminUser, machine_id: in
         user_id=current_user.id,
         entity_type="machine",
         entity_id=machine.id,
-        message=f"Stanok o'chirildi: {machine.name}",
+        message=f"Ish markazi o'chirildi: {machine.name}",
         ip=client_ip(request),
     )
     await crud_machines.delete(db, id=machine_id)
-    return Message(message="Stanok o'chirildi.")
+    return Message(message="Ish markazi o'chirildi.")

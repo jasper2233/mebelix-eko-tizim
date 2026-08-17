@@ -59,7 +59,7 @@ const CATEGORIES: { key: string; label: string }[] = [
   { key: "employees", label: "Hodimlar" },
   { key: "clients", label: "Mijozlar" },
   { key: "materials", label: "Materiallar" },
-  { key: "machines", label: "Stanoklar" },
+  { key: "machines", label: "Ish markazlari" },
   { key: "posts", label: "Postlar" },
 ]
 const CATEGORY_LABELS = Object.fromEntries(
@@ -78,7 +78,7 @@ const ACTION_LABELS: Record<string, string> = {
   deleted: "o'chirildi",
   started: "boshlandi",
   ended: "tugadi",
-  machine_linked: "stanok bog'landi",
+  machine_linked: "ish markazi bog'landi",
   can_print_changed: "chek chiqarish o'zgardi",
   scx_regenerated: "SCX qayta yaratildi",
   matrix_edited: "matritsa tahrirlandi",
@@ -91,7 +91,7 @@ const ACTION_LABELS: Record<string, string> = {
   delivered: "topshirildi",
   confirmed: "tasdiqlandi",
   production_started: "ishlab chiqarishga uzatildi",
-  machines_assigned: "stanoklar biriktirildi",
+  machines_assigned: "ish markazlari biriktirildi",
   project_uploaded: "fayl yuklandi",
 }
 
@@ -119,7 +119,7 @@ function LogsPage() {
   const total = data?.count ?? 0
   const pages = Math.max(1, Math.ceil(total / PAGE))
 
-  // Dialogda meta'dagi raw ID'lar o'rniga nomlar: post/stanok/agent lug'atlari
+  // Dialogda meta'dagi raw ID'lar o'rniga nomlar: post/ish markazi/agent lug'atlari
   // (kichik ro'yxatlar, keshda turadi — har ochilishda so'rov ketmaydi)
   const { data: posts } = useQuery(getPostsQueryOptions())
   const { data: machines } = useQuery(getMachinesQueryOptions())
@@ -130,7 +130,7 @@ function LogsPage() {
   const postName = (id: number) =>
     posts?.find((p) => p.id === id)?.name ?? `post #${id}`
   const machineName = (id: number) =>
-    machines?.find((m) => m.id === id)?.name ?? `stanok #${id}`
+    machines?.find((m) => m.id === id)?.name ?? `ish markazi #${id}`
   const agentName = (id: number) =>
     agents?.find((a) => a.id === id)?.name ?? `agent #${id}`
 
@@ -304,7 +304,7 @@ function LogsPage() {
                   )}
                   {detail.meta?.machine_id != null && (
                     <>
-                      <span>Stanok:</span>
+                      <span>Ish markazi:</span>
                       <span className="text-foreground">
                         {machineName(Number(detail.meta.machine_id))}
                       </span>

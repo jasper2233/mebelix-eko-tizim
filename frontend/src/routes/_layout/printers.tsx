@@ -133,7 +133,7 @@ function PrintersPage() {
                 <TableHead>Nomi</TableHead>
                 <TableHead>Holat</TableHead>
                 <TableHead>Ulanish kodi</TableHead>
-                <TableHead>Stanok (skan-forvard)</TableHead>
+                <TableHead>Ish markazi (skan-forvard)</TableHead>
                 <TableHead>Chek chiqarish</TableHead>
                 <TableHead>Oxirgi ulanish</TableHead>
                 <TableHead className="w-24" />
@@ -158,7 +158,7 @@ function PrintersPage() {
 function AgentRow({ agent }: { agent: BridgeAgentRead }) {
   const queryClient = useQueryClient()
   const [confirm, setConfirm] = useState<"code" | "delete" | null>(null)
-  // Stanok almashinuvi tasdiq bilan: noto'g'ri tanlov keyingi barcha skan-forvard
+  // Ish markazi almashinuvi tasdiq bilan: noto'g'ri tanlov keyingi barcha skan-forvard
   // skanlarini BOSHQA post nomidan yozadi — jimgina o'tib ketmasin
   const [pendingMachine, setPendingMachine] = useState<number | null | "unset">(
     "unset",
@@ -183,7 +183,7 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
     },
   })
 
-  const linkCb = cb("Stanok bog'landi")
+  const linkCb = cb("Ish markazi bog'landi")
   const linkMachine = useMutation({
     mutationFn: (machineId: number | null) =>
       BridgeAgentsService.updateBridgeAgent({
@@ -281,11 +281,11 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
           title={
             pendingName
               ? `${pendingName} stanogiga bog'lansinmi?`
-              : "Stanok bog'lanishi olib tashlansinmi?"
+              : "Ish markazi bog'lami olib tashlansinmi?"
           }
           description={
             pendingName
-              ? `${agent.name} kompyuteridagi skaner o'qigan QR endi "${pendingName}" nomidan yoziladi. Noto'g'ri stanok tanlansa skanlar boshqa postga yozilib ketadi.`
+              ? `${agent.name} kompyuteridagi skaner o'qigan QR endi "${pendingName}" nomidan yoziladi. Noto'g'ri ish markazi tanlansa skanlar boshqa postga yozilib ketadi.`
               : `${agent.name} skan-forvardi o'chadi — skaner o'qigan QR MES'ga yozilmaydi (Nanxing'da ochilaveradi).`
           }
           confirmText={pendingName ? "Bog'lash" : "Olib tashlash"}

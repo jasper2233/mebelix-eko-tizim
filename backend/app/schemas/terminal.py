@@ -50,7 +50,7 @@ class TerminalContext(BaseModel):
     post_id: int
     post_code: PostCode
     post_name: str
-    #: Brigada — stanokdagi OCHIQ smenalar (ARRA da ikki kishi birga ishlaydi).
+    #: Brigada — ish markazidagi OCHIQ smenalar (ARRA da ikki kishi birga ishlaydi).
     #: Bo'sh ro'yxat: hali hech kim smenani boshlamagan.
     crew: list[SessionRead] = []
 

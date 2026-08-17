@@ -154,16 +154,16 @@ async def _post_machine(db: SessionDep, post: Post) -> Machine:
         )
     ).scalar_one_or_none()
     if machine is None:
-        raise UnauthorizedException(f"{post.name} postida stanok yo'q. Admin stanok qo'shishi kerak.")
+        raise UnauthorizedException(f"{post.name} postida ish markazi yo'q. Admin ish markazi qo'shishi kerak.")
     return machine
 
 
 async def _terminal_user(db: SessionDep, machine: Machine, post: Post) -> User:
     """Kirish qaysi hisob nomidan yoziladi.
 
-    Ikki manba, shu tartibda: shu stanokka biriktirilgan TERMINAL hisobi, bo'lmasa
+    Ikki manba, shu tartibda: shu ish markaziga biriktirilgan TERMINAL hisobi, bo'lmasa
     post rolidagi hisob. Ikkalasi ham `resolve_terminal` bilan BIR XIL postga
-    olib keladi (biri stanok orqali, ikkinchisi rol orqali) — aks holda operator
+    olib keladi (biri ish markazi orqali, ikkinchisi rol orqali) — aks holda operator
     boshqa postning ekranida paydo bo'lardi.
 
     Hisob hech qaysi hodimni bildirmaydi — KIM ishlayotgani beyjik ochgan smenada.

@@ -75,7 +75,7 @@ export function EditUser({ user, onSuccess }: EditUserProps) {
       phone: data.phone,
       name: data.name,
       role: data.role,
-      // Stanok faqat terminal/tablo uchun; boshqa rolga o'tishda bog'lam uziladi
+      // Ish markazi faqat terminal/tablo uchun; boshqa rolga o'tishda bog'lam uziladi
       machine_id:
         isMachineBoundRole(data.role) && data.machine_id
           ? Number(data.machine_id)

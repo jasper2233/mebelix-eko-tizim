@@ -56,11 +56,11 @@ import {
   getPostsQueryOptions,
 } from "@/queries/mes"
 
-export const Route = createFileRoute("/_layout/machines")({
+export const Route = createFileRoute("/_layout/work-centers")({
   component: MachinesPage,
   // Sidebar ko'rinishi bilan bir xil rollar to'plami (lib/mes)
   beforeLoad: requireAccess(isProductionStaff),
-  head: () => ({ meta: [{ title: "Stanoklar | MebeliX" }] }),
+  head: () => ({ meta: [{ title: "Ish markazlari | MebeliX" }] }),
 })
 
 function MachinesPage() {
@@ -78,8 +78,8 @@ function MachinesPage() {
   return (
     <div>
       <PageHeader
-        title="Stanoklar"
-        description="Postlar zanjiri bo'yicha jihozlar"
+        title="Ish markazlari"
+        description="Har postdagi ish markazi — smena shu joyda ochiladi"
         actions={admin ? <AddMachine /> : undefined}
       />
       {isLoading ? (
@@ -91,7 +91,7 @@ function MachinesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Stanok</TableHead>
+                <TableHead>Ish markazi</TableHead>
                 <TableHead>Post</TableHead>
                 <TableHead>Holat</TableHead>
               </TableRow>
@@ -119,7 +119,7 @@ function MachinesPage() {
                   )
                 })
               ) : (
-                <EmptyRow colSpan={3}>Stanoklar yo'q.</EmptyRow>
+                <EmptyRow colSpan={3}>Ish markazlari yo'q.</EmptyRow>
               )}
             </TableBody>
           </Table>
@@ -138,7 +138,7 @@ function AddMachine() {
   const [open, setOpen] = useState(false)
   const { data: posts } = useQuery(getPostsQueryOptions())
   const queryClient = useQueryClient()
-  const cb = crudCallbacks(queryClient, ["machines"], "Stanok qo'shildi")
+  const cb = crudCallbacks(queryClient, ["machines"], "Ish markazi qo'shildi")
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -165,12 +165,12 @@ function AddMachine() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Plus /> Stanok qo'shish
+          <Plus /> Ish markazi qo'shish
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Yangi stanok</DialogTitle>
+          <DialogTitle>Yangi ish markazi</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form
@@ -184,7 +184,7 @@ function AddMachine() {
                 <FormItem>
                   <FormLabel>Nomi</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="01 ARRA STANOGI" autoFocus />
+                    <Input {...field} placeholder="01 ARRA" autoFocus />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

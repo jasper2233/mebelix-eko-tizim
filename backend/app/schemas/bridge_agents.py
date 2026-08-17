@@ -15,7 +15,7 @@ class BridgeAgentRead(BaseModel):
     pair_expires_at: datetime | None
     last_seen_at: datetime | None
     created_at: datetime
-    # Skan-forvard: stanok skaneri MES'ga shu stanok nomidan yoziladi
+    # Skan-forvard: stanok skaneri MES'ga shu ish markazi nomidan yoziladi
     machine_id: int | None = None
     machine_name: str | None = None
     # Agent exe versiyasi (oxirgi ulanishdan); null = eski (headersiz) exe
@@ -29,7 +29,7 @@ class BridgeAgentCreate(BaseModel):
 
 
 class BridgeAgentUpdate(BaseModel):
-    """Stanok bog'lami va chek-chiqarish belgisi. can_print=None = tegilmaydi
+    """Ish markazi bog'lami va chek-chiqarish belgisi. can_print=None = tegilmaydi
     (machine_id'da None "olib tashlash" degani, shuning uchun sentinel farqli)."""
 
     machine_id: int | None = None
