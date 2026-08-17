@@ -22,9 +22,9 @@ const sectionTitles: Record<string, string> = {
 }
 
 /** Materiallar omborchisi kira oladigan yagona sahifalar. Qolgan hamma joydan
- * `/ombor` ga qaytariladi, shuning uchun menyuda ham ular ko'rsatilmaydi
+ * `/stock` ga qaytariladi, shuning uchun menyuda ham ular ko'rsatilmaydi
  * (`isStockOnly`, AppSidebar). */
-const STOCK_ONLY_PATHS = ["/ombor", "/settings"]
+const STOCK_ONLY_PATHS = ["/stock", "/settings"]
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
@@ -37,7 +37,7 @@ export const Route = createFileRoute("/_layout")({
     // Materiallar omborchisi admin panelda faqat bitta sahifani ko'radi —
     // bosh sahifadagi hisobotlar unga yopiq, ya'ni u yerda bo'sh ekran chiqardi.
     //
-    // PATHNAME TEKSHIRUVI SHART: `/ombor` ham SHU layout ostida, ya'ni unga
+    // PATHNAME TEKSHIRUVI SHART: `/stock` ham SHU layout ostida, ya'ni unga
     // o'tish yana shu `beforeLoad` ni ishga tushiradi. Tekshiruvsiz bu cheksiz
     // redirect halqasi bo'lib, sahifa oq qolardi va renderer qotardi.
     // `terminal`/`tablo` da bunday muammo yo'q — ular layoutdan TASHQARIDA.
@@ -48,7 +48,7 @@ export const Route = createFileRoute("/_layout")({
       me.role === "material_omborchi" &&
       !STOCK_ONLY_PATHS.some((p) => location.pathname.startsWith(p))
     )
-      throw redirect({ to: "/ombor" })
+      throw redirect({ to: "/stock" })
   },
 })
 

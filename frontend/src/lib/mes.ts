@@ -159,7 +159,7 @@ export const isProductionStaff = (u?: RoleUser | null) =>
  * qiladi va monoblokda ishlaydi, bu esa boshqa odam va boshqa joy. */
 export const isStockStaff = (u?: RoleUser | null) =>
   isProductionStaff(u) || isStockOnly(u)
-/** FAQAT omborni ko'radigan rol. `_layout` uni kirishda `/ombor` ga yuboradi,
+/** FAQAT omborni ko'radigan rol. `_layout` uni kirishda `/stock` ga yuboradi,
  * ya'ni menyudagi boshqa hamma narsa u uchun boshi berk ko'cha: bosilsa
  * qaytarib yuboriladi. Shuning uchun ular ro'yxatdan ham olib tashlanadi. */
 export const isStockOnly = (u?: RoleUser | null) =>

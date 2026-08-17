@@ -14,10 +14,10 @@ import { Route as TabloRouteImport } from './routes/tablo'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
+import { Route as LayoutStockRouteImport } from './routes/_layout/stock'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutReportsRouteImport } from './routes/_layout/reports'
 import { Route as LayoutPrintersRouteImport } from './routes/_layout/printers'
-import { Route as LayoutOmborRouteImport } from './routes/_layout/ombor'
 import { Route as LayoutMaterialsRouteImport } from './routes/_layout/materials'
 import { Route as LayoutMachinesRouteImport } from './routes/_layout/machines'
 import { Route as LayoutLogsRouteImport } from './routes/_layout/logs'
@@ -53,6 +53,11 @@ const LayoutIndexRoute = LayoutIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutStockRoute = LayoutStockRouteImport.update({
+  id: '/stock',
+  path: '/stock',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -66,11 +71,6 @@ const LayoutReportsRoute = LayoutReportsRouteImport.update({
 const LayoutPrintersRoute = LayoutPrintersRouteImport.update({
   id: '/printers',
   path: '/printers',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutOmborRoute = LayoutOmborRouteImport.update({
-  id: '/ombor',
-  path: '/ombor',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutMaterialsRoute = LayoutMaterialsRouteImport.update({
@@ -135,10 +135,10 @@ export interface FileRoutesByFullPath {
   '/logs': typeof LayoutLogsRoute
   '/machines': typeof LayoutMachinesRoute
   '/materials': typeof LayoutMaterialsRoute
-  '/ombor': typeof LayoutOmborRoute
   '/printers': typeof LayoutPrintersRoute
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
+  '/stock': typeof LayoutStockRoute
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
@@ -154,10 +154,10 @@ export interface FileRoutesByTo {
   '/logs': typeof LayoutLogsRoute
   '/machines': typeof LayoutMachinesRoute
   '/materials': typeof LayoutMaterialsRoute
-  '/ombor': typeof LayoutOmborRoute
   '/printers': typeof LayoutPrintersRoute
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
+  '/stock': typeof LayoutStockRoute
   '/': typeof LayoutIndexRoute
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
@@ -176,10 +176,10 @@ export interface FileRoutesById {
   '/_layout/logs': typeof LayoutLogsRoute
   '/_layout/machines': typeof LayoutMachinesRoute
   '/_layout/materials': typeof LayoutMaterialsRoute
-  '/_layout/ombor': typeof LayoutOmborRoute
   '/_layout/printers': typeof LayoutPrintersRoute
   '/_layout/reports': typeof LayoutReportsRoute
   '/_layout/settings': typeof LayoutSettingsRoute
+  '/_layout/stock': typeof LayoutStockRoute
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/_layout/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
@@ -199,10 +199,10 @@ export interface FileRouteTypes {
     | '/logs'
     | '/machines'
     | '/materials'
-    | '/ombor'
     | '/printers'
     | '/reports'
     | '/settings'
+    | '/stock'
     | '/anketa/$orderId'
     | '/cutmap/$orderId'
     | '/orders/$orderId'
@@ -218,10 +218,10 @@ export interface FileRouteTypes {
     | '/logs'
     | '/machines'
     | '/materials'
-    | '/ombor'
     | '/printers'
     | '/reports'
     | '/settings'
+    | '/stock'
     | '/'
     | '/anketa/$orderId'
     | '/cutmap/$orderId'
@@ -239,10 +239,10 @@ export interface FileRouteTypes {
     | '/_layout/logs'
     | '/_layout/machines'
     | '/_layout/materials'
-    | '/_layout/ombor'
     | '/_layout/printers'
     | '/_layout/reports'
     | '/_layout/settings'
+    | '/_layout/stock'
     | '/_layout/'
     | '/_layout/anketa/$orderId'
     | '/_layout/cutmap/$orderId'
@@ -294,6 +294,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutIndexRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/stock': {
+      id: '/_layout/stock'
+      path: '/stock'
+      fullPath: '/stock'
+      preLoaderRoute: typeof LayoutStockRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/settings': {
       id: '/_layout/settings'
       path: '/settings'
@@ -313,13 +320,6 @@ declare module '@tanstack/react-router' {
       path: '/printers'
       fullPath: '/printers'
       preLoaderRoute: typeof LayoutPrintersRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/ombor': {
-      id: '/_layout/ombor'
-      path: '/ombor'
-      fullPath: '/ombor'
-      preLoaderRoute: typeof LayoutOmborRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/materials': {
@@ -402,10 +402,10 @@ interface LayoutRouteChildren {
   LayoutLogsRoute: typeof LayoutLogsRoute
   LayoutMachinesRoute: typeof LayoutMachinesRoute
   LayoutMaterialsRoute: typeof LayoutMaterialsRoute
-  LayoutOmborRoute: typeof LayoutOmborRoute
   LayoutPrintersRoute: typeof LayoutPrintersRoute
   LayoutReportsRoute: typeof LayoutReportsRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
+  LayoutStockRoute: typeof LayoutStockRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
   LayoutAnketaOrderIdRoute: typeof LayoutAnketaOrderIdRoute
   LayoutCutmapOrderIdRoute: typeof LayoutCutmapOrderIdRoute
@@ -420,10 +420,10 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutLogsRoute: LayoutLogsRoute,
   LayoutMachinesRoute: LayoutMachinesRoute,
   LayoutMaterialsRoute: LayoutMaterialsRoute,
-  LayoutOmborRoute: LayoutOmborRoute,
   LayoutPrintersRoute: LayoutPrintersRoute,
   LayoutReportsRoute: LayoutReportsRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
+  LayoutStockRoute: LayoutStockRoute,
   LayoutIndexRoute: LayoutIndexRoute,
   LayoutAnketaOrderIdRoute: LayoutAnketaOrderIdRoute,
   LayoutCutmapOrderIdRoute: LayoutCutmapOrderIdRoute,

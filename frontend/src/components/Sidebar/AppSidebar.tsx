@@ -65,13 +65,18 @@ export const NAV_ITEMS: (Item & {
   },
   {
     icon: Layers,
-    title: "Materiallar",
+    title: "Material katalogi",
     path: "/materials",
     show: isProductionStaff,
   },
   // Materiallar ombori — `/materials` dan AYRIM: u GibLab fayllaridan avtomat
   // to'ladigan ishlab chiqarish katalogi, bu esa omborchi yuritadigan qoldiq
-  { icon: Boxes, title: "Ombor", path: "/ombor", show: isStockStaff },
+  {
+    icon: Boxes,
+    title: "Materiallar ombori",
+    path: "/stock",
+    show: isStockStaff,
+  },
   {
     icon: BarChart3,
     title: "Hisobotlar",

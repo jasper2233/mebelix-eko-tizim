@@ -39,7 +39,7 @@ import {
   getStockSummaryQueryOptions,
 } from "@/queries/mes"
 
-export const Route = createFileRoute("/_layout/ombor")({
+export const Route = createFileRoute("/_layout/stock")({
   component: OmborPage,
   beforeLoad: requireAccess(isStockStaff),
   head: () => ({ meta: [{ title: "Materiallar ombori | MebeliX" }] }),
