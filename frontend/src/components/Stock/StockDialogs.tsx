@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Plus, Upload } from "lucide-react"
-import { useRef, useState } from "react"
-import { toast } from "sonner"
+import { Plus } from "lucide-react"
+import { useState } from "react"
 import { type StockGroup, type StockItemRead, StockService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { SelectField } from "@/components/Common/SelectField"
@@ -18,7 +17,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { crudCallbacks } from "@/queries/mes"
-import { handleError } from "@/utils"
 import { num, qty } from "./format"
 
 const digits = (v: string) => v.replace(/[^\d.]/g, "")
@@ -363,55 +361,5 @@ export function DeleteItem({
       loading={mutation.isPending}
       onConfirm={() => item && mutation.mutate(item.id)}
     />
-  )
-}
-
-/** Katalogni Excel'dan yuklash — brauzerdan, serverga kirmasdan.
- *
- * Buyruq qatoridagi `import_stock_catalog` bilan bir xil ish, lekin katalog
- * vaqti-vaqti bilan yangilanadi va har safar server terminaliga kirish real ish
- * emas — tizim boshqa zavodga o'rnatilganda u yerda shell umuman bo'lmaydi.
- *
- * Fayl diskka saqlanmaydi: u bir martalik manba, qoladigan narsa — pozitsiyalar.
- * `qty` faqat YANGI pozitsiyada yoziladi, ya'ni qayta yuklash omborchining
- * qoldig'ini Excel'dagi eski raqamga qaytarmaydi. */
-export function ImportCatalog() {
-  const input = useRef<HTMLInputElement>(null)
-  const queryClient = useQueryClient()
-  const mutation = useMutation({
-    mutationFn: (file: File) =>
-      // Generator `file` ni `string` deb chiqaradi (OpenAPI binary format) —
-      // loyihadagi boshqa yuklashlar ham xuddi shunday o'giradi
-      StockService.importStockCatalog({
-        formData: { file: file as unknown as string },
-      }),
-    onSuccess: (r) => toast.success(r.message),
-    onError: handleError,
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["stock"] }),
-  })
-
-  return (
-    <>
-      <input
-        ref={input}
-        type="file"
-        accept=".xlsx,.xlsm"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          // Qiymat tozalanadi: bir xil fayl ketma-ket ikki marta tanlanganda
-          // ham `change` hodisasi ishlasin
-          e.target.value = ""
-          if (file) mutation.mutate(file)
-        }}
-      />
-      <LoadingButton
-        variant="outline"
-        loading={mutation.isPending}
-        onClick={() => input.current?.click()}
-      >
-        <Upload /> Excel'dan yuklash
-      </LoadingButton>
-    </>
   )
 }

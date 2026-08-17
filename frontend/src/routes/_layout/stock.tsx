@@ -13,11 +13,7 @@ import { num, qty, uzs } from "@/components/Stock/format"
 import { MoveDialog } from "@/components/Stock/MoveDialog"
 import { SaleDialog } from "@/components/Stock/SaleDialog"
 import { SalesView } from "@/components/Stock/SalesView"
-import {
-  DeleteItem,
-  ImportCatalog,
-  ItemDialog,
-} from "@/components/Stock/StockDialogs"
+import { DeleteItem, ItemDialog } from "@/components/Stock/StockDialogs"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -120,14 +116,7 @@ function StockPage() {
       <PageHeader
         title="Materiallar ombori"
         description="Xomashyo va furnitura qoldig'i — TMO dan ayrim"
-        actions={
-          canEdit ? (
-            <div className="flex gap-2">
-              <ImportCatalog />
-              <ItemDialog groups={groups ?? []} />
-            </div>
-          ) : undefined
-        }
+        actions={canEdit ? <ItemDialog groups={groups ?? []} /> : undefined}
       />
 
       <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
@@ -140,27 +129,15 @@ function StockPage() {
       {view === "sotuv" && <SalesView />}
 
       <div hidden={view !== "katalog"}>
-        {/* KUNNING ISHI bitta jumlada. Ilgari uchta teng karta turardi
-            (pozitsiya / tugayapti / qoldiq qiymati) — ular 85px joy olib,
-            ma'lumotni pastga surardi va faqat bittasi harakatga chorlardi.
-            Endi u jumla O'ZI filtr: "Tugayaptilar" degan alohida tugma ham
-            aynan shu ishni qilardi, ikkitasi ortiqcha edi. */}
-        <button
-          type="button"
-          // Yetishmovchilik yo'q bo'lsa bosilmaydi: filtr bo'sh jadval
-          // ko'rsatib, foydalanuvchini boshi berk ko'chaga olib borardi
-          disabled={!summary?.low}
-          onClick={() => {
-            setLow(!low)
-            setPage(0)
-          }}
-          aria-pressed={low}
-          className={`mb-4 flex w-full flex-wrap items-baseline gap-x-3 gap-y-1 rounded-lg border px-4 py-3 text-left transition-colors ${
-            low
-              ? "border-(--brand-gold-deep) bg-(--brand-gold)/10"
-              : "bg-card hover:border-(--brand-gold)"
-          }`}
-        >
+        {/* KUNNING ISHI: yo'lak HOLATNI xabar qiladi, filtrni esa ichidagi
+            NOMLANGAN TUGMA qo'llaydi.
+
+            Ilgari yo'lakning O'ZI tugma edi va bu noto'g'ri yechim edi: statistika
+            bosiladigan ekanini hech narsa aytmasdi (`→` zaif ishora), filtrlar esa
+            ilovada boshqa joyda — filtr qatorida — turadi, ya'ni ko'z izlaydigan
+            joyda emasdi. Ustiga bitta element ikkita ish bajarardi: holatni ham
+            xabar qilardi, filtrni ham qo'llardi. */}
+        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border bg-card px-4 py-3">
           {summary?.low ? (
             <>
               <span className="num text-3xl font-black text-(--brand-gold-deep)">
@@ -169,11 +146,18 @@ function StockPage() {
               <span className="text-lg font-semibold">
                 pozitsiya minimal zaxiradan past
               </span>
-              {/* Ko'rsatkich o'rniga strelka: "bosing" degan ko'rsatma
-                  tugmaning o'zi aytishi kerak bo'lgan narsani takrorlardi */}
-              <span aria-hidden className="text-lg text-(--brand-gold-deep)">
-                {low ? "×" : "→"}
-              </span>
+              {/* Tugma KEYINGI NATIJANI aytadi, holatni emas — foydalanuvchi
+                  bosishdan oldin nima bo'lishini biladi */}
+              <Button
+                variant={low ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setLow(!low)
+                  setPage(0)
+                }}
+              >
+                {low ? "Hammasini ko'rsatish" : "Faqat shularni ko'rsatish"}
+              </Button>
             </>
           ) : (
             <span className="text-lg font-semibold">
@@ -198,7 +182,7 @@ function StockPage() {
               ))}
             </span>
           )}
-        </button>
+        </div>
 
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <Tabs
@@ -375,7 +359,7 @@ function StockPage() {
                   <EmptyRow colSpan={5}>
                     {debounced || group || low
                       ? "Shu shartga mos pozitsiya yo'q."
-                      : "Katalog bo'sh — tepadagi \"Excel'dan yuklash\" tugmasi bilan boshlang."}
+                      : "Katalog bo'sh — \"Pozitsiya qo'shish\" bilan boshlang."}
                   </EmptyRow>
                 )}
               </TableBody>
