@@ -300,52 +300,10 @@ export type MachineUpdate = {
     status?: (MachineStatus | null);
 };
 
-export type MaterialCreate = {
-    name: string;
-    code?: (string | null);
-    type: MaterialType;
-    thickness?: (number | null);
-    width?: (number | null);
-    length?: (number | null);
-    default_supplier?: (string | null);
-    price_per_unit?: (number | string | null);
-    color?: (string | null);
-    glossiness?: (string | null);
-};
-
-export type MaterialRead = {
-    id: number;
-    name: string;
-    code: (string | null);
-    type: MaterialType;
-    thickness: (number | null);
-    width: (number | null);
-    length: (number | null);
-    default_supplier: (string | null);
-    price_per_unit: (string | null);
-    color: (string | null);
-    glossiness: (string | null);
-    created_at: string;
-};
-
 export type MaterialsReport = {
     date_from: string;
     date_to: string;
     rows: Array<MaterialUsageRow>;
-};
-
-export type MaterialType = 'sheet' | 'band' | 'hardware';
-
-export type MaterialUpdate = {
-    name?: (string | null);
-    code?: (string | null);
-    thickness?: (number | null);
-    width?: (number | null);
-    length?: (number | null);
-    default_supplier?: (string | null);
-    price_per_unit?: (number | string | null);
-    color?: (string | null);
-    glossiness?: (string | null);
 };
 
 /**
@@ -599,11 +557,6 @@ export type Paginated_ClientRead_ = {
 
 export type Paginated_EmployeeRead_ = {
     data: Array<EmployeeRead>;
-    count: number;
-};
-
-export type Paginated_MaterialRead_ = {
-    data: Array<MaterialRead>;
     count: number;
 };
 
@@ -903,7 +856,7 @@ export type StageAgg = {
 export type StockCatalog = 'F' | 'M';
 
 /**
- * Filtr chipi: guruh va undagi pozitsiyalar soni.
+ * Filtr chipi: guruh va undagi tovarlar soni.
  */
 export type StockGroup = {
     catalog: StockCatalog;
@@ -1464,34 +1417,6 @@ export type DeleteMachineData = {
 };
 
 export type DeleteMachineResponse = (Message);
-
-export type ReadMaterialsData = {
-    limit?: number;
-    search?: (string | null);
-    skip?: number;
-    type?: (MaterialType | null);
-};
-
-export type ReadMaterialsResponse = (Paginated_MaterialRead_);
-
-export type CreateMaterialData = {
-    requestBody: MaterialCreate;
-};
-
-export type CreateMaterialResponse = (MaterialRead);
-
-export type UpdateMaterialData = {
-    materialId: number;
-    requestBody: MaterialUpdate;
-};
-
-export type UpdateMaterialResponse = (MaterialRead);
-
-export type DeleteMaterialData = {
-    materialId: number;
-};
-
-export type DeleteMaterialResponse = (Message);
 
 export type CreateOrderData = {
     requestBody: OrderCreate;

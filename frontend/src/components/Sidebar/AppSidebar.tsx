@@ -7,7 +7,6 @@ import {
   Factory,
   Home,
   IdCard,
-  Layers,
   Printer,
   ScrollText,
   Tv,
@@ -61,12 +60,6 @@ export const NAV_ITEMS: (Item & {
     icon: Factory,
     title: "Stanoklar",
     path: "/machines",
-    show: isProductionStaff,
-  },
-  {
-    icon: Layers,
-    title: "Material katalogi",
-    path: "/material-catalog",
     show: isProductionStaff,
   },
   // Materiallar ombori — `/materials` dan AYRIM: u GibLab fayllaridan avtomat

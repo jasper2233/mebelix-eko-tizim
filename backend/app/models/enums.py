@@ -141,12 +141,6 @@ class PaymentMethod(StrEnum):
     TRANSFER = "transfer"
 
 
-class MaterialType(StrEnum):
-    SHEET = "sheet"
-    BAND = "band"
-    HARDWARE = "hardware"
-
-
 class OrderStatus(StrEnum):
     DRAFT = "draft"
     TECHNICAL_REVIEW = "technical_review"

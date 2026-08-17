@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { ReadAuditLogsData, ReadAuditLogsResponse, ReadBridgeAgentsResponse, CreateBridgeAgentData, CreateBridgeAgentResponse, UpdateBridgeAgentData, UpdateBridgeAgentResponse, DeleteBridgeAgentData, DeleteBridgeAgentResponse, RegenerateBridgeCodeData, RegenerateBridgeCodeResponse, PairBridgeAgentData, PairBridgeAgentResponse, BridgeScanData, BridgeScanResponse, ReadClientsData, ReadClientsResponse, CreateClientData, CreateClientResponse, ReadClientData, ReadClientResponse, UpdateClientData, UpdateClientResponse, DeleteClientData, DeleteClientResponse, ReadEmployeesData, ReadEmployeesResponse, CreateEmployeeData, CreateEmployeeResponse, ReadEmployeeData, ReadEmployeeResponse, UpdateEmployeeData, UpdateEmployeeResponse, DeleteEmployeeData, DeleteEmployeeResponse, RegenerateBadgeData, RegenerateBadgeResponse, PrintEmployeeBadgeData, PrintEmployeeBadgeResponse, HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, LoginWithBadgeData, LoginWithBadgeResponse, RefreshAccessTokenResponse, LogoutResponse, ReadMachinesResponse, CreateMachineData, CreateMachineResponse, ReadMachineData, ReadMachineResponse, UpdateMachineData, UpdateMachineResponse, DeleteMachineData, DeleteMachineResponse, ReadMaterialsData, ReadMaterialsResponse, CreateMaterialData, CreateMaterialResponse, UpdateMaterialData, UpdateMaterialResponse, DeleteMaterialData, DeleteMaterialResponse, CreateOrderData, CreateOrderResponse, ReadOrdersData, ReadOrdersResponse, ReadOrderStatusCountsResponse, ReadOrderData, ReadOrderResponse, UpdateOrderData, UpdateOrderResponse, SaveOrderSurveyData, SaveOrderSurveyResponse, UploadRoomPhotoData, UploadRoomPhotoResponse, DeleteRoomPhotoData, DeleteRoomPhotoResponse, CancelOrderData, CancelOrderResponse, DeliverOrderData, DeliverOrderResponse, ReadOrderMatrixData, ReadOrderMatrixResponse, EditOrderMatrixData, EditOrderMatrixResponse, AssignOrderMachinesData, AssignOrderMachinesResponse, ConfirmOrderData, ConfirmOrderResponse, StartOrderProductionData, StartOrderProductionResponse, UploadOrderProjectData, UploadOrderProjectResponse, DownloadOrderScxZipData, DownloadOrderScxZipResponse, RegenerateOrderScxData, RegenerateOrderScxResponse, DownloadOrderFileData, DownloadOrderFileResponse, ReadOrderCutmapData, ReadOrderCutmapResponse, ReadUpakovkaOrderData, ReadUpakovkaOrderResponse, CreatePachkaData, CreatePachkaResponse, ScanIntoPachkaData, ScanIntoPachkaResponse, RemoveFromPachkaData, RemoveFromPachkaResponse, ClosePachkaData, ClosePachkaResponse, ReadPostsResponse, UpdatePostData, UpdatePostResponse, ReportProductivityData, ReportProductivityResponse, ReportOrdersData, ReportOrdersResponse, ReportMaterialsData, ReportMaterialsResponse, ReportDashboardResponse, RecordScanData, RecordScanResponse, CancelScanData, CancelScanResponse, ReadStockItemsData, ReadStockItemsResponse, CreateStockItemData, CreateStockItemResponse, ReadStockSummaryResponse, ReadStockGroupsResponse, UpdateStockItemData, UpdateStockItemResponse, DeleteStockItemData, DeleteStockItemResponse, MoveStockItemData, MoveStockItemResponse, ReadStockMovesData, ReadStockMovesResponse, CreateSaleData, CreateSaleResponse, ReadSalesData, ReadSalesResponse, ReadSalesSummaryResponse, ReadSaleData, ReadSaleResponse, AddSalePaymentData, AddSalePaymentResponse, ReadTabloMatrixResponse, ReadTabloOrderData, ReadTabloOrderResponse, ReadTerminalContextResponse, ReadTerminalEmployeesResponse, StartTerminalSessionData, StartTerminalSessionResponse, EndTerminalSessionData, EndTerminalSessionResponse, ReadTerminalOrdersResponse, ResolveTerminalQrData, ResolveTerminalQrResponse, ReadTerminalKromkaData, ReadTerminalKromkaResponse, ReadTerminalPrisadkaData, ReadTerminalPrisadkaResponse, ReadTerminalCutmapData, ReadTerminalCutmapResponse, ReadTerminalPostQueueData, ReadTerminalPostQueueResponse, PrintInstanceLabelData, PrintInstanceLabelResponse, CancelInstanceLabelData, CancelInstanceLabelResponse, RenderInstanceLabelData, RenderInstanceLabelResponse, DownloadTerminalFileData, DownloadTerminalFileResponse, ReadTmoOrderData, ReadTmoOrderResponse, AcceptIntoTmoData, AcceptIntoTmoResponse, ShipPachkaData, ShipPachkaResponse, DeliverTmoOrderData, DeliverTmoOrderResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
+import type { ReadAuditLogsData, ReadAuditLogsResponse, ReadBridgeAgentsResponse, CreateBridgeAgentData, CreateBridgeAgentResponse, UpdateBridgeAgentData, UpdateBridgeAgentResponse, DeleteBridgeAgentData, DeleteBridgeAgentResponse, RegenerateBridgeCodeData, RegenerateBridgeCodeResponse, PairBridgeAgentData, PairBridgeAgentResponse, BridgeScanData, BridgeScanResponse, ReadClientsData, ReadClientsResponse, CreateClientData, CreateClientResponse, ReadClientData, ReadClientResponse, UpdateClientData, UpdateClientResponse, DeleteClientData, DeleteClientResponse, ReadEmployeesData, ReadEmployeesResponse, CreateEmployeeData, CreateEmployeeResponse, ReadEmployeeData, ReadEmployeeResponse, UpdateEmployeeData, UpdateEmployeeResponse, DeleteEmployeeData, DeleteEmployeeResponse, RegenerateBadgeData, RegenerateBadgeResponse, PrintEmployeeBadgeData, PrintEmployeeBadgeResponse, HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, LoginWithBadgeData, LoginWithBadgeResponse, RefreshAccessTokenResponse, LogoutResponse, ReadMachinesResponse, CreateMachineData, CreateMachineResponse, ReadMachineData, ReadMachineResponse, UpdateMachineData, UpdateMachineResponse, DeleteMachineData, DeleteMachineResponse, CreateOrderData, CreateOrderResponse, ReadOrdersData, ReadOrdersResponse, ReadOrderStatusCountsResponse, ReadOrderData, ReadOrderResponse, UpdateOrderData, UpdateOrderResponse, SaveOrderSurveyData, SaveOrderSurveyResponse, UploadRoomPhotoData, UploadRoomPhotoResponse, DeleteRoomPhotoData, DeleteRoomPhotoResponse, CancelOrderData, CancelOrderResponse, DeliverOrderData, DeliverOrderResponse, ReadOrderMatrixData, ReadOrderMatrixResponse, EditOrderMatrixData, EditOrderMatrixResponse, AssignOrderMachinesData, AssignOrderMachinesResponse, ConfirmOrderData, ConfirmOrderResponse, StartOrderProductionData, StartOrderProductionResponse, UploadOrderProjectData, UploadOrderProjectResponse, DownloadOrderScxZipData, DownloadOrderScxZipResponse, RegenerateOrderScxData, RegenerateOrderScxResponse, DownloadOrderFileData, DownloadOrderFileResponse, ReadOrderCutmapData, ReadOrderCutmapResponse, ReadUpakovkaOrderData, ReadUpakovkaOrderResponse, CreatePachkaData, CreatePachkaResponse, ScanIntoPachkaData, ScanIntoPachkaResponse, RemoveFromPachkaData, RemoveFromPachkaResponse, ClosePachkaData, ClosePachkaResponse, ReadPostsResponse, UpdatePostData, UpdatePostResponse, ReportProductivityData, ReportProductivityResponse, ReportOrdersData, ReportOrdersResponse, ReportMaterialsData, ReportMaterialsResponse, ReportDashboardResponse, RecordScanData, RecordScanResponse, CancelScanData, CancelScanResponse, ReadStockItemsData, ReadStockItemsResponse, CreateStockItemData, CreateStockItemResponse, ReadStockSummaryResponse, ReadStockGroupsResponse, UpdateStockItemData, UpdateStockItemResponse, DeleteStockItemData, DeleteStockItemResponse, MoveStockItemData, MoveStockItemResponse, ReadStockMovesData, ReadStockMovesResponse, CreateSaleData, CreateSaleResponse, ReadSalesData, ReadSalesResponse, ReadSalesSummaryResponse, ReadSaleData, ReadSaleResponse, AddSalePaymentData, AddSalePaymentResponse, ReadTabloMatrixResponse, ReadTabloOrderData, ReadTabloOrderResponse, ReadTerminalContextResponse, ReadTerminalEmployeesResponse, StartTerminalSessionData, StartTerminalSessionResponse, EndTerminalSessionData, EndTerminalSessionResponse, ReadTerminalOrdersResponse, ResolveTerminalQrData, ResolveTerminalQrResponse, ReadTerminalKromkaData, ReadTerminalKromkaResponse, ReadTerminalPrisadkaData, ReadTerminalPrisadkaResponse, ReadTerminalCutmapData, ReadTerminalCutmapResponse, ReadTerminalPostQueueData, ReadTerminalPostQueueResponse, PrintInstanceLabelData, PrintInstanceLabelResponse, CancelInstanceLabelData, CancelInstanceLabelResponse, RenderInstanceLabelData, RenderInstanceLabelResponse, DownloadTerminalFileData, DownloadTerminalFileResponse, ReadTmoOrderData, ReadTmoOrderResponse, AcceptIntoTmoData, AcceptIntoTmoResponse, ShipPachkaData, ShipPachkaResponse, DeliverTmoOrderData, DeliverTmoOrderResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
 
 export class AuditService {
     /**
@@ -646,96 +646,6 @@ export class MachinesService {
             url: '/api/v1/machines/{machine_id}',
             path: {
                 machine_id: data.machineId
-            },
-            errors: {
-                422: 'Validation Error'
-            }
-        });
-    }
-}
-
-export class MaterialCatalogService {
-    /**
-     * Read Materials
-     * @param data The data for the request.
-     * @param data.skip
-     * @param data.limit
-     * @param data.search
-     * @param data.type
-     * @returns Paginated_MaterialRead_ Successful Response
-     * @throws ApiError
-     */
-    public static readMaterials(data: ReadMaterialsData = {}): CancelablePromise<ReadMaterialsResponse> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/material-catalog/',
-            query: {
-                skip: data.skip,
-                limit: data.limit,
-                search: data.search,
-                type: data.type
-            },
-            errors: {
-                422: 'Validation Error'
-            }
-        });
-    }
-    
-    /**
-     * Create Material
-     * @param data The data for the request.
-     * @param data.requestBody
-     * @returns MaterialRead Successful Response
-     * @throws ApiError
-     */
-    public static createMaterial(data: CreateMaterialData): CancelablePromise<CreateMaterialResponse> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/v1/material-catalog/',
-            body: data.requestBody,
-            mediaType: 'application/json',
-            errors: {
-                422: 'Validation Error'
-            }
-        });
-    }
-    
-    /**
-     * Update Material
-     * @param data The data for the request.
-     * @param data.materialId
-     * @param data.requestBody
-     * @returns MaterialRead Successful Response
-     * @throws ApiError
-     */
-    public static updateMaterial(data: UpdateMaterialData): CancelablePromise<UpdateMaterialResponse> {
-        return __request(OpenAPI, {
-            method: 'PATCH',
-            url: '/api/v1/material-catalog/{material_id}',
-            path: {
-                material_id: data.materialId
-            },
-            body: data.requestBody,
-            mediaType: 'application/json',
-            errors: {
-                422: 'Validation Error'
-            }
-        });
-    }
-    
-    /**
-     * Delete Material
-     * @param data The data for the request.
-     * @param data.materialId
-     * @returns Message Successful Response
-     * @throws ApiError
-     */
-    public static deleteMaterial(data: DeleteMaterialData): CancelablePromise<DeleteMaterialResponse> {
-        return __request(OpenAPI, {
-            method: 'DELETE',
-            url: '/api/v1/material-catalog/{material_id}',
-            path: {
-                material_id: data.materialId
             },
             errors: {
                 422: 'Validation Error'
@@ -1474,7 +1384,7 @@ export class ScansService {
 export class StockService {
     /**
      * Read Stock Items
-     * Pozitsiyalar ro'yxati. `low=true` — faqat minimal zaxiradan pastga tushganlar.
+     * Tovarlar ro'yxati. `low=true` — faqat minimal zaxiradan pastga tushganlar.
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
@@ -1539,7 +1449,7 @@ export class StockService {
     /**
      * Read Stock Groups
      * Filtr chiplari. Guruhlar katalogdan keladi (`F-RC` = Ruchkalar), ya'ni
-     * alohida jadval kerak emas — 28 ta guruh pozitsiyalarning o'zidan yig'iladi.
+     * alohida jadval kerak emas — 28 ta guruh tovarlarning o'zidan yig'iladi.
      * @returns StockGroup Successful Response
      * @throws ApiError
      */
@@ -1622,7 +1532,7 @@ export class StockService {
     
     /**
      * Read Stock Moves
-     * Ombor harakatlari — pozitsiya kartochkasi (`item_id`) yoki buyurtmaga
+     * Ombor harakatlari — tovar kartochkasi (`item_id`) yoki buyurtmaga
      * berilganlar (`order_id`). Buyurtma sahifasidagi "Ombordan berilgan" bloki
      * shu yerdan oziqlanadi.
      * @param data The data for the request.

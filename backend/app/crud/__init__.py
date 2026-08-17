@@ -1,4 +1,4 @@
-from app.models import BridgeAgent, Client, Employee, Machine, Material, Post, StockItem
+from app.models import BridgeAgent, Client, Employee, Machine, Post, StockItem
 
 from .audit import log_action
 from .base import BaseCRUD
@@ -11,7 +11,6 @@ crud_bridge_agents: BaseCRUD[BridgeAgent] = BaseCRUD(BridgeAgent)
 crud_clients: BaseCRUD[Client] = BaseCRUD(Client)
 crud_employees: BaseCRUD[Employee] = BaseCRUD(Employee)
 crud_machines: BaseCRUD[Machine] = BaseCRUD(Machine)
-crud_materials: BaseCRUD[Material] = BaseCRUD(Material)
 crud_posts: BaseCRUD[Post] = BaseCRUD(Post)
 crud_stock_items: BaseCRUD[StockItem] = BaseCRUD(StockItem)
 
@@ -20,7 +19,6 @@ __all__ = [
     "crud_clients",
     "crud_employees",
     "crud_machines",
-    "crud_materials",
     "crud_orders",
     "crud_posts",
     "crud_stock_items",

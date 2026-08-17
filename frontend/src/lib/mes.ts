@@ -200,11 +200,6 @@ export const CAPACITY_UNIT_LABELS: Record<string, string> = {
   units_per_hour: "dona/soat",
 }
 
-export const MATERIAL_TYPE_LABELS: Record<string, string> = {
-  sheet: "List",
-  band: "Kromka lenta",
-  hardware: "Furnitura",
-}
 
 // Hamma joyda bir xil: kun.oy.yil (brauzer locale'iga bog'liq emas)
 const p2 = (n: number) => String(n).padStart(2, "0")

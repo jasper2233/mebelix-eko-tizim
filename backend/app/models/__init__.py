@@ -3,7 +3,6 @@ from .bridge_agent import BridgeAgent
 from .client import Client
 from .employee import Employee
 from .machine import Machine
-from .material import Material
 from .order import (
     ORDER_FAT_COLUMNS,
     PART_FAT_COLUMNS,
@@ -29,7 +28,6 @@ __all__ = [
     "Client",
     "Employee",
     "Machine",
-    "Material",
     "Payment",
     "Sale",
     "StockItem",

@@ -269,17 +269,6 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 
 ---
 
-## `backend/app/api/routes/materials.py` — Materiallar katalogi
-
-**Maqsadi:** Material spravochnigi (list/kromka). Katalogni texnolog yuritadi.
-
-| Metod | Path | Rol | Izoh |
-|---|---|---|---|
-| GET | `/api/v1/material-catalog/` | login (har qanday) | Paginatsiya; `search` — nom/kod; `type` filtri (`MaterialType`) |
-| POST | `/api/v1/material-catalog/` | `TexnologUser` | 201; nom+tur dublikati bo'lsa 409 |
-| PATCH | `/api/v1/material-catalog/{id}` | `TexnologUser` | Yangilash |
-| DELETE | `/api/v1/material-catalog/{id}` | `TexnologUser` | Soft-delete |
-
 ### `/api/v1/stock` — Materiallar ombori (`routes/stock.py`)
 
 **Maqsadi:** omborchi yuritadigan katalog: kod, qoldiq, minimal zaxira, narx. `Material` dan AYRIM jadval (`stock_item`) — u GibLab `.project` faylidan avtomat to'ladi va har yuklashda qayta yoziladi, ya'ni qoldiq va narx u yerda tura olmaydi; furnitura esa `.project` da umuman uchramaydi. Huquq: `StockUser` — `material_omborchi` (qoldiqni yuritadigan xodim) + manager/texnolog/direktor (u yo'qligida ish to'xtamasin). `omborchi` bu yerda YO'Q: u TMO ning odami, monoblokda ishlaydi.

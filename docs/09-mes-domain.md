@@ -42,10 +42,10 @@ uning bo'lim raqamlari. Barcha fazalar implementatsiya qilingan — alohida `TOD
 |---|---|---|
 | **TMO** | Tayyor Mahsulot Ombori — marshrutning oxirgi posti (`PostCode.TMO`) | "Ombor", "sklad", "tayyor mahsulot skladi" |
 | **Materiallar omborchisi** | `UserRole.MATERIAL_OMBORCHI` — xomashyo va furnitura qoldig'ini yuritadi, oddiy kompyuterda parol bilan. `POST_ROLES` ga KIRMAYDI: posti ham, terminali ham, beyjigi ham yo'q | `omborchi` — u BOSHQA odam: TMO da tayyor mahsulot qabul qiladi, monoblokda beyjik bilan |
-| **Materiallar ombori** | Xomashyo va furnitura qoldig'i — `/stock` sahifasi va `stock_item` jadvali (`b4d1e79c53a8`). `/material-catalog` esa BOSHQA narsa: GibLab `.project` dan avtomat to'ladigan ishlab chiqarish katalogi, qoldiq hisobi emas | "Ombor", "sklad" |
+| **Materiallar ombori** | Xomashyo va furnitura qoldig'i — `/stock` sahifasi va `stock_item` jadvali (`b4d1e79c53a8`). GibLab material katalogi sahifasi olib tashlangan (`d2b71f4c86e9`) — material sarfi `Order.material_usage` dan hisoblanadi, yorliq va kesish xaritasi esa `Part.material_name` dan | "Ombor", "sklad" |
 | **Qadoqlash bo'limi** | `PostCode.UPAKOVKA` — marshrutning oddiy posti | "Upakovka ombori" — bunday ombor yo'q |
 
-Bu MENYU VA URL ga ham tegishli: sahifa "Materiallar ombori" deb ataladi va `/stock` da turadi. Ilgari u "Ombor" / `/ombor` edi — qaysi ombor ekani yo'qolardi (`/materials` esa `/material-catalog` ga o'zgardi — u GibLab katalogi, ombor qoldig'i emas).
+Bu MENYU VA URL ga ham tegishli: sahifa "Materiallar ombori" deb ataladi va `/stock` da turadi. Ilgari u "Ombor" / `/ombor` edi — qaysi ombor ekani yo'qolardi. GibLab material katalogi sahifasi esa BUTUNLAY OLIB TASHLANDI (`d2b71f4c86e9`): u `.project` fayllaridan avtomat to'lardi va hech kim o'qimasdi. Material sarfi `Order.material_usage` dan hisoblanadi, yorliq va kesish xaritasi `Part.material_name` dan.
 
 Yolg'iz "Ombor" va "sklad" ishlatilmaydi: tsexda ikkita ombor bor, nomsiz atalganda
 qaysi biri ekani yo'qoladi. Boshqa tizimning ombori haqida yozilganda kimniki ekani
@@ -61,7 +61,7 @@ aytiladi ("GibLab ombori") — 10-giblab-reference.md dagidek.
 | `csblob.py` | CS `data` blob dekoderi: big-endian, 15B yozuvlar, guillotine daraxt, dims+117 root-o'q sloti, 5.7.4 self-check |
 | `cutmap.py` | Vizual model (5.7.5): sheets/parts/cuts + holes overlay, rot/eW/eH, atxot foydali o'lcham, instance↔katakcha binding; har list uchun root-strip o'lcham zanjiri `dims` (ax/a/b/v, ≥10mm poloslar, GibSaw uslubi) — cutmap JSONida saqlanadi, terminal SVG chizadi |
 | `scx.py` | SCX generatsiya — Nanxing haqiqiy konvensiyasi (Scx-korpusdan, 87 proyekt): Y=Width−y; qirra Face l4/r3/t1/b2; orqa dastur Face=6 bilan bitta faylda; 32mm qo'shqavat 16/Z÷2; freza kompensatsiyalangan yo'l. To'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §7.2 |
-| `ingest.py` | DBga yozish: products/parts/instances/routes/materials/fayllar/cutmap/material_usage; qayta yuklash to'liq almashtiradi, LEKIN qo'lda chizilgan marshrutlar `snapshot_custom_routes`/`restore_custom_routes` bilan saqlanib tiklanadi (quyida); SCX fayl yozish+ro'yxatga olish `write_and_register_scx()` helperda — `/orders/{id}/scx/regenerate` ham shundan foydalanadi |
+| `ingest.py` | DBga yozish: products/parts/instances/routes/fayllar/cutmap/material_usage (`material` jadvali `d2b71f4c86e9` da olib tashlangan); qayta yuklash to'liq almashtiradi, LEKIN qo'lda chizilgan marshrutlar `snapshot_custom_routes`/`restore_custom_routes` bilan saqlanib tiklanadi (quyida); SCX fayl yozish+ro'yxatga olish `write_and_register_scx()` helperda — `/orders/{id}/scx/regenerate` ham shundan foydalanadi |
 
 **O'lcham juftliklari (GibLab veb-ilovasida tekshirilgan).** Faylda har detalning
 uch juft o'lchami bo'ladi: `dl/dw` — tayyor detal (kromka bilan), `jl/jw` — zagotovka

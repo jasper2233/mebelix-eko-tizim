@@ -6,7 +6,6 @@ import {
   ClientsService,
   EmployeesService,
   MachinesService,
-  MaterialCatalogService,
   OrdersService,
   PostsService,
   StockService,
@@ -48,20 +47,6 @@ export const getEmployeesQueryOptions = (search?: string) =>
     queryFn: () =>
       EmployeesService.readEmployees({
         search: search || undefined,
-        limit: PAGE_SIZE,
-      }),
-  })
-
-export const getMaterialsQueryOptions = (
-  search?: string,
-  type?: "sheet" | "band" | "hardware",
-) =>
-  queryOptions({
-    queryKey: ["materials", search ?? "", type ?? ""],
-    queryFn: () =>
-      MaterialCatalogService.readMaterials({
-        search: search || undefined,
-        type,
         limit: PAGE_SIZE,
       }),
   })

@@ -10,8 +10,8 @@ from typing import Any
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Material, Order, OrderFile, Part, PartInstance, PartRoute, Post, Product
-from app.models.enums import FileKind, MaterialType, PostCode, RouteSource
+from app.models import Order, OrderFile, Part, PartInstance, PartRoute, Post, Product
+from app.models.enums import FileKind, PostCode, RouteSource
 
 from .cutmap import build_cutmap
 from .models import PROCESS_POSTS, TAIL_CODES, ParsedPart, ParsedProject, ParseError
@@ -221,33 +221,6 @@ async def wipe_previous_parse(db: AsyncSession, order: Order, upload_root: Path)
 _USAGE_UNITS = {"sheet": "list", "band": "metr", "hardware": "dona"}
 
 
-async def _upsert_materials(db: AsyncSession, project: ParsedProject) -> None:
-    """New materials appear automatically when a project references them (TZ 4.5)."""
-    for mat in project.materials:
-        mtype = MaterialType(mat.kind)
-        exists = (
-            await db.execute(
-                select(Material).where(
-                    Material.name == mat.name,
-                    Material.type == mtype,
-                    Material.is_deleted == False,  # noqa: E712
-                )
-            )
-        ).scalar_one_or_none()
-        if exists is None:
-            db.add(
-                Material(
-                    name=mat.name,
-                    code=mat.code,
-                    type=mtype,
-                    thickness=mat.thickness,
-                    width=mat.width,
-                    length=mat.length,
-                )
-            )
-            await db.flush()
-
-
 def write_and_register_scx(
     db: AsyncSession,
     order_id: int,
@@ -315,8 +288,6 @@ async def ingest_project(
     packaging = bool((order.survey or {}).get("packaging"))
 
     cutmap = build_cutmap(project) if any(c.data_blob for c in project.cut_ops) else None
-
-    await _upsert_materials(db, project)
 
     # --- store the raw project file ---
     project_dir = upload_root / "projects" / str(order.id)

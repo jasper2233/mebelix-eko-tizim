@@ -10,7 +10,6 @@ from .health import router as health_router
 from .login import router as login_router
 from .logout import router as logout_router
 from .machines import router as machines_router
-from .materials import router as materials_router
 from .orders import router as orders_router
 from .pachka import router as pachka_router
 from .posts import router as posts_router
@@ -34,7 +33,6 @@ router.include_router(clients_router, dependencies=_protected)
 router.include_router(employees_router, dependencies=_protected)
 router.include_router(machines_router, dependencies=_protected)
 router.include_router(posts_router, dependencies=_protected)
-router.include_router(materials_router, dependencies=_protected)
 router.include_router(stock_router, dependencies=_protected)
 router.include_router(orders_router, dependencies=_protected)
 router.include_router(pachka_router, dependencies=_protected)
