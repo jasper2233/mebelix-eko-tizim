@@ -150,7 +150,7 @@ Beyjik ikkala savolga javob beradi — KIM va QAYERDA:
 
 1. `badge_id` → `employee` (nofaol beyjik va noma'lum beyjik 401).
 2. `employee.assigned_post_ids` → post. Bitta bo'lsa so'ralmaydi; bir nechta bo'lsa 409 + ro'yxat, hodim monoblokda tanlaydi (`_badge_post`).
-3. Post → ish markazi: `_post_machine` postning birinchi o'chirilmagan ish markazini oladi — `resolve_terminal` operator rolida aynan shunday tanlaydi, ya'ni ikkalasi bir xil javob beradi.
+3. Post → ish markazi: `_post_machine` `scanning.post_machine` — BITTA joydagi qoida (ilgari ikki nusxada yozilgan edi): NOAKTIV markaz tanlanmaydi, AKTIV TA'MIRDA dan ustun turadi, ikkalasi ham yo'q bo'lsa admin uchun aniq xato. Beyjik kirishi ham, terminal konteksti ham SHU funksiyani chaqiradi, ya'ni ikkalasi bir xil javob beradi.
 4. `_terminal_user(machine, post)` — kirish qaysi hisob nomidan yoziladi: shu ish markaziga biriktirilgan **TERMINAL** hisobi, bo'lmasa post roli hisobi (`POST_ROLES`). Ikkala yo'l ham `resolve_terminal` bilan BIR XIL postga olib keladi (biri ish markazi, ikkinchisi rol orqali) — aks holda operator boshqa postning ekranida paydo bo'lardi. Hisob KIM ishlayotganini bildirmaydi — u beyjik ochgan `work_session` da.
 
 **Xavfsizlik (ataylab tanlangan, 2026-08-12).** Beyjik — yagona omil: QR qog'ozda, nusxa olingan bo'lsa istalgan qurilmadan kirsa bo'ladi. Qurilma bog'lash varianti ko'rib chiqilib rad etildi — tsexda parol/kod terish smena almashuvini sekinlashtiradi va amalda umumiy akkauntga olib keladi, ya'ni ish haqi atributsiyasini butunlay yo'qotadi. O'rniga: hisob imtiyozi tor (terminal ekranlari, admin paneli emas), har kirish audit logga tushadi, beyjik `employee.status` bilan darhol bekor qilinadi. Chegara `30/60s` — 122-bitli UUID'ni brute-force qilib bo'lmaydi, tor chegara esa smena almashuvida butun tsexni (bitta tashqi IP) qulflab qo'yardi.
@@ -249,8 +249,10 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | GET | `/api/v1/machines/` | login (har qanday) | Barcha ish markazlari, `list[MachineRead]` |
 | POST | `/api/v1/machines/` | `AdminUser` | 201; `post_id` mavjudligi tekshiriladi |
 | GET | `/api/v1/machines/{id}` | login (har qanday) | Topilmasa 404 |
-| PATCH | `/api/v1/machines/{id}` | `AdminUser` | `post_id` o'zgarsa qayta tekshiriladi |
-| DELETE | `/api/v1/machines/{id}` | `AdminUser` | Soft-delete |
+| PATCH | `/api/v1/machines/{id}` | `AdminUser` | `post_id` o'zgarsa qayta tekshiriladi; **skan tarixi bor markazning posti o'zgarmaydi** (409) — o'tgan skanlar yangi post nomidan sanalib ketardi |
+| DELETE | `/api/v1/machines/{id}` | `AdminUser` | Soft-delete, LEKIN **bog'lam bo'lsa 409** (`_blockers`): biriktirilgan hisob (`user.machine_id`), printer agenti, ochiq smena, tugallanmagan marshrut (`total_done < total_required`). Sabab xabarda nomlanadi |
+
+**O'chirish nega to'sildi:** soft-delete FK'ni buzmaydi, lekin bog'lamni JIMGINA uzadi — qurilma hisobi E009 bilan kirolmaydi, agent skan-forvardi 409 beradi, tugallanmagan marshrutlar terminal ro'yxatidan yo'qoladi (filtr `machine_id` bo'yicha). Vaqtincha to'xtatish uchun o'chirish emas, `status` kerak.
 
 **Bog'lanishlar:** `backend/app/schemas/machines.py`, `backend/app/crud` (`crud_machines`, `crud_posts`, `log_action`).
 
@@ -314,7 +316,7 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | POST | `/api/v1/orders/{id}/upload` | `TexnologUser` | `.project` fayl yuklash (TZ 6.3): faqat TECHNICAL_REVIEW holatida; kengaytma va hajm (`MAX_PROJECT_FILE_SIZE`) tekshiriladi; parse xatosi 422; TEMPLATE (GibLab'da optimizatsiya qilinmagan) fayl 422 aniq yo'riqnoma matni bilan rad etiladi (TZ 5.3.3); qayta yuklashda `wipe_previous_parse` oldingi parse natijalarini o'chiradi, `ingest_project` yangisini yozadi. Qo'lda chizilgan (nostandart) marshrutlar fayldan kelmaydi, shuning uchun `snapshot_custom_routes` ular fizik o'chirishdan OLDIN (mahsulot kodi, detal kodi) bo'yicha saqlaydi va `restore_custom_routes` yangi detallarga tiklaydi; tiklanganlar soni va yangi faylda topilmagan detallar javob matnidagi ogohlantirishlarga qo'shiladi |
 | GET | `/api/v1/orders/{id}/matrix` | `StaffReadUser` | `OrderMatrix` — har detal (`MatrixPart`, `is_custom` bayrog'i bilan) va uning marshrut QADAMLARI (`RouteCell`, javobda `seq` bo'yicha tartiblangan) |
 | PATCH | `/api/v1/orders/{id}/matrix` | `TexnologUser` | Matritsa tahriri (TZ 6.3.3): bosqich on/off (ARRA'ni o'chirib BO'LMAYDI — 403, faqat STANDART detalda), izoh, `is_custom` bayrog'i, nostandart marshrut (`route_codes`), soni o'zgartirish (`_resize_instances` fizik nusxalar va route summalarini moslashtiradi); faqat production'gacha — batafsil quyida |
-| POST | `/api/v1/orders/{id}/machines` | `ManagerUser` | Bir postda bir nechta ish markazi bo'lsa manager tanlaydi (TZ 6.4.1); post/ish markazi mosligi tekshiriladi; faqat production'gacha |
+| POST | `/api/v1/orders/{id}/machines` | `ManagerUser` | Bir postda bir nechta ish markazi bo'lsa manager tanlaydi (TZ 6.4.1); post/ish markazi mosligi tekshiriladi; **faqat AKTIV markaz** — TA'MIRDA/NOAKTIV bo'lsa 409 (ish bajariladigan joyi yo'q); faqat production'gacha |
 | POST | `/api/v1/orders/{id}/start` | `ManagerUser` | Ishlab chiqarishga uzatish (TZ 6.4.2): `TECHNICAL_REVIEW → PRODUCTION`; `.project` yuklangan bo'lishi shart; **marshrutsiz detal bo'lsa 403** (quyida); `requires_assignment_choice` postlarda ish markazi tanlanmagan bo'lsa 403; tanlangan ish markazi route yozuvlariga muhrlanadi (terminal filtri uchun); WS `order.started` |
 | POST | `/api/v1/orders/{id}/cancel` | `ManagerUser` | Bekor qilish (TZ 6.5): istalgan bosqichda (DELIVERED/CANCELLED dan tashqari); sabab majburiy; skan tarixi audit uchun saqlanadi; WS `order.cancelled` — terminallar vazifalarni DARHOL tashlaydi |
 | POST | `/api/v1/orders/{id}/deliver` | `ManagerUser` | TOPSHIRILDI (TZ 10.3): faqat `COMPLETED → DELIVERED`; `delivered_at` avtomatik; WS `order.delivered` |

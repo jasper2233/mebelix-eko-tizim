@@ -13,13 +13,22 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from app.schemas.terminal import ScanResult
 
-from sqlalchemy import func, select, update
+from sqlalchemy import case, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models import Employee, Machine, Order, OrderFile, Part, PartInstance, PartRoute, Post, Scan, WorkSession
-from app.models.enums import POST_ROLES, EmployeeStatus, FileKind, OrderStatus, PostCode, SessionStatus, UserRole
+from app.models.enums import (
+    POST_ROLES,
+    EmployeeStatus,
+    FileKind,
+    MachineStatus,
+    OrderStatus,
+    PostCode,
+    SessionStatus,
+    UserRole,
+)
 from app.models.user import User
 
 _QR_RE = re.compile(r"^.+_.+$")  # {productCode}_{partCode}[_{n}] — yagona nusxada suffiks yo'q (TZ 5.8)
@@ -67,6 +76,35 @@ class ScanOutcome:
     events: list[dict[str, Any]] = field(default_factory=list)
 
 
+#: Avtomatik tanlashda AKTIV birinchi, TA'MIRDA oxirgi. NOAKTIV umuman tanlanmaydi
+#: (`post_machine` filtri) — admin uni ataylab o'chirgan.
+_STATUS_PREFERENCE = case((Machine.status == MachineStatus.ACTIVE, 0), else_=1)
+
+MACHINE_MISSING = "postida ishga yaroqli ish markazi yo'q — admin qo'shishi yoki NOAKTIV holatidan chiqarishi kerak."
+
+
+async def post_machine(db: AsyncSession, post: Post) -> Machine | None:
+    """Postning ishga yaroqli ish markazi. Login ham, terminal ham SHU qoidadan o'tadi.
+
+    NOAKTIV tanlanmaydi: admin ish markazini ataylab o'chirgan, ish u yerga
+    yo'naltirilmasligi kerak. TA'MIRDA esa oxirgi navbatda turadi, lekin
+    TANLANADI — buzilgan stanokda ham qo'lda ishlash davom etadi va admin
+    belgini qaytarishni unutsa tsex to'xtab qolmasligi kerak.
+    """
+    return (
+        await db.execute(
+            select(Machine)
+            .where(
+                Machine.post_id == post.id,
+                Machine.is_deleted == False,  # noqa: E712
+                Machine.status != MachineStatus.INACTIVE,
+            )
+            .order_by(_STATUS_PREFERENCE, Machine.id)
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+
 async def resolve_terminal(db: AsyncSession, user: User) -> tuple[Machine, Post]:
     post_code = POST_ROLES.get(UserRole(user.role))
     if post_code is not None:
@@ -79,18 +117,12 @@ async def resolve_terminal(db: AsyncSession, user: User) -> tuple[Machine, Post]
         machine = None
         if user.machine_id is not None:
             machine = await db.get(Machine, user.machine_id)
-        if machine is None or machine.is_deleted:
-            # ponytail: first active machine of the post; bind user.machine_id when a post gets several
-            machine = (
-                await db.execute(
-                    select(Machine)
-                    .where(Machine.post_id == post.id, Machine.is_deleted == False)  # noqa: E712
-                    .order_by(Machine.id)
-                    .limit(1)
-                )
-            ).scalar_one_or_none()
+            if machine is not None and (machine.is_deleted or machine.status == MachineStatus.INACTIVE):
+                machine = None  # biriktirilgani ishlamaydi — postdan boshqasini olamiz
         if machine is None:
-            raise ScanRejected("E009", f"{post.name} postida ish markazi yo'q. Admin ish markazi qo'shishi kerak.")
+            machine = await post_machine(db, post)
+        if machine is None:
+            raise ScanRejected("E009", f"{post.name} {MACHINE_MISSING}")
         return machine, post
 
     if user.machine_id is None:
@@ -98,6 +130,10 @@ async def resolve_terminal(db: AsyncSession, user: User) -> tuple[Machine, Post]
     machine = await db.get(Machine, user.machine_id)
     if machine is None or machine.is_deleted:
         raise ScanRejected("E009", "Terminal ish markazi topilmadi.")
+    if machine.status == MachineStatus.INACTIVE:
+        # Qurilma hisobi KONKRET ish markaziga bog'langan: admin uni o'chirgan
+        # bo'lsa boshqasiga sakrash ham xato bo'lardi — skan boshqa joyga yozilardi
+        raise ScanRejected("E009", f"{machine.name} NOAKTIV holatda — admin uni yoqishi kerak.")
     post = await db.get(Post, machine.post_id)
     if post is None:
         raise ScanRejected("E009", "Ish markazining posti topilmadi.")

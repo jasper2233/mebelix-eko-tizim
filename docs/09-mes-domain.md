@@ -230,7 +230,7 @@ Beyjik ikkala savolga javob beradi — KIM va QAYERDA (`login.py`):
 |---|---|
 | 1 | `badge_id` → `employee`. Noma'lum yoki nofaol beyjik — 401 |
 | 2 | `employee.assigned_post_ids` → post (`_badge_post`). Bitta bo'lsa so'ralmaydi; bir nechta bo'lsa **409 + ro'yxat**, hodim monoblokda tanlaydi |
-| 3 | Post → ish markazi (`_post_machine`): postning birinchi o'chirilmagan ish markazi — `resolve_terminal` ham operator rolida aynan shunday tanlaydi |
+| 3 | Post → ish markazi (`_post_machine` → `scanning.post_machine` — BITTA joydagi qoida (ilgari ikki nusxada yozilgan edi): NOAKTIV markaz tanlanmaydi, AKTIV TA'MIRDA dan ustun turadi, ikkalasi ham yo'q bo'lsa admin uchun aniq xato) |
 | 4 | `_terminal_user`: shu ish markaziga biriktirilgan TERMINAL hisobi, bo'lmasa post roli hisobi. **Hisob KIM ishlayotganini bildirmaydi** — u beyjik ochgan `work_session` da |
 
 3- va 4-qadam ataylab `resolve_terminal` bilan bir xil javob berishi kerak: aks holda operator

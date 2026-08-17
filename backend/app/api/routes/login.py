@@ -25,7 +25,7 @@ from app.models import Employee, Machine, Post
 from app.models.enums import POST_ROLES, EmployeeStatus, UserRole
 from app.models.user import User
 from app.schemas.auth import BadgeLoginRequest, BadgeLoginResponse, BadgePostOption, Token
-from app.services.scanning import open_badge_session
+from app.services.scanning import MACHINE_MISSING, open_badge_session, post_machine
 
 router = APIRouter(prefix="/login", tags=["login"])
 
@@ -140,21 +140,12 @@ async def _badge_post(db: SessionDep, employee: Employee, post_id: int | None) -
 
 
 async def _post_machine(db: SessionDep, post: Post) -> Machine:
-    """Postning ish markazi. Bir nechta bo'lsa birinchisi — `resolve_terminal` ham
-    operator rolida aynan shunday tanlaydi, ya'ni ikkalasi bir xil javob beradi."""
-    machine = (
-        await db.execute(
-            select(Machine)
-            .where(
-                Machine.post_id == post.id,
-                Machine.is_deleted == False,  # noqa: E712
-            )
-            .order_by(Machine.id)
-            .limit(1)
-        )
-    ).scalar_one_or_none()
+    """Postning ish markazi. Qoida `scanning.post_machine` da — beyjik kirishi va
+    terminal konteksti BIR XIL javob berishi kerak, aks holda operator bir joyda
+    kirib boshqa joyda skan qilardi. Ilgari qoida ikki nusxada yozilgan edi."""
+    machine = await post_machine(db, post)
     if machine is None:
-        raise UnauthorizedException(f"{post.name} postida ish markazi yo'q. Admin ish markazi qo'shishi kerak.")
+        raise UnauthorizedException(f"{post.name} {MACHINE_MISSING}")
     return machine
 
 

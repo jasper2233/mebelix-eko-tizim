@@ -289,6 +289,17 @@ export type MachineStat = {
     today_scans: number;
 };
 
+/**
+ * Ish markazining ish holati — BEZAK EMAS, tanlovga ta'sir qiladi.
+ *
+ * ACTIVE   ishlayapti.
+ * REPAIR   buzilgan, lekin post ishlashda davom etadi: avtomatik tanlanadi
+ * (oxirgi navbatda), YANGI buyurtma esa biriktirilmaydi.
+ * INACTIVE admin ataylab ishdan chiqargan: avtomatik TANLANMAYDI, unga
+ * bog'langan qurilma hisobi skan qila olmaydi.
+ *
+ * Qoida `app/services/scanning.post_machine` da, bitta joyda.
+ */
 export type MachineStatus = 'active' | 'inactive' | 'repair';
 
 export type MachineUpdate = {

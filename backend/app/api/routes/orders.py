@@ -28,7 +28,15 @@ from app.models import (
     Post,
     Product,
 )
-from app.models.enums import FileKind, OrderStatus, PostCode, RouteSource, UserRole
+from app.models.enums import (
+    MACHINE_STATUS_LABELS,
+    FileKind,
+    MachineStatus,
+    OrderStatus,
+    PostCode,
+    RouteSource,
+    UserRole,
+)
 from app.models.user import User
 from app.schemas.common import Message, Paginated
 from app.schemas.orders import (
@@ -868,6 +876,13 @@ async def assign_order_machines(
         ).scalar_one_or_none()
         if machine is None:
             raise NotFoundException(f"{post_code} postida {machine_id} ish markazi topilmadi.")
+        # Yangi ish faqat AKTIV ish markaziga: ta'mirdagi stanokka biriktirilgan
+        # buyurtma terminalda ko'rinadi-yu, bajariladigan joyi yo'q
+        if machine.status != MachineStatus.ACTIVE:
+            raise HTTPException(
+                status_code=409,
+                detail=f"{machine.name} — {MACHINE_STATUS_LABELS[machine.status]}. Yangi ishni biriktirib bo'lmaydi.",
+            )
 
     order.machine_assignments = {str(k): v for k, v in body.assignments.items()}
     log_action(

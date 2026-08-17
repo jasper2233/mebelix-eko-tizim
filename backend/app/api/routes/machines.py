@@ -1,13 +1,77 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
+from sqlalchemy import func, select
 
 from app.api.deps import AdminUser, CurrentUser, SessionDep, client_ip
 from app.core.exceptions import NotFoundException
 from app.crud import crud_machines, crud_posts, log_action
-from app.models import Machine
+from app.models import BridgeAgent, Machine, PartRoute, Scan, User, WorkSession
+from app.models.enums import SessionStatus
 from app.schemas.common import Message
 from app.schemas.machines import MachineCreate, MachineRead, MachineUpdate
 
 router = APIRouter(prefix="/machines", tags=["machines"])
+
+
+async def _blockers(db: SessionDep, machine_id: int) -> list[str]:
+    """Ish markazini o'chirishga to'sqinlik qiladigan bog'lamlar, odam tilida.
+
+    O'chirish soft-delete, ya'ni FK buzilmaydi — LEKIN bog'lam jimgina uziladi:
+    qurilma hisobi kirolmaydi (E009), agent skan-forvardi 409 beradi, tugallanmagan
+    marshrutlar terminal ro'yxatidan yo'qoladi (filtr `machine_id` bo'yicha).
+    Shuning uchun sabab ko'rsatib to'xtatamiz, jim o'chirmaymiz.
+    """
+    blockers = []
+    accounts = (
+        (
+            await db.execute(
+                select(User.username).where(User.machine_id == machine_id, User.is_deleted == False)  # noqa: E712
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if accounts:
+        blockers.append(f"biriktirilgan hisob: {', '.join(accounts)}")
+
+    agents = (
+        (
+            await db.execute(
+                select(BridgeAgent.name).where(
+                    BridgeAgent.machine_id == machine_id,
+                    BridgeAgent.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if agents:
+        blockers.append(f"printer agenti: {', '.join(agents)}")
+
+    open_sessions = (
+        await db.execute(
+            select(func.count(WorkSession.id)).where(
+                WorkSession.machine_id == machine_id,
+                WorkSession.status == SessionStatus.ACTIVE,
+                WorkSession.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).scalar_one()
+    if open_sessions:
+        blockers.append(f"ochiq smena: {open_sessions} ta")
+
+    unfinished = (
+        await db.execute(
+            select(func.count(PartRoute.id)).where(
+                PartRoute.machine_id == machine_id,
+                PartRoute.total_done < PartRoute.total_required,
+                PartRoute.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).scalar_one()
+    if unfinished:
+        blockers.append(f"tugallanmagan marshrut: {unfinished} ta")
+    return blockers
 
 
 @router.get("/", response_model=list[MachineRead], operation_id="read_machines")
@@ -50,8 +114,17 @@ async def update_machine(
 ) -> Machine:
     machine = await crud_machines.get_or_404(db, "Ish markazi topilmadi.", id=machine_id)
     update_data = body.model_dump(exclude_unset=True)
-    if "post_id" in update_data and await crud_posts.get(db, id=update_data["post_id"]) is None:
-        raise NotFoundException("Post topilmadi.")
+    if "post_id" in update_data and update_data["post_id"] != machine.post_id:
+        if await crud_posts.get(db, id=update_data["post_id"]) is None:
+            raise NotFoundException("Post topilmadi.")
+        # Skan tarixi bor ish markazini boshqa postga ko'chirish o'tgan hisobotlarni
+        # jimgina buzadi: skanlar yangi post nomidan sanalib ketadi
+        scans = (await db.execute(select(func.count(Scan.id)).where(Scan.machine_id == machine_id))).scalar_one()
+        if scans:
+            raise HTTPException(
+                status_code=409,
+                detail=f"{machine.name} da {scans} ta skan bor — postni o'zgartirib bo'lmaydi. Yangisini qo'shing.",
+            )
     for field, value in update_data.items():
         setattr(machine, field, value)
     log_action(
@@ -71,6 +144,15 @@ async def update_machine(
 @router.delete("/{machine_id}", response_model=Message, operation_id="delete_machine")
 async def delete_machine(db: SessionDep, current_user: AdminUser, machine_id: int, request: Request) -> Message:
     machine = await crud_machines.get_or_404(db, "Ish markazi topilmadi.", id=machine_id)
+    blockers = await _blockers(db, machine_id)
+    if blockers:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"{machine.name} ishlatilmoqda — {'; '.join(blockers)}. "
+                "Avval bog'lamni uzing yoki ish tugashini kutib, NOAKTIV holatiga o'tkazing."
+            ),
+        )
     log_action(
         db,
         module="machines",

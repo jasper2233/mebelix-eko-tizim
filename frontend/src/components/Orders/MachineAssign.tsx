@@ -4,15 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 
 import { type OrderDetail, OrdersService } from "@/client"
+import { SelectField } from "@/components/Common/SelectField"
 import { Card } from "@/components/ui/card"
 import { LoadingButton } from "@/components/ui/loading-button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { POST_COLORS } from "@/lib/mes"
 import {
   crudCallbacks,
@@ -74,6 +68,7 @@ export function MachineAssign({
       <h2 className="mb-3 text-base font-semibold">Ish markazi tanlovi</h2>
       <div className="flex flex-wrap items-end gap-4">
         {choiceposts.map((post) => {
+          // Faqat AKTIV: ta'mirdagi/noaktivga server ham biriktirmaydi (409)
           const options = (machines ?? []).filter(
             (m) => m.post_id === post.id && m.status === "active",
           )
@@ -85,29 +80,19 @@ export function MachineAssign({
               >
                 {post.code}
               </div>
-              <Select
+              <SelectField
                 value={selection[post.code] ?? ""}
-                onValueChange={(v) =>
+                onChange={(v) =>
                   setSelection((prev) => ({ ...prev, [post.code]: v }))
                 }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue
-                    placeholder={
-                      options.length
-                        ? "Ish markazini tanlang"
-                        : "Ish markazi yo'q"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {options.map((m) => (
-                    <SelectItem key={m.id} value={String(m.id)}>
-                      {m.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder={
+                  options.length ? "Ish markazini tanlang" : "AKTIV markaz yo'q"
+                }
+                options={options.map((m) => ({
+                  value: String(m.id),
+                  label: m.name,
+                }))}
+              />
             </div>
           )
         })}

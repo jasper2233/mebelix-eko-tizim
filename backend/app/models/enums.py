@@ -88,9 +88,28 @@ class PostUnit(StrEnum):
 
 
 class MachineStatus(StrEnum):
+    """Ish markazining ish holati — BEZAK EMAS, tanlovga ta'sir qiladi.
+
+    ACTIVE   ishlayapti.
+    REPAIR   buzilgan, lekin post ishlashda davom etadi: avtomatik tanlanadi
+             (oxirgi navbatda), YANGI buyurtma esa biriktirilmaydi.
+    INACTIVE admin ataylab ishdan chiqargan: avtomatik TANLANMAYDI, unga
+             bog'langan qurilma hisobi skan qila olmaydi.
+
+    Qoida `app/services/scanning.post_machine` da, bitta joyda.
+    """
+
     ACTIVE = "active"
     INACTIVE = "inactive"
     REPAIR = "repair"
+
+
+#: Xato xabarlari uchun — frontenddagi `MACHINE_STATUS_LABELS` bilan bir xil matn
+MACHINE_STATUS_LABELS: dict[MachineStatus, str] = {
+    MachineStatus.ACTIVE: "AKTIV",
+    MachineStatus.INACTIVE: "NOAKTIV",
+    MachineStatus.REPAIR: "TA'MIRDA",
+}
 
 
 class CapacityUnit(StrEnum):
