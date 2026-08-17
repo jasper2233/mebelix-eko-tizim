@@ -87,7 +87,9 @@ function StockPage() {
     .sort((a, b) => b.low - a.low || b.items - a.items)
 
   return (
-    <div>
+    // `min-w-0`: ichkaridagi keng jadval va chip qatori sahifani
+    // kengaytirib yubormasin — ular o'z konteynerida skroll qiladi
+    <div className="min-w-0">
       <PageHeader
         title="Materiallar ombori"
         description="Xomashyo va furnitura qoldig'i — TMO dan ayrim"
@@ -381,7 +383,10 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+      // `shrink-0` SHART: gorizontal skroll qatorida flex chiplarni siqib,
+      // matnni o'rab yuborardi — ular aylanaga aylanib qolgandi. `whitespace-nowrap`
+      // esa nom va raqamni bitta satrda ushlab turadi.
+      className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-sm transition-colors ${
         active
           ? "border-primary bg-primary text-primary-foreground"
           : "bg-card hover:border-primary/40"
