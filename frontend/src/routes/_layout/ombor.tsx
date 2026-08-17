@@ -32,7 +32,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useDebounced } from "@/hooks/useDebounced"
 import { requireAccess } from "@/lib/guards"
-import { isManagement, isStockStaff } from "@/lib/mes"
+import { isStockStaff } from "@/lib/mes"
 import {
   getStockGroupsQueryOptions,
   getStockQueryOptions,
@@ -62,7 +62,10 @@ function OmborPage() {
   const [view, setView] = useState<"katalog" | "sotuv">("katalog")
   const debounced = useDebounced(search.trim())
   const { currentUser } = useCurrentUser()
-  const canEdit = isManagement(currentUser)
+  // Backend bilan BIR XIL shart (`StockUser`): omborchining butun ishi shu
+  // sahifada, uni faqat ko'rish huquqi bilan qoldirish katalogni ham,
+  // pozitsiya qo'shishni ham imkonsiz qilardi
+  const canEdit = isStockStaff(currentUser)
 
   const { data, isLoading, isError, refetch } = useQuery({
     ...getStockQueryOptions({
@@ -279,7 +282,7 @@ function OmborPage() {
                   <EmptyRow colSpan={8}>
                     {debounced || group || low
                       ? "Shu shartga mos pozitsiya yo'q."
-                      : "Katalog bo'sh — `python -m app.commands.import_stock_catalog` bilan yuklang."}
+                      : "Katalog bo'sh — tepadagi \"Excel'dan yuklash\" tugmasi bilan boshlang."}
                   </EmptyRow>
                 )}
               </TableBody>
