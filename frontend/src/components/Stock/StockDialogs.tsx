@@ -46,6 +46,8 @@ export function ItemDialog({
 }) {
   const editing = !!item
   const [open, setOpen] = useState(editing)
+  // Kodni qo'lda kiritish — kamdan-kam holat, shuning uchun yashirin
+  const [manualCode, setManualCode] = useState(false)
   const [form, setForm] = useState({
     catalog: item?.catalog ?? "F",
     group: item ? `${item.catalog}|${item.group_code}` : "",
@@ -196,13 +198,33 @@ export function ItemDialog({
                   </Field>
                 </div>
               )}
-              <Field label="Kod — bo'sh qoldiring, server beradi">
-                <Input
-                  value={form.code}
-                  onChange={(e) => set("code", e.target.value.toUpperCase())}
-                  placeholder="Mavjud modelning varianti: F-RC-001-04"
-                />
-              </Field>
+              {/* Kod SO'RALMAYDI: uni server beradi. Ilgari bu yerda bo'sh
+                  matn maydoni turib, yorlig'i "bo'sh qoldiring" deb yozardi —
+                  ya'ni foydalanuvchidan hech narsa qilmaslikni so'rardi.
+                  Maydon faqat BITTA holatda kerak: mavjud modelning yangi
+                  varianti (o'sha ruchkaning boshqa rangi), shuning uchun u
+                  ochib qo'yiladigan holatda. */}
+              {manualCode ? (
+                <Field label="Kod — mavjud modelning varianti">
+                  <Input
+                    value={form.code}
+                    onChange={(e) => set("code", e.target.value.toUpperCase())}
+                    placeholder="F-RC-001-04"
+                    autoFocus
+                  />
+                </Field>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Kod avtomatik shakllanadi.{" "}
+                  <button
+                    type="button"
+                    className="underline underline-offset-4 hover:text-foreground"
+                    onClick={() => setManualCode(true)}
+                  >
+                    Mavjud modelning varianti
+                  </button>
+                </p>
+              )}
             </>
           )}
 

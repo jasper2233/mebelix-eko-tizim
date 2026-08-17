@@ -266,10 +266,13 @@ function StockPage() {
                   <TableHead className="whitespace-nowrap text-right">
                     Narx
                   </TableHead>
-                  {/* Amallar YOPISHQOQ: tor ekranda skroll bo'lganda kesiladigan
-                      narsa narx bo'lsin, hech qachon eng ko'p bosiladigan
-                      "Kirim / Chiqim" emas */}
-                  <TableHead className="sticky right-0 bg-background" />
+                  {/* Yopishqoq ustun OLIB TASHLANDI: `bg-card` qatorning
+                      o'z foni va `hover` holati bilan mos kelmasdi, natijada
+                      amallar ustuni butun jadval bo'ylab boshqa rangda ko'rinib,
+                      vertikal chiziq yasardi. Guruh va Min ustunlari ketgach
+                      jadval besh ustunga tushdi va odatdagi ekranda sig'adi,
+                      ya'ni yopishqoqlik faqat zarar keltirardi. */}
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -322,7 +325,7 @@ function StockPage() {
                           xarid {i.purchase_uzs ? uzs(i.purchase_uzs) : "—"}
                         </div>
                       </TableCell>
-                      <TableCell className="sticky right-0 bg-card">
+                      <TableCell>
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             variant="outline"
