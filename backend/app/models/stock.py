@@ -8,7 +8,7 @@ from .enums import PaymentMethod, SaleStatus, StockCatalog, StockMoveKind, db_en
 
 
 class StockItem(BaseModel):
-    """MATERIALLAR OMBORI pozitsiyasi — kod, qoldiq va narx.
+    """MATERIALLAR OMBORI tovarsi — kod, qoldiq va narx.
 
     `Material` dan AYRIM jadval, garchi ikkalasi ham "material" desa ham:
 
@@ -42,8 +42,8 @@ class StockItem(BaseModel):
     unit: Mapped[str | None] = mapped_column(String(16), default=None, kw_only=True)
     #: Qoldiq. Kasr: kromka va smola metr/kg bilan o'lchanadi.
     qty: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=Decimal(0), kw_only=True)
-    #: Minimal zaxira — bundan pastda pozitsiya "buyurtma berish kerak" deb belgilanadi.
-    #: 0 = nazorat qilinmaydi (katalogda Min ustuni bo'sh kelgan pozitsiyalar).
+    #: Minimal zaxira — bundan pastda tovar "buyurtma berish kerak" deb belgilanadi.
+    #: 0 = nazorat qilinmaydi (katalogda Min ustuni bo'sh kelgan tovarlar).
     min_qty: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=Decimal(0), kw_only=True)
     purchase_usd: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), default=None, kw_only=True)
     purchase_uzs: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), default=None, kw_only=True)

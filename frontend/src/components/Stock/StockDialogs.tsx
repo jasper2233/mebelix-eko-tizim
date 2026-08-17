@@ -21,15 +21,15 @@ import { num, qty } from "./format"
 
 const digits = (v: string) => v.replace(/[^\d.]/g, "")
 
-/** Pozitsiya qo'shish / tahrirlash — bitta dialog, ikkala ish uchun.
+/** Tovar qo'shish / tahrirlash — bitta dialog, ikkala ish uchun.
  *
- * KOD SO'RALMAYDI: yangi pozitsiyada uni server beradi (guruhdagi eng katta
+ * KOD SO'RALMAYDI: yangi tovarda uni server beradi (guruhdagi eng katta
  * model raqami + 1). Excel katalogida "Keyingi bo'sh model kodi" ustunini odam
  * qo'lda yuritardi — o'sha ish serverga o'tdi. Mavjud modelning boshqa rangi
  * kerak bo'lsa kod qo'lda yoziladi (`F-RC-001-04`).
  *
  * Guruh mavjudlaridan tanlanadi yoki yangisi yoziladi: guruhlar alohida jadval
- * emas, pozitsiyalarning o'zidan yig'iladi.
+ * emas, tovarlarning o'zidan yig'iladi.
  *
  * Tahrirlashda QOLDIQ maydoni yo'q — u faqat "Kirim / Chiqim" orqali o'zgaradi,
  * aks holda audit izi uzilib, qoldiq qayerdan kelganini hech kim aytolmasdi. */
@@ -69,7 +69,7 @@ export function ItemDialog({
   const cb = crudCallbacks(
     queryClient,
     ["stock"],
-    editing ? "Pozitsiya yangilandi" : "Pozitsiya qo'shildi",
+    editing ? "Tovar yangilandi" : "Tovar qo'shildi",
   )
   const mutation = useMutation({
     mutationFn: () => {
@@ -132,13 +132,13 @@ export function ItemDialog({
       {!editing && (
         <DialogTrigger asChild>
           <Button>
-            <Plus /> Pozitsiya qo'shish
+            <Plus /> Tovar qo'shish
           </Button>
         </DialogTrigger>
       )}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{editing ? item.name : "Yangi pozitsiya"}</DialogTitle>
+          <DialogTitle>{editing ? item.name : "Yangi tovar"}</DialogTitle>
           <DialogDescription>
             {editing
               ? `${item.code} · qoldiqni "Kirim / Chiqim" bilan o'zgartiring`
@@ -337,7 +337,7 @@ export function DeleteItem({
   onClose: () => void
 }) {
   const queryClient = useQueryClient()
-  const cb = crudCallbacks(queryClient, ["stock"], "Pozitsiya o'chirildi")
+  const cb = crudCallbacks(queryClient, ["stock"], "Tovar o'chirildi")
   const mutation = useMutation({
     mutationFn: (id: number) => StockService.deleteStockItem({ itemId: id }),
     ...cb,
@@ -350,7 +350,7 @@ export function DeleteItem({
     <ConfirmDialog
       open={!!item}
       onOpenChange={(v) => !v && onClose()}
-      title="Pozitsiyani o'chirish"
+      title="Tovarni o'chirish"
       description={
         item
           ? `${item.code} — ${item.name} ro'yxatdan chiqadi. Kirim/chiqim tarixi audit logda qoladi.`

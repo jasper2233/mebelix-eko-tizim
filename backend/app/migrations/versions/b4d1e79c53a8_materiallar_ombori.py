@@ -1,4 +1,4 @@
-"""Materiallar ombori pozitsiyalari
+"""Materiallar ombori tovarlari
 
 `stock_item` — omborchi yuritadigan katalog: kod, qoldiq, minimal zaxira, narx.
 Mavjud `material` jadvalidan AYRIM: u GibLab `.project` faylidan avtomat to'ladi
@@ -60,7 +60,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("ix_stock_item_is_deleted", "stock_item", ["is_deleted"])
-    # Qisman unique: soft-delete qilingan pozitsiya kodni band qilib turmasin
+    # Qisman unique: soft-delete qilingan tovar kodni band qilib turmasin
     op.create_index(
         "ix_stock_item_code", "stock_item", ["code"], unique=True, postgresql_where=sa.text("NOT is_deleted")
     )

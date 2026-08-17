@@ -32,7 +32,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Qaytarilmaydi: `_1` bilan tugagan detal kodlari (GibLab `{blok}_{pozitsiya}`
+    # Qaytarilmaydi: `_1` bilan tugagan detal kodlari (GibLab `{blok}_{tovar}`
     # sxemasi) uchun teskari UPDATE noaniq — `X_P_1` asli `X_P_1` (kod) ham,
     # `X_P` + suffiks ham bo'lishi mumkin, qo'shish esa unique indeksga uriladi.
     # Eski app kodi baribir yangi QR'larni topa olmaydi — rollback'da yorliqlar

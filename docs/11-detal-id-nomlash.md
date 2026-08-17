@@ -18,7 +18,7 @@ to'liq satrni saqlaydi. Oddiy raqamli kodlarda farq sezilmaydi.
 | Qism | Qayerdan | Ma'nosi |
 | --- | --- | --- |
 | `100701` | .project dagi mahsulot `code` (bo'lmasa `name`, u ham bo'lmasa `PRODUCT`) | buyurtma ichidagi mahsulot (masalan 1007-buyurtma, 01-shkaf) |
-| `03_002` | .project dagi detal `code` (GibLab sxemasi `{blok}_{pozitsiya}`); faylda kod bo'lmasa parser tartib raqami beradi (`001`, `002`, ...) va ogohlantiradi | detal turi |
+| `03_002` | .project dagi detal `code` (GibLab sxemasi `{blok}_{tovar}`); faylda kod bo'lmasa parser tartib raqami beradi (`001`, `002`, ...) va ogohlantiradi | detal turi |
 | `-2` | parser qo'shadi (`_dedupe_part_code`) | fayl NUQSONI belgisi: bitta mahsulotda IKKI detal bir xil kod bilan kelgan — ikkinchisi `-2` (uchinchisi `-3`, ...). Bu BOSHQA detal, nusxa emas: odatda ko'zgu juftlik (chap/o'ng bok — teshiklari qarama-qarshi) yoki kromka tomoni farqli juftlik |
 | `_n` | ingest (`ParsedPart.qr_texts`) | nusxa raqami — FAQAT detal 1 dan ko'p nusxada bo'lsa (`_1.._count`). Yagona nusxada suffiks YO'Q |
 

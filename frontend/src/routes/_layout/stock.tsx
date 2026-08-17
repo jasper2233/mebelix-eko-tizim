@@ -65,7 +65,7 @@ function StockPage() {
   const { currentUser } = useCurrentUser()
   // Backend bilan BIR XIL shart (`StockUser`): omborchining butun ishi shu
   // sahifada, uni faqat ko'rish huquqi bilan qoldirish katalogni ham,
-  // pozitsiya qo'shishni ham imkonsiz qilardi
+  // tovar qo'shishni ham imkonsiz qilardi
   const canEdit = isStockStaff(currentUser)
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -144,7 +144,7 @@ function StockPage() {
                 {summary.low}
               </span>
               <span className="text-lg font-semibold">
-                pozitsiya minimal zaxiradan past
+                tovar minimal zaxiradan past
               </span>
               {/* Tugma KEYINGI NATIJANI aytadi, holatni emas — foydalanuvchi
                   bosishdan oldin nima bo'lishini biladi */}
@@ -161,11 +161,11 @@ function StockPage() {
             </>
           ) : (
             <span className="text-lg font-semibold">
-              Hamma pozitsiya zaxirada yetarli
+              Hamma tovar zaxirada yetarli
             </span>
           )}
           <span className="ml-auto text-sm text-muted-foreground">
-            {summary?.items ?? "—"} pozitsiya · ombor qiymati{" "}
+            {summary?.items ?? "—"} tovar · ombor qiymati{" "}
             <span className="num">{uzs(summary?.value_uzs)}</span> so'm
           </span>
           {worst.length > 0 && (
@@ -358,8 +358,8 @@ function StockPage() {
                 ) : (
                   <EmptyRow colSpan={5}>
                     {debounced || group || low
-                      ? "Shu shartga mos pozitsiya yo'q."
-                      : "Katalog bo'sh — \"Pozitsiya qo'shish\" bilan boshlang."}
+                      ? "Shu shartga mos tovar yo'q."
+                      : "Katalog bo'sh — \"Tovar qo'shish\" bilan boshlang."}
                   </EmptyRow>
                 )}
               </TableBody>
@@ -367,8 +367,8 @@ function StockPage() {
           </div>
         )}
 
-        {/* 638 pozitsiyadan 100 tasi ko'rsatiladi. Busiz sahifa o'zining bosh
-            vazifasida yolg'on gapirardi: "296 pozitsiya past" deb yozib, bosilsa
+        {/* 638 tovardan 100 tasi ko'rsatiladi. Busiz sahifa o'zining bosh
+            vazifasida yolg'on gapirardi: "296 tovar past" deb yozib, bosilsa
             100 tasini ko'rsatardi va omborchi qolgan 196 tasini kam buyurtma
             qilardi. */}
         {total > 0 && (

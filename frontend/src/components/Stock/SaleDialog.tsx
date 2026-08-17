@@ -26,7 +26,7 @@ const digits = (v: string) => v.replace(/[^\d.]/g, "")
  * kimdan undirishni bilmasak, yozuvning ma'nosi yo'q. Naqd to'langan sotuvda
  * mijoz shart emas — o'tkinchi xaridor.
  *
- * Hozircha BITTA pozitsiya. Backend ko'p satrni qo'llab-quvvatlaydi
+ * Hozircha BITTA tovar. Backend ko'p satrni qo'llab-quvvatlaydi
  * (`lines[]`), ya'ni savat keyin faqat frontendda quriladi. */
 export function SaleDialog({
   item,

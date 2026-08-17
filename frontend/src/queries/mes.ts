@@ -136,8 +136,8 @@ export const getBridgeAgentsQueryOptions = () =>
  * `onSuccess: () => { cb.onSuccess(); onClose() }` tarzida o'raladi.
  */
 /** Materiallar ombori. Guruh chiplari va tepadagi raqamlar AYRIM so'rovlar:
- * ular sahifalashdan mustaqil — 638 pozitsiyaning 100 tasi ko'rinib turganda
- * ham "12 ta pozitsiya tugayapti" butun ombor bo'yicha bo'lishi kerak. */
+ * ular sahifalashdan mustaqil — 638 tovarning 100 tasi ko'rinib turganda
+ * ham "12 ta tovar tugayapti" butun ombor bo'yicha bo'lishi kerak. */
 export const getStockQueryOptions = (opts: {
   search?: string
   catalog?: "F" | "M"

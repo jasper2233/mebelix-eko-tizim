@@ -287,20 +287,20 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | Method | Path | Nima qiladi |
 |---|---|---|
 | GET | `/api/v1/stock/` | Ro'yxat: `search` (nom yoki kod), `catalog` (F/M), `group_code`, `low=true` (min zaxiradan pastdagilar) |
-| GET | `/api/v1/stock/summary` | Sahifa tepasidagi uchta raqam: pozitsiya soni, tugayaptilar, qoldiqning XARID narxidagi qiymati |
-| GET | `/api/v1/stock/groups` | Filtr chiplari — guruh, pozitsiya soni, tugayaptilar soni. Alohida jadval yo'q: 28 guruh pozitsiyalarning o'zidan yig'iladi |
-| POST | `/api/v1/stock/` | Yangi pozitsiya. **`code` IXTIYORIY**: bo'sh bo'lsa server beradi — guruhdagi eng katta model raqami + 1 (`F-RC-032-01`). Excel katalogida "Keyingi bo'sh model kodi" ustunini odam qo'lda yuritardi, o'sha ish serverga o'tdi va ikki kishi bir vaqtda qo'shsa unique indeks ikkinchisini rad etadi. Mavjud MODELNING yangi varianti kerak bo'lsa (o'sha ruchkaning boshqa rangi) kod qo'lda beriladi — `F-RC-001-04`. Kod band bo'lsa 409 |
+| GET | `/api/v1/stock/summary` | Sahifa tepasidagi uchta raqam: tovar soni, tugayaptilar, qoldiqning XARID narxidagi qiymati |
+| GET | `/api/v1/stock/groups` | Filtr chiplari — guruh, tovar soni, tugayaptilar soni. Alohida jadval yo'q: 28 guruh tovarlarning o'zidan yig'iladi |
+| POST | `/api/v1/stock/` | Yangi tovar. **`code` IXTIYORIY**: bo'sh bo'lsa server beradi — guruhdagi eng katta model raqami + 1 (`F-RC-032-01`). Excel katalogida "Keyingi bo'sh model kodi" ustunini odam qo'lda yuritardi, o'sha ish serverga o'tdi va ikki kishi bir vaqtda qo'shsa unique indeks ikkinchisini rad etadi. Mavjud MODELNING yangi varianti kerak bo'lsa (o'sha ruchkaning boshqa rangi) kod qo'lda beriladi — `F-RC-001-04`. Kod band bo'lsa 409 |
 | PATCH | `/api/v1/stock/{id}` | Nom, o'lcham, min zaxira, narx |
 | POST | `/api/v1/stock/{id}/move` | **KIRIM / BUYURTMAGA / HISOBDAN CHIQIM** — `delta` (musbat/manfiy) + `kind`. Qoldiqni to'g'ridan-to'g'ri yozish EMAS: omborchi "20 ta keldi" deb o'ylaydi va delta ikki kishi bir vaqtda yozganda ham yo'qolmaydi. `kind=buyurtma` da `order_id` MAJBURIY va faqat chiqim — tannarx shu buyurtmaga yoziladi. `kind=sotuv` bu yerda RAD ETILADI (422): sotuvda hujjat, mijoz va to'lov bo'ladi. Qoldiq manfiyga tushsa 409 |
-| GET | `/api/v1/stock/moves` | Harakatlar: `item_id` (pozitsiya kartochkasi), `order_id` (buyurtmaga berilganlar — buyurtma tannarxi), `kind` |
-| POST | `/api/v1/stock/sales` | **SOTUV**: `lines[]` (pozitsiya, miqdor, narx — bo'sh bo'lsa katalogdagi sotuv narxi), `client_id`, `paid_uzs`, `method`. Qarzga sotishda MIJOZ MAJBURIY (kimdan undirishni bilmasak yozuvning ma'nosi yo'q); naqd sotuvda shart emas. Satrlar `stock_move` sifatida yoziladi (`sale_id` bilan) — sotuv satri va ombor harakati bir xil voqea |
+| GET | `/api/v1/stock/moves` | Harakatlar: `item_id` (tovar kartochkasi), `order_id` (buyurtmaga berilganlar — buyurtma tannarxi), `kind` |
+| POST | `/api/v1/stock/sales` | **SOTUV**: `lines[]` (tovar, miqdor, narx — bo'sh bo'lsa katalogdagi sotuv narxi), `client_id`, `paid_uzs`, `method`. Qarzga sotishda MIJOZ MAJBURIY (kimdan undirishni bilmasak yozuvning ma'nosi yo'q); naqd sotuvda shart emas. Satrlar `stock_move` sifatida yoziladi (`sale_id` bilan) — sotuv satri va ombor harakati bir xil voqea |
 | GET | `/api/v1/stock/sales` | Sotuvlar; `debts=true` — faqat to'lanmaganlar (qarzdorlar) |
 | GET | `/api/v1/stock/sales/summary` | Sotuvlar soni, savdo, tushgan pul, qarz |
 | GET | `/api/v1/stock/sales/{id}` | Bitta sotuv: satrlar + to'lovlar |
 | POST | `/api/v1/stock/sales/{id}/payments` | Qarzni to'lash (to'liq yoki qisman). To'lov AYRIM yozuv — `paid_uzs` ni shunchaki yangilash "qachon va qanday to'ladi" ni yo'qotardi. Qarzdan katta to'lov 422 |
 | DELETE | `/api/v1/stock/{id}` | Soft-delete |
 
-**Katalogni yuklash:** `python -m app.commands.import_stock_catalog ["fayl.xlsx"]` — BUYRUQ QATORIDAN. Brauzerdan yuklash endpointi qurildi va OLIB TASHLANDI: katalog bir marta to'ldiriladi, keyin pozitsiyalar bittalab qo'shiladi, ya'ni har kun ko'rinib turadigan tugma keraksiz edi — `uploads/Umumiy maxsulotlar kataligi.xlsx` dan 638 pozitsiya (464 furnitura + 174 material). `Xizmatlar` varag'i OLINMAYDI: xizmatning qoldig'i bo'lmaydi. Idempotent — kod bo'yicha topilsa nom va narx yangilanadi, **`qty` esa faqat yangi pozitsiyada yoziladi**: mavjud qoldiqni omborchi tizimda yuritadi va qayta import uni Excel'dagi eski raqamga qaytarmasligi kerak. Ustunlar tartib raqamiga emas SARLAVHAGA qarab olinadi.
+**Katalogni yuklash:** `python -m app.commands.import_stock_catalog ["fayl.xlsx"]` — BUYRUQ QATORIDAN. Brauzerdan yuklash endpointi qurildi va OLIB TASHLANDI: katalog bir marta to'ldiriladi, keyin tovarlar bittalab qo'shiladi, ya'ni har kun ko'rinib turadigan tugma keraksiz edi — `uploads/Umumiy maxsulotlar kataligi.xlsx` dan 638 tovar (464 furnitura + 174 material). `Xizmatlar` varag'i OLINMAYDI: xizmatning qoldig'i bo'lmaydi. Idempotent — kod bo'yicha topilsa nom va narx yangilanadi, **`qty` esa faqat yangi tovarda yoziladi**: mavjud qoldiqni omborchi tizimda yuritadi va qayta import uni Excel'dagi eski raqamga qaytarmasligi kerak. Ustunlar tartib raqamiga emas SARLAVHAGA qarab olinadi.
 
 
 **Bog'lanishlar:** `backend/app/schemas/materials.py`, `backend/app/crud` (`crud_materials`, `log_action`), `backend/app/models/enums.py` (`MaterialType`).

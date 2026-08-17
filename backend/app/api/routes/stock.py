@@ -53,7 +53,7 @@ async def read_stock_items(
     group_code: str | None = None,
     low: bool = False,
 ) -> Paginated[StockItemRead]:
-    """Pozitsiyalar ro'yxati. `low=true` — faqat minimal zaxiradan pastga tushganlar."""
+    """Tovarlar ro'yxati. `low=true` — faqat minimal zaxiradan pastga tushganlar."""
     query = select(StockItem).where(_VISIBLE)
     if catalog is not None:
         query = query.where(StockItem.catalog == catalog)
@@ -98,7 +98,7 @@ async def read_stock_summary(db: SessionDep, _: StockUser) -> StockSummary:
 @router.get("/groups", response_model=list[StockGroup], operation_id="read_stock_groups")
 async def read_stock_groups(db: SessionDep, _: StockUser) -> list[StockGroup]:
     """Filtr chiplari. Guruhlar katalogdan keladi (`F-RC` = Ruchkalar), ya'ni
-    alohida jadval kerak emas — 28 ta guruh pozitsiyalarning o'zidan yig'iladi."""
+    alohida jadval kerak emas — 28 ta guruh tovarlarning o'zidan yig'iladi."""
     rows = (
         await db.execute(
             select(
@@ -123,7 +123,7 @@ async def _next_code(db: SessionDep, catalog: StockCatalog, group_code: str) -> 
     """Guruhdagi keyingi bo'sh kod: `F-RC-032-01`.
 
     Excel katalogida "Keyingi bo'sh model kodi" ustuni bor va uni odam qo'lda
-    yuritardi — bu yerda o'sha ish serverga o'tdi, ya'ni yangi pozitsiya
+    yuritardi — bu yerda o'sha ish serverga o'tdi, ya'ni yangi tovar
     qo'shayotgan odam kod o'ylab topmaydi va ikki kishi bir vaqtda qo'shsa
     unique indeks ikkinchisini rad etadi (jimgina ustiga yozilmaydi).
     """
@@ -153,7 +153,7 @@ async def create_stock_item(
         user_id=current_user.id,
         entity_type="stock_item",
         entity_id=item.id,
-        message=f"Pozitsiya qo'shildi: {item.code} — {item.name}",
+        message=f"Tovar qo'shildi: {item.code} — {item.name}",
         ip=client_ip(request),
     )
     await db.commit()
@@ -164,7 +164,7 @@ async def create_stock_item(
 async def update_stock_item(
     db: SessionDep, current_user: StockUser, item_id: int, body: StockItemUpdate, request: Request
 ) -> StockItem:
-    item = await crud_stock_items.get_or_404(db, "Pozitsiya topilmadi.", id=item_id)
+    item = await crud_stock_items.get_or_404(db, "Tovar topilmadi.", id=item_id)
     changes = body.model_dump(exclude_unset=True)
     for field, value in changes.items():
         setattr(item, field, value)
@@ -175,7 +175,7 @@ async def update_stock_item(
         user_id=current_user.id,
         entity_type="stock_item",
         entity_id=item.id,
-        message=f"Pozitsiya tahrirlandi: {item.code}",
+        message=f"Tovar tahrirlandi: {item.code}",
         meta={"fields": sorted(changes)},
         ip=client_ip(request),
     )
@@ -198,7 +198,7 @@ async def _apply_move(
 ) -> StockMove:
     """Qoldiqni o'zgartiradi va harakatni yozadi — HAR DOIM birga.
 
-    `stock_item.qty` harakatlar yig'indisining keshi: ro'yxatda 638 pozitsiya
+    `stock_item.qty` harakatlar yig'indisining keshi: ro'yxatda 638 tovar
     uchun har safar summa hisoblash sekin bo'lardi. Kesh va manba bir joyda
     yangilanadi, aks holda ular ajralib ketardi.
     """
@@ -234,7 +234,7 @@ async def move_stock_item(
     """
     if body.kind == StockMoveKind.SOTUV:
         raise HTTPException(status_code=422, detail="Sotuv `/stock/sales` orqali rasmiylashtiriladi.")
-    item = await crud_stock_items.get_or_404(db, "Pozitsiya topilmadi.", id=item_id)
+    item = await crud_stock_items.get_or_404(db, "Tovar topilmadi.", id=item_id)
 
     order_id = None
     if body.kind == StockMoveKind.BUYURTMA:
@@ -278,7 +278,7 @@ async def move_stock_item(
 
 @router.delete("/{item_id}", response_model=Message, operation_id="delete_stock_item")
 async def delete_stock_item(db: SessionDep, current_user: StockUser, item_id: int, request: Request) -> Message:
-    item = await crud_stock_items.get_or_404(db, "Pozitsiya topilmadi.", id=item_id)
+    item = await crud_stock_items.get_or_404(db, "Tovar topilmadi.", id=item_id)
     log_action(
         db,
         module="stock",
@@ -286,7 +286,7 @@ async def delete_stock_item(db: SessionDep, current_user: StockUser, item_id: in
         user_id=current_user.id,
         entity_type="stock_item",
         entity_id=item.id,
-        message=f"Pozitsiya o'chirildi: {item.code} — {item.name}",
+        message=f"Tovar o'chirildi: {item.code} — {item.name}",
         ip=client_ip(request),
     )
     await crud_stock_items.delete(db, id=item_id)
@@ -343,7 +343,7 @@ async def read_stock_moves(
     kind: StockMoveKind | None = None,
     limit: Annotated[int, Query(ge=1, le=settings.MAX_PAGE_SIZE)] = settings.DEFAULT_PAGE_SIZE,
 ) -> list[StockMoveRead]:
-    """Ombor harakatlari — pozitsiya kartochkasi (`item_id`) yoki buyurtmaga
+    """Ombor harakatlari — tovar kartochkasi (`item_id`) yoki buyurtmaga
     berilganlar (`order_id`). Buyurtma sahifasidagi "Ombordan berilgan" bloki
     shu yerdan oziqlanadi."""
     query = select(StockMove).where(StockMove.is_deleted == False)  # noqa: E712
@@ -419,7 +419,7 @@ async def create_sale(db: SessionDep, current_user: StockUser, body: SaleCreate,
 
     total = Decimal(0)
     for line in body.lines:
-        item = await crud_stock_items.get_or_404(db, f"Pozitsiya topilmadi: {line.item_id}", id=line.item_id)
+        item = await crud_stock_items.get_or_404(db, f"Tovar topilmadi: {line.item_id}", id=line.item_id)
         price = line.price_uzs if line.price_uzs is not None else (item.sale_uzs or Decimal(0))
         total += price * line.qty
         await _apply_move(

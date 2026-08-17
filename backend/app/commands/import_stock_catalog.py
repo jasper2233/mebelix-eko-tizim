@@ -3,15 +3,15 @@
 Manba: `uploads/Umumiy maxsulotlar kataligi.xlsx` — yagona kodlash tizimi
 `K-GG-MMM-VV`. Uchta varaq bor, ikkitasi olinadi:
 
-* `Furnitura` — 464 pozitsiya, qoldiq va MIN zaxira bilan
-* `Materiallar` — 174 pozitsiya (plita, kromka…), MIN ustuni yo'q
+* `Furnitura` — 464 tovar, qoldiq va MIN zaxira bilan
+* `Materiallar` — 174 tovar (plita, kromka…), MIN ustuni yo'q
 * `Xizmatlar` — OLINMAYDI: xizmatning qoldig'i bo'lmaydi, ya'ni omborga kirmaydi
 
 Ishga tushirish:
     python -m app.commands.import_stock_catalog ["fayl.xlsx"]
 
 Idempotent: kod bo'yicha topilsa YANGILANADI, topilmasa qo'shiladi. Qoldiq
-(`qty`) esa faqat YANGI pozitsiyada yoziladi — mavjud pozitsiyada omborchi uni
+(`qty`) esa faqat YANGI tovarda yoziladi — mavjud tovarda omborchi uni
 tizimda yuritadi va qayta import uni Excel'dagi eski raqamga qaytarib
 yubormasligi kerak. Narx va nom har importda yangilanadi.
 """
@@ -103,7 +103,7 @@ def _num(value: Any) -> Decimal | None:
 
 
 def read_rows(source: Path | BytesIO) -> list[dict[str, Any]]:
-    """Excel -> pozitsiyalar ro'yxati. Manba fayl yo'li ham, bayt oqimi ham
+    """Excel -> tovarlar ro'yxati. Manba fayl yo'li ham, bayt oqimi ham
     bo'lishi mumkin: buyruq diskdan o'qiydi, endpoint esa yuklangan faylni
     diskka yozmasdan to'g'ridan-to'g'ri beradi."""
     import openpyxl

@@ -28,7 +28,7 @@ class StockItemRead(BaseModel):
 
 
 class StockGroup(BaseModel):
-    """Filtr chipi: guruh va undagi pozitsiyalar soni."""
+    """Filtr chipi: guruh va undagi tovarlar soni."""
 
     catalog: StockCatalog
     group_code: str
@@ -42,7 +42,7 @@ class StockSummary(BaseModel):
 
     items: int
     low: int
-    #: Qoldiqning xarid narxidagi qiymati (so'm). Narxi yo'q pozitsiya 0 sanaladi.
+    #: Qoldiqning xarid narxidagi qiymati (so'm). Narxi yo'q tovar 0 sanaladi.
     value_uzs: Decimal
 
 
