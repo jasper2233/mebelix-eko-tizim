@@ -323,7 +323,12 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sidebar-inset"
       className={cn(
-        "bg-transparent relative flex w-full flex-1 flex-col",
+        // `min-w-0` SHART: bu flex elementi va uning sukut `min-width: auto`
+        // qiymati keng kontentni (jadval, chip qatori) SAHIFANI kengaytirishga
+        // majbur qilardi — sarlavhadagi tugmalar ekrandan chiqib ketardi va
+        // gorizontal skroll sahifa darajasida paydo bo'lardi. Endi keng
+        // kontent o'z `overflow-x-auto` konteynerida skroll qiladi.
+        "bg-transparent relative flex w-full min-w-0 flex-1 flex-col",
         "md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
         className,
       )}

@@ -87,9 +87,7 @@ function StockPage() {
     .sort((a, b) => b.low - a.low || b.items - a.items)
 
   return (
-    // `min-w-0`: ichkaridagi keng jadval va chip qatori sahifani
-    // kengaytirib yubormasin — ular o'z konteynerida skroll qiladi
-    <div className="min-w-0">
+    <div>
       <PageHeader
         title="Materiallar ombori"
         description="Xomashyo va furnitura qoldig'i — TMO dan ayrim"
