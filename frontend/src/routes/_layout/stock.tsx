@@ -104,18 +104,15 @@ function StockPage() {
     .filter((g) => !catalog || g.catalog === catalog)
     .sort((a, b) => a.group_name.localeCompare(b.group_name))
 
-  // Yetishmovchilik eng ko'p uchta guruh — chip qatori bergan yagona foydali
-  // signal shu edi, uni bitta satrga yig'amiz
-  const worst = [...(groups ?? [])]
-    .filter((g) => g.low > 0)
-    .sort((a, b) => b.low - a.low)
-    .slice(0, 3)
-
   return (
     <div>
       <PageHeader
         title="Materiallar ombori"
-        description="Xomashyo va furnitura qoldig'i — TMO dan ayrim"
+        // Ombor qiymati oylik hisobot raqami: sahifada qoladi, lekin o'z
+        // kartasini olib yurmaydi
+        description={`Xomashyo va furnitura qoldig'i — TMO dan ayrim${
+          summary ? ` · ombor qiymati ${uzs(summary.value_uzs)} so'm` : ""
+        }`}
         actions={canEdit ? <ItemDialog groups={groups ?? []} /> : undefined}
       />
 
@@ -129,61 +126,6 @@ function StockPage() {
       {view === "sotuv" && <SalesView />}
 
       <div hidden={view !== "katalog"}>
-        {/* KUNNING ISHI: yo'lak HOLATNI xabar qiladi, filtrni esa ichidagi
-            NOMLANGAN TUGMA qo'llaydi.
-
-            Ilgari yo'lakning O'ZI tugma edi va bu noto'g'ri yechim edi: statistika
-            bosiladigan ekanini hech narsa aytmasdi (`→` zaif ishora), filtrlar esa
-            ilovada boshqa joyda — filtr qatorida — turadi, ya'ni ko'z izlaydigan
-            joyda emasdi. Ustiga bitta element ikkita ish bajarardi: holatni ham
-            xabar qilardi, filtrni ham qo'llardi. */}
-        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border bg-card px-4 py-3">
-          {summary?.low ? (
-            <>
-              <span className="num text-3xl font-black text-(--brand-gold-deep)">
-                {summary.low}
-              </span>
-              <span className="text-lg font-semibold">
-                tovar minimal zaxiradan past
-              </span>
-              {/* Tugma KEYINGI NATIJANI aytadi, holatni emas — foydalanuvchi
-                  bosishdan oldin nima bo'lishini biladi */}
-              <Button
-                variant={low ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setLow(!low)
-                  setPage(0)
-                }}
-              >
-                {low ? "Hammasini ko'rsatish" : "Faqat shularni ko'rsatish"}
-              </Button>
-            </>
-          ) : (
-            <span className="text-lg font-semibold">
-              Hamma tovar zaxirada yetarli
-            </span>
-          )}
-          <span className="ml-auto text-sm text-muted-foreground">
-            {summary?.items ?? "—"} tovar · ombor qiymati{" "}
-            <span className="num">{uzs(summary?.value_uzs)}</span> so'm
-          </span>
-          {worst.length > 0 && (
-            <span className="w-full text-2xs text-muted-foreground">
-              ko'pi:{" "}
-              {worst.map((g, n) => (
-                <span key={g.group_code}>
-                  {n > 0 && " · "}
-                  {g.group_name}{" "}
-                  <span className="num font-semibold text-(--brand-gold-deep)">
-                    {g.low}
-                  </span>
-                </span>
-              ))}
-            </span>
-          )}
-        </div>
-
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <Tabs
             value={catalog}
@@ -219,6 +161,38 @@ function StockPage() {
                   : `${g.catalog}-${g.group_code}`,
             }))}
           />
+          {/* Boolean filtr — ilovaning O'Z naqshi: matn O'ZGARMAYDI, faol
+              holat TO'LDIRISH bilan ko'rsatiladi. Aynan shu naqsh shu
+              sahifaning ikkinchi tabida ham bor ("Faqat qarzdorlar",
+              `SalesView`), shuning uchun nomi ham u bilan bir og'izdan
+              gapiradi.
+
+              Ilgari bu filtr jadval ustidagi xabar kartasi ICHIDA turardi va
+              matni holatga qarab almashardi ("Hammasini ko'rsatish"). Ikki
+              nuqsoni bor edi: (1) filtr holati sahifada ikki joyga bo'lingan —
+              jadval nega qisqarganini izlagan odam FILTR QATORIGA qaraydi,
+              kartaga qaramaydi; (2) to'la bo'yalgan tugma "yoqilgan" deydi,
+              ustidagi "Hammasini ko'rsatish" matni esa teskarisini o'qitadi.
+
+              Raqam tugmaning USTIDA: "shular" nima ekanini bosishdan oldin
+              aytadi. Yetishmovchilik yo'q bo'lsa chip umuman chizilmaydi —
+              bosilmaydigan "0 kam" o'lik boshqaruv bo'lardi. */}
+          {!!summary?.low && (
+            <Button
+              size="sm"
+              variant={low ? "default" : "outline"}
+              className="h-9"
+              aria-pressed={low}
+              title="Minimal zaxiradan past tovarlar"
+              onClick={() => {
+                setLow(!low)
+                setPage(0)
+              }}
+            >
+              Faqat kam qoldiq{" "}
+              <span className="num font-bold">{summary.low}</span>
+            </Button>
+          )}
           <SearchInput
             className="ml-auto w-full max-w-xs"
             placeholder="Nomi, kodi yoki guruhi"
