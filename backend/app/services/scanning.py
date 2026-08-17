@@ -97,7 +97,7 @@ async def resolve_terminal(db: AsyncSession, user: User) -> tuple[Machine, Post]
         raise ScanRejected("E009", "Terminal foydalanuvchisiga ish markazi biriktirilmagan.")
     machine = await db.get(Machine, user.machine_id)
     if machine is None or machine.is_deleted:
-        raise ScanRejected("E009", "Terminal stanogi topilmadi.")
+        raise ScanRejected("E009", "Terminal ish markazi topilmadi.")
     post = await db.get(Post, machine.post_id)
     if post is None:
         raise ScanRejected("E009", "Ish markazining posti topilmadi.")

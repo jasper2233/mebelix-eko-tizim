@@ -280,7 +280,7 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
           onOpenChange={(v) => !v && setPendingMachine("unset")}
           title={
             pendingName
-              ? `${pendingName} stanogiga bog'lansinmi?`
+              ? `${pendingName} ish markaziga bog'lansinmi?`
               : "Ish markazi bog'lami olib tashlansinmi?"
           }
           description={

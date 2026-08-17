@@ -23,7 +23,7 @@ class MachineCreate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     post_id: int
-    name: Annotated[str, Field(min_length=2, max_length=100, examples=["01 ARRA STANOGI"])]
+    name: Annotated[str, Field(min_length=2, max_length=100, examples=["01 ARRA"])]
     ip_address: str | None = Field(default=None, max_length=45)
     capacity: float | None = Field(default=None, gt=0)
     capacity_unit: CapacityUnit | None = None

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
  * Monoblok TERMINAL hisobi bilan bir marta, o'rnatishda kirgan va boshqa hech
  * qachon parol termaydi (tsexda klaviatura yo'q). Bu yerda esa KIM ishlayotgani
  * yoziladi — bu autentifikatsiya emas, atributsiya: qurilma allaqachon
- * tanitilgan, ekran ARRA stanogida turibdi, ya'ni sir so'rashning ma'nosi yo'q.
+ * tanitilgan, ekran ARRA ish markazida turibdi, ya'ni sir so'rashning ma'nosi yo'q.
  *
  * Beyjik ham shu ishni bajaradi (bitta harakat), lekin skaner faqat detal
  * skanlanadigan postda bor — ARRA da chek chiqarish skanning o'zi. */

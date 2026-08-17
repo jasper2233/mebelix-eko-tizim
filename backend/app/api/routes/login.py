@@ -140,7 +140,7 @@ async def _badge_post(db: SessionDep, employee: Employee, post_id: int | None) -
 
 
 async def _post_machine(db: SessionDep, post: Post) -> Machine:
-    """Postning stanogi. Bir nechta bo'lsa birinchisi — `resolve_terminal` ham
+    """Postning ish markazi. Bir nechta bo'lsa birinchisi — `resolve_terminal` ham
     operator rolida aynan shunday tanlaydi, ya'ni ikkalasi bir xil javob beradi."""
     machine = (
         await db.execute(
