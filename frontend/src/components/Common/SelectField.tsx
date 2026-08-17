@@ -48,7 +48,13 @@ export function SelectField({
 }) {
   return (
     <Select
-      value={value === "" ? (emptyLabel ? EMPTY : undefined) : value}
+      // Qiymat HAR DOIM satr: `undefined` bersak Radix boshqarilmaydigan
+      // holatga o'tib ketardi va keyin tashqaridan tozalash ishlamasdi
+      // (React ham "uncontrolled -> controlled" deb ogohlantirardi).
+      // `emptyLabel` berilmaganda EMPTY variantining o'zi chizilmaydi, ya'ni
+      // Radix hech qanday elementga mos kelmagan qiymatda `placeholder` ni
+      // ko'rsatadi — majburiy maydon uchun aynan shu kerak.
+      value={value === "" ? EMPTY : value}
       onValueChange={(v) => onChange(v === EMPTY ? "" : v)}
       disabled={disabled}
     >
