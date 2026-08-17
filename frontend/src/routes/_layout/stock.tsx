@@ -118,6 +118,9 @@ function StockPage() {
             aynan shu ishni qilardi, ikkitasi ortiqcha edi. */}
         <button
           type="button"
+          // Yetishmovchilik yo'q bo'lsa bosilmaydi: filtr bo'sh jadval
+          // ko'rsatib, foydalanuvchini boshi berk ko'chaga olib borardi
+          disabled={!summary?.low}
           onClick={() => setLow(!low)}
           aria-pressed={low}
           className={`mb-4 flex w-full flex-wrap items-baseline gap-x-3 gap-y-1 rounded-lg border px-4 py-3 text-left transition-colors ${
@@ -133,6 +136,11 @@ function StockPage() {
               </span>
               <span className="text-lg font-semibold">
                 pozitsiya minimal zaxiradan past
+              </span>
+              {/* Ko'rsatkich o'rniga strelka: "bosing" degan ko'rsatma
+                  tugmaning o'zi aytishi kerak bo'lgan narsani takrorlardi */}
+              <span aria-hidden className="text-lg text-(--brand-gold-deep)">
+                {low ? "×" : "→"}
               </span>
             </>
           ) : (
