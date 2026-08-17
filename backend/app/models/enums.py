@@ -116,6 +116,31 @@ class StockCatalog(StrEnum):
     MATERIAL = "M"
 
 
+class StockMoveKind(StrEnum):
+    """Ombor harakati NEGA bo'lgani. Miqdorning o'zi javob bermaydi: 12 ta petlya
+    kamaydi — buyurtmagami, sotildimi, yo'qoldimi? Hisobot aynan shu farqqa
+    tayanadi (buyurtmada TANNARX, sotuvda DAROMAD)."""
+
+    KIRIM = "kirim"
+    #: Buyurtmaga berildi — `.project` faylida furnitura kelmaydi, uni ombor beradi
+    BUYURTMA = "buyurtma"
+    SOTUV = "sotuv"
+    #: Yaroqsiz, yo'qolgan, inventarizatsiya farqi
+    CHIQIM = "chiqim"
+
+
+class SaleStatus(StrEnum):
+    PAID = "paid"
+    PARTIAL = "partial"
+    DEBT = "debt"
+
+
+class PaymentMethod(StrEnum):
+    CASH = "cash"
+    CARD = "card"
+    TRANSFER = "transfer"
+
+
 class MaterialType(StrEnum):
     SHEET = "sheet"
     BAND = "band"
