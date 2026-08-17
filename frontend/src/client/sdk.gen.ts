@@ -75,7 +75,7 @@ export class BridgeAgentsService {
     
     /**
      * Update Bridge Agent
-     * Stanok bog'lash (skan-forvard) va chek-chiqarish belgisi. Maydonlar
+     * Ish markazi bog'lash (skan-forvard) va chek-chiqarish belgisi. Maydonlar
      * alohida yuboriladi — berilmagani tegilmaydi (exclude_unset).
      * @param data The data for the request.
      * @param data.agentId
@@ -169,7 +169,7 @@ export class BridgeAgentsService {
      * Bridge Scan
      * Skan-forvard (TZ 12.5): stanok skaneri o'qigan QR agent orqali MES'ga ham yoziladi.
      *
-     * Auth — agentning doimiy tokeni (Bearer). Skan agentga bog'langan stanokning
+     * Auth — agentning doimiy tokeni (Bearer). Skan agentga bog'langan ish markazining
      * AKTIV sessiyasi nomidan yoziladi (monoblokda operator kirgan bo'lishi shart) —
      * hisob-kitob odatdagi skan bilan bir xil yo'ldan o'tadi.
      * @param data The data for the request.

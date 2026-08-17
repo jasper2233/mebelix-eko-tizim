@@ -27,8 +27,25 @@ class TokenType(StrEnum):
     REFRESH = "refresh"
 
 
+# bcrypt algoritmi 72 baytdan keyingi qismni HISOBGA OLMAYDI, bcrypt 5.0.0 esa
+# uzun parolni jimgina kesmasdan `ValueError` otadi — `hashpw` ham, `checkpw` ham.
+BCRYPT_MAX_BYTES = 72
+
+
+def _bcrypt_bytes(password: str) -> bytes:
+    """Parolni bcrypt qabul qiladigan uzunlikka keltiradi — kesish BITTA joyda.
+
+    Sxemaga `max_length` qo'yish yetmaydi: login `OAuth2PasswordRequestForm` dan
+    o'tadi, unda sxema yo'q, ya'ni uzun parol AUTENTIFIKATSIYASIZ 500 berardi.
+    Bu hujum emas, oddiy holat ham: o'zbek/kirill harflari 2 bayt, 40 belgili
+    parol ham chegaradan oshadi. Mavjud hash'lar ≤72 baytdan yasalgan, shuning
+    uchun kesish eski parollarni buzmaydi.
+    """
+    return password.encode()[:BCRYPT_MAX_BYTES]
+
+
 async def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return await run_in_threadpool(bcrypt.checkpw, plain_password.encode(), hashed_password.encode())
+    return await run_in_threadpool(bcrypt.checkpw, _bcrypt_bytes(plain_password), hashed_password.encode())
 
 
 async def get_password_hash(password: str) -> str:
@@ -37,7 +54,7 @@ async def get_password_hash(password: str) -> str:
 
 
 def _hash_password_sync(password: str) -> str:
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=settings.BCRYPT_ROUNDS)).decode()
+    return bcrypt.hashpw(_bcrypt_bytes(password), bcrypt.gensalt(rounds=settings.BCRYPT_ROUNDS)).decode()
 
 
 def _create_token(data: dict[str, Any], token_type: TokenType, expires_delta: timedelta) -> str:

@@ -75,7 +75,7 @@ export type BridgeAgentRead = {
 };
 
 /**
- * Stanok bog'lami va chek-chiqarish belgisi. can_print=None = tegilmaydi
+ * Ish markazi bog'lami va chek-chiqarish belgisi. can_print=None = tegilmaydi
  * (machine_id'da None "olib tashlash" degani, shuning uchun sentinel farqli).
  */
 export type BridgeAgentUpdate = {

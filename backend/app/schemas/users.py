@@ -44,9 +44,15 @@ class UserRead(BaseModel):
     # currentUser.id ni token bilan solishtiradi; int'ga o'tkazish client'dagi
     # barcha id taqqoslashlarni sindiradi, foydasi yo'q
     id: Annotated[str, BeforeValidator(lambda v: str(v)), Field(examples=["1"])]
-    name: Annotated[str | None, _NAME_FIELD]
-    username: Annotated[str, Field(min_length=2, max_length=20, pattern=r"^[a-z0-9]+$", examples=["userson"])]
-    phone: Annotated[str, _PHONE_FIELD]
+    # O'QISHDA SHABLON/UZUNLIK CHEKLOVI YO'Q: chiqish sxemasi bazadagi narsani
+    # TASVIRLAYDI, cheklamaydi. Ilgari bu yerda kirish shabloni turardi va
+    # shablonga mos kelmagan BITTA qator butun `GET /users/` ni 500 qilardi
+    # (`/users/me` ham shu sxemadan o'tadi — ya'ni bunday qator egasi ilovaga
+    # umuman kira olmasdi). Cheklov faqat yozish sxemalarida: `UserCreate`,
+    # `UserUpdate`, `UserAdminUpdate`.
+    name: str | None = None
+    username: str
+    phone: str
     is_active: bool
     is_superuser: bool
     role: UserRole
