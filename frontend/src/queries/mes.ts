@@ -143,6 +143,7 @@ export const getStockQueryOptions = (opts: {
   catalog?: "F" | "M"
   groupCode?: string
   low?: boolean
+  page?: number
 }) =>
   queryOptions({
     queryKey: [
@@ -151,6 +152,7 @@ export const getStockQueryOptions = (opts: {
       opts.catalog ?? "",
       opts.groupCode ?? "",
       opts.low ?? false,
+      opts.page ?? 0,
     ],
     queryFn: () =>
       StockService.readStockItems({
@@ -158,6 +160,7 @@ export const getStockQueryOptions = (opts: {
         catalog: opts.catalog,
         groupCode: opts.groupCode || undefined,
         low: opts.low || undefined,
+        skip: (opts.page ?? 0) * PAGE_SIZE,
         limit: PAGE_SIZE,
       }),
   })

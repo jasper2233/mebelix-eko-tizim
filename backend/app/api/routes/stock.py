@@ -63,8 +63,17 @@ async def read_stock_items(
     if low:
         query = query.where(_LOW)
     if search:
+        # GURUH NOMI ham qidiriladi: jadvalda alohida "Guruh" ustuni yo'q
+        # (kod prefiksi va tanlangan guruh uni allaqachon aytadi), shuning uchun
+        # "petlya" deb yozgan omborchi butun guruhni topa olishi kerak.
         pattern = f"%{search.strip()}%"
-        query = query.where(or_(StockItem.name.ilike(pattern), StockItem.code.ilike(pattern)))
+        query = query.where(
+            or_(
+                StockItem.name.ilike(pattern),
+                StockItem.code.ilike(pattern),
+                StockItem.group_name.ilike(pattern),
+            )
+        )
 
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
     rows = (await db.execute(query.order_by(StockItem.code).offset(skip).limit(limit))).scalars().all()

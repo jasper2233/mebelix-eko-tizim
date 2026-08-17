@@ -8,6 +8,7 @@ import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
 import { SearchInput } from "@/components/Common/SearchInput"
+import { SelectField } from "@/components/Common/SelectField"
 import { num, qty, uzs } from "@/components/Stock/format"
 import { MoveDialog } from "@/components/Stock/MoveDialog"
 import { SaleDialog } from "@/components/Stock/SaleDialog"
@@ -36,6 +37,7 @@ import {
   getStockGroupsQueryOptions,
   getStockQueryOptions,
   getStockSummaryQueryOptions,
+  PAGE_SIZE,
 } from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/stock")({
@@ -52,6 +54,7 @@ function StockPage() {
   const [catalog, setCatalog] = useState("")
   const [group, setGroup] = useState("")
   const [low, setLow] = useState(false)
+  const [page, setPage] = useState(0)
   const [moveFor, setMoveFor] = useState<StockItemRead | null>(null)
   const [editFor, setEditFor] = useState<StockItemRead | null>(null)
   const [deleteFor, setDeleteFor] = useState<StockItemRead | null>(null)
@@ -72,19 +75,39 @@ function StockPage() {
       catalog: (catalog || undefined) as "F" | "M" | undefined,
       groupCode: group,
       low,
+      page,
     }),
     placeholderData: keepPreviousData,
   })
+  const total = data?.count ?? 0
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  /** Filtr o'zgarganda sahifa boshiga: 4-sahifada turib filtrni almashtirgan
+   *  odam aks holda bo'sh jadval ko'rardi. */
+  const reset =
+    <T,>(set: (v: T) => void) =>
+    (v: T) => {
+      set(v)
+      setPage(0)
+    }
   const { data: groups } = useQuery(getStockGroupsQueryOptions())
   const { data: summary } = useQuery(getStockSummaryQueryOptions())
 
   // Katalog almashganda guruh chipi eskirib qoladi (RC furniturada, LD materialda)
-  // Yetishmovchilik bo'yicha kamayish tartibida: birinchi chiplar aynan
-  // buyurtma berish kerak bo'lgan guruhlar. Alifbo tartibi bu yerda hech
-  // qanday ma'lumot bermasdi.
+  // ALIFBO tartibi, yetishmovchilik bo'yicha EMAS: ro'yxat ichida har
+  // variantning raqami baribir yonida turadi, ya'ni saralash hech narsa
+  // qo'shmaydi — lekin har kirim/chiqimdan keyin o'rinlar almashib, guruhni
+  // ko'z bilan topish imkonsiz bo'lardi.
   const visibleGroups = (groups ?? [])
     .filter((g) => !catalog || g.catalog === catalog)
-    .sort((a, b) => b.low - a.low || b.items - a.items)
+    .sort((a, b) => a.group_name.localeCompare(b.group_name))
+
+  // Yetishmovchilik eng ko'p uchta guruh — chip qatori bergan yagona foydali
+  // signal shu edi, uni bitta satrga yig'amiz
+  const worst = [...(groups ?? [])]
+    .filter((g) => g.low > 0)
+    .sort((a, b) => b.low - a.low)
+    .slice(0, 3)
 
   return (
     <div>
@@ -121,7 +144,10 @@ function StockPage() {
           // Yetishmovchilik yo'q bo'lsa bosilmaydi: filtr bo'sh jadval
           // ko'rsatib, foydalanuvchini boshi berk ko'chaga olib borardi
           disabled={!summary?.low}
-          onClick={() => setLow(!low)}
+          onClick={() => {
+            setLow(!low)
+            setPage(0)
+          }}
           aria-pressed={low}
           className={`mb-4 flex w-full flex-wrap items-baseline gap-x-3 gap-y-1 rounded-lg border px-4 py-3 text-left transition-colors ${
             low
@@ -152,15 +178,29 @@ function StockPage() {
             {summary?.items ?? "—"} pozitsiya · ombor qiymati{" "}
             <span className="num">{uzs(summary?.value_uzs)}</span> so'm
           </span>
+          {worst.length > 0 && (
+            <span className="w-full text-2xs text-muted-foreground">
+              ko'pi:{" "}
+              {worst.map((g, n) => (
+                <span key={g.group_code}>
+                  {n > 0 && " · "}
+                  {g.group_name}{" "}
+                  <span className="num font-semibold text-(--brand-gold-deep)">
+                    {g.low}
+                  </span>
+                </span>
+              ))}
+            </span>
+          )}
         </button>
 
-        <div className="mb-3 flex flex-wrap items-center gap-3">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <Tabs
             value={catalog}
-            onValueChange={(v) => {
+            onValueChange={reset((v: string) => {
               setCatalog(v)
               setGroup("")
-            }}
+            })}
           >
             <TabsList className="h-9">
               <TabsTrigger value="">Hammasi</TabsTrigger>
@@ -168,46 +208,33 @@ function StockPage() {
               <TabsTrigger value="F">Furnitura</TabsTrigger>
             </TabsList>
           </Tabs>
+          {/* Guruh TANLOVI, chip qatori emas. 28 chip gorizontal skrollda
+              turganda 19 tasi amalda ko'rinmasdi — sichqoncha g'ildiragi
+              gorizontal skrollni bajarmaydi. Ro'yxatda hammasi bir vaqtda
+              ochiladi, klaviaturadan yoziladi va vertikal joy olmaydi.
+              Yorliq NOM bilan boshlanadi: klaviatura qidiruvi variantni
+              boshidan izlaydi, kod oldinda tursa "ruchka" deb yozib bo'lmasdi. */}
+          <SelectField
+            className="w-64"
+            value={group}
+            onChange={reset(setGroup)}
+            emptyLabel="Barcha guruh"
+            placeholder="Barcha guruh"
+            options={visibleGroups.map((g) => ({
+              value: g.group_code,
+              label: g.group_name,
+              hint:
+                g.low > 0
+                  ? `${g.catalog}-${g.group_code} · ${g.low} kam`
+                  : `${g.catalog}-${g.group_code}`,
+            }))}
+          />
           <SearchInput
             className="ml-auto w-full max-w-xs"
-            placeholder="Nomi yoki kodi"
+            placeholder="Nomi, kodi yoki guruhi"
             value={search}
-            onChange={setSearch}
+            onChange={reset(setSearch)}
           />
-        </div>
-
-        {/* Guruh chiplari BITTA qatorda, yetishmovchilik bo'yicha kamayish
-            tartibida: 28 guruh uch qatorga yoyilganda 84 raqam bir vaqtda
-            ko'rinardi va hech biri ajralib turmasdi. Endi birinchi o'nta —
-            aynan buyurtma berish kerak bo'lganlari. Kod (`F-RC`) oldinda:
-            u zavodning o'z manzil tizimi, guruh nomi esa uzun. */}
-        <div className="mb-4 flex gap-1.5 overflow-x-auto pb-1">
-          <Chip active={!group} onClick={() => setGroup("")}>
-            Barchasi
-          </Chip>
-          {visibleGroups.map((g) => (
-            <Chip
-              key={`${g.catalog}-${g.group_code}`}
-              active={group === g.group_code}
-              onClick={() =>
-                setGroup(group === g.group_code ? "" : g.group_code)
-              }
-            >
-              <span className="num mr-1.5 text-muted-foreground">
-                {g.catalog}-{g.group_code}
-              </span>
-              {g.group_name}
-              {g.low > 0 ? (
-                <span className="num ml-1.5 font-semibold text-(--brand-gold-deep)">
-                  {g.low}
-                </span>
-              ) : (
-                <span className="num ml-1.5 text-muted-foreground">
-                  {g.items}
-                </span>
-              )}
-            </Chip>
-          ))}
         </div>
 
         {isLoading ? (
@@ -221,15 +248,15 @@ function StockPage() {
                 <TableRow>
                   <TableHead>Kod</TableHead>
                   <TableHead>Nomi</TableHead>
-                  {/* Guruh ustuni FILTR YOQILGANDA yashiriladi: 45 qator
-                      ketma-ket bir xil qiymatni takrorlab turardi */}
-                  {!group && <TableHead>Guruh</TableHead>}
+                  {/* "Guruh" ustuni YO'Q: u kod prefiksida (F-RC-001 -> F-RC),
+                      tanlangan guruh esa tepadagi ro'yxatda ko'rinib turadi.
+                      "Min" ham alohida ustun emas — qoldiq katagining ostida. */}
                   <TableHead className="text-right">Qoldiq</TableHead>
-                  <TableHead className="text-right">Min</TableHead>
-                  {/* Xarid va sotuv bitta katakda: ikkalasi ham kerak, lekin
-                      ikkita ustun jadvalni amallar ustunidan siqib chiqarardi */}
                   <TableHead className="text-right">Narx</TableHead>
-                  <TableHead />
+                  {/* Amallar YOPISHQOQ: tor ekranda skroll bo'lganda kesiladigan
+                      narsa narx bo'lsin, hech qachon eng ko'p bosiladigan
+                      "Kirim / Chiqim" emas */}
+                  <TableHead className="sticky right-0 bg-background" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -247,11 +274,6 @@ function StockPage() {
                           </span>
                         )}
                       </TableCell>
-                      {!group && (
-                        <TableCell className="text-muted-foreground">
-                          {i.group_name}
-                        </TableCell>
-                      )}
                       {/* IKKI darajali signal. Ilgari nol ham, kamaygan ham bir
                           xil qizil edi — omborchi "ish to'xtadi" bilan
                           "buyurtma bering" ni ajrata olmasdi. Qizil = nol,
@@ -273,9 +295,11 @@ function StockPage() {
                             {i.unit}
                           </span>
                         )}
-                      </TableCell>
-                      <TableCell className="num text-right text-muted-foreground">
-                        {num(i.min_qty) > 0 ? qty(i.min_qty) : "—"}
+                        <div className="text-2xs text-muted-foreground">
+                          {num(i.min_qty) > 0
+                            ? `min ${qty(i.min_qty)}`
+                            : "\u00a0"}
+                        </div>
                       </TableCell>
                       <TableCell className="num whitespace-nowrap text-right leading-tight">
                         <div className="font-medium">
@@ -285,7 +309,7 @@ function StockPage() {
                           xarid {i.purchase_uzs ? uzs(i.purchase_uzs) : "—"}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="sticky right-0 bg-card">
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             variant="outline"
@@ -332,7 +356,7 @@ function StockPage() {
                     </TableRow>
                   ))
                 ) : (
-                  <EmptyRow colSpan={group ? 6 : 7}>
+                  <EmptyRow colSpan={5}>
                     {debounced || group || low
                       ? "Shu shartga mos pozitsiya yo'q."
                       : "Katalog bo'sh — tepadagi \"Excel'dan yuklash\" tugmasi bilan boshlang."}
@@ -340,6 +364,40 @@ function StockPage() {
                 )}
               </TableBody>
             </Table>
+          </div>
+        )}
+
+        {/* 638 pozitsiyadan 100 tasi ko'rsatiladi. Busiz sahifa o'zining bosh
+            vazifasida yolg'on gapirardi: "296 pozitsiya past" deb yozib, bosilsa
+            100 tasini ko'rsatardi va omborchi qolgan 196 tasini kam buyurtma
+            qilardi. */}
+        {total > 0 && (
+          <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+            <span className="text-sm text-muted-foreground">
+              <span className="num">{total}</span> tadan{" "}
+              <span className="num">
+                {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)}
+              </span>
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page === 0}
+              onClick={() => setPage((n) => n - 1)}
+            >
+              Oldingi
+            </Button>
+            <span className="num text-sm text-muted-foreground">
+              {page + 1} / {pages}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page + 1 >= pages}
+              onClick={() => setPage((n) => n + 1)}
+            >
+              Keyingi
+            </Button>
           </div>
         )}
       </div>
@@ -368,32 +426,5 @@ function StockPage() {
       )}
       <DeleteItem item={deleteFor} onClose={() => setDeleteFor(null)} />
     </div>
-  )
-}
-
-function Chip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      // `shrink-0` SHART: gorizontal skroll qatorida flex chiplarni siqib,
-      // matnni o'rab yuborardi — ular aylanaga aylanib qolgandi. `whitespace-nowrap`
-      // esa nom va raqamni bitta satrda ushlab turadi.
-      className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-sm transition-colors ${
-        active
-          ? "border-primary bg-primary text-primary-foreground"
-          : "bg-card hover:border-primary/40"
-      }`}
-    >
-      {children}
-    </button>
   )
 }
