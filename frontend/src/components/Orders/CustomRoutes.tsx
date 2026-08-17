@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 
 import { OrdersService } from "@/client"
+import { SelectField } from "@/components/Common/SelectField"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -228,24 +229,23 @@ export function CustomRoutes({
                     <span className="text-xs text-muted-foreground">
                       Asosiy detalga biriktirish:
                     </span>
-                    <select
+                    <SelectField
+                      className="h-8 w-64 text-xs"
                       disabled={!editable || !mine}
-                      value={parentId}
-                      onChange={(e) =>
+                      value={parentId ? String(parentId) : ""}
+                      onChange={(v) =>
                         setParents((prev) => ({
                           ...prev,
-                          [part.id]: Number(e.target.value),
+                          [part.id]: Number(v || 0),
                         }))
                       }
-                      className="h-8 rounded-md border bg-background px-2 text-xs disabled:opacity-50"
-                    >
-                      <option value={0}>— biriktirilmagan —</option>
-                      {options.map((o) => (
-                        <option key={o.id} value={o.id}>
-                          {o.product_code}_{o.code} · {o.name}
-                        </option>
-                      ))}
-                    </select>
+                      emptyLabel="Biriktirilmagan"
+                      options={options.map((o) => ({
+                        value: String(o.id),
+                        label: o.name,
+                        hint: `${o.product_code}_${o.code}`,
+                      }))}
+                    />
                     {!!parentId && (
                       <span className="text-xs text-amber-700">
                         Marshrut {PROCESS_OPS[mine]?.name} da tugaydi —

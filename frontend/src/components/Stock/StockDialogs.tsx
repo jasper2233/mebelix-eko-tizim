@@ -4,6 +4,7 @@ import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { type StockGroup, type StockItemRead, StockService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
+import { SelectField } from "@/components/Common/SelectField"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -149,22 +150,22 @@ export function ItemDialog({
           {!editing && (
             <>
               <Field label="Guruh">
-                <Select
+                <SelectField
                   value={form.group}
                   onChange={(v) => set("group", v)}
-                  options={[
-                    { value: "", label: "— yangi guruh —" },
-                    ...groups.map((g) => ({
-                      value: `${g.catalog}|${g.group_code}`,
-                      label: `${g.catalog === "F" ? "Furnitura" : "Material"} · ${g.group_name}`,
-                    })),
-                  ]}
+                  emptyLabel="Yangi guruh ochish"
+                  placeholder="Guruhni tanlang"
+                  options={groups.map((g) => ({
+                    value: `${g.catalog}|${g.group_code}`,
+                    label: g.group_name,
+                    hint: `${g.catalog}-${g.group_code}`,
+                  }))}
                 />
               </Field>
               {newGroup && (
                 <div className="grid grid-cols-3 gap-3">
                   <Field label="Katalog">
-                    <Select
+                    <SelectField
                       value={form.catalog}
                       onChange={(v) => set("catalog", v)}
                       options={[
@@ -305,33 +306,6 @@ function Field({
       </span>
       {children}
     </div>
-  )
-}
-
-/** Oddiy `<select>`: guruh ro'yxati 28 ta va o'sib boradi, Radix Select esa bu
- * yerda faqat kod qo'shardi — sahifa kompyuterda ochiladi, native ro'yxat
- * klaviatura bilan ham qidiriladi. */
-function Select({
-  value,
-  onChange,
-  options,
-}: {
-  value: string
-  onChange: (v: string) => void
-  options: { value: string; label: string }[]
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-9 w-full rounded-md border bg-card px-2 text-sm"
-    >
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
   )
 }
 

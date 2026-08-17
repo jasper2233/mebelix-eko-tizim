@@ -3,6 +3,7 @@ import { Minus, Plus } from "lucide-react"
 import { useState } from "react"
 
 import { OrdersService, type StockItemRead, StockService } from "@/client"
+import { SelectField } from "@/components/Common/SelectField"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -110,19 +111,16 @@ export function MoveDialog({
         </div>
 
         {kind === "buyurtma" && (
-          <select
+          <SelectField
             value={orderId}
-            onChange={(e) => setOrderId(e.target.value)}
-            className="h-10 w-full rounded-md border bg-card px-2 text-sm"
-          >
-            <option value="">— buyurtmani tanlang —</option>
-            {(orders?.data ?? []).map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.number}
-                {o.project_name ? ` · ${o.project_name}` : ""}
-              </option>
-            ))}
-          </select>
+            onChange={setOrderId}
+            placeholder="Buyurtmani tanlang"
+            options={(orders?.data ?? []).map((o) => ({
+              value: String(o.id),
+              label: o.number,
+              hint: o.project_name ?? undefined,
+            }))}
+          />
         )}
 
         <Input

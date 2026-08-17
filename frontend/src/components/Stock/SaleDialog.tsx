@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 
 import { ClientsService, type StockItemRead, StockService } from "@/client"
+import { SelectField } from "@/components/Common/SelectField"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -115,19 +116,17 @@ export function SaleDialog({
         </div>
 
         <Field label="Mijoz — qarzga sotilsa MAJBURIY">
-          <select
+          <SelectField
             value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
-            className="h-9 w-full rounded-md border bg-card px-2 text-sm"
-          >
-            <option value="">— o'tkinchi xaridor —</option>
-            {(clients?.data ?? []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.full_name}
-                {c.phone ? ` · ${c.phone}` : ""}
-              </option>
-            ))}
-          </select>
+            onChange={setClientId}
+            emptyLabel="O'tkinchi xaridor"
+            placeholder="Mijozni tanlang"
+            options={(clients?.data ?? []).map((c) => ({
+              value: String(c.id),
+              label: c.full_name,
+              hint: c.phone ?? undefined,
+            }))}
+          />
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
@@ -140,17 +139,15 @@ export function SaleDialog({
             />
           </Field>
           <Field label="Usuli">
-            <select
+            <SelectField
               value={method}
-              onChange={(e) =>
-                setMethod(e.target.value as "cash" | "card" | "transfer")
-              }
-              className="h-9 w-full rounded-md border bg-card px-2 text-sm"
-            >
-              <option value="cash">Naqd</option>
-              <option value="card">Karta</option>
-              <option value="transfer">O'tkazma</option>
-            </select>
+              onChange={(v) => setMethod(v as "cash" | "card" | "transfer")}
+              options={[
+                { value: "cash", label: "Naqd" },
+                { value: "card", label: "Karta" },
+                { value: "transfer", label: "O'tkazma" },
+              ]}
+            />
           </Field>
         </div>
 

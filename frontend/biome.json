@@ -1,6 +1,12 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.3/schema.json",
-  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
   "files": {
     "includes": [
       "**",
@@ -24,6 +30,17 @@
       },
       "style": {
         "noNonNullAssertion": "off"
+      },
+      "correctness": {
+        "noRestrictedElements": {
+          "level": "error",
+          "options": {
+            "elements": {
+              "select": "SelectField (@/components/Common/SelectField). Xom <select> ochilganda BRAUZERNING o'z ro'yxatini chizadi — uni CSS bilan o'zgartirib bo'lmaydi, ya'ni yonidagi Input/Button bilan mos kelmaydi va butun forma 'tayyor shablon' bo'lib ko'rinadi",
+              "textarea": "Textarea (@/components/ui/textarea)"
+            }
+          }
+        }
       }
     }
   },
