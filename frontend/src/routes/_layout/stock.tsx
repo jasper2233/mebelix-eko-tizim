@@ -40,7 +40,7 @@ import {
 } from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/stock")({
-  component: OmborPage,
+  component: StockPage,
   beforeLoad: requireAccess(isStockStaff),
   head: () => ({ meta: [{ title: "Materiallar ombori | MebeliX" }] }),
 })
@@ -48,7 +48,7 @@ export const Route = createFileRoute("/_layout/stock")({
 const isLow = (i: StockItemRead) =>
   num(i.min_qty) > 0 && num(i.qty) < num(i.min_qty)
 
-function OmborPage() {
+function StockPage() {
   const [search, setSearch] = useState("")
   const [catalog, setCatalog] = useState("")
   const [group, setGroup] = useState("")

@@ -19,7 +19,7 @@ import { num, uzs } from "./format"
 
 const digits = (v: string) => v.replace(/[^\d.]/g, "")
 
-/** Ombordan SOTUV — mijozga to'g'ridan-to'g'ri.
+/** Materiallar omboridan SOTUV — mijozga to'g'ridan-to'g'ri.
  *
  * To'lanmagan qism qarz bo'lib qoladi, shuning uchun qarzda MIJOZ majburiy:
  * kimdan undirishni bilmasak, yozuvning ma'nosi yo'q. Naqd to'langan sotuvda
@@ -87,7 +87,7 @@ export function SaleDialog({
         <DialogHeader>
           <DialogTitle>Sotuv — {item.name}</DialogTitle>
           <DialogDescription>
-            {item.code} · omborda {num(item.qty)}
+            {item.code} · qoldiq {num(item.qty)}
             {item.unit ? ` ${item.unit}` : ""}
           </DialogDescription>
         </DialogHeader>

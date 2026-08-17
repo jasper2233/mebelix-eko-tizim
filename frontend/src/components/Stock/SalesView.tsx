@@ -24,7 +24,7 @@ const STATUS: Record<string, { label: string; color: string }> = {
   debt: { label: "QARZ", color: "var(--status-cancelled)" },
 }
 
-/** Sotuvlar va qarzdorlar. Alohida sahifa emas — ombor sahifasidagi ikkinchi
+/** Sotuvlar va qarzdorlar. Alohida sahifa emas — Materiallar ombori sahifasidagi ikkinchi
  * ko'rinish: omborchi kun davomida ikkalasi orasida tez-tez o'tadi, sahifa
  * almashtirish ortiqcha qadam bo'lardi. */
 export function SalesView() {
