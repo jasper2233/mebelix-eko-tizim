@@ -626,6 +626,23 @@ export type Paginated_UserRead_ = {
     count: number;
 };
 
+export type PaymentCreate = {
+    amount_uzs: (number | string);
+    method?: PaymentMethod;
+    note?: (string | null);
+};
+
+export type PaymentMethod = 'cash' | 'card' | 'transfer';
+
+export type PaymentRead = {
+    id: number;
+    amount_uzs: string;
+    method: PaymentMethod;
+    note: (string | null);
+    user_name?: (string | null);
+    created_at: string;
+};
+
 export type PostCode = 'ARRA' | 'KROMKA' | 'OVAL' | 'PRISADKA' | 'ROVER' | 'STOLYARKA' | 'BOYOQ' | 'UPAKOVKA' | 'TMO';
 
 /**
@@ -772,6 +789,53 @@ export type RouteCell = {
 
 export type RouteSource = 'auto' | 'manual';
 
+/**
+ * Ombordan sotuv. To'lov ixtiyoriy — to'lanmasa qarz bo'lib qoladi.
+ */
+export type SaleCreate = {
+    lines: Array<SaleLine>;
+    client_id?: (number | null);
+    paid_uzs?: (number | string);
+    method?: PaymentMethod;
+    note?: (string | null);
+};
+
+/**
+ * Sotuv satri. Narx bo'sh bo'lsa katalogdagi sotuv narxi olinadi.
+ */
+export type SaleLine = {
+    item_id: number;
+    qty: (number | string);
+    price_uzs?: (number | string | null);
+};
+
+export type SaleRead = {
+    id: number;
+    client_id: (number | null);
+    client_name?: (string | null);
+    total_uzs: string;
+    paid_uzs: string;
+    debt_uzs?: string;
+    status: SaleStatus;
+    note: (string | null);
+    user_name?: (string | null);
+    created_at: string;
+    lines?: Array<StockMoveRead>;
+    payments?: Array<PaymentRead>;
+};
+
+export type SaleStatus = 'paid' | 'partial' | 'debt';
+
+/**
+ * Sotuv sahifasining tepasi: davr savdosi va umumiy qarz.
+ */
+export type SaleSummary = {
+    sales: number;
+    total_uzs: string;
+    paid_uzs: string;
+    debt_uzs: string;
+};
+
 export type ScanHistoryItem = {
     id: number;
     qr_text?: string;
@@ -903,14 +967,44 @@ export type StockItemUpdate = {
 };
 
 /**
+ * Ombor harakati NEGA bo'lgani. Miqdorning o'zi javob bermaydi: 12 ta petlya
+ * kamaydi — buyurtmagami, sotildimi, yo'qoldimi? Hisobot aynan shu farqqa
+ * tayanadi (buyurtmada TANNARX, sotuvda DAROMAD).
+ */
+export type StockMoveKind = 'kirim' | 'buyurtma' | 'sotuv' | 'chiqim';
+
+export type StockMoveRead = {
+    id: number;
+    stock_item_id: number;
+    item_code?: string;
+    item_name?: string;
+    qty: string;
+    kind: StockMoveKind;
+    order_id: (number | null);
+    order_number?: (string | null);
+    sale_id: (number | null);
+    price_uzs: (string | null);
+    note: (string | null);
+    user_name?: (string | null);
+    created_at: string;
+};
+
+/**
  * KIRIM / CHIQIM — qoldiqni to'g'ridan-to'g'ri yozish o'rniga o'zgarish miqdori.
  *
  * Nega delta: omborchi "20 ta keldi" deb o'ylaydi, "endi 174 ta bo'ldi" deb
  * emas. Ikki kishi bir vaqtda yozsa ham delta yo'qolmaydi, absolyut qiymat esa
  * bir-birini bosib ketardi.
+ *
+ * `kind=buyurtma` da `order_id` MAJBURIY: tannarx qaysi buyurtmaga tushishini
+ * bilmasak, harakatning ma'nosi qolmaydi. `sotuv` bu yerda QABUL QILINMAYDI —
+ * u `POST /stock/sales` orqali, chunki sotuvda hujjat, mijoz va to'lov bo'ladi.
  */
-export type StockMove = {
+export type StockMoveRequest = {
     delta: (number | string);
+    kind?: StockMoveKind;
+    order_id?: (number | null);
+    price_uzs?: (number | string | null);
     note?: (string | null);
 };
 
@@ -1648,7 +1742,7 @@ export type DeleteStockItemResponse = (Message);
 
 export type MoveStockItemData = {
     itemId: number;
-    requestBody: StockMove;
+    requestBody: StockMoveRequest;
 };
 
 export type MoveStockItemResponse = (StockItemRead);
@@ -1658,6 +1752,45 @@ export type ImportStockCatalogData = {
 };
 
 export type ImportStockCatalogResponse = (Message);
+
+export type ReadStockMovesData = {
+    itemId?: (number | null);
+    kind?: (StockMoveKind | null);
+    limit?: number;
+    orderId?: (number | null);
+};
+
+export type ReadStockMovesResponse = (Array<StockMoveRead>);
+
+export type CreateSaleData = {
+    requestBody: SaleCreate;
+};
+
+export type CreateSaleResponse = (SaleRead);
+
+export type ReadSalesData = {
+    clientId?: (number | null);
+    debts?: boolean;
+    limit?: number;
+    status?: (SaleStatus | null);
+};
+
+export type ReadSalesResponse = (Array<SaleRead>);
+
+export type ReadSalesSummaryResponse = (SaleSummary);
+
+export type ReadSaleData = {
+    saleId: number;
+};
+
+export type ReadSaleResponse = (SaleRead);
+
+export type AddSalePaymentData = {
+    requestBody: PaymentCreate;
+    saleId: number;
+};
+
+export type AddSalePaymentResponse = (SaleRead);
 
 export type ReadTabloMatrixResponse = (TabloMatrix);
 

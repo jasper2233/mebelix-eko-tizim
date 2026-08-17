@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { ReadAuditLogsData, ReadAuditLogsResponse, ReadBridgeAgentsResponse, CreateBridgeAgentData, CreateBridgeAgentResponse, UpdateBridgeAgentData, UpdateBridgeAgentResponse, DeleteBridgeAgentData, DeleteBridgeAgentResponse, RegenerateBridgeCodeData, RegenerateBridgeCodeResponse, PairBridgeAgentData, PairBridgeAgentResponse, BridgeScanData, BridgeScanResponse, ReadClientsData, ReadClientsResponse, CreateClientData, CreateClientResponse, ReadClientData, ReadClientResponse, UpdateClientData, UpdateClientResponse, DeleteClientData, DeleteClientResponse, ReadEmployeesData, ReadEmployeesResponse, CreateEmployeeData, CreateEmployeeResponse, ReadEmployeeData, ReadEmployeeResponse, UpdateEmployeeData, UpdateEmployeeResponse, DeleteEmployeeData, DeleteEmployeeResponse, RegenerateBadgeData, RegenerateBadgeResponse, PrintEmployeeBadgeData, PrintEmployeeBadgeResponse, HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, LoginWithBadgeData, LoginWithBadgeResponse, RefreshAccessTokenResponse, LogoutResponse, ReadMachinesResponse, CreateMachineData, CreateMachineResponse, ReadMachineData, ReadMachineResponse, UpdateMachineData, UpdateMachineResponse, DeleteMachineData, DeleteMachineResponse, ReadMaterialsData, ReadMaterialsResponse, CreateMaterialData, CreateMaterialResponse, UpdateMaterialData, UpdateMaterialResponse, DeleteMaterialData, DeleteMaterialResponse, CreateOrderData, CreateOrderResponse, ReadOrdersData, ReadOrdersResponse, ReadOrderStatusCountsResponse, ReadOrderData, ReadOrderResponse, UpdateOrderData, UpdateOrderResponse, SaveOrderSurveyData, SaveOrderSurveyResponse, UploadRoomPhotoData, UploadRoomPhotoResponse, DeleteRoomPhotoData, DeleteRoomPhotoResponse, CancelOrderData, CancelOrderResponse, DeliverOrderData, DeliverOrderResponse, ReadOrderMatrixData, ReadOrderMatrixResponse, EditOrderMatrixData, EditOrderMatrixResponse, AssignOrderMachinesData, AssignOrderMachinesResponse, ConfirmOrderData, ConfirmOrderResponse, StartOrderProductionData, StartOrderProductionResponse, UploadOrderProjectData, UploadOrderProjectResponse, DownloadOrderScxZipData, DownloadOrderScxZipResponse, RegenerateOrderScxData, RegenerateOrderScxResponse, DownloadOrderFileData, DownloadOrderFileResponse, ReadOrderCutmapData, ReadOrderCutmapResponse, ReadUpakovkaOrderData, ReadUpakovkaOrderResponse, CreatePachkaData, CreatePachkaResponse, ScanIntoPachkaData, ScanIntoPachkaResponse, RemoveFromPachkaData, RemoveFromPachkaResponse, ClosePachkaData, ClosePachkaResponse, ReadPostsResponse, UpdatePostData, UpdatePostResponse, ReportProductivityData, ReportProductivityResponse, ReportOrdersData, ReportOrdersResponse, ReportMaterialsData, ReportMaterialsResponse, ReportDashboardResponse, RecordScanData, RecordScanResponse, CancelScanData, CancelScanResponse, ReadStockItemsData, ReadStockItemsResponse, CreateStockItemData, CreateStockItemResponse, ReadStockSummaryResponse, ReadStockGroupsResponse, UpdateStockItemData, UpdateStockItemResponse, DeleteStockItemData, DeleteStockItemResponse, MoveStockItemData, MoveStockItemResponse, ImportStockCatalogData, ImportStockCatalogResponse, ReadTabloMatrixResponse, ReadTabloOrderData, ReadTabloOrderResponse, ReadTerminalContextResponse, ReadTerminalEmployeesResponse, StartTerminalSessionData, StartTerminalSessionResponse, EndTerminalSessionData, EndTerminalSessionResponse, ReadTerminalOrdersResponse, ResolveTerminalQrData, ResolveTerminalQrResponse, ReadTerminalKromkaData, ReadTerminalKromkaResponse, ReadTerminalPrisadkaData, ReadTerminalPrisadkaResponse, ReadTerminalCutmapData, ReadTerminalCutmapResponse, ReadTerminalPostQueueData, ReadTerminalPostQueueResponse, PrintInstanceLabelData, PrintInstanceLabelResponse, CancelInstanceLabelData, CancelInstanceLabelResponse, RenderInstanceLabelData, RenderInstanceLabelResponse, DownloadTerminalFileData, DownloadTerminalFileResponse, ReadTmoOrderData, ReadTmoOrderResponse, AcceptIntoTmoData, AcceptIntoTmoResponse, ShipPachkaData, ShipPachkaResponse, DeliverTmoOrderData, DeliverTmoOrderResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
+import type { ReadAuditLogsData, ReadAuditLogsResponse, ReadBridgeAgentsResponse, CreateBridgeAgentData, CreateBridgeAgentResponse, UpdateBridgeAgentData, UpdateBridgeAgentResponse, DeleteBridgeAgentData, DeleteBridgeAgentResponse, RegenerateBridgeCodeData, RegenerateBridgeCodeResponse, PairBridgeAgentData, PairBridgeAgentResponse, BridgeScanData, BridgeScanResponse, ReadClientsData, ReadClientsResponse, CreateClientData, CreateClientResponse, ReadClientData, ReadClientResponse, UpdateClientData, UpdateClientResponse, DeleteClientData, DeleteClientResponse, ReadEmployeesData, ReadEmployeesResponse, CreateEmployeeData, CreateEmployeeResponse, ReadEmployeeData, ReadEmployeeResponse, UpdateEmployeeData, UpdateEmployeeResponse, DeleteEmployeeData, DeleteEmployeeResponse, RegenerateBadgeData, RegenerateBadgeResponse, PrintEmployeeBadgeData, PrintEmployeeBadgeResponse, HealthApiV1HealthGetResponse, ReadyApiV1ReadyGetResponse, LoginAccessTokenData, LoginAccessTokenResponse, LoginWithBadgeData, LoginWithBadgeResponse, RefreshAccessTokenResponse, LogoutResponse, ReadMachinesResponse, CreateMachineData, CreateMachineResponse, ReadMachineData, ReadMachineResponse, UpdateMachineData, UpdateMachineResponse, DeleteMachineData, DeleteMachineResponse, ReadMaterialsData, ReadMaterialsResponse, CreateMaterialData, CreateMaterialResponse, UpdateMaterialData, UpdateMaterialResponse, DeleteMaterialData, DeleteMaterialResponse, CreateOrderData, CreateOrderResponse, ReadOrdersData, ReadOrdersResponse, ReadOrderStatusCountsResponse, ReadOrderData, ReadOrderResponse, UpdateOrderData, UpdateOrderResponse, SaveOrderSurveyData, SaveOrderSurveyResponse, UploadRoomPhotoData, UploadRoomPhotoResponse, DeleteRoomPhotoData, DeleteRoomPhotoResponse, CancelOrderData, CancelOrderResponse, DeliverOrderData, DeliverOrderResponse, ReadOrderMatrixData, ReadOrderMatrixResponse, EditOrderMatrixData, EditOrderMatrixResponse, AssignOrderMachinesData, AssignOrderMachinesResponse, ConfirmOrderData, ConfirmOrderResponse, StartOrderProductionData, StartOrderProductionResponse, UploadOrderProjectData, UploadOrderProjectResponse, DownloadOrderScxZipData, DownloadOrderScxZipResponse, RegenerateOrderScxData, RegenerateOrderScxResponse, DownloadOrderFileData, DownloadOrderFileResponse, ReadOrderCutmapData, ReadOrderCutmapResponse, ReadUpakovkaOrderData, ReadUpakovkaOrderResponse, CreatePachkaData, CreatePachkaResponse, ScanIntoPachkaData, ScanIntoPachkaResponse, RemoveFromPachkaData, RemoveFromPachkaResponse, ClosePachkaData, ClosePachkaResponse, ReadPostsResponse, UpdatePostData, UpdatePostResponse, ReportProductivityData, ReportProductivityResponse, ReportOrdersData, ReportOrdersResponse, ReportMaterialsData, ReportMaterialsResponse, ReportDashboardResponse, RecordScanData, RecordScanResponse, CancelScanData, CancelScanResponse, ReadStockItemsData, ReadStockItemsResponse, CreateStockItemData, CreateStockItemResponse, ReadStockSummaryResponse, ReadStockGroupsResponse, UpdateStockItemData, UpdateStockItemResponse, DeleteStockItemData, DeleteStockItemResponse, MoveStockItemData, MoveStockItemResponse, ImportStockCatalogData, ImportStockCatalogResponse, ReadStockMovesData, ReadStockMovesResponse, CreateSaleData, CreateSaleResponse, ReadSalesData, ReadSalesResponse, ReadSalesSummaryResponse, ReadSaleData, ReadSaleResponse, AddSalePaymentData, AddSalePaymentResponse, ReadTabloMatrixResponse, ReadTabloOrderData, ReadTabloOrderResponse, ReadTerminalContextResponse, ReadTerminalEmployeesResponse, StartTerminalSessionData, StartTerminalSessionResponse, EndTerminalSessionData, EndTerminalSessionResponse, ReadTerminalOrdersResponse, ResolveTerminalQrData, ResolveTerminalQrResponse, ReadTerminalKromkaData, ReadTerminalKromkaResponse, ReadTerminalPrisadkaData, ReadTerminalPrisadkaResponse, ReadTerminalCutmapData, ReadTerminalCutmapResponse, ReadTerminalPostQueueData, ReadTerminalPostQueueResponse, PrintInstanceLabelData, PrintInstanceLabelResponse, CancelInstanceLabelData, CancelInstanceLabelResponse, RenderInstanceLabelData, RenderInstanceLabelResponse, DownloadTerminalFileData, DownloadTerminalFileResponse, ReadTmoOrderData, ReadTmoOrderResponse, AcceptIntoTmoData, AcceptIntoTmoResponse, ShipPachkaData, ShipPachkaResponse, DeliverTmoOrderData, DeliverTmoOrderResponse, CreateUserData, CreateUserResponse, ReadUsersData, ReadUsersResponse, ReadUserMeResponse, DeleteUserMeResponse, UpdateUserMeData, UpdateUserMeResponse, UpdatePasswordMeData, UpdatePasswordMeResponse, ReadUserByIdData, ReadUserByIdResponse, UpdateUserData, UpdateUserResponse, DeleteUserData, DeleteUserResponse } from './types.gen';
 
 export class AuditService {
     /**
@@ -1595,9 +1595,10 @@ export class StockService {
     
     /**
      * Move Stock Item
-     * KIRIM / CHIQIM. Alohida harakatlar jadvali YO'Q — har o'zgarish audit logga
-     * tushadi (`module=stock, action=move`), ya'ni "kim, qachon, qancha" savoliga
-     * javob bor. To'liq ombor kartochkasi kerak bo'lganda shu loglardan quriladi.
+     * KIRIM / BUYURTMAGA BERISH / HISOBDAN CHIQIM.
+     *
+     * SOTUV bu yerda emas — u `POST /stock/sales` orqali, chunki sotuvda hujjat,
+     * mijoz va to'lov bo'ladi va ular bitta tranzaksiyada yozilishi kerak.
      * @param data The data for the request.
      * @param data.itemId
      * @param data.requestBody
@@ -1641,6 +1642,147 @@ export class StockService {
             url: '/api/v1/stock/import',
             formData: data.formData,
             mediaType: 'multipart/form-data',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Read Stock Moves
+     * Ombor harakatlari — pozitsiya kartochkasi (`item_id`) yoki buyurtmaga
+     * berilganlar (`order_id`). Buyurtma sahifasidagi "Ombordan berilgan" bloki
+     * shu yerdan oziqlanadi.
+     * @param data The data for the request.
+     * @param data.itemId
+     * @param data.orderId
+     * @param data.kind
+     * @param data.limit
+     * @returns StockMoveRead Successful Response
+     * @throws ApiError
+     */
+    public static readStockMoves(data: ReadStockMovesData = {}): CancelablePromise<ReadStockMovesResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/stock/moves',
+            query: {
+                item_id: data.itemId,
+                order_id: data.orderId,
+                kind: data.kind,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Create Sale
+     * Ombordan sotuv: satrlar + ixtiyoriy to'lov.
+     *
+     * To'lanmagan qism QARZ bo'lib qoladi va qarzdorlar ro'yxatiga tushadi —
+     * shuning uchun qarzli sotuvda MIJOZ majburiy: kimdan undirishni bilmasak,
+     * yozuvning ma'nosi yo'q. Naqd to'langan sotuvda mijoz shart emas (o'tkinchi
+     * xaridor).
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns SaleRead Successful Response
+     * @throws ApiError
+     */
+    public static createSale(data: CreateSaleData): CancelablePromise<CreateSaleResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/stock/sales',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Read Sales
+     * Sotuvlar. `debts=true` — faqat to'lanmaganlar, ya'ni qarzdorlar ro'yxati.
+     * @param data The data for the request.
+     * @param data.status
+     * @param data.clientId
+     * @param data.debts
+     * @param data.limit
+     * @returns SaleRead Successful Response
+     * @throws ApiError
+     */
+    public static readSales(data: ReadSalesData = {}): CancelablePromise<ReadSalesResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/stock/sales',
+            query: {
+                status: data.status,
+                client_id: data.clientId,
+                debts: data.debts,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Read Sales Summary
+     * Sotuv sahifasining tepasi: nechta sotuv, jami savdo, tushgan pul, qarz.
+     * @returns SaleSummary Successful Response
+     * @throws ApiError
+     */
+    public static readSalesSummary(): CancelablePromise<ReadSalesSummaryResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/stock/sales/summary'
+        });
+    }
+    
+    /**
+     * Read Sale
+     * @param data The data for the request.
+     * @param data.saleId
+     * @returns SaleRead Successful Response
+     * @throws ApiError
+     */
+    public static readSale(data: ReadSaleData): CancelablePromise<ReadSaleResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/stock/sales/{sale_id}',
+            path: {
+                sale_id: data.saleId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Add Sale Payment
+     * Qarzni to'lash — to'liq yoki qisman.
+     *
+     * To'lov AYRIM yozuv: `sale.paid_uzs` ni shunchaki yangilash "qachon va qanday
+     * to'ladi" degan savolni yo'qotardi.
+     * @param data The data for the request.
+     * @param data.saleId
+     * @param data.requestBody
+     * @returns SaleRead Successful Response
+     * @throws ApiError
+     */
+    public static addSalePayment(data: AddSalePaymentData): CancelablePromise<AddSalePaymentResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/stock/sales/{sale_id}/payments',
+            path: {
+                sale_id: data.saleId
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: 'Validation Error'
             }
