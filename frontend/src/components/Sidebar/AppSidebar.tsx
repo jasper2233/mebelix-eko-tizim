@@ -27,6 +27,7 @@ import {
   isAdmin,
   isManagement,
   isProductionStaff,
+  isStockOnly,
   isStockStaff,
   isSuperuser,
   TERMINAL_STATUSES,
@@ -42,7 +43,12 @@ import { User } from "./User"
 export const NAV_ITEMS: (Item & {
   show: (user: UserRead | null | undefined) => boolean
 })[] = [
-  { icon: Home, title: "Boshqaruv paneli", path: "/", show: () => true },
+  {
+    icon: Home,
+    title: "Boshqaruv paneli",
+    path: "/",
+    show: (u) => !isStockOnly(u),
+  },
   {
     icon: ClipboardList,
     title: "Buyurtmalar",
@@ -72,7 +78,14 @@ export const NAV_ITEMS: (Item & {
     path: "/reports",
     show: isManagement,
   },
-  { icon: Tv, title: "LIVE Tablo", path: "/tablo", show: () => true },
+  // TABLO — tsex zalidagi TV ekran. Omborchiga keraksiz: u boshqa
+  // binoda, kompyuter oldida ishlaydi
+  {
+    icon: Tv,
+    title: "LIVE Tablo",
+    path: "/tablo",
+    show: (u) => !isStockOnly(u),
+  },
   // Foydalanuvchilar ro'yxati barcha telefon raqamlarni ochadi — backend uni
   // faqat superuser'ga beradi, shuning uchun menyu ham shu shartda
   { icon: Users, title: "Foydalanuvchilar", path: "/admin", show: isSuperuser },

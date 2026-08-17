@@ -158,7 +158,12 @@ export const isProductionStaff = (u?: RoleUser | null) =>
  * to'xtamasin). `omborchi` bu yerda EMAS: u TMO da tayyor mahsulot qabul
  * qiladi va monoblokda ishlaydi, bu esa boshqa odam va boshqa joy. */
 export const isStockStaff = (u?: RoleUser | null) =>
-  isProductionStaff(u) || u?.role === "material_omborchi"
+  isProductionStaff(u) || isStockOnly(u)
+/** FAQAT omborni ko'radigan rol. `_layout` uni kirishda `/ombor` ga yuboradi,
+ * ya'ni menyudagi boshqa hamma narsa u uchun boshi berk ko'cha: bosilsa
+ * qaytarib yuboriladi. Shuning uchun ular ro'yxatdan ham olib tashlanadi. */
+export const isStockOnly = (u?: RoleUser | null) =>
+  u?.role === "material_omborchi"
 
 // Stanok bog'lami MAJBURIY rollar — qurilma akkauntlari (Admin dialoglarida
 // rol tanlovi, machine_id validatsiyasi va bog'lamni uzish shu ro'yxatdan)

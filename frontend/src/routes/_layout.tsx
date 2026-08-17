@@ -21,6 +21,11 @@ const sectionTitles: Record<string, string> = {
   "/settings": "Sozlamalar",
 }
 
+/** Materiallar omborchisi kira oladigan yagona sahifalar. Qolgan hamma joydan
+ * `/ombor` ga qaytariladi, shuning uchun menyuda ham ular ko'rsatilmaydi
+ * (`isStockOnly`, AppSidebar). */
+const STOCK_ONLY_PATHS = ["/ombor", "/settings"]
+
 export const Route = createFileRoute("/_layout")({
   component: Layout,
   beforeLoad: async ({ location }) => {
@@ -36,9 +41,12 @@ export const Route = createFileRoute("/_layout")({
     // o'tish yana shu `beforeLoad` ni ishga tushiradi. Tekshiruvsiz bu cheksiz
     // redirect halqasi bo'lib, sahifa oq qolardi va renderer qotardi.
     // `terminal`/`tablo` da bunday muammo yo'q — ular layoutdan TASHQARIDA.
+    //
+    // `/settings` ham ochiq qoladi: u foydalanuvchi menyusida turadi va har kim
+    // o'z parolini o'zgartira olishi kerak.
     if (
       me.role === "material_omborchi" &&
-      !location.pathname.startsWith("/ombor")
+      !STOCK_ONLY_PATHS.some((p) => location.pathname.startsWith(p))
     )
       throw redirect({ to: "/ombor" })
   },
