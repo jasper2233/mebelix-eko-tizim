@@ -246,13 +246,20 @@ function StockPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Kod</TableHead>
-                  <TableHead>Nomi</TableHead>
+                  {/* Bo'sh joyni NOMI ustuni yutadi. Busiz jadval besh ustunga
+                      tushgach konteynerni to'ldirish uchun cho'zilib, Narx bilan
+                      amallar orasida katta bo'shliq qolardi. */}
+                  <TableHead className="whitespace-nowrap">Kod</TableHead>
+                  <TableHead className="w-full">Nomi</TableHead>
                   {/* "Guruh" ustuni YO'Q: u kod prefiksida (F-RC-001 -> F-RC),
                       tanlangan guruh esa tepadagi ro'yxatda ko'rinib turadi.
                       "Min" ham alohida ustun emas — qoldiq katagining ostida. */}
-                  <TableHead className="text-right">Qoldiq</TableHead>
-                  <TableHead className="text-right">Narx</TableHead>
+                  <TableHead className="whitespace-nowrap text-right">
+                    Qoldiq
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap text-right">
+                    Narx
+                  </TableHead>
                   {/* Amallar YOPISHQOQ: tor ekranda skroll bo'lganda kesiladigan
                       narsa narx bo'lsin, hech qachon eng ko'p bosiladigan
                       "Kirim / Chiqim" emas */}
