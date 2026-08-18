@@ -35,14 +35,13 @@
 		reverse_proxy api:8000
 	}
 
-	# Prometheus metrics — faqat ichki/private tarmoqdan (scraper shu yerdan keladi).
-	@internal_metrics {
-		path /metrics
-		remote_ip private_ranges
-	}
-	handle @internal_metrics {
-		reverse_proxy api:8000
-	}
+	# Prometheus metrics tashqariga UMUMAN chiqmaydi.
+	# Ilgari bu yerda `remote_ip private_ranges` matcher turardi, lekin prodda
+	# Caddy host-nginx ORTIDA ishlaydi: har bir tashqi so'rovning `remote_host`i
+	# proxy'ning o'zi (127.0.0.1 / docker bridge), ya'ni private range — matcher
+	# hech kimni to'smasdi va metrikalar ochiq internetda edi.
+	# Scraper qo'shilsa u compose tarmog'i ichidan `api:8000/metrics` ga boradi,
+	# bu yo'ldan emas.
 	handle /metrics {
 		respond "Forbidden" 403
 	}
