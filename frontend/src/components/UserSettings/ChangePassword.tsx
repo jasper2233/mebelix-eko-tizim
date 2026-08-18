@@ -45,7 +45,7 @@ export const ChangePassword = () => {
 
   const mutation = useMutation({
     mutationFn: (data: UpdatePassword) =>
-      UsersService.updatePasswordMe({ requestBody: data }),
+      UsersService.updatePasswordMe({ body: data }),
     onSuccess: () => {
       toast.success("Parol muvaffaqiyatli yangilandi")
       form.reset()

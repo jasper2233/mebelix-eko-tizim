@@ -46,7 +46,8 @@ export function SaleDialog({
 
   const { data: clients } = useQuery({
     queryKey: ["clients", "for-sale"],
-    queryFn: () => ClientsService.readClients({ limit: 100 }),
+    queryFn: async () =>
+      (await ClientsService.readClients({ query: { limit: 100 } })).data,
     staleTime: 60_000,
   })
 
@@ -59,7 +60,7 @@ export function SaleDialog({
   const mutation = useMutation({
     mutationFn: () =>
       StockService.createSale({
-        requestBody: {
+        body: {
           lines: [{ item_id: item.id, qty: amount, price_uzs: price || null }],
           client_id: clientId ? Number(clientId) : null,
           paid_uzs: String(paidNum),
@@ -197,8 +198,8 @@ export function PaymentDialog({
   const mutation = useMutation({
     mutationFn: () =>
       StockService.addSalePayment({
-        saleId,
-        requestBody: { amount_uzs: amount, method },
+        path: { sale_id: saleId },
+        body: { amount_uzs: amount, method },
       }),
     ...cb,
     onSuccess: () => {

@@ -1,8 +1,7 @@
 // WebSocket ulanish (TZ 2.3): avto-reconnect, 30s heartbeat, online holati.
 
 import { useEffect, useRef, useState } from "react"
-
-import { OpenAPI } from "@/client"
+import { API_BASE } from "@/utils"
 
 type MesEvent = { type: string; payload: Record<string, unknown> }
 
@@ -18,7 +17,7 @@ export function useMesWs(onEvent: (event: MesEvent) => void) {
     let closed = false
 
     const connect = () => {
-      const base = OpenAPI.BASE || window.location.origin
+      const base = API_BASE || window.location.origin
       const url = `${base.replace(/^http/, "ws")}/api/v1/ws/events`
       socket = new WebSocket(url)
       socket.onopen = () => {

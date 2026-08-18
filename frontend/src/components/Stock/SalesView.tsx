@@ -33,12 +33,16 @@ export function SalesView() {
 
   const { data: sales, isLoading } = useQuery({
     queryKey: ["stock", "sales", debtsOnly],
-    queryFn: () =>
-      StockService.readSales({ debts: debtsOnly || undefined, limit: 100 }),
+    queryFn: async () =>
+      (
+        await StockService.readSales({
+          query: { debts: debtsOnly || undefined, limit: 100 },
+        })
+      ).data,
   })
   const { data: summary } = useQuery({
     queryKey: ["stock", "sales", "summary"],
-    queryFn: () => StockService.readSalesSummary(),
+    queryFn: async () => (await StockService.readSalesSummary()).data,
   })
 
   return (

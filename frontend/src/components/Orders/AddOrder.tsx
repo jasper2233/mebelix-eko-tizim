@@ -55,8 +55,8 @@ export function AddOrder() {
 
   const mutation = useMutation({
     mutationFn: (data: FormValues) =>
-      OrdersService.createOrder({ requestBody: toRequestBody(data) }),
-    onSuccess: (order) => {
+      OrdersService.createOrder({ body: toRequestBody(data) }),
+    onSuccess: ({ data: order }) => {
       toast.success(`Buyurtma yaratildi: ${order.number}`)
       form.reset()
       setOpen(false)

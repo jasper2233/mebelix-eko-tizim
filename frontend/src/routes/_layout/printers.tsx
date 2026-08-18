@@ -173,8 +173,8 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
   const togglePrint = useMutation({
     mutationFn: (v: boolean) =>
       BridgeAgentsService.updateBridgeAgent({
-        agentId: agent.id,
-        requestBody: { can_print: v },
+        path: { agent_id: agent.id },
+        body: { can_print: v },
       }),
     ...printCb,
     onSuccess: () => {
@@ -187,8 +187,8 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
   const linkMachine = useMutation({
     mutationFn: (machineId: number | null) =>
       BridgeAgentsService.updateBridgeAgent({
-        agentId: agent.id,
-        requestBody: { machine_id: machineId },
+        path: { agent_id: agent.id },
+        body: { machine_id: machineId },
       }),
     ...linkCb,
     onSuccess: () => {
@@ -204,7 +204,9 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
   const regenCb = cb("Yangi ulanish kodi yaratildi")
   const regen = useMutation({
     mutationFn: () =>
-      BridgeAgentsService.regenerateBridgeCode({ agentId: agent.id }),
+      BridgeAgentsService.regenerateBridgeCode({
+        path: { agent_id: agent.id },
+      }),
     ...regenCb,
     onSuccess: () => {
       regenCb.onSuccess()
@@ -214,7 +216,7 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
   const removeCb = cb("Agent bekor qilindi")
   const remove = useMutation({
     mutationFn: () =>
-      BridgeAgentsService.deleteBridgeAgent({ agentId: agent.id }),
+      BridgeAgentsService.deleteBridgeAgent({ path: { agent_id: agent.id } }),
     ...removeCb,
     onSuccess: () => {
       removeCb.onSuccess()
@@ -384,10 +386,12 @@ function AddAgent() {
   })
 
   const mutation = useMutation({
-    mutationFn: (data: z.infer<typeof formSchema>) =>
-      BridgeAgentsService.createBridgeAgent({
-        requestBody: { name: data.name },
-      }),
+    mutationFn: async (data: z.infer<typeof formSchema>) =>
+      (
+        await BridgeAgentsService.createBridgeAgent({
+          body: { name: data.name },
+        })
+      ).data,
     onSuccess: (agent) => {
       setCreated(agent)
       form.reset()

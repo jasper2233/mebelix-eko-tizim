@@ -343,8 +343,8 @@ function EditEmployee({
   const mutation = useMutation({
     mutationFn: (data: z.infer<typeof formSchema>) =>
       EmployeesService.updateEmployee({
-        employeeId: employee.id,
-        requestBody: {
+        path: { employee_id: employee.id },
+        body: {
           full_name: data.full_name,
           phone: data.phone || null,
           position: data.position || null,
@@ -402,7 +402,7 @@ function DeleteEmployee({
   const cb = crudCallbacks(queryClient, ["employees"], "Hodim o'chirildi")
   const mutation = useMutation({
     mutationFn: (id: number) =>
-      EmployeesService.deleteEmployee({ employeeId: id }),
+      EmployeesService.deleteEmployee({ path: { employee_id: id } }),
     ...cb,
     onSuccess: () => {
       cb.onSuccess()
@@ -449,7 +449,7 @@ function AddEmployee() {
   const mutation = useMutation({
     mutationFn: (data: z.infer<typeof formSchema>) =>
       EmployeesService.createEmployee({
-        requestBody: {
+        body: {
           full_name: data.full_name,
           phone: data.phone || null,
           position: data.position || null,
@@ -514,13 +514,13 @@ function BadgeDialog({
   const [confirmRegen, setConfirmRegen] = useState(false)
   const print = useMutation({
     mutationFn: (id: number) =>
-      EmployeesService.printEmployeeBadge({ employeeId: id }),
-    onSuccess: (r) => toast.success(r.message),
+      EmployeesService.printEmployeeBadge({ path: { employee_id: id } }),
+    onSuccess: (r) => toast.success(r.data.message),
     onError: (e) => toast.error(detailMessage(e)),
   })
   const regen = useMutation({
     mutationFn: (id: number) =>
-      EmployeesService.regenerateBadge({ employeeId: id }),
+      EmployeesService.regenerateBadge({ path: { employee_id: id } }),
     ...cb,
     onSuccess: () => {
       setConfirmRegen(false)
@@ -531,7 +531,7 @@ function BadgeDialog({
   if (!employee) return null
   // Yangi beyjik yaratilgach dialog YANGI QR ko'rsatishi shart — prop'dagi
   // eski snapshot bekor qilingan beyjikni chop ettirib yuborardi
-  const emp = regen.data ?? employee
+  const emp = regen.data?.data ?? employee
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-xs text-center">

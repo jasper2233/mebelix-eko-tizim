@@ -41,7 +41,12 @@ export function KromkaView({
 }) {
   const { data, isLoading } = useQuery({
     queryKey: ["terminal", "kromka", orderId],
-    queryFn: () => TerminalService.readTerminalKromka({ orderId }),
+    queryFn: async () =>
+      (
+        await TerminalService.readTerminalKromka({
+          path: { order_id: orderId },
+        })
+      ).data,
     refetchInterval: 30_000,
   })
 

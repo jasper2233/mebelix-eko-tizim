@@ -64,7 +64,7 @@ export function AddClient({
   const mutation = useMutation({
     mutationFn: (data: FormValues) =>
       ClientsService.createClient({
-        requestBody: {
+        body: {
           full_name: data.full_name,
           phone: data.phone || null,
           phone_alt: data.phone_alt || null,
@@ -73,7 +73,7 @@ export function AddClient({
         },
       }),
     ...cb,
-    onSuccess: (client) => {
+    onSuccess: ({ data: client }) => {
       cb.onSuccess()
       form.reset()
       setOpen(false)

@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
 import {
-  OpenAPI,
   type OrderFileRead,
   type OrderSurvey,
   OrdersService,
@@ -46,7 +45,7 @@ import {
 } from "@/lib/anketa"
 import { cn } from "@/lib/utils"
 import { getOrderQueryOptions } from "@/queries/mes"
-import { handleError } from "@/utils"
+import { API_BASE, handleError } from "@/utils"
 
 export const Route = createFileRoute("/_layout/anketa/$orderId")({
   component: AnketaPage,
@@ -138,7 +137,7 @@ function AnketaPage() {
 
   const save = useMutation({
     mutationFn: (body: OrderSurvey) =>
-      OrdersService.saveOrderSurvey({ orderId: id, requestBody: body }),
+      OrdersService.saveOrderSurvey({ path: { order_id: id }, body }),
     onSuccess: (_data, body) => {
       // Faqat yuborilgan nusxa hali ham joriy bo'lsa "toza" deb belgilaymiz.
       // Aks holda saqlash uchayotganda yozilgan matn dirty=false tufayli
@@ -174,8 +173,8 @@ function AnketaPage() {
       if (dirtyRef.current) {
         // fire-and-forget: komponent yo'q bo'lyapti, javob kutilmaydi
         OrdersService.saveOrderSurvey({
-          orderId: id,
-          requestBody: surveyRef.current,
+          path: { order_id: id },
+          body: surveyRef.current,
         }).catch(() => {})
       }
     }
@@ -829,15 +828,17 @@ function RoomPhotos({
   const upload = useMutation({
     mutationFn: (file: File) =>
       OrdersService.uploadRoomPhoto({
-        orderId,
-        formData: { room_id: roomId, file: file as unknown as string },
+        path: { order_id: orderId },
+        body: { room_id: roomId, file },
       }),
     onSuccess: refresh,
     onError: handleError,
   })
   const remove = useMutation({
     mutationFn: (fileId: number) =>
-      OrdersService.deleteRoomPhoto({ orderId, fileId }),
+      OrdersService.deleteRoomPhoto({
+        path: { order_id: orderId, file_id: fileId },
+      }),
     onSuccess: () => {
       setToRemove(null)
       refresh()
@@ -870,7 +871,7 @@ function RoomPhotos({
   if (!canEdit && !photos.length) return null
 
   const src = (fileId: number) =>
-    `${OpenAPI.BASE}/api/v1/orders/${orderId}/files/${fileId}`
+    `${API_BASE}/api/v1/orders/${orderId}/files/${fileId}`
   const full = photos.length >= MAX_PHOTOS
 
   return (

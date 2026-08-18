@@ -229,10 +229,10 @@ function MachineDialog({
       }
       return editing
         ? MachinesService.updateMachine({
-            machineId: machine.id,
-            requestBody: body,
+            path: { machine_id: machine.id },
+            body,
           })
-        : MachinesService.createMachine({ requestBody: body })
+        : MachinesService.createMachine({ body })
     },
     ...cb,
     onSuccess: () => {
@@ -361,7 +361,7 @@ function DeleteMachine({
   const cb = crudCallbacks(queryClient, ["machines"], "Ish markazi o'chirildi")
   const mutation = useMutation({
     mutationFn: (id: number) =>
-      MachinesService.deleteMachine({ machineId: id }),
+      MachinesService.deleteMachine({ path: { machine_id: id } }),
     ...cb,
     onSuccess: () => {
       cb.onSuccess()

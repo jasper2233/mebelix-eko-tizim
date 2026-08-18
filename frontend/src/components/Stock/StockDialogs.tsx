@@ -85,8 +85,8 @@ export function ItemDialog({
       }
       if (item)
         return StockService.updateStockItem({
-          itemId: item.id,
-          requestBody: shared,
+          path: { item_id: item.id },
+          body: shared,
         })
       const [catalog, groupCode] = form.group
         ? form.group.split("|")
@@ -95,7 +95,7 @@ export function ItemDialog({
         groups.find((g) => `${g.catalog}|${g.group_code}` === form.group)
           ?.group_name ?? form.newGroupName.trim()
       return StockService.createStockItem({
-        requestBody: {
+        body: {
           ...shared,
           code: form.code.trim() || null,
           catalog: catalog as "F" | "M",
@@ -339,7 +339,8 @@ export function DeleteItem({
   const queryClient = useQueryClient()
   const cb = crudCallbacks(queryClient, ["stock"], "Tovar o'chirildi")
   const mutation = useMutation({
-    mutationFn: (id: number) => StockService.deleteStockItem({ itemId: id }),
+    mutationFn: (id: number) =>
+      StockService.deleteStockItem({ path: { item_id: id } }),
     ...cb,
     onSuccess: () => {
       cb.onSuccess()

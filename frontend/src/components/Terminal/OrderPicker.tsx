@@ -29,7 +29,7 @@ export function OrderPicker({
     isError,
   } = useQuery({
     queryKey: ["terminal", "orders"],
-    queryFn: () => TerminalService.readTerminalOrders(),
+    queryFn: async () => (await TerminalService.readTerminalOrders()).data,
     refetchInterval: 30_000,
   })
   return (

@@ -64,8 +64,8 @@ export function EditOrder({
   const mutation = useMutation({
     mutationFn: (data: FormValues) =>
       OrdersService.updateOrder({
-        orderId: order.id,
-        requestBody: toRequestBody(data),
+        path: { order_id: order.id },
+        body: toRequestBody(data),
       }),
     ...cb,
     onSuccess: () => {

@@ -53,7 +53,7 @@ function Dashboard() {
     role === "director"
   const { data: stats } = useQuery({
     queryKey: ["reports", "dashboard"],
-    queryFn: () => ReportsService.reportDashboard(),
+    queryFn: async () => (await ReportsService.reportDashboard()).data,
     enabled: Boolean(canStats),
     refetchInterval: 60_000,
   })

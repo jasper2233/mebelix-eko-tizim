@@ -117,15 +117,19 @@ function LogsPage() {
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["audit-logs", module ?? "", q, day, page],
-    queryFn: () =>
-      AuditService.readAuditLogs({
-        module: module ?? undefined,
-        q: q || undefined,
-        dateFrom: day || undefined,
-        dateTo: day || undefined,
-        skip: page * PAGE,
-        limit: PAGE,
-      }),
+    queryFn: async () =>
+      (
+        await AuditService.readAuditLogs({
+          query: {
+            module: module ?? undefined,
+            q: q || undefined,
+            date_from: day || undefined,
+            date_to: day || undefined,
+            skip: page * PAGE,
+            limit: PAGE,
+          },
+        })
+      ).data,
   })
   const rows = data?.data ?? []
   const total = data?.count ?? 0

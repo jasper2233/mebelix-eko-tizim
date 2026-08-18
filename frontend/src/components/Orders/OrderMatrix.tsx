@@ -74,8 +74,8 @@ export function OrderMatrix({
         ].map(Number),
       )
       return OrdersService.editOrderMatrix({
-        orderId,
-        requestBody: {
+        path: { order_id: orderId },
+        body: {
           edits: [...partIds].map((partId) => ({
             part_id: partId,
             note: noteEdits[partId] ?? null,
@@ -288,7 +288,7 @@ export function OrderMatrix({
 }
 
 type MatrixPartData = NonNullable<
-  Awaited<ReturnType<typeof OrdersService.readOrderMatrix>>
+  Awaited<ReturnType<typeof OrdersService.readOrderMatrix>>["data"]
 >["parts"][number]
 
 function MatrixCell({

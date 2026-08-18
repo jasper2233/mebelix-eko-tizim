@@ -19,7 +19,7 @@ export function DeleteUser({ id, onSuccess }: DeleteUserProps) {
 
   const mutation = useMutation({
     mutationFn: () =>
-      UsersService.deleteUser({ userId: Number.parseInt(id, 10) }),
+      UsersService.deleteUser({ path: { user_id: Number.parseInt(id, 10) } }),
     onSuccess: () => {
       toast.success("Foydalanuvchi muvaffaqiyatli o'chirildi")
       setOpen(false)

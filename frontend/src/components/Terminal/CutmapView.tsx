@@ -54,10 +54,12 @@ type Material = any
 const getCutmapQueryOptions = (orderId: number, admin: boolean) =>
   queryOptions({
     queryKey: [admin ? "admin" : "terminal", "cutmap", orderId],
-    queryFn: () =>
-      admin
-        ? OrdersService.readOrderCutmap({ orderId })
-        : TerminalService.readTerminalCutmap({ orderId }),
+    queryFn: async () =>
+      (
+        await (admin
+          ? OrdersService.readOrderCutmap({ path: { order_id: orderId } })
+          : TerminalService.readTerminalCutmap({ path: { order_id: orderId } }))
+      ).data,
     refetchInterval: 60_000,
   })
 

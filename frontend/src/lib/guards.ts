@@ -1,6 +1,7 @@
 import { redirect } from "@tanstack/react-router"
+import { AxiosError } from "axios"
 
-import { ApiError, type UserRead, UsersService } from "@/client"
+import { type UserRead, UsersService } from "@/client"
 
 /**
  * Autentifikatsiya guard'i (`beforeLoad`): 401 — login sahifasiga.
@@ -11,9 +12,9 @@ import { ApiError, type UserRead, UsersService } from "@/client"
  */
 export async function requireAuth(): Promise<UserRead> {
   try {
-    return await UsersService.readUserMe()
+    return (await UsersService.readUserMe()).data
   } catch (err) {
-    if (err instanceof ApiError && err.status === 401) {
+    if (err instanceof AxiosError && err.response?.status === 401) {
       throw redirect({ to: "/login" })
     }
     throw err
@@ -31,6 +32,6 @@ export async function requireAuth(): Promise<UserRead> {
  */
 export const requireAccess =
   (allow: (user: UserRead) => boolean) => async () => {
-    const me = await UsersService.readUserMe()
+    const { data: me } = await UsersService.readUserMe()
     if (!allow(me)) throw redirect({ to: "/" })
   }

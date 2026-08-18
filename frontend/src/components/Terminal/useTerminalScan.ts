@@ -107,12 +107,12 @@ export function useTerminalScan({
       if (err === "NOTFOUND") {
         playError()
         // Qaysi proyektga tegishli ekanini aniqlab, aniq xato ko'rsatamiz
-        TerminalService.resolveTerminalQr({ qrText: value })
+        TerminalService.resolveTerminalQr({ path: { qr_text: value } })
           .then((r) =>
             toast.error(
-              r.order_id === mapOrderId
+              r.data.order_id === mapOrderId
                 ? "Bu detal kromka bosqichiga kirmaydi."
-                : `Bu detal bu proyektga tegishli emas — ${r.order_number} proyektining detali.`,
+                : `Bu detal bu proyektga tegishli emas — ${r.data.order_number} proyektining detali.`,
             ),
           )
           .catch(() =>
@@ -133,9 +133,9 @@ export function useTerminalScan({
     }
     // Picker ochiq: QR qaysi proyektga tegishli — o'sha proyekt ochiladi va
     // skan darhol yoziladi
-    TerminalService.resolveTerminalQr({ qrText: value })
+    TerminalService.resolveTerminalQr({ path: { qr_text: value } })
       .then((r) => {
-        openOrder(r.order_id)
+        openOrder(r.data.order_id)
         cooldownRef.current.set(value, Date.now())
         onScan(value)
       })

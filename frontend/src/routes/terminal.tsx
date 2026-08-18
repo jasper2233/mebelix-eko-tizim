@@ -145,10 +145,12 @@ function TerminalPage() {
   const [joining, setJoining] = useState(false)
 
   const startShift = useMutation({
-    mutationFn: (v: { badge_id?: string; employee_id?: number }) =>
-      TerminalService.startTerminalSession({
-        requestBody: { ...v, join: joining },
-      }),
+    mutationFn: async (v: { badge_id?: string; employee_id?: number }) =>
+      (
+        await TerminalService.startTerminalSession({
+          body: { ...v, join: joining },
+        })
+      ).data,
     onSuccess: (s) => {
       playSuccess()
       setLocked(false) // beyjik — qulfning kaliti
@@ -165,10 +167,12 @@ function TerminalPage() {
   })
 
   const scanMutation = useMutation({
-    mutationFn: (qr: string) =>
-      ScansService.recordScan({
-        requestBody: { qr_text: qr, client_event_id: crypto.randomUUID() },
-      }),
+    mutationFn: async (qr: string) =>
+      (
+        await ScansService.recordScan({
+          body: { qr_text: qr, client_event_id: crypto.randomUUID() },
+        })
+      ).data,
     onSuccess: (r: ScanResult) => {
       playSuccess()
       lastScanAtRef.current = Date.now()
@@ -203,7 +207,8 @@ function TerminalPage() {
   })
 
   const undoMutation = useMutation({
-    mutationFn: (scanId: number) => ScansService.cancelScan({ scanId }),
+    mutationFn: (scanId: number) =>
+      ScansService.cancelScan({ path: { scan_id: scanId } }),
     onSuccess: () => {
       playWarning()
       toast.success("Oxirgi scan bekor qilindi")
@@ -219,7 +224,9 @@ function TerminalPage() {
 
   const endSession = useMutation({
     mutationFn: (employeeId?: number) =>
-      TerminalService.endTerminalSession({ employeeId }),
+      TerminalService.endTerminalSession({
+        query: { employee_id: employeeId },
+      }),
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: ["terminal", "context"] }),
   })
@@ -251,7 +258,7 @@ function TerminalPage() {
   const gateOpen = !!ctx && (!crew.length || joining)
   const { data: shiftEmployees } = useQuery({
     queryKey: ["terminal", "employees"],
-    queryFn: () => TerminalService.readTerminalEmployees(),
+    queryFn: async () => (await TerminalService.readTerminalEmployees()).data,
     enabled: gateOpen,
     staleTime: 60_000,
   })

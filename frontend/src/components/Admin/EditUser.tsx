@@ -54,10 +54,10 @@ export function EditUser({ user, onSuccess }: EditUserProps) {
   })
 
   const mutation = useMutation({
-    mutationFn: (requestBody: UserAdminUpdate) =>
+    mutationFn: (body: UserAdminUpdate) =>
       UsersService.updateUser({
-        userId: Number.parseInt(user.id, 10),
-        requestBody,
+        path: { user_id: Number.parseInt(user.id, 10) },
+        body,
       }),
     onSuccess: () => {
       toast.success("Foydalanuvchi muvaffaqiyatli yangilandi")

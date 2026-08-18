@@ -11,8 +11,12 @@ import { handleError } from "@/utils"
 export function usePrintLabel(scope: "cutmap" | "prisadka") {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (instanceId: number) =>
-      TerminalService.printInstanceLabel({ instanceId }),
+    mutationFn: async (instanceId: number) =>
+      (
+        await TerminalService.printInstanceLabel({
+          path: { instance_id: instanceId },
+        })
+      ).data,
     onSuccess: (r) => toast.success(r.message),
     onError: handleError,
     onSettled: () =>
@@ -27,8 +31,12 @@ export function usePrintLabel(scope: "cutmap" | "prisadka") {
 export function useCancelLabel() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (instanceId: number) =>
-      TerminalService.cancelInstanceLabel({ instanceId }),
+    mutationFn: async (instanceId: number) =>
+      (
+        await TerminalService.cancelInstanceLabel({
+          path: { instance_id: instanceId },
+        })
+      ).data,
     onSuccess: (r) => toast.success(r.message),
     onError: handleError,
     onSettled: () => {
