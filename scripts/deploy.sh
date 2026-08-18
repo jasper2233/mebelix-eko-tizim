@@ -21,9 +21,15 @@ BIND="${BIND:-80}"
 case "$BIND" in *:*) ;; *) BIND="127.0.0.1:${BIND}" ;; esac
 SMOKE_URL="${SMOKE_URL:-http://${BIND}/api/v1/ready}"
 
+# `--max-time` MAJBURIY: usiz osilgan API (TCP qabul qiladi, javob bermaydi —
+# aynan smoke tutishi kerak bo'lgan holat) `curl` ni CHEKSIZ kuttiradi, sikl
+# birinchi iteratsiyadan chiqmaydi va avto-rollback hech qachon ishga tushmaydi.
+# 5s ulanish + 10s to'liq javob: sog'lom `/ready` bundan ancha tez qaytadi.
 smoke() {
     for _ in $(seq 1 30); do
-        [ "$(curl -s -o /dev/null -w '%{http_code}' "$SMOKE_URL")" = "200" ] && return 0
+        code=$(curl -s -o /dev/null -w '%{http_code}' \
+            --connect-timeout 5 --max-time 10 "$SMOKE_URL" || true)
+        [ "$code" = "200" ] && return 0
         sleep 5
     done
     return 1
