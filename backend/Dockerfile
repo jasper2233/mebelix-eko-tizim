@@ -36,6 +36,13 @@ COPY --from=builder --chown=app:app /app/backend/.venv /app/backend/.venv
 COPY --chown=app:app backend /app/backend
 COPY --chown=app:app scripts /app/scripts
 
+# `backend/uploads` .dockerignore'da — ya'ni image'da bunday katalog YO'Q.
+# Prodda u named volume mount nuqtasi: Docker bo'sh volume'ni mount qilganda
+# mavjud katalogning egaligini ko'chiradi, katalog bo'lmasa esa root:root bilan
+# yaratadi — konteyner uid 1000 (`USER app`) ostida ishlagani uchun har qanday
+# fayl yuklash EACCES bilan yiqilardi. Shuning uchun oldindan yaratamiz.
+RUN mkdir -p /app/backend/uploads && chown app:app /app/backend/uploads
+
 # Ensure the virtual environment is in the PATH
 ENV PATH="/app/backend/.venv/bin:$PATH"
 ENV PYTHONPATH="/app/backend"
