@@ -25,19 +25,23 @@ jobs:
           echo
           echo "=== 2) KONTEYNER ichida (mount yangimi) ==="
           docker compose -f docker-compose.prod.yml exec -T caddy \
-            grep -n -A3 'handle /metrics' /etc/caddy/Caddyfile || echo "  TOPILMADI"
+            grep -n -A3 'handle /metrics' /etc/caddy/Caddyfile </dev/null || echo "  TOPILMADI"
           echo
-          echo "=== 3) private_ranges qoldig'i bormi (eski konfig belgisi) ==="
-          grep -c 'private_ranges' caddy/Caddyfile || true
-          docker compose -f docker-compose.prod.yml exec -T caddy \
-            grep -c 'private_ranges' /etc/caddy/Caddyfile || true
+          echo "=== 3) private_ranges (eski konfig belgisi: host / konteyner) ==="
+          echo -n "  host:      "; grep -c 'private_ranges' caddy/Caddyfile || true
+          echo -n "  konteyner: "; docker compose -f docker-compose.prod.yml exec -T caddy \
+            grep -c 'private_ranges' /etc/caddy/Caddyfile </dev/null || true
+          echo "=== 3b) fayllar bir xilmi (md5) ==="
+          echo -n "  host:      "; md5sum caddy/Caddyfile | cut -d' ' -f1
+          echo -n "  konteyner: "; docker compose -f docker-compose.prod.yml exec -T caddy \
+            md5sum /etc/caddy/Caddyfile </dev/null | cut -d' ' -f1
           echo
           echo "=== 4) caddy konteyner holati ==="
           docker ps --filter name=caddy --format '{{.Names}} | {{.Status}} | {{.Image}}'
           echo
           echo "=== 5) Caddy ichidan /metrics (nginx ni chetlab) ==="
           docker compose -f docker-compose.prod.yml exec -T caddy \
-            wget -qS -O /dev/null http://localhost/metrics 2>&1 | head -3 || true
+            wget -qS -O /dev/null http://localhost/metrics </dev/null 2>&1 | head -3 || true
           echo
           echo "=== 6) host-nginx /metrics ni qayerga yuboradi ==="
           grep -rn 'metrics' /etc/nginx/ 2>/dev/null | head -5 || echo "  nginx konfigida 'metrics' yo'q"
