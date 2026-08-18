@@ -57,6 +57,7 @@
     {
       "includes": [
         "src/routes/_layout/**",
+        "src/components/Anketa/**",
         "src/components/Admin/**",
         "src/components/Clients/**",
         "src/components/Orders/**",
