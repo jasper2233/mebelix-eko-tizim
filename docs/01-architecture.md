@@ -106,7 +106,6 @@ flowchart LR
     G -->|"POST /api/v1/bridge-agents/scan<br/>(skan-forvard, TZ 12.5)"| C
     G -->|"PNG -> Windows GDI<br/>(USB)"| PR
     C -->|"/api*, /docs*, /redoc*, /openapi.json"| A
-    C -->|"/metrics (faqat private IP)"| A
     C -->|qolgan pathlar| N
     A -->|async SQLAlchemy + asyncpg| P
     A -->|rate limit pool| R
@@ -121,7 +120,13 @@ Asosiy nuqtalar:
 
 - **Prod'da yagona kirish — Caddy**: `/api*`, `/docs*`, `/redoc*`,
   `/openapi.json` → `api:8000`, qolgan hamma narsa → `frontend:80` (nginx).
-  `/metrics` faqat `private_ranges` IP'lardan o'tadi, tashqi so'rovlar 403 oladi.
+  `/metrics` esa Caddy'dan UMUMAN o'tmaydi — `handle /metrics` har doim 403
+  qaytaradi, ya'ni Prometheus metrikalari tashqariga chiqmaydi. (Ilgari bu yerda
+  `remote_ip private_ranges` matcher turardi, lekin prod'da Caddy host-nginx
+  ORTIDA ishlaydi: har bir tashqi so'rovning `remote_host`i proxy'ning o'zi
+  bo'lib ko'rinardi va matcher hech kimni to'smasdi.) Repoda Prometheus/Grafana
+  xizmati yo'q; scraper qo'shilsa u compose tarmog'i ichidan
+  `api:8000/metrics` ga boradi, Caddy orqali emas.
   Alohida `:8080` listener `/healthz` beradi (Docker healthcheck uchun,
   auto-HTTPS redirect'dan mustaqil). Frontend nginx'i `/api` pathlarga ataylab
   404 qaytaradi — API'ga faqat Caddy orqali kiriladi.
@@ -462,7 +467,7 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
 | [05-frontend-app.md](./05-frontend-app.md) | SPA arxitekturasi: TanStack Router file-based routing, TanStack Query, cookie-auth + silent refresh interceptor, OpenAPI'dan generatsiya qilingan client, zod validatsiya, route guard'lar. |
 | [06-frontend-components.md](./06-frontend-components.md) | Prezentatsiya qatlami: Admin CRUD dialoglari, Common (ConfirmDialog, PageHeader, StatusBadge, StagePipeline), rolga qarab Sidebar navigatsiya, UserSettings, custom shadcn/ui primitivlar (sidebar, loading-button, password-input). |
 | [07-infra-devops.md](./07-infra-devops.md) | Infra: local/prod Docker Compose stacklar, Caddy auto-HTTPS routing, multi-stage Dockerfile'lar (uv / node→nginx), prestart migratsiyalar, Makefile targetlar, pre-commit hooks. |
-| [08-packages.md](./08-packages.md) | Dependency snapshot: backend/frontend paket versiyalari va ataylab ushlab qolingan ceiling'lar (redis, openapi-ts, typescript). |
+| [08-packages.md](./08-packages.md) | Dependency snapshot: backend/frontend paket versiyalari va ataylab ushlab qolingan ceiling'lar (redis, typescript). |
 | [09-mes-domain.md](./09-mes-domain.md) | MES domeni: data model, GibLab parser, scan engine, cutmap, chop etish, terminal/tablo/reports API va frontend tuzilishi. |
 | [10-giblab-reference.md](./10-giblab-reference.md) | GibLab manba tizim ma'lumotnomasi: `.project` fayl formati, ma'lumot modeli, operatsiya turlari — parser nimaga tayanishini asoslaydi. |
 | [11-detal-id-nomlash.md](./11-detal-id-nomlash.md) | Detal ID nomlash qoidasi: chek, QR, SCX fayl nomi va `qr_text` — hammasi bitta satr (Nanxing skan mosligi). |
@@ -487,7 +492,12 @@ CI yiqilsa butun job skip bo'lib, xabar umuman ketmasdi. Endi `deploy` natijasi
 
 - **ruff** — lint + format (`target-version = py311`, `line-length = 120`;
   qoidalar: Pyflakes, pycodestyle, mccabe/comprehensions, pyupgrade, isort).
-  Pre-commit'da `ruff --fix` va `ruff-format` avtomatik ishlaydi.
+  Pre-commit'da `ruff --fix` va `ruff-format` avtomatik ishlaydi, ikkala hook ham
+  `files: ^backend/` bilan cheklangan — CI ham faqat shu daraxtni tekshiradi
+  (`cd backend && uv run ruff check app && uv run ruff format --check app`).
+  Qamrovsiz hook repo ildizida `pyproject.toml` yo'qligi sababli
+  `bridge-agent/agent.py` ni default `line-length = 88` bilan qayta yozardi,
+  ruff 0.16 esa `docs/*.md` ichidagi python bloklarini ham formatlaydi.
 - **mypy** — `app.*` modullari uchun `disallow_untyped_defs = true`, ya'ni barcha
   funksiyalar to'liq type-annotated bo'lishi shart. Local hook sifatida
   `uv --directory backend run mypy app` bilan ishlaydi.

@@ -1,6 +1,6 @@
 # Frontend Components (Admin, Clients, Common, Orders, Anketa, Sidebar, Terminal, UserSettings, ui)
 
-Ushbu hujjat `frontend/src/components/` katalogidagi React komponentlarini va anketa sahifasi ichidagi komponentlarni (`routes/_layout/anketa.$orderId.tsx`) qamrab oladi. Stack: React + TypeScript, TanStack Router/Query, react-hook-form + zod, shadcn/ui (Radix UI + Tailwind CSS 4). Barcha komponentlar backend bilan avtomatik generatsiya qilingan `@/client` (UsersService, ClientsService, OrdersService, TerminalService va model turlari) orqali gaplashadi; umumiy query'lar `@/queries/mes` dagi `queryOptions` fabrikalarida (getClients/getMachines/getPosts/getOrderMatrixQueryOptions va h.k.), domen konstantalari `@/lib/mes` da (ROLE_LABELS, PRIORITY_LABELS, PRIORITY_DOT_CLASSES/PRIORITY_TEXT_CLASSES/PRIORITY_BADGE_CLASSES — prioritet ranglari yagona manbadan, POST_COLORS, ORDER_STATUS_LABELS/COLORS, chipColors/mixTint — chip rang formulasi, isCut, formatSize), buyurtma anketasi variantlari `@/lib/anketa` da; toast xabarlari to'g'ridan-to'g'ri sonner `toast.success/error` (`useCustomToast` hooki o'chirilgan), xatoliklar `handleError` utiliti orqali (`onError: handleError` — curry emas); takrorlanuvchi toast+xato+invalidatsiya triosi `@/queries/mes` dagi `crudCallbacks()` da.
+Ushbu hujjat `frontend/src/components/` katalogidagi React komponentlarini va anketa sahifasi ichidagi komponentlarni (`routes/_layout/anketa.$orderId.tsx`) qamrab oladi. Stack: React + TypeScript, TanStack Router/Query, react-hook-form + zod, shadcn/ui (Radix UI + Tailwind CSS 4). Barcha komponentlar backend bilan avtomatik generatsiya qilingan `@/client` (UsersService, ClientsService, OrdersService, TerminalService va model turlari) orqali gaplashadi — chaqiruv shakli `@hey-api/client-axios` niki: argumentlar `{ path, query, body }` guruhlarida beriladi va path/query kalitlari backend'dagi XOM snake_case nomlar (`path: { user_id }`, `query: { employee_id }`), natija esa `AxiosResponse`, ya'ni foydali yuk `.data` da (`onSuccess: ({ data: client }) => ...`, `queryFn: async () => (await ...).data`); umumiy query'lar `@/queries/mes` dagi `queryOptions` fabrikalarida (getClients/getMachines/getPosts/getOrderMatrixQueryOptions va h.k.), domen konstantalari `@/lib/mes` da (ROLE_LABELS, PRIORITY_LABELS, PRIORITY_DOT_CLASSES/PRIORITY_TEXT_CLASSES/PRIORITY_BADGE_CLASSES — prioritet ranglari yagona manbadan, POST_COLORS, ORDER_STATUS_LABELS/COLORS, chipColors/mixTint — chip rang formulasi, isCut, formatSize), buyurtma anketasi variantlari `@/lib/anketa` da; toast xabarlari to'g'ridan-to'g'ri sonner `toast.success/error` (`useCustomToast` hooki o'chirilgan), xatoliklar `handleError` utiliti orqali (`onError: handleError` — curry emas; imzosi `(err: unknown)`, chunki bu klient har qanday xatoni `AxiosError` qilib tashlaydi — eski `ApiError` klassi yo'q, server tanasi `err.response.data.detail` da); takrorlanuvchi toast+xato+invalidatsiya triosi `@/queries/mes` dagi `crudCallbacks()` da.
 
 Umumiy naqsh (pattern): **forma → zod schema → react-hook-form → useMutation → @/client servisi → toast + query invalidation**. Barcha ko'rinadigan UI matnlari o'zbek tilida; shadcn primitivlaridagi ekran o'quvchi matnlari ham o'zbekchalashtirilgan (`sidebar.tsx` trigger — "Menyuni yig'ish/Menyuni ochish", mobil sidebar sr-only sarlavhasi "Yon menyu", tavsifi "Mobil yon menyu"; `dialog.tsx`/`sheet.tsx` — sr-only "Yopish"; `password-input.tsx` — aria-label "Parolni yashirish/ko'rsatish").
 
@@ -25,7 +25,7 @@ Admin panel (`/admin` route, guard: `requireAccess(isSuperuser)`) uchun foydalan
 - Schema `buildUserFormSchema(true)` (parol majburiy) + maydonlar `UserFormFields` — ikkalasi `UserForm.tsx` dan.
 - Default qiymatlar: `role: "manager"`, `is_superuser: false`, `is_active: true` — yangi foydalanuvchi darhol tizimga kira oladi.
 - Submitda `machine_id` faqat ish markaziga bog'liq rolda (`isMachineBoundRole`) `Number` ga o'giriladi, aks holda `null` — rol keyin almashtirilsa yashirin qolgan ish markazi tanlovi ofis rolga jo'nab ketmaydi.
-- Mutation: `UsersService.createUser({ requestBody })`; muvaffaqiyatda toast, forma reset, dialog yopiladi; `onSettled` da `["users"]` query invalidatsiya qilinadi.
+- Mutation: `UsersService.createUser({ body })`; muvaffaqiyatda toast, forma reset, dialog yopiladi; `onSettled` da `["users"]` query invalidatsiya qilinadi.
 - Forma `mode: "onBlur"` rejimida validatsiya qiladi; trigger — `<Plus /> Foydalanuvchi qo'shish` tugmasi.
 - Submit tugmasi `LoadingButton` (`loading={mutation.isPending}`).
 
@@ -36,7 +36,7 @@ Admin panel (`/admin` route, guard: `requireAccess(isSuperuser)`) uchun foydalan
 **Maqsadi:** foydalanuvchini o'chirish — dropdown menu bandi + tasdiqlash dialogi.
 
 - Props: `{ id: string; onSuccess: () => void }`.
-- Mutation: `UsersService.deleteUser({ userId: Number.parseInt(id, 10) })`; muvaffaqiyatda toast, dialog yopiladi, `onSuccess()` (ota-menuni yopish); `onSettled` da `["users"]` queryi invalidatsiya qilinadi.
+- Mutation: `UsersService.deleteUser({ path: { user_id: Number.parseInt(id, 10) } })`; muvaffaqiyatda toast, dialog yopiladi, `onSuccess()` (ota-menuni yopish); `onSettled` da `["users"]` queryi invalidatsiya qilinadi.
 - `DropdownMenuItem variant="destructive"` da `onSelect={(e) => e.preventDefault()}` — menyu yopilib dialog ochilishini ta'minlaydi.
 - Dialog UI to'liq `Common/ConfirmDialog` orqali (`destructive`, `confirmText="O'chirish"`); description matni soft-delete'ga mos — foydalanuvchi **o'chirilgan deb belgilanadi** va tizimga kira olmaydi (ma'lumotlar butunlay o'chirilmaydi).
 
@@ -57,7 +57,7 @@ const payload: UserAdminUpdate = {
 if (data.password) payload.password = data.password
 ```
 
-- Mutation: `UsersService.updateUser({ userId: Number.parseInt(user.id, 10), requestBody })`; `["users"]` invalidatsiyasi.
+- Mutation: `UsersService.updateUser({ path: { user_id: Number.parseInt(user.id, 10) }, body })`; `["users"]` invalidatsiyasi.
 - Forma default qiymatlari `user` obyektidan olinadi.
 
 ### `frontend/src/components/Admin/UserActionsMenu.tsx`
@@ -427,7 +427,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 **Maqsadi:** parolni o'zgartirish formasi.
 
 - zod: `current_password`, `new_password` (`passwordSchema`), `confirm_password` + mos kelish refine'i; `mode: "onSubmit"`.
-- Mutation: `UsersService.updatePasswordMe({ requestBody })`; muvaffaqiyatda toast + `form.reset()`.
+- Mutation: `UsersService.updatePasswordMe({ body })`; muvaffaqiyatda toast + `form.reset()`.
 - Uchchala maydon `PasswordInput` (ko'rish/yashirish ko'zchali) bilan, `aria-invalid={fieldState.invalid}` uzatiladi.
 
 ---
@@ -436,23 +436,25 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 
 shadcn/ui asosidagi 25 ta primitiv. Ko'pchiligi standart generatsiya; quyidagi jadvalda qaysilari o'zgartirilgani ko'rsatilgan.
 
+**Tizim faqat light rejimda ishlaydi.** shadcn generatsiyasidan kelgan 23 ta `dark:` utility klass yettita fayldan olib tashlangan (`badge` 3, `button` 7, `checkbox` 3, `dropdown-menu` 1, `input` 2, `select` 3, `tabs` 4). Shu bilan birga `src/index.css` dagi `@custom-variant dark (&:where(.dark, .dark *));` qatori ham o'chirilgan — u faqat `dark:` klasslarni `prefers-color-scheme` dan uzib, o'lik `.dark` klassiga bog'lash uchun kerak edi; qo'llanadigan `dark:` klass qolmagach hack'ning ma'nosi yo'q (`index.css` da o'rniga qisqa izoh turibdi). Toaster ham `theme="light"` da qattiq belgilangan, tema tokenlari dark uchun qayta belgilanmagan.
+
 | Fayl | Komponent(lar) | Asos | Custom o'zgartirish |
 |---|---|---|---|
 | `avatar.tsx` | Avatar, AvatarImage, AvatarFallback | Radix Avatar | Yo'q (standart) |
-| `badge.tsx` | Badge, badgeVariants | cva | Deyarli standart (`rounded-full` shakl) |
-| `button.tsx` | Button, buttonVariants | cva + Slot | **Qo'shimcha o'lchamlar**: `icon-sm` (size-8), `icon-lg` (size-10) |
+| `badge.tsx` | Badge, badgeVariants | cva | Deyarli standart (`rounded-full` shakl); `dark:` klasslar olib tashlangan |
+| `button.tsx` | Button, buttonVariants | cva + Slot | **Qo'shimcha o'lchamlar**: `icon-sm` (size-8), `icon-lg` (size-10); `dark:` klasslar olib tashlangan |
 | `card.tsx` | Card, `cardSurface` konstanta | native div | **Soddalashtirilgan custom**: faqat yuza (`rounded-xl border bg-card`), shadcn'ning 5 qismli Header/Title/... API'si ataylab yo'q; `<ul>`/`<details>` kabi teglar uchun `cardSurface` klassi ham eksport |
-| `checkbox.tsx` | Checkbox | Radix Checkbox | Yo'q |
+| `checkbox.tsx` | Checkbox | Radix Checkbox | `dark:` klasslar olib tashlangan (boshqasi standart) |
 | `date-picker.tsx` | DatePicker | react-day-picker + Popover | **To'liq custom** (pastda) |
 | `dialog.tsx` | Dialog, DialogContent, DialogHeader/Footer/Title/Description, ... | Radix Dialog | Yo'q (`showCloseButton` prop — yangi shadcn standarti) |
-| `dropdown-menu.tsx` | DropdownMenu* (Item `variant="destructive"` bilan), 15 ta eksport | Radix DropdownMenu | Yo'q |
+| `dropdown-menu.tsx` | DropdownMenu* (Item `variant="destructive"` bilan), 15 ta eksport | Radix DropdownMenu | `dark:` klasslar olib tashlangan (boshqasi standart) |
 | `form.tsx` | Form, FormField, FormItem/Label/Control/Message, useFormField | react-hook-form + Radix Label | Yo'q |
-| `input.tsx` | Input | native `<input>` | Yo'q |
+| `input.tsx` | Input | native `<input>` | `dark:` klasslar olib tashlangan (boshqasi standart) |
 | `label.tsx` | Label | Radix Label | Yo'q |
 | `loading-button.tsx` | LoadingButton (`ButtonProps` — fayl ichida, eksport emas) | `buttonVariants` (button.tsx dan import) | **To'liq custom** (pastda) |
 | `password-input.tsx` | PasswordInput | `Input` + Button | **To'liq custom** (pastda) |
 | `popover.tsx` | Popover, PopoverTrigger, PopoverContent | Radix Popover | Deyarli standart (`rounded-xl`, `p-3`, `align="start"`) |
-| `select.tsx` | Select, SelectTrigger/Content/Item/..., 10 ta eksport | Radix Select | Yo'q |
+| `select.tsx` | Select, SelectTrigger/Content/Item/..., 10 ta eksport | Radix Select | `dark:` klasslar olib tashlangan (boshqasi standart) |
 | `separator.tsx` | Separator | Radix Separator | Yo'q |
 | `sheet.tsx` | Sheet, SheetContent (side: top/right/bottom/left), ... | Radix Dialog | Yo'q; mobil sidebar shu orqali |
 | `sidebar.tsx` | 24 ta eksport: SidebarProvider, Sidebar, SidebarTrigger, SidebarMenu*, useSidebar, ... | shadcn sidebar block | **Ha, o'zgartirilgan** (pastda) |
@@ -460,7 +462,7 @@ shadcn/ui asosidagi 25 ta primitiv. Ko'pchiligi standart generatsiya; quyidagi j
 | `sonner.tsx` | Toaster | sonner kutubxonasi | **Kichik custom**: `theme="light"` qattiq belgilangan (next-themes yo'q), lucide ikonkalar to'plami (success/info/warning/error/loading), CSS o'zgaruvchilar mapping'i |
 | `switch.tsx` | Switch | Radix Switch | Yo'q (terminaldagi "Faqat xatolar" filtri, `employees.tsx` hodim dialogidagi AKTIV/NOFAOL va `printers.tsx` dagi chek chiqarish `can_print` almashtirgichi) |
 | `table.tsx` | Table, TableHeader/Body/Footer/Row/Head/Cell/Caption | native table | **Stil custom**: konteyner `rounded-lg border`, TableHeader `bg-muted/50`, TableHead `h-11 text-xs font-semibold uppercase tracking-wider`, TableCell `px-4 py-3 whitespace-nowrap` |
-| `tabs.tsx` | Tabs, TabsList, TabsTrigger, TabsContent | Radix Tabs | Yo'q |
+| `tabs.tsx` | Tabs, TabsList, TabsTrigger, TabsContent | Radix Tabs | `dark:` klasslar olib tashlangan (boshqasi standart) |
 | `textarea.tsx` | Textarea | native `<textarea>` | Yo'q (standart shadcn; anketa "Qo'shimcha izoh" maydoni uchun qo'shilgan) |
 | `tooltip.tsx` | Tooltip, TooltipTrigger/Content/Provider | Radix Tooltip | Yo'q (delayDuration=0) |
 

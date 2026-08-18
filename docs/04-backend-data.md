@@ -398,7 +398,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 |---|---|---|---|
 | 1 | `e1c262d7e2ae` | `e1c262d7e2ae_init.py` | **Init**: `user` va (o'sha paytdagi demo) `item` jadvallari, to'liq unique indekslar |
 | 2 | `b7f3a9c41d02` | `b7f3a9c41d02_drop_items_partial_unique_user.py` | `item` jadvalini drop qiladi; `ix_user_username`/`ix_user_phone` ni **partial unique** ga almashtiradi (`WHERE NOT is_deleted`) |
-| 3 | `1393a241b793` | `1393a241b793_mes_domain_org_posts_machines_employees_.py` | **MES domeni**: 15 jadval yaratadi (`organization`, `client`, `employee`, `material`, `post`, `machine`, `audit_log`, `order`, `work_session`, `product`, `part`, `order_file`, `part_instance`, `part_route`, `scan`) + `user` ga `role` (server_default `'admin'`) va `machine_id` (FK `fk_user_machine_id`) qo'shadi |
+| 3 | `1393a241b793` | `1393a241b793_mes_domain_org_posts_machines_employees_.py` | **MES domeni**: 15 jadval yaratadi (`organization`, `client`, `employee`, `material`, `post`, `machine`, `audit_log`, `order`, `work_session`, `product`, `part`, `order_file`, `part_instance`, `part_route`, `scan`) + `user` ga `role` (server_default `'admin'`) va `machine_id` (FK `fk_user_machine_id`) qo'shadi. Oxirida **default `organization` qatorini ham qo'yadi**: idempotent `INSERT INTO organization (name, phones, currency, timezone, settings, is_deleted) SELECT 'Mebelix', ... WHERE NOT EXISTS (SELECT 1 FROM organization)`. Sabab — keyingi uchta post migratsiyasi (`b3e9a1d76c42`/BOYOQ, `f1b6d0c73a25`/UPAKOVKA, `a3f8d61c9b04`/OMBOR — bugungi TMO) `post` ga `organization_id = 1` bilan qator qo'yadi, `seed_defaults` esa prestart'da migratsiyalardan KEYIN ishlaydi: busiz toza bazada `alembic upgrade head` FK buzilishi bilan yiqilardi. `phones`/`currency`/`timezone`/`settings` shu nuqtada hali NOT NULL — ular keyinroq `c7f2d84a91b3` da drop qilinadi |
 | 4 | `3b4e0b90f440` | `3b4e0b90f440_order_material_usage.py` | `order.material_usage` JSONB NOT NULL (server_default `'[]'`) |
 | 5 | `7d2c9f5e1b3a` | `7d2c9f5e1b3a_order_advance_payment.py` | `order.advance_payment Numeric(14,2)` NULL — to'lov oqimi maydoni |
 | 6 | `a91c7d34f6e2` | `a91c7d34f6e2_order_survey.py` | `order.survey JSONB` NULL — mijoz anketasi va o'lchov varag'i (xonalar bo'yicha) |
@@ -432,6 +432,8 @@ Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kin
 
 Eslatma: `1393a241b793` dagi `user.role` enum'i 6 qiymat bilan yaratilgan; keyinchalik 9 operator roli faqat Python enum'ga qo'shildi — ustun VARCHAR bo'lgani uchun (`db_enum`, `native_enum=False`) DB migratsiyasi kerak bo'lmadi.
 
+Prestart ketma-ketligi (`scripts/prestart.sh`: `alembic upgrade head` → `create_first_superuser` → `seed_defaults`) endi **toza bazada** ham to'liq o'tadi — default `organization` qatori `1393a241b793` da tug'ilgani uchun keyingi post migratsiyalarining `organization_id = 1` FK'si buzilmaydi. Toza bazadagi natija: 1 tashkilot, 9 post, 1 admin.
+
 ---
 
 ## 5. Commands — `backend/app/commands/`
@@ -447,9 +449,9 @@ Idempotent bootstrap skript — birinchi admin foydalanuvchini yaratadi (`python
 
 ### 5.2 `backend/app/commands/seed_defaults.py`
 
-Idempotent bootstrap — default tashkilot va 7 ishlab chiqarish postini yaratadi (`python -m app.commands.seed_defaults`, prestart/setup scriptlardan chaqiriladi):
+Idempotent bootstrap — default tashkilot va 7 ishlab chiqarish postini ta'minlaydi (`python -m app.commands.seed_defaults`, prestart/setup scriptlardan chaqiriladi):
 
-- Tashkilot: `select(Organization).limit(1)` — DB'da **birorta ham** tashkilot bo'lmasa `Organization(name="Mebelix")` yaratadi.
+- Tashkilot: `select(Organization).limit(1)` — DB'da **birorta ham** tashkilot bo'lmasa `Organization(name="Mebelix")` yaratadi. Kod o'zgarmagan, lekin bu shox endi **hech qachon ishlamaydi**: org qatorini `1393a241b793` migratsiyasi qo'yadi (4.4-bo'lim), seed uni faqat topib qoldiradi.
 - Postlar: mavjud `code` lar to'plami bilan solishtirib, yetishmaganlarini `POSTS` ro'yxatidan qo'shadi — 7 post (`ARRA`…`BOYOQ`, `OVAL` 3-o'rinda) `order_index` 1–8, `unit` (m2/meter/piece), `color`/`icon` bilan; faqat `ROVER` — `requires_assignment_choice=True`; BOYOQ'da ish markazi tanlash shart emas — bo'yoq kamerasi bitta. **`order_index` 5 ataylab bo'sh** — olib tashlangan `PAZ` o'rni: tartib faqat nisbiy ishlatiladi, qayta raqamlash esa mavjud bazalarda bekorga siljish beradi. Mavjud postning `order_index` i ro'yxatdan farq qilsa sinxronlanadi (yangi post qo'shilganda tartib siljiydi).
 
 `backend/app/commands/__init__.py` — bo'sh (faqat package marker).

@@ -18,7 +18,7 @@ So'rov oqimi (production):
 ```
 Client → Caddy (:80/:443)
            ├── /api*, /docs*, /redoc*, /openapi.json → api:8000 (FastAPI)
-           ├── /metrics → api:8000 (faqat private IP'lardan; boshqalarga 403)
+           ├── /metrics → har doim 403 (Prometheus tashqariga umuman chiqmaydi)
            └── boshqa hamma narsa → frontend:80 (nginx, SPA)
 ```
 
@@ -64,7 +64,7 @@ Lokal composeda Caddy yo'q — frontend nginx'i to'g'ridan-to'g'ri `3000` portda
 | `setup` | `scripts/setup.sh` + `install-hooks` |
 | `install` / `frontend-install` | `uv sync` / `npm install` |
 | `run-backend` / `run-frontend` / `worker` | dev serverlar va ARQ worker |
-| `lint` / `format` | `ruff check app` + `ruff format --check app` + `mypy app` (`backend/` dan, CI bilan aynan bir xil) / `ruff format` + `ruff check --fix` |
+| `lint` / `format` | `ruff check app` + `ruff format --check app` + `mypy app` (`backend/` dan, CI bilan aynan bir xil) / `ruff format .` + `ruff check . --fix` — bular **repo ildizidan** ishlaydi, ya'ni `backend/` dan tashqaridagi fayllarga ham tegadi (pastdagi ".pre-commit-config.yaml" bo'limidagi ogohlantirish) |
 | `frontend-lint` / `frontend-build` | `npm run lint` (biome) / `npm run build` |
 | `frontend-gen` | `scripts/generate-client.sh` — OpenAPI → TS client |
 | `migrate` / `makemigrations m="msg"` | `alembic upgrade head` / `alembic revision --autogenerate` |
@@ -131,7 +131,7 @@ Backend yuklangan fayllarni diskka yozadi (`backend/app/core/config.py`: `UPLOAD
 
 DB'da faqat nisbiy yo'l saqlanadi (`OrderFile.path`), o'qishda `upload_root() / row.path` bilan qayta yig'iladi (`upload_root()` — `app/core/config.py` dagi helper: `Path(settings.UPLOAD_DIR).resolve()`, path-traversal tekshiruvlari ham shu root'ga nisbatan).
 
-**Prod'da doimiylik:** `docker-compose.prod.yml` da `api` xizmati `uploads_data` named volume'ini `/app/backend/uploads` ga mount qiladi. Volume bo'lmaganda fayllar konteyner qatlamida qolar va **har deploy'da (yangi image + konteyner almashishi) yo'qolar edi** — DB'dagi `OrderFile` yozuvlari qolib, fayl yo'q bo'lardi (`download_order_file` "Fayl diskda topilmadi" beradi). `worker` ga mount berilmagan: arq tasklari (`print_label`) faylga tegmaydi, yorliq DB ma'lumotidan chiziladi — `UPLOAD_DIR` ni faqat `api` route'lari o'qiydi.
+**Prod'da doimiylik:** `docker-compose.prod.yml` da `api` xizmati `uploads_data` named volume'ini `/app/backend/uploads` ga mount qiladi. Mount nuqtasining o'zi image'da oldindan yaratilgan va `app:app` ga tegishli (`backend/Dockerfile` dagi `mkdir -p` + `chown`) — busiz Docker bo'sh volume'ni `root:root` bilan yaratar, uid 1000 ostidagi konteyner esa unga yozolmasdi (pastdagi "Dockerfile'lar" bo'limi). Volume bo'lmaganda fayllar konteyner qatlamida qolar va **har deploy'da (yangi image + konteyner almashishi) yo'qolar edi** — DB'dagi `OrderFile` yozuvlari qolib, fayl yo'q bo'lardi (`download_order_file` "Fayl diskda topilmadi" beradi). `worker` ga mount berilmagan: arq tasklari (`print_label`) faylga tegmaydi, yorliq DB ma'lumotidan chiziladi — `UPLOAD_DIR` ni faqat `api` route'lari o'qiydi.
 
 `docker-compose.local.yml` faqat `./backend/app` va `./scripts` ni mount qiladi — `uploads` uchun na bind-mount, na volume bor, ya'ni `make docker-local` rejimida yuklangan fayllar konteynerning yozuvchi qatlamida (`/app/backend/uploads`) qoladi va konteyner qayta yaratilganda yo'qoladi (lokal sinov uchun ataylab shunday). Hostda ishlaganda (`make run-backend`) fayllar `UPLOAD_DIR` nisbiy yo'li bo'yicha joriy katalogdagi `uploads/` ga tushadi — repo ichidagi `uploads/` ham, `backend/uploads/` ham `.gitignore` da. CI `rsync` `uploads` ni exclude qiladi, ya'ni deploy serverdagi fayllarga tegmaydi.
 
@@ -149,8 +149,10 @@ Blok ichida: security headerlar (`X-Frame-Options SAMEORIGIN`, `X-Content-Type-O
 |---|---|---|
 | `/api*` | `api:8000` | faqat `X-Real-IP` header_up — `Host` passthrough va `X-Forwarded-For`/`X-Forwarded-Proto` ni Caddy `reverse_proxy` o'zi default qo'yadi |
 | `/docs*`, `/redoc*`, `/openapi.json` | `api:8000` | API hujjatlari |
-| `/metrics` | `api:8000` yoki `403` | Prometheus — `remote_ip private_ranges` matcher: faqat private tarmoq IP'laridan proxy qilinadi, boshqa hammaga `403 Forbidden` |
+| `/metrics` | — (`403`) | Prometheus — upstream'ga umuman uzatilmaydi, `respond "Forbidden" 403` |
 | qolgani (`handle {}`) | `frontend:80` | SPA, `X-Real-IP` bilan |
+
+**Nega `/metrics` butunlay yopiq.** Ilgari bu handle'da `@internal_metrics` matcher (`remote_ip private_ranges`) turardi va private tarmoqdan kelgan so'rovlar `api:8000` ga o'tardi. Lekin prodda Caddy **host-nginx ortida** ishlaydi: har bir tashqi so'rovning `remote_host`i proxy'ning o'zi (`127.0.0.1` / docker bridge) bo'lib ko'rinadi, ya'ni matcher hech kimni to'smasdi va Prometheus metrikalari amalda ochiq internetda edi. Endi matcher olib tashlangan — `handle /metrics` har doim `403` qaytaradi. Repoda Prometheus/Grafana xizmati umuman yo'q; scraper qo'shilganda u compose tarmog'i ichidan to'g'ridan-to'g'ri `api:8000/metrics` ga boradi, bu yo'ldan emas.
 
 Asosiy site blokidan tashqari alohida **`:8080` bloki** bor — `respond /healthz "OK" 200`. Bu Docker healthcheck uchun doimiy plain-HTTP endpoint: `SITE_ADDRESS` domenga o'tib asosiy blok TLS'ga ko'chganda ham ishlayveradi.
 
@@ -173,7 +175,9 @@ Frontend konteyneri ichida nginx `:80` da:
 ### `backend/Dockerfile` — multi-stage, uv asosida
 
 1. **Builder stage** — `ghcr.io/astral-sh/uv:python3.13-bookworm-slim`. `UV_COMPILE_BYTECODE=1`, `UV_LINK_MODE=copy`. **Faqat bog'liqliklar** o'rnatiladi: `uv.lock` + `pyproject.toml` bind-mount bilan `uv sync --frozen --no-install-project` (cache mount `/root/.cache/uv`). Loyihaning o'zi venv'ga o'rnatilmaydi (app `PYTHONPATH` orqali ishlaydi) — shunda venv qatlami faqat `uv.lock` ga bog'liq: kod o'zgarganda ~380 MB qatlam qayta qurilmaydi va server har deployda uni qayta tortmaydi.
-2. **Final stage** — `python:3.13-slim-bookworm`. Healthcheck uchun `curl`, yorliq PNG'si TTF shriftda chiqishi uchun `fonts-liberation` o'rnatiladi. Xavfsizlik uchun **non-root `app` user** (uid/gid 1000). Builderdan faqat `/app/backend/.venv` ko'chiriladi; `backend` va `scripts` esa to'g'ridan-to'g'ri build kontekstidan `COPY --chown=app:app` qilinadi — tez-tez o'zgaradigan kod qatlamlari oxirida tursin. `PATH` ga venv qo'shiladi, `PYTHONPATH=/app/backend`. Default `CMD` — `uvicorn app.main:app --host 0.0.0.0 --port 8000`, lekin ikkala compose ham buni override qiladi (dev: reload'li uvicorn; prod: gunicorn; worker: arq).
+2. **Final stage** — `python:3.13-slim-bookworm`. Healthcheck uchun `curl`, yorliq PNG'si TTF shriftda chiqishi uchun `fonts-liberation` o'rnatiladi. Xavfsizlik uchun **non-root `app` user** (uid/gid 1000). Builderdan faqat `/app/backend/.venv` ko'chiriladi; `backend` va `scripts` esa to'g'ridan-to'g'ri build kontekstidan `COPY --chown=app:app` qilinadi — tez-tez o'zgaradigan kod qatlamlari oxirida tursin. So'ng `RUN mkdir -p /app/backend/uploads && chown app:app /app/backend/uploads` — **yuklamalar katalogi image'da oldindan yaratiladi** (pastda sabab). `PATH` ga venv qo'shiladi, `PYTHONPATH=/app/backend`. Default `CMD` — `uvicorn app.main:app --host 0.0.0.0 --port 8000`, lekin ikkala compose ham buni override qiladi (dev: reload'li uvicorn; prod: gunicorn; worker: arq).
+
+**Nega `uploads` katalogi image'da oldindan yaratiladi.** `backend/uploads` `.dockerignore` da, ya'ni `COPY backend /app/backend` uni image'ga olib kelmaydi — katalog umuman bo'lmasdi. Prodda esa aynan shu yo'l `uploads_data` named volume'ning mount nuqtasi: Docker bo'sh volume'ni mount qilganda mavjud katalogning egaligini ko'chiradi, katalog bo'lmasa esa uni **`root:root`** bilan yaratadi. Konteyner `USER app` (uid 1000) ostida ishlagani uchun har qanday fayl yuklash `EACCES`/"Permission denied" bilan yiqilardi. `mkdir` + `chown app:app` shuni oldini oladi: volume katalogning `app:app` egaligini oladi.
 
 Muhim: build context — **repo root** (`context: .`), chunki image'ga `scripts/` ham kiradi (`prestart.sh` shu yerdan ishlaydi).
 
@@ -195,6 +199,8 @@ Barcha `scripts/*.sh` fayllar git'da **executable (mode 100755)** saqlanadi. Bu 
 ### `scripts/prestart.sh` — konteyner startidan oldingi bosqich
 
 Ikkala composeda ham `api` command zanjirining birinchi qismi. Uch qadam: `alembic.ini` mavjud bo'lsa `python -m alembic upgrade head`, so'ng `python -m app.commands.create_first_superuser`, oxirida `python -m app.commands.seed_defaults` (default organizatsiya va 7 ta ishlab chiqarish postini idempotent seed qiladi; yangi post qo'shilganda mavjud bazalarda `order_index` ham sinxronlanadi). Shu tufayli konteyner har startda schema'ni head'ga keltiradi, admin user va default org/postlar mavjudligini kafolatlaydi. `worker` servisi buni ishlatmaydi (migratsiyani `api` ga qoldiradi).
+
+Ketma-ketlikning nozik joyi: default `organization` qatorini seed emas, **`1393a241b793` migratsiyasi** qo'yadi (idempotent `INSERT ... WHERE NOT EXISTS`). Undan keyingi uchta post migratsiyasi (`b3e9a1d76c42`, `f1b6d0c73a25`, `a3f8d61c9b04`) `post` ga `organization_id = 1` bilan yozadi, `seed_defaults` esa migratsiyalardan **keyin** ishlaydi — busiz toza bazada `alembic upgrade head` FK buzilishi bilan yiqilar va yangi muhit umuman ko'tarilmasdi (tafsilot: `docs/04-backend-data.md`).
 
 ### `scripts/generate-client.sh` — OpenAPI → TypeScript client
 
@@ -388,11 +394,15 @@ Eslatma: SCX/CNC fayllar bridge orqali **o'tmaydi** — ular stanok kompyuterida
 | Hook | Manba | Vazifasi |
 |---|---|---|
 | `check-added-large-files`, `check-toml`, `check-yaml --unsafe` | `pre-commit-hooks` v5.0.0 | umumiy sanitariya |
-| `ruff --fix`, `ruff-format` | `ruff-pre-commit` v0.15.20 (`backend/uv.lock` dagi ruff bilan bir xil versiya) | Python lint + format |
+| `ruff --fix`, `ruff-format` | `ruff-pre-commit` v0.16.3 (`backend/uv.lock` dagi ruff bilan bir xil versiya) | Python lint + format, **faqat `^backend/`** |
 | `mypy` (local, `language: system`) | `uv --directory backend run mypy app` | type check — loyiha venv'i kerakligi uchun local hook (`make install` prereq) |
 | `biome-check` (local) | `cd frontend && npx --no-install biome check ...` | frontend lint — `frontend/biome.json` ni olishi uchun `frontend/` dan ishlaydi (`npm install` prereq) |
 
 `mypy` va `biome` hooklari `pass_filenames: false` — butun loyiha bo'yicha tekshiradi.
+
+Ikkala ruff hook'ida `files: ^backend/` cheklovi bor — **pre-commit qamrovi CI bilan bir xil** (`ci.yml`: `cd backend && uv run ruff check app && uv run ruff format --check app`; `backend/` ichidagi yagona python kodi aynan `app/`). Busiz hook butun repoga tushardi: `bridge-agent/agent.py` uchun ruff konfigi yo'q (repo ildizida `pyproject.toml` ham, `ruff.toml` ham yo'q — sozlama faqat `backend/pyproject.toml` da), ya'ni u DEFAULT line-length 88 ni olib, CI hech qachon tekshirmaydigan uslubga qayta yozilardi. Hujjatlar (`docs/*.md`) baribir hook'ka tushmaydi — ruff-pre-commit hooklari `types_or: [python, pyi, jupyter]` bilan cheklangan.
+
+Muhim: CLI'da holat boshqacha — **ruff 0.16 markdown ichidagi python bloklarini ham formatlaydi** (0.15.20 `.md` fayllarni umuman ko'rmasdi). `make format` esa repo **ildizidan** `ruff format .` + `ruff check . --fix` ishlatadi, ya'ni `docs/*.md` dagi qo'lda tekislangan python bloklarini va `bridge-agent/agent.py` ni (u yerda konfig yo'q → line-length 88) qayta yozadi. Bu fayllarni na hook, na CI tekshiradi, shuning uchun `make format` dan keyin `git diff` ni ko'rib, `backend/` dan tashqaridagi o'zgarishlarni tashlab yuborish kerak (yoki formatni `cd backend && uv run ruff format app` bilan chaqirish).
 
 ### `.github/workflows/ci.yml` — GitHub Actions
 
@@ -489,7 +499,7 @@ Standart Python artefaktlari (`__pycache__`, `*.py[cod]`, `build/`, `dist/` — 
 
 ### `backend/pyproject.toml`
 
-`mebelix-backend` 0.1.0, `requires-python >=3.11, <3.14`, build-backend `hatchling` (faqat `app/` package). Runtime dependencylar (21 ta): `fastapi`, `uvicorn` + `uvloop` (uvloop faqat non-Windows), `websockets`, `gunicorn`, `SQLAlchemy` 2 + `asyncpg` + `greenlet` + `alembic`, `pydantic[email]`/`pydantic-settings`, `pyjwt[crypto]` + `bcrypt`, `redis` + `arq` (queue/worker), `prometheus-fastapi-instrumentator` (metrics), `python-multipart` (fayl yuklash: `.project`, SCX, anketa rasmlari), `openpyxl` (Excel), `pillow` + `qrcode` (`render_label_png` — yorliq PNG), `tzdata` (`TASHKENT_TZ = ZoneInfo("Asia/Tashkent")` — `app/core/config.py`; yorliq sanasi va audit/hisobot sana filtrlari). `websockets` aynan runtime dependency: uvicorn `[standard]` extra'siz o'rnatilgan (`wsproto` ham yo'q), ya'ni `/ws/events` va `/ws/bridge` transporti shu paketga tayanadi — dev groupda qolsa prod image'da WebSocket ishlamasdi. Dev group — to'rtta: `mypy`, `ruff`, `pre-commit`, `types-openpyxl`. Tooling konfiguratsiyasi shu faylda: **ruff** (`target-version py311`, line-length 120, `F/E/W/C/UP/I` rulesetlar, `__init__.py` da unused/star import istisno) va **mypy** (`python_version 3.11`, `app.*` uchun `disallow_untyped_defs = true`).
+`mebelix-backend` 0.1.0, `requires-python >=3.11, <3.14`, build-backend `hatchling` (faqat `app/` package). Runtime dependencylar (21 ta): `fastapi`, `uvicorn` + `uvloop` (uvloop faqat non-Windows), `websockets`, `gunicorn`, `SQLAlchemy` 2 + `asyncpg` + `greenlet` + `alembic`, `pydantic[email]`/`pydantic-settings`, `pyjwt` (`[crypto]` extra'siz — `ALGORITHM=HS256` simmetrik, `cryptography` faqat RS*/ES* uchun kerak bo'lardi) + `bcrypt`, `redis` + `arq` (queue/worker), `prometheus-fastapi-instrumentator` (metrics), `python-multipart` (fayl yuklash: `.project`, SCX, anketa rasmlari), `openpyxl` (Excel), `pillow` + `qrcode` (`render_label_png` — yorliq PNG), `tzdata` (`TASHKENT_TZ = ZoneInfo("Asia/Tashkent")` — `app/core/config.py`; yorliq sanasi va audit/hisobot sana filtrlari). `websockets` aynan runtime dependency: uvicorn `[standard]` extra'siz o'rnatilgan (`wsproto` ham yo'q), ya'ni `/ws/events` va `/ws/bridge` transporti shu paketga tayanadi — dev groupda qolsa prod image'da WebSocket ishlamasdi. Dev group — to'rtta: `mypy`, `ruff`, `pre-commit`, `types-openpyxl`. Tooling konfiguratsiyasi shu faylda: **ruff** (`target-version py311`, line-length 120, `F/E/W/C/UP/I` rulesetlar, `__init__.py` da unused/star import istisno) va **mypy** (`python_version 3.11`, `app.*` uchun `disallow_untyped_defs = true`).
 
 ### `frontend/package.json` va `frontend/.nvmrc`
 
@@ -497,7 +507,7 @@ Standart Python artefaktlari (`__pycache__`, `*.py[cod]`, `build/`, `dist/` — 
 
 ### `backend/README.md`
 
-Backend dev qo'llanmasi: texnologiyalar ro'yxati, `make setup` yoki qo'lda setup (`uv sync`, `.env`, migratsiyalar, superuser, seed), ishga tushirish (`make run-backend` / `make docker-local`), ARQ worker, test/lint/migratsiya buyruqlari. `docs/07-infra-devops.md` va `docs/09-mes-domain.md` ga yo'naltiradi.
+Backend dev qo'llanmasi: texnologiyalar ro'yxati, `make setup` yoki qo'lda setup (`uv sync`, `.env`, migratsiyalar, superuser, seed), ishga tushirish (`make run-backend` / `make docker-local`), ARQ worker, lint/migratsiya buyruqlari. `docs/07-infra-devops.md` va `docs/09-mes-domain.md` ga yo'naltiradi.
 
 ### `frontend/README.md`
 

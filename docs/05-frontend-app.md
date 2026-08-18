@@ -14,7 +14,7 @@ Bu hujjat MebeliX MES frontend ilovasining yadro qismini tavsiflaydi: build/tool
 | Styling | Tailwind CSS v4 (`@tailwindcss/vite`), shadcn/ui (new-york style) |
 | Formalar | react-hook-form + zod (`zodResolver`) |
 | Lint/format | Biome |
-| API client | `@hey-api/openapi-ts` (legacy/axios plugin) |
+| API client | `@hey-api/openapi-ts` + `@hey-api/client-axios` |
 
 ---
 
@@ -37,8 +37,8 @@ Vite konfiguratsiyasi. Uchta plugin ulangan:
 
 ### `frontend/openapi-ts.config.ts`
 `@hey-api/openapi-ts` konfiguratsiyasi. Input: `./openapi.json` (backend'dan eksport qilinadi), output: `./src/client`. Plugin'lar:
-- `legacy/axios` — Axios asosidagi legacy client core (`src/client/core/*`);
-- `@hey-api/sdk` — `asClass: true` bilan servis klasslari (`{{name}}Service`, masalan `UsersService`, `LoginService`) va camelCase metodlar generatsiya qilinadi (tree-shaking'ga yo'l qo'ymaydi, lekin qulay namespace beradi).
+- `@hey-api/client-axios` (`throwOnError: true`) — zamonaviy Axios klienti. O'Z axios instansiyasini yaratadi (`client.instance`), shuning uchun interceptorlar global `axios`ga emas, o'shanga ulanadi (`src/main.tsx`); `throwOnError` xato holatida throw qildiradi — TanStack Query'ning `isError`/`onError` zanjiri va mavjud `handleError` shu xatti-harakatga qurilgan. Ilgari `legacy/axios` plugini edi (`src/client/core/*` qo'lda o'qiladigan runtime), u 0.87.0 da olib tashlangan;
+- `@hey-api/sdk` — `asClass: true` bilan servis klasslari (`{{name}}Service`, masalan `UsersService`, `LoginService`) va camelCase metodlar generatsiya qilinadi (tree-shaking'ga yo'l qo'ymaydi, lekin qulay namespace beradi). Metod nomi backend `operation_id`idan olinadi (`operationId: true` — `read_clients` → `readClients`): 0.99 da bu sukutdagi xatti-harakat, shuning uchun avvalgi qo'lda yozilgan `methodNameBuilder` olib tashlandi va `OrdersService.readOrders` kabi nomlar o'zgarmadi.
 
 `@hey-api/schemas` plugini olib tashlangan (config'dagi izohga qarang): u generatsiya qiladigan `schemas.gen.ts`ni hech kim import qilmasdi.
 
@@ -55,22 +55,24 @@ Biome linter/formatter sozlamalari. Generatsiya qilinadigan va tashqi fayllar (`
 ### `frontend/src/main.tsx`
 Ilovaning eng muhim fayli — bootstrap + global HTTP xatti-harakati:
 
-1. **API client sozlash**: `OpenAPI.BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000"`, `OpenAPI.WITH_CREDENTIALS = true`. Token JS xotirasida saqlanmaydi — autentifikatsiya to'liq HttpOnly cookie'lar orqali (`withCredentials` bilan avtomatik yuboriladi). Axios global timeout: `VITE_API_TIMEOUT_MS` (default 30 000 ms).
+1. **API client sozlash**: `client.setConfig({ baseURL: API_BASE, withCredentials: true, timeout })` — `client` `./client/client.gen`dan import qilinadi (`./client` barreli uni eksport qilmaydi), `API_BASE` esa `utils.ts`dan (`VITE_API_URL ?? "http://localhost:8000"`). Global `OpenAPI` singletoni ham, global `axios.defaults` ham yo'q: sozlama klientning O'Z instansiyasiga qo'yiladi. Token JS xotirasida saqlanmaydi — autentifikatsiya to'liq HttpOnly cookie'lar orqali (`withCredentials` bilan avtomatik yuboriladi). Timeout: `VITE_API_TIMEOUT_MS` (default 30 000 ms).
 
-2. **Silent refresh interceptor**: Axios response interceptor 401 kelganda (agar so'rov `/login/` ostida BO'LMASA va hali retry qilinmagan bo'lsa — `/login/*` dagi 401 "sessiya eskirdi" emas, "kirish ma'lumoti noto'g'ri" degani: refresh urinilsa uning o'z xatosi asl xabarni bosib qolardi, beyjik skanerlagan operator "Beyjik topilmadi" o'rniga "Yangilash tokeni topilmadi" ni ko'rardi) `LoginService.refreshAccessToken()` ni chaqiradi — server yangi `access_token` cookie'sini o'rnatadi — so'ng asl so'rov qayta yuboriladi. Bir vaqtda kelgan parallel 401'lar bitta umumiy promise'ni kutadi (`refreshing ??= ...`, `finally`da tozalanadi): refresh muvaffaqiyatli bo'lsa hammasi qayta yuboriladi, yiqilsa hammasi shu xato bilan rad etiladi.
+2. **Silent refresh interceptor**: `client.instance.interceptors.response` 401 kelganda (agar so'rov `/login/` ostida BO'LMASA va hali retry qilinmagan bo'lsa — `/login/*` dagi 401 "sessiya eskirdi" emas, "kirish ma'lumoti noto'g'ri" degani: refresh urinilsa uning o'z xatosi asl xabarni bosib qolardi, beyjik skanerlagan operator "Beyjik topilmadi" o'rniga "Yangilash tokeni topilmadi" ni ko'rardi) `LoginService.refreshAccessToken()` ni chaqiradi — server yangi `access_token` cookie'sini o'rnatadi — so'ng asl so'rov qayta yuboriladi. Bir vaqtda kelgan parallel 401'lar bitta umumiy promise'ni kutadi (`refreshing ??= ...`, `finally`da tozalanadi): refresh muvaffaqiyatli bo'lsa hammasi qayta yuboriladi, yiqilsa hammasi shu xato bilan rad etiladi.
 
-3. **401 fallback**: `QueryCache`/`MutationCache` `onError` handler'i (`handleApiError`) — agar interceptor'dan keyin ham `ApiError` 401 bo'lib chiqsa (masalan, boshqa tab'da logout tufayli `token_version` mos kelmasa), `queryClient.clear()` qilinadi va `window.location.href = "/login"` ga majburiy redirect.
+3. **401 fallback**: `QueryCache`/`MutationCache` `onError` handler'i (`handleApiError`) — agar interceptor'dan keyin ham 401 bo'lib chiqsa (masalan, boshqa tab'da logout tufayli `token_version` mos kelmasa), `queryClient.clear()` qilinadi va `window.location.href = "/login"` ga majburiy redirect. Tekshiruv `error instanceof AxiosError` + `error.response?.status` bilan: `ApiError` klassi endi yo'q — zamonaviy klient har qanday xatoni `AxiosError` qilib tashlaydi.
 
 4. **Render**: `createRouter({ routeTree })` (generatsiya qilingan `routeTree.gen.ts`dan), `QueryClientProvider` + `RouterProvider` StrictMode ichida render qilinadi (Toaster bu yerda emas — `__root.tsx`dagi `AppToaster`da). `declare module "@tanstack/react-router"` orqali router type-registratsiyasi qilinadi (type-safe navigatsiya).
 
 ### `frontend/src/index.css`
-Tailwind v4 uslubidagi global CSS: `@import "tailwindcss"`, `tw-animate-css`, `@fontsource-variable/archivo` (asosiy shrift — Archivo Variable). `@theme inline` bloki shadcn CSS o'zgaruvchilarini Tailwind token'lariga bog'laydi. `:root`da MebeliX brend palitrasi: navy `#2F496E` (primary), gold `#F0A52F` (ring/sidebar-primary), sidebar uchun to'q navy `#243a59` fon, kiosk ekranlar (tablo/terminal) uchun umumiy `--surface` `#f4f6f9` "qog'oz" foni; brend aksent token'lari — `--brand-gold` `#eaa83c`, `--brand-gold-deep` `#8a6420` (oq fondagi mayda yozuv uchun to'q oltin — `#b8862f` WCAG AA dan o'tmasdi), `--brand-navy-deep` `#16233a`. `@layer base`da border/outline default'lari va `button { cursor: pointer }`.
+Tailwind v4 uslubidagi global CSS: `@import "tailwindcss"`, `tw-animate-css`, `@fontsource-variable/archivo` (asosiy shrift — Archivo Variable). `@theme inline` bloki shadcn CSS o'zgaruvchilarini Tailwind token'lariga bog'laydi. **Tizim FAQAT light**: `dark` varianti umuman yo'q — shadcn komponentlaridan 23 ta `dark:` utility klass olib tashlangan, shu bilan birga `@custom-variant dark (&:where(.dark, .dark *))` qatori ham (endi hech narsaga qo'llanmaydi); `Toaster` `theme="light"` da qattiq belgilangan (`components/ui/sonner.tsx`) va tokenlarning birortasi ham dark uchun qayta belgilanmagan. `:root`da MebeliX brend palitrasi: navy `#2F496E` (primary), gold `#F0A52F` (ring/sidebar-primary), sidebar uchun to'q navy `#243a59` fon, kiosk ekranlar (tablo/terminal) uchun umumiy `--surface` `#f4f6f9` "qog'oz" foni; brend aksent token'lari — `--brand-gold` `#eaa83c`, `--brand-gold-deep` `#8a6420` (oq fondagi mayda yozuv uchun to'q oltin — `#b8862f` WCAG AA dan o'tmasdi), `--brand-navy-deep` `#16233a`. `@layer base`da border/outline default'lari va `button { cursor: pointer }`.
 
 ### `frontend/src/utils.ts`
 API xatolarini toast'ga aylantirish yordamchilari:
-- `extractErrorMessage(err: ApiError)` — `AxiosError` bo'lsa kod bo'yicha o'zbekcha xabar (`ERR_NETWORK` → "Tarmoq xatosi — internet aloqasini tekshiring", `ECONNABORTED` → "So'rov vaqti tugadi — qayta urinib ko'ring", aks holda `err.message`); boshqa hollarda `body.detail`dan xabar — FastAPI validation array, string yoki MES tuzilmali `{code, message}` konverti (`"E003: ..."` ko'rinishida; busiz toast'ga "[object Object]" tushardi), u ham bo'lmasa "Xatolik yuz berdi. Qayta urinib ko'ring." fallback;
-- `detailParts(err)` / `detailMessage(err)` — MES `{code, message}` konvertini ajratish; `detailParts` kod ALOHIDA kerak bo'lganda (terminal skan oqimi xato kodiga qarab ovoz beradi), `detailMessage` bitta satr qaytaradi;
-- `handleError(err)` — TanStack Query `onError` uchun to'g'ridan-to'g'ri handler (`onError: handleError`) — `toast.error(extractErrorMessage(err))`; avvalgi curried varianti va `useCustomToast` wrapper'i olib tashlangan, hamma joyda sonner `toast.success/error` to'g'ridan-to'g'ri chaqiriladi;
+- `errorDetail(err)` (ichki, eksport qilinmaydi) — server javob tanasidagi `detail`ni ajratadi: klient (`@hey-api/client-axios`) HAR QANDAY xatoni `AxiosError` qilib tashlaydi, ya'ni 4xx tanasi `err.response.data`da keladi (ilgari `ApiError.body` edi);
+- `extractErrorMessage(err: unknown)` — `AxiosError` bo'lsa avval kod bo'yicha o'zbekcha xabar (`ERR_NETWORK` → "Tarmoq xatosi — internet aloqasini tekshiring", `ECONNABORTED` → "So'rov vaqti tugadi — qayta urinib ko'ring"); so'ng `detail`dan xabar — FastAPI validatsiya massivi (`[{msg, loc}]`), MES tuzilmali `{code, message}` konverti (`"E003: ..."` ko'rinishida; busiz toast'ga "[object Object]" tushardi) yoki oddiy satr; tanada `detail` bo'lmasa (5xx, HTML sahifa, proxy xatosi) `err.message`, u ham bo'lmasa "Xatolik yuz berdi. Qayta urinib ko'ring." fallback;
+- `detailParts(err)` / `detailMessage(err)` — MES `{code, message}` konvertini ajratish; `detailParts` kod ALOHIDA kerak bo'lganda (terminal skan oqimi xato kodiga qarab ovoz beradi), `detailMessage` bitta satr qaytaradi. `detailParts` FastAPI validatsiya massivini ham o'qiydi — massiv ham `object` bo'lgani uchun u tuzilmali konvertdan OLDIN tekshiriladi;
+- `handleError(err: unknown)` — TanStack Query `onError` uchun to'g'ridan-to'g'ri handler (`onError: handleError`) — `toast.error(extractErrorMessage(err))`; avvalgi curried varianti va `useCustomToast` wrapper'i olib tashlangan, hamma joyda sonner `toast.success/error` to'g'ridan-to'g'ri chaqiriladi;
+- `API_BASE` — API bazasi (`import.meta.env.VITE_API_URL ?? "http://localhost:8000"`). Zamonaviy klientda `OpenAPI.BASE` kabi global yo'q, shuning uchun bazani bitta joydan oladigan hamma iste'molchi shu konstantaga tayanadi: `main.tsx` (`client.setConfig`), `hooks/useMesWs`, `lib/scxDir`, `_layout/reports.tsx`, `_layout/anketa.$orderId.tsx`, `_layout/orders/$orderId.tsx`;
 - `getInitials(name)` — ismdan 2 harfli initsiallar (avatar uchun).
 
 ### `frontend/src/vite-env.d.ts`
@@ -175,7 +177,7 @@ Ro'yxat sahifalarida umumiy naqsh: qidiruv maydoni `Common/SearchInput`, so'rov 
 `createRootRoute` — barcha route'larning ildizi. `HeadContent` (route'lardagi `head()` meta/title'larni renderlash), `Outlet`, `AppToaster`, hamda `TanStackRouterDevtools` va `ReactQueryDevtools`. `notFoundComponent` → `@/components/Common/NotFound`, `errorComponent` → `@/components/Common/ErrorComponent`. **`AppToaster`** — sonner `Toaster` (`richColors closeButton`) pathname'ga qarab moslashadi: `/terminal` va `/tablo`da top-center, 1.3rem shrift, 560px kenglik, 6s (operator monitordan uzoqda turadi); qolgan sahifalarda odatdagi bottom-right, 4s.
 
 ### `frontend/src/routes/login.tsx`
-`/login` sahifasi. **Teskari guard**: `beforeLoad`da `UsersService.readUserMe()` chaqiriladi — agar muvaffaqiyatli bo'lsa (foydalanuvchi allaqachon tizimda), `redirect({ to: "/" })` tashlanadi; xato bo'lsa sahifa ochiladi. Forma react-hook-form + zod (sxema `makeFormSchema()` bilan komponent ichida quriladi — top-level `z.object` zod'ni entry chunk'ka tortib, terminal/tablo kioskini ham og'irlashtirardi): `username` — foydalanuvchi nomi yoki telefon, `password` — faqat `min(1)` (bo'sh emasligi; kuch talablari faqat parol o'rnatishda qo'llanadi, eski/seed parollar bilan kirish saqlanadi); `satisfies z.ZodType<Body_login_access_token>` orqali generatsiya qilingan API tipiga bog'langan. Submit `useAuth().loginMutation` ga yuboriladi, UI `AuthLayout`, `LoadingButton`, `PasswordInput` komponentlaridan foydalanadi. Login xatosi toast emas — forma ichida inline `role="alert"` bloki sifatida ko'rsatiladi (`extractErrorMessage`).
+`/login` sahifasi. **Teskari guard**: `beforeLoad`da `UsersService.readUserMe()` chaqiriladi — agar muvaffaqiyatli bo'lsa (foydalanuvchi allaqachon tizimda), `redirect({ to: "/" })` tashlanadi; xato bo'lsa sahifa ochiladi. Forma react-hook-form + zod (sxema `makeFormSchema()` bilan komponent ichida quriladi — top-level `z.object` zod'ni entry chunk'ka tortib, terminal/tablo kioskini ham og'irlashtirardi): `username` — foydalanuvchi nomi yoki telefon, `password` — faqat `min(1)` (bo'sh emasligi; kuch talablari faqat parol o'rnatishda qo'llanadi, eski/seed parollar bilan kirish saqlanadi); `satisfies z.ZodType<BodyLoginAccessToken>` orqali generatsiya qilingan API tipiga bog'langan. Submit `useAuth().loginMutation` ga yuboriladi, UI `AuthLayout`, `LoadingButton`, `PasswordInput` komponentlaridan foydalanadi. Login xatosi toast emas — forma ichida inline `role="alert"` bloki sifatida ko'rsatiladi (`extractErrorMessage`).
 
 **Beyjik — sahifaning ASOSIY yo'li, parol esa ikkinchisi.** Gap chastotada emas (skan ikkala holatda ham tinglanadi), BELGIDA: monoblokka kelgan odam forma ko'rsa terishga urinadi, chizilgan beyjik esa "kartani ko'taring" deydi. Ofis xodimi kuniga bir marta bitta tugma bosadi.
 
@@ -205,7 +207,7 @@ Pathless layout — himoyalangan sahifalar qobig'i. **Auth guard + rol-router**:
   - **Xonalar**: anketa xonalar massivi (`survey.rooms`), tepada xona pill'lari + "Xona qo'shish"; xona o'chirish pilldagi `×` da (brauzer tablari naqshi — obyekt va uni o'chirish tugmasi bir joyda), `ConfirmDialog` orqali (rasmlar ham server tomonda o'chadi); bitta xona qolganda `×` ko'rsatilmaydi. Har xona: 1) nomi va rasmlar, 2) mebel turi, 3) shakl (`ShapeChoice` — SVG piktogrammali `SHAPE_ART`) va xona uzunlik/kenglik/balandlik + mebel devori uzunligi, 4) korpus materiali/rangi/qalinligi/izohi, 5) fasad materiali/rangi/stol usti/izohi, 6) furnitura darajasi + qo'shimcha xizmatlar, 7) izoh (`Textarea`, max 1000). 8-bo'lim — **O'lchov varag'i** `<details>` ichida yopiq turadi (zamerdan keyin to'ldiriladi): `WALL_LETTERS` bo'yicha 5 ta devor uzunlik/balandligi, modullar jadvali (nomi, devor, eni/chuqurlik/balandlik, soni, izoh — qator qo'shish/o'chirish) va umumiy pm/balandlik.
   - **"Butun buyurtma uchun" kartasi** (faqat `canEdit`): xona pill'lari bilan xona bo'limlari orasida turadi. Ichida `ORDER_SERVICES`ning uchta checkbox'i — `packaging` "Upakovka qilish", `delivery` "Yetkazib berish", `installation` "O'rnatish (montaj)" — hamda o'lchov sanasi (`DatePicker`) va o'lchagan usta (`survey.measured_at` / `measured_by`). Bu maydonlar xona emas, BUYURTMA darajasida: tsex bitta `.project` fayl ustida ishlaydi, logistika ham butun buyurtmani bitta mashinada olib ketadi; ilgari xona bo'limida turgani uchun menejer 3-xonada o'zgartirsa, jimgina butun buyurtma uchun o'zgarardi.
   - **Avtosaqlash**: har tahrirda `dirty` yoqiladi, 1.5s debounce'dan keyin `OrdersService.saveOrderSurvey` (PUT `/orders/{id}/survey`); pastda `sticky` panel holatni ko'rsatadi — besh holat ("Saqlanmoqda..." / xato bo'lsa **"Saqlanmadi — qayta urinib ko'ring"**, `text-destructive` va `role="alert"` bilan / "O'zgarishlar avtomatik saqlanadi" / "Saqlandi HH:MM" / sahifa endi ochilgan va hali saqlash bo'lmaganda "Hammasi saqlangan"), yonida esa qo'lda "Saqlash" tugmasi (`disabled={!dirty}`). `beforeunload` da ogohlantirish, komponent unmount bo'lganda saqlanmagan qoralama fire-and-forget yuboriladi. Muvaffaqiyatda `["orders", id]` invalidatsiya qilinadi.
-  - **Xona rasmlari** (`RoomPhotos`): anketa JSON'ida emas — `OrderFile(kind=DOCUMENT, meta.room_id)` da, shuning uchun avtosaqlash bilan aralashmaydi. Butun panel drop-zona; `OrdersService.uploadRoomPhoto` (POST `/orders/{id}/survey/photos`, form-data `room_id` + `file`) va `deleteRoomPhoto`. Klient chegaralari: xonaga 6 tagacha rasm, har biri 5 MB gacha, faqat `image/*` — chegara buzilsa toast, serverga so'rov ketmaydi. Rasm `src` = `${OpenAPI.BASE}/api/v1/orders/{id}/files/{fileId}` (`crossOrigin="use-credentials"` — cookie auth), bosilsa `Dialog`da kattalashadi. Har amaldan keyin `["orders", orderId]` invalidatsiya (rasmlar `order.files`dan o'qiladi).
+  - **Xona rasmlari** (`RoomPhotos`): anketa JSON'ida emas — `OrderFile(kind=DOCUMENT, meta.room_id)` da, shuning uchun avtosaqlash bilan aralashmaydi. Butun panel drop-zona; `OrdersService.uploadRoomPhoto` (POST `/orders/{id}/survey/photos`, form-data `room_id` + `file`) va `deleteRoomPhoto`. Klient chegaralari: xonaga 6 tagacha rasm, har biri 5 MB gacha, faqat `image/*` — chegara buzilsa toast, serverga so'rov ketmaydi. Rasm `src` = `${API_BASE}/api/v1/orders/{id}/files/{fileId}` (`utils.ts`dagi konstanta; `crossOrigin="use-credentials"` — cookie auth), bosilsa `Dialog`da kattalashadi. Har amaldan keyin `["orders", orderId]` invalidatsiya (rasmlar `order.files`dan o'qiladi).
   - Raqamli maydonlar `NumInput`/`Num` orqali: yozilayotgan xom matn saqlanadi (aks holda "3," yozilganda maydon o'zini tozalab yuboradi), blur'da normallashadi; `numOrNull` vergulni nuqtaga aylantiradi.
 - **`cutmap.$orderId.tsx` — `/cutmap/:id`.** Kesish xaritalarining admin ko'rinishi (TZ 10.3): `Terminal/CutmapView` `admin` rejimida (`OrdersService.readOrderCutmap`), `registerPrint` callback'i orqali "PDF / Chop etish" tugmasi barcha xaritalarni yangi oynada A4 landscape sahifalarga chiqaradi (har list — alohida sahifa).
 
@@ -239,9 +241,9 @@ Fullscreen jonli matritsa (TZ 9): buyurtmalar × postlar jadvali `TabloService.r
 
 ### Auth flow (login → cookie token → guard → silent refresh)
 
-1. **Login**: `/login` formasida `useAuth().loginMutation` → `LoginService.loginAccessToken({ formData })` (OAuth2 form-data: username/password). Server javobida `access_token` va `refresh_token` **HttpOnly cookie** sifatida o'rnatiladi — frontend token'ni hech qayerda saqlamaydi (`localStorage` yo'q). Muvaffaqiyatda `navigate({ to: "/" })`.
+1. **Login**: `/login` formasida `useAuth().loginMutation` → `LoginService.loginAccessToken({ body: data })` (OAuth2 form-data: username/password — klient uni `urlSearchParamsBodySerializer` bilan `application/x-www-form-urlencoded` ga o'giradi). Server javobida `access_token` va `refresh_token` **HttpOnly cookie** sifatida o'rnatiladi — frontend token'ni hech qayerda saqlamaydi (`localStorage` yo'q). Muvaffaqiyatda `navigate({ to: "/" })`.
 2. **Guard + rol-router**: har bir himoyalangan sahifaga kirishda `_layout.tsx` `beforeLoad`i `requireAuth()` (`lib/guards` — ichida `readUserMe()`) chaqiradi — cookie yaroqli bo'lsa rol tekshiriladi: `terminal`/operator rollar `/terminal` ga, `tablo` `/tablo` ga yo'naltiriladi, qolganlar o'tadi; 401 bo'lsa `/login` ga redirect (boshqa xatolar `errorComponent`ga chiqadi). Ustiga sakkiz sahifa o'z `beforeLoad` guard'idan o'tkazadi (`lib/guards.requireAccess`, predikatlar `lib/mes`dan): `/admin` — `isSuperuser`; `/printers`, `/logs` — `isAdmin`; `/clients`, `/employees`, `/reports` — `isManagement`; `/work-centers` — `isProductionStaff`; `/terminal` esa o'z rol tekshiruvidan. `/login` esa teskari tekshiradi: sessiya bor bo'lsa `/` ga qaytaradi.
-3. **So'rovlar**: barcha API chaqiriqlar `withCredentials: true` bilan ketadi (`main.tsx`da `OpenAPI.WITH_CREDENTIALS = true`), cookie avtomatik biriktiriladi.
+3. **So'rovlar**: barcha API chaqiriqlar `withCredentials: true` bilan ketadi (`main.tsx`dagi `client.setConfig({ withCredentials: true })` — global `axios.defaults` emas, klientning O'Z instansiyasi), cookie avtomatik biriktiriladi.
 4. **Silent refresh**: access token muddati tugab 401 kelsa, `main.tsx`dagi Axios interceptor `LoginService.refreshAccessToken()` orqali cookie'ni yangilab, asl so'rovni bir marta qayta yuboradi; parallel so'rovlar bitta umumiy refresh promise'ini kutadi.
 5. **Fallback logout**: refresh ham 401 bersa (yoki `token_version` mismatch), `QueryCache`/`MutationCache` `onError`i cache'ni tozalab `/login` ga yo'naltiradi.
 6. **Logout**: `useAuth().logout` → `LoginService.logout()` (server cookie'larni o'chiradi), `onSettled`da `queryClient.clear()` + `/login` ga navigate — server xato bersa ham lokal sessiya tozalanadi.
@@ -252,7 +254,7 @@ Fullscreen jonli matritsa (TZ 9): buyurtmalar × postlar jadvali `TabloService.r
 
 ### `frontend/src/hooks/useAuth.ts`
 Autentifikatsiya mutation'lari:
-- `loginMutation` — `LoginService.loginAccessToken({ formData })`; success'da `/` ga navigate; `onError` yo'q — xato login sahifasida inline ko'rsatiladi (toast emas);
+- `loginMutation` — `LoginService.loginAccessToken({ body: data })`; success'da `/` ga navigate; `onError` yo'q — xato login sahifasida inline ko'rsatiladi (toast emas);
 - `logout()` — `logoutMutation.mutate()`; `onSettled`da har doim `queryClient.clear()` + `/login`.
 
 `frontend/src/routes/login.tsx` va sidebar'dagi user menyusi tomonidan ishlatiladi.
@@ -270,7 +272,7 @@ Joriy foydalanuvchi — `useQuery(getCurrentUserQueryOptions())`, `retry: false`
 `useIsMobile()` — `matchMedia("(max-width: 767px)")` (breakpoint 768) asosida responsive flag. shadcn `sidebar` komponenti mobil/desktop rejimni shu bilan aniqlaydi.
 
 ### `frontend/src/hooks/useMesWs.ts`
-`useMesWs(onEvent)` — jonli yangilanishlar kanali (TZ 2.3): `OpenAPI.BASE`dagi `http` `ws` ga almashtirilib `/api/v1/ws/events` ga WebSocket ochiladi. Ulanish uzilsa 3s dan keyin avto-reconnect, har 30s "ping" heartbeat ("pong" va JSON bo'lmagan frame'lar filtrlanadi); `onEvent` ref orqali saqlanadi — har doim eng so'nggi callback chaqiriladi. Qaytaradi: `{ online }` — Dashboard'dagi JONLI / ALOQA YO'Q badge, terminaldagi "ALOQA YO'Q" bloki va tablodagi nuqta/"OFFLINE" shu flag'dan. Iste'molchilar event turi bo'yicha (`scan.*`, `order.*`, `session.*`) tegishli query key'larni invalidatsiya qiladi.
+`useMesWs(onEvent)` — jonli yangilanishlar kanali (TZ 2.3): `API_BASE`dagi (`utils.ts`; bo'sh bo'lsa `window.location.origin`) `http` `ws` ga almashtirilib `/api/v1/ws/events` ga WebSocket ochiladi. Ulanish uzilsa 3s dan keyin avto-reconnect, har 30s "ping" heartbeat ("pong" va JSON bo'lmagan frame'lar filtrlanadi); `onEvent` ref orqali saqlanadi — har doim eng so'nggi callback chaqiriladi. Qaytaradi: `{ online }` — Dashboard'dagi JONLI / ALOQA YO'Q badge, terminaldagi "ALOQA YO'Q" bloki va tablodagi nuqta/"OFFLINE" shu flag'dan. Iste'molchilar event turi bo'yicha (`scan.*`, `order.*`, `session.*`) tegishli query key'larni invalidatsiya qiladi.
 
 ---
 
@@ -284,7 +286,7 @@ getUsersQueryOptions()        // queryKey: ["users"],       readUsers — barcha
 getCurrentUserQueryOptions()  // queryKey: ["currentUser"], readUserMe
 ```
 
-Ikkalasi `queryOptions()` bilan e'lon qilingan (key/fn tiplashgan); `getCurrentUserQueryOptions` `queryFn`i `Promise<UserRead | null>` — `useCurrentUser` 401 da `null` bilan ishlaydi. `getUsersQueryOptions` `queryFn`i sahifalab yig'adi: `PAGE_SIZE = 100` (`queries/mes.ts`dan import, backend `MAX_PAGE_SIZE`) bilan `readUsers({ skip, limit })` loop'da `count`ga yetguncha chaqiriladi — 100 dan ortiq foydalanuvchi ham to'liq ko'rinadi (jadval client-side; foydalanuvchilar minglab bo'lsa server-side paginatsiyaga o'tish kerak bo'ladi).
+Ikkalasi `queryOptions()` bilan e'lon qilingan (key/fn tiplashgan); `getCurrentUserQueryOptions` `queryFn`i `Promise<UserRead | null>` — `useCurrentUser` 401 da `null` bilan ishlaydi. `getUsersQueryOptions` `queryFn`i sahifalab yig'adi: `PAGE_SIZE = 100` (`queries/mes.ts`dan import, backend `MAX_PAGE_SIZE`) bilan `readUsers({ query: { skip, limit } })` loop'da `count`ga yetguncha chaqiriladi (javob `AxiosResponse`, shuning uchun har chaqiruvda `.data` ochiladi) — 100 dan ortiq foydalanuvchi ham to'liq ko'rinadi (jadval client-side; foydalanuvchilar minglab bo'lsa server-side paginatsiyaga o'tish kerak bo'ladi).
 
 `/admin` sahifasi ham, `useCurrentUser` ham oddiy `useQuery` bilan ishlatadi. Foydalanuvchi CRUD mutation'lari (Admin komponentlarida) invalidatsiya uchun shu key'larga tayanadi.
 
@@ -320,8 +322,8 @@ Factory'lardan tashqarida sahifa/komponent ichida inline e'lon qilingan `useQuer
 | `["terminal", "prisadka", orderId]` | `components/Terminal/PrisadkaView.tsx` | `TerminalService.readTerminalPrisadka`, `refetchInterval` 30s |
 | `["tablo", "order", orderId]` | `routes/tablo.tsx` → qator drill-down'i | `TabloService.readTabloOrder`, `refetchInterval` 30s |
 | `["reports", "dashboard"]` | `_layout/index.tsx` (Dashboard) | `ReportsService.reportDashboard`, `refetchInterval` 60s, `enabled: canStats` |
-| `["reports", "productivity" \| "orders" \| "materials", params]` | `_layout/reports.tsx` — uch tab | `ReportsService.report*(params)`; poll yo'q, sana oralig'i (`params`) key'ning bir qismi |
-| `["audit-logs", module, q, day, page]` | `_layout/logs.tsx` | `AuditService.readAuditLogs` — `q` qidiruv (`useDebounced` 400ms), `dateFrom`/`dateTo` bitta kun, `limit` 50 |
+| `["reports", "productivity" \| "orders" \| "materials", params]` | `_layout/reports.tsx` — uch tab | `ReportsService.report*({ query: { date_from, date_to } })`; poll yo'q, sana oralig'i (lokal `params` obyekti) key'ning bir qismi |
+| `["audit-logs", module, q, day, page]` | `_layout/logs.tsx` | `AuditService.readAuditLogs` — `q` qidiruv (`useDebounced` 400ms), `date_from`/`date_to` bitta kun, `limit` 50 |
 
 Factory'ni spread bilan kengaytirib ishlatadigan joylar ham bor: `tablo.tsx` — `getMachinesQueryOptions()` (`enabled: me?.role === "tablo"`; rolni aniqlaydigan `getCurrentUserQueryOptions()` esa shartsiz chaqiriladi), `ClientCombobox` — `getClientsQueryOptions(debounced)` (`enabled: open`), `printers.tsx`/`logs.tsx` — `getBridgeAgentsQueryOptions()` (mos ravishda `refetchInterval` 10s va `staleTime` 5 min).
 
@@ -329,39 +331,40 @@ Factory'ni spread bilan kengaytirib ishlatadigan joylar ham bor: `tablo.tsx` —
 
 ## 6. API Client (`frontend/src/client/`)
 
-`@hey-api/openapi-ts` tomonidan generatsiya qilinadi; `core/` fayllar ham generator template'idan keladi, lekin qo'lda o'qilishi mumkin bo'lgan barqaror runtime.
+`@hey-api/openapi-ts` (0.99, `@hey-api/client-axios` runtime'i bilan) tomonidan TO'LIQ generatsiya qilinadi — bu katalogda qo'lda yoziladigan fayl yo'q. Tarkibi: `index.ts` (barrel), `sdk.gen.ts` (servis klasslari), `types.gen.ts` (domen tiplari), `client.gen.ts` (yagona klient instansiyasi) va ikkita runtime katalogi — `client/` (axios transporti) hamda `core/` (transportdan mustaqil yordamchilar).
 
-### `frontend/src/client/index.ts`
-Barrel eksport: `ApiError`, `CancelablePromise`/`CancelError`, `OpenAPI`/`OpenAPIConfig` hamda `sdk.gen.ts` (servis klasslari) va `types.gen.ts` (request/response tiplari) dagi hamma narsa. Ilova bo'ylab import faqat `@/client` orqali.
-
-### `frontend/src/client/core/OpenAPI.ts`
-Global client konfiguratsiyasi — `OpenAPI` singleton obyekti: `BASE` (API URL), `WITH_CREDENTIALS`, `TOKEN`/`USERNAME`/`PASSWORD`/`HEADERS` (statik qiymat yoki async resolver), `VERSION`, va `interceptors.request`/`interceptors.response` (`Interceptors<T>` klassi — `use`/`eject` metodli oddiy middleware ro'yxati). `main.tsx` startup'da `BASE` va `WITH_CREDENTIALS`ni o'rnatadi; `TOKEN` ishlatilmaydi (cookie auth).
-
-### `frontend/src/client/core/request.ts`
-HTTP so'rov dvigateli. Asosiy eksport:
+**Chaqiruv shakli.** Ilgari (`legacy/axios`) metodlar tekis camelCase argument olardi va foydali yukni to'g'ridan-to'g'ri qaytarardi. Endi argument konvert ichida — `{ path, query, body }` — va uning kalitlari backend'dagi XOM nomlar (`order_id`, `qr_text`, `date_from`); javob esa `AxiosResponse`, ya'ni ma'lumot `.data` da:
 
 ```ts
-request<T>(config: OpenAPIConfig, options: ApiRequestOptions<T>, axiosClient = axios): CancelablePromise<T>
+const { data } = await OrdersService.readOrders({ query: { status, skip, limit: PAGE_SIZE } })
+const { data } = await OrdersService.readOrder({ path: { order_id: orderId } })
 ```
 
-Bosqichlari: URL qurish (`getUrl` — `{param}` path-interpolyatsiya + `getQueryString` query-serializatsiya, massiv/obyekt/Date qo'llab-quvvatlanadi), `getFormData` (FormData yig'ish), `getHeaders` (Bearer/Basic auth resolver'lari, Content-Type aniqlash), `sendRequest` (Axios orqali, `AbortController` + `onCancel` bilan bekor qilish, custom request interceptor'lar), keyin response interceptor'lar, `getResponseBody`/`getResponseHeader`, ixtiyoriy `responseTransformer`, va nihoyat `catchErrorCodes` — 4xx/5xx status'larni `ApiError`ga aylantirib throw qiladi. Muhim nuans: Axios xatosi response bilan kelsa, u throw qilinmasdan response sifatida qaytariladi va status tekshiruvi `catchErrorCodes`da bajariladi (shu tufayli `main.tsx`dagi Axios-level 401 interceptor retry'dan keyin ham ishlaydi).
+Xato yo'li ham shu bilan o'zgargan: `ApiError` klassi endi yo'q — `throwOnError: true` tufayli klient har qanday xatoni `AxiosError` qilib tashlaydi, server tanasi esa `err.response.data` da (`utils.ts` dagi `errorDetail` shuni ajratadi).
 
-### `frontend/src/client/core/ApiError.ts`
-`Error` subklassi — `url`, `status`, `statusText`, `body` (server javobi, masalan FastAPI `detail`), `request` maydonlari bilan. `main.tsx` (401 fallback) va `utils.ts` (`extractErrorMessage`) shu tipga tayanadi.
+### `frontend/src/client/index.ts`
+Barrel eksport: `sdk.gen.ts` dagi 17 ta servis klassi + `Options` tipi va `types.gen.ts` dagi hamma request/response tiplari. Ilova bo'ylab import faqat `@/client` orqali. **Klient obyektining o'zi bu barrelda YO'Q** — uni `main.tsx` alohida, `@/client/client.gen` dan import qiladi.
 
-### `frontend/src/client/core/CancelablePromise.ts`
-`Promise<T>` implementatsiyasi + `cancel()` metodi: executor'ga `onCancel` callback beriladi (`request.ts` unga `controller.abort()` ni ro'yxatlaydi); `cancel()` chaqirilsa barcha cancel handler'lar ishga tushib, promise `CancelError` bilan reject bo'ladi. Resolved/rejected/cancelled holatlaridan keyin ikkinchi o'tish yo'q (idempotent).
+### `frontend/src/client/client.gen.ts`
+Yagona klient instansiyasi: `createClient(createConfig({ throwOnError: true }))`. `sdk.gen.ts` ning har bir metodi shu `client` ga tushadi (chaqiruvda `options.client` berilmasa). `main.tsx` startup'da `client.setConfig({ baseURL, withCredentials, timeout })` qiladi va 401 interceptorini `client.instance` (ichkarida `axios.create()` bilan yaratilgan instansiya) ga ulaydi — global `axios` ga tegilmaydi.
 
-### `frontend/src/client/core/ApiRequestOptions.ts` va `ApiResult.ts`
-Faqat tip deklaratsiyalari. `ApiRequestOptions<T>` — bitta so'rovning to'liq tavsifi: `method` (GET/POST/...), `url`, `path`/`query`/`headers`/`cookies` parametrlari, `body`/`formData`/`mediaType`, status-kodga xos xato matnlari (`errors`), `responseHeader` va ixtiyoriy `responseTransformer`. `ApiResult<TData>` — xom javob: `url`, `ok`, `status`, `statusText`, `body`. Ikkalasi `request.ts` ichida ishlatiladi; `sdk.gen.ts` metodlari `ApiRequestOptions` obyektlarini yig'ib `request()`ga uzatadi.
+### `frontend/src/client/client/` — axios transporti
+- `client.gen.ts` — `createClient()`: axios instansiyasini yaratadi, `getConfig`/`setConfig`, HTTP metod funksiyalari (`get`/`post`/...), `buildUrl` va SSE klienti;
+- `types.gen.ts` — transport tiplari: `Client` (`instance: AxiosInstance` maydoni bilan), `Config`, `ClientOptions` (`baseURL`, `throwOnError`), `RequestOptions`, `Options`, `TDataShape` va `RequestResult` — `throwOnError: true` da u oddiygina `Promise<AxiosResponse<T>>`;
+- `utils.gen.ts` — `createConfig`, `mergeConfigs`, `mergeHeaders`, `buildUrl`, `setAuthParams`;
+- `index.ts` — shu katalog va `core/` ning re-eksport barreli (`sdk.gen.ts` shundan import qiladi).
+
+### `frontend/src/client/core/` — transportdan mustaqil yordamchilar
+Sakkiz fayl, hammasi `*.gen.ts`: `auth.gen.ts` (`Auth` sxemasi va `getAuthToken` — MES'da ishlatilmaydi, autentifikatsiya cookie orqali), `bodySerializer.gen.ts` (`jsonBodySerializer`; `formDataBodySerializer` — `uploadRoomPhoto`/`uploadOrderProject`; `urlSearchParamsBodySerializer` — OAuth2 login formasi), `params.gen.ts` (`buildClientParams`), `pathSerializer.gen.ts` va `utils.gen.ts` (`{param}` path-interpolyatsiya, query serializatsiya, `getUrl`, `getValidRequestBody`), `queryKeySerializer.gen.ts`, `serverSentEvents.gen.ts` (SSE — MES jonli kanali WS'da, shuning uchun chaqirilmaydi) va `types.gen.ts` (`HttpMethod`, `Config`, `ClientMeta`).
 
 ### Generatsiya qilinadigan fayllar va yangilash buyrug'i
 
 | Fayl | Nima | Generator |
 |---|---|---|
 | `frontend/src/routeTree.gen.ts` | Route daraxti (type-safe) — `src/routes/` fayllaridan | `@tanstack/router-plugin` (Vite dev/build paytida avtomatik) |
-| `frontend/src/client/sdk.gen.ts` | 15 ta servis klass: `AuditService`, `BridgeAgentsService`, `ClientsService`, `EmployeesService`, `HealthService`, `LoginService`, `MachinesService`, `MaterialsService`, `OrdersService`, `PostsService`, `ReportsService`, `ScansService`, `TabloService`, `TerminalService`, `UsersService` — har metod `CancelablePromise` qaytaradi | `@hey-api/openapi-ts` |
-| `frontend/src/client/types.gen.ts` | Request/response TypeScript tiplari (`UserRead`, `Body_login_access_token`, `OrderSurvey`/`SurveyRoom`/`SurveyWall`/`SurveyModule`, `OrderFileRead.meta`, `TerminalOrderCard`, `QrOrderRef`, `PrisadkaOrderState`, `TabloPostCol`, `Message`, ...) | `@hey-api/openapi-ts` |
+| `frontend/src/client/sdk.gen.ts` | 17 ta servis klass: `AuditService`, `BridgeAgentsService`, `ClientsService`, `EmployeesService`, `HealthService`, `LoginService`, `MachinesService`, `OrdersService`, `PachkaService`, `PostsService`, `ReportsService`, `ScansService`, `StockService`, `TabloService`, `TerminalService`, `TmoService`, `UsersService` — har metod `RequestResult` (ya'ni `Promise<AxiosResponse<T>>`) qaytaradi | `@hey-api/openapi-ts` |
+| `frontend/src/client/client.gen.ts` + `client/`, `core/` | Klient instansiyasi va uning runtime'i (yuqorida) — `legacy/axios` davridagi qo'lda o'qiladigan `core/ApiError.ts`, `core/CancelablePromise.ts`, `core/OpenAPI.ts`, `core/request.ts` o'rniga | `@hey-api/client-axios` |
+| `frontend/src/client/types.gen.ts` | Request/response TypeScript tiplari (`UserRead`, `BodyLoginAccessToken`, `OrderSurvey`/`SurveyRoom`/`SurveyWall`/`SurveyModule`, `OrderFileRead.meta`, `TerminalOrderCard`, `QrOrderRef`, `PrisadkaOrderState`, `TabloPostCol`, `Message`, ...) | `@hey-api/openapi-ts` |
 
 API client'ni yangilash — `scripts/generate-client.sh` (repo root'dan):
 1. `backend/`da `uv run python -c "...app.openapi()..."` bilan `openapi.json` eksport qilinadi;
@@ -369,7 +372,7 @@ API client'ni yangilash — `scripts/generate-client.sh` (repo root'dan):
 3. `npm run generate-client` (`openapi-ts`, konfiguratsiya `frontend/openapi-ts.config.ts`);
 4. `npx biome format --write ./src/client`.
 
-Backend endpoint/schema o'zgarganda shu skript qayta ishga tushiriladi; generatsiya qilingan fayllar qo'lda tahrirlanmaydi (Biome ham ularni lint'dan chiqargan). 2026-08-05 regeneratsiyasi: backend'da `GET /scans/recent` o'chirilgani uchun `ScansService`da endi faqat `recordScan`/`cancelScan` bor; terminal/tablo javoblari typed schema'larga o'tdi (`TerminalOrderCard`, `QrOrderRef`, `PrisadkaOrderState`, `TabloPostCol`) — frontend'dagi qo'lda yozilgan `TabloPost` tipi va cast'lar olib tashlandi; `OrderSurvey` esa buyurtma darajasidagi `packaging`/`delivery`/`installation` bayroqlarini oldi (anketadagi "Butun buyurtma uchun" kartasi).
+Backend endpoint/schema o'zgarganda shu skript qayta ishga tushiriladi; generatsiya qilingan fayllar qo'lda tahrirlanmaydi (Biome ham ularni lint'dan chiqargan). 2026-08-05 regeneratsiyasi: backend'da `GET /scans/recent` o'chirilgani uchun `ScansService`da endi faqat `recordScan`/`cancelScan` bor; terminal/tablo javoblari typed schema'larga o'tdi (`TerminalOrderCard`, `QrOrderRef`, `PrisadkaOrderState`, `TabloPostCol`) — frontend'dagi qo'lda yozilgan `TabloPost` tipi va cast'lar olib tashlandi; `OrderSurvey` esa buyurtma darajasidagi `packaging`/`delivery`/`installation` bayroqlarini oldi (anketadagi "Butun buyurtma uchun" kartasi). 2026-08-18 da qayta generatsiya `@hey-api/openapi-ts` 0.86.12 (`legacy/axios`) → 0.99.0 (`@hey-api/client-axios`) migratsiyasi bilan birga bo'ldi: `openapi.json` 106 operatsiyaga yangilandi (fayl git'da tracked EMAS — skript uni har safar backend'dan eksport qiladi), `core/*` qo'lda o'qiladigan runtime `*.gen.ts` lar bilan almashdi va chaqiruv shakli `{ path, query, body }` + `.data` ga o'tdi (yuqoriga qarang); servis va metod nomlari esa o'zgarmadi.
 
 Anketa/yorliq oqimidagi e'tiborli metodlar:
 
@@ -385,7 +388,7 @@ Anketa/yorliq oqimidagi e'tiborli metodlar:
 ## 7. Fayllararo bog'lanish xulosasi
 
 ```
-main.tsx ──(BASE, WITH_CREDENTIALS)──> client/core/OpenAPI.ts
+main.tsx ──(setConfig: baseURL/withCredentials/timeout)──> client/client.gen.ts (client, client.instance)
 main.tsx ──(401 interceptor)─────────> LoginService.refreshAccessToken (sdk.gen.ts)
 routes/* ──(beforeLoad guard)────────> lib/guards.requireAuth ──> UsersService.readUserMe (+ rol-router: lib/mes.ts OPERATOR_ROLES)
 routes/_layout/{admin,printers,logs,clients,employees,machines,materials,reports}.tsx ──> lib/guards.requireAccess ──> lib/mes.ts (isSuperuser/isAdmin/isManagement/isProductionStaff) <── Sidebar/AppSidebar (NAV_ITEMS)
@@ -399,7 +402,7 @@ routes/tablo.tsx, _layout/index.tsx ──> TabloService (matrix) + hooks/useMes
 hooks/useMesWs ──(ws://.../api/v1/ws/events)──> query invalidatsiya + {online} flag
 routes/_layout/admin.tsx ──> queries/users.ts ──> UsersService.readUsers
 hooks/useCurrentUser ──> queries/users.ts (["currentUser"])
-sdk.gen.ts ──> core/request.ts ──> core/CancelablePromise.ts, core/ApiError.ts
+sdk.gen.ts ──> client.gen.ts (client) ──> client/*.gen.ts (axios transporti) + core/*.gen.ts (serializatorlar)
 utils.ts (handleError ──> sonner toast) <── mutation onError'lar / queries/mes.ts crudCallbacks
 lib/mes.ts (label/rang/format konstantalari) <── deyarli barcha route va komponentlar
 lib/validation.ts <──> backend/app/schemas/users.py (qo'lda sinxron)
