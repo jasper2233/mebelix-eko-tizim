@@ -115,6 +115,19 @@ function TerminalPage() {
   // Qadoq QR'i (`PK-...`) umumiy yo'ldan o'tsa "QR noto'g'ri" bo'lib rad etilardi.
   const viewScanRef = useRef<((qr: string) => void) | null>(null)
 
+  // Skan ish HOLATINI o'zgartiradi (post ekrani, buyurtma progressi), lekin
+  // `context` ni — ish markazi, post, brigada — hech qachon. `["terminal"]`
+  // prefiksi esa uni ham qamrab olardi va har skanga ortiqcha
+  // `/terminal/context` round-trip'i qo'shardi (tsexda RTT ~100 ms).
+  const invalidateWork = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          q.queryKey[0] === "terminal" && q.queryKey[1] !== "context",
+      }),
+    [queryClient],
+  )
+
   const { online } = useMesWs(
     useCallback(
       (event) => {
@@ -126,10 +139,10 @@ function TerminalPage() {
             "order.cancelled",
           ].includes(event.type)
         ) {
-          queryClient.invalidateQueries({ queryKey: ["terminal"] })
+          invalidateWork()
         }
       },
-      [queryClient],
+      [invalidateWork],
     ),
   )
 
@@ -184,7 +197,7 @@ function TerminalPage() {
         scanId: r.scan_id,
         at: Date.now(),
       })
-      queryClient.invalidateQueries({ queryKey: ["terminal"] })
+      invalidateWork()
       if (r.order_completed) toast.success("Buyurtma to'liq tayyor bo'ldi!")
       // SCX fayllar har scanda qaytadan (TZ 12.5): saqlangan papkadagi PROYEKT
       // nomli subpapkaga ("Hammasini yuklab olish" bilan bir joy).
@@ -214,7 +227,7 @@ function TerminalPage() {
       toast.success("Oxirgi scan bekor qilindi")
       setUndoOpen(false)
       setLastScan(null)
-      queryClient.invalidateQueries({ queryKey: ["terminal"] })
+      invalidateWork()
     },
     onError: (err) => {
       toast.error(detailMessage(err))
