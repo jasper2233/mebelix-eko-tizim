@@ -12,11 +12,18 @@ repos:
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # backend/uv.lock dagi ruff bilan bir xil versiya (ruff-pre-commit teglari ruff relizlarini aks ettiradi)
-    rev: v0.15.20
+    rev: v0.16.3
+    # Faqat `backend/` — CI ham shu qamrovni tekshiradi (ci.yml: `cd backend`).
+    # Busiz hook `bridge-agent/agent.py` ni ham oladi, lekin u yerda ruff konfigi
+    # yo'q: DEFAULT line-length 88 bilan CI hech qachon tekshirmaydigan uslubga
+    # qayta yozilardi. `docs/*.md` ham chetda qoladi — ruff 0.16 markdown ichidagi
+    # python bloklarini formatlaydi, ular esa qo'lda tekislangan.
     hooks:
       - id: ruff
         args: [--fix]
+        files: ^backend/
       - id: ruff-format
+        files: ^backend/
 
   - repo: local
     hooks:
