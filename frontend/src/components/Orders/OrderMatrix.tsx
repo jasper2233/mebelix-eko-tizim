@@ -20,7 +20,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { formatSize, POST_COLORS, STANDARD_MATRIX_POSTS } from "@/lib/mes"
+import {
+  chipColors,
+  formatSize,
+  POST_COLORS,
+  STANDARD_MATRIX_POSTS,
+} from "@/lib/mes"
 import {
   crudCallbacks,
   getOrderMatrixQueryOptions,
@@ -74,8 +79,8 @@ export function OrderMatrix({
         ].map(Number),
       )
       return OrdersService.editOrderMatrix({
-        orderId,
-        requestBody: {
+        path: { order_id: orderId },
+        body: {
           edits: [...partIds].map((partId) => ({
             part_id: partId,
             note: noteEdits[partId] ?? null,
@@ -288,7 +293,7 @@ export function OrderMatrix({
 }
 
 type MatrixPartData = NonNullable<
-  Awaited<ReturnType<typeof OrdersService.readOrderMatrix>>
+  Awaited<ReturnType<typeof OrdersService.readOrderMatrix>>["data"]
 >["parts"][number]
 
 function MatrixCell({
@@ -354,12 +359,8 @@ function MatrixCell({
     <TableCell className="text-center">
       <span
         className="num inline-flex min-w-11 justify-center rounded-sm px-1.5 py-0.5 text-xs font-bold"
-        style={{
-          // Matn to'qroq variantda: sof post rangi o'z tinti ustida 3.65-5.11:1
-          // berardi va aksariyat kombinatsiya AA dan o'tmasdi.
-          color: `color-mix(in srgb, ${color} 78%, black)`,
-          backgroundColor: `color-mix(in srgb, ${color} ${complete ? 22 : 10}%, white)`,
-        }}
+        // Tugallangan katak to'qroq fonda ajralib tursin (22% vs 10%).
+        style={chipColors(color, complete ? 22 : 10)}
       >
         {complete ? "✓" : `${route.total_done}/${route.total_required}`}
       </span>

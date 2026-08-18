@@ -20,35 +20,43 @@ export const PAGE_SIZE = 100 // backend MAX_PAGE_SIZE
 export const getPostsQueryOptions = () =>
   queryOptions({
     queryKey: ["posts"],
-    queryFn: () => PostsService.readPosts(),
+    queryFn: async () => (await PostsService.readPosts()).data,
     staleTime: 5 * 60_000,
   })
 
 export const getMachinesQueryOptions = () =>
   queryOptions({
     queryKey: ["machines"],
-    queryFn: () => MachinesService.readMachines(),
+    queryFn: async () => (await MachinesService.readMachines()).data,
     staleTime: 60_000,
   })
 
 export const getClientsQueryOptions = (search?: string) =>
   queryOptions({
     queryKey: ["clients", search ?? ""],
-    queryFn: () =>
-      ClientsService.readClients({
-        search: search || undefined,
-        limit: PAGE_SIZE,
-      }),
+    queryFn: async () =>
+      (
+        await ClientsService.readClients({
+          query: {
+            search: search || undefined,
+            limit: PAGE_SIZE,
+          },
+        })
+      ).data,
   })
 
 export const getEmployeesQueryOptions = (search?: string) =>
   queryOptions({
     queryKey: ["employees", search ?? ""],
-    queryFn: () =>
-      EmployeesService.readEmployees({
-        search: search || undefined,
-        limit: PAGE_SIZE,
-      }),
+    queryFn: async () =>
+      (
+        await EmployeesService.readEmployees({
+          query: {
+            search: search || undefined,
+            limit: PAGE_SIZE,
+          },
+        })
+      ).data,
   })
 
 export const getOrdersQueryOptions = (
@@ -56,31 +64,38 @@ export const getOrdersQueryOptions = (
 ) =>
   queryOptions({
     queryKey: ["orders", opts.status ?? "", opts.search ?? "", opts.page ?? 0],
-    queryFn: () =>
-      OrdersService.readOrders({
-        status: (opts.status as never) || undefined,
-        search: opts.search || undefined,
-        skip: (opts.page ?? 0) * PAGE_SIZE,
-        limit: PAGE_SIZE,
-      }),
+    queryFn: async () =>
+      (
+        await OrdersService.readOrders({
+          query: {
+            status: (opts.status as never) || undefined,
+            search: opts.search || undefined,
+            skip: (opts.page ?? 0) * PAGE_SIZE,
+            limit: PAGE_SIZE,
+          },
+        })
+      ).data,
   })
 
 export const getOrderQueryOptions = (orderId: number) =>
   queryOptions({
     queryKey: ["orders", orderId],
-    queryFn: () => OrdersService.readOrder({ orderId }),
+    queryFn: async () =>
+      (await OrdersService.readOrder({ path: { order_id: orderId } })).data,
   })
 
 export const getOrderMatrixQueryOptions = (orderId: number) =>
   queryOptions({
     queryKey: ["orders", orderId, "matrix"],
-    queryFn: () => OrdersService.readOrderMatrix({ orderId }),
+    queryFn: async () =>
+      (await OrdersService.readOrderMatrix({ path: { order_id: orderId } }))
+        .data,
   })
 
 export const getTerminalContextQueryOptions = () =>
   queryOptions({
     queryKey: ["terminal", "context"],
-    queryFn: () => TerminalService.readTerminalContext(),
+    queryFn: async () => (await TerminalService.readTerminalContext()).data,
     // Xato holatda (masalan postda ish markazi yo'q) admin tuzatgach terminal
     // o'zi tiklansin — operator sahifani qayta ochishni bilmasligi mumkin
     refetchInterval: 30_000,
@@ -91,7 +106,7 @@ export const getTerminalContextQueryOptions = () =>
 export const getTabloMatrixQueryOptions = () =>
   queryOptions({
     queryKey: ["tablo", "matrix"],
-    queryFn: () => TabloService.readTabloMatrix(),
+    queryFn: async () => (await TabloService.readTabloMatrix()).data,
     refetchInterval: 60_000,
   })
 
@@ -100,7 +115,7 @@ export const getTabloMatrixQueryOptions = () =>
 export const getOrderStatusCountsQueryOptions = () =>
   queryOptions({
     queryKey: ["orders", "status-counts"],
-    queryFn: () => OrdersService.readOrderStatusCounts(),
+    queryFn: async () => (await OrdersService.readOrderStatusCounts()).data,
     refetchInterval: 30_000,
   })
 
@@ -110,7 +125,7 @@ export const getOrderStatusCountsQueryOptions = () =>
 export const getBridgeAgentsQueryOptions = () =>
   queryOptions({
     queryKey: ["bridge-agents"],
-    queryFn: () => BridgeAgentsService.readBridgeAgents(),
+    queryFn: async () => (await BridgeAgentsService.readBridgeAgents()).data,
   })
 
 /**
@@ -139,27 +154,31 @@ export const getStockQueryOptions = (opts: {
       opts.low ?? false,
       opts.page ?? 0,
     ],
-    queryFn: () =>
-      StockService.readStockItems({
-        search: opts.search || undefined,
-        catalog: opts.catalog,
-        groupCode: opts.groupCode || undefined,
-        low: opts.low || undefined,
-        skip: (opts.page ?? 0) * PAGE_SIZE,
-        limit: PAGE_SIZE,
-      }),
+    queryFn: async () =>
+      (
+        await StockService.readStockItems({
+          query: {
+            search: opts.search || undefined,
+            catalog: opts.catalog,
+            group_code: opts.groupCode || undefined,
+            low: opts.low || undefined,
+            skip: (opts.page ?? 0) * PAGE_SIZE,
+            limit: PAGE_SIZE,
+          },
+        })
+      ).data,
   })
 
 export const getStockGroupsQueryOptions = () =>
   queryOptions({
     queryKey: ["stock", "groups"],
-    queryFn: () => StockService.readStockGroups(),
+    queryFn: async () => (await StockService.readStockGroups()).data,
   })
 
 export const getStockSummaryQueryOptions = () =>
   queryOptions({
     queryKey: ["stock", "summary"],
-    queryFn: () => StockService.readStockSummary(),
+    queryFn: async () => (await StockService.readStockSummary()).data,
   })
 
 export function crudCallbacks(

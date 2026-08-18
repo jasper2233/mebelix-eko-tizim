@@ -3,6 +3,7 @@ import { useState } from "react"
 
 import { type SaleRead, StockService } from "@/client"
 import { EmptyRow } from "@/components/Common/EmptyRow"
+import { QueryError } from "@/components/Common/QueryError"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -31,14 +32,23 @@ export function SalesView() {
   const [debtsOnly, setDebtsOnly] = useState(false)
   const [payFor, setPayFor] = useState<SaleRead | null>(null)
 
-  const { data: sales, isLoading } = useQuery({
+  const {
+    data: sales,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["stock", "sales", debtsOnly],
-    queryFn: () =>
-      StockService.readSales({ debts: debtsOnly || undefined, limit: 100 }),
+    queryFn: async () =>
+      (
+        await StockService.readSales({
+          query: { debts: debtsOnly || undefined, limit: 100 },
+        })
+      ).data,
   })
   const { data: summary } = useQuery({
     queryKey: ["stock", "sales", "summary"],
-    queryFn: () => StockService.readSalesSummary(),
+    queryFn: async () => (await StockService.readSalesSummary()).data,
   })
 
   return (
@@ -72,6 +82,8 @@ export function SalesView() {
 
       {isLoading ? (
         <Skeleton className="h-64 w-full" />
+      ) : isError ? (
+        <QueryError onRetry={() => refetch()} />
       ) : (
         <div className="overflow-x-auto">
           <Table>

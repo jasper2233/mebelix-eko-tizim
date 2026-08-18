@@ -45,8 +45,8 @@ export function MachineAssign({
   const mutation = useMutation({
     mutationFn: () =>
       OrdersService.assignOrderMachines({
-        orderId: order.id,
-        requestBody: {
+        path: { order_id: order.id },
+        body: {
           assignments: Object.fromEntries(
             Object.entries(selection)
               .filter(([, v]) => v)

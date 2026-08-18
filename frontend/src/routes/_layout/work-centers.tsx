@@ -1,14 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { Pencil, Plus, Trash2 } from "lucide-react"
-import { type ReactNode, useState } from "react"
+import { useState } from "react"
 
 import { type MachineRead, MachinesService, type PostRead } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { EmptyRow } from "@/components/Common/EmptyRow"
+import { Field } from "@/components/Common/Field"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { PostBadge } from "@/components/Common/PostBadge"
 import { QueryError } from "@/components/Common/QueryError"
+import { RowAction } from "@/components/Common/RowAction"
 import { SelectField } from "@/components/Common/SelectField"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -131,24 +133,17 @@ function WorkCentersPage() {
                       {admin && (
                         <TableCell>
                           <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 text-muted-foreground"
+                            <RowAction
+                              icon={Pencil}
                               title="Tahrirlash"
                               onClick={() => setEditFor(m)}
-                            >
-                              <Pencil />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 text-muted-foreground hover:text-destructive"
+                            />
+                            <RowAction
+                              icon={Trash2}
                               title="O'chirish"
+                              danger
                               onClick={() => setDeleteFor(m)}
-                            >
-                              <Trash2 />
-                            </Button>
+                            />
                           </div>
                         </TableCell>
                       )}
@@ -229,10 +224,10 @@ function MachineDialog({
       }
       return editing
         ? MachinesService.updateMachine({
-            machineId: machine.id,
-            requestBody: body,
+            path: { machine_id: machine.id },
+            body,
           })
-        : MachinesService.createMachine({ requestBody: body })
+        : MachinesService.createMachine({ body })
     },
     ...cb,
     onSuccess: () => {
@@ -339,17 +334,6 @@ function MachineDialog({
   )
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="grid gap-1.5">
-      <span className="text-2xs font-medium uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
-      {children}
-    </div>
-  )
-}
-
 function DeleteMachine({
   machine,
   onClose,
@@ -361,7 +345,7 @@ function DeleteMachine({
   const cb = crudCallbacks(queryClient, ["machines"], "Ish markazi o'chirildi")
   const mutation = useMutation({
     mutationFn: (id: number) =>
-      MachinesService.deleteMachine({ machineId: id }),
+      MachinesService.deleteMachine({ path: { machine_id: id } }),
     ...cb,
     onSuccess: () => {
       cb.onSuccess()

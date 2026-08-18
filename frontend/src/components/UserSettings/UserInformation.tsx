@@ -53,8 +53,7 @@ export const UserInformation = () => {
   }
 
   const mutation = useMutation({
-    mutationFn: (data: UserUpdate) =>
-      UsersService.updateUserMe({ requestBody: data }),
+    mutationFn: (data: UserUpdate) => UsersService.updateUserMe({ body: data }),
     onSuccess: () => {
       toast.success("Foydalanuvchi muvaffaqiyatli yangilandi")
       form.reset(form.getValues())

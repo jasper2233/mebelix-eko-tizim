@@ -31,7 +31,9 @@ export function UpakovkaView({
   const queryClient = useQueryClient()
   const { data, isLoading } = useQuery({
     queryKey: ["terminal", "upakovka", orderId],
-    queryFn: () => PachkaService.readUpakovkaOrder({ orderId }),
+    queryFn: async () =>
+      (await PachkaService.readUpakovkaOrder({ path: { order_id: orderId } }))
+        .data,
     refetchInterval: 30_000,
   })
 
@@ -39,30 +41,35 @@ export function UpakovkaView({
     queryClient.setQueryData(["terminal", "upakovka", orderId], d)
 
   const create = useMutation({
-    mutationFn: () => PachkaService.createPachka({ orderId }),
+    mutationFn: async () =>
+      (await PachkaService.createPachka({ path: { order_id: orderId } })).data,
     onSuccess: put,
     onError: (e) => toast.error(detailMessage(e)),
   })
   const scan = useMutation({
-    mutationFn: (v: { pachkaId: number; qr: string }) =>
-      PachkaService.scanIntoPachka({
-        pachkaId: v.pachkaId,
-        requestBody: { qr_text: v.qr },
-      }),
+    mutationFn: async (v: { pachkaId: number; qr: string }) =>
+      (
+        await PachkaService.scanIntoPachka({
+          path: { pachka_id: v.pachkaId },
+          body: { qr_text: v.qr },
+        })
+      ).data,
     onSuccess: put,
     onError: (e) => toast.error(detailMessage(e)),
   })
   const remove = useMutation({
-    mutationFn: (v: { pachkaId: number; instanceId: number }) =>
-      PachkaService.removeFromPachka({
-        pachkaId: v.pachkaId,
-        instanceId: v.instanceId,
-      }),
+    mutationFn: async (v: { pachkaId: number; instanceId: number }) =>
+      (
+        await PachkaService.removeFromPachka({
+          path: { pachka_id: v.pachkaId, instance_id: v.instanceId },
+        })
+      ).data,
     onSuccess: put,
     onError: (e) => toast.error(detailMessage(e)),
   })
   const close = useMutation({
-    mutationFn: (pachkaId: number) => PachkaService.closePachka({ pachkaId }),
+    mutationFn: async (pachkaId: number) =>
+      (await PachkaService.closePachka({ path: { pachka_id: pachkaId } })).data,
     onSuccess: (r) => {
       toast.success(r.message)
       queryClient.invalidateQueries({ queryKey: ["terminal", "upakovka"] })

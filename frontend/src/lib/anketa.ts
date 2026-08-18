@@ -1,3 +1,5 @@
+import type { OrderSurvey } from "@/client"
+
 // Buyurtma anketasi (mijoz so'rovnomasi + o'lchov varag'i) uchun variantlar katalogi.
 // Qog'oz anketa: uploads/forma/mebel_buyurtma_anketa.html
 // Kodlar bazaga JSON'da yoziladi, matnlar faqat shu yerda — o'zgarsa tarix buzilmaydi.
@@ -92,3 +94,14 @@ export function labelsOf(
 ): string {
   return (values ?? []).map((v) => labelOf(options, v)).join(", ")
 }
+
+/** Butun buyurtmaga tegishli xizmatlar — xonaga bo'linmaydi: tsex bitta
+ *  .project fayl ustida ishlaydi, logistika bitta mashinada olib ketadi. */
+export const ORDER_SERVICES = [
+  { key: "packaging", label: "Upakovka qilish" },
+  { key: "delivery", label: "Yetkazib berish" },
+  { key: "installation", label: "O'rnatish (montaj)" },
+] as const satisfies readonly {
+  key: keyof OrderSurvey
+  label: string
+}[]

@@ -413,7 +413,8 @@ function TabloOrderDrill({
 }) {
   const { data } = useQuery({
     queryKey: ["tablo", "order", orderId],
-    queryFn: () => TabloService.readTabloOrder({ orderId }),
+    queryFn: async () =>
+      (await TabloService.readTabloOrder({ path: { order_id: orderId } })).data,
     refetchInterval: 30_000,
   })
   // Ustunlar matritsa postlaridan (order_index tartibida) — qotirilgan ro'yxat

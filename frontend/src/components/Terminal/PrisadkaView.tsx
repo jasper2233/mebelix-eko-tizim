@@ -64,7 +64,12 @@ export function PrisadkaView({
 }) {
   const { data, isLoading } = useQuery({
     queryKey: ["terminal", "prisadka", orderId],
-    queryFn: () => TerminalService.readTerminalPrisadka({ orderId }),
+    queryFn: async () =>
+      (
+        await TerminalService.readTerminalPrisadka({
+          path: { order_id: orderId },
+        })
+      ).data,
     refetchInterval: 30_000,
   })
   // ROVER'da jarayon shu postdan boshlanishi mumkin (marshrutda ARRA yo'q) —

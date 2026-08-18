@@ -9,20 +9,20 @@ export default defineConfig({
   // re-eksport qilardi, na biror kod import qilardi — bundle'ga ham tushmasdi.
   // Kerak bo'lsa qayta qo'shish bir qatorlik ish.
   plugins: [
-    "legacy/axios",
+    {
+      // `legacy/axios` 0.87.0 da olib tashlangan. Zamonaviy klient o'z axios
+      // instansiyasini yaratadi — interceptorlar global `axios` ga emas,
+      // `client.instance` ga ulanadi (`src/main.tsx`).
+      name: "@hey-api/client-axios",
+      // Xato holatida throw qiladi: TanStack Query'ning isError/onError
+      // zanjiri va mavjud `handleError` shu xatti-harakatga qurilgan.
+      throwOnError: true,
+    },
     {
       name: "@hey-api/sdk",
       // NOTE: this doesn't allow tree-shaking
       asClass: true,
-      operationId: true,
       classNameBuilder: "{{name}}Service",
-      methodNameBuilder: (operation) => {
-        // @ts-expect-error
-        const name: string = operation.name
-
-        // Basic camelCase conversion if needed, though usually operationIds are already good
-        return name.charAt(0).toLowerCase() + name.slice(1)
-      },
     },
   ],
 })

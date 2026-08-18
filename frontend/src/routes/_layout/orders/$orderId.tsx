@@ -13,7 +13,7 @@ import {
 import { useRef, useState } from "react"
 import { toast } from "sonner"
 
-import { OpenAPI, OrdersService } from "@/client"
+import { OrdersService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
@@ -60,7 +60,7 @@ import {
   getOrderMatrixQueryOptions,
   getOrderQueryOptions,
 } from "@/queries/mes"
-import { extractErrorMessage, handleError } from "@/utils"
+import { API_BASE, extractErrorMessage, handleError } from "@/utils"
 
 export const Route = createFileRoute("/_layout/orders/$orderId")({
   component: OrderDetailPage,
@@ -99,9 +99,9 @@ function OrderDetailPage() {
   const upload = async (file: File) => {
     setUploading(true)
     try {
-      const res = await OrdersService.uploadOrderProject({
-        orderId: id,
-        formData: { file: file as unknown as string },
+      const { data: res } = await OrdersService.uploadOrderProject({
+        path: { order_id: id },
+        body: { file },
       })
       // Server javobida detal soni va tahlil ogohlantirishlari bor (kodsiz detal,
       // takroriy kod, xaritada joyi yo'q detal) — ilgari ular ko'rsatilmasdi.
@@ -116,16 +116,17 @@ function OrderDetailPage() {
   }
 
   const confirm = useMutation({
-    mutationFn: () => OrdersService.confirmOrder({ orderId: id }),
+    mutationFn: () => OrdersService.confirmOrder({ path: { order_id: id } }),
     ...cb("Buyurtma tasdiqlandi — texnologga uzatildi"),
   })
   const start = useMutation({
-    mutationFn: () => OrdersService.startOrderProduction({ orderId: id }),
+    mutationFn: () =>
+      OrdersService.startOrderProduction({ path: { order_id: id } }),
     ...cb("Ishlab chiqarishga uzatildi"),
   })
   const deliverCb = cb("Buyurtma topshirildi")
   const deliver = useMutation({
-    mutationFn: () => OrdersService.deliverOrder({ orderId: id }),
+    mutationFn: () => OrdersService.deliverOrder({ path: { order_id: id } }),
     ...deliverCb,
     onSuccess: () => {
       deliverCb.onSuccess()
@@ -136,8 +137,8 @@ function OrderDetailPage() {
   const cancel = useMutation({
     mutationFn: () =>
       OrdersService.cancelOrder({
-        orderId: id,
-        requestBody: { reason: cancelReason },
+        path: { order_id: id },
+        body: { reason: cancelReason },
       }),
     ...cancelCb,
     onSuccess: () => {
@@ -148,8 +149,9 @@ function OrderDetailPage() {
   // Eski buyurtmalarni yangi SCX nomlashga (nusxa QR = fayl nomi, Nanxing skan
   // mosligi) o'tkazish — .project saqlangan bo'lsa bir bosishda
   const regenScx = useMutation({
-    mutationFn: () => OrdersService.regenerateOrderScx({ orderId: id }),
-    onSuccess: (r) => toast.success(r.message),
+    mutationFn: () =>
+      OrdersService.regenerateOrderScx({ path: { order_id: id } }),
+    onSuccess: (r) => toast.success(r.data.message),
     onError: handleError,
     onSettled: invalidate,
   })
@@ -443,7 +445,7 @@ function OrderDetailPage() {
                   </span>
                   <a
                     className="shrink-0 text-primary hover:underline"
-                    href={`${OpenAPI.BASE}/api/v1/orders/${id}/files/${f.id}`}
+                    href={`${API_BASE}/api/v1/orders/${id}/files/${f.id}`}
                     download
                   >
                     Yuklab olish
@@ -474,7 +476,7 @@ function OrderDetailPage() {
                   )}
                   <a
                     className="shrink-0 font-medium text-primary hover:underline"
-                    href={`${OpenAPI.BASE}/api/v1/orders/${id}/files/scx.zip`}
+                    href={`${API_BASE}/api/v1/orders/${id}/files/scx.zip`}
                     download
                   >
                     Hammasini yuklab olish (ZIP)
@@ -489,7 +491,7 @@ function OrderDetailPage() {
                       <li key={f.id} className="truncate text-xs">
                         <a
                           className="text-primary hover:underline"
-                          href={`${OpenAPI.BASE}/api/v1/orders/${id}/files/${f.id}`}
+                          href={`${API_BASE}/api/v1/orders/${id}/files/${f.id}`}
                           download
                         >
                           {f.filename}

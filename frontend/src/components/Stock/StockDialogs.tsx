@@ -3,6 +3,7 @@ import { Plus } from "lucide-react"
 import { useState } from "react"
 import { type StockGroup, type StockItemRead, StockService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
+import { Field } from "@/components/Common/Field"
 import { SelectField } from "@/components/Common/SelectField"
 import { Button } from "@/components/ui/button"
 import {
@@ -85,8 +86,8 @@ export function ItemDialog({
       }
       if (item)
         return StockService.updateStockItem({
-          itemId: item.id,
-          requestBody: shared,
+          path: { item_id: item.id },
+          body: shared,
         })
       const [catalog, groupCode] = form.group
         ? form.group.split("|")
@@ -95,7 +96,7 @@ export function ItemDialog({
         groups.find((g) => `${g.catalog}|${g.group_code}` === form.group)
           ?.group_name ?? form.newGroupName.trim()
       return StockService.createStockItem({
-        requestBody: {
+        body: {
           ...shared,
           code: form.code.trim() || null,
           catalog: catalog as "F" | "M",
@@ -312,23 +313,6 @@ export function ItemDialog({
   )
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="grid gap-1.5">
-      <span className="text-2xs font-medium uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
-      {children}
-    </div>
-  )
-}
-
 export function DeleteItem({
   item,
   onClose,
@@ -339,7 +323,8 @@ export function DeleteItem({
   const queryClient = useQueryClient()
   const cb = crudCallbacks(queryClient, ["stock"], "Tovar o'chirildi")
   const mutation = useMutation({
-    mutationFn: (id: number) => StockService.deleteStockItem({ itemId: id }),
+    mutationFn: (id: number) =>
+      StockService.deleteStockItem({ path: { item_id: id } }),
     ...cb,
     onSuccess: () => {
       cb.onSuccess()

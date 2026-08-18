@@ -47,7 +47,8 @@ export function MoveDialog({
   // Buyurtmalar ro'yxati FAQAT kerak bo'lganda — kirim yo'lida u ochilmaydi
   const { data: orders } = useQuery({
     queryKey: ["orders", "for-stock"],
-    queryFn: () => OrdersService.readOrders({ limit: 100 }),
+    queryFn: async () =>
+      (await OrdersService.readOrders({ query: { limit: 100 } })).data,
     enabled: kind === "buyurtma",
     staleTime: 60_000,
   })
@@ -59,8 +60,8 @@ export function MoveDialog({
   const mutation = useMutation({
     mutationFn: () =>
       StockService.moveStockItem({
-        itemId: item.id,
-        requestBody: {
+        path: { item_id: item.id },
+        body: {
           delta: String(sign * value),
           kind,
           order_id: kind === "buyurtma" ? Number(orderId) : null,

@@ -47,8 +47,8 @@ export function CustomRoutes({
     mutationFn: () => {
       const ids = new Set([...Object.keys(draft), ...Object.keys(parents)])
       return OrdersService.editOrderMatrix({
-        orderId,
-        requestBody: {
+        path: { order_id: orderId },
+        body: {
           edits: [...ids].map((id) => {
             const partId = Number(id)
             return {

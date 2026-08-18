@@ -5,7 +5,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { Download } from "lucide-react"
 import { useState } from "react"
 
-import { OpenAPI, ReportsService } from "@/client"
+import { ReportsService } from "@/client"
 import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
@@ -24,6 +24,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { requireAccess } from "@/lib/guards"
 import { formatDate, formatDateTime, isManagement } from "@/lib/mes"
+import { API_BASE } from "@/utils"
 
 export const Route = createFileRoute("/_layout/reports")({
   component: ReportsPage,
@@ -40,14 +41,14 @@ function ReportsPage() {
   const [dateTo, setDateTo] = useState("")
 
   const params = {
-    dateFrom: dateFrom || undefined,
-    dateTo: dateTo || undefined,
+    date_from: dateFrom || undefined,
+    date_to: dateTo || undefined,
   }
   const exportUrl = () => {
     const q = new URLSearchParams({ format: "xlsx" })
     if (dateFrom) q.set("date_from", dateFrom)
     if (dateTo) q.set("date_to", dateTo)
-    return `${OpenAPI.BASE}/api/v1/reports/${kind}?${q}`
+    return `${API_BASE}/api/v1/reports/${kind}?${q}`
   }
 
   return (
@@ -97,12 +98,13 @@ function ReportsPage() {
   )
 }
 
-type RangeParams = { dateFrom?: string; dateTo?: string }
+type RangeParams = { date_from?: string; date_to?: string }
 
 function ProductivityTable({ params }: { params: RangeParams }) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["reports", "productivity", params],
-    queryFn: () => ReportsService.reportProductivity(params),
+    queryFn: async () =>
+      (await ReportsService.reportProductivity({ query: params })).data,
   })
   if (isLoading) return <Skeleton className="h-64 w-full" />
   if (isError) return <QueryError onRetry={() => refetch()} />
@@ -151,7 +153,8 @@ function ProductivityTable({ params }: { params: RangeParams }) {
 function OrdersTable({ params }: { params: RangeParams }) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["reports", "orders", params],
-    queryFn: () => ReportsService.reportOrders(params),
+    queryFn: async () =>
+      (await ReportsService.reportOrders({ query: params })).data,
   })
   if (isLoading) return <Skeleton className="h-64 w-full" />
   if (isError) return <QueryError onRetry={() => refetch()} />
@@ -214,7 +217,8 @@ function OrdersTable({ params }: { params: RangeParams }) {
 function MaterialsTable({ params }: { params: RangeParams }) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["reports", "materials", params],
-    queryFn: () => ReportsService.reportMaterials(params),
+    queryFn: async () =>
+      (await ReportsService.reportMaterials({ query: params })).data,
   })
   if (isLoading) return <Skeleton className="h-64 w-full" />
   if (isError) return <QueryError onRetry={() => refetch()} />

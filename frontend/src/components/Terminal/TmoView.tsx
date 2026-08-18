@@ -32,7 +32,8 @@ export function TmoView({
   const [tab, setTab] = useState<"qabul" | "topshirish">("qabul")
   const { data, isLoading } = useQuery({
     queryKey: ["terminal", "tmo", orderId],
-    queryFn: () => TmoService.readTmoOrder({ orderId }),
+    queryFn: async () =>
+      (await TmoService.readTmoOrder({ path: { order_id: orderId } })).data,
     refetchInterval: 30_000,
   })
 
@@ -40,14 +41,24 @@ export function TmoView({
     queryClient.setQueryData(["terminal", "tmo", orderId], d)
 
   const accept = useMutation({
-    mutationFn: (qr: string) =>
-      TmoService.acceptIntoTmo({ orderId, requestBody: { qr_text: qr } }),
+    mutationFn: async (qr: string) =>
+      (
+        await TmoService.acceptIntoTmo({
+          path: { order_id: orderId },
+          body: { qr_text: qr },
+        })
+      ).data,
     onSuccess: put,
     onError: (e) => toast.error(detailMessage(e)),
   })
   const ship = useMutation({
-    mutationFn: (code: string) =>
-      TmoService.shipPachka({ orderId, requestBody: { qr_text: code } }),
+    mutationFn: async (code: string) =>
+      (
+        await TmoService.shipPachka({
+          path: { order_id: orderId },
+          body: { qr_text: code },
+        })
+      ).data,
     onSuccess: (d) => {
       put(d)
       toast.success("Qadoq topshirildi")
@@ -55,7 +66,8 @@ export function TmoView({
     onError: (e) => toast.error(detailMessage(e)),
   })
   const deliver = useMutation({
-    mutationFn: () => TmoService.deliverTmoOrder({ orderId }),
+    mutationFn: async () =>
+      (await TmoService.deliverTmoOrder({ path: { order_id: orderId } })).data,
     onSuccess: (r) => {
       toast.success(r.message)
       queryClient.invalidateQueries({ queryKey: ["terminal", "tmo"] })

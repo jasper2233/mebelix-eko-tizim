@@ -115,6 +115,19 @@ function TerminalPage() {
   // Qadoq QR'i (`PK-...`) umumiy yo'ldan o'tsa "QR noto'g'ri" bo'lib rad etilardi.
   const viewScanRef = useRef<((qr: string) => void) | null>(null)
 
+  // Skan ish HOLATINI o'zgartiradi (post ekrani, buyurtma progressi), lekin
+  // `context` ni — ish markazi, post, brigada — hech qachon. `["terminal"]`
+  // prefiksi esa uni ham qamrab olardi va har skanga ortiqcha
+  // `/terminal/context` round-trip'i qo'shardi (tsexda RTT ~100 ms).
+  const invalidateWork = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          q.queryKey[0] === "terminal" && q.queryKey[1] !== "context",
+      }),
+    [queryClient],
+  )
+
   const { online } = useMesWs(
     useCallback(
       (event) => {
@@ -126,10 +139,10 @@ function TerminalPage() {
             "order.cancelled",
           ].includes(event.type)
         ) {
-          queryClient.invalidateQueries({ queryKey: ["terminal"] })
+          invalidateWork()
         }
       },
-      [queryClient],
+      [invalidateWork],
     ),
   )
 
@@ -145,10 +158,12 @@ function TerminalPage() {
   const [joining, setJoining] = useState(false)
 
   const startShift = useMutation({
-    mutationFn: (v: { badge_id?: string; employee_id?: number }) =>
-      TerminalService.startTerminalSession({
-        requestBody: { ...v, join: joining },
-      }),
+    mutationFn: async (v: { badge_id?: string; employee_id?: number }) =>
+      (
+        await TerminalService.startTerminalSession({
+          body: { ...v, join: joining },
+        })
+      ).data,
     onSuccess: (s) => {
       playSuccess()
       setLocked(false) // beyjik — qulfning kaliti
@@ -165,10 +180,12 @@ function TerminalPage() {
   })
 
   const scanMutation = useMutation({
-    mutationFn: (qr: string) =>
-      ScansService.recordScan({
-        requestBody: { qr_text: qr, client_event_id: crypto.randomUUID() },
-      }),
+    mutationFn: async (qr: string) =>
+      (
+        await ScansService.recordScan({
+          body: { qr_text: qr, client_event_id: crypto.randomUUID() },
+        })
+      ).data,
     onSuccess: (r: ScanResult) => {
       playSuccess()
       lastScanAtRef.current = Date.now()
@@ -180,7 +197,7 @@ function TerminalPage() {
         scanId: r.scan_id,
         at: Date.now(),
       })
-      queryClient.invalidateQueries({ queryKey: ["terminal"] })
+      invalidateWork()
       if (r.order_completed) toast.success("Buyurtma to'liq tayyor bo'ldi!")
       // SCX fayllar har scanda qaytadan (TZ 12.5): saqlangan papkadagi PROYEKT
       // nomli subpapkaga ("Hammasini yuklab olish" bilan bir joy).
@@ -203,13 +220,14 @@ function TerminalPage() {
   })
 
   const undoMutation = useMutation({
-    mutationFn: (scanId: number) => ScansService.cancelScan({ scanId }),
+    mutationFn: (scanId: number) =>
+      ScansService.cancelScan({ path: { scan_id: scanId } }),
     onSuccess: () => {
       playWarning()
       toast.success("Oxirgi scan bekor qilindi")
       setUndoOpen(false)
       setLastScan(null)
-      queryClient.invalidateQueries({ queryKey: ["terminal"] })
+      invalidateWork()
     },
     onError: (err) => {
       toast.error(detailMessage(err))
@@ -219,7 +237,9 @@ function TerminalPage() {
 
   const endSession = useMutation({
     mutationFn: (employeeId?: number) =>
-      TerminalService.endTerminalSession({ employeeId }),
+      TerminalService.endTerminalSession({
+        query: { employee_id: employeeId },
+      }),
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: ["terminal", "context"] }),
   })
@@ -251,7 +271,7 @@ function TerminalPage() {
   const gateOpen = !!ctx && (!crew.length || joining)
   const { data: shiftEmployees } = useQuery({
     queryKey: ["terminal", "employees"],
-    queryFn: () => TerminalService.readTerminalEmployees(),
+    queryFn: async () => (await TerminalService.readTerminalEmployees()).data,
     enabled: gateOpen,
     staleTime: 60_000,
   })

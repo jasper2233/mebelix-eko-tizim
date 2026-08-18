@@ -1,27 +1,28 @@
-import {
-  MutationCache,
-  QueryCache,
-  QueryClient,
-  QueryClientProvider,
-} from "@tanstack/react-query"
+import { QueryClientProvider } from "@tanstack/react-query"
 import { createRouter, RouterProvider } from "@tanstack/react-router"
-import axios from "axios"
 import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
-import { ApiError, LoginService, OpenAPI } from "./client"
+import { LoginService } from "./client"
+import { client } from "./client/client.gen"
 import "./index.css"
+import { queryClient } from "./lib/queryClient"
 import { routeTree } from "./routeTree.gen"
+import { API_BASE } from "./utils"
 
 // Cookies are sent automatically via withCredentials — no token in JS memory.
-OpenAPI.BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000"
-OpenAPI.WITH_CREDENTIALS = true
-axios.defaults.timeout = Number(import.meta.env.VITE_API_TIMEOUT_MS ?? 30_000)
+// Klient O'Z axios instansiyasini yaratadi (`client.instance`), shuning uchun
+// sozlama ham, interceptor ham global `axios` ga emas, o'shanga qo'yiladi.
+client.setConfig({
+  baseURL: API_BASE,
+  withCredentials: true,
+  timeout: Number(import.meta.env.VITE_API_TIMEOUT_MS ?? 30_000),
+})
 
 // --- Silent refresh: bir vaqtda kelgan 401'lar bitta promise'ni kutadi ---
 
 let refreshing: Promise<unknown> | null = null
 
-axios.interceptors.response.use(
+client.instance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
@@ -40,35 +41,11 @@ axios.interceptors.response.use(
         refreshing = null
       })
       await refreshing // refresh yiqilsa — kutayotgan barcha so'rov shu xato bilan rad etiladi
-      return axios(originalRequest)
+      return client.instance(originalRequest)
     }
     return Promise.reject(error)
   },
 )
-
-// Fallback: if a query/mutation still surfaces a 401 after the interceptor
-// (e.g. token_version mismatch after logout on another tab), redirect to login.
-const handleApiError = (error: Error) => {
-  if (error instanceof ApiError) {
-    if (
-      error.status === 401 &&
-      !error.url.includes("/login/access-token") &&
-      window.location.pathname !== "/login"
-    ) {
-      queryClient.clear()
-      window.location.href = "/login"
-    }
-  }
-}
-
-const queryClient = new QueryClient({
-  queryCache: new QueryCache({
-    onError: handleApiError,
-  }),
-  mutationCache: new MutationCache({
-    onError: handleApiError,
-  }),
-})
 
 const router = createRouter({ routeTree })
 declare module "@tanstack/react-router" {

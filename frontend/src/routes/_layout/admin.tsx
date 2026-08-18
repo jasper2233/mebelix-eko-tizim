@@ -4,7 +4,9 @@ import { createFileRoute } from "@tanstack/react-router"
 import type { UserRead } from "@/client"
 import { AddUser } from "@/components/Admin/AddUser"
 import { UserActionsMenu } from "@/components/Admin/UserActionsMenu"
+import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
+import { QueryError } from "@/components/Common/QueryError"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -85,10 +87,17 @@ function UserRow({ user, isMe }: { user: UserRead; isMe: boolean }) {
 
 function UsersTable() {
   const { currentUser } = useCurrentUser()
-  const { data: users, isLoading } = useQuery(getUsersQueryOptions())
+  const {
+    data: users,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery(getUsersQueryOptions())
 
   return isLoading ? (
     <Skeleton className="h-64 w-full" />
+  ) : isError ? (
+    <QueryError onRetry={() => refetch()} />
   ) : (
     // Sahifalash yo'q: getUsersQueryOptions barcha sahifalarni bitta ro'yxatga
     // yig'adi va zavodda foydalanuvchilar o'nlab. Boshqa registrlar ham shunday.
@@ -114,14 +123,10 @@ function UsersTable() {
             />
           ))
         ) : (
-          <TableRow>
-            <TableCell
-              colSpan={5}
-              className="h-24 text-center text-muted-foreground"
-            >
-              Natija topilmadi.
-            </TableCell>
-          </TableRow>
+          <EmptyRow colSpan={5}>
+            Hali foydalanuvchi yo&apos;q — &quot;Foydalanuvchi
+            qo&apos;shish&quot; bilan qo&apos;shing.
+          </EmptyRow>
         )}
       </TableBody>
     </Table>

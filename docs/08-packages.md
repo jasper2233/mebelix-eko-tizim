@@ -1,58 +1,62 @@
 # 08 — Paketlar va versiyalar
 
-Holat: **2026-08-06** tekshiruvi (oxirgi to'liq upgrade: 2026-07-09). Barcha paketlar 2026-07-09 dagi eng so'ngi stable versiyaga ko'tarilgan (quyidagi 3 ta ataylab qilingan istisno bilan). 2026-08-05 dagi katta refaktor manifestlarning faqat **metadatasiga** tegdi — bog'liqliklar ro'yxati 2026-07-27 dan beri o'zgarmagan.
+Holat: **2026-08-18** to'liq upgrade (oldingisi: 2026-07-09). Barcha paketlar 2026-08-18 dagi eng so'ngi stable versiyaga ko'tarilgan (quyidagi 2 ta ataylab qilingan istisno bilan). Shu upgrade bilan birga ikkita manifest o'zgarishi bo'ldi: backend'da `pyjwt[crypto]` → `pyjwt`, frontend'da esa API klient `legacy/axios` dan zamonaviy `@hey-api/client-axios` ga ko'chirildi — ya'ni avvalgi ceiling #2 **yopildi**.
 
-**Manifest tarixi (upgrade'dan keyin):** manifestlar olti marta o'zgardi — avval ikkita qo'shish (2026-07-10), keyin uchta kamaytirish (2026-07-27), oxirida bitta metadata tahriri (2026-08-05):
+**Manifest tarixi (2026-07-09 upgrade'dan keyin):** manifestlar yetti marta o'zgardi — avval ikkita qo'shish (2026-07-10), keyin uchta kamaytirish (2026-07-27), so'ng bitta metadata tahriri (2026-08-05) va oxirida 2026-08-18 upgrade'ining o'zi:
 
 - `26e00af` — MES core bilan `openpyxl` (runtime, Excel eksport) va dev'ga `types-openpyxl` + `websockets` qo'shildi;
 - `b5ee41d` — yorliq chop etish uchun `tzdata`/`pillow`/`qrcode` (pastdagi jadval), frontend'ga `@radix-ui/react-popover` va `react-day-picker`;
 - `4306a42` — `websockets` dev group'dan asosiy `dependencies` ga ko'chirildi (pastda alohida bo'lim);
 - `87d23ab` — `httpx` va `uuid6` runtime'dan, `types-redis` dev'dan chiqarildi (kod ularni hech qayerda import qilmasdi); `uv.lock` 71 → **63** paketga tushdi (`certifi`, `httpcore`, `types-cffi`, `types-pyopenssl`, `types-setuptools` transitiv bo'lib birga ketdi);
 - `a916088` — `@tanstack/react-table` o'chirildi (`Common/DataTable.tsx` va `Admin/columns.tsx` bilan birga; `admin.tsx` endi oddiy `<Table>` chizadi), `backend/pyproject.toml` dagi `license` kaliti ham olib tashlandi;
-- `a4f7f21` — `frontend/package.json` da `name` `frontend` → `mebelix-mes-frontend` bo'ldi va yangi `description` kaliti qo'shildi; bog'liqliklarning o'ziga tegilmadi (yagona metadata o'zgarishi).
+- `a4f7f21` — `frontend/package.json` da `name` `frontend` → `mebelix-mes-frontend` bo'ldi va yangi `description` kaliti qo'shildi; bog'liqliklarning o'ziga tegilmadi (yagona metadata o'zgarishi);
+- **2026-08-18 (shu upgrade)** — `backend/pyproject.toml` da `pyjwt[crypto]` → `pyjwt` (extra olib tashlandi, pastda alohida bo'lim); `frontend/package.json` da `@hey-api/openapi-ts` `^0.86.12` → `^0.99.0`, yangi runtime bog'liqlik `@hey-api/client-axios` `^0.9.1`, `axios` qattiq pin `1.18.1` → `^1.19.0` va yangi `overrides` bloki (`js-yaml` `^4.3.1`).
 
-Yangi bog'liqliklar faqat manifestdan **tashqarida** paydo bo'ldi va ikkalasi ham quyida alohida bo'limlarda yozilgan:
+Bulardan tashqari ikkita bog'liqlik manifestdan **tashqarida** yashaydi va ikkalasi ham quyida alohida bo'limlarda yozilgan:
 
 - bridge-agent'ning Windows GDI chop etish yo'li — `pywin32` + `pillow` (repo'da manifest fayli yo'q);
 - `render_label_png()` uchun tizim TrueType shriftlari (Docker image'ga `fonts-liberation` apt paketi bilan qo'shilgan).
 
-## Yangilash tarixi (2026-07-09 upgrade)
+## Yangilash tarixi (2026-08-18 upgrade)
 
 ### Backend (`backend/pyproject.toml` + `uv.lock`)
 
 `uv lock --upgrade && uv sync --all-groups` bilan yangilandi. `pyproject.toml` dagi `>=` minimal constraintlar o'zgartirilmadi — real versiyalarni `uv.lock` boshqaradi.
 
-Lock'da ko'tarilganlar: `uvicorn` 0.50.0→0.51.0, `mypy` 2.1.0→2.2.0, `cffi` 2.0.0→2.1.0, `filelock`, `librt`, `python-discovery`, `types-setuptools`, `virtualenv`.
+Lock'da ko'tarilgan transitivlar: `annotated-doc` 0.0.4→0.0.5, `annotated-types` 0.7.0→0.8.0, `anyio` 4.14.1→4.14.2, `ast-serialize` 0.6.0→0.8.0, `filelock` 3.29.7→3.32.3, `hiredis` 3.4.0→3.4.1, `idna` 3.18→3.19, `librt` 0.13.0→0.15.0, `mako` 1.3.12→1.4.1, `packaging` 26.2→26.3, `platformdirs` 4.10.0→4.11.3, `prometheus-client` 0.25.0→0.26.0, `python-discovery` 1.4.4→1.5.2, `python-dotenv` 1.2.2→1.2.3, `typing-inspection` 0.4.2→0.4.4, `virtualenv` 21.6.0→21.7.4.
 
 Asosiy paketlar (yangilangandan keyin):
 
 | Paket | Versiya | Izoh |
 | --- | --- | --- |
-| fastapi | 0.139.0 | latest |
-| starlette | 1.3.1 | latest (fastapi bilan keladi) |
-| uvicorn | 0.51.0 | latest |
-| gunicorn | 26.0.0 | latest |
-| pydantic | 2.13.4 | latest |
-| sqlalchemy | 2.0.51 | latest |
-| alembic | 1.18.5 | latest |
-| asyncpg | 0.31.0 | latest |
+| fastapi | 0.141.1 | latest (0.139.0 edi) |
+| starlette | 1.6.0 | latest (fastapi bilan keladi; 1.3.1 edi) |
+| uvicorn | 0.52.3 | latest (0.51.0 edi) |
+| gunicorn | 26.0.0 | latest (o'zgarmadi) |
+| pydantic | 2.13.4 | latest (o'zgarmadi) |
+| sqlalchemy | 2.0.52 | latest (2.0.51 edi) |
+| alembic | 1.19.1 | latest (1.18.5 edi) |
+| asyncpg | 0.31.0 | latest (o'zgarmadi) |
 | **redis** | **5.3.1** | ⚠️ 8.1.0 mavjud, lekin `arq` bloklaydi (pastga qarang) |
-| arq | 0.28.0 | latest |
-| pyjwt | 2.13.0 | latest |
-| bcrypt | 5.0.0 | latest |
-| mypy (dev) | 2.2.0 | latest |
-| ruff (dev) | 0.15.20 | latest |
-| pre-commit (dev) | 4.6.0 | latest |
+| arq | 0.28.0 | latest (o'zgarmadi) |
+| pyjwt | 2.13.0 | latest; `[crypto]` extra'siz (pastga qarang) |
+| bcrypt | 5.0.0 | latest (o'zgarmadi) |
+| websockets | 17.0.1 | latest (16.0 edi) |
+| mypy (dev) | 2.3.1 | latest (2.2.0 edi) |
+| ruff (dev) | 0.16.3 | latest (0.15.20 edi) |
+| pre-commit (dev) | 4.6.2 | latest (4.6.0 edi) |
 
-Tekshiruv: `uv run ruff check .` ✅ · `uv run mypy app` ✅ (104 fayl) · `import app.main` ✅
+Tekshiruv: `uv run ruff check .` ✅ · `uv run mypy app` ✅ (125 fayl) · `import app.main` ✅
 
-Jadvalda ko'rsatilmagan, lekin manifestda e'lon qilingan runtime paketlar (lock versiyalari bilan): `openpyxl` 3.1.5 — Excel eksport (`app/services/excel.py`; dev'da `types-openpyxl`), `pydantic-settings` 2.14.2 — `app/core/config.py` dagi `Settings`, `python-multipart` 0.0.32 — fayl yuklash (FastAPI `UploadFile`/`Form`, `orders.py`), `prometheus-fastapi-instrumentator` 8.0.2 — `/metrics` (`app/core/setup.py`), `uvloop` 0.22.1 — faqat `sys_platform != 'win32'`, `greenlet` 3.5.3 — SQLAlchemy async uchun.
+**`pyjwt[crypto]` → `pyjwt` (extra olib tashlandi):** `app/core/config.py` dagi `ALGORITHM` — `HS256`, ya'ni simmetrik HMAC, va `app/core/security.py` tokenni faqat shu bilan imzolaydi/tekshiradi (`jwt.encode(..., algorithm=ALGORITHM)` / `jwt.decode(..., algorithms=[ALGORITHM])`). `cryptography` faqat RS\*/ES\* kabi asimmetrik algoritmlar uchun kerak bo'lardi. Extra olingach lock'dan uchta paket birgalikda chiqib ketdi — `cryptography` 49.0.0, `cffi` 2.1.0, `pycparser` 3.0 — va `uv.lock` 63 → **60** paketga tushdi. `pyproject.toml` da qator ustiga sabab izoh qilib yozib qo'yilgan.
+
+Jadvalda ko'rsatilmagan, lekin manifestda e'lon qilingan runtime paketlar (lock versiyalari bilan): `openpyxl` 3.1.5 — Excel eksport (`app/services/excel.py`; dev'da `types-openpyxl` 3.1.5.20260807), `pydantic-settings` 2.15.0 — `app/core/config.py` dagi `Settings`, `python-multipart` 0.0.32 — fayl yuklash (FastAPI `UploadFile`/`Form`, `orders.py`), `prometheus-fastapi-instrumentator` 8.1.0 — `/metrics` (`app/core/setup.py`), `uvloop` 0.22.1 — faqat `sys_platform != 'win32'`, `greenlet` 3.5.5 — SQLAlchemy async uchun.
 
 **2026-07-10 (b5ee41d) da qo'shilganlar** — yorliq chop etish (label-printing) feature uchun yangi runtime dependency'lar:
 
 | Paket | Constraint | Lock | Izoh |
 | --- | --- | --- | --- |
-| tzdata | >=2026.2 | 2026.2 | Windows'da timezone datasi |
+| tzdata | >=2026.2 | 2026.3 | Windows'da timezone datasi |
 | pillow | >=12.3.0 | 12.3.0 | Yorliqni PNG qilib render qilish |
 | qrcode | >=8.2 | 8.2 | Yorliqdagi QR kod generatsiyasi |
 
@@ -64,31 +68,32 @@ Bu uchtasining **haqiqiy ishlatilishi** (99cebc3 dagi `render_label_png()` qayta
 
 `labels.py` ning butun tashqi yuzasi shu uchtaga tayanadi: `LabelData`, `load_label_data()`, `_n()`, `_bw()`, `render_label_png()` — boshqa paket talab qilmaydi. `print_label` taski (`backend/app/tasks/__init__.py`) PNG'ni base64 qilib Redis navbatiga (`mes:print:queue`) qo'yadi, job JSON'i `{"type", "instance_id", "png"}` — printer dialekti generatsiya qilinmaydi, shuning uchun task tomonda ham qo'shimcha bog'liqlik yo'q.
 
-`websockets>=16.0` asosiy `dependencies` da, garchi `backend/app` ichida hech qayerda `import` qilinmasa ham (repo bo'yicha yagona `import websockets` — `bridge-agent/agent.py` da). Sabab: `uvicorn` 0.51.0 `[standard]` extra'siz o'rnatilgan (lock'da bog'liqliklari faqat `click` + `h11`), `wsproto` esa umuman yo'q — ya'ni `/ws/events` va `/ws/bridge` uchun WebSocket transporti aynan shu paket. Dev group'da tursa `uv sync --no-dev` bilan yig'ilgan image'da TABLO ham, yorliq chop etish ham jimgina o'lardi; shuning uchun `pyproject.toml` da qator ustiga izoh yozib qo'yilgan.
+`websockets>=16.0` asosiy `dependencies` da, garchi `backend/app` ichida hech qayerda `import` qilinmasa ham (repo bo'yicha yagona `import websockets` — `bridge-agent/agent.py` da). Sabab: `uvicorn` 0.52.3 `[standard]` extra'siz o'rnatilgan (lock'da bog'liqliklari faqat `click` + `h11`), `wsproto` esa umuman yo'q — ya'ni `/ws/events` va `/ws/bridge` uchun WebSocket transporti aynan shu paket. Dev group'da tursa `uv sync --no-dev` bilan yig'ilgan image'da TABLO ham, yorliq chop etish ham jimgina o'lardi; shuning uchun `pyproject.toml` da qator ustiga izoh yozib qo'yilgan.
 
 ### Frontend (`frontend/package.json` + `package-lock.json`)
 
-`npm update` bilan barcha paketlar caret range ichida latestga ko'tarildi (jumladan: vite 8.1.4, @biomejs/biome 2.5.3, lucide-react 1.24.0, radix-ui paketlari). Runtime dependencies allaqachon latest edi.
+`npm update` bilan barcha paketlar caret range ichida latestga ko'tarildi (jumladan: vite 8.2.1, @biomejs/biome 2.5.9, lucide-react 1.31.0, radix-ui/tanstack paketlari). Ikkita qo'lda o'zgarish: `axios` qattiq pin (`1.18.1`) edi — `^1.19.0` ga o'tkazildi, `@hey-api/openapi-ts` esa `^0.86.12` → `^0.99.0` (caret major'dan o'tkazmaydi). Biome 2.5.9 uchun `biome migrate` ishlatildi — `frontend/biome.json` dagi `$schema` 2.5.3 → 2.5.9 ga ko'chdi, qoidalarning o'ziga tegilmadi.
 
 Asosiy paketlar (yangilangandan keyin):
 
 | Paket | Versiya | Izoh |
 | --- | --- | --- |
-| react / react-dom | 19.2.7 | latest |
-| @tanstack/react-query | 5.101.2 | latest |
-| @tanstack/react-router | 1.170.17 | latest |
-| axios | 1.18.1 | latest |
-| tailwindcss / @tailwindcss/vite | 4.3.2 | latest |
+| react / react-dom | 19.2.8 | latest |
+| @tanstack/react-query | 5.101.4 | latest |
+| @tanstack/react-router | 1.170.29 | latest |
+| axios | 1.19.0 | latest (endi caret: `^1.19.0`) |
+| tailwindcss / @tailwindcss/vite | 4.3.3 | latest |
 | zod | 4.4.3 | latest |
-| react-hook-form | 7.81.0 | latest |
-| vite (dev) | 8.1.4 | latest |
-| @biomejs/biome (dev) | 2.5.3 | latest |
+| react-hook-form | 7.85.0 | latest |
+| vite (dev) | 8.2.1 | latest |
+| @biomejs/biome (dev) | 2.5.9 | latest |
 | **typescript (dev)** | **6.0.3** | ⚠️ 7.0.2 mavjud, lekin openapi-ts bloklaydi (pastga qarang) |
-| **@hey-api/openapi-ts (dev)** | **0.86.12** | ⚠️ 0.99.0 mavjud, lekin legacy client kerak (pastga qarang) |
+| @hey-api/openapi-ts (dev) | 0.99.0 | latest — 0.86.12 (`legacy/axios`) dan migratsiya qilindi |
+| @hey-api/client-axios | 0.9.1 | yangi: `openapi-ts.config.ts` dagi klient plugini nomi (`src` uni import qilmaydi — pastga qarang) |
 
-Tekshiruv: `npm run build` (tsc + vite) ✅ · `bash scripts/generate-client.sh` ✅ (client qayta generate qilindi, build o'tdi)
+Tekshiruv: `npm run build` (tsc + vite) ✅ · `bash scripts/generate-client.sh` ✅ (klient 0.99 bilan noldan qayta generate qilindi — `openapi.json` 106 operatsiya; fayl git'da tracked emas, skript uni har safar backend'dan eksport qiladi) · `npm audit` ✅ 0 vulnerability
 
-**2026-08-05 tekshiruvi:** `frontend/src` dagi barcha TS/TSX tashqi importlar (29 ta modul) `package.json` da e'lon qilingan — e'lon qilinmagan (phantom) bog'liqlik yo'q va aksincha, ishlatilmay qolgan paket ham yo'q. Ikki paket TS importisiz, faqat CSS orqali keladi: `@fontsource-variable/archivo` 5.2.8 va `tw-animate-css` 1.4.0 (dev) — `src/index.css` boshidagi `@import` qatorlari; `tailwindcss`/`@tailwindcss/vite` ham CSS/vite-config tomonda, shuning uchun 29 talik hisobga kirmaydi. Jadvalda ko'rsatilmagan, lekin ishlatiladigan runtime paketlar: `qrcode.react` 4.2.0 (`components/Terminal/CutmapView.tsx`, `routes/_layout/employees.tsx`), `react-day-picker` 10.0.1 (`ui/date-picker` — anketa, hisobot va log sanalarida), `sonner` 2.0.7 (`ui/sonner`, `Toaster` `routes/__root.tsx` da mount qilinadi; `useCustomToast` 2026-08-05 da o'chirilgan — komponentlar to'g'ridan-to'g'ri `toast.success/error` chaqiradi). `ui/textarea.tsx` — xom `<textarea>` ustidagi wrapper, Radix paketi talab qilmaydi; `Terminal/SheetSvg.tsx` faqat React va inline SVG ishlatadi (chizma kutubxonasi yo'q).
+**2026-08-18 tekshiruvi:** `frontend/src` dagi barcha TS/TSX tashqi importlar (29 ta modul) `package.json` da e'lon qilingan — e'lon qilinmagan (phantom) bog'liqlik yo'q. Yagona teskari holat — `@hey-api/client-axios`: u `dependencies` da turadi, lekin `src` dagi hech bir fayl uni import qilmaydi. Sabab: 0.99 da plugin implementatsiyasi `@hey-api/openapi-ts` ichida keladi (`dist/clients`) va axios transportini `src/client/client/` ga inline generatsiya qiladi — generatsiya qilingan fayllar faqat `axios` ni import qiladi. Ikki paket TS importisiz, faqat CSS orqali keladi: `@fontsource-variable/archivo` 5.3.0 va `tw-animate-css` 1.4.0 (dev) — `src/index.css` boshidagi `@import` qatorlari; `tailwindcss`/`@tailwindcss/vite` ham CSS/vite-config tomonda, shuning uchun 29 talik hisobga kirmaydi. Jadvalda ko'rsatilmagan, lekin ishlatiladigan runtime paketlar: `qrcode.react` 4.2.0 (`components/Terminal/CutmapView.tsx`, `routes/_layout/employees.tsx`), `react-day-picker` 10.0.1 (`ui/date-picker` — anketa, hisobot va log sanalarida), `sonner` 2.0.8 (`ui/sonner`, `Toaster` `routes/__root.tsx` da mount qilinadi; `useCustomToast` 2026-08-05 da o'chirilgan — komponentlar to'g'ridan-to'g'ri `toast.success/error` chaqiradi). `ui/textarea.tsx` — xom `<textarea>` ustidagi wrapper, Radix paketi talab qilmaydi; `Terminal/SheetSvg.tsx` faqat React va inline SVG ishlatadi (chizma kutubxonasi yo'q).
 
 ## Bridge-agent bog'liqliklari (manifestsiz)
 
@@ -132,24 +137,17 @@ Yorliq rasm assetlari — `backend/app/assets/label-logo.png`, `label-icon-drill
 
 **Yangilash yo'li:** arq redis 6+ ni qo'llaganda `uv lock --upgrade` o'zi ko'taradi. Yoki arq'dan boshqa queue'ga (masalan taskiq, saq) o'tilsa.
 
-### 2. @hey-api/openapi-ts 0.86.12 (latest: 0.99.0)
+### 2. typescript 6.0.3 (latest: 7.0.2)
 
-`openapi-ts.config.ts` `legacy/axios` client ishlatadi (`OpenAPI` config obyekti, `ApiError`, `CancelablePromise`, `*Service` klasslari — butun frontend shu API'ga qurilgan). **0.87.0 da legacy clientlar butunlay olib tashlangan** — 0.99.0 bilan `legacy/axios` jimgina 0 fayl generate qiladi (0.99 sinab ko'rildi: `src/client` bo'shab qoldi, qaytarildi). 0.86.12 — legacy clientni qo'llaydigan eng so'ngi versiya.
+TypeScript 7 — Go'da yozilgan native port; eski compiler API'ni (`ts.SyntaxKind` va h.k.) bermaydi. `@hey-api/openapi-ts` shu API'ga bog'liq — TS 7 bilan `generate-client` crash bo'ladi (`TypeError: Cannot read properties of undefined (reading 'AnyKeyword')`). 2026-08-18 da qayta sinaldi: **0.99.0 ga migratsiyadan keyin ham** natija o'zgarmadi, ya'ni bu ceiling legacy clientning oqibati emas edi — TS 7.0.2 rad etildi va `typescript` `^6.0.3` da qoldi. Buni `openapi-ts` 0.99 ning o'z `peerDependencies` i ham tasdiqlaydi: `typescript: ">=5.5.3 || >=6.0.0 || 6.0.1-rc"` — 7 umuman e'lon qilinmagan. `tsc` build o'zi TS 7 bilan ishlagan edi, lekin bitta repo'da ikkita TS ushlab turish shart emas.
 
-⚠️ **Security eslatma:** `npm audit` jami 3 ta vulnerability ko'rsatadi (2 high + 1 critical), shundan ikkitasi shu ceiling'dan keladi: transitive `handlebars` (critical) va `@hey-api/openapi-ts` ning **o'ziga** qarshi advisory (high — `buildClientParams` shablonida noma'lum `$<slot>___proto__` kaliti orqali prototip zanjirini almashtirish; npm uni `via` da o'z advisory'si + `handlebars` bilan ko'rsatadi). Ikkalasi ham **faqat dev-time code-generator** ichida — production bundlega kirmaydi, input esa o'zimizning `openapi.json`. Xavf past, lekin quyidagi migratsiya bilan butunlay yo'qoladi. Uchinchi topilma — `postcss` (high, `sourceMappingURL` orqali path traversal) — `vite` zanjiridan keladi va bu ceiling'ga aloqasi yo'q.
+**Yangilash yo'li:** openapi-ts TS 7 ni qo'llagan versiyani chiqarganda `typescript` → `^7`.
 
-**Yangilash yo'li:** `legacy/axios` dan modern `@hey-api/client-axios` pluginiga migratsiya:
+### Yopilgan ceiling: @hey-api/openapi-ts 0.86.12 → 0.99.0
 
-- `openapi-ts.config.ts` da `legacy/axios` → `@hey-api/client-axios`
-- `src/client/core/*` yo'qoladi; `OpenAPI.TOKEN` / interceptorlar o'rniga `client.setConfig()` / `client.interceptors`
-- `hooks/useAuth.ts`, `queries/users.ts` va `ApiError` ishlatadigan barcha joylar yangi API'ga moslanadi
-- Keyin `@hey-api/openapi-ts` → `^0.99.0` va TypeScript 7 ham ochiladi
+Ilgari uchinchi ceiling `@hey-api/openapi-ts` 0.86.12 edi: `openapi-ts.config.ts` `legacy/axios` clientini ishlatardi (`OpenAPI` config obyekti, `ApiError`, `CancelablePromise`), 0.87.0 da esa legacy clientlar butunlay olib tashlangan. **2026-08-18 da migratsiya bajarildi** — plugin `@hey-api/client-axios` (`throwOnError: true`) ga almashdi, eski `src/client/core/*` (`ApiError`, `CancelablePromise`, `OpenAPI`, `request`) o'chib o'rniga `core/*.gen.ts` + `client/` katalogi generatsiya qilinadigan bo'ldi, chaqiruv shakli `{ path, query, body }` + `.data` ga o'tdi va `ApiError` o'rnini `AxiosError` egalladi. Servis/metod nomlari (`OrdersService.readOrders` kabi) o'zgarmadi — `asClass`/`operationId`/`classNameBuilder` saqlangan. To'liq tafsilot: `05-frontend-app.md` → «6. API Client (`frontend/src/client/`)».
 
-### 3. typescript 6.0.3 (latest: 7.0.2)
-
-TypeScript 7 — Go'da yozilgan native port; eski compiler API'ni (`ts.SyntaxKind` va h.k.) bermaydi. `@hey-api/openapi-ts` (0.86 ham, 0.99 ham) shu API'ga bog'liq — TS 7 bilan `generate-client` crash bo'ladi (sinab ko'rildi: `TypeError: Cannot read properties of undefined (reading 'AnyKeyword')`). `tsc` build o'zi TS 7 bilan ishlagan edi, lekin bitta repo'da ikkita TS ushlab turish shart emas.
-
-**Yangilash yo'li:** openapi-ts TS 7 ni qo'llaganda (yoki yuqoridagi modern client migratsiyasidan keyin qayta tekshirilganda) `typescript` → `^7`.
+⚠️ **Security eslatma:** hozir `npm audit` — **0 vulnerability** (ilgari bu yerda 3 ta topilma yozilgan edi: `handlebars` critical, `@hey-api/openapi-ts` high, `postcss` high). Eski uchtasidan hech biri qolmadi: `handlebars` 0.99 zanjirida umuman yo'q (`npm ls handlebars` → bo'sh), `@hey-api/openapi-ts` ning o'ziga qarshi advisory 0.99 bilan yopildi, `postcss` esa `vite` 8.2.1 orqali 8.5.26 ga ko'tarildi. Migratsiya paytida esa `@hey-api/json-schema-ref-parser` → `js-yaml` 4.2.0 zanjiri yangi advisory olib keldi (audit 5 topilma ko'rsatdi: 1 critical + 4 high); u `package.json` dagi `"overrides": { "js-yaml": "^4.3.1" }` bilan yopildi va audit 0 ga tushdi (`npm ls js-yaml` → `js-yaml@4.3.1 overridden`). Override kerak, chunki zaif versiya to'g'ridan-to'g'ri bog'liqligimiz emas — u transitiv va faqat dev-time codegen ichida ishlatiladi.
 
 ## Yangilashni takrorlash (keyingi safar)
 
@@ -160,12 +158,15 @@ uv run ruff check . && uv run mypy app
 
 # Frontend
 cd frontend && npm update && npm outdated   # outdated bo'sh bo'lsa — hammasi latest
+npm audit                                   # 0 vulnerability bo'lishi kerak
 npm run build
 
 # Client regeneratsiya (backend schema o'zgarganda)
 bash scripts/generate-client.sh
 ```
 
-`npm outdated` major bump ko'rsatsa — `package.json` dagi caret versiyani qo'lda ko'tarish kerak (caret major'dan o'tkazmaydi). Yuqoridagi 3 ceiling'ni tekshirishni unutmang.
+`ruff` lock'da ko'tarilsa (`uv lock --upgrade` uni o'zi ko'taradi) `.pre-commit-config.yaml` dagi `ruff-pre-commit` `rev` ni ham qo'lda o'sha teg'ga tenglashtirish kerak — hozir `v0.16.3`, ya'ni hook va `uv.lock` bir xil ruff'ni ishlatadi (batafsil: `07-infra-devops.md`).
+
+`npm outdated` major bump ko'rsatsa — `package.json` dagi caret versiyani qo'lda ko'tarish kerak (caret major'dan o'tkazmaydi). Yuqoridagi 2 ceiling'ni tekshirishni unutmang. Biome major/minor'dan keyin `npx biome migrate --write` — u `biome.json` dagi `$schema` ni va eskirgan kalitlarni yangilaydi.
 
 Bridge-agent bu siklga kirmaydi: uning `websockets` (>=14) / `pywin32` / `pillow` / `pynput` versiyalari exe yig'ilgan paytdagi dasturchi muhitidan keladi, lock fayli yo'q. Yangilash = paketlarni yangilab exe'ni qayta yig'ish va yangi `mebelix-agent.exe` ni printerli kompyuterlarga qo'lda tarqatish (flashka/lokal tarmoq — panel ichidagi yuklab olish olib tashlangan). Har agent kod o'zgarishida `agent.py` dagi `AGENT_VERSION` qo'lda +1 qilinadi (hozir 1.2.1) — u WS headerida (`X-Agent-Version`) serverga boradi va admin paneldagi Printerlar sahifasida qaysi exe ishlayotgani ko'rinadi.

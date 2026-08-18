@@ -50,8 +50,7 @@ export function AddUser() {
   })
 
   const mutation = useMutation({
-    mutationFn: (data: UserCreate) =>
-      UsersService.createUser({ requestBody: data }),
+    mutationFn: (data: UserCreate) => UsersService.createUser({ body: data }),
     onSuccess: () => {
       toast.success("Foydalanuvchi muvaffaqiyatli yaratildi")
       form.reset()

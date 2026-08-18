@@ -32,7 +32,12 @@ export function PostQueueView({
 }) {
   const { data, isLoading } = useQuery({
     queryKey: ["terminal", "queue", orderId],
-    queryFn: () => TerminalService.readTerminalPostQueue({ orderId }),
+    queryFn: async () =>
+      (
+        await TerminalService.readTerminalPostQueue({
+          path: { order_id: orderId },
+        })
+      ).data,
     refetchInterval: 30_000,
   })
 

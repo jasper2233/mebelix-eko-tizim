@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 
 import { ClientsService, type StockItemRead, StockService } from "@/client"
+import { Field } from "@/components/Common/Field"
 import { SelectField } from "@/components/Common/SelectField"
 import { Button } from "@/components/ui/button"
 import {
@@ -46,7 +47,8 @@ export function SaleDialog({
 
   const { data: clients } = useQuery({
     queryKey: ["clients", "for-sale"],
-    queryFn: () => ClientsService.readClients({ limit: 100 }),
+    queryFn: async () =>
+      (await ClientsService.readClients({ query: { limit: 100 } })).data,
     staleTime: 60_000,
   })
 
@@ -59,7 +61,7 @@ export function SaleDialog({
   const mutation = useMutation({
     mutationFn: () =>
       StockService.createSale({
-        requestBody: {
+        body: {
           lines: [{ item_id: item.id, qty: amount, price_uzs: price || null }],
           client_id: clientId ? Number(clientId) : null,
           paid_uzs: String(paidNum),
@@ -197,8 +199,8 @@ export function PaymentDialog({
   const mutation = useMutation({
     mutationFn: () =>
       StockService.addSalePayment({
-        saleId,
-        requestBody: { amount_uzs: amount, method },
+        path: { sale_id: saleId },
+        body: { amount_uzs: amount, method },
       }),
     ...cb,
     onSuccess: () => {
@@ -254,22 +256,5 @@ export function PaymentDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="grid gap-1.5">
-      <span className="text-2xs font-medium uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
-      {children}
-    </div>
   )
 }

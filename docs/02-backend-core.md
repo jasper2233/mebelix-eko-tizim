@@ -203,7 +203,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
   4. Middleware'lar: `RequestLoggingMiddleware`, `CORSMiddleware` (`allow_credentials=True` — cookie-auth uchun zarur), `ProxyHeadersMiddleware` (`FORWARDED_ALLOW_IPS` bilan) — busiz `request.client.host` har doim proxy IP bo'lib, barcha foydalanuvchilar bitta rate-limit bucket'iga tushib qolardi.
   5. `_install_metrics()` va `_install_docs_router()`.
 - `NON_BUSINESS_PATHS = ["/metrics", "/api/v1/health", "/api/v1/ready"]` — metrics'dan ham, access-log'dan ham chiqarib tashlanadigan pathlar (yagona manba — single source of truth).
-- `_install_metrics(application)` — `prometheus_fastapi_instrumentator` orqali `/metrics` endpoint (gzip, schema'da ko'rinmaydi). Endpoint autentifikatsiyasiz — production'da Caddy darajasida cheklash nazarda tutilgan.
+- `_install_metrics(application)` — `prometheus_fastapi_instrumentator` orqali `/metrics` endpoint (gzip, schema'da ko'rinmaydi). Endpoint autentifikatsiyasiz, shuning uchun prod'da Caddy uni tashqariga UMUMAN chiqarmaydi: `handle /metrics` har doim 403 qaytaradi (`caddy/Caddyfile`) — ilgarigi `remote_ip private_ranges` matcher olib tashlangan, chunki Caddy host-nginx ortida turgani uchun har bir tashqi so'rov ham private range'dan kelgandek ko'rinardi. Metrikalarga faqat compose tarmog'i ichidan, to'g'ridan-to'g'ri `api:8000/metrics` orqali borish mumkin; repoda scraper (Prometheus/Grafana) xizmatining o'zi yo'q.
 
 **Bog'lanishlar:** `config.py`, `db.py`, `logger.py` (`setup_logging`), `middleware.py`, `ws.py` (`ws_manager`), `utils/queue.py`, `utils/rate_limit.py`, `backend/app/api/deps.py` (`get_current_superuser`); `main.py` va `worker.py` bu modulni ishlatadi.
 

@@ -5,6 +5,7 @@ import { useMemo, useState } from "react"
 
 import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
+import { QueryError } from "@/components/Common/QueryError"
 import { SearchInput } from "@/components/Common/SearchInput"
 import { StatusBadge } from "@/components/Common/StatusBadge"
 import { AddOrder } from "@/components/Orders/AddOrder"
@@ -103,7 +104,7 @@ function OrdersPage() {
   const [status, setStatus] = useState("")
   const [search, setSearch] = useState("")
   const debounced = useDebounced(search.trim())
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     ...getOrdersQueryOptions({ status, search: debounced }),
     placeholderData: keepPreviousData,
   })
@@ -194,6 +195,8 @@ function OrdersPage() {
       </div>
       {isLoading ? (
         <Skeleton className="h-64 w-full" />
+      ) : isError ? (
+        <QueryError onRetry={() => refetch()} />
       ) : (
         <div className="overflow-x-auto">
           <Table>

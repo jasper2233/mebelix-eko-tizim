@@ -1,11 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation } from "@tanstack/react-query"
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
+import type { AxiosError } from "axios"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import type { Body_login_access_token as AccessToken, ApiError } from "@/client"
+import type { BodyLoginAccessToken as AccessToken } from "@/client"
 import { LoginService, UsersService } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
 import { BadgePrompt } from "@/components/Common/BadgePrompt"
@@ -83,7 +84,7 @@ function Login() {
   const badge = useMutation({
     mutationFn: (v: { badgeId: string; postId?: number }) =>
       LoginService.loginWithBadge({
-        requestBody: { badge_id: v.badgeId, post_id: v.postId ?? null },
+        body: { badge_id: v.badgeId, post_id: v.postId ?? null },
       }),
     onSuccess: () => {
       setChoice(null)
@@ -92,7 +93,7 @@ function Login() {
     onError: (e, v) => {
       // 409 detali OBYEKT bo'ladi (odatdagi xatolarda — satr): hodim bir nechta
       // postga biriktirilgan, qaysi biriga kirayotganini o'zi tanlaydi.
-      const { detail } = ((e as ApiError)?.body ?? {}) as {
+      const { detail } = ((e as AxiosError)?.response?.data ?? {}) as {
         detail?: { code?: string; employee_name?: string; posts?: PostChoice[] }
       }
       if (detail?.code === "POST_CHOICE")
@@ -136,7 +137,7 @@ function Login() {
   }
 
   const badgeError =
-    badge.isError && !choice ? extractErrorMessage(badge.error as ApiError) : ""
+    badge.isError && !choice ? extractErrorMessage(badge.error) : ""
 
   return (
     <AuthLayout>
@@ -252,7 +253,7 @@ function Login() {
                   role="alert"
                   className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
                 >
-                  {extractErrorMessage(loginMutation.error as ApiError)}
+                  {extractErrorMessage(loginMutation.error)}
                 </div>
               )}
 

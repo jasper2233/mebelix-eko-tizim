@@ -3,7 +3,7 @@
 // olishlar so'roqsiz o'sha papkaga tushadi. API bo'lmasa (eski brauzer)
 // chaqiruvchi oddiy <a download> ga qaytadi.
 
-import { OpenAPI } from "@/client"
+import { API_BASE } from "@/utils"
 
 const DB_NAME = "mebelix-terminal"
 const STORE = "kv"
@@ -43,7 +43,7 @@ export function dirSupported(): boolean {
 
 /** SCX faylni yuklab olish URL'i — endpoint manzili BITTA joyda */
 export function scxFileUrl(id: number): string {
-  return `${OpenAPI.BASE}/api/v1/terminal/files/${id}`
+  return `${API_BASE}/api/v1/terminal/files/${id}`
 }
 
 /** Proyekt nomidan papka nomi: Windows'da taqiqlangan belgilar almashtiriladi */

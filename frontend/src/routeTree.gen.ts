@@ -9,33 +9,27 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TerminalRouteImport } from './routes/terminal'
-import { Route as TabloRouteImport } from './routes/tablo'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as TabloRouteImport } from './routes/tablo'
+import { Route as TerminalRouteImport } from './routes/terminal'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
-import { Route as LayoutWorkCentersRouteImport } from './routes/_layout/work-centers'
-import { Route as LayoutStockRouteImport } from './routes/_layout/stock'
-import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
-import { Route as LayoutReportsRouteImport } from './routes/_layout/reports'
-import { Route as LayoutPrintersRouteImport } from './routes/_layout/printers'
-import { Route as LayoutLogsRouteImport } from './routes/_layout/logs'
-import { Route as LayoutEmployeesRouteImport } from './routes/_layout/employees'
-import { Route as LayoutClientsRouteImport } from './routes/_layout/clients'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
+import { Route as LayoutClientsRouteImport } from './routes/_layout/clients'
+import { Route as LayoutEmployeesRouteImport } from './routes/_layout/employees'
+import { Route as LayoutLogsRouteImport } from './routes/_layout/logs'
+import { Route as LayoutPrintersRouteImport } from './routes/_layout/printers'
+import { Route as LayoutReportsRouteImport } from './routes/_layout/reports'
+import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
+import { Route as LayoutStockRouteImport } from './routes/_layout/stock'
+import { Route as LayoutWorkCentersRouteImport } from './routes/_layout/work-centers'
+import { Route as LayoutAnketaOrderIdRouteImport } from './routes/_layout/anketa.$orderId'
+import { Route as LayoutCutmapOrderIdRouteImport } from './routes/_layout/cutmap.$orderId'
 import { Route as LayoutOrdersIndexRouteImport } from './routes/_layout/orders/index'
 import { Route as LayoutOrdersOrderIdRouteImport } from './routes/_layout/orders/$orderId'
-import { Route as LayoutCutmapOrderIdRouteImport } from './routes/_layout/cutmap.$orderId'
-import { Route as LayoutAnketaOrderIdRouteImport } from './routes/_layout/anketa.$orderId'
 
-const TerminalRoute = TerminalRouteImport.update({
-  id: '/terminal',
-  path: '/terminal',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TabloRoute = TabloRouteImport.update({
-  id: '/tablo',
-  path: '/tablo',
+const LayoutRoute = LayoutRouteImport.update({
+  id: '/_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -43,8 +37,14 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LayoutRoute = LayoutRouteImport.update({
-  id: '/_layout',
+const TabloRoute = TabloRouteImport.update({
+  id: '/tablo',
+  path: '/tablo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TerminalRoute = TerminalRouteImport.update({
+  id: '/terminal',
+  path: '/terminal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutIndexRoute = LayoutIndexRouteImport.update({
@@ -52,39 +52,9 @@ const LayoutIndexRoute = LayoutIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LayoutRoute,
 } as any)
-const LayoutWorkCentersRoute = LayoutWorkCentersRouteImport.update({
-  id: '/work-centers',
-  path: '/work-centers',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutStockRoute = LayoutStockRouteImport.update({
-  id: '/stock',
-  path: '/stock',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutReportsRoute = LayoutReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutPrintersRoute = LayoutPrintersRouteImport.update({
-  id: '/printers',
-  path: '/printers',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutLogsRoute = LayoutLogsRouteImport.update({
-  id: '/logs',
-  path: '/logs',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutEmployeesRoute = LayoutEmployeesRouteImport.update({
-  id: '/employees',
-  path: '/employees',
+const LayoutAdminRoute = LayoutAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutClientsRoute = LayoutClientsRouteImport.update({
@@ -92,9 +62,49 @@ const LayoutClientsRoute = LayoutClientsRouteImport.update({
   path: '/clients',
   getParentRoute: () => LayoutRoute,
 } as any)
-const LayoutAdminRoute = LayoutAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const LayoutEmployeesRoute = LayoutEmployeesRouteImport.update({
+  id: '/employees',
+  path: '/employees',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutLogsRoute = LayoutLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutPrintersRoute = LayoutPrintersRouteImport.update({
+  id: '/printers',
+  path: '/printers',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutReportsRoute = LayoutReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutStockRoute = LayoutStockRouteImport.update({
+  id: '/stock',
+  path: '/stock',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutWorkCentersRoute = LayoutWorkCentersRouteImport.update({
+  id: '/work-centers',
+  path: '/work-centers',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutAnketaOrderIdRoute = LayoutAnketaOrderIdRouteImport.update({
+  id: '/anketa/$orderId',
+  path: '/anketa/$orderId',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutCutmapOrderIdRoute = LayoutCutmapOrderIdRouteImport.update({
+  id: '/cutmap/$orderId',
+  path: '/cutmap/$orderId',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutOrdersIndexRoute = LayoutOrdersIndexRouteImport.update({
@@ -105,16 +115,6 @@ const LayoutOrdersIndexRoute = LayoutOrdersIndexRouteImport.update({
 const LayoutOrdersOrderIdRoute = LayoutOrdersOrderIdRouteImport.update({
   id: '/orders/$orderId',
   path: '/orders/$orderId',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutCutmapOrderIdRoute = LayoutCutmapOrderIdRouteImport.update({
-  id: '/cutmap/$orderId',
-  path: '/cutmap/$orderId',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutAnketaOrderIdRoute = LayoutAnketaOrderIdRouteImport.update({
-  id: '/anketa/$orderId',
-  path: '/anketa/$orderId',
   getParentRoute: () => LayoutRoute,
 } as any)
 
@@ -247,18 +247,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/terminal': {
-      id: '/terminal'
-      path: '/terminal'
-      fullPath: '/terminal'
-      preLoaderRoute: typeof TerminalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/tablo': {
-      id: '/tablo'
-      path: '/tablo'
-      fullPath: '/tablo'
-      preLoaderRoute: typeof TabloRouteImport
+    '/_layout': {
+      id: '/_layout'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -268,11 +261,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_layout': {
-      id: '/_layout'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof LayoutRouteImport
+    '/tablo': {
+      id: '/tablo'
+      path: '/tablo'
+      fullPath: '/tablo'
+      preLoaderRoute: typeof TabloRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terminal': {
+      id: '/terminal'
+      path: '/terminal'
+      fullPath: '/terminal'
+      preLoaderRoute: typeof TerminalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout/': {
@@ -282,53 +282,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutIndexRouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/_layout/work-centers': {
-      id: '/_layout/work-centers'
-      path: '/work-centers'
-      fullPath: '/work-centers'
-      preLoaderRoute: typeof LayoutWorkCentersRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/stock': {
-      id: '/_layout/stock'
-      path: '/stock'
-      fullPath: '/stock'
-      preLoaderRoute: typeof LayoutStockRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/settings': {
-      id: '/_layout/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof LayoutSettingsRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/reports': {
-      id: '/_layout/reports'
-      path: '/reports'
-      fullPath: '/reports'
-      preLoaderRoute: typeof LayoutReportsRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/printers': {
-      id: '/_layout/printers'
-      path: '/printers'
-      fullPath: '/printers'
-      preLoaderRoute: typeof LayoutPrintersRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/logs': {
-      id: '/_layout/logs'
-      path: '/logs'
-      fullPath: '/logs'
-      preLoaderRoute: typeof LayoutLogsRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/employees': {
-      id: '/_layout/employees'
-      path: '/employees'
-      fullPath: '/employees'
-      preLoaderRoute: typeof LayoutEmployeesRouteImport
+    '/_layout/admin': {
+      id: '/_layout/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof LayoutAdminRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/clients': {
@@ -338,11 +296,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutClientsRouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/_layout/admin': {
-      id: '/_layout/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof LayoutAdminRouteImport
+    '/_layout/employees': {
+      id: '/_layout/employees'
+      path: '/employees'
+      fullPath: '/employees'
+      preLoaderRoute: typeof LayoutEmployeesRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/logs': {
+      id: '/_layout/logs'
+      path: '/logs'
+      fullPath: '/logs'
+      preLoaderRoute: typeof LayoutLogsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/printers': {
+      id: '/_layout/printers'
+      path: '/printers'
+      fullPath: '/printers'
+      preLoaderRoute: typeof LayoutPrintersRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/reports': {
+      id: '/_layout/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof LayoutReportsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/settings': {
+      id: '/_layout/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof LayoutSettingsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/stock': {
+      id: '/_layout/stock'
+      path: '/stock'
+      fullPath: '/stock'
+      preLoaderRoute: typeof LayoutStockRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/work-centers': {
+      id: '/_layout/work-centers'
+      path: '/work-centers'
+      fullPath: '/work-centers'
+      preLoaderRoute: typeof LayoutWorkCentersRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/anketa/$orderId': {
+      id: '/_layout/anketa/$orderId'
+      path: '/anketa/$orderId'
+      fullPath: '/anketa/$orderId'
+      preLoaderRoute: typeof LayoutAnketaOrderIdRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/cutmap/$orderId': {
+      id: '/_layout/cutmap/$orderId'
+      path: '/cutmap/$orderId'
+      fullPath: '/cutmap/$orderId'
+      preLoaderRoute: typeof LayoutCutmapOrderIdRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/orders/': {
@@ -357,20 +371,6 @@ declare module '@tanstack/react-router' {
       path: '/orders/$orderId'
       fullPath: '/orders/$orderId'
       preLoaderRoute: typeof LayoutOrdersOrderIdRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/cutmap/$orderId': {
-      id: '/_layout/cutmap/$orderId'
-      path: '/cutmap/$orderId'
-      fullPath: '/cutmap/$orderId'
-      preLoaderRoute: typeof LayoutCutmapOrderIdRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/anketa/$orderId': {
-      id: '/_layout/anketa/$orderId'
-      path: '/anketa/$orderId'
-      fullPath: '/anketa/$orderId'
-      preLoaderRoute: typeof LayoutAnketaOrderIdRouteImport
       parentRoute: typeof LayoutRoute
     }
   }

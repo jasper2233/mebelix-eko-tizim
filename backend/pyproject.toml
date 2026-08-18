@@ -15,7 +15,9 @@ dependencies = [
     "uvloop>=0.22.1; sys_platform != 'win32'",
     "alembic>=1.18.4",
     "asyncpg>=0.31.0",
-    "pyjwt[crypto]>=2.8.0",
+    # `[crypto]` extra'siz: ALGORITHM=HS256 (simmetrik), pyjwt uni o'z hashlib'i
+    # bilan imzolaydi — `cryptography` faqat RS*/ES* uchun kerak bo'lardi.
+    "pyjwt>=2.8.0",
     "SQLAlchemy>=2.0.25",
     "python-multipart>=0.0.26",
     "greenlet>=3.4.0",
