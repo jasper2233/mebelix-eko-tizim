@@ -37,6 +37,26 @@ TAG="$TAG" $COMPOSE pull
 echo "==> Switch: TAG=$TAG"
 TAG="$TAG" $COMPOSE up -d
 
+# Caddyfile bind-mount (`./caddy/Caddyfile:/etc/caddy/Caddyfile:ro`), ya'ni
+# `up -d` uni O'ZGARGAN deb bilmaydi: compose faqat service ta'rifi (image, env,
+# volumes RO'YXATI) o'zgarsa konteynerni qayta yaratadi, mount qilingan faylning
+# MAZMUNI hisobga olinmaydi. Natijada rsync yangi konfigni serverga qo'ysa ham,
+# Caddy eskisi bilan ishlab turaverardi — konfig o'zgarishlari deployda jimgina
+# yo'qolardi.
+#
+# `caddy reload` zero-downtime va konfigni AVVAL tekshiradi: sintaksis buzuq
+# bo'lsa eski konfig joyida qoladi va sayt yiqilmaydi. Shuning uchun `|| true`
+# emas — reload yiqilsa smoke ham buni ko'rsin.
+echo "==> Caddy konfigini qayta yuklash"
+if ! $COMPOSE exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile; then
+    echo "==> CADDY RELOAD YIQILDI — konfig qo'llanmadi." >&2
+    echo "    Sayt ESKI konfig bilan ishlab turibdi (reload buzuq konfigni rad etadi)," >&2
+    echo "    ya'ni yangi image'lar ko'tarilgan, lekin caddy/Caddyfile o'zgarishi TUSHMAGAN." >&2
+    echo "    Odatda sabab — Caddyfile sintaksisi; CI dagi 'Caddyfile validate' qadami buni" >&2
+    echo "    tutishi kerak edi. Konfigni tuzatib qayta deploy qiling." >&2
+    exit 1
+fi
+
 if smoke; then
     echo "$TAG" >"$STABLE_FILE"
     echo "==> Deploy OK, stable=$TAG"

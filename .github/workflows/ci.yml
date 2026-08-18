@@ -20,6 +20,15 @@ jobs:
         run: cd backend && uv run ruff check app && uv run ruff format --check app
       - name: Types (mypy)
         run: cd backend && uv run mypy app
+      - name: Caddyfile validate
+        # Caddyfile prodga rsync bilan boradi va `deploy.sh` uni `caddy reload`
+        # bilan qo'llaydi. Reload buzuq konfigni RAD ETADI (sayt tirik qoladi),
+        # lekin unda deploy yarim yo'lda yiqiladi — sintaksisni shu yerda,
+        # deploydan OLDIN tutgan arzonroq.
+        run: |
+          docker run --rm -v "$PWD/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            -e SITE_ADDRESS=:80 caddy:2-alpine \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
   frontend:
     runs-on: ubuntu-latest
