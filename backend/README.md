@@ -43,7 +43,7 @@ Swagger UI: http://localhost:8000/docs (faqat non-production; `ENVIRONMENT=local
 make worker         # uv --project backend run arq app.core.worker.WorkerSettings
 ```
 
-## Test, lint, migratsiya
+## Lint, migratsiya
 
 ```bash
 make lint                                          # ruff check + mypy app
