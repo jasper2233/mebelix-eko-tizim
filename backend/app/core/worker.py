@@ -37,3 +37,9 @@ class WorkerSettings:
     on_shutdown = shutdown
     # handle_signals defaults to True — the worker must catch SIGTERM on `docker stop`
     # so in-flight jobs finish (or re-queue) instead of dying mid-run.
+    #
+    # Docker healthcheck (`arq ... --check`) Redis'dagi shu yozuvni o'qiydi.
+    # arq defaulti 3600s — bir soat: yangi ko'tarilgan worker soat davomida
+    # "unhealthy" bo'lib turardi va deploy uni ishlamayapti deb hisoblardi.
+    # 30s — healthcheck intervali bilan bir xil.
+    health_check_interval = 30

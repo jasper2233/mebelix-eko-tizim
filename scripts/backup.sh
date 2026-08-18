@@ -15,11 +15,28 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-set -a
-source .env # POSTGRES_* va ADMIN_PASSWORD
+# `.env` ni SOURCE QILMAYMIZ: u pydantic uchun yozilgan va ichida bash uchun
+# yaroqsiz qatorlar bor — masalan `CORS_ORIGINS=["http://a", "http://b"]`.
+# Vergul ortidagi bo'shliq tufayli bash ikkinchi bo'lakni BUYRUQ deb o'qiydi va
+# `set -e` ostida skript o'sha yerda, pg_dump'gacha yetmasdan o'ladi (exit 127).
+# Docker va pydantic o'sha faylni muammosiz o'qiydi, ya'ni nosozlik faqat shu
+# yerda ko'rinardi — jimgina, hech qanday backupsiz.
+# Shuning uchun faqat KERAKLI kalitlar o'qiladi, qiymat qo'shtirnoqlardan tozalanadi.
+env_get() { # $1 = kalit, $2 = fayl
+    [ -f "$2" ] || return 0
+    sed -n "s/^${1}=//p" "$2" | tail -1 | sed 's/[[:space:]]*#.*$//; s/^"\(.*\)"$/\1/; s/^'"'"'\(.*\)'"'"'$/\1/'
+}
+
+export POSTGRES_USER="$(env_get POSTGRES_USER .env)"
+export POSTGRES_DB="$(env_get POSTGRES_DB .env)"
+export ADMIN_PASSWORD="$(env_get ADMIN_PASSWORD .env)"
 # Telegram kalitlari ixtiyoriy: bo'lsa nusxa yuboriladi, bo'lmasa lokal backup yetarli
-[ -f .backup.env ] && source .backup.env
-set +a
+export TG_BOT_TOKEN="$(env_get TG_BOT_TOKEN .backup.env)"
+export TG_CHAT_ID="$(env_get TG_CHAT_ID .backup.env)"
+
+: "${POSTGRES_USER:?.env da POSTGRES_USER topilmadi}"
+: "${POSTGRES_DB:?.env da POSTGRES_DB topilmadi}"
+: "${ADMIN_PASSWORD:?.env da ADMIN_PASSWORD topilmadi — shifr paroli}"
 
 # Deploy daraxtidan TASHQARIDA: CI `rsync --delete` bilan /opt/mebelix-mes ni
 # repo bilan tenglashtiradi, ya'ni repoda yo'q katalogni o'chirib yuboradi.
@@ -43,8 +60,13 @@ send_tg() { # $1 = fayl, $2 = izoh
         return 0
     }
     local resp
-    resp=$(curl -s -F chat_id="$TG_CHAT_ID" -F document=@"$1" -F caption="$2" \
-        "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendDocument")
+    # `|| resp=...`: tarmoq xatosida (DNS/connect/timeout) curl non-zero qaytaradi
+    # va `set -e` ostida BUTUN skript shu yerda to'xtardi — yuklangan fayllar
+    # backupi va retention (`find -delete`) umuman bajarilmasdi.
+    resp=$(curl -s --connect-timeout 10 --max-time 300 \
+        -F chat_id="$TG_CHAT_ID" -F document=@"$1" -F caption="$2" \
+        "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendDocument") ||
+        resp='{"ok":false,"description":"curl xatosi (tarmoq yoki timeout)"}'
     echo "$resp" | grep -q '"ok":true' &&
         echo "Telegramga yuborildi: $(basename "$1")" ||
         echo "OGOHLANTIRISH: Telegram yuborilmadi ($(basename "$1")): $resp — lokal nusxa joyida" >&2

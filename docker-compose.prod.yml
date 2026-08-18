@@ -75,6 +75,17 @@ services:
     image: ${REGISTRY:-ghcr.io/dshukriddinov}/mebelix-mes-backend:${TAG:-latest}
     command: arq app.core.worker.WorkerSettings
     restart: always
+    healthcheck:
+      # `arq --check` Redis'dagi worker yozuvini o'qiydi (WorkerSettings da
+      # `health_check_interval = 30`). Busiz worker jimgina o'lsa ham konteyner
+      # "up" bo'lib turardi: chek chiqarish navbati to'xtaydi, lekin deploy ham,
+      # monitoring ham buni ko'rmasdi.
+      test: ["CMD", "arq", "app.core.worker.WorkerSettings", "--check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      # api bilan bir xil: worker startda DB ulanishini kutadi
+      start_period: 40s
     logging: *logging
     env_file:
       - .env
