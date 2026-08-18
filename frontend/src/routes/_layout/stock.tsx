@@ -7,6 +7,7 @@ import type { StockItemRead } from "@/client"
 import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
+import { RowAction } from "@/components/Common/RowAction"
 import { SearchInput } from "@/components/Common/SearchInput"
 import { SelectField } from "@/components/Common/SelectField"
 import { TablePagination } from "@/components/Common/TablePagination"
@@ -305,24 +306,17 @@ function StockPage() {
                           </Button>
                           {canEdit && (
                             <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-8 text-muted-foreground"
+                              <RowAction
+                                icon={Pencil}
                                 title="Tahrirlash"
                                 onClick={() => setEditFor(i)}
-                              >
-                                <Pencil />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-8 text-muted-foreground hover:text-destructive"
+                              />
+                              <RowAction
+                                icon={Trash2}
                                 title="O'chirish"
+                                danger
                                 onClick={() => setDeleteFor(i)}
-                              >
-                                <Trash2 />
-                              </Button>
+                              />
                             </>
                           )}
                         </div>

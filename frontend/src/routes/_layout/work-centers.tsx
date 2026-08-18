@@ -10,6 +10,7 @@ import { Field } from "@/components/Common/Field"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { PostBadge } from "@/components/Common/PostBadge"
 import { QueryError } from "@/components/Common/QueryError"
+import { RowAction } from "@/components/Common/RowAction"
 import { SelectField } from "@/components/Common/SelectField"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -132,24 +133,17 @@ function WorkCentersPage() {
                       {admin && (
                         <TableCell>
                           <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 text-muted-foreground"
+                            <RowAction
+                              icon={Pencil}
                               title="Tahrirlash"
                               onClick={() => setEditFor(m)}
-                            >
-                              <Pencil />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 text-muted-foreground hover:text-destructive"
+                            />
+                            <RowAction
+                              icon={Trash2}
                               title="O'chirish"
+                              danger
                               onClick={() => setDeleteFor(m)}
-                            >
-                              <Trash2 />
-                            </Button>
+                            />
                           </div>
                         </TableCell>
                       )}

@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
+import { RowAction } from "@/components/Common/RowAction"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -328,23 +329,17 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
       </TableCell>
       <TableCell>
         <div className="flex gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
+          <RowAction
+            icon={KeyRound}
             title="Yangi ulanish kodi (eski token bekor bo'ladi)"
             onClick={() => setConfirm("code")}
-          >
-            <KeyRound />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive"
+          />
+          <RowAction
+            icon={Trash2}
             title="Agentni bekor qilish"
+            danger
             onClick={() => setConfirm("delete")}
-          >
-            <Trash2 />
-          </Button>
+          />
         </div>
         <ConfirmDialog
           open={confirm === "code"}

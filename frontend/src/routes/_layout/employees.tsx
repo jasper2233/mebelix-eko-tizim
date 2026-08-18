@@ -19,6 +19,7 @@ import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { PostBadge } from "@/components/Common/PostBadge"
 import { QueryError } from "@/components/Common/QueryError"
+import { RowAction } from "@/components/Common/RowAction"
 import { SearchInput } from "@/components/Common/SearchInput"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -264,23 +265,17 @@ function EmployeesPage() {
                         </Button>
                         {admin && (
                           <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
+                            <RowAction
+                              icon={Pencil}
                               title="Tahrirlash"
                               onClick={() => setEditFor(e)}
-                            >
-                              <Pencil />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive"
+                            />
+                            <RowAction
+                              icon={Trash2}
                               title="O'chirish"
+                              danger
                               onClick={() => setDeleteFor(e)}
-                            >
-                              <Trash2 />
-                            </Button>
+                            />
                           </>
                         )}
                       </div>
