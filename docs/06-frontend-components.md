@@ -90,6 +90,24 @@ if (data.password) payload.password = data.password
 
 ---
 
+## Anketa komponentlari — `frontend/src/components/Anketa/`
+
+Anketa sahifasi (`routes/_layout/anketa.$orderId.tsx`) uch mustaqil bo'lakdan iborat — ular bir-birini chaqiradi, lekin har biri o'z sababi bilan o'zgaradi:
+
+### `frontend/src/components/Anketa/fields.tsx`
+
+Anketaning O'Z UI tili: `Section`, `Field`, `Num`, `NumInput`, `CheckGrid`, `ShapeChoice`, `Choice`, `Facts` va `numOrNull`. Qog'oz so'rovnomaning aksi (raqam katagi, belgilash to'ri, shakl tanlash) — shuning uchun `Common/` ga chiqarilmagan: hech biri anketadan tashqarida ishlatilmaydi. Yangi umumiy forma elementi kerak bo'lsa u `Common/` ga boradi, bu yerga emas.
+
+### `frontend/src/components/Anketa/RoomPhotos.tsx`
+
+Xona rasmlari galereyasi. Rasmlar anketa JSONB'sida EMAS — `OrderFile(kind=DOCUMENT, meta.room_id)` da, shuning uchun avtosaqlash bilan aralashmaydi va o'z mutatsiyalarini yuritadi (`uploadRoomPhoto`, `deleteRoomPhoto`). Klient chegaralari: xonaga 6 rasm, har biri 5 MB gacha, faqat `image/*`.
+
+### `frontend/src/components/Anketa/RoomSummary.tsx`
+
+Texnolog/direktor ko'rinishi: forma emas, o'qish uchun jamlanma. **Diqqat:** u anketa formasi bilan bir xil ma'lumotni chizadi — anketaga yangi maydon qo'shilsa, shu yerda ham ko'rsatilishi kerak, aks holda texnolog uni umuman ko'rmaydi.
+
+---
+
 ## Common komponentlari — `frontend/src/components/Common/`
 
 ### Qachon nima ishlatiladi (konventsiya)
