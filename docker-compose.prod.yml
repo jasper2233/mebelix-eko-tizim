@@ -114,7 +114,12 @@ services:
       # `:80` (default) → plain HTTP. Set `SITE_ADDRESS=your-domain.com` to get auto-HTTPS.
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
     volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # KATALOG mount, fayl EMAS: `rsync` faylni almashtirganda yangi inode
+      # yaratadi, fayl-mount esa eskisiga bog'langan qoladi — konteyner eski
+      # konfigni ko'rib turaverardi (prodda caddy 3 hafta eski Caddyfile bilan
+      # ishlagan va `caddy reload` ham o'sha eskisini qayta yuklardi).
+      # Katalog mountda inode o'zgarmaydi, ichidagi fayl esa doim ko'rinadi.
+      - ./caddy:/etc/caddy:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
