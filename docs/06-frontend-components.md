@@ -92,6 +92,34 @@ if (data.password) payload.password = data.password
 
 ## Common komponentlari — `frontend/src/components/Common/`
 
+### Qachon nima ishlatiladi (konventsiya)
+
+Yangi sahifa yoki dialog yozganda quyidagilarni **qo'lda takrorlamang** — har biri
+ilgari bir necha joyda alohida yozilib, nusxalar bir-biridan uzoqlashgani uchun
+ajratilgan:
+
+| Ehtiyoj | Komponent | Eslatma |
+| --- | --- | --- |
+| Reyestr jadvali | `ui/table` dagi `Table` | Admin panelida xom `<table>` **biome bilan taqiqlangan** (`noRestrictedElements`); terminal kiosk ekranlari mustasno |
+| Jadvalning bo'sh holati | `Common/EmptyRow` | `colSpan` beriladi; matn yo'l ko'rsatuvchi bo'lsin ("Hali X yo'q — ... bilan qo'shing") |
+| So'rov xatosi | `Common/QueryError` | `useQuery` dan `isError, refetch` olinadi; naqsh: `isLoading ? Skeleton : isError ? QueryError : Table` |
+| Sahifalash | `Common/TablePagination` | `page`/`pageSize`/`total`/`onPage`; natija bo'sh bo'lsa o'zi chizilmaydi |
+| Qatordagi amal tugmasi | `Common/RowAction` | Ikonka tugma; buzuvchi amalga `danger` (hoverda qizil) |
+| Dialog maydoni yorlig'i | `Common/Field` | react-hook-form ishlatilmaydigan formalar uchun; rhf bo'lsa `ui/form` dagi `FormField`/`FormLabel` |
+| Tasdiqlash so'rovi | `Common/ConfirmDialog` | O'chirishda `destructive` |
+| Qidiruv maydoni | `Common/SearchInput` | `useDebounced(search.trim())` bilan |
+| Tanlov ro'yxati | `Common/SelectField` | Xom `<select>` **biome bilan taqiqlangan** |
+| Sahifa sarlavhasi | `Common/PageHeader` | `title`/`description`/`actions` |
+| Status yoki post nishoni | `Common/StatusBadge`, `Common/PostBadge` | Rang formulasi `lib/mes.ts` dagi `chipColors` da — qo'lda yozilmaydi |
+
+Mahkamlash uch qatlamli: (1) komponent — yagona manba; (2) `frontend/biome.json`
+dagi `noRestrictedElements` — xom element ishlatilsa CI **xato** beradi va sababini
+tushuntiradi; (3) shu jadval — qaysi ehtiyojga qaysi komponent.
+
+Ataylab chetlanish bo'lsa `biome-ignore` izohida SABABI yoziladi (namuna:
+`anketa.$orderId.tsx` dagi forma jadvallari — ular reyestr emas, kataklarida
+kiritish maydonlari turadi).
+
 ### `frontend/src/components/Common/AuthLayout.tsx`
 
 **Maqsadi:** login sahifasi uchun ikki ustunli layout.
@@ -112,6 +140,18 @@ if (data.password) payload.password = data.password
 ### `frontend/src/components/Common/EmptyRow.tsx`
 
 **Maqsadi:** jadvalning bo'sh holati qatori (`colSpan` + markazlangan muted xabar — "topilmadi / hali yo'q") — har reyestrda qo'lda takrorlanadigan `TableRow`+`TableCell` naqshi bitta joyda. 8 ta reyestr sahifasida ishlatiladi (clients, employees, logs, machines, reports, materials, printers, orders ro'yxati).
+
+### `frontend/src/components/Common/Field.tsx`
+
+Dialog maydoni yorlig'i — `useState` bilan yozilgan formalar uchun (`StockDialogs`, `SaleDialog`, `work-centers`). Maydon `<label>` ICHIDA turadi, ya'ni yorliqni bosish fokus beradi. react-hook-form ishlatiladigan joyda `ui/form` dagi `FormField`/`FormLabel` qoladi.
+
+### `frontend/src/components/Common/RowAction.tsx`
+
+Jadval qatoridagi amal tugmasi: `icon`/`title`/`onClick`, buzuvchi amalga `danger`. O'lcham bitta (`size="icon"` + `size-8`), `danger` odatda kulrang va faqat hoverda qizil. `aria-label` `title` dan olinadi.
+
+### `frontend/src/components/Common/TablePagination.tsx`
+
+Reyestr sahifalagichi: `page` (0 dan), `pageSize`, `total`, `onPage`. Tartib bitta — chapda "N tadan X–Y", o'ngda `[Oldingi] [k / n] [Keyingi]`. `total === 0` da `null` qaytaradi. `logs` (PAGE=50) va `stock` (PAGE_SIZE=100) ishlatadi — sahifa hajmi prop, chunki jurnal qatorlari qisqa, ombor qatorlari uzun.
 
 ### `frontend/src/components/Common/ErrorComponent.tsx`
 

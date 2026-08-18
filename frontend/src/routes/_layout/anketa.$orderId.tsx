@@ -597,6 +597,7 @@ function AnketaPage() {
                   Yasaladigan mebel o'lchamlari
                 </div>
                 <div className="overflow-x-auto">
+                  {/* biome-ignore lint/correctness/noRestrictedElements: anketa jadvali reyestr emas — kataklarida kiritish maydonlari turadi, o'z ustun kengliklari bilan */}
                   <table className="w-full min-w-[720px] border-collapse text-sm">
                     <thead>
                       <tr className="border-b text-left text-muted-foreground text-xs font-semibold uppercase tracking-wider">
@@ -1049,6 +1050,7 @@ function RoomSummary({
       <Section title={`Modullar (${modules.length} ta)`}>
         {modules.length ? (
           <div className="overflow-x-auto">
+            {/* biome-ignore lint/correctness/noRestrictedElements: anketa jadvali reyestr emas — kataklarida kiritish maydonlari turadi, o'z ustun kengliklari bilan */}
             <table className="w-full min-w-[700px] border-collapse text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground text-xs font-semibold uppercase tracking-wider">

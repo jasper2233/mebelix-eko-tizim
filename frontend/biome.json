@@ -36,7 +36,7 @@
           "level": "error",
           "options": {
             "elements": {
-              "select": "SelectField (@/components/Common/SelectField). Xom <select> ochilganda BRAUZERNING o'z ro'yxatini chizadi — uni CSS bilan o'zgartirib bo'lmaydi, ya'ni yonidagi Input/Button bilan mos kelmaydi va butun forma 'tayyor shablon' bo'lib ko'rinadi",
+              "select": "SelectField (@/components/Common/SelectField). Xom <select> ochilganda BRAUZERNING o'z ro'yxatini chizadi \u2014 uni CSS bilan o'zgartirib bo'lmaydi, ya'ni yonidagi Input/Button bilan mos kelmaydi va butun forma 'tayyor shablon' bo'lib ko'rinadi",
               "textarea": "Textarea (@/components/ui/textarea)"
             }
           }
@@ -52,5 +52,30 @@
       "quoteStyle": "double",
       "semicolons": "asNeeded"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "src/routes/_layout/**",
+        "src/components/Admin/**",
+        "src/components/Clients/**",
+        "src/components/Orders/**",
+        "src/components/Stock/**"
+      ],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noRestrictedElements": {
+              "level": "error",
+              "options": {
+                "elements": {
+                  "table": "Table (@/components/ui/table). Xom <table> reyestrning qator balandligi, chegara va sarlavha uslubini olmaydi \u2014 jadvallar bir-biridan uzoqlasha boshlaydi. Terminal kiosk ekranlari bundan mustasno (o'z uslubi bor), shuning uchun qoida faqat admin paneliga qo'llanadi"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }
