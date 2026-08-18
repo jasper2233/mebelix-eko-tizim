@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 
 import { ClientsService, type StockItemRead, StockService } from "@/client"
+import { Field } from "@/components/Common/Field"
 import { SelectField } from "@/components/Common/SelectField"
 import { Button } from "@/components/ui/button"
 import {
@@ -255,22 +256,5 @@ export function PaymentDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="grid gap-1.5">
-      <span className="text-2xs font-medium uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
-      {children}
-    </div>
   )
 }

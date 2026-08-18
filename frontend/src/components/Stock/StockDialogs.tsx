@@ -3,6 +3,7 @@ import { Plus } from "lucide-react"
 import { useState } from "react"
 import { type StockGroup, type StockItemRead, StockService } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
+import { Field } from "@/components/Common/Field"
 import { SelectField } from "@/components/Common/SelectField"
 import { Button } from "@/components/ui/button"
 import {
@@ -309,23 +310,6 @@ export function ItemDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="grid gap-1.5">
-      <span className="text-2xs font-medium uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
-      {children}
-    </div>
   )
 }
 

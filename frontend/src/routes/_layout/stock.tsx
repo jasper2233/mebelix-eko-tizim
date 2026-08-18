@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
 import { SearchInput } from "@/components/Common/SearchInput"
 import { SelectField } from "@/components/Common/SelectField"
+import { TablePagination } from "@/components/Common/TablePagination"
 import { num, qty, uzs } from "@/components/Stock/format"
 import { MoveDialog } from "@/components/Stock/MoveDialog"
 import { SaleDialog } from "@/components/Stock/SaleDialog"
@@ -82,7 +83,6 @@ function StockPage() {
     placeholderData: keepPreviousData,
   })
   const total = data?.count ?? 0
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   /** Filtr o'zgarganda sahifa boshiga: 4-sahifada turib filtrni almashtirgan
    *  odam aks holda bo'sh jadval ko'rardi. */
@@ -345,35 +345,12 @@ function StockPage() {
             vazifasida yolg'on gapirardi: "296 tovar past" deb yozib, bosilsa
             100 tasini ko'rsatardi va omborchi qolgan 196 tasini kam buyurtma
             qilardi. */}
-        {total > 0 && (
-          <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
-            <span className="text-sm text-muted-foreground">
-              <span className="num">{total}</span> tadan{" "}
-              <span className="num">
-                {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)}
-              </span>
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={page === 0}
-              onClick={() => setPage((n) => n - 1)}
-            >
-              Oldingi
-            </Button>
-            <span className="num text-sm text-muted-foreground">
-              {page + 1} / {pages}
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={page + 1 >= pages}
-              onClick={() => setPage((n) => n + 1)}
-            >
-              Keyingi
-            </Button>
-          </div>
-        )}
+        <TablePagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          onPage={setPage}
+        />
       </div>
 
       {moveFor && (

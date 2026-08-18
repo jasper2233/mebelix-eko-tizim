@@ -12,6 +12,7 @@ import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
 import { SearchInput } from "@/components/Common/SearchInput"
+import { TablePagination } from "@/components/Common/TablePagination"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
@@ -133,7 +134,6 @@ function LogsPage() {
   })
   const rows = data?.data ?? []
   const total = data?.count ?? 0
-  const pages = Math.max(1, Math.ceil(total / PAGE))
 
   // Dialogda meta'dagi raw ID'lar o'rniga nomlar: post/ish markazi/agent lug'atlari
   // (kichik ro'yxatlar, keshda turadi — har ochilishda so'rov ketmaydi)
@@ -265,27 +265,12 @@ function LogsPage() {
         </Table>
       )}
 
-      <div className="mt-3 flex items-center justify-end gap-2">
-        <span className="num text-sm text-muted-foreground">
-          {page + 1} / {pages}
-        </span>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={page === 0}
-          onClick={() => setPage((p) => p - 1)}
-        >
-          Oldingi
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={page + 1 >= pages}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          Keyingi
-        </Button>
-      </div>
+      <TablePagination
+        page={page}
+        pageSize={PAGE}
+        total={total}
+        onPage={setPage}
+      />
 
       <Dialog
         open={detail !== null}

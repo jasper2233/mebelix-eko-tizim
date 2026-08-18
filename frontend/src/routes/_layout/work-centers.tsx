@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { Pencil, Plus, Trash2 } from "lucide-react"
-import { type ReactNode, useState } from "react"
+import { useState } from "react"
 
 import { type MachineRead, MachinesService, type PostRead } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { EmptyRow } from "@/components/Common/EmptyRow"
+import { Field } from "@/components/Common/Field"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { PostBadge } from "@/components/Common/PostBadge"
 import { QueryError } from "@/components/Common/QueryError"
@@ -336,17 +337,6 @@ function MachineDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="grid gap-1.5">
-      <span className="text-2xs font-medium uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
-      {children}
-    </div>
   )
 }
 
