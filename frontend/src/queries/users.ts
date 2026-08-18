@@ -26,9 +26,14 @@ export const getUsersQueryOptions = () =>
 
 export const getCurrentUserQueryOptions = () =>
   queryOptions({
-    // Tip aniq `UserRead | null`: useCurrentUser 401 da null bilan ishlaydi —
-    // teglangan queryKey (queryOptions) o'sha kengroq tip bilan mos kelsin
     queryKey: ["currentUser"],
-    queryFn: async (): Promise<UserRead | null> =>
+    queryFn: async (): Promise<UserRead> =>
       (await UsersService.readUserMe()).data,
+    // Har navigatsiyada `beforeLoad` guard'lari (lib/guards.ts) shu so'rovni
+    // kutadi. staleTime'siz har o'tish IKKI ketma-ket `/users/me` ni bloklovchi
+    // qilib yuborardi — Frankfurt RTT'da ~218 ms sof kechikish.
+    // Eskirgan rol xavf tug'dirmaydi: guard faqat UI yo'naltirgichi, huquqni
+    // backend har so'rovda o'zi tekshiradi; parol/rol o'zgarsa 401 keladi va
+    // `lib/queryClient.ts` dagi handler login'ga chiqaradi.
+    staleTime: 5 * 60_000,
   })
