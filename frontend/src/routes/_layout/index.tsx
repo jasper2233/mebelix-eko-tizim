@@ -6,6 +6,7 @@ import { useCallback } from "react"
 import { ReportsService } from "@/client"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { PostBadge } from "@/components/Common/PostBadge"
+import { QueryError } from "@/components/Common/QueryError"
 import { SectionTitle } from "@/components/Common/SectionTitle"
 import { StagePipeline } from "@/components/Common/StagePipeline"
 import { StatusBadge } from "@/components/Common/StatusBadge"
@@ -42,9 +43,12 @@ export const Route = createFileRoute("/_layout/")({
 function Dashboard() {
   const { currentUser } = useCurrentUser()
   const queryClient = useQueryClient()
-  const { data: machines, isLoading: machinesLoading } = useQuery(
-    getMachinesQueryOptions(),
-  )
+  const {
+    data: machines,
+    isLoading: machinesLoading,
+    isError: machinesError,
+    refetch: refetchMachines,
+  } = useQuery(getMachinesQueryOptions())
   const role = currentUser?.role
   const canStats =
     currentUser?.is_superuser ||
@@ -58,9 +62,12 @@ function Dashboard() {
     refetchInterval: 60_000,
   })
   const { data: posts } = useQuery(getPostsQueryOptions())
-  const { data: matrix, isLoading: matrixLoading } = useQuery(
-    getTabloMatrixQueryOptions(),
-  )
+  const {
+    data: matrix,
+    isLoading: matrixLoading,
+    isError: matrixError,
+    refetch: refetchMatrix,
+  } = useQuery(getTabloMatrixQueryOptions())
 
   const { online } = useMesWs(
     useCallback(
@@ -110,6 +117,10 @@ function Dashboard() {
       <SectionTitle>Ish markazlari</SectionTitle>
       {machinesLoading ? (
         <Skeleton className="mb-8 h-40 w-full" />
+      ) : machinesError ? (
+        <div className="mb-8">
+          <QueryError onRetry={() => refetchMachines()} />
+        </div>
       ) : machines?.length ? (
         <div className="mb-8 overflow-x-auto">
           <Table>
@@ -191,6 +202,8 @@ function Dashboard() {
       <SectionTitle>Aktiv buyurtmalar</SectionTitle>
       {matrixLoading ? (
         <Skeleton className="h-40 w-full" />
+      ) : matrixError ? (
+        <QueryError onRetry={() => refetchMatrix()} />
       ) : matrix?.orders.length ? (
         <div className="space-y-2">
           {matrix.orders.map((o) => (
