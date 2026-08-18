@@ -262,6 +262,26 @@ async def active_session(db: AsyncSession, machine: Machine) -> WorkSession:
     return session
 
 
+async def _scans_done_map(db: AsyncSession, instance_id: int) -> dict[int, int]:
+    """Shu nusxaning HAR qadamdagi skan soni — bitta so'rovda.
+
+    `record_scan_at` ilgari har qadam uchun alohida COUNT yuborardi, qat'iy
+    tartib tekshiruvi esa oldingi qadamlarni ham birma-bir so'rardi — ya'ni
+    bitta skanga o'nlab round-trip. Qadoq QR'i skanerlanganda (TMO qabuli)
+    bu sikl ichida takrorlanib, 40 detalli qadoqda yuzlab so'rov berardi.
+    """
+    rows = await db.execute(
+        select(Scan.route_id, func.count(Scan.id))
+        .where(
+            Scan.instance_id == instance_id,
+            Scan.is_cancelled == False,  # noqa: E712
+            Scan.is_deleted == False,  # noqa: E712
+        )
+        .group_by(Scan.route_id)
+    )
+    return dict(rows.all())  # type: ignore[arg-type]
+
+
 async def _scans_done(db: AsyncSession, instance_id: int, route_id: int) -> int:
     """Shu NUSXA shu QADAMDA necha marta skanlangan. Kalit `route_id` — post emas:
     bitta post marshrutda ikki marta bo'lsa (kromka -> prisadka -> kromka) qadamlar
@@ -481,9 +501,12 @@ async def record_scan_at(
     if not steps:
         raise ScanRejected("E001", "Bu post bu detal marshrutida yo'q. Chekni tekshiring.")
 
+    # Nusxaning hamma qadam hisobi bitta so'rovda — pastdagi qat'iy tartib
+    # tekshiruvi ham shu xaritadan o'qiydi.
+    done = await _scans_done_map(db, instance.id)
     route = None
     for step in steps:
-        if await _scans_done(db, instance.id, step.id) < step.per_instance:
+        if done.get(step.id, 0) < step.per_instance:
             route = step
             break
     if route is None:
@@ -507,7 +530,7 @@ async def record_scan_at(
             )
         ).scalars()
         for prev in pending:
-            if await _scans_done(db, instance.id, prev.id) < prev.per_instance:
+            if done.get(prev.id, 0) < prev.per_instance:
                 prev_post = await db.get(Post, prev.post_id)
                 nom = prev_post.name if prev_post is not None else f"{prev.seq}-qadam"
                 raise ScanRejected("E004", f"Navbat: avval {nom}. Oldingi bosqich yakunlanmagan.")
