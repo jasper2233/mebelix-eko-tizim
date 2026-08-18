@@ -41,8 +41,8 @@ function ReportsPage() {
   const [dateTo, setDateTo] = useState("")
 
   const params = {
-    dateFrom: dateFrom || undefined,
-    dateTo: dateTo || undefined,
+    date_from: dateFrom || undefined,
+    date_to: dateTo || undefined,
   }
   const exportUrl = () => {
     const q = new URLSearchParams({ format: "xlsx" })
@@ -98,17 +98,13 @@ function ReportsPage() {
   )
 }
 
-type RangeParams = { dateFrom?: string; dateTo?: string }
+type RangeParams = { date_from?: string; date_to?: string }
 
 function ProductivityTable({ params }: { params: RangeParams }) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["reports", "productivity", params],
     queryFn: async () =>
-      (
-        await ReportsService.reportProductivity({
-          query: { date_from: params.dateFrom, date_to: params.dateTo },
-        })
-      ).data,
+      (await ReportsService.reportProductivity({ query: params })).data,
   })
   if (isLoading) return <Skeleton className="h-64 w-full" />
   if (isError) return <QueryError onRetry={() => refetch()} />
@@ -158,11 +154,7 @@ function OrdersTable({ params }: { params: RangeParams }) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["reports", "orders", params],
     queryFn: async () =>
-      (
-        await ReportsService.reportOrders({
-          query: { date_from: params.dateFrom, date_to: params.dateTo },
-        })
-      ).data,
+      (await ReportsService.reportOrders({ query: params })).data,
   })
   if (isLoading) return <Skeleton className="h-64 w-full" />
   if (isError) return <QueryError onRetry={() => refetch()} />
@@ -226,11 +218,7 @@ function MaterialsTable({ params }: { params: RangeParams }) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["reports", "materials", params],
     queryFn: async () =>
-      (
-        await ReportsService.reportMaterials({
-          query: { date_from: params.dateFrom, date_to: params.dateTo },
-        })
-      ).data,
+      (await ReportsService.reportMaterials({ query: params })).data,
   })
   if (isLoading) return <Skeleton className="h-64 w-full" />
   if (isError) return <QueryError onRetry={() => refetch()} />

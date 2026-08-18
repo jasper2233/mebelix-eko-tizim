@@ -22,10 +22,6 @@ export default defineConfig({
       name: "@hey-api/sdk",
       // NOTE: this doesn't allow tree-shaking
       asClass: true,
-      // Metod nomi backend'dagi `operation_id` dan olinadi (`read_clients` ->
-      // `readClients`) — 0.99 da bu sukutdagi xatti-harakat, avvalgi qo'lda
-      // yozilgan `methodNameBuilder` kerak emas.
-      operationId: true,
       classNameBuilder: "{{name}}Service",
     },
   ],
