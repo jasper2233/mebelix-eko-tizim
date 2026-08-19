@@ -193,7 +193,7 @@ Barcha mutatsiyalar (yaratish, admin-yangilash, parol almashtirish, o'chirish) `
 | Method | Path | Auth | Request | Response | Tavsif |
 |---|---|---|---|---|---|
 | POST | `/api/v1/users/` | Superuser | `UserCreate` | `UserRead`, 201 | Yangi foydalanuvchi yaratish; telefon uniqueness tekshiruvi; username ixtiyoriy (telefondan derive qilinadi) |
-| GET | `/api/v1/users/` | Superuser | Query: `skip>=0`, `limit` (1..`MAX_PAGE_SIZE`, default `DEFAULT_PAGE_SIZE`) | `Paginated[UserRead]` | Foydalanuvchilar ro'yxati (paginatsiya bilan); faqat superuser — ro'yxat barcha telefon raqamlarni ochib beradi |
+| GET | `/api/v1/users/` | `StaffReadUser` | Query: `skip>=0`, `limit` (1..`MAX_PAGE_SIZE`, default `DEFAULT_PAGE_SIZE`) | `Paginated[UserRead]` | Sahifalangan ro'yxat. RO'YXAT boshqaruvga ochiq — birlashgan "Hodimlar" sahifasi har odamning kirish usulini shundan biladi; YOZISH amallari superuser'da qoladi |
 | GET | `/api/v1/users/me` | Login | — | `UserRead` | Joriy foydalanuvchi profili |
 | PATCH | `/api/v1/users/me` | Login | `UserUpdate` | `UserRead` | O'z profilini yangilash; `UserUpdate` da privilege flaglar yo'q — eskalatsiya mumkin emas; explicit `null`lar `_drop_forbidden_nulls` bilan filtrlanadi |
 | PATCH | `/api/v1/users/me/password` | Login | `UpdatePassword` (`current_password`, `new_password`) | `{"message": ...}` | Joriy parolni `verify_password` bilan tekshiradi; yangi parol eskisiga teng bo'lmasligi kerak; yangi hash `await get_password_hash(...)` bilan hisoblanadi |
@@ -231,14 +231,18 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
 | GET | `/api/v1/employees/` | `StaffReadUser` | Paginatsiya; `search` — ism/beyjik; `status` filtri (`EmployeeStatus`) |
-| POST | `/api/v1/employees/` | `AdminUser` | 201; `badge_id` avtomatik `uuid4` sifatida yaratiladi; `assigned_post_ids` mavjudligi tekshiriladi |
+| POST | `/api/v1/employees/` | `AdminUser` | 201; `badge_id` avtomatik `uuid4` sifatida yaratiladi va JAVOBDA QAYTARILMAYDI (tsexdagi yagona kirish kaliti — ekranga chiqmaydi); `assigned_post_ids` mavjudligi tekshiriladi, BO'SH bo'lishi mumkin (hamma xodim ish markazida ishlamaydi); `user_id` — ixtiyoriy kirish hisobi bog'lami (`_validate_user_link`: hisob mavjud, qurilma/post hisobi emas, boshqa hodimga band emas) |
 | GET | `/api/v1/employees/{id}` | `StaffReadUser` | Topilmasa 404 |
 | PATCH | `/api/v1/employees/{id}` | `AdminUser` | `assigned_post_ids` o'zgarsa qayta validatsiya |
 | POST | `/api/v1/employees/{id}/badge` | `AdminUser` | Beyjik yo'qolganda (TZ 4.2): yangi `uuid4` beriladi — eskisi darhol ishlamay qoladi, tarix shu hodimda qoladi; eski beyjik audit `meta`sida saqlanadi |
 | POST | `/api/v1/employees/{id}/print` | `AdminUser` | Beyjikni chop etish navbatiga qo'yadi (`print_badge` arq task -> Redis `mes:print:queue` -> bridge-agent -> GoDEX). Brauzerdan chop etish TASHLANDI: u drayverdagi saqlangan qog'oz o'lchamiga tayanardi, agent esa DEVMODE bilan 80×60 ni majburlaydi |
 | DELETE | `/api/v1/employees/{id}` | `AdminUser` | Soft-delete; LEKIN `employee.user_id` to'ldirilgan eski avtomat mirror yozuvlar ("arrachi", "omborchi") o'chirilmaydi — 403: ularda haqiqiy skan tarixi bor va o'chirilsa mahsuldorlik hisobotidan tushib ketardi (yangi mirror yaratilmaydi, `c7e2b4f81d39`) |
 
-**Bog'lanishlar:** `backend/app/schemas/employees.py`, `backend/app/crud` (`crud_employees`, `crud_posts`, `log_action`), `backend/app/models/enums.py` (`EmployeeStatus`).
+**Hodim nofaol qilinganda yoki o'chirilganda** `end_employee_sessions()` uning OCHIQ smenalarini yopadi. Busiz nofaol hodim brigadaning LANGAR smenasi egasi bo'lib qolsa, o'sha ish markazidagi har skan E006 "Hodim nofaol" bilan rad etilardi (`scanning.active_session`) — brigadaning qolgan a'zolari aybsiz bo'lsa ham post to'liq to'xtardi. Audit xabariga nechta smena yopilgani yoziladi.
+
+**O'chirish to'sig'i** faqat POST ROLI hisobiga bog'langan yozuvlarga (eski avtomat mirror arxivi, `c7e2b4f81d39`) — 403. Oddiy xodimning kirish hisobi (manager, texnolog) bunga kirmaydi.
+
+**Bog'lanishlar:** `backend/app/schemas/employees.py`, `backend/app/crud` (`crud_employees`, `crud_posts`, `crud_users`, `log_action`), `backend/app/services/scanning.py` (`end_employee_sessions`).
 
 ---
 
