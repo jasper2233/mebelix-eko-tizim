@@ -150,7 +150,10 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
             post = posts.get(post_code)
             if post is None:
                 raise ParseError(f"Post sozlanmagan: {post_code}. Administratorga murojaat qiling.")
-            first_edge_pass = post_code in (PostCode.KROMKA, PostCode.OVAL) and post_code not in seen
+            # OVAL bu yerda YO'Q: oval kromkada detal bitta o'tishda ishlanadi — bitta skan.
+            # KROMKA esa har qirrani alohida yopishtiradi, shuning uchun birinchi o'tishda
+            # qirralar soni marta skanlanadi (takror kelsa — bitta).
+            first_edge_pass = post_code == PostCode.KROMKA and post_code not in seen
             seen.add(post_code)
             per = edge_count if first_edge_pass else 1
             db.add(

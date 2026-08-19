@@ -731,7 +731,8 @@ async def _set_custom_route(
     """Nostandart detal marshrutini jarayon kodlari ro'yxatidan qayta quradi.
 
     Ro'yxat TARTIBLI va kod takrorlanishi mumkin ([3, 6, 3] — kromkaga qaytish).
-    Kromka/oval BIRINCHI kelganda qirralar soni marta skanlanadi, takrorida bitta."""
+    KROMKA birinchi kelganda qirralar soni marta skanlanadi, takrorida bitta.
+    OVAL har doim bitta: oval kromkada detal bitta o'tishda ishlanadi."""
     for code in codes:
         if code not in PROCESS_POSTS:
             raise ForbiddenException(f"Noma'lum jarayon kodi: {code}. Ruxsat etilgan: 1–14.")
@@ -761,7 +762,10 @@ async def _set_custom_route(
         post = by_code.get(post_code)
         if post is None:
             raise NotFoundException(f"Post sozlanmagan: {post_code}. Administratorga murojaat qiling.")
-        first_edge_pass = post_code in (PostCode.KROMKA, PostCode.OVAL) and post_code not in seen
+        # OVAL bu yerda YO'Q: oval kromkada detal bitta o'tishda ishlanadi — bitta skan.
+        # KROMKA esa har qirrani alohida yopishtiradi, shuning uchun birinchi o'tishda
+        # qirralar soni marta skanlanadi (takror kelsa — bitta).
+        first_edge_pass = post_code == PostCode.KROMKA and post_code not in seen
         seen.add(post_code)
         per_instance = edge_count if first_edge_pass else 1
         db.add(

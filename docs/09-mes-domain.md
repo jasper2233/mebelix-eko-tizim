@@ -114,7 +114,7 @@ to'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §2.3. Qoidalar:
 - **Marshrut faqat ARRA yoki ROVER'dan boshlanadi** (`_ROUTE_START_POSTS`, frontendda
   `ROUTE_START_POSTS`) — QR cheki aynan shu ikki postda chiqadi, boshqasidan boshlansa detal
   yorliqsiz qolardi.
-- `per_instance`: KROMKA/OVAL marshrutda **BIRINCHI** kelganda qirralar soni marta skanlanadi
+- `per_instance`: KROMKA marshrutda **BIRINCHI** kelganda qirralar soni marta skanlanadi (har qirra alohida yopishtiriladi), takror kelganda 1. OVAL esa HAR DOIM 1 — oval kromkada detal bitta o'tishda ishlanadi (`c3d97a1e5b02`)
   (skan qirra bo'yicha sanaladi), TAKROR kelganda bitta. Qolgan postlarda bitta o'tish = bitta skan.
 - Qaysi amal ekanini endi nom emas, qadamning **`process_code`** i saqlaydi (kodlar postga
   ko'p-birga tushadi: 1 va 2 → ARRA, 3 va 4 → KROMKA, 9..14 → STOLYARKA). Terminal amal NOMINI
@@ -562,7 +562,7 @@ direktor ham ko'radi.
     (tugaganlari yashil, pastda), o'ngda "Jarayonda" (2+ tomonli, boshlangan, tugamagan).
     Har skan darhol yoziladi (tomon = skan, `per_instance`); bir QR uchun 5 s to'siq;
     picker'da skan qilinsa proyekt o'zi ochiladi (`/qr/{qr}/order`); begona detalga aniq xato.
-  · **OVAL** — o'sha KromkaView `oval` rejimda: bir panel, tomonlar ustuni yo'q va `done/sides` o'rniga faqat tugagan/tugamagan belgisi. SKAN SONI KROMKA bilan bir xil qoidada: marshrutda OVAL BIRINCHI kelganda `per_instance` = qirralar soni, takror kelganda 1 (`orders.py:764-766`) — `oval` bayrog'i hisoblagichni yashiradi, skan sonini o'zgartirmaydi.
+  · **OVAL** — o'sha KromkaView `oval` rejimda: bir panel, tomonlar ustuni yo'q va `done/sides` o'rniga faqat tugagan/tugamagan belgisi. Har detal BITTA skan (`per_instance = 1`), shuning uchun hisoblagichning ma'nosi ham yo'q.
   · **PRISADKA** (`Terminal/PrisadkaView`) — detallar + SCX fayllar; "Hammasini yuklab olish"
     File System Access API bilan BIR MARTA tanlangan papkaga (IndexedDB'da saqlanadi,
     `lib/scxDir.ts`) proyekt nomli subpapka ochib yozadi; har skandagi avto-SCX ham o'sha yerga.
