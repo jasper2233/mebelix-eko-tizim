@@ -52,7 +52,12 @@ function SelectContent({
   className,
   children,
   position = "popper",
-  align = "center",
+  // Loyihadagi boshqa suzuvchi qatlamlar bilan bir xil: `popover.tsx` va
+  // `dropdown-menu.tsx` ham `align="start"` va `sideOffset={4}`. Ilgari select
+  // markazga tekislanardi va tugmaga yopishib turardi — bir ekranda ikki xil
+  // uslub ko'rinardi.
+  align = "start",
+  sideOffset = 4,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
   return (
@@ -67,6 +72,7 @@ function SelectContent({
         )}
         position={position}
         align={align}
+        sideOffset={sideOffset}
         {...props}
       >
         <SelectScrollUpButton />
