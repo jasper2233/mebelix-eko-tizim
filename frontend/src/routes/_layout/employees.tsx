@@ -74,6 +74,7 @@ import {
   OPERATOR_ROLES,
   ROLE_LABELS,
 } from "@/lib/mes"
+import { cn } from "@/lib/utils"
 import {
   crudCallbacks,
   getEmployeesQueryOptions,
@@ -94,12 +95,58 @@ const isDeviceAccount = (u: UserRead) => DEVICE_ROLES.includes(u.role)
 const ACCESS_LABEL: Record<Access, string> = {
   badge: "Beyjik",
   password: "Parol",
-  both: "Beyjik + parol",
+  both: "Ikkalasi",
   none: "Yo'q",
+}
+
+const ACCESS_FILTERS: { key: Access | "all"; label: string }[] = [
+  { key: "all", label: "Hammasi" },
+  { key: "badge", label: "Tsex" },
+  { key: "password", label: "Ofis" },
+  { key: "none", label: "Kirishsiz" },
+]
+
+/** Odamda IKKI eshik bo'lishi mumkin: beyjik (tsex monoblokи) va parol (ofis
+ * kompyuteri). Ular bir-biriga bog'liq emas, shuning uchun ustun ham ikki katak:
+ * to'ldirilgan — eshik ochiq, uzuq chiziqli — yopiq. Ro'yxatni pastga qarab
+ * o'qiganda kim qayerda ishlashi legendasiz ko'rinadi. Rang brend tizimidan:
+ * tsex — asosiy navy, ofis — oltin (kamroq odamda bor, kuchliroq huquq). */
+function AccessDoors({ access }: { access: Access }) {
+  const hasBadge = access === "badge" || access === "both"
+  const hasPassword = access === "password" || access === "both"
+  const slot = "grid size-6 place-items-center rounded-[4px] border"
+  return (
+    <span className="flex items-center gap-2">
+      <span aria-hidden className="flex gap-1">
+        <span
+          className={cn(
+            slot,
+            hasBadge
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-dashed border-border text-muted-foreground/40",
+          )}
+        >
+          <IdCard className="size-3.5" />
+        </span>
+        <span
+          className={cn(
+            slot,
+            hasPassword
+              ? "border-sidebar-primary bg-sidebar-primary text-sidebar-primary-foreground"
+              : "border-dashed border-border text-muted-foreground/40",
+          )}
+        >
+          <KeyRound className="size-3.5" />
+        </span>
+      </span>
+      <span className="text-sm">{ACCESS_LABEL[access]}</span>
+    </span>
+  )
 }
 
 function PeoplePage() {
   const [search, setSearch] = useState("")
+  const [accessFilter, setAccessFilter] = useState<Access | "all">("all")
   const [badgeFor, setBadgeFor] = useState<EmployeeRead | null>(null)
   const [editFor, setEditFor] = useState<Person | null>(null)
   const [adding, setAdding] = useState(false)
@@ -165,6 +212,19 @@ function PeoplePage() {
     }
   }, [employees.data, users.data, debounced])
 
+  // "Tsex" va "Ofis" — eshik bo'yicha filtr, ya'ni ikkala eshikli odam IKKALASIDA
+  // ham chiqadi. Aks holda texnolog qidirilganda ikkala chipda ham topilmasdi.
+  const shown =
+    accessFilter === "all"
+      ? people
+      : people.filter((p) =>
+          accessFilter === "badge"
+            ? p.access === "badge" || p.access === "both"
+            : accessFilter === "password"
+              ? p.access === "password" || p.access === "both"
+              : p.access === "none",
+        )
+
   const isLoading = employees.isLoading || users.isLoading
   const isError = employees.isError || users.isError
 
@@ -181,7 +241,17 @@ function PeoplePage() {
           ) : undefined
         }
       />
-      <div className="mb-4 flex">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {ACCESS_FILTERS.map((f) => (
+          <Button
+            key={f.key}
+            size="sm"
+            variant={accessFilter === f.key ? "default" : "outline"}
+            onClick={() => setAccessFilter(f.key)}
+          >
+            {f.label}
+          </Button>
+        ))}
         <SearchInput
           className="ml-auto w-full max-w-xs"
           placeholder="F.I.Sh bo'yicha"
@@ -213,8 +283,8 @@ function PeoplePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {people.length ? (
-                people.map((p) => {
+              {shown.length ? (
+                shown.map((p) => {
                   const active = p.employee
                     ? p.employee.status === "active"
                     : (p.user?.is_active ?? true)
@@ -225,21 +295,7 @@ function PeoplePage() {
                       <TableCell className="font-medium">{p.name}</TableCell>
                       <TableCell>{p.position ?? "—"}</TableCell>
                       <TableCell>
-                        <span className="flex items-center gap-1.5 text-sm">
-                          {p.access === "none" ? (
-                            <span className="text-muted-foreground">—</span>
-                          ) : (
-                            <>
-                              {p.access !== "password" && (
-                                <IdCard className="size-4 text-muted-foreground" />
-                              )}
-                              {p.access !== "badge" && (
-                                <KeyRound className="size-4 text-muted-foreground" />
-                              )}
-                            </>
-                          )}
-                          {ACCESS_LABEL[p.access]}
-                        </span>
+                        <AccessDoors access={p.access} />
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
@@ -289,7 +345,9 @@ function PeoplePage() {
                 <EmptyRow colSpan={6}>
                   {debounced
                     ? `"${debounced}" bo'yicha odam topilmadi.`
-                    : "Hali odam yo'q — \"Odam qo'shish\" bilan qo'shing."}
+                    : accessFilter !== "all"
+                      ? "Bu kirish usulida hali hech kim yo'q."
+                      : "Hali odam yo'q — \"Odam qo'shish\" bilan qo'shing."}
                 </EmptyRow>
               )}
             </TableBody>

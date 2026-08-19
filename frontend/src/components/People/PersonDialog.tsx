@@ -31,6 +31,7 @@ import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
 import { POST_COLORS, ROLE_LABELS } from "@/lib/mes"
+import { cn } from "@/lib/utils"
 import { formatUzPhone } from "@/lib/validation"
 import { detailMessage } from "@/utils"
 
@@ -209,18 +210,44 @@ export function PersonDialog({
             </Field>
           </div>
 
+          {/* Dropdown EMAS: tanlov quyidagi maydonlarni o'zgartiradi, ya'ni to'rt
+              variant ham ko'rinib turishi kerak — nima tanlasa nima ochilishini
+              odam bir qarashda ko'radi. */}
           <Field label="Kirish usuli">
-            <SelectField
-              value={form.access}
-              onChange={(v) => set("access", v as Access)}
-              options={
-                canManageAccounts
-                  ? ACCESS_OPTIONS
-                  : ACCESS_OPTIONS.filter(
-                      (o) => o.value === "badge" || o.value === "none",
-                    )
-              }
-            />
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {(canManageAccounts
+                ? ACCESS_OPTIONS
+                : ACCESS_OPTIONS.filter(
+                    (o) => o.value === "badge" || o.value === "none",
+                  )
+              ).map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  aria-pressed={form.access === o.value}
+                  onClick={() => set("access", o.value as Access)}
+                  className={cn(
+                    "rounded-md border px-3 py-2 text-left text-sm transition-colors",
+                    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                    form.access === o.value
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border hover:bg-accent",
+                  )}
+                >
+                  <span className="block font-medium">{o.label}</span>
+                  <span
+                    className={cn(
+                      "block text-2xs",
+                      form.access === o.value
+                        ? "text-primary-foreground/75"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {o.hint}
+                  </span>
+                </button>
+              ))}
+            </div>
           </Field>
 
           {form.access !== "none" && form.access !== "password" && (
