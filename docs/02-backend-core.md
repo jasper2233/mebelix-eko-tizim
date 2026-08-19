@@ -77,7 +77,7 @@ app = create_application(router=router, settings=settings)
 | Env / CORS | `ENVIRONMENT`, `CORS_ORIGINS=["http://localhost:5173"]`, `CORS_METHODS`, `CORS_HEADERS` |
 
 - Computed field'lar: `POSTGRES_URI` (`user:pass@host:port/db`) va `REDIS_URL` (`redis://host:port`).
-- Modul darajasidagi eksportlar: `TASHKENT_TZ = ZoneInfo("Asia/Tashkent")` — tsex mahalliy vaqti, hisobot/audit kunlari va chek timestamp'lari shu zonada (TZ 10.4; `audit.py`, `reports.py` route'lari va `services/labels.py` ishlatadi); `upload_root()` — `UPLOAD_DIR`ning absolyut `Path` ildizi, path-traversal tekshiruvlari shu qiymatga nisbatan (`orders.py`, `terminal.py` ishlatadi).
+- Modul darajasidagi eksportlar: `TASHKENT_TZ = ZoneInfo("Asia/Tashkent")` — tsex mahalliy vaqti, hisobot/audit kunlari va chek timestamp'lari shu zonada (TZ 10.4; `audit.py`, `reports.py` route'lari, `services/labels.py` va `tasks/__init__.py` ishlatadi); `upload_root()` — `UPLOAD_DIR`ning absolyut `Path` ildizi, path-traversal tekshiruvlari shu qiymatga nisbatan (`orders.py`, `terminal.py` ishlatadi).
 - `_validate_production_settings(s)` — **har qanday non-LOCAL muhitda (STAGING ham, PRODUCTION ham) xavfsiz bo'lmagan default'lar bilan boot qilishni rad etadi** (faqat LOCAL o'tkazib yuboriladi): `SECRET_KEY`, `ADMIN_PASSWORD`, `POSTGRES_PASSWORD`, `ADMIN_PHONE` placeholder qiymatda qolgan bo'lsa `RuntimeError` ko'taradi. Modul import bo'lganda darhol ishlaydi (birinchi so'rovda emas, startup'da).
 - Modul oxirida global singleton: `settings = Settings()`.
 
@@ -227,6 +227,9 @@ class WorkerSettings:
     redis_settings = RedisSettings(host=..., port=...)
     on_startup = startup
     on_shutdown = shutdown
+    # arq defaulti 3600s: yangi ko'tarilgan worker soat davomida "sog'lom" yozuvini
+    # yangilamasdi va `arq ... --check` healthcheck'i yiqilardi
+    health_check_interval = 30
     # handle_signals default (True) — docker stop'da SIGTERM to'g'ri ushlanadi
 ```
 

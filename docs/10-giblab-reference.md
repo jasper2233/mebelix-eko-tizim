@@ -71,8 +71,7 @@ ishlatilgan. Korpusdagi 4 pogonaj zagotovkasi (`l=3200` alyuminiy profil, quvur,
 arrachiga tushmaydi.
 
 `version` atributi — **build sanasi** `YYMMDDNN` ko'rinishida: `21052101` = 2021-05-21,
-`23051701` = 2023-05-17. Korpusda ikkala versiya ham bor va ular **turlicha yozadi** —
-2021 buildi detal kodlarini umuman bermaydi.
+`23051701` = 2023-05-17. Korpusda ikkala versiya ham bor. Detal kodining bor-yo'qligi BUILDGA emas, dizayner katalogni qanday to'ldirganiga bog'liq: bitta 21052101 buildida `4273_Dilmurod` da birorta `code` yo'q, `kuxniya` da esa 681 `part` elementining 169 tasida bor.
 
 `<project>` atributlari: `version`, `currency`, **`date`** (tayyorlik sanasi, default bugun),
 `description`, `costOperation`, `costMaterial`, `cost`. Real fayllarda bundan tashqari
@@ -464,7 +463,7 @@ Ildiz atributlari: `dx`/`dy`/`dz` (yangi) yoki `l`/`w`/`thick` (eski).
 | `mirHor` / `mirVert` | Gorizontal / vertikal aks ettirish | ✅ geometriyaga qo'llanadi (`xnc.apply_mirror`) |
 | `bySizeDetail` | Koordinatalar detal o'lchamiga nisbatan | korpusda 505/505 `true`; dastur `dx/dy` si detal o'lchamiga 501 holatda aynan teng |
 | `count` | Detallar soni (detalga bog'langan bo'lsa detal sonidan olinadi) | detal sonini `<part>` dan olamiz |
-| `code` | Dastur kodi | ✅ SCX nomi va identifikatsiya |
+| `code` | Dastur kodi | ✅ tomon zaxirasi (`_2` suffiksi) va `OrderFile.meta.codes` identifikatsiyasi; SCX FAYL NOMI esa nusxa QR'idan (`f"{qr}.scx"`, `panel_id=qr` — `scx.py:244-245`) |
 | `price*` / `count*` / `cost*` | Teshik/freza/rez narxi va soni | ❌ narx hisobi yo'q |
 
 `side` ni o'qish shart edi, chunki kod suffiksi (`_2`) ishonchsiz:

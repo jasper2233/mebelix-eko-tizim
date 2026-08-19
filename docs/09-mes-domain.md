@@ -562,7 +562,7 @@ direktor ham ko'radi.
     (tugaganlari yashil, pastda), o'ngda "Jarayonda" (2+ tomonli, boshlangan, tugamagan).
     Har skan darhol yoziladi (tomon = skan, `per_instance`); bir QR uchun 5 s to'siq;
     picker'da skan qilinsa proyekt o'zi ochiladi (`/qr/{qr}/order`); begona detalga aniq xato.
-  · **OVAL** — o'sha KromkaView `oval` rejimda: bir panel, har detal BITTA skan.
+  · **OVAL** — o'sha KromkaView `oval` rejimda: bir panel, tomonlar ustuni yo'q va `done/sides` o'rniga faqat tugagan/tugamagan belgisi. SKAN SONI KROMKA bilan bir xil qoidada: marshrutda OVAL BIRINCHI kelganda `per_instance` = qirralar soni, takror kelganda 1 (`orders.py:764-766`) — `oval` bayrog'i hisoblagichni yashiradi, skan sonini o'zgartirmaydi.
   · **PRISADKA** (`Terminal/PrisadkaView`) — detallar + SCX fayllar; "Hammasini yuklab olish"
     File System Access API bilan BIR MARTA tanlangan papkaga (IndexedDB'da saqlanadi,
     `lib/scxDir.ts`) proyekt nomli subpapka ochib yozadi; har skandagi avto-SCX ham o'sha yerga.
