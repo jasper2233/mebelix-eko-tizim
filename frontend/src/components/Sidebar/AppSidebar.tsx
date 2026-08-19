@@ -11,7 +11,6 @@ import {
   ScrollText,
   Tv,
   UserRound,
-  Users,
 } from "lucide-react"
 import type { UserRead } from "@/client"
 import {
@@ -28,7 +27,6 @@ import {
   isProductionStaff,
   isStockOnly,
   isStockStaff,
-  isSuperuser,
   TERMINAL_STATUSES,
 } from "@/lib/mes"
 import { getOrderStatusCountsQueryOptions } from "@/queries/mes"
@@ -82,9 +80,6 @@ export const NAV_ITEMS: (Item & {
     path: "/tablo",
     show: (u) => !isStockOnly(u),
   },
-  // Foydalanuvchilar ro'yxati barcha telefon raqamlarni ochadi — backend uni
-  // faqat superuser'ga beradi, shuning uchun menyu ham shu shartda
-  { icon: Users, title: "Foydalanuvchilar", path: "/admin", show: isSuperuser },
   {
     icon: Printer,
     title: "Printer agentlar",

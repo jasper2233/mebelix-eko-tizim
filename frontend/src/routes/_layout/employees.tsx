@@ -1,4 +1,14 @@
-import { zodResolver } from "@hookform/resolvers/zod"
+// Odamlar — hodimlar va kirish hisoblari BITTA ro'yxatda. Har odam bitta qator:
+// tsex ishchisi (beyjik), ofis xodimi (parol), ikkalasi, yoki hisobsiz xodim.
+//
+// Nega bitta ro'yxat: ilgari bir odam ikki sahifada ikki yozuv edi (Hodimlar va
+// Foydalanuvchilar) va ular o'rtasida hech qanday ko'rinadigan bog'lam yo'q edi —
+// texnolog ham hodim, ham hisob sifatida ikki marta yaratilardi.
+//
+// Qurilma va post hisoblari (TERMINAL, TABLO va 9 operator roli) ODAM EMAS:
+// TERMINAL — monoblokning o'zi, post rollari esa beyjik bilan ochilgan smena
+// qaysi hisob nomidan yozilishini hal qiladi. Ular pastdagi alohida bo'limda.
+
 import {
   keepPreviousData,
   useMutation,
@@ -6,13 +16,18 @@ import {
   useQueryClient,
 } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { IdCard, Pencil, Plus, Printer, Trash2 } from "lucide-react"
-import { useState } from "react"
-import { type Control, useForm } from "react-hook-form"
+import { IdCard, KeyRound, Pencil, Plus, Printer, Trash2 } from "lucide-react"
+import { useMemo, useState } from "react"
 import { toast } from "sonner"
-import { z } from "zod"
 
-import { type EmployeeRead, EmployeesService } from "@/client"
+import {
+  type EmployeeRead,
+  EmployeesService,
+  type UserRead,
+  UsersService,
+} from "@/client"
+import { AddUser } from "@/components/Admin/AddUser"
+import { UserActionsMenu } from "@/components/Admin/UserActionsMenu"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
@@ -20,9 +35,13 @@ import { PostBadge } from "@/components/Common/PostBadge"
 import { QueryError } from "@/components/Common/QueryError"
 import { RowAction } from "@/components/Common/RowAction"
 import { SearchInput } from "@/components/Common/SearchInput"
+import {
+  type Access,
+  type Person,
+  PersonDialog,
+} from "@/components/People/PersonDialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -30,20 +49,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Switch } from "@/components/ui/switch"
 import {
   Table,
   TableBody,
@@ -57,166 +65,140 @@ import { useDebounced } from "@/hooks/useDebounced"
 import { requireAccess } from "@/lib/guards"
 import {
   EMPLOYEE_STATUS_LABELS,
-  isAdmin,
   isManagement,
-  POST_COLORS,
+  isSuperuser,
+  MACHINE_BOUND_ROLES,
+  OPERATOR_ROLES,
+  ROLE_LABELS,
 } from "@/lib/mes"
-import { formatUzPhone, optionalFormattedPhoneSchema } from "@/lib/validation"
 import {
   crudCallbacks,
   getEmployeesQueryOptions,
   getPostsQueryOptions,
 } from "@/queries/mes"
+import { getUsersQueryOptions } from "@/queries/users"
 import { detailMessage } from "@/utils"
 
 export const Route = createFileRoute("/_layout/employees")({
-  component: EmployeesPage,
-  // Sidebar ko'rinishi bilan bir xil rollar to'plami (lib/mes)
+  component: PeoplePage,
   beforeLoad: requireAccess(isManagement),
   head: () => ({ meta: [{ title: "Hodimlar | MebeliX" }] }),
 })
 
-const formSchema = z.object({
-  full_name: z.string().trim().min(2, "Kamida 2 belgi").max(100),
-  phone: optionalFormattedPhoneSchema,
-  position: z.string().max(50).optional(),
-  assigned_post_ids: z.array(z.number()).min(1, "Kamida bitta post tanlang"),
-})
+const DEVICE_ROLES: string[] = [...MACHINE_BOUND_ROLES, ...OPERATOR_ROLES]
+const isDeviceAccount = (u: UserRead) => DEVICE_ROLES.includes(u.role)
 
-/** Qo'shish va tahrirlash dialoglaridagi bir xil maydonlar. Ikkalasi ham bitta
- * formSchema'ga tayanadi: maydon qo'shilsa u avtomat ikkala dialogda chiqadi. */
-function EmployeeFields({
-  control,
-}: {
-  control: Control<z.infer<typeof formSchema>>
-}) {
-  // TanStack bir xil kalit bo'yicha dedupe qiladi — dialog o'zi so'rasa ham qo'shimcha so'rov ketmaydi
-  const { data: posts } = useQuery(getPostsQueryOptions())
-
-  return (
-    <>
-      <FormField
-        control={control}
-        name="full_name"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>F.I.Sh</FormLabel>
-            <FormControl>
-              <Input {...field} autoFocus />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <div className="grid grid-cols-2 gap-3">
-        <FormField
-          control={control}
-          name="phone"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Telefon</FormLabel>
-              <FormControl>
-                <Input
-                  {...field}
-                  type="tel"
-                  inputMode="numeric"
-                  placeholder="+998 90 123-45-67"
-                  onChange={(e) =>
-                    field.onChange(formatUzPhone(e.target.value, field.value))
-                  }
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={control}
-          name="position"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Lavozim</FormLabel>
-              <FormControl>
-                <Input {...field} placeholder="ISHCHI XODIM" />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-      </div>
-      <FormField
-        control={control}
-        name="assigned_post_ids"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Qaysi postlarda ishlaydi</FormLabel>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {(posts ?? []).map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-center gap-2 rounded-lg border p-2 text-sm"
-                >
-                  <Checkbox
-                    checked={field.value.includes(p.id)}
-                    aria-label={p.code}
-                    onCheckedChange={(v) =>
-                      field.onChange(
-                        v === true
-                          ? [...field.value, p.id]
-                          : field.value.filter((x) => x !== p.id),
-                      )
-                    }
-                  />
-                  <span
-                    style={{ color: POST_COLORS[p.code] }}
-                    className="font-semibold"
-                  >
-                    {p.code}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-    </>
-  )
+const ACCESS_LABEL: Record<Access, string> = {
+  badge: "Beyjik",
+  password: "Parol",
+  both: "Beyjik + parol",
+  none: "Yo'q",
 }
 
-function EmployeesPage() {
+function PeoplePage() {
   const [search, setSearch] = useState("")
   const [badgeFor, setBadgeFor] = useState<EmployeeRead | null>(null)
-  const [editFor, setEditFor] = useState<EmployeeRead | null>(null)
-  const [deleteFor, setDeleteFor] = useState<EmployeeRead | null>(null)
+  const [editFor, setEditFor] = useState<Person | null>(null)
+  const [adding, setAdding] = useState(false)
+  const [deleteFor, setDeleteFor] = useState<Person | null>(null)
   const debounced = useDebounced(search.trim())
-  const { data, isLoading, isError, refetch } = useQuery({
+
+  const employees = useQuery({
     ...getEmployeesQueryOptions(debounced),
     placeholderData: keepPreviousData,
   })
+  const users = useQuery(getUsersQueryOptions())
   const { data: posts } = useQuery(getPostsQueryOptions())
   const { currentUser } = useCurrentUser()
-  const admin = isAdmin(currentUser)
+  const canManageAccounts = isSuperuser(currentUser)
   const postById = new Map((posts ?? []).map((p) => [p.id, p]))
+
+  const { people, devices } = useMemo(() => {
+    const userRows = users.data?.data ?? []
+    const byId = new Map(userRows.map((u) => [Number(u.id), u]))
+    const linked = new Set<number>()
+    const result: Person[] = []
+
+    for (const e of employees.data?.data ?? []) {
+      const user = e.user_id != null ? (byId.get(e.user_id) ?? null) : null
+      // Eski avtomat "mirror" yozuvlari post hisobiga bog'langan — ular odam emas,
+      // faqat skan tarixi uchun bazada turadi (`c7e2b4f81d39`)
+      if (user && isDeviceAccount(user)) continue
+      if (user) linked.add(Number(user.id))
+      const hasPosts = e.assigned_post_ids.length > 0
+      result.push({
+        employee: e,
+        user,
+        name: e.full_name,
+        position: e.position,
+        phone: e.phone,
+        posts: e.assigned_post_ids,
+        access: user
+          ? hasPosts
+            ? "both"
+            : "password"
+          : hasPosts
+            ? "badge"
+            : "none",
+      })
+    }
+
+    // Hodim yozuvi yo'q hisoblar — ofis xodimlari
+    const q = debounced.toLowerCase()
+    for (const u of userRows) {
+      if (isDeviceAccount(u) || linked.has(Number(u.id))) continue
+      if (q && !(u.name ?? u.username).toLowerCase().includes(q)) continue
+      result.push({
+        employee: null,
+        user: u,
+        name: u.name ?? u.username,
+        position: ROLE_LABELS[u.role],
+        phone: u.phone,
+        posts: [],
+        access: "password",
+      })
+    }
+
+    return {
+      people: result.sort((a, b) => a.name.localeCompare(b.name)),
+      devices: userRows.filter(isDeviceAccount),
+    }
+  }, [employees.data, users.data, debounced])
+
+  const isLoading = employees.isLoading || users.isLoading
+  const isError = employees.isError || users.isError
 
   return (
     <div>
       <PageHeader
         title="Hodimlar"
-        description="Tsex ishchilari — beyjik QR orqali aniqlanadi"
-        actions={admin ? <AddEmployee /> : undefined}
+        description="Tsex ishchilari va ofis xodimlari — kirish usuli bilan"
+        actions={
+          canManageAccounts || isManagement(currentUser) ? (
+            <Button onClick={() => setAdding(true)}>
+              <Plus /> Odam qo'shish
+            </Button>
+          ) : undefined
+        }
       />
       <div className="mb-4 flex">
         <SearchInput
           className="ml-auto w-full max-w-xs"
-          placeholder="F.I.Sh yoki beyjik"
+          placeholder="F.I.Sh bo'yicha"
           value={search}
           onChange={setSearch}
         />
       </div>
+
       {isLoading ? (
         <Skeleton className="h-64 w-full" />
       ) : isError ? (
-        <QueryError onRetry={() => refetch()} />
+        <QueryError
+          onRetry={() => {
+            employees.refetch()
+            users.refetch()
+          }}
+        />
       ) : (
         <div className="overflow-x-auto">
           <Table>
@@ -224,269 +206,226 @@ function EmployeesPage() {
               <TableRow>
                 <TableHead>F.I.Sh</TableHead>
                 <TableHead>Lavozim</TableHead>
+                <TableHead>Kirish</TableHead>
                 <TableHead>Postlar</TableHead>
                 <TableHead>Holat</TableHead>
-                <TableHead>Amallar</TableHead>
+                <TableHead className="w-32">Amallar</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data?.data.length ? (
-                data.data.map((e) => (
-                  <TableRow key={e.id}>
-                    <TableCell className="font-medium">{e.full_name}</TableCell>
-                    <TableCell>{e.position ?? "—"}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {e.assigned_post_ids.map((pid) => {
-                          const post = postById.get(pid)
-                          if (!post) return null
-                          return <PostBadge key={pid} code={post.code} />
-                        })}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          e.status === "active" ? "default" : "secondary"
-                        }
-                      >
-                        {EMPLOYEE_STATUS_LABELS[e.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setBadgeFor(e)}
-                        >
-                          <IdCard /> Beyjik
-                        </Button>
-                        {admin && (
-                          <>
-                            <RowAction
-                              icon={Pencil}
-                              title="Tahrirlash"
-                              onClick={() => setEditFor(e)}
-                            />
-                            <RowAction
-                              icon={Trash2}
-                              title="O'chirish"
-                              danger
-                              onClick={() => setDeleteFor(e)}
-                            />
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+              {people.length ? (
+                people.map((p) => {
+                  const active = p.employee
+                    ? p.employee.status === "active"
+                    : (p.user?.is_active ?? true)
+                  return (
+                    <TableRow
+                      key={p.employee ? `e${p.employee.id}` : `u${p.user?.id}`}
+                    >
+                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell>{p.position ?? "—"}</TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1.5 text-sm">
+                          {p.access === "none" ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : (
+                            <>
+                              {p.access !== "password" && (
+                                <IdCard className="size-4 text-muted-foreground" />
+                              )}
+                              {p.access !== "badge" && (
+                                <KeyRound className="size-4 text-muted-foreground" />
+                              )}
+                            </>
+                          )}
+                          {ACCESS_LABEL[p.access]}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {p.posts.map((pid) => {
+                            const post = postById.get(pid)
+                            return post ? (
+                              <PostBadge key={pid} code={post.code} />
+                            ) : null
+                          })}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={active ? "default" : "secondary"}>
+                          {active
+                            ? EMPLOYEE_STATUS_LABELS.active
+                            : EMPLOYEE_STATUS_LABELS.inactive}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          {p.employee && p.access !== "none" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setBadgeFor(p.employee)}
+                            >
+                              <IdCard /> Beyjik
+                            </Button>
+                          )}
+                          <RowAction
+                            icon={Pencil}
+                            title="Tahrirlash"
+                            onClick={() => setEditFor(p)}
+                          />
+                          <RowAction
+                            icon={Trash2}
+                            title="O'chirish"
+                            danger
+                            onClick={() => setDeleteFor(p)}
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               ) : (
-                <EmptyRow colSpan={5}>
+                <EmptyRow colSpan={6}>
                   {debounced
-                    ? `"${debounced}" bo'yicha hodim topilmadi.`
-                    : "Hali hodim yo'q — \"Hodim qo'shish\" bilan qo'shing."}
+                    ? `"${debounced}" bo'yicha odam topilmadi.`
+                    : "Hali odam yo'q — \"Odam qo'shish\" bilan qo'shing."}
                 </EmptyRow>
               )}
             </TableBody>
           </Table>
         </div>
       )}
+
+      {canManageAccounts && devices.length > 0 && (
+        <details className="mt-8 rounded-md border p-4">
+          <summary className="cursor-pointer text-sm font-semibold">
+            Qurilma va post hisoblari ({devices.length})
+          </summary>
+          <p className="mt-2 mb-3 text-sm text-muted-foreground">
+            Bular ODAM EMAS: TERMINAL — monoblokning o'zi, post rollari esa
+            beyjik bilan ochilgan smena qaysi hisob nomidan yozilishini hal
+            qiladi. O'chirilsa o'sha postda beyjik bilan kirish ishlamay qoladi
+            — server ham buni rad etadi.
+          </p>
+          <div className="mb-3">
+            <AddUser />
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Hisob</TableHead>
+                <TableHead>Rol</TableHead>
+                <TableHead>Holat</TableHead>
+                <TableHead className="w-16" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {devices.map((u) => (
+                <TableRow key={u.id}>
+                  <TableCell className="font-medium">
+                    {u.name ?? u.username}
+                  </TableCell>
+                  <TableCell>{ROLE_LABELS[u.role]}</TableCell>
+                  <TableCell>
+                    <Badge variant={u.is_active ? "default" : "secondary"}>
+                      {u.is_active ? "FAOL" : "NOFAOL"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <UserActionsMenu user={u} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </details>
+      )}
+
       {/* `key` SHART: dialog ichidagi "yangi beyjik" mutatsiyasi holati komponent
-          bilan yashaydi. Kalitsiz u doim o'rnatilgan turardi va bir hodimga
-          beyjik qayta berilgach, KEYINGI hodimning dialogida ham o'sha eski
-          javob ko'rsatilardi (`regen.data ?? employee`) — ya'ni boshqa odamning
-          ismi va QR'i chop etilardi. */}
+          bilan yashaydi. Kalitsiz u bir hodimga beyjik qayta berilgach, KEYINGI
+          hodimning dialogida ham o'sha eski javobni ko'rsatardi. */}
       {badgeFor && (
         <BadgeDialog
           key={badgeFor.id}
           employee={badgeFor}
           onClose={() => setBadgeFor(null)}
-          isAdmin={admin}
+          isAdmin={canManageAccounts}
         />
       )}
-      {editFor && (
-        <EditEmployee employee={editFor} onClose={() => setEditFor(null)} />
+      {(adding || editFor) && (
+        <PersonDialog
+          person={editFor}
+          posts={posts ?? []}
+          canManageAccounts={canManageAccounts}
+          onClose={() => {
+            setAdding(false)
+            setEditFor(null)
+          }}
+        />
       )}
-      <DeleteEmployee employee={deleteFor} onClose={() => setDeleteFor(null)} />
+      <DeletePerson
+        person={deleteFor}
+        canManageAccounts={canManageAccounts}
+        onClose={() => setDeleteFor(null)}
+      />
     </div>
   )
 }
 
-function EditEmployee({
-  employee,
+function DeletePerson({
+  person,
+  canManageAccounts,
   onClose,
 }: {
-  employee: EmployeeRead
+  person: Person | null
+  canManageAccounts: boolean
   onClose: () => void
 }) {
   const queryClient = useQueryClient()
-  const cb = crudCallbacks(queryClient, ["employees"], "Hodim yangilandi")
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      full_name: employee.full_name,
-      phone: formatUzPhone(employee.phone ?? ""),
-      position: employee.position ?? "",
-      assigned_post_ids: employee.assigned_post_ids,
-    },
-  })
-  const [active, setActive] = useState(employee.status === "active")
-
   const mutation = useMutation({
-    mutationFn: (data: z.infer<typeof formSchema>) =>
-      EmployeesService.updateEmployee({
-        path: { employee_id: employee.id },
-        body: {
-          full_name: data.full_name,
-          phone: data.phone || null,
-          position: data.position || null,
-          assigned_post_ids: data.assigned_post_ids,
-          status: active ? "active" : "inactive",
-        },
-      }),
-    ...cb,
+    mutationFn: async (p: Person) => {
+      if (p.employee) {
+        await EmployeesService.deleteEmployee({
+          path: { employee_id: p.employee.id },
+        })
+      }
+      // Hisobni faqat superuser o'chira oladi — boshqasida tsex yozuvi ketadi,
+      // hisob esa qoladi va buni xabar ham aytadi
+      if (p.user && canManageAccounts) {
+        await UsersService.deleteUser({ path: { user_id: Number(p.user.id) } })
+      }
+    },
     onSuccess: () => {
-      cb.onSuccess()
+      toast.success("O'chirildi")
       onClose()
     },
-  })
-
-  return (
-    <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Hodimni tahrirlash</DialogTitle>
-          <DialogDescription>{employee.full_name}</DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit((d) => mutation.mutate(d))}
-            className="space-y-3"
-          >
-            <EmployeeFields control={form.control} />
-            <div className="flex items-center justify-between rounded-lg border p-3">
-              <span className="text-sm font-medium">
-                {active ? "AKTIV" : "NOFAOL"} — beyjik{" "}
-                {active ? "ishlaydi" : "bloklangan"}
-              </span>
-              <Switch checked={active} onCheckedChange={setActive} />
-            </div>
-            <DialogFooter className="pt-2">
-              <LoadingButton type="submit" loading={mutation.isPending}>
-                Saqlash
-              </LoadingButton>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function DeleteEmployee({
-  employee,
-  onClose,
-}: {
-  employee: EmployeeRead | null
-  onClose: () => void
-}) {
-  const queryClient = useQueryClient()
-  const cb = crudCallbacks(queryClient, ["employees"], "Hodim o'chirildi")
-  const mutation = useMutation({
-    mutationFn: (id: number) =>
-      EmployeesService.deleteEmployee({ path: { employee_id: id } }),
-    ...cb,
-    onSuccess: () => {
-      cb.onSuccess()
-      onClose()
+    onError: (e) => toast.error(detailMessage(e)),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] })
+      queryClient.invalidateQueries({ queryKey: ["users"] })
     },
   })
+
+  const what = person?.user
+    ? canManageAccounts
+      ? "tsex yozuvi ham, kirish hisobi ham o'chiriladi"
+      : "faqat tsex yozuvi o'chiriladi — kirish hisobini superuser o'chiradi"
+    : "ro'yxatdan o'chiriladi, beyjigi ishlamay qoladi"
+
   return (
     <ConfirmDialog
-      open={!!employee}
+      open={!!person}
       onOpenChange={(v) => !v && onClose()}
-      title="Hodimni o'chirish"
+      title="Odamni o'chirish"
       description={
-        employee
-          ? `${employee.full_name} ro'yxatdan o'chiriladi, beyjigi ishlamay qoladi. Scan tarixi saqlanadi.`
-          : ""
+        person ? `${person.name}: ${what}. Skan tarixi saqlanadi.` : ""
       }
       confirmText="O'chirish"
       destructive
       loading={mutation.isPending}
-      onConfirm={() => employee && mutation.mutate(employee.id)}
+      onConfirm={() => person && mutation.mutate(person)}
     />
-  )
-}
-
-function AddEmployee() {
-  const [open, setOpen] = useState(false)
-  const queryClient = useQueryClient()
-  const cb = crudCallbacks(
-    queryClient,
-    ["employees"],
-    "Hodim qo'shildi — beyjik QR tayyor",
-  )
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      full_name: "",
-      phone: "",
-      position: "",
-      assigned_post_ids: [],
-    },
-  })
-
-  const mutation = useMutation({
-    mutationFn: (data: z.infer<typeof formSchema>) =>
-      EmployeesService.createEmployee({
-        body: {
-          full_name: data.full_name,
-          phone: data.phone || null,
-          position: data.position || null,
-          assigned_post_ids: data.assigned_post_ids,
-        },
-      }),
-    ...cb,
-    onSuccess: () => {
-      cb.onSuccess()
-      form.reset()
-      setOpen(false)
-    },
-  })
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus /> Hodim qo'shish
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Yangi hodim</DialogTitle>
-          <DialogDescription>
-            Beyjik ID tizim tomonidan beriladi (UUID)
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit((d) => mutation.mutate(d))}
-            className="space-y-3"
-          >
-            <EmployeeFields control={form.control} />
-            <DialogFooter className="pt-2">
-              <LoadingButton type="submit" loading={mutation.isPending}>
-                Saqlash
-              </LoadingButton>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
   )
 }
 
@@ -499,54 +438,48 @@ function BadgeDialog({
   onClose: () => void
   isAdmin: boolean
 }) {
-  const queryClient = useQueryClient()
-  const cb = crudCallbacks(
-    queryClient,
-    ["employees"],
-    "Yangi beyjik tayyor — chop etib bering",
-  )
   const [confirmRegen, setConfirmRegen] = useState(false)
+  const queryClient = useQueryClient()
   const print = useMutation({
     mutationFn: (id: number) =>
       EmployeesService.printEmployeeBadge({ path: { employee_id: id } }),
-    onSuccess: (r) => toast.success(r.data.message),
+    onSuccess: () => toast.success("Beyjik chop etishga yuborildi"),
     onError: (e) => toast.error(detailMessage(e)),
   })
+  const regenCb = crudCallbacks(
+    queryClient,
+    ["employees"],
+    "Yangi beyjik berildi",
+  )
   const regen = useMutation({
     mutationFn: (id: number) =>
       EmployeesService.regenerateBadge({ path: { employee_id: id } }),
-    ...cb,
+    ...regenCb,
     onSuccess: () => {
+      regenCb.onSuccess()
       setConfirmRegen(false)
-      cb.onSuccess()
     },
   })
 
   if (!employee) return null
-  // Yangi beyjik yaratilgach dialog YANGI QR ko'rsatishi shart — prop'dagi
-  // eski snapshot bekor qilingan beyjikni chop ettirib yuborardi
-  const emp = regen.data?.data ?? employee
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-xs text-center">
         <DialogHeader>
-          {/* Lavozim ISMDAN OLDIN, kichik shriftda: beyjikda avval "kim
-              lavozimda", keyin "kim" o'qiladi. Ikkalasi bitta blok — orasida
-              bo'shliq yo'q, chunki ular bitta ma'noni beradi. */}
-          {emp.position && (
+          {employee.position && (
             <div className="text-2xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              {emp.position}
+              {employee.position}
             </div>
           )}
-          <DialogTitle>{emp.full_name}</DialogTitle>
+          <DialogTitle>{employee.full_name}</DialogTitle>
           <DialogDescription>
             Beyjikni chop etib hodimga bering
           </DialogDescription>
         </DialogHeader>
         {/* QR EKRANDA CHIZILMAYDI: beyjik — tsexdagi yagona kirish kaliti, ekrandagi
             QR ni suratga olgan odam boshqa hodim nomidan smena ocha olardi. Server
-            yorliqni to'g'ridan-to'g'ri printerga yuboradi (`POST /employees/{id}/print`),
-            shuning uchun `badge_id` javobda ham qaytarilmaydi. */}
+            yorliqni to'g'ridan-to'g'ri printerga yuboradi, shuning uchun `badge_id`
+            javobda ham qaytarilmaydi. */}
         <div className="mx-auto rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
           Beyjik raqami ekranda ko'rsatilmaydi.
           <br />
@@ -556,7 +489,7 @@ function BadgeDialog({
           <LoadingButton
             variant="outline"
             loading={print.isPending}
-            onClick={() => print.mutate(emp.id)}
+            onClick={() => print.mutate(employee.id)}
           >
             <Printer /> Chop etish
           </LoadingButton>
