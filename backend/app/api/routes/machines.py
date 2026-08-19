@@ -74,6 +74,19 @@ async def _blockers(db: SessionDep, machine_id: int) -> list[str]:
     return blockers
 
 
+async def _check_name(db: SessionDep, name: str, machine_id: int | None = None) -> None:
+    """Nom takrorlanmasin. Indeks (`ix_machine_name`) baribir rad etardi, lekin
+    IntegrityError xabari admin uchun tushunarsiz bo'lardi."""
+    query = select(Machine.id).where(
+        func.lower(Machine.name) == name.strip().lower(),
+        Machine.is_deleted == False,  # noqa: E712
+    )
+    if machine_id is not None:
+        query = query.where(Machine.id != machine_id)
+    if (await db.execute(query)).scalar_one_or_none() is not None:
+        raise HTTPException(status_code=409, detail=f'"{name}" nomli ish markazi allaqachon bor.')
+
+
 @router.get("/", response_model=list[MachineRead], operation_id="read_machines")
 async def read_machines(db: SessionDep, _: CurrentUser) -> list[Machine]:
     """All machines — small fixed set, no pagination. Terminals/TABLO need this for context too."""
@@ -85,6 +98,7 @@ async def read_machines(db: SessionDep, _: CurrentUser) -> list[Machine]:
 async def create_machine(db: SessionDep, current_user: AdminUser, body: MachineCreate, request: Request) -> Machine:
     if await crud_posts.get(db, id=body.post_id) is None:
         raise NotFoundException("Post topilmadi.")
+    await _check_name(db, body.name)
     machine = Machine(**body.model_dump())
     db.add(machine)
     await db.flush()
@@ -114,6 +128,8 @@ async def update_machine(
 ) -> Machine:
     machine = await crud_machines.get_or_404(db, "Ish markazi topilmadi.", id=machine_id)
     update_data = body.model_dump(exclude_unset=True)
+    if update_data.get("name"):
+        await _check_name(db, update_data["name"], machine_id=machine.id)
     if "post_id" in update_data and update_data["post_id"] != machine.post_id:
         if await crud_posts.get(db, id=update_data["post_id"]) is None:
             raise NotFoundException("Post topilmadi.")

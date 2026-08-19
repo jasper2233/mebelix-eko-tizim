@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Index, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import BaseModel
@@ -17,6 +17,12 @@ class Machine(BaseModel):
     """
 
     __tablename__ = "machine"
+
+    __table_args__ = (
+        # Nom operatorga MONOBLOKDA yolg'iz ko'rinadi (post yonida emas) — ikkita
+        # "01 ARRA" bo'lsa u qaysi stanokda turganini ajrata olmaydi (`d8f31a05c7e2`)
+        Index("ix_machine_name", "name", unique=True, postgresql_where=text("NOT is_deleted")),
+    )
 
     organization_id: Mapped[int] = mapped_column(ForeignKey("organization.id"), default=1, kw_only=True)
     post_id: Mapped[int] = mapped_column(ForeignKey("post.id"), index=True, kw_only=True)

@@ -163,6 +163,7 @@ function WorkCentersPage() {
         <MachineDialog
           machine={editFor}
           posts={posts ?? []}
+          machines={machines ?? []}
           onClose={() => {
             setAdding(false)
             setEditFor(null)
@@ -185,10 +186,12 @@ type FormState = {
 function MachineDialog({
   machine,
   posts,
+  machines,
   onClose,
 }: {
   machine: MachineRead | null
   posts: PostRead[]
+  machines: MachineRead[]
   onClose: () => void
 }) {
   const editing = machine !== null
@@ -201,6 +204,19 @@ function MachineDialog({
   })
   const set = (key: keyof FormState, value: string) =>
     setForm((f) => ({ ...f, [key]: value }))
+
+  /** Post tanlanganda nom TAKLIF qilinadi: "Arra-1", "Arra-2"... Nom qo'lda
+   * yoziladi — u monoblokda operatorga YOLG'IZ ko'rinadi, ya'ni stanokning
+   * ustidagi haqiqiy yozuvga mos kelishi kerak ("Altendorf F45" ham bo'lishi
+   * mumkin). Taklif faqat bo'sh maydonga qo'yiladi, yozilganini bosmaydi. */
+  const pickPost = (postId: string) => {
+    const post = posts.find((p) => String(p.id) === postId)
+    setForm((f) => {
+      if (!post || f.name.trim()) return { ...f, post_id: postId }
+      const used = machines.filter((m) => m.post_id === post.id).length
+      return { ...f, post_id: postId, name: `${post.name}-${used + 1}` }
+    })
+  }
 
   const queryClient = useQueryClient()
   const cb = crudCallbacks(
@@ -265,7 +281,7 @@ function MachineDialog({
             <Field label="Post">
               <SelectField
                 value={form.post_id}
-                onChange={(v) => set("post_id", v)}
+                onChange={pickPost}
                 placeholder="Postni tanlang"
                 options={[...posts]
                   .sort((a, b) => a.order_index - b.order_index)
