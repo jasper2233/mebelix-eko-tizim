@@ -242,17 +242,15 @@ export function PersonDialog({
             <SelectField
               value={form.position}
               onChange={pickPosition}
+              // Ro'yxatda FAQAT lavozim nomi turadi. Ilgari yonida post kodi
+              // ko'rsatilardi ("Arrachi  ARRA") — u ikki marta bir narsani
+              // aytardi va lavozim ro'yxatiga post atamasini olib kirardi.
+              // Tanlov OQIBATI baribir darhol ko'rinadi: tsex lavozimida
+              // pastda postlar belgilanadi, ofisda parol bloki ochiladi,
+              // "Boshqa" da lavozim nomi maydoni chiqadi.
               options={[
-                ...options.map((x) => ({
-                  value: x.label,
-                  label: x.label,
-                  hint: x.post,
-                })),
-                {
-                  value: OTHER_POSITION,
-                  label: OTHER_POSITION,
-                  hint: "tizimga kirmaydi",
-                },
+                ...options.map((x) => ({ value: x.label, label: x.label })),
+                { value: OTHER_POSITION, label: OTHER_POSITION },
               ]}
             />
           </Field>
