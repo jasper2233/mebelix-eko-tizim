@@ -5,19 +5,22 @@ uning bo'lim raqamlari. Barcha fazalar implementatsiya qilingan — alohida `TOD
 
 ## 1. Data model (`app/models/`)
 
-19 jadval, hammasi `BaseModel` (ID + timestamps + soft-delete):
+22 jadval, hammasi `BaseModel` (ID + timestamps + soft-delete):
 
 | Jadval | Mazmun | TT |
 |---|---|---|
 | `organization` | Tenant (bitta: Mebelix), sxema multi-tenant tayyor | 4.1 |
-| `post` | 9 bosqich: ARRA→KROMKA→OVAL→PRISADKA→ROVER→STOLYARKA→BO'YOQ→**QADOQLASH**→**TMO** (unit, order_index, flaglar), seed `app/commands/seed_defaults.py` — idempotent, order_index'ni mavjud bazalarda ham sinxronlaydi. `order_index` 5 bo'sh: eski PAZ posti olib tashlangan (paz ham frezer stanogida, ya'ni ROVER da kesiladi), qayta raqamlash mavjud bazalarda bekorga siljish beradi. OVAL fayldan avto-aniqlanmaydi: texnolog matritsada belgilaydi (route `per_instance=1`). QADOQLASH (`f1b6d0c73a25`, unit `m2` — ish haqi kvadratura bo'yicha) anketadagi `packaging` bayrog'i bo'yicha qo'shiladi; TMO (`a3f8d61c9b04`, `f2a08c47b6d1` da nomlandi, unit `piece`) esa HAR marshrutning ENG OXIRGI qadami | 4.4 |
-| `machine` | Ish markazi (post FK, IP, capacity, holat) | 4.3 |
+| `post` | 9 bosqich: ARRA→KROMKA→OVAL→PRISADKA→ROVER→STOLYARKA→BO'YOQ→**QADOQLASH**→**TMO** (unit, order_index, flaglar), seed `app/commands/seed_defaults.py` — idempotent, order_index'ni mavjud bazalarda ham sinxronlaydi. `order_index` 5 bo'sh: eski PAZ posti olib tashlangan (paz ham frezer stanogida, ya'ni ROVER da kesiladi), qayta raqamlash mavjud bazalarda bekorga siljish beradi. OVAL fayldan avto-aniqlanmaydi va detallar matritsasida ustuni ham YO'Q (`STANDARD_MATRIX_POSTS` faqat ARRA/KROMKA/PRISADKA): texnolog uni "Nostandart detallar" tabida jarayon kodi 5 bilan marshrutga qo'shadi; marshrutda BIRINCHI kelganda `per_instance` = qirralar soni, takror kelganda 1 (§2). QADOQLASH (`f1b6d0c73a25`, unit `m2` — ish haqi kvadratura bo'yicha) anketadagi `packaging` bayrog'i bo'yicha qo'shiladi; TMO (`a3f8d61c9b04`, `f2a08c47b6d1` da nomlandi, unit `piece`) esa HAR marshrutning ENG OXIRGI qadami | 4.4 |
+| `machine` | Ish markazi (post FK, capacity + `capacity_unit`, holat `MachineStatus`); `ip_address` ustuni olib tashlangan — migratsiya `b1f27ce03d94` | 4.3 |
 | `employee` | Beyjik egasi (badge_id UUID partial-unique, assigned_post_ids JSONB) | 4.2 |
 | `client` | Mijoz (FIO, telefonlar, manzil, izoh; `client_type`/`inn` o'lik ustunlar sifatida olib tashlangan — migratsiya `c7f2d84a91b3`) | 4.6 |
-| `material` | Katalog — .project fayldan avtomatik to'ladi | 4.5 |
+| `stock_item` | Materiallar ombori katalogi: kod `K-GG-MMM-VV` (partial-unique `ix_stock_item_code`), `catalog`/`group_code`, `qty` + `min_qty`, `purchase_usd`/`purchase_uzs`/`sale_uzs`. Migratsiya `b4d1e79c53a8`. GibLab material katalogi (`material` jadvali) esa `d2b71f4c86e9` da olib tashlangan — §1.1 | — |
+| `stock_move` | Ombordagi HAR o'zgarish: `qty` ISHORALI (kirim +, chiqim −), `kind`, `order_id`/`sale_id`; `stock_item.qty` shu qatorlar yig'indisining keshi | — |
+| `sale` | Ombordan sotuv hujjati: `total_uzs`/`paid_uzs` (to'lovlar keshi), `status`, ixtiyoriy `client_id`. Satrlari alohida jadval emas — `StockMove.sale_id` orqali | — |
+| `payment` | Sotuvga tushgan to'lov (`amount_uzs`, `method`) — bo'lib to'lash uchun bir sotuvda bir nechta. `sale`/`payment`/`stock_move` migratsiyasi `c9a3e15d84b6` | — |
 | `order` | B-YYYY-NNN, status DRAFT→…→DELIVERED/CANCELLED; `amount` + `advance_payment` Numeric(14,2) (boshlang'ich to'lov, migratsiya `7d2c9f5e1b3a`); `cutmap` JSONB (5.7.5 modeli), `machine_assignments`, `material_usage`; `survey` JSONB — mijoz anketasi + o'lchov varag'i (migratsiya `a91c7d34f6e2`, §6.2) | 6 |
 | `product`/`part`/`part_instance` | Fayl tarkibi; instance QR = `productCode_partCode` (yagona nusxa) / `productCode_partCode_n` (takror), kesish xaritasi katakchasiga bog'langan (pattern_no, cell_index); `part.is_custom` — nostandart detal bayrog'i (marshrutini texnolog qo'lda chizadi, migratsiya `e7c4b208af13`); `part.assembly_parent_id` — yig'ma buyum: mayda detal qaysi ASOSIY detalga yopishtiriladi (`c9d4e2f81a70`, §3.1) | 5.8 |
-| `part_route` | Marshrutning BITTA QADAMI: `seq` (tartib, 1 dan) + post + `process_code` (1..14 — aynan qaysi amal) + per_instance (KROMKA tomonlar), total_required/done — QOLDIQ shu yerda. Yagonalik `(part_id, seq)` bo'yicha (`ix_part_route_part_seq`), post bo'yicha EMAS: bitta post marshrutda bir necha marta uchrashi mumkin (kromka → prisadka → yana kromka). Migratsiya `d5a1c93b70e2` | 5.4 |
+| `part_route` | Marshrutning BITTA QADAMI: `seq` (tartib, 1 dan) + post + `process_code` (1..16 — aynan qaysi amal: 1..14 texnolog tanlaydigan amallar, 15/16 — tizim qo'shadigan dum, `TAIL_CODES`) + per_instance (KROMKA tomonlar), total_required/done — QOLDIQ shu yerda. Yagonalik `(part_id, seq)` bo'yicha (`ix_part_route_part_seq`), post bo'yicha EMAS: bitta post marshrutda bir necha marta uchrashi mumkin (kromka → prisadka → yana kromka). Migratsiya `d5a1c93b70e2` | 5.4 |
 | `scan` | Muvaffaqiyatli ish birligi; `client_event_id` UNIQUE (idempotency), bekor qilish belgisi; `parent_scan_id` — yig'ma buyumda asosiy detal skani yozgan hosila qatorlar (birga bekor bo'ladi, `c9d4e2f81a70`) | 8.4 |
 | `pachka`/`pachka_item` | Qadoq va uning tarkibi (`7e2e0ae9f7f3`): `code` = chekdagi QR (`PK-{buyurtma}-{NN}`, PARTIAL UNIQUE), `status` open→closed→shipped, `closed_at`/`shipped_at`. Bitta nusxa faqat bitta qadoqda — `ix_pachka_item_instance` PARTIAL UNIQUE | Upakovka |
 | `work_session` | Smena (beyjik → sessiya) | 8.2 |
@@ -25,16 +28,22 @@ uning bo'lim raqamlari. Barcha fazalar implementatsiya qilingan — alohida `TOD
 | `audit_log` | Kim-qachon-nima (`crud/audit.py: log_action`, tranzaksiya ichida) | 10.11 |
 | `bridge_agent` | Printerli kompyuterdagi chop etish agenti: `name`, `token_hash` (sha256, unique), bir martalik `pair_code` + `pair_expires_at` (15 daqiqa), `last_seen_at` (panelda "Ulandi"/"Uzilgan"); migratsiya `d5e81a24c3b7`. Qo'shimcha: `machine_id` — skan-forvard bog'lash (`f4b8c2a91e55`), `version` — agent exe versiyasi, WS handshake `X-Agent-Version` dan (`a7c3e9d12f04`), `can_print` — False bo'lsa printersiz stansiya chek navbatidan job olmaydi (`d4f7a8c25e91`) | 2.2.2 |
 
-`user` jadvaliga qo'shildi: `role` (`UserRole`, 15 a'zo) + `machine_id`. Rollar ikki guruh
-(`app/models/enums.py`):
+`user` jadvaliga qo'shildi: `role` (`UserRole`, 16 a'zo) + `machine_id`. Rollar ikki guruh
+va bitta alohida rol (`app/models/enums.py`):
 
 - staff/qurilma: admin, director, manager, texnolog, terminal, tablo — terminal/TABLO qurilma
   akkauntlari ish markaziga biriktiriladi (TT 8.1 variant B);
 - post-operator: arrachi, kromkachi, ovalchi, prisadkachi, roverchi, stolyar, boyoqchi,
   **upakovkachi**, **omborchi** — `POST_ROLES` mapping orqali postga bog'lanadi (ARRACHI→ARRA …
-  OMBORCHI→TMO); o'z akkaunti bilan kiradi, **ish markazi biriktirish ham, beyjik ham shart emas**
-  (login = smena, §3 ga qarang). `omborchi` rol KODI o'zgarmaydi (odamning kasbi), ekranda
-  esa "TMO omborchisi" — materiallar ombori omborchisidan farqi ko'rinib tursin.
+  OMBORCHI→TMO); **parol bilan kirish YOPIQ** — `login_for_access_token` `POST_ROLES` dagi rolni
+  401 "Tsexda beyjik bilan kiriladi." bilan rad etadi, ya'ni tsexga yagona yo'l `/login/badge`
+  (beyjik skani), smena esa terminalda ochiladi (§3, §3.0.1). Ish markazi biriktirish shart
+  emas: `resolve_terminal` postdan `scanning.post_machine` bilan topadi.
+  `omborchi` rol KODI o'zgarmaydi (odamning kasbi), ekranda
+  esa "TMO omborchisi" — materiallar ombori omborchisidan farqi ko'rinib tursin;
+- alohida: **material_omborchi** — ikkala guruhga ham kirmaydi, `POST_ROLES` da yo'q:
+  posti ham, terminali ham, beyjigi ham yo'q, oddiy kompyuterda parol bilan `/stock` da ishlaydi
+  (§1.1).
 
 ### 1.1 Atamalar (kelishilgan — kodda ham, ekranda ham shu)
 
@@ -98,7 +107,10 @@ to'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §2.3. Qoidalar:
   (`Orders/CustomRoutes.tsx`): texnolog jarayonlarni bosadi, ular tanlangan tartibda 1, 2, 3…
   raqamlanadi va bitta kodni **takror tanlash mumkin** ([3, 6, 3] — kromkaga qaytish). Yo'l:
   `PATCH /orders/{id}/matrix` → `MatrixPartEdit.route_codes` → `_set_custom_route()` (eski
-  qadamlar yumshoq o'chadi, ro'yxat qaytadan quriladi).
+  QO'LDA chizilgan (`MANUAL`) qadamlar BUTUNLAY o'chadi — `delete(PartRoute)`, fayldan
+  kelgan `AUTO` qadamlar esa yumshoq o'chadi; ro'yxat qaytadan quriladi. Manual qadam yumshoq
+  o'chirilsa avlodlar to'planib, bayroq qaytarilib yana yoqilganda hammasi tiklanib
+  `(part_id, seq)` yagonaligini buzardi).
 - **Marshrut faqat ARRA yoki ROVER'dan boshlanadi** (`_ROUTE_START_POSTS`, frontendda
   `ROUTE_START_POSTS`) — QR cheki aynan shu ikki postda chiqadi, boshqasidan boshlansa detal
   yorliqsiz qolardi.
@@ -170,8 +182,9 @@ Rad etilgan urinish `log_rejected_scan()` orqali audit logga yoziladi
 guruhlash shundan ishlaydi.
 
 Operator-rol oqimi (`resolve_terminal` / `active_session`): arrachi…omborchi uchun post roldan
-aniqlanadi (`POST_ROLES`); ish markazi — `user.machine_id`, bo'lmasa postning birinchi o'chirilmagan
-ish markazi (faqat soft-delete tekshiriladi, holat emas — NOAKTIV/TA'MIRDA ish markazi ham tushishi mumkin).
+aniqlanadi (`POST_ROLES`); ish markazi — `user.machine_id`, bo'lmasa (yoki biriktirilgani o'chirilgan/NOAKTIV
+bo'lsa) `scanning.post_machine` — BITTA joydagi qoida (§3.0.1 3-qadam bilan bir xil): NOAKTIV markaz
+tanlanmaydi, AKTIV esa TA'MIRDA dan ustun turadi (`_STATUS_PREFERENCE`), ikkalasi ham yo'q bo'lsa E009.
 
 **Smena YAGONA joyda ochiladi — terminalda** (`open_badge_session`): beyjik skani yoki ekrandagi
 "Kim ishlayapti?" ro'yxatidan ismni bosish. `active_session` hech qachon smena ochmaydi: brigada
@@ -190,7 +203,8 @@ ya'ni kuzatib turgan odamdan himoya qilmasdi — himoya qilmaydigan narsani himo
 
 Ilgari post rollari uchun "login = smena" shoxi bor edi: `operator_employee` hisobga soxta hodim
 yozuvi yaratib ("Arrachi", "Omborchi" — ismi rol nomi) smenani o'sha nomdan ochardi. Post rollari
-parol bilan kira olmagach (§3.0.2) u shox smena ocholmay qoldi va butunlay olib tashlandi.
+parol bilan kira olmagach (§3.0.1; `login.py: login_for_access_token` — `POST_ROLES` dagi rol uchun
+"Tsexda beyjik bilan kiriladi") u shox smena ocholmay qoldi va butunlay olib tashlandi.
 `c7e2b4f81d39` mavjud mirror yozuvlarni NOFAOL qiladi va ularning ochiq smenalarini yopadi;
 yozuvlar O'CHIRILMAYDI — ularda haqiqiy skan tarixi bor. Natijada **`Hodimlar` = odamlar,
 `Foydalanuvchilar` = loginlar** va ular kesishmaydi.
@@ -374,13 +388,18 @@ biladi.
 chiqaradi va alohida skan qilmaydi (xarita ochiqda terminalning skan maydoni yashirin);
 ROVER'da esa marshrutida ARRA bo'lmagan detal roverning o'zida kesiladi. Ikkala holatda ham
 `POST /terminal/labels/{id}` avto-skan yozadi (`record_scan`,
-`client_event_id="cutprint-{instance_id}"`). Busiz `PartRoute.total_done` hech qachon
+`client_event_id="cutprint-{instance_id}-{unix_ts}"`). Vaqt tamg'asi ataylab: doimiy kalitda chek
+bekor qilinib qayta chiqarilsa idempotentlik tekshiruvi eski (bekor qilingan) qatorni topib
+`duplicate` qaytarardi — yangi skan yozilmas, holat "Bajarilmagan" bo'lib qolardi.
+Avto-skanning o'zi busiz esa `PartRoute.total_done` hech qachon
 o'smasdi: buyurtma COMPLETED bo'lmasdi va qat'iy tartibda KEYINGI postlarning hammasi E004
 bilan rad etilardi. Skan rad etilsa (oldingi bosqich tugamagan) chek baribir chiqadi —
 operator keyin oddiy skan bilan yakunlaydi.
 
 Chekni bekor qilish (`DELETE /terminal/labels/{id}`) shu avto-skanni ham bekor qiladi va
-`total_done` ni qaytaradi; operator qo'lda qilgan skanga tegilmaydi.
+`total_done` ni qaytaradi; operator qo'lda qilgan skanga tegilmaydi. Qidiruv ikkala shaklni ham
+qamraydi — eski doimiy `cutprint-{id}` / `rvprint-{id}` va yangi vaqt tamg'ali `cutprint-{id}-%` /
+`rvprint-{id}-%`.
 
 `bridge-agent/agent.py` — tsexdagi mustaqil servis (websockets + pywin32 + Pillow): outbound WS,
 lokal JSONL navbat `QUEUE_FILE` (printer/internet uzilganda yo'qotmaydi), flusher **event-driven** —
@@ -398,7 +417,8 @@ O'rnatish qadamlari: [07-infra-devops.md](07-infra-devops.md) → "Chop etish in
 
 | Router | Prefix | Kirish |
 |---|---|---|
-| `clients/employees/machines/posts/materials` | CRUD + qidiruv | rol-based (`api/deps.py: require_roles`) |
+| `clients/employees/machines/posts` | CRUD + qidiruv | rol-based (`api/deps.py: require_roles`) |
+| `stock` | `/stock` — katalog CRUD + `/summary` + `/groups` + `/{id}/move` (ishorali harakat) + `/moves` + `/sales` (`/sales/summary`, `/sales/{id}`, `/sales/{id}/payments`) | `StockUser` — material_omborchi + manager/texnolog/director (`api/deps.py`) |
 | `orders` | lifecycle (`/confirm`, `/start`, …) + `/status-counts` + `/upload` + `/matrix` + `/machines` + `/cutmap` + `/files/{id}` + `/files/scx.zip` (barcha SCX bitta arxivda, `StaffReadUser`) + `/scx/regenerate` (SCX qayta generatsiya, `TexnologUser`; `write_and_register_scx` — ingest bilan umumiy helper) + `/survey` + `/survey/photos[/{file_id}]` | o'qish: manager/texnolog/director (`StaffReadUser`); yozish: manager/texnolog (+admin/superuser); anketa yozuvi: `ManagerUser` |
 | `scans` | POST scan, DELETE undo (`/recent` olib tashlangan) | terminal + 9 operator rol |
 | `terminal` | `/context`, `/session`, `/session/end`, `/orders` (loyiha kartalari: done/total post semantikasida — ARRA: chek∪skan, KROMKA: detal bo'yicha), `/orders/{id}/cutmap`, `/orders/{id}/kromka` (KROMKA/OVAL sahifasi), `/orders/{id}/prisadka` (detallar + SCX fayllar), `/orders/{id}/queue` (post navbati NUSXA darajasida — BOYOQ/STOLYARKA; postga bog'liq emas, kontekstdagi postni oladi), `/qr/{qr}/order` (QR→buyurtma), `/labels/{id}` POST (GoDEX navbat) / DELETE (chekni bekor qilish, manager/texnolog ham), `/labels/{id}.png`, `/files/{id}` | terminal + 9 operator rol; ish markazi/post konteksti (`_terminal_ctx` → `TerminalCtx`) har route'ga alohida qo'yiladi — yorliq/fayl route'lariga ataylab emas, ular ish markazisiz ham ishlaydi; javoblar typed (`app/schemas/terminal.py`: `TerminalOrderCard`, `QrOrderRef`, `Kromka*`/`Prisadka*` modellari — `list[dict]` yo'q) |
@@ -406,7 +426,7 @@ O'rnatish qadamlari: [07-infra-devops.md](07-infra-devops.md) → "Chop etish in
 | `tmo` | `/orders/{id}` GET, `/orders/{id}/accept` (QABUL — `PK-...` bo'lsa qadoq ichidagi HAMMA nusxa bitta skanda, aks holda bitta detal), `/orders/{id}/ship` (qadoqni topshirish), `/orders/{id}/deliver` (qadoqsiz buyurtmani butunligicha topshirish) | terminal + operator rollar; faqat TMO postida (`_wh_ctx`) |
 | `tablo` | `/matrix`, `/orders/{id}` | istalgan auth |
 | `reports` | `/productivity`, `/orders`, `/materials` (+`?format=xlsx`), `/dashboard` | manager/director/admin |
-| `audit-logs` | filtrli ro'yxat (11 modul: users/orders/scan/print/sessions/bridge_agents/…; rad etilgan skanlar ham — `module=scan, action=rejected`, §3) | faqat admin (`AdminUser`, TZ 10.11) — butun tizim audit izi; direktor ishlab chiqarish ko'rsatkichlarini `/reports` dan oladi |
+| `audit-logs` | filtrli ro'yxat (13 modul: scan, print, sessions, orders, pachka, tmo, stock, bridge_agents, employees, users, clients, machines, posts — backend `log_action(module=…)` qiymatlari va frontend `logs.tsx: CATEGORIES` bir xil; eski `ombor`/`materials` nomlari `e5b83c04d7a1` da `tmo`/`stock` ga birlashtirilgan; rad etilgan skanlar ham — `module=scan, action=rejected`, §3) | faqat admin (`AdminUser`, TZ 10.11) — butun tizim audit izi; direktor ishlab chiqarish ko'rsatkichlarini `/reports` dan oladi |
 | `bridge-agents` | ro'yxat/yaratish, `/{id}` PATCH (ish markazi bog'lash + `can_print`), `/{id}/code` (yangi ulanish kodi), `/{id}` DELETE, `/pair`, `/scan` (skan-forvard, §4) | admin (`AdminUser`); `/pair` ochiq (router global auth'siz), `/scan` agent tokeni bilan. `/download` olib tashlangan (2026-08-02) — exe qo'lda tarqatiladi (`bridge-agent/README.md`) |
 
 ### Buyurtma lifecycle va to'lovlar
@@ -440,7 +460,7 @@ Sxema `app/schemas/orders.py`:
 | Model | Mazmun |
 |---|---|
 | `OrderSurvey` | `version`, `measured_at` (o'lchov sanasi), `measured_by` (o'lchagan usta), `packaging`/`delivery`/`installation` — buyurtma darajasidagi bayroqlar (tsex bitta `.project` fayl ustida ishlaydi, logistika butun buyurtmani bitta mashinada olib ketadi: xona degan tushuncha ularga yetib bormaydi), `rooms` (max 10) |
-| `SurveyRoom` | `id` (frontend beradigan barqaror kalit) + `name`; 2-bo'lim `furniture_types`/`furniture_other`; 3-bo'lim `shape`, `room_length/width/height`, `furniture_wall_length`; 4-bo'lim `corpus_materials`, `corpus_color`, `corpus_thickness`, `corpus_note`; 5-bo'lim `facade_materials`, `facade_color`, `countertop`, `facade_note`; 6-7 `hardware_level`, `extra_services`; 8 `note`; o'lchov varag'i `walls`, `modules`, `total_running_meters`, `total_height` |
+| `SurveyRoom` | `id` (frontend beradigan barqaror kalit) + `name`; 2-bo'lim `furniture_types`/`furniture_other`; 3-bo'lim `shape`, `room_length/width/height`, `furniture_wall_length`; 4-bo'lim `corpus_materials`, `corpus_color`, `corpus_thickness`, `corpus_note`; 5-bo'lim `facade_materials`, `facade_color`, `countertop`, `facade_note`; 6-bo'lim `hardware_level`, `extra_services`; 7-bo'lim `note`; o'lchov varag'i `walls`, `modules`, `total_running_meters`, `total_height` |
 | `SurveyWall` | A bo'limi: `letter` (A..E), `length`, `height` — max 8 ta |
 | `SurveyModule` | B bo'limi: `name`, `wall`, `width`/`depth`/`height`, `count`, `note` — max 40 ta |
 
@@ -497,8 +517,9 @@ direktor ham ko'radi.
 
 - Dizayn tokenlar: `src/index.css` (post/status ranglari, `.num`, print CSS); domen konstantalar `src/lib/mes.ts`.
 - Imzo komponent: `Common/StagePipeline` — post zanjiri (dinamik, dashboard va buyurtma qatorlari).
-- Routelar: `_layout/*` admin modullar (orders, clients, employees, machines, materials, reports,
-  logs, printers, admin, settings, cutmap.$orderId, `anketa.$orderId`), `/terminal`, `/tablo`
+- Routelar: `_layout/*` admin modullar (index — boshqaruv paneli, orders (`index` + `$orderId`),
+  clients, employees, work-centers, stock, reports, logs, printers, admin, settings,
+  cutmap.$orderId, `anketa.$orderId`), `/terminal`, `/tablo`
   ("Jami" yig'indi qatori + rejimlar + drill-down; sarlavhada brend logo, ish markaziga bog'langan
   tablo akkauntida "JORIY NUQTA" chipi, onlayn indikatori va tablo bo'lmagan rollarga "Boshqaruv
   paneli" havolasi). "Jami" qatori hajmga bog'lanmagan — katakchalari tanlangan rejimga ergashadi:

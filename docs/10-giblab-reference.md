@@ -94,7 +94,7 @@ Bitta teg, oltita turdagi ma'lumot uchun:
 | `sheet` | Listli material. `l`/`w`/`t` (default 2750×1830×18), `count` | ✅ material registri |
 | `band` | Pogonaj material — kromka lentasi, profil, quvur. `w`/`t`, `count` metrda | ✅ material registri |
 | `simple` | **Furnitura**: petlya, yevrovint, dasta, napravlyayushiye. `unit`, `count`, `cost` | ✅ material registri (`hardware`) |
-| `tool.cutting` | Kesish dastgohi sozlamalari. **`swSawthick` — pilla qalinligi (kerf), default 4.4 mm** | ✅ faqat kerf |
+| `tool.cutting` | Kesish dastgohi sozlamalari. **`swSawthick` — pilla qalinligi (kerf), default 4.4 mm**. Qaysi good ekanini CS operatsiyasining `tool1` atributi ko'rsatadi (§3.1) | ✅ faqat kerf |
 | `tool.edgeline` | Kromkalash dastgohi. `elRestSide`, **`elWidthPreJoint` — prifugovka kengligi** | ❌ o'qilmaydi (qiymati hech qayerda ishlatilmasdi, 2026-08-05 da olib tashlandi) |
 
 `tool.cutting` ning qolgan atributlari (`swPackageHeight`, `swMaxturns`, `swSort`,
@@ -254,7 +254,7 @@ Tomonlar: `t`/`b` — **uzunlik bo'ylab**, `l`/`r` — **kenglik bo'ylab**.
 
 | Atribut | Nima | Nega muhim |
 |---|---|---|
-| `allowanceT/B/L/R` | Ishlov qo'shimchasi tomon bo'yicha | Pilla o'lchamiga qo'shiladi, GibLab kartada **punktir chiziq** bilan chizadi. Bizda punktir yo'q → nolga teng bo'lmasa ogohlantiramiz |
+| `allowanceT/B/L/R` — detalda, tomon bo'yicha; `cAllowanceWorkpiece` — CS operatsiyasida, butun zagotovkaga umumiy | Ishlov qo'shimchasi | Pilla o'lchamiga qo'shiladi, GibLab kartada **punktir chiziq** bilan chizadi. Bizda punktir yo'q → ikkalasidan biri noldan katta bo'lsa ogohlantiramiz (`parser._allowance_warning`): detalda bo'lsa "N detalda", faqat operatsiyada bo'lsa "umumiy N mm" |
 | `minusCount` | Allaqachon tayyor turgan nusxalar | GibLab ularni kesishga qo'ymaydi, biz `count` bo'yicha hammasini ishlab chiqaramiz → ogohlantiramiz |
 | `description` | Izoh **va/yoki ishlov dasturi kodi**: `#nom` — yuz tomon, `##nom` — orqa tomon, bo'shliqsiz | Shablon kutubxonasidan ishlov. Bunday holatda faylda XNC operatsiyasi bo'lmaydi va butun ishlov yo'qoladi → ogohlantiramiz. Korpusda ishlatilmagan |
 | `dbId` | GibLab qoldig'ining 1C dagi ID'si | 1C integratsiyasi ishlatilsa paydo bo'ladi. Korpusda yo'q |
@@ -282,7 +282,7 @@ Endi marshrut faqat MES ichida, ko'rinadigan joyda beriladi.
 joylashtirilgan detalga) + KROMKA (kod 3, qirralar soni bo'yicha) + PRISADKA (kod 6, XNC da
 teshik bo'lsa). Paz va freza ROVER bosqichini **yaratmaydi**: roverdan chiqqan detal keyin
 bo'yalishi ham mumkinligini fayl bilmaydi, ya'ni marshrutni fayldan taxmin qilib bo'lmaydi.
-Paz/freza geometriyasi baribir SCX ga va yorliq eskiziga ketadi.
+Paz/freza geometriyasi faqat SCX ga ketadi — yorliq eskizida ko'rinmaydi: eskiz `bores` va `edge` teshiklarinigina chizadi, П/Ф belgilari ataylab olib tashlangan (`labels.py:237`).
 
 **Standartdan chetga chiqadigan hamma narsa — MES ichida.** Texnolog detallar matritsasida
 detalni "Nostandart" deb belgilaydi (`Part.is_custom`), so'ng "Nostandart detallar" tabida
@@ -340,7 +340,7 @@ GibLab "+Операция" ro'yxatida **to'qqiz tur** taklif qiladi:
 |---|---|---|
 | `CS` | Листовой раскрой — listni kesish | ✅ kesish xaritasi + yorliq raqamlari |
 | `EL` | Кромкооблицовка — kromkalash | ✅ kromka simvoli va materiali |
-| `XNC` | Обработка — CNC ishlov | ✅ teshik → PRISADKA bosqichi; paz va freza faqat SCX va yorliq eskizida (bosqich yaratmaydi — §2.3) |
+| `XNC` | Обработка — CNC ishlov | ✅ teshik → PRISADKA bosqichi; paz va freza faqat SCX da (yorliq eskizida yo'q; bosqich ham yaratmaydi — §2.3) |
 | `O` | Комплектация — furnitura komplekti | ataylab jim: sanoqlar `simple` goodlarida bor |
 | `LB` | Этикетки — yorliq shablonlari | ataylab jim: tizim o'z yorlig'ini chiqaradi (TZ 5.2.8) |
 | `CL` | Погонажный раскрой — profil kesish | ataylab jim + **ma'lumot yoziladi**: tsexda profil kesish posti yo'q, profillar tayyor keladi |
@@ -383,6 +383,9 @@ har birida daraxt ko'rinishidagi kesish yozuvlari. `csblob.py` uni ochadi.
 
 Muhim tushunchalar:
 
+- **Kerf manbasi** — CS o'z dastgohini **`tool1`** atributi bilan ko'rsatadi: pilla qalinligi
+  shu `tool.cutting` goodining `swSawthick` idan olinadi (`parser.py`, `_parse_cs_operation`).
+  `tool1` yozilmagan yoki noma'lum goodga ishora qilsa — spetsifikatsiyadagi 4.4 mm (§2.1)
 - **Кратность (`mult`)** — bitta naqsh necha marta takrorlanadi. Xaritada `C:2` deb ko'rinadi
 - **Torsovka** (`cTrimL`, `cTrimW`) — listning chetidan olinadigan qirqim, **spetsifikatsiya
   bo'yicha default 10 mm** (tsexning fayllarida doim 2 mm yozilgan; eski eksportda umuman yo'q).
@@ -559,7 +562,7 @@ beradi va fayl rad etiladi (`xnc.py`, `_eval_expr`).
 beradi — yorliq shabloni `XNC1..XNC5` maydonlarini taklif qiladi. Shuning uchun parser
 sonini cheklamaydi: hammasini saqlaydi va ikkitadan ko'p bo'lsa ogohlantiradi
 (`stage_sides()` teshigi bor har operatsiyaga bitta PRISADKA skani beradi — paz/freza
-esa marshrut qadamini umuman yaratmaydi, §3.7).
+esa marshrut qadamini umuman yaratmaydi, §2.3).
 
 ---
 
@@ -597,12 +600,17 @@ GibLab shabloniga qo'yiladigan maydonlar (109 ta), guruhlar bo'yicha:
 - **Ishlov**: `XNC1..XNC5` + `xncSide1..5` + `xncBSD1..5`
 
 MebeliX o'z yorlig'ini chiqaradi (TZ 5.2.8, `services/labels.py`): 80×60 mm, 203 dpi, 1-bit
-termoprinter uchun. Ichida QR (`{productCode}_{partCode}` — yagona nusxa suffikssiz, takrorlanganda `_{n}`), matn qatorida ham shu nusxa ID (QR va SCX nomi bilan bir xil satr; matn qatori 20 belgigacha qisqartiriladi, QR to'liq — [11-detal-id-nomlash.md](11-detal-id-nomlash.md)), detal nomi, buyurtma,
-material, o'lcham, qalinlik, kromka belgilari, teshik eskizi, burg'u ikonkasi va marshrut
+termoprinter uchun. Ichida QR (`{productCode}_{partCode}` — yagona nusxa suffikssiz, takrorlanganda `_{n}`), matn qatorida ham shu nusxa ID (QR va SCX nomi bilan bir xil satr; matn qatori 20 belgigacha qisqartiriladi, QR to'liq — [11-detal-id-nomlash.md](11-detal-id-nomlash.md)), detal nomi, loyiha nomi
+(`order.project_name`, bo'sh bo'lsa buyurtma raqamiga tushadi), mahsulot kodi ("Formatka"
+qatori), material, o'lcham, kromka belgilari, teshik eskizi, burg'u ikonkasi va marshrut
 qatori (`Marshrut: 7/11/8` — jarayon kodlari tartib bilan, §2.3; nomga qo'shilmaydi, chunki
 nom 24 belgida kesiladi va marshrut jimgina yo'qolardi). Marshrut satri **faqat nostandart
 detalda** chiqadi (`Part.is_custom`): standart detalning yo'li oldindan ma'lum va chekda joyni
 behuda band qilardi.
+
+**Qalinlik yorliqda chizilmaydi** — `LabelData.thickness` yuklanadi (`labels.py`), lekin
+`render_label_png` uni hech qayerda ishlatmaydi: o'lcham qatori faqat `uzunlik x kenglik = soni`.
+Qalinlik bazada va detallar matritsasida qoladi.
 
 Sabab: GibLab yorlig'i skan qilinadigan QR bermaydi va MebeliX'ning bosqichma-bosqich
 kuzatuvi aynan shu QR ga tayanadi.
@@ -653,7 +661,7 @@ profil kesish (`CL` — tsexda bunday post yo'q), detal NOMI (u marshrutga ta'si
 | Detal kodlari yo'q (2021 build) | tartib raqamidan berildi |
 | Detal kodi takrorlangan | `-2` qo'shib saqlandi |
 | Manfiy o'lcham | moduli olindi |
-| Ishlov qo'shimchasi (`allowance*`) | xaritada punktir chizilmaydi |
+| Ishlov qo'shimchasi (detalda `allowance*` yoki CS da `cAllowanceWorkpiece`) | xaritada punktir chizilmaydi |
 | `minusCount` > 0 | to'liq miqdor ishlab chiqariladi |
 | `CL` operatsiyasi | profil kesish — ma'lumot, arrachiga bermaymiz |
 | `CN`/`SP`/`GR` operatsiyasi | import qilinmaydi, bosqich yo'qoladi |
@@ -734,6 +742,7 @@ eksportdan farq qilgan holatlar (dizayner keyin o'zgartirgan), generator xatosi 
 | Kromka lenta Face | qirra bilan bir xil (l4 r3 t1 b2); Edge'da `Pre_Milling`, `X`, `Y` atributlari |
 | Orqa (`_2`) dastur | ALOHIDA FAYL EMAS — yuza elementlari `Face="6"` bilan asosiy nusxa-fayliga (transform old bilan bir xil `x, W−y`) |
 | Qo'shqavat (2×plita) | eksport qalinligi plita bo'yicha (32→16), qirra Z ikki baravar kichik, yuza chuqurlik bir qatlamga kamayadi (35→19). Shart: dz ≈ 2×plita qalinligi (material bo'yicha, `ingest` dan) YOKI dz≈32; 18/26/40 o'zgarmaydi |
+| Paz (Type 4) | Har `gr` ga bitta Machining: Face yuza bilan bir xil (old 5 / orqa 6); `X`=`x1`, `Y`=Width−`y1`, `EndX`=`x2`, `EndY`=Width−`y2`, `Z`=`EndZ`= eksport qalinligi (Panel `Thickness`), `Width`=`gr.t` (yozilmasa 4), `Depth`=`gr.dp`, `ToolOffset=中` |
 | Freza (Type 3) | KOMPENSATSIYALANGAN asbob-markazi yo'li: `ms.c`=2 harakatga chapga r, `c`=1 o'ngga, yoy radiusi mos o'zgaradi; `<Lines><Line Angle=…>` formati (Angle=0 chiziq, ±N yoy sweep'i); `c`=0 xom; panel cheti bo'ylab trim xom + `ToolOffset=右` |
 | Atributlar | Machining'da ketma-ket `ID` (1000+) va `IsGenCode="2"`, Panel'da `MachiningPoint="1"` |
 | Fayl nomi | har nusxaga bitta to'liq fayl, nom/Panel ID = nusxa QR — yagona nusxada suffikssiz (`100701_02_003.scx`), takrorlanganda `_1.._n` (`100701_02_003_1.scx`) — Nanxing skaneri va chekdagi kod bir xil |

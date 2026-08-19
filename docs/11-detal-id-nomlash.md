@@ -59,12 +59,18 @@ to'liq satrni saqlaydi. Oddiy raqamli kodlarda farq sezilmaydi.
 | Bazadagi `part_instance.qr_text` | `ingest.py` (`ParsedPart.qr_texts`), matritsada son o'zgarsa `orders.py _resize_instances` |
 | Chekdagi matn qatori va QR | `services/labels.py` (`qr_text`; `qr_part_code` — `scanning.py` dan import) |
 | SCX fayl nomi va ichidagi Panel ID | `services/giblab/scx.py` (`build_scx_files`; nomlar ingestda parser bergan `qr_texts`dan, qayta yaratishda bazadagi QR'lardan) |
-| Skan tekshiruvi | `services/scanning.py` (aynan moslik; eski `_1` yorliqlar uchun fallback) |
+| Skan tekshiruvi | `services/scanning.py` (aynan moslik + eski `_1` yorliqlar uchun fallback); `api/routes/terminal.py` (`resolve_terminal_qr` — o'sha fallbackning ikkinchi nusxasi); `api/routes/pachka.py` (qadoqqa skan — FAQAT aynan moslik, fallback yo'q) |
 | Terminal UI (banner, tarix, arra, kromka, prisadka) | `qr_text` to'g'ridan ko'rsatiladi, qismlarga ajratilmaydi; yagona istisno — `KromkaView` skan matnidan oxirgi `_1` ni kesib ham sinaydi (backend fallbackining frontend nusxasi) |
 
 Eski konvensiya (2026-08-02 gacha): yagona nusxada ham `_1` yozilardi.
 Migratsiya `c9e5b2a41d78` mavjud bazani yangi qoidaga o'tkazgan; o'shagacha
-chop etilgan `_1` li yorliqlarni skan qilish fallback bilan ishlayveradi.
+chop etilgan `_1` li yorliqlarni skan qilish fallback bilan ishlayveradi —
+lekin faqat post skani (`scanning.py`) va terminal QR qidiruvida
+(`terminal.py`). Qadoqqa skanda (`pachka.py`) fallback yo'q: nusxani o'zi
+aynan moslik bilan qidiradi va topolmay `E001` ("Bunday QR topilmadi") beradi,
+ya'ni dvijokdagi fallbackka gal ham tegmaydi. Eski `_1` li yorliq boshqa
+postlarda skan bo'lsa ham upakovkada o'tmaydi — chekni qayta chop etish kerak.
+
 Eski buyurtmalarning SCX fayllarini yangi nomlarga o'tkazish uchun
 `POST /orders/{order_id}/scx/regenerate` (texnolog huquqi) bor — fayllarni
 bazadagi QR'lardan qayta quradi (`orders.py regenerate_order_scx`, ingest

@@ -5,17 +5,22 @@
 **MebeliX MES** — mebel ishlab chiqarishni boshqarish tizimi (Manufacturing Execution
 System) uchun to'liq ishlaydigan fullstack ilova. FastAPI fullstack template
 poydevorida (JWT + httpOnly cookie auth, users boshqaruvi) **to'liq MES domeni**
-qurilgan: `/v1` agregatorida **17 ta router** (health, login, logout, users,
-clients, employees, machines, posts, materials, orders, audit, terminal, scans,
-tablo, reports, bridge-agents, ws), **17 ta ORM model**
-(Order/Product/Part/PartInstance/PartRoute, Client, Employee, Machine, Post,
-Material, Scan/WorkSession, AuditLog, BridgeAgent va h.k.) va
-**13 ta `UserRole`** (admin, director, manager, texnolog, terminal, tablo + 7 ta
-post operatori roli: arrachi, kromkachi, ovalchi, prisadkachi, roverchi,
-stolyar, boyoqchi).
+qurilgan: `/v1` agregatorida **19 ta router** (health, login, logout, users,
+clients, employees, machines, posts, stock, orders, pachka, tmo, audit,
+terminal, scans, tablo, reports, bridge-agents, ws), **22 ta ORM model**
+(Order/Product/Part/PartInstance/PartRoute/OrderFile, Client, Employee, Machine,
+Post, Organization, Pachka/PachkaItem, StockItem/Sale/Payment/StockMove,
+Scan/WorkSession, AuditLog, BridgeAgent, User) va
+**16 ta `UserRole`** (admin, director, manager, texnolog, terminal, tablo,
+material_omborchi + 9 ta post operatori roli: arrachi, kromkachi, ovalchi,
+prisadkachi, roverchi, stolyar, boyoqchi, upakovkachi, omborchi).
+Material katalogi (`materials` routeri, `Material` modeli, `MaterialType`
+enumi) olib tashlangan — o'rnida materiallar ombori `stock` turadi.
 Domen tafsilotlari uchun [09-mes-domain.md](./09-mes-domain.md) ga qarang.
 
-Barcha UI matnlari va API xato xabarlari **o'zbek tilida**; telefon raqamlari
+Barcha UI matnlari va API xato xabarlari **o'zbek tilida** — bitta istisno:
+parol kuchini tekshirish xatolari (`validate_password_strength`) hozircha
+inglizcha va API 422 javobida shunday chiqadi. Telefon raqamlari
 O'zbekiston E.164 formatida (`+998XXXXXXXXX`) validatsiya qilinadi.
 
 Repo tuzilishi:
@@ -77,7 +82,7 @@ MebeliX-Mes-System/
 |---|---|
 | Konteynerlash | Docker Compose — `local` (hot-reload, portlar ochiq) va `prod` (faqat Caddy tashqariga ochiq) |
 | Ma'lumotlar bazasi | PostgreSQL 15 |
-| Cache / queue | Redis 7 (ARQ queue + rate limit + WS pub/sub, uchta alohida ulanish) |
+| Cache / queue | Redis 7 (ARQ queue + rate limit + WS pub/sub — uchta lifespan ulanishi, plyus har `/ws/bridge` agent ulanishi uchun alohida qisqa umrli klient) |
 | Reverse proxy | Caddy (prod, `SITE_ADDRESS` orqali auto-HTTPS / Let's Encrypt); port bindinglar `CADDY_HTTP_BIND`/`CADDY_HTTPS_BIND` bilan parametrlangan — mavjud host-nginx (ISPmanager) ortida ishlash rejimi uchun |
 | Static serving | nginx (frontend build, SPA fallback, 1 yillik asset cache) |
 | Sifat nazorati | pre-commit hooks (ruff, mypy, biome) + GitHub Actions CI (`.github/workflows/ci.yml`) |
@@ -148,11 +153,14 @@ Asosiy nuqtalar:
   Windows drayveri orqali USB GoDEX'ga chiqadi. G500-U'da tarmoq porti yo'q,
   shuning uchun yagona transport shu. Batafsil:
   [4.3](#43-yorliq-chop-etish-zanjiri).
-- **Uchta Redis ulanishi**: ARQ job queue pool, rate limiting klienti va WebSocket
-  pub/sub uchun alohida `ws_redis` (`AsyncRedis.from_url`, `mes:events` kanali —
-  gunicorn worker'lar orasida `ws_manager` fan-out'ini ta'minlaydi). Startup'dagi
-  retry'li probe faqat birinchi ikkitasini tekshiradi (fail-fast boot); rate limit
-  runtime'da ham fail-closed — Redis xatosida so'rov bloklanadi.
+- **Uchta lifespan Redis ulanishi**: ARQ job queue pool, rate limiting klienti va
+  WebSocket pub/sub uchun alohida `ws_redis` (`AsyncRedis.from_url`, `mes:events`
+  kanali — gunicorn worker'lar orasida `ws_manager` fan-out'ini ta'minlaydi).
+  Ularning ustiga har `/ws/bridge` ulanishi O'Z qisqa umrli klientini ochadi
+  (`ws.py`, chek navbatini `brpop`/`rpush` qilish uchun) va uzilganda `finally`
+  da yopadi — u lifespan tomonidan boshqarilmaydi, startup probe'ga ham kirmaydi.
+  Startup'dagi retry'li probe faqat birinchi ikkitasini tekshiradi (fail-fast
+  boot); rate limit runtime'da ham fail-closed — Redis xatosida so'rov bloklanadi.
 - **ARQ worker** alohida konteyner/processda ishlaydi (`app/core/worker.py` →
   `WorkerSettings`), tasklar `app/tasks/` da ro'yxatdan o'tadi.
 - **Prod deploy TAG asosida**: image'lar CI'da qurilib `ghcr.io` ga yuboriladi
@@ -184,11 +192,18 @@ Browser                      FastAPI                        PostgreSQL/Redis
    |  Set-Cookie:               |                                 |
    |   access_token (httpOnly)  |  JWT ichida token_version       |
    |   refresh_token (httpOnly) |  SameSite=Strict                |
+   |  + JSON tana:              |                                 |
+   |   {"access_token", ...}    |  (OAuth2 mosligi)               |
    |<---------------------------|                                 |
 ```
 
-- Tokenlar **hech qachon JS'ga berilmaydi** — faqat httpOnly cookie
-  (`secure` flag non-local muhitlarda). `Authorization: Bearer` header ham qabul
+- Frontend tokenni SAQLAMAYDI — u faqat httpOnly cookie'dan ishlatiladi
+  (`secure` flag non-local muhitlarda). Lekin token beruvchi uchala endpoint
+  javob TANASIDA ham `access_token` qaytaradi (`Token` sxemasi,
+  `app/schemas/auth.py`) — OAuth2 mosligi uchun, ya'ni token JS uchun texnik
+  jihatdan ochiq: `login_for_access_token` va `refresh_access_token`
+  → `{"access_token", "token_type"}`, `login_with_badge` → `BadgeLoginResponse`
+  (u `Token`dan meros oladi). `Authorization: Bearer` header ham qabul
   qilinadi va cookie'dan ustuvor.
 - `login`/`refresh` har chaqiruvda **ikkala tokenni rotatsiya** qiladi
   (yo'llar: `POST /api/v1/login/access-token`, `POST /api/v1/login/refresh`).
@@ -217,21 +232,28 @@ Browser (React)                FastAPI                        PostgreSQL
 ```
 
 - Router ierarxiyasi: `/api` root → `/v1` agregator; auth **router darajasida**
-  qo'llanadi (`health`, `login` ochiq; `logout`, `users` va 11 ta MES routeri
+  qo'llanadi (`health`, `login` ochiq; `logout`, `users` va 13 ta MES routeri
   `get_current_user` ortida; `ws` va `bridge-agents` routerlari auth'ni o'zlari
   hal qiladi — `bridge-agents` da `/pair` ochiq bo'lishi shart, `/scan` agentning
   Bearer tokeni bilan, qolgan admin endpointlar esa har biri `AdminUser` bilan
   himoyalangan).
 - Frontend'da route guard'lar `beforeLoad`da ishlaydi (`src/lib/guards.ts`):
-  `requireAuth()` (`UsersService.readUserMe()`, 401 → `/login`) —
+  `requireAuth()` (`queryClient.ensureQueryData(getCurrentUserQueryOptions())`
+  — keshdan o'qiydi, 401 → `/login`) —
   `_layout.tsx`, `terminal.tsx`, `tablo.tsx` da; rolga bog'liq sahifalar
   `requireAccess(<predikat>)` bilan, predikatlar `src/lib/mes.ts` da:
-  `isManagement` (clients, employees, reports), `isProductionStaff` (machines,
-  materials), `isAdmin` (logs, printers), `isSuperuser` (admin) — sidebar
-  (`NAV_ITEMS.show`) ham aynan shu predikatlarni ishlatadi.
+  `isManagement` (clients, employees, reports), `isProductionStaff`
+  (work-centers), `isStockStaff` (stock — `isProductionStaff || isStockOnly`),
+  `isAdmin` (logs, printers), `isSuperuser` (admin) — sidebar
+  (`NAV_ITEMS.show`) ham aynan shu predikatlarni ishlatadi. `/orders` da
+  `beforeLoad` yo'q: unga huquq faqat sidebar ko'rinishi (`show:
+  isProductionStaff`) va `_layout` redirectlari orqali bilvosita chiqadi.
+  Oltinchi predikat `isStockOnly` (`material_omborchi`) menyudan boshi berk
+  sahifalarni olib tashlaydi.
   `_layout.tsx` rolga qarab yo'naltiradi — `terminal` va operator
-  rollari (`arrachi`...`boyoqchi`) → `/terminal`, `tablo` → `/tablo`
-  (qurilma/operator akkauntlari admin panelga kirmaydi); `login.tsx` teskari
+  rollari (`arrachi`...`omborchi`, `OPERATOR_ROLES`) → `/terminal`, `tablo` →
+  `/tablo`, `material_omborchi` → `/stock` (qurilma/operator akkauntlari admin
+  panelga kirmaydi); `login.tsx` teskari
   guard bilan sessiyali foydalanuvchini `/`ga qaytaradi.
 - Parallel so'rovlarda 401 kelsa, interceptor ularni navbatga qo'yib bitta refresh
   bilan hal qiladi.
@@ -353,7 +375,9 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   `L x W = count`, `N_nom`, teshik bo'lsa `app/assets/label-icon-drill.png`
   ikonkasi, **marshrut qatori** (`Marshrut: 7/11/8` — jarayon kodlari `seq`
   tartibida, y=41.5 mm; detal NOMIGA qo'shilmaydi, chunki nom 24 belgida
-  kesiladi), material va sana; o'ng ustunda QR
+  kesiladi). Marshrut FAQAT nostandart detalda chiqadi (`load_label_data()`
+  `route_codes` ni `part.is_custom` shartida to'ldiradi) — standart detalda
+  ro'yxat bo'sh va qator umuman chizilmaydi; keyin material va sana; o'ng ustunda QR
   (`qrcode`, `instance.qr_text`) va vertikal detal eskizi.
 - Eskizda kromka konturdan 1 mm tashqarida qalin chiziq bilan, `part.txt` bo'lsa
   tekstura chiziqlari, va cutmap'dan HAQIQIY teshiklar: `load_label_data()`
@@ -455,7 +479,11 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
 - `GET /terminal/orders` javobi karta uchun kengaydi: `materials` (`sheet` turidagi
   plita nomlari), `sheets_total`, `has_cutmap`. Tartib — prioritet (URGENT birinchi)
   → `deadline` (nulls oxirida) → `id`; boshqa ish markaziga biriktirilgan `PartRoute`lar
-  bu terminalda ko'rinmaydi (`/tasks` bilan bir xil filtr).
+  bu terminalda ko'rinmaydi (`PartRoute.machine_id == machine.id` YOKI `NULL`).
+  Aynan shu shart `_post_route_rows()` orqali `/terminal/orders/{id}/kromka` va
+  `/prisadka` da ham qo'llanadi. (`/terminal/tasks` endpointi "Navbatdagi
+  vazifalar" ekrani bilan birga olib tashlangan — kodda faqat unga ishora
+  qiladigan eskirgan izoh qolgan.)
 
 ## 5. Hujjatlar xaritasi
 
@@ -477,7 +505,8 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
 Sifat nazorati ikki qatlamda: **pre-commit hooks** (`.pre-commit-config.yaml`,
 `make install-hooks` bilan o'rnatiladi) va **GitHub Actions CI**
 (`.github/workflows/ci.yml`, `main`ga push va har PR'da): `backend` job — ruff
-check/format va mypy; `frontend` job — `biome ci` va
+check/format, mypy va Caddyfile validate (`caddy:2-alpine` konteynerida
+`caddy validate` — buzuq konfig deploydan OLDIN tutiladi); `frontend` job — `biome ci` va
 `tsc + vite build`; `images` job — ikkala image'ni qurib `ghcr.io` ga
 yuboradi (matritsa, GHA layer keshi bilan); `deploy` job — yashil `main`
 push'da kod `/opt/mebelix-mes`ga rsync qilinadi, server ghcr'ga login
@@ -525,4 +554,7 @@ CI yiqilsa butun job skip bo'lib, xabar umuman ketmasdi. Endi `deploy` natijasi
   `run-frontend`, `lint`, `format`, `migrate`, `makemigrations`,
   `frontend-gen`, `docker-local`, `docker-prod`).
 - Foydalanuvchiga ko'rinadigan barcha matnlar (UI, API xatolari) — o'zbek tilida;
-  kod, identifikatorlar va commit'lar — inglizcha.
+  kod, identifikatorlar va commit'lar — inglizcha. Istisno:
+  `schemas/users.py:validate_password_strength` xatolari inglizcha qolgan
+  ("Password must be at least 8 characters" va h.k.). Formada ko'rinmaydi —
+  zod sxemasi o'z o'zbekcha matnini beradi — lekin API 422 javobida chiqadi.

@@ -62,7 +62,7 @@ app = create_application(router=router, settings=settings)
 | Guruh | Asosiy maydonlar |
 |---|---|
 | Application | `APP_NAME` (FastAPI `title`), `APP_VERSION` (`/health` va `/ready` hisobotida ishlatiladi) — description/license/contact sozlamalari olib tashlangan, metadata `setup.py`da literal yoziladi |
-| Crypto / JWT | `SECRET_KEY: SecretStr`, `ALGORITHM="HS256"`, `ACCESS_TOKEN_EXPIRE_MINUTES=30`, `REFRESH_TOKEN_EXPIRE_DAYS=7`, `BCRYPT_ROUNDS=12` |
+| Crypto / JWT | `SECRET_KEY: SecretStr`, `ALGORITHM="HS256"`, `ACCESS_TOKEN_EXPIRE_MINUTES=30`, `REFRESH_TOKEN_EXPIRE_DAYS=7`, `DEVICE_REFRESH_TOKEN_EXPIRE_DAYS=90` (qurilma sessiyasi — monoblok/TABLO tsexda klaviatura yo'q, qayta parol termaydi; token har ishlatilganda yangilanadi, uzun muddat esa uzoq to'xtashdan keyin ham qayta kirish kerak bo'lmasligi uchun), `BCRYPT_ROUNDS=12` |
 | PostgreSQL | `POSTGRES_USER/PASSWORD/SERVER/PORT/DB`, `POSTGRES_ASYNC_PREFIX="postgresql+asyncpg://"`, `DB_POOL_SIZE=10`, `DB_MAX_OVERFLOW=20` |
 | First admin | `ADMIN_NAME/PHONE/USERNAME/PASSWORD` — startup'da yaratiladigan birinchi admin |
 | Redis | `REDIS_HOST`, `REDIS_PORT` — navbat ham, rate limit ham, WS pub/sub ham shu bitta Redis'ga boradi (yoqish/o'chirish bayroqlari yo'q) |
@@ -139,7 +139,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 **Maqsadi:** 12-factor uslubidagi structured JSON logging — process o'zi log fayl yozmaydi, hamma narsa stdout'ga bir qatorli JSON sifatida chiqadi.
 
 - `JsonFormatter(logging.Formatter)` — har bir log record'ni `{"timestamp", "level", "logger", "message"}` + mavjud bo'lsa `_EXTRA_FIELDS` (`request_id`, `method`, `path`, `status_code`, `duration_ms`) va `exc_info` bilan JSON'ga aylantiradi.
-- `setup_logging(level=logging.INFO)` — root logger handlerlarini stdout JSON handler bilan **almashtiradi** (`root.handlers = [handler]`). Import-time side-effect yo'q — har bir uzoq yashovchi entrypoint uni **explicit** chaqiradi: `create_application()` (`setup.py`) va arq worker (`core/worker.py`, modul yuklanishida). CLI komandalar (`commands/seed_defaults.py`, `commands/create_first_superuser.py`) esa oddiy `logging.basicConfig(level=INFO)` bilan kifoyalanadi.
+- `setup_logging(level=logging.INFO)` — root logger handlerlarini stdout JSON handler bilan **almashtiradi** (`root.handlers = [handler]`). Import-time side-effect yo'q — har bir uzoq yashovchi entrypoint uni **explicit** chaqiradi: `create_application()` (`setup.py`) va arq worker (`core/worker.py`, modul yuklanishida). `app/commands/` dagi barcha CLI komandalar (`seed_defaults.py`, `create_first_superuser.py`, `import_stock_catalog.py`) esa oddiy `logging.basicConfig(level=INFO)` bilan kifoyalanadi.
 
 **Bog'lanishlar:** `middleware.py` yozadigan `extra` maydonlar aynan `_EXTRA_FIELDS` bilan mos keladi; `setup.py` va `worker.py` `setup_logging`ni chaqiradi.
 
@@ -167,11 +167,12 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 
 - Konstantalar: `ACCESS_COOKIE_NAME = "access_token"`, `REFRESH_COOKIE_NAME = "refresh_token"`; `TokenType` (StrEnum): `ACCESS` / `REFRESH`.
 - Parollar:
+  - `_bcrypt_bytes(password)` — parolni UTF-8'ga o'girib `BCRYPT_MAX_BYTES = 72` baytga kesadi. bcrypt algoritmi 72 baytdan keyingi qismni baribir hisobga olmaydi, bcrypt 5.0.0 esa uzun parolni jimgina kesmasdan `ValueError` otadi (`hashpw` ham, `checkpw` ham). Kesish **bitta joyda** — hash yo'li ham, verify yo'li ham shu helperdan o'tadi; sxemaga `max_length` qo'yish yetmasdi, chunki login `OAuth2PasswordRequestForm`dan o'tadi (unda sxema yo'q, ya'ni uzun parol autentifikatsiyasiz 500 berardi). Bu chekka holat emas: kirill harflari 2 bayt bo'lgani uchun 40 belgili parol ham chegaradan oshadi. Mavjud hash'lar ≤72 baytdan yasalgani uchun kesish eski parollarni buzmaydi.
   - `verify_password(plain, hashed)` — **async**: `bcrypt.checkpw` `run_in_threadpool` orqali bajariladi (bcrypt CPU-bound, event loop'ni bloklamaslik uchun).
   - `get_password_hash(password)` — **async**: hashlash (`_hash_password_sync`, `BCRYPT_ROUNDS`=12) `run_in_threadpool` orqali bajariladi — 12 round ~250ms olgani uchun event loop'ni bloklamasligi kerak.
 - JWT:
   - `_create_token(data, token_type, expires_delta)` — payload'ga `exp` va `token_type` qo'shib `HS256` bilan imzolaydi.
-  - `create_access_token(data)` (30 daqiqa) va `create_refresh_token(data)` (7 kun). Refresh token payload'iga unikal `jti` (`uuid4().hex`) qo'shiladi — har bir refresh token unikal bo'ladi va bir marta rotation'dan keyin "ishlatilgan" deb belgilash mumkin.
+  - `create_access_token(data)` — `ACCESS_TOKEN_EXPIRE_MINUTES` (30 daqiqa); `create_refresh_token(data, days=None)` — `days` berilmasa `REFRESH_TOKEN_EXPIRE_DAYS` (7 kun), berilsa o'sha muddat: `routes/login.py` qurilma akkauntlariga (`UserRole.TERMINAL` / `UserRole.TABLO`) `days=settings.DEVICE_REFRESH_TOKEN_EXPIRE_DAYS` (90 kun) uzatadi. Refresh token payload'iga unikal `jti` (`uuid4().hex`) qo'shiladi — har bir refresh token unikal bo'ladi va bir marta rotation'dan keyin "ishlatilgan" deb belgilash mumkin.
   - `verify_token(token, expected_token_type) -> TokenData | None` — decode qiladi, `sub` mavjudligini va `token_type` mosligini tekshiradi; `sub` **int `user_id`** sifatida parse qilinadi (parse bo'lmasa `None`) va natijada `TokenData(user_id, token_version, jti)` qaytadi — `token_version` (default 0) token bekor qilish (revocation) mexanizmi uchun, `jti` esa refresh tokenning bir martalik (one-time-use) nazorati uchun (access tokenlarda `None`).
 - Cookie'lar:
   - `set_auth_cookie(response, key, value, max_age)` — `httponly=True`, `samesite="strict"` (klassik CSRF vektorini neytrallaydi), `secure` faqat non-LOCAL muhitlarda (`_is_secure_environment()`), local'da oddiy HTTP ustida ishlashi uchun o'chirilgan.
