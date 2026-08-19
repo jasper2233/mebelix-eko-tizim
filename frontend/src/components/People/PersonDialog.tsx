@@ -1,13 +1,13 @@
-// Hodim dialogi: BITTA tanlov — lavozim — qolganini hal qiladi.
+// Hodim dialogi: uch savol — F.I.Sh, telefon, lavozim. Qolganini lavozim hal qiladi.
 //
-//   tsex lavozimi   -> beyjik bilan ishlaydi; posti oldindan belgilanadi
-//                      (backend `POST_ROLES` bilan bir xil jadval), o'zgartirsa bo'ladi
-//   ofis lavozimi   -> parol bilan kiradi; roli lavozimdan keladi
-//   "Boshqa"        -> tizimga kirmaydi (haydovchi, farrosh) — nomi qo'lda yoziladi
+//   tsex lavozimi -> beyjik bilan ishlaydi, posti lavozimdan keladi (POST_ROLES bilan bir xil)
+//   ofis lavozimi -> parol bilan kiradi, roli lavozimdan keladi; post ham, beyjik ham berilmaydi
+//   "Boshqa"      -> tizimga kirmaydi (haydovchi, farrosh); nomi qo'lda yoziladi
 //
-// Ilgari bu yerda "Kirish usuli" tanlovi bor edi (beyjik/parol/ikkalasi/yo'q).
-// U adminni BIZNING ma'lumot modelimizni tasvirlashga majburlardi, holbuki javob
-// lavozimning o'zida yotibdi: arrachi — beyjik, menejer — parol.
+// LAVOZIM MATNDAN EMAS, MA'LUMOTDAN tiklanadi: ofis odamida `user.role` dan,
+// tsex odamida esa biriktirilgan postdan. Ilgari u `position` MATNI bilan
+// solishtirilardi va "Manager" != "Menejer" bo'lgani uchun menejerni tahrirlash
+// hisobni emas, YANGI hodim yozuvini yaratardi.
 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
@@ -22,7 +22,6 @@ import {
 } from "@/client"
 import { Field } from "@/components/Common/Field"
 import { SelectField } from "@/components/Common/SelectField"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -34,11 +33,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
-import { OTHER_POSITION, POSITIONS, POST_COLORS, ROLE_LABELS } from "@/lib/mes"
+import { OTHER_POSITION, POSITIONS } from "@/lib/mes"
 import { formatUzPhone } from "@/lib/validation"
 import { detailMessage } from "@/utils"
 
-export type Access = "badge" | "password" | "both" | "none"
+export type Access = "badge" | "password" | "none"
 
 export type Person = {
   employee: EmployeeRead | null
@@ -50,14 +49,38 @@ export type Person = {
   access: Access
 }
 
-type Form = {
-  name: string
-  position: string
-  otherPosition: string
-  phone: string
-  posts: number[]
-  username: string
-  password: string
+type PostRow = { id: number; code: string; name: string }
+
+/** Lavozimni MA'LUMOTDAN aniqlaydi: ofis odamida rol bo'yicha, tsex odamida
+ * biriktirilgan post bo'yicha. Matn bilan solishtirish mo'rt — yorliq bir joyda
+ * o'zgarsa bog'lam jimgina uzilardi. */
+function positionOf(person: Person | null, posts: PostRow[]): string {
+  if (person === null) return "Arrachi"
+  if (person.user) {
+    const byRole = POSITIONS.find((x) => x.role === person.user?.role)
+    if (byRole) return byRole.label
+  }
+  const code = posts.find((p) => p.id === person.posts[0])?.code
+  const byPost = code ? POSITIONS.find((x) => x.post === code) : undefined
+  // Post bo'yicha topilgani hodimning yozib qo'yilgan lavozimiga mos kelsa —
+  // o'shani olamiz; aks holda lavozim ro'yxatdan tashqarida (haydovchi va h.k.)
+  if (byPost && (!person.position || person.position === byPost.label))
+    return byPost.label
+  const byLabel = POSITIONS.find((x) => x.label === person.position)
+  return byLabel ? byLabel.label : OTHER_POSITION
+}
+
+function postsFor(
+  label: string,
+  posts: PostRow[],
+  fallback: number[],
+): number[] {
+  const found = POSITIONS.find((x) => x.label === label)
+  if (found?.post) {
+    const post = posts.find((p) => p.code === found.post)
+    return post ? [post.id] : []
+  }
+  return found?.kind === "ofis" ? [] : fallback
 }
 
 export function PersonDialog({
@@ -67,22 +90,26 @@ export function PersonDialog({
   onClose,
 }: {
   person: Person | null // null = yangi hodim
-  posts: { id: number; code: string; name: string }[]
+  posts: PostRow[]
   canManageAccounts: boolean
   onClose: () => void
 }) {
   const editing = person !== null
-  const known = POSITIONS.find((x) => x.label === person?.position)
-  const [form, setForm] = useState<Form>({
+  const initialPosition = positionOf(person, posts)
+  const [form, setForm] = useState({
     name: person?.name ?? "",
-    position: person ? (known ? known.label : OTHER_POSITION) : "Arrachi",
-    otherPosition: person && !known ? (person.position ?? "") : "",
+    position: initialPosition,
+    otherPosition:
+      initialPosition === OTHER_POSITION ? (person?.position ?? "") : "",
     phone: person?.phone ?? "",
-    posts: person?.posts ?? [],
+    // Postni DIALOG OCHILGANDA ham lavozimdan olamiz. Ilgari u faqat lavozim
+    // QO'LDA almashtirilganda to'ldirilardi: admin tayyor turgan "Arrachi" ga
+    // tegmasdan saqlasa, postsiz hodim yaratilardi va uning beyjigi ishlamasdi.
+    posts: postsFor(initialPosition, posts, person?.posts ?? []),
     username: person?.user?.username ?? "",
     password: "",
   })
-  const set = <K extends keyof Form>(key: K, value: Form[K]) =>
+  const set = (key: keyof typeof form, value: string) =>
     setForm((f) => ({ ...f, [key]: value }))
 
   const chosen = POSITIONS.find((x) => x.label === form.position)
@@ -90,19 +117,12 @@ export function PersonDialog({
   const positionText =
     kind === "boshqa" ? form.otherPosition.trim() : form.position
 
-  /** Lavozim almashganda posti ham almashadi — arrachidan kromkachiga o'tkazilgan
-   * odam eski postida qolib ketmasin. */
-  const pickPosition = (label: string) => {
-    const next = POSITIONS.find((x) => x.label === label)
-    const post = next?.post
-      ? posts.find((p) => p.code === next.post)
-      : undefined
+  const pickPosition = (label: string) =>
     setForm((f) => ({
       ...f,
       position: label,
-      posts: post ? [post.id] : next?.kind === "ofis" ? [] : f.posts,
+      posts: postsFor(label, posts, f.posts),
     }))
-  }
 
   const queryClient = useQueryClient()
   const digits = form.phone.replace(/\D/g, "")
@@ -133,6 +153,13 @@ export function PersonDialog({
             },
           })
         }
+        // Tsexdan ofisga o'tkazilgan odamning ESKI beyjigi qolib ketmasin:
+        // u ofisda ishlayotgan bo'lsa ham tsexda smena ocha olardi
+        if (person?.employee) {
+          await EmployeesService.deleteEmployee({
+            path: { employee_id: person.employee.id },
+          })
+        }
         return
       }
 
@@ -150,6 +177,13 @@ export function PersonDialog({
       } else {
         await EmployeesService.createEmployee({ body })
       }
+      // Ofisdan tsexga o'tkazilgan bo'lsa kirish hisobi yopiladi — aks holda
+      // u eski paroli bilan ofis paneliga kiraverardi
+      if (person?.user && canManageAccounts) {
+        await UsersService.deleteUser({
+          path: { user_id: Number(person.user.id) },
+        })
+      }
     },
     onSuccess: () => {
       toast.success(editing ? "Saqlandi" : "Hodim qo'shildi")
@@ -165,22 +199,23 @@ export function PersonDialog({
   const valid =
     form.name.trim().length > 1 &&
     (kind !== "boshqa" || form.otherPosition.trim().length > 1) &&
+    (kind !== "tsex" || form.posts.length > 0) &&
     (kind !== "ofis" ||
       (!!phone && (!!person?.user || form.password.length > 0)))
 
-  // Ofis lavozimi kirish hisobi ochadi — uni faqat superuser bera oladi
-  const positionOptions = POSITIONS.filter(
+  // Ofis lavozimi kirish hisobi ochadi — buni faqat superuser qila oladi
+  const options = POSITIONS.filter(
     (x) => canManageAccounts || x.kind !== "ofis",
   )
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{editing ? form.name : "Yangi hodim"}</DialogTitle>
           <DialogDescription>
-            Lavozim qolganini hal qiladi: tsex lavozimi beyjik va post beradi,
-            ofis lavozimi parol bilan kirish ochadi
+            Lavozim qolganini hal qiladi: tsex lavozimi postni va beyjikni, ofis
+            lavozimi parol bilan kirishni beradi
           </DialogDescription>
         </DialogHeader>
 
@@ -194,34 +229,33 @@ export function PersonDialog({
             />
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Lavozim">
-              <SelectField
-                value={form.position}
-                onChange={pickPosition}
-                options={[
-                  ...positionOptions.map((x) => ({
-                    value: x.label,
-                    label: x.label,
-                    hint: x.post ?? (x.role ? ROLE_LABELS[x.role] : undefined),
-                  })),
-                  {
-                    value: OTHER_POSITION,
-                    label: OTHER_POSITION,
-                    hint: "kirmaydi",
-                  },
-                ]}
-              />
-            </Field>
-            <Field label="Telefon">
-              <Input
-                value={formatUzPhone(form.phone)}
-                onChange={(e) => set("phone", e.target.value)}
-                placeholder="+998 90 123-45-67"
-                inputMode="tel"
-              />
-            </Field>
-          </div>
+          <Field label="Telefon">
+            <Input
+              value={formatUzPhone(form.phone)}
+              onChange={(e) => set("phone", e.target.value)}
+              placeholder="+998 90 123-45-67"
+              inputMode="tel"
+            />
+          </Field>
+
+          <Field label="Lavozim">
+            <SelectField
+              value={form.position}
+              onChange={pickPosition}
+              options={[
+                ...options.map((x) => ({
+                  value: x.label,
+                  label: x.label,
+                  hint: x.post,
+                })),
+                {
+                  value: OTHER_POSITION,
+                  label: OTHER_POSITION,
+                  hint: "tizimga kirmaydi",
+                },
+              ]}
+            />
+          </Field>
 
           {kind === "boshqa" && (
             <Field label="Lavozim nomi">
@@ -234,43 +268,8 @@ export function PersonDialog({
             </Field>
           )}
 
-          {kind === "tsex" && (
-            <Field label="Qaysi postlarda ishlaydi">
-              <div className="flex flex-wrap gap-3 rounded-md border p-3">
-                {posts.map((p) => (
-                  <div key={p.id} className="flex items-center gap-1.5 text-sm">
-                    <Checkbox
-                      id={`post-${p.id}`}
-                      aria-label={p.code}
-                      checked={form.posts.includes(p.id)}
-                      onCheckedChange={(on) =>
-                        set(
-                          "posts",
-                          on === true
-                            ? [...form.posts, p.id]
-                            : form.posts.filter((x) => x !== p.id),
-                        )
-                      }
-                    />
-                    <label
-                      htmlFor={`post-${p.id}`}
-                      className="cursor-pointer"
-                      style={{ color: POST_COLORS[p.code] }}
-                    >
-                      {p.code}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </Field>
-          )}
-
           {kind === "ofis" && (
             <div className="grid gap-3 rounded-md border border-dashed p-3">
-              <p className="text-2xs uppercase tracking-wider text-muted-foreground">
-                Kirish hisobi — rol:{" "}
-                {chosen?.role ? ROLE_LABELS[chosen.role] : "—"}
-              </p>
               {!person?.user && (
                 <Field label="Login">
                   <Input

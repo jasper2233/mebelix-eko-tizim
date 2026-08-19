@@ -19,7 +19,16 @@ import {
   useQueryClient,
 } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { IdCard, KeyRound, Pencil, Plus, Printer, Trash2 } from "lucide-react"
+import {
+  IdCard,
+  KeyRound,
+  Pencil,
+  Plus,
+  Printer,
+  Trash2,
+  UserCheck,
+  UserMinus,
+} from "lucide-react"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
 
@@ -29,8 +38,6 @@ import {
   type UserRead,
   UsersService,
 } from "@/client"
-import { AddUser } from "@/components/Admin/AddUser"
-import { UserActionsMenu } from "@/components/Admin/UserActionsMenu"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
@@ -68,6 +75,7 @@ import { useDebounced } from "@/hooks/useDebounced"
 import { requireAccess } from "@/lib/guards"
 import {
   EMPLOYEE_STATUS_LABELS,
+  isAdmin,
   isManagement,
   isSuperuser,
   MACHINE_BOUND_ROLES,
@@ -95,16 +103,8 @@ const isDeviceAccount = (u: UserRead) => DEVICE_ROLES.includes(u.role)
 const ACCESS_LABEL: Record<Access, string> = {
   badge: "Beyjik",
   password: "Parol",
-  both: "Ikkalasi",
   none: "Yo'q",
 }
-
-const ACCESS_FILTERS: { key: Access | "all"; label: string }[] = [
-  { key: "all", label: "Hammasi" },
-  { key: "badge", label: "Tsex" },
-  { key: "password", label: "Ofis" },
-  { key: "none", label: "Kirishsiz" },
-]
 
 /** Odamda IKKI eshik bo'lishi mumkin: beyjik (tsex monoblokи) va parol (ofis
  * kompyuteri). Ular bir-biriga bog'liq emas, shuning uchun ustun ham ikki katak:
@@ -112,8 +112,8 @@ const ACCESS_FILTERS: { key: Access | "all"; label: string }[] = [
  * o'qiganda kim qayerda ishlashi legendasiz ko'rinadi. Rang brend tizimidan:
  * tsex — asosiy navy, ofis — oltin (kamroq odamda bor, kuchliroq huquq). */
 function AccessDoors({ access }: { access: Access }) {
-  const hasBadge = access === "badge" || access === "both"
-  const hasPassword = access === "password" || access === "both"
+  const hasBadge = access === "badge"
+  const hasPassword = access === "password"
   const slot = "grid size-6 place-items-center rounded-[4px] border"
   return (
     <span className="flex items-center gap-2">
@@ -146,11 +146,11 @@ function AccessDoors({ access }: { access: Access }) {
 
 function PeoplePage() {
   const [search, setSearch] = useState("")
-  const [accessFilter, setAccessFilter] = useState<Access | "all">("all")
   const [badgeFor, setBadgeFor] = useState<EmployeeRead | null>(null)
   const [editFor, setEditFor] = useState<Person | null>(null)
   const [adding, setAdding] = useState(false)
   const [deleteFor, setDeleteFor] = useState<Person | null>(null)
+  const [toggleFor, setToggleFor] = useState<Person | null>(null)
   const debounced = useDebounced(search.trim())
 
   const employees = useQuery({
@@ -160,10 +160,14 @@ function PeoplePage() {
   const users = useQuery(getUsersQueryOptions())
   const { data: posts } = useQuery(getPostsQueryOptions())
   const { currentUser } = useCurrentUser()
+  // Backend: hodim yozish `AdminUser`, hisob yozish superuser. Tugmalar AYNAN
+  // shu chegaraga qarab chiziladi — ilgari manager hammasini ko'rib, bosganda
+  // 403 olardi va ish shu yerda to'xtardi.
+  const canEdit = isAdmin(currentUser)
   const canManageAccounts = isSuperuser(currentUser)
   const postById = new Map((posts ?? []).map((p) => [p.id, p]))
 
-  const { people, devices } = useMemo(() => {
+  const people = useMemo(() => {
     const userRows = users.data?.data ?? []
     const byId = new Map(userRows.map((u) => [Number(u.id), u]))
     const linked = new Set<number>()
@@ -180,13 +184,7 @@ function PeoplePage() {
         position: e.position,
         phone: e.phone,
         posts: e.assigned_post_ids,
-        access: user
-          ? hasPosts
-            ? "both"
-            : "password"
-          : hasPosts
-            ? "badge"
-            : "none",
+        access: user ? "password" : hasPosts ? "badge" : "none",
       })
     }
 
@@ -206,24 +204,8 @@ function PeoplePage() {
       })
     }
 
-    return {
-      people: result.sort((a, b) => a.name.localeCompare(b.name)),
-      devices: userRows.filter(isDeviceAccount),
-    }
+    return result.sort((a, b) => a.name.localeCompare(b.name))
   }, [employees.data, users.data, debounced])
-
-  // "Tsex" va "Ofis" — eshik bo'yicha filtr, ya'ni ikkala eshikli odam IKKALASIDA
-  // ham chiqadi. Aks holda texnolog qidirilganda ikkala chipda ham topilmasdi.
-  const shown =
-    accessFilter === "all"
-      ? people
-      : people.filter((p) =>
-          accessFilter === "badge"
-            ? p.access === "badge" || p.access === "both"
-            : accessFilter === "password"
-              ? p.access === "password" || p.access === "both"
-              : p.access === "none",
-        )
 
   const isLoading = employees.isLoading || users.isLoading
   const isError = employees.isError || users.isError
@@ -234,24 +216,14 @@ function PeoplePage() {
         title="Hodimlar"
         description="Tsex ishchilari va ofis xodimlari — kirish usuli bilan"
         actions={
-          canManageAccounts || isManagement(currentUser) ? (
+          canEdit ? (
             <Button onClick={() => setAdding(true)}>
               <Plus /> Hodim qo'shish
             </Button>
           ) : undefined
         }
       />
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {ACCESS_FILTERS.map((f) => (
-          <Button
-            key={f.key}
-            size="sm"
-            variant={accessFilter === f.key ? "default" : "outline"}
-            onClick={() => setAccessFilter(f.key)}
-          >
-            {f.label}
-          </Button>
-        ))}
+      <div className="mb-4 flex">
         <SearchInput
           className="ml-auto w-full max-w-xs"
           placeholder="F.I.Sh bo'yicha"
@@ -283,8 +255,8 @@ function PeoplePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {shown.length ? (
-                shown.map((p) => {
+              {people.length ? (
+                people.map((p) => {
                   const active = p.employee
                     ? p.employee.status === "active"
                     : (p.user?.is_active ?? true)
@@ -325,17 +297,28 @@ function PeoplePage() {
                               <IdCard /> Beyjik
                             </Button>
                           )}
-                          <RowAction
-                            icon={Pencil}
-                            title="Tahrirlash"
-                            onClick={() => setEditFor(p)}
-                          />
-                          <RowAction
-                            icon={Trash2}
-                            title="O'chirish"
-                            danger
-                            onClick={() => setDeleteFor(p)}
-                          />
+                          {(p.user ? canManageAccounts : canEdit) && (
+                            <>
+                              <RowAction
+                                icon={active ? UserMinus : UserCheck}
+                                title={
+                                  active ? "Nofaol qilish" : "Faollashtirish"
+                                }
+                                onClick={() => setToggleFor(p)}
+                              />
+                              <RowAction
+                                icon={Pencil}
+                                title="Tahrirlash"
+                                onClick={() => setEditFor(p)}
+                              />
+                              <RowAction
+                                icon={Trash2}
+                                title="O'chirish"
+                                danger
+                                onClick={() => setDeleteFor(p)}
+                              />
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -345,62 +328,12 @@ function PeoplePage() {
                 <EmptyRow colSpan={6}>
                   {debounced
                     ? `"${debounced}" bo'yicha hodim topilmadi.`
-                    : accessFilter !== "all"
-                      ? "Bu kirish usulida hali hech kim yo'q."
-                      : "Hali hodim yo'q — \"Hodim qo'shish\" bilan qo'shing."}
+                    : "Hali hodim yo'q — \"Hodim qo'shish\" bilan qo'shing."}
                 </EmptyRow>
               )}
             </TableBody>
           </Table>
         </div>
-      )}
-
-      {canManageAccounts && devices.length > 0 && (
-        <details className="mt-8 rounded-md border p-4">
-          <summary className="cursor-pointer text-sm font-semibold">
-            Qurilma va post hisoblari ({devices.length})
-          </summary>
-          <p className="mt-2 mb-3 text-sm text-muted-foreground">
-            Bular ODAM EMAS: TERMINAL — monoblokning o'zi, post rollari esa
-            beyjik bilan ochilgan smena qaysi hisob nomidan yozilishini hal
-            qiladi. O'chirilsa o'sha postda beyjik bilan kirish ishlamay qoladi
-            — server ham buni rad etadi.
-          </p>
-          <div className="mb-3">
-            <AddUser
-              allowedRoles={["terminal", "tablo"]}
-              label="Qurilma hisobi qo'shish"
-            />
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Hisob</TableHead>
-                <TableHead>Rol</TableHead>
-                <TableHead>Holat</TableHead>
-                <TableHead className="w-16" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {devices.map((u) => (
-                <TableRow key={u.id}>
-                  <TableCell className="font-medium">
-                    {u.name ?? u.username}
-                  </TableCell>
-                  <TableCell>{ROLE_LABELS[u.role]}</TableCell>
-                  <TableCell>
-                    <Badge variant={u.is_active ? "default" : "secondary"}>
-                      {u.is_active ? "FAOL" : "NOFAOL"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <UserActionsMenu user={u} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </details>
       )}
 
       {/* `key` SHART: dialog ichidagi "yangi beyjik" mutatsiyasi holati komponent
@@ -425,12 +358,71 @@ function PeoplePage() {
           }}
         />
       )}
+      <TogglePerson person={toggleFor} onClose={() => setToggleFor(null)} />
       <DeletePerson
         person={deleteFor}
         canManageAccounts={canManageAccounts}
         onClose={() => setDeleteFor(null)}
       />
     </div>
+  )
+}
+
+/** Nofaol qilish — ishdan bo'shash yoki ta'til uchun. O'chirish emas: skan tarixi,
+ * ish haqi va hisobot qatorlari joyida qolishi kerak. Hodimda `status`, hisobda
+ * `is_active` — ikkalasi bir tugmadan boshqariladi. */
+function TogglePerson({
+  person,
+  onClose,
+}: {
+  person: Person | null
+  onClose: () => void
+}) {
+  const queryClient = useQueryClient()
+  const active = person?.employee
+    ? person.employee.status === "active"
+    : (person?.user?.is_active ?? true)
+  const mutation = useMutation({
+    mutationFn: async (p: Person) => {
+      if (p.employee) {
+        await EmployeesService.updateEmployee({
+          path: { employee_id: p.employee.id },
+          body: { status: active ? "inactive" : "active" },
+        })
+      } else if (p.user) {
+        await UsersService.updateUser({
+          path: { user_id: Number(p.user.id) },
+          body: { is_active: !active },
+        })
+      }
+    },
+    onSuccess: () => {
+      toast.success(active ? "Nofaol qilindi" : "Faollashtirildi")
+      onClose()
+    },
+    onError: (e) => toast.error(detailMessage(e)),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] })
+      queryClient.invalidateQueries({ queryKey: ["users"] })
+    },
+  })
+  return (
+    <ConfirmDialog
+      open={!!person}
+      onOpenChange={(v) => !v && onClose()}
+      title={active ? "Nofaol qilinsinmi?" : "Faollashtirilsinmi?"}
+      description={
+        person
+          ? active
+            ? `${person.name} ro'yxatda qoladi, lekin beyjigi va kirishi ishlamaydi. Ochiq smenasi yopiladi. Skan tarixi va ish haqi saqlanadi.`
+            : `${person.name} yana ishlay boshlaydi.`
+          : ""
+      }
+      confirmText={active ? "Nofaol qilish" : "Faollashtirish"}
+      destructive={active}
+      loading={mutation.isPending}
+      onConfirm={() => person && mutation.mutate(person)}
+    />
   )
 }
 

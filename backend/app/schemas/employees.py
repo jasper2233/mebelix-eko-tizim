@@ -1,13 +1,12 @@
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.enums import EmployeeStatus
+from app.schemas.users import validate_phone
 
-from .users import PHONE_PATTERN
-
-_PHONE = Field(pattern=PHONE_PATTERN, examples=["+998901234567"], default=None)
+_PHONE = Field(examples=["+998901234567"], default=None)
 
 
 class EmployeeRead(BaseModel):
@@ -39,6 +38,11 @@ class EmployeeCreate(BaseModel):
     user_id: int | None = None
     # badge_id is server-generated (UUID) — never client-supplied
 
+    @field_validator("phone")
+    @classmethod
+    def _check_phone(cls, v: str | None) -> str | None:
+        return validate_phone(v)
+
 
 class EmployeeUpdate(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -49,3 +53,8 @@ class EmployeeUpdate(BaseModel):
     status: EmployeeStatus | None = None
     user_id: int | None = None
     assigned_post_ids: list[int] | None = None
+
+    @field_validator("phone")
+    @classmethod
+    def _check_phone(cls, v: str | None) -> str | None:
+        return validate_phone(v)

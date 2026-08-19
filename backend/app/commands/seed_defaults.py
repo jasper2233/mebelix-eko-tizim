@@ -1,16 +1,20 @@
-"""Idempotent bootstrap: default organization and the 7 production posts (TZ 4.4).
+"""Idempotent bootstrap: tashkilot, 9 ishlab chiqarish posti va post hisoblari (TZ 4.4).
 
 Run: python -m app.commands.seed_defaults (called from prestart/setup scripts).
 """
 
 import asyncio
 import logging
+import secrets
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import local_session
+from app.core.security import get_password_hash
 from app.models import Organization, Post
-from app.models.enums import PostCode, PostUnit
+from app.models.enums import POST_ROLES, PostCode, PostUnit, UserRole
+from app.models.user import User
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -103,6 +107,52 @@ POSTS: list[dict[str, object]] = [
 ]
 
 
+async def _seed_post_accounts(db: AsyncSession) -> None:
+    """Har post uchun bitta TEXNIK hisob (arrachi, kromkachi, ...).
+
+    Beyjik bilan kirishda smena kimningdir hisobi nomidan ochilishi kerak:
+    `login._terminal_user` avval ish markazining TERMINAL hisobini, bo'lmasa
+    post rolidagi hisobni oladi. Ikkalasi ham bo'lmasa post BUTUNLAY ishlamaydi
+    — bo'yoqchi beyjigini urganda 401 oladi. Aynan shu holat bugun BOYOQ postida
+    edi: `boyoqchi` hisobi hech qachon yaratilmagan.
+
+    Bu hisoblar ODAM EMAS va admin ularni yuritmaydi — shuning uchun ular
+    Hodimlar sahifasida ko'rinmaydi va shu yerda, o'rnatishda yaratiladi.
+    Parol tasodifiy va hech kimga aytilmaydi: post rollariga parol bilan kirish
+    kodda yopilgan (`login.py` — "Tsexda beyjik bilan kiriladi"), ya'ni parol
+    faqat NOT NULL ustunni to'ldirish uchun turadi.
+
+    Telefon `+99800000000N` ajratilgan diapazondan — haqiqiy raqam bilan
+    to'qnashmasin (ustunda UNIQUE indeks bor).
+    """
+    existing = {
+        UserRole(u.role): u
+        for u in (
+            await db.execute(select(User).where(User.role.in_(list(POST_ROLES)), User.is_deleted == False))  # noqa: E712
+        )
+        .scalars()
+        .all()
+    }
+    for index, (role, post_code) in enumerate(POST_ROLES.items(), start=1):
+        account = existing.get(role)
+        if account is not None:
+            if not account.is_active:
+                account.is_active = True
+                logger.info("Post hisobi qayta faollashtirildi: %s", role)
+            continue
+        db.add(
+            User(
+                name=f"{post_code} posti",
+                username=str(role),
+                phone=f"+9980000000{index:02d}",
+                hashed_password=await get_password_hash(secrets.token_urlsafe(24)),
+                role=role,
+                is_active=True,
+            )
+        )
+        logger.info("Post hisobi yaratildi: %s (%s)", role, post_code)
+
+
 async def seed_defaults() -> None:
     async with local_session() as db:
         org = (await db.execute(select(Organization).limit(1))).scalar_one_or_none()
@@ -123,6 +173,7 @@ async def seed_defaults() -> None:
                 post.order_index = data["order_index"]  # type: ignore[assignment]
                 logger.info("Post %s order_index -> %s", data["code"], data["order_index"])
 
+        await _seed_post_accounts(db)
         await db.commit()
 
 

@@ -1,3 +1,4 @@
+import re
 from typing import Annotated
 
 from pydantic import (
@@ -15,24 +16,41 @@ PHONE_PATTERN = r"^\+998\d{9}$"
 
 
 def validate_password_strength(v: str) -> str:
-    """Reject weak passwords. Required: 8+ chars, lowercase, uppercase, digit, special."""
+    """Zaif parolni rad etadi: 8+ belgi, kichik va katta harf, raqam, belgi.
+
+    Xabarlar O'ZBEKCHA — ular to'g'ridan-to'g'ri adminning ekraniga toast bo'lib
+    chiqadi (frontend `detailMessage`), ya'ni bu ichki log matni emas, interfeys matni.
+    """
     if len(v) < 8:
-        raise ValueError("Password must be at least 8 characters")
+        raise ValueError("Parol kamida 8 belgi bo'lsin")
     if not any(c.islower() for c in v):
-        raise ValueError("Password must contain at least one lowercase letter")
+        raise ValueError("Parolda kamida bitta kichik harf bo'lsin")
     if not any(c.isupper() for c in v):
-        raise ValueError("Password must contain at least one uppercase letter")
+        raise ValueError("Parolda kamida bitta KATTA harf bo'lsin")
     if not any(c.isdigit() for c in v):
-        raise ValueError("Password must contain at least one digit")
+        raise ValueError("Parolda kamida bitta raqam bo'lsin")
     if not any(not c.isalnum() for c in v):
-        raise ValueError("Password must contain at least one special character")
+        raise ValueError("Parolda kamida bitta belgi bo'lsin (masalan ! yoki *)")
     return v
 
 
-_NAME_FIELD = Field(min_length=2, max_length=30, examples=["User Userson"], default=None)
+def validate_phone(v: str | None) -> str | None:
+    """Telefon: +998 va 9 raqam.
+
+    Pydantic `pattern` xatosi ekranga "String should match pattern ..." bo'lib
+    chiqardi — regexp adminning ekraniga tushmasligi kerak.
+    """
+    if v is not None and not re.fullmatch(PHONE_PATTERN, v):
+        raise ValueError("Telefon +998 bilan boshlanib, 9 ta raqamdan iborat bo'lsin")
+    return v
+
+
+#: 30 belgi yetmasdi: "Abdurahmonov Abdurahmon Abdurahmonovich" — 39 belgi.
+#: `employee.full_name` allaqachon 100 belgi, ikkalasi bir xil bo'lsin.
+_NAME_FIELD = Field(min_length=2, max_length=100, examples=["Abdurahmonov Sherzod"], default=None)
 _USERNAME_FIELD = Field(min_length=2, max_length=20, pattern=r"^[a-z0-9]+$", examples=["userson"], default=None)
-_PHONE_FIELD = Field(pattern=PHONE_PATTERN, examples=["+998901234567"])
-_OPTIONAL_PHONE_FIELD = Field(pattern=PHONE_PATTERN, examples=["+998901234567"], default=None)
+_PHONE_FIELD = Field(examples=["+998901234567"])
+_OPTIONAL_PHONE_FIELD = Field(examples=["+998901234567"], default=None)
 
 
 class UserRead(BaseModel):
@@ -78,6 +96,11 @@ class UserCreate(BaseModel):
     def password_strength(cls, v: str) -> str:
         return validate_password_strength(v)
 
+    @field_validator("phone")
+    @classmethod
+    def _check_phone(cls, v: str | None) -> str | None:
+        return validate_phone(v)
+
 
 class UserUpdate(BaseModel):
     """Body for `PATCH /users/me` — self-update only.
@@ -91,6 +114,11 @@ class UserUpdate(BaseModel):
     name: Annotated[str | None, _NAME_FIELD]
     username: Annotated[str | None, _USERNAME_FIELD]
     phone: Annotated[str | None, _OPTIONAL_PHONE_FIELD]
+
+    @field_validator("phone")
+    @classmethod
+    def _check_phone(cls, v: str | None) -> str | None:
+        return validate_phone(v)
 
 
 class UserAdminUpdate(UserUpdate):
