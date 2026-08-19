@@ -523,9 +523,9 @@ export type EmployeeRead = {
      */
     full_name: string;
     /**
-     * Badge Id
+     * User Id
      */
-    badge_id: string;
+    user_id: number | null;
     /**
      * Phone
      */

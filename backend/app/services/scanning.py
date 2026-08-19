@@ -193,6 +193,37 @@ async def end_session(db: AsyncSession, session: WorkSession) -> None:
     await db.flush()
 
 
+async def end_employee_sessions(db: AsyncSession, employee_id: int) -> int:
+    """Hodimning HAMMA ochiq smenasini yopadi. Nechtasi yopilgani qaytadi.
+
+    Hodimni nofaol qilish yoki o'chirish shuni chaqirishi SHART, aks holda ochiq
+    smena ish markazida qolib ketadi: `active_session` brigadaning LANGAR smenasi
+    egasini tekshiradi va nofaol hodim langar bo'lsa o'sha ish markazidagi HAR
+    skan E006 "Hodim nofaol" bilan rad etiladi — brigadaning qolgan a'zolari
+    aybsiz bo'lsa ham post to'liq to'xtaydi.
+
+    `commit` chaqiruvchida — hodim yozuvi bilan bitta tranzaksiyada ketsin.
+    """
+    open_sessions = (
+        (
+            await db.execute(
+                select(WorkSession).where(
+                    WorkSession.employee_id == employee_id,
+                    WorkSession.status == SessionStatus.ACTIVE,
+                    WorkSession.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    now = datetime.now(UTC)
+    for session in open_sessions:
+        session.status = SessionStatus.ENDED
+        session.ended_at = now
+    return len(open_sessions)
+
+
 async def crew_sessions(db: AsyncSession, machine_id: int) -> list[WorkSession]:
     """Ish markazidagi OCHIQ smenalar — brigada, ochilish tartibida.
 

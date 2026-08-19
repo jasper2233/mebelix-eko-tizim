@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.core.exceptions import DuplicateValueException, ForbiddenException
 from app.core.security import get_password_hash, verify_password
 from app.crud import crud_users, log_action
+from app.models.enums import POST_ROLES, UserRole
 from app.models.user import User
 from app.schemas.common import Message, Paginated
 from app.schemas.users import UpdatePassword, UserAdminUpdate, UserCreate, UserRead, UserUpdate
@@ -122,6 +123,9 @@ async def update_password_me(
     await crud_users.update(
         db=db, db_user=current_user, user_update={"hashed_password": await get_password_hash(body.new_password)}
     )
+    # Parol almashgach hamma qurilmadan chiqariladi (shu brauzer ham) — parolni
+    # almashtirishning maqsadi aynan eski kirishni bekor qilish
+    await crud_users.increment_token_version(db=db, user=current_user)
     log_action(
         db,
         module="users",
@@ -164,7 +168,20 @@ async def update_user(
 
     await _ensure_unique(db, phone=values.phone, username=values.username, current=db_user)
     update_data = _drop_forbidden_nulls(values.model_dump(exclude_unset=True))
+    # O'zini qulflab qo'yish yo'li yopiq: tiklash uchun BOSHQA superuser kerak, u esa
+    # bitta bo'lgan o'rnatishda umuman yo'q — tizimga kirishning yagona yo'li yopilardi
+    if user_id == current_user.id:
+        if update_data.get("is_active") is False:
+            raise ForbiddenException("O'z hisobingizni nofaol qila olmaysiz.")
+        if update_data.get("is_superuser") is False:
+            raise ForbiddenException("O'zingizdan superuser huquqini ola olmaysiz.")
+    # `crud_users.update` parolni dict'dan POP qiladi — bayroq oldindan olinadi
+    password_changed = bool(update_data.get("password"))
     updated_user = await crud_users.update(db=db, db_user=db_user, user_update=update_data)
+    # Admin parolni almashtirsa egasining TIRIK sessiyalari ham uzilishi kerak:
+    # aks holda o'g'irlangan cookie parol almashtirilgandan keyin ham ishlayverardi
+    if password_changed:
+        await crud_users.increment_token_version(db=db, user=updated_user)
     log_action(
         db,
         module="users",
@@ -190,6 +207,15 @@ async def delete_user(
     db_user = await crud_users.get_or_404(db, "Foydalanuvchi topilmadi", id=user_id)
     if not current_user.is_superuser and user_id != current_user.id:
         raise ForbiddenException()
+    # Qurilma va post hisoblari ODAM EMAS: TERMINAL monoblokning o'zi, post rollari esa
+    # beyjik bilan ochilgan smena qaysi hisob nomidan yozilishini hal qiladi
+    # (`login._terminal_user`). O'chirilsa o'sha postda beyjik kirishi o'ladi.
+    role = UserRole(db_user.role)
+    if role in (UserRole.TERMINAL, UserRole.TABLO) or role in POST_ROLES:
+        raise ForbiddenException(
+            f"{db_user.username} — qurilma yoki post hisobi, odam emas. O'chirilsa o'sha postda "
+            "beyjik bilan kirish ishlamay qoladi. Kerak bo'lsa nofaol qiling."
+        )
     if current_user.is_superuser and user_id == current_user.id:
         raise ForbiddenException(
             "Adminlar o'z hisobini o'zlari o'chira olmaydilar. Iltimos, boshqa adminga murojaat qiling."

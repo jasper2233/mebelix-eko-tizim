@@ -7,7 +7,6 @@ import {
 } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { IdCard, Pencil, Plus, Printer, Trash2 } from "lucide-react"
-import { QRCodeSVG } from "qrcode.react"
 import { useState } from "react"
 import { type Control, useForm } from "react-hook-form"
 import { toast } from "sonner"
@@ -540,21 +539,19 @@ function BadgeDialog({
             </div>
           )}
           <DialogTitle>{emp.full_name}</DialogTitle>
-          {/* Bu ADMINGA ko'rsatma — beyjikning o'ziga bosilmaydi */}
           <DialogDescription>
-            Beyjik QR — chop etib hodimga bering
+            Beyjikni chop etib hodimga bering
           </DialogDescription>
         </DialogHeader>
-        <div className="mx-auto rounded-xl border p-4">
-          {/* `marginSize` — QR standartining "tinch zonasi" (4 modul). v4 da u
-              sukut bo'yicha 0: qog'ozda beyjik kichraytirilganda QR chetiga
-              yaqin narsa tushsa skaner o'qimay qolardi. */}
-          <QRCodeSVG value={emp.badge_id} size={180} marginSize={4} />
+        {/* QR EKRANDA CHIZILMAYDI: beyjik — tsexdagi yagona kirish kaliti, ekrandagi
+            QR ni suratga olgan odam boshqa hodim nomidan smena ocha olardi. Server
+            yorliqni to'g'ridan-to'g'ri printerga yuboradi (`POST /employees/{id}/print`),
+            shuning uchun `badge_id` javobda ham qaytarilmaydi. */}
+        <div className="mx-auto rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
+          Beyjik raqami ekranda ko'rsatilmaydi.
+          <br />
+          Yorliq to'g'ridan-to'g'ri printerga yuboriladi.
         </div>
-        {/* Beyjik ID qog'ozga BOSILMAYDI: hodim uchun u ma'nosiz raqam, QR
-            o'qilmasa uni qo'lda kiritadigan joy ham yo'q. Ekranda qoladi —
-            adminga hodimni aniqlash uchun kerak bo'ladi. */}
-        <div className="num text-xs text-muted-foreground">{emp.badge_id}</div>
         <DialogFooter className="flex-col gap-2 sm:flex-col">
           <LoadingButton
             variant="outline"

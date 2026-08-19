@@ -15,7 +15,11 @@ class EmployeeRead(BaseModel):
 
     id: int
     full_name: str
-    badge_id: str
+    #: Beyjik RAQAMI ataylab BERILMAYDI: u tsexdagi yagona kirish kaliti (login.py
+    #: `/login/badge`). Ilgari ro'yxat javobida ochiq matnda ketardi va ekrandagi QR
+    #: ni suratga olgan odam boshqa hodim nomidan smena ocha olardi. Chop etish
+    #: serverda (`POST /{id}/print`), yorliqni bevosita printer oladi.
+    user_id: int | None
     phone: str | None
     position: str | None
     status: EmployeeStatus

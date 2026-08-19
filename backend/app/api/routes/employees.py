@@ -12,6 +12,7 @@ from app.models import Employee
 from app.models.enums import EmployeeStatus
 from app.schemas.common import Message, Paginated
 from app.schemas.employees import EmployeeCreate, EmployeeRead, EmployeeUpdate
+from app.services.scanning import end_employee_sessions
 
 router = APIRouter(prefix="/employees", tags=["employees"])
 
@@ -83,10 +84,14 @@ async def update_employee(
         await _validate_post_ids(db, update_data["assigned_post_ids"])
     for field, value in update_data.items():
         setattr(employee, field, value)
+    # Nofaol hodimning ochiq smenasi ish markazini to'xtatib qo'yadi (E006) —
+    # holat o'zgarishi bilan bitta tranzaksiyada yopiladi
+    closed = await end_employee_sessions(db, employee.id) if employee.status != EmployeeStatus.ACTIVE else 0
     log_action(
         db,
         module="employees",
         action="updated",
+        message=f"Nofaol qilindi, {closed} ta ochiq smena yopildi" if closed else None,
         user_id=current_user.id,
         entity_type="employee",
         entity_id=employee.id,
@@ -153,6 +158,7 @@ async def delete_employee(db: SessionDep, current_user: AdminUser, employee_id: 
             f"{employee.full_name} — eski operator hisobi yozuvi, o'chirib bo'lmaydi: "
             "unda skan tarixi bor. U allaqachon NOFAOL va ro'yxatda faqat tarix uchun turibdi."
         )
+    closed = await end_employee_sessions(db, employee.id)
     log_action(
         db,
         module="employees",
@@ -160,7 +166,7 @@ async def delete_employee(db: SessionDep, current_user: AdminUser, employee_id: 
         user_id=current_user.id,
         entity_type="employee",
         entity_id=employee.id,
-        message=f"Hodim o'chirildi: {employee.full_name}",
+        message=f"Hodim o'chirildi: {employee.full_name}" + (f" ({closed} ta ochiq smena yopildi)" if closed else ""),
         ip=client_ip(request),
     )
     await crud_employees.delete(db, id=employee_id)
