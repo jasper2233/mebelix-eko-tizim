@@ -253,9 +253,9 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
 | GET | `/api/v1/machines/` | login (har qanday) | Barcha ish markazlari, `list[MachineRead]` |
-| POST | `/api/v1/machines/` | `AdminUser` | 201; `post_id` mavjudligi tekshiriladi |
+| POST | `/api/v1/machines/` | `AdminUser` | 201; `post_id` mavjudligi va NOM TAKRORLANMASLIGI tekshiriladi (`_check_name`, registrga sezgir emas) — indeks `ix_machine_name` baribir rad etardi, lekin xabari tushunarsiz bo'lardi |
 | GET | `/api/v1/machines/{id}` | login (har qanday) | Topilmasa 404 |
-| PATCH | `/api/v1/machines/{id}` | `AdminUser` | `post_id` o'zgarsa qayta tekshiriladi; **skan tarixi bor markazning posti o'zgarmaydi** (409) — o'tgan skanlar yangi post nomidan sanalib ketardi |
+| PATCH | `/api/v1/machines/{id}` | `AdminUser` | nom o'zgarsa takrorlanmasligi tekshiriladi; `post_id` o'zgarsa qayta tekshiriladi; **skan tarixi bor markazning posti o'zgarmaydi** (409) — o'tgan skanlar yangi post nomidan sanalib ketardi |
 | DELETE | `/api/v1/machines/{id}` | `AdminUser` | Soft-delete, LEKIN **bog'lam bo'lsa 409** (`_blockers`): biriktirilgan hisob (`user.machine_id`), printer agenti, ochiq smena, tugallanmagan marshrut (`total_done < total_required`). Sabab xabarda nomlanadi |
 
 **O'chirish nega to'sildi:** soft-delete FK'ni buzmaydi, lekin bog'lamni JIMGINA uzadi — qurilma hisobi E009 bilan kirolmaydi, agent skan-forvardi 409 beradi, tugallanmagan marshrutlar terminal ro'yxatidan yo'qoladi (filtr `machine_id` bo'yicha). Vaqtincha to'xtatish uchun o'chirish emas, `status` kerak.

@@ -1,4 +1,4 @@
-# Frontend Components (Admin, Clients, Common, Orders, Anketa, Sidebar, Stock, Terminal, UserSettings, ui)
+# Frontend Components (Clients, Common, Orders, Anketa, People, Sidebar, Stock, Terminal, UserSettings, ui)
 
 Ushbu hujjat `frontend/src/components/` katalogidagi React komponentlarini va ularni yig'adigan anketa sahifasini (`routes/_layout/anketa.$orderId.tsx`) qamrab oladi. Stack: React + TypeScript, TanStack Router/Query, react-hook-form + zod, shadcn/ui (Radix UI + Tailwind CSS 4). Barcha komponentlar backend bilan avtomatik generatsiya qilingan `@/client` (UsersService, ClientsService, OrdersService, TerminalService va model turlari) orqali gaplashadi — chaqiruv shakli `@hey-api/client-axios` niki: argumentlar `{ path, query, body }` guruhlarida beriladi va path/query kalitlari backend'dagi XOM snake_case nomlar (`path: { user_id }`, `query: { employee_id }`), natija esa `AxiosResponse`, ya'ni foydali yuk `.data` da (`onSuccess: ({ data: client }) => ...`, `queryFn: async () => (await ...).data`); umumiy query'lar `@/queries/mes` dagi `queryOptions` fabrikalarida (getClients/getMachines/getPosts/getOrderMatrixQueryOptions va h.k.), domen konstantalari `@/lib/mes` da (ROLE_LABELS, PRIORITY_LABELS, PRIORITY_DOT_CLASSES/PRIORITY_TEXT_CLASSES/PRIORITY_BADGE_CLASSES — prioritet ranglari yagona manbadan, POST_COLORS, ORDER_STATUS_LABELS/COLORS, chipColors/mixTint — chip rang formulasi, isCut, formatSize), buyurtma anketasi variantlari `@/lib/anketa` da; toast xabarlari to'g'ridan-to'g'ri sonner `toast.success/error` (`useCustomToast` hooki o'chirilgan), xatoliklar `handleError` utiliti orqali (`onError: handleError` — curry emas; imzosi `(err: unknown)`, chunki bu klient har qanday xatoni `AxiosError` qilib tashlaydi — eski `ApiError` klassi yo'q, server tanasi `err.response.data.detail` da); takrorlanuvchi toast+xato+invalidatsiya triosi `@/queries/mes` dagi `crudCallbacks()` da.
 
@@ -6,68 +6,37 @@ Umumiy naqsh (pattern): **forma → zod schema → react-hook-form → useMutati
 
 ---
 
-## Admin komponentlari — `frontend/src/components/Admin/`
+## People komponentlari — `frontend/src/components/People/`
 
-Admin panel (`/admin` route, guard: `requireAccess(isSuperuser)`) uchun foydalanuvchilarni CRUD boshqarish komponentlari. Jadvalning o'zi route faylida — `routes/_layout/admin.tsx` dagi lokal `UserRow` oddiy `ui/table` qatorini chizadi (clients.tsx/employees.tsx bilan bir xil naqsh; joriy foydalanuvchi qatorida "Siz" badge); sahifalash yo'q, `getUsersQueryOptions` barcha sahifalarni bitta ro'yxatga yig'adi. Yuklanish holati — `isLoading` + `Skeleton` (avvalgi `Pending/PendingUsers` skeleton komponenti va Suspense naqshi o'chirilgan). Add/Edit dialoglarining umumiy yadrosi — `UserForm.tsx`.
+Birlashgan "Hodimlar" sahifasining yozish qismi. Ilgari bu yerda `Admin/` papkasi turardi
+(`AddUser`, `EditUser`, `DeleteUser`, `UserActionsMenu`, `UserForm` — 616 qator): u
+`/admin` sahifasi bilan birga o'lik qoldi va o'chirildi, chunki odam ham, hisob ham endi
+BITTA dialogdan yaratiladi.
 
-### `frontend/src/components/Admin/UserForm.tsx`
+### `frontend/src/components/People/PersonDialog.tsx`
 
-**Maqsadi:** AddUser va EditUser uchun umumiy forma yadrosi — schema va maydonlar bir joyda (avval har dialogda ~320 qatordan takrorlangan edi).
+**Maqsadi:** hodim qo'shish va tahrirlash. Uch savol: F.I.Sh, telefon, **lavozim** —
+qolganini lavozim hal qiladi.
 
-- Eksportlar: `buildUserFormSchema(requirePassword)` — zod: `phone` (`formattedPhoneSchema` — maskalangan "+998 90 123-45-67" kiritish qabul qilinadi), `name` (`optionalNameSchema`), `password` (Add'da `passwordSchema`, Edit'da `optionalPasswordSchema` — bo'sh qoldirilsa parol o'zgarmaydi), `confirm_password`, `role` (`z.enum(Object.keys(ROLE_LABELS))` — 16 rol yagona manbadan, generatsiya qilingan `UserRole` tipida), `machine_id` (ixtiyoriy), `is_superuser`, `is_active`; ikkita `.refine()`: ish markaziga bog'liq rolga ish markazi majburiy ("Terminal/TABLO uchun ish markazini tanlang") va parollar mosligi ("Parollar mos emas").
-- `UserFormFields({ form, passwordRequired })` — 8 maydonli grid: rol `Select` `ROLE_LABELS` (`@/lib/mes`) dan to'ldiriladi; rol ish markaziga bog'liq bo'lsa shartli "Ish markazi" `Select` chiqadi (`getMachinesQueryOptions()` — `@/queries/mes`).
-- `isMachineBoundRole(role)` — `MACHINE_BOUND_ROLES` (`@/lib/mes`, terminal/tablo) asosidagi predikat; ikkala dialog submitda ham shundan foydalanadi.
-
-### `frontend/src/components/Admin/AddUser.tsx`
-
-**Maqsadi:** yangi foydalanuvchi yaratish dialogi (o'zining trigger tugmasi bilan).
-
-- Schema `buildUserFormSchema(true)` (parol majburiy) + maydonlar `UserFormFields` — ikkalasi `UserForm.tsx` dan.
-- Default qiymatlar: `role: "manager"`, `is_superuser: false`, `is_active: true` — yangi foydalanuvchi darhol tizimga kira oladi.
-- Submitda `machine_id` faqat ish markaziga bog'liq rolda (`isMachineBoundRole`) `Number` ga o'giriladi, aks holda `null` — rol keyin almashtirilsa yashirin qolgan ish markazi tanlovi ofis rolga jo'nab ketmaydi.
-- Mutation: `UsersService.createUser({ body })`; muvaffaqiyatda toast, forma reset, dialog yopiladi; `onSettled` da `["users"]` query invalidatsiya qilinadi.
-- Forma `mode: "onBlur"` rejimida validatsiya qiladi; trigger — `<Plus /> Foydalanuvchi qo'shish` tugmasi.
-- Submit tugmasi `LoadingButton` (`loading={mutation.isPending}`).
-
-**Bog'lanishlar:** `Admin/UserForm` (schema + maydonlar), sonner `toast`, `@/utils` (`handleError`), ui: `dialog`, `form`, `button`, `loading-button`. Admin route sahifasidan chaqiriladi.
-
-### `frontend/src/components/Admin/DeleteUser.tsx`
-
-**Maqsadi:** foydalanuvchini o'chirish — dropdown menu bandi + tasdiqlash dialogi.
-
-- Props: `{ id: string; onSuccess: () => void }`.
-- Mutation: `UsersService.deleteUser({ path: { user_id: Number.parseInt(id, 10) } })`; muvaffaqiyatda toast, dialog yopiladi, `onSuccess()` (ota-menuni yopish); `onSettled` da `["users"]` queryi invalidatsiya qilinadi.
-- `DropdownMenuItem variant="destructive"` da `onSelect={(e) => e.preventDefault()}` — menyu yopilib dialog ochilishini ta'minlaydi.
-- Dialog UI to'liq `Common/ConfirmDialog` orqali (`destructive`, `confirmText="O'chirish"`); description matni soft-delete'ga mos — foydalanuvchi **o'chirilgan deb belgilanadi** va tizimga kira olmaydi (ma'lumotlar butunlay o'chirilmaydi).
-
-### `frontend/src/components/Admin/EditUser.tsx`
-
-**Maqsadi:** mavjud foydalanuvchini tahrirlash dialogi (dropdown menu bandi ichidan ochiladi).
-
-- Props: `{ user: UserRead; onSuccess: () => void }`.
-- Schema `buildUserFormSchema(false)` (`UserForm.tsx`): `password` — `optionalPasswordSchema` (bo'sh qoldirilsa parol o'zgarmaydi), refine faqat parol kiritilganda mosligini tekshiradi.
-- `onSubmit` da to'liq `UserAdminUpdate` payload quriladi (rol va ish markazi ham tahrirlanadi); `password` faqat kiritilgan bo'lsa qo'shiladi:
-
-```ts
-const payload: UserAdminUpdate = {
-  phone, name, role,
-  machine_id: isMachineBoundRole(role) && machine_id ? Number(machine_id) : null,
-  is_superuser, is_active,
-}
-if (data.password) payload.password = data.password
-```
-
-- Mutation: `UsersService.updateUser({ path: { user_id: Number.parseInt(user.id, 10) }, body })`; `["users"]` invalidatsiyasi.
-- Forma default qiymatlari `user` obyektidan olinadi.
-
-### `frontend/src/components/Admin/UserActionsMenu.tsx`
-
-**Maqsadi:** jadval qatoridagi "..." (EllipsisVertical) amallar menyusi.
-
-- Props: `{ user: UserRead }`. `useCurrentUser` orqali joriy foydalanuvchi aniqlanadi; **agar qator joriy foydalanuvchining o'zi bo'lsa `null` qaytaradi** (o'zini tahrirlash/o'chirish mumkin emas — buning uchun UserSettings bor).
-- Menyu ichida `EditUser` va `DeleteUser`; ikkalasiga `onSuccess={() => setOpen(false)}` uzatiladi (muvaffaqiyatdan keyin dropdown yopilsin).
-
----
+- **Lavozim** (`lib/mes.ts` `POSITIONS`) uch turga bo'linadi:
+  `tsex` (9 ta, har biri postga ko'rsatadi — backend `POST_ROLES` bilan bir xil jadval),
+  `ofis` (5 ta, har biri `UserRole` ga ko'rsatadi), `boshqa` (nomi qo'lda — haydovchi,
+  farrosh; post ham, hisob ham berilmaydi).
+- **Post lavozimdan keladi**: "Arrachi" tanlansa ARRA belgilanadi. Dialog OCHILGANDA ham
+  hisoblanadi (`postsFor`), faqat almashtirilganda emas — ilgari admin tayyor turgan
+  lavozimga tegmasdan saqlasa POSTSIZ hodim yaratilardi va uning beyjigi ishlamasdi.
+  Qulflanmaydi: bir odam ikki postda ishlashi mumkin.
+- **Lavozim MATNDAN emas MA'LUMOTDAN tiklanadi** (`positionOf`): ofis odamida
+  `user.role`, tsex odamida biriktirilgan post bo'yicha. Matn bilan solishtirish
+  "Manager" != "Menejer" da sinib, tahrirlash o'rniga ikkinchi yozuv yaratardi.
+- **Yozish yo'li lavozim turiga qarab:** `ofis` -> `UsersService` (hisob), aks holda
+  `EmployeesService` (tsex yozuvi). Tur o'zgarsa qarama-qarshi yozuv o'chiriladi va
+  buning uchun TASDIQ so'raladi ("beyjigi bekor qilinadi" / "kirish hisobi o'chiriladi") —
+  ilgari bu jimgina bo'lardi.
+- **O'chiq "Saqlash" sababini aytadi** (`missing`): "Kamida bitta post tanlang",
+  "Ofis xodimiga telefon kerak — u bilan tizimga kiradi", "Parol kiriting".
+- Parol va login qoidalari maydon ostida turadi — ilgari ular faqat serverdan xato
+  bo'lib qaytardi (endi o'zbekcha: `schemas/users.py` `validate_password_strength`).
 
 ## Clients komponentlari — `frontend/src/components/Clients/`
 
@@ -153,7 +122,7 @@ kiritish maydonlari turadi).
 - Props: `open`, `onOpenChange`, `title`, `description?`, `confirmText?` (default "Tasdiqlash"), `cancelText?` (default "Bekor qilish"), `destructive?`, `loading?`, `onConfirm`.
 - Tasdiqlash tugmasi `LoadingButton` (`variant={destructive ? "destructive" : "default"}`); ikkala tugma ham `h-11 px-5` — 44px minimal barmoq o'lchami terminal (touch) va admin uchun bir xil.
 
-**Foydalanuvchilari:** `Admin/DeleteUser.tsx`, `Anketa/RoomPhotos.tsx` (rasm o'chirish), `Stock/StockDialogs.tsx` (`DeleteItem` — tovarni o'chirish), `routes/_layout/orders/$orderId.tsx`, `routes/_layout/anketa.$orderId.tsx` (xona o'chirish), `routes/_layout/employees.tsx`, `routes/_layout/work-centers.tsx` (ish markazini o'chirish), `routes/_layout/printers.tsx` (ish markazi bog'lash/uzish, chek chiqarish `can_print` switch'i, agentga yangi kod berish va agentni bekor qilish — to'rtta dialog), `routes/terminal.tsx`.
+**Foydalanuvchilari:** `Anketa/RoomPhotos.tsx` (rasm o'chirish), `Stock/StockDialogs.tsx` (`DeleteItem` — tovarni o'chirish), `routes/_layout/orders/$orderId.tsx`, `routes/_layout/anketa.$orderId.tsx` (xona o'chirish), `routes/_layout/employees.tsx`, `routes/_layout/work-centers.tsx` (ish markazini o'chirish), `routes/_layout/printers.tsx` (ish markazi bog'lash/uzish, chek chiqarish `can_print` switch'i, agentga yangi kod berish va agentni bekor qilish — to'rtta dialog), `routes/terminal.tsx`.
 
 ### `frontend/src/components/Common/EmptyRow.tsx`
 
@@ -591,7 +560,7 @@ function LoadingButton({ loading = false, disabled, asChild = false, ... }: Butt
 // loading=true -> disabled + <Loader2 className="mr-2 h-5 w-5 animate-spin" />
 ```
 
-Barcha mutation submit tugmalarida ishlatiladi — jami 24 chaqiruvchi (AddUser, EditUser, AddClient, AddOrder, EditOrder, MachineAssign, OrderMatrix, CustomRoutes, CutmapView, TmoView, UpakovkaView, ConfirmDialog, Stock dialoglari — `MoveDialog`/`SaleDialog`/`StockDialogs`, ChangePassword, UserInformation, login formasi, anketa saqlash paneli, employees hodim formalari, work-centers ish markazi formasi, buyurtma sahifasi amallari, printers agent qo'shish formasi) va uzoq davom etadigan amallarda — `PrisadkaView` dagi SCX "Hammasini yuklab olish" tugmasi jonli progress yozuvi bilan ("Yuklanmoqda… 12/81").
+Barcha mutation submit tugmalarida ishlatiladi — jami 22 chaqiruvchi (PersonDialog, BadgeDialog, AddClient, AddOrder, EditOrder, MachineAssign, OrderMatrix, CustomRoutes, CutmapView, TmoView, UpakovkaView, ConfirmDialog, Stock dialoglari — `MoveDialog`/`SaleDialog`/`StockDialogs`, ChangePassword, UserInformation, login formasi, anketa saqlash paneli, employees hodim formalari, work-centers ish markazi formasi, buyurtma sahifasi amallari, printers agent qo'shish formasi) va uzoq davom etadigan amallarda — `PrisadkaView` dagi SCX "Hammasini yuklab olish" tugmasi jonli progress yozuvi bilan ("Yuklanmoqda… 12/81").
 
 ### `frontend/src/components/ui/password-input.tsx` (custom)
 
@@ -616,11 +585,11 @@ routes (_layout sahifalar)                      routes (terminal / cutmap)
   ├─ stock.tsx: ItemDialog / MoveDialog /         │    └─ usePrintLabel
   │        SaleDialog / DeleteItem                └─ audio (playSuccess/Error/Warning)
   │        └─ SalesView ─ PaymentDialog · Stock/format (num/uzs/qty)
-  └─ admin.tsx: ui/table + UserRow
+  └─ employees.tsx: ui/table + AccessCell
        │    (isLoading → Skeleton)
-       ├─ AddUser ─┐
-       └─ UserActionsMenu ─ EditUser ─┴─ UserForm (umumiy schema+maydonlar)
-                          └ DeleteUser ─ ConfirmDialog
+       ├─ People/PersonDialog (F.I.Sh · telefon · lavozim)
+       ├─ BadgeDialog (chop etish · yangi beyjik)
+       └─ TogglePerson / DeletePerson ─ ConfirmDialog
 
 routes/_layout/anketa.$orderId → components/Anketa
   ├─ Section / Field / Num / NumInput / CheckGrid / Choice / ShapeChoice

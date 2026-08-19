@@ -209,7 +209,7 @@ Har bir registr moduli standart uchlik (`*Read` / `*Create` / `*Update`) beradi:
 | Fayl | Schemalar | Muhim jihatlar |
 |---|---|---|
 | `clients.py` | `ClientRead`, `ClientCreate`, `ClientUpdate` | `full_name` 2–150; telefonlar `PHONE_PATTERN`; `ClientRead.orders_count` — route'da hisoblanadi (default 0) |
-| `employees.py` | `EmployeeRead`, `EmployeeCreate`, `EmployeeUpdate` | `badge_id` **faqat server tomonda** generatsiya qilinadi (UUID) va `EmployeeRead` da ham QAYTARILMAYDI — u tsexdagi yagona kirish kaliti, ekrandagi QR ni suratga olgan odam boshqa hodim nomidan smena ocha olardi; `assigned_post_ids: list[int]` (bo'sh bo'lishi mumkin); `user_id: int \| None` — kirish hisobi bog'lami, birlashgan sahifa "Kirish usuli" ustunini shundan hisoblaydi |
+| `employees.py` | `EmployeeRead`, `EmployeeCreate`, `EmployeeUpdate` | `badge_id` **faqat server tomonda** generatsiya qilinadi (UUID) va `EmployeeRead` da ham QAYTARILMAYDI — u tsexdagi yagona kirish kaliti, ekrandagi QR ni suratga olgan odam boshqa hodim nomidan smena ocha olardi; `assigned_post_ids: list[int]` (bo'sh bo'lishi mumkin); `user_id: int \| None` — kirish hisobi bog'lami, birlashgan sahifa "Kirish" ustunini shundan hisoblaydi. Telefon `pattern` o'rniga `validate_phone` VALIDATORIDAN o'tadi: Pydantic shablon xatosi ekranga "String should match pattern '^\\+998...'" bo'lib chiqardi |
 | `machines.py` | `MachineRead`, `MachineCreate`, `MachineUpdate` | `post_id` majburiy; `capacity` `gt=0`; `capacity_unit`/`status` enumlar |
 | `posts.py` | `PostRead`, `PostUpdate` | Create yo'q — 9 postlik zanjir qat'iy (TZ 4.4), faqat prezentatsion/xulq maydonlari tahrirlanadi (`name`, `order_index`, `requires_assignment_choice`, `icon`, `color`) |
 | `stock.py` | `StockItemRead`, `StockItemCreate`, `StockItemUpdate` + `StockGroup`, `StockSummary`, `StockMoveRequest`, `StockMoveRead`, `SaleLine`, `SaleCreate`, `SaleRead`, `SaleSummary`, `PaymentCreate`, `PaymentRead` (13 klass) | Materiallar ombori — uchlikdan kengroq: `StockItemCreate.code` bo'sh qolsa server guruhdagi keyingi model raqamini beradi (`F-RC-032-01`); `StockMoveRequest` qoldiqni emas **delta** ni oladi (`delta`, `kind`, `order_id`, `price_uzs`, `note` ≤200 → `StockMove.note`) — `kind=buyurtma` da `order_id` majburiy, `sotuv` esa bu yerda QABUL QILINMAYDI (u `POST /stock/sales` orqali, hujjat + mijoz + to'lov bilan); `SaleRead` `debt_uzs` va `lines`/`payments` ni ham qaytaradi |
@@ -408,7 +408,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 
 ### 4.4 Versiyalar zanjiri — `backend/app/migrations/versions/`
 
-32 ta migratsiya, head: `b1f27ce03d94`.
+35 ta migratsiya, head: `d8f31a05c7e2`.
 
 | # | Revision | Fayl | Nima qiladi |
 |---|---|---|---|
@@ -446,6 +446,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 | 32 | `b1f27ce03d94` | `b1f27ce03d94_machine_ip_address_olib_tashlandi.py` | **`machine.ip_address` DROP** — o'lik ustun: birorta so'rov, biznes-logika yoki hisobot murojaat qilmasdi, 9 qatorning hammasida NULL edi. Ish markazi bilan aloqa `user.machine_id` va `bridge_agent.machine_id` orqali, tarmoq manzili orqali emas. Downgrade faqat TUZILMANI qaytaradi (qiymat bo'lmagan) |
 | 33 | `c3d97a1e5b02` | `c3d97a1e5b02_oval_bitta_skan.py` | **OVAL da detal BITTA marta skanlanadi**: mavjud marshrutlarda `per_instance=1`, `total_required=part.count`, `total_done` chegaraga tushiriladi. Kod OVAL ni KROMKA bilan bir qatorga qo'ygan edi (qirralar soni marta skan) — egasi xato ekanini tasdiqladi; kodning o'z izohlari ham "bitta skan" deb turgandi |
 | 34 | `a9e14b7c2d63` | `a9e14b7c2d63_mirror_hodimlar_ochirildi.py` | **Mirror hodim yozuvlari HARD DELETE**: 8 hodim, 410 smena, 120 skan; audit yozuvlari saqlanadi (`employee_id` NULL). Skanlar ketgani uchun ta'sirlangan 40 `part_route` ning `total_done` i qolgan skanlar bo'yicha qayta sanaladi. Qaytarilmaydi |
+| 35 | `d8f31a05c7e2` | `d8f31a05c7e2_ish_markazi_nomi_unikal.py` | **Ish markazi nomi UNIKAL** — PARTIAL UNIQUE `ix_machine_name`. Ilgari bitta postga ikkita "01 ARRA" qo'shsa bo'lardi: monoblokda operator FAQAT nomni ko'radi, ya'ni qaysi stanokda turganini ajrata olmasdi. Mavjud dublikatlar avval " (2)" bilan ajratiladi |
 
 Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kind=DOCUMENT` + `meta` JSONB bilan ishlatiladi (1.4.1-bo'lim).
 
@@ -472,6 +473,16 @@ Idempotent bootstrap — default tashkilot va 9 ishlab chiqarish postini ta'minl
 
 - Tashkilot: `select(Organization).limit(1)` — DB'da **birorta ham** tashkilot bo'lmasa `Organization(name="Mebelix")` yaratadi. Kod o'zgarmagan, lekin bu shox endi **hech qachon ishlamaydi**: org qatorini `1393a241b793` migratsiyasi qo'yadi (4.4-bo'lim), seed uni faqat topib qoldiradi.
 - Postlar: mavjud `code` lar to'plami bilan solishtirib, yetishmaganlarini `POSTS` ro'yxatidan qo'shadi — 9 post (`ARRA`…`BOYOQ` + `UPAKOVKA` + `TMO`, `OVAL` 3-o'rinda) `order_index` 1–10, `unit` (m2/meter/piece; `UPAKOVKA` — `m2`, ish haqi qadoqlangan kvadratura bo'yicha, `TMO` — `piece`), `color`/`icon` bilan; faqat `ROVER` — `requires_assignment_choice=True`; BOYOQ'da ish markazi tanlash shart emas — bo'yoq kamerasi bitta. **`order_index` 5 ataylab bo'sh** — olib tashlangan `PAZ` o'rni: tartib faqat nisbiy ishlatiladi, qayta raqamlash esa mavjud bazalarda bekorga siljish beradi. Mavjud postning `order_index` i ro'yxatdan farq qilsa sinxronlanadi (yangi post qo'shilganda tartib siljiydi).
+
+**Post hisoblari** (`_seed_post_accounts`) — har post uchun BITTA texnik hisob (`arrachi`,
+`kromkachi`, … `omborchi`), idempotent; mavjudi nofaol bo'lsa qayta faollashtiriladi.
+Nega kerak: beyjik bilan kirishda smena kimningdir hisobi nomidan ochiladi
+(`login._terminal_user` — avval ish markazining TERMINAL hisobi, bo'lmasa post roli).
+Ikkalasi ham bo'lmasa post BUTUNLAY ishlamaydi va operator 401 oladi. Aynan shu holat
+BOYOQ postida bor edi: `boyoqchi` hisobi hech qachon yaratilmagan. Parol tasodifiy
+(`secrets.token_urlsafe`) va hech kimga aytilmaydi — post rollariga parol bilan kirish
+`login.py` da yopilgan, ya'ni parol faqat NOT NULL ustunni to'ldiradi. Telefon
+`+99800000001…09` ajratilgan diapazondan (ustunda UNIQUE indeks bor).
 
 ### 5.3 `backend/app/commands/import_stock_catalog.py`
 
