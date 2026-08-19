@@ -35,6 +35,8 @@ class EmployeeCreate(BaseModel):
     position: str | None = Field(default=None, max_length=50)
     status: EmployeeStatus = EmployeeStatus.ACTIVE
     assigned_post_ids: list[int] = []
+    #: Kirish hisobi (ofis xodimida parol bilan kirish). Bo'sh — tsexda faqat beyjik
+    user_id: int | None = None
     # badge_id is server-generated (UUID) — never client-supplied
 
 
@@ -45,4 +47,5 @@ class EmployeeUpdate(BaseModel):
     phone: Annotated[str | None, _PHONE]
     position: str | None = Field(default=None, max_length=50)
     status: EmployeeStatus | None = None
+    user_id: int | None = None
     assigned_post_ids: list[int] | None = None

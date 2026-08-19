@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query, Request
 
-from app.api.deps import CurrentUser, SessionDep, SuperUserDep, client_ip
+from app.api.deps import CurrentUser, SessionDep, StaffReadUser, SuperUserDep, client_ip
 from app.core.config import settings
 from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
 from app.core.security import get_password_hash, verify_password
@@ -99,7 +99,10 @@ async def create_user(
 
 @router.get("/", response_model=Paginated[UserRead], operation_id="read_users")
 async def read_users(
-    current_user: SuperUserDep,
+    # Ro'yxat BOSHQARUVGA ochiq: birlashgan "Hodimlar" sahifasi har odamning kirish
+    # usulini shu ro'yxatdan biladi. YOZISH amallari (yaratish, rol berish, parol
+    # tiklash, o'chirish) superuser'da qoladi — pastdagi endpointlarga qarang.
+    current_user: StaffReadUser,
     db: SessionDep,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=settings.MAX_PAGE_SIZE)] = settings.DEFAULT_PAGE_SIZE,

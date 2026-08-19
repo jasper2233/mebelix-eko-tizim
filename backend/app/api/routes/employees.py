@@ -6,10 +6,10 @@ from sqlalchemy import func, or_, select
 
 from app.api.deps import AdminUser, SessionDep, StaffReadUser, client_ip
 from app.core.config import settings
-from app.core.exceptions import ForbiddenException, NotFoundException
-from app.crud import crud_employees, crud_posts, log_action
+from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
+from app.crud import crud_employees, crud_posts, crud_users, log_action
 from app.models import Employee
-from app.models.enums import EmployeeStatus
+from app.models.enums import POST_ROLES, EmployeeStatus, UserRole
 from app.schemas.common import Message, Paginated
 from app.schemas.employees import EmployeeCreate, EmployeeRead, EmployeeUpdate
 from app.services.scanning import end_employee_sessions
@@ -25,6 +25,35 @@ async def _validate_post_ids(db: SessionDep, post_ids: list[int]) -> None:
     unknown = set(post_ids) - valid
     if unknown:
         raise NotFoundException(f"Post topilmadi: {sorted(unknown)}")
+
+
+async def _validate_user_link(db: SessionDep, user_id: int | None, employee_id: int | None = None) -> None:
+    """Hodimni kirish hisobiga bog'lash qoidalari.
+
+    Qurilma va post hisoblari (TERMINAL/TABLO va POST_ROLES) ODAM EMAS — ular
+    monoblokning o'zi va smena qaysi hisob nomidan yozilishini hal qiladigan
+    texnik hisoblar (`login._terminal_user`). Odam ularga bog'lanmaydi.
+
+    Bitta hisob ikki hodimga tegishli bo'lolmaydi: `ix_employee_user_id` PARTIAL
+    UNIQUE indeksi buni baribir rad etardi, lekin xato xabari tushunarsiz bo'lardi.
+    """
+    if user_id is None:
+        return
+    user = await crud_users.get(db, id=user_id)
+    if user is None:
+        raise NotFoundException("Kirish hisobi topilmadi.")
+    role = UserRole(user.role)
+    if role in (UserRole.TERMINAL, UserRole.TABLO) or role in POST_ROLES:
+        raise DuplicateValueException(f"{user.username} — qurilma yoki post hisobi, unga hodim biriktirilmaydi.")
+    query = select(Employee.full_name).where(
+        Employee.user_id == user_id,
+        Employee.is_deleted == False,  # noqa: E712
+    )
+    if employee_id is not None:
+        query = query.where(Employee.id != employee_id)
+    taken = (await db.execute(query)).scalar_one_or_none()
+    if taken is not None:
+        raise DuplicateValueException(f"Bu hisob allaqachon {taken} ga biriktirilgan.")
 
 
 @router.get("/", response_model=Paginated[EmployeeRead], operation_id="read_employees")
@@ -51,6 +80,7 @@ async def read_employees(
 @router.post("/", response_model=EmployeeRead, status_code=201, operation_id="create_employee")
 async def create_employee(db: SessionDep, current_user: AdminUser, body: EmployeeCreate, request: Request) -> Employee:
     await _validate_post_ids(db, body.assigned_post_ids)
+    await _validate_user_link(db, body.user_id)
     employee = Employee(**body.model_dump(), badge_id=str(uuid4()))
     db.add(employee)
     await db.flush()
@@ -82,6 +112,8 @@ async def update_employee(
     update_data = body.model_dump(exclude_unset=True)
     if "assigned_post_ids" in update_data and update_data["assigned_post_ids"] is not None:
         await _validate_post_ids(db, update_data["assigned_post_ids"])
+    if "user_id" in update_data:
+        await _validate_user_link(db, update_data["user_id"], employee_id=employee.id)
     for field, value in update_data.items():
         setattr(employee, field, value)
     # Nofaol hodimning ochiq smenasi ish markazini to'xtatib qo'yadi (E006) —
@@ -150,14 +182,18 @@ async def print_employee_badge(db: SessionDep, current_user: AdminUser, employee
 @router.delete("/{employee_id}", response_model=Message, operation_id="delete_employee")
 async def delete_employee(db: SessionDep, current_user: AdminUser, employee_id: int, request: Request) -> Message:
     employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
-    # `user_id` li yozuvlar — eski avtomat mirror'lar ("arrachi", "omborchi").
-    # Ular arxiv: yangi mirror yaratilmaydi (`c7e2b4f81d39`), lekin ularda
+    # Eski avtomat mirror'lar ("arrachi", "omborchi") — POST ROLI hisobiga bog'langan
+    # yozuvlar. Ular arxiv: yangi mirror yaratilmaydi (`c7e2b4f81d39`), lekin ularda
     # haqiqiy skan tarixi bor va o'chirilsa mahsuldorlik hisobotidan tushardi.
+    # Oddiy hodimning kirish hisobi (manager, texnolog, ...) bunga kirmaydi — u
+    # odam va o'chirilishi mumkin.
     if employee.user_id is not None:
-        raise ForbiddenException(
-            f"{employee.full_name} — eski operator hisobi yozuvi, o'chirib bo'lmaydi: "
-            "unda skan tarixi bor. U allaqachon NOFAOL va ro'yxatda faqat tarix uchun turibdi."
-        )
+        linked = await crud_users.get(db, id=employee.user_id)
+        if linked is not None and UserRole(linked.role) in POST_ROLES:
+            raise ForbiddenException(
+                f"{employee.full_name} — eski operator hisobi yozuvi, o'chirib bo'lmaydi: "
+                "unda skan tarixi bor. U allaqachon NOFAOL va ro'yxatda faqat tarix uchun turibdi."
+            )
     closed = await end_employee_sessions(db, employee.id)
     log_action(
         db,

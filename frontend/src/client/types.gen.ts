@@ -474,6 +474,10 @@ export type EmployeeCreate = {
      * Assigned Post Ids
      */
     assigned_post_ids?: Array<number>;
+    /**
+     * User Id
+     */
+    user_id?: number | null;
 };
 
 /**
@@ -567,6 +571,10 @@ export type EmployeeUpdate = {
      */
     position?: string | null;
     status?: EmployeeStatus | null;
+    /**
+     * User Id
+     */
+    user_id?: number | null;
     /**
      * Assigned Post Ids
      */
