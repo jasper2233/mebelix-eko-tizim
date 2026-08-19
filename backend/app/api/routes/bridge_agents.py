@@ -37,7 +37,7 @@ from app.schemas.common import Message
 from app.schemas.terminal import ScanResult
 from app.services.scanning import (
     ScanRejected,
-    crew_sessions,
+    active_session,
     finalize_scan,
     log_rejected_scan,
     record_scan_at,
@@ -285,13 +285,14 @@ async def bridge_scan(
     # Terminal bilan bir xil qoida: 12 soatlik smena muddati stanok skanida ham
     # amal qiladi (`crew_sessions` muddati o'tganini o'zi yopadi). Brigadadan
     # LANGAR smena olinadi — `active_session` ham aynan shunday tanlaydi.
-    crew = await crew_sessions(db, machine.id)
-    session = crew[0] if crew else None
-    if session is None:
-        raise HTTPException(
-            status_code=409,
-            detail="Terminalda aktiv sessiya yo'q — operator monoblokda tizimga kirgan bo'lishi kerak.",
-        )
+    # Terminal bilan AYNAN bir xil qoida: `active_session` langar smenani beradi va
+    # egasining nofaol emasligini ham tekshiradi. Ilgari bu yerda `crew[0]` to'g'ridan
+    # olinardi — nofaol hodim langar bo'lsa terminal skanni rad etib, stanok skani
+    # o'sha odam nomidan yozilaverardi.
+    try:
+        session = await active_session(db, machine)
+    except ScanRejected as exc:
+        raise HTTPException(status_code=409, detail=exc.message) from exc
 
     try:
         outcome = await record_scan_at(

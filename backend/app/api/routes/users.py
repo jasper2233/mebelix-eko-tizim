@@ -4,9 +4,9 @@ from fastapi import APIRouter, Query, Request
 
 from app.api.deps import CurrentUser, SessionDep, SuperUserDep, client_ip
 from app.core.config import settings
-from app.core.exceptions import DuplicateValueException, ForbiddenException
+from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
 from app.core.security import get_password_hash, verify_password
-from app.crud import crud_users, log_action
+from app.crud import crud_machines, crud_users, log_action
 from app.models.enums import POST_ROLES, UserRole
 from app.models.user import User
 from app.schemas.common import Message, Paginated
@@ -37,6 +37,26 @@ def _drop_forbidden_nulls(update_data: dict) -> dict:
     return {k: v for k, v in update_data.items() if v is not None or k in _NULLABLE_FIELDS}
 
 
+async def _check_machine(db: SessionDep, role: UserRole | None, machine_id: int | None) -> None:
+    """Rol va ish markazi bog'lami mos kelishini tekshiradi.
+
+    TERMINAL/TABLO hisobi KONKRET ish markazining o'zi: `resolve_terminal` postni
+    aynan `user.machine_id` dan oladi, bo'lmasa skan E009 bilan rad etiladi.
+    Boshqa rolda esa bog'lam ma'nosiz — odam ish markaziga biriktirilmaydi.
+
+    Mavjud bo'lmagan `machine_id` ilgari FK xatosiga tushib, `crud` da
+    "Telefon yoki foydalanuvchi nomi allaqachon band" degan ADASHTIRUVCHI xabar
+    berardi (IntegrityError hammasi bir joyda tutiladi).
+    """
+    if role in (UserRole.TERMINAL, UserRole.TABLO):
+        if machine_id is None:
+            raise DuplicateValueException(f"{role} hisobi uchun ish markazi tanlanishi shart.")
+        if await crud_machines.get(db, id=machine_id) is None:
+            raise NotFoundException("Ish markazi topilmadi.")
+    elif machine_id is not None:
+        raise DuplicateValueException("Ish markazi faqat terminal va TABLO hisoblariga biriktiriladi.")
+
+
 @router.post("/", response_model=UserRead, status_code=201, operation_id="create_user")
 async def create_user(
     user: UserCreate,
@@ -47,6 +67,7 @@ async def create_user(
     """Create a new user (superuser only). If `username` is omitted, derive one from the phone digits."""
     if await crud_users.exists(db=db, phone=user.phone):
         raise DuplicateValueException("Bu telefon allaqachon ro'yxatdan o'tgan")
+    await _check_machine(db, user.role, user.machine_id)
 
     if user.username:
         if await crud_users.exists(db=db, username=user.username):
@@ -170,6 +191,12 @@ async def update_user(
     update_data = _drop_forbidden_nulls(values.model_dump(exclude_unset=True))
     # O'zini qulflab qo'yish yo'li yopiq: tiklash uchun BOSHQA superuser kerak, u esa
     # bitta bo'lgan o'rnatishda umuman yo'q — tizimga kirishning yagona yo'li yopilardi
+    if "role" in update_data or "machine_id" in update_data:
+        await _check_machine(
+            db,
+            UserRole(update_data.get("role", db_user.role)),
+            update_data.get("machine_id", db_user.machine_id),
+        )
     if user_id == current_user.id:
         if update_data.get("is_active") is False:
             raise ForbiddenException("O'z hisobingizni nofaol qila olmaysiz.")
