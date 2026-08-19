@@ -75,6 +75,14 @@ function WorkCentersPage() {
   const [editFor, setEditFor] = useState<MachineRead | null>(null)
   const [deleteFor, setDeleteFor] = useState<MachineRead | null>(null)
   const postById = new Map((posts ?? []).map((p) => [p.id, p]))
+  // Marshrut tartibida: ARRA, KROMKA, OVAL... Ilgari id tartibida chiqardi,
+  // ya'ni yangi qo'shilgan arra ro'yxat oxirida, o'z posti yonida emas edi
+  const sorted = [...(machines ?? [])].sort(
+    (a, b) =>
+      (postById.get(a.post_id)?.order_index ?? 0) -
+        (postById.get(b.post_id)?.order_index ?? 0) ||
+      a.name.localeCompare(b.name),
+  )
 
   return (
     <div>
@@ -83,7 +91,7 @@ function WorkCentersPage() {
         description="Har postdagi ish markazi — smena shu joyda ochiladi"
         actions={
           admin ? (
-            <Button onClick={() => setAdding(true)}>
+            <Button onClick={() => setAdding(true)} disabled={!posts}>
               <Plus /> Ish markazi qo'shish
             </Button>
           ) : undefined
@@ -106,8 +114,8 @@ function WorkCentersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {machines?.length ? (
-                machines.map((m) => {
+              {sorted.length ? (
+                sorted.map((m) => {
                   const post = postById.get(m.post_id)
                   return (
                     <TableRow key={m.id}>
@@ -205,6 +213,11 @@ function MachineDialog({
   const set = (key: keyof FormState, value: string) =>
     setForm((f) => ({ ...f, [key]: value }))
 
+  const capacityNumber = form.capacity
+    ? Number(form.capacity.replace(",", "."))
+    : null
+  const capacityBad = capacityNumber !== null && Number.isNaN(capacityNumber)
+
   /** Post tanlanganda nom TAKLIF qilinadi: "Arra-1", "Arra-2"... Nom qo'lda
    * yoziladi — u monoblokda operatorga YOLG'IZ ko'rinadi, ya'ni stanokning
    * ustidagi haqiqiy yozuvga mos kelishi kerak ("Altendorf F45" ham bo'lishi
@@ -230,7 +243,9 @@ function MachineDialog({
         name: form.name.trim(),
         post_id: Number(form.post_id),
         status: form.status as MachineRead["status"],
-        capacity: form.capacity ? Number(form.capacity) : null,
+        // O'zbek klaviaturasida o'nlik kasr VERGUL bilan yoziladi: Number("18,5")
+        // NaN beradi, JSON uni null qiladi va tizim "saqlandi" deb yolg'on aytardi
+        capacity: capacityNumber,
         // Quvvat berilib birlik tanlanmasa hisobot birligi noma'lum qolardi
         capacity_unit: form.capacity
           ? ((form.capacity_unit || "units_per_hour") as NonNullable<
@@ -252,7 +267,8 @@ function MachineDialog({
     },
   })
 
-  const valid = form.name.trim().length > 1 && form.post_id !== ""
+  const valid =
+    form.name.trim().length > 1 && form.post_id !== "" && !capacityBad
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
@@ -301,12 +317,12 @@ function MachineDialog({
                   {
                     value: "repair",
                     label: "TA'MIRDA",
-                    hint: "yangi ish biriktirilmaydi",
+                    hint: "navbatda oxirgi turadi",
                   },
                   {
                     value: "inactive",
                     label: "NOAKTIV",
-                    hint: "smena ochilmaydi",
+                    hint: "ish yo'naltirilmaydi",
                   },
                 ]}
               />
@@ -321,7 +337,13 @@ function MachineDialog({
                 }
                 placeholder="18"
                 inputMode="decimal"
+                aria-invalid={capacityBad}
               />
+              {capacityBad && (
+                <span className="text-xs text-destructive">
+                  Sonni kiriting, masalan 18.5
+                </span>
+              )}
             </Field>
             <Field label="Birlik">
               <SelectField

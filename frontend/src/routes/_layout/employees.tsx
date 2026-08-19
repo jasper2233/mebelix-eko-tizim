@@ -80,9 +80,9 @@ import {
   isSuperuser,
   MACHINE_BOUND_ROLES,
   OPERATOR_ROLES,
+  POSITIONS,
   ROLE_LABELS,
 } from "@/lib/mes"
-import { cn } from "@/lib/utils"
 import {
   crudCallbacks,
   getEmployeesQueryOptions,
@@ -106,40 +106,19 @@ const ACCESS_LABEL: Record<Access, string> = {
   none: "Yo'q",
 }
 
-/** Odamda IKKI eshik bo'lishi mumkin: beyjik (tsex monoblokи) va parol (ofis
- * kompyuteri). Ular bir-biriga bog'liq emas, shuning uchun ustun ham ikki katak:
- * to'ldirilgan — eshik ochiq, uzuq chiziqli — yopiq. Ro'yxatni pastga qarab
- * o'qiganda kim qayerda ishlashi legendasiz ko'rinadi. Rang brend tizimidan:
- * tsex — asosiy navy, ofis — oltin (kamroq odamda bor, kuchliroq huquq). */
-function AccessDoors({ access }: { access: Access }) {
-  const hasBadge = access === "badge"
-  const hasPassword = access === "password"
-  const slot = "grid size-6 place-items-center rounded-[4px] border"
+/** Kirish usuli — BITTA holat: beyjik (tsex), parol (ofis) yoki yo'q.
+ * Ilgari bu yerda ikki katak turardi (beyjik + parol), lekin lavozim bitta yo'lni
+ * tanlagandan keyin ikkalasi birga hech qachon yona olmaydi — belgi mavjud
+ * bo'lmagan holatni va'da qilardi. */
+function AccessCell({ access }: { access: Access }) {
+  if (access === "none") {
+    return <span className="text-sm text-muted-foreground">—</span>
+  }
+  const Icon = access === "badge" ? IdCard : KeyRound
   return (
-    <span className="flex items-center gap-2">
-      <span aria-hidden className="flex gap-1">
-        <span
-          className={cn(
-            slot,
-            hasBadge
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-dashed border-border text-muted-foreground/40",
-          )}
-        >
-          <IdCard className="size-3.5" />
-        </span>
-        <span
-          className={cn(
-            slot,
-            hasPassword
-              ? "border-sidebar-primary bg-sidebar-primary text-sidebar-primary-foreground"
-              : "border-dashed border-border text-muted-foreground/40",
-          )}
-        >
-          <KeyRound className="size-3.5" />
-        </span>
-      </span>
-      <span className="text-sm">{ACCESS_LABEL[access]}</span>
+    <span className="flex items-center gap-1.5 text-sm">
+      <Icon className="size-4 text-muted-foreground" />
+      {ACCESS_LABEL[access]}
     </span>
   )
 }
@@ -197,7 +176,11 @@ function PeoplePage() {
         employee: null,
         user: u,
         name: u.name ?? u.username,
-        position: ROLE_LABELS[u.role],
+        // Lavozim ustuni ROL yorlig'ini emas, LAVOZIM nomini ko'rsatadi —
+        // dialog ham shu ro'yxatdan o'qiydi, ikkalasi bir so'zni aytsin
+        position:
+          POSITIONS.find((x) => x.role === u.role)?.label ??
+          ROLE_LABELS[u.role],
         phone: u.phone,
         posts: [],
         access: "password",
@@ -217,7 +200,9 @@ function PeoplePage() {
         description="Tsex ishchilari va ofis xodimlari — kirish usuli bilan"
         actions={
           canEdit ? (
-            <Button onClick={() => setAdding(true)}>
+            // Postlar kelmaguncha dialog ochilmaydi: post bo'lmasa tsex
+            // lavozimida "Saqlash" o'chiq turadi va sababi ko'rinmaydi
+            <Button onClick={() => setAdding(true)} disabled={!posts}>
               <Plus /> Hodim qo'shish
             </Button>
           ) : undefined
@@ -267,7 +252,7 @@ function PeoplePage() {
                       <TableCell className="font-medium">{p.name}</TableCell>
                       <TableCell>{p.position ?? "—"}</TableCell>
                       <TableCell>
-                        <AccessDoors access={p.access} />
+                        <AccessCell access={p.access} />
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
@@ -288,7 +273,7 @@ function PeoplePage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
-                          {p.employee && p.access !== "none" && (
+                          {canEdit && p.employee && p.access !== "none" && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -344,7 +329,7 @@ function PeoplePage() {
           key={badgeFor.id}
           employee={badgeFor}
           onClose={() => setBadgeFor(null)}
-          isAdmin={canManageAccounts}
+          isAdmin={canEdit}
         />
       )}
       {(adding || editFor) && (

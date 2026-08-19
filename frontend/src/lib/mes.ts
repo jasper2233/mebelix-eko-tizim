@@ -121,7 +121,7 @@ export const ROUTE_START_POSTS = ["ARRA", "ROVER"]
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: "Admin",
   director: "Direktor",
-  manager: "Manager",
+  manager: "Menejer",
   texnolog: "Texnolog",
   terminal: "Terminal",
   tablo: "TABLO",

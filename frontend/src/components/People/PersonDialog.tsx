@@ -20,6 +20,7 @@ import {
   type UserRole,
   UsersService,
 } from "@/client"
+import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { Field } from "@/components/Common/Field"
 import { SelectField } from "@/components/Common/SelectField"
 import {
@@ -96,6 +97,7 @@ export function PersonDialog({
 }) {
   const editing = person !== null
   const initialPosition = positionOf(person, posts)
+  const [confirmSwitch, setConfirmSwitch] = useState(false)
   const [form, setForm] = useState({
     name: person?.name ?? "",
     position: initialPosition,
@@ -127,6 +129,13 @@ export function PersonDialog({
   const queryClient = useQueryClient()
   const digits = form.phone.replace(/\D/g, "")
   const phone = digits ? `+${digits}` : null
+
+  // Lavozim turi o'zgarsa qarama-qarshi yozuv o'chiriladi (tsexdan ofisga
+  // o'tgan odamning beyjigi bekor bo'ladi va aksincha). Bu JIM bo'lmasin.
+  const switching =
+    editing &&
+    ((kind === "ofis" && !!person?.employee) ||
+      (kind !== "ofis" && !!person?.user))
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -196,12 +205,21 @@ export function PersonDialog({
     },
   })
 
-  const valid =
-    form.name.trim().length > 1 &&
-    (kind !== "boshqa" || form.otherPosition.trim().length > 1) &&
-    (kind !== "tsex" || form.posts.length > 0) &&
-    (kind !== "ofis" ||
-      (!!phone && (!!person?.user || form.password.length > 0)))
+  // O'chiq tugma sababini AYTADI: ilgari u shunchaki o'chiq turardi va admin
+  // nima yetishmayotganini topa olmasdi
+  const missing =
+    form.name.trim().length < 2
+      ? "F.I.Sh yozing"
+      : kind === "boshqa" && form.otherPosition.trim().length < 2
+        ? "Lavozim nomini yozing"
+        : kind === "tsex" && form.posts.length === 0
+          ? "Kamida bitta post tanlang"
+          : kind === "ofis" && !phone
+            ? "Ofis xodimiga telefon kerak — u bilan tizimga kiradi"
+            : kind === "ofis" && !person?.user && form.password.length === 0
+              ? "Parol kiriting"
+              : null
+  const valid = missing === null
 
   // Ofis lavozimi kirish hisobi ochadi — buni faqat superuser qila oladi
   const options = POSITIONS.filter(
@@ -229,7 +247,7 @@ export function PersonDialog({
             />
           </Field>
 
-          <Field label="Telefon">
+          <Field label={kind === "ofis" ? "Telefon (majburiy)" : "Telefon"}>
             <Input
               value={formatUzPhone(form.phone)}
               onChange={(e) => set("phone", e.target.value)}
@@ -276,6 +294,9 @@ export function PersonDialog({
                     placeholder="bo'sh — telefondan olinadi"
                     maxLength={20}
                   />
+                  <span className="text-2xs text-muted-foreground">
+                    faqat kichik lotin harflari va raqamlar
+                  </span>
                 </Field>
               )}
               <Field
@@ -288,20 +309,49 @@ export function PersonDialog({
                   onChange={(e) => set("password", e.target.value)}
                   autoComplete="new-password"
                 />
+                {/* Qoida EKRANDA turadi: ilgari u faqat serverdan xato bo'lib
+                    qaytardi va admin uch marta urinib topardi */}
+                <span className="text-2xs text-muted-foreground">
+                  kamida 8 belgi, katta va kichik harf, raqam va belgi (! yoki
+                  *)
+                </span>
               </Field>
             </div>
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col items-end gap-2 sm:flex-col sm:items-end">
+          {missing && (
+            <span className="text-xs text-muted-foreground">{missing}</span>
+          )}
           <LoadingButton
             disabled={!valid}
             loading={mutation.isPending}
-            onClick={() => mutation.mutate()}
+            onClick={() =>
+              switching ? setConfirmSwitch(true) : mutation.mutate()
+            }
           >
             Saqlash
           </LoadingButton>
         </DialogFooter>
+        <ConfirmDialog
+          open={confirmSwitch}
+          onOpenChange={setConfirmSwitch}
+          title={
+            kind === "ofis" ? "Ofisga o'tkazilsinmi?" : "Tsexga o'tkazilsinmi?"
+          }
+          description={
+            kind === "ofis"
+              ? `${form.name} endi ofisda ishlaydi: beyjigi bekor qilinadi va tsexda smena ocha olmaydi. Skan tarixi saqlanadi.`
+              : `${form.name} endi tsexda ishlaydi: kirish hisobi o'chiriladi va u ofis paneliga kira olmaydi.`
+          }
+          confirmText={
+            kind === "ofis" ? "Ofisga o'tkazish" : "Tsexga o'tkazish"
+          }
+          destructive
+          loading={mutation.isPending}
+          onConfirm={() => mutation.mutate()}
+        />
       </DialogContent>
     </Dialog>
   )
