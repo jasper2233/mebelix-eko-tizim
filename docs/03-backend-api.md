@@ -240,7 +240,7 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 
 **Hodim nofaol qilinganda yoki o'chirilganda** `end_employee_sessions()` uning OCHIQ smenalarini yopadi. Busiz nofaol hodim brigadaning LANGAR smenasi egasi bo'lib qolsa, o'sha ish markazidagi har skan E006 "Hodim nofaol" bilan rad etilardi (`scanning.active_session`) — brigadaning qolgan a'zolari aybsiz bo'lsa ham post to'liq to'xtardi. Audit xabariga nechta smena yopilgani yoziladi.
 
-**O'chirish to'sig'i** faqat POST ROLI hisobiga bog'langan yozuvlarga (eski avtomat mirror arxivi, `c7e2b4f81d39`) — 403. Oddiy xodimning kirish hisobi (manager, texnolog) bunga kirmaydi.
+**O'chirish to'sig'i** faqat POST ROLI hisobiga bog'langan yozuvlarga — 403. Bunday yozuvlar (eski avtomat mirror'lar) `a9e14b7c2d63` da butunlay o'chirilgan va yangisi yaratilmaydi (`_validate_user_link` rad etadi), ya'ni to'siq endi faqat sug'urta. Oddiy xodimning kirish hisobi (manager, texnolog) bunga kirmaydi.
 
 **Bog'lanishlar:** `backend/app/schemas/employees.py`, `backend/app/crud` (`crud_employees`, `crud_posts`, `crud_users`, `log_action`), `backend/app/services/scanning.py` (`end_employee_sessions`).
 

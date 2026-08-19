@@ -8,6 +8,9 @@
 // Qurilma va post hisoblari (TERMINAL, TABLO va 9 operator roli) ODAM EMAS:
 // TERMINAL — monoblokning o'zi, post rollari esa beyjik bilan ochilgan smena
 // qaysi hisob nomidan yozilishini hal qiladi. Ular pastdagi alohida bo'limda.
+//
+// Hodimni qurilma/post hisobiga bog'lashni server rad etadi
+// (`employees._validate_user_link`), ya'ni bu ro'yxatga "odam emas" qator tusholmaydi.
 
 import {
   keepPreviousData,
@@ -121,9 +124,6 @@ function PeoplePage() {
 
     for (const e of employees.data?.data ?? []) {
       const user = e.user_id != null ? (byId.get(e.user_id) ?? null) : null
-      // Eski avtomat "mirror" yozuvlari post hisobiga bog'langan — ular odam emas,
-      // faqat skan tarixi uchun bazada turadi (`c7e2b4f81d39`)
-      if (user && isDeviceAccount(user)) continue
       if (user) linked.add(Number(user.id))
       const hasPosts = e.assigned_post_ids.length > 0
       result.push({
