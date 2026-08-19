@@ -169,6 +169,40 @@ export const isStockOnly = (u?: RoleUser | null) =>
 // rol tanlovi, machine_id validatsiyasi va bog'lamni uzish shu ro'yxatdan)
 export const MACHINE_BOUND_ROLES = ["terminal", "tablo"] as const
 
+/** Lavozimlar — tizim biladigan ro'yxat. Lavozim odamning butun sozlamasini
+ * hal qiladi, shuning uchun u dialogdagi YAGONA tanlov:
+ *   tsex   -> beyjik bilan ishlaydi, posti oldindan belgilanadi (backend POST_ROLES)
+ *   ofis   -> parol bilan kiradi, roli shu yerdan keladi
+ *   boshqa -> tizimga kirmaydi (haydovchi, farrosh) — nomi qo'lda yoziladi
+ *
+ * Lavozim BEYJIKDA chop etiladi va mahsuldorlik hisobotida ustun bo'ladi:
+ * erkin matn bo'lganda "Arrachi" va "arrachi" ikki qator berardi. */
+export type PositionKind = "tsex" | "ofis" | "boshqa"
+
+export const POSITIONS: {
+  label: string
+  kind: PositionKind
+  post?: string
+  role?: UserRole
+}[] = [
+  { label: "Arrachi", kind: "tsex", post: "ARRA" },
+  { label: "Kromkachi", kind: "tsex", post: "KROMKA" },
+  { label: "Oval kromkachi", kind: "tsex", post: "OVAL" },
+  { label: "Prisadkachi", kind: "tsex", post: "PRISADKA" },
+  { label: "Roverchi", kind: "tsex", post: "ROVER" },
+  { label: "Stolyar", kind: "tsex", post: "STOLYARKA" },
+  { label: "Bo'yoqchi", kind: "tsex", post: "BOYOQ" },
+  { label: "Qadoqlovchi", kind: "tsex", post: "UPAKOVKA" },
+  { label: "TMO omborchisi", kind: "tsex", post: "TMO" },
+  { label: "Menejer", kind: "ofis", role: "manager" },
+  { label: "Texnolog", kind: "ofis", role: "texnolog" },
+  { label: "Direktor", kind: "ofis", role: "director" },
+  { label: "Materiallar omborchisi", kind: "ofis", role: "material_omborchi" },
+  { label: "Admin", kind: "ofis", role: "admin" },
+]
+
+export const OTHER_POSITION = "Boshqa"
+
 // Operator rollar — o'z posti terminalini ko'radi (ish markazi/beyjik shart emas)
 export const OPERATOR_ROLES = [
   "arrachi",

@@ -236,7 +236,7 @@ function PeoplePage() {
         actions={
           canManageAccounts || isManagement(currentUser) ? (
             <Button onClick={() => setAdding(true)}>
-              <Plus /> Odam qo'shish
+              <Plus /> Hodim qo'shish
             </Button>
           ) : undefined
         }
@@ -344,10 +344,10 @@ function PeoplePage() {
               ) : (
                 <EmptyRow colSpan={6}>
                   {debounced
-                    ? `"${debounced}" bo'yicha odam topilmadi.`
+                    ? `"${debounced}" bo'yicha hodim topilmadi.`
                     : accessFilter !== "all"
                       ? "Bu kirish usulida hali hech kim yo'q."
-                      : "Hali odam yo'q — \"Odam qo'shish\" bilan qo'shing."}
+                      : "Hali hodim yo'q — \"Hodim qo'shish\" bilan qo'shing."}
                 </EmptyRow>
               )}
             </TableBody>
@@ -367,7 +367,10 @@ function PeoplePage() {
             — server ham buni rad etadi.
           </p>
           <div className="mb-3">
-            <AddUser />
+            <AddUser
+              allowedRoles={["terminal", "tablo"]}
+              label="Qurilma hisobi qo'shish"
+            />
           </div>
           <Table>
             <TableHeader>
@@ -475,7 +478,7 @@ function DeletePerson({
     <ConfirmDialog
       open={!!person}
       onOpenChange={(v) => !v && onClose()}
-      title="Odamni o'chirish"
+      title="Hodimni o'chirish"
       description={
         person ? `${person.name}: ${what}. Skan tarixi saqlanadi.` : ""
       }

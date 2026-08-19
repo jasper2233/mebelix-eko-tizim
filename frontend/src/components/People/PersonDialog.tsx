@@ -1,9 +1,13 @@
-// Odam dialogi: bitta forma ham tsex xodimini, ham ofis hisobini yaratadi.
-// "Kirish usuli" qaysi yozuv kerakligini hal qiladi:
-//   beyjik    -> faqat `employee` qatori (postlar bilan)
-//   parol     -> faqat `user` qatori (ofis xodimi, tsexga tushmaydi)
-//   ikkalasi  -> ikkala qator, `employee.user_id` bilan bog'lanadi
-//   yo'q      -> `employee` qatori, postsiz (haydovchi, farrosh — tizimga kirmaydi)
+// Hodim dialogi: BITTA tanlov — lavozim — qolganini hal qiladi.
+//
+//   tsex lavozimi   -> beyjik bilan ishlaydi; posti oldindan belgilanadi
+//                      (backend `POST_ROLES` bilan bir xil jadval), o'zgartirsa bo'ladi
+//   ofis lavozimi   -> parol bilan kiradi; roli lavozimdan keladi
+//   "Boshqa"        -> tizimga kirmaydi (haydovchi, farrosh) — nomi qo'lda yoziladi
+//
+// Ilgari bu yerda "Kirish usuli" tanlovi bor edi (beyjik/parol/ikkalasi/yo'q).
+// U adminni BIZNING ma'lumot modelimizni tasvirlashga majburlardi, holbuki javob
+// lavozimning o'zida yotibdi: arrachi — beyjik, menejer — parol.
 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
@@ -30,19 +34,9 @@ import {
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
-import { POST_COLORS, ROLE_LABELS } from "@/lib/mes"
-import { cn } from "@/lib/utils"
+import { OTHER_POSITION, POSITIONS, POST_COLORS, ROLE_LABELS } from "@/lib/mes"
 import { formatUzPhone } from "@/lib/validation"
 import { detailMessage } from "@/utils"
-
-/** Odam hisoblari — qurilma va post hisoblari bu ro'yxatda YO'Q: ular odam emas. */
-const PERSON_ROLES: UserRole[] = [
-  "manager",
-  "texnolog",
-  "director",
-  "material_omborchi",
-  "admin",
-]
 
 export type Access = "badge" | "password" | "both" | "none"
 
@@ -56,21 +50,13 @@ export type Person = {
   access: Access
 }
 
-const ACCESS_OPTIONS = [
-  { value: "badge", label: "Beyjik", hint: "tsexda skan qiladi" },
-  { value: "password", label: "Parol", hint: "ofisda kompyuterda" },
-  { value: "both", label: "Ikkalasi", hint: "ofis + tsex" },
-  { value: "none", label: "Yo'q", hint: "tizimga kirmaydi" },
-]
-
 type Form = {
   name: string
   position: string
+  otherPosition: string
   phone: string
-  access: Access
   posts: number[]
   username: string
-  role: UserRole
   password: string
 }
 
@@ -80,83 +66,93 @@ export function PersonDialog({
   canManageAccounts,
   onClose,
 }: {
-  person: Person | null // null = yangi odam
+  person: Person | null // null = yangi hodim
   posts: { id: number; code: string; name: string }[]
   canManageAccounts: boolean
   onClose: () => void
 }) {
   const editing = person !== null
+  const known = POSITIONS.find((x) => x.label === person?.position)
   const [form, setForm] = useState<Form>({
     name: person?.name ?? "",
-    position: person?.position ?? "",
+    position: person ? (known ? known.label : OTHER_POSITION) : "Arrachi",
+    otherPosition: person && !known ? (person.position ?? "") : "",
     phone: person?.phone ?? "",
-    access: person?.access ?? "badge",
     posts: person?.posts ?? [],
     username: person?.user?.username ?? "",
-    role: (person?.user?.role as UserRole) ?? "manager",
     password: "",
   })
   const set = <K extends keyof Form>(key: K, value: Form[K]) =>
     setForm((f) => ({ ...f, [key]: value }))
 
+  const chosen = POSITIONS.find((x) => x.label === form.position)
+  const kind = chosen?.kind ?? "boshqa"
+  const positionText =
+    kind === "boshqa" ? form.otherPosition.trim() : form.position
+
+  /** Lavozim almashganda posti ham almashadi — arrachidan kromkachiga o'tkazilgan
+   * odam eski postida qolib ketmasin. */
+  const pickPosition = (label: string) => {
+    const next = POSITIONS.find((x) => x.label === label)
+    const post = next?.post
+      ? posts.find((p) => p.code === next.post)
+      : undefined
+    setForm((f) => ({
+      ...f,
+      position: label,
+      posts: post ? [post.id] : next?.kind === "ofis" ? [] : f.posts,
+    }))
+  }
+
   const queryClient = useQueryClient()
-  const needsEmployee = form.access !== "password"
-  const needsUser = form.access === "password" || form.access === "both"
   const digits = form.phone.replace(/\D/g, "")
   const phone = digits ? `+${digits}` : null
 
   const mutation = useMutation({
     mutationFn: async () => {
-      // Hisob AVVAL yaratiladi: hodim qatoriga uning id'si kerak.
-      // `UserRead.id` ATAYLAB satr (JWT `sub` bilan solishtiriladi) — bu yerda songa o'tkaziladi
-      let userId: number | null = person?.user ? Number(person.user.id) : null
-      if (needsUser && userId === null) {
-        const created = await UsersService.createUser({
-          body: {
-            name: form.name.trim(),
-            username: form.username.trim() || undefined,
-            phone: phone ?? "",
-            password: form.password,
-            role: form.role,
-          },
-        })
-        userId = Number(created.data.id)
-      } else if (needsUser && userId !== null) {
-        await UsersService.updateUser({
-          path: { user_id: userId },
-          body: {
-            name: form.name.trim(),
-            role: form.role,
-            ...(form.password ? { password: form.password } : {}),
-          },
-        })
+      if (kind === "ofis") {
+        const role = chosen?.role as UserRole
+        if (person?.user) {
+          await UsersService.updateUser({
+            path: { user_id: Number(person.user.id) },
+            body: {
+              name: form.name.trim(),
+              role,
+              ...(phone ? { phone } : {}),
+              ...(form.password ? { password: form.password } : {}),
+            },
+          })
+        } else {
+          await UsersService.createUser({
+            body: {
+              name: form.name.trim(),
+              username: form.username.trim() || undefined,
+              phone: phone ?? "",
+              password: form.password,
+              role,
+            },
+          })
+        }
+        return
       }
 
       const body = {
         full_name: form.name.trim(),
-        position: form.position.trim() || null,
+        position: positionText || null,
         phone,
-        assigned_post_ids: form.access === "none" ? [] : form.posts,
-        user_id: needsUser ? userId : null,
+        assigned_post_ids: kind === "boshqa" ? [] : form.posts,
       }
-      if (needsEmployee) {
-        if (person?.employee) {
-          await EmployeesService.updateEmployee({
-            path: { employee_id: person.employee.id },
-            body,
-          })
-        } else {
-          await EmployeesService.createEmployee({ body })
-        }
-      } else if (person?.employee) {
-        // "Parol" ga o'tkazildi — tsex yozuvi endi kerak emas
-        await EmployeesService.deleteEmployee({
+      if (person?.employee) {
+        await EmployeesService.updateEmployee({
           path: { employee_id: person.employee.id },
+          body,
         })
+      } else {
+        await EmployeesService.createEmployee({ body })
       }
     },
     onSuccess: () => {
-      toast.success(editing ? "Saqlandi" : "Odam qo'shildi")
+      toast.success(editing ? "Saqlandi" : "Hodim qo'shildi")
       onClose()
     },
     onError: (e) => toast.error(detailMessage(e)),
@@ -168,17 +164,23 @@ export function PersonDialog({
 
   const valid =
     form.name.trim().length > 1 &&
-    (!needsUser ||
-      (!!phone && (person?.user !== null || form.password.length > 0)))
+    (kind !== "boshqa" || form.otherPosition.trim().length > 1) &&
+    (kind !== "ofis" ||
+      (!!phone && (!!person?.user || form.password.length > 0)))
+
+  // Ofis lavozimi kirish hisobi ochadi — uni faqat superuser bera oladi
+  const positionOptions = POSITIONS.filter(
+    (x) => canManageAccounts || x.kind !== "ofis",
+  )
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{editing ? form.name : "Yangi odam"}</DialogTitle>
+          <DialogTitle>{editing ? form.name : "Yangi hodim"}</DialogTitle>
           <DialogDescription>
-            Kirish usuli qanday yozuv kerakligini hal qiladi — tsex beyjigi,
-            ofis paroli yoki ikkalasi
+            Lavozim qolganini hal qiladi: tsex lavozimi beyjik va post beradi,
+            ofis lavozimi parol bilan kirish ochadi
           </DialogDescription>
         </DialogHeader>
 
@@ -191,13 +193,24 @@ export function PersonDialog({
               autoFocus
             />
           </Field>
+
           <div className="grid grid-cols-2 gap-3">
             <Field label="Lavozim">
-              <Input
+              <SelectField
                 value={form.position}
-                onChange={(e) => set("position", e.target.value)}
-                placeholder="Arrachi, Haydovchi..."
-                maxLength={50}
+                onChange={pickPosition}
+                options={[
+                  ...positionOptions.map((x) => ({
+                    value: x.label,
+                    label: x.label,
+                    hint: x.post ?? (x.role ? ROLE_LABELS[x.role] : undefined),
+                  })),
+                  {
+                    value: OTHER_POSITION,
+                    label: OTHER_POSITION,
+                    hint: "kirmaydi",
+                  },
+                ]}
               />
             </Field>
             <Field label="Telefon">
@@ -210,47 +223,18 @@ export function PersonDialog({
             </Field>
           </div>
 
-          {/* Dropdown EMAS: tanlov quyidagi maydonlarni o'zgartiradi, ya'ni to'rt
-              variant ham ko'rinib turishi kerak — nima tanlasa nima ochilishini
-              odam bir qarashda ko'radi. */}
-          <Field label="Kirish usuli">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {(canManageAccounts
-                ? ACCESS_OPTIONS
-                : ACCESS_OPTIONS.filter(
-                    (o) => o.value === "badge" || o.value === "none",
-                  )
-              ).map((o) => (
-                <button
-                  key={o.value}
-                  type="button"
-                  aria-pressed={form.access === o.value}
-                  onClick={() => set("access", o.value as Access)}
-                  className={cn(
-                    "rounded-md border px-3 py-2 text-left text-sm transition-colors",
-                    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-                    form.access === o.value
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border hover:bg-accent",
-                  )}
-                >
-                  <span className="block font-medium">{o.label}</span>
-                  <span
-                    className={cn(
-                      "block text-2xs",
-                      form.access === o.value
-                        ? "text-primary-foreground/75"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    {o.hint}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </Field>
+          {kind === "boshqa" && (
+            <Field label="Lavozim nomi">
+              <Input
+                value={form.otherPosition}
+                onChange={(e) => set("otherPosition", e.target.value)}
+                placeholder="Haydovchi, farrosh, qorovul..."
+                maxLength={50}
+              />
+            </Field>
+          )}
 
-          {form.access !== "none" && form.access !== "password" && (
+          {kind === "tsex" && (
             <Field label="Qaysi postlarda ishlaydi">
               <div className="flex flex-wrap gap-3 rounded-md border p-3">
                 {posts.map((p) => (
@@ -281,9 +265,13 @@ export function PersonDialog({
             </Field>
           )}
 
-          {needsUser && (
+          {kind === "ofis" && (
             <div className="grid gap-3 rounded-md border border-dashed p-3">
-              <div className="grid grid-cols-2 gap-3">
+              <p className="text-2xs uppercase tracking-wider text-muted-foreground">
+                Kirish hisobi — rol:{" "}
+                {chosen?.role ? ROLE_LABELS[chosen.role] : "—"}
+              </p>
+              {!person?.user && (
                 <Field label="Login">
                   <Input
                     value={form.username}
@@ -292,17 +280,7 @@ export function PersonDialog({
                     maxLength={20}
                   />
                 </Field>
-                <Field label="Rol">
-                  <SelectField
-                    value={form.role}
-                    onChange={(v) => set("role", v as UserRole)}
-                    options={PERSON_ROLES.map((r) => ({
-                      value: r,
-                      label: ROLE_LABELS[r],
-                    }))}
-                  />
-                </Field>
-              </div>
+              )}
               <Field
                 label={
                   person?.user ? "Yangi parol (bo'sh — o'zgarmaydi)" : "Parol"

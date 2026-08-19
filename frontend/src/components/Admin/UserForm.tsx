@@ -80,9 +80,13 @@ export function buildUserFormSchema(
 export function UserFormFields({
   form,
   passwordRequired,
+  allowedRoles,
 }: {
   form: UseFormReturn<UserFormData>
   passwordRequired: boolean
+  /** Rol tanlovini cheklaydi. Qurilma bo'limida faqat `terminal`/`tablo`:
+   * odam hisobi Hodimlar dialogidan yaratiladi, ikkinchi yo'l bo'lmasin. */
+  allowedRoles?: UserRole[]
 }) {
   const { data: machines } = useQuery(getMachinesQueryOptions())
 
@@ -192,11 +196,16 @@ export function UserFormFields({
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {Object.entries(ROLE_LABELS).map(([v, l]) => (
-                  <SelectItem key={v} value={v}>
-                    {l}
-                  </SelectItem>
-                ))}
+                {Object.entries(ROLE_LABELS)
+                  .filter(
+                    ([v]) =>
+                      !allowedRoles || allowedRoles.includes(v as UserRole),
+                  )
+                  .map(([v, l]) => (
+                    <SelectItem key={v} value={v}>
+                      {l}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
             <FormMessage />

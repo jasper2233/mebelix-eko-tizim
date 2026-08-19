@@ -4,6 +4,7 @@ import { Plus } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
+import type { UserRole } from "@/client"
 
 import { type UserCreate, UsersService } from "@/client"
 import {
@@ -29,7 +30,13 @@ import { handleError } from "@/utils"
 
 const formSchema = buildUserFormSchema(true)
 
-export function AddUser() {
+export function AddUser({
+  allowedRoles,
+  label,
+}: {
+  allowedRoles?: UserRole[]
+  label?: string
+} = {}) {
   const [isOpen, setIsOpen] = useState(false)
   const queryClient = useQueryClient()
 
@@ -42,7 +49,7 @@ export function AddUser() {
       name: "",
       password: "",
       confirm_password: "",
-      role: "manager",
+      role: (allowedRoles?.[0] ?? "manager") as UserRole,
       machine_id: "",
       is_superuser: false,
       is_active: true,
@@ -85,19 +92,23 @@ export function AddUser() {
       <DialogTrigger asChild>
         <Button className="my-4">
           <Plus className="mr-2" />
-          Foydalanuvchi qo'shish
+          {label ?? "Foydalanuvchi qo'shish"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Foydalanuvchi qo'shish</DialogTitle>
+          <DialogTitle>{label ?? "Foydalanuvchi qo'shish"}</DialogTitle>
           <DialogDescription>
-            Yangi foydalanuvchi qo'shish uchun quyidagi maydonlarni to'ldiring.
+            Hisob ma'lumotlarini to'ldiring.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            <UserFormFields form={form} passwordRequired />
+            <UserFormFields
+              form={form}
+              passwordRequired
+              allowedRoles={allowedRoles}
+            />
             <DialogFooter>
               <DialogClose asChild>
                 <Button variant="outline" disabled={mutation.isPending}>
