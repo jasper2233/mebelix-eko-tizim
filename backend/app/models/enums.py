@@ -202,3 +202,16 @@ class StopKind(StrEnum):
 
     PLANNED = "planned"
     UNPLANNED = "unplanned"
+
+
+class DefectStatus(StrEnum):
+    """Brak yozuvining holati.
+
+    Operator brakni BELGILAYDI, lekin qayta ishlab chiqarish o'zidan o'zi
+    boshlanmaydi: menejer tasdiqlashi kerak. Aks holda har xato skan yangi
+    nusxa yaratib, buyurtma miqdorini shishirardi.
+    """
+
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"

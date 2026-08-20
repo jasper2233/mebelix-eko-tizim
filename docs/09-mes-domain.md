@@ -720,9 +720,41 @@ qo'yilganini bildiradi va aynan shu ko'rinishi kerak.
 
 ### Quality (keyingi bosqich)
 
-Quality brak hisobini talab qiladi: operator o'z terminalida belgilaydi, MENEJER
-tasdiqlaydi (o'zi ishlab chiqarishga ketmaydi), aybdor post va hodim skan
-tarixidan aniqlanadi, qayta ishlab chiqarish qaysi postdan boshlanishini menejer
-belgilaydi. ARRA yoki ROVER dan boshlansa YANGI nusxa yaratiladi (chek o'sha ikki
-postda chiqadi — `_ROUTE_START_POSTS`), boshqa postdan boshlansa bori to'g'rilanadi.
+`Quality = (ishlab chiqarilgan − brak) / ishlab chiqarilgan`.
+
+Oqim: operator o'z terminalida brakni belgilaydi -> yozuv KUTILMOQDA holatida
+turadi -> menejer aybdor postni, hodimni va qayta boshlash postini belgilab
+tasdiqlaydi -> detal ishlab chiqarishga qaytadi. Menejer tasdig'i ATAYLAB
+majburiy: aks holda har xato skan yangi nusxa yaratib, buyurtma miqdorini
+shishirardi.
+
+Uch qoida hisobning ma'nosini belgilaydi:
+
+1. **Brak AYBDOR postga yoziladi**, topilgan postga emas (`blamed_post_id`).
+   Kromkachi arradan kelgan yaroqsiz detalni topsa, bu kromkaning ko'rsatkichini
+   tushirmasligi kerak. Aybdor skan tarixidan TAKLIF qilinadi (oxirgi skan),
+   qarorni esa odam qabul qiladi — fayl ham, hisoblagich ham detalning qaysi
+   bosqichda buzilganini bilmaydi.
+2. **Brak ISHLAB CHIQARILGAN kunga tushadi**, topilgan kunga emas: vaqt aybdor
+   postdagi birinchi skandan olinadi (bekor qilinganlari ham sanaladi). Aks
+   holda bir hafta o'tib topilgan nuqson o'sha kunning ko'rsatkichini tushirardi
+   va ishlab chiqarish bo'lmagan kunda brak nisbati 100% dan oshib ketardi.
+3. **Quality boshqa birlikda o'lchanadi** (`QUALITY_UNITS`): arrada Performance
+   metr bilan, Quality esa **m²** bilan — bitta yaroqsiz detal o'z maydonicha
+   plita yo'qotadi, kesim uzunligi buni ifodalamaydi. KROMKA metr, PRISADKA
+   teshik.
+
+### Qayta ishlab chiqarish
+
+| Qayta boshlash posti | Nima bo'ladi |
+|---|---|
+| ARRA yoki ROVER | **Yangi nusxa** yaratiladi: `part.count` oshadi, har qadamning `total_required` oshadi (aks holda QOLDIQ yangi nusxani hisobga olmasdi), QR `{mahsulot}_{detal}_{raqam}`. Chek aynan shu ikki postda chiqadi (`_ROUTE_START_POSTS`), ya'ni detal yangi QR oladi. Mavjud nusxalarning QR'iga TEGILMAYDI — ular chop etilgan va tsexda yurgan bo'lishi mumkin |
+| Boshqa post | **Bori to'g'rilanadi**: `scanning.reopen_instance_from` o'sha qadamdan keyingi skanlarni bekor qiladi va `total_done` ni kamaytiradi. Detal jismonan mavjud va QR'i ishlaydi |
+
+"Bajarilgan" holat hisoblagichdan emas, SKAN QATORLARIDAN o'qiladi
+(`_scans_done_map`) — shuning uchun qadamni qayta ochishning yagona yo'li
+skanlarni bekor qilish. Skan qatori o'chirilmaydi (`is_cancelled`), tarix
+saqlanadi. Mahsuldorlik hisoboti bekor qilinganini sanamaydi va bu ATAYLAB:
+detal yaroqsiz chiqqan, ya'ni o'sha ish natija bermagan; qayta ishlagan odam
+yangi skanida o'z hisobini oladi. Aks holda bitta nusxa ikki marta to'lanardi.
 

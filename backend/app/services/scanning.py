@@ -835,3 +835,60 @@ async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Sc
         order.status = OrderStatus.PRODUCTION
         order.completed_at = None
     return scan, events
+
+
+async def reopen_instance_from(db: AsyncSession, *, instance: PartInstance, from_seq: int) -> int:
+    """Nusxani marshrutning `from_seq` qadamidan QAYTA ochadi. Bekor qilingan skan soni qaytadi.
+
+    "Bajarilgan" holat hisoblagichdan emas, SKAN QATORLARIDAN o'qiladi
+    (`_scans_done_map`), ya'ni qadamni qayta skanlanadigan qilishning yagona
+    yo'li — o'sha skanlarni bekor qilish. Hisoblagich (`total_done`) ham birga
+    kamayadi, aks holda QOLDIQ soxta bo'lib qolardi.
+
+    Skan qatori O'CHIRILMAYDI, `is_cancelled` bo'ladi: tarix va audit saqlanadi.
+    Mahsuldorlik hisoboti bekor qilinganini sanamaydi — bu ATAYLAB: detal
+    yaroqsiz chiqqan, ya'ni o'sha ish natija bermagan; qayta ishlagan odam esa
+    yangi skanida o'z hisobini oladi. Aks holda bitta nusxa ikki marta to'lanardi.
+    """
+    steps = (
+        (
+            await db.execute(
+                select(PartRoute).where(
+                    PartRoute.part_id == instance.part_id,
+                    PartRoute.seq >= from_seq,
+                    PartRoute.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not steps:
+        return 0
+    scans = (
+        (
+            await db.execute(
+                select(Scan).where(
+                    Scan.instance_id == instance.id,
+                    Scan.route_id.in_([r.id for r in steps]),
+                    Scan.is_cancelled == False,  # noqa: E712
+                    Scan.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    now = datetime.now(UTC)
+    per_route: dict[int, int] = {}
+    for scan in scans:
+        scan.is_cancelled = True
+        scan.cancelled_at = now
+        per_route[scan.route_id] = per_route.get(scan.route_id, 0) + 1
+    for route_id, count in per_route.items():
+        await db.execute(
+            update(PartRoute)
+            .where(PartRoute.id == route_id, PartRoute.total_done >= count)
+            .values(total_done=PartRoute.total_done - count)
+        )
+    return len(scans)

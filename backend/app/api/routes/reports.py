@@ -44,7 +44,7 @@ from app.schemas.reports import (
 )
 from app.services.excel import xlsx_response
 from app.services.metrics import part_volume
-from app.services.oee import machine_availability, machine_performance
+from app.services.oee import machine_availability, machine_performance, machine_quality
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -415,8 +415,10 @@ async def report_oee(
     for machine, post in (await db.execute(query)).all():
         result = await machine_availability(db, machine, start_day, end_day)
         perf = await machine_performance(db, machine, post, result.run_minutes, start_day, end_day)
+        qual = await machine_quality(db, machine, post, start_day, end_day)
         avail = result.value
         p_value = perf.value if perf else None
+        q_value = qual.value if qual else None
         out.machines.append(
             OeeMachineRow(
                 machine_id=machine.id,
@@ -433,8 +435,15 @@ async def report_oee(
                 quantity_unit=perf.unit if perf else "",
                 ideal_minutes=round(perf.ideal_minutes, 1) if perf else 0.0,
                 performance=round(p_value, 4) if p_value is not None else None,
-                oee_partial=(
-                    round(avail * p_value, 4) if avail is not None and p_value is not None else None
+                quality=round(q_value, 4) if q_value is not None else None,
+                quality_unit=qual.unit if qual else "",
+                defective=round(qual.defective, 2) if qual else 0.0,
+                # To'liq OEE faqat uchala ko'rsatkich ham bo'lganda: bittasi
+                # yo'q bo'lsa ko'paytma yolg'on optimizm berardi
+                oee=(
+                    round(avail * p_value * q_value, 4)
+                    if avail is not None and p_value is not None and q_value is not None
+                    else None
                 ),
                 stops=[
                     OeeStopRow(

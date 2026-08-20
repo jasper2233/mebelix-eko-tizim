@@ -9,6 +9,7 @@ import {
   LogOut,
   OctagonPause,
   ScanLine,
+  TriangleAlert,
   WifiOff,
 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -27,6 +28,7 @@ import {
   playWarning,
 } from "@/components/Terminal/audio"
 import { CutmapView, TBtn } from "@/components/Terminal/CutmapView"
+import { DefectDialog } from "@/components/Terminal/DefectDialog"
 import { KioskOverlays } from "@/components/Terminal/KioskOverlays"
 import { KromkaView } from "@/components/Terminal/KromkaView"
 import { OrderPicker } from "@/components/Terminal/OrderPicker"
@@ -88,6 +90,7 @@ function TerminalPage() {
   const lastScanAtRef = useRef(0)
   const [locked, setLocked] = useState(false)
   const [stopPicking, setStopPicking] = useState(false)
+  const [defectOpen, setDefectOpen] = useState(false)
   // ROVER: detallar ro'yxati (SCX/chek) va kesish xaritasi almashtirgichi
   const [roverMap, setRoverMap] = useState(false)
   // Ro'yxatdagi xarita ikonkasi: xarita shu detal belgilangan holda ochiladi
@@ -438,6 +441,16 @@ function TerminalPage() {
                 <OctagonPause />
               </TBtn>
             )}
+            {/* Brak — har postda: yaroqsiz detalni topgan odam o'sha yerda
+                belgilaydi. OEE kuzatilmaydigan postda ham kerak, chunki brak
+                AYBDOR postga yoziladi va u kuzatiladigan stanok bo'lishi mumkin. */}
+            <TBtn
+              label="Brak"
+              tone="danger"
+              onClick={() => setDefectOpen(true)}
+            >
+              <TriangleAlert />
+            </TBtn>
             <TBtn label="Qulflash" tone="warn" onClick={() => setLocked(true)}>
               <Lock />
             </TBtn>
@@ -627,6 +640,7 @@ function TerminalPage() {
         open={stopPicking}
         onClose={() => setStopPicking(false)}
       />
+      <DefectDialog open={defectOpen} onClose={() => setDefectOpen(false)} />
 
       <ConfirmDialog
         open={logoutOpen}

@@ -478,6 +478,151 @@ export type DashboardStats = {
 };
 
 /**
+ * DefectApprove
+ */
+export type DefectApprove = {
+    /**
+     * Blamed Post Id
+     */
+    blamed_post_id: number;
+    /**
+     * Blamed Employee Id
+     */
+    blamed_employee_id?: number | null;
+    /**
+     * Restart Post Id
+     */
+    restart_post_id: number;
+};
+
+/**
+ * DefectCreate
+ *
+ * Terminalda belgilash. Nusxa QR bo'yicha topiladi — operator qo'lida
+ * aynan chek bor, ID emas.
+ */
+export type DefectCreate = {
+    /**
+     * Qr Text
+     */
+    qr_text: string;
+    /**
+     * Reason
+     */
+    reason: string;
+};
+
+/**
+ * DefectRead
+ */
+export type DefectRead = {
+    /**
+     * Id
+     */
+    id: number;
+    status: DefectStatus;
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Order Number
+     */
+    order_number: string;
+    /**
+     * Part Name
+     */
+    part_name: string;
+    /**
+     * Qr Text
+     */
+    qr_text: string;
+    /**
+     * Found Post Name
+     */
+    found_post_name: string;
+    /**
+     * Found By Name
+     */
+    found_by_name: string | null;
+    /**
+     * Route
+     */
+    route?: Array<string>;
+    /**
+     * History
+     */
+    history?: Array<DefectScanRow>;
+    /**
+     * Suggested Post Id
+     */
+    suggested_post_id?: number | null;
+    /**
+     * Suggested Employee Id
+     */
+    suggested_employee_id?: number | null;
+    /**
+     * Blamed Post Name
+     */
+    blamed_post_name?: string | null;
+    /**
+     * Blamed Employee Name
+     */
+    blamed_employee_name?: string | null;
+    /**
+     * Restart Post Name
+     */
+    restart_post_name?: string | null;
+    /**
+     * New Qr Text
+     */
+    new_qr_text?: string | null;
+    /**
+     * Reviewed At
+     */
+    reviewed_at?: string | null;
+};
+
+/**
+ * DefectScanRow
+ *
+ * Nusxaning skan tarixi — menejer AYBDORNI shundan aniqlaydi.
+ */
+export type DefectScanRow = {
+    /**
+     * Post Name
+     */
+    post_name: string;
+    /**
+     * Employee Name
+     */
+    employee_name: string | null;
+    /**
+     * Machine Name
+     */
+    machine_name: string | null;
+    /**
+     * At
+     */
+    at: string;
+};
+
+/**
+ * DefectStatus
+ *
+ * Brak yozuvining holati.
+ *
+ * Operator brakni BELGILAYDI, lekin qayta ishlab chiqarish o'zidan o'zi
+ * boshlanmaydi: menejer tasdiqlashi kerak. Aks holda har xato skan yangi
+ * nusxa yaratib, buyurtma miqdorini shishirardi.
+ */
+export type DefectStatus = 'pending' | 'approved' | 'rejected';
+
+/**
  * EmployeeCreate
  */
 export type EmployeeCreate = {
@@ -1186,9 +1331,21 @@ export type OeeMachineRow = {
      */
     performance: number | null;
     /**
-     * Oee Partial
+     * Quality
      */
-    oee_partial: number | null;
+    quality: number | null;
+    /**
+     * Quality Unit
+     */
+    quality_unit: string;
+    /**
+     * Defective
+     */
+    defective: number;
+    /**
+     * Oee
+     */
+    oee: number | null;
     /**
      * Stops
      */
@@ -1746,6 +1903,20 @@ export type PaginatedClientRead = {
      * Data
      */
     data: Array<ClientRead>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * Paginated[DefectRead]
+ */
+export type PaginatedDefectRead = {
+    /**
+     * Data
+     */
+    data: Array<DefectRead>;
     /**
      * Count
      */
@@ -4394,6 +4565,129 @@ export type PrintEmployeeBadgeResponses = {
 };
 
 export type PrintEmployeeBadgeResponse = PrintEmployeeBadgeResponses[keyof PrintEmployeeBadgeResponses];
+
+export type ReadDefectsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Status
+         */
+        status?: DefectStatus | null;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/defects/';
+};
+
+export type ReadDefectsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadDefectsError = ReadDefectsErrors[keyof ReadDefectsErrors];
+
+export type ReadDefectsResponses = {
+    /**
+     * Successful Response
+     */
+    200: PaginatedDefectRead;
+};
+
+export type ReadDefectsResponse = ReadDefectsResponses[keyof ReadDefectsResponses];
+
+export type ReportDefectData = {
+    body: DefectCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/defects/';
+};
+
+export type ReportDefectErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReportDefectError = ReportDefectErrors[keyof ReportDefectErrors];
+
+export type ReportDefectResponses = {
+    /**
+     * Successful Response
+     */
+    201: Message;
+};
+
+export type ReportDefectResponse = ReportDefectResponses[keyof ReportDefectResponses];
+
+export type ApproveDefectData = {
+    body: DefectApprove;
+    path: {
+        /**
+         * Defect Id
+         */
+        defect_id: number;
+    };
+    query?: never;
+    url: '/api/v1/defects/{defect_id}/approve';
+};
+
+export type ApproveDefectErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ApproveDefectError = ApproveDefectErrors[keyof ApproveDefectErrors];
+
+export type ApproveDefectResponses = {
+    /**
+     * Successful Response
+     */
+    200: DefectRead;
+};
+
+export type ApproveDefectResponse = ApproveDefectResponses[keyof ApproveDefectResponses];
+
+export type RejectDefectData = {
+    body?: never;
+    path: {
+        /**
+         * Defect Id
+         */
+        defect_id: number;
+    };
+    query?: never;
+    url: '/api/v1/defects/{defect_id}/reject';
+};
+
+export type RejectDefectErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RejectDefectError = RejectDefectErrors[keyof RejectDefectErrors];
+
+export type RejectDefectResponses = {
+    /**
+     * Successful Response
+     */
+    200: DefectRead;
+};
+
+export type RejectDefectResponse = RejectDefectResponses[keyof RejectDefectResponses];
 
 export type ReadMachinesData = {
     body?: never;

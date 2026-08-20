@@ -114,9 +114,12 @@ class OeeMachineRow(BaseModel):
     #: 0..1, lekin YUQORIDAN cheklanmagan: 100% dan oshgani ideal tezlik
     #: noto'g'ri qo'yilganini bildiradi va aynan shu ko'rinishi kerak
     performance: float | None
-    #: Availability x Performance. Quality (brak hisobi) 3-bosqichda qo'shiladi,
-    #: shuning uchun bu HALI to'liq OEE emas
-    oee_partial: float | None
+    #: Yaroqli nisbati — AYBDOR postga yozilgan tasdiqlangan braklar bo'yicha
+    quality: float | None
+    quality_unit: str
+    defective: float
+    #: Availability x Performance x Quality — to'liq OEE
+    oee: float | None
     stops: list[OeeStopRow] = []
 
 

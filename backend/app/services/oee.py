@@ -11,18 +11,18 @@ ishlab chiqarish REJALASHTIRILMAGAN to'xtalishlar ayriladi (tushlik, tanaffus �
 `StopReason.excludes_planned`). Qolgan to'xtalishlar RUN dan chiqadi, ya'ni
 ular Availability yo'qotishi (sozlash, nosozlik, material yo'q).
 
-Quality keyingi bosqichda qo'shiladi (brak hisobi) — hozircha Availability va
-Performance.
+Uchala ko'rsatkich ham shu modulda.
 """
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import TASHKENT_TZ
 from app.models import (
+    Defect,
     Machine,
     MachineStop,
     Part,
@@ -33,7 +33,7 @@ from app.models import (
     StopReason,
     WorkSession,
 )
-from app.models.enums import PostCode
+from app.models.enums import DefectStatus, PostCode
 from app.services.metrics import part_volume
 
 
@@ -252,3 +252,117 @@ async def machine_performance(
 
     ideal_minutes = quantity * machine.ideal_rate / 60 if kind == "sek" else quantity / machine.ideal_rate
     return Performance(quantity=quantity, unit=unit, ideal_minutes=ideal_minutes, run_minutes=run_minutes)
+
+
+#: Quality BOSHQA birlikda o'lchanadi (`Mebel_MES_OEE_texnik_talablar.docx` §7):
+#: arrada Performance metr bilan, Quality esa MAYDON bilan — bitta yaroqsiz
+#: detal o'z maydonicha plita yo'qotadi, kesim uzunligi esa buni ifodalamaydi.
+QUALITY_UNITS: dict[str, str] = {
+    PostCode.ARRA: "m²",
+    PostCode.KROMKA: "metr",
+    PostCode.PRISADKA: "teshik",
+}
+
+
+@dataclass
+class Quality:
+    produced: float
+    defective: float
+    unit: str
+
+    @property
+    def value(self) -> float | None:
+        """0..1. Ishlab chiqarilmagan bo'lsa None — bo'linma ma'nosiz."""
+        if self.produced <= 0:
+            return None
+        return max(0.0, min(1.0, (self.produced - self.defective) / self.produced))
+
+
+def _instance_measure(post_code: str, part: Part) -> float:
+    """Bitta NUSXAning Quality birligidagi qiymati."""
+    if post_code == PostCode.ARRA:
+        # part_volume ARRA uchun BUTUN detal maydonini beradi (x count)
+        return part_volume(post_code, length=part.length, width=part.width, count=part.count, edges=part.edges) / max(
+            1, part.count
+        )
+    if post_code == PostCode.KROMKA:
+        return part_volume(post_code, length=part.length, width=part.width, count=part.count, edges=part.edges) / max(
+            1, part.count
+        )
+    summary = part.xnc_summary or {}
+    return float(int(summary.get("bores", 0)) + int(summary.get("edge_bores", 0)))
+
+
+async def machine_quality(
+    db: AsyncSession, machine: Machine, post: Post, day_from: date, day_to: date
+) -> Quality | None:
+    """Yaroqli nisbati: (ishlab chiqarilgan − brak) / ishlab chiqarilgan.
+
+    Brak AYBDOR postga yoziladi (`Defect.blamed_post_id`), topilgan postga
+    emas: kromkachi arradan kelgan yaroqsiz detalni topsa, bu kromkaning
+    ko'rsatkichini tushirmasligi kerak. Faqat TASDIQLANGAN braklar sanaladi —
+    menejer rad etgani ko'rsatkichga tegmaydi.
+
+    Brak butun NUSXA bo'yicha hisoblanadi: detal yaroqsiz bo'lsa, undagi
+    hamma ish yo'qoladi, yarmi emas.
+    """
+    if post.code not in QUALITY_UNITS:
+        return None
+    unit = QUALITY_UNITS[post.code]
+    now = datetime.now(TASHKENT_TZ)
+    start = datetime.combine(day_from, time.min, tzinfo=TASHKENT_TZ)
+    end = min(datetime.combine(day_to + timedelta(days=1), time.min, tzinfo=TASHKENT_TZ), now)
+
+    produced = 0.0
+    rows = (
+        await db.execute(
+            select(Part, PartRoute.per_instance)
+            .select_from(Scan)
+            .join(Part, Part.id == Scan.part_id)
+            .join(PartRoute, PartRoute.id == Scan.route_id)
+            .where(
+                Scan.machine_id == machine.id,
+                Scan.is_cancelled == False,  # noqa: E712
+                Scan.is_deleted == False,  # noqa: E712
+                Scan.created_at >= start,
+                Scan.created_at < end,
+            )
+        )
+    ).all()
+    for part, per_instance in rows:
+        # Bitta nusxa qadamda bir necha marta skanlanadi (KROMKA — har qirra),
+        # miqdor esa NUSXA bo'yicha o'lchanadi: skan soniga bo'lamiz
+        produced += _instance_measure(post.code, part) / max(1, per_instance or 1)
+
+    # Brak ISHLAB CHIQARILGAN vaqtga yoziladi, TOPILGAN vaqtga emas: bir hafta
+    # o'tib topilgan nuqson o'sha kunning ko'rsatkichini tushirardi va ishlab
+    # chiqarish bo'lmagan kunda brak nisbati 100% dan oshib ketardi. Vaqt —
+    # aybdor postdagi birinchi skan; bekor qilinganlari ham sanaladi, chunki
+    # qayta ishlashga yuborilgan detalning aynan o'sha skanlari bekor bo'ladi.
+    produced_at = (
+        select(func.min(Scan.created_at))
+        .where(Scan.instance_id == Defect.instance_id, Scan.post_id == Defect.blamed_post_id)
+        .correlate(Defect)
+        .scalar_subquery()
+    )
+    moment = func.coalesce(produced_at, Defect.created_at)
+    defective = 0.0
+    bad = (
+        await db.execute(
+            select(Part)
+            .select_from(Defect)
+            .join(PartInstance, PartInstance.id == Defect.instance_id)
+            .join(Part, Part.id == PartInstance.part_id)
+            .where(
+                Defect.blamed_post_id == post.id,
+                Defect.status == DefectStatus.APPROVED,
+                Defect.is_deleted == False,  # noqa: E712
+                moment >= start,
+                moment < end,
+            )
+        )
+    ).scalars()
+    for part in bad:
+        defective += _instance_measure(post.code, part)
+
+    return Quality(produced=produced, defective=defective, unit=unit)

@@ -319,9 +319,10 @@ function OeeTable({ params }: { params: RangeParams }) {
       <p className="text-xs text-muted-foreground">
         <b>Vaqt</b> — ishlagan vaqt ÷ rejalashtirilgan vaqt (tushlik va tanaffus
         rejadan ayriladi, ular yo'qotish emas). <b>Tezlik</b> — ishlangan
-        miqdorning ideal vaqti ÷ ishlagan vaqt. To'liq OEE uchun uchinchi
-        ko'rsatkich — brak nisbati — hali qo'shilmagan. Ro'yxatda faqat ideal
-        tezligi kiritilgan stanoklar.
+        miqdorning ideal vaqti ÷ ishlagan vaqt. <b>Sifat</b> — yaroqli nisbati;
+        brak topilgan postga emas, AYBDOR postga yoziladi va ishlab chiqarilgan
+        kunga tushadi. <b>OEE</b> — uchalasining ko'paytmasi. Ro'yxatda faqat
+        ideal tezligi kiritilgan stanoklar.
       </p>
       {rows.length ? (
         rows.map((m) => {
@@ -339,11 +340,8 @@ function OeeTable({ params }: { params: RangeParams }) {
                 <span className="ml-auto flex items-baseline gap-4">
                   <Metric label="Vaqt" value={pct(m.availability)} />
                   <Metric label="Tezlik" value={pct(m.performance)} />
-                  <Metric
-                    label="Vaqt × tezlik"
-                    value={pct(m.oee_partial)}
-                    strong
-                  />
+                  <Metric label="Sifat" value={pct(m.quality)} />
+                  <Metric label="OEE" value={pct(m.oee)} strong />
                 </span>
               </div>
               <div className="mt-1 text-xs text-muted-foreground">
@@ -353,6 +351,7 @@ function OeeTable({ params }: { params: RangeParams }) {
                   ` · rejadan ayrildi ${hhmm(m.planned_off_minutes)}`}
                 {m.quantity > 0 &&
                   ` · ${m.quantity} ${m.quantity_unit} · ideal ${hhmm(m.ideal_minutes)}`}
+                {m.defective > 0 && ` · brak ${m.defective} ${m.quality_unit}`}
               </div>
               {losses.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
