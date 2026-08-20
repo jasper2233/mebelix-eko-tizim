@@ -179,21 +179,24 @@ export const MACHINE_BOUND_ROLES = ["terminal", "tablo"] as const
  * erkin matn bo'lganda "Arrachi" va "arrachi" ikki qator berardi. */
 export type PositionKind = "tsex" | "ofis" | "boshqa"
 
+// Tsex lavozimida ham `role` bor: skaneri yo'q postda (ARRA) xodimga SHAXSIY
+// hisob ochiladi va u parol bilan kiradi. Rol backend `POST_ROLES` bilan bir xil
+// jadval — hisob roli o'sha post terminalini ochadi.
 export const POSITIONS: {
   label: string
   kind: PositionKind
   post?: string
   role?: UserRole
 }[] = [
-  { label: "Arrachi", kind: "tsex", post: "ARRA" },
-  { label: "Kromkachi", kind: "tsex", post: "KROMKA" },
-  { label: "Oval kromkachi", kind: "tsex", post: "OVAL" },
-  { label: "Prisadkachi", kind: "tsex", post: "PRISADKA" },
-  { label: "Roverchi", kind: "tsex", post: "ROVER" },
-  { label: "Stolyar", kind: "tsex", post: "STOLYARKA" },
-  { label: "Bo'yoqchi", kind: "tsex", post: "BOYOQ" },
-  { label: "Qadoqlovchi", kind: "tsex", post: "UPAKOVKA" },
-  { label: "TMO omborchisi", kind: "tsex", post: "TMO" },
+  { label: "Arrachi", kind: "tsex", post: "ARRA", role: "arrachi" },
+  { label: "Kromkachi", kind: "tsex", post: "KROMKA", role: "kromkachi" },
+  { label: "Oval kromkachi", kind: "tsex", post: "OVAL", role: "ovalchi" },
+  { label: "Prisadkachi", kind: "tsex", post: "PRISADKA", role: "prisadkachi" },
+  { label: "Roverchi", kind: "tsex", post: "ROVER", role: "roverchi" },
+  { label: "Stolyar", kind: "tsex", post: "STOLYARKA", role: "stolyar" },
+  { label: "Bo'yoqchi", kind: "tsex", post: "BOYOQ", role: "boyoqchi" },
+  { label: "Qadoqlovchi", kind: "tsex", post: "UPAKOVKA", role: "upakovkachi" },
+  { label: "TMO omborchisi", kind: "tsex", post: "TMO", role: "omborchi" },
   { label: "Menejer", kind: "ofis", role: "manager" },
   { label: "Texnolog", kind: "ofis", role: "texnolog" },
   { label: "Direktor", kind: "ofis", role: "director" },

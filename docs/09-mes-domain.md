@@ -35,8 +35,9 @@ va bitta alohida rol (`app/models/enums.py`):
   akkauntlari ish markaziga biriktiriladi (TT 8.1 variant B);
 - post-operator: arrachi, kromkachi, ovalchi, prisadkachi, roverchi, stolyar, boyoqchi,
   **upakovkachi**, **omborchi** — `POST_ROLES` mapping orqali postga bog'lanadi (ARRACHI→ARRA …
-  OMBORCHI→TMO); **parol bilan kirish YOPIQ** — `login_for_access_token` `POST_ROLES` dagi rolni
-  401 "Tsexda beyjik bilan kiriladi." bilan rad etadi, ya'ni tsexga yagona yo'l `/login/badge`
+  OMBORCHI→TMO); odatdagi yo'l — `/login/badge`. Parol bilan kirish ROLGA emas, HISOB TURIGA
+  bog'liq: seed yaratgan `is_system=True` hisob 401 oladi, odamning shaxsiy hisobi esa kiradi va
+  smenasi avtomat ochiladi (§3.0.1) — skaneri yo'q post uchun (ARRA)
   (beyjik skani), smena esa terminalda ochiladi (§3, §3.0.1). Ish markazi biriktirish shart
   emas: `resolve_terminal` postdan `scanning.post_machine` bilan topadi.
   `omborchi` rol KODI o'zgarmaydi (odamning kasbi), ekranda
@@ -203,8 +204,8 @@ ya'ni kuzatib turgan odamdan himoya qilmasdi — himoya qilmaydigan narsani himo
 
 Ilgari post rollari uchun "login = smena" shoxi bor edi: `operator_employee` hisobga soxta hodim
 yozuvi yaratib ("Arrachi", "Omborchi" — ismi rol nomi) smenani o'sha nomdan ochardi. Post rollari
-parol bilan kira olmagach (§3.0.1; `login.py: login_for_access_token` — `POST_ROLES` dagi rol uchun
-"Tsexda beyjik bilan kiriladi") u shox smena ocholmay qoldi va butunlay olib tashlandi.
+parol bilan kira olmagach (§3.0.1; o'sha paytda `login.py` `POST_ROLES` dagi HAR qanday rolni rad
+etardi) u shox smena ocholmay qoldi va butunlay olib tashlandi.
 `c7e2b4f81d39` mavjud mirror yozuvlarni NOFAOL qiladi va ularning ochiq smenalarini yopadi;
 yozuvlar O'CHIRILMAYDI — ularda haqiqiy skan tarixi bor. Natijada **`Hodimlar` = odamlar,
 `Foydalanuvchilar` = loginlar** va ular kesishmaydi.
@@ -233,10 +234,11 @@ hisobot uni SANAMAYDI — har skan o'z VAQTIDA ochiq bo'lgan smenalar orasida te
 0.5 yoziladi: zavod bir ishga bir marta to'laydi. `scan.machine_id` NULL bo'lsa (ish markazisiz yozuv)
 `COALESCE` uni eski yo'l bilan `scan.employee_id` ga yozadi — skan hisobdan tushib qolmasin.
 
-### 3.0.1 Beyjik bilan kirish (tsexda parol yo'q)
+### 3.0.1 Beyjik bilan kirish (tsexdagi asosiy yo'l)
 
 Operator login/parol termaydi va **hech qanday o'rnatish qadami yo'q**: kirish sahifasi ochilib
-turgan istalgan brauzerda beyjik skani kirishga aylanadi.
+turgan istalgan brauzerda beyjik skani kirishga aylanadi. Skaneri yo'q postda esa parol yo'li bor —
+§3.0.2.
 
 Beyjik ikkala savolga javob beradi — KIM va QAYERDA (`login.py`):
 
@@ -254,9 +256,40 @@ kirgandan keyin BOSHQA postning ekranida paydo bo'lardi.
 kiradi; beyjik faqat tsexda ishlaydiganlarga. Shuning uchun `Hodimlar` ro'yxatidagi HAR bir yozuvga
 beyjik chiqariladi.
 
-`employee.user_id` ustuni (`d1c4e7a90b52`) endi ARXIV: u eski mirror yozuvlarni belgilaydi
-(o'chirish taqiqlanadi — skan tarixi ularda) va kelajakda ishchi ayni paytda menejer ham bo'lsa
-ishlatiladi. Yangi hodim qo'shganda foydalanuvchi tanlanmaydi: tsexdagi ishchi login qilmaydi.
+`employee.user_id` — hodimni kirish hisobiga bog'laydi (`d1c4e7a90b52`). U ikki ish qiladi:
+skaneri yo'q postda hodimni SHAXSIY hisobiga bog'laydi (§3.0.2) va ishchi ayni paytda menejer ham
+bo'lgan holatni ifodalaydi. Bog'lash qoidalari `employees._validate_user_link` da: qurilma hisobi
+(TERMINAL/TABLO) va `is_system=True` texnik hisob odam emas — ularga hodim biriktirilmaydi;
+bitta hisob ikki hodimga tegishli bo'lolmaydi (`ix_employee_user_id`).
+
+### 3.0.2 Parol bilan kirish (skaneri yo'q post)
+
+ARRA da monoblok bor, **skaner yo'q**. U yerda skaner ishga kerak ham emas: chek chiqarishning
+o'zi skan hisoblanadi (`cut_by_print` — `terminal.py`), ya'ni skaner FAQAT kirish uchun sotib
+olinardi. Shuning uchun arrachi o'zining shaxsiy login va paroli bilan kiradi.
+
+| Qadam | Nima |
+|---|---|
+| 1 | `POST /login/access-token` — oddiy login. `is_system=True` hisob shu yerda 401 oladi |
+| 2 | Rol `POST_ROLES` da bo'lsa `_open_shift_for` ishlaydi |
+| 3 | `employee.user_id == user.id` bo'yicha AKTIV hodim topiladi. Topilmasa smena ochilmaydi — odam terminalda o'zini tanishtiradi |
+| 4 | Post rolidan (`POST_ROLES`), ish markazi `scanning.post_machine` dan — beyjik yo'li bilan BIR XIL qoida |
+| 5 | `open_badge_session` — smena ochiladi, ya'ni ish haqi o'sha odamga yoziladi |
+
+Ikki turdagi hisob bir xil rolda yashaydi va ularni `user.is_system` ajratadi (`e7a35c19d840`):
+
+| | `is_system=False` | `is_system=True` |
+|---|---|---|
+| Kim yaratadi | admin, Hodimlar sahifasidan | `seed_defaults._seed_post_accounts` |
+| Kirish | kiradi, smenasi o'ziga ochiladi | **hech qachon** — paroli tasodifiy |
+| Vazifasi | odamning shaxsiy hisobi | beyjik ochgan smena qaysi nom bilan yozilishini hal qiladi (`_terminal_user`) |
+
+Qoida ROLGA emas, HISOBGA bog'langan: kodda "faqat ARRA" degan ro'yxat yo'q. Boshqa postda skaner
+sinsa, admin o'sha odamga hisob ochadi — kod tegilmaydi. Ikki yo'l bir-birini inkor qilmaydi:
+shaxsiy hisobi bor hodimning beyjigi ham amal qiladi (boshqa postda ishlaganda kerak bo'ladi).
+
+Parol qoidasi hamma uchun bitta: 8+ belgi, katta va kichik harf, raqam, belgi
+(`schemas/users.py: validate_password_strength`).
 
 **Xavfsizlik — ataylab qilingan tanlov (2026-08-12).** Beyjik yagona omil: QR qog'ozda va nusxa
 olingan bo'lsa istalgan qurilmadan kirsa bo'ladi. Qurilma bog'lash (monoblokni ish markaziga bir

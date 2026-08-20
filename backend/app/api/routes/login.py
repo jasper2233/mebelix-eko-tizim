@@ -88,15 +88,50 @@ async def login_for_access_token(
         raise UnauthorizedException("Foydalanuvchi nomi, telefon yoki parol noto'g'ri.")
     if not user.is_active:
         raise UnauthorizedException("Foydalanuvchi faol emas")
-    # Tsexda kirish yo'li BITTA — beyjik. Har postda bitta operator hisobi bor,
-    # ya'ni parol butun smenaga ma'lum: u bilan kirilsa smena "arrachi" mirror
-    # hodimiga ochilib, skan va ish haqi haqiqiy odamga emas, o'shanga yozilardi.
-    # Ustiga u istalgan joydan ishlardi — tsexdan tashqarida ham skan qilinardi.
+    # TIZIM hisobi hech qachon kirmaydi: u beyjik bilan ochilgan smena qaysi hisob
+    # nomidan yozilishini hal qiladi, xolos (`_terminal_user`). Odamning SHAXSIY
+    # hisobi esa kiradi — skaneri yo'q postda (ARRA) yagona yo'l shu.
+    if user.is_system:
+        raise UnauthorizedException("Bu texnik hisob — u bilan kirilmaydi. Beyjik yoki shaxsiy hisobdan foydalaning.")
+
+    # Tsex hisobi bo'lsa smena SHU YERDA ochiladi: aks holda operator kirib, keyin
+    # yana ekranda ismini bosishi kerak bo'lardi — ikki marta bir ish
     if POST_ROLES.get(UserRole(user.role)) is not None:
-        raise UnauthorizedException("Tsexda beyjik bilan kiriladi.")
+        await _open_shift_for(db, user)
 
     access_token = _issue_token_pair(response, user)
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+async def _open_shift_for(db: SessionDep, user: User) -> None:
+    """Tsex xodimi parol bilan kirganda smenasini ochadi.
+
+    Hodim yozuvi `employee.user_id` orqali topiladi — u bo'lmasa smena ochilmaydi
+    va terminal ekranida odam o'zini tanishtiradi (ismini bosadi yoki beyjik).
+    Post rolidan keladi, ish markazi esa `post_machine` qoidasidan.
+    """
+    employee = (
+        await db.execute(
+            select(Employee).where(
+                Employee.user_id == user.id,
+                Employee.status == EmployeeStatus.ACTIVE,
+                Employee.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).scalar_one_or_none()
+    if employee is None:
+        return
+    post_code = POST_ROLES[UserRole(user.role)]
+    post = (
+        await db.execute(select(Post).where(Post.code == post_code, Post.is_deleted == False))  # noqa: E712
+    ).scalar_one_or_none()
+    if post is None or post.id not in (employee.assigned_post_ids or []):
+        return
+    machine = await post_machine(db, post)
+    if machine is None:
+        return
+    await open_badge_session(db, user=user, machine=machine, post=post, employee=employee)
+    await db.commit()
 
 
 async def _badge_post(db: SessionDep, employee: Employee, post_id: int | None) -> Post:
@@ -182,6 +217,10 @@ async def _terminal_user(db: SessionDep, machine: Machine, post: Post) -> User:
                 select(User)
                 .where(
                     User.role == post_role,
+                    # TEXNIK hisob: shu rolda odamning SHAXSIY hisobi ham bo'ladi
+                    # (skaneri yo'q post). Usiz eng kichik ID olinardi va beyjik
+                    # ochgan smena BOSHQA ishchining hisobi nomidan yozilardi.
+                    User.is_system == True,  # noqa: E712
                     User.is_active == True,  # noqa: E712
                     User.is_deleted == False,  # noqa: E712
                 )

@@ -103,21 +103,27 @@ const isDeviceAccount = (u: UserRead) => DEVICE_ROLES.includes(u.role)
 const ACCESS_LABEL: Record<Access, string> = {
   badge: "Beyjik",
   password: "Parol",
+  both: "Beyjik + parol",
   none: "Yo'q",
 }
 
-/** Kirish usuli — BITTA holat: beyjik (tsex), parol (ofis) yoki yo'q.
- * Ilgari bu yerda ikki katak turardi (beyjik + parol), lekin lavozim bitta yo'lni
- * tanlagandan keyin ikkalasi birga hech qachon yona olmaydi — belgi mavjud
- * bo'lmagan holatni va'da qilardi. */
+/** Kirish usuli — odam tizimga QANDAY kiradi.
+ * Uchtasi ham haqiqiy holat: beyjik (skanerli post), parol (ofis yoki skaneri
+ * yo'q post), ikkalasi (postda ishlaydi va shaxsiy hisobi bor). Ustun aynan
+ * shuni aytadi, chunki hisob yopilganda odam qaysi yo'ldan qolishini admin
+ * shu yerdan ko'radi. */
 function AccessCell({ access }: { access: Access }) {
   if (access === "none") {
     return <span className="text-sm text-muted-foreground">—</span>
   }
-  const Icon = access === "badge" ? IdCard : KeyRound
   return (
     <span className="flex items-center gap-1.5 text-sm">
-      <Icon className="size-4 text-muted-foreground" />
+      {access !== "password" && (
+        <IdCard className="size-4 text-muted-foreground" />
+      )}
+      {access !== "badge" && (
+        <KeyRound className="size-4 text-muted-foreground" />
+      )}
       {ACCESS_LABEL[access]}
     </span>
   )
@@ -163,7 +169,15 @@ function PeoplePage() {
         position: e.position,
         phone: e.phone,
         posts: e.assigned_post_ids,
-        access: user ? "password" : hasPosts ? "badge" : "none",
+        // Postli hodimda beyjik HAMISHA bor; shaxsiy hisob unga QO'SHILADI
+        // (skaneri yo'q postda parol yagona yo'l, lekin beyjigi ham amal qiladi)
+        access: hasPosts
+          ? user
+            ? "both"
+            : "badge"
+          : user
+            ? "password"
+            : "none",
       })
     }
 

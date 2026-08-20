@@ -119,7 +119,7 @@ async def _seed_post_accounts(db: AsyncSession) -> None:
     Bu hisoblar ODAM EMAS va admin ularni yuritmaydi — shuning uchun ular
     Hodimlar sahifasida ko'rinmaydi va shu yerda, o'rnatishda yaratiladi.
     Parol tasodifiy va hech kimga aytilmaydi: post rollariga parol bilan kirish
-    kodda yopilgan (`login.py` — "Tsexda beyjik bilan kiriladi"), ya'ni parol
+    kodda yopilgan (`login.py` — `is_system` tekshiruvi), ya'ni parol
     faqat NOT NULL ustunni to'ldirish uchun turadi.
 
     Telefon `+99800000000N` ajratilgan diapazondan — haqiqiy raqam bilan
@@ -128,7 +128,16 @@ async def _seed_post_accounts(db: AsyncSession) -> None:
     existing = {
         UserRole(u.role): u
         for u in (
-            await db.execute(select(User).where(User.role.in_(list(POST_ROLES)), User.is_deleted == False))  # noqa: E712
+            await db.execute(
+                # `is_system` SHART: post rolida odamning SHAXSIY hisobi ham bo'ladi
+                # (skaneri yo'q post). Usiz seed o'shani texnik hisob deb o'ylab,
+                # postni texnik hisobsiz qoldirardi — beyjik bilan kirish sinardi.
+                select(User).where(
+                    User.role.in_(list(POST_ROLES)),
+                    User.is_system == True,  # noqa: E712
+                    User.is_deleted == False,  # noqa: E712
+                )
+            )
         )
         .scalars()
         .all()
@@ -148,6 +157,7 @@ async def _seed_post_accounts(db: AsyncSession) -> None:
                 hashed_password=await get_password_hash(secrets.token_urlsafe(24)),
                 role=role,
                 is_active=True,
+                is_system=True,
             )
         )
         logger.info("Post hisobi yaratildi: %s (%s)", role, post_code)

@@ -22,6 +22,10 @@ qolganini lavozim hal qiladi.
   `tsex` (9 ta, har biri postga ko'rsatadi — backend `POST_ROLES` bilan bir xil jadval),
   `ofis` (5 ta, har biri `UserRole` ga ko'rsatadi), `boshqa` (nomi qo'lda — haydovchi,
   farrosh; post ham, hisob ham berilmaydi).
+- **Tsexda parol bilan kirish** — "Postda skaner yo'q" katakchasi. Belgilansa hisob HODIMDAN
+  OLDIN yaratiladi va `employee.user_id` darhol unga bog'lanadi: aks holda odam parol bilan
+  kirardi-yu, smenasi ochilmasdi (`login._open_shift_for` aynan shu bog'lamdan hodimni topadi).
+  Rol lavozim jadvalidan keladi (`POSITIONS[].role` — backend `POST_ROLES` bilan bir xil).
 - **Post lavozimdan keladi**: "Arrachi" tanlansa ARRA belgilanadi. Dialog OCHILGANDA ham
   hisoblanadi (`postsFor`), faqat almashtirilganda emas — ilgari admin tayyor turgan
   lavozimga tegmasdan saqlasa POSTSIZ hodim yaratilardi va uning beyjigi ishlamasdi.

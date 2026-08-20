@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
 from app.crud import crud_employees, crud_posts, crud_users, log_action
 from app.models import Employee
-from app.models.enums import POST_ROLES, EmployeeStatus, UserRole
+from app.models.enums import EmployeeStatus, UserRole
 from app.schemas.common import Message, Paginated
 from app.schemas.employees import EmployeeCreate, EmployeeRead, EmployeeUpdate
 from app.services.scanning import end_employee_sessions
@@ -43,8 +43,11 @@ async def _validate_user_link(db: SessionDep, user_id: int | None, employee_id: 
     if user is None:
         raise NotFoundException("Kirish hisobi topilmadi.")
     role = UserRole(user.role)
-    if role in (UserRole.TERMINAL, UserRole.TABLO) or role in POST_ROLES:
-        raise DuplicateValueException(f"{user.username} — qurilma yoki post hisobi, unga hodim biriktirilmaydi.")
+    # Post rolidagi SHAXSIY hisobga ruxsat: skanersiz postda (ARRA) xodim aynan
+    # shu hisob bilan kiradi va smenasi o'ziga yoziladi. Qurilma hisobi va
+    # `seed_defaults` yaratgan TEXNIK hisob esa odam emas.
+    if role in (UserRole.TERMINAL, UserRole.TABLO) or user.is_system:
+        raise DuplicateValueException(f"{user.username} — qurilma yoki texnik hisob, unga hodim biriktirilmaydi.")
     query = select(Employee.full_name).where(
         Employee.user_id == user_id,
         Employee.is_deleted == False,  # noqa: E712
@@ -182,18 +185,11 @@ async def print_employee_badge(db: SessionDep, current_user: AdminUser, employee
 @router.delete("/{employee_id}", response_model=Message, operation_id="delete_employee")
 async def delete_employee(db: SessionDep, current_user: AdminUser, employee_id: int, request: Request) -> Message:
     employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
-    # Eski avtomat mirror'lar ("arrachi", "omborchi") — POST ROLI hisobiga bog'langan
-    # yozuvlar. Ular arxiv: yangi mirror yaratilmaydi (`c7e2b4f81d39`), lekin ularda
-    # haqiqiy skan tarixi bor va o'chirilsa mahsuldorlik hisobotidan tushardi.
-    # Oddiy hodimning kirish hisobi (manager, texnolog, ...) bunga kirmaydi — u
-    # odam va o'chirilishi mumkin.
-    if employee.user_id is not None:
-        linked = await crud_users.get(db, id=employee.user_id)
-        if linked is not None and UserRole(linked.role) in POST_ROLES:
-            raise ForbiddenException(
-                f"{employee.full_name} — eski operator hisobi yozuvi, o'chirib bo'lmaydi: "
-                "unda skan tarixi bor. U allaqachon NOFAOL va ro'yxatda faqat tarix uchun turibdi."
-            )
+    # Ilgari bu yerda POST ROLI hisobiga bog'langan yozuvni o'chirishga to'siq bor
+    # edi — eski avtomat mirror'lar uchun. Mirror'lar `a9e14b7c2d63` da butunlay
+    # o'chirildi va endi post rolidagi bog'lam BOSHQA narsani bildiradi: skaneri
+    # yo'q postda ishlaydigan odamning SHAXSIY hisobi. To'siq qolganda haqiqiy
+    # hodimni o'chirib bo'lmasdi.
     closed = await end_employee_sessions(db, employee.id)
     log_action(
         db,

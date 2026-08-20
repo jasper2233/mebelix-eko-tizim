@@ -19,6 +19,10 @@ class User(BaseModel):
     username: Mapped[str] = mapped_column(String(20), kw_only=True)
     # E.164 Uzbek mobile: '+998' + 9 digits = 13 chars total. Stored canonical, no spaces.
     phone: Mapped[str] = mapped_column(String(13), kw_only=True)
+    #: TIZIM hisobi — `seed_defaults` yaratgan post hisobi. Beyjik bilan kirishda
+    #: smena shu hisob nomidan ochiladi, lekin uning O'ZI hech qachon kirmaydi
+    #: (paroli tasodifiy). Odamning shaxsiy hisobida `False` (`e7a35c19d840`).
+    is_system: Mapped[bool] = mapped_column(default=False, server_default=text("false"), kw_only=True)
     hashed_password: Mapped[str] = mapped_column(String, kw_only=True)
 
     is_active: Mapped[bool] = mapped_column(default=True, kw_only=True)

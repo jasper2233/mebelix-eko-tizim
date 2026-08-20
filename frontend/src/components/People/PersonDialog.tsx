@@ -1,6 +1,7 @@
 // Hodim dialogi: uch savol — F.I.Sh, telefon, lavozim. Qolganini lavozim hal qiladi.
 //
 //   tsex lavozimi -> beyjik bilan ishlaydi, posti lavozimdan keladi (POST_ROLES bilan bir xil)
+//                    skaneri yo'q postda (ARRA) esa qo'shimcha: shaxsiy login+parol
 //   ofis lavozimi -> parol bilan kiradi, roli lavozimdan keladi; post ham, beyjik ham berilmaydi
 //   "Boshqa"      -> tizimga kirmaydi (haydovchi, farrosh); nomi qo'lda yoziladi
 //
@@ -23,6 +24,7 @@ import {
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { Field } from "@/components/Common/Field"
 import { SelectField } from "@/components/Common/SelectField"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -38,7 +40,7 @@ import { OTHER_POSITION, POSITIONS } from "@/lib/mes"
 import { formatUzPhone } from "@/lib/validation"
 import { detailMessage } from "@/utils"
 
-export type Access = "badge" | "password" | "none"
+export type Access = "badge" | "password" | "both" | "none"
 
 export type Person = {
   employee: EmployeeRead | null
@@ -111,11 +113,20 @@ export function PersonDialog({
     username: person?.user?.username ?? "",
     password: "",
   })
+  // Tsex xodimiga SHAXSIY hisob: skaneri yo'q postda beyjikni skanerlash
+  // imkoni yo'q, shuning uchun u monoblokda login va parol bilan kiradi.
+  // Kirgan zahoti smenasi ochiladi (`login._open_shift_for`).
+  const [shopLogin, setShopLogin] = useState(
+    !!person?.user &&
+      POSITIONS.find((x) => x.label === initialPosition)?.kind === "tsex",
+  )
   const set = (key: keyof typeof form, value: string) =>
     setForm((f) => ({ ...f, [key]: value }))
 
   const chosen = POSITIONS.find((x) => x.label === form.position)
   const kind = chosen?.kind ?? "boshqa"
+  // Hisob faqat tsex lavozimida, faqat superuser qo'li bilan ochiladi
+  const withLogin = kind === "tsex" && shopLogin && canManageAccounts
   const positionText =
     kind === "boshqa" ? form.otherPosition.trim() : form.position
 
@@ -172,11 +183,39 @@ export function PersonDialog({
         return
       }
 
+      // Tsex hisobi HODIMDAN OLDIN ochiladi: hodim yozuvi darhol unga bog'lanadi,
+      // aks holda parol bilan kirgan odamning smenasi ochilmasdi (bog'lam yo'q).
+      let userId = person?.user ? Number(person.user.id) : null
+      const account = withLogin && chosen?.role
+      if (account && userId === null) {
+        const created = await UsersService.createUser({
+          body: {
+            name: form.name.trim(),
+            username: form.username.trim() || undefined,
+            phone: phone ?? "",
+            password: form.password,
+            role: chosen.role as UserRole,
+          },
+        })
+        userId = Number(created.data.id)
+      } else if (account && userId !== null) {
+        await UsersService.updateUser({
+          path: { user_id: userId },
+          body: {
+            name: form.name.trim(),
+            role: chosen.role as UserRole,
+            ...(phone ? { phone } : {}),
+            ...(form.password ? { password: form.password } : {}),
+          },
+        })
+      }
+
       const body = {
         full_name: form.name.trim(),
         position: positionText || null,
         phone,
         assigned_post_ids: kind === "boshqa" ? [] : form.posts,
+        user_id: account ? userId : null,
       }
       if (person?.employee) {
         await EmployeesService.updateEmployee({
@@ -186,12 +225,11 @@ export function PersonDialog({
       } else {
         await EmployeesService.createEmployee({ body })
       }
-      // Ofisdan tsexga o'tkazilgan bo'lsa kirish hisobi yopiladi — aks holda
-      // u eski paroli bilan ofis paneliga kiraverardi
-      if (person?.user && canManageAccounts) {
-        await UsersService.deleteUser({
-          path: { user_id: Number(person.user.id) },
-        })
+      // Hisob KERAK EMAS bo'lib qolsa yopiladi: ofisdan tsexga o'tkazilganda
+      // (eski paroli bilan ofis paneliga kiraverardi) yoki tsex xodimidan
+      // parol bilan kirish olib tashlanganda. Bog'lam yuqorida uzilgan.
+      if (!account && userId !== null && canManageAccounts) {
+        await UsersService.deleteUser({ path: { user_id: userId } })
       }
     },
     onSuccess: () => {
@@ -214,9 +252,11 @@ export function PersonDialog({
         ? "Lavozim nomini yozing"
         : kind === "tsex" && form.posts.length === 0
           ? "Kamida bitta post tanlang"
-          : kind === "ofis" && !phone
-            ? "Ofis xodimiga telefon kerak — u bilan tizimga kiradi"
-            : kind === "ofis" && !person?.user && form.password.length === 0
+          : (kind === "ofis" || withLogin) && !phone
+            ? "Kirish uchun telefon kerak — login o'shandan olinadi"
+            : (kind === "ofis" || withLogin) &&
+                !person?.user &&
+                form.password.length === 0
               ? "Parol kiriting"
               : null
   const valid = missing === null
@@ -247,7 +287,11 @@ export function PersonDialog({
             />
           </Field>
 
-          <Field label={kind === "ofis" ? "Telefon (majburiy)" : "Telefon"}>
+          <Field
+            label={
+              kind === "ofis" || withLogin ? "Telefon (majburiy)" : "Telefon"
+            }
+          >
             <Input
               value={formatUzPhone(form.phone)}
               onChange={(e) => set("phone", e.target.value)}
@@ -284,7 +328,31 @@ export function PersonDialog({
             </Field>
           )}
 
-          {kind === "ofis" && (
+          {kind === "tsex" && canManageAccounts && (
+            // biome-ignore lint/a11y/noLabelWithoutControl: Checkbox (Radix) ichida
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-md border p-3 text-sm">
+              <Checkbox
+                checked={shopLogin}
+                onCheckedChange={(v) => setShopLogin(v === true)}
+                className="mt-0.5"
+              />
+              <span>
+                Postda skaner yo'q — parol bilan kiradi
+                <span className="mt-0.5 block text-2xs text-muted-foreground">
+                  Monoblokda login va parol teradi, smenasi o'zi ochiladi.
+                  Skaner bo'lsa buni belgilamang — beyjik tezroq.
+                </span>
+                {person?.user && !shopLogin && (
+                  <span className="mt-1 block text-2xs text-destructive">
+                    Saqlansa kirish hisobi o'chiriladi — u faqat beyjik bilan
+                    ishlaydi.
+                  </span>
+                )}
+              </span>
+            </label>
+          )}
+
+          {(kind === "ofis" || withLogin) && (
             <div className="grid gap-3 rounded-md border border-dashed p-3">
               {!person?.user && (
                 <Field label="Login">
