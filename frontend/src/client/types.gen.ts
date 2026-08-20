@@ -5,6 +5,30 @@ export type ClientOptions = {
 };
 
 /**
+ * ActiveStop
+ *
+ * Hozir davom etayotgan to'xtash — terminal ekrani shuni ko'rsatib turadi.
+ */
+export type ActiveStop = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Reason Id
+     */
+    reason_id: number;
+    /**
+     * Reason Name
+     */
+    reason_name: string;
+    /**
+     * Started At
+     */
+    started_at: string;
+};
+
+/**
  * AuditLogRead
  */
 export type AuditLogRead = {
@@ -758,6 +782,14 @@ export type MachineCreate = {
     capacity?: number | null;
     capacity_unit?: CapacityUnit | null;
     status?: MachineStatus;
+    /**
+     * Planned Minutes Per Day
+     */
+    planned_minutes_per_day?: number;
+    /**
+     * Ideal Rate
+     */
+    ideal_rate?: number | null;
 };
 
 /**
@@ -782,6 +814,14 @@ export type MachineRead = {
     capacity: number | null;
     capacity_unit: CapacityUnit | null;
     status: MachineStatus;
+    /**
+     * Planned Minutes Per Day
+     */
+    planned_minutes_per_day: number;
+    /**
+     * Ideal Rate
+     */
+    ideal_rate: number | null;
     /**
      * Created At
      */
@@ -867,6 +907,14 @@ export type MachineUpdate = {
     capacity?: number | null;
     capacity_unit?: CapacityUnit | null;
     status?: MachineStatus | null;
+    /**
+     * Planned Minutes Per Day
+     */
+    planned_minutes_per_day?: number | null;
+    /**
+     * Ideal Rate
+     */
+    ideal_rate?: number | null;
 };
 
 /**
@@ -1075,6 +1123,98 @@ export type Message = {
      * Message
      */
     message: string;
+};
+
+/**
+ * OeeMachineRow
+ */
+export type OeeMachineRow = {
+    /**
+     * Machine Id
+     */
+    machine_id: number;
+    /**
+     * Machine Name
+     */
+    machine_name: string;
+    /**
+     * Post Code
+     */
+    post_code: string;
+    /**
+     * Post Name
+     */
+    post_name: string;
+    /**
+     * Active Days
+     */
+    active_days: number;
+    /**
+     * Planned Minutes
+     */
+    planned_minutes: number;
+    /**
+     * Run Minutes
+     */
+    run_minutes: number;
+    /**
+     * Planned Off Minutes
+     */
+    planned_off_minutes: number;
+    /**
+     * Loss Minutes
+     */
+    loss_minutes: number;
+    /**
+     * Availability
+     */
+    availability: number | null;
+    /**
+     * Stops
+     */
+    stops?: Array<OeeStopRow>;
+};
+
+/**
+ * OeeReport
+ */
+export type OeeReport = {
+    /**
+     * Date From
+     */
+    date_from: string;
+    /**
+     * Date To
+     */
+    date_to: string;
+    /**
+     * Machines
+     */
+    machines?: Array<OeeMachineRow>;
+};
+
+/**
+ * OeeStopRow
+ *
+ * Bitta sabab bo'yicha yig'ma to'xtash — eng katta yo'qotish tepada turadi.
+ */
+export type OeeStopRow = {
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Minutes
+     */
+    minutes: number;
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Excludes Planned
+     */
+    excludes_planned: boolean;
 };
 
 /**
@@ -2728,6 +2868,45 @@ export type StockSummary = {
 };
 
 /**
+ * StopKind
+ *
+ * To'xtash sababining egasi bergan turkumi (`oee to'xtalishlar.xlsx` ikki ustuni).
+ *
+ * OEE hisobiga bu ta'sir qilmaydi — buni `StopReason.excludes_planned` hal
+ * qiladi. Turkum faqat ro'yxatni guruhlash va hisobotda ajratish uchun.
+ */
+export type StopKind = 'planned' | 'unplanned';
+
+/**
+ * StopReasonRead
+ */
+export type StopReasonRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Name
+     */
+    name: string;
+    kind: StopKind;
+};
+
+/**
+ * StopStart
+ */
+export type StopStart = {
+    /**
+     * Reason Id
+     */
+    reason_id: number;
+    /**
+     * Note
+     */
+    note?: string | null;
+};
+
+/**
  * SurveyModule
  *
  * O'lchov varag'i B bo'limi: yasaladigan moduldan bitta qator.
@@ -3040,6 +3219,7 @@ export type TerminalContext = {
      * Crew
      */
     crew?: Array<SessionRead>;
+    stop?: ActiveStop | null;
 };
 
 /**
@@ -5782,6 +5962,65 @@ export type EndTerminalSessionResponses = {
 
 export type EndTerminalSessionResponse = EndTerminalSessionResponses[keyof EndTerminalSessionResponses];
 
+export type ReadStopReasonsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/terminal/stop-reasons';
+};
+
+export type ReadStopReasonsResponses = {
+    /**
+     * Response Read Stop Reasons
+     *
+     * Successful Response
+     */
+    200: Array<StopReasonRead>;
+};
+
+export type ReadStopReasonsResponse = ReadStopReasonsResponses[keyof ReadStopReasonsResponses];
+
+export type StartMachineStopData = {
+    body: StopStart;
+    path?: never;
+    query?: never;
+    url: '/api/v1/terminal/stop';
+};
+
+export type StartMachineStopErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StartMachineStopError = StartMachineStopErrors[keyof StartMachineStopErrors];
+
+export type StartMachineStopResponses = {
+    /**
+     * Successful Response
+     */
+    200: ActiveStop;
+};
+
+export type StartMachineStopResponse = StartMachineStopResponses[keyof StartMachineStopResponses];
+
+export type EndMachineStopData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/terminal/stop/end';
+};
+
+export type EndMachineStopResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type EndMachineStopResponse = EndMachineStopResponses[keyof EndMachineStopResponses];
+
 export type ReadTerminalOrdersData = {
     body?: never;
     path?: never;
@@ -6296,6 +6535,44 @@ export type ReportDashboardResponses = {
 };
 
 export type ReportDashboardResponse = ReportDashboardResponses[keyof ReportDashboardResponses];
+
+export type ReportOeeData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Date From
+         */
+        date_from?: string | null;
+        /**
+         * Date To
+         */
+        date_to?: string | null;
+        /**
+         * Post Id
+         */
+        post_id?: number | null;
+    };
+    url: '/api/v1/reports/oee';
+};
+
+export type ReportOeeErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReportOeeError = ReportOeeErrors[keyof ReportOeeErrors];
+
+export type ReportOeeResponses = {
+    /**
+     * Successful Response
+     */
+    200: OeeReport;
+};
+
+export type ReportOeeResponse = ReportOeeResponses[keyof ReportOeeResponses];
 
 export type ReadBridgeAgentsData = {
     body?: never;

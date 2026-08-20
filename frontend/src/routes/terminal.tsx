@@ -3,7 +3,14 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { Grid2x2, Lock, LogOut, ScanLine, WifiOff } from "lucide-react"
+import {
+  Grid2x2,
+  Lock,
+  LogOut,
+  OctagonPause,
+  ScanLine,
+  WifiOff,
+} from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
@@ -27,6 +34,7 @@ import { PostQueueView } from "@/components/Terminal/PostQueueView"
 import { PrisadkaView } from "@/components/Terminal/PrisadkaView"
 import { type LastScan, ScanStrip } from "@/components/Terminal/ScanStrip"
 import { CrewChips, ShiftGate } from "@/components/Terminal/ShiftGate"
+import { StopBanner, StopReasonDialog } from "@/components/Terminal/StopPanel"
 import { TmoView } from "@/components/Terminal/TmoView"
 import { UpakovkaView } from "@/components/Terminal/UpakovkaView"
 import {
@@ -79,6 +87,7 @@ function TerminalPage() {
   // "tinchlik" o'lchovi; lastScan holatidan farqli, 15s da tozalanmaydi
   const lastScanAtRef = useRef(0)
   const [locked, setLocked] = useState(false)
+  const [stopPicking, setStopPicking] = useState(false)
   // ROVER: detallar ro'yxati (SCX/chek) va kesish xaritasi almashtirgichi
   const [roverMap, setRoverMap] = useState(false)
   // Ro'yxatdagi xarita ikonkasi: xarita shu detal belgilangan holda ochiladi
@@ -268,6 +277,9 @@ function TerminalPage() {
   // Ro'yxat FAQAT smena ochilmagan yoki qo'shish so'ralganda kerak — ish
   // ketayotganda terminal uni bekorga so'ramasin.
   const crew = ctx?.crew ?? []
+  // To'xtash ish markaziga bog'liq, smenaga emas: operator ketgan bo'lsa ham
+  // stanokning to'xtab turgani yozilib boradi ("operator yo'q" ham sabab)
+  const stop = ctx?.stop ?? null
   const gateOpen = !!ctx && (!crew.length || joining)
   const { data: shiftEmployees } = useQuery({
     queryKey: ["terminal", "employees"],
@@ -393,7 +405,11 @@ function TerminalPage() {
       </header>
 
       {/* Asosiy maydon — ARRA: proyekt ro'yxati → kesish xaritasi; boshqa postlar: vazifalar */}
-      <main className="flex min-h-0 flex-1 gap-1.5 p-3 pl-1.5">
+      <main className="relative flex min-h-0 flex-1 gap-1.5 p-3 pl-1.5">
+        {/* To'xtash paneli ish maydonini BOSIB turadi: yozib qo'yib
+            unutilgan to'xtash stanokni soatlab "to'xtagan" qilib
+            ko'rsatardi va ko'rsatkich yolg'on bo'lardi */}
+        {stop && <StopBanner stop={stop} />}
         {/* Chap ustun: xarita toolbari (portal) tepada, qulf/chiqish doim pastda */}
         <div className="flex w-[68px] shrink-0 flex-col gap-2">
           {/* ROVER: detallar <-> kesish xaritasi. Terminalning barcha amallari
@@ -409,6 +425,15 @@ function TerminalPage() {
             className="flex flex-col gap-2 empty:hidden"
           />
           <div className="mt-auto flex flex-col gap-2">
+            {!stop && (
+              <TBtn
+                label="To'xtash"
+                tone="warn"
+                onClick={() => setStopPicking(true)}
+              >
+                <OctagonPause />
+              </TBtn>
+            )}
             <TBtn label="Qulflash" tone="warn" onClick={() => setLocked(true)}>
               <Lock />
             </TBtn>
@@ -593,6 +618,11 @@ function TerminalPage() {
           </div>
         )}
       </main>
+
+      <StopReasonDialog
+        open={stopPicking}
+        onClose={() => setStopPicking(false)}
+      />
 
       <ConfirmDialog
         open={logoutOpen}

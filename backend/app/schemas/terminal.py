@@ -3,7 +3,7 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.enums import OrderPriority, OrderStatus, PachkaStatus, PostCode, SessionStatus
+from app.models.enums import OrderPriority, OrderStatus, PachkaStatus, PostCode, SessionStatus, StopKind
 
 
 class ShiftStart(BaseModel):
@@ -44,6 +44,30 @@ class SessionRead(BaseModel):
     ended_at: datetime | None
 
 
+class StopReasonRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    kind: StopKind
+
+
+class ActiveStop(BaseModel):
+    """Hozir davom etayotgan to'xtash — terminal ekrani shuni ko'rsatib turadi."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    reason_id: int
+    reason_name: str
+    started_at: datetime
+
+
+class StopStart(BaseModel):
+    reason_id: int
+    note: str | None = Field(default=None, max_length=200)
+
+
 class TerminalContext(BaseModel):
     machine_id: int
     machine_name: str
@@ -53,6 +77,9 @@ class TerminalContext(BaseModel):
     #: Brigada — ish markazidagi OCHIQ smenalar (ARRA da ikki kishi birga ishlaydi).
     #: Bo'sh ro'yxat: hali hech kim smenani boshlamagan.
     crew: list[SessionRead] = []
+    #: To'xtab turibdimi. Ish markaziga bog'liq, smenaga emas: operator
+    #: ketgan bo'lsa ham stanok to'xtab turgani yozilib boradi (OEE).
+    stop: ActiveStop | None = None
 
 
 class TerminalOrderCard(BaseModel):

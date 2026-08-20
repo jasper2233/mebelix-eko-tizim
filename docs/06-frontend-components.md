@@ -625,3 +625,17 @@ MACHINE_BOUND_ROLES, TERMINAL_STATUSES, formatSize),
 @/lib/anketa (variant kataloglari, labelOf/labelsOf), @/lib/scxDir (papka + scxFileUrl),
 @/utils (handleError, getInitials).
 ```
+
+## `frontend/src/components/Terminal/StopPanel.tsx`
+
+**Maqsadi:** stanok to'xtashini qayd etish — OEE ning Availability qismi shu yerdan yig'iladi.
+
+- `StopReasonDialog` — sabablar rejali/rejasiz guruhlarida, 56px balandlikdagi tugmalar
+  (qo'lqop bilan bosiladi). Ro'yxat `staleTime: 30 daq` — u kamdan-kam o'zgaradi,
+  monoblok esa uni har to'xtashda so'rardi.
+- `StopBanner` — ish maydonini BUTUNLAY bosib turadigan qizil panel: sabab nomi va
+  sanovchi soat. Bosib turishi ataylab: yozib qo'yilib unutilgan to'xtash stanokni
+  soatlab "to'xtagan" qilib ko'rsatardi. Ikki amal — davom ettirish va sababni
+  almashtirish.
+- `useElapsed` — sekundlik hisoblagich; vaqt `started_at` dan hisoblanadi, ya'ni
+  sahifa qayta yuklansa ham davom etadi.

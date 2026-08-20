@@ -33,7 +33,7 @@ export const Route = createFileRoute("/_layout/reports")({
   head: () => ({ meta: [{ title: "Hisobotlar | MebeliX" }] }),
 })
 
-type Kind = "productivity" | "orders" | "materials"
+type Kind = "productivity" | "orders" | "materials" | "oee"
 
 function ReportsPage() {
   const [kind, setKind] = useState<Kind>("productivity")
@@ -57,11 +57,15 @@ function ReportsPage() {
         title="Hisobotlar"
         description="Mahsuldorlik, buyurtmalar holati va material sarfi"
         actions={
-          <Button asChild variant="outline">
-            <a href={exportUrl()} download>
-              <Download /> Excel yuklash
-            </a>
-          </Button>
+          // OEE da Excel yo'q: hisobot ichma-ich (ish markazi -> to'xtash
+          // sabablari) va uni yassi jadvalga aylantirish ma'noni yo'qotardi
+          kind === "oee" ? undefined : (
+            <Button asChild variant="outline">
+              <a href={exportUrl()} download>
+                <Download /> Excel yuklash
+              </a>
+            </Button>
+          )
         }
       />
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -70,6 +74,7 @@ function ReportsPage() {
             <TabsTrigger value="productivity">Mahsuldorlik</TabsTrigger>
             <TabsTrigger value="orders">Buyurtmalar</TabsTrigger>
             <TabsTrigger value="materials">Material sarfi</TabsTrigger>
+            <TabsTrigger value="oee">OEE</TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="ml-auto flex items-center gap-2 text-sm">
@@ -94,6 +99,7 @@ function ReportsPage() {
       {kind === "productivity" && <ProductivityTable params={params} />}
       {kind === "orders" && <OrdersTable params={params} />}
       {kind === "materials" && <MaterialsTable params={params} />}
+      {kind === "oee" && <OeeTable params={params} />}
     </div>
   )
 }
@@ -255,6 +261,79 @@ function MaterialsTable({ params }: { params: RangeParams }) {
           )}
         </TableBody>
       </Table>
+    </div>
+  )
+}
+
+/** Foizga o'girish. `null` — o'sha davrda reja bo'lmagan: "0%" yolg'on bo'lardi. */
+function pct(value: number | null | undefined): string {
+  return value == null ? "—" : `${(value * 100).toFixed(1)}%`
+}
+
+function hhmm(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = Math.round(minutes % 60)
+  return h ? `${h} s ${m} d` : `${m} d`
+}
+
+function OeeTable({ params }: { params: RangeParams }) {
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["reports", "oee", params],
+    queryFn: async () =>
+      (await ReportsService.reportOee({ query: params })).data,
+  })
+  if (isLoading) return <Skeleton className="h-64 w-full" />
+  if (isError) return <QueryError onRetry={() => refetch()} />
+  const rows = data?.machines ?? []
+  return (
+    <div className="grid gap-3">
+      {/* Hozircha OEE ning VAQT qismi. Performance ideal tezlik va ishlab
+          chiqarilgan miqdorni, Quality esa brak hisobini talab qiladi. */}
+      <p className="text-xs text-muted-foreground">
+        Availability = ishlagan vaqt ÷ rejalashtirilgan vaqt. Tushlik va
+        tanaffus rejadan ayriladi — ular yo'qotish emas.
+      </p>
+      {rows.length ? (
+        rows.map((m) => {
+          const losses = (m.stops ?? []).filter((s) => !s.excludes_planned)
+          return (
+            <div key={m.machine_id} className="rounded-lg border p-3">
+              <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                <span className="font-semibold">{m.machine_name}</span>
+                <span className="text-xs text-muted-foreground">
+                  {m.post_name}
+                </span>
+                <span className="num ml-auto text-2xl font-black tabular-nums">
+                  {pct(m.availability)}
+                </span>
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {m.active_days} kun · reja {hhmm(m.planned_minutes)} · ishlagan{" "}
+                {hhmm(m.run_minutes)}
+                {m.planned_off_minutes > 0 &&
+                  ` · rejadan ayrildi ${hhmm(m.planned_off_minutes)}`}
+              </div>
+              {losses.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {losses.map((s) => (
+                    <span
+                      key={s.reason}
+                      className="rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive"
+                    >
+                      {s.reason} · {hhmm(s.minutes)}
+                      {s.count > 1 && ` (${s.count})`}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Ish markazlari topilmadi.
+        </p>
+      )}
     </div>
   )
 }

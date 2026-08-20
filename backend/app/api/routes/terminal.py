@@ -12,10 +12,11 @@ from app.api.deps import SessionDep, client_ip, require_roles
 from app.core.config import upload_root
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.core.ws import ws_manager
-from app.crud import crud_orders, log_action
+from app.crud import crud_orders, crud_stop_reasons, log_action
 from app.models import (
     Employee,
     Machine,
+    MachineStop,
     Order,
     OrderFile,
     Part,
@@ -24,6 +25,7 @@ from app.models import (
     Post,
     Product,
     Scan,
+    StopReason,
     WorkSession,
 )
 from app.models.enums import (
@@ -38,6 +40,7 @@ from app.models.enums import (
 from app.models.user import User
 from app.schemas.common import Message
 from app.schemas.terminal import (
+    ActiveStop,
     CutmapInstanceState,
     CutmapState,
     KromkaInstance,
@@ -52,6 +55,8 @@ from app.schemas.terminal import (
     QrOrderRef,
     SessionRead,
     ShiftStart,
+    StopReasonRead,
+    StopStart,
     TerminalContext,
     TerminalEmployee,
     TerminalOrderCard,
@@ -108,6 +113,7 @@ async def read_terminal_context(db: SessionDep, user: TerminalUser, ctx: Termina
     for session in await crew_sessions(db, machine.id):
         employee = await db.get(Employee, session.employee_id)
         out.crew.append(_session_read(session, employee.full_name if employee else ""))
+    out.stop = await _active_stop(db, machine.id)
     # `crew_sessions` muddati o'tgan smenalarni yopadi — o'sha yozuv saqlanishi kerak
     await db.commit()
     return out
@@ -225,6 +231,132 @@ def _own_sheets(order: Order, own_nos: set[int] | None) -> int:
         for s in mat.get("sheets", [])
         if own_nos is None or s.get("no") in own_nos
     )
+
+
+async def _active_stop(db: SessionDep, machine_id: int) -> ActiveStop | None:
+    """Ish markazining ochiq to'xtashi (`ended_at IS NULL`), bo'lmasa None."""
+    row = (
+        await db.execute(
+            select(MachineStop, StopReason)
+            .join(StopReason, StopReason.id == MachineStop.reason_id)
+            .where(
+                MachineStop.machine_id == machine_id,
+                MachineStop.ended_at.is_(None),
+                MachineStop.is_deleted == False,  # noqa: E712
+            )
+            .order_by(MachineStop.started_at.desc())
+            .limit(1)
+        )
+    ).first()
+    if row is None:
+        return None
+    stop, reason = row
+    return ActiveStop(id=stop.id, reason_id=reason.id, reason_name=reason.name, started_at=stop.started_at)
+
+
+@router.get("/stop-reasons", response_model=list[StopReasonRead], operation_id="read_stop_reasons")
+async def read_stop_reasons(db: SessionDep, _: TerminalUser) -> list[StopReason]:
+    """To'xtash sabablari — monoblokdagi tanlash ro'yxati."""
+    rows = (
+        await db.execute(
+            select(StopReason)
+            .where(StopReason.is_active == True, StopReason.is_deleted == False)  # noqa: E712
+            .order_by(StopReason.order_index, StopReason.name)
+        )
+    ).scalars()
+    return list(rows)
+
+
+@router.post("/stop", response_model=ActiveStop, operation_id="start_machine_stop")
+async def start_machine_stop(
+    db: SessionDep, user: TerminalUser, ctx: TerminalCtx, body: StopStart, request: Request
+) -> ActiveStop:
+    """To'xtashni boshlaydi. Ochig'i bo'lsa AVVAL yopiladi.
+
+    Sababni almashtirish oddiy holat: "material yo'q" bilan boshlanib, keyin
+    "nosozlik" bo'lib chiqadi. Ikkinchi tugma bosilishi xato bermasin — aks
+    holda operator eskisini qidirib yurardi va vaqt noto'g'ri sababda qolardi.
+    """
+    machine, _post = ctx
+    reason = await crud_stop_reasons.get_or_404(db, "To'xtash sababi topilmadi.", id=body.reason_id)
+    now = datetime.now(UTC)
+    open_stop = await _active_stop(db, machine.id)
+    if open_stop is not None:
+        if open_stop.reason_id == reason.id:
+            return open_stop
+        await _close_stop(db, machine.id, now)
+    stop = MachineStop(
+        machine_id=machine.id,
+        reason_id=reason.id,
+        started_at=now,
+        employee_id=await _current_employee_id(db, machine.id),
+        note=body.note,
+    )
+    db.add(stop)
+    await db.flush()
+    log_action(
+        db,
+        module="oee",
+        action="stop_started",
+        user_id=user.id,
+        entity_type="machine",
+        entity_id=machine.id,
+        message=f"{machine.name}: to'xtash — {reason.name}",
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return ActiveStop(id=stop.id, reason_id=reason.id, reason_name=reason.name, started_at=stop.started_at)
+
+
+@router.post("/stop/end", response_model=Message, operation_id="end_machine_stop")
+async def end_machine_stop(db: SessionDep, user: TerminalUser, ctx: TerminalCtx, request: Request) -> Message:
+    """Ishni davom ettirish — ochiq to'xtashni yopadi."""
+    machine, _post = ctx
+    closed = await _close_stop(db, machine.id, datetime.now(UTC))
+    if closed == 0:
+        raise NotFoundException("Ochiq to'xtash yo'q.")
+    log_action(
+        db,
+        module="oee",
+        action="stop_ended",
+        user_id=user.id,
+        entity_type="machine",
+        entity_id=machine.id,
+        message=f"{machine.name}: ish davom etdi",
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return Message(message="Ish davom etmoqda.")
+
+
+async def _close_stop(db: SessionDep, machine_id: int, now: datetime) -> int:
+    """Ish markazining ochiq to'xtashlarini yopadi, yopilgan soni qaytadi."""
+    rows = (
+        (
+            await db.execute(
+                select(MachineStop).where(
+                    MachineStop.machine_id == machine_id,
+                    MachineStop.ended_at.is_(None),
+                    MachineStop.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for stop in rows:
+        stop.ended_at = now
+    return len(rows)
+
+
+async def _current_employee_id(db: SessionDep, machine_id: int) -> int | None:
+    """Tugmani bosgan odam — ish markazidagi ochiq smenalarning birinchisi.
+
+    Brigada bo'lsa langar smena olinadi; hech kim bo'lmasa None — stanok
+    operatorsiz ham to'xtab turadi ("operator yo'q" aynan shunday yoziladi).
+    """
+    sessions = await crew_sessions(db, machine_id)
+    return sessions[0].employee_id if sessions else None
 
 
 @router.get("/orders", response_model=list[TerminalOrderCard], operation_id="read_terminal_orders")

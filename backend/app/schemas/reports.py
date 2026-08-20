@@ -82,3 +82,35 @@ class MachineStat(BaseModel):
 
 class DashboardStats(BaseModel):
     machines: list[MachineStat]
+
+
+class OeeStopRow(BaseModel):
+    """Bitta sabab bo'yicha yig'ma to'xtash — eng katta yo'qotish tepada turadi."""
+
+    reason: str
+    minutes: float
+    count: int
+    #: True — PLANNED dan ayrilgan (tushlik, tanaffus), ya'ni YO'QOTISH EMAS
+    excludes_planned: bool
+
+
+class OeeMachineRow(BaseModel):
+    machine_id: int
+    machine_name: str
+    post_code: str
+    post_name: str
+    active_days: int
+    planned_minutes: float
+    run_minutes: float
+    planned_off_minutes: float
+    loss_minutes: float
+    #: 0..1. None — o'sha davrda reja umuman bo'lmagan (ish markazi ishlamagan):
+    #: "0%" ko'rsatish yolg'on bo'lardi
+    availability: float | None
+    stops: list[OeeStopRow] = []
+
+
+class OeeReport(BaseModel):
+    date_from: date
+    date_to: date
+    machines: list[OeeMachineRow] = []

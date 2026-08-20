@@ -191,3 +191,14 @@ class FileKind(StrEnum):
 class SessionStatus(StrEnum):
     ACTIVE = "active"
     ENDED = "ended"
+
+
+class StopKind(StrEnum):
+    """To'xtash sababining egasi bergan turkumi (`oee to'xtalishlar.xlsx` ikki ustuni).
+
+    OEE hisobiga bu ta'sir qilmaydi — buni `StopReason.excludes_planned` hal
+    qiladi. Turkum faqat ro'yxatni guruhlash va hisobotda ajratish uchun.
+    """
+
+    PLANNED = "planned"
+    UNPLANNED = "unplanned"

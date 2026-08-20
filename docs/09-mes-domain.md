@@ -644,3 +644,62 @@ tushishda `%APPDATA%\MebelixAgent\.env` ga o'zi yoziladi; qo'lda berish faqat le
 `%APPDATA%\MebelixAgent\print-queue.jsonl` — avtostartda ishchi papka System32 bo'lgani uchun;
 exe yonidagi eski fayl birinchi ishga tushishda bir marta ko'chiriladi), `SCAN_FORWARD`
 (default yoqiq; `0` — stanok skanerini MES'ga forvard qilish o'chadi, §4).
+
+## OEE — uskuna samaradorligi
+
+Manba: `uploads/Mebel_MES_OEE_texnik_talablar.docx` va `uploads/oee to'xtalishlar.xlsx`.
+Hozircha ASOSIY uch stanok: **ARRA, KROMKA, PRISADKA**.
+
+```
+OEE = Availability x Performance x Quality
+```
+
+### Availability (ishlaydi)
+
+```
+PLANNED = faol kunlar x machine.planned_minutes_per_day - (rejalashtirilmagan vaqt)
+RUN     = PLANNED - (Availability yo'qotishlari)
+Availability = RUN / PLANNED
+```
+
+To'xtash sababi ikki xil ishlaydi va buni `StopReason.excludes_planned` hal qiladi:
+
+| Bayroq | Ma'nosi | Misol |
+|---|---|---|
+| `True` | Vaqt PLANNED dan ayriladi — ishlab chiqarish rejalashtirilmagan, ya'ni YO'QOTISH EMAS | Tushlik, tanaffus, kofe-breyk, majlis, smena yo'q |
+| `False` | Vaqt RUN dan chiqadi, PLANNED joyida qoladi — **Availability yo'qotishi** | Sozlash, arra almashtirish, moylash, tozalash, sifat nazorati, nosozlik, material yo'q, operator yo'q |
+
+Egasining ro'yxatidagi "Rejali/Rejasiz" ustuni (`StopKind`) va bu bayroq ATAYLAB bir
+xil emas: "sozlash" va "arra almashtirish" egasi uchun rejali, lekin standart bo'yicha
+ular Six Big Losses ning birinchisi (Setup & Adjustments) — qisqartirilishi mumkin
+bo'lgan yo'qotish. PLANNED dan chiqarilsa, eng katta zaxira hisobotda umuman
+ko'rinmay qolardi. Bayroq har sabab uchun alohida sozlanadi.
+
+**Faol kun** — o'sha kuni ish markazida smena ochilgan yoki to'xtash yozilgan kun.
+Aks holda yakshanba va bayramlar har hafta soxta yo'qotish bo'lib chiqardi.
+`ponytail:` haqiqiy ishlab chiqarish kalendari kerak bo'lganda `_active_days`
+almashtiriladi.
+
+**Ochiq to'xtash HOZIRGACHA sanaladi** — tugatilmagan to'xtash hisobotda yo'q
+bo'lib ko'rinsa, yo'qotish yashirinardi. Terminalda to'xtash paneli ish maydonini
+BOSIB turadi, ya'ni uni unutib bo'lmaydi.
+
+### Performance va Quality (keyingi bosqichlar)
+
+| Stanok | Performance birligi | Manba (bazada BOR) |
+|---|---|---|
+| ARRA | metr (kesim uzunligi) | `order.cutmap` → `sheets[].cuts[]` giliotina segmentlari (mm) x `mult`. Nusxaga varaq ulushi bo'yicha taqsimlanadi (`PartInstance.pattern_no`) |
+| KROMKA | metr | `services/metrics.py: part_volume` (KROMKA — `edges` bo'yicha) |
+| PRISADKA | teshik soni | `part.xnc_summary` → `bores + edge_bores` |
+
+`Performance = (miqdor x ideal vaqt) / RUN`. `machine.ideal_rate` HAR ISH
+MARKAZIDA alohida: bir postdagi ikki stanokning konfiguratsiyasi bir xil bo'lmaydi.
+Birlik postdan keladi — ARRA sek/metr, KROMKA metr/daqiqa, PRISADKA sek/teshik.
+NULL bo'lsa Performance hisoblanmaydi va faqat Availability ko'rinadi.
+
+Quality brak hisobini talab qiladi: operator o'z terminalida belgilaydi, MENEJER
+tasdiqlaydi (o'zi ishlab chiqarishga ketmaydi), aybdor post va hodim skan
+tarixidan aniqlanadi, qayta ishlab chiqarish qaysi postdan boshlanishini menejer
+belgilaydi. ARRA yoki ROVER dan boshlansa YANGI nusxa yaratiladi (chek o'sha ikki
+postda chiqadi — `_ROUTE_START_POSTS`), boshqa postdan boshlansa bori to'g'rilanadi.
+

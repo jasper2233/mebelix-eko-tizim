@@ -30,3 +30,12 @@ class Machine(BaseModel):
     capacity: Mapped[float | None] = mapped_column(default=None, kw_only=True)
     capacity_unit: Mapped[CapacityUnit | None] = mapped_column(db_enum(CapacityUnit), default=None, kw_only=True)
     status: Mapped[MachineStatus] = mapped_column(db_enum(MachineStatus), default=MachineStatus.ACTIVE, kw_only=True)
+    #: OEE — rejalashtirilgan ishlab chiqarish vaqti, kuniga daqiqa (8 soat = 480).
+    #: Rejali to'xtashlar (tushlik, tanaffus) shundan ayriladi, `StopReason.excludes_planned`.
+    planned_minutes_per_day: Mapped[int] = mapped_column(default=480, server_default=text("480"), kw_only=True)
+    #: OEE Performance — ideal tezlik. Ma'nosi POSTDAN keladi, chunki har post
+    #: bitta birlikda ishlaydi: ARRA sek/metr, KROMKA metr/daqiqa, PRISADKA
+    #: sek/teshik. Har stanokda O'ZINIKI — bir postdagi ikki stanok bir xil
+    #: konfiguratsiyada bo'lmaydi. NULL = Performance hisoblanmaydi (o'sha
+    #: stanokda OEE ham chiqmaydi, faqat Availability ko'rinadi).
+    ideal_rate: Mapped[float | None] = mapped_column(default=None, kw_only=True)

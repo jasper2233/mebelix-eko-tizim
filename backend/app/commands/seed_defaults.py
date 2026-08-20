@@ -12,8 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import local_session
 from app.core.security import get_password_hash
-from app.models import Organization, Post
-from app.models.enums import POST_ROLES, PostCode, PostUnit, UserRole
+from app.models import Organization, Post, StopReason
+from app.models.enums import POST_ROLES, PostCode, PostUnit, StopKind, UserRole
 from app.models.user import User
 
 logging.basicConfig(level=logging.INFO)
@@ -163,6 +163,52 @@ async def _seed_post_accounts(db: AsyncSession) -> None:
         logger.info("Post hisobi yaratildi: %s (%s)", role, post_code)
 
 
+#: To'xtash sabablari — egasining `oee to'xtalishlar.xlsx` ro'yxati.
+#: `kind` egasining ikki ustuni, `excludes_planned` esa HISOB qoidasi va ular
+#: ATAYLAB bir xil emas: "sozlash", "arra almashtirish", "moylash", "tozalash",
+#: "sifat nazorati" egasining ro'yxatida rejali, lekin ular QISQARTIRILISHI
+#: mumkin bo'lgan yo'qotishlar (Six Big Losses — Setup & Adjustments). PLANNED
+#: dan chiqarilsa, eng katta zaxira hisobotda umuman ko'rinmay qolardi.
+#: Faqat ishlab chiqarish REJALASHTIRILMAGAN vaqt PLANNED dan chiqadi.
+STOP_REASONS: list[tuple[str, StopKind, bool]] = [
+    ("Tushlik", StopKind.PLANNED, True),
+    ("Tanaffus", StopKind.PLANNED, True),
+    ("Kofe-breyk", StopKind.PLANNED, True),
+    ("Majlis", StopKind.PLANNED, True),
+    ("Smena yo'q", StopKind.PLANNED, True),
+    ("Sozlash", StopKind.PLANNED, False),
+    ("Arra almashtirish", StopKind.PLANNED, False),
+    ("Moylash", StopKind.PLANNED, False),
+    ("Tozalash", StopKind.PLANNED, False),
+    ("Sifat nazorati", StopKind.PLANNED, False),
+    ("Elektr yo'q", StopKind.UNPLANNED, False),
+    ("Nosozlik", StopKind.UNPLANNED, False),
+    ("Remont", StopKind.UNPLANNED, False),
+    ("Avariya holati", StopKind.UNPLANNED, False),
+    ("Operator yo'q", StopKind.UNPLANNED, False),
+    ("Material yo'q", StopKind.UNPLANNED, False),
+    ("Buyurtma yo'q", StopKind.UNPLANNED, False),
+    ("Mahsulot brak", StopKind.UNPLANNED, False),
+    ("Yangi buyurtma keltirilmoqda", StopKind.UNPLANNED, False),
+    ("Hojatxona", StopKind.UNPLANNED, False),
+]
+
+
+async def _seed_stop_reasons(db: AsyncSession) -> None:
+    """To'xtash sabablari. Faqat YETISHMAYOTGANI qo'shiladi.
+
+    Mavjud qatorga TEGILMAYDI: admin `excludes_planned` bayrog'ini yoki nomni
+    o'zgartirgan bo'lishi mumkin, seed esa har deployda ishlaydi — tuzatishni
+    har safar bekor qilib turardi.
+    """
+    existing = {r.name for r in (await db.execute(select(StopReason))).scalars()}
+    for index, (name, kind, excludes) in enumerate(STOP_REASONS, start=1):
+        if name in existing:
+            continue
+        db.add(StopReason(name=name, kind=kind, excludes_planned=excludes, order_index=index))
+        logger.info("Stop reason %s created", name)
+
+
 async def seed_defaults() -> None:
     async with local_session() as db:
         org = (await db.execute(select(Organization).limit(1))).scalar_one_or_none()
@@ -183,6 +229,7 @@ async def seed_defaults() -> None:
                 post.order_index = data["order_index"]  # type: ignore[assignment]
                 logger.info("Post %s order_index -> %s", data["code"], data["order_index"])
 
+        await _seed_stop_reasons(db)
         await _seed_post_accounts(db)
         await db.commit()
 
