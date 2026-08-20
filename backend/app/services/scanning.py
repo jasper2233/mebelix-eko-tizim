@@ -125,6 +125,13 @@ async def resolve_terminal(db: AsyncSession, user: User) -> tuple[Machine, Post]
             raise ScanRejected("E009", f"{post.name} {MACHINE_MISSING}")
         return machine, post
 
+    # Qurilma hisobi emasmi — sabab BOSHQA: ofis hisobiga ish markazi umuman
+    # biriktirilmaydi (`users._check_machine`), ya'ni "biriktirilmagan" deyish
+    # sozlama buzuqdek ko'rsatardi. Admin va superuser ham shu yerga tushadi:
+    # `require_roles` ularni hamma joyga o'tkazadi, lekin terminal huquq
+    # darajasi emas — u qurilma ekrani.
+    if UserRole(user.role) not in (UserRole.TERMINAL, UserRole.TABLO):
+        raise ScanRejected("E009", "Bu ekran monoblok uchun. Tsex hisobi yoki beyjik bilan kiring.")
     if user.machine_id is None:
         raise ScanRejected("E009", "Terminal foydalanuvchisiga ish markazi biriktirilmagan.")
     machine = await db.get(Machine, user.machine_id)

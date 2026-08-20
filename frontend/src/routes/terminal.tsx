@@ -60,12 +60,12 @@ export const Route = createFileRoute("/terminal")({
   head: () => ({ meta: [{ title: "Terminal | MebeliX" }] }),
   beforeLoad: async () => {
     const me = await requireAuth()
-    if (
-      me.role !== "terminal" &&
-      me.role !== "admin" &&
-      !me.is_superuser &&
-      !OPERATOR_ROLES.includes(me.role as never)
-    ) {
+    // Terminal — HUQUQ darajasi emas, QURILMA ekrani: u ish markazi kontekstisiz
+    // ishlamaydi. Ofis hisobida esa ish markazi bo'lishi MUMKIN EMAS
+    // (`users._check_machine` bog'lashni taqiqlaydi). Ilgari bu yerda admin va
+    // superuser uchun istisno bor edi va ular "posti uchun ekran sozlanmagan"
+    // degan chalg'ituvchi ekranga tushardi — go'yo sozlama buzuq.
+    if (me.role !== "terminal" && !OPERATOR_ROLES.includes(me.role as never)) {
       throw redirect({ to: "/" })
     }
   },
