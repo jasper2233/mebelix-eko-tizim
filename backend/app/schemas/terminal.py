@@ -80,6 +80,10 @@ class TerminalContext(BaseModel):
     #: To'xtab turibdimi. Ish markaziga bog'liq, smenaga emas: operator
     #: ketgan bo'lsa ham stanok to'xtab turgani yozilib boradi (OEE).
     stop: ActiveStop | None = None
+    #: OEE kuzatiladimi (`machine.ideal_rate` to'ldirilganmi). False bo'lsa
+    #: monoblokda "To'xtash" tugmasi umuman ko'rinmaydi: hisobot chiqmaydigan
+    #: joyda operatordan to'xtash sababini so'rash bekorga ish yuklardi.
+    oee: bool = False
 
 
 class TerminalOrderCard(BaseModel):

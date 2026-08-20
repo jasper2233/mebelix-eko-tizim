@@ -109,6 +109,7 @@ async def read_terminal_context(db: SessionDep, user: TerminalUser, ctx: Termina
         post_id=post.id,
         post_code=post.code,
         post_name=post.name,
+        oee=machine.ideal_rate is not None,
     )
     for session in await crew_sessions(db, machine.id):
         employee = await db.get(Employee, session.employee_id)

@@ -387,6 +387,12 @@ async def report_oee(
     Hozircha OEE ning VAQT qismi: Performance ideal tezlik va ishlab chiqarilgan
     miqdorni, Quality esa brak hisobini talab qiladi — ular keyingi bosqichlarda.
 
+    FAQAT STANOKLAR: `ideal_rate` to'ldirilgan ish markazlari. To'qqiz postning
+    beshtasida haqiqiy stanok bor (ARRA, KROMKA, OVAL, PRISADKA, ROVER),
+    qolganida esa brigada va monoblok — u yerda "uskuna samaradorligi" o'lchash
+    mumkin bo'lgan uskunaning o'zi yo'q. Ro'yxat KODDA emas, sozlamada:
+    admin ish markaziga ideal tezlik kiritsa, o'sha stanok kuzatuvga tushadi.
+
     NOAKTIV ish markazlari ham ro'yxatda: ta'mirda turgan stanok aynan eng katta
     yo'qotish manbai bo'lishi mumkin, uni yashirish ko'rsatkichni chiroylashtirardi.
     """
@@ -396,7 +402,10 @@ async def report_oee(
     query = (
         select(Machine, Post)
         .join(Post, Post.id == Machine.post_id)
-        .where(Machine.is_deleted == False)  # noqa: E712
+        .where(
+            Machine.is_deleted == False,  # noqa: E712
+            Machine.ideal_rate.is_not(None),
+        )
         .order_by(Post.order_index, Machine.name)
     )
     if post_id is not None:

@@ -629,6 +629,9 @@ MACHINE_BOUND_ROLES, TERMINAL_STATUSES, formatSize),
 ## `frontend/src/components/Terminal/StopPanel.tsx`
 
 **Maqsadi:** stanok to'xtashini qayd etish — OEE ning Availability qismi shu yerdan yig'iladi.
+Tugma faqat OEE kuzatiladigan ish markazida chiziladi (`TerminalContext.oee`): brigada
+postlarida (stolyarka, bo'yoq, qadoqlash, TMO) sabab so'rash bekorga ish yuklardi va
+hisobot baribir chiqmasdi.
 
 - `StopReasonDialog` — sabablar rejali/rejasiz guruhlarida, 56px balandlikdagi tugmalar
   (qo'lqop bilan bosiladi). Ro'yxat `staleTime: 30 daq` — u kamdan-kam o'zgaradi,

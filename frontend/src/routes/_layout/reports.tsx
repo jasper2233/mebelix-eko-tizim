@@ -291,7 +291,8 @@ function OeeTable({ params }: { params: RangeParams }) {
           chiqarilgan miqdorni, Quality esa brak hisobini talab qiladi. */}
       <p className="text-xs text-muted-foreground">
         Availability = ishlagan vaqt ÷ rejalashtirilgan vaqt. Tushlik va
-        tanaffus rejadan ayriladi — ular yo'qotish emas.
+        tanaffus rejadan ayriladi — ular yo'qotish emas. Ro'yxatda faqat ideal
+        tezligi kiritilgan stanoklar.
       </p>
       {rows.length ? (
         rows.map((m) => {
@@ -330,8 +331,12 @@ function OeeTable({ params }: { params: RangeParams }) {
           )
         })
       ) : (
+        /* Bo'sh holat YO'NALTIRADI: OEE stanokka ideal tezlik kiritilgandan
+           keyin hisoblanadi, ya'ni "hech nima yo'q" emas — sozlash qadami. */
         <p className="text-sm text-muted-foreground">
-          Ish markazlari topilmadi.
+          Hali birorta stanokka ideal tezlik kiritilmagan. Ish markazlari
+          sahifasida arra, kromka yoki prisadka stanogini oching va OEE
+          blokidagi ideal tezlikni to'ldiring.
         </p>
       )}
     </div>

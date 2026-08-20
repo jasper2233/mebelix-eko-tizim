@@ -675,6 +675,13 @@ ular Six Big Losses ning birinchisi (Setup & Adjustments) — qisqartirilishi mu
 bo'lgan yo'qotish. PLANNED dan chiqarilsa, eng katta zaxira hisobotda umuman
 ko'rinmay qolardi. Bayroq har sabab uchun alohida sozlanadi.
 
+**Qaysi ish markazlarida** — `ideal_rate` to'ldirilganida. To'qqiz postning beshtasida
+haqiqiy stanok bor (ARRA, KROMKA, OVAL, PRISADKA, ROVER), qolganida brigada va
+monoblok, ya'ni "uskuna samaradorligi" o'lchanadigan uskunaning o'zi yo'q. Ro'yxat
+KODDA emas: admin ish markaziga ideal tezlik kiritsa, o'sha stanok kuzatuvga
+tushadi va monoblokda "To'xtash" tugmasi paydo bo'ladi (`TerminalContext.oee`).
+Hozircha ideal tezlik maydoni ARRA, KROMKA va PRISADKA da ochiq.
+
 **Faol kun** — o'sha kuni ish markazida smena ochilgan yoki to'xtash yozilgan kun.
 Aks holda yakshanba va bayramlar har hafta soxta yo'qotish bo'lib chiqardi.
 `ponytail:` haqiqiy ishlab chiqarish kalendari kerak bo'lganda `_active_days`

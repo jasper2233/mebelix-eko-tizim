@@ -3220,6 +3220,10 @@ export type TerminalContext = {
      */
     crew?: Array<SessionRead>;
     stop?: ActiveStop | null;
+    /**
+     * Oee
+     */
+    oee?: boolean;
 };
 
 /**

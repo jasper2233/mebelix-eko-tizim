@@ -425,7 +425,11 @@ function TerminalPage() {
             className="flex flex-col gap-2 empty:hidden"
           />
           <div className="mt-auto flex flex-col gap-2">
-            {!stop && (
+            {/* Tugma faqat OEE kuzatiladigan STANOKDA. Brigada + monoblok
+                postlarida (stolyarka, bo'yoq, qadoqlash, TMO) o'lchanadigan
+                uskunaning o'zi yo'q — u yerda sabab so'rash bekorga ish
+                yuklardi va hisobot baribir chiqmasdi. */}
+            {ctx?.oee && !stop && (
               <TBtn
                 label="To'xtash"
                 tone="warn"
