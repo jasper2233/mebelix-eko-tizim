@@ -276,6 +276,31 @@ function hhmm(minutes: number): string {
   return h ? `${h} s ${m} d` : `${m} d`
 }
 
+/** Bitta ko'rsatkich — yorlig'i bilan. Raqam yolg'iz turganda nima ekani
+ * noma'lum qolardi, uch raqam yonma-yon turganda esa ayniqsa. */
+function Metric({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string
+  value: string
+  strong?: boolean
+}) {
+  return (
+    <span className="flex flex-col items-end leading-none">
+      <span className="text-2xs uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      <span
+        className={`num mt-0.5 tabular-nums ${strong ? "text-2xl font-black" : "text-lg font-semibold"}`}
+      >
+        {value}
+      </span>
+    </span>
+  )
+}
+
 function OeeTable({ params }: { params: RangeParams }) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["reports", "oee", params],
@@ -289,9 +314,13 @@ function OeeTable({ params }: { params: RangeParams }) {
     <div className="grid gap-3">
       {/* Hozircha OEE ning VAQT qismi. Performance ideal tezlik va ishlab
           chiqarilgan miqdorni, Quality esa brak hisobini talab qiladi. */}
+      {/* Nima o'lchanayotgani AYTILADI: "OEE" so'zi hozircha to'liq emas —
+          Quality (brak hisobi) 3-bosqichda qo'shiladi. */}
       <p className="text-xs text-muted-foreground">
-        Availability = ishlagan vaqt ÷ rejalashtirilgan vaqt. Tushlik va
-        tanaffus rejadan ayriladi — ular yo'qotish emas. Ro'yxatda faqat ideal
+        <b>Vaqt</b> — ishlagan vaqt ÷ rejalashtirilgan vaqt (tushlik va tanaffus
+        rejadan ayriladi, ular yo'qotish emas). <b>Tezlik</b> — ishlangan
+        miqdorning ideal vaqti ÷ ishlagan vaqt. To'liq OEE uchun uchinchi
+        ko'rsatkich — brak nisbati — hali qo'shilmagan. Ro'yxatda faqat ideal
         tezligi kiritilgan stanoklar.
       </p>
       {rows.length ? (
@@ -304,8 +333,17 @@ function OeeTable({ params }: { params: RangeParams }) {
                 <span className="text-xs text-muted-foreground">
                   {m.post_name}
                 </span>
-                <span className="num ml-auto text-2xl font-black tabular-nums">
-                  {pct(m.availability)}
+                {/* Uchta raqam ALOHIDA turadi: past ko'rsatkichning sababi
+                    qaysi biri ekani darhol ko'rinsin — vaqtmi (A) yoki
+                    tezlikmi (P). Ko'paytma o'zi buni yashirardi. */}
+                <span className="ml-auto flex items-baseline gap-4">
+                  <Metric label="Vaqt" value={pct(m.availability)} />
+                  <Metric label="Tezlik" value={pct(m.performance)} />
+                  <Metric
+                    label="Vaqt × tezlik"
+                    value={pct(m.oee_partial)}
+                    strong
+                  />
                 </span>
               </div>
               <div className="mt-1 text-xs text-muted-foreground">
@@ -313,6 +351,8 @@ function OeeTable({ params }: { params: RangeParams }) {
                 {hhmm(m.run_minutes)}
                 {m.planned_off_minutes > 0 &&
                   ` · rejadan ayrildi ${hhmm(m.planned_off_minutes)}`}
+                {m.quantity > 0 &&
+                  ` · ${m.quantity} ${m.quantity_unit} · ideal ${hhmm(m.ideal_minutes)}`}
               </div>
               {losses.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">

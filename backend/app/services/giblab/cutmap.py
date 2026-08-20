@@ -11,6 +11,7 @@ Validated rules from the working prototype (GibCut Viewer):
 """
 
 from dataclasses import dataclass, field
+from math import hypot
 from typing import Any
 
 from .csblob import BlobPattern, BlobRecord, decode_cs_blob, self_check
@@ -24,6 +25,12 @@ class InstanceCell:
     part_key: str  # productCode_partCode
     pattern_no: int  # 1-based, global across materials
     cell_index: int  # 1-based within the pattern
+    #: OEE — shu nusxaga to'g'ri keladigan KESIM uzunligi, metrda.
+    #: Arra varaqni kesadi, detalni emas: bitta varaqning kesimlari undagi HAMMA
+    #: detalga xizmat qiladi, shuning uchun uzunlik varaqdagi detal katakchalari
+    #: soniga teng bo'linadi. `mult` ga bo'linmaydi — har takror uchun alohida
+    #: nusxa yaratiladi, ya'ni ko'paytma nusxalar soni orqali o'zi hisobga oladi.
+    cut_meters: float = 0.0
 
 
 @dataclass
@@ -172,6 +179,7 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
                 "cuts": cuts,
             }
             cell_index = 0
+            bindings_start = len(result.bindings)
             for cell in cells:
                 cell_index += 1
                 entry: dict[str, Any] = {
@@ -222,6 +230,15 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
                             InstanceCell(part_key=part.key, pattern_no=pattern_no, cell_index=cell_index)
                         )
                 sheet["parts"].append(entry)
+            # OEE: shu varaqning kesim uzunligi detal katakchalariga bo'linadi.
+            # Giliotina kesimi umumiy — qaysi detalga tegishli ekanini ajratib
+            # bo'lmaydi, teng bo'lish esa YIG'INDIDA aniq natija beradi.
+            part_cells = sum(1 for e in sheet["parts"] if not e["waste"])
+            if part_cells:
+                total_mm = sum(hypot(c["x2"] - c["x1"], c["y2"] - c["y1"]) for c in cuts)
+                per_instance = total_mm / 1000 / part_cells
+                for binding in result.bindings[bindings_start:]:
+                    binding.cut_meters = per_instance
             material["sheets"].append(sheet)
 
         expected = int(cut.stats.get("cPartCount") or 0)

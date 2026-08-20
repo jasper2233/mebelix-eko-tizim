@@ -1170,6 +1170,26 @@ export type OeeMachineRow = {
      */
     availability: number | null;
     /**
+     * Quantity
+     */
+    quantity: number;
+    /**
+     * Quantity Unit
+     */
+    quantity_unit: string;
+    /**
+     * Ideal Minutes
+     */
+    ideal_minutes: number;
+    /**
+     * Performance
+     */
+    performance: number | null;
+    /**
+     * Oee Partial
+     */
+    oee_partial: number | null;
+    /**
      * Stops
      */
     stops?: Array<OeeStopRow>;

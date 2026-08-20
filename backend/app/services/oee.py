@@ -11,8 +11,8 @@ ishlab chiqarish REJALASHTIRILMAGAN to'xtalishlar ayriladi (tushlik, tanaffus �
 `StopReason.excludes_planned`). Qolgan to'xtalishlar RUN dan chiqadi, ya'ni
 ular Availability yo'qotishi (sozlash, nosozlik, material yo'q).
 
-Performance va Quality keyingi bosqichlarda qo'shiladi — bu modul hozircha
-vaqt qismini beradi.
+Quality keyingi bosqichda qo'shiladi (brak hisobi) — hozircha Availability va
+Performance.
 """
 
 from dataclasses import dataclass, field
@@ -22,7 +22,19 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import TASHKENT_TZ
-from app.models import Machine, MachineStop, StopReason, WorkSession
+from app.models import (
+    Machine,
+    MachineStop,
+    Part,
+    PartInstance,
+    PartRoute,
+    Post,
+    Scan,
+    StopReason,
+    WorkSession,
+)
+from app.models.enums import PostCode
+from app.services.metrics import part_volume
 
 
 @dataclass
@@ -149,3 +161,94 @@ async def _active_days(db: AsyncSession, machine_id: int, start: datetime, end: 
         for moment in (await db.execute(query)).scalars():
             days.add(moment.astimezone(TASHKENT_TZ).date())
     return len(days)
+
+
+#: Ideal tezlikning MA'NOSI postdan keladi — har post bitta birlikda ishlaydi
+#: (`Mebel_MES_OEE_texnik_talablar.docx` §7). Ikki xil talqin bor va ularni
+#: adashtirish Performance'ni ag'darib yuborardi:
+#:   "sek"  — BITTA birlik uchun ketadigan vaqt (arra: sek/metr, prisadka: sek/teshik)
+#:   "daq"  — DAQIQADA bajariladigan birlik (kromka: metr/daqiqa)
+IDEAL_UNITS: dict[str, tuple[str, str]] = {
+    PostCode.ARRA: ("metr", "sek"),
+    PostCode.KROMKA: ("metr", "daq"),
+    PostCode.PRISADKA: ("teshik", "sek"),
+}
+
+
+@dataclass
+class Performance:
+    """Ishlab chiqarilgan miqdor va uning IDEAL vaqti."""
+
+    quantity: float
+    unit: str
+    ideal_minutes: float
+    run_minutes: float
+
+    @property
+    def value(self) -> float | None:
+        """0..1. RUN nol bo'lsa None — bo'linma ma'nosiz.
+
+        Yuqoridan CHEKLANMAYDI: 100% dan oshgan Performance ideal tezlik
+        noto'g'ri qo'yilganini bildiradi va aynan shu ko'rinishi kerak.
+        """
+        if self.run_minutes <= 0:
+            return None
+        return self.ideal_minutes / self.run_minutes
+
+
+async def machine_performance(
+    db: AsyncSession, machine: Machine, post: Post, run_minutes: float, day_from: date, day_to: date
+) -> Performance | None:
+    """Ish markazida davr ichida ishlangan miqdor va uning ideal vaqti.
+
+    Miqdor SKANLARDAN yig'iladi — skan bitta ish birligini bildiradi va unda
+    ish markazi ham, vaqt ham bor. Bekor qilingan skanlar chiqariladi.
+
+    Har post o'z birligida:
+      ARRA      `part_instance.cut_meters` — varaq kesimining nusxaga tegishli ulushi
+      KROMKA    detalning kromka metri (`metrics.part_volume`), nusxaga va qadamdagi
+                skan soniga bo'linadi (KROMKA birinchi kelganda `per_instance` =
+                qirralar soni, ya'ni bitta skan = bitta qirra)
+      PRISADKA  `xnc_summary` dagi teshiklar soni, xuddi shunday bo'linadi
+    """
+    if machine.ideal_rate is None or post.code not in IDEAL_UNITS:
+        return None
+    unit, kind = IDEAL_UNITS[post.code]
+    now = datetime.now(TASHKENT_TZ)
+    start = datetime.combine(day_from, time.min, tzinfo=TASHKENT_TZ)
+    end = min(datetime.combine(day_to + timedelta(days=1), time.min, tzinfo=TASHKENT_TZ), now)
+
+    rows = (
+        await db.execute(
+            select(PartInstance.cut_meters, Part, PartRoute.per_instance, Part.count)
+            .select_from(Scan)
+            .join(PartInstance, PartInstance.id == Scan.instance_id)
+            .join(Part, Part.id == Scan.part_id)
+            .join(PartRoute, PartRoute.id == Scan.route_id)
+            .where(
+                Scan.machine_id == machine.id,
+                Scan.is_cancelled == False,  # noqa: E712
+                Scan.is_deleted == False,  # noqa: E712
+                Scan.created_at >= start,
+                Scan.created_at < end,
+            )
+        )
+    ).all()
+
+    quantity = 0.0
+    for cut_meters, part, per_instance, count in rows:
+        if post.code == PostCode.ARRA:
+            quantity += cut_meters or 0.0
+            continue
+        # Nusxaga to'g'ri keladigan qiymat, keyin qadamdagi skan soniga bo'linadi
+        per_scan = max(1, per_instance or 1)
+        if post.code == PostCode.KROMKA:
+            total = part_volume(post.code, length=part.length, width=part.width, count=part.count, edges=part.edges)
+            quantity += total / max(1, count) / per_scan
+        else:  # PRISADKA
+            summary = part.xnc_summary or {}
+            holes = int(summary.get("bores", 0)) + int(summary.get("edge_bores", 0))
+            quantity += holes / per_scan
+
+    ideal_minutes = quantity * machine.ideal_rate / 60 if kind == "sek" else quantity / machine.ideal_rate
+    return Performance(quantity=quantity, unit=unit, ideal_minutes=ideal_minutes, run_minutes=run_minutes)

@@ -44,7 +44,7 @@ from app.schemas.reports import (
 )
 from app.services.excel import xlsx_response
 from app.services.metrics import part_volume
-from app.services.oee import machine_availability
+from app.services.oee import machine_availability, machine_performance
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -414,6 +414,9 @@ async def report_oee(
     out = OeeReport(date_from=start_day, date_to=end_day)
     for machine, post in (await db.execute(query)).all():
         result = await machine_availability(db, machine, start_day, end_day)
+        perf = await machine_performance(db, machine, post, result.run_minutes, start_day, end_day)
+        avail = result.value
+        p_value = perf.value if perf else None
         out.machines.append(
             OeeMachineRow(
                 machine_id=machine.id,
@@ -425,7 +428,14 @@ async def report_oee(
                 run_minutes=round(result.run_minutes, 1),
                 planned_off_minutes=round(result.planned_off_minutes, 1),
                 loss_minutes=round(result.loss_minutes, 1),
-                availability=round(result.value, 4) if result.value is not None else None,
+                availability=round(avail, 4) if avail is not None else None,
+                quantity=round(perf.quantity, 2) if perf else 0.0,
+                quantity_unit=perf.unit if perf else "",
+                ideal_minutes=round(perf.ideal_minutes, 1) if perf else 0.0,
+                performance=round(p_value, 4) if p_value is not None else None,
+                oee_partial=(
+                    round(avail * p_value, 4) if avail is not None and p_value is not None else None
+                ),
                 stops=[
                     OeeStopRow(
                         reason=line.reason,

@@ -411,7 +411,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 
 ### 4.4 Versiyalar zanjiri — `backend/app/migrations/versions/`
 
-37 ta migratsiya, head: `f3fad5351d8a`.
+38 ta migratsiya, head: `b2c7e40f9a13`.
 
 | # | Revision | Fayl | Nima qiladi |
 |---|---|---|---|
@@ -452,6 +452,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 | 35 | `d8f31a05c7e2` | `d8f31a05c7e2_ish_markazi_nomi_unikal.py` | **Ish markazi nomi UNIKAL** — PARTIAL UNIQUE `ix_machine_name`. Ilgari bitta postga ikkita "01 ARRA" qo'shsa bo'lardi: monoblokda operator FAQAT nomni ko'radi, ya'ni qaysi stanokda turganini ajrata olmasdi. Mavjud dublikatlar avval " (2)" bilan ajratiladi |
 | 36 | `e7a35c19d840` | `e7a35c19d840_user_is_system.py` | **`user.is_system`** — texnik hisobni odamnikidan ajratadi. Mavjud seed hisoblari belgilanadi (username rolga teng VA telefon `+998000000%`). Shundan keyin post rolidagi SHAXSIY hisob parol bilan kira oladi — skaneri yo'q postda (ARRA) yagona yo'l |
 | 37 | `f3fad5351d8a` | `f3fad5351d8a_oee_toxtalishlar_va_ideal_tezlik.py` | **OEE poydevori**: `stop_reason` (sabablar ro'yxati + `excludes_planned` bayrog'i), `machine_stop` (to'xtash oraliqlari), `machine.planned_minutes_per_day` (480) va `machine.ideal_rate`. Sabablar ro'yxati migratsiyada emas, `seed_defaults` da |
+| 38 | `b2c7e40f9a13` | `b2c7e40f9a13_part_instance_cut_meters.py` | **`part_instance.cut_meters`** — OEE Performance uchun kesim uzunligi. Varaqning giliotina kesimi undagi DETAL KATAKCHALARI soniga bo'linadi (kesim umumiy, qaysi detalga tegishli ekanini ajratib bo'lmaydi; teng bo'lish yig'indida aniq). `mult` ga bo'linmaydi — har varaq takrori uchun alohida nusxa yaratiladi. Mavjud buyurtmalar migratsiyada to'ldiriladi: aks holda eski buyurtmalar nol metr berib, Performance sun'iy past ko'rinardi |
 
 Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kind=DOCUMENT` + `meta` JSONB bilan ishlatiladi (1.4.1-bo'lim).
 

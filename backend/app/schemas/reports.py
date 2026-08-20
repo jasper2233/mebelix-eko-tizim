@@ -107,6 +107,16 @@ class OeeMachineRow(BaseModel):
     #: 0..1. None — o'sha davrda reja umuman bo'lmagan (ish markazi ishlamagan):
     #: "0%" ko'rsatish yolg'on bo'lardi
     availability: float | None
+    #: Ishlab chiqarilgan miqdor va uning birligi (metr yoki teshik)
+    quantity: float
+    quantity_unit: str
+    ideal_minutes: float
+    #: 0..1, lekin YUQORIDAN cheklanmagan: 100% dan oshgani ideal tezlik
+    #: noto'g'ri qo'yilganini bildiradi va aynan shu ko'rinishi kerak
+    performance: float | None
+    #: Availability x Performance. Quality (brak hisobi) 3-bosqichda qo'shiladi,
+    #: shuning uchun bu HALI to'liq OEE emas
+    oee_partial: float | None
     stops: list[OeeStopRow] = []
 
 

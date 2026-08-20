@@ -691,7 +691,7 @@ almashtiriladi.
 bo'lib ko'rinsa, yo'qotish yashirinardi. Terminalda to'xtash paneli ish maydonini
 BOSIB turadi, ya'ni uni unutib bo'lmaydi.
 
-### Performance va Quality (keyingi bosqichlar)
+### Performance (ishlaydi)
 
 | Stanok | Performance birligi | Manba (bazada BOR) |
 |---|---|---|
@@ -699,10 +699,26 @@ BOSIB turadi, ya'ni uni unutib bo'lmaydi.
 | KROMKA | metr | `services/metrics.py: part_volume` (KROMKA — `edges` bo'yicha) |
 | PRISADKA | teshik soni | `part.xnc_summary` → `bores + edge_bores` |
 
-`Performance = (miqdor x ideal vaqt) / RUN`. `machine.ideal_rate` HAR ISH
-MARKAZIDA alohida: bir postdagi ikki stanokning konfiguratsiyasi bir xil bo'lmaydi.
-Birlik postdan keladi — ARRA sek/metr, KROMKA metr/daqiqa, PRISADKA sek/teshik.
-NULL bo'lsa Performance hisoblanmaydi va faqat Availability ko'rinadi.
+`Performance = ideal ishlab chiqarish vaqti / RUN`. Miqdor SKANLARDAN yig'iladi —
+skan bitta ish birligini bildiradi va unda ish markazi ham, vaqt ham bor; bekor
+qilingani chiqariladi. KROMKA va PRISADKA da nusxaga to'g'ri keladigan qiymat
+qadamdagi skan soniga (`per_instance`) bo'linadi: KROMKA birinchi kelganda
+`per_instance` = qirralar soni, ya'ni bitta skan = bitta qirra.
+
+`machine.ideal_rate` HAR ISH MARKAZIDA alohida: bir postdagi ikki stanokning
+konfiguratsiyasi bir xil bo'lmaydi. Birlikning MA'NOSI postdan keladi va ikki xil
+talqin bor (`IDEAL_UNITS`) — adashtirilsa Performance ag'darilib ketardi:
+
+| Post | Ideal tezlik | Talqin | Ideal vaqt |
+|---|---|---|---|
+| ARRA | sek/metr | bitta birlik uchun vaqt | `miqdor x rate / 60` |
+| KROMKA | metr/daqiqa | daqiqada bajariladigan miqdor | `miqdor / rate` |
+| PRISADKA | sek/teshik | bitta birlik uchun vaqt | `miqdor x rate / 60` |
+
+Natija YUQORIDAN cheklanmaydi: 100% dan oshgan Performance ideal tezlik noto'g'ri
+qo'yilganini bildiradi va aynan shu ko'rinishi kerak.
+
+### Quality (keyingi bosqich)
 
 Quality brak hisobini talab qiladi: operator o'z terminalida belgilaydi, MENEJER
 tasdiqlaydi (o'zi ishlab chiqarishga ketmaydi), aybdor post va hodim skan
