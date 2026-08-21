@@ -625,31 +625,3 @@ MACHINE_BOUND_ROLES, TERMINAL_STATUSES, formatSize),
 @/lib/anketa (variant kataloglari, labelOf/labelsOf), @/lib/scxDir (papka + scxFileUrl),
 @/utils (handleError, getInitials).
 ```
-
-## `frontend/src/components/Terminal/DefectDialog.tsx`
-
-**Maqsadi:** operator yaroqsiz detalni shu yerdan yuboradi (chap ustundagi "Brak" tugmasi).
-
-- QR maydoniga skaner yozadi — dialog ochilishi bilan fokus shu yerda.
-- Tez sabablar tugma bo'lib turadi (o'lcham, kromka, teshik, yuza, material,
-  rang): qo'lqop bilan yozish qiyin, bosish bir harakat. Ostida erkin matn.
-- Tugma HAR postda ko'rinadi, OEE kuzatilmaydiganida ham: brak aybdor postga
-  yoziladi va u kuzatiladigan stanok bo'lishi mumkin.
-- Dialog tavsifi oqibatni aytadi — detal darhol qaytmaydi, menejer ko'rib chiqadi.
-
-## `frontend/src/components/Terminal/StopPanel.tsx`
-
-**Maqsadi:** stanok to'xtashini qayd etish — OEE ning Availability qismi shu yerdan yig'iladi.
-Tugma faqat OEE kuzatiladigan ish markazida chiziladi (`TerminalContext.oee`): brigada
-postlarida (stolyarka, bo'yoq, qadoqlash, TMO) sabab so'rash bekorga ish yuklardi va
-hisobot baribir chiqmasdi.
-
-- `StopReasonDialog` — sabablar rejali/rejasiz guruhlarida, 56px balandlikdagi tugmalar
-  (qo'lqop bilan bosiladi). Ro'yxat `staleTime: 30 daq` — u kamdan-kam o'zgaradi,
-  monoblok esa uni har to'xtashda so'rardi.
-- `StopBanner` — ish maydonini BUTUNLAY bosib turadigan qizil panel: sabab nomi va
-  sanovchi soat. Bosib turishi ataylab: yozib qo'yilib unutilgan to'xtash stanokni
-  soatlab "to'xtagan" qilib ko'rsatardi. Ikki amal — davom ettirish va sababni
-  almashtirish.
-- `useElapsed` — sekundlik hisoblagich; vaqt `started_at` dan hisoblanadi, ya'ni
-  sahifa qayta yuklansa ham davom etadi.

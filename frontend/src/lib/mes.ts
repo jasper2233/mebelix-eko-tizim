@@ -204,30 +204,6 @@ export const POSITIONS: {
   { label: "Admin", kind: "ofis", role: "admin" },
 ]
 
-// OEE ideal tezligining MA'NOSI postdan keladi — har post bitta birlikda
-// ishlaydi (`Mebel_MES_OEE_texnik_talablar.docx` §7). Qiymatning o'zi har ish
-// markazida alohida: bir postdagi ikki stanok bir xil tezlikda ishlamaydi.
-export const IDEAL_RATE_HINTS: Record<
-  string,
-  { unit: string; placeholder: string; hint: string }
-> = {
-  ARRA: {
-    unit: "sek/metr",
-    placeholder: "2",
-    hint: "1 metr kesishga ketadigan ideal vaqt",
-  },
-  KROMKA: {
-    unit: "metr/daqiqa",
-    placeholder: "20",
-    hint: "ideal sharoitdagi yopishtirish tezligi",
-  },
-  PRISADKA: {
-    unit: "sek/teshik",
-    placeholder: "0.8",
-    hint: "1 teshik ochishga ketadigan ideal vaqt",
-  },
-}
-
 export const OTHER_POSITION = "Boshqa"
 
 // Operator rollar — o'z posti terminalini ko'radi (ish markazi/beyjik shart emas)

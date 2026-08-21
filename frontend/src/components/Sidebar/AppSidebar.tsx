@@ -9,7 +9,6 @@ import {
   IdCard,
   Printer,
   ScrollText,
-  TriangleAlert,
   Tv,
   UserRound,
 } from "lucide-react"
@@ -66,12 +65,6 @@ export const NAV_ITEMS: (Item & {
     title: "Materiallar ombori",
     path: "/stock",
     show: isStockStaff,
-  },
-  {
-    icon: TriangleAlert,
-    title: "Brak",
-    path: "/defects",
-    show: isManagement,
   },
   {
     icon: BarChart3,

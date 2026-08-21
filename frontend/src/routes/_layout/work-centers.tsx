@@ -37,7 +37,6 @@ import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { requireAccess } from "@/lib/guards"
 import {
   CAPACITY_UNIT_LABELS,
-  IDEAL_RATE_HINTS,
   isAdmin,
   isProductionStaff,
   MACHINE_STATUS_LABELS,
@@ -190,8 +189,6 @@ type FormState = {
   status: string
   capacity: string
   capacity_unit: string
-  planned_minutes_per_day: string
-  ideal_rate: string
 }
 
 function MachineDialog({
@@ -212,8 +209,6 @@ function MachineDialog({
     status: machine?.status ?? "active",
     capacity: machine?.capacity != null ? String(machine.capacity) : "",
     capacity_unit: machine?.capacity_unit ?? "",
-    planned_minutes_per_day: String(machine?.planned_minutes_per_day ?? 480),
-    ideal_rate: machine?.ideal_rate != null ? String(machine.ideal_rate) : "",
   })
   const set = (key: keyof FormState, value: string) =>
     setForm((f) => ({ ...f, [key]: value }))
@@ -222,18 +217,6 @@ function MachineDialog({
     ? Number(form.capacity.replace(",", "."))
     : null
   const capacityBad = capacityNumber !== null && Number.isNaN(capacityNumber)
-  const idealNumber = form.ideal_rate
-    ? Number(form.ideal_rate.replace(",", "."))
-    : null
-  const idealBad = idealNumber !== null && Number.isNaN(idealNumber)
-  const plannedNumber = Number(form.planned_minutes_per_day)
-  const plannedBad =
-    Number.isNaN(plannedNumber) || plannedNumber < 1 || plannedNumber > 1440
-  // Ideal tezlikning MA'NOSI postdan keladi — har post bitta birlikda ishlaydi
-  const ideal =
-    IDEAL_RATE_HINTS[
-      posts.find((p) => String(p.id) === form.post_id)?.code ?? ""
-    ]
 
   /** Post tanlanganda nom TAKLIF qilinadi: "Arra-1", "Arra-2"... Nom qo'lda
    * yoziladi — u monoblokda operatorga YOLG'IZ ko'rinadi, ya'ni stanokning
@@ -269,10 +252,6 @@ function MachineDialog({
               MachineRead["capacity_unit"]
             >)
           : null,
-        planned_minutes_per_day: plannedNumber,
-        // Stanokli postdan brigada postiga ko'chirilsa ideal tezlik TOZALANADI:
-        // aks holda ish markazi o'lchanadigan uskunasiz OEE kuzatuvida qolardi
-        ideal_rate: ideal ? idealNumber : null,
       }
       return editing
         ? MachinesService.updateMachine({
@@ -288,14 +267,8 @@ function MachineDialog({
     },
   })
 
-  // OEE tekshiruvlari faqat blok KO'RINGANDA: aks holda arrada maydonni
-  // tozalab, keyin postni stolyarkaga almashtirgan admin sababi ko'rinmaydigan
-  // o'chiq tugmaga qarab qolardi
   const valid =
-    form.name.trim().length > 1 &&
-    form.post_id !== "" &&
-    !capacityBad &&
-    (!ideal || (!idealBad && !plannedBad))
+    form.name.trim().length > 1 && form.post_id !== "" && !capacityBad
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
@@ -383,56 +356,6 @@ function MachineDialog({
               />
             </Field>
           </div>
-
-          {/* OEE bloki FAQAT stanokli postda. Brigada postlarida (stolyarka,
-              bo'yoq, qadoqlash, TMO) o'lchanadigan uskunaning o'zi yo'q, ya'ni
-              bu maydonlar u yerda faqat chalg'itardi — ustiga kunlik reja
-              majburiy bo'lgani uchun tozalab qo'yilsa saqlash to'sib qolardi.
-              Ikkala qiymat ham SHU ish markaziniki: bir postdagi ikki
-              stanokning konfiguratsiyasi bir xil bo'lmaydi. */}
-          {ideal && (
-            <div className="grid grid-cols-2 gap-3 rounded-md border border-dashed p-3">
-              <Field label="Kunlik reja (daqiqa)">
-                <Input
-                  value={form.planned_minutes_per_day}
-                  onChange={(e) =>
-                    set(
-                      "planned_minutes_per_day",
-                      e.target.value.replace(/\D/g, ""),
-                    )
-                  }
-                  placeholder="480"
-                  inputMode="numeric"
-                  aria-invalid={plannedBad}
-                />
-                <span className="text-2xs text-muted-foreground">
-                  {plannedBad
-                    ? "1 dan 1440 gacha"
-                    : `${(plannedNumber / 60).toFixed(1)} soat. Tushlik va tanaffus shundan ayriladi`}
-                </span>
-              </Field>
-              <Field label={`Ideal tezlik (${ideal.unit})`}>
-                <Input
-                  value={form.ideal_rate}
-                  onChange={(e) =>
-                    set("ideal_rate", e.target.value.replace(/[^\d.,]/g, ""))
-                  }
-                  placeholder={ideal.placeholder}
-                  inputMode="decimal"
-                  aria-invalid={idealBad}
-                />
-                {/* Bo'sh qoldirilsa OEE kuzatilmaydi — buni AYTIB qo'yamiz,
-                    aks holda hisobotdagi bo'sh ro'yxat sababsiz ko'rinardi */}
-                <span className="text-2xs text-muted-foreground">
-                  {idealBad
-                    ? "Sonni kiriting, masalan 2.5"
-                    : form.ideal_rate
-                      ? ideal.hint
-                      : `${ideal.hint} — bo'sh qolsa OEE hisoblanmaydi`}
-                </span>
-              </Field>
-            </div>
-          )}
         </div>
 
         <DialogFooter>

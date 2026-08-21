@@ -410,10 +410,7 @@ Yuklash cheklovlari (`orders.py` dagi konstantalar):
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
-| GET | `/api/v1/terminal/context` | terminal/operator | Ish markazi+post konteksti, OCHIQ smenalar ro'yxati (`crew` — brigada), OCHIQ TO'XTASH (`stop`, bo'lmasa `null`) va `oee` bayrog'i (`machine.ideal_rate` to'ldirilganmi — monoblokda "To'xtash" tugmasi shunga qarab chiziladi); muddati o'tganlari shu so'rovda yopiladi (`crew_sessions` → `expire_if_stale`). Rolidan qat'i nazar smena AVTOMATIK ochilmaydi: yagona yo'l — `POST /terminal/session` (beyjik skani yoki ismni bosish) yoxud `/login/badge`. Ilgari operator rollarida "login = smena" shoxi bor edi, u soxta mirror hodim yozuvi bilan birga olib tashlangan (`c7e2b4f81d39`) |
-| GET | `/api/v1/terminal/stop-reasons` | terminal/operator | Faol to'xtash sabablari (`is_active`, `order_index` bo'yicha) — monoblokdagi tanlash ro'yxati |
-| POST | `/api/v1/terminal/stop` | terminal/operator | To'xtashni boshlaydi (`reason_id`, ixtiyoriy `note`). Ochig'i bo'lsa AVVAL yopiladi — sababni almashtirish odatiy holat ("material yo'q" bilan boshlanib, keyin "nosozlik" bo'lib chiqadi); XUDDI SHU sabab bo'lsa mavjudi qaytariladi, dublikat ochilmaydi. `employee_id` — ish markazidagi langar smena egasi, hech kim bo'lmasa NULL (stanok operatorsiz ham to'xtaydi) |
-| POST | `/api/v1/terminal/stop/end` | terminal/operator | Ochiq to'xtashni yopadi; ochig'i bo'lmasa 404 |
+| GET | `/api/v1/terminal/context` | terminal/operator | Ish markazi+post konteksti va shu ish markazidagi OCHIQ smenalar ro'yxati (`crew` — brigada); muddati o'tganlari shu so'rovda yopiladi (`crew_sessions` → `expire_if_stale`). Rolidan qat'i nazar smena AVTOMATIK ochilmaydi: yagona yo'l — `POST /terminal/session` (beyjik skani yoki ismni bosish) yoxud `/login/badge`. Ilgari operator rollarida "login = smena" shoxi bor edi, u soxta mirror hodim yozuvi bilan birga olib tashlangan (`c7e2b4f81d39`) |
 | GET | `/api/v1/terminal/employees` | terminal/operator | "Kim ishlayapti?" ro'yxati — shu postga biriktirilgan FAOL hodimlar. Monoblok TERMINAL hisobi bilan allaqachon kirgan, ya'ni ro'yxat ochiq emas. Ismni bosish AUTENTIFIKATSIYA emas, ATRIBUTSIYA: qurilma tanitilgan, endi kim ishlayotgani yoziladi |
 | POST | `/api/v1/terminal/session` | terminal/operator | Smenani ochadi (TZ 8.2.2). IKKI yo'l, natijasi bir xil: `badge_id` (skaneri bor post — bitta harakat) yoki `employee_id` (ekrandagi "Kim ishlayapti?" ro'yxatidan ism). `join=true` — BRIGADAGA qo'shiladi (ARRA da ikki kishi birga ishlaydi); sukut bo'yicha ALMASHTIRADI, ya'ni yakunlashni unutish xavfsiz tomonga og'adi. Bir odam ikki marta qo'shilmaydi — mavjud smenasi qaytariladi. Xatolar 422 `{code: "E006", message}` — beyjik topilmadi / nofaol / bu postga biriktirilmagan; WS `session.started` |
 | POST | `/api/v1/terminal/session/end` | terminal/operator | Smenani yakunlaydi. `?employee_id=` berilsa FAQAT o'shaniki — brigadaning qolgani ishlayveradi (biri ketib, ikkinchisi qolishi odatiy hol); berilmasa hammasi. Aktiv smena bo'lmasa 404; WS `session.ended` |
@@ -525,7 +522,6 @@ Javob sxemalari `backend/app/schemas/tablo.py` da: `TabloMatrix` (`posts` — ty
 | GET | `/api/v1/reports/productivity` | manager/direktor | Hodim mahsuldorligi (TZ 11.1.1): skan soni, faol kunlar, kuniga/soatiga o'rtacha; `?format=xlsx` |
 | GET | `/api/v1/reports/orders` | manager/direktor | Buyurtmalar holati (TZ 11.2): holat, muddatlar, `overdue` belgisi (muddat o'tgan tugallanmaganlar), bekor sababi; `?format=xlsx` |
 | GET | `/api/v1/reports/materials` | manager/direktor | Material sarfi (TZ 11.3): `Order.material_usage` JSONB'dan agregatsiya (`project_loaded_at` oralig'ida, CANCELLED chiqariladi); `?format=xlsx` |
-| GET | `/api/v1/reports/oee` | manager/direktor | Ish markazlari bo'yicha **OEE** (Availability x Performance x Quality) va to'xtalishlar tahlili (`?post_id` bilan filtrlanadi). FAQAT `ideal_rate` to'ldirilgan ish markazlari: to'qqiz postning beshtasida haqiqiy stanok bor, qolganida brigada va monoblok — o'lchanadigan uskunaning o'zi yo'q. Ro'yxat kodda emas, SOZLAMADA: admin ideal tezlik kiritsa stanok kuzatuvga tushadi. Hisob `services/oee.py: machine_availability` da. NOAKTIV ish markazlari ham ro'yxatda: ta'mirdagi stanok aynan eng katta yo'qotish manbai bo'lishi mumkin. `availability=null` — o'sha davrda reja umuman bo'lmagan, "0%" yolg'on bo'lardi. Excel eksporti YO'Q: hisobot ichma-ich (ish markazi → sabablar) va yassi jadval ma'noni yo'qotardi |
 | GET | `/api/v1/reports/dashboard` | manager/direktor | Dashboard (TZ 10.2.1): har ish markazi uchun navbat (qolgan skanlar/hajm), quvvat va prognoz soatlar (TZ 4.3: navbat/quvvat), bugungi skanlar; faqat JSON |
 
 **Bog'lanishlar:** `backend/app/schemas/reports.py`, `backend/app/services/excel.py` (`xlsx_response`), `backend/app/services/metrics.py` (`part_volume`).
@@ -595,21 +591,3 @@ Server → klient eventlarni `app/core/ws.py` dagi `ws_manager` tarqatadi — mu
 - **Real-time eventlar:** mutatsion endpointlar `ws_manager.publish` orqali WS eventlar tarqatadi (`order.*`, `session.*`, `scan.*`, `label.*`, `pachka.*`, `tmo.*`, `bridge.*` — to'liq ro'yxat `ws.py` bo'limida) — terminallar, TABLO va dashboard jonli yangilanadi.
 - **Xatoliklar:** `backend/app/core/exceptions.py` dagi maxsus exception'lar (`UnauthorizedException` 401, `ForbiddenException` 403, `NotFoundException` 404, `DuplicateValueException` 409, `RateLimitException` 429) — xabarlar o'zbek tilida. "Topilmadi" holati odatda qo'lda yozilmaydi: `BaseCRUD.get_or_404(db, "Mijoz topilmadi.", id=...)` o'zi `NotFoundException` ko'taradi. Terminal/skan oqimida esa 422 `{code, message}` formati (E001–E009 kodlari — `docs/09-mes-domain.md` §3.0). `E007` ("Aloqa yo'q") server kodi emas — WS uzilganda terminal frontendi lokal hosil qiladi (`frontend/src/routes/terminal.tsx`), so'rov serverga umuman ketmaydi.
 - **OpenAPI barqarorligi:** biznes endpointlarning barchasida aniq `operation_id` berilgan (frontend client generatsiyasi uchun qulay); istisno — `health.py` dagi `/health` va `/ready` probalari (FastAPI avtomatik nom beradi).
-
----
-
-## `backend/app/api/routes/defects.py` — brak (OEE Quality)
-
-**Maqsadi:** yaroqsiz detalni qayd etish va qayta ishlab chiqarishga yuborish.
-
-| Metod | Yo'l | Rol | Nima qiladi |
-|---|---|---|---|
-| POST | `/api/v1/defects/` | terminal/operator | Operator brakni belgilaydi (`qr_text` + `reason`). Detal ishlab chiqarishga QAYTMAYDI — yozuv `pending` holatida menejerga ketadi. Bitta nusxada ikkinchi ochiq brak yaratilmaydi (403) |
-| GET | `/api/v1/defects/` | manager/direktor | Ro'yxat (`?status=`). Har yozuvda detal, marshrut, NUSXANING TO'LIQ SKAN TARIXI (kim, qayerda, qachon) va oxirgi skandan olingan aybdor TAKLIFI |
-| POST | `/api/v1/defects/{id}/approve` | manager/direktor | `blamed_post_id`, `blamed_employee_id`, `restart_post_id`. ARRA yoki ROVER dan qayta boshlansa YANGI nusxa yaratiladi (`part.count` va har qadamning `total_required` oshadi, QR `{mahsulot}_{detal}_{raqam}`), boshqa postdan boshlansa `scanning.reopen_instance_from` o'sha qadamdan keyingi skanlarni bekor qiladi va hisoblagichlarni kamaytiradi |
-| POST | `/api/v1/defects/{id}/reject` | manager/direktor | Rad etadi — ko'rsatkichga ta'sir qilmaydi |
-
-Ikki marta tasdiqlash TO'SILADI (`_pending`): aks holda qayta ishlab chiqarish
-ikki marta ishga tushib, yangi nusxa ham ikkita bo'lardi.
-
-**Bog'lanishlar:** `backend/app/services/defects.py` (`suggest_blame`, `approve`, `_clone_instance`, `NEW_INSTANCE_POSTS`), `backend/app/services/scanning.py` (`reopen_instance_from`, `resolve_terminal`, `active_session`), `backend/app/schemas/defects.py`.

@@ -3,7 +3,6 @@ from .bridge_agent import BridgeAgent
 from .client import Client
 from .employee import Employee
 from .machine import Machine
-from .oee import Defect, MachineStop, StopReason
 from .order import (
     ORDER_FAT_COLUMNS,
     PART_FAT_COLUMNS,
@@ -27,15 +26,12 @@ __all__ = [
     "AuditLog",
     "BridgeAgent",
     "Client",
-    "Defect",
     "Employee",
     "Machine",
-    "MachineStop",
     "Payment",
     "Sale",
     "StockItem",
     "StockMove",
-    "StopReason",
     "Order",
     "OrderFile",
     "Organization",

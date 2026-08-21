@@ -35,16 +35,12 @@ from app.schemas.reports import (
     MachineStat,
     MaterialsReport,
     MaterialUsageRow,
-    OeeMachineRow,
-    OeeReport,
-    OeeStopRow,
     OrderReportRow,
     OrdersReport,
     ProductivityReport,
 )
 from app.services.excel import xlsx_response
 from app.services.metrics import part_volume
-from app.services.oee import machine_availability, machine_performance, machine_quality
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -369,91 +365,3 @@ async def report_dashboard(db: SessionDep, _: ReportsUser) -> DashboardStats:
             )
         )
     return DashboardStats(machines=stats)
-
-
-# ---------- OEE (Availability) ----------
-
-
-@router.get("/oee", operation_id="report_oee", response_model=OeeReport)
-async def report_oee(
-    db: SessionDep,
-    _: ReportsUser,
-    date_from: date | None = None,
-    date_to: date | None = None,
-    post_id: int | None = None,
-) -> OeeReport:
-    """Ish markazlari bo'yicha Availability va to'xtalishlar tahlili.
-
-    Hozircha OEE ning VAQT qismi: Performance ideal tezlik va ishlab chiqarilgan
-    miqdorni, Quality esa brak hisobini talab qiladi — ular keyingi bosqichlarda.
-
-    FAQAT STANOKLAR: `ideal_rate` to'ldirilgan ish markazlari. To'qqiz postning
-    beshtasida haqiqiy stanok bor (ARRA, KROMKA, OVAL, PRISADKA, ROVER),
-    qolganida esa brigada va monoblok — u yerda "uskuna samaradorligi" o'lchash
-    mumkin bo'lgan uskunaning o'zi yo'q. Ro'yxat KODDA emas, sozlamada:
-    admin ish markaziga ideal tezlik kiritsa, o'sha stanok kuzatuvga tushadi.
-
-    NOAKTIV ish markazlari ham ro'yxatda: ta'mirda turgan stanok aynan eng katta
-    yo'qotish manbai bo'lishi mumkin, uni yashirish ko'rsatkichni chiroylashtirardi.
-    """
-    end_day = date_to or datetime.now(TASHKENT_TZ).date()
-    start_day = date_from or (end_day - timedelta(days=30))
-
-    query = (
-        select(Machine, Post)
-        .join(Post, Post.id == Machine.post_id)
-        .where(
-            Machine.is_deleted == False,  # noqa: E712
-            Machine.ideal_rate.is_not(None),
-        )
-        .order_by(Post.order_index, Machine.name)
-    )
-    if post_id is not None:
-        query = query.where(Machine.post_id == post_id)
-
-    out = OeeReport(date_from=start_day, date_to=end_day)
-    for machine, post in (await db.execute(query)).all():
-        result = await machine_availability(db, machine, start_day, end_day)
-        perf = await machine_performance(db, machine, post, result.run_minutes, start_day, end_day)
-        qual = await machine_quality(db, machine, post, start_day, end_day)
-        avail = result.value
-        p_value = perf.value if perf else None
-        q_value = qual.value if qual else None
-        out.machines.append(
-            OeeMachineRow(
-                machine_id=machine.id,
-                machine_name=machine.name,
-                post_code=post.code,
-                post_name=post.name,
-                active_days=result.active_days,
-                planned_minutes=round(result.planned_minutes, 1),
-                run_minutes=round(result.run_minutes, 1),
-                planned_off_minutes=round(result.planned_off_minutes, 1),
-                loss_minutes=round(result.loss_minutes, 1),
-                availability=round(avail, 4) if avail is not None else None,
-                quantity=round(perf.quantity, 2) if perf else 0.0,
-                quantity_unit=perf.unit if perf else "",
-                ideal_minutes=round(perf.ideal_minutes, 1) if perf else 0.0,
-                performance=round(p_value, 4) if p_value is not None else None,
-                quality=round(q_value, 4) if q_value is not None else None,
-                quality_unit=qual.unit if qual else "",
-                defective=round(qual.defective, 2) if qual else 0.0,
-                # To'liq OEE faqat uchala ko'rsatkich ham bo'lganda: bittasi
-                # yo'q bo'lsa ko'paytma yolg'on optimizm berardi
-                oee=(
-                    round(avail * p_value * q_value, 4)
-                    if avail is not None and p_value is not None and q_value is not None
-                    else None
-                ),
-                stops=[
-                    OeeStopRow(
-                        reason=line.reason,
-                        minutes=round(line.minutes, 1),
-                        count=line.count,
-                        excludes_planned=line.excludes_planned,
-                    )
-                    for line in result.stops
-                ],
-            )
-        )
-    return out

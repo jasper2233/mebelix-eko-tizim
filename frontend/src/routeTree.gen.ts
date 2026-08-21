@@ -16,7 +16,6 @@ import { Route as TerminalRouteImport } from './routes/terminal'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 import { Route as LayoutClientsRouteImport } from './routes/_layout/clients'
-import { Route as LayoutDefectsRouteImport } from './routes/_layout/defects'
 import { Route as LayoutEmployeesRouteImport } from './routes/_layout/employees'
 import { Route as LayoutLogsRouteImport } from './routes/_layout/logs'
 import { Route as LayoutPrintersRouteImport } from './routes/_layout/printers'
@@ -61,11 +60,6 @@ const LayoutAdminRoute = LayoutAdminRouteImport.update({
 const LayoutClientsRoute = LayoutClientsRouteImport.update({
   id: '/clients',
   path: '/clients',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutDefectsRoute = LayoutDefectsRouteImport.update({
-  id: '/defects',
-  path: '/defects',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutEmployeesRoute = LayoutEmployeesRouteImport.update({
@@ -131,7 +125,6 @@ export interface FileRoutesByFullPath {
   '/terminal': typeof TerminalRoute
   '/admin': typeof LayoutAdminRoute
   '/clients': typeof LayoutClientsRoute
-  '/defects': typeof LayoutDefectsRoute
   '/employees': typeof LayoutEmployeesRoute
   '/logs': typeof LayoutLogsRoute
   '/printers': typeof LayoutPrintersRoute
@@ -150,7 +143,6 @@ export interface FileRoutesByTo {
   '/terminal': typeof TerminalRoute
   '/admin': typeof LayoutAdminRoute
   '/clients': typeof LayoutClientsRoute
-  '/defects': typeof LayoutDefectsRoute
   '/employees': typeof LayoutEmployeesRoute
   '/logs': typeof LayoutLogsRoute
   '/printers': typeof LayoutPrintersRoute
@@ -172,7 +164,6 @@ export interface FileRoutesById {
   '/terminal': typeof TerminalRoute
   '/_layout/admin': typeof LayoutAdminRoute
   '/_layout/clients': typeof LayoutClientsRoute
-  '/_layout/defects': typeof LayoutDefectsRoute
   '/_layout/employees': typeof LayoutEmployeesRoute
   '/_layout/logs': typeof LayoutLogsRoute
   '/_layout/printers': typeof LayoutPrintersRoute
@@ -195,7 +186,6 @@ export interface FileRouteTypes {
     | '/terminal'
     | '/admin'
     | '/clients'
-    | '/defects'
     | '/employees'
     | '/logs'
     | '/printers'
@@ -214,7 +204,6 @@ export interface FileRouteTypes {
     | '/terminal'
     | '/admin'
     | '/clients'
-    | '/defects'
     | '/employees'
     | '/logs'
     | '/printers'
@@ -235,7 +224,6 @@ export interface FileRouteTypes {
     | '/terminal'
     | '/_layout/admin'
     | '/_layout/clients'
-    | '/_layout/defects'
     | '/_layout/employees'
     | '/_layout/logs'
     | '/_layout/printers'
@@ -306,13 +294,6 @@ declare module '@tanstack/react-router' {
       path: '/clients'
       fullPath: '/clients'
       preLoaderRoute: typeof LayoutClientsRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/defects': {
-      id: '/_layout/defects'
-      path: '/defects'
-      fullPath: '/defects'
-      preLoaderRoute: typeof LayoutDefectsRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/employees': {
@@ -398,7 +379,6 @@ declare module '@tanstack/react-router' {
 interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
   LayoutClientsRoute: typeof LayoutClientsRoute
-  LayoutDefectsRoute: typeof LayoutDefectsRoute
   LayoutEmployeesRoute: typeof LayoutEmployeesRoute
   LayoutLogsRoute: typeof LayoutLogsRoute
   LayoutPrintersRoute: typeof LayoutPrintersRoute
@@ -416,7 +396,6 @@ interface LayoutRouteChildren {
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRoute: LayoutAdminRoute,
   LayoutClientsRoute: LayoutClientsRoute,
-  LayoutDefectsRoute: LayoutDefectsRoute,
   LayoutEmployeesRoute: LayoutEmployeesRoute,
   LayoutLogsRoute: LayoutLogsRoute,
   LayoutPrintersRoute: LayoutPrintersRoute,

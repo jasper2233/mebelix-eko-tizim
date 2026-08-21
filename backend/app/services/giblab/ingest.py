@@ -369,7 +369,6 @@ async def ingest_project(
                         qr_text=pp.qr_texts[n - 1],
                         pattern_no=binding.pattern_no if binding else None,
                         cell_index=binding.cell_index if binding else None,
-                        cut_meters=binding.cut_meters if binding else None,
                     )
                 )
                 instances_created += 1

@@ -5,7 +5,6 @@ from app.api.deps import get_current_user
 from .audit import router as audit_router
 from .bridge_agents import router as bridge_agents_router
 from .clients import router as clients_router
-from .defects import router as defects_router
 from .employees import router as employees_router
 from .health import router as health_router
 from .login import router as login_router
@@ -32,7 +31,6 @@ router.include_router(logout_router, dependencies=_protected)
 router.include_router(users_router, dependencies=_protected)
 router.include_router(clients_router, dependencies=_protected)
 router.include_router(employees_router, dependencies=_protected)
-router.include_router(defects_router, dependencies=_protected)
 router.include_router(machines_router, dependencies=_protected)
 router.include_router(posts_router, dependencies=_protected)
 router.include_router(stock_router, dependencies=_protected)

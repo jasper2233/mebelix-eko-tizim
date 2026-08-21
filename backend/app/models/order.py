@@ -131,12 +131,6 @@ class PartInstance(BaseModel):
     qr_text: Mapped[str] = mapped_column(String(120), kw_only=True)
     # Cut map cell binding: which pattern sheet / cell this copy occupies (TZ 7.1.4)
     pattern_no: Mapped[int | None] = mapped_column(default=None, kw_only=True)
-    #: OEE — shu nusxaga to'g'ri keladigan kesim uzunligi, metrda (`cutmap`
-    #: giliotina segmentlaridan; varaq kesimi undagi detal katakchalariga teng
-    #: bo'linadi). ARRA Performance shu ustunni SUM qiladi — hisobot paytida
-    #: har buyurtmaning kesim xaritasini (JSONB, yuzlab KB) qayta o'qish
-    #: o'rniga. NULL — kesim xaritasi yo'q yoki fayl bu ustundan oldin yuklangan.
-    cut_meters: Mapped[float | None] = mapped_column(default=None, kw_only=True)
     cell_index: Mapped[int | None] = mapped_column(default=None, kw_only=True)
     label_printed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
 

@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { AcceptIntoTmoData, AcceptIntoTmoErrors, AcceptIntoTmoResponses, AddSalePaymentData, AddSalePaymentErrors, AddSalePaymentResponses, ApproveDefectData, ApproveDefectErrors, ApproveDefectResponses, AssignOrderMachinesData, AssignOrderMachinesErrors, AssignOrderMachinesResponses, BridgeScanData, BridgeScanErrors, BridgeScanResponses, CancelInstanceLabelData, CancelInstanceLabelErrors, CancelInstanceLabelResponses, CancelOrderData, CancelOrderErrors, CancelOrderResponses, CancelScanData, CancelScanErrors, CancelScanResponses, ClosePachkaData, ClosePachkaErrors, ClosePachkaResponses, ConfirmOrderData, ConfirmOrderErrors, ConfirmOrderResponses, CreateBridgeAgentData, CreateBridgeAgentErrors, CreateBridgeAgentResponses, CreateClientData, CreateClientErrors, CreateClientResponses, CreateEmployeeData, CreateEmployeeErrors, CreateEmployeeResponses, CreateMachineData, CreateMachineErrors, CreateMachineResponses, CreateOrderData, CreateOrderErrors, CreateOrderResponses, CreatePachkaData, CreatePachkaErrors, CreatePachkaResponses, CreateSaleData, CreateSaleErrors, CreateSaleResponses, CreateStockItemData, CreateStockItemErrors, CreateStockItemResponses, CreateUserData, CreateUserErrors, CreateUserResponses, DeleteBridgeAgentData, DeleteBridgeAgentErrors, DeleteBridgeAgentResponses, DeleteClientData, DeleteClientErrors, DeleteClientResponses, DeleteEmployeeData, DeleteEmployeeErrors, DeleteEmployeeResponses, DeleteMachineData, DeleteMachineErrors, DeleteMachineResponses, DeleteRoomPhotoData, DeleteRoomPhotoErrors, DeleteRoomPhotoResponses, DeleteStockItemData, DeleteStockItemErrors, DeleteStockItemResponses, DeleteUserData, DeleteUserErrors, DeleteUserMeData, DeleteUserMeResponses, DeleteUserResponses, DeliverOrderData, DeliverOrderErrors, DeliverOrderResponses, DeliverTmoOrderData, DeliverTmoOrderErrors, DeliverTmoOrderResponses, DownloadOrderFileData, DownloadOrderFileErrors, DownloadOrderFileResponses, DownloadOrderScxZipData, DownloadOrderScxZipErrors, DownloadOrderScxZipResponses, DownloadTerminalFileData, DownloadTerminalFileErrors, DownloadTerminalFileResponses, EditOrderMatrixData, EditOrderMatrixErrors, EditOrderMatrixResponses, EndMachineStopData, EndMachineStopResponses, EndTerminalSessionData, EndTerminalSessionErrors, EndTerminalSessionResponses, HealthApiV1HealthGetData, HealthApiV1HealthGetResponses, LoginAccessTokenData, LoginAccessTokenErrors, LoginAccessTokenResponses, LoginWithBadgeData, LoginWithBadgeErrors, LoginWithBadgeResponses, LogoutData, LogoutResponses, MoveStockItemData, MoveStockItemErrors, MoveStockItemResponses, PairBridgeAgentData, PairBridgeAgentErrors, PairBridgeAgentResponses, PrintEmployeeBadgeData, PrintEmployeeBadgeErrors, PrintEmployeeBadgeResponses, PrintInstanceLabelData, PrintInstanceLabelErrors, PrintInstanceLabelResponses, ReadAuditLogsData, ReadAuditLogsErrors, ReadAuditLogsResponses, ReadBridgeAgentsData, ReadBridgeAgentsResponses, ReadClientData, ReadClientErrors, ReadClientResponses, ReadClientsData, ReadClientsErrors, ReadClientsResponses, ReadDefectsData, ReadDefectsErrors, ReadDefectsResponses, ReadEmployeeData, ReadEmployeeErrors, ReadEmployeeResponses, ReadEmployeesData, ReadEmployeesErrors, ReadEmployeesResponses, ReadMachineData, ReadMachineErrors, ReadMachineResponses, ReadMachinesData, ReadMachinesResponses, ReadOrderCutmapData, ReadOrderCutmapErrors, ReadOrderCutmapResponses, ReadOrderData, ReadOrderErrors, ReadOrderMatrixData, ReadOrderMatrixErrors, ReadOrderMatrixResponses, ReadOrderResponses, ReadOrdersData, ReadOrdersErrors, ReadOrdersResponses, ReadOrderStatusCountsData, ReadOrderStatusCountsResponses, ReadPostsData, ReadPostsResponses, ReadSaleData, ReadSaleErrors, ReadSaleResponses, ReadSalesData, ReadSalesErrors, ReadSalesResponses, ReadSalesSummaryData, ReadSalesSummaryResponses, ReadStockGroupsData, ReadStockGroupsResponses, ReadStockItemsData, ReadStockItemsErrors, ReadStockItemsResponses, ReadStockMovesData, ReadStockMovesErrors, ReadStockMovesResponses, ReadStockSummaryData, ReadStockSummaryResponses, ReadStopReasonsData, ReadStopReasonsResponses, ReadTabloMatrixData, ReadTabloMatrixResponses, ReadTabloOrderData, ReadTabloOrderErrors, ReadTabloOrderResponses, ReadTerminalContextData, ReadTerminalContextResponses, ReadTerminalCutmapData, ReadTerminalCutmapErrors, ReadTerminalCutmapResponses, ReadTerminalEmployeesData, ReadTerminalEmployeesResponses, ReadTerminalKromkaData, ReadTerminalKromkaErrors, ReadTerminalKromkaResponses, ReadTerminalOrdersData, ReadTerminalOrdersResponses, ReadTerminalPostQueueData, ReadTerminalPostQueueErrors, ReadTerminalPostQueueResponses, ReadTerminalPrisadkaData, ReadTerminalPrisadkaErrors, ReadTerminalPrisadkaResponses, ReadTmoOrderData, ReadTmoOrderErrors, ReadTmoOrderResponses, ReadUpakovkaOrderData, ReadUpakovkaOrderErrors, ReadUpakovkaOrderResponses, ReadUserByIdData, ReadUserByIdErrors, ReadUserByIdResponses, ReadUserMeData, ReadUserMeResponses, ReadUsersData, ReadUsersErrors, ReadUsersResponses, ReadyApiV1ReadyGetData, ReadyApiV1ReadyGetResponses, RecordScanData, RecordScanErrors, RecordScanResponses, RefreshAccessTokenData, RefreshAccessTokenResponses, RegenerateBadgeData, RegenerateBadgeErrors, RegenerateBadgeResponses, RegenerateBridgeCodeData, RegenerateBridgeCodeErrors, RegenerateBridgeCodeResponses, RegenerateOrderScxData, RegenerateOrderScxErrors, RegenerateOrderScxResponses, RejectDefectData, RejectDefectErrors, RejectDefectResponses, RemoveFromPachkaData, RemoveFromPachkaErrors, RemoveFromPachkaResponses, RenderInstanceLabelData, RenderInstanceLabelErrors, RenderInstanceLabelResponses, ReportDashboardData, ReportDashboardResponses, ReportDefectData, ReportDefectErrors, ReportDefectResponses, ReportMaterialsData, ReportMaterialsErrors, ReportMaterialsResponses, ReportOeeData, ReportOeeErrors, ReportOeeResponses, ReportOrdersData, ReportOrdersErrors, ReportOrdersResponses, ReportProductivityData, ReportProductivityErrors, ReportProductivityResponses, ResolveTerminalQrData, ResolveTerminalQrErrors, ResolveTerminalQrResponses, SaveOrderSurveyData, SaveOrderSurveyErrors, SaveOrderSurveyResponses, ScanIntoPachkaData, ScanIntoPachkaErrors, ScanIntoPachkaResponses, ShipPachkaData, ShipPachkaErrors, ShipPachkaResponses, StartMachineStopData, StartMachineStopErrors, StartMachineStopResponses, StartOrderProductionData, StartOrderProductionErrors, StartOrderProductionResponses, StartTerminalSessionData, StartTerminalSessionErrors, StartTerminalSessionResponses, UpdateBridgeAgentData, UpdateBridgeAgentErrors, UpdateBridgeAgentResponses, UpdateClientData, UpdateClientErrors, UpdateClientResponses, UpdateEmployeeData, UpdateEmployeeErrors, UpdateEmployeeResponses, UpdateMachineData, UpdateMachineErrors, UpdateMachineResponses, UpdateOrderData, UpdateOrderErrors, UpdateOrderResponses, UpdatePasswordMeData, UpdatePasswordMeErrors, UpdatePasswordMeResponses, UpdatePostData, UpdatePostErrors, UpdatePostResponses, UpdateStockItemData, UpdateStockItemErrors, UpdateStockItemResponses, UpdateUserData, UpdateUserErrors, UpdateUserMeData, UpdateUserMeErrors, UpdateUserMeResponses, UpdateUserResponses, UploadOrderProjectData, UploadOrderProjectErrors, UploadOrderProjectResponses, UploadRoomPhotoData, UploadRoomPhotoErrors, UploadRoomPhotoResponses } from './types.gen';
+import type { AcceptIntoTmoData, AcceptIntoTmoErrors, AcceptIntoTmoResponses, AddSalePaymentData, AddSalePaymentErrors, AddSalePaymentResponses, AssignOrderMachinesData, AssignOrderMachinesErrors, AssignOrderMachinesResponses, BridgeScanData, BridgeScanErrors, BridgeScanResponses, CancelInstanceLabelData, CancelInstanceLabelErrors, CancelInstanceLabelResponses, CancelOrderData, CancelOrderErrors, CancelOrderResponses, CancelScanData, CancelScanErrors, CancelScanResponses, ClosePachkaData, ClosePachkaErrors, ClosePachkaResponses, ConfirmOrderData, ConfirmOrderErrors, ConfirmOrderResponses, CreateBridgeAgentData, CreateBridgeAgentErrors, CreateBridgeAgentResponses, CreateClientData, CreateClientErrors, CreateClientResponses, CreateEmployeeData, CreateEmployeeErrors, CreateEmployeeResponses, CreateMachineData, CreateMachineErrors, CreateMachineResponses, CreateOrderData, CreateOrderErrors, CreateOrderResponses, CreatePachkaData, CreatePachkaErrors, CreatePachkaResponses, CreateSaleData, CreateSaleErrors, CreateSaleResponses, CreateStockItemData, CreateStockItemErrors, CreateStockItemResponses, CreateUserData, CreateUserErrors, CreateUserResponses, DeleteBridgeAgentData, DeleteBridgeAgentErrors, DeleteBridgeAgentResponses, DeleteClientData, DeleteClientErrors, DeleteClientResponses, DeleteEmployeeData, DeleteEmployeeErrors, DeleteEmployeeResponses, DeleteMachineData, DeleteMachineErrors, DeleteMachineResponses, DeleteRoomPhotoData, DeleteRoomPhotoErrors, DeleteRoomPhotoResponses, DeleteStockItemData, DeleteStockItemErrors, DeleteStockItemResponses, DeleteUserData, DeleteUserErrors, DeleteUserMeData, DeleteUserMeResponses, DeleteUserResponses, DeliverOrderData, DeliverOrderErrors, DeliverOrderResponses, DeliverTmoOrderData, DeliverTmoOrderErrors, DeliverTmoOrderResponses, DownloadOrderFileData, DownloadOrderFileErrors, DownloadOrderFileResponses, DownloadOrderScxZipData, DownloadOrderScxZipErrors, DownloadOrderScxZipResponses, DownloadTerminalFileData, DownloadTerminalFileErrors, DownloadTerminalFileResponses, EditOrderMatrixData, EditOrderMatrixErrors, EditOrderMatrixResponses, EndTerminalSessionData, EndTerminalSessionErrors, EndTerminalSessionResponses, HealthApiV1HealthGetData, HealthApiV1HealthGetResponses, LoginAccessTokenData, LoginAccessTokenErrors, LoginAccessTokenResponses, LoginWithBadgeData, LoginWithBadgeErrors, LoginWithBadgeResponses, LogoutData, LogoutResponses, MoveStockItemData, MoveStockItemErrors, MoveStockItemResponses, PairBridgeAgentData, PairBridgeAgentErrors, PairBridgeAgentResponses, PrintEmployeeBadgeData, PrintEmployeeBadgeErrors, PrintEmployeeBadgeResponses, PrintInstanceLabelData, PrintInstanceLabelErrors, PrintInstanceLabelResponses, ReadAuditLogsData, ReadAuditLogsErrors, ReadAuditLogsResponses, ReadBridgeAgentsData, ReadBridgeAgentsResponses, ReadClientData, ReadClientErrors, ReadClientResponses, ReadClientsData, ReadClientsErrors, ReadClientsResponses, ReadEmployeeData, ReadEmployeeErrors, ReadEmployeeResponses, ReadEmployeesData, ReadEmployeesErrors, ReadEmployeesResponses, ReadMachineData, ReadMachineErrors, ReadMachineResponses, ReadMachinesData, ReadMachinesResponses, ReadOrderCutmapData, ReadOrderCutmapErrors, ReadOrderCutmapResponses, ReadOrderData, ReadOrderErrors, ReadOrderMatrixData, ReadOrderMatrixErrors, ReadOrderMatrixResponses, ReadOrderResponses, ReadOrdersData, ReadOrdersErrors, ReadOrdersResponses, ReadOrderStatusCountsData, ReadOrderStatusCountsResponses, ReadPostsData, ReadPostsResponses, ReadSaleData, ReadSaleErrors, ReadSaleResponses, ReadSalesData, ReadSalesErrors, ReadSalesResponses, ReadSalesSummaryData, ReadSalesSummaryResponses, ReadStockGroupsData, ReadStockGroupsResponses, ReadStockItemsData, ReadStockItemsErrors, ReadStockItemsResponses, ReadStockMovesData, ReadStockMovesErrors, ReadStockMovesResponses, ReadStockSummaryData, ReadStockSummaryResponses, ReadTabloMatrixData, ReadTabloMatrixResponses, ReadTabloOrderData, ReadTabloOrderErrors, ReadTabloOrderResponses, ReadTerminalContextData, ReadTerminalContextResponses, ReadTerminalCutmapData, ReadTerminalCutmapErrors, ReadTerminalCutmapResponses, ReadTerminalEmployeesData, ReadTerminalEmployeesResponses, ReadTerminalKromkaData, ReadTerminalKromkaErrors, ReadTerminalKromkaResponses, ReadTerminalOrdersData, ReadTerminalOrdersResponses, ReadTerminalPostQueueData, ReadTerminalPostQueueErrors, ReadTerminalPostQueueResponses, ReadTerminalPrisadkaData, ReadTerminalPrisadkaErrors, ReadTerminalPrisadkaResponses, ReadTmoOrderData, ReadTmoOrderErrors, ReadTmoOrderResponses, ReadUpakovkaOrderData, ReadUpakovkaOrderErrors, ReadUpakovkaOrderResponses, ReadUserByIdData, ReadUserByIdErrors, ReadUserByIdResponses, ReadUserMeData, ReadUserMeResponses, ReadUsersData, ReadUsersErrors, ReadUsersResponses, ReadyApiV1ReadyGetData, ReadyApiV1ReadyGetResponses, RecordScanData, RecordScanErrors, RecordScanResponses, RefreshAccessTokenData, RefreshAccessTokenResponses, RegenerateBadgeData, RegenerateBadgeErrors, RegenerateBadgeResponses, RegenerateBridgeCodeData, RegenerateBridgeCodeErrors, RegenerateBridgeCodeResponses, RegenerateOrderScxData, RegenerateOrderScxErrors, RegenerateOrderScxResponses, RemoveFromPachkaData, RemoveFromPachkaErrors, RemoveFromPachkaResponses, RenderInstanceLabelData, RenderInstanceLabelErrors, RenderInstanceLabelResponses, ReportDashboardData, ReportDashboardResponses, ReportMaterialsData, ReportMaterialsErrors, ReportMaterialsResponses, ReportOrdersData, ReportOrdersErrors, ReportOrdersResponses, ReportProductivityData, ReportProductivityErrors, ReportProductivityResponses, ResolveTerminalQrData, ResolveTerminalQrErrors, ResolveTerminalQrResponses, SaveOrderSurveyData, SaveOrderSurveyErrors, SaveOrderSurveyResponses, ScanIntoPachkaData, ScanIntoPachkaErrors, ScanIntoPachkaResponses, ShipPachkaData, ShipPachkaErrors, ShipPachkaResponses, StartOrderProductionData, StartOrderProductionErrors, StartOrderProductionResponses, StartTerminalSessionData, StartTerminalSessionErrors, StartTerminalSessionResponses, UpdateBridgeAgentData, UpdateBridgeAgentErrors, UpdateBridgeAgentResponses, UpdateClientData, UpdateClientErrors, UpdateClientResponses, UpdateEmployeeData, UpdateEmployeeErrors, UpdateEmployeeResponses, UpdateMachineData, UpdateMachineErrors, UpdateMachineResponses, UpdateOrderData, UpdateOrderErrors, UpdateOrderResponses, UpdatePasswordMeData, UpdatePasswordMeErrors, UpdatePasswordMeResponses, UpdatePostData, UpdatePostErrors, UpdatePostResponses, UpdateStockItemData, UpdateStockItemErrors, UpdateStockItemResponses, UpdateUserData, UpdateUserErrors, UpdateUserMeData, UpdateUserMeErrors, UpdateUserMeResponses, UpdateUserResponses, UploadOrderProjectData, UploadOrderProjectErrors, UploadOrderProjectResponses, UploadRoomPhotoData, UploadRoomPhotoErrors, UploadRoomPhotoResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -418,70 +418,6 @@ export class EmployeesService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/employees/{employee_id}/print',
-            ...options
-        });
-    }
-}
-
-export class DefectsService {
-    /**
-     * Read Defects
-     */
-    public static readDefects<ThrowOnError extends boolean = true>(options?: Options<ReadDefectsData, ThrowOnError>): RequestResult<ReadDefectsResponses, ReadDefectsErrors, ThrowOnError> {
-        return (options?.client ?? client).get<ReadDefectsResponses, ReadDefectsErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/defects/',
-            ...options
-        });
-    }
-    
-    /**
-     * Report Defect
-     *
-     * Operator brakni belgilaydi. Detal ishlab chiqarishga QAYTMAYDI — menejer tasdig'i kerak.
-     */
-    public static reportDefect<ThrowOnError extends boolean = true>(options: Options<ReportDefectData, ThrowOnError>): RequestResult<ReportDefectResponses, ReportDefectErrors, ThrowOnError> {
-        return (options.client ?? client).post<ReportDefectResponses, ReportDefectErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/defects/',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
-    }
-    
-    /**
-     * Approve Defect
-     *
-     * Tasdiqlaydi va detalni qayta ishlab chiqarishga yuboradi.
-     */
-    public static approveDefect<ThrowOnError extends boolean = true>(options: Options<ApproveDefectData, ThrowOnError>): RequestResult<ApproveDefectResponses, ApproveDefectErrors, ThrowOnError> {
-        return (options.client ?? client).post<ApproveDefectResponses, ApproveDefectErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/defects/{defect_id}/approve',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
-    }
-    
-    /**
-     * Reject Defect
-     *
-     * Rad etadi — detal yaroqli, ko'rsatkichga ta'sir qilmaydi.
-     */
-    public static rejectDefect<ThrowOnError extends boolean = true>(options: Options<RejectDefectData, ThrowOnError>): RequestResult<RejectDefectResponses, RejectDefectErrors, ThrowOnError> {
-        return (options.client ?? client).post<RejectDefectResponses, RejectDefectErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/defects/{defect_id}/reject',
             ...options
         });
     }
@@ -1346,56 +1282,6 @@ export class TerminalService {
     }
     
     /**
-     * Read Stop Reasons
-     *
-     * To'xtash sabablari — monoblokdagi tanlash ro'yxati.
-     */
-    public static readStopReasons<ThrowOnError extends boolean = true>(options?: Options<ReadStopReasonsData, ThrowOnError>): RequestResult<ReadStopReasonsResponses, unknown, ThrowOnError> {
-        return (options?.client ?? client).get<ReadStopReasonsResponses, unknown, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/terminal/stop-reasons',
-            ...options
-        });
-    }
-    
-    /**
-     * Start Machine Stop
-     *
-     * To'xtashni boshlaydi. Ochig'i bo'lsa AVVAL yopiladi.
-     *
-     * Sababni almashtirish oddiy holat: "material yo'q" bilan boshlanib, keyin
-     * "nosozlik" bo'lib chiqadi. Ikkinchi tugma bosilishi xato bermasin — aks
-     * holda operator eskisini qidirib yurardi va vaqt noto'g'ri sababda qolardi.
-     */
-    public static startMachineStop<ThrowOnError extends boolean = true>(options: Options<StartMachineStopData, ThrowOnError>): RequestResult<StartMachineStopResponses, StartMachineStopErrors, ThrowOnError> {
-        return (options.client ?? client).post<StartMachineStopResponses, StartMachineStopErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/terminal/stop',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
-    }
-    
-    /**
-     * End Machine Stop
-     *
-     * Ishni davom ettirish — ochiq to'xtashni yopadi.
-     */
-    public static endMachineStop<ThrowOnError extends boolean = true>(options?: Options<EndMachineStopData, ThrowOnError>): RequestResult<EndMachineStopResponses, unknown, ThrowOnError> {
-        return (options?.client ?? client).post<EndMachineStopResponses, unknown, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/terminal/stop/end',
-            ...options
-        });
-    }
-    
-    /**
      * Read Terminal Orders
      *
      * Active orders relevant to this terminal (for the ARRA map order picker).
@@ -1654,32 +1540,6 @@ export class ReportsService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/reports/dashboard',
-            ...options
-        });
-    }
-    
-    /**
-     * Report Oee
-     *
-     * Ish markazlari bo'yicha Availability va to'xtalishlar tahlili.
-     *
-     * Hozircha OEE ning VAQT qismi: Performance ideal tezlik va ishlab chiqarilgan
-     * miqdorni, Quality esa brak hisobini talab qiladi — ular keyingi bosqichlarda.
-     *
-     * FAQAT STANOKLAR: `ideal_rate` to'ldirilgan ish markazlari. To'qqiz postning
-     * beshtasida haqiqiy stanok bor (ARRA, KROMKA, OVAL, PRISADKA, ROVER),
-     * qolganida esa brigada va monoblok — u yerda "uskuna samaradorligi" o'lchash
-     * mumkin bo'lgan uskunaning o'zi yo'q. Ro'yxat KODDA emas, sozlamada:
-     * admin ish markaziga ideal tezlik kiritsa, o'sha stanok kuzatuvga tushadi.
-     *
-     * NOAKTIV ish markazlari ham ro'yxatda: ta'mirda turgan stanok aynan eng katta
-     * yo'qotish manbai bo'lishi mumkin, uni yashirish ko'rsatkichni chiroylashtirardi.
-     */
-    public static reportOee<ThrowOnError extends boolean = true>(options?: Options<ReportOeeData, ThrowOnError>): RequestResult<ReportOeeResponses, ReportOeeErrors, ThrowOnError> {
-        return (options?.client ?? client).get<ReportOeeResponses, ReportOeeErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/reports/oee',
             ...options
         });
     }
