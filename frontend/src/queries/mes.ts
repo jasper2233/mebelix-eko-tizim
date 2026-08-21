@@ -107,6 +107,11 @@ export const getTabloMatrixQueryOptions = () =>
     queryKey: ["tablo", "matrix"],
     queryFn: async () => (await TabloService.readTabloMatrix()).data,
     refetchInterval: 60_000,
+    // Devor ekrani hech qachon "fokusda" bo'lmaydi — hech kim sichqoncha
+    // tegizmaydi, kiosk brauzeri boshqa oynaga o'tib qolishi mumkin. Standart
+    // holatda TanStack fon oynada pollingni to'xtatadi: prodda o'lchandi —
+    // ma'lumot 2 daqiqa eskirib, JONLI ko'rsatkichi bejiz qizarib qoldi.
+    refetchIntervalInBackground: true,
   })
 
 /** Status bo'yicha buyurtma sonlari. Reyestr tablari ham, sidebar badge'i ham

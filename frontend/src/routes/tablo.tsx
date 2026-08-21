@@ -15,7 +15,7 @@ import {
 import { TabloService } from "@/client"
 import { useMesWs } from "@/hooks/useMesWs"
 import { requireAuth } from "@/lib/guards"
-import { deadlineTone, formatDate, POST_COLORS } from "@/lib/mes"
+import { deadlineTone, POST_COLORS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import {
   getMachinesQueryOptions,
@@ -44,16 +44,19 @@ const UNIT_LABELS: Record<string, string> = {
  * Devor ekranida sana raqami foydasiz: odam uni bugungi kundan ayirishi kerak
  * bo'ladi. Muddat esa TABLO ning eng muhim signali — u hisoblab berilishi kerak.
  */
-function deadlineCountdown(value?: string | null): string {
-  if (!value) return "—"
+function deadlineCountdown(value?: string | null): [string, string] {
+  if (!value) return ["—", ""]
   const target = new Date(value)
   const today = new Date()
   target.setHours(0, 0, 0, 0)
   today.setHours(0, 0, 0, 0)
   const days = Math.round((target.getTime() - today.getTime()) / 86_400_000)
-  if (days < 0) return `${-days} kun kechikdi`
-  if (days === 0) return "BUGUN"
-  return `${days} kun qoldi`
+  if (days === 0) return ["BUGUN", ""]
+  // Raqam va so'z AJRATILADI: bitta satrda "2 kun kechikdi" tor ustunga
+  // sig'masdi va qisqartirilganda "2 kun ke…" bo'lib ma'nosini yo'qotardi.
+  // Ikki satrda hech qachon kesilmaydi va ierarxiya ham to'g'ri chiqadi:
+  // raqam — ma'lumot, so'z — yorliq.
+  return [`${days < 0 ? -days : days} kun`, days < 0 ? "KECHIKDI" : "QOLDI"]
 }
 
 /** Devor ekrani uchun o'lcham shkalasi — REJIMGA bog'liq.
@@ -77,8 +80,13 @@ function tabloScale(mode: Mode): React.CSSProperties {
         : "clamp(0.85rem, 1.2vw, 2.25rem)",
     "--t-order": "clamp(1rem, 1.45vw, 2.75rem)",
     "--t-head": "clamp(0.7rem, 0.8vw, 1.6rem)",
-    "--t-meta": "clamp(0.65rem, 0.72vw, 1.4rem)",
+    "--t-meta": "clamp(0.7rem, 0.9vw, 1.5rem)",
     "--t-badge": "clamp(0.55rem, 0.6vw, 1.1rem)",
+    // Fon FAQAT tabloda quyuqroq. O'lchandi: `--surface` (#f4f6f9) bilan oq
+    // kartochka orasidagi kontrast 1.08:1 — 5 metrdan kartochka chegarasi
+    // umuman ko'rinmasdi, faqat 1px soya ajratardi va u ham yo'qoladi.
+    // Ya'ni jadval strukturasi (qator/ustun to'ri) uzoqdan tarqalib ketardi.
+    "--surface": "#dde3eb",
   } as React.CSSProperties
 }
 
@@ -356,12 +364,12 @@ function TabloPage() {
              Ilgari ustunlar mazmunga qarab 87px dan 187px gacha sakrardi. */
           <table className="w-full table-fixed border-separate border-spacing-2">
             <colgroup>
-              <col className="w-[15%]" />
-              <col className="w-[10%]" />
+              <col className="w-[14%]" />
+              <col className="w-[13%]" />
               {data?.posts.map((p) => (
                 <col
                   key={p.id}
-                  style={{ width: `${75 / (data.posts.length || 1)}%` }}
+                  style={{ width: `${73 / (data.posts.length || 1)}%` }}
                 />
               ))}
             </colgroup>
@@ -371,10 +379,10 @@ function TabloPage() {
                 style={{ fontSize: "var(--t-head)" }}
               >
                 <th className="sticky top-0 z-10 bg-surface px-2 text-left">
-                  № / Buyurtma
+                  Buyurtma
                 </th>
                 <th className="sticky top-0 z-10 bg-surface px-2 text-left">
-                  Topshirish sanasi
+                  Muddat
                 </th>
                 {data?.posts.map((p) => {
                   // Kontekst rejimida boshqa ustunlar RANG bilan susayadi, opacity bilan emas —
@@ -454,7 +462,7 @@ function TabloPage() {
                   })}
                 </tr>
               )}
-              {paged.visible.map((o, idx) => (
+              {paged.visible.map((o) => (
                 <tr
                   key={o.id}
                   onClick={() => setDrill(o.id)}
@@ -466,23 +474,26 @@ function TabloPage() {
                 >
                   {/* MATN ustuni — bu yerda qisqartirish O'RINLI: loyiha nomi
                       ixtiyoriy uzunlikda bo'ladi. Raqam kataklarida esa
-                      qisqartirish TAQIQ — kesilgan son yolg'on ma'lumot. */}
-                  <td className="truncate rounded-l-lg bg-card px-3 py-3 shadow-sm">
+                      qisqartirish TAQIQ — kesilgan son yolg'on ma'lumot.
+
+                      Raqam va loyiha nomi USTMA-UST. Yonma-yon turganda ikkalasi
+                      bitta satrga sig'masdi (o'lchandi: 261px matn 244px katakda)
+                      va `truncate` ham yordam bermasdi — u `<td>` da ishlamaydi,
+                      chunki `display: table-cell` da `text-overflow` qo'llanmaydi.
+                      Ustma-ust bo'lganda raqam butun kenglikni oladi, nom esa
+                      o'z satrida qisqaradi. Muddat katagi ham shu naqshda.
+                      Qator raqami (1, 2, 3...) olib tashlandi: qatorning o'rni
+                      ko'rinib turibdi, raqam faqat joy egallardi. */}
+                  <td className="rounded-l-lg bg-card px-3 py-3 shadow-sm">
                     <span
-                      className="num mr-2 text-muted-foreground"
-                      style={{ fontSize: "var(--t-meta)" }}
-                    >
-                      {idx + 1}
-                    </span>
-                    <span
-                      className="font-bold"
+                      className="block truncate font-bold leading-tight"
                       style={{ fontSize: "var(--t-order)" }}
                     >
                       {o.number}
                     </span>
                     {o.name && (
                       <span
-                        className="ml-2 hidden text-muted-foreground xl:inline"
+                        className="block truncate text-muted-foreground"
                         style={{ fontSize: "var(--t-meta)" }}
                       >
                         {o.name}
@@ -491,9 +502,8 @@ function TabloPage() {
                   </td>
                   {/* Muddat toni signal: hammasi amber bo'lsa amber hech narsa anglatmaydi */}
                   <td
-                    style={{ fontSize: "var(--t-order)" }}
                     className={cn(
-                      "whitespace-nowrap px-3 py-3 font-bold",
+                      "px-3 py-3 font-bold",
                       deadlineTone(o.deadline) === "overdue"
                         ? "bg-red-100 text-red-800"
                         : deadlineTone(o.deadline) === "today"
@@ -504,15 +514,27 @@ function TabloPage() {
                     {/* Devor ekranida "19.08.2026" hech narsa demaydi — odam
                         boshida sanani bugungi kundan ayirishi kerak bo'lardi.
                         Javobning O'ZI yoziladi, sana ostida dalil bo'lib qoladi. */}
-                    <span className="block leading-tight">
-                      {deadlineCountdown(o.deadline)}
-                    </span>
-                    <span
-                      className="num block font-semibold tabular-nums opacity-55"
-                      style={{ fontSize: "var(--t-badge)" }}
-                    >
-                      {formatDate(o.deadline)}
-                    </span>
+                    {(() => {
+                      const [son, soz] = deadlineCountdown(o.deadline)
+                      return (
+                        <>
+                          <span
+                            className="num block leading-tight tabular-nums"
+                            style={{ fontSize: "var(--t-order)" }}
+                          >
+                            {son}
+                          </span>
+                          {soz && (
+                            <span
+                              className="block font-bold uppercase leading-tight tracking-wider"
+                              style={{ fontSize: "var(--t-badge)" }}
+                            >
+                              {soz}
+                            </span>
+                          )}
+                        </>
+                      )
+                    })()}
                   </td>
                   {(() => {
                     // Qat'iy tartib (STRICT_STAGE_ORDER): ROVER boshlanmasa
@@ -634,7 +656,7 @@ function TabloCell({
   return (
     <td
       className={cn(
-        "relative overflow-hidden rounded-sm px-2 pb-4 pt-3 text-center align-middle",
+        "relative overflow-hidden rounded-sm px-2 py-3 text-center align-middle",
         complete
           ? "bg-green-100"
           : overdue
@@ -645,20 +667,39 @@ function TabloCell({
     >
       {/* Kontekst rejimida faqat progress to'ldirgichi susayadi — raqam to'liq
           kontrastda qoladi, aks holda 4 metrdan o'qib bo'lmasdi. */}
-      {!complete && (
+      {/* BUTUN KATAK to'ladi — "data bar in cell" naqshi (Excel data bars,
+          Grafana jadval paneli). Devor ekranida MAYDON eng oson o'qiladigan
+          signal: 5 metrdan 12% bilan 18% ni ajratish uchun ingichka chiziq
+          yetmaydi, to'ldirilgan yuza esa darhol ko'rinadi.
+
+          Ilgari ham shunday edi va men uni pastki relsga almashtirgan edim —
+          xato tashxis: ayb GEOMETRIYADA emas, RANGDA edi. Eski to'ldirish
+          post rangining 22% i bo'lgan (och pushti, och yashil) — oq ustida
+          deyarli ko'rinmasdi. Endi rang holat rangi (navy), post rangi esa
+          ustun sarlavhasida qoladi.
+
+          Chegara chizig'i ham bor: ko'z aynan CHEGARANI o'qiydi, yuza esa
+          uzoqdan massa beradi. Ikkalasi birga past foizda ham (12%) aniq
+          ko'rinadi — haqiqiy o'lchamdagi maketda 14/18/22/26/32% solishtirildi.
+
+          HAMMA katakda emas, faqat ISH KETAYOTGANIDA. Nisbat faqat qisman
+          bajarilgan qadamda ma'noga ega: 0% — "boshlanmadi", 100% — "tugadi",
+          ikkalasi ham TOIFA, o'lchov emas, va ularni raqamning o'zi (yoki
+          yashil ✓) allaqachon aytgan. Har katakda chizilsa, 9 post x 6
+          buyurtma = 54 ta bezak bo'lib, hech biri ajralib turmasdi.
+
+          Bundan tashqari 0% da chegara chizig'i katakning CHAP chetida
+          qolib, ~3% dek ko'rinardi — ya'ni boshlanmagan ishni boshlangandek
+          ko'rsatardi. */}
+      {!complete && stage.done > 0 && (
         <span
-          // Ilgari bu butun katakni 22% shaffoflikda bo'yardigan "wash" edi —
-          // 5 metrdan umuman ko'rinmasdi, ya'ni eng oson o'qiladigan signal
-          // (bajarilgan ulush) behuda ketardi. Endi pastda to'yingan rangli
-          // rels: raqam bilan raqobatlashmaydi, uzoqdan esa darhol o'qiladi.
-          // Rang MA'NO bo'yicha bo'linadi: post rangi USTUN SARLAVHASIDA
-          // (kimligi), ma'lumot maydonida esa faqat HOLAT (qizil — to'siq,
-          // yashil — tugagan). Rels "qancha" deydi, "qaysi post" emas — buni
-          // ustun allaqachon aytgan. Post rangida bo'lsa har qatorda to'qqizta
-          // rangli chiziq paydo bo'lib, ranglar ma'nosini yo'qotardi.
-          // `transition-all` emas: faqat kenglik o'zgaradi.
-          className="absolute bottom-0 left-0 h-2.5 rounded-full bg-primary transition-[width] duration-700"
-          style={{ width: `${pct}%`, opacity: dim ? 0.3 : 0.85 }}
+          className="absolute inset-y-0 left-0 transition-[width] duration-700"
+          style={{
+            width: `${pct}%`,
+            background: "color-mix(in srgb, var(--primary) 22%, transparent)",
+            borderRight: "4px solid var(--primary)",
+            opacity: dim ? 0.35 : 1,
+          }}
         />
       )}
       <span
