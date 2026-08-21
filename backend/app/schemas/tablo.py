@@ -20,7 +20,6 @@ class TabloPostCol(BaseModel):
     code: str
     name: str
     unit: str
-    color: str | None
     order_index: int
 
 

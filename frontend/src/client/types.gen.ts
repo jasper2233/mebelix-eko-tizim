@@ -1196,6 +1196,10 @@ export type OrderDetail = {
      * Instances Count
      */
     instances_count?: number;
+    /**
+     * Cancelled By Name
+     */
+    cancelled_by_name?: string | null;
 };
 
 /**
@@ -1725,14 +1729,6 @@ export type PostRead = {
      * Requires Assignment Choice
      */
     requires_assignment_choice: boolean;
-    /**
-     * Icon
-     */
-    icon: string | null;
-    /**
-     * Color
-     */
-    color: string | null;
 };
 
 /**
@@ -1758,14 +1754,6 @@ export type PostUpdate = {
      * Requires Assignment Choice
      */
     requires_assignment_choice?: boolean | null;
-    /**
-     * Icon
-     */
-    icon?: string | null;
-    /**
-     * Color
-     */
-    color?: string | null;
 };
 
 /**
@@ -2466,10 +2454,6 @@ export type TabloPostCol = {
      * Unit
      */
     unit: string;
-    /**
-     * Color
-     */
-    color: string | null;
     /**
      * Order Index
      */

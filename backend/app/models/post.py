@@ -20,5 +20,3 @@ class Post(BaseModel):
     # requires_qr_print/auto_skip_if_empty olib tashlandi: hech qayerda o'qilmasdi —
     # ARRA chek-oqimi post.code bilan aniqlanadi (e8b1... keyingi migratsiyada drop)
     requires_assignment_choice: Mapped[bool] = mapped_column(default=False, kw_only=True)
-    icon: Mapped[str | None] = mapped_column(String(50), default=None, kw_only=True)
-    color: Mapped[str | None] = mapped_column(String(20), default=None, kw_only=True)

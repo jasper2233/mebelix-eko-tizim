@@ -163,7 +163,7 @@ __root.tsx                 → root layout (Outlet, devtools, 404/error)
 |---|---|---|
 | `/` | `index.tsx` | Dashboard — jonli ishlab chiqarish monitori (quyida) |
 | `/orders` | `orders/index.tsx` | Buyurtmalar reestri: status tab'lar + to'lov ustunlari (quyida) |
-| `/orders/:id` | `orders/$orderId.tsx` | Buyurtma sahifasi — lifecycle tugmalari, to'lovlar, matritsa (quyida) |
+| `/orders/:id` | `orders/$orderId.tsx` | Buyurtma sahifasi — lifecycle tugmalari, to'lovlar, matritsa (quyida). Bekor qilingan buyurtmada "Bekor sababi" yonida **"Bekor qildi"** satri ham chiqadi (`cancelled_by_name`) — ilgari kim bekor qilgani faqat audit logda qolardi |
 | `/anketa/:id` | `anketa.$orderId.tsx` | Buyurtma anketasi — mijoz so'rovnomasi + o'lchov varag'i (quyida) |
 | `/cutmap/:id` | `cutmap.$orderId.tsx` | Kesish xaritalari — admin/print ko'rinishi (quyida) |
 | `/clients` | `clients.tsx` | Mijozlar reestri (guard: `requireAccess(isManagement)`): qidiruv (ism/telefon), `AddClient` dialogi, buyurtmalar soni ustuni |

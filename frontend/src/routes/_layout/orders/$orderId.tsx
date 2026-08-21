@@ -358,6 +358,12 @@ function OrderDetailPage() {
         {order.cancel_reason && (
           <Meta label="Bekor sababi" value={order.cancel_reason} />
         )}
+        {/* Kim bekor qilgani BAZADA bor edi (`cancelled_by_id`), lekin hech
+            qayerda ko'rsatilmasdi — foydalanuvchi sababni ko'rib, kimligini
+            audit logdan qidirishga majbur bo'lardi */}
+        {order.cancelled_by_name && (
+          <Meta label="Bekor qildi" value={order.cancelled_by_name} />
+        )}
         {order.delivered_at && (
           <Meta
             label="Topshirilgan"

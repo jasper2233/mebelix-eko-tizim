@@ -159,6 +159,5 @@ def _post_col(p: Post) -> TabloPostCol:
         code=str(p.code),
         name=p.name,
         unit=str(p.unit),
-        color=p.color,
         order_index=p.order_index,
     )

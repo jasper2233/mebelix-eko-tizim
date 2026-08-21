@@ -25,16 +25,12 @@ POSTS: list[dict[str, object]] = [
         "name": "Arra",
         "order_index": 1,
         "unit": PostUnit.M2,
-        "color": "#c2410c",
-        "icon": "saw",
     },
     {
         "code": PostCode.KROMKA,
         "name": "Kromka",
         "order_index": 2,
         "unit": PostUnit.METER,
-        "color": "#0e7490",
-        "icon": "band",
     },
     {
         # Oval (egri) kromka: fayldan avto-aniqlanmaydi — texnolog matritsada
@@ -43,16 +39,12 @@ POSTS: list[dict[str, object]] = [
         "name": "Oval kromka",
         "order_index": 3,
         "unit": PostUnit.METER,
-        "color": "#0d9488",
-        "icon": "band",
     },
     {
         "code": PostCode.PRISADKA,
         "name": "Prisadka",
         "order_index": 4,
         "unit": PostUnit.PIECE,
-        "color": "#7c3aed",
-        "icon": "drill",
     },
     # order_index 5 (eski PAZ) ataylab bo'sh: tartib faqat nisbiy ishlatiladi,
     # qayta raqamlash esa mavjud bazalarda bekorga siljish beradi.
@@ -62,16 +54,12 @@ POSTS: list[dict[str, object]] = [
         "order_index": 6,
         "unit": PostUnit.PIECE,
         "requires_assignment_choice": True,
-        "color": "#be185d",
-        "icon": "mill",
     },
     {
         "code": PostCode.STOLYARKA,
         "name": "Stolyarka",
         "order_index": 7,
         "unit": PostUnit.PIECE,
-        "color": "#15803d",
-        "icon": "assembly",
     },
     # Bo'yoq oxirgi bosqich: haqiqiy marshrut {7;11;8} = rover -> petlya (stolyarka) -> bo'yoq.
     # Ish markazi tanlash shart emas — bo'yoq kamerasi bitta, terminalda umumiy vazifalar ro'yxati.
@@ -80,8 +68,6 @@ POSTS: list[dict[str, object]] = [
         "name": "Bo'yoq",
         "order_index": 8,
         "unit": PostUnit.PIECE,
-        "color": "#a16207",
-        "icon": "paint",
     },
     # Qadoqlash — bo'yoqdan keyingi oxirgi bosqich. Birligi m2: ish haqi
     # qadoqlangan detallar kvadraturasi bo'yicha hisoblanadi.
@@ -90,8 +76,6 @@ POSTS: list[dict[str, object]] = [
         "name": "Qadoqlash",
         "order_index": 9,
         "unit": PostUnit.M2,
-        "color": "#0369a1",
-        "icon": "package",
     },
     # TMO (Tayyor Mahsulot Ombori) — eng oxirgi qadam, HAR buyurtmada (qadoqlangan
     # ham, qadoqlanmagan ham). Omborchi qabul qilmaguncha detal "tayyor" hisoblanmaydi:
@@ -101,8 +85,6 @@ POSTS: list[dict[str, object]] = [
         "name": "TMO",
         "order_index": 10,
         "unit": PostUnit.PIECE,
-        "color": "#7c2d12",
-        "icon": "warehouse",
     },
 ]
 

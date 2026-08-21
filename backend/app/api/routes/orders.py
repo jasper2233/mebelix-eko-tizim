@@ -215,6 +215,10 @@ async def read_order(db: SessionDep, current_user: StaffReadUser, order_id: int)
 
     detail = OrderDetail.model_validate(order)
     detail.client_name = client.full_name if client else ""
+    # Faqat bekor qilingan buyurtmada — qo'shimcha so'rov behuda ketmasin
+    if order.cancelled_by_id is not None:
+        canceller = await db.get(User, order.cancelled_by_id)
+        detail.cancelled_by_name = (canceller.name or canceller.username) if canceller else None
     detail.files = [OrderFileRead.model_validate(f) for f in files]
     detail.parts_count = parts_count
     detail.instances_count = instances_count

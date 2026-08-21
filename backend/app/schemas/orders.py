@@ -67,6 +67,10 @@ class OrderDetail(OrderRead):
     files: list[OrderFileRead] = []
     parts_count: int = 0
     instances_count: int = 0
+    #: Kim bekor qilgan — ISM, id emas: kartochkada "Bekor sababi" yonida turadi.
+    #: Ilgari `cancelled_by_id` yozilardi-yu, hech qayerda o'qilmasdi: foydalanuvchi
+    #: sababni ko'rar, kimligini esa faqat audit logdan qidirishga to'g'ri kelardi.
+    cancelled_by_name: str | None = None
 
 
 class OrderCreate(BaseModel):
