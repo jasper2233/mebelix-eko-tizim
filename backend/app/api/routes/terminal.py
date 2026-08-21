@@ -908,6 +908,8 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
         raise _scan_error("E001", "Bu detal roverda kesiladi — chekni rover terminalidan chiqaring.")
 
     instance.label_printed_at = datetime.now(UTC)
+    # Chekni kim chiqargani nusxaning O'ZIDA qoladi — bekor qilish huquqi shundan
+    instance.label_post_id = print_post.id if print_post is not None else None
     log_action(
         db,
         module="print",
@@ -976,7 +978,6 @@ async def cancel_instance_label(db: SessionDep, user: LabelCancelUser, instance_
     instance = await db.get(PartInstance, instance_id)
     if instance is None or instance.is_deleted:
         raise NotFoundException("Nusxa topilmadi.")
-    instance.label_printed_at = None
 
     # Kesish postlarida chek chiqarish skan ham yozadi ("chek = kesildi"), shuning
     # uchun bekor qilish o'sha skanni ham qaytarishi shart — aks holda katak yashil
@@ -1000,6 +1001,46 @@ async def cancel_instance_label(db: SessionDep, user: LabelCancelUser, instance_
         .scalars()
         .all()
     )
+
+    # HAR KIM FAQAT O'Z POSTINI BEKOR QILADI. Ilgari tekshiruv umuman yo'q edi:
+    # roverchi ro'yxatida arradan kelgan detallar ham turadi va ularda uzoq bosish
+    # ishlar edi — ya'ni roverchi arrachining kesish skanini qaytarib, katakni
+    # "kesilmagan" holatga tushira olardi (va aksincha, API orqali arrachi
+    # rovernikini). Skanning O'ZIDAGI `post_id` dalil bo'lib xizmat qiladi:
+    # marshrutdan taxmin qilinmaydi.
+    #
+    # Menejer/texnolog/admin — ataylab istisno: proyekt ro'yxatdan tushib
+    # bo'lgach arrachi xaritani ocholmaydi, oxirgi xato chekni texnolog tuzatadi.
+    if not user.is_superuser and UserRole(user.role) not in (
+        UserRole.MANAGER,
+        UserRole.TEXNOLOG,
+        UserRole.ADMIN,
+    ):
+        try:
+            _, caller_post = await resolve_terminal(db, user)
+        except ScanRejected as exc:
+            raise _scan_error(exc.code, exc.message) from None
+        if caller_post.code not in (PostCode.ARRA, PostCode.ROVER):
+            raise ForbiddenException("Chekni faqat kesish posti (ARRA yoki ROVER) bekor qila oladi.")
+        # Skan dalili — bajarilgan ISHNI himoya qiladi (`total_done` qaytmasin)
+        foreign = next((sc for sc in auto_scans if sc.post_id != caller_post.id), None)
+        if foreign is not None:
+            owner = await db.get(Post, foreign.post_id)
+            raise ForbiddenException(
+                f"Bu detalni {owner.name if owner else 'boshqa post'} kesgan — bekor qilishni o'sha post bajaradi."
+            )
+        # Nusxadagi yozuv — CHEKNING o'zini himoya qiladi. Chek chiqib, skan
+        # yozilmasligi mumkin (roverchi arradan keladigan detalning chekini
+        # chiqarsa, `record_scan` E001 bilan rad etadi) — o'shanda skanda dalil
+        # qolmaydi va ilgari boshqa post chekni tozalab yubora olardi.
+        if instance.label_post_id is not None and instance.label_post_id != caller_post.id:
+            owner = await db.get(Post, instance.label_post_id)
+            raise ForbiddenException(
+                f"Bu chekni {owner.name if owner else 'boshqa post'} chiqargan — bekor qilishni o'sha post bajaradi."
+            )
+
+    instance.label_printed_at = None
+    instance.label_post_id = None
     for scan in auto_scans:
         scan.is_cancelled = True
         scan.cancelled_at = datetime.now(UTC)

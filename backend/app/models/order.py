@@ -133,6 +133,11 @@ class PartInstance(BaseModel):
     pattern_no: Mapped[int | None] = mapped_column(default=None, kw_only=True)
     cell_index: Mapped[int | None] = mapped_column(default=None, kw_only=True)
     label_printed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
+    #: Chekni QAYSI POST chiqargan. Bekor qilish huquqi shunga bog'liq: chekni
+    #: chiqargan post o'zi qaytaradi, boshqasi tegolmaydi. Marshrutdan taxmin
+    #: qilib bo'lmaydi — bitta detalning chekini ARRA ham, ROVER ham chiqarishi
+    #: mumkin, va chek chiqarish har doim ham skan yozmaydi.
+    label_post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"), default=None, kw_only=True)
 
 
 class PartRoute(BaseModel):

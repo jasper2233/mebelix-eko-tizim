@@ -92,6 +92,9 @@ export function PrisadkaView({
   }) => {
     pressRef.current = window.setTimeout(() => setCancelTarget(t), 600)
   }
+  /** Chek SHU postda chiqarilganmi — bekor qilish huquqi shunga bog'liq */
+  const ownLabel = (p: { arra_route?: boolean | null }) =>
+    Boolean(onShowOnMap) && !p.arra_route
   const holdEnd = () => {
     if (pressRef.current !== null) window.clearTimeout(pressRef.current)
     pressRef.current = null
@@ -252,9 +255,15 @@ export function PrisadkaView({
                     key={i.instance_id}
                     id={`pv-inst-${i.instance_id}`}
                     onClick={() => setSelectedId(i.instance_id)}
-                    // Chek chiqarilgan nusxada uzoq bosish uni bekor qiladi
+                    // Chek chiqarilgan nusxada uzoq bosish uni bekor qiladi —
+                    // lekin FAQAT o'z postida chiqarilganida. Ro'yxatda arradan
+                    // kelgan detallar ham turadi va ilgari ularda ham ishlardi:
+                    // roverchi arrachining kesish skanini qaytara olardi.
+                    // Shart ikonkanikiga teng — uning borligi "chek shu yerda
+                    // chiqadi" degani (backend ham shuni tekshiradi).
                     onPointerDown={() =>
                       i.label_printed &&
+                      ownLabel(p) &&
                       holdStart({
                         instance_id: i.instance_id,
                         qr_text: i.qr_text,
