@@ -24,6 +24,7 @@ import {
   EmployeesService,
   type PostRead,
 } from "@/client"
+import { Field } from "@/components/Common/Field"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
 import { SelectField } from "@/components/Common/SelectField"
@@ -225,17 +226,17 @@ function DefectCard({
 
       {pending ? (
         <div className="mt-3 grid gap-3 border-t pt-3 sm:grid-cols-3">
-          <label className="grid gap-1 text-sm">
-            <span className="font-medium">Aybdor post</span>
+          {/* Loyihaning yorliq naqshi — `Field` (ilova bo'ylab bir xil ko'rinish
+              va `<label>` ichidagi bog'lanish shu yerda hal qilingan) */}
+          <Field label="Aybdor post">
             <SelectField
               value={blamedPost}
               onChange={setBlamedPost}
               placeholder="Tanlang"
               options={postOptions}
             />
-          </label>
-          <label className="grid gap-1 text-sm">
-            <span className="font-medium">Aybdor hodim</span>
+          </Field>
+          <Field label="Aybdor hodim">
             <SelectField
               value={blamedEmployee}
               onChange={setBlamedEmployee}
@@ -245,16 +246,15 @@ function DefectCard({
                 label: e.full_name,
               }))}
             />
-          </label>
-          <label className="grid gap-1 text-sm">
-            <span className="font-medium">Qaysi postdan qayta</span>
+          </Field>
+          <Field label="Qaysi postdan qayta">
             <SelectField
               value={restartPost}
               onChange={setRestartPost}
               placeholder="Tanlang"
               options={postOptions}
             />
-          </label>
+          </Field>
           <div className="sm:col-span-3 flex flex-wrap items-center gap-2">
             {/* Oqibat OLDINDAN aytiladi: yangi nusxa yaratilishi buyurtma
                 miqdorini oshiradi va buni bosishdan oldin bilish kerak */}
