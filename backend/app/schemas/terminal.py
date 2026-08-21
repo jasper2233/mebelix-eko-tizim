@@ -42,6 +42,10 @@ class SessionRead(BaseModel):
     status: SessionStatus
     created_at: datetime
     ended_at: datetime | None
+    #: Shu smena KIRGAN ODAMNING o'ziniki. Tsex hisobi bilan kirgan operator
+    #: o'zini brigada chipida ko'rmasligi kerak - u kimligini login allaqachon
+    #: aytgan, chip esa faqat QO'SHILGAN sherik uchun.
+    is_me: bool = False
 
 
 class TerminalContext(BaseModel):

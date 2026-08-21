@@ -2119,6 +2119,10 @@ export type SessionRead = {
      * Ended At
      */
     ended_at: string | null;
+    /**
+     * Is Me
+     */
+    is_me?: boolean;
 };
 
 /**

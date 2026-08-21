@@ -89,9 +89,10 @@ async def _terminal_ctx(db: SessionDep, user: TerminalUser) -> tuple[Machine, Po
 TerminalCtx = Annotated[tuple[Machine, Post], Depends(_terminal_ctx)]
 
 
-def _session_read(session: WorkSession, employee_name: str) -> SessionRead:
+def _session_read(session: WorkSession, employee_name: str, *, is_me: bool = False) -> SessionRead:
     item = SessionRead.model_validate(session)
     item.employee_name = employee_name
+    item.is_me = is_me
     return item
 
 
@@ -107,7 +108,16 @@ async def read_terminal_context(db: SessionDep, user: TerminalUser, ctx: Termina
     )
     for session in await crew_sessions(db, machine.id):
         employee = await db.get(Employee, session.employee_id)
-        out.crew.append(_session_read(session, employee.full_name if employee else ""))
+        out.crew.append(
+            _session_read(
+                session,
+                employee.full_name if employee else "",
+                # Qurilma hisobida (TERMINAL) hech bir hodim `user_id` bilan
+                # bog'lanmagan - o'shanda hamma chip ko'rinadi, chunki u yerda
+                # kim ishlayotganini faqat shu ro'yxat aytadi.
+                is_me=bool(employee and employee.user_id == user.id),
+            )
+        )
     # `crew_sessions` muddati o'tgan smenalarni yopadi — o'sha yozuv saqlanishi kerak
     await db.commit()
     return out

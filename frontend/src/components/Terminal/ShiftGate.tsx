@@ -16,10 +16,14 @@ export function ShiftGate({
   employees,
   pending,
   onStart,
+  onCancel,
 }: {
   employees: TerminalEmployee[]
   pending: boolean
   onStart: (employeeId: number) => void
+  /** "+ Qo'shish" bilan ochilganda - orqaga yo'l. Qurilma hisobida ekran
+   *  smenasiz ishlay olmaydi, o'shanda bekor qilish berilmaydi. */
+  onCancel?: () => void
 }) {
   return (
     <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-background/95 p-6 backdrop-blur-sm">
@@ -50,14 +54,31 @@ export function ShiftGate({
         </p>
       )}
       <p className="text-sm text-muted-foreground">Yoki beyjikni skanerlang</p>
+      {onCancel && (
+        <Button
+          variant="ghost"
+          className="h-14 px-8 text-lg font-bold"
+          onClick={onCancel}
+        >
+          Bekor qilish
+        </Button>
+      )}
     </div>
   )
 }
 
-/** Sarlavhadagi brigada. Ikki kishi bir ish markazida ishlashi mumkin va detalni
- * qaysi biri olganini bilib bo'lmaydi — shuning uchun ish ular orasida
- * bo'linadi. Ismlar doim ko'rinib turadi: ketgan odam o'chirishni unutsa,
- * qolgani begona ismni ko'radi va bosib qo'yadi — eng arzon nazorat. */
+/** Sarlavhadagi brigada - faqat QO'SHILGAN sheriklar.
+ *
+ * Ikki kishi bir ish markazida ishlashi mumkin va detalni qaysi biri olganini
+ * bilib bo'lmaydi, shuning uchun ish ular orasida bo'linadi.
+ *
+ * Kirgan odamning O'ZI ro'yxatda ko'rinmaydi (`is_me`): u kimligini login
+ * allaqachon aytgan va o'z ismini ko'rish unga hech narsa qo'shmaydi. Sherik
+ * ismi esa ko'rinishi shart - ketgan odam o'chirishni unutsa, qolgani begona
+ * ismni ko'radi va bosib qo'yadi, bu eng arzon nazorat.
+ *
+ * Qurilma hisobida (TERMINAL) hech kim `is_me` bo'lmaydi, ya'ni u yerda hamma
+ * ism ko'rinadi - monoblokda kim ishlayotganini faqat shu ro'yxat aytadi. */
 export function CrewChips({
   crew,
   onEnd,
@@ -67,28 +88,35 @@ export function CrewChips({
   onEnd: (session: SessionRead) => void
   onAdd: () => void
 }) {
+  // Kirgan odamning smenasi ochilmagan bo'lsa tugma boshqa ishni bildiradi:
+  // `employee.user_id` bog'lanishi QO'LDA qo'yiladi va admin uni unutishi
+  // mumkin, o'shanda login smenani ocholmaydi. "+ Qo'shish" degan yozuv
+  // yolg'on bo'lardi - qo'shadigan smena yo'q, uni BOSHLASH kerak.
+  const ozSmenasi = crew.some((s) => s.is_me)
   return (
     <div className="hidden shrink-0 items-center gap-1.5 md:flex">
       <UserRound className="size-4 text-muted-foreground" />
-      {crew.map((s) => (
-        <button
-          key={s.id}
-          type="button"
-          onClick={() => onEnd(s)}
-          className="flex items-center gap-1.5 rounded-full border bg-card py-1.5 pl-3 pr-2 text-sm hover:border-destructive/50"
-        >
-          <span className="size-2 rounded-full bg-green-500" />
-          <b className="max-w-32 truncate">{s.employee_name}</b>
-          <X className="size-3.5 text-muted-foreground" />
-        </button>
-      ))}
+      {crew
+        .filter((s) => !s.is_me)
+        .map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => onEnd(s)}
+            className="flex items-center gap-1.5 rounded-full border bg-card py-1.5 pl-3 pr-2 text-sm hover:border-destructive/50"
+          >
+            <span className="size-2 rounded-full bg-green-500" />
+            <b className="max-w-32 truncate">{s.employee_name}</b>
+            <X className="size-3.5 text-muted-foreground" />
+          </button>
+        ))}
       <Button
         variant="ghost"
         size="sm"
         className="rounded-full text-muted-foreground"
         onClick={onAdd}
       >
-        + Qo'shish
+        {ozSmenasi ? "+ Qo'shish" : "Smenani boshlash"}
       </Button>
     </div>
   )

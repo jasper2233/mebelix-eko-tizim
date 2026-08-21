@@ -265,10 +265,18 @@ function TerminalPage() {
     openOrder: setMapOrderId,
   })
 
-  // Ro'yxat FAQAT smena ochilmagan yoki qo'shish so'ralganda kerak — ish
-  // ketayotganda terminal uni bekorga so'ramasin.
   const crew = ctx?.crew ?? []
-  const gateOpen = !!ctx && (!crew.length || joining)
+  // "Kim ishlayapti?" FAQAT "+ Qo'shish" bosilganda ochiladi.
+  //
+  // Tsex hisobi bilan kirgan operator kimligini LOGIN allaqachon aytgan va
+  // `login._open_shift_for` uning smenasini ochib bergan - ustiga savol berish
+  // bitta faktni ikki marta so'rash bo'lardi. Ilgari savol bo'sh brigadada
+  // avtomat ochilardi, natijada chiqishda ekran hisobdan chiqmay "Kim
+  // ishlayapti?" ga qaytib qolardi.
+  //
+  // Qurilma hisobi (TERMINAL) uchun savol SHART: monoblokda login kim
+  // ishlayotganini aytmaydi, ro'yxat aytadi.
+  const gateOpen = !!ctx && (joining || (!isOperator && !crew.length))
   const { data: shiftEmployees } = useQuery({
     queryKey: ["terminal", "employees"],
     queryFn: async () => (await TerminalService.readTerminalEmployees()).data,
@@ -323,6 +331,7 @@ function TerminalPage() {
           employees={shiftEmployees ?? []}
           pending={startShift.isPending}
           onStart={(employee_id) => startShift.mutate({ employee_id })}
+          onCancel={joining ? () => setJoining(false) : undefined}
         />
       )}
       {/* Header (TZ 8.3.1) */}
@@ -412,22 +421,29 @@ function TerminalPage() {
             <TBtn label="Qulflash" tone="warn" onClick={() => setLocked(true)}>
               <Lock />
             </TBtn>
-            {/* Smena ochiq ekan — yakunlash; brigada bo'sh bo'lgandagina
-                qurilmadan chiqish ko'rinadi (beyjik bilan kirgan operator
-                hisobi qulf ostida qolib ketmasin). */}
-            {crew.length ? (
-              <TBtn
-                label="Yakunlash"
-                tone="danger"
-                onClick={() => setEndFor(crew[0] ?? null)}
-              >
-                <LogOut />
-              </TBtn>
-            ) : isOperator ? (
+            {/* Tsex hisobi bilan kirgan odam uchun bitta tugma: CHIQISH.
+                U hisobdan ham chiqaradi, smenani ham yopadi (backend `logout`
+                o'zi yopadi). Ilgari avval "Yakunlash" chiqar, bosilgach ekran
+                hisobda qolgan holda "Kim ishlayapti?" ga tushib qolardi -
+                chiqish ikki bosqichli va chalkash edi.
+
+                Sherikning smenasi sarlavhadagi chipini bosib yopiladi.
+
+                Qurilma hisobida (TERMINAL) chiqish yo'q - monoblok bir marta,
+                o'rnatishda kiradi; u yerda faqat smenani yakunlash kerak. */}
+            {isOperator ? (
               <TBtn
                 label="Chiqish"
                 tone="danger"
                 onClick={() => setLogoutOpen(true)}
+              >
+                <LogOut />
+              </TBtn>
+            ) : crew.length ? (
+              <TBtn
+                label="Yakunlash"
+                tone="danger"
+                onClick={() => setEndFor(crew[0] ?? null)}
               >
                 <LogOut />
               </TBtn>
@@ -598,7 +614,7 @@ function TerminalPage() {
         open={logoutOpen}
         onOpenChange={setLogoutOpen}
         title="Tizimdan chiqish"
-        description="Terminal login sahifasiga qaytadi — qayta kirish uchun parol kerak bo'ladi."
+        description="Smenangiz yopiladi va terminal login sahifasiga qaytadi — qayta kirish uchun parol kerak bo'ladi."
         confirmText="Chiqish"
         destructive
         onConfirm={() => logout()}

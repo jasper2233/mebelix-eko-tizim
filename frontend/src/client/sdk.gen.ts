@@ -104,6 +104,14 @@ export class LoginService {
      * Logout
      *
      * Log the user out by bumping `token_version`, which invalidates every outstanding access/refresh token.
+     *
+     * Tsex xodimi uchun chiqish SMENANI ham yopadi. Kirish uni ochgan
+     * (`login._open_shift_for`), shuning uchun chiqish uni yopmasa hisob yopilib,
+     * smena ochiq qolib ketardi: terminal "Kim ishlayapti?" ni ko'rsatar, ish haqi
+     * esa ketgan odamga yozilib turaverardi.
+     *
+     * Faqat O'Z smenasi yopiladi - beyjik bilan qo'shilgan sherigining smenasiga
+     * tegilmaydi, u boshqa odam va o'zi chiqadi.
      */
     public static logout<ThrowOnError extends boolean = true>(options?: Options<LogoutData, ThrowOnError>): RequestResult<LogoutResponses, unknown, ThrowOnError> {
         return (options?.client ?? client).post<LogoutResponses, unknown, ThrowOnError>({
