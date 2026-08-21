@@ -3,7 +3,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.enums import CapacityUnit, MachineStatus
+from app.models.enums import MachineStatus
 
 
 class MachineRead(BaseModel):
@@ -12,8 +12,6 @@ class MachineRead(BaseModel):
     id: int
     post_id: int
     name: str
-    capacity: float | None
-    capacity_unit: CapacityUnit | None
     status: MachineStatus
     created_at: datetime
 
@@ -23,8 +21,6 @@ class MachineCreate(BaseModel):
 
     post_id: int
     name: Annotated[str, Field(min_length=2, max_length=100, examples=["01 ARRA"])]
-    capacity: float | None = Field(default=None, gt=0)
-    capacity_unit: CapacityUnit | None = None
     status: MachineStatus = MachineStatus.ACTIVE
 
 
@@ -33,6 +29,4 @@ class MachineUpdate(BaseModel):
 
     post_id: int | None = None
     name: Annotated[str | None, Field(min_length=2, max_length=100, default=None)]
-    capacity: float | None = Field(default=None, gt=0)
-    capacity_unit: CapacityUnit | None = None
     status: MachineStatus | None = None

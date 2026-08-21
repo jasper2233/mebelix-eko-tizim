@@ -230,13 +230,6 @@ export const MACHINE_STATUS_LABELS: Record<string, string> = {
   repair: "TA'MIRDA",
 }
 
-// Kalitlar — backend `CapacityUnit` enum'i (generatsiya qilingan tip)
-export const CAPACITY_UNIT_LABELS: Record<string, string> = {
-  m2_per_hour: "m²/soat",
-  meter_per_hour: "m/soat",
-  units_per_hour: "dona/soat",
-}
-
 // Hamma joyda bir xil: kun.oy.yil (brauzer locale'iga bog'liq emas)
 const p2 = (n: number) => String(n).padStart(2, "0")
 

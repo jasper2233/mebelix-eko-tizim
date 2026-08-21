@@ -1,4 +1,4 @@
-"""Shared production volume math (TZ 9.3.1 HAJM / 4.3 capacity forecast)."""
+"""Shared production volume math (TZ 9.3.1 HAJM)."""
 
 from typing import Any
 

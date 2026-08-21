@@ -347,9 +347,6 @@ async def report_dashboard(db: SessionDep, _: ReportsUser) -> DashboardStats:
     for m in machines:
         post = posts.get(m.post_id)
         q = queue[m.id]
-        forecast: float | None = None
-        if m.capacity and q["volume"]:
-            forecast = round(q["volume"] / m.capacity, 1)
         stats.append(
             MachineStat(
                 machine_id=m.id,
@@ -359,8 +356,6 @@ async def report_dashboard(db: SessionDep, _: ReportsUser) -> DashboardStats:
                 queue_scans=int(q["scans"]),
                 queue_volume=round(q["volume"], 2),
                 unit=unit_labels.get(str(post.unit), "") if post else "",
-                capacity=m.capacity,
-                forecast_hours=forecast,
                 today_scans=today_by_machine.get(m.id, 0),
             )
         )

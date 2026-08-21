@@ -281,11 +281,6 @@ export type BridgeScanRequest = {
 };
 
 /**
- * CapacityUnit
- */
-export type CapacityUnit = 'm2_per_hour' | 'meter_per_hour' | 'units_per_hour';
-
-/**
  * ClientCreate
  */
 export type ClientCreate = {
@@ -752,11 +747,6 @@ export type MachineCreate = {
      * Name
      */
     name: string;
-    /**
-     * Capacity
-     */
-    capacity?: number | null;
-    capacity_unit?: CapacityUnit | null;
     status?: MachineStatus;
 };
 
@@ -776,11 +766,6 @@ export type MachineRead = {
      * Name
      */
     name: string;
-    /**
-     * Capacity
-     */
-    capacity: number | null;
-    capacity_unit: CapacityUnit | null;
     status: MachineStatus;
     /**
      * Created At
@@ -821,14 +806,6 @@ export type MachineStat = {
      */
     unit: string;
     /**
-     * Capacity
-     */
-    capacity: number | null;
-    /**
-     * Forecast Hours
-     */
-    forecast_hours: number | null;
-    /**
      * Today Scans
      */
     today_scans: number;
@@ -861,11 +838,6 @@ export type MachineUpdate = {
      * Name
      */
     name?: string | null;
-    /**
-     * Capacity
-     */
-    capacity?: number | null;
-    capacity_unit?: CapacityUnit | null;
     status?: MachineStatus | null;
 };
 

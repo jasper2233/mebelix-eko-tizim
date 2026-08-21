@@ -522,7 +522,7 @@ Javob sxemalari `backend/app/schemas/tablo.py` da: `TabloMatrix` (`posts` — ty
 | GET | `/api/v1/reports/productivity` | manager/direktor | Hodim mahsuldorligi (TZ 11.1.1): skan soni, faol kunlar, kuniga/soatiga o'rtacha; `?format=xlsx` |
 | GET | `/api/v1/reports/orders` | manager/direktor | Buyurtmalar holati (TZ 11.2): holat, muddatlar, `overdue` belgisi (muddat o'tgan tugallanmaganlar), bekor sababi; `?format=xlsx` |
 | GET | `/api/v1/reports/materials` | manager/direktor | Material sarfi (TZ 11.3): `Order.material_usage` JSONB'dan agregatsiya (`project_loaded_at` oralig'ida, CANCELLED chiqariladi); `?format=xlsx` |
-| GET | `/api/v1/reports/dashboard` | manager/direktor | Dashboard (TZ 10.2.1): har ish markazi uchun navbat (qolgan skanlar/hajm), quvvat va prognoz soatlar (TZ 4.3: navbat/quvvat), bugungi skanlar; faqat JSON |
+| GET | `/api/v1/reports/dashboard` | manager/direktor | Dashboard (TZ 10.2.1): har ish markazi uchun navbat (qolgan skanlar/hajm) va bugungi skanlar; faqat JSON. Quvvat va prognoz soatlar (TZ 4.3) OLIB TASHLANDI — quvvat hech qachon kiritilmagani uchun prognoz doim bo'sh edi |
 
 **Bog'lanishlar:** `backend/app/schemas/reports.py`, `backend/app/services/excel.py` (`xlsx_response`), `backend/app/services/metrics.py` (`part_volume`).
 

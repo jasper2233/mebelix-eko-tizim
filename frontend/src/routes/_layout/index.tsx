@@ -23,11 +23,7 @@ import {
 } from "@/components/ui/table"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useMesWs } from "@/hooks/useMesWs"
-import {
-  CAPACITY_UNIT_LABELS,
-  formatDate,
-  MACHINE_STATUS_LABELS,
-} from "@/lib/mes"
+import { formatDate, MACHINE_STATUS_LABELS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import {
   getMachinesQueryOptions,
@@ -128,10 +124,8 @@ function Dashboard() {
               <TableRow>
                 <TableHead>Ish markazi</TableHead>
                 <TableHead>Post</TableHead>
-                <TableHead className="text-right">Quvvat</TableHead>
                 <TableHead className="text-right">Navbatda</TableHead>
                 <TableHead className="text-right">Bugun</TableHead>
-                <TableHead className="text-right">Tugash</TableHead>
                 <TableHead>Holat</TableHead>
               </TableRow>
             </TableHeader>
@@ -144,11 +138,6 @@ function Dashboard() {
                     <TableCell className="font-medium">{m.name}</TableCell>
                     <TableCell>
                       {post ? <PostBadge code={post.code} /> : "—"}
-                    </TableCell>
-                    <TableCell className="num text-right text-muted-foreground">
-                      {m.capacity != null
-                        ? `${m.capacity} ${CAPACITY_UNIT_LABELS[m.capacity_unit ?? "units_per_hour"]}`
-                        : "—"}
                     </TableCell>
                     {/* Navbat — sahifadagi asosiy signal, shuning uchun eng katta */}
                     <TableCell className="num text-right">
@@ -169,12 +158,6 @@ function Dashboard() {
                     </TableCell>
                     <TableCell className="num text-right">
                       {stat?.today_scans ?? "—"}
-                    </TableCell>
-                    {/* TZ 4.3: tugatish_vaqti = navbatdagi_yuk / capacity */}
-                    <TableCell className="num text-right font-bold text-primary">
-                      {stat?.forecast_hours != null
-                        ? `~${stat.forecast_hours} soat`
-                        : "—"}
                     </TableCell>
                     <TableCell>
                       <Badge

@@ -75,8 +75,6 @@ class MachineStat(BaseModel):
     queue_scans: int  # remaining scans routed to this machine
     queue_volume: float  # in the post's unit
     unit: str
-    capacity: float | None
-    forecast_hours: float | None  # TZ 4.3: navbatdagi_yuk / capacity
     today_scans: int
 
 

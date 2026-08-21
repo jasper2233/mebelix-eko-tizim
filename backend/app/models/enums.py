@@ -112,12 +112,6 @@ MACHINE_STATUS_LABELS: dict[MachineStatus, str] = {
 }
 
 
-class CapacityUnit(StrEnum):
-    M2_PER_HOUR = "m2_per_hour"
-    METER_PER_HOUR = "meter_per_hour"
-    UNITS_PER_HOUR = "units_per_hour"
-
-
 class EmployeeStatus(StrEnum):
     ACTIVE = "active"
     INACTIVE = "inactive"

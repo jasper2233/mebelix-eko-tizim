@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -35,12 +34,7 @@ import {
 } from "@/components/ui/table"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { requireAccess } from "@/lib/guards"
-import {
-  CAPACITY_UNIT_LABELS,
-  isAdmin,
-  isProductionStaff,
-  MACHINE_STATUS_LABELS,
-} from "@/lib/mes"
+import { isAdmin, isProductionStaff, MACHINE_STATUS_LABELS } from "@/lib/mes"
 import {
   crudCallbacks,
   getMachinesQueryOptions,
@@ -108,7 +102,6 @@ function WorkCentersPage() {
               <TableRow>
                 <TableHead>Ish markazi</TableHead>
                 <TableHead>Post</TableHead>
-                <TableHead className="text-right">Quvvat</TableHead>
                 <TableHead>Holat</TableHead>
                 {admin && <TableHead className="w-20" />}
               </TableRow>
@@ -122,11 +115,6 @@ function WorkCentersPage() {
                       <TableCell className="font-medium">{m.name}</TableCell>
                       <TableCell>
                         {post && <PostBadge code={post.code} />}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {m.capacity != null
-                          ? `${m.capacity} ${CAPACITY_UNIT_LABELS[m.capacity_unit ?? "units_per_hour"]}`
-                          : "—"}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -187,8 +175,6 @@ type FormState = {
   name: string
   post_id: string
   status: string
-  capacity: string
-  capacity_unit: string
 }
 
 function MachineDialog({
@@ -207,16 +193,9 @@ function MachineDialog({
     name: machine?.name ?? "",
     post_id: machine ? String(machine.post_id) : "",
     status: machine?.status ?? "active",
-    capacity: machine?.capacity != null ? String(machine.capacity) : "",
-    capacity_unit: machine?.capacity_unit ?? "",
   })
   const set = (key: keyof FormState, value: string) =>
     setForm((f) => ({ ...f, [key]: value }))
-
-  const capacityNumber = form.capacity
-    ? Number(form.capacity.replace(",", "."))
-    : null
-  const capacityBad = capacityNumber !== null && Number.isNaN(capacityNumber)
 
   /** Post tanlanganda nom TAKLIF qilinadi: "Arra-1", "Arra-2"... Nom qo'lda
    * yoziladi — u monoblokda operatorga YOLG'IZ ko'rinadi, ya'ni stanokning
@@ -243,15 +222,6 @@ function MachineDialog({
         name: form.name.trim(),
         post_id: Number(form.post_id),
         status: form.status as MachineRead["status"],
-        // O'zbek klaviaturasida o'nlik kasr VERGUL bilan yoziladi: Number("18,5")
-        // NaN beradi, JSON uni null qiladi va tizim "saqlandi" deb yolg'on aytardi
-        capacity: capacityNumber,
-        // Quvvat berilib birlik tanlanmasa hisobot birligi noma'lum qolardi
-        capacity_unit: form.capacity
-          ? ((form.capacity_unit || "units_per_hour") as NonNullable<
-              MachineRead["capacity_unit"]
-            >)
-          : null,
       }
       return editing
         ? MachinesService.updateMachine({
@@ -267,8 +237,7 @@ function MachineDialog({
     },
   })
 
-  const valid =
-    form.name.trim().length > 1 && form.post_id !== "" && !capacityBad
+  const valid = form.name.trim().length > 1 && form.post_id !== ""
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
@@ -277,10 +246,6 @@ function MachineDialog({
           <DialogTitle>
             {editing ? machine.name : "Yangi ish markazi"}
           </DialogTitle>
-          <DialogDescription>
-            Quvvat boshqaruv panelidagi "Tugash" prognozini hisoblaydi:
-            navbatdagi yuk ÷ quvvat
-          </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-3">
@@ -325,34 +290,6 @@ function MachineDialog({
                     hint: "ish yo'naltirilmaydi",
                   },
                 ]}
-              />
-            </Field>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Quvvat (soatiga)">
-              <Input
-                value={form.capacity}
-                onChange={(e) =>
-                  set("capacity", e.target.value.replace(/[^\d.,]/g, ""))
-                }
-                placeholder="18"
-                inputMode="decimal"
-                aria-invalid={capacityBad}
-              />
-              {capacityBad && (
-                <span className="text-xs text-destructive">
-                  Sonni kiriting, masalan 18.5
-                </span>
-              )}
-            </Field>
-            <Field label="Birlik">
-              <SelectField
-                value={form.capacity_unit}
-                onChange={(v) => set("capacity_unit", v)}
-                emptyLabel="dona/soat"
-                options={Object.entries(CAPACITY_UNIT_LABELS).map(
-                  ([value, label]) => ({ value, label }),
-                )}
               />
             </Field>
           </div>
