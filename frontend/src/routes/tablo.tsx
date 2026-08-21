@@ -678,9 +678,14 @@ function TabloCell({
           deyarli ko'rinmasdi. Endi rang holat rangi (navy), post rangi esa
           ustun sarlavhasida qoladi.
 
-          Chegara chizig'i ham bor: ko'z aynan CHEGARANI o'qiydi, yuza esa
-          uzoqdan massa beradi. Ikkalasi birga past foizda ham (12%) aniq
-          ko'rinadi — haqiqiy o'lchamdagi maketda 14/18/22/26/32% solishtirildi.
+          Alohida chegara chizig'i YO'Q: bo'yalgan va oq joy orasidagi o'tish
+          o'zi aniq chegara beradi. Qo'shilgan 4px chiziq esa raqam ustidan
+          o'tardi — maketda ko'rindi: "38%" da 8 ni, "52%" da 2 ni, "8 / 47"
+          da chiziqchani kesardi. Raqam markazda turgani uchun bu tasodif
+          emas, foizning katta oralig'ida sodir bo'lardi.
+
+          Tiniqlik haqiqiy o'lchamdagi maketda 14/18/22/26/32% da tanlandi:
+          32% da raqam ostiga qalin band tushadi, 14% da yuza zaif.
 
           HAMMA katakda emas, faqat ISH KETAYOTGANIDA. Nisbat faqat qisman
           bajarilgan qadamda ma'noga ega: 0% — "boshlanmadi", 100% — "tugadi",
@@ -697,7 +702,6 @@ function TabloCell({
           style={{
             width: `${pct}%`,
             background: "color-mix(in srgb, var(--primary) 22%, transparent)",
-            borderRight: "4px solid var(--primary)",
             opacity: dim ? 0.35 : 1,
           }}
         />
