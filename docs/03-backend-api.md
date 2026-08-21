@@ -14,8 +14,7 @@ Bu hujjat MebeliX MES backend'ining HTTP API qatlamini tavsiflaydi: router ierar
         ├── /clients/*      ← clients.py   │
         ├── /employees/*    ← employees.py │
         ├── /machines/*     ← machines.py  │
-        ├── /posts/*        ← posts.py     │
-        ├── /stock/*        ← stock.py     │  router darajasida
+        ├── /posts/*        ← posts.py     │  router darajasida
         ├── /orders/*       ← orders.py    │  Depends(get_current_user)
         ├── /pachka/*       ← pachka.py    │
         ├── /tmo/*          ← tmo.py       │
@@ -28,7 +27,7 @@ Bu hujjat MebeliX MES backend'ining HTTP API qatlamini tavsiflaydi: router ierar
         └── /ws/*           ← ws.py        (router darajasida auth YO'Q — auth endpoint ichida)
 ```
 
-Jami 19 router: 2 ta ochiq (`health`, `login`), 15 tasi `get_current_user` ortida, `bridge_agents` va `ws` esa router darajasida himoyalanmaydi — autentifikatsiyani endpointlar o'zi bajaradi (WebSocket'da HTTP dependency ishlamaydi, `/bridge-agents/pair` esa sessiyasiz agent uchun ochiq bo'lishi shart).
+Jami 18 router: 2 ta ochiq (`health`, `login`), 14 tasi `get_current_user` ortida, `bridge_agents` va `ws` esa router darajasida himoyalanmaydi — autentifikatsiyani endpointlar o'zi bajaradi (WebSocket'da HTTP dependency ishlamaydi, `/bridge-agents/pair` esa sessiyasiz agent uchun ochiq bo'lishi shart).
 
 Autentifikatsiya modeli: JWT access + refresh token juftligi, ikkalasi ham `httpOnly` cookie sifatida o'rnatiladi; qo'shimcha ravishda `Authorization: Bearer` header ham qabul qilinadi (header cookie'dan ustun). Token bekor qilish `token_version` mexanizmi orqali — logout paytida foydalanuvchining `token_version` oshiriladi va barcha eski tokenlar yaroqsiz bo'ladi.
 
@@ -98,7 +97,6 @@ router.include_router(clients_router, dependencies=_protected)
 router.include_router(employees_router, dependencies=_protected)
 router.include_router(machines_router, dependencies=_protected)
 router.include_router(posts_router, dependencies=_protected)
-router.include_router(stock_router, dependencies=_protected)    # materiallar ombori
 router.include_router(orders_router, dependencies=_protected)
 router.include_router(pachka_router, dependencies=_protected)   # qadoqlash
 router.include_router(tmo_router, dependencies=_protected)      # TMO — tayyor mahsulot ombori
@@ -274,33 +272,6 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | PATCH | `/api/v1/posts/{id}` | `AdminUser` | Post sozlamalarini yangilash (nom, rang, flaglar) |
 
 **Bog'lanishlar:** `backend/app/schemas/posts.py`, `backend/app/crud` (`crud_posts`, `log_action`), `backend/app/commands/seed_defaults.py`.
-
----
-
-### `/api/v1/stock` — Materiallar ombori (`routes/stock.py`)
-
-**Maqsadi:** omborchi yuritadigan katalog: kod, qoldiq, minimal zaxira, narx. `stock_item` — AYRIM jadval: GibLab `.project` dan keladigan plita/kromka sarfi `Order.material_usage` JSONB ustunida turadi va har yuklashda qayta yoziladi, ya'ni qoldiq va narx u yerda tura olmaydi; furnitura esa `.project` da umuman uchramaydi (material katalogi jadvali `d2b71f4c86e9` bilan butunlay olib tashlangan). Huquq: `StockUser` — `material_omborchi` (qoldiqni yuritadigan xodim) + manager/texnolog/direktor (u yo'qligida ish to'xtamasin). `omborchi` bu yerda YO'Q: u TMO ning odami, monoblokda ishlaydi.
-
-| Method | Path | Nima qiladi |
-|---|---|---|
-| GET | `/api/v1/stock/` | Ro'yxat (`Paginated[StockItemRead]`, `skip`/`limit`): `search` — nom, kod YOKI guruh nomi (`group_name`; jadvalda alohida "Guruh" ustuni yo'q, "petlya" deb yozgan omborchi butun guruhni topsin), `catalog` (F/M), `group_code`, `low=true` (min zaxiradan pastdagilar) |
-| GET | `/api/v1/stock/summary` | Sahifa tepasidagi uchta raqam: tovar soni, tugayaptilar, qoldiqning XARID narxidagi qiymati |
-| GET | `/api/v1/stock/groups` | Filtr chiplari — guruh, tovar soni, tugayaptilar soni. Alohida jadval yo'q: 28 guruh tovarlarning o'zidan yig'iladi |
-| POST | `/api/v1/stock/` | Yangi tovar. **`code` IXTIYORIY**: bo'sh bo'lsa server beradi — guruhdagi eng katta model raqami + 1 (`F-RC-032-01`). Excel katalogida "Keyingi bo'sh model kodi" ustunini odam qo'lda yuritardi, o'sha ish serverga o'tdi va ikki kishi bir vaqtda qo'shsa unique indeks ikkinchisini rad etadi. Mavjud MODELNING yangi varianti kerak bo'lsa (o'sha ruchkaning boshqa rangi) kod qo'lda beriladi — `F-RC-001-04`. Kod band bo'lsa 409 |
-| PATCH | `/api/v1/stock/{id}` | Kartochka maydonlari: nom, variant, o'lcham, birlik, izoh, min zaxira, narxlar — va **`qty` ham** (`StockItemUpdate` da bor, endpoint kelgan maydonni to'g'ridan-to'g'ri `setattr` qiladi). PATCH bilan yozilgan qoldiq HARAKAT JURNALIGA (`stock_move`) TUSHMAYDI, shuning uchun frontend bu yerda `qty` yubormaydi — qoldiqning odatdagi yo'li `POST /{id}/move` |
-| POST | `/api/v1/stock/{id}/move` | **KIRIM / BUYURTMAGA / HISOBDAN CHIQIM** — `delta` (musbat/manfiy) + `kind`. Qoldiqni to'g'ridan-to'g'ri yozish EMAS: omborchi "20 ta keldi" deb o'ylaydi va delta ikki kishi bir vaqtda yozganda ham yo'qolmaydi. `kind=buyurtma` da `order_id` MAJBURIY va faqat chiqim — tannarx shu buyurtmaga yoziladi. `kind=sotuv` bu yerda RAD ETILADI (422): sotuvda hujjat, mijoz va to'lov bo'ladi. Qoldiq manfiyga tushsa 409 |
-| GET | `/api/v1/stock/moves` | Harakatlar: `item_id` (tovar kartochkasi), `order_id` (buyurtmaga berilganlar — buyurtma tannarxi), `kind`, `limit` (1..`settings.MAX_PAGE_SIZE`, sukut `settings.DEFAULT_PAGE_SIZE`) |
-| POST | `/api/v1/stock/sales` | **SOTUV**: `lines[]` (tovar, miqdor, narx — bo'sh bo'lsa katalogdagi sotuv narxi), `client_id`, `paid_uzs`, `method`. To'liq to'lanmagan (`paid_uzs = 0`) sotuvda MIJOZ MAJBURIY (kimdan undirishni bilmasak yozuvning ma'nosi yo'q) — 422; naqd sotuvda shart emas, qisman to'lovda (`0 < paid_uzs < jami`) hozircha talab qilinmaydi. Satrlar `stock_move` sifatida yoziladi (`sale_id` bilan) — sotuv satri va ombor harakati bir xil voqea |
-| GET | `/api/v1/stock/sales` | Sotuvlar; `debts=true` — faqat to'lanmaganlar (qarzdorlar), `status` (`paid`/`partial`/`debt`), `client_id` (mijozning qarz tarixi), `limit` (1..`settings.MAX_PAGE_SIZE`, sukut `settings.DEFAULT_PAGE_SIZE`) |
-| GET | `/api/v1/stock/sales/summary` | Sotuvlar soni, savdo, tushgan pul, qarz |
-| GET | `/api/v1/stock/sales/{id}` | Bitta sotuv: satrlar + to'lovlar |
-| POST | `/api/v1/stock/sales/{id}/payments` | Qarzni to'lash (to'liq yoki qisman). To'lov AYRIM yozuv — `paid_uzs` ni shunchaki yangilash "qachon va qanday to'ladi" ni yo'qotardi. Qarzdan katta to'lov 422 |
-| DELETE | `/api/v1/stock/{id}` | Soft-delete |
-
-**Katalogni yuklash:** `python -m app.commands.import_stock_catalog ["fayl.xlsx"]` — BUYRUQ QATORIDAN. Brauzerdan yuklash endpointi qurildi va OLIB TASHLANDI: katalog bir marta to'ldiriladi, keyin tovarlar bittalab qo'shiladi, ya'ni har kun ko'rinib turadigan tugma keraksiz edi — `uploads/Umumiy maxsulotlar kataligi.xlsx` dan 638 tovar (464 furnitura + 174 material). `Xizmatlar` varag'i OLINMAYDI: xizmatning qoldig'i bo'lmaydi. Idempotent — kod bo'yicha topilsa nom va narx yangilanadi, **`qty` esa faqat yangi tovarda yoziladi**: mavjud qoldiqni omborchi tizimda yuritadi va qayta import uni Excel'dagi eski raqamga qaytarmasligi kerak. Ustunlar tartib raqamiga emas SARLAVHAGA qarab olinadi.
-
-
-**Bog'lanishlar:** `backend/app/schemas/stock.py` (`StockItemCreate/Read/Update`, `StockMoveRequest/Read`, `SaleCreate/Read/Summary`, `PaymentCreate/Read`, `StockGroup`, `StockSummary`), `backend/app/models/stock.py` (`StockItem`, `StockMove`, `Sale`, `Payment`), `backend/app/crud` (`crud_stock_items`, `log_action`), `backend/app/models/enums.py` (`StockCatalog`, `StockMoveKind`, `SaleStatus`, `PaymentMethod`), `backend/app/commands/import_stock_catalog.py`.
 
 ---
 
@@ -587,7 +558,7 @@ Server → klient eventlarni `app/core/ws.py` dagi `ws_manager` tarqatadi — mu
 - **Rate limiting:** `RateLimit` dependency — login endpointida (`LOGIN_RATE_LIMIT_*`).
 - **Paginatsiya:** `skip`/`limit` query parametrlari, chegaralar `settings.DEFAULT_PAGE_SIZE` / `settings.MAX_PAGE_SIZE` dan; ro'yxat javoblari `app/schemas/common.py` dagi generik `Paginated[T]` (`{data, count}`) sxemasida, oddiy tasdiqlar `Message` da.
 - **Fayl yuklash:** `UploadFile` qabul qiladigan endpointlar (`/orders/{id}/upload` — `.project`, `/orders/{id}/survey/photos` — xona rasmi) kengaytma/MIME va hajmni endpoint ichida tekshiradi, xato 422; fayl `settings.UPLOAD_DIR` ostiga yoziladi (absolyut root — `upload_root()`, `app/core/config.py`), bazada `OrderFile` qatori qoladi (yo'l — nisbiy).
-- **Audit:** deyarli barcha mutatsion endpointlar o'z tranzaksiyasida `crud.log_action` chaqiradi — modul, amal, foydalanuvchi, entity, `meta`, IP (`deps.client_ip`) yoziladi; o'qish `GET /api/v1/audit-logs/` orqali. Kodda ishlatiladigan 13 modul nomi: `users`, `clients`, `employees`, `machines`, `posts`, `orders`, `stock`, `pachka`, `tmo`, `bridge_agents`, `print`, `sessions`, `scan`. Eski nomlar `e5b83c04d7a1` da birlashtirilgan (`ombor`→`tmo`, `materials`→`stock`), `terminal.py` esa o'z nomidan emas — `print` va `sessions` modullariga yozadi.
+- **Audit:** deyarli barcha mutatsion endpointlar o'z tranzaksiyasida `crud.log_action` chaqiradi — modul, amal, foydalanuvchi, entity, `meta`, IP (`deps.client_ip`) yoziladi; o'qish `GET /api/v1/audit-logs/` orqali. Kodda ishlatiladigan 12 modul nomi: `users`, `clients`, `employees`, `machines`, `posts`, `orders`, `pachka`, `tmo`, `bridge_agents`, `print`, `sessions`, `scan`. Eski nomlar `e5b83c04d7a1` da birlashtirilgan (`ombor`→`tmo`), `terminal.py` esa o'z nomidan emas — `print` va `sessions` modullariga yozadi.
 - **Real-time eventlar:** mutatsion endpointlar `ws_manager.publish` orqali WS eventlar tarqatadi (`order.*`, `session.*`, `scan.*`, `label.*`, `pachka.*`, `tmo.*`, `bridge.*` — to'liq ro'yxat `ws.py` bo'limida) — terminallar, TABLO va dashboard jonli yangilanadi.
 - **Xatoliklar:** `backend/app/core/exceptions.py` dagi maxsus exception'lar (`UnauthorizedException` 401, `ForbiddenException` 403, `NotFoundException` 404, `DuplicateValueException` 409, `RateLimitException` 429) — xabarlar o'zbek tilida. "Topilmadi" holati odatda qo'lda yozilmaydi: `BaseCRUD.get_or_404(db, "Mijoz topilmadi.", id=...)` o'zi `NotFoundException` ko'taradi. Terminal/skan oqimida esa 422 `{code, message}` formati (E001–E009 kodlari — `docs/09-mes-domain.md` §3.0). `E007` ("Aloqa yo'q") server kodi emas — WS uzilganda terminal frontendi lokal hosil qiladi (`frontend/src/routes/terminal.tsx`), so'rov serverga umuman ketmaydi.
 - **OpenAPI barqarorligi:** biznes endpointlarning barchasida aniq `operation_id` berilgan (frontend client generatsiyasi uchun qulay); istisno — `health.py` dagi `/health` va `/ready` probalari (FastAPI avtomatik nom beradi).

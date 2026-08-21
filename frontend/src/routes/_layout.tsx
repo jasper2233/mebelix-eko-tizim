@@ -21,34 +21,14 @@ const sectionTitles: Record<string, string> = {
   "/settings": "Sozlamalar",
 }
 
-/** Materiallar omborchisi kira oladigan yagona sahifalar. Qolgan hamma joydan
- * `/stock` ga qaytariladi, shuning uchun menyuda ham ular ko'rsatilmaydi
- * (`isStockOnly`, AppSidebar). */
-const STOCK_ONLY_PATHS = ["/stock", "/settings"]
-
 export const Route = createFileRoute("/_layout")({
   component: Layout,
-  beforeLoad: async ({ location }) => {
+  beforeLoad: async () => {
     const me = await requireAuth()
     // Qurilma akkauntlari va operatorlar admin panelga kirmaydi — o'z ekraniga (TZ 3.4/3.5)
     if (me.role === "terminal" || OPERATOR_ROLES.includes(me.role as never))
       throw redirect({ to: "/terminal" })
     if (me.role === "tablo") throw redirect({ to: "/tablo" })
-    // Materiallar omborchisi admin panelda faqat bitta sahifani ko'radi —
-    // bosh sahifadagi hisobotlar unga yopiq, ya'ni u yerda bo'sh ekran chiqardi.
-    //
-    // PATHNAME TEKSHIRUVI SHART: `/stock` ham SHU layout ostida, ya'ni unga
-    // o'tish yana shu `beforeLoad` ni ishga tushiradi. Tekshiruvsiz bu cheksiz
-    // redirect halqasi bo'lib, sahifa oq qolardi va renderer qotardi.
-    // `terminal`/`tablo` da bunday muammo yo'q — ular layoutdan TASHQARIDA.
-    //
-    // `/settings` ham ochiq qoladi: u foydalanuvchi menyusida turadi va har kim
-    // o'z parolini o'zgartira olishi kerak.
-    if (
-      me.role === "material_omborchi" &&
-      !STOCK_ONLY_PATHS.some((p) => location.pathname.startsWith(p))
-    )
-      throw redirect({ to: "/stock" })
   },
 })
 

@@ -5,17 +5,18 @@
 **MebeliX MES** — mebel ishlab chiqarishni boshqarish tizimi (Manufacturing Execution
 System) uchun to'liq ishlaydigan fullstack ilova. FastAPI fullstack template
 poydevorida (JWT + httpOnly cookie auth, users boshqaruvi) **to'liq MES domeni**
-qurilgan: `/v1` agregatorida **19 ta router** (health, login, logout, users,
-clients, employees, machines, posts, stock, orders, pachka, tmo, audit,
-terminal, scans, tablo, reports, bridge-agents, ws), **22 ta ORM model**
+qurilgan: `/v1` agregatorida **18 ta router** (health, login, logout, users,
+clients, employees, machines, posts, orders, pachka, tmo, audit,
+terminal, scans, tablo, reports, bridge-agents, ws), **18 ta ORM model**
 (Order/Product/Part/PartInstance/PartRoute/OrderFile, Client, Employee, Machine,
-Post, Organization, Pachka/PachkaItem, StockItem/Sale/Payment/StockMove,
-Scan/WorkSession, AuditLog, BridgeAgent, User) va
-**16 ta `UserRole`** (admin, director, manager, texnolog, terminal, tablo,
-material_omborchi + 9 ta post operatori roli: arrachi, kromkachi, ovalchi,
+Post, Organization, Pachka/PachkaItem, Scan/WorkSession, AuditLog, BridgeAgent,
+User) va **15 ta `UserRole`** (admin, director, manager, texnolog, terminal,
+tablo + 9 ta post operatori roli: arrachi, kromkachi, ovalchi,
 prisadkachi, roverchi, stolyar, boyoqchi, upakovkachi, omborchi).
 Material katalogi (`materials` routeri, `Material` modeli, `MaterialType`
-enumi) olib tashlangan — o'rnida materiallar ombori `stock` turadi.
+enumi) va materiallar ombori (`stock` routeri, `StockItem`/`Sale`/`Payment`/
+`StockMove` modellari, `material_omborchi` roli) olib tashlangan — bazadagi
+jadvallari va migratsiyalari qolgan, lekin kod ularga tegmaydi.
 Domen tafsilotlari uchun [09-mes-domain.md](./09-mes-domain.md) ga qarang.
 
 Barcha UI matnlari va API xato xabarlari **o'zbek tilida** — bitta istisno:
@@ -232,7 +233,7 @@ Browser (React)                FastAPI                        PostgreSQL
 ```
 
 - Router ierarxiyasi: `/api` root → `/v1` agregator; auth **router darajasida**
-  qo'llanadi (`health`, `login` ochiq; `logout`, `users` va 13 ta MES routeri
+  qo'llanadi (`health`, `login` ochiq; `logout`, `users` va 12 ta MES routeri
   `get_current_user` ortida; `ws` va `bridge-agents` routerlari auth'ni o'zlari
   hal qiladi — `bridge-agents` da `/pair` ochiq bo'lishi shart, `/scan` agentning
   Bearer tokeni bilan, qolgan admin endpointlar esa har biri `AdminUser` bilan
@@ -243,17 +244,14 @@ Browser (React)                FastAPI                        PostgreSQL
   `_layout.tsx`, `terminal.tsx`, `tablo.tsx` da; rolga bog'liq sahifalar
   `requireAccess(<predikat>)` bilan, predikatlar `src/lib/mes.ts` da:
   `isManagement` (clients, employees, reports), `isProductionStaff`
-  (work-centers), `isStockStaff` (stock — `isProductionStaff || isStockOnly`),
-  `isAdmin` (logs, printers), `isSuperuser` (admin) — sidebar
+  (work-centers), `isAdmin` (logs, printers), `isSuperuser` (admin) — sidebar
   (`NAV_ITEMS.show`) ham aynan shu predikatlarni ishlatadi. `/orders` da
   `beforeLoad` yo'q: unga huquq faqat sidebar ko'rinishi (`show:
   isProductionStaff`) va `_layout` redirectlari orqali bilvosita chiqadi.
-  Oltinchi predikat `isStockOnly` (`material_omborchi`) menyudan boshi berk
-  sahifalarni olib tashlaydi.
   `_layout.tsx` rolga qarab yo'naltiradi — `terminal` va operator
   rollari (`arrachi`...`omborchi`, `OPERATOR_ROLES`) → `/terminal`, `tablo` →
-  `/tablo`, `material_omborchi` → `/stock` (qurilma/operator akkauntlari admin
-  panelga kirmaydi); `login.tsx` teskari
+  `/tablo` (qurilma/operator akkauntlari admin panelga kirmaydi);
+  `login.tsx` teskari
   guard bilan sessiyali foydalanuvchini `/`ga qaytaradi.
 - Parallel so'rovlarda 401 kelsa, interceptor ularni navbatga qo'yib bitta refresh
   bilan hal qiladi.

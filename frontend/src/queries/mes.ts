@@ -8,7 +8,6 @@ import {
   MachinesService,
   OrdersService,
   PostsService,
-  StockService,
   TabloService,
   TerminalService,
 } from "@/client"
@@ -135,52 +134,6 @@ export const getBridgeAgentsQueryOptions = () =>
  * Dialog yopish kabi qo'shimcha ish chaqiruvchida:
  * `onSuccess: () => { cb.onSuccess(); onClose() }` tarzida o'raladi.
  */
-/** Materiallar ombori. Guruh chiplari va tepadagi raqamlar AYRIM so'rovlar:
- * ular sahifalashdan mustaqil — 638 tovarning 100 tasi ko'rinib turganda
- * ham "12 ta tovar tugayapti" butun ombor bo'yicha bo'lishi kerak. */
-export const getStockQueryOptions = (opts: {
-  search?: string
-  catalog?: "F" | "M"
-  groupCode?: string
-  low?: boolean
-  page?: number
-}) =>
-  queryOptions({
-    queryKey: [
-      "stock",
-      opts.search ?? "",
-      opts.catalog ?? "",
-      opts.groupCode ?? "",
-      opts.low ?? false,
-      opts.page ?? 0,
-    ],
-    queryFn: async () =>
-      (
-        await StockService.readStockItems({
-          query: {
-            search: opts.search || undefined,
-            catalog: opts.catalog,
-            group_code: opts.groupCode || undefined,
-            low: opts.low || undefined,
-            skip: (opts.page ?? 0) * PAGE_SIZE,
-            limit: PAGE_SIZE,
-          },
-        })
-      ).data,
-  })
-
-export const getStockGroupsQueryOptions = () =>
-  queryOptions({
-    queryKey: ["stock", "groups"],
-    queryFn: async () => (await StockService.readStockGroups()).data,
-  })
-
-export const getStockSummaryQueryOptions = () =>
-  queryOptions({
-    queryKey: ["stock", "summary"],
-    queryFn: async () => (await StockService.readStockSummary()).data,
-  })
-
 export function crudCallbacks(
   queryClient: QueryClient,
   queryKey: unknown[],

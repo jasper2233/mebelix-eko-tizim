@@ -134,7 +134,6 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   boyoqchi: "Bo'yoqchi",
   upakovkachi: "Qadoqlovchi",
   omborchi: "TMO omborchisi",
-  material_omborchi: "Materiallar omborchisi",
 }
 
 // Sahifa huquqi BITTA joyda: sidebar menyusi ham, route guard ham shu ikkisini
@@ -151,19 +150,9 @@ export const isAdmin = (u?: RoleUser | null) =>
 /** Boshqaruv sahifalari (mijozlar, hodimlar, hisobotlar): admin + manager + direktor */
 export const isManagement = (u?: RoleUser | null) =>
   isAdmin(u) || u?.role === "manager" || u?.role === "director"
-/** Ishlab chiqarish sahifalari (buyurtmalar, ish markazlari, ombor): boshqaruv + texnolog */
+/** Ishlab chiqarish sahifalari (buyurtmalar, ish markazlari): boshqaruv + texnolog */
 export const isProductionStaff = (u?: RoleUser | null) =>
   isManagement(u) || u?.role === "texnolog"
-/** Materiallar ombori — qoldiqni yuritadigan xodim + ofis (u yo'qligida ish
- * to'xtamasin). `omborchi` bu yerda EMAS: u TMO da tayyor mahsulot qabul
- * qiladi va monoblokda ishlaydi, bu esa boshqa odam va boshqa joy. */
-export const isStockStaff = (u?: RoleUser | null) =>
-  isProductionStaff(u) || isStockOnly(u)
-/** FAQAT omborni ko'radigan rol. `_layout` uni kirishda `/stock` ga yuboradi,
- * ya'ni menyudagi boshqa hamma narsa u uchun boshi berk ko'cha: bosilsa
- * qaytarib yuboriladi. Shuning uchun ular ro'yxatdan ham olib tashlanadi. */
-export const isStockOnly = (u?: RoleUser | null) =>
-  u?.role === "material_omborchi"
 
 // Ish markazi bog'lami MAJBURIY rollar — qurilma akkauntlari (Admin dialoglarida
 // rol tanlovi, machine_id validatsiyasi va bog'lamni uzish shu ro'yxatdan)
@@ -200,7 +189,6 @@ export const POSITIONS: {
   { label: "Menejer", kind: "ofis", role: "manager" },
   { label: "Texnolog", kind: "ofis", role: "texnolog" },
   { label: "Direktor", kind: "ofis", role: "director" },
-  { label: "Materiallar omborchisi", kind: "ofis", role: "material_omborchi" },
   { label: "Admin", kind: "ofis", role: "admin" },
 ]
 

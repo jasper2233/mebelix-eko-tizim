@@ -24,12 +24,6 @@ class UserRole(StrEnum):
     BOYOQCHI = "boyoqchi"
     UPAKOVKACHI = "upakovkachi"
     OMBORCHI = "omborchi"
-    #: MATERIALLAR OMBORI xodimi — `omborchi` dan boshqa odam va boshqa joy.
-    #: `omborchi` marshrutning oxirgi posti TMO da tayyor mahsulot qabul qiladi,
-    #: bu esa xomashyo va furnitura qoldig'ini yuritadi. `POST_ROLES` ga ATAYLAB
-    #: kirmaydi: uning posti yo'q, terminali yo'q, beyjigi ham shart emas —
-    #: monoblokda emas, oddiy kompyuterda parol bilan ishlaydi.
-    MATERIAL_OMBORCHI = "material_omborchi"
 
 
 class PostCode(StrEnum):
@@ -115,31 +109,6 @@ MACHINE_STATUS_LABELS: dict[MachineStatus, str] = {
 class EmployeeStatus(StrEnum):
     ACTIVE = "active"
     INACTIVE = "inactive"
-
-
-class StockCatalog(StrEnum):
-    """Materiallar ombori katalogi (`K-GG-MMM-VV` kodining birinchi bo'lagi).
-
-    Yuklangan yagona katalogda uchinchi bo'lim ham bor — X (xizmatlar), lekin u
-    OMBORGA kirmaydi: xizmatning qoldig'i bo'lmaydi. Kerak bo'lsa narx ro'yxati
-    sifatida alohida joyda ochiladi.
-    """
-
-    FURNITURA = "F"
-    MATERIAL = "M"
-
-
-class StockMoveKind(StrEnum):
-    """Ombor harakati NEGA bo'lgani. Miqdorning o'zi javob bermaydi: 12 ta petlya
-    kamaydi — buyurtmagami, sotildimi, yo'qoldimi? Hisobot aynan shu farqqa
-    tayanadi (buyurtmada TANNARX, sotuvda DAROMAD)."""
-
-    KIRIM = "kirim"
-    #: Buyurtmaga berildi — `.project` faylida furnitura kelmaydi, uni ombor beradi
-    BUYURTMA = "buyurtma"
-    SOTUV = "sotuv"
-    #: Yaroqsiz, yo'qolgan, inventarizatsiya farqi
-    CHIQIM = "chiqim"
 
 
 class SaleStatus(StrEnum):

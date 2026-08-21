@@ -1,4 +1,4 @@
-# Frontend Components (Clients, Common, Orders, Anketa, People, Sidebar, Stock, Terminal, UserSettings, ui)
+# Frontend Components (Clients, Common, Orders, Anketa, People, Sidebar, Terminal, UserSettings, ui)
 
 Ushbu hujjat `frontend/src/components/` katalogidagi React komponentlarini va ularni yig'adigan anketa sahifasini (`routes/_layout/anketa.$orderId.tsx`) qamrab oladi. Stack: React + TypeScript, TanStack Router/Query, react-hook-form + zod, shadcn/ui (Radix UI + Tailwind CSS 4). Barcha komponentlar backend bilan avtomatik generatsiya qilingan `@/client` (UsersService, ClientsService, OrdersService, TerminalService va model turlari) orqali gaplashadi — chaqiruv shakli `@hey-api/client-axios` niki: argumentlar `{ path, query, body }` guruhlarida beriladi va path/query kalitlari backend'dagi XOM snake_case nomlar (`path: { user_id }`, `query: { employee_id }`), natija esa `AxiosResponse`, ya'ni foydali yuk `.data` da (`onSuccess: ({ data: client }) => ...`, `queryFn: async () => (await ...).data`); umumiy query'lar `@/queries/mes` dagi `queryOptions` fabrikalarida (getClients/getMachines/getPosts/getOrderMatrixQueryOptions va h.k.), domen konstantalari `@/lib/mes` da (ROLE_LABELS, PRIORITY_LABELS, PRIORITY_DOT_CLASSES/PRIORITY_TEXT_CLASSES/PRIORITY_BADGE_CLASSES — prioritet ranglari yagona manbadan, POST_COLORS, ORDER_STATUS_LABELS/COLORS, chipColors/mixTint — chip rang formulasi, isCut, formatSize), buyurtma anketasi variantlari `@/lib/anketa` da; toast xabarlari to'g'ridan-to'g'ri sonner `toast.success/error` (`useCustomToast` hooki o'chirilgan), xatoliklar `handleError` utiliti orqali (`onError: handleError` — curry emas; imzosi `(err: unknown)`, chunki bu klient har qanday xatoni `AxiosError` qilib tashlaydi — eski `ApiError` klassi yo'q, server tanasi `err.response.data.detail` da); takrorlanuvchi toast+xato+invalidatsiya triosi `@/queries/mes` dagi `crudCallbacks()` da.
 
@@ -20,7 +20,7 @@ qolganini lavozim hal qiladi.
 
 - **Lavozim** (`lib/mes.ts` `POSITIONS`) uch turga bo'linadi:
   `tsex` (9 ta, har biri postga ko'rsatadi — backend `POST_ROLES` bilan bir xil jadval),
-  `ofis` (5 ta, har biri `UserRole` ga ko'rsatadi), `boshqa` (nomi qo'lda — haydovchi,
+  `ofis` (4 ta, har biri `UserRole` ga ko'rsatadi), `boshqa` (nomi qo'lda — haydovchi,
   farrosh; post ham, hisob ham berilmaydi).
 - **Tsexda parol bilan kirish** — "Postda skaner yo'q" katakchasi. Belgilansa hisob HODIMDAN
   OLDIN yaratiladi va `employee.user_id` darhol unga bog'lanadi: aks holda odam parol bilan
@@ -126,15 +126,15 @@ kiritish maydonlari turadi).
 - Props: `open`, `onOpenChange`, `title`, `description?`, `confirmText?` (default "Tasdiqlash"), `cancelText?` (default "Bekor qilish"), `destructive?`, `loading?`, `onConfirm`.
 - Tasdiqlash tugmasi `LoadingButton` (`variant={destructive ? "destructive" : "default"}`); ikkala tugma ham `h-11 px-5` — 44px minimal barmoq o'lchami terminal (touch) va admin uchun bir xil.
 
-**Foydalanuvchilari:** `Anketa/RoomPhotos.tsx` (rasm o'chirish), `Stock/StockDialogs.tsx` (`DeleteItem` — tovarni o'chirish), `routes/_layout/orders/$orderId.tsx`, `routes/_layout/anketa.$orderId.tsx` (xona o'chirish), `routes/_layout/employees.tsx`, `routes/_layout/work-centers.tsx` (ish markazini o'chirish), `routes/_layout/printers.tsx` (ish markazi bog'lash/uzish, chek chiqarish `can_print` switch'i, agentga yangi kod berish va agentni bekor qilish — to'rtta dialog), `routes/terminal.tsx`.
+**Foydalanuvchilari:** `Anketa/RoomPhotos.tsx` (rasm o'chirish), `People/PersonDialog.tsx` (lavozim turi o'zgarganda qarama-qarshi yozuv o'chirilishi), `routes/_layout/orders/$orderId.tsx`, `routes/_layout/anketa.$orderId.tsx` (xona o'chirish), `routes/_layout/employees.tsx`, `routes/_layout/work-centers.tsx` (ish markazini o'chirish), `routes/_layout/printers.tsx` (ish markazi bog'lash/uzish, chek chiqarish `can_print` switch'i, agentga yangi kod berish va agentni bekor qilish — to'rtta dialog), `routes/terminal.tsx`.
 
 ### `frontend/src/components/Common/EmptyRow.tsx`
 
-**Maqsadi:** jadvalning bo'sh holati qatori (`colSpan` + markazlangan muted xabar — "topilmadi / hali yo'q") — har reyestrda qo'lda takrorlanadigan `TableRow`+`TableCell` naqshi bitta joyda. 10 ta joyda ishlatiladi (admin, clients, employees, logs, orders ro'yxati, printers, reports, stock, work-centers va `Stock/SalesView`).
+**Maqsadi:** jadvalning bo'sh holati qatori (`colSpan` + markazlangan muted xabar — "topilmadi / hali yo'q") — har reyestrda qo'lda takrorlanadigan `TableRow`+`TableCell` naqshi bitta joyda. 7 ta joyda ishlatiladi (clients, employees, logs, orders ro'yxati, printers, reports, work-centers).
 
 ### `frontend/src/components/Common/Field.tsx`
 
-Dialog maydoni yorlig'i — `useState` bilan yozilgan formalar uchun (`StockDialogs`, `SaleDialog`, `work-centers`). Maydon `<label>` ICHIDA turadi, ya'ni yorliqni bosish fokus beradi. react-hook-form ishlatiladigan joyda `ui/form` dagi `FormField`/`FormLabel` qoladi.
+Dialog maydoni yorlig'i — `useState` bilan yozilgan formalar uchun (`People/PersonDialog`, `work-centers`). Maydon `<label>` ICHIDA turadi, ya'ni yorliqni bosish fokus beradi. react-hook-form ishlatiladigan joyda `ui/form` dagi `FormField`/`FormLabel` qoladi.
 
 ### `frontend/src/components/Common/RowAction.tsx`
 
@@ -142,7 +142,7 @@ Jadval qatoridagi amal tugmasi: `icon`/`title`/`onClick`, buzuvchi amalga `dange
 
 ### `frontend/src/components/Common/TablePagination.tsx`
 
-Reyestr sahifalagichi: `page` (0 dan), `pageSize`, `total`, `onPage`. Tartib bitta — chapda "N tadan X–Y", o'ngda `[Oldingi] [k / n] [Keyingi]`. `total === 0` da `null` qaytaradi. `logs` (PAGE=50) va `stock` (PAGE_SIZE=100) ishlatadi — sahifa hajmi prop, chunki jurnal qatorlari qisqa, ombor qatorlari uzun.
+Reyestr sahifalagichi: `page` (0 dan), `pageSize`, `total`, `onPage`. Tartib bitta — chapda "N tadan X–Y", o'ngda `[Oldingi] [k / n] [Keyingi]`. `total === 0` da `null` qaytaradi. Hozircha yagona chaqiruvchi — `logs` (PAGE=50); sahifa hajmi baribir prop bo'lib qoladi, chunki u qator balandligiga bog'liq va har reyestrda boshqacha bo'lishi mumkin.
 
 ### `frontend/src/components/Common/ErrorComponent.tsx`
 
@@ -170,7 +170,7 @@ Reyestr sahifalagichi: `page` (0 dan), `pageSize`, `total`, `onPage`. Tartib bit
 
 ### `frontend/src/components/Common/PageHeader.tsx`
 
-**Maqsadi:** sahifa sarlavhasi — `title`, ixtiyoriy `description` va o'ng tomonda `actions` slot. Barcha `_layout` sahifalarida ishlatiladi (dashboard, orders ro'yxati va sahifasi, clients, employees, work-centers, stock, reports, logs, printers, anketa, admin, settings — 13 ta sahifa); yagona istisno — `cutmap.$orderId.tsx`, unda sarlavha umuman yo'q (to'liq ekran).
+**Maqsadi:** sahifa sarlavhasi — `title`, ixtiyoriy `description` va o'ng tomonda `actions` slot. Barcha `_layout` sahifalarida ishlatiladi (dashboard, orders ro'yxati va sahifasi, clients, employees, work-centers, reports, logs, printers, anketa, settings — 11 ta sahifa; `admin.tsx` sanoqqa kirmaydi — u endi redirect, chizadigan sarlavhasi yo'q); yagona istisno — `cutmap.$orderId.tsx`, unda sarlavha umuman yo'q (to'liq ekran).
 
 ### `frontend/src/components/Common/PostBadge.tsx`
 
@@ -182,7 +182,7 @@ Reyestr sahifalagichi: `page` (0 dan), `pageSize`, `total`, `onPage`. Tartib bit
 
 ### `frontend/src/components/Common/SearchInput.tsx`
 
-**Maqsadi:** ichida `Search` ikonkasi bo'lgan qidiruv maydoni (`value`/`onChange`/`placeholder`/`className`) — reyestr sahifalarida (clients, employees, orders ro'yxati, stock (ombor), logs) qo'lda takrorlanadigan `relative` div + absolyut ikonka + `pl-8` Input naqshi bitta joyda; kenglik/joylashuv `className` orqali chaqiruvchidan.
+**Maqsadi:** ichida `Search` ikonkasi bo'lgan qidiruv maydoni (`value`/`onChange`/`placeholder`/`className`) — reyestr sahifalarida (clients, employees, orders ro'yxati, logs) qo'lda takrorlanadigan `relative` div + absolyut ikonka + `pl-8` Input naqshi bitta joyda; kenglik/joylashuv `className` orqali chaqiruvchidan.
 
 ### `frontend/src/components/Common/SelectField.tsx`
 
@@ -190,7 +190,7 @@ Reyestr sahifalagichi: `page` (0 dan), `pageSize`, `total`, `onPage`. Tartib bit
 
 - Props: `value`/`onChange`, `options: SelectOption[]` (`{ value, label, hint? }` — `hint` kod/telefon kabi ikkinchi darajali matn), `placeholder?`, `emptyLabel?`, `disabled?`, `className?`. `emptyLabel` — "tanlanmagan" varianti: Radix bo'sh `""` qiymatni qabul qilmaydi, shuning uchun ichki `EMPTY = "__empty__"` sentineli bilan ifodalanadi va tashqariga `""` qaytadi.
 - **Qoida biome bilan mahkamlangan**: `correctness/noRestrictedElements` `<select>` va `<textarea>` ni taqiqlaydi va nima ishlatish kerakligini xato matnida aytadi. `src/components/ui/**` biome tekshiruvidan chiqarilgan, ya'ni shadcn primitivlarining o'zi bu qoidaga tushmaydi.
-- Chaqiruvchilari: `Orders/CustomRoutes.tsx`, `Orders/MachineAssign.tsx`, `Stock/MoveDialog.tsx`, `Stock/SaleDialog.tsx`, `Stock/StockDialogs.tsx`, `routes/_layout/stock.tsx`, `routes/_layout/work-centers.tsx`.
+- Chaqiruvchilari: `Orders/CustomRoutes.tsx`, `Orders/MachineAssign.tsx`, `People/PersonDialog.tsx`, `routes/_layout/work-centers.tsx`.
 
 ### `frontend/src/components/Common/SectionTitle.tsx`
 
@@ -315,7 +315,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 
 **Maqsadi:** ilovaning asosiy yon paneli — brend, navigatsiya va foydalanuvchi menyusini yig'adi.
 
-- Modul darajasidagi `NAV_ITEMS` ro'yxati (TZ 3.7 rollar-modullar matritsasi, eksport — `routes/_layout.tsx` mobil sarlavhalari ham shu ro'yxatdan) 10 ta punkt beradi, har bandda `show(user)` predikati. Huquq predikatlari `@/lib/mes` dan — `isProductionStaff` / `isManagement` / `isAdmin` / `isSuperuser` / `isStockStaff` / `isStockOnly`; **route guard'lar ham AYNAN shularni ishlatadi** (`lib/guards.requireAccess`), ya'ni menyuda ko'rinadigan sahifa albatta ochiladi. Bandlar: Boshqaruv paneli `/` va LIVE Tablo `/tablo` — ombor-only rollardan boshqa hammaga (`show: (u) => !isStockOnly(u)`; TABLO tsex zalidagi TV ekran, boshqa binoda kompyuter oldida o'tirgan `material_omborchi` ga keraksiz); Buyurtmalar `/orders`, Ish markazlari `/work-centers` — `isProductionStaff` (boshqaruv + texnolog); Mijozlar `/clients`, Hodimlar `/employees`, Hisobotlar `/reports` — `isManagement` (admin/manager/direktor); Materiallar ombori `/stock` (`Boxes` ikonkasi) — `isStockStaff`; Printer agentlar `/printers` (`Printer` ikonkasi) va Loglar `/logs` (`ScrollText` ikonkasi) — `isAdmin` (superuser yoki `role === "admin"`); Foydalanuvchilar bandi OLIB TASHLANDI — u Hodimlar sahifasiga birlashtirildi (`/admin` endi redirect). **Rolga qarab navigatsiya**.
+- Modul darajasidagi `NAV_ITEMS` ro'yxati (TZ 3.7 rollar-modullar matritsasi, eksport — `routes/_layout.tsx` mobil sarlavhalari ham shu ro'yxatdan) 9 ta punkt beradi, har bandda `show(user)` predikati. Huquq predikatlari `@/lib/mes` dan — `isProductionStaff` / `isManagement` / `isAdmin`; **route guard'lar ham AYNAN shularni ishlatadi** (`lib/guards.requireAccess`), ya'ni menyuda ko'rinadigan sahifa albatta ochiladi. Bandlar: Boshqaruv paneli `/` va LIVE Tablo `/tablo` — hammaga (`show: () => true`; TABLO tsex zalidagi TV ekran); Buyurtmalar `/orders`, Ish markazlari `/work-centers` — `isProductionStaff` (boshqaruv + texnolog); Mijozlar `/clients`, Hodimlar `/employees`, Hisobotlar `/reports` — `isManagement` (admin/manager/direktor); Printer agentlar `/printers` (`Printer` ikonkasi) va Loglar `/logs` (`ScrollText` ikonkasi) — `isAdmin` (superuser yoki `role === "admin"`); Foydalanuvchilar bandi OLIB TASHLANDI — u Hodimlar sahifasiga birlashtirildi (`/admin` endi redirect). **Rolga qarab navigatsiya**.
 - Buyurtmalar bandida jonli badge — faol buyurtmalar soni (`TERMINAL_STATUSES` — delivered/cancelled — dan boshqa statuslar yig'indisi): `getOrderStatusCountsQueryOptions()` reyestr sahifasi bilan AYNAN bitta query key'da, TanStack dedupe qiladi — sidebar qo'shimcha so'rov qo'shmaydi; `enabled` faqat `/orders` bandi ko'rinadigan rollarda.
 - `<Sidebar collapsible="icon">`: yig'ilganda faqat ikonkalar qoladi. Header'da `Link to="/"` — ichida faqat to'liq logo (`/assets/logo/logo-gold.png`, `h-9 w-auto`, `alt="MebeliX — bosh sahifa"`; login ekrani bilan bir xil brend), matn tuguni yo'q. Yig'ilganda BUTUN havola `group-data-[collapsible=icon]:hidden` bilan yashiriladi — brend tab sarlavhasi, favicon va login ekranida qoladi, bosh sahifa havolasi esa menyuning birinchi qatorida ("Boshqaruv paneli"). `SidebarTrigger` yig'ilgan railda `group-data-[collapsible=icon]:mx-auto` bilan markazga tushadi.
 - `SidebarContent` → `Main items={items}`; `SidebarFooter` → `User user={currentUser}`.
@@ -336,38 +336,6 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 
 - Ichki `UserInfo({ fullName, phone })` — tema tokenlaridagi `Avatar` (`bg-sidebar-primary` oltin fon, `text-sidebar-primary-foreground` matn) + `getInitials()` (`@/utils`) initsiallari (ism bo'sh bo'lsa "Foydalanuvchi" dan), ism va telefon. Yig'ilganda ism/telefon ustuni ham, yonidagi `ChevronsUpDown` ikonkasi ham `group-data-[collapsible=icon]:hidden` bilan yashiriladi — aks holda avatar 32px ga qisqargan tugmadan (`sidebarMenuButtonVariants` da `group-data-[collapsible=icon]:size-8!`) toshib chiqardi; dropdown ichidagi nusxaga bu qoida tegmaydi (sidebar `group`i unga ajdod emas), ya'ni menyuda ism ko'rinaveradi.
 - `User({ user }: { user?: UserRead | null })`: `user` bo'lmasa `null`. `SidebarMenuButton size="lg"` trigger → `DropdownMenu` (`side`: mobil bo'lsa "bottom", aks holda "right"): `DropdownMenuLabel` da yana `UserInfo`, so'ng "Sozlamalar" (`RouterLink to="/settings"`) va "Chiqish" (`useAuth().logout()`).
-
----
-
-## Stock komponentlari — `frontend/src/components/Stock/`
-
-Materiallar ombori sahifasining (`/stock`, guard: `isStockStaff`) dialoglari va ikkinchi ko'rinishi — 5 fayl, ~985 qator. Formalar react-hook-form'siz, oddiy `useState` bilan (shuning uchun yorliqlar `Common/Field`, tanlovlar `Common/SelectField`); barcha mutatsiyalar `crudCallbacks(queryClient, ["stock"], ...)` triosidan o'tadi.
-
-### `frontend/src/components/Stock/StockDialogs.tsx`
-
-Ikki eksport:
-
-- `ItemDialog({ groups, item?, onClose? })` — tovar qo'shish va tahrirlash bitta dialogda. **Kod so'ralmaydi:** yangi tovarda uni server beradi (guruhdagi eng katta model raqami + 1) — Excel katalogida "Keyingi bo'sh model kodi" ustunini odam qo'lda yuritardi, o'sha ish serverga o'tdi; mavjud modelning boshqa rangi kerak bo'lsa kod qo'lda yoziladi (`manualCode`, masalan `F-RC-001-04`). Guruh mavjudlaridan tanlanadi yoki yangisi yoziladi — guruhlar alohida jadval emas, tovarlarning o'zidan yig'iladi. **Tahrirlashda QOLDIQ maydoni yo'q:** u faqat "Kirim / Chiqim" orqali o'zgaradi, aks holda audit izi uzilib, qoldiq qayerdan kelganini hech kim aytolmasdi.
-- `DeleteItem({ item, onClose })` — `Common/ConfirmDialog` ustidagi yupqa qatlam (`destructive`, `confirmText="O'chirish"`); tavsifda kirim/chiqim tarixi audit logda qolishi aytiladi.
-
-### `frontend/src/components/Stock/MoveDialog.tsx`
-
-Kirim/chiqim dialogi. Miqdor **delta** bo'lib kiritiladi: omborchi "20 ta keldi" deb o'ylaydi, "endi 174 ta bo'ldi" deb emas — va delta bo'lgani uchun ikki kishi bir vaqtda yozsa ham hech biri yo'qolmaydi. Chiqimning TURI so'raladi (`kirim` / `buyurtma` / `chiqim`), chunki miqdorning o'zi javob bermaydi: 12 ta petlya kamaydi — buyurtmagami, yo'qoldimi? Hisobot aynan shu farqqa tayanadi (buyurtmada TANNARX). Sotuv bu yerda yo'q — u alohida hujjat.
-
-### `frontend/src/components/Stock/SaleDialog.tsx`
-
-Ikki eksport:
-
-- `SaleDialog({ item, onClose })` — ombordan mijozga to'g'ridan-to'g'ri sotuv. To'lanmagan qism qarz bo'lib qoladi, shuning uchun qarzda MIJOZ majburiy (kimdan undirishni bilmasak yozuvning ma'nosi yo'q), naqd to'langan sotuvda esa shart emas — o'tkinchi xaridor. To'lov usuli: `cash` / `card` / `transfer`. Hozircha BITTA tovar: backend ko'p satrni (`lines[]`) qo'llab-quvvatlaydi, ya'ni savat keyin faqat frontendda quriladi.
-- `PaymentDialog({ saleId, debt, onClose })` — qarzni to'liq yoki qisman to'lash (`StockService.addSalePayment`).
-
-### `frontend/src/components/Stock/SalesView.tsx`
-
-Sotuvlar va qarzdorlar jadvali. Alohida sahifa emas — ombor sahifasidagi ikkinchi ko'rinish: omborchi kun davomida ikkalasi orasida tez-tez o'tadi, sahifa almashtirish ortiqcha qadam bo'lardi. `debtsOnly` filtri, holat nishonlari `STATUS` dan (TO'LANDI / QISMAN / QARZ — `--status-*` tokenlari), qarz qatoridan `PaymentDialog` ochiladi. Bo'sh holat `Common/EmptyRow`, xato `Common/QueryError`.
-
-### `frontend/src/components/Stock/format.ts`
-
-Ombor raqamlarini ko'rsatish bir joyda — jadval, dialoglar va sotuv ro'yxati bir xil formatda chiqishi kerak: `num(v)` (Decimal API'dan SATR bo'lib keladi — `"107.000"`), `uzs(v)` (`toLocaleString("ru-RU")` ming ajratkichi), `qty(v)` (butun bo'lsa kasrsiz — 174 dona `"174.000"` bo'lib ko'rinmasin).
 
 ---
 
@@ -551,7 +519,7 @@ Eng katta ui fayl (~740 qator, 24 eksport). shadcn'ning rasmiy sidebar blokiga a
 - **Cookie'dan boshlang'ich holatni o'qish**: standart shadcn faqat cookie'ga *yozadi*; bu yerda `getInitialOpen()` funksiyasi `sidebar_state` cookie'sini o'qib, sahifa yangilanganda ochiq/yopiq holatni tiklaydi (`useState(getInitialOpen)` lazy initializer).
 - `SidebarTrigger` sr-only matni dinamik va o'zbekcha: `open ? "Menyuni yig'ish" : "Menyuni ochish"`; mobil `Sheet` ning sr-only sarlavhasi "Yon menyu", tavsifi "Mobil yon menyu".
 - `sidebarMenuButtonVariants` o'lchamlari brendga moslangan: `default: "h-8 text-sm rounded-lg"`, `lg: "... rounded-xl data-[state=closed]:rounded-lg"`.
-- `SidebarHeader` (`p-2 pb-3`) va `SidebarFooter` (`gap-3 p-2`) padding'lari sozlangan; `SidebarInset` `bg-transparent` va **`min-w-0` SHART**: u flex elementi va sukut `min-width: auto` bilan keng kontent (ombor jadvali, chip qatori) SAHIFANI kengaytirib yubordi — sarlavhadagi tugmalar ekrandan chiqib ketdi va skroll sahifa darajasida paydo bo'lib, ichkaridagi `overflow-x-auto` konteynerlari ishlamay qoldi.
+- `SidebarHeader` (`p-2 pb-3`) va `SidebarFooter` (`gap-3 p-2`) padding'lari sozlangan; `SidebarInset` `bg-transparent` va **`min-w-0` SHART**: u flex elementi va sukut `min-width: auto` bilan keng kontent (loglar jadvali, chip qatori) SAHIFANI kengaytirib yubordi — sarlavhadagi tugmalar ekrandan chiqib ketdi va skroll sahifa darajasida paydo bo'lib, ichkaridagi `overflow-x-auto` konteynerlari ishlamay qoldi.
 - Muhim konstantalar: `SIDEBAR_WIDTH = "16rem"`, `SIDEBAR_WIDTH_ICON = "3rem"`, `SIDEBAR_WIDTH_MOBILE = "18rem"`, klaviatura yorlig'i **Ctrl/Cmd+B** (`SIDEBAR_KEYBOARD_SHORTCUT = "b"`).
 - Mobil rejimda `Sheet` ichida render qilinadi (`useIsMobile` — `@/hooks/useMobile`); `useSidebar()` hooki `{ state, open, setOpen, openMobile, setOpenMobile, isMobile, toggleSidebar }` kontekstini beradi — `Sidebar/Main.tsx` va `Sidebar/User.tsx` shundan foydalanadi.
 
@@ -564,11 +532,11 @@ function LoadingButton({ loading = false, disabled, asChild = false, ... }: Butt
 // loading=true -> disabled + <Loader2 className="mr-2 h-5 w-5 animate-spin" />
 ```
 
-Barcha mutation submit tugmalarida ishlatiladi — jami 22 chaqiruvchi (PersonDialog, BadgeDialog, AddClient, AddOrder, EditOrder, MachineAssign, OrderMatrix, CustomRoutes, CutmapView, TmoView, UpakovkaView, ConfirmDialog, Stock dialoglari — `MoveDialog`/`SaleDialog`/`StockDialogs`, ChangePassword, UserInformation, login formasi, anketa saqlash paneli, employees hodim formalari, work-centers ish markazi formasi, buyurtma sahifasi amallari, printers agent qo'shish formasi) va uzoq davom etadigan amallarda — `PrisadkaView` dagi SCX "Hammasini yuklab olish" tugmasi jonli progress yozuvi bilan ("Yuklanmoqda… 12/81").
+Barcha mutation submit tugmalarida ishlatiladi — jami 20 chaqiruvchi (PersonDialog, BadgeDialog, AddClient, AddOrder, EditOrder, MachineAssign, OrderMatrix, CustomRoutes, CutmapView, TmoView, UpakovkaView, ConfirmDialog, ChangePassword, UserInformation, login formasi, anketa saqlash paneli, employees hodim formalari, work-centers ish markazi formasi, buyurtma sahifasi amallari, printers agent qo'shish formasi) va uzoq davom etadigan amallarda — `PrisadkaView` dagi SCX "Hammasini yuklab olish" tugmasi jonli progress yozuvi bilan ("Yuklanmoqda… 12/81").
 
 ### `frontend/src/components/ui/password-input.tsx` (custom)
 
-shadcn'da yo'q. `ui/input` ni compose qiladi (`pr-10` bilan), o'ng tomonida ghost `Button size="icon-sm"` — `Eye`/`EyeOff` ikonkasi bilan parolni ko'rsatish/yashirish (`showPassword` state, `type` almashadi; aria-label "Parolni yashirish/ko'rsatish"). `React.ComponentProps<"input">` propslarini o'tkazadi (forwardRef yo'q — React 19 uslubi); `aria-invalid` ni chaqiruvchi o'zi uzatadi. `UserSettings/ChangePassword.tsx`, `routes/login.tsx` va `Admin/UserForm.tsx` (AddUser/EditUser umumiy maydonlari — parol va parolni tasdiqlash) da ishlatiladi — jami uchta chaqiruvchi; oddiy `Input type="password"` frontendda umuman qolmagan.
+shadcn'da yo'q. `ui/input` ni compose qiladi (`pr-10` bilan), o'ng tomonida ghost `Button size="icon-sm"` — `Eye`/`EyeOff` ikonkasi bilan parolni ko'rsatish/yashirish (`showPassword` state, `type` almashadi; aria-label "Parolni yashirish/ko'rsatish"). `React.ComponentProps<"input">` propslarini o'tkazadi (forwardRef yo'q — React 19 uslubi); `aria-invalid` ni chaqiruvchi o'zi uzatadi. `UserSettings/ChangePassword.tsx`, `routes/login.tsx` va `People/PersonDialog.tsx` da ishlatiladi — jami uchta chaqiruvchi; oddiy `Input type="password"` frontendda umuman qolmagan.
 
 ### `frontend/src/components/ui/date-picker.tsx` (custom)
 
@@ -586,11 +554,8 @@ routes (_layout sahifalar)                      routes (terminal / cutmap)
   │        ├─ ClientCombobox                      │    └─ PartCard → PartPreview + QR
   │        └─ AddClient (inline)                  ├─ KromkaView / PrisadkaView
   ├─ MachineAssign / OrderMatrix / CustomRoutes   │    ├─ OperationChips
-  ├─ stock.tsx: ItemDialog / MoveDialog /         │    └─ usePrintLabel
-  │        SaleDialog / DeleteItem                └─ audio (playSuccess/Error/Warning)
-  │        └─ SalesView ─ PaymentDialog · Stock/format (num/uzs/qty)
-  └─ employees.tsx: ui/table + AccessCell
-       │    (isLoading → Skeleton)
+  └─ employees.tsx: ui/table + AccessCell         │    └─ usePrintLabel
+       │    (isLoading → Skeleton)                └─ audio (playSuccess/Error/Warning)
        ├─ People/PersonDialog (F.I.Sh · telefon · lavozim)
        ├─ BadgeDialog (chop etish · yangi beyjik)
        └─ TogglePerson / DeletePerson ─ ConfirmDialog
@@ -611,14 +576,13 @@ routes (settings)                               routes (__root / layout)
 Tashqi bog'liqliklar: @/client (UsersService, ClientsService, OrdersService, TerminalService va
 User*/Client*/Order*/Post* model turlari), @/queries/mes (getClients/getMachines/getPosts/
 getOrderMatrixQueryOptions/getOrderQueryOptions va h.k.; PAGE_SIZE, crudCallbacks),
-@/queries/users (getUsersQueryOptions — barcha sahifalarni bitta ro'yxatga yig'adi, `admin.tsx`;
+@/queries/users (getUsersQueryOptions — barcha sahifalarni bitta ro'yxatga yig'adi, `employees.tsx`;
 getCurrentUserQueryOptions — `useCurrentUser` va `tablo.tsx` shundan foydalanadi), @/lib/mes (ROLE_LABELS, PRIORITY_LABELS,
 PRIORITY_DOT_CLASSES/PRIORITY_TEXT_CLASSES/PRIORITY_BADGE_CLASSES, POST_COLORS,
 ORDER_STATUS_LABELS/COLORS, chipColors/mixTint, isCut, PROCESS_OPS (16 amal kodi →
 nom+post; OperationChips va CustomRoutes ishlatadi — CustomRoutes 15/16 ni chiqarib
 tashlaydi), STANDARD_MATRIX_POSTS,
-ROUTE_START_POSTS, isAdmin/isSuperuser/isManagement/isProductionStaff/
-isStockStaff/isStockOnly,
+ROUTE_START_POSTS, isAdmin/isSuperuser/isManagement/isProductionStaff,
 MACHINE_BOUND_ROLES, TERMINAL_STATUSES, formatSize),
 @/hooks (useAuth, useCurrentUser, useMobile, useDebounced, useScanFlash), sonner (toast),
 @/lib/validation (zod schema'lar, formatMoneyInput, formatUzPhone), @/lib/utils (cn),

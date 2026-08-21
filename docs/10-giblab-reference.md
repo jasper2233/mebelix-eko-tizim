@@ -264,8 +264,8 @@ Tomonlar: `t`/`b` — **uzunlik bo'ylab**, `l`/`r` — **kenglik bo'ylab**.
 **Deloviy qoldiqlar — ishlatilmagan imkoniyat.** Korpusda 13 ta `waste="true" business="true"`
 `<part>` bor va ular hammasi `good[typeId=sheet]` ichida yashaydi (detal ro'yxatiga tushmaydi,
 soxta vazifa yaratmaydi). Ular GibLab'ning "shu kesishdan 688×1166 foydali qoldiq chiqadi"
-degan xabari. Materiallar ombori moduli ularni qabul qilsa qoldiq hisobi avtomatlashadi — 1C protokoli
-(§6) aynan shu ma'lumot bilan ishlaydi.
+degan xabari. Hozircha ularni hech kim iste'mol qilmaydi — qoldiq hisobi tsexda tizimdan
+tashqarida yuritiladi; 1C protokoli (§6) aynan shu ma'lumot bilan ishlaydi.
 
 ### 2.3 Detal nomi va jarayon kodlari
 

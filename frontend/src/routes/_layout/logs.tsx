@@ -59,7 +59,6 @@ const CATEGORIES: { key: string; label: string }[] = [
   { key: "orders", label: "Buyurtmalar" },
   { key: "pachka", label: "Pachkalar" },
   { key: "tmo", label: "TMO" },
-  { key: "stock", label: "Materiallar ombori" },
   { key: "bridge_agents", label: "Printer agentlar" },
   { key: "employees", label: "Hodimlar" },
   { key: "users", label: "Foydalanuvchilar" },
@@ -103,9 +102,6 @@ const ACTION_LABELS: Record<string, string> = {
   closed: "yopildi",
   item_removed: "pachkadan olindi",
   badge_queued: "beyjik chop etishga yuborildi",
-  move: "ombor harakati",
-  sale: "sotildi",
-  payment: "to'lov qabul qilindi",
 }
 
 function LogsPage() {

@@ -17,7 +17,6 @@ from .organization import Organization
 from .pachka import Pachka, PachkaItem
 from .post import Post
 from .scan import Scan, WorkSession
-from .stock import Payment, Sale, StockItem, StockMove
 from .user import User
 
 __all__ = [
@@ -28,10 +27,6 @@ __all__ = [
     "Client",
     "Employee",
     "Machine",
-    "Payment",
-    "Sale",
-    "StockItem",
-    "StockMove",
     "Order",
     "OrderFile",
     "Organization",

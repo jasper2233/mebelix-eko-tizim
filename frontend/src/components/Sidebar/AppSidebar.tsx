@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import {
   BarChart3,
-  Boxes,
   ClipboardList,
   Factory,
   Home,
@@ -25,8 +24,6 @@ import {
   isAdmin,
   isManagement,
   isProductionStaff,
-  isStockOnly,
-  isStockStaff,
   TERMINAL_STATUSES,
 } from "@/lib/mes"
 import { getOrderStatusCountsQueryOptions } from "@/queries/mes"
@@ -40,12 +37,7 @@ import { User } from "./User"
 export const NAV_ITEMS: (Item & {
   show: (user: UserRead | null | undefined) => boolean
 })[] = [
-  {
-    icon: Home,
-    title: "Boshqaruv paneli",
-    path: "/",
-    show: (u) => !isStockOnly(u),
-  },
+  { icon: Home, title: "Boshqaruv paneli", path: "/", show: () => true },
   {
     icon: ClipboardList,
     title: "Buyurtmalar",
@@ -61,25 +53,13 @@ export const NAV_ITEMS: (Item & {
     show: isProductionStaff,
   },
   {
-    icon: Boxes,
-    title: "Materiallar ombori",
-    path: "/stock",
-    show: isStockStaff,
-  },
-  {
     icon: BarChart3,
     title: "Hisobotlar",
     path: "/reports",
     show: isManagement,
   },
-  // TABLO — tsex zalidagi TV ekran. Omborchiga keraksiz: u boshqa
-  // binoda, kompyuter oldida ishlaydi
-  {
-    icon: Tv,
-    title: "LIVE Tablo",
-    path: "/tablo",
-    show: (u) => !isStockOnly(u),
-  },
+  // TABLO — tsex zalidagi TV ekran
+  { icon: Tv, title: "LIVE Tablo", path: "/tablo", show: () => true },
   {
     icon: Printer,
     title: "Printer agentlar",

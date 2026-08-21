@@ -4,7 +4,7 @@ import type { ReactNode } from "react"
  * Dialog maydoni yorlig'i — react-hook-form ishlatmaydigan formalar uchun.
  *
  * `ui/form.tsx` dagi `FormField`/`FormLabel` rhf konteksti talab qiladi;
- * qo'lda `useState` bilan yozilgan dialoglarda (ombor, sotuv, ish markazi)
+ * qo'lda `useState` bilan yozilgan dialoglarda (ish markazi, hodim)
  * shu komponent o'sha rolni bajaradi. Ilgari u uchta faylda bayt-ba-bayt
  * takrorlanardi.
  *
