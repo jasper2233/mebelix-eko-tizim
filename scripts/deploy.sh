@@ -19,7 +19,28 @@ COMPOSE="docker compose -f docker-compose.prod.yml"
 BIND="$(grep -E '^CADDY_HTTP_BIND=' .env 2>/dev/null | tail -1 | cut -d= -f2- || true)"
 BIND="${BIND:-80}"
 case "$BIND" in *:*) ;; *) BIND="127.0.0.1:${BIND}" ;; esac
-SMOKE_URL="${SMOKE_URL:-http://${BIND}/api/v1/ready}"
+
+# SITE_ADDRESS domen bo'lsa Caddy HTTP'ni HTTPS'ga 308 bilan yo'naltiradi va
+# oddiy HTTP smoke HECH QACHON 200 olmaydi — har deploy yolg'ondan yiqilib
+# rollback bo'lardi. Eski o'rnatishda `SITE_ADDRESS=:80` edi (Caddy nginx
+# ortida turardi), ya'ni yo'naltirish yo'q edi va bu kamchilik bilinmasdi.
+#
+# Domen holatida smoke SHU MASHINADA qoladi: `--resolve` domenni 127.0.0.1 ga
+# bog'laydi, SNI to'g'ri ketadi va Caddy o'z sayt blokini tanlaydi. Tashqi DNS
+# ham, internet ham aralashmaydi.
+SITE="$(grep -E '^SITE_ADDRESS=' .env 2>/dev/null | tail -1 | cut -d= -f2- || true)"
+SITE="${SITE#\"}"
+SITE="${SITE%\"}"
+case "$SITE" in
+    ""|:*)  # bo'sh yoki `:80` / `:8443` — oddiy HTTP, yo'naltirish yo'q
+        SMOKE_URL="${SMOKE_URL:-http://${BIND}/api/v1/ready}"
+        SMOKE_OPTS=""
+        ;;
+    *)      # domen — TLS orqali, lekin baribir shu mashinada
+        SMOKE_URL="${SMOKE_URL:-https://${SITE}/api/v1/ready}"
+        SMOKE_OPTS="--resolve ${SITE}:443:127.0.0.1"
+        ;;
+esac
 
 # `--max-time` MAJBURIY: usiz osilgan API (TCP qabul qiladi, javob bermaydi —
 # aynan smoke tutishi kerak bo'lgan holat) `curl` ni CHEKSIZ kuttiradi, sikl
@@ -28,7 +49,7 @@ SMOKE_URL="${SMOKE_URL:-http://${BIND}/api/v1/ready}"
 smoke() {
     for _ in $(seq 1 30); do
         code=$(curl -s -o /dev/null -w '%{http_code}' \
-            --connect-timeout 5 --max-time 10 "$SMOKE_URL" || true)
+            --connect-timeout 5 --max-time 10 ${SMOKE_OPTS} "$SMOKE_URL" || true)
         [ "$code" = "200" ] && return 0
         sleep 5
     done
