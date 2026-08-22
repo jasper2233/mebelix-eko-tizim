@@ -64,7 +64,9 @@ async def printer_agent(db: "AsyncSession", machine_id: int | None) -> "Row | No
                 )
             )
         )
-        .scalars()
+        # `.scalars()` YO'Q: u faqat BIRINCHI ustunni oladi va bu yerda `Row`
+        # o'rniga `int` qaytarardi — chaqiruvchidagi `agent.id` esa
+        # `AttributeError: 'int' object has no attribute 'id'` bilan yiqilardi.
         .first()
     )
 
