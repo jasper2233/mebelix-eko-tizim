@@ -315,6 +315,13 @@ export function SheetSvg({
       cur.height,
     )
   }
+  /** Ko'rsatkichni ro'yxatdan chiqarish va unga bog'liq jestlarni tozalash. */
+  const forgetPointer = (id: number) => {
+    ptsRef.current.delete(id)
+    if (ptsRef.current.size < 2) pinchRef.current = null
+    if (!ptsRef.current.size) panRef.current = null
+  }
+
   const onPointerEnd = (e: React.PointerEvent<SVGSVGElement>) => {
     cancelLP()
     const sw = swipeRef.current
@@ -325,9 +332,19 @@ export function SheetSvg({
         onSwipe?.(dx < 0 ? "next" : "prev")
     }
     swipeRef.current = null
-    ptsRef.current.delete(e.pointerId)
-    if (ptsRef.current.size < 2) pinchRef.current = null
-    if (!ptsRef.current.size) panRef.current = null
+    forgetPointer(e.pointerId)
+  }
+
+  /** Barmoq SVG CHETIDAN chiqib ketdi.
+   *
+   * Bu yerda `setPointerCapture` ATAYIN ishlatilmaydi (yuqoridagi izohga qarang),
+   * ya'ni chetga chiqqan barmoqning `pointerup` i boshqa elementga ketadi va
+   * bu ro'yxatda ARVOH yozuv qoldirardi. Keyingi safar ikki barmoq qo'yilsa
+   * o'lcham 2 emas, 3 bo'lib chiqar va pinch sharti umuman bajarilmasdi —
+   * yaqinlashtirish jimgina o'lardi, faqat sahifa yangilangach tiklanardi.
+   */
+  const onPointerLeave = (e: React.PointerEvent<SVGSVGElement>) => {
+    forgetPointer(e.pointerId)
   }
 
   // Tugma zoom — qo'lqopda pinch ishonchsiz; markaz atrofida 1.5x
@@ -844,6 +861,7 @@ export function SheetSvg({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerEnd}
       onPointerCancel={onPointerEnd}
+      onPointerLeave={onPointerLeave}
       onContextMenu={(e) => onOpenPart && e.preventDefault()}
     >
       <title>Kesish xaritasi</title>
