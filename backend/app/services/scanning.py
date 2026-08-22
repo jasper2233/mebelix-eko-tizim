@@ -753,19 +753,10 @@ async def log_rejected_scan(
     user_id: int | None = None,
     source: str = "",
     meta_extra: dict[str, Any] | None = None,
-    machine_id: int | None = None,
-    post_id: int | None = None,
 ) -> None:
-    """Rad etilgan skan YAKUNI — rollback + audit-log + commit + WS publish.
+    """Rad etilgan skan YAKUNI — rollback + audit-log + commit.
     Terminal (scans.py) va stanok skan-forvardi (bridge_agents.py) bir xil blokni
-    takrorlardi; HTTPException(422) esa har bir chaqiruv joyining o'zida qoladi.
-
-    `machine_id` berilsa hodisa WS orqali ham chiqadi. Bu STANOK skaneri uchun:
-    u agent orqali to'g'ridan-to'g'ri serverga yozadi, ya'ni javobni ko'radigan
-    brauzer yo'q va agent oynasiz fon jarayoni. Rad etilgan skan shu paytgacha
-    faqat logda qolardi — operator "allaqachon skanerlangan" ni bilmasdi va
-    detalni qayta-qayta o'tkazardi."""
-    from app.core.ws import ws_manager
+    takrorlardi; HTTPException(422) esa har bir chaqiruv joyining o'zida qoladi."""
     from app.crud import log_action
 
     await db.rollback()
@@ -778,13 +769,6 @@ async def log_rejected_scan(
         meta={"code": exc.code, **(meta_extra or {})},
     )
     await db.commit()
-    if machine_id is not None:
-        await ws_manager.publish(
-            "scan.rejected",
-            {"qr_text": qr_text, "code": exc.code, "message": exc.message, "machine_id": machine_id},
-            post_id=post_id,
-            machine_id=machine_id,
-        )
 
 
 async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Scan, list[dict[str, Any]]]:

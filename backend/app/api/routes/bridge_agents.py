@@ -370,18 +370,18 @@ async def bridge_scan(
             client_event_id=body.client_event_id or uuid.uuid4().hex,
         )
     except ScanRejected as exc:
-        # Stanokdagi rad etilgan skan endi terminal ekraniga ham chiqadi:
-        # `machine_id` berilgani uchun `log_rejected_scan` WS hodisasini chiqaradi
-        # va o'sha ish markazidagi brauzer qizil bannerni ko'rsatadi. Ilgari u
-        # faqat logda qolardi — operator sababini bilmay detalni qayta o'tkazardi.
         await log_rejected_scan(
-            db,
-            exc,
-            body.qr_text,
-            source=f" (stanok, {agent.name})",
-            meta_extra={"agent_id": agent.id},
-            machine_id=machine.id,
+            db, exc, body.qr_text, source=f" (stanok, {agent.name})", meta_extra={"agent_id": agent.id}
+        )
+        # Stanokdagi rad etilgan skan endi terminal ekraniga ham chiqadi. Bu
+        # FAQAT shu yo'lga tegishli: terminalning o'z skani 422 javobning
+        # o'zidan xabar oladi, ya'ni umumiy `log_rejected_scan` ga parametr
+        # qo'shishning hojati yo'q.
+        await ws_manager.publish(
+            "scan.rejected",
+            {"qr_text": body.qr_text, "code": exc.code, "message": exc.message, "machine_id": machine.id},
             post_id=post.id,
+            machine_id=machine.id,
         )
         raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
 
