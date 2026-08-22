@@ -92,6 +92,8 @@ function TerminalPage() {
     }
   }
   const [lastScan, setLastScan] = useState<LastScan>(null)
+  //: Shu brauzer qilgan skanlar — WS hodisasi qaytib kelganda takrorlamaslik uchun
+  const ownScansRef = useRef<Set<number>>(new Set())
   const [undoOpen, setUndoOpen] = useState(false)
   const [logoutOpen, setLogoutOpen] = useState(false)
   // Yakunlanayotgan smena — brigadada kim ekani muhim (biri ketib, ikkinchisi
@@ -128,6 +130,14 @@ function TerminalPage() {
     [queryClient],
   )
 
+  // STANOK SKANERIDAN kelgan skanni ham ekranda ko'rsatamiz.
+  //
+  // Nanxing/prisadka stansiyasining skaneri QR'ni agentga beradi, agent esa
+  // to'g'ridan-to'g'ri serverga yozadi — brauzer bu yo'lda umuman qatnashmaydi
+  // va agent oynasiz fon jarayoni. Shu sababli operator na muvaffaqiyatni, na
+  // "allaqachon skanerlangan" ni ko'rardi: skan bazaga tushar, ekranda esa
+  // hech nima o'zgarmasdi. Server hodisani allaqachon chiqarayotgan ekan,
+  // terminal uni O'ZI qilgan skan bilan bir xil banner va ovoz bilan ko'rsatadi.
   const { online } = useMesWs(
     useCallback(
       (event) => {
@@ -141,8 +151,34 @@ function TerminalPage() {
         ) {
           invalidateWork()
         }
+        const p = event.payload
+        if (!ctx || p.machine_id !== ctx.machine_id) return
+        if (event.type === "scan.recorded") {
+          const sid = Number(p.scan_id)
+          // O'z skanimizni ikki marta ko'rsatmaymiz: `onSuccess` bannerni
+          // allaqachon qo'ygan va unda BEKOR QILISH uchun `scanId` bor.
+          if (ownScansRef.current.delete(sid)) return
+          playSuccess()
+          lastScanAtRef.current = Date.now()
+          setLastScan({
+            kind: "ok",
+            code: String(p.part_code ?? ""),
+            qoldiq: Number(p.qoldiq ?? 0),
+            scanId: sid,
+            at: Date.now(),
+          })
+        } else if (event.type === "scan.rejected") {
+          const code = String(p.code ?? "")
+          const message = String(p.message ?? "")
+          // E008 — ish allaqachon bajarilgan: xato emas, neytral signal
+          if (code === "E008") playWarning()
+          else playError()
+          lastScanAtRef.current = Date.now()
+          setLastScan({ kind: "error", code, message, at: Date.now() })
+          toast.error(message)
+        }
       },
-      [invalidateWork],
+      [invalidateWork, ctx],
     ),
   )
 
@@ -188,6 +224,7 @@ function TerminalPage() {
       ).data,
     onSuccess: (r: ScanResult) => {
       playSuccess()
+      ownScansRef.current.add(r.scan_id)
       lastScanAtRef.current = Date.now()
       // Chek/QR/SCX bilan bir xil satr — operator solishtirganda adashmasin
       setLastScan({
