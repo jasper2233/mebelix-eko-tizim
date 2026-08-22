@@ -562,7 +562,7 @@ export function CutmapView({
             : toast.error(
                 markedInsts.length
                   ? "Bu detal chiqarilgan. Qaytadan chiqarish uchun detalni ikki marta bosib chekni bekor qiling."
-                  : "Bu detal ro'yxatdan o'tmagan — chek chiqmaydi. Texnologga ayting.",
+                  : "Bu detalning QR'i yo'q — chek chiqmaydi. Texnologga ayting.",
               )
         }
       >
