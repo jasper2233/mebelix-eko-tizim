@@ -88,11 +88,6 @@ export function CrewChips({
   onEnd: (session: SessionRead) => void
   onAdd: () => void
 }) {
-  // Kirgan odamning smenasi ochilmagan bo'lsa tugma boshqa ishni bildiradi:
-  // `employee.user_id` bog'lanishi QO'LDA qo'yiladi va admin uni unutishi
-  // mumkin, o'shanda login smenani ocholmaydi. "+ Qo'shish" degan yozuv
-  // yolg'on bo'lardi - qo'shadigan smena yo'q, uni BOSHLASH kerak.
-  const ozSmenasi = crew.some((s) => s.is_me)
   return (
     <div className="hidden shrink-0 items-center gap-1.5 md:flex">
       <UserRound className="size-4 text-muted-foreground" />
@@ -116,7 +111,7 @@ export function CrewChips({
         className="rounded-full text-muted-foreground"
         onClick={onAdd}
       >
-        {ozSmenasi ? "+ Qo'shish" : "Smenani boshlash"}
+        + Qo'shish
       </Button>
     </div>
   )
