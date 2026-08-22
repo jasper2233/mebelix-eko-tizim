@@ -386,6 +386,204 @@ export type ClientUpdate = {
 };
 
 /**
+ * CutmapBore
+ *
+ * Yuza teshigi: detal tekisligida (x, y).
+ */
+export type CutmapBore = {
+    /**
+     * X
+     */
+    x: number;
+    /**
+     * Y
+     */
+    y: number;
+    /**
+     * D
+     */
+    d: number;
+    /**
+     * Thru
+     */
+    thru: boolean;
+};
+
+/**
+ * CutmapCell
+ *
+ * Listdagi bitta fizik katak: detal yoki ro'yxatga olingan atxot.
+ *
+ * Ikkala tur BITTA model bilan tasvirlanadi. Atxot katagida detal maydonlari
+ * (`key`, `num`, `rot`, `eW`, `eH`) bo'lmaydi — ularni ixtiyoriy qilib qo'yish
+ * ajratilgan union'dan sodda va saqlangan eski JSON'ni rad etmaydi (bu yerda
+ * validatsiya xatosi butun xaritani 500 bilan yiqitardi). Ajratish `waste`
+ * bo'yicha.
+ */
+export type CutmapCell = {
+    /**
+     * Cell
+     */
+    cell: number;
+    /**
+     * X
+     */
+    x: number;
+    /**
+     * Y
+     */
+    y: number;
+    /**
+     * W
+     */
+    w: number;
+    /**
+     * H
+     */
+    h: number;
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Qty
+     */
+    qty: number;
+    /**
+     * Waste
+     */
+    waste: boolean;
+    /**
+     * Key
+     */
+    key?: string | null;
+    /**
+     * Num
+     */
+    num?: number | null;
+    /**
+     * Rot
+     */
+    rot?: boolean;
+    /**
+     * Ew
+     */
+    eW?: Array<string | null> | null;
+    /**
+     * Eh
+     */
+    eH?: Array<string | null> | null;
+    /**
+     * Txt
+     */
+    txt?: boolean;
+};
+
+/**
+ * CutmapCut
+ *
+ * Guillotine cut line — edge to edge across its parent region (TZ 5.7.5).
+ */
+export type CutmapCut = {
+    /**
+     * X1
+     */
+    x1: number;
+    /**
+     * Y1
+     */
+    y1: number;
+    /**
+     * X2
+     */
+    x2: number;
+    /**
+     * Y2
+     */
+    y2: number;
+};
+
+/**
+ * CutmapDim
+ *
+ * Root strip dimension chain entry (GibSaw style).
+ */
+export type CutmapDim = {
+    /**
+     * Ax
+     */
+    ax: 'X' | 'Y';
+    /**
+     * A
+     */
+    a: number;
+    /**
+     * B
+     */
+    b: number;
+    /**
+     * V
+     */
+    v: number;
+};
+
+/**
+ * CutmapEdgeBore
+ *
+ * Qirra teshigi: `side` — l/r/t/b, `pos` — o'sha qirra bo'ylab masofa.
+ */
+export type CutmapEdgeBore = {
+    /**
+     * Side
+     */
+    side: string;
+    /**
+     * Pos
+     */
+    pos: number;
+    /**
+     * D
+     */
+    d: number;
+    /**
+     * Dp
+     */
+    dp: number;
+    /**
+     * Thru
+     */
+    thru: boolean;
+};
+
+/**
+ * CutmapHole
+ *
+ * Bitta detalning birlashtirilgan XNC qatlami (TZ 5.7.5).
+ */
+export type CutmapHole = {
+    /**
+     * L
+     */
+    l?: number | null;
+    /**
+     * W
+     */
+    w?: number | null;
+    /**
+     * Bores
+     */
+    bores?: Array<CutmapBore>;
+    /**
+     * Edge
+     */
+    edge?: Array<CutmapEdgeBore>;
+};
+
+/**
  * CutmapInstanceState
  */
 export type CutmapInstanceState = {
@@ -428,6 +626,120 @@ export type CutmapInstanceState = {
 };
 
 /**
+ * CutmapMaterial
+ *
+ * Bitta CS operatsiyasi = bitta list materiali, GibSaw reja ko'rsatkichlari bilan.
+ */
+export type CutmapMaterial = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Thick
+     */
+    thick?: number | null;
+    /**
+     * Kerf
+     */
+    kerf?: number | null;
+    /**
+     * Triml
+     */
+    trimL?: number | null;
+    /**
+     * Trimw
+     */
+    trimW?: number | null;
+    /**
+     * Fill
+     */
+    fill?: number | null;
+    /**
+     * Kd
+     */
+    kd?: number | null;
+    /**
+     * Kk
+     */
+    kk?: number | null;
+    /**
+     * Ko
+     */
+    ko?: number | null;
+    /**
+     * Dr
+     */
+    dr?: number | null;
+    /**
+     * Kr
+     */
+    kr?: number | null;
+    /**
+     * Sheets
+     */
+    sheets?: Array<CutmapSheet>;
+};
+
+/**
+ * CutmapModel
+ *
+ * `order.cutmap` — kesish xaritasining vizual modeli (`build_cutmap` chiqishi).
+ *
+ * Ilgari bu `dict[str, Any]` edi, ya'ni generatsiya qilingan klient ham bo'sh
+ * tur berardi va frontend butun xaritani `any` ustida yozishga majbur edi —
+ * `p.cell`, `s.no` kabi murojaatlar umuman tekshirilmasdi.
+ */
+export type CutmapModel = {
+    /**
+     * Materials
+     */
+    materials?: Array<CutmapMaterial>;
+    /**
+     * Holes
+     */
+    holes?: {
+        [key: string]: CutmapHole;
+    };
+};
+
+/**
+ * CutmapSheet
+ *
+ * Bitta kesish sxemasi. `mult` — u nechta bir xil listni bildiradi.
+ */
+export type CutmapSheet = {
+    /**
+     * No
+     */
+    no: number;
+    /**
+     * L
+     */
+    L: number;
+    /**
+     * W
+     */
+    W: number;
+    /**
+     * Mult
+     */
+    mult: number;
+    /**
+     * Parts
+     */
+    parts: Array<CutmapCell>;
+    /**
+     * Dims
+     */
+    dims?: Array<CutmapDim>;
+    /**
+     * Cuts
+     */
+    cuts?: Array<CutmapCut>;
+};
+
+/**
  * CutmapState
  *
  * ARRA cut-map screen payload (TZ 7.1.7): the visual model + live per-cell state.
@@ -441,12 +753,7 @@ export type CutmapState = {
      * Order Number
      */
     order_number: string;
-    /**
-     * Model
-     */
-    model: {
-        [key: string]: unknown;
-    } | null;
+    model: CutmapModel | null;
     /**
      * Instances
      */

@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -207,12 +207,130 @@ class CutmapInstanceState(BaseModel):
     arra_route: bool = True
 
 
+class CutmapDim(BaseModel):
+    """Root strip dimension chain entry (GibSaw style)."""
+
+    ax: Literal["X", "Y"]
+    a: float
+    b: float
+    v: float
+
+
+class CutmapCut(BaseModel):
+    """Guillotine cut line — edge to edge across its parent region (TZ 5.7.5)."""
+
+    x1: float
+    y1: float
+    x2: float
+    y2: float
+
+
+class CutmapCell(BaseModel):
+    """Listdagi bitta fizik katak: detal yoki ro'yxatga olingan atxot.
+
+    Ikkala tur BITTA model bilan tasvirlanadi. Atxot katagida detal maydonlari
+    (`key`, `num`, `rot`, `eW`, `eH`) bo'lmaydi — ularni ixtiyoriy qilib qo'yish
+    ajratilgan union'dan sodda va saqlangan eski JSON'ni rad etmaydi (bu yerda
+    validatsiya xatosi butun xaritani 500 bilan yiqitardi). Ajratish `waste`
+    bo'yicha.
+    """
+
+    cell: int
+    x: float
+    y: float
+    w: float
+    h: float
+    id: int
+    name: str
+    qty: int
+    waste: bool
+    key: str | None = None
+    num: int | None = None
+    rot: bool = False
+    #: Qirra belgilari joylashgan holatda: eW = [chap, o'ng], eH = [tepa, past].
+    eW: list[str | None] | None = None
+    eH: list[str | None] | None = None
+    txt: bool = False
+
+
+class CutmapSheet(BaseModel):
+    """Bitta kesish sxemasi. `mult` — u nechta bir xil listni bildiradi."""
+
+    no: int
+    L: float
+    W: float
+    mult: int
+    parts: list[CutmapCell]
+    dims: list[CutmapDim] = Field(default_factory=list)
+    cuts: list[CutmapCut] = Field(default_factory=list)
+
+
+class CutmapMaterial(BaseModel):
+    """Bitta CS operatsiyasi = bitta list materiali, GibSaw reja ko'rsatkichlari bilan."""
+
+    name: str
+    thick: float | None = None
+    kerf: float | None = None
+    trimL: float | None = None
+    trimW: float | None = None
+    #: Reja ko'rsatkichlari GibSaw statistikasidan keladi va fayl to'liq
+    #: hisoblanmagan bo'lsa yo'q bo'lishi mumkin — shuning uchun ixtiyoriy.
+    fill: float | None = None
+    kd: float | None = None
+    kk: float | None = None
+    ko: float | None = None
+    dr: float | None = None
+    kr: float | None = None
+    sheets: list[CutmapSheet] = Field(default_factory=list)
+
+
+class CutmapBore(BaseModel):
+    """Yuza teshigi: detal tekisligida (x, y)."""
+
+    x: float
+    y: float
+    d: float
+    thru: bool
+
+
+class CutmapEdgeBore(BaseModel):
+    """Qirra teshigi: `side` — l/r/t/b, `pos` — o'sha qirra bo'ylab masofa."""
+
+    side: str
+    pos: float
+    d: float
+    dp: float
+    thru: bool
+
+
+class CutmapHole(BaseModel):
+    """Bitta detalning birlashtirilgan XNC qatlami (TZ 5.7.5)."""
+
+    l: float | None = None  # noqa: E741 — model kaliti, `length` deb o'zgartirib bo'lmaydi
+    w: float | None = None
+    bores: list[CutmapBore] = Field(default_factory=list)
+    edge: list[CutmapEdgeBore] = Field(default_factory=list)
+
+
+class CutmapModel(BaseModel):
+    """`order.cutmap` — kesish xaritasining vizual modeli (`build_cutmap` chiqishi).
+
+    Ilgari bu `dict[str, Any]` edi, ya'ni generatsiya qilingan klient ham bo'sh
+    tur berardi va frontend butun xaritani `any` ustida yozishga majbur edi —
+    `p.cell`, `s.no` kabi murojaatlar umuman tekshirilmasdi.
+    """
+
+    materials: list[CutmapMaterial] = Field(default_factory=list)
+    #: Kalit — `file_part_id` matn ko'rinishida (JSON obyekt kaliti butun son bo'lolmaydi).
+    holes: dict[str, CutmapHole] = Field(default_factory=dict)
+
+
 class CutmapState(BaseModel):
     """ARRA cut-map screen payload (TZ 7.1.7): the visual model + live per-cell state."""
 
     order_id: int
     order_number: str
-    model: dict[str, Any] | None
+    model: CutmapModel | None
     instances: list[CutmapInstanceState]
 
 

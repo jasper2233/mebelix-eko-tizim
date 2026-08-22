@@ -11,25 +11,26 @@ import {
   Minus,
   Plus,
   Printer,
-  RotateCw,
 } from "lucide-react"
-import { QRCodeSVG } from "qrcode.react"
 import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { renderToStaticMarkup } from "react-dom/server"
 import { toast } from "sonner"
 
 import {
+  type CutmapHole,
   type CutmapInstanceState,
+  type CutmapMaterial,
   OrdersService,
   TerminalService,
 } from "@/client"
+import { PartCard } from "@/components/Terminal/PartCard"
 import {
-  edgeBoreRect,
-  edgeLocalXY,
-  holeXY,
+  type Sheet,
+  type SheetPart,
   SheetSvg,
 } from "@/components/Terminal/SheetSvg"
+import { TBtn } from "@/components/Terminal/TBtn"
 import {
   useCancelLabel,
   usePrintLabel,
@@ -45,11 +46,12 @@ import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { isCut } from "@/lib/mes"
 
-// Kesish xaritasi modeli (order.cutmap JSON) server tomonda tiplashtirilmagan
-// (CutmapState.model = {[k: string]: unknown} | null) — lokal any'lar shu sababli
-type SheetPart = any
-type Sheet = any
-type Material = any
+// `SheetPart`/`Sheet` — SheetSvg dan (ikkalasi bir xil yoyilgan listni ko'radi).
+// `rover` materialda ham bor: hamma listi roverniki bo'lgan material.
+type Material = Omit<CutmapMaterial, "sheets"> & {
+  sheets: Sheet[]
+  rover?: boolean
+}
 
 const getCutmapQueryOptions = (orderId: number, admin: boolean) =>
   queryOptions({
@@ -72,7 +74,7 @@ function escapeHtml(s: string): string {
 function printAllMaps(
   orderNumber: string,
   materials: Material[],
-  holes: Record<string, any>,
+  holes: Record<string, CutmapHole>,
   instancesByCell: Map<string, CutmapInstanceState[]>,
 ) {
   const w = window.open("", "_blank", "width=1000,height=800")
@@ -80,7 +82,7 @@ function printAllMaps(
   const blocks = materials
     .flatMap((m: Material) =>
       m.sheets.map(
-        (s: Sheet) => `
+        (s) => `
         <section>
           <h2>${escapeHtml(m.name)} | №${s.disp ?? s.no} — ${s.L} × ${s.W} mm</h2>
           ${renderToStaticMarkup(
@@ -244,67 +246,62 @@ export function CutmapView({
   // binding (pattern_no, cell_index) semantikasi buzilmaydi.
   const { expMaterials, cellInsts } = useMemo(() => {
     const view = new Map<string, CutmapInstanceState[]>()
-    const mats = (((data?.model as any)?.materials ?? []) as any[]).map(
-      (m: any) => {
-        let disp = 0
-        const sheets = ((m.sheets ?? []) as any[]).flatMap((s: any) => {
-          const mult = s.mult || 1
-          return Array.from({ length: mult }, (_, k) => {
-            disp += 1
-            const no = mult > 1 ? `${s.no}c${k + 1}` : s.no
-            for (const p of s.parts ?? []) {
-              if (p.waste) continue
-              const all = instancesByCell.get(`${s.no}:${p.cell}`) ?? []
-              // Barqaror taqsimot: k-karta har katakning k-nusxasini oladi
-              const sorted = [...all].sort(
-                (a, b) =>
-                  (a.instance_no ?? 0) - (b.instance_no ?? 0) ||
-                  a.instance_id - b.instance_id,
-              )
-              view.set(
-                `${no}:${p.cell}`,
-                mult > 1 ? sorted.slice(k, k + 1) : sorted,
-              )
-            }
-            return { ...s, no, disp, mult: 1 }
-          })
+    const mats: Material[] = (data?.model?.materials ?? []).map((m) => {
+      let disp = 0
+      const sheets: Sheet[] = (m.sheets ?? []).flatMap((s) => {
+        const mult = s.mult || 1
+        return Array.from({ length: mult }, (_, k) => {
+          disp += 1
+          const no = mult > 1 ? `${s.no}c${k + 1}` : s.no
+          for (const p of s.parts ?? []) {
+            if (p.waste) continue
+            const all = instancesByCell.get(`${s.no}:${p.cell}`) ?? []
+            // Barqaror taqsimot: k-karta har katakning k-nusxasini oladi
+            const sorted = [...all].sort(
+              (a, b) =>
+                (a.instance_no ?? 0) - (b.instance_no ?? 0) ||
+                a.instance_id - b.instance_id,
+            )
+            view.set(
+              `${no}:${p.cell}`,
+              mult > 1 ? sorted.slice(k, k + 1) : sorted,
+            )
+          }
+          return { ...s, no, disp, mult: 1 }
         })
-        return { ...m, sheets }
-      },
-    )
+      })
+      return { ...m, sheets }
+    })
     return { expMaterials: mats, cellInsts: view }
   }, [data, instancesByCell])
 
   // Listning egasi: hamma katagi marshrutida ARRA qadami YO'Q detallardan iborat
   // bo'lsa — list roverniki (frezer butun listni o'zi kesadi).
   const materials: Material[] = useMemo(() => {
-    const isRover = (s: any) => {
-      const cells = ((s.parts ?? []) as SheetPart[]).filter((p) => !p.waste)
+    const isRover = (s: Sheet) => {
+      const cells = s.parts.filter((p) => !p.waste)
       if (!cells.length) return false
       const insts = cells.flatMap(
         (p) => cellInsts.get(`${s.no}:${p.cell}`) ?? [],
       )
       return insts.length > 0 && insts.every((i) => i.arra_route === false)
     }
-    const mats = (expMaterials as any[]).map((m) => {
-      const sheets = (m.sheets ?? []).map((s: any) => ({
-        ...s,
-        rover: isRover(s),
-      }))
+    const mats: Material[] = expMaterials.map((m) => {
+      const sheets = m.sheets.map((s) => ({ ...s, rover: isRover(s) }))
       return {
         ...m,
         sheets,
-        rover: sheets.length > 0 && sheets.every((s: any) => s.rover),
+        rover: sheets.length > 0 && sheets.every((s) => s.rover),
       }
     })
     // Admin (texnolog) rejasini fayl tartibida ko'radi: uning "o'z listi" degan
     // tushunchasi yo'q, marshrutni matritsa va nostandart tabidan tekshiradi.
-    if (admin) return mats as Material[]
+    if (admin) return mats
     // Roverchi FAQAT o'z listlarini ko'radi
     if (postCode === "ROVER") {
       return mats
-        .map((m) => ({ ...m, sheets: m.sheets.filter((s: any) => s.rover) }))
-        .filter((m) => m.sheets.length > 0) as Material[]
+        .map((m) => ({ ...m, sheets: m.sheets.filter((s) => s.rover) }))
+        .filter((m) => m.sheets.length > 0)
     }
     // Arrachida: O'ZINIKI OLDINDA. Materiallar fayl tartibida keladi va rover
     // materiali birinchi bo'lishi mumkin (prodda aynan shunday) — u holda xarita
@@ -313,11 +310,9 @@ export function CutmapView({
     return mats
       .map((m) => ({
         ...m,
-        sheets: [...m.sheets].sort(
-          (a: any, b: any) => Number(a.rover) - Number(b.rover),
-        ),
+        sheets: [...m.sheets].sort((a, b) => Number(a.rover) - Number(b.rover)),
       }))
-      .sort((a, b) => Number(a.rover) - Number(b.rover)) as Material[]
+      .sort((a, b) => Number(a.rover) - Number(b.rover))
   }, [expMaterials, cellInsts, postCode, admin])
 
   // Matritsadan kelgan "xaritada ko'rsat" sakrashi: ma'lumot kelgach detalning
@@ -336,7 +331,7 @@ export function CutmapView({
       const shs = materials[mi].sheets ?? []
       for (let si = 0; si < shs.length; si++) {
         const hit = (shs[si].parts ?? []).find(
-          (p: any) => !p.waste && p.key === focusPartKey,
+          (p) => !p.waste && p.key === focusPartKey,
         )
         if (hit) {
           setMaterialIdx(mi)
@@ -367,14 +362,14 @@ export function CutmapView({
     )
   }
 
-  const model = data.model as any
+  const model = data.model
   const material = materials[materialIdx]
   const sheets: Sheet[] = material?.sheets ?? []
   const sheet = sheetIdx !== null ? sheets[sheetIdx] : undefined
-  const holes = (model.holes ?? {}) as Record<string, any>
+  const holes = model.holes ?? {}
 
   const sheetDone = (s: Sheet) => {
-    const cells = (s.parts as SheetPart[]).filter((p) => !p.waste)
+    const cells = s.parts.filter((p) => !p.waste)
     if (!cells.length) return false
     return cells.every((p) => {
       const insts = cellInsts.get(`${s.no}:${p.cell}`) ?? []
@@ -388,48 +383,23 @@ export function CutmapView({
 
   // Material statistikasi — ixcham bir qator (terminalda SKAN ON qatoriga portal,
   // admin sahifada xarita tepasida). Xarita balandligidan joy olmaydi.
-  const listTot = sheets.reduce((a: number, s: Sheet) => a + (s.mult || 1), 0)
-  const listDn = sheets
-    .filter(sheetDone)
-    .reduce((a: number, s: Sheet) => a + (s.mult || 1), 0)
-  // Jami detal KO'RINAYOTGAN listlardan sanaladi, fayldagi `kd` dan emas: `kd`
-  // butun materialning yig'indisi va u filtrni bilmaydi — roverchi o'z listlarini
-  // ko'rib turib arraning detallari qo'shilgan jamini o'qib qolardi. Kengaytirilgan
-  // listlarda `mult` allaqachon nusxalarga yoyilgan, ya'ni son `kd` bilan bir xil
-  // chiqadi (LDSP: 39 katak + 17 takror = 56 = kd).
-  let detTot = 0
-  let detDn = 0
-  for (const s of sheets) {
-    for (const p of s.parts as SheetPart[]) {
-      if (p.waste) continue
-      detTot += 1
-      detDn += (cellInsts.get(`${s.no}:${p.cell}`) ?? []).filter(isCut).length
-    }
-  }
   const markedPart =
     sheet && markedCell !== null
-      ? (sheet.parts as SheetPart[]).find(
-          (p) => p.cell === markedCell && !p.waste,
-        )
+      ? sheet.parts.find((p) => p.cell === markedCell && !p.waste)
       : undefined
-  const markedInsts = markedPart
-    ? (cellInsts.get(`${sheet.no}:${markedPart.cell}`) ?? [])
-    : []
+  const markedInsts =
+    sheet && markedPart
+      ? (cellInsts.get(`${sheet.no}:${markedPart.cell}`) ?? [])
+      : []
   // Fallback YO'Q: hammasi chiqarilgan bo'lsa qayta chop etilmaydi —
   // avval chek bekor qilinadi (dublikat chek oqimni buzadi)
   const nextInstance = markedInsts.find((i) => !isCut(i))
 
-  // Ikki guruh. BIRINCHISI — operator ish paytida qaraydigan raqamlar: nechta
-  // list va nechta detal qoldi. QOLGANLARI — GibLab optimizatsiyasining sifat
-  // ko'rsatkichlari (atxot, rez, to'ldirish) va stanok sozlamalari (arra kesimi,
-  // tirim): ular ishlab chiqarishgacha hal bo'lgan, kesish paytida hech narsani
-  // o'zgartirmaydi. Shuning uchun xarita ochilganda faqat birinchi ikkitasi
-  // ko'rinadi — sarlavhada joy tor va 2 metrdan o'qilishi kerak; qolganlari
-  // listlar jadvalida, joy bor yerda turaveradi.
-  const workPairs: Array<[string, string | number]> = [
-    ["Listlar", `${listTot}−${listDn}=${listTot - listDn}`],
-    ["Detallar", `${detTot}−${detDn}=${detTot - detDn}`],
-  ]
+  // Xaritada FAQAT reja ko'rsatkichlari qoladi va ular ham faqat texnologda.
+  // "Listlar 4-0=4 / Detallar 20-0=20" olib tashlandi: kesish paytida operator
+  // bu sonlar bilan hech narsa qilmaydi va sarlavhada joy egallardi. Qancha
+  // qolgani listlar jadvalidan (har kartochka o'z holatini ko'rsatadi) va
+  // pastdagi progressdan baribir ko'rinadi.
   const planPairs: Array<[string, string | number]> = [
     ["Atxot", material?.ko ?? "—"],
     ["Rez, m", material?.dr?.toFixed?.(1) ?? material?.dr ?? "—"],
@@ -448,7 +418,7 @@ export function CutmapView({
   // Terminalda esa ekran tor va 2 metrdan o'qiladi: ikkita ish raqami yirik
   // shriftda to'qqiztasi 12px dan foydaliroq.
   const fullStats = admin
-  const statPairs = fullStats ? [...workPairs, ...planPairs] : workPairs
+  const statPairs = fullStats ? planPairs : []
   // GibSaw uslubi: 3 qator × 3 ustun qat'iy blok (KK/KD/KO | DR/KR/PZ | TP/TD/TSh)
   // — hech qachon o'ramaydi, header balandligi o'smaydi, eni ~400px
   // Header info: list nomi (ochiq bo'lsa) + 3x3 statlar — bitta portalda
@@ -469,7 +439,7 @@ export function CutmapView({
           </div>
         </div>
       )}
-      {fullStats ? (
+      {statPairs.length > 0 && (
         <div
           className="num grid w-fit grid-flow-col grid-rows-3 text-xs leading-[1.4]"
           style={{ columnGap: "18px" }}
@@ -477,15 +447,6 @@ export function CutmapView({
           {statPairs.map(([l, v]) => (
             <span key={l} className="whitespace-nowrap">
               <span className="text-muted-foreground">{l}:</span> <b>{v}</b>
-            </span>
-          ))}
-        </div>
-      ) : (
-        <div className="num flex items-center gap-5 text-base">
-          {statPairs.map(([l, v]) => (
-            <span key={l} className="whitespace-nowrap">
-              <span className="text-muted-foreground">{l}:</span>{" "}
-              <b className="text-lg">{v}</b>
             </span>
           ))}
         </div>
@@ -590,12 +551,18 @@ export function CutmapView({
       <TBtn
         label="Chop etish"
         tone={nextInstance ? "success" : "default"}
-        disabled={!markedInsts.length || printMutation.isPending}
+        // Katak belgilangan bo'lsa tugma ISHLAYDI. Ilgari nusxasi bog'lanmagan
+        // katakda u jimgina o'chib qolardi: arrachi bosadi, hech narsa
+        // bo'lmaydi, sabab ham aytilmaydi — 17" kioskda bu "chek chiqmayapti"
+        // bo'lib ko'rinardi va operator sababini topa olmasdi.
+        disabled={markedCell === null || printMutation.isPending}
         onClick={() =>
           nextInstance
             ? printMutation.mutate(nextInstance.instance_id)
             : toast.error(
-                "Bu detal chiqarilgan. Qaytadan chiqarish uchun katakni ikki marta bosib chekni bekor qiling.",
+                markedInsts.length
+                  ? "Bu detal chiqarilgan. Qaytadan chiqarish uchun katakni ikki marta bosib chekni bekor qiling."
+                  : "Bu katakka nusxa bog'lanmagan — texnologga ayting: xarita bilan detallar mos kelmayapti.",
               )
         }
       >
@@ -636,7 +603,10 @@ export function CutmapView({
             {webToolbar}
           </div>
         )}
-        {sheetIdx === null ? (
+        {/* Shart `sheet` bo'yicha, `sheetIdx` bo'yicha EMAS: material almashsa
+            yoki refetch listlar sonini kamaytirsa indeks eskirib qolishi mumkin —
+            o'shanda ro'yxatga qaytamiz, oq ekran bilan yiqilmaymiz. */}
+        {!sheet ? (
           /* Jadval sahifasi: material tablar + list grid (GibLab #matlist + #grid) */
           <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border bg-white p-4">
             {/* Material tablar: bitta qator, ko'paysa gorizontal swipe (grid joyini yemaydi) */}
@@ -656,10 +626,9 @@ export function CutmapView({
                 // kontrast birinchi bo'lib yo'qoladi) va yangi rang qo'shmaymiz
                 // (ekranda yashil/binafsha/ko'k allaqachon band): tartib va MATN
                 // ishlaydi — o'ziniki oldinda, begonasida hisoblagich o'rniga so'z.
-                const foreign =
-                  !admin && (m as any).rover && postCode !== "ROVER"
+                const foreign = !admin && m.rover && postCode !== "ROVER"
                 const firstForeign =
-                  foreign && i > 0 && !(materials[i - 1] as any)?.rover
+                  foreign && i > 0 && !materials[i - 1]?.rover
                 return (
                   <div
                     key={m.name}
@@ -688,23 +657,21 @@ export function CutmapView({
                 const mixedOwners =
                   !admin &&
                   postCode !== "ROVER" &&
-                  sheets.some((x: Sheet) => (x as any).rover) &&
-                  sheets.some((x: Sheet) => !(x as any).rover)
+                  sheets.some((x) => x.rover) &&
+                  sheets.some((x) => !x.rover)
                 const done = sheetDone(s)
-                const foreign =
-                  !admin && (s as any).rover && postCode !== "ROVER"
+                const foreign = !admin && s.rover && postCode !== "ROVER"
                 // Ajratuvchi FAQAT aralash materialda va FAQAT begona guruh
                 // tepasida: o'ziniki oldinda turgani uchun "sizning listlaringiz"
                 // deb takrorlash ortiqcha — chiziqdan tepasi baribir uniki.
-                const divider =
-                  mixedOwners && foreign && !(sheets[i - 1] as any)?.rover
+                const divider = mixedOwners && foreign && !sheets[i - 1]?.rover
                 return (
                   <Fragment key={s.no}>
                     {divider && (
                       <div className="col-span-full mt-2 flex items-baseline gap-2 border-t pt-3 text-base text-muted-foreground">
                         Roverda kesiladi
                         <span className="num text-sm">
-                          {sheets.filter((x: Sheet) => (x as any).rover).length}
+                          {sheets.filter((x) => x.rover).length}
                         </span>
                       </div>
                     )}
@@ -752,7 +719,7 @@ export function CutmapView({
           >
             {/* Ataylab ochgan — qichqirish shart emas, bitta jumla yetadi.
                 Chek baribir bloklangan (backend aniq xato qaytaradi). */}
-            {!admin && (sheet as any)?.rover && postCode !== "ROVER" && (
+            {!admin && sheet?.rover && postCode !== "ROVER" && (
               <div className="absolute inset-x-0 top-0 z-10 bg-white/90 px-4 py-1.5 text-center text-base text-muted-foreground">
                 Bu listni rover kesadi
               </div>
@@ -860,313 +827,5 @@ export function CutmapView({
         </DialogContent>
       </Dialog>
     </div>
-  )
-}
-
-/** Chap toolbar tugmasi: ikonka + kichik yozuv (sanoat HMI uslubi).
- * tone — funksiya bo'yicha rang kodi: primary (asosiy nav), warn (qulf), danger (chiqish). */
-const TBTN_TONES = {
-  default: "border bg-white text-primary hover:border-primary",
-  primary:
-    "border-transparent bg-primary text-primary-foreground hover:bg-primary/90",
-  // warn to'ldirilmaydi: amber fon xarita apelsini bilan qo'shilib ketardi — faqat ikonka rangi
-  warn: "border bg-white text-amber-600 hover:border-amber-500",
-  danger: "border-transparent bg-red-600 text-white hover:bg-red-700",
-  success: "border-transparent bg-green-600 text-white hover:bg-green-700",
-} as const
-
-export function TBtn({
-  label,
-  disabled = false,
-  tone = "default",
-  onClick,
-  children,
-}: {
-  label: string
-  disabled?: boolean
-  tone?: keyof typeof TBTN_TONES
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={`flex h-16 w-full flex-col items-center justify-center gap-1 rounded-xl shadow-sm outline-none transition-all focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-95 disabled:opacity-40 [&_svg]:size-6 ${TBTN_TONES[tone]}`}
-    >
-      {children}
-      <span className="text-2xs font-bold leading-none">{label}</span>
-    </button>
-  )
-}
-
-/** Tanlangan detal mini-chizmasi: o'lcham strelkalari + teshiklar (GibSaw «Чертеж детали»). */
-function PartPreview({
-  part,
-  holes,
-}: {
-  part: SheetPart
-  holes: Record<string, any>
-}) {
-  const w = part.w
-  const h = part.h
-  const boxW = 276
-  const boxH = 190
-  const m = 34
-  const scale = Math.min((boxW - 2 * m) / w, (boxH - 2 * m) / h)
-  const rw = w * scale
-  const rh = h * scale
-  const ox = (boxW - rw) / 2
-  const oy = (boxH - rh) / 2
-  const H = holes[String(part.id)]
-  const local = { ...part, x: ox, y: oy, w: rw, h: rh } as SheetPart
-  const ty = oy - 13
-  const lx = ox - 13
-  return (
-    <svg viewBox={`0 0 ${boxW} ${boxH}`} className="block h-auto w-full">
-      <title>Detal chizmasi</title>
-      <rect
-        x={ox}
-        y={oy}
-        width={rw}
-        height={rh}
-        fill="#d2d2d2"
-        stroke="#242424"
-        strokeWidth="1.5"
-      />
-      {H?.bores?.map((b: any, i: number) => {
-        const [cx, cy] = holeXY(local, H, b.x, b.y)
-        return (
-          <circle
-            key={`b${i}`}
-            cx={cx}
-            cy={cy}
-            r={Math.max((b.d / 2) * scale, 2.4)}
-            fill="#fafafa"
-            stroke="#202020"
-            strokeWidth="1"
-          />
-        )
-      })}
-      {H?.edge?.map((b: any, i: number) => {
-        const [px, py] = edgeLocalXY(H, b.side, b.pos)
-        const [cx, cy] = holeXY(local, H, px, py)
-        const r = edgeBoreRect(
-          local,
-          cx,
-          cy,
-          Math.max(b.d * scale, 2),
-          Math.max((b.dp || 12) * scale, 4),
-        )
-        return (
-          <rect
-            key={`e${i}`}
-            x={r.x}
-            y={r.y}
-            width={r.w}
-            height={r.h}
-            fill="#fafafa"
-            stroke="#202020"
-            strokeWidth="1"
-          />
-        )
-      })}
-      <line
-        x1={ox}
-        y1={ty}
-        x2={ox + rw}
-        y2={ty}
-        stroke="#333"
-        strokeWidth="1"
-      />
-      <path
-        d={`M${ox} ${ty}l6 -3M${ox} ${ty}l6 3M${ox + rw} ${ty}l-6 -3M${ox + rw} ${ty}l-6 3`}
-        stroke="#333"
-        strokeWidth="1"
-        fill="none"
-      />
-      <text
-        x={ox + rw / 2}
-        y={ty - 5}
-        fontSize="14"
-        fontWeight="bold"
-        textAnchor="middle"
-        fill="#111"
-      >
-        {w}
-      </text>
-      <line
-        x1={lx}
-        y1={oy}
-        x2={lx}
-        y2={oy + rh}
-        stroke="#333"
-        strokeWidth="1"
-      />
-      <path
-        d={`M${lx} ${oy}l-3 6M${lx} ${oy}l3 6M${lx} ${oy + rh}l-3 -6M${lx} ${oy + rh}l3 -6`}
-        stroke="#333"
-        strokeWidth="1"
-        fill="none"
-      />
-      <text
-        x={lx - 5}
-        y={oy + rh / 2}
-        fontSize="14"
-        fontWeight="bold"
-        textAnchor="middle"
-        fill="#111"
-        transform={`rotate(-90 ${lx - 5} ${oy + rh / 2})`}
-      >
-        {h}
-      </text>
-      {part.rot && (
-        <text
-          x={ox + rw - 4}
-          y={oy + 16}
-          fontSize="15"
-          textAnchor="end"
-          fill="#a94b05"
-        >
-          ⟳
-        </text>
-      )}
-    </svg>
-  )
-}
-
-function PartCard({
-  part,
-  sheetNo,
-  instancesByCell,
-  onClose,
-  holes,
-  onCancelRequest,
-}: {
-  part: SheetPart | null
-  sheetNo?: number
-  instancesByCell: Map<string, CutmapInstanceState[]>
-  onClose: () => void
-  holes: Record<string, any>
-  /** Berilsa — bekor qilish TO'G'RIDAN-TO'G'RI bajarilmaydi, chaqiruvchiga
-   *  uzatiladi (terminalda tasdiq oynasi ochiladi). Berilmasa — adminning
-   *  avvalgi xatti-harakati: darhol bekor qilinadi. */
-  onCancelRequest?: (inst: CutmapInstanceState) => void
-}) {
-  // Kartochka adminda bir marta bosishda, terminalda esa ikki marta bosish
-  // yoki uzoq bosishda ochiladi. Chop etish terminalda chap toolbar orqali,
-  // shuning uchun bu yerda print mutatsiyasi yo'q.
-  const cancelMutation = useCancelLabel()
-
-  if (!part || part.waste) return null
-  const insts = instancesByCell.get(`${sheetNo}:${part.cell}`) ?? []
-  const next = insts.find((i) => !i.done) ?? insts[0]
-
-  return (
-    <Dialog open={!!part} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>
-            №{part.num} — {part.name}{" "}
-            {part.rot && <RotateCw className="inline size-4" />}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="rounded-lg border bg-white p-2">
-          <PartPreview part={part} holes={holes} />
-        </div>
-        <div className="flex items-start gap-4">
-          {next && (
-            <div className="shrink-0 rounded-lg border p-2">
-              <QRCodeSVG value={next.qr_text} size={170} />
-              <div className="num mt-1 text-center text-2xs text-muted-foreground">
-                {next.qr_text}
-              </div>
-            </div>
-          )}
-          <div className="num space-y-1 text-sm">
-            <div>
-              O'lcham:{" "}
-              <b>
-                {part.w} × {part.h} mm
-              </b>
-            </div>
-            {/* Kromka QAYSI TOMONDA — belgi o'zi yetarli emas edi. Tomon
-                nomlari yonidagi eskiz bilan bir xil yo'nalishda: eW = chap/o'ng
-                (vertikal qirralar, uzunligi = balandlik), eH = tepa/past
-                (gorizontal, uzunligi = kenglik). O'lcham ham yoziladi —
-                kromkachi qaysi qirrani lentalashini shundan biladi. */}
-            <div>
-              Kromka: {(() => {
-                const tomonlar = [
-                  { nom: "chap", sym: part.eW?.[0], boyi: part.h },
-                  { nom: "o'ng", sym: part.eW?.[1], boyi: part.h },
-                  { nom: "tepa", sym: part.eH?.[0], boyi: part.w },
-                  { nom: "past", sym: part.eH?.[1], boyi: part.w },
-                ].filter((t) => t.sym)
-                if (!tomonlar.length) return <b>yo'q</b>
-                return tomonlar.map((t, i) => (
-                  <span key={t.nom}>
-                    {i > 0 && " · "}
-                    <b>
-                      {t.nom} {Math.round(t.boyi)}
-                    </b>
-                    {t.sym !== "•" && ` (${t.sym})`}
-                  </span>
-                ))
-              })()}
-            </div>
-            <div>
-              Yorliq raqami: <b>№{part.num}</b>
-            </div>
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          {insts.map((inst) => (
-            <div
-              key={inst.instance_id}
-              className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm"
-            >
-              <span className="num">
-                {inst.qr_text}{" "}
-                {inst.done ? (
-                  <span className="font-bold text-green-700">✓ kesildi</span>
-                ) : inst.label_printed_at ? (
-                  <span className="font-bold text-green-600">
-                    ✓ chek chiqarilgan
-                  </span>
-                ) : null}
-              </span>
-              {/* Texnolog xato chekni shu yerdan tuzatadi — proyekt ARRA
-                  ro'yxatidan tushib bo'lgach arrachi xaritani ocholmaydi.
-                  Arrachi ham SHU tugmadan foydalanadi (kartochka ikki marta
-                  bosishda ochiladi) — faqat unda tasdiq oynasi orqali. */}
-              {inst.label_printed_at && (
-                <LoadingButton
-                  variant="destructive"
-                  size="sm"
-                  loading={cancelMutation.isPending}
-                  onClick={() =>
-                    onCancelRequest
-                      ? onCancelRequest(inst)
-                      : cancelMutation.mutate(inst.instance_id)
-                  }
-                >
-                  Chekni bekor qilish
-                </LoadingButton>
-              )}
-            </div>
-          ))}
-        </div>
-        {/* Radix X 16px — qo'lqopga kichik; katta yopish tugmasi */}
-        <Button
-          variant="outline"
-          className="h-12 w-full text-base font-bold"
-          onClick={onClose}
-        >
-          Yopish
-        </Button>
-      </DialogContent>
-    </Dialog>
   )
 }

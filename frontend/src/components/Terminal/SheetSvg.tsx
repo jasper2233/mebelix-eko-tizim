@@ -4,10 +4,25 @@
 
 import { useEffect, useRef, useState } from "react"
 
+import type {
+  CutmapCell,
+  CutmapHole,
+  CutmapInstanceState,
+  CutmapSheet,
+} from "@/client"
 import { isCut } from "@/lib/mes"
 
-type SheetPart = any
-type Sheet = any
+// Xarita turlari SHU YERDA e'lon qilinadi va CutmapView ularni import qiladi:
+// ikkalasi bir xil yoyilgan listni ko'radi, ta'rif ikki joyda turmasin.
+export type SheetPart = CutmapCell
+/** Yoyilgan list: `mult` li sxema alohida listlarga bo'linadi, o'shanda `no`
+ *  "3c2" ko'rinishini oladi (matn) va `disp` ketma-ket raqam beradi. `rover` —
+ *  listning egasi, kataklar marshrutidan hisoblanadi (serverda yo'q). */
+export type Sheet = Omit<CutmapSheet, "no"> & {
+  no: number | string
+  disp?: number
+  rover?: boolean
+}
 
 // Barcha detallar bir xil to'q apelsin; tanlangani moviy bo'lib ajraladi.
 // Xarita paneli kulrang (oq emas) — yorug' tsexda ko'z qamashtirmaydi, detallar ajralib turadi
@@ -38,30 +53,64 @@ const PART_CUSTOM = "#a78bfa"
  * qimirlaydi, ya'ni keng chegara sichqonchaga hech qanday zarar qilmaydi. */
 const LP_SLOP = 30
 
+/** O'lcham yozuvi EKRANDA shu oraliqda bo'ladi (SVG birligi emas, piksel).
+ *
+ * Arrachi o'lchamga qarab kesadi — bu uning ASOSIY ma'lumoti, detal nomidan
+ * muhimroq. Shuning uchun o'lcham eng oxirida yo'qoladi: joy tanqislashganda
+ * ketma-ketlik `nom -> faqat raqam -> nom yo'q -> o'lcham`.
+ */
+const DIM_MIN = 12 // bundan past — umuman chizilmaydi
+const DIM_MAX = 46 // katta detalda ham me'yorida
+
+/** Bitta o'lcham yozuvining kattaligi va ko'rinishi.
+ *
+ * `bo'ylab` — yozuv joylashadigan qirra uzunligi, `ko'ndalang` — unga
+ * perpendikular o'lcham. W va H uchun aynan bir xil hisob, faqat o'qlar
+ * almashadi — shuning uchun bitta funksiya.
+ *
+ * `zoom` bo'yicha baholash: shrift ekranda doimiy qolsin va yaqinlashtirish
+ * yozuvni kattaytirmasdan, sig'maganlarini OCHSIN.
+ */
+function dimFit(boylab: number, kondalang: number, matn: string, zoom: number) {
+  const sig = Math.min(
+    kondalang * 0.28,
+    (boylab * 0.9) / Math.max(3, matn.length * 0.6),
+  )
+  return {
+    fs: Math.min(sig, DIM_MAX / zoom),
+    show: boylab > 16 && sig * zoom >= DIM_MIN,
+  }
+}
+
 // --- GibSaw render qoidalari (GibLabViewer'dan portlangan, foto-tekshirilgan) ---
 
 /** Teshik koordinatasi detal lokal (l×w) o'qidan katakka: rot = o'q almashinuvi, OYNASIZ. */
 export function holeXY(
   p: SheetPart,
-  H: any,
+  H: CutmapHole,
   bx: number,
   by: number,
 ): [number, number] {
-  const cx = p.rot ? p.x + by * (p.w / H.w) : p.x + bx * (p.w / H.l)
-  const cy = p.rot ? p.y + bx * (p.h / H.l) : p.y + by * (p.h / H.w)
+  // `l`/`w` — detalning tayyor o'lchami, fayl bermasa `null`. Nol bilan
+  // bo'lish avvalgidek Infinity beradi (JS'da `null` ham 0 ga aylanardi),
+  // ya'ni geometriyasiz detal teshigi ekrandan tashqarida qoladi.
+  const hl = H.l ?? 0
+  const hw = H.w ?? 0
+  const cx = p.rot ? p.x + by * (p.w / hw) : p.x + bx * (p.w / hl)
+  const cy = p.rot ? p.y + bx * (p.h / hl) : p.y + by * (p.h / hw)
   return [cx, cy]
 }
 
 /** Qirra teshigi lokal nuqtasi: side chetida, pos shu chet bo'ylab. */
 export function edgeLocalXY(
-  H: any,
+  H: CutmapHole,
   side: string,
   pos: number,
 ): [number, number] {
   if (side === "t") return [pos, 0]
-  if (side === "b") return [pos, H.w]
+  if (side === "b") return [pos, H.w ?? 0]
   if (side === "l") return [0, pos]
-  return [H.l, pos]
+  return [H.l ?? 0, pos]
 }
 
 /** Qirra teshigi: eng yaqin chetdan ichkariga to'rtburchak, uzunlik = burg'u chuqurligi. */
@@ -99,8 +148,8 @@ export function SheetSvg({
   onSwipe,
 }: {
   sheet: Sheet
-  holes: Record<string, any>
-  instancesByCell: Map<string, any[]>
+  holes: Record<string, CutmapHole>
+  instancesByCell: Map<string, CutmapInstanceState[]>
   onSelect: (part: SheetPart) => void
   /** Uzoq bosish (~600ms): chekni bekor qilish — noto'g'ri chiqarilgan yorliq */
   /** Detal kartochkasini ochadi. IKKI jest ham shuni chaqiradi: ikki marta
@@ -149,9 +198,9 @@ export function SheetSvg({
   } | null>(null)
   const lpFiredRef = useRef(false)
   /** Oxirgi bosish — IKKI MARTA BOSISH aniqlash uchun (pastdagi izohga qara) */
-  const tapRef = useRef<{ cell: string; t: number } | null>(null)
+  const tapRef = useRef<{ cell: number; t: number } | null>(null)
   //: Hozir uzoq bosilayotgan katak — faqat KO'RSATISH uchun (jarayon bo'yog'i)
-  const [holding, setHolding] = useState<string | null>(null)
+  const [holding, setHolding] = useState<number | null>(null)
   const cancelLP = () => {
     if (lpRef.current) clearTimeout(lpRef.current.t)
     lpRef.current = null
@@ -317,7 +366,7 @@ export function SheetSvg({
   // ikkalasi bir vaqtda mumkin emas, chunki joy chegaralangan.
   const zoom = vb ? base.w / Math.max(1, vb.w) : 1
 
-  const partNodes = (sheet.parts as SheetPart[]).map((p) => {
+  const partNodes = sheet.parts.map((p) => {
     const insts = instancesByCell.get(`${sheet.no}:${p.cell}`) ?? []
     // "Kesildi" ta'rifi @/lib/mes'dagi isCut da — bitta manba
     const doneCount = insts.filter(isCut).length
@@ -383,38 +432,14 @@ export function SheetSvg({
       const cy = p.y + hv / 2
       const eTop = (p.eH ?? []).filter(Boolean).join("")
       const eLeft = (p.eW ?? []).filter(Boolean).join("")
-      // ── YOZUV O'LCHAMI: ekranda DOIM bir xil, sig'masa YASHIRINADI ──────
-      //
-      // Ilgari shrift model birligida edi va "kamida 16" deb majburlanardi:
-      // kichik katakda yozuv katakdan toshib, qo'shnisi bilan ustma-ust tushardi;
-      // uzoqdan esa baribir o'qilmasdi. Ikki yomon xususiyat birga.
-      //
-      // Endi CAD ko'ruvchilarining qoidasi: annotatsiya ekran o'lchamida doimiy
-      // (`/ zoom`), va u SIG'SAGINA chiziladi. Ya'ni "o'qilishi" bilan "hammasi
-      // ko'rinishi" o'rtasidagi ziddiyat yaqinlashtirish orqali hal qilinadi —
-      // katak ekranda kattarayvergani sari yangi yozuvlar ochiladi. Joy
-      // chegaralangan ekan, ikkalasini bir vaqtda olishning iloji yo'q.
-      const O_MIN = 22 // ekranda eng kichik o'qiladigan o'lcham (SVG birligida)
-      const dW = O_MIN / zoom
-      const dH = O_MIN / zoom
-      // Sig'ish sinovi EKRAN birligida: yaqinlashganda ko'proq yozuv o'tadi
-      const sigW =
-        Math.min(
-          hv * 0.28,
-          (wv * 0.9) / Math.max(3, `${wv}${eTop}`.length * 0.6),
-        ) *
-          zoom >=
-        O_MIN
-      const sigH =
-        Math.min(
-          wv * 0.28,
-          (hv * 0.9) / Math.max(3, `${hv}${eLeft}`.length * 0.6),
-        ) *
-          zoom >=
-        O_MIN
+      // O'lcham qoidasi `dimFit` da (modul boshida)
+      const oW = dimFit(wv, hv, `${wv}${eTop}`, zoom)
+      const oH = dimFit(hv, wv, `${hv}${eLeft}`, zoom)
+      const dW = oW.fs
+      const dH = oH.fs
       const oneLine = hv < 3.6 * dW // yupqa strip: uzunlik o'lchami pastki-chap burchakda
-      const showW = wv > 16 && sigW
-      const showH = hv > 16 && sigH
+      const showW = oW.show
+      const showH = oH.show
       const topB = showW && !oneLine ? dW * 1.2 : 2
       const leftB = showH ? dH * 1.2 : 2
       const label = `№${p.num ?? p.id} ${p.name}${p.rot ? " ⟳" : ""}${
@@ -425,10 +450,14 @@ export function SheetSvg({
       const vert = availH > availW * 1.15
       const longA = vert ? availH : availW
       const shortA = vert ? availW : availH
+      // Nom O'LCHAMDAN katta bo'lmaydi: arrachi uchun ustuvorlik o'lchamda,
+      // nom faqat identifikatsiya. Ilgari qisqa nomli katta detalda nom
+      // o'lchamdan yirikroq chiqib, ko'zni birinchi bo'lib o'ziga tortardi.
+      const nomMax = Math.min(dW, dH) * 0.9
       let fsN = Math.min(
         shortA * 0.55,
         (longA * 0.72) / Math.max(1, label.length * 0.52),
-        110 / zoom, // ekranda haddan tashqari yirik bo'lib ketmasin
+        nomMax,
       )
       let shown = label
       if (oneLine) fsN = Math.min(fsN, dW * 1.3)
@@ -694,7 +723,7 @@ export function SheetSvg({
         )}
         {/* yuza teshiklari — haqiqiy masshtab: katta sverlo katta doira (GibSaw) */}
         {!p.waste &&
-          H?.bores?.map((b: any, i: number) => {
+          H?.bores?.map((b, i) => {
             const [bx, by] = holeXY(p, H, b.x, b.y)
             return (
               <circle
@@ -710,7 +739,7 @@ export function SheetSvg({
           })}
         {/* qirra teshiklari — chetdan ichkariga, uzunlik = burg'u chuqurligi */}
         {!p.waste &&
-          H?.edge?.map((b: any, i: number) => {
+          H?.edge?.map((b, i) => {
             const [lx, ly] = edgeLocalXY(H, b.side, b.pos)
             const [bx, by] = holeXY(p, H, lx, ly)
             const r = edgeBoreRect(p, bx, by, b.d, b.dp)
@@ -732,76 +761,74 @@ export function SheetSvg({
   })
 
   // polosa o'lcham zanjiri: chetda strelka, ichki chegarada kesim davomi + ✕ (GibSaw)
-  const dimNodes = (thumbnail ? [] : ((sheet.dims as any[]) ?? [])).map(
-    (dm, i) => {
-      const mid = (dm.a + dm.b) / 2
-      if (dm.ax === "X") {
-        const y = -34
-        return (
-          <g key={`dm${i}`} stroke="#1a1a1a" strokeWidth="2" fill="none">
-            <line x1={dm.a} y1={y} x2={dm.b} y2={y} />
-            {dm.a <= 6 ? (
-              <path d={`M${dm.a} ${y} l13 -8 M${dm.a} ${y} l13 8`} />
-            ) : (
-              <path
-                d={`M${dm.a} -50 L${dm.a} 0 M${dm.a - 11} -45 L${dm.a + 11} -23 M${dm.a - 11} -23 L${dm.a + 11} -45`}
-              />
-            )}
-            {dm.b >= L - 6 ? (
-              <path d={`M${dm.b} ${y} l-13 -8 M${dm.b} ${y} l-13 8`} />
-            ) : (
-              <path
-                d={`M${dm.b} -50 L${dm.b} 0 M${dm.b - 11} -45 L${dm.b + 11} -23 M${dm.b - 11} -23 L${dm.b + 11} -45`}
-              />
-            )}
-            <text
-              x={mid}
-              y={y - 14}
-              fontSize="44"
-              fontWeight="bold"
-              fill="#000"
-              stroke="none"
-              textAnchor="middle"
-            >
-              {dm.v}
-            </text>
-          </g>
-        )
-      }
-      const x = -34
+  const dimNodes = (thumbnail ? [] : (sheet.dims ?? [])).map((dm, i) => {
+    const mid = (dm.a + dm.b) / 2
+    if (dm.ax === "X") {
+      const y = -34
       return (
         <g key={`dm${i}`} stroke="#1a1a1a" strokeWidth="2" fill="none">
-          <line x1={x} y1={dm.a} x2={x} y2={dm.b} />
+          <line x1={dm.a} y1={y} x2={dm.b} y2={y} />
           {dm.a <= 6 ? (
-            <path d={`M${x} ${dm.a} l-8 13 M${x} ${dm.a} l8 13`} />
+            <path d={`M${dm.a} ${y} l13 -8 M${dm.a} ${y} l13 8`} />
           ) : (
             <path
-              d={`M-50 ${dm.a} L0 ${dm.a} M-45 ${dm.a - 11} L-23 ${dm.a + 11} M-45 ${dm.a + 11} L-23 ${dm.a - 11}`}
+              d={`M${dm.a} -50 L${dm.a} 0 M${dm.a - 11} -45 L${dm.a + 11} -23 M${dm.a - 11} -23 L${dm.a + 11} -45`}
             />
           )}
-          {dm.b >= W - 6 ? (
-            <path d={`M${x} ${dm.b} l-8 -13 M${x} ${dm.b} l8 -13`} />
+          {dm.b >= L - 6 ? (
+            <path d={`M${dm.b} ${y} l-13 -8 M${dm.b} ${y} l-13 8`} />
           ) : (
             <path
-              d={`M-50 ${dm.b} L0 ${dm.b} M-45 ${dm.b - 11} L-23 ${dm.b + 11} M-45 ${dm.b + 11} L-23 ${dm.b - 11}`}
+              d={`M${dm.b} -50 L${dm.b} 0 M${dm.b - 11} -45 L${dm.b + 11} -23 M${dm.b - 11} -23 L${dm.b + 11} -45`}
             />
           )}
           <text
-            x={x - 14}
-            y={mid}
+            x={mid}
+            y={y - 14}
             fontSize="44"
             fontWeight="bold"
             fill="#000"
             stroke="none"
             textAnchor="middle"
-            transform={`rotate(-90 ${x - 14} ${mid})`}
           >
             {dm.v}
           </text>
         </g>
       )
-    },
-  )
+    }
+    const x = -34
+    return (
+      <g key={`dm${i}`} stroke="#1a1a1a" strokeWidth="2" fill="none">
+        <line x1={x} y1={dm.a} x2={x} y2={dm.b} />
+        {dm.a <= 6 ? (
+          <path d={`M${x} ${dm.a} l-8 13 M${x} ${dm.a} l8 13`} />
+        ) : (
+          <path
+            d={`M-50 ${dm.a} L0 ${dm.a} M-45 ${dm.a - 11} L-23 ${dm.a + 11} M-45 ${dm.a + 11} L-23 ${dm.a - 11}`}
+          />
+        )}
+        {dm.b >= W - 6 ? (
+          <path d={`M${x} ${dm.b} l-8 -13 M${x} ${dm.b} l8 -13`} />
+        ) : (
+          <path
+            d={`M-50 ${dm.b} L0 ${dm.b} M-45 ${dm.b - 11} L-23 ${dm.b + 11} M-45 ${dm.b + 11} L-23 ${dm.b - 11}`}
+          />
+        )}
+        <text
+          x={x - 14}
+          y={mid}
+          fontSize="44"
+          fontWeight="bold"
+          fill="#000"
+          stroke="none"
+          textAnchor="middle"
+          transform={`rotate(-90 ${x - 14} ${mid})`}
+        >
+          {dm.v}
+        </text>
+      </g>
+    )
+  })
 
   const svgEl = (
     <svg
@@ -844,7 +871,7 @@ export function SheetSvg({
       />
       {partNodes}
       {/* arra yo'llari — guillotine, qora uzluksiz (GibSaw) */}
-      {(sheet.cuts as any[]).map((c, i) => (
+      {(sheet.cuts ?? []).map((c, i) => (
         <line
           key={i}
           x1={c.x1}

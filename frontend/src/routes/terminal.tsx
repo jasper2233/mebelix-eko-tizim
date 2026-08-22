@@ -19,7 +19,7 @@ import {
   playSuccess,
   playWarning,
 } from "@/components/Terminal/audio"
-import { CutmapView, TBtn } from "@/components/Terminal/CutmapView"
+import { CutmapView } from "@/components/Terminal/CutmapView"
 import { KioskOverlays } from "@/components/Terminal/KioskOverlays"
 import { KromkaView } from "@/components/Terminal/KromkaView"
 import { OrderPicker } from "@/components/Terminal/OrderPicker"
@@ -27,6 +27,7 @@ import { PostQueueView } from "@/components/Terminal/PostQueueView"
 import { PrisadkaView } from "@/components/Terminal/PrisadkaView"
 import { type LastScan, ScanStrip } from "@/components/Terminal/ScanStrip"
 import { CrewChips, ShiftGate } from "@/components/Terminal/ShiftGate"
+import { TBtn } from "@/components/Terminal/TBtn"
 import { TmoView } from "@/components/Terminal/TmoView"
 import { UpakovkaView } from "@/components/Terminal/UpakovkaView"
 import {

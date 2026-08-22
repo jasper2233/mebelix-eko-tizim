@@ -17,8 +17,8 @@ import { createPortal } from "react-dom"
 import { toast } from "sonner"
 
 import { TerminalService } from "@/client"
-import { TBtn } from "@/components/Terminal/CutmapView"
 import { PostProgress } from "@/components/Terminal/PostProgress"
+import { TBtn } from "@/components/Terminal/TBtn"
 import {
   useCancelLabel,
   usePrintLabel,
