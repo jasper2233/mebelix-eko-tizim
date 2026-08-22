@@ -123,11 +123,23 @@ export function SheetSvg({
   const swipeRef = useRef<{ x: number; y: number; t: number } | null>(null)
   // Long press (chekni bekor qilish): taymer + boshlang'ich nuqta; barmoq
   // siljisa/ko'tarilsa bekor. Otilgach keyingi click yutiladi (tanlash ochilmasin)
-  const lpRef = useRef<{ t: number; x: number; y: number } | null>(null)
+  const lpRef = useRef<{
+    t: number
+    x: number
+    y: number
+    /** Bosishni BOSHLAGAN ko'rsatkich. Boshqa barmoq (yoki kaft) qimirlaganda
+     *  uzoq bosish bekor bo'lmasin — 17" monoblokda kaft ekranga tegib turadi. */
+    id: number
+    /** Chidamlilik ko'rsatkich TURIGA bog'liq (pastda). */
+    type: string
+  } | null>(null)
   const lpFiredRef = useRef(false)
+  //: Hozir uzoq bosilayotgan katak — faqat KO'RSATISH uchun (jarayon bo'yog'i)
+  const [holding, setHolding] = useState<string | null>(null)
   const cancelLP = () => {
     if (lpRef.current) clearTimeout(lpRef.current.t)
     lpRef.current = null
+    setHolding(null)
   }
 
   // Assimetrik ramka: dims zanjiri faqat tepada/chapda — o'ng/past minimal (bo'sh joy qolmasin)
@@ -199,8 +211,21 @@ export function SheetSvg({
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     if (ptsRef.current.has(e.pointerId))
       ptsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    // UZOQ BOSISH chidamliligi ko'rsatkich turiga qarab.
+    //
+    // Ilgari chegara hamma uchun 12px edi — sichqoncha uchun to'g'ri (u qo'yib
+    // qo'yilsa NOL piksel qimirlaydi), barmoq uchun esa juda tor: 12px ~3mm, va
+    // barmoq 600ms davomida shundan ko'proq suriladi. Natijada uzoq bosish
+    // sensorli monoblokda deyarli hech qachon ishlamas, sichqoncha bilan esa
+    // muammosiz ishlardi — aynan shu farq xabar qilingan edi.
+    //
+    // Faqat BOSHLAGAN ko'rsatkichning harakati hisobga olinadi: ikkinchi barmoq
+    // yoki ekranga tekkan kaft avval har qanday harakatda bekor qilardi.
     const lp = lpRef.current
-    if (lp && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > 12) cancelLP()
+    if (lp && e.pointerId === lp.id) {
+      const chegara = lp.type === "touch" ? 28 : lp.type === "pen" ? 18 : 12
+      if (Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > chegara) cancelLP()
+    }
     const svg = svgRef.current
     if (!svg) return
     if (ptsRef.current.size === 2 && pinchRef.current) {
@@ -528,13 +553,17 @@ export function SheetSvg({
             ? (e) => {
                 lpFiredRef.current = false
                 cancelLP()
+                setHolding(p.cell)
                 lpRef.current = {
                   t: window.setTimeout(() => {
                     lpFiredRef.current = true
+                    setHolding(null)
                     onLongPress(p)
                   }, 600),
                   x: e.clientX,
                   y: e.clientY,
+                  id: e.pointerId,
+                  type: e.pointerType,
                 }
               }
             : undefined
@@ -551,6 +580,21 @@ export function SheetSvg({
           strokeWidth="3"
           strokeDasharray={p.waste ? "16 11" : undefined}
         />
+        {/* Uzoq bosish JARAYONI: 600 ms davomida katak asta bo'yaladi.
+            Bosish qabul qilinganini darhol ko'rsatadi va qancha ushlash
+            kerakligini o'rgatadi; barmoq siljib bekor bo'lsa bo'yoq
+            yo'qoladi, ya'ni sabab ham ko'rinadi. */}
+        {holding === p.cell && (
+          <rect
+            x={p.x}
+            y={p.y}
+            width={p.w}
+            height={p.h}
+            fill="#2f496e"
+            className="animate-hold"
+            pointerEvents="none"
+          />
+        )}
         {/* yuza teshiklari — haqiqiy masshtab: katta sverlo katta doira (GibSaw) */}
         {!p.waste &&
           H?.bores?.map((b: any, i: number) => {

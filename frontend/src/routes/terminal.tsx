@@ -320,7 +320,14 @@ function TerminalPage() {
   )
 
   return (
-    <div className="flex h-dvh flex-col bg-surface">
+    // `select-none` BUTUN terminalga: sensorli monoblokda surish yoki uzoq
+    // bosish matnni ko'kartirib belgilab qo'yardi va u ekranda osilib qolardi
+    // (tsexda "bo'sh joyga bosib bekor qilish" odati yo'q). Kioskda matn
+    // tanlashning ma'nosi ham yo'q — nusxa olib boradigan joy yo'q.
+    //
+    // Radix dialoglari portal orqali `body` ga chiqadi, ya'ni ular bu qoidani
+    // MEROS QILMAYDI — tasdiq oynalaridagi matn odatdagidek qoladi.
+    <div className="flex h-dvh select-none flex-col bg-surface">
       <KioskOverlays
         fullscreen={fullscreen}
         locked={locked}
@@ -366,7 +373,10 @@ function TerminalPage() {
           <input
             ref={inputRef}
             disabled={!scanOn || mapOpen}
-            className="h-12 w-full rounded-lg border-2 border-primary/40 bg-card pl-10 pr-4 font-mono text-base outline-none focus:border-primary disabled:bg-muted"
+            // Maydon ichida tanlash QOLADI: skaner yozgan qiymatni qo'lda
+            // to'g'rilash kerak bo'lib qolsa, ildizdagi `select-none` to'sib
+            // qo'ymasin.
+            className="h-12 w-full select-text rounded-lg border-2 border-primary/40 bg-card pl-10 pr-4 font-mono text-base outline-none focus:border-primary disabled:bg-muted"
             placeholder={
               crew.length ? "QR scan qiling..." : "Beyjik QR scan qiling..."
             }

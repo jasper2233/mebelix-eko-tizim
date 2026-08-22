@@ -185,6 +185,23 @@
   animation: mx-cell-flash 0.9s ease-out 1;
 }
 
+/* Uzoq bosish JARAYONI (kesish xaritasi, sensorli monoblok).
+   Bosish 600 ms davom etadi va shu vaqtda katak asta bo'yaladi: operator
+   bosish qabul qilinganini va qancha ushlash kerakligini KO'RADI. Busiz
+   muvaffaqiyatsizlik sababi bilinmasdi — kam ushladimmi yoki barmoq
+   siljidimi. iOS/Android uzoq bosishda ham shunday darhol javob beradi. */
+@keyframes mx-hold {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.42;
+  }
+}
+.animate-hold {
+  animation: mx-hold 600ms linear forwards;
+}
+
 /* Login cutmap art (AuthLayout) */
 @keyframes mx-draw {
   to {

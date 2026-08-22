@@ -111,6 +111,61 @@ function printAllMaps(
   setTimeout(() => w.print(), 300)
 }
 
+/** Barmoq bilan SURIB gorizontal aylantirish.
+ *
+ * Tsex monoblokida sichqoncha yo'q — ingichka scrollbar'ni tortish qo'lqopda
+ * deyarli imkonsiz, shuning uchun kartochkalar ustidan surish yagona tabiiy
+ * harakat. Qatorga `touch-pan-y` qo'yilgan: vertikal aylantirishni brauzer
+ * o'zi bajaradi, gorizontalini esa shu hook — ikkalasi bir-biriga xalaqit
+ * bermaydi va qo'sh aylantirish bo'lmaydi.
+ *
+ * Bosish bilan aralashmaydi: 8px dan ko'p surilsa bu SURISH deb hisoblanadi
+ * va keyingi `click` yutiladi, aks holda material tasodifan almashardi.
+ */
+function useDragScroll() {
+  const ref = useRef<HTMLDivElement>(null)
+  const drag = useRef<{ x: number; left: number; id: number } | null>(null)
+  const surildi = useRef(false)
+
+  return {
+    ref,
+    props: {
+      onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+        const el = ref.current
+        if (!el) return
+        surildi.current = false
+        drag.current = { x: e.clientX, left: el.scrollLeft, id: e.pointerId }
+      },
+      onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
+        const el = ref.current
+        const d = drag.current
+        if (!el || !d || e.pointerId !== d.id) return
+        const dx = e.clientX - d.x
+        if (!surildi.current && Math.abs(dx) < 8) return
+        surildi.current = true
+        el.scrollLeft = d.left - dx
+      },
+      onPointerUp: () => {
+        drag.current = null
+      },
+      onPointerCancel: () => {
+        drag.current = null
+      },
+      onPointerLeave: () => {
+        drag.current = null
+      },
+      // Surishdan keyingi bosishni yutamiz — barmoq material tugmasi ustida
+      // uzilsa, surish tasodifan tanlovga aylanardi.
+      onClickCapture: (e: React.MouseEvent) => {
+        if (!surildi.current) return
+        e.preventDefault()
+        e.stopPropagation()
+        surildi.current = false
+      },
+    },
+  }
+}
+
 export function CutmapView({
   orderId,
   onBack,
@@ -157,6 +212,8 @@ export function CutmapView({
     qr_text: string
     instance_id: number
   } | null>(null)
+  // Material qatorini barmoq bilan surib aylantirish
+  const matDrag = useDragScroll()
   // GibLab toolbar zoom API (SheetSvg ro'yxatdan o'tkazadi)
   const zoomApi = useRef<{
     zin: () => void
@@ -583,7 +640,15 @@ export function CutmapView({
           /* Jadval sahifasi: material tablar + list grid (GibLab #matlist + #grid) */
           <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border bg-white p-4">
             {/* Material tablar: bitta qator, ko'paysa gorizontal swipe (grid joyini yemaydi) */}
-            <div className="mb-3 flex items-center gap-2 overflow-x-auto pb-1">
+            <div
+              ref={matDrag.ref}
+              {...matDrag.props}
+              // `select-none`: surganda material nomi ko'karib belgilanib qolardi
+              // (kioskda matn tanlashning umuman ma'nosi yo'q).
+              // `touch-pan-y`: vertikal aylantirish brauzerda qoladi, gorizontalini
+              // `useDragScroll` bajaradi.
+              className="mb-3 flex touch-pan-y cursor-grab select-none items-center gap-2 overflow-x-auto pb-1 active:cursor-grabbing"
+            >
               {materials.map((m: Material, i: number) => {
                 const mdone = m.sheets.filter(sheetDone).length
                 const active = i === materialIdx
