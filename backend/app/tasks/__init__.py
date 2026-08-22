@@ -78,9 +78,7 @@ def _print_job(instance_id: int, png_b64: str) -> str:
     `instance_id` bir xil keladi — u bo'yicha filtrlash operatorning yagona
     tuzatish yo'lini yopib qo'yardi.
     """
-    return json.dumps(
-        {"type": "print", "job_id": uuid4().hex, "instance_id": instance_id, "png": png_b64}
-    )
+    return json.dumps({"type": "print", "job_id": uuid4().hex, "instance_id": instance_id, "png": png_b64})
 
 
 async def print_label(ctx: dict[str, Any], instance_id: int, agent_id: int | None = None) -> str:
