@@ -28,6 +28,17 @@ services:
     image: redis:7-alpine
     restart: always
     logging: *logging
+    # Chek navbati (`mes:print:queue:*`) shu yerda yotadi va u YO'QOLMASLIGI kerak:
+    # sukutdagi RDB snapshot 60 soniyagacha ish yo'qotardi. Restartda navbatdagi
+    # chek yo'qolsa operator "yuborildi" xabarini olgan bo'lib turib qog'oz
+    # kutardi; teskarisi ham bo'lardi — eski snapshot tiklanib, chiqib bo'lgan
+    # yorliqlar qayta chiqardi. AOF har soniyada yozadi va ikkalasini ham yopadi.
+    # `noeviction` — navbat xotira siqilganda O'CHIRILMASIN (chek ma'lumot, kesh emas).
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory-policy noeviction
     volumes:
       - redis_data:/data
     healthcheck:

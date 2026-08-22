@@ -386,7 +386,7 @@ async def remove_from_pachka(
 @router.post("/{pachka_id}/close", response_model=Message, operation_id="close_pachka")
 async def close_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, pachka_id: int) -> Message:
     """Qadoqni yakunlash: yopiladi va cheki chop etishga yuboriladi."""
-    _machine, _post = ctx
+    machine, _post = ctx
     pachka = await _open_pachka(db, pachka_id)
     count = (
         await db.execute(
@@ -415,8 +415,12 @@ async def close_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, pachka_id: 
     await db.commit()
 
     from app.core.utils import queue
+    from app.tasks import printer_agent
 
     if queue.pool is not None:
-        await queue.pool.enqueue_job("print_pachka_label", pachka.id)
+        # Qadoq cheki qadoqlash stansiyasining printeridan chiqsin — umumiy
+        # navbatda u boshqa tsexdagi agentga tushishi mumkin edi.
+        agent = await printer_agent(db, machine.id)
+        await queue.pool.enqueue_job("print_pachka_label", pachka.id, agent.id if agent else None)
     await ws_manager.publish("pachka.closed", {"pachka_id": pachka.id, "code": pachka.code})
     return Message(message=f"Qadoq yakunlandi: {pachka.code} ({count} detal)")

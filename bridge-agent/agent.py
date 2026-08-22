@@ -29,8 +29,8 @@ import json
 import logging
 import os
 import sys
-from logging.handlers import RotatingFileHandler
 from collections import deque
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 # websockets>=14 shart: additional_headers= va InvalidStatus.response.status_code
@@ -46,7 +46,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.2.1"
+AGENT_VERSION = "1.3.0"
 
 # O'rnatish konfiguratsiyasi shu yerda saqlanadi (exe qayerdan ishlatilishidan qat'i nazar)
 CONFIG_DIR = Path(os.environ.get("APPDATA", str(Path.home()))) / "MebelixAgent"
@@ -359,6 +359,17 @@ _pair()
 MES_URL = os.environ.get("MES_URL", "ws://localhost:8000")
 BRIDGE_TOKEN = os.environ.get("BRIDGE_TOKEN", "")
 PRINTER_NAME = os.environ.get("PRINTER_NAME", "") or _detect_printer()
+#: Qo'lda berilgan nom har doim ustun; avto-topilgani esa qayta tekshiriladi.
+PRINTER_FIXED = bool(os.environ.get("PRINTER_NAME", ""))
+
+
+def refresh_printer() -> str:
+    """Printer nomini qayta aniqlaydi — drayver qaytganda agent qayta ishga
+    tushirilishini talab qilmasin (ilgari nom faqat startda bir marta olinardi)."""
+    global PRINTER_NAME
+    if not PRINTER_FIXED:
+        PRINTER_NAME = _detect_printer()
+    return PRINTER_NAME
 # Default %APPDATA%\MebelixAgent ichida: avtostartda ishchi papka System32 bo'ladi —
 # u yerga yozib bo'lmaydi va navbat fayli jimgina yo'qolardi
 QUEUE_FILE = Path(os.environ.get("QUEUE_FILE") or (CONFIG_DIR / "print-queue.jsonl"))
@@ -376,6 +387,25 @@ SCAN_FORWARD = os.environ.get("SCAN_FORWARD", "1") != "0"
 
 # Yangi job kelganda flusher darhol uyg'onadi (5s siklni kutmaydi)
 FLUSH_EVENT = asyncio.Event()
+
+
+#: Yaqinda qabul qilingan `job_id` lar. Server ack'ni ololmasa AYNAN o'sha jobni
+#: qayta yuboradi — takrorni shu yerda to'xtatamiz, aks holda bitta bosishga
+#: ikkita yorliq chiqardi. `instance_id` bu vazifaga YARAMAYDI: chek bekor
+#: qilinganda o'sha nusxa qayta ishlatiladi, ya'ni qonuniy qayta chiqarishda ham
+#: `instance_id` bir xil keladi va u bo'yicha filtr operatorning tuzatish yo'lini
+#: yopib qo'yardi.
+SEEN_JOBS: deque[str] = deque(maxlen=500)
+
+
+def already_seen(job_id: str) -> bool:
+    """Shu job allaqachon qabul qilinganmi. `job_id` siz (eski server) — doim yo'q."""
+    if not job_id:
+        return False
+    if job_id in SEEN_JOBS:
+        return True
+    SEEN_JOBS.append(job_id)
+    return False
 
 
 def local_enqueue(job: dict) -> None:
@@ -510,8 +540,13 @@ async def flusher() -> None:
         jobs = local_drain()
         if jobs:
             remaining = []
+            refresh_printer()
             for i, job in enumerate(jobs):
-                if send_to_printer(job.get("png", "")):
+                # ALOHIDA OQIMDA: GDI chop etish bir necha soniya davom etadi va
+                # to'g'ridan-to'g'ri chaqirilganda hodisa siklini qotirardi — WS
+                # xabarlari o'qilmay, ack 15 soniyalik server chegarasidan
+                # kechikardi, server esa jobni qaytarib IKKINCHI yorliq chiqarardi.
+                if await asyncio.to_thread(send_to_printer, job.get("png", "")):
                     log.info("Yorliq chop etildi: instance %s", job.get("instance_id"))
                 else:
                     remaining = jobs[i:]
@@ -608,6 +643,26 @@ async def uplink() -> None:
                         await ws.send(json.dumps({"type": "pong"}))
                         continue
                     if msg.get("type") == "print":
+                        job_id = str(msg.get("job_id") or "")
+                        # PRINTER YO'Q — rad etamiz. Ilgari job baribir qabul
+                        # qilinib faylda MANGU qolardi, server esa "yetkazildi"
+                        # deb hisoblardi: operator "chek yuborildi" xabarini
+                        # ko'rib turib qog'oz kutardi. Rad etilsa job serverning
+                        # navbatida qoladi va printer qaytganda chiqadi.
+                        if not refresh_printer():
+                            await ws.send(json.dumps({"ok": False}))
+                            log.error(
+                                "GoDEX printer topilmadi — job rad etildi, "
+                                "serverda navbatda qoladi (instance %s)",
+                                msg.get("instance_id"),
+                            )
+                            continue
+                        if already_seen(job_id):
+                            # Ack yo'lda yo'qolgan: server qayta yubordi. Faylga
+                            # ikkinchi marta yozsak ikkita yorliq chiqardi.
+                            await ws.send(json.dumps({"ok": True}))
+                            log.info("Takroriy job tashlandi: %s", job_id)
+                            continue
                         # Avval diskka — keyin ack. Server ackdan keyin jobni unutadi (TZ 2.2.2).
                         local_enqueue(msg)
                         await ws.send(json.dumps({"ok": True}))

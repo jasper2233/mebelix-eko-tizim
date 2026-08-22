@@ -5,6 +5,7 @@ import asyncio
 import contextlib
 import hashlib
 import json
+import logging
 import secrets
 from datetime import UTC, datetime
 
@@ -19,9 +20,15 @@ from app.core.security import ACCESS_COOKIE_NAME
 from app.core.ws import WsClient, ws_manager
 from app.models import BridgeAgent, Machine, Post
 from app.models.enums import POST_ROLES, UserRole
-from app.tasks import PRINT_QUEUE_KEY
+from app.tasks import PRINT_QUEUE_KEY, print_queue_key
 
 router = APIRouter()
+
+# Chek yo'qolganda serverda IZ qolishi uchun. Ilgari bu modulda logging umuman
+# yo'q edi va "chek chiqmadi" shikoyati kelganda tekshirish uchun hech narsa
+# bo'lmasdi: job qaysi agentga ketgani ham, ack kelgan-kelmagani ham qayd
+# etilmasdi. Nosozlikni prodda ajratib bo'lmasligining asosiy sababi shu edi.
+logger = logging.getLogger(__name__)
 
 WS_CLOSE_UNAUTHORIZED = 4401  # custom "unauthorized" close code (4000–4999 — application-defined)
 
@@ -146,11 +153,18 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
     await ws_manager.publish("bridge.connected", {"agent_id": agent_id})
     last_touch = asyncio.get_event_loop().time()
 
+    # Manzilli navbat oldinda, umumiysi zaxira (beyjik va ish markazi
+    # biriktirilmagan terminal cheki manzilsiz keladi).
+    own_keys = [PRINT_QUEUE_KEY] if agent_id is None else [print_queue_key(agent_id), PRINT_QUEUE_KEY]
     redis = AsyncRedis.from_url(settings.REDIS_URL)
     try:
         while True:
             if can_print:
-                popped = await redis.brpop([PRINT_QUEUE_KEY], timeout=5)
+                # Tartib MUHIM: `BRPOP` ro'yxatdagi BIRINCHI bo'sh bo'lmagan
+                # kalitdan oladi, ya'ni agent avval o'ziga manzillangan chekni,
+                # keyin umumiy navbatni ko'radi. Manzilli chekni endi boshqa
+                # tsexdagi printer tortib ololmaydi.
+                popped = await redis.brpop(own_keys, timeout=5)
             else:
                 # Printersiz stansiya (skan-forvard): navbatdan chek OLMAYDI —
                 # aks holda umumiy navbatdan chekni "o'g'irlab" lokalida qoldiradi
@@ -162,7 +176,7 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
                     # Revoke jonli ulanishni ham uzadi (maks ~5 daqiqa kechikish).
                     # Qo'lda turgan job navbatga qaytadi — yo'qolmaydi.
                     if popped is not None:
-                        await redis.rpush(PRINT_QUEUE_KEY, popped[1])
+                        await redis.rpush(popped[0], popped[1])
                     await websocket.close(code=WS_CLOSE_UNAUTHORIZED)
                     return
                 last_touch = now
@@ -172,8 +186,11 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
                 with contextlib.suppress(TimeoutError):
                     await asyncio.wait_for(websocket.receive_text(), timeout=10)
                 continue
-            _key, raw = popped
+            src_key, raw = popped
             job = raw.decode() if isinstance(raw, bytes) else raw
+            job_id = ""
+            with contextlib.suppress(Exception):
+                job_id = json.loads(job).get("job_id", "")
             try:
                 # 10s dan KECH kelgan ping-javob soketda qolib keyingi jobning
                 # ack'i bo'lib o'qilardi (eski agent pingga ham {"ok":true} beradi)
@@ -196,11 +213,20 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
                     if not ack.get("ok"):
                         raise ValueError("bridge nak")
                     break
-            except Exception:
-                await redis.rpush(PRINT_QUEUE_KEY, job)  # requeue — job is never lost
+                logger.info("Chek yetkazildi: agent=%s job=%s", agent_id, job_id)
+            except Exception as exc:
+                logger.warning(
+                    "Chek yetkazilmadi, navbatga qaytarildi: agent=%s job=%s sabab=%s",
+                    agent_id,
+                    job_id,
+                    exc,
+                )
+                # AYNAN kelgan kalitga qaytadi: umumiy navbatga tashlansa
+                # manzil yo'qolib, chek boshqa printerdan chiqib ketardi.
+                await redis.rpush(src_key, job)  # requeue — job is never lost
                 raise
-    except Exception:  # noqa: BLE001 — connection teardown; the job was already requeued
-        pass
+    except Exception as exc:  # noqa: BLE001 — connection teardown; the job was already requeued
+        logger.info("Bridge ulanishi yopildi: agent=%s sabab=%s", agent_id, exc)
     finally:
         await redis.close()
         with contextlib.suppress(Exception):

@@ -39,6 +39,7 @@ from app.models.user import User
 from app.schemas.common import Message
 from app.schemas.terminal import (
     CutmapInstanceState,
+    CutmapModel,
     CutmapState,
     KromkaInstance,
     KromkaOrderState,
@@ -868,7 +869,10 @@ async def build_cutmap_state(db: SessionDep, order: Order, post_id: int) -> Cutm
     return CutmapState(
         order_id=order.id,
         order_number=order.number,
-        model=order.cutmap,
+        # `Order.cutmap` — xom JSON ustuni (`dict[str, Any]`). Tekshiruvni
+        # Pydantic dict berilganda ham bajaradi; bu chaqiruv faqat mypy uchun,
+        # xatti-harakat o'zgarmaydi.
+        model=CutmapModel.model_validate(order.cutmap) if order.cutmap else None,
         instances=[
             CutmapInstanceState(
                 instance_id=i.id,
@@ -894,8 +898,9 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
         raise NotFoundException("Nusxa topilmadi.")
 
     # Post aniqlanmasa (ish markazi yo'q terminal) tekshiruvsiz chiqadi — yorliq ko'rish uchun
+    print_machine: Machine | None = None
     try:
-        _, print_post = await resolve_terminal(db, user)
+        print_machine, print_post = await resolve_terminal(db, user)
     except ScanRejected:
         print_post = None
     arra_route = (
@@ -917,6 +922,12 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     if print_post is not None and print_post.code == PostCode.ARRA and arra_route is None:
         raise _scan_error("E001", "Bu detal roverda kesiladi — chekni rover terminalidan chiqaring.")
 
+    # `qr_text` SHU YERDA olinadi: quyida `record_scan` rad etilsa `db.rollback()`
+    # chaqiriladi va u identity map'dagi HAMMA obyektni expire qiladi. O'shandan
+    # keyin `instance.qr_text` ni o'qish lazy refresh talab qilib, async kontekstda
+    # `MissingGreenlet` bilan yiqilardi: chek fizik chiqib turib, terminal xato
+    # ko'rsatardi va operator chek chiqmadi deb o'ylardi.
+    qr_text = instance.qr_text
     instance.label_printed_at = datetime.now(UTC)
     # Chekni kim chiqargani nusxaning O'ZIDA qoladi — bekor qilish huquqi shundan
     instance.label_post_id = print_post.id if print_post is not None else None
@@ -927,15 +938,37 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
         user_id=user.id,
         entity_type="part_instance",
         entity_id=instance.id,
-        message=f"Chek chop etishga yuborildi: {instance.qr_text}",
+        message=f"Chek chop etishga yuborildi: {qr_text}",
     )
-    await db.commit()
 
     from app.core.utils import queue
+    from app.tasks import AGENT_ONLINE_WINDOW, printer_agent
 
+    # Chek SO'RAGAN ish markazining printeriga manzillanadi. Manzilsiz qolsa
+    # umumiy navbatga tushadi va boshqa tsexdagi agent uni tortib olishi mumkin
+    # (aynan shu sabab arrachining cheki prisadka printeridan chiqar edi).
+    agent = await printer_agent(db, print_machine.id if print_machine else None)
+    print_agent_id = agent.id if agent else None
+    # Printer ulanmagan bo'lsa buni AYTAMIZ. Ilgari xabar doim bir xil edi
+    # ("yuborildi"), operator esa qog'oz kutib turardi va sababini bilmasdi.
+    # Job Redisda saqlanadi — agent ulanganda chiqadi, ya'ni yo'qolmaydi.
+    printer_kutilmoqda = agent is None or (
+        agent.last_seen_at is None or datetime.now(UTC) - agent.last_seen_at > AGENT_ONLINE_WINDOW
+    )
+    # Navbatga qo'yish COMMIT'DAN OLDIN. Teskari tartibda Redis uzilib qolsa
+    # `label_printed_at` allaqachon yozilgan bo'lardi: qog'oz chiqmaydi, lekin
+    # katak "chiqarilgan" bo'lib qulflanadi va operator faqat bekor qilish orqali
+    # chiqa olardi. Bu tartibda esa eng yomon holat — ortiqcha yorliq, u qulfdan
+    # ancha arzon.
     if queue.pool is not None:
-        await queue.pool.enqueue_job("print_label", instance_id)
-    await ws_manager.publish("label.printed", {"instance_id": instance_id, "qr_text": instance.qr_text})
+        await queue.pool.enqueue_job("print_label", instance_id, print_agent_id)
+    await db.commit()
+    await ws_manager.publish("label.printed", {"instance_id": instance_id, "qr_text": qr_text})
+    natija = (
+        f"Printer ulanmagan — chek navbatda turibdi: {qr_text}"
+        if printer_kutilmoqda
+        else f"Chek chop etishga yuborildi: {qr_text}"
+    )
 
     # "CHEK = ISH BAJARILDI" — kesish postlarida chop etishning o'zi bosqichni yopadi.
     # ARRA'da arrachi xaritada katakni bosib chek chiqaradi va alohida skan qilmaydi
@@ -952,7 +985,7 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     # bo'ladi — bu yerda faqat avto-skan o'tkazib yuboriladi. Ilgari himoyasiz edi
     # va chop etish so'rovi 500 bilan tugardi.
     if print_post is None:
-        return Message(message=f"Chek chop etishga yuborildi: {instance.qr_text}")
+        return Message(message=natija)
     # ARRA'da doim; ROVER'da esa faqat arradan o'tmaydigan detal uchun (qolganini arrachi kesgan)
     cut_by_print = print_post.code == PostCode.ARRA or (print_post.code == PostCode.ROVER and arra_route is None)
     if cut_by_print:
@@ -964,14 +997,14 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
             outcome = await record_scan(
                 db,
                 user=user,
-                qr_text=instance.qr_text,
+                qr_text=qr_text,
                 client_event_id=f"cutprint-{instance.id}-{int(datetime.now(UTC).timestamp())}",
             )
             await finalize_scan(db, outcome, user_id=user.id, source=" (chek chiqarish bilan)")
         except ScanRejected:
             await db.rollback()
 
-    return Message(message=f"Chek chop etishga yuborildi: {instance.qr_text}")
+    return Message(message=natija)
 
 
 # Bekor qilishga admin webdagi xarita egalari ham kiradi: proyekt ro'yxatdan
