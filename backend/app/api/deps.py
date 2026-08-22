@@ -81,6 +81,10 @@ def require_roles(*roles: UserRole) -> Callable[..., Coroutine[Any, Any, User]]:
 # Common role groups (TZ 3.7 role/module matrix)
 ManagerUser = Annotated[User, Depends(require_roles(UserRole.MANAGER))]
 TexnologUser = Annotated[User, Depends(require_roles(UserRole.TEXNOLOG))]
+#: Ishlab chiqarishga uzatish (`orders/{id}/start`). TZ 6.4.2 da bu faqat menejer
+#: amali edi; egasining qaroriga ko'ra texnologga ham ochildi — faylni u yuklaydi,
+#: marshrutni u chizadi, ya'ni buyurtma tayyorligini birinchi bo'lib u biladi.
+ManagerOrTexnologUser = Annotated[User, Depends(require_roles(UserRole.MANAGER, UserRole.TEXNOLOG))]
 StaffReadUser = Annotated[
     User, Depends(require_roles(UserRole.MANAGER, UserRole.TEXNOLOG, UserRole.DIRECTOR))
 ]  # read-only lists shared by office roles

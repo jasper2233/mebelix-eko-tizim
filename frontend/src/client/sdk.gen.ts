@@ -755,7 +755,11 @@ export class OrdersService {
     /**
      * Start Order Production
      *
-     * Manager 'Ishlab chiqarishga uzatish' (TZ 6.4.2): TECHNICAL_REVIEW → PRODUCTION.
+     * 'Ishlab chiqarishga uzatish' (TZ 6.4.2): TECHNICAL_REVIEW → PRODUCTION.
+     *
+     * Menejer ham, TEXNOLOG ham uzata oladi. TZ da bu faqat menejer amali edi, lekin
+     * tayyorlikni texnolog birinchi biladi: `.project` faylni u yuklaydi va nostandart
+     * detallarning marshrutini u chizadi — menejerni kutish bekorga to'siq edi.
      */
     public static startOrderProduction<ThrowOnError extends boolean = true>(options: Options<StartOrderProductionData, ThrowOnError>): RequestResult<StartOrderProductionResponses, StartOrderProductionErrors, ThrowOnError> {
         return (options.client ?? client).post<StartOrderProductionResponses, StartOrderProductionErrors, ThrowOnError>({

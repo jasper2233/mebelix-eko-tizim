@@ -11,7 +11,14 @@ from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import defer
 
-from app.api.deps import ManagerUser, SessionDep, StaffReadUser, TexnologUser, client_ip
+from app.api.deps import (
+    ManagerOrTexnologUser,
+    ManagerUser,
+    SessionDep,
+    StaffReadUser,
+    TexnologUser,
+    client_ip,
+)
 from app.core.config import settings, upload_root
 from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
 from app.core.ws import ws_manager
@@ -934,9 +941,14 @@ async def confirm_order(db: SessionDep, current_user: ManagerUser, order_id: int
 
 @router.post("/{order_id}/start", response_model=OrderRead, operation_id="start_order_production")
 async def start_order_production(
-    db: SessionDep, current_user: ManagerUser, order_id: int, request: Request
+    db: SessionDep, current_user: ManagerOrTexnologUser, order_id: int, request: Request
 ) -> OrderRead:
-    """Manager 'Ishlab chiqarishga uzatish' (TZ 6.4.2): TECHNICAL_REVIEW → PRODUCTION."""
+    """'Ishlab chiqarishga uzatish' (TZ 6.4.2): TECHNICAL_REVIEW → PRODUCTION.
+
+    Menejer ham, TEXNOLOG ham uzata oladi. TZ da bu faqat menejer amali edi, lekin
+    tayyorlikni texnolog birinchi biladi: `.project` faylni u yuklaydi va nostandart
+    detallarning marshrutini u chizadi — menejerni kutish bekorga to'siq edi.
+    """
     order = await _get_order(db, order_id)
     if order.status != OrderStatus.TECHNICAL_REVIEW:
         raise ForbiddenException("Buyurtma avval tasdiqlangan bo'lishi kerak.")
@@ -1079,6 +1091,12 @@ async def upload_order_project(
     if not (file.filename or "").lower().endswith(".project"):
         raise HTTPException(status_code=422, detail="Faqat .project kengaytmali fayl qabul qilinadi.")
 
+    # QAYTA yuklashni AJRATIB olamiz — pastdagi `wipe_previous_parse` va `ingest`
+    # `project_uuid` ni almashtiradi, ya'ni logni yozish paytida bu fakt yo'qolgan
+    # bo'ladi. Loglarda "yuklandi" va "qayta yuklandi" bir xil ko'rinsa, texnolog
+    # faylni necha marta almashtirgani bilinmasdi.
+    qayta_yuklash = order.project_uuid is not None
+
     content = await file.read()
     if len(content) > settings.MAX_PROJECT_FILE_SIZE:
         raise HTTPException(status_code=422, detail="Fayl juda katta.")
@@ -1122,7 +1140,7 @@ async def upload_order_project(
         user_id=current_user.id,
         entity_type="order",
         entity_id=order.id,
-        message=f"Project fayl yuklandi: {file.filename}",
+        message=f"Project fayl {'qayta ' if qayta_yuklash else ''}yuklandi: {file.filename}",
         meta=summary,
         ip=client_ip(request),
     )

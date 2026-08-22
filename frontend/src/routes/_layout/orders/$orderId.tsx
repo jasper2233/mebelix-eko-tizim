@@ -234,7 +234,10 @@ function OrderDetailPage() {
                 </LoadingButton>
               </>
             )}
-            {isManager &&
+            {/* Texnolog ham uzatadi: faylni va marshrutni u tayyorlaydi, ya'ni
+                buyurtma tayyorligini birinchi bo'lib u biladi (backend ham
+                `ManagerOrTexnologUser` bilan ochilgan). */}
+            {(isManager || isTexnolog) &&
               order.status === "technical_review" &&
               order.project_uuid && (
                 <LoadingButton
