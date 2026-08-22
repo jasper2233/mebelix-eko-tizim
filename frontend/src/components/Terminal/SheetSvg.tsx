@@ -26,6 +26,18 @@ const PART_DONE = "#22c55e"
 // postining rangi (--post-rover) — ikkalasi ham noto'g'ri ma'no berardi.
 const PART_CUSTOM = "#a78bfa"
 
+/** Uzoq bosishda ruxsat etilgan siljish, piksel.
+ *
+ * TURGA QARAB EMAS, ataylab bitta son. Ilgari `pointerType` bo'yicha
+ * ajratilgandi (barmoqqa kengroq), lekin bu DRAYVER ROSTGO'YLIGIGA tayanadi:
+ * tsexdagi panel barmoqni "mouse" deb xabar qilsa, tor sichqoncha chegarasi
+ * qo'llanib uzoq bosish yiqilardi — sinov panelida esa ishlardi. Aynan shu
+ * farq kuzatilgan.
+ *
+ * 30px = 17" 1920x1080 da ~6 mm. Sichqoncha qo'yib qo'yilganda NOL piksel
+ * qimirlaydi, ya'ni keng chegara sichqonchaga hech qanday zarar qilmaydi. */
+const LP_SLOP = 30
+
 // --- GibSaw render qoidalari (GibLabViewer'dan portlangan, foto-tekshirilgan) ---
 
 /** Teshik koordinatasi detal lokal (l×w) o'qidan katakka: rot = o'q almashinuvi, OYNASIZ. */
@@ -80,7 +92,7 @@ export function SheetSvg({
   holes,
   instancesByCell,
   onSelect,
-  onLongPress,
+  onOpenPart,
   selectedCell,
   thumbnail = false,
   registerZoom,
@@ -91,7 +103,9 @@ export function SheetSvg({
   instancesByCell: Map<string, any[]>
   onSelect: (part: SheetPart) => void
   /** Uzoq bosish (~600ms): chekni bekor qilish — noto'g'ri chiqarilgan yorliq */
-  onLongPress?: (part: SheetPart) => void
+  /** Detal kartochkasini ochadi. IKKI jest ham shuni chaqiradi: ikki marta
+   *  bosish (GibSaw dagi odat) va uzoq bosish (o'rganib qolganlar uchun). */
+  onOpenPart?: (part: SheetPart) => void
   selectedCell: number | null
   /** Mini preview (material kartasi): interaktivsiz, scroll bloklamaydi */
   thumbnail?: boolean
@@ -134,6 +148,8 @@ export function SheetSvg({
     type: string
   } | null>(null)
   const lpFiredRef = useRef(false)
+  /** Oxirgi bosish — IKKI MARTA BOSISH aniqlash uchun (pastdagi izohga qara) */
+  const tapRef = useRef<{ cell: string; t: number } | null>(null)
   //: Hozir uzoq bosilayotgan katak — faqat KO'RSATISH uchun (jarayon bo'yog'i)
   const [holding, setHolding] = useState<string | null>(null)
   const cancelLP = () => {
@@ -223,8 +239,7 @@ export function SheetSvg({
     // yoki ekranga tekkan kaft avval har qanday harakatda bekor qilardi.
     const lp = lpRef.current
     if (lp && e.pointerId === lp.id) {
-      const chegara = lp.type === "touch" ? 28 : lp.type === "pen" ? 18 : 12
-      if (Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > chegara) cancelLP()
+      if (Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > LP_SLOP) cancelLP()
     }
     const svg = svgRef.current
     if (!svg) return
@@ -290,6 +305,18 @@ export function SheetSvg({
   // Yorliqlar hamma narsadan KEYIN chiziladi (teshik/tekstura ortida qolmasin), halo bilan
   const labels: React.ReactNode[] = []
 
+  // Yozuvlar EKRAN o'lchamida doimiy: SVG birligidagi shrift masshtabga BO'LINADI.
+  //
+  // Ilgari yozuv model birligida edi — yaqinlashtirilganda u ham kattayib
+  // ketardi, uzoqlashtirilganda esa o'qib bo'lmasdi. 17" monoblokda to'liq list
+  // ko'rinishida kichik detalning o'lchami ko'zga ilinmasdi.
+  //
+  // Endi CAD ko'ruvchilaridagi qoida: yozuv doim bir xil kattalikda, YAQINLASHISH
+  // esa yangi yozuvlarni OCHADI — katak ekranda kattarayvergani sari unga sig'adi.
+  // Bu "o'qilishi" bilan "hammasi ko'rinishi" orasidagi ziddiyatni hal qiladi:
+  // ikkalasi bir vaqtda mumkin emas, chunki joy chegaralangan.
+  const zoom = vb ? base.w / Math.max(1, vb.w) : 1
+
   const partNodes = (sheet.parts as SheetPart[]).map((p) => {
     const insts = instancesByCell.get(`${sheet.no}:${p.cell}`) ?? []
     // "Kesildi" ta'rifi @/lib/mes'dagi isCut da — bitta manba
@@ -318,6 +345,37 @@ export function SheetSvg({
     // thumbnail'da yozuvlar umuman hisoblanmaydi — pickSpot to'qnashuv qidiruvi
     // har detal uchun bir necha nomzod joyni tekshiradi, natijasi esa 128px da
     // ko'rinmaydi.
+    // ATXOT o'lchami. GibLab ro'yxatga olgan atxot (blob turi 4) foydali
+    // o'lchami bilan keladi — xom kesim emas (`cutmap.py`, TZ 5.2.3). Arra haqqi
+    // (tur 1, ~0.5 mm chekka kesim) esa umuman katak bo'lmaydi, ya'ni bu yerga
+    // tushmaydi. O'lcham ko'rsatilmasa arrachi atxotni ko'z bilan chamalab,
+    // keyingi buyurtmaga yaraydimi-yo'qmi deb bilolmasdi.
+    if (p.waste && !thumbnail) {
+      const wv = p.w
+      const hv = p.h
+      const fs = Math.max(
+        10,
+        Math.min(34, wv * 0.16, hv * 0.42, (wv * 0.8) / 6),
+      )
+      // Juda kichik atxotda yozuv o'qilmaydi — chizmaymiz
+      if (wv > 70 && hv > 26)
+        labels.push(
+          <text
+            key={`wz${p.cell}`}
+            x={p.x + wv / 2}
+            y={p.y + hv / 2}
+            fontSize={fs}
+            fill="#5a6b82"
+            fontWeight="700"
+            textAnchor="middle"
+            dominantBaseline="central"
+            pointerEvents="none"
+          >
+            {`${Math.round(wv)}×${Math.round(hv)}`}
+          </text>,
+        )
+    }
+
     if (!p.waste && !thumbnail) {
       const wv = p.w
       const hv = p.h
@@ -325,28 +383,38 @@ export function SheetSvg({
       const cy = p.y + hv / 2
       const eTop = (p.eH ?? []).filter(Boolean).join("")
       const eLeft = (p.eW ?? []).filter(Boolean).join("")
-      // o'lcham shrifti deyarli doimiy (GibSaw pattrenPartDim), faqat tor detalda kichrayadi.
-      // 17" da to'liq ko'rinishda o'qilsin: cap 42 (~ekranda 18px); kichik detalda formula
-      // o'zi qisqartiradi — u yerda yechim zoom yoki detal kartochkasi
-      const dW = Math.max(
-        16,
+      // ── YOZUV O'LCHAMI: ekranda DOIM bir xil, sig'masa YASHIRINADI ──────
+      //
+      // Ilgari shrift model birligida edi va "kamida 16" deb majburlanardi:
+      // kichik katakda yozuv katakdan toshib, qo'shnisi bilan ustma-ust tushardi;
+      // uzoqdan esa baribir o'qilmasdi. Ikki yomon xususiyat birga.
+      //
+      // Endi CAD ko'ruvchilarining qoidasi: annotatsiya ekran o'lchamida doimiy
+      // (`/ zoom`), va u SIG'SAGINA chiziladi. Ya'ni "o'qilishi" bilan "hammasi
+      // ko'rinishi" o'rtasidagi ziddiyat yaqinlashtirish orqali hal qilinadi —
+      // katak ekranda kattarayvergani sari yangi yozuvlar ochiladi. Joy
+      // chegaralangan ekan, ikkalasini bir vaqtda olishning iloji yo'q.
+      const O_MIN = 22 // ekranda eng kichik o'qiladigan o'lcham (SVG birligida)
+      const dW = O_MIN / zoom
+      const dH = O_MIN / zoom
+      // Sig'ish sinovi EKRAN birligida: yaqinlashganda ko'proq yozuv o'tadi
+      const sigW =
         Math.min(
-          42,
           hv * 0.28,
           (wv * 0.9) / Math.max(3, `${wv}${eTop}`.length * 0.6),
-        ),
-      )
-      const dH = Math.max(
-        16,
+        ) *
+          zoom >=
+        O_MIN
+      const sigH =
         Math.min(
-          42,
           wv * 0.28,
           (hv * 0.9) / Math.max(3, `${hv}${eLeft}`.length * 0.6),
-        ),
-      )
+        ) *
+          zoom >=
+        O_MIN
       const oneLine = hv < 3.6 * dW // yupqa strip: uzunlik o'lchami pastki-chap burchakda
-      const showW = wv > 16
-      const showH = hv > 16
+      const showW = wv > 16 && sigW
+      const showH = hv > 16 && sigH
       const topB = showW && !oneLine ? dW * 1.2 : 2
       const leftB = showH ? dH * 1.2 : 2
       const label = `№${p.num ?? p.id} ${p.name}${p.rot ? " ⟳" : ""}${
@@ -360,18 +428,18 @@ export function SheetSvg({
       let fsN = Math.min(
         shortA * 0.55,
         (longA * 0.72) / Math.max(1, label.length * 0.52),
-        110,
+        110 / zoom, // ekranda haddan tashqari yirik bo'lib ketmasin
       )
       let shown = label
       if (oneLine) fsN = Math.min(fsN, dW * 1.3)
-      if (fsN < 9) {
+      if (fsN * zoom < 9) {
         shown = `${p.num ?? p.id}`
         fsN = Math.min(
           shortA * 0.7,
           (longA * 0.7) / Math.max(1, shown.length * 0.62),
           40,
         )
-        if (fsN < 6) shown = ""
+        if (fsN * zoom < 6) shown = ""
       }
       if (availW < 16 || availH < 8) shown = ""
       // tekstura yo'nalishi: 3 gorizontal chiziq matn ORQASIDA, matndan uzunroq
@@ -546,10 +614,39 @@ export function SheetSvg({
             lpFiredRef.current = false
             return
           }
-          if (!p.waste) onSelect(p)
+          if (p.waste) return
+          // IKKI MARTA BOSISH — detal kartochkasini ochadi.
+          //
+          // Eski GibSaw dasturida ham kesish xaritasida shu jest ishlatilgan,
+          // ya'ni operatorlarda odat allaqachon bor — yangisini o'rgatish
+          // shart emas. Uzoq bosish ham qoladi, lekin u sensor DRAYVERIGA
+          // bog'liq bo'lib chiqdi: bir panelda ishlaydi, boshqasida yo'q.
+          // `click` esa brauzer eng ishonchli sintez qiladigan hodisa —
+          // katak tanlanayotgan ekan, ikki marta bosish ham ishlaydi.
+          // Kartochka ichida chekni bekor qilish tugmasi turadi: jest
+          // buzg'unchi amalni O'ZI bajarmaydi, faqat ko'rinadigan
+          // boshqaruvga olib boradi.
+          //
+          // 450 ms — Windows ning odatdagi ikki marta bosish oynasi (500 ms)
+          // dan bir oz tor: qo'lqopdagi barmoq sekinroq, lekin ikkita ALOHIDA
+          // bosish ham shundan tez ketma-ket bo'lmaydi.
+          const hozir = Date.now()
+          const oldingi = tapRef.current
+          if (
+            onOpenPart &&
+            oldingi &&
+            oldingi.cell === p.cell &&
+            hozir - oldingi.t < 450
+          ) {
+            tapRef.current = null
+            onOpenPart(p)
+            return
+          }
+          tapRef.current = { cell: p.cell, t: hozir }
+          onSelect(p)
         }}
         onPointerDown={
-          !p.waste && !thumbnail && onLongPress
+          !p.waste && !thumbnail && onOpenPart
             ? (e) => {
                 lpFiredRef.current = false
                 cancelLP()
@@ -558,7 +655,7 @@ export function SheetSvg({
                   t: window.setTimeout(() => {
                     lpFiredRef.current = true
                     setHolding(null)
-                    onLongPress(p)
+                    onOpenPart(p)
                   }, 600),
                   x: e.clientX,
                   y: e.clientY,
@@ -720,7 +817,7 @@ export function SheetSvg({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerEnd}
       onPointerCancel={onPointerEnd}
-      onContextMenu={(e) => onLongPress && e.preventDefault()}
+      onContextMenu={(e) => onOpenPart && e.preventDefault()}
     >
       <title>Kesish xaritasi</title>
       <defs>

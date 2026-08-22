@@ -416,7 +416,7 @@ export function CutmapView({
     ? (cellInsts.get(`${sheet.no}:${markedPart.cell}`) ?? [])
     : []
   // Fallback YO'Q: hammasi chiqarilgan bo'lsa qayta chop etilmaydi —
-  // avval long press bilan bekor qilinadi (dublikat chek oqimni buzadi)
+  // avval chek bekor qilinadi (dublikat chek oqimni buzadi)
   const nextInstance = markedInsts.find((i) => !isCut(i))
 
   // Ikki guruh. BIRINCHISI — operator ish paytida qaraydigan raqamlar: nechta
@@ -595,7 +595,7 @@ export function CutmapView({
           nextInstance
             ? printMutation.mutate(nextInstance.instance_id)
             : toast.error(
-                "Bu detal chiqarilgan. Qaytadan chiqarish uchun katakni bosib turib chekni bekor qiling.",
+                "Bu detal chiqarilgan. Qaytadan chiqarish uchun katakni ikki marta bosib chekni bekor qiling.",
               )
         }
       >
@@ -768,34 +768,11 @@ export function CutmapView({
                   if (admin) setSelected(part)
                   setMarkedCell(part.cell)
                 }}
-                onLongPress={
-                  admin
-                    ? undefined
-                    : (part) => {
-                        // Noto'g'ri detal cheki chiqib ketgan: oxirgi chiqarilgan
-                        // (hali skan qilinmagan) nusxa tasdiqdan keyin bekor bo'ladi
-                        const insts =
-                          cellInsts.get(`${sheet.no}:${part.cell}`) ?? []
-                        // Faqat `label_printed_at`: kesish postida chek chiqarish
-                        // skan ham yozadi, ya'ni `done` DOIM true bo'ladi va
-                        // `!i.done` sharti long press'ni butunlay o'lik qilardi.
-                        const last = insts
-                          .filter((i) => i.label_printed_at)
-                          .sort((a, b) =>
-                            String(a.label_printed_at).localeCompare(
-                              String(b.label_printed_at),
-                            ),
-                          )
-                          .pop()
-                        if (last)
-                          setCancelTarget({
-                            num: part.num ?? part.id,
-                            name: part.name,
-                            qr_text: last.qr_text,
-                            instance_id: last.instance_id,
-                          })
-                      }
-                }
+                // Terminalda ikki marta bosish (yoki uzoq bosish) detal
+                // kartochkasini ochadi — adminda u bir marta bosishda ochiladi.
+                // Chekni bekor qilish tugmasi kartochka ICHIDA: jest
+                // buzg'unchi amalni o'zi bajarmaydi.
+                onOpenPart={admin ? undefined : setSelected}
                 selectedCell={markedCell}
                 registerZoom={(a) => {
                   zoomApi.current = a
@@ -819,8 +796,24 @@ export function CutmapView({
         sheetNo={sheet?.no}
         instancesByCell={cellInsts}
         onClose={() => setSelected(null)}
-        admin={admin}
         holes={holes}
+        // Terminalda bekor qilish TASDIQ orqali o'tadi: tsexda qo'lqopdagi
+        // barmoq bilan xato bosish adminning stoliga qaraganda ancha ehtimolli.
+        // Admin uchun `undefined` — u avvalgidek to'g'ridan-to'g'ri bekor qiladi.
+        onCancelRequest={
+          admin
+            ? undefined
+            : (inst) => {
+                if (!selected) return
+                setSelected(null)
+                setCancelTarget({
+                  num: selected.num ?? selected.id,
+                  name: selected.name,
+                  qr_text: inst.qr_text,
+                  instance_id: inst.instance_id,
+                })
+              }
+        }
       />
 
       {/* Long press tasdiq dialogi — qo'lqopga mos katta tugmalar */}
@@ -1048,18 +1041,22 @@ function PartCard({
   sheetNo,
   instancesByCell,
   onClose,
-  admin = false,
   holes,
+  onCancelRequest,
 }: {
   part: SheetPart | null
   sheetNo?: number
   instancesByCell: Map<string, CutmapInstanceState[]>
   onClose: () => void
-  admin?: boolean
   holes: Record<string, any>
+  /** Berilsa — bekor qilish TO'G'RIDAN-TO'G'RI bajarilmaydi, chaqiruvchiga
+   *  uzatiladi (terminalda tasdiq oynasi ochiladi). Berilmasa — adminning
+   *  avvalgi xatti-harakati: darhol bekor qilinadi. */
+  onCancelRequest?: (inst: CutmapInstanceState) => void
 }) {
-  // PartCard faqat admin xaritada ochiladi (onSelect if(admin)) — terminal
-  // chop etish chap toolbar orqali; shuning uchun bu yerda print mutatsiyasi yo'q
+  // Kartochka adminda bir marta bosishda, terminalda esa ikki marta bosish
+  // yoki uzoq bosishda ochiladi. Chop etish terminalda chap toolbar orqali,
+  // shuning uchun bu yerda print mutatsiyasi yo'q.
   const cancelMutation = useCancelLabel()
 
   if (!part || part.waste) return null
@@ -1094,11 +1091,30 @@ function PartCard({
                 {part.w} × {part.h} mm
               </b>
             </div>
+            {/* Kromka QAYSI TOMONDA — belgi o'zi yetarli emas edi. Tomon
+                nomlari yonidagi eskiz bilan bir xil yo'nalishda: eW = chap/o'ng
+                (vertikal qirralar, uzunligi = balandlik), eH = tepa/past
+                (gorizontal, uzunligi = kenglik). O'lcham ham yoziladi —
+                kromkachi qaysi qirrani lentalashini shundan biladi. */}
             <div>
-              Kromka:{" "}
-              {[part.eW?.[0], part.eW?.[1], part.eH?.[0], part.eH?.[1]]
-                .filter(Boolean)
-                .join(", ") || "yo'q"}
+              Kromka: {(() => {
+                const tomonlar = [
+                  { nom: "chap", sym: part.eW?.[0], boyi: part.h },
+                  { nom: "o'ng", sym: part.eW?.[1], boyi: part.h },
+                  { nom: "tepa", sym: part.eH?.[0], boyi: part.w },
+                  { nom: "past", sym: part.eH?.[1], boyi: part.w },
+                ].filter((t) => t.sym)
+                if (!tomonlar.length) return <b>yo'q</b>
+                return tomonlar.map((t, i) => (
+                  <span key={t.nom}>
+                    {i > 0 && " · "}
+                    <b>
+                      {t.nom} {Math.round(t.boyi)}
+                    </b>
+                    {t.sym !== "•" && ` (${t.sym})`}
+                  </span>
+                ))
+              })()}
             </div>
             <div>
               Yorliq raqami: <b>№{part.num}</b>
@@ -1122,13 +1138,19 @@ function PartCard({
                 ) : null}
               </span>
               {/* Texnolog xato chekni shu yerdan tuzatadi — proyekt ARRA
-                  ro'yxatidan tushib bo'lgach arrachi xaritani ocholmaydi */}
-              {admin && inst.label_printed_at && (
+                  ro'yxatidan tushib bo'lgach arrachi xaritani ocholmaydi.
+                  Arrachi ham SHU tugmadan foydalanadi (kartochka ikki marta
+                  bosishda ochiladi) — faqat unda tasdiq oynasi orqali. */}
+              {inst.label_printed_at && (
                 <LoadingButton
                   variant="destructive"
                   size="sm"
                   loading={cancelMutation.isPending}
-                  onClick={() => cancelMutation.mutate(inst.instance_id)}
+                  onClick={() =>
+                    onCancelRequest
+                      ? onCancelRequest(inst)
+                      : cancelMutation.mutate(inst.instance_id)
+                  }
                 >
                   Chekni bekor qilish
                 </LoadingButton>
