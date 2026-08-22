@@ -1,8 +1,8 @@
 // PRISADKA post sahifasi (TZ 12.5): buyurtmaning prisadka detallari ro'yxati,
 // har detalning SCX fayllari. "Hammasini yuklab olish" barcha SCX'ni BIR MARTA
 // tanlangan papkaga yozadi (File System Access API) — papka IndexedDB'da
-// saqlanadi, keyingi safar so'ralmaydi. Skan oqimi odatdagidek (har skanda
-// o'sha detal SCX'i ham avtomatik tushadi).
+// saqlanadi, keyingi safar so'ralmaydi. SKAN esa hech qanday fayl yuklamaydi:
+// yuklash faqat shu tugma orqali, operator xohlaganda.
 
 import { useQuery } from "@tanstack/react-query"
 import {

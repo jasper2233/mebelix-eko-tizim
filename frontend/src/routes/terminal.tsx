@@ -42,7 +42,6 @@ import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useMesWs } from "@/hooks/useMesWs"
 import { requireAuth } from "@/lib/guards"
 import { OPERATOR_ROLES, POST_COLORS } from "@/lib/mes"
-import { downloadScx } from "@/lib/scxDir"
 import { cn } from "@/lib/utils"
 import { getTerminalContextQueryOptions } from "@/queries/mes"
 import { detailMessage, detailParts } from "@/utils"
@@ -199,11 +198,14 @@ function TerminalPage() {
       })
       invalidateWork()
       if (r.order_completed) toast.success("Buyurtma to'liq tayyor bo'ldi!")
-      // SCX fayllar har scanda qaytadan (TZ 12.5): saqlangan papkadagi PROYEKT
-      // nomli subpapkaga ("Hammasini yuklab olish" bilan bir joy).
-      // ROVER'ga SCX kerak emas — avto-yuklash ham o'chiq
-      if (ctx?.post_code !== "ROVER")
-        for (const fid of r.scx_file_ids ?? []) downloadScx(fid, r.project_name)
+      // SKAN FAYL YUKLAMAYDI. Ilgari har skanda o'sha detalning SCX'i avtomat
+      // tushirilardi. Saqlangan papka tanlanmagan bo'lsa (yoki brauzer File
+      // System Access API ni qo'llamasa) bu oddiy `<a download>` ga tushib,
+      // har skanda brauzer yuklamasi ochilardi — operator ish o'rniga fayl
+      // oynalarini yopib o'tirardi.
+      //
+      // Skanning ishi — bosqichni yopish, u shu yerda bajarildi. Fayl kerak
+      // bo'lsa operator "Hammasini yuklab olish" ni bir marta bosadi.
     },
     onError: (err) => {
       lastScanAtRef.current = Date.now()

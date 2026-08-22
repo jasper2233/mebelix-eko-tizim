@@ -111,31 +111,3 @@ export async function saveScxToDir(
   await w.close()
   return name
 }
-
-/** Bitta SCX: saqlangan papkaga — folder berilsa proyekt nomli subpapkaga
- * ("Hammasini yuklab olish" bilan BIR joy); papka yo'q — brauzer Downloads */
-export async function downloadScx(
-  fileId: number,
-  folder?: string | null,
-): Promise<void> {
-  if (dirSupported()) {
-    const dir = await getSavedDir(false)
-    if (dir) {
-      try {
-        const target = folder
-          ? await dir.getDirectoryHandle(projectFolder(folder), {
-              create: true,
-            })
-          : dir
-        await saveScxToDir(target, fileId)
-        return
-      } catch {
-        /* papka o'chirilgan bo'lishi mumkin — quyidagi fallback */
-      }
-    }
-  }
-  const a = document.createElement("a")
-  a.href = scxFileUrl(fileId)
-  a.download = ""
-  a.click()
-}
