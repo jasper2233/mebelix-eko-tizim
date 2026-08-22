@@ -241,6 +241,21 @@ export type BridgeAgentUpdate = {
 };
 
 /**
+ * BridgeLogPush
+ *
+ * Agent o'z log satrlarini yuboradi (diagnostika).
+ *
+ * Chegara ataylab qat'iy: agent ishlamay qolganda log oqimi sekundiga bir necha
+ * marta kelishi mumkin, server esa ularni faqat oxirgi 200 tasini saqlaydi.
+ */
+export type BridgeLogPush = {
+    /**
+     * Lines
+     */
+    lines?: Array<string>;
+};
+
+/**
  * BridgePairRequest
  */
 export type BridgePairRequest = {
@@ -5515,6 +5530,69 @@ export type PairBridgeAgentResponses = {
 };
 
 export type PairBridgeAgentResponse = PairBridgeAgentResponses[keyof PairBridgeAgentResponses];
+
+export type PushBridgeLogsData = {
+    body: BridgeLogPush;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/bridge-agents/logs';
+};
+
+export type PushBridgeLogsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PushBridgeLogsError = PushBridgeLogsErrors[keyof PushBridgeLogsErrors];
+
+export type PushBridgeLogsResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type PushBridgeLogsResponse = PushBridgeLogsResponses[keyof PushBridgeLogsResponses];
+
+export type ReadBridgeLogsData = {
+    body?: never;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: number;
+    };
+    query?: never;
+    url: '/api/v1/bridge-agents/{agent_id}/logs';
+};
+
+export type ReadBridgeLogsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadBridgeLogsError = ReadBridgeLogsErrors[keyof ReadBridgeLogsErrors];
+
+export type ReadBridgeLogsResponses = {
+    /**
+     * Response Read Bridge Logs
+     *
+     * Successful Response
+     */
+    200: Array<string>;
+};
+
+export type ReadBridgeLogsResponse = ReadBridgeLogsResponses[keyof ReadBridgeLogsResponses];
 
 export type BridgeScanData = {
     body: BridgeScanRequest;

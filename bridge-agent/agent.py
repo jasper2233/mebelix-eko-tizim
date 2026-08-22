@@ -30,6 +30,7 @@ import logging
 import os
 import sys
 from logging.handlers import RotatingFileHandler
+from collections import deque
 from pathlib import Path
 
 # websockets>=14 shart: additional_headers= va InvalidStatus.response.status_code
@@ -75,6 +76,31 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
     handlers=_handlers,
 )
+
+# ── Loglarni SERVERGA ham yuborish ────────────────────────────────────────────
+# Admin panelda ko'rinsin: ilgari nosozlikni topish uchun operatordan tsexdagi
+# kompyuterda agent log faylini ochishni so'rash kerak edi
+# (masofadan kirish yo'q). Bufer chegaralangan: agent uzluksiz xato bersa ham
+# xotira o'smaydi, eski satrlar o'zi tushib qoladi.
+LOG_BUFFER: deque[str] = deque(maxlen=200)
+
+
+class _ServerLogHandler(logging.Handler):
+    """Satrni buferga qo'yadi — yuborishni alohida vazifa bajaradi.
+
+    Bu yerda TARMOQQA CHIQILMAYDI: logging chaqiruvi chop etish yoki skan
+    oqimining o'rtasida bo'lishi mumkin, tarmoq esa sekin. Bloklab qo'ysa
+    yorliq kechikardi."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        with contextlib.suppress(Exception):
+            LOG_BUFFER.append(self.format(record))
+
+
+_server_handler = _ServerLogHandler()
+_server_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+_server_handler.setLevel(logging.INFO)
+logging.getLogger().addHandler(_server_handler)
 log = logging.getLogger("bridge-agent")
 
 
@@ -444,6 +470,40 @@ def send_to_printer(png_b64: str) -> bool:
         return False
 
 
+async def log_shipper() -> None:
+    """Buferdagi log satrlarini serverga yuboradi (har 30 s).
+
+    HTTP, `/ws/bridge` orqali EMAS: o'sha soketda chek jo'natish, ack kutish va
+    qayta navbatga qo'yish mantiqi bor — log xabari ack o'rniga o'qilsa job
+    "nak" deb hisoblanib chop etish buzilardi. Diagnostika uchun ishlab
+    chiqarish yo'lini xavf ostiga qo'yish mantiqsiz.
+
+    Yuborilmasa satrlar TASHLAB YUBORILADI (qayta urinilmaydi): log yordamchi
+    ma'lumot, u uchun navbat saqlash agentni murakkablashtirardi. Muhimi —
+    fayl nusxasi baribir kompyuterda qoladi."""
+    import urllib.error
+    import urllib.request
+
+    while True:
+        await asyncio.sleep(30)
+        if not LOG_BUFFER or not BRIDGE_TOKEN:
+            continue
+        lines = list(LOG_BUFFER)
+        LOG_BUFFER.clear()
+        http = MES_URL.replace("wss://", "https://", 1).replace("ws://", "http://", 1).rstrip("/")
+        req = urllib.request.Request(
+            f"{http}/api/v1/bridge-agents/logs",
+            data=json.dumps({"lines": lines[-200:]}).encode(),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {BRIDGE_TOKEN}",
+            },
+        )
+        # Tarmoq chaqiruvi hodisa siklini bloklamasin — alohida oqimda
+        with contextlib.suppress(Exception):
+            await asyncio.to_thread(lambda: urllib.request.urlopen(req, timeout=10).close())
+
+
 async def flusher() -> None:
     """Lokal navbatni printerga oqizadi — printer qaytganda o'zi davom etadi."""
     while True:
@@ -669,7 +729,7 @@ async def main() -> None:
     log.info("MebeliX agent v%s", AGENT_VERSION)
     log.info("Printer: %s", PRINTER_NAME or "TOPILMADI — GoDEX drayverini o'rnating")
     start_scan_forward()
-    await asyncio.gather(uplink(), flusher())
+    await asyncio.gather(uplink(), flusher(), log_shipper())
 
 
 if __name__ == "__main__":

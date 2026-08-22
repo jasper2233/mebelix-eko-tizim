@@ -18,9 +18,11 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Header, HTTPException, Request
+from redis.asyncio import Redis as AsyncRedis
 from sqlalchemy import select, update
 
 from app.api.deps import AdminUser, SessionDep, client_ip
+from app.core.config import settings
 from app.core.exceptions import NotFoundException
 from app.core.ws import ws_manager
 from app.crud import crud_bridge_agents, log_action
@@ -29,6 +31,7 @@ from app.schemas.bridge_agents import (
     BridgeAgentCreate,
     BridgeAgentRead,
     BridgeAgentUpdate,
+    BridgeLogPush,
     BridgePairRequest,
     BridgePairResponse,
     BridgeScanRequest,
@@ -48,6 +51,14 @@ router = APIRouter(prefix="/bridge-agents", tags=["bridge-agents"])
 # I/L/O/0/1 yo'q — telefonda aytganda adashtirmaydi. 31^8 ≈ 8.5e11 kombinatsiya:
 # 15 daqiqalik oynada brute-force amalda imkonsiz.
 _CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
+# Agent loglari REDISDA, jadvalda emas: diagnostika uchun oxirgi N satr kerak,
+# tarix emas. Ro'yxat o'zi kesiladi (LTRIM), ya'ni o'sishni boshqarish shart
+# emas va migratsiya ham kerak bo'lmaydi. 7 kundan keyin o'zi yo'qoladi —
+# ulanmagan agentning eski loglari bo'sh joy egallab yotmasin.
+AGENT_LOG_KEY = "mes:agent:log:{}"
+AGENT_LOG_KEEP = 200
+AGENT_LOG_TTL = 7 * 24 * 3600
 _CODE_LEN = 8
 PAIR_TTL = timedelta(minutes=15)
 
@@ -245,18 +256,8 @@ async def pair_bridge_agent(db: SessionDep, body: BridgePairRequest, request: Re
     return BridgePairResponse(token=token, name=row.name)
 
 
-@router.post("/scan", response_model=ScanResult, operation_id="bridge_scan")
-async def bridge_scan(
-    db: SessionDep,
-    body: BridgeScanRequest,
-    authorization: str = Header(default=""),
-) -> ScanResult:
-    """Skan-forvard (TZ 12.5): stanok skaneri o'qigan QR agent orqali MES'ga ham yoziladi.
-
-    Auth — agentning doimiy tokeni (Bearer). Skan agentga bog'langan ish markazining
-    AKTIV sessiyasi nomidan yoziladi (monoblokda operator kirgan bo'lishi shart) —
-    hisob-kitob odatdagi skan bilan bir xil yo'ldan o'tadi.
-    """
+async def _agent_by_token(db: SessionDep, authorization: str) -> BridgeAgent:
+    """Bearer token bo'yicha agentni topadi — `/scan` va `/logs` uchun umumiy."""
     token = authorization.removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(status_code=401, detail="Token yo'q.")
@@ -271,6 +272,71 @@ async def bridge_scan(
     ).scalar_one_or_none()
     if agent is None:
         raise HTTPException(status_code=401, detail="Token bekor qilingan.")
+    return agent
+
+
+@router.post("/logs", response_model=Message, operation_id="push_bridge_logs")
+async def push_bridge_logs(
+    db: SessionDep,
+    body: BridgeLogPush,
+    authorization: str = Header(default=""),
+) -> Message:
+    """Agent o'z loglarini yuboradi — admin ularni panelda ko'radi.
+
+    Nega HTTP, `/ws/bridge` orqali emas: o'sha soketda chek jo'natish, ack kutish
+    va qayta navbatga qo'yish mantiqi bor. Log xabari ack o'rniga o'qilsa job
+    "nak" deb hisoblanib chop etish buzilardi. Diagnostika uchun ishlab chiqarish
+    yo'lini xavf ostiga qo'yish mantiqsiz.
+
+    Autentifikatsiya — agentning o'sha doimiy tokeni. Boshqa agentning logini
+    ko'rish yoki yozish imkonsiz: kalit token egasining `id` sidan quriladi.
+    """
+    agent = await _agent_by_token(db, authorization)
+    lines = [ln[:500] for ln in body.lines if ln.strip()]
+    if not lines:
+        return Message(message="bo'sh")
+    redis = AsyncRedis.from_url(settings.REDIS_URL)
+    try:
+        key = AGENT_LOG_KEY.format(agent.id)
+        # Eng yangisi boshida tursin: LPUSH teskari tartibda beriladi
+        await redis.lpush(key, *reversed(lines))
+        await redis.ltrim(key, 0, AGENT_LOG_KEEP - 1)
+        await redis.expire(key, AGENT_LOG_TTL)
+    finally:
+        await redis.aclose()
+    return Message(message=f"{len(lines)} satr")
+
+
+@router.get("/{agent_id}/logs", response_model=list[str], operation_id="read_bridge_logs")
+async def read_bridge_logs(db: SessionDep, _: AdminUser, agent_id: int) -> list[str]:
+    """Agentning oxirgi log satrlari (eng yangisi birinchi).
+
+    Ilgari admin operatordan `%APPDATA%\\MebelixAgent\agent.log` ni ochishni
+    so'rashga majbur edi — tsexdagi kompyuterga masofadan kirish yo'q."""
+    agent = await db.get(BridgeAgent, agent_id)
+    if agent is None or agent.is_deleted:
+        raise NotFoundException("Agent topilmadi.")
+    redis = AsyncRedis.from_url(settings.REDIS_URL)
+    try:
+        rows = await redis.lrange(AGENT_LOG_KEY.format(agent_id), 0, AGENT_LOG_KEEP - 1)
+    finally:
+        await redis.aclose()
+    return [r.decode() if isinstance(r, bytes) else r for r in rows]
+
+
+@router.post("/scan", response_model=ScanResult, operation_id="bridge_scan")
+async def bridge_scan(
+    db: SessionDep,
+    body: BridgeScanRequest,
+    authorization: str = Header(default=""),
+) -> ScanResult:
+    """Skan-forvard (TZ 12.5): stanok skaneri o'qigan QR agent orqali MES'ga ham yoziladi.
+
+    Auth — agentning doimiy tokeni (Bearer). Skan agentga bog'langan ish markazining
+    AKTIV sessiyasi nomidan yoziladi (monoblokda operator kirgan bo'lishi shart) —
+    hisob-kitob odatdagi skan bilan bir xil yo'ldan o'tadi.
+    """
+    agent = await _agent_by_token(db, authorization)
     if agent.machine_id is None:
         raise HTTPException(
             status_code=409,

@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { KeyRound, Plus, Trash2 } from "lucide-react"
+import { FileText, KeyRound, Plus, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -104,6 +104,61 @@ function CodeTtl({ expiresAt }: { expiresAt: string }) {
     >
       {Math.floor(qoldi / 60)}:{String(qoldi % 60).padStart(2, "0")} qoldi
     </span>
+  )
+}
+
+/** Agent loglari — tsexdagi kompyuterga bormasdan nosozlikni ko'rish.
+ *
+ * Agent har 30 soniyada o'z log satrlarini serverga yuboradi; server ularni
+ * Redisda oxirgi 200 tasini saqlaydi. Ilgari admin operatordan tsexdagi
+ * kompyuterda log faylini ochishni so'rashga majbur edi — masofadan kirish yo'q.
+ */
+function AgentLogs({ agent }: { agent: BridgeAgentRead }) {
+  const [open, setOpen] = useState(false)
+  const { data, isFetching } = useQuery({
+    queryKey: ["bridge-agents", agent.id, "logs"],
+    queryFn: async () =>
+      (
+        await BridgeAgentsService.readBridgeLogs({
+          path: { agent_id: agent.id },
+        })
+      ).data,
+    // Faqat oyna ochiq bo'lganda — yopiq turganda so'rov yubormaydi
+    enabled: open,
+    refetchInterval: open ? 10_000 : false,
+  })
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <span>
+          <RowAction
+            icon={FileText}
+            title="Loglar"
+            onClick={() => setOpen(true)}
+          />
+        </span>
+      </DialogTrigger>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{agent.name} — loglar</DialogTitle>
+          <DialogDescription>
+            Agent yuborgan oxirgi satrlar, eng yangisi tepada. Har 30 soniyada
+            yangilanadi.
+          </DialogDescription>
+        </DialogHeader>
+        {!data?.length ? (
+          <p className="py-8 text-center text-muted-foreground">
+            {isFetching
+              ? "Yuklanmoqda..."
+              : "Hali log yo'q — agent ulangach 30 soniya ichida keladi."}
+          </p>
+        ) : (
+          <pre className="max-h-[60vh] overflow-auto rounded-md bg-muted p-3 text-xs leading-relaxed">
+            {data.join("\n")}
+          </pre>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -368,6 +423,7 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
       </TableCell>
       <TableCell>
         <div className="flex gap-1">
+          <AgentLogs agent={agent} />
           <RowAction
             icon={KeyRound}
             title="Yangi ulanish kodi (eski token bekor bo'ladi)"

@@ -50,3 +50,12 @@ class BridgePairResponse(BaseModel):
 
     token: str
     name: str
+
+
+class BridgeLogPush(BaseModel):
+    """Agent o'z log satrlarini yuboradi (diagnostika).
+
+    Chegara ataylab qat'iy: agent ishlamay qolganda log oqimi sekundiga bir necha
+    marta kelishi mumkin, server esa ularni faqat oxirgi 200 tasini saqlaydi."""
+
+    lines: list[str] = Field(default_factory=list, max_length=200)
