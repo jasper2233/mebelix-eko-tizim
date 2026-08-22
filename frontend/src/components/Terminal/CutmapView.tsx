@@ -561,8 +561,8 @@ export function CutmapView({
             ? printMutation.mutate(nextInstance.instance_id)
             : toast.error(
                 markedInsts.length
-                  ? "Bu detal chiqarilgan. Qaytadan chiqarish uchun katakni ikki marta bosib chekni bekor qiling."
-                  : "Bu katakka nusxa bog'lanmagan — texnologga ayting: xarita bilan detallar mos kelmayapti.",
+                  ? "Bu detal chiqarilgan. Qaytadan chiqarish uchun detalni ikki marta bosib chekni bekor qiling."
+                  : "Bu detal ro'yxatdan o'tmagan — chek chiqmaydi. Texnologga ayting.",
               )
         }
       >

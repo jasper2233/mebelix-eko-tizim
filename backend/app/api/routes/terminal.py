@@ -965,7 +965,7 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     await db.commit()
     await ws_manager.publish("label.printed", {"instance_id": instance_id, "qr_text": qr_text})
     natija = (
-        f"Printer ulanmagan — chek navbatda turibdi: {qr_text}"
+        f"Printer ulanmagan. Chek saqlandi — printer ulanganda o'zi chiqadi: {qr_text}"
         if printer_kutilmoqda
         else f"Chek chop etishga yuborildi: {qr_text}"
     )
