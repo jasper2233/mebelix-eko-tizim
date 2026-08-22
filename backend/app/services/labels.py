@@ -279,6 +279,23 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
     # pastda (en) va o'ng tomonda aylantirilgan (uzunlik)
     if d.length and d.width:
         long_side, short_side = max(d.length, d.width), min(d.length, d.width)
+        # Eskiz UZUN tomonni vertikal qilib chizadi. Bu detal 90° BURILGAN
+        # degani emas: uzun tomon `length` bo'lsa eskiz burilgan, `width` bo'lsa
+        # tabiiy holatda. Ilgari doim burilgan deb hisoblanardi — natijada eni
+        # uzunroq detalda (masalan 120x400) kromka, teshik va o'lcham belgilari
+        # 90° noto'g'ri tomonga tushardi. Kesish xaritasi to'g'ri ko'rsatar,
+        # chek esa yolg'on gapirardi.
+        #
+        # Detal o'z koordinatasida: x = uzunlik, y = en.
+        #   t/b — y qirralari, UZUNLIK bo'ylab ketadi
+        #   l/r — x qirralari, EN bo'ylab ketadi
+        burilgan = d.length > d.width
+        # detal tomoni -> eskizdagi qirra
+        qirra = (
+            {"t": "chap", "b": "ong", "l": "tepa", "r": "past"}
+            if burilgan
+            else {"l": "chap", "r": "ong", "t": "tepa", "b": "past"}
+        )
         off = int(1 * mm)  # edgeband.offset=1mm
         bt = max(2, int(0.6 * mm))  # kromka chizig'i qalinligi
         # QR'dan keyin (kromka chizig'i ham QR'ga tegmasin — quiet zone)
@@ -298,15 +315,17 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
             e = d.edges.get(side)
             return str(e.get("symbol") or "").strip()[:3] if e else ""
 
-        # 90 gradus burilgan eskiz: t -> chap, b -> o'ng, l -> tepa, r -> past
-        if d.edges.get("t"):
-            draw.rectangle((bx - off - bt, by, bx - off, by + bh), fill="black")
-        if d.edges.get("b"):
-            draw.rectangle((bx + bw + off, by, bx + bw + off + bt, by + bh), fill="black")
-        if d.edges.get("l"):
-            draw.rectangle((bx, by - off - bt, bx + bw, by - off), fill="black")
-        if d.edges.get("r"):
-            draw.rectangle((bx, by + bh + off, bx + bw, by + bh + off + bt), fill="black")
+        for tomon, joy in qirra.items():
+            if not d.edges.get(tomon):
+                continue
+            if joy == "chap":
+                draw.rectangle((bx - off - bt, by, bx - off, by + bh), fill="black")
+            elif joy == "ong":
+                draw.rectangle((bx + bw + off, by, bx + bw + off + bt, by + bh), fill="black")
+            elif joy == "tepa":
+                draw.rectangle((bx, by - off - bt, bx + bw, by - off), fill="black")
+            else:
+                draw.rectangle((bx, by + bh + off, bx + bw, by + bh + off + bt), fill="black")
 
         # Tekstura yo'nalishi (xaritadagidek): uzunlik bo'ylab 3 ingichka chiziq —
         # eskizda vertikal. Teshiklardan oldin chiziladi (teshik ustida qolsin)
@@ -321,34 +340,43 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
         # lokal (x bo'ylab uzunlik, y bo'ylab en) -> vertikal eskiz koordinatalari
         if d.holes and d.holes.get("l") and d.holes.get("w"):
             hl, hw = float(d.holes["l"]), float(d.holes["w"])
-            kx, ky = bw / hw, bh / hl  # en -> gorizontal, uzunlik -> vertikal
+            # Qaysi o'lcham qaysi o'qqa tushishi eskiz yo'nalishiga bog'liq
+            kx = bw / (hw if burilgan else hl)
+            ky = bh / (hl if burilgan else hw)
             for b in d.holes.get("bores", []):
-                cxp = bx + int(float(b["y"]) * kx)
-                cyp = by + int(float(b["x"]) * ky)
+                gor, ver = (b["y"], b["x"]) if burilgan else (b["x"], b["y"])
+                cxp = bx + int(float(gor) * kx)
+                cyp = by + int(float(ver) * ky)
                 r = max(int(0.4 * mm), int(float(b.get("d", 5)) / 2 * min(kx, ky)))
                 draw.ellipse((cxp - r, cyp - r, cxp + r, cyp + r), fill="white", outline="black", width=max(2, scale))
             for b in d.holes.get("edge", []):
                 side, pos = b.get("side"), float(b.get("pos", 0))
                 dp = min(float(b.get("dp", 12)), 30) * min(kx, ky)
                 tick = max(2, int(dp))
-                if side == "t":  # y=0 en chizig'i -> eskizda chap qirra
+                # Vertikal qirradagi teshik `ky` bo'ylab, gorizontaldagisi `kx`
+                # bo'ylab joylashadi — yo'nalish `qirra` xaritasidan keladi
+                teshik_joyi = qirra.get(side or "")
+                if teshik_joyi == "chap":
                     yy = by + int(pos * ky)
                     draw.line((bx, yy, bx + tick, yy), fill="black", width=2)
-                elif side == "b":
+                elif teshik_joyi == "ong":
                     yy = by + int(pos * ky)
                     draw.line((bx + bw - tick, yy, bx + bw, yy), fill="black", width=2)
-                elif side == "l":  # x=0 uzunlik boshi -> eskizda tepa qirra
+                elif teshik_joyi == "tepa":
                     xx = bx + int(pos * kx)
                     draw.line((xx, by, xx, by + tick), fill="black", width=2)
-                elif side == "r":
+                elif teshik_joyi == "past":
                     xx = bx + int(pos * kx)
                     draw.line((xx, by + bh - tick, xx, by + bh), fill="black", width=2)
 
         # O'lchamlar: en pastda gorizontal, uzunlik o'ngda aylantirilgan (Universal size.top/left=false).
         # Har o'lcham yoniga o'sha tomonlar kromka belgilari (xaritadagi "450 B" uslubi):
         # uzunlik <- t/b tomonlar, en <- l/r tomonlar
-        sym_long = "".join(s for s in (edge_sym("t"), edge_sym("b")) if s)
-        sym_short = "".join(s for s in (edge_sym("l"), edge_sym("r")) if s)
+        # Uzun o'lcham yonida — o'sha o'lcham BO'YLAB ketadigan qirralar belgisi
+        uzun_tomonlar = ("t", "b") if burilgan else ("l", "r")
+        qisqa_tomonlar = ("l", "r") if burilgan else ("t", "b")
+        sym_long = "".join(s for s in map(edge_sym, uzun_tomonlar) if s)
+        sym_short = "".join(s for s in map(edge_sym, qisqa_tomonlar) if s)
         draw.text(
             (bx + bw // 2, by + bh + off + bt + int(0.6 * mm)),
             f"{_n(short_side)} {sym_short}".strip(),
