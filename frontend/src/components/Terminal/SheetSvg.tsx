@@ -60,7 +60,16 @@ const LP_SLOP = 30
  * ketma-ketlik `nom -> faqat raqam -> nom yo'q -> o'lcham`.
  */
 const DIM_MIN = 12 // bundan past — umuman chizilmaydi
-const DIM_MAX = 46 // katta detalda ham me'yorida
+// Yuqori chegara. 46 da yozuvlarning YARMI aynan shu chegaraga tiralib turardi
+// va 17" monoblokda ~3.7 mm bo'lib chiqardi — bir metrdan o'qish uchun kichik.
+// 90 da o'sha yozuvlar ~6.9 mm ga chiqadi.
+//
+// Ataylab FAQAT shu son ko'tarildi: haqiqiy buyurtmada (126 katak, 252 yozuv)
+// o'lchandi — chegarani ko'tarish katakka sig'magan yozuvlar sonini umuman
+// o'zgartirmaydi (8/252, o'zgarishdan oldingi holat), `kondalang * 0.28`
+// koeffitsiyentini ko'tarish esa uni 24+ ga oshirardi va yozuvlar ustma-ust
+// tusha boshlardi.
+const DIM_MAX = 90
 
 /** Bitta o'lcham yozuvining kattaligi va ko'rinishi.
  *
