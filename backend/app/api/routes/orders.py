@@ -868,9 +868,14 @@ async def _resize_instances(db: SessionDep, part: Part, new_count: int) -> None:
 
 @router.post("/{order_id}/machines", response_model=Message, operation_id="assign_order_machines")
 async def assign_order_machines(
-    db: SessionDep, current_user: ManagerUser, order_id: int, body: MachineAssignments, request: Request
+    db: SessionDep, current_user: ManagerOrTexnologUser, order_id: int, body: MachineAssignments, request: Request
 ) -> Message:
-    """Manager picks a machine per post where several exist (TZ 6.4.1)."""
+    """Ish markazi tanlovi (TZ 6.4.1): bir postda bir nechta markaz bo'lsa qaysi biri.
+
+    Texnolog ham tanlaydi: marshrutni u chizadi va qaysi stanok qaysi ishni
+    bajarishini menejerdan ko'ra yaxshiroq biladi. Buyurtma ishlab chiqarishga
+    uzatilgach ikkalasiga ham yopiq (quyidagi holat tekshiruvi).
+    """
     order = await _get_order(db, order_id)
     if order.status not in _EDITABLE_STATUSES:
         raise ForbiddenException("Ish markazi tanlovi faqat ishlab chiqarishga uzatilgunga qadar mumkin.")

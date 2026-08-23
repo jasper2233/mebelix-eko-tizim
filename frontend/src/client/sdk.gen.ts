@@ -722,7 +722,11 @@ export class OrdersService {
     /**
      * Assign Order Machines
      *
-     * Manager picks a machine per post where several exist (TZ 6.4.1).
+     * Ish markazi tanlovi (TZ 6.4.1): bir postda bir nechta markaz bo'lsa qaysi biri.
+     *
+     * Texnolog ham tanlaydi: marshrutni u chizadi va qaysi stanok qaysi ishni
+     * bajarishini menejerdan ko'ra yaxshiroq biladi. Buyurtma ishlab chiqarishga
+     * uzatilgach ikkalasiga ham yopiq (quyidagi holat tekshiruvi).
      */
     public static assignOrderMachines<ThrowOnError extends boolean = true>(options: Options<AssignOrderMachinesData, ThrowOnError>): RequestResult<AssignOrderMachinesResponses, AssignOrderMachinesErrors, ThrowOnError> {
         return (options.client ?? client).post<AssignOrderMachinesResponses, AssignOrderMachinesErrors, ThrowOnError>({

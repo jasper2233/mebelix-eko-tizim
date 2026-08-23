@@ -375,7 +375,9 @@ function OrderDetailPage() {
         )}
       </Card>
 
-      {isManager && editableStatus && order.project_uuid && (
+      {/* Texnolog ham tanlaydi: marshrutni u chizadi, ya'ni qaysi stanok
+          qaysi ishni bajarishini yaxshiroq biladi. */}
+      {(isManager || isTexnolog) && editableStatus && order.project_uuid && (
         <MachineAssign order={order} onSaved={invalidate} />
       )}
 
