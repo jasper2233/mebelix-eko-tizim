@@ -632,6 +632,11 @@ async def record_scan_at(
                 "order_number": order.number,
                 "part_id": part.id,
                 "part_code": qr_part_code(instance.qr_text, part.count),
+                # Nusxaning TO'LIQ QR'i: `part_code` ko'p nusxali detalda `_n`
+                # siz keladi, terminal esa takroriy xabarni aynan QR bo'yicha
+                # ajratadi (bitta fizik skan brauzer va stanok agenti orqali
+                # ikki marta kelishi mumkin).
+                "qr_text": instance.qr_text,
                 "instance_no": instance.instance_no,
                 "post_id": post.id,
                 "machine_id": machine.id,

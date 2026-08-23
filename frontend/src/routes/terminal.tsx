@@ -94,6 +94,26 @@ function TerminalPage() {
   const [lastScan, setLastScan] = useState<LastScan>(null)
   //: Shu brauzer qilgan skanlar — WS hodisasi qaytib kelganda takrorlamaslik uchun
   const ownScansRef = useRef<Set<number>>(new Set())
+  //: Oxirgi xabar berilgan QR va vaqti.
+  //
+  //: Stanok stansiyasida bitta fizik skan IKKI yo'ldan ketadi: brauzerning
+  //: skan maydoni (u doim fokusda) va agentning global klaviatura kuzatuvchisi.
+  //: Ikkalasi ham serverga yozadi, ya'ni operator bir bosishga ikki xabar
+  //: ko'rardi — ba'zan bir-biriga ZID: brauzerniki "bajarildi", agentniki esa
+  //: "allaqachon bajarilgan" (ikkinchi so'rov E008 bilan rad etiladi).
+  //: Ma'lumot to'g'ri qolgan — `total_done` ikki marta oshmaydi — muammo faqat
+  //: ko'rsatishda edi.
+  const notifiedRef = useRef<{ qr: string; at: number }>({ qr: "", at: 0 })
+  /** Shu QR bo'yicha xabar berish kerakmi (4 soniyada bir marta).
+   *  `useCallback([])` — faqat ref bilan ishlaydi, ya'ni barqaror: WS
+   *  ishlov beruvchisi uni bog'liqlik sifatida olganda har renderda
+   *  qayta yaratilmaydi. */
+  const yangiXabar = useCallback((qr: string) => {
+    const n = notifiedRef.current
+    if (qr && n.qr === qr && Date.now() - n.at < 4000) return false
+    notifiedRef.current = { qr, at: Date.now() }
+    return true
+  }, [])
   const [undoOpen, setUndoOpen] = useState(false)
   const [logoutOpen, setLogoutOpen] = useState(false)
   // Yakunlanayotgan smena — brigadada kim ekani muhim (biri ketib, ikkinchisi
@@ -158,6 +178,7 @@ function TerminalPage() {
           // O'z skanimizni ikki marta ko'rsatmaymiz: `onSuccess` bannerni
           // allaqachon qo'ygan va unda BEKOR QILISH uchun `scanId` bor.
           if (ownScansRef.current.delete(sid)) return
+          if (!yangiXabar(String(p.qr_text ?? p.part_code ?? ""))) return
           playSuccess()
           lastScanAtRef.current = Date.now()
           setLastScan({
@@ -168,6 +189,7 @@ function TerminalPage() {
             at: Date.now(),
           })
         } else if (event.type === "scan.rejected") {
+          if (!yangiXabar(String(p.qr_text ?? ""))) return
           const code = String(p.code ?? "")
           const message = String(p.message ?? "")
           // E008 — ish allaqachon bajarilgan: xato emas, neytral signal
@@ -178,7 +200,7 @@ function TerminalPage() {
           toast.error(message)
         }
       },
-      [invalidateWork, ctx],
+      [invalidateWork, ctx, yangiXabar],
     ),
   )
 
@@ -223,6 +245,7 @@ function TerminalPage() {
         })
       ).data,
     onSuccess: (r: ScanResult) => {
+      yangiXabar(r.qr_text)
       playSuccess()
       ownScansRef.current.add(r.scan_id)
       lastScanAtRef.current = Date.now()
@@ -245,7 +268,8 @@ function TerminalPage() {
       // Skanning ishi — bosqichni yopish, u shu yerda bajarildi. Fayl kerak
       // bo'lsa operator "Hammasini yuklab olish" ni bir marta bosadi.
     },
-    onError: (err) => {
+    onError: (err, qr) => {
+      if (!yangiXabar(qr)) return
       lastScanAtRef.current = Date.now()
       const { code, message } = detailParts(err)
       // Ovoz KOD bo'yicha tanlanadi, matn bo'yicha emas: ilgari o'zbekcha
