@@ -274,6 +274,20 @@ def _raw_segments(contour: list[dict], width: float) -> list[tuple[float, float,
     return out
 
 
+def _line_kesishuv(
+    a: tuple[tuple[float, float], tuple[float, float]],
+    b: tuple[tuple[float, float], tuple[float, float]],
+) -> tuple[float, float] | None:
+    """Ikki CHEKSIZ chiziqning kesishuvi; parallel bo'lsa `None`."""
+    (x1, y1), (x2, y2) = a
+    (x3, y3), (x4, y4) = b
+    d = (x2 - x1) * (y4 - y3) - (y2 - y1) * (x4 - x3)
+    if abs(d) < 1e-9:
+        return None
+    t = ((x3 - x1) * (y4 - y3) - (y3 - y1) * (x4 - x3)) / d
+    return (x1 + t * (x2 - x1), y1 + t * (y2 - y1))
+
+
 def _offset_contour(
     contour: list[dict], width: float, radius: float, comp: str
 ) -> tuple[float, float, list[tuple[float, float, float]]]:
@@ -300,7 +314,13 @@ def _offset_contour(
         ln = math.hypot(dx, dy) or 1.0
         return (-dy / ln, dx / ln)
 
-    out_pts: list[tuple[float, float]] = [(0.0, 0.0)] * len(pts)
+    # Har segmentning ofseti ALOHIDA saqlanadi. Ilgari ular bitta massivga
+    # yozilardi va ichki burchak ikki marta ustidan yozilib, oxirgi segmentning
+    # ofset boshi bo'lib qolardi — bu ikki ofset chiziqning KESISHUVI emas,
+    # undan asbob radiusicha siljigan nuqta. 3093 korpusida 115 detaldan 7 tasi
+    # shu sababdan GibLab eksporti bilan mos kelmasdi.
+    seg_pts: list[tuple[tuple[float, float], tuple[float, float]]] = []
+    kinds: list[str] = []
     angles: list[float] = []
     for i, seg in enumerate(segs):
         p0, p1 = pts[i], pts[i + 1]
@@ -312,17 +332,30 @@ def _offset_contour(
             # CCW yoyda markaz harakatning chap tomonida: chap ofset = ichkariga
             new_r = big_r - sign * radius if ccw else big_r + sign * radius
             k = new_r / big_r
-            a0 = (cx + (p0[0] - cx) * k, cy + (p0[1] - cy) * k)
-            a1 = (cx + (p1[0] - cx) * k, cy + (p1[1] - cy) * k)
-            out_pts[i] = a0
-            out_pts[i + 1] = a1
+            seg_pts.append(
+                (
+                    (cx + (p0[0] - cx) * k, cy + (p0[1] - cy) * k),
+                    (cx + (p1[0] - cx) * k, cy + (p1[1] - cy) * k),
+                )
+            )
+            kinds.append("arc")
             angles.append(_arc_sweep_deg(p0, p1, cx, cy, ccw))
         else:
             nx, ny = left_normal(p1[0] - p0[0], p1[1] - p0[1])
             off = (sign * radius * nx, sign * radius * ny)
-            out_pts[i] = (p0[0] + off[0], p0[1] + off[1])
-            out_pts[i + 1] = (p1[0] + off[0], p1[1] + off[1])
+            seg_pts.append(((p0[0] + off[0], p0[1] + off[1]), (p1[0] + off[0], p1[1] + off[1])))
+            kinds.append("line")
             angles.append(0.0)
+
+    out_pts: list[tuple[float, float]] = [(0.0, 0.0)] * len(pts)
+    out_pts[0] = seg_pts[0][0]
+    out_pts[len(segs)] = seg_pts[-1][1]
+    for i in range(1, len(segs)):
+        # Ikki to'g'ri chiziq tutashgan burchak — ofset chiziqlarning kesishuvi.
+        # Yoy bilan tutashuvda esa ofset nuqtalari allaqachon mos keladi
+        # (GibLab dasturlarida burchaklar tangens-uzluksiz yoy bilan beriladi).
+        kesishuv = _line_kesishuv(seg_pts[i - 1], seg_pts[i]) if kinds[i - 1] == "line" and kinds[i] == "line" else None
+        out_pts[i] = kesishuv or seg_pts[i][0]
 
     head = out_pts[0]
     return head[0], head[1], [(out_pts[i + 1][0], out_pts[i + 1][1], angles[i]) for i in range(len(segs))]
