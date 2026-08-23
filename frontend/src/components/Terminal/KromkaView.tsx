@@ -184,33 +184,46 @@ export function KromkaView({
                       </td>
                     )}
                     <td className="px-4 py-3 text-right">
-                      <div className="flex flex-wrap items-center justify-end gap-1.5">
-                        {p.instances.map((i) => (
-                          <span
-                            key={i.instance_id}
-                            title={i.qr_text}
-                            className={cn(
-                              "num rounded-md px-2.5 py-1 text-lg font-black",
-                              i.done >= p.sides
-                                ? "bg-green-600 text-white"
-                                : i.done > 0
-                                  ? "bg-amber-100 text-amber-700"
-                                  : "bg-muted text-muted-foreground",
-                            )}
-                          >
-                            {p.instances.length > 1 && (
-                              <span className="mr-1 text-xs font-bold opacity-70">
-                                №{i.instance_no}
-                              </span>
-                            )}
-                            {i.done >= p.sides
-                              ? "✓"
-                              : oval
-                                ? "–"
-                                : `${i.done}/${p.sides}`}
-                          </span>
-                        ))}
-                      </div>
+                      {/* Ish TUGAGANDA bitta aniq belgi — prisadkadagi bilan
+                          bir xil. Ilgari bu yerda faqat nusxa chiplari turardi
+                          va tugagan qatorda ular hammasi "✓" bo'lib, "tayyor"
+                          degan yagona ishorani berolmasdi: kromkachi 2 metrdan
+                          qarab qaysi qator tugaganini darrov ajrata olmasdi.
+                          Tugamagan qatorda chiplar qoladi — u yerda qaysi nusxa
+                          nechta tomondan o'tgani muhim. */}
+                      {finished ? (
+                        <span className="rounded-md bg-green-600 px-2.5 py-1 text-sm font-bold text-white">
+                          ✓ Bajarildi
+                        </span>
+                      ) : (
+                        <div className="flex flex-wrap items-center justify-end gap-1.5">
+                          {p.instances.map((i) => (
+                            <span
+                              key={i.instance_id}
+                              title={i.qr_text}
+                              className={cn(
+                                "num rounded-md px-2.5 py-1 text-lg font-black",
+                                i.done >= p.sides
+                                  ? "bg-green-600 text-white"
+                                  : i.done > 0
+                                    ? "bg-amber-100 text-amber-700"
+                                    : "bg-muted text-muted-foreground",
+                              )}
+                            >
+                              {p.instances.length > 1 && (
+                                <span className="mr-1 text-xs font-bold opacity-70">
+                                  №{i.instance_no}
+                                </span>
+                              )}
+                              {i.done >= p.sides
+                                ? "✓"
+                                : oval
+                                  ? "–"
+                                  : `${i.done}/${p.sides}`}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )

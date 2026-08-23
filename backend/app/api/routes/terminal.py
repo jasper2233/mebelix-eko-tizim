@@ -401,9 +401,12 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
         total_val = int(total or 0)
         if post.code == PostCode.KROMKA:
             done_val, total_val = kromka_counts.get(o.id, (0, 0))
-        # Hamma detali chiqarilgan proyekt arrachi ro'yxatini band qilmasin —
-        # kesish tugagan, qolgani keyingi postlarning ishi
-        if post.code == PostCode.ARRA and total_val > 0 and done_val >= total_val:
+        # Ishi TUGAGAN proyekt ro'yxatni band qilmasin — qolgani keyingi
+        # postlarning ishi. `done/total` shu POST bo'yicha hisoblanadi
+        # (so'rovda `PartRoute.post_id == post.id`), ya'ni har terminal faqat
+        # o'z ishini ko'radi. Ilgari bu qoida faqat ARRA'da ishlardi va boshqa
+        # postlarda tugagan proyektlar ro'yxatda abadiy turaverardi.
+        if total_val > 0 and done_val >= total_val:
             continue
         result.append(
             TerminalOrderCard(
