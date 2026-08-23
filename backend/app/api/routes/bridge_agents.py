@@ -348,6 +348,11 @@ async def bridge_scan(
     post = await db.get(Post, machine.post_id)
     if post is None:
         raise HTTPException(status_code=409, detail="Ish markazining posti topilmadi.")
+    # Idlar SHU YERDA olinadi: quyidagi `log_rejected_scan` ichida `db.rollback()`
+    # bor va u identity map'dagi HAMMA obyektni expire qiladi. Undan keyin
+    # `machine.id` ni o'qish lazy refresh talab qilib, async kontekstda
+    # `MissingGreenlet` bilan 500 berardi — stanok skani jimgina yo'qolardi.
+    machine_id, post_id = machine.id, post.id
     # Terminal bilan bir xil qoida: 12 soatlik smena muddati stanok skanida ham
     # amal qiladi (`crew_sessions` muddati o'tganini o'zi yopadi). Brigadadan
     # LANGAR smena olinadi — `active_session` ham aynan shunday tanlaydi.
@@ -379,9 +384,9 @@ async def bridge_scan(
         # qo'shishning hojati yo'q.
         await ws_manager.publish(
             "scan.rejected",
-            {"qr_text": body.qr_text, "code": exc.code, "message": exc.message, "machine_id": machine.id},
-            post_id=post.id,
-            machine_id=machine.id,
+            {"qr_text": body.qr_text, "code": exc.code, "message": exc.message, "machine_id": machine_id},
+            post_id=post_id,
+            machine_id=machine_id,
         )
         raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
 
