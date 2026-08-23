@@ -5,11 +5,16 @@
 // narsani topshirilgan deb belgilab qo'yardi.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, PackageCheck, Truck } from "lucide-react"
+import { ArrowLeft, Check, PackageCheck, Truck } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
 import { TmoService } from "@/client"
+import {
+  playError,
+  playSuccess,
+  playWarning,
+} from "@/components/Terminal/audio"
 import { PostProgress } from "@/components/Terminal/PostProgress"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
@@ -30,6 +35,14 @@ export function TmoView({
 }) {
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<"qabul" | "topshirish">("qabul")
+  //: Shu smenada qabul qilinganlar. Server javobida ular `pending` dan
+  //: CHIQIB KETADI (tmo.py: qabul qilingan nusxa ro'yxatga qo'shilmaydi), ya'ni
+  //: skanerlangan detal ekrandan jimgina yo'qolardi va omborchi skan
+  //: o'tgan-o'tmaganini bilolmasdi. Endi ular ro'yxat oxirida belgi bilan
+  //: turadi — bu ish emas, TASDIQ.
+  const [qabulQilingan, setQabulQilingan] = useState<
+    { instance_id: number; qr_text: string; part_name: string }[]
+  >([])
   const { data, isLoading } = useQuery({
     queryKey: ["terminal", "tmo", orderId],
     queryFn: async () =>
@@ -48,8 +61,40 @@ export function TmoView({
           body: { qr_text: qr },
         })
       ).data,
-    onSuccess: put,
-    onError: (e) => toast.error(detailMessage(e)),
+    // Muvaffaqiyat XABARI shu yerda tug'iladi: TMO skani `viewScanRef` orqali
+    // ketadi va terminalning umumiy oqimini (ovoz + yashil banner) chetlab
+    // o'tadi. Ilgari bu yerda faqat `put` bor edi — operator hech qanday
+    // javob olmasdi.
+    onSuccess: (d, qr) => {
+      const oldin = queryClient.getQueryData<typeof data>([
+        "terminal",
+        "tmo",
+        orderId,
+      ])
+      const qoldi = new Set((d?.pending ?? []).map((p) => p.instance_id))
+      const yangi = (oldin?.pending ?? []).filter(
+        (p) => !qoldi.has(p.instance_id),
+      )
+      put(d)
+      // Takroriy skan xato bermaydi: `client_event_id` barqaror
+      // (`wh-{order}-{qr}`), ya'ni server 200 qaytaradi va ro'yxat o'zgarmaydi.
+      if (!yangi.length) {
+        playWarning()
+        toast.error(`Allaqachon qabul qilingan: ${qr}`)
+        return
+      }
+      setQabulQilingan((oldingi) => [...oldingi, ...yangi])
+      playSuccess()
+      toast.success(
+        yangi.length > 1
+          ? `Qadoq qabul qilindi — ${yangi.length} detal`
+          : `Qabul qilindi: ${yangi[0].qr_text}`,
+      )
+    },
+    onError: (e) => {
+      playError()
+      toast.error(detailMessage(e))
+    },
   })
   const ship = useMutation({
     mutationFn: async (code: string) =>
@@ -178,6 +223,35 @@ export function TmoView({
                     {/* Detal shu postdan keyin turibdi — omborchi o'sha yerdan oladi */}
                     <td className="px-4 py-2.5 text-right text-sm font-semibold">
                       {p.stage}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {/* Shu smenada qabul qilinganlar — ro'yxat oxirida, belgi bilan.
+              Ular serverning `pending` ro'yxatidan chiqib ketgan; bu yerda
+              faqat TASDIQ uchun turadi va sahifa yangilanganda ketadi. */}
+          {!!qabulQilingan.length && (
+            <table className="w-full border-t text-base">
+              <tbody>
+                {qabulQilingan.map((p) => (
+                  <tr
+                    key={`ok${p.instance_id}`}
+                    className="border-b bg-green-50 last:border-0"
+                  >
+                    <td className="w-10 py-2.5 pl-4 text-green-700">
+                      <Check className="size-5" />
+                    </td>
+                    <td className="num py-2.5 pr-4 font-semibold text-green-800">
+                      {p.qr_text}
+                    </td>
+                    <td className="max-w-[280px] truncate px-4 py-2.5 text-green-800">
+                      {p.part_name}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-sm font-bold text-green-700">
+                      qabul qilindi
                     </td>
                   </tr>
                 ))}
