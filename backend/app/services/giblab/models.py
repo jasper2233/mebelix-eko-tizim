@@ -164,13 +164,19 @@ class ParsedPart:
     def stage_sides(self) -> dict[PostCode, int]:
         """post_code -> per-instance scan count for XNC stages (TZ 5.4.3, 7.3.3).
 
-        FAQAT PRISADKA. Paz/freza uchun ROVER bosqichi ATAYLAB yaratilmaydi: roverdan
-        chiqqan detal keyin bo'yalishi ham mumkin, ya'ni marshruti fayldan chiqarib
-        bo'lmaydi. Bunday detalni texnolog "nostandart" deb belgilab, marshrutini
-        o'zi chizadi. Paz/freza geometriyasi baribir SCX ga va yorliq eskiziga ketadi."""
+        FAQAT PRISADKA — ROVER bosqichi ataylab yaratilmaydi: roverdan chiqqan detal
+        keyin bo'yalishi ham mumkin, ya'ni QOLGAN marshrutni fayldan chiqarib
+        bo'lmaydi. Uni texnolog chizadi.
+
+        Qadam HAR QANDAY ishlov uchun ochiladi: teshik, paz yoki freza. Ilgari
+        faqat TESHIK hisobga olinardi va paz/freza-only detal marshrutsiz qolardi:
+        SCX fayli yaratilar, lekin uni bajaradigan post yo'q edi — detal
+        ARRA -> TMO bo'ylab ishlov KO'RMASDAN o'tib ketardi va buni hech kim
+        sezmasdi. 3152 buyurtmasida shunday ikki detal bor edi (har birida 7 paz).
+        """
         result: dict[PostCode, int] = {}
         for op in self.xnc_ops:
-            if op.bores or op.edge_bores:
+            if op.bores or op.edge_bores or op.grooves or any(op.mills):
                 result[PostCode.PRISADKA] = result.get(PostCode.PRISADKA, 0) + 1
         return result
 
