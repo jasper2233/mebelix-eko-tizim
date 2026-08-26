@@ -25,6 +25,9 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
+# Claude Code: agent ta'riflari commit qilinadi, shaxsiy sozlama — yo'q
+.claude/settings.local.json
+
 # IDEs & Editors
 .vscode/*
 !.vscode/settings.json
