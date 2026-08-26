@@ -94,9 +94,19 @@ class Settings(BaseSettings):
     THREADPOOL_TOKENS: int = 100  # AnyIO sync-bridge slots; raise if blocking calls back up.
 
     # === Reverse-proxy trust ===
-    # Comma-separated list of upstream IPs whose X-Forwarded-* headers we trust.
-    # `*` is permissive — appropriate when Caddy/nginx is the only path to the app.
-    FORWARDED_ALLOW_IPS: list[str] = ["*"]
+    # X-Forwarded-* HAQIQAT deb qabul qilinadigan upstream manzillar (CIDR bo'lishi mumkin).
+    #
+    # `*` QO'YMANG. `*` da uvicorn XFF'ning ENG CHAP qiymatini oladi, u esa butunlay
+    # so'rov yuboruvchi qo'lida: o'lchandi — har so'rovda `X-Forwarded-For` ni
+    # almashtirib turgan mijoz login rate-limitini TO'LIQ aylanib o'tadi
+    # (12 urinishdan 0 tasi bloklandi, chunki `rate_limit.py` kaliti
+    # `request.client.host` ga bog'langan), audit logdagi IP ham soxta bo'ladi.
+    # Konkret ro'yxat berilganda uvicorn XFF'ni O'NGDAN chapga yuradi va birinchi
+    # ISHONILMAGAN manzilni oladi — ya'ni Caddy haqiqatan ko'rgan mijoz IP'sini.
+    #
+    # Standart qiymat — docker compose tarmoqlari diapazoni: api konteyneri uchun
+    # yagona kirish yo'li Caddy konteyneri, u esa shu tarmoqda.
+    FORWARDED_ALLOW_IPS: list[str] = ["172.16.0.0/12"]
 
     # === Environment / CORS ===
     ENVIRONMENT: EnvironmentOption = EnvironmentOption.LOCAL

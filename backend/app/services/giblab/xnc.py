@@ -1,5 +1,6 @@
 """XNC program parsing (TZ 5.5): the `program` attribute is an escaped inner XML document."""
 
+import ast
 import re
 import xml.etree.ElementTree as ET
 from collections.abc import Callable
@@ -7,8 +8,6 @@ from typing import Any
 
 from .models import ParseError, XncOp, xml_bool
 
-# Safe arithmetic: numbers, identifiers (dz, throughBoreDepth...), + - * / ( ) . and spaces only.
-_EXPR_RE = re.compile(r"^[\w\s+\-*/().]+$")
 _NAME_DIGITS = re.compile(r"(\d+(?:\.\d+)?)")
 
 _EDGE_TAGS = {"bt": "t", "bb": "b", "bl": "l", "br": "r"}
@@ -20,6 +19,43 @@ _EDGE_TAGS = {"bt": "t", "bb": "b", "bl": "l", "br": "r"}
 # ogohlantiradi, ya'ni jimgina buzilmaydi.
 
 
+def _eval_node(node: ast.AST, env: dict[str, float]) -> float:
+    """Faqat + - * / va qavs. Boshqa har qanday tugun — xato.
+
+    Ilgari bu yer `eval()` edi va belgilar ro'yxati (`^[\\w\\s+\\-*/().]+$`) bilan
+    himoyalangan deb hisoblanardi. Ro'yxat `.` va `()` ga ruxsat bergani uchun
+    `**` taqiqini AYLANIB O'TSA bo'lardi: `9 .__pow__(99999999)` ifodasi
+    charsetdan o'tib, ARQ workerini cheksiz CPU bilan osiltirardi (o'lchandi:
+    10 soniyadan keyin ham ishlab turardi). Atribut/chaqiruv umuman yo'q qilindi.
+    """
+    if isinstance(node, ast.Expression):
+        return _eval_node(node.body, env)
+    if isinstance(node, ast.Constant):
+        # `True`/`False` ham int — ular ifodada ma'noga ega emas, rad etiladi.
+        if isinstance(node.value, bool) or not isinstance(node.value, int | float):
+            raise ValueError(f"raqam emas: {node.value!r}")
+        return float(node.value)
+    if isinstance(node, ast.Name):
+        if node.id not in env:
+            raise ValueError(f"noma'lum o'zgaruvchi: {node.id}")
+        return float(env[node.id])
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.UAdd | ast.USub):
+        value = _eval_node(node.operand, env)
+        return value if isinstance(node.op, ast.UAdd) else -value
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add | ast.Sub | ast.Mult | ast.Div):
+        left, right = _eval_node(node.left, env), _eval_node(node.right, env)
+        if isinstance(node.op, ast.Add):
+            return left + right
+        if isinstance(node.op, ast.Sub):
+            return left - right
+        if isinstance(node.op, ast.Mult):
+            return left * right
+        if right == 0:
+            raise ValueError("nolga bo'lish")
+        return left / right
+    raise ValueError(f"ruxsat etilmagan ifoda: {type(node).__name__}")
+
+
 def _eval_expr(expr: str, env: dict[str, float]) -> float:
     """Evaluate a coordinate/depth expression like 'dz+3' or 'dx-34' against dx/dy/dz + vars."""
     expr = expr.strip()
@@ -27,12 +63,10 @@ def _eval_expr(expr: str, env: dict[str, float]) -> float:
         return float(expr)
     except ValueError:
         pass
-    # `**` charset'dan o'tadi ("* *") — 9**9**9 kabi ifoda eval'da workerni
-    # osiltirib qo'yardi (DoS). Arifmetikada daraja ishlatilmaydi — taqiq.
-    if not _EXPR_RE.match(expr) or "**" in expr:
-        raise ParseError(f"XNC ifodasi xavfsiz emas: {expr!r}")
     try:
-        return float(eval(expr, {"__builtins__": {}}, env))  # noqa: S307 — charset-whitelisted arithmetic
+        return _eval_node(ast.parse(expr, mode="eval"), env)
+    except ValueError as exc:
+        raise ParseError(f"XNC ifodasi xavfsiz emas: {expr!r} — {exc}") from None
     except Exception as exc:
         raise ParseError(f"XNC ifodasini hisoblab bo'lmadi: {expr!r}") from exc
 

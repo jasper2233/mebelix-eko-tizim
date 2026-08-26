@@ -55,7 +55,11 @@ services:
     image: ${REGISTRY:-ghcr.io/dshukriddinov}/mebelix-mes-backend:${TAG:-latest}
     # --forwarded-allow-ips flag sifatida beriladi: FORWARDED_ALLOW_IPS env'ini gunicorn
     # ham o'qiydi va pydantic'ning JSON list formati ('["*"]') uni yiqitadi.
-    command: bash -c "/app/scripts/prestart.sh && gunicorn app.main:app -w ${GUNICORN_WORKERS:-4} -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 --forwarded-allow-ips '*'"
+    # `*` EMAS: u XFF'ning eng chap (mijoz bergan) qiymatini oladi va login
+    # rate-limitini header almashtirish bilan aylanib o'tsa bo'lardi. Compose
+    # tarmog'i diapazoni berilganda uvicorn o'ngdan chapga yurib Caddy ko'rgan
+    # haqiqiy mijoz IP'sini oladi.
+    command: bash -c "/app/scripts/prestart.sh && gunicorn app.main:app -w ${GUNICORN_WORKERS:-4} -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 --forwarded-allow-ips '172.16.0.0/12'"
     restart: always
     logging: *logging
     expose:
