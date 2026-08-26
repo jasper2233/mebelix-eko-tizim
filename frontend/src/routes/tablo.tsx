@@ -74,18 +74,19 @@ function deadlineCountdown(value?: string | null): [string, string] {
  * qatorda doim turadigan raqam shovqin bo'lardi va haqiqiy muammoni yashirardi.
  */
 function stallLabel(idle?: number | null): string | null {
-  // Qisqa ATAYLAB: "2 KUN TO'XTAGAN" buyurtma katagining yarmini egallab, loyiha
-  // nomini "431…" ga aylantirardi. Quyuq slate teg + raqamning o'zi belgi sifatida
-  // yetarli, "TO'XTAGAN" so'zi esa ~70px turadi va hech narsa qo'shmaydi.
-  if (idle == null) return "0 SKAN"
-  return idle >= 2 ? `${idle} KUN` : null
+  // Matn O'ZINI tushuntirishi shart: "0 SKAN", "TEGILMAGAN", "2 KUN" — uchalasi
+  // ham tsexdagi odamga hech narsa demasdi. "BOSHLANMAGAN" va "3 KUN TURIBDI"
+  // izohsiz o'qiladi va tsex tilida gapiradi.
+  if (idle == null) return "BOSHLANMAGAN"
+  return idle >= 2 ? `${idle} KUN TURIBDI` : null
 }
 
-/** Devor ekrani uchun o'lcham shkalasi — REJIMGA bog'liq.
+/** Devor ekrani uchun o'lcham shkalasi.
  *
- * Toshishni ekran emas, ikkita narsa belgilaydi: yorliq uzunligi va ustun
- * ulushi. FOIZ da yorliq "99%" (~3em) — katta bo'lishi mumkin; HAJM/SONI da
- * "128 / 340" (~6em) — kichikroq bo'lishi SHART.
+ * Katak shriftini O'QISH istagi emas, USTUN KENGLIGI cheklaydi: jadvaldagi eng
+ * uzun yorliq ("1010/1274") ustunga sig'ishi shart, aks holda ikki qatorga
+ * o'ralib qator balandligini buzadi. Shu sabab yorliqlardan bo'shliq olib
+ * tashlangan (" / " -> "/") — ikki belgi, ya'ni ~18% shrift.
  *
  * Ilgari katak `text-4xl` (36px) qotirilgan edi. PRODDA O'LCHANDI (1745px,
  * HAJM rejimi): `5.7 / 27.4 m²` ustunga sig'may uch qatorga o'ralardi va
@@ -94,12 +95,15 @@ function stallLabel(idle?: number | null): string | null {
  * Shkala IKKALA ildizga beriladi: matritsa ham, detal ro'yxati (drill) ham
  * bir xil `TabloCell` ni ishlatadi, drill esa alohida ildiz qaytaradi.
  */
-function tabloScale(mode: Mode): React.CSSProperties {
+function tabloScale(): React.CSSProperties {
   return {
-    "--t-cell":
-      mode === "foiz"
-        ? "clamp(1.5rem, 2.6vw, 4.5rem)"
-        : "clamp(1rem, 1.45vw, 2.6rem)",
+    // BITTA o'lcham, rejimdan qat'i nazar. Ilgari FOIZ da 2.2vw, HAJM/SONI da
+    // 1.2vw edi — mantiq "foiz yorlig'i qisqa, katta bo'la oladi" edi, lekin bu
+    // noto'g'ri narsani optimallashtiradi: O'LCHANDI, rejim almashtirilganda
+    // qator 60px dan 85px ga chiqib (+42%), butun taxta qayta oqardi va
+    // ekranga sig'adigan buyurtmalar soni o'zgarib ketardi. Tugma o'lchov
+    // BIRLIGINI almashtirishi kerak, sahifa maketini emas.
+    "--t-cell": "clamp(1rem, 1.45vw, 2.6rem)",
     // `--t-fit` — hamma qator bitta sahifaga sig'ishi uchun koeffitsient
     // (`useFitScale`). Sig'sa 1, sig'masa MIN_FIT gacha kichrayadi.
     "--t-cell-fit": "calc(var(--t-cell) * var(--t-fit, 1))",
@@ -394,9 +398,7 @@ function TabloPage() {
       className="flex h-dvh flex-col bg-surface text-foreground"
       // `--t-fit` FAQAT matritsa ildizida: drill ro'yxati alohida ildiz va u
       // sahifaga sig'dirilmaydi (uni odam yaqindan ko'radi, varaqlay oladi).
-      style={
-        { ...tabloScale(mode), "--t-fit": fitted.fit } as React.CSSProperties
-      }
+      style={{ ...tabloScale(), "--t-fit": fitted.fit } as React.CSSProperties}
     >
       <header className="flex items-center gap-4 border-b border-border bg-card px-5 py-2 shadow-sm">
         {/* Brend sidebar va login bilan bitta manbadan — to'liq logo.
@@ -534,11 +536,16 @@ function TabloPage() {
                     const bugun = data.orders.filter(
                       (o) => deadlineTone(o.deadline) === "today",
                     ).length
+                    // "7 / KECHIKKAN" qatordagi "2 / KECHIKDI" bilan bir xil
+                    // shaklda edi, u yerda esa raqam KUNNI anglatadi — ya'ni
+                    // jami ham "7 kun kechikkan" deb o'qilardi. Taxtaning o'z
+                    // grammatikasi X/Y: JAMI qatoridagi qolgan hamma katak
+                    // shunday, demak "7/19" ikkilanishsiz "19 tadan 7 tasi".
                     const [son, soz] = kech
-                      ? [kech, "KECHIKKAN"]
+                      ? [`${kech}/${data.orders.length}`, "KECHIKKAN"]
                       : bugun
-                        ? [bugun, "BUGUN"]
-                        : [0, ""]
+                        ? [`${bugun}/${data.orders.length}`, "BUGUN"]
+                        : ["", ""]
                     return (
                       <td
                         className={cn(
@@ -669,8 +676,12 @@ function TabloPage() {
                       {/* Nom OLDIN, belgi keyin: belgi birinchi turganda nomni
                           surib "431…" qoldirardi. Endi nom qolgan joyni oladi va
                           tartibli qisqaradi, belgi esa o'ng chetda qotib turadi. */}
+                      {/* Belgi bo'lsa nom O'RNIGA chiqadi. Yonma-yon qo'yilganda
+                          ikkalasi ham sig'masdi va nom "431…" bo'lib qolardi —
+                          bu na nom, na ma'lumot. Buyurtma raqami baribir to'liq
+                          turibdi, ya'ni qatorni aniqlash yo'qolmaydi. */}
                       <span className="flex items-baseline justify-between gap-2 overflow-hidden">
-                        {o.name && (
+                        {!stall && o.name && (
                           <span
                             className="truncate text-muted-foreground"
                             style={{ fontSize: "var(--t-meta)" }}
@@ -986,7 +997,7 @@ function TabloOrderDrill({
     // aniqlanmay, katak raqami merosdagi 16px ga tushib qolardi.
     <div
       className="flex h-dvh flex-col bg-surface text-foreground"
-      style={tabloScale(mode)}
+      style={tabloScale()}
     >
       <header className="flex items-center gap-4 border-b border-border bg-card px-5 py-3 shadow-sm">
         {/* Qaytish havolasi tizimdagi boshqa sahifalar bilan bir xil naqsh:
