@@ -45,18 +45,6 @@ export const PRIORITY_TEXT_CLASSES: Record<string, string> = {
   urgent: "font-bold text-red-600",
 }
 
-/** Prioritet TASMASI: TABLO qatorining chap qirrasi.
- *
- * `PRIORITY_DOT_CLASSES` bilan bir xil ranglar — reestrda nuqta, taxtada tasma,
- * ya'ni bitta prioritet ikki ekranda ikki xil rangda ko'rinmaydi.
- */
-export const PRIORITY_EDGE: Record<string, string> = {
-  low: "border-l-slate-300",
-  medium: "border-l-slate-400",
-  high: "border-l-orange-500",
-  urgent: "border-l-red-500",
-}
-
 export const PRIORITY_BADGE_CLASSES: Record<string, string> = {
   low: "bg-muted text-muted-foreground",
   medium: "bg-muted text-muted-foreground",

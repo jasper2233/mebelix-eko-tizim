@@ -15,7 +15,7 @@ import {
 import { TabloService } from "@/client"
 import { useMesWs } from "@/hooks/useMesWs"
 import { requireAuth } from "@/lib/guards"
-import { deadlineTone, POST_COLORS, PRIORITY_EDGE } from "@/lib/mes"
+import { deadlineTone, POST_COLORS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import {
   getMachinesQueryOptions,
@@ -523,7 +523,10 @@ function TabloPage() {
                     {/* Nechta buyurtma jamlanganini AYTISH kerak: usiz "363 / 437"
                         qancha ish ustidan olingani noma'lum qoladi, va qatorlar
                         ekranga sig'may kesilganda buni sanab ham bo'lmaydi. */}
-                    Jami · {data.orders.length} buyurtma
+                    {/* "buyurtma" so'zi ortiqcha: ustun sarlavhasi allaqachon
+                        BUYURTMA deb turibdi va qator o'zi jami ekani ko'rinib
+                        turibdi. Devor ekranida har ortiqcha so'z joy yeydi. */}
+                    Jami · {data.orders.length}
                   </td>
                   {/* Har post ustuni o'z yakunini beradi, muddat ustuni esa bo'sh
                       turardi. Bu yerda yakun — nechtasi kechikkani: taxtaning
@@ -649,7 +652,17 @@ function TabloPage() {
                     <td
                       className={cn(
                         "rounded-l-md px-3 py-3",
-                        PRIORITY_EDGE[o.priority] ?? "border-l-transparent",
+                        // FAQAT shoshilinch. To'rt rangli shkala normani ham
+                        // belgilardi, holbuki taxta ALLAQACHON prioritet bo'yicha
+                        // saralangan — o'rin uni aytib turibdi. Qolgan hamma
+                        // belgi shu qoidada ishlaydi: JONLI raqami faqat
+                        // nosozlikda, teg faqat to'xtaganda, qizil faqat to'siq
+                        // postda. Ustiga to'q sariq/qizil — deuteranopia'da
+                        // aynan chalkashadigan juftlik, ya'ni to'rt pog'onali
+                        // shkala o'sha odamlar uchun baribir ishlamasdi.
+                        o.priority === "urgent"
+                          ? "border-l-red-600"
+                          : "border-l-transparent",
                       )}
                       style={{
                         borderLeftWidth: "10px",
@@ -919,7 +932,13 @@ function TabloCell({
           className="absolute inset-y-0 left-0 transition-[width] duration-700"
           style={{
             width: `${pct}%`,
-            background: "color-mix(in srgb, var(--primary) 22%, transparent)",
+            // YASHIL, kulrang emas. `--primary` 22% `#d1d7df` berardi — u
+            // "o'chirilgan" degan ma'no beradi, "bajarilmoqda" emas. Taxtada
+            // tugagan holat yashil (`bg-green-200/70`), demak to'ldirish o'sha
+            // rang sari borishi kerak: katak to'lib boradi va to'lganda aynan
+            // shu rangga aylanadi. Bitta uzluksiz hikoya, ikkita rang tizimi emas.
+            background:
+              "color-mix(in srgb, var(--color-green-500) 22%, transparent)",
             opacity: dim ? 0.35 : 1,
           }}
         />
