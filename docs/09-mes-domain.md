@@ -95,7 +95,7 @@ to'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §2.3. Qoidalar:
 
 - Bayroq `Part.is_custom` — texnolog detallar matritsasidagi "Nostandart" checkbox bilan qo'yadi.
   Yoqilganda fayldan kelgan `AUTO` qadamlar YUMSHOQ o'chiriladi, bayroq qaytarilganda AYNAN
-  tiklanadi (`orders.py: edit_order_matrix`) — fayl ma'lumotidan qayta hisoblash taxminiy bo'lardi.
+  tiklanadi (`orders/matrix.py: edit_order_matrix`) — fayl ma'lumotidan qayta hisoblash taxminiy bo'lardi.
 - Marshrutning o'zi alohida **"Nostandart detallar" tabida** chiziladi
   (`Orders/CustomRoutes.tsx`): texnolog jarayonlarni bosadi, ular tanlangan tartibda 1, 2, 3…
   raqamlanadi va bitta kodni **takror tanlash mumkin** ([3, 6, 3] — kromkaga qaytish). Yo'l:
@@ -477,7 +477,7 @@ bo'lib qolardi.
 `GET /orders/status-counts` — registr tablari uchun har status bo'yicha son. Frontendda
 qoldiq to'lov = `amount − advance_payment`, `advance ≤ amount` validatsiyasi bilan.
 
-Texnolog ko'rinishi cheklangan (`orders.py: _hidden_statuses`): DRAFT va CANCELLED buyurtmalar
+Texnolog ko'rinishi cheklangan (`orders/_common.py: _hidden_statuses`): DRAFT va CANCELLED buyurtmalar
 ro'yxatdan va `/status-counts` dan yashirin, to'g'ridan ID bilan GET ham 404 — buyurtma
 texnologga confirm'dan keyin ko'rinadi.
 
@@ -508,7 +508,7 @@ kerak emas, saqlangan tarix ham buzilmaydi. Mijoz ma'lumotlari `client` da, narx
 ro'yxatidan olib tashlanadi (`_layout/anketa.$orderId.tsx`), keyingi avtosaqlash yangi
 shaklni yozadi — migratsiya kerak emas.
 
-Endpointlar (`app/api/routes/orders.py`, hammasi `ManagerUser`):
+Endpointlar (`app/api/routes/orders/survey.py`, hammasi `ManagerUser`):
 
 - `PUT /orders/{id}/survey` → `save_order_survey`. DELIVERED/CANCELLED buyurtmada 403. Saqlashda
   **yetim rasm tozalash**: `body.rooms` da yo'q `room_id` li `OrderFile` lar diskdan `unlink`,

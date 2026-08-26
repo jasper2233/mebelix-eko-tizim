@@ -15,7 +15,7 @@ Bu hujjat MebeliX MES backend'ining HTTP API qatlamini tavsiflaydi: router ierar
         ├── /employees/*    ← employees.py │
         ├── /machines/*     ← machines.py  │
         ├── /posts/*        ← posts.py     │  router darajasida
-        ├── /orders/*       ← orders.py    │  Depends(get_current_user)
+        ├── /orders/*       ← orders/      │  Depends(get_current_user)
         ├── /pachka/*       ← pachka.py    │
         ├── /tmo/*          ← tmo.py       │
         ├── /audit-logs/    ← audit.py     │
@@ -275,9 +275,9 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 
 ---
 
-## `backend/app/api/routes/orders.py` — Buyurtmalar (hayot sikli, matritsa, fayllar)
+## `backend/app/api/routes/orders/` — Buyurtmalar (hayot sikli, matritsa, fayllar, anketa)
 
-**Maqsadi:** Eng katta route moduli (20 endpoint) — buyurtma hayot sikli TZ 6 bo'yicha: `DRAFT → TECHNICAL_REVIEW → PRODUCTION → COMPLETED → DELIVERED` (+ istalgan bosqichda `CANCELLED`). Tahrirlash cheklovlari `_edit_block_reason` atrofida qurilgan: `_EDITABLE_STATUSES = (DRAFT, TECHNICAL_REVIEW)` va ularga qo'shimcha `PRODUCTION` — tsexda tirik skan bo'lmasa (quyida «Qachon tahrirlash mumkin»).
+**Maqsadi:** Eng katta route moduli (20 endpoint) — MAVZU bo'yicha beshga bo'lingan paket: `lifecycle.py` (hayot sikli), `matrix.py` (marshrut matritsasi), `files.py` (`.project`/SCX/cutmap), `survey.py` (anketa) va `_common.py` (ko'rinish + tahrirlash qoidalari). `__init__.py` prefiks, tag va ro'yxatga olish TARTIBINI beradi; sub-routerlar yalang'och `APIRouter()` — tag ularda takrorlansa `include_router` uni qo'shib yuboradi va generatsiya qilingan klientda metod ikki klassga tushadi. Endpoint yo'llari, `operation_id` lari va marshrut tartibi bo'lishdan oldingi holat bilan AYNAN bir xil — buyurtma hayot sikli TZ 6 bo'yicha: `DRAFT → TECHNICAL_REVIEW → PRODUCTION → COMPLETED → DELIVERED` (+ istalgan bosqichda `CANCELLED`). Tahrirlash cheklovlari `_edit_block_reason` atrofida qurilgan: `_EDITABLE_STATUSES = (DRAFT, TECHNICAL_REVIEW)` va ularga qo'shimcha `PRODUCTION` — tsexda tirik skan bo'lmasa (quyida «Qachon tahrirlash mumkin»).
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
@@ -309,7 +309,7 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi. `.project` parser qoidala
 ### Qachon tahrirlash mumkin (`_require_editable`)
 
 Fayl qayta yuklash, matritsa tahriri va ish markazi tanlovi — uchalasi BITTA
-qoidadan o'tadi (`orders.py: _edit_block_reason`):
+qoidadan o'tadi (`orders/_common.py: _edit_block_reason`):
 
 | Holat | Tahrirlash |
 |---|---|
@@ -376,7 +376,7 @@ Variant kodlari (`ldsp`, `mdf`, `akril`…) backend'da qat'iy ro'yxat emas — m
 
 **Xona rasmlari** alohida jadval talab qilmaydi: `OrderFile(kind=FileKind.DOCUMENT, meta={"room_id": ..., "content_type": ...})`, disk yo'li `uploads/survey/{order_id}/{uuid4().hex}{ext}`. Shu sabab `OrderFileRead` ga `meta` maydoni qo'shilgan.
 
-Yuklash cheklovlari (`orders.py` dagi konstantalar):
+Yuklash cheklovlari (`orders/survey.py` dagi konstantalar):
 
 - `_ROOM_PHOTO_TYPES` — faqat `image/jpeg` → `.jpg`, `image/png` → `.png`, `image/webp` → `.webp`; boshqasi 422 "Faqat JPG, PNG yoki WEBP rasm qabul qilinadi."
 - `MAX_ROOM_PHOTO_SIZE = 5 MB` — oshsa 422 (telefon surati odatda 2–4 MB).

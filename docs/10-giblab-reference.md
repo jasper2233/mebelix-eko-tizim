@@ -415,7 +415,7 @@ holda birinchi polosa butun detallari bilan yo'qolardi.
 **Blobsiz kesish operatsiyasi.** Optimallashtirilmagan faylda `data` umuman bo'lmaydi (korpusdagi
 ikki eski faylda 10 ta shunday CS bor) — bunda fayl `template` deb belgilanadi va yuklashda
 HTTP 422 bilan **rad etiladi** ("Bu fayl GibLabda hali optimizatsiya qilinmagan..." —
-`orders.py`, upload). `processed` bo'lishi uchun blob bilan birga `project.uuid` ham bo'lishi
+`orders/files.py`, upload). `processed` bo'lishi uchun blob bilan birga `project.uuid` ham bo'lishi
 shart (`parser.py`). Lekin optimallashtirilgan faylda ham bitta materialni optimallashtirmaslik
 mumkin: o'shanda uning detallari arrachiga tushib, xaritasi bo'lmaydi. Xarita quruvchi bunday
 operatsiyani jimgina o'tkazib yuboradi (nusxa tekshiruvi nolni sanamaydi), shuning uchun parser
@@ -659,7 +659,7 @@ o'lcham zanjiri), teshik/paz/freza (XNC), yorliq raqami, SCX generatsiyasi.
 profil kesish (`CL` — tsexda bunday post yo'q), detal NOMI (u marshrutga ta'sir qilmaydi —
 §2.3).
 
-**Ogohlantirish beradigan holatlar** (`parser.py`, `ingest.py`, `orders.py`):
+**Ogohlantirish beradigan holatlar** (`parser.py`, `ingest.py`, `orders/files.py`):
 
 | Holat | Xabar |
 |---|---|
@@ -688,7 +688,7 @@ oldin), "Xaritada joyi yo'q detal" esa xarita qurilgandan keyin `ingest.py` da.
 
 Oxirgi ikkitasi parse'dan tashqarida: ular qo'lda chizilgan marshrutlarni qayta yuklashda
 saqlab tiklaydigan qadamdan chiqadi (`ingest.snapshot_custom_routes` / `restore_custom_routes`,
-xabarni `orders.py` upload handleri yozadi). Ikkalasi ham ataylab **yig'ma** — har detalga
+xabarni `orders/files.py` upload handleri yozadi). Ikkalasi ham ataylab **yig'ma** — har detalga
 bitta xabar yozilsa, javobda faqat dastlabki bir nechtasi ko'rinib qolgani yo'qolardi.
 
 Bu xabarlar yuklash javobida ko'rsatiladi (dastlabki 3 tasi, qolgani soni bilan) va
@@ -768,7 +768,7 @@ va `OrderFile` maydonlari bir joyda).
 - DB'ga yozish: `ingest.py` (mahsulot/detal/nusxa/marshrut, material registri, sarf hisobi, SCX yozish)
 - `giblab/__init__.py` faqat ikki nom eksport qiladi: `ParseError` va `parse_project`; `ingest`
   funksiyalari (`ingest_project`, `wipe_previous_parse`, `write_and_register_scx`) submoduldan
-  to'g'ridan-to'g'ri olinadi (`orders.py`)
+  to'g'ridan-to'g'ri olinadi (`orders/files.py`)
 - Korpus fayllari git'ga tushmaydi (`.gitignore`: `uploads/`), lekin lokal `uploads/projects/`
   da turadi — parser o'zgarishida real .project fayllarga qarshi qo'lda tekshiriladi
 - Hujjatdagi sanoqlar SAKKIZTA fayl bo'yicha o'lchangan: `01 shkaf`, `02 kitob javon`,

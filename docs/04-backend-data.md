@@ -135,7 +135,7 @@ Xona surati uchun yangi jadval qo'shilmagan: `OrderFile` qatori `kind=FileKind.D
 - Rasm xonaning ro'yxatdagi **o'rniga** emas, barqaror `SurveyRoom.id` ga bog'langan — xonalar qayta tartiblansa ham bog'lanish buzilmaydi.
 - Filtr JSONB operatorlari bilan: `OrderFile.meta["room_id"].astext == room_id`, yetimlarni topishda `OrderFile.meta.has_key("room_id")`.
 - Disk yo'li: `{UPLOAD_DIR}/survey/{order_id}/{uuid4().hex}{.jpg|.png|.webp}` — absolyut root `app.core.config.upload_root()` helperidan (path traversal tekshiruvlari ham shunga nisbatan).
-- Chegaralar route qatlamida (`backend/app/api/routes/orders.py`): `_ROOM_PHOTO_TYPES` = jpeg/png/webp, `MAX_ROOM_PHOTO_SIZE` = 5 MB, `MAX_ROOM_PHOTOS` = 6 (bitta xonaga).
+- Chegaralar route qatlamida (`backend/app/api/routes/orders/survey.py`): `_ROOM_PHOTO_TYPES` = jpeg/png/webp, `MAX_ROOM_PHOTO_SIZE` = 5 MB, `MAX_ROOM_PHOTOS` = 6 (bitta xonaga).
 - `PUT /orders/{id}/survey` (`save_order_survey`) saqlashda anketada endi mavjud bo'lmagan `room_id` li rasmlarni topib, diskdan `unlink` qiladi va qatorni soft-delete qiladi (yetim rasm tozalash). `DELETE /orders/{id}/survey/photos/{file_id}` ham diskdagi faylni o'chiradi — anketa rasmlari tarix uchun saqlanmaydi.
 - `GET /orders/{id}/files/{file_id}` (`download_order_file`) `kind` `PROJECT`/`SCX` bo'lsa `application/xml`, aks holda `meta["content_type"]` (bo'lmasa `application/octet-stream`) ni `media_type` qilib beradi — brauzer rasmni `<img>` da yuklab olmasdan ko'rsatadi.
 
