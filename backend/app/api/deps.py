@@ -89,4 +89,4 @@ ManagerOrTexnologUser = Annotated[User, Depends(require_roles(UserRole.MANAGER, 
 StaffReadUser = Annotated[
     User, Depends(require_roles(UserRole.MANAGER, UserRole.TEXNOLOG, UserRole.DIRECTOR))
 ]  # read-only lists shared by office roles
-AdminUser = Annotated[User, Depends(require_roles())]  # admin/superuser only
+AdminUser = Annotated[User, Depends(require_roles(UserRole.ADMIN))]

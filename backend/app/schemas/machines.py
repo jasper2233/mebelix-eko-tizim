@@ -17,7 +17,7 @@ class MachineRead(BaseModel):
 
 
 class MachineCreate(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
 
     post_id: int
     name: Annotated[str, Field(min_length=2, max_length=100, examples=["01 ARRA"])]
@@ -25,7 +25,7 @@ class MachineCreate(BaseModel):
 
 
 class MachineUpdate(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
 
     post_id: int | None = None
     name: Annotated[str | None, Field(min_length=2, max_length=100, default=None)]

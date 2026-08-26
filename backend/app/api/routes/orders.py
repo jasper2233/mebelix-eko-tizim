@@ -151,6 +151,19 @@ async def _get_order(db: SessionDep, order_id: int) -> Order:
     return await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
 
 
+async def _get_visible_order(db: SessionDep, user: User, order_id: int) -> Order:
+    """O'QISH yo'llari uchun: ro'yxatdan yashiringan buyurtma to'g'ridan ID bilan ham ochilmasin.
+
+    Faqat o'qishda ishlatiladi. Mutatsiyalarga tarqatilmaydi: texnolog bekor
+    qilingan buyurtmaga fayl yuklashga urinsa, "topilmadi" emas, nima uchun
+    mumkin emasligini aytadigan xato chiqishi kerak.
+    """
+    order = await _get_order(db, order_id)
+    if order.status in _hidden_statuses(user):
+        raise NotFoundException("Buyurtma topilmadi.")
+    return order
+
+
 def _order_read(order: Order, client_name: str) -> OrderRead:
     item = OrderRead.model_validate(order)
     item.client_name = client_name
@@ -254,10 +267,7 @@ async def read_order_status_counts(db: SessionDep, current_user: StaffReadUser) 
 
 @router.get("/{order_id}", response_model=OrderDetail, operation_id="read_order")
 async def read_order(db: SessionDep, current_user: StaffReadUser, order_id: int) -> OrderDetail:
-    order = await _get_order(db, order_id)
-    # List'da yashiringan holat to'g'ridan ID bilan ham ochilmasin
-    if order.status in _hidden_statuses(current_user):
-        raise NotFoundException("Buyurtma topilmadi.")
+    order = await _get_visible_order(db, current_user, order_id)
     client = await db.get(Client, order.client_id)  # include soft-deleted: history must render
     files = (
         (
@@ -543,8 +553,8 @@ async def deliver_order(db: SessionDep, current_user: ManagerUser, order_id: int
 
 
 @router.get("/{order_id}/matrix", response_model=OrderMatrix, operation_id="read_order_matrix")
-async def read_order_matrix(db: SessionDep, _: StaffReadUser, order_id: int) -> OrderMatrix:
-    await _get_order(db, order_id)
+async def read_order_matrix(db: SessionDep, current_user: StaffReadUser, order_id: int) -> OrderMatrix:
+    await _get_visible_order(db, current_user, order_id)
     rows = (
         await db.execute(
             select(Part, Product.code)
@@ -1235,10 +1245,10 @@ async def upload_order_project(
 
 
 @router.get("/{order_id}/files/scx.zip", operation_id="download_order_scx_zip")
-async def download_order_scx_zip(db: SessionDep, _: StaffReadUser, order_id: int) -> Response:
+async def download_order_scx_zip(db: SessionDep, current_user: StaffReadUser, order_id: int) -> Response:
     """Barcha SCX dasturlarini bitta arxivda berish — prisadkachi stanokka bittalab emas,
     bitta ZIP ko'chiradi. Fayllar kichik (bir necha KB), xotirada yig'ish yetarli."""
-    order = await _get_order(db, order_id)
+    order = await _get_visible_order(db, current_user, order_id)
     rows = (
         (
             await db.execute(
@@ -1372,8 +1382,9 @@ async def regenerate_order_scx(db: SessionDep, current_user: TexnologUser, order
 
 
 @router.get("/{order_id}/files/{file_id}", operation_id="download_order_file")
-async def download_order_file(db: SessionDep, _: StaffReadUser, order_id: int, file_id: int) -> FileResponse:
+async def download_order_file(db: SessionDep, current_user: StaffReadUser, order_id: int, file_id: int) -> FileResponse:
     """Download a stored file (project / SCX / document)."""
+    await _get_visible_order(db, current_user, order_id)
     row = (
         await db.execute(
             select(OrderFile).where(
@@ -1397,11 +1408,11 @@ async def download_order_file(db: SessionDep, _: StaffReadUser, order_id: int, f
 
 
 @router.get("/{order_id}/cutmap", response_model=CutmapState, operation_id="read_order_cutmap")
-async def read_order_cutmap(db: SessionDep, _: StaffReadUser, order_id: int) -> CutmapState:
+async def read_order_cutmap(db: SessionDep, current_user: StaffReadUser, order_id: int) -> CutmapState:
     """Kesish xaritalari (TZ 10.3): manager/texnolog view + browser-print for a paper copy."""
     from app.api.routes.terminal import build_cutmap_state
 
-    order = await _get_order(db, order_id)
+    order = await _get_visible_order(db, current_user, order_id)
     arra_post = (await db.execute(select(Post).where(Post.code == PostCode.ARRA))).scalar_one_or_none()
     if arra_post is None:
         raise NotFoundException("ARRA posti topilmadi.")

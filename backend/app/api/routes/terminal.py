@@ -746,21 +746,7 @@ async def read_terminal_post_queue(db: SessionDep, ctx: TerminalCtx, order_id: i
             rows=[],
         )
 
-    counts = {
-        (instance_id, route_id): n
-        for instance_id, route_id, n in (
-            await db.execute(
-                select(Scan.instance_id, Scan.route_id, func.count())
-                .where(
-                    Scan.order_id == order.id,
-                    Scan.post_id == post.id,
-                    Scan.is_cancelled == False,  # noqa: E712
-                    Scan.is_deleted == False,  # noqa: E712
-                )
-                .group_by(Scan.instance_id, Scan.route_id)
-            )
-        ).all()
-    }
+    counts = await _post_scan_counts(db, order.id, post.id)
     children: dict[int, list[str]] = {}
     for child, product_code in (
         await db.execute(
