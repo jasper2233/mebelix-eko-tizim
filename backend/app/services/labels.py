@@ -327,14 +327,26 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
             else:
                 draw.rectangle((bx, by + bh + off, bx + bw, by + bh + off + bt), fill="black")
 
-        # Tekstura yo'nalishi (xaritadagidek): uzunlik bo'ylab 3 ingichka chiziq —
-        # eskizda vertikal. Teshiklardan oldin chiziladi (teshik ustida qolsin)
+        # Tekstura yo'nalishi: 3 ingichka chiziq UZUNLIK (`l` — teksturali
+        # materialda birinchi o'lcham, tekstura qulflangan o'q) BO'YLAB.
+        # Yo'nalish ESKIZGA ergashadi: `burilgan` (l vertikal) bo'lsa chiziqlar
+        # vertikal, aks holda gorizontal. Ilgari doim vertikal chizilardi —
+        # 250x832 kabi l < w detalda (eskiz burilmagan, l gorizontal) chek
+        # teksturani 90° noto'g'ri ko'rsatib, kesish xaritasi bilan mos kelmasdi;
+        # arrachilar aynan shu farqdan shikoyat qilgan. Teshiklardan oldin
+        # chiziladi (teshik ustida qolsin).
         if d.texture:
-            tl = int(bh * 0.32)
-            gap = max(3, bw // 4)
-            # kamida 2px: GDI kichraytirishda 1px vertikal chiziq yo'qolib qoladi
-            for xx in (bx + bw // 2 - gap, bx + bw // 2, bx + bw // 2 + gap):
-                draw.line((xx, by + (bh - tl) // 2, xx, by + (bh + tl) // 2), fill="black", width=max(2, scale))
+            w2 = max(2, scale)  # kamida 2px: GDI kichraytirishda 1px yo'qoladi
+            if burilgan:
+                tl = int(bh * 0.32)
+                gap = max(3, bw // 4)
+                for xx in (bx + bw // 2 - gap, bx + bw // 2, bx + bw // 2 + gap):
+                    draw.line((xx, by + (bh - tl) // 2, xx, by + (bh + tl) // 2), fill="black", width=w2)
+            else:
+                tl = int(bw * 0.32)
+                gap = max(3, bh // 4)
+                for yy in (by + bh // 2 - gap, by + bh // 2, by + bh // 2 + gap):
+                    draw.line((bx + (bw - tl) // 2, yy, bx + (bw + tl) // 2, yy), fill="black", width=w2)
 
         # Haqiqiy sverlo o'rinlari (GibSaw'da yo'q — bizda cutmap'dan bor):
         # lokal (x bo'ylab uzunlik, y bo'ylab en) -> vertikal eskiz koordinatalari

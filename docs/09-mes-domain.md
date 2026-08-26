@@ -388,7 +388,7 @@ chiqadi), **holes**, **texture**, **route_codes** (marshrut jarayon kodlari `seq
   qilardi; nostandartda esa operator keyingi postni aynan shundan biladi,
   pastda material + sana + `N{label_num} {instance_no}/{count}`;
 - o'ng ustun: QR (`qrcode`, `d.qr_text`) tepada, ostida **vertikal detal eskizi** — ingichka kontur,
-  kromka konturdan 1 mm tashqarida qalin chiziq, `texture` bo'lsa uzunlik bo'ylab 3 chiziq,
+  kromka konturdan 1 mm tashqarida qalin chiziq, `texture` bo'lsa `l` O'QI bo'ylab 3 chiziq — yo'nalish eskizga ergashadi (`burilgan` bo'lsa vertikal, aks holda gorizontal; ilgari doim vertikal edi va 250×832 kabi l<w detalda chek teksturani 90° noto'g'ri ko'rsatib, kesish xaritasi bilan mos kelmasdi),
   cutmap'dagi **haqiqiy teshiklar** (`bores` aylana, `edge` qirra shtrixi), o'lchamlar en pastda va
   uzunlik o'ngda 90° aylantirilgan, har biri yoniga o'sha tomonlar kromka simvoli.
 

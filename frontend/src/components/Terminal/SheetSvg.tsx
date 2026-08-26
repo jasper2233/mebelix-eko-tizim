@@ -535,23 +535,47 @@ export function SheetSvg({
       }
       if (availW < 16 || availH < 8) shown = ""
       if (tight) shown = "" // markazni birlashgan o'lcham egalladi
-      // tekstura yo'nalishi: 3 gorizontal chiziq matn ORQASIDA, matndan uzunroq
+      // Tekstura yo'nalishi: 3 chiziq detalning `l` O'QI bo'ylab (teksturali
+      // materialda birinchi o'lcham — tekstura qulflangan tomon). rot=false da
+      // l katakda gorizontal -> chiziqlar gorizontal; GibLab teksturali detalni
+      // odatda buramaydi, lekin rot=true kelsa chiziqlar ham buriladi — aks
+      // holda xarita teksturani 90° noto'g'ri ko'rsatardi. GibSaw xaritada
+      // teksturani UMUMAN chizmaydi (dekompilyatsiya: part-draw'da faqat XNC,
+      // kromka punktiri, o'lchamlar, nom) — bu belgi bizning qo'shimcha, chek
+      // eskizi bilan bir xil qoidada.
       if (p.txt && wv > 60 && hv > 40) {
         const lw = shown && !vert ? shown.length * fsN * 0.27 + 10 : 0
-        const th = Math.min(Math.max(wv * 0.22, lw + 120), wv * 0.45)
-        const gp = Math.min(hv * 0.3, Math.max(fsN * 0.55, 16))
-        for (const yy of [cy - gp, cy, cy + gp])
-          labels.push(
-            <line
-              key={`tx${p.cell}-${yy}`}
-              x1={cx - th}
-              y1={yy}
-              x2={cx + th}
-              y2={yy}
-              stroke="#1a1a1a"
-              strokeWidth="2.5"
-            />,
-          )
+        if (p.rot) {
+          const th = Math.min(Math.max(hv * 0.22, 120), hv * 0.45)
+          const gp = Math.min(wv * 0.3, Math.max(fsN * 0.55, 16))
+          for (const xx of [cx - gp, cx, cx + gp])
+            labels.push(
+              <line
+                key={`tx${p.cell}-${xx}`}
+                x1={xx}
+                y1={cy - th}
+                x2={xx}
+                y2={cy + th}
+                stroke="#1a1a1a"
+                strokeWidth="2.5"
+              />,
+            )
+        } else {
+          const th = Math.min(Math.max(wv * 0.22, lw + 120), wv * 0.45)
+          const gp = Math.min(hv * 0.3, Math.max(fsN * 0.55, 16))
+          for (const yy of [cy - gp, cy, cy + gp])
+            labels.push(
+              <line
+                key={`tx${p.cell}-${yy}`}
+                x1={cx - th}
+                y1={yy}
+                x2={cx + th}
+                y2={yy}
+                stroke="#1a1a1a"
+                strokeWidth="2.5"
+              />,
+            )
+        }
       }
       // O'lcham/nom yozuvlari teshiklar ustiga tushmasin: har yozuvga bir necha
       // nomzod joy, teshiksiz birinchisi tanlanadi; tanlangan joy keyingi
