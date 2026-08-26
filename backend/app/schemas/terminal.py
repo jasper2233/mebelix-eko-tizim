@@ -450,6 +450,11 @@ class TmoOrderState(BaseModel):
     order_status: OrderStatus
     packaging: bool  # marshrutda UPAKOVKA bormi — topshirish qadoq bo'yicha ketadi
     total: int
+    #: TMO ga JISMONAN yetib kelgan nusxalar — oldingi barcha bosqichlari tugaganlar.
+    #: Skan qilinganlar ham shu songa kiradi (ular ham kelgan), ya'ni
+    #: `accepted <= arrived <= total`. Omborchi "40 dan 20 tasi keldi, 10 tasi
+    #: qabul qilindi" ni bir qarashda ko'rishi kerak.
+    arrived: int
     accepted: int
     pachkas: list[TmoPachkaRow] = []
     pending: list[TmoPending] = []

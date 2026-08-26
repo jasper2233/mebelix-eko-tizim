@@ -9,7 +9,10 @@ buyurtmada bitta qadoq QR'i ichidagi HAMMA nusxani birdaniga qabul qiladi —
 omborchi qadoqni ochib har detalni skanerlamaydi.
 
 TOPSHIRISH — mijozga berish. Qadoqlangan buyurtmada birlik = qadoq, qadoqsizda
-= butun buyurtma. Hamma narsa topshirilgach buyurtma DELIVERED bo'ladi.
+= butun buyurtma. TMO buyurtmani TOPSHIRMAYDI — u faqat qabul qiladi.
+Hamma detal TMO dan o'tgach buyurtma o'zi COMPLETED (tayyor) bo'ladi
+(`scanning.record_scan_at`), TOPSHIRILDI esa managerning amali
+(`orders.deliver_order`, faqat COMPLETED holatdan).
 """
 
 from datetime import UTC, datetime
@@ -23,9 +26,8 @@ from app.core.exceptions import ForbiddenException
 from app.core.ws import ws_manager
 from app.crud import crud_orders, log_action
 from app.models import Machine, Order, Pachka, PachkaItem, Part, PartInstance, PartRoute, Post, Product, Scan
-from app.models.enums import POST_ROLES, OrderStatus, PachkaStatus, PostCode, UserRole
+from app.models.enums import POST_ROLES, PachkaStatus, PostCode, UserRole
 from app.models.user import User
-from app.schemas.common import Message
 from app.schemas.terminal import (
     PachkaScan,
     TmoOrderState,
@@ -180,6 +182,8 @@ async def _state(db: SessionDep, order: Order, post: Post) -> TmoOrderState:
         order_status=order.status,
         packaging=packaging,
         total=total,
+        # Kelganlar = allaqachon qabul qilinganlar + navbatda turgan TAYYORlar.
+        arrived=(total - len(pending)) + sum(1 for p in pending if p.ready),
         accepted=total - len(pending),
         pachkas=list(pachkas.values()),
         pending=pending,
@@ -283,16 +287,6 @@ async def accept_into_tmo(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: in
     return await _state(db, order, post)
 
 
-def _deliver_if_done(order: Order, state: TmoOrderState) -> None:
-    """Hammasi qabul qilinib topshirilgan bo'lsa — buyurtma yopiladi."""
-    if state.pending or order.status == OrderStatus.DELIVERED:
-        return
-    if any(p.shipped_at is None for p in state.pachkas):
-        return
-    order.status = OrderStatus.DELIVERED
-    order.delivered_at = datetime.now(UTC)
-
-
 @router.post("/orders/{order_id}/ship", response_model=TmoOrderState, operation_id="ship_pachka")
 async def ship_pachka(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: int, body: PachkaScan) -> TmoOrderState:
     """Qadoqni mijozga topshirish — QR skani yoki ro'yxatdagi tugma (ikkalasi ham kod yuboradi)."""
@@ -313,7 +307,6 @@ async def ship_pachka(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: int, b
     pachka.shipped_at = datetime.now(UTC)
     row.status = PachkaStatus.SHIPPED
     row.shipped_at = pachka.shipped_at
-    _deliver_if_done(order, state)
     log_action(
         db,
         module="tmo",
@@ -326,33 +319,3 @@ async def ship_pachka(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: int, b
     await db.commit()
     await ws_manager.publish("tmo.shipped", {"order_id": order.id, "code": pachka.code})
     return await _state(db, order, post)
-
-
-@router.post("/orders/{order_id}/deliver", response_model=Message, operation_id="deliver_tmo_order")
-async def deliver_tmo_order(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: int) -> Message:
-    """Butun buyurtmani topshirish — qadoqsiz buyurtma uchun (qadoqlanganda har qadoq alohida)."""
-    _machine, post = ctx
-    order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
-    if order.status == OrderStatus.DELIVERED:
-        raise ForbiddenException("Buyurtma allaqachon topshirilgan.")
-    state = await _state(db, order, post)
-    if state.pending:
-        raise ForbiddenException(f"{len(state.pending)} detal hali TMO ga qabul qilinmagan.")
-    unshipped = [p for p in state.pachkas if p.shipped_at is None]
-    if unshipped:
-        raise ForbiddenException(f"{len(unshipped)} qadoq topshirilmagan — avval ularni topshiring.")
-
-    order.status = OrderStatus.DELIVERED
-    order.delivered_at = datetime.now(UTC)
-    log_action(
-        db,
-        module="tmo",
-        action="delivered",
-        user_id=user.id,
-        entity_type="order",
-        entity_id=order.id,
-        message=f"Buyurtma topshirildi: {order.number} ({state.total} detal)",
-    )
-    await db.commit()
-    await ws_manager.publish("tmo.delivered", {"order_id": order.id})
-    return Message(message=f"Buyurtma topshirildi: {order.number}")

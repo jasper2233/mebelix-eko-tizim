@@ -407,8 +407,10 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 **Maqsadi:** TMO post sahifasi, ikki tab (ikki xil ish bir ekranda aralashmasin).
 
 - **Qabul** — TMO ga yetib kelganlar (qadoq kodi bilan), skan `PK-...` bo'lsa qadoq ichidagi hammasini birdan qabul qiladi. Pastda "Tsexda" ro'yxati: har detalga ishi TUGAGAN post yozilgan (`stage`) — omborchi buyumni aynan o'sha yerdan topadi.
-- **Topshirish** — qadoqlangan buyurtmada har qadoq alohida (to'liq qabul qilinmagani bloklangan), qadoqsizda bitta "Buyurtmani topshirish" tugmasi.
-- `registerScan` aktiv tabga qarab qabul yoki topshirishga yo'naltiradi.
+- **Qadoqlar** (ilgari "Topshirish") — qadoqlangan buyurtmada har qadoq alohida topshiriladi (to'liq qabul qilinmagani bloklangan). Qadoqsiz buyurtmada tab bo'sh: nima uchun qadoq yo'qligi va buyurtma o'zi TAYYOR bo'lishi yozilgan.
+- **"Buyurtmani topshirish" tugmasi OLIB TASHLANDI** (`deliver_tmo_order` endpointi bilan birga). TMO buyurtmani topshirmaydi: hamma detal TMO dan o'tgach buyurtma `record_scan_at` da o'zi TAYYOR (COMPLETED) bo'ladi, TOPSHIRILDI esa managerning amali (`/orders/{id}`, faqat TAYYOR holatdan).
+- Sarlavhada `TMO ga keldi: arrived/total` va `Qabul qilindi: accepted/total` — omborchi oldida qancha ish turganini ko'rishi uchun (bitta progress bar faqat skanerlanganini ko'rsatardi).
+- `registerScan` aktiv tabga qarab qabul yoki qadoq topshirishga yo'naltiradi.
 
 ### `frontend/src/components/Terminal/OrderPicker.tsx`
 

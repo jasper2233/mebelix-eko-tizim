@@ -2906,6 +2906,10 @@ export type TmoOrderState = {
      */
     total: number;
     /**
+     * Arrived
+     */
+    arrived: number;
+    /**
      * Accepted
      */
     accepted: number;
@@ -4987,36 +4991,6 @@ export type ShipPachkaResponses = {
 };
 
 export type ShipPachkaResponse = ShipPachkaResponses[keyof ShipPachkaResponses];
-
-export type DeliverTmoOrderData = {
-    body?: never;
-    path: {
-        /**
-         * Order Id
-         */
-        order_id: number;
-    };
-    query?: never;
-    url: '/api/v1/tmo/orders/{order_id}/deliver';
-};
-
-export type DeliverTmoOrderErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type DeliverTmoOrderError = DeliverTmoOrderErrors[keyof DeliverTmoOrderErrors];
-
-export type DeliverTmoOrderResponses = {
-    /**
-     * Successful Response
-     */
-    200: Message;
-};
-
-export type DeliverTmoOrderResponse = DeliverTmoOrderResponses[keyof DeliverTmoOrderResponses];
 
 export type ReadAuditLogsData = {
     body?: never;

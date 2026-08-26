@@ -1,8 +1,12 @@
 // TMO (Tayyor Mahsulot Ombori) post sahifasi — marshrutning oxirgi qadami.
 //
-// Ikki tab, chunki ikki xil ish: QABUL (kelganini skanerlash) va TOPSHIRISH
-// (mijozga berish). Bir ekranda aralashsa omborchi tasodifan topshirilmagan
-// narsani topshirilgan deb belgilab qo'yardi.
+// Ikki tab, chunki ikki xil ish: QABUL (kelganini skanerlash) va QADOQLAR
+// (qadoqni mijozga berish). Bir ekranda aralashsa omborchi tasodifan
+// berilmagan narsani berilgan deb belgilab qo'yardi.
+//
+// TMO buyurtmani TOPSHIRMAYDI. Hamma detal TMO dan o'tgach buyurtma o'zi
+// TAYYOR (COMPLETED) bo'ladi, TOPSHIRILDI esa managerning amali
+// (`/orders/{id}` sahifasidagi tugma, faqat TAYYOR holatdan).
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, Check, PackageCheck, Truck } from "lucide-react"
@@ -34,7 +38,7 @@ export function TmoView({
   registerScan?: (fn: ((qr: string) => void) | null) => void
 }) {
   const queryClient = useQueryClient()
-  const [tab, setTab] = useState<"qabul" | "topshirish">("qabul")
+  const [tab, setTab] = useState<"qabul" | "qadoqlar">("qabul")
   //: Shu smenada qabul qilinganlar. Server javobida ular `pending` dan
   //: CHIQIB KETADI (tmo.py: qabul qilingan nusxa ro'yxatga qo'shilmaydi), ya'ni
   //: skanerlangan detal ekrandan jimgina yo'qolardi va omborchi skan
@@ -110,15 +114,6 @@ export function TmoView({
     },
     onError: (e) => toast.error(detailMessage(e)),
   })
-  const deliver = useMutation({
-    mutationFn: async () =>
-      (await TmoService.deliverTmoOrder({ path: { order_id: orderId } })).data,
-    onSuccess: (r) => {
-      toast.success(r.message)
-      queryClient.invalidateQueries({ queryKey: ["terminal", "tmo"] })
-    },
-    onError: (e) => toast.error(detailMessage(e)),
-  })
 
   // Skan aktiv tabga ketadi. Ref: terminal callback'ni bir marta ro'yxatga
   // oladi, tab esa keyin ham o'zgaradi.
@@ -165,11 +160,25 @@ export function TmoView({
             </div>
           )}
         </div>
-        <PostProgress
-          className="ml-auto"
-          done={data?.accepted ?? 0}
-          total={data?.total ?? 0}
-        />
+        {/* Uchta son ATAYLAB alohida: omborchi "nechtasi keldi" va "nechtasini
+            men skanerladim" ni ajratishi kerak. Bitta progress bar faqat
+            skanerlanganini ko'rsatardi — kelgan-u hali qabul qilinmagani
+            ko'rinmasdi, ya'ni oldida qancha ish turgani bilinmasdi. */}
+        <div className="ml-auto flex items-center gap-4">
+          <span className="text-sm font-bold">
+            <span className="text-muted-foreground">TMO ga keldi: </span>
+            <span className="num text-base">{data?.arrived ?? 0}</span>
+            <span className="text-muted-foreground">/{data?.total ?? 0}</span>
+          </span>
+          <span className="text-sm font-bold">
+            <span className="text-muted-foreground">Qabul qilindi: </span>
+            <span className="num text-base text-green-700">
+              {data?.accepted ?? 0}
+            </span>
+            <span className="text-muted-foreground">/{data?.total ?? 0}</span>
+          </span>
+          <PostProgress done={data?.accepted ?? 0} total={data?.total ?? 0} />
+        </div>
         {delivered && (
           <span className="rounded-sm bg-green-100 px-2 py-1 text-sm font-black text-green-700">
             TOPSHIRILGAN
@@ -187,10 +196,10 @@ export function TmoView({
             <PackageCheck /> Qabul ({arrived.length})
           </TabsTrigger>
           <TabsTrigger
-            value="topshirish"
+            value="qadoqlar"
             className="h-10 px-6 text-base font-bold"
           >
-            <Truck /> Topshirish ({shipped.length}/{pachkas.length})
+            <Truck /> Qadoqlar ({shipped.length}/{pachkas.length})
           </TabsTrigger>
         </TabsList>
 
@@ -286,7 +295,7 @@ export function TmoView({
 
         {/* TOPSHIRISH: qadoq bo'yicha. Qadoqsiz buyurtmada butun buyurtma birdan. */}
         <TabsContent
-          value="topshirish"
+          value="qadoqlar"
           className="min-h-0 flex-1 overflow-y-auto"
         >
           {data?.packaging ? (
@@ -334,22 +343,19 @@ export function TmoView({
               </tbody>
             </table>
           ) : (
-            <div className="flex flex-col items-center gap-4 p-8 text-center">
+            <div className="flex flex-col items-center gap-3 p-8 text-center">
               <p className="text-base text-muted-foreground">
-                Bu buyurtma qadoqlanmaydi — mahsulot detal bo'yicha qabul
-                qilinadi va butunligicha topshiriladi.
+                Bu buyurtma qadoqlanmaydi — anketada "Upakovka qilish"
+                belgilanmagan, shuning uchun detallar to'g'ridan-to'g'ri TMO ga
+                keladi va shu yerda birma-bir qabul qilinadi.
               </p>
-              <LoadingButton
-                className="h-14 px-8 text-lg font-black"
-                loading={deliver.isPending}
-                disabled={!!pending.length || delivered}
-                onClick={() => deliver.mutate()}
-              >
-                <Truck />
-                {delivered ? "Topshirilgan" : "Buyurtmani topshirish"}
-              </LoadingButton>
+              <p className="text-sm text-muted-foreground">
+                Hamma detal qabul qilingach buyurtma o'zi{" "}
+                <b className="text-foreground">TAYYOR</b> bo'ladi. Topshirishni
+                manager belgilaydi.
+              </p>
               {!!pending.length && (
-                <p className="text-sm text-amber-700">
+                <p className="text-sm font-semibold text-amber-700">
                   {pending.length} detal hali qabul qilinmagan.
                 </p>
               )}
