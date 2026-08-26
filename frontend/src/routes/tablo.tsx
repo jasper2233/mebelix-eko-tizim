@@ -15,7 +15,7 @@ import {
 import { TabloService } from "@/client"
 import { useMesWs } from "@/hooks/useMesWs"
 import { requireAuth } from "@/lib/guards"
-import { deadlineTone, POST_COLORS } from "@/lib/mes"
+import { deadlineTone, POST_COLORS, PRIORITY_EDGE } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import {
   getMachinesQueryOptions,
@@ -618,12 +618,10 @@ function TabloPage() {
                     <td
                       className={cn(
                         "rounded-l-md px-3 py-3",
-                        // FAQAT shoshilinch: taxta allaqachon prioritet bo'yicha
-                        // saralangan, ya'ni o'rin normani aytib turibdi. Ustiga
-                        // to'q sariq/qizil deuteranopia'da chalkashadi.
-                        o.priority === "urgent"
-                          ? "border-l-red-600"
-                          : "border-l-transparent",
+                        // To'rttala prioritet rangi — buyurtma formasi va
+                        // reestr bilan bir xil (PRIORITY_EDGE). Tsex talabi:
+                        // taxtada faqat shoshilinch emas, hammasi ko'rinsin.
+                        PRIORITY_EDGE[o.priority] ?? "border-l-transparent",
                       )}
                       style={{
                         borderLeftWidth: "10px",

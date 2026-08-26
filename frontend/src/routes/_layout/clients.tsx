@@ -58,7 +58,15 @@ function ClientsPage() {
     <div>
       <PageHeader
         title="Mijozlar"
-        description="Buyurtmachilar reestri — aylanma bo'yicha tartiblangan"
+        // Umumiy son sarlavhada: qidiruv paytida esa topilganlar soni —
+        // "nechta mijoz bor?" savoliga sahifalamasdan javob.
+        description={
+          data
+            ? debounced
+              ? `${data.count} ta topildi — aylanma bo'yicha tartiblangan`
+              : `${data.count} mijoz — aylanma bo'yicha tartiblangan`
+            : "Buyurtmachilar reestri"
+        }
         actions={<AddClient />}
       />
       <div className="mb-4 flex">
