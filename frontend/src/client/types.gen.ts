@@ -322,6 +322,106 @@ export type ClientCreate = {
 };
 
 /**
+ * ClientDetail
+ *
+ * Qator ustiga bosilganda: to'liq ma'lumot + buyurtmalar ro'yxati.
+ */
+export type ClientDetail = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Full Name
+     */
+    full_name: string;
+    /**
+     * Phone
+     */
+    phone: string | null;
+    /**
+     * Phone Alt
+     */
+    phone_alt: string | null;
+    /**
+     * Address
+     */
+    address: string | null;
+    /**
+     * Notes
+     */
+    notes: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Orders Count
+     */
+    orders_count?: number;
+    /**
+     * Total Amount
+     */
+    total_amount?: string;
+    /**
+     * Rank
+     */
+    rank?: number;
+    /**
+     * Share Pct
+     */
+    share_pct?: number;
+    /**
+     * Segment
+     */
+    segment?: string;
+    /**
+     * Orders
+     */
+    orders?: Array<ClientOrderRow>;
+};
+
+/**
+ * ClientOrderRow
+ *
+ * Mijoz kartochkasidagi buyurtma qatori.
+ */
+export type ClientOrderRow = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Number
+     */
+    number: string;
+    /**
+     * Project Name
+     */
+    project_name: string | null;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Priority
+     */
+    priority: string;
+    /**
+     * Deadline
+     */
+    deadline: string | null;
+    /**
+     * Amount
+     */
+    amount: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
  * ClientRead
  */
 export type ClientRead = {
@@ -357,6 +457,22 @@ export type ClientRead = {
      * Orders Count
      */
     orders_count?: number;
+    /**
+     * Total Amount
+     */
+    total_amount?: string;
+    /**
+     * Rank
+     */
+    rank?: number;
+    /**
+     * Share Pct
+     */
+    share_pct?: number;
+    /**
+     * Segment
+     */
+    segment?: string;
 };
 
 /**
@@ -3767,6 +3883,36 @@ export type UpdateClientResponses = {
 };
 
 export type UpdateClientResponse = UpdateClientResponses[keyof UpdateClientResponses];
+
+export type ReadClientDetailData = {
+    body?: never;
+    path: {
+        /**
+         * Client Id
+         */
+        client_id: number;
+    };
+    query?: never;
+    url: '/api/v1/clients/{client_id}/detail';
+};
+
+export type ReadClientDetailErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadClientDetailError = ReadClientDetailErrors[keyof ReadClientDetailErrors];
+
+export type ReadClientDetailResponses = {
+    /**
+     * Successful Response
+     */
+    200: ClientDetail;
+};
+
+export type ReadClientDetailResponse = ReadClientDetailResponses[keyof ReadClientDetailResponses];
 
 export type ReadEmployeesData = {
     body?: never;

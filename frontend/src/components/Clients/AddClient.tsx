@@ -41,54 +41,83 @@ type FormValues = z.infer<typeof formSchema>
 export function AddClient({
   trigger,
   onCreated,
+  client,
+  onClose,
 }: {
   trigger?: React.ReactNode
   onCreated?: (client: ClientRead) => void
+  /** Berilsa — TAHRIRLASH rejimi: forma boshqariladigan bo'lib ochiladi.
+   *  Bitta forma, chunki maydonlar va tekshiruvlar aynan bir xil; ikkinchi
+   *  nusxa bo'lsa telefon formati bir joyda o'zgarib, ikkinchisida qolardi. */
+  client?: ClientRead | null
+  onClose?: () => void
 }) {
+  const tahrir = Boolean(client)
   const [open, setOpen] = useState(false)
+  const ochiq = tahrir ? true : open
   const queryClient = useQueryClient()
-  const cb = crudCallbacks(queryClient, ["clients"], "Mijoz qo'shildi")
+  const cb = crudCallbacks(
+    queryClient,
+    ["clients"],
+    tahrir ? "Mijoz yangilandi" : "Mijoz qo'shildi",
+  )
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
     defaultValues: {
-      full_name: "",
-      phone: "",
-      phone_alt: "",
-      address: "",
-      notes: "",
+      full_name: client?.full_name ?? "",
+      phone: client?.phone ?? "",
+      phone_alt: client?.phone_alt ?? "",
+      address: client?.address ?? "",
+      notes: client?.notes ?? "",
     },
   })
 
   const mutation = useMutation({
-    mutationFn: (data: FormValues) =>
-      ClientsService.createClient({
-        body: {
-          full_name: data.full_name,
-          phone: data.phone || null,
-          phone_alt: data.phone_alt || null,
-          address: data.address || null,
-          notes: data.notes || null,
-        },
-      }),
+    mutationFn: (data: FormValues) => {
+      const body = {
+        full_name: data.full_name,
+        phone: data.phone || null,
+        phone_alt: data.phone_alt || null,
+        address: data.address || null,
+        notes: data.notes || null,
+      }
+      return client
+        ? ClientsService.updateClient({ path: { client_id: client.id }, body })
+        : ClientsService.createClient({ body })
+    },
     ...cb,
-    onSuccess: ({ data: client }) => {
+    onSuccess: ({ data: saqlangan }) => {
       cb.onSuccess()
       form.reset()
       setOpen(false)
-      onCreated?.(client)
+      onClose?.()
+      if (!tahrir && saqlangan) onCreated?.(saqlangan)
     },
   })
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? <Button>+ Yangi mijoz</Button>}
-      </DialogTrigger>
+    <Dialog
+      open={ochiq}
+      onOpenChange={(v) => {
+        if (tahrir) {
+          if (!v) onClose?.()
+        } else {
+          setOpen(v)
+        }
+      }}
+    >
+      {!tahrir && (
+        <DialogTrigger asChild>
+          {trigger ?? <Button>+ Yangi mijoz</Button>}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Yangi mijoz</DialogTitle>
+          <DialogTitle>
+            {tahrir ? "Mijozni tahrirlash" : "Yangi mijoz"}
+          </DialogTitle>
           <DialogDescription>Mijoz ma'lumotlarini kiriting</DialogDescription>
         </DialogHeader>
         <Form {...form}>

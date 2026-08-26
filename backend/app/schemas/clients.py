@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -19,7 +20,39 @@ class ClientRead(BaseModel):
     address: str | None
     notes: str | None
     created_at: datetime
-    orders_count: int = 0  # computed in the route, not stored
+    # Quyidagilar route'da hisoblanadi, bazada saqlanmaydi.
+    orders_count: int = 0
+    #: Bekor qilinmagan buyurtmalar summasi — mijozning haqiqiy qiymati.
+    total_amount: Decimal = Decimal(0)
+    #: O'rin (1 — eng yirik) va ulush; reyting AYNAN summadan chiqadi.
+    rank: int = 0
+    share_pct: float = 0.0
+    #: ABC (Pareto) segmenti: A — aylanmaning birinchi 80%, B — 95% gacha, C — qolgani.
+    #: Yulduzcha reyting bu ma'lumotda ishlamaydi: prodda o'lchandi, eng yirik
+    #: mijoz aylanmaning 81% ini beradi, ya'ni qolgan hamma bir xil past bahoni
+    #: olardi. ABC esa aynan shunday nomutanosib taqsimot uchun qilingan.
+    segment: str = "C"
+
+
+class ClientOrderRow(BaseModel):
+    """Mijoz kartochkasidagi buyurtma qatori."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    number: str
+    project_name: str | None
+    status: str
+    priority: str
+    deadline: date | None
+    amount: Decimal | None
+    created_at: datetime
+
+
+class ClientDetail(ClientRead):
+    """Qator ustiga bosilganda: to'liq ma'lumot + buyurtmalar ro'yxati."""
+
+    orders: list[ClientOrderRow] = []
 
 
 class ClientCreate(BaseModel):

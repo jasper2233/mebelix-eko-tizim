@@ -214,7 +214,12 @@ Barcha mutatsiyalar (yaratish, admin-yangilash, parol almashtirish, o'chirish) `
 | POST | `/api/v1/clients/` | `ManagerUser` | 201; telefon unikalligi: `phone` va `phone_alt` ustunlari bo'yicha tirik yozuvlarda tekshiriladi, band bo'lsa 409 — xabarda egasining ismi ko'rsatiladi |
 | GET | `/api/v1/clients/{id}` | `StaffReadUser` | Bitta mijoz + `orders_count`; topilmasa 404 |
 | PATCH | `/api/v1/clients/{id}` | `ManagerUser` | Yangilash; telefon o'zgarsa unikallik qayta tekshiriladi |
-| DELETE | `/api/v1/clients/{id}` | `ManagerUser` | Soft-delete, `Message` qaytaradi |
+| GET | `/api/v1/clients/{id}/detail` | `StaffReadUser` | `ClientDetail` — mijoz + uning BARCHA buyurtmalari (`ClientOrderRow`: raqam, loyiha nomi, holat, prioritet, muddat, summa), yangi buyurtma birinchi. Ro'yxatdagi qator ustiga bosilganda ochiladi |
+| DELETE | `/api/v1/clients/{id}` | `ManagerUser` | **Buyurtmasi bor mijoz o'chirilmaydi — 409**, xabar nechta buyurtma borligini aytadi. `order.client_id` majburiy FK: yumshoq o'chirilgan mijozning buyurtmalari reestrda egasiz qatorga aylanardi. Yumshoq o'chirilgan buyurtma to'siq emas. Ish markazi o'chirishidagi qoida bilan bir xil (`machines._blockers`) |
+
+**Mijoz REYTINGI** (`clients._reyting`): `total_amount` (bekor qilinmagan buyurtmalar summasi), `rank`, `share_pct` va ABC segmenti. HAMMA mijoz bo'yicha hisoblanadi, sahifa bo'yicha emas — o'rin va segment populyatsiya xossasi, aks holda ikkinchi sahifada "1-o'rin" chiqib qolardi. Ro'yxat ham SUMMA bo'yicha tartiblanadi (`id desc` emas). "Daromad" ta'rifi (`_DAROMAD`) bitta joyda — saralash va reyting ajralib ketmasin.
+
+ABC (Pareto): A — aylanmaning birinchi 80%, B — 95% gacha, C — qolgani; chegarani KESIB o'tgan mijoz yuqori sinfda qoladi. Yulduzcha reyting bu ma'lumotda ishlamaydi — prodda o'lchandi: eng yirik mijoz aylanmaning **81%** ini beradi, ya'ni qolgan yigirmatasi bir xil past bahoni olardi (A: 1 mijoz, B: 6, C: 14).
 
 Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 
