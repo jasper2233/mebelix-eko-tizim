@@ -450,15 +450,16 @@ export function SheetSvg({
     // `allDone` `custom` dan USTUN: chek chiqarilgan nostandart detal ham yashil
     // bo'ladi (arrachi uchun "kesildi" belgisi hamma detalda bir xil), bekor
     // qilinsa `allDone` yana false bo'lib o'z rangiga qaytadi.
-    // QOLDIQ (business atxot) ranglari — tsex taklifi, "chek = yashil" tilida:
-    //   chek chiqarilmagan -> OQ (zebra atxotdan ajralib, "chek chiqarish
-    //   mumkin" deb o'qiladi); chek chiqarilgan -> detallar kabi YASHIL.
-    // Oddiy (ro'yxatga olinmagan) atxot zebra bo'lib qolaveradi.
+    // QOLDIQ (business atxot) ranglari — tsex taklifi: zebra SAQLANADI
+    // ("bu atxot" identligi), RANG holatni aytadi. Chek chiqmagan -> apelsin-oq
+    // zebra (detal apelsini bilan bir tilda: "chek chiqarish mumkin"), chek
+    // chiqqach -> yashil-oq zebra. Oddiy (ro'yxatga olinmagan) atxot kulrang
+    // zebra bo'lib qolaveradi.
     const fill = p.waste
       ? p.atx
         ? wastePrinted?.has(p.atx)
-          ? PART_DONE
-          : "#ffffff"
+          ? "url(#zebraDone)"
+          : "url(#zebraQoldiq)"
         : "url(#zebra)"
       : selected
         ? PART_SELECTED
@@ -1076,6 +1077,28 @@ export function SheetSvg({
         >
           <rect width="36" height="36" fill="#eef0f2" />
           <rect width="18" height="36" fill="#c9d2de" />
+        </pattern>
+        {/* Qoldiq zebralari: yo'l-yo'l naqsh atxotligini, rang chek holatini
+            aytadi (apelsin = chiqmagan, yashil = chiqqan) */}
+        <pattern
+          id="zebraQoldiq"
+          width="36"
+          height="36"
+          patternTransform="rotate(45)"
+          patternUnits="userSpaceOnUse"
+        >
+          <rect width="36" height="36" fill="#fff7ec" />
+          <rect width="18" height="36" fill="#f2c78d" />
+        </pattern>
+        <pattern
+          id="zebraDone"
+          width="36"
+          height="36"
+          patternTransform="rotate(45)"
+          patternUnits="userSpaceOnUse"
+        >
+          <rect width="36" height="36" fill="#effaf2" />
+          <rect width="18" height="36" fill="#a3dfb8" />
         </pattern>
       </defs>
       {/* fon zebra: detal tushmagan joy = atxot (GibSaw) */}
