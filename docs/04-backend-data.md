@@ -291,7 +291,7 @@ Umumiy "NAVBATDAGI VAZIFALAR" jadvali (`TaskRow`) va `/terminal/tasks` endpointi
 | `backend/app/schemas/common.py` | `Message` | Generic `{"message": str}` javob |
 | | `Paginated[T]` | Standart sahifalangan ro'yxat javobi: `{data: list[T], count: int}` — registr ro'yxatlarida (users, clients, employees, orders, audit). Postlar/ish markazlari/bridge-agentlar va terminal yordamchi ro'yxatlari (`terminal/employees`, `terminal/orders`) xom `list[...]` qaytaradi — sahifalanmaydi |
 | `backend/app/schemas/health.py` | `HealthCheck`, `ReadyCheck` | Liveness/readiness endpointlari; `ReadyCheck` `database` va `redis` holatini ham qaytaradi |
-| `backend/app/schemas/bridge_agents.py` | `BridgeAgentRead`, `BridgeAgentCreate`, `BridgeAgentUpdate`, `BridgeScanRequest`, `BridgePairRequest`, `BridgePairResponse` | Printer agentlari (1.4.2-bo'lim): `BridgeAgentRead` `token_hash` o'rniga `paired: bool` beradi, `pair_code` faqat muddati o'tmagan bo'lsa; `BridgeAgentUpdate` — `machine_id`/`can_print` PATCH body; `BridgeScanRequest` — skan-forvard body (`POST /bridge-agents/scan`, javobi `ScanResult`); `BridgePairResponse.token` — tokenning yagona ko'rinishi |
+| `backend/app/schemas/bridge_agents.py` | `BridgeAgentRead`, `BridgeAgentCreate`, `BridgeAgentUpdate`, `BridgeScanRequest`, `BridgePairRequest`, `BridgePairResponse`, `BridgeLogPush` (agent log push tanasi — `lines`, ≤200) | Printer agentlari (1.4.2-bo'lim): `BridgeAgentRead` `token_hash` o'rniga `paired: bool` beradi, `pair_code` faqat muddati o'tmagan bo'lsa; `BridgeAgentUpdate` — `machine_id`/`can_print` PATCH body; `BridgeScanRequest` — skan-forvard body (`POST /bridge-agents/scan`, javobi `ScanResult`); `BridgePairResponse.token` — tokenning yagona ko'rinishi |
 | `backend/app/schemas/tablo.py` | `StageAgg`, `TabloPostCol`, `TabloOrderRow`, `TabloMatrix`, `TabloPartRow`, `TabloOrderDetail` | TABLO javob modellari (avval `tablo.py` route ichida inline edi); `TabloMatrix.posts` endi typed (`TabloPostCol`) |
 | `backend/app/schemas/reports.py` | `EmployeeProductivity`, `ProductivityReport`, `OrderReportRow`, `OrdersReport`, `MaterialUsageRow`, `MaterialsReport`, `MachineStat`, `DashboardStats` | Hisobot/dashboard javob modellari (avval `reports.py` route ichida inline edi) |
 | `backend/app/schemas/audit.py` | `AuditLogRead` | Loglar sahifasi qatori (avval route ichida inline edi) |
@@ -395,15 +395,15 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 
 ### 4.4 Versiyalar zanjiri — `backend/app/migrations/versions/`
 
-39 ta migratsiya, head: `10a4a7945eac`.
+42 ta migratsiya, head: `a7c419e0b3d5`.
 
 **Olib tashlangan ikki modulning migratsiyalari ATAYLAB qoldirilgan** — OEE
-(oxirgi uchtasi: 37–39) va materiallar ombori (27–28). Modul kodi butunlay
+(37–39) va materiallar ombori (27–28). Modul kodi butunlay
 olib tashlandi (egasi hozircha kerak emas dedi), lekin migratsiyalar prodga
-allaqachon qo'llangan: `alembic_version` da `10a4a7945eac` turibdi. Faylni
+allaqachon qo'llangan. Faylni
 o'chirish keyingi deployda `alembic upgrade head` ni "Can't locate revision"
 bilan yiqitardi, ya'ni prod deploy butunlay sinardi. OEE jadvallari
-(`stop_reason`, `machine_stop`, `defect`) va ustunlari
+(`stop_reason`, `machine_stop` — `defect` esa 40-migratsiyada DROP qilingan) va ustunlari
 (`machine.planned_minutes_per_day`, `machine.ideal_rate`,
 `part_instance.cut_meters`), shuningdek ombor jadvallari (`stock_item`,
 `stock_move`, `sale`, `payment`) bazada bo'sh turadi va hech qayerdan
@@ -452,6 +452,9 @@ ikkitasi NULL qabul qiladi.
 | 37 | `f3fad5351d8a` | `f3fad5351d8a_oee_toxtalishlar_va_ideal_tezlik.py` | **OEE (OLIB TASHLANGAN modul)**: `stop_reason`, `machine_stop` jadvallari va `machine.planned_minutes_per_day`/`machine.ideal_rate` ustunlari. Modul kodi olib tashlandi, migratsiya QOLDI — jadval oldidagi izohga qarang |
 | 38 | `b2c7e40f9a13` | `b2c7e40f9a13_part_instance_cut_meters.py` | **OEE (OLIB TASHLANGAN modul)**: `part_instance.cut_meters` — kesim uzunligi, mavjud buyurtmalar migratsiyada to'ldirilgan |
 | 39 | `10a4a7945eac` | `10a4a7945eac_brak_defect_jadvali.py` | **OEE (OLIB TASHLANGAN modul)**: `defect` jadvali (brak) |
+| 40 | `a1c9d4f2b60e` | `a1c9d4f2b60e_brak_jadvali_olib_tashlandi.py` | **`defect` jadvali DROP** — modul umuman ishlatilmaydi, prodda 0 qator, yetim jadval sxemani chalg'itardi. `10a4a7945eac` o'chirilmaydi (prodda qo'llanib bo'lingan), o'rniga shu migratsiya tushiradi; `downgrade` jadvalni to'liq tiklaydi |
+| 41 | `c5e81b3a97d2` | `c5e81b3a97d2_chek_qaysi_postda_chiqarilgani.py` | **`part_instance.label_post_id`** — chekni qaysi post chiqargani (FK `post`) |
+| 42 | `a7c419e0b3d5` | `a7c419e0b3d5_paz_freza_detaliga_prisadka_qadami.py` | **Paz/freza bor detalga PRISADKA qadami** — mavjud buyurtmalarga ham qo'llanadi. Ilgari faqat TESHIK hisobga olinardi va paz/freza-only detal marshrutsiz qolardi |
 
 Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kind=DOCUMENT` + `meta` JSONB bilan ishlatiladi (1.4.1-bo'lim).
 
