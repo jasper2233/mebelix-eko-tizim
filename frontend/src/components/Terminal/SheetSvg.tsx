@@ -73,6 +73,14 @@ const DIM_MAX = 90
 // GibSaw pariteti: tsexdagi GibSaw.ini `pattrenPartDim=48`. Arrachi ikkala
 // dasturda BIR XIL kattalikdagi raqamni ko'radi.
 const DIM_FS = 48
+// Archivo Variable 700 HAQIQIY metrikasi — jonli brauzerda getBBox bilan
+// o'lchangan (fs=100: ascent 88.4, descent 20.1, raqam eni 59.6). Ilgari
+// ascent 0.75em deb taxmin qilingan edi — har vertikal yozuv glyph'i hisobdan
+// 6.4 mm keng chiqib, baseline chetga yaqin qo'yilgan joylarda matn katakdan
+// mm-larda sirg'alib chiqardi.
+const ASC = 0.9 // ozgina zaxira bilan
+const DESC = 0.22
+const CH = 0.6 // bir belgi eni (em)
 
 /** Bitta o'lcham yozuvining kattaligi va ko'rinishi.
  *
@@ -94,13 +102,15 @@ const DIM_FS = 48
  */
 function dimFit(boylab: number, kondalang: number, matn: string, zoom: number) {
   const fs = Math.min(DIM_FS, DIM_MAX / zoom)
-  const len = matn.length * fs * 0.62 + 8
-  // Matn UZUNLIGI o'z o'qiga, QALINLIGI (fs) ko'ndalangiga sig'ishi shart —
-  // ikkinchisi tekshirilmasa 40 mm stripda 48 mm qalin yozuv baribir chiqardi.
+  const len = matn.length * fs * CH + 8
+  // Matn UZUNLIGI o'z o'qiga, QALINLIGI ko'ndalangiga sig'ishi shart. Qalinlik
+  // = glyph bbox (ASC+DESC ≈ 1.12em) + 8 padding — fs emas: fs bilan
+  // tekshirilganda 52 mm li haqiqiy bbox 48 deb o'tib ketardi.
+  const qalin = fs * (ASC + DESC) + 8
   const mode: "h" | "v" | null =
-    len <= boylab && fs * 1.1 <= kondalang
+    len <= boylab && qalin <= kondalang
       ? "h"
-      : len <= kondalang && fs * 1.1 <= boylab
+      : len <= kondalang && qalin <= boylab
         ? "v"
         : null
   return { fs, mode, show: mode !== null && fs * zoom >= DIM_MIN }
@@ -508,8 +518,8 @@ export function SheetSvg({
       // yozuv bilan chiziladi — mitti detal ham shu shaklga tushadi. Bunda
       // kichraytirish joiz: bitta qator, va 29 mm ("120×80") baribir eski
       // ikki alohida 6-8 mm yozuvdan ancha yirik.
-      const wlen0 = wText.length * dW * 0.62
-      const hlen0 = hText0.length * dH * 0.62
+      const wlen0 = wText.length * dW * CH
+      const hlen0 = hText0.length * dH * CH
       // Ikki holatda markaziy birlashgan rejim: (1) burchak sxemasida box'lar
       // kesishadigan mitti detal; (2) o'lchamlardan biri umuman sig'magan
       // (GibSaw bu holda shunchaki chizmaydi — arrachi o'lchamsiz qoladi;
@@ -628,8 +638,8 @@ export function SheetSvg({
         const t = `${wv}×${hv}`
         const fs = Math.min(
           DIM_FS,
-          (wv * 0.9) / (t.length * 0.62),
-          hv * 0.55,
+          (wv * 0.9) / (t.length * CH),
+          (hv * 0.8) / (ASC + DESC),
           DIM_MAX / zoom,
         )
         if (fs * zoom >= DIM_MIN)
@@ -652,15 +662,15 @@ export function SheetSvg({
         // GibSaw: pastki-chap burchak, qirradan 6 ichkarida. Muqobil nomzodlar
         // faqat teshik ustiga tushganda (GibSaw teshiklarni umuman tekshirmaydi
         // — bu bizning qo'shimcha).
-        const wlen = wText.length * dW * 0.62
+        const wlen = wText.length * dW * CH
         const spot = pickSpot(
           [
-            { x: p.x + 6, y: p.y + hv - dW * 0.35 },
-            { x: p.x + wv - wlen - rightB - 6, y: p.y + hv - dW * 0.35 },
-            { x: p.x + 6, y: p.y + hv - dW * 1.5 },
+            { x: p.x + 6, y: p.y + hv - 4 - DESC * dW },
+            { x: p.x + wv - wlen - rightB - 6, y: p.y + hv - 4 - DESC * dW },
+            { x: p.x + 6, y: p.y + hv - 4 - dW * 1.2 },
           ].map((c) => ({
             ...c,
-            box: { x: c.x, y: c.y - dW * 0.85, w: wlen, h: dW },
+            box: { x: c.x, y: c.y - ASC * dW, w: wlen, h: (ASC + DESC) * dW },
           })),
         )
         labels.push(
@@ -678,14 +688,19 @@ export function SheetSvg({
       } else if (!tight && showW) {
         // Eni detalga sig'madi — GibSaw uni chap qirraga BURAB chizadi,
         // kichraytirmaydi. Tor-baland detalda ilgari eni yo mayda, yo yo'q edi.
-        const wlen = wText.length * dW * 0.62
+        const wlen = wText.length * dW * CH
         const spot = pickSpot(
           [
-            { x: p.x + dW * 0.85, y: p.y + hv - 6 },
-            { x: p.x + dW * 0.85, y: p.y + hv - dW * 1.2 },
+            { x: p.x + 4 + ASC * dW, y: p.y + hv - 6 },
+            { x: p.x + 4 + ASC * dW, y: p.y + hv - dW * 1.2 },
           ].map((c) => ({
             ...c,
-            box: { x: c.x - dW * 0.85, y: c.y - wlen, w: dW, h: wlen },
+            box: {
+              x: c.x - ASC * dW,
+              y: c.y - wlen,
+              w: (ASC + DESC) * dW,
+              h: wlen,
+            },
           })),
         )
         labels.push(
@@ -706,7 +721,7 @@ export function SheetSvg({
       if (!tight && showH && oH.mode === "h") {
         // GibSaw: bo'yi o'ng qirrada YUQORIDAN PASTGA o'qiladi (rotate 90) —
         // eni pastki-chapda bo'lgani uchun ikkalasi hech qachon uchrashmaydi.
-        const hlen = hText.length * dH * 0.62
+        const hlen = hText.length * dH * CH
         // rotate(90) da glyph baseline'dan O'NG tomonda chiziladi (ascent +x):
         // baseline qirradan kamida 0.85*dH ichkarida turishi shart. Ilgari
         // 0.25*dH edi — matn katakdan o'ngga ~0.75*dH chiqib QO'SHNI katakka
@@ -714,12 +729,12 @@ export function SheetSvg({
         // hammasi shu naqsh. Box ham glyph bilan bir tomonda: [x-0.25, x+0.75].
         const spot = pickSpot(
           [
-            { x: p.x + wv - dH * 0.85, y: p.y + 6 },
-            { x: p.x + wv - dH * 0.85, y: p.y + hv - hlen - botB - 6 },
-            { x: p.x + wv - dH * 2.0, y: p.y + 6 },
+            { x: p.x + wv - 4 - ASC * dH, y: p.y + 6 },
+            { x: p.x + wv - 4 - ASC * dH, y: p.y + hv - hlen - botB - 6 },
+            { x: p.x + wv - 4 - dH * 2.0, y: p.y + 6 },
           ].map((c) => ({
             ...c,
-            box: { x: c.x - dH * 0.25, y: c.y, w: dH, h: hlen },
+            box: { x: c.x - DESC * dH, y: c.y, w: (ASC + DESC) * dH, h: hlen },
           })),
         )
         labels.push(
@@ -738,14 +753,14 @@ export function SheetSvg({
       } else if (!tight && showH) {
         // Vertikal sig'madi (yupqa gorizontal strip) — GibSaw fallback:
         // yuqori-o'ng burchakda gorizontal.
-        const hlen = hText.length * dH * 0.62
+        const hlen = hText.length * dH * CH
         const spot = pickSpot(
           [
-            { x: p.x + wv - hlen - 6, y: p.y + dH * 0.85 },
-            { x: p.x + wv - hlen - 6, y: p.y + hv - dH * 0.35 },
+            { x: p.x + wv - hlen - 6, y: p.y + 4 + ASC * dH },
+            { x: p.x + wv - hlen - 6, y: p.y + hv - 4 - DESC * dH },
           ].map((c) => ({
             ...c,
-            box: { x: c.x, y: c.y - dH * 0.85, w: hlen, h: dH },
+            box: { x: c.x, y: c.y - ASC * dH, w: hlen, h: (ASC + DESC) * dH },
           })),
         )
         labels.push(
