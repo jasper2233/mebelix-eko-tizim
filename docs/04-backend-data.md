@@ -499,15 +499,15 @@ BOYOQ postida bor edi: `boyoqchi` hisobi hech qachon yaratilmagan. Parol tasodif
 
 | Task | Vazifasi |
 |---|---|
-| `print_label(ctx, instance_id)` | Bitta fizik nusxa uchun yorliq PNG'ini render qilib chop etish navbatiga qo'yadi (TZ 7.1.4) |
-| `print_pachka_label(ctx, pachka_id)` | Qadoq chekini (`render_pachka_label_png` — qadoq kodi + buyurtma raqami + proyekt nomi + ichidagi detallar soni) shu navbatga qo'yadi — detal yorlig'i bilan bir xil zanjir |
-| `print_badge(ctx, employee_id)` | Hodim beyjigini (`render_badge_png` — lavozim + ism + QR, 80×60 mm) shu navbatga qo'yadi. Beyjik brauzerdan chop etilmaydi: agent DEVMODE bilan qog'ozni majburlaydi, drayver sozlamasi ahamiyatsiz |
+| `print_label(ctx, instance_id, agent_id=None)` | Bitta fizik nusxa uchun yorliq PNG'ini render qilib chop etish navbatiga qo'yadi (TZ 7.1.4) |
+| `print_pachka_label(ctx, pachka_id, agent_id=None)` | Qadoq chekini (`render_pachka_label_png` — qadoq kodi + buyurtma raqami + proyekt nomi + ichidagi detallar soni) shu navbatga qo'yadi — detal yorlig'i bilan bir xil zanjir |
+| `print_badge(ctx, employee_id, agent_id=None)` | Hodim beyjigini (`render_badge_png` — lavozim + ism + QR, 80×60 mm) shu navbatga qo'yadi. Beyjik brauzerdan chop etilmaydi: agent DEVMODE bilan qog'ozni majburlaydi, drayver sozlamasi ahamiyatsiz |
 
 `print_label` oqimi:
 
 1. `app.services.labels.load_label_data(db, instance_id)` — nusxa/detal/buyurtma ma'lumoti va cutmap teshiklari yig'iladi; topilmasa `skip:{instance_id}`.
 2. `render_label_png(data)` → `base64` (`png_b64`). Yagona format — PNG: GoDEX G500-U faqat USB, agent rasmni Windows drayveri (GDI) orqali chizadi, printer dialekti kerak emas.
-3. ARQ worker kontekstidagi Redis'ga `LPUSH`: `PRINT_QUEUE_KEY = "mes:print:queue"` ro'yxatiga JSON job `{"type": "print", "instance_id", "png"}` → `queued:{instance_id}` (TZ 2.2.2).
+3. ARQ worker kontekstidagi Redis'ga `LPUSH`: `print_queue_key(agent_id)` ro'yxatiga (`mes:print:queue:{agent_id}`, manzilsiz bo'lsa `mes:print:queue`) JSON job `{"type": "print", "job_id", "instance_id", "png"}` → `queued:{instance_id}` (TZ 2.2.2).
 4. Worker kontekstida Redis bo'lmasa — `logger.error` + `lost:{instance_id}`.
 
 To'liq zanjir:
@@ -515,7 +515,7 @@ To'liq zanjir:
 ```
 Terminal "Chop etish"
   -> POST /api/v1/terminal/labels/{instance_id}   (label_printed_at + ws "label.printed")
-  -> arq print_label: render_label_png -> LPUSH mes:print:queue
+  -> arq print_label: render_label_png -> LPUSH mes:print:queue:{agent_id}
   -> /ws/bridge (per-agent token -> bridge_agent.token_hash): brpop -> agentga yuboradi, ack kutadi
   -> bridge-agent: print-queue.jsonl (durable) -> Windows GDI -> USB GoDEX
 ```

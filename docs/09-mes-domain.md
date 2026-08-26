@@ -342,7 +342,7 @@ sahifasida qoladi. `GET /scans/recent` endpointi olib tashlangan.
 - Fan-out Redis pub/sub (`mes:events`) orqali — gunicorn workerlar orasida; pool lifespan'da doim
   ochiladi (flag yo'q), publish xato bersa lokal yetkazishga tushadi.
 - `/ws/bridge` — tsex bridge-agenti (per-agent pairing tokeni: `Authorization: Bearer` header, sha256
-  → `bridge_agent.token_hash`; umumiy `BRIDGE_TOKEN` faqat legacy moslik): Redis `mes:print:queue`
+  → `bridge_agent.token_hash`; umumiy `BRIDGE_TOKEN` faqat legacy moslik): Redis `mes:print:queue:{agent_id}`
   dan chop etish joblarini oladi, ack qilinmagan job qayta navbatga qaytadi. `can_print=False`
   agent (printersiz skan-forvard stansiyasi) navbatdan job OLMAYDI — brpop o'rniga sleep, aks
   holda u umumiy navbatdan chekni "o'g'irlab" lokalida qoldirardi. `touch_agent()` har
@@ -392,7 +392,7 @@ terminal (POST /terminal/labels/{instance_id})   → label_printed_at + ws "labe
   (DELETE o'sha path — chekni bekor qilish: label_printed_at=None + ws "label.cancelled";
    ARRA UI'da chiqarilgan katak yashil="kesildi", qayta chop etish bekor qilishdan keyingina)
   → arq task print_label (app/tasks/__init__.py)
-     · render_label_png → LPUSH mes:print:queue = {type, instance_id, png(base64)}
+     · render_label_png → LPUSH mes:print:queue:{agent_id} = {type, job_id, instance_id, png(base64)}
   → /ws/bridge (per-agent token auth: Bearer → sha256 bridge_agent.token_hash; Redis brpop + ack;
      ack kelmasa rpush bilan navbatga qaytadi)
   → bridge-agent/agent.py → print-queue.jsonl → Windows GDI → USB GoDEX

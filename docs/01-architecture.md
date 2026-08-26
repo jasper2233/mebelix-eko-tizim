@@ -118,7 +118,7 @@ flowchart LR
     A -->|job enqueue - arq pool| R
     A <-->|"pub/sub mes:events (ws_redis)"| R
     R -->|job dequeue| W
-    W -->|"LPUSH mes:print:queue<br/>(png base64)"| R
+    W -->|"LPUSH mes:print:queue:{agent_id}<br/>(png base64)"| R
     W --> P
 ```
 
@@ -148,7 +148,8 @@ Asosiy nuqtalar:
   `compare_digest` bilan hamon qabul qilinadi). Batafsil:
   [4.3](#43-yorliq-chop-etish-zanjiri).
 - **Yorliq chop etish oqimi**: `print_label` ARQ task base64 PNG
-  (`render_label_png`) ni Redis `mes:print:queue` ro'yxatiga qo'yadi →
+  (`render_label_png`) ni Redis `mes:print:queue:{agent_id}` ro'yxatiga qo'yadi
+  (manzilsiz job — umumiy `mes:print:queue`) →
   `/ws/bridge` uni printerli kompyuterdagi `bridge-agent/agent.py` ga uzatadi
   (agent lokal JSONL navbatga yozib ack qaytaradi — yorliq yo'qolmaydi) →
   Windows drayveri orqali USB GoDEX'ga chiqadi. G500-U'da tarmoq porti yo'q,
@@ -269,7 +270,7 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
    |                 |                     |<----------------|               |              |
    |                 |                     | load_label_data(db, id)         |              |
    |                 |                     | render_label_png() -> base64    |              |
-   |                 |                     | LPUSH mes:print:queue --------->|              |
+   |                 |                     | LPUSH mes:print:queue:{agent_id} ->|            |
    |                 |  /ws/bridge: brpop -> {"type","instance_id","png"} -->|              |
    |                 |<---------- ack {"ok": true} (agent diskka yozgach) ---|              |
    |                 |                     |                 |  JSONL -> flusher -> GDI --->|
@@ -280,7 +281,8 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   `print_label` job qo'yiladi, `label.printed` WS eventi tarqatiladi.
 - `app/tasks/__init__.py:print_label` yorliqni render qilib faqat Redis navbatiga
   qo'yadi. Job JSON: `{"type":"print","instance_id","png"}` →
-  `LPUSH mes:print:queue`. Redis yo'q bo'lsa job `lost:` bilan yakunlanadi va
+  `LPUSH print_queue_key(agent_id)` — `agent_id` bo'lsa `mes:print:queue:{agent_id}`,
+  bo'lmasa umumiy `mes:print:queue`. Redis yo'q bo'lsa job `lost:` bilan yakunlanadi va
   xato log'ga yoziladi. Server printerga to'g'ridan-to'g'ri chiqmaydi — yagona
   yo'l bridge-agent.
 - `/ws/bridge` (`app/api/routes/ws.py`) navbatni `brpop(timeout=5)` bilan so'radi;

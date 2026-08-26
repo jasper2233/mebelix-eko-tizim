@@ -245,22 +245,23 @@ Terminal (arrachi)
   POST /api/v1/terminal/labels/{instance_id}          (backend/app/api/routes/terminal.py)
     ├── instance.label_printed_at = now()
     ├── ws_manager.publish("label.printed", …)         → brauzerlarga live yangilanish
-    └── arq enqueue_job("print_label", instance_id)
+    └── printer_agent(db, machine_id) → arq enqueue_job("print_label", instance_id, agent_id)
           ↓
   print_label task                                     (backend/app/tasks/__init__.py)
     ├── load_label_data(db, instance_id)               (backend/app/services/labels.py)
     ├── render_label_png(data)      → PNG, base64
-    └── redis.lpush("mes:print:queue", job)            → job = {type, instance_id, png}
+    └── redis.lpush(print_queue_key(agent_id), job)    → job = {type, job_id, instance_id, png}
           ↓
   GET /api/v1/ws/bridge  (Authorization: Bearer …)     (backend/app/api/routes/ws.py)
-    brpop("mes:print:queue", 5) → send → ack kutish → yo'q bo'lsa rpush (qaytarib qo'yish)
+    brpop([o'z kaliti, umumiy kalit], 5) → send → ack kutish → yo'q bo'lsa src_key ga rpush
           ↓
   bridge-agent (tsex)                                   (bridge-agent/agent.py)
     uplink() → local_enqueue(job) → ack → FLUSH_EVENT.set()
     flusher() → send_to_printer(png)                   → Windows GDI → USB GoDEX
 ```
 
-Job'ning Redis'dagi kaliti — `PRINT_QUEUE_KEY = "mes:print:queue"` (`backend/app/tasks/__init__.py`).
+Job'ning Redis kaliti — `print_queue_key(agent_id)`: `mes:print:queue:{agent_id}` manzilli job uchun,
+`PRINT_QUEUE_KEY = "mes:print:queue"` manzilsizi uchun (`backend/app/tasks/__init__.py`).
 
 ### Ishonchlilik: hech bir yorliq yo'qolmaydi
 
@@ -309,7 +310,8 @@ Amallar: **yangi kod** (`POST /{id}/code` — eski tokenni ham bekor qiladi, kom
 | `load_label_data(db, instance_id)` | `LabelData` (DB'dan yig'iladi, cutmap'dagi haqiqiy teshiklar bilan) | `print_label` task va PNG endpoint uchun umumiy manba |
 | `render_label_png(d, scale=1)` | 80×60 mm, 203 dpi (8 dot/mm → 640×480 px), **1-bit** PNG | agent'ning Windows GDI yo'li; `GET /api/v1/terminal/labels/{id}.png` (brauzerdan istalgan printerga) |
 
-`print_label` task jobga faqat base64 `png` soladi — job JSON: `{"type": "print", "instance_id", "png"}`. PNG printer dialektiga bog'liq emas — server hech qanday xom printer formatini generatsiya qilmaydi, chizishni Windows drayveri bajaradi.
+`print_label` task jobga base64 `png` va har yuborishda yangi `job_id` soladi — job JSON:
+`{"type": "print", "job_id", "instance_id", "png"}`; agent takrorni `job_id` bo'yicha tashlaydi. PNG printer dialektiga bog'liq emas — server hech qanday xom printer formatini generatsiya qilmaydi, chizishni Windows drayveri bajaradi.
 
 PNG maketi GibSaw `mebelix.lbl` ga taqlid qiladi: chap ustun — logo, `Formatka` + zakaz kodi, detal kodi, loyiha nomi, 2×2 kromka jadvali (tagchiziq bilan), katta `L x W = count`, `N_detal` nomi, marshrut qatori (`Marshrut: 7/11/8` — `LabelData.route_codes`, y=41.5 mm; detal nomiga qo'shilmaydi, chunki nom 24 belgida kesiladi), material va sana; o'ng ustun — QR (tepada, `qrcode` kutubxonasi bilan chiziladi) va vertikal detal eskizi. Eskizda kromka konturdan 1 mm tashqarida qalin chiziq bilan, `d.texture` bo'lsa uzunlik bo'ylab 3 ta chiziq, `d.holes` (cutmap'dan olingan haqiqiy teshiklar) aylana/qirra tikkalari bilan chiziladi.
 

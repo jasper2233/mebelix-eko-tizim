@@ -233,7 +233,7 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | GET | `/api/v1/employees/{id}` | `StaffReadUser` | Topilmasa 404 |
 | PATCH | `/api/v1/employees/{id}` | `AdminUser` | `assigned_post_ids` o'zgarsa qayta validatsiya |
 | POST | `/api/v1/employees/{id}/badge` | `AdminUser` | Beyjik yo'qolganda (TZ 4.2): yangi `uuid4` beriladi — eskisi darhol ishlamay qoladi, tarix shu hodimda qoladi; eski beyjik audit `meta`sida saqlanadi |
-| POST | `/api/v1/employees/{id}/print` | `AdminUser` | Beyjikni chop etish navbatiga qo'yadi (`print_badge` arq task -> Redis `mes:print:queue` -> bridge-agent -> GoDEX). Brauzerdan chop etish TASHLANDI: u drayverdagi saqlangan qog'oz o'lchamiga tayanardi, agent esa DEVMODE bilan 80×60 ni majburlaydi |
+| POST | `/api/v1/employees/{id}/print` | `AdminUser` | Beyjikni chop etish navbatiga qo'yadi (`print_badge` arq task -> Redis `mes:print:queue` — beyjik `agent_id` SIZ navbatga tushadi, ya'ni uni istalgan printer oladi -> bridge-agent -> GoDEX). Brauzerdan chop etish TASHLANDI: u drayverdagi saqlangan qog'oz o'lchamiga tayanardi, agent esa DEVMODE bilan 80×60 ni majburlaydi |
 | DELETE | `/api/v1/employees/{id}` | `AdminUser` | Soft-delete. Ochiq smenalari shu tranzaksiyada yopiladi (`end_employee_sessions`) — aks holda ular postni E006 bilan tiqilib qoldirardi |
 
 **Hodim nofaol qilinganda yoki o'chirilganda** `end_employee_sessions()` uning OCHIQ smenalarini yopadi. Busiz nofaol hodim brigadaning LANGAR smenasi egasi bo'lib qolsa, o'sha ish markazidagi har skan E006 "Hodim nofaol" bilan rad etilardi (`scanning.active_session`) — brigadaning qolgan a'zolari aybsiz bo'lsa ham post to'liq to'xtardi. Audit xabariga nechta smena yopilgani yoziladi.
@@ -403,8 +403,8 @@ terminal (POST /terminal/labels/{instance_id})
   → arq: app.tasks.print_label(instance_id)
       load_label_data(db, instance_id) → LabelData
       render_label_png(data)   → PNG (80×60 mm, 203 dpi, 1-bit) → base64
-  → Redis LPUSH mes:print:queue
-      job = {"type": "print", "instance_id": ..., "png": <base64>}
+  → Redis LPUSH mes:print:queue:{agent_id}  (manzilsiz bo'lsa — mes:print:queue)
+      job = {"type": "print", "job_id": <uuid4hex>, "instance_id": ..., "png": <base64>}
   → WS /api/v1/ws/bridge (brpop + ack)
   → bridge-agent → print-queue.jsonl (durable) → Windows GDI → USB GoDEX
 ```

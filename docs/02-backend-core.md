@@ -34,7 +34,7 @@ backend/app/main.py
 | `backend/app/core/utils/__init__.py` | Bo'sh package marker |
 | `backend/app/core/utils/queue.py` | arq Redis pool uchun global holder |
 | `backend/app/core/utils/rate_limit.py` | Redis asosidagi rate limiting (`RateLimiter`, `RateLimit`) |
-| `backend/app/tasks/__init__.py` | arq'ga ro'yxatga olinadigan vazifalar (`print_label`, `print_pachka_label`, `print_badge`) + `PRINT_QUEUE_KEY` |
+| `backend/app/tasks/__init__.py` | arq'ga ro'yxatga olinadigan vazifalar (`print_label`, `print_pachka_label`, `print_badge`) + `PRINT_QUEUE_KEY`, `print_queue_key()`, `printer_agent()`, `AGENT_ONLINE_WINDOW` |
 
 ---
 
@@ -239,23 +239,37 @@ class WorkerSettings:
 
 ### `backend/app/tasks/__init__.py` — ro'yxatga olingan vazifa
 
-- `PRINT_QUEUE_KEY = "mes:print:queue"` — bridge-agent shu Redis ro'yxatini bo'shatadi (TZ 2.2.2). `backend/app/api/routes/ws.py` ham shu konstantani import qiladi.
-- `print_label(ctx, instance_id)` — yorliq chiqarish vazifasi (TZ 7.1.4). Bitta DB sessiyasida (`local_session`) `services/labels.py`dan:
+- `PRINT_QUEUE_KEY = "mes:print:queue"` — umumiy (manzilsiz) navbat. `print_queue_key(agent_id)` esa
+  manzilli kalitni beradi: `agent_id` bo'lsa `mes:print:queue:{agent_id}`, bo'lmasa umumiy kalit.
+  Chek SO'RAGAN ish markazining printeriga borishi uchun shunday: `ws.py` ulangan agent uchun
+  `brpop([o'z kaliti, umumiy kalit], timeout=5)` qiladi — ya'ni avval o'ziga atalganini oladi,
+  keyin manzilsizini. Ack kelmasa job AYNAN kelgan kalitiga (`src_key`) qaytariladi.
+- `printer_agent(db, machine_id)` — shu ish markaziga bog'langan, `can_print=True` va oxirgi
+  `AGENT_ONLINE_WINDOW` (6 daqiqa) ichida ko'ringan agentni topadi; `terminal.py` va `pachka.py`
+  navbatga qo'yishdan OLDIN shuni chaqiradi. `employees.py` dagi beyjik chop etish esa `agent_id`
+  bermaydi — beyjik umumiy navbatga tushadi va uni istalgan printer olishi mumkin.
+- `print_label(ctx, instance_id, agent_id=None)` — yorliq chiqarish vazifasi (TZ 7.1.4).
+  Bitta DB sessiyasida (`local_session`) `services/labels.py`dan:
   - `load_label_data(db, instance_id)` — `None` bo'lsa `"skip:{id}"` qaytarib chiqadi;
   - `render_label_png(data)` — o'sha yorliqning 80×60 mm / 203 dpi rasteri; `base64` bilan kodlanadi.
 
   **Nega PNG:** GoDEX G500-U USB bilan ishlaydi va bridge-agent uni Windows drayveri (GDI) orqali chizadi — PNG printer dialektiga bog'liq emas.
 
-  So'ng arq context'idagi Redis (`ctx["redis"]`) orqali `LPUSH mes:print:queue`, job JSON: `{"type": "print", "instance_id", "png"}` (`png` — base64 PNG). Natija `"queued:{id}"`. Redis mavjud bo'lmasa — xato loglanadi, `"lost:{id}"`.
+  So'ng arq context'idagi Redis (`ctx["redis"]`) orqali `LPUSH print_queue_key(agent_id)`, job JSON:
+  `{"type": "print", "job_id", "instance_id", "png"}` (`png` — base64 PNG). `job_id` — har
+  yuborishda yangi `uuid4().hex`: agent takror yetkazilgan jobni aynan shu kalit bo'yicha tashlaydi
+  (`SEEN_JOBS`). Natija `"queued:{id}"`. Redis mavjud bo'lmasa — xato loglanadi, `"lost:{id}"`.
 
 **To'liq zanjir (TZ 2.2):**
 
 ```
 terminal → POST /api/v1/terminal/labels/{instance_id}
   → label_printed_at yoziladi + ws_manager.publish("label.printed", ...)
-  → queue.pool.enqueue_job("print_label", instance_id)
-  → arq worker: render_label_png → LPUSH mes:print:queue
-  → /ws/bridge (per-agent token auth; faqat can_print=True agent BRPOP qiladi; ack talab qilinadi, ack kelmasa RPUSH bilan qaytariladi)
+  → printer_agent(db, machine_id) → shu ish markazining printeri (yoki None)
+  → queue.pool.enqueue_job("print_label", instance_id, agent_id)
+  → arq worker: render_label_png → LPUSH mes:print:queue:{agent_id}  (agent_id yo'q bo'lsa — mes:print:queue)
+  → /ws/bridge (per-agent token auth; faqat can_print=True agent BRPOP qiladi;
+     brpop([o'z kaliti, umumiy kalit]); ack talab qilinadi, ack kelmasa src_key ga RPUSH bilan qaytariladi)
   → bridge-agent → print-queue.jsonl (durable) → Windows GDI (_print_png_gdi) → USB GoDEX G500-U
 ```
 
