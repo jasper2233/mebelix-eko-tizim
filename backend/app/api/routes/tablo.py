@@ -6,7 +6,7 @@ from sqlalchemy.orm import defer
 
 from app.api.deps import CurrentUser, SessionDep
 from app.crud import crud_orders
-from app.models import ORDER_FAT_COLUMNS, Order, Part, PartRoute, Post, Product
+from app.models import ORDER_FAT_COLUMNS, PRIORITY_RANK, Order, Part, PartRoute, Post, Product
 from app.models.enums import OrderStatus
 from app.schemas.tablo import StageAgg, TabloMatrix, TabloOrderDetail, TabloOrderRow, TabloPartRow, TabloPostCol
 from app.services.metrics import part_volume
@@ -53,7 +53,10 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
                     Order.status == OrderStatus.PRODUCTION,
                     Order.is_deleted == False,  # noqa: E712
                 )
-                .order_by(Order.deadline.asc().nulls_last(), Order.id)
+                # Terminal ro'yxati bilan AYNAN bir xil tartib (`PRIORITY_RANK`):
+                # ishchi o'z postida ko'rgan navbat devordagi taxta bilan
+                # mos tushsin.
+                .order_by(PRIORITY_RANK, Order.deadline.asc().nulls_last(), Order.id)
             )
         )
         .scalars()

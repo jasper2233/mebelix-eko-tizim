@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Date, DateTime, ForeignKey, Index, Numeric, String, Text, text
+from sqlalchemy import Case, Date, DateTime, ForeignKey, Index, Numeric, String, Text, case, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -188,3 +188,16 @@ class OrderFile(BaseModel):
     filename: Mapped[str] = mapped_column(String(255), kw_only=True)
     size: Mapped[int | None] = mapped_column(default=None, kw_only=True)
     meta: Mapped[dict[str, Any]] = mapped_column(JSONB, default_factory=dict, kw_only=True)
+
+
+#: Buyurtma navbati: SHOSHILINCH birinchi, keyin muddat. Tsexda bitta tartib
+#: bo'lishi kerak — ishchi terminalda ko'rgan navbat devordagi taxtadagi bilan
+#: mos tushsin, aks holda "qaysi biri to'g'ri?" degan savol tug'iladi. Ilgari
+#: taxta prioritetni umuman hisobga olmasdi va shoshilinch buyurtma 19 tadan
+#: 16-o'rinda turib, ekran ostida kesilib qolishi mumkin edi.
+PRIORITY_RANK: Case[int] = case(
+    (Order.priority == OrderPriority.URGENT, 0),
+    (Order.priority == OrderPriority.HIGH, 1),
+    (Order.priority == OrderPriority.MEDIUM, 2),
+    else_=3,
+)

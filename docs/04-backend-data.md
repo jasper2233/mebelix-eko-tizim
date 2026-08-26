@@ -158,7 +158,7 @@ Ilgari barcha printerlar server `.env` idagi **bitta** `BRIDGE_TOKEN` bilan ishl
 
 ### 1.5 `backend/app/models/__init__.py`
 
-`__all__` da 20 nom: 18 model klassi — `AuditLog`, `BridgeAgent`, `Client`, `Employee`, `Machine`, `Order`, `OrderFile`, `Organization`, `Pachka`, `PachkaItem`, `Part`, `PartInstance`, `PartRoute`, `Post`, `Product`, `Scan`, `User`, `WorkSession` — hamda `ORDER_FAT_COLUMNS`/`PART_FAT_COLUMNS` defer-tuple'lari (1.4-bo'lim). Alembic `env.py` ham endi shu faylga tayanadi: statik `import app.models` metadata'ni to'ldiradi (avvalgi `pkgutil.walk_packages` dinamik importi olib tashlangan) — yangi model fayli qo'shilsa uni `__init__.py` ga import qilish shart.
+`__all__` da 21 nom: 18 model klassi — `AuditLog`, `BridgeAgent`, `Client`, `Employee`, `Machine`, `Order`, `OrderFile`, `Organization`, `Pachka`, `PachkaItem`, `Part`, `PartInstance`, `PartRoute`, `Post`, `Product`, `Scan`, `User`, `WorkSession` — hamda `ORDER_FAT_COLUMNS`/`PART_FAT_COLUMNS` defer-tuple'lari (1.4-bo'lim) va `PRIORITY_RANK` — buyurtma navbatining `case()` ifodasi (URGENT→HIGH→MEDIUM→LOW). Oxirgisi modelda turadi, chunki uni TERMINAL ro'yxati ham, TABLO ham ishlatadi va ikki nusxa bo'lsa navbat ikki xil chiqardi. Alembic `env.py` ham endi shu faylga tayanadi: statik `import app.models` metadata'ni to'ldiradi (avvalgi `pkgutil.walk_packages` dinamik importi olib tashlangan) — yangi model fayli qo'shilsa uni `__init__.py` ga import qilish shart.
 
 ---
 

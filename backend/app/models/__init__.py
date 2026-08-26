@@ -6,6 +6,7 @@ from .machine import Machine
 from .order import (
     ORDER_FAT_COLUMNS,
     PART_FAT_COLUMNS,
+    PRIORITY_RANK,
     Order,
     OrderFile,
     Part,
@@ -21,6 +22,7 @@ from .user import User
 
 __all__ = [
     "ORDER_FAT_COLUMNS",
+    "PRIORITY_RANK",
     "PART_FAT_COLUMNS",
     "AuditLog",
     "BridgeAgent",

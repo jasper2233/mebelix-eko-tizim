@@ -14,6 +14,7 @@ from app.core.exceptions import ForbiddenException, NotFoundException
 from app.core.ws import ws_manager
 from app.crud import crud_orders, log_action
 from app.models import (
+    PRIORITY_RANK,
     Employee,
     Machine,
     Order,
@@ -30,7 +31,6 @@ from app.models.enums import (
     POST_ROLES,
     EmployeeStatus,
     FileKind,
-    OrderPriority,
     OrderStatus,
     PostCode,
     UserRole,
@@ -243,12 +243,6 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
     """Active orders relevant to this terminal (for the ARRA map order picker)."""
     machine, post = ctx
     # SHOSHILINCH tepada tursin: prioritet birinchi, keyin deadline (nulls oxirida)
-    priority_rank = case(
-        (Order.priority == OrderPriority.URGENT, 0),
-        (Order.priority == OrderPriority.HIGH, 1),
-        (Order.priority == OrderPriority.MEDIUM, 2),
-        else_=3,
-    )
     rows = (
         await db.execute(
             select(
@@ -268,7 +262,7 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
                 (PartRoute.machine_id == machine.id) | (PartRoute.machine_id.is_(None)),
             )
             .group_by(Order.id)
-            .order_by(priority_rank, Order.deadline.asc().nulls_last(), Order.id)
+            .order_by(PRIORITY_RANK, Order.deadline.asc().nulls_last(), Order.id)
         )
     ).all()
 
