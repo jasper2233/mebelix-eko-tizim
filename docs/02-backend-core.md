@@ -73,7 +73,7 @@ app = create_application(router=router, settings=settings)
 | Printing (TZ 12.3 / 13.2) | `BRIDGE_TOKEN=""` — **legacy**, ixtiyoriy: eski agentlar uchun umumiy token. Printerlar endi per-agent pairing orqali ulanadi (`bridge_agent` jadvali), shuning uchun bu sozlama bo'sh qolganda ham chop etish ishlaydi. Yorliqlar faqat shu navbat orqali USB GoDEX'ga boradi (G500-U'da tarmoq porti yo'q), shuning uchun printer manzili sozlamasi yo'q |
 | Startup probes | `STARTUP_RETRY_MAX_ATTEMPTS=5`, `STARTUP_RETRY_DELAY_SECONDS=2` |
 | Threadpool | `THREADPOOL_TOKENS=100` (AnyIO sync-bridge slotlari) |
-| Reverse-proxy | `FORWARDED_ALLOW_IPS=["*"]` — X-Forwarded-* headerlariga ishoniladigan IP'lar |
+| Reverse-proxy | `FORWARDED_ALLOW_IPS=["172.16.0.0/12"]` — X-Forwarded-* ga ishoniladigan upstream (compose tarmog'i). **`*` QO'YILMAYDI**: unda uvicorn XFF'ning eng CHAP, ya'ni mijoz bergan qiymatini oladi va login rate-limiti header almashtirish bilan aylanib o'tiladi (o'lchandi: 12 urinishdan 0 tasi bloklandi) |
 | Env / CORS | `ENVIRONMENT`, `CORS_ORIGINS=["http://localhost:5173"]`, `CORS_METHODS`, `CORS_HEADERS` |
 
 - Computed field'lar: `POSTGRES_URI` (`user:pass@host:port/db`) va `REDIS_URL` (`redis://host:port`).

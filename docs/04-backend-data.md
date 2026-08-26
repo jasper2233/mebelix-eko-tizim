@@ -209,7 +209,7 @@ Har bir registr moduli standart uchlik (`*Read` / `*Create` / `*Update`) beradi:
 | `OrderRead` | Registr qatori (TZ 10.3.1): `number`, `status`, `priority`, `client_id` + route'da join qilinadigan `client_name`, `deadline`, `amount`, `advance_payment`, `notes`, `project_name`, barcha lifecycle timestamplar |
 | `MaterialUsageItem` | `material_usage` yozuvi (ingest.py yozadi): `name`, `code` (goods SKU, NULL bo'lishi mumkin), `kind` (`sheet`/`band`/`hardware`), `count`, `unit` — buyurtma kartasining Furnituralar tabi shu ro'yxatni ko'rsatadi |
 | `OrderFileRead` | Fayl qatori: `id`, `kind`, `filename`, `size`, `part_id`, `meta: dict[str, Any]` (default `{}` — anketa rasmida `{"room_id", "content_type"}`), `created_at` |
-| `OrderDetail` | `OrderRead` + `machine_assignments`, `project_uuid`/`project_loaded_at`, `survey: dict \| None` (xom JSONB — texnolog o'qiydi), `material_usage: list[MaterialUsageItem]`, `files: list[OrderFileRead]`, `parts_count`, `instances_count` (buyurtma kartasi, TZ 10.3.3), `cancelled_by_name` (ISM, id emas — kartochkada "Bekor sababi" yonida turadi; `cancelled_by_id` bazada yozilardi-yu hech qayerda o'qilmasdi, ya'ni foydalanuvchi sababni ko'rib kimligini audit logdan qidirishga majbur bo'lardi; ism faqat bekor qilingan buyurtmada so'raladi) |
+| `OrderDetail` | `OrderRead` + `machine_assignments`, `project_uuid`/`project_loaded_at`/`project_name` (**yuklangan fayl nomi, kengaytmasiz**: `2064 alisher.project` -> `2064 alisher`; ilgari fayl ICHIDAGI `<root name=...>` atributidan olinardi va GibLab eksportlarining bir qismida u yo'q — prodda 39 buyurtmadan 20 tasida nom bo'sh qolgan edi, migratsiya `b8e4a71c92d5` ularni to'ldirdi), `survey: dict \| None` (xom JSONB — texnolog o'qiydi), `material_usage: list[MaterialUsageItem]`, `files: list[OrderFileRead]`, `parts_count`, `instances_count` (buyurtma kartasi, TZ 10.3.3), `cancelled_by_name` (ISM, id emas — kartochkada "Bekor sababi" yonida turadi; `cancelled_by_id` bazada yozilardi-yu hech qayerda o'qilmasdi, ya'ni foydalanuvchi sababni ko'rib kimligini audit logdan qidirishga majbur bo'lardi; ism faqat bekor qilingan buyurtmada so'raladi) |
 | `OrderCreate` | Manager DRAFT ochadi (TZ 6.2): `client_id`, `deadline`, `priority`, `amount`/`advance_payment` (`ge=0`), `notes`; `number` avto (`B-2026-001`) |
 | `OrderUpdate` | Hammasi optional (shu jumladan `advance_payment`) |
 | `OrderCancel` | `reason` (3–500 belgi, majburiy) |
@@ -395,7 +395,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 
 ### 4.4 Versiyalar zanjiri — `backend/app/migrations/versions/`
 
-42 ta migratsiya, head: `a7c419e0b3d5`.
+43 ta migratsiya, head: `b8e4a71c92d5`.
 
 **Olib tashlangan ikki modulning migratsiyalari ATAYLAB qoldirilgan** — OEE
 (37–39) va materiallar ombori (27–28). Modul kodi butunlay
@@ -455,6 +455,7 @@ ikkitasi NULL qabul qiladi.
 | 40 | `a1c9d4f2b60e` | `a1c9d4f2b60e_brak_jadvali_olib_tashlandi.py` | **`defect` jadvali DROP** — modul umuman ishlatilmaydi, prodda 0 qator, yetim jadval sxemani chalg'itardi. `10a4a7945eac` o'chirilmaydi (prodda qo'llanib bo'lingan), o'rniga shu migratsiya tushiradi; `downgrade` jadvalni to'liq tiklaydi |
 | 41 | `c5e81b3a97d2` | `c5e81b3a97d2_chek_qaysi_postda_chiqarilgani.py` | **`part_instance.label_post_id`** — chekni qaysi post chiqargani (FK `post`) |
 | 42 | `a7c419e0b3d5` | `a7c419e0b3d5_paz_freza_detaliga_prisadka_qadami.py` | **Paz/freza bor detalga PRISADKA qadami** — mavjud buyurtmalarga ham qo'llanadi. Ilgari faqat TESHIK hisobga olinardi va paz/freza-only detal marshrutsiz qolardi |
+| 43 | `b8e4a71c92d5` | `b8e4a71c92d5_project_name_fayl_nomidan.py` | **`order.project_name` backfill** — bo'sh qolganlari `order_file` dagi `.project` yo'lining fayl nomidan to'ldiriladi. Sabab: nom ilgari fayl ichidagi `<root name=...>` dan olinardi, GibLab eksportlarining bir qismida esa u yo'q |
 
 Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kind=DOCUMENT` + `meta` JSONB bilan ishlatiladi (1.4.1-bo'lim).
 

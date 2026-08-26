@@ -84,9 +84,9 @@ Lokaldan asosiy farqlar:
 - **Prod composeda `build:` bo'limlari yo'q — image'lar tayyor holda registrydan olinadi.** `${REGISTRY:-ghcr.io/dshukriddinov}/mebelix-mes-backend:${TAG:-latest}` (`api` va `worker` bittasini bo'lishadi) va `${REGISTRY:-ghcr.io/dshukriddinov}/mebelix-mes-frontend:${TAG:-latest}`. CI ikkala qiymatni ham beradi — `REGISTRY=ghcr.io/<owner>` va `TAG=<git sha>` (git sha rollback uchun, pastda `scripts/deploy.sh`); defaultlar lokal qo'lda ishga tushirishga. Image'larni GitHub Actions quradi va ghcr.io ga yuboradi (`images` job, pastda CI bo'limi), server faqat `pull` qiladi. Lokal build `docker-compose.local.yml` da qoladi — u o'z `build:` bo'limlarini saqlab qolgan.
 - **`api`** production serverda ishlaydi:
   ```
-  bash -c "/app/scripts/prestart.sh && gunicorn app.main:app -w ${GUNICORN_WORKERS:-4} -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 --forwarded-allow-ips '*'"
+  bash -c "/app/scripts/prestart.sh && gunicorn app.main:app -w ${GUNICORN_WORKERS:-4} -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 --forwarded-allow-ips '172.16.0.0/12'"
   ```
-  `--forwarded-allow-ips` flag sifatida beriladi, chunki gunicorn `FORWARDED_ALLOW_IPS` env'ini ham o'qiydi va pydantic'ning JSON list formati (`'["*"]'`) uni yiqitadi. `env_file: .env` orqali to'liq konfiguratsiya, `POSTGRES_SERVER=db` / `REDIS_HOST=redis` override. `restart: always`. Healthcheck: `curl -f http://localhost:8000/api/v1/health` (`start_period: 40s`) — `caddy` shu healthcheck'ka tayanadi.
+  `--forwarded-allow-ips` flag sifatida beriladi, chunki gunicorn `FORWARDED_ALLOW_IPS` env'ini ham o'qiydi va pydantic'ning JSON list formati (`'["172.16.0.0/12"]'`) uni yiqitadi. `env_file: .env` orqali to'liq konfiguratsiya, `POSTGRES_SERVER=db` / `REDIS_HOST=redis` override. `restart: always`. Healthcheck: `curl -f http://localhost:8000/api/v1/health` (`start_period: 40s`) — `caddy` shu healthcheck'ka tayanadi.
 - **`worker`** — `api` bilan aynan bir xil image, command: `arq app.core.worker.WorkerSettings`, `restart: always`. Lokaldan farqli o'laroq prodda healthcheck bor: `arq app.core.worker.WorkerSettings --check` (`interval: 30s`, `start_period: 40s` — `api` bilan bir xil, worker startda DB ulanishini kutadi). U Redis'dagi worker yozuvini o'qiydi, yozuvni esa worker `WorkerSettings.health_check_interval = 30` bo'yicha yangilab turadi (`backend/app/core/worker.py`; arq defaulti 3600s — bir soat, unda yangi ko'tarilgan worker soat davomida "unhealthy" ko'rinardi). Busiz worker jimgina o'lsa ham konteyner `up` bo'lib turardi: chek chiqarish navbati to'xtaydi, lekin deploy ham, monitoring ham buni ko'rmasdi.
 - **`db` / `redis`** credentiallari defaultsiz — `.env` da majburiy (`${POSTGRES_USER}` va h.k.).
 - **`frontend`** `VITE_API_URL=""` (bo'sh string) bilan build qilinadi — generatsiyalangan SDK yo'llari allaqachon `/api/v1` bilan boshlanadi, shuning uchun bo'sh base same-origin so'rovlar beradi va ularni Caddy backendga proxy qiladi (avvalgi `/api` qiymati so'rovlarni `/api/api/v1` ga aylantirib 404 berardi). `VITE_*` build-arglar (`VITE_API_URL=` va `VITE_API_TIMEOUT_MS=30000`) endi compose faylida emas, CI'ning `images` job'ida beriladi — prod uchun ular belgilanadigan yagona joy. Compose'da alohida healthcheck yo'q — image'ning o'z `HEALTHCHECK`i (`frontend/Dockerfile`: `wget --spider http://127.0.0.1/`) yagona manba.
@@ -157,7 +157,9 @@ Blok ichida: security headerlar (`X-Frame-Options SAMEORIGIN`, `X-Content-Type-O
 
 Asosiy site blokidan tashqari alohida **`:8080` bloki** bor — `respond /healthz "OK" 200`. Bu Docker healthcheck uchun doimiy plain-HTTP endpoint: `SITE_ADDRESS` domenga o'tib asosiy blok TLS'ga ko'chganda ham ishlayveradi.
 
-Backend `X-Forwarded-*` headerlariga ishonishi ikki qatlamli: app-level `ProxyHeadersMiddleware` haliyam `.env` dagi `FORWARDED_ALLOW_IPS` dan oladi, lekin prod'da gunicorn darajasi `--forwarded-allow-ips '*'` flagi bilan qattiq belgilangan (yuqoridagi `api` command).
+Backend `X-Forwarded-*` headerlariga ishonishi ikki qatlamli: app-level `ProxyHeadersMiddleware` `.env`/kod default'idagi `FORWARDED_ALLOW_IPS` dan oladi, gunicorn darajasi esa `--forwarded-allow-ips` flagi bilan (yuqoridagi `api` command). **Ikkalasi ham `172.16.0.0/12`** — docker compose tarmog'i, ya'ni Caddy konteyneri.
+
+⚠️ `*` QO'YMANG. `*` da uvicorn XFF'ning eng CHAP (mijoz bergan) qiymatini oladi. 2026-08-26 da o'lchandi: `X-Forwarded-For` ni har so'rovda almashtirgan mijoz login rate-limitini TO'LIQ aylanib o'tdi (barqaror IP'da 8 urinishdan 3 tasi bloklandi, almashib turganda 12 tadan 0 tasi), audit logdagi IP ham soxta bo'lardi. Konkret ro'yxat berilganda uvicorn XFF'ni O'NGDAN chapga yuradi va birinchi ISHONILMAGAN manzilni — Caddy haqiqatan ko'rgan mijoz IP'sini — oladi.
 
 ### `frontend/nginx/index.conf` — konteyner ichidagi static server
 
@@ -465,7 +467,7 @@ Ya'ni sifat nazorati ikki qatlamli: lokalda pre-commit + `make lint`, remote'da 
 | `DEFAULT_PAGE_SIZE` / `MAX_PAGE_SIZE` | `50` / `100` | Pagination |
 | `STARTUP_RETRY_MAX_ATTEMPTS` / `STARTUP_RETRY_DELAY_SECONDS` | `5` / `2` | Lifespan'da DB/Redis health retry |
 | `THREADPOOL_TOKENS` | `100` | AnyIO sync-bridge slotlari |
-| `FORWARDED_ALLOW_IPS` | `["*"]` | `X-Forwarded-*` ga ishoniladigan upstream IPlar; `*` — Caddy/nginx yagona yo'l bo'lganda maqbul |
+| `FORWARDED_ALLOW_IPS` | `["172.16.0.0/12"]` | `X-Forwarded-*` ga ishoniladigan upstream (CIDR bo'lishi mumkin). **`*` EMAS** — u rate-limit aylanib o'tishga yo'l ochadi (yuqoriga qarang) |
 | `ADMIN_PHONE` / `ADMIN_USERNAME` / `ADMIN_PASSWORD` | misol qiymatlar | Startupda yaratiladigan birinchi superuser (E.164 telefon) |
 | `CORS_ORIGINS` | `["http://localhost:5173", "http://localhost:3000"]` | JSON-array CORS originlar |
 | `VITE_API_URL` | `http://localhost:8000` | Frontend API bazasi; reverse proxy ortida (prod compose) `""` — SDK yo'llari o'zi `/api/v1` bilan boshlanadi |

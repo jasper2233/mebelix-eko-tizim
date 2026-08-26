@@ -335,6 +335,15 @@ Rad etilgan skan yakuni umumiy helperda — `log_rejected_scan()` (rollback + au
 (`bridge_agents.py`) ham shu yo'ldan o'tadi, ya'ni operator ko'rmagan rad ham Loglar
 sahifasida qoladi. `GET /scans/recent` endpointi olib tashlangan.
 
+**WS eventlarini tarqatish — `publish_scan_events(outcomes)`** (`scanning.py`), FAQAT
+commitdan keyin chaqiriladi. Bitta skan uchun uni `finalize_scan` chaqiradi; TMO qabuli
+(`tmo.accept_into_tmo`) va qadoqqa skan (`pachka.scan_into_pachka`) esa bir nechta skanni
+bitta tranzaksiyada yozib o'z javobini qaytargani uchun to'g'ridan-to'g'ri shuni chaqiradi.
+Ilgari o'sha ikki yo'l `record_scan_at` qaytargan `ScanOutcome` ni umuman TASHLAB
+YUBORARDI: `scan.recorded` boshqa terminallarga bormasdi (terminal ekranidagi jonli lenta
+uni tinglaydi), `order.stage_completed`/`order.completed` esa efirga umuman chiqmasdi.
+Buyurtma STATUSI baribir to'g'ri yozilardi — yo'qolgani faqat WS xabari edi.
+
 ## 4. Real-time (`app/core/ws.py`, `api/routes/ws.py`)
 
 - `/ws/events` — brauzer klientlar: JWT (cookie yoki `?token=`); rol → scope (terminal/tablo/dashboard),

@@ -552,10 +552,16 @@ contMillDepth    = dz            # kontur bo'ylab frezalash
 
 Parser ularni oldindan qo'yadi; fayl `<var>` bilan e'lon qilsa u ustun keladi.
 
-Ifodalar (`dz+3` kabi) faqat oq ro'yxatdagi arifmetika bilan hisoblanadi: raqam,
-identifikator, `+ - * / ( ) .`; `**` alohida taqiqlangan (`9**9**9` workerni osiltirib
-qo'yardi — DoS himoyasi). Xavfsiz bo'lmagan yoki hisoblab bo'lmaydigan ifoda `ParseError`
-beradi va fayl rad etiladi (`xnc.py`, `_eval_expr`).
+Ifodalar (`dz+3` kabi) `ast.parse` bilan tahlil qilinib, FAQAT quyidagi tugunlar
+bajariladi: son, identifikator (`dz`, `throughBoreDepth`...), unar `+ -`, va ikkilik
+`+ - * /` (qavs bilan). Atribut, chaqiruv, indeks, daraja — hech biri mumkin emas.
+Hisoblab bo'lmaydigan yoki ruxsat etilmagan ifoda `ParseError` beradi va fayl rad
+etiladi (`xnc.py`, `_eval_expr` / `_eval_node`).
+
+Ilgari bu yer `eval()` edi va BELGILAR ro'yxati (`^[\w\s+\-*/().]+$` + `**` taqiqi)
+bilan himoyalangan deb hisoblanardi. Ro'yxat `.` va `()` ga ruxsat bergani uchun taqiq
+aylanib o'tilardi — 2026-08-26 da o'lchandi: `dz.__pow__(9)` hisoblanib ketdi,
+`9 .__pow__(99999999)` esa ARQ workerini 10 soniyadan ortiq CPU bilan band qildi.
 
 **Nechta dastur bo'lishi mumkin?** Korpusda detalga ko'pi bilan ikkita. Lekin GibLab ko'proq
 beradi — yorliq shabloni `XNC1..XNC5` maydonlarini taklif qiladi. Shuning uchun parser
