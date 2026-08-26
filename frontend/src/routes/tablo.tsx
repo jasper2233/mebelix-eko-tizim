@@ -74,11 +74,13 @@ function deadlineCountdown(value?: string | null): [string, string] {
  * qatorda doim turadigan raqam shovqin bo'lardi va haqiqiy muammoni yashirardi.
  */
 function stallLabel(idle?: number | null): string | null {
-  // Matn O'ZINI tushuntirishi shart: "0 SKAN", "TEGILMAGAN", "2 KUN" — uchalasi
-  // ham tsexdagi odamga hech narsa demasdi. "BOSHLANMAGAN" va "3 KUN TURIBDI"
-  // izohsiz o'qiladi va tsex tilida gapiradi.
+  // RAQAMSIZ, ataylab. Qatorda allaqachon "N KUN" bor — muddat ustunida
+  // ("2 / KECHIKDI"). Ikkinchi kun hisobi qanday so'z bilan yozilmasin,
+  // ko'rgan odam uni muddat bilan bog'laydi: "2 KUN TURIBDI" aynan shu sababdan
+  // tushunarsiz bo'lib chiqdi. Taxtaning vazifasi "bu qotib qolgan" deb
+  // ko'rsatish; necha kunligi reestrda bor va u yerda chalkashadigan narsa yo'q.
   if (idle == null) return "BOSHLANMAGAN"
-  return idle >= 2 ? `${idle} KUN TURIBDI` : null
+  return idle >= 2 ? "QIMIRLAMADI" : null
 }
 
 /** Devor ekrani uchun o'lcham shkalasi.
@@ -689,10 +691,14 @@ function TabloPage() {
                       {/* Nom OLDIN, belgi keyin: belgi birinchi turganda nomni
                           surib "431…" qoldirardi. Endi nom qolgan joyni oladi va
                           tartibli qisqaradi, belgi esa o'ng chetda qotib turadi. */}
-                      {/* Belgi bo'lsa nom O'RNIGA chiqadi. Yonma-yon qo'yilganda
-                          ikkalasi ham sig'masdi va nom "431…" bo'lib qolardi —
-                          bu na nom, na ma'lumot. Buyurtma raqami baribir to'liq
-                          turibdi, ya'ni qatorni aniqlash yo'qolmaydi. */}
+                      {/* Teg bo'lsa nom O'RNIGA chiqadi. 1920px da (odatiy TV)
+                          O'LCHANDI: nomga 119-160px kerak, teg bilan yonma-yon
+                          97px qoladi — ya'ni 7 qatorda "4297_Al…" bo'lib kesilardi,
+                          bu na nom, na ma'lumot. Ustunni kengaytirish ham yordam
+                          bermaydi: 3% olinsa "1010/1274" post ustuniga sig'may
+                          qoladi (kerak 150px, qolardi 141px). 2560px da ikkalasi
+                          sig'adi, lekin maket eng tor ekranga qurilishi kerak.
+                          Buyurtma raqami baribir to'liq turibdi. */}
                       <span className="flex items-baseline justify-between gap-2 overflow-hidden">
                         {!stall && o.name && (
                           <span
