@@ -11,6 +11,8 @@ yetarli.
 from fastapi import APIRouter
 
 from .lifecycle import router as lifecycle_router
+from .matrix import router as matrix_router
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 router.include_router(lifecycle_router)
+router.include_router(matrix_router)

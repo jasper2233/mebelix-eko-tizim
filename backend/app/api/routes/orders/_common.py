@@ -13,7 +13,7 @@ from app.core.config import TASHKENT_TZ
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.crud import crud_orders
 from app.models import Order, Post, Scan
-from app.models.enums import OrderStatus, UserRole
+from app.models.enums import OrderStatus, PostCode, UserRole
 from app.models.user import User
 
 _EDITABLE_STATUSES = (OrderStatus.DRAFT, OrderStatus.TECHNICAL_REVIEW)
@@ -105,3 +105,8 @@ async def _get_visible_order(db: SessionDep, user: User, order_id: int) -> Order
     if order.status in _hidden_statuses(user):
         raise NotFoundException("Buyurtma topilmadi.")
     return order
+
+
+#: Nostandart marshrut faqat shu postlardan boshlanadi: detal yo arrada kesiladi,
+#: yo roverda. Ikkalasi ham chek chiqaradi — boshqa post boshlansa detalda QR bo'lmaydi.
+_ROUTE_START_POSTS = (PostCode.ARRA, PostCode.ROVER)
