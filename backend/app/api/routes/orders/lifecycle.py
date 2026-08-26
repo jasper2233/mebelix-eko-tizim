@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import Row, delete, func, or_, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import defer
 
@@ -19,7 +19,7 @@ from app.api.deps import (
     TexnologUser,
     client_ip,
 )
-from app.core.config import TASHKENT_TZ, settings, upload_root
+from app.core.config import settings, upload_root
 from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
 from app.core.ws import ws_manager
 from app.crud import crud_clients, crud_orders, log_action
@@ -34,7 +34,6 @@ from app.models import (
     PartRoute,
     Post,
     Product,
-    Scan,
 )
 from app.models.enums import (
     MACHINE_STATUS_LABELS,
@@ -43,7 +42,6 @@ from app.models.enums import (
     OrderStatus,
     PostCode,
     RouteSource,
-    UserRole,
 )
 from app.models.user import User
 from app.schemas.common import Message, Paginated
@@ -72,99 +70,12 @@ from app.services.giblab.ingest import (
 )
 from app.services.giblab.models import DEFAULT_PROCESS_CODE, PROCESS_NAMES, PROCESS_POSTS, TAIL_CODES
 
+from ._common import _edit_block_reason, _get_order, _get_visible_order, _hidden_statuses, _require_editable
+
 # Prefiks va tag PARENT routerda (`orders/__init__.py`) — bu yerda takrorlansa
 # `include_router` ularni QO'SHADI, almashtirmaydi va generatsiya qilingan
 # klientda metod ikki klassga nusxalanadi.
 router = APIRouter()
-
-_EDITABLE_STATUSES = (OrderStatus.DRAFT, OrderStatus.TECHNICAL_REVIEW)
-
-#: Ishlab chiqarishga uzatilgan buyurtma HAM tahrirlanadi — TO shu paytgacha
-#: hech bir postda amal bajarilmagan bo'lsa. Sabab: texnolog faylni yuklab,
-#: marshrutni chizib, "uzatish" ni bosgach xatoni ko'rishi odatiy hol; tsex esa
-#: hali ishga kirishmagan bo'ladi. Ilgari bu holatda buyurtmani bekor qilib
-#: qaytadan yaratishdan boshqa yo'l yo'q edi.
-_EDITABLE_IF_UNTOUCHED = (*_EDITABLE_STATUSES, OrderStatus.PRODUCTION)
-
-
-async def _first_work(db: SessionDep, order_id: int) -> "Row | None":
-    """Buyurtmada bajarilgan BIRINCHI amal: `(post nomi, soni, vaqti)` yoki `None`.
-
-    "Amal bajarilgan" = BEKOR QILINMAGAN skan. Bekor qilingani hisobga olinmaydi
-    va bu ataylab: arrachi ikki detalga chek chiqarib, keyin bekor qilsa —
-    jarayonda hech narsa qolmaydi, ya'ni buyurtma yana tahrirlanadigan bo'ladi.
-    `PartRoute.total_done` ham bekor qilinganda kamayadi, ya'ni ikki hisob mos
-    keladi (prodda 8 buyurtmada tekshirildi: tirik skan == sum(total_done)).
-    """
-    return (
-        await db.execute(
-            select(Post.name, func.count(Scan.id).label("soni"), func.min(Scan.created_at).label("vaqti"))
-            .join(Scan, Scan.post_id == Post.id)
-            .where(
-                Scan.order_id == order_id,
-                Scan.is_cancelled == False,  # noqa: E712
-                Scan.is_deleted == False,  # noqa: E712
-            )
-            .group_by(Post.name)
-            .order_by(func.min(Scan.created_at))
-        )
-    ).first()
-
-
-async def _edit_block_reason(db: SessionDep, order: Order) -> str | None:
-    """Tahrirlashga to'sqinlik qiladigan sabab, yoki `None` (mumkin).
-
-    Bitta joyda: fayl qayta yuklash, matritsa va ish markazi tanlovi shundan
-    o'tadi, `read_order` esa shu bilan `can_edit` ni hisoblaydi — ya'ni tugma
-    ko'rinishi va server javobi hech qachon ajralib ketmaydi.
-    """
-    if order.status not in _EDITABLE_IF_UNTOUCHED:
-        return (
-            f"buyurtma holati «{order.status}». Faqat qoralama, texnik ko'rik yoki "
-            "hali ishlanmagan ishlab chiqarish buyurtmasi tahrirlanadi."
-        )
-    if order.status != OrderStatus.PRODUCTION:
-        return None
-    work = await _first_work(db, order.id)
-    if work is None:
-        return None
-    vaqt = work.vaqti.astimezone(TASHKENT_TZ).strftime("%d-%m %H:%M") if work.vaqti else ""
-    return (
-        f"tsexda ish allaqachon boshlangan — {work.name} postida {work.soni} ta skan ({vaqt}). "
-        "Tahrirlash uchun avval o'sha skanlarni bekor qilish kerak."
-    )
-
-
-async def _require_editable(db: SessionDep, order: Order, nima: str) -> None:
-    reason = await _edit_block_reason(db, order)
-    if reason is not None:
-        raise ForbiddenException(f"{nima} — {reason}")
-
-
-def _hidden_statuses(user: User) -> set[OrderStatus]:
-    """Texnolog navbatiga tushmagan holatlar: qoralama (hali tasdiqlanmagan,
-    tijoriy bosqich) va bekor qilinganlar. Buyurtma texnologga confirm'dan
-    keyin (TECHNICAL_REVIEW) ko'rinadi."""
-    if user.role == UserRole.TEXNOLOG and not user.is_superuser:
-        return {OrderStatus.DRAFT, OrderStatus.CANCELLED}
-    return set()
-
-
-async def _get_order(db: SessionDep, order_id: int) -> Order:
-    return await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
-
-
-async def _get_visible_order(db: SessionDep, user: User, order_id: int) -> Order:
-    """O'QISH yo'llari uchun: ro'yxatdan yashiringan buyurtma to'g'ridan ID bilan ham ochilmasin.
-
-    Faqat o'qishda ishlatiladi. Mutatsiyalarga tarqatilmaydi: texnolog bekor
-    qilingan buyurtmaga fayl yuklashga urinsa, "topilmadi" emas, nima uchun
-    mumkin emasligini aytadigan xato chiqishi kerak.
-    """
-    order = await _get_order(db, order_id)
-    if order.status in _hidden_statuses(user):
-        raise NotFoundException("Buyurtma topilmadi.")
-    return order
 
 
 def _order_read(order: Order, client_name: str) -> OrderRead:
