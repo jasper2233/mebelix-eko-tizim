@@ -277,7 +277,7 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 
 ## `backend/app/api/routes/orders.py` — Buyurtmalar (hayot sikli, matritsa, fayllar)
 
-**Maqsadi:** Eng katta route moduli (20 endpoint) — buyurtma hayot sikli TZ 6 bo'yicha: `DRAFT → TECHNICAL_REVIEW → PRODUCTION → COMPLETED → DELIVERED` (+ istalgan bosqichda `CANCELLED`). Tahrirlash cheklovlari `_EDITABLE_STATUSES = (DRAFT, TECHNICAL_REVIEW)` atrofida qurilgan.
+**Maqsadi:** Eng katta route moduli (20 endpoint) — buyurtma hayot sikli TZ 6 bo'yicha: `DRAFT → TECHNICAL_REVIEW → PRODUCTION → COMPLETED → DELIVERED` (+ istalgan bosqichda `CANCELLED`). Tahrirlash cheklovlari `_edit_block_reason` atrofida qurilgan: `_EDITABLE_STATUSES = (DRAFT, TECHNICAL_REVIEW)` va ularga qo'shimcha `PRODUCTION` — tsexda tirik skan bo'lmasa (quyida «Qachon tahrirlash mumkin»).
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|

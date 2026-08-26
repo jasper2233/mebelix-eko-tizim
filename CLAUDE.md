@@ -103,7 +103,7 @@ oqimidan emas.
 
 ```
 backend/app/
-  api/routes/     97 endpoint (95 HTTP + 2 WS), `/v1` agregatorida 18 router
+  api/routes/     95 endpoint (93 HTTP + 2 WS), `/v1` agregatorida 18 router
   models/         18 ORM model  ·  services/giblab/  .project parseri
   services/scanning.py   skan dvijoki (E001..E009 xato kodlari)
   services/labels.py     80x60 mm yorliq PNG renderi
