@@ -152,7 +152,10 @@ export function edgeBoreRect(
   return { x: cx - dd / 2, y: p.y + p.h - len, w: dd, h: len }
 }
 
-const PAD = 110 // dims zanjiri viewBox'dan siqilib qolmasin
+// GibSaw zanjir chuqurligi = band-font balandligi (~55 mm, dekompilyatsiya:
+// `d2 = fontMetrics.getHeight()`). Ilgari 110 edi — zanjir zonasi ikki baravar
+// keng bo'lib, listning o'zi shuncha kichik render bo'lardi.
+const PAD = 68
 
 export function SheetSvg({
   sheet,
@@ -890,14 +893,21 @@ export function SheetSvg({
               d={`M${dm.b} -50 L${dm.b} 0 M${dm.b - 11} -45 L${dm.b + 11} -23 M${dm.b - 11} -23 L${dm.b + 11} -45`}
             />
           )}
+          {/* GibSaw: matn zanjir chizig'i ICHIDA, chiziq matn joyida uziladi
+              (dekompilyatsiya: `(d8-d7-d11)/2` gacha chiziq, matndan keyin
+              davom). SVG'da oq halo shu uzilishni beradi. Font 48 —
+              GibSaw.ini `pattrenBandDim=48` pariteti. */}
           <text
             x={mid}
-            y={y - 14}
-            fontSize="44"
+            y={y}
+            fontSize="48"
             fontWeight="bold"
             fill="#000"
-            stroke="none"
+            stroke="#fff"
+            strokeWidth="14"
+            paintOrder="stroke"
             textAnchor="middle"
+            dominantBaseline="central"
           >
             {dm.v}
           </text>
@@ -923,14 +933,17 @@ export function SheetSvg({
           />
         )}
         <text
-          x={x - 14}
+          x={x}
           y={mid}
-          fontSize="44"
+          fontSize="48"
           fontWeight="bold"
           fill="#000"
-          stroke="none"
+          stroke="#fff"
+          strokeWidth="14"
+          paintOrder="stroke"
           textAnchor="middle"
-          transform={`rotate(-90 ${x - 14} ${mid})`}
+          dominantBaseline="central"
+          transform={`rotate(-90 ${x} ${mid})`}
         >
           {dm.v}
         </text>
