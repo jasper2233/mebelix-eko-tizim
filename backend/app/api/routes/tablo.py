@@ -1,7 +1,7 @@
 """TABLO data API (TZ 9): orders × stages live matrix. Read-only, any authenticated device."""
 
 from fastapi import APIRouter
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.orm import defer
 
 from app.api.deps import CurrentUser, SessionDep
@@ -48,7 +48,14 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
                     Order.status.in_([OrderStatus.PRODUCTION, OrderStatus.COMPLETED]),
                     Order.is_deleted == False,  # noqa: E712
                 )
-                .order_by(Order.deadline.asc().nulls_last(), Order.id)
+                # TAYYOR buyurtmalar ENG PASTDA: ular ustida ish qolmagan, taxtaning
+                # yuqori qismi esa hali kesilayotganlar uchun — devordagi ekranga
+                # uzoqdan qaraganda birinchi ko'zga tushadigan joy o'sha.
+                .order_by(
+                    case((Order.status == OrderStatus.COMPLETED, 1), else_=0),
+                    Order.deadline.asc().nulls_last(),
+                    Order.id,
+                )
             )
         )
         .scalars()

@@ -78,10 +78,13 @@ function tabloScale(mode: Mode): React.CSSProperties {
       mode === "foiz"
         ? "clamp(1.4rem, 2.2vw, 3.5rem)"
         : "clamp(0.85rem, 1.2vw, 2.25rem)",
-    "--t-order": "clamp(1rem, 1.45vw, 2.75rem)",
+    // `--t-fit` — hamma qator bitta sahifaga sig'ishi uchun koeffitsient
+    // (`useFitScale`). Sig'sa 1, sig'masa MIN_FIT gacha kichrayadi.
+    "--t-cell-fit": "calc(var(--t-cell) * var(--t-fit, 1))",
+    "--t-order": "calc(clamp(1rem, 1.45vw, 2.75rem) * var(--t-fit, 1))",
     "--t-head": "clamp(0.7rem, 0.8vw, 1.6rem)",
-    "--t-meta": "clamp(0.7rem, 0.9vw, 1.5rem)",
-    "--t-badge": "clamp(0.55rem, 0.6vw, 1.1rem)",
+    "--t-meta": "calc(clamp(0.7rem, 0.9vw, 1.5rem) * var(--t-fit, 1))",
+    "--t-badge": "calc(clamp(0.55rem, 0.6vw, 1.1rem) * var(--t-fit, 1))",
     // Fon FAQAT tabloda quyuqroq. O'lchandi: `--surface` (#f4f6f9) bilan oq
     // kartochka orasidagi kontrast 1.08:1 — 5 metrdan kartochka chegarasi
     // umuman ko'rinmasdi, faqat 1px soya ajratardi va u ham yo'qoladi.
@@ -98,19 +101,27 @@ function ageLabel(sec: number): string {
 const MODES: Mode[] = ["hajm", "soni", "foiz"]
 const MODE_KEY = "tablo-mode"
 
-/** Sig'magan buyurtmalarni sahifalarga bo'lib, avtomat aylantiradi.
+/** HAMMA buyurtmani BITTA sahifaga sig'diradi: sig'masa shriftni kichraytiradi.
  *
  * Devordagi TV da sichqoncha ham, klaviatura ham yo'q — `overflow-auto` bor
  * bo'lsa ham hech kim varaqlamaydi. Prodda o'lchandi: 6 buyurtmadan keyin
  * qolgani ko'rinmay qolardi, 40 tada jadval ekrandan 7 barobar uzun edi.
+ * Ilgari bu sahifalarga bo'lib, har 15 soniyada aylantirish bilan hal
+ * qilingandi — lekin o'shanda buyurtmangizni ko'rish uchun navbat kutish
+ * kerak edi va bir vaqtning o'zida butun tsex holatini ko'rib bo'lmasdi.
  *
- * REJIM aylantirilmaydi, faqat SAHIFA: operator ekranga qaraganda nima
- * ko'rayotganini bilishi kerak, kerakli rejim qaytishini kutmasligi kerak.
+ * Endi: mavjud balandlikka qarab `--t-fit` koeffitsienti hisoblanadi va qator
+ * shriftlari shunga ko'paytiriladi. `MIN_FIT` — o'qish chegarasi (5 metrdan
+ * ko'rinishi kerak); undan pastga tushmaydi, ya'ni juda ko'p buyurtmada
+ * pastki qatorlar baribir kesiladi. Bu ATAYLAB: shriftni cheksiz kichraytirish
+ * devordagi ekranni umuman foydasiz qilardi. Tartib esa tayyorlarni pastga
+ * suradi (backend `order_by`), ya'ni kesilsa — eng kam ahamiyatlisi kesiladi.
  */
-function usePagedRows<T>(rows: T[], enabled: boolean) {
+const MIN_FIT = 0.62
+
+function useFitScale<T>(rows: T[]) {
   const bodyRef = useRef<HTMLTableSectionElement>(null)
-  const [perPage, setPerPage] = useState(rows.length || 1)
-  const [page, setPage] = useState(0)
+  const [fit, setFit] = useState(1)
 
   // Nechta sig'ishini O'LCHAYMIZ: qator balandligi shriftga, shrift esa ekran
   // kengligiga bog'liq — qotirilgan son 4K da ham, noutbukda ham xato bo'lardi.
@@ -122,7 +133,7 @@ function usePagedRows<T>(rows: T[], enabled: boolean) {
     if (!body || !scroller) return
     const measure = () => {
       const trs = [...body.querySelectorAll("tr")]
-      if (trs.length < 2) return setPerPage(rows.length || 1)
+      if (trs.length < 2) return setFit(1)
       const jami = trs[0].getBoundingClientRect().height
       const qator = trs[1].getBoundingClientRect().height
       const head =
@@ -134,7 +145,14 @@ function usePagedRows<T>(rows: T[], enabled: boolean) {
         Number.parseFloat(pad.paddingBottom) -
         head -
         jami
-      setPerPage(Math.max(1, Math.floor(joy / Math.max(qator, 1))))
+      // Qator balandligi shriftga chiziqli bog'liq emas (padding qo'shiladi),
+      // shuning uchun joriy `fit` ni hisobga olib nisbatni topamiz va bir qadam
+      // qo'yamiz — ResizeObserver keyingi o'lchovda uni aniqlashtiradi.
+      const kerak = qator * rows.length
+      if (kerak <= 0 || joy <= 0) return
+      setFit((oldingi) =>
+        Math.min(1, Math.max(MIN_FIT, (oldingi * joy) / kerak)),
+      )
     }
     measure()
     const ro = new ResizeObserver(measure)
@@ -143,23 +161,7 @@ function usePagedRows<T>(rows: T[], enabled: boolean) {
     return () => ro.disconnect()
   }, [rows.length])
 
-  // Sahifa QAYTA TIKLANMAYDI: matritsa har 5 soniyada yangilanadi, har
-  // yangilanishda 1-sahifaga sakrasa hech kim oxirgi sahifani ko'rmasdi.
-  const pages = Math.max(1, Math.ceil(rows.length / perPage))
-  useEffect(() => {
-    if (!enabled || pages < 2) return
-    const id = setInterval(() => setPage((p) => (p + 1) % pages), 15_000)
-    return () => clearInterval(id)
-  }, [enabled, pages])
-
-  const safe = Math.min(page, pages - 1)
-  return {
-    bodyRef,
-    visible:
-      pages > 1 ? rows.slice(safe * perPage, safe * perPage + perPage) : rows,
-    page: safe,
-    pages,
-  }
+  return { bodyRef, fit }
 }
 
 /** Jonlilik ko'rsatkichi — yashil nuqtaning O'ZI yetarli emas.
@@ -246,7 +248,7 @@ function TabloPage() {
     getTabloMatrixQueryOptions(),
   )
   // Sig'magan buyurtmalar sahifalanadi; drill ochiq bo'lsa aylanish to'xtaydi
-  const paged = usePagedRows(data?.orders ?? [], drill === null)
+  const fitted = useFitScale(data?.orders ?? [])
   const closeDrill = useCallback(() => setDrill(null), [])
 
   const { online } = useMesWs(
@@ -292,7 +294,11 @@ function TabloPage() {
   return (
     <div
       className="flex h-dvh flex-col bg-surface text-foreground"
-      style={tabloScale(mode)}
+      // `--t-fit` FAQAT matritsa ildizida: drill ro'yxati alohida ildiz va u
+      // sahifaga sig'dirilmaydi (uni odam yaqindan ko'radi, varaqlay oladi).
+      style={
+        { ...tabloScale(mode), "--t-fit": fitted.fit } as React.CSSProperties
+      }
     >
       <header className="flex items-center gap-4 border-b border-border bg-card px-5 py-2 shadow-sm">
         {/* Brend sidebar va login bilan bitta manbadan — to'liq logo.
@@ -325,16 +331,6 @@ function TabloPage() {
             </button>
           ))}
         </div>
-        {/* Aylanish JIM bo'lmasin: operator ekran o'zgarganda nima bo'lganini
-            bilishi kerak, aks holda buyurtmasi "yo'qolgan"day tuyulardi */}
-        {paged.pages > 1 && (
-          <span
-            className="num rounded-sm bg-secondary px-3 py-1.5 font-bold tabular-nums"
-            style={{ fontSize: "var(--t-head)" }}
-          >
-            {paged.page + 1} / {paged.pages}
-          </span>
-        )}
         <LiveBadge online={online} updatedAt={dataUpdatedAt} />
         {/* Panelga qaytish faqat odam foydalanuvchiga: `tablo` roli qurilma
             akkaunti, u boshqa sahifaga kira olmaydi (_layout uni shu yerga
@@ -413,7 +409,7 @@ function TabloPage() {
                 })}
               </tr>
             </thead>
-            <tbody ref={paged.bodyRef}>
+            <tbody ref={fitted.bodyRef}>
               {data && data.orders.length > 0 && (
                 <tr>
                   <td
@@ -462,7 +458,7 @@ function TabloPage() {
                   })}
                 </tr>
               )}
-              {paged.visible.map((o) => (
+              {(data?.orders ?? []).map((o) => (
                 <tr
                   key={o.id}
                   onClick={() => setDrill(o.id)}

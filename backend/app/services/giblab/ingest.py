@@ -432,7 +432,12 @@ async def ingest_project(
         if m.count
     ]
     order.project_uuid = project.uuid
-    order.project_name = project.name
+    # Nom YUKLANGAN FAYL nomidan olinadi (kengaytmasiz): "2064 alisher.project" -> "2064 alisher".
+    # Ilgari `project.name` — ya'ni fayl ICHIDAGI `<root name=...>` atributi ishlatilardi, lekin
+    # GibLab eksportlarining bir qismida u umuman bo'lmaydi: prodda 39 buyurtmadan faqat 19 tasida
+    # nom bor edi, qolganlarida `.project` fayli yuklangan bo'lsa ham nom BO'SH qolardi va reestrda
+    # ham, TABLOda ham ko'rinmasdi. Fayl nomi esa doim bor.
+    order.project_name = Path(original_filename).stem or project.name
     order.project_loaded_at = datetime.now(UTC)
     order.cutmap = cutmap.model if cutmap else None
 
