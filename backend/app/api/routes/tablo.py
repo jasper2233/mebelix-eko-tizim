@@ -150,6 +150,7 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
             name=o.project_name,
             deadline=o.deadline,
             status=str(o.status),
+            priority=str(o.priority),
             stages={str(posts_by_id[pid].code): stage for (oid, pid), stage in agg.items() if oid == o.id},
             idle_days=(sum(1 for d in ish_kunlari if d > last_day[o.id]) if o.id in last_day else None),
         )

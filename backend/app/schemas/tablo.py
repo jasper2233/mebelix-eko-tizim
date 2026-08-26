@@ -29,6 +29,9 @@ class TabloOrderRow(BaseModel):
     name: str | None
     deadline: date | None
     status: str
+    #: Taxta prioritet bo'yicha saralanadi, lekin uni KO'RSATMASDI — ya'ni
+    #: "nega bu qator birinchi?" degan savolga javob yo'q edi.
+    priority: str
     stages: dict[str, StageAgg]  # keyed by post code
     #: Shu buyurtma oxirgi marta qimirlaganidan beri TSEX NECHA KUN ishlagani.
     #: `None` — hali bironta ham amal bajarilmagan (uzatilgan, tegilmagan);

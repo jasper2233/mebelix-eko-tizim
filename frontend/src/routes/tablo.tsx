@@ -15,7 +15,7 @@ import {
 import { TabloService } from "@/client"
 import { useMesWs } from "@/hooks/useMesWs"
 import { requireAuth } from "@/lib/guards"
-import { deadlineTone, POST_COLORS } from "@/lib/mes"
+import { deadlineTone, POST_COLORS, PRIORITY_EDGE } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import {
   getMachinesQueryOptions,
@@ -74,8 +74,11 @@ function deadlineCountdown(value?: string | null): [string, string] {
  * qatorda doim turadigan raqam shovqin bo'lardi va haqiqiy muammoni yashirardi.
  */
 function stallLabel(idle?: number | null): string | null {
-  if (idle == null) return "TEGILMAGAN"
-  return idle >= 2 ? `${idle} KUN TO'XTAGAN` : null
+  // Qisqa ATAYLAB: "2 KUN TO'XTAGAN" buyurtma katagining yarmini egallab, loyiha
+  // nomini "431…" ga aylantirardi. Quyuq slate teg + raqamning o'zi belgi sifatida
+  // yetarli, "TO'XTAGAN" so'zi esa ~70px turadi va hech narsa qo'shmaydi.
+  if (idle == null) return "0 SKAN"
+  return idle >= 2 ? `${idle} KUN` : null
 }
 
 /** Devor ekrani uchun o'lcham shkalasi — REJIMGA bog'liq.
@@ -95,20 +98,21 @@ function tabloScale(mode: Mode): React.CSSProperties {
   return {
     "--t-cell":
       mode === "foiz"
-        ? "clamp(1.4rem, 2.2vw, 3.5rem)"
-        : "clamp(0.85rem, 1.2vw, 2.25rem)",
+        ? "clamp(1.5rem, 2.6vw, 4.5rem)"
+        : "clamp(1rem, 1.45vw, 2.6rem)",
     // `--t-fit` — hamma qator bitta sahifaga sig'ishi uchun koeffitsient
     // (`useFitScale`). Sig'sa 1, sig'masa MIN_FIT gacha kichrayadi.
     "--t-cell-fit": "calc(var(--t-cell) * var(--t-fit, 1))",
-    "--t-order": "calc(clamp(1rem, 1.45vw, 2.75rem) * var(--t-fit, 1))",
-    "--t-head": "clamp(0.7rem, 0.8vw, 1.6rem)",
-    "--t-meta": "calc(clamp(0.7rem, 0.9vw, 1.5rem) * var(--t-fit, 1))",
-    "--t-badge": "calc(clamp(0.55rem, 0.6vw, 1.1rem) * var(--t-fit, 1))",
-    // Fon FAQAT tabloda quyuqroq. O'lchandi: `--surface` (#f4f6f9) bilan oq
-    // kartochka orasidagi kontrast 1.08:1 — 5 metrdan kartochka chegarasi
-    // umuman ko'rinmasdi, faqat 1px soya ajratardi va u ham yo'qoladi.
-    // Ya'ni jadval strukturasi (qator/ustun to'ri) uzoqdan tarqalib ketardi.
-    "--surface": "#dde3eb",
+    "--t-order": "calc(clamp(1.1rem, 1.7vw, 3rem) * var(--t-fit, 1))",
+    "--t-head": "clamp(0.8rem, 1vw, 2rem)",
+    "--t-meta": "calc(clamp(0.75rem, 1vw, 1.7rem) * var(--t-fit, 1))",
+    "--t-badge": "calc(clamp(0.65rem, 0.8vw, 1.4rem) * var(--t-fit, 1))",
+    // Fon FAQAT tabloda quyuqroq — qatorlar ORASIDAGI oraliq 5 metrdan chiziq
+    // bo'lib ko'rinishi uchun. O'lchandi: `#f4f6f9` da oq qator bilan kontrast
+    // 1.08:1 (ko'rinmaydi), `#dde3eb` da 1.29:1 (zo'rg'a), `#bcc7d5` da 1.71:1.
+    // Qator endi yaxlit slab bo'lgani uchun struktura AYNAN shu oraliqlar bilan
+    // beriladi — ular ko'rinmasa taxta bitta oq maydonga aylanadi.
+    "--surface": "#bcc7d5",
   } as React.CSSProperties
 }
 
@@ -137,7 +141,16 @@ const MODE_KEY = "tablo-mode"
  * (backend `order_by`, terminal ro'yxati bilan bir xil), ya'ni kesilsa —
  * eng kam shoshilinchi kesiladi.
  */
-const MIN_FIT = 0.62
+// Ilgari 0.62 edi, chunki HAMMA qator ekranga sig'ishi SHART edi — sig'magani
+// kesilib yo'qolardi, ya'ni shriftni kichraytirishdan boshqa yo'l yo'q edi.
+// `useIdleAutoScroll` shu majburiyatni oldi: sig'magani endi aylanadi.
+// Shuning uchun siqish faqat KICHIK toshish uchun qoldi (21 qator 20 ta joyga —
+// 15% siqish bir sikl aylanishdan yaxshiroq), katta toshishda esa taxta
+// aylanadi va shrift o'qiladigan bo'lib qoladi.
+//
+// O'lchangan sabab: 0.62 da 55" TV da buyurtma raqamining bosh harfi 7.9 mm —
+// ~1.6 m dan o'qiladi, taxta esa 5 m uchun osilgan.
+const MIN_FIT = 0.85
 
 function useFitScale<T>(rows: T[]) {
   const bodyRef = useRef<HTMLTableSectionElement>(null)
@@ -442,8 +455,12 @@ function TabloPage() {
           </p>
         ) : (
           /* `table-fixed` + aniq ulushlar: kenglik MAZMUNGA bog'liq bo'lmasin.
-             Ilgari ustunlar mazmunga qarab 87px dan 187px gacha sakrardi. */
-          <table className="w-full table-fixed border-separate border-spacing-2">
+             Ilgari ustunlar mazmunga qarab 87px dan 187px gacha sakrardi.
+
+             Gorizontal oraliq 0: qator yaxlit slab, kataklar uning ichidagi
+             zonalar. 8px gorizontal oraliqda taxta foni qator ICHIDAN ko'rinib,
+             bitta buyurtma to'qqiz alohida kartochkaga bo'linib ketardi. */
+          <table className="w-full table-fixed border-separate border-spacing-x-0 border-spacing-y-2">
             <colgroup>
               <col className="w-[14%]" />
               <col className="w-[13%]" />
@@ -569,9 +586,9 @@ function TabloPage() {
                     // beradi, kasr esa yorliqni uzaytirib o'ralishga olib kelardi
                     const label =
                       mode === "hajm"
-                        ? `${Math.round(vDone)} / ${Math.round(vTotal)}`
+                        ? `${Math.round(vDone)}/${Math.round(vTotal)}`
                         : mode === "soni"
-                          ? `${done} / ${total}`
+                          ? `${done}/${total}`
                           : !total
                             ? "—"
                             : done >= total
@@ -601,7 +618,7 @@ function TabloPage() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") setDrill(o.id)
                     }}
-                    className="cursor-pointer hover:bg-accent"
+                    className="cursor-pointer bg-card hover:bg-accent"
                   >
                     {/* MATN ustuni — bu yerda qisqartirish O'RINLI: loyiha nomi
                       ixtiyoriy uzunlikda bo'ladi. Raqam kataklarida esa
@@ -615,18 +632,52 @@ function TabloPage() {
                       o'z satrida qisqaradi. Muddat katagi ham shu naqshda.
                       Qator raqami (1, 2, 3...) olib tashlandi: qatorning o'rni
                       ko'rinib turibdi, raqam faqat joy egallardi. */}
-                    <td className="rounded-l-lg bg-card px-3 py-3 shadow-sm">
-                      <span className="flex items-baseline gap-2">
-                        <span
-                          className="truncate font-bold leading-tight"
-                          style={{ fontSize: "var(--t-order)" }}
-                        >
-                          {o.number}
-                        </span>
-                        {/* Slate, qizil EMAS: muddat ustuni qizilni egallagan va
+                    {/* Prioritet qatorning CHAP QIRRASIDA. Ilgari u umuman
+                        ko'rinmasdi — taxta unga qarab saralanardi-yu, "nega bu
+                        qator birinchi?" savoli javobsiz qolardi. Burchakdagi
+                        badge bo'lmaydi: ~10px matn ~1 metrdan o'qiladi, taxta
+                        esa 5 metr uchun. Tasma gorizontal joy olmaydi va uzoqdan
+                        rang lentasi bo'lib o'qiladi — shoshilinchlar qayerda
+                        tugashi bir qarashda ko'rinadi. */}
+                    <td
+                      className={cn(
+                        "rounded-l-md px-3 py-3",
+                        PRIORITY_EDGE[o.priority] ?? "border-l-transparent",
+                      )}
+                      style={{
+                        borderLeftWidth: "10px",
+                        borderLeftStyle: "solid",
+                      }}
+                    >
+                      {/* Raqam BUTUN satrni oladi. Belgi bilan yonma-yon
+                          qo'yilganda "B-2026-036" -> "B-..." bo'lib kesilardi,
+                          ya'ni buyurtmaning O'ZINI aniqlab bo'lmasdi. */}
+                      <span
+                        className="block truncate font-bold leading-tight"
+                        style={{ fontSize: "var(--t-order)" }}
+                      >
+                        {o.number}
+                      </span>
+                      {/* Belgi loyiha nomi bilan bitta satrda: ikkinchi satr
+                          ikkilamchi ma'lumot uchun, va nom qisqarsa ham
+                          buyurtma raqami butun qoladi.
+
+                          Slate, qizil EMAS: muddat ustuni qizilni egallagan va
                           "kechikdi" bilan "to'xtagan" boshqa-boshqa faktlar.
                           Muddatsiz buyurtma ham to'xtab qolishi mumkin — prodda
                           shundaysi bor (4301_Komol, 463 skandan keyin jim). */}
+                      {/* Nom OLDIN, belgi keyin: belgi birinchi turganda nomni
+                          surib "431…" qoldirardi. Endi nom qolgan joyni oladi va
+                          tartibli qisqaradi, belgi esa o'ng chetda qotib turadi. */}
+                      <span className="flex items-baseline justify-between gap-2 overflow-hidden">
+                        {o.name && (
+                          <span
+                            className="truncate text-muted-foreground"
+                            style={{ fontSize: "var(--t-meta)" }}
+                          >
+                            {o.name}
+                          </span>
+                        )}
                         {stall && (
                           <span
                             className="shrink-0 whitespace-nowrap rounded-sm bg-slate-700 px-1.5 py-0.5 font-black uppercase tracking-wider text-white"
@@ -636,23 +687,19 @@ function TabloPage() {
                           </span>
                         )}
                       </span>
-                      {o.name && (
-                        <span
-                          className="block truncate text-muted-foreground"
-                          style={{ fontSize: "var(--t-meta)" }}
-                        >
-                          {o.name}
-                        </span>
-                      )}
                     </td>
                     {/* Muddat toni signal: hammasi amber bo'lsa amber hech narsa anglatmaydi */}
                     <td
                       className={cn(
-                        "px-3 py-3 font-bold",
+                        "px-3 py-3 text-center font-bold",
+                        // Pastel tint (#ffe2e2) devordan "teg" bo'lib o'qilardi,
+                        // trevoga emas. Kontrasti yaxshi edi (6.85), muammo
+                        // ENERGIYADA: 5 metrdan ochiq pushti oq bilan qo'shilib
+                        // ketadi. To'yingan blok esa qatorni ushlab qoladi.
                         deadlineTone(o.deadline) === "overdue"
-                          ? "bg-red-100 text-red-800"
+                          ? "bg-red-600 text-white"
                           : deadlineTone(o.deadline) === "today"
-                            ? "bg-amber-100 text-amber-800"
+                            ? "bg-amber-400 text-amber-950"
                             : "text-muted-foreground",
                       )}
                     >
@@ -694,8 +741,9 @@ function TabloPage() {
                         const st = o.stages[p.code]
                         return st?.total && st.done < st.total
                       })
-                      return posts.map((p) => (
+                      return posts.map((p, i) => (
                         <TabloCell
+                          last={i === posts.length - 1}
                           key={p.id}
                           stage={o.stages[p.code]}
                           mode={mode}
@@ -730,6 +778,7 @@ function TabloCell({
   stage,
   mode,
   dim,
+  last = false,
   deadline,
   blocker = false,
 }: {
@@ -741,6 +790,8 @@ function TabloCell({
   }
   mode: Mode
   dim: boolean
+  /** Qatordagi OXIRGI katak — slabning o'ng chekkasini yumaloqlaydi. */
+  last?: boolean
   deadline?: string | null
   // Marshrutdagi BIRINCHI tugallanmagan post — harakat aynan shu yerda kerak
   blocker?: boolean
@@ -762,8 +813,11 @@ function TabloCell({
   if (!stage?.total) {
     return (
       <td
-        className="bg-card px-2 py-3 text-center text-muted-foreground shadow-sm"
-        style={{ fontSize: "var(--t-cell)" }}
+        // Marshrutda YO'Q post. Chiziq raqam bilan bir xil kattalikda bo'lsa,
+        // ish YO'QLIGI ish BORLIGI kabi baqiradi — taxtaning asosiy tekstursi
+        // bo'sh kataklar bo'lib qoladi (bugun 9 ustundan 3 tasi butunlay bo'sh).
+        className="border-l border-border/60 px-2 py-3 text-center text-muted-foreground/50"
+        style={{ fontSize: "var(--t-meta)" }}
       >
         —
       </td>
@@ -797,19 +851,24 @@ function TabloCell({
   // chizadi), shuning uchun 99.6% ni 100% ga yaxlitlash mumkin emas —
   // operator kartani bajarilgan deb o'qib, oxirgi detalni tashlab ketardi.
   if (mode === "hajm")
-    label = `${Math.round(stage.volume_done)} / ${Math.round(stage.volume_total)}`
-  else if (mode === "soni") label = `${stage.done} / ${stage.total}`
+    label = `${Math.round(stage.volume_done)}/${Math.round(stage.volume_total)}`
+  else if (mode === "soni") label = `${stage.done}/${stage.total}`
   else label = `${Math.min(99, Math.floor((stage.done / stage.total) * 100))}%`
 
   return (
     <td
       className={cn(
-        "relative overflow-hidden rounded-sm px-2 py-3 text-center align-middle",
+        // Kartochka EMAS, zona: kartochka — qatorning O'ZI. Ilgari bitta qatorda
+        // uch xil grammatika bor edi (buyurtma 10px radius, muddat 0, katak 6px)
+        // va oq katak taxta foni bilan atigi 1.29:1 kontrast berardi, ya'ni
+        // "kartochka" chegarasi 5 metrdan umuman ko'rinmasdi.
+        "relative overflow-hidden whitespace-nowrap border-l border-border/60 px-2 py-3 text-center align-middle",
+        last && "rounded-r-md",
         complete
-          ? "bg-green-100"
+          ? "bg-green-200/70"
           : overdue
-            ? "bg-red-50 ring-2 ring-inset ring-red-600"
-            : "bg-card shadow-sm",
+            ? "bg-red-100 ring-2 ring-inset ring-red-600"
+            : "bg-card",
         flash && "animate-cell-flash",
       )}
     >

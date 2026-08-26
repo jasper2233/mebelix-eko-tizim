@@ -2731,6 +2731,10 @@ export type TabloOrderRow = {
      */
     status: string;
     /**
+     * Priority
+     */
+    priority: string;
+    /**
      * Stages
      */
     stages: {
