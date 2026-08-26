@@ -51,7 +51,7 @@ frontend-gen: ## Generate frontend client from OpenAPI spec
 
 .PHONY: lint
 lint: ## Run linting checks (ruff check + format check + mypy, CI bilan bir xil)
-	cd backend && uv run ruff check app && uv run ruff format --check app
+	cd backend && uv run ruff check --no-fix app && uv run ruff format --check app
 	cd backend && uv run mypy app
 
 .PHONY: format
@@ -66,6 +66,10 @@ migrate: ## Run database migrations to head
 .PHONY: makemigrations
 makemigrations: ## Create a new database migration (usage: make makemigrations m="migration message")
 	cd backend && uv run alembic revision --autogenerate -m "$(m)"
+
+.PHONY: check-migrations
+check-migrations: ## Model <-> migratsiya drifti (ishlab turgan DB kerak; CI ham shuni chaqiradi)
+	cd backend && uv run alembic upgrade head && uv run alembic check
 
 .PHONY: cmd
 cmd: ## Run a custom command from app.commands (usage: make cmd n="command_name")

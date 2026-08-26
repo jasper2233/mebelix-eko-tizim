@@ -1,5 +1,6 @@
 import asyncio
 from logging.config import fileConfig
+from typing import Any
 
 from alembic import context
 from sqlalchemy import pool
@@ -27,6 +28,34 @@ import app.models  # noqa: F401, E402
 
 target_metadata = Base.metadata
 
+#: Migratsiyasi prodga QO'LLANGAN, lekin modeli olib tashlangan obyektlar — OEE va
+#: materiallar ombori modullari (`docs/04-backend-data.md` §4.4). Bazada bo'sh turadi
+#: va ATAYLAB drop qilinmaydi: prodda qo'llangan migratsiyani orqaga qaytarish
+#: deployni yiqitardi. Autogenerate/`alembic check` ularni har safar "drift" deb
+#: ko'rsatmasin — aks holda haqiqiy drift shovqin ichida ko'rinmay qoladi.
+#: Modul qaytarilsa yoki jadval haqiqatan drop qilinsa — shu ro'yxatdan olib tashlanadi.
+LEGACY_TABLES = frozenset({"machine_stop", "payment", "sale", "stock_item", "stock_move", "stop_reason"})
+LEGACY_COLUMNS = frozenset(
+    {
+        ("machine", "capacity"),
+        ("machine", "capacity_unit"),
+        ("machine", "ideal_rate"),
+        ("machine", "planned_minutes_per_day"),
+        ("part_instance", "cut_meters"),
+        ("post", "color"),
+        ("post", "icon"),
+    }
+)
+
+
+def include_object(obj: Any, name: str | None, type_: str, reflected: bool, compare_to: Any) -> bool:
+    """Yuqoridagi yetim obyektlarni autogenerate solishtiruvidan chiqaradi."""
+    if type_ == "table":
+        return name not in LEGACY_TABLES
+    if type_ == "column" and reflected and compare_to is None:
+        return (obj.table.name, name) not in LEGACY_COLUMNS
+    return True
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -42,6 +71,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -49,7 +79,7 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(connection=connection, target_metadata=target_metadata, include_object=include_object)
 
     with context.begin_transaction():
         context.run_migrations()

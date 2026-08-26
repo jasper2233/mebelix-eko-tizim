@@ -8,6 +8,19 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      # `alembic check` uchun — u modelni JONLI sxema bilan solishtiradi.
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -17,9 +30,25 @@ jobs:
       - name: Install
         run: uv --project backend sync --all-groups
       - name: Lint (ruff)
-        run: cd backend && uv run ruff check app && uv run ruff format --check app
+        # `--no-fix` SHART: pyproject.toml da `fix = true` turibdi, ya'ni oddiy
+        # `ruff check app` xatoni jimgina TUZATIB exit 0 qaytaradi — CI hech qachon
+        # qizil bo'lmaydi. Avtomatik tuzatish faqat pre-commit va `make format` da.
+        run: cd backend && uv run ruff check --no-fix app && uv run ruff format --check app
       - name: Types (mypy)
         run: cd backend && uv run mypy app
+      - name: Migratsiya drifti (alembic check)
+        # Toza bazaga BUTUN zanjirni qo'llaydi (ya'ni "prodda ishlagan, toza bazada
+        # yiqiladigan" migratsiya shu yerda tutiladi), keyin modelni natija sxema
+        # bilan solishtiradi. Modelga ustun qo'shib migratsiya yozilmasa — CI qizil.
+        # Ataylab qoldirilgan yetim jadval/ustunlar `migrations/env.py` dagi
+        # LEGACY_TABLES / LEGACY_COLUMNS da sanab o'tilgan.
+        env:
+          POSTGRES_SERVER: localhost
+          POSTGRES_PORT: "5432"
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        run: cd backend && uv run alembic upgrade head && uv run alembic check
       - name: Caddyfile validate
         # Caddyfile prodga rsync bilan boradi va `deploy.sh` uni `caddy reload`
         # bilan qo'llaydi. Reload buzuq konfigni RAD ETADI (sayt tirik qoladi),
