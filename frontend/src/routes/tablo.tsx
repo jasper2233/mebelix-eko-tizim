@@ -59,26 +59,15 @@ function deadlineCountdown(value?: string | null): [string, string] {
   return [`${days < 0 ? -days : days} kun`, days < 0 ? "KECHIKDI" : "QOLDI"]
 }
 
-/** "Qotib qolgan" belgisi: `null` — normal, aks holda yozuv.
+/** To'xtash belgisi: `null` — normal, aks holda yozuv.
  *
- * Taxta HOLATNI ko'rsatadi, oqimni emas: 6 soat qimirlamagan buyurtma bir
- * daqiqa oldin skan qilingani bilan bir xil ko'rinadi. Bu esa taxtaning eng
- * muhim savolini — "qayerda to'xtab qolgan?" — javobsiz qoldiradi.
- *
- * Hisobni SERVER beradi (`idle_days`) va u kalendar kunini emas, TSEX ISHLAGAN
- * kunlarini sanaydi. Soatlik chegara har kecha butun taxtani yoqardi (smena
- * 18:30-18:40 da tugaydi), kalendar kuni esa dam olishdan keyin: dushanba
- * ertalab hamma qator "2 kun to'xtagan" bo'lib, belgi ma'nosini yo'qotardi.
- *
- * Belgi faqat G'AYRITABIIY holatda chiqadi (JONLI bilan bir xil qoida): har
- * qatorda doim turadigan raqam shovqin bo'lardi va haqiqiy muammoni yashirardi.
+ * Hisobni server beradi (`idle_days`) va u TSEX ISHLAGAN kunlarni sanaydi:
+ * soatlik chegara har kecha butun taxtani yoqardi (smena 18:30-18:40 da
+ * tugaydi), kalendar kuni esa dam olishdan keyingi ertalab.
  */
 function stallLabel(idle?: number | null): string | null {
-  // RAQAMSIZ, ataylab. Qatorda allaqachon "N KUN" bor — muddat ustunida
-  // ("2 / KECHIKDI"). Ikkinchi kun hisobi qanday so'z bilan yozilmasin,
-  // ko'rgan odam uni muddat bilan bog'laydi: "2 KUN TURIBDI" aynan shu sababdan
-  // tushunarsiz bo'lib chiqdi. Taxtaning vazifasi "bu qotib qolgan" deb
-  // ko'rsatish; necha kunligi reestrda bor va u yerda chalkashadigan narsa yo'q.
+  // RAQAMSIZ: qatorda allaqachon "N KUN" bor (muddat ustunida), va ikkinchi
+  // kun hisobi qanday yozilmasin muddat deb o'qiladi.
   if (idle == null) return "BOSHLANMAGAN"
   return idle >= 2 ? "QIMIRLAMADI" : null
 }
@@ -99,16 +88,10 @@ function stallLabel(idle?: number | null): string | null {
  */
 function tabloScale(): React.CSSProperties {
   return {
-    // BITTA o'lcham, rejimdan qat'i nazar. Ilgari FOIZ da 2.2vw, HAJM/SONI da
-    // 1.2vw edi — mantiq "foiz yorlig'i qisqa, katta bo'la oladi" edi, lekin bu
-    // noto'g'ri narsani optimallashtiradi: O'LCHANDI, rejim almashtirilganda
-    // qator 60px dan 85px ga chiqib (+42%), butun taxta qayta oqardi va
-    // ekranga sig'adigan buyurtmalar soni o'zgarib ketardi. Tugma o'lchov
-    // BIRLIGINI almashtirishi kerak, sahifa maketini emas.
+    // BITTA o'lcham, rejimdan qat'i nazar: FOIZ da 2.2vw bo'lganda qator
+    // 60px dan 85px ga chiqib butun taxta qayta oqardi (o'lchandi). Tugma
+    // o'lchov birligini almashtiradi, maketni emas.
     "--t-cell": "clamp(1rem, 1.45vw, 2.6rem)",
-    // `--t-fit` — hamma qator bitta sahifaga sig'ishi uchun koeffitsient
-    // (`useFitScale`). Sig'sa 1, sig'masa MIN_FIT gacha kichrayadi.
-    "--t-cell-fit": "calc(var(--t-cell) * var(--t-fit, 1))",
     "--t-order": "calc(clamp(1.1rem, 1.7vw, 3rem) * var(--t-fit, 1))",
     "--t-head": "clamp(0.8rem, 1vw, 2rem)",
     "--t-meta": "calc(clamp(0.75rem, 1vw, 1.7rem) * var(--t-fit, 1))",
@@ -130,32 +113,16 @@ function ageLabel(sec: number): string {
 const MODES: Mode[] = ["hajm", "soni", "foiz"]
 const MODE_KEY = "tablo-mode"
 
-/** HAMMA buyurtmani BITTA sahifaga sig'diradi: sig'masa shriftni kichraytiradi.
+/** Hamma qator bitta sahifaga sig'sin: sig'masa shrift kichrayadi.
  *
- * Devordagi TV da sichqoncha ham, klaviatura ham yo'q — `overflow-auto` bor
- * bo'lsa ham hech kim varaqlamaydi. Prodda o'lchandi: 6 buyurtmadan keyin
- * qolgani ko'rinmay qolardi, 40 tada jadval ekrandan 7 barobar uzun edi.
- * Ilgari bu sahifalarga bo'lib, har 15 soniyada aylantirish bilan hal
- * qilingandi — lekin o'shanda buyurtmangizni ko'rish uchun navbat kutish
- * kerak edi va bir vaqtning o'zida butun tsex holatini ko'rib bo'lmasdi.
+ * Prodda o'lchandi: 6 buyurtmadan keyin qolgani ko'rinmay qolardi, 40 tada
+ * jadval ekrandan 7 barobar uzun edi. Ilgari sahifalarga bo'lib aylantirilardi
+ * — o'z buyurtmangizni ko'rish uchun navbat kutish kerak edi.
  *
- * Endi: mavjud balandlikka qarab `--t-fit` koeffitsienti hisoblanadi va qator
- * shriftlari shunga ko'paytiriladi. `MIN_FIT` — o'qish chegarasi (5 metrdan
- * ko'rinishi kerak); undan pastga tushmaydi, ya'ni juda ko'p buyurtmada
- * pastki qatorlar baribir kesiladi. Bu ATAYLAB: shriftni cheksiz kichraytirish
- * devordagi ekranni umuman foydasiz qilardi. Tartib prioritet, keyin muddat
- * (backend `order_by`, terminal ro'yxati bilan bir xil), ya'ni kesilsa —
- * eng kam shoshilinchi kesiladi.
+ * Siqish endi faqat KICHIK toshish uchun: `useIdleAutoScroll` katta toshishni
+ * aylantirib qoplaydi. 0.62 da 55" TV da buyurtma raqamining bosh harfi 7.9 mm
+ * bo'lib ~1.6 m dan o'qilardi — taxta esa 5 m uchun osilgan.
  */
-// Ilgari 0.62 edi, chunki HAMMA qator ekranga sig'ishi SHART edi — sig'magani
-// kesilib yo'qolardi, ya'ni shriftni kichraytirishdan boshqa yo'l yo'q edi.
-// `useIdleAutoScroll` shu majburiyatni oldi: sig'magani endi aylanadi.
-// Shuning uchun siqish faqat KICHIK toshish uchun qoldi (21 qator 20 ta joyga —
-// 15% siqish bir sikl aylanishdan yaxshiroq), katta toshishda esa taxta
-// aylanadi va shrift o'qiladigan bo'lib qoladi.
-//
-// O'lchangan sabab: 0.62 da 55" TV da buyurtma raqamining bosh harfi 7.9 mm —
-// ~1.6 m dan o'qiladi, taxta esa 5 m uchun osilgan.
 const MIN_FIT = 0.85
 
 function useFitScale<T>(rows: T[]) {
@@ -279,12 +246,9 @@ function LiveBadge({
   online: boolean
   updatedAt: number
 }) {
-  // Har SONIYADA emas, 15 soniyada: bu yerda o'lchanadigan yagona narsa —
-  // yangilanish yiqildimi (90 s chegara), va unga soniya aniqligi kerak emas.
-  // Ilgari 1 s li taymer butun belgini har soniyada qayta chizib, ekranda
-  // to'xtovsiz o'sadigan raqam hosil qilardi: uzoqdan qaraganda u sekundomer
-  // bo'lib ko'rinib, ko'zni ma'lumotdan tortib olardi. Raqamning O'ZI esa
-  // faqat KATTA bo'lganda ma'noli — 0..60 orasida aylanishi sof shovqin.
+  // 15 soniyada, har soniyada emas: bu yerda o'lchanadigan yagona narsa —
+  // yangilanish yiqildimi (90 s chegara). 1 s li taymer ekranda to'xtovsiz
+  // o'sadigan raqam hosil qilib, sekundomer bo'lib ko'rinardi.
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 15_000)
@@ -654,14 +618,9 @@ function TabloPage() {
                     <td
                       className={cn(
                         "rounded-l-md px-3 py-3",
-                        // FAQAT shoshilinch. To'rt rangli shkala normani ham
-                        // belgilardi, holbuki taxta ALLAQACHON prioritet bo'yicha
-                        // saralangan — o'rin uni aytib turibdi. Qolgan hamma
-                        // belgi shu qoidada ishlaydi: JONLI raqami faqat
-                        // nosozlikda, teg faqat to'xtaganda, qizil faqat to'siq
-                        // postda. Ustiga to'q sariq/qizil — deuteranopia'da
-                        // aynan chalkashadigan juftlik, ya'ni to'rt pog'onali
-                        // shkala o'sha odamlar uchun baribir ishlamasdi.
+                        // FAQAT shoshilinch: taxta allaqachon prioritet bo'yicha
+                        // saralangan, ya'ni o'rin normani aytib turibdi. Ustiga
+                        // to'q sariq/qizil deuteranopia'da chalkashadi.
                         o.priority === "urgent"
                           ? "border-l-red-600"
                           : "border-l-transparent",
@@ -691,14 +650,10 @@ function TabloPage() {
                       {/* Nom OLDIN, belgi keyin: belgi birinchi turganda nomni
                           surib "431…" qoldirardi. Endi nom qolgan joyni oladi va
                           tartibli qisqaradi, belgi esa o'ng chetda qotib turadi. */}
-                      {/* Teg bo'lsa nom O'RNIGA chiqadi. 1920px da (odatiy TV)
-                          O'LCHANDI: nomga 119-160px kerak, teg bilan yonma-yon
-                          97px qoladi — ya'ni 7 qatorda "4297_Al…" bo'lib kesilardi,
-                          bu na nom, na ma'lumot. Ustunni kengaytirish ham yordam
-                          bermaydi: 3% olinsa "1010/1274" post ustuniga sig'may
-                          qoladi (kerak 150px, qolardi 141px). 2560px da ikkalasi
-                          sig'adi, lekin maket eng tor ekranga qurilishi kerak.
-                          Buyurtma raqami baribir to'liq turibdi. */}
+                      {/* Teg bo'lsa nom O'RNIGA chiqadi: 1920px da nomga 119-160px
+                          kerak, teg bilan yonma-yon 97px qoladi (o'lchandi).
+                          Ustunni kengaytirish ham yaramaydi — "1010/1274" post
+                          ustuniga sig'may qoladi. */}
                       <span className="flex items-baseline justify-between gap-2 overflow-hidden">
                         {!stall && o.name && (
                           <span
@@ -938,11 +893,9 @@ function TabloCell({
           className="absolute inset-y-0 left-0 transition-[width] duration-700"
           style={{
             width: `${pct}%`,
-            // YASHIL, kulrang emas. `--primary` 22% `#d1d7df` berardi — u
-            // "o'chirilgan" degan ma'no beradi, "bajarilmoqda" emas. Taxtada
-            // tugagan holat yashil (`bg-green-200/70`), demak to'ldirish o'sha
-            // rang sari borishi kerak: katak to'lib boradi va to'lganda aynan
-            // shu rangga aylanadi. Bitta uzluksiz hikoya, ikkita rang tizimi emas.
+            // YASHIL: `--primary` 22% `#d1d7df` berardi, ya'ni kulrang =
+            // "o'chirilgan". Tugagan holat yashil, demak to'ldirish o'sha
+            // rang sari boradi va to'lganda aynan shunga aylanadi.
             background:
               "color-mix(in srgb, var(--color-green-500) 22%, transparent)",
             opacity: dim ? 0.35 : 1,
@@ -1052,7 +1005,11 @@ function TabloOrderDrill({
         {/* Matritsadagi bilan bir xil sabab: kenglik mazmunga bog'liq bo'lmasin.
             Prodda o'lchandi — ustunlar 83px dan 175px gacha sakrardi, ya'ni
             "TMO" ustuni "STOLYARKA" dan ikki baravar tor edi. */}
-        <table className="w-full table-fixed border-separate border-spacing-2">
+        {/* Matritsa bilan BIR XIL grammatika: qator — yagona slab, gorizontal
+            oraliq 0. Aks holda `TabloCell` chizadigan `border-l` 8px bo'shliq
+            ichida osilib qolardi va bitta detal to'qqiz alohida kartochkaga
+            bo'linib ketardi. */}
+        <table className="w-full table-fixed border-separate border-spacing-x-0 border-spacing-y-2">
           <colgroup>
             <col className="w-[22%]" />
             <col className="w-[8%]" />
@@ -1084,19 +1041,20 @@ function TabloOrderDrill({
           </thead>
           <tbody>
             {data?.parts.map((p) => (
-              <tr key={p.part_id}>
-                <td className="rounded-l-lg bg-card px-3 py-3 shadow-sm">
+              <tr key={p.part_id} className="bg-card">
+                <td className="rounded-l-md px-3 py-3">
                   <b className="num text-3xl">{p.code}</b>{" "}
                   <span className="text-xl text-muted-foreground">
                     {p.name}
                   </span>
                 </td>
-                <td className="num bg-card px-2 py-3 text-center text-3xl font-bold shadow-sm">
+                <td className="num border-l border-border/60 px-2 py-3 text-center text-3xl font-bold">
                   {p.count}
                 </td>
-                {drillPosts.map((c) => (
+                {drillPosts.map((c, i) => (
                   <TabloCell
                     key={c}
+                    last={i === drillPosts.length - 1}
                     stage={p.stages[c]}
                     mode={mode === "hajm" ? "soni" : mode}
                     dim={false}
