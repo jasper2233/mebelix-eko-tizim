@@ -70,6 +70,9 @@ const DIM_MIN = 12 // bundan past — umuman chizilmaydi
 // koeffitsiyentini ko'tarish esa uni 24+ ga oshirardi va yozuvlar ustma-ust
 // tusha boshlardi.
 const DIM_MAX = 90
+// GibSaw pariteti: tsexdagi GibSaw.ini `pattrenPartDim=48`. Arrachi ikkala
+// dasturda BIR XIL kattalikdagi raqamni ko'radi.
+const DIM_FS = 48
 
 /** Bitta o'lcham yozuvining kattaligi va ko'rinishi.
  *
@@ -80,15 +83,21 @@ const DIM_MAX = 90
  * `zoom` bo'yicha baholash: shrift ekranda doimiy qolsin va yaqinlashtirish
  * yozuvni kattaytirmasdan, sig'maganlarini OCHSIN.
  */
+/** GibSaw qoidasi (GibSaw.exe dekompilyatsiyasidan, `xsmp.gibsaw.k`):
+ * font KICHRAYMAYDI — tsexdagi o'rnatmada `pattrenPartDim=48` (48 mm, qattiq).
+ * Detalga sig'masa O'LCHAM emas, YO'NALISH almashadi:
+ *   'h'  — o'z qirrasi bo'ylab gorizontal sig'adi;
+ *   'v'  — sig'masa, ko'ndalangiga burab chiziladi;
+ *   null — ikkalasiga ham sig'masa umuman chizilmaydi (GibSaw ham shunday).
+ * Ilgari font `min(kondalang*0.28, boylab/len)` bilan kichrayardi — kichik
+ * detalda 6-8 mm ga tushib o'qib bo'lmasdi; arrachiga esa aynan o'lcham kerak.
+ */
 function dimFit(boylab: number, kondalang: number, matn: string, zoom: number) {
-  const sig = Math.min(
-    kondalang * 0.28,
-    (boylab * 0.9) / Math.max(3, matn.length * 0.6),
-  )
-  return {
-    fs: Math.min(sig, DIM_MAX / zoom),
-    show: boylab > 16 && sig * zoom >= DIM_MIN,
-  }
+  const fs = Math.min(DIM_FS, DIM_MAX / zoom)
+  const len = matn.length * fs * 0.62 + 8
+  const mode: "h" | "v" | null =
+    len <= boylab ? "h" : len <= kondalang ? "v" : null
+  return { fs, mode, show: mode !== null && fs * zoom >= DIM_MIN }
 }
 
 // --- GibSaw render qoidalari (GibLabViewer'dan portlangan, foto-tekshirilgan) ---
@@ -463,16 +472,42 @@ export function SheetSvg({
       const oH = dimFit(hv, wv, `${hv}${eLeft}`, zoom)
       const dW = oW.fs
       const dH = oH.fs
-      const oneLine = hv < 3.6 * dW // yupqa strip: uzunlik o'lchami pastki-chap burchakda
       const showW = oW.show
       const showH = oH.show
-      const topB = showW && !oneLine ? dW * 1.2 : 2
-      const leftB = showH ? dH * 1.2 : 2
+      // GibSaw joylashuvi: ENI — pastki-chap, BO'YI — yuqori-o'ng. Diagonal
+      // qarama-qarshi burchaklar, ya'ni ikki o'lcham STRUKTURAVIY to'qnasha
+      // olmaydi. Ilgari ikkalasi markaz atrofidagi nomzodlarni talashib,
+      // hammasi band bo'lganda `pickSpot` baribir birinchisiga qo'yardi —
+      // foydalanuvchi ko'rgan ustma-ust tushish aynan shu yo'l edi.
+      const botB = showW ? dW * 1.1 : 2
+      const rightB = showH ? dH * 1.1 : 2
+      const wText = `${wv}${eTop ? ` ${eTop}` : ""}`
+      const hText0 = `${hv}${eLeft ? ` ${eLeft}` : ""}`
+      // MITTI detal: burchak sxemasida ham W (pastki-chap) va H (o'ng qirra)
+      // box'lari kesishadi — sinovda o'lchandi (120x80 da 48 mm font bilan).
+      // GibSaw bu holatda shunchaki ustma-ust chizaveradi (dekompilyatsiyada
+      // himoya yo'q). Bizda yaxshiroq yo'l bor: atxot allaqachon "W×H" bitta
+      // yozuv bilan chiziladi — mitti detal ham shu shaklga tushadi. Bunda
+      // kichraytirish joiz: bitta qator, va 29 mm ("120×80") baribir eski
+      // ikki alohida 6-8 mm yozuvdan ancha yirik.
+      const wlen0 = wText.length * dW * 0.62
+      const hlen0 = hText0.length * dH * 0.62
+      // Ikki holatda markaziy birlashgan rejim: (1) burchak sxemasida box'lar
+      // kesishadigan mitti detal; (2) o'lchamlardan biri umuman sig'magan
+      // (GibSaw bu holda shunchaki chizmaydi — arrachi o'lchamsiz qoladi;
+      // markazdagi "60×45" undan yaxshiroq).
+      const tight =
+        oW.mode === null ||
+        oH.mode === null ||
+        (oW.mode === "h" &&
+          oH.mode === "h" &&
+          wv < wlen0 + dH * 1.6 &&
+          hv < hlen0 + dW * 1.6)
       const label = `№${p.num ?? p.id} ${p.name}${p.rot ? " ⟳" : ""}${
         insts.length > 1 && !allDone ? ` ${doneCount}/${insts.length}` : ""
       }`
-      const availW = wv - 2 * leftB
-      const availH = hv - 2 * topB
+      const availW = wv - rightB - 6
+      const availH = hv - botB - 6
       const vert = availH > availW * 1.15
       const longA = vert ? availH : availW
       const shortA = vert ? availW : availH
@@ -486,7 +521,6 @@ export function SheetSvg({
         nomMax,
       )
       let shown = label
-      if (oneLine) fsN = Math.min(fsN, dW * 1.3)
       if (fsN * zoom < 9) {
         shown = `${p.num ?? p.id}`
         fsN = Math.min(
@@ -497,6 +531,7 @@ export function SheetSvg({
         if (fsN * zoom < 6) shown = ""
       }
       if (availW < 16 || availH < 8) shown = ""
+      if (tight) shown = "" // markazni birlashgan o'lcham egalladi
       // tekstura yo'nalishi: 3 gorizontal chiziq matn ORQASIDA, matndan uzunroq
       if (p.txt && wv > 60 && hv > 40) {
         const lw = shown && !vert ? shown.length * fsN * 0.27 + 10 : 0
@@ -547,14 +582,40 @@ export function SheetSvg({
         return c
       }
 
-      const wText = `${wv}${eTop ? ` ${eTop}` : ""}`
-      if (showW && oneLine) {
+      if (tight) {
+        const t = `${wv}×${hv}`
+        const fs = Math.min(
+          DIM_FS,
+          (wv * 0.9) / (t.length * 0.62),
+          hv * 0.55,
+          DIM_MAX / zoom,
+        )
+        if (fs * zoom >= DIM_MIN)
+          labels.push(
+            <text
+              key={`wh${p.cell}`}
+              x={cx}
+              y={cy}
+              fontSize={fs}
+              fill="#1f1f1f"
+              fontWeight="700"
+              textAnchor="middle"
+              dominantBaseline="central"
+            >
+              {t}
+            </text>,
+          )
+      }
+      if (!tight && showW && oW.mode === "h") {
+        // GibSaw: pastki-chap burchak, qirradan 6 ichkarida. Muqobil nomzodlar
+        // faqat teshik ustiga tushganda (GibSaw teshiklarni umuman tekshirmaydi
+        // — bu bizning qo'shimcha).
         const wlen = wText.length * dW * 0.62
         const spot = pickSpot(
           [
-            { x: p.x + leftB + 6, y: p.y + hv - dW * 0.7 },
-            { x: p.x + wv - wlen - 6, y: p.y + hv - dW * 0.7 },
-            { x: p.x + leftB + 6, y: p.y + dW * 0.95 },
+            { x: p.x + 6, y: p.y + hv - dW * 0.35 },
+            { x: p.x + wv - wlen - rightB - 6, y: p.y + hv - dW * 0.35 },
+            { x: p.x + 6, y: p.y + hv - dW * 1.5 },
           ].map((c) => ({
             ...c,
             box: { x: c.x, y: c.y - dW * 0.85, w: wlen, h: dW },
@@ -572,19 +633,17 @@ export function SheetSvg({
             {wText}
           </text>,
         )
-      } else if (showW) {
+      } else if (!tight && showW) {
+        // Eni detalga sig'madi — GibSaw uni chap qirraga BURAB chizadi,
+        // kichraytirmaydi. Tor-baland detalda ilgari eni yo mayda, yo yo'q edi.
         const wlen = wText.length * dW * 0.62
         const spot = pickSpot(
           [
-            { x: cx, y: p.y + dW * 0.85 },
-            { x: p.x + wv * 0.28, y: p.y + dW * 0.85 },
-            { x: p.x + wv * 0.72, y: p.y + dW * 0.85 },
-            { x: cx, y: p.y + hv - dW * 0.35 },
-            { x: p.x + wv * 0.28, y: p.y + hv - dW * 0.35 },
-            { x: p.x + wv * 0.72, y: p.y + hv - dW * 0.35 },
+            { x: p.x + dW * 0.85, y: p.y + hv - 6 },
+            { x: p.x + dW * 0.85, y: p.y + hv - dW * 1.2 },
           ].map((c) => ({
             ...c,
-            box: { x: c.x - wlen / 2, y: c.y - dW * 0.85, w: wlen, h: dW },
+            box: { x: c.x - dW * 0.85, y: c.y - wlen, w: dW, h: wlen },
           })),
         )
         labels.push(
@@ -595,26 +654,25 @@ export function SheetSvg({
             fontSize={dW}
             fill="#1f1f1f"
             fontWeight="700"
-            textAnchor="middle"
+            transform={`rotate(-90 ${spot.x} ${spot.y})`}
           >
             {wText}
           </text>,
         )
       }
-      const hText = `${hv}${eLeft ? ` ${eLeft}` : ""}`
-      if (showH) {
+      const hText = hText0
+      if (!tight && showH && oH.mode === "h") {
+        // GibSaw: bo'yi o'ng qirrada YUQORIDAN PASTGA o'qiladi (rotate 90) —
+        // eni pastki-chapda bo'lgani uchun ikkalasi hech qachon uchrashmaydi.
         const hlen = hText.length * dH * 0.62
         const spot = pickSpot(
           [
-            { x: p.x + dH * 0.85, y: cy },
-            { x: p.x + dH * 0.85, y: p.y + hv * 0.3 },
-            { x: p.x + dH * 0.85, y: p.y + hv * 0.72 },
-            { x: p.x + wv - dH * 0.35, y: cy },
-            { x: p.x + wv - dH * 0.35, y: p.y + hv * 0.3 },
-            { x: p.x + wv - dH * 0.35, y: p.y + hv * 0.72 },
+            { x: p.x + wv - dH * 0.25, y: p.y + 6 },
+            { x: p.x + wv - dH * 0.25, y: p.y + hv - hlen - botB - 6 },
+            { x: p.x + wv - dH * 1.5, y: p.y + 6 },
           ].map((c) => ({
             ...c,
-            box: { x: c.x - dH * 0.85, y: c.y - hlen / 2, w: dH, h: hlen },
+            box: { x: c.x - dH * 0.85, y: c.y, w: dH, h: hlen },
           })),
         )
         labels.push(
@@ -625,8 +683,32 @@ export function SheetSvg({
             fontSize={dH}
             fill="#1f1f1f"
             fontWeight="700"
-            textAnchor="middle"
-            transform={`rotate(-90 ${spot.x} ${spot.y})`}
+            transform={`rotate(90 ${spot.x} ${spot.y})`}
+          >
+            {hText}
+          </text>,
+        )
+      } else if (!tight && showH) {
+        // Vertikal sig'madi (yupqa gorizontal strip) — GibSaw fallback:
+        // yuqori-o'ng burchakda gorizontal.
+        const hlen = hText.length * dH * 0.62
+        const spot = pickSpot(
+          [
+            { x: p.x + wv - hlen - 6, y: p.y + dH * 0.85 },
+            { x: p.x + wv - hlen - 6, y: p.y + hv - dH * 0.35 },
+          ].map((c) => ({
+            ...c,
+            box: { x: c.x, y: c.y - dH * 0.85, w: hlen, h: dH },
+          })),
+        )
+        labels.push(
+          <text
+            key={`h${p.cell}`}
+            x={spot.x}
+            y={spot.y}
+            fontSize={dH}
+            fill="#1f1f1f"
+            fontWeight="700"
           >
             {hText}
           </text>,
