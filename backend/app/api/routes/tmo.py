@@ -32,7 +32,7 @@ from app.schemas.terminal import (
     TmoPachkaRow,
     TmoPending,
 )
-from app.services.scanning import ScanRejected, active_session, record_scan_at, resolve_terminal
+from app.services.scanning import ScanRejected, active_session, publish_scan_events, record_scan_at, resolve_terminal
 
 from .pachka import _weight, instance_stages
 
@@ -248,15 +248,18 @@ async def accept_into_tmo(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: in
         qrs = [qr]
         note = f"TMO ga qabul qilindi: {qr}"
 
+    outcomes = []
     for one in qrs:
         try:
-            await record_scan_at(
-                db,
-                machine=machine,
-                post=post,
-                session=session,
-                qr_text=one,
-                client_event_id=f"wh-{order.id}-{one}",
+            outcomes.append(
+                await record_scan_at(
+                    db,
+                    machine=machine,
+                    post=post,
+                    session=session,
+                    qr_text=one,
+                    client_event_id=f"wh-{order.id}-{one}",
+                )
             )
         except ScanRejected as exc:
             await db.rollback()
@@ -272,6 +275,10 @@ async def accept_into_tmo(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: in
         message=note,
     )
     await db.commit()
+    # TMO — har detalning OXIRGI qadami, ya'ni buyurtmani yakunlaydigan skan aynan
+    # shu yerdan o'tadi. Eventlarni tarqatmasak `scan.recorded` boshqa terminallarga
+    # yetmasdi, `order.completed` esa umuman efirga chiqmasdi.
+    await publish_scan_events(outcomes)
     await ws_manager.publish("tmo.accepted", {"order_id": order.id, "qr_text": qr})
     return await _state(db, order, post)
 

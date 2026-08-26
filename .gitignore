@@ -65,3 +65,6 @@ backups/
 
 # pyinstaller artefaktlari
 bridge-agent/*.spec
+
+# Serverdagi shaxsiy credential fayllar faqatgina localda saqlansin, commit qilinmasin
+server_credentials.txt

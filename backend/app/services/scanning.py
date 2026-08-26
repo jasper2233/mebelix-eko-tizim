@@ -692,6 +692,30 @@ async def record_scan_at(
     return outcome
 
 
+async def publish_scan_events(outcomes: list[ScanOutcome]) -> None:
+    """Yig'ilgan skanlarning WS eventlarini tarqatadi — FAQAT commitdan keyin.
+
+    `finalize_scan` bitta skan uchun shuni chaqiradi. TMO qabuli va qadoqqa skan
+    esa bir nechta skanni bitta tranzaksiyada yozadi va o'z javobini qaytaradi,
+    shuning uchun ular ham aynan shu yerni chaqiradi — aks holda `scan.recorded`,
+    `order.stage_completed` va `order.completed` eventlari jimgina yo'qolardi
+    (ilgari shunday edi: `ScanOutcome` umuman tashlab yuborilardi).
+    """
+    from app.core.ws import ws_manager
+
+    for outcome in outcomes:
+        for event in outcome.events:
+            # `scan_id` faqat COMMITDAN keyin ma'lum. U brauzerga o'z skanini
+            # begonasidan ajratish uchun kerak: stanok skaneridan kelgan skan ham
+            # shu event bilan keladi va terminal uni bannerda ko'rsatadi, lekin
+            # o'zi qilgan skanni ikki marta ko'rsatmasligi kerak.
+            if event["type"] == "scan.recorded":
+                event["payload"]["scan_id"] = outcome.scan.id
+            await ws_manager.publish(
+                event["type"], event["payload"], post_id=event.get("post_id"), machine_id=event.get("machine_id")
+            )
+
+
 async def finalize_scan(
     db: AsyncSession,
     outcome: ScanOutcome,
@@ -703,7 +727,6 @@ async def finalize_scan(
     """Muvaffaqiyatli skanning YAKUNI — log + commit + WS publish + ScanResult.
     Terminal (scans.py) va stanok skan-forvardi (bridge_agents.py) aynan shu
     yo'ldan o'tadi: ikki nusxa drift bergani uchun bitta joyga yig'ildi."""
-    from app.core.ws import ws_manager
     from app.crud import log_action
     from app.schemas.terminal import ScanResult
 
@@ -725,16 +748,7 @@ async def finalize_scan(
     # Avto-SCX proyekt papkasiga tushishi uchun (downloadScx subpapka nomi)
     order = await db.get(Order, outcome.scan.order_id)
     await db.commit()
-    for event in outcome.events:
-        # `scan_id` faqat COMMITDAN keyin ma'lum. U brauzerga o'z skanini
-        # begonasidan ajratish uchun kerak: stanok skaneridan kelgan skan ham
-        # shu event bilan keladi va terminal uni bannerda ko'rsatadi, lekin
-        # o'zi qilgan skanni ikki marta ko'rsatmasligi kerak.
-        if event["type"] == "scan.recorded":
-            event["payload"]["scan_id"] = outcome.scan.id
-        await ws_manager.publish(
-            event["type"], event["payload"], post_id=event.get("post_id"), machine_id=event.get("machine_id")
-        )
+    await publish_scan_events([outcome])
     return ScanResult(
         scan_id=outcome.scan.id,
         duplicate=outcome.duplicate,

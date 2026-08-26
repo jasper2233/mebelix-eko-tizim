@@ -27,7 +27,7 @@ from app.schemas.terminal import (
     UpakovkaOrderState,
     UpakovkaPending,
 )
-from app.services.scanning import ScanRejected, active_session, record_scan_at, resolve_terminal
+from app.services.scanning import ScanRejected, active_session, publish_scan_events, record_scan_at, resolve_terminal
 
 router = APIRouter(prefix="/pachka", tags=["pachka"])
 
@@ -305,7 +305,7 @@ async def scan_into_pachka(
 
     session = await active_session(db, machine)
     try:
-        await record_scan_at(
+        outcome = await record_scan_at(
             db,
             machine=machine,
             post=post,
@@ -319,6 +319,9 @@ async def scan_into_pachka(
 
     db.add(PachkaItem(pachka_id=pachka.id, instance_id=instance.id))
     await db.commit()
+    # UPAKOVKA skani ham odatdagi skan: `scan.recorded` boshqa terminallarga borishi
+    # va bosqich/buyurtma yakunlanishi efirga chiqishi kerak.
+    await publish_scan_events([outcome])
     await ws_manager.publish("pachka.item", {"pachka_id": pachka.id, "qr_text": qr})
     return await _state(db, order, post)
 

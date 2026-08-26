@@ -37,9 +37,21 @@ _LOGIN_RATE_LIMIT = RateLimit(limit=settings.LOGIN_RATE_LIMIT_ATTEMPTS, period=s
 _BADGE_RATE_LIMIT = RateLimit(limit=30, period=60)
 
 ACCESS_MAX_AGE = ACCESS_TOKEN_EXPIRE_MINUTES * 60
-REFRESH_MAX_AGE = REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
 
 _USED_JTI_PREFIX = "auth:refresh:used:"
+
+
+def _refresh_days(user: User) -> int:
+    """Shu hisobning refresh tokeni necha kun yashaydi.
+
+    BITTA joyda: tokenni berish ham, bir martalik ishlatish belgisining (tombstone)
+    muddati ham shundan oladi. Ilgari tombstone qotirilgan 7 kunlik qiymat
+    bilan qo'yilardi, qurilma tokeni esa 90 kun yashardi — ya'ni 8-kundan 90-kungacha
+    ALLAQACHON aylantirilgan token qayta ishlatilsa bo'lardi va bir martalik
+    kafolat jimgina yo'qolardi (o'lchandi: 83 kunlik replay oynasi).
+    """
+    device = UserRole(user.role) in (UserRole.TERMINAL, UserRole.TABLO)
+    return settings.DEVICE_REFRESH_TOKEN_EXPIRE_DAYS if device else REFRESH_TOKEN_EXPIRE_DAYS
 
 
 def _issue_token_pair(response: Response, user: User) -> str:
@@ -50,8 +62,7 @@ def _issue_token_pair(response: Response, user: User) -> str:
     qisqa qoladi — o'g'irlangan cookie oynasi kengaymasin.
     """
     payload = {"sub": str(user.id), "token_version": user.token_version}
-    device = UserRole(user.role) in (UserRole.TERMINAL, UserRole.TABLO)
-    days = settings.DEVICE_REFRESH_TOKEN_EXPIRE_DAYS if device else REFRESH_TOKEN_EXPIRE_DAYS
+    days = _refresh_days(user)
     access_token = create_access_token(data=payload)
     refresh_token = create_refresh_token(data=payload, days=days)
     set_auth_cookie(response, ACCESS_COOKIE_NAME, access_token, ACCESS_MAX_AGE)
@@ -65,11 +76,11 @@ async def _is_refresh_token_used(jti: str) -> bool:
     return bool(await rate_limiter.client.exists(_USED_JTI_PREFIX + jti))
 
 
-async def _mark_refresh_token_used(jti: str) -> None:
+async def _mark_refresh_token_used(jti: str, max_age: int) -> None:
     if rate_limiter.client is None:
         return
-    # Keep the tombstone exactly as long as the token could still be valid.
-    await rate_limiter.client.set(_USED_JTI_PREFIX + jti, 1, ex=REFRESH_MAX_AGE)
+    # Tombstone token qancha yashashi mumkin bo'lsa — shuncha turadi (`_refresh_days`).
+    await rate_limiter.client.set(_USED_JTI_PREFIX + jti, 1, ex=max_age)
 
 
 @router.post(
@@ -327,6 +338,6 @@ async def refresh_access_token(
         raise UnauthorizedException("Token bekor qilingan.")
 
     if token_data.jti:
-        await _mark_refresh_token_used(token_data.jti)
+        await _mark_refresh_token_used(token_data.jti, _refresh_days(user) * 24 * 60 * 60)
     access_token = _issue_token_pair(response, user)
     return {"access_token": access_token, "token_type": "bearer"}
