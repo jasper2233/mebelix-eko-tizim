@@ -1,7 +1,7 @@
 """TABLO data API (TZ 9): orders × stages live matrix. Read-only, any authenticated device."""
 
 from fastapi import APIRouter
-from sqlalchemy import case, select
+from sqlalchemy import select
 from sqlalchemy.orm import defer
 
 from app.api.deps import CurrentUser, SessionDep
@@ -13,21 +13,26 @@ from app.services.metrics import part_volume
 
 router = APIRouter(prefix="/tablo", tags=["tablo"])
 
-# TABLO'da nima ko'rinadi: ishlab chiqarishdagi VA tayyor bo'lgan buyurtmalar.
-# Tayyor buyurtma taxtadan FAQAT "topshirildi" belgilangach tushadi (TMO
-# `deliver_tmo_order` yoki `orders.deliver_order`) — vaqt chegarasi YO'Q.
+# TABLO'da FAQAT ishlab chiqarishdagi buyurtmalar ko'rinadi.
+#
+# Buyurtma taxtadan hamma detali TMO dan o'tgan zahoti tushadi — bu aynan
+# COMPLETED holatining o'zi: oxirgi marshrut qadami TMO qabuli, va oxirgi
+# qadam yopilganda `scanning.record_scan_at` statusni COMPLETED qiladi.
+# Ya'ni bu yerda alohida "tayyorlarni ham ko'rsat" sharti KERAK EMAS,
+# status filtri o'zi shu ma'noni beradi.
+#
+# Managerning "TOPSHIRILDI" tugmasi taxtaga TA'SIR QILMAYDI — u DELIVERED
+# holatini va topshirish sanasini yozadi, taxta esa undan oldin tozalangan
+# bo'ladi. Sabab: devordagi ekran TSEXNING ishi uchun, tsexda esa TMO dan
+# o'tgan buyurtma ustida bajariladigan ish qolmaydi. Topshirish — tijoriy
+# qadam, u reestrda kuzatiladi.
 #
 # Ilgari 30 kunlik oyna bor edi, sababi "chegarasiz qoldirilsa ekran
 # sekinlashadi (100 buyurtmada 28 ms -> 1.9 s)". O'sha o'lchov keyingi
 # optimizatsiyadan (ORDER_FAT_COLUMNS defer + faqat kerakli ustunlar,
 # 669 ms -> 175 ms) OLDIN olingan. 2026-08-26 da qayta o'lchandi: 19 buyurtma
-# uchun 84-120 ms, va og'ir qism `part_route` bo'yicha agregatsiya — u BUTUN
-# jadvalni skanerlaydi, ya'ni oyna uni qisqartirmasdi ham. O'sish uchun
-# `ix_part_route_order_post` indeksi bor.
-#
-# Oyna olib tashlanishining MAQSADI ham shu: "topshirildi" bosilmagan buyurtma
-# taxtada qolib ko'zga tashlanishi kerak — u to'xtab qolgan oqim belgisi.
-# Oyna esa aksincha, muammo surunkali bo'lgach uni JIMGINA yashirardi.
+# uchun 84-120 ms, og'ir qism `part_route` agregatsiyasi. Oyna endi umuman
+# kerak emas: ro'yxatni TMO ning o'zi cheklaydi.
 
 
 @router.get("/matrix", response_model=TabloMatrix, operation_id="read_tablo_matrix")
@@ -45,17 +50,10 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
                 select(Order)
                 .options(*(defer(c) for c in ORDER_FAT_COLUMNS))
                 .where(
-                    Order.status.in_([OrderStatus.PRODUCTION, OrderStatus.COMPLETED]),
+                    Order.status == OrderStatus.PRODUCTION,
                     Order.is_deleted == False,  # noqa: E712
                 )
-                # TAYYOR buyurtmalar ENG PASTDA: ular ustida ish qolmagan, taxtaning
-                # yuqori qismi esa hali kesilayotganlar uchun — devordagi ekranga
-                # uzoqdan qaraganda birinchi ko'zga tushadigan joy o'sha.
-                .order_by(
-                    case((Order.status == OrderStatus.COMPLETED, 1), else_=0),
-                    Order.deadline.asc().nulls_last(),
-                    Order.id,
-                )
+                .order_by(Order.deadline.asc().nulls_last(), Order.id)
             )
         )
         .scalars()

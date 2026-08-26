@@ -114,8 +114,8 @@ const MODE_KEY = "tablo-mode"
  * shriftlari shunga ko'paytiriladi. `MIN_FIT` — o'qish chegarasi (5 metrdan
  * ko'rinishi kerak); undan pastga tushmaydi, ya'ni juda ko'p buyurtmada
  * pastki qatorlar baribir kesiladi. Bu ATAYLAB: shriftni cheksiz kichraytirish
- * devordagi ekranni umuman foydasiz qilardi. Tartib esa tayyorlarni pastga
- * suradi (backend `order_by`), ya'ni kesilsa — eng kam ahamiyatlisi kesiladi.
+ * devordagi ekranni umuman foydasiz qilardi. Tartib muddat bo'yicha (backend
+ * `order_by`), ya'ni kesilsa — muddati eng uzoqdagisi kesiladi.
  */
 const MIN_FIT = 0.62
 

@@ -500,7 +500,7 @@ Skan qabul qilish qoidalari (marshrut/ketma-ketlik tekshiruvi, dublikat) va xato
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
-| GET | `/api/v1/tablo/matrix` | login (har qanday) | `TabloMatrix`: postlar ro'yxati + PRODUCTION va COMPLETED buyurtmalar; tartib — TAYYORLAR ENG PASTDA (`case(status=COMPLETED -> 1)`), keyin `deadline`, keyin `id`. Tayyor buyurtma taxtadan FAQAT "topshirildi" belgilangach tushadi — vaqt chegarasi yo'q (`COMPLETED_WINDOW` olib tashlandi: u to'xtab qolgan buyurtmani 30 kundan keyin jimgina yashirardi).
+| GET | `/api/v1/tablo/matrix` | login (har qanday) | `TabloMatrix`: postlar ro'yxati + **faqat PRODUCTION** buyurtmalar; tartib — `deadline` (nulls oxirida), keyin `id`. Buyurtma taxtadan hamma detali TMO dan o'tgan zahoti tushadi — bu COMPLETED holatining o'zi (oxirgi marshrut qadami TMO qabuli, `scanning.record_scan_at` statusni qo'yadi), ya'ni alohida filtr shart emas. Managerning "TOPSHIRILDI" tugmasi taxtaga ta'sir qilmaydi: u DELIVERED ni yozadi, taxta esa undan oldin tozalangan bo'ladi. Devordagi ekran TSEX ishi uchun — TMO dan o'tgan buyurtmada tsex ishi qolmaydi. (`COMPLETED_WINDOW` 30 kunlik oyna olib tashlangan: endi ro'yxatni TMO ning o'zi cheklaydi.) |
 | GET | `/api/v1/tablo/orders/{id}` | login (har qanday) | Drill-down (TZ 9.5 SONI NAZORATI): har detal × bosqich done/total. Katakcha post bo'yicha, marshrut esa qadamli — bitta post takrorlansa (kromka → prisadka → kromka) qadamlar QO'SHILADI, aks holda oxirgi qadam oldingisining ustiga yozilib bajarilgan ish yo'qolardi |
 
 Javob sxemalari `backend/app/schemas/tablo.py` da: `TabloMatrix` (`posts` — typed `TabloPostCol` ro'yxati), `TabloOrderRow`, `StageAgg`, `TabloOrderDetail`, `TabloPartRow`.
