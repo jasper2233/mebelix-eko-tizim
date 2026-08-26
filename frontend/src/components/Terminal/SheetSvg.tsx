@@ -602,37 +602,60 @@ export function SheetSvg({
             )
         }
       }
-      // O'lcham/nom yozuvlari teshiklar ustiga tushmasin: har yozuvga bir necha
-      // nomzod joy, teshiksiz birinchisi tanlanadi; tanlangan joy keyingi
-      // yozuvlar uchun ham to'siq — yozuvlar bir-birining ustiga chiqmaydi
+      // Tekstura yo'nalishi: 3 chiziq detalning `l` O'QI bo'ylab (teksturali
+      // materialda birinchi o'lcham — tekstura qulflangan tomon). rot=false da
+      // l katakda gorizontal -> chiziqlar gorizontal; GibLab teksturali detalni
+      // odatda buramaydi, lekin rot=true kelsa chiziqlar ham buriladi — aks
+      // holda xarita teksturani 90° noto'g'ri ko'rsatardi. GibSaw xaritada
+      // teksturani UMUMAN chizmaydi (dekompilyatsiya: part-draw'da faqat XNC,
+      // kromka punktiri, o'lchamlar, nom) — bu belgi bizning qo'shimcha, chek
+      // eskizi bilan bir xil qoidada.
+      if (p.txt && wv > 60 && hv > 40) {
+        const lw = shown && !vert ? shown.length * fsN * 0.27 + 10 : 0
+        if (p.rot) {
+          const th = Math.min(Math.max(hv * 0.22, 120), hv * 0.45)
+          const gp = Math.min(wv * 0.3, Math.max(fsN * 0.55, 16))
+          for (const xx of [cx - gp, cx, cx + gp])
+            labels.push(
+              <line
+                key={`tx${p.cell}-${xx}`}
+                x1={xx}
+                y1={cy - th}
+                x2={xx}
+                y2={cy + th}
+                stroke="#1a1a1a"
+                strokeWidth="2.5"
+              />,
+            )
+        } else {
+          const th = Math.min(Math.max(wv * 0.22, lw + 120), wv * 0.45)
+          const gp = Math.min(hv * 0.3, Math.max(fsN * 0.55, 16))
+          for (const yy of [cy - gp, cy, cy + gp])
+            labels.push(
+              <line
+                key={`tx${p.cell}-${yy}`}
+                x1={cx - th}
+                y1={yy}
+                x2={cx + th}
+                y2={yy}
+                stroke="#1a1a1a"
+                strokeWidth="2.5"
+              />,
+            )
+        }
+      }
+      // Teshiklar YOZUVGA TO'SIQ EMAS — o'lcham ham, nom ham teshik ustiga
+      // bemalol tushadi (tsex talabi; GibSaw ham teshikni tekshirmaydi).
+      // Ilgari teshik-chetlab o'tish yozuvni muqobil nomzodga sakratardi —
+      // bir xil detal turli listlarda TURLI joyda yozuv olib, "o'lcham
+      // siljigan" bo'lib ko'rinardi. Endi har yozuv o'rni DETERMINISTIK:
+      // W past-chapda, H o'ng qirrada, nom markazda. Yagona qolgan tekshiruv —
+      // nom o'lcham box'lariga tegsa NOM chizilmaydi (arrachiga o'lcham kerak,
+      // nom faqat identifikatsiya).
       type Box = { x: number; y: number; w: number; h: number }
-      const obstacles: Box[] = []
-      if (H) {
-        for (const b of H.bores ?? []) {
-          const [bx, by] = holeXY(p, H, b.x, b.y)
-          const r = Math.max(b.d / 2, 4) + 4
-          obstacles.push({ x: bx - r, y: by - r, w: 2 * r, h: 2 * r })
-        }
-        for (const b of H.edge ?? []) {
-          const [lx, ly] = edgeLocalXY(H, b.side, b.pos)
-          const [bx, by] = holeXY(p, H, lx, ly)
-          const r = edgeBoreRect(p, bx, by, b.d, b.dp)
-          obstacles.push({ x: r.x - 4, y: r.y - 4, w: r.w + 8, h: r.h + 8 })
-        }
-      }
-      const overlaps = (b: Box) =>
-        obstacles.some(
-          (o) =>
-            b.x < o.x + o.w &&
-            o.x < b.x + b.w &&
-            b.y < o.y + o.h &&
-            o.y < b.y + b.h,
-        )
-      const pickSpot = <T extends { box: Box }>(cands: T[]): T => {
-        const c = cands.find((v) => !overlaps(v.box)) ?? cands[0]
-        obstacles.push(c.box)
-        return c
-      }
+      const dimBoxes: Box[] = []
+      const kesishadi = (a: Box, b: Box) =>
+        a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
 
       if (tight) {
         const t = `${wv}×${hv}`
@@ -663,16 +686,13 @@ export function SheetSvg({
         // faqat teshik ustiga tushganda (GibSaw teshiklarni umuman tekshirmaydi
         // — bu bizning qo'shimcha).
         const wlen = wText.length * dW * CH
-        const spot = pickSpot(
-          [
-            { x: p.x + 6, y: p.y + hv - 4 - DESC * dW },
-            { x: p.x + wv - wlen - rightB - 6, y: p.y + hv - 4 - DESC * dW },
-            { x: p.x + 6, y: p.y + hv - 4 - dW * 1.2 },
-          ].map((c) => ({
-            ...c,
-            box: { x: c.x, y: c.y - ASC * dW, w: wlen, h: (ASC + DESC) * dW },
-          })),
-        )
+        const spot = { x: p.x + 6, y: p.y + hv - 4 - DESC * dW }
+        dimBoxes.push({
+          x: spot.x,
+          y: spot.y - ASC * dW,
+          w: wlen,
+          h: (ASC + DESC) * dW,
+        })
         labels.push(
           <text
             key={`w${p.cell}`}
@@ -689,20 +709,13 @@ export function SheetSvg({
         // Eni detalga sig'madi — GibSaw uni chap qirraga BURAB chizadi,
         // kichraytirmaydi. Tor-baland detalda ilgari eni yo mayda, yo yo'q edi.
         const wlen = wText.length * dW * CH
-        const spot = pickSpot(
-          [
-            { x: p.x + 4 + ASC * dW, y: p.y + hv - 6 },
-            { x: p.x + 4 + ASC * dW, y: p.y + hv - dW * 1.2 },
-          ].map((c) => ({
-            ...c,
-            box: {
-              x: c.x - ASC * dW,
-              y: c.y - wlen,
-              w: (ASC + DESC) * dW,
-              h: wlen,
-            },
-          })),
-        )
+        const spot = { x: p.x + 4 + ASC * dW, y: p.y + hv - 6 }
+        dimBoxes.push({
+          x: spot.x - ASC * dW,
+          y: spot.y - wlen,
+          w: (ASC + DESC) * dW,
+          h: wlen,
+        })
         labels.push(
           <text
             key={`w${p.cell}`}
@@ -727,16 +740,13 @@ export function SheetSvg({
         // 0.25*dH edi — matn katakdan o'ngga ~0.75*dH chiqib QO'SHNI katakka
         // kirardi; jonli terminalda o'lchandi: 72 matndan 13 tasi toshgan,
         // hammasi shu naqsh. Box ham glyph bilan bir tomonda: [x-0.25, x+0.75].
-        const spot = pickSpot(
-          [
-            { x: p.x + wv - 4 - ASC * dH, y: p.y + 6 },
-            { x: p.x + wv - 4 - ASC * dH, y: p.y + hv - hlen - botB - 6 },
-            { x: p.x + wv - 4 - dH * 2.0, y: p.y + 6 },
-          ].map((c) => ({
-            ...c,
-            box: { x: c.x - DESC * dH, y: c.y, w: (ASC + DESC) * dH, h: hlen },
-          })),
-        )
+        const spot = { x: p.x + wv - 4 - ASC * dH, y: p.y + 6 }
+        dimBoxes.push({
+          x: spot.x - DESC * dH,
+          y: spot.y,
+          w: (ASC + DESC) * dH,
+          h: hlen,
+        })
         labels.push(
           <text
             key={`h${p.cell}`}
@@ -754,15 +764,13 @@ export function SheetSvg({
         // Vertikal sig'madi (yupqa gorizontal strip) — GibSaw fallback:
         // yuqori-o'ng burchakda gorizontal.
         const hlen = hText.length * dH * CH
-        const spot = pickSpot(
-          [
-            { x: p.x + wv - hlen - 6, y: p.y + 4 + ASC * dH },
-            { x: p.x + wv - hlen - 6, y: p.y + hv - 4 - DESC * dH },
-          ].map((c) => ({
-            ...c,
-            box: { x: c.x, y: c.y - ASC * dH, w: hlen, h: (ASC + DESC) * dH },
-          })),
-        )
+        const spot = { x: p.x + wv - hlen - 6, y: p.y + 4 + ASC * dH }
+        dimBoxes.push({
+          x: spot.x,
+          y: spot.y - ASC * dH,
+          w: hlen,
+          h: (ASC + DESC) * dH,
+        })
         labels.push(
           <text
             key={`h${p.cell}`}
@@ -779,23 +787,25 @@ export function SheetSvg({
       if (shown) {
         const nw = vert ? fsN : shown.length * fsN * 0.55
         const nh = vert ? shown.length * fsN * 0.55 : fsN
-        const spot = pickSpot(
-          [cy, cy + hv * 0.18, cy - hv * 0.18].map((yy) => ({
-            y: yy,
-            box: { x: cx - nw / 2, y: yy - nh / 2, w: nw, h: nh },
-          })),
-        )
+        // Nom har doim MARKAZDA. O'lcham yozuvlariga tegsa — NOM chizilmaydi:
+        // kichik detalda katta o'lcham raqami ostida ko'rinmay "qolib
+        // ketgandan" ko'ra yo'q bo'lgani yaxshi (tsex talabi — arrachiga
+        // o'lcham kerak, nom faqat identifikatsiya).
+        const nomBox = { x: cx - nw / 2, y: cy - nh / 2, w: nw, h: nh }
+        if (dimBoxes.some((b) => kesishadi(b, nomBox))) shown = ""
+      }
+      if (shown) {
         labels.push(
           <text
             key={`n${p.cell}`}
             x={cx}
-            y={spot.y}
+            y={cy}
             fontSize={fsN}
             fill="#111"
             fontWeight="700"
             textAnchor="middle"
             dominantBaseline="middle"
-            transform={vert ? `rotate(-90 ${cx} ${spot.y})` : undefined}
+            transform={vert ? `rotate(-90 ${cx} ${cy})` : undefined}
           >
             {shown}
           </text>,
