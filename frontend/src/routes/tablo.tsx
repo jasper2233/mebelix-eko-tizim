@@ -59,6 +59,25 @@ function deadlineCountdown(value?: string | null): [string, string] {
   return [`${days < 0 ? -days : days} kun`, days < 0 ? "KECHIKDI" : "QOLDI"]
 }
 
+/** "Qotib qolgan" belgisi: `null` — normal, aks holda yozuv.
+ *
+ * Taxta HOLATNI ko'rsatadi, oqimni emas: 6 soat qimirlamagan buyurtma bir
+ * daqiqa oldin skan qilingani bilan bir xil ko'rinadi. Bu esa taxtaning eng
+ * muhim savolini — "qayerda to'xtab qolgan?" — javobsiz qoldiradi.
+ *
+ * Hisobni SERVER beradi (`idle_days`) va u kalendar kunini emas, TSEX ISHLAGAN
+ * kunlarini sanaydi. Soatlik chegara har kecha butun taxtani yoqardi (smena
+ * 18:30-18:40 da tugaydi), kalendar kuni esa dam olishdan keyin: dushanba
+ * ertalab hamma qator "2 kun to'xtagan" bo'lib, belgi ma'nosini yo'qotardi.
+ *
+ * Belgi faqat G'AYRITABIIY holatda chiqadi (JONLI bilan bir xil qoida): har
+ * qatorda doim turadigan raqam shovqin bo'lardi va haqiqiy muammoni yashirardi.
+ */
+function stallLabel(idle?: number | null): string | null {
+  if (idle == null) return "TEGILMAGAN"
+  return idle >= 2 ? `${idle} KUN TO'XTAGAN` : null
+}
+
 /** Devor ekrani uchun o'lcham shkalasi — REJIMGA bog'liq.
  *
  * Toshishni ekran emas, ikkita narsa belgilaydi: yorliq uzunligi va ustun
@@ -572,17 +591,19 @@ function TabloPage() {
                   })}
                 </tr>
               )}
-              {(data?.orders ?? []).map((o) => (
-                <tr
-                  key={o.id}
-                  onClick={() => setDrill(o.id)}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") setDrill(o.id)
-                  }}
-                  className="cursor-pointer hover:bg-accent"
-                >
-                  {/* MATN ustuni — bu yerda qisqartirish O'RINLI: loyiha nomi
+              {(data?.orders ?? []).map((o) => {
+                const stall = stallLabel(o.idle_days)
+                return (
+                  <tr
+                    key={o.id}
+                    onClick={() => setDrill(o.id)}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") setDrill(o.id)
+                    }}
+                    className="cursor-pointer hover:bg-accent"
+                  >
+                    {/* MATN ustuni — bu yerda qisqartirish O'RINLI: loyiha nomi
                       ixtiyoriy uzunlikda bo'ladi. Raqam kataklarida esa
                       qisqartirish TAQIQ — kesilgan son yolg'on ma'lumot.
 
@@ -594,84 +615,99 @@ function TabloPage() {
                       o'z satrida qisqaradi. Muddat katagi ham shu naqshda.
                       Qator raqami (1, 2, 3...) olib tashlandi: qatorning o'rni
                       ko'rinib turibdi, raqam faqat joy egallardi. */}
-                  <td className="rounded-l-lg bg-card px-3 py-3 shadow-sm">
-                    <span
-                      className="block truncate font-bold leading-tight"
-                      style={{ fontSize: "var(--t-order)" }}
-                    >
-                      {o.number}
-                    </span>
-                    {o.name && (
-                      <span
-                        className="block truncate text-muted-foreground"
-                        style={{ fontSize: "var(--t-meta)" }}
-                      >
-                        {o.name}
+                    <td className="rounded-l-lg bg-card px-3 py-3 shadow-sm">
+                      <span className="flex items-baseline gap-2">
+                        <span
+                          className="truncate font-bold leading-tight"
+                          style={{ fontSize: "var(--t-order)" }}
+                        >
+                          {o.number}
+                        </span>
+                        {/* Slate, qizil EMAS: muddat ustuni qizilni egallagan va
+                          "kechikdi" bilan "to'xtagan" boshqa-boshqa faktlar.
+                          Muddatsiz buyurtma ham to'xtab qolishi mumkin — prodda
+                          shundaysi bor (4301_Komol, 463 skandan keyin jim). */}
+                        {stall && (
+                          <span
+                            className="shrink-0 whitespace-nowrap rounded-sm bg-slate-700 px-1.5 py-0.5 font-black uppercase tracking-wider text-white"
+                            style={{ fontSize: "var(--t-badge)" }}
+                          >
+                            {stall}
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </td>
-                  {/* Muddat toni signal: hammasi amber bo'lsa amber hech narsa anglatmaydi */}
-                  <td
-                    className={cn(
-                      "px-3 py-3 font-bold",
-                      deadlineTone(o.deadline) === "overdue"
-                        ? "bg-red-100 text-red-800"
-                        : deadlineTone(o.deadline) === "today"
-                          ? "bg-amber-100 text-amber-800"
-                          : "text-muted-foreground",
-                    )}
-                  >
-                    {/* Devor ekranida "19.08.2026" hech narsa demaydi — odam
+                      {o.name && (
+                        <span
+                          className="block truncate text-muted-foreground"
+                          style={{ fontSize: "var(--t-meta)" }}
+                        >
+                          {o.name}
+                        </span>
+                      )}
+                    </td>
+                    {/* Muddat toni signal: hammasi amber bo'lsa amber hech narsa anglatmaydi */}
+                    <td
+                      className={cn(
+                        "px-3 py-3 font-bold",
+                        deadlineTone(o.deadline) === "overdue"
+                          ? "bg-red-100 text-red-800"
+                          : deadlineTone(o.deadline) === "today"
+                            ? "bg-amber-100 text-amber-800"
+                            : "text-muted-foreground",
+                      )}
+                    >
+                      {/* Devor ekranida "19.08.2026" hech narsa demaydi — odam
                         boshida sanani bugungi kundan ayirishi kerak bo'lardi.
                         Shuning uchun javobning O'ZI yoziladi: "3 kun / QOLDI".
                         Xom sana UMUMAN chizilmaydi — devordan uni hech kim
                         ko'chirib olmaydi, aniq sana kerak bo'lsa reestrda bor. */}
-                    {(() => {
-                      const [son, soz] = deadlineCountdown(o.deadline)
-                      return (
-                        <>
-                          <span
-                            className="num block leading-tight tabular-nums"
-                            style={{ fontSize: "var(--t-order)" }}
-                          >
-                            {son}
-                          </span>
-                          {soz && (
+                      {(() => {
+                        const [son, soz] = deadlineCountdown(o.deadline)
+                        return (
+                          <>
                             <span
-                              className="block font-bold uppercase leading-tight tracking-wider"
-                              style={{ fontSize: "var(--t-badge)" }}
+                              className="num block leading-tight tabular-nums"
+                              style={{ fontSize: "var(--t-order)" }}
                             >
-                              {soz}
+                              {son}
                             </span>
-                          )}
-                        </>
-                      )
+                            {soz && (
+                              <span
+                                className="block font-bold uppercase leading-tight tracking-wider"
+                                style={{ fontSize: "var(--t-badge)" }}
+                              >
+                                {soz}
+                              </span>
+                            )}
+                          </>
+                        )
+                      })()}
+                    </td>
+                    {(() => {
+                      // Qat'iy tartib (STRICT_STAGE_ORDER): ROVER boshlanmasa
+                      // STOLYARKA ham boshlanolmaydi. Ya'ni ishlanmagan HAR post
+                      // "BOSHLANMADI" deb qichqirsa, bitta fakt uch marta
+                      // aytiladi va operator qaysi biri O'ZINIKI ekanini
+                      // ajratolmaydi. Faqat BIRINCHISI harakat talab qiladi.
+                      const posts = data?.posts ?? []
+                      const blocker = posts.find((p) => {
+                        const st = o.stages[p.code]
+                        return st?.total && st.done < st.total
+                      })
+                      return posts.map((p) => (
+                        <TabloCell
+                          key={p.id}
+                          stage={o.stages[p.code]}
+                          mode={mode}
+                          dim={Boolean(contextPostId && p.id !== contextPostId)}
+                          deadline={o.deadline}
+                          blocker={blocker?.id === p.id}
+                        />
+                      ))
                     })()}
-                  </td>
-                  {(() => {
-                    // Qat'iy tartib (STRICT_STAGE_ORDER): ROVER boshlanmasa
-                    // STOLYARKA ham boshlanolmaydi. Ya'ni ishlanmagan HAR post
-                    // "BOSHLANMADI" deb qichqirsa, bitta fakt uch marta
-                    // aytiladi va operator qaysi biri O'ZINIKI ekanini
-                    // ajratolmaydi. Faqat BIRINCHISI harakat talab qiladi.
-                    const posts = data?.posts ?? []
-                    const blocker = posts.find((p) => {
-                      const st = o.stages[p.code]
-                      return st?.total && st.done < st.total
-                    })
-                    return posts.map((p) => (
-                      <TabloCell
-                        key={p.id}
-                        stage={o.stages[p.code]}
-                        mode={mode}
-                        dim={Boolean(contextPostId && p.id !== contextPostId)}
-                        deadline={o.deadline}
-                        blocker={blocker?.id === p.id}
-                      />
-                    ))
-                  })()}
-                </tr>
-              ))}
+                  </tr>
+                )
+              })}
               {!data?.orders.length && (
                 <tr>
                   <td

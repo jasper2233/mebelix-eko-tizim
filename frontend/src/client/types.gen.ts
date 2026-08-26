@@ -2736,6 +2736,10 @@ export type TabloOrderRow = {
     stages: {
         [key: string]: StageAgg;
     };
+    /**
+     * Idle Days
+     */
+    idle_days?: number | null;
 };
 
 /**

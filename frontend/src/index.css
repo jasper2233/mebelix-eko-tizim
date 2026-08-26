@@ -96,15 +96,30 @@
    avval --post-boyoq == --status-review va --post-stolyarka == --status-completed
    bayt-baytiga bir xil edi, ya'ni yashil chip "tugadi" degan ma'noni ham berardi. */
 :root {
-  --post-arra: #c2410c;
-  --post-kromka: #0e7490;
-  --post-oval: #0d9488; /* teal-600 — to'g'ri kromkaning ko'k-ferozasidan ajralib turadi */
-  --post-prisadka: #7c3aed;
-  --post-boyoq: #a16207; /* yellow-700 — review'ning amber-700 idan ajratilgan (eski paz rangi) */
-  --post-rover: #be185d;
-  --post-stolyarka: #4d7c0f; /* lime-700 — completed'ning green-700 idan ajratilgan */
-  --post-upakovka: #0369a1; /* sky-700 — qadoqlash; production'ning blue-700 idan to'qroq */
-  --post-tmo: #7c2d12; /* orange-900 — TMO; arraning #c2410c idan to'qroq */
+  /* Tonlar o'zgarmadi — operatorlar ularni o'rgangan, terminal ham shu ranglarni
+     ishlatadi. O'zgargan narsa QUYUQLIK, ikki o'lchov bo'yicha:
+
+     1. Kontrast. Tablo foni (#dde3eb) ustida oltitasi WCAG ning 4.5 chegarasidan
+        past edi, OVAL esa 2.90 — katta matn uchun kerakli 3.0 dan ham past, ya'ni
+        devor ekranida sarlavhasi o'qilmasdi. Endi hammasi >= 4.68.
+
+     2. Rang ko'rmaydiganlar (tsexda erkaklar ko'p, ~8% da qizil-yashil buzilishi).
+        Deuteranopia simulyatsiyasida ARRA va BOYOQ ΔE 2.0 edi — amalda bitta rang;
+        STOLYARKA bilan BOYOQ esa YONMA-YON ustunlar va protanopia'da ΔE 2.4.
+        Shu uchlikka ataylab TURLI quyuqlik berildi, ya'ni ular kulrangda ham
+        ajraladi: ΔE 2.0 -> 18.0, 10.9 -> 18.1, 12.8 -> 35.8.
+
+     Ochiq qolgani: KROMKA/OVAL/UPAKOVKA — uchta ko'k-feroza, KROMKA↔UPAKOVKA
+     ΔE 19.2. Uni tuzatish TONNI o'zgartirishni talab qiladi — alohida qaror. */
+  --post-arra: #af3b0b; /* kontrast 4.01 -> 4.71 */
+  --post-kromka: #0d6b85; /* 4.15 -> 4.70 */
+  --post-oval: #07544d; /* 2.90 -> 6.82 — eng yomon holat edi */
+  --post-prisadka: #7733ec; /* 4.41 -> 4.69 */
+  --post-boyoq: #6a4105; /* 3.81 -> 6.86; ARRA dan quyuqlik bilan ajratildi */
+  --post-rover: #be185d; /* 4.68 — yetarli, tegilmadi */
+  --post-stolyarka: #273e08; /* 3.87 -> 9.14; uchlikning eng quyug'i */
+  --post-upakovka: #03669d; /* 4.59 -> 4.80 */
+  --post-tmo: #782c11; /* 7.26 -> 7.50 */
   --status-draft: #64748b;
   --status-review: #b45309;
   --status-production: #1d4ed8;

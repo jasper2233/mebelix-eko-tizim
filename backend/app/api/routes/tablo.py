@@ -1,12 +1,14 @@
 """TABLO data API (TZ 9): orders × stages live matrix. Read-only, any authenticated device."""
 
+from datetime import date
+
 from fastapi import APIRouter
-from sqlalchemy import select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import defer
 
 from app.api.deps import CurrentUser, SessionDep
 from app.crud import crud_orders
-from app.models import ORDER_FAT_COLUMNS, PRIORITY_RANK, Order, Part, PartRoute, Post, Product
+from app.models import ORDER_FAT_COLUMNS, PRIORITY_RANK, Order, Part, PartRoute, Post, Product, Scan
 from app.models.enums import OrderStatus
 from app.schemas.tablo import StageAgg, TabloMatrix, TabloOrderDetail, TabloOrderRow, TabloPartRow, TabloPostCol
 from app.services.metrics import part_volume
@@ -89,6 +91,43 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
         )
     ).all()
 
+    # Oxirgi harakat: bitta agregat, faqat ro'yxatdagi buyurtmalar bo'yicha.
+    # `ix_scan_order_post` shu filtrga tushadi (prodda 39 484 skan bilan
+    # ishlatilgan indeks). Bekor qilingan skan hisobga olinmaydi — u qaytarilgan
+    # ish, ya'ni "harakat" emas.
+    kun = func.date(func.timezone("Asia/Tashkent", Scan.created_at))
+    last_day: dict[int, date] = dict(
+        (
+            await db.execute(
+                select(Scan.order_id, func.max(kun))
+                .where(
+                    Scan.order_id.in_(order_ids),
+                    Scan.is_cancelled == False,  # noqa: E712
+                    Scan.is_deleted == False,  # noqa: E712
+                )
+                .group_by(Scan.order_id)
+            )
+        ).all()
+    )
+    # TSEX ishlagan kunlar — buyurtma filtrisiz: bir buyurtma turgan paytda
+    # boshqasi ishlagan bo'lsa, o'sha kun "ish kuni" sanaladi. Oxirgi 60 kun
+    # yetarli: undan uzoq turgan buyurtma baribir chegaradan oshgan.
+    ish_kunlari = sorted(
+        (
+            await db.execute(
+                select(kun)
+                .where(
+                    Scan.created_at > func.now() - text("interval '60 days'"),
+                    Scan.is_cancelled == False,  # noqa: E712
+                    Scan.is_deleted == False,  # noqa: E712
+                )
+                .group_by(kun)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
     agg: dict[tuple[int, int], StageAgg] = {}
     for row in routes:
         key = (row.order_id, row.post_id)
@@ -112,6 +151,7 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
             deadline=o.deadline,
             status=str(o.status),
             stages={str(posts_by_id[pid].code): stage for (oid, pid), stage in agg.items() if oid == o.id},
+            idle_days=(sum(1 for d in ish_kunlari if d > last_day[o.id]) if o.id in last_day else None),
         )
         for o in orders
     ]
