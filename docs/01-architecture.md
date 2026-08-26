@@ -245,8 +245,10 @@ Browser (React)                FastAPI                        PostgreSQL
   `_layout.tsx`, `terminal.tsx`, `tablo.tsx` da; rolga bog'liq sahifalar
   `requireAccess(<predikat>)` bilan, predikatlar `src/lib/mes.ts` da:
   `isManagement` (clients, employees, reports), `isProductionStaff`
-  (work-centers), `isAdmin` (logs, printers), `isSuperuser` (admin) — sidebar
-  (`NAV_ITEMS.show`) ham aynan shu predikatlarni ishlatadi. `/orders` da
+  (work-centers), `isAdmin` (logs, printers) — sidebar (`NAV_ITEMS.show`) ham
+  aynan shu predikatlarni ishlatadi. `isSuperuser` esa guard EMAS: `/admin`
+  route'i faqat `/employees` ga redirect qiladi, predikat esa `employees.tsx`
+  ichida `canManageAccounts` sifatida ishlatiladi (hisob yozish chegarasi). `/orders` da
   `beforeLoad` yo'q: unga huquq faqat sidebar ko'rinishi (`show:
   isProductionStaff`) va `_layout` redirectlari orqali bilvosita chiqadi.
   `_layout.tsx` rolga qarab yo'naltiradi — `terminal` va operator
