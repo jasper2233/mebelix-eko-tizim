@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from app.api.deps import SessionDep, require_roles
 from app.core.exceptions import ForbiddenException, NotFoundException
@@ -328,10 +328,6 @@ async def remove_from_pachka(
     db: SessionDep, user: PackUser, ctx: PackCtx, pachka_id: int, instance_id: int
 ) -> UpakovkaOrderState:
     """Xato skanni qaytarish: nusxa qadoqdan chiqadi va UPAKOVKA skani bekor bo'ladi."""
-    from sqlalchemy import update
-
-    from app.models import Scan
-
     _machine, post = ctx
     pachka = await _open_pachka(db, pachka_id)
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=pachka.order_id)

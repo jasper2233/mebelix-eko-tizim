@@ -162,7 +162,8 @@ class PartRoute(BaseModel):
     #: Marshrutdagi o'rni, 1 dan boshlanadi. Skan tartibi AYNAN shu bo'yicha tekshiriladi
     #: (postlarning global tartibi bilan emas — nostandart marshrut uni buzadi).
     seq: Mapped[int] = mapped_column(kw_only=True)
-    #: Jarayon kodi 1..14 (PROCESS_POSTS). Post o'zi yetarli emas: STOLYARKA da 6 xil amal,
+    #: Jarayon kodi 1..16 (PROCESS_POSTS; 15/16 — tizim qo'shadigan dum, TAIL_CODES).
+    #: Post o'zi yetarli emas: STOLYARKA da 6 xil amal,
     #: KROMKA da 2 xil bor — operator qaysi biri kerakligini shu koddan biladi.
     process_code: Mapped[int] = mapped_column(kw_only=True)
     machine_id: Mapped[int | None] = mapped_column(ForeignKey("machine.id"), default=None, kw_only=True)

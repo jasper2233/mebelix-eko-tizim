@@ -309,9 +309,9 @@ async def push_bridge_logs(
 
 @router.get("/{agent_id}/logs", response_model=list[str], operation_id="read_bridge_logs")
 async def read_bridge_logs(db: SessionDep, _: AdminUser, agent_id: int) -> list[str]:
-    """Agentning oxirgi log satrlari (eng yangisi birinchi).
+    r"""Agentning oxirgi log satrlari (eng yangisi birinchi).
 
-    Ilgari admin operatordan `%APPDATA%\\MebelixAgent\agent.log` ni ochishni
+    Ilgari admin operatordan `%APPDATA%\MebelixAgent\agent.log` ni ochishni
     so'rashga majbur edi — tsexdagi kompyuterga masofadan kirish yo'q."""
     agent = await db.get(BridgeAgent, agent_id)
     if agent is None or agent.is_deleted:

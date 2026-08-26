@@ -263,7 +263,8 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
                 PartRoute.post_id == post.id,
                 PartRoute.is_enabled == True,  # noqa: E712
                 PartRoute.is_deleted == False,  # noqa: E712
-                # boshqa ish markaziga biriktirilgan yo'nalishlar bu terminalda ko'rinmasin (/tasks bilan bir xil)
+                # boshqa ish markaziga biriktirilgan yo'nalishlar bu terminalda ko'rinmasin
+                # (aynan shu shart `_post_route_rows()` orqali /kromka va /prisadka da ham)
                 (PartRoute.machine_id == machine.id) | (PartRoute.machine_id.is_(None)),
             )
             .group_by(Order.id)

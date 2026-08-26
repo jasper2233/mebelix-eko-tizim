@@ -271,7 +271,7 @@ async def report_materials(
     return report
 
 
-# ---------- 10.2.1 Dashboard: ish markazi yuklamasi + prognoz ----------
+# ---------- 10.2.1 Dashboard: ish markazi yuklamasi ----------
 
 
 @router.get("/dashboard", operation_id="report_dashboard")
