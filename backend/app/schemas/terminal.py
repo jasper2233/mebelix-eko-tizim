@@ -414,18 +414,6 @@ class PachkaScan(BaseModel):
     qr_text: Annotated[str, Field(min_length=3, max_length=120)]
 
 
-class TmoPachkaRow(BaseModel):
-    """TMO dagi qadoq: qabul qilingani va topshirilgani shu qatordan ko'rinadi."""
-
-    id: int
-    code: str
-    status: PachkaStatus
-    item_count: int
-    accepted_count: int  # ichidagi nechta nusxa TMO ga qabul qilingan
-    weight_kg: float
-    shipped_at: datetime | None
-
-
 class TmoPending(BaseModel):
     """TMO ga hali qabul qilinmagan nusxa."""
 
@@ -439,6 +427,22 @@ class TmoPending(BaseModel):
     #: Omborchiga "tsexda" degan umumiy so'z hech narsa bermaydi: u buyumni qidirib
     #: qaysi postga borishni bilishi kerak.
     stage: str = ""
+
+
+class TmoDone(BaseModel):
+    """TMO ga QABUL QILINGAN nusxa — skan qilingani.
+
+    Ilgari qabul qilingan nusxa javobdan butunlay chiqib ketardi va ekranda
+    faqat SHU SMENADAGI skanlar (React state) ko'rinardi: sahifa yangilansa
+    omborchi o'zi qabul qilgan detallarni boshqa ko'rmasdi.
+    """
+
+    instance_id: int
+    qr_text: str
+    part_code: str
+    part_name: str
+    pachka_code: str | None  # qaysi qadoq cheki bilan kelgan (qadoqsizda None)
+    accepted_at: datetime
 
 
 class TmoOrderState(BaseModel):
@@ -456,5 +460,8 @@ class TmoOrderState(BaseModel):
     #: qabul qilindi" ni bir qarashda ko'rishi kerak.
     arrived: int
     accepted: int
-    pachkas: list[TmoPachkaRow] = []
+    #: Qabul qilinganlar — "Qabul qilingan" tabi shundan chiziladi.
+    done: list[TmoDone] = []
+    #: Hali qabul qilinmaganlar: `ready=True` — TMO da turibdi (skanerlash mumkin),
+    #: `ready=False` — hali tsexda (`stage` qaysi postdaligini aytadi).
     pending: list[TmoPending] = []

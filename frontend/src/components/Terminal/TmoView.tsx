@@ -9,7 +9,7 @@
 // (`/orders/{id}` sahifasidagi tugma, faqat TAYYOR holatdan).
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Check, PackageCheck, Truck } from "lucide-react"
+import { ArrowLeft, Check, PackageCheck } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
@@ -21,10 +21,17 @@ import {
 } from "@/components/Terminal/audio"
 import { PostProgress } from "@/components/Terminal/PostProgress"
 import { Button } from "@/components/ui/button"
-import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { detailMessage } from "@/utils"
+
+/** "14:32" — omborchi uchun soat yetarli, sana kerak emas: ro'yxat shu buyurtmaniki. */
+function shortTime(value: string): string {
+  const d = new Date(value)
+  return Number.isNaN(d.getTime())
+    ? ""
+    : d.toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" })
+}
 
 export function TmoView({
   orderId,
@@ -38,15 +45,7 @@ export function TmoView({
   registerScan?: (fn: ((qr: string) => void) | null) => void
 }) {
   const queryClient = useQueryClient()
-  const [tab, setTab] = useState<"qabul" | "qadoqlar">("qabul")
-  //: Shu smenada qabul qilinganlar. Server javobida ular `pending` dan
-  //: CHIQIB KETADI (tmo.py: qabul qilingan nusxa ro'yxatga qo'shilmaydi), ya'ni
-  //: skanerlangan detal ekrandan jimgina yo'qolardi va omborchi skan
-  //: o'tgan-o'tmaganini bilolmasdi. Endi ular ro'yxat oxirida belgi bilan
-  //: turadi — bu ish emas, TASDIQ.
-  const [qabulQilingan, setQabulQilingan] = useState<
-    { instance_id: number; qr_text: string; part_name: string }[]
-  >([])
+  const [tab, setTab] = useState<"kelgan" | "qilingan">("kelgan")
   const { data, isLoading } = useQuery({
     queryKey: ["terminal", "tmo", orderId],
     queryFn: async () =>
@@ -87,7 +86,6 @@ export function TmoView({
         toast.error(`Allaqachon qabul qilingan: ${qr}`)
         return
       }
-      setQabulQilingan((oldingi) => [...oldingi, ...yangi])
       playSuccess()
       toast.success(
         yangi.length > 1
@@ -100,20 +98,6 @@ export function TmoView({
       toast.error(detailMessage(e))
     },
   })
-  const ship = useMutation({
-    mutationFn: async (code: string) =>
-      (
-        await TmoService.shipPachka({
-          path: { order_id: orderId },
-          body: { qr_text: code },
-        })
-      ).data,
-    onSuccess: (d) => {
-      put(d)
-      toast.success("Qadoq topshirildi")
-    },
-    onError: (e) => toast.error(detailMessage(e)),
-  })
 
   // Skan aktiv tabga ketadi. Ref: terminal callback'ni bir marta ro'yxatga
   // oladi, tab esa keyin ham o'zgaradi.
@@ -121,19 +105,19 @@ export function TmoView({
   tabRef.current = tab
   useEffect(() => {
     registerScan?.((qr) => {
-      if (tabRef.current === "qabul") accept.mutate(qr)
-      else if (qr.toUpperCase().startsWith("PK-")) ship.mutate(qr)
-      else toast.error("Topshirish uchun qadoq QR'ini skanerlang")
+      // Har qanday skan — QABUL. Qadoq cheki (`PK-...`) bo'lsa server ichidagi
+      // hamma nusxani birdan qabul qiladi (`accept_into_tmo`), ya'ni omborchi
+      // uchun chek va yakka detal bir xil ishlaydi.
+      accept.mutate(qr)
     })
     return () => registerScan?.(null)
-  }, [registerScan, accept.mutate, ship.mutate])
+  }, [registerScan, accept.mutate])
 
   if (isLoading) return <Skeleton className="h-full w-full" />
 
   const pending = data?.pending ?? []
-  const pachkas = data?.pachkas ?? []
+  const done = data?.done ?? []
   const delivered = data?.order_status === "delivered"
-  const shipped = pachkas.filter((p) => p.shipped_at)
   // Omborchining ISH ro'yxati — faqat oxirgi bosqichdan o'tib kelganlar.
   // Qolganlari hali tsexda; har biriga ishi TUGAGAN post yoziladi, ya'ni
   // omborchi detalni jismonan qaysi postdan olishini biladi.
@@ -192,19 +176,22 @@ export function TmoView({
         className="flex min-h-0 flex-1 flex-col"
       >
         <TabsList className="mx-4 mt-3 h-12 w-fit">
-          <TabsTrigger value="qabul" className="h-10 px-6 text-base font-bold">
-            <PackageCheck /> Qabul ({arrived.length})
+          <TabsTrigger value="kelgan" className="h-10 px-6 text-base font-bold">
+            <PackageCheck /> Qabulga kelgan ({arrived.length})
           </TabsTrigger>
           <TabsTrigger
-            value="qadoqlar"
+            value="qilingan"
             className="h-10 px-6 text-base font-bold"
           >
-            <Truck /> Qadoqlar ({shipped.length}/{pachkas.length})
+            <Check /> Qabul qilingan ({done.length})
           </TabsTrigger>
         </TabsList>
 
-        {/* QABUL: skanerlanmagan nusxalar. Qadoq QR'i bittada hammasini yopadi. */}
-        <TabsContent value="qabul" className="min-h-0 flex-1 overflow-y-auto">
+        {/* QABULGA KELGAN: TMO da turgan, hali skanerlanmagan nusxalar.
+            Qadoq cheki (`PK-...`) skanerlansa ichidagi HAMMA nusxa birdan
+            "Qabul qilingan" ga o'tadi — alohida "Qadoqlar" ro'yxati kerak emas,
+            omborchi baribir DETAL ro'yxatini ko'radi. */}
+        <TabsContent value="kelgan" className="min-h-0 flex-1 overflow-y-auto">
           {!arrived.length ? (
             <div className="p-8 text-center text-lg font-bold">
               {pending.length ? (
@@ -239,35 +226,6 @@ export function TmoView({
             </table>
           )}
 
-          {/* Shu smenada qabul qilinganlar — ro'yxat oxirida, belgi bilan.
-              Ular serverning `pending` ro'yxatidan chiqib ketgan; bu yerda
-              faqat TASDIQ uchun turadi va sahifa yangilanganda ketadi. */}
-          {!!qabulQilingan.length && (
-            <table className="w-full border-t text-base">
-              <tbody>
-                {qabulQilingan.map((p) => (
-                  <tr
-                    key={`ok${p.instance_id}`}
-                    className="border-b bg-green-50 last:border-0"
-                  >
-                    <td className="w-10 py-2.5 pl-4 text-green-700">
-                      <Check className="size-5" />
-                    </td>
-                    <td className="num py-2.5 pr-4 font-semibold text-green-800">
-                      {p.qr_text}
-                    </td>
-                    <td className="max-w-[280px] truncate px-4 py-2.5 text-green-800">
-                      {p.part_name}
-                    </td>
-                    <td className="px-4 py-2.5 text-right text-sm font-bold text-green-700">
-                      qabul qilindi
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-
           {/* Hali tsexdagilar: qaysi postda turgani yozilgan — omborchi qidirib yurmasin */}
           {!!inShop.length && (
             <div className="mt-3 border-t">
@@ -293,73 +251,45 @@ export function TmoView({
           )}
         </TabsContent>
 
-        {/* TOPSHIRISH: qadoq bo'yicha. Qadoqsiz buyurtmada butun buyurtma birdan. */}
+        {/* QABUL QILINGAN: serverdan keladi, ya'ni sahifa yangilansa ham qoladi.
+            Ilgari bu ro'yxat faqat React state'da edi (shu smenadagi skanlar) —
+            omborchi sahifani yangilasa o'zi qabul qilgan detallar ko'rinmasdi. */}
         <TabsContent
-          value="qadoqlar"
+          value="qilingan"
           className="min-h-0 flex-1 overflow-y-auto"
         >
-          {data?.packaging ? (
+          {!done.length ? (
+            <div className="p-8 text-center text-lg font-bold text-muted-foreground">
+              Hali hech narsa qabul qilinmagan.
+            </div>
+          ) : (
             <table className="w-full text-base">
               <tbody>
-                {pachkas.map((p) => {
-                  const full = p.accepted_count >= p.item_count
-                  return (
-                    <tr key={p.id} className="border-b last:border-0">
-                      <td className="num px-4 py-3 text-lg font-black">
-                        {p.code}
-                      </td>
-                      <td className="num px-4 py-3">
-                        {p.accepted_count}/{p.item_count} detal
-                      </td>
-                      <td className="num px-4 py-3 text-muted-foreground">
-                        ~{p.weight_kg} kg
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {p.shipped_at ? (
-                          <span className="font-bold text-green-700">
-                            ✓ Topshirildi
-                          </span>
-                        ) : (
-                          <LoadingButton
-                            className="h-12 px-5 text-base font-bold"
-                            loading={ship.isPending}
-                            disabled={!full}
-                            onClick={() => ship.mutate(p.code)}
-                          >
-                            {full ? "Topshirish" : "Qabul qilinmagan"}
-                          </LoadingButton>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-                {!pachkas.length && (
-                  <tr>
-                    <td className="p-8 text-center text-muted-foreground">
-                      Hali qadoq yo'q.
+                {done.map((d) => (
+                  <tr
+                    key={d.instance_id}
+                    className="border-b bg-green-50/40 last:border-0"
+                  >
+                    <td className="w-10 py-2.5 pl-4 text-green-700">
+                      <Check className="size-5" />
+                    </td>
+                    <td className="num py-2.5 pr-4 font-semibold text-green-900">
+                      {d.qr_text}
+                    </td>
+                    <td className="max-w-[280px] truncate px-4 py-2.5 text-green-900">
+                      {d.part_name}
+                    </td>
+                    {/* Qadoq cheki bilan kelgan bo'lsa — qaysi chek ekani */}
+                    <td className="num px-4 py-2.5 text-sm font-semibold text-blue-800">
+                      {d.pachka_code ?? ""}
+                    </td>
+                    <td className="num px-4 py-2.5 text-right text-sm text-muted-foreground">
+                      {shortTime(d.accepted_at)}
                     </td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
-          ) : (
-            <div className="flex flex-col items-center gap-3 p-8 text-center">
-              <p className="text-base text-muted-foreground">
-                Bu buyurtma qadoqlanmaydi — anketada "Upakovka qilish"
-                belgilanmagan, shuning uchun detallar to'g'ridan-to'g'ri TMO ga
-                keladi va shu yerda birma-bir qabul qilinadi.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Hamma detal qabul qilingach buyurtma o'zi{" "}
-                <b className="text-foreground">TAYYOR</b> bo'ladi. Topshirishni
-                manager belgilaydi.
-              </p>
-              {!!pending.length && (
-                <p className="text-sm font-semibold text-amber-700">
-                  {pending.length} detal hali qabul qilinmagan.
-                </p>
-              )}
-            </div>
           )}
         </TabsContent>
       </Tabs>

@@ -407,7 +407,8 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 **Maqsadi:** TMO post sahifasi, ikki tab (ikki xil ish bir ekranda aralashmasin).
 
 - **Qabul** — TMO ga yetib kelganlar (qadoq kodi bilan), skan `PK-...` bo'lsa qadoq ichidagi hammasini birdan qabul qiladi. Pastda "Tsexda" ro'yxati: har detalga ishi TUGAGAN post yozilgan (`stage`) — omborchi buyumni aynan o'sha yerdan topadi.
-- **Qadoqlar** (ilgari "Topshirish") — qadoqlangan buyurtmada har qadoq alohida topshiriladi (to'liq qabul qilinmagani bloklangan). Qadoqsiz buyurtmada tab bo'sh: nima uchun qadoq yo'qligi va buyurtma o'zi TAYYOR bo'lishi yozilgan.
+- **Qabul qilingan** — SERVERDAN keladigan ro'yxat (`TmoOrderState.done`): qabul qilingan nusxa, qadoq cheki (bo'lsa) va qabul vaqti, eng oxirgisi tepada. Ilgari bu ro'yxat faqat React state'da edi va sahifa yangilanganda YO'QOLARDI — omborchi o'zi qabul qilgan detallarni ko'rmasdi.
+- **Alohida "Qadoqlar" tabi YO'Q.** Qadoq faqat yorliq: har detal qatorida qaysi chek bilan kelgani yoziladi. Qadoq cheki (`PK-...`) skanerlansa `accept_into_tmo` ichidagi HAMMA nusxani birdan qabul qiladi, ya'ni natija baribir detal ro'yxatida ko'rinadi — omborchi uchun chek va yakka detal bir xil ishlaydi.
 - **"Buyurtmani topshirish" tugmasi OLIB TASHLANDI** (`deliver_tmo_order` endpointi bilan birga). TMO buyurtmani topshirmaydi: hamma detal TMO dan o'tgach buyurtma `record_scan_at` da o'zi TAYYOR (COMPLETED) bo'ladi, TOPSHIRILDI esa managerning amali (`/orders/{id}`, faqat TAYYOR holatdan).
 - Sarlavhada `TMO ga keldi: arrived/total` va `Qabul qilindi: accepted/total` — omborchi oldida qancha ish turganini ko'rishi uchun (bitta progress bar faqat skanerlanganini ko'rsatardi).
 - `registerScan` aktiv tabga qarab qabul yoki qadoq topshirishga yo'naltiradi.

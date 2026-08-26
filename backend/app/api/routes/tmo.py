@@ -15,11 +15,11 @@ Hamma detal TMO dan o'tgach buyurtma o'zi COMPLETED (tayyor) bo'ladi
 (`orders.deliver_order`, faqat COMPLETED holatdan).
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.deps import SessionDep, require_roles
 from app.core.exceptions import ForbiddenException
@@ -30,13 +30,13 @@ from app.models.enums import POST_ROLES, PachkaStatus, PostCode, UserRole
 from app.models.user import User
 from app.schemas.terminal import (
     PachkaScan,
+    TmoDone,
     TmoOrderState,
-    TmoPachkaRow,
     TmoPending,
 )
 from app.services.scanning import ScanRejected, active_session, publish_scan_events, record_scan_at, resolve_terminal
 
-from .pachka import _weight, instance_stages
+from .pachka import instance_stages
 
 router = APIRouter(prefix="/tmo", tags=["tmo"])
 
@@ -81,20 +81,23 @@ async def _state(db: SessionDep, order: Order, post: Post) -> TmoOrderState:
     #: Har NUSXA uchun: TMO ga yetib keldimi, kelmagan bo'lsa qaysi postda turibdi.
     stages = await instance_stages(db, order, post)
 
-    accepted: set[int] = set(
+    #: Nusxa -> TMO da qachon qabul qilingani. Vaqt ham kerak: "Qabul qilingan"
+    #: ro'yxati eng oxirgisi tepada bo'lib chiziladi.
+    accepted_at: dict[int, datetime] = dict(
         (
             await db.execute(
-                select(Scan.instance_id).where(
+                select(Scan.instance_id, func.min(Scan.created_at))
+                .where(
                     Scan.order_id == order.id,
                     Scan.post_id == post.id,
                     Scan.is_cancelled == False,  # noqa: E712
                     Scan.is_deleted == False,  # noqa: E712
                 )
+                .group_by(Scan.instance_id)
             )
-        )
-        .scalars()
-        .all()
+        ).all()  # type: ignore[arg-type]
     )
+    accepted: set[int] = set(accepted_at)
 
     #: Nusxa -> qaysi qadoqda. Qadoqsiz buyurtmada bo'sh qoladi.
     in_pachka: dict[int, Pachka] = {}
@@ -112,28 +115,13 @@ async def _state(db: SessionDep, order: Order, post: Post) -> TmoOrderState:
             .order_by(Pachka.id)
         )
     ).all()
-    pachkas: dict[int, TmoPachkaRow] = {}
-    weights: dict[int, float] = {}
+    # Qadoq faqat YORLIQ sifatida kerak: har detal qatorida "qaysi qadoq cheki
+    # bilan keldi" ko'rinadi. Alohida "Qadoqlar" ro'yxati YO'Q — qadoq cheki
+    # skanerlanganda `accept_into_tmo` ichidagi hamma nusxani birdan qabul
+    # qiladi, ya'ni omborchi uchun natija baribir DETAL ro'yxatida ko'rinadi.
     for pachka, instance_id in pachka_rows:
-        row = pachkas.get(pachka.id)
-        if row is None:
-            row = TmoPachkaRow(
-                id=pachka.id,
-                code=pachka.code,
-                status=pachka.status,
-                item_count=0,
-                accepted_count=0,
-                weight_kg=0,
-                shipped_at=pachka.shipped_at,
-            )
-            pachkas[pachka.id] = row
-            weights[pachka.id] = 0.0
-        if instance_id is None:
-            continue
-        in_pachka[instance_id] = pachka
-        row.item_count += 1
-        if instance_id in accepted:
-            row.accepted_count += 1
+        if instance_id is not None:
+            in_pachka[instance_id] = pachka
 
     instances = (
         await db.execute(
@@ -149,15 +137,24 @@ async def _state(db: SessionDep, order: Order, post: Post) -> TmoOrderState:
     ).all()
 
     pending: list[TmoPending] = []
+    done: list[TmoDone] = []
     total = 0
     for instance, part, product_code in instances:
         if part.id not in by_part or not any(s.post_id == post.id for s in by_part[part.id]):
             continue  # marshrutida TMO qadami yo'q (eski buyurtma)
         total += 1
         pachka = in_pachka.get(instance.id)
-        if pachka is not None:
-            weights[pachka.id] = weights.get(pachka.id, 0.0) + _weight(part)
         if instance.id in accepted:
+            done.append(
+                TmoDone(
+                    instance_id=instance.id,
+                    qr_text=instance.qr_text,
+                    part_code=f"{product_code}_{part.code}",
+                    part_name=part.name,
+                    pachka_code=pachka.code if pachka else None,
+                    accepted_at=accepted_at[instance.id],
+                )
+            )
             continue
         pending.append(
             TmoPending(
@@ -172,8 +169,8 @@ async def _state(db: SessionDep, order: Order, post: Post) -> TmoOrderState:
         )
     # TMO ga yetib kelganlari tepada: omborchi ish ro'yxati aynan shular.
     pending.sort(key=lambda p: (not p.ready, p.stage, p.part_code))
-    for pid, row in pachkas.items():
-        row.weight_kg = round(weights.get(pid, 0.0), 1)
+    # Eng oxirgi qabul qilingani tepada — omborchi hozirgina nima skanerlaganini ko'radi.
+    done.sort(key=lambda d: d.accepted_at, reverse=True)
 
     return TmoOrderState(
         order_id=order.id,
@@ -185,7 +182,7 @@ async def _state(db: SessionDep, order: Order, post: Post) -> TmoOrderState:
         # Kelganlar = allaqachon qabul qilinganlar + navbatda turgan TAYYORlar.
         arrived=(total - len(pending)) + sum(1 for p in pending if p.ready),
         accepted=total - len(pending),
-        pachkas=list(pachkas.values()),
+        done=done,
         pending=pending,
     )
 
@@ -284,38 +281,4 @@ async def accept_into_tmo(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: in
     # yetmasdi, `order.completed` esa umuman efirga chiqmasdi.
     await publish_scan_events(outcomes)
     await ws_manager.publish("tmo.accepted", {"order_id": order.id, "qr_text": qr})
-    return await _state(db, order, post)
-
-
-@router.post("/orders/{order_id}/ship", response_model=TmoOrderState, operation_id="ship_pachka")
-async def ship_pachka(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: int, body: PachkaScan) -> TmoOrderState:
-    """Qadoqni mijozga topshirish — QR skani yoki ro'yxatdagi tugma (ikkalasi ham kod yuboradi)."""
-    _machine, post = ctx
-    order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
-    pachka = await _pachka_by_code(db, order, body.qr_text.strip())
-    if pachka.shipped_at is not None:
-        raise ForbiddenException(f"{pachka.code} allaqachon topshirilgan.")
-
-    state = await _state(db, order, post)
-    row = next((p for p in state.pachkas if p.id == pachka.id), None)
-    # Qabul qilinmagan qadoqni topshirib bo'lmaydi: aks holda detal TMO ga
-    # kirmasdan chiqib ketardi va marshrut oxirgi qadamida osilib qolardi.
-    if row is None or row.accepted_count < row.item_count:
-        raise ForbiddenException(f"{pachka.code} to'liq qabul qilinmagan — avval skanerlang.")
-
-    pachka.status = PachkaStatus.SHIPPED
-    pachka.shipped_at = datetime.now(UTC)
-    row.status = PachkaStatus.SHIPPED
-    row.shipped_at = pachka.shipped_at
-    log_action(
-        db,
-        module="tmo",
-        action="shipped",
-        user_id=user.id,
-        entity_type="pachka",
-        entity_id=pachka.id,
-        message=f"Qadoq topshirildi: {pachka.code}",
-    )
-    await db.commit()
-    await ws_manager.publish("tmo.shipped", {"order_id": order.id, "code": pachka.code})
     return await _state(db, order, post)

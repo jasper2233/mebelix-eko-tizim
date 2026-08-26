@@ -2879,6 +2879,42 @@ export type TerminalOrderCard = {
 };
 
 /**
+ * TmoDone
+ *
+ * TMO ga QABUL QILINGAN nusxa — skan qilingani.
+ *
+ * Ilgari qabul qilingan nusxa javobdan butunlay chiqib ketardi va ekranda
+ * faqat SHU SMENADAGI skanlar (React state) ko'rinardi: sahifa yangilansa
+ * omborchi o'zi qabul qilgan detallarni boshqa ko'rmasdi.
+ */
+export type TmoDone = {
+    /**
+     * Instance Id
+     */
+    instance_id: number;
+    /**
+     * Qr Text
+     */
+    qr_text: string;
+    /**
+     * Part Code
+     */
+    part_code: string;
+    /**
+     * Part Name
+     */
+    part_name: string;
+    /**
+     * Pachka Code
+     */
+    pachka_code: string | null;
+    /**
+     * Accepted At
+     */
+    accepted_at: string;
+};
+
+/**
  * TmoOrderState
  *
  * TMO post sahifasi: qabul (skan) va topshirish tablari uchun bitta holat.
@@ -2914,46 +2950,13 @@ export type TmoOrderState = {
      */
     accepted: number;
     /**
-     * Pachkas
+     * Done
      */
-    pachkas?: Array<TmoPachkaRow>;
+    done?: Array<TmoDone>;
     /**
      * Pending
      */
     pending?: Array<TmoPending>;
-};
-
-/**
- * TmoPachkaRow
- *
- * TMO dagi qadoq: qabul qilingani va topshirilgani shu qatordan ko'rinadi.
- */
-export type TmoPachkaRow = {
-    /**
-     * Id
-     */
-    id: number;
-    /**
-     * Code
-     */
-    code: string;
-    status: PachkaStatus;
-    /**
-     * Item Count
-     */
-    item_count: number;
-    /**
-     * Accepted Count
-     */
-    accepted_count: number;
-    /**
-     * Weight Kg
-     */
-    weight_kg: number;
-    /**
-     * Shipped At
-     */
-    shipped_at: string | null;
 };
 
 /**
@@ -4961,36 +4964,6 @@ export type AcceptIntoTmoResponses = {
 };
 
 export type AcceptIntoTmoResponse = AcceptIntoTmoResponses[keyof AcceptIntoTmoResponses];
-
-export type ShipPachkaData = {
-    body: PachkaScan;
-    path: {
-        /**
-         * Order Id
-         */
-        order_id: number;
-    };
-    query?: never;
-    url: '/api/v1/tmo/orders/{order_id}/ship';
-};
-
-export type ShipPachkaErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type ShipPachkaError = ShipPachkaErrors[keyof ShipPachkaErrors];
-
-export type ShipPachkaResponses = {
-    /**
-     * Successful Response
-     */
-    200: TmoOrderState;
-};
-
-export type ShipPachkaResponse = ShipPachkaResponses[keyof ShipPachkaResponses];
 
 export type ReadAuditLogsData = {
     body?: never;

@@ -447,7 +447,6 @@ faqat TMO postida.
 |---|---|---|
 | GET | `/api/v1/tmo/orders/{id}` | `total` / **`arrived`** (TMO ga jismonan kelganlar — skan qilinganlar ham shunda) / `accepted` (skan qilinganlar), qadoqlar (`accepted_count`/`item_count`, `shipped_at`), qabul qilinmagan nusxalar (`ready` + `stage` — ishi TUGAGAN post, omborchi detalni o'sha yerdan topadi), `packaging`, `total`/`accepted` |
 | POST | `/api/v1/tmo/orders/{id}/accept` | QABUL. QR `PK-` bilan boshlansa — qadoq: ichidagi HAMMA nusxa bitta skanda qabul qilinadi (omborchi qadoqni ochmaydi); aks holda bitta detal. Ochiq (yakunlanmagan) qadoq qabul qilinmaydi. `client_event_id="wh-{order}-{qr}"` — idempotent; WS `tmo.accepted` |
-| POST | `/api/v1/tmo/orders/{id}/ship` | Qadoqni mijozga topshirish (QR skani yoki ro'yxatdagi tugma — ikkisi ham kod yuboradi). To'liq qabul qilinmagan qadoq topshirilmaydi: aks holda detal TMO ga kirmasdan chiqib ketardi; WS `tmo.shipped` |
 
 Hammasi qabul qilinib topshirilgach buyurtma `DELIVERED` bo'ladi (`_deliver_if_done`).
 

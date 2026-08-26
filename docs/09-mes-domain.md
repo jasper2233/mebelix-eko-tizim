@@ -455,7 +455,7 @@ O'rnatish qadamlari: [07-infra-devops.md](07-infra-devops.md) → "Chop etish in
 | `scans` | POST scan, DELETE undo (`/recent` olib tashlangan) | terminal + 9 operator rol |
 | `terminal` | `/context`, `/session`, `/session/end`, `/orders` (loyiha kartalari: done/total post semantikasida — ARRA: chek∪skan, KROMKA: detal bo'yicha), `/orders/{id}/cutmap`, `/orders/{id}/kromka` (KROMKA/OVAL sahifasi), `/orders/{id}/prisadka` (detallar + SCX fayllar), `/orders/{id}/queue` (post navbati NUSXA darajasida — BOYOQ/STOLYARKA; postga bog'liq emas, kontekstdagi postni oladi), `/qr/{qr}/order` (QR→buyurtma), `/labels/{id}` POST (GoDEX navbat) / DELETE (chekni bekor qilish, manager/texnolog ham), `/labels/{id}.png`, `/files/{id}` | terminal + 9 operator rol; ish markazi/post konteksti (`_terminal_ctx` → `TerminalCtx`) har route'ga alohida qo'yiladi — yorliq/fayl route'lariga ataylab emas, ular ish markazisiz ham ishlaydi; javoblar typed (`app/schemas/terminal.py`: `TerminalOrderCard`, `QrOrderRef`, `Kromka*`/`Prisadka*` modellari — `list[dict]` yo'q) |
 | `pachka` | `/orders/{id}` GET (qadoqlash holati) / POST (yangi qadoq), `/{id}/scan` (detalni qadoqqa — bu AYNI paytda marshrutning UPAKOVKA qadami), `/{id}/items/{instance_id}` DELETE (xato skanni qaytarish — skan ham bekor bo'ladi), `/{id}/close` (yakunlash + chek) | terminal + operator rollar; faqat UPAKOVKA postida (`_pack_ctx`) |
-| `tmo` | `/orders/{id}` GET, `/orders/{id}/accept` (QABUL — `PK-...` bo'lsa qadoq ichidagi HAMMA nusxa bitta skanda, aks holda bitta detal), `/orders/{id}/ship` (qadoqni topshirish). **Buyurtmani TOPSHIRISH endpointi TMO da YO'Q** — u managerda (`orders.deliver_order`, faqat TAYYOR holatdan); TMO faqat qabul qiladi va hamma detal o'tgach buyurtma o'zi TAYYOR bo'ladish) | terminal + operator rollar; faqat TMO postida (`_wh_ctx`) |
+| `tmo` | `/orders/{id}` GET, `/orders/{id}/accept` (QABUL — `PK-...` bo'lsa qadoq ichidagi HAMMA nusxa bitta skanda, aks holda bitta detal), **`/orders/{id}/ship` ham OLIB TASHLANDI** — TMO da qadoq ro'yxati yo'q. **Buyurtmani TOPSHIRISH endpointi ham TMO da YO'Q** — u managerda (`orders.deliver_order`, faqat TAYYOR holatdan); TMO faqat qabul qiladi va hamma detal o'tgach buyurtma o'zi TAYYOR bo'ladish) | terminal + operator rollar; faqat TMO postida (`_wh_ctx`) |
 | `tablo` | `/matrix`, `/orders/{id}` | istalgan auth |
 | `reports` | `/productivity`, `/orders`, `/materials` (+`?format=xlsx`), `/dashboard` | manager/director/admin |
 | `audit-logs` | filtrli ro'yxat (12 modul: scan, print, sessions, orders, pachka, tmo, bridge_agents, employees, users, clients, machines, posts — backend `log_action(module=…)` qiymatlari va frontend `logs.tsx: CATEGORIES` bir xil; eski `ombor` nomi `e5b83c04d7a1` da `tmo` ga birlashtirilgan (o'sha migratsiya `materials` ni `stock` ga ham ko'chirgan — stock moduli olib tashlangach o'sha qatorlar bazada filtrsiz tarix bo'lib qoladi); rad etilgan skanlar ham — `module=scan, action=rejected`, §3) | faqat admin (`AdminUser`, TZ 10.11) — butun tizim audit izi; direktor ishlab chiqarish ko'rsatkichlarini `/reports` dan oladi |
@@ -615,7 +615,10 @@ direktor ham ko'radi.
   · **TMO** (`Terminal/TmoView`) — ikki tab. **Qabul**: TMO ga yetib kelganlar (qadoq kodi
     bilan), qadoq QR'i bitta skanda ichidagi hammasini qabul qiladi; pastda "Tsexda" ro'yxati,
     har detalga ishi TUGAGAN post yozilgan (omborchi uni o'sha yerdan topadi). Sarlavhada
-    uchta son: `TMO ga keldi: arrived/total` va `Qabul qilindi: accepted/total`. **Qadoqlar**:
+    ikki son: `TMO ga keldi: arrived/total` va `Qabul qilindi: accepted/total`.
+    **Qabul qilingan**: serverdan kelgan ro'yxat (`done`) — sahifa yangilansa ham qoladi.
+    Qadoq alohida tab EMAS, faqat yorliq — chek skanerlansa ichidagi hamma nusxa birdan
+    "Qabul qilingan" ga o'tadi. Eski matn:
     qadoqlangan buyurtmada har qadoq alohida (to'liq qabul qilinmagani topshirilmaydi),
     qadoqsizda butun buyurtma; hammasi topshirilgach buyurtma DELIVERED.
   Qadoqlash va TMO skani ekranning O'ZIDA yoziladi (`viewScanRef` — umumiy skan yo'li
