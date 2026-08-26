@@ -961,6 +961,13 @@ function TabloOrderDrill({
   }, [onBack])
 
   const parts = data?.parts ?? []
+  // Muddat/holat AYNI so'rovdan: `matrix` bu yerda `drillPosts` uchun
+  // allaqachon yuklangan va TanStack uni dedupe qiladi, ya'ni kontekst
+  // tekin keladi — backendga yangi maydon ham, yangi so'rov ham kerak emas.
+  // Buyurtma TMO dan o'tib taxtadan tushgan bo'lsa `row` yo'q: kontekst
+  // ko'rinmaydi, qolgan hamma narsa ishlayveradi.
+  const row = matrix?.orders.find((o) => o.id === orderId)
+  const stall = stallLabel(row?.idle_days)
   const drillPosts = (matrix?.posts ?? [])
     .map((p) => p.code)
     // Detallar kelgunicha hammasi turadi: bo'sh ro'yxatdan to'liq ro'yxatga
@@ -996,6 +1003,32 @@ function TabloOrderDrill({
         <span className="text-2xl text-muted-foreground">
           {data?.name ?? ""}
         </span>
+        {/* Bosilgan qator muddatni ko'rsatib turgan edi, ichkarida esa u
+            yo'qolardi — "bu kechikkanmi?" savoli javobsiz qolardi. */}
+        {row &&
+          (() => {
+            const [son, soz] = deadlineCountdown(row.deadline)
+            if (son === "—") return null
+            return (
+              <span
+                className={cn(
+                  "rounded-sm px-3 py-1 text-2xl font-black uppercase tracking-wider",
+                  deadlineTone(row.deadline) === "overdue"
+                    ? "bg-red-600 text-white"
+                    : deadlineTone(row.deadline) === "today"
+                      ? "bg-amber-400 text-amber-950"
+                      : "text-muted-foreground",
+                )}
+              >
+                {son} {soz}
+              </span>
+            )
+          })()}
+        {stall && (
+          <span className="rounded-sm bg-slate-700 px-3 py-1 text-2xl font-black uppercase tracking-wider text-white">
+            {stall}
+          </span>
+        )}
         <span className="ml-auto text-xl font-bold uppercase tracking-widest text-muted-foreground">
           {/* Hujayralar bilan bir xil rejim (hajm drill'da soni'ga tushadi) */}
           {mode === "foiz" ? "Foiz nazorati" : "Soni nazorati"}
@@ -1040,6 +1073,55 @@ function TabloOrderDrill({
             </tr>
           </thead>
           <tbody>
+            {/* Bosilgan qatordagi post yig'indilari ichkarida yo'qolardi:
+                158 detalli buyurtmada "ARRA umuman qanday?" degan savolga
+                javob berish uchun orqaga qaytish kerak edi. Matritsadagi
+                JAMI qatori bilan bir xil shakl. */}
+            {parts.length > 0 && (
+              <tr className="bg-card">
+                <td
+                  className="rounded-l-md bg-primary px-3 py-3 font-black uppercase tracking-wider text-primary-foreground"
+                  style={{ fontSize: "var(--t-head)" }}
+                >
+                  Jami · {parts.length} detal
+                </td>
+                <td className="num border-l border-border/60 bg-primary/90 px-2 py-3 text-center text-3xl font-black text-primary-foreground">
+                  {parts.reduce((a, p) => a + p.count, 0)}
+                </td>
+                {drillPosts.map((c, i) => {
+                  let done = 0
+                  let total = 0
+                  for (const p of parts) {
+                    const st = p.stages[c]
+                    if (!st) continue
+                    done += st.done
+                    total += st.total
+                  }
+                  return (
+                    <td
+                      key={c}
+                      className={cn(
+                        "border-l border-border/60 bg-primary/90 px-2 py-3 text-center font-black text-primary-foreground",
+                        i === drillPosts.length - 1 && "rounded-r-md",
+                      )}
+                      style={{ fontSize: "var(--t-cell)" }}
+                    >
+                      {/* 99 ga cheklash FAQAT tugallanmagan katakda: JAMI
+                          qatorida ✓ chizilmaydi, ya'ni to'liq bajarilgan post
+                          "99%" bo'lib qotib qolardi. Matritsadagi JAMI bilan
+                          bir xil qoida. */}
+                      {!total
+                        ? "—"
+                        : mode !== "foiz"
+                          ? `${done}/${total}`
+                          : done >= total
+                            ? "100%"
+                            : `${Math.min(99, Math.floor((done / total) * 100))}%`}
+                    </td>
+                  )
+                })}
+              </tr>
+            )}
             {data?.parts.map((p) => (
               <tr key={p.part_id} className="bg-card">
                 <td className="rounded-l-md px-3 py-3">
