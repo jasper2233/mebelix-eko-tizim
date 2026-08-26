@@ -1,9 +1,7 @@
 """TABLO data API (TZ 9): orders × stages live matrix. Read-only, any authenticated device."""
 
-from datetime import UTC, datetime, timedelta
-
 from fastapi import APIRouter
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import defer
 
 from app.api.deps import CurrentUser, SessionDep
@@ -15,10 +13,21 @@ from app.services.metrics import part_volume
 
 router = APIRouter(prefix="/tablo", tags=["tablo"])
 
-# Yakunlangan buyurtma taxtada shuncha kun turadi. Chegarasiz qoldirilsa
-# "topshirildi" bosilmagan har bir buyurtma abadiy qolib, tsex ekrani yildan
-# yilga sekinlashardi (o'lchov: 100 buyurtmada 28 ms -> 1.9 s).
-COMPLETED_WINDOW = timedelta(days=30)
+# TABLO'da nima ko'rinadi: ishlab chiqarishdagi VA tayyor bo'lgan buyurtmalar.
+# Tayyor buyurtma taxtadan FAQAT "topshirildi" belgilangach tushadi (TMO
+# `deliver_tmo_order` yoki `orders.deliver_order`) — vaqt chegarasi YO'Q.
+#
+# Ilgari 30 kunlik oyna bor edi, sababi "chegarasiz qoldirilsa ekran
+# sekinlashadi (100 buyurtmada 28 ms -> 1.9 s)". O'sha o'lchov keyingi
+# optimizatsiyadan (ORDER_FAT_COLUMNS defer + faqat kerakli ustunlar,
+# 669 ms -> 175 ms) OLDIN olingan. 2026-08-26 da qayta o'lchandi: 19 buyurtma
+# uchun 84-120 ms, va og'ir qism `part_route` bo'yicha agregatsiya — u BUTUN
+# jadvalni skanerlaydi, ya'ni oyna uni qisqartirmasdi ham. O'sish uchun
+# `ix_part_route_order_post` indeksi bor.
+#
+# Oyna olib tashlanishining MAQSADI ham shu: "topshirildi" bosilmagan buyurtma
+# taxtada qolib ko'zga tashlanishi kerak — u to'xtab qolgan oqim belgisi.
+# Oyna esa aksincha, muammo surunkali bo'lgach uni JIMGINA yashirardi.
 
 
 @router.get("/matrix", response_model=TabloMatrix, operation_id="read_tablo_matrix")
@@ -36,10 +45,6 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
                 select(Order)
                 .options(*(defer(c) for c in ORDER_FAT_COLUMNS))
                 .where(
-                    or_(
-                        Order.status == OrderStatus.PRODUCTION,
-                        Order.completed_at >= datetime.now(UTC) - COMPLETED_WINDOW,
-                    ),
                     Order.status.in_([OrderStatus.PRODUCTION, OrderStatus.COMPLETED]),
                     Order.is_deleted == False,  # noqa: E712
                 )

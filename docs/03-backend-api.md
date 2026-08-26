@@ -475,7 +475,7 @@ Skan qabul qilish qoidalari (marshrut/ketma-ketlik tekshiruvi, dublikat) va xato
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
-| GET | `/api/v1/tablo/matrix` | login (har qanday) | `TabloMatrix`: postlar ro'yxati + PRODUCTION buyurtmalar va oxirgi `COMPLETED_WINDOW` (30 kun) ichida yakunlanganlar; har katak `StageAgg` — done/total va post birligidagi hajm (`part_volume`: m²/metr/dona). **Chegara shart**: COMPLETED holatdan faqat manager qo'lda "topshirildi" bosgandagina chiqiladi, ya'ni chegarasiz har bir unutilgan buyurtma taxtada abadiy qolib, tsex ekranini sekinlashtirardi (o'lchov: 100 buyurtmada 28 ms → 1.9 s). Marshrutlar ORM obyekti sifatida emas, faqat kerakli ustunlar bilan o'qiladi |
+| GET | `/api/v1/tablo/matrix` | login (har qanday) | `TabloMatrix`: postlar ro'yxati + PRODUCTION va COMPLETED buyurtmalar. Tayyor buyurtma taxtadan FAQAT "topshirildi" belgilangach tushadi — vaqt chegarasi yo'q (`COMPLETED_WINDOW` olib tashlandi: u to'xtab qolgan buyurtmani 30 kundan keyin jimgina yashirardi).
 | GET | `/api/v1/tablo/orders/{id}` | login (har qanday) | Drill-down (TZ 9.5 SONI NAZORATI): har detal × bosqich done/total. Katakcha post bo'yicha, marshrut esa qadamli — bitta post takrorlansa (kromka → prisadka → kromka) qadamlar QO'SHILADI, aks holda oxirgi qadam oldingisining ustiga yozilib bajarilgan ish yo'qolardi |
 
 Javob sxemalari `backend/app/schemas/tablo.py` da: `TabloMatrix` (`posts` — typed `TabloPostCol` ro'yxati), `TabloOrderRow`, `StageAgg`, `TabloOrderDetail`, `TabloPartRow`.
