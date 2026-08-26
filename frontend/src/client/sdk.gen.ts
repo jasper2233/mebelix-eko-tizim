@@ -612,59 +612,6 @@ export class OrdersService {
     }
     
     /**
-     * Save Order Survey
-     *
-     * Mijoz anketasi va o'lchov varag'ini saqlaydi (TZ 6.2, qog'oz forma o'rniga).
-     *
-     * Butun anketa bir butun sifatida yoziladi — menejer to'ldirib boradi, texnolog o'qiydi.
-     */
-    public static saveOrderSurvey<ThrowOnError extends boolean = true>(options: Options<SaveOrderSurveyData, ThrowOnError>): RequestResult<SaveOrderSurveyResponses, SaveOrderSurveyErrors, ThrowOnError> {
-        return (options.client ?? client).put<SaveOrderSurveyResponses, SaveOrderSurveyErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/orders/{order_id}/survey',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
-    }
-    
-    /**
-     * Upload Room Photo
-     *
-     * Xona uchun taxminiy ko'rinish rasmi (anketa, mijoz ko'rsatgan namuna).
-     *
-     * Rasm SurveyRoom.id ga bog'lanadi — xona ro'yxatdagi o'rni o'zgarsa ham yo'qolmaydi.
-     */
-    public static uploadRoomPhoto<ThrowOnError extends boolean = true>(options: Options<UploadRoomPhotoData, ThrowOnError>): RequestResult<UploadRoomPhotoResponses, UploadRoomPhotoErrors, ThrowOnError> {
-        return (options.client ?? client).post<UploadRoomPhotoResponses, UploadRoomPhotoErrors, ThrowOnError>({
-            ...formDataBodySerializer,
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/orders/{order_id}/survey/photos',
-            ...options,
-            headers: {
-                'Content-Type': null,
-                ...options.headers
-            }
-        });
-    }
-    
-    /**
-     * Delete Room Photo
-     */
-    public static deleteRoomPhoto<ThrowOnError extends boolean = true>(options: Options<DeleteRoomPhotoData, ThrowOnError>): RequestResult<DeleteRoomPhotoResponses, DeleteRoomPhotoErrors, ThrowOnError> {
-        return (options.client ?? client).delete<DeleteRoomPhotoResponses, DeleteRoomPhotoErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/orders/{order_id}/survey/photos/{file_id}',
-            ...options
-        });
-    }
-    
-    /**
      * Cancel Order
      *
      * TZ 6.5: any stage; scans/history stay for audit; terminals are notified in real time.
@@ -693,36 +640,6 @@ export class OrdersService {
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/orders/{order_id}/deliver',
             ...options
-        });
-    }
-    
-    /**
-     * Read Order Matrix
-     */
-    public static readOrderMatrix<ThrowOnError extends boolean = true>(options: Options<ReadOrderMatrixData, ThrowOnError>): RequestResult<ReadOrderMatrixResponses, ReadOrderMatrixErrors, ThrowOnError> {
-        return (options.client ?? client).get<ReadOrderMatrixResponses, ReadOrderMatrixErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/orders/{order_id}/matrix',
-            ...options
-        });
-    }
-    
-    /**
-     * Edit Order Matrix
-     *
-     * Texnolog matrix edits (TZ 6.3.3): stage toggles, notes, rare count fixes. Pre-production only.
-     */
-    public static editOrderMatrix<ThrowOnError extends boolean = true>(options: Options<EditOrderMatrixData, ThrowOnError>): RequestResult<EditOrderMatrixResponses, EditOrderMatrixErrors, ThrowOnError> {
-        return (options.client ?? client).patch<EditOrderMatrixResponses, EditOrderMatrixErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/orders/{order_id}/matrix',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
         });
     }
     
@@ -778,6 +695,36 @@ export class OrdersService {
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/orders/{order_id}/start',
             ...options
+        });
+    }
+    
+    /**
+     * Read Order Matrix
+     */
+    public static readOrderMatrix<ThrowOnError extends boolean = true>(options: Options<ReadOrderMatrixData, ThrowOnError>): RequestResult<ReadOrderMatrixResponses, ReadOrderMatrixErrors, ThrowOnError> {
+        return (options.client ?? client).get<ReadOrderMatrixResponses, ReadOrderMatrixErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orders/{order_id}/matrix',
+            ...options
+        });
+    }
+    
+    /**
+     * Edit Order Matrix
+     *
+     * Texnolog matrix edits (TZ 6.3.3): stage toggles, notes, rare count fixes. Pre-production only.
+     */
+    public static editOrderMatrix<ThrowOnError extends boolean = true>(options: Options<EditOrderMatrixData, ThrowOnError>): RequestResult<EditOrderMatrixResponses, EditOrderMatrixErrors, ThrowOnError> {
+        return (options.client ?? client).patch<EditOrderMatrixResponses, EditOrderMatrixErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orders/{order_id}/matrix',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
         });
     }
     
@@ -861,6 +808,59 @@ export class OrdersService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/orders/{order_id}/cutmap',
+            ...options
+        });
+    }
+    
+    /**
+     * Save Order Survey
+     *
+     * Mijoz anketasi va o'lchov varag'ini saqlaydi (TZ 6.2, qog'oz forma o'rniga).
+     *
+     * Butun anketa bir butun sifatida yoziladi — menejer to'ldirib boradi, texnolog o'qiydi.
+     */
+    public static saveOrderSurvey<ThrowOnError extends boolean = true>(options: Options<SaveOrderSurveyData, ThrowOnError>): RequestResult<SaveOrderSurveyResponses, SaveOrderSurveyErrors, ThrowOnError> {
+        return (options.client ?? client).put<SaveOrderSurveyResponses, SaveOrderSurveyErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orders/{order_id}/survey',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Upload Room Photo
+     *
+     * Xona uchun taxminiy ko'rinish rasmi (anketa, mijoz ko'rsatgan namuna).
+     *
+     * Rasm SurveyRoom.id ga bog'lanadi — xona ro'yxatdagi o'rni o'zgarsa ham yo'qolmaydi.
+     */
+    public static uploadRoomPhoto<ThrowOnError extends boolean = true>(options: Options<UploadRoomPhotoData, ThrowOnError>): RequestResult<UploadRoomPhotoResponses, UploadRoomPhotoErrors, ThrowOnError> {
+        return (options.client ?? client).post<UploadRoomPhotoResponses, UploadRoomPhotoErrors, ThrowOnError>({
+            ...formDataBodySerializer,
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orders/{order_id}/survey/photos',
+            ...options,
+            headers: {
+                'Content-Type': null,
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Delete Room Photo
+     */
+    public static deleteRoomPhoto<ThrowOnError extends boolean = true>(options: Options<DeleteRoomPhotoData, ThrowOnError>): RequestResult<DeleteRoomPhotoResponses, DeleteRoomPhotoErrors, ThrowOnError> {
+        return (options.client ?? client).delete<DeleteRoomPhotoResponses, DeleteRoomPhotoErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orders/{order_id}/survey/photos/{file_id}',
             ...options
         });
     }

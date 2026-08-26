@@ -4310,100 +4310,6 @@ export type UpdateOrderResponses = {
 
 export type UpdateOrderResponse = UpdateOrderResponses[keyof UpdateOrderResponses];
 
-export type SaveOrderSurveyData = {
-    body: OrderSurvey;
-    path: {
-        /**
-         * Order Id
-         */
-        order_id: number;
-    };
-    query?: never;
-    url: '/api/v1/orders/{order_id}/survey';
-};
-
-export type SaveOrderSurveyErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type SaveOrderSurveyError = SaveOrderSurveyErrors[keyof SaveOrderSurveyErrors];
-
-export type SaveOrderSurveyResponses = {
-    /**
-     * Successful Response
-     */
-    200: Message;
-};
-
-export type SaveOrderSurveyResponse = SaveOrderSurveyResponses[keyof SaveOrderSurveyResponses];
-
-export type UploadRoomPhotoData = {
-    body: BodyUploadRoomPhoto;
-    path: {
-        /**
-         * Order Id
-         */
-        order_id: number;
-    };
-    query?: never;
-    url: '/api/v1/orders/{order_id}/survey/photos';
-};
-
-export type UploadRoomPhotoErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type UploadRoomPhotoError = UploadRoomPhotoErrors[keyof UploadRoomPhotoErrors];
-
-export type UploadRoomPhotoResponses = {
-    /**
-     * Successful Response
-     */
-    201: OrderFileRead;
-};
-
-export type UploadRoomPhotoResponse = UploadRoomPhotoResponses[keyof UploadRoomPhotoResponses];
-
-export type DeleteRoomPhotoData = {
-    body?: never;
-    path: {
-        /**
-         * Order Id
-         */
-        order_id: number;
-        /**
-         * File Id
-         */
-        file_id: number;
-    };
-    query?: never;
-    url: '/api/v1/orders/{order_id}/survey/photos/{file_id}';
-};
-
-export type DeleteRoomPhotoErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type DeleteRoomPhotoError = DeleteRoomPhotoErrors[keyof DeleteRoomPhotoErrors];
-
-export type DeleteRoomPhotoResponses = {
-    /**
-     * Successful Response
-     */
-    200: Message;
-};
-
-export type DeleteRoomPhotoResponse = DeleteRoomPhotoResponses[keyof DeleteRoomPhotoResponses];
-
 export type CancelOrderData = {
     body: OrderCancel;
     path: {
@@ -4463,66 +4369,6 @@ export type DeliverOrderResponses = {
 };
 
 export type DeliverOrderResponse = DeliverOrderResponses[keyof DeliverOrderResponses];
-
-export type ReadOrderMatrixData = {
-    body?: never;
-    path: {
-        /**
-         * Order Id
-         */
-        order_id: number;
-    };
-    query?: never;
-    url: '/api/v1/orders/{order_id}/matrix';
-};
-
-export type ReadOrderMatrixErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type ReadOrderMatrixError = ReadOrderMatrixErrors[keyof ReadOrderMatrixErrors];
-
-export type ReadOrderMatrixResponses = {
-    /**
-     * Successful Response
-     */
-    200: OrderMatrix;
-};
-
-export type ReadOrderMatrixResponse = ReadOrderMatrixResponses[keyof ReadOrderMatrixResponses];
-
-export type EditOrderMatrixData = {
-    body: MatrixEdit;
-    path: {
-        /**
-         * Order Id
-         */
-        order_id: number;
-    };
-    query?: never;
-    url: '/api/v1/orders/{order_id}/matrix';
-};
-
-export type EditOrderMatrixErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type EditOrderMatrixError = EditOrderMatrixErrors[keyof EditOrderMatrixErrors];
-
-export type EditOrderMatrixResponses = {
-    /**
-     * Successful Response
-     */
-    200: OrderMatrix;
-};
-
-export type EditOrderMatrixResponse = EditOrderMatrixResponses[keyof EditOrderMatrixResponses];
 
 export type AssignOrderMachinesData = {
     body: MachineAssignments;
@@ -4613,6 +4459,66 @@ export type StartOrderProductionResponses = {
 };
 
 export type StartOrderProductionResponse = StartOrderProductionResponses[keyof StartOrderProductionResponses];
+
+export type ReadOrderMatrixData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/orders/{order_id}/matrix';
+};
+
+export type ReadOrderMatrixErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadOrderMatrixError = ReadOrderMatrixErrors[keyof ReadOrderMatrixErrors];
+
+export type ReadOrderMatrixResponses = {
+    /**
+     * Successful Response
+     */
+    200: OrderMatrix;
+};
+
+export type ReadOrderMatrixResponse = ReadOrderMatrixResponses[keyof ReadOrderMatrixResponses];
+
+export type EditOrderMatrixData = {
+    body: MatrixEdit;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/orders/{order_id}/matrix';
+};
+
+export type EditOrderMatrixErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type EditOrderMatrixError = EditOrderMatrixErrors[keyof EditOrderMatrixErrors];
+
+export type EditOrderMatrixResponses = {
+    /**
+     * Successful Response
+     */
+    200: OrderMatrix;
+};
+
+export type EditOrderMatrixResponse = EditOrderMatrixResponses[keyof EditOrderMatrixResponses];
 
 export type UploadOrderProjectData = {
     body: BodyUploadOrderProject;
@@ -4763,6 +4669,100 @@ export type ReadOrderCutmapResponses = {
 };
 
 export type ReadOrderCutmapResponse = ReadOrderCutmapResponses[keyof ReadOrderCutmapResponses];
+
+export type SaveOrderSurveyData = {
+    body: OrderSurvey;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/orders/{order_id}/survey';
+};
+
+export type SaveOrderSurveyErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveOrderSurveyError = SaveOrderSurveyErrors[keyof SaveOrderSurveyErrors];
+
+export type SaveOrderSurveyResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type SaveOrderSurveyResponse = SaveOrderSurveyResponses[keyof SaveOrderSurveyResponses];
+
+export type UploadRoomPhotoData = {
+    body: BodyUploadRoomPhoto;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/orders/{order_id}/survey/photos';
+};
+
+export type UploadRoomPhotoErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UploadRoomPhotoError = UploadRoomPhotoErrors[keyof UploadRoomPhotoErrors];
+
+export type UploadRoomPhotoResponses = {
+    /**
+     * Successful Response
+     */
+    201: OrderFileRead;
+};
+
+export type UploadRoomPhotoResponse = UploadRoomPhotoResponses[keyof UploadRoomPhotoResponses];
+
+export type DeleteRoomPhotoData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+        /**
+         * File Id
+         */
+        file_id: number;
+    };
+    query?: never;
+    url: '/api/v1/orders/{order_id}/survey/photos/{file_id}';
+};
+
+export type DeleteRoomPhotoErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteRoomPhotoError = DeleteRoomPhotoErrors[keyof DeleteRoomPhotoErrors];
+
+export type DeleteRoomPhotoResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type DeleteRoomPhotoResponse = DeleteRoomPhotoResponses[keyof DeleteRoomPhotoResponses];
 
 export type ReadUpakovkaOrderData = {
     body?: never;
