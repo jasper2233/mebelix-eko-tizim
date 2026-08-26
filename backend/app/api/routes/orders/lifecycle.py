@@ -72,7 +72,10 @@ from app.services.giblab.ingest import (
 )
 from app.services.giblab.models import DEFAULT_PROCESS_CODE, PROCESS_NAMES, PROCESS_POSTS, TAIL_CODES
 
-router = APIRouter(prefix="/orders", tags=["orders"])
+# Prefiks va tag PARENT routerda (`orders/__init__.py`) — bu yerda takrorlansa
+# `include_router` ularni QO'SHADI, almashtirmaydi va generatsiya qilingan
+# klientda metod ikki klassga nusxalanadi.
+router = APIRouter()
 
 _EDITABLE_STATUSES = (OrderStatus.DRAFT, OrderStatus.TECHNICAL_REVIEW)
 
