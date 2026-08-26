@@ -44,7 +44,11 @@ def _edge_markers(part: ParsedPart, rot: bool) -> tuple[list[str | None], list[s
 
     if not rot:
         return [sym("l"), sym("r")], [sym("t"), sym("b")]
-    return [sym("t"), sym("b")], [sym("l"), sym("r")]
+    # HAQIQIY 90° burilish (x,y)->(y, h-x), GibSaw bilan bir xil: lokal l qirra
+    # (x=0) katakning PASTIGA, r (x=l) TEPASIGA tushadi. Ilgari [l, r] edi —
+    # transpose (oyna) izi, ya'ni burilgan detalda tepa/past kromka almashib
+    # ko'rsatilardi.
+    return [sym("t"), sym("b")], [sym("r"), sym("l")]
 
 
 def _place(

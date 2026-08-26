@@ -102,7 +102,16 @@ function dimFit(boylab: number, kondalang: number, matn: string, zoom: number) {
 
 // --- GibSaw render qoidalari (GibLabViewer'dan portlangan, foto-tekshirilgan) ---
 
-/** Teshik koordinatasi detal lokal (l×w) o'qidan katakka: rot = o'q almashinuvi, OYNASIZ. */
+/** Teshik koordinatasi detal lokal (l×w) o'qidan katakka.
+ *
+ * rot = HAQIQIY 90° burilish: (x, y) -> (y, h − x). GibSaw.exe
+ * dekompilyatsiyasidan tasdiqlangan (`translate(0,h); rotate(-90)`).
+ * Ilgari transpose edi — (y, x) — bu esa burilish EMAS, OYNA: transpose =
+ * burilish + aks. Fizikada detal listda buriladi, ag'darilmaydi (yuz tomoni
+ * pastga qarab qolardi). Prodda o'lchandi: 03_002 bok (1803×581, teshik
+ * x=408) — bizda teshik 408 da, GibSaw'da 1395 da chiqardi, deyarli bir
+ * metr farq. Burilgan+teshikli katak prod bazasida 493 ta.
+ */
 export function holeXY(
   p: SheetPart,
   H: CutmapHole,
@@ -115,7 +124,7 @@ export function holeXY(
   const hl = H.l ?? 0
   const hw = H.w ?? 0
   const cx = p.rot ? p.x + by * (p.w / hw) : p.x + bx * (p.w / hl)
-  const cy = p.rot ? p.y + bx * (p.h / hl) : p.y + by * (p.h / hw)
+  const cy = p.rot ? p.y + p.h - bx * (p.h / hl) : p.y + by * (p.h / hw)
   return [cx, cy]
 }
 

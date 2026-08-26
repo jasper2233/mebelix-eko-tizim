@@ -291,8 +291,13 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
         #   l/r — x qirralari, EN bo'ylab ketadi
         burilgan = d.length > d.width
         # detal tomoni -> eskizdagi qirra
+        # Burilgan eskizda HAQIQIY 90° burilish (x,y)->(y, l-x) — kesish
+        # xaritasi va GibSaw bilan bitta konvensiya: lokal `l` qirra (x=0)
+        # eskiz PASTIGA, `r` (x=l) TEPAGA tushadi. Ilgari transpose edi (l->tepa,
+        # r->past) — bu oyna: kromka va qirra teshiklari qarama-qarshi uchda
+        # ko'rsatilardi, arrachi xarita bilan solishtirsa mos kelmasdi.
         qirra = (
-            {"t": "chap", "b": "ong", "l": "tepa", "r": "past"}
+            {"t": "chap", "b": "ong", "l": "past", "r": "tepa"}
             if burilgan
             else {"l": "chap", "r": "ong", "t": "tepa", "b": "past"}
         )
@@ -356,7 +361,8 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
             kx = bw / (hw if burilgan else hl)
             ky = bh / (hl if burilgan else hw)
             for b in d.holes.get("bores", []):
-                gor, ver = (b["y"], b["x"]) if burilgan else (b["x"], b["y"])
+                # burilgan: (x,y)->(y, l-x) — transpose emas (u oyna bo'lardi)
+                gor, ver = (b["y"], hl - b["x"]) if burilgan else (b["x"], b["y"])
                 cxp = bx + int(float(gor) * kx)
                 cyp = by + int(float(ver) * ky)
                 r = max(int(0.4 * mm), int(float(b.get("d", 5)) / 2 * min(kx, ky)))
@@ -368,18 +374,21 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
                 # Vertikal qirradagi teshik `ky` bo'ylab, gorizontaldagisi `kx`
                 # bo'ylab joylashadi — yo'nalish `qirra` xaritasidan keladi
                 teshik_joyi = qirra.get(side or "")
-                if teshik_joyi == "chap":
-                    yy = by + int(pos * ky)
-                    draw.line((bx, yy, bx + tick, yy), fill="black", width=2)
-                elif teshik_joyi == "ong":
-                    yy = by + int(pos * ky)
-                    draw.line((bx + bw - tick, yy, bx + bw, yy), fill="black", width=2)
-                elif teshik_joyi == "tepa":
+                # t/b qirradagi pos lokal X bo'ylab: burilgan eskizda u vertikal
+                # o'qqa (y, l-x) bilan tushadi; l/r qirradagi pos lokal Y bo'ylab
+                # — burilganda gorizontalga o'zgarishsiz o'tadi.
+                if teshik_joyi in ("chap", "ong"):
+                    yy = by + int((hl - pos if burilgan else pos) * ky)
+                    if teshik_joyi == "chap":
+                        draw.line((bx, yy, bx + tick, yy), fill="black", width=2)
+                    else:
+                        draw.line((bx + bw - tick, yy, bx + bw, yy), fill="black", width=2)
+                elif teshik_joyi in ("tepa", "past"):
                     xx = bx + int(pos * kx)
-                    draw.line((xx, by, xx, by + tick), fill="black", width=2)
-                elif teshik_joyi == "past":
-                    xx = bx + int(pos * kx)
-                    draw.line((xx, by + bh - tick, xx, by + bh), fill="black", width=2)
+                    if teshik_joyi == "tepa":
+                        draw.line((xx, by, xx, by + tick), fill="black", width=2)
+                    else:
+                        draw.line((xx, by + bh - tick, xx, by + bh), fill="black", width=2)
 
         # O'lchamlar: en pastda gorizontal, uzunlik o'ngda aylantirilgan (Universal size.top/left=false).
         # Har o'lcham yoniga o'sha tomonlar kromka belgilari (xaritadagi "450 B" uslubi):
