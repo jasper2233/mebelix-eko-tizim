@@ -176,6 +176,90 @@ function useFitScale<T>(rows: T[]) {
  * Soat SHU komponent ichida: bo'lmasa har soniyada butun matritsa (40 qator
  * x 9 katak) qayta chizilardi.
  */
+/** Sig'magan qatorlarni O'ZI aylantiradi — lekin odam tegsa DARHOL to'xtaydi.
+ *
+ * Devordagi TV va oddiy PC bitta sahifani ochadi, xulq esa boshqacha bo'lishi
+ * kerak: televizorda hech kim varaqlamaydi (shuning uchun kesilgan qator =
+ * yo'qolgan ma'lumot), stolda esa o'zi qimirlaydigan jadval bilan ishlab
+ * bo'lmaydi. Ikkalasini AJRATIB ko'rsatish shart emas — kiritishning O'ZI
+ * ajratadi: TV da sichqoncha ham, klaviatura ham yo'q, ya'ni u hech qachon
+ * to'xtamaydi; stolda esa har tegishda to'xtaydi. Kiosk bayrog'i, alohida
+ * manzil yoki sozlama kerak emas.
+ *
+ * WCAG 2.2 SC 2.2.2 ham aynan shuni talab qiladi: o'zi boshlanadigan va 5
+ * soniyadan uzoq davom etadigan harakatni to'xtatish yo'li bo'lishi shart.
+ *
+ * Sakrab-turib aylanadi, uzluksiz sirg'anmaydi: uzluksiz harakatda ko'z matnni
+ * ta'qib qilishga majbur bo'ladi va o'qib bo'lmaydi (vokzal tablolari ham shu
+ * sababdan sakraydi). `prefers-reduced-motion` da silliqlik ham o'chadi.
+ *
+ * Faqat SIG'MAGANDA ishlaydi: avval `useFitScale` shriftni kichraytiradi,
+ * aylantirish esa MIN_FIT da ham sig'magan qoldiq uchun.
+ */
+const DWELL_MS = 9_000
+const IDLE_MS = 10_000
+
+function useIdleAutoScroll() {
+  const ref = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let lastInput = 0
+    // O'Z aylantirishimiz kursor ostidagi elementni almashtiradi va ba'zi
+    // dvijoklarda `pointermove` chiqaradi — uni kiritish deb hisoblasak, taxta
+    // o'zini o'zi to'xtatib, boshqa hech qachon yurmasdi. Chrome 152 da
+    // O'LCHANDI: kursor qimirlamay turganda 6 soniyalik uzluksiz aylantirish
+    // 0 ta `pointermove` berdi, ya'ni bu yerda guard SHART emas. Qoldirilgan:
+    // xatoning bahosi jim to'xtash, narxi esa to'rt qator.
+    let ignoreMoveUntil = 0
+    const bump = (e: Event) => {
+      if (e.type === "pointermove" && Date.now() < ignoreMoveUntil) return
+      lastInput = Date.now()
+    }
+    const events = [
+      "pointermove",
+      "pointerdown",
+      "keydown",
+      "wheel",
+      "touchstart",
+    ] as const
+    for (const ev of events)
+      window.addEventListener(ev, bump, { passive: true })
+
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    const id = setInterval(() => {
+      if (Date.now() - lastInput < IDLE_MS) return
+      const max = el.scrollHeight - el.clientHeight
+      if (max <= 1) return // sig'ib turibdi — qimirlatmaymiz
+      // "Oxirida" = scrollTop MAKSIMUMDA, "keyingi qadam maksimumdan oshadi"
+      // EMAS. Ikkinchisi oxirgi to'liqmas ekranni tashlab ketardi: 40 qator x
+      // 40px = 1600, ekran 300 -> max 1300; scrollTop 1200 da 1200..1500
+      // ko'rinadi va 1500..1600 hech qachon chiqmasdi. Brauzerda o'lchandi.
+      const oxirida = el.scrollTop >= max - 1
+      ignoreMoveUntil = Date.now() + 1_500
+      // Qadam ekranning O'ZI emas, 90% i. Aynan bitta ekran bo'lsa, chegaraga
+      // to'g'ri kelgan qator HAR qadamda ham chegarada qolaverardi va hech
+      // qachon to'liq o'qilmasdi — brauzerda o'lchandi: 40 qatordan 8- va 23-
+      // qatorlar butun sikl davomida yarim ko'rinardi. Ustma-ustlik ularni
+      // suradi va o'qiyotgan odamga bog'lanish nuqtasi ham beradi.
+      el.scrollTo({
+        top: oxirida ? 0 : Math.min(max, el.scrollTop + el.clientHeight * 0.9),
+        behavior: reduce ? "auto" : "smooth",
+      })
+    }, DWELL_MS)
+
+    return () => {
+      clearInterval(id)
+      for (const ev of events) window.removeEventListener(ev, bump)
+    }
+    // Bir marta o'rnatiladi: har tikda `scrollHeight`/`clientHeight` DOM dan
+    // o'qiladi, ya'ni qatorlar soni yoki ekran o'lchami o'zgarsa o'zi moslashadi.
+  }, [])
+
+  return ref
+}
+
 function LiveBadge({
   online,
   updatedAt,
@@ -183,9 +267,15 @@ function LiveBadge({
   online: boolean
   updatedAt: number
 }) {
+  // Har SONIYADA emas, 15 soniyada: bu yerda o'lchanadigan yagona narsa —
+  // yangilanish yiqildimi (90 s chegara), va unga soniya aniqligi kerak emas.
+  // Ilgari 1 s li taymer butun belgini har soniyada qayta chizib, ekranda
+  // to'xtovsiz o'sadigan raqam hosil qilardi: uzoqdan qaraganda u sekundomer
+  // bo'lib ko'rinib, ko'zni ma'lumotdan tortib olardi. Raqamning O'ZI esa
+  // faqat KATTA bo'lganda ma'noli — 0..60 orasida aylanishi sof shovqin.
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000)
+    const id = setInterval(() => setNow(Date.now()), 15_000)
     return () => clearInterval(id)
   }, [])
   const age = updatedAt ? Math.max(0, Math.round((now - updatedAt) / 1000)) : 0
@@ -217,11 +307,9 @@ function LiveBadge({
           )}
         />
       </span>
-      {!online
-        ? "ULANMADI"
-        : stale
-          ? `ESKI · ${ageLabel(age)}`
-          : `JONLI · ${ageLabel(age)}`}
+      {/* Raqam FAQAT nosozlikda: normal holatda jonlilikni tepkilayotgan
+          halqa ko'rsatadi, "3d" esa muammo qanchalik eskiligini aytadi. */}
+      {!online ? "ULANMADI" : stale ? `ESKI · ${ageLabel(age)}` : "JONLI"}
     </span>
   )
 }
@@ -288,6 +376,9 @@ function TabloPage() {
 
   const myMachine = machines?.find((m) => m.id === me?.machine_id)
   const contextPostId = myMachine?.post_id ?? null
+  // MIN_FIT da ham sig'magan qatorlar uchun: TV o'zi aylantiradi,
+  // stolda esa birinchi tegishda to'xtaydi.
+  const autoScroll = useIdleAutoScroll()
 
   if (drill !== null)
     return <TabloOrderDrill orderId={drill} onBack={closeDrill} mode={mode} />
@@ -351,7 +442,7 @@ function TabloPage() {
         )}
       </header>
 
-      <main className="min-h-0 flex-1 overflow-auto p-4">
+      <main ref={autoScroll} className="min-h-0 flex-1 overflow-auto p-4">
         {isLoading ? (
           <p className="p-8 text-center text-3xl text-muted-foreground">
             Yuklanmoqda...
