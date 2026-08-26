@@ -176,25 +176,15 @@ function useFitScale<T>(rows: T[]) {
  * Soat SHU komponent ichida: bo'lmasa har soniyada butun matritsa (40 qator
  * x 9 katak) qayta chizilardi.
  */
-/** Sig'magan qatorlarni O'ZI aylantiradi — lekin odam tegsa DARHOL to'xtaydi.
+/** Sig'magan qatorlarni O'ZI aylantiradi — odam tegsa to'xtaydi.
  *
- * Devordagi TV va oddiy PC bitta sahifani ochadi, xulq esa boshqacha bo'lishi
- * kerak: televizorda hech kim varaqlamaydi (shuning uchun kesilgan qator =
- * yo'qolgan ma'lumot), stolda esa o'zi qimirlaydigan jadval bilan ishlab
- * bo'lmaydi. Ikkalasini AJRATIB ko'rsatish shart emas — kiritishning O'ZI
- * ajratadi: TV da sichqoncha ham, klaviatura ham yo'q, ya'ni u hech qachon
- * to'xtamaydi; stolda esa har tegishda to'xtaydi. Kiosk bayrog'i, alohida
- * manzil yoki sozlama kerak emas.
+ * Devordagi TV va stol ustidagi PC bitta sahifani ochadi. Ajratish uchun kiosk
+ * bayrog'i kerak emas: TV da kiritish qurilmasi yo'q, ya'ni u hech qachon
+ * to'xtamaydi, stolda esa birinchi tegishda to'xtaydi. WCAG 2.2 SC 2.2.2 ham
+ * o'zi boshlanadigan harakatni to'xtatish yo'lini talab qiladi.
  *
- * WCAG 2.2 SC 2.2.2 ham aynan shuni talab qiladi: o'zi boshlanadigan va 5
- * soniyadan uzoq davom etadigan harakatni to'xtatish yo'li bo'lishi shart.
- *
- * Sakrab-turib aylanadi, uzluksiz sirg'anmaydi: uzluksiz harakatda ko'z matnni
- * ta'qib qilishga majbur bo'ladi va o'qib bo'lmaydi (vokzal tablolari ham shu
- * sababdan sakraydi). `prefers-reduced-motion` da silliqlik ham o'chadi.
- *
- * Faqat SIG'MAGANDA ishlaydi: avval `useFitScale` shriftni kichraytiradi,
- * aylantirish esa MIN_FIT da ham sig'magan qoldiq uchun.
+ * Sakrab-turib aylanadi: uzluksiz harakatda ko'z matnni ta'qib qilishga majbur
+ * bo'ladi va o'qib bo'lmaydi. Faqat MIN_FIT da ham sig'magan qoldiq uchun.
  */
 const DWELL_MS = 9_000
 const IDLE_MS = 10_000
@@ -206,24 +196,14 @@ function useIdleAutoScroll() {
     const el = ref.current
     if (!el) return
     let lastInput = 0
-    // O'Z aylantirishimiz kursor ostidagi elementni almashtiradi va ba'zi
-    // dvijoklarda `pointermove` chiqaradi — uni kiritish deb hisoblasak, taxta
-    // o'zini o'zi to'xtatib, boshqa hech qachon yurmasdi. Chrome 152 da
-    // O'LCHANDI: kursor qimirlamay turganda 6 soniyalik uzluksiz aylantirish
-    // 0 ta `pointermove` berdi, ya'ni bu yerda guard SHART emas. Qoldirilgan:
-    // xatoning bahosi jim to'xtash, narxi esa to'rt qator.
-    let ignoreMoveUntil = 0
-    const bump = (e: Event) => {
-      if (e.type === "pointermove" && Date.now() < ignoreMoveUntil) return
+    const bump = () => {
       lastInput = Date.now()
     }
-    const events = [
-      "pointermove",
-      "pointerdown",
-      "keydown",
-      "wheel",
-      "touchstart",
-    ] as const
+    // `pointermove` ATAYLAB yo'q: o'z aylantirishimiz kursor ostidagi elementni
+    // almashtiradi va ba'zi dvijoklarda uni chiqaradi — taxta o'zini o'zi
+    // to'xtatib qo'yardi. Bosish, g'ildirak, klavish va teginish haqiqiy
+    // niyatni baribir ushlaydi; sichqonchani shunchaki surish esa ushlamaydi.
+    const events = ["pointerdown", "keydown", "wheel", "touchstart"] as const
     for (const ev of events)
       window.addEventListener(ev, bump, { passive: true })
 
@@ -232,17 +212,11 @@ function useIdleAutoScroll() {
       if (Date.now() - lastInput < IDLE_MS) return
       const max = el.scrollHeight - el.clientHeight
       if (max <= 1) return // sig'ib turibdi — qimirlatmaymiz
-      // "Oxirida" = scrollTop MAKSIMUMDA, "keyingi qadam maksimumdan oshadi"
-      // EMAS. Ikkinchisi oxirgi to'liqmas ekranni tashlab ketardi: 40 qator x
-      // 40px = 1600, ekran 300 -> max 1300; scrollTop 1200 da 1200..1500
-      // ko'rinadi va 1500..1600 hech qachon chiqmasdi. Brauzerda o'lchandi.
+      // "keyingi qadam oshadi" EMAS, "allaqachon oxirida": birinchisi oxirgi
+      // to'liqmas ekranni tashlab ketardi (brauzerda o'lchandi).
       const oxirida = el.scrollTop >= max - 1
-      ignoreMoveUntil = Date.now() + 1_500
-      // Qadam ekranning O'ZI emas, 90% i. Aynan bitta ekran bo'lsa, chegaraga
-      // to'g'ri kelgan qator HAR qadamda ham chegarada qolaverardi va hech
-      // qachon to'liq o'qilmasdi — brauzerda o'lchandi: 40 qatordan 8- va 23-
-      // qatorlar butun sikl davomida yarim ko'rinardi. Ustma-ustlik ularni
-      // suradi va o'qiyotgan odamga bog'lanish nuqtasi ham beradi.
+      // Qadam 90%: aynan bitta ekran bo'lsa chegaraga to'g'ri kelgan qator
+      // har qadamda ham yarim qolardi (40 tadan 8- va 23-, o'lchandi).
       el.scrollTo({
         top: oxirida ? 0 : Math.min(max, el.scrollTop + el.clientHeight * 0.9),
         behavior: reduce ? "auto" : "smooth",
