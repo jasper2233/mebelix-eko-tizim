@@ -95,8 +95,14 @@ const DIM_FS = 48
 function dimFit(boylab: number, kondalang: number, matn: string, zoom: number) {
   const fs = Math.min(DIM_FS, DIM_MAX / zoom)
   const len = matn.length * fs * 0.62 + 8
+  // Matn UZUNLIGI o'z o'qiga, QALINLIGI (fs) ko'ndalangiga sig'ishi shart —
+  // ikkinchisi tekshirilmasa 40 mm stripda 48 mm qalin yozuv baribir chiqardi.
   const mode: "h" | "v" | null =
-    len <= boylab ? "h" : len <= kondalang ? "v" : null
+    len <= boylab && fs * 1.1 <= kondalang
+      ? "h"
+      : len <= kondalang && fs * 1.1 <= boylab
+        ? "v"
+        : null
   return { fs, mode, show: mode !== null && fs * zoom >= DIM_MIN }
 }
 
@@ -701,14 +707,19 @@ export function SheetSvg({
         // GibSaw: bo'yi o'ng qirrada YUQORIDAN PASTGA o'qiladi (rotate 90) —
         // eni pastki-chapda bo'lgani uchun ikkalasi hech qachon uchrashmaydi.
         const hlen = hText.length * dH * 0.62
+        // rotate(90) da glyph baseline'dan O'NG tomonda chiziladi (ascent +x):
+        // baseline qirradan kamida 0.85*dH ichkarida turishi shart. Ilgari
+        // 0.25*dH edi — matn katakdan o'ngga ~0.75*dH chiqib QO'SHNI katakka
+        // kirardi; jonli terminalda o'lchandi: 72 matndan 13 tasi toshgan,
+        // hammasi shu naqsh. Box ham glyph bilan bir tomonda: [x-0.25, x+0.75].
         const spot = pickSpot(
           [
-            { x: p.x + wv - dH * 0.25, y: p.y + 6 },
-            { x: p.x + wv - dH * 0.25, y: p.y + hv - hlen - botB - 6 },
-            { x: p.x + wv - dH * 1.5, y: p.y + 6 },
+            { x: p.x + wv - dH * 0.85, y: p.y + 6 },
+            { x: p.x + wv - dH * 0.85, y: p.y + hv - hlen - botB - 6 },
+            { x: p.x + wv - dH * 2.0, y: p.y + 6 },
           ].map((c) => ({
             ...c,
-            box: { x: c.x - dH * 0.85, y: c.y, w: dH, h: hlen },
+            box: { x: c.x - dH * 0.25, y: c.y, w: dH, h: hlen },
           })),
         )
         labels.push(
