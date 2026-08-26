@@ -560,9 +560,17 @@ export function SheetSvg({
       // kichraytirardi ("joy bor, lekin kichik ko'rsatilyapti"). Cap endi
       // DIM_FS; nom o'lchamga tegib ketsa pastdagi kesishish himoyasi avval
       // bir pog'ona kichraytiradi, yana tegsa olib tashlaydi.
+      //
+      // Ko'ndalang cap KATAKNING o'ziga qaraydi (`shortC`), `shortA` ga emas:
+      // shortA dan botB/rightB butun en bo'ylab ayirilardi, o'lcham esa faqat
+      // BURCHAKDA turadi. Cho'zinchoq detalda (2390×100 o'lchandi) bu nomni
+      // 22.7 mm gacha tushirardi — markazdagi nom burchakdagi o'lcham bilan
+      // umuman kesishmasa ham. Endi cap = glyph bbox (ASC+DESC) katak
+      // ko'ndalangiga sig'ishi; haqiqiy to'qnashuvni kesishish himoyasi ushlaydi.
+      const shortC = vert ? wv : hv
       let fsN = Math.min(
         DIM_FS,
-        shortA * 0.55,
+        (shortC - 10) / (ASC + DESC),
         (longA * 0.9) / Math.max(1, label.length * 0.52),
       )
       let shown = label
