@@ -114,8 +114,9 @@ const MODE_KEY = "tablo-mode"
  * shriftlari shunga ko'paytiriladi. `MIN_FIT` — o'qish chegarasi (5 metrdan
  * ko'rinishi kerak); undan pastga tushmaydi, ya'ni juda ko'p buyurtmada
  * pastki qatorlar baribir kesiladi. Bu ATAYLAB: shriftni cheksiz kichraytirish
- * devordagi ekranni umuman foydasiz qilardi. Tartib muddat bo'yicha (backend
- * `order_by`), ya'ni kesilsa — muddati eng uzoqdagisi kesiladi.
+ * devordagi ekranni umuman foydasiz qilardi. Tartib prioritet, keyin muddat
+ * (backend `order_by`, terminal ro'yxati bilan bir xil), ya'ni kesilsa —
+ * eng kam shoshilinchi kesiladi.
  */
 const MIN_FIT = 0.62
 
@@ -509,7 +510,9 @@ function TabloPage() {
                   >
                     {/* Devor ekranida "19.08.2026" hech narsa demaydi — odam
                         boshida sanani bugungi kundan ayirishi kerak bo'lardi.
-                        Javobning O'ZI yoziladi, sana ostida dalil bo'lib qoladi. */}
+                        Shuning uchun javobning O'ZI yoziladi: "3 kun / QOLDI".
+                        Xom sana UMUMAN chizilmaydi — devordan uni hech kim
+                        ko'chirib olmaydi, aniq sana kerak bo'lsa reestrda bor. */}
                     {(() => {
                       const [son, soz] = deadlineCountdown(o.deadline)
                       return (
