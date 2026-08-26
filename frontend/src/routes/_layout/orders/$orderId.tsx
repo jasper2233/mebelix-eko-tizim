@@ -5,6 +5,7 @@ import {
   CheckCheck,
   ClipboardList,
   FileUp,
+  Lock,
   Map as MapIcon,
   Play,
   Truck,
@@ -165,8 +166,12 @@ function OrderDetailPage() {
     )
   if (isLoading || !order) return <Skeleton className="h-96 w-full" />
 
-  const editableStatus =
-    order.status === "draft" || order.status === "technical_review"
+  // Tahrirlash huquqini BACKEND aytadi (`orders._edit_block_reason`): holat +
+  // tsexda haqiqiy ish bor-yo'qligi. Bu yerda qayta hisoblab bo'lmaydi —
+  // skanlar bu javobda yo'q, va ikki joyda hisoblansa ular ajralib ketardi.
+  const canEdit = order.can_edit ?? false
+  // Fayl qayta yuklash faqat texnologda: marshrutni u tuzadi.
+  const canUpload = isTexnolog && canEdit
   const scxFiles = (order.files ?? []).filter((f) => f.kind === "scx")
   // GibLab fayldagi typeId="simple" goodlar: petlya, yevrovint, dasta... (dona).
   // SKU kodlilar oldin: kodsizlar orasida dizaynerning 3D-model qoldiqlari ham
@@ -214,7 +219,7 @@ function OrderDetailPage() {
                 <CheckCheck /> Tasdiqlash
               </LoadingButton>
             )}
-            {isTexnolog && order.status === "technical_review" && (
+            {canUpload && (
               <>
                 <input
                   ref={fileInput}
@@ -279,7 +284,7 @@ function OrderDetailPage() {
         }
       />
 
-      {isTexnolog && order.status === "technical_review" && (
+      {canUpload && (
         // biome-ignore lint/a11y/noStaticElementInteractions: drop zone — klaviatura uchun yonidagi tugma bor
         // biome-ignore lint/a11y/useKeyWithClickEvents: klaviatura yo'li headerdagi "Project fayl yuklash" tugmasi
         <div
@@ -315,6 +320,18 @@ function OrderDetailPage() {
           <span className="text-xs">
             GibLab eksport fayli — yuklangach tahlil avtomatik boshlanadi
           </span>
+        </div>
+      )}
+
+      {isTexnolog && order.edit_blocked_reason && (
+        <div className="mb-6 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+          <Lock className="mt-0.5 size-4 shrink-0 text-amber-600" />
+          <div>
+            <div className="font-medium">Tahrirlab bo'lmaydi</div>
+            <div className="text-muted-foreground">
+              {order.edit_blocked_reason}
+            </div>
+          </div>
         </div>
       )}
 
@@ -377,7 +394,7 @@ function OrderDetailPage() {
 
       {/* Texnolog ham tanlaydi: marshrutni u chizadi, ya'ni qaysi stanok
           qaysi ishni bajarishini yaxshiroq biladi. */}
-      {(isManager || isTexnolog) && editableStatus && order.project_uuid && (
+      {(isManager || isTexnolog) && canEdit && order.project_uuid && (
         <MachineAssign order={order} onSaved={invalidate} />
       )}
 
@@ -395,13 +412,10 @@ function OrderDetailPage() {
             )}
           </TabsList>
           <TabsContent value="matrix">
-            <OrderMatrix orderId={id} editable={isTexnolog && editableStatus} />
+            <OrderMatrix orderId={id} editable={isTexnolog && canEdit} />
           </TabsContent>
           <TabsContent value="custom">
-            <CustomRoutes
-              orderId={id}
-              editable={isTexnolog && editableStatus}
-            />
+            <CustomRoutes orderId={id} editable={isTexnolog && canEdit} />
           </TabsContent>
           <TabsContent value="hardware">
             <Table>
@@ -435,7 +449,7 @@ function OrderDetailPage() {
       ) : (
         <>
           <SectionTitle>Detallar matritsasi</SectionTitle>
-          <OrderMatrix orderId={id} editable={isTexnolog && editableStatus} />
+          <OrderMatrix orderId={id} editable={isTexnolog && canEdit} />
         </>
       )}
 

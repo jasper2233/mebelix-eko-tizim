@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy import Row, delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import defer
 
@@ -19,7 +19,7 @@ from app.api.deps import (
     TexnologUser,
     client_ip,
 )
-from app.core.config import settings, upload_root
+from app.core.config import TASHKENT_TZ, settings, upload_root
 from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
 from app.core.ws import ws_manager
 from app.crud import crud_clients, crud_orders, log_action
@@ -34,6 +34,7 @@ from app.models import (
     PartRoute,
     Post,
     Product,
+    Scan,
 )
 from app.models.enums import (
     MACHINE_STATUS_LABELS,
@@ -74,6 +75,67 @@ from app.services.giblab.models import DEFAULT_PROCESS_CODE, PROCESS_NAMES, PROC
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 _EDITABLE_STATUSES = (OrderStatus.DRAFT, OrderStatus.TECHNICAL_REVIEW)
+
+#: Ishlab chiqarishga uzatilgan buyurtma HAM tahrirlanadi — TO shu paytgacha
+#: hech bir postda amal bajarilmagan bo'lsa. Sabab: texnolog faylni yuklab,
+#: marshrutni chizib, "uzatish" ni bosgach xatoni ko'rishi odatiy hol; tsex esa
+#: hali ishga kirishmagan bo'ladi. Ilgari bu holatda buyurtmani bekor qilib
+#: qaytadan yaratishdan boshqa yo'l yo'q edi.
+_EDITABLE_IF_UNTOUCHED = (*_EDITABLE_STATUSES, OrderStatus.PRODUCTION)
+
+
+async def _first_work(db: SessionDep, order_id: int) -> "Row | None":
+    """Buyurtmada bajarilgan BIRINCHI amal: `(post nomi, soni, vaqti)` yoki `None`.
+
+    "Amal bajarilgan" = BEKOR QILINMAGAN skan. Bekor qilingani hisobga olinmaydi
+    va bu ataylab: arrachi ikki detalga chek chiqarib, keyin bekor qilsa —
+    jarayonda hech narsa qolmaydi, ya'ni buyurtma yana tahrirlanadigan bo'ladi.
+    `PartRoute.total_done` ham bekor qilinganda kamayadi, ya'ni ikki hisob mos
+    keladi (prodda 8 buyurtmada tekshirildi: tirik skan == sum(total_done)).
+    """
+    return (
+        await db.execute(
+            select(Post.name, func.count(Scan.id).label("soni"), func.min(Scan.created_at).label("vaqti"))
+            .join(Scan, Scan.post_id == Post.id)
+            .where(
+                Scan.order_id == order_id,
+                Scan.is_cancelled == False,  # noqa: E712
+                Scan.is_deleted == False,  # noqa: E712
+            )
+            .group_by(Post.name)
+            .order_by(func.min(Scan.created_at))
+        )
+    ).first()
+
+
+async def _edit_block_reason(db: SessionDep, order: Order) -> str | None:
+    """Tahrirlashga to'sqinlik qiladigan sabab, yoki `None` (mumkin).
+
+    Bitta joyda: fayl qayta yuklash, matritsa va ish markazi tanlovi shundan
+    o'tadi, `read_order` esa shu bilan `can_edit` ni hisoblaydi — ya'ni tugma
+    ko'rinishi va server javobi hech qachon ajralib ketmaydi.
+    """
+    if order.status not in _EDITABLE_IF_UNTOUCHED:
+        return (
+            f"buyurtma holati «{order.status}». Faqat qoralama, texnik ko'rik yoki "
+            "hali ishlanmagan ishlab chiqarish buyurtmasi tahrirlanadi."
+        )
+    if order.status != OrderStatus.PRODUCTION:
+        return None
+    work = await _first_work(db, order.id)
+    if work is None:
+        return None
+    vaqt = work.vaqti.astimezone(TASHKENT_TZ).strftime("%d-%m %H:%M") if work.vaqti else ""
+    return (
+        f"tsexda ish allaqachon boshlangan — {work.name} postida {work.soni} ta skan ({vaqt}). "
+        "Tahrirlash uchun avval o'sha skanlarni bekor qilish kerak."
+    )
+
+
+async def _require_editable(db: SessionDep, order: Order, nima: str) -> None:
+    reason = await _edit_block_reason(db, order)
+    if reason is not None:
+        raise ForbiddenException(f"{nima} — {reason}")
 
 
 def _hidden_statuses(user: User) -> set[OrderStatus]:
@@ -229,6 +291,11 @@ async def read_order(db: SessionDep, current_user: StaffReadUser, order_id: int)
     detail.files = [OrderFileRead.model_validate(f) for f in files]
     detail.parts_count = parts_count
     detail.instances_count = instances_count
+    # Tahrirlash mumkinmi — frontend tugmalarni shunga qarab yoqadi va SABABINI
+    # ko'rsatadi. Qoida bitta joyda (`_require_editable`) bo'lishi uchun shu
+    # yerda ham aynan o'sha helper chaqiriladi.
+    detail.edit_blocked_reason = await _edit_block_reason(db, order)
+    detail.can_edit = detail.edit_blocked_reason is None
     return detail
 
 
@@ -539,8 +606,7 @@ async def edit_order_matrix(
 ) -> OrderMatrix:
     """Texnolog matrix edits (TZ 6.3.3): stage toggles, notes, rare count fixes. Pre-production only."""
     order = await _get_order(db, order_id)
-    if order.status not in _EDITABLE_STATUSES:
-        raise ForbiddenException("Matritsani faqat ishlab chiqarishga uzatilgunga qadar o'zgartirish mumkin.")
+    await _require_editable(db, order, "Matritsani o'zgartirib bo'lmaydi")
 
     posts = {p.id: p for p in (await db.execute(select(Post))).scalars()}
     # Anketadagi "Upakovka qilish" — qo'lda chizilgan marshrutga ham qadoqlash
@@ -873,12 +939,11 @@ async def assign_order_machines(
     """Ish markazi tanlovi (TZ 6.4.1): bir postda bir nechta markaz bo'lsa qaysi biri.
 
     Texnolog ham tanlaydi: marshrutni u chizadi va qaysi stanok qaysi ishni
-    bajarishini menejerdan ko'ra yaxshiroq biladi. Buyurtma ishlab chiqarishga
-    uzatilgach ikkalasiga ham yopiq (quyidagi holat tekshiruvi).
+    bajarishini menejerdan ko'ra yaxshiroq biladi. Tsexda ish boshlangach
+    ikkalasiga ham yopiq (`_require_editable`).
     """
     order = await _get_order(db, order_id)
-    if order.status not in _EDITABLE_STATUSES:
-        raise ForbiddenException("Ish markazi tanlovi faqat ishlab chiqarishga uzatilgunga qadar mumkin.")
+    await _require_editable(db, order, "Ish markazi tanlovini o'zgartirib bo'lmaydi")
 
     posts_by_code = {p.code: p for p in (await db.execute(select(Post))).scalars()}
     for post_code, machine_id in body.assignments.items():
@@ -1087,12 +1152,19 @@ async def upload_order_project(
     db: SessionDep, current_user: TexnologUser, order_id: int, file: UploadFile, request: Request
 ) -> Message:
     """Texnolog uploads the .project file (TZ 6.3). Exactly ONE file per order; re-upload
-    replaces all previous parse results and is allowed only before PRODUCTION."""
+    replaces all previous parse results.
+
+    Ishlab chiqarishga uzatilgan buyurtmaga ham QAYTA yuklash mumkin — TO hech bir
+    postda amal bajarilmagan bo'lsa (`_require_editable`). Bekor qilingan skan
+    hisobga olinmaydi: arrada ikki detalga chek chiqarib keyin bekor qilinsa,
+    jarayonda hech narsa qolmaydi va fayl yana almashtiriladi.
+    """
     order = await _get_order(db, order_id)
-    if order.status != OrderStatus.TECHNICAL_REVIEW:
+    if order.status == OrderStatus.DRAFT:
         raise ForbiddenException(
             "Fayl faqat tasdiqlangan buyurtmaga yuklanadi. Avval manager buyurtmani tasdiqlashi kerak."
         )
+    await _require_editable(db, order, "Faylni qayta yuklab bo'lmaydi")
     if not (file.filename or "").lower().endswith(".project"):
         raise HTTPException(status_code=422, detail="Faqat .project kengaytmali fayl qabul qilinadi.")
 

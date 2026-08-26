@@ -67,6 +67,13 @@ class OrderDetail(OrderRead):
     files: list[OrderFileRead] = []
     parts_count: int = 0
     instances_count: int = 0
+    #: Buyurtmani hali tahrirlash mumkinmi (fayl qayta yuklash, matritsa, ish
+    #: markazi). Ishlab chiqarishdagi buyurtma ham tahrirlanadi — TO birinchi
+    #: skan qilinmaguncha. Frontend tugmalarni shunga qarab yoqadi.
+    can_edit: bool = False
+    #: Tahrirlab bo'lmasa — SABABI: "ARRA postida 12 ta skan (26-08 10:15)".
+    #: Tugmani jimgina o'chirib qo'yish texnologni sababsiz qoldirardi.
+    edit_blocked_reason: str | None = None
     #: Kim bekor qilgan — ISM, id emas: kartochkada "Bekor sababi" yonida turadi.
     #: Ilgari `cancelled_by_id` yozilardi-yu, hech qayerda o'qilmasdi: foydalanuvchi
     #: sababni ko'rar, kimligini esa faqat audit logdan qidirishga to'g'ri kelardi.

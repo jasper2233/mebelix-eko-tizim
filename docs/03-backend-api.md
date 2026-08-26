@@ -290,10 +290,10 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | POST | `/api/v1/orders/{id}/survey/photos` | `ManagerUser` | 201, multipart: `room_id` (Form, ≤40 belgi) + `file`; xona uchun namuna rasm; DELIVERED/CANCELLED buyurtmaga rasm qo'shib bo'lmaydi (403); javob `OrderFileRead`; audit `survey_photo_added` |
 | DELETE | `/api/v1/orders/{id}/survey/photos/{file_id}` | `ManagerUser` | Rasmni o'chiradi — diskdan ham, bazada `is_deleted=True`; boshqa buyurtmaning yoki `DOCUMENT` bo'lmagan fayl uchun 404; audit `survey_photo_deleted` |
 | POST | `/api/v1/orders/{id}/confirm` | `ManagerUser` | Tasdiqlash: `DRAFT → TECHNICAL_REVIEW` — buyurtma texnologga o'tadi; `amount` (narx) kiritilgan bo'lishi shart |
-| POST | `/api/v1/orders/{id}/upload` | `TexnologUser` | `.project` fayl yuklash (TZ 6.3): faqat TECHNICAL_REVIEW holatida; kengaytma va hajm (`MAX_PROJECT_FILE_SIZE`) tekshiriladi; parse xatosi 422; TEMPLATE (GibLab'da optimizatsiya qilinmagan) fayl 422 aniq yo'riqnoma matni bilan rad etiladi (TZ 5.3.3); qayta yuklashda `wipe_previous_parse` oldingi parse natijalarini o'chiradi, `ingest_project` yangisini yozadi. Qo'lda chizilgan (nostandart) marshrutlar fayldan kelmaydi, shuning uchun `snapshot_custom_routes` ular fizik o'chirishdan OLDIN (mahsulot kodi, detal kodi) bo'yicha saqlaydi va `restore_custom_routes` yangi detallarga tiklaydi; tiklanganlar soni va yangi faylda topilmagan detallar javob matnidagi ogohlantirishlarga qo'shiladi |
+| POST | `/api/v1/orders/{id}/upload` | `TexnologUser` | `.project` fayl yuklash (TZ 6.3): DRAFT'da rad etiladi (avval tasdiqlansin); TECHNICAL_REVIEW va **hali ishlanmagan** PRODUCTION buyurtmada ruxsat (`_require_editable`, quyida); kengaytma va hajm (`MAX_PROJECT_FILE_SIZE`) tekshiriladi; parse xatosi 422; TEMPLATE (GibLab'da optimizatsiya qilinmagan) fayl 422 aniq yo'riqnoma matni bilan rad etiladi (TZ 5.3.3); qayta yuklashda `wipe_previous_parse` oldingi parse natijalarini o'chiradi, `ingest_project` yangisini yozadi. Qo'lda chizilgan (nostandart) marshrutlar fayldan kelmaydi, shuning uchun `snapshot_custom_routes` ular fizik o'chirishdan OLDIN (mahsulot kodi, detal kodi) bo'yicha saqlaydi va `restore_custom_routes` yangi detallarga tiklaydi; tiklanganlar soni va yangi faylda topilmagan detallar javob matnidagi ogohlantirishlarga qo'shiladi |
 | GET | `/api/v1/orders/{id}/matrix` | `StaffReadUser` | `OrderMatrix` — har detal (`MatrixPart`, `is_custom` bayrog'i bilan) va uning marshrut QADAMLARI (`RouteCell`, javobda `seq` bo'yicha tartiblangan) |
-| PATCH | `/api/v1/orders/{id}/matrix` | `TexnologUser` | Matritsa tahriri (TZ 6.3.3): bosqich on/off (ARRA'ni o'chirib BO'LMAYDI — 403, faqat STANDART detalda), izoh, `is_custom` bayrog'i, nostandart marshrut (`route_codes`), soni o'zgartirish (`_resize_instances` fizik nusxalar va route summalarini moslashtiradi); faqat production'gacha — batafsil quyida |
-| POST | `/api/v1/orders/{id}/machines` | `ManagerOrTexnologUser` | Bir postda bir nechta ish markazi bo'lsa manager tanlaydi (TZ 6.4.1); post/ish markazi mosligi tekshiriladi; **faqat AKTIV markaz** — TA'MIRDA/NOAKTIV bo'lsa 409 (ish bajariladigan joyi yo'q); faqat production'gacha |
+| PATCH | `/api/v1/orders/{id}/matrix` | `TexnologUser` | Matritsa tahriri (TZ 6.3.3): bosqich on/off (ARRA'ni o'chirib BO'LMAYDI — 403, faqat STANDART detalda), izoh, `is_custom` bayrog'i, nostandart marshrut (`route_codes`), soni o'zgartirish (`_resize_instances` fizik nusxalar va route summalarini moslashtiradi); tahrir shartlari — `_require_editable` (quyida); batafsil quyida |
+| POST | `/api/v1/orders/{id}/machines` | `ManagerOrTexnologUser` | Bir postda bir nechta ish markazi bo'lsa manager tanlaydi (TZ 6.4.1); post/ish markazi mosligi tekshiriladi; **faqat AKTIV markaz** — TA'MIRDA/NOAKTIV bo'lsa 409 (ish bajariladigan joyi yo'q); tahrir shartlari — `_require_editable` (quyida) |
 | POST | `/api/v1/orders/{id}/start` | `ManagerOrTexnologUser` | Ishlab chiqarishga uzatish (TZ 6.4.2 — TZ da faqat menejer edi, texnolog ham qo'shildi: faylni va marshrutni u tayyorlaydi): `TECHNICAL_REVIEW → PRODUCTION`; `.project` yuklangan bo'lishi shart; **marshrutsiz detal bo'lsa 403** (quyida); `requires_assignment_choice` postlarda ish markazi tanlanmagan bo'lsa 403; tanlangan ish markazi route yozuvlariga muhrlanadi (terminal filtri uchun); WS `order.started` |
 | POST | `/api/v1/orders/{id}/cancel` | `ManagerUser` | Bekor qilish (TZ 6.5): istalgan bosqichda (DELIVERED/CANCELLED dan tashqari); sabab majburiy; skan tarixi audit uchun saqlanadi; WS `order.cancelled` — terminallar vazifalarni DARHOL tashlaydi |
 | POST | `/api/v1/orders/{id}/deliver` | `ManagerUser` | TOPSHIRILDI (TZ 10.3): faqat `COMPLETED → DELIVERED`; `delivered_at` avtomatik; WS `order.delivered` |
@@ -303,6 +303,31 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | GET | `/api/v1/orders/{id}/cutmap` | `StaffReadUser` | Kesish xaritasi holati (TZ 10.3) — admin-panel ko'rinishi va brauzer-print; terminal bilan umumiy `build_cutmap_state` (ARRA posti) |
 
 Barcha mutatsiyalar `log_action` bilan audit qilinadi. `.project` parser qoidalari va cutmap tafsilotlari — `docs/09-mes-domain.md`.
+
+### Qachon tahrirlash mumkin (`_require_editable`)
+
+Fayl qayta yuklash, matritsa tahriri va ish markazi tanlovi — uchalasi BITTA
+qoidadan o'tadi (`orders.py: _edit_block_reason`):
+
+| Holat | Tahrirlash |
+|---|---|
+| `DRAFT` | Faqat matritsa/markaz (fayl yuklash alohida 403 — avval tasdiqlash kerak) |
+| `TECHNICAL_REVIEW` | Ha |
+| `PRODUCTION` | **Faqat tsexda hech qanday ish qilinmagan bo'lsa** |
+| `COMPLETED`, `DELIVERED`, `CANCELLED` | Yo'q |
+
+"Ish qilingan" = shu buyurtmada BEKOR QILINMAGAN va o'chirilmagan skan bor
+(`scan.is_cancelled = false AND scan.is_deleted = false`). Ya'ni ARRAda 2 detal
+kesilib chek chiqarilsa-yu, keyin o'sha skanlar bekor qilinsa — buyurtma yana
+tahrirlanadi. Bu ataylab: bekor qilingan skan hisoblagichni ham qaytaradi, ya'ni
+tsexda haqiqatan hech narsa qilinmagan holatga tenglashadi.
+
+403 xabari qaysi postda nechta skan borligini va birinchi skan vaqtini aytadi:
+«tsexda ish allaqachon boshlangan — Arra postida 2 ta skan (26-08 14:10)».
+
+`GET /api/v1/orders/{id}` javobida shu qoida `can_edit: bool` va
+`edit_blocked_reason: str | None` bo'lib qaytadi — frontend tugmani shu bo'yicha
+ko'rsatadi, ya'ni tugma ko'rinishi bilan server javobi hech qachon ajralmaydi.
 
 ### Marshrut matritsasi (detal × qadam)
 

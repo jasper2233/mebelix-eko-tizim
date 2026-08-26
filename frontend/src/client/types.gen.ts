@@ -1519,6 +1519,14 @@ export type OrderDetail = {
      */
     instances_count?: number;
     /**
+     * Can Edit
+     */
+    can_edit?: boolean;
+    /**
+     * Edit Blocked Reason
+     */
+    edit_blocked_reason?: string | null;
+    /**
      * Cancelled By Name
      */
     cancelled_by_name?: string | null;

@@ -732,8 +732,8 @@ export class OrdersService {
      * Ish markazi tanlovi (TZ 6.4.1): bir postda bir nechta markaz bo'lsa qaysi biri.
      *
      * Texnolog ham tanlaydi: marshrutni u chizadi va qaysi stanok qaysi ishni
-     * bajarishini menejerdan ko'ra yaxshiroq biladi. Buyurtma ishlab chiqarishga
-     * uzatilgach ikkalasiga ham yopiq (quyidagi holat tekshiruvi).
+     * bajarishini menejerdan ko'ra yaxshiroq biladi. Tsexda ish boshlangach
+     * ikkalasiga ham yopiq (`_require_editable`).
      */
     public static assignOrderMachines<ThrowOnError extends boolean = true>(options: Options<AssignOrderMachinesData, ThrowOnError>): RequestResult<AssignOrderMachinesResponses, AssignOrderMachinesErrors, ThrowOnError> {
         return (options.client ?? client).post<AssignOrderMachinesResponses, AssignOrderMachinesErrors, ThrowOnError>({
@@ -785,7 +785,12 @@ export class OrdersService {
      * Upload Order Project
      *
      * Texnolog uploads the .project file (TZ 6.3). Exactly ONE file per order; re-upload
-     * replaces all previous parse results and is allowed only before PRODUCTION.
+     * replaces all previous parse results.
+     *
+     * Ishlab chiqarishga uzatilgan buyurtmaga ham QAYTA yuklash mumkin — TO hech bir
+     * postda amal bajarilmagan bo'lsa (`_require_editable`). Bekor qilingan skan
+     * hisobga olinmaydi: arrada ikki detalga chek chiqarib keyin bekor qilinsa,
+     * jarayonda hech narsa qolmaydi va fayl yana almashtiriladi.
      */
     public static uploadOrderProject<ThrowOnError extends boolean = true>(options: Options<UploadOrderProjectData, ThrowOnError>): RequestResult<UploadOrderProjectResponses, UploadOrderProjectErrors, ThrowOnError> {
         return (options.client ?? client).post<UploadOrderProjectResponses, UploadOrderProjectErrors, ThrowOnError>({
