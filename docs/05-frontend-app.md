@@ -131,8 +131,6 @@ Umumiy zod schema'lar — backend cheklovlari bilan sinxron ushlab turiladi (`ba
 |---|---|
 | `PHONE_PATTERN = /^\+998\d{9}$/` | E.164 O'zbekiston mobil formati (server `PHONE_PATTERN` bilan mos) |
 | `passwordSchema` | Majburiy parol (parol o'rnatish/yangilash) — min 8 belgi + kuch talablari: kamida bitta kichik harf, katta harf, raqam va maxsus belgi (alohida regex'lar, o'zbekcha xabarlar; server `validate_password_strength` bilan mos) |
-| `optionalPasswordSchema` | `passwordSchema`dan hosil qilingan ixtiyoriy variant (`.optional().or(z.literal(""))`) — admin edit: bo'sh = "o'zgartirmaslik" |
-| `phoneSchema` | Majburiy telefon, regex bilan |
 | `optionalNameSchema` | Ixtiyoriy ism: `trim`, max 30 belgi, to'ldirilgan bo'lsa min 2 belgi; bo'sh satr `undefined`ga transform qilinadi (backend `min_length=2` tufayli 422 bermasligi uchun) |
 | `optionalFormattedPhoneSchema` | Ko'rinishda formatlangan telefon (`+998 90 123-45-67`) qabul qilinadi; transform'da bo'shliq/defis olib tashlanib kanonik `PHONE_PATTERN` bilan tekshiriladi, bo'sh satr ruxsat |
 | `formattedPhoneSchema` | `optionalFormattedPhoneSchema`ning MAJBURIY varianti — bo'sh satrda "Telefon majburiy" (login identifikatori va shunga o'xshash maydonlar) |

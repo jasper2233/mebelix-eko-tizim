@@ -42,8 +42,6 @@ class BaseModel(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
 | `PostUnit` | `m2`, `meter`, `piece` |
 | `MachineStatus` | `active`, `inactive`, `repair` — **bezak emas, tanlovga ta'sir qiladi** (`scanning.post_machine`): `inactive` avtomatik TANLANMAYDI va unga bog'langan qurilma hisobi skan qila olmaydi (E009); `repair` tanlanadi, lekin oxirgi navbatda va yangi buyurtma biriktirilmaydi (409). Sababi: admin belgini qaytarishni unutsa tsex to'xtab qolmasligi kerak, `inactive` esa ataylab o'chirish. O'zbekcha nomlar — `MACHINE_STATUS_LABELS` |
 | `EmployeeStatus` | `active`, `inactive` |
-| `SaleStatus` | `paid`, `partial`, `debt` — olib tashlangan ombor modulidan qolgan, hech qayerda ishlatilmaydi |
-| `PaymentMethod` | `cash`, `card`, `transfer` — xuddi shunday qoldiq |
 | `OrderStatus` | `draft`, `technical_review`, `production`, `completed`, `delivered`, `cancelled` |
 | `OrderPriority` | `low`, `medium`, `high`, `urgent` |
 | `RouteSource` | `auto`, `manual` |

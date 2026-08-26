@@ -25,16 +25,6 @@ export const passwordSchema = z
     message: "Parolda kamida bitta maxsus belgi bo'lishi kerak",
   })
 
-/** Optional password field (admin edit form: empty = "don't change"). */
-export const optionalPasswordSchema = passwordSchema
-  .optional()
-  .or(z.literal(""))
-
-export const phoneSchema = z
-  .string()
-  .min(1, { message: "Telefon majburiy" })
-  .regex(PHONE_PATTERN, { message: PHONE_INVALID })
-
 /** Ko'rinishda "+998 90 123-45-67", submit'da kanonik "+998901234567" (transform). */
 export const optionalFormattedPhoneSchema = z
   .string()

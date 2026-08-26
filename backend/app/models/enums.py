@@ -111,18 +111,6 @@ class EmployeeStatus(StrEnum):
     INACTIVE = "inactive"
 
 
-class SaleStatus(StrEnum):
-    PAID = "paid"
-    PARTIAL = "partial"
-    DEBT = "debt"
-
-
-class PaymentMethod(StrEnum):
-    CASH = "cash"
-    CARD = "card"
-    TRANSFER = "transfer"
-
-
 class OrderStatus(StrEnum):
     DRAFT = "draft"
     TECHNICAL_REVIEW = "technical_review"

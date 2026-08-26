@@ -147,26 +147,6 @@
   }
 }
 
-/* Muvaffaqiyatli skan tasdig'i: tsexda operator ekranga qaramay ishlaydi,
-   qisqa yashil urish "qabul qilindi" ni chetki ko'rish bilan ham bildiradi.
-   Klass terminal.tsx da ishlatilardi, lekin hech qayerda aniqlanmagan edi. */
-@keyframes mx-pulse-once {
-  0% {
-    background-color: #86efac;
-  }
-  100% {
-    background-color: var(--color-green-50, #f0fdf4);
-  }
-}
-.animate-pulse-once {
-  animation: mx-pulse-once 0.6s ease-out 1;
-}
-@media (prefers-reduced-motion: reduce) {
-  .animate-pulse-once {
-    animation: none;
-  }
-}
-
 /* TABLO: katak qiymati oshganda qisqa yashil urish. Devordagi ekranda 5
    metrdan turib 7×N matritsada bitta raqamning o'zgarishini payqab bo'lmaydi —
    chetki ko'rish ilib oladigan yagona signal shu. DOIMIY (ambient) animatsiya
