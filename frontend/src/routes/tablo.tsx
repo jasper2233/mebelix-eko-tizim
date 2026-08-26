@@ -482,9 +482,57 @@ function TabloPage() {
                     className="rounded-l-lg bg-primary px-3 py-3 font-black uppercase tracking-wider text-primary-foreground"
                     style={{ fontSize: "var(--t-head)" }}
                   >
-                    Jami
+                    {/* Nechta buyurtma jamlanganini AYTISH kerak: usiz "363 / 437"
+                        qancha ish ustidan olingani noma'lum qoladi, va qatorlar
+                        ekranga sig'may kesilganda buni sanab ham bo'lmaydi. */}
+                    Jami · {data.orders.length} buyurtma
                   </td>
-                  <td className="bg-primary/90" />
+                  {/* Har post ustuni o'z yakunini beradi, muddat ustuni esa bo'sh
+                      turardi. Bu yerda yakun — nechtasi kechikkani: taxtaning
+                      butun maqsadi shu savol. Format qatordagi katak bilan bir xil
+                      (raqam + so'z), ya'ni ko'z bir xil joydan o'qiydi. */}
+                  {(() => {
+                    const kech = data.orders.filter(
+                      (o) => deadlineTone(o.deadline) === "overdue",
+                    ).length
+                    const bugun = data.orders.filter(
+                      (o) => deadlineTone(o.deadline) === "today",
+                    ).length
+                    const [son, soz] = kech
+                      ? [kech, "KECHIKKAN"]
+                      : bugun
+                        ? [bugun, "BUGUN"]
+                        : [0, ""]
+                    return (
+                      <td
+                        className={cn(
+                          "px-3 py-3 text-center font-black",
+                          kech
+                            ? "bg-red-600 text-white"
+                            : "bg-primary/90 text-primary-foreground",
+                        )}
+                      >
+                        {son ? (
+                          <>
+                            <span
+                              className="num block leading-tight tabular-nums"
+                              style={{ fontSize: "var(--t-order)" }}
+                            >
+                              {son}
+                            </span>
+                            <span
+                              className="block uppercase leading-tight tracking-wider"
+                              style={{ fontSize: "var(--t-badge)" }}
+                            >
+                              {soz}
+                            </span>
+                          </>
+                        ) : (
+                          <span style={{ fontSize: "var(--t-head)" }}>—</span>
+                        )}
+                      </td>
+                    )
+                  })()}
                   {data.posts.map((p) => {
                     let done = 0
                     let total = 0
