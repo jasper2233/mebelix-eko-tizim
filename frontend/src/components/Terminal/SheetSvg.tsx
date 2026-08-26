@@ -539,14 +539,16 @@ export function SheetSvg({
       const vert = availH > availW * 1.15
       const longA = vert ? availH : availW
       const shortA = vert ? availW : availH
-      // Nom O'LCHAMDAN katta bo'lmaydi: arrachi uchun ustuvorlik o'lchamda,
-      // nom faqat identifikatsiya. Ilgari qisqa nomli katta detalda nom
-      // o'lchamdan yirikroq chiqib, ko'zni birinchi bo'lib o'ziga tortardi.
-      const nomMax = Math.min(dW, dH) * 0.9
+      // GibSaw: nom ham O'LCHAM FONTIDA — dekompilyatsiyada string3 `this.n`
+      // (48) bilan chiziladi, alohida kichik font YO'Q. Ilgari `nomMax =
+      // min(dW,dH)*0.9` cap va 0.72 koeffitsient katta katakda nomni sababsiz
+      // kichraytirardi ("joy bor, lekin kichik ko'rsatilyapti"). Cap endi
+      // DIM_FS; nom o'lchamga tegib ketsa pastdagi kesishish himoyasi avval
+      // bir pog'ona kichraytiradi, yana tegsa olib tashlaydi.
       let fsN = Math.min(
+        DIM_FS,
         shortA * 0.55,
-        (longA * 0.72) / Math.max(1, label.length * 0.52),
-        nomMax,
+        (longA * 0.9) / Math.max(1, label.length * 0.52),
       )
       let shown = label
       if (fsN * zoom < 9) {
@@ -787,12 +789,18 @@ export function SheetSvg({
       if (shown) {
         const nw = vert ? fsN : shown.length * fsN * 0.55
         const nh = vert ? shown.length * fsN * 0.55 : fsN
-        // Nom har doim MARKAZDA. O'lcham yozuvlariga tegsa — NOM chizilmaydi:
-        // kichik detalda katta o'lcham raqami ostida ko'rinmay "qolib
-        // ketgandan" ko'ra yo'q bo'lgani yaxshi (tsex talabi — arrachiga
-        // o'lcham kerak, nom faqat identifikatsiya).
-        const nomBox = { x: cx - nw / 2, y: cy - nh / 2, w: nw, h: nh }
-        if (dimBoxes.some((b) => kesishadi(b, nomBox))) shown = ""
+        // Nom har doim MARKAZDA. O'lchamga tegsa avval BIR pog'ona kichrayadi
+        // (katta nom katta katakda arzimagan teginish uchun yo'qolmasin),
+        // baribir tegsa — chizilmaydi: kichik detalda katta o'lcham ostida
+        // ko'rinmay "qolib ketgandan" ko'ra yo'q bo'lgani yaxshi (tsex talabi).
+        let nomBox = { x: cx - nw / 2, y: cy - nh / 2, w: nw, h: nh }
+        if (dimBoxes.some((b) => kesishadi(b, nomBox))) {
+          fsN *= 0.72
+          const nw2 = vert ? fsN : shown.length * fsN * 0.55
+          const nh2 = vert ? shown.length * fsN * 0.55 : fsN
+          nomBox = { x: cx - nw2 / 2, y: cy - nh2 / 2, w: nw2, h: nh2 }
+          if (dimBoxes.some((b) => kesishadi(b, nomBox))) shown = ""
+        }
       }
       if (shown) {
         labels.push(
