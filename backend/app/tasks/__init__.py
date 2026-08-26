@@ -195,6 +195,43 @@ async def print_pachka_label(ctx: dict[str, Any], pachka_id: int, agent_id: int 
     return f"lost:{pachka_id}"
 
 
+async def print_waste_label(ctx: dict[str, Any], waste_id: int, agent_id: int | None = None) -> str:
+    """Foydali atxot chekini chizib navbatga qo'yadi — detal cheki bilan bir xil zanjir."""
+    from app.models import Order, WasteItem
+    from app.services.labels import WasteLabelData, render_waste_label_png
+
+    async with local_session() as db:
+        w = await db.get(WasteItem, waste_id)
+        if w is None or w.is_deleted:
+            return f"skip:{waste_id}"
+        order = await db.get(Order, w.order_id)
+        png_b64 = base64.b64encode(
+            render_waste_label_png(
+                WasteLabelData(
+                    qr_text=w.qr_text,
+                    order_number=order.number if order else "",
+                    project_name=(order.project_name if order else "") or "",
+                    material=w.material_name,
+                    length=w.length,
+                    width=w.width,
+                    sheet_no=w.sheet_no,
+                    printed_at=datetime.now(UTC).astimezone(TASHKENT_TZ),
+                )
+            )
+        ).decode()
+        w.label_printed_at = datetime.now(UTC)
+        await db.commit()
+
+    redis = ctx.get("redis")
+    if redis is not None:
+        job = _print_job(waste_id, png_b64)
+        await redis.lpush(print_queue_key(agent_id), job)
+        return f"queued:{waste_id}"
+
+    logger.error("Atxot cheki %s uchun Redis navbati mavjud emas", waste_id)
+    return f"lost:{waste_id}"
+
+
 async def print_badge(ctx: dict[str, Any], employee_id: int, agent_id: int | None = None) -> str:
     """Hodim beyjigini chizib navbatga qo'yadi — detal cheki bilan bir xil zanjir.
 
@@ -228,4 +265,4 @@ async def print_badge(ctx: dict[str, Any], employee_id: int, agent_id: int | Non
     return f"lost:{employee_id}"
 
 
-all_tasks = [print_label, print_pachka_label, print_badge]
+all_tasks = [print_label, print_pachka_label, print_waste_label, print_badge]

@@ -574,6 +574,14 @@ export type CutmapCell = {
      */
     waste: boolean;
     /**
+     * Atx
+     */
+    atx?: number | null;
+    /**
+     * Business
+     */
+    business?: boolean | null;
+    /**
      * Key
      */
     key?: string | null;
@@ -874,6 +882,42 @@ export type CutmapState = {
      * Instances
      */
     instances: Array<CutmapInstanceState>;
+    /**
+     * Waste Items
+     */
+    waste_items?: Array<CutmapWasteItem>;
+};
+
+/**
+ * CutmapWasteItem
+ *
+ * Foydali atxot yozuvi — kesish xaritasidagi `atx` raqamiga bog'lanadi.
+ */
+export type CutmapWasteItem = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Qr Text
+     */
+    qr_text: string;
+    /**
+     * Sheet No
+     */
+    sheet_no: number;
+    /**
+     * Length
+     */
+    length: number;
+    /**
+     * Width
+     */
+    width: number;
+    /**
+     * Label Printed At
+     */
+    label_printed_at?: string | null;
 };
 
 /**
@@ -5446,6 +5490,36 @@ export type ReadTerminalPostQueueResponses = {
 };
 
 export type ReadTerminalPostQueueResponse = ReadTerminalPostQueueResponses[keyof ReadTerminalPostQueueResponses];
+
+export type PrintWasteItemLabelData = {
+    body?: never;
+    path: {
+        /**
+         * Waste Id
+         */
+        waste_id: number;
+    };
+    query?: never;
+    url: '/api/v1/terminal/waste/{waste_id}/label';
+};
+
+export type PrintWasteItemLabelErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PrintWasteItemLabelError = PrintWasteItemLabelErrors[keyof PrintWasteItemLabelErrors];
+
+export type PrintWasteItemLabelResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type PrintWasteItemLabelResponse = PrintWasteItemLabelResponses[keyof PrintWasteItemLabelResponses];
 
 export type CancelInstanceLabelData = {
     body?: never;

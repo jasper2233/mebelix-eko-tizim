@@ -475,6 +475,12 @@ def _parse_cs_operation(
                 cut.waste_parts[int(sp.get("id", 0))] = {
                     "l": _f(sp, "l") or _f(sp, "dl") or 0.0,
                     "w": _f(sp, "w") or _f(sp, "dw") or 0.0,
+                    # GibLab optimizatorning O'ZI qo'yadigan "деловой остаток"
+                    # bayrog'i: saqlashga arziydigan yirik qoldiq. GibSaw shu
+                    # bayroq bilan atxotga chek chiqaradi (mebelix.lbl da
+                    # business=true bloki) — biz ham aynan shularga chiqaramiz;
+                    # business=false mayda qoldiq o'tinga ketadi, chek shart emas.
+                    "business": xml_bool(sp.get("business")),
                 }
     project.cut_ops.append(cut)
     return label_counter

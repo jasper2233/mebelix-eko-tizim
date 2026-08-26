@@ -2,7 +2,7 @@
 // list kartochkalari, to'liq list SVG (detallar, kesim chiziqlari, teshiklar overlay),
 // detal kartochkasi (katta QR + YORLIQ CHOP ETISH). GibCut litsenziyasi o'rnini bosadi.
 
-import { queryOptions, useQuery } from "@tanstack/react-query"
+import { queryOptions, useMutation, useQuery } from "@tanstack/react-query"
 import {
   ArrowLeft,
   ChevronDown,
@@ -16,7 +16,6 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { renderToStaticMarkup } from "react-dom/server"
 import { toast } from "sonner"
-
 import {
   type CutmapHole,
   type CutmapInstanceState,
@@ -44,7 +43,8 @@ import {
 } from "@/components/ui/dialog"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { isCut } from "@/lib/mes"
+import { formatDateTime, isCut } from "@/lib/mes"
+import { handleError } from "@/utils"
 
 // `SheetPart`/`Sheet` — SheetSvg dan (ikkalasi bir xil yoyilgan listni ko'radi).
 // `rover` materialda ham bor: hamma listi roverniki bo'lgan material.
@@ -214,6 +214,8 @@ export function CutmapView({
     qr_text: string
     instance_id: number
   } | null>(null)
+  // Foydali atxot katagi bosilganda: chek chiqarish dialogi
+  const [wasteTarget, setWasteTarget] = useState<SheetPart | null>(null)
   // Material qatorini barmoq bilan surib aylantirish
   const matDrag = useDragScroll()
   // GibLab toolbar zoom API (SheetSvg ro'yxatdan o'tkazadi)
@@ -227,6 +229,30 @@ export function CutmapView({
   // to'g'ridan-to'g'ri GoDEX navbatiga ketadi (dialog yo'q)
   const printMutation = usePrintLabel("cutmap")
   const cancelMutation = useCancelLabel()
+  // Atxot cheki: WasteItem id `waste_items` dan atx raqami orqali topiladi
+  const wastePrint = useMutation({
+    mutationFn: async (wasteId: number) =>
+      (
+        await TerminalService.printWasteItemLabel({
+          path: { waste_id: wasteId },
+        })
+      ).data,
+    onSuccess: (r) => {
+      toast.success(r.message)
+      setWasteTarget(null)
+    },
+    onError: handleError,
+  })
+  const wasteItemFor = (part: SheetPart | null) =>
+    part?.atx
+      ? ((data?.waste_items ?? []).find(
+          (w) => w.qr_text.endsWith(`-${part.atx}`) && w.sheet_no === sheet?.no,
+        ) ??
+        (data?.waste_items ?? []).find((w) =>
+          w.qr_text.endsWith(`-${part.atx}`),
+        ) ??
+        null)
+      : null
 
   const instancesByCell = useMemo(() => {
     const map = new Map<string, CutmapInstanceState[]>()
@@ -740,6 +766,7 @@ export function CutmapView({
                 // Chekni bekor qilish tugmasi kartochka ICHIDA: jest
                 // buzg'unchi amalni o'zi bajarmaydi.
                 onOpenPart={admin ? undefined : setSelected}
+                onOpenWaste={setWasteTarget}
                 selectedCell={markedCell}
                 registerZoom={(a) => {
                   zoomApi.current = a
@@ -782,6 +809,57 @@ export function CutmapView({
               }
         }
       />
+
+      {/* Foydali atxot: o'lcham + chek chiqarish. GibSaw'dagi "Деловой
+          остаток" chekining muqobili — atxot katagi bosilganda ochiladi. */}
+      <Dialog
+        open={wasteTarget !== null}
+        onOpenChange={(v) => !v && setWasteTarget(null)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Foydali atxot</DialogTitle>
+          </DialogHeader>
+          {wasteTarget && (
+            <div className="space-y-3">
+              <div className="num text-4xl font-black">
+                {Math.round(wasteTarget.w)} × {Math.round(wasteTarget.h)} mm
+              </div>
+              <div className="text-lg text-muted-foreground">
+                {material?.name} · list №{sheet?.disp ?? sheet?.no}
+              </div>
+              {(() => {
+                const item = wasteItemFor(wasteTarget)
+                if (!item)
+                  return (
+                    <p className="text-muted-foreground">
+                      Bu atxot ro'yxatga olinmagan (eski yuklama) — project
+                      faylni qayta yuklang.
+                    </p>
+                  )
+                return (
+                  <>
+                    <div className="num text-lg">{item.qr_text}</div>
+                    {item.label_printed_at && (
+                      <p className="text-sm text-muted-foreground">
+                        Chek avval chiqarilgan:{" "}
+                        {formatDateTime(item.label_printed_at)}
+                      </p>
+                    )}
+                    <LoadingButton
+                      className="h-14 w-full text-xl"
+                      loading={wastePrint.isPending}
+                      onClick={() => wastePrint.mutate(item.id)}
+                    >
+                      <Printer /> Chek chiqarish
+                    </LoadingButton>
+                  </>
+                )
+              })()}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Long press tasdiq dialogi — qo'lqopga mos katta tugmalar */}
       <Dialog

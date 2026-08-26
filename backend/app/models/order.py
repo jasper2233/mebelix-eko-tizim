@@ -201,3 +201,27 @@ PRIORITY_RANK: Case[int] = case(
     (Order.priority == OrderPriority.MEDIUM, 2),
     else_=3,
 )
+
+
+class WasteItem(BaseModel):
+    """FOYDALI atxot (GibLab `business="true"`): saqlashga arziydigan yirik qoldiq.
+
+    GibLab optimizatorning o'zi ajratadi — mayda qoldiq bu jadvalga tushmaydi,
+    u o'tinga ketadi va cheki ham chiqarilmaydi (GibSaw xulqi bilan bir xil:
+    mebelix.lbl dagi `business` bloki). Ombor moduli keyin shu jadval ustiga
+    quriladi; hozircha vazifasi bitta — chek chiqarib ID ni yo'qotmaslik.
+    """
+
+    __tablename__ = "waste_item"
+
+    __table_args__ = (Index("ix_waste_item_qr_text", "qr_text", unique=True, postgresql_where=text("NOT is_deleted")),)
+
+    order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), index=True, kw_only=True)
+    material_name: Mapped[str] = mapped_column(String(150), kw_only=True)
+    sheet_no: Mapped[int] = mapped_column(kw_only=True)  # material ichidagi list raqami
+    length: Mapped[float] = mapped_column(kw_only=True)  # foydali o'lcham, mm
+    width: Mapped[float] = mapped_column(kw_only=True)
+    #: "ATX-{buyurtma}-{n}" — chekdagi QR. Detal QR'idan ataylab farqli prefiks:
+    #: skan dvijoki uni detal deb qidirmasligi kerak.
+    qr_text: Mapped[str] = mapped_column(String(120), kw_only=True)
+    label_printed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)

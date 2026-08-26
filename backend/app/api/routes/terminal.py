@@ -25,6 +25,7 @@ from app.models import (
     Post,
     Product,
     Scan,
+    WasteItem,
     WorkSession,
 )
 from app.models.enums import (
@@ -41,6 +42,7 @@ from app.schemas.terminal import (
     CutmapInstanceState,
     CutmapModel,
     CutmapState,
+    CutmapWasteItem,
     KromkaInstance,
     KromkaOrderState,
     KromkaPartRow,
@@ -850,9 +852,32 @@ async def build_cutmap_state(db: SessionDep, order: Order, post_id: int) -> Cutm
         .scalars()
         .all()
     )
+    waste_rows = (
+        (
+            await db.execute(
+                select(WasteItem).where(
+                    WasteItem.order_id == order.id,
+                    WasteItem.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
     return CutmapState(
         order_id=order.id,
         order_number=order.number,
+        waste_items=[
+            CutmapWasteItem(
+                id=w.id,
+                qr_text=w.qr_text,
+                sheet_no=w.sheet_no,
+                length=w.length,
+                width=w.width,
+                label_printed_at=w.label_printed_at,
+            )
+            for w in waste_rows
+        ],
         # `Order.cutmap` — xom JSON ustuni (`dict[str, Any]`). Tekshiruvni
         # Pydantic dict berilganda ham bajaradi; bu chaqiruv faqat mypy uchun,
         # xatti-harakat o'zgarmaydi.
@@ -871,6 +896,58 @@ async def build_cutmap_state(db: SessionDep, order: Order, post_id: int) -> Cutm
             )
             for i in instances
         ],
+    )
+
+
+@router.post("/waste/{waste_id}/label", response_model=Message, operation_id="print_waste_item_label")
+async def print_waste_item_label(db: SessionDep, user: TerminalUser, waste_id: int) -> Message:
+    """FOYDALI ATXOT cheki (GibLab `business` qoldig'i, GibSaw'dagi "Деловой
+    остаток" chekining muqobili): kesish xaritasidagi atxot katagidan chiqariladi.
+
+    Detal chekidan farqi: marshrut/skan tekshiruvi yo'q — atxot ish bosqichi
+    emas, saqlanadigan material. QR prefiksi ATX- bo'lgani uchun skan dvijoki
+    uni detal deb qidirmaydi.
+    """
+    w = await db.get(WasteItem, waste_id)
+    if w is None or w.is_deleted:
+        raise NotFoundException("Atxot yozuvi topilmadi.")
+
+    print_machine: Machine | None = None
+    try:
+        print_machine, _waste_post = await resolve_terminal(db, user)
+    except ScanRejected:
+        pass
+
+    from app.core.utils import queue
+    from app.tasks import AGENT_ONLINE_WINDOW, NoPrinterBound, require_printer
+
+    try:
+        agent = await require_printer(db, print_machine.id if print_machine else None)
+    except NoPrinterBound:
+        raise HTTPException(
+            status_code=422,
+            detail="Bu ish markaziga printer biriktirilmagan — atxot cheki yuborilmadi.",
+        ) from None
+
+    log_action(
+        db,
+        module="print",
+        action="waste_label_sent",
+        user_id=user.id,
+        entity_type="waste_item",
+        entity_id=w.id,
+        message=f"Atxot cheki yuborildi: {w.qr_text} ({w.length:g}x{w.width:g})",
+    )
+    printer_kutilmoqda = agent.last_seen_at is None or datetime.now(UTC) - agent.last_seen_at > AGENT_ONLINE_WINDOW
+    if queue.pool is not None:
+        await queue.pool.enqueue_job("print_waste_label", waste_id, agent.id)
+    await db.commit()
+    return Message(
+        message=(
+            f"Printer ulanmagan. Atxot cheki saqlandi — printer ulanganda chiqadi: {w.qr_text}"
+            if printer_kutilmoqda
+            else f"Atxot cheki yuborildi: {w.qr_text}"
+        )
     )
 
 

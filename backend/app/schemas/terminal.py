@@ -244,6 +244,10 @@ class CutmapCell(BaseModel):
     name: str
     qty: int
     waste: bool
+    #: Foydali atxot raqami (`WasteItem` bilan bog'laydi) — faqat `business` atxotda
+    atx: int | None = None
+    #: GibLab "business" bayrog'i: saqlanadigan foydali qoldiq
+    business: bool | None = None
     key: str | None = None
     num: int | None = None
     rot: bool = False
@@ -325,6 +329,17 @@ class CutmapModel(BaseModel):
     holes: dict[str, CutmapHole] = Field(default_factory=dict)
 
 
+class CutmapWasteItem(BaseModel):
+    """Foydali atxot yozuvi — kesish xaritasidagi `atx` raqamiga bog'lanadi."""
+
+    id: int
+    qr_text: str
+    sheet_no: int
+    length: float
+    width: float
+    label_printed_at: datetime | None = None
+
+
 class CutmapState(BaseModel):
     """ARRA cut-map screen payload (TZ 7.1.7): the visual model + live per-cell state."""
 
@@ -332,6 +347,8 @@ class CutmapState(BaseModel):
     order_number: str
     model: CutmapModel | None
     instances: list[CutmapInstanceState]
+    #: Foydali atxotlar (`business`) — katakdagi `atx` raqami orqali bog'lanadi
+    waste_items: list[CutmapWasteItem] = []
 
 
 class PostQueueRow(BaseModel):

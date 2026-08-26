@@ -13,6 +13,7 @@ from .order import (
     PartInstance,
     PartRoute,
     Product,
+    WasteItem,
 )
 from .organization import Organization
 from .pachka import Pachka, PachkaItem
@@ -37,6 +38,7 @@ __all__ = [
     "Part",
     "PartInstance",
     "PartRoute",
+    "WasteItem",
     "Post",
     "Product",
     "Scan",

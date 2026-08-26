@@ -10,7 +10,7 @@ from typing import Any
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Order, OrderFile, Part, PartInstance, PartRoute, Post, Product
+from app.models import Order, OrderFile, Part, PartInstance, PartRoute, Post, Product, WasteItem
 from app.models.enums import FileKind, PostCode, RouteSource
 
 from .cutmap import build_cutmap
@@ -199,7 +199,7 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
 async def wipe_previous_parse(db: AsyncSession, order: Order, upload_root: Path) -> None:
     """Re-upload replaces everything derived from the old file (TZ 6.3.1)."""
     now = datetime.now(UTC)
-    for model in (Product, Part, PartInstance, PartRoute):
+    for model in (Product, Part, PartInstance, PartRoute, WasteItem):
         await db.execute(
             update(model)
             .where(model.order_id == order.id, model.is_deleted == False)  # noqa: E712
@@ -440,6 +440,31 @@ async def ingest_project(
     order.project_name = Path(original_filename).stem or project.name
     order.project_loaded_at = datetime.now(UTC)
     order.cutmap = cutmap.model if cutmap else None
+
+    # FOYDALI atxotlar (GibLab `business="true"`) — chek va treking uchun yozuv.
+    # QR prefiksi "ATX-": skan dvijoki detal QR'i bilan adashtirmasin. Raqamlash
+    # material/list tartibida — chekdagi raqam xaritadagi bilan mos keladi.
+    if cutmap:
+        atx_n = 0
+        for mat in cutmap.model.get("materials", []):
+            for sh in mat.get("sheets", []):
+                for cell in sh.get("parts", []):
+                    if not (cell.get("waste") and cell.get("business")):
+                        continue
+                    atx_n += 1
+                    # Katakka raqam yoziladi (order.cutmap JSONB ga tushadi) —
+                    # frontend shu raqam orqali WasteItem'ni topadi.
+                    cell["atx"] = atx_n
+                    db.add(
+                        WasteItem(
+                            order_id=order.id,
+                            material_name=str(mat.get("name") or "")[:150],
+                            sheet_no=int(sh.get("no") or 0),
+                            length=float(cell.get("w") or 0),
+                            width=float(cell.get("h") or 0),
+                            qr_text=f"ATX-{order.number}-{atx_n}",
+                        )
+                    )
 
     # Kesish xaritasi qurilgan bo'lsa: unda joyi yo'q detallarni texnolog bilishi shart.
     # Ikki sabab bo'ladi — (a) listdan kesilmaydigan profil, (b) GibLab uni ataylab

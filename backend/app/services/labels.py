@@ -509,6 +509,87 @@ def render_pachka_label_png(d: PachkaLabelData, scale: int = 1) -> bytes:
 
 
 @dataclass
+class WasteLabelData:
+    """Foydali atxot cheki (GibLab `business` qoldig'i).
+
+    GibSaw'dagi "Деловой остаток" chekining o'zbekcha muqobili (mebelix.lbl
+    shu blok bilan ishlagan). Eskiz yo'q — atxot to'rtburchak, unga chizma
+    ortiqcha; asosiysi O'LCHAM (katta), material va QR.
+    """
+
+    qr_text: str  # ATX-{buyurtma}-{n}
+    order_number: str
+    project_name: str
+    material: str
+    length: float
+    width: float
+    sheet_no: int
+    printed_at: datetime
+
+
+def render_waste_label_png(d: WasteLabelData, scale: int = 1) -> bytes:
+    """80x60mm foydali-atxot cheki — detal/qadoq cheklari bilan bir xil
+    o'lcham va printer zanjiri (bridge-agent + GoDEX)."""
+    import io as _io
+    from pathlib import Path
+
+    import qrcode
+    from PIL import Image, ImageDraw, ImageFont
+
+    mm = 8 * scale
+    W, H = 80 * mm, 60 * mm
+    img = Image.new("RGB", (W, H), "white")
+    draw = ImageDraw.Draw(img)
+    draw.fontmode = "1"
+
+    def font(size_mm: float, bold: bool = False) -> Any:
+        for path in _FONT_BOLD if bold else _FONT_REGULAR:
+            try:
+                return ImageFont.truetype(path, int(size_mm * mm))
+            except OSError:
+                continue
+        return ImageFont.load_default()
+
+    def text(x: float, y: float, t: str, size_mm: float, bold: bool = False, anchor: str = "la") -> None:
+        draw.text((x * mm, y * mm), t, fill="black", font=font(size_mm, bold), anchor=anchor)
+
+    logo_path = Path(__file__).resolve().parents[1] / "assets" / "label-logo.png"
+    try:
+        logo = Image.open(logo_path).convert("L").point(_bw).convert("RGB")
+        lw = 24 * mm
+        lh = int(lw * logo.height / logo.width)
+        img.paste(logo.resize((lw, lh)), (4 * mm, int(2 * mm)))
+    except OSError:
+        text(5, 2, "MEBELIX", 4.5, bold=True)
+
+    # Sarlavha atxotligini QICHQIRIB aytadi — omborda detal cheki bilan
+    # adashtirilmasin (GibSaw ham "Деловой остаток" ni alohida yozadi)
+    text(5, 13, "FOYDALI ATXOT", 3.6, bold=True)
+    text(5, 17.5, d.qr_text[:18], 4.2, bold=True)
+
+    draw.line((int(5 * mm), int(26 * mm), int(46 * mm), int(26 * mm)), fill="black", width=max(2, scale))
+
+    # O'lcham — chekning eng muhim raqami: omborchi atxotni shu bo'yicha qidiradi
+    text(5, 28.5, "O'lcham", 2.9)
+    text(5, 32, f"{_n(d.length)} x {_n(d.width)}", 5.4, bold=True)
+
+    text(5, 41, "Material", 2.9)
+    text(5, 44.5, d.material[:20], 3.6, bold=True)
+
+    text(5, 51.5, f"{d.order_number}  ·  {d.project_name[:12]}  ·  list {d.sheet_no}", 2.7)
+    text(46, 55.5, d.printed_at.strftime("%Y.%m.%d %H:%M"), 2.5, anchor="ra")
+
+    qr = qrcode.make(d.qr_text, box_size=max(1, scale * 2), border=0)
+    qr_px = 28 * mm
+    img.paste(qr.get_image().convert("RGB").resize((qr_px, qr_px)), (48 * mm, 4 * mm))
+    text(62, 34.5, d.qr_text[:22], 2.5, anchor="ma")
+
+    buf = _io.BytesIO()
+    img.convert("L").point(_bw, "1").save(buf, format="PNG")
+    return buf.getvalue()
+
+
+@dataclass
 class BadgeLabelData:
     """Hodim beyjigi — 80×60 mm, detal cheki bilan bir xil blank va bir xil zanjir."""
 

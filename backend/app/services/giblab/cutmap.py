@@ -187,6 +187,9 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
                 }
                 if cell["waste"]:
                     wdef = cut.waste_parts.get(cell["part_id"])
+                    # GibLab "business" atxoti — saqlanadigan foydali qoldiq;
+                    # chek chiqarish va ombor trekingi faqat shularga.
+                    entry["business"] = bool(wdef and wdef.get("business"))
                     if wdef:  # useful size from the definition, not the raw cut (TZ 5.2.3)
                         entry["w"], entry["h"] = wdef["l"], wdef["w"]
                     entry.update({"id": cell["part_id"], "qty": 0, "waste": True, "name": "atxot"})

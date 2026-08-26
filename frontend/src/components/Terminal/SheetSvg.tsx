@@ -188,6 +188,7 @@ export function SheetSvg({
   instancesByCell,
   onSelect,
   onOpenPart,
+  onOpenWaste,
   selectedCell,
   thumbnail = false,
   registerZoom,
@@ -201,6 +202,8 @@ export function SheetSvg({
   /** Detal kartochkasini ochadi. IKKI jest ham shuni chaqiradi: ikki marta
    *  bosish (GibSaw dagi odat) va uzoq bosish (o'rganib qolganlar uchun). */
   onOpenPart?: (part: SheetPart) => void
+  /** Foydali atxot (`business`, atx raqamli) katagi bosilganda. */
+  onOpenWaste?: (part: SheetPart) => void
   selectedCell: number | null
   /** Mini preview (material kartasi): interaktivsiz, scroll bloklamaydi */
   thumbnail?: boolean
@@ -847,6 +850,12 @@ export function SheetSvg({
           // 450 ms — Windows ning odatdagi ikki marta bosish oynasi (500 ms)
           // dan bir oz tor: qo'lqopdagi barmoq sekinroq, lekin ikkita ALOHIDA
           // bosish ham shundan tez ketma-ket bo'lmaydi.
+          // FOYDALI atxot bitta bosishda ochiladi: unda ikki-bosish/uzoq
+          // bosish semantikasi yo'q — yagona amali chek chiqarish.
+          if (p.waste && p.atx && onOpenWaste) {
+            onOpenWaste(p)
+            return
+          }
           const hozir = Date.now()
           const oldingi = tapRef.current
           if (
@@ -882,7 +891,7 @@ export function SheetSvg({
               }
             : undefined
         }
-        className={p.waste ? undefined : "cursor-pointer"}
+        className={p.waste && !p.atx ? undefined : "cursor-pointer"}
       >
         <rect
           x={p.x}
