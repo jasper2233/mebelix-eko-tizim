@@ -5491,6 +5491,36 @@ export type ReadTerminalPostQueueResponses = {
 
 export type ReadTerminalPostQueueResponse = ReadTerminalPostQueueResponses[keyof ReadTerminalPostQueueResponses];
 
+export type CancelWasteItemLabelData = {
+    body?: never;
+    path: {
+        /**
+         * Waste Id
+         */
+        waste_id: number;
+    };
+    query?: never;
+    url: '/api/v1/terminal/waste/{waste_id}/label';
+};
+
+export type CancelWasteItemLabelErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CancelWasteItemLabelError = CancelWasteItemLabelErrors[keyof CancelWasteItemLabelErrors];
+
+export type CancelWasteItemLabelResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type CancelWasteItemLabelResponse = CancelWasteItemLabelResponses[keyof CancelWasteItemLabelResponses];
+
 export type PrintWasteItemLabelData = {
     body?: never;
     path: {

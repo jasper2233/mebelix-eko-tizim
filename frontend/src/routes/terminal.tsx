@@ -275,6 +275,13 @@ function TerminalPage() {
       // Ovoz KOD bo'yicha tanlanadi, matn bo'yicha emas: ilgari o'zbekcha
       // xabardan "yakunlangan" bo'lagi qidirilardi va matn tahrirlansa jimgina
       // buzilardi. E008 — ish allaqachon bajarilgan, bu xato emas: neytral signal.
+      // ATX — qoldiq QR: xato emas, ma'lumot (o'lcham, buyurtma, list).
+      // Qoldiq marshrutda yurmaydi, skan hech narsani yopmaydi.
+      if (code === "ATX") {
+        playWarning()
+        setLastScan({ kind: "info", code, message, at: Date.now() })
+        return
+      }
       if (code === "E008") playWarning()
       else playError()
       // Shovqinli tsexda ovoz yetarli emas — xato toast bilan ham ko'rsatiladi

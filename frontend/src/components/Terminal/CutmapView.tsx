@@ -2,7 +2,12 @@
 // list kartochkalari, to'liq list SVG (detallar, kesim chiziqlari, teshiklar overlay),
 // detal kartochkasi (katta QR + YORLIQ CHOP ETISH). GibCut litsenziyasi o'rnini bosadi.
 
-import { queryOptions, useMutation, useQuery } from "@tanstack/react-query"
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import {
   ArrowLeft,
   ChevronDown,
@@ -230,6 +235,7 @@ export function CutmapView({
   const printMutation = usePrintLabel("cutmap")
   const cancelMutation = useCancelLabel()
   // Atxot cheki: WasteItem id `waste_items` dan atx raqami orqali topiladi
+  const queryClient = useQueryClient()
   const wastePrint = useMutation({
     mutationFn: async (wasteId: number) =>
       (
@@ -242,6 +248,33 @@ export function CutmapView({
       setWasteTarget(null)
     },
     onError: handleError,
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: ["terminal", "cutmap"] }),
+  })
+  // Cheki chiqarilgan qoldiqlar (atx raqamlari) — SVG katakni yashil qiladi
+  const wastePrinted = useMemo(() => {
+    const out = new Set<number>()
+    for (const w of data?.waste_items ?? []) {
+      if (!w.label_printed_at) continue
+      const m = w.qr_text.match(/-(\d+)$/)
+      if (m) out.add(Number(m[1]))
+    }
+    return out
+  }, [data?.waste_items])
+  const wasteCancel = useMutation({
+    mutationFn: async (wasteId: number) =>
+      (
+        await TerminalService.cancelWasteItemLabel({
+          path: { waste_id: wasteId },
+        })
+      ).data,
+    onSuccess: (r) => {
+      toast.success(r.message)
+      setWasteTarget(null)
+    },
+    onError: handleError,
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: ["terminal", "cutmap"] }),
   })
   const wasteItemFor = (part: SheetPart | null) =>
     part?.atx
@@ -767,6 +800,7 @@ export function CutmapView({
                 // buzg'unchi amalni o'zi bajarmaydi.
                 onOpenPart={admin ? undefined : setSelected}
                 onOpenWaste={setWasteTarget}
+                wastePrinted={wastePrinted}
                 selectedCell={markedCell}
                 registerZoom={(a) => {
                   zoomApi.current = a
@@ -818,7 +852,7 @@ export function CutmapView({
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Foydali atxot</DialogTitle>
+            <DialogTitle className="text-2xl">Qoldiq</DialogTitle>
           </DialogHeader>
           {wasteTarget && (
             <div className="space-y-3">
@@ -851,8 +885,21 @@ export function CutmapView({
                       loading={wastePrint.isPending}
                       onClick={() => wastePrint.mutate(item.id)}
                     >
-                      <Printer /> Chek chiqarish
+                      <Printer />{" "}
+                      {item.label_printed_at
+                        ? "Chekni qayta chiqarish"
+                        : "Chek chiqarish"}
                     </LoadingButton>
+                    {item.label_printed_at && (
+                      <LoadingButton
+                        variant="outline"
+                        className="h-12 w-full text-lg"
+                        loading={wasteCancel.isPending}
+                        onClick={() => wasteCancel.mutate(item.id)}
+                      >
+                        Chekni bekor qilish
+                      </LoadingButton>
+                    )}
                   </>
                 )
               })()}

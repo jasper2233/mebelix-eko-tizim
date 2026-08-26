@@ -189,6 +189,7 @@ export function SheetSvg({
   onSelect,
   onOpenPart,
   onOpenWaste,
+  wastePrinted,
   selectedCell,
   thumbnail = false,
   registerZoom,
@@ -204,6 +205,8 @@ export function SheetSvg({
   onOpenPart?: (part: SheetPart) => void
   /** Foydali atxot (`business`, atx raqamli) katagi bosilganda. */
   onOpenWaste?: (part: SheetPart) => void
+  /** Cheki chiqarilgan qoldiqlarning `atx` raqamlari — katak yashil bo'ladi. */
+  wastePrinted?: Set<number>
   selectedCell: number | null
   /** Mini preview (material kartasi): interaktivsiz, scroll bloklamaydi */
   thumbnail?: boolean
@@ -447,8 +450,16 @@ export function SheetSvg({
     // `allDone` `custom` dan USTUN: chek chiqarilgan nostandart detal ham yashil
     // bo'ladi (arrachi uchun "kesildi" belgisi hamma detalda bir xil), bekor
     // qilinsa `allDone` yana false bo'lib o'z rangiga qaytadi.
+    // QOLDIQ (business atxot) ranglari — tsex taklifi, "chek = yashil" tilida:
+    //   chek chiqarilmagan -> OQ (zebra atxotdan ajralib, "chek chiqarish
+    //   mumkin" deb o'qiladi); chek chiqarilgan -> detallar kabi YASHIL.
+    // Oddiy (ro'yxatga olinmagan) atxot zebra bo'lib qolaveradi.
     const fill = p.waste
-      ? "url(#zebra)"
+      ? p.atx
+        ? wastePrinted?.has(p.atx)
+          ? PART_DONE
+          : "#ffffff"
+        : "url(#zebra)"
       : selected
         ? PART_SELECTED
         : allDone

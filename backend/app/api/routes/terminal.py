@@ -936,7 +936,7 @@ async def print_waste_item_label(db: SessionDep, user: TerminalUser, waste_id: i
         user_id=user.id,
         entity_type="waste_item",
         entity_id=w.id,
-        message=f"Atxot cheki yuborildi: {w.qr_text} ({w.length:g}x{w.width:g})",
+        message=f"Qoldiq cheki yuborildi: {w.qr_text} ({w.length:g}x{w.width:g})",
     )
     printer_kutilmoqda = agent.last_seen_at is None or datetime.now(UTC) - agent.last_seen_at > AGENT_ONLINE_WINDOW
     if queue.pool is not None:
@@ -1081,6 +1081,31 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
 LabelCancelUser = Annotated[
     User, Depends(require_roles(UserRole.TERMINAL, *POST_ROLES, UserRole.MANAGER, UserRole.TEXNOLOG))
 ]
+
+
+@router.delete("/waste/{waste_id}/label", response_model=Message, operation_id="cancel_waste_item_label")
+async def cancel_waste_item_label(db: SessionDep, user: TerminalUser, waste_id: int) -> Message:
+    """Qoldiq chekini bekor qilish: `label_printed_at` tozalanadi.
+
+    Detal chekidan farqi — bu yerda qaytariladigan skan yo'q (qoldiq ish
+    bosqichi emas), shuning uchun faqat belgi tozalanadi va katak xaritada
+    yana "chek chiqarilmagan" rangga qaytadi.
+    """
+    w = await db.get(WasteItem, waste_id)
+    if w is None or w.is_deleted:
+        raise NotFoundException("Qoldiq yozuvi topilmadi.")
+    w.label_printed_at = None
+    log_action(
+        db,
+        module="print",
+        action="waste_label_cancelled",
+        user_id=user.id,
+        entity_type="waste_item",
+        entity_id=w.id,
+        message=f"Qoldiq cheki bekor qilindi: {w.qr_text}",
+    )
+    await db.commit()
+    return Message(message=f"Qoldiq cheki bekor qilindi: {w.qr_text}")
 
 
 @router.delete("/labels/{instance_id}", response_model=Message, operation_id="cancel_instance_label")

@@ -564,7 +564,10 @@ def render_waste_label_png(d: WasteLabelData, scale: int = 1) -> bytes:
 
     # Sarlavha atxotligini QICHQIRIB aytadi — omborda detal cheki bilan
     # adashtirilmasin (GibSaw ham "Деловой остаток" ni alohida yozadi)
-    text(5, 13, "FOYDALI ATXOT", 3.6, bold=True)
+    # "QOLDIQ" — tsex tili ("foydali atxot" sun'iy jaranglaydi; GibSaw ruschada
+    # "Деловой остаток" ishlatgan, o'zbekcha muqobili shu). Sarlavha vazifasi
+    # bitta: detal cheki bilan adashtirmaslik.
+    text(5, 13, "QOLDIQ", 4.2, bold=True)
     text(5, 17.5, d.qr_text[:18], 4.2, bold=True)
 
     draw.line((int(5 * mm), int(26 * mm), int(46 * mm), int(26 * mm)), fill="black", width=max(2, scale))

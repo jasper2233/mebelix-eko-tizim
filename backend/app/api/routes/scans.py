@@ -3,11 +3,13 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 
 from app.api.deps import SessionDep, require_roles
+from app.core.config import TASHKENT_TZ
 from app.core.ws import ws_manager
 from app.crud import log_action
-from app.models import Part, PartInstance
+from app.models import Order, Part, PartInstance, WasteItem
 from app.models.enums import POST_ROLES, UserRole
 from app.models.user import User
 from app.schemas.terminal import ScanHistoryItem, ScanRequest, ScanResult
@@ -27,6 +29,41 @@ TerminalUser = Annotated[User, Depends(require_roles(UserRole.TERMINAL, *POST_RO
 
 @router.post("/", response_model=ScanResult, operation_id="record_scan")
 async def record_scan_endpoint(db: SessionDep, user: TerminalUser, body: ScanRequest) -> ScanResult:
+    # QOLDIQ cheki skanlandi: bu ish bosqichi emas — skan yozilmaydi, operator
+    # qoldiq HAQIDA to'liq ma'lumot oladi (qaysi buyurtma, qaysi list, o'lcham).
+    # 422 + "ATX" kodi bilan: frontend buni xato emas, ma'lumot deb ko'rsatadi.
+    if body.qr_text.startswith("ATX-"):
+        w = (
+            await db.execute(
+                select(WasteItem).where(
+                    WasteItem.qr_text == body.qr_text,
+                    WasteItem.is_deleted == False,  # noqa: E712
+                )
+            )
+        ).scalar_one_or_none()
+        if w is None:
+            raise HTTPException(
+                status_code=422,
+                detail={"code": "E002", "message": "Bunday qoldiq cheki ro'yxatda yo'q."},
+            )
+        order = await db.get(Order, w.order_id)
+        chek = (
+            w.label_printed_at.astimezone(TASHKENT_TZ).strftime("%d-%m %H:%M")
+            if w.label_printed_at
+            else "chiqarilmagan"
+        )
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "ATX",
+                "message": (
+                    f"QOLDIQ: {w.length:g} x {w.width:g} mm, {w.material_name}. "
+                    f"Buyurtma {order.number if order else '?'}"
+                    f"{' (' + order.project_name + ')' if order and order.project_name else ''}, "
+                    f"list {w.sheet_no}. Chek: {chek}."
+                ),
+            },
+        )
     try:
         outcome = await record_scan(db, user=user, qr_text=body.qr_text, client_event_id=body.client_event_id)
     except ScanRejected as exc:
