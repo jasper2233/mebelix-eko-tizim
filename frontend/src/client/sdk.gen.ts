@@ -420,6 +420,13 @@ export class EmployeesService {
      * Print Employee Badge
      *
      * Beyjikni chop etish navbatiga qo'yadi — detal cheki bilan bir xil zanjir.
+     *
+     * Beyjikda ish markazi YO'Q (ofisdan chop etiladi), shuning uchun printer
+     * ATAYLAB tanlanadi: `agent_id` berilsa o'sha, berilmasa — chop eta oladigan
+     * yagona agent. Bir nechta printer bo'lsa 422 va ro'yxat qaytadi.
+     *
+     * Ilgari job manzilsiz qo'yilardi va uni umumiy navbatdan birinchi ulgurgan
+     * printer olardi — beyjik qaysi tsex printeridan chiqishi tasodif edi.
      */
     public static printEmployeeBadge<ThrowOnError extends boolean = true>(options: Options<PrintEmployeeBadgeData, ThrowOnError>): RequestResult<PrintEmployeeBadgeResponses, PrintEmployeeBadgeErrors, ThrowOnError> {
         return (options.client ?? client).post<PrintEmployeeBadgeResponses, PrintEmployeeBadgeErrors, ThrowOnError>({

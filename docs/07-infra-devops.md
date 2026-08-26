@@ -263,7 +263,7 @@ Terminal (arrachi)
 ```
 
 Job'ning Redis kaliti — `print_queue_key(agent_id)`: `mes:print:queue:{agent_id}` manzilli job uchun,
-`PRINT_QUEUE_KEY = "mes:print:queue"` manzilsizi uchun (`backend/app/tasks/__init__.py`).
+`PRINT_QUEUE_KEY = "mes:print:queue"` esa endi o'qilmaydi ham, yozilmaydi ham: har chek aniq agentga manzillanadi (`require_printer`), manzilsiz job umuman yaratilmaydi. Umumiy navbat aynan "boshqa postdagi printer chekni tortib oldi" nuqsonining mexanizmi edi (`backend/app/tasks/__init__.py`).
 
 ### Ishonchlilik: hech bir yorliq yo'qolmaydi
 

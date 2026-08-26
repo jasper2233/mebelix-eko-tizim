@@ -244,10 +244,16 @@ class WorkerSettings:
   Chek SO'RAGAN ish markazining printeriga borishi uchun shunday: `ws.py` ulangan agent uchun
   `brpop([o'z kaliti, umumiy kalit], timeout=5)` qiladi — ya'ni avval o'ziga atalganini oladi,
   keyin manzilsizini. Ack kelmasa job AYNAN kelgan kalitiga (`src_key`) qaytariladi.
-- `printer_agent(db, machine_id)` — shu ish markaziga bog'langan, `can_print=True` va oxirgi
+- `require_printer(db, machine_id)` — chek qaysi agentga ketishini ANIQ aytadi, agent biriktirilmagan bo'lsa `NoPrinterBound` (chaqiruvchi 422 beradi, chek YUBORILMAYDI). `printing_agents(db)` — beyjik uchun tanlov ro'yxati. `printer_agent(db, machine_id)` — shu ish markaziga bog'langan, `can_print=True` va oxirgi
   `AGENT_ONLINE_WINDOW` (6 daqiqa) ichida ko'ringan agentni topadi; `terminal.py` va `pachka.py`
-  navbatga qo'yishdan OLDIN shuni chaqiradi. `employees.py` dagi beyjik chop etish esa `agent_id`
-  bermaydi — beyjik umumiy navbatga tushadi va uni istalgan printer olishi mumkin.
+  navbatga qo'yishdan OLDIN shuni chaqiradi. `employees.py` dagi beyjik chop etishda ish markazi yo'q, shuning uchun printer
+  ATAYLAB tanlanadi: `agent_id` query parametri, berilmasa — chop eta oladigan
+  yagona agent, bir nechta bo'lsa 422 va ro'yxat.
+
+  **Umumiy `PRINT_QUEUE_KEY` endi ISHLATILMAYDI.** Har chek aniq agentga
+  manzillanadi, `ws.py` esa faqat o'z kalitini o'qiydi. Aynan umumiy navbat
+  "ofisdagi test printeri tsexdagi chekni tortib oldi" nuqsonini bergan edi:
+  kim birinchi `BRPOP` qilsa, chek o'shanikiga chiqardi.
 - `print_label(ctx, instance_id, agent_id=None)` — yorliq chiqarish vazifasi (TZ 7.1.4).
   Bitta DB sessiyasida (`local_session`) `services/labels.py`dan:
   - `load_label_data(db, instance_id)` — `None` bo'lsa `"skip:{id}"` qaytarib chiqadi;

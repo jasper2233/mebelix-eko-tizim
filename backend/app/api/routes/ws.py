@@ -20,7 +20,7 @@ from app.core.security import ACCESS_COOKIE_NAME
 from app.core.ws import WsClient, ws_manager
 from app.models import BridgeAgent, Machine, Post
 from app.models.enums import POST_ROLES, UserRole
-from app.tasks import PRINT_QUEUE_KEY, print_queue_key
+from app.tasks import print_queue_key
 
 router = APIRouter()
 
@@ -153,17 +153,21 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
     await ws_manager.publish("bridge.connected", {"agent_id": agent_id})
     last_touch = asyncio.get_event_loop().time()
 
-    # Manzilli navbat oldinda, umumiysi zaxira (beyjik va ish markazi
-    # biriktirilmagan terminal cheki manzilsiz keladi).
-    own_keys = [PRINT_QUEUE_KEY] if agent_id is None else [print_queue_key(agent_id), PRINT_QUEUE_KEY]
+    # HAR chek aniq bir agentga manzillangan (`tasks.require_printer`), shuning
+    # uchun agent FAQAT o'zining navbatidan oladi. Umumiy `PRINT_QUEUE_KEY`
+    # ATAYLAB o'qilmaydi: aynan u "ofisdagi test printeri tsexdagi chekni tortib
+    # oldi" nuqsonining mexanizmi edi — kim birinchi ulgursa, chek o'shanikiga
+    # chiqardi. Endi manzilsiz job umuman yaratilmaydi (chaqiruvchi 422 beradi),
+    # ya'ni bu kalit bo'sh turadi.
+    #
+    # Tanitilmagan agent (legacy umumiy `BRIDGE_TOKEN`, `agent_id is None`) hech
+    # qanday chek OLMAYDI: qaysi ish markazi ekani noma'lum, ya'ni unga chek
+    # berish — yana o'sha tasodif.
+    own_keys = [] if agent_id is None else [print_queue_key(agent_id)]
     redis = AsyncRedis.from_url(settings.REDIS_URL)
     try:
         while True:
-            if can_print:
-                # Tartib MUHIM: `BRPOP` ro'yxatdagi BIRINCHI bo'sh bo'lmagan
-                # kalitdan oladi, ya'ni agent avval o'ziga manzillangan chekni,
-                # keyin umumiy navbatni ko'radi. Manzilli chekni endi boshqa
-                # tsexdagi printer tortib ololmaydi.
+            if can_print and own_keys:
                 popped = await redis.brpop(own_keys, timeout=5)
             else:
                 # Printersiz stansiya (skan-forvard): navbatdan chek OLMAYDI —

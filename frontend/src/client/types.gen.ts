@@ -3947,7 +3947,12 @@ export type PrintEmployeeBadgeData = {
          */
         employee_id: number;
     };
-    query?: never;
+    query?: {
+        /**
+         * Agent Id
+         */
+        agent_id?: number | null;
+    };
     url: '/api/v1/employees/{employee_id}/print';
 };
 

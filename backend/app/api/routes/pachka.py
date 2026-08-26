@@ -385,7 +385,7 @@ async def remove_from_pachka(
 @router.post("/{pachka_id}/close", response_model=Message, operation_id="close_pachka")
 async def close_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, pachka_id: int) -> Message:
     """Qadoqni yakunlash: yopiladi va cheki chop etishga yuboriladi."""
-    machine, _post = ctx
+    machine, post = ctx
     pachka = await _open_pachka(db, pachka_id)
     count = (
         await db.execute(
@@ -414,12 +414,22 @@ async def close_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, pachka_id: 
     await db.commit()
 
     from app.core.utils import queue
-    from app.tasks import printer_agent
+    from app.tasks import NoPrinterBound, require_printer
 
     if queue.pool is not None:
-        # Qadoq cheki qadoqlash stansiyasining printeridan chiqsin — umumiy
-        # navbatda u boshqa tsexdagi agentga tushishi mumkin edi.
-        agent = await printer_agent(db, machine.id)
-        await queue.pool.enqueue_job("print_pachka_label", pachka.id, agent.id if agent else None)
+        # Qadoq cheki qadoqlash stansiyasining printeridan chiqsin. Printer
+        # biriktirilmagan bo'lsa chek YUBORILMAYDI: umumiy navbatda uni boshqa
+        # postdagi agent tortib olardi va chek noto'g'ri joyda chiqardi.
+        try:
+            agent = await require_printer(db, machine.id)
+        except NoPrinterBound:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"{post.name} ish markaziga printer biriktirilmagan — qadoq cheki yuborilmadi. "
+                    "Qadoq YOPILDI; admin printerni bog'lagach chekni qayta chiqarish mumkin."
+                ),
+            ) from None
+        await queue.pool.enqueue_job("print_pachka_label", pachka.id, agent.id)
     await ws_manager.publish("pachka.closed", {"pachka_id": pachka.id, "code": pachka.code})
     return Message(message=f"Qadoq yakunlandi: {pachka.code} ({count} detal)")

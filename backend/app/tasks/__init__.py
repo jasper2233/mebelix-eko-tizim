@@ -8,6 +8,8 @@ from uuid import uuid4
 from sqlalchemy import func, select
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from sqlalchemy import Row
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,9 +32,12 @@ def print_queue_key(agent_id: int | None) -> str:
     turib qog'ozni kutardi. Bekor qilib qayta bosish yordam bergandek tuyulardi,
     chunki u yangi tasodif edi.
 
-    Manzilsiz job (beyjik, ish markazi biriktirilmagan terminal) umumiy
-    ro'yxatda qoladi — uni istalgan printer oladi, ya'ni eski xatti-harakat
-    saqlanadi.
+    `agent_id=None` endi ISHLATILMAYDI: har bir chek aniq bir agentga
+    manzillanadi (`require_printer`). Umumiy `PRINT_QUEUE_KEY` faqat eski
+    (deploydan oldin qo'yilgan) joblar uchun qoldirilgan — yangi job u yerga
+    tushmaydi. Sabab: umumiy navbatdan chekni ISTALGAN printer olardi va
+    aynan shu "ofisdagi test printeri tsexdagi chekni tortib oldi" nuqsonini
+    bergan edi.
     """
     return PRINT_QUEUE_KEY if agent_id is None else f"{PRINT_QUEUE_KEY}:{agent_id}"
 
@@ -69,6 +74,51 @@ async def printer_agent(db: "AsyncSession", machine_id: int | None) -> "Row | No
         # `AttributeError: 'int' object has no attribute 'id'` bilan yiqilardi.
         .first()
     )
+
+
+class NoPrinterBound(Exception):
+    """Bu ish markaziga chop etadigan agent biriktirilmagan."""
+
+
+async def require_printer(db: "AsyncSession", machine_id: int | None) -> "Row":
+    """Chek qaysi agentga ketishini ANIQ aytadi, aks holda xato.
+
+    Ilgari agent topilmasa `None` qaytarilib job UMUMIY navbatga tushardi va uni
+    istalgan ulangan printer tortib olardi — chek boshqa postda, hatto ofisdagi
+    test printeridan chiqib ketardi. Endi "printeri yo'q" holati JIM emas:
+    chaqiruvchi 422 bilan aytadi va omborchi/operator sababini biladi.
+
+    DIQQAT: agent OFFLINE bo'lishi xato EMAS — job o'sha agentning navbatida
+    kutadi va u ulanganda chiqadi. Xato faqat agent umuman BIRIKTIRILMAGANDA.
+    """
+    agent = await printer_agent(db, machine_id)
+    if agent is None:
+        raise NoPrinterBound
+    return agent
+
+
+async def printing_agents(db: "AsyncSession") -> "Sequence[Row]":
+    """Chop eta oladigan, juftlangan barcha agentlar — beyjik uchun tanlov ro'yxati.
+
+    Beyjik ofisdagi admin panelidan chop etiladi, ya'ni ish markazi YO'Q va
+    `printer_agent()` ga uzatadigan `machine_id` ham yo'q. Ilgari job umumiy
+    navbatga tushardi va uni birinchi ulgurgan printer olardi — beyjik qaysi
+    tsex printeridan chiqishi tasodif edi, admin esa uni qidirib yurishi kerak
+    bo'lardi. Endi admin printerni ATAYLAB tanlaydi (yoki bitta bo'lsa — o'sha).
+    """
+    from app.models import BridgeAgent
+
+    return (
+        await db.execute(
+            select(BridgeAgent.id, BridgeAgent.name, BridgeAgent.last_seen_at)
+            .where(
+                BridgeAgent.can_print == True,  # noqa: E712
+                BridgeAgent.token_hash.is_not(None),
+                BridgeAgent.is_deleted == False,  # noqa: E712
+            )
+            .order_by(BridgeAgent.name)
+        )
+    ).all()
 
 
 def _print_job(instance_id: int, png_b64: str) -> str:

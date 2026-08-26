@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, or_, select
 
 from app.api.deps import AdminUser, SessionDep, StaffReadUser, client_ip
@@ -160,14 +160,48 @@ async def regenerate_badge(db: SessionDep, current_user: AdminUser, employee_id:
 
 
 @router.post("/{employee_id}/print", response_model=Message, operation_id="print_employee_badge")
-async def print_employee_badge(db: SessionDep, current_user: AdminUser, employee_id: int, request: Request) -> Message:
-    """Beyjikni chop etish navbatiga qo'yadi — detal cheki bilan bir xil zanjir."""
+async def print_employee_badge(
+    db: SessionDep,
+    current_user: AdminUser,
+    employee_id: int,
+    request: Request,
+    agent_id: int | None = None,
+) -> Message:
+    """Beyjikni chop etish navbatiga qo'yadi — detal cheki bilan bir xil zanjir.
+
+    Beyjikda ish markazi YO'Q (ofisdan chop etiladi), shuning uchun printer
+    ATAYLAB tanlanadi: `agent_id` berilsa o'sha, berilmasa — chop eta oladigan
+    yagona agent. Bir nechta printer bo'lsa 422 va ro'yxat qaytadi.
+
+    Ilgari job manzilsiz qo'yilardi va uni umumiy navbatdan birinchi ulgurgan
+    printer olardi — beyjik qaysi tsex printeridan chiqishi tasodif edi.
+    """
     employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
     from app.core.utils import queue
+    from app.tasks import printing_agents
 
     if queue.pool is None:
         raise ForbiddenException("Chop etish navbati ishlamayapti. Adminga murojaat qiling.")
-    await queue.pool.enqueue_job("print_badge", employee.id)
+
+    agents = await printing_agents(db)
+    if not agents:
+        raise HTTPException(
+            status_code=422,
+            detail="Chop etadigan printer yo'q. /printers sahifasida agentni ulang.",
+        )
+    if agent_id is not None:
+        target = next((a for a in agents if a.id == agent_id), None)
+        if target is None:
+            raise HTTPException(status_code=422, detail="Bunday printer topilmadi yoki chop eta olmaydi.")
+    elif len(agents) == 1:
+        target = agents[0]
+    else:
+        nomlar = ", ".join(f"{a.name} (id={a.id})" for a in agents)
+        raise HTTPException(
+            status_code=422,
+            detail=f"Bir nechta printer bor — qaysi biridan chiqarishni tanlang: {nomlar}",
+        )
+    await queue.pool.enqueue_job("print_badge", employee.id, target.id)
     log_action(
         db,
         module="print",

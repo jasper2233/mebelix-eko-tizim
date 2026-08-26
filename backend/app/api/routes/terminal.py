@@ -946,19 +946,27 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     )
 
     from app.core.utils import queue
-    from app.tasks import AGENT_ONLINE_WINDOW, printer_agent
+    from app.tasks import AGENT_ONLINE_WINDOW, NoPrinterBound, require_printer
 
-    # Chek SO'RAGAN ish markazining printeriga manzillanadi. Manzilsiz qolsa
-    # umumiy navbatga tushadi va boshqa tsexdagi agent uni tortib olishi mumkin
-    # (aynan shu sabab arrachining cheki prisadka printeridan chiqar edi).
-    agent = await printer_agent(db, print_machine.id if print_machine else None)
-    print_agent_id = agent.id if agent else None
+    # Chek SO'RAGAN ish markazining printeriga manzillanadi. Printer biriktirilmagan
+    # bo'lsa chek YUBORILMAYDI: ilgari u umumiy navbatga tushib, boshqa postdagi —
+    # hatto ofisdagi test — printeri uni tortib olardi. Jim noto'g'ri printerdan
+    # chiqqan chek, ochiq xatodan yomonroq: operator qog'ozni kutib turaveradi.
+    try:
+        agent = await require_printer(db, print_machine.id if print_machine else None)
+    except NoPrinterBound:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"{print_post.name if print_post else 'Bu post'} ish markaziga printer biriktirilmagan — "
+                "chek yuborilmadi. Admin /printers sahifasida agentni ish markaziga bog'lashi kerak."
+            ),
+        ) from None
+    print_agent_id = agent.id
     # Printer ulanmagan bo'lsa buni AYTAMIZ. Ilgari xabar doim bir xil edi
     # ("yuborildi"), operator esa qog'oz kutib turardi va sababini bilmasdi.
     # Job Redisda saqlanadi — agent ulanganda chiqadi, ya'ni yo'qolmaydi.
-    printer_kutilmoqda = agent is None or (
-        agent.last_seen_at is None or datetime.now(UTC) - agent.last_seen_at > AGENT_ONLINE_WINDOW
-    )
+    printer_kutilmoqda = agent.last_seen_at is None or datetime.now(UTC) - agent.last_seen_at > AGENT_ONLINE_WINDOW
     # Navbatga qo'yish COMMIT'DAN OLDIN. Teskari tartibda Redis uzilib qolsa
     # `label_printed_at` allaqachon yozilgan bo'lardi: qog'oz chiqmaydi, lekin
     # katak "chiqarilgan" bo'lib qulflanadi va operator faqat bekor qilish orqali
