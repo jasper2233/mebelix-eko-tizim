@@ -434,13 +434,13 @@ def _success_window(name: str, stanok: str) -> None:
         with contextlib.suppress(Exception):
             st.theme_use("clam")
         st.configure("K.TFrame", background="#ffffff")
-        st.configure("K.TLabel", background="#ffffff", font=("Segoe UI", 12))
-        st.configure("Ok.TLabel", background="#ffffff", font=("Segoe UI", 20, "bold"), foreground="#15803d")
-        st.configure("Sub.TLabel", background="#ffffff", font=("Segoe UI", 11), foreground="#5b6b73")
-        st.configure("K.TButton", font=("Segoe UI", 13, "bold"), padding=(0, 10))
-        frm = ttk.Frame(root, padding=(32, 26, 32, 28), style="K.TFrame")
+        st.configure("K.TLabel", background="#ffffff", font=("Segoe UI", 14))
+        st.configure("Ok.TLabel", background="#ffffff", font=("Segoe UI", 22, "bold"), foreground="#15803d")
+        st.configure("Sub.TLabel", background="#ffffff", font=("Segoe UI", 12), foreground="#5b6b73")
+        st.configure("K.TButton", font=("Segoe UI", 15, "bold"), padding=(0, 12))
+        frm = ttk.Frame(root, padding=(36, 28, 36, 30), style="K.TFrame")
         frm.grid()
-        frm.columnconfigure(0, minsize=460)
+        frm.columnconfigure(0, minsize=520)
         kapa = ttk.Frame(frm, style="K.TFrame")
         kapa.grid(column=0, row=0, sticky="w")
         with contextlib.suppress(Exception):
@@ -491,22 +491,24 @@ def _pair_dialog(error: str = "") -> tuple[str, str] | None:
     st = ttk.Style(root)
     with contextlib.suppress(Exception):
         st.theme_use("clam")
+    # Monoblok oldida TIK TURIB o'qiladi — 11-12pt mayda edi, hammasi bir
+    # pog'ona katta. Kod maydoni eng katta: u yagona qo'lda teriladigan qiymat.
     st.configure("K.TFrame", background="#ffffff")
-    st.configure("K.TLabel", background="#ffffff", font=("Segoe UI", 12))
+    st.configure("K.TLabel", background="#ffffff", font=("Segoe UI", 14))
     st.configure(
-        "Title.TLabel", background="#ffffff", font=("Segoe UI", 20, "bold")
+        "Title.TLabel", background="#ffffff", font=("Segoe UI", 22, "bold")
     )
     st.configure(
-        "Sub.TLabel", background="#ffffff", font=("Segoe UI", 11), foreground="#5b6b73"
+        "Sub.TLabel", background="#ffffff", font=("Segoe UI", 12), foreground="#5b6b73"
     )
     st.configure(
-        "Err.TLabel", background="#ffffff", font=("Segoe UI", 11), foreground="#b00020"
+        "Err.TLabel", background="#ffffff", font=("Segoe UI", 12, "bold"), foreground="#b00020"
     )
-    st.configure("K.TButton", font=("Segoe UI", 13, "bold"), padding=(0, 10))
+    st.configure("K.TButton", font=("Segoe UI", 15, "bold"), padding=(0, 12))
 
-    frm = ttk.Frame(root, padding=(32, 26, 32, 28), style="K.TFrame")
+    frm = ttk.Frame(root, padding=(36, 28, 36, 30), style="K.TFrame")
     frm.grid()
-    frm.columnconfigure(0, minsize=460)
+    frm.columnconfigure(0, minsize=520)
 
     # Logo sarlavha yonida; iconphoto — taskbar/alt-tab uchun
     logo = None
@@ -535,24 +537,27 @@ def _pair_dialog(error: str = "") -> tuple[str, str] | None:
         column=0, row=2, sticky="w"
     )
     url_var = tk.StringVar(value=DEFAULT_SERVER_URL)
-    ttk.Entry(frm, textvariable=url_var, font=("Segoe UI", 13)).grid(
-        column=0, row=3, sticky="we", pady=(2, 12), ipady=6
+    ttk.Entry(frm, textvariable=url_var, font=("Segoe UI", 14)).grid(
+        column=0, row=3, sticky="we", pady=(2, 14), ipady=7
     )
 
     ttk.Label(frm, text="Ulanish kodi", style="K.TLabel").grid(
         column=0, row=4, sticky="w"
     )
     code_var = tk.StringVar()
-    # Kod katta mono shriftda: 8 belgi + defis, xato terish darhol ko'rinadi
+    # Kod katta mono shriftda: 8 belgi + defis, xato terish darhol ko'rinadi.
+    # AVTO-KATTA harf: server baribir upper() qiladi, lekin kichik harfda
+    # terilgan kod ekranda paneldagidan boshqacha ko'rinib ishonchsizlik berardi
+    code_var.trace_add("write", lambda *_: code_var.set(code_var.get().upper()))
     code_entry = ttk.Entry(
-        frm, textvariable=code_var, font=("Consolas", 18, "bold"), justify="center"
+        frm, textvariable=code_var, font=("Consolas", 22, "bold"), justify="center"
     )
-    code_entry.grid(column=0, row=5, sticky="we", pady=(2, 0), ipady=8)
+    code_entry.grid(column=0, row=5, sticky="we", pady=(2, 0), ipady=10)
 
     if error:
         ttk.Label(
-            frm, text=error, style="Err.TLabel", wraplength=460, justify="left"
-        ).grid(column=0, row=6, sticky="w", pady=(12, 0))
+            frm, text=error, style="Err.TLabel", wraplength=520, justify="left"
+        ).grid(column=0, row=6, sticky="w", pady=(14, 0))
 
     def submit(*_: object) -> None:
         if code_var.get().strip():
@@ -561,7 +566,7 @@ def _pair_dialog(error: str = "") -> tuple[str, str] | None:
             root.destroy()
 
     ttk.Button(frm, text="Ulash", command=submit, style="K.TButton").grid(
-        column=0, row=7, sticky="we", pady=(20, 0)
+        column=0, row=7, sticky="we", pady=(22, 0)
     )
     root.bind("<Return>", submit)
     code_entry.focus_set()
