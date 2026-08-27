@@ -1164,6 +1164,18 @@ async def self_update() -> None:
                 )
                 if hashlib.sha256(data).hexdigest() != info.get("sha256"):
                     log.warning("Yangilanish sha256 mos emas — o'tkazib yuborildi")
+                elif local_drain():
+                    # ISH PAYTIDA EMAS: navbatda chek turganda os._exit chop
+                    # etishni o'rtasida uzib, restartda o'sha chek IKKINCHI
+                    # marta chiqishi mumkin edi (fayldan faqat muvaffaqiyatli
+                    # chop etishdan KEYIN o'chiriladi). Navbat bo'shaguncha
+                    # 10 daqiqadan tekshirib turamiz — flusher odatda
+                    # soniyalarda bo'shatadi, yangilanish esa shoshmaydi.
+                    log.info("Yangilanish tayyor, navbat bo'shashini kutmoqda")
+                    new_exe.write_bytes(data)
+                    while local_drain():
+                        await asyncio.sleep(600)
+                    _apply_update(new_exe)
                 else:
                     new_exe.write_bytes(data)
                     _apply_update(new_exe)
