@@ -93,7 +93,7 @@ yo'qolmaydi — yorliqlar Redis navbatida turadi va agent qaytishi bilan chiqadi
 
 ```bash
 pip install "websockets>=14" pywin32 pillow pynput pystray pyinstaller
-pyinstaller --onefile --noconsole --name mebelix-agent agent.py
+pyinstaller --onefile --noconsole --icon mebelix.ico --name mebelix-agent agent.py
 ```
 
 `websockets>=14` majburiy: agent kodi v14+ API'siga yozilgan

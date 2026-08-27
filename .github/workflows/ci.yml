@@ -151,7 +151,7 @@ jobs:
       - name: Build exe
         run: |
           pip install "websockets>=14" pywin32 pillow pynput pystray pyinstaller
-          pyinstaller --onefile --noconsole --name mebelix-agent bridge-agent/agent.py
+          pyinstaller --onefile --noconsole --icon bridge-agent/mebelix.ico --name mebelix-agent bridge-agent/agent.py
       - name: Manifest (versiya + sha256)
         shell: python
         run: |
