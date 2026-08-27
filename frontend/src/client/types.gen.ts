@@ -3008,9 +3008,13 @@ export type TerminalContext = {
      */
     crew?: Array<SessionRead>;
     /**
-     * Printer Online
+     * Agent Online
      */
-    printer_online?: boolean | null;
+    agent_online?: boolean | null;
+    /**
+     * Agent Prints
+     */
+    agent_prints?: boolean;
 };
 
 /**

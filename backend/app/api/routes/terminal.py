@@ -15,6 +15,7 @@ from app.core.ws import ws_manager
 from app.crud import crud_orders, log_action
 from app.models import (
     PRIORITY_RANK,
+    BridgeAgent,
     Employee,
     Machine,
     Order,
@@ -109,17 +110,28 @@ async def read_terminal_context(db: SessionDep, user: TerminalUser, ctx: Termina
         post_code=post.code,
         post_name=post.name,
     )
-    # Chek chiqaradigan postda printer holati headerda ko'rinadi — operator
-    # birinchi chekkacha kutmasdan biladi. Ta'rif chop etishdagi bilan AYNAN
-    # bir xil (printer_kutilmoqda), panel bilan ham.
-    from app.tasks import AGENT_ONLINE_WINDOW, printer_agent
+    # Agent biriktirilgan postda holati headerda ko'rinadi — operator birinchi
+    # chekkacha (yoki yo'qolgan skanlargacha) kutmasdan biladi. `printer_agent`
+    # ISHLATILMAYDI: u can_print bilan filtrlaydi, faqat skan-forvard agent esa
+    # chetda qolib, o'lgani hech qayerda ko'rinmasdi. Onlaynlik ta'rifi chop
+    # etishdagi va paneldagi bilan AYNAN bir xil (6 daqiqalik oyna).
+    from app.tasks import AGENT_ONLINE_WINDOW
 
-    agent = await printer_agent(db, machine.id)
+    agent = (
+        await db.execute(
+            select(BridgeAgent.last_seen_at, BridgeAgent.can_print).where(
+                BridgeAgent.machine_id == machine.id,
+                BridgeAgent.token_hash.is_not(None),
+                BridgeAgent.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).first()
     if agent is not None:
-        out.printer_online = not (
+        out.agent_online = not (
             agent.last_seen_at is None
             or datetime.now(UTC) - agent.last_seen_at > AGENT_ONLINE_WINDOW
         )
+        out.agent_prints = bool(agent.can_print)
     for session in await crew_sessions(db, machine.id):
         employee = await db.get(Employee, session.employee_id)
         out.crew.append(

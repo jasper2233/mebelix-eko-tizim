@@ -57,10 +57,14 @@ class TerminalContext(BaseModel):
     #: Brigada — ish markazidagi OCHIQ smenalar (ARRA da ikki kishi birga ishlaydi).
     #: Bo'sh ro'yxat: hali hech kim smenani boshlamagan.
     crew: list[SessionRead] = []
-    #: None = bu ish markaziga chop etadigan agent biriktirilmagan (chip chiqmaydi);
-    #: aks holda paneldagi bilan bir xil 6 daqiqalik oyna bo'yicha onlaynlik.
-    #: Jonli o'zgarishlar `bridge.connected/disconnected` WS eventlaridan keladi.
-    printer_online: bool | None = None
+    #: None = bu ish markaziga agent biriktirilmagan (chip chiqmaydi); aks holda
+    #: paneldagi bilan bir xil 6 daqiqalik oyna bo'yicha onlaynlik. can_print'siz
+    #: (faqat skan-forvard) agent ham qamraladi: u o'lsa skanlar MES'ga jimgina
+    #: tushmay qolardi. Jonli o'zgarish `bridge.connected/disconnected` dan.
+    agent_online: bool | None = None
+    #: Biriktirilgan agent chek chiqaradimi (ikonka tanlash uchun): True — printer,
+    #: False — faqat skan-forvard. agent_online None bo'lsa ma'nosiz.
+    agent_prints: bool = False
 
 
 class TerminalOrderCard(BaseModel):

@@ -431,21 +431,27 @@ function TerminalPage() {
           {ctx?.machine_name ?? ctx?.post_name?.toUpperCase() ?? "—"}
         </div>
 
-        {/* Printer agenti — trayning webdagi aksi. Faqat chek chiqaradigan
-            (agent biriktirilgan) postda chiqadi; yashilda e'tibor tortmaydi,
-            uzilganda qizil: operator birinchi chekkacha kutmasdan biladi.
-            Chek baribir yo'qolmaydi (navbatda kutadi) — bu faqat ogohlantirish. */}
-        {(printerLive ?? ctx?.printer_online) != null && (
+        {/* MES agent — trayning webdagi aksi, agent biriktirilgan postda.
+            Nomi "printer" EMAS: agent skan-forvard ham qiladi, faqat-skan
+            stansiyada o'lsa skanlar MES'ga jimgina tushmay qolardi. Ikonka
+            rolni aytadi (printer / skaner), matn bitta. Onlaynda e'tibor
+            tortmaydi, uzilganda qizil. Cheklar baribir yo'qolmaydi (navbatda
+            kutadi) — bu faqat ogohlantirish. */}
+        {(printerLive ?? ctx?.agent_online) != null && (
           <div
             className={cn(
               "flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-sm font-bold",
-              (printerLive ?? ctx?.printer_online)
+              (printerLive ?? ctx?.agent_online)
                 ? "text-muted-foreground"
                 : "bg-red-600 text-white",
             )}
           >
-            <Printer className="size-4" />
-            {(printerLive ?? ctx?.printer_online) ? null : "PRINTER UZILGAN"}
+            {ctx?.agent_prints ? (
+              <Printer className="size-4" />
+            ) : (
+              <ScanLine className="size-4" />
+            )}
+            {(printerLive ?? ctx?.agent_online) ? null : "MES AGENT UZILGAN"}
           </div>
         )}
 
