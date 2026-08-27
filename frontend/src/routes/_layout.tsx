@@ -5,6 +5,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router"
 
+import { MX_PATH, MX_VIEWBOX } from "@/components/Common/BrandLoader"
 import { AppSidebar, NAV_ITEMS } from "@/components/Sidebar/AppSidebar"
 import {
   SidebarInset,
@@ -40,11 +41,25 @@ function Layout() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 md:hidden">
+        {/* Brend suv belgisi — o'ng past burchak. 28-iyulda (29e790b) olib
+            tashlangan edi: absolute varianti overflow-hidden o'ram talab qilib
+            sticky panellarni o'ldirardi. FIXED bilan o'ram kerak emas: scrollda
+            burchakda qoladi, hech narsaga tegmaydi. Kontent (header/main)
+            relative — suv belgisi ustidan bo'yaladi; kartalar bg'i uni o'zi
+            yopadi, faqat sahifaning nafas joylarida 4.5% da ko'rinadi.
+            PNG emas VEKTOR (BrandLoader'dagi potrace-path) — 34rem da o'tkir. */}
+        <svg
+          viewBox={MX_VIEWBOX}
+          aria-hidden="true"
+          className="pointer-events-none fixed -bottom-24 -right-20 z-0 w-[34rem] text-primary opacity-[0.045] select-none"
+        >
+          <path d={MX_PATH} fill="currentColor" />
+        </svg>
+        <header className="relative z-10 flex h-12 shrink-0 items-center gap-2 border-b px-4 md:hidden">
           <SidebarTrigger className="-ml-1 text-muted-foreground" />
           {sectionTitle && <span className="font-medium">{sectionTitle}</span>}
         </header>
-        <main className="flex-1 p-6 md:p-8">
+        <main className="relative z-10 flex-1 p-6 md:p-8">
           {/* Kenglik chegarasi: busiz 2560px monitorda kontent ~2280px ga
               yoyilib, jadval ustunlari orasi o'qib bo'lmas darajada uzoqlashardi.
               1800px tanlangan: 1600 bo'lganda 1920px monitorda menyuni yig'ish
