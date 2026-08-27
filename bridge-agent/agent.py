@@ -46,7 +46,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.3.0"
+AGENT_VERSION = "1.4.0"
 
 # O'rnatish konfiguratsiyasi shu yerda saqlanadi (exe qayerdan ishlatilishidan qat'i nazar)
 CONFIG_DIR = Path(os.environ.get("APPDATA", str(Path.home()))) / "MebelixAgent"
@@ -399,19 +399,31 @@ SEEN_JOBS: deque[str] = deque(maxlen=500)
 
 
 def already_seen(job_id: str) -> bool:
-    """Shu job allaqachon qabul qilinganmi. `job_id` siz (eski server) — doim yo'q."""
-    if not job_id:
-        return False
-    if job_id in SEEN_JOBS:
-        return True
-    SEEN_JOBS.append(job_id)
-    return False
+    """Shu job allaqachon qabul qilinganmi. `job_id` siz (eski server) — doim yo'q.
+
+    FAQAT tekshiradi — belgilash `mark_seen` da, diskka yozish MUVAFFAQIYATLI
+    bo'lgandan keyin. Ilgari tekshirishning o'zi belgilab qo'yardi: local_enqueue
+    yiqilsa (disk to'la, antivirus) ulanish ack'siz uzilar, server jobni qayta
+    yuborar — endi esa "takror" deb soxta ok bilan yutilardi. Isbotlangan."""
+    return bool(job_id) and job_id in SEEN_JOBS
+
+
+def mark_seen(job_id: str) -> None:
+    if job_id:
+        SEEN_JOBS.append(job_id)
 
 
 def local_enqueue(job: dict) -> None:
-    """Durable local queue — survives agent restarts and power cuts (TZ 8.7)."""
+    """Durable local queue — survives agent restarts and power cuts (TZ 8.7).
+
+    fsync SHART: usiz yozuv OS sahifa keshida qolar, ack esa serverga ketib
+    bo'lgan bo'lardi — ack bilan lazy-writer orasidagi soniyalarda tok o'chsa
+    yorliq hech qayerda qolmasdi (strace bilan tekshirilgan: oddiy write+close
+    fsync bermaydi)."""
     with QUEUE_FILE.open("a", encoding="utf-8") as f:
         f.write(json.dumps(job, ensure_ascii=False) + "\n")
+        f.flush()
+        os.fsync(f.fileno())
 
 
 def local_drain() -> list[dict]:
@@ -433,6 +445,8 @@ def local_rewrite(jobs: list[dict]) -> None:
     with tmp.open("w", encoding="utf-8") as f:
         for job in jobs:
             f.write(json.dumps(job, ensure_ascii=False) + "\n")
+        f.flush()
+        os.fsync(f.fileno())
     tmp.replace(QUEUE_FILE)
 
 
@@ -455,6 +469,10 @@ def _print_png_gdi(png_b64: str) -> None:
         dm = win32print.GetPrinter(h, 2)["pDevMode"]
     finally:
         win32print.ClosePrinter(h)
+    if dm is None:
+        # Ba'zi drayver holatlarida DEVMODE kelmaydi — aniq xabar bilan
+        # yiqilamiz (job navbatda qoladi), AttributeError tashlamasdan
+        raise RuntimeError("printer DEVMODE bermadi — drayverni qayta o'rnating")
     dm.PaperSize = 256  # DMPAPER_USER
     dm.PaperWidth = 800  # 0.1mm — 80mm
     dm.PaperLength = 600  # 60mm
@@ -474,10 +492,17 @@ def _print_png_gdi(png_b64: str) -> None:
         scale = min(w / img.width, ht / img.height)
         dw, dh = int(img.width * scale), int(img.height * scale)
         hdc.StartDoc("MebeliX yorliq")
-        hdc.StartPage()
-        ImageWin.Dib(img).draw(hdc.GetHandleOutput(), (0, 0, dw, dh))
-        hdc.EndPage()
-        hdc.EndDoc()
+        try:
+            hdc.StartPage()
+            ImageWin.Dib(img).draw(hdc.GetHandleOutput(), (0, 0, dw, dh))
+            hdc.EndPage()
+            hdc.EndDoc()
+        except Exception:
+            # Ochiq hujjatni bekor qilmasdan DeleteDC qilish spooler'da
+            # chala hujjat qoldirardi
+            with contextlib.suppress(Exception):
+                hdc.AbortDoc()
+            raise
     finally:
         hdc.DeleteDC()
 
@@ -535,25 +560,44 @@ async def log_shipper() -> None:
 
 
 async def flusher() -> None:
-    """Lokal navbatni printerga oqizadi — printer qaytganda o'zi davom etadi."""
+    """Lokal navbatni printerga oqizadi — printer qaytganda o'zi davom etadi.
+
+    BITTADAN: har chop etishdan keyin fayl QAYTA o'qiladi va faqat chiqqan job
+    olib tashlanadi. Ilgari butun batch bitta snapshot bilan yurar va oxirida
+    `local_rewrite(remaining)` qilinardi — bu ikkita isbotlangan yo'qotish
+    berardi: (1) chop etish (~3s GDI) paytida uplink qo'shgan va ack qilingan
+    yangi job eski snapshot ustiga yozishda o'chib ketardi — serverda ham yo'q,
+    yorliq izsiz yo'qolardi; (2) batch o'rtasida tok o'chsa chiqqan yorliqlar
+    diskda qolib, restartda IKKINCHI marta chiqardi (bitta detalga ikkita bir
+    xil QR). Endi xavf oynasi bitta yorliq: chop etish o'rtasida o'chsa faqat
+    o'sha yorliq takrorlanishi mumkin — printersiz idempotentlikda bundan
+    kichik oyna yo'q."""
     while True:
-        jobs = local_drain()
-        if jobs:
-            remaining = []
+        while True:
+            # Har aylanishda yangidan o'qiladi — snapshot eskirmaydi
+            jobs = local_drain()
+            if not jobs:
+                break
             refresh_printer()
-            for i, job in enumerate(jobs):
-                # ALOHIDA OQIMDA: GDI chop etish bir necha soniya davom etadi va
-                # to'g'ridan-to'g'ri chaqirilganda hodisa siklini qotirardi — WS
-                # xabarlari o'qilmay, ack 15 soniyalik server chegarasidan
-                # kechikardi, server esa jobni qaytarib IKKINCHI yorliq chiqarardi.
-                if await asyncio.to_thread(send_to_printer, job.get("png", "")):
-                    log.info("Yorliq chop etildi: instance %s", job.get("instance_id"))
-                else:
-                    remaining = jobs[i:]
-                    break
-            local_rewrite(remaining)
-            if remaining:
-                log.info("Printer kutilmoqda — navbatda %d ta yorliq", len(remaining))
+            job = jobs[0]
+            # ALOHIDA OQIMDA: GDI chop etish bir necha soniya davom etadi va
+            # to'g'ridan-to'g'ri chaqirilganda hodisa siklini qotirardi — WS
+            # xabarlari o'qilmay, ack 15 soniyalik server chegarasidan
+            # kechikardi, server esa jobni qaytarib IKKINCHI yorliq chiqarardi.
+            if not await asyncio.to_thread(send_to_printer, job.get("png", "")):
+                log.info("Printer kutilmoqda — navbatda %d ta yorliq", len(jobs))
+                break
+            log.info("Yorliq chop etildi: instance %s", job.get("instance_id"))
+            # await'dan keyin fayl qayta o'qiladi: shu oraliqda kelganlar
+            # SAQLANADI. local_enqueue faqat oxiriga qo'shadi, ya'ni birinchi
+            # qator hali ham hozir chiqqan job — himoya sharti shunchaki
+            # kutilmagan holatga qarshi.
+            current = local_drain()
+            if current and current[0] == job:
+                current = current[1:]
+            else:
+                current = [j for j in current if j != job]
+            local_rewrite(current)
         # Yangi job kelsa darhol, aks holda 5s da bir (printer tiklanishini kutish)
         with contextlib.suppress(TimeoutError):
             await asyncio.wait_for(FLUSH_EVENT.wait(), timeout=5)
@@ -663,8 +707,11 @@ async def uplink() -> None:
                             await ws.send(json.dumps({"ok": True}))
                             log.info("Takroriy job tashlandi: %s", job_id)
                             continue
-                        # Avval diskka — keyin ack. Server ackdan keyin jobni unutadi (TZ 2.2.2).
+                        # Avval diskka — keyin belgi, keyin ack. Server ackdan
+                        # keyin jobni unutadi (TZ 2.2.2); yozish yiqilsa belgi
+                        # ham qo'yilmaydi va serverning retry'si qabul qilinadi.
                         local_enqueue(msg)
+                        mark_seen(job_id)
                         await ws.send(json.dumps({"ok": True}))
                         FLUSH_EVENT.set()
                         log.info(
@@ -682,7 +729,13 @@ async def uplink() -> None:
                         status,
                     )
                     reject_streak = 0
-                    _repair()
+                    # ALOHIDA OQIMDA: _repair ichida tk mainloop (operator kod
+                    # kiritguncha), urllib va messagebox bor — event loop'da
+                    # chaqirilsa dialog ochiq turgan butun vaqt flusher lokal
+                    # navbatdagi (allaqachon ack qilingan!) cheklarni ishlab
+                    # turgan printerga chiqara olmasdi. Isbotlangan. Tk to'liq
+                    # shu oqim ichida yaratiladi va yopiladi — thread-safe.
+                    await asyncio.to_thread(_repair)
                     continue
                 log.warning(
                     "Handshake rad etildi (HTTP %s, %d/3) — 5s dan keyin qayta urinish",
