@@ -42,7 +42,7 @@ Kod muddati o'tishi ulangan agentga ta'sir qilmaydi — token muddatsiz.
 
 ## Avto-yangilanish (v1.4.0+)
 
-Agent har 6 soatda `GET /api/v1/bridge-agents/latest` dan versiyani so'raydi.
+Agent `GET /api/v1/bridge-agents/latest` dan versiyani so'raydi: startdan ~1 daqiqada, har QAYTA ULANISHDA (deploy serverni qayta ishga tushiradi — yangi versiya deploy'dan daqiqalar ichida yetadi) va kamida har 6 soatda.
 Yangisi bo'lsa JIM yangilanadi: exe'ni yuklab oladi, sha256 tekshiradi,
 `update.bat` orqali o'zini almashtirib qayta ishga tushadi (~10 soniya). Lokal navbatda chek turganda ALMASHMAYDI — bo'shashini kutadi (chop etish o'rtasida uzilsa bitta chek ikki marta chiqishi mumkin edi).
 Token va sozlamalar `%APPDATA%` da — ulanish saqlanadi; exe yo'li o'zgarmagani

@@ -47,7 +47,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.4.1"
+AGENT_VERSION = "1.4.2"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -719,6 +719,10 @@ SCAN_FORWARD = os.environ.get("SCAN_FORWARD", "1") != "0"
 
 # Yangi job kelganda flusher darhol uyg'onadi (5s siklni kutmaydi)
 FLUSH_EVENT = asyncio.Event()
+# Serverga (qayta) ulanildi — self_update darhol tekshiradi. Deploy WS'ni uzadi,
+# agent qayta ulanadi: yangi versiya deploy'dan daqiqalar ichida yetib boradi,
+# 6 soatlik navbatni kutmaydi.
+CONNECTED_EVENT = asyncio.Event()
 
 
 #: Yaqinda qabul qilingan `job_id` lar. Server ack'ni ololmasa AYNAN o'sha jobni
@@ -1018,6 +1022,7 @@ async def uplink() -> None:
                 log.info("Serverga ulandi: %s", MES_URL)
                 global CONNECTED
                 CONNECTED = True
+                CONNECTED_EVENT.set()
                 reject_streak = 0
                 global _connected_once
                 if not _connected_once:
@@ -1306,7 +1311,11 @@ async def self_update() -> None:
                     _apply_update(new_exe)
         except Exception as exc:  # noqa: BLE001 — yangilanish hech qachon agentni yiqitmasin
             log.info("Yangilanish tekshiruvi o'tmadi: %s", exc)
-        await asyncio.sleep(6 * 3600)
+        # 6 soat YOKI qayta ulanish — qaysi biri oldin. Deploy serverni qayta
+        # ishga tushiradi -> WS uziladi -> qayta ulanish -> darhol tekshiruv.
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(CONNECTED_EVENT.wait(), timeout=6 * 3600)
+        CONNECTED_EVENT.clear()
 
 
 def start_tray() -> None:
