@@ -3,7 +3,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { Grid2x2, Lock, LogOut, ScanLine, WifiOff } from "lucide-react"
+import { Grid2x2, Lock, LogOut, Printer, ScanLine, WifiOff } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
@@ -158,6 +158,12 @@ function TerminalPage() {
   // "allaqachon skanerlangan" ni ko'rardi: skan bazaga tushar, ekranda esa
   // hech nima o'zgarmasdi. Server hodisani allaqachon chiqarayotgan ekan,
   // terminal uni O'ZI qilgan skan bilan bir xil banner va ovoz bilan ko'rsatadi.
+  // Printer agenti holati: boshlang'ich qiymat kontekstdan (6 daqiqalik oyna),
+  // jonli o'zgarish bridge.connected/disconnected dan — uzilish DARHOL ko'rinadi
+  // (kontekstning o'zi last_seen tufayli 6 daqiqagacha "onlayn" deb turardi).
+  const [printerLive, setPrinterLive] = useState<boolean | null>(null)
+  const ctxMachineId = ctx?.machine_id
+  useEffect(() => setPrinterLive(null), [ctxMachineId])
   const { online } = useMesWs(
     useCallback(
       (event) => {
@@ -173,6 +179,8 @@ function TerminalPage() {
         }
         const p = event.payload
         if (!ctx || p.machine_id !== ctx.machine_id) return
+        if (event.type === "bridge.connected") setPrinterLive(true)
+        else if (event.type === "bridge.disconnected") setPrinterLive(false)
         if (event.type === "scan.recorded") {
           const sid = Number(p.scan_id)
           // O'z skanimizni ikki marta ko'rsatmaymiz: `onSuccess` bannerni
@@ -422,6 +430,24 @@ function TerminalPage() {
         >
           {ctx?.machine_name ?? ctx?.post_name?.toUpperCase() ?? "—"}
         </div>
+
+        {/* Printer agenti — trayning webdagi aksi. Faqat chek chiqaradigan
+            (agent biriktirilgan) postda chiqadi; yashilda e'tibor tortmaydi,
+            uzilganda qizil: operator birinchi chekkacha kutmasdan biladi.
+            Chek baribir yo'qolmaydi (navbatda kutadi) — bu faqat ogohlantirish. */}
+        {(printerLive ?? ctx?.printer_online) != null && (
+          <div
+            className={cn(
+              "flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-sm font-bold",
+              (printerLive ?? ctx?.printer_online)
+                ? "text-muted-foreground"
+                : "bg-red-600 text-white",
+            )}
+          >
+            <Printer className="size-4" />
+            {(printerLive ?? ctx?.printer_online) ? null : "PRINTER UZILGAN"}
+          </div>
+        )}
 
         {/* Brigada — ixcham chiplar (alohida qator o'rniga, vertikal joy tejaladi).
             Ismni bosish o'sha odamning smenasini yakunlaydi. */}

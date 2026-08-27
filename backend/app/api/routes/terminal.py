@@ -109,6 +109,17 @@ async def read_terminal_context(db: SessionDep, user: TerminalUser, ctx: Termina
         post_code=post.code,
         post_name=post.name,
     )
+    # Chek chiqaradigan postda printer holati headerda ko'rinadi — operator
+    # birinchi chekkacha kutmasdan biladi. Ta'rif chop etishdagi bilan AYNAN
+    # bir xil (printer_kutilmoqda), panel bilan ham.
+    from app.tasks import AGENT_ONLINE_WINDOW, printer_agent
+
+    agent = await printer_agent(db, machine.id)
+    if agent is not None:
+        out.printer_online = not (
+            agent.last_seen_at is None
+            or datetime.now(UTC) - agent.last_seen_at > AGENT_ONLINE_WINDOW
+        )
     for session in await crew_sessions(db, machine.id):
         employee = await db.get(Employee, session.employee_id)
         out.crew.append(

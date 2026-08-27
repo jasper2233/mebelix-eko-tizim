@@ -97,6 +97,7 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
         token = websocket.headers.get("authorization", "").removeprefix("Bearer ").strip()
     agent_version = websocket.headers.get("x-agent-version", "").strip()[:20] or None
     agent_id: int | None = None
+    agent_machine_id: int | None = None
     token_hash: str | None = None
     can_print = True
     # bytes solishtirish: non-ASCII tokenda compare_digest(str) TypeError beradi
@@ -106,7 +107,7 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
         async with local_session() as db:
             row = (
                 await db.execute(
-                    select(BridgeAgent.id, BridgeAgent.can_print).where(
+                    select(BridgeAgent.id, BridgeAgent.can_print, BridgeAgent.machine_id).where(
                         BridgeAgent.token_hash == token_hash,
                         BridgeAgent.is_deleted == False,  # noqa: E712
                     )
@@ -115,7 +116,7 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
         if row is None:
             await websocket.close(code=WS_CLOSE_UNAUTHORIZED)
             return
-        agent_id, can_print = row
+        agent_id, can_print, agent_machine_id = row
     await websocket.accept()
 
     async def touch_agent() -> bool:
@@ -150,7 +151,9 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
         await websocket.close(code=WS_CLOSE_UNAUTHORIZED)
         return
     # Admin "Printerlar" sahifasi darhol "Ulandi" ko'rsatsin — 10s pollingni kutmasdan
-    await ws_manager.publish("bridge.connected", {"agent_id": agent_id})
+    await ws_manager.publish(
+        "bridge.connected", {"agent_id": agent_id, "machine_id": agent_machine_id}
+    )
     last_touch = asyncio.get_event_loop().time()
 
     # HAR chek aniq bir agentga manzillangan (`tasks.require_printer`), shuning
@@ -234,4 +237,7 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
     finally:
         await redis.close()
         with contextlib.suppress(Exception):
-            await ws_manager.publish("bridge.disconnected", {"agent_id": agent_id})
+            await ws_manager.publish(
+                "bridge.disconnected",
+                {"agent_id": agent_id, "machine_id": agent_machine_id},
+            )

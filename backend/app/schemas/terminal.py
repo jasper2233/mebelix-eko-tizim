@@ -57,6 +57,10 @@ class TerminalContext(BaseModel):
     #: Brigada — ish markazidagi OCHIQ smenalar (ARRA da ikki kishi birga ishlaydi).
     #: Bo'sh ro'yxat: hali hech kim smenani boshlamagan.
     crew: list[SessionRead] = []
+    #: None = bu ish markaziga chop etadigan agent biriktirilmagan (chip chiqmaydi);
+    #: aks holda paneldagi bilan bir xil 6 daqiqalik oyna bo'yicha onlaynlik.
+    #: Jonli o'zgarishlar `bridge.connected/disconnected` WS eventlaridan keladi.
+    printer_online: bool | None = None
 
 
 class TerminalOrderCard(BaseModel):
