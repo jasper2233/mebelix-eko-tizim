@@ -52,6 +52,13 @@ class BridgePairResponse(BaseModel):
     name: str
 
 
+class AgentRelease(BaseModel):
+    """CI qurgan oxirgi agent exe haqida ma'lumot (`agent-dist/version.json`)."""
+
+    version: str
+    sha256: str
+
+
 class BridgeLogPush(BaseModel):
     """Agent o'z log satrlarini yuboradi (diagnostika).
 

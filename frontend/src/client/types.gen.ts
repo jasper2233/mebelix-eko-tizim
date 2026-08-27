@@ -5,6 +5,22 @@ export type ClientOptions = {
 };
 
 /**
+ * AgentRelease
+ *
+ * CI qurgan oxirgi agent exe haqida ma'lumot (`agent-dist/version.json`).
+ */
+export type AgentRelease = {
+    /**
+     * Version
+     */
+    version: string;
+    /**
+     * Sha256
+     */
+    sha256: string;
+};
+
+/**
  * AuditLogRead
  */
 export type AuditLogRead = {
@@ -6149,3 +6165,33 @@ export type BridgeScanResponses = {
 };
 
 export type BridgeScanResponse = BridgeScanResponses[keyof BridgeScanResponses];
+
+export type AgentLatestReleaseData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/bridge-agents/latest';
+};
+
+export type AgentLatestReleaseResponses = {
+    /**
+     * Successful Response
+     */
+    200: AgentRelease;
+};
+
+export type AgentLatestReleaseResponse = AgentLatestReleaseResponses[keyof AgentLatestReleaseResponses];
+
+export type DownloadAgentExeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/bridge-agents/download';
+};
+
+export type DownloadAgentExeResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};

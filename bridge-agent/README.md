@@ -13,9 +13,10 @@ terminallariga hech narsa kerak emas (ular brauzerdan tugmani bosadi).
 
 1. GoDEX drayverini o'rnating (printer USB ulangan holda). Agent printerni
    nomidan o'zi topadi ("godex" qidiradi) — sozlash shart emas.
-2. `mebelix-agent.exe` ni printerli kompyuterga ko'chiring (qo'lda tarqatiladi —
-   flashka yoki lokal tarmoq; panel ichidagi yuklab olish tugmasi olib tashlangan,
-   chunki serverda eski nusxa qolib adashtirardi). Python ham, `pip` ham kerak emas.
+2. `mebelix-agent.exe` ni admin panel > Printer agentlar sahifasidagi havoladan
+   yuklab oling (`/api/v1/bridge-agents/download` — CI har deploy'da windows
+   runner'da qurib serverga qo'yadi, eskirgan nusxa bo'lishi mumkin emas; 2026-08-02
+   da olib tashlangan tugma shu kafolat bilan qaytdi). Python ham, `pip` ham kerak emas.
 3. O'sha sahifada "Yangi agent" 8 belgili bir martalik kod beradi (masalan
    `P7HJ-N46U`) — 15 daqiqa amal qiladi.
 4. Exe'ni ishga tushiring — kichik oyna chiqadi, ikkita maydon: server manzili
@@ -30,6 +31,19 @@ huquqi kerak emas). Ishlayotganini admin paneldagi **Ulandi** belgisi bildiradi;
 tafsilotlar `%APPDATA%\MebelixAgent\agent.log` da (1 MB x 3 rotatsiya).
 
 Kod muddati o'tishi ulangan agentga ta'sir qilmaydi — token muddatsiz.
+
+## Avto-yangilanish (v1.4.0+)
+
+Agent har 6 soatda `GET /api/v1/bridge-agents/latest` dan versiyani so'raydi.
+Yangisi bo'lsa JIM yangilanadi: exe'ni yuklab oladi, sha256 tekshiradi,
+`update.bat` orqali o'zini almashtirib qayta ishga tushadi (~10 soniya).
+Token va sozlamalar `%APPDATA%` da — ulanish saqlanadi; exe yo'li o'zgarmagani
+uchun avtostart ham amal qilaveradi. Flashka bilan tarqatish endi faqat BIRINCHI
+o'rnatishda kerak (yoki paneldagi havoladan). Panelda eski versiyali agent sariq
+`v1.3.0 → v1.4.0` belgisi bilan ko'rinadi; 6+ soat o'tsa ham yangilanmasa —
+`agent.log` da "Yangilanish tekshiruvi o'tmadi" qatorini qidiring.
+sha256 mos kelmasa (yarim yuklangan fayl) o'tkazib yuboriladi va keyingi siklda
+qayta urinadi. Dev-skript (exe emas) o'zini yangilamaydi.
 
 Agentni ikki marta ishga tushirib bo'lmaydi: mutex ikkinchi nusxani to'xtatib,
 "allaqachon ishlab turibdi" deydi. Oyna ko'rinmagani uchun bu tez-tez uchraydi.

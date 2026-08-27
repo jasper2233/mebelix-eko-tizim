@@ -13,11 +13,14 @@ admin endpointlar esa har biri AdminUser bilan o'zi himoyalanadi.
 """
 
 import hashlib
+import json
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi.responses import FileResponse
 from redis.asyncio import Redis as AsyncRedis
 from sqlalchemy import select, update
 
@@ -28,6 +31,7 @@ from app.core.ws import ws_manager
 from app.crud import crud_bridge_agents, log_action
 from app.models import BridgeAgent, Machine, Post
 from app.schemas.bridge_agents import (
+    AgentRelease,
     BridgeAgentCreate,
     BridgeAgentRead,
     BridgeAgentUpdate,
@@ -393,6 +397,29 @@ async def bridge_scan(
     return await finalize_scan(db, outcome, source=f" (stanok, {agent.name})", agent_id=agent.id)
 
 
-# "Agentni yuklab olish" endpointi olib tashlangan (2026-08-02): u diskdagi
-# eski exe'ni berib adashtirardi — deploy uploads/ ni yangilamaydi. Agent exe
-# qo'lda tarqatiladi (bridge-agent/README.md).
+# Agent exe tarqatish (2026-08-27, flashka o'rniga). 2026-08-02 da yuklab olish
+# endpointi olib tashlangan edi — sababi diskda ESKI exe qolib adashtirishi.
+# Endi manba yagona: CI har deploy'da windows-runner'da exe qurib version.json
+# (versiya + sha256) bilan `agent-dist/` ga qo'yadi — eskirishning iloji yo'q.
+# Ochiq (himoyasiz): agentda sessiya yo'q, exe sir emas, /pair ham ochiq.
+
+_AGENT_DIST = Path("agent-dist")
+
+
+@router.get("/latest", response_model=AgentRelease, operation_id="agent_latest_release")
+async def agent_latest_release() -> AgentRelease:
+    """Oxirgi agent versiyasi — agent har 6 soatda shu yerdan tekshiradi."""
+    manifest = _AGENT_DIST / "version.json"
+    if not manifest.is_file():
+        raise NotFoundException("Agent fayli serverda yo'q — CI hali qurmagan.")
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    return AgentRelease(version=data["version"], sha256=data["sha256"])
+
+
+@router.get("/download", operation_id="download_agent_exe")
+async def download_agent_exe() -> FileResponse:
+    """mebelix-agent.exe — agent o'zini yangilashda, admin birinchi o'rnatishda."""
+    exe = _AGENT_DIST / "mebelix-agent.exe"
+    if not exe.is_file():
+        raise NotFoundException("Agent fayli serverda yo'q — CI hali qurmagan.")
+    return FileResponse(exe, media_type="application/octet-stream", filename="mebelix-agent.exe")

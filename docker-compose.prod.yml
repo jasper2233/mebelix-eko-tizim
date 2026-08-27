@@ -68,6 +68,8 @@ services:
       # Yuklangan fayllar (.project, SCX, anketa xona rasmlari) konteyner
       # ichida turadi — volumesiz har deploy yangi konteyner bilan o'chib ketardi.
       - uploads_data:/app/backend/uploads
+      # CI qurgan agent exe (deploy rsync qo'yadi) — /bridge-agents/latest,/download
+      - ./agent-dist:/app/backend/agent-dist:ro
     env_file:
       - .env
     environment:

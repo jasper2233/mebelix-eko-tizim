@@ -829,6 +829,80 @@ def start_scan_forward() -> None:
     log.info("Skan-forvard yoqildi — skaner o'qigani MES'ga ham boradi")
 
 
+def _newer(latest: str, current: str) -> bool:
+    """'1.4.1' > '1.4.0'. Buzuq satr — yangilanish yo'q deb hisoblanadi."""
+    try:
+        lt = tuple(int(x) for x in latest.split("."))
+        ct = tuple(int(x) for x in current.split("."))
+        return lt > ct
+    except ValueError:
+        return False
+
+
+def _apply_update(new_exe: Path) -> None:
+    """O'zini almashtirish: .bat agent chiqishini kutadi, exe'ni almashtiradi,
+    qayta ishga tushiradi. Yo'l o'zgarmaydi — avtostart registri amal qilaveradi;
+    token/sozlama %APPDATA% da — ulanish saqlanadi."""
+    import subprocess
+
+    exe = Path(sys.executable)
+    bat = CONFIG_DIR / "update.bat"
+    bat.write_text(
+        "@echo off\r\n"
+        "timeout /t 2 /nobreak >nul\r\n"
+        ":kutish\r\n"
+        f'del "{exe}" >nul 2>&1\r\n'
+        f'if exist "{exe}" (timeout /t 1 /nobreak >nul & goto kutish)\r\n'
+        f'move /y "{new_exe}" "{exe}" >nul\r\n'
+        f'start "" "{exe}"\r\n'
+        f'del "%~f0"\r\n',
+        encoding="ascii",
+    )
+    # DETACHED + NO_WINDOW: bat agent o'lgandan keyin ham yashaydi, oyna ochmaydi
+    subprocess.Popen(  # noqa: S602
+        ["cmd", "/c", str(bat)], creationflags=0x00000008 | 0x08000000
+    )
+    log.info("Yangilanish qo'llanmoqda — agent qayta ishga tushadi")
+    os._exit(0)  # navbat fayli fsync qilingan, tozalash shart emas
+
+
+async def self_update() -> None:
+    """Har 6 soatda serverdan versiya so'raydi; yangi bo'lsa JIM yangilanadi.
+
+    Flashka bilan tarqatish o'rniga: CI har deploy'da exe qurib serverga qo'yadi,
+    agent o'zi tortadi. Operator hech narsa qilmaydi — tsexda "yuklab ol" tugmasi
+    ishlamaydi. sha256 mos kelmasa (yarim yuklangan fayl) o'tkazib yuboriladi,
+    keyingi siklda qayta urinadi. Dev-skript (frozen emas) o'zini yangilamaydi."""
+    import hashlib
+    import urllib.request
+
+    if not getattr(sys, "frozen", False):
+        return
+    await asyncio.sleep(60)  # start + pairing tinchlansin
+    while True:
+        try:
+            http = MES_URL.replace("wss://", "https://", 1).replace("ws://", "http://", 1).rstrip("/")
+            info = json.loads(
+                await asyncio.to_thread(
+                    lambda: urllib.request.urlopen(f"{http}/api/v1/bridge-agents/latest", timeout=15).read()
+                )
+            )
+            if _newer(str(info.get("version", "")), AGENT_VERSION):
+                log.info("Yangilanish topildi: v%s -> v%s", AGENT_VERSION, info["version"])
+                new_exe = CONFIG_DIR / "mebelix-agent-new.exe"
+                data = await asyncio.to_thread(
+                    lambda: urllib.request.urlopen(f"{http}/api/v1/bridge-agents/download", timeout=120).read()
+                )
+                if hashlib.sha256(data).hexdigest() != info.get("sha256"):
+                    log.warning("Yangilanish sha256 mos emas — o'tkazib yuborildi")
+                else:
+                    new_exe.write_bytes(data)
+                    _apply_update(new_exe)
+        except Exception as exc:  # noqa: BLE001 — yangilanish hech qachon agentni yiqitmasin
+            log.info("Yangilanish tekshiruvi o'tmadi: %s", exc)
+        await asyncio.sleep(6 * 3600)
+
+
 async def main() -> None:
     if not BRIDGE_TOKEN:
         raise SystemExit(
@@ -837,7 +911,7 @@ async def main() -> None:
     log.info("MebeliX agent v%s", AGENT_VERSION)
     log.info("Printer: %s", PRINTER_NAME or "TOPILMADI — GoDEX drayverini o'rnating")
     start_scan_forward()
-    await asyncio.gather(uplink(), flusher(), log_shipper())
+    await asyncio.gather(uplink(), flusher(), log_shipper(), self_update())
 
 
 if __name__ == "__main__":

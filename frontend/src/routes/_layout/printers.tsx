@@ -163,6 +163,15 @@ function AgentLogs({ agent }: { agent: BridgeAgentRead }) {
 }
 
 function PrintersPage() {
+  // CI qurgan oxirgi exe versiyasi — eski agentlarni belgilash uchun.
+  // 404 = CI hali qurmagan (dev): belgi shunchaki chiqmaydi.
+  const { data: latest } = useQuery({
+    queryKey: ["bridge-agents", "latest"],
+    queryFn: async () =>
+      (await BridgeAgentsService.agentLatestRelease()).data.version,
+    retry: false,
+    staleTime: 10 * 60 * 1000,
+  })
   const queryClient = useQueryClient()
   const {
     data: agents,
@@ -191,7 +200,21 @@ function PrintersPage() {
     <div>
       <PageHeader
         title="Printer agentlar"
-        description="Chek printerlari — ulanish kodi bilan o'rnatiladi, serverga kirish shart emas"
+        // Havola CI qurgan exe'ga boradi — diskda eskirgan nusxa bo'lishi
+        // mumkin emas (2026-08-02 dagi olib tashlash sababi bartaraf)
+        description={
+          <>
+            Chek printerlari — ulanish kodi bilan o'rnatiladi, serverga kirish
+            shart emas.{" "}
+            <a
+              href="/api/v1/bridge-agents/download"
+              className="underline underline-offset-4"
+              download
+            >
+              mebelix-agent.exe yuklab olish
+            </a>
+          </>
+        }
         actions={<AddAgent />}
       />
 
@@ -231,7 +254,9 @@ function PrintersPage() {
             </TableHeader>
             <TableBody>
               {agents?.length ? (
-                agents.map((a) => <AgentRow key={a.id} agent={a} />)
+                agents.map((a) => (
+                  <AgentRow key={a.id} agent={a} latest={latest} />
+                ))
               ) : (
                 <EmptyRow colSpan={7}>
                   Agentlar yo'q. "Yangi agent" bilan ulanish kodi yarating.
@@ -245,7 +270,13 @@ function PrintersPage() {
   )
 }
 
-function AgentRow({ agent }: { agent: BridgeAgentRead }) {
+function AgentRow({
+  agent,
+  latest,
+}: {
+  agent: BridgeAgentRead
+  latest?: string
+}) {
   const queryClient = useQueryClient()
   const [confirm, setConfirm] = useState<"code" | "delete" | null>(null)
   // Ish markazi almashinuvi tasdiq bilan: noto'g'ri tanlov keyingi barcha skan-forvard
@@ -324,9 +355,21 @@ function AgentRow({ agent }: { agent: BridgeAgentRead }) {
         {online ? (
           <span className="inline-flex items-center gap-1.5">
             <Badge>Ulandi</Badge>
-            {/* null = eski (versiyasiz) exe — yangilash kerakligi darhol ko'rinadi */}
-            <span className="num text-xs text-muted-foreground">
-              {agent.version ? `v${agent.version}` : "eski exe"}
+            {/* null = eski (versiyasiz) exe. Versiya oxirgisidan orqada bo'lsa
+                sariq: agent 6 soat ichida o'zi yangilanadi, undan keyin ham
+                orqada tursa self-update ishlamayapti (log'ga qarash kerak) */}
+            <span
+              className={
+                agent.version && latest && agent.version !== latest
+                  ? "num text-xs font-semibold text-amber-600"
+                  : "num text-xs text-muted-foreground"
+              }
+            >
+              {agent.version
+                ? agent.version !== latest && latest
+                  ? `v${agent.version} → v${latest}`
+                  : `v${agent.version}`
+                : "eski exe"}
             </span>
           </span>
         ) : agent.paired ? (
