@@ -428,7 +428,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 
 ### `frontend/src/components/Terminal/ScanStrip.tsx`
 
-**Maqsadi:** oxirgi skan natijasi + BEKOR QILISH tugmasi, har post ekranining tepasida (`PostScreen` orqali). Tsex shovqinida ovoz signaliga ishonib bo'lmaydi. `LastScan` tipi ham shu yerda eksport qilinadi. Props: `scan`, `canUndo` (60 s oynasi — taymer chaqiruvchida), `onUndo`.
+**Maqsadi:** oxirgi skan natijasi + BEKOR QILISH tugmasi, har post ekranining tepasida (`PostScreen` orqali). Tsex shovqinida ovoz signaliga ishonib bo'lmaydi. `LastScan` tipi ham shu yerda eksport qilinadi. Props: `scan`, `canUndo` (60 s oynasi — taymer chaqiruvchida), `onUndo`, `birlik?` (KROMKA'da "qirra" — qoldiq nimada o'lchanishini aytadi). ARRA + xarita ochiq holatda MUVAFFAQIYAT banneri ko'rsatilmaydi (terminal.tsx WS shoxida filtr): chek bosilgan katakning yashil bo'lishi o'zi tasdiq, banner dublikat edi, undagi BEKOR QILISH esa yarim-tuzoq — skanni qaytarib chek bayrog'ini qoldirardi (to'liq bekor — katak dialogida). Xato/rad (scan.rejected) arrada ham ko'rinaveradi.
 
 ### `frontend/src/components/Terminal/ShiftGate.tsx`
 
