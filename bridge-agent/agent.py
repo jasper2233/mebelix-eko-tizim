@@ -47,7 +47,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.4.2"
+AGENT_VERSION = "1.4.3"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -1266,7 +1266,8 @@ def _apply_update(new_exe: Path) -> None:
 
 
 async def self_update() -> None:
-    """Har 6 soatda serverdan versiya so'raydi; yangi bo'lsa JIM yangilanadi.
+    """Serverdan versiya so'raydi (qayta ulanishda darhol, zaxira — har 10
+    daqiqada); yangi bo'lsa JIM yangilanadi.
 
     Flashka bilan tarqatish o'rniga: CI har deploy'da exe qurib serverga qo'yadi,
     agent o'zi tortadi. Operator hech narsa qilmaydi — tsexda "yuklab ol" tugmasi
@@ -1311,10 +1312,13 @@ async def self_update() -> None:
                     _apply_update(new_exe)
         except Exception as exc:  # noqa: BLE001 — yangilanish hech qachon agentni yiqitmasin
             log.info("Yangilanish tekshiruvi o'tmadi: %s", exc)
-        # 6 soat YOKI qayta ulanish — qaysi biri oldin. Deploy serverni qayta
-        # ishga tushiradi -> WS uziladi -> qayta ulanish -> darhol tekshiruv.
+        # 10 daqiqa YOKI qayta ulanish — qaysi biri oldin. Deploy serverni
+        # qayta ishga tushiradi -> WS uziladi -> qayta ulanish -> darhol
+        # tekshiruv. 10 daqiqalik zaxira avvalgi 6 soat o'rniga: tekshiruv
+        # bitta mitti GET, bo'sh turgan agent yangilanishni soatlab kutib
+        # o'tirishining hech qanday foydasi yo'q edi.
         with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(CONNECTED_EVENT.wait(), timeout=6 * 3600)
+            await asyncio.wait_for(CONNECTED_EVENT.wait(), timeout=600)
         CONNECTED_EVENT.clear()
 
 
