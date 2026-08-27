@@ -70,6 +70,9 @@ class ScanOutcome:
     instance: PartInstance
     qoldiq: int
     duplicate: bool = False
+    #: Chek chiqarishdan tug'ilgan avto-skan (finalize_scan(auto=True) qo'yadi) —
+    #: WS payload'iga chiqadi, terminal muvaffaqiyat bannerini bosishda ishlatadi
+    auto: bool = False
     scx_file_ids: list[int] = field(default_factory=list)
     order_stage_completed: bool = False
     order_completed: bool = False
@@ -729,6 +732,13 @@ async def publish_scan_events(outcomes: list[ScanOutcome]) -> None:
             # o'zi qilgan skanni ikki marta ko'rsatmasligi kerak.
             if event["type"] == "scan.recorded":
                 event["payload"]["scan_id"] = outcome.scan.id
+                # `auto` — skan QO'L skanidan emas, chek chiqarishdan tug'ilgan
+                # (ARRA doim, ROVER roverda kesiladigan detalda). Terminal bunga
+                # qarab muvaffaqiyat bannerini bosadi: katakning yashil bo'lishi
+                # o'zi tasdiq. Post nomi bo'yicha emas — ROVER ham chek chiqaradi,
+                # ham qo'lda skan oladi, farq postda emas, skanning kelib
+                # chiqishida.
+                event["payload"]["auto"] = outcome.auto
             await ws_manager.publish(
                 event["type"], event["payload"], post_id=event.get("post_id"), machine_id=event.get("machine_id")
             )
@@ -741,6 +751,7 @@ async def finalize_scan(
     user_id: int | None = None,
     source: str = "",
     agent_id: int | None = None,
+    auto: bool = False,
 ) -> "ScanResult":
     """Muvaffaqiyatli skanning YAKUNI — log + commit + WS publish + ScanResult.
     Terminal (scans.py) va stanok skan-forvardi (bridge_agents.py) aynan shu
@@ -748,6 +759,7 @@ async def finalize_scan(
     from app.crud import log_action
     from app.schemas.terminal import ScanResult
 
+    outcome.auto = auto
     if not outcome.duplicate:
         meta: dict[str, Any] = {"post_id": outcome.scan.post_id, "machine_id": outcome.scan.machine_id}
         if agent_id is not None:

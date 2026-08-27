@@ -84,10 +84,6 @@ function TerminalPage() {
   // Ro'yxatdagi xarita ikonkasi: xarita shu detal belgilangan holda ochiladi
   const [focusPart, setFocusPart] = useState<string | undefined>(undefined)
   const [mapOrderId, setMapOrderIdRaw] = useState<number | null>(null)
-  // WS ishlov beruvchisi uchun ref: state bog'liqlik bo'lsa har xarita
-  // ochilishida WS qayta ulanardi
-  const mapOrderIdRef = useRef<number | null>(null)
-  mapOrderIdRef.current = mapOrderId
   const setMapOrderId = (v: number | null) => {
     setMapOrderIdRaw(v)
     if (v === null) {
@@ -193,12 +189,14 @@ function TerminalPage() {
           // O'z skanimizni ikki marta ko'rsatmaymiz: `onSuccess` bannerni
           // allaqachon qo'ygan va unda BEKOR QILISH uchun `scanId` bor.
           if (ownScansRef.current.delete(sid)) return
-          // ARRA + xarita ochiq: muvaffaqiyat banneri CHIQMAYDI. Chek bosilgan
-          // katak o'zi yashil bo'ladi — banner dublikat shovqin edi, undagi
-          // BEKOR QILISH esa yarim-tuzoq: skanni qaytarib chek bayrog'ini
-          // qoldirardi (to'liq bekor — katak dialogida). XATO esa baribir
-          // pastdagi scan.rejected shoxidan ko'rinadi.
-          if (ctx.post_code === "ARRA" && mapOrderIdRef.current !== null) return
+          // Chek chiqarishdan tug'ilgan AVTO-skan (payload.auto — server qo'yadi):
+          // muvaffaqiyat banneri chiqmaydi. Chek bosilgan katak o'zi yashil
+          // bo'ladi — banner dublikat shovqin edi, undagi BEKOR QILISH esa
+          // yarim-tuzoq: skanni qaytarib chek bayrog'ini qoldirardi (to'liq
+          // bekor — katak dialogida). Post nomi bo'yicha EMAS: ROVER ham chek
+          // chiqaradi, ham qo'lda skan oladi — farq skanning kelib chiqishida.
+          // XATO baribir pastdagi scan.rejected shoxidan ko'rinadi.
+          if (p.auto) return
           if (!yangiXabar(String(p.qr_text ?? p.part_code ?? ""))) return
           playSuccess()
           lastScanAtRef.current = Date.now()

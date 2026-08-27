@@ -1091,7 +1091,7 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
                 qr_text=qr_text,
                 client_event_id=f"cutprint-{instance.id}-{int(datetime.now(UTC).timestamp())}",
             )
-            await finalize_scan(db, outcome, user_id=user.id, source=" (chek chiqarish bilan)")
+            await finalize_scan(db, outcome, user_id=user.id, source=" (chek chiqarish bilan)", auto=True)
         except ScanRejected:
             await db.rollback()
 
