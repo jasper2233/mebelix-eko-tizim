@@ -47,11 +47,13 @@ function Layout() {
             burchakda qoladi, hech narsaga tegmaydi. Kontent (header/main)
             relative — suv belgisi ustidan bo'yaladi; kartalar bg'i uni o'zi
             yopadi, faqat sahifaning nafas joylarida 4.5% da ko'rinadi.
-            PNG emas VEKTOR (BrandLoader'dagi potrace-path) — 34rem da o'tkir. */}
+            PNG emas VEKTOR (BrandLoader'dagi potrace-path) — katta o'lchamda o'tkir.
+            TO'LIQ ko'rinadi (qirqilmaydi): MX oyoqlari uchli — o'rtasidan
+            kesilsa "singan" bo'lib o'qilardi. */}
         <svg
           viewBox={MX_VIEWBOX}
           aria-hidden="true"
-          className="pointer-events-none fixed -bottom-24 -right-20 z-0 w-[34rem] text-primary opacity-[0.045] select-none"
+          className="pointer-events-none fixed bottom-6 right-8 z-0 w-[26rem] text-primary opacity-[0.05] select-none"
         >
           <path d={MX_PATH} fill="currentColor" />
         </svg>
