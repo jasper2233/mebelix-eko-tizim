@@ -199,24 +199,27 @@
 
 /* BrandLoader (Common/BrandLoader.tsx): logo o'zini chizadi -> to'ladi ->
    so'nadi. pathLength=1 normallashgan — dasharray real uzunlikka bog'liq emas.
-   Sikl 2.4s: 0-55% chizish, 55-72% to'lish, 72-86% turish, 86-100% so'nish. */
+   Sikl 1.8s: 0-25% chizish (450ms), 25-42% to'lish, 42-80% turish, 80-100%
+   so'nish. Chizish ATAYLAB qisqa: router loader'ni kamida 500ms ko'rsatadi
+   (defaultPendingMinMs), ilgari esa chizish 1320ms ga cho'zilib, qisqa
+   yuklanishlarda logotipning bir qismi umuman chizilmay qolardi. */
 @keyframes mx-loader {
   0% {
     stroke-dashoffset: 1;
     fill-opacity: 0;
     opacity: 1;
   }
-  55% {
+  25% {
     stroke-dashoffset: 0;
     fill-opacity: 0;
     opacity: 1;
   }
-  72% {
+  42% {
     stroke-dashoffset: 0;
     fill-opacity: 1;
     opacity: 1;
   }
-  86% {
+  80% {
     stroke-dashoffset: 0;
     fill-opacity: 1;
     opacity: 1;
@@ -229,7 +232,7 @@
 }
 .mx-loader-path {
   stroke-dasharray: 1;
-  animation: mx-loader 2.4s cubic-bezier(0.45, 0, 0.3, 1) infinite;
+  animation: mx-loader 1.8s cubic-bezier(0.45, 0, 0.3, 1) infinite;
 }
 
 /* Login cutmap art (AuthLayout) */
