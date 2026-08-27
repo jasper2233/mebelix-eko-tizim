@@ -431,27 +431,21 @@ function TerminalPage() {
           {ctx?.machine_name ?? ctx?.post_name?.toUpperCase() ?? "—"}
         </div>
 
-        {/* MES agent — trayning webdagi aksi, agent biriktirilgan postda.
-            Nomi "printer" EMAS: agent skan-forvard ham qiladi, faqat-skan
-            stansiyada o'lsa skanlar MES'ga jimgina tushmay qolardi. Ikonka
-            rolni aytadi (printer / skaner), matn bitta. Onlaynda e'tibor
-            tortmaydi, uzilganda qizil. Cheklar baribir yo'qolmaydi (navbatda
-            kutadi) — bu faqat ogohlantirish. */}
-        {(printerLive ?? ctx?.agent_online) != null && (
-          <div
-            className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-sm font-bold",
-              (printerLive ?? ctx?.agent_online)
-                ? "text-muted-foreground"
-                : "bg-red-600 text-white",
-            )}
-          >
+        {/* MES agent uzilganda QIZIL chip; boshqa hamma holatda HECH NARSA.
+            Onlayn holat ko'rsatilmaydi: tray o'sha mashinada doimiy holatni
+            beradi, terminalda dublikat shovqin bo'lardi — chip yo'qolishi
+            "tuzaldi" tasdig'i. Faqat agent biriktirilgan postda ma'no bor
+            (agent_online null = signal yo'q). Matn ikonkasiz emas: qizil
+            belgi yolg'iz o'zini tushuntirmaydi. Ikonka rolni aytadi
+            (printer / skaner). Cheklar baribir yo'qolmaydi — ogohlantirish. */}
+        {(printerLive ?? ctx?.agent_online) === false && (
+          <div className="flex shrink-0 items-center gap-1.5 rounded-md bg-red-600 px-2 py-1 text-sm font-bold text-white">
             {ctx?.agent_prints ? (
               <Printer className="size-4" />
             ) : (
               <ScanLine className="size-4" />
             )}
-            {(printerLive ?? ctx?.agent_online) ? null : "MES AGENT UZILGAN"}
+            AGENT UZILGAN
           </div>
         )}
 
