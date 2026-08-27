@@ -18,11 +18,17 @@ export function ScanStrip({
   scan,
   canUndo,
   onUndo,
+  birlik,
 }: {
   scan: LastScan
   /** Bekor qilish oynasi 60 s (TZ 8.6) — chaqiruvchi taymer bilan hisoblaydi */
   canUndo: boolean
   onUndo: () => void
+  /** Qoldiq birligi — KROMKA'da "qirra" (har qirra alohida skan, TZ 5.4.3).
+   *  Yalang'och "Qoldiq: 3" kromkachini adashtirardi: 3 nima — detalmi, skanmi?
+   *  U 4 qirralik detalni 2 skan bilan "tugadi" deb ketar, prisadka esa E004
+   *  bilan to'xtatardi. */
+  birlik?: string
 }) {
   if (!scan) return null
   const ok = scan.kind === "ok"
@@ -44,6 +50,7 @@ export function ScanStrip({
           </span>
           <span className="text-base text-green-800">
             Qoldiq: <b>{scan.qoldiq}</b>
+            {birlik ? ` ${birlik}` : ""}
           </span>
         </>
       ) : scan.kind === "info" ? (

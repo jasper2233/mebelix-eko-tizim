@@ -393,6 +393,7 @@ function TerminalPage() {
       scan={lastScan}
       canUndo={canUndo}
       onUndo={() => setUndoOpen(true)}
+      birlik={ctx?.post_code === "KROMKA" ? "qirra" : undefined}
     />
   )
 
