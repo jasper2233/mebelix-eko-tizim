@@ -14,7 +14,8 @@ O'rnatish (faqat printer ulangan kompyuterda):
     admin panelda Ulandi/Uzilgan bo'lib ko'rinadi.
     Sozlama: %APPDATA%\MebelixAgent\.env, loglar: %APPDATA%\MebelixAgent\agent.log
 
-Printer avto-topiladi (nomida "godex" bor Windows printeri) — sozlash shart emas.
+Printer avto-topiladi (tanish yorliq-printer rusumlari: godex, xprinter,
+gprinter, tsc, zebra, argox, postek). Boshqa rusum — PRINTER_NAME bilan.
 
 Env sozlamalari (ixtiyoriy, pairing o'zi to'ldiradi):
     MES_URL       — server manzili (wss://... yoki ws://host:8000)
@@ -46,7 +47,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.4.0"
+AGENT_VERSION = "1.4.1"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -586,18 +587,37 @@ def _pair() -> None:
     )
 
 
+#: Yorliq printerlarining tanish rusumlari — avto-topish shu ro'yxat bo'yicha.
+#: RUSUMGA QOTIB QOLMASLIK uchun ro'yxat keng: tsexda GoDEX ham, Xprinter ham
+#: bor (Rover). Ro'yxatda yo'q rusum kelsa — PRINTER_NAME env bilan qo'lda
+#: ko'rsatiladi (%APPDATA%\MebelixAgent\.env), chop etish yo'li GDI —
+#: har qanday Windows drayveri bilan ishlaydi.
+_PRINTER_KEYWORDS = ("godex", "xprinter", "gprinter", "tsc", "zebra", "argox", "postek")
+
+
 def _detect_printer() -> str:
-    """PRINTER_NAME berilmasa nomida 'godex' bor lokal printerni topadi —
-    printer almashsa ham config o'zgarmaydi, drayver o'rnatilsa bas."""
+    """PRINTER_NAME berilmasa nomi tanish yorliq-printerga o'xshagan lokal
+    printerni topadi — printer almashsa ham config o'zgarmaydi, drayver
+    o'rnatilsa bas."""
     try:
         import win32print
 
         for p in win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL):
-            if "godex" in p[2].lower():
+            if any(k in p[2].lower() for k in _PRINTER_KEYWORDS):
                 return p[2]
     except Exception:  # noqa: BLE001 — win32 yo'q (Linux) yoki printer topilmadi
         pass
     return ""
+
+
+def _local_printer_names() -> list[str]:
+    """Diagnostika: kompyuterda qanday printerlar ko'rinayapti."""
+    try:
+        import win32print
+
+        return [p[2] for p in win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL)]
+    except Exception:  # noqa: BLE001
+        return []
 
 
 _load_dotenv()
@@ -765,7 +785,10 @@ def _print_png_gdi(png_b64: str) -> None:
 def send_to_printer(png_b64: str) -> bool:
     """PNG yorliqni USB GoDEX'ga chiqaradi. False = printer band/yo'q — job navbatda qoladi."""
     if not PRINTER_NAME:
-        log.error("GoDEX printer topilmadi — drayver o'rnatilganini tekshiring")
+        log.error(
+            "Yorliq printeri topilmadi — drayver o'rnatilganini tekshiring. Bor printerlar: %s",
+            ", ".join(_local_printer_names()) or "yo'q",
+        )
         return False
     if not png_b64:
         log.warning(
@@ -963,9 +986,12 @@ async def uplink() -> None:
                         if not refresh_printer():
                             await ws.send(json.dumps({"ok": False}))
                             log.error(
-                                "GoDEX printer topilmadi — job rad etildi, "
-                                "serverda navbatda qoladi (instance %s)",
+                                "Yorliq printeri topilmadi — job rad etildi, "
+                                "serverda navbatda qoladi (instance %s). "
+                                "Kompyuterdagi printerlar: %s. Kerakligini "
+                                "PRINTER_NAME bilan .env da ko'rsatish mumkin.",
                                 msg.get("instance_id"),
+                                ", ".join(_local_printer_names()) or "yo'q",
                             )
                             continue
                         if already_seen(job_id):
@@ -1262,7 +1288,7 @@ async def main() -> None:
             "Token yo'q — agentni ishga tushirib admin paneldagi ulanish kodini kiriting"
         )
     log.info("MebeliX MES agent v%s", AGENT_VERSION)
-    log.info("Printer: %s", PRINTER_NAME or "TOPILMADI — GoDEX drayverini o'rnating")
+    log.info("Printer: %s", PRINTER_NAME or "TOPILMADI — yorliq printeri drayverini o'rnating")
     start_scan_forward()
     start_tray()
     await asyncio.gather(uplink(), flusher(), log_shipper(), self_update())

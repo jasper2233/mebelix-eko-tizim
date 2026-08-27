@@ -1,7 +1,7 @@
 # MebeliX bridge-agent
 
 Printerli kompyuterdagi yengil servis (TZ 2.2.2): masofaviy serverdan chop etish
-buyruqlarini olib, **GoDEX G500-U (USB)** printerga Windows drayveri orqali
+buyruqlarini olib, **USB yorliq printeriga** (GoDEX, Xprinter va b.) Windows drayveri orqali
 chiqaradi. Internet yoki printer uzilganda buyruqlar `print-queue.jsonl` faylida
 saqlanadi va aloqa tiklangach avtomatik bajariladi — yorliq yo'qolmaydi.
 
@@ -11,8 +11,10 @@ terminallariga hech narsa kerak emas (ular brauzerdan tugmani bosadi).
 
 ## O'rnatish
 
-1. GoDEX drayverini o'rnating (printer USB ulangan holda). Agent printerni
-   nomidan o'zi topadi ("godex" qidiradi) — sozlash shart emas.
+1. Printer drayverini o'rnating (USB ulangan holda). Agent printerni nomidan
+   o'zi topadi (tanish rusumlar: godex, xprinter, gprinter, tsc, zebra, argox,
+   postek) — sozlash shart emas; boshqa rusum `PRINTER_NAME` bilan ko'rsatiladi.
+   Chop etish Windows GDI orqali — har qanday drayver ishlaydi.
 2. `mebelix-agent.exe` ni admin panel > MES agentlar sahifasidagi havoladan
    yuklab oling (`/api/v1/bridge-agents/download` — CI har deploy'da windows
    runner'da qurib serverga qo'yadi, eskirgan nusxa bo'lishi mumkin emas; 2026-08-02

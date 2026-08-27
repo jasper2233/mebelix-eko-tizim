@@ -333,7 +333,7 @@ Termoprinter uchun ikki qat'iy qoida kodga o'rnatilgan: `draw.fontmode = "1"` (a
 
 `send_to_printer(png_b64)` da bitta yo'l bor: `_print_png_gdi()` — win32ui/PIL orqali Windows drayveriga rasm chizish. Bu GibSaw'ning "Used the printer driver" rejimi bilan bir xil; admin huquqi ham, printer share ham kerak emas.
 
-Printer **avtomatik topiladi**: `_detect_printer()` `win32print.EnumPrinters(PRINTER_ENUM_LOCAL)` bo'yicha yuradi va nomida `godex` bo'lgan birinchi lokal printerni oladi. Shuning uchun odatdagi o'rnatishda hech qanday printer sozlamasi yozilmaydi — GoDEX drayveri o'rnatilgan bo'lsa bas, printer almashsa ham config o'zgarmaydi. `PRINTER_NAME` env'i faqat qo'lda override uchun (avto-topish o'rniga).
+Printer **avtomatik topiladi**: `_detect_printer()` `win32print.EnumPrinters(PRINTER_ENUM_LOCAL)` bo'yicha yuradi va nomi tanish yorliq-printer rusumiga (`_PRINTER_KEYWORDS`: godex, xprinter, gprinter, tsc, zebra, argox, postek — v1.4.1, Roverga Xprinter qo'yilganda rusumga qotib qolish aniqlangan) mos birinchi lokal printerni oladi. Chop etish GDI orqali — istalgan Windows drayveri ishlaydi. Odatdagi o'rnatishda hech qanday printer sozlamasi yozilmaydi; `PRINTER_NAME` env'i faqat ro'yxatda yo'q rusum uchun. Topilmasa agent log'iga KOMPYUTERDAGI BOR printerlar ro'yxati yoziladi — panel loglaridan diagnostika qilinadi. Agent chekni rad etganda (`ok:false`) server ulanishni UZMAYDI (v1.4.1 gacha uzardi — 5 soniyalik ulan-uzil sikli va terminal chipining lipillashi): job navbatga qaytadi, 15s pauza, ulanish tirik qoladi.
 
 Printer topilmasa job navbatda qoladi va log'da `GoDEX printer topilmadi — drayver o'rnatilganini tekshiring` xatosi chiqadi. `png` maydonisiz job (eski format yozuvi) navbatni to'smasligi uchun tashlab yuboriladi.
 
@@ -370,7 +370,7 @@ Agent sozlamalari (bular **server `.env`** ida emas — printerli mashinada, `%A
 |---|---|---|
 | `MES_URL` | `ws://localhost:8000` | server manzili; agent oxiriga `/api/v1/ws/bridge` qo'shadi. Pairing paytida `https://`/`http://`/sxemasiz manzil ham qabul qilinadi va `wss://`/`ws://` ga normallashtiriladi (TLS'siz manzilga ogohlantirish chiqadi) |
 | `BRIDGE_TOKEN` | — | pairing bergan doimiy token; bo'sh bo'lsa agent ishga tushishda pairing oynasini ochadi (`_pair()`) va faqat foydalanuvchi bekor qilganda `SystemExit` bilan to'xtaydi |
-| `PRINTER_NAME` | avto-topish (`godex`) | printer nomini qo'lda berish — faqat avto-topish mos kelmaganda |
+| `PRINTER_NAME` | avto-topish (rusumlar ro'yxati) | printer nomini qo'lda berish — faqat avto-topish mos kelmaganda |
 | `QUEUE_FILE` | `%APPDATA%\MebelixAgent\print-queue.jsonl` | lokal durable navbat fayli (avtostartda ishchi papka System32 — nisbiy yo'l ishlamaydi); eski o'rnatishlardagi exe yonidagi navbat fayli birinchi ishga tushishda avtomatik shu yerga ko'chiriladi |
 | `SCAN_FORWARD` | `1` (yoqiq) | stanok skanerini passiv kuzatib MES'ga forvard qilish; `0` o'chiradi |
 

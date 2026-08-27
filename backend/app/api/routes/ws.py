@@ -216,7 +216,22 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
                     if ack.get("type") == "pong":
                         continue
                     if not ack.get("ok"):
-                        raise ValueError("bridge nak")
+                        # Agent chekni RAD ETDI (printeri yo'q) — bu tarmoq
+                        # xatosi EMAS: ulanish tirik, faqat chiqara olmaydi.
+                        # Ilgari ValueError ko'tarilib butun soket yopilardi va
+                        # 5 soniyalik ulan-uzil sikli boshlanardi: reconnect ->
+                        # o'sha job -> yana nack -> yana uzilish (terminal
+                        # chipi ham lip-lip qilardi). Endi job navbatga
+                        # qaytadi, ulanish qoladi, 15s pauza — printer drayveri
+                        # o'rnatilgach o'zi chiqadi.
+                        await redis.rpush(src_key, job)
+                        logger.warning(
+                            "Agent chekni rad etdi (printer topilmadi?) — navbatda qoladi: agent=%s job=%s",
+                            agent_id,
+                            job_id,
+                        )
+                        await asyncio.sleep(15)
+                        break
                     break
                 logger.info("Chek yetkazildi: agent=%s job=%s", agent_id, job_id)
             except Exception as exc:
