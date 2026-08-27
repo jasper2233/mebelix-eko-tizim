@@ -111,6 +111,10 @@ Ataylab chetlanish bo'lsa `biome-ignore` izohida SABABI yoziladi (namuna:
 `anketa.$orderId.tsx` dagi forma jadvallari — ular reyestr emas, kataklarida
 kiritish maydonlari turadi).
 
+### `frontend/src/components/Common/BrandLoader.tsx`
+
+**Maqsadi:** MX logotipli yuklanish indikatori — sahifa/route darajasidagi kutishlarda spinner o'rniga brend. Kontur o'zini chizadi (dash bitta yo'l bo'ylab: avval M, keyin X), to'ladi, so'nadi, qaytadan (`mx-loader` keyframes, 2.4s; `prefers-reduced-motion` da statik to'liq logo). Vektor `icon-navy.png` dan potrace bilan olingan (piksel-mos, headless Chrome'da solishtirilgan), `pathLength=1` — dasharray real uzunlikka bog'liq emas. Rang `currentColor`: panelda `text-primary`, tabloda oltin. Ishlatilishi: router `defaultPendingComponent` (`main.tsx`, 200ms dan cho'zilgan yuklanishda, minMs 500), tablo `isLoading`. Tugma ichidagi spinner (`LoadingButton`) va toast ikonkasi ATAYLAB o'zgarmagan — 16-20px masshtabda logo shovqin, spinner tanish konvensiya.
+
 ### `frontend/src/components/Common/AuthLayout.tsx`
 
 **Maqsadi:** login sahifasi uchun ikki ustunli layout.

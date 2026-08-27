@@ -197,6 +197,41 @@
   animation: mx-hold 600ms linear forwards;
 }
 
+/* BrandLoader (Common/BrandLoader.tsx): logo o'zini chizadi -> to'ladi ->
+   so'nadi. pathLength=1 normallashgan — dasharray real uzunlikka bog'liq emas.
+   Sikl 2.4s: 0-55% chizish, 55-72% to'lish, 72-86% turish, 86-100% so'nish. */
+@keyframes mx-loader {
+  0% {
+    stroke-dashoffset: 1;
+    fill-opacity: 0;
+    opacity: 1;
+  }
+  55% {
+    stroke-dashoffset: 0;
+    fill-opacity: 0;
+    opacity: 1;
+  }
+  72% {
+    stroke-dashoffset: 0;
+    fill-opacity: 1;
+    opacity: 1;
+  }
+  86% {
+    stroke-dashoffset: 0;
+    fill-opacity: 1;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    fill-opacity: 1;
+    opacity: 0;
+  }
+}
+.mx-loader-path {
+  stroke-dasharray: 1;
+  animation: mx-loader 2.4s cubic-bezier(0.45, 0, 0.3, 1) infinite;
+}
+
 /* Login cutmap art (AuthLayout) */
 @keyframes mx-draw {
   to {
@@ -224,6 +259,11 @@
   }
   .mx-fade {
     opacity: 1;
+    animation: none;
+  }
+  .mx-loader-path {
+    stroke-dashoffset: 0;
+    fill-opacity: 1;
     animation: none;
   }
   /* Login animatsiyasidan tashqari qolgan hammasi ham hurmat qilinsin:

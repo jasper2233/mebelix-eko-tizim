@@ -11,8 +11,8 @@ import {
   useRef,
   useState,
 } from "react"
-
 import { TabloService } from "@/client"
+import { BrandLoader } from "@/components/Common/BrandLoader"
 import { useMesWs } from "@/hooks/useMesWs"
 import { requireAuth } from "@/lib/guards"
 import { deadlineTone, POST_COLORS, PRIORITY_EDGE } from "@/lib/mes"
@@ -418,9 +418,11 @@ function TabloPage() {
 
       <main ref={autoScroll} className="min-h-0 flex-1 overflow-auto p-4">
         {isLoading ? (
-          <p className="p-8 text-center text-3xl text-muted-foreground">
-            Yuklanmoqda...
-          </p>
+          <BrandLoader
+            size={120}
+            className="p-16 text-[#d9b34a]"
+            label="Yuklanmoqda"
+          />
         ) : (
           /* `table-fixed` + aniq ulushlar: kenglik MAZMUNGA bog'liq bo'lmasin.
              Ilgari ustunlar mazmunga qarab 87px dan 187px gacha sakrardi.

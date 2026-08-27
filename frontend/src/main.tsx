@@ -2,6 +2,7 @@ import { QueryClientProvider } from "@tanstack/react-query"
 import { createRouter, RouterProvider } from "@tanstack/react-router"
 import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
+import { BrandLoader } from "@/components/Common/BrandLoader"
 import { LoginService } from "./client"
 import { client } from "./client/client.gen"
 import "./index.css"
@@ -47,7 +48,18 @@ client.instance.interceptors.response.use(
   },
 )
 
-const router = createRouter({ routeTree })
+const router = createRouter({
+  routeTree,
+  // Route yuklanishi (beforeLoad auth so'rovi ham) 200ms dan cho'zilsa brend
+  // loader chiqadi; minMs — bir soniya ko'rinib "lip" etib yo'qolmasin
+  defaultPendingComponent: () => (
+    <div className="flex min-h-screen items-center justify-center text-primary">
+      <BrandLoader size={88} />
+    </div>
+  ),
+  defaultPendingMs: 200,
+  defaultPendingMinMs: 500,
+})
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router
