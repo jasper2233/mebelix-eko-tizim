@@ -17,7 +17,7 @@ from sqlalchemy import case, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.core.config import TASHKENT_TZ, settings
 from app.models import Employee, Machine, Order, OrderFile, Part, PartInstance, PartRoute, Post, Scan, WorkSession
 from app.models.enums import (
     POST_ROLES,
@@ -548,7 +548,25 @@ async def record_scan_at(
             route = step
             break
     if route is None:
-        raise ScanRejected("E008", "Bu detal allaqachon yakunlangan.")
+        # Yalang'och "allaqachon yakunlangan" ishchini adashtirardi: QAYSI postda,
+        # NECHTA skan bilan, QACHON? Egizak detallar (05_009 va 05_009-2 kabi bir
+        # nomli cheklar) holatida bu javob ishchining o'ziga xatoni ko'rsatadi —
+        # "men 2 marta skan qildim" degan taxmin 4/4 va vaqt qarshisida yechiladi.
+        jami = sum(st.per_instance for st in steps)
+        oxirgi = (
+            await db.execute(
+                select(func.max(Scan.created_at)).where(
+                    Scan.instance_id == instance.id,
+                    Scan.route_id.in_([st.id for st in steps]),
+                    Scan.is_cancelled == False,  # noqa: E712
+                )
+            )
+        ).scalar_one_or_none()
+        vaqt = f", oxirgi skan {oxirgi.astimezone(TASHKENT_TZ):%H:%M}" if oxirgi else ""
+        raise ScanRejected(
+            "E008",
+            f"Bu detal {post.name} postida allaqachon yakunlangan ({jami}/{jami} skan{vaqt}).",
+        )
     if route.machine_id is not None and route.machine_id != machine.id:
         raise ScanRejected("E001", "Bu detal boshqa ish markaziga biriktirilgan.")
 

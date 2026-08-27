@@ -162,7 +162,7 @@ qidirardi — matn tahrirlanishi bilan jimgina buziladigan bog'lanish.
 | `E005` | Aktiv sessiya yo'q yoki `SESSION_MAX_HOURS` (12 soat) o'tgan | Operator — beyjikni skanerlaydi |
 | `E006` | Beyjik: topilmadi / nofaol / hodim bu postga biriktirilmagan | Admin yoki hodim |
 | `E007` | Aloqa yo'q — **server kodi emas**, WS uzilganda terminal frontendi o'zi hosil qiladi, so'rov serverga umuman ketmaydi | — |
-| `E008` | Ish allaqachon bajarilgan (shu nusxaning shu postdagi qadamlari to'lgan). Xato emas — terminal neytral ogohlantirish ovozini beradi | Hech kim — takror skan |
+| `E008` | Ish allaqachon bajarilgan (shu nusxaning shu postdagi qadamlari to'lgan). Xabar endi KONKRET: post nomi, N/N skan soni va oxirgi skan vaqti (Toshkent) — egizak cheklar (05_009 / 05_009-2) chalkashligida ishchi xatoni o'zi ko'radi. Xato emas — terminal neytral ogohlantirish ovozini beradi | Hech kim — takror skan |
 | `ATX` | Qoldiq QR (`ATX-` prefiks) skan qilindi — **xato emas, ma'lumot**: javob o'lcham, material, buyurtma·loyiha·list va chek holatini aytadi. Qoldiq marshrutda yurmaydi, skan hech qanday bosqichni yopmaydi; terminal KO'K (info) chiziq ko'rsatadi, qizil emas | Hech kim — ma'lumot skan |
 | `E009` | SOZLAMA xatosi: post topilmadi, postda ish markazi yo'q, terminalga ish markazi biriktirilmagan. Hisob QURILMA hisobi ham, post roli ham bo'lmasa (ofis, admin) xabar boshqacha — "Bu ekran monoblok uchun": ofis hisobiga ish markazi biriktirilmaydi (`users._check_machine`), ya'ni "biriktirilmagan" deyish sozlama buzuqdek ko'rsatardi | **Admin** — operator hech narsa qila olmaydi |
 
