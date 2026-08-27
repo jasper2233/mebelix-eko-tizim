@@ -224,37 +224,69 @@ def _pair_dialog(error: str = "") -> tuple[str, str] | None:
     import tkinter as tk
     from tkinter import ttk
 
+    # Tsex monobloki uchun KATTA: eski 18px padding + default shriftli oyna
+    # ~360px chiqardi — sensorli ekranda maydon topish qiyin, matn mayda edi.
+    # Endi shriftlar 12-20pt, maydonlar to'liq en, tugma butun pastki qator.
     picked: dict[str, str] = {}
     root = tk.Tk()
     # "printer agenti" EMAS: agent printersiz stanok kompyuterida ham ishlaydi
     # (skan-forvard) — nom ikkala vazifani qamrasin
-    root.title("MebeliX agent")
+    root.title("MebeliX MES agent")
     root.resizable(False, False)
-    frm = ttk.Frame(root, padding=18)
-    frm.grid()
+    root.configure(bg="#ffffff")
+    st = ttk.Style(root)
+    with contextlib.suppress(Exception):
+        st.theme_use("clam")
+    st.configure("K.TFrame", background="#ffffff")
+    st.configure("K.TLabel", background="#ffffff", font=("Segoe UI", 12))
+    st.configure(
+        "Title.TLabel", background="#ffffff", font=("Segoe UI", 20, "bold")
+    )
+    st.configure(
+        "Sub.TLabel", background="#ffffff", font=("Segoe UI", 11), foreground="#5b6b73"
+    )
+    st.configure(
+        "Err.TLabel", background="#ffffff", font=("Segoe UI", 11), foreground="#b00020"
+    )
+    st.configure("K.TButton", font=("Segoe UI", 13, "bold"), padding=(0, 10))
 
-    ttk.Label(frm, text="Printerni ulash", font=("Segoe UI", 13, "bold")).grid(
-        column=0, row=0, columnspan=2, sticky="w"
+    frm = ttk.Frame(root, padding=(32, 26, 32, 28), style="K.TFrame")
+    frm.grid()
+    frm.columnconfigure(0, minsize=460)
+
+    ttk.Label(frm, text="MebeliX MES agent", style="Title.TLabel").grid(
+        column=0, row=0, sticky="w"
     )
     ttk.Label(
-        frm, text="Kodni admin paneldan oling:\nPrinter agentlar > Yangi agent"
-    ).grid(column=0, row=1, columnspan=2, sticky="w", pady=(2, 12))
+        frm,
+        text="Serverga bir marta ulanadi, keyin fonda ishlaydi.\n"
+        "Kod: admin panel > Printer agentlar > Yangi agent (15 daqiqa amal qiladi).",
+        style="Sub.TLabel",
+        justify="left",
+    ).grid(column=0, row=1, sticky="w", pady=(4, 18))
 
-    ttk.Label(frm, text="Server manzili").grid(
-        column=0, row=2, sticky="w", padx=(0, 10)
+    ttk.Label(frm, text="Server manzili", style="K.TLabel").grid(
+        column=0, row=2, sticky="w"
     )
     url_var = tk.StringVar(value=DEFAULT_SERVER_URL)
-    ttk.Entry(frm, textvariable=url_var, width=32).grid(column=1, row=2, pady=4)
+    ttk.Entry(frm, textvariable=url_var, font=("Segoe UI", 13)).grid(
+        column=0, row=3, sticky="we", pady=(2, 12), ipady=6
+    )
 
-    ttk.Label(frm, text="Ulanish kodi").grid(column=0, row=3, sticky="w", padx=(0, 10))
+    ttk.Label(frm, text="Ulanish kodi", style="K.TLabel").grid(
+        column=0, row=4, sticky="w"
+    )
     code_var = tk.StringVar()
-    code_entry = ttk.Entry(frm, textvariable=code_var, width=32, font=("Consolas", 11))
-    code_entry.grid(column=1, row=3, pady=4)
+    # Kod katta mono shriftda: 8 belgi + defis, xato terish darhol ko'rinadi
+    code_entry = ttk.Entry(
+        frm, textvariable=code_var, font=("Consolas", 18, "bold"), justify="center"
+    )
+    code_entry.grid(column=0, row=5, sticky="we", pady=(2, 0), ipady=8)
 
     if error:
         ttk.Label(
-            frm, text=error, foreground="#b00020", wraplength=330, justify="left"
-        ).grid(column=0, row=4, columnspan=2, sticky="w", pady=(10, 0))
+            frm, text=error, style="Err.TLabel", wraplength=460, justify="left"
+        ).grid(column=0, row=6, sticky="w", pady=(12, 0))
 
     def submit(*_: object) -> None:
         if code_var.get().strip():
@@ -262,8 +294,8 @@ def _pair_dialog(error: str = "") -> tuple[str, str] | None:
             picked["code"] = code_var.get().strip()
             root.destroy()
 
-    ttk.Button(frm, text="Ulash", command=submit).grid(
-        column=1, row=5, sticky="e", pady=(16, 0)
+    ttk.Button(frm, text="Ulash", command=submit, style="K.TButton").grid(
+        column=0, row=7, sticky="we", pady=(20, 0)
     )
     root.bind("<Return>", submit)
     code_entry.focus_set()
@@ -650,7 +682,7 @@ def _notify_connected() -> None:
             # (XP dan beri bor); topilmasa xabar shunchaki chiqmaydi, log yetadi
             ctypes.windll.user32.MessageBoxTimeoutW(  # type: ignore[attr-defined]
                 0,
-                f"MebeliX agent serverga ulandi (v{AGENT_VERSION}).\n{holat}",
+                f"MebeliX MES agent serverga ulandi (v{AGENT_VERSION}).\n{holat}",
                 "MebeliX",
                 0x00000040 | 0x00040000,  # MB_ICONINFORMATION | MB_TOPMOST
                 0,
@@ -952,7 +984,7 @@ def start_tray() -> None:
     icon = pystray.Icon(
         "mebelix-agent",
         bad_icon,
-        "MebeliX agent",
+        "MebeliX MES agent",
         menu=pystray.Menu(
             pystray.MenuItem(holat, None, enabled=False),
             pystray.MenuItem("Log papkasini ochish", open_logs),
@@ -967,7 +999,7 @@ def start_tray() -> None:
             want = ok_icon if CONNECTED else bad_icon
             if icon.icon is not want:
                 icon.icon = want
-                icon.title = f"MebeliX agent — {'ulandi' if CONNECTED else 'uzilgan'}"
+                icon.title = f"MebeliX MES agent — {'ulandi' if CONNECTED else 'uzilgan'}"
 
     import threading
 
@@ -980,7 +1012,7 @@ async def main() -> None:
         raise SystemExit(
             "Token yo'q — agentni ishga tushirib admin paneldagi ulanish kodini kiriting"
         )
-    log.info("MebeliX agent v%s", AGENT_VERSION)
+    log.info("MebeliX MES agent v%s", AGENT_VERSION)
     log.info("Printer: %s", PRINTER_NAME or "TOPILMADI — GoDEX drayverini o'rnating")
     start_scan_forward()
     start_tray()
