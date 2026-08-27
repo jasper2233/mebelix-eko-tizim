@@ -417,6 +417,62 @@ def _exchange(url: str, code: str) -> tuple[str, str, str, str]:
         ) from None
 
 
+def _success_window(name: str, stanok: str) -> None:
+    """Ulanish muvaffaqiyati — pairing oynasi uslubidagi brendlangan oyna.
+
+    Oddiy messagebox o'rnatuvchining ko'zi tushadigan YAGONA tasdiq edi —
+    endi logo, katta sarlavha va aniq satrlar. Tk bo'lmasa log yetadi."""
+    try:
+        import tkinter as tk
+        from tkinter import ttk
+
+        root = tk.Tk()
+        root.title("MebeliX MES agent")
+        root.resizable(False, False)
+        root.configure(bg="#ffffff")
+        st = ttk.Style(root)
+        with contextlib.suppress(Exception):
+            st.theme_use("clam")
+        st.configure("K.TFrame", background="#ffffff")
+        st.configure("K.TLabel", background="#ffffff", font=("Segoe UI", 12))
+        st.configure("Ok.TLabel", background="#ffffff", font=("Segoe UI", 20, "bold"), foreground="#15803d")
+        st.configure("Sub.TLabel", background="#ffffff", font=("Segoe UI", 11), foreground="#5b6b73")
+        st.configure("K.TButton", font=("Segoe UI", 13, "bold"), padding=(0, 10))
+        frm = ttk.Frame(root, padding=(32, 26, 32, 28), style="K.TFrame")
+        frm.grid()
+        frm.columnconfigure(0, minsize=460)
+        kapa = ttk.Frame(frm, style="K.TFrame")
+        kapa.grid(column=0, row=0, sticky="w")
+        with contextlib.suppress(Exception):
+            logo2x = tk.PhotoImage(data=_LOGO_B64)
+            logo = logo2x.subsample(2)
+            root.iconphoto(True, logo2x)
+            lbl = ttk.Label(kapa, image=logo, style="K.TLabel")
+            lbl.image = logo  # type: ignore[attr-defined]
+            lbl.grid(column=0, row=0, padx=(0, 14))
+        ttk.Label(kapa, text="Ulandi ✓", style="Ok.TLabel").grid(column=1, row=0)
+        satrlar = [f"Agent: {name}", f"Versiya: v{AGENT_VERSION}"]
+        if stanok:
+            satrlar.append(f"Ish markazi: {stanok} — skan-forvard shu stanok nomidan yoziladi")
+        satrlar.append("")
+        satrlar.append(
+            "Agent fonda ishlaydi va kompyuter yonganda o'zi tushadi.\n"
+            "Holati — tray'dagi MX belgisi (yashil = ulandi) va admin panel."
+        )
+        ttk.Label(frm, text="\n".join(satrlar), style="K.TLabel", justify="left").grid(
+            column=0, row=1, sticky="w", pady=(14, 0)
+        )
+        ttk.Button(frm, text="Tushunarli", command=root.destroy, style="K.TButton").grid(
+            column=0, row=2, sticky="we", pady=(20, 0)
+        )
+        root.bind("<Return>", lambda *_: root.destroy())
+        with contextlib.suppress(Exception):
+            root.eval("tk::PlaceWindow . center")
+        root.mainloop()
+    except Exception:  # noqa: BLE001 — GUI yo'q: log yetarli
+        log.info("Ulandi: %s (%s)", name, stanok or "stanoksiz")
+
+
 def _pair_dialog(error: str = "") -> tuple[str, str] | None:
     """Ikki maydonli sozlash oynasi. None = foydalanuvchi bekor qildi."""
     import tkinter as tk
@@ -575,16 +631,7 @@ def _pair() -> None:
     _register_autostart()
     # Stanok bog'langan bo'lsa aytamiz: skan-forvard AYNAN shu stanokning aktiv
     # sessiyasi nomidan yoziladi — noto'g'ri bog'lanish shu yerda darhol ko'rinadi
-    stanok_info = (
-        f"\nIsh markazi: {stanok} (skan-forvard shu stanok nomidan yoziladi)."
-        if stanok
-        else ""
-    )
-    _alert(
-        "MebeliX",
-        f"Ulandi: {name}{stanok_info}\n\nAgent fonda ishlaydi va kompyuter "
-        f"yonganda o'zi tushadi. Holati tray belgisida va admin panelda.",
-    )
+    _success_window(name, stanok)
 
 
 #: Yorliq printerlarining tanish rusumlari — avto-topish shu ro'yxat bo'yicha.
@@ -622,7 +669,12 @@ def _local_printer_names() -> list[str]:
 
 _load_dotenv()
 if not _single_instance():
-    _alert("MebeliX", "Agent allaqachon ishlab turibdi.")
+    _alert(
+        "MebeliX",
+        "Agent allaqachon fonda ishlayapti — tray'dagi MX belgisiga qarang.\n\n"
+        "Yangi kod bilan qayta ulash uchun tray menyusidan "
+        "\"Qayta ulash (yangi kod)\" ni tanlang.",
+    )
     raise SystemExit(0)
 _pair()
 # HAR startda qayta yoziladi, faqat pairing'da emas. Ilgari bir marta yozilardi:
@@ -1134,6 +1186,48 @@ def _newer(latest: str, current: str) -> bool:
         return False
 
 
+def _restart_self() -> None:
+    """Agentni toza qayta ishga tushiradi (bat: eski jarayon o'lishini kutadi —
+    mutex poygasi bo'lmasin). Tray'dan qayta ulashda ishlatiladi: eski token
+    bilan ochilgan WS ulanishini uzishning eng ishonchli yo'li — yangi jarayon."""
+    import subprocess
+
+    exe = Path(sys.executable)
+    bat = CONFIG_DIR / "restart.bat"
+    bat.write_text(
+        "@echo off\r\n"
+        "timeout /t 2 /nobreak >nul\r\n"
+        f'start "" "{exe}"\r\n'
+        f'del "%~f0"\r\n',
+        encoding="ascii",
+    )
+    subprocess.Popen(  # noqa: S602
+        ["cmd", "/c", str(bat)], creationflags=0x00000008 | 0x08000000
+    )
+    log.info("Qayta ulash — agent qayta ishga tushmoqda")
+    os._exit(0)
+
+
+def _repair_from_tray() -> None:
+    """Tray menyusidagi "Qayta ulash": yangi kod bilan qayta bog'lash.
+
+    Yangi kod olingani ESKI tokenni bekor qilmaydi (u boshqa agent yozuviga
+    tegishli bo'lishi mumkin) — shuning uchun exe'ni qayta bosish "allaqachon
+    ulangan" beraveradi. Bu menyu aynan shu holat uchun: dialog ochiladi, yangi
+    kod kiritilsa .env yangilanib agent qayta ishga tushadi. Bekor qilinsa eski
+    ulanish SAQLANADI (token qaytariladi)."""
+    eski = os.environ.pop("BRIDGE_TOKEN", None)
+    try:
+        _pair()
+    except SystemExit:
+        # dialog bekor qilindi — eski holat qaytadi, agent ishlashda davom etadi
+        if eski:
+            os.environ["BRIDGE_TOKEN"] = eski
+        log.info("Qayta ulash bekor qilindi — eski ulanish saqlanib qoldi")
+        return
+    _restart_self()
+
+
 def _apply_update(new_exe: Path) -> None:
     """O'zini almashtirish: .bat agent chiqishini kutadi, exe'ni almashtiradi,
     qayta ishga tushiradi. Yo'l o'zgarmaydi — avtostart registri amal qilaveradi;
@@ -1263,6 +1357,10 @@ def start_tray() -> None:
         menu=pystray.Menu(
             pystray.MenuItem(holat, None, enabled=False),
             pystray.MenuItem("Log papkasini ochish", open_logs),
+            pystray.MenuItem(
+                "Qayta ulash (yangi kod)",
+                lambda _i, _m: _repair_from_tray(),
+            ),
         ),
     )
 

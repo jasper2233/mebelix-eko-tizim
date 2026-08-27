@@ -53,8 +53,11 @@ o'rnatishda kerak (yoki paneldagi havoladan). Panelda eski versiyali agent sariq
 sha256 mos kelmasa (yarim yuklangan fayl) o'tkazib yuboriladi va keyingi siklda
 qayta urinadi. Dev-skript (exe emas) o'zini yangilamaydi.
 
-Agentni ikki marta ishga tushirib bo'lmaydi: mutex ikkinchi nusxani to'xtatib,
-"allaqachon ishlab turibdi" deydi. Oyna ko'rinmagani uchun bu tez-tez uchraydi.
+Agentni ikki marta ishga tushirib bo'lmaydi: mutex ikkinchi nusxani to'xtatadi
+va xabar tray'ga yo'naltiradi. **Yangi kod bilan qayta ulash** — exe'ni qayta
+bosish EMAS (eski token amalda qolaveradi): tray menyusidan **"Qayta ulash
+(yangi kod)"** tanlanadi — dialog ochiladi, kod kiritilsa agent yangi ulanish
+bilan qayta ishga tushadi; bekor qilinsa eski ulanish saqlanib qoladi.
 
 ## Env sozlamalari
 
