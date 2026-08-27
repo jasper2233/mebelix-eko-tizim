@@ -469,7 +469,7 @@ def _pair_dialog(error: str = "") -> tuple[str, str] | None:
     ttk.Label(
         frm,
         text="Serverga bir marta ulanadi, keyin fonda ishlaydi.\n"
-        "Kod: admin panel > Printer agentlar > Yangi agent (15 daqiqa amal qiladi).",
+        "Kod: admin panel > MES agentlar > Yangi agent (15 daqiqa amal qiladi).",
         style="Sub.TLabel",
         justify="left",
     ).grid(column=0, row=1, sticky="w", pady=(4, 18))

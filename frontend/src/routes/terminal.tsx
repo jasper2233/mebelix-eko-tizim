@@ -158,7 +158,7 @@ function TerminalPage() {
   // "allaqachon skanerlangan" ni ko'rardi: skan bazaga tushar, ekranda esa
   // hech nima o'zgarmasdi. Server hodisani allaqachon chiqarayotgan ekan,
   // terminal uni O'ZI qilgan skan bilan bir xil banner va ovoz bilan ko'rsatadi.
-  // Printer agenti holati: boshlang'ich qiymat kontekstdan (6 daqiqalik oyna),
+  // MES agent holati: boshlang'ich qiymat kontekstdan (6 daqiqalik oyna),
   // jonli o'zgarish bridge.connected/disconnected dan — uzilish DARHOL ko'rinadi
   // (kontekstning o'zi last_seen tufayli 6 daqiqagacha "onlayn" deb turardi).
   const [printerLive, setPrinterLive] = useState<boolean | null>(null)

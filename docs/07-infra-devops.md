@@ -291,7 +291,7 @@ Oqim:
 
 **Bekor qilish (revoke) darhol emas, lekin kafolatli.** Ulanish davomida `touch_agent()` har **300 sekundda** `last_seen_at` ni yangilaydi (paneldagi "Ulandi" indikatorining manbai) va shu UPDATE'ning o'zi agent hali mavjudligini qayta tekshiradi: `token_hash` mos kelmasa yoki qator o'chirilgan bo'lsa `RETURNING` bo'sh qaytadi. Ya'ni bekor qilingan agentning **jonli** ulanishi ham 5 daqiqa ichida `4401` bilan uziladi, qo'lida turgan job esa Redis navbatiga `rpush` bilan qaytariladi — yo'qolmaydi. DB xatosi ulanishni **yiqitmaydi** (jobni saqlab qolish ustuvor).
 
-### Admin panel — "Printer agentlar"
+### Admin panel — "MES agentlar"
 
 `frontend/src/routes/_layout/printers.tsx`, faqat admin. Sahifada: uch qatorli o'rnatish yo'riqnomasi (yuklab olish tugmasi yo'q — exe qo'lda tarqatiladi) va agentlar jadvali — nomi, holati (faqat ulangan agentda yonida versiya belgisi), joriy ulanish kodi, ish markazi bog'lami (skan-forvard), chek chiqarish ruxsati, oxirgi ulanish vaqti, amallar.
 

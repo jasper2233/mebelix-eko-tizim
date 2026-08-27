@@ -13,7 +13,7 @@ terminallariga hech narsa kerak emas (ular brauzerdan tugmani bosadi).
 
 1. GoDEX drayverini o'rnating (printer USB ulangan holda). Agent printerni
    nomidan o'zi topadi ("godex" qidiradi) — sozlash shart emas.
-2. `mebelix-agent.exe` ni admin panel > Printer agentlar sahifasidagi havoladan
+2. `mebelix-agent.exe` ni admin panel > MES agentlar sahifasidagi havoladan
    yuklab oling (`/api/v1/bridge-agents/download` — CI har deploy'da windows
    runner'da qurib serverga qo'yadi, eskirgan nusxa bo'lishi mumkin emas; 2026-08-02
    da olib tashlangan tugma shu kafolat bilan qaytdi). Python ham, `pip` ham kerak emas.
@@ -122,7 +122,7 @@ Stanok (Nanxing) kompyuterida agent o'rnatilgan bo'lsa, skaner o'qigan QR:
 
 Ishlashi uchun:
 
-- admin panel > Printer agentlar > agentga **stanok bog'lanadi** (skan shu
+- admin panel > MES agentlar > agentga **stanok bog'lanadi** (skan shu
   stanokning aktiv sessiyasi nomidan yoziladi — operator monoblokda kirgan
   bo'lishi shart);
 - `pip install pynput` (exe yig'ilganda kiritiladi); `SCAN_FORWARD=0` o'chiradi;

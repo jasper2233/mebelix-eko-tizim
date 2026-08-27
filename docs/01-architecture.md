@@ -364,7 +364,7 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   KERAK EMAS: agent PyInstaller onefile `mebelix-agent.exe` bo'lib yig'iladi —
   exe qo'lda tarqatiladi (`bridge-agent/README.md`), ishga tushiriladi va
   admin panel bergan kod kiritiladi.
-  Frontend tomoni: `frontend/src/routes/_layout/printers.tsx` ("Printer agentlar")
+  Frontend tomoni: `frontend/src/routes/_layout/printers.tsx` ("MES agentlar")
   va sidebar yozuvi.
 - `render_label_png()` (`app/services/labels.py`) — 80×60 mm, 203 dpi
   (8 dot/mm → 640×480 px). `draw.fontmode = "1"` (antialiasing yo'q) va yakuniy

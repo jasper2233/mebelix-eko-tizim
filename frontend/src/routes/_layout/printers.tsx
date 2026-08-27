@@ -65,7 +65,7 @@ export const Route = createFileRoute("/_layout/printers")({
   // Backend ham AdminUser talab qiladi — guardsiz admin bo'lmagan odam bo'sh
   // jadval ko'rib, 403 qaytaradigan endpointni har 10 soniyada so'rab turardi.
   beforeLoad: requireAccess(isAdmin),
-  head: () => ({ meta: [{ title: "Printer agentlar | MebeliX" }] }),
+  head: () => ({ meta: [{ title: "MES agentlar | MebeliX" }] }),
 })
 
 // Server last_seen_at ni har 5 daqiqada yangilaydi — 6 daqiqadan yangi bo'lsa onlayn
@@ -199,7 +199,7 @@ function PrintersPage() {
   return (
     <div>
       <PageHeader
-        title="Printer agentlar"
+        title="MES agentlar"
         // Havola CI qurgan exe'ga boradi — diskda eskirgan nusxa bo'lishi
         // mumkin emas (2026-08-02 dagi olib tashlash sababi bartaraf)
         description={

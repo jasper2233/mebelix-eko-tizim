@@ -531,7 +531,7 @@ Javob sxemalari `backend/app/schemas/tablo.py` da: `TabloMatrix` (`posts` — ty
 
 ---
 
-## `backend/app/api/routes/bridge_agents.py` — Printer agentlari va pairing (TZ 2.2.2)
+## `backend/app/api/routes/bridge_agents.py` — MES agentlari va pairing (TZ 2.2.2)
 
 **Maqsadi:** Printerli kompyuterdagi bridge-agent'ni serverga ulash (pairing) — podpiska modeli uchun: admin panelda kod beriladi, agent kodni doimiy tokenga almashtiradi. Serverga SSH kirish ham, `.env` tahriri ham kerak emas. Har printerning o'z tokeni bor — birini bekor qilish qolganlariga tegmaydi.
 

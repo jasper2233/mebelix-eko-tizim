@@ -59,7 +59,7 @@ const CATEGORIES: { key: string; label: string }[] = [
   { key: "orders", label: "Buyurtmalar" },
   { key: "pachka", label: "Pachkalar" },
   { key: "tmo", label: "TMO" },
-  { key: "bridge_agents", label: "Printer agentlar" },
+  { key: "bridge_agents", label: "MES agentlar" },
   { key: "employees", label: "Hodimlar" },
   { key: "users", label: "Foydalanuvchilar" },
   { key: "clients", label: "Mijozlar" },

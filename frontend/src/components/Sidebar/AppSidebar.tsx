@@ -62,7 +62,7 @@ export const NAV_ITEMS: (Item & {
   { icon: Tv, title: "LIVE Tablo", path: "/tablo", show: () => true },
   {
     icon: Printer,
-    title: "Printer agentlar",
+    title: "MES agentlar",
     path: "/printers",
     show: isAdmin,
   },
