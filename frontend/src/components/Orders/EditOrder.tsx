@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
-import { formatMoneyInput } from "@/lib/validation"
+import { moneyToInput } from "@/lib/validation"
 import { crudCallbacks } from "@/queries/mes"
 
 export function EditOrder({
@@ -55,8 +55,8 @@ export function EditOrder({
       client_id: String(order.client_id),
       deadline: order.deadline ?? "",
       priority: order.priority,
-      amount: formatMoneyInput(order.amount ?? ""),
-      advance_payment: formatMoneyInput(order.advance_payment ?? ""),
+      amount: moneyToInput(order.amount),
+      advance_payment: moneyToInput(order.advance_payment),
       notes: order.notes ?? "",
     },
   })

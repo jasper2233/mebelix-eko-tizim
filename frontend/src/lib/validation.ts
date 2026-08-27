@@ -51,6 +51,14 @@ function phoneDigits(s: string): string {
 }
 
 /** Pul maydoni avto-separatori: "5000000" → "5 000 000". Submit'da bo'shliqlar olib tashlanadi. */
+/** API'dan kelgan Decimal-satrni ("14000000.00") input qiymatiga tayyorlaydi.
+ * `formatMoneyInput` TO'G'RIDAN-TO'G'RI ishlatilsa nuqta o'chirilib kasr
+ * raqamlar yopishib qolardi: "14000000.00" -> "1 400 000 000" (ikki ortiqcha
+ * nol). Kasr qismi pulda doim .00 — tashlab yuboriladi. */
+export function moneyToInput(value: string | null | undefined): string {
+  return formatMoneyInput(String(value ?? "").replace(/[.,]\d*$/, ""))
+}
+
 export function formatMoneyInput(input: string): string {
   const d = input
     .replace(/\D/g, "")
