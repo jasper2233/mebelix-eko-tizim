@@ -25,10 +25,13 @@ terminallariga hech narsa kerak emas (ular brauzerdan tugmani bosadi).
    `%APPDATA%\MebelixAgent\.env` ga saqlanadi. Kod noto'g'ri bo'lsa oyna xato
    bilan qayta ochiladi — dasturni qayta ishga tushirish shart emas.
 
-Shundan keyin **oyna umuman ko'rinmaydi**: agent fonda ishlaydi va kompyuter
-yonganda o'zi tushadi (birinchi ulanishda `HKCU\...\Run` ga yoziladi, admin
-huquqi kerak emas). Ishlayotganini admin paneldagi **Ulandi** belgisi bildiradi;
-tafsilotlar `%APPDATA%\MebelixAgent\agent.log` da (1 MB x 3 rotatsiya).
+Shundan keyin oyna yopiladi: agent fonda ishlaydi va kompyuter yonganda o'zi
+tushadi (birinchi ulanishda `HKCU\...\Run` ga yoziladi, admin huquqi kerak
+emas). Holat **tray belgisida** (v1.4.0+): yashil nuqta = ulandi, qizil =
+uzilgan; menyuda rejim (printer nomi yoki skan-forvard), versiya va log papkasi.
+"Chiqish" ATAYIN yo'q — tasodifan yopilgan agent chek chiqarmay qo'yardi.
+Admin paneldagi **Ulandi** belgisi ham ishlaydi; tafsilotlar
+`%APPDATA%\MebelixAgent\agent.log` da (1 MB x 3 rotatsiya).
 
 Kod muddati o'tishi ulangan agentga ta'sir qilmaydi — token muddatsiz.
 
@@ -89,7 +92,7 @@ yo'qolmaydi — yorliqlar Redis navbatida turadi va agent qaytishi bilan chiqadi
 ## Dasturchi uchun: exe yig'ish
 
 ```bash
-pip install "websockets>=14" pywin32 pillow pynput pyinstaller
+pip install "websockets>=14" pywin32 pillow pynput pystray pyinstaller
 pyinstaller --onefile --noconsole --name mebelix-agent agent.py
 ```
 

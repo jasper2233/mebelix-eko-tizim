@@ -226,7 +226,9 @@ def _pair_dialog(error: str = "") -> tuple[str, str] | None:
 
     picked: dict[str, str] = {}
     root = tk.Tk()
-    root.title("MebeliX printer agenti")
+    # "printer agenti" EMAS: agent printersiz stanok kompyuterida ham ishlaydi
+    # (skan-forvard) — nom ikkala vazifani qamrasin
+    root.title("MebeliX agent")
     root.resizable(False, False)
     frm = ttk.Frame(root, padding=18)
     frm.grid()
@@ -622,6 +624,8 @@ def _repair() -> None:
 
 
 _connected_once = False
+#: Tray belgisi rangi uchun jonli holat (uplink yozadi, tray o'qiydi)
+CONNECTED = False
 
 
 def _notify_connected() -> None:
@@ -632,13 +636,21 @@ def _notify_connected() -> None:
     import ctypes
     import threading
 
+    # Skan-forvard stansiyasida (printer yo'q) "chek chiqarishga tayyor" yolg'on
+    # bo'lardi — xabar rejimga qarab tanlanadi
+    holat = (
+        "Chek chiqarishga tayyor."
+        if PRINTER_NAME
+        else "Skan-forvard rejimi (printer ulanmagan)."
+    )
+
     def show() -> None:
         with contextlib.suppress(Exception):
             # MessageBoxTimeoutW — timeout bilan yopiladigan MessageBox
             # (XP dan beri bor); topilmasa xabar shunchaki chiqmaydi, log yetadi
             ctypes.windll.user32.MessageBoxTimeoutW(  # type: ignore[attr-defined]
                 0,
-                f"Printer agenti serverga ulandi (v{AGENT_VERSION}).\nChek chiqarishga tayyor.",
+                f"MebeliX agent serverga ulandi (v{AGENT_VERSION}).\n{holat}",
                 "MebeliX",
                 0x00000040 | 0x00040000,  # MB_ICONINFORMATION | MB_TOPMOST
                 0,
@@ -671,6 +683,8 @@ async def uplink() -> None:
                 url, ping_interval=30, additional_headers=headers
             ) as ws:
                 log.info("Serverga ulandi: %s", MES_URL)
+                global CONNECTED
+                CONNECTED = True
                 reject_streak = 0
                 global _connected_once
                 if not _connected_once:
@@ -719,6 +733,7 @@ async def uplink() -> None:
                             msg.get("instance_id"),
                         )
         except websockets.exceptions.InvalidStatus as exc:
+            CONNECTED = False
             status = exc.response.status_code
             if status in (401, 403):
                 reject_streak += 1
@@ -752,6 +767,7 @@ async def uplink() -> None:
                 )
             await asyncio.sleep(5)
         except Exception as exc:
+            CONNECTED = False
             reject_streak = 0
             log.warning("Ulanish uzildi (%s) — 5s dan keyin qayta urinish", exc)
             await asyncio.sleep(5)
@@ -903,6 +919,62 @@ async def self_update() -> None:
         await asyncio.sleep(6 * 3600)
 
 
+def start_tray() -> None:
+    """Tray belgisi: yashil = ulandi, qizil = uzilgan. Yagona ko'rinadigan UI.
+
+    Ilgari agent butunlay ko'rinmas edi — "ishlayaptimi?" savoli exe'ni qayta
+    bosish (mutex xabari) yoki admin panelga qarash bilan hal bo'lardi. Menyu
+    minimal: holat satri va log papkasi. "Chiqish" ATAYIN yo'q — tsexda tasodifan
+    yopilgan agent = chek chiqmaydi va uzoq qidiruv; kerak bo'lsa Task Manager
+    bor. pystray o'rnatilmagan bo'lsa (eski build) jim o'tib ketadi."""
+    try:
+        import pystray
+        from PIL import Image, ImageDraw
+    except ImportError:
+        log.info("pystray o'rnatilmagan — tray belgisi yo'q")
+        return
+
+    def dot(color: str) -> "Image.Image":
+        img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+        ImageDraw.Draw(img).ellipse((8, 8, 56, 56), fill=color)
+        return img
+
+    ok_icon, bad_icon = dot("#22c55e"), dot("#dc2626")
+
+    def holat(_item: object = None) -> str:
+        rejim = PRINTER_NAME or "printer yo'q (skan-forvard)"
+        return f"{'Ulandi' if CONNECTED else 'Uzilgan'} · {rejim} · v{AGENT_VERSION}"
+
+    def open_logs(_icon: object = None, _item: object = None) -> None:
+        with contextlib.suppress(Exception):
+            os.startfile(CONFIG_DIR)  # type: ignore[attr-defined]  # noqa: S606
+
+    icon = pystray.Icon(
+        "mebelix-agent",
+        bad_icon,
+        "MebeliX agent",
+        menu=pystray.Menu(
+            pystray.MenuItem(holat, None, enabled=False),
+            pystray.MenuItem("Log papkasini ochish", open_logs),
+        ),
+    )
+
+    def refresh() -> None:
+        import time as _t
+
+        while True:
+            _t.sleep(3)
+            want = ok_icon if CONNECTED else bad_icon
+            if icon.icon is not want:
+                icon.icon = want
+                icon.title = f"MebeliX agent — {'ulandi' if CONNECTED else 'uzilgan'}"
+
+    import threading
+
+    threading.Thread(target=refresh, daemon=True).start()
+    icon.run_detached()
+
+
 async def main() -> None:
     if not BRIDGE_TOKEN:
         raise SystemExit(
@@ -911,6 +983,7 @@ async def main() -> None:
     log.info("MebeliX agent v%s", AGENT_VERSION)
     log.info("Printer: %s", PRINTER_NAME or "TOPILMADI — GoDEX drayverini o'rnating")
     start_scan_forward()
+    start_tray()
     await asyncio.gather(uplink(), flusher(), log_shipper(), self_update())
 
 
