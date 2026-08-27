@@ -48,12 +48,15 @@ function Layout() {
             relative — suv belgisi ustidan bo'yaladi; kartalar bg'i uni o'zi
             yopadi, faqat sahifaning nafas joylarida 4.5% da ko'rinadi.
             PNG emas VEKTOR (BrandLoader'dagi potrace-path) — katta o'lchamda o'tkir.
-            TO'LIQ ko'rinadi (qirqilmaydi): MX oyoqlari uchli — o'rtasidan
-            kesilsa "singan" bo'lib o'qilardi. */}
+            BLEED — ataylab: belgi sahifadan "tashqariga davom etayotgandek"
+            his beradi, to'liq ichida tursa stiker bo'lib qolardi. Kesish
+            NUQTASI sozlangan: M qanotlari va markaziy cho'qqi butun, faqat
+            oyoq UCHLARI pastdan, X qanoti o'ngdan chiqadi — shtrix o'rtasidan
+            kesilmaydi ("singan" o'qilmasin). */}
         <svg
           viewBox={MX_VIEWBOX}
           aria-hidden="true"
-          className="pointer-events-none fixed bottom-6 right-8 z-0 w-[26rem] text-primary opacity-[0.05] select-none"
+          className="pointer-events-none fixed -bottom-18 -right-24 z-0 w-[40rem] text-primary opacity-[0.05] select-none"
         >
           <path d={MX_PATH} fill="currentColor" />
         </svg>

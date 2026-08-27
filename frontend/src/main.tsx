@@ -54,7 +54,7 @@ const router = createRouter({
   // loader chiqadi; minMs — bir soniya ko'rinib "lip" etib yo'qolmasin
   defaultPendingComponent: () => (
     <div className="flex min-h-screen items-center justify-center text-primary">
-      <BrandLoader size={88} />
+      <BrandLoader size={128} />
     </div>
   ),
   defaultPendingMs: 200,
