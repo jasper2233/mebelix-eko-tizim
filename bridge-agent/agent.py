@@ -47,7 +47,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.4.3"
+AGENT_VERSION = "1.4.4"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -1137,6 +1137,12 @@ def start_scan_forward() -> None:
     from uuid import uuid4
 
     scan_re = re.compile(r"^[0-9A-Za-z_\-]{6,64}$")
+    # Beyjik (UUID) — detal QR'i EMAS: uni terminalning o'z oqimi qabul qiladi.
+    # Yubormaymiz, aks holda server uni detal deb tekshirib rad etardi va
+    # operator qonuniy beyjik skanida qizil banner + xato ovozini olardi.
+    badge_re = re.compile(
+        r"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    )
     buf: list[str] = []
     first = [0.0]
     last = [0.0]
@@ -1176,6 +1182,9 @@ def start_scan_forward() -> None:
             buf.clear()
             # skanerga xos tezlik: o'rtacha <50ms/belgi; odam terishi bundan sekin
             if n >= 6 and scan_re.match(s) and (last[0] - first[0]) / n < 0.05:
+                if badge_re.match(s):
+                    log.info("Beyjik skani — MES'ga yuborilmadi")
+                    return
                 threading.Thread(target=send, args=(s,), daemon=True).start()
             return
         ch = getattr(key, "char", None)

@@ -156,7 +156,7 @@ qidirardi — matn tahrirlanishi bilan jimgina buziladigan bog'lanish.
 | Kod | Ma'nosi | Kim tuzatadi |
 |---|---|---|
 | `E001` | Detal/plan mos kelmadi: bu QR bo'yicha tugallanmagan plan yo'q, bu post detal marshrutida yo'q, detal boshqa ish markaziga biriktirilgan, detal roverda kesiladi | Operator — chekni va postni tekshiradi |
-| `E002` | QR formati buzuq (`_` yo'q) | Operator — chekni qayta chop etadi |
+| `E002` | QR formati buzuq (`_` yo'q) | Operator — chekni qayta chop etadi. Beyjik UUID'i endi bu kodga YETIB KELMAYDI: skan-forvardda u alohida chetlab o'tiladi (`BADGE`), aks holda qonuniy beyjik skani xato bo'lib ko'rinardi |
 | `E003` | Buyurtma bekor qilingan | Manager |
 | `E004` | Navbat buzildi: shu NUSXAda oldingi qadam tugamagan (`STRICT_STAGE_ORDER`); xabar navbatdagi post nomini aytadi | Operator — oldingi postni kutadi |
 | `E005` | Aktiv sessiya yo'q yoki `SESSION_MAX_HOURS` (12 soat) o'tgan | Operator — beyjikni skanerlaydi |

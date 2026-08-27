@@ -14,6 +14,7 @@ admin endpointlar esa har biri AdminUser bilan o'zi himoyalanadi.
 
 import hashlib
 import json
+import re
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -333,6 +334,11 @@ async def read_bridge_logs(db: SessionDep, _: AdminUser, agent_id: int) -> list[
     return [r.decode() if isinstance(r, bytes) else r for r in rows]
 
 
+#: Beyjik QR'i — UUID (Employee.badge_id String(36)). Detal QR'ida esa DOIM `_`
+#: bo'ladi (TZ 5.8), ya'ni ikkalasi hech qachon chalkashmaydi.
+_BADGE_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+
 @router.post("/scan", response_model=ScanResult, operation_id="bridge_scan")
 async def bridge_scan(
     db: SessionDep,
@@ -346,6 +352,19 @@ async def bridge_scan(
     hisob-kitob odatdagi skan bilan bir xil yo'ldan o'tadi.
     """
     agent = await _agent_by_token(db, authorization)
+    # BEYJIK — detal skani EMAS. Operator monoblokda smena ochish uchun beyjigini
+    # skanerlaydi; agentning global klaviatura kuzatuvchisi o'sha zarbalarni ham
+    # ilib olib bu yerga yuboradi. Ilgari u odatdagi yo'ldan o'tib E002 ("QR
+    # formati buzuq") bilan rad etilardi: audit logga yozilar va terminal
+    # ekraniga QIZIL banner + xato ovozi chiqardi — qonuniy beyjik skanidan.
+    # Prodda 9 marta o'lchandi. Endi jimgina chetlab o'tiladi: log ham,
+    # WS xabari ham yo'q. Yangi agent (v1.4.4+) buni umuman jo'natmaydi —
+    # bu yerdagi tekshiruv eski agentlar uchun himoya.
+    if _BADGE_RE.match(body.qr_text.strip()):
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "BADGE", "message": "Beyjik skani — detal skani emas, o'tkazib yuborildi."},
+        )
     if agent.machine_id is None:
         raise HTTPException(
             status_code=409,

@@ -131,6 +131,7 @@ Ishlashi uchun:
   stanokning aktiv sessiyasi nomidan yoziladi — operator monoblokda kirgan
   bo'lishi shart);
 - `pip install pynput` (exe yig'ilganda kiritiladi); `SCAN_FORWARD=0` o'chiradi;
+- beyjik (UUID) yuborilmaydi — u smena oqimiga tegishli, detal skani emas;
 - skaner-klaviatura aniqlanishi: 6+ belgi, har belgi <50ms, Enter bilan
   tugaydi — odam terishi bu tezlikka tushmaydi.
 
