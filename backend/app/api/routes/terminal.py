@@ -128,8 +128,7 @@ async def read_terminal_context(db: SessionDep, user: TerminalUser, ctx: Termina
     ).first()
     if agent is not None:
         out.agent_online = not (
-            agent.last_seen_at is None
-            or datetime.now(UTC) - agent.last_seen_at > AGENT_ONLINE_WINDOW
+            agent.last_seen_at is None or datetime.now(UTC) - agent.last_seen_at > AGENT_ONLINE_WINDOW
         )
         out.agent_prints = bool(agent.can_print)
     for session in await crew_sessions(db, machine.id):

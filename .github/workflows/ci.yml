@@ -241,7 +241,7 @@ jobs:
     # Alohida job: CI (backend/frontend) yiqilsa deploy skip bo'ladi —
     # notify deploy ichida bo'lsa xabar umuman ketmaydi. Bu yerda har doim ketadi.
     if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [backend, frontend, images, deploy]
+    needs: [backend, frontend, images, agent, deploy]
     runs-on: ubuntu-latest
     steps:
       - name: Telegram notify
@@ -251,6 +251,7 @@ jobs:
           BACKEND: ${{ needs.backend.result }}
           FRONTEND: ${{ needs.frontend.result }}
           IMAGES: ${{ needs.images.result }}
+          AGENT: ${{ needs.agent.result }}
           DEPLOY: ${{ needs.deploy.result }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TG_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
@@ -259,7 +260,7 @@ jobs:
           if [ "$DEPLOY" = "success" ]; then
             head="✅ MebeliX deploy OK"
           elif [ "$DEPLOY" = "skipped" ]; then
-            head="❌ MebeliX CI YIQILDI (deploy boshlanmadi) — backend: $BACKEND, frontend: $FRONTEND, images: $IMAGES"
+            head="❌ MebeliX CI YIQILDI (deploy boshlanmadi) — backend: $BACKEND, frontend: $FRONTEND, images: $IMAGES, agent: $AGENT"
           else
             head="❌ MebeliX deploy YIQILDI (avto-rollback ishlagan bo'lishi kerak)"
           fi

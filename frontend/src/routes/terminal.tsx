@@ -163,7 +163,10 @@ function TerminalPage() {
   // (kontekstning o'zi last_seen tufayli 6 daqiqagacha "onlayn" deb turardi).
   const [printerLive, setPrinterLive] = useState<boolean | null>(null)
   const ctxMachineId = ctx?.machine_id
-  useEffect(() => setPrinterLive(null), [ctxMachineId])
+  // Ish markazi almashdi — eski jonli override endi boshqa mashinaga tegishli
+  useEffect(() => {
+    if (ctxMachineId !== undefined) setPrinterLive(null)
+  }, [ctxMachineId])
   const { online } = useMesWs(
     useCallback(
       (event) => {
