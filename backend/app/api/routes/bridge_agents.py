@@ -237,7 +237,7 @@ async def pair_bridge_agent(db: SessionDep, body: BridgePairRequest, request: Re
                     pair_code=None,
                     pair_expires_at=None,
                 )
-                .returning(BridgeAgent.id, BridgeAgent.name)
+                .returning(BridgeAgent.id, BridgeAgent.name, BridgeAgent.machine_id)
             )
         ).first()
     if row is None:
@@ -257,7 +257,12 @@ async def pair_bridge_agent(db: SessionDep, body: BridgePairRequest, request: Re
     await db.commit()
     # Kod terilishi bilan admin sahifasi darhol yangilanadi (pollingni kutmasdan)
     await ws_manager.publish("bridge.paired", {"agent_id": row.id})
-    return BridgePairResponse(token=token, name=row.name)
+    machine_name = None
+    if row.machine_id is not None:
+        machine = await db.get(Machine, row.machine_id)
+        if machine is not None and not machine.is_deleted:
+            machine_name = machine.name
+    return BridgePairResponse(token=token, name=row.name, machine_name=machine_name)
 
 
 async def _agent_by_token(db: SessionDep, authorization: str) -> BridgeAgent:

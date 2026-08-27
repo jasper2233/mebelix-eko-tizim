@@ -295,6 +295,10 @@ export type BridgePairResponse = {
      * Name
      */
     name: string;
+    /**
+     * Machine Name
+     */
+    machine_name?: string | null;
 };
 
 /**

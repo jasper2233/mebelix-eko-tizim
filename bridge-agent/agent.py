@@ -374,9 +374,9 @@ class _PairError(Exception):
     """Foydalanuvchiga ko'rsatiladigan, tuzatib qayta urinsa bo'ladigan xato."""
 
 
-def _exchange(url: str, code: str) -> tuple[str, str, str]:
+def _exchange(url: str, code: str) -> tuple[str, str, str, str]:
     """Bir martalik kodni doimiy tokenga almashtiradi.
-    Qaytaradi: (normallashgan ws url, token, agent nomi)."""
+    Qaytaradi: (normallashgan ws url, token, agent nomi, stanok nomi yoki "")."""
     import urllib.error
     import urllib.request
 
@@ -400,7 +400,7 @@ def _exchange(url: str, code: str) -> tuple[str, str, str]:
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read())
-            return url, data["token"], data["name"]
+            return url, data["token"], data["name"], str(data.get("machine_name") or "")
     except urllib.error.HTTPError as exc:
         detail = ""
         with contextlib.suppress(Exception):
@@ -541,7 +541,7 @@ def _pair() -> None:
         if picked is None:
             raise SystemExit("Ulanish bekor qilindi.")
         try:
-            url, token, name = _exchange(*picked)
+            url, token, name, stanok = _exchange(*picked)
             break
         except _PairError as exc:
             error = str(exc)
@@ -572,10 +572,17 @@ def _pair() -> None:
     os.environ["MES_URL"] = url
     os.environ["BRIDGE_TOKEN"] = token
     _register_autostart()
+    # Stanok bog'langan bo'lsa aytamiz: skan-forvard AYNAN shu stanokning aktiv
+    # sessiyasi nomidan yoziladi — noto'g'ri bog'lanish shu yerda darhol ko'rinadi
+    stanok_info = (
+        f"\nIsh markazi: {stanok} (skan-forvard shu stanok nomidan yoziladi)."
+        if stanok
+        else ""
+    )
     _alert(
         "MebeliX",
-        f"Ulandi: {name}\n\nAgent fonda ishlaydi va kompyuter yonganda o'zi "
-        f"tushadi - oyna ko'rinmaydi. Holatini admin paneldan kuzatasiz.",
+        f"Ulandi: {name}{stanok_info}\n\nAgent fonda ishlaydi va kompyuter "
+        f"yonganda o'zi tushadi. Holati tray belgisida va admin panelda.",
     )
 
 

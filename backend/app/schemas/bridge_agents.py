@@ -50,6 +50,9 @@ class BridgePairResponse(BaseModel):
 
     token: str
     name: str
+    #: Bog'langan stanok nomi — agent ulanish xabarida ko'rsatadi (skan-forvard
+    #: qaysi stanok nomidan yozilishini operator darhol bilsin); bog'lanmagan — None
+    machine_name: str | None = None
 
 
 class AgentRelease(BaseModel):
