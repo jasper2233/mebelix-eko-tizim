@@ -346,7 +346,11 @@ function AgentRow({
   })
 
   const seen = agent.last_seen_at ? new Date(agent.last_seen_at) : null
-  const online = seen && Date.now() - seen.getTime() < ONLINE_MS
+  // `paired` SHART: "yangi kod" bosilgach token bekor bo'ladi, lekin oxirgi
+  // ko'rinish vaqti eski qiymatida qolsa panel yana 6 daqiqa "Ulandi" deb
+  // YOLG'ON ko'rsatardi. Server endi revoke'da `last_seen_at` ni ham tozalaydi
+  // — bu shart eski yozuvlar va poyga holatlari uchun ikkinchi himoya.
+  const online = agent.paired && seen && Date.now() - seen.getTime() < ONLINE_MS
 
   return (
     <TableRow>

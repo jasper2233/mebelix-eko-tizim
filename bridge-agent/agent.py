@@ -30,6 +30,7 @@ import json
 import logging
 import os
 import sys
+import threading
 from collections import deque
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -47,7 +48,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.4.4"
+AGENT_VERSION = "1.4.5"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -371,6 +372,11 @@ def _register_autostart() -> None:
         log.warning("Avtostart yozilmadi (%s) - qo'lda qo'shish kerak", exc)
 
 
+#: Pairing dialogi ochiq — self_update shu paytda exe'ni almashtirmasligi kerak
+#: (os._exit ochiq oynani o'ldirib, operatorni kod kiritolmay qoldirardi)
+PAIRING = threading.Event()
+
+
 class _PairError(Exception):
     """Foydalanuvchiga ko'rsatiladigan, tuzatib qayta urinsa bo'ladigan xato."""
 
@@ -466,6 +472,9 @@ def _success_window(name: str, stanok: str) -> None:
             column=0, row=2, sticky="we", pady=(20, 0)
         )
         root.bind("<Return>", lambda *_: root.destroy())
+        with contextlib.suppress(Exception):
+            root.attributes("-topmost", True)
+            root.lift()
         with contextlib.suppress(Exception):
             root.eval("tk::PlaceWindow . center")
         root.mainloop()
@@ -569,6 +578,13 @@ def _pair_dialog(error: str = "") -> tuple[str, str] | None:
         column=0, row=7, sticky="we", pady=(22, 0)
     )
     root.bind("<Return>", submit)
+    # USTKI QATLAM + majburiy fokus: terminal to'liq ekran kiosk rejimida
+    # ishlaydi, oyna uning ORTIDA ochilsa operator hech narsa ko'rmasdi va
+    # "agent yangi kod so'ramayapti" degan xulosaga kelardi.
+    with contextlib.suppress(Exception):
+        root.attributes("-topmost", True)
+        root.lift()
+        root.focus_force()
     code_entry.focus_set()
     with contextlib.suppress(Exception):
         root.eval("tk::PlaceWindow . center")
@@ -594,6 +610,15 @@ def _pair() -> None:
     tushirish shart emas. Kod bir martalik va 15 daqiqa yashaydi; token muddatsiz."""
     if os.environ.get("BRIDGE_TOKEN"):
         return  # allaqachon ulangan
+    PAIRING.set()
+    try:
+        _pair_loop()
+    finally:
+        PAIRING.clear()
+
+
+def _pair_loop() -> None:
+    """`_pair` ning asosiy qismi — PAIRING bayrog'i bilan o'ralgan."""
     error = ""
     while True:
         try:
@@ -1078,7 +1103,7 @@ async def uplink() -> None:
             status = exc.response.status_code
             if status in (401, 403):
                 reject_streak += 1
-                if reject_streak >= 3:
+                if reject_streak >= 2:
                     log.error(
                         "Server %d marta rad etdi (HTTP %s) - token bekor qilingan",
                         reject_streak,
@@ -1091,13 +1116,23 @@ async def uplink() -> None:
                     # navbatdagi (allaqachon ack qilingan!) cheklarni ishlab
                     # turgan printerga chiqara olmasdi. Isbotlangan. Tk to'liq
                     # shu oqim ichida yaratiladi va yopiladi — thread-safe.
-                    await asyncio.to_thread(_repair)
+                    # SystemExit himoyasi: dialog bekor qilinsa `_pair` uni
+                    # ko'taradi va `except Exception` uni TUTMAYDI (BaseException)
+                    # — butun agent jimgina o'lardi. Endi eski holat saqlanadi
+                    # va qayta urinaveradi (tray menyusidagi yo'l ham ochiq).
+                    try:
+                        await asyncio.to_thread(_repair)
+                    except SystemExit:
+                        log.warning("Qayta ulanish bekor qilindi — agent ishlashda davom etadi")
+                        await asyncio.sleep(30)
                     continue
                 log.warning(
-                    "Handshake rad etildi (HTTP %s, %d/3) — 5s dan keyin qayta urinish",
+                    "Handshake rad etildi (HTTP %s, %d/2) — 3s dan keyin qayta urinish",
                     status,
                     reject_streak,
                 )
+                await asyncio.sleep(3)
+                continue
             else:
                 # 5xx / redirect / g'alati javob — server yoki tarmoq holati,
                 # token aybdor emas; streak ham nolga — "ketma-ket" chin bo'lsin
@@ -1109,7 +1144,12 @@ async def uplink() -> None:
             await asyncio.sleep(5)
         except Exception as exc:
             CONNECTED = False
-            reject_streak = 0
+            # `reject_streak` BU YERDA NOLGA TUSHIRILMAYDI. Ilgari tushirilardi
+            # va notekis tsex tarmog'ida ketma-ket 403 hech yig'ilmasdi: 403 ->
+            # TCP timeout (streak=0) -> 403 -> ... — bekor qilingan agent yangi
+            # kod SO'RAMAY qolardi. Streak faqat MUVAFFAQIYATLI ulanishda va
+            # auth bo'lmagan HTTP javobida nolga tushadi — o'shanda token
+            # aybdor emasligi aniq.
             log.warning("Ulanish uzildi (%s) — 5s dan keyin qayta urinish", exc)
             await asyncio.sleep(5)
 
@@ -1304,17 +1344,22 @@ async def self_update() -> None:
                 )
                 if hashlib.sha256(data).hexdigest() != info.get("sha256"):
                     log.warning("Yangilanish sha256 mos emas — o'tkazib yuborildi")
-                elif local_drain():
+                elif local_drain() or PAIRING.is_set():
                     # ISH PAYTIDA EMAS: navbatda chek turganda os._exit chop
                     # etishni o'rtasida uzib, restartda o'sha chek IKKINCHI
                     # marta chiqishi mumkin edi (fayldan faqat muvaffaqiyatli
                     # chop etishdan KEYIN o'chiriladi). Navbat bo'shaguncha
                     # 10 daqiqadan tekshirib turamiz — flusher odatda
                     # soniyalarda bo'shatadi, yangilanish esa shoshmaydi.
-                    log.info("Yangilanish tayyor, navbat bo'shashini kutmoqda")
+                    log.info("Yangilanish tayyor, navbat/pairing tugashini kutmoqda")
                     new_exe.write_bytes(data)
-                    while local_drain():
-                        await asyncio.sleep(600)
+                    # Chegara bilan: tiqilib qolgan bitta chek (masalan printer
+                    # buzuq) ilgari yangilanishni MANGU to'xtatardi — aynan
+                    # tuzatish kerak bo'lgan mashina tuzatishni olmasdi.
+                    kutildi = 0
+                    while (local_drain() or PAIRING.is_set()) and kutildi < 3600:
+                        await asyncio.sleep(30)
+                        kutildi += 30
                     _apply_update(new_exe)
                 else:
                     new_exe.write_bytes(data)

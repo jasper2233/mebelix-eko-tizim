@@ -20,7 +20,7 @@ from app.core.security import ACCESS_COOKIE_NAME
 from app.core.ws import WsClient, ws_manager
 from app.models import BridgeAgent, Machine, Post
 from app.models.enums import POST_ROLES, UserRole
-from app.tasks import print_queue_key
+from app.tasks import agent_revoked_key, print_queue_key
 
 router = APIRouter()
 
@@ -175,8 +175,20 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
                 # aks holda umumiy navbatdan chekni "o'g'irlab" lokalida qoldiradi
                 popped = None
                 await asyncio.sleep(5)
+            # REVOKE — HAR ITERATSIYADA (arzon Redis GET, ulanishning o'z
+            # klienti bilan). Ilgari yagona tekshiruv 5 daqiqalik `touch_agent`
+            # edi: admin "yangi kod" bosgach bekor qilingan token yana ~5 daqiqa
+            # chek olib chop etaverardi va panel "Ulandi" deb turardi
+            # (repro bilan o'lchangan: 295 s). Endi kechikish <= brpop siklining
+            # o'zi (~5 s).
+            if agent_id is not None and await redis.get(agent_revoked_key(agent_id)):
+                if popped is not None:
+                    await redis.rpush(popped[0], popped[1])
+                logger.info("Agent bekor qilindi — ulanish uzildi: agent=%s", agent_id)
+                await websocket.close(code=WS_CLOSE_UNAUTHORIZED)
+                return
             now = asyncio.get_event_loop().time()
-            if now - last_touch > 300:  # har 5 daqiqada — DB'ga ortiqcha yuk bo'lmasin
+            if now - last_touch > 300:  # zaxira tekshiruv — DB'ga ortiqcha yuk bo'lmasin
                 if not await touch_agent():
                     # Revoke jonli ulanishni ham uzadi (maks ~5 daqiqa kechikish).
                     # Qo'lda turgan job navbatga qaytadi — yo'qolmaydi.
@@ -196,6 +208,7 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
             job_id = ""
             with contextlib.suppress(Exception):
                 job_id = json.loads(job).get("job_id", "")
+            delivered = False  # nack yo'lida "yetkazildi" deb yozilmasin
             try:
                 # 10s dan KECH kelgan ping-javob soketda qolib keyingi jobning
                 # ack'i bo'lib o'qilardi (eski agent pingga ham {"ok":true} beradi)
@@ -231,9 +244,12 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
                             job_id,
                         )
                         await asyncio.sleep(15)
+                        delivered = False
                         break
+                    delivered = True
                     break
-                logger.info("Chek yetkazildi: agent=%s job=%s", agent_id, job_id)
+                if delivered:
+                    logger.info("Chek yetkazildi: agent=%s job=%s", agent_id, job_id)
             except Exception as exc:
                 logger.warning(
                     "Chek yetkazilmadi, navbatga qaytarildi: agent=%s job=%s sabab=%s",

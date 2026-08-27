@@ -85,9 +85,10 @@ Ack kelmasa yoki ulanish uzilsa job navbatga qaytadi — yorliq yo'qolmaydi.
 
 ## Muammolar
 
-Admin panelda "yangi kod" yoki "bekor qilish" bosilsa server ulanishni **HTTP
-401/403** bilan rad etadi. Agent buni o'zi payqaydi: 401/403 KETMA-KET 3 marta
-kelgandagina (~15 soniya) saqlangan tokenni o'chirib, sozlash oynasini qayta
+Admin panelda "yangi kod" yoki "bekor qilish" bosilsa server jonli ulanishni **~5 soniyada** uzadi
+(Redis revoke bayrog'i) va keyingi ulanishni **HTTP 401/403** bilan rad etadi. Agent buni o'zi payqaydi: 401/403 KETMA-KET 2 marta
+kelgandagina (~3 soniya; transport xatosi endi hisobni NOLLAMAYDI — ilgari notekis
+tarmoqda ketma-ketlik hech yig'ilmasdi) saqlangan tokenni o'chirib, sozlash oynasini qayta
 ochadi — yangi kodni kiritsangiz ishlashda davom etadi. Oyna bekor qilinsa agent
 to'xtaydi. Boshqa har qanday xato (deploy paytidagi 502, kompyuter yonganda
 tarmoq hali tik turmagani, server qayta yonayotgani) tokenni O'CHIRMAYDI —

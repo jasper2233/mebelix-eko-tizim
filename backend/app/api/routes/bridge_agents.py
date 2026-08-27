@@ -50,6 +50,7 @@ from app.services.scanning import (
     log_rejected_scan,
     record_scan_at,
 )
+from app.tasks import agent_revoked_key, print_queue_key
 
 router = APIRouter(prefix="/bridge-agents", tags=["bridge-agents"])
 
@@ -112,6 +113,22 @@ async def update_bridge_agent(
     machine_name: str | None = None
     if "machine_id" in sent:
         if body.machine_id is not None:
+            band = (
+                await db.execute(
+                    select(BridgeAgent.name).where(
+                        BridgeAgent.machine_id == body.machine_id,
+                        BridgeAgent.id != agent.id,
+                        BridgeAgent.is_deleted == False,  # noqa: E712
+                    )
+                )
+            ).scalar_one_or_none()
+            if band is not None:
+                # Ikki agent bitta ish markazida: cheklar ular orasida bo'linib,
+                # yarmi o'lik navbatda qolardi (`printer_agent` bittasini tanlaydi).
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Bu ish markaziga «{band}» agenti allaqachon bog'langan — avval uni uzing.",
+                )
             machine = await db.get(Machine, body.machine_id)
             if machine is None or machine.is_deleted:
                 raise NotFoundException("Ish markazi topilmadi.")
@@ -181,6 +198,10 @@ async def regenerate_bridge_code(
     agent.token_hash = None
     agent.pair_code = _new_code()
     agent.pair_expires_at = datetime.now(UTC) + PAIR_TTL
+    # Panel DARHOL "Uzilgan" ko'rsatsin: `last_seen_at` eski qiymatida qolsa
+    # 6 daqiqalik onlayn oynasi tufayli "Ulandi" deb yolg'on ko'rsatardi.
+    agent.last_seen_at = None
+    await _revoke_live_connection(agent.id)
     log_action(
         db,
         module="bridge_agents",
@@ -209,8 +230,37 @@ async def delete_bridge_agent(db: SessionDep, current_user: AdminUser, agent_id:
         message=f"Agent bekor qilindi: {agent.name}",
         ip=client_ip(request),
     )
+    # Navbatda qolgan cheklar: agent o'chirilgach ularni HECH KIM olmaydi
+    # (har chek aniq agentga manzillangan) — kalit jimgina abadiy qolardi.
+    # Nechta chek bekor bo'lganini AYTAMIZ, aks holda operator "chek yuborildi"
+    # xabarini ko'rib qog'oz kutib qolardi.
+    qolgan = await _revoke_live_connection(agent.id, purge_queue=True)
     await crud_bridge_agents.delete(db, id=agent_id)
+    if qolgan:
+        return Message(message=f"Agent bekor qilindi — ulanish rad etiladi. Navbatdagi {qolgan} ta chek bekor qilindi.")
     return Message(message="Agent bekor qilindi — ulanish endi rad etiladi.")
+
+
+async def _revoke_live_connection(agent_id: int, *, purge_queue: bool = False) -> int:
+    """Jonli WS ulanishni darhol uzish uchun Redis bayrog'i; ixtiyoriy — navbatni
+    tozalash. Qaytaradi: tozalangan cheklar soni (`purge_queue` bo'lmasa 0).
+
+    `/ws/bridge` sikli har iteratsiyada shu bayroqni o'qiydi (~5 s), ya'ni
+    "yangi kod"/"o'chirish" bosilgach ulanish deyarli darhol uziladi. Ilgari
+    yagona tekshiruv 5 daqiqalik `touch_agent` edi.
+    """
+    redis = AsyncRedis.from_url(settings.REDIS_URL)
+    try:
+        await redis.set(agent_revoked_key(agent_id), "1", ex=600)
+        if not purge_queue:
+            return 0
+        key = print_queue_key(agent_id)
+        n = int(await redis.llen(key) or 0)
+        if n:
+            await redis.delete(key)
+        return n
+    finally:
+        await redis.aclose()
 
 
 @router.post("/pair", response_model=BridgePairResponse, operation_id="pair_bridge_agent")
@@ -245,6 +295,13 @@ async def pair_bridge_agent(db: SessionDep, body: BridgePairRequest, request: Re
         await db.rollback()
         raise HTTPException(status_code=400, detail="Ulanish kodi noto'g'ri yoki muddati o'tgan.")
 
+    # Yangi juftlanish bayroqni bekor qiladi: aks holda endi qonuniy bo'lgan
+    # ulanish TTL tugaguncha (10 daqiqa) uzilib turardi.
+    _redis = AsyncRedis.from_url(settings.REDIS_URL)
+    try:
+        await _redis.delete(agent_revoked_key(row.id))
+    finally:
+        await _redis.aclose()
     log_action(
         db,
         module="bridge_agents",
@@ -360,6 +417,17 @@ async def bridge_scan(
     # Prodda 9 marta o'lchandi. Endi jimgina chetlab o'tiladi: log ham,
     # WS xabari ham yo'q. Yangi agent (v1.4.4+) buni umuman jo'natmaydi —
     # bu yerdagi tekshiruv eski agentlar uchun himoya.
+    # QOLDIQ (ATX-) va PACHKA (PK-) QR'lari detal skani EMAS: ularning o'z
+    # oqimi bor (terminal `/scans` ATX uchun to'liq ma'lumot qaytaradi, PK esa
+    # TMO qabulida ishlatiladi). Stanok skaneridan o'tsa ular `_QR_RE` dan
+    # yiqilib E002 "QR formati buzuq" degan QIZIL xato berardi — chek aslida
+    # butun. Jimgina chetlab o'tamiz.
+    _qr = body.qr_text.strip().upper()
+    if _qr.startswith(("ATX-", "PK-")):
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "SKIP", "message": "Bu QR detal skani emas — terminalda skanerlang."},
+        )
     if _BADGE_RE.match(body.qr_text.strip()):
         raise HTTPException(
             status_code=422,
@@ -391,6 +459,16 @@ async def bridge_scan(
     try:
         session = await active_session(db, machine)
     except ScanRejected as exc:
+        # Terminal ekraniga ham chiqsin: ilgari bu holat (smena ochilmagan,
+        # hodim nofaol) FAQAT agent logiga tushardi — stanokda skanerlagan
+        # operator hech qanday signal ko'rmasdi va skanini yo'qotganini
+        # bilmasdi. Skan hisobga OLINMAYDI, bu faqat xabar.
+        await ws_manager.publish(
+            "scan.rejected",
+            {"qr_text": body.qr_text, "code": exc.code, "message": exc.message, "machine_id": machine_id},
+            post_id=post_id,
+            machine_id=machine_id,
+        )
         raise HTTPException(status_code=409, detail=exc.message) from exc
 
     try:

@@ -147,6 +147,8 @@ tugamaguncha keyingisi rad etiladi, xabar navbatdagi post nomini aytadi.
 
 ### 3.0 Xato kodlari (TT 8.5)
 
+**MANBALAR-ARO DEDUP:** bitta fizik skan IKKI yo'ldan kelishi mumkin (brauzer terminali va stanok agentining klaviatura kuzatuvchisi) — ular turli `client_event_id` beradi, ya'ni oddiy idempotentlik ushlamaydi. `per_instance == 1` qadamda ikkinchisi E008 bilan to'xtaydi, lekin KROMKA qirralari / PRISADKA tomonlarida u JIMGINA keyingi qirrani ham yopardi (real DB bilan isbotlangan: 2 qirralik qadam bitta skanda 2/2 bo'lardi). Endi bir xil (nusxa, qadam) bo'yicha 3 soniya ichidagi ikkinchi yozuv takror deb qabul qilinadi (`CROSS_SOURCE_WINDOW`, `scanning.py`).
+
 Rad etilgan skan `422 {"code": "E00x", "message": "..."}` qaytaradi. **Kod kim
 harakat qilishini aytadi, matn esa nima qilishini** — matn tahrirlanadi, kod
 barqaror qoladi, shuning uchun mantiq (terminal ovozi, hisobot guruhlashi)

@@ -31,6 +31,9 @@ from app.models.enums import (
 )
 from app.models.user import User
 
+#: Manbalar-aro dedup oynasi (pastdagi `record_scan_at` izohiga qarang)
+CROSS_SOURCE_WINDOW = timedelta(seconds=3)
+
 _QR_RE = re.compile(r"^.+_.+$")  # {productCode}_{partCode}[_{n}] — yagona nusxada suffiks yo'q (TZ 5.8)
 
 
@@ -593,6 +596,42 @@ async def record_scan_at(
                 prev_post = await db.get(Post, prev.post_id)
                 nom = prev_post.name if prev_post is not None else f"{prev.seq}-qadam"
                 raise ScanRejected("E004", f"Navbat: avval {nom}. Oldingi bosqich yakunlanmagan.")
+
+    # MANBALAR-ARO DEDUP. Bitta fizik skan IKKI yo'ldan kelishi mumkin: brauzer
+    # terminali (`/scans`, client_event_id = crypto.randomUUID()) va stanok
+    # agentining klaviatura kuzatuvchisi (`/bridge-agents/scan`, uuid4().hex).
+    # `client_event_id` dedupi bu yerda ishlamaydi — ikki yo'l ikki xil id beradi.
+    # `per_instance == 1` qadamda ikkinchisi E008 bilan to'xtaydi, lekin
+    # per_instance > 1 (KROMKA qirralari, PRISADKA tomonlari) da u JIMGINA
+    # ikkinchi qirrani ham yopib qo'yardi: detal bir tomoni ishlanmasdan
+    # "tugagan" bo'lardi. Bir xil (nusxa, qadam) bo'yicha 3 soniya ichidagi
+    # ikkinchi yozuv takror deb qabul qilinadi — qirra/tomon ishlovi soniyalarda
+    # tugamaydi, ya'ni oyna qonuniy ishni yutib yubormaydi.
+    yaqin = (
+        (
+            await db.execute(
+                select(Scan)
+                .where(
+                    Scan.instance_id == instance.id,
+                    Scan.route_id == route.id,
+                    Scan.is_cancelled == False,  # noqa: E712
+                    Scan.is_deleted == False,  # noqa: E712
+                    Scan.created_at > datetime.now(UTC) - CROSS_SOURCE_WINDOW,
+                )
+                .order_by(Scan.created_at.desc())
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if yaqin is not None:
+        return ScanOutcome(
+            scan=yaqin,
+            part=part,
+            instance=instance,
+            qoldiq=route.total_required - route.total_done,
+            duplicate=True,
+        )
 
     scan = Scan(
         order_id=order.id,

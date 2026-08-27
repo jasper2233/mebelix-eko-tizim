@@ -22,6 +22,15 @@ logger = logging.getLogger(__name__)
 PRINT_QUEUE_KEY = "mes:print:queue"  # bridge-agent drains this list (TZ 2.2.2)
 
 
+def agent_revoked_key(agent_id: int) -> str:
+    """Bekor qilingan agent bayrog'i. Jonli WS ulanish har iteratsiyada shuni
+    o'qiydi va darhol uziladi — ilgari revoke faqat 5 daqiqalik `touch_agent`
+    da sezilardi va bekor qilingan token o'sha vaqt davomida chek olib chop
+    etaverardi (prod-repro bilan o'lchandi: 295 s). TTL 10 daqiqa — ulanish
+    shu vaqt ichida albatta uziladi, keyin bayroq keraksiz."""
+    return f"mes:agent:revoked:{agent_id}"
+
+
 def print_queue_key(agent_id: int | None) -> str:
     """Chek navbati kaliti. `agent_id` berilsa — FAQAT o'sha agentniki.
 
@@ -61,12 +70,19 @@ async def printer_agent(db: "AsyncSession", machine_id: int | None) -> "Row | No
     return (
         (
             await db.execute(
-                select(BridgeAgent.id, BridgeAgent.last_seen_at).where(
+                select(BridgeAgent.id, BridgeAgent.last_seen_at)
+                .where(
                     BridgeAgent.machine_id == machine_id,
                     BridgeAgent.can_print == True,  # noqa: E712
                     BridgeAgent.token_hash.is_not(None),  # juftlanmagan agent chek ololmaydi
                     BridgeAgent.is_deleted == False,  # noqa: E712
                 )
+                # DETERMINISTIK: bitta ish markaziga xato bilan ikki agent
+                # bog'langan bo'lsa (endi 409 bilan to'silgan, lekin eski
+                # ma'lumotda uchrashi mumkin) tartibsiz `.first()` cheklarni
+                # ikkiga bo'lib yuborardi — biri chiqadi, biri o'lik navbatda
+                # qoladi. Eng yangi ko'ringani ustun, so'ng eng katta id.
+                .order_by(BridgeAgent.last_seen_at.desc().nullslast(), BridgeAgent.id.desc())
             )
         )
         # `.scalars()` YO'Q: u faqat BIRINCHI ustunni oladi va bu yerda `Row`
