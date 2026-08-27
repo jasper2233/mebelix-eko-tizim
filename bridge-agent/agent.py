@@ -605,6 +605,11 @@ if not _single_instance():
     _alert("MebeliX", "Agent allaqachon ishlab turibdi.")
     raise SystemExit(0)
 _pair()
+# HAR startda qayta yoziladi, faqat pairing'da emas. Ilgari bir marta yozilardi:
+# exe keyin ko'chirilsa registry o'lik yo'lga ishora qilib, reboot'dan keyin
+# agent turmasdi va o'zini hech qachon tuzatmasdi (Prisadkada aynan shu kuzatilgan).
+# Yozuv idempotent va HKCU — arzon, har startda yangilash zarari yo'q.
+_register_autostart()
 
 MES_URL = os.environ.get("MES_URL", "ws://localhost:8000")
 BRIDGE_TOKEN = os.environ.get("BRIDGE_TOKEN", "")

@@ -26,8 +26,11 @@ terminallariga hech narsa kerak emas (ular brauzerdan tugmani bosadi).
    bilan qayta ochiladi — dasturni qayta ishga tushirish shart emas.
 
 Shundan keyin oyna yopiladi: agent fonda ishlaydi va kompyuter yonganda o'zi
-tushadi (birinchi ulanishda `HKCU\...\Run` ga yoziladi, admin huquqi kerak
-emas). Holat **tray belgisida** (v1.4.0+): yashil nuqta = ulandi, qizil =
+tushadi (`HKCU\...\Run` — HAR startda qayta yoziladi, ya'ni exe ko'chirilsa
+ham keyingi qo'lda ishga tushirishdan boshlab avtostart o'zini tuzatadi; admin
+huquqi kerak emas). Eslatma: HKCU foydalanuvchiga bog'liq — kompyuter boshqa
+Windows akkaunti bilan yonsa agent tushmaydi; stanok/monoblokda avto-login
+o'sha bitta akkauntda bo'lishi kerak. Holat **tray belgisida** (v1.4.0+): yashil nuqta = ulandi, qizil =
 uzilgan; menyuda rejim (printer nomi yoki skan-forvard), versiya va log papkasi.
 "Chiqish" ATAYIN yo'q — tasodifan yopilgan agent chek chiqarmay qo'yardi.
 Admin paneldagi **Ulandi** belgisi ham ishlaydi; tafsilotlar
