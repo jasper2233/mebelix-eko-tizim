@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/dialog"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { formatDateTime, isCut } from "@/lib/mes"
+import { isCut } from "@/lib/mes"
 import { handleError } from "@/utils"
 
 // `SheetPart`/`Sheet` — SheetSvg dan (ikkalasi bir xil yoyilgan listni ko'radi).
@@ -220,7 +220,6 @@ export function CutmapView({
     instance_id: number
   } | null>(null)
   // Foydali atxot katagi bosilganda: chek chiqarish dialogi
-  const [wasteTarget, setWasteTarget] = useState<SheetPart | null>(null)
   // Material qatorini barmoq bilan surib aylantirish
   const matDrag = useDragScroll()
   // GibLab toolbar zoom API (SheetSvg ro'yxatdan o'tkazadi)
@@ -245,7 +244,7 @@ export function CutmapView({
       ).data,
     onSuccess: (r) => {
       toast.success(r.message)
-      setWasteTarget(null)
+      setSelected(null)
     },
     onError: handleError,
     onSettled: () =>
@@ -270,7 +269,7 @@ export function CutmapView({
       ).data,
     onSuccess: (r) => {
       toast.success(r.message)
-      setWasteTarget(null)
+      setSelected(null)
     },
     onError: handleError,
     onSettled: () =>
@@ -442,12 +441,17 @@ export function CutmapView({
 
   // Material statistikasi — ixcham bir qator (terminalda SKAN ON qatoriga portal,
   // admin sahifada xarita tepasida). Xarita balandligidan joy olmaydi.
+  // Belgilangan katak — DETAL yoki QOLDIQ. Ikkalasi bir xil oqimdan o'tadi:
+  // bir marta bosish belgilaydi, chap qatordagi "Chop etish" chiqaradi, ikki
+  // marta bosish kartochkani ochadi (bekor qilish o'sha yerda).
   const markedPart =
     sheet && markedCell !== null
-      ? sheet.parts.find((p) => p.cell === markedCell && !p.waste)
+      ? sheet.parts.find((p) => p.cell === markedCell)
       : undefined
+  const markedWaste = markedPart?.waste ? markedPart : undefined
+  const markedWasteItem = wasteItemFor(markedWaste ?? null)
   const markedInsts =
-    sheet && markedPart
+    sheet && markedPart && !markedPart.waste
       ? (cellInsts.get(`${sheet.no}:${markedPart.cell}`) ?? [])
       : []
   // Fallback YO'Q: hammasi chiqarilgan bo'lsa qayta chop etilmaydi —
@@ -609,21 +613,40 @@ export function CutmapView({
       </TBtn>
       <TBtn
         label="Chop etish"
-        tone={nextInstance ? "success" : "default"}
+        tone={
+          nextInstance || (markedWasteItem && !markedWasteItem.label_printed_at)
+            ? "success"
+            : "default"
+        }
         // Katak belgilangan bo'lsa tugma ISHLAYDI. Ilgari nusxasi bog'lanmagan
         // katakda u jimgina o'chib qolardi: arrachi bosadi, hech narsa
         // bo'lmaydi, sabab ham aytilmaydi — 17" kioskda bu "chek chiqmayapti"
         // bo'lib ko'rinardi va operator sababini topa olmasdi.
-        disabled={markedCell === null || printMutation.isPending}
-        onClick={() =>
-          nextInstance
+        disabled={
+          markedCell === null || printMutation.isPending || wastePrint.isPending
+        }
+        onClick={() => {
+          // QOLDIQ — detal bilan bir xil qoida: chiqarilmagan bo'lsa chiqadi,
+          // chiqarilgan bo'lsa avval kartochkadan bekor qilinadi.
+          if (markedWaste) {
+            if (!markedWasteItem)
+              return toast.error(
+                "Bu qoldiq ro'yxatga olinmagan (eski yuklama) — project faylni qayta yuklang.",
+              )
+            if (markedWasteItem.label_printed_at)
+              return toast.error(
+                "Bu qoldiq chiqarilgan. Qaytadan chiqarish uchun uni ikki marta bosib chekni bekor qiling.",
+              )
+            return wastePrint.mutate(markedWasteItem.id)
+          }
+          return nextInstance
             ? printMutation.mutate(nextInstance.instance_id)
             : toast.error(
                 markedInsts.length
                   ? "Bu detal chiqarilgan. Qaytadan chiqarish uchun detalni ikki marta bosib chekni bekor qiling."
                   : "Bu detalning QR'i yo'q — chek chiqmaydi. Texnologga ayting.",
               )
-        }
+        }}
       >
         <Printer />
       </TBtn>
@@ -799,7 +822,6 @@ export function CutmapView({
                 // Chekni bekor qilish tugmasi kartochka ICHIDA: jest
                 // buzg'unchi amalni o'zi bajarmaydi.
                 onOpenPart={admin ? undefined : setSelected}
-                onOpenWaste={setWasteTarget}
                 wastePrinted={wastePrinted}
                 selectedCell={markedCell}
                 registerZoom={(a) => {
@@ -825,6 +847,9 @@ export function CutmapView({
         instancesByCell={cellInsts}
         onClose={() => setSelected(null)}
         holes={holes}
+        wasteItem={wasteItemFor(selected)}
+        onCancelWaste={(id) => wasteCancel.mutate(id)}
+        wasteCancelling={wasteCancel.isPending}
         // Terminalda bekor qilish TASDIQ orqali o'tadi: tsexda qo'lqopdagi
         // barmoq bilan xato bosish adminning stoliga qaraganda ancha ehtimolli.
         // Admin uchun `undefined` — u avvalgidek to'g'ridan-to'g'ri bekor qiladi.
@@ -843,83 +868,6 @@ export function CutmapView({
               }
         }
       />
-
-      {/* Foydali atxot: o'lcham + chek chiqarish. GibSaw'dagi "Деловой
-          остаток" chekining muqobili — atxot katagi bosilganda ochiladi. */}
-      <Dialog
-        open={wasteTarget !== null}
-        onOpenChange={(v) => !v && setWasteTarget(null)}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">Qoldiq</DialogTitle>
-          </DialogHeader>
-          {wasteTarget && (
-            <div className="space-y-3">
-              <div className="num text-4xl font-black">
-                {Math.round(wasteTarget.w)} × {Math.round(wasteTarget.h)} mm
-              </div>
-              <div className="text-lg text-muted-foreground">
-                {material?.name} · list №{sheet?.disp ?? sheet?.no}
-              </div>
-              {(() => {
-                const item = wasteItemFor(wasteTarget)
-                if (!item)
-                  return (
-                    <p className="text-muted-foreground">
-                      Bu atxot ro'yxatga olinmagan (eski yuklama) — project
-                      faylni qayta yuklang.
-                    </p>
-                  )
-                return (
-                  <>
-                    <div className="num text-lg">{item.qr_text}</div>
-                    {item.label_printed_at && (
-                      <p className="text-sm text-muted-foreground">
-                        Chek avval chiqarilgan:{" "}
-                        {formatDateTime(item.label_printed_at)}
-                      </p>
-                    )}
-                    {/* CHEK FAQAT TERMINALDAN. Admin ko'rinishida (panel)
-                        printer konteksti yo'q: `print_waste_item_label`
-                        TerminalUser talab qiladi (403), talab qilmaganda ham
-                        `require_printer` ish markazisiz 422 berardi — tugma
-                        ko'rinib turib HECH QACHON ishlamasdi. Bekor qilish esa
-                        texnologga ochiq (detal cheki bilan bir xil qoida). */}
-                    {admin ? (
-                      <p className="text-sm text-muted-foreground">
-                        Chek tsexdagi terminaldan chiqariladi — bu yerda faqat
-                        ko'rish va bekor qilish mumkin.
-                      </p>
-                    ) : (
-                      <LoadingButton
-                        className="h-14 w-full text-xl"
-                        loading={wastePrint.isPending}
-                        onClick={() => wastePrint.mutate(item.id)}
-                      >
-                        <Printer />{" "}
-                        {item.label_printed_at
-                          ? "Chekni qayta chiqarish"
-                          : "Chek chiqarish"}
-                      </LoadingButton>
-                    )}
-                    {item.label_printed_at && (
-                      <LoadingButton
-                        variant="outline"
-                        className="h-12 w-full text-lg"
-                        loading={wasteCancel.isPending}
-                        onClick={() => wasteCancel.mutate(item.id)}
-                      >
-                        Chekni bekor qilish
-                      </LoadingButton>
-                    )}
-                  </>
-                )
-              })()}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Long press tasdiq dialogi — qo'lqopga mos katta tugmalar */}
       <Dialog

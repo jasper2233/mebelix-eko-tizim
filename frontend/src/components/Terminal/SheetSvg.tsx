@@ -188,7 +188,6 @@ export function SheetSvg({
   instancesByCell,
   onSelect,
   onOpenPart,
-  onOpenWaste,
   wastePrinted,
   selectedCell,
   thumbnail = false,
@@ -203,8 +202,6 @@ export function SheetSvg({
   /** Detal kartochkasini ochadi. IKKI jest ham shuni chaqiradi: ikki marta
    *  bosish (GibSaw dagi odat) va uzoq bosish (o'rganib qolganlar uchun). */
   onOpenPart?: (part: SheetPart) => void
-  /** Foydali atxot (`business`, atx raqamli) katagi bosilganda. */
-  onOpenWaste?: (part: SheetPart) => void
   /** Cheki chiqarilgan qoldiqlarning `atx` raqamlari — katak yashil bo'ladi. */
   wastePrinted?: Set<number>
   selectedCell: number | null
@@ -854,16 +851,13 @@ export function SheetSvg({
             lpFiredRef.current = false
             return
           }
-          // ATXOT: ro'yxatga olingan QOLDIQ (atx raqamli) dialogni ochadi,
-          // oddiy atxot esa inert. Bu shart pastdagi `p.waste && p.atx`
-          // shoxidan YUQORIDA turgan `if (p.waste) return` bilan almashtirildi:
-          // u atxot katagining har bosishini yutib, qoldiq dialogini O'LIK
-          // KODGA aylantirgan edi (8bc2ef7 da qo'shilgan, qoldiq shoxi esa
-          // undan oldingi 8f4f23d da yozilgan — hech qachon ishlamagan).
-          if (p.waste) {
-            if (p.atx && onOpenWaste) onOpenWaste(p)
-            return
-          }
+          // Ro'yxatga OLINMAGAN atxot inert: uning na cheki, na kartochkasi bor.
+          // Ro'yxatga olingan QOLDIQ (atx raqamli) esa oddiy detal bilan BIR XIL
+          // yo'ldan o'tadi — bir marta bosish belgilaydi (chap qatordagi "Chop
+          // etish" ishlaydi), ikki marta bosish kartochkani ochadi. Ilgari unga
+          // alohida dialog va alohida jest bor edi: bitta xaritada ikki xil
+          // qoida operator uchun ortiqcha yuk edi.
+          if (p.waste && !p.atx) return
           // IKKI MARTA BOSISH — detal kartochkasini ochadi.
           //
           // Eski GibSaw dasturida ham kesish xaritasida shu jest ishlatilgan,
@@ -895,7 +889,7 @@ export function SheetSvg({
           onSelect(p)
         }}
         onPointerDown={
-          !p.waste && !thumbnail && onOpenPart
+          !(p.waste && !p.atx) && !thumbnail && onOpenPart
             ? (e) => {
                 lpFiredRef.current = false
                 cancelLP()

@@ -187,12 +187,27 @@ export function PartCard({
   onClose,
   holes,
   onCancelRequest,
+  wasteItem,
+  onCancelWaste,
+  wasteCancelling = false,
 }: {
   part: SheetPart | null
   sheetNo?: number | string
   instancesByCell: Map<string, CutmapInstanceState[]>
   onClose: () => void
   holes: Record<string, CutmapHole>
+  /** QOLDIQ katagi ochilganda — unga mos `waste_item`. Kartochka ATAYLAB
+   *  bitta: qoldiq ham detal kabi belgilanadi, chap qatordagi "Chop etish"
+   *  bilan chiqariladi va ikki marta bosishda shu kartochkada bekor qilinadi.
+   *  Alohida dialog bo'lganda operator bitta xaritada ikki xil qoidani
+   *  eslab qolishi kerak edi. */
+  wasteItem?: {
+    id: number
+    qr_text: string
+    label_printed_at?: string | null
+  } | null
+  onCancelWaste?: (wasteId: number) => void
+  wasteCancelling?: boolean
   /** Berilsa — bekor qilish TO'G'RIDAN-TO'G'RI bajarilmaydi, chaqiruvchiga
    *  uzatiladi (terminalda tasdiq oynasi ochiladi). Berilmasa — adminning
    *  avvalgi xatti-harakati: darhol bekor qilinadi. */
@@ -203,7 +218,74 @@ export function PartCard({
   // shuning uchun bu yerda print mutatsiyasi yo'q.
   const cancelMutation = useCancelLabel()
 
-  if (!part || part.waste) return null
+  if (!part) return null
+  // Ro'yxatga olinmagan atxot (atx yo'q) kartochka ochmaydi — unda ko'rsatadigan
+  // ham, qiladigan ham narsa yo'q.
+  if (part.waste && !part.atx) return null
+  if (part.waste) {
+    return (
+      <Dialog open={!!part} onOpenChange={(v) => !v && onClose()}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              Qoldiq — {Math.round(part.w)} × {Math.round(part.h)} mm
+            </DialogTitle>
+          </DialogHeader>
+          <div className="rounded-lg border bg-white p-2">
+            <PartPreview part={part} holes={holes} />
+          </div>
+          {wasteItem ? (
+            <div className="flex items-start gap-4">
+              <div className="shrink-0 rounded-lg border p-2">
+                <QRCodeSVG value={wasteItem.qr_text} size={170} />
+                <div className="num mt-1 text-center text-2xs text-muted-foreground">
+                  {wasteItem.qr_text}
+                </div>
+              </div>
+              <div className="num space-y-1 text-sm">
+                <div>
+                  O'lcham:{" "}
+                  <b>
+                    {Math.round(part.w)} × {Math.round(part.h)} mm
+                  </b>
+                </div>
+                <div>
+                  Chek:{" "}
+                  {wasteItem.label_printed_at ? (
+                    <b className="text-green-700">✓ chiqarilgan</b>
+                  ) : (
+                    <b>chiqarilmagan</b>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-muted-foreground">
+              Bu qoldiq ro'yxatga olinmagan (eski yuklama) — project faylni
+              qayta yuklang.
+            </p>
+          )}
+          {wasteItem?.label_printed_at && onCancelWaste && (
+            <LoadingButton
+              variant="destructive"
+              className="h-12 w-full text-base font-bold"
+              loading={wasteCancelling}
+              onClick={() => onCancelWaste(wasteItem.id)}
+            >
+              Chekni bekor qilish
+            </LoadingButton>
+          )}
+          <Button
+            variant="outline"
+            className="h-12 w-full text-base font-bold"
+            onClick={onClose}
+          >
+            Yopish
+          </Button>
+        </DialogContent>
+      </Dialog>
+    )
+  }
   const insts = instancesByCell.get(`${sheetNo}:${part.cell}`) ?? []
   const next = insts.find((i) => !i.done) ?? insts[0]
 
