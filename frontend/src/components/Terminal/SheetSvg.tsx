@@ -854,7 +854,16 @@ export function SheetSvg({
             lpFiredRef.current = false
             return
           }
-          if (p.waste) return
+          // ATXOT: ro'yxatga olingan QOLDIQ (atx raqamli) dialogni ochadi,
+          // oddiy atxot esa inert. Bu shart pastdagi `p.waste && p.atx`
+          // shoxidan YUQORIDA turgan `if (p.waste) return` bilan almashtirildi:
+          // u atxot katagining har bosishini yutib, qoldiq dialogini O'LIK
+          // KODGA aylantirgan edi (8bc2ef7 da qo'shilgan, qoldiq shoxi esa
+          // undan oldingi 8f4f23d da yozilgan — hech qachon ishlamagan).
+          if (p.waste) {
+            if (p.atx && onOpenWaste) onOpenWaste(p)
+            return
+          }
           // IKKI MARTA BOSISH — detal kartochkasini ochadi.
           //
           // Eski GibSaw dasturida ham kesish xaritasida shu jest ishlatilgan,
@@ -870,12 +879,6 @@ export function SheetSvg({
           // 450 ms — Windows ning odatdagi ikki marta bosish oynasi (500 ms)
           // dan bir oz tor: qo'lqopdagi barmoq sekinroq, lekin ikkita ALOHIDA
           // bosish ham shundan tez ketma-ket bo'lmaydi.
-          // FOYDALI atxot bitta bosishda ochiladi: unda ikki-bosish/uzoq
-          // bosish semantikasi yo'q — yagona amali chek chiqarish.
-          if (p.waste && p.atx && onOpenWaste) {
-            onOpenWaste(p)
-            return
-          }
           const hozir = Date.now()
           const oldingi = tapRef.current
           if (
