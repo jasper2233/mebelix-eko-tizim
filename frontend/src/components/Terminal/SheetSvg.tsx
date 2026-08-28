@@ -481,12 +481,21 @@ export function SheetSvg({
     if (p.waste && !thumbnail) {
       const wv = p.w
       const hv = p.h
-      const fs = Math.max(
-        10,
-        Math.min(34, wv * 0.16, hv * 0.42, (wv * 0.8) / 6),
+      // O'LCHAM SHRIFTI DETAL BILAN BIR XIL QOIDADA. Ilgari atxotda alohida
+      // formula turardi va u 34 ga QOTIRILGAN edi (`min(34, wv*0.16, ...)`):
+      // bir xil o'lchamli detal 48 olar, qoldiq esa doim 34 — bitta xaritada
+      // ikki xil shrift. Endi pastdagi "tight" (birlashgan W×H) rejimi bilan
+      // bir xil: DIM_FS gacha, faqat sig'masa kichrayadi, zoom ham hisobga
+      // olinadi.
+      const wt = `${Math.round(wv)}×${Math.round(hv)}`
+      const fs = Math.min(
+        DIM_FS,
+        (wv * 0.9) / (wt.length * CH),
+        (hv * 0.8) / (ASC + DESC),
+        DIM_MAX / zoom,
       )
-      // Juda kichik atxotda yozuv o'qilmaydi — chizmaymiz
-      if (wv > 70 && hv > 26)
+      // Juda kichik atxotda yozuv o'qilmaydi — detaldagi bilan bir xil chegara
+      if (fs * zoom >= DIM_MIN)
         labels.push(
           <text
             key={`wz${p.cell}`}
@@ -499,7 +508,7 @@ export function SheetSvg({
             dominantBaseline="central"
             pointerEvents="none"
           >
-            {`${Math.round(wv)}×${Math.round(hv)}`}
+            {wt}
           </text>,
         )
     }
