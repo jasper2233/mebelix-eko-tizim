@@ -2,12 +2,13 @@ from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import func, select
 
 from app.api.deps import AdminUser, CurrentUser, SessionDep, client_ip
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import DuplicateValueException, NotFoundException
+from app.core.security import get_password_hash
 from app.crud import crud_machines, crud_posts, log_action
 from app.models import BridgeAgent, Machine, PartRoute, Scan, User, WorkSession
-from app.models.enums import SessionStatus
+from app.models.enums import SessionStatus, UserRole
 from app.schemas.common import Message
-from app.schemas.machines import MachineCreate, MachineRead, MachineUpdate
+from app.schemas.machines import MachineCreate, MachineRead, MachineUpdate, TerminalAccountUpsert
 
 router = APIRouter(prefix="/machines", tags=["machines"])
 
@@ -87,11 +88,33 @@ async def _check_name(db: SessionDep, name: str, machine_id: int | None = None) 
         raise HTTPException(status_code=409, detail=f'"{name}" nomli ish markazi allaqachon bor.')
 
 
+async def _with_accounts(db: SessionDep, machines: list[Machine]) -> list[MachineRead]:
+    """Har mashinaga uning monoblok hisobining loginini qo'shadi (bitta so'rov)."""
+    if not machines:
+        return []
+    rows = (
+        await db.execute(
+            select(User.machine_id, User.username).where(
+                User.machine_id.in_([m.id for m in machines]),
+                User.role == UserRole.TERMINAL,
+                User.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).all()
+    by_machine: dict[int | None, str] = {mid: uname for mid, uname in rows}  # noqa: C416
+    out = []
+    for m in machines:
+        item = MachineRead.model_validate(m)
+        item.terminal_username = by_machine.get(m.id)
+        out.append(item)
+    return out
+
+
 @router.get("/", response_model=list[MachineRead], operation_id="read_machines")
-async def read_machines(db: SessionDep, _: CurrentUser) -> list[Machine]:
+async def read_machines(db: SessionDep, _: CurrentUser) -> list[MachineRead]:
     """All machines — small fixed set, no pagination. Terminals/TABLO need this for context too."""
     machines, _total = await crud_machines.get_multi(db, limit=500)
-    return machines
+    return await _with_accounts(db, list(machines))
 
 
 @router.post("/", response_model=MachineRead, status_code=201, operation_id="create_machine")
@@ -155,6 +178,87 @@ async def update_machine(
     await db.commit()
     await db.refresh(machine)
     return machine
+
+
+@router.put(
+    "/{machine_id}/terminal-account",
+    response_model=Message,
+    operation_id="upsert_terminal_account",
+)
+async def upsert_terminal_account(
+    db: SessionDep, current_user: AdminUser, machine_id: int, body: TerminalAccountUpsert, request: Request
+) -> Message:
+    """Ish markazining MONOBLOK hisobi: yaratadi yoki loginini/parolini yangilaydi.
+
+    Nega ish markazlari sahifasida, Hodimlarda emas: bu hisob ODAM emas —
+    monoblokning o'zi. Terminal ekrani qaysi mashinani ochishini AYNAN shu hisob
+    hal qiladi (`resolve_terminal` uni `user.machine_id` dan oladi). Usiz post
+    o'zining eng kichik id'li mashinasiga qulflanadi va postda ikkinchi mashina
+    paydo bo'lgach unga yetib boradigan yo'l qolmaydi (buyurtma o'sha mashinaga
+    biriktirilsa har skan E001 beradi).
+
+    Odam bu hisob bilan tanishtirilmaydi — smenani beyjik yoki ismni bosish
+    ochadi. Shuning uchun hodim yozuvi YARATILMAYDI.
+    """
+    machine = await crud_machines.get(db, id=machine_id)
+    if machine is None:
+        raise NotFoundException("Ish markazi topilmadi.")
+    existing = (
+        await db.execute(
+            select(User).where(
+                User.machine_id == machine_id,
+                User.role == UserRole.TERMINAL,
+                User.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).scalar_one_or_none()
+    band = (
+        await db.execute(
+            select(User.id).where(
+                User.username == body.username,
+                User.is_deleted == False,  # noqa: E712
+                *([User.id != existing.id] if existing is not None else []),
+            )
+        )
+    ).scalar_one_or_none()
+    if band is not None:
+        raise DuplicateValueException("Bu login allaqachon band.")
+
+    if existing is not None:
+        existing.username = body.username
+        existing.hashed_password = await get_password_hash(body.password)
+        existing.is_active = True
+        xabar = f"Monoblok hisobi yangilandi: {machine.name} ({body.username})"
+        action = "terminal_account_updated"
+    else:
+        db.add(
+            User(
+                name=f"{machine.name} monoblok",
+                username=body.username,
+                # Telefon User'da majburiy va unikal — qurilmada u yo'q, shuning
+                # uchun seed'dagi kabi sintetik raqam (odam raqami bilan
+                # to'qnashmaydigan oraliq).
+                phone=f"+99801{machine_id:06d}",
+                hashed_password=await get_password_hash(body.password),
+                role=UserRole.TERMINAL,
+                machine_id=machine_id,
+                is_active=True,
+            )
+        )
+        xabar = f"Monoblok hisobi yaratildi: {machine.name} ({body.username})"
+        action = "terminal_account_created"
+    log_action(
+        db,
+        module="machines",
+        action=action,
+        user_id=current_user.id,
+        entity_type="machine",
+        entity_id=machine_id,
+        message=xabar,
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return Message(message=xabar)
 
 
 @router.delete("/{machine_id}", response_model=Message, operation_id="delete_machine")

@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { Pencil, Plus, Trash2 } from "lucide-react"
-import { useState } from "react"
+import { KeyRound, Pencil, Plus, Trash2 } from "lucide-react"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
 
 import { type MachineRead, MachinesService, type PostRead } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
@@ -17,11 +18,13 @@ import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -40,6 +43,7 @@ import {
   getMachinesQueryOptions,
   getPostsQueryOptions,
 } from "@/queries/mes"
+import { handleError } from "@/utils"
 
 export const Route = createFileRoute("/_layout/work-centers")({
   component: WorkCentersPage,
@@ -68,6 +72,7 @@ function WorkCentersPage() {
   const [adding, setAdding] = useState(false)
   const [editFor, setEditFor] = useState<MachineRead | null>(null)
   const [deleteFor, setDeleteFor] = useState<MachineRead | null>(null)
+  const [accountFor, setAccountFor] = useState<MachineRead | null>(null)
   const postById = new Map((posts ?? []).map((p) => [p.id, p]))
   // Marshrut tartibida: ARRA, KROMKA, OVAL... Ilgari id tartibida chiqardi,
   // ya'ni yangi qo'shilgan arra ro'yxat oxirida, o'z posti yonida emas edi
@@ -103,6 +108,11 @@ function WorkCentersPage() {
                 <TableHead>Ish markazi</TableHead>
                 <TableHead>Post</TableHead>
                 <TableHead>Holat</TableHead>
+                {/* Monoblok hisobi — terminal ekrani QAYSI mashinani ochishini
+                    aynan shu hisob hal qiladi. Usiz post o'zining eng kichik
+                    id'li mashinasiga qulflanadi va ikkinchi mashinaga yetib
+                    boradigan yo'l qolmaydi. */}
+                <TableHead>Monoblok hisobi</TableHead>
                 {admin && <TableHead className="w-20" />}
               </TableRow>
             </TableHeader>
@@ -126,6 +136,32 @@ function WorkCentersPage() {
                           {MACHINE_STATUS_LABELS[m.status]}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        {m.terminal_username ? (
+                          <span className="inline-flex items-center gap-2">
+                            <span className="num text-sm">
+                              {m.terminal_username}
+                            </span>
+                            {admin && (
+                              <RowAction
+                                icon={KeyRound}
+                                title="Parolni yangilash"
+                                onClick={() => setAccountFor(m)}
+                              />
+                            )}
+                          </span>
+                        ) : admin ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setAccountFor(m)}
+                          >
+                            <KeyRound /> Hisob yaratish
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       {admin && (
                         <TableCell>
                           <div className="flex justify-end gap-1">
@@ -147,7 +183,7 @@ function WorkCentersPage() {
                   )
                 })
               ) : (
-                <EmptyRow colSpan={admin ? 5 : 4}>
+                <EmptyRow colSpan={admin ? 6 : 5}>
                   Ish markazlari yo'q.
                 </EmptyRow>
               )}
@@ -155,6 +191,10 @@ function WorkCentersPage() {
           </Table>
         </div>
       )}
+      <TerminalAccountDialog
+        machine={accountFor}
+        onClose={() => setAccountFor(null)}
+      />
       {(adding || editFor) && (
         <MachineDialog
           machine={editFor}
@@ -344,5 +384,88 @@ function DeleteMachine({
       loading={mutation.isPending}
       onConfirm={() => machine && mutation.mutate(machine.id)}
     />
+  )
+}
+
+/** Ish markazining MONOBLOK hisobi: login + parol.
+ *
+ * Nega Hodimlarda emas, shu yerda: bu hisob ODAM emas — monoblokning o'zi.
+ * Hodim beyjik bilan tanishtiriladi, hisob esa qurilmaga tegishli va terminal
+ * qaysi ish markazini ochishini AYNAN u hal qiladi. Shu sababli hodim yozuvi
+ * ham yaratilmaydi.
+ */
+function TerminalAccountDialog({
+  machine,
+  onClose,
+}: {
+  machine: MachineRead | null
+  onClose: () => void
+}) {
+  const queryClient = useQueryClient()
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
+  const yangi = !machine?.terminal_username
+
+  useEffect(() => {
+    setUsername(machine?.terminal_username ?? "")
+    setPassword("")
+  }, [machine])
+
+  const mutation = useMutation({
+    mutationFn: async () =>
+      MachinesService.upsertTerminalAccount({
+        path: { machine_id: Number(machine?.id) },
+        body: { username: username.trim(), password },
+      }),
+    onSuccess: (r) => {
+      toast.success(r.data?.message ?? "Saqlandi")
+      queryClient.invalidateQueries({ queryKey: ["machines"] })
+      onClose()
+    },
+    onError: handleError,
+  })
+
+  return (
+    <Dialog open={!!machine} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Monoblok hisobi — {machine?.name}</DialogTitle>
+          <DialogDescription>
+            Shu ish markazidagi monoblok ana shu login/parol bilan kiradi.
+            Ishchi esa beyjik yoki ismini bosib tanishtiriladi.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label htmlFor="tu">Login</Label>
+            <Input
+              id="tu"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="arra-1"
+              autoFocus
+            />
+          </div>
+          <div>
+            <Label htmlFor="tp">{yangi ? "Parol" : "Yangi parol"}</Label>
+            <Input
+              id="tp"
+              type="text"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Kamida 8 belgi"
+            />
+          </div>
+        </div>
+        <LoadingButton
+          className="w-full"
+          loading={mutation.isPending}
+          disabled={username.trim().length < 3 || password.length < 8}
+          onClick={() => mutation.mutate()}
+        >
+          {yangi ? "Hisob yaratish" : "Saqlash"}
+        </LoadingButton>
+      </DialogContent>
+    </Dialog>
   )
 }

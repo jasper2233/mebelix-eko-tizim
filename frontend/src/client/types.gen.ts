@@ -1277,6 +1277,10 @@ export type MachineRead = {
      * Created At
      */
     created_at: string;
+    /**
+     * Terminal Username
+     */
+    terminal_username?: string | null;
 };
 
 /**
@@ -2987,6 +2991,22 @@ export type TabloPostCol = {
 };
 
 /**
+ * TerminalAccountUpsert
+ *
+ * Ish markazining monoblok hisobi: yaratish yoki parolni yangilash.
+ */
+export type TerminalAccountUpsert = {
+    /**
+     * Username
+     */
+    username: string;
+    /**
+     * Password
+     */
+    password: string;
+};
+
+/**
  * TerminalContext
  */
 export type TerminalContext = {
@@ -4344,6 +4364,36 @@ export type UpdateMachineResponses = {
 };
 
 export type UpdateMachineResponse = UpdateMachineResponses[keyof UpdateMachineResponses];
+
+export type UpsertTerminalAccountData = {
+    body: TerminalAccountUpsert;
+    path: {
+        /**
+         * Machine Id
+         */
+        machine_id: number;
+    };
+    query?: never;
+    url: '/api/v1/machines/{machine_id}/terminal-account';
+};
+
+export type UpsertTerminalAccountErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpsertTerminalAccountError = UpsertTerminalAccountErrors[keyof UpsertTerminalAccountErrors];
+
+export type UpsertTerminalAccountResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type UpsertTerminalAccountResponse = UpsertTerminalAccountResponses[keyof UpsertTerminalAccountResponses];
 
 export type ReadPostsData = {
     body?: never;

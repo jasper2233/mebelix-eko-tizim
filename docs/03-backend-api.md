@@ -1,4 +1,4 @@
-# Backend API — Routes, Dependencies va Endpointlar
+#| PUT | `/api/v1/machines/{machine_id}/terminal-account` | admin | **MONOBLOK HISOBI** (rol `terminal`): yaratadi yoki login/parolni yangilaydi. Terminal ekrani QAYSI ish markazini ochishini aynan shu hisob hal qiladi (`resolve_terminal` uni `user.machine_id` dan oladi) — usiz post o'zining eng kichik id'li aktiv mashinasiga qulflanadi va postda ikkinchi mashina paydo bo'lgach unga yetib boradigan yo'l qolmaydi (buyurtma o'sha mashinaga biriktirilsa har skan E001 beradi). Hisob ODAM emas — hodim yozuvi yaratilmaydi, smenani beyjik ochadi; telefon sintetik (`+99801{machine_id:06d}`), login band bo'lsa 409. `MachineRead.terminal_username` ro'yxatda holatni ko'rsatadi | Backend API — Routes, Dependencies va Endpointlar
 
 Bu hujjat MebeliX MES backend'ining HTTP API qatlamini tavsiflaydi: router ierarxiyasi, autentifikatsiya dependency'lari va barcha endpointlar. API FastAPI asosida qurilgan, barcha handler'lar `async`, ma'lumotlar bazasi bilan ishlash SQLAlchemy `AsyncSession` orqali amalga oshiriladi. Foydalanuvchiga qaytariladigan xabarlar o'zbek tilida.
 
