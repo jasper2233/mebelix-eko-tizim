@@ -117,7 +117,7 @@ kiritish maydonlari turadi).
 
 ### Dialog maydonlari — `Common/Field`
 
-react-hook-form ishlatmaydigan dialoglarda yorliq va maydon `Field` orqali beriladi: u `grid gap-1.5` bo'shliqni ham, yorliqni bosganda fokusni ham (implicit `<label>`) beradi. Yalang'och `<Label>` + `<Input>` ishlatilsa bo'shliq umuman bo'lmaydi va yozuv maydonga tegib turadi — monoblok hisobi va beyjik printeri dialoglarida aynan shu bo'lgan. Qoida: rhf yo'q dialogda **doim `Field`**.
+react-hook-form ishlatmaydigan dialoglarda yorliq va maydon `Field` orqali beriladi: u `grid gap-1.5` bo'shliqni ham, yorliqni bosganda fokusni ham (implicit `<label>`) beradi. Yalang'och `<Label>` + `<Input>` ishlatilsa bo'shliq umuman bo'lmaydi va yozuv maydonga tegib turadi — beyjik printeri dialogida aynan shu bo'lgan. Qoida: rhf yo'q dialogda **doim `Field`**.
 
 ### `frontend/src/components/Common/BrandLoader.tsx`
 
