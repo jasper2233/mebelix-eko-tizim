@@ -156,6 +156,8 @@ __root.tsx                 → root layout (Outlet, devtools, 404/error)
 └── _layout.tsx            → pathless layout (auth guard + rol-router + sidebar shell)
 ```
 
+Login maydoni IKKI xil qiymat oladi (foydalanuvchi nomi yoki telefon), shuning uchun jonli ajratgich SHARTLI: qiymatda faqat `+`, raqam, bo'shliq va tire bo'lsa VA kamida uch raqam terilgan bo'lsa `formatUzPhone` ishlaydi — `admin` kabi harfli nom tegilmaydi, qo'yib yozilgan (paste) raqam ham shu yo'ldan o'tadi. Yuborishda ajratgichlar olib tashlanadi; `get_by_login` `+` bilan boshlangan qiymatni TELEFON deb qidiradi, raqamli loginlarda esa `phone = '+' + username` (prodda tekshirilgan), ya'ni formatlash kirishni buzmaydi.
+
 `_layout` ichidagi sahifalar (`frontend/src/routes/_layout/*`):
 
 | Route | Fayl | Mazmuni |

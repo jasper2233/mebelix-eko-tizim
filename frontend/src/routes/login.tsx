@@ -30,6 +30,7 @@ import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
 import { useAuth } from "@/hooks/useAuth"
 import { useBadgeScan } from "@/hooks/useBadgeScan"
+import { formatUzPhone } from "@/lib/validation"
 import { extractErrorMessage } from "@/utils"
 
 // Sxema modul darajasida EMAS, funksiya ichida: `routeTree.gen.ts` marshrut
@@ -124,9 +125,9 @@ function Login() {
   const onSubmit = (data: FormData) => {
     if (loginMutation.isPending) return
     // Maydon IKKI xil qiymat qabul qiladi: foydalanuvchi nomi yoki telefon.
-    // Shuning uchun bu yerda yozish paytida formatlash YO'Q — `formatUzPhone`
-    // harflarni tashlab yuborardi va "admin" deb yozib bo'lmasdi.
-    // Faqat yuborishdan oldin tozalaymiz: qiymat telefonga o'xshasa (faqat
+    // Yozish paytidagi formatlash SHARTLI (maydonning `onChange` iga qarang) —
+    // harfli nomga tegilmaydi. Bu yerda esa yuborishdan oldin tozalaymiz:
+    // qiymat telefonga o'xshasa (faqat
     // +, raqam, bo'shliq, tire) ajratgichlar olib tashlanadi — shunda
     // "+998 90 123-45-67" ko'rinishida joylashtirilgan raqam ham ishlaydi.
     // Foydalanuvchi nomiga tegilmaydi: unda boshqa belgilar bor.
@@ -221,6 +222,25 @@ function Login() {
                         // yozmasdan "majburiy" xatosini ko'rardi.
                         className="h-11"
                         {...field}
+                        // TELEFON YOZILSA — jonli ajratgich, foydalanuvchi
+                        // nomiga TEGILMAYDI. Maydon ikki xil qiymat qabul
+                        // qiladi, shuning uchun formatlash shartli: qiymatda
+                        // faqat +, raqam, bo'shliq va tire bo'lsa VA kamida uch
+                        // raqam terilgan bo'lsa. "admin" kabi nom harf tufayli
+                        // shartga tushmaydi; qo'yib yozilgan (paste) raqam ham
+                        // shu yerdan o'tadi, chunki `onChange` paste'da ham
+                        // ishlaydi. Ilgari formatlash umuman yo'q edi —
+                        // "+998 90 123-45-67" faqat YUBORISHDA tozalanardi,
+                        // ya'ni ekranda raqam ajratgichsiz turardi.
+                        onChange={(e) => {
+                          const v = e.target.value
+                          const raqam = v.replace(/\D/g, "")
+                          field.onChange(
+                            /^[+\d\s-]*$/.test(v) && raqam.length >= 3
+                              ? formatUzPhone(v, field.value)
+                              : v,
+                          )
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
