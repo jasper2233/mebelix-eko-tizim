@@ -26,10 +26,12 @@ class BridgeAgentRead(BaseModel):
 
 class BridgeAgentCreate(BaseModel):
     name: Annotated[str, Field(min_length=2, max_length=100, examples=["Arrachi monoblok"])]
-    #: Ish markazi YARATISHDA tanlanadi: bog'lanmagan agent na chek chiqara oladi
-    #: (`require_printer` -> 422), na skan yubora oladi (`bridge_scan` -> 409).
-    #: Ilgari u alohida qadam edi va muntazam esdan chiqib qolardi.
-    machine_id: int
+    #: Ish markazi YARATISHDA so'raladi (ilgari alohida qadam edi va muntazam
+    #: esdan chiqib qolardi). IXTIYORIY: chek chiqarish va skan-forvard uchun u
+    #: shart (usiz `require_printer` -> 422, `bridge_scan` -> 409), lekin
+    #: OFISDAGI beyjik printeriga ish markazi kerak emas — `printing_agents`
+    #: agentni faqat `can_print` bo'yicha tanlaydi.
+    machine_id: int | None = None
 
 
 class BridgeAgentUpdate(BaseModel):

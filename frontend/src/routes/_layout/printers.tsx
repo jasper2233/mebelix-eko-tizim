@@ -25,6 +25,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -510,10 +511,11 @@ function AgentRow({
 
 const formSchema = z.object({
   name: z.string().trim().min(2).max(100),
-  // Ish markazi YARATISHDA so'raladi. Ilgari u alohida qadam edi (jadvaldagi
-  // select) va muntazam esdan chiqib qolardi — bog'lanmagan agent esa na chek
-  // chiqara oladi, na skan yubora oladi, ya'ni kod berilgan bo'lsa ham ishlamas.
-  machine_id: z.string().min(1, "Ish markazini tanlang"),
+  // Ish markazi YARATISHDA so'raladi (ilgari alohida qadam edi va esdan chiqib
+  // qolardi). MAJBURIY EMAS: chek chiqarish va skan-forvard uchun u shart, lekin
+  // ofisdagi beyjik printeriga ish markazi kerak emas — beyjik chop etish
+  // agentni faqat "chek chiqara oladi" belgisi bo'yicha tanlaydi.
+  machine_id: z.string(),
 })
 
 function AddAgent() {
@@ -531,7 +533,13 @@ function AddAgent() {
     mutationFn: async (data: z.infer<typeof formSchema>) =>
       (
         await BridgeAgentsService.createBridgeAgent({
-          body: { name: data.name, machine_id: Number(data.machine_id) },
+          body: {
+            name: data.name,
+            machine_id:
+              data.machine_id && data.machine_id !== "none"
+                ? Number(data.machine_id)
+                : null,
+          },
         })
       ).data,
     onSuccess: (agent) => {
@@ -611,6 +619,10 @@ function AddAgent() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Ish markazi</FormLabel>
+                      <FormDescription>
+                        Chek chiqarish va skan-forvard uchun shart. Faqat beyjik
+                        chop etadigan ofis printeri bo'lsa — bo'sh qoldiring.
+                      </FormDescription>
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
@@ -621,6 +633,9 @@ function AddAgent() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="none">
+                            — bog'lanmagan (faqat beyjik)
+                          </SelectItem>
                           {machines?.map((m) => (
                             <SelectItem key={m.id} value={String(m.id)}>
                               {m.name}

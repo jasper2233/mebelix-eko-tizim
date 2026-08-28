@@ -187,7 +187,7 @@ export type BridgeAgentCreate = {
     /**
      * Machine Id
      */
-    machine_id: number;
+    machine_id?: number | null;
 };
 
 /**
