@@ -231,8 +231,44 @@ export function PartCard({
   const insts = waste
     ? []
     : (instancesByCell.get(`${sheetNo}:${part.cell}`) ?? [])
-  const next = waste ? undefined : (insts.find((i) => !i.done) ?? insts[0])
-  const qr = waste ? wasteItem?.qr_text : next?.qr_text
+  // Qoldiq va detal cheki BIR SHAKLGA keltiriladi — pastda yagona render yo'li.
+  const cheklar = waste
+    ? wasteItem
+      ? [
+          {
+            key: `w${wasteItem.id}`,
+            qr: wasteItem.qr_text,
+            printed: !!wasteItem.label_printed_at,
+            done: false,
+            loading: wasteCancelling,
+            cancel: onCancelWaste
+              ? () => onCancelWaste(wasteItem.id)
+              : undefined,
+          },
+        ]
+      : []
+    : insts.map((inst) => ({
+        key: `i${inst.instance_id}`,
+        qr: inst.qr_text,
+        printed: !!inst.label_printed_at,
+        done: !!inst.done,
+        loading: cancelMutation.isPending,
+        // Texnolog xato chekni shu yerdan tuzatadi — proyekt ARRA ro'yxatidan
+        // tushib bo'lgach arrachi xaritani ocholmaydi. Arrachi ham SHU tugmadan
+        // foydalanadi (kartochka ikki marta bosishda ochiladi) — faqat unda
+        // tasdiq oynasi orqali.
+        cancel: () =>
+          onCancelRequest
+            ? onCancelRequest(inst)
+            : cancelMutation.mutate(inst.instance_id),
+      }))
+  // HAR KATAK = BITTA JISMONIY DETAL = BITTA CHEK. `count>1` detalning nusxalari
+  // xaritada alohida kataklarda turadi, `mult>1` list esa render paytida alohida
+  // kartalarga yoyiladi (`CutmapView` `slice(k, k+1)`) — shuning uchun `cheklar`
+  // amalda doim bitta. Ro'yxat shakli faqat kutilmagan ma'lumotda ishlaydi:
+  // ikkinchi chek yashirilib qolgandan ko'ra ko'rinib tursin.
+  const chek = cheklar.find((c) => !c.done) ?? cheklar[0]
+  const qr = chek?.qr
   const nomer = waste ? part.atx : part.num
 
   return (
@@ -256,6 +292,20 @@ export function PartCard({
             )}
             {part.rot && <RotateCw className="inline size-4 shrink-0" />}
           </DialogTitle>
+          {/* CHEK ID SI SARLAVHA OSTIDA — kartochkaning eng ko'p
+              solishtiriladigan qiymati: qo'ldagi chekdagi matn bilan. Ilgari u
+              QR ostida `text-2xs` kulrang bo'lib, yana bekor qilish qatorida
+              takrorlanardi. */}
+          {chek && (
+            <div className="num flex flex-wrap items-center gap-2 text-left text-base font-bold">
+              <span>{chek.qr}</span>
+              {chek.done ? (
+                <span className="text-green-700">✓ kesildi</span>
+              ) : chek.printed ? (
+                <span className="text-green-600">✓ chek chiqarilgan</span>
+              ) : null}
+            </div>
+          )}
         </DialogHeader>
         <div className="rounded-lg border bg-white p-2">
           <PartPreview part={part} holes={holes} />
@@ -264,9 +314,6 @@ export function PartCard({
           {qr && (
             <div className="shrink-0 rounded-lg border p-2">
               <QRCodeSVG value={qr} size={170} />
-              <div className="num mt-1 text-center text-2xs text-muted-foreground">
-                {qr}
-              </div>
             </div>
           )}
           <div className="num space-y-1 text-sm">
@@ -305,9 +352,6 @@ export function PartCard({
                     ))
                   })()}
                 </div>
-                <div>
-                  Yorliq raqami: <b>№{part.num}</b>
-                </div>
               </>
             )}
             {waste && !wasteItem && (
@@ -318,67 +362,26 @@ export function PartCard({
             )}
           </div>
         </div>
+        {/* Bekor qilish TO'LIQ KENGLIKDA: kartochkada bitta chek bo'lgani uchun
+            uni siqilgan qatorga tiqishning ma'nosi yo'q — qo'lqopdagi barmoq
+            uchun eng katta nishon. */}
         <div className="space-y-1.5">
-          {waste && wasteItem && (
-            <div className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm">
-              <span className="num">
-                {wasteItem.qr_text}{" "}
-                {wasteItem.label_printed_at && (
-                  <span className="font-bold text-green-600">
-                    ✓ chek chiqarilgan
-                  </span>
+          {cheklar.map((c) =>
+            c.printed && c.cancel ? (
+              <LoadingButton
+                key={c.key}
+                variant="destructive"
+                className="h-14 w-full text-lg font-bold"
+                loading={c.loading}
+                onClick={c.cancel}
+              >
+                Chekni bekor qilish
+                {cheklar.length > 1 && (
+                  <span className="num ml-2 text-sm font-normal">{c.qr}</span>
                 )}
-              </span>
-              {wasteItem.label_printed_at && onCancelWaste && (
-                <LoadingButton
-                  variant="destructive"
-                  className="h-12 px-4 text-base font-bold"
-                  loading={wasteCancelling}
-                  onClick={() => onCancelWaste(wasteItem.id)}
-                >
-                  Chekni bekor qilish
-                </LoadingButton>
-              )}
-            </div>
+              </LoadingButton>
+            ) : null,
           )}
-          {insts.map((inst) => (
-            <div
-              key={inst.instance_id}
-              className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm"
-            >
-              <span className="num">
-                {inst.qr_text}{" "}
-                {inst.done ? (
-                  <span className="font-bold text-green-700">✓ kesildi</span>
-                ) : inst.label_printed_at ? (
-                  <span className="font-bold text-green-600">
-                    ✓ chek chiqarilgan
-                  </span>
-                ) : null}
-              </span>
-              {/* Texnolog xato chekni shu yerdan tuzatadi — proyekt ARRA
-                  ro'yxatidan tushib bo'lgach arrachi xaritani ocholmaydi.
-                  Arrachi ham SHU tugmadan foydalanadi (kartochka ikki marta
-                  bosishda ochiladi) — faqat unda tasdiq oynasi orqali. */}
-              {inst.label_printed_at && (
-                <LoadingButton
-                  variant="destructive"
-                  // Qoldiq kartochkasidagi bekor qilish bilan BIR XIL balandlik:
-                  // qo'lqopdagi barmoq uchun `sm` (32px) juda kichik edi va bir
-                  // xil amal ikki kartochkada ikki xil o'lchamda turardi.
-                  className="h-12 px-4 text-base font-bold"
-                  loading={cancelMutation.isPending}
-                  onClick={() =>
-                    onCancelRequest
-                      ? onCancelRequest(inst)
-                      : cancelMutation.mutate(inst.instance_id)
-                  }
-                >
-                  Chekni bekor qilish
-                </LoadingButton>
-              )}
-            </div>
-          ))}
         </div>
         {/* Radix X 16px — qo'lqopga kichik; katta yopish tugmasi */}
         <Button

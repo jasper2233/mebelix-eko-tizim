@@ -40,6 +40,24 @@ to'liq satrni saqlaydi. Oddiy raqamli kodlarda farq sezilmaydi.
 - `-2` ni `_2` qilib bo'lmaydi: `100701_01_010_2` "2-nusxa"mi yoki "2-detal"mi —
   ajratib bo'lmay qoladi, baza unique indeksi ham to'qnashadi.
 
+## Nusxalar kesish xaritasida
+
+Har nusxa xaritada **alohida katak** — jismonan ular listning turli joyida
+kesiladi. Katak bog'lanishi `PartInstance.pattern_no` + `cell_index` da
+saqlanadi, ya'ni `_1` aynan bitta katakka tegishli. Nusxalar `№` (`label_num`)
+ni BO'LISHADI — u detalning xaritadagi raqami, nusxaniki emas; farq faqat QR
+suffiksida. Buni `-2` bilan chalkashtirmaslik kerak: u boshqa detal qatori,
+o'z `label_num`i bilan (shuning uchun ular birlashtirilmaydi — birlashsa
+chekdagi `N` xarita bilan mos kelmay arrachi adashadi).
+
+Bir naqsh bir necha marta kesilsa (`sheet.mult > 1`) katakdagi nusxa soni
+`mult` ga teng bo'ladi; frontend naqshni alohida list kartalariga yoyib har
+kartaga bitta nusxani beradi (`CutmapView` → `slice(k, k+1)`). Natijada
+**ekranda har katak = bitta jismoniy detal = bitta chek** — `PartCard` ham shu
+sababli bitta chek ID si va bitta bekor qilish tugmasini ko'rsatadi
+(`docs/06` → «Nega bitta chek, ro'yxat emas»). Prodda o'lchangan (2026-08-28):
+2601 katakda `nusxa == mult`, istisno yo'q.
+
 ## Himoya tekshiruvlari
 
 - **Yo'l belgilariga taqiq**: detal yoki mahsulot kodida `\`, `/` yoki `..`
