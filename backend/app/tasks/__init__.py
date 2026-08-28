@@ -235,8 +235,9 @@ async def print_waste_label(ctx: dict[str, Any], waste_id: int, agent_id: int | 
                 )
             )
         ).decode()
-        w.label_printed_at = datetime.now(UTC)
-        await db.commit()
+        # `label_printed_at` ni ENDPOINT yozadi (terminal.py) — bu yerda yozilsa
+        # javob bilan yozuv orasida poyga bo'lardi va terminal katagi darhol
+        # yangilanmasdi.
 
     redis = ctx.get("redis")
     if redis is not None:

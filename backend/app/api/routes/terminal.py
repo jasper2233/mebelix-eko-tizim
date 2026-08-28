@@ -960,6 +960,12 @@ async def print_waste_item_label(db: SessionDep, user: TerminalUser, waste_id: i
         entity_id=w.id,
         message=f"Qoldiq cheki yuborildi: {w.qr_text} ({w.length:g}x{w.width:g})",
     )
+    # `label_printed_at` SHU YERDA — detal cheki bilan bir xil (`print_instance_label`).
+    # Ilgari uni ARQ vazifasi yozardi: javob qaytgach terminal darhol qayta so'rasa
+    # worker hali ishlamagan bo'lar va katak rangi o'zgarmasdi — faqat keyingi
+    # yangilashda ko'rinardi. Detal chekida bunday muammo yo'q edi, ya'ni bitta
+    # xaritada ikki xil xulq.
+    w.label_printed_at = datetime.now(UTC)
     printer_kutilmoqda = agent.last_seen_at is None or datetime.now(UTC) - agent.last_seen_at > AGENT_ONLINE_WINDOW
     if queue.pool is not None:
         await queue.pool.enqueue_job("print_waste_label", waste_id, agent.id)

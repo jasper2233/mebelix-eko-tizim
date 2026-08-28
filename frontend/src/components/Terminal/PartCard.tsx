@@ -222,91 +222,50 @@ export function PartCard({
   // Ro'yxatga olinmagan atxot (atx yo'q) kartochka ochmaydi — unda ko'rsatadigan
   // ham, qiladigan ham narsa yo'q.
   if (part.waste && !part.atx) return null
-  if (part.waste) {
-    return (
-      <Dialog open={!!part} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              Qoldiq — {Math.round(part.w)} × {Math.round(part.h)} mm
-            </DialogTitle>
-          </DialogHeader>
-          <div className="rounded-lg border bg-white p-2">
-            <PartPreview part={part} holes={holes} />
-          </div>
-          {wasteItem ? (
-            <div className="flex items-start gap-4">
-              <div className="shrink-0 rounded-lg border p-2">
-                <QRCodeSVG value={wasteItem.qr_text} size={170} />
-                <div className="num mt-1 text-center text-2xs text-muted-foreground">
-                  {wasteItem.qr_text}
-                </div>
-              </div>
-              <div className="num space-y-1 text-sm">
-                <div>
-                  O'lcham:{" "}
-                  <b>
-                    {Math.round(part.w)} × {Math.round(part.h)} mm
-                  </b>
-                </div>
-                <div>
-                  Chek:{" "}
-                  {wasteItem.label_printed_at ? (
-                    <b className="text-green-700">✓ chiqarilgan</b>
-                  ) : (
-                    <b>chiqarilmagan</b>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-muted-foreground">
-              Bu qoldiq ro'yxatga olinmagan (eski yuklama) — project faylni
-              qayta yuklang.
-            </p>
-          )}
-          {wasteItem?.label_printed_at && onCancelWaste && (
-            <LoadingButton
-              variant="destructive"
-              className="h-12 w-full px-4 text-base font-bold"
-              loading={wasteCancelling}
-              onClick={() => onCancelWaste(wasteItem.id)}
-            >
-              Chekni bekor qilish
-            </LoadingButton>
-          )}
-          <Button
-            variant="outline"
-            className="h-12 w-full text-base font-bold"
-            onClick={onClose}
-          >
-            Yopish
-          </Button>
-        </DialogContent>
-      </Dialog>
-    )
-  }
-  const insts = instancesByCell.get(`${sheetNo}:${part.cell}`) ?? []
-  const next = insts.find((i) => !i.done) ?? insts[0]
+  // QOLDIQ VA DETAL BIR XIL KARTOCHKADA. Qoldiqda nusxalar yo'q — uning
+  // yagona cheki qatorlar ro'yxatida detal nusxasi bilan BIR XIL shaklda
+  // ko'rsatiladi, ya'ni "chekni bekor qilish" ikkalasida ham ID yonida turadi.
+  // Ilgari qoldiq alohida bloк edi: tugma "Yopish" ustida, o'lcham sarlavhada,
+  // ID esa umuman yo'q — bitta xaritada ikki xil kartochka.
+  const waste = !!part.waste
+  const insts = waste
+    ? []
+    : (instancesByCell.get(`${sheetNo}:${part.cell}`) ?? [])
+  const next = waste ? undefined : (insts.find((i) => !i.done) ?? insts[0])
+  const qr = waste ? wasteItem?.qr_text : next?.qr_text
+  const nomer = waste ? part.atx : part.num
 
   return (
     <Dialog open={!!part} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>
-            №{part.num} — {part.name}{" "}
-            {part.rot && <RotateCw className="inline size-4" />}
+          {/* ID SARLAVHA QATORIDA va kattaroq: kartochkaning eng ko'p
+              solishtiriladigan qiymati — chekdagi raqam bilan. Qoldiqda
+              yonida QOLDIQ bayrog'i turadi, boshqa hammasi bir xil. */}
+          <DialogTitle className="flex items-center gap-2 pr-8">
+            <span className="num text-2xl font-black">№{nomer}</span>
+            <span className="truncate text-base font-semibold">
+              {waste
+                ? `${Math.round(part.w)} × ${Math.round(part.h)} mm`
+                : part.name}
+            </span>
+            {waste && (
+              <span className="shrink-0 rounded bg-amber-100 px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-amber-800">
+                Qoldiq
+              </span>
+            )}
+            {part.rot && <RotateCw className="inline size-4 shrink-0" />}
           </DialogTitle>
         </DialogHeader>
         <div className="rounded-lg border bg-white p-2">
           <PartPreview part={part} holes={holes} />
         </div>
         <div className="flex items-start gap-4">
-          {next && (
+          {qr && (
             <div className="shrink-0 rounded-lg border p-2">
-              <QRCodeSVG value={next.qr_text} size={170} />
+              <QRCodeSVG value={qr} size={170} />
               <div className="num mt-1 text-center text-2xs text-muted-foreground">
-                {next.qr_text}
+                {qr}
               </div>
             </div>
           )}
@@ -317,37 +276,71 @@ export function PartCard({
                 {part.w} × {part.h} mm
               </b>
             </div>
-            {/* Kromka QAYSI TOMONDA — belgi o'zi yetarli emas edi. Tomon
+            {/* Qoldiqda kromka ham, yorliq raqami ham yo'q — u material,
+                ishlov berilmaydi. */}
+            {!waste && (
+              <>
+                {/* Kromka QAYSI TOMONDA — belgi o'zi yetarli emas edi. Tomon
                 nomlari yonidagi eskiz bilan bir xil yo'nalishda: eW = chap/o'ng
                 (vertikal qirralar, uzunligi = balandlik), eH = tepa/past
                 (gorizontal, uzunligi = kenglik). O'lcham ham yoziladi —
                 kromkachi qaysi qirrani lentalashini shundan biladi. */}
-            <div>
-              Kromka: {(() => {
-                const tomonlar = [
-                  { nom: "chap", sym: part.eW?.[0], boyi: part.h },
-                  { nom: "o'ng", sym: part.eW?.[1], boyi: part.h },
-                  { nom: "tepa", sym: part.eH?.[0], boyi: part.w },
-                  { nom: "past", sym: part.eH?.[1], boyi: part.w },
-                ].filter((t) => t.sym)
-                if (!tomonlar.length) return <b>yo'q</b>
-                return tomonlar.map((t, i) => (
-                  <span key={t.nom}>
-                    {i > 0 && " · "}
-                    <b>
-                      {t.nom} {Math.round(t.boyi)}
-                    </b>
-                    {t.sym !== "•" && ` (${t.sym})`}
-                  </span>
-                ))
-              })()}
-            </div>
-            <div>
-              Yorliq raqami: <b>№{part.num}</b>
-            </div>
+                <div>
+                  Kromka: {(() => {
+                    const tomonlar = [
+                      { nom: "chap", sym: part.eW?.[0], boyi: part.h },
+                      { nom: "o'ng", sym: part.eW?.[1], boyi: part.h },
+                      { nom: "tepa", sym: part.eH?.[0], boyi: part.w },
+                      { nom: "past", sym: part.eH?.[1], boyi: part.w },
+                    ].filter((t) => t.sym)
+                    if (!tomonlar.length) return <b>yo'q</b>
+                    return tomonlar.map((t, i) => (
+                      <span key={t.nom}>
+                        {i > 0 && " · "}
+                        <b>
+                          {t.nom} {Math.round(t.boyi)}
+                        </b>
+                        {t.sym !== "•" && ` (${t.sym})`}
+                      </span>
+                    ))
+                  })()}
+                </div>
+                <div>
+                  Yorliq raqami: <b>№{part.num}</b>
+                </div>
+              </>
+            )}
+            {waste && !wasteItem && (
+              <div className="text-muted-foreground">
+                Bu qoldiq ro'yxatga olinmagan (eski yuklama) — project faylni
+                qayta yuklang.
+              </div>
+            )}
           </div>
         </div>
         <div className="space-y-1.5">
+          {waste && wasteItem && (
+            <div className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm">
+              <span className="num">
+                {wasteItem.qr_text}{" "}
+                {wasteItem.label_printed_at && (
+                  <span className="font-bold text-green-600">
+                    ✓ chek chiqarilgan
+                  </span>
+                )}
+              </span>
+              {wasteItem.label_printed_at && onCancelWaste && (
+                <LoadingButton
+                  variant="destructive"
+                  className="h-12 px-4 text-base font-bold"
+                  loading={wasteCancelling}
+                  onClick={() => onCancelWaste(wasteItem.id)}
+                >
+                  Chekni bekor qilish
+                </LoadingButton>
+              )}
+            </div>
+          )}
           {insts.map((inst) => (
             <div
               key={inst.instance_id}
