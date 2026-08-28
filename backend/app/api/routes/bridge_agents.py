@@ -168,7 +168,28 @@ async def update_bridge_agent(
 async def create_bridge_agent(
     db: SessionDep, current_user: AdminUser, body: BridgeAgentCreate, request: Request
 ) -> BridgeAgentRead:
-    agent = BridgeAgent(name=body.name, pair_code=_new_code(), pair_expires_at=datetime.now(UTC) + PAIR_TTL)
+    machine = await db.get(Machine, body.machine_id)
+    if machine is None or machine.is_deleted:
+        raise NotFoundException("Ish markazi topilmadi.")
+    band = (
+        await db.execute(
+            select(BridgeAgent.name).where(
+                BridgeAgent.machine_id == body.machine_id,
+                BridgeAgent.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).scalar_one_or_none()
+    if band is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Bu ish markaziga «{band}» agenti allaqachon bog'langan — avval uni uzing.",
+        )
+    agent = BridgeAgent(
+        name=body.name,
+        machine_id=body.machine_id,
+        pair_code=_new_code(),
+        pair_expires_at=datetime.now(UTC) + PAIR_TTL,
+    )
     db.add(agent)
     await db.flush()
     log_action(
@@ -178,12 +199,12 @@ async def create_bridge_agent(
         user_id=current_user.id,
         entity_type="bridge_agent",
         entity_id=agent.id,
-        message=f"Agent yaratildi, ulanish kodi berildi: {agent.name}",
+        message=f"Agent yaratildi, ulanish kodi berildi: {agent.name} -> {machine.name}",
         ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(agent)
-    return _read(agent)
+    return _read(agent, machine.name)
 
 
 @router.post("/{agent_id}/code", response_model=BridgeAgentRead, operation_id="regenerate_bridge_code")

@@ -113,7 +113,7 @@ export function AddClient({
           {trigger ?? <Button>+ Yangi mijoz</Button>}
         </DialogTrigger>
       )}
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
             {tahrir ? "Mijozni tahrirlash" : "Yangi mijoz"}

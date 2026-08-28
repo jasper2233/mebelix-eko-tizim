@@ -111,6 +111,10 @@ Ataylab chetlanish bo'lsa `biome-ignore` izohida SABABI yoziladi (namuna:
 `anketa.$orderId.tsx` dagi forma jadvallari — ular reyestr emas, kataklarida
 kiritish maydonlari turadi).
 
+### Dialog kengligi qoidasi
+
+`DialogContent` sukut bo'yicha `sm:max-w-lg` (512px). Ikki ustunli formalar (`grid-cols-2`) uni `sm:max-w-xl` (576px) qiladi: `sm:max-w-md` (448px) da ustun 194px bo'lib qolardi, eng uzun yorliq esa 166px (`Boshlang'ich to'lov (so'm)`, brauzerda o'lchangan) — maydon bilan yorliq bir-biriga tiqilardi. 576px da ustun 258px. Bu formalar: `Orders/AddOrder`, `Orders/EditOrder`, `Clients/AddClient`. Bitta ustunli qisqa dialoglar (`ConfirmDialog`, `PersonDialog`, `AddAgent`) `md` da qoladi — kenglik MAZMUNGA qarab tanlanadi, umumiy cheklov emas.
+
 ### `frontend/src/components/Common/BrandLoader.tsx`
 
 **Maqsadi:** MX logotipli yuklanish indikatori — sahifa/route darajasidagi kutishlarda spinner o'rniga brend. Kontur o'zini chizadi, to'ladi, so'nadi, qaytadan (`mx-loader` keyframes, **1.8s**; chizish 0-25% = 450ms; `prefers-reduced-motion` da statik to'liq logo). Har kontur ALOHIDA `<path>` elementida (`MX_SUBPATHS`): SVG'da dash naqshi har subpathda qaytadan boshlanadi, ya'ni bitta elementda ikkala kontur parallel chizilib, har biri o'z uzunligiga qarab turli vaqtda tugardi — 2.4s siklda kontur ~660ms da tayyor bo'lib qolgan vaqt o'lik turardi, router esa loader'ni kamida 500ms ko'rsatadi, natijada qisqa yuklanishlarda X ning o'ng-past qanoti UMUMAN chizilmasdi (o'lchandi: eski kodda 450ms da 6325 piksel yetishmasdi, yangisida 2). Alohida elementda har biri chizish fazasi oxirida aniq tugaydi. Ostida 12% xira SHARPA — qisqa yuklanishda ham brend butun ko'rinadi. Vektor `icon-navy.png` dan potrace bilan olingan (piksel-mos, headless Chrome'da solishtirilgan), `pathLength=1` — dasharray real uzunlikka bog'liq emas. Rang `currentColor`: panelda `text-primary`, tabloda oltin. Ishlatilishi: router `defaultPendingComponent` (`main.tsx`, 200ms dan cho'zilgan yuklanishda, minMs 500), tablo `isLoading`. Tugma ichidagi spinner (`LoadingButton`) va toast ikonkasi ATAYLAB o'zgarmagan — 16-20px masshtabda logo shovqin, spinner tanish konvensiya.

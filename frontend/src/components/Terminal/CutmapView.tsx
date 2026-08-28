@@ -880,16 +880,29 @@ export function CutmapView({
                         {formatDateTime(item.label_printed_at)}
                       </p>
                     )}
-                    <LoadingButton
-                      className="h-14 w-full text-xl"
-                      loading={wastePrint.isPending}
-                      onClick={() => wastePrint.mutate(item.id)}
-                    >
-                      <Printer />{" "}
-                      {item.label_printed_at
-                        ? "Chekni qayta chiqarish"
-                        : "Chek chiqarish"}
-                    </LoadingButton>
+                    {/* CHEK FAQAT TERMINALDAN. Admin ko'rinishida (panel)
+                        printer konteksti yo'q: `print_waste_item_label`
+                        TerminalUser talab qiladi (403), talab qilmaganda ham
+                        `require_printer` ish markazisiz 422 berardi — tugma
+                        ko'rinib turib HECH QACHON ishlamasdi. Bekor qilish esa
+                        texnologga ochiq (detal cheki bilan bir xil qoida). */}
+                    {admin ? (
+                      <p className="text-sm text-muted-foreground">
+                        Chek tsexdagi terminaldan chiqariladi — bu yerda faqat
+                        ko'rish va bekor qilish mumkin.
+                      </p>
+                    ) : (
+                      <LoadingButton
+                        className="h-14 w-full text-xl"
+                        loading={wastePrint.isPending}
+                        onClick={() => wastePrint.mutate(item.id)}
+                      >
+                        <Printer />{" "}
+                        {item.label_printed_at
+                          ? "Chekni qayta chiqarish"
+                          : "Chek chiqarish"}
+                      </LoadingButton>
+                    )}
                     {item.label_printed_at && (
                       <LoadingButton
                         variant="outline"

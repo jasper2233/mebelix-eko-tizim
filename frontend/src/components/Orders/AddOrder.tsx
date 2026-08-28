@@ -76,7 +76,7 @@ export function AddOrder() {
           <Plus /> Yangi buyurtma
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Yangi buyurtma</DialogTitle>
           <DialogDescription>

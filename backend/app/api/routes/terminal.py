@@ -1106,7 +1106,7 @@ LabelCancelUser = Annotated[
 
 
 @router.delete("/waste/{waste_id}/label", response_model=Message, operation_id="cancel_waste_item_label")
-async def cancel_waste_item_label(db: SessionDep, user: TerminalUser, waste_id: int) -> Message:
+async def cancel_waste_item_label(db: SessionDep, user: LabelCancelUser, waste_id: int) -> Message:
     """Qoldiq chekini bekor qilish: `label_printed_at` tozalanadi.
 
     Detal chekidan farqi — bu yerda qaytariladigan skan yo'q (qoldiq ish

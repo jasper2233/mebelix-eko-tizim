@@ -510,23 +510,28 @@ function AgentRow({
 
 const formSchema = z.object({
   name: z.string().trim().min(2).max(100),
+  // Ish markazi YARATISHDA so'raladi. Ilgari u alohida qadam edi (jadvaldagi
+  // select) va muntazam esdan chiqib qolardi — bog'lanmagan agent esa na chek
+  // chiqara oladi, na skan yubora oladi, ya'ni kod berilgan bo'lsa ham ishlamas.
+  machine_id: z.string().min(1, "Ish markazini tanlang"),
 })
 
 function AddAgent() {
   const [open, setOpen] = useState(false)
   const [created, setCreated] = useState<BridgeAgentRead | null>(null)
   const queryClient = useQueryClient()
+  const { data: machines } = useQuery(getMachinesQueryOptions())
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: "" },
+    defaultValues: { name: "", machine_id: "" },
   })
 
   const mutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) =>
       (
         await BridgeAgentsService.createBridgeAgent({
-          body: { name: data.name },
+          body: { name: data.name, machine_id: Number(data.machine_id) },
         })
       ).data,
     onSuccess: (agent) => {
@@ -569,10 +574,10 @@ function AddAgent() {
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>Yangi printer agenti</DialogTitle>
+              <DialogTitle>Yangi MES agenti</DialogTitle>
               <DialogDescription>
-                Qaysi kompyuter/post ekanini bildiruvchi nom bering — ulanish
-                kodi yaratiladi.
+                Nom va ish markazini tanlang — shundan keyin ulanish kodi
+                beriladi.
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -593,6 +598,36 @@ function AddAgent() {
                           autoFocus
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {/* Ish markazi KOD BERILISHIDAN OLDIN tanlanadi — chek shu
+                    markazga manzillanadi, skan-forvard esa shu stanok nomidan
+                    yoziladi. Bog'lanmagan agent ikkalasini ham qila olmaydi. */}
+                <FormField
+                  control={form.control}
+                  name="machine_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ish markazi</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Tanlang" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {machines?.map((m) => (
+                            <SelectItem key={m.id} value={String(m.id)}>
+                              {m.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
