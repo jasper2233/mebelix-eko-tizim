@@ -27,9 +27,9 @@ from sqlalchemy import select, update
 
 from app.api.deps import AdminUser, SessionDep, client_ip
 from app.core.config import settings
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import DuplicateValueException, NotFoundException
 from app.core.ws import ws_manager
-from app.crud import crud_bridge_agents, log_action
+from app.crud import crud_bridge_agents, crud_machines, log_action
 from app.models import BridgeAgent, Machine, Post
 from app.schemas.bridge_agents import (
     AgentRelease,
@@ -125,9 +125,8 @@ async def update_bridge_agent(
             if band is not None:
                 # Ikki agent bitta ish markazida: cheklar ular orasida bo'linib,
                 # yarmi o'lik navbatda qolardi (`printer_agent` bittasini tanlaydi).
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"Bu ish markaziga «{band}» agenti allaqachon bog'langan — avval uni uzing.",
+                raise DuplicateValueException(
+                    f"Bu ish markaziga «{band}» agenti allaqachon bog'langan — avval uni uzing."
                 )
             machine = await db.get(Machine, body.machine_id)
             if machine is None or machine.is_deleted:
@@ -170,9 +169,7 @@ async def create_bridge_agent(
 ) -> BridgeAgentRead:
     machine = None
     if body.machine_id is not None:
-        machine = await db.get(Machine, body.machine_id)
-        if machine is None or machine.is_deleted:
-            raise NotFoundException("Ish markazi topilmadi.")
+        machine = await crud_machines.get_or_404(db, "Ish markazi topilmadi.", id=body.machine_id)
         band = (
             await db.execute(
                 select(BridgeAgent.name).where(
@@ -182,10 +179,7 @@ async def create_bridge_agent(
             )
         ).scalar_one_or_none()
         if band is not None:
-            raise HTTPException(
-                status_code=409,
-                detail=f"Bu ish markaziga «{band}» agenti allaqachon bog'langan — avval uni uzing.",
-            )
+            raise DuplicateValueException(f"Bu ish markaziga «{band}» agenti allaqachon bog'langan — avval uni uzing.")
     agent = BridgeAgent(
         name=body.name,
         machine_id=body.machine_id,

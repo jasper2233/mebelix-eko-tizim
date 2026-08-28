@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 from app.api.deps import AdminUser, CurrentUser, SessionDep, client_ip
 from app.core.exceptions import DuplicateValueException, NotFoundException
 from app.core.security import get_password_hash
-from app.crud import crud_machines, crud_posts, log_action
+from app.crud import crud_machines, crud_posts, crud_users, log_action
 from app.models import BridgeAgent, Machine, PartRoute, Scan, User, WorkSession
 from app.models.enums import SessionStatus, UserRole
 from app.schemas.common import Message
@@ -200,18 +200,8 @@ async def upsert_terminal_account(
     Odam bu hisob bilan tanishtirilmaydi — smenani beyjik yoki ismni bosish
     ochadi. Shuning uchun hodim yozuvi YARATILMAYDI.
     """
-    machine = await crud_machines.get(db, id=machine_id)
-    if machine is None:
-        raise NotFoundException("Ish markazi topilmadi.")
-    existing = (
-        await db.execute(
-            select(User).where(
-                User.machine_id == machine_id,
-                User.role == UserRole.TERMINAL,
-                User.is_deleted == False,  # noqa: E712
-            )
-        )
-    ).scalar_one_or_none()
+    machine = await crud_machines.get_or_404(db, "Ish markazi topilmadi.", id=machine_id)
+    existing = await crud_users.get(db, machine_id=machine_id, role=UserRole.TERMINAL)
     band = (
         await db.execute(
             select(User.id).where(
