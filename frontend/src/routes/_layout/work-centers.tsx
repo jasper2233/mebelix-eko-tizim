@@ -24,7 +24,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -435,27 +434,27 @@ function TerminalAccountDialog({
             Ishchi esa beyjik yoki ismini bosib tanishtiriladi.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
-          <div>
-            <Label htmlFor="tu">Login</Label>
+        {/* Sahifadagi boshqa dialoglar bilan bir xil: `Field` yorliq va maydon
+            orasidagi bo'shliqni ham, yorliqni bosganda fokusni ham beradi.
+            Ilgari bu yerda yalang'och `Label` + `Input` turgan va ular orasida
+            bo'shliq umuman yo'q edi — yozuv maydonga tegib turardi. */}
+        <div className="grid gap-3">
+          <Field label="Login">
             <Input
-              id="tu"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="arra-1"
               autoFocus
             />
-          </div>
-          <div>
-            <Label htmlFor="tp">{yangi ? "Parol" : "Yangi parol"}</Label>
+          </Field>
+          <Field label={yangi ? "Parol" : "Yangi parol"}>
             <Input
-              id="tp"
               type="text"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Kamida 8 belgi"
             />
-          </div>
+          </Field>
         </div>
         <LoadingButton
           className="w-full"

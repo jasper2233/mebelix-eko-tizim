@@ -40,6 +40,7 @@ import {
 } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { EmptyRow } from "@/components/Common/EmptyRow"
+import { Field } from "@/components/Common/Field"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { PostBadge } from "@/components/Common/PostBadge"
 import { QueryError } from "@/components/Common/QueryError"
@@ -60,7 +61,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
 import { LoadingButton } from "@/components/ui/loading-button"
 import {
   Select,
@@ -561,19 +561,22 @@ function BadgeDialog({
         </div>
         {printers.length > 1 && (
           <div className="text-left">
-            <Label htmlFor="badge-printer">Printer</Label>
-            <Select value={target} onValueChange={setAgentId}>
-              <SelectTrigger id="badge-printer" className="w-full">
-                <SelectValue placeholder="Tanlang" />
-              </SelectTrigger>
-              <SelectContent>
-                {printers.map((a) => (
-                  <SelectItem key={a.id} value={String(a.id)}>
-                    {a.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* `Field` — yorliq bilan maydon orasidagi bo'shliq va yorliqni
+                bosganda fokus. Yalang'och `Label` da bo'shliq yo'q edi. */}
+            <Field label="Printer">
+              <Select value={target} onValueChange={setAgentId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Tanlang" />
+                </SelectTrigger>
+                <SelectContent>
+                  {printers.map((a) => (
+                    <SelectItem key={a.id} value={String(a.id)}>
+                      {a.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
           </div>
         )}
         <DialogFooter className="flex-col gap-2 sm:flex-col">
