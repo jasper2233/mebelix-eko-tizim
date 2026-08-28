@@ -60,7 +60,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import { LoadingButton } from "@/components/ui/loading-button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -85,6 +93,7 @@ import {
 } from "@/lib/mes"
 import {
   crudCallbacks,
+  getBridgeAgentsQueryOptions,
   getEmployeesQueryOptions,
   getPostsQueryOptions,
 } from "@/queries/mes"
@@ -492,9 +501,22 @@ function BadgeDialog({
 }) {
   const [confirmRegen, setConfirmRegen] = useState(false)
   const queryClient = useQueryClient()
+  // PRINTER TANLOVI. Backend bir nechta printer bo'lsa 422 bilan "qaysi biridan
+  // chiqarishni tanlang" deydi va `agent_id` kutadi — UI esa uni hech qachon
+  // yubormasdi, ya'ni ikkinchi printer paydo bo'lgan zahoti beyjik chop etish
+  // umuman ishlamay qolardi (faqat xato toast). Bitta printer bo'lsa tanlov
+  // ko'rsatilmaydi — ortiqcha qadam bo'lardi.
+  const { data: agents } = useQuery(getBridgeAgentsQueryOptions())
+  const printers = (agents ?? []).filter((a) => a.can_print && a.paired)
+  const [agentId, setAgentId] = useState<string>("")
+  const target =
+    agentId || (printers.length === 1 ? String(printers[0].id) : "")
   const print = useMutation({
     mutationFn: (id: number) =>
-      EmployeesService.printEmployeeBadge({ path: { employee_id: id } }),
+      EmployeesService.printEmployeeBadge({
+        path: { employee_id: id },
+        query: target ? { agent_id: Number(target) } : undefined,
+      }),
     onSuccess: () => toast.success("Beyjik chop etishga yuborildi"),
     onError: (e) => toast.error(detailMessage(e)),
   })
@@ -537,10 +559,28 @@ function BadgeDialog({
           <br />
           Yorliq to'g'ridan-to'g'ri printerga yuboriladi.
         </div>
+        {printers.length > 1 && (
+          <div className="text-left">
+            <Label htmlFor="badge-printer">Printer</Label>
+            <Select value={target} onValueChange={setAgentId}>
+              <SelectTrigger id="badge-printer" className="w-full">
+                <SelectValue placeholder="Tanlang" />
+              </SelectTrigger>
+              <SelectContent>
+                {printers.map((a) => (
+                  <SelectItem key={a.id} value={String(a.id)}>
+                    {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <DialogFooter className="flex-col gap-2 sm:flex-col">
           <LoadingButton
             variant="outline"
             loading={print.isPending}
+            disabled={printers.length > 1 && !target}
             onClick={() => print.mutate(employee.id)}
           >
             <Printer /> Chop etish
