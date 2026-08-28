@@ -29,7 +29,7 @@ Bu hujjat MebeliX MES backend'ining HTTP API qatlamini tavsiflaydi: router ierar
 
 Jami 18 router: 2 ta ochiq (`health`, `login`), 14 tasi `get_current_user` ortida, `bridge_agents` va `ws` esa router darajasida himoyalanmaydi — autentifikatsiyani endpointlar o'zi bajaradi (WebSocket'da HTTP dependency ishlamaydi, `/bridge-agents/pair` esa sessiyasiz agent uchun ochiq bo'lishi shart).
 
-Autentifikatsiya modeli: JWT access + refresh token juftligi, ikkalasi ham `httpOnly` cookie sifatida o'rnatiladi; qo'shimcha ravishda `Authorization: Bearer` header ham qabul qilinadi (header cookie'dan ustun). Token bekor qilish `token_version` mexanizmi orqali — logout paytida foydalanuvchining `token_version` oshiriladi va barcha eski tokenlar yaroqsiz bo'ladi.
+Autentifikatsiya modeli: JWT access + refresh token juftligi, ikkalasi ham `httpOnly` cookie sifatida o'rnatiladi; qo'shimcha ravishda `Authorization: Bearer` header ham qabul qilinadi (header cookie'dan ustun). Token bekor qilishning IKKI darajasi bor. (1) **Chiqish — faqat shu qurilma**: `logout` joriy refresh tokenning `jti` sini Redis'dagi `auth:refresh:used:` tombstone'iga qo'yadi va cookie'larni tozalaydi; boshqa qurilmalardagi sessiyalarga tegilmaydi (ilgari bu yerda ham `token_version` oshirilardi — monoblokdan chiqqan admin noutbukdagi ishidan ham uchib tushardi; sanoat amaliyotida chiqish joriy sessiyani yopadi). (2) **Global bekor qilish** — `token_version` oshirilishi, u BARCHA qurilmadagi access va refresh tokenlarni birdan o'ldiradi va faqat jiddiy holatlarda ishlatiladi: parol almashtirilganda (`users.py`, o'z paroli ham, admin boshqasinikini almashtirganda ham) va refresh token qayta ishlatilganda (o'g'irlanish belgisi, `login.py`). Alohida «hamma qurilmadan chiqish» tugmasi ATAYLAB yo'q: u kerak bo'ladigan yagona jiddiy holat — token o'g'irlangani — parolni almashtirish bilan yopiladi.
 
 ---
 
@@ -62,7 +62,7 @@ Asosiy elementlar:
 | `CurrentUser` | `Annotated[User, Depends(get_current_user)]` | Endpoint signaturalarida qulay alias |
 | `get_current_superuser` / `SuperUserDep` | dependency / alias | `is_superuser` bo'lmasa `ForbiddenException("Sizda yetarli huquq yo'q.")` |
 
-Muhim xavfsizlik detali: `resolve_user` da `user.token_version != token_data.token_version` tekshiruvi — logout qilingan (versiyasi oshirilgan) tokenlar rad etiladi.
+Muhim xavfsizlik detali: `resolve_user` da `user.token_version != token_data.token_version` tekshiruvi — versiyasi oshirilgan (parol almashtirilgan yoki refresh replay aniqlangan) tokenlar rad etiladi. Oddiy chiqish bu versiyani OSHIRMAYDI — u faqat shu qurilmani uzadi.
 
 ### Rol-asosli avtorizatsiya (TZ 3.7 rol/modul matritsasi)
 

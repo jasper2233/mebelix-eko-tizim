@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Response
+import contextlib
+
+from fastapi import APIRouter, Request, Response
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep
-from app.core.security import clear_auth_cookies
-from app.crud import crud_users
+from app.api.routes.login import mark_refresh_token_used, refresh_days
+from app.core.security import REFRESH_COOKIE_NAME, TokenType, clear_auth_cookies, verify_token
 from app.models import Employee, WorkSession
 from app.models.enums import SessionStatus
 from app.schemas.common import Message
@@ -14,11 +16,26 @@ router = APIRouter(tags=["login"])
 
 @router.post("/logout", response_model=Message, operation_id="logout")
 async def logout(
+    request: Request,
     response: Response,
     db: SessionDep,
     current_user: CurrentUser,
 ) -> Message:
-    """Log the user out by bumping `token_version`, which invalidates every outstanding access/refresh token.
+    """Chiqish — FAQAT SHU QURILMA.
+
+    Ilgari bu yerda `token_version` oshirilardi va u hisobning HAMMA
+    qurilmasidagi tokenni birdan o'ldirardi: monoblokdan chiqqan admin
+    noutbukdagi ishidan ham uchib tushardi. Sanoat amaliyoti boshqacha —
+    "Chiqish" joriy sessiyani yopadi, hamma joydan chiqarish esa alohida,
+    ATAYLAB tanlanadigan amal. Bu yerda uni alohida tugma qilmaymiz: parol
+    almashtirish allaqachon `token_version` ni oshiradi (`users.py`), ya'ni
+    "hamma qurilmadan chiqish" kerak bo'lgan yagona jiddiy holat — token
+    o'g'irlangani — parolni almashtirish bilan yopiladi.
+
+    Shu qurilma haqiqatan uziladi: refresh token bir martalik va uning `jti` si
+    Redis'ga "ishlatilgan" deb qo'yiladi (aylantirish mexanizmi allaqachon shu
+    tombstone'ga tayanadi), cookie'lar esa tozalanadi. Access token 30 daqiqa
+    texnik jihatdan amal qiladi, lekin u ham shu qurilmadan o'chiriladi.
 
     Tsex xodimi uchun chiqish SMENANI ham yopadi. Kirish uni ochgan
     (`login._open_shift_for`), shuning uchun chiqish uni yopmasa hisob yopilib,
@@ -45,7 +62,13 @@ async def logout(
     )
     for session in sessions:
         await end_session(db, session)
-    await crud_users.increment_token_version(db=db, user=current_user)
     await db.commit()
+    # Joriy refresh tokenni bekor qilamiz — boshqa qurilmalarnikiga tegilmaydi
+    raw = request.cookies.get(REFRESH_COOKIE_NAME)
+    if raw:
+        with contextlib.suppress(Exception):  # buzuq/eskirgan token — chiqish baribir bajariladi
+            data = verify_token(raw, TokenType.REFRESH)
+            if data is not None and data.jti:
+                await mark_refresh_token_used(data.jti, refresh_days(current_user) * 24 * 60 * 60)
     clear_auth_cookies(response)
     return Message(message="Tizimdan muvaffaqiyatli chiqildi")
