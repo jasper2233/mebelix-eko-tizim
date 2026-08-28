@@ -268,7 +268,7 @@ export function PartCard({
           {wasteItem?.label_printed_at && onCancelWaste && (
             <LoadingButton
               variant="destructive"
-              className="h-12 w-full text-base font-bold"
+              className="h-12 w-full px-4 text-base font-bold"
               loading={wasteCancelling}
               onClick={() => onCancelWaste(wasteItem.id)}
             >
@@ -370,7 +370,10 @@ export function PartCard({
               {inst.label_printed_at && (
                 <LoadingButton
                   variant="destructive"
-                  size="sm"
+                  // Qoldiq kartochkasidagi bekor qilish bilan BIR XIL balandlik:
+                  // qo'lqopdagi barmoq uchun `sm` (32px) juda kichik edi va bir
+                  // xil amal ikki kartochkada ikki xil o'lchamda turardi.
+                  className="h-12 px-4 text-base font-bold"
                   loading={cancelMutation.isPending}
                   onClick={() =>
                     onCancelRequest

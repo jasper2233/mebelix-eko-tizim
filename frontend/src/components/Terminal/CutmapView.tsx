@@ -272,8 +272,12 @@ export function CutmapView({
       setSelected(null)
     },
     onError: handleError,
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: ["terminal", "cutmap"] }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["terminal", "cutmap"] })
+      // Admin ko'rinishi boshqa kalitda — texnolog bekor qilganda u ham
+      // yangilanishi kerak (chek chiqarish adminda yo'q, bekor qilish bor).
+      queryClient.invalidateQueries({ queryKey: ["admin", "cutmap"] })
+    },
   })
   const wasteItemFor = (part: SheetPart | null) =>
     part?.atx

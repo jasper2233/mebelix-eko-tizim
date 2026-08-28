@@ -452,19 +452,23 @@ export function SheetSvg({
     // zebra (detal apelsini bilan bir tilda: "chek chiqarish mumkin"), chek
     // chiqqach -> yashil-oq zebra. Oddiy (ro'yxatga olinmagan) atxot kulrang
     // zebra bo'lib qolaveradi.
+    // TANLOV FONNI ALMASHTIRMAYDI — u qalin ko'k KONTUR bilan ko'rsatiladi
+    // (pastdagi `rect`). Ilgari tanlangan katak butunlay ko'k bo'yalar va
+    // HOLATNI yopib qo'yardi: arrachi chek chiqargach katak tanlangan holda
+    // qolar, yashil rang esa faqat BOSHQA katak tanlanganda ko'rinardi —
+    // "chek chiqdi, lekin hech narsa o'zgarmadi" degan taassurot shundan.
+    // Holat va tanlov — ikki mustaqil narsa, ikki mustaqil belgi bilan.
     const fill = p.waste
       ? p.atx
         ? wastePrinted?.has(p.atx)
           ? "url(#zebraDone)"
           : "url(#zebraQoldiq)"
         : "url(#zebra)"
-      : selected
-        ? PART_SELECTED
-        : allDone
-          ? PART_DONE
-          : custom
-            ? PART_CUSTOM
-            : PART_FILL
+      : allDone
+        ? PART_DONE
+        : custom
+          ? PART_CUSTOM
+          : PART_FILL
 
     // thumbnail'da yozuvlar umuman hisoblanmaydi — pickSpot to'qnashuv qidiruvi
     // har detal uchun bir necha nomzod joyni tekshiradi, natijasi esa 128px da
@@ -916,9 +920,13 @@ export function SheetSvg({
           width={p.w}
           height={p.h}
           fill={fill}
-          stroke="#242424"
-          strokeWidth="3"
-          strokeDasharray={p.waste ? "16 11" : undefined}
+          // Tanlov belgisi: qalin ko'k kontur. 5 metrdan ham ko'rinadi va
+          // katakning O'Z rangini (apelsin/yashil/binafsha yoki qoldiq zebrasi)
+          // yopmaydi. Qoldiqda ham ishlaydi — ilgari unda tanlov umuman
+          // ko'rinmasdi.
+          stroke={selected ? PART_SELECTED : "#242424"}
+          strokeWidth={selected ? 14 : 3}
+          strokeDasharray={p.waste && !selected ? "16 11" : undefined}
         />
         {/* Uzoq bosish JARAYONI: 600 ms davomida katak asta bo'yaladi.
             Bosish qabul qilinganini darhol ko'rsatadi va qancha ushlash
