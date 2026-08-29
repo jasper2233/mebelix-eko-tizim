@@ -2911,10 +2911,6 @@ export type TabloOrderRow = {
      */
     deadline: string | null;
     /**
-     * Status
-     */
-    status: string;
-    /**
      * Priority
      */
     priority: string;
@@ -2924,6 +2920,10 @@ export type TabloOrderRow = {
     stages: {
         [key: string]: StageAgg;
     };
+    /**
+     * Status
+     */
+    status: string;
     /**
      * Idle Days
      */
@@ -3142,10 +3142,6 @@ export type TmoOrderState = {
     project_name: string | null;
     order_status: OrderStatus;
     /**
-     * Packaging
-     */
-    packaging: boolean;
-    /**
      * Total
      */
     total: number;
@@ -3235,10 +3231,6 @@ export type UpakovkaOrderState = {
      * Project Name
      */
     project_name: string | null;
-    /**
-     * Density
-     */
-    density: number;
     /**
      * Pachkas
      */
