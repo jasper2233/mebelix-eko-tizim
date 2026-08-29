@@ -1,4 +1,5 @@
 import { queryOptions } from "@tanstack/react-query"
+import { AxiosError } from "axios"
 
 import { type UserRead, UsersService } from "@/client"
 import { PAGE_SIZE } from "./mes"
@@ -29,11 +30,20 @@ export const getCurrentUserQueryOptions = () =>
     queryKey: ["currentUser"],
     queryFn: async (): Promise<UserRead> =>
       (await UsersService.readUserMe()).data,
-    // Har navigatsiyada `beforeLoad` guard'lari (lib/guards.ts) shu so'rovni
-    // kutadi. staleTime'siz har o'tish IKKI ketma-ket `/users/me` ni bloklovchi
-    // qilib yuborardi — Frankfurt RTT'da ~218 ms sof kechikish.
+    // `useCurrentUser` (AppSidebar, sahifalar) va `tablo.tsx` observer'larining
+    // mount/fokus refetch'larini to'xtatadi — /users/me har sahifa o'tishida va
+    // har oyna fokusida qaytadan so'ralmaydi. (Guard'lar `ensureQueryData` bilan
+    // keshdan o'qiydi va staleTime'ga umuman qaramaydi — sabab `lib/guards.ts` da.)
     // Eskirgan rol xavf tug'dirmaydi: guard faqat UI yo'naltirgichi, huquqni
     // backend har so'rovda o'zi tekshiradi; parol/rol o'zgarsa 401 keladi va
     // `lib/queryClient.ts` dagi handler login'ga chiqaradi.
     staleTime: 5 * 60_000,
+    // Sessiya tugagan bo'lsa 401 ni uch marta takrorlashning ma'nosi yo'q —
+    // lekin TARMOQ uzilishi boshqa gap: `lib/guards.ts` shu so'rovni
+    // `ensureQueryData` bilan kutadi, ya'ni bitta yiqilgan so'rov butun
+    // navigatsiyani xato ekraniga uloqtiradi. Shuning uchun faqat javobSIZ
+    // xatoda qayta urinamiz. Siyosat SHU YERDA: barcha observer'lar (tablo
+    // ham) bir xil olsin.
+    retry: (n: number, e: Error) =>
+      !(e instanceof AxiosError && e.response) && n < 2,
   })

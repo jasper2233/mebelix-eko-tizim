@@ -9,8 +9,9 @@
 // TERMINAL — monoblokning o'zi, post rollari esa beyjik bilan ochilgan smena
 // qaysi hisob nomidan yozilishini hal qiladi. Ular pastdagi alohida bo'limda.
 //
-// Hodimni qurilma/post hisobiga bog'lashni server rad etadi
-// (`employees._validate_user_link`), ya'ni bu ro'yxatga "odam emas" qator tusholmaydi.
+// Hodimni QURILMA (TERMINAL/TABLO) va texnik hisobga bog'lashni server rad etadi
+// (`employees._validate_user_link`); post rolidagi SHAXSIY hisobga esa ruxsat —
+// skanersiz postda xodim aynan shu hisob bilan kiradi.
 
 import {
   keepPreviousData,
@@ -109,11 +110,11 @@ export const Route = createFileRoute("/_layout/employees")({
 const DEVICE_ROLES: string[] = [...MACHINE_BOUND_ROLES, ...OPERATOR_ROLES]
 const isDeviceAccount = (u: UserRead) => DEVICE_ROLES.includes(u.role)
 
-const ACCESS_LABEL: Record<Access, string> = {
+// "none" yo'q: AccessCell u holatda tirecha bilan qaytadi va bu yerga yetmaydi
+const ACCESS_LABEL: Record<Exclude<Access, "none">, string> = {
   badge: "Beyjik",
   password: "Parol",
   both: "Beyjik + parol",
-  none: "Yo'q",
 }
 
 /** Kirish usuli — odam tizimga QANDAY kiradi.
@@ -250,98 +251,96 @@ function PeoplePage() {
           }}
         />
       ) : (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>F.I.Sh</TableHead>
-                <TableHead>Lavozim</TableHead>
-                <TableHead>Kirish</TableHead>
-                <TableHead>Postlar</TableHead>
-                <TableHead>Holat</TableHead>
-                <TableHead className="w-32">Amallar</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {people.length ? (
-                people.map((p) => {
-                  const active = p.employee
-                    ? p.employee.status === "active"
-                    : (p.user?.is_active ?? true)
-                  return (
-                    <TableRow
-                      key={p.employee ? `e${p.employee.id}` : `u${p.user?.id}`}
-                    >
-                      <TableCell className="font-medium">{p.name}</TableCell>
-                      <TableCell>{p.position ?? "—"}</TableCell>
-                      <TableCell>
-                        <AccessCell access={p.access} />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {p.posts.map((pid) => {
-                            const post = postById.get(pid)
-                            return post ? (
-                              <PostBadge key={pid} code={post.code} />
-                            ) : null
-                          })}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={active ? "default" : "secondary"}>
-                          {active
-                            ? EMPLOYEE_STATUS_LABELS.active
-                            : EMPLOYEE_STATUS_LABELS.inactive}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          {canEdit && p.employee && p.access !== "none" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setBadgeFor(p.employee)}
-                            >
-                              <IdCard /> Beyjik
-                            </Button>
-                          )}
-                          {(p.user ? canManageAccounts : canEdit) && (
-                            <>
-                              <RowAction
-                                icon={active ? UserMinus : UserCheck}
-                                title={
-                                  active ? "Nofaol qilish" : "Faollashtirish"
-                                }
-                                onClick={() => setToggleFor(p)}
-                              />
-                              <RowAction
-                                icon={Pencil}
-                                title="Tahrirlash"
-                                onClick={() => setEditFor(p)}
-                              />
-                              <RowAction
-                                icon={Trash2}
-                                title="O'chirish"
-                                danger
-                                onClick={() => setDeleteFor(p)}
-                              />
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              ) : (
-                <EmptyRow colSpan={6}>
-                  {debounced
-                    ? `"${debounced}" bo'yicha hodim topilmadi.`
-                    : "Hali hodim yo'q — \"Hodim qo'shish\" bilan qo'shing."}
-                </EmptyRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>F.I.Sh</TableHead>
+              <TableHead>Lavozim</TableHead>
+              <TableHead>Kirish</TableHead>
+              <TableHead>Postlar</TableHead>
+              <TableHead>Holat</TableHead>
+              <TableHead className="w-32">Amallar</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {people.length ? (
+              people.map((p) => {
+                const active = p.employee
+                  ? p.employee.status === "active"
+                  : (p.user?.is_active ?? true)
+                return (
+                  <TableRow
+                    key={p.employee ? `e${p.employee.id}` : `u${p.user?.id}`}
+                  >
+                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell>{p.position ?? "—"}</TableCell>
+                    <TableCell>
+                      <AccessCell access={p.access} />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {p.posts.map((pid) => {
+                          const post = postById.get(pid)
+                          return post ? (
+                            <PostBadge key={pid} code={post.code} />
+                          ) : null
+                        })}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={active ? "default" : "secondary"}>
+                        {active
+                          ? EMPLOYEE_STATUS_LABELS.active
+                          : EMPLOYEE_STATUS_LABELS.inactive}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        {canEdit && p.employee && p.access !== "none" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setBadgeFor(p.employee)}
+                          >
+                            <IdCard /> Beyjik
+                          </Button>
+                        )}
+                        {(p.user ? canManageAccounts : canEdit) && (
+                          <>
+                            <RowAction
+                              icon={active ? UserMinus : UserCheck}
+                              title={
+                                active ? "Nofaol qilish" : "Faollashtirish"
+                              }
+                              onClick={() => setToggleFor(p)}
+                            />
+                            <RowAction
+                              icon={Pencil}
+                              title="Tahrirlash"
+                              onClick={() => setEditFor(p)}
+                            />
+                            <RowAction
+                              icon={Trash2}
+                              title="O'chirish"
+                              danger
+                              onClick={() => setDeleteFor(p)}
+                            />
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
+            ) : (
+              <EmptyRow colSpan={6}>
+                {debounced
+                  ? `"${debounced}" bo'yicha hodim topilmadi.`
+                  : "Hali hodim yo'q — \"Hodim qo'shish\" bilan qo'shing."}
+              </EmptyRow>
+            )}
+          </TableBody>
+        </Table>
       )}
 
       {/* `key` SHART: dialog ichidagi "yangi beyjik" mutatsiyasi holati komponent
@@ -352,7 +351,6 @@ function PeoplePage() {
           key={badgeFor.id}
           employee={badgeFor}
           onClose={() => setBadgeFor(null)}
-          isAdmin={canEdit}
         />
       )}
       {(adding || editFor) && (
@@ -367,11 +365,7 @@ function PeoplePage() {
         />
       )}
       <TogglePerson person={toggleFor} onClose={() => setToggleFor(null)} />
-      <DeletePerson
-        person={deleteFor}
-        canManageAccounts={canManageAccounts}
-        onClose={() => setDeleteFor(null)}
-      />
+      <DeletePerson person={deleteFor} onClose={() => setDeleteFor(null)} />
     </div>
   )
 }
@@ -434,13 +428,14 @@ function TogglePerson({
   )
 }
 
+// Hisobi bor qatorda o'chirish tugmasi FAQAT superuserga chiziladi
+// (`p.user ? canManageAccounts : canEdit`), shuning uchun bu yerda qayta
+// tekshirilmaydi — hisobli odam kelsa, huquq allaqachon bor.
 function DeletePerson({
   person,
-  canManageAccounts,
   onClose,
 }: {
   person: Person | null
-  canManageAccounts: boolean
   onClose: () => void
 }) {
   const queryClient = useQueryClient()
@@ -451,9 +446,7 @@ function DeletePerson({
           path: { employee_id: p.employee.id },
         })
       }
-      // Hisobni faqat superuser o'chira oladi — boshqasida tsex yozuvi ketadi,
-      // hisob esa qoladi va buni xabar ham aytadi
-      if (p.user && canManageAccounts) {
+      if (p.user) {
         await UsersService.deleteUser({ path: { user_id: Number(p.user.id) } })
       }
     },
@@ -469,9 +462,7 @@ function DeletePerson({
   })
 
   const what = person?.user
-    ? canManageAccounts
-      ? "tsex yozuvi ham, kirish hisobi ham o'chiriladi"
-      : "faqat tsex yozuvi o'chiriladi — kirish hisobini superuser o'chiradi"
+    ? "tsex yozuvi ham, kirish hisobi ham o'chiriladi"
     : "ro'yxatdan o'chiriladi, beyjigi ishlamay qoladi"
 
   return (
@@ -490,14 +481,14 @@ function DeletePerson({
   )
 }
 
+// Faqat `canEdit` (admin) beyjik tugmasini ko'radi, ya'ni dialog ochilgan
+// bo'lsa "yangi beyjik" huquqi ham bor
 function BadgeDialog({
   employee,
   onClose,
-  isAdmin,
 }: {
-  employee: EmployeeRead | null
+  employee: EmployeeRead
   onClose: () => void
-  isAdmin: boolean
 }) {
   const [confirmRegen, setConfirmRegen] = useState(false)
   const queryClient = useQueryClient()
@@ -535,7 +526,6 @@ function BadgeDialog({
     },
   })
 
-  if (!employee) return null
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-xs text-center">
@@ -588,15 +578,13 @@ function BadgeDialog({
           >
             <Printer /> Chop etish
           </LoadingButton>
-          {isAdmin && (
-            <LoadingButton
-              variant="destructive"
-              loading={regen.isPending}
-              onClick={() => setConfirmRegen(true)}
-            >
-              Yo'qolgan — yangi beyjik berish
-            </LoadingButton>
-          )}
+          <LoadingButton
+            variant="destructive"
+            loading={regen.isPending}
+            onClick={() => setConfirmRegen(true)}
+          >
+            Yo'qolgan — yangi beyjik berish
+          </LoadingButton>
         </DialogFooter>
         <ConfirmDialog
           open={confirmRegen}

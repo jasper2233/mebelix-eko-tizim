@@ -64,8 +64,6 @@ const newRoom = (n: number): SurveyRoom => ({
   modules: [],
 })
 
-const emptyModule = (): SurveyModule => ({ name: "" })
-
 function AnketaPage() {
   const { orderId } = Route.useParams()
   const id = Number(orderId)
@@ -496,7 +494,7 @@ function AnketaPage() {
           </Section>
 
           {/* O'lchov varag'i — zamerdan keyin to'ldiriladi, shuning uchun yopiq turadi */}
-          <details className={cn(cardSurface)}>
+          <details className={cardSurface}>
             <summary className="cursor-pointer px-4 py-3 font-semibold">
               <span className="mr-2 text-muted-foreground">8</span>
               O'lchov varag'i{" "}
@@ -672,19 +670,15 @@ function AnketaPage() {
                     </tbody>
                   </table>
                 </div>
-                {canEdit && (
-                  <Button
-                    variant="outline"
-                    className="mt-2"
-                    onClick={() =>
-                      patch({
-                        modules: [...(room.modules ?? []), emptyModule()],
-                      })
-                    }
-                  >
-                    <Plus /> Qator qo'shish
-                  </Button>
-                )}
+                <Button
+                  variant="outline"
+                  className="mt-2"
+                  onClick={() =>
+                    patch({ modules: [...(room.modules ?? []), { name: "" }] })
+                  }
+                >
+                  <Plus /> Qator qo'shish
+                </Button>
                 <div className="grid items-start gap-3 sm:grid-cols-2">
                   <Num
                     label="Umumiy uzunlik (pm)"

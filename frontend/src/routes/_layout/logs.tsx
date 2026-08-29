@@ -148,11 +148,6 @@ function LogsPage() {
   const agentName = (id: number) =>
     agents?.find((a) => a.id === id)?.name ?? `agent #${id}`
 
-  const setFilter = (fn: () => void) => {
-    fn()
-    setPage(0)
-  }
-
   return (
     <div>
       <PageHeader
@@ -167,7 +162,10 @@ function LogsPage() {
               key={c.key ?? "all"}
               size="sm"
               variant={module === c.key ? "default" : "outline"}
-              onClick={() => setFilter(() => setModule(c.key))}
+              onClick={() => {
+                setModule(c.key)
+                setPage(0)
+              }}
             >
               {c.label}
             </Button>
@@ -180,11 +178,17 @@ function LogsPage() {
           className="w-full max-w-xs"
           placeholder="Xabar bo'yicha qidirish..."
           value={search}
-          onChange={(v) => setFilter(() => setSearch(v))}
+          onChange={(v) => {
+            setSearch(v)
+            setPage(0)
+          }}
         />
         <DatePicker
           value={day}
-          onChange={(v) => setFilter(() => setDay(v))}
+          onChange={(v) => {
+            setDay(v)
+            setPage(0)
+          }}
           placeholder="Sana bo'yicha"
           className="h-9"
         />
@@ -192,13 +196,12 @@ function LogsPage() {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() =>
-              setFilter(() => {
-                setModule(null)
-                setSearch("")
-                setDay("")
-              })
-            }
+            onClick={() => {
+              setModule(null)
+              setSearch("")
+              setDay("")
+              setPage(0)
+            }}
           >
             <X /> Tozalash
           </Button>

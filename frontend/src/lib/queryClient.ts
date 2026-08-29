@@ -7,7 +7,13 @@ const handleApiError = (error: Error) => {
   if (error instanceof AxiosError) {
     if (
       error.response?.status === 401 &&
-      !error.config?.url?.includes("/login/access-token") &&
+      // Faqat kirish ma'lumotini TEKSHIRUVCHI endpointlar chetlab o'tiladi —
+      // u yerdagi 401 "parol/beyjik xato" degani, sessiya tugagani emas.
+      // `/login/refresh` ATAYLAB ro'yxatda YO'Q: undagi 401 aynan "sessiya
+      // tugadi" signali va foydalanuvchi login sahifasiga uchishi kerak.
+      // (main.tsx dagi interceptor butun `/login/*` ni chetlab o'tadi, lekin
+      // uning vazifasi boshqa — yiqilgan refresh'ni qayta refresh qilmaslik.)
+      !/\/login\/(access-token|badge)/.test(error.config?.url ?? "") &&
       window.location.pathname !== "/login"
     ) {
       queryClient.clear()

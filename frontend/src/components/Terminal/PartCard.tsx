@@ -272,7 +272,7 @@ export function PartCard({
   const nomer = waste ? part.atx : part.num
 
   return (
-    <Dialog open={!!part} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           {/* ID SARLAVHA QATORIDA va kattaroq: kartochkaning eng ko'p

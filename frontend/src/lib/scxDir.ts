@@ -89,25 +89,21 @@ export async function pickDir(): Promise<FileSystemDirectoryHandle | null> {
   }
 }
 
-/** SCX faylni serverdan olib papkaga yozadi; yozilgan fayl nomini qaytaradi (xatoda throw) */
+/** SCX faylni serverdan olib papkaga yozadi; yozilgan fayl nomini qaytaradi (xatoda throw).
+ * Nomni chaqiruvchi beradi — docs/11 bo'yicha SCX fayl nomi QR matnining o'zi. */
 export async function saveScxToDir(
   dir: FileSystemDirectoryHandle,
   fileId: number,
-  filename?: string,
+  filename: string,
 ): Promise<string> {
   const resp = await fetch(scxFileUrl(fileId), {
     credentials: "include",
   })
   if (!resp.ok) throw new Error(`Fayl ${fileId}: HTTP ${resp.status}`)
-  let name = filename
-  if (!name) {
-    const cd = resp.headers.get("content-disposition") ?? ""
-    name = /filename="?([^";]+)"?/.exec(cd)?.[1] ?? `scx_${fileId}.scx`
-  }
   const blob = await resp.blob()
-  const fh = await dir.getFileHandle(name, { create: true })
+  const fh = await dir.getFileHandle(filename, { create: true })
   const w = await fh.createWritable()
   await w.write(blob)
   await w.close()
-  return name
+  return filename
 }

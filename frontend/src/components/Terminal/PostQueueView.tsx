@@ -15,7 +15,6 @@ import { PostProgress } from "@/components/Terminal/PostProgress"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatSize } from "@/lib/mes"
-import { cn } from "@/lib/utils"
 
 //: Post nomiga moslangan sarlavhalar — "bo'yalgan" stolyarkada mos kelmaydi.
 const LABELS: Record<string, { ready: string; done: string }> = {
@@ -146,14 +145,14 @@ export function PostQueueView({
         {!!done.length && (
           <>
             <div className="border-y bg-muted/40 px-4 py-2 text-sm font-bold text-muted-foreground">
-              Bo'yalgan <span className="num">({done.length})</span>
+              {label.done} <span className="num">({done.length})</span>
             </div>
             <table className="w-full text-sm">
               <tbody>
                 {done.map((r) => (
                   <tr
                     key={r.instance_id}
-                    className={cn("border-b text-green-700 last:border-0")}
+                    className="border-b text-green-700 last:border-0"
                   >
                     <td className="num px-4 py-1.5 font-semibold">
                       {r.qr_text}

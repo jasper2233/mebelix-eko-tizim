@@ -12,7 +12,7 @@ import {
   Map as MapIcon,
   Printer,
 } from "lucide-react"
-import { useMemo, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
 
@@ -60,7 +60,7 @@ export function PrisadkaView({
   onShowOnMap?: (partCode: string) => void
   /** ROVER Chop etish tugmasi terminalning umumiy chap ustuniga (Qulflash
    * ustiga) portal qilinadi — alohida ikkinchi ustun ochilmasin */
-  toolbarContainer?: HTMLElement | null
+  toolbarContainer: HTMLElement | null
 }) {
   const { data, isLoading } = useQuery({
     queryKey: ["terminal", "prisadka", orderId],
@@ -105,10 +105,7 @@ export function PrisadkaView({
   const [selectedId, setSelectedId] = useState<number | null>(null)
 
   // PrisadkaPartRow'da files sxemada ixtiyoriy — bir joyda normallashtiramiz
-  const parts = useMemo(
-    () => (data?.parts ?? []).map((p) => ({ ...p, files: p.files ?? [] })),
-    [data],
-  )
+  const parts = (data?.parts ?? []).map((p) => ({ ...p, files: p.files ?? [] }))
 
   // Oxirgi skan bo'lgan qator keyingi skangacha ajralib turadi + avto-scroll
   const flashId = useScanFlash(
@@ -214,13 +211,7 @@ export function PrisadkaView({
     return (
       <div className="flex h-full min-h-0 gap-3">
         {/* Tugma terminalning umumiy chap ustunida, Qulflash tepasida turadi */}
-        {toolbarContainer ? (
-          createPortal(printBtn, toolbarContainer)
-        ) : (
-          <div className="flex w-[68px] shrink-0 flex-col gap-2">
-            {printBtn}
-          </div>
-        )}
+        {toolbarContainer && createPortal(printBtn, toolbarContainer)}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border bg-white">
           <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2">
             <Button
@@ -259,8 +250,6 @@ export function PrisadkaView({
                     // lekin FAQAT o'z postida chiqarilganida. Ro'yxatda arradan
                     // kelgan detallar ham turadi va ilgari ularda ham ishlardi:
                     // roverchi arrachining kesish skanini qaytara olardi.
-                    // Shart ikonkanikiga teng — uning borligi "chek shu yerda
-                    // chiqadi" degani (backend ham shuni tekshiradi).
                     onPointerDown={() =>
                       i.label_printed &&
                       ownLabel(p) &&
@@ -290,8 +279,9 @@ export function PrisadkaView({
                           belgilangan holda ochiladi: 20 detalli listda uni
                           qidirib topguncha ancha vaqt ketardi. Ikonkaning
                           BORLIGI ayni paytda "chek shu yerda chiqadi" degani —
-                          arradan kelgan detalda u yo'q. */}
-                      {!p.arra_route && onShowOnMap && (
+                          arradan kelgan detalda u yo'q (`ownLabel` bilan bir
+                          xil shart: uzoq bosib bekor qilish ham shunga bog'liq). */}
+                      {ownLabel(p) && (
                         <button
                           type="button"
                           title="Kesish xaritasida ko'rsatish"
@@ -299,7 +289,7 @@ export function PrisadkaView({
                           className="ml-2 inline-flex size-8 items-center justify-center rounded-md align-middle text-muted-foreground hover:bg-muted hover:text-primary"
                           onClick={(e) => {
                             e.stopPropagation()
-                            onShowOnMap(p.code)
+                            onShowOnMap?.(p.code)
                           }}
                         >
                           <MapIcon className="size-5" />
@@ -442,9 +432,7 @@ export function PrisadkaView({
               <th className="px-4 py-2.5">Kod</th>
               <th className="px-4 py-2.5">Nomi</th>
               <th className="px-4 py-2.5">O'lchami</th>
-              <th className="px-4 py-2.5">
-                {showScx ? "Nusxalar (SCX)" : "Nusxalar"}
-              </th>
+              <th className="px-4 py-2.5">Nusxalar (SCX)</th>
               <th className="px-4 py-2.5 text-right">Bajarildi</th>
             </tr>
           </thead>
@@ -513,26 +501,18 @@ export function PrisadkaView({
                           ))}
                         </div>
                       ) : p.files.length ? (
-                        <div className="flex flex-wrap gap-1">
-                          {p.files.map((f) => {
-                            const ok = p.done_qrs?.includes(
-                              f.filename.replace(/\.scx$/i, ""),
-                            )
-                            return (
-                              <span
-                                key={f.id}
-                                className={cn(
-                                  "num rounded-sm px-1.5 py-0.5",
-                                  ok
-                                    ? "bg-green-100 font-semibold text-green-700"
-                                    : "text-muted-foreground",
-                                )}
-                              >
-                                {f.filename}
-                                {ok && " ✓"}
-                              </span>
-                            )
-                          })}
+                        // Nusxasiz fayl ro'yxati — HOLATSIZ: `done_qrs` ham
+                        // `instances` ham bitta manbadan keladi (terminal.py),
+                        // ya'ni nusxa yo'q joyda tugagan QR ham bo'lmaydi.
+                        <div className="flex flex-wrap gap-1 text-muted-foreground">
+                          {p.files.map((f) => (
+                            <span
+                              key={f.id}
+                              className="num rounded-sm px-1.5 py-0.5"
+                            >
+                              {f.filename}
+                            </span>
+                          ))}
                         </div>
                       ) : (
                         <span className="text-muted-foreground">—</span>

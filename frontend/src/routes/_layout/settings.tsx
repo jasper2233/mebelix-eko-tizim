@@ -6,11 +6,6 @@ import { UserInformation } from "@/components/UserSettings/UserInformation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 
-const tabsConfig = [
-  { value: "my-profile", title: "Profilim", component: UserInformation },
-  { value: "password", title: "Parol", component: ChangePassword },
-]
-
 export const Route = createFileRoute("/_layout/settings")({
   component: UserSettings,
   head: () => ({
@@ -38,17 +33,15 @@ function UserSettings() {
 
       <Tabs defaultValue="my-profile">
         <TabsList>
-          {tabsConfig.map((tab) => (
-            <TabsTrigger key={tab.value} value={tab.value}>
-              {tab.title}
-            </TabsTrigger>
-          ))}
+          <TabsTrigger value="my-profile">Profilim</TabsTrigger>
+          <TabsTrigger value="password">Parol</TabsTrigger>
         </TabsList>
-        {tabsConfig.map((tab) => (
-          <TabsContent key={tab.value} value={tab.value}>
-            <tab.component />
-          </TabsContent>
-        ))}
+        <TabsContent value="my-profile">
+          <UserInformation />
+        </TabsContent>
+        <TabsContent value="password">
+          <ChangePassword />
+        </TabsContent>
       </Tabs>
     </div>
   )

@@ -49,19 +49,19 @@ export function OrderPicker({
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {orders?.map((o) => {
-            const total = o.total ?? 0
-            const done = o.done ?? 0
+            // Tugagan buyurtma bu ro'yxatda YO'Q: backend uni `/terminal/orders`
+            // da tashlab ketadi (done >= total -> continue), ya'ni bu yerda
+            // doim qoldiq bo'ladi.
+            const total = o.total
+            const done = o.done
             const pct = total ? Math.round((done / total) * 100) : 0
-            const finished = total > 0 && done >= total
             const tone = deadlineTone(o.deadline)
             return (
               <button
                 type="button"
                 key={o.id}
                 onClick={() => onPick(o.id)}
-                className={`rounded-xl border-2 p-4 text-left outline-none transition-all hover:border-primary focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.98] active:border-primary ${
-                  finished ? "border-green-500/60 bg-green-50/50" : ""
-                }`}
+                className="rounded-xl border-2 p-4 text-left outline-none transition-all hover:border-primary focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.98] active:border-primary"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -90,20 +90,14 @@ export function OrderPicker({
                 <div className="mt-2">
                   <div className="h-2 overflow-hidden rounded-full bg-muted">
                     <div
-                      className={`h-full rounded-full ${finished ? "bg-green-500" : "bg-primary"}`}
+                      className="h-full rounded-full bg-primary"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
                   <div className="num mt-1 flex items-end justify-between">
-                    {finished ? (
-                      <span className="text-xl font-black text-green-600">
-                        ✓ 100%
-                      </span>
-                    ) : (
-                      <span className="text-xl font-black text-primary">
-                        Qoldiq: {total - done}
-                      </span>
-                    )}
+                    <span className="text-xl font-black text-primary">
+                      Qoldiq: {total - done}
+                    </span>
                     <span className="text-sm text-muted-foreground">
                       {done}/{total} detal
                       {o.sheets_total ? ` · ${o.sheets_total} list` : ""}

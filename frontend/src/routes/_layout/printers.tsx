@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { FileText, KeyRound, Plus, Trash2 } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
@@ -12,6 +12,7 @@ import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
 import { RowAction } from "@/components/Common/RowAction"
+import { SelectField } from "@/components/Common/SelectField"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -124,41 +125,37 @@ function AgentLogs({ agent }: { agent: BridgeAgentRead }) {
           path: { agent_id: agent.id },
         })
       ).data,
+    // `enabled` o'chgan so'rovda interval baribir ishlamaydi — dialog yopiq
+    // bo'lsa polling ham to'xtaydi
     enabled: open,
-    refetchInterval: open ? 10_000 : false,
+    refetchInterval: 10_000,
   })
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <span>
-          <RowAction
-            icon={FileText}
-            title="Loglar"
-            onClick={() => setOpen(true)}
-          />
-        </span>
-      </DialogTrigger>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>{agent.name} — loglar</DialogTitle>
-          <DialogDescription>
-            Agent yuborgan oxirgi satrlar, eng yangisi tepada. Har 30 soniyada
-            yangilanadi.
-          </DialogDescription>
-        </DialogHeader>
-        {!data?.length ? (
-          <p className="py-8 text-center text-muted-foreground">
-            {isFetching
-              ? "Yuklanmoqda..."
-              : "Hali log yo'q — agent ulangach 30 soniya ichida keladi."}
-          </p>
-        ) : (
-          <pre className="max-h-[60vh] overflow-auto rounded-md bg-muted p-3 text-xs leading-relaxed">
-            {data.join("\n")}
-          </pre>
-        )}
-      </DialogContent>
-    </Dialog>
+    <>
+      <RowAction icon={FileText} title="Loglar" onClick={() => setOpen(true)} />
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{agent.name} — loglar</DialogTitle>
+            <DialogDescription>
+              Agent yuborgan oxirgi satrlar, eng yangisi tepada. Har 30 soniyada
+              yangilanadi.
+            </DialogDescription>
+          </DialogHeader>
+          {!data?.length ? (
+            <p className="py-8 text-center text-muted-foreground">
+              {isFetching
+                ? "Yuklanmoqda..."
+                : "Hali log yo'q — agent ulangach 30 soniya ichida keladi."}
+            </p>
+          ) : (
+            <pre className="max-h-[60vh] overflow-auto rounded-md bg-muted p-3 text-xs leading-relaxed">
+              {data.join("\n")}
+            </pre>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
@@ -185,16 +182,11 @@ function PrintersPage() {
   })
   // Jonli holat: agent kod terib ulanishi bilan (bridge.paired/connected)
   // sahifa DARHOL yangilanadi — pollingni kutmasdan
-  useMesWs(
-    useCallback(
-      (event) => {
-        if (event.type.startsWith("bridge.")) {
-          queryClient.invalidateQueries({ queryKey: ["bridge-agents"] })
-        }
-      },
-      [queryClient],
-    ),
-  )
+  useMesWs((event) => {
+    if (event.type.startsWith("bridge.")) {
+      queryClient.invalidateQueries({ queryKey: ["bridge-agents"] })
+    }
+  })
 
   return (
     <div>
@@ -239,32 +231,30 @@ function PrintersPage() {
       ) : isError ? (
         <QueryError onRetry={() => refetch()} />
       ) : (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nomi</TableHead>
-                <TableHead>Holat</TableHead>
-                <TableHead>Ulanish kodi</TableHead>
-                <TableHead>Ish markazi (skan-forvard)</TableHead>
-                <TableHead>Chek chiqarish</TableHead>
-                <TableHead>Oxirgi ulanish</TableHead>
-                <TableHead className="w-24" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {agents?.length ? (
-                agents.map((a) => (
-                  <AgentRow key={a.id} agent={a} latest={latest} />
-                ))
-              ) : (
-                <EmptyRow colSpan={7}>
-                  Agentlar yo'q. "Yangi agent" bilan ulanish kodi yarating.
-                </EmptyRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nomi</TableHead>
+              <TableHead>Holat</TableHead>
+              <TableHead>Ulanish kodi</TableHead>
+              <TableHead>Ish markazi (skan-forvard)</TableHead>
+              <TableHead>Chek chiqarish</TableHead>
+              <TableHead>Oxirgi ulanish</TableHead>
+              <TableHead className="w-24" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {agents?.length ? (
+              agents.map((a) => (
+                <AgentRow key={a.id} agent={a} latest={latest} />
+              ))
+            ) : (
+              <EmptyRow colSpan={7}>
+                Agentlar yo'q. "Yangi agent" bilan ulanish kodi yarating.
+              </EmptyRow>
+            )}
+          </TableBody>
+        </Table>
       )}
     </div>
   )
@@ -400,25 +390,19 @@ function AgentRow({
       </TableCell>
       <TableCell>
         {/* Skan-forvard: stanok skaneri o'qigan QR MES'ga shu stanok nomidan yoziladi */}
-        <Select
-          value={agent.machine_id ? String(agent.machine_id) : "none"}
-          onValueChange={(v) => {
-            const next = v === "none" ? null : Number(v)
+        <SelectField
+          className="h-9 w-44"
+          value={agent.machine_id ? String(agent.machine_id) : ""}
+          emptyLabel="— bog'lanmagan"
+          options={(machines ?? []).map((m) => ({
+            value: String(m.id),
+            label: m.name,
+          }))}
+          onChange={(v) => {
+            const next = v ? Number(v) : null
             if (next !== (agent.machine_id ?? null)) setPendingMachine(next)
           }}
-        >
-          <SelectTrigger className="h-9 w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">— bog'lanmagan</SelectItem>
-            {machines?.map((m) => (
-              <SelectItem key={m.id} value={String(m.id)}>
-                {m.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
         <ConfirmDialog
           open={pendingMachine !== "unset"}
           onOpenChange={(v) => !v && setPendingMachine("unset")}

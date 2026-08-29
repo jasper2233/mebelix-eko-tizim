@@ -1,8 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { Activity } from "lucide-react"
-import { useCallback } from "react"
-
 import { ReportsService } from "@/client"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { PostBadge } from "@/components/Common/PostBadge"
@@ -60,25 +58,20 @@ function Dashboard() {
     refetch: refetchMatrix,
   } = useQuery(getTabloMatrixQueryOptions())
 
-  const { online } = useMesWs(
-    useCallback(
-      (event) => {
-        if (
-          event.type.startsWith("scan.") ||
-          event.type.startsWith("order.") ||
-          event.type.startsWith("session.")
-        ) {
-          queryClient.invalidateQueries({ queryKey: ["tablo"] })
-        }
-      },
-      [queryClient],
-    ),
-  )
+  const { online } = useMesWs((event) => {
+    if (
+      event.type.startsWith("scan.") ||
+      event.type.startsWith("order.") ||
+      event.type.startsWith("session.")
+    ) {
+      queryClient.invalidateQueries({ queryKey: ["tablo"] })
+    }
+  })
 
   const postById = new Map((posts ?? []).map((p) => [p.id, p]))
   const sortedPosts = (matrix?.posts ?? [])
     .slice()
-    .sort((a, b) => (a.order_index as number) - (b.order_index as number))
+    .sort((a, b) => a.order_index - b.order_index)
 
   return (
     <div>
@@ -113,7 +106,7 @@ function Dashboard() {
           <QueryError onRetry={() => refetchMachines()} />
         </div>
       ) : machines?.length ? (
-        <div className="mb-8 overflow-x-auto">
+        <div className="mb-8">
           <Table>
             <TableHeader>
               <TableRow>
@@ -211,11 +204,11 @@ function Dashboard() {
               <div className="ml-auto">
                 <StagePipeline
                   stages={sortedPosts
-                    .filter((p) => o.stages[p.code as string])
+                    .filter((p) => o.stages[p.code])
                     .map((p) => ({
-                      code: p.code as string,
-                      done: o.stages[p.code as string].done,
-                      total: o.stages[p.code as string].total,
+                      code: p.code,
+                      done: o.stages[p.code].done,
+                      total: o.stages[p.code].total,
                     }))}
                 />
               </div>

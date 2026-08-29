@@ -183,7 +183,7 @@ export const MACHINE_BOUND_ROLES = ["terminal", "tablo"] as const
  *
  * Lavozim BEYJIKDA chop etiladi va mahsuldorlik hisobotida ustun bo'ladi:
  * erkin matn bo'lganda "Arrachi" va "arrachi" ikki qator berardi. */
-export type PositionKind = "tsex" | "ofis" | "boshqa"
+type PositionKind = "tsex" | "ofis" | "boshqa"
 
 // Tsex lavozimida ham `role` bor: skaneri yo'q postda (ARRA) xodimga SHAXSIY
 // hisob ochiladi va u parol bilan kiradi. Rol backend `POST_ROLES` bilan bir xil
@@ -269,7 +269,7 @@ export function deadlineTone(value?: string | null): "overdue" | "today" | "" {
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return "—"
   const d = new Date(value)
-  return `${p2(d.getDate())}.${p2(d.getMonth() + 1)}.${d.getFullYear()} ${p2(d.getHours())}:${p2(d.getMinutes())}`
+  return `${formatDate(value)} ${p2(d.getHours())}:${p2(d.getMinutes())}`
 }
 
 // Formatter bir marta quriladi — Intl.NumberFormat konstruktori qimmat, reestrda

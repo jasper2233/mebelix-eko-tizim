@@ -109,44 +109,40 @@ function ProductivityTable({ params }: { params: RangeParams }) {
   if (isLoading) return <Skeleton className="h-64 w-full" />
   if (isError) return <QueryError onRetry={() => refetch()} />
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>#</TableHead>
-            <TableHead>Hodim</TableHead>
-            <TableHead>Lavozim</TableHead>
-            <TableHead className="text-right">Jami scan</TableHead>
-            <TableHead className="text-right">Faol kunlar</TableHead>
-            <TableHead className="text-right">Kuniga</TableHead>
-            <TableHead className="text-right">Soatiga</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data?.employees.length ? (
-            data.employees.map((e, i) => (
-              <TableRow key={e.employee_id}>
-                <TableCell className="num text-muted-foreground">
-                  {i + 1}
-                </TableCell>
-                <TableCell className="font-medium">{e.full_name}</TableCell>
-                <TableCell>{e.position ?? "—"}</TableCell>
-                <TableCell className="num text-right font-semibold">
-                  {e.total_scans}
-                </TableCell>
-                <TableCell className="num text-right">
-                  {e.active_days}
-                </TableCell>
-                <TableCell className="num text-right">{e.per_day}</TableCell>
-                <TableCell className="num text-right">{e.per_hour}</TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <EmptyRow colSpan={7}>Tanlangan davrda scanlar yo'q.</EmptyRow>
-          )}
-        </TableBody>
-      </Table>
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>#</TableHead>
+          <TableHead>Hodim</TableHead>
+          <TableHead>Lavozim</TableHead>
+          <TableHead className="text-right">Jami scan</TableHead>
+          <TableHead className="text-right">Faol kunlar</TableHead>
+          <TableHead className="text-right">Kuniga</TableHead>
+          <TableHead className="text-right">Soatiga</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {data?.employees.length ? (
+          data.employees.map((e, i) => (
+            <TableRow key={e.employee_id}>
+              <TableCell className="num text-muted-foreground">
+                {i + 1}
+              </TableCell>
+              <TableCell className="font-medium">{e.full_name}</TableCell>
+              <TableCell>{e.position ?? "—"}</TableCell>
+              <TableCell className="num text-right font-semibold">
+                {e.total_scans}
+              </TableCell>
+              <TableCell className="num text-right">{e.active_days}</TableCell>
+              <TableCell className="num text-right">{e.per_day}</TableCell>
+              <TableCell className="num text-right">{e.per_hour}</TableCell>
+            </TableRow>
+          ))
+        ) : (
+          <EmptyRow colSpan={7}>Tanlangan davrda scanlar yo'q.</EmptyRow>
+        )}
+      </TableBody>
+    </Table>
   )
 }
 
@@ -159,58 +155,56 @@ function OrdersTable({ params }: { params: RangeParams }) {
   if (isLoading) return <Skeleton className="h-64 w-full" />
   if (isError) return <QueryError onRetry={() => refetch()} />
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Raqam</TableHead>
-            <TableHead>Mijoz</TableHead>
-            <TableHead>Holat</TableHead>
-            <TableHead>Topshirish sanasi</TableHead>
-            <TableHead>Tayyor</TableHead>
-            <TableHead>Topshirilgan</TableHead>
-            <TableHead>Izoh</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data?.rows.length ? (
-            data.rows.map((r) => (
-              <TableRow key={r.number}>
-                <TableCell className="font-semibold">{r.number}</TableCell>
-                <TableCell
-                  className="max-w-[220px] truncate"
-                  title={r.client_name}
-                >
-                  {r.client_name}
-                </TableCell>
-                <TableCell>
-                  <StatusBadge status={r.status} />
-                </TableCell>
-                <TableCell className="num">
-                  {formatDate(r.deadline)}
-                  {r.overdue && (
-                    <span className="ml-1.5 rounded-sm bg-red-100 px-1.5 py-0.5 text-2xs font-bold text-red-700">
-                      KECHIKKAN
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell className="num">
-                  {formatDateTime(r.completed_at)}
-                </TableCell>
-                <TableCell className="num">
-                  {formatDateTime(r.delivered_at)}
-                </TableCell>
-                <TableCell className="max-w-[220px] truncate text-xs text-muted-foreground">
-                  {r.cancel_reason ?? ""}
-                </TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <EmptyRow colSpan={7}>Tanlangan davrda buyurtmalar yo'q.</EmptyRow>
-          )}
-        </TableBody>
-      </Table>
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Raqam</TableHead>
+          <TableHead>Mijoz</TableHead>
+          <TableHead>Holat</TableHead>
+          <TableHead>Topshirish sanasi</TableHead>
+          <TableHead>Tayyor</TableHead>
+          <TableHead>Topshirilgan</TableHead>
+          <TableHead>Izoh</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {data?.rows.length ? (
+          data.rows.map((r) => (
+            <TableRow key={r.number}>
+              <TableCell className="font-semibold">{r.number}</TableCell>
+              <TableCell
+                className="max-w-[220px] truncate"
+                title={r.client_name}
+              >
+                {r.client_name}
+              </TableCell>
+              <TableCell>
+                <StatusBadge status={r.status} />
+              </TableCell>
+              <TableCell className="num">
+                {formatDate(r.deadline)}
+                {r.overdue && (
+                  <span className="ml-1.5 rounded-sm bg-red-100 px-1.5 py-0.5 text-2xs font-bold text-red-700">
+                    KECHIKKAN
+                  </span>
+                )}
+              </TableCell>
+              <TableCell className="num">
+                {formatDateTime(r.completed_at)}
+              </TableCell>
+              <TableCell className="num">
+                {formatDateTime(r.delivered_at)}
+              </TableCell>
+              <TableCell className="max-w-[220px] truncate text-xs text-muted-foreground">
+                {r.cancel_reason ?? ""}
+              </TableCell>
+            </TableRow>
+          ))
+        ) : (
+          <EmptyRow colSpan={7}>Tanlangan davrda buyurtmalar yo'q.</EmptyRow>
+        )}
+      </TableBody>
+    </Table>
   )
 }
 
@@ -223,38 +217,36 @@ function MaterialsTable({ params }: { params: RangeParams }) {
   if (isLoading) return <Skeleton className="h-64 w-full" />
   if (isError) return <QueryError onRetry={() => refetch()} />
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Material</TableHead>
-            <TableHead>Turi</TableHead>
-            <TableHead className="text-right">Jami sarf</TableHead>
-            <TableHead>Birlik</TableHead>
-            <TableHead className="text-right">Buyurtmalar</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data?.rows.length ? (
-            data.rows.map((r) => (
-              <TableRow key={`${r.name}-${r.kind}`}>
-                <TableCell className="font-medium">{r.name}</TableCell>
-                <TableCell>{r.kind === "sheet" ? "List" : "Kromka"}</TableCell>
-                <TableCell className="num text-right font-semibold">
-                  {Math.round(r.total * 100) / 100}
-                </TableCell>
-                <TableCell>{r.unit}</TableCell>
-                <TableCell className="num text-right">{r.orders}</TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <EmptyRow colSpan={5}>
-              Tanlangan davrda material sarfi yo'q (fayl yuklangan buyurtmalar
-              hisobga olinadi).
-            </EmptyRow>
-          )}
-        </TableBody>
-      </Table>
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Material</TableHead>
+          <TableHead>Turi</TableHead>
+          <TableHead className="text-right">Jami sarf</TableHead>
+          <TableHead>Birlik</TableHead>
+          <TableHead className="text-right">Buyurtmalar</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {data?.rows.length ? (
+          data.rows.map((r) => (
+            <TableRow key={`${r.name}-${r.kind}`}>
+              <TableCell className="font-medium">{r.name}</TableCell>
+              <TableCell>{r.kind === "sheet" ? "List" : "Kromka"}</TableCell>
+              <TableCell className="num text-right font-semibold">
+                {Math.round(r.total * 100) / 100}
+              </TableCell>
+              <TableCell>{r.unit}</TableCell>
+              <TableCell className="num text-right">{r.orders}</TableCell>
+            </TableRow>
+          ))
+        ) : (
+          <EmptyRow colSpan={5}>
+            Tanlangan davrda material sarfi yo'q (fayl yuklangan buyurtmalar
+            hisobga olinadi).
+          </EmptyRow>
+        )}
+      </TableBody>
+    </Table>
   )
 }

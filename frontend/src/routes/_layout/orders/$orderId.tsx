@@ -173,17 +173,22 @@ function OrderDetailPage() {
   const canEdit = order.can_edit ?? false
   // Fayl qayta yuklash faqat texnologda: marshrutni u tuzadi.
   const canUpload = isTexnolog && canEdit
+  const isTerminal = (TERMINAL_STATUSES as readonly string[]).includes(
+    order.status,
+  )
   const scxFiles = (order.files ?? []).filter((f) => f.kind === "scx")
-  // GibLab fayldagi typeId="simple" goodlar: petlya, yevrovint, dasta... (dona).
-  // SKU kodlilar oldin: kodsizlar orasida dizaynerning 3D-model qoldiqlari ham
-  // uchraydi ("Вычитание тел", "Гнутая") — haqiqiy furnitura ustun tursin.
-  // Matritsa allaqachon yuklangan bo'lsa tab yorlig'ida son ko'rinadi (TanStack
-  // dedupe qiladi — qo'shimcha so'rov ketmaydi).
+  const fileUrl = (name: string | number) =>
+    `${API_BASE}/api/v1/orders/${id}/files/${name}`
+  // Matritsa allaqachon yuklangan bo'lsa tab yorlig'ida son ko'rinadi. Bu yerda
+  // faqat KESH o'qiladi (`getQueryData`) — qo'shimcha so'rov ketmaydi.
   const customCount = (
     queryClient.getQueryData(getOrderMatrixQueryOptions(id).queryKey)?.parts ??
     []
   ).filter((p) => p.is_custom).length
 
+  // GibLab fayldagi typeId="simple" goodlar: petlya, yevrovint, dasta... (dona).
+  // SKU kodlilar oldin: kodsizlar orasida dizaynerning 3D-model qoldiqlari ham
+  // uchraydi ("Вычитание тел", "Гнутая") — haqiqiy furnitura ustun tursin.
   const hardware = (order.material_usage ?? [])
     .filter((m) => m.kind === "hardware")
     .sort(
@@ -208,10 +213,9 @@ function OrderDetailPage() {
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {canManage &&
-              !(TERMINAL_STATUSES as readonly string[]).includes(
-                order.status,
-              ) && <EditOrder order={order} onSaved={invalidate} />}
+            {canManage && !isTerminal && (
+              <EditOrder order={order} onSaved={invalidate} />
+            )}
             {canManage && order.status === "draft" && (
               <LoadingButton
                 loading={confirm.isPending}
@@ -270,17 +274,11 @@ function OrderDetailPage() {
                 <Truck /> TOPSHIRILDI
               </Button>
             )}
-            {canManage &&
-              !(TERMINAL_STATUSES as readonly string[]).includes(
-                order.status,
-              ) && (
-                <Button
-                  variant="destructive"
-                  onClick={() => setCancelOpen(true)}
-                >
-                  <XCircle /> Bekor qilish
-                </Button>
-              )}
+            {canManage && !isTerminal && (
+              <Button variant="destructive" onClick={() => setCancelOpen(true)}>
+                <XCircle /> Bekor qilish
+              </Button>
+            )}
           </div>
         }
       />
@@ -413,10 +411,10 @@ function OrderDetailPage() {
             )}
           </TabsList>
           <TabsContent value="matrix">
-            <OrderMatrix orderId={id} editable={isTexnolog && canEdit} />
+            <OrderMatrix orderId={id} editable={canEdit} />
           </TabsContent>
           <TabsContent value="custom">
-            <CustomRoutes orderId={id} editable={isTexnolog && canEdit} />
+            <CustomRoutes orderId={id} editable={canEdit} />
           </TabsContent>
           <TabsContent value="hardware">
             <Table>
@@ -449,8 +447,9 @@ function OrderDetailPage() {
         </Tabs>
       ) : (
         <>
+          {/* Matritsani faqat texnolog tahrirlaydi — bu shox unga tegishli emas */}
           <SectionTitle>Detallar matritsasi</SectionTitle>
-          <OrderMatrix orderId={id} editable={isTexnolog && canEdit} />
+          <OrderMatrix orderId={id} editable={false} />
         </>
       )}
 
@@ -471,7 +470,7 @@ function OrderDetailPage() {
                   </span>
                   <a
                     className="shrink-0 text-primary hover:underline"
-                    href={`${API_BASE}/api/v1/orders/${id}/files/${f.id}`}
+                    href={fileUrl(f.id)}
                     download
                   >
                     Yuklab olish
@@ -502,7 +501,7 @@ function OrderDetailPage() {
                   )}
                   <a
                     className="shrink-0 font-medium text-primary hover:underline"
-                    href={`${API_BASE}/api/v1/orders/${id}/files/scx.zip`}
+                    href={fileUrl("scx.zip")}
                     download
                   >
                     Hammasini yuklab olish (ZIP)
@@ -517,7 +516,7 @@ function OrderDetailPage() {
                       <li key={f.id} className="truncate text-xs">
                         <a
                           className="text-primary hover:underline"
-                          href={`${API_BASE}/api/v1/orders/${id}/files/${f.id}`}
+                          href={fileUrl(f.id)}
                           download
                         >
                           {f.filename}

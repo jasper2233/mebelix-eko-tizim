@@ -59,17 +59,16 @@ export const getEmployeesQueryOptions = (search?: string) =>
   })
 
 export const getOrdersQueryOptions = (
-  opts: { status?: string; search?: string; page?: number } = {},
+  opts: { status?: string; search?: string } = {},
 ) =>
   queryOptions({
-    queryKey: ["orders", opts.status ?? "", opts.search ?? "", opts.page ?? 0],
+    queryKey: ["orders", opts.status ?? "", opts.search ?? ""],
     queryFn: async () =>
       (
         await OrdersService.readOrders({
           query: {
             status: (opts.status as never) || undefined,
             search: opts.search || undefined,
-            skip: (opts.page ?? 0) * PAGE_SIZE,
             limit: PAGE_SIZE,
           },
         })

@@ -18,9 +18,9 @@ export function PostProgress({
   total,
   className,
 }: {
+  /** Nima sanalayotgani — kromkada tomonlar, qolganida detallar */
   done: number
   total: number
-  /** Nima sanalayotgani — kromkada tomonlar, qolganida detallar */
   className?: string
 }) {
   const left = Math.max(0, total - done)

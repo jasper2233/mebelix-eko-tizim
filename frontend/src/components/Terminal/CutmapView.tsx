@@ -461,11 +461,13 @@ export function CutmapView({
   // avval chek bekor qilinadi (dublikat chek oqimni buzadi)
   const nextInstance = markedInsts.find((i) => !isCut(i))
 
-  // Xaritada FAQAT reja ko'rsatkichlari qoladi va ular ham faqat texnologda.
-  // "Listlar 4-0=4 / Detallar 20-0=20" olib tashlandi: kesish paytida operator
-  // bu sonlar bilan hech narsa qilmaydi va sarlavhada joy egallardi. Qancha
-  // qolgani listlar jadvalidan (har kartochka o'z holatini ko'rsatadi) va
-  // pastdagi progressdan baribir ko'rinadi.
+  // Reja ko'rsatkichlari (optimizatsiya sifati — atxot, to'ldirish, rez; va
+  // fayl yaratilganda hal bo'lgan stanok sozlamalari — arra kesimi, tirim)
+  // FAQAT texnologda: kesish paytida operator ular bilan hech narsa qilmaydi,
+  // terminalda esa ekran tor va 2 metrdan o'qiladi — ikkita ish raqami yirik
+  // shriftda to'qqiztasi 12px dan foydaliroq. Shu sababdan "Listlar 4-0=4 /
+  // Detallar 20-0=20" ham olib tashlangan: qancha qolgani listlar jadvalidan
+  // (har kartochka o'z holatini ko'rsatadi) va pastdagi progressdan ko'rinadi.
   const planPairs: Array<[string, string | number]> = [
     ["Atxot", material?.ko ?? "—"],
     ["Rez, m", material?.dr?.toFixed?.(1) ?? material?.dr ?? "—"],
@@ -478,16 +480,10 @@ export function CutmapView({
     ["Tirim uz.", material?.trimL ?? "—"],
     ["Tirim en", material?.trimW ?? "—"],
   ]
-  // Reja ko'rsatkichlari FAQAT texnologda. Ular optimizatsiya sifati (atxot,
-  // to'ldirish, rez) va fayl yaratilganda hal bo'lgan stanok sozlamalari (arra
-  // kesimi, tirim) — kesish paytida operator ular bilan hech narsa qilmaydi.
-  // Terminalda esa ekran tor va 2 metrdan o'qiladi: ikkita ish raqami yirik
-  // shriftda to'qqiztasi 12px dan foydaliroq.
-  const fullStats = admin
-  const statPairs = fullStats ? planPairs : []
-  // GibSaw uslubi: 3 qator × 3 ustun qat'iy blok (KK/KD/KO | DR/KR/PZ | TP/TD/TSh)
-  // — hech qachon o'ramaydi, header balandligi o'smaydi, eni ~400px
-  // Header info: list nomi (ochiq bo'lsa) + 3x3 statlar — bitta portalda
+  const statPairs = admin ? planPairs : []
+  // GibSaw uslubi: qat'iy 3 qator, bandlar ustunlarga to'kiladi — hech qachon
+  // o'ramaydi, header balandligi o'smaydi, eni ~400px.
+  // Header info: list nomi (ochiq bo'lsa) + statlar — bitta portalda
   const statsRow = material ? (
     <div
       className={`flex w-fit items-center gap-6 ${statsContainer ? "mx-auto" : ""}`}

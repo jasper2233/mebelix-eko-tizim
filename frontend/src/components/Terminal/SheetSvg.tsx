@@ -241,9 +241,6 @@ export function SheetSvg({
     /** Bosishni BOSHLAGAN ko'rsatkich. Boshqa barmoq (yoki kaft) qimirlaganda
      *  uzoq bosish bekor bo'lmasin — 17" monoblokda kaft ekranga tegib turadi. */
     id: number
-    /** Ko'rsatkich turi — YOZILADI, LEKIN HECH QAYERDA O'QILMAYDI: chidamlilik
-     *  `LP_SLOP` (bitta son, turga bog'liq EMAS — yuqoridagi izohga qara). */
-    type: string
   } | null>(null)
   const lpFiredRef = useRef(false)
   /** Oxirgi bosish — IKKI MARTA BOSISH aniqlash uchun (pastdagi izohga qara) */
@@ -325,13 +322,8 @@ export function SheetSvg({
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     if (ptsRef.current.has(e.pointerId))
       ptsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-    // UZOQ BOSISH chidamliligi ko'rsatkich turiga qarab.
-    //
-    // Ilgari chegara hamma uchun 12px edi — sichqoncha uchun to'g'ri (u qo'yib
-    // qo'yilsa NOL piksel qimirlaydi), barmoq uchun esa juda tor: 12px ~3mm, va
-    // barmoq 600ms davomida shundan ko'proq suriladi. Natijada uzoq bosish
-    // sensorli monoblokda deyarli hech qachon ishlamas, sichqoncha bilan esa
-    // muammosiz ishlardi — aynan shu farq xabar qilingan edi.
+    // UZOQ BOSISH chidamliligi — `LP_SLOP` (bitta son, ko'rsatkich turiga
+    // bog'liq EMAS; sababi o'sha konstanta izohida).
     //
     // Faqat BOSHLAGAN ko'rsatkichning harakati hisobga olinadi: ikkinchi barmoq
     // yoki ekranga tekkan kaft avval har qanday harakatda bekor qilardi.
@@ -417,7 +409,7 @@ export function SheetSvg({
     })
   }, [registerZoom])
 
-  // Yorliqlar hamma narsadan KEYIN chiziladi (teshik/tekstura ortida qolmasin), halo bilan
+  // Yorliqlar hamma narsadan KEYIN chiziladi (teshik/tekstura ortida qolmasin)
   const labels: React.ReactNode[] = []
 
   // Yozuvlar EKRAN o'lchamida doimiy: SVG birligidagi shrift masshtabga BO'LINADI.
@@ -470,8 +462,6 @@ export function SheetSvg({
           ? PART_CUSTOM
           : PART_FILL
 
-    // thumbnail'da yozuvlar umuman hisoblanmaydi — har detal uchun `dimFit`
-    // hisobi va matn tugunlari 128px preview'da baribir ko'rinmaydi.
     // ATXOT o'lchami. GibLab ro'yxatga olgan atxot (blob turi 4) foydali
     // o'lchami bilan keladi — xom kesim emas (`cutmap.py`, TZ 5.2.3). Arra haqqi
     // (tur 1, ~0.5 mm chekka kesim) esa umuman katak bo'lmaydi, ya'ni bu yerga
@@ -873,7 +863,6 @@ export function SheetSvg({
                   x: e.clientX,
                   y: e.clientY,
                   id: e.pointerId,
-                  type: e.pointerType,
                 }
               }
             : undefined
@@ -1028,7 +1017,7 @@ export function SheetSvg({
     )
   })
 
-  const svgEl = (
+  return (
     <svg
       ref={svgRef}
       viewBox={
@@ -1107,6 +1096,4 @@ export function SheetSvg({
       {!thumbnail && <g pointerEvents="none">{labels}</g>}
     </svg>
   )
-
-  return svgEl
 }

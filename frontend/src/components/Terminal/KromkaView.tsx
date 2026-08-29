@@ -6,7 +6,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft } from "lucide-react"
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useRef } from "react"
 
 import { TerminalService } from "@/client"
 import { OperationChips } from "@/components/Common/OperationChips"
@@ -52,15 +52,11 @@ export function KromkaView({
 
   // KromkaPartRow'da edges/instances sxemada ixtiyoriy — bir joyda normallashtiramiz,
   // quyida hamma joyda oddiy massiv/obyekt sifatida ishlatiladi
-  const parts = useMemo(
-    () =>
-      (data?.parts ?? []).map((p) => ({
-        ...p,
-        edges: p.edges ?? {},
-        instances: p.instances ?? [],
-      })),
-    [data],
-  )
+  const parts = (data?.parts ?? []).map((p) => ({
+    ...p,
+    edges: p.edges ?? {},
+    instances: p.instances ?? [],
+  }))
 
   // Tekshiruv har renderda yangi data ko'radi, terminal esa bir marta ro'yxatga oladi
   const checkRef = useRef<(qr: string) => string | null>(() => "NOTFOUND")
