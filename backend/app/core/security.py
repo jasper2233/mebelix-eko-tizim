@@ -15,8 +15,6 @@ from .config import EnvironmentOption, settings
 
 SECRET_KEY: SecretStr = settings.SECRET_KEY
 ALGORITHM = settings.ALGORITHM
-ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
-REFRESH_TOKEN_EXPIRE_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS
 
 ACCESS_COOKIE_NAME = "access_token"
 REFRESH_COOKIE_NAME = "refresh_token"
@@ -64,13 +62,13 @@ def _create_token(data: dict[str, Any], token_type: TokenType, expires_delta: ti
 
 
 def create_access_token(data: dict[str, Any]) -> str:
-    return _create_token(data, TokenType.ACCESS, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    return _create_token(data, TokenType.ACCESS, timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
 
 
 def create_refresh_token(data: dict[str, Any], days: int | None = None) -> str:
     # `jti` makes every refresh token unique, so it can be marked as used after one rotation.
     payload = {**data, "jti": uuid.uuid4().hex}
-    return _create_token(payload, TokenType.REFRESH, timedelta(days=days or REFRESH_TOKEN_EXPIRE_DAYS))
+    return _create_token(payload, TokenType.REFRESH, timedelta(days=days or settings.REFRESH_TOKEN_EXPIRE_DAYS))
 
 
 def verify_token(token: str, expected_token_type: TokenType) -> TokenData | None:

@@ -92,7 +92,7 @@ async def edit_order_matrix(
     posts = {p.id: p for p in (await db.execute(select(Post))).scalars()}
     # Anketadagi "Upakovka qilish" — qo'lda chizilgan marshrutga ham qadoqlash
     # qadamini qo'shadi (buyurtma qadoqlansa HAMMA detal qadoqlanadi).
-    packaging = bool((order.survey or {}).get("packaging"))
+    packaging = order.needs_packaging
 
     for edit in body.edits:
         part = (

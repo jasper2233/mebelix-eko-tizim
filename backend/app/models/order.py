@@ -53,6 +53,16 @@ class Order(BaseModel):
     cancel_reason: Mapped[str | None] = mapped_column(Text, default=None, kw_only=True)
     cancelled_by_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
 
+    @property
+    def needs_packaging(self) -> bool:
+        """Anketadagi «Upakovka qilish» xizmati — marshrutga UPAKOVKA qadamini qo'shadimi.
+
+        `survey` JSONB va eski yozuvda kalit umuman yo'q, shuning uchun o'qish
+        shakli ehtiyotkor. Marshrut quruvchi uch joyda (ingest ikki marta,
+        matritsa bir marta) shu qiymatga qaraydi — nusxalar ajralib ketmasin.
+        """
+        return bool((self.survey or {}).get("packaging"))
+
 
 #: Ro'yxat/hisobot so'rovlarida KERAK EMAS bo'lgan og'ir JSONB ustunlar.
 #: `defer()` bilan qoldiriladi — busiz 100 ta buyurtma reestri 2.2 MB kesish

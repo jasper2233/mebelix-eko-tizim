@@ -432,7 +432,6 @@ class UpakovkaOrderState(BaseModel):
     order_id: int
     order_number: str
     project_name: str | None
-    density: float  # kg/m3 — taxminiy og'irlik shundan hisoblanadi
     pachkas: list[PachkaRow] = []
     pending: list[UpakovkaPending] = []
 
@@ -479,7 +478,6 @@ class TmoOrderState(BaseModel):
     order_number: str
     project_name: str | None
     order_status: OrderStatus
-    packaging: bool  # marshrutda UPAKOVKA bormi — topshirish qadoq bo'yicha ketadi
     total: int
     #: TMO ga JISMONAN yetib kelgan nusxalar — oldingi barcha bosqichlari tugaganlar.
     #: Skan qilinganlar ham shu songa kiradi (ular ham kelgan), ya'ni

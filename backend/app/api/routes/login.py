@@ -9,9 +9,7 @@ from app.core.config import settings
 from app.core.exceptions import UnauthorizedException
 from app.core.security import (
     ACCESS_COOKIE_NAME,
-    ACCESS_TOKEN_EXPIRE_MINUTES,
     REFRESH_COOKIE_NAME,
-    REFRESH_TOKEN_EXPIRE_DAYS,
     TokenType,
     create_access_token,
     create_refresh_token,
@@ -36,7 +34,7 @@ _LOGIN_RATE_LIMIT = RateLimit(limit=settings.LOGIN_RATE_LIMIT_ATTEMPTS, period=s
 # (bitta tashqi IP) qulflab qo'yardi.
 _BADGE_RATE_LIMIT = RateLimit(limit=30, period=60)
 
-ACCESS_MAX_AGE = ACCESS_TOKEN_EXPIRE_MINUTES * 60
+ACCESS_MAX_AGE = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
 
 _USED_JTI_PREFIX = "auth:refresh:used:"
 
@@ -51,7 +49,7 @@ def refresh_days(user: User) -> int:
     kafolat jimgina yo'qolardi (o'lchandi: 83 kunlik replay oynasi).
     """
     device = UserRole(user.role) in (UserRole.TERMINAL, UserRole.TABLO)
-    return settings.DEVICE_REFRESH_TOKEN_EXPIRE_DAYS if device else REFRESH_TOKEN_EXPIRE_DAYS
+    return settings.DEVICE_REFRESH_TOKEN_EXPIRE_DAYS if device else settings.REFRESH_TOKEN_EXPIRE_DAYS
 
 
 def _issue_token_pair(response: Response, user: User) -> str:

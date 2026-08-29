@@ -73,7 +73,7 @@ class RateLimit:
     async def __call__(self, request: Request) -> None:
         """Route bog'liqligi: faqat tekshiradi, hisobni oshirmaydi."""
         if await rate_limiter.over_limit(self._key(request), self.limit):
-            raise RateLimitException("So'rovlar chegarasidan oshib ketdi.")
+            raise RateLimitException()
 
     async def hit(self, request: Request) -> None:
         """Muvaffaqiyatsiz urinish — chaqiruvchi xato yo'lida chaqiradi."""

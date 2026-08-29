@@ -210,7 +210,6 @@ async def _state(db: SessionDep, order: Order, post: Post) -> UpakovkaOrderState
         order_id=order.id,
         order_number=order.number,
         project_name=order.project_name,
-        density=DENSITY,
         pachkas=list(pachkas.values()),
         pending=pending,
     )

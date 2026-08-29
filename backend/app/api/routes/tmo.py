@@ -72,7 +72,6 @@ async def _state(db: SessionDep, order: Order, post: Post) -> TmoOrderState:
     by_part: dict[int, list[PartRoute]] = {}
     for r in routes:
         by_part.setdefault(r.part_id, []).append(r)
-    packaging = any(r.process_code == 15 for r in routes)  # 15 = Qadoqlash
 
     #: Har NUSXA uchun: TMO ga yetib keldimi, kelmagan bo'lsa qaysi postda turibdi.
     #: Marshrut yuqorida o'qilgan — `by_part` uzatilmasa aynan o'sha so'rov takrorlanardi.
@@ -174,7 +173,6 @@ async def _state(db: SessionDep, order: Order, post: Post) -> TmoOrderState:
         order_number=order.number,
         project_name=order.project_name,
         order_status=order.status,
-        packaging=packaging,
         total=total,
         # Kelganlar = allaqachon qabul qilinganlar + navbatda turgan TAYYORlar.
         arrived=(total - len(pending)) + sum(1 for p in pending if p.ready),

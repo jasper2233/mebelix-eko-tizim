@@ -21,7 +21,7 @@ from app.core.middleware import RequestLoggingMiddleware
 from app.core.utils.rate_limit import rate_limiter
 from app.core.ws import ws_manager
 
-from .config import EnvironmentOption, Settings, settings
+from .config import EnvironmentOption, settings
 from .utils import queue
 
 
@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
             await rate_limiter.client.aclose()  # type: ignore[attr-defined]
 
 
-def _install_docs_router(application: FastAPI, settings: Settings) -> None:
+def _install_docs_router(application: FastAPI) -> None:
     """In production: no docs at all. In staging: docs require a superuser. In local: docs are open."""
     if settings.ENVIRONMENT == EnvironmentOption.PRODUCTION:
         return
@@ -80,7 +80,7 @@ def _install_docs_router(application: FastAPI, settings: Settings) -> None:
     application.include_router(docs_router)
 
 
-def create_application(router: APIRouter, settings: Settings) -> FastAPI:
+def create_application(router: APIRouter) -> FastAPI:
     """Build the FastAPI app: metadata, lifespan, middleware (CORS + request logging), and env-conditional docs."""
     setup_logging()
     application = FastAPI(
@@ -111,7 +111,7 @@ def create_application(router: APIRouter, settings: Settings) -> FastAPI:
         trusted_hosts=settings.FORWARDED_ALLOW_IPS,
     )
     _install_metrics(application)
-    _install_docs_router(application, settings)
+    _install_docs_router(application)
     return application
 
 

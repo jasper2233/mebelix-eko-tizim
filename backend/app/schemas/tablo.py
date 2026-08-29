@@ -31,7 +31,6 @@ class TabloOrderRow(BaseModel):
     number: str
     name: str | None
     deadline: date | None
-    status: str
     #: Taxta prioritet bo'yicha saralanadi, lekin uni KO'RSATMASDI — ya'ni
     #: "nega bu qator birinchi?" degan savolga javob yo'q edi.
     priority: str
@@ -44,6 +43,9 @@ class TabloOrderRow(BaseModel):
     #: dushanba ertalab butun taxta "2 kun to'xtagan" bo'lib yonardi va belgi
     #: ma'nosini yo'qotardi. "Tsex ishlagan kun" = o'sha kuni bironta skan
     #: bo'lgan kun, ya'ni bayram/ta'til/to'xtash ro'yxatini yuritish kerak emas.
+    #: Doim PRODUCTION (so'rov shu bo'yicha filtrlaydi), lekin dashboard uni
+    #: StatusBadge bo'lib chizadi — olib tashlash UI o'zgarishi, tozalash emas.
+    status: str
     idle_days: int | None = None
 
 

@@ -92,7 +92,7 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
     posts = {p.code: p for p in (await db.execute(select(Post))).scalars()}
     # Anketadagi "Upakovka qilish" xizmati (manager kelishadi) — marshrutga
     # qadoqlash qadamini qo'shadimi. `survey` JSONB, eski yozuvda kalit umuman yo'q.
-    packaging = bool((order.survey or {}).get("packaging"))
+    packaging = order.needs_packaging
     posts_by_id = {p.id: p.code for p in posts.values()}
     parts = (
         await db.execute(
@@ -288,7 +288,7 @@ async def ingest_project(
     posts = {str(p.code): p for p in (await db.execute(select(Post))).scalars()}
     # Anketadagi "Upakovka qilish" xizmati — marshrutga qadoqlash qadamini
     # qo'shadimi. `survey` JSONB, eski yozuvda kalit umuman bo'lmasligi mumkin.
-    packaging = bool((order.survey or {}).get("packaging"))
+    packaging = order.needs_packaging
 
     cutmap = build_cutmap(project) if any(c.data_blob for c in project.cut_ops) else None
 
