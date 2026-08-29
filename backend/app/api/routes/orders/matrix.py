@@ -13,7 +13,7 @@ from sqlalchemy import delete, func, select, update
 from app.api.deps import SessionDep, StaffReadUser, TexnologUser, client_ip
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.crud import log_action
-from app.models import Part, PartInstance, PartRoute, Post, Product
+from app.models import Part, PartInstance, PartRoute, Post, Product, Scan
 from app.models.enums import PostCode, RouteSource
 from app.schemas.orders import MatrixEdit, MatrixPart, OrderMatrix, RouteCell
 from app.services.giblab.models import DEFAULT_PROCESS_CODE, PROCESS_NAMES, PROCESS_POSTS, TAIL_CODES
@@ -287,17 +287,42 @@ async def _set_custom_route(
     KROMKA birinchi kelganda qirralar soni marta skanlanadi, takrorida bitta.
     OVAL har doim bitta: oval kromkada detal bitta o'tishda ishlanadi."""
     for code in codes:
-        if code not in PROCESS_POSTS:
+        # 15/16 (qadoqlash, TMO) — dumni tizim qo'shadi, texnolog tanlamaydi
+        if code not in PROCESS_POSTS or code in TAIL_CODES:
             raise ForbiddenException(f"Noma'lum jarayon kodi: {code}. Ruxsat etilgan: 1–14.")
     if codes and PROCESS_POSTS[codes[0]] not in _ROUTE_START_POSTS:
         raise ForbiddenException("Marshrut faqat Arra yoki Rover'dan boshlanadi — chek o'sha yerda chiqadi.")
 
     by_code = {p.code: p for p in posts.values()}
     # Eski QO'LDA chizilgan qadamlar BUTUNLAY o'chiriladi: ular almashtirilyapti,
-    # tarix emas (tahrir faqat ishlab chiqarishgacha — bu qatorlarga skan yo'q).
-    # Yumshoq o'chirilsa avlodlar to'planib qolardi va bayroq standartga qaytarilib
-    # yana yoqilganda HAMMASI birdan tiklanib `(part_id, seq)` yagonaligini buzardi.
-    await db.execute(delete(PartRoute).where(PartRoute.part_id == part.id, PartRoute.source == RouteSource.MANUAL))
+    # tarix emas. Yumshoq o'chirilsa avlodlar to'planib qolardi va bayroq
+    # standartga qaytarilib yana yoqilganda HAMMASI birdan tiklanib
+    # `(part_id, seq)` yagonaligini buzardi.
+    #
+    # ISTISNO — skan TEGGAN qator: `scan.route_id` NOT NULL FK va `ON DELETE`
+    # yo'q, ya'ni qattiq o'chirish 500 (ForeignKeyViolation) berardi. Buyurtma
+    # PRODUCTION da bo'lib, hamma skani BEKOR QILINGAN bo'lsa tahrir ochiq
+    # qoladi (`_first_work` bekor qilinganini sanamaydi), skan qatorlari esa
+    # o'sha marshrut qadamiga ishora qilib turadi. Ular yumshoq o'chadi —
+    # `ix_part_route_part_seq` faqat `NOT is_deleted` uchun yagona, to'qnashuv yo'q.
+    scanned = select(Scan.route_id).where(Scan.route_id.is_not(None))
+    await db.execute(
+        update(PartRoute)
+        .where(
+            PartRoute.part_id == part.id,
+            PartRoute.source == RouteSource.MANUAL,
+            PartRoute.id.in_(scanned),
+            PartRoute.is_deleted == False,  # noqa: E712
+        )
+        .values(is_deleted=True, deleted_at=datetime.now(UTC))
+    )
+    await db.execute(
+        delete(PartRoute).where(
+            PartRoute.part_id == part.id,
+            PartRoute.source == RouteSource.MANUAL,
+            PartRoute.id.not_in(scanned),
+        )
+    )
     # Fayldan kelgan qadamlar esa yumshoq o'chadi — detal standartga qaytsa tiklanadi.
     await db.execute(
         update(PartRoute)

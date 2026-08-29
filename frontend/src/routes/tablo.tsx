@@ -175,11 +175,11 @@ function useFitScale<T>(rows: T[]) {
  * Nuqta soket ochiqligini isbotlaydi, RAQAMLAR yangiligini emas: soket
  * ulangan, lekin hodisa kelmasa va so'rov yiqilsa, ekran eski raqamlarni
  * ko'rsatib turaveradi — nuqta esa xotirjam yashil qolardi. Shuning uchun
- * ma'lumot YOSHI ko'rsatiladi va u har soniyada tikillaydi: bir qarashda
- * jonli ekani ko'rinadi, qotib qolsa raqam o'sib ketadi.
+ * ma'lumot YOSHI o'lchanadi: normal holatda jonlilikni tepkilayotgan halqa
+ * ko'rsatadi, yangilanish yiqilsa (90 s dan oshsa) yosh raqam bo'lib chiqadi.
  *
- * Soat SHU komponent ichida: bo'lmasa har soniyada butun matritsa (40 qator
- * x 9 katak) qayta chizilardi.
+ * Soat SHU komponent ichida va 15 soniyada uriladi: bo'lmasa har tikda butun
+ * matritsa (40 qator x 9 katak) qayta chizilardi.
  */
 /** Sig'magan qatorlarni O'ZI aylantiradi — odam tegsa to'xtaydi.
  *
@@ -198,8 +198,6 @@ function useIdleAutoScroll() {
   const ref = useRef<HTMLElement>(null)
 
   useEffect(() => {
-    const el = ref.current
-    if (!el) return
     let lastInput = 0
     const bump = () => {
       lastInput = Date.now()
@@ -215,6 +213,11 @@ function useIdleAutoScroll() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
     const id = setInterval(() => {
       if (Date.now() - lastInput < IDLE_MS) return
+      // Tugun HAR tikda o'qiladi: drill ochilib yopilganda butun matritsa
+      // daraxti qayta yaratiladi va effekt boshida ushlangan eski `<main>`
+      // uzilib qolardi — taxta boshqa aylanmasdi.
+      const el = ref.current
+      if (!el) return
       const max = el.scrollHeight - el.clientHeight
       if (max <= 1) return // sig'ib turibdi — qimirlatmaymiz
       // "keyingi qadam oshadi" EMAS, "allaqachon oxirida": birinchisi oxirgi
@@ -312,7 +315,6 @@ function TabloPage() {
   const { data, isLoading, dataUpdatedAt } = useQuery(
     getTabloMatrixQueryOptions(),
   )
-  // Sig'magan buyurtmalar sahifalanadi; drill ochiq bo'lsa aylanish to'xtaydi
   const fitted = useFitScale(data?.orders ?? [])
   const closeDrill = useCallback(() => setDrill(null), [])
 
@@ -381,7 +383,7 @@ function TabloPage() {
           </span>
         )}
         <div className="mx-auto flex gap-2">
-          {(["hajm", "soni", "foiz"] as Mode[]).map((m) => (
+          {MODES.map((m) => (
             <button
               type="button"
               key={m}
@@ -567,11 +569,9 @@ function TabloPage() {
                         ? `${Math.round(vDone)}/${Math.round(vTotal)}`
                         : mode === "soni"
                           ? `${done}/${total}`
-                          : !total
-                            ? "—"
-                            : done >= total
-                              ? "100%"
-                              : `${Math.min(99, Math.floor((done / total) * 100))}%`
+                          : done >= total
+                            ? "100%"
+                            : `${Math.min(99, Math.floor((done / total) * 100))}%`
                     return (
                       <td
                         key={p.id}
@@ -647,9 +647,6 @@ function TabloPage() {
                           "kechikdi" bilan "to'xtagan" boshqa-boshqa faktlar.
                           Muddatsiz buyurtma ham to'xtab qolishi mumkin — prodda
                           shundaysi bor (4301_Komol, 463 skandan keyin jim). */}
-                      {/* Nom OLDIN, belgi keyin: belgi birinchi turganda nomni
-                          surib "431…" qoldirardi. Endi nom qolgan joyni oladi va
-                          tartibli qisqaradi, belgi esa o'ng chetda qotib turadi. */}
                       {/* Teg bo'lsa nom O'RNIGA chiqadi: 1920px da nomga 119-160px
                           kerak, teg bilan yonma-yon 97px qoladi (o'lchandi).
                           Ustunni kengaytirish ham yaramaydi — "1010/1274" post
@@ -857,8 +854,9 @@ function TabloCell({
         flash && "animate-cell-flash",
       )}
     >
-      {/* Kontekst rejimida faqat progress to'ldirgichi susayadi — raqam to'liq
-          kontrastda qoladi, aks holda 4 metrdan o'qib bo'lmasdi. */}
+      {/* Kontekst rejimida katak butunlay `opacity-40` bo'lmaydi — oq fonda
+          kontrast 1.85:1 ga tushib, 4 metrdan o'qib bo'lmasdi. Susayish ikki
+          xil: to'ldirgich shaffoflashadi, raqam esa RANG bilan (muted). */}
       {/* BUTUN KATAK to'ladi — "data bar in cell" naqshi (Excel data bars,
           Grafana jadval paneli). Devor ekranida MAYDON eng oson o'qiladigan
           signal: 5 metrdan 12% bilan 18% ni ajratish uchun ingichka chiziq

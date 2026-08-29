@@ -198,7 +198,6 @@ export function SheetSvg({
   holes: Record<string, CutmapHole>
   instancesByCell: Map<string, CutmapInstanceState[]>
   onSelect: (part: SheetPart) => void
-  /** Uzoq bosish (~600ms): chekni bekor qilish — noto'g'ri chiqarilgan yorliq */
   /** Detal kartochkasini ochadi. IKKI jest ham shuni chaqiradi: ikki marta
    *  bosish (GibSaw dagi odat) va uzoq bosish (o'rganib qolganlar uchun). */
   onOpenPart?: (part: SheetPart) => void
@@ -242,7 +241,8 @@ export function SheetSvg({
     /** Bosishni BOSHLAGAN ko'rsatkich. Boshqa barmoq (yoki kaft) qimirlaganda
      *  uzoq bosish bekor bo'lmasin — 17" monoblokda kaft ekranga tegib turadi. */
     id: number
-    /** Chidamlilik ko'rsatkich TURIGA bog'liq (pastda). */
+    /** Ko'rsatkich turi — YOZILADI, LEKIN HECH QAYERDA O'QILMAYDI: chidamlilik
+     *  `LP_SLOP` (bitta son, turga bog'liq EMAS — yuqoridagi izohga qara). */
     type: string
   } | null>(null)
   const lpFiredRef = useRef(false)
@@ -470,9 +470,8 @@ export function SheetSvg({
           ? PART_CUSTOM
           : PART_FILL
 
-    // thumbnail'da yozuvlar umuman hisoblanmaydi — pickSpot to'qnashuv qidiruvi
-    // har detal uchun bir necha nomzod joyni tekshiradi, natijasi esa 128px da
-    // ko'rinmaydi.
+    // thumbnail'da yozuvlar umuman hisoblanmaydi — har detal uchun `dimFit`
+    // hisobi va matn tugunlari 128px preview'da baribir ko'rinmaydi.
     // ATXOT o'lchami. GibLab ro'yxatga olgan atxot (blob turi 4) foydali
     // o'lchami bilan keladi — xom kesim emas (`cutmap.py`, TZ 5.2.3). Arra haqqi
     // (tur 1, ~0.5 mm chekka kesim) esa umuman katak bo'lmaydi, ya'ni bu yerga
@@ -595,48 +594,6 @@ export function SheetSvg({
       }
       if (availW < 16 || availH < 8) shown = ""
       if (tight) shown = "" // markazni birlashgan o'lcham egalladi
-      // Tekstura yo'nalishi: 3 chiziq detalning `l` O'QI bo'ylab (teksturali
-      // materialda birinchi o'lcham — tekstura qulflangan tomon). rot=false da
-      // l katakda gorizontal -> chiziqlar gorizontal; GibLab teksturali detalni
-      // odatda buramaydi, lekin rot=true kelsa chiziqlar ham buriladi — aks
-      // holda xarita teksturani 90° noto'g'ri ko'rsatardi. GibSaw xaritada
-      // teksturani UMUMAN chizmaydi (dekompilyatsiya: part-draw'da faqat XNC,
-      // kromka punktiri, o'lchamlar, nom) — bu belgi bizning qo'shimcha, chek
-      // eskizi bilan bir xil qoidada.
-      if (p.txt && wv > 60 && hv > 40) {
-        const lw = shown && !vert ? shown.length * fsN * 0.27 + 10 : 0
-        if (p.rot) {
-          const th = Math.min(Math.max(hv * 0.22, 120), hv * 0.45)
-          const gp = Math.min(wv * 0.3, Math.max(fsN * 0.55, 16))
-          for (const xx of [cx - gp, cx, cx + gp])
-            labels.push(
-              <line
-                key={`tx${p.cell}-${xx}`}
-                x1={xx}
-                y1={cy - th}
-                x2={xx}
-                y2={cy + th}
-                stroke="#1a1a1a"
-                strokeWidth="2.5"
-              />,
-            )
-        } else {
-          const th = Math.min(Math.max(wv * 0.22, lw + 120), wv * 0.45)
-          const gp = Math.min(hv * 0.3, Math.max(fsN * 0.55, 16))
-          for (const yy of [cy - gp, cy, cy + gp])
-            labels.push(
-              <line
-                key={`tx${p.cell}-${yy}`}
-                x1={cx - th}
-                y1={yy}
-                x2={cx + th}
-                y2={yy}
-                stroke="#1a1a1a"
-                strokeWidth="2.5"
-              />,
-            )
-        }
-      }
       // Tekstura yo'nalishi: 3 chiziq detalning `l` O'QI bo'ylab (teksturali
       // materialda birinchi o'lcham — tekstura qulflangan tomon). rot=false da
       // l katakda gorizontal -> chiziqlar gorizontal; GibLab teksturali detalni

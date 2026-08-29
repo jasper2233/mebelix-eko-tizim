@@ -33,10 +33,6 @@ import { useBadgeScan } from "@/hooks/useBadgeScan"
 import { formatUzPhone } from "@/lib/validation"
 import { extractErrorMessage } from "@/utils"
 
-// Sxema modul darajasida EMAS, funksiya ichida: `routeTree.gen.ts` marshrut
-// modulini statik import qiladi, shuning uchun top-level `z.object(...)` zod'ni
-// entry chunk'ka tortardi — formasi umuman yo'q terminal va TABLO kioski ham
-// har cold start'da uni yuklab, parse qilardi.
 const makeFormSchema = () =>
   z.object({
     username: z
@@ -115,7 +111,6 @@ function Login() {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
-    criteriaMode: "all",
     defaultValues: {
       username: "",
       password: "",
@@ -253,9 +248,7 @@ function Login() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="flex items-center">
-                      <FormLabel>Parol</FormLabel>
-                    </div>
+                    <FormLabel>Parol</FormLabel>
                     <FormControl>
                       <PasswordInput
                         placeholder="Parol"
@@ -304,7 +297,16 @@ function Login() {
       </Form>
 
       {/* Bir nechta postga biriktirilgan hodim qaysi biriga kirayotganini aytadi */}
-      <Dialog open={!!choice} onOpenChange={(o) => !o && setChoice(null)}>
+      <Dialog
+        open={!!choice}
+        onOpenChange={(o) => {
+          if (o) return
+          setChoice(null)
+          // Dialog bekor qilinganda mutatsiya ham tozalanadi: aks holda
+          // "POST_CHOICE" signal xatosi ekranda haqiqiy xato bo'lib qolardi.
+          badge.reset()
+        }}
+      >
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>{choice?.employeeName} — qaysi postda?</DialogTitle>

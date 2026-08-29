@@ -77,6 +77,8 @@ const ACTION_LABELS: Record<string, string> = {
   cancelled: "bekor qilindi",
   label_sent: "chek yuborildi",
   label_cancelled: "chek bekor qilindi",
+  waste_label_sent: "qoldiq cheki yuborildi",
+  waste_label_cancelled: "qoldiq cheki bekor qilindi",
   created: "yaratildi",
   updated: "o'zgartirildi",
   deleted: "o'chirildi",
@@ -107,7 +109,7 @@ const ACTION_LABELS: Record<string, string> = {
 function LogsPage() {
   const [module, setModule] = useState<string | null>(null)
   const [search, setSearch] = useState("")
-  const [day, setDay] = useState("") // yyyy-mm-dd (native date input)
+  const [day, setDay] = useState("") // yyyy-mm-dd (DatePicker qiymati, date_from=date_to)
   const [page, setPage] = useState(0)
   const [detail, setDetail] = useState<AuditLogRead | null>(null)
   const q = useDebounced(search, 400)

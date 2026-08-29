@@ -27,7 +27,7 @@ from app.models import (
     Scan,
     WorkSession,
 )
-from app.models.enums import OrderStatus, UserRole
+from app.models.enums import POST_UNIT_LABELS, OrderStatus, PostUnit, UserRole
 from app.models.user import User
 from app.schemas.reports import (
     DashboardStats,
@@ -342,7 +342,6 @@ async def report_dashboard(db: SessionDep, _: ReportsUser) -> DashboardStats:
     ).all()
     today_by_machine = {mid: cnt for mid, cnt in today_rows if mid is not None}
 
-    unit_labels = {"m2": "m²", "meter": "metr", "piece": "dona"}
     stats: list[MachineStat] = []
     for m in machines:
         post = posts.get(m.post_id)
@@ -355,7 +354,7 @@ async def report_dashboard(db: SessionDep, _: ReportsUser) -> DashboardStats:
                 status=str(m.status),
                 queue_scans=int(q["scans"]),
                 queue_volume=round(q["volume"], 2),
-                unit=unit_labels.get(str(post.unit), "") if post else "",
+                unit=POST_UNIT_LABELS.get(PostUnit(post.unit), "") if post else "",
                 today_scans=today_by_machine.get(m.id, 0),
             )
         )

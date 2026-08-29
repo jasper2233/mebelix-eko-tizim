@@ -3,9 +3,9 @@ from enum import StrEnum
 from sqlalchemy import Enum as SAEnum
 
 
-def db_enum(enum_cls: type[StrEnum], length: int = 30) -> SAEnum:
+def db_enum(enum_cls: type[StrEnum]) -> SAEnum:
     """VARCHAR-backed enum (no native PG enum type — painless ALTERs on new members)."""
-    return SAEnum(enum_cls, native_enum=False, length=length, values_callable=lambda e: [m.value for m in e])
+    return SAEnum(enum_cls, native_enum=False, length=30, values_callable=lambda e: [m.value for m in e])
 
 
 class UserRole(StrEnum):
@@ -29,7 +29,10 @@ class UserRole(StrEnum):
 class PostCode(StrEnum):
     ARRA = "ARRA"
     KROMKA = "KROMKA"
-    OVAL = "OVAL"  # oval (egri) kromka — alohida post, texnolog matritsada belgilaydi
+    #: Oval (egri) kromka — alohida post. Detallar matritsasida ustuni YO'Q
+    #: (`STANDARD_MATRIX_POSTS` faqat ARRA/KROMKA/PRISADKA): texnolog uni
+    #: «Nostandart detallar» tabida jarayon kodi 5 bilan marshrutga qo'shadi.
+    OVAL = "OVAL"
     PRISADKA = "PRISADKA"
     # PAZ olib tashlandi: paz ham frezer stanogida kesiladi, ya'ni ROVER postida.
     # order_index 5 bo'sh qoldirildi — qayta raqamlash hech narsa bermaydi.
@@ -79,6 +82,15 @@ class PostUnit(StrEnum):
     M2 = "m2"
     METER = "meter"
     PIECE = "piece"
+
+
+#: Frontenddagi `UNIT_LABELS` (routes/tablo.tsx) bilan AYNAN bir xil matn —
+#: bitta post ikki ekranda ikki xil birlik bilan chiqmasin.
+POST_UNIT_LABELS: dict[PostUnit, str] = {
+    PostUnit.M2: "m²",
+    PostUnit.METER: "m",
+    PostUnit.PIECE: "dona",
+}
 
 
 class MachineStatus(StrEnum):

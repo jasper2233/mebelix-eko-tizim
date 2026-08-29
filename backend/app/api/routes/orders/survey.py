@@ -12,7 +12,7 @@ from app.api.deps import ManagerUser, SessionDep, client_ip
 from app.core.config import upload_root
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.crud import log_action
-from app.models import OrderFile
+from app.models import Order, OrderFile
 from app.models.enums import FileKind, OrderStatus
 from app.schemas.common import Message
 from app.schemas.orders import OrderFileRead, OrderSurvey
@@ -20,6 +20,19 @@ from app.schemas.orders import OrderFileRead, OrderSurvey
 from ._common import _get_order
 
 router = APIRouter()
+
+
+async def _editable_order(db: SessionDep, order_id: int, nima: str = "anketasini o'zgartirib") -> Order:
+    """Anketa yozish yo'llari uchun buyurtma. Yakunlangan/bekor qilinganda 403.
+
+    Uchala yozish endpointi (saqlash, rasm qo'shish, rasm o'chirish) SHU
+    qorovuldan o'tadi: ilgari rasm o'chirish yo'lida u yo'q edi va topshirilgan
+    buyurtma rasmi diskdan butunlay o'chib ketardi.
+    """
+    order = await _get_order(db, order_id)
+    if order.status in (OrderStatus.DELIVERED, OrderStatus.CANCELLED):
+        raise ForbiddenException(f"Yakunlangan yoki bekor qilingan buyurtma {nima} bo'lmaydi.")
+    return order
 
 
 @router.put("/{order_id}/survey", response_model=Message, operation_id="save_order_survey")
@@ -30,9 +43,7 @@ async def save_order_survey(
 
     Butun anketa bir butun sifatida yoziladi — menejer to'ldirib boradi, texnolog o'qiydi.
     """
-    order = await _get_order(db, order_id)
-    if order.status in (OrderStatus.DELIVERED, OrderStatus.CANCELLED):
-        raise ForbiddenException("Yakunlangan yoki bekor qilingan buyurtma anketasini o'zgartirib bo'lmaydi.")
+    order = await _editable_order(db, order_id)
     order.survey = body.model_dump(mode="json")
 
     # Xona o'chirilsa uning rasmlari yetim qolmasin (diskda ham, bazada ham)
@@ -96,9 +107,7 @@ async def upload_room_photo(
 
     Rasm SurveyRoom.id ga bog'lanadi — xona ro'yxatdagi o'rni o'zgarsa ham yo'qolmaydi.
     """
-    order = await _get_order(db, order_id)
-    if order.status in (OrderStatus.DELIVERED, OrderStatus.CANCELLED):
-        raise ForbiddenException("Yakunlangan yoki bekor qilingan buyurtmaga rasm qo'shib bo'lmaydi.")
+    await _editable_order(db, order_id, "rasmini qo'shib")
 
     ext = _ROOM_PHOTO_TYPES.get(file.content_type or "")
     if ext is None:
@@ -156,6 +165,7 @@ async def upload_room_photo(
 async def delete_room_photo(
     db: SessionDep, current_user: ManagerUser, order_id: int, file_id: int, request: Request
 ) -> Message:
+    await _editable_order(db, order_id)
     row = (
         await db.execute(
             select(OrderFile).where(
