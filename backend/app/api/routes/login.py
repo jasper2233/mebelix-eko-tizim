@@ -93,16 +93,23 @@ async def login_for_access_token(
     response: Response,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: SessionDep,
+    request: Request,
 ) -> dict[str, str]:
+    # Chegara FAQAT muvaffaqiyatsiz urinishni hisoblaydi (`_LOGIN_RATE_LIMIT.hit`):
+    # tsex bitta tashqi IP orqali chiqadi va har so'rov hisoblanganda bir necha
+    # operator kirgach admin bloklanib qolardi.
     user = await crud_users.authenticate(db=db, username_or_phone=form_data.username, password=form_data.password)
     if not user:
+        await _LOGIN_RATE_LIMIT.hit(request)
         raise UnauthorizedException("Foydalanuvchi nomi, telefon yoki parol noto'g'ri.")
     if not user.is_active:
+        await _LOGIN_RATE_LIMIT.hit(request)
         raise UnauthorizedException("Foydalanuvchi faol emas")
     # TIZIM hisobi hech qachon kirmaydi: u beyjik bilan ochilgan smena qaysi hisob
     # nomidan yozilishini hal qiladi, xolos (`_terminal_user`). Odamning SHAXSIY
     # hisobi esa kiradi — skaneri yo'q postda (ARRA) yagona yo'l shu.
     if user.is_system:
+        await _LOGIN_RATE_LIMIT.hit(request)
         raise UnauthorizedException("Bu texnik hisob — u bilan kirilmaydi. Beyjik yoki shaxsiy hisobdan foydalaning.")
 
     # Tsex hisobi bo'lsa smena SHU YERDA ochiladi: aks holda operator kirib, keyin
@@ -273,8 +280,10 @@ async def login_with_badge(
         )
     ).scalar_one_or_none()
     if employee is None:
+        await _BADGE_RATE_LIMIT.hit(request)
         raise UnauthorizedException("Beyjik topilmadi.")
     if employee.status != EmployeeStatus.ACTIVE:
+        await _BADGE_RATE_LIMIT.hit(request)
         raise UnauthorizedException("Beyjik nofaol. Adminga murojaat qiling.")
 
     # Postga biriktirilganini `_badge_post` tekshiradi (terminaldagi `badge_employee`

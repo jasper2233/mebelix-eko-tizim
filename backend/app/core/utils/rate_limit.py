@@ -18,35 +18,62 @@ class RateLimiter:
         if self.client is None:
             self.client = Redis.from_url(redis_url)
 
-    async def is_rate_limited(self, key: str, limit: int, period: int) -> bool:
+    async def over_limit(self, key: str, limit: int) -> bool:
+        """Chegaradan oshganmi — HISOBLAMASDAN, faqat o'qiydi."""
         if self.client is None:
             return True  # lifespan doim initialize() qiladi; bu yerga tushsak — fail-closed
         try:
-            # redis-py o'z tiplarida ResponseT (Any) qaytaradi — `int` bo'lmasa warn_return_any yonadi
-            current_count: int = await self.client.incr(key)
-            if current_count == 1:
-                await self.client.expire(key, period)
-            return current_count > limit
+            raw = await self.client.get(key)
+            return raw is not None and int(raw) >= limit
         except Exception as e:
-            logger.exception("Error checking rate limit for key %s: %s", key, e)
+            logger.exception("Rate limit o'qishda xato (%s): %s", key, e)
             # Fail closed: a Redis outage must not silently switch off brute-force protection.
             return True
+
+    async def bump(self, key: str, period: int) -> None:
+        """Bitta MUVAFFAQIYATSIZ urinishni hisobga oladi."""
+        if self.client is None:
+            return
+        try:
+            if await self.client.incr(key) == 1:
+                await self.client.expire(key, period)
+        except Exception as e:
+            logger.exception("Rate limit yozishda xato (%s): %s", key, e)
 
 
 rate_limiter = RateLimiter()
 
 
 class RateLimit:
+    """Brute-force himoyasi: FAQAT muvaffaqiyatsiz urinishlar hisoblanadi.
+
+    Ilgari har so'rov hisoblanardi — kirish MUVAFFAQIYATLI bo'lsa ham. Tsex esa
+    bitta tashqi IP orqali chiqadi (NAT): monobloklar, admin va menejer bir xil
+    manzildan ko'rinadi, ya'ni 5 urinish / 5 daqiqa chegarasi butun zavodga
+    umumiy edi. Smena boshida operatorlar navbatma-navbat kirsa byudjet tugar
+    va keyingi odam — odatda admin — "So'rovlar chegarasidan oshib ketdi"
+    xatosiga uchrardi, hech kim parolni xato termagan bo'lsa ham. Prodda
+    o'lchangan: 30 daqiqada 9 ta muvaffaqiyatli kirish va 8 ta 429.
+
+    Endi qoida asl ma'nosida ishlaydi: bog'liqlik faqat TEKSHIRADI, chaqiruvchi
+    esa parol/beyjik noto'g'ri bo'lgan yo'lda `hit()` chaqiradi.
+    """
+
     def __init__(self, limit: int, period: int):
         self.limit = limit
         self.period = period
 
-    async def __call__(self, request: Request) -> None:
+    def _key(self, request: Request) -> str:
         ip = request.client.host if request.client else "unknown"
-        path = request.url.path
-        current_timestamp = int(datetime.now(UTC).timestamp())
-        window_start = current_timestamp - (current_timestamp % self.period)
-        key = f"ratelimit:{ip}:{path}:{window_start}"
+        now = int(datetime.now(UTC).timestamp())
+        window_start = now - (now % self.period)
+        return f"ratelimit:{ip}:{request.url.path}:{window_start}"
 
-        if await rate_limiter.is_rate_limited(key, self.limit, self.period):
+    async def __call__(self, request: Request) -> None:
+        """Route bog'liqligi: faqat tekshiradi, hisobni oshirmaydi."""
+        if await rate_limiter.over_limit(self._key(request), self.limit):
             raise RateLimitException("So'rovlar chegarasidan oshib ketdi.")
+
+    async def hit(self, request: Request) -> None:
+        """Muvaffaqiyatsiz urinish — chaqiruvchi xato yo'lida chaqiradi."""
+        await rate_limiter.bump(self._key(request), self.period)
