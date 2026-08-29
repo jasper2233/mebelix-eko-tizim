@@ -5,11 +5,9 @@ set -e
 echo "Starting prestart script..."
 
 echo "Running database migrations..."
-if [ -f "alembic.ini" ]; then
-    python -m alembic upgrade head
-else
-    echo "alembic.ini not found in $(pwd), skipping migrations."
-fi
+# Shartsiz: WORKDIR /app/backend, alembic.ini shu yerda. Yo'q bo'lsa start
+# qattiq yiqilsin — migratsiyasiz sxema ustida API ko'tarilgandan ko'ra yaxshi.
+python -m alembic upgrade head
 
 echo "Creating first superuser..."
 python -m app.commands.create_first_superuser

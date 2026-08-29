@@ -9,7 +9,7 @@ help: ## Show this help message
 .PHONY: setup
 setup: ## Run initial setup (install, env, migrations, pre-commit)
 	./scripts/setup.sh
-	@make install-hooks
+	@$(MAKE) install-hooks
 
 .PHONY: install-hooks
 install-hooks: ## Install git hooks (pre-commit)

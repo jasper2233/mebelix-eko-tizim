@@ -6,17 +6,14 @@
 	header {
 		X-Frame-Options SAMEORIGIN
 		X-Content-Type-Options nosniff
-		X-XSS-Protection "1; mode=block"
 	}
 
 	encode gzip
 
 	# Host passthrough, X-Forwarded-For va X-Forwarded-Proto'ni Caddy reverse_proxy
-	# o'zi qo'yadi — faqat default bo'lmagan X-Real-IP qoladi.
+	# o'zi qo'yadi — qo'lda `header_up` yozish shart emas.
 	handle /api* {
-		reverse_proxy api:8000 {
-			header_up X-Real-IP {remote_host}
-		}
+		reverse_proxy api:8000
 	}
 
 	handle /docs* {
@@ -43,9 +40,7 @@
 	}
 
 	handle {
-		reverse_proxy frontend:80 {
-			header_up X-Real-IP {remote_host}
-		}
+		reverse_proxy frontend:80
 	}
 }
 

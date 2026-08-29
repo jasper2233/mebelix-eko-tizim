@@ -5,9 +5,6 @@ __pycache__/
 # build/ va dist/ — bridge-agent PyInstaller chiqishi
 build/
 dist/
-**/lib/
-**/lib64/
-!frontend/src/lib/
 
 # Environment & Virtual Envs
 .env
@@ -17,10 +14,7 @@ venv/
 env/
 backend/.venv
 
-# Testing & Linting
-.coverage
-.coverage.*
-htmlcov/
+# Linting cache
 .cache
 .mypy_cache/
 .ruff_cache/

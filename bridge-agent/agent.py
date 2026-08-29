@@ -34,6 +34,7 @@ import threading
 from collections import deque
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import Any
 
 # websockets>=14 shart: additional_headers= va InvalidStatus.response.status_code
 # API'si ishlatiladi (exe hozir 16.x bilan yig'iladi — README'dagi install qatori)
@@ -423,39 +424,56 @@ def _exchange(url: str, code: str) -> tuple[str, str, str, str]:
         ) from None
 
 
+def _brand_root(title: str) -> tuple[Any, Any, Any]:
+    """Brendlangan Tk oyna: oq fon, clam mavzu, style'lar, logo va kapa qatori.
+
+    Qaytaradi (root, frm, kapa): logo kapa'ning 0-ustunida turadi — chaqiruvchi
+    sarlavhasini 1-ustunga, qolgan mazmunini frm'ning 1+ qatorlariga qo'yadi."""
+    import tkinter as tk
+    from tkinter import ttk
+
+    root = tk.Tk()
+    root.title(title)
+    root.resizable(False, False)
+    root.configure(bg="#ffffff")
+    st = ttk.Style(root)
+    with contextlib.suppress(Exception):
+        st.theme_use("clam")
+    # Monoblok oldida TIK TURIB o'qiladi — 11-12pt mayda edi, hammasi bir
+    # pog'ona katta.
+    st.configure("K.TFrame", background="#ffffff")
+    st.configure("K.TLabel", background="#ffffff", font=("Segoe UI", 14))
+    st.configure("Title.TLabel", background="#ffffff", font=("Segoe UI", 22, "bold"))
+    st.configure("Ok.TLabel", background="#ffffff", font=("Segoe UI", 22, "bold"), foreground="#15803d")
+    st.configure("Sub.TLabel", background="#ffffff", font=("Segoe UI", 12), foreground="#5b6b73")
+    st.configure("Err.TLabel", background="#ffffff", font=("Segoe UI", 12, "bold"), foreground="#b00020")
+    st.configure("K.TButton", font=("Segoe UI", 15, "bold"), padding=(0, 12))
+
+    frm = ttk.Frame(root, padding=(36, 28, 36, 30), style="K.TFrame")
+    frm.grid()
+    frm.columnconfigure(0, minsize=520)
+    kapa = ttk.Frame(frm, style="K.TFrame")
+    kapa.grid(column=0, row=0, sticky="w")
+    # Logo sarlavha yonida; iconphoto — taskbar/alt-tab uchun
+    with contextlib.suppress(Exception):
+        logo2x = tk.PhotoImage(data=_LOGO_B64)
+        logo = logo2x.subsample(2)
+        root.iconphoto(True, logo2x)
+        lbl = ttk.Label(kapa, image=logo, style="K.TLabel")
+        lbl.image = logo  # type: ignore[attr-defined]  # GC dan saqlash
+        lbl.grid(column=0, row=0, padx=(0, 14))
+    return root, frm, kapa
+
+
 def _success_window(name: str, stanok: str) -> None:
     """Ulanish muvaffaqiyati — pairing oynasi uslubidagi brendlangan oyna.
 
     Oddiy messagebox o'rnatuvchining ko'zi tushadigan YAGONA tasdiq edi —
     endi logo, katta sarlavha va aniq satrlar. Tk bo'lmasa log yetadi."""
     try:
-        import tkinter as tk
         from tkinter import ttk
 
-        root = tk.Tk()
-        root.title("MebeliX MES agent")
-        root.resizable(False, False)
-        root.configure(bg="#ffffff")
-        st = ttk.Style(root)
-        with contextlib.suppress(Exception):
-            st.theme_use("clam")
-        st.configure("K.TFrame", background="#ffffff")
-        st.configure("K.TLabel", background="#ffffff", font=("Segoe UI", 14))
-        st.configure("Ok.TLabel", background="#ffffff", font=("Segoe UI", 22, "bold"), foreground="#15803d")
-        st.configure("Sub.TLabel", background="#ffffff", font=("Segoe UI", 12), foreground="#5b6b73")
-        st.configure("K.TButton", font=("Segoe UI", 15, "bold"), padding=(0, 12))
-        frm = ttk.Frame(root, padding=(36, 28, 36, 30), style="K.TFrame")
-        frm.grid()
-        frm.columnconfigure(0, minsize=520)
-        kapa = ttk.Frame(frm, style="K.TFrame")
-        kapa.grid(column=0, row=0, sticky="w")
-        with contextlib.suppress(Exception):
-            logo2x = tk.PhotoImage(data=_LOGO_B64)
-            logo = logo2x.subsample(2)
-            root.iconphoto(True, logo2x)
-            lbl = ttk.Label(kapa, image=logo, style="K.TLabel")
-            lbl.image = logo  # type: ignore[attr-defined]
-            lbl.grid(column=0, row=0, padx=(0, 14))
+        root, frm, kapa = _brand_root("MebeliX MES agent")
         ttk.Label(kapa, text="Ulandi ✓", style="Ok.TLabel").grid(column=1, row=0)
         satrlar = [f"Agent: {name}", f"Versiya: v{AGENT_VERSION}"]
         if stanok:
@@ -491,46 +509,9 @@ def _pair_dialog(error: str = "") -> tuple[str, str] | None:
     # ~360px chiqardi — sensorli ekranda maydon topish qiyin, matn mayda edi.
     # Endi shriftlar 12-20pt, maydonlar to'liq en, tugma butun pastki qator.
     picked: dict[str, str] = {}
-    root = tk.Tk()
     # "printer agenti" EMAS: agent printersiz stanok kompyuterida ham ishlaydi
     # (skan-forvard) — nom ikkala vazifani qamrasin
-    root.title("MebeliX MES agent")
-    root.resizable(False, False)
-    root.configure(bg="#ffffff")
-    st = ttk.Style(root)
-    with contextlib.suppress(Exception):
-        st.theme_use("clam")
-    # Monoblok oldida TIK TURIB o'qiladi — 11-12pt mayda edi, hammasi bir
-    # pog'ona katta. Kod maydoni eng katta: u yagona qo'lda teriladigan qiymat.
-    st.configure("K.TFrame", background="#ffffff")
-    st.configure("K.TLabel", background="#ffffff", font=("Segoe UI", 14))
-    st.configure(
-        "Title.TLabel", background="#ffffff", font=("Segoe UI", 22, "bold")
-    )
-    st.configure(
-        "Sub.TLabel", background="#ffffff", font=("Segoe UI", 12), foreground="#5b6b73"
-    )
-    st.configure(
-        "Err.TLabel", background="#ffffff", font=("Segoe UI", 12, "bold"), foreground="#b00020"
-    )
-    st.configure("K.TButton", font=("Segoe UI", 15, "bold"), padding=(0, 12))
-
-    frm = ttk.Frame(root, padding=(36, 28, 36, 30), style="K.TFrame")
-    frm.grid()
-    frm.columnconfigure(0, minsize=520)
-
-    # Logo sarlavha yonida; iconphoto — taskbar/alt-tab uchun
-    logo = None
-    with contextlib.suppress(Exception):
-        logo2x = tk.PhotoImage(data=_LOGO_B64)
-        logo = logo2x.subsample(2)
-        root.iconphoto(True, logo2x)
-    kapa = ttk.Frame(frm, style="K.TFrame")
-    kapa.grid(column=0, row=0, sticky="w")
-    if logo is not None:
-        lbl = ttk.Label(kapa, image=logo, style="K.TLabel")
-        lbl.image = logo  # type: ignore[attr-defined]  # GC dan saqlash
-        lbl.grid(column=0, row=0, padx=(0, 14))
+    root, frm, kapa = _brand_root("MebeliX MES agent")
     ttk.Label(kapa, text="MebeliX MES agent", style="Title.TLabel").grid(
         column=1, row=0, sticky="w"
     )
@@ -554,7 +535,8 @@ def _pair_dialog(error: str = "") -> tuple[str, str] | None:
         column=0, row=4, sticky="w"
     )
     code_var = tk.StringVar()
-    # Kod katta mono shriftda: 8 belgi + defis, xato terish darhol ko'rinadi.
+    # Kod maydoni eng katta — u yagona qo'lda teriladigan qiymat: katta mono
+    # shriftda 8 belgi + defis, xato terish darhol ko'rinadi.
     # AVTO-KATTA harf: server baribir upper() qiladi, lekin kichik harfda
     # terilgan kod ekranda paneldagidan boshqacha ko'rinib ishonchsizlik berardi
     code_var.trace_add("write", lambda *_: code_var.set(code_var.get().upper()))
@@ -718,6 +700,14 @@ BRIDGE_TOKEN = os.environ.get("BRIDGE_TOKEN", "")
 PRINTER_NAME = os.environ.get("PRINTER_NAME", "") or _detect_printer()
 #: Qo'lda berilgan nom har doim ustun; avto-topilgani esa qayta tekshiriladi.
 PRINTER_FIXED = bool(os.environ.get("PRINTER_NAME", ""))
+
+
+def _http_base() -> str:
+    """MES_URL ning http(s) shakli (REST chaqiruvlari uchun).
+
+    MES_URL har chaqiruvda qayta o'qiladi: re-pairing manzilni almashtirgan
+    bo'lsa log/skan/yangilanish darhol yangi serverga boradi."""
+    return MES_URL.replace("wss://", "https://", 1).replace("ws://", "http://", 1).rstrip("/")
 
 
 def refresh_printer() -> str:
@@ -900,7 +890,6 @@ async def log_shipper() -> None:
     Yuborilmasa satrlar TASHLAB YUBORILADI (qayta urinilmaydi): log yordamchi
     ma'lumot, u uchun navbat saqlash agentni murakkablashtirardi. Muhimi —
     fayl nusxasi baribir kompyuterda qoladi."""
-    import urllib.error
     import urllib.request
 
     while True:
@@ -909,9 +898,8 @@ async def log_shipper() -> None:
             continue
         lines = list(LOG_BUFFER)
         LOG_BUFFER.clear()
-        http = MES_URL.replace("wss://", "https://", 1).replace("ws://", "http://", 1).rstrip("/")
         req = urllib.request.Request(
-            f"{http}/api/v1/bridge-agents/logs",
+            f"{_http_base()}/api/v1/bridge-agents/logs",
             data=json.dumps({"lines": lines[-200:]}).encode(),
             headers={
                 "Content-Type": "application/json",
@@ -996,7 +984,6 @@ def _notify_connected() -> None:
     shart emas, ish oqimini to'smaydi. Alohida threadda: asyncio loop
     (flusher/uplink) bloklanmasin."""
     import ctypes
-    import threading
 
     # Skan-forvard stansiyasida (printer yo'q) "chek chiqarishga tayyor" yolg'on
     # bo'lardi — xabar rejimga qarab tanlanadi
@@ -1170,7 +1157,6 @@ def start_scan_forward() -> None:
         return
 
     import re
-    import threading
     import time as _time
     import urllib.error
     import urllib.request
@@ -1188,11 +1174,8 @@ def start_scan_forward() -> None:
     last = [0.0]
 
     def send(qr: str) -> None:
-        # MES_URL har chaqiruvda o'qiladi: re-pairing manzilni almashtirgan
-        # bo'lsa skan-forvard ham yangi serverga yozsin
-        http = MES_URL.replace("wss://", "https://", 1).replace("ws://", "http://", 1).rstrip("/")
         req = urllib.request.Request(
-            f"{http}/api/v1/bridge-agents/scan",
+            f"{_http_base()}/api/v1/bridge-agents/scan",
             data=json.dumps({"qr_text": qr, "client_event_id": uuid4().hex}).encode(),
             headers={
                 "Content-Type": "application/json",
@@ -1330,7 +1313,7 @@ async def self_update() -> None:
     await asyncio.sleep(60)  # start + pairing tinchlansin
     while True:
         try:
-            http = MES_URL.replace("wss://", "https://", 1).replace("ws://", "http://", 1).rstrip("/")
+            http = _http_base()
             info = json.loads(
                 await asyncio.to_thread(
                     lambda: urllib.request.urlopen(f"{http}/api/v1/bridge-agents/latest", timeout=15).read()
@@ -1445,8 +1428,6 @@ def start_tray() -> None:
             if icon.icon is not want:
                 icon.icon = want
                 icon.title = f"MebeliX MES agent — {'ulandi' if CONNECTED else 'uzilgan'}"
-
-    import threading
 
     threading.Thread(target=refresh, daemon=True).start()
     icon.run_detached()

@@ -94,14 +94,10 @@ send_tg "$FILE" "MebeliX DB backup ${STAMP} (${SIZE}). Ochish: openssl enc -d -a
 # kartochkasi "Fayl diskda topilmadi" beradi, ya'ni DB dumpi YOLG'IZ O'ZI
 # buyurtmani tiklamaydi: .project, SCX va anketa rasmlari ham kerak.
 #
-# `agent/` chiqariladi — u ma'lumot emas: eski tarqatish oqimidan qolgan exe
-# (19 MB, backupni sakkiz barobar shishirardi va har kecha o'zgarmasdan qayta
-# ketardi). Yangi exe bu yerga tushmaydi — CI uni `agent-dist/` ga qo'yadi.
-#
 # Yiqilsa script TO'XTAMAYDI: DB backupi allaqachon olindi va yuborildi, uni
 # uploads muammosi tufayli yo'qotish mantiqsiz.
 if docker compose -f docker-compose.prod.yml exec -T api \
-    tar -cz -C /app/backend --exclude='uploads/agent' uploads 2>/dev/null |
+    tar -cz -C /app/backend uploads 2>/dev/null |
     openssl enc -aes-256-cbc -pbkdf2 -pass env:ADMIN_PASSWORD -out "$UP_FILE" &&
     [ "$(stat -c %s "$UP_FILE")" -gt 100 ]; then
     UP_SIZE=$(du -h "$UP_FILE" | cut -f1)
