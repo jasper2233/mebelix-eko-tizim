@@ -7,10 +7,10 @@ System) uchun to'liq ishlaydigan fullstack ilova. FastAPI fullstack template
 poydevorida (JWT + httpOnly cookie auth, users boshqaruvi) **to'liq MES domeni**
 qurilgan: `/v1` agregatorida **18 ta router** (health, login, logout, users,
 clients, employees, machines, posts, orders, pachka, tmo, audit,
-terminal, scans, tablo, reports, bridge-agents, ws), **18 ta ORM model**
-(Order/Product/Part/PartInstance/PartRoute/OrderFile, Client, Employee, Machine,
-Post, Organization, Pachka/PachkaItem, Scan/WorkSession, AuditLog, BridgeAgent,
-User) va **15 ta `UserRole`** (admin, director, manager, texnolog, terminal,
+terminal, scans, tablo, reports, bridge-agents, ws), **19 ta ORM model**
+(Order/Product/Part/PartInstance/PartRoute/OrderFile/WasteItem, Client, Employee,
+Machine, Post, Organization, Pachka/PachkaItem, Scan/WorkSession, AuditLog,
+BridgeAgent, User) va **15 ta `UserRole`** (admin, director, manager, texnolog, terminal,
 tablo + 9 ta post operatori roli: arrachi, kromkachi, ovalchi,
 prisadkachi, roverchi, stolyar, boyoqchi, upakovkachi, omborchi).
 Material katalogi (`materials` routeri, `Material` modeli, `MaterialType`
@@ -19,9 +19,9 @@ enumi) va materiallar ombori (`stock` routeri, `StockItem`/`Sale`/`Payment`/
 jadvallari va migratsiyalari qolgan, lekin kod ularga tegmaydi.
 Domen tafsilotlari uchun [09-mes-domain.md](./09-mes-domain.md) ga qarang.
 
-Barcha UI matnlari va API xato xabarlari **o'zbek tilida** — bitta istisno:
-parol kuchini tekshirish xatolari (`validate_password_strength`) hozircha
-inglizcha va API 422 javobida shunday chiqadi. Telefon raqamlari
+Barcha UI matnlari va API xato xabarlari **o'zbek tilida** — istisnosiz:
+parol kuchini tekshirish xatolari (`validate_password_strength`) ham o'zbekcha
+(«Parol kamida 8 belgi bo'lsin» va h.k.). Telefon raqamlari
 O'zbekiston E.164 formatida (`+998XXXXXXXXX`) validatsiya qilinadi.
 
 Repo tuzilishi:
@@ -149,7 +149,9 @@ Asosiy nuqtalar:
   [4.3](#43-yorliq-chop-etish-zanjiri).
 - **Yorliq chop etish oqimi**: `print_label` ARQ task base64 PNG
   (`render_label_png`) ni Redis `mes:print:queue:{agent_id}` ro'yxatiga qo'yadi
-  (manzilsiz job — umumiy `mes:print:queue`) →
+  (`require_printer` har chekni AYNAN bir agentga manzillaydi; printer
+  biriktirilmagan bo'lsa endpoint 422 beradi va job umuman yaratilmaydi —
+  umumiy `mes:print:queue` faqat eski joblar uchun qolgan) →
   `/ws/bridge` uni printerli kompyuterdagi `bridge-agent/agent.py` ga uzatadi
   (agent lokal JSONL navbatga yozib ack qaytaradi — yorliq yo'qolmaydi) →
   Windows drayveri orqali USB GoDEX'ga chiqadi. G500-U'da tarmoq porti yo'q,
@@ -209,8 +211,11 @@ Browser                      FastAPI                        PostgreSQL/Redis
   qilinadi va cookie'dan ustuvor.
 - `login`/`refresh` har chaqiruvda **ikkala tokenni rotatsiya** qiladi
   (yo'llar: `POST /api/v1/login/access-token`, `POST /api/v1/login/refresh`).
-- Logout DB'dagi `token_version`ni oshiradi — barcha eski tokenlar birdaniga 401
-  oladi (mass-invalidation).
+- Logout `token_version`ga TEGMAYDI — chiqish FAQAT shu qurilmani uzadi: refresh
+  token'ning `jti` si Redis'ga "ishlatilgan" deb qo'yiladi, cookie'lar tozalanadi
+  va tsex xodimining O'Z smenasi yopiladi (`end_session`). Mass-invalidation esa
+  parol almashtirilganda (`users.py`) va refresh-replay aniqlanganda (`login.py`)
+  bo'ladi — `increment_token_version` faqat shu ikki joydan chaqiriladi.
 
 ### 4.2 Authenticated request flow
 
@@ -236,9 +241,10 @@ Browser (React)                FastAPI                        PostgreSQL
 - Router ierarxiyasi: `/api` root → `/v1` agregator; auth **router darajasida**
   qo'llanadi (`health`, `login` ochiq; `logout`, `users` va 12 ta MES routeri
   `get_current_user` ortida; `ws` va `bridge-agents` routerlari auth'ni o'zlari
-  hal qiladi — `bridge-agents` da `/pair` ochiq bo'lishi shart, `/scan` agentning
-  Bearer tokeni bilan, qolgan admin endpointlar esa har biri `AdminUser` bilan
-  himoyalangan).
+  hal qiladi — `bridge-agents` da `/pair` ochiq bo'lishi shart, `/scan` va
+  `POST /logs` agentning Bearer tokeni bilan, `GET /latest` va `GET /download`
+  esa umuman ochiq (agentda sessiya yo'q, exe sir emas); qolgan admin endpointlar
+  har biri `AdminUser` bilan himoyalangan).
 - Frontend'da route guard'lar `beforeLoad`da ishlaydi (`src/lib/guards.ts`):
   `requireAuth()` (`queryClient.ensureQueryData(getCurrentUserQueryOptions())`
   — keshdan o'qiydi, 401 → `/login`) —
@@ -273,7 +279,7 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
    |                 |                     | load_label_data(db, id)         |              |
    |                 |                     | render_label_png() -> base64    |              |
    |                 |                     | LPUSH mes:print:queue:{agent_id} ->|            |
-   |                 |  /ws/bridge: brpop -> {"type","instance_id","png"} -->|              |
+   |                 |  /ws/bridge: brpop -> {type,job_id,instance_id,png}-->|              |
    |                 |<---------- ack {"ok": true} (agent diskka yozgach) ---|              |
    |                 |                     |                 |  JSONL -> flusher -> GDI --->|
 ```
@@ -281,12 +287,17 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
 - `POST /terminal/labels/{instance_id}` (`print_instance_label`,
   `app/api/routes/terminal.py`) — `PartInstance.label_printed_at` yoziladi, ARQ'ga
   `print_label` job qo'yiladi, `label.printed` WS eventi tarqatiladi.
-- `app/tasks/__init__.py:print_label` yorliqni render qilib faqat Redis navbatiga
-  qo'yadi. Job JSON: `{"type":"print","instance_id","png"}` →
+- `app/tasks/__init__.py` da to'rtta chop etish taski ro'yxatdan o'tadi
+  (`all_tasks`): `print_label` (detal), `print_pachka_label` (qadoq),
+  `print_waste_label` (foydali atxot) va `print_badge` (hodim beyjigi) — hammasi
+  yorliqni render qilib faqat Redis navbatiga qo'yadi.
+  Job JSON: `{"type":"print","job_id","instance_id","png"}` — `job_id`
+  HAR yuborishda yangi uuid, agent shu bo'yicha takrorni tashlaydi (`instance_id`
+  bu vazifani bajara olmaydi: chek bekor qilinsa o'sha nusxa qayta ishlatiladi) →
   `LPUSH print_queue_key(agent_id)` — `agent_id` bo'lsa `mes:print:queue:{agent_id}`,
-  bo'lmasa umumiy `mes:print:queue`. Redis yo'q bo'lsa job `lost:` bilan yakunlanadi va
-  xato log'ga yoziladi. Server printerga to'g'ridan-to'g'ri chiqmaydi — yagona
-  yo'l bridge-agent.
+  bo'lmasa umumiy `mes:print:queue` (yangi job u yerga tushmaydi). Redis yo'q
+  bo'lsa job `lost:` bilan yakunlanadi va xato log'ga yoziladi. Server printerga
+  to'g'ridan-to'g'ri chiqmaydi — yagona yo'l bridge-agent.
 - `/ws/bridge` (`app/api/routes/ws.py`) navbatni `brpop(timeout=5)` bilan so'radi;
   bo'sh bo'lsa `{"type":"ping"}` heartbeat yuboradi (yarim ochiq TCP tez o'lsin).
   Ack kelmasa yoki nak bo'lsa job `rpush` bilan navbatga qaytariladi — uzilishda
@@ -299,8 +310,10 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   80×60 mm ga majburlanadi. Admin huquqi ham, printer share ham talab qilmaydi.
   Printer xatosi `False` qaytaradi va job lokal navbatda qoladi.
 - Printer AVTO-TOPILADI: `_detect_printer()` `win32print.EnumPrinters` ro'yxatidan
-  nomida `godex` bor lokal printerni oladi — drayver o'rnatilsa bas, sozlash
-  shart emas. `PRINTER_NAME` faqat qo'lda override uchun. Agent env'lari:
+  nomida `godex`, `xprinter`, `gprinter`, `tsc`, `zebra`, `argox` yoki `postek`
+  bor lokal printerni oladi (`_PRINTER_KEYWORDS` — tsexda GoDEX ham, Xprinter
+  ham bor, ro'yxat ataylab keng) — drayver o'rnatilsa bas, sozlash shart emas.
+  `PRINTER_NAME` faqat qo'lda override uchun. Agent env'lari:
   `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME` (ixtiyoriy), `QUEUE_FILE`,
   `SCAN_FORWARD` (default yoqiq, `0` o'chiradi);
   `_load_dotenv()` ularni shu tartibda o'qiydi: env var > exe yonidagi `.env` >
@@ -316,9 +329,11 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   bilan bir xil; rad etilgan skan `log_rejected_scan()` bilan audit logga tushadi.
 - Agent printerli kompyuterga yoki printersiz skan-forvard stansiyasiga
   (masalan Nanxing, `can_print=false`) o'rnatiladi; avtostartni agentning o'zi
-  qo'yadi — ulangandan keyin `_register_autostart()` exe yo'lini
-  `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` dagi `MebelixAgent`
-  qiymatiga yozadi (admin huquqi kerak emas, Task Scheduler ishlatilmaydi).
+  qo'yadi — `_register_autostart()` HAR startda (pairing'dan keyin ham) exe
+  yo'lini `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` dagi `MebelixAgent`
+  qiymatiga qayta yozadi (admin huquqi kerak emas, Task Scheduler ishlatilmaydi).
+  Bir marta yozilganda exe ko'chirilsa registry o'lik yo'lga qolar va reboot'dan
+  keyin agent turmasdi — Prisadkada aynan shu kuzatilgan.
   Menejer, texnolog va boshqa post terminallariga hech narsa kerak emas — ular
   brauzerdan tugmani bosadi.
 - **Ulanish (pairing)** — har printer o'z tokeni bilan ishlaydi, serverda yagona
@@ -346,8 +361,13 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   `AdminUser`. `POST /pair` OCHIQ: atomik `UPDATE ... RETURNING` bilan bitta kodni
   ikki kompyuter bir vaqtda ishlata olmaydi, xato esa yagona umumiy matn — kod
   bor-yo'qligi oshkor bo'lmaydi. `POST /scan` — skan-forvard (auth: agentning
-  Bearer tokeni). Agentni yuklab olish endpointi olib tashlangan — exe qo'lda
-  tarqatiladi (`bridge-agent/README.md`).
+  Bearer tokeni). `POST /logs` — agent o'z log satrlarini yuboradi (o'sha agent
+  Bearer tokeni; ataylab HTTP, `/ws/bridge` emas — log ack o'rniga o'qilsa chop
+  etish buzilardi), `GET /{id}/logs` — admin ularni panelda o'qiydi (`AdminUser`,
+  Redis'da oxirgi satrlar). `GET /latest` (versiya + sha256) va `GET /download`
+  (`mebelix-agent.exe`) OCHIQ: fayllar CI qurgan `agent-dist/` katalogidan
+  beriladi (prod compose'da `./agent-dist:/app/backend/agent-dist:ro`), agentda
+  sessiya yo'q va exe sir emas.
 - `/ws/bridge` tokenni `Authorization: Bearer` headerdan oladi (server
   access-loglariga tushmasin; `?token=` eski agentlar uchun fallback). Legacy
   `settings.BRIDGE_TOKEN` `compare_digest` bilan hamon qabul qilinadi; aks holda
@@ -356,16 +376,26 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   headeri `BridgeAgent.version` ga yoziladi — admin panelda qaysi kompyuterda
   eski exe qolgani ko'rinadi. `can_print=false` agent chek navbatidan ish
   OLMAYDI (aks holda umumiy navbatdan chekni "o'g'irlab" lokalida qoldirardi).
-  `touch_agent()` har 300 s da `last_seen_at` ni yangilaydi, `can_print` ni
-  qayta o'qiydi va agent hali tirikligini qayta tekshiradi — bekor qilingan
-  bo'lsa jonli ulanish ham uziladi (maks ~5 daqiqa kechikish) va qo'ldagi job
-  navbatga qaytariladi.
+  Bekor qilingan agentning jonli ulanishi ham uziladi. Asosiy tekshiruv HAR
+  `brpop` iteratsiyasida (~5 s): `redis.get(agent_revoked_key(agent_id))` —
+  admin "yangi kod"/"o'chirish" bosgach `_revoke_live_connection()` bayroqni
+  qo'yadi va ulanish deyarli darhol yopiladi (4401). `touch_agent()` esa 300 s
+  lik ZAXIRA tekshiruv: `last_seen_at` ni yangilaydi, `can_print` ni qayta
+  o'qiydi va agent hali tirikligini tasdiqlaydi. Ikkala yo'lda ham qo'ldagi job
+  `rpush` bilan navbatga qaytariladi.
 - Tsex kompyuteriga Python ham, pip ham, SSH ham, serverdagi `.env` tahriri ham
   KERAK EMAS: agent PyInstaller onefile `mebelix-agent.exe` bo'lib yig'iladi —
-  exe qo'lda tarqatiladi (`bridge-agent/README.md`), ishga tushiriladi va
-  admin panel bergan kod kiritiladi.
-  Frontend tomoni: `frontend/src/routes/_layout/printers.tsx` ("MES agentlar")
-  va sidebar yozuvi.
+  uni CI ning `agent` job'i quradi va `GET /bridge-agents/download` beradi. Admin
+  birinchi o'rnatishda exe'ni `/printers` sahifasidagi havoladan yuklab oladi,
+  ishga tushiradi va admin panel bergan kod kiritiladi; keyingisini agent o'zi
+  qiladi — `self_update()` `GET /bridge-agents/latest` ni qayta ulanishda darhol
+  va zaxira sifatida har 10 daqiqada tekshiradi, versiya yangi bo'lsa exe'ni
+  tortib sha256 ni solishtiradi va `_apply_update()`/`_restart_self()` bilan
+  JIM almashtiradi (navbatda chek turgan yoki pairing ketayotgan bo'lsa —
+  bo'shaguncha, ko'pi bilan 1 soat kutadi).
+  Frontend tomoni: `frontend/src/routes/_layout/printers.tsx` ("MES agentlar",
+  exe havolasi va har agentning `v<version> → v<latest>` belgisi) va sidebar
+  yozuvi.
 - `render_label_png()` (`app/services/labels.py`) — 80×60 mm, 203 dpi
   (8 dot/mm → 640×480 px). `draw.fontmode = "1"` (antialiasing yo'q) va yakuniy
   `convert("L").point(v < 160)` — chiqish sof 1-bit, drayver dither qilmasin.
@@ -450,8 +480,11 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
 
 ### 4.5 Arrachi terminali: kesish xaritasi
 
-- `frontend/src/routes/terminal.tsx` — majburiy to'liq ekran overlay: to'liq
-  ekranga o'tmaguncha ish boshlanmaydi. `requestFullscreen` user-gesture talab
+- `frontend/src/routes/terminal.tsx` (kiosk mantiqi
+  `components/Terminal/useKiosk.ts` dagi `useKioskShell`, overlay'lar
+  `components/Terminal/KioskOverlays.tsx` da — route ularni faqat ulaydi) —
+  majburiy to'liq ekran overlay: to'liq ekranga o'tmaguncha ish boshlanmaydi.
+  `requestFullscreen` user-gesture talab
   qilgani uchun tugma orqali; holat `document.fullscreenElement` VA
   `matchMedia("(display-mode: fullscreen)")` bo'yicha aniqlanadi, ya'ni
   `chrome --kiosk` / PWA rejimi ham to'liq ekran hisoblanadi.
@@ -463,13 +496,19 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
   list kartalari (har birida mini xarita preview) → to'liq ekran xarita. Chap
   toolbar: orqaga, oldingi/keyingi list, zoom (katta/kichik/to'liq) va
   **Chop etish** — belgilangan katakning navbatdagi nusxasi to'g'ridan-to'g'ri
-  GoDEX navbatiga ketadi (`POST /terminal/labels/{instance_id}`). Terminalda
-  detalga tegish faqat belgilaydi; QR kartochkasi (`PartCard`) faqat admin
-  ko'rinishida ochiladi. Material statistikasi terminal header'iga portal
-  qilinadi — xarita balandligidan joy olmaydi.
+  GoDEX navbatiga ketadi: detal bo'lsa `POST /terminal/labels/{instance_id}`,
+  belgilangan katak ro'yxatga olingan foydali atxot bo'lsa
+  `POST /terminal/waste/{waste_id}/label`. Terminalda detalga bir marta tegish
+  faqat belgilaydi, QR kartochkasi (`PartCard`) esa ikki marta (yoki uzoq)
+  bosishda ochiladi — adminda o'sha kartochka bir marta bosishda chiqadi
+  (`onOpenPart={admin ? undefined : setSelected}`). Chekni bekor qilish tugmasi
+  kartochka ICHIDA: terminalda `ConfirmDialog` orqali, adminda to'g'ridan-to'g'ri.
+  Material statistikasi terminal header'iga portal qilinadi — xarita
+  balandligidan joy olmaydi.
 - `components/Terminal/SheetSvg.tsx` (yangi) — bitta listning to'liq SVG renderi:
-  detallar, kesim chiziqlari, teshiklar (`holeXY`, `edgeLocalXY`, `edgeBoreRect`),
-  o'lchamlar zanjiri, zoom/pan/swipe; `thumbnail` rejimida interaktivsiz va
+  detallar, ATXOT kataklari, kesim chiziqlari, teshiklar (`holeXY`,
+  `edgeLocalXY`, `edgeBoreRect`), o'lchamlar zanjiri, zoom/pan/swipe;
+  `thumbnail` rejimida interaktivsiz va
   scrollni bloklamaydi. Xarita ham, list kartalaridagi preview ham shu bitta
   komponentni ishlatadi. NOSTANDART detal (`Part.is_custom` →
   `CutmapInstanceState.custom`) kesilmagan holatda binafsha
@@ -478,14 +517,19 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
   bo'ladi (`allDone` fondan ustun), chek bekor qilinsa yana binafshaga qaytadi;
   chegara barcha detallarda bir xil. Qizil va pushti ATAYLAB ishlatilmagan:
   qizil `--status-cancelled`, pushti esa `--post-rover` rangi.
+  ATXOT kataklari fonda emas, ZEBRA (diagonal shtrix) bilan ajratiladi va
+  detalning o'zi bilan bir xil qoidadan o'tadi: ro'yxatga olinmagan atxot kulrang
+  `#zebra` va butunlay inert (`p.waste && !p.atx` → na cheki, na kartochkasi
+  bor, `onOpenPart` ham berilmaydi), ro'yxatga olingan qoldiq issiq `#zebraQoldiq`,
+  cheki chiqarilgani esa (`wastePrinted` to'plamida) yashil `#zebraDone` —
+  ya'ni detaldagi YASHIL bilan bir xil ma'no.
 - `GET /terminal/orders` javobi karta uchun kengaydi: `materials` (`sheet` turidagi
   plita nomlari), `sheets_total`, `has_cutmap`. Tartib — prioritet (URGENT birinchi)
   → `deadline` (nulls oxirida) → `id`; boshqa ish markaziga biriktirilgan `PartRoute`lar
   bu terminalda ko'rinmaydi (`PartRoute.machine_id == machine.id` YOKI `NULL`).
   Aynan shu shart `_post_route_rows()` orqali `/terminal/orders/{id}/kromka` va
   `/prisadka` da ham qo'llanadi. (`/terminal/tasks` endpointi "Navbatdagi
-  vazifalar" ekrani bilan birga olib tashlangan — kodda faqat unga ishora
-  qiladigan eskirgan izoh qolgan.)
+  vazifalar" ekrani bilan birga olib tashlangan — kodda undan iz qolmagan.)
 
 ## 5. Hujjatlar xaritasi
 
@@ -507,17 +551,24 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
 Sifat nazorati ikki qatlamda: **pre-commit hooks** (`.pre-commit-config.yaml`,
 `make install-hooks` bilan o'rnatiladi) va **GitHub Actions CI**
 (`.github/workflows/ci.yml`, `main`ga push va har PR'da): `backend` job — ruff
-check/format, mypy va Caddyfile validate (`caddy:2-alpine` konteynerida
-`caddy validate` — buzuq konfig deploydan OLDIN tutiladi); `frontend` job — `biome ci` va
+check/format (`--no-fix` bilan), mypy, migratsiya drifti (`postgres:15-alpine`
+servisida `alembic upgrade head && alembic check` — modelga ustun qo'shib
+migratsiya yozilmasa CI qizil) va Caddyfile validate (`caddy:2-alpine`
+konteynerida `caddy validate` — buzuq konfig deploydan OLDIN tutiladi);
+`frontend` job — `biome ci` va
 `tsc + vite build`; `images` job — ikkala image'ni qurib `ghcr.io` ga
-yuboradi (matritsa, GHA layer keshi bilan); `deploy` job — yashil `main`
+yuboradi (matritsa, GHA layer keshi bilan); `agent` job — `windows-latest` da
+PyInstaller bilan `mebelix-agent.exe` va `version.json` (versiya + sha256)
+quriladi hamda `agent-dist` artefakti bo'lib yuklanadi (`deploy` uni serverdagi
+`agent-dist/` ga tushiradi); `deploy` job — yashil `main`
 push'da kod `/opt/mebelix-mes`ga rsync qilinadi, server ghcr'ga login
 qiladi, `TAG=<git sha> REGISTRY=... scripts/deploy.sh` ishga tushadi va
 public smoke (`https://mes.mebelix.uz/api/v1/ready`) tekshiriladi;
 `notify` job — Telegram xabari. Notify ataylab ALOHIDA job
-(`if: always()`, `needs: [backend, frontend, images, deploy]`): `deploy` ichida turganda
-CI yiqilsa butun job skip bo'lib, xabar umuman ketmasdi. Endi `deploy` natijasi
-`skipped` bo'lsa ham xabar ketadi va qaysi job yiqilgani ko'rsatiladi.
+(`if: always()`, `needs: [backend, frontend, images, agent, deploy]`):
+`deploy` ichida turganda CI yiqilsa butun job skip bo'lib, xabar umuman
+ketmasdi. Endi `deploy` natijasi `skipped` bo'lsa ham xabar ketadi va qaysi
+job yiqilgani ko'rsatiladi.
 
 ### Backend (Python)
 
@@ -525,7 +576,9 @@ CI yiqilsa butun job skip bo'lib, xabar umuman ketmasdi. Endi `deploy` natijasi
   qoidalar: Pyflakes, pycodestyle, mccabe/comprehensions, pyupgrade, isort).
   Pre-commit'da `ruff --fix` va `ruff-format` avtomatik ishlaydi, ikkala hook ham
   `files: ^backend/` bilan cheklangan — CI ham faqat shu daraxtni tekshiradi
-  (`cd backend && uv run ruff check app && uv run ruff format --check app`).
+  (`cd backend && uv run ruff check --no-fix app && uv run ruff format --check app`
+  — `--no-fix` SHART: `pyproject.toml` da `fix = true` turibdi, ya'ni usiz
+  `ruff check` xatoni jimgina tuzatib exit 0 qaytaradi).
   Qamrovsiz hook repo ildizida `pyproject.toml` yo'qligi sababli
   `bridge-agent/agent.py` ni default `line-length = 88` bilan qayta yozardi,
   ruff 0.16 esa `docs/*.md` ichidagi python bloklarini ham formatlaydi.
@@ -555,8 +608,10 @@ CI yiqilsa butun job skip bo'lib, xabar umuman ketmasdi. Endi `deploy` natijasi
   barcha targetlarni ko'rsatadi (`setup`, `run-backend`, `worker`,
   `run-frontend`, `lint`, `format`, `migrate`, `makemigrations`,
   `frontend-gen`, `docker-local`, `docker-prod`).
-- Foydalanuvchiga ko'rinadigan barcha matnlar (UI, API xatolari) — o'zbek tilida;
-  kod, identifikatorlar va commit'lar — inglizcha. Istisno:
-  `schemas/users.py:validate_password_strength` xatolari inglizcha qolgan
-  ("Password must be at least 8 characters" va h.k.). Formada ko'rinmaydi —
-  zod sxemasi o'z o'zbekcha matnini beradi — lekin API 422 javobida chiqadi.
+- Foydalanuvchiga ko'rinadigan barcha matnlar (UI, API xatolari) — o'zbek tilida,
+  ISTISNOSIZ; kod, identifikatorlar va commit'lar — inglizcha.
+  `schemas/users.py:validate_password_strength` xatolari ham o'zbekcha
+  ("Parol kamida 8 belgi bo'lsin" va h.k.), lekin ular ekranga CHIQMAYDI:
+  pydantic ularni 422 massiv `detail` ichiga soladi, frontend `detailParts`
+  (`utils.ts`) esa har qanday massivni umumiy matnga almashtiradi — admin
+  ko'radigan matn `lib/validation.ts:passwordSchema` da qo'lda oynalangan.

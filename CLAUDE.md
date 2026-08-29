@@ -47,9 +47,8 @@ make frontend-gen                         # scripts/generate-client.sh
   `frontend/src/routeTree.gen.ts`. Birinchisi `make frontend-gen` bilan,
   ikkinchisi TanStack Router bilan qayta yaraladi.
 - **Til:** foydalanuvchi ko'radigan hamma matn (UI, API xato xabarlari) —
-  **o'zbekcha**. Kod identifikatorlari va commit'lar — inglizcha. Izohlar
-  asosan o'zbekcha. Istisno: `schemas/users.py:validate_password_strength`
-  xatolari inglizcha qolgan (422 javobida chiqadi).
+  **o'zbekcha**, istisnosiz. Kod identifikatorlari va commit'lar — inglizcha.
+  Izohlar asosan o'zbekcha.
 - **`docs/` — birlamchi manba va QO'LDA yuritiladi.** Kod o'zgarsa tegishli
   hujjatni ham yangila (xarita: `docs/README.md`). Hujjat kod bilan zid kelsa —
   qaysi biri to'g'riligini tekshirib, ikkalasini moslashtir.
@@ -105,7 +104,7 @@ oqimidan emas.
 backend/app/
   api/routes/     100 endpoint (98 HTTP + 2 WS), `/v1` agregatorida 18 router
   api/routes/orders/   5 modul: lifecycle · matrix · files · survey · _common
-  models/         18 ORM model  ·  services/giblab/  .project parseri
+  models/         19 ORM model  ·  services/giblab/  .project parseri
   services/scanning.py   skan dvijoki (E001..E009 xato kodlari)
   services/labels.py     80x60 mm yorliq PNG renderi
 frontend/src/routes/     TanStack Router, fayl asosidagi

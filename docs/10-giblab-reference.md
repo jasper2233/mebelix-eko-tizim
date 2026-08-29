@@ -39,8 +39,10 @@ hammasi (52/52), qolganlarida qisman — `kupe` 38/70, `kuxniya` 22/191, `TV_zon
 Nomida kod o'rniga `№` belgisi faqat `2001_Nukriddin` da turadi (52 tadan 48 tasida).
 
 Shu sababli parser kodsiz detalga tartib raqamidan kod beradi (`001`, `002`, ...) va
-ogohlantirish yozadi. Kod GibLab'da to'ldirilsa yorliqda `312001_01_003 bok` kabi ma'noli
-qiymat chiqadi.
+ogohlantirish yozadi. Ogohlantirish faqat mahsulotning **birinchi** detali kodsiz bo'lganda
+chiqadi (`parser._build_part`): qisman kodli faylda (`kupe` 38/70 kabi) birinchi detalda kod
+bo'lsa, qolganlariga sun'iy kod berilsa ham xabar bo'lmaydi. Kod GibLab'da to'ldirilsa
+yorliqda `312001_01_003 bok` kabi ma'noli qiymat chiqadi.
 
 ---
 
@@ -75,8 +77,9 @@ arrachiga tushmaydi.
 
 `<project>` atributlari: `version`, `currency`, **`date`** (tayyorlik sanasi, default bugun),
 `description`, `costOperation`, `costMaterial`, `cost`. Real fayllarda bundan tashqari
-`name` va `project.uuid` ham bor (spetsifikatsiyada yo'q, lekin biz ikkalasiga tayanamiz —
-`uuid` fayl o'zligining yagona barqaror belgisi).
+`name` va `project.uuid` ham bor (spetsifikatsiyada yo'q). Biz `uuid` ga tayanamiz — u fayl
+o'zligining yagona barqaror belgisi; fayl ichidagi `name` esa faqat **zaxira**: loyiha nomi
+yuklangan fayl nomidan olinadi (`ingest.py`, `order.project_name`).
 
 `product` goodida esa `orderDate`, `date`, `phone1`, `phone2`, `description` va `program`
 (parametrik dastur) bor. **Biz o'qimaymiz:** buyurtma sanasi, mijoz va telefon menejer
@@ -261,11 +264,15 @@ Tomonlar: `t`/`b` — **uzunlik bo'ylab**, `l`/`r` — **kenglik bo'ylab**.
 | `cTrimL` / `cTrimW` / `cTrimEL` / `cTrimEW` | **Faqat list/polosa uchun**: shu listning o'z torsovkasi. Manfiy (default −1) → operatsiyaning qiymati ishlatiladi | Bir listning torsovkasi boshqacha bo'lsa xarita sarlavhasidagi raqam shu list uchun xato bo'ladi. Korpusda ishlatilmagan |
 | `groupInBlock` / `groupInBlockMC` / `groupInBlockMaxC` | Detallarni blokka guruhlash | Optimizator sozlamasi. Korpusda yo'q |
 
-**Deloviy qoldiqlar — ishlatilmagan imkoniyat.** Korpusda 13 ta `waste="true" business="true"`
+**Deloviy qoldiqlar — ATX cheki bo'lib chiqadi.** Korpusda 13 ta `waste="true" business="true"`
 `<part>` bor va ular hammasi `good[typeId=sheet]` ichida yashaydi (detal ro'yxatiga tushmaydi,
 soxta vazifa yaratmaydi). Ular GibLab'ning "shu kesishdan 688×1166 foydali qoldiq chiqadi"
-degan xabari. Hozircha ularni hech kim iste'mol qilmaydi — qoldiq hisobi tsexda tizimdan
-tashqarida yuritiladi; 1C protokoli (§6) aynan shu ma'lumot bilan ishlaydi.
+degan xabari. `ingest` har shunday katakka bitta `WasteItem` yozadi va `ATX-{buyurtma}-{n}`
+QR beradi (katakning o'ziga `atx` tartib raqami qo'yiladi va `order.cutmap` ga tushadi) —
+ARRA terminalida qoldiq cheki chiqariladi va bekor qilinadi (`terminal.py`). Skanlanganda
+skan YOZILMAYDI: dvijok `ATX-` prefiksini tanib, qoldiq o'lchami va materialini ma'lumot
+sifatida qaytaradi (`scans.py`) — qoldiq ish bosqichi emas, saqlanadigan material.
+1C protokoli (§6) esa hamon ishlatilmaydi.
 
 ### 2.3 Detal nomi va jarayon kodlari
 
@@ -277,11 +284,13 @@ ko'rinmas yozuv qoidasiga bog'lanib qolardi — bitta noto'g'ri belgi butun ro'y
 etardi, to'g'ri yozilgani esa detalni matritsada bilintirmay arradan chiqarib yuborardi.
 Endi marshrut faqat MES ichida, ko'rinadigan joyda beriladi.
 
-**Fayldan chiqadigan marshrut — STANDART va qisqa** (`ingest.py`): ARRA (kod 1, listga
-joylashtirilgan detalga) + KROMKA (kod 3, qirralar soni bo'yicha) + PRISADKA (kod 6, XNC da
-teshik bo'lsa). Paz va freza ROVER bosqichini **yaratmaydi**: roverdan chiqqan detal keyin
+**Fayldan chiqadigan marshrut — STANDART va qisqa** (`ingest.py`): ARRA (kod 1, CS ro'yxatiga
+tushgan — ya'ni materiali yoki yorliq raqami bor — detalga; ro'yxatda turgan, lekin
+joylashtirilmagan `usedCount="0"` detal ham oladi, §3.1) + KROMKA (kod 3, qirralar soni
+bo'yicha) + PRISADKA (kod 6, XNC da **har qanday** ishlov — teshik, qirra teshigi, paz yoki
+freza — bo'lsa). Paz va freza ROVER bosqichini **yaratmaydi**: roverdan chiqqan detal keyin
 bo'yalishi ham mumkinligini fayl bilmaydi, ya'ni marshrutni fayldan taxmin qilib bo'lmaydi.
-Paz/freza geometriyasi faqat SCX ga ketadi — yorliq eskizida ko'rinmaydi: eskiz `bores` va `edge` teshiklarinigina chizadi, П/Ф belgilari ataylab olib tashlangan (`labels.py:237`).
+Paz/freza geometriyasi faqat SCX ga ketadi — yorliq eskizida ko'rinmaydi: eskiz `bores` va `edge` teshiklarinigina chizadi, П/Ф belgilari ataylab olib tashlangan (`labels.py:234`).
 
 **Standartdan chetga chiqadigan hamma narsa — MES ichida.** Texnolog detallar matritsasida
 detalni "Nostandart" deb belgilaydi (`Part.is_custom`), so'ng "Nostandart detallar" tabida
@@ -314,7 +323,9 @@ kod o'zgarsa ikkalasi birga yangilanadi. Ziddiyat chiqsa — bajariladigan manba
 | 15 | Qadoqlash | UPAKOVKA |
 | 16 | TMO qabuli | TMO |
 
-Paz uchun kod yo'q — paz alohida post emas, u frezer stanogida (ROVER) kesiladi.
+Paz uchun ALOHIDA kod yo'q — paz alohida post emas. Avtomatik marshrutda u (freza bilan birga)
+kod 6 — PRISADKA qadamiga qo'shiladi (`stage_sides()`); frezer stanogi kerak bo'lsa ROVER ni
+texnolog nostandart tabida qo'lda chizadi, fayldan ROVER yaratilmaydi.
 
 **15 va 16 tsexning varag'ida yo'q** — ular jarayon emas, marshrutning oxirgi bosqichlari va
 texnolog ularni TANLAMAYDI: qadoqlashni anketadagi "Upakovka qilish" bayrog'i qo'shadi, TMO
@@ -339,13 +350,13 @@ GibLab "+Операция" ro'yxatida **to'qqiz tur** taklif qiladi:
 |---|---|---|
 | `CS` | Листовой раскрой — listni kesish | ✅ kesish xaritasi + yorliq raqamlari |
 | `EL` | Кромкооблицовка — kromkalash | ✅ kromka simvoli va materiali |
-| `XNC` | Обработка — CNC ishlov | ✅ teshik → PRISADKA bosqichi; paz va freza faqat SCX da (yorliq eskizida yo'q; bosqich ham yaratmaydi — §2.3) |
+| `XNC` | Обработка — CNC ishlov | ✅ har qanday ishlov (teshik, paz, freza) → PRISADKA bosqichi; paz va freza geometriyasi faqat SCX da (yorliq eskizida yo'q — §2.3) |
 | `O` | Комплектация — furnitura komplekti | ataylab jim: sanoqlar `simple` goodlarida bor |
 | `LB` | Этикетки — yorliq shablonlari | ataylab jim: tizim o'z yorlig'ini chiqaradi (TZ 5.2.8) |
 | `CL` | Погонажный раскрой — profil kesish | ataylab jim + **ma'lumot yoziladi**: tsexda profil kesish posti yo'q, profillar tayyor keladi |
 | `CN` | Нестинговый раскрой — CNC nesting | ❌ ogohlantirish. GibLab'ga 2021-05 da qo'shilgan |
 | `SP` | Обработка поверхности — yuza ishlovi | ❌ ogohlantirish |
-| `GR` | Пазование — paz | ❌ ogohlantirish (paz XNC dan aniqlanadi, lekin bosqich yaratmaydi) |
+| `GR` | Пазование — paz | ❌ ogohlantirish (paz XNC dan aniqlanadi va PRISADKA qadamini ochadi; yaratilmaydigan bosqich — faqat ROVER) |
 
 `CN`, `SP`, `GR` korpusda umuman uchramaydi. `CL` esa `kupe.project` da 3 ta, `TV_zonakupe`
 da 1 ta — ularning `<part>` lari `X1..X32` kodli alyuminiy profillar, 3200 mm zagotovkadan
@@ -385,7 +396,9 @@ Muhim tushunchalar:
 - **Kerf manbasi** — CS o'z dastgohini **`tool1`** atributi bilan ko'rsatadi: pilla qalinligi
   shu `tool.cutting` goodining `swSawthick` idan olinadi (`parser.py`, `_parse_cs_operation`).
   `tool1` yozilmagan yoki noma'lum goodga ishora qilsa — spetsifikatsiyadagi 4.4 mm (§2.1)
-- **Кратность (`mult`)** — bitta naqsh necha marta takrorlanadi. Xaritada `C:2` deb ko'rinadi
+- **Кратность (`mult`)** — bitta naqsh necha JISMONIY listda kesiladi. Xaritada `×mult`
+  belgisi yo'q: `mult>1` naqsh render paytida har jismoniy list uchun alohida kartaga
+  yoyiladi va list raqami `3c1`/`3c2` ko'rinishini oladi (`CutmapView.tsx`, `SheetSvg.tsx`)
 - **Torsovka** (`cTrimL`, `cTrimW`) — listning chetidan olinadigan qirqim, **spetsifikatsiya
   bo'yicha default 10 mm** (tsexning fayllarida doim 2 mm yozilgan; eski eksportda umuman yo'q).
   `cTrimEL`/`cTrimEW` — pastdan va o'ngdan minimal chekinish, manfiy bo'lsa `cTrimL`/`cTrimW`
@@ -500,8 +513,9 @@ Spetsifikatsiyadagi element to'plami:
 
 **Atribut merosi.** Spetsifikatsiya aniq aytadi: `dp`, `ac`, `as`, `z`, `x`, `y` kabi atribut
 **yozilmasa "oldingi qiymat" olinadi**. Parser buni teg bo'yicha yuritadi (pazning chuqurligi
-keyingi teshikka o'tib ketmasligi uchun). Ilgari `dp` yo'q bo'lsa ParseError chiqib **butun
-fayl rad etilardi**.
+keyingi teshikka o'tib ketmasligi uchun). Meros faqat SHU teg ilgari uchragan bo'lsa ishlaydi:
+teg birinchi marta kelib, atributi ham, defaulti ham bo'lmasa hamon `ParseError` chiqadi va
+**butun fayl rad etiladi** (`XNC (C1): <bf> da dp yo'q` — `xnc.py`, `num()`).
 
 **Teshik qatori.** `ac` (soni), `as` (qadam), `av` (vertikal=true / gorizontal=false) —
 bitta element **teshik qatorini** bildiradi. 32 mm javon teshiklari aynan shunday beriladi.
@@ -566,8 +580,8 @@ aylanib o'tilardi — 2026-08-26 da o'lchandi: `dz.__pow__(9)` hisoblanib ketdi,
 **Nechta dastur bo'lishi mumkin?** Korpusda detalga ko'pi bilan ikkita. Lekin GibLab ko'proq
 beradi — yorliq shabloni `XNC1..XNC5` maydonlarini taklif qiladi. Shuning uchun parser
 sonini cheklamaydi: hammasini saqlaydi va ikkitadan ko'p bo'lsa ogohlantiradi
-(`stage_sides()` teshigi bor har operatsiyaga bitta PRISADKA skani beradi — paz/freza
-esa marshrut qadamini umuman yaratmaydi, §2.3).
+(`stage_sides()` ishlovi bor — teshik, paz yoki freza — har operatsiyaga bitta PRISADKA
+skani beradi, §2.3).
 
 ---
 
@@ -674,7 +688,7 @@ profil kesish (`CL` — tsexda bunday post yo'q), detal NOMI (u marshrutga ta'si
 | Detalda 2 tadan ko'p XNC | hammasi saqlandi, skan sonini tekshirish kerak |
 | XNC operatsiya noma'lum detalga ishora qiladi | shu dasturning BUTUN ishlovi (teshik, paz, freza) detalga biriktirilmaydi va yo'qoladi |
 | `description` da `#kod` | ishlov shablon nomi bilan berilgan, o'qilmaydi |
-| Xaritada joyi yo'q detal | arrachi ro'yxatiga tushmaydi |
+| Xaritada joyi yo'q detal | arrachi ro'yxatiga tushmaydi — xarita EKRANIDA katagi yo'q; ARRA marshrut qadami esa CS ro'yxatida turgani uchun baribir yaratiladi (§2.3) |
 | `turn` ≠ 0 | dastur aylantirilgan — aylantirish qo'llanmaydi, CNC'da tekshirish shart (`mirHor`/`mirVert` esa parse'da geometriyaga QO'LLANADI — `xnc.apply_mirror`) |
 | Blobsiz kesish operatsiyasi | material optimallashtirilmagan, xaritasi yo'q |
 | Nostandart marshrut tiklandi | qayta yuklashda N detalning qo'lda chizilgan marshruti qaytarildi |
@@ -703,7 +717,11 @@ to'liq ro'yxat audit logga yoziladi (`POST /orders/{id}/upload`).
 - detal yoki mahsulot kodida `/`, `\` yoki `..` bo'lsa (`parser.py`) — kod QR/SCX fayl
   nomiga aylanadi, yo'l belgilari uploads tashqarisiga yozishga olib borardi; yuklangan
   fayl nomi ham faqat basename bilan saqlanadi (`ingest.py`);
-- XNC ifodasi xavfsiz bo'lmasa yoki hisoblanmasa — §3.2.
+- XNC ifodasi xavfsiz bo'lmasa yoki hisoblanmasa — §3.2;
+- XNC elementida majburiy atribut bo'lmasa va meros zanjirida ham qiymat bo'lmasa
+  (`XNC (C1): <bf> da dp yo'q`) yoxud dastur XML'i buzilgan bo'lsa — §3.2;
+- marshrut qadami uchun post bazada sozlanmagan bo'lsa (`Post sozlanmagan: {post_code}` —
+  `ingest.py`).
 
 ### 7.1 Qamrov — spetsifikatsiyadagi 289 atribut
 

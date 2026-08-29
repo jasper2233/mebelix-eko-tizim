@@ -34,7 +34,7 @@ backend/app/main.py
 | `backend/app/core/utils/__init__.py` | Bo'sh package marker |
 | `backend/app/core/utils/queue.py` | arq Redis pool uchun global holder |
 | `backend/app/core/utils/rate_limit.py` | Redis asosidagi rate limiting (`RateLimiter`, `RateLimit`) |
-| `backend/app/tasks/__init__.py` | arq'ga ro'yxatga olinadigan vazifalar (`print_label`, `print_pachka_label`, `print_badge`) + `PRINT_QUEUE_KEY`, `print_queue_key()`, `printer_agent()`, `AGENT_ONLINE_WINDOW` |
+| `backend/app/tasks/__init__.py` | arq'ga ro'yxatga olinadigan vazifalar (`print_label`, `print_pachka_label`, `print_waste_label`, `print_badge`) + `PRINT_QUEUE_KEY`, `print_queue_key()`, `agent_revoked_key()`, `AGENT_ONLINE_WINDOW`/`agent_online()`, `printer_agent()`, `require_printer()`/`NoPrinterBound`, `printing_agents()` |
 
 ---
 
@@ -70,14 +70,14 @@ app = create_application(router=router, settings=settings)
 | Pagination | `DEFAULT_PAGE_SIZE=50`, `MAX_PAGE_SIZE=100` |
 | File storage | `UPLOAD_DIR="uploads"` (project/scx/label fayllar ildizi, TZ 2.4.3), `MAX_PROJECT_FILE_SIZE` = 50 MB |
 | Production floor | `STRICT_STAGE_ORDER=True` (E004 — oldingi qadam tugamaguncha skanni bloklash, TZ 7.2.5; tartib postlarning global ketma-ketligidan emas, detalning O'Z marshrutidagi `seq` bo'yicha, chunki nostandart marshrut roverdan ham boshlanishi mumkin), `SESSION_MAX_HOURS=12` (operator smenasi timeout'i, TZ 8.5), `SCAN_UNDO_SECONDS=60` (BEKOR QILISH oynasi, TZ 8.6) |
-| Printing (TZ 12.3 / 13.2) | `BRIDGE_TOKEN=""` — **legacy**, ixtiyoriy: eski agentlar uchun umumiy token. Printerlar endi per-agent pairing orqali ulanadi (`bridge_agent` jadvali), shuning uchun bu sozlama bo'sh qolganda ham chop etish ishlaydi. Yorliqlar faqat shu navbat orqali USB GoDEX'ga boradi (G500-U'da tarmoq porti yo'q), shuning uchun printer manzili sozlamasi yo'q |
+| Printing (TZ 12.3 / 13.2) | `BRIDGE_TOKEN=""` — **legacy**, ixtiyoriy: eski agentlar uchun umumiy token, u faqat `/ws/bridge` handshake'idan o'tkazadi (bunday agent chek OLMAYDI). Printerlar endi per-agent pairing orqali ulanadi (`bridge_agent` jadvali), shuning uchun bu sozlama bo'sh qolganda ham chop etish ishlaydi. Yorliqlar faqat shu navbat orqali USB GoDEX'ga boradi (G500-U'da tarmoq porti yo'q), shuning uchun printer manzili sozlamasi yo'q |
 | Startup probes | `STARTUP_RETRY_MAX_ATTEMPTS=5`, `STARTUP_RETRY_DELAY_SECONDS=2` |
 | Threadpool | `THREADPOOL_TOKENS=100` (AnyIO sync-bridge slotlari) |
 | Reverse-proxy | `FORWARDED_ALLOW_IPS=["172.16.0.0/12"]` — X-Forwarded-* ga ishoniladigan upstream (compose tarmog'i). **`*` QO'YILMAYDI**: unda uvicorn XFF'ning eng CHAP, ya'ni mijoz bergan qiymatini oladi va login rate-limiti header almashtirish bilan aylanib o'tiladi (o'lchandi: 12 urinishdan 0 tasi bloklandi) |
 | Env / CORS | `ENVIRONMENT`, `CORS_ORIGINS=["http://localhost:5173"]`, `CORS_METHODS`, `CORS_HEADERS` |
 
 - Computed field'lar: `POSTGRES_URI` (`user:pass@host:port/db`) va `REDIS_URL` (`redis://host:port`).
-- Modul darajasidagi eksportlar: `TASHKENT_TZ = ZoneInfo("Asia/Tashkent")` — tsex mahalliy vaqti, hisobot/audit kunlari va chek timestamp'lari shu zonada (TZ 10.4; `audit.py`, `reports.py` route'lari, `services/labels.py` va `tasks/__init__.py` ishlatadi); `upload_root()` — `UPLOAD_DIR`ning absolyut `Path` ildizi, path-traversal tekshiruvlari shu qiymatga nisbatan (`orders.py`, `terminal.py` ishlatadi).
+- Modul darajasidagi eksportlar: `TASHKENT_TZ = ZoneInfo("Asia/Tashkent")` — tsex mahalliy vaqti, hisobot/audit kunlari va chek timestamp'lari shu zonada (TZ 10.4; `audit.py`, `reports.py`, `scans.py`, `tablo.py`, `orders/_common.py` route'lari, `services/labels.py`, `services/scanning.py` va `tasks/__init__.py` ishlatadi); `upload_root()` — `UPLOAD_DIR`ning absolyut `Path` ildizi, path-traversal tekshiruvlari shu qiymatga nisbatan. Uni faqat uchta route moduli import qiladi: `orders/files.py`, `orders/survey.py`, `terminal.py`. `services/giblab/ingest.py` esa `config`dan import qilmaydi — ildizni `upload_root: Path` PARAMETRI sifatida oladi, qiymatni `orders/files.py` (`root = upload_root()`) uzatadi.
 - `_validate_production_settings(s)` — **har qanday non-LOCAL muhitda (STAGING ham, PRODUCTION ham) xavfsiz bo'lmagan default'lar bilan boot qilishni rad etadi** (faqat LOCAL o'tkazib yuboriladi): `SECRET_KEY`, `ADMIN_PASSWORD`, `POSTGRES_PASSWORD`, `ADMIN_PHONE` placeholder qiymatda qolgan bo'lsa `RuntimeError` ko'taradi. Modul import bo'lganda darhol ishlaydi (birinchi so'rovda emas, startup'da).
 - Modul oxirida global singleton: `settings = Settings()`.
 
@@ -235,18 +235,28 @@ class WorkerSettings:
 
 - `handle_signals` endi o'rnatilmaydi (default `True`): `docker stop`da SIGTERM to'g'ri ushlanib, bajarilayotgan joblar tugatiladi yoki qayta navbatga qo'yiladi.
 
-**Bog'lanishlar:** `config.py`, `setup.py` (`check_database_connection`), `backend/app/tasks/__init__.py` (`all_tasks = [print_label, print_pachka_label, print_badge]`). Web-process `utils/queue.py`dagi pool orqali vazifalarni shu worker navbatiga qo'yadi.
+**Bog'lanishlar:** `config.py`, `setup.py` (`check_database_connection`), `backend/app/tasks/__init__.py` (`all_tasks = [print_label, print_pachka_label, print_waste_label, print_badge]`). Web-process `utils/queue.py`dagi pool orqali vazifalarni shu worker navbatiga qo'yadi.
 
-### `backend/app/tasks/__init__.py` — ro'yxatga olingan vazifa
+### `backend/app/tasks/__init__.py` — ro'yxatga olingan vazifalar
 
-- `PRINT_QUEUE_KEY = "mes:print:queue"` — umumiy (manzilsiz) navbat. `print_queue_key(agent_id)` esa
+- `PRINT_QUEUE_KEY = "mes:print:queue"` — kalit prefiksi (TZ 2.2.2); manzilsiz kalitning o'zi endi o'qilmaydi. `print_queue_key(agent_id)` esa
   manzilli kalitni beradi: `agent_id` bo'lsa `mes:print:queue:{agent_id}`, bo'lmasa umumiy kalit.
   Chek SO'RAGAN ish markazining printeriga borishi uchun shunday: `ws.py` ulangan agent uchun
-  `brpop([o'z kaliti, umumiy kalit], timeout=5)` qiladi — ya'ni avval o'ziga atalganini oladi,
-  keyin manzilsizini. Ack kelmasa job AYNAN kelgan kalitiga (`src_key`) qaytariladi.
-- `require_printer(db, machine_id)` — chek qaysi agentga ketishini ANIQ aytadi, agent biriktirilmagan bo'lsa `NoPrinterBound` (chaqiruvchi 422 beradi, chek YUBORILMAYDI). `printing_agents(db)` — beyjik uchun tanlov ro'yxati. `printer_agent(db, machine_id)` — shu ish markaziga bog'langan, `can_print=True` va oxirgi
-  `AGENT_ONLINE_WINDOW` (6 daqiqa) ichida ko'ringan agentni topadi; `terminal.py` va `pachka.py`
-  navbatga qo'yishdan OLDIN shuni chaqiradi. `employees.py` dagi beyjik chop etishda ish markazi yo'q, shuning uchun printer
+  `brpop([o'z kaliti], timeout=5)` qiladi — FAQAT o'ziga atalgan kalitdan oladi, umumiy
+  `PRINT_QUEUE_KEY` ATAYLAB o'qilmaydi. Ack kelmasa job AYNAN kelgan kalitiga (`src_key`) qaytariladi.
+- `agent_revoked_key(agent_id)` — `mes:agent:revoked:{agent_id}`, bekor qilingan agent bayrog'i
+  (TTL 10 daqiqa). `bridge_agents.py` uni qo'yadi, `/ws/bridge` har brpop iteratsiyasida o'qiydi.
+- `require_printer(db, machine_id)` — chek qaysi agentga ketishini ANIQ aytadi, agent biriktirilmagan bo'lsa `NoPrinterBound` (chaqiruvchi 422 beradi, chek YUBORILMAYDI); `terminal.py` va `pachka.py`
+  navbatga qo'yishdan OLDIN aynan shuni chaqiradi. `printing_agents(db)` — beyjik uchun tanlov ro'yxati.
+  `printer_agent(db, machine_id)` — shu ish markaziga bog'langan, `can_print=True`, juftlangan
+  (`token_hash` bor) va o'chirilmagan agentni topadi (`require_printer` ichida ishlatiladi;
+  xato bilan ikkita agent bog'langan bo'lsa tanlov DETERMINISTIK: eng yangi `last_seen_at`, so'ng eng katta `id`).
+  **Onlaynlik tanlashda TEKSHIRILMAYDI** — offline agent ham qaytadi va chek uning navbatida kutadi
+  (bu xato emas). `AGENT_ONLINE_WINDOW` (6 daqiqa) / `agent_online(last_seen_at)` faqat CHAQIRUVCHIDA:
+  «Printer ulanmagan. Chek saqlandi — printer ulanganda o'zi chiqadi: {qr_text}» xabarini (atxot chekida —
+  «Printer ulanmagan. Atxot cheki saqlandi — printer ulanganda chiqadi: {qr_text}») va terminal
+  header'idagi agent holatini shu chegara hal qiladi (frontend `printers.tsx` bilan aynan bir xil oyna).
+  `employees.py` dagi beyjik chop etishda ish markazi yo'q, shuning uchun printer
   ATAYLAB tanlanadi: `agent_id` query parametri, berilmasa — chop eta oladigan
   yagona agent, bir nechta bo'lsa 422 va ro'yxat.
 
@@ -265,27 +275,49 @@ class WorkerSettings:
   `{"type": "print", "job_id", "instance_id", "png"}` (`png` — base64 PNG). `job_id` — har
   yuborishda yangi `uuid4().hex`: agent takror yetkazilgan jobni aynan shu kalit bo'yicha tashlaydi
   (`SEEN_JOBS`). Natija `"queued:{id}"`. Redis mavjud bo'lmasa — xato loglanadi, `"lost:{id}"`.
+- Qolgan uchta vazifa AYNAN shu zanjirdan o'tadi (`_print_job` + `LPUSH print_queue_key(agent_id)`,
+  `skip:`/`queued:`/`lost:` natijalari) — faqat render qilinadigan ma'lumot boshqacha:
+  - `print_pachka_label(ctx, pachka_id, agent_id=None)` — qadoq cheki (`render_pachka_label_png`;
+    buyurtma raqami, loyiha nomi, qadoqdagi detallar soni). `pachka.py` qadoq yopilganda qo'yadi.
+  - `print_waste_label(ctx, waste_id, agent_id=None)` — FOYDALI ATXOT cheki (`render_waste_label_png`;
+    `ATX-` prefiksli QR, material, o'lcham, list raqami). `terminal.py` dagi
+    `POST /terminal/waste/{waste_id}/label` qo'yadi; `label_printed_at` ni ENDPOINT yozadi, vazifa emas —
+    aks holda javob bilan yozuv orasida poyga bo'lib, kesish xaritasidagi katak darhol yangilanmasdi.
+  - `print_badge(ctx, employee_id, agent_id=None)` — hodim beyjigi (`render_badge_png`). `employees.py`
+    qo'yadi; brauzerdan chop etish o'rniga shu yo'l, chunki brauzer drayverdagi saqlangan qog'oz
+    o'lchamiga tayanardi va 80×60 bo'lmasa kontent yorliqqa sig'masdi.
+
+  Job JSON'dagi maydon nomi hamma vazifada `instance_id` (`_print_job` umumiy) — qadoq, atxot va
+  beyjikda u mos ravishda `pachka_id`, `waste_id`, `employee_id` qiymatini olib yuradi; agent uni
+  faqat log uchun ishlatadi, chop etish `png` bilan bo'ladi.
 
 **To'liq zanjir (TZ 2.2):**
 
 ```
 terminal → POST /api/v1/terminal/labels/{instance_id}
-  → label_printed_at yoziladi + ws_manager.publish("label.printed", ...)
-  → printer_agent(db, machine_id) → shu ish markazining printeri (yoki None)
-  → queue.pool.enqueue_job("print_label", instance_id, agent_id)
-  → arq worker: render_label_png → LPUSH mes:print:queue:{agent_id}  (agent_id yo'q bo'lsa — mes:print:queue)
-  → /ws/bridge (per-agent token auth; faqat can_print=True agent BRPOP qiladi;
-     brpop([o'z kaliti, umumiy kalit]); ack talab qilinadi, ack kelmasa src_key ga RPUSH bilan qaytariladi)
+  → label_printed_at + label_post_id yoziladi (hali commit qilinmagan)
+  → require_printer(db, machine_id) → shu ish markazining printeri
+     (biriktirilmagan bo'lsa NoPrinterBound → 422, chek YUBORILMAYDI)
+  → queue.pool.enqueue_job("print_label", instance_id, agent_id)   ← commit'dan OLDIN
+  → db.commit() → ws_manager.publish("label.printed", ...)         ← eng oxirida
+  → arq worker: render_label_png → LPUSH mes:print:queue:{agent_id}
+  → /ws/bridge (per-agent token auth; faqat juftlangan (agent_id bor) va can_print=True
+     agent BRPOP qiladi; brpop([o'z kaliti]); ack talab qilinadi, ack kelmasa src_key ga
+     RPUSH bilan qaytariladi)
   → bridge-agent → print-queue.jsonl (durable) → Windows GDI (_print_png_gdi) → USB GoDEX G500-U
 ```
 
-Bridge-agent faqat printer ulangan kompyuterga o'rnatiladi va GoDEX printerini nomidan o'zi topadi (`_detect_printer`, nomida "godex" bor Windows printeri); `PRINTER_NAME` env faqat qo'lda override uchun. Tsexdagi kompyuterda `mebelix-agent.exe` (PyInstaller onefile) ishlaydi — Python ham, pip ham, serverdagi `.env` tahriri ham kerak emas. Menejer, texnolog va boshqa terminallarga hech narsa o'rnatilmaydi — ular brauzerdan tugmani bosadi.
+Bridge-agent faqat printer ulangan kompyuterga o'rnatiladi va yorliq printerini nomidan o'zi topadi (`_detect_printer` — nomida `godex`/`xprinter`/`gprinter`/`tsc`/`zebra`/`argox`/`postek` bor birinchi Windows printeri; tsexda GoDEX ham, Xprinter ham bor); `PRINTER_NAME` env faqat qo'lda override uchun. Tsexdagi kompyuterda `mebelix-agent.exe` (PyInstaller onefile) ishlaydi — Python ham, pip ham, serverdagi `.env` tahriri ham kerak emas. Menejer, texnolog va boshqa terminallarga hech narsa o'rnatilmaydi — ular brauzerdan tugmani bosadi.
 
 **`/ws/bridge` autentifikatsiyasi — per-agent pairing.** Admin panel har bir printerli kompyuter uchun 8 belgili bir martalik ulanish kodi beradi (alifboda I/L/O/0/1 yo'q — telefonda aytganda adashtirmaydi; TTL 15 daqiqa). Agent birinchi ishga tushganda kodni ochiq `POST /api/v1/bridge-agents/pair` endpointi orqali doimiy tokenga almashtiradi; bazada tokenning faqat sha256 xeshi qoladi (`bridge_agent.token_hash`, unikal) — token o'zi bir marta, pair javobida beriladi.
 
-Ulanishda token `Authorization: Bearer` headerda keladi (server access-loglariga tushmasligi uchun; `?token=` query eski agentlar uchun fallback). Tekshiruv tartibi: avval legacy `settings.BRIDGE_TOKEN` bilan `secrets.compare_digest` orqali solishtiriladi, mos kelmasa token sha256'si bo'yicha `bridge_agent` jadvalidan qidiriladi; topilmasa socket `WS_CLOSE_UNAUTHORIZED` (4401) bilan yopiladi. Handshake'dagi `X-Agent-Version` header agent exe versiyasi sifatida saqlanadi. Ulanish davomida har 300 soniyada `touch_agent()` ishlaydi — `last_seen_at`ni yangilaydi (paneldagi "Ulandi"), `version`ni yozadi va `can_print`ni qayta o'qiydi (admin belgini o'zgartirsa ~5 daqiqada kuchga kiradi); agent qatori yo'q bo'lsa (admin bekor qilgan) jonli ulanish ham 4401 bilan uziladi, qo'lda turgan job esa `rpush` bilan navbatga qaytariladi — yo'qolmaydi. Ulanish/uzilish/pairing panelga `bridge.connected` / `bridge.disconnected` / `bridge.paired` eventlari bilan (`ws_manager.publish`) tarqatiladi — admin "Printerlar" sahifasi pollingsiz yangilanadi.
+Ulanishda token `Authorization: Bearer` headerda keladi (server access-loglariga tushmasligi uchun; `?token=` query eski agentlar uchun fallback). Tekshiruv tartibi: avval legacy `settings.BRIDGE_TOKEN` bilan `secrets.compare_digest` orqali solishtiriladi, mos kelmasa token sha256'si bo'yicha `bridge_agent` jadvalidan qidiriladi; topilmasa socket `WS_CLOSE_UNAUTHORIZED` (4401) bilan yopiladi. Handshake'dagi `X-Agent-Version` header agent exe versiyasi sifatida saqlanadi. Ulanish davomida har 300 soniyada `touch_agent()` ishlaydi — `last_seen_at`ni yangilaydi (paneldagi "Ulandi"), `version`ni yozadi va `can_print`ni qayta o'qiydi (admin belgini o'zgartirsa ~5 daqiqada kuchga kiradi). **Bekor qilish esa deyarli DARHOL kuchga kiradi:** `bridge_agents.py` "yangi kod"/"o'chirish"da `agent_revoked_key(agent_id)` Redis bayrog'ini 10 daqiqaga qo'yadi, `/ws/bridge` esa uni HAR brpop iteratsiyasida o'qiydi — kechikish ≤ ~5 s. Ilgari yagona tekshiruv o'sha 300 soniyalik `touch_agent()` edi va bekor qilingan token shu vaqt davomida chek olib chop etaverardi (prod-repro bilan o'lchangan: 295 s); endi `touch_agent()` — zaxira tekshiruv: agent qatori yo'q bo'lsa yoki `token_hash` almashgan bo'lsa u ham 4401 bilan uzadi. Ikkala yo'lda ham qo'lda turgan job `rpush` bilan AYNAN kelgan kalitiga qaytariladi — yo'qolmaydi.
 
-**Skan-forvard va printersiz stansiyalar (TZ 12.5).** `bridge_agent.machine_id` agentni ish markaziga bog'laydi: stanok skaneri o'qigan QR agent orqali `POST /api/v1/bridge-agents/scan` endpointiga (agent tokeni bilan) yuboriladi va bog'langan ish markazining terminalidagi AKTIV sessiya nomidan odatdagi skan yo'li bilan yoziladi. `can_print=False` agent (masalan, Nanxing skan-forvard stansiyasi — printeri yo'q) ulanib turadi, lekin `mes:print:queue`dan ish OLMAYDI: BRPOP o'rniga 5s uxlaydi — aks holda umumiy navbatdan chekni "o'g'irlab" lokalida qoldirardi. Ikkala maydonni admin `PATCH /api/v1/bridge-agents/{agent_id}` bilan boshqaradi (endpoint tafsilotlari: `docs/03-backend-api.md`).
+**Istisno — agentni O'CHIRISH.** `DELETE /api/v1/bridge-agents/{agent_id}` `_revoke_live_connection(..., purge_queue=True)` chaqiradi: bayroqdan tashqari u `llen` bilan sanab `print_queue_key(agent_id)` kalitini butunlay `delete` qiladi, ya'ni o'sha agentning navbatidagi HAMMA chek ATAYLAB bekor qilinadi va javobda «Navbatdagi N ta chek bekor qilindi» deb aytiladi. Sabab: har chek aniq agentga manzillangan — o'chirilgan agentning navbatini endi hech kim o'qimaydi va kalit jimgina abadiy qolardi.
+
+Ulanish/uzilish/pairing panelga `bridge.connected` / `bridge.disconnected` / `bridge.paired` eventlari bilan (`ws_manager.publish`) tarqatiladi — admin "Printerlar" sahifasi pollingsiz yangilanadi.
+
+**Skan-forvard va printersiz stansiyalar (TZ 12.5).** `bridge_agent.machine_id` agentni ish markaziga bog'laydi: stanok skaneri o'qigan QR agent orqali `POST /api/v1/bridge-agents/scan` endpointiga (agent tokeni bilan) yuboriladi va bog'langan ish markazining terminalidagi AKTIV sessiya nomidan odatdagi skan yo'li bilan yoziladi. `can_print=False` agent (masalan, Nanxing skan-forvard stansiyasi — printeri yo'q) ulanib turadi, lekin chek OLMAYDI: BRPOP o'rniga 5s uxlaydi — aks holda chekni "o'g'irlab" lokalida qoldirardi. Shart aslida IKKITA (`if can_print and own_keys`): `own_keys` bo'sh bo'lgani uchun legacy umumiy `BRIDGE_TOKEN` bilan ulangan agent (`agent_id is None`) ham HECH QACHON chek olmaydi — u qaysi ish markazi ekani noma'lum, unga chek berish yana o'sha tasodif bo'lardi. Ya'ni legacy token faqat WS handshake'dan o'tkazadi: chop etish uchun ham, skan-forvard uchun ham (`/bridge-agents/scan` juftlangan tokenni talab qiladi) yaroqsiz. Ikkala maydonni admin `PATCH /api/v1/bridge-agents/{agent_id}` bilan boshqaradi (endpoint tafsilotlari: `docs/03-backend-api.md`).
 
 **Bog'liq fayllar (core'dan tashqarida):** `backend/app/models/bridge_agent.py` (`bridge_agent` jadvali: `organization_id`, `name`, `token_hash`, `pair_code`, `pair_expires_at`, `last_seen_at`, `machine_id` (FK `machine.id`, skan-forvard), `version` (agent exe versiyasi), `can_print` (default `True`)), migratsiyalar `d5e81a24c3b7` (pairing), `f4b8c2a91e55` (machine), `a7c3e9d12f04` (version), `d4f7a8c25e91` (can_print), `backend/app/crud/__init__.py` (`crud_bridge_agents` — `BaseCRUD[BridgeAgent]`, o'z moduli yo'q), `backend/app/schemas/bridge_agents.py`, `backend/app/api/routes/bridge_agents.py`.
 
@@ -328,13 +360,15 @@ Pool `setup.py`dagi lifespan'da (`queue.pool = await create_pool(ArqRedisSetting
 
 - `RateLimiter` klassi (modul-darajali singleton `rate_limiter`):
   - `initialize(redis_url)` — `Redis.from_url(redis_url)` bilan klient yaratadi (idempotent: klient bor bo'lsa qayta yaratmaydi).
-  - `is_rate_limited(key, limit, period) -> bool` — `INCR` + birinchi urinishda `EXPIRE`; hisob `limit`dan oshsa `True`. **Fail-closed**: Redis xatosi bo'lsa ham, klient `None` bo'lsa ham `True` qaytaradi (so'rov 429 oladi, xato loglanadi) — Redis yiqilishi brute-force himoyasini jimgina o'chirib qo'ymasligi uchun. Klient `None` bo'lishi normal holat emas: lifespan doim `initialize()` qiladi.
+  - `over_limit(key, limit) -> bool` — faqat `GET` bilan o'qiydi, hisobni OSHIRMAYDI; hisob `limit`dan katta yoki teng bo'lsa `True`. **Fail-closed**: Redis xatosi bo'lsa ham, klient `None` bo'lsa ham `True` qaytaradi (so'rov 429 oladi, xato loglanadi) — Redis yiqilishi brute-force himoyasini jimgina o'chirib qo'ymasligi uchun. Klient `None` bo'lishi normal holat emas: lifespan doim `initialize()` qiladi.
+  - `bump(key, period)` — `INCR` + birinchi urinishda `EXPIRE`; bitta MUVAFFAQIYATSIZ urinishni hisobga oladi. Bu yerda xato **fail-open**: Redis yiqilsa faqat loglanadi (hisob oshmaydi), so'rovning o'zi to'silmaydi.
 - `RateLimit(limit, period)` — endpoint dependency (callable klass):
   - Kalit: `ratelimit:{ip}:{path}:{window_start}` — fixed-window algoritmi (`window_start = timestamp - timestamp % period`).
   - Limit oshsa `RateLimitException` (429, o'zbekcha xabar) ko'taradi.
+  - **Faqat MUVAFFAQIYATSIZ urinishlar sanaladi:** dependency (`__call__`) faqat TEKSHIRADI (`over_limit`), hisobni esa chaqiruvchi xato yo'lda `await _LOGIN_RATE_LIMIT.hit(request)` bilan oshiradi (`routes/login.py`). Sabab: tsex bitta tashqi IP orqali chiqadi (NAT), ya'ni har so'rovni sanaganda smena boshida navbatma-navbat kirgan operatorlar butun zavod uchun umumiy byudjetni tugatar va keyingi odam — odatda admin — parolni xato termasa ham 429 olardi (prodda o'lchangan: 30 daqiqada 9 muvaffaqiyatli kirish va 8 ta 429).
   - `ip` `request.client.host`dan olinadi — shuning uchun `setup.py`dagi `ProxyHeadersMiddleware` muhim (aks holda hamma bitta bucket'da bo'lardi).
 
-**Bog'lanishlar:** `exceptions.py` (`RateLimitException`); `setup.py` lifecycle'ni boshqaradi; login kabi endpointlar `Depends(RateLimit(...))` orqali ishlatadi (`LOGIN_RATE_LIMIT_ATTEMPTS`/`PERIOD` sozlamalari bilan). Logging oddiy `import logging` orqali — `logger.py`ga bog'liq emas.
+**Bog'lanishlar:** `exceptions.py` (`RateLimitException`); `setup.py` lifecycle'ni boshqaradi; `routes/login.py` ikkita instansiyani ishlatadi: `_LOGIN_RATE_LIMIT` (`LOGIN_RATE_LIMIT_ATTEMPTS`/`PERIOD` sozlamalaridan — parol bilan kirish) va `_BADGE_RATE_LIMIT` (30/60 s, kodda qat'iy — beyjik bilan kirish: 122-bitli UUID topib bo'lmaydi, tor chegara esa smena almashuvida butun tsexni qulflardi). Logging oddiy `import logging` orqali — `logger.py`ga bog'liq emas.
 
 ---
 
