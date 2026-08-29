@@ -35,7 +35,6 @@ export const ChangePassword = () => {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onSubmit",
-    criteriaMode: "all",
     defaultValues: {
       current_password: "",
       new_password: "",
@@ -53,9 +52,7 @@ export const ChangePassword = () => {
     onError: handleError,
   })
 
-  const onSubmit = async (data: FormData) => {
-    mutation.mutate(data)
-  }
+  const onSubmit = (data: FormData) => mutation.mutate(data)
 
   return (
     <div className="max-w-md">

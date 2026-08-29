@@ -6,7 +6,7 @@ import { Link } from "@tanstack/react-router"
 import { Map as MapIcon, Pencil, X } from "lucide-react"
 import { useMemo, useState } from "react"
 
-import { OrdersService, type PostRead } from "@/client"
+import { type MatrixPart, OrdersService, type PostRead } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -52,6 +52,12 @@ export function OrderMatrix({
   const [stageEdits, setStageEdits] = useState<StageEdits>({})
   const [noteEdits, setNoteEdits] = useState<NoteEdits>({})
   const [customEdits, setCustomEdits] = useState<CustomEdits>({})
+  const exitEdit = () => {
+    setEditMode(false)
+    setStageEdits({})
+    setNoteEdits({})
+    setCustomEdits({})
+  }
   const queryClient = useQueryClient()
   const cb = crudCallbacks(
     queryClient,
@@ -93,10 +99,7 @@ export function OrderMatrix({
     ...cb,
     onSuccess: () => {
       cb.onSuccess()
-      setEditMode(false)
-      setStageEdits({})
-      setNoteEdits({})
-      setCustomEdits({})
+      exitEdit()
     },
   })
 
@@ -142,16 +145,7 @@ export function OrderMatrix({
         {editable &&
           (editMode ? (
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setEditMode(false)
-                  setStageEdits({})
-                  setNoteEdits({})
-                  setCustomEdits({})
-                }}
-              >
+              <Button variant="ghost" size="sm" onClick={exitEdit}>
                 <X /> Bekor qilish
               </Button>
               <LoadingButton
@@ -292,10 +286,6 @@ export function OrderMatrix({
   )
 }
 
-type MatrixPartData = NonNullable<
-  Awaited<ReturnType<typeof OrdersService.readOrderMatrix>>["data"]
->["parts"][number]
-
 function MatrixCell({
   part,
   post,
@@ -304,7 +294,7 @@ function MatrixCell({
   stageEdits,
   setStageEdits,
 }: {
-  part: MatrixPartData
+  part: MatrixPart
   post: PostRead
   editMode: boolean
   /** Tahrirdagi holat (serverdagi emas): checkbox belgilangan zahoti katakchalar

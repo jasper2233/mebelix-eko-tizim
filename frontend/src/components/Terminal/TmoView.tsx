@@ -1,8 +1,8 @@
 // TMO (Tayyor Mahsulot Ombori) post sahifasi — marshrutning oxirgi qadami.
 //
-// Ikki tab, chunki ikki xil ish: QABUL (kelganini skanerlash) va QADOQLAR
-// (qadoqni mijozga berish). Bir ekranda aralashsa omborchi tasodifan
-// berilmagan narsani berilgan deb belgilab qo'yardi.
+// Ikki tab, chunki ikki xil ish: QABULGA KELGAN (skanerlanadi) va QABUL
+// QILINGAN (serverdagi yozuv, sahifa yangilansa ham qoladi). Alohida
+// "Qadoqlar" tabi yo'q — qadoq cheki (`PK-...`) ham shu QABUL oqimidan o'tadi.
 //
 // TMO buyurtmani TOPSHIRMAYDI. Hamma detal TMO dan o'tgach buyurtma o'zi
 // TAYYOR (COMPLETED) bo'ladi, TOPSHIRILDI esa managerning amali
@@ -10,7 +10,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, Check, PackageCheck } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
 import { TmoService } from "@/client"
@@ -99,10 +99,6 @@ export function TmoView({
     },
   })
 
-  // Skan aktiv tabga ketadi. Ref: terminal callback'ni bir marta ro'yxatga
-  // oladi, tab esa keyin ham o'zgaradi.
-  const tabRef = useRef(tab)
-  tabRef.current = tab
   useEffect(() => {
     registerScan?.((qr) => {
       // Har qanday skan — QABUL. Qadoq cheki (`PK-...`) bo'lsa server ichidagi

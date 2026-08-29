@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { type ReactNode, useState } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
@@ -33,6 +33,42 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>
 
+/** Ko'rish va tahrir shakli BITTA joyda. Ilgari har maydon o'z juftini
+ * yozardi va ular ajralib ketgandi: ism bo'sh bo'lsa "—" chiqarardi,
+ * telefon esa jimgina bo'sh qatorni. */
+function ProfileField({
+  label,
+  editMode,
+  value,
+  children,
+}: {
+  label: string
+  editMode: boolean
+  value: string | undefined
+  children: ReactNode
+}) {
+  return (
+    <FormItem>
+      <FormLabel>{label}</FormLabel>
+      {editMode ? (
+        <>
+          <FormControl>{children}</FormControl>
+          <FormMessage />
+        </>
+      ) : (
+        <p
+          className={cn(
+            "py-2 truncate max-w-sm",
+            !value && "text-muted-foreground",
+          )}
+        >
+          {value || "—"}
+        </p>
+      )}
+    </FormItem>
+  )
+}
+
 export const UserInformation = () => {
   const queryClient = useQueryClient()
   const [editMode, setEditMode] = useState(false)
@@ -41,23 +77,18 @@ export const UserInformation = () => {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
-    criteriaMode: "all",
     defaultValues: {
       name: currentUser?.name ?? undefined,
       phone: formatUzPhone(currentUser?.phone ?? ""),
     },
   })
 
-  const toggleEditMode = () => {
-    setEditMode(!editMode)
-  }
-
   const mutation = useMutation({
     mutationFn: (data: UserUpdate) => UsersService.updateUserMe({ body: data }),
     onSuccess: () => {
       toast.success("Foydalanuvchi muvaffaqiyatli yangilandi")
       form.reset(form.getValues())
-      toggleEditMode()
+      setEditMode(false)
     },
     onError: handleError,
     onSettled: () => {
@@ -79,7 +110,7 @@ export const UserInformation = () => {
 
   const onCancel = () => {
     form.reset()
-    toggleEditMode()
+    setEditMode(false)
   }
 
   return (
@@ -95,60 +126,37 @@ export const UserInformation = () => {
           <FormField
             control={form.control}
             name="name"
-            render={({ field }) =>
-              editMode ? (
-                <FormItem>
-                  <FormLabel>To'liq ism</FormLabel>
-                  <FormControl>
-                    <Input type="text" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              ) : (
-                <FormItem>
-                  <FormLabel>To'liq ism</FormLabel>
-                  <p
-                    className={cn(
-                      "py-2 truncate max-w-sm",
-                      !field.value && "text-muted-foreground",
-                    )}
-                  >
-                    {field.value || "—"}
-                  </p>
-                </FormItem>
-              )
-            }
+            render={({ field }) => (
+              <ProfileField
+                label="To'liq ism"
+                editMode={editMode}
+                value={field.value}
+              >
+                <Input type="text" {...field} />
+              </ProfileField>
+            )}
           />
 
           <FormField
             control={form.control}
             name="phone"
-            render={({ field }) =>
-              editMode ? (
-                <FormItem>
-                  <FormLabel>Telefon</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="tel"
-                      inputMode="numeric"
-                      placeholder="+998 90 123-45-67"
-                      {...field}
-                      onChange={(e) =>
-                        field.onChange(
-                          formatUzPhone(e.target.value, field.value),
-                        )
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              ) : (
-                <FormItem>
-                  <FormLabel>Telefon</FormLabel>
-                  <p className="py-2 truncate max-w-sm">{field.value}</p>
-                </FormItem>
-              )
-            }
+            render={({ field }) => (
+              <ProfileField
+                label="Telefon"
+                editMode={editMode}
+                value={field.value}
+              >
+                <Input
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="+998 90 123-45-67"
+                  {...field}
+                  onChange={(e) =>
+                    field.onChange(formatUzPhone(e.target.value, field.value))
+                  }
+                />
+              </ProfileField>
+            )}
           />
 
           <div className="flex gap-3">
@@ -171,7 +179,7 @@ export const UserInformation = () => {
                 </Button>
               </>
             ) : (
-              <Button type="button" onClick={toggleEditMode}>
+              <Button type="button" onClick={() => setEditMode(true)}>
                 Tahrirlash
               </Button>
             )}

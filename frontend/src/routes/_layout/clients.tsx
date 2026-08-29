@@ -25,7 +25,7 @@ import {
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useDebounced } from "@/hooks/useDebounced"
 import { requireAccess } from "@/lib/guards"
-import { formatDate, formatMoney, isAdmin, isManagement } from "@/lib/mes"
+import { formatDate, formatMoney, isManagement, isManager } from "@/lib/mes"
 import { getClientsQueryOptions } from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/clients")({
@@ -45,7 +45,7 @@ function ClientsPage() {
   // `isManagement` DIREKTORNI ham qamrab oladi, backend esa `ManagerUser` —
   // ya'ni menejer va admin. Kengroq shart tugmalarni direktorga ham ko'rsatib,
   // u bosganda 403 olardi.
-  const canWrite = isAdmin(currentUser) || currentUser?.role === "manager"
+  const canWrite = isManager(currentUser)
   const [editFor, setEditFor] = useState<ClientRead | null>(null)
   const [deleteFor, setDeleteFor] = useState<ClientRead | null>(null)
   const [openId, setOpenId] = useState<number | null>(null)

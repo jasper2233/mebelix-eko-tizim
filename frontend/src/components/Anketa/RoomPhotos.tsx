@@ -104,7 +104,6 @@ export function RoomPhotos({
         )}
       </div>
 
-      {/* Butun panel drop-zona: rasm panelning istalgan yeriga tashlanadi */}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: faqat drag&drop — klaviatura yo'li "Rasm qo'shish" tugmasi */}
       <div
         onDragOver={
@@ -199,7 +198,6 @@ export function RoomPhotos({
         )}
       </div>
 
-      {/* Kattalashtirilgan ko'rinish */}
       <Dialog open={!!preview} onOpenChange={(v) => !v && setPreview(null)}>
         <DialogContent className="gap-2 p-3 sm:max-w-4xl">
           <DialogHeader className="px-1">
@@ -239,6 +237,3 @@ export function RoomPhotos({
     </div>
   )
 }
-
-/** Texnolog ko'rinishi: tartib qog'ozning teskarisi — avval modullar va o'lchamlar,
- *  keyin material. Texnolog aynan shu tartibda GibLab'da dizayn yasaydi. */

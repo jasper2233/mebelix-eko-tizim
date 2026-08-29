@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/table"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useMesWs } from "@/hooks/useMesWs"
-import { formatDate, MACHINE_STATUS_LABELS } from "@/lib/mes"
+import { formatDate, isManagement, MACHINE_STATUS_LABELS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import {
   getMachinesQueryOptions,
@@ -45,12 +45,7 @@ function Dashboard() {
     isError: machinesError,
     refetch: refetchMachines,
   } = useQuery(getMachinesQueryOptions())
-  const role = currentUser?.role
-  const canStats =
-    currentUser?.is_superuser ||
-    role === "admin" ||
-    role === "manager" ||
-    role === "director"
+  const canStats = isManagement(currentUser)
   const { data: stats } = useQuery({
     queryKey: ["reports", "dashboard"],
     queryFn: async () => (await ReportsService.reportDashboard()).data,

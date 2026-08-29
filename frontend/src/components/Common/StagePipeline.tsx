@@ -1,5 +1,5 @@
-// Signature element: the 6-stage production pipeline (TZ 4.4) rendered as connected
-// stage cells.
+// Signature element: the production pipeline (TZ 4.4) rendered as connected stage
+// cells. Cell count is data-driven — one per `stages` entry, not a fixed chain.
 
 import { mixTint, POST_COLORS } from "@/lib/mes"
 

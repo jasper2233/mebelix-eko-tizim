@@ -225,9 +225,9 @@ function TerminalPage() {
 
   // Avto-skan: input doim fokusda (TZ 8.4.1). Faqat ARRA xaritasi ochiqda
   // o'chadi (input yashirin) — KROMKA proyekt sahifasida skan doim ishlashi kerak
-  const scanInputHidden = ctx?.post_code === "ARRA" && mapOrderId !== null
+  const mapOpen = ctx?.post_code === "ARRA" && mapOrderId !== null
   // Qulf ostida ham fokus kerak: qulfning kaliti — beyjik skani
-  useScanFocus(scanOn && !scanInputHidden, inputRef)
+  useScanFocus(scanOn && !mapOpen, inputRef)
 
   // Smenaga QO'SHILISH rejimi: "+ Qo'shish" bosilgach keyingi tanlov brigadani
   // almashtirmaydi, ustiga qo'shadi. Sukut — almashtirish: ketayotgan odam
@@ -374,19 +374,11 @@ function TerminalPage() {
     staleTime: 60_000,
   })
 
-  const mapOpen = scanInputHidden
-  // BEKOR QILISH oynasi 60 s (TZ 8.6). Vaqtga bog'liq bo'lgani uchun taymer
-  // kerak: busiz tugma muddat o'tgach ham yoqilgan ko'rinib turardi va
-  // bosilganda server rad etardi.
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    if (lastScan?.kind !== "ok") return
-    const left = 60_000 - (Date.now() - lastScan.at)
-    if (left <= 0) return
-    const t = setTimeout(() => setNow(Date.now()), left)
-    return () => clearTimeout(t)
-  }, [lastScan])
-  const canUndo = lastScan?.kind === "ok" && now - lastScan.at < 60_000
+  // BEKOR QILISH oynasi serverda 60 s (TZ 8.6 — `SCAN_UNDO_SECONDS`, undan
+  // keyin faqat admin). Ekranda muddat taymeri KERAK EMAS: pastdagi tozalash
+  // 15 s da `lastScan`ni null qiladi va ScanStrip butunlay yo'qoladi — tugma
+  // server oynasi tugashidan ancha oldin ekrandan ketadi.
+  const canUndo = lastScan?.kind === "ok"
 
   // Skan chizig'i 15s dan keyin o'zi yo'qoladi — ekranni band qilib turmasin;
   // har yangi skan taymerni qaytadan boshlaydi
@@ -398,6 +390,12 @@ function TerminalPage() {
   const postColor = ctx
     ? (POST_COLORS[ctx.post_code] ?? "var(--primary)")
     : "var(--primary)"
+
+  // Proyekt tanlagich: ARRA'dan boshqa hamma postda bir xil, faqat sarlavha
+  // farq qiladi (kesish xaritasi bejigi ham faqat ARRA'da ma'noga ega)
+  const picker = (title: string) => (
+    <OrderPicker onPick={setMapOrderId} title={title} showCutmapBadge={false} />
+  )
 
   const scanStrip = (
     <ScanStrip
@@ -440,7 +438,7 @@ function TerminalPage() {
           className="shrink-0 whitespace-nowrap text-xl font-black"
           style={{ color: postColor }}
         >
-          {ctx?.machine_name ?? ctx?.post_name?.toUpperCase() ?? "—"}
+          {ctx?.machine_name ?? "—"}
         </div>
 
         {/* MES agent uzilganda QIZIL chip; boshqa hamma holatda HECH NARSA.
@@ -520,7 +518,8 @@ function TerminalPage() {
         )}
       </header>
 
-      {/* Asosiy maydon — ARRA: proyekt ro'yxati → kesish xaritasi; boshqa postlar: vazifalar */}
+      {/* Asosiy maydon — har postning O'Z ekrani: proyekt ro'yxati → post ekrani
+          (ARRA'da kesish xaritasi). Umumiy vazifalar jadvali yo'q. */}
       <main className="flex min-h-0 flex-1 gap-1.5 p-3 pl-1.5">
         {/* Chap ustun: xarita toolbari (portal) tepada, qulf/chiqish doim pastda */}
         <div className="flex w-[68px] shrink-0 flex-col gap-2">
@@ -629,11 +628,7 @@ function TerminalPage() {
                 }
               />
             ) : (
-              <OrderPicker
-                onPick={setMapOrderId}
-                title="Proyektlar — detallar uchun proyektni tanlang"
-                showCutmapBadge={false}
-              />
+              picker("Proyektlar — detallar uchun proyektni tanlang")
             )}
           </PostScreen>
         ) : ctx?.post_code === "UPAKOVKA" ? (
@@ -648,11 +643,7 @@ function TerminalPage() {
                 }}
               />
             ) : (
-              <OrderPicker
-                onPick={setMapOrderId}
-                title="Proyektlar — qadoqlash uchun proyektni tanlang"
-                showCutmapBadge={false}
-              />
+              picker("Proyektlar — qadoqlash uchun proyektni tanlang")
             )}
           </PostScreen>
         ) : ["BOYOQ", "STOLYARKA"].includes(ctx?.post_code ?? "") ? (
@@ -664,11 +655,7 @@ function TerminalPage() {
                 onBack={() => setMapOrderId(null)}
               />
             ) : (
-              <OrderPicker
-                onPick={setMapOrderId}
-                title="Proyektlar — ish uchun proyektni tanlang"
-                showCutmapBadge={false}
-              />
+              picker("Proyektlar — ish uchun proyektni tanlang")
             )}
           </PostScreen>
         ) : ctx?.post_code === "TMO" ? (
@@ -683,11 +670,7 @@ function TerminalPage() {
                 }}
               />
             ) : (
-              <OrderPicker
-                onPick={setMapOrderId}
-                title="Proyektlar — TMO uchun proyektni tanlang"
-                showCutmapBadge={false}
-              />
+              picker("Proyektlar — TMO uchun proyektni tanlang")
             )}
           </PostScreen>
         ) : ctx?.post_code === "KROMKA" || ctx?.post_code === "OVAL" ? (
@@ -704,11 +687,7 @@ function TerminalPage() {
                 oval={ctx?.post_code === "OVAL"}
               />
             ) : (
-              <OrderPicker
-                onPick={setMapOrderId}
-                title="Proyektlar — detallar uchun proyektni tanlang"
-                showCutmapBadge={false}
-              />
+              picker("Proyektlar — detallar uchun proyektni tanlang")
             )}
           </PostScreen>
         ) : (

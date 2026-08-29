@@ -20,15 +20,18 @@ function toDate(value: string): Date | undefined {
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
 }
 
+const p = (n: number) => String(n).padStart(2, "0")
+
 function toValue(d: Date): string {
-  const p = (n: number) => String(n).padStart(2, "0")
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
+// `lib/mes.ts` dagi formatDate EMAS: u `new Date(value)` bilan parslaydi (UTC
+// yarim tuni), bu yerda esa sana LOKAL komponentlardan quriladi — tanlangan
+// katak bilan ko'rinadigan matn hech qachon bir kunga siljimasin.
 function display(value: string): string {
   const d = toDate(value)
   if (!d) return ""
-  const p = (n: number) => String(n).padStart(2, "0")
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`
 }
 
@@ -80,7 +83,7 @@ export function DatePicker({
           </button>
         )}
       </div>
-      <PopoverContent className="w-auto">
+      <PopoverContent>
         <DayPicker
           mode="single"
           locale={uz}

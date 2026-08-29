@@ -187,5 +187,3 @@ export function RoomSummary({
     </div>
   )
 }
-
-/** Bo'sh qiymatlar tashlab yuboriladi — texnolog faqat kiritilganini ko'radi */

@@ -87,7 +87,6 @@ export function OrderPicker({
                     {o.materials.join(" · ")}
                   </div>
                 )}
-                {/* ARRA bo'yicha bajarilish: kesilgan nusxalar / jami */}
                 <div className="mt-2">
                   <div className="h-2 overflow-hidden rounded-full bg-muted">
                     <div

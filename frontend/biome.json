@@ -58,10 +58,8 @@
       "includes": [
         "src/routes/_layout/**",
         "src/components/Anketa/**",
-        "src/components/Admin/**",
         "src/components/Clients/**",
-        "src/components/Orders/**",
-        "src/components/Stock/**"
+        "src/components/Orders/**"
       ],
       "linter": {
         "rules": {

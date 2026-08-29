@@ -51,6 +51,7 @@ import {
   formatDateTime,
   formatMoney,
   isAdmin,
+  isManager,
   PRIORITY_LABELS,
   remainingPayment,
   TERMINAL_STATUSES,
@@ -88,7 +89,7 @@ function OrderDetailPage() {
 
   const role = currentUser?.role
   const admin = isAdmin(currentUser)
-  const isManager = admin || role === "manager"
+  const canManage = isManager(currentUser)
   const isTexnolog = admin || role === "texnolog"
 
   // ["orders"] prefiksi ["orders", id] va ["orders", id, "matrix"] ni ham
@@ -207,11 +208,11 @@ function OrderDetailPage() {
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {isManager &&
+            {canManage &&
               !(TERMINAL_STATUSES as readonly string[]).includes(
                 order.status,
               ) && <EditOrder order={order} onSaved={invalidate} />}
-            {isManager && order.status === "draft" && (
+            {canManage && order.status === "draft" && (
               <LoadingButton
                 loading={confirm.isPending}
                 onClick={() => confirm.mutate()}
@@ -242,7 +243,7 @@ function OrderDetailPage() {
             {/* Texnolog ham uzatadi: faylni va marshrutni u tayyorlaydi, ya'ni
                 buyurtma tayyorligini birinchi bo'lib u biladi (backend ham
                 `ManagerOrTexnologUser` bilan ochilgan). */}
-            {(isManager || isTexnolog) &&
+            {(canManage || isTexnolog) &&
               order.status === "technical_review" &&
               order.project_uuid && (
                 <LoadingButton
@@ -264,12 +265,12 @@ function OrderDetailPage() {
                 </Link>
               </Button>
             )}
-            {isManager && order.status === "completed" && (
+            {canManage && order.status === "completed" && (
               <Button onClick={() => setDeliverOpen(true)}>
                 <Truck /> TOPSHIRILDI
               </Button>
             )}
-            {isManager &&
+            {canManage &&
               !(TERMINAL_STATUSES as readonly string[]).includes(
                 order.status,
               ) && (
@@ -394,7 +395,7 @@ function OrderDetailPage() {
 
       {/* Texnolog ham tanlaydi: marshrutni u chizadi, ya'ni qaysi stanok
           qaysi ishni bajarishini yaxshiroq biladi. */}
-      {(isManager || isTexnolog) && canEdit && order.project_uuid && (
+      {(canManage || isTexnolog) && canEdit && order.project_uuid && (
         <MachineAssign order={order} onSaved={invalidate} />
       )}
 

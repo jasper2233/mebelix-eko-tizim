@@ -24,6 +24,7 @@ import { useDebounced } from "@/hooks/useDebounced"
 import {
   formatDate,
   formatMoney,
+  isManager,
   PRIORITY_LABELS,
   PRIORITY_TEXT_CLASSES,
   remainingPayment,
@@ -152,10 +153,7 @@ function OrdersPage() {
   }, [data, sort])
 
   const { currentUser } = useCurrentUser()
-  const canCreate =
-    currentUser?.is_superuser ||
-    currentUser?.role === "admin" ||
-    currentUser?.role === "manager"
+  const canCreate = isManager(currentUser)
   // Qoralama va bekor qilinganlar texnologga ko'rinmaydi (backend ham filtrlaydi):
   // buyurtma texnolog navbatiga confirm'dan keyin tushadi
   const isTexnolog =

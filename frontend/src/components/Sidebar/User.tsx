@@ -55,9 +55,6 @@ export function User({ user }: { user?: UserRead | null }) {
       setOpenMobile(false)
     }
   }
-  const handleLogout = async () => {
-    logout()
-  }
 
   return (
     <SidebarMenu>
@@ -68,7 +65,7 @@ export function User({ user }: { user?: UserRead | null }) {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <UserInfo fullName={user?.name} phone={user?.phone} />
+              <UserInfo fullName={user.name} phone={user.phone} />
               <ChevronsUpDown className="ml-auto size-4 opacity-70 group-data-[collapsible=icon]:hidden" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
@@ -79,7 +76,7 @@ export function User({ user }: { user?: UserRead | null }) {
             sideOffset={4}
           >
             <DropdownMenuLabel className="p-0 font-normal">
-              <UserInfo fullName={user?.name} phone={user?.phone} />
+              <UserInfo fullName={user.name} phone={user.phone} />
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <RouterLink to="/settings" onClick={handleMenuClick}>
@@ -88,7 +85,7 @@ export function User({ user }: { user?: UserRead | null }) {
                 Sozlamalar
               </DropdownMenuItem>
             </RouterLink>
-            <DropdownMenuItem onClick={handleLogout}>
+            <DropdownMenuItem onClick={logout}>
               <LogOut />
               Chiqish
             </DropdownMenuItem>

@@ -20,7 +20,8 @@ export default defineConfig({
     },
     {
       name: "@hey-api/sdk",
-      // NOTE: this doesn't allow tree-shaking
+      // `asClass` tree-shaking'ni yopadi — evaziga `OrdersService.readOrders`
+      // ko'rinishidagi namespace olinadi.
       asClass: true,
       classNameBuilder: "{{name}}Service",
     },

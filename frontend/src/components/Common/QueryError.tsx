@@ -14,7 +14,7 @@ export function QueryError({
   onRetry,
 }: {
   message?: string
-  onRetry?: () => void
+  onRetry: () => void
 }) {
   return (
     <div
@@ -23,11 +23,9 @@ export function QueryError({
     >
       <AlertTriangle className="size-8 text-destructive" />
       <p className="font-medium text-destructive">{message}</p>
-      {onRetry && (
-        <Button variant="outline" onClick={onRetry}>
-          Qayta urinish
-        </Button>
-      )}
+      <Button variant="outline" onClick={onRetry}>
+        Qayta urinish
+      </Button>
     </div>
   )
 }

@@ -219,7 +219,6 @@ export function CutmapView({
     qr_text: string
     instance_id: number
   } | null>(null)
-  // Foydali atxot katagi bosilganda: chek chiqarish dialogi
   // Material qatorini barmoq bilan surib aylantirish
   const matDrag = useDragScroll()
   // GibLab toolbar zoom API (SheetSvg ro'yxatdan o'tkazadi)

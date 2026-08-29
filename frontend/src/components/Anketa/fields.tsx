@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input"
 import { LAYOUT_SHAPES, type Option } from "@/lib/anketa"
 import { cn } from "@/lib/utils"
 
+/** Bo'sh qiymatlar tashlab yuboriladi — texnolog faqat kiritilganini ko'radi */
 export function Facts({ items }: { items: [string, string][] }) {
-  const filled = items.filter(([, v]) => v?.trim())
+  const filled = items.filter(([, v]) => v.trim())
   if (!filled.length)
     return <p className="text-muted-foreground text-sm">To'ldirilmagan.</p>
   return (
@@ -26,7 +27,7 @@ export function Facts({ items }: { items: [string, string][] }) {
   )
 }
 
-export function numOrNull(v: string): number | null {
+function numOrNull(v: string): number | null {
   // O'zbek/rus klaviaturasida o'nlik ajratgich vergul — "3,5" ni ham qabul qilamiz
   const n = Number(v.replace(",", "."))
   return v.trim() === "" || Number.isNaN(n) ? null : n
@@ -38,14 +39,12 @@ export function NumInput({
   value,
   disabled,
   onChange,
-  placeholder,
   integer = false,
   "aria-label": ariaLabel,
 }: {
   value: number | null | undefined
   disabled?: boolean
   onChange: (v: number | null) => void
-  placeholder?: string
   integer?: boolean
   /** O'lchov varag'idagi maydonlarda ko'rinadigan `<label>` yo'q (jadval
    *  kataklari), shuning uchun nom shu yerdan beriladi. */
@@ -58,7 +57,6 @@ export function NumInput({
       aria-label={ariaLabel}
       // raqamlar bir xil kenglikda va o'ngga tekis — ustunni ko'z bilan qo'shish mumkin
       className="num text-right"
-      placeholder={placeholder}
       disabled={disabled}
       value={raw ?? value ?? ""}
       onChange={(e) => {

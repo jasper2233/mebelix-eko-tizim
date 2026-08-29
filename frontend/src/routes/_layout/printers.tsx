@@ -124,7 +124,6 @@ function AgentLogs({ agent }: { agent: BridgeAgentRead }) {
           path: { agent_id: agent.id },
         })
       ).data,
-    // Faqat oyna ochiq bo'lganda — yopiq turganda so'rov yubormaydi
     enabled: open,
     refetchInterval: open ? 10_000 : false,
   })

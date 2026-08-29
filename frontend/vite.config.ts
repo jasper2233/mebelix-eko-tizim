@@ -4,11 +4,12 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite"
 import react from "@vitejs/plugin-react-swc"
 import { defineConfig } from "vite"
 
-// https://vitejs.dev/config/
 export default defineConfig({
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      // `__dirname` emas: Vite'ning keyingi major'idagi `configLoader: 'native'`
+      // uni shim qilmaydi va hozircha har build'da deprecation ogohlantiradi.
+      "@": path.resolve(import.meta.dirname, "./src"),
     },
   },
   plugins: [

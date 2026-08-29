@@ -43,6 +43,7 @@ import {
   ORDER_SERVICES,
   WALL_LETTERS,
 } from "@/lib/anketa"
+import { isManager } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { getOrderQueryOptions } from "@/queries/mes"
 import { handleError } from "@/utils"
@@ -77,9 +78,7 @@ function AnketaPage() {
   } = useQuery(getOrderQueryOptions(id))
   const { currentUser } = useCurrentUser()
 
-  const role = currentUser?.role
-  const canEdit =
-    currentUser?.is_superuser || role === "admin" || role === "manager"
+  const canEdit = isManager(currentUser)
 
   const [survey, setSurvey] = useState<OrderSurvey>({ version: 1, rooms: [] })
   const [active, setActive] = useState(0)
@@ -198,6 +197,12 @@ function AnketaPage() {
     setDirty(true)
   }
 
+  // Buyurtma darajasidagi maydonlar (xona ichida emas) — `patch` ning juftligi
+  const patchSurvey = (changes: Partial<OrderSurvey>) => {
+    setSurvey((s) => ({ ...s, ...changes }))
+    setDirty(true)
+  }
+
   const addRoom = () => {
     setSurvey((s) => ({
       ...s,
@@ -230,7 +235,6 @@ function AnketaPage() {
         description={`${order.client_name} · har bir xona uchun alohida to'ldiriladi`}
       />
 
-      {/* Xona tanlash + qo'shish */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {rooms.map((r, i) => {
           const label = r.name || `Xona ${i + 1}`
@@ -293,10 +297,9 @@ function AnketaPage() {
               >
                 <Checkbox
                   checked={survey[svc.key] ?? false}
-                  onCheckedChange={(v) => {
-                    setSurvey((s) => ({ ...s, [svc.key]: v === true }))
-                    setDirty(true)
-                  }}
+                  onCheckedChange={(v) =>
+                    patchSurvey({ [svc.key]: v === true })
+                  }
                 />
                 {svc.label}
               </label>
@@ -308,20 +311,14 @@ function AnketaPage() {
                 value={survey.measured_at ?? ""}
                 className="w-full"
                 aria-label="O'lchov sanasi"
-                onChange={(v) => {
-                  setSurvey((s) => ({ ...s, measured_at: v || null }))
-                  setDirty(true)
-                }}
+                onChange={(v) => patchSurvey({ measured_at: v || null })}
               />
             </Field>
             <Field label="O'lchagan usta">
               <Input
                 value={survey.measured_by ?? ""}
                 maxLength={120}
-                onChange={(e) => {
-                  setSurvey((s) => ({ ...s, measured_by: e.target.value }))
-                  setDirty(true)
-                }}
+                onChange={(e) => patchSurvey({ measured_by: e.target.value })}
               />
             </Field>
           </div>
@@ -350,7 +347,6 @@ function AnketaPage() {
                   <Input
                     className="max-w-xs"
                     value={room.name ?? ""}
-                    disabled={!canEdit}
                     maxLength={60}
                     placeholder="Oshxona, Yotoqxona, Mehmonxona…"
                     onChange={(e) => patch({ name: e.target.value })}
@@ -361,7 +357,7 @@ function AnketaPage() {
                 orderId={id}
                 roomId={room.id}
                 photos={photosOf(room.id)}
-                canEdit={!!canEdit}
+                canEdit
               />
             </div>
           </Section>
@@ -370,14 +366,12 @@ function AnketaPage() {
             <CheckGrid
               options={FURNITURE_TYPES}
               values={room.furniture_types ?? []}
-              disabled={!canEdit}
               onChange={(v) => patch({ furniture_types: v })}
             />
             <Field label="Boshqa">
               <Input
                 value={room.furniture_other ?? ""}
                 maxLength={120}
-                disabled={!canEdit}
                 onChange={(e) => patch({ furniture_other: e.target.value })}
               />
             </Field>
@@ -386,32 +380,27 @@ function AnketaPage() {
           <Section n={3} title="Xonadagi shakli va o'lchamlari">
             <ShapeChoice
               value={room.shape ?? null}
-              disabled={!canEdit}
               onChange={(v) => patch({ shape: v })}
             />
             <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Num
                 label="Xona uzunligi (mm)"
                 value={room.room_length}
-                disabled={!canEdit}
                 onChange={(v) => patch({ room_length: v })}
               />
               <Num
                 label="Xona kengligi (mm)"
                 value={room.room_width}
-                disabled={!canEdit}
                 onChange={(v) => patch({ room_width: v })}
               />
               <Num
                 label="Xona balandligi (mm)"
                 value={room.room_height}
-                disabled={!canEdit}
                 onChange={(v) => patch({ room_height: v })}
               />
               <Num
                 label="Mebel devori uzunligi (mm)"
                 value={room.furniture_wall_length}
-                disabled={!canEdit}
                 onChange={(v) => patch({ furniture_wall_length: v })}
               />
             </div>
@@ -421,7 +410,6 @@ function AnketaPage() {
             <CheckGrid
               options={CORPUS_MATERIALS}
               values={room.corpus_materials ?? []}
-              disabled={!canEdit}
               onChange={(v) => patch({ corpus_materials: v })}
             />
             <div className="grid items-start gap-3 sm:grid-cols-2">
@@ -429,7 +417,6 @@ function AnketaPage() {
                 <Input
                   value={room.corpus_color ?? ""}
                   maxLength={120}
-                  disabled={!canEdit}
                   onChange={(e) => patch({ corpus_color: e.target.value })}
                 />
               </Field>
@@ -437,7 +424,6 @@ function AnketaPage() {
                 <Choice
                   options={CORPUS_THICKNESS}
                   value={room.corpus_thickness ?? null}
-                  disabled={!canEdit}
                   onChange={(v) => patch({ corpus_thickness: v })}
                 />
               </Field>
@@ -446,7 +432,6 @@ function AnketaPage() {
               <Input
                 value={room.corpus_note ?? ""}
                 maxLength={300}
-                disabled={!canEdit}
                 onChange={(e) => patch({ corpus_note: e.target.value })}
               />
             </Field>
@@ -456,7 +441,6 @@ function AnketaPage() {
             <CheckGrid
               options={FACADE_MATERIALS}
               values={room.facade_materials ?? []}
-              disabled={!canEdit}
               onChange={(v) => patch({ facade_materials: v })}
             />
             <div className="grid items-start gap-3 sm:grid-cols-2">
@@ -464,7 +448,6 @@ function AnketaPage() {
                 <Input
                   value={room.facade_color ?? ""}
                   maxLength={120}
-                  disabled={!canEdit}
                   onChange={(e) => patch({ facade_color: e.target.value })}
                 />
               </Field>
@@ -472,7 +455,6 @@ function AnketaPage() {
                 <Choice
                   options={COUNTERTOPS}
                   value={room.countertop ?? null}
-                  disabled={!canEdit}
                   onChange={(v) => patch({ countertop: v })}
                 />
               </Field>
@@ -481,7 +463,6 @@ function AnketaPage() {
               <Input
                 value={room.facade_note ?? ""}
                 maxLength={300}
-                disabled={!canEdit}
                 onChange={(e) => patch({ facade_note: e.target.value })}
               />
             </Field>
@@ -492,7 +473,6 @@ function AnketaPage() {
               <Choice
                 options={HARDWARE_LEVELS}
                 value={room.hardware_level ?? null}
-                disabled={!canEdit}
                 onChange={(v) => patch({ hardware_level: v })}
               />
             </Field>
@@ -500,7 +480,6 @@ function AnketaPage() {
               <CheckGrid
                 options={EXTRA_SERVICES}
                 values={room.extra_services ?? []}
-                disabled={!canEdit}
                 onChange={(v) => patch({ extra_services: v })}
               />
             </div>
@@ -511,7 +490,6 @@ function AnketaPage() {
               rows={3}
               value={room.note ?? ""}
               maxLength={1000}
-              disabled={!canEdit}
               placeholder="Mijozning qo'shimcha talab va izohlari"
               onChange={(e) => patch({ note: e.target.value })}
             />
@@ -562,7 +540,6 @@ function AnketaPage() {
                         </span>
                         <NumInput
                           value={w.length}
-                          disabled={!canEdit}
                           onChange={(v) => setWall("length", v)}
                           aria-label={`${letter} devor — uzunligi (mm)`}
                         />
@@ -571,7 +548,6 @@ function AnketaPage() {
                         </span>
                         <NumInput
                           value={w.height}
-                          disabled={!canEdit}
                           onChange={(v) => setWall("height", v)}
                           aria-label={`${letter} devor — balandligi (mm)`}
                         />
@@ -618,7 +594,6 @@ function AnketaPage() {
                               <Input
                                 value={m.name ?? ""}
                                 maxLength={120}
-                                disabled={!canEdit}
                                 onChange={(e) =>
                                   setMod({ name: e.target.value })
                                 }
@@ -628,7 +603,6 @@ function AnketaPage() {
                               <Input
                                 value={m.wall ?? ""}
                                 maxLength={2}
-                                disabled={!canEdit}
                                 onChange={(e) =>
                                   setMod({ wall: e.target.value })
                                 }
@@ -637,7 +611,6 @@ function AnketaPage() {
                             <td className="py-1 pr-1">
                               <NumInput
                                 value={m.width}
-                                disabled={!canEdit}
                                 integer={true}
                                 onChange={(v) => setMod({ width: v })}
                                 aria-label={`${mi + 1}-modul — eni (mm)`}
@@ -646,7 +619,6 @@ function AnketaPage() {
                             <td className="py-1 pr-1">
                               <NumInput
                                 value={m.depth}
-                                disabled={!canEdit}
                                 integer={true}
                                 onChange={(v) => setMod({ depth: v })}
                                 aria-label={`${mi + 1}-modul — chuqurligi (mm)`}
@@ -655,7 +627,6 @@ function AnketaPage() {
                             <td className="py-1 pr-1">
                               <NumInput
                                 value={m.height}
-                                disabled={!canEdit}
                                 integer={true}
                                 onChange={(v) => setMod({ height: v })}
                                 aria-label={`${mi + 1}-modul — balandligi (mm)`}
@@ -664,7 +635,6 @@ function AnketaPage() {
                             <td className="py-1 pr-1">
                               <NumInput
                                 value={m.count}
-                                disabled={!canEdit}
                                 integer={true}
                                 onChange={(v) => setMod({ count: v })}
                                 aria-label={`${mi + 1}-modul — soni`}
@@ -674,30 +644,27 @@ function AnketaPage() {
                               <Input
                                 value={m.note ?? ""}
                                 maxLength={200}
-                                disabled={!canEdit}
                                 onChange={(e) =>
                                   setMod({ note: e.target.value })
                                 }
                               />
                             </td>
                             <td className="py-1">
-                              {canEdit && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-destructive"
-                                  aria-label={`${m.name || `${mi + 1}-modul`} — o'chirish`}
-                                  onClick={() =>
-                                    patch({
-                                      modules: (room.modules ?? []).filter(
-                                        (_, i) => i !== mi,
-                                      ),
-                                    })
-                                  }
-                                >
-                                  <Trash2 />
-                                </Button>
-                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive"
+                                aria-label={`${m.name || `${mi + 1}-modul`} — o'chirish`}
+                                onClick={() =>
+                                  patch({
+                                    modules: (room.modules ?? []).filter(
+                                      (_, i) => i !== mi,
+                                    ),
+                                  })
+                                }
+                              >
+                                <Trash2 />
+                              </Button>
                             </td>
                           </tr>
                         )
@@ -722,13 +689,11 @@ function AnketaPage() {
                   <Num
                     label="Umumiy uzunlik (pm)"
                     value={room.total_running_meters}
-                    disabled={!canEdit}
                     onChange={(v) => patch({ total_running_meters: v })}
                   />
                   <Num
                     label="Umumiy balandlik (mm)"
                     value={room.total_height}
-                    disabled={!canEdit}
                     onChange={(v) => patch({ total_height: v })}
                   />
                 </div>

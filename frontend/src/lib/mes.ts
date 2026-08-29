@@ -161,9 +161,12 @@ export const isSuperuser = (u?: RoleUser | null) => Boolean(u?.is_superuser)
 /** Tizim sozlamalari: printer agentlar, loglar/audit izi (backend AdminUser) */
 export const isAdmin = (u?: RoleUser | null) =>
   Boolean(u?.is_superuser || u?.role === "admin")
+/** Yozish huquqi (mijoz, buyurtma, anketa): backend `ManagerUser` ning oynasi */
+export const isManager = (u?: RoleUser | null) =>
+  isAdmin(u) || u?.role === "manager"
 /** Boshqaruv sahifalari (mijozlar, hodimlar, hisobotlar): admin + manager + direktor */
 export const isManagement = (u?: RoleUser | null) =>
-  isAdmin(u) || u?.role === "manager" || u?.role === "director"
+  isManager(u) || u?.role === "director"
 /** Ishlab chiqarish sahifalari (buyurtmalar, ish markazlari): boshqaruv + texnolog */
 export const isProductionStaff = (u?: RoleUser | null) =>
   isManagement(u) || u?.role === "texnolog"

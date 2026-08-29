@@ -17,6 +17,7 @@ import { toast } from "sonner"
 import {
   type EmployeeRead,
   EmployeesService,
+  type PostRead,
   type UserRead,
   type UserRole,
   UsersService,
@@ -52,13 +53,11 @@ export type Person = {
   access: Access
 }
 
-type PostRow = { id: number; code: string; name: string }
-
 /** Lavozimni MA'LUMOTDAN aniqlaydi: ofis odamida rol bo'yicha, tsex odamida
  * biriktirilgan post bo'yicha. Matn bilan solishtirish mo'rt — yorliq bir joyda
  * o'zgarsa bog'lam jimgina uzilardi. */
-function positionOf(person: Person | null, posts: PostRow[]): string {
-  if (person === null) return "Arrachi"
+function positionOf(person: Person | null, posts: PostRead[]): string {
+  if (person === null) return POSITIONS[0].label
   if (person.user) {
     const byRole = POSITIONS.find((x) => x.role === person.user?.role)
     if (byRole) return byRole.label
@@ -73,17 +72,11 @@ function positionOf(person: Person | null, posts: PostRow[]): string {
   return byLabel ? byLabel.label : OTHER_POSITION
 }
 
-function postsFor(
-  label: string,
-  posts: PostRow[],
-  fallback: number[],
-): number[] {
+function postsFor(label: string, posts: PostRead[]): number[] {
   const found = POSITIONS.find((x) => x.label === label)
-  if (found?.post) {
-    const post = posts.find((p) => p.code === found.post)
-    return post ? [post.id] : []
-  }
-  return found?.kind === "ofis" ? [] : fallback
+  if (!found?.post) return []
+  const post = posts.find((p) => p.code === found.post)
+  return post ? [post.id] : []
 }
 
 export function PersonDialog({
@@ -93,7 +86,7 @@ export function PersonDialog({
   onClose,
 }: {
   person: Person | null // null = yangi hodim
-  posts: PostRow[]
+  posts: PostRead[]
   canManageAccounts: boolean
   onClose: () => void
 }) {
@@ -109,7 +102,7 @@ export function PersonDialog({
     // Postni DIALOG OCHILGANDA ham lavozimdan olamiz. Ilgari u faqat lavozim
     // QO'LDA almashtirilganda to'ldirilardi: admin tayyor turgan "Arrachi" ga
     // tegmasdan saqlasa, postsiz hodim yaratilardi va uning beyjigi ishlamasdi.
-    posts: postsFor(initialPosition, posts, person?.posts ?? []),
+    posts: postsFor(initialPosition, posts),
     username: person?.user?.username ?? "",
     password: "",
   })
@@ -134,7 +127,7 @@ export function PersonDialog({
     setForm((f) => ({
       ...f,
       position: label,
-      posts: postsFor(label, posts, f.posts),
+      posts: postsFor(label, posts),
     }))
 
   const queryClient = useQueryClient()
@@ -307,9 +300,8 @@ export function PersonDialog({
               // Ro'yxatda FAQAT lavozim nomi turadi. Ilgari yonida post kodi
               // ko'rsatilardi ("Arrachi  ARRA") — u ikki marta bir narsani
               // aytardi va lavozim ro'yxatiga post atamasini olib kirardi.
-              // Tanlov OQIBATI baribir darhol ko'rinadi: tsex lavozimida
-              // pastda postlar belgilanadi, ofisda parol bloki ochiladi,
-              // "Boshqa" da lavozim nomi maydoni chiqadi.
+              // Tanlov OQIBATI baribir darhol ko'rinadi: ofisda parol bloki
+              // ochiladi, "Boshqa" da lavozim nomi maydoni chiqadi.
               options={[
                 ...options.map((x) => ({ value: x.label, label: x.label })),
                 { value: OTHER_POSITION, label: OTHER_POSITION },

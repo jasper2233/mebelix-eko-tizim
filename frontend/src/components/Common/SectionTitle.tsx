@@ -1,7 +1,5 @@
 import type { ReactNode } from "react"
 
-import { cn } from "@/lib/utils"
-
 /**
  * Sahifa ichidagi bo'lim sarlavhasi — karta guruhi yoki jadval ustida turadi.
  *
@@ -11,20 +9,9 @@ import { cn } from "@/lib/utils"
  * `font-semibold`), shuning uchun bir sahifadagi ikki bo'lim turli og'irlikda
  * ko'rinardi.
  */
-export function SectionTitle({
-  children,
-  className,
-}: {
-  children: ReactNode
-  className?: string
-}) {
+export function SectionTitle({ children }: { children: ReactNode }) {
   return (
-    <h2
-      className={cn(
-        "mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground",
-        className,
-      )}
-    >
+    <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
       {children}
     </h2>
   )
