@@ -94,8 +94,9 @@ send_tg "$FILE" "MebeliX DB backup ${STAMP} (${SIZE}). Ochish: openssl enc -d -a
 # kartochkasi "Fayl diskda topilmadi" beradi, ya'ni DB dumpi YOLG'IZ O'ZI
 # buyurtmani tiklamaydi: .project, SCX va anketa rasmlari ham kerak.
 #
-# `agent/` chiqariladi — u ma'lumot emas, qo'lda ko'chiriladigan exe (19 MB,
-# backupni sakkiz barobar shishirardi va har kecha o'zgarmasdan qayta ketardi).
+# `agent/` chiqariladi — u ma'lumot emas: eski tarqatish oqimidan qolgan exe
+# (19 MB, backupni sakkiz barobar shishirardi va har kecha o'zgarmasdan qayta
+# ketardi). Yangi exe bu yerga tushmaydi — CI uni `agent-dist/` ga qo'yadi.
 #
 # Yiqilsa script TO'XTAMAYDI: DB backupi allaqachon olindi va yuborildi, uni
 # uploads muammosi tufayli yo'qotish mantiqsiz.

@@ -1,5 +1,4 @@
 
-# Variables
 export PYTHONPATH := backend
 WORKER_SETTINGS := app.core.worker.WorkerSettings
 
@@ -28,7 +27,6 @@ run-backend: ## Run the FastAPI application locally with reload
 worker: ## Run the ARQ background worker
 	uv --project backend run arq $(WORKER_SETTINGS)
 
-# Frontend
 .PHONY: run-frontend
 run-frontend: ## Run frontend development server
 	cd frontend && npm run dev

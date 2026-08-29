@@ -1025,7 +1025,7 @@ def _notify_connected() -> None:
 async def uplink() -> None:
     """Serverga doimiy outbound ulanish; uzilsa 5s backoff bilan qayta ulanadi.
 
-    Token FAQAT server 401/403 bilan KETMA-KET 3 marta rad etgandagina bekor
+    Token FAQAT server 401/403 bilan KETMA-KET 2 marta rad etgandagina bekor
     hisoblanadi (webda "yangi kod"/"o'chirish" — server shunda 403 qaytaradi).
     Boshqa har qanday holat (deploy paytidagi 502/503, monoblok yonganda tarmoq
     hali tik turmagani, server qayta yonayotgani) — oddiy qayta urinish: saqlangan

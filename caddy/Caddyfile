@@ -3,17 +3,14 @@
 #   - `your-domain.com`       → Caddy provisions a Let's Encrypt cert automatically, listens on :443.
 #   - `your-domain.com:8443`  → custom port, Caddy still provisions TLS for the host name.
 {$SITE_ADDRESS::80} {
-	# Security headers
 	header {
 		X-Frame-Options SAMEORIGIN
 		X-Content-Type-Options nosniff
 		X-XSS-Protection "1; mode=block"
 	}
 
-	# Compression
 	encode gzip
 
-	# Backend API routes
 	# Host passthrough, X-Forwarded-For va X-Forwarded-Proto'ni Caddy reverse_proxy
 	# o'zi qo'yadi — faqat default bo'lmagan X-Real-IP qoladi.
 	handle /api* {
@@ -22,7 +19,6 @@
 		}
 	}
 
-	# API documentation routes
 	handle /docs* {
 		reverse_proxy api:8000
 	}
@@ -46,7 +42,6 @@
 		respond "Forbidden" 403
 	}
 
-	# Frontend application
 	handle {
 		reverse_proxy frontend:80 {
 			header_up X-Real-IP {remote_host}
