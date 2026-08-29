@@ -1,4 +1,3 @@
-import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, status
@@ -13,8 +12,6 @@ router = APIRouter(tags=["health"])
 
 STATUS_HEALTHY = "healthy"
 STATUS_UNHEALTHY = "unhealthy"
-
-LOGGER = logging.getLogger(__name__)
 
 
 def _now() -> str:

@@ -164,8 +164,8 @@ def decode_cs_blob(b64: str) -> list[BlobPattern]:
 def self_check(patterns: list[BlobPattern], stats: dict[str, float]) -> list[str]:
     """TZ 5.7.4 equalities. Any mismatch marks the file as broken (returned as messages).
 
-    Note: cWasteCount is mult-multiplied in the CS attribute, but per-pattern wasteCount
-    is NOT — the comparison must apply mult (TZ 5.3.4).
+    Note: cWasteAmount/cPartAmount are mult-multiplied in the CS attributes, but the
+    per-pattern areas are NOT — the comparison must apply mult (TZ 5.3.4).
     """
     problems: list[str] = []
 

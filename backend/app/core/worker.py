@@ -4,8 +4,8 @@ import logging
 from arq.connections import RedisSettings
 from arq.worker import Worker
 
+from app.core.health import check_database_connection
 from app.core.logger import setup_logging
-from app.core.setup import check_database_connection
 from app.tasks import all_tasks
 
 from .config import settings

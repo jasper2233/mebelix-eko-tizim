@@ -87,8 +87,6 @@ class ParsedMaterial:
     name: str
     code: str | None = None
     thickness: float | None = None
-    width: float | None = None
-    length: float | None = None
     count: float | None = None  # sheets used / band meters bought
 
 
@@ -161,8 +159,8 @@ class ParsedPart:
             base.mills.extend(op.mills)
         return base
 
-    def stage_sides(self) -> dict[PostCode, int]:
-        """post_code -> per-instance scan count for XNC stages (TZ 5.4.3, 7.3.3).
+    def prisadka_passes(self) -> int:
+        """PRISADKA qadamining per-instance skan soni (TZ 5.4.3, 7.3.3); 0 — qadam yo'q.
 
         FAQAT PRISADKA — ROVER bosqichi ataylab yaratilmaydi: roverdan chiqqan detal
         keyin bo'yalishi ham mumkin, ya'ni QOLGAN marshrutni fayldan chiqarib
@@ -174,11 +172,7 @@ class ParsedPart:
         ARRA -> TMO bo'ylab ishlov KO'RMASDAN o'tib ketardi va buni hech kim
         sezmasdi. 3152 buyurtmasida shunday ikki detal bor edi (har birida 7 paz).
         """
-        result: dict[PostCode, int] = {}
-        for op in self.xnc_ops:
-            if op.bores or op.edge_bores or op.grooves or any(op.mills):
-                result[PostCode.PRISADKA] = result.get(PostCode.PRISADKA, 0) + 1
-        return result
+        return sum(1 for op in self.xnc_ops if op.bores or op.edge_bores or op.grooves or any(op.mills))
 
 
 @dataclass

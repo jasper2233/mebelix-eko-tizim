@@ -15,11 +15,21 @@ if TYPE_CHECKING:
 
 from app.core.config import TASHKENT_TZ
 from app.core.db import local_session
-from app.services.labels import load_label_data, render_label_png
+from app.models import BridgeAgent, Employee, Order, Pachka, PachkaItem, WasteItem
+from app.services.labels import (
+    BadgeLabelData,
+    PachkaLabelData,
+    WasteLabelData,
+    load_label_data,
+    render_badge_png,
+    render_label_png,
+    render_pachka_label_png,
+    render_waste_label_png,
+)
 
 logger = logging.getLogger(__name__)
 
-PRINT_QUEUE_KEY = "mes:print:queue"  # bridge-agent drains this list (TZ 2.2.2)
+PRINT_QUEUE_KEY = "mes:print:queue"  # kalit prefiksi (TZ 2.2.2); manzilsiz kalitning o'zi o'qilmaydi
 
 
 def agent_revoked_key(agent_id: int) -> str:
@@ -31,8 +41,8 @@ def agent_revoked_key(agent_id: int) -> str:
     return f"mes:agent:revoked:{agent_id}"
 
 
-def print_queue_key(agent_id: int | None) -> str:
-    """Chek navbati kaliti. `agent_id` berilsa — FAQAT o'sha agentniki.
+def print_queue_key(agent_id: int) -> str:
+    """Chek navbati kaliti — FAQAT o'sha agentniki.
 
     Ilgari navbat bitta umumiy ro'yxat edi va har ulangan agent undan `BRPOP`
     qilardi. Ikki printer ulanganda (Arra-1 va Prisadka-1) chek qaysi biriga
@@ -41,19 +51,21 @@ def print_queue_key(agent_id: int | None) -> str:
     turib qog'ozni kutardi. Bekor qilib qayta bosish yordam bergandek tuyulardi,
     chunki u yangi tasodif edi.
 
-    `agent_id=None` endi ISHLATILMAYDI: har bir chek aniq bir agentga
-    manzillanadi (`require_printer`). Umumiy `PRINT_QUEUE_KEY` faqat eski
-    (deploydan oldin qo'yilgan) joblar uchun qoldirilgan — yangi job u yerga
-    tushmaydi. Sabab: umumiy navbatdan chekni ISTALGAN printer olardi va
-    aynan shu "ofisdagi test printeri tsexdagi chekni tortib oldi" nuqsonini
-    bergan edi.
+    `agent_id` MAJBURIY. Ilgari `None` berilsa umumiy `PRINT_QUEUE_KEY` ga
+    tushardi, uni esa `ws.py` umuman o'qimaydi — job "queued" deb muvaffaqiyat
+    qaytarib jimgina yo'qolardi. Endi taskning o'zida `agent_id` ning
+    standart qiymati YO'Q, ya'ni agentni unutgan chaqiruvchi TypeError oladi.
     """
-    return PRINT_QUEUE_KEY if agent_id is None else f"{PRINT_QUEUE_KEY}:{agent_id}"
+    return f"{PRINT_QUEUE_KEY}:{agent_id}"
 
 
 #: Agent `last_seen_at` ni har 5 daqiqada yangilaydi — 6 daqiqadan yangi bo'lsa
 #: onlayn hisoblanadi (frontend `printers.tsx` bilan AYNAN bir xil chegara).
 AGENT_ONLINE_WINDOW = timedelta(minutes=6)
+
+
+def agent_online(last_seen_at: datetime | None) -> bool:
+    return last_seen_at is not None and datetime.now(UTC) - last_seen_at <= AGENT_ONLINE_WINDOW
 
 
 async def printer_agent(db: "AsyncSession", machine_id: int | None) -> "Row | None":
@@ -63,8 +75,6 @@ async def printer_agent(db: "AsyncSession", machine_id: int | None) -> "Row | No
     esa postga. Ya'ni "qaysi printer" savoliga javob bazada allaqachon bor edi,
     faqat chek jo'natishda ishlatilmasdi.
     """
-    from app.models import BridgeAgent
-
     if machine_id is None:
         return None
     return (
@@ -122,8 +132,6 @@ async def printing_agents(db: "AsyncSession") -> "Sequence[Row]":
     tsex printeridan chiqishi tasodif edi, admin esa uni qidirib yurishi kerak
     bo'lardi. Endi admin printerni ATAYLAB tanlaydi (yoki bitta bo'lsa — o'sha).
     """
-    from app.models import BridgeAgent
-
     return (
         await db.execute(
             select(BridgeAgent.id, BridgeAgent.name, BridgeAgent.last_seen_at)
@@ -137,19 +145,33 @@ async def printing_agents(db: "AsyncSession") -> "Sequence[Row]":
     ).all()
 
 
-def _print_job(instance_id: int, png_b64: str) -> str:
+def _print_job(ref_id: int, png_b64: str) -> str:
     """Bitta chop etish topshirig'i. `job_id` — HAR YUBORISHDA yangi.
 
-    Agent shu `job_id` bo'yicha takrorni tashlaydi. `instance_id` bu vazifani
+    Agent shu `job_id` bo'yicha takrorni tashlaydi. `ref_id` bu vazifani
     bajara OLMAYDI: chek bekor qilinganda o'sha nusxa qayta ishlatiladi
     (`terminal.py` da `label_printed_at = None`), ya'ni qayta chiqarishda
-    `instance_id` bir xil keladi — u bo'yicha filtrlash operatorning yagona
+    `ref_id` bir xil keladi — u bo'yicha filtrlash operatorning yagona
     tuzatish yo'lini yopib qo'yardi.
+
+    Wire maydoni `instance_id` deb ataladi, lekin qadoq/atxot/beyjik joblarida
+    u `pachka_id`/`waste_id`/`employee_id` bo'ladi. Nom MEROS: uni `ref_id` ga
+    o'zgartirish `bridge-agent/agent.py` ni ham yangilashni talab qiladi.
     """
-    return json.dumps({"type": "print", "job_id": uuid4().hex, "instance_id": instance_id, "png": png_b64})
+    return json.dumps({"type": "print", "job_id": uuid4().hex, "instance_id": ref_id, "png": png_b64})
 
 
-async def print_label(ctx: dict[str, Any], instance_id: int, agent_id: int | None = None) -> str:
+async def _enqueue(ctx: dict[str, Any], ref_id: int, png_b64: str, agent_id: int, label: str) -> str:
+    """Chizilgan PNG ni AYNAN shu agentning navbatiga qo'yadi."""
+    redis = ctx.get("redis")  # arq worker context carries its Redis connection
+    if redis is None:
+        logger.error("%s %s uchun Redis navbati mavjud emas", label, ref_id)
+        return f"lost:{ref_id}"
+    await redis.lpush(print_queue_key(agent_id), _print_job(ref_id, png_b64))
+    return f"queued:{ref_id}"
+
+
+async def print_label(ctx: dict[str, Any], instance_id: int, agent_id: int) -> str:
     """Render the label PNG for one physical copy and queue it (TZ 7.1.4).
 
     LPUSH to the Redis print queue — the shop-floor bridge-agent draws the PNG on the
@@ -162,21 +184,11 @@ async def print_label(ctx: dict[str, Any], instance_id: int, agent_id: int | Non
             return f"skip:{instance_id}"
         png_b64 = base64.b64encode(render_label_png(data)).decode()
 
-    redis = ctx.get("redis")  # arq worker context carries its Redis connection
-    if redis is not None:
-        job = _print_job(instance_id, png_b64)
-        await redis.lpush(print_queue_key(agent_id), job)
-        return f"queued:{instance_id}"
-
-    logger.error("Print job %s uchun Redis navbati mavjud emas", instance_id)
-    return f"lost:{instance_id}"
+    return await _enqueue(ctx, instance_id, png_b64, agent_id, "Print job")
 
 
-async def print_pachka_label(ctx: dict[str, Any], pachka_id: int, agent_id: int | None = None) -> str:
+async def print_pachka_label(ctx: dict[str, Any], pachka_id: int, agent_id: int) -> str:
     """Qadoq chekini chizib navbatga qo'yadi — detal yorlig'i bilan bir xil zanjir."""
-    from app.models import Order, Pachka, PachkaItem
-    from app.services.labels import PachkaLabelData, render_pachka_label_png
-
     async with local_session() as db:
         pachka = await db.get(Pachka, pachka_id)
         if pachka is None or pachka.is_deleted:
@@ -201,21 +213,11 @@ async def print_pachka_label(ctx: dict[str, Any], pachka_id: int, agent_id: int 
             )
         ).decode()
 
-    redis = ctx.get("redis")
-    if redis is not None:
-        job = _print_job(pachka_id, png_b64)
-        await redis.lpush(print_queue_key(agent_id), job)
-        return f"queued:{pachka_id}"
-
-    logger.error("Qadoq cheki %s uchun Redis navbati mavjud emas", pachka_id)
-    return f"lost:{pachka_id}"
+    return await _enqueue(ctx, pachka_id, png_b64, agent_id, "Qadoq cheki")
 
 
-async def print_waste_label(ctx: dict[str, Any], waste_id: int, agent_id: int | None = None) -> str:
+async def print_waste_label(ctx: dict[str, Any], waste_id: int, agent_id: int) -> str:
     """Foydali atxot chekini chizib navbatga qo'yadi — detal cheki bilan bir xil zanjir."""
-    from app.models import Order, WasteItem
-    from app.services.labels import WasteLabelData, render_waste_label_png
-
     async with local_session() as db:
         w = await db.get(WasteItem, waste_id)
         if w is None or w.is_deleted:
@@ -239,25 +241,15 @@ async def print_waste_label(ctx: dict[str, Any], waste_id: int, agent_id: int | 
         # javob bilan yozuv orasida poyga bo'lardi va terminal katagi darhol
         # yangilanmasdi.
 
-    redis = ctx.get("redis")
-    if redis is not None:
-        job = _print_job(waste_id, png_b64)
-        await redis.lpush(print_queue_key(agent_id), job)
-        return f"queued:{waste_id}"
-
-    logger.error("Atxot cheki %s uchun Redis navbati mavjud emas", waste_id)
-    return f"lost:{waste_id}"
+    return await _enqueue(ctx, waste_id, png_b64, agent_id, "Atxot cheki")
 
 
-async def print_badge(ctx: dict[str, Any], employee_id: int, agent_id: int | None = None) -> str:
+async def print_badge(ctx: dict[str, Any], employee_id: int, agent_id: int) -> str:
     """Hodim beyjigini chizib navbatga qo'yadi — detal cheki bilan bir xil zanjir.
 
     Brauzerdan chop etish o'rniga: u drayverdagi saqlangan qog'oz o'lchamiga
     tayanardi va 80x60 bo'lmasa kontent yorliqqa mos tushmasdi.
     """
-    from app.models import Employee
-    from app.services.labels import BadgeLabelData, render_badge_png
-
     async with local_session() as db:
         employee = await db.get(Employee, employee_id)
         if employee is None or employee.is_deleted:
@@ -272,14 +264,7 @@ async def print_badge(ctx: dict[str, Any], employee_id: int, agent_id: int | Non
             )
         ).decode()
 
-    redis = ctx.get("redis")
-    if redis is not None:
-        job = _print_job(employee_id, png_b64)
-        await redis.lpush(print_queue_key(agent_id), job)
-        return f"queued:{employee_id}"
-
-    logger.error("Beyjik %s uchun Redis navbati mavjud emas", employee_id)
-    return f"lost:{employee_id}"
+    return await _enqueue(ctx, employee_id, png_b64, agent_id, "Beyjik")
 
 
 all_tasks = [print_label, print_pachka_label, print_waste_label, print_badge]

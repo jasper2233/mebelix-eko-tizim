@@ -17,7 +17,7 @@ def log_action(
     message: str | None = None,
     meta: dict[str, Any] | None = None,
     ip: str | None = None,
-) -> AuditLog:
+) -> None:
     """Stage an audit row in the caller's transaction — committed together with the change."""
     entry = AuditLog(
         module=module,
@@ -31,4 +31,3 @@ def log_action(
         ip=ip,
     )
     db.add(entry)
-    return entry

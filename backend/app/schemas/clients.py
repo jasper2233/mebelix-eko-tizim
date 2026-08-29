@@ -2,12 +2,14 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
-from .users import PHONE_PATTERN
+from .users import validate_phone
 
 _NAME_FIELD = Field(min_length=2, max_length=150, examples=["Azamat Karimov"])
-_PHONE = Field(pattern=PHONE_PATTERN, examples=["+998901234567"], default=None)
+#: Telefon qoidasi users/employees bilan BITTA funksiyada — pydantic `pattern`
+#: xatosi "String should match pattern ..." bo'lib chiqadi, o'zbekchasi esa shu yerda.
+_Phone = Annotated[str | None, AfterValidator(validate_phone), Field(examples=["+998901234567"], default=None)]
 
 
 class ClientRead(BaseModel):
@@ -59,8 +61,8 @@ class ClientCreate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     full_name: Annotated[str, _NAME_FIELD]
-    phone: Annotated[str | None, _PHONE]
-    phone_alt: Annotated[str | None, _PHONE]
+    phone: _Phone
+    phone_alt: _Phone
     address: str | None = Field(default=None, max_length=255)
     notes: str | None = None
 
@@ -68,8 +70,8 @@ class ClientCreate(BaseModel):
 class ClientUpdate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    full_name: Annotated[str | None, Field(min_length=2, max_length=150, default=None)]
-    phone: Annotated[str | None, _PHONE]
-    phone_alt: Annotated[str | None, _PHONE]
+    full_name: Annotated[str | None, _NAME_FIELD] = None
+    phone: _Phone
+    phone_alt: _Phone
     address: str | None = Field(default=None, max_length=255)
     notes: str | None = None

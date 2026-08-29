@@ -9,7 +9,10 @@ class StageAgg(BaseModel):
     post_id: int
     done: int
     total: int
-    volume_total: float  # unit amount (m² / meter / dona) per post unit
+    #: Post birligidagi hajm (m² / metr / dona) — FAQAT matritsada. Drill-down
+    #: (`/tablo/orders/{id}`) bu yerga qadam SONINI takrorlaydi va uni hech kim
+    #: o'qimaydi: u yerda frontend "hajm" rejimini "soni" ga almashtiradi.
+    volume_total: float
     volume_done: float
 
 

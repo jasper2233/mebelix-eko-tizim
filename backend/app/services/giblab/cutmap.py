@@ -30,7 +30,6 @@ class InstanceCell:
 class CutmapResult:
     model: dict[str, Any]
     bindings: list[InstanceCell] = field(default_factory=list)
-    problems: list[str] = field(default_factory=list)
 
 
 def _edge_markers(part: ParsedPart, rot: bool) -> tuple[list[str | None], list[str | None]]:
@@ -111,11 +110,8 @@ def _place_pattern(
     dims: list[dict[str, Any]] = []
     cursor = pattern.leading_trim or 0.0
     if pattern.leading_trim:
-        cuts.append(
-            {"x1": cursor, "y1": 0.0, "x2": cursor, "y2": pattern.width}
-            if pattern.root_axis_vertical
-            else {"x1": 0.0, "y1": cursor, "x2": pattern.length, "y2": cursor}
-        )
+        # Yetakchi torsovka FAQAT vertikal root o'qda bo'ladi (csblob: slot depth=1, type=1)
+        cuts.append({"x1": cursor, "y1": 0.0, "x2": cursor, "y2": pattern.width})
     for node in pattern.records:
         if pattern.root_axis_vertical:
             cursor += _place(node, cursor, 0.0, pattern.length, pattern.width, True, cells, cuts, dims)
@@ -140,12 +136,13 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
     result = CutmapResult(model={"materials": [], "holes": {}})
     pattern_no = 0
     instance_counters: dict[str, int] = {}
+    problems: list[str] = []
 
     for cut in project.cut_ops:
         if not cut.data_blob:
             continue
         patterns = decode_cs_blob(cut.data_blob)
-        result.problems.extend(f"{cut.material_name}: {p}" for p in self_check(patterns, cut.stats))
+        problems.extend(f"{cut.material_name}: {p}" for p in self_check(patterns, cut.stats))
 
         material: dict[str, Any] = {
             "name": cut.material_name,
@@ -196,7 +193,7 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
                 else:
                     part = parts_by_file_id.get(cell["part_id"])
                     if part is None:
-                        result.problems.append(
+                        problems.append(
                             f"{cut.material_name}: blob noma'lum detalga ishora qiladi (id={cell['part_id']})"
                         )
                         continue
@@ -233,9 +230,7 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
 
         expected = int(cut.stats.get("cPartCount") or 0)
         if expected and material_placed != expected:
-            result.problems.append(
-                f"{cut.material_name}: joylashtirilgan detallar {material_placed} ≠ cPartCount {expected}"
-            )
+            problems.append(f"{cut.material_name}: joylashtirilgan detallar {material_placed} ≠ cPartCount {expected}")
         result.model["materials"].append(material)
 
     # Holes overlay (TZ 5.7.5): merged XNC per part, duplicates removed.
@@ -256,8 +251,8 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
     for part in project.all_parts:
         got = instance_counters.get(part.key, 0)
         if got and got != part.count:
-            result.problems.append(f"{part.key}: xaritadagi nusxalar {got} ≠ detal soni {part.count}")
+            problems.append(f"{part.key}: xaritadagi nusxalar {got} ≠ detal soni {part.count}")
 
-    if result.problems:
-        raise ParseError("Kesish xaritasi mos kelmadi: " + " · ".join(result.problems[:5]))
+    if problems:
+        raise ParseError("Kesish xaritasi mos kelmadi: " + " · ".join(problems[:5]))
     return result

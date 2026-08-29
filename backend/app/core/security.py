@@ -92,10 +92,6 @@ def verify_token(token: str, expected_token_type: TokenType) -> TokenData | None
     return TokenData(user_id=user_id, token_version=payload.get("token_version", 0), jti=payload.get("jti"))
 
 
-def _is_secure_environment() -> bool:
-    return settings.ENVIRONMENT != EnvironmentOption.LOCAL
-
-
 def set_auth_cookie(response: Response, key: str, value: str, max_age: int) -> None:
     """Set an httpOnly auth cookie.
 
@@ -107,7 +103,7 @@ def set_auth_cookie(response: Response, key: str, value: str, max_age: int) -> N
         key=key,
         value=value,
         httponly=True,
-        secure=_is_secure_environment(),
+        secure=settings.ENVIRONMENT != EnvironmentOption.LOCAL,
         samesite="strict",
         max_age=max_age,
     )

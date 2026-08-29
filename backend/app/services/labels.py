@@ -5,14 +5,17 @@ orqali chiqaradi. Maket MES PRO chekiga (chek/IMG_4925.JPG) va GibSaw shablonlar
 asoslangan. EZPL yo'q: G500-U'da tarmoq porti yo'q, RAW dialekt kerak emas.
 """
 
+import io
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import Any
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import TASHKENT_TZ
-
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
+from app.models import Order, Part, PartInstance, PartRoute
+from app.services.scanning import qr_part_code
 
 
 @dataclass
@@ -21,11 +24,9 @@ class LabelData:
     part_code: str  # productCode_partCode (chek: "4202_8")
     part_name: str
     project_name: str
-    order_number: str
     material: str  # plita (chek: "ldsp kashmir shagrin")
     length: float | None
     width: float | None
-    thickness: float | None
     count: int
     instance_no: int | None
     edges: dict[str, Any]  # side -> {"mat": ..., "symbol": ...}
@@ -40,13 +41,8 @@ class LabelData:
     route_codes: list[int] = field(default_factory=list)
 
 
-async def load_label_data(db: "AsyncSession", instance_id: int) -> LabelData | None:
+async def load_label_data(db: AsyncSession, instance_id: int) -> LabelData | None:
     """Bitta nusxa uchun yorliq ma'lumotini DB'dan yig'adi (print task va PNG endpoint uchun umumiy)."""
-    from sqlalchemy import select
-
-    from app.models import Order, Part, PartInstance, PartRoute
-    from app.services.scanning import qr_part_code
-
     instance = await db.get(PartInstance, instance_id)
     if instance is None:
         return None
@@ -101,11 +97,9 @@ async def load_label_data(db: "AsyncSession", instance_id: int) -> LabelData | N
         part_code=qr_part_code(instance.qr_text, part.count),
         part_name=part.name,
         project_name=order.project_name or order.number,
-        order_number=order.number,
         material=part.material_name or "",
         length=part.length,
         width=part.width,
-        thickness=part.thickness,
         count=part.count,
         instance_no=instance.instance_no,
         edges=part.edges,
@@ -151,57 +145,85 @@ _FONT_BOLD = (
     "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
 )
 
+_MM = 8  # piksel/mm — 203 dpi (8 dot/mm), ya'ni 80x60 mm blank = 640x480 px
 
-def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — chiziqli layout kodi
+
+def _canvas() -> tuple[Any, Any, int]:
+    """Bo'sh 80x60 mm blank — to'rtala chek shundan boshlanadi."""
+    from PIL import Image, ImageDraw
+
+    img = Image.new("RGB", (80 * _MM, 60 * _MM), "white")
+    draw = ImageDraw.Draw(img)
+    # Termoprinter 1-bit: antialiasing o'chiriladi, aks holda drayver dither qiladi
+    draw.fontmode = "1"
+    return img, draw, _MM
+
+
+def _font(size_mm: float, bold: bool = False) -> Any:
+    """Shrift ro'yxati tartib bilan sinaladi; hech biri topilmasa PIL sukut shrifti."""
+    from PIL import ImageFont
+
+    for path in _FONT_BOLD if bold else _FONT_REGULAR:
+        try:
+            return ImageFont.truetype(path, int(size_mm * _MM))
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
+
+def _paste_logo(img: Any, *, width_mm: float, xy: tuple[int, int]) -> bool:
+    """Logo — Universal.lbl dan ajratilgan, threshold qilingan.
+    Fayl o'qilmasa False; chaqiruvchi o'rniga matn yozadi."""
+    from pathlib import Path
+
+    from PIL import Image
+
+    try:
+        logo_path = Path(__file__).resolve().parents[1] / "assets" / "label-logo.png"
+        logo = Image.open(logo_path).convert("L").point(_bw).convert("RGB")
+        lw = int(width_mm * _MM)
+        img.paste(logo.resize((lw, int(lw * logo.height / logo.width))), xy)
+    except OSError:
+        return False
+    return True
+
+
+def _to_1bit_png(img: Any) -> bytes:
+    """Yakuniy chiqish — sof 1-bit PNG (termodrayver dither qilmasin)."""
+    buf = io.BytesIO()
+    img.convert("L").point(_bw, "1").save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout kodi
     """80x60mm yorliq PNG (203 dpi: 8 dot/mm -> 640x480 px).
 
     Ustunlar tartibi mebelix.lbl bo'yicha: chap ustun — matnlar, o'ng ustun —
     QR (tepada) va detal eskizi vertikal (ostida). 1-bit, antialiasing'siz.
     """
-    import io as _io
     from pathlib import Path
 
     import qrcode
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw
 
-    mm = 8 * scale  # px per mm
-    W, H = 80 * mm, 60 * mm
-    img = Image.new("RGB", (W, H), "white")
-    draw = ImageDraw.Draw(img)
-    # Termoprinter 1-bit: antialiasing o'chiriladi, aks holda drayver dither qiladi
-    draw.fontmode = "1"
-
-    def font(size_mm: float, bold: bool = False) -> Any:
-        for path in _FONT_BOLD if bold else _FONT_REGULAR:
-            try:
-                return ImageFont.truetype(path, int(size_mm * mm))
-            except OSError:
-                continue
-        return ImageFont.load_default()
+    img, draw, mm = _canvas()
 
     def text(x: float, y: float, t: str, size_mm: float, bold: bool = False, anchor: str = "la") -> None:
-        draw.text((x * mm, y * mm), t, fill="black", font=font(size_mm, bold), anchor=anchor)
+        draw.text((x * mm, y * mm), t, fill="black", font=_font(size_mm, bold), anchor=anchor)
 
-    def edge_mat(side: str) -> str:
+    def edge_field(side: str, key: str) -> str:
         e = d.edges.get(side)
-        return str(e.get("mat") or "").strip()[:16] if e else ""
+        return str(e.get(key) or "").strip() if e else ""
 
     # ============ CHAP USTUN (x 5..52) ============
-    # Logo — Universal.lbl dan ajratilgan, threshold qilingan
-    logo_path = Path(__file__).resolve().parents[1] / "assets" / "label-logo.png"
-    try:
-        logo = Image.open(logo_path).convert("L").point(_bw).convert("RGB")
-        lw = 22 * mm
-        lh = int(lw * logo.height / logo.width)
-        img.paste(logo.resize((lw, lh)), (3 * mm, int(1 * mm)))
-    except OSError:
+    if not _paste_logo(img, width_mm=22, xy=(3 * mm, 1 * mm)):
         text(5, 1, "MEBELIX", 4, bold=True)
 
     product_code = d.part_code.split("_", 1)[0]
     text(26, 1.5, "Formatka", 2.8)
     text(26, 4.8, product_code[:7], 3.7, bold=True)
-    # To'liq nusxa ID (= QR matni = SCX fayl nomi): prisadkachi chekdagi yozuv
-    # bilan stanokdagi faylni bevosita solishtira oladi
+    # Nusxa ID (= QR matni = SCX fayl nomi), chekda 20 belgigacha qisqartirilgan
+    # (docs/11): prisadkachi shu yozuv bilan stanokdagi faylni solishtira oladi
     text(5, 9.5, d.qr_text[:20], 2.7)
 
     # Loyiha (limit 26: kattaroq shriftda eskiz chizig'iga yetmasin)
@@ -215,13 +237,13 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
         draw.line(
             (int(x * mm), int((y + 3.4) * mm), int((x + 22) * mm), int((y + 3.4) * mm)),
             fill="black",
-            width=max(2, scale),
+            width=2,
         )
 
-    edge_cell(5, 19, edge_mat("t"))
-    edge_cell(29, 19, edge_mat("l"))
-    edge_cell(5, 30, edge_mat("b"))
-    edge_cell(29, 30, edge_mat("r"))
+    edge_cell(5, 19, edge_field("t", "mat"))
+    edge_cell(29, 19, edge_field("l", "mat"))
+    edge_cell(5, 30, edge_field("b", "mat"))
+    edge_cell(29, 30, edge_field("r", "mat"))
 
     # Katta o'lcham markazda (kromka qatorlari orasida): "1900 x 330 = 4"
     if d.length and d.width:
@@ -239,10 +261,10 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
     # hech qanday ish ko'rsatmasdi. Teshik esa PRISADKA bosqichini beradi —
     # sverlo ikonkasi qoladi.
     if d.xnc_summary.get("bores") or d.xnc_summary.get("edge_bores"):
-        # Sverlo ikonkasi zakaz ID ("Formatka 305201") tagida — detal kodi (~x27
-        # gacha), loyiha (y13.5+) va QR (x40+) oralig'idagi bo'sh joyda
+        # Sverlo ikonkasi mahsulot kodi ("Formatka 305201") tagida — detal kodi
+        # (~x27 gacha), loyiha (y13.5+) va QR (x40+) oralig'idagi bo'sh joyda
         drill_path = Path(__file__).resolve().parents[1] / "assets" / "label-icon-drill.png"
-        isz = int(4 * mm)  # zakaz ID (past ~8.9) va loyiha qatori (13.5) orasiga sig'adi
+        isz = int(4 * mm)  # nusxa ID qatori (past ~8.9) va loyiha qatori (13.5) orasiga sig'adi
         try:
             raw = Image.open(drill_path)
             flat = Image.new("RGB", raw.size, "white")
@@ -268,9 +290,9 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
         text(5, 52.8, tail, 2.9, bold=True)
     text(52, 53.2, d.printed_at.strftime("%Y.%m.%d %H:%M"), 2.5, anchor="ra")
 
-    # ============ O'NG USTUN (x 56..78) ============
+    # ====== O'NG USTUN: QR (x 40..56), eskiz (x 58.5..73.5) ======
     # QR tepada — to'liq nusxa kodi (skan oqimi)
-    qr = qrcode.make(d.qr_text, box_size=max(1, scale * 2), border=0)
+    qr = qrcode.make(d.qr_text, box_size=2, border=0)
     qr_px = 16 * mm
     img.paste(qr.get_image().convert("RGB").resize((qr_px, qr_px)), (40 * mm, 1 * mm))
 
@@ -314,11 +336,7 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
         bx = area_x + (area_w - bw) // 2
         by = area_y
         # kamida 2px kontur: GDI kichraytirishda 1px chiziq yo'qolishi mumkin
-        draw.rectangle((bx, by, bx + bw, by + bh), outline="black", width=max(2, scale))
-
-        def edge_sym(side: str) -> str:
-            e = d.edges.get(side)
-            return str(e.get("symbol") or "").strip()[:3] if e else ""
+        draw.rectangle((bx, by, bx + bw, by + bh), outline="black", width=2)
 
         for tomon, joy in qirra.items():
             if not d.edges.get(tomon):
@@ -341,7 +359,7 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
         # arrachilar aynan shu farqdan shikoyat qilgan. Teshiklardan oldin
         # chiziladi (teshik ustida qolsin).
         if d.texture:
-            w2 = max(2, scale)  # kamida 2px: GDI kichraytirishda 1px yo'qoladi
+            w2 = 2  # kamida 2px: GDI kichraytirishda 1px yo'qoladi
             if burilgan:
                 tl = int(bh * 0.32)
                 gap = max(3, bw // 4)
@@ -366,7 +384,7 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
                 cxp = bx + int(float(gor) * kx)
                 cyp = by + int(float(ver) * ky)
                 r = max(int(0.4 * mm), int(float(b.get("d", 5)) / 2 * min(kx, ky)))
-                draw.ellipse((cxp - r, cyp - r, cxp + r, cyp + r), fill="white", outline="black", width=max(2, scale))
+                draw.ellipse((cxp - r, cyp - r, cxp + r, cyp + r), fill="white", outline="black", width=2)
             for b in d.holes.get("edge", []):
                 side, pos = b.get("side"), float(b.get("pos", 0))
                 dp = min(float(b.get("dp", 12)), 30) * min(kx, ky)
@@ -396,17 +414,17 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
         # Uzun o'lcham yonida — o'sha o'lcham BO'YLAB ketadigan qirralar belgisi
         uzun_tomonlar = ("t", "b") if burilgan else ("l", "r")
         qisqa_tomonlar = ("l", "r") if burilgan else ("t", "b")
-        sym_long = "".join(s for s in map(edge_sym, uzun_tomonlar) if s)
-        sym_short = "".join(s for s in map(edge_sym, qisqa_tomonlar) if s)
+        sym_long = "".join(edge_field(s, "symbol")[:3] for s in uzun_tomonlar)
+        sym_short = "".join(edge_field(s, "symbol")[:3] for s in qisqa_tomonlar)
         draw.text(
             (bx + bw // 2, by + bh + off + bt + int(0.6 * mm)),
             f"{_n(short_side)} {sym_short}".strip(),
             fill="black",
-            font=font(3.2, bold=True),
+            font=_font(3.2, bold=True),
             anchor="ma",
         )
         vt = f"{_n(long_side)} {sym_long}".strip()
-        vfont = font(3.2, bold=True)
+        vfont = _font(3.2, bold=True)
         vbb = draw.textbbox((0, 0), vt, font=vfont)
         vimg = Image.new("RGB", (int(vbb[2]) + 2, int(vbb[3]) + 2), "white")
         vdraw = ImageDraw.Draw(vimg)
@@ -414,13 +432,10 @@ def render_label_png(d: LabelData, scale: int = 1) -> bytes:  # noqa: C901 — c
         vdraw.text((1, 1), vt, fill="black", font=vfont)
         vimg = vimg.rotate(90, expand=True)
         # Keng eskizda yozuv qog'oz chetidan chiqib ketmasin
-        vx = min(bx + bw + off + bt + int(0.6 * mm), W - vimg.width - 1)
+        vx = min(bx + bw + off + bt + int(0.6 * mm), img.width - vimg.width - 1)
         img.paste(vimg, (vx, by + (bh - vimg.height) // 2))
 
-    buf = _io.BytesIO()
-    # Yakuniy 1-bit: har piksel sof qora yoki oq
-    img.convert("L").point(_bw, "1").save(buf, format="PNG")
-    return buf.getvalue()
+    return _to_1bit_png(img)
 
 
 @dataclass
@@ -438,7 +453,7 @@ class PachkaLabelData:
     printed_at: datetime
 
 
-def render_pachka_label_png(d: PachkaLabelData, scale: int = 1) -> bytes:
+def render_pachka_label_png(d: PachkaLabelData) -> bytes:
     """80x60mm qadoq cheki PNG (203 dpi) — detal yorlig'i bilan bir xil o'lcham
     va bir xil printer zanjiri (bridge-agent + GoDEX).
 
@@ -447,36 +462,14 @@ def render_pachka_label_png(d: PachkaLabelData, scale: int = 1) -> bytes:
     faqat qadoqlash ekranida taxminiy ko'rsatadi, chekda aniq raqamdek
     ko'rinib, xato ishonch berardi.
     """
-    import io as _io
-    from pathlib import Path
-
     import qrcode
-    from PIL import Image, ImageDraw, ImageFont
 
-    mm = 8 * scale
-    W, H = 80 * mm, 60 * mm
-    img = Image.new("RGB", (W, H), "white")
-    draw = ImageDraw.Draw(img)
-    draw.fontmode = "1"
-
-    def font(size_mm: float, bold: bool = False) -> Any:
-        for path in _FONT_BOLD if bold else _FONT_REGULAR:
-            try:
-                return ImageFont.truetype(path, int(size_mm * mm))
-            except OSError:
-                continue
-        return ImageFont.load_default()
+    img, draw, mm = _canvas()
 
     def text(x: float, y: float, t: str, size_mm: float, bold: bool = False, anchor: str = "la") -> None:
-        draw.text((x * mm, y * mm), t, fill="black", font=font(size_mm, bold), anchor=anchor)
+        draw.text((x * mm, y * mm), t, fill="black", font=_font(size_mm, bold), anchor=anchor)
 
-    logo_path = Path(__file__).resolve().parents[1] / "assets" / "label-logo.png"
-    try:
-        logo = Image.open(logo_path).convert("L").point(_bw).convert("RGB")
-        lw = 24 * mm
-        lh = int(lw * logo.height / logo.width)
-        img.paste(logo.resize((lw, lh)), (4 * mm, int(2 * mm)))
-    except OSError:
+    if not _paste_logo(img, width_mm=24, xy=(4 * mm, 2 * mm)):
         text(5, 2, "MEBELIX", 4.5, bold=True)
 
     text(5, 13, "QADOQ", 3.2, bold=True)
@@ -485,7 +478,7 @@ def render_pachka_label_png(d: PachkaLabelData, scale: int = 1) -> bytes:
     text(5, 17, d.code[:18], 4.6, bold=True)
 
     # Ajratuvchi chiziq — kod bloki bilan tafsilotlar orasida
-    draw.line((int(5 * mm), int(26.5 * mm), int(46 * mm), int(26.5 * mm)), fill="black", width=max(2, scale))
+    draw.line((int(5 * mm), int(26.5 * mm), int(46 * mm), int(26.5 * mm)), fill="black", width=2)
 
     text(5, 29, "Buyurtma", 2.9)
     text(5, 32.5, d.order_number[:18], 4.4, bold=True)
@@ -498,14 +491,12 @@ def render_pachka_label_png(d: PachkaLabelData, scale: int = 1) -> bytes:
     text(46, 55.5, d.printed_at.strftime("%Y.%m.%d %H:%M"), 2.5, anchor="ra")
 
     # QR o'ngda, katta: TMO va yuklashda uzoqdan skanerlanadi
-    qr = qrcode.make(d.code, box_size=max(1, scale * 2), border=0)
+    qr = qrcode.make(d.code, box_size=2, border=0)
     qr_px = 28 * mm
     img.paste(qr.get_image().convert("RGB").resize((qr_px, qr_px)), (48 * mm, 4 * mm))
     text(62, 34.5, d.code[:22], 2.5, anchor="ma")
 
-    buf = _io.BytesIO()
-    img.convert("L").point(_bw, "1").save(buf, format="PNG")
-    return buf.getvalue()
+    return _to_1bit_png(img)
 
 
 @dataclass
@@ -527,39 +518,17 @@ class WasteLabelData:
     printed_at: datetime
 
 
-def render_waste_label_png(d: WasteLabelData, scale: int = 1) -> bytes:
+def render_waste_label_png(d: WasteLabelData) -> bytes:
     """80x60mm foydali-atxot cheki — detal/qadoq cheklari bilan bir xil
     o'lcham va printer zanjiri (bridge-agent + GoDEX)."""
-    import io as _io
-    from pathlib import Path
-
     import qrcode
-    from PIL import Image, ImageDraw, ImageFont
 
-    mm = 8 * scale
-    W, H = 80 * mm, 60 * mm
-    img = Image.new("RGB", (W, H), "white")
-    draw = ImageDraw.Draw(img)
-    draw.fontmode = "1"
-
-    def font(size_mm: float, bold: bool = False) -> Any:
-        for path in _FONT_BOLD if bold else _FONT_REGULAR:
-            try:
-                return ImageFont.truetype(path, int(size_mm * mm))
-            except OSError:
-                continue
-        return ImageFont.load_default()
+    img, draw, mm = _canvas()
 
     def text(x: float, y: float, t: str, size_mm: float, bold: bool = False, anchor: str = "la") -> None:
-        draw.text((x * mm, y * mm), t, fill="black", font=font(size_mm, bold), anchor=anchor)
+        draw.text((x * mm, y * mm), t, fill="black", font=_font(size_mm, bold), anchor=anchor)
 
-    logo_path = Path(__file__).resolve().parents[1] / "assets" / "label-logo.png"
-    try:
-        logo = Image.open(logo_path).convert("L").point(_bw).convert("RGB")
-        lw = 24 * mm
-        lh = int(lw * logo.height / logo.width)
-        img.paste(logo.resize((lw, lh)), (4 * mm, int(2 * mm)))
-    except OSError:
+    if not _paste_logo(img, width_mm=24, xy=(4 * mm, 2 * mm)):
         text(5, 2, "MEBELIX", 4.5, bold=True)
 
     # Sarlavha atxotligini QICHQIRIB aytadi — omborda detal cheki bilan
@@ -570,7 +539,7 @@ def render_waste_label_png(d: WasteLabelData, scale: int = 1) -> bytes:
     text(5, 13, "QOLDIQ", 4.2, bold=True)
     text(5, 17.5, d.qr_text[:18], 4.2, bold=True)
 
-    draw.line((int(5 * mm), int(26 * mm), int(46 * mm), int(26 * mm)), fill="black", width=max(2, scale))
+    draw.line((int(5 * mm), int(26 * mm), int(46 * mm), int(26 * mm)), fill="black", width=2)
 
     # O'lcham — chekning eng muhim raqami: omborchi atxotni shu bo'yicha qidiradi
     text(5, 28.5, "O'lcham", 2.9)
@@ -582,14 +551,12 @@ def render_waste_label_png(d: WasteLabelData, scale: int = 1) -> bytes:
     text(5, 51.5, f"{d.order_number}  ·  {d.project_name[:12]}  ·  list {d.sheet_no}", 2.7)
     text(46, 55.5, d.printed_at.strftime("%Y.%m.%d %H:%M"), 2.5, anchor="ra")
 
-    qr = qrcode.make(d.qr_text, box_size=max(1, scale * 2), border=0)
+    qr = qrcode.make(d.qr_text, box_size=2, border=0)
     qr_px = 28 * mm
     img.paste(qr.get_image().convert("RGB").resize((qr_px, qr_px)), (48 * mm, 4 * mm))
     text(62, 34.5, d.qr_text[:22], 2.5, anchor="ma")
 
-    buf = _io.BytesIO()
-    img.convert("L").point(_bw, "1").save(buf, format="PNG")
-    return buf.getvalue()
+    return _to_1bit_png(img)
 
 
 @dataclass
@@ -601,33 +568,19 @@ class BadgeLabelData:
     badge_id: str  # QR matni (UUID)
 
 
-def render_badge_png(d: BadgeLabelData, scale: int = 1) -> bytes:
+def render_badge_png(d: BadgeLabelData) -> bytes:
     """80×60 mm hodim beyjigi PNG (203 dpi).
 
     Maket: lavozim (kichik) → ism (katta) → QR. QR o'rni QAT'IY — ism bir yoki
     ikki qatorga tushishidan qat'i nazar u bir joyda turadi, ya'ni skaner uchun
     beyjiklar bir xil.
     """
-    import io as _io
-
     import qrcode
-    from PIL import Image, ImageDraw, ImageFont
 
-    mm = 8 * scale
-    W, H = 80 * mm, 60 * mm
-    img = Image.new("RGB", (W, H), "white")
-    draw = ImageDraw.Draw(img)
-    draw.fontmode = "1"
+    img, draw, mm = _canvas()
+    W = img.width
 
-    def font(size_mm: float, bold: bool = False) -> Any:
-        for path in _FONT_BOLD if bold else _FONT_REGULAR:
-            try:
-                return ImageFont.truetype(path, int(size_mm * mm))
-            except OSError:
-                continue
-        return ImageFont.load_default()
-
-    name_font = font(5.5, bold=True)
+    name_font = _font(5.5, bold=True)
     # Ism ikki qatorgacha o'raladi, uchinchisi "…" bilan kesiladi: uzun o'zbek
     # ismlari (F.I.Sh + otasining ismi) 80mm ga sig'maydi.
     max_px = 72 * mm
@@ -661,7 +614,7 @@ def render_badge_png(d: BadgeLabelData, scale: int = 1) -> bytes:
             (W // 2, int((top - 4.2) * mm)),
             d.position.upper()[:28],
             fill="black",
-            font=font(3.2, bold=True),
+            font=_font(3.2, bold=True),
             anchor="ma",
         )
     for i, line in enumerate(lines):
@@ -671,10 +624,8 @@ def render_badge_png(d: BadgeLabelData, scale: int = 1) -> bytes:
     # modul, ya'ni 31mm da modul 1.07mm va atrofdagi 4.5mm oq aynan standart
     # talab qiladigan 4 modul tinch zona. 34mm da tepada 1.7 modul qolib,
     # ism QR'ga yopishardi.
-    qr = qrcode.make(d.badge_id, box_size=max(1, scale * 2), border=0)
+    qr = qrcode.make(d.badge_id, box_size=2, border=0)
     qr_px = 31 * mm
     img.paste(qr.get_image().convert("RGB").resize((qr_px, qr_px)), ((W - qr_px) // 2, int(24.5 * mm)))
 
-    buf = _io.BytesIO()
-    img.convert("L").point(_bw, "1").save(buf, format="PNG")
-    return buf.getvalue()
+    return _to_1bit_png(img)

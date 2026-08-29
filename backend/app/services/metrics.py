@@ -13,8 +13,9 @@ def part_volume(
     Obyekt emas, qiymatlar qabul qiladi: TABLO o'n minglab marshrutni to'liq ORM
     obyekti sifatida qurmay, faqat shu to'rt ustunni tanlay olsin (669 ms -> 175 ms).
 
-    ponytail: PAZ meters approximated as pieces — groove lengths are not persisted
-    per part; upgrade when reports need exact meters.
+    ponytail: OVAL (birligi metr) va UPAKOVKA (m²) dona bilan approksimatsiya
+    qilinadi — egri qirra uzunligi ham, qadoq kvadraturasi ham detal bo'yicha
+    saqlanmaydi; hisobot aniq birlik so'raganda yangilanadi.
     """
     if post_code == PostCode.ARRA:
         return ((length or 0) * (width or 0) / 1_000_000) * count

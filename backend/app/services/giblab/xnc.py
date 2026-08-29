@@ -178,7 +178,7 @@ def parse_xnc_program(code: str, program_xml: str, side: str | None = None) -> X
     # zaxira: korpusda `2001_Nukriddin` orqa tomonni `x2` bilan tugatadi (`_2` emas), ya'ni 16
     # dastur old tomon deb belgilanardi; `3052_Hikmat` da esa old va orqa dasturning kodi AYNAN
     # bir xil bo'lib, ikkalasi bitta SCX nomiga yozilib biri o'chib ketardi.
-    side2 = not xml_bool(side, True) if side is not None else code.endswith("_2")
+    side2 = not xml_bool(side) if side is not None else code.endswith("_2")
     op = XncOp(code=code, side2=side2, dx=dx, dy=dy, dz=dz)
     current_contour: list[dict[str, Any]] = []
 
@@ -233,27 +233,16 @@ def parse_xnc_program(code: str, program_xml: str, side: str | None = None) -> X
                 }
             ]
             op.mills.append(current_contour)
-        elif tag == "ml":
+        elif tag in ("ml", "mac"):
             if not current_contour:
+                # Kontur boshlanmagan bo'lsa sintetik boshlanish — chiziq/yoy
+                # jimgina yo'qolmasin ("hech narsa jim yo'qolmaydi")
                 current_contour = [{"op": "ms", "x": 0.0, "y": 0.0, "dp": dz, "c": None, "d": 0.0}]
                 op.mills.append(current_contour)
-            current_contour.append({"op": "ml", "x": num(el, "x"), "y": num(el, "y")})
-        elif tag == "mac":
-            if not current_contour:
-                # ml bilan bir xil siyosat: kontur boshlanmagan bo'lsa sintetik
-                # boshlanish — yoy jimgina yo'qolmasin ("hech narsa jim yo'qolmaydi")
-                current_contour = [{"op": "ms", "x": 0.0, "y": 0.0, "dp": dz, "c": None, "d": 0.0}]
-                op.mills.append(current_contour)
-            current_contour.append(
-                {
-                    "op": "mac",
-                    "x": num(el, "x"),
-                    "y": num(el, "y"),
-                    "cx": num(el, "cx"),
-                    "cy": num(el, "cy"),
-                    "dir": xml_bool(el.get("dir")),
-                }
-            )
+            seg: dict[str, Any] = {"op": tag, "x": num(el, "x"), "y": num(el, "y")}
+            if tag == "mac":
+                seg |= {"cx": num(el, "cx"), "cy": num(el, "cy"), "dir": xml_bool(el.get("dir"))}
+            current_contour.append(seg)
         # oq/oh (saw/groove tools of old generation) intentionally map to grooves too
         elif tag in ("oq", "oh"):
             op.grooves.append(
@@ -315,9 +304,8 @@ def apply_mirror(op: XncOp, mir_hor: bool, mir_vert: bool) -> None:
     flip_dir = mir_hor != mir_vert  # bitta aks ettirish orientatsiyani teskarilaydi
     for contour in op.mills:
         for seg in contour:
-            if "x" in seg:
-                seg["x"], seg["y"] = mx(seg["x"]), my(seg["y"])
-            if seg.get("op") == "mac":
+            seg["x"], seg["y"] = mx(seg["x"]), my(seg["y"])
+            if seg["op"] == "mac":
                 seg["cx"], seg["cy"] = mx(seg["cx"]), my(seg["cy"])
                 if flip_dir:
                     seg["dir"] = not bool(seg["dir"])
@@ -331,6 +319,6 @@ def merge_xnc_ops(ops: list[XncOp]) -> list[XncOp]:
     XNC1..XNC5 maydonlarini taklif qiladi (help/labels_ru.html). Ilgari bu yerda ikkitadan
     ko'pi uchun ParseError bor edi — ya'ni uch tomoni ishlanadigan detal bo'lsa BUTUN fayl
     import bo'lmasdi. Cheklov TZ talabi emas, korpus kuzatuvidan qotib qolgan edi.
-    `stage_sides()` N ta operatsiyani baribir to'g'ri sanaydi (har biri +1 skan).
+    `prisadka_passes()` N ta operatsiyani baribir to'g'ri sanaydi (har biri +1 skan).
     """
     return sorted(ops, key=lambda o: (o.side2, o.code))

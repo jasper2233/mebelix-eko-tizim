@@ -13,7 +13,10 @@ class WorkSession(BaseModel):
     __tablename__ = "work_session"
 
     employee_id: Mapped[int] = mapped_column(ForeignKey("employee.id"), index=True, kw_only=True)
-    user_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)  # terminal account
+    #: Smenani OCHGAN hisob: ish markazining TERMINAL hisobi, post rolidagi texnik
+    #: hisob (`login._terminal_user`) yoki parol bilan kirgan ishchining SHAXSIY
+    #: hisobi (`login._open_shift_for`). KIM ishlayotgani bu yerda emas — `employee_id` da.
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
     machine_id: Mapped[int | None] = mapped_column(ForeignKey("machine.id"), default=None, kw_only=True)
     post_id: Mapped[int] = mapped_column(ForeignKey("post.id"), kw_only=True)
     status: Mapped[SessionStatus] = mapped_column(
@@ -25,8 +28,10 @@ class WorkSession(BaseModel):
 class Scan(BaseModel):
     """Successful work-unit registration (one QOLDIQ decrement). created_at = scan time.
 
-    Idempotency: client_event_id is a client-generated UUID; unique index rejects network replays
-    (TZ 8.4.4). Cancelled scans stay for audit with is_cancelled=True (counter re-incremented).
+    Idempotentlik kaliti `client_event_id`: terminal UUID yuboradi, chek/qadoq/TMO/yig'ma
+    oqimlari esa server tomonda DETERMINISTIK kalit yozadi (`cutprint-`, `pack-`, `wh-`, `asm-`).
+    Yagona indeks takrorni rad etadi (TZ 8.4.4) va u bekor qilingan qatorlarni HAM qamraydi —
+    bekor qilingan skan audit uchun qoladi (is_cancelled=True, hisoblagich qaytariladi).
     """
 
     __tablename__ = "scan"

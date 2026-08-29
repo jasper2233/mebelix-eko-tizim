@@ -259,12 +259,12 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
                 )
                 # AYNAN kelgan kalitga qaytadi: umumiy navbatga tashlansa
                 # manzil yo'qolib, chek boshqa printerdan chiqib ketardi.
-                await redis.rpush(src_key, job)  # requeue — job is never lost
+                await redis.rpush(src_key, job)
                 raise
     except Exception as exc:  # noqa: BLE001 — connection teardown; the job was already requeued
         logger.info("Bridge ulanishi yopildi: agent=%s sabab=%s", agent_id, exc)
     finally:
-        await redis.close()
+        await redis.aclose()
         with contextlib.suppress(Exception):
             await ws_manager.publish(
                 "bridge.disconnected",

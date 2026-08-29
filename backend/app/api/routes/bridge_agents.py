@@ -16,7 +16,6 @@ import hashlib
 import json
 import re
 import secrets
-import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -92,6 +91,20 @@ def _read(agent: BridgeAgent, machine_name: str | None = None) -> BridgeAgentRea
     )
 
 
+async def _ensure_machine_free(db: SessionDep, machine_id: int, exclude_id: int | None = None) -> None:
+    """Bitta ish markazi — bitta agent. Ikki agent bitta ish markazida bo'lsa cheklar
+    ular orasida bo'linib, yarmi o'lik navbatda qolardi (`printer_agent` bittasini tanlaydi)."""
+    query = select(BridgeAgent.name).where(
+        BridgeAgent.machine_id == machine_id,
+        BridgeAgent.is_deleted == False,  # noqa: E712
+    )
+    if exclude_id is not None:
+        query = query.where(BridgeAgent.id != exclude_id)
+    band = (await db.execute(query)).scalar_one_or_none()
+    if band is not None:
+        raise DuplicateValueException(f"Bu ish markaziga «{band}» agenti allaqachon bog'langan — avval uni uzing.")
+
+
 @router.get("/", response_model=list[BridgeAgentRead], operation_id="read_bridge_agents")
 async def read_bridge_agents(db: SessionDep, _: AdminUser) -> list[BridgeAgentRead]:
     agents, _total = await crud_bridge_agents.get_multi(db, limit=100)
@@ -113,24 +126,8 @@ async def update_bridge_agent(
     machine_name: str | None = None
     if "machine_id" in sent:
         if body.machine_id is not None:
-            band = (
-                await db.execute(
-                    select(BridgeAgent.name).where(
-                        BridgeAgent.machine_id == body.machine_id,
-                        BridgeAgent.id != agent.id,
-                        BridgeAgent.is_deleted == False,  # noqa: E712
-                    )
-                )
-            ).scalar_one_or_none()
-            if band is not None:
-                # Ikki agent bitta ish markazida: cheklar ular orasida bo'linib,
-                # yarmi o'lik navbatda qolardi (`printer_agent` bittasini tanlaydi).
-                raise DuplicateValueException(
-                    f"Bu ish markaziga «{band}» agenti allaqachon bog'langan — avval uni uzing."
-                )
-            machine = await db.get(Machine, body.machine_id)
-            if machine is None or machine.is_deleted:
-                raise NotFoundException("Ish markazi topilmadi.")
+            await _ensure_machine_free(db, body.machine_id, exclude_id=agent.id)
+            machine = await crud_machines.get_or_404(db, "Ish markazi topilmadi.", id=body.machine_id)
             machine_name = machine.name
         agent.machine_id = body.machine_id
         log_action(
@@ -170,16 +167,7 @@ async def create_bridge_agent(
     machine = None
     if body.machine_id is not None:
         machine = await crud_machines.get_or_404(db, "Ish markazi topilmadi.", id=body.machine_id)
-        band = (
-            await db.execute(
-                select(BridgeAgent.name).where(
-                    BridgeAgent.machine_id == body.machine_id,
-                    BridgeAgent.is_deleted == False,  # noqa: E712
-                )
-            )
-        ).scalar_one_or_none()
-        if band is not None:
-            raise DuplicateValueException(f"Bu ish markaziga «{band}» agenti allaqachon bog'langan — avval uni uzing.")
+        await _ensure_machine_free(db, body.machine_id)
     agent = BridgeAgent(
         name=body.name,
         machine_id=body.machine_id,
@@ -269,8 +257,7 @@ async def _revoke_live_connection(agent_id: int, *, purge_queue: bool = False) -
     "yangi kod"/"o'chirish" bosilgach ulanish deyarli darhol uziladi. Ilgari
     yagona tekshiruv 5 daqiqalik `touch_agent` edi.
     """
-    redis = AsyncRedis.from_url(settings.REDIS_URL)
-    try:
+    async with AsyncRedis.from_url(settings.REDIS_URL) as redis:
         await redis.set(agent_revoked_key(agent_id), "1", ex=600)
         if not purge_queue:
             return 0
@@ -279,8 +266,6 @@ async def _revoke_live_connection(agent_id: int, *, purge_queue: bool = False) -
         if n:
             await redis.delete(key)
         return n
-    finally:
-        await redis.aclose()
 
 
 @router.post("/pair", response_model=BridgePairResponse, operation_id="pair_bridge_agent")
@@ -317,11 +302,8 @@ async def pair_bridge_agent(db: SessionDep, body: BridgePairRequest, request: Re
 
     # Yangi juftlanish bayroqni bekor qiladi: aks holda endi qonuniy bo'lgan
     # ulanish TTL tugaguncha (10 daqiqa) uzilib turardi.
-    _redis = AsyncRedis.from_url(settings.REDIS_URL)
-    try:
-        await _redis.delete(agent_revoked_key(row.id))
-    finally:
-        await _redis.aclose()
+    async with AsyncRedis.from_url(settings.REDIS_URL) as redis:
+        await redis.delete(agent_revoked_key(row.id))
     log_action(
         db,
         module="bridge_agents",
@@ -337,9 +319,8 @@ async def pair_bridge_agent(db: SessionDep, body: BridgePairRequest, request: Re
     await ws_manager.publish("bridge.paired", {"agent_id": row.id})
     machine_name = None
     if row.machine_id is not None:
-        machine = await db.get(Machine, row.machine_id)
-        if machine is not None and not machine.is_deleted:
-            machine_name = machine.name
+        machine = await crud_machines.get(db, id=row.machine_id)
+        machine_name = machine.name if machine is not None else None
     return BridgePairResponse(token=token, name=row.name, machine_name=machine_name)
 
 
@@ -382,15 +363,12 @@ async def push_bridge_logs(
     lines = [ln[:500] for ln in body.lines if ln.strip()]
     if not lines:
         return Message(message="bo'sh")
-    redis = AsyncRedis.from_url(settings.REDIS_URL)
-    try:
+    async with AsyncRedis.from_url(settings.REDIS_URL) as redis:
         key = AGENT_LOG_KEY.format(agent.id)
         # Eng yangisi boshida tursin: LPUSH teskari tartibda beriladi
         await redis.lpush(key, *reversed(lines))
         await redis.ltrim(key, 0, AGENT_LOG_KEEP - 1)
         await redis.expire(key, AGENT_LOG_TTL)
-    finally:
-        await redis.aclose()
     return Message(message=f"{len(lines)} satr")
 
 
@@ -400,14 +378,9 @@ async def read_bridge_logs(db: SessionDep, _: AdminUser, agent_id: int) -> list[
 
     Ilgari admin operatordan `%APPDATA%\MebelixAgent\agent.log` ni ochishni
     so'rashga majbur edi — tsexdagi kompyuterga masofadan kirish yo'q."""
-    agent = await db.get(BridgeAgent, agent_id)
-    if agent is None or agent.is_deleted:
-        raise NotFoundException("Agent topilmadi.")
-    redis = AsyncRedis.from_url(settings.REDIS_URL)
-    try:
+    await crud_bridge_agents.get_or_404(db, "Agent topilmadi.", id=agent_id)
+    async with AsyncRedis.from_url(settings.REDIS_URL) as redis:
         rows = await redis.lrange(AGENT_LOG_KEY.format(agent_id), 0, AGENT_LOG_KEEP - 1)
-    finally:
-        await redis.aclose()
     return [r.decode() if isinstance(r, bytes) else r for r in rows]
 
 
@@ -469,9 +442,6 @@ async def bridge_scan(
     # `machine.id` ni o'qish lazy refresh talab qilib, async kontekstda
     # `MissingGreenlet` bilan 500 berardi — stanok skani jimgina yo'qolardi.
     machine_id, post_id = machine.id, post.id
-    # Terminal bilan bir xil qoida: 12 soatlik smena muddati stanok skanida ham
-    # amal qiladi (`crew_sessions` muddati o'tganini o'zi yopadi). Brigadadan
-    # LANGAR smena olinadi — `active_session` ham aynan shunday tanlaydi.
     # Terminal bilan AYNAN bir xil qoida: `active_session` langar smenani beradi va
     # egasining nofaol emasligini ham tekshiradi. Ilgari bu yerda `crew[0]` to'g'ridan
     # olinardi — nofaol hodim langar bo'lsa terminal skanni rad etib, stanok skani
@@ -498,7 +468,7 @@ async def bridge_scan(
             post=post,
             session=session,
             qr_text=body.qr_text,
-            client_event_id=body.client_event_id or uuid.uuid4().hex,
+            client_event_id=body.client_event_id,
         )
     except ScanRejected as exc:
         await log_rejected_scan(

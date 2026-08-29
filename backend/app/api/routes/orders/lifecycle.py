@@ -73,6 +73,11 @@ async def _order_read_with_client(db: SessionDep, order: Order) -> OrderRead:
     return _order_read(order, client.full_name if client else "")
 
 
+def _first_n(items: list[str], n: int = 5) -> str:
+    """Birinchi n ta nom + «va yana N ta» — xato xabari yuzlab detal bilan to'lib ketmasin."""
+    return ", ".join(items[:n]) + (f" va yana {len(items) - n} ta" if len(items) > n else "")
+
+
 @router.post("/", response_model=OrderRead, status_code=201, operation_id="create_order")
 async def create_order(db: SessionDep, current_user: ManagerUser, body: OrderCreate, request: Request) -> OrderRead:
     client = await crud_clients.get(db, id=body.client_id)
@@ -404,9 +409,8 @@ async def start_order_production(
         .all()
     )
     if routeless:
-        names = ", ".join(f"{pc}_{code}" for pc, code in routeless[:5])
-        more = f" va yana {len(routeless) - 5} ta" if len(routeless) > 5 else ""
-        raise ForbiddenException(f"Marshruti berilmagan detallar bor: {names}{more}. Texnologga qaytaring.")
+        names = _first_n([f"{pc}_{code}" for pc, code in routeless])
+        raise ForbiddenException(f"Marshruti berilmagan detallar bor: {names}. Texnologga qaytaring.")
 
     # Marshrutning BIRINCHI qadami arra yoki roverda bo'lishi shart — chek o'sha
     # postda chiqadi. Boshqa postdan boshlansa detalga QR chiqmaydi va u butun
@@ -435,12 +439,10 @@ async def start_order_production(
         first_post.setdefault(f"{product_code}_{part_code}", post_code)
     bad_start = [name for name, post_code in first_post.items() if post_code not in _ROUTE_START_POSTS]
     if bad_start:
-        names = ", ".join(bad_start[:5]) + (f" va yana {len(bad_start) - 5} ta" if len(bad_start) > 5 else "")
         raise ForbiddenException(
-            f"Marshruti Arra yoki Rover'dan boshlanmagan detallar bor: {names}. Ularga chek chiqmaydi."
+            f"Marshruti Arra yoki Rover'dan boshlanmagan detallar bor: {_first_n(bad_start)}. Ularga chek chiqmaydi."
         )
 
-    # Posts with several machines and requires_assignment_choice must be assigned.
     posts = {p.id: p for p in (await db.execute(select(Post))).scalars()}
     used_post_ids = (
         (

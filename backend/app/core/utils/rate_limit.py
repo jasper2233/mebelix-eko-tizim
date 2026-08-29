@@ -10,7 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class RateLimiter:
-    """Holds the shared Redis client used by `RateLimit`. Use the module-level `rate_limiter` instance."""
+    """Ilovaning umumiy Redis mijozini ushlab turadi: `RateLimit` va `login.py` dagi
+    refresh-token `jti` qabrtoshlari. Modul darajasidagi `rate_limiter` nusxasidan foydalaning."""
 
     client: Redis | None = None
 
@@ -25,8 +26,8 @@ class RateLimiter:
         try:
             raw = await self.client.get(key)
             return raw is not None and int(raw) >= limit
-        except Exception as e:
-            logger.exception("Rate limit o'qishda xato (%s): %s", key, e)
+        except Exception:
+            logger.exception("Rate limit o'qishda xato (%s)", key)
             # Fail closed: a Redis outage must not silently switch off brute-force protection.
             return True
 
@@ -37,8 +38,8 @@ class RateLimiter:
         try:
             if await self.client.incr(key) == 1:
                 await self.client.expire(key, period)
-        except Exception as e:
-            logger.exception("Rate limit yozishda xato (%s): %s", key, e)
+        except Exception:
+            logger.exception("Rate limit yozishda xato (%s)", key)
 
 
 rate_limiter = RateLimiter()

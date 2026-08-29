@@ -1,7 +1,6 @@
 # --------- Builder Stage ---------
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS builder
 
-# Set environment variables for uv
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 
@@ -19,16 +18,13 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # --------- Final Stage ---------
 FROM python:3.13-slim-bookworm
 
-# Install curl for healthcheck
+# curl — konteyner healthcheck'i (docker-compose: `curl -f .../api/v1/health`).
 # fonts-liberation: yorliq PNG'si (render_label_png) TTF shriftsiz PIL'ning mayda
 # bitmap fontiga tushib qolardi — chek o'qib bo'lmas holda chiqardi
 RUN apt-get update && apt-get install -y --no-install-recommends curl fonts-liberation && rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user for security
 RUN groupadd --gid 1000 app \
     && useradd --uid 1000 --gid app --shell /bin/bash --create-home app
-
-WORKDIR /app
 
 # Venv (barqaror qatlam — faqat lock o'zgarsa yangilanadi), keyin kod (kichik,
 # har deployda o'zgaradigan qatlamlar OXIRIDA tursin)
@@ -43,11 +39,9 @@ COPY --chown=app:app scripts /app/scripts
 # fayl yuklash EACCES bilan yiqilardi. Shuning uchun oldindan yaratamiz.
 RUN mkdir -p /app/backend/uploads && chown app:app /app/backend/uploads
 
-# Ensure the virtual environment is in the PATH
 ENV PATH="/app/backend/.venv/bin:$PATH"
 ENV PYTHONPATH="/app/backend"
 
-# Switch to the non-root user
 USER app
 
 WORKDIR /app/backend

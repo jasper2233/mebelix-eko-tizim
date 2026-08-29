@@ -133,7 +133,7 @@ def _build_part(p: ET.Element, product: ParsedProduct, seen: set[str], warnings:
     name = (p.get("name") or "").strip() or code
 
     return ParsedPart(
-        file_part_id=int(p.get("id", 0)),
+        file_part_id=_i(p, "id"),
         product_code=product.code,
         code=code,
         name=name,
@@ -215,7 +215,7 @@ def _advisories(
         )
 
     # Korpusda detalda ko'pi bilan 2 ta XNC bor; ko'pi bo'lsa skan sonlari kutilmagan
-    # bo'lishi mumkin (stage_sides har operatsiyaga +1 beradi), shuning uchun aytamiz.
+    # bo'lishi mumkin (prisadka_passes har operatsiyaga +1 beradi), shuning uchun aytamiz.
     many_xnc = sum(1 for ops in xnc_ops_by_part.values() if len(ops) > 2)
     if many_xnc:
         out.append(
@@ -287,13 +287,13 @@ def parse_project(content: bytes) -> ParsedProject:
     if not products_goods:
         raise ParseError("Faylda birorta mahsulot (product) topilmadi.")
 
-    sheets = {int(g.get("id", 0)): g for g in goods if g.get("typeId") == "sheet"}
-    bands = {int(g.get("id", 0)): g for g in goods if g.get("typeId") == "band"}
+    sheets = {_i(g, "id"): g for g in goods if g.get("typeId") == "sheet"}
+    bands = {_i(g, "id"): g for g in goods if g.get("typeId") == "band"}
     # typeId="simple" — furnitura (petlya, yevrovint, dasta, napravlyayushiye...).
     # Faqat furnitura qo'yilgan eksportlarda uchraydi va listga joylashtirilmaydi:
     # bu yerda u faqat material registriga va sarf hisobiga tushadi.
     hardware = [g for g in goods if g.get("typeId") == "simple"]
-    cutting_tools = {int(g.get("id", 0)): g for g in goods if g.get("typeId") == "tool.cutting"}
+    cutting_tools = {_i(g, "id"): g for g in goods if g.get("typeId") == "tool.cutting"}
 
     project = ParsedProject(
         uuid=root.get("project.uuid"),
@@ -309,8 +309,6 @@ def parse_project(content: bytes) -> ParsedProject:
                 name=g.get("name", f"Sheet {gid}"),
                 code=g.get("code"),
                 thickness=_f(g, "t"),
-                length=_f(g, "l"),
-                width=_f(g, "w"),
                 count=_f(g, "count"),
             )
         )
@@ -321,7 +319,6 @@ def parse_project(content: bytes) -> ParsedProject:
                 name=g.get("name", f"Band {gid}"),
                 code=g.get("code"),
                 thickness=_f(g, "t"),
-                width=_f(g, "w"),
                 count=_f(g, "count"),
             )
         )
@@ -379,7 +376,7 @@ def parse_project(content: bytes) -> ParsedProject:
                     program = ET.tostring(prog_el, encoding="unicode")
             if not program:
                 continue
-            pid = int(stub_el.get("id", 0))
+            pid = _i(stub_el, "id")
             code = op_el.get("code") or ""
             op = parse_xnc_program(code, program, op_el.get("side"))
             # mirHor/mirVert geometriyaga darhol qo'llanadi (TZ 5.6.4) — SCX,
@@ -409,8 +406,6 @@ def parse_project(content: bytes) -> ParsedProject:
             project.warnings.append(
                 "Kesish xaritasi yo'q material: " + ", ".join(unmapped) + " — GibLab'da optimallashtirilmagan."
             )
-    else:
-        project.generation = "template"
 
     return project
 
@@ -426,7 +421,7 @@ def _parse_cs_operation(
     """One CS = one sheet material (TZ 5.2.5). Returns the advanced file-global label counter."""
     tool = cutting_tools.get(_i(op_el, "tool1"))
     material_el = _base_material(op_el)
-    mat_gid = int(material_el.get("id", 0)) if material_el is not None else 0
+    mat_gid = _i(material_el, "id") if material_el is not None else 0
     sheet = sheets.get(mat_gid)
     stats = {
         key: _f(op_el, key) or 0.0
@@ -461,7 +456,7 @@ def _parse_cs_operation(
     )
     # Stub order = GibSaw label number (1-based, file-global) — TZ 5.2.3/5.8.
     for stub in op_el.findall("part"):
-        pid = int(stub.get("id", 0))
+        pid = _i(stub, "id")
         label_counter += 1
         ref_part = part_by_file_id.get(pid)
         if ref_part is not None:
@@ -472,7 +467,7 @@ def _parse_cs_operation(
     if sheet is not None:
         for sp in sheet.findall("part"):
             if xml_bool(sp.get("waste")):
-                cut.waste_parts[int(sp.get("id", 0))] = {
+                cut.waste_parts[_i(sp, "id")] = {
                     "l": _f(sp, "l") or _f(sp, "dl") or 0.0,
                     "w": _f(sp, "w") or _f(sp, "dw") or 0.0,
                     # GibLab optimizatorning O'ZI qo'yadigan "деловой остаток"
@@ -499,14 +494,14 @@ def _apply_el_symbols(
     # Detalning `el{side}Mat` i yozilmasligi mumkin (korpusda 779 qirradan 112 tasi) — o'shanda
     # yorliqdagi lenta katakchasi bo'sh chiqib, kromkachi qaysi lentani olishini bilmasdi.
     mat_el = _base_material(op_el)
-    band = bands.get(int(mat_el.get("id", 0))) if mat_el is not None else None
+    band = bands.get(_i(mat_el, "id")) if mat_el is not None else None
     band_name = band.get("name") if band is not None else None
     if not symbol and not band_name:
         return
     op_id = _i(op_el, "id")
     for g in products_goods:
         for p in g.findall("part"):
-            ref_part = part_by_file_id.get(int(p.get("id", 0)))
+            ref_part = part_by_file_id.get(_i(p, "id"))
             if ref_part is None:
                 continue
             for side in _EDGE_SIDES:

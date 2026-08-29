@@ -19,14 +19,9 @@ _oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/login/access-token", aut
 
 
 def client_ip(request: Request) -> str | None:
-    """log_action uchun mijoz IP — BITTA joyda. Kelajakda proxy ortida
-    X-Forwarded-For o'qish kerak bo'lsa faqat shu funksiya o'zgaradi."""
+    """log_action uchun mijoz IP. X-Forwarded-For allaqachon `ProxyHeadersMiddleware`
+    orqali qo'llanadi (`core/setup.py`) — bu funksiya faqat `request.client` ni o'qiydi."""
     return request.client.host if request.client else None
-
-
-def _extract_token(request: Request, bearer_token: str | None) -> str | None:
-    """Prefer the explicit Authorization header over the cookie fallback."""
-    return bearer_token or request.cookies.get(ACCESS_COOKIE_NAME)
 
 
 async def resolve_user(db: AsyncSession, token: str) -> User | None:
@@ -45,7 +40,8 @@ async def get_current_user(
     db: SessionDep,
     bearer_token: Annotated[str | None, Depends(_oauth2_scheme)] = None,
 ) -> User:
-    token = _extract_token(request, bearer_token)
+    # Avval Authorization header, keyin httpOnly access cookie.
+    token = bearer_token or request.cookies.get(ACCESS_COOKIE_NAME)
     if not token:
         raise UnauthorizedException("Tizimga kirilmagan.")
 

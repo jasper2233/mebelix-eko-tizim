@@ -156,5 +156,5 @@ _validate_production_settings(settings)
 
 
 def upload_root() -> Path:
-    """UPLOAD_DIR absolyut root'i — path traversal tekshiruvlari shu qiymatga nisbatan."""
+    """UPLOAD_DIR absolyut root'i — barcha yuklamalar (project/scx/label) shu papka ostida."""
     return Path(settings.UPLOAD_DIR).resolve()

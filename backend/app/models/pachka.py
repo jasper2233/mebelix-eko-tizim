@@ -33,7 +33,8 @@ class Pachka(BaseModel):
         db_enum(PachkaStatus), default=PachkaStatus.OPEN, index=True, kw_only=True
     )
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
-    #: TMO dan chiqarilgan payt: bitta QR skani ichidagi HAMMA detalni chiqaradi.
+    #: O'LIK ustun: TMO dan jo'natish endpointi olib tashlangan, hech kim yozmaydi va
+    #: o'qimaydi (`PachkaStatus.SHIPPED` ham shunday). Migratsiya bilan tushiriladi.
     shipped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
 

@@ -192,16 +192,6 @@ async def _badge_post(db: SessionDep, employee: Employee, post_id: int | None) -
     return posts[0]
 
 
-async def _post_machine(db: SessionDep, post: Post) -> Machine:
-    """Postning ish markazi. Qoida `scanning.post_machine` da — beyjik kirishi va
-    terminal konteksti BIR XIL javob berishi kerak, aks holda operator bir joyda
-    kirib boshqa joyda skan qilardi. Ilgari qoida ikki nusxada yozilgan edi."""
-    machine = await post_machine(db, post)
-    if machine is None:
-        raise UnauthorizedException(f"{post.name} {MACHINE_MISSING}")
-    return machine
-
-
 async def _terminal_user(db: SessionDep, machine: Machine, post: Post) -> User:
     """Kirish qaysi hisob nomidan yoziladi.
 
@@ -289,7 +279,12 @@ async def login_with_badge(
     # Postga biriktirilganini `_badge_post` tekshiradi (terminaldagi `badge_employee`
     # bilan bir xil qoida, faqat u yerda post ma'lum, bu yerda esa aniqlanadi).
     post = await _badge_post(db, employee, body.post_id)
-    machine = await _post_machine(db, post)
+    # Ish markazi qoidasi `scanning.post_machine` da: beyjik kirishi va terminal
+    # konteksti BIR XIL javob berishi kerak, aks holda operator bir joyda kirib
+    # boshqa joyda skan qilardi.
+    machine = await post_machine(db, post)
+    if machine is None:
+        raise UnauthorizedException(f"{post.name} {MACHINE_MISSING}")
     user = await _terminal_user(db, machine, post)
 
     session = await open_badge_session(db, user=user, machine=machine, post=post, employee=employee)

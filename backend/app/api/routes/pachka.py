@@ -39,14 +39,12 @@ PackUser = Annotated[User, Depends(require_roles(UserRole.TERMINAL, *POST_ROLES)
 
 
 def _weight(part: Part) -> float:
-    """Detalning taxminiy og'irligi: hajm × zichlik. O'lchami yo'q bo'lsa 0."""
     if not (part.length and part.width and part.thickness):
         return 0.0
     return round(part.length * part.width * part.thickness / 1e9 * DENSITY, 2)
 
 
 async def _pack_ctx(db: SessionDep, user: PackUser) -> tuple[Machine, Post]:
-    """Qadoqlash posti konteksti — faqat UPAKOVKA terminalidan."""
     try:
         machine, post = await resolve_terminal(db, user)
     except ScanRejected as exc:
@@ -59,7 +57,9 @@ async def _pack_ctx(db: SessionDep, user: PackUser) -> tuple[Machine, Post]:
 PackCtx = Annotated[tuple[Machine, Post], Depends(_pack_ctx)]
 
 
-async def instance_stages(db: SessionDep, order: Order, post: Post) -> dict[int, tuple[bool, str]]:
+async def instance_stages(
+    db: SessionDep, order: Order, post: Post, by_part: dict[int, list[PartRoute]] | None = None
+) -> dict[int, tuple[bool, str]]:
     """Har NUSXA uchun: `(shu postga tayyormi, OXIRGI bajarilgan bosqich nomi)`.
 
     Bosqich nomi — ishi TUGAGAN post, kutilayotgani emas: detal jismonan o'sha
@@ -70,9 +70,14 @@ async def instance_stages(db: SessionDep, order: Order, post: Post) -> dict[int,
     qadoqlansa, detal jami hali tugamagan bo'ladi — lekin o'sha bitta nusxa
     TMO ga tayyor. Detal darajasida sanaganda u tsexda qolib ketardi va
     omborchi qadoqlangan buyumni ro'yxatdan topa olmasdi.
+
+    `by_part` — chaqiruvchi marshrutni ALLAQACHON o'qigan bo'lsa (TMO sahifasi
+    uni `packaging` va TMO qadami uchun o'qiydi) o'sha lug'at uzatiladi, aks
+    holda aynan o'sha so'rov har sahifa so'rovida ikki marta ketardi.
     """
-    routes = list(
-        (
+    if by_part is None:
+        by_part = {}
+        for r in (
             await db.execute(
                 select(PartRoute).where(
                     PartRoute.order_id == order.id,
@@ -80,13 +85,8 @@ async def instance_stages(db: SessionDep, order: Order, post: Post) -> dict[int,
                     PartRoute.is_deleted == False,  # noqa: E712
                 )
             )
-        )
-        .scalars()
-        .all()
-    )
-    by_part: dict[int, list[PartRoute]] = {}
-    for r in routes:
-        by_part.setdefault(r.part_id, []).append(r)
+        ).scalars():
+            by_part.setdefault(r.part_id, []).append(r)
 
     # Bitta agregat so'rov: (nusxa, qadam) -> nechta skan
     counts = {
@@ -176,7 +176,7 @@ async def _state(db: SessionDep, order: Order, post: Post) -> UpakovkaOrderState
     # etiladi, lekin ro'yxatda ko'rinib turgani qadoqlovchiga nima kutayotganini aytadi.
     pending_rows = (
         await db.execute(
-            select(PartInstance, Part, Product.code, PartRoute.seq)
+            select(PartInstance, Part, Product.code)
             .join(Part, Part.id == PartInstance.part_id)
             .join(Product, Product.id == Part.product_id)
             .join(PartRoute, (PartRoute.part_id == Part.id) & (PartRoute.post_id == post.id))
@@ -192,7 +192,7 @@ async def _state(db: SessionDep, order: Order, post: Post) -> UpakovkaOrderState
 
     stages = await instance_stages(db, order, post)
     pending: list[UpakovkaPending] = []
-    for instance, part, product_code, _seq in pending_rows:
+    for instance, part, product_code in pending_rows:
         if instance.id in packed:
             continue
         pending.append(
@@ -258,9 +258,7 @@ async def _open_pachka(db: SessionDep, pachka_id: int) -> Pachka:
 
 
 @router.post("/{pachka_id}/scan", response_model=UpakovkaOrderState, operation_id="scan_into_pachka")
-async def scan_into_pachka(
-    db: SessionDep, user: PackUser, ctx: PackCtx, pachka_id: int, body: PachkaScan
-) -> UpakovkaOrderState:
+async def scan_into_pachka(db: SessionDep, ctx: PackCtx, pachka_id: int, body: PachkaScan) -> UpakovkaOrderState:
     """Detalni qadoqqa skanerlash — bu AYNI PAYTDA marshrutning UPAKOVKA qadami.
 
     Skanni odatdagi dvijok yozadi, ya'ni qat'iy tartib shu yerda ham ishlaydi:

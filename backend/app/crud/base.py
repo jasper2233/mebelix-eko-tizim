@@ -14,10 +14,6 @@ ModelType = TypeVar("ModelType", bound=BaseModel)
 class BaseCRUD(Generic[ModelType]):
     """Umumiy CRUD. Hamma metodda `**kwargs` = WHERE tenglik zanjiri (field == value)."""
 
-    exclude_deleted: bool = True
-    """When True, automatically filters out soft-deleted records (is_deleted=False).
-    Override at the class level or pass is_deleted explicitly to bypass."""
-
     def __init__(self, model: type[ModelType]):
         self.model = model
 
@@ -27,8 +23,8 @@ class BaseCRUD(Generic[ModelType]):
     ) -> Select[tuple[ModelType]]:
         """`is_deleted` ochiq berilmasa soft-delete filtri o'zi qo'shiladi."""
         query = select(self.model)
-        if self.exclude_deleted and hasattr(self.model, "is_deleted") and "is_deleted" not in kwargs:
-            query = query.where(getattr(self.model, "is_deleted") == False)  # noqa: E712
+        if "is_deleted" not in kwargs:
+            query = query.where(self.model.is_deleted == False)  # noqa: E712
         for field, value in kwargs.items():
             query = query.where(getattr(self.model, field) == value)
         return query
@@ -38,7 +34,6 @@ class BaseCRUD(Generic[ModelType]):
         db: AsyncSession,
         **kwargs: Any,
     ) -> ModelType | None:
-        """Bitta yozuv istalgan maydon bo'yicha; topilmasa None."""
         query = self._build_query(**kwargs)
         result = await db.execute(query)
         return result.scalar_one_or_none()
@@ -106,5 +101,4 @@ class BaseCRUD(Generic[ModelType]):
         record.deleted_at = datetime.now(UTC)
         db.add(record)
         await db.commit()
-        await db.refresh(record)
         return True

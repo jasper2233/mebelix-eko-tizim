@@ -18,8 +18,11 @@ PHONE_PATTERN = r"^\+998\d{9}$"
 def validate_password_strength(v: str) -> str:
     """Zaif parolni rad etadi: 8+ belgi, kichik va katta harf, raqam, belgi.
 
-    Xabarlar O'ZBEKCHA — ular to'g'ridan-to'g'ri adminning ekraniga toast bo'lib
-    chiqadi (frontend `detailMessage`), ya'ni bu ichki log matni emas, interfeys matni.
+    Xabarlar O'ZBEKCHA, lekin ekranga CHIQMAYDI: pydantic ularni 422 massiv
+    `detail` ichiga soladi, frontend `detailParts` (utils.ts) esa har qanday
+    massivni "Kiritilgan ma'lumot noto'g'ri — tekshirib qayta yuboring" ga
+    almashtiradi. Admin ko'radigan matn `lib/validation.ts:passwordSchema` da
+    qo'lda oynalangan — bu yerdagi qoidani o'zgartirsang, u yerni ham yangila.
     """
     if len(v) < 8:
         raise ValueError("Parol kamida 8 belgi bo'lsin")
@@ -37,8 +40,9 @@ def validate_password_strength(v: str) -> str:
 def validate_phone(v: str | None) -> str | None:
     """Telefon: +998 va 9 raqam.
 
-    Pydantic `pattern` xatosi ekranga "String should match pattern ..." bo'lib
-    chiqardi — regexp adminning ekraniga tushmasligi kerak.
+    `pattern` o'rniga funksiya: pydantic xatosi "String should match pattern ..."
+    bo'lib chiqadi — OpenAPI/logda regexp emas, o'zbekcha matn tursin
+    (ekranga chiqmasligi haqida `validate_password_strength` ga qarang).
     """
     if v is not None and not re.fullmatch(PHONE_PATTERN, v):
         raise ValueError("Telefon +998 bilan boshlanib, 9 ta raqamdan iborat bo'lsin")
@@ -49,8 +53,6 @@ def validate_phone(v: str | None) -> str | None:
 #: `employee.full_name` allaqachon 100 belgi, ikkalasi bir xil bo'lsin.
 _NAME_FIELD = Field(min_length=2, max_length=100, examples=["Abdurahmonov Sherzod"], default=None)
 _USERNAME_FIELD = Field(min_length=2, max_length=20, pattern=r"^[a-z0-9]+$", examples=["userson"], default=None)
-_PHONE_FIELD = Field(examples=["+998901234567"])
-_OPTIONAL_PHONE_FIELD = Field(examples=["+998901234567"], default=None)
 
 
 class UserRead(BaseModel):
@@ -84,7 +86,7 @@ class UserCreate(BaseModel):
 
     name: Annotated[str | None, _NAME_FIELD]
     username: Annotated[str | None, _USERNAME_FIELD]
-    phone: Annotated[str, _PHONE_FIELD]
+    phone: str = Field(examples=["+998901234567"])
     password: Annotated[str, Field(examples=["Str1ngst!"])]
     is_superuser: bool = False
     is_active: bool = True
@@ -113,7 +115,7 @@ class UserUpdate(BaseModel):
 
     name: Annotated[str | None, _NAME_FIELD]
     username: Annotated[str | None, _USERNAME_FIELD]
-    phone: Annotated[str | None, _OPTIONAL_PHONE_FIELD]
+    phone: str | None = Field(default=None, examples=["+998901234567"])
 
     @field_validator("phone")
     @classmethod

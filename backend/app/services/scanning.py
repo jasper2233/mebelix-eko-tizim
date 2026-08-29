@@ -8,16 +8,15 @@ mode — only after THE SAME copy finished post N−1. Other copies never interf
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from app.schemas.terminal import ScanResult
+from typing import Any
 
 from sqlalchemy import case, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import TASHKENT_TZ, settings
+from app.core.ws import ws_manager
+from app.crud import log_action
 from app.models import Employee, Machine, Order, OrderFile, Part, PartInstance, PartRoute, Post, Scan, WorkSession
 from app.models.enums import (
     POST_ROLES,
@@ -30,11 +29,17 @@ from app.models.enums import (
     UserRole,
 )
 from app.models.user import User
+from app.schemas.terminal import ScanResult
 
 #: Manbalar-aro dedup oynasi (pastdagi `record_scan_at` izohiga qarang)
 CROSS_SOURCE_WINDOW = timedelta(seconds=3)
 
 _QR_RE = re.compile(r"^.+_.+$")  # {productCode}_{partCode}[_{n}] — yagona nusxada suffiks yo'q (TZ 5.8)
+
+
+def _utc(dt: datetime) -> datetime:
+    """Naive `created_at` (SQLite/dev) ni UTC deb belgilaydi — solishtirish yiqilmasin."""
+    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
 
 
 def qr_part_code(qr: str, count: int) -> str:
@@ -271,13 +276,10 @@ async def crew_sessions(db: AsyncSession, machine_id: int) -> list[WorkSession]:
     return live
 
 
-async def expire_if_stale(db: AsyncSession, session: WorkSession | None) -> WorkSession | None:
+async def expire_if_stale(db: AsyncSession, session: WorkSession) -> WorkSession | None:
     """12 soatlik smena muddati (TZ 8.5 E005): o'tgan bo'lsa yopib None qaytaradi.
     Terminal ham, stanok skan-forvardi ham SHU tekshiruvdan o'tadi."""
-    if session is None:
-        return None
-    started = session.created_at if session.created_at.tzinfo else session.created_at.replace(tzinfo=UTC)
-    if datetime.now(UTC) - started > timedelta(hours=settings.SESSION_MAX_HOURS):
+    if datetime.now(UTC) - _utc(session.created_at) > timedelta(hours=settings.SESSION_MAX_HOURS):
         await end_session(db, session)
         return None
     return session
@@ -309,6 +311,9 @@ async def active_session(db: AsyncSession, machine: Machine) -> WorkSession:
 async def _scans_done_map(db: AsyncSession, instance_id: int) -> dict[int, int]:
     """Shu nusxaning HAR qadamdagi skan soni — bitta so'rovda.
 
+    Kalit `route_id` — post emas: bitta post marshrutda ikki marta bo'lsa
+    (kromka -> prisadka -> kromka) qadamlar hisobi aralashib ketardi.
+
     `record_scan_at` ilgari har qadam uchun alohida COUNT yuborardi, qat'iy
     tartib tekshiruvi esa oldingi qadamlarni ham birma-bir so'rardi — ya'ni
     bitta skanga o'nlab round-trip. Qadoq QR'i skanerlanganda (TMO qabuli)
@@ -324,22 +329,6 @@ async def _scans_done_map(db: AsyncSession, instance_id: int) -> dict[int, int]:
         .group_by(Scan.route_id)
     )
     return dict(rows.all())  # type: ignore[arg-type]
-
-
-async def _scans_done(db: AsyncSession, instance_id: int, route_id: int) -> int:
-    """Shu NUSXA shu QADAMDA necha marta skanlangan. Kalit `route_id` — post emas:
-    bitta post marshrutda ikki marta bo'lsa (kromka -> prisadka -> kromka) qadamlar
-    hisobi aralashib ketardi."""
-    return (
-        await db.execute(
-            select(func.count(Scan.id)).where(
-                Scan.instance_id == instance_id,
-                Scan.route_id == route_id,
-                Scan.is_cancelled == False,  # noqa: E712
-                Scan.is_deleted == False,  # noqa: E712
-            )
-        )
-    ).scalar_one()
 
 
 async def _close_assembly_children(
@@ -399,6 +388,8 @@ async def _close_assembly_children(
             continue  # birikish boshqa postda (yoki marshrut chizilmagan)
         merge = steps[-1]
 
+        # Har nusxa uchun BITTA hisob so'rovi: birikish qadami ham, undan oldingi
+        # qadamlar tekshiruvi ham shu xaritadan o'qiydi.
         open_instances = []
         for inst in (
             (
@@ -414,17 +405,18 @@ async def _close_assembly_children(
             .scalars()
             .all()
         ):
-            if await _scans_done(db, inst.id, merge.id) < merge.per_instance:
-                open_instances.append(inst)
+            done = await _scans_done_map(db, inst.id)
+            if done.get(merge.id, 0) < merge.per_instance:
+                open_instances.append((inst, done))
         if not open_instances:
             continue
 
         per_parent = max(1, child.count // part.count) if part.count else len(open_instances)
         take = open_instances if last_parent_scan else open_instances[:per_parent]
 
-        for inst in take:
+        for inst, done in take:
             for prev in steps[:-1]:
-                if await _scans_done(db, inst.id, prev.id) < prev.per_instance:
+                if done.get(prev.id, 0) < prev.per_instance:
                     prev_post = await db.get(Post, prev.post_id)
                     nom = prev_post.name if prev_post is not None else f"{prev.seq}-qadam"
                     raise ScanRejected(
@@ -761,14 +753,13 @@ async def publish_scan_events(outcomes: list[ScanOutcome]) -> None:
     `order.stage_completed` va `order.completed` eventlari jimgina yo'qolardi
     (ilgari shunday edi: `ScanOutcome` umuman tashlab yuborilardi).
     """
-    from app.core.ws import ws_manager
-
     for outcome in outcomes:
         for event in outcome.events:
-            # `scan_id` faqat COMMITDAN keyin ma'lum. U brauzerga o'z skanini
-            # begonasidan ajratish uchun kerak: stanok skaneridan kelgan skan ham
-            # shu event bilan keladi va terminal uni bannerda ko'rsatadi, lekin
-            # o'zi qilgan skanni ikki marta ko'rsatmasligi kerak.
+            # `scan_id` payload'ga aynan shu yerda — publish oldidan — qo'yiladi.
+            # U brauzerga o'z skanini begonasidan ajratish uchun kerak: stanok
+            # skaneridan kelgan skan ham shu event bilan keladi va terminal uni
+            # bannerda ko'rsatadi, lekin o'zi qilgan skanni ikki marta
+            # ko'rsatmasligi kerak.
             if event["type"] == "scan.recorded":
                 event["payload"]["scan_id"] = outcome.scan.id
                 # `auto` — skan QO'L skanidan emas, chek chiqarishdan tug'ilgan
@@ -791,13 +782,10 @@ async def finalize_scan(
     source: str = "",
     agent_id: int | None = None,
     auto: bool = False,
-) -> "ScanResult":
+) -> ScanResult:
     """Muvaffaqiyatli skanning YAKUNI — log + commit + WS publish + ScanResult.
     Terminal (scans.py) va stanok skan-forvardi (bridge_agents.py) aynan shu
     yo'ldan o'tadi: ikki nusxa drift bergani uchun bitta joyga yig'ildi."""
-    from app.crud import log_action
-    from app.schemas.terminal import ScanResult
-
     outcome.auto = auto
     if not outcome.duplicate:
         meta: dict[str, Any] = {"post_id": outcome.scan.post_id, "machine_id": outcome.scan.machine_id}
@@ -845,8 +833,6 @@ async def log_rejected_scan(
     """Rad etilgan skan YAKUNI — rollback + audit-log + commit.
     Terminal (scans.py) va stanok skan-forvardi (bridge_agents.py) bir xil blokni
     takrorlardi; HTTPException(422) esa har bir chaqiruv joyining o'zida qoladi."""
-    from app.crud import log_action
-
     await db.rollback()
     log_action(
         db,
@@ -869,8 +855,7 @@ async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Sc
         raise ScanRejected("E001", "Scan topilmadi yoki bu sessiyaga tegishli emas.")
     if scan.is_cancelled:
         raise ScanRejected("E001", "Bu scan allaqachon bekor qilingan.")
-    created = scan.created_at if scan.created_at.tzinfo else scan.created_at.replace(tzinfo=UTC)
-    if datetime.now(UTC) - created > timedelta(seconds=settings.SCAN_UNDO_SECONDS):
+    if datetime.now(UTC) - _utc(scan.created_at) > timedelta(seconds=settings.SCAN_UNDO_SECONDS):
         raise ScanRejected("E001", f"{settings.SCAN_UNDO_SECONDS} sekunddan ko'p o'tdi — faqat admin bekor qila oladi.")
 
     scan.is_cancelled = True
@@ -924,7 +909,6 @@ async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Sc
             "machine_id": scan.machine_id,
         }
     ]
-    # A completed order regresses if its last scan is undone.
     if order is not None and order.status == OrderStatus.COMPLETED:
         order.status = OrderStatus.PRODUCTION
         order.completed_at = None

@@ -1,6 +1,4 @@
-import asyncio
-import logging
-from collections.abc import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -14,75 +12,17 @@ from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from prometheus_fastapi_instrumentator import Instrumentator
 from redis.asyncio import Redis as AsyncRedis
-from sqlalchemy import text
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.api.deps import get_current_superuser
+from app.core.health import check_database_connection, check_redis_connection
 from app.core.logger import setup_logging
 from app.core.middleware import RequestLoggingMiddleware
 from app.core.utils.rate_limit import rate_limiter
 from app.core.ws import ws_manager
 
 from .config import EnvironmentOption, Settings, settings
-from .db import async_engine as engine
 from .utils import queue
-
-
-# -------------- connection probes --------------
-async def _retry_async(label: str, fn: Callable[[], Any]) -> None:
-    """Run `fn` up to STARTUP_RETRY_MAX_ATTEMPTS times, sleeping STARTUP_RETRY_DELAY_SECONDS between tries.
-
-    Cancellation (`KeyboardInterrupt`, `asyncio.CancelledError`) propagates immediately.
-    """
-    max_attempts = settings.STARTUP_RETRY_MAX_ATTEMPTS
-    delay = settings.STARTUP_RETRY_DELAY_SECONDS
-    for attempt in range(1, max_attempts + 1):
-        try:
-            await fn()
-            return
-        except (asyncio.CancelledError, KeyboardInterrupt):
-            logging.info("%s check cancelled by user.", label)
-            raise
-        except Exception as e:
-            if attempt == max_attempts:
-                logging.error("%s failed after %s attempts: %s", label, max_attempts, e)
-                raise
-            logging.warning("%s attempt %s failed: %s. Retrying in %ss...", label, attempt, e, delay)
-            await anyio.sleep(delay)
-
-
-async def check_database_connection() -> None:
-    async def _probe() -> None:
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-        logging.info(
-            "Database connection successful to %s:%s/%s",
-            settings.POSTGRES_SERVER,
-            settings.POSTGRES_PORT,
-            settings.POSTGRES_DB,
-        )
-
-    await _retry_async("Database connection", _probe)
-
-
-async def check_redis_connection() -> None:
-    checks: list[tuple[str, Any]] = []
-    if queue.pool is not None:
-        checks.append(("Queue", queue.pool))
-    if rate_limiter.client is not None:
-        checks.append(("RateLimit", rate_limiter.client))
-
-    async def _probe() -> None:
-        for _, connection in checks:
-            await connection.ping()
-        logging.info(
-            "Redis connection successful to %s:%s (verified: %s)",
-            settings.REDIS_HOST,
-            settings.REDIS_PORT,
-            ", ".join(name for name, _ in checks),
-        )
-
-    await _retry_async("Redis connection", _probe)
 
 
 # -------------- thread pool --------------
@@ -110,7 +50,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     finally:
         await ws_manager.stop_listener()
         if ws_redis is not None:
-            await ws_redis.close()
+            await ws_redis.aclose()
         if queue.pool is not None:
             await queue.pool.aclose()  # type: ignore
         if rate_limiter.client is not None:
@@ -140,14 +80,11 @@ def _install_docs_router(application: FastAPI, settings: Settings) -> None:
     application.include_router(docs_router)
 
 
-def create_application(
-    router: APIRouter,
-    settings: Settings,
-    **kwargs: Any,
-) -> FastAPI:
+def create_application(router: APIRouter, settings: Settings) -> FastAPI:
     """Build the FastAPI app: metadata, lifespan, middleware (CORS + request logging), and env-conditional docs."""
     setup_logging()
-    kwargs.update(
+    application = FastAPI(
+        lifespan=lifespan,
         title=settings.APP_NAME,
         description="MebeliX API",
         # FastAPI's built-in docs are always disabled — we wire our own conditional ones via `_install_docs_router`.
@@ -155,8 +92,6 @@ def create_application(
         redoc_url=None,
         openapi_url=None,
     )
-
-    application = FastAPI(lifespan=lifespan, **kwargs)
     application.include_router(router)
     application.add_middleware(RequestLoggingMiddleware)
     application.add_middleware(
@@ -168,7 +103,9 @@ def create_application(
     )
     # Trust X-Forwarded-* from the reverse proxy (Caddy in prod). Without this, `request.client.host` is the
     # proxy IP for every request, which would collapse all users into a single rate-limit bucket.
-    # `FORWARDED_ALLOW_IPS=["*"]` is permissive — appropriate when only Caddy/nginx fronts the app.
+    # `*` QO'YILMAYDI: unda uvicorn hammaga ishonib XFF'ning eng CHAP (mijoz bergan) qiymatini olardi va
+    # header almashtirish rate-limit kalitini nolga qaytarardi. Konkret CIDR (compose tarmog'i) berilganda
+    # u o'ngdan chapga yurib birinchi ISHONILMAGAN hop'ni — Caddy haqiqatan ko'rgan mijoz IP'sini — oladi.
     application.add_middleware(
         ProxyHeadersMiddleware,  # type: ignore[arg-type]
         trusted_hosts=settings.FORWARDED_ALLOW_IPS,
@@ -183,8 +120,8 @@ NON_BUSINESS_PATHS: list[str] = ["/metrics", "/api/v1/health", "/api/v1/ready"]
 
 
 def _install_metrics(application: FastAPI) -> None:
-    """Expose Prometheus metrics at `/metrics`. In production, restrict access at the proxy layer
-    (Caddy → only allow scrapes from the metrics network) — this endpoint is unauthenticated."""
+    """Expose Prometheus metrics at `/metrics` — unauthenticated, so it never leaves the compose network:
+    Caddy answers `/metrics` with a plain 403 and the scraper goes straight to `api:8000/metrics` instead."""
     Instrumentator(
         excluded_handlers=NON_BUSINESS_PATHS,
     ).instrument(application).expose(application, include_in_schema=False, should_gzip=True)

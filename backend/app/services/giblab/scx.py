@@ -29,14 +29,14 @@ from xml.dom import minidom
 
 from .models import ParsedPart, XncOp
 
-# Korpus ovozlari (derive_conv): l:3988, r:3730, t:1435, b:1323 — qarshi ovoz <0.5%
+# Korpus ovozlari (D:\\MebeliX\\Scx): l:3988, r:3730, t:1435, b:1323 — qarshi ovoz <0.5%
 _EDGE_FACE = {"l": "4", "r": "3", "t": "1", "b": "2"}  # bore ham, band ham bir xil Face
 
 
 def generate_scx(
     part: ParsedPart,
     ops: list[XncOp],
-    panel_id: str | None = None,
+    panel_id: str,
     plate_thickness: float | None = None,
 ) -> str:
     """Bitta detalning BARCHA XNC dasturlarini bitta SCX hujjatga yig'adi.
@@ -65,7 +65,7 @@ def generate_scx(
         panels,
         "Panel",
         {
-            "ID": panel_id or front.code or part.key,
+            "ID": panel_id,
             "Length": _n(length),
             "Width": _n(width),
             "Thickness": _n(thick),
@@ -174,7 +174,7 @@ def generate_scx(
             dp = float(head.get("dp") or thick)
             if layer_cut:
                 dp = min(dp, thick)  # qo'shqavatda freza ham bitta qatlam
-            pts = [(s["x"], s["y"]) for s in contour if "x" in s]
+            pts = [(s["x"], s["y"]) for s in contour]
             on_border = (
                 all(abs(x) < 0.05 for x, _ in pts)
                 or all(abs(x - length) < 0.05 for x, _ in pts)
@@ -241,7 +241,7 @@ def build_scx_files(
     out: list[tuple[str, str, dict]] = []
     codes = [op.code for op in part.xnc_ops]
     for qr in qr_texts:
-        content = generate_scx(part, part.xnc_ops, panel_id=qr, plate_thickness=plate_thickness)
+        content = generate_scx(part, part.xnc_ops, qr, plate_thickness=plate_thickness)
         out.append((f"{qr}.scx", content, {"codes": codes, "qr": qr}))
     return out
 

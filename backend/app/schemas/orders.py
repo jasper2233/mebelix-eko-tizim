@@ -115,7 +115,7 @@ class OrderCancel(BaseModel):
 
 
 # Anketa tashqi kirish — chegaralar shu yerda, aks holda bitta so'rov bazani to'ldirib yuboradi
-_Mm = Annotated[float | None, Field(default=None, ge=0, le=50_000)]
+_Mm = Annotated[float | None, Field(ge=0, le=50_000)]
 
 
 class SurveyWall(BaseModel):
@@ -134,7 +134,7 @@ class SurveyModule(BaseModel):
     width: _Mm = None  # eni
     depth: _Mm = None  # chuqurlik
     height: _Mm = None  # balandlik
-    count: Annotated[int | None, Field(default=None, ge=1, le=999)] = None
+    count: Annotated[int | None, Field(ge=1, le=999)] = None
     note: Annotated[str, Field(max_length=200)] = ""
 
 
@@ -151,7 +151,7 @@ class SurveyRoom(BaseModel):
     furniture_other: Annotated[str, Field(max_length=120)] = ""
 
     # 3. Shakl va xona o'lchamlari (mm)
-    shape: Annotated[str | None, Field(default=None, max_length=20)] = None
+    shape: Annotated[str | None, Field(max_length=20)] = None
     room_length: _Mm = None
     room_width: _Mm = None
     room_height: _Mm = None
@@ -160,17 +160,17 @@ class SurveyRoom(BaseModel):
     # 4. Korpus
     corpus_materials: Annotated[list[str], Field(max_length=10)] = []
     corpus_color: Annotated[str, Field(max_length=120)] = ""
-    corpus_thickness: Annotated[str | None, Field(default=None, max_length=20)] = None
+    corpus_thickness: Annotated[str | None, Field(max_length=20)] = None
     corpus_note: Annotated[str, Field(max_length=300)] = ""
 
     # 5. Fasad
     facade_materials: Annotated[list[str], Field(max_length=10)] = []
     facade_color: Annotated[str, Field(max_length=120)] = ""
-    countertop: Annotated[str | None, Field(default=None, max_length=20)] = None
+    countertop: Annotated[str | None, Field(max_length=20)] = None
     facade_note: Annotated[str, Field(max_length=300)] = ""
 
     # 6. Furnitura va qo'shimcha xizmatlar
-    hardware_level: Annotated[str | None, Field(default=None, max_length=20)] = None
+    hardware_level: Annotated[str | None, Field(max_length=20)] = None
     extra_services: Annotated[list[str], Field(max_length=10)] = []
 
     # 7. Izoh
@@ -179,7 +179,7 @@ class SurveyRoom(BaseModel):
     # O'lchov varag'i (zamerdan keyin to'ldiriladi)
     walls: Annotated[list[SurveyWall], Field(max_length=8)] = []
     modules: Annotated[list[SurveyModule], Field(max_length=40)] = []
-    total_running_meters: Annotated[float | None, Field(default=None, ge=0, le=1000)] = None  # pm
+    total_running_meters: Annotated[float | None, Field(ge=0, le=1000)] = None  # pm
     total_height: _Mm = None
 
 
@@ -217,7 +217,7 @@ class RouteCell(BaseModel):
     id: int
     post_id: int
     seq: int  # marshrutdagi o'rni, 1 dan
-    process_code: int  # 1..14, aynan qaysi amal (STOLYARKA da 6 xil bor)
+    process_code: int  # 1..16 (15/16 — marshrut dumi, TAIL_CODES); STOLYARKA da 6 xil bor
     source: RouteSource
     is_enabled: bool
     per_instance: int
@@ -255,7 +255,7 @@ class OrderMatrix(BaseModel):
 
 
 class MatrixPartEdit(BaseModel):
-    """Texnolog edits one part's row (TZ 6.3.3): toggle stages, note, rare count fix."""
+    """Texnolog edits one part's row (TZ 6.3.3): stages, note, count, custom route, assembly link."""
 
     part_id: int
     note: str | None = None

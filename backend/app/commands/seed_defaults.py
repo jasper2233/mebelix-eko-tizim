@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import local_session
 from app.core.security import get_password_hash
-from app.models import Organization, Post
+from app.models import Post
 from app.models.enums import POST_ROLES, PostCode, PostUnit, UserRole
 from app.models.user import User
 
@@ -147,11 +147,8 @@ async def _seed_post_accounts(db: AsyncSession) -> None:
 
 async def seed_defaults() -> None:
     async with local_session() as db:
-        org = (await db.execute(select(Organization).limit(1))).scalar_one_or_none()
-        if org is None:
-            db.add(Organization(name="Mebelix"))
-            logger.info("Default organization created")
-
+        # Tashkilot qatorini `1393a241b793` migratsiyasi qo'yadi (prestart migratsiyani
+        # seed'dan OLDIN yuritadi) — bu yerda takroran yaratishga urinish o'lik shox edi.
         existing = {p.code: p for p in (await db.execute(select(Post))).scalars()}
         for data in POSTS:
             code: PostCode = data["code"]  # type: ignore[assignment]

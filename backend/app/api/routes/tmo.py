@@ -1,18 +1,14 @@
 """TMO — Tayyor Mahsulot Ombori API (marshrutning ENG OXIRGI qadami).
 
-Ikki ish: QABUL va TOPSHIRISH.
+Bitta ish: QABUL. Omborchi kelgan narsani skanerlaydi va u ro'yxatga tushadi.
+Bu ayni paytda marshrutning TMO qadami: shu skansiz detal "oxirgi postda
+qolib ketgan" bo'lib qolaverardi va buyurtma hech qachon yopilmasdi.
+Qadoqlangan buyurtmada bitta qadoq QR'i ichidagi HAMMA nusxani birdaniga
+qabul qiladi — omborchi qadoqni ochib har detalni skanerlamaydi.
 
-QABUL — omborchi kelgan narsani skanerlaydi va u ro'yxatga tushadi. Bu ayni
-paytda marshrutning TMO qadami: shu skansiz detal "oxirgi postda qolib
-ketgan" bo'lib qolaverardi va buyurtma hech qachon yopilmasdi. Qadoqlangan
-buyurtmada bitta qadoq QR'i ichidagi HAMMA nusxani birdaniga qabul qiladi —
-omborchi qadoqni ochib har detalni skanerlamaydi.
-
-TOPSHIRISH — mijozga berish. Qadoqlangan buyurtmada birlik = qadoq, qadoqsizda
-= butun buyurtma. TMO buyurtmani TOPSHIRMAYDI — u faqat qabul qiladi.
-Hamma detal TMO dan o'tgach buyurtma o'zi COMPLETED (tayyor) bo'ladi
-(`scanning.record_scan_at`), TOPSHIRILDI esa managerning amali
-(`orders.deliver_order`, faqat COMPLETED holatdan).
+TMO buyurtmani TOPSHIRMAYDI. Hamma detal TMO dan o'tgach buyurtma o'zi
+COMPLETED (tayyor) bo'ladi (`scanning.record_scan_at`), TOPSHIRILDI esa
+managerning amali (`orders.deliver_order`, faqat COMPLETED holatdan).
 """
 
 from datetime import datetime
@@ -60,7 +56,7 @@ async def _state(db: SessionDep, order: Order, post: Post) -> TmoOrderState:
     """Buyurtmaning TMO holati: qadoqlar, qabul qilinmagan nusxalar, hisob."""
     # Butun buyurtmaning marshruti bir so'rovda — `ready` ni har nusxa uchun
     # alohida COUNT bilan hisoblasak 100 detalga 100 so'rov ketardi.
-    routes = list(
+    routes = (
         (
             await db.execute(
                 select(PartRoute).where(
@@ -79,7 +75,8 @@ async def _state(db: SessionDep, order: Order, post: Post) -> TmoOrderState:
     packaging = any(r.process_code == 15 for r in routes)  # 15 = Qadoqlash
 
     #: Har NUSXA uchun: TMO ga yetib keldimi, kelmagan bo'lsa qaysi postda turibdi.
-    stages = await instance_stages(db, order, post)
+    #: Marshrut yuqorida o'qilgan — `by_part` uzatilmasa aynan o'sha so'rov takrorlanardi.
+    stages = await instance_stages(db, order, post, by_part)
 
     #: Nusxa -> TMO da qachon qabul qilingani. Vaqt ham kerak: "Qabul qilingan"
     #: ro'yxati eng oxirgisi tepada bo'lib chiziladi.

@@ -88,7 +88,9 @@ async def upload_order_project(
         await db.rollback()
         raise HTTPException(status_code=422, detail=str(exc)) from None
     if restored:
-        summary["warnings"].append(f"{restored} nostandart detalning qo'lda chizilgan marshruti tiklandi.")
+        # Nostandart detalgina emas: standart detalga matritsadan qo'shilgan
+        # qadam ham MANUAL bo'lib saqlanadi va shu sanoqqa kiradi.
+        summary["warnings"].append(f"{restored} detalning qo'lda kiritilgan marshrut qadamlari tiklandi.")
     if lost:
         names = ", ".join(lost[:5]) + (f" va yana {len(lost) - 5} ta" if len(lost) > 5 else "")
         summary["warnings"].append(f"Yangi faylda topilmagani uchun marshruti yo'qolgan detallar: {names}")
@@ -206,7 +208,6 @@ async def regenerate_order_scx(db: SessionDep, current_user: TexnologUser, order
     ):
         qr_by_part.setdefault(inst.part_id, []).append(inst.qr_text)
 
-    # Eski SCX yozuvlari va fayllari yo'qoladi
     now = datetime.now(UTC)
     old_files = (
         (

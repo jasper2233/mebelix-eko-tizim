@@ -7,8 +7,9 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import defer
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.config import TASHKENT_TZ
 from app.crud import crud_orders
-from app.models import ORDER_FAT_COLUMNS, PRIORITY_RANK, Order, Part, PartRoute, Post, Product, Scan
+from app.models import ORDER_FAT_COLUMNS, PART_FAT_COLUMNS, PRIORITY_RANK, Order, Part, PartRoute, Post, Product, Scan
 from app.models.enums import OrderStatus
 from app.schemas.tablo import StageAgg, TabloMatrix, TabloOrderDetail, TabloOrderRow, TabloPartRow, TabloPostCol
 from app.services.metrics import part_volume
@@ -95,7 +96,7 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
     # `ix_scan_order_post` shu filtrga tushadi (prodda 39 484 skan bilan
     # ishlatilgan indeks). Bekor qilingan skan hisobga olinmaydi — u qaytarilgan
     # ish, ya'ni "harakat" emas.
-    kun = func.date(func.timezone("Asia/Tashkent", Scan.created_at))
+    kun = func.date(func.timezone(TASHKENT_TZ.key, Scan.created_at))
     last_day: dict[int, date] = dict(
         (
             await db.execute(
@@ -169,6 +170,8 @@ async def read_tablo_order(db: SessionDep, _: CurrentUser, order_id: int) -> Tab
             select(PartRoute, Part, Product.code)
             .join(Part, Part.id == PartRoute.part_id)
             .join(Product, Product.id == Part.product_id)
+            # Faqat id/code/name/count o'qiladi — `xnc_summary` JSONB bekorga uzatilardi
+            .options(*(defer(c) for c in PART_FAT_COLUMNS))
             .where(
                 PartRoute.order_id == order_id,
                 PartRoute.is_enabled == True,  # noqa: E712

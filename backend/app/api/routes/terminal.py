@@ -1,4 +1,4 @@
-"""Operator terminal API (TZ 8): context, badge sessions, task queue, ARRA cut map, files."""
+"""Operator terminal API (TZ 8): context, badge sessions, post queue, ARRA cut map, files."""
 
 from collections.abc import Sequence
 from datetime import UTC, datetime
@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse
-from sqlalchemy import Row, case, func, select, update
+from sqlalchemy import ColumnElement, Row, Select, case, func, select, update
 
 from app.api.deps import SessionDep, client_ip, require_roles
 from app.core.config import upload_root
@@ -62,14 +62,18 @@ from app.schemas.terminal import (
 )
 from app.services.scanning import (
     ScanRejected,
+    active_session,
     badge_employee,
     crew_sessions,
     end_session,
     finalize_scan,
     open_badge_session,
-    record_scan,
+    record_scan_at,
     resolve_terminal,
 )
+from app.tasks import NoPrinterBound, agent_online, require_printer
+
+from .pachka import instance_stages
 
 router = APIRouter(prefix="/terminal", tags=["terminal"])
 
@@ -115,7 +119,6 @@ async def read_terminal_context(db: SessionDep, user: TerminalUser, ctx: Termina
     # ISHLATILMAYDI: u can_print bilan filtrlaydi, faqat skan-forvard agent esa
     # chetda qolib, o'lgani hech qayerda ko'rinmasdi. Onlaynlik ta'rifi chop
     # etishdagi va paneldagi bilan AYNAN bir xil (6 daqiqalik oyna).
-    from app.tasks import AGENT_ONLINE_WINDOW
 
     agent = (
         await db.execute(
@@ -127,9 +130,7 @@ async def read_terminal_context(db: SessionDep, user: TerminalUser, ctx: Termina
         )
     ).first()
     if agent is not None:
-        out.agent_online = not (
-            agent.last_seen_at is None or datetime.now(UTC) - agent.last_seen_at > AGENT_ONLINE_WINDOW
-        )
+        out.agent_online = agent_online(agent.last_seen_at)
         out.agent_prints = bool(agent.can_print)
     for session in await crew_sessions(db, machine.id):
         employee = await db.get(Employee, session.employee_id)
@@ -249,6 +250,20 @@ async def end_terminal_session(
     return Message(message="Smena yakunlandi.")
 
 
+def _arra_parts(*where: ColumnElement[bool]) -> Select[tuple[int]]:
+    """Marshrutida yoqilgan ARRA qadami bor detallar (`part_id`) — listning egasi shundan aniqlanadi."""
+    return (
+        select(PartRoute.part_id)
+        .join(Post, Post.id == PartRoute.post_id)
+        .where(
+            Post.code == PostCode.ARRA,
+            PartRoute.is_enabled == True,  # noqa: E712
+            PartRoute.is_deleted == False,  # noqa: E712
+            *where,
+        )
+    )
+
+
 def _own_sheets(order: Order, own_nos: set[int] | None) -> int:
     """Kartadagi "N list" — SHU postniki. `mult` (bir naqsh necha marta kesiladi) sanaladi.
 
@@ -338,17 +353,7 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
     # 3 ta bo'lar va reja noto'g'ri chamalanardi.
     own_sheet_nos: dict[int, set[int]] | None = None
     if post.code in (PostCode.ARRA, PostCode.ROVER) and order_ids:
-        arra_parts = (
-            select(PartRoute.part_id)
-            .join(Post, Post.id == PartRoute.post_id)
-            .where(
-                PartRoute.order_id.in_(order_ids),
-                Post.code == PostCode.ARRA,
-                PartRoute.is_enabled == True,  # noqa: E712
-                PartRoute.is_deleted == False,  # noqa: E712
-            )
-            .scalar_subquery()
-        )
+        arra_parts = _arra_parts(PartRoute.order_id.in_(order_ids)).scalar_subquery()
         seen: dict[int, dict[int, set[bool]]] = {}
         for oid, pattern_no, has_arra in (
             await db.execute(
@@ -650,21 +655,7 @@ async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int
     # detalning QR cheki shu sahifadan chiqariladi. ARRA'li detalga bu yerdan
     # chek chiqarish TAQIQ — arra statistikasi ("chek chiqarilgan = kesilgan")
     # buzilardi, chek arrachi tomonidan chiqadi.
-    arra_part_ids = {
-        pid
-        for (pid,) in (
-            await db.execute(
-                select(PartRoute.part_id)
-                .join(Post, Post.id == PartRoute.post_id)
-                .where(
-                    PartRoute.order_id == order.id,
-                    Post.code == PostCode.ARRA,
-                    PartRoute.is_enabled == True,  # noqa: E712
-                    PartRoute.is_deleted == False,  # noqa: E712
-                )
-            )
-        ).all()
-    }
+    arra_part_ids = set((await db.execute(_arra_parts(PartRoute.order_id == order.id))).scalars().all())
 
     return PrisadkaOrderState(
         order_id=order.id,
@@ -730,8 +721,6 @@ async def read_terminal_post_queue(db: SessionDep, ctx: TerminalCtx, order_id: i
     Bu yerda har nusxa alohida qator: skan qilinganda o'sha qator ro'yxatdan
     chiqadi. Material ham beriladi — bo'yoqchi uchun bu RANG.
     """
-    from .pachka import instance_stages
-
     _machine, post = ctx
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
     stages = await instance_stages(db, order, post)
@@ -857,23 +846,7 @@ async def build_cutmap_state(db: SessionDep, order: Order, post_id: int) -> Cutm
         .scalars()
         .all()
     )
-    # Marshrutida ARRA qadami bor detallar — listning egasini shundan aniqlaymiz
-    arra_parts = set(
-        (
-            await db.execute(
-                select(PartRoute.part_id)
-                .join(Post, Post.id == PartRoute.post_id)
-                .where(
-                    PartRoute.order_id == order.id,
-                    Post.code == PostCode.ARRA,
-                    PartRoute.is_enabled == True,  # noqa: E712
-                    PartRoute.is_deleted == False,  # noqa: E712
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
+    arra_parts = set((await db.execute(_arra_parts(PartRoute.order_id == order.id))).scalars().all())
     waste_rows = (
         (
             await db.execute(
@@ -941,7 +914,6 @@ async def print_waste_item_label(db: SessionDep, user: TerminalUser, waste_id: i
         pass
 
     from app.core.utils import queue
-    from app.tasks import AGENT_ONLINE_WINDOW, NoPrinterBound, require_printer
 
     try:
         agent = await require_printer(db, print_machine.id if print_machine else None)
@@ -966,7 +938,7 @@ async def print_waste_item_label(db: SessionDep, user: TerminalUser, waste_id: i
     # yangilashda ko'rinardi. Detal chekida bunday muammo yo'q edi, ya'ni bitta
     # xaritada ikki xil xulq.
     w.label_printed_at = datetime.now(UTC)
-    printer_kutilmoqda = agent.last_seen_at is None or datetime.now(UTC) - agent.last_seen_at > AGENT_ONLINE_WINDOW
+    printer_kutilmoqda = not agent_online(agent.last_seen_at)
     if queue.pool is not None:
         await queue.pool.enqueue_job("print_waste_label", waste_id, agent.id)
     await db.commit()
@@ -992,18 +964,7 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
         print_machine, print_post = await resolve_terminal(db, user)
     except ScanRejected:
         print_post = None
-    arra_route = (
-        await db.execute(
-            select(PartRoute.id)
-            .join(Post, Post.id == PartRoute.post_id)
-            .where(
-                PartRoute.part_id == instance.part_id,
-                Post.code == PostCode.ARRA,
-                PartRoute.is_enabled == True,  # noqa: E712
-                PartRoute.is_deleted == False,  # noqa: E712
-            )
-        )
-    ).first()
+    arra_route = (await db.execute(_arra_parts(PartRoute.part_id == instance.part_id))).first()
     # Marshruti arradan boshlanmagan detal arrachiga TEGISHLI EMAS: uning listini
     # frezer butunlay o'zi kesadi. Ilgari chek jimgina chiqar, skan esa E001 bilan
     # yutilar edi — katak "kesildi" bo'lib yashil qolar, roverchining chek tugmasi
@@ -1031,7 +992,6 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     )
 
     from app.core.utils import queue
-    from app.tasks import AGENT_ONLINE_WINDOW, NoPrinterBound, require_printer
 
     # Chek SO'RAGAN ish markazining printeriga manzillanadi. Printer biriktirilmagan
     # bo'lsa chek YUBORILMAYDI: ilgari u umumiy navbatga tushib, boshqa postdagi —
@@ -1051,7 +1011,7 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     # Printer ulanmagan bo'lsa buni AYTAMIZ. Ilgari xabar doim bir xil edi
     # ("yuborildi"), operator esa qog'oz kutib turardi va sababini bilmasdi.
     # Job Redisda saqlanadi — agent ulanganda chiqadi, ya'ni yo'qolmaydi.
-    printer_kutilmoqda = agent.last_seen_at is None or datetime.now(UTC) - agent.last_seen_at > AGENT_ONLINE_WINDOW
+    printer_kutilmoqda = not agent_online(agent.last_seen_at)
     # Navbatga qo'yish COMMIT'DAN OLDIN. Teskari tartibda Redis uzilib qolsa
     # `label_printed_at` allaqachon yozilgan bo'lardi: qog'oz chiqmaydi, lekin
     # katak "chiqarilgan" bo'lib qulflanadi va operator faqat bekor qilish orqali
@@ -1081,7 +1041,7 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     # Post aniqlanmasa (ish markazi biriktirilmagan terminal) chek baribir chiqqan
     # bo'ladi — bu yerda faqat avto-skan o'tkazib yuboriladi. Ilgari himoyasiz edi
     # va chop etish so'rovi 500 bilan tugardi.
-    if print_post is None:
+    if print_post is None or print_machine is None:
         return Message(message=natija)
     # ARRA'da doim; ROVER'da esa faqat arradan o'tmaydigan detal uchun (qolganini arrachi kesgan)
     cut_by_print = print_post.code == PostCode.ARRA or (print_post.code == PostCode.ROVER and arra_route is None)
@@ -1091,9 +1051,13 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
             # chek bekor qilinib qayta chiqarilsa, idempotentlik tekshiruvi eski
             # (bekor qilingan) qatorni topib `duplicate` qaytarardi — yangi skan
             # yozilmas, `total_done` o'smas, holat "Bajarilmagan" bo'lib qolardi.
-            outcome = await record_scan(
+            # Kontekst tepada allaqachon hal qilingan — `record_scan` uni `user`dan
+            # QAYTA topardi (pachka.py/tmo.py ham shu yo'ldan boradi)
+            outcome = await record_scan_at(
                 db,
-                user=user,
+                machine=print_machine,
+                post=print_post,
+                session=await active_session(db, print_machine),
                 qr_text=qr_text,
                 client_event_id=f"cutprint-{instance.id}-{int(datetime.now(UTC).timestamp())}",
             )
@@ -1156,8 +1120,7 @@ async def cancel_instance_label(db: SessionDep, user: LabelCancelUser, instance_
                     # Eski shakl (`cutprint-12`) ham, yangisi (`cutprint-12-1755…`)
                     # ham: har chop etish o'z hodisa nomi bilan yoziladi
                     Scan.client_event_id.in_([f"cutprint-{instance.id}", f"rvprint-{instance.id}"])
-                    | Scan.client_event_id.like(f"cutprint-{instance.id}-%")
-                    | Scan.client_event_id.like(f"rvprint-{instance.id}-%"),
+                    | Scan.client_event_id.like(f"cutprint-{instance.id}-%"),
                     Scan.is_cancelled == False,  # noqa: E712
                     Scan.is_deleted == False,  # noqa: E712
                 )

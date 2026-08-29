@@ -15,7 +15,7 @@ class PostRead(BaseModel):
 
 
 class PostUpdate(BaseModel):
-    """The 7-post chain is fixed (TZ 4.4); only presentation/behavior fields are editable."""
+    """The 9-post chain is fixed (TZ 4.4); only presentation/behavior fields are editable."""
 
     model_config = ConfigDict(extra="ignore")
 

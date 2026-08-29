@@ -7,12 +7,14 @@ from sqlalchemy import func, or_, select
 from app.api.deps import AdminUser, SessionDep, StaffReadUser, client_ip
 from app.core.config import settings
 from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
+from app.core.utils import queue
 from app.crud import crud_employees, crud_posts, crud_users, log_action
 from app.models import Employee
 from app.models.enums import EmployeeStatus, UserRole
 from app.schemas.common import Message, Paginated
 from app.schemas.employees import EmployeeCreate, EmployeeRead, EmployeeUpdate
 from app.services.scanning import end_employee_sessions
+from app.tasks import printing_agents
 
 router = APIRouter(prefix="/employees", tags=["employees"])
 
@@ -151,7 +153,10 @@ async def regenerate_badge(db: SessionDep, current_user: AdminUser, employee_id:
         entity_type="employee",
         entity_id=employee.id,
         message="Beyjik yangilandi (eskisi bloklandi)",
-        meta={"old_badge": old_badge},
+        # Faqat DUM: `meta` ni `AuditLogRead` xom holda qaytaradi, ya'ni to'liq
+        # eski beyjik UUID'i jurnalda ochiq matn bo'lib qolardi. Olti belgi ikki
+        # yozuvni bog'lashga yetadi.
+        meta={"old_badge_tail": old_badge[-6:]},
         ip=client_ip(request),
     )
     await db.commit()
@@ -177,9 +182,6 @@ async def print_employee_badge(
     printer olardi — beyjik qaysi tsex printeridan chiqishi tasodif edi.
     """
     employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
-    from app.core.utils import queue
-    from app.tasks import printing_agents
-
     if queue.pool is None:
         raise ForbiddenException("Chop etish navbati ishlamayapti. Adminga murojaat qiling.")
 

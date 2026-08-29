@@ -1,6 +1,6 @@
 """Persist a parsed .project into the order (TZ 6.3): products, parts, instances, routes,
 materials auto-registry, SCX files and the cut map. Re-upload fully replaces previous results
-(allowed until PRODUCTION)."""
+(gate — `_require_editable`: PRODUCTION included, until the first live scan)."""
 
 import logging
 from datetime import UTC, datetime
@@ -346,7 +346,6 @@ async def ingest_project(
                 label_num=pp.label_num,
                 edges=pp.edges,
                 xnc_summary={
-                    "sides": len(pp.xnc_ops),
                     "bores": len(merged.bores) if merged else 0,
                     "edge_bores": len(merged.edge_bores) if merged else 0,
                     "grooves": len(merged.grooves) if merged else 0,
@@ -384,13 +383,12 @@ async def ingest_project(
             # materiali ham, yorliq raqami ham yo'q detal umuman listga joylashtirilmagan
             # (masalan kupe alyuminiy profillari) — unga ARRA vazifasi berilsa arrachi
             # kesa olmaydigan soxta ish paydo bo'lardi.
-            sheet_part = project.generation != "processed" or pp.material_name or pp.label_num is not None
-            if sheet_part:
+            if pp.material_name or pp.label_num is not None:
                 steps.append((1, PostCode.ARRA, 1))  # 1 = Raspil
             if pp.kromka_sides:
                 steps.append((3, PostCode.KROMKA, pp.kromka_sides))  # 3 = Kromka
-            for post_code, per_instance in pp.stage_sides().items():  # faqat PRISADKA
-                steps.append((6, post_code, per_instance))  # 6 = Prisadka
+            if prisadka := pp.prisadka_passes():
+                steps.append((6, PostCode.PRISADKA, prisadka))  # 6 = Prisadka
             # Qadoqlash — anketada belgilangan bo'lsa HAMMA detalga oxirgi qadam.
             # Qisman qadoqlash yo'q: buyurtma yo butunlay qadoqlanadi, yo yo'q.
             if packaging:

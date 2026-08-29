@@ -2,8 +2,8 @@
 
 Room model: every connection registers a scope + optional post/machine filters.
 Events published by API handlers go through Redis (`mes:events` channel) so all
-gunicorn workers deliver to their local sockets; with Redis disabled (dev) the
-dispatch is local-only.
+gunicorn workers deliver to their local sockets; before the lifespan starts the
+listener, or when a `PUBLISH` fails, dispatch degrades to local-only.
 """
 
 import asyncio

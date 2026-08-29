@@ -107,7 +107,7 @@ async def read_users(
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=settings.MAX_PAGE_SIZE)] = settings.DEFAULT_PAGE_SIZE,
 ) -> Paginated[UserRead]:
-    """List users with pagination (superuser only — the list exposes every phone number)."""
+    """List users with pagination (manager/texnolog/director/admin — the list exposes every phone number)."""
     rows, total = await crud_users.get_multi(db=db, offset=skip, limit=limit)
     return Paginated(data=[UserRead.model_validate(user) for user in rows], count=total)
 
@@ -192,14 +192,14 @@ async def update_user(
 
     await _ensure_unique(db, phone=values.phone, username=values.username, current=db_user)
     update_data = _drop_forbidden_nulls(values.model_dump(exclude_unset=True))
-    # O'zini qulflab qo'yish yo'li yopiq: tiklash uchun BOSHQA superuser kerak, u esa
-    # bitta bo'lgan o'rnatishda umuman yo'q — tizimga kirishning yagona yo'li yopilardi
     if "role" in update_data or "machine_id" in update_data:
         await _check_machine(
             db,
             UserRole(update_data.get("role", db_user.role)),
             update_data.get("machine_id", db_user.machine_id),
         )
+    # O'zini qulflab qo'yish yo'li yopiq: tiklash uchun BOSHQA superuser kerak, u esa
+    # bitta bo'lgan o'rnatishda umuman yo'q — tizimga kirishning yagona yo'li yopilardi
     if user_id == current_user.id:
         if update_data.get("is_active") is False:
             raise ForbiddenException("O'z hisobingizni nofaol qila olmaysiz.")

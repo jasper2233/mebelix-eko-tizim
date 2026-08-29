@@ -178,7 +178,9 @@ class ScanResult(BaseModel):
     instance_no: int
     qoldiq: int  # remaining for this part at this post after the scan
     scx_file_ids: list[int] = []  # served on EVERY scan for CNC posts (TZ 12.5)
-    # Avto-SCX proyekt nomli papkaga tushishi uchun (downloadScx subpapka nomi)
+    # Hech bir klient o'qimaydi: har skandagi avto-SCX olib tashlangan (`f7f1a8d`).
+    # Papka nomi endi PRISADKA sahifasidagi "Hammasini yuklab olish" da
+    # `PrisadkaOrderState.project_name` dan olinadi. Maydon javobda qoldi.
     project_name: str | None = None
     order_stage_completed: bool = False
     order_completed: bool = False
@@ -203,7 +205,7 @@ class CutmapInstanceState(BaseModel):
     done: bool
     label_printed_at: datetime | None
     #: Nostandart detal (`Part.is_custom`) — marshrutini texnolog qo'lda chizgan.
-    #: Xaritada pushti bo'lib turadi: arrachi uni odatdagi detal deb o'ylamasin,
+    #: Xaritada binafsha (`PART_CUSTOM`) bo'lib turadi: arrachi uni odatdagi detal deb o'ylamasin,
     #: chunki marshruti arradan boshlanmasligi ham mumkin (o'shanda skan qabul
     #: qilinmaydi va arrachi "plan topilmadi" xatosiga uchrardi).
     custom: bool = False

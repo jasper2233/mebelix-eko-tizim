@@ -5,7 +5,12 @@ from .base import BaseModel
 
 
 class Organization(BaseModel):
-    """Tenant. Single row (Mebelix) for now; schema is multi-tenant ready per TZ 4.1."""
+    """Tenant. Bitta qator ("Mebelix"), `seed_defaults` yaratadi.
+
+    Oltita jadvaldagi `organization_id` FK hech qayerda filtrlanmaydi va hech
+    qachon berilmaydi (`default=1`): ikkinchi tashkilot tayyor mexanizmni yoqish
+    emas, noldan yozish bo'ladi (TZ 4.1).
+    """
 
     __tablename__ = "organization"
 

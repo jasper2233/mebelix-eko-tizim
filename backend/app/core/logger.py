@@ -27,10 +27,10 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(payload)
 
 
-def setup_logging(level: int = logging.INFO) -> None:
+def setup_logging() -> None:
     """Called explicitly by each long-running entrypoint (create_application, arq worker)."""
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(JsonFormatter())
     root = logging.getLogger()
     root.handlers = [handler]
-    root.setLevel(level)
+    root.setLevel(logging.INFO)
