@@ -144,14 +144,14 @@ Site bloki `{$SITE_ADDRESS::80}` — env-driven listener:
 - `your-domain.com` → Caddy **avtomatik Let's Encrypt sertifikat** oladi va `:443` da tinglaydi;
 - `your-domain.com:8443` → custom port, TLS baribir provision qilinadi.
 
-Blok ichida: security headerlar (`X-Frame-Options SAMEORIGIN`, `X-Content-Type-Options nosniff`, `X-XSS-Protection`), `encode gzip`, so'ng routing:
+Blok ichida: security headerlar (`X-Frame-Options SAMEORIGIN`, `X-Content-Type-Options nosniff` — `X-XSS-Protection` olib tashlandi: barcha hozirgi brauzerlar uni e'tiborsiz qoldiradi), `encode gzip`, so'ng routing:
 
 | Handle | Upstream | Izoh |
 |---|---|---|
-| `/api*` | `api:8000` | faqat `X-Real-IP` header_up — `Host` passthrough va `X-Forwarded-For`/`X-Forwarded-Proto` ni Caddy `reverse_proxy` o'zi default qo'yadi |
+| `/api*` | `api:8000` | qo'lda `header_up` yo'q — `Host` passthrough va `X-Forwarded-For`/`X-Forwarded-Proto` ni Caddy `reverse_proxy` o'zi default qo'yadi, backend esa faqat shularni o'qiydi |
 | `/docs*`, `/redoc*`, `/openapi.json` | `api:8000` | API hujjatlari |
 | `/metrics` | — (`403`) | Prometheus — upstream'ga umuman uzatilmaydi, `respond "Forbidden" 403` |
-| qolgani (`handle {}`) | `frontend:80` | SPA, `X-Real-IP` bilan |
+| qolgani (`handle {}`) | `frontend:80` | SPA |
 
 **Nega `/metrics` butunlay yopiq.** Ilgari bu handle'da `@internal_metrics` matcher (`remote_ip private_ranges`) turardi va private tarmoqdan kelgan so'rovlar `api:8000` ga o'tardi. Lekin prodda Caddy **host-nginx ortida** ishlaydi: har bir tashqi so'rovning `remote_host`i proxy'ning o'zi (`127.0.0.1` / docker bridge) bo'lib ko'rinadi, ya'ni matcher hech kimni to'smasdi va Prometheus metrikalari amalda ochiq internetda edi. Endi matcher olib tashlangan — `handle /metrics` har doim `403` qaytaradi. Repoda Prometheus/Grafana xizmati umuman yo'q; scraper qo'shilganda u compose tarmog'i ichidan to'g'ridan-to'g'ri `api:8000/metrics` ga boradi, bu yo'ldan emas.
 
@@ -201,13 +201,13 @@ Barcha `scripts/*.sh` fayllar git'da **executable (mode 100755)** saqlanadi. Bu 
 
 ### `scripts/prestart.sh` — konteyner startidan oldingi bosqich
 
-Ikkala composeda ham `api` command zanjirining birinchi qismi. Uch qadam: `alembic.ini` mavjud bo'lsa `python -m alembic upgrade head`, so'ng `python -m app.commands.create_first_superuser`, oxirida `python -m app.commands.seed_defaults` (default organizatsiya, 9 ta ishlab chiqarish posti — Arra, Kromka, Oval kromka, Prisadka, Rover, Stolyarka, Bo'yoq, Qadoqlash, TMO — hamda HAR post uchun bitta `is_system` texnik hisob idempotent seed qilinadi; `order_index` 1,2,3,4,6,7,8,9,10, ya'ni 5 (eski PAZ) ataylab bo'sh; yangi post qo'shilganda mavjud bazalarda `order_index` ham sinxronlanadi). Post hisoblari (`_seed_post_accounts`) alohida ahamiyatli: usiz beyjik bilan kirish 401 beradi. Shu tufayli konteyner har startda schema'ni head'ga keltiradi, admin user, default org/postlar va post hisoblari mavjudligini kafolatlaydi. `worker` servisi buni ishlatmaydi (migratsiyani `api` ga qoldiradi).
+Ikkala composeda ham `api` command zanjirining birinchi qismi. Uch qadam: `python -m alembic upgrade head` (shartsiz — WORKDIR `/app/backend`, `alembic.ini` shu yerda; yo'q bo'lsa start ataylab yiqiladi), so'ng `python -m app.commands.create_first_superuser`, oxirida `python -m app.commands.seed_defaults` (default organizatsiya, 9 ta ishlab chiqarish posti — Arra, Kromka, Oval kromka, Prisadka, Rover, Stolyarka, Bo'yoq, Qadoqlash, TMO — hamda HAR post uchun bitta `is_system` texnik hisob idempotent seed qilinadi; `order_index` 1,2,3,4,6,7,8,9,10, ya'ni 5 (eski PAZ) ataylab bo'sh; yangi post qo'shilganda mavjud bazalarda `order_index` ham sinxronlanadi). Post hisoblari (`_seed_post_accounts`) alohida ahamiyatli: usiz beyjik bilan kirish 401 beradi. Shu tufayli konteyner har startda schema'ni head'ga keltiradi, admin user, default org/postlar va post hisoblari mavjudligini kafolatlaydi. `worker` servisi buni ishlatmaydi (migratsiyani `api` ga qoldiradi).
 
 Ketma-ketlikning nozik joyi: default `organization` qatorini seed emas, **`1393a241b793` migratsiyasi** qo'yadi (idempotent `INSERT ... WHERE NOT EXISTS`). Undan keyingi uchta post migratsiyasi (`b3e9a1d76c42`, `f1b6d0c73a25`, `a3f8d61c9b04`) `post` ga `organization_id = 1` bilan yozadi, `seed_defaults` esa migratsiyalardan **keyin** ishlaydi — busiz toza bazada `alembic upgrade head` FK buzilishi bilan yiqilar va yangi muhit umuman ko'tarilmasdi (tafsilot: `docs/04-backend-data.md`).
 
 ### `scripts/generate-client.sh` — OpenAPI → TypeScript client
 
-`make frontend-gen` chaqiradi. Oqim: `backend/` da `app.main.app.openapi()` ni Python orqali JSON'ga dump → `frontend/openapi.json`; keyin `npm run generate-client` (`@hey-api/openapi-ts`, `frontend/package.json` dagi `generate-client: openapi-ts` script) → `frontend/src/client/`; oxirida `npx biome format --write ./src/client`. Backend endpoint/schema o'zgarganda shu buyruqni qayta ishlatish kerak (`frontend/README.md` da ham qo'lda variant tasvirlangan).
+`make frontend-gen` chaqiradi. Oqim: `backend/` da `app.main.app.openapi()` ni Python orqali JSON'ga dump → `frontend/openapi.json`; keyin `npm run generate-client` (`@hey-api/openapi-ts`, `frontend/package.json` dagi `generate-client: openapi-ts` script) → `frontend/src/client/`. (Biome format qadami olib tashlandi: `biome.json` `src/client/**` ni butunlay ignore qiladi, ya'ni u har safar "Checked 0 files" berardi.) Backend endpoint/schema o'zgarganda shu buyruqni qayta ishlatish kerak (`frontend/README.md` da ham qo'lda variant tasvirlangan).
 
 ### `scripts/deploy.sh` — prod deploy avto-rollback bilan
 

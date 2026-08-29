@@ -516,7 +516,7 @@ Chap toolbar tugmasi: ikonka + `text-2xs` yozuv (`index.css` da 0.6875rem), `h-1
 
 `/settings` sahifasining bo'limlari (joriy foydalanuvchining o'z profili, `*Me` endpointlari).
 
-**O'z hisobini o'chirish UI'da yo'q:** `DeleteAccount.tsx` olib tashlangan, `routes/_layout/settings.tsx` da `tabsConfig` faqat ikkita band beradi ("Profilim", "Parol"). Backend endpointi (`DELETE /users/me` — `backend/app/api/routes/users.py`) va generatsiya qilingan `UsersService.deleteUserMe` (`frontend/src/client/sdk.gen.ts`) saqlanib qolgan, lekin `frontend/src` da uni chaqiradigan joy yo'q.
+**O'z hisobini o'chirish UI'da yo'q:** `DeleteAccount.tsx` olib tashlangan, `routes/_layout/settings.tsx` da faqat ikkita tab qolgan ("Profilim", "Parol"). Backend endpointi (`DELETE /users/me` — `backend/app/api/routes/users.py`) va generatsiya qilingan `UsersService.deleteUserMe` (`frontend/src/client/sdk.gen.ts`) saqlanib qolgan, lekin `frontend/src` da uni chaqiradigan joy yo'q.
 
 ### `frontend/src/components/UserSettings/UserInformation.tsx`
 

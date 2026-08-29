@@ -82,7 +82,6 @@ uv run python -c "import app.main; import json; print(json.dumps(app.main.app.op
 
 ```bash
 npm run generate-client
-npx biome format --write ./src/client
 ```
 
 * Commit the changes.
