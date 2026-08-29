@@ -141,7 +141,7 @@ export class UsersService {
     /**
      * Read Users
      *
-     * List users with pagination (superuser only — the list exposes every phone number).
+     * List users with pagination (manager/texnolog/director/admin — the list exposes every phone number).
      */
     public static readUsers<ThrowOnError extends boolean = true>(options?: Options<ReadUsersData, ThrowOnError>): RequestResult<ReadUsersResponses, ReadUsersErrors, ThrowOnError> {
         return (options?.client ?? client).get<ReadUsersResponses, ReadUsersErrors, ThrowOnError>({

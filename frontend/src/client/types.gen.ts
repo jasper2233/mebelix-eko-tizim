@@ -1510,7 +1510,7 @@ export type MatrixPart = {
 /**
  * MatrixPartEdit
  *
- * Texnolog edits one part's row (TZ 6.3.3): toggle stages, note, rare count fix.
+ * Texnolog edits one part's row (TZ 6.3.3): stages, note, count, custom route, assembly link.
  */
 export type MatrixPartEdit = {
     /**
@@ -2253,7 +2253,7 @@ export type PostUnit = 'm2' | 'meter' | 'piece';
 /**
  * PostUpdate
  *
- * The 7-post chain is fixed (TZ 4.4); only presentation/behavior fields are editable.
+ * The 9-post chain is fixed (TZ 4.4); only presentation/behavior fields are editable.
  */
 export type PostUpdate = {
     /**
