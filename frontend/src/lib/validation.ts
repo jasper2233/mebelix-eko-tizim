@@ -3,7 +3,7 @@ import { z } from "zod"
 // Mirror the limits enforced by the backend (see `backend/app/schemas/users.py`).
 // Keep these in sync when tightening or relaxing rules on either side.
 const PASSWORD_MIN_LENGTH = 8
-const NAME_MAX_LENGTH = 30
+const NAME_MAX_LENGTH = 100
 
 // E.164 Uzbek mobile: `+998` + 9 digits, no spaces. Matches `PHONE_PATTERN` on the server.
 export const PHONE_PATTERN = /^\+998\d{9}$/
@@ -50,7 +50,6 @@ function phoneDigits(s: string): string {
   return d.slice(0, 9)
 }
 
-/** Pul maydoni avto-separatori: "5000000" → "5 000 000". Submit'da bo'shliqlar olib tashlanadi. */
 /** API'dan kelgan Decimal-satrni ("14000000.00") input qiymatiga tayyorlaydi.
  * `formatMoneyInput` TO'G'RIDAN-TO'G'RI ishlatilsa nuqta o'chirilib kasr
  * raqamlar yopishib qolardi: "14000000.00" -> "1 400 000 000" (ikki ortiqcha
@@ -59,6 +58,7 @@ export function moneyToInput(value: string | null | undefined): string {
   return formatMoneyInput(String(value ?? "").replace(/[.,]\d*$/, ""))
 }
 
+/** Pul maydoni avto-separatori: "5000000" → "5 000 000". Submit'da bo'shliqlar olib tashlanadi. */
 export function formatMoneyInput(input: string): string {
   const d = input
     .replace(/\D/g, "")
