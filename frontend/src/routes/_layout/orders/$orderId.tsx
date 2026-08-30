@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import {
   ArrowLeft,
   CheckCheck,
@@ -8,6 +8,7 @@ import {
   Lock,
   Map as MapIcon,
   Play,
+  Trash2,
   Truck,
   XCircle,
 } from "lucide-react"
@@ -52,6 +53,7 @@ import {
   formatMoney,
   isAdmin,
   isManager,
+  isSuperuser,
   PRIORITY_LABELS,
   remainingPayment,
   TERMINAL_STATUSES,
@@ -84,7 +86,9 @@ function OrderDetailPage() {
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
+  const navigate = useNavigate()
   const [deliverOpen, setDeliverOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [cancelReason, setCancelReason] = useState("")
 
   const role = currentUser?.role
@@ -133,6 +137,19 @@ function OrderDetailPage() {
     onSuccess: () => {
       deliverCb.onSuccess()
       setDeliverOpen(false)
+    },
+  })
+  // O'chirish QAYTMAYDI: buyurtma, detallari va diskdagi fayllari ketadi.
+  // Shuning uchun faqat superuser va faqat BEKOR QILINGAN buyurtmada. Muvaffaqiyatdan
+  // keyin sahifa qoladigan joy yo'q — reestrga qaytamiz.
+  const deleteCb = cb("Buyurtma o'chirildi")
+  const remove = useMutation({
+    mutationFn: () => OrdersService.deleteOrder({ path: { order_id: id } }),
+    ...deleteCb,
+    onSuccess: () => {
+      deleteCb.onSuccess()
+      setDeleteOpen(false)
+      navigate({ to: "/orders" })
     },
   })
   const cancelCb = cb("Buyurtma bekor qilindi")
@@ -274,11 +291,21 @@ function OrderDetailPage() {
                 <Truck /> TOPSHIRILDI
               </Button>
             )}
-            {canManage && !isTerminal && (
+            {canManage && !isTerminal && order.status !== "cancelled" && (
               <Button variant="destructive" onClick={() => setCancelOpen(true)}>
                 <XCircle /> Bekor qilish
               </Button>
             )}
+            {isSuperuser(currentUser) &&
+              !isTerminal &&
+              order.status === "cancelled" && (
+                <Button
+                  variant="destructive"
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  <Trash2 /> O'chirish
+                </Button>
+              )}
           </div>
         }
       />
@@ -530,6 +557,16 @@ function OrderDetailPage() {
           </ul>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Buyurtmani butunlay o'chirish"
+        description={`${order.number} — buyurtma, uning detallari, marshrutlari va diskdagi fayllari (.project, SCX, anketa rasmlari) BUTUNLAY o'chadi. Bu amalni QAYTARIB BO'LMAYDI. Bekor qilish tarixi (audit izi) saqlanadi.`}
+        confirmText="BUTUNLAY O'CHIRISH"
+        loading={remove.isPending}
+        onConfirm={() => remove.mutate()}
+      />
 
       <ConfirmDialog
         open={deliverOpen}

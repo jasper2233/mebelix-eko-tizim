@@ -4472,6 +4472,36 @@ export type ReadOrderStatusCountsResponses = {
 
 export type ReadOrderStatusCountsResponse = ReadOrderStatusCountsResponses[keyof ReadOrderStatusCountsResponses];
 
+export type DeleteOrderData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/orders/{order_id}';
+};
+
+export type DeleteOrderErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteOrderError = DeleteOrderErrors[keyof DeleteOrderErrors];
+
+export type DeleteOrderResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type DeleteOrderResponse = DeleteOrderResponses[keyof DeleteOrderResponses];
+
 export type ReadOrderData = {
     body?: never;
     path: {

@@ -972,6 +972,27 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     if print_post is not None and print_post.code == PostCode.ARRA and arra_route is None:
         raise _scan_error("E001", "Bu detal roverda kesiladi — chekni rover terminalidan chiqaring.")
 
+    # CHEK = BOSQICH. Kesish postlarida chop etishning O'ZI bosqichni yopadi —
+    # pastda avto-skan yoziladi. Skan esa smenasiz YOZILMAYDI (`Scan.employee_id`
+    # va `session_id` NOT NULL: ish kimga yozilishi ma'lum bo'lishi kerak).
+    # Shuning uchun smena SHU YERDA, chek chiqishidan OLDIN talab qilinadi.
+    #
+    # Ilgari tekshiruv faqat pastda edi: chek chiqar, avto-skan esa E005 bilan
+    # JIMGINA yutilardi (`except ScanRejected` — na xabar, na log). Natijada
+    # qog'oz arrachining qo'lida, katak xaritada yashil (`label_printed_at`),
+    # lekin `total_done` 0 — detal boshqa hamma ekranda "o'tmagan" bo'lib
+    # qolardi. Prodda B-2026-037 buyurtmasida smena yopiq 32 daqiqada aynan
+    # shunday 19 ta detal yo'qolgan.
+    cut_by_print = print_post is not None and (
+        print_post.code == PostCode.ARRA or (print_post.code == PostCode.ROVER and arra_route is None)
+    )
+    crew_session = None
+    if cut_by_print and print_machine is not None:
+        try:
+            crew_session = await active_session(db, print_machine)
+        except ScanRejected as exc:
+            raise _scan_error(exc.code, exc.message) from None
+
     # `qr_text` SHU YERDA olinadi: quyida `record_scan` rad etilsa `db.rollback()`
     # chaqiriladi va u identity map'dagi HAMMA obyektni expire qiladi. O'shandan
     # keyin `instance.qr_text` ni o'qish lazy refresh talab qilib, async kontekstda
@@ -1043,9 +1064,7 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     # va chop etish so'rovi 500 bilan tugardi.
     if print_post is None or print_machine is None:
         return Message(message=natija)
-    # ARRA'da doim; ROVER'da esa faqat arradan o'tmaydigan detal uchun (qolganini arrachi kesgan)
-    cut_by_print = print_post.code == PostCode.ARRA or (print_post.code == PostCode.ROVER and arra_route is None)
-    if cut_by_print:
+    if cut_by_print and crew_session is not None:
         try:
             # Har chop etish ALOHIDA hodisa: `cutprint-{id}` doimiy bo'lganda
             # chek bekor qilinib qayta chiqarilsa, idempotentlik tekshiruvi eski
@@ -1057,13 +1076,30 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
                 db,
                 machine=print_machine,
                 post=print_post,
-                session=await active_session(db, print_machine),
+                session=crew_session,
                 qr_text=qr_text,
                 client_event_id=f"cutprint-{instance.id}-{int(datetime.now(UTC).timestamp())}",
             )
             await finalize_scan(db, outcome, user_id=user.id, source=" (chek chiqarish bilan)", auto=True)
-        except ScanRejected:
+        except ScanRejected as exc:
+            # Smena tepada tekshirilgan, ya'ni bu yerga faqat BOSHQA sabab
+            # yetib keladi (masalan E004 — oldingi bosqich yopilmagan).
+            # Jimgina yutish AYNAN shu nuqsonni bergan edi: chek qo'lda,
+            # bosqich esa yopilmagan. Endi operator sababini ko'radi va
+            # audit izida ham qoladi.
             await db.rollback()
+            log_action(
+                db,
+                module="print",
+                action="rejected",
+                user_id=user.id,
+                entity_type="part_instance",
+                entity_id=instance_id,
+                message=f"Chek chiqdi, lekin bosqich yopilmadi: {qr_text} — {exc.message}",
+                meta={"code": exc.code},
+            )
+            await db.commit()
+            natija = f"{natija}. DIQQAT: bosqich yopilmadi — {exc.message}"
 
     return Message(message=natija)
 

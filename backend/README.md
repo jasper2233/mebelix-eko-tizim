@@ -1,6 +1,6 @@
 # MebeliX MES — Backend
 
-FastAPI asosidagi MES (ishlab chiqarish boshqaruvi) backend: buyurtmalar hayot sikli, GibLab `.project` parser (CUTMAP/SCX), scan engine, operator terminali, TABLO, hisobotlar, PNG yorliq chop etish (bridge-agent orqali USB GoDEX G500-U, Windows GDI — EZPL/RAW dialekt ishlatilmaydi) va WebSocket real-time (`/api/v1/*`, jami 98 HTTP endpoint + 2 WebSocket).
+FastAPI asosidagi MES (ishlab chiqarish boshqaruvi) backend: buyurtmalar hayot sikli, GibLab `.project` parser (CUTMAP/SCX), scan engine, operator terminali, TABLO, hisobotlar, PNG yorliq chop etish (bridge-agent orqali USB GoDEX G500-U, Windows GDI — EZPL/RAW dialekt ishlatilmaydi) va WebSocket real-time (`/api/v1/*`, jami 99 HTTP endpoint + 2 WebSocket).
 
 Texnologiyalar: Python 3.11–3.13 (`pyproject.toml`: `requires-python >=3.11, <3.14`; Docker image'lari 3.13 da quriladi), FastAPI, SQLAlchemy 2 (async) + Alembic, PostgreSQL, Redis (pub/sub + navbatlar), ARQ worker, Pillow/qrcode (yorliq PNG), openpyxl (Excel).
 

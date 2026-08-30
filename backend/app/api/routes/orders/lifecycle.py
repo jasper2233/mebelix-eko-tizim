@@ -1,8 +1,9 @@
+import logging
 from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import defer
 
@@ -11,9 +12,10 @@ from app.api.deps import (
     ManagerUser,
     SessionDep,
     StaffReadUser,
+    SuperUserDep,
     client_ip,
 )
-from app.core.config import settings
+from app.core.config import settings, upload_root
 from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
 from app.core.ws import ws_manager
 from app.crud import crud_clients, crud_orders, log_action
@@ -23,11 +25,15 @@ from app.models import (
     Machine,
     Order,
     OrderFile,
+    Pachka,
+    PachkaItem,
     Part,
     PartInstance,
     PartRoute,
     Post,
     Product,
+    Scan,
+    WasteItem,
 )
 from app.models.enums import (
     MACHINE_STATUS_LABELS,
@@ -58,6 +64,8 @@ from ._common import (
 # Prefiks va tag PARENT routerda (`orders/__init__.py`) — bu yerda takrorlansa
 # `include_router` ularni QO'SHADI, almashtirmaydi va generatsiya qilingan
 # klientda metod ikki klassga nusxalanadi.
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
@@ -267,6 +275,90 @@ async def cancel_order(
     # Terminals drop the tasks IMMEDIATELY (TZ 6.5) — real-time, all posts.
     await ws_manager.publish("order.cancelled", {"order_id": order.id, "order_number": order.number})
     return await _order_read_with_client(db, order)
+
+
+@router.delete("/{order_id}", response_model=Message, operation_id="delete_order")
+async def delete_order(db: SessionDep, current_user: SuperUserDep, order_id: int, request: Request) -> Message:
+    """Bekor qilingan buyurtmani bazadan BUTUNLAY o'chiradi (TZ 6.5 dan keyingi tozalash).
+
+    Bekor qilish tarixni SAQLAYDI — bu esa uni o'chiradi, ya'ni amal QAYTMAYDI.
+    Shuning uchun uchta chegara bor:
+
+    1. Faqat `CANCELLED` holatdagi buyurtma. Tirik buyurtmani o'chirish yo'li yo'q.
+    2. Faqat superuser. Bekor qilishning o'zi menejerda, o'chirish esa undan
+       qattiqroq: bu yagona qaytmaydigan amal.
+    3. Bekor qilinmagan skani bor buyurtma o'chirilmaydi. Skan — bajarilgan ish,
+       u ish haqiga kiradi (`reports.py`): o'chirilsa hodimning o'sha kunlik
+       hisobi jimgina kamayardi. Bunday buyurtma tsexda haqiqatan ishlangan,
+       ya'ni uni yo'q qilish emas, arxivda qoldirish kerak.
+
+    Yo'l-yo'lakay diskdagi fayllar ham o'chadi (`.project`, SCX, anketa rasmlari) —
+    aks holda buyurtma yozuvi ketib, o'nlab megabayt yetim fayl qolardi.
+    `audit_log` esa ATAYLAB qoladi: buyurtma bo'lgani va bekor qilingani tarixda
+    saqlanishi kerak, uning ustiga shu o'chirish ham yoziladi.
+    """
+    order = await _get_order(db, order_id)
+    if order.status != OrderStatus.CANCELLED:
+        raise ForbiddenException("Faqat bekor qilingan buyurtmani o'chirish mumkin.")
+
+    live_scans = (
+        await db.execute(
+            select(func.count(Scan.id)).where(
+                Scan.order_id == order_id,
+                Scan.is_cancelled == False,  # noqa: E712
+                Scan.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).scalar_one()
+    if live_scans:
+        raise ForbiddenException(
+            f"Bu buyurtmada {live_scans} ta bekor qilinmagan skan bor — ish haqi hisobiga kiradi. "
+            "O'chirish uchun avval o'sha skanlarni bekor qiling."
+        )
+
+    number = order.number
+    # Fayl yo'llari qator o'chishidan OLDIN olinadi.
+    paths = (await db.execute(select(OrderFile.path).where(OrderFile.order_id == order_id))).scalars().all()
+
+    # FK'larda `ON DELETE` yo'q — tartib qo'lda. Bolalardan ota-onalarga.
+    instances = select(PartInstance.id).where(PartInstance.order_id == order_id)
+    pachkas = select(Pachka.id).where(Pachka.order_id == order_id)
+    await db.execute(
+        delete(PachkaItem).where(or_(PachkaItem.pachka_id.in_(pachkas), PachkaItem.instance_id.in_(instances)))
+    )
+    await db.execute(delete(Pachka).where(Pachka.order_id == order_id))
+    await db.execute(delete(Scan).where(Scan.order_id == order_id))
+    await db.execute(delete(WasteItem).where(WasteItem.order_id == order_id))
+    await db.execute(delete(OrderFile).where(OrderFile.order_id == order_id))
+    await db.execute(delete(PartRoute).where(PartRoute.order_id == order_id))
+    await db.execute(delete(PartInstance).where(PartInstance.order_id == order_id))
+    # `part.assembly_parent_id` o'ziga qaraydi: bitta DELETE da qatorlar tartibi
+    # kafolatlanmaydi, shuning uchun avval bog'lam uziladi.
+    await db.execute(update(Part).where(Part.order_id == order_id).values(assembly_parent_id=None))
+    await db.execute(delete(Part).where(Part.order_id == order_id))
+    await db.execute(delete(Product).where(Product.order_id == order_id))
+    await db.delete(order)
+
+    log_action(
+        db,
+        module="orders",
+        action="deleted",
+        user_id=current_user.id,
+        entity_type="order",
+        entity_id=order_id,
+        message=f"Bekor qilingan buyurtma bazadan o'chirildi: {number} ({len(paths)} fayl)",
+        ip=client_ip(request),
+    )
+    await db.commit()
+
+    root = upload_root()
+    for path in paths:
+        try:
+            (root / path).unlink(missing_ok=True)
+        except OSError:
+            logger.warning("Buyurtma faylini o'chirib bo'lmadi: %s", path)
+
+    return Message(message=f"Buyurtma o'chirildi: {number}")
 
 
 @router.post("/{order_id}/deliver", response_model=OrderRead, operation_id="deliver_order")
