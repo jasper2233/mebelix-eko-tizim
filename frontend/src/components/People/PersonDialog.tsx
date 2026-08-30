@@ -72,11 +72,19 @@ function positionOf(person: Person | null, posts: PostRead[]): string {
   return byLabel ? byLabel.label : OTHER_POSITION
 }
 
-function postsFor(label: string, posts: PostRead[]): number[] {
+function postsFor(
+  label: string,
+  posts: PostRead[],
+  fallback: number[],
+): number[] {
   const found = POSITIONS.find((x) => x.label === label)
-  if (!found?.post) return []
-  const post = posts.find((p) => p.code === found.post)
-  return post ? [post.id] : []
+  if (found?.post) {
+    const post = posts.find((p) => p.code === found.post)
+    return post ? [post.id] : []
+  }
+  // Katalogda yo'q lavozim ("Boshqa", eski erkin matn) — mavjud postlar
+  // SAQLANADI: aks holda shunday odamni tahrirlash uni postsiz qoldirardi.
+  return found?.kind === "ofis" ? [] : fallback
 }
 
 export function PersonDialog({
@@ -102,7 +110,7 @@ export function PersonDialog({
     // Postni DIALOG OCHILGANDA ham lavozimdan olamiz. Ilgari u faqat lavozim
     // QO'LDA almashtirilganda to'ldirilardi: admin tayyor turgan "Arrachi" ga
     // tegmasdan saqlasa, postsiz hodim yaratilardi va uning beyjigi ishlamasdi.
-    posts: postsFor(initialPosition, posts),
+    posts: postsFor(initialPosition, posts, person?.posts ?? []),
     username: person?.user?.username ?? "",
     password: "",
   })
@@ -127,7 +135,7 @@ export function PersonDialog({
     setForm((f) => ({
       ...f,
       position: label,
-      posts: postsFor(label, posts),
+      posts: postsFor(label, posts, f.posts),
     }))
 
   const queryClient = useQueryClient()

@@ -1,5 +1,4 @@
 import { queryOptions } from "@tanstack/react-query"
-import { AxiosError } from "axios"
 
 import { type UserRead, UsersService } from "@/client"
 import { PAGE_SIZE } from "./mes"
@@ -38,12 +37,4 @@ export const getCurrentUserQueryOptions = () =>
     // backend har so'rovda o'zi tekshiradi; parol/rol o'zgarsa 401 keladi va
     // `lib/queryClient.ts` dagi handler login'ga chiqaradi.
     staleTime: 5 * 60_000,
-    // Sessiya tugagan bo'lsa 401 ni uch marta takrorlashning ma'nosi yo'q —
-    // lekin TARMOQ uzilishi boshqa gap: `lib/guards.ts` shu so'rovni
-    // `ensureQueryData` bilan kutadi, ya'ni bitta yiqilgan so'rov butun
-    // navigatsiyani xato ekraniga uloqtiradi. Shuning uchun faqat javobSIZ
-    // xatoda qayta urinamiz. Siyosat SHU YERDA: barcha observer'lar (tablo
-    // ham) bir xil olsin.
-    retry: (n: number, e: Error) =>
-      !(e instanceof AxiosError && e.response) && n < 2,
   })
