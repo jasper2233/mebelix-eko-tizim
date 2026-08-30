@@ -329,12 +329,12 @@ Ulanish/uzilish/pairing panelga `bridge.connected` / `bridge.disconnected` / `br
 
 **Muhim elementlar:**
 
-- `WsClient` (dataclass) — bitta ulanish: `socket`, `scope` (`"terminal"` / `"tablo"` / `"dashboard"`) va ixtiyoriy `post_id`/`machine_id` filtrlar. `wants(event)` — dashboard hamma eventni oladi; target'siz eventlar broadcast; terminal/tablo faqat o'z `post_id`/`machine_id`siga mos eventlarni oladi (TZ 2.3.2).
+- `WsClient` (dataclass) — bitta ulanish: `socket`, `scope` (`"terminal"` / `"tablo"` / `"dashboard"`) va ixtiyoriy `post_id`/`machine_id` filtrlar. `wants(event)` — dashboard VA TABLO hamma eventni oladi; target'siz eventlar broadcast; terminal faqat o'z `post_id`/`machine_id`siga mos eventlarni oladi (TZ 2.3.2). TABLO ataylab filtrsiz: u devor ekrani va BUTUN tsex matritsasini ko'rsatadi, qurilma hisobi esa majburan bitta ish markaziga bog'langan — filtr qolsa taxta faqat o'z postining skanlarini jonli ko'rardi.
 - `WsManager` (modul-darajali singleton `ws_manager`):
   - `connect(client)` / `disconnect(client)` — lokal klientlar ro'yxatini boshqaradi (`accept` + qo'shish / olib tashlash).
   - `publish(event_type, payload, **targets)` — event quradi (`{"type", "payload"}` + `post_id`/`machine_id` target'lar) va Redis mavjud bo'lsa `mes:events` kanaliga `PUBLISH` qiladi; Redis yo'q (dev) yoki yiqilgan bo'lsa **lokal yetkazishga degradatsiya** qiladi (`_dispatch`).
   - `_dispatch(event)` — `wants()`ga mos klientlarga `send_json`; yuborishda xato bergan **o'lik socketlar ro'yxatdan tozalanadi**.
-  - `start_listener(redis)` / `stop_listener()` — lifespan boshqaradigan pub/sub listener task: `mes:events`ga subscribe bo'lib, kelgan xabarlarni `_dispatch`ga uzatadi; shutdown'da unsubscribe + cancel.
+  - `start_listener(redis)` / `stop_listener()` — lifespan boshqaradigan pub/sub listener task: `mes:events`ga subscribe bo'lib, kelgan xabarlarni `_dispatch`ga uzatadi; shutdown'da unsubscribe + cancel. Redis uzilishi task'ni O'LDIRMAYDI: xato logga yozilib, `_RESUBSCRIBE_SECONDS` (2 s) dan keyin qayta obuna bo'ladi — ilgari faqat `CancelledError` ushlanardi va bitta tarmoq uzilishi workerlar aro fan-out'ni jimgina to'xtatardi.
 
 **Bog'lanishlar:** `setup.py` (lifespan listener'ni ishga tushiradi/to'xtatadi), `backend/app/api/routes/ws.py` (WebSocket endpointlar klientlarni ro'yxatga oladi); mutatsiya qiluvchi API endpointlar `ws_manager.publish(...)` orqali event yuboradi.
 

@@ -18,6 +18,10 @@ from redis.asyncio import Redis
 
 logger = logging.getLogger(__name__)
 
+#: Pub/sub uzilgach qayta obuna oralig'i. Qisqa: fan-out to'xtagan har soniya
+#: terminalda "skan ko'rinmadi" degani.
+_RESUBSCRIBE_SECONDS = 2
+
 _CHANNEL = "mes:events"
 
 
@@ -29,11 +33,16 @@ class WsClient:
     machine_id: int | None = None
 
     def wants(self, event: dict[str, Any]) -> bool:
-        """Terminals/TABLO receive only their own post/machine events (TZ 2.3.2);
-        dashboards receive everything; events without a target are broadcast."""
+        """Terminallar O'Z posti/ish markazi eventlarini oladi (TZ 2.3.2);
+        dashboard va TABLO hammasini; nishonsiz event esa hammaga ketadi."""
         target_post = event.get("post_id")
         target_machine = event.get("machine_id")
-        if self.scope == "dashboard":
+        # TABLO — devor ekrani, u BUTUN tsex matritsasini ko'rsatadi, ya'ni post
+        # filtri unga ma'nosiz. Qurilma hisobi majburan ish markaziga bog'langani
+        # uchun (`users.py`: TERMINAL/TABLO da `machine_id` shart) u ilgari FAQAT
+        # bitta postning skanlarini olardi: taxta qolgan 8 postni jonli ko'rmay,
+        # 60 soniyalik pollingni kutardi.
+        if self.scope in ("dashboard", "tablo"):
             return True
         if target_post is None and target_machine is None:
             return True
@@ -86,15 +95,29 @@ class WsManager:
         await pubsub.subscribe(_CHANNEL)
 
         async def listen() -> None:
-            try:
-                async for message in pubsub.listen():
-                    if message.get("type") != "message":
-                        continue
+            # Redis uzilishi tinglovchini O'LDIRMASLIGI kerak. Ilgari faqat
+            # `CancelledError` ushlanardi: bitta tarmoq uzilishi task'ni tashlab
+            # ketar, workerlar aro fan-out esa JIMGINA to'xtardi — terminal
+            # boshqa workerdagi skanni umuman ko'rmay qolardi va buni hech kim
+            # sezmasdi (log ham yo'q edi). Endi qayta obuna bo'lib davom etadi.
+            while True:
+                try:
+                    async for message in pubsub.listen():
+                        if message.get("type") != "message":
+                            continue
+                        with contextlib.suppress(Exception):
+                            await self._dispatch(json.loads(message["data"]))
+                except asyncio.CancelledError:
                     with contextlib.suppress(Exception):
-                        await self._dispatch(json.loads(message["data"]))
-            except asyncio.CancelledError:
-                await pubsub.unsubscribe(_CHANNEL)
-                raise
+                        await pubsub.unsubscribe(_CHANNEL)
+                    raise
+                except Exception:
+                    logger.exception(
+                        "WS pub/sub tinglovchisi uzildi — %s s dan keyin qayta obuna", _RESUBSCRIBE_SECONDS
+                    )
+                    await asyncio.sleep(_RESUBSCRIBE_SECONDS)
+                    with contextlib.suppress(Exception):
+                        await pubsub.subscribe(_CHANNEL)
 
         self._listener = asyncio.create_task(listen())
 

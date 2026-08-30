@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 
 from app.api.deps import SessionDep, require_roles
 from app.core.exceptions import ForbiddenException, NotFoundException
@@ -27,7 +27,14 @@ from app.schemas.terminal import (
     UpakovkaOrderState,
     UpakovkaPending,
 )
-from app.services.scanning import ScanRejected, active_session, publish_scan_events, record_scan_at, resolve_terminal
+from app.services.scanning import (
+    ScanRejected,
+    active_session,
+    publish_scan_events,
+    record_scan_at,
+    resolve_terminal,
+    revoke_scan,
+)
 
 router = APIRouter(prefix="/pachka", tags=["pachka"])
 
@@ -359,13 +366,9 @@ async def remove_from_pachka(
         )
     ).scalar_one_or_none()
     if scan is not None:
-        scan.is_cancelled = True
-        scan.cancelled_at = now
-        await db.execute(
-            update(PartRoute)
-            .where(PartRoute.id == scan.route_id, PartRoute.total_done > 0)
-            .values(total_done=PartRoute.total_done - 1)
-        )
+        # Bekor qilishning yagona shakli (`services/scanning.revoke_scan`):
+        # hosila skanlar va COMPLETED -> PRODUCTION qaytishi ham shunda.
+        await revoke_scan(db, scan, at=now)
     log_action(
         db,
         module="pachka",

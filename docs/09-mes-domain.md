@@ -146,7 +146,7 @@ bo'yicha sanash hisobni aralashtirib yuborardi. `total_done` SQL tomonda oshiril
 (`UPDATE ... SET total_done = total_done ± 1`): Python tomondagi o'qib-yozish ikki terminal bir
 vaqtda skanlaganda bitta inkrementni yo'qotardi va qadam `total_required` ga hech qachon
 yetmasdi — buyurtmani faqat bazani qo'lda tuzatib yopish mumkin bo'lardi. Xatolar TT 8.5 kodlari bilan (`{"code": "E00x",
-"message": ...}` 422 detail). Idempotency: `client_event_id` UNIQUE — takror so'rov `duplicate:true`
+"message": ...}` 422 detail). Idempotency: `client_event_id` UNIQUE — takror so'rov `duplicate:true` (tekshiruv FAQAT tirik skanni ko'radi, bekor qilinganda kalit `NULL` ga bo'shatiladi: aks holda qadoqdan chiqarilgan nusxa o'sha qadoqqa qayta skanerlanmasdi)
 bilan muvaffaqiyat. `STRICT_STAGE_ORDER` (endi default **yoqiq**) — E004: tekshiruv postlarning
 global tartibidan emas, detalning O'Z marshruti bo'yicha: `seq` i kichik qadamlar shu nusxada
 tugamaguncha keyingisi rad etiladi, xabar navbatdagi post nomini aytadi.

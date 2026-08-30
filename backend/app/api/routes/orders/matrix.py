@@ -20,6 +20,9 @@ from app.services.giblab.models import DEFAULT_PROCESS_CODE, PROCESS_NAMES, PROC
 
 from ._common import _ROUTE_START_POSTS, _get_order, _get_visible_order, _require_editable
 
+#: Dumni vaqtincha ko'chirish oralig'i — marshrutda hech qachon shuncha qadam bo'lmaydi.
+_SEQ_PARK = 1000
+
 router = APIRouter()
 
 
@@ -167,14 +170,29 @@ async def edit_order_matrix(
                 .all()
             )
             if not steps and enabled:
+                # Yangi qadam DUMDAN (UPAKOVKA/TMO) OLDIN turishi shart. Qat'iy
+                # tartib `seq` bo'yicha tekshiradi, ya'ni dumdan keyin qo'yilgan
+                # qadam "avval TMO" ni talab qilardi — TMO esa oxirgi qadam, ya'ni
+                # skan MANGU E004 bilan rad etilardi.
                 next_seq = (
                     await db.execute(
                         select(func.coalesce(func.max(PartRoute.seq), 0) + 1).where(
                             PartRoute.part_id == part.id,
+                            PartRoute.process_code.not_in(TAIL_CODES),
                             PartRoute.is_deleted == False,  # noqa: E712
                         )
                     )
                 ).scalar_one()
+                # Dumni bir pog'ona yuqoriga surish IKKI QADAMDA: `(part_id, seq)`
+                # qisman UNIQUE indeks va u dublikatni satr-ma-satr tekshiradi,
+                # ya'ni to'g'ridan-to'g'ri `seq + 1` o'rtada to'qnashardi. Avval
+                # dum bo'sh diapazonga ko'chiriladi, keyin joyiga tushiriladi.
+                tail_where = (
+                    PartRoute.part_id == part.id,
+                    PartRoute.process_code.in_(TAIL_CODES),
+                    PartRoute.is_deleted == False,  # noqa: E712
+                )
+                await db.execute(update(PartRoute).where(*tail_where).values(seq=PartRoute.seq + _SEQ_PARK))
                 db.add(
                     PartRoute(
                         order_id=order_id,
@@ -186,6 +204,12 @@ async def edit_order_matrix(
                         per_instance=1,
                         total_required=part.count,
                     )
+                )
+                await db.flush()
+                await db.execute(
+                    update(PartRoute)
+                    .where(*tail_where, PartRoute.seq >= _SEQ_PARK)
+                    .values(seq=PartRoute.seq - _SEQ_PARK + 1)
                 )
             for step in steps:
                 step.is_enabled = enabled

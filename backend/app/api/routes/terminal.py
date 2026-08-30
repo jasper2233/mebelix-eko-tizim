@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse
-from sqlalchemy import ColumnElement, Row, Select, case, func, select, update
+from sqlalchemy import ColumnElement, Row, Select, case, func, select
 
 from app.api.deps import SessionDep, client_ip, require_roles
 from app.core.config import upload_root
@@ -70,6 +70,7 @@ from app.services.scanning import (
     open_badge_session,
     record_scan_at,
     resolve_terminal,
+    revoke_scan,
 )
 from app.tasks import NoPrinterBound, agent_online, require_printer
 
@@ -1205,14 +1206,12 @@ async def cancel_instance_label(db: SessionDep, user: LabelCancelUser, instance_
 
     instance.label_printed_at = None
     instance.label_post_id = None
+    # `revoke_scan` — bekor qilishning YAGONA shakli: hosila skanlar ham qaytadi
+    # va COMPLETED buyurtma PRODUCTION ga tushadi. Ilgari bu yerda faqat
+    # hisoblagich kamayardi, ya'ni chek bekor qilingan buyurtma "tayyor" bo'lib
+    # turaverardi.
     for scan in auto_scans:
-        scan.is_cancelled = True
-        scan.cancelled_at = datetime.now(UTC)
-        await db.execute(
-            update(PartRoute)
-            .where(PartRoute.id == scan.route_id, PartRoute.total_done > 0)
-            .values(total_done=PartRoute.total_done - 1)
-        )
+        await revoke_scan(db, scan)
     log_action(
         db,
         module="print",

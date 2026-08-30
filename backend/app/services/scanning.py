@@ -473,8 +473,24 @@ async def record_scan_at(
     if not _QR_RE.match(qr):
         raise ScanRejected("E002", "QR kodi noto'g'ri formatda. Chekni qaytadan chop eting.")
 
-    # Idempotent replay (network retry): same client_event_id → same success, no recount.
-    existing = (await db.execute(select(Scan).where(Scan.client_event_id == client_event_id))).scalar_one_or_none()
+    # Idempotent replay (tarmoq qayta urinishi): bir xil `client_event_id` → bir xil
+    # muvaffaqiyat, qayta sanamasdan.
+    #
+    # BEKOR QILINGAN skan bu tekshiruvga KIRMAYDI. Kalit doimiy bo'lgan yagona
+    # yo'lda (`pachka`: `pack-{qadoq}-{nusxa}`) bekor qilingan qator o'z kaliti
+    # bilan bazada qolardi: qadoqdan chiqarilgan nusxa O'SHA qadoqqa qayta
+    # skanerlanganda mana shu qator topilib `duplicate` qaytardi — yangi skan
+    # yozilmas, `total_done` kamaygan holicha qolar, UPAKOVKA qadami esa hech
+    # qachon yopilmasdi. Bekor qilingan ish "bajarilgan" emas, ya'ni takrorni
+    # to'sishi ham mantiqsiz.
+    existing = (
+        await db.execute(
+            select(Scan).where(
+                Scan.client_event_id == client_event_id,
+                Scan.is_cancelled == False,  # noqa: E712
+            )
+        )
+    ).scalar_one_or_none()
     if existing is not None:
         part = await db.get(Part, existing.part_id)
         instance = await db.get(PartInstance, existing.instance_id)
@@ -845,23 +861,34 @@ async def log_rejected_scan(
     await db.commit()
 
 
-async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Scan, list[dict[str, Any]]]:
-    """BEKOR QILISH (TZ 8.6): only the last N seconds, same terminal session."""
-    machine, _ = await resolve_terminal(db, user)
-    session = await active_session(db, machine)
+async def revoke_scan(db: AsyncSession, scan: Scan, *, at: datetime | None = None) -> PartRoute | None:
+    """Bitta skanni QAYTARADI: o'zi, hosilalari, hisoblagichlar va buyurtma holati.
 
-    scan = await db.get(Scan, scan_id)
-    if scan is None or scan.is_deleted or scan.session_id != session.id:
-        raise ScanRejected("E001", "Scan topilmadi yoki bu sessiyaga tegishli emas.")
-    if scan.is_cancelled:
-        raise ScanRejected("E001", "Bu scan allaqachon bekor qilingan.")
-    if datetime.now(UTC) - _utc(scan.created_at) > timedelta(seconds=settings.SCAN_UNDO_SECONDS):
-        raise ScanRejected("E001", f"{settings.SCAN_UNDO_SECONDS} sekunddan ko'p o'tdi — faqat admin bekor qila oladi.")
+    Skanni bekor qilish UCH joyda bo'ladi — terminaldagi BEKOR QILISH tugmasi
+    (`cancel_scan`), chekni bekor qilish (`terminal.cancel_instance_label`) va
+    qadoqdan chiqarish (`pachka.remove_from_pachka`). Ilgari uchalasi alohida
+    yozilgan edi va ikkitasida ikki qadam YETISHMASDI:
 
+      * hosila skanlar (`parent_scan_id`) qaytmasdi — yig'ma buyumda asosiy detal
+        ochilib, unga yopishtirilgan maydalari yopiq qolib ketardi;
+      * COMPLETED buyurtma PRODUCTION ga qaytmasdi — marshrutda ochiq qadam
+        paydo bo'lsa ham buyurtma "tayyor" bo'lib turaverardi, ya'ni TABLO ham,
+        hisobot ham yolg'on ko'rsatardi.
+
+    Qaytaradi: skanning O'Z marshrut qadami (hisoblagichi yangilangan holda),
+    chaqiruvchi undan `qoldiq` ni hisoblaydi.
+    """
+    now = at or datetime.now(UTC)
     scan.is_cancelled = True
-    scan.cancelled_at = datetime.now(UTC)
-    # Yig'ma buyum: shu skan mayda detallarni ham yopgan bo'lsa, ular birga qaytadi —
-    # aks holda asosiy detal qaytib, maydalari yopiq qolib ketardi.
+    scan.cancelled_at = now
+    # Idempotentlik kaliti BO'SHATILADI. U doim yagona (`ix_scan_client_event_id`)
+    # va faqat TIRIK skan uchun ma'noga ega. Doimiy kalitli yagona yo'lda
+    # (`pachka`: `pack-{qadoq}-{nusxa}`) bekor qilingan qator kalitni band qilib
+    # turardi: qadoqdan chiqarilgan nusxani O'SHA qadoqqa qayta skanerlaganda
+    # yo takror deb rad etilar, yo unique indeksga urilardi — ikkala holda ham
+    # UPAKOVKA qadami yopilmay qolardi.
+    scan.client_event_id = None
+
     derived = (
         (
             await db.execute(
@@ -877,7 +904,7 @@ async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Sc
     )
     for child_scan in derived:
         child_scan.is_cancelled = True
-        child_scan.cancelled_at = scan.cancelled_at
+        child_scan.cancelled_at = now
         await db.execute(
             update(PartRoute)
             .where(PartRoute.id == child_scan.route_id, PartRoute.total_done > 0)
@@ -895,6 +922,26 @@ async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Sc
         await db.refresh(route, ["total_done"])
 
     order = await db.get(Order, scan.order_id)
+    if order is not None and order.status == OrderStatus.COMPLETED:
+        order.status = OrderStatus.PRODUCTION
+        order.completed_at = None
+    return route
+
+
+async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Scan, list[dict[str, Any]]]:
+    """BEKOR QILISH (TZ 8.6): only the last N seconds, same terminal session."""
+    machine, _ = await resolve_terminal(db, user)
+    session = await active_session(db, machine)
+
+    scan = await db.get(Scan, scan_id)
+    if scan is None or scan.is_deleted or scan.session_id != session.id:
+        raise ScanRejected("E001", "Scan topilmadi yoki bu sessiyaga tegishli emas.")
+    if scan.is_cancelled:
+        raise ScanRejected("E001", "Bu scan allaqachon bekor qilingan.")
+    if datetime.now(UTC) - _utc(scan.created_at) > timedelta(seconds=settings.SCAN_UNDO_SECONDS):
+        raise ScanRejected("E001", f"{settings.SCAN_UNDO_SECONDS} sekunddan ko'p o'tdi — faqat admin bekor qila oladi.")
+
+    route = await revoke_scan(db, scan)
     events: list[dict[str, Any]] = [
         {
             "type": "scan.cancelled",
@@ -909,7 +956,4 @@ async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Sc
             "machine_id": scan.machine_id,
         }
     ]
-    if order is not None and order.status == OrderStatus.COMPLETED:
-        order.status = OrderStatus.PRODUCTION
-        order.completed_at = None
     return scan, events
