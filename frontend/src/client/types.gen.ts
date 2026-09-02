@@ -2220,16 +2220,17 @@ export type PostUnit = 'm2' | 'meter' | 'piece';
  * PostUpdate
  *
  * The 9-post chain is fixed (TZ 4.4); only presentation/behavior fields are editable.
+ *
+ * `order_index` ataylab yo'q: uning yagona egasi `seed_defaults.POSTS`, u har
+ * prestart'da tartibni sinxronlaydi — PATCH bilan qilingan tahrir keyingi
+ * deploy'da jimgina yo'qolardi. `extra="ignore"` tufayli eski klient yuborsa
+ * e'tiborsiz qoladi.
  */
 export type PostUpdate = {
     /**
      * Name
      */
     name?: string | null;
-    /**
-     * Order Index
-     */
-    order_index?: number | null;
     /**
      * Requires Assignment Choice
      */

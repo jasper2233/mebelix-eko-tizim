@@ -18,12 +18,14 @@ export function RowAction({
   title,
   onClick,
   danger = false,
+  disabled = false,
 }: {
   icon: LucideIcon
   /** Tooltip va ekran o'quvchi uchun — ikonka yolg'iz turadi. */
   title: string
   onClick: () => void
   danger?: boolean
+  disabled?: boolean
 }) {
   return (
     <Button
@@ -36,6 +38,7 @@ export function RowAction({
       title={title}
       aria-label={title}
       onClick={onClick}
+      disabled={disabled}
     >
       <Icon />
     </Button>

@@ -1,5 +1,7 @@
 import {
+  CatchBoundary,
   createFileRoute,
+  type ErrorComponentProps,
   Outlet,
   redirect,
   useRouterState,
@@ -7,6 +9,7 @@ import {
 
 import { MX_PATH, MX_VIEWBOX } from "@/components/Common/BrandLoader"
 import { AppSidebar, NAV_ITEMS } from "@/components/Sidebar/AppSidebar"
+import { Button } from "@/components/ui/button"
 import {
   SidebarInset,
   SidebarProvider,
@@ -33,8 +36,36 @@ export const Route = createFileRoute("/_layout")({
   },
 })
 
+// Sahifa render crash'i uchun QOBIQ ICHIDAGI chegara. Marshrutning o'z
+// `errorComponent`i bu yerda yaramaydi: u aynan SHU marshrut komponentini —
+// ya'ni sidebar bilan header'ni ham — almashtiradi. Chegara `<Outlet/>`
+// atrofida turgani uchun faqat main kontenti yo'qoladi, navigatsiya qoladi.
+function PageError({ error, reset }: ErrorComponentProps) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
+      <span className="text-4xl font-bold">Xato</span>
+      <p className="text-muted-foreground">
+        Sahifani ko'rsatishda xatolik yuz berdi.
+      </p>
+      {error.message && (
+        <p className="max-w-prose text-sm text-muted-foreground/70">
+          {error.message}
+        </p>
+      )}
+      <Button onClick={reset}>Qayta urinish</Button>
+    </div>
+  )
+}
+
 function Layout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  // Chegara reset kaliti — resolvedLocation: `location` navigatsiya boshlanishidayoq
+  // almashadi, matches esa yuklash tugagach; kalit erta o'zgarsa chegara ESKI
+  // (crash qilgan) match bilan qayta render bo'lib xatoga qaytadi va yangi
+  // sahifaga o'tganda ham «Xato» qolib ketadi.
+  const resolvedPath = useRouterState({
+    select: (s) => s.resolvedLocation?.pathname ?? "",
+  })
   const sectionTitle = sectionTitles[pathname]
 
   return (
@@ -73,7 +104,12 @@ function Layout() {
               joyni qayta taqsimlardi. 1800 bilan 1920px ekranda yig'ish ~200px
               beradi, 2560px da esa yoyilish baribir to'xtatiladi. */}
           <div className="mx-auto w-full max-w-[1800px]">
-            <Outlet />
+            <CatchBoundary
+              getResetKey={() => resolvedPath}
+              errorComponent={PageError}
+            >
+              <Outlet />
+            </CatchBoundary>
           </div>
         </main>
       </SidebarInset>

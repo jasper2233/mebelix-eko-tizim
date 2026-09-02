@@ -167,6 +167,7 @@ function OrderDetailPage() {
     onSuccess: () => {
       cancelCb.onSuccess()
       setCancelOpen(false)
+      setCancelReason("")
     },
   })
   // Eski buyurtmalarni yangi SCX nomlashga (nusxa QR = fayl nomi, Nanxing skan
@@ -583,7 +584,13 @@ function OrderDetailPage() {
         onConfirm={() => deliver.mutate()}
       />
 
-      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+      <Dialog
+        open={cancelOpen}
+        onOpenChange={(o) => {
+          setCancelOpen(o)
+          if (!o) setCancelReason("")
+        }}
+      >
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Buyurtmani bekor qilish</DialogTitle>

@@ -194,6 +194,8 @@ export function UpakovkaView({
                             variant="ghost"
                             size="sm"
                             aria-label={`${i.part_code} ni chiqarish`}
+                            // Ikki marta bosilsa ikkinchi DELETE 404 berardi
+                            disabled={remove.isPending}
                             onClick={() =>
                               remove.mutate({
                                 pachkaId: open.id,

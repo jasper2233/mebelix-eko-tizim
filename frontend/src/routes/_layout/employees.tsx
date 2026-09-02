@@ -98,7 +98,7 @@ import {
   getPostsQueryOptions,
 } from "@/queries/mes"
 import { getUsersQueryOptions } from "@/queries/users"
-import { detailMessage } from "@/utils"
+import { handleError } from "@/utils"
 
 export const Route = createFileRoute("/_layout/employees")({
   component: PeoplePage,
@@ -315,6 +315,7 @@ function PeoplePage() {
                               icon={Pencil}
                               title="Tahrirlash"
                               onClick={() => setEditFor(p)}
+                              disabled={!posts}
                             />
                             <RowAction
                               icon={Trash2}
@@ -404,7 +405,7 @@ function TogglePerson({
       toast.success(active ? "Nofaol qilindi" : "Faollashtirildi")
       onClose()
     },
-    onError: (e) => toast.error(detailMessage(e)),
+    onError: handleError,
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] })
       queryClient.invalidateQueries({ queryKey: ["users"] })
@@ -456,7 +457,7 @@ function DeletePerson({
       toast.success("O'chirildi")
       onClose()
     },
-    onError: (e) => toast.error(detailMessage(e)),
+    onError: handleError,
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] })
       queryClient.invalidateQueries({ queryKey: ["users"] })
@@ -511,7 +512,7 @@ function BadgeDialog({
         query: target ? { agent_id: Number(target) } : undefined,
       }),
     onSuccess: () => toast.success("Beyjik chop etishga yuborildi"),
-    onError: (e) => toast.error(detailMessage(e)),
+    onError: handleError,
   })
   const regenCb = crudCallbacks(
     queryClient,

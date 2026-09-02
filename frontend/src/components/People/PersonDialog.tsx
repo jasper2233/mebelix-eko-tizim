@@ -39,7 +39,7 @@ import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
 import { OTHER_POSITION, POSITIONS } from "@/lib/mes"
 import { formatUzPhone, optionalFormattedPhoneSchema } from "@/lib/validation"
-import { detailMessage } from "@/utils"
+import { handleError } from "@/utils"
 
 export type Access = "badge" | "password" | "both" | "none"
 
@@ -243,7 +243,7 @@ export function PersonDialog({
       toast.success(editing ? "Saqlandi" : "Hodim qo'shildi")
       onClose()
     },
-    onError: (e) => toast.error(detailMessage(e)),
+    onError: handleError,
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] })
       queryClient.invalidateQueries({ queryKey: ["users"] })

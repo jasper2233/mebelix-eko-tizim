@@ -31,7 +31,13 @@ export function useBadgeScan(onBadge: (badgeId: string) => void) {
       if (e.key === "Enter") {
         const value = buffer.trim()
         buffer = ""
-        if (BADGE_RE.test(value)) handler.current(value)
+        if (BADGE_RE.test(value)) {
+          // Bufer to'liq beyjik — bu Enter skanerniki, odamniki emas. Bloklamasak
+          // parol maydoni fokusda bo'lganda brauzer login formasini ham yuboradi:
+          // bitta skan bir vaqtda beyjik so'rovini ham, forma xatosini ham chiqarardi.
+          e.preventDefault()
+          handler.current(value)
+        }
         return
       }
       // `e.key` HAR DOIM ham bo'lmaydi: brauzer avtoto'ldirishi (parol menejeri)

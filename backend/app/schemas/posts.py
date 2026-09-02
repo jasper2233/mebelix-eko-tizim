@@ -15,10 +15,15 @@ class PostRead(BaseModel):
 
 
 class PostUpdate(BaseModel):
-    """The 9-post chain is fixed (TZ 4.4); only presentation/behavior fields are editable."""
+    """The 9-post chain is fixed (TZ 4.4); only presentation/behavior fields are editable.
+
+    `order_index` ataylab yo'q: uning yagona egasi `seed_defaults.POSTS`, u har
+    prestart'da tartibni sinxronlaydi — PATCH bilan qilingan tahrir keyingi
+    deploy'da jimgina yo'qolardi. `extra="ignore"` tufayli eski klient yuborsa
+    e'tiborsiz qoladi.
+    """
 
     model_config = ConfigDict(extra="ignore")
 
     name: str | None = Field(default=None, min_length=2, max_length=50)
-    order_index: int | None = Field(default=None, ge=1)
     requires_assignment_choice: bool | None = None

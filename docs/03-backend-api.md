@@ -277,7 +277,7 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
 | GET | `/api/v1/posts/` | login (har qanday) | `order_index` bo'yicha tartiblangan postlar ro'yxati |
-| PATCH | `/api/v1/posts/{id}` | `AdminUser` | Post sozlamalarini yangilash — `PostUpdate`: `name`, `order_index`, `requires_assignment_choice`. `Post` ning uchala ustuni ham NOT NULL, shuning uchun body'dagi explicit `null` `drop_forbidden_nulls` bilan tashlanadi (no-op) — ilgari `name: null` NOT NULL ustunga tushib 500 berardi. Frontendda chaqiruvchi YO'Q (faqat generatsiya qilingan `src/client/sdk.gen.ts`) — endpoint qo'lda/admin so'rov uchun qolgan |
+| PATCH | `/api/v1/posts/{id}` | `AdminUser` | Post sozlamalarini yangilash — `PostUpdate`: `name`, `requires_assignment_choice`. `order_index` ataylab TAHRIRLANMAYDI — uning yagona egasi `seed_defaults.POSTS`, u har prestart'da tartibni sinxronlaydi, ya'ni PATCH tahriri keyingi deploy'da jimgina yo'qolardi (`extra="ignore"`: eski klient yuborsa e'tiborsiz qoladi). `Post` ning uchala ustuni ham NOT NULL, shuning uchun body'dagi explicit `null` `drop_forbidden_nulls` bilan tashlanadi (no-op) — ilgari `name: null` NOT NULL ustunga tushib 500 berardi. Frontendda chaqiruvchi YO'Q (faqat generatsiya qilingan `src/client/sdk.gen.ts`) — endpoint qo'lda/admin so'rov uchun qolgan |
 
 **Bog'lanishlar:** `backend/app/schemas/posts.py`, `backend/app/crud` (`crud_posts`, `log_action`), `backend/app/commands/seed_defaults.py`.
 

@@ -167,8 +167,8 @@ async def seed_defaults() -> None:
                 db.add(Post(**data))  # type: ignore[arg-type]
                 logger.info("Post %s created", data["code"])
             elif post.order_index != data["order_index"]:
-                # Yangi post qo'shilganda tartib siljiydi (masalan OVAL=3) —
-                # mavjud bazalarda ham sinxronlanadi
+                # Tartibning YAGONA egasi shu jadval (`PostUpdate` da order_index yo'q):
+                # yangi post qo'shilganda (masalan OVAL=3) mavjud bazalar ham sinxronlanadi
                 post.order_index = data["order_index"]  # type: ignore[assignment]
                 logger.info("Post %s order_index -> %s", data["code"], data["order_index"])
 
