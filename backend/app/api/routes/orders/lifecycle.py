@@ -92,10 +92,15 @@ async def create_order(db: SessionDep, current_user: ManagerUser, body: OrderCre
     if client is None:
         raise NotFoundException("Mijoz topilmadi.")
 
+    # Rollback (expire_on_rollback default True) sessiyadagi HAMMA obyektni expire
+    # qiladi, shu sababli retry'dan keyin kerak bo'ladigan qiymatlar oldindan olinadi.
+    user_id = current_user.id
+    client_name = client.full_name
+
     # Sequential number has a race window between two managers — the partial unique
     # index is the arbiter; retry regenerates from the committed max.
     for attempt in range(3):
-        order = Order(**body.model_dump(), number=await crud_orders.next_number(db), created_by_id=current_user.id)
+        order = Order(**body.model_dump(), number=await crud_orders.next_number(db), created_by_id=user_id)
         db.add(order)
         try:
             await db.flush()
@@ -109,7 +114,7 @@ async def create_order(db: SessionDep, current_user: ManagerUser, body: OrderCre
         db,
         module="orders",
         action="created",
-        user_id=current_user.id,
+        user_id=user_id,
         entity_type="order",
         entity_id=order.id,
         message=f"Buyurtma yaratildi: {order.number}",
@@ -118,7 +123,7 @@ async def create_order(db: SessionDep, current_user: ManagerUser, body: OrderCre
     await db.commit()
     await db.refresh(order)
     await ws_manager.publish("order.created", {"order_id": order.id, "order_number": order.number})
-    return _order_read(order, client.full_name)
+    return _order_read(order, client_name)
 
 
 @router.get("/", response_model=Paginated[OrderRead], operation_id="read_orders")

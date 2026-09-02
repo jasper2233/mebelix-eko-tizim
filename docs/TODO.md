@@ -51,7 +51,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `backend/app/api/routes/orders/files.py:50` — PRODUCTION holatidagi buyurtmaga `.project` ni qayta yuklash yangi `PartRoute` qatorlarini `machine_id=None` bilan yaratadi — ilgari muhrlangan ish ma
 - [ ] ✅ `backend/app/api/routes/orders/files.py:65,85` — The whole .project ingest — XML parse, blob decode, cut-map build, SCX XML generation and one synchronous write per SCX file — runs inline on the even
 - [ ] ✅ `backend/app/api/routes/orders/files.py:82-89` — wipe_previous_parse unlinks the old .project/SCX files from disk inside an uncommitted transaction; if ingest/restore later raises ParseError the DB i
-- [ ] ✅ `backend/app/api/routes/orders/lifecycle.py:91,97-106,121` — On the number-collision retry path create_order reads client.full_name after db.rollback() has expired every identity-map object, so the documented re
+- [x] ✅ `backend/app/api/routes/orders/lifecycle.py:91,97-106,121` — On the number-collision retry path create_order reads client.full_name after db.rollback() has expired every identity-map object, so the documented re
 - [ ] ✅ `backend/app/api/routes/orders/matrix.py:134-147` — _check_assembly_match (which enforces that a child part's last route step exists in its assembly parent's route) only runs when assembly_parent_id its
 - [ ] ✅ `backend/app/api/routes/orders/matrix.py:354-395` — The whole manual-route construction (edge_count, KROMKA first-pass rule, seen set, packaging/TMO tail) is written twice, in orders._set_custom_route a
 - [ ] ✅ `backend/app/api/routes/orders/matrix.py:409-451` — _resize_instances rewrites instance qr_text and adds copies but leaves the SCX files untouched, so SCX filenames stop matching the QR the doc guarante
@@ -59,15 +59,15 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `backend/app/api/routes/pachka.py:256` — `get-or-404` is hand-rolled as `db.get(...)` + `is None or .is_deleted` + `NotFoundException` at seven sites, including inside `bridge_agents.py` whic
 - [ ] ✅ `backend/app/api/routes/pachka.py:261-262` — Yopilgan qadoq — o'lik nuqta: uni qayta ochish ham, chekini qayta chiqarish ham MUMKIN EMAS, lekin ikkala foydalanuvchi xabari ham buni mumkin deb va'
 - [ ] ✅ `backend/app/api/routes/reports.py:268` — Excel eksportda FURNITURA (`kind="hardware"`) qatorlari "Kromka" deb belgilanadi — `kind` uchta qiymatli, kod esa ikkitasini biladi.
-- [ ] ✅ `backend/app/api/routes/terminal.py:282` — `read_terminal_orders` to'liq `Order` ORM obyektlarini `defer(*ORDER_FAT_COLUMNS)` siz o'qiydi — har terminal har 30 soniyada hamma PRODUCTION buyurtm
-- [ ] ✅ `backend/app/api/routes/terminal.py:394` — KROMKA karta hisobidagi `need_sq` subquery buyurtma bo'yicha filtrlanmagan — u 30 soniyada bir chaqiriladigan endpointda butun `part_route` jadvalini 
+- [x] ✅ `backend/app/api/routes/terminal.py:282` — `read_terminal_orders` to'liq `Order` ORM obyektlarini `defer(*ORDER_FAT_COLUMNS)` siz o'qiydi — har terminal har 30 soniyada hamma PRODUCTION buyurtm
+- [x] ✅ `backend/app/api/routes/terminal.py:394` — KROMKA karta hisobidagi `need_sq` subquery buyurtma bo'yicha filtrlanmagan — u 30 soniyada bir chaqiriladigan endpointda butun `part_route` jadvalini 
 - [ ] ✅ `backend/app/api/routes/terminal.py:425` — ARRA kartasida `done` NUSXA sonini, `total` esa qadamlar yig'indisini sanaydi — detalda ikkita ARRA qadami bo'lsa (jarayon kodi 1 va 2 ikkalasi ham AR
-- [ ] ✅ `backend/app/api/routes/terminal.py:447` — Kesish postida (`ARRA`/`ROVER`) buyurtmaning HECH BIR nusxasida `pattern_no` bo'lmasa, `own_sheet_nos.get(o.id)` `None` qaytaradi va `_own_sheets` uni
-- [ ] ✅ `backend/app/commands/seed_defaults.py:138` — Post-account phone numbers are derived from the POSITION of the role inside POST_ROLES, so inserting a tenth post role anywhere but at the end makes t
+- [x] ✅ `backend/app/api/routes/terminal.py:447` — Kesish postida (`ARRA`/`ROVER`) buyurtmaning HECH BIR nusxasida `pattern_no` bo'lmasa, `own_sheet_nos.get(o.id)` `None` qaytaradi va `_own_sheets` uni
+- [x] ✅ `backend/app/commands/seed_defaults.py:138` — Post-account phone numbers are derived from the POSITION of the role inside POST_ROLES, so inserting a tenth post role anywhere but at the end makes t
 - [ ] ✅ `backend/app/commands/seed_defaults.py:159` — PATCH /posts/{id} lets an admin change order_index, but seed_defaults resets it to the hardcoded table on every container start, so the edit is silent
-- [ ] ✅ `backend/app/core/config.py:126-128` — The Alembic DB URL is built by raw f-string interpolation, so a POSTGRES_PASSWORD (or user/db) containing `@`, `/`, `:`, `#` or `?` silently produces 
-- [ ] ✅ `backend/app/core/config.py:127` — `POSTGRES_URI` interpolates the raw `POSTGRES_PASSWORD` into a DSN without percent-encoding, so any password containing a URL-reserved character produ
-- [ ] ✅ `backend/app/core/config.py:137-150` — _validate_production_settings refuses to boot on four placeholder secrets but not on FORWARDED_ALLOW_IPS=["*"], so a single env value silently re-open
+- [x] ✅ `backend/app/core/config.py:126-128` — The Alembic DB URL is built by raw f-string interpolation, so a POSTGRES_PASSWORD (or user/db) containing `@`, `/`, `:`, `#` or `?` silently produces 
+- [x] ✅ `backend/app/core/config.py:127` — `POSTGRES_URI` interpolates the raw `POSTGRES_PASSWORD` into a DSN without percent-encoding, so any password containing a URL-reserved character produ
+- [x] ✅ `backend/app/core/config.py:137-150` — _validate_production_settings refuses to boot on four placeholder secrets but not on FORWARDED_ALLOW_IPS=["*"], so a single env value silently re-open
 - [ ] ✅ `backend/app/core/middleware.py:30` — An unhandled exception in a handler bypasses the access log and the response never carries X-Request-ID, so 500s — the requests that most need correla
 - [ ] ✅ `backend/app/core/setup.py:78` — The hand-rolled /openapi.json handler rebuilds the schema with `application.version` (FastAPI's hardcoded default "0.1.0") and never passes `descripti
 - [ ] ✅ `backend/app/core/worker.py:20` — Every arq log line in the worker is emitted twice — once as plain text and once as JSON — because arq's CLI applies its own dictConfig after this modu

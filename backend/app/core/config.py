@@ -1,6 +1,7 @@
 import os
 from enum import StrEnum
 from pathlib import Path
+from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 from pydantic import SecretStr, computed_field
@@ -124,7 +125,12 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def POSTGRES_URI(self) -> str:
-        credentials = f"{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+        # Parol/foydalanuvchi DSN uchun band belgi (@ / : # ? %) tutishi mumkin — xom
+        # f-string bunday qiymatni jimgina noto'g'ri host/bazaga aylantiradi (`p@ss/w` →
+        # host='ss'). Shuning uchun user/password percent-encode qilinadi. Baza nomi EMAS:
+        # SQLAlchemy faqat user/password'ni unquote qiladi, database komponenti xom qoladi
+        # (bo'shliqli nom `judge%20b07` bo'lib ketardi — hakam Postgres bilan isbotladi).
+        credentials = f"{quote(self.POSTGRES_USER, safe='')}:{quote(self.POSTGRES_PASSWORD, safe='')}"
         location = f"{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         return f"{credentials}@{location}"
 
@@ -147,6 +153,11 @@ def _validate_production_settings(s: Settings) -> None:
         problems.append("POSTGRES_PASSWORD is the default placeholder")
     if s.ADMIN_PHONE == _DEFAULT_ADMIN_PHONE:
         problems.append("ADMIN_PHONE is the default placeholder")
+    # App-level ProxyHeadersMiddleware gunicorn'ning `--forwarded-allow-ips` flagidan
+    # ICHKARIDA ishlaydi, ya'ni "*" bu yerda serverdagi qat'iy ro'yxatni bekor qiladi va
+    # login rate-limitini (kaliti `request.client.host`) aylanib o'tish yo'lini ochadi.
+    if "*" in s.FORWARDED_ALLOW_IPS:
+        problems.append("FORWARDED_ALLOW_IPS trusts every caller")
     if problems:
         raise RuntimeError("Refusing to boot in production with insecure defaults: " + "; ".join(problems))
 

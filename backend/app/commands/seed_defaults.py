@@ -105,7 +105,9 @@ async def _seed_post_accounts(db: AsyncSession) -> None:
     faqat NOT NULL ustunni to'ldirish uchun turadi.
 
     Telefon `+99800000000N` ajratilgan diapazondan — haqiqiy raqam bilan
-    to'qnashmasin (ustunda UNIQUE indeks bor).
+    to'qnashmasin (ustunda UNIQUE indeks bor). N rolga BIR MARTA, hisob
+    yaratilganda beriladi: diapazondagi birinchi bo'sh raqam olinadi va
+    keyin POST_ROLES tartibi o'zgarsa ham o'zgarmaydi.
     """
     existing = {
         UserRole(u.role): u
@@ -124,18 +126,26 @@ async def _seed_post_accounts(db: AsyncSession) -> None:
         .scalars()
         .all()
     }
-    for index, (role, post_code) in enumerate(POST_ROLES.items(), start=1):
+    used_phones = {u.phone for u in existing.values()}
+    for role, post_code in POST_ROLES.items():
         account = existing.get(role)
         if account is not None:
             if not account.is_active:
                 account.is_active = True
                 logger.info("Post hisobi qayta faollashtirildi: %s", role)
             continue
+        # Raqam POST_ROLES TARTIBIDAN olinmaydi: ro'yxat o'rtasiga yangi rol
+        # qo'shilganda indeks siljib, mavjud hisobning raqamini talab qilardi —
+        # UNIQUE indeks buzilib prestart yiqilardi. Diapazondagi birinchi bo'sh raqam.
+        number = 1
+        while (phone := f"+9980000000{number:02d}") in used_phones:
+            number += 1
+        used_phones.add(phone)
         db.add(
             User(
                 name=f"{post_code} posti",
                 username=str(role),
-                phone=f"+9980000000{index:02d}",
+                phone=phone,
                 hashed_password=await get_password_hash(secrets.token_urlsafe(24)),
                 role=role,
                 is_active=True,

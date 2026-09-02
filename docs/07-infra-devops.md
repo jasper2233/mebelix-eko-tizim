@@ -157,7 +157,7 @@ Blok ichida: security headerlar (`X-Frame-Options SAMEORIGIN`, `X-Content-Type-O
 
 Asosiy site blokidan tashqari alohida **`:8080` bloki** bor — `respond /healthz "OK" 200`. Bu Docker healthcheck uchun doimiy plain-HTTP endpoint: `SITE_ADDRESS` domenga o'tib asosiy blok TLS'ga ko'chganda ham ishlayveradi.
 
-Backend `X-Forwarded-*` headerlariga ishonishi ikki qatlamli: app-level `ProxyHeadersMiddleware` `.env`/kod default'idagi `FORWARDED_ALLOW_IPS` dan oladi, gunicorn darajasi esa `--forwarded-allow-ips` flagi bilan — u compose'da `GUNICORN_FORWARDED_ALLOW_IPS` o'zgaruvchisidan olinadi (yuqoridagi `api` command). **Ikkalasining defaulti ham `172.16.0.0/12`** — docker compose tarmog'i, ya'ni Caddy konteyneri. Ikki o'zgaruvchi mustaqil: birini o'zgartirsang ikkinchisini ham qo'lda moslashtir.
+Backend `X-Forwarded-*` headerlariga ishonishi ikki qatlamli: app-level `ProxyHeadersMiddleware` `.env`/kod default'idagi `FORWARDED_ALLOW_IPS` dan oladi, gunicorn darajasi esa `--forwarded-allow-ips` flagi bilan — u compose'da `GUNICORN_FORWARDED_ALLOW_IPS` o'zgaruvchisidan olinadi (yuqoridagi `api` command). **Ikkalasining defaulti ham `172.16.0.0/12`** — docker compose tarmog'i, ya'ni Caddy konteyneri. Ikki o'zgaruvchi mustaqil: birini o'zgartirsang ikkinchisini ham qo'lda moslashtir. App-level middleware gunicorn qatlamidan ICHKARIDA ishlaydi, ya'ni `FORWARDED_ALLOW_IPS=["*"]` flagdagi qat'iy ro'yxatni bekor qilardi — shuning uchun non-LOCAL muhitda `*` bilan boot rad etiladi.
 
 ⚠️ `*` QO'YMANG. `*` da uvicorn XFF'ning eng CHAP (mijoz bergan) qiymatini oladi. 2026-08-26 da o'lchandi: `X-Forwarded-For` ni har so'rovda almashtirgan mijoz login rate-limitini TO'LIQ aylanib o'tdi (barqaror IP'da 8 urinishdan 3 tasi bloklandi, almashib turganda 12 tadan 0 tasi), audit logdagi IP ham soxta bo'lardi. Konkret ro'yxat berilganda uvicorn XFF'ni O'NGDAN chapga yuradi va birinchi ISHONILMAGAN manzilni — Caddy haqiqatan ko'rgan mijoz IP'sini — oladi.
 
@@ -463,7 +463,7 @@ Ya'ni sifat nazorati ikki qatlamli: lokalda pre-commit + `make lint`, remote'da 
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | Access token muddati |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Refresh token muddati |
 | `BCRYPT_ROUNDS` | `12` | Parol hashing rounds |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` | `postgres` / `postgres` | DB credentiallar (prod composeda defaultsiz — majburiy) |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` | `postgres` / `postgres` | DB credentiallar (prod composeda defaultsiz — majburiy). Parolda `@ / : # ? %` kabi belgilar bo'lishi mumkin: `POSTGRES_URI` ularni percent-encode qiladi (`docs/02` §config.py) |
 | `POSTGRES_SERVER` | `localhost` | Docker'da `db` (compose override qiladi) |
 | `POSTGRES_PORT` | `5432` | DB port |
 | `POSTGRES_DB` | `fastapi_db` | DB nomi (eski o'rnatishlarda `fastapi` bo'lishi mumkin — mavjud `.env` dagi qiymat saqlanadi) |
@@ -474,7 +474,7 @@ Ya'ni sifat nazorati ikki qatlamli: lokalda pre-commit + `make lint`, remote'da 
 | `DEFAULT_PAGE_SIZE` / `MAX_PAGE_SIZE` | `50` / `100` | Pagination |
 | `STARTUP_RETRY_MAX_ATTEMPTS` / `STARTUP_RETRY_DELAY_SECONDS` | `5` / `2` | Lifespan'da DB/Redis health retry |
 | `THREADPOOL_TOKENS` | `100` | AnyIO sync-bridge slotlari |
-| `FORWARDED_ALLOW_IPS` | `["172.16.0.0/12"]` | `X-Forwarded-*` ga ishoniladigan upstream (CIDR bo'lishi mumkin). **`*` EMAS** — u rate-limit aylanib o'tishga yo'l ochadi (yuqoriga qarang) |
+| `FORWARDED_ALLOW_IPS` | `["172.16.0.0/12"]` | `X-Forwarded-*` ga ishoniladigan upstream (CIDR bo'lishi mumkin). **`*` EMAS** — u rate-limit aylanib o'tishga yo'l ochadi (yuqoriga qarang); non-LOCAL muhitda `*` bilan ilova umuman ko'tarilmaydi (`_validate_production_settings` `RuntimeError` beradi) |
 | `GUNICORN_FORWARDED_ALLOW_IPS` | `172.16.0.0/12` | Faqat prod compose: gunicorn `--forwarded-allow-ips` flagi (oddiy satr, JSON emas). `FORWARDED_ALLOW_IPS` bilan sinxron turishi kerak |
 | `ADMIN_PHONE` / `ADMIN_USERNAME` / `ADMIN_PASSWORD` | misol qiymatlar | Startupda yaratiladigan birinchi superuser (E.164 telefon) |
 | `CORS_ORIGINS` | `["http://localhost:5173", "http://localhost:3000"]` | JSON-array CORS originlar |

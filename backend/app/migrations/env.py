@@ -13,7 +13,9 @@ config = context.config
 
 # URL alembic.ini da yo'q (parol repoga tushmasin) — ilova ishlatadigan aynan shu
 # satrni olamiz, ya'ni driver/escaping tuzatishi migratsiyaga ham o'z-o'zidan tegadi.
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+# `%` ni ikkilantirish SHART: set_main_option qiymatni configparser'ga yozadi va u `%` ni
+# interpolatsiya boshlanishi deb o'qiydi — percent-encode qilingan parol ValueError beradi.
+config.set_main_option("sqlalchemy.url", DATABASE_URL.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

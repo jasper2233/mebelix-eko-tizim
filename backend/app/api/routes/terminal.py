@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from sqlalchemy import ColumnElement, Row, Select, case, func, select
+from sqlalchemy.orm import defer
 
 from app.api.deps import SessionDep, client_ip, require_roles
 from app.core.config import upload_root
@@ -269,6 +270,7 @@ def _own_sheets(order: Order, own_nos: set[int] | None) -> int:
     """Kartadagi "N list" — SHU postniki. `mult` (bir naqsh necha marta kesiladi) sanaladi.
 
     `own_nos=None` — post kesish posti emas (kromka, prisadka...), hamma list sanaladi.
+    Bo'sh to'plam esa "bu postga bog'langan list yo'q" — 0.
     """
     return sum(
         int(s.get("mult") or 1)
@@ -301,6 +303,9 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
                 # (aynan shu shart `_post_route_rows()` orqali /kromka va /prisadka da ham)
                 (PartRoute.machine_id == machine.id) | (PartRoute.machine_id.is_(None)),
             )
+            # `cutmap` va `material_usage` kartada kerak (has_cutmap, sheets_total,
+            # materials), qolgan ikki og'ir JSONB bu yerda umuman o'qilmaydi
+            .options(defer(Order.survey), defer(Order.machine_assignments))
             .group_by(Order.id)
             .order_by(PRIORITY_RANK, Order.deadline.asc().nulls_last(), Order.id)
         )
@@ -394,6 +399,9 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
         need_sq = (
             select(PartRoute.part_id.label("part_id"), func.sum(PartRoute.per_instance).label("need"))
             .where(
+                # `part_id` buyurtmaga xos, ya'ni natija o'zgarmaydi — lekin filtrsiz
+                # agregat butun `part_route` jadvalini har so'rovda skanerlardi
+                PartRoute.order_id.in_(order_ids),
                 PartRoute.post_id == post.id,
                 PartRoute.is_enabled == True,  # noqa: E712
                 PartRoute.is_deleted == False,  # noqa: E712
@@ -444,7 +452,7 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
                 total=total_val,
                 # karta uchun: arrachi plita bo'yicha partiyalab kesadi
                 materials=[m["name"] for m in o.material_usage if m.get("kind") == "sheet"],
-                sheets_total=_own_sheets(o, own_sheet_nos.get(o.id) if own_sheet_nos is not None else None),
+                sheets_total=_own_sheets(o, own_sheet_nos.get(o.id, set()) if own_sheet_nos is not None else None),
                 has_cutmap=o.cutmap is not None,
             )
         )

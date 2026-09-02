@@ -127,7 +127,7 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
 - Skan tartibi postlarning global `order_index` idan emas, detalning O'Z `seq` i bo'yicha tekshiriladi (`services/scanning.py`) — nostandart marshrut global tartibni buzadi. Skan shu postdagi eng kichik `seq` li tugallanmagan qadamga yoziladi.
 - Standart (`is_custom=False`) detal fayldan faqat ARRA (kod 1) + KROMKA (kod 3, qirralar soni bo'yicha) + PRISADKA (kod 6) oladi; PRISADKA qadami HAR QANDAY ishlovda ochiladi — teshik, qirra teshigi, paz yoki freza (`giblab/models.py: ParsedPart.stage_sides`; ilgari faqat TESHIK sanalardi va paz/freza-only detal marshrutsiz qolardi — `a7c419e0b3d5`, §4.4). Paz/freza uchun alohida ROVER qadami ataylab yaratilmaydi — roverdan chiqqan detal keyin bo'yalishi mumkinligini fayl bilmaydi (geometriya baribir SCX va yorliq eskiziga ketadi).
 
-**Og'ir JSONB'larni defer qilish** — `order.py` da ikkita modul-darajali tuple: `ORDER_FAT_COLUMNS = (Order.cutmap, Order.survey, Order.material_usage, Order.machine_assignments)` va `PART_FAT_COLUMNS = (Part.xnc_summary, Part.note)`. Ro'yxat/hisobot so'rovlari ularni `defer()` bilan tashlab yuboradi — busiz 100 talik buyurtma reestri 2.2 MB kesish xaritasini bazadan tortib parse qilib tashlar edi (o'lchov: 284 ms → 5 ms). `Part.edges` ataylab ro'yxatda YO'Q — hajm hisobida kerak. Kartochka so'rovlarida ustunlar odatdagidek yuklanadi.
+**Og'ir JSONB'larni defer qilish** — `order.py` da ikkita modul-darajali tuple: `ORDER_FAT_COLUMNS = (Order.cutmap, Order.survey, Order.material_usage, Order.machine_assignments)` va `PART_FAT_COLUMNS = (Part.xnc_summary, Part.note)`. Ro'yxat/hisobot so'rovlari ularni `defer()` bilan tashlab yuboradi — busiz 100 talik buyurtma reestri 2.2 MB kesish xaritasini bazadan tortib parse qilib tashlar edi (o'lchov: 284 ms → 5 ms). `Part.edges` ataylab ro'yxatda YO'Q — hajm hisobida kerak. Kartochka so'rovlarida ustunlar odatdagidek yuklanadi. `/terminal/orders` esa tuple'ning faqat yarmini — `survey` va `machine_assignments` ni — defer qiladi: `cutmap` va `material_usage` terminal kartasining o'zida ishlatiladi.
 
 #### 1.4.1 Anketa xona rasmlari — `OrderFile.meta` orqali
 
@@ -506,8 +506,11 @@ bayrog'iga qarab kirishni 401 bilan rad etadi, ya'ni parol faqat NOT NULL ustunn
 to'ldiradi. Cheklov ROLGA emas, hisob TURIGA: post rolidagi SHAXSIY hisob
 (`is_system=False`) parol bilan bemalol kiradi va smenasi shu zahoti ochiladi
 (1.2-bo'lim). Telefon `+998000000001…09` ajratilgan diapazondan (`+9980000000` +
-ikki xonali tartib raqami = 13 belgi, `user.phone` dagi `String(13)` ga aynan
-mos; ustunda UNIQUE indeks bor).
+ikki xonali raqam = 13 belgi, `user.phone` dagi `String(13)` ga aynan mos;
+ustunda UNIQUE indeks bor). Raqam `POST_ROLES` tartibidan OLINMAYDI: seed
+diapazondagi birinchi bo'sh raqamni beradi va u rolga biriktirilib qoladi —
+aks holda ro'yxat o'rtasiga yangi rol qo'shilganda indeks siljib, mavjud
+hisobning raqami bilan to'qnashardi (UNIQUE buzilib prestart yiqilardi).
 
 `backend/app/commands/__init__.py` — bo'sh (faqat package marker).
 
