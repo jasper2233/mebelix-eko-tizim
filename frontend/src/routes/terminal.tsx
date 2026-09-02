@@ -229,11 +229,14 @@ function TerminalPage() {
     ),
   )
 
-  // Avto-skan: input doim fokusda (TZ 8.4.1). Faqat ARRA xaritasi ochiqda
-  // o'chadi (input yashirin) — KROMKA proyekt sahifasida skan doim ishlashi kerak
+  // Avto-skan: input doim fokusda (TZ 8.4.1). ARRA xaritasi ochiqda o'chadi
+  // (input yashirin) — KROMKA proyekt sahifasida skan doim ishlashi kerak.
   const mapOpen = ctx?.post_code === "ARRA" && mapOrderId !== null
+  // Tasdiq dialogi ochiqda ham o'chadi: input modaldan tashqarida, ya'ni
+  // interval/keydown fokusni tortadi, Radix trap darhol qaytaradi — churn
+  const dialogOpen = logoutOpen || endFor !== null || undoFor !== null
   // Qulf ostida ham fokus kerak: qulfning kaliti — beyjik skani
-  useScanFocus(scanOn && !mapOpen, inputRef)
+  useScanFocus(scanOn && !mapOpen && !dialogOpen, inputRef)
 
   // Smenaga QO'SHILISH rejimi: "+ Qo'shish" bosilgach keyingi tanlov brigadani
   // almashtirmaydi, ustiga qo'shadi. Sukut — almashtirish: ketayotgan odam

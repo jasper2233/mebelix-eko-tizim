@@ -32,7 +32,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/routes/_layout/employees.tsx:389-399` — TogglePerson (Nofaol qilish/Faollashtirish) uses `if (p.employee) {...} else if (p.user) {...}` — mutually exclusive branches. For a person with BOTH 
 - [x] ✅ `frontend/src/routes/_layout/logs.tsx:118` — Paginatsiya boshqaruvi va "Jami" hisoblagichi har sahifa/filtr o'zgarishida butunlay yo'qoladi: so'rovda `placeholderData`/`keepPreviousData` yo'q, sh
 - [x] ✅ `frontend/src/routes/login.tsx:136` — Post-tanlash dialogida ikkinchi beyjik so'rovi xato bersa, xato HECH QAYERDA ko'rsatilmaydi — dialog qotib qoladi.
-- [ ] ✅ `frontend/src/routes/tablo.tsx:315` — Matritsa so'rovi xatosi jimgina yutiladi: TV ekranda "Aktiv buyurtmalar yo'q" chiqadi va JONLI belgisi yashil qoladi.
+- [x] ✅ `frontend/src/routes/tablo.tsx:315` — Matritsa so'rovi xatosi jimgina yutiladi: TV ekranda "Aktiv buyurtmalar yo'q" chiqadi va JONLI belgisi yashil qoladi.
 - [x] ✅ `frontend/src/routes/terminal.tsx:328` — `endSession` is the only terminal mutation with no `onError` — a failed "Yakunlash" produces no toast, no dialog close, and no visible feedback at all
 - [x] ✅ `frontend/src/routes/terminal.tsx:387` — The undo ConfirmDialog turns into a dead modal: the 15s auto-clear nulls `lastScan` while the dialog is open, after which the confirm button is a sile
 - [x] ✅ `docker-compose.prod.yml:55` — `${TAG:-latest}` default hech qachon mavjud emas — CI faqat `:<git sha>` tegini push qiladi, ya'ni hujjatda ko'rsatilgan `make docker-prod` (TAG'siz) 
@@ -43,7 +43,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/Dockerfile:16` — Builder stage installs the full 'dev' dependency group (mypy, ruff, pre-commit, types-openpyxl, plus their transitive deps like nodeenv/virtualenv/ide
 - [x] ✅ `backend/app/api/routes/employees.py:78` — `search` beyjik UUID'ini SUBSTRING bo'yicha solishtiradi, ya'ni StaffReadUser (manager/texnolog/direktor) javobdan ataylab olib tashlangan `badge_id` 
 - [x] ✅ `backend/app/api/routes/login.py:122` — `_open_shift_for` opens a WorkSession without writing an audit record, while both other session-open paths do.
-- [ ] ✅ `backend/app/api/routes/login.py:90` — Password login (success and failure) and logout write no audit row at all — only badge login does — so the Loglar page cannot answer "who logged into 
+- [x] ✅ `backend/app/api/routes/login.py:90` — Password login (success and failure) and logout write no audit row at all — only badge login does — so the Loglar page cannot answer "who logged into 
 - [x] ✅ `backend/app/api/routes/machines.py:126` — PATCH /machines/{id} with an explicit `null` for `name` or `status` writes NULL into a NOT NULL column and ends in an uncaught IntegrityError (500) — 
 - [x] ✅ `backend/app/api/routes/machines.py:51` — Muddati o'tgan (12 soatdan eski) smena ham «ochiq smena» to'sig'i sifatida sanaladi va ish markazini o'chirtirmaydi.
 - [x] ✅ `backend/app/api/routes/machines.py:63` — Bekor qilingan buyurtmaning tugallanmagan marshrutlari ish markazini abadiy o'chirilmas qilib qo'yadi.
@@ -111,7 +111,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/components/Orders/OrderMatrix.tsx:265` — The note field is uncontrolled (`defaultValue`), so filtering the search box while in edit mode unmounts and remounts the row and the input snaps back
 - [x] ✅ `frontend/src/components/Orders/OrderMatrix.tsx:46` — OrderMatrix and CustomRoutes destructure only `data`/`isLoading` from the matrix query, so a failed request renders a misleading "no parts yet" empty 
 - [x] ✅ `frontend/src/components/People/PersonDialog.tsx:142` — Phone is turned into a payload by stripping non-digits with no `PHONE_PATTERN` check, so a half-typed number is sent as e.g. `+99890` and the server 4
-- [ ] ✅ `frontend/src/components/People/PersonDialog.tsx:146-150` — `switching` (which triggers the destructive-change confirm dialog) checks only whether the ORIGINAL person had any linked user account, not whether th
+- [x] ✅ `frontend/src/components/People/PersonDialog.tsx:146-150` — `switching` (which triggers the destructive-change confirm dialog) checks only whether the ORIGINAL person had any linked user account, not whether th
 - [ ] ✅ `frontend/src/components/People/PersonDialog.tsx:227` — User account and employee row are created in one non-atomic mutationFn; if the employee step fails, the created account is orphaned, invisible in the 
 - [x] ✅ `frontend/src/components/Sidebar/AppSidebar.tsx:76` — The docs (and the code comment they mirror) claim the badge query adds no request because the registry page dedupes it. That only holds ON `/orders`. 
 - [x] ✅ `frontend/src/components/Sidebar/Main.tsx:43` — Active-item detection is a strict equality on the full pathname, so on any child route the sidebar shows NO highlighted item — the user loses their pl
@@ -133,7 +133,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/components/UserSettings/ChangePassword.tsx:23` — current_password ham to'liq parol-kuchi sxemasi (passwordSchema) bilan tekshirilyapti, lekin bu sxema "Required password field (sign-up / new password
 - [x] ✅ `frontend/src/components/UserSettings/UserInformation.tsx:100-107` — Clearing the name field silently does nothing: the cleared value becomes `undefined`, is dropped from the JSON body, yet a success toast fires and the
 - [x] ✅ `frontend/src/lib/mes.ts:215, routes/terminal.tsx:60,75, routes/_layout.tsx:30` — `OPERATOR_ROLES` is an `as const` tuple, which forces every call site to cast the argument with `as never` — silently disabling exactly the rename-saf
-- [ ] ✅ `frontend/src/lib/queryClient.ts:23-26` — The single QueryClient declares no `defaultOptions`, so every query in the app inherits TanStack v5 defaults `staleTime: 0`, `refetchOnWindowFocus: tr
+- [x] ✅ `frontend/src/lib/queryClient.ts:23-26` — The single QueryClient declares no `defaultOptions`, so every query in the app inherits TanStack v5 defaults `staleTime: 0`, `refetchOnWindowFocus: tr
 - [x] ✅ `frontend/src/lib/scxDir.ts:89-91` — `pickDir` swallows every error as "user cancelled", so a real failure (SecurityError outside a user gesture, NotAllowedError) makes the "Hammasini yuk
 - [x] ✅ `frontend/src/lib/validation.ts:24-26, backend/app/schemas/users.py:35` — The "special character" rule differs between the two sides: `ʻ` and `ʼ` (the Uzbek oʻ/gʻ apostrophes) satisfy zod but not the server, so a password th
 - [ ] ✅ `frontend/src/queries/mes.ts:33-58` — getClientsQueryOptions and getEmployeesQueryOptions ask for one 100-row page and never paginate, while the page header renders the server's FULL count
@@ -143,7 +143,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `frontend/src/routes/_layout/clients.tsx:53` — Clients registry silently shows only the newest 100 rows — `count` is fetched and thrown away, no pagination and no "N tadan" hint.
 - [x] ✅ `frontend/src/routes/_layout/index.tsx:47` — Dashboard `stats` so'rovi (Navbatda/Bugun ustunlari) uchun xato holati umuman qayta ishlanmagan — so'rov yiqilsa ustunlar jimgina "—" ko'rsatadi va he
 - [x] ✅ `frontend/src/routes/_layout/orders/$orderId.tsx:105` — The .project drop zone has no in-flight guard, so a second drop (or a click that reopens the file dialog) while an upload is running fires a second up
-- [ ] ✅ `frontend/src/routes/_layout/orders/$orderId.tsx:201` — customCount is read from the query cache with getQueryData() during render, which creates no subscription — the tab label's count is missing on first 
+- [x] ✅ `frontend/src/routes/_layout/orders/$orderId.tsx:201` — customCount is read from the query cache with getQueryData() during render, which creates no subscription — the tab label's count is missing on first 
 - [x] ✅ `frontend/src/routes/_layout/printers.tsx:120` — The agent-log dialog swallows API errors: a failed `readBridgeLogs` request renders the 'no logs yet' hint instead of an error, so the admin blames th
 - [x] ✅ `frontend/src/routes/_layout/printers.tsx:202` — The mebelix-agent.exe download link is the only place in the whole frontend that builds an API URL without API_BASE, so whenever the API lives on a di
 - [x] ✅ `frontend/src/routes/_layout/reports.tsx:40` — Sahifa ochilganda ikkala DatePicker bo'sh turadi, backend esa jimgina oxirgi 30 kunni qaytaradi; javobdagi haqiqiy oraliq (`date_from`/`date_to`) hech
@@ -229,9 +229,9 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/components/Common/ErrorScreen.tsx:20-22` — The "Bosh sahifaga" control nests a `<button>` inside an `<a>` (interactive content inside an anchor), instead of the `<Button asChild><Link>` pattern
 - [x] ✅ `frontend/src/components/Common/TablePagination.tsx:9` — Nima: docs/06 says the range label sits on the left and the controls on the right; the whole block is right-aligned (`justify-end`).
 - [x] ✅ `frontend/src/components/Orders/CustomRoutes.tsx:224` — The "Asosiy detalga biriktirish" option list reads `assembly_parent_id` from the server row only, ignoring pending `parents` edits — so a part already
-- [ ] ✅ `frontend/src/components/Orders/EditOrder.tsx:74` — EditOrder and MachineAssign both spread crudCallbacks (which already invalidates on onSettled) AND call an `onSaved` prop whose only implementation is
+- [x] ✅ `frontend/src/components/Orders/EditOrder.tsx:74` — EditOrder and MachineAssign both spread crudCallbacks (which already invalidates on onSettled) AND call an `onSaved` prop whose only implementation is
 - [x] ✅ `frontend/src/components/Orders/MachineAssign.tsx:26` — `selection` is seeded from `order.machine_assignments` by a useState initializer, which runs once per mount — a refetch that brings different assignme
-- [ ] ✅ `frontend/src/components/Orders/MachineAssign.tsx:83` — A machine assignment can never be removed once made: the SelectField gets no `emptyLabel` so no empty option is rendered, the mutation body drops empt
+- [x] ✅ `frontend/src/components/Orders/MachineAssign.tsx:83` — A machine assignment can never be removed once made: the SelectField gets no `emptyLabel` so no empty option is rendered, the mutation body drops empt
 - [x] ✅ `frontend/src/components/Orders/orderForm.tsx:59` — The "Izoh" FormField is copy-pasted into AddOrder and EditOrder with the only difference being a placeholder, contradicting the stated reason for keep
 - [x] ✅ `frontend/src/components/People/PersonDialog.tsx:113` — form.posts is snapshotted in the useState initializer from the `posts` prop, so opening the dialog from the EDIT button before the posts query resolve
 - [x] ✅ `frontend/src/components/People/PersonDialog.tsx:297` — `formatUzPhone` is called without the `prev` argument, re-introducing the backspace lock that argument exists to prevent.
@@ -244,7 +244,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/components/Terminal/PrisadkaView.tsx:177` — Eski brauzer yo'lida hech narsa tekshirilmasdan "N ta SCX yuklab olindi" muvaffaqiyat toasti chiqadi — `<a download>` yo'li xatoni umuman ko'rmaydi, h
 - [x] ✅ `frontend/src/components/Terminal/UpakovkaView.tsx:176` — Qadoqdan chiqarish tugmasida pending/disabled holati yo'q — ikki marta bosilsa ikkinchi DELETE 404 beradi va operatorga tushunarsiz xato toast chiqadi
 - [ ] ✅ `frontend/src/components/Terminal/UpakovkaView.tsx:81` — Faqat BIRINCHI ochiq qadoq ko'rsatiladi; backend bir buyurtmada ikkinchi ochiq qadoq yaratilishini taqiqlamaydi — ikkinchisi ekranda umuman ko'rinmayd
-- [ ] ✅ `frontend/src/components/Terminal/useKiosk.ts:88` — `useScanFocus` has no awareness of open modals, so while any of terminal.tsx's three ConfirmDialogs is open it keeps yanking focus every 2s (and on ev
+- [x] ✅ `frontend/src/components/Terminal/useKiosk.ts:88` — `useScanFocus` has no awareness of open modals, so while any of terminal.tsx's three ConfirmDialogs is open it keeps yanking focus every 2s (and on ev
 - [x] ✅ `frontend/src/components/UserSettings/ChangePassword.tsx:55` — The whole form object is passed as the mutation payload, so `confirm_password` — a second copy of the new password — is sent to the server in the PATC
 - [x] ✅ `frontend/src/components/ui/label.tsx:1` — Uchta ui faylida `"use client"` direktivasi qolgan; loyihada Next.js/RSC yo'q (Vite SPA), shuning uchun direktiva hech qanday ma'no bermaydi va 25 fay
 - [x] ✅ `frontend/src/hooks/useBadgeScan.ts:33-42` — Beyjik skani `Enter` da `preventDefault` qilmaydi — parol formasi ochiq va maydon fokusda bo'lsa, skan UUID'ni maydonga yozib, formani ham yuborishga 

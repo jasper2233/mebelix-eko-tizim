@@ -154,6 +154,9 @@ export function PersonDialog({
     editing &&
     ((kind === "ofis" && !!person?.employee) ||
       (kind !== "ofis" && !!person?.user && !withLogin))
+  // Allaqachon tsexda bo'lgan xodimning logini olib tashlanmoqda — bu «tsexga
+  // o'tkazish» emas, tasdiq matni ham shunga mos bo'lsin.
+  const removingLogin = kind !== "ofis" && !!person?.employee
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -416,15 +419,25 @@ export function PersonDialog({
           open={confirmSwitch}
           onOpenChange={setConfirmSwitch}
           title={
-            kind === "ofis" ? "Ofisga o'tkazilsinmi?" : "Tsexga o'tkazilsinmi?"
+            kind === "ofis"
+              ? "Ofisga o'tkazilsinmi?"
+              : removingLogin
+                ? "Kirish hisobi o'chirilsinmi?"
+                : "Tsexga o'tkazilsinmi?"
           }
           description={
             kind === "ofis"
               ? `${form.name} endi ofisda ishlaydi: beyjigi bekor qilinadi va tsexda smena ocha olmaydi. Skan tarixi saqlanadi.`
-              : `${form.name} endi tsexda ishlaydi: kirish hisobi o'chiriladi va u ofis paneliga kira olmaydi.`
+              : removingLogin
+                ? `${form.name} ning kirish hisobi o'chiriladi va u ofis paneliga kira olmaydi. Tsex yozuvi va beyjigi qoladi.`
+                : `${form.name} endi tsexda ishlaydi: kirish hisobi o'chiriladi va u ofis paneliga kira olmaydi.`
           }
           confirmText={
-            kind === "ofis" ? "Ofisga o'tkazish" : "Tsexga o'tkazish"
+            kind === "ofis"
+              ? "Ofisga o'tkazish"
+              : removingLogin
+                ? "Hisobni o'chirish"
+                : "Tsexga o'tkazish"
           }
           destructive
           loading={mutation.isPending}

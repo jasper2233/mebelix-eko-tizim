@@ -87,6 +87,16 @@ async def mark_refresh_token_used(jti: str, max_age: int) -> None:
     await rate_limiter.client.set(_USED_JTI_PREFIX + jti, 1, ex=max_age)
 
 
+async def _audit_auth(db: SessionDep, request: Request, action: str, *, user_id: int | None, message: str) -> None:
+    """Admin paneliga kirish/chiqishni audit logga yozadi (`auth` moduli).
+
+    SHU YERDA commit qilinadi: rad etish yo'lida keyin 401 ko'tariladi va sessiya
+    rollback bo'lardi — ya'ni aynan brute-force izi yo'qolardi.
+    """
+    log_action(db, module="auth", action=action, user_id=user_id, message=message, ip=client_ip(request))
+    await db.commit()
+
+
 @router.post(
     "/access-token",
     response_model=Token,
@@ -105,16 +115,25 @@ async def login_for_access_token(
     user = await crud_users.authenticate(db=db, username_or_phone=form_data.username, password=form_data.password)
     if not user:
         await _LOGIN_RATE_LIMIT.hit(request)
+        await _audit_auth(
+            db, request, "login_failed", user_id=None, message=f"Kirish urinishi rad etildi: {form_data.username}"
+        )
         raise UnauthorizedException("Foydalanuvchi nomi, telefon yoki parol noto'g'ri.")
     if not user.is_active:
         await _LOGIN_RATE_LIMIT.hit(request)
+        await _audit_auth(db, request, "login_failed", user_id=user.id, message=f"Nofaol hisob: {form_data.username}")
         raise UnauthorizedException("Foydalanuvchi faol emas")
     # TIZIM hisobi hech qachon kirmaydi: u beyjik bilan ochilgan smena qaysi hisob
     # nomidan yozilishini hal qiladi, xolos (`_terminal_user`). Odamning SHAXSIY
     # hisobi esa kiradi — skaneri yo'q postda (ARRA) yagona yo'l shu.
     if user.is_system:
         await _LOGIN_RATE_LIMIT.hit(request)
+        await _audit_auth(
+            db, request, "login_failed", user_id=user.id, message=f"Texnik hisob bilan kirish: {form_data.username}"
+        )
         raise UnauthorizedException("Bu texnik hisob — u bilan kirilmaydi. Beyjik yoki shaxsiy hisobdan foydalaning.")
+
+    await _audit_auth(db, request, "login", user_id=user.id, message=f"Parol bilan kirish: {form_data.username}")
 
     # Tsex hisobi bo'lsa smena SHU YERDA ochiladi: aks holda operator kirib, keyin
     # yana ekranda ismini bosishi kerak bo'lardi — ikki marta bir ish

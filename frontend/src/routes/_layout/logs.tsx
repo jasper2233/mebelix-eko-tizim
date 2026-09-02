@@ -65,6 +65,7 @@ const CATEGORIES: { key: string; label: string }[] = [
   { key: "clients", label: "Mijozlar" },
   { key: "machines", label: "Ish markazlari" },
   { key: "posts", label: "Postlar" },
+  { key: "auth", label: "Kirish/chiqish" },
 ]
 const CATEGORY_LABELS = Object.fromEntries(
   CATEGORIES.map((c) => [c.key, c.label]),
@@ -86,6 +87,9 @@ const ACTION_LABELS: Record<string, string> = {
   ended: "tugadi",
   machine_linked: "ish markazi bog'landi",
   machine_unlinked: "ish markazidan uzildi",
+  login: "tizimga kirdi",
+  login_failed: "kirish rad etildi",
+  logout: "tizimdan chiqdi",
   can_print_changed: "chek chiqarish o'zgardi",
   scx_regenerated: "SCX qayta yaratildi",
   matrix_edited: "matritsa tahrirlandi",

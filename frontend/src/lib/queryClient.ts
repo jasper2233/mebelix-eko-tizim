@@ -27,4 +27,19 @@ const handleApiError = (error: Error) => {
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({ onError: handleApiError }),
   mutationCache: new MutationCache({ onError: handleApiError }),
+  defaultOptions: {
+    queries: {
+      // TanStack default `retry: 3` — tsex Wi-Fi uzilganda har xato ~7 s jim
+      // turadi (3 ta qayta urinish + backoff), keyingina `isError` yonadi.
+      // Bitta qayta urinish tarmoqning bir martalik uzilishiga yetadi.
+      retry: 1,
+      // Tablo/terminal ekranlari o'z `refetchInterval` i bilan yangilanadi;
+      // qolgan sahifalar uchun har alt-tab'da qayta so'rash ortiqcha yuk.
+      refetchOnWindowFocus: false,
+      // Global `staleTime` ATAYLAB berilmagan: u bir joydan hamma sahifa
+      // xulqini o'zgartiradi, mutatsiyadan keyingi yangilanish esa
+      // `invalidateQueries` ga tayanadi. Kerak bo'lgan joyda so'rovning
+      // o'zida beriladi (`queries/`, `routes/`).
+    },
+  },
 })

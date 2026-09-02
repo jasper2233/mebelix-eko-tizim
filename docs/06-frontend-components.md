@@ -47,6 +47,8 @@ qolganini lavozim hal qiladi.
   shaxsiy logini SAQLANAYOTGAN tsex xodimini tahrirlashda (`withLogin` — katakcha
   belgilangan) hisob `updateUser` bilan yangilanadi, shuning uchun `switching` shartida
   `&& !withLogin` turadi — busiz har tahrirda yolg'on destruktiv tasdiq chiqardi.
+  Allaqachon tsexda bo'lgan xodimning logini olib tashlanganda (yozuv qoladi, faqat
+  hisob o'chadi) tasdiq «Kirish hisobi o'chirilsinmi?» deydi — «Tsexga o'tkazilsinmi?» emas.
 - **O'chiq "Saqlash" sababini aytadi** (`missing`): "F.I.Sh yozing", "Lavozim nomini
   yozing", "Kamida bitta post tanlang", "Telefon +998XXXXXXXXX formatida bo'lsin",
   "Kirish uchun telefon kerak — login o'shandan olinadi" (ofis lavozimida ham,
@@ -289,13 +291,14 @@ Buyurtma sahifalari (`/orders`, `/orders/$orderId`) uchun dialog va jadval kompo
 **Maqsadi:** buyurtmani tahrirlash dialogi (manager) — AddOrder bilan umumiy `orderForm.tsx` (schema, maydonlar, payload), qiymatlar `values:` orqali `order` dan olinadi (pul maydonlari `moneyToInput` bilan — u API'ning `"14000000.00"` Decimal-satridan avval kasr qismini kesib tashlaydi, keyin `formatMoneyInput` ni chaqiradi; to'g'ridan-to'g'ri `formatMoneyInput` nuqtani o'chirib summani 100 barobar oshirib yuborardi).
 
 - Mijoz maydoni — `ClientCombobox` (`initialLabel={order.client_name}`, `disabled={!isDraft}`) — DRAFT dan keyin mijoz almashtirilmaydi ("faqat qoralamada almashtiriladi"; backend ham shu qoidani ushlaydi).
-- Mutation: `OrdersService.updateOrder`; muvaffaqiyatda `onSaved()` callback.
+- Mutation: `OrdersService.updateOrder` (`crudCallbacks(queryClient, ["orders"], …)`); muvaffaqiyatda toast + dialog yopiladi. `onSaved` propi YO'Q: `["orders"]` prefiksi `["orders", id]` va `["orders", id, "matrix"]` ni ham qamraydi, chaqiruvchidagi ikkinchi invalidatsiya har saqlashda ortiqcha so'rov berardi.
 
 ### `frontend/src/components/Orders/MachineAssign.tsx`
 
 **Maqsadi:** ish markazi tanlovi paneli (TZ 6.4.1) — `requires_assignment_choice` bo'lgan postlar uchun stanokni odam aniq tanlaydi. Panelni manager ham, texnolog ham ko'radi (`orders/$orderId.tsx`: `(canManage || isTexnolog) && canEdit && order.project_uuid`) — marshrutni texnolog chizadi, ya'ni qaysi stanok qaysi ishni bajarishini yaxshiroq biladi.
 
-- Har post uchun `POST_COLORS` rangli sarlavha + faol ish markazlari selecti (`getPostsQueryOptions` + `getMachinesQueryOptions`); `OrdersService.assignOrderMachines` ga saqlanadi; tanlov talab qiluvchi post bo'lmasa `null` qaytaradi.
+- Har post uchun `POST_COLORS` rangli sarlavha + faol ish markazlari selecti (`getPostsQueryOptions` + `getMachinesQueryOptions`); `OrdersService.assignOrderMachines` ga saqlanadi (`crudCallbacks(queryClient, ["orders"], …)` — `onSaved` propi yo'q); tanlov talab qiluvchi post bo'lmasa `null` qaytaradi.
+- Selectda `emptyLabel="Biriktirilmagan"` varianti bor — biriktirishni BEKOR qilish mumkin (bo'sh qiymatlar payload'dan tushadi, server esa `machine_assignments` dict'ini butunlay almashtiradi). "Biriktirish" tugmasi faqat tanlov boshlang'ich holatdan farq qilganda faol: aks holda bo'sh formada bosib hamma biriktirishni tasodifan o'chirib yuborish mumkin edi.
 
 ### `frontend/src/components/Orders/OrderMatrix.tsx`
 
@@ -537,7 +540,7 @@ Chap toolbar tugmasi: ikonka + `text-2xs` yozuv (`index.css` da 0.6875rem), `h-1
 
 ### `frontend/src/components/Terminal/useKiosk.ts`
 
-**Maqsadi:** kiosk qobig'i. `useKioskShell(canReload)` — kontekst menyusini o'chirish (sensorda long press chekni bekor qilish uchun kerak), to'liq ekran holati (Fullscreen API yoki `display-mode`), yangi build tekshiruvi (`/` HEAD ETag, 5 daqiqada) va XAVFSIZ paytda avto-reload (`canReload()` — xarita yopiq va `QUIET_MS`=2 daqiqa skan bo'lmagan). `useScanFocus(enabled, inputRef)` — avto-skan inputini fokusda ushlash (2 s interval) va fokussiz terilgan birinchi belgida fokusni qaytarish.
+**Maqsadi:** kiosk qobig'i. `useKioskShell(canReload)` — kontekst menyusini o'chirish (sensorda long press chekni bekor qilish uchun kerak), to'liq ekran holati (Fullscreen API yoki `display-mode`), yangi build tekshiruvi (`/` HEAD ETag, 5 daqiqada) va XAVFSIZ paytda avto-reload (`canReload()` — xarita yopiq va `QUIET_MS`=2 daqiqa skan bo'lmagan). `useScanFocus(enabled, inputRef)` — avto-skan inputini fokusda ushlash (2 s interval) va fokussiz terilgan birinchi belgida fokusni qaytarish. `terminal.tsx` `enabled` ni ARRA xaritasi ochiqda (input yashirin) VA tasdiq dialogi ochiqda (`logoutOpen`/`endFor`/`undoFor`) o'chiradi: input modaldan tashqarida, ya'ni aks holda interval fokusni tortadi, Radix fokus tuzog'i darhol qaytaradi — bemaqsad focus/blur churn. Dialog yopilgach effekt qayta yoqiladi va `focus()` darhol chaqiriladi.
 
 ### `frontend/src/components/Terminal/useTerminalScan.ts`
 

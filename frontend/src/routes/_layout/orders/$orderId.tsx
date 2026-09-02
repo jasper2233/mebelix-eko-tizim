@@ -81,6 +81,14 @@ function OrderDetailPage() {
     isError,
     refetch,
   } = useQuery(getOrderQueryOptions(id))
+  // Tab yorlig'idagi nostandart detallar soni. `enabled: false` — bu yerdan
+  // SO'ROV KETMAYDI (matritsani OrderMatrix/CustomRoutes o'zi yuklaydi), lekin
+  // kuzatuvchi keshga OBUNA bo'ladi: matritsa yuklangan yoki tahrirlangan
+  // zahoti yorliq qayta chiziladi. `getQueryData` bunday qilmasdi.
+  const { data: matrix } = useQuery({
+    ...getOrderMatrixQueryOptions(id),
+    enabled: false,
+  })
   const { currentUser } = useCurrentUser()
   const fileInput = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -199,12 +207,7 @@ function OrderDetailPage() {
   const scxFiles = (order.files ?? []).filter((f) => f.kind === "scx")
   const fileUrl = (name: string | number) =>
     `${API_BASE}/api/v1/orders/${id}/files/${name}`
-  // Matritsa allaqachon yuklangan bo'lsa tab yorlig'ida son ko'rinadi. Bu yerda
-  // faqat KESH o'qiladi (`getQueryData`) — qo'shimcha so'rov ketmaydi.
-  const customCount = (
-    queryClient.getQueryData(getOrderMatrixQueryOptions(id).queryKey)?.parts ??
-    []
-  ).filter((p) => p.is_custom).length
+  const customCount = (matrix?.parts ?? []).filter((p) => p.is_custom).length
 
   // GibLab fayldagi typeId="simple" goodlar: petlya, yevrovint, dasta... (dona).
   // SKU kodlilar oldin: kodsizlar orasida dizaynerning 3D-model qoldiqlari ham
@@ -233,9 +236,7 @@ function OrderDetailPage() {
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {canManage && !isTerminal && (
-              <EditOrder order={order} onSaved={invalidate} />
-            )}
+            {canManage && !isTerminal && <EditOrder order={order} />}
             {canManage && order.status === "draft" && (
               <LoadingButton
                 loading={confirm.isPending}
@@ -425,7 +426,7 @@ function OrderDetailPage() {
           qaysi ishni bajarishini yaxshiroq biladi. */}
       {(canManage || isTexnolog) && canEdit && order.project_uuid && (
         // key: buyurtma almashsa ichki `selection` holati qaytadan seed bo'lsin
-        <MachineAssign key={order.id} order={order} onSaved={invalidate} />
+        <MachineAssign key={order.id} order={order} />
       )}
 
       {isTexnolog ? (

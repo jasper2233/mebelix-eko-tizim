@@ -260,7 +260,10 @@ function LiveBadge({
   const age = updatedAt ? Math.max(0, Math.round((now - updatedAt) / 1000)) : 0
   // So'rov 60 soniyada bir takrorlanadi — 90 dan oshsa yangilanish yiqilgan
   const stale = updatedAt > 0 && age > 90
-  const live = online && !stale
+  // `updatedAt === 0` — so'rov hali BIR MARTA ham muvaffaqiyat bilan
+  // tugamagan (sovuq start + API yiqilgan). Busiz WS ulangani yetardi va
+  // ekran bo'sh jadval ustida "JONLI" deb turardi.
+  const live = online && !stale && updatedAt > 0
   return (
     <span
       className={cn(
@@ -288,7 +291,13 @@ function LiveBadge({
       </span>
       {/* Raqam FAQAT nosozlikda: normal holatda jonlilikni tepkilayotgan
           halqa ko'rsatadi, "3d" esa muammo qanchalik eskiligini aytadi. */}
-      {!online ? "ULANMADI" : stale ? `ESKI · ${ageLabel(age)}` : "JONLI"}
+      {!online
+        ? "ULANMADI"
+        : !updatedAt
+          ? "MA'LUMOT YO'Q"
+          : stale
+            ? `ESKI · ${ageLabel(age)}`
+            : "JONLI"}
     </span>
   )
 }
@@ -312,7 +321,7 @@ function TabloPage() {
     ...getMachinesQueryOptions(),
     enabled: me?.role === "tablo",
   })
-  const { data, isLoading, dataUpdatedAt } = useQuery(
+  const { data, isLoading, isError, dataUpdatedAt } = useQuery(
     getTabloMatrixQueryOptions(),
   )
   const fitted = useFitScale(data?.orders ?? [])
@@ -425,6 +434,14 @@ function TabloPage() {
             className="p-16 text-[#d9b34a]"
             label="Yuklanmoqda"
           />
+        ) : isError && !data ? (
+          /* Drill ekranidagi bilan bir xil sabab: bo'sh jadval "aktiv
+             buyurtma yo'q" degan YOLG'ON aytadi. Devorda hech kim tugma
+             bosmaydi — 60 s polling (refetchIntervalInBackground) o'zi qayta
+             uradi, shuning uchun matn kutishga chorlaydi. */
+          <p className="p-16 text-center text-4xl font-bold text-muted-foreground">
+            MA'LUMOT OLINMADI. Ulanish tiklanganda ekran o'zi yangilanadi.
+          </p>
         ) : (
           /* `table-fixed` + aniq ulushlar: kenglik MAZMUNGA bog'liq bo'lmasin.
              Ilgari ustunlar mazmunga qarab 87px dan 187px gacha sakrardi.

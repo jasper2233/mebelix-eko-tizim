@@ -36,13 +36,7 @@ import { LoadingButton } from "@/components/ui/loading-button"
 import { moneyToInput } from "@/lib/validation"
 import { crudCallbacks } from "@/queries/mes"
 
-export function EditOrder({
-  order,
-  onSaved,
-}: {
-  order: OrderDetail
-  onSaved: () => void
-}) {
+export function EditOrder({ order }: { order: OrderDetail }) {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
   const cb = crudCallbacks(queryClient, ["orders"], "Buyurtma yangilandi")
@@ -70,7 +64,6 @@ export function EditOrder({
     onSuccess: () => {
       cb.onSuccess()
       setOpen(false)
-      onSaved()
     },
   })
 

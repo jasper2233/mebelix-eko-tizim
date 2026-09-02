@@ -14,27 +14,31 @@ import {
   getPostsQueryOptions,
 } from "@/queries/mes"
 
-export function MachineAssign({
-  order,
-  onSaved,
-}: {
-  order: OrderDetail
-  onSaved: () => void
-}) {
+/** Tanlovlarni solishtirish uchun normal shakl: bo'sh (biriktirilmagan)
+ *  qiymatlar tashlanadi, tartib barqaror. */
+const norm = (s: Record<string, string>) =>
+  JSON.stringify(
+    Object.entries(s)
+      .filter(([, v]) => v)
+      .sort(),
+  )
+
+export function MachineAssign({ order }: { order: OrderDetail }) {
   const { data: posts } = useQuery(getPostsQueryOptions())
   const { data: machines } = useQuery(getMachinesQueryOptions())
-  const [selection, setSelection] = useState<Record<string, string>>(
-    Object.fromEntries(
-      Object.entries(order.machine_assignments ?? {}).map(([k, v]) => [
-        k,
-        String(v),
-      ]),
-    ),
+  const assigned = Object.fromEntries(
+    Object.entries(order.machine_assignments ?? {}).map(([k, v]) => [
+      k,
+      String(v),
+    ]),
   )
+  const [selection, setSelection] = useState<Record<string, string>>(assigned)
   const queryClient = useQueryClient()
+  // ["orders"] prefiksi buyurtmaning o'zini ham, reestrni ham qamraydi —
+  // shuning uchun chaqiruvchida qo'shimcha invalidatsiya kerak emas.
   const cb = crudCallbacks(
     queryClient,
-    ["orders", order.id],
+    ["orders"],
     "Ish markazlari biriktirildi",
   )
 
@@ -55,10 +59,6 @@ export function MachineAssign({
         },
       }),
     ...cb,
-    onSuccess: () => {
-      cb.onSuccess()
-      onSaved()
-    },
   })
 
   if (!choiceposts.length) return null
@@ -88,6 +88,7 @@ export function MachineAssign({
                 placeholder={
                   options.length ? "Ish markazini tanlang" : "AKTIV markaz yo'q"
                 }
+                emptyLabel="Biriktirilmagan"
                 options={options.map((m) => ({
                   value: String(m.id),
                   label: m.name,
@@ -98,7 +99,11 @@ export function MachineAssign({
         })}
         <LoadingButton
           loading={mutation.isPending}
-          disabled={!Object.values(selection).some(Boolean)}
+          // Faqat O'ZGARGANDA: shart "biror narsa tanlangan" bo'lsa
+          // biriktirishni bekor qilib bo'lmasdi; endi bo'sh tanlov ham
+          // yuboriladi (server dict'ni butunlay almashtiradi), lekin
+          // o'zgarmagan formada tugma bosilmaydi.
+          disabled={norm(selection) === norm(assigned)}
           onClick={() => mutation.mutate()}
         >
           Biriktirish

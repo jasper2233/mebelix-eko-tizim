@@ -3,9 +3,10 @@ import contextlib
 from fastapi import APIRouter, Request, Response
 from sqlalchemy import select
 
-from app.api.deps import CurrentUser, SessionDep
+from app.api.deps import CurrentUser, SessionDep, client_ip
 from app.api.routes.login import mark_refresh_token_used, refresh_days
 from app.core.security import REFRESH_COOKIE_NAME, TokenType, clear_auth_cookies, verify_token
+from app.crud import log_action
 from app.models import Employee, WorkSession
 from app.models.enums import SessionStatus
 from app.schemas.common import Message
@@ -62,6 +63,14 @@ async def logout(
     )
     for session in sessions:
         await end_session(db, session)
+    log_action(
+        db,
+        module="auth",
+        action="logout",
+        user_id=current_user.id,
+        message=f"Chiqish: {current_user.username}",
+        ip=client_ip(request),
+    )
     await db.commit()
     # Joriy refresh tokenni bekor qilamiz — boshqa qurilmalarnikiga tegilmaydi
     raw = request.cookies.get(REFRESH_COOKIE_NAME)
