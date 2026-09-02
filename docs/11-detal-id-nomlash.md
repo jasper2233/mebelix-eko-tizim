@@ -87,7 +87,10 @@ sababli bitta chek ID si va bitta bekor qilish tugmasini ko'rsatadi
 - **ID to'qnashuvini oldindan aniqlash**: ikki HAR XIL detal bir xil QR bersa
   (masalan `010` kodli 2 nusxa va `010_2` kodli detal), ingest unique-indeks
   500 xatosi o'rniga do'stona `ParseError` beradi: "Detal ID to'qnashuvi: ..."
-  (`ingest.py ingest_project`).
+  (`ingest.py ingest_project`). AYNAN shu tekshiruv matritsa yo'lida ham bor:
+  `_resize_instances` yangi QR'larni yozishdan OLDIN buyurtmadagi BOSHQA
+  detallarning tirik `qr_text` larini o'qiydi va to'qnashsa 422 beradi
+  (`orders/matrix.py`) — son o'zgarishi ham xuddi shu juftlikni yasashi mumkin.
 - **Skan format darvozasi**: `scanning.py` dagi `_QR_RE = ^.+_.+$` — kamida
   bitta `_` bo'lmagan QR bazaga murojaatdan oldin `E002` bilan rad etiladi.
   Shu sababli detal ID sidan ATAYLAB farqli prefiksli ikki QR turi bor:

@@ -137,7 +137,40 @@ export function Num({
   )
 }
 
-/** Ko'p tanlovli katakchalar — sensorli ekranda butun katak bosiladi */
+/** Bitta belgilash katagi — sensorli ekranda butun katak bosiladi.
+ *  Tanlangan holat grammatikasi FAQAT shu yerda: anketadagi har bir katakcha
+ *  (to'rdagisi ham, buyurtma darajasidagisi ham) shu ko'rinishni oladi. */
+export function CheckCard({
+  checked,
+  disabled,
+  onToggle,
+  children,
+}: {
+  checked: boolean
+  disabled?: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    // biome-ignore lint/a11y/noLabelWithoutControl: Checkbox (Radix) ichida — butun katak bosiladi
+    <label
+      className={cn(
+        "flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
+        checked ? "border-primary bg-primary/5" : "hover:border-primary/40",
+        disabled && "cursor-default opacity-70",
+      )}
+    >
+      <Checkbox
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={onToggle}
+      />
+      {children}
+    </label>
+  )
+}
+
+/** Ko'p tanlovli katakchalar to'ri */
 export function CheckGrid({
   options,
   values,
@@ -154,28 +187,20 @@ export function CheckGrid({
       {options.map((o) => {
         const checked = values.includes(o.value)
         return (
-          // biome-ignore lint/a11y/noLabelWithoutControl: Checkbox (Radix) ichida — butun katak bosiladi
-          <label
+          <CheckCard
             key={o.value}
-            className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
-              checked
-                ? "border-primary bg-primary/5"
-                : "hover:border-primary/40"
-            } ${disabled ? "cursor-default opacity-70" : ""}`}
+            checked={checked}
+            disabled={disabled}
+            onToggle={() =>
+              onChange(
+                checked
+                  ? values.filter((v) => v !== o.value)
+                  : [...values, o.value],
+              )
+            }
           >
-            <Checkbox
-              checked={checked}
-              disabled={disabled}
-              onCheckedChange={() =>
-                onChange(
-                  checked
-                    ? values.filter((v) => v !== o.value)
-                    : [...values, o.value],
-                )
-              }
-            />
             {o.label}
-          </label>
+          </CheckCard>
         )
       })}
     </div>

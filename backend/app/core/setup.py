@@ -101,6 +101,9 @@ def create_application(router: APIRouter) -> FastAPI:
         allow_credentials=True,
         allow_methods=settings.CORS_METHODS,
         allow_headers=settings.CORS_HEADERS,
+        # Cross-origin dev'da (vite 5173 -> API 8000) Excel eksporti fayl nomini
+        # o'qiy olsin — Content-Disposition CORS-safelisted emas, brauzer yashiradi.
+        expose_headers=["Content-Disposition"],
     )
     # Trust X-Forwarded-* from the reverse proxy (Caddy in prod). Without this, `request.client.host` is the
     # proxy IP for every request, which would collapse all users into a single rate-limit bucket.

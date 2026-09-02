@@ -55,7 +55,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/api/routes/orders/matrix.py:134-147` — _check_assembly_match (which enforces that a child part's last route step exists in its assembly parent's route) only runs when assembly_parent_id its
 - [ ] ✅ `backend/app/api/routes/orders/matrix.py:354-395` — The whole manual-route construction (edge_count, KROMKA first-pass rule, seen set, packaging/TMO tail) is written twice, in orders._set_custom_route a
 - [ ] ✅ `backend/app/api/routes/orders/matrix.py:409-451` — _resize_instances rewrites instance qr_text and adds copies but leaves the SCX files untouched, so SCX filenames stop matching the QR the doc guarante
-- [ ] ✅ `backend/app/api/routes/orders/matrix.py:426-439` — `_resize_instances` re-mints qr_text by the same rule but skips the collision pre-check ingest performs, so a count change can hit the unique index an
+- [x] ✅ `backend/app/api/routes/orders/matrix.py:426-439` — `_resize_instances` re-mints qr_text by the same rule but skips the collision pre-check ingest performs, so a count change can hit the unique index an
 - [x] ✅ `backend/app/api/routes/pachka.py:256` — `get-or-404` is hand-rolled as `db.get(...)` + `is None or .is_deleted` + `NotFoundException` at seven sites, including inside `bridge_agents.py` whic
 - [ ] ✅ `backend/app/api/routes/pachka.py:261-262` — Yopilgan qadoq — o'lik nuqta: uni qayta ochish ham, chekini qayta chiqarish ham MUMKIN EMAS, lekin ikkala foydalanuvchi xabari ham buni mumkin deb va'
 - [x] ✅ `backend/app/api/routes/reports.py:268` — Excel eksportda FURNITURA (`kind="hardware"`) qatorlari "Kromka" deb belgilanadi — `kind` uchta qiymatli, kod esa ikkitasini biladi.
@@ -105,7 +105,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/components/Clients/AddClient.tsx:158` — `address` has a 255-char zod limit but no `FormMessage` and no `maxLength`, so an over-long address silently blocks submit with no visible reason.
 - [ ] ✅ `frontend/src/components/Clients/ClientCombobox.tsx:37` — The visible label is never derived from `value`, so the trigger can show "Mijozni tanlang" while the form still holds a selected client id.
 - [x] ✅ `frontend/src/components/Common/BadgePrompt.tsx:66-77` — `pathLength={1}` is set on the `<g>` wrapper instead of on the two `<rect>` children, so the badge card outline never draws itself — it renders as a p
-- [ ] ✅ `frontend/src/components/Common/ErrorComponent.tsx:3` — The router's global errorComponent throws away TanStack Router's `error` and `reset` props, so every uncaught render/loader error shows one identical 
+- [x] ✅ `frontend/src/components/Common/ErrorComponent.tsx:3` — The router's global errorComponent throws away TanStack Router's `error` and `reset` props, so every uncaught render/loader error shows one identical 
 - [x] ✅ `frontend/src/components/Orders/CustomRoutes.tsx:124` — The "Bekor qilish" button resets only `draft`, leaving unsaved `parents` (assembly-parent) selections in place — the button disappears (dirty flips fa
 - [x] ✅ `frontend/src/components/Orders/OrderMatrix.tsx:221` — The "Nostandart · N qadam" badge counts raw `part.routes`, which includes the system tail steps (UPAKOVKA/TMO) the technologist never drew and disable
 - [x] ✅ `frontend/src/components/Orders/OrderMatrix.tsx:265` — The note field is uncontrolled (`defaultValue`), so filtering the search box while in edit mode unmounts and remounts the row and the input snaps back
@@ -136,22 +136,22 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/lib/queryClient.ts:23-26` — The single QueryClient declares no `defaultOptions`, so every query in the app inherits TanStack v5 defaults `staleTime: 0`, `refetchOnWindowFocus: tr
 - [x] ✅ `frontend/src/lib/scxDir.ts:89-91` — `pickDir` swallows every error as "user cancelled", so a real failure (SecurityError outside a user gesture, NotAllowedError) makes the "Hammasini yuk
 - [x] ✅ `frontend/src/lib/validation.ts:24-26, backend/app/schemas/users.py:35` — The "special character" rule differs between the two sides: `ʻ` and `ʼ` (the Uzbek oʻ/gʻ apostrophes) satisfy zod but not the server, so a password th
-- [ ] ✅ `frontend/src/queries/mes.ts:33-58` — getClientsQueryOptions and getEmployeesQueryOptions ask for one 100-row page and never paginate, while the page header renders the server's FULL count
+- [x] ✅ `frontend/src/queries/mes.ts:33-58` — getClientsQueryOptions and getEmployeesQueryOptions ask for one 100-row page and never paginate, while the page header renders the server's FULL count
 - [ ] ✅ `frontend/src/routes/_layout/anketa.$orderId.tsx:146` — Debounce effekti oldingi save.mutate hali tugamagan bo'lsa ham (save.isPending tekshirilmaydi) yangi mutate chaqiradi; har ikkalasi ham survey'ning TO
-- [ ] ✅ `frontend/src/routes/_layout/anketa.$orderId.tsx:294` — "Butun buyurtma uchun" katakchalari `CheckGrid` markupini qo'lda takrorlaydi va allaqachon undan uzoqlashgan — belgilangan xizmat sahifadagi boshqa ha
-- [ ] ✅ `frontend/src/routes/_layout/anketa.$orderId.tsx:79` — `canEdit` faqat rolni tekshiradi, buyurtma holatini emas — topshirilgan/bekor qilingan buyurtmada menejer to'liq tahrirlanadigan forma oladi, lekin ha
-- [ ] ✅ `frontend/src/routes/_layout/clients.tsx:53` — Clients registry silently shows only the newest 100 rows — `count` is fetched and thrown away, no pagination and no "N tadan" hint.
+- [x] ✅ `frontend/src/routes/_layout/anketa.$orderId.tsx:294` — "Butun buyurtma uchun" katakchalari `CheckGrid` markupini qo'lda takrorlaydi va allaqachon undan uzoqlashgan — belgilangan xizmat sahifadagi boshqa ha
+- [x] ✅ `frontend/src/routes/_layout/anketa.$orderId.tsx:79` — `canEdit` faqat rolni tekshiradi, buyurtma holatini emas — topshirilgan/bekor qilingan buyurtmada menejer to'liq tahrirlanadigan forma oladi, lekin ha
+- [x] ✅ `frontend/src/routes/_layout/clients.tsx:53` — Clients registry silently shows only the newest 100 rows — `count` is fetched and thrown away, no pagination and no "N tadan" hint.
 - [x] ✅ `frontend/src/routes/_layout/index.tsx:47` — Dashboard `stats` so'rovi (Navbatda/Bugun ustunlari) uchun xato holati umuman qayta ishlanmagan — so'rov yiqilsa ustunlar jimgina "—" ko'rsatadi va he
 - [x] ✅ `frontend/src/routes/_layout/orders/$orderId.tsx:105` — The .project drop zone has no in-flight guard, so a second drop (or a click that reopens the file dialog) while an upload is running fires a second up
 - [x] ✅ `frontend/src/routes/_layout/orders/$orderId.tsx:201` — customCount is read from the query cache with getQueryData() during render, which creates no subscription — the tab label's count is missing on first 
 - [x] ✅ `frontend/src/routes/_layout/printers.tsx:120` — The agent-log dialog swallows API errors: a failed `readBridgeLogs` request renders the 'no logs yet' hint instead of an error, so the admin blames th
 - [x] ✅ `frontend/src/routes/_layout/printers.tsx:202` — The mebelix-agent.exe download link is the only place in the whole frontend that builds an API URL without API_BASE, so whenever the API lives on a di
 - [x] ✅ `frontend/src/routes/_layout/reports.tsx:40` — Sahifa ochilganda ikkala DatePicker bo'sh turadi, backend esa jimgina oxirgi 30 kunni qaytaradi; javobdagi haqiqiy oraliq (`date_from`/`date_to`) hech
-- [ ] ✅ `frontend/src/routes/_layout/reports.tsx:61` — Excel eksporti oddiy `<a href>` navigatsiyasi — xato holatida (403/500/sessiya tugagan) brauzer SPA dan chiqib ketib xom JSON xatosini ekranga chiqara
+- [x] ✅ `frontend/src/routes/_layout/reports.tsx:61` — Excel eksporti oddiy `<a href>` navigatsiyasi — xato holatida (403/500/sessiya tugagan) brauzer SPA dan chiqib ketib xom JSON xatosini ekranga chiqara
 - [x] ✅ `frontend/src/routes/_layout/work-centers.tsx:150` — The empty-state row spans one column more than the table has, so the 'Ish markazlari yo'q' cell overflows the table grid.
 - [x] ✅ `frontend/src/routes/_layout/work-centers.tsx:208` — The auto-suggested work-center name counts existing machines on the post, so after any deletion or manual rename it proposes a name that already exist
 - [x] ✅ `frontend/src/routes/_layout/work-centers.tsx:65` — A failed `/posts` request is silently swallowed — only the machines query drives the error branch, so the page renders with a blank Post column and a 
-- [ ] ✅ `frontend/src/routes/login.tsx:135-136` — Post-choice dialogidan keyin badge.mutate ikkinchi marta ishga tushadi (postId bilan); u xato bersa (backend _badge_post/_post_machine/_terminal_user 
+- [x] ✅ `frontend/src/routes/login.tsx:135-136` — Post-choice dialogidan keyin badge.mutate ikkinchi marta ishga tushadi (postId bilan); u xato bersa (backend _badge_post/_post_machine/_terminal_user 
 - [x] ✅ `frontend/src/routes/tablo.tsx:1025` — Drill sarlavhasida YOLG'ON "BOSHLANMAGAN" belgisi chiqadi: buyurtma matritsadan tushgan bo'lsa (TMO dan o'tgan) `row` undefined bo'ladi va `stallLabel
 - [ ] ✅ `frontend/src/routes/tablo.tsx:136-168` — Xuddi shu sabab `useFitScale` da ham: drill ochilib yopilgach ResizeObserver uzilgan (detached) `tbody`/`main` ni kuzatib qoladi va shrift sig'dirish 
 - [x] ✅ `frontend/src/routes/tablo.tsx:939` — Drill ko'rinishida yuklanish ham, xato ham ishlanmaydi — bo'sh sarlavha va bo'sh jadval chiqadi.

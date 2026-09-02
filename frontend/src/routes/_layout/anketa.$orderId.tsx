@@ -10,6 +10,7 @@ import {
   type SurveyRoom,
 } from "@/client"
 import {
+  CheckCard,
   CheckGrid,
   Choice,
   Field,
@@ -25,7 +26,6 @@ import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
 import { Button } from "@/components/ui/button"
 import { cardSurface } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
@@ -78,7 +78,13 @@ function AnketaPage() {
   } = useQuery(getOrderQueryOptions(id))
   const { currentUser } = useCurrentUser()
 
-  const canEdit = isManager(currentUser)
+  // Backend ham AYNAN shu shartni qo'yadi (`orders/survey.py` `_editable_order`):
+  // yakunlangan/bekor qilingan buyurtmada yozish yo'llari 403 qaytaradi. Shart
+  // bu yerda bo'lmasa menejerga to'liq tahrirlanadigan forma ochilib, har
+  // avtosaqlash 403 bilan yo'qolardi.
+  const readOnlyStatus =
+    order?.status === "delivered" || order?.status === "cancelled"
+  const canEdit = isManager(currentUser) && !!order && !readOnlyStatus
 
   const [survey, setSurvey] = useState<OrderSurvey>({ version: 1, rooms: [] })
   const [active, setActive] = useState(0)
@@ -234,6 +240,11 @@ function AnketaPage() {
         title="Buyurtma anketasi"
         description={`${order.client_name} · har bir xona uchun alohida to'ldiriladi`}
       />
+      {readOnlyStatus && (
+        <p className="mb-4 text-muted-foreground text-sm">
+          Buyurtma yakunlangan yoki bekor qilingan — anketa faqat o'qish uchun.
+        </p>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {rooms.map((r, i) => {
@@ -303,19 +314,13 @@ function AnketaPage() {
           <div className="mb-3 font-semibold text-sm">Butun buyurtma uchun</div>
           <div className="grid gap-2 sm:grid-cols-3">
             {ORDER_SERVICES.map((svc) => (
-              // biome-ignore lint/a11y/noLabelWithoutControl: Checkbox (Radix) ichida — butun katak bosiladi
-              <label
+              <CheckCard
                 key={svc.key}
-                className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors hover:border-primary/40"
+                checked={survey[svc.key] ?? false}
+                onToggle={() => patchSurvey({ [svc.key]: !survey[svc.key] })}
               >
-                <Checkbox
-                  checked={survey[svc.key] ?? false}
-                  onCheckedChange={(v) =>
-                    patchSurvey({ [svc.key]: v === true })
-                  }
-                />
                 {svc.label}
-              </label>
+              </CheckCard>
             ))}
           </div>
           <div className="mt-3 grid items-start gap-3 sm:grid-cols-2">

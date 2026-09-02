@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
 import { RowAction } from "@/components/Common/RowAction"
 import { SearchInput } from "@/components/Common/SearchInput"
+import { TablePagination } from "@/components/Common/TablePagination"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -26,7 +27,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useDebounced } from "@/hooks/useDebounced"
 import { requireAccess } from "@/lib/guards"
 import { formatDate, formatMoney, isManagement, isManager } from "@/lib/mes"
-import { getClientsQueryOptions } from "@/queries/mes"
+import { getClientsQueryOptions, PAGE_SIZE } from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/clients")({
   component: ClientsPage,
@@ -49,8 +50,9 @@ function ClientsPage() {
   const [editFor, setEditFor] = useState<ClientRead | null>(null)
   const [deleteFor, setDeleteFor] = useState<ClientRead | null>(null)
   const [openId, setOpenId] = useState<number | null>(null)
+  const [page, setPage] = useState(0)
   const { data, isLoading, isError, refetch } = useQuery({
-    ...getClientsQueryOptions(debounced),
+    ...getClientsQueryOptions(debounced, page * PAGE_SIZE),
     placeholderData: keepPreviousData,
   })
 
@@ -58,8 +60,9 @@ function ClientsPage() {
     <div>
       <PageHeader
         title="Mijozlar"
-        // Umumiy son sarlavhada: qidiruv paytida esa topilganlar soni —
-        // "nechta mijoz bor?" savoliga sahifalamasdan javob.
+        // Umumiy son sarlavhada: qidiruv paytida esa topilganlar soni.
+        // Jadval bir sahifada PAGE_SIZE qator chizadi — qolganiga jadval
+        // ostidagi sahifalagich orqali yetiladi.
         description={
           data
             ? debounced
@@ -76,7 +79,12 @@ function ClientsPage() {
           className="ml-auto w-full max-w-xs"
           placeholder="Ism yoki telefon bo'yicha qidirish"
           value={search}
-          onChange={setSearch}
+          // Qidiruv o'zgarganda birinchi sahifaga: aks holda 3-sahifada
+          // turib qidirgan odam bo'sh jadval ko'rardi.
+          onChange={(v) => {
+            setSearch(v)
+            setPage(0)
+          }}
         />
       </div>
       {isLoading ? (
@@ -171,6 +179,12 @@ function ClientsPage() {
           </TableBody>
         </Table>
       )}
+      <TablePagination
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={data?.count ?? 0}
+        onPage={setPage}
+      />
       {editFor && (
         <AddClient client={editFor} onClose={() => setEditFor(null)} />
       )}

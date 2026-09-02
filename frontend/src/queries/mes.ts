@@ -31,20 +31,29 @@ export const getMachinesQueryOptions = () =>
     staleTime: 60_000,
   })
 
-export const getClientsQueryOptions = (search?: string) =>
+/** `skip` — server tomonda sahifalash: `count` HAMMA mos mijozni sanaydi,
+ *  `data` esa ko'pi bilan PAGE_SIZE qator qaytaradi. Sahifalagichsiz
+ *  chaqiruvchi (ClientCombobox) standart `skip = 0` bilan birinchi sahifani —
+ *  aylanma bo'yicha eng yiriklarini — oladi, qolganini qidiruv topadi. */
+export const getClientsQueryOptions = (search?: string, skip = 0) =>
   queryOptions({
-    queryKey: ["clients", search ?? ""],
+    queryKey: ["clients", search ?? "", skip],
     queryFn: async () =>
       (
         await ClientsService.readClients({
           query: {
             search: search || undefined,
+            skip,
             limit: PAGE_SIZE,
           },
         })
       ).data,
   })
 
+/** Bitta sahifa: `count` to'liq sonni beradi, jadval esa ko'pi bilan PAGE_SIZE
+ *  qatorni ko'radi. Hodimlar sahifasi sonni ko'rsatmaydi, shuning uchun
+ *  ziddiyat yo'q; 100 dan ortiq hodim paydo bo'lsa bu yerga ham `skip`
+ *  (yuqoridagi mijozlar naqshi) kerak bo'ladi. */
 export const getEmployeesQueryOptions = (search?: string) =>
   queryOptions({
     queryKey: ["employees", search ?? ""],

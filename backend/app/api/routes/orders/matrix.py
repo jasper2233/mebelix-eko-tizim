@@ -7,7 +7,7 @@ marta uchrashi mumkin — shuning uchun katakcha emas, QADAM ustida ishlaydi.
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import delete, func, select, update
 
 from app.api.deps import SessionDep, StaffReadUser, TexnologUser, client_ip
@@ -440,8 +440,33 @@ async def _resize_instances(db: SessionDep, part: Part, new_count: int) -> None:
     # Count o'zgarganda BARCHA tirik nusxalar qayta normallanadi (1↔N o'tishda
     # eski QR konvensiyaga zid qolib ketmasin) — bosqich pre-production,
     # yorliqlar hali chop etilmagan.
-    for n in range(1, new_count + 1):
-        qr = key if new_count == 1 else f"{key}_{n}"
+    new_qrs = {n: (key if new_count == 1 else f"{key}_{n}") for n in range(1, new_count + 1)}
+    # To'qnashuvni OLDINDAN aniqlash (ingest'dagi qr_owner tekshiruvining juftligi):
+    # "010" (2 nusxa) va "010_2" kodli detal bir xil QR beradi — unique indeks
+    # xom 500 bermasin, do'stona 422 chiqsin.
+    taken = set(
+        (
+            await db.execute(
+                select(PartInstance.qr_text).where(
+                    PartInstance.order_id == part.order_id,
+                    PartInstance.part_id != part.id,
+                    PartInstance.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    clash = sorted(qr for qr in new_qrs.values() if qr in taken)
+    if clash:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Detal ID to'qnashuvi: {', '.join(clash)} bu buyurtmada boshqa detalga tegishli. "
+                "Detal kodini yoki sonini o'zgartiring."
+            ),
+        )
+    for n, qr in new_qrs.items():
         if n in existing:
             existing[n].qr_text = qr
         else:

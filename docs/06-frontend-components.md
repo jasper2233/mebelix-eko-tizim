@@ -106,7 +106,7 @@ Anketa sahifasi (`routes/_layout/anketa.$orderId.tsx`) uch mustaqil bo'lakdan ib
 
 ### `frontend/src/components/Anketa/fields.tsx`
 
-Anketaning O'Z UI tili: `Section`, `Field`, `Num`, `NumInput`, `CheckGrid`, `ShapeChoice`, `Choice`, `Facts` va `numOrNull`. Qog'oz so'rovnomaning aksi (raqam katagi, belgilash to'ri, shakl tanlash) — shuning uchun `Common/` ga chiqarilmagan: hech biri anketadan tashqarida ishlatilmaydi. Yangi umumiy forma elementi kerak bo'lsa u `Common/` ga boradi, bu yerga emas.
+Anketaning O'Z UI tili: `Section`, `Field`, `Num`, `NumInput`, `CheckCard`, `CheckGrid`, `ShapeChoice`, `Choice`, `Facts` va `numOrNull`. Qog'oz so'rovnomaning aksi (raqam katagi, belgilash to'ri, shakl tanlash) — shuning uchun `Common/` ga chiqarilmagan: hech biri anketadan tashqarida ishlatilmaydi. Yangi umumiy forma elementi kerak bo'lsa u `Common/` ga boradi, bu yerga emas.
 
 ### `frontend/src/components/Anketa/RoomPhotos.tsx`
 
@@ -203,11 +203,11 @@ Reyestr sahifalagichi: `page` (0 dan), `pageSize`, `total`, `onPage`. Tartib bit
 
 ### `frontend/src/components/Common/ErrorComponent.tsx`
 
-**Maqsadi:** routerning global xato ekrani — `ErrorScreen` ga delegatsiya (`code="Xato"`, "Xatolik yuz berdi..." matni).
+**Maqsadi:** routerning global xato ekrani — `ErrorScreen` ga delegatsiya (`code="Xato"`, "Xatolik yuz berdi..." matni). TanStack beradigan `ErrorComponentProps` ni QABUL QILADI: `error` `extractErrorMessage` (`@/utils`) dan o'tib `detail` sifatida umumiy jumla ostida chiqadi, `reset` esa "Qayta urinish" tugmasiga ulanadi. Shuning uchun `__root.tsx` da `errorComponent: ErrorComponent` deb ulanadi — o'rab qo'yilgan `() => <ErrorComponent />` proplarni yutar va har xato bir xil sababsiz matn ko'rsatardi.
 
 ### `frontend/src/components/Common/ErrorScreen.tsx`
 
-**Maqsadi:** xato/404 ekranlarining umumiy maketi (`code` + `message` + "Bosh sahifaga" tugmasi, `Link to="/"`) — ikki nusxa layout drift bermasin. `ErrorComponent` va `NotFound` shundan quriladi.
+**Maqsadi:** xato/404 ekranlarining umumiy maketi (`code` + `message` + "Bosh sahifaga" tugmasi, `Link to="/"`) — ikki nusxa layout drift bermasin. `ErrorComponent` va `NotFound` shundan quriladi. Ikki ixtiyoriy prop: `detail` (sabab — umumiy matn ostida mayda shriftda) va `action` ("Bosh sahifaga" yonidagi qo'shimcha tugma); ikkalasi ham berilmasa ekran o'zgarmaydi — `NotFound` aynan shunday ishlatadi.
 
 ### `frontend/src/components/Common/Footer.tsx`
 
@@ -354,7 +354,8 @@ Buyurtma anketasi (mijoz so'rovnomasi + o'lchov varag'i) sahifasi — ~790 qator
 | `Section` | `n?` raqami + `title` + `hint?` bo'lgan karta (raqam qog'oz anketa bilan bir xil — menejer telefonda "3-bo'limga o'tamiz" deb ayta oladi) |
 | `Field` / `Num` | Label + child; `Num` — `Field` + `NumInput` |
 | `NumInput` | Raqamli maydon: yozilayotgan xom matn `raw` state'da saqlanadi (aks holda "3," yozilganda maydon o'zini tozalab qo'yardi), blur'da normallashadi; vergul o'nlik ajratgich sifatida qabul qilinadi (`numOrNull`); `integer` bo'lsa `Math.trunc` |
-| `CheckGrid` | Ko'p tanlovli katakchalar (butun katak bosiladi — sensorli ekran) |
+| `CheckCard` | Bitta belgilash katagi (butun katak bosiladi — sensorli ekran); tanlangan holat klassi (`border-primary bg-primary/5`) FAQAT shu yerda. `CheckGrid` ham, anketa sahifasidagi "Butun buyurtma uchun" kartasi ham shuni chizadi — ilgari ikkinchisi markupni qo'lda takrorlab, belgilangan xizmat tanlanmagandek ko'rinardi |
+| `CheckGrid` | `CheckCard` lardan tuzilgan ko'p tanlovli to'r (`Option[]` + `values`) |
 | `Choice` | Bitta tanlov, qayta bosilsa bekor qilinadi (radio'da imkonsiz); `h-9` — `Input` bilan bir xil balandlik |
 | `ShapeChoice` + `SHAPE_ART` | Planirovka siluetlari (I / L / П / orolchali) — inline SVG to'rtburchaklar; mijoz "П-shakl (U)" jargonini emas, shaklni taniydi |
 
@@ -662,7 +663,7 @@ routes (_layout sahifalar)                      routes (terminal / cutmap)
        └─ TogglePerson / DeletePerson ─ ConfirmDialog
 
 routes/_layout/anketa.$orderId → components/Anketa
-  ├─ Section / Field / Num / NumInput / CheckGrid / Choice / ShapeChoice
+  ├─ Section / Field / Num / NumInput / CheckCard / CheckGrid / Choice / ShapeChoice
   ├─ RoomPhotos (drag&drop + Dialog preview)
   ├─ RoomSummary (room + survey) → Facts (canEdit=false ko'rinishi)
   └─ ConfirmDialog (xona o'chirish) · DatePicker · Textarea · LoadingButton

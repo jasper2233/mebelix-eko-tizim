@@ -3,6 +3,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router"
 import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
 import { BrandLoader } from "@/components/Common/BrandLoader"
+import { ErrorComponent } from "@/components/Common/ErrorComponent"
 import { LoginService } from "./client"
 import { client } from "./client/client.gen"
 import "./index.css"
@@ -50,6 +51,10 @@ client.instance.interceptors.response.use(
 
 const router = createRouter({
   routeTree,
+  // Bola marshrut xatosi O'SHA marshrutning errorComponent'ini, u bo'lmasa shu
+  // default'ni oladi (root'nikini EMAS) — busiz TanStack'ning inglizcha
+  // "Something went wrong!" ekrani chiqadi.
+  defaultErrorComponent: ErrorComponent,
   // Route yuklanishi (beforeLoad auth so'rovi ham) 200ms dan cho'zilsa brend
   // loader chiqadi; minMs — bir soniya ko'rinib "lip" etib yo'qolmasin
   defaultPendingComponent: () => (

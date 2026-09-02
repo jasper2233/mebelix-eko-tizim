@@ -1,11 +1,12 @@
 // Hisobotlar (TZ 11): mahsuldorlik, buyurtmalar holati, material sarfi + Excel eksport.
 
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { Download } from "lucide-react"
 import { useState } from "react"
 
 import { ReportsService } from "@/client"
+import { client } from "@/client/client.gen"
 import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
@@ -24,7 +25,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { requireAccess } from "@/lib/guards"
 import { formatDate, formatDateTime, isManagement } from "@/lib/mes"
-import { API_BASE } from "@/utils"
+import { handleError } from "@/utils"
 
 export const Route = createFileRoute("/_layout/reports")({
   component: ReportsPage,
@@ -56,12 +57,30 @@ function ReportsPage() {
     date_from: dateFrom || undefined,
     date_to: dateTo || undefined,
   }
-  const exportUrl = () => {
-    const q = new URLSearchParams({ format: "xlsx" })
-    if (dateFrom) q.set("date_from", dateFrom)
-    if (dateTo) q.set("date_to", dateTo)
-    return `${API_BASE}/api/v1/reports/${kind}?${q}`
-  }
+  // Eksport oddiy `<a download>` emas, `client.instance` orqali ketadi: shunda
+  // silent-refresh interceptor (main.tsx) ishlaydi va 401/500 sahifadan chiqib
+  // ketgan xom JSON emas, o'zbekcha toast bo'lib ko'rinadi.
+  const exportXlsx = useMutation({
+    mutationFn: async () => {
+      const q = new URLSearchParams({ format: "xlsx" })
+      if (dateFrom) q.set("date_from", dateFrom)
+      if (dateTo) q.set("date_to", dateTo)
+      const res = await client.instance.get<Blob>(
+        `/api/v1/reports/${kind}?${q}`,
+        { responseType: "blob" },
+      )
+      const disposition = String(res.headers["content-disposition"] ?? "")
+      const url = URL.createObjectURL(res.data)
+      const a = document.createElement("a")
+      a.href = url
+      a.download =
+        /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? `${kind}.xlsx`
+      a.click()
+      // Darhol revoke qilinsa ba'zi brauzerlarda yuklab olish boshlanmay qoladi
+      setTimeout(() => URL.revokeObjectURL(url), 0)
+    },
+    onError: handleError,
+  })
 
   return (
     <div>
@@ -69,10 +88,12 @@ function ReportsPage() {
         title="Hisobotlar"
         description="Mahsuldorlik, buyurtmalar holati va material sarfi"
         actions={
-          <Button asChild variant="outline">
-            <a href={exportUrl()} download>
-              <Download /> Excel yuklash
-            </a>
+          <Button
+            variant="outline"
+            onClick={() => exportXlsx.mutate()}
+            disabled={exportXlsx.isPending}
+          >
+            <Download /> Excel yuklash
           </Button>
         }
       />
