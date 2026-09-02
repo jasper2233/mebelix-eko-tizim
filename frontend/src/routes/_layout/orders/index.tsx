@@ -27,6 +27,7 @@ import {
   formatMoney,
   isManager,
   PRIORITY_LABELS,
+  PRIORITY_RANK,
   PRIORITY_TEXT_CLASSES,
   remainingPayment,
 } from "@/lib/mes"
@@ -41,12 +42,6 @@ export const Route = createFileRoute("/_layout/orders/")({
 })
 
 type SortKey = "created_at" | "deadline" | "priority" | "amount" | "left"
-const PRIORITY_RANK: Record<string, number> = {
-  low: 0,
-  medium: 1,
-  high: 2,
-  urgent: 3,
-}
 
 const TABS: { value: OrderStatus | ""; label: string }[] = [
   { value: "", label: "Hammasi" },

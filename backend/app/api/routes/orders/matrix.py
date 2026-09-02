@@ -16,12 +16,10 @@ from app.crud import log_action
 from app.models import Part, PartInstance, PartRoute, Post, Product, Scan
 from app.models.enums import PostCode, RouteSource
 from app.schemas.orders import MatrixEdit, MatrixPart, OrderMatrix, RouteCell
+from app.services.giblab.ingest import park_tail, unpark_tail
 from app.services.giblab.models import DEFAULT_PROCESS_CODE, PROCESS_NAMES, PROCESS_POSTS, TAIL_CODES
 
 from ._common import _ROUTE_START_POSTS, _get_order, _get_visible_order, _require_editable
-
-#: Dumni vaqtincha ko'chirish oralig'i — marshrutda hech qachon shuncha qadam bo'lmaydi.
-_SEQ_PARK = 1000
 
 router = APIRouter()
 
@@ -187,16 +185,9 @@ async def edit_order_matrix(
                         )
                     )
                 ).scalar_one()
-                # Dumni bir pog'ona yuqoriga surish IKKI QADAMDA: `(part_id, seq)`
-                # qisman UNIQUE indeks va u dublikatni satr-ma-satr tekshiradi,
-                # ya'ni to'g'ridan-to'g'ri `seq + 1` o'rtada to'qnashardi. Avval
-                # dum bo'sh diapazonga ko'chiriladi, keyin joyiga tushiriladi.
-                tail_where = (
-                    PartRoute.part_id == part.id,
-                    PartRoute.process_code.in_(TAIL_CODES),
-                    PartRoute.is_deleted == False,  # noqa: E712
-                )
-                await db.execute(update(PartRoute).where(*tail_where).values(seq=PartRoute.seq + _SEQ_PARK))
+                # Dumni bir pog'ona yuqoriga surish IKKI QADAMDA (`park_tail`/`unpark_tail`
+                # izohiga qarang) — qayta yuklashdagi marshrut tiklash ham shu yo'ldan boradi.
+                await park_tail(db, part.id)
                 # KROMKA har qirrani alohida yopishtiradi — skan qirralar soni marta
                 # kutiladi (`_set_custom_route` va fayldan ingest ham shunday hisoblaydi).
                 # Bu yerda KROMKA qadami hali yo'q (`steps` bo'sh), ya'ni bu birinchi o'tish.
@@ -214,11 +205,7 @@ async def edit_order_matrix(
                     )
                 )
                 await db.flush()
-                await db.execute(
-                    update(PartRoute)
-                    .where(*tail_where, PartRoute.seq >= _SEQ_PARK)
-                    .values(seq=PartRoute.seq - _SEQ_PARK + 1)
-                )
+                await unpark_tail(db, part.id, 1)
             for step in steps:
                 step.is_enabled = enabled
 

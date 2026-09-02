@@ -9,8 +9,8 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/api/routes/orders/matrix.py:200-203` — When a matrix stage checkbox is toggled on for a post that has no existing PartRoute step yet, the new step is always created with per_instance=1. For
 - [x] ✅ `backend/app/api/routes/tmo.py:224-225` — Prefix check is case-insensitive via .upper(), but the original non-uppercased `qr` is then used for the actual pachka lookup (`_pachka_by_code(db, or
 - [ ] ✅ `backend/app/models/base.py:23` — `updated_at` is declared nullable with `default=None` AND `server_default=current_timestamp(0)`, so SQLAlchemy omits it from the INSERT and every fres
-- [ ] ✅ `backend/app/services/giblab/ingest.py:155` — restore_custom_routes appends restored MANUAL steps AFTER the freshly-ingested tail (UPAKOVKA/TMO), so TMO is no longer the last step of a standard pa
-- [ ] ✅ `backend/app/services/giblab/ingest.py:78` — snapshot_custom_routes only sees parts that already have a MANUAL route row, so a part marked "Nostandart" (or bound to an assembly parent) before any
+- [x] ✅ `backend/app/services/giblab/ingest.py:155` — restore_custom_routes appends restored MANUAL steps AFTER the freshly-ingested tail (UPAKOVKA/TMO), so TMO is no longer the last step of a standard pa
+- [x] ✅ `backend/app/services/giblab/ingest.py:78` — snapshot_custom_routes only sees parts that already have a MANUAL route row, so a part marked "Nostandart" (or bound to an assembly parent) before any
 - [ ] ✅ `backend/app/services/giblab/parser.py:463` — CS `<part>` ro'yxatidagi HAR bir stubga `label_num` beriladi, joylashtirilmagan (usedCount=0) detalga ham — ingest esa aynan `label_num is not None` n
 - [x] ✅ `backend/app/services/labels.py:230` — Loyiha nomi 26 belgigacha chiziladi, lekin QR bloki uni x=40 mm dan boshlab ustidan bosib o'chiradi — uzun loyiha nomining oxiri chekda umuman ko'rinm
 - [ ] ✅ `backend/app/services/scanning.py:518` — QR text is not order-scoped (uniqueness is only per order), so when two live PRODUCTION orders are built from the same GibLab product/part codes, ever
@@ -49,8 +49,8 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/api/routes/machines.py:63` — Bekor qilingan buyurtmaning tugallanmagan marshrutlari ish markazini abadiy o'chirilmas qilib qo'yadi.
 - [ ] ✅ `backend/app/api/routes/orders/files.py:149` — download_order_scx_zip zips only SCX files that happen to exist on disk and silently drops any OrderFile row whose file is missing — no error, no warn
 - [ ] ✅ `backend/app/api/routes/orders/files.py:50` — PRODUCTION holatidagi buyurtmaga `.project` ni qayta yuklash yangi `PartRoute` qatorlarini `machine_id=None` bilan yaratadi — ilgari muhrlangan ish ma
-- [ ] ✅ `backend/app/api/routes/orders/files.py:65,85` — The whole .project ingest — XML parse, blob decode, cut-map build, SCX XML generation and one synchronous write per SCX file — runs inline on the even
-- [ ] ✅ `backend/app/api/routes/orders/files.py:82-89` — wipe_previous_parse unlinks the old .project/SCX files from disk inside an uncommitted transaction; if ingest/restore later raises ParseError the DB i
+- [x] ✅ `backend/app/api/routes/orders/files.py:65,85` — The whole .project ingest — XML parse, blob decode, cut-map build, SCX XML generation and one synchronous write per SCX file — runs inline on the even
+- [x] ✅ `backend/app/api/routes/orders/files.py:82-89` — wipe_previous_parse unlinks the old .project/SCX files from disk inside an uncommitted transaction; if ingest/restore later raises ParseError the DB i
 - [x] ✅ `backend/app/api/routes/orders/lifecycle.py:91,97-106,121` — On the number-collision retry path create_order reads client.full_name after db.rollback() has expired every identity-map object, so the documented re
 - [x] ✅ `backend/app/api/routes/orders/matrix.py:134-147` — _check_assembly_match (which enforces that a child part's last route step exists in its assembly parent's route) only runs when assembly_parent_id its
 - [ ] ✅ `backend/app/api/routes/orders/matrix.py:354-395` — The whole manual-route construction (edge_count, KROMKA first-pass rule, seen set, packaging/TMO tail) is written twice, in orders._set_custom_route a
@@ -77,7 +77,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/schemas/terminal.py:154` — `PrisadkaPartRow.done_qrs` amalda hech qachon ishlamaydi: uni o'qiydigan yagona shox faqat `instances` bo'sh bo'lganda ishga tushadi, ikkala ro'yxat e
 - [x] ✅ `backend/app/services/excel.py:52` — `_cell` `datetime` ni `TASHKENT_TZ` ga o'tkazmasdan formatlaydi, shuning uchun buyurtmalar hisobotining .xlsx eksporti UTC soatlarini (Toshkentdan 5 s
 - [x] ✅ `backend/app/services/giblab/cutmap.py:198-204` — `rot` is computed only from the rotated-match test, so a near-square part placed UNROTATED is flagged as rotated and its kromka symbols are swapped.
-- [ ] ✅ `backend/app/services/giblab/ingest.py:222-226` — wipe_previous_parse unlinks the old .project and SCX files from disk before the ingest try/except, so a ParseError rolls the DB back to the old rows w
+- [x] ✅ `backend/app/services/giblab/ingest.py:222-226` — wipe_previous_parse unlinks the old .project and SCX files from disk before the ingest try/except, so a ParseError rolls the DB back to the old rows w
 - [ ] ✅ `backend/app/services/giblab/ingest.py:391` — A part that GibLab listed in the CS operation but never placed (usedCount=0) still gets an ARRA route step, so its ARRA counter can never be closed an
 - [x] ✅ `backend/app/services/giblab/models.py:154` — `merged_machining` da qirra teshiklari imzosi `z` ni hisobga olmaydi — bir tomonda bir xil pozitsiya/diametr/chuqurlikdagi, lekin BOSHQA balandlikdagi
 - [x] ✅ `backend/app/services/giblab/parser.py:100` — Kodsiz detal ogohlantirishi faqat mahsulotning BIRINCHI detali kodsiz bo'lganda yoziladi — qisman kodsiz fayllarda (korpusdagi `kupe` 38/70, `kuxniya`
@@ -225,7 +225,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/README.md:109` — Nima: README'ning `src/lib` tavsifi 7 fayldan faqat 4 tasini sanaydi — `guards.ts`, `queryClient.ts`, `scxDir.ts` tushib qolgan; `src/utils.ts` esa st
 - [x] ✅ `frontend/src/components/Clients/AddClient.tsx:85` — The form is reset only on success, so closing the dialog mid-typing and reopening shows the abandoned draft plus its stale validation errors.
 - [x] ✅ `frontend/src/components/Clients/ClientCombobox.tsx:38` — Closing the popover without selecting leaves `search`/`active` populated, so the next open shows the previous query's filtered list.
-- [ ] ✅ `frontend/src/components/Clients/ClientCombobox.tsx:93` — Keyboard navigation never scrolls the active option into view, so arrowing past the 5th result moves an invisible highlight inside the `max-h-64` list
+- [x] ✅ `frontend/src/components/Clients/ClientCombobox.tsx:93` — Keyboard navigation never scrolls the active option into view, so arrowing past the 5th result moves an invisible highlight inside the `max-h-64` list
 - [x] ✅ `frontend/src/components/Common/ErrorScreen.tsx:20-22` — The "Bosh sahifaga" control nests a `<button>` inside an `<a>` (interactive content inside an anchor), instead of the `<Button asChild><Link>` pattern
 - [x] ✅ `frontend/src/components/Common/TablePagination.tsx:9` — Nima: docs/06 says the range label sits on the left and the controls on the right; the whole block is right-aligned (`justify-end`).
 - [x] ✅ `frontend/src/components/Orders/CustomRoutes.tsx:224` — The "Asosiy detalga biriktirish" option list reads `assembly_parent_id` from the server row only, ignoring pending `parents` edits — so a part already
@@ -250,7 +250,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/hooks/useBadgeScan.ts:33-42` — Beyjik skani `Enter` da `preventDefault` qilmaydi — parol formasi ochiq va maydon fokusda bo'lsa, skan UUID'ni maydonga yozib, formani ham yuborishga 
 - [x] ✅ `frontend/src/hooks/useCurrentUser.ts:9` — `retry: false` umumiy factory'da emas, iste'molchida turibdi — aynan shu query key'ni ishlatadigan `tablo.tsx` esa uni bermaydi, ya'ni bitta query ikk
 - [x] ✅ `frontend/src/lib/mes.ts:196-208 (POSITIONS) va frontend/src/routes/_layout/employees.tsx:206-207` — 13 of the 15 `ROLE_LABELS` values are repeated verbatim as `POSITIONS[].label`, so a label change has to be made in two tables — and one consumer chai
-- [ ] ✅ `frontend/src/lib/mes.ts:5,14,26,34,41,55,62,69,227,232` — Every label/colour map except ROLE_LABELS is typed `Record<string, string>`, so a new backend enum value silently renders a raw code — or literally th
+- [x] ✅ `frontend/src/lib/mes.ts:5,14,26,34,41,55,62,69,227,232` — Every label/colour map except ROLE_LABELS is typed `Record<string, string>`, so a new backend enum value silently renders a raw code — or literally th
 - [x] ✅ `frontend/src/queries/mes.ts:70` — getOrdersQueryOptions types `status` as a free `string` and then casts it with `as never` to satisfy the generated OrderStatus enum — the same rename-
 - [x] ✅ `frontend/src/queries/users.ts:16` — `getUsersQueryOptions` is the only query in the app that issues N sequential blocking requests, and it carries no `staleTime` — with the QueryClient's
 - [x] ✅ `frontend/src/routes/_layout.tsx:24` — No route below the root declares an `errorComponent`, so any render crash inside an admin page bubbles to the root boundary and replaces the entire sh
@@ -260,6 +260,6 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/routes/_layout/logs.tsx:235` — `<TableRow>` ga `role="button"` berilgan — bu qatorning implicit `row` rolini bosib ketadi va jadval semantikasini buzadi (skrinriderda ustun/qator na
 - [x] ✅ `frontend/src/routes/_layout/orders/$orderId.tsx:590-594 (input), 156-167 (cancel mutation), 581 (onOpenChange={setCancelOpen})` — cancelReason state hech qachon tozalanmaydi: dialog Escape/tashqariga bosib yopilsa (setCancelOpen(false), submit qilinmasdan) yoki muvaffaqiyatli bek
 - [x] ✅ `frontend/src/routes/_layout/printers.tsx:496` — The 'Yangi agent' name field uses bare zod constraints with no messages, so an invalid name shows zod's built-in English error inside an otherwise ful
-- [ ] ✅ `frontend/src/routes/_layout/reports.tsx:159-166` — Ekrandagi "Buyurtmalar" jadvali va o'sha hisobotning Excel eksporti turli ustunlarni ko'rsatadi: JSON javobida kelgan `created_at` va `production_star
+- [x] ✅ `frontend/src/routes/_layout/reports.tsx:159-166` — Ekrandagi "Buyurtmalar" jadvali va o'sha hisobotning Excel eksporti turli ustunlarni ko'rsatadi: JSON javobida kelgan `created_at` va `production_star
 - [x] ✅ `frontend/src/routes/_layout/work-centers.tsx:150` — Jadval sarlavhasida (102-107 qatorlar) atigi 3 ta doimiy TableHead + shartli admin ustuni bor, ya'ni jami admin uchun 4, aks holda 3 ustun. EmptyRow'g
 

@@ -1,12 +1,26 @@
 // MES domain constants: Uzbek labels + stage colors (TZ 3, 4.4, 6.1)
 
-import type { OrderStatus, UserRole } from "@/client"
+import type {
+  EmployeeStatus,
+  MachineStatus,
+  OrderPriority,
+  OrderStatus,
+  PostCode,
+  UserRole,
+} from "@/client"
 
 /** Beyjik QR'i = xodim UUID'i. Backend bilan umumiy shartnoma — bitta nusxa:
  *  uni ikkala skan tinglagichi (`useBadgeScan`, `useTerminalScan`) shu yerdan oladi. */
 export const BADGE_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+/**
+ * Yorliq/rang xaritalari `satisfies` bilan backend enum'iga bog'langan
+ * (`ROLE_LABELS` kabi): yangi qiymat qo'shilsa yoki kalit noto'g'ri yozilsa
+ * build yiqiladi, tsex esa xom kod yoki `undefined` klass ko'rmaydi.
+ * Tashqi tip `Record<string, ...>` qoladi — chaqiruvchilar kalitni API'dan xom
+ * `string` sifatida oladi va o'z `?? fallback`ini saqlaydi.
+ */
 export const ORDER_STATUS_LABELS: Record<string, string> = {
   draft: "QORALAMA",
   technical_review: "TEXNOLOGDA",
@@ -14,7 +28,7 @@ export const ORDER_STATUS_LABELS: Record<string, string> = {
   completed: "TAYYOR",
   delivered: "TOPSHIRILDI",
   cancelled: "BEKOR QILINGAN",
-}
+} satisfies Record<OrderStatus, string>
 
 export const ORDER_STATUS_COLORS: Record<string, string> = {
   draft: "var(--status-draft)",
@@ -23,7 +37,7 @@ export const ORDER_STATUS_COLORS: Record<string, string> = {
   completed: "var(--status-completed)",
   delivered: "var(--status-delivered)",
   cancelled: "var(--status-cancelled)",
-}
+} satisfies Record<OrderStatus, string>
 
 // Terminal (yakuniy) holatlar: yakunlangan ish sanoqqa kirmaydi
 export const TERMINAL_STATUSES: readonly OrderStatus[] = [
@@ -36,7 +50,7 @@ export const PRIORITY_LABELS: Record<string, string> = {
   medium: "O'rta",
   high: "Yuqori",
   urgent: "Shoshilinch",
-}
+} satisfies Record<OrderPriority, string>
 
 // Prioritet ranglari bitta manbadan: select nuqtalari va reestr matni
 export const PRIORITY_DOT_CLASSES: Record<string, string> = {
@@ -44,14 +58,14 @@ export const PRIORITY_DOT_CLASSES: Record<string, string> = {
   medium: "bg-slate-400",
   high: "bg-orange-500",
   urgent: "bg-red-500",
-}
+} satisfies Record<OrderPriority, string>
 
 export const PRIORITY_TEXT_CLASSES: Record<string, string> = {
   low: "text-muted-foreground",
   medium: "text-muted-foreground",
   high: "font-semibold text-orange-700",
   urgent: "font-bold text-red-600",
-}
+} satisfies Record<OrderPriority, string>
 
 /** Prioritet TASMASI: TABLO qatorining chap qirrasi.
  *
@@ -65,14 +79,23 @@ export const PRIORITY_EDGE: Record<string, string> = {
   medium: "border-l-slate-400",
   high: "border-l-orange-500",
   urgent: "border-l-red-500",
-}
+} satisfies Record<OrderPriority, string>
 
 export const PRIORITY_BADGE_CLASSES: Record<string, string> = {
   low: "bg-muted text-muted-foreground",
   medium: "bg-muted text-muted-foreground",
   high: "bg-orange-600 text-white",
   urgent: "bg-red-600 text-white",
-}
+} satisfies Record<OrderPriority, string>
+
+/** Reestrni prioritet bo'yicha saralash tartibi. Yorliq/rang xaritalari bilan
+ * yonma-yon: yangi prioritet ularning hech birida unutilmasin. */
+export const PRIORITY_RANK: Record<string, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+  urgent: 3,
+} satisfies Record<OrderPriority, number>
 
 export const POST_COLORS: Record<string, string> = {
   ARRA: "var(--post-arra)",
@@ -84,7 +107,7 @@ export const POST_COLORS: Record<string, string> = {
   BOYOQ: "var(--post-boyoq)",
   UPAKOVKA: "var(--post-upakovka)",
   TMO: "var(--post-tmo)",
-}
+} satisfies Record<PostCode, string>
 
 /** Rangning oq bilan `pct`% tinti — chip/katak fonlari uchun. */
 export const mixTint = (color: string, pct: number) =>
@@ -252,13 +275,13 @@ export const OPERATOR_ROLES: readonly UserRole[] = [
 export const EMPLOYEE_STATUS_LABELS: Record<string, string> = {
   active: "AKTIV",
   inactive: "NOFAOL",
-}
+} satisfies Record<EmployeeStatus, string>
 
 export const MACHINE_STATUS_LABELS: Record<string, string> = {
   active: "AKTIV",
   inactive: "NOAKTIV",
   repair: "TA'MIRDA",
-}
+} satisfies Record<MachineStatus, string>
 
 // Hamma joyda bir xil: kun.oy.yil (brauzer locale'iga bog'liq emas)
 const p2 = (n: number) => String(n).padStart(2, "0")

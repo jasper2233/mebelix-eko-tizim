@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import select
+from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import SessionDep, StaffReadUser, TexnologUser, client_ip
 from app.core.config import settings, upload_root
@@ -19,8 +20,10 @@ from app.schemas.terminal import CutmapState
 from app.services.giblab import ParseError, parse_project
 from app.services.giblab.cutmap import build_cutmap_state
 from app.services.giblab.ingest import (
+    drop_stale_files,
     ingest_project,
     restore_custom_routes,
+    restore_stale_files,
     snapshot_custom_routes,
     wipe_previous_parse,
     write_and_register_scx,
@@ -64,7 +67,9 @@ async def upload_order_project(
         raise HTTPException(status_code=422, detail="Fayl juda katta.")
 
     try:
-        project = parse_project(content)
+        # Parse sof CPU (50 MB gacha XML) — event loop'da bajarilsa hamma terminal,
+        # TABLO va WebSocket shu vaqtga muzlab qolardi.
+        project = await run_in_threadpool(parse_project, content)
     except ParseError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None
 
@@ -82,13 +87,19 @@ async def upload_order_project(
     # Qo'lda chizilgan marshrutlar fayldan kelmaydi — qayta yuklashda ular bilan birga
     # yo'qolib ketmasligi uchun detal kodi bo'yicha saqlab turiladi.
     saved_routes = await snapshot_custom_routes(db, order)
-    await wipe_previous_parse(db, order, root)
+    # Eski fayllar `.stale` ga qayta nomlanadi: ingest yiqilsa qaytariladi, commit'dan
+    # keyin o'chiriladi. Ilgari unlink tranzaksiya ichida edi — ParseError'da DB orqaga
+    # qaytar, fayllar esa qaytmasdi.
+    stale_files = await wipe_previous_parse(db, order, root)
     try:
         summary = await ingest_project(db, order, project, content, file.filename or "project.project", root)
         restored, lost = await restore_custom_routes(db, order, saved_routes)
-    except ParseError as exc:
+    except Exception as exc:
         await db.rollback()
-        raise HTTPException(status_code=422, detail=str(exc)) from None
+        restore_stale_files(stale_files, root)
+        if isinstance(exc, ParseError):
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        raise
     if restored:
         # Nostandart detalgina emas: standart detalga matritsadan qo'shilgan
         # qadam ham MANUAL bo'lib saqlanadi va shu sanoqqa kiradi.
@@ -109,6 +120,7 @@ async def upload_order_project(
         ip=client_ip(request),
     )
     await db.commit()
+    drop_stale_files(stale_files, root)
     warnings = summary["warnings"]
     text = (
         f"Fayl qabul qilindi: {summary['products']} mahsulot, {summary['parts']} detal, {summary['instances']} nusxa."
@@ -185,8 +197,9 @@ async def regenerate_order_scx(db: SessionDep, current_user: TexnologUser, order
     if project_row is None or not (root / project_row.path).is_file():
         raise NotFoundException(".project fayli diskda topilmadi — qayta yaratib bo'lmaydi.")
 
+    project_path = root / project_row.path
     try:
-        project = parse_project((root / project_row.path).read_bytes())
+        project = await run_in_threadpool(lambda: parse_project(project_path.read_bytes()))
     except ParseError as exc:
         raise HTTPException(status_code=422, detail=f"Fayl o'qilmadi: {exc}") from None
 
@@ -240,7 +253,7 @@ async def regenerate_order_scx(db: SessionDep, current_user: TexnologUser, order
         part = parts_by_key.get(pp.key)
         if part is None or not pp.xnc_ops:
             continue
-        created += write_and_register_scx(
+        created += await write_and_register_scx(
             db,
             order.id,
             part.id,

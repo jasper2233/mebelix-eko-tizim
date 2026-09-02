@@ -194,7 +194,9 @@ function OrdersTable({ params }: { params: RangeParams }) {
           <TableHead>Raqam</TableHead>
           <TableHead>Mijoz</TableHead>
           <TableHead>Holat</TableHead>
+          <TableHead>Ochilgan</TableHead>
           <TableHead>Topshirish sanasi</TableHead>
+          <TableHead>Ishga tushgan</TableHead>
           <TableHead>Tayyor</TableHead>
           <TableHead>Topshirilgan</TableHead>
           <TableHead>Izoh</TableHead>
@@ -215,12 +217,18 @@ function OrdersTable({ params }: { params: RangeParams }) {
                 <StatusBadge status={r.status} />
               </TableCell>
               <TableCell className="num">
+                {formatDateTime(r.created_at)}
+              </TableCell>
+              <TableCell className="num">
                 {formatDate(r.deadline)}
                 {r.overdue && (
                   <span className="ml-1.5 rounded-sm bg-red-100 px-1.5 py-0.5 text-2xs font-bold text-red-700">
                     KECHIKKAN
                   </span>
                 )}
+              </TableCell>
+              <TableCell className="num">
+                {formatDateTime(r.production_started_at)}
               </TableCell>
               <TableCell className="num">
                 {formatDateTime(r.completed_at)}
@@ -234,7 +242,7 @@ function OrdersTable({ params }: { params: RangeParams }) {
             </TableRow>
           ))
         ) : (
-          <EmptyRow colSpan={7}>Tanlangan davrda buyurtmalar yo'q.</EmptyRow>
+          <EmptyRow colSpan={9}>Tanlangan davrda buyurtmalar yo'q.</EmptyRow>
         )}
       </TableBody>
     </Table>

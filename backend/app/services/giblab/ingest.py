@@ -9,6 +9,7 @@ from typing import Any, TypeVar
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.models import Order, OrderFile, Part, PartInstance, PartRoute, Post, Product, WasteItem
 from app.models.enums import FileKind, PostCode, RouteSource
@@ -25,6 +26,36 @@ RouteSnapshot = dict[tuple[str, str], tuple[bool, list[int], tuple[str, str] | N
 
 
 _K = TypeVar("_K", str, PostCode)  # posts lug'ati ingest'da str, restore'da PostCode kalitli
+
+#: Dumni vaqtincha ko'chirish oralig'i — marshrutda hech qachon shuncha qadam bo'lmaydi.
+SEQ_PARK = 1000
+
+
+def _tail_where(part_id: int) -> tuple[Any, ...]:
+    """Detalning TIRIK dum (qadoqlash/TMO) qadamlari."""
+    return (
+        PartRoute.part_id == part_id,
+        PartRoute.process_code.in_(TAIL_CODES),
+        PartRoute.is_deleted == False,  # noqa: E712
+    )
+
+
+async def park_tail(db: AsyncSession, part_id: int) -> None:
+    """Dumni bo'sh `seq` diapazoniga olib chiqish — o'rtaga yangi qadam sig'sin.
+
+    `(part_id, seq)` qisman UNIQUE indeks dublikatni satr-ma-satr tekshiradi, ya'ni
+    to'g'ridan-to'g'ri `seq + n` o'rtada to'qnashardi: avval dum chetga ko'chiriladi,
+    yangi qadamlar yoziladi, keyin `unpark_tail` uni joyiga tushiradi."""
+    await db.execute(update(PartRoute).where(*_tail_where(part_id)).values(seq=PartRoute.seq + SEQ_PARK))
+
+
+async def unpark_tail(db: AsyncSession, part_id: int, shift: int) -> None:
+    """Dumni joyiga qaytarish — o'rtaga qo'shilgan `shift` qadam hisobga olinadi."""
+    await db.execute(
+        update(PartRoute)
+        .where(*_tail_where(part_id), PartRoute.seq >= SEQ_PARK)
+        .values(seq=PartRoute.seq - SEQ_PARK + shift)
+    )
 
 
 def _post(posts: dict[_K, Post], post_code: _K) -> Post:
@@ -45,19 +76,20 @@ async def snapshot_custom_routes(db: AsyncSession, order: Order) -> RouteSnapsho
     olinadi — ikkalasi ham fayldan tiklanmaydi. Bayroqning o'zi ham saqlanadi."""
     # Yig'ma bog'lam ham eslab qolinadi: id qayta yuklashda o'zgaradi, shuning
     # uchun asosiy detal ham KOD bilan yoziladi.
-    keys = {
-        part_id: (product_code, part_code)
-        for part_id, product_code, part_code in (
-            await db.execute(
-                select(Part.id, Product.code, Part.code)
-                .join(Product, Product.id == Part.product_id)
-                .where(
-                    Part.order_id == order.id,
-                    Part.is_deleted == False,  # noqa: E712
-                )
+    keys: dict[int, tuple[str, str]] = {}
+    custom: dict[int, bool] = {}
+    for part_id, product_code, part_code, is_custom in (
+        await db.execute(
+            select(Part.id, Product.code, Part.code, Part.is_custom)
+            .join(Product, Product.id == Part.product_id)
+            .where(
+                Part.order_id == order.id,
+                Part.is_deleted == False,  # noqa: E712
             )
-        ).tuples()
-    }
+        )
+    ).tuples():
+        keys[part_id] = (product_code, part_code)
+        custom[part_id] = is_custom
     parents: dict[int, tuple[str, str] | None] = {
         part_id: keys.get(parent_id) if parent_id is not None else None
         for part_id, parent_id in (
@@ -86,6 +118,12 @@ async def snapshot_custom_routes(db: AsyncSession, order: Order) -> RouteSnapsho
         )
     ).tuples()
     saved: RouteSnapshot = {}
+    # Bayroqlar MANUAL qatorlardan EMAS, detalning O'ZIDAN olinadi: "Nostandart" deb
+    # belgilangan (yoki yig'maga biriktirilgan) detalda hali bironta ham qo'lda qadam
+    # bo'lmasligi mumkin — o'shanda bayroq qayta yuklashda jimgina yo'qolardi.
+    for part_id, key in keys.items():
+        if custom[part_id] or parents.get(part_id) is not None:
+            saved[key] = (custom[part_id], [], parents.get(part_id))
     for part_id, product_code, part_code, is_custom, process_code in rows:
         entry = saved.setdefault((product_code, part_code), (is_custom, [], parents.get(part_id)))
         # Dum (qadoqlash/TMO) saqlanmaydi — tiklashda o'zi qo'shiladi. Saqlansa
@@ -158,9 +196,13 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
         else:
             # Standart detalda qo'lda qo'shilgan qadam fayl qadamlariga QO'SHIMCHA edi
             # (matritsadagi tugma) — fayl qadamlari joyida qoladi, bular ketidan tushadi.
+            # Dum (qadoqlash/TMO) OXIRIDA qolishi shart: undan keyin tushgan qadam
+            # qat'iy tartib tekshiruvida "avval TMO" ni talab qilib, mangu E004 berardi.
             live = live_by_part.get(part.id, [])
-            start_seq = max((r.seq for r in live), default=0) + 1
+            start_seq = max((r.seq for r in live if r.process_code not in TAIL_CODES), default=0) + 1
             seen = {posts_by_id[r.post_id] for r in live if r.post_id in posts_by_id}
+            if codes:
+                await park_tail(db, part.id)
         edge_count = len(part.edges) or 1
         for offset, code in enumerate(codes):
             post_code = PROCESS_POSTS[code]
@@ -183,11 +225,15 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
                     total_required=part.count * per,
                 )
             )
+        if not was_custom and codes:
+            # Yangi qadamlar yozilsin, keyin dum ularning ustiga tushadi.
+            await db.flush()
+            await unpark_tail(db, part.id, len(codes))
         # Nostandart detalning marshruti to'liq qayta yozilgani uchun qadoqlash va
         # TMO qadamlari shu yerda tiklanadi (standart detalda ular AUTO bo'lib qoladi).
         # Biriktirilgan MAYDA detalga dum qo'shilmaydi — u asosiy detalga
         # yopishib yaxlit buyumga aylanadi (orders._set_custom_route bilan bir xil qoida).
-        if was_custom and part.assembly_parent_id is None:
+        if was_custom and codes and part.assembly_parent_id is None:
             tail = [(15, PostCode.UPAKOVKA)] if packaging else []
             tail.append((16, PostCode.TMO))
             for offset, (code, post_code) in enumerate(tail):
@@ -209,8 +255,14 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
     return restored, lost
 
 
-async def wipe_previous_parse(db: AsyncSession, order: Order, upload_root: Path) -> None:
-    """Re-upload replaces everything derived from the old file (TZ 6.3.1)."""
+async def wipe_previous_parse(db: AsyncSession, order: Order, upload_root: Path) -> list[str]:
+    """Re-upload replaces everything derived from the old file (TZ 6.3.1).
+
+    Eski `.project`/SCX fayllari diskdan O'CHIRILMAYDI — `<yo'l>.stale` ga qayta nomlanadi
+    va yo'llar ro'yxati qaytariladi. Yangi ingest aynan o'sha nomlarga yozadi (SCX nomi = QR,
+    project nomi = fayl nomi); ingest yiqilsa chaqiruvchi `db.rollback()` dan keyin
+    `restore_stale_files` bilan eskilarni qaytaradi (yarim yozilgan yangining ustidan),
+    muvaffaqiyatda `db.commit()` dan keyin `drop_stale_files` `.stale` larni o'chiradi."""
     now = datetime.now(UTC)
     for model in (Product, Part, PartInstance, PartRoute, WasteItem):
         await db.execute(
@@ -226,18 +278,48 @@ async def wipe_previous_parse(db: AsyncSession, order: Order, upload_root: Path)
     )
     paths = (await db.execute(select(OrderFile.path).where(*file_where))).scalars().all()
     await db.execute(update(OrderFile).where(*file_where).values(is_deleted=True, deleted_at=now))
-    for path in paths:
-        try:
-            (upload_root / path).unlink(missing_ok=True)
-        except OSError:
-            logger.warning("Eski faylni o'chirib bo'lmadi: %s", path)
+    for rel in paths:
+        f = upload_root / rel
+        if f.is_file():
+            f.replace(_stale(f))
+    return list(paths)
+
+
+def _stale(f: Path) -> Path:
+    return f.with_name(f.name + ".stale")
+
+
+def restore_stale_files(stale: list[str], upload_root: Path) -> None:
+    """Ingest yiqildi: eski fayllar asl nomiga qaytadi (yangi yozilganning ustidan)."""
+    for rel in stale:
+        f = upload_root / rel
+        if _stale(f).is_file():
+            _stale(f).replace(f)
+
+
+def drop_stale_files(stale: list[str], upload_root: Path) -> None:
+    """Eski parse fayllarining `.stale` nusxalarini COMMIT'DAN KEYIN o'chirish."""
+    for rel in stale:
+        _stale(upload_root / rel).unlink(missing_ok=True)
 
 
 # Sarf birligi: list va kromkada faylda `unit` yo'q, furnitura esa doim 'шт' beradi.
 _USAGE_UNITS = {"sheet": "list", "band": "metr", "hardware": "dona"}
 
 
-def write_and_register_scx(
+def _build_and_write_scx(
+    scx_dir: Path, pp: ParsedPart, qr_texts: list[str], plate_thickness: float | None
+) -> list[tuple[str, int]]:
+    """SCX XML'ni qurib diskka yozadi (thread'da chaqiriladi). Qaytadi: (fayl nomi, hajmi)."""
+    scx_dir.mkdir(parents=True, exist_ok=True)
+    written = []
+    for filename, content in build_scx_files(pp, qr_texts, plate_thickness=plate_thickness):
+        (scx_dir / filename).write_text(content, encoding="utf-8")
+        written.append((filename, len(content.encode())))
+    return written
+
+
+async def write_and_register_scx(
     db: AsyncSession,
     order_id: int,
     part_id: int,
@@ -252,10 +334,10 @@ def write_and_register_scx(
     o'tadi — fayl nomi/joyi va OrderFile maydonlari bir joyda. Nechta fayl yaratilgani qaytadi.
     """
     scx_dir = upload_root / "scx" / str(order_id)
-    scx_dir.mkdir(parents=True, exist_ok=True)
-    created = 0
-    for filename, content in build_scx_files(pp, qr_texts, plate_thickness=plate_thickness):
-        (scx_dir / filename).write_text(content, encoding="utf-8")
+    # XML qurish ham, diskka yozish ham thread'da: bittasi ham event loop'ni
+    # (terminallar, TABLO, WebSocket) to'xtatib qo'ymasin.
+    written = await run_in_threadpool(_build_and_write_scx, scx_dir, pp, qr_texts, plate_thickness)
+    for filename, size in written:
         db.add(
             OrderFile(
                 order_id=order_id,
@@ -263,11 +345,10 @@ def write_and_register_scx(
                 kind=FileKind.SCX,
                 path=str((scx_dir / filename).relative_to(upload_root)),
                 filename=filename,
-                size=len(content.encode()),
+                size=size,
             )
         )
-        created += 1
-    return created
+    return len(written)
 
 
 async def ingest_project(
@@ -302,13 +383,14 @@ async def ingest_project(
     # qo'shadimi. `survey` JSONB, eski yozuvda kalit umuman bo'lmasligi mumkin.
     packaging = order.needs_packaging
 
-    cutmap = build_cutmap(project) if any(c.data_blob for c in project.cut_ops) else None
+    # Kesish xaritasi CS blobini ochadi va katakchalarni hisoblaydi — sof CPU, thread'da.
+    cutmap = await run_in_threadpool(build_cutmap, project) if any(c.data_blob for c in project.cut_ops) else None
 
     # --- store the raw project file ---
     project_dir = upload_root / "projects" / str(order.id)
     project_dir.mkdir(parents=True, exist_ok=True)
     project_path = project_dir / original_filename
-    project_path.write_bytes(raw_content)
+    await run_in_threadpool(project_path.write_bytes, raw_content)
     db.add(
         OrderFile(
             order_id=order.id,
@@ -425,7 +507,7 @@ async def ingest_project(
             # birlashgan, nom/ID = QR — Nanxing skaneri to'g'ridan-to'g'ri topadi).
             # plate: qo'shqavat detalda (32mm) eksport qalinligi plita bo'yicha
             plate = _plate_thickness.get(pp.material_name or "")
-            write_and_register_scx(db, order.id, part.id, pp, pp.qr_texts, upload_root, plate_thickness=plate)
+            await write_and_register_scx(db, order.id, part.id, pp, pp.qr_texts, upload_root, plate_thickness=plate)
 
     # --- order metadata ---
     # `code` — tsexning `goods.xls` katalogidagi SKU. Parser uni o'qiydi, lekin bu yerda

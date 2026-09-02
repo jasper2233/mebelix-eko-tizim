@@ -731,6 +731,17 @@ detallar va buyurtmaning HAMMA tirik marshruti bittadan SELECT bilan olinadi (ma
 qatorlari esa sikldan OLDIN bitta `UPDATE ... WHERE part_id IN (...)` bilan yumshoq
 o'chiriladi. Yangi MANUAL qatorlar `db.add` bilan qo'shiladi va tranzaksiya oxirida yoziladi.
 
+STANDART detalda tiklangan qadam DUMDAN (UPAKOVKA/TMO, `TAIL_CODES`) OLDIN turadi: `seq`
+dumsiz maksimumdan boshlanadi, dum esa `park_tail`/`unpark_tail` bilan qadamlar soniga
+suriladi (ikki qadamda — `(part_id, seq)` qisman UNIQUE indeks dublikatni satr-ma-satr
+tekshiradi, to'g'ridan-to'g'ri surish o'rtada to'qnashardi). Marshrut matritsasidagi yangi
+qadam ham AYNAN shu ikki helperdan foydalanadi (`orders/matrix.py`). Dum hisobga olinmasa
+tiklangan qadam TMO dan keyin tushib, `STRICT_STAGE_ORDER` da mangu `E004` berardi.
+
+`snapshot_custom_routes` esa `is_custom` va `assembly_parent_id` ni MANUAL qatorlardan emas,
+DETAL jadvalidan oladi (marshrut kodlari alohida so'rovda ustiga qo'shiladi): bayroq yoqilgan,
+lekin marshruti hali chizilmagan detal ham saqlanadi.
+
 Bu xabarlar yuklash javobida ko'rsatiladi (dastlabki 3 tasi, qolgani soni bilan) va
 to'liq ro'yxat audit logga yoziladi (`POST /orders/{id}/upload`).
 
@@ -751,6 +762,13 @@ to'liq ro'yxat audit logga yoziladi (`POST /orders/{id}/upload`).
   (`XNC (C1): <bf> da dp yo'q`) yoxud dastur XML'i buzilgan bo'lsa — §3.2;
 - marshrut qadami uchun post bazada sozlanmagan bo'lsa (`Post sozlanmagan: {post_code}` —
   `ingest.py`).
+
+Rad etish QAYTA yuklashda ham xavfsiz: `wipe_previous_parse` DB qatorlarini yumshoq
+o'chirib eski fayllarni `<yo'l>.stale` ga qayta nomlaydi (yangi ingest aynan o'sha nomlarga
+yozadi); ingest yiqilsa `db.rollback()` dan keyin `restore_stale_files` ularni qaytaradi,
+muvaffaqiyatda `db.commit()` dan KEYIN `drop_stale_files` `.stale` larni o'chiradi. Ya'ni
+`ParseError` da tranzaksiya orqaga qaytadi va buyurtmaning eski `.project`/SCX fayllari
+joyida qoladi.
 
 ### 7.1 Qamrov — spetsifikatsiyadagi 289 atribut
 
@@ -803,7 +821,10 @@ Eski buyurtmalar fayllari diskda eski konvensiyada qolgan bo'lsa — buyurtma sa
 "SCX qayta yaratish" tugmasi (`POST /orders/{id}/scx/regenerate`). Birinchi yuklash ham,
 qayta yaratish ham bitta yo'ldan o'tadi — `ingest.write_and_register_scx()` (fayl nomi/joyi
 va `OrderFile` maydonlari bir joyda); plita qalinligi jadvalini ikkala yo'l ham
-`scx.plate_thickness_map(project)` dan oladi.
+`scx.plate_thickness_map(project)` dan oladi. Funksiya `async`: XML qurish va diskka yozish
+`run_in_threadpool` da bajariladi (`_build_and_write_scx`), OrderFile qatorlarini esa
+chaqiruvchi koroutinaning o'zi qo'shadi — 3000 faylni event loop'da yozish uni ~0.3 s
+muzlatib qo'yardi (terminallar, TABLO, WebSocket bir vaqtning o'zida to'xtardi).
 
 ---
 
@@ -815,8 +836,9 @@ va `OrderFile` maydonlari bir joyda); plita qalinligi jadvalini ikkala yo'l ham
 - Ishlov: `xnc.py` (dastur XML), `scx.py` (CNC fayl generatsiyasi)
 - DB'ga yozish: `ingest.py` (mahsulot/detal/nusxa/marshrut, material registri, sarf hisobi, SCX yozish)
 - `giblab/__init__.py` faqat ikki nom eksport qiladi: `ParseError` va `parse_project`; `ingest`
-  funksiyalari (`ingest_project`, `wipe_previous_parse`, `write_and_register_scx`,
-  `snapshot_custom_routes`, `restore_custom_routes`) submoduldan to'g'ridan-to'g'ri olinadi
+  funksiyalari (`ingest_project`, `wipe_previous_parse`, `drop_stale_files`,
+  `write_and_register_scx`, `snapshot_custom_routes`, `restore_custom_routes`,
+  `park_tail`/`unpark_tail`) submoduldan to'g'ridan-to'g'ri olinadi
   (`orders/files.py`) — oxirgi juftlik qayta yuklashda qo'lda chizilgan marshrutlarni
   saqlab tiklaydi (§7 ga qarang)
 - Korpus fayllari git'ga tushmaydi (`.gitignore`: `uploads/`), lekin lokal `uploads/projects/`

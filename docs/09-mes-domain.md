@@ -129,200 +129,27 @@ to'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §2.3. Qoidalar:
   `snapshot_custom_routes()` qo'lda kiritilgan (`MANUAL`) qadamlarni `(mahsulot kodi, detal kodi)`
   kaliti bilan eslab qoladi — detal kodi fayl ichidagi `part@id` dan farqli o'laroq qayta
   eksportda ham o'zgarmaydi. Nostandart detallar ham, matritsadan qo'lda qadam qo'shilgan
-  STANDART detallar ham olinadi (`is_custom` bayrog'i bilan birga). Ingest'dan keyin
+  STANDART detallar ham olinadi. `is_custom` va `assembly_parent_id` bayroqlari MANUAL
+  qatordan emas, DETALNING O'ZIDAN o'qiladi: "Nostandart" deb belgilangan yoki yig'maga
+  biriktirilgan detalda hali bironta ham qo'lda qadam bo'lmasligi mumkin (matritsa bayroqni
+  yoqqanda MANUAL qator YOZMAYDI, faqat AUTO qatorlarni yumshoq o'chiradi) — bayroqlar
+  qatorlarga bog'lansa qayta yuklashda jimgina yo'qolardi. Ingest'dan keyin
   `restore_custom_routes()` ularni tiklaydi: nostandart detalda marshrut TO'LIQ qo'lda, ya'ni
-  fayldan qurilgani o'chadi; standart detalda esa qo'lda qo'shilgan qadam fayl qadamlariga
-  QO'SHIMCHA edi — fayl qadamlari joyida qoladi, saqlanganlari ketidan tushadi. Yangi faylda
+  fayldan qurilgani o'chadi (kodlar saqlanmagan bo'lsa marshrut bo'sh qoladi — dum ham
+  qo'shilmaydi, `_set_custom_route` bilan bir xil qoida); standart detalda esa qo'lda
+  qo'shilgan qadam fayl qadamlariga QO'SHIMCHA edi — fayl qadamlari joyida qoladi,
+  saqlanganlari DUMDAN (UPAKOVKA/TMO) OLDIN qo'yiladi va dum ular soniga suriladi
+  (`park_tail`/`unpark_tail`, matritsadagi yangi qadam bilan bitta helper). Aks holda
+  tiklangan qadam TMO dan keyin tushib, qat'iy tartibda mangu `E004` berardi. Yangi faylda
   topilmagan detallar warning'da sanaladi.
-
-
-## 3. Scan engine (`app/services/scanning.py`)
-
-Instance-level nazorat: QR → aktiv PRODUCTION buyurtma → shu postdagi marshrut QADAMLARI (`seq`
-bo'yicha) → eng kichik `seq` li TUGALLANMAGAN qadam + ish markazi mosligi → per-instance limit →
-yozish + `total_done++`. Hisob POST emas, QADAM bo'yicha: `_scans_done(db, instance_id, route_id)`
-kaliti `route_id` — bitta post marshrutda ikki marta bo'lsa (kromka → prisadka → kromka) post
-bo'yicha sanash hisobni aralashtirib yuborardi. `total_done` SQL tomonda oshiriladi/kamaytiriladi
-(`UPDATE ... SET total_done = total_done ± 1`): Python tomondagi o'qib-yozish ikki terminal bir
-vaqtda skanlaganda bitta inkrementni yo'qotardi va qadam `total_required` ga hech qachon
-yetmasdi — buyurtmani faqat bazani qo'lda tuzatib yopish mumkin bo'lardi. Xatolar TT 8.5 kodlari bilan (`{"code": "E00x",
-"message": ...}` 422 detail). Idempotency: `client_event_id` UNIQUE — takror so'rov `duplicate:true` (tekshiruv FAQAT tirik skanni ko'radi, bekor qilinganda kalit `NULL` ga bo'shatiladi: aks holda qadoqdan chiqarilgan nusxa o'sha qadoqqa qayta skanerlanmasdi)
-bilan muvaffaqiyat. `STRICT_STAGE_ORDER` (endi default **yoqiq**) — E004: tekshiruv postlarning
-global tartibidan emas, detalning O'Z marshruti bo'yicha: `seq` i kichik qadamlar shu nusxada
-tugamaguncha keyingisi rad etiladi, xabar navbatdagi post nomini aytadi.
-60s ichida bekor qilish; COMPLETED regress. Bosqich tugashi → `order.stage_completed`, hammasi →
-`COMPLETED` + `order.completed`.
-
-### 3.0 Xato kodlari (TT 8.5)
-
-**MANBALAR-ARO DEDUP:** bitta fizik skan IKKI yo'ldan kelishi mumkin (brauzer terminali va stanok agentining klaviatura kuzatuvchisi) — ular turli `client_event_id` beradi, ya'ni oddiy idempotentlik ushlamaydi. `per_instance == 1` qadamda ikkinchisi E008 bilan to'xtaydi, lekin KROMKA qirralari / PRISADKA tomonlarida u JIMGINA keyingi qirrani ham yopardi (real DB bilan isbotlangan: 2 qirralik qadam bitta skanda 2/2 bo'lardi). Endi bir xil (nusxa, qadam) bo'yicha 3 soniya ichidagi ikkinchi yozuv takror deb qabul qilinadi (`CROSS_SOURCE_WINDOW`, `scanning.py`).
-
-Rad etilgan skan `422 {"code": "E00x", "message": "..."}` qaytaradi. Bu shaklni
-YAGONA joy yasaydi — `services/scanning.py` dagi `scan_error(code, message)`;
-route'lar (`terminal.py`, `pachka.py`, `tmo.py`, `scans.py`, `bridge_agents.py`) `ScanRejected` ni
-ushlab aynan shuni ko'taradi. **Kod kim
-harakat qilishini aytadi, matn esa nima qilishini** — matn tahrirlanadi, kod
-barqaror qoladi, shuning uchun mantiq (terminal ovozi, hisobot guruhlashi)
-faqat kodga tayanadi. Ilgari terminal o'zbekcha xabardan "yakunlangan" bo'lagini
-qidirardi — matn tahrirlanishi bilan jimgina buziladigan bog'lanish.
-
-| Kod | Ma'nosi | Kim tuzatadi |
-|---|---|---|
-| `E001` | Detal/plan mos kelmadi: bu QR bo'yicha tugallanmagan plan yo'q, bu post detal marshrutida yo'q, detal boshqa ish markaziga biriktirilgan, detal roverda kesiladi. Skan dvijokining ikkita xizmat sababi ham shu kodda: takroriy skan poygasi (`scanning.py:660`, guard `db.flush()` ni o'rab turadi) va bekor qilish rad etilishi — skan topilmadi / allaqachon bekor qilingan / `SCAN_UNDO_SECONDS` o'tdi (`scanning.py:918-922`). **Qadoq/TMO shoxi** (`pachka.py:288/292/307`, `tmo.py:203/207`) ham E001 dan foydalanadi: "Bunday QR topilmadi", "Bu detal boshqa buyurtmaga tegishli", "Bu detal allaqachon `<qadoq>` ichida", "`PK-…` qadog'i topilmadi", "Bu qadoq boshqa buyurtmaga tegishli" | Operator — chekni va postni tekshiradi |
-| `E002` | Ikki ma'no: (a) QR formati buzuq (`_` yo'q); (b) `ATX-` cheki BUTUN, lekin `waste_item` ro'yxatida yo'q — "Bunday qoldiq cheki ro'yxatda yo'q." (yozuv o'chirilgan yoki qayta yuklashda `wipe_previous_parse` soft-delete qilgan) | Operator — chekni qayta chop etadi; (b) holatida qayta chop etish YORDAM BERMAYDI, qoldiq bazada yo'q. Beyjik UUID'i endi bu kodga YETIB KELMAYDI: skan-forvardda u alohida chetlab o'tiladi (`BADGE`), aks holda qonuniy beyjik skani xato bo'lib ko'rinardi |
-| `E003` | Buyurtma bekor qilingan | Manager |
-| `E004` | Navbat buzildi: shu NUSXAda oldingi qadam tugamagan (`STRICT_STAGE_ORDER`); xabar navbatdagi post nomini aytadi | Operator — oldingi postni kutadi |
-| `E005` | Aktiv sessiya yo'q yoki `SESSION_MAX_HOURS` (12 soat) o'tgan | Operator — beyjikni skanerlaydi |
-| `E006` | Beyjik: topilmadi / nofaol / hodim bu postga biriktirilmagan | Admin yoki hodim |
-| `E007` | Aloqa yo'q — **server kodi emas**, WS uzilganda terminal frontendi o'zi hosil qiladi, so'rov serverga umuman ketmaydi | — |
-| `E008` | Ish allaqachon bajarilgan (shu nusxaning shu postdagi qadamlari to'lgan). Xabar endi KONKRET: post nomi, N/N skan soni va oxirgi skan vaqti (Toshkent) — egizak cheklar (05_009 / 05_009-2) chalkashligida ishchi xatoni o'zi ko'radi. Xato emas — terminal neytral ogohlantirish ovozini beradi | Hech kim — takror skan |
-| `ATX` | Qoldiq QR (`ATX-` prefiks) skan qilindi — **xato emas, ma'lumot**: javob o'lcham, material, buyurtma·loyiha·list va chek holatini aytadi. Qoldiq marshrutda yurmaydi, skan hech qanday bosqichni yopmaydi; terminal KO'K (info) chiziq ko'rsatadi, qizil emas. Bu javob FAQAT terminal yo'lida (`POST /scans`) beriladi | Hech kim — ma'lumot skan |
-| `SKIP` | Stanok skan-forvardi (`POST /bridge-agents/scan`) chetlab o'tdi: `ATX-` yoki `PK-` QR detal skani emas — "Bu QR detal skani emas — terminalda skanerlang." O'lcham/material javobi bu yo'lda YO'Q. Ilgari ular `_QR_RE` dan yiqilib E002 "QR formati buzuq" degan qizil xato berardi, chek aslida butun bo'lsa ham | Hech kim — operator o'sha chekni terminalda skanerlaydi |
-| `E009` | SOZLAMA xatosi: post topilmadi, postda ish markazi yo'q, terminalga ish markazi biriktirilmagan. Hisob QURILMA hisobi ham, post roli ham bo'lmasa (ofis, admin) xabar boshqacha — "Bu ekran monoblok uchun": ofis hisobiga ish markazi biriktirilmaydi (`users._check_machine`), ya'ni "biriktirilmagan" deyish sozlama buzuqdek ko'rsatardi | **Admin** — operator hech narsa qila olmaydi |
-
-`E008` va `E009` 2026-08-12 da `E001` dan ajratildi: u 12 xil sababni qamrab
-olgani uchun kod amalda hech narsa bildirmasdi va mijoz matn qidirishga majbur
-edi. `E001`–`E006` raqamlari TT dan kelgan, tegilmagan. Ajratish faqat skan
-dvijokining asosiy yo'liga tegdi: qadoq (`/pachka`) va TMO (`/tmo`) endpointlari
-hamon E001 ni umumiy "mos kelmadi" kodi sifatida ishlatadi — yuqoridagi qatorda
-sanab o'tilgani shu sabab.
-
-Rad etilgan urinish `log_rejected_scan()` orqali audit logga yoziladi
-(`module=scan, action=rejected`, `meta={"code": ...}`) — hisobotda kod bo'yicha
-guruhlash shundan ishlaydi.
-
-Operator-rol oqimi (`resolve_terminal` / `active_session`): arrachi…omborchi uchun post roldan
-aniqlanadi (`POST_ROLES`); ish markazi — `user.machine_id`, bo'lmasa (yoki biriktirilgani o'chirilgan/NOAKTIV
-bo'lsa) `scanning.post_machine` — BITTA joydagi qoida (§3.0.1 3-qadam bilan bir xil): NOAKTIV markaz
-tanlanmaydi, AKTIV esa TA'MIRDA dan ustun turadi (`_STATUS_PREFERENCE`), ikkalasi ham yo'q bo'lsa E009.
-
-**Smena YAGONA joyda ochiladi — terminalda** (`open_badge_session`): beyjik skani yoki ekrandagi
-"Kim ishlayapti?" ro'yxatidan ismni bosish. `active_session` hech qachon smena ochmaydi: brigada
-bo'sh bo'lsa E005, smena egasi nofaol bo'lsa E006.
-
-**QURILMA ≠ ODAM.** Monoblok TERMINAL hisobi bilan BIR MARTA, o'rnatishda kiradi va boshqa hech
-qachon parol termaydi — tsexda klaviatura yo'q, qurilma tokeni 90 kunlik va har ishlatilganda
-yangilanadi (`DEVICE_REFRESH_TOKEN_EXPIRE_DAYS`). Kim ishlayotgani esa HAR smenada yoziladi. Bu
-ikkisini bir narsa deb qarash eng qimmat xato bo'lardi: "bir marta kirib eslab qolsin" degan yechim
-qurilmani tanitadi, lekin ertaga boshqa odam kelganda hamma skan kechagi odamga yozilib ketardi.
-
-Ismni bosish AUTENTIFIKATSIYA emas, **ATRIBUTSIYA**: qurilma allaqachon tanitilgan va ekran tsex
-ichida, ish markazi yonida turibdi, ya'ni sir so'rashning ma'nosi yo'q — uzoqdan hech kim tegolmaydi.
-Shu sabab PIN kodi qurilib, keyin OLIB TASHLANDI: u 4 raqamni hamma oldida terishni talab qilardi,
-ya'ni kuzatib turgan odamdan himoya qilmasdi — himoya qilmaydigan narsani himoya qilardi.
-
-Ilgari post rollari uchun "login = smena" shoxi bor edi: `operator_employee` hisobga soxta hodim
-yozuvi yaratib ("Arrachi", "Omborchi" — ismi rol nomi) smenani o'sha nomdan ochardi. Post rollari
-parol bilan kira olmagach (§3.0.1; o'sha paytda `login.py` `POST_ROLES` dagi HAR qanday rolni rad
-etardi) u shox smena ocholmay qoldi va butunlay olib tashlandi.
-`c7e2b4f81d39` mavjud mirror yozuvlarni NOFAOL qiladi va ularning ochiq smenalarini yopadi;
-yozuvlar O'CHIRILMAYDI — ularda haqiqiy skan tarixi bor. Natijada **`Hodimlar` = odamlar,
-`Foydalanuvchilar` = loginlar** va ular kesishmaydi.
-
-#### Brigada — bitta ish markazida ikki kishi
-
-ARRA da ikki kishi birga ishlaydi: biri varaqni beradi, ikkinchisi detalni oladi va taxlaydi.
-Detalni qaysi biri olganini bilishning **iloji yo'q** — ish qo'shma, ya'ni har skanda operator
-tanlashni so'rash soxta ma'lumot berardi.
-
-Shuning uchun ish markazida bir nechta ochiq smena bo'lishi mumkin (`crew_sessions`):
-
-| Amal | Natija |
-|---|---|
-| beyjik / ism (sukut) | brigadani ALMASHTIRADI — ochiq smenalar yopiladi |
-| `join=true` ("+ Qo'shish") | brigadaga QO'SHILADI |
-| `/session/end?employee_id=` | FAQAT o'sha odamniki yopiladi, qolgani ishlayveradi |
-
-Almashtirish ATAYLAB sukut: ketayotgan odam yakunlashni unutsa, keyingi kirish eski smenani yopadi
-— unutish xavfsiz tomonga og'adi. Qo'shilish esa ataylab so'raladi, aks holda ikkalasiga ham jimgina
-ish yozilib ketardi.
-
-Ish haqi va mahsuldorlik: skan qatorida bitta `employee_id` bor (LANGAR smena egasi), shuning uchun
-hisobot uni SANAMAYDI — har skan o'z VAQTIDA ochiq bo'lgan smenalar orasida teng bo'linadi
-(`reports.py`, `count() OVER (PARTITION BY scan.id)`). Ikki kishi birga ishlagan skan har biriga
-0.5 yoziladi: zavod bir ishga bir marta to'laydi. `scan.machine_id` NULL bo'lsa (ish markazisiz yozuv)
-`COALESCE` uni eski yo'l bilan `scan.employee_id` ga yozadi — skan hisobdan tushib qolmasin.
-
-### 3.0.1 Beyjik bilan kirish (tsexdagi asosiy yo'l)
-
-Operator login/parol termaydi va **hech qanday o'rnatish qadami yo'q**: kirish sahifasi ochilib
-turgan istalgan brauzerda beyjik skani kirishga aylanadi. Skaneri yo'q postda esa parol yo'li bor —
-§3.0.2.
-
-Beyjik ikkala savolga javob beradi — KIM va QAYERDA (`login.py`):
-
-| Qadam | Nima |
-|---|---|
-| 1 | `badge_id` → `employee`. Noma'lum yoki nofaol beyjik — 401 |
-| 2 | `employee.assigned_post_ids` → post (`_badge_post`). Bitta bo'lsa so'ralmaydi; bir nechta bo'lsa **409 + ro'yxat**, hodim monoblokda tanlaydi |
-| 3 | Post → ish markazi (`_post_machine` → `scanning.post_machine` — BITTA joydagi qoida (ilgari ikki nusxada yozilgan edi): NOAKTIV markaz tanlanmaydi, AKTIV TA'MIRDA dan ustun turadi, ikkalasi ham yo'q bo'lsa admin uchun aniq xato) |
-| 4 | `_terminal_user`: shu ish markaziga biriktirilgan TERMINAL hisobi, bo'lmasa post roli hisobi. **Hisob KIM ishlayotganini bildirmaydi** — u beyjik ochgan `work_session` da |
-
-3- va 4-qadam ataylab `resolve_terminal` bilan bir xil javob berishi kerak: aks holda operator
-kirgandan keyin BOSHQA postning ekranida paydo bo'lardi.
-
-**SEXDAGI HAR HODIMDA BEYJIK BOR.** Admin beyjiksiz — u mes.mebelix.uz ga login/parol bilan
-kiradi; beyjik faqat tsexda ishlaydiganlarga. Shuning uchun `Hodimlar` ro'yxatidagi HAR bir yozuvga
-beyjik chiqariladi.
-
-`employee.user_id` — hodimni kirish hisobiga bog'laydi (`d1c4e7a90b52`). U ikki ish qiladi:
-skaneri yo'q postda hodimni SHAXSIY hisobiga bog'laydi (§3.0.2) va ishchi ayni paytda menejer ham
-bo'lgan holatni ifodalaydi. Bog'lash qoidalari `employees._validate_user_link` da: qurilma hisobi
-(TERMINAL/TABLO) va `is_system=True` texnik hisob odam emas — ularga hodim biriktirilmaydi;
-bitta hisob ikki hodimga tegishli bo'lolmaydi (`ix_employee_user_id`).
-
-### 3.0.2 Parol bilan kirish (skaneri yo'q post)
-
-ARRA da monoblok bor, **skaner yo'q**. U yerda skaner ishga kerak ham emas: chek chiqarishning
-o'zi skan hisoblanadi (`cut_by_print` — `terminal.py`), ya'ni skaner FAQAT kirish uchun sotib
-olinardi. Shuning uchun arrachi o'zining shaxsiy login va paroli bilan kiradi.
-
-| Qadam | Nima |
-|---|---|
-| 1 | `POST /login/access-token` — oddiy login. `is_system=True` hisob shu yerda 401 oladi |
-| 2 | Rol `POST_ROLES` da bo'lsa `_open_shift_for` ishlaydi |
-| 3 | `employee.user_id == user.id` bo'yicha AKTIV hodim topiladi. Topilmasa smena ochilmaydi — odam terminalda o'zini tanishtiradi |
-| 4 | Post rolidan (`POST_ROLES`), ish markazi `scanning.post_machine` dan — beyjik yo'li bilan BIR XIL qoida |
-| 5 | `open_badge_session` — smena ochiladi, ya'ni ish haqi o'sha odamga yoziladi |
-
-Ikki turdagi hisob bir xil rolda yashaydi va ularni `user.is_system` ajratadi (`e7a35c19d840`):
-
-| | `is_system=False` | `is_system=True` |
-|---|---|---|
-| Kim yaratadi | admin, Hodimlar sahifasidan | `seed_defaults._seed_post_accounts` |
-| Kirish | kiradi, smenasi o'ziga ochiladi | **hech qachon** — paroli tasodifiy |
-| Vazifasi | odamning shaxsiy hisobi | beyjik ochgan smena qaysi nom bilan yozilishini hal qiladi (`_terminal_user`) |
-
-Qoida ROLGA emas, HISOBGA bog'langan: kodda "faqat ARRA" degan ro'yxat yo'q. Boshqa postda skaner
-sinsa, admin o'sha odamga hisob ochadi — kod tegilmaydi. Ikki yo'l bir-birini inkor qilmaydi:
-shaxsiy hisobi bor hodimning beyjigi ham amal qiladi (boshqa postda ishlaganda kerak bo'ladi).
-
-Parol qoidasi hamma uchun bitta: 8+ belgi, katta va kichik harf, raqam, belgi
-(`schemas/users.py: validate_password_strength`).
-
-**Xavfsizlik — ataylab qilingan tanlov (2026-08-12).** Beyjik yagona omil: QR qog'ozda va nusxa
-olingan bo'lsa istalgan qurilmadan kirsa bo'ladi. Qurilma bog'lash (monoblokni ish markaziga bir
-martalik kod bilan bog'lash) qurilib, keyin OLIB TASHLANDI — tsexda kod/parol terish smena
-almashuvini sekinlashtiradi va amalda umumiy akkauntga olib keladi, ya'ni ish haqi atributsiyasini
-butunlay yo'qotadi. Buning o'rniga:
-
-- hisob imtiyozi tor — terminal ekranlari, admin paneli emas;
-- har kirish audit logga tushadi (`module=sessions, action=started`);
-- beyjik `employee.status` bilan darhol bekor qilinadi;
-- chegara `30/60s` (`_BADGE_RATE_LIMIT`) — 122-bitli UUID brute-force qilinmaydi, tor chegara esa
-  smena almashuvida butun tsexni (bitta tashqi IP) qulflab qo'yardi.
-
-Frontendda skan **fokusni tortmaydi** (`hooks/useBadgeScan`): login sahifasida ofis xodimi ayni
-paytda parol terayotgan bo'lishi mumkin. Skanerni odamdan tezlik ajratadi — belgilar orasi
-120 ms dan oshsa bufer tozalanadi.
-
-### 3.1 Yig'ma buyum (stolyarkada bir nechta detal birikadi)
-
-Stolyarkada mayda detallar asosiy detalga yopishtirilib **yaxlit buyum** bo'ladi. Texnolog
-"Nostandart detallar" tabida MAYDA detalda "Asosiy detal" ni tanlaydi — alohida "asosiy" bayrog'i
-yo'q, detal unga kimdir biriktirilgani uchun asosiy bo'lib qoladi. Bir pog'ona: biriktirilgan
-detalning o'zi asosiy bo'la olmaydi (`orders._set_assembly_parent` tekshiradi).
-
+- **Qayta yuklash yiqilsa fayllar joyida qoladi.** `wipe_previous_parse()` eski
+  `.project`/SCX qatorlarini yumshoq o'chiradi va fayllarni diskda `<yo'l>.stale` ga qayta
+  nomlaydi (yangi ingest aynan o'sha nomlarga yozadi: SCX nomi = QR, project nomi = fayl
+  nomi). Ingest har qanday xato bilan yiqilsa `db.rollback()` dan keyin
+  `restore_stale_files()` eskilarni asl nomiga qaytaradi (yarim yozilgan yangining
+  ustidan), muvaffaqiyatda `db.commit()` dan keyin `drop_stale_files()` `.stale` larni
+  o'chiradi. Ilgari unlink tranzaksiya ichida edi — ParseError'da DB orqaga qaytar,
+  fayllar esa mangu yo'qolardi.
 - **Marshrut birikish qadamida tugaydi**: `_set_custom_route` biriktirilgan detalga qadoqlash/TMO
   dumini QO'SHMAYDI — alohida detal endi mavjud emas, qadoqlovchi uni qidirmaydi.
   `_check_assembly_match` asosiy detal marshrutida o'sha amal borligini talab qiladi — bog'lam

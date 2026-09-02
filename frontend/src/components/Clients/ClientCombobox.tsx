@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { Check, ChevronsUpDown, Loader2, Plus } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 
 import { AddClient } from "@/components/Clients/AddClient"
 import { Button } from "@/components/ui/button"
@@ -37,6 +37,8 @@ export function ClientCombobox({
   const [label, setLabel] = useState(initialLabel ?? "")
   const [search, setSearch] = useState("")
   const [active, setActive] = useState(0)
+  const listRef = useRef<HTMLDivElement>(null)
+  const listId = useId()
   const debounced = useDebounced(search.trim())
 
   const { data, isFetching } = useQuery({
@@ -47,6 +49,14 @@ export function ClientCombobox({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: yangi natijada belgilangan qator boshiga qaytsin
   useEffect(() => setActive(0), [debounced])
+
+  // Belgilangan qatorni ko'rinishga suramiz — ro'yxat `max-h-64` bilan
+  // chegaralangan, aks holda 5-6 dan keyingi belgilash ko'rinmas joyda yurardi
+  useEffect(() => {
+    listRef.current
+      ?.querySelector(`[data-idx="${active}"]`)
+      ?.scrollIntoView({ block: "nearest" })
+  }, [active])
 
   // Yopilganda qidiruvni tozalaymiz — aks holda keyingi ochilishda eski filtr ko'rinadi
   const changeOpen = (v: boolean) => {
@@ -93,6 +103,12 @@ export function ClientCombobox({
         <div className="relative border-b p-2">
           <Input
             ref={inputRef}
+            role="combobox"
+            aria-controls={listId}
+            aria-expanded={open}
+            aria-activedescendant={
+              items[active] ? `${listId}-opt-${active}` : undefined
+            }
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => {
@@ -115,7 +131,12 @@ export function ClientCombobox({
             <Loader2 className="absolute right-4 top-4.5 size-4 animate-spin text-muted-foreground" />
           )}
         </div>
-        <div role="listbox" className="max-h-64 overflow-y-auto p-1">
+        <div
+          id={listId}
+          ref={listRef}
+          role="listbox"
+          className="max-h-64 overflow-y-auto p-1"
+        >
           {items.length === 0 && isFetching && (
             <p className="px-2 py-6 text-center text-sm text-muted-foreground">
               Qidirilmoqda…
@@ -131,6 +152,8 @@ export function ClientCombobox({
           {items.map((c, i) => (
             <button
               key={c.id}
+              id={`${listId}-opt-${i}`}
+              data-idx={i}
               type="button"
               role="option"
               aria-selected={String(c.id) === value}
