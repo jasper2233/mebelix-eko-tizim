@@ -40,7 +40,11 @@ frontend-build: ## Build frontend for production
 	cd frontend && npm run build
 
 .PHONY: frontend-lint
-frontend-lint: ## Run frontend linting checks
+frontend-lint: ## Frontend tekshiruvi (biome ci, CI bilan bir xil — hech narsani o'zgartirmaydi)
+	cd frontend && npx biome ci .
+
+.PHONY: frontend-format
+frontend-format: ## Frontendni formatlaydi va tuzatadi (biome check --write --unsafe)
 	cd frontend && npm run lint
 
 .PHONY: frontend-gen
@@ -53,9 +57,8 @@ lint: ## Run linting checks (ruff check + format check + mypy, CI bilan bir xil)
 	cd backend && uv run mypy app
 
 .PHONY: format
-format: ## Run code formatting (ruff)
-	uv --project backend run ruff format .
-	uv --project backend run ruff check . --fix
+format: ## Backendni formatlaydi va tuzatadi (ruff, `lint` bilan bir xil qamrov: backend/app)
+	cd backend && uv run ruff format app && uv run ruff check app --fix
 
 .PHONY: migrate
 migrate: ## Run database migrations to head

@@ -113,18 +113,21 @@ async def login_for_access_token(
     # Tsex hisobi bo'lsa smena SHU YERDA ochiladi: aks holda operator kirib, keyin
     # yana ekranda ismini bosishi kerak bo'lardi — ikki marta bir ish
     if POST_ROLES.get(UserRole(user.role)) is not None:
-        await _open_shift_for(db, user)
+        await _open_shift_for(db, user, request)
 
     access_token = _issue_token_pair(response, user)
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-async def _open_shift_for(db: SessionDep, user: User) -> None:
+async def _open_shift_for(db: SessionDep, user: User, request: Request) -> None:
     """Tsex xodimi parol bilan kirganda smenasini ochadi.
 
     Hodim yozuvi `employee.user_id` orqali topiladi — u bo'lmasa smena ochilmaydi
     va terminal ekranida odam o'zini tanishtiradi (ismini bosadi yoki beyjik).
     Post rolidan keladi, ish markazi esa `post_machine` qoidasidan.
+
+    Smena ochilishi audit logga yoziladi (`sessions/started`) — beyjik yo'li va
+    terminaldagi yo'l bilan BIR XIL, aks holda parol bilan ochilgan smena izsiz qolardi.
     """
     employee = (
         await db.execute(
@@ -146,8 +149,24 @@ async def _open_shift_for(db: SessionDep, user: User) -> None:
     machine = await post_machine(db, post)
     if machine is None:
         return
-    await open_badge_session(db, user=user, machine=machine, post=post, employee=employee)
+    session = await open_badge_session(db, user=user, machine=machine, post=post, employee=employee)
+    log_action(
+        db,
+        module="sessions",
+        action="started",
+        user_id=user.id,
+        employee_id=employee.id,
+        entity_type="session",
+        entity_id=session.id,
+        message=f"Parol bilan kirish: {employee.full_name} — {machine.name}",
+        ip=client_ip(request),
+    )
     await db.commit()
+    # Beyjik yo'li (login_with_badge) va terminal bilan bir xil: tablo/dashboard smena boshlanganini ko'rsin
+    await ws_manager.publish(
+        "session.started",
+        {"session_id": session.id, "employee": employee.full_name, "machine_id": machine.id, "post_id": post.id},
+    )
 
 
 async def _badge_post(db: SessionDep, employee: Employee, post_id: int | None) -> Post:

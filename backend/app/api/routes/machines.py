@@ -5,10 +5,10 @@ from app.api.deps import AdminUser, CurrentUser, SessionDep, client_ip
 from app.api.routes._shared import drop_forbidden_nulls
 from app.core.exceptions import DuplicateValueException, NotFoundException
 from app.crud import crud_machines, crud_posts, log_action
-from app.models import BridgeAgent, Machine, PartRoute, Scan, User, WorkSession
-from app.models.enums import SessionStatus
+from app.models import BridgeAgent, Machine, PartRoute, Scan, User
 from app.schemas.common import Message
 from app.schemas.machines import MachineCreate, MachineRead, MachineUpdate
+from app.services.scanning import crew_sessions
 
 router = APIRouter(prefix="/machines", tags=["machines"])
 
@@ -49,15 +49,9 @@ async def _blockers(db: SessionDep, machine_id: int) -> list[str]:
     if agents:
         blockers.append(f"printer agenti: {', '.join(agents)}")
 
-    open_sessions = (
-        await db.execute(
-            select(func.count(WorkSession.id)).where(
-                WorkSession.machine_id == machine_id,
-                WorkSession.status == SessionStatus.ACTIVE,
-                WorkSession.is_deleted == False,  # noqa: E712
-            )
-        )
-    ).scalar_one()
+    # `crew_sessions` 12 soatlik muddatni o'zi qo'llaydi — yopishni unutilgan
+    # eskirgan smena o'chirishni abadiy bloklab turmasin (xom COUNT shunday qilardi).
+    open_sessions = len(await crew_sessions(db, machine_id))
     if open_sessions:
         blockers.append(f"ochiq smena: {open_sessions} ta")
 

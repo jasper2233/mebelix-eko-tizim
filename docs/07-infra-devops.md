@@ -64,8 +64,8 @@ Lokal composeda Caddy yo'q — frontend nginx'i to'g'ridan-to'g'ri `3000` portda
 | `setup` | `scripts/setup.sh` + `install-hooks` |
 | `install` / `frontend-install` | `uv sync` / `npm install` |
 | `run-backend` / `run-frontend` / `worker` | dev serverlar va ARQ worker |
-| `lint` / `format` | `ruff check --no-fix app` + `ruff format --check app` + `mypy app` (`backend/` dan, CI bilan aynan bir xil — `--no-fix` SHART: `pyproject.toml` da `fix = true`, usiz `ruff check` xatoni jimgina tuzatib exit 0 qaytaradi) / `ruff format .` + `ruff check . --fix` — bular **repo ildizidan** ishlaydi, ya'ni `backend/` dan tashqaridagi fayllarga ham tegadi (pastdagi ".pre-commit-config.yaml" bo'limidagi ogohlantirish) |
-| `frontend-lint` / `frontend-build` | `npm run lint` (biome) / `npm run build` |
+| `lint` / `format` | `ruff check --no-fix app` + `ruff format --check app` + `mypy app` (`backend/` dan, CI bilan aynan bir xil — `--no-fix` SHART: `pyproject.toml` da `fix = true`, usiz `ruff check` xatoni jimgina tuzatib exit 0 qaytaradi) / `ruff format app` + `ruff check app --fix` — ikkalasi ham `backend/` dan va bir xil qamrovda (`app/`), ya'ni `format` faqat CI tekshiradigan fayllarni o'zgartiradi |
+| `frontend-lint` / `frontend-format` / `frontend-build` | `npx biome ci .` — CI bilan aynan bir xil, TEKSHIRUV (hech narsani yozmaydi) / `npm run lint` = `biome check --write --unsafe` — YOZADI, tuzatish uchun / `npm run build` |
 | `frontend-gen` | `scripts/generate-client.sh` — OpenAPI → TS client |
 | `migrate` / `makemigrations m="msg"` / `check-migrations` | `alembic upgrade head` / `alembic revision --autogenerate` / `alembic upgrade head && alembic check` — model↔migratsiya drifti, ishlab turgan DB kerak; CI ham aynan shuni chaqiradi |
 | `cmd n="name"` | `python -m app.commands.<name>` — custom CLI commandlar |
@@ -415,7 +415,7 @@ Eslatma: SCX/CNC fayllar bridge orqali **o'tmaydi** — ular stanok kompyuterida
 
 Ikkala ruff hook'ida `files: ^backend/` cheklovi bor — **pre-commit qamrovi CI bilan bir xil** (`ci.yml`: `cd backend && uv run ruff check --no-fix app && uv run ruff format --check app`; `backend/` ichidagi yagona python kodi aynan `app/`). Busiz hook butun repoga tushardi: `bridge-agent/agent.py` uchun ruff konfigi yo'q (repo ildizida `pyproject.toml` ham, `ruff.toml` ham yo'q — sozlama faqat `backend/pyproject.toml` da), ya'ni u DEFAULT line-length 88 ni olib, CI hech qachon tekshirmaydigan uslubga qayta yozilardi. Hujjatlar (`docs/*.md`) baribir hook'ka tushmaydi — ruff-pre-commit hooklari `types_or: [python, pyi, jupyter]` bilan cheklangan.
 
-Muhim: CLI'da holat boshqacha — **ruff 0.16 markdown ichidagi python bloklarini ham formatlaydi** (0.15.20 `.md` fayllarni umuman ko'rmasdi). `make format` esa repo **ildizidan** `ruff format .` + `ruff check . --fix` ishlatadi, ya'ni `docs/*.md` dagi qo'lda tekislangan python bloklarini va `bridge-agent/agent.py` ni (u yerda konfig yo'q → line-length 88) qayta yozadi. Bu fayllarni na hook, na CI tekshiradi, shuning uchun `make format` dan keyin `git diff` ni ko'rib, `backend/` dan tashqaridagi o'zgarishlarni tashlab yuborish kerak (yoki formatni `cd backend && uv run ruff format app` bilan chaqirish).
+Muhim: CLI'da ruff qamrovi kengroq — **ruff 0.16 markdown ichidagi python bloklarini ham formatlaydi** (0.15.20 `.md` fayllarni umuman ko'rmasdi). Shuning uchun `make format` ham hook/CI bilan bir xil toraytirilgan: `cd backend && uv run ruff format app && uv run ruff check app --fix`. Repo **ildizidan** (`ruff format .`) chaqirilsa `docs/*.md` dagi qo'lda tekislangan python bloklari va `bridge-agent/agent.py` (u yerda konfig yo'q → line-length 88) qayta yozilardi — bu fayllarni na hook, na CI tekshiradi, ya'ni o'zgarish sof zarar bo'lardi. Ildizdan ruff chaqirmang.
 
 ### `.github/workflows/ci.yml` — GitHub Actions
 

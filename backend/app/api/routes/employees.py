@@ -74,8 +74,10 @@ async def read_employees(
     if status is not None:
         query = query.where(Employee.status == status)
     if search:
-        pattern = f"%{search.strip()}%"
-        query = query.where(or_(Employee.full_name.ilike(pattern), Employee.badge_id.ilike(pattern)))
+        # Beyjik ATAYLAB aniq moslik bilan: skaner har doim to'liq UUID beradi,
+        # qismiy qidiruv esa `EmployeeRead` yashirgan `badge_id` ni prefiks-prefiks
+        # tiklab olish kanali bo'lardi (~400 GET bilan to'liq beyjik chiqadi).
+        query = query.where(or_(Employee.full_name.ilike(f"%{search.strip()}%"), Employee.badge_id == search.strip()))
 
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
     rows = (await db.execute(query.order_by(Employee.full_name).offset(skip).limit(limit))).scalars().all()

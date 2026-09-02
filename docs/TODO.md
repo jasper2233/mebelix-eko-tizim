@@ -31,21 +31,21 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/routes/_layout/clients.tsx:70` — Director sees "+ Yangi mijoz" but `POST /clients` rejects the role — the exact 403 dead-end that employees.tsx explicitly guards against.
 - [x] ✅ `frontend/src/routes/_layout/employees.tsx:389-399` — TogglePerson (Nofaol qilish/Faollashtirish) uses `if (p.employee) {...} else if (p.user) {...}` — mutually exclusive branches. For a person with BOTH 
 - [x] ✅ `frontend/src/routes/_layout/logs.tsx:118` — Paginatsiya boshqaruvi va "Jami" hisoblagichi har sahifa/filtr o'zgarishida butunlay yo'qoladi: so'rovda `placeholderData`/`keepPreviousData` yo'q, sh
-- [ ] ✅ `frontend/src/routes/login.tsx:136` — Post-tanlash dialogida ikkinchi beyjik so'rovi xato bersa, xato HECH QAYERDA ko'rsatilmaydi — dialog qotib qoladi.
+- [x] ✅ `frontend/src/routes/login.tsx:136` — Post-tanlash dialogida ikkinchi beyjik so'rovi xato bersa, xato HECH QAYERDA ko'rsatilmaydi — dialog qotib qoladi.
 - [ ] ✅ `frontend/src/routes/tablo.tsx:315` — Matritsa so'rovi xatosi jimgina yutiladi: TV ekranda "Aktiv buyurtmalar yo'q" chiqadi va JONLI belgisi yashil qoladi.
-- [ ] ✅ `frontend/src/routes/terminal.tsx:328` — `endSession` is the only terminal mutation with no `onError` — a failed "Yakunlash" produces no toast, no dialog close, and no visible feedback at all
-- [ ] ✅ `frontend/src/routes/terminal.tsx:387` — The undo ConfirmDialog turns into a dead modal: the 15s auto-clear nulls `lastScan` while the dialog is open, after which the confirm button is a sile
+- [x] ✅ `frontend/src/routes/terminal.tsx:328` — `endSession` is the only terminal mutation with no `onError` — a failed "Yakunlash" produces no toast, no dialog close, and no visible feedback at all
+- [x] ✅ `frontend/src/routes/terminal.tsx:387` — The undo ConfirmDialog turns into a dead modal: the 15s auto-clear nulls `lastScan` while the dialog is open, after which the confirm button is a sile
 - [x] ✅ `docker-compose.prod.yml:55` — `${TAG:-latest}` default hech qachon mavjud emas — CI faqat `:<git sha>` tegini push qiladi, ya'ni hujjatda ko'rsatilgan `make docker-prod` (TAG'siz) 
 - [x] ✅ `scripts/backup.sh:27` — `env_get` strips everything from the first `#` onward, so any `#` inside POSTGRES_USER / POSTGRES_DB / ADMIN_PASSWORD / TG_BOT_TOKEN silently truncate
 
 ## O'rta (127)
 
 - [x] ✅ `backend/Dockerfile:16` — Builder stage installs the full 'dev' dependency group (mypy, ruff, pre-commit, types-openpyxl, plus their transitive deps like nodeenv/virtualenv/ide
-- [ ] ✅ `backend/app/api/routes/employees.py:78` — `search` beyjik UUID'ini SUBSTRING bo'yicha solishtiradi, ya'ni StaffReadUser (manager/texnolog/direktor) javobdan ataylab olib tashlangan `badge_id` 
-- [ ] ✅ `backend/app/api/routes/login.py:122` — `_open_shift_for` opens a WorkSession without writing an audit record, while both other session-open paths do.
+- [x] ✅ `backend/app/api/routes/employees.py:78` — `search` beyjik UUID'ini SUBSTRING bo'yicha solishtiradi, ya'ni StaffReadUser (manager/texnolog/direktor) javobdan ataylab olib tashlangan `badge_id` 
+- [x] ✅ `backend/app/api/routes/login.py:122` — `_open_shift_for` opens a WorkSession without writing an audit record, while both other session-open paths do.
 - [ ] ✅ `backend/app/api/routes/login.py:90` — Password login (success and failure) and logout write no audit row at all — only badge login does — so the Loglar page cannot answer "who logged into 
 - [x] ✅ `backend/app/api/routes/machines.py:126` — PATCH /machines/{id} with an explicit `null` for `name` or `status` writes NULL into a NOT NULL column and ends in an uncaught IntegrityError (500) — 
-- [ ] ✅ `backend/app/api/routes/machines.py:51` — Muddati o'tgan (12 soatdan eski) smena ham «ochiq smena» to'sig'i sifatida sanaladi va ish markazini o'chirtirmaydi.
+- [x] ✅ `backend/app/api/routes/machines.py:51` — Muddati o'tgan (12 soatdan eski) smena ham «ochiq smena» to'sig'i sifatida sanaladi va ish markazini o'chirtirmaydi.
 - [ ] ✅ `backend/app/api/routes/machines.py:63` — Bekor qilingan buyurtmaning tugallanmagan marshrutlari ish markazini abadiy o'chirilmas qilib qo'yadi.
 - [ ] ✅ `backend/app/api/routes/orders/files.py:149` — download_order_scx_zip zips only SCX files that happen to exist on disk and silently drops any OrderFile row whose file is missing — no error, no warn
 - [ ] ✅ `backend/app/api/routes/orders/files.py:50` — PRODUCTION holatidagi buyurtmaga `.project` ni qayta yuklash yangi `PartRoute` qatorlarini `machine_id=None` bilan yaratadi — ilgari muhrlangan ish ma
@@ -161,8 +161,8 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `frontend/src/utils.ts:39` — `extractErrorMessage` and `detailParts` implement the same six-branch error ladder in the same file, duplicating two user-facing strings verbatim and 
 - [x] ✅ `.dockerignore:4` — `**/.env` naqshi faqat aynan `.env` nomini tutadi — `.env.server` kabi variantlar build kontekstiga uzatiladi (frontend'ning o'z `.dockerignore`'i esa
 - [x] ✅ `.gitignore:10-11` — Only `.env` and `.env.local` are ignored, not `.env.*` — the repo currently has an untracked, un-ignored `.env.server` sitting in the root, one `git a
-- [ ] ✅ `Makefile:43-44 & frontend/package.json:10` — `make frontend-lint` ("Run frontend linting checks") is not a check — `npm run lint` is `biome check --write --unsafe`, which applies unsafe autofixes
-- [ ] ✅ `Makefile:56-58` — `make format` runs ruff from the repo root, so it reformats files no linter in the project owns — `docs/*.md` python blocks and `bridge-agent/agent.py
+- [x] ✅ `Makefile:43-44 & frontend/package.json:10` — `make frontend-lint` ("Run frontend linting checks") is not a check — `npm run lint` is `biome check --write --unsafe`, which applies unsafe autofixes
+- [x] ✅ `Makefile:56-58` — `make format` runs ruff from the repo root, so it reformats files no linter in the project owns — `docs/*.md` python blocks and `bridge-agent/agent.py
 - [x] ✅ `docker-compose.prod.yml:56-62 | .env.example:60-66` — XFF ishonch diapazoni ikki joyda mustaqil belgilangan: .env dagi FORWARDED_ALLOW_IPS (backend/app/core/setup.py:174 da ProxyHeadersMiddleware shuni o'
 - [ ] ✅ `scripts/deploy.sh:102` — The auto-rollback path re-runs `up -d` with the old image TAG but never re-runs `caddy reload`, so a rolled-back stack keeps the new Caddyfile that wa
 - [x] ✅ `scripts/deploy.sh:19` — `CADDY_HTTP_BIND` is read from `.env` without stripping surrounding quotes, while `SITE_ADDRESS` two lines below is explicitly de-quoted — a quoted bi

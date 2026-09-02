@@ -99,6 +99,11 @@ function Login() {
           employeeName: detail.employee_name ?? "",
           posts: detail.posts ?? [],
         })
+      // Boshqa har qanday xato (400/500) dialogni YOPADI. Aks holda dialogdagi
+      // post tugmasidan kelgan xato hech qayerda ko'rinmasdi: `choice` turgani
+      // uchun quyidagi `badgeError` bo'sh bo'lar, dialogning o'zida esa xato
+      // bloki yo'q — operator tugmani javobsiz takror bosaverardi.
+      else setChoice(null)
     },
   })
 
@@ -132,6 +137,9 @@ function Login() {
     loginMutation.mutate({ ...data, username })
   }
 
+  // `!choice` — POST_CHOICE signalini bostirish uchun: u xato emas, tanlov
+  // so'rovi. Haqiqiy xatoda `onError` `choice` ni tozalaydi, shuning uchun
+  // dialogdan kelgan 400/500 ham shu yerda chiqadi.
   const badgeError =
     badge.isError && !choice ? extractErrorMessage(badge.error) : ""
 

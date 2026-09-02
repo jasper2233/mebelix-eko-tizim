@@ -114,7 +114,13 @@ function TerminalPage() {
     notifiedRef.current = { qr, at: Date.now() }
     return true
   }, [])
-  const [undoOpen, setUndoOpen] = useState(false)
+  // Bekor qilinayotgan skan — dialog OCHILGANDA suratga olinadi. `lastScan`
+  // 15 s da tozalanadi, ya'ni dialog ochiqligicha qolsa tasdiqlash tugmasi jim
+  // no-op bo'lib qolardi.
+  const [undoFor, setUndoFor] = useState<{
+    scanId: number
+    code: string
+  } | null>(null)
   const [logoutOpen, setLogoutOpen] = useState(false)
   // Yakunlanayotgan smena — brigadada kim ekani muhim (biri ketib, ikkinchisi
   // qolishi odatiy hol)
@@ -315,13 +321,13 @@ function TerminalPage() {
     onSuccess: () => {
       playWarning()
       toast.success("Oxirgi scan bekor qilindi")
-      setUndoOpen(false)
+      setUndoFor(null)
       setLastScan(null)
       invalidateWork()
     },
     onError: (err) => {
       toast.error(detailMessage(err))
-      setUndoOpen(false)
+      setUndoFor(null)
     },
   })
 
@@ -330,6 +336,11 @@ function TerminalPage() {
       TerminalService.endTerminalSession({
         query: { employee_id: employeeId },
       }),
+    onError: (err) => {
+      playError()
+      toast.error(detailMessage(err))
+      setEndFor(null)
+    },
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: ["terminal", "context"] }),
   })
@@ -409,7 +420,10 @@ function TerminalPage() {
     <ScanStrip
       scan={lastScan}
       canUndo={canUndo}
-      onUndo={() => setUndoOpen(true)}
+      onUndo={() =>
+        lastScan?.kind === "ok" &&
+        setUndoFor({ scanId: lastScan.scanId, code: lastScan.code })
+      }
       birlik={ctx?.post_code === "KROMKA" ? "qirra" : undefined}
     />
   )
@@ -744,21 +758,19 @@ function TerminalPage() {
         }
       />
       <ConfirmDialog
-        open={undoOpen}
-        onOpenChange={setUndoOpen}
+        open={!!undoFor}
+        onOpenChange={(v) => !v && setUndoFor(null)}
         title="Oxirgi scanni bekor qilish"
         description={
-          lastScan?.kind === "ok"
-            ? `${lastScan.code} scan bekor qilinadi, qoldiq qaytariladi.`
+          undoFor
+            ? `${undoFor.code} scan bekor qilinadi, qoldiq qaytariladi.`
             : ""
         }
         confirmText="Scanni bekor qilish"
         cancelText="Yopish"
         destructive
         loading={undoMutation.isPending}
-        onConfirm={() =>
-          lastScan?.kind === "ok" && undoMutation.mutate(lastScan.scanId)
-        }
+        onConfirm={() => undoFor && undoMutation.mutate(undoFor.scanId)}
       />
     </div>
   )
