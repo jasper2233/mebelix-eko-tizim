@@ -165,7 +165,7 @@ qidirardi — matn tahrirlanishi bilan jimgina buziladigan bog'lanish.
 
 | Kod | Ma'nosi | Kim tuzatadi |
 |---|---|---|
-| `E001` | Detal/plan mos kelmadi: bu QR bo'yicha tugallanmagan plan yo'q, bu post detal marshrutida yo'q, detal boshqa ish markaziga biriktirilgan, detal roverda kesiladi | Operator — chekni va postni tekshiradi |
+| `E001` | Detal/plan mos kelmadi: bu QR bo'yicha tugallanmagan plan yo'q, bu post detal marshrutida yo'q, detal boshqa ish markaziga biriktirilgan, detal roverda kesiladi. Skan dvijokining ikkita xizmat sababi ham shu kodda: takroriy skan poygasi (`scanning.py:662`) va bekor qilish rad etilishi — skan topilmadi / allaqachon bekor qilingan / `SCAN_UNDO_SECONDS` o'tdi (`scanning.py:914-918`). **Qadoq/TMO shoxi** (`pachka.py:288/292/307`, `tmo.py:203/207`) ham E001 dan foydalanadi: "Bunday QR topilmadi", "Bu detal boshqa buyurtmaga tegishli", "Bu detal allaqachon `<qadoq>` ichida", "`PK-…` qadog'i topilmadi", "Bu qadoq boshqa buyurtmaga tegishli" | Operator — chekni va postni tekshiradi |
 | `E002` | Ikki ma'no: (a) QR formati buzuq (`_` yo'q); (b) `ATX-` cheki BUTUN, lekin `waste_item` ro'yxatida yo'q — "Bunday qoldiq cheki ro'yxatda yo'q." (yozuv o'chirilgan yoki qayta yuklashda `wipe_previous_parse` soft-delete qilgan) | Operator — chekni qayta chop etadi; (b) holatida qayta chop etish YORDAM BERMAYDI, qoldiq bazada yo'q. Beyjik UUID'i endi bu kodga YETIB KELMAYDI: skan-forvardda u alohida chetlab o'tiladi (`BADGE`), aks holda qonuniy beyjik skani xato bo'lib ko'rinardi |
 | `E003` | Buyurtma bekor qilingan | Manager |
 | `E004` | Navbat buzildi: shu NUSXAda oldingi qadam tugamagan (`STRICT_STAGE_ORDER`); xabar navbatdagi post nomini aytadi | Operator — oldingi postni kutadi |
@@ -179,7 +179,10 @@ qidirardi — matn tahrirlanishi bilan jimgina buziladigan bog'lanish.
 
 `E008` va `E009` 2026-08-12 da `E001` dan ajratildi: u 12 xil sababni qamrab
 olgani uchun kod amalda hech narsa bildirmasdi va mijoz matn qidirishga majbur
-edi. `E001`–`E006` raqamlari TT dan kelgan, tegilmagan.
+edi. `E001`–`E006` raqamlari TT dan kelgan, tegilmagan. Ajratish faqat skan
+dvijokining asosiy yo'liga tegdi: qadoq (`/pachka`) va TMO (`/tmo`) endpointlari
+hamon E001 ni umumiy "mos kelmadi" kodi sifatida ishlatadi — yuqoridagi qatorda
+sanab o'tilgani shu sabab.
 
 Rad etilgan urinish `log_rejected_scan()` orqali audit logga yoziladi
 (`module=scan, action=rejected`, `meta={"code": ...}`) — hisobotda kod bo'yicha
@@ -589,7 +592,7 @@ direktor ham ko'radi.
 ## 7. Frontend tuzilishi
 
 - Dizayn tokenlar: `src/index.css` (post/status ranglari, `.num`, print CSS); domen konstantalar `src/lib/mes.ts`.
-- Imzo komponent: `Common/StagePipeline` — post zanjiri (dinamik, dashboard va buyurtma qatorlari).
+- Imzo komponent: `Common/StagePipeline` — post zanjiri (dinamik, faqat dashboard'ning "Aktiv buyurtmalar" qatorlarida — `routes/_layout/index.tsx:205`; buyurtmalar reyestrida bosqich ustuni yo'q).
 - Routelar: `_layout/*` admin modullar (index — boshqaruv paneli, orders (`index` + `$orderId`),
   clients, employees, work-centers, reports, logs, printers, admin, settings,
   cutmap.$orderId, `anketa.$orderId`), `/terminal`, `/tablo`

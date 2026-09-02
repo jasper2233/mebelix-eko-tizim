@@ -45,7 +45,7 @@ Vite konfiguratsiyasi. Uchta plugin ulangan:
 shadcn/ui CLI konfiguratsiyasi: `new-york` style, `neutral` base color, CSS variables rejimi, ikonkalar — `lucide`. Alias'lar: `@/components`, `@/components/ui`, `@/lib`, `@/lib/utils`, `@/hooks`. Yangi UI komponent qo'shishda shadcn CLI shu faylga tayanadi.
 
 ### `frontend/biome.json`
-Biome linter/formatter sozlamalari. Generatsiya qilinadigan va tashqi fayllar (`src/components/ui/**`, `src/routeTree.gen.ts`, `src/client/**`, `dist`, `public`, `src/index.css`) tekshiruvdan chiqarilgan. Format: 2 space, double quotes, `semicolons: "asNeeded"`. `noExplicitAny`, `noArrayIndexKey`, `noNonNullAssertion` qoidalari o'chirilgan; `correctness.noRestrictedElements` esa YOQILGAN — xom `<select>` va `<textarea>` taqiqlanadi (`Common/SelectField` / `ui/textarea` ga yo'naltiradi), `overrides` da esa `src/routes/_layout/**` va admin panel komponentlarida (`Anketa`, `Clients`, `Orders`, ...) xom `<table>` ham (`ui/table` ishlatiladi; terminal kioski bundan mustasno — o'z uslubi bor). `organizeImports` yoqilgan. `npm run lint` — `biome check --write --unsafe ...`.
+Biome linter/formatter sozlamalari. Generatsiya qilinadigan va tashqi fayllar (`src/components/ui/**`, `src/routeTree.gen.ts`, `src/client/**`, `openapi.json`, `dist`, `node_modules`, `public`, `src/index.css`) tekshiruvdan chiqarilgan. Format: 2 space, double quotes, `semicolons: "asNeeded"`. `noExplicitAny`, `noArrayIndexKey`, `noNonNullAssertion` qoidalari o'chirilgan; `correctness.noRestrictedElements` esa YOQILGAN — xom `<select>` va `<textarea>` taqiqlanadi (`Common/SelectField` / `ui/textarea` ga yo'naltiradi), `overrides` da esa `src/routes/_layout/**` va admin panel komponentlarida (`Anketa`, `Clients`, `Orders`, ...) xom `<table>` ham (`ui/table` ishlatiladi; terminal kioski bundan mustasno — o'z uslubi bor). `organizeImports` yoqilgan. `npm run lint` — `biome check --write --unsafe ...`.
 
 ---
 
@@ -289,7 +289,7 @@ Autentifikatsiya mutation'lari:
 `frontend/src/routes/login.tsx` va sidebar'dagi user menyusi tomonidan ishlatiladi.
 
 ### `frontend/src/hooks/useCurrentUser.ts`
-Joriy foydalanuvchi — `useQuery(getCurrentUserQueryOptions())`, `retry: false` (401'da qayta urinmaslik). `queryKey: ["currentUser"]` — Dashboard, Hodimlar sahifasi (`canEdit`/`canManageAccounts`), settings va sidebar shu key'dan ulanadi. Guard'lar (`beforeLoad`) ham AYNAN shu keshdan o'qiydi (`lib/guards` → `ensureQueryData`) — birinchi so'rovdan keyin navigatsiya tarmoqni kutmaydi; eskirgan rol xavfsiz, huquqni backend har so'rovda o'zi tekshiradi.
+Joriy foydalanuvchi — `useQuery(getCurrentUserQueryOptions())`, `retry: false` (401'da qayta urinmaslik). `queryKey: ["currentUser"]` — sidebar, settings va deyarli hamma sahifa (Dashboard, Hodimlar, Buyurtmalar, Mijozlar, Ish markazlari, Anketa, tablo, terminal) rolga qarab shu key'dan o'qiydi; to'liq ro'yxat — `grep -rl 'getCurrentUserQueryOptions\|useCurrentUser' src/`. Guard'lar (`beforeLoad`) ham AYNAN shu keshdan o'qiydi (`lib/guards` → `ensureQueryData`) — birinchi so'rovdan keyin navigatsiya tarmoqni kutmaydi; eskirgan rol xavfsiz, huquqni backend har so'rovda o'zi tekshiradi.
 
 ### `frontend/src/hooks/useDebounced.ts`
 `useDebounced(value, delay = 300)` — qiymatni kechiktirib qaytaradi. Qidiruv maydonlari uchun: busiz har harf yangi query key yaratib, jadval skeleton bilan "lip-lip" qiladi. Reestrlar va `/logs` qidiruvi (400ms) shu hookdan foydalanadi.

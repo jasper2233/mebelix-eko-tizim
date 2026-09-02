@@ -212,14 +212,14 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `docs/03-backend-api.md:422` — Nima: Doc says the only ways to open a shift are POST /terminal/session and /login/badge; password login on a post role also opens one.
 - [x] ✅ `docs/03-backend-api.md:57` — Nima: Docs claim nearly every route module imports `client_ip`; it is imported by 9 of the 18 route modules.
 - [x] ✅ `docs/03-backend-api.md:603` — Nima: Eleven of the 47 `log_action` call sites never pass `ip`, and they are not scattered — the `pachka`, `tmo`, `scan` and `print` modules named in 
-- [ ] ✅ `docs/04-backend-data.md:174` — Nima: Doc says employees schemas import `PHONE_PATTERN`; they import the `validate_phone` validator instead — contradicting the doc's own §2.3 note.
-- [ ] ✅ `docs/05-frontend-app.md:292` — Nima: `["currentUser"]` iste'molchilari ro'yxati eskirgan — «admin jadvali» sahifasi yo'q, ro'yxatda `tablo.tsx` va boshqa oltita sahifa yetishmaydi.
-- [ ] ✅ `docs/05-frontend-app.md:49` — Nima: The biome ignore list in docs/05 omits `node_modules` and `openapi.json`, and does not mention the per-directory `overrides` block that adds the
-- [ ] ✅ `docs/06-frontend-components.md:459-470` — Nima: TmoView bo'limi "shu smenada qabul qilinganlar" yashil tasdiq ro'yxatini va ekranning o'z toast/ovoz javobini umuman tilga olmaydi — bular atayl
-- [ ] ✅ `docs/06-frontend-components.md:509-510` — Nima: audio.ts tavsifi ovoz faqat `routes/terminal.tsx` da chalinadi deydi — aslida uni yana `TmoView.tsx` va `useTerminalScan.ts` ham chaqiradi.
-- [ ] ✅ `docs/08-packages.md:174` — Nima: `$schema` aniq versiyaga qotirilgan, `package.json` esa `^2.5.2` caret bergan — PATCH bump ham schema mos kelmasligini keltirib chiqaradi, hujja
-- [ ] ✅ `docs/09-mes-domain.md:168` — Nima: The packing and TMO endpoints emit E001 for five reasons that are absent from the documented E001 list — the same overloading the doc says was s
-- [ ] ✅ `docs/09-mes-domain.md:592` — Nima: StagePipeline is rendered only on the dashboard; the orders registry has no stage pipeline, so "buyurtma qatorlari" is stale.
+- [x] ✅ `docs/04-backend-data.md:174` — Nima: Doc says employees schemas import `PHONE_PATTERN`; they import the `validate_phone` validator instead — contradicting the doc's own §2.3 note.
+- [x] ✅ `docs/05-frontend-app.md:292` — Nima: `["currentUser"]` iste'molchilari ro'yxati eskirgan — «admin jadvali» sahifasi yo'q, ro'yxatda `tablo.tsx` va boshqa oltita sahifa yetishmaydi.
+- [x] ✅ `docs/05-frontend-app.md:49` — Nima: The biome ignore list in docs/05 omits `node_modules` and `openapi.json`, and does not mention the per-directory `overrides` block that adds the
+- [x] ✅ `docs/06-frontend-components.md:459-470` — Nima: TmoView bo'limi "shu smenada qabul qilinganlar" yashil tasdiq ro'yxatini va ekranning o'z toast/ovoz javobini umuman tilga olmaydi — bular atayl
+- [x] ✅ `docs/06-frontend-components.md:509-510` — Nima: audio.ts tavsifi ovoz faqat `routes/terminal.tsx` da chalinadi deydi — aslida uni yana `TmoView.tsx` va `useTerminalScan.ts` ham chaqiradi.
+- [x] ✅ `docs/08-packages.md:174` — Nima: `$schema` aniq versiyaga qotirilgan, `package.json` esa `^2.5.2` caret bergan — PATCH bump ham schema mos kelmasligini keltirib chiqaradi, hujja
+- [x] ✅ `docs/09-mes-domain.md:168` — Nima: The packing and TMO endpoints emit E001 for five reasons that are absent from the documented E001 list — the same overloading the doc says was s
+- [x] ✅ `docs/09-mes-domain.md:592` — Nima: StagePipeline is rendered only on the dashboard; the orders registry has no stage pipeline, so "buyurtma qatorlari" is stale.
 - [ ] ✅ `docs/10-giblab-reference.md:767` — Nima: For double-layer parts docs describe only the surface-bore depth rule; the code applies a different rule to milling depth and no rule at all to 
 - [ ] ✅ `docs/10-giblab-reference.md:769` — Nima: Docs state the panel-edge trim always exports as a raw path with `ToolOffset=右`; the code applies that rule only when `ms.c == "2"`.
 - [ ] ✅ `frontend/README.md:109` — Nima: README'ning `src/lib` tavsifi 7 fayldan faqat 4 tasini sanaydi — `guards.ts`, `queryClient.ts`, `scxDir.ts` tushib qolgan; `src/utils.ts` esa st

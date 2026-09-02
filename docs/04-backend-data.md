@@ -171,7 +171,7 @@ Pydantic v2 schemalari — API request/response validatsiyasi. `backend/app/sche
 
 Umumiy validatsiya elementlari:
 
-- `PHONE_PATTERN = r"^\+998\d{9}$"` — O'zbekiston E.164 telefon regex'i (model'dagi `String(13)` bilan mos); `clients.py` shu konstantani import qiladi, `employees.py` esa uning ustidagi `validate_phone` validatorini (§2.3).
+- `PHONE_PATTERN = r"^\+998\d{9}$"` — O'zbekiston E.164 telefon regex'i (model'dagi `String(13)` bilan mos); uni hech bir sxema import qilmaydi — faqat shu modulning `validate_phone` funksiyasi ichida ishlatiladi. `clients.py` (`from .users import validate_phone`) ham, `employees.py` (`from app.schemas.users import validate_phone`) ham shu validatorni import qiladi (§2.3).
 - `validate_password_strength(v)` — parol kuchi: 8+ belgi, kichik harf, katta harf, raqam, maxsus belgi. Xato bo'lsa `ValueError`.
 - Qayta ishlatiladigan `Field` konstantalar: `_NAME_FIELD` (2–100, `employee.full_name` bilan bir xil — 30 belgi yetmasdi: "Abdurahmonov Abdurahmon Abdurahmonovich" 39 belgi), `_USERNAME_FIELD` (2–20, `^[a-z0-9]+$`), `_PHONE_FIELD`, `_OPTIONAL_PHONE_FIELD`.
 
@@ -198,7 +198,7 @@ Har bir registr moduli standart uchlik (`*Read` / `*Create` / `*Update`) beradi:
 
 | Fayl | Schemalar | Muhim jihatlar |
 |---|---|---|
-| `clients.py` | `ClientRead`, `ClientOrderRow`, `ClientDetail`, `ClientCreate`, `ClientUpdate` | `full_name` 2–150; telefonlar `PHONE_PATTERN`; `ClientRead` da bazada saqlanmaydigan, route'da hisoblanadigan maydonlar: `orders_count`, `total_amount` (bekor qilinmagan buyurtmalar summasi — mijozning haqiqiy qiymati), `rank`/`share_pct` va `segment` — ABC (Pareto) segmenti (A — aylanmaning birinchi 80%, B — 95% gacha, C — qolgani; yulduzcha reyting ishlamasdi: prodda eng yirik mijoz aylanmaning 81% ini beradi, ya'ni qolgan hamma bir xil past baho olardi). `ClientDetail` = `ClientRead` + `orders: list[ClientOrderRow]` (mijoz kartochkasidagi buyurtmalar ro'yxati) |
+| `clients.py` | `ClientRead`, `ClientOrderRow`, `ClientDetail`, `ClientCreate`, `ClientUpdate` | `full_name` 2–150; telefonlar `validate_phone` validatoridan o'tadi; `ClientRead` da bazada saqlanmaydigan, route'da hisoblanadigan maydonlar: `orders_count`, `total_amount` (bekor qilinmagan buyurtmalar summasi — mijozning haqiqiy qiymati), `rank`/`share_pct` va `segment` — ABC (Pareto) segmenti (A — aylanmaning birinchi 80%, B — 95% gacha, C — qolgani; yulduzcha reyting ishlamasdi: prodda eng yirik mijoz aylanmaning 81% ini beradi, ya'ni qolgan hamma bir xil past baho olardi). `ClientDetail` = `ClientRead` + `orders: list[ClientOrderRow]` (mijoz kartochkasidagi buyurtmalar ro'yxati) |
 | `employees.py` | `EmployeeRead`, `EmployeeCreate`, `EmployeeUpdate` | `badge_id` **faqat server tomonda** generatsiya qilinadi (UUID) va `EmployeeRead` da ham QAYTARILMAYDI — u tsexdagi yagona kirish kaliti, ekrandagi QR ni suratga olgan odam boshqa hodim nomidan smena ocha olardi; `assigned_post_ids: list[int]` (bo'sh bo'lishi mumkin); `user_id: int \| None` — kirish hisobi bog'lami, birlashgan sahifa "Kirish" ustunini shundan hisoblaydi. Telefon `pattern` o'rniga `validate_phone` VALIDATORIDAN o'tadi: Pydantic shablon xatosi ekranga "String should match pattern '^\\+998...'" bo'lib chiqardi |
 | `machines.py` | `MachineRead`, `MachineCreate`, `MachineUpdate` | `post_id` majburiy; `status` enum |
 | `posts.py` | `PostRead`, `PostUpdate` | Create yo'q — 9 postlik zanjir qat'iy (TZ 4.4), faqat `name`, `order_index` va `requires_assignment_choice` tahrirlanadi (`icon`/`color` olib tashlandi — rang frontend konstantasida) |

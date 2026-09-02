@@ -468,6 +468,7 @@ Chap toolbar tugmasi: ikonka + `text-2xs` yozuv (`index.css` da 0.6875rem), `h-1
 - **"Buyurtmani topshirish" tugmasi OLIB TASHLANDI** (`deliver_tmo_order` endpointi bilan birga). TMO buyurtmani topshirmaydi: hamma detal TMO dan o'tgach buyurtma `record_scan_at` da o'zi TAYYOR (COMPLETED) bo'ladi, TOPSHIRILDI esa managerning amali (`/orders/{id}`, faqat TAYYOR holatdan).
 - Sarlavhada `TMO ga keldi: arrived/total` va `Qabul qilindi: accepted/total` — omborchi oldida qancha ish turganini ko'rishi uchun (bitta progress bar faqat skanerlanganini ko'rsatardi).
 - `registerScan` HAR QANDAY skanni QABULGA yo'naltiradi (`accept.mutate(qr)`) — aktiv tab bunga ta'sir qilmaydi; qadoq cheki (`PK-...`) bo'lsa server `accept_into_tmo` ichida hamma nusxani birdan qabul qiladi.
+- **Skan javobini ekranning o'zi beradi** (ovoz + toast, `ScanStrip` WS orqali kechikib to'lganidan oldin): takror qabulda `playWarning()` + `toast.error("Allaqachon qabul qilingan: …")`, muvaffaqiyatda `playSuccess()` + `toast.success` (qadoq bo'lsa nechta detal qabul qilingani), xatoda `playError()` + serverdan kelgan xabar (`detailMessage`).
 
 ### `frontend/src/components/Terminal/OrderPicker.tsx`
 
@@ -517,7 +518,7 @@ Chap toolbar tugmasi: ikonka + `text-2xs` yozuv (`index.css` da 0.6875rem), `h-1
 
 ### `frontend/src/components/Terminal/audio.ts`
 
-**Maqsadi:** skan ovoz signallari (TZ 8.4.3, tsex shovqinida majburiy) — WebAudio, internetsiz ishlaydi: `playSuccess` (600 Hz qisqa), `playError` (200 Hz uzun), `playWarning` (2×800 Hz). `routes/terminal.tsx` da skan natijasiga qarab chalinadi.
+**Maqsadi:** skan ovoz signallari (TZ 8.4.3, tsex shovqinida majburiy) — WebAudio, internetsiz ishlaydi: `playSuccess` (600 Hz qisqa), `playError` (200 Hz uzun), `playWarning` (2×800 Hz). Uchta chaqiruvchi bor: `routes/terminal.tsx` (skan natijasi — `E008` va ATX qoldiq QR'ida `playWarning`, qolgan xatolarda `playError`; smena ochish success/error; bekor qilish → `playWarning`; oflayn `E007` → `playError`), `useTerminalScan.ts` (qulflangan ekran va KROMKA/OVAL 5 s to'siqda `playWarning`, KROMKA/OVAL skani topilmasa/xato bo'lsa `playError`) va `TmoView.tsx` (qabul javobi).
 
 ---
 
