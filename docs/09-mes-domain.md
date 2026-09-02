@@ -641,9 +641,9 @@ direktor ham ko'radi.
   · **OVAL** — o'sha KromkaView `oval` rejimda: bir panel, tomonlar ustuni yo'q va `done/sides` o'rniga faqat tugagan/tugamagan belgisi. Har detal BITTA skan (`per_instance = 1`), shuning uchun hisoblagichning ma'nosi ham yo'q.
   · **PRISADKA** (`Terminal/PrisadkaView`) — detallar + SCX fayllar; "Hammasini yuklab olish"
     File System Access API bilan BIR MARTA tanlangan papkaga (IndexedDB'da saqlanadi,
-    `lib/scxDir.ts`) proyekt nomli subpapka ochib yozadi; har skandagi avto-SCX ham o'sha yerga.
-  · **ROVER** — o'sha PrisadkaView, lekin SCX butunlay yashirin (`showScx=false`, avto-yuklash
-    ham o'chiq — roverga SCX kerak emas): har jismoniy nusxa ALOHIDA qator, chap ustunda katta
+    `lib/scxDir.ts`) proyekt nomli subpapka ochib yozadi (har skandagi avto-SCX olib tashlangan — faqat shu tugma).
+  · **ROVER** — o'sha PrisadkaView, lekin SCX butunlay yashirin (`showScx=false` — roverga SCX
+    kerak emas): har jismoniy nusxa ALOHIDA qator, chap ustunda katta
     "Chop etish" tugmasi (`Terminal/usePrintLabel.ts`); marshrutida ARRA bo'lmagan detalda chek
     chiqarish avto-skan yozadi (§5 "ROVER'da chop etish = bajarildi").
   · **BO'YOQ / STOLYARKA** (`Terminal/PostQueueView`, `GET /orders/{id}/queue`) — NUSXA

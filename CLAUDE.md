@@ -15,7 +15,7 @@ Hammasi repo ildizidan. `make help` — to'liq ro'yxat.
 
 ```bash
 # Tekshiruv (CI aynan shularni chaqiradi)
-cd backend && uv run ruff check app && uv run ruff format --check app
+cd backend && uv run ruff check --no-fix app && uv run ruff format --check app
 cd backend && uv run mypy app
 cd frontend && npx biome ci .
 cd frontend && npm run build              # tsc + vite
@@ -94,7 +94,7 @@ make check-migrations                          # alembic upgrade head && alembic
 JIMGINA tuzatib exit 0 qaytaradi. 2026-08-26 gacha CI lint darvozasi shu sabab
 umuman ishlamagan.
 
-2026-08-26 auditining o'lchangan xulosasi (`docs/audit-2026-08-26.md` → «Metod»):
+2026-08-26 auditining o'lchangan xulosasi (`docs/audit-2026-09-02.md` → «Metod»):
 eng ishonchli topilmalar bajarilgan skriptlardan chiqdi, 16.7M tokenlik agent
 oqimidan emas.
 
@@ -102,7 +102,7 @@ oqimidan emas.
 
 ```
 backend/app/
-  api/routes/     101 endpoint (99 HTTP + 2 WS), `/v1` agregatorida 18 router
+  api/routes/     99 endpoint (97 HTTP + 2 WS), `/v1` agregatorida 18 router
   api/routes/orders/   5 modul: lifecycle · matrix · files · survey · _common
   models/         19 ORM model  ·  services/giblab/  .project parseri
   services/scanning.py   skan dvijoki (E001..E009 xato kodlari)

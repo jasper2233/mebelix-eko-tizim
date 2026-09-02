@@ -476,7 +476,7 @@ Ildiz atributlari: `dx`/`dy`/`dz` (yangi) yoki `l`/`w`/`thick` (eski).
 | `mirHor` / `mirVert` | Gorizontal / vertikal aks ettirish | ✅ geometriyaga qo'llanadi (`xnc.apply_mirror`) |
 | `bySizeDetail` | Koordinatalar detal o'lchamiga nisbatan | korpusda 505/505 `true`; dastur `dx/dy` si detal o'lchamiga 501 holatda aynan teng |
 | `count` | Detallar soni (detalga bog'langan bo'lsa detal sonidan olinadi) | detal sonini `<part>` dan olamiz |
-| `code` | Dastur kodi | ✅ tomon zaxirasi (`_2` suffiksi) va `OrderFile.meta.codes` identifikatsiyasi; SCX FAYL NOMI esa nusxa QR'idan (`f"{qr}.scx"`, `panel_id=qr` — `scx.py:244-245`) |
+| `code` | Dastur kodi | ✅ tomon zaxirasi (`_2` suffiksi); SCX FAYL NOMI esa nusxa QR'idan (`f"{qr}.scx"`, `panel_id=qr` — `build_scx_files`) |
 | `price*` / `count*` / `cost*` | Teshik/freza/rez narxi va soni | ❌ narx hisobi yo'q |
 
 `side` ni o'qish shart edi, chunki kod suffiksi (`_2`) ishonchsiz:

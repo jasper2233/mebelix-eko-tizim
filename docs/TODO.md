@@ -1,0 +1,265 @@
+# TODO — 2026-09-02 auditi
+
+Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajarib isbotlangan; ⚠️ — faqat iqtibos + adversarial tekshiruv.
+
+## Yuqori (33)
+
+- [ ] ✅ `scripts/deploy.sh:104` — Migratsiyali deploy'da avto-rollback ishlamaydi: eski image `alembic upgrade head` noma'lum revision'da yiqiladi → api crash loop; rollback shoxiga stable image bilan `alembic stamp`/`downgrade` qadami kerak (repro: audit «Deploy-xavfsizlik»)
+- [ ] ✅ `backend/app/api/routes/orders/lifecycle.py:425` — Ish markazini PRODUCTION holatidagi buyurtmada qayta tanlash `order.machine_assignments` ni yangilaydi, lekin `PartRoute.machine_id` eski stanokda qol
+- [ ] ✅ `backend/app/api/routes/orders/matrix.py:200-203` — When a matrix stage checkbox is toggled on for a post that has no existing PartRoute step yet, the new step is always created with per_instance=1. For
+- [ ] ✅ `backend/app/api/routes/tmo.py:224-225` — Prefix check is case-insensitive via .upper(), but the original non-uppercased `qr` is then used for the actual pachka lookup (`_pachka_by_code(db, or
+- [ ] ✅ `backend/app/models/base.py:23` — `updated_at` is declared nullable with `default=None` AND `server_default=current_timestamp(0)`, so SQLAlchemy omits it from the INSERT and every fres
+- [ ] ✅ `backend/app/services/giblab/ingest.py:155` — restore_custom_routes appends restored MANUAL steps AFTER the freshly-ingested tail (UPAKOVKA/TMO), so TMO is no longer the last step of a standard pa
+- [ ] ✅ `backend/app/services/giblab/ingest.py:78` — snapshot_custom_routes only sees parts that already have a MANUAL route row, so a part marked "Nostandart" (or bound to an assembly parent) before any
+- [ ] ✅ `backend/app/services/giblab/parser.py:463` — CS `<part>` ro'yxatidagi HAR bir stubga `label_num` beriladi, joylashtirilmagan (usedCount=0) detalga ham — ingest esa aynan `label_num is not None` n
+- [ ] ✅ `backend/app/services/labels.py:230` — Loyiha nomi 26 belgigacha chiziladi, lekin QR bloki uni x=40 mm dan boshlab ustidan bosib o'chiradi — uzun loyiha nomining oxiri chekda umuman ko'rinm
+- [ ] ✅ `backend/app/services/scanning.py:518` — QR text is not order-scoped (uniqueness is only per order), so when two live PRODUCTION orders are built from the same GibLab product/part codes, ever
+- [ ] ✅ `backend/app/services/scanning.py:656` — The `except IntegrityError` guard around `db.flush()` never fires — SQLAlchemy autoflushes the pending Scan INSERT inside the preceding `db.execute(up
+- [ ] ✅ `frontend/src/components/Orders/CustomRoutes.tsx:124-125` — "Bekor qilish" (Cancel) tugmasi faqat setDraft({}) chaqiradi, setParents({}) emas. dirty holati draft VA parents ikkalasidan hisoblanadi (Object.keys(
+- [ ] ✅ `frontend/src/components/Orders/CustomRoutes.tsx:88` — codesOf() reads every saved route step, including the system tail steps (15 UPAKOVKA / 16 TMO) that the backend appends itself, so a re-edited custom 
+- [ ] ✅ `frontend/src/components/Orders/OrderMatrix.tsx:248` — Ticking "Nostandart" only locks FUTURE stage clicks; stage toggles already staged for that part are still sent in the same batch, which is exactly the
+- [ ] ✅ `frontend/src/components/People/PersonDialog.tsx:150` — `switching` fires the destructive "kirish hisobi o'chiriladi" confirmation on EVERY edit of a tsex employee who has a personal login, even when the ac
+- [ ] ✅ `frontend/src/components/Terminal/CutmapView.tsx:203` — So'rov xatosi (500/tarmoq) operatorga "fayl GibLabda optimizatsiya qilinmagan (TEMPLATE)" deb ko'rsatiladi — API xatosi jimgina yashiriladi, `isError`
+- [ ] ✅ `frontend/src/components/Terminal/KromkaView.tsx:71` — Lokal skan tekshiruvi detalning BIRINCHI topilgan marshrut qadamiga qarab javob beradi — KROMKA marshrutda ikki marta bo'lsa, birinchi o'tish tugagach
+- [ ] ✅ `frontend/src/components/Terminal/TmoView.tsx:49` — So'rov yiqilganda TMO ekrani xatoni jim yutadi va yashil "Hammasi qabul qilindi." ko'rsatadi — omborchi ishni tugallangan deb o'ylaydi.
+- [ ] ✅ `frontend/src/components/Terminal/useTerminalScan.ts:68` — Badge UUIDs are dispatched before any cooldown check, so a scanner double-read fires two `startTerminalSession` POSTs — the documented 2s duplicate ba
+- [ ] ✅ `frontend/src/components/UserSettings/ChangePassword.tsx:23` — Full password-strength rules are applied to the EXISTING password field, so any account whose current password does not meet the new strength policy c
+- [ ] ✅ `frontend/src/hooks/useMesWs.ts:25` — The 30s heartbeat is write-only: the server's `pong` is explicitly discarded and no timer ever checks that a reply arrived, so a half-open WebSocket l
+- [ ] ✅ `frontend/src/hooks/useScanFlash.ts:43` — useScanFlash's auto-scroll timer is always cancelled before it fires, because every call site passes inline getKey/getCount lambdas that change identi
+- [ ] ✅ `frontend/src/routes/_layout/anketa.$orderId.tsx:207` — Xona va modul qo'shishda backend ro'yxat chegaralari (rooms max 10, modules max 40) klientda umuman tekshirilmaydi — 11-xona/41-modul qo'shilgan zahot
+- [ ] ✅ `frontend/src/routes/_layout/anketa.$orderId.tsx:634` — Raqamli maydonlarda backend diapazonlari (mm: 0..50000, modul soni: 1..999, pm: 0..1000) klientda tekshirilmaydi — "Soni" ga 0 yozilishi yoki mm ga qo
+- [ ] ✅ `frontend/src/routes/_layout/clients.tsx:70` — Director sees "+ Yangi mijoz" but `POST /clients` rejects the role — the exact 403 dead-end that employees.tsx explicitly guards against.
+- [ ] ✅ `frontend/src/routes/_layout/employees.tsx:389-399` — TogglePerson (Nofaol qilish/Faollashtirish) uses `if (p.employee) {...} else if (p.user) {...}` — mutually exclusive branches. For a person with BOTH 
+- [ ] ✅ `frontend/src/routes/_layout/logs.tsx:118` — Paginatsiya boshqaruvi va "Jami" hisoblagichi har sahifa/filtr o'zgarishida butunlay yo'qoladi: so'rovda `placeholderData`/`keepPreviousData` yo'q, sh
+- [ ] ✅ `frontend/src/routes/login.tsx:136` — Post-tanlash dialogida ikkinchi beyjik so'rovi xato bersa, xato HECH QAYERDA ko'rsatilmaydi — dialog qotib qoladi.
+- [ ] ✅ `frontend/src/routes/tablo.tsx:315` — Matritsa so'rovi xatosi jimgina yutiladi: TV ekranda "Aktiv buyurtmalar yo'q" chiqadi va JONLI belgisi yashil qoladi.
+- [ ] ✅ `frontend/src/routes/terminal.tsx:328` — `endSession` is the only terminal mutation with no `onError` — a failed "Yakunlash" produces no toast, no dialog close, and no visible feedback at all
+- [ ] ✅ `frontend/src/routes/terminal.tsx:387` — The undo ConfirmDialog turns into a dead modal: the 15s auto-clear nulls `lastScan` while the dialog is open, after which the confirm button is a sile
+- [ ] ✅ `docker-compose.prod.yml:55` — `${TAG:-latest}` default hech qachon mavjud emas — CI faqat `:<git sha>` tegini push qiladi, ya'ni hujjatda ko'rsatilgan `make docker-prod` (TAG'siz) 
+- [ ] ✅ `scripts/backup.sh:27` — `env_get` strips everything from the first `#` onward, so any `#` inside POSTGRES_USER / POSTGRES_DB / ADMIN_PASSWORD / TG_BOT_TOKEN silently truncate
+
+## O'rta (127)
+
+- [ ] ✅ `backend/Dockerfile:16` — Builder stage installs the full 'dev' dependency group (mypy, ruff, pre-commit, types-openpyxl, plus their transitive deps like nodeenv/virtualenv/ide
+- [ ] ✅ `backend/app/api/routes/employees.py:78` — `search` beyjik UUID'ini SUBSTRING bo'yicha solishtiradi, ya'ni StaffReadUser (manager/texnolog/direktor) javobdan ataylab olib tashlangan `badge_id` 
+- [ ] ✅ `backend/app/api/routes/login.py:122` — `_open_shift_for` opens a WorkSession without writing an audit record, while both other session-open paths do.
+- [ ] ✅ `backend/app/api/routes/login.py:90` — Password login (success and failure) and logout write no audit row at all — only badge login does — so the Loglar page cannot answer "who logged into 
+- [ ] ✅ `backend/app/api/routes/machines.py:126` — PATCH /machines/{id} with an explicit `null` for `name` or `status` writes NULL into a NOT NULL column and ends in an uncaught IntegrityError (500) — 
+- [ ] ✅ `backend/app/api/routes/machines.py:51` — Muddati o'tgan (12 soatdan eski) smena ham «ochiq smena» to'sig'i sifatida sanaladi va ish markazini o'chirtirmaydi.
+- [ ] ✅ `backend/app/api/routes/machines.py:63` — Bekor qilingan buyurtmaning tugallanmagan marshrutlari ish markazini abadiy o'chirilmas qilib qo'yadi.
+- [ ] ✅ `backend/app/api/routes/orders/files.py:149` — download_order_scx_zip zips only SCX files that happen to exist on disk and silently drops any OrderFile row whose file is missing — no error, no warn
+- [ ] ✅ `backend/app/api/routes/orders/files.py:50` — PRODUCTION holatidagi buyurtmaga `.project` ni qayta yuklash yangi `PartRoute` qatorlarini `machine_id=None` bilan yaratadi — ilgari muhrlangan ish ma
+- [ ] ✅ `backend/app/api/routes/orders/files.py:65,85` — The whole .project ingest — XML parse, blob decode, cut-map build, SCX XML generation and one synchronous write per SCX file — runs inline on the even
+- [ ] ✅ `backend/app/api/routes/orders/files.py:82-89` — wipe_previous_parse unlinks the old .project/SCX files from disk inside an uncommitted transaction; if ingest/restore later raises ParseError the DB i
+- [ ] ✅ `backend/app/api/routes/orders/lifecycle.py:91,97-106,121` — On the number-collision retry path create_order reads client.full_name after db.rollback() has expired every identity-map object, so the documented re
+- [ ] ✅ `backend/app/api/routes/orders/matrix.py:134-147` — _check_assembly_match (which enforces that a child part's last route step exists in its assembly parent's route) only runs when assembly_parent_id its
+- [ ] ✅ `backend/app/api/routes/orders/matrix.py:354-395` — The whole manual-route construction (edge_count, KROMKA first-pass rule, seen set, packaging/TMO tail) is written twice, in orders._set_custom_route a
+- [ ] ✅ `backend/app/api/routes/orders/matrix.py:409-451` — _resize_instances rewrites instance qr_text and adds copies but leaves the SCX files untouched, so SCX filenames stop matching the QR the doc guarante
+- [ ] ✅ `backend/app/api/routes/orders/matrix.py:426-439` — `_resize_instances` re-mints qr_text by the same rule but skips the collision pre-check ingest performs, so a count change can hit the unique index an
+- [ ] ✅ `backend/app/api/routes/pachka.py:256` — `get-or-404` is hand-rolled as `db.get(...)` + `is None or .is_deleted` + `NotFoundException` at seven sites, including inside `bridge_agents.py` whic
+- [ ] ✅ `backend/app/api/routes/pachka.py:261-262` — Yopilgan qadoq — o'lik nuqta: uni qayta ochish ham, chekini qayta chiqarish ham MUMKIN EMAS, lekin ikkala foydalanuvchi xabari ham buni mumkin deb va'
+- [ ] ✅ `backend/app/api/routes/reports.py:268` — Excel eksportda FURNITURA (`kind="hardware"`) qatorlari "Kromka" deb belgilanadi — `kind` uchta qiymatli, kod esa ikkitasini biladi.
+- [ ] ✅ `backend/app/api/routes/terminal.py:282` — `read_terminal_orders` to'liq `Order` ORM obyektlarini `defer(*ORDER_FAT_COLUMNS)` siz o'qiydi — har terminal har 30 soniyada hamma PRODUCTION buyurtm
+- [ ] ✅ `backend/app/api/routes/terminal.py:394` — KROMKA karta hisobidagi `need_sq` subquery buyurtma bo'yicha filtrlanmagan — u 30 soniyada bir chaqiriladigan endpointda butun `part_route` jadvalini 
+- [ ] ✅ `backend/app/api/routes/terminal.py:425` — ARRA kartasida `done` NUSXA sonini, `total` esa qadamlar yig'indisini sanaydi — detalda ikkita ARRA qadami bo'lsa (jarayon kodi 1 va 2 ikkalasi ham AR
+- [ ] ✅ `backend/app/api/routes/terminal.py:447` — Kesish postida (`ARRA`/`ROVER`) buyurtmaning HECH BIR nusxasida `pattern_no` bo'lmasa, `own_sheet_nos.get(o.id)` `None` qaytaradi va `_own_sheets` uni
+- [ ] ✅ `backend/app/commands/seed_defaults.py:138` — Post-account phone numbers are derived from the POSITION of the role inside POST_ROLES, so inserting a tenth post role anywhere but at the end makes t
+- [ ] ✅ `backend/app/commands/seed_defaults.py:159` — PATCH /posts/{id} lets an admin change order_index, but seed_defaults resets it to the hardcoded table on every container start, so the edit is silent
+- [ ] ✅ `backend/app/core/config.py:126-128` — The Alembic DB URL is built by raw f-string interpolation, so a POSTGRES_PASSWORD (or user/db) containing `@`, `/`, `:`, `#` or `?` silently produces 
+- [ ] ✅ `backend/app/core/config.py:127` — `POSTGRES_URI` interpolates the raw `POSTGRES_PASSWORD` into a DSN without percent-encoding, so any password containing a URL-reserved character produ
+- [ ] ✅ `backend/app/core/config.py:137-150` — _validate_production_settings refuses to boot on four placeholder secrets but not on FORWARDED_ALLOW_IPS=["*"], so a single env value silently re-open
+- [ ] ✅ `backend/app/core/middleware.py:30` — An unhandled exception in a handler bypasses the access log and the response never carries X-Request-ID, so 500s — the requests that most need correla
+- [ ] ✅ `backend/app/core/setup.py:78` — The hand-rolled /openapi.json handler rebuilds the schema with `application.version` (FastAPI's hardcoded default "0.1.0") and never passes `descripti
+- [ ] ✅ `backend/app/core/worker.py:20` — Every arq log line in the worker is emitted twice — once as plain text and once as JSON — because arq's CLI applies its own dictConfig after this modu
+- [ ] ✅ `backend/app/migrations/script.py.mako:8` — The revision template emits `from typing import Sequence, Union`, which fails the project's own ruff config (UP035 + I001), so every autogenerated mig
+- [ ] ✅ `backend/app/schemas/employees.py:50` — Update sxemalarida NOT NULL ustunlar `str | None` — explicit `null` yuborilsa route uni to'g'ridan-to'g'ri setattr qiladi va 422 o'rniga 500 chiqadi.
+- [ ] ✅ `backend/app/schemas/posts.py:23` — `PostUpdate.order_index` bilan qilingan tahrir keyingi prestart'da `seed_defaults` tomonidan jimgina qaytarib tashlanadi.
+- [ ] ✅ `backend/app/schemas/terminal.py:154` — `PrisadkaPartRow.done_qrs` amalda hech qachon ishlamaydi: uni o'qiydigan yagona shox faqat `instances` bo'sh bo'lganda ishga tushadi, ikkala ro'yxat e
+- [ ] ✅ `backend/app/services/excel.py:52` — `_cell` `datetime` ni `TASHKENT_TZ` ga o'tkazmasdan formatlaydi, shuning uchun buyurtmalar hisobotining .xlsx eksporti UTC soatlarini (Toshkentdan 5 s
+- [ ] ✅ `backend/app/services/giblab/cutmap.py:198-204` — `rot` is computed only from the rotated-match test, so a near-square part placed UNROTATED is flagged as rotated and its kromka symbols are swapped.
+- [ ] ✅ `backend/app/services/giblab/ingest.py:222-226` — wipe_previous_parse unlinks the old .project and SCX files from disk before the ingest try/except, so a ParseError rolls the DB back to the old rows w
+- [ ] ✅ `backend/app/services/giblab/ingest.py:391` — A part that GibLab listed in the CS operation but never placed (usedCount=0) still gets an ARRA route step, so its ARRA counter can never be closed an
+- [ ] ✅ `backend/app/services/giblab/models.py:154` — `merged_machining` da qirra teshiklari imzosi `z` ni hisobga olmaydi — bir tomonda bir xil pozitsiya/diametr/chuqurlikdagi, lekin BOSHQA balandlikdagi
+- [ ] ✅ `backend/app/services/giblab/parser.py:100` — Kodsiz detal ogohlantirishi faqat mahsulotning BIRINCHI detali kodsiz bo'lganda yoziladi — qisman kodsiz fayllarda (korpusdagi `kupe` 38/70, `kuxniya`
+- [ ] ✅ `backend/app/services/giblab/parser.py:339` — The documented name-as-product-code fallback can produce a value longer than the `Product.code` column, crashing ingest instead of failing with a pars
+- [ ] ✅ `backend/app/services/giblab/parser.py:372-377` — `<part>` havolasi yoki `program` i yo'q XNC operatsiyasi butunlay JIM tashlab yuboriladi — butun ishlov (teshik, paz, freza), PRISADKA qadami va SCX g
+- [ ] ✅ `backend/app/services/giblab/parser.py:452-453` — `_f()` returns `None` only when the attribute is absent, but here `or 10.0` also fires when the attribute is present and explicitly `0`. The surroundi
+- [ ] ✅ `backend/app/services/giblab/scx.py:169` — A mill contour that contains only its `ms` head crashes `_offset_contour` with IndexError; the guard at line 169 only covers the empty-list case, whic
+- [ ] ✅ `backend/app/services/giblab/xnc.py:136` — `_groove()` xujjatlaydi (comment) va spesifikatsiya bo'yicha `gr` tegining `c` (korreksiya) atributi 1 yoki 2 bo'lsa paz o'q bo'ylab t/2 ga suriladiga
+- [ ] ✅ `backend/app/services/giblab/xnc.py:208` — `enable="false"` bo'lgan `<ms>` o'tkazib yuborilganda `current_contour` tozalanmaydi, shuning uchun o'chirilgan konturning `<ml>`/`<mac>` segmentlari 
+- [ ] ✅ `backend/app/services/labels.py:47-49` — `load_label_data` nusxa/detal/buyurtmaning `is_deleted` bayrog'ini tekshirmaydi, shuning uchun `.png` endpointi yumshoq o'chirilgan nusxaga ham yorliq
+- [ ] ✅ `backend/app/services/metrics.py:27` — `part_volume` `Post.unit` ni o'qimaydi: UPAKOVKA posti birligi `m2` bo'lsa ham dona qaytaradi, natijada TABLO va dashboard "m²" yorlig'i ostida DONA s
+- [ ] ✅ `backend/app/services/scanning.py:651-660` — `record_scan_at` dagi `except IntegrityError` bloki erishib bo'lmaydigan — poyga 422 emas, 500 beradi.
+- [ ] ✅ `bridge-agent/agent.py:1244` — `_restart_self()` va `_apply_update()` .bat faylni `encoding="ascii"` bilan yozadi — Windows profil nomi ASCII bo'lmasa (masalan `Oʻktam`, kirillcha n
+- [ ] ✅ `bridge-agent/agent.py:780-801,914-950,1447-1454` — Navbat fayli bilan ishlashda (local_drain/local_rewrite/local_enqueue) hech qanday xato ushlanmaydi; bitta OSError (Windows'da antivirus/backup faylni
+- [ ] ✅ `docs/03-backend-api.md:282` — Hujjat PATCH /posts/{id} da «rang» (color) maydonini tahrirlash mumkin deydi — bunday maydon na sxemada, na modelda bor.
+- [ ] ✅ `docs/03-backend-api.md:282` — docs/03 `PATCH /posts/{id}` ni "nom, rang, flaglar" deydi — `PostUpdate` da rang maydoni umuman yo'q, `order_index` esa sanalmagan.
+- [ ] ✅ `docs/03-backend-api.md:57` — `client_ip`'s docstring claims the client IP is read in exactly one place and that X-Forwarded-For support would be a future change to this function o
+- [ ] ✅ `docs/04-backend-data.md:147` — Both the model comment and docs/04 say `WorkSession.user_id` is the TERMINAL device account, but the shift is also opened under a post-role account or
+- [ ] ✅ `docs/05-frontend-app.md:318` — Hujjat `staleTime: 5 min` guard'larning keshdan o'qishini ta'minlaydi deydi; aslida `ensureQueryData` staleTime'ni umuman hisobga olmaydi — kesh bor b
+- [ ] ✅ `docs/06-frontend-components.md:32` — Docs claim post assignment "isn't locked, one person can work two posts" — the dialog has no post picker at all and derives exactly one post from the 
+- [ ] ✅ `docs/06-frontend-components.md:560` — Doc says the only local change to select.tsx is dark: class removal ("boshqasi standart"), but SelectContent carries a deliberate, commented deviation
+- [ ] ✅ `docs/10-giblab-reference.md:787-789` — orders.py `ingest` submodulidan uchtasini emas, BESHTA funksiyani import qiladi — marshrut snapshot/restore juftligi ro'yxatdan tushib qolgan.
+- [ ] ✅ `frontend/nginx/index.conf:19` — `try_files` oxirida `=404` turgani uchun `/index.html` ichki redirect emas, FAYL tekshiruvi bo'ladi — SPA chuqur havolalari (`/orders/123`) `location 
+- [ ] ✅ `frontend/src/components/Anketa/RoomPhotos.tsx:70,165` — Klient MIME tekshiruvi serverdan kengroq: `image/*` o'tadi, lekin server faqat jpeg/png/webp qabul qiladi — iPhone'ning HEIC surati (yoki GIF/SVG) kli
+- [ ] ✅ `frontend/src/components/Clients/AddClient.tsx:158` — `address` has a 255-char zod limit but no `FormMessage` and no `maxLength`, so an over-long address silently blocks submit with no visible reason.
+- [ ] ✅ `frontend/src/components/Clients/ClientCombobox.tsx:37` — The visible label is never derived from `value`, so the trigger can show "Mijozni tanlang" while the form still holds a selected client id.
+- [ ] ✅ `frontend/src/components/Common/BadgePrompt.tsx:66-77` — `pathLength={1}` is set on the `<g>` wrapper instead of on the two `<rect>` children, so the badge card outline never draws itself — it renders as a p
+- [ ] ✅ `frontend/src/components/Common/ErrorComponent.tsx:3` — The router's global errorComponent throws away TanStack Router's `error` and `reset` props, so every uncaught render/loader error shows one identical 
+- [ ] ✅ `frontend/src/components/Orders/CustomRoutes.tsx:124` — The "Bekor qilish" button resets only `draft`, leaving unsaved `parents` (assembly-parent) selections in place — the button disappears (dirty flips fa
+- [ ] ✅ `frontend/src/components/Orders/OrderMatrix.tsx:221` — The "Nostandart · N qadam" badge counts raw `part.routes`, which includes the system tail steps (UPAKOVKA/TMO) the technologist never drew and disable
+- [ ] ✅ `frontend/src/components/Orders/OrderMatrix.tsx:265` — The note field is uncontrolled (`defaultValue`), so filtering the search box while in edit mode unmounts and remounts the row and the input snaps back
+- [ ] ✅ `frontend/src/components/Orders/OrderMatrix.tsx:46` — OrderMatrix and CustomRoutes destructure only `data`/`isLoading` from the matrix query, so a failed request renders a misleading "no parts yet" empty 
+- [ ] ✅ `frontend/src/components/People/PersonDialog.tsx:142` — Phone is turned into a payload by stripping non-digits with no `PHONE_PATTERN` check, so a half-typed number is sent as e.g. `+99890` and the server 4
+- [ ] ✅ `frontend/src/components/People/PersonDialog.tsx:146-150` — `switching` (which triggers the destructive-change confirm dialog) checks only whether the ORIGINAL person had any linked user account, not whether th
+- [ ] ✅ `frontend/src/components/People/PersonDialog.tsx:227` — User account and employee row are created in one non-atomic mutationFn; if the employee step fails, the created account is orphaned, invisible in the 
+- [ ] ✅ `frontend/src/components/Sidebar/AppSidebar.tsx:76` — The docs (and the code comment they mirror) claim the badge query adds no request because the registry page dedupes it. That only holds ON `/orders`. 
+- [ ] ✅ `frontend/src/components/Sidebar/Main.tsx:43` — Active-item detection is a strict equality on the full pathname, so on any child route the sidebar shows NO highlighted item — the user loses their pl
+- [ ] ✅ `frontend/src/components/Sidebar/Main.tsx:43` — Faqat aniq (exact) path solishtiriladi, shuning uchun ichki marshrutda (masalan /orders/$orderId — buyurtma detail sahifasi) sidebar'dagi "Buyurtmalar
+- [ ] ✅ `frontend/src/components/Terminal/KromkaView.tsx:152-153` — Qator kaliti `route_id`, DOM id va `useScanFlash` kaliti `part_id` — bitta detal KROMKA'ni ikki marta olsa DOM id takrorlanadi va xatcho'p/avto-scroll
+- [ ] ✅ `frontend/src/components/Terminal/KromkaView.tsx:20-25` — Qirra tomonlari l/r/t/b → Chap/O'ng/Tepa/Past qat'iy jadval bilan nomlanadi, holbuki chekdagi eskiz detal burilganda bu moslikni almashtiradi — izohda
+- [ ] ✅ `frontend/src/components/Terminal/KromkaView.tsx:42` — `isError` ushlanmaydi — API yiqilganda kromkachi "Arradan kelgan detal yo'q" degan yolg'on bo'sh ekranni ko'radi va detallarni kutib turaveradi.
+- [ ] ✅ `frontend/src/components/Terminal/PostQueueView.tsx:32` — Post navbati so'rov xatosida "Bu proyektda bu postga tegishli detal yo'q." deydi — operator ish yo'q deb postni tashlab ketadi.
+- [ ] ✅ `frontend/src/components/Terminal/PrisadkaView.tsx:137-180` — `downloadAll` da `try { ... } finally { ... }` bor, lekin `catch` yo'q — papka ochishda (`getDirectoryHandle`) xato bo'lsa unhandled rejection bo'lib 
+- [ ] ✅ `frontend/src/components/Terminal/PrisadkaView.tsx:246-248` — ROVER jadvalida qator kaliti `instance_id` — bitta detal marshrutda PRISADKA/ROVER qadamini ikki marta olsa bir xil nusxa ikki qator bo'lib chiqadi: R
+- [ ] ✅ `frontend/src/components/Terminal/PrisadkaView.tsx:449-455` — Qator kaliti `route_id`, DOM id va `useScanFlash` kaliti esa `part_id` — bir detal shu postda ikki qadam olsa DOM id takrorlanadi va xatcho'p noto'g'r
+- [ ] ✅ `frontend/src/components/Terminal/PrisadkaView.tsx:65` — `useQuery` dan faqat `data, isLoading` olinadi — so'rov yiqilsa operator xato o'rniga "Bu buyurtmada prisadka detallari yo'q" degan YOLG'ON bo'sh ro'y
+- [ ] ✅ `frontend/src/components/Terminal/TmoView.tsx:53-57` — Mutatsiya javobi `setQueryData` bilan yoziladi, lekin fon so'rovi bekor qilinmaydi — 30 s pollingda ketayotgan eski javob mutatsiya natijasini ustidan
+- [ ] ✅ `frontend/src/components/Terminal/UpakovkaView.tsx:49` — Qadoqlash postida skan umuman ovoz bermaydi (na muvaffaqiyat, na xato) — bu ekran skanni o'zi yozadi va terminalning ovoz+banner oqimini chetlab o'tad
+- [ ] ✅ `frontend/src/components/Terminal/UpakovkaView.tsx:57` — A successful UPAKOVKA scan produces no sound, no toast and no ScanStrip banner — the exact defect TmoView documents having fixed for itself is still p
+- [ ] ✅ `frontend/src/components/Terminal/UpakovkaView.tsx:99` — Qadoqlash ekrani ham so'rov xatosini yutadi — "Ochiq qadoq yo'q" va "Hammasi qadoqlangan." yozuvlari server yiqilganda ham chiqadi.
+- [ ] ✅ `frontend/src/components/Terminal/audio.ts:6` — The lazily created `AudioContext` is never `resume()`d, so on the WS-driven (stanok agent) scan path — which by design involves no interaction with th
+- [ ] ✅ `frontend/src/components/Terminal/useTerminalScan.ts:105` — On KROMKA/OVAL the cooldown map is only written on the success paths, so a rejected QR bypasses the 5s barrier entirely and every repeat read fires an
+- [ ] ✅ `frontend/src/components/UserSettings/ChangePassword.tsx:23` — current_password ham to'liq parol-kuchi sxemasi (passwordSchema) bilan tekshirilyapti, lekin bu sxema "Required password field (sign-up / new password
+- [ ] ✅ `frontend/src/components/UserSettings/UserInformation.tsx:100-107` — Clearing the name field silently does nothing: the cleared value becomes `undefined`, is dropped from the JSON body, yet a success toast fires and the
+- [ ] ✅ `frontend/src/lib/mes.ts:215, routes/terminal.tsx:60,75, routes/_layout.tsx:30` — `OPERATOR_ROLES` is an `as const` tuple, which forces every call site to cast the argument with `as never` — silently disabling exactly the rename-saf
+- [ ] ✅ `frontend/src/lib/queryClient.ts:23-26` — The single QueryClient declares no `defaultOptions`, so every query in the app inherits TanStack v5 defaults `staleTime: 0`, `refetchOnWindowFocus: tr
+- [ ] ✅ `frontend/src/lib/scxDir.ts:89-91` — `pickDir` swallows every error as "user cancelled", so a real failure (SecurityError outside a user gesture, NotAllowedError) makes the "Hammasini yuk
+- [ ] ✅ `frontend/src/lib/validation.ts:24-26, backend/app/schemas/users.py:35` — The "special character" rule differs between the two sides: `ʻ` and `ʼ` (the Uzbek oʻ/gʻ apostrophes) satisfy zod but not the server, so a password th
+- [ ] ✅ `frontend/src/queries/mes.ts:33-58` — getClientsQueryOptions and getEmployeesQueryOptions ask for one 100-row page and never paginate, while the page header renders the server's FULL count
+- [ ] ✅ `frontend/src/routes/_layout/anketa.$orderId.tsx:146` — Debounce effekti oldingi save.mutate hali tugamagan bo'lsa ham (save.isPending tekshirilmaydi) yangi mutate chaqiradi; har ikkalasi ham survey'ning TO
+- [ ] ✅ `frontend/src/routes/_layout/anketa.$orderId.tsx:294` — "Butun buyurtma uchun" katakchalari `CheckGrid` markupini qo'lda takrorlaydi va allaqachon undan uzoqlashgan — belgilangan xizmat sahifadagi boshqa ha
+- [ ] ✅ `frontend/src/routes/_layout/anketa.$orderId.tsx:79` — `canEdit` faqat rolni tekshiradi, buyurtma holatini emas — topshirilgan/bekor qilingan buyurtmada menejer to'liq tahrirlanadigan forma oladi, lekin ha
+- [ ] ✅ `frontend/src/routes/_layout/clients.tsx:53` — Clients registry silently shows only the newest 100 rows — `count` is fetched and thrown away, no pagination and no "N tadan" hint.
+- [ ] ✅ `frontend/src/routes/_layout/index.tsx:47` — Dashboard `stats` so'rovi (Navbatda/Bugun ustunlari) uchun xato holati umuman qayta ishlanmagan — so'rov yiqilsa ustunlar jimgina "—" ko'rsatadi va he
+- [ ] ✅ `frontend/src/routes/_layout/orders/$orderId.tsx:105` — The .project drop zone has no in-flight guard, so a second drop (or a click that reopens the file dialog) while an upload is running fires a second up
+- [ ] ✅ `frontend/src/routes/_layout/orders/$orderId.tsx:201` — customCount is read from the query cache with getQueryData() during render, which creates no subscription — the tab label's count is missing on first 
+- [ ] ✅ `frontend/src/routes/_layout/printers.tsx:120` — The agent-log dialog swallows API errors: a failed `readBridgeLogs` request renders the 'no logs yet' hint instead of an error, so the admin blames th
+- [ ] ✅ `frontend/src/routes/_layout/printers.tsx:202` — The mebelix-agent.exe download link is the only place in the whole frontend that builds an API URL without API_BASE, so whenever the API lives on a di
+- [ ] ✅ `frontend/src/routes/_layout/reports.tsx:40` — Sahifa ochilganda ikkala DatePicker bo'sh turadi, backend esa jimgina oxirgi 30 kunni qaytaradi; javobdagi haqiqiy oraliq (`date_from`/`date_to`) hech
+- [ ] ✅ `frontend/src/routes/_layout/reports.tsx:61` — Excel eksporti oddiy `<a href>` navigatsiyasi — xato holatida (403/500/sessiya tugagan) brauzer SPA dan chiqib ketib xom JSON xatosini ekranga chiqara
+- [ ] ✅ `frontend/src/routes/_layout/work-centers.tsx:150` — The empty-state row spans one column more than the table has, so the 'Ish markazlari yo'q' cell overflows the table grid.
+- [ ] ✅ `frontend/src/routes/_layout/work-centers.tsx:208` — The auto-suggested work-center name counts existing machines on the post, so after any deletion or manual rename it proposes a name that already exist
+- [ ] ✅ `frontend/src/routes/_layout/work-centers.tsx:65` — A failed `/posts` request is silently swallowed — only the machines query drives the error branch, so the page renders with a blank Post column and a 
+- [ ] ✅ `frontend/src/routes/login.tsx:135-136` — Post-choice dialogidan keyin badge.mutate ikkinchi marta ishga tushadi (postId bilan); u xato bersa (backend _badge_post/_post_machine/_terminal_user 
+- [ ] ✅ `frontend/src/routes/tablo.tsx:1025` — Drill sarlavhasida YOLG'ON "BOSHLANMAGAN" belgisi chiqadi: buyurtma matritsadan tushgan bo'lsa (TMO dan o'tgan) `row` undefined bo'ladi va `stallLabel
+- [ ] ✅ `frontend/src/routes/tablo.tsx:136-168` — Xuddi shu sabab `useFitScale` da ham: drill ochilib yopilgach ResizeObserver uzilgan (detached) `tbody`/`main` ni kuzatib qoladi va shrift sig'dirish 
+- [ ] ✅ `frontend/src/routes/tablo.tsx:939` — Drill ko'rinishida yuklanish ham, xato ham ishlanmaydi — bo'sh sarlavha va bo'sh jadval chiqadi.
+- [ ] ✅ `frontend/src/routes/tablo.tsx:968` — TabloOrderDrill's `stall` badge is computed from `row?.idle_days`, but `row` becomes `undefined` both when the order genuinely never started (idle_day
+- [ ] ✅ `frontend/src/routes/terminal.tsx:328-335` — endSession mutatsiyasida onError yo'q — startShift, scanMutation, undoMutation hammasi xatoni toast.error bilan ko'rsatadi va playError() chaqiradi, l
+- [ ] ✅ `frontend/src/routes/terminal.tsx:346-353` — The offline (E007) scan path is the only scan outcome that does not stamp `lastScanAtRef`, so the kiosk's "quiet time" gate can decide it is safe to a
+- [ ] ✅ `frontend/src/utils.ts:39` — `extractErrorMessage` and `detailParts` implement the same six-branch error ladder in the same file, duplicating two user-facing strings verbatim and 
+- [ ] ✅ `.dockerignore:4` — `**/.env` naqshi faqat aynan `.env` nomini tutadi — `.env.server` kabi variantlar build kontekstiga uzatiladi (frontend'ning o'z `.dockerignore`'i esa
+- [ ] ✅ `.gitignore:10-11` — Only `.env` and `.env.local` are ignored, not `.env.*` — the repo currently has an untracked, un-ignored `.env.server` sitting in the root, one `git a
+- [ ] ✅ `Makefile:43-44 & frontend/package.json:10` — `make frontend-lint` ("Run frontend linting checks") is not a check — `npm run lint` is `biome check --write --unsafe`, which applies unsafe autofixes
+- [ ] ✅ `Makefile:56-58` — `make format` runs ruff from the repo root, so it reformats files no linter in the project owns — `docs/*.md` python blocks and `bridge-agent/agent.py
+- [ ] ✅ `docker-compose.prod.yml:56-62 | .env.example:60-66` — XFF ishonch diapazoni ikki joyda mustaqil belgilangan: .env dagi FORWARDED_ALLOW_IPS (backend/app/core/setup.py:174 da ProxyHeadersMiddleware shuni o'
+- [ ] ✅ `scripts/deploy.sh:102` — The auto-rollback path re-runs `up -d` with the old image TAG but never re-runs `caddy reload`, so a rolled-back stack keeps the new Caddyfile that wa
+- [ ] ✅ `scripts/deploy.sh:19` — `CADDY_HTTP_BIND` is read from `.env` without stripping surrounding quotes, while `SITE_ADDRESS` two lines below is explicitly de-quoted — a quoted bi
+- [ ] ✅ `scripts/setup.sh:1-3 & scripts/generate-client.sh:1-6` — `setup.sh` and `generate-client.sh` assume the caller's cwd is the repo root, while their two siblings `deploy.sh` and `backup.sh` both normalise cwd 
+
+## Past (92)
+
+- [ ] ✅ `backend/app/models/pachka.py:30` — `Pachka.order_id` `index=True` ortiqcha (`ix_pachka_order_status` kompoziti qoplaydi); migratsiya (`op.drop_index("ix_pachka_order_id")`, down_revision `e5b73c04a19f`) tayyor edi, deploy-xavfsizlik sababli alohida kichik deploy'ga qoldirildi
+- [ ] ✅ `backend/app/api/routes/bridge_agents.py:130-140` — Ish markazi bog'lami UZILGANDA ham audit xabari «bog'landi … -> —» deb yoziladi — jurnal amalni teskari ko'rsatadi.
+- [ ] ✅ `backend/app/api/routes/clients.py:59` — Qidiruv faqat `phone` ustunini ko'radi, unikallik esa `phone_alt` ni ham qamraydi — ikkinchi raqami bo'yicha qidirilgan mijoz topilmaydi, garchi o'sha
+- [ ] ✅ `backend/app/api/routes/employees.py:178` — Navbat (arq/Redis) ishlamayotganda infratuzilma nosozligi 403 Forbidden bilan qaytariladi — bu huquq xatosi kodi, klient uni "sizda ruxsat yo'q" deb k
+- [ ] ✅ `backend/app/api/routes/login.py:71-81,331-343` — The one-time-use refresh check is check-then-set, not atomic, so two concurrent replays of the same refresh token both succeed and neither triggers re
+- [ ] ✅ `backend/app/api/routes/orders/files.py:141-153` — download_order_scx_zip 404s only when the DB has no SCX rows; if the rows exist but the files are missing on disk it silently streams an empty or part
+- [ ] ✅ `backend/app/api/routes/orders/files.py:228,257` — regenerate_order_scx unlinks the old SCX files from disk before writing the new ones and before commit, so any failure while generating leaves the ord
+- [ ] ✅ `backend/app/api/routes/pachka.py:404-433` — Qadoq cheki COMMITDAN KEYIN navbatga qo'yiladi va navbat yo'q bo'lsa jimgina tashlab yuboriladi — qadoq CLOSED bo'lib qoladi, QR cheki esa yo'q va uni
+- [ ] ✅ `backend/app/api/routes/pachka.py:48,67; backend/app/api/routes/terminal.py:803; backend/app/api/routes/orders/files.py:289` — Three domain helpers live inside route modules and are imported across routers — including a name-mangled private one — so `tmo.py` and `terminal.py` 
+- [ ] ✅ `backend/app/api/routes/pachka.py:57,320; backend/app/api/routes/tmo.py:45,260; backend/app/api/routes/scans.py:69,81` — `ScanRejected` ni 422 ga o'girish oltita joyda qo'lda yozilgan, holbuki terminal.py da aynan shu maqsad uchun `_scan_error()` helperi bor va hujjatda 
+- [ ] ✅ `backend/app/api/routes/posts.py:27` — PATCH /posts/{id} has the same explicit-null hole: `{"name": null}` / `{"order_index": null}` / `{"requires_assignment_choice": null}` are written to 
+- [ ] ✅ `backend/app/api/routes/reports.py:253,261` — Material agregatsiyasi barqaror `code` ni butunlay e'tiborsiz qoldirib, faqat NOM bo'yicha guruhlaydi; `orders` esa buyurtmalarni emas, JSONB YOZUVLAR
+- [ ] ✅ `backend/app/api/routes/reports.py:53` — Sukut oralig'i 30 emas, 31 kun: chegaralar inklyuziv bo'lgani uchun `today-30 … today` 31 kalendar kunni qamraydi.
+- [ ] ✅ `backend/app/api/routes/tablo.py:164` — TABLO drill-down `_hidden_statuses` ni umuman qo'llamaydi — texnolog `/tablo/orders/{id}` orqali DRAFT/CANCELLED buyurtmaning raqami, loyiha nomi va d
+- [ ] ✅ `backend/app/api/routes/terminal.py:132` — `read_terminal_context` agentni tartibsiz `.first()` bilan tanlaydi; `printer_agent` xuddi shu nuqson uchun ataylab deterministik tartib qo'ygan — bit
+- [ ] ✅ `backend/app/api/routes/tmo.py:221` — Qadoq QR'i registrga sezgir bo'lmagan shart bilan aniqlanadi, lekin bazadan registrga SEZGIR qidiriladi: kichik harfli `pk-...` qadoq shoxiga kiradi v
+- [ ] ✅ `backend/app/api/routes/users.py:237-239` — `delete_user` fetches the target before checking permission, so any logged-in non-superuser can enumerate which user ids exist (404 vs 403).
+- [ ] ✅ `backend/app/api/routes/ws.py:42-43` — /ws/events accepts the access token as a query parameter, which lands in proxy/access logs — the exact leak the sibling /ws/bridge endpoint was change
+- [ ] ✅ `backend/app/api/routes/ws.py:73-82` — /ws/events tokenni FAQAT ulanish paytida tekshiradi va ulanish umrida qayta tekshirmaydi — logout (token_version bump) yoki tokenning muddati tugashi 
+- [ ] ✅ `backend/app/commands/create_first_superuser.py:21` — Idempotentlik faqat `phone` bo'yicha tekshiriladi; `ADMIN_PHONE` o'zgartirilsa eski admin qatoridagi username tufayli INSERT `ix_user_username` ni buz
+- [ ] ✅ `backend/app/core/config.py:160` — `upload_root()` resolves a relative `UPLOAD_DIR` against the process working directory, so the file-storage root (and the path-traversal baseline) mov
+- [ ] ✅ `backend/app/core/ws.py:82` — _dispatch iterates self.clients by index while awaiting a send, so a socket that disconnects mid-fan-out mutates the list under the loop and the next 
+- [ ] ✅ `backend/app/core/ws.py:85` — _dispatch sends to every matching socket sequentially with await, so one stalled client blocks delivery to all others and stalls the whole pub/sub lis
+- [ ] ✅ `backend/app/crud/orders.py:17` — Order numbers use the UTC year while every other date boundary in the app uses Asia/Tashkent, so orders created between 00:00 and 05:00 Tashkent time 
+- [ ] ✅ `backend/app/crud/users.py:60` — `update()` dict kelganda uni NUSXALAMAYDI (`update_data = user_update`), so'ng `pop("password")` bilan CHAQIRUVCHINING dict'ini o'zgartiradi — chaqiru
+- [ ] ✅ `backend/app/models/base.py:26` — `is_deleted` is indexed on every table via the mixin, creating 18 near-useless boolean indexes — every query filters `is_deleted` together with a more
+- [ ] ✅ `backend/app/models/pachka.py:26-33` — Pachka.status is indexed twice (a standalone ix_pachka_status plus the status column of ix_pachka_order_status) but no query anywhere puts Pachka.stat
+- [ ] ✅ `backend/app/services/giblab/ingest.py:145` — restore_custom_routes issues one extra round-trip per restored part (a SELECT for standard parts, an UPDATE for custom ones) instead of one query for 
+- [ ] ✅ `backend/app/services/giblab/ingest.py:24` — The route snapshot carries only (is_custom, process codes, parent), so a technolog-disabled step comes back enabled and the part note is dropped on re
+- [ ] ✅ `backend/app/services/giblab/ingest.py:316` — The sheet-material → plate-thickness map for the 32 mm double-layer SCX rule is built twice with the same comprehension.
+- [ ] ✅ `backend/app/services/giblab/parser.py:131` — Manfiy o'lchamni modulga o'girishda `None` bo'lgan ikkinchi o'lcham 0.0 ga aylanadi — o'lchamsiz detal 0 mm o'lchamli detalga aylanib qoladi.
+- [ ] ✅ `backend/app/services/giblab/parser.py:452` — `or` bilan berilgan zaxira qiymatlar fayldagi ANIQ nolni ham almashtiradi: torsovkasiz kesilgan listda `cTrimL="0"` xarita sarlavhasida 10 mm, `swSawt
+- [ ] ✅ `backend/app/services/labels.py:490-491` — Qadoq cheki 80×60 mm blankning pastki chetiga 2.1 mm qolguncha chiziladi — detal yorlig'ida ataylab qo'yilgan 4 mm zaxira qoidasi buzilgan.
+- [ ] ✅ `backend/app/services/labels.py:602-603` — The badge name's width trim only shrinks the LAST line, so a single word wider than 72 mm on the first line is drawn at full width and bleeds off both
+- [ ] ✅ `backend/app/services/labels.py:604` — Beyjikda ism kesilganini aniqlash tekshiruvi qator ICHIDAGI bo'shliqlarni sanaydi, shuning uchun qisqa dum tashlab yuborilganda "…" qo'yilmaydi va ism
+- [ ] ✅ `bridge-agent/README.md:47` — README navbatda chek turganda update hech qachon almashtirmaydi deb qat'iy aytadi; kodda esa kutish 3600 soniya (1 soat) bilan cheklangan — tiqilib qo
+- [ ] ✅ `bridge-agent/agent.py:415` — _exchange serverning `detail` maydonini doim matn deb hisoblaydi; 4 belgidan qisqa kod kiritilganda FastAPI 422 qaytaradi va `detail` — lug'atlar RO'Y
+- [ ] ✅ `docs/01-architecture.md:86` — Nima: The Redis-connection inventory misses the short-lived clients opened per request by the two bridge-agent log endpoints.
+- [ ] ✅ `docs/03-backend-api.md:418` — Nima: The doc names only the label and file routes as ctx-free, but `/qr/{qr}/order` also runs without `TerminalCtx`.
+- [ ] ✅ `docs/03-backend-api.md:422` — Nima: Doc says the only ways to open a shift are POST /terminal/session and /login/badge; password login on a post role also opens one.
+- [ ] ✅ `docs/03-backend-api.md:57` — Nima: Docs claim nearly every route module imports `client_ip`; it is imported by 9 of the 18 route modules.
+- [ ] ✅ `docs/03-backend-api.md:603` — Nima: Eleven of the 47 `log_action` call sites never pass `ip`, and they are not scattered — the `pachka`, `tmo`, `scan` and `print` modules named in 
+- [ ] ✅ `docs/04-backend-data.md:174` — Nima: Doc says employees schemas import `PHONE_PATTERN`; they import the `validate_phone` validator instead — contradicting the doc's own §2.3 note.
+- [ ] ✅ `docs/05-frontend-app.md:292` — Nima: `["currentUser"]` iste'molchilari ro'yxati eskirgan — «admin jadvali» sahifasi yo'q, ro'yxatda `tablo.tsx` va boshqa oltita sahifa yetishmaydi.
+- [ ] ✅ `docs/05-frontend-app.md:49` — Nima: The biome ignore list in docs/05 omits `node_modules` and `openapi.json`, and does not mention the per-directory `overrides` block that adds the
+- [ ] ✅ `docs/06-frontend-components.md:459-470` — Nima: TmoView bo'limi "shu smenada qabul qilinganlar" yashil tasdiq ro'yxatini va ekranning o'z toast/ovoz javobini umuman tilga olmaydi — bular atayl
+- [ ] ✅ `docs/06-frontend-components.md:509-510` — Nima: audio.ts tavsifi ovoz faqat `routes/terminal.tsx` da chalinadi deydi — aslida uni yana `TmoView.tsx` va `useTerminalScan.ts` ham chaqiradi.
+- [ ] ✅ `docs/08-packages.md:174` — Nima: `$schema` aniq versiyaga qotirilgan, `package.json` esa `^2.5.2` caret bergan — PATCH bump ham schema mos kelmasligini keltirib chiqaradi, hujja
+- [ ] ✅ `docs/09-mes-domain.md:168` — Nima: The packing and TMO endpoints emit E001 for five reasons that are absent from the documented E001 list — the same overloading the doc says was s
+- [ ] ✅ `docs/09-mes-domain.md:592` — Nima: StagePipeline is rendered only on the dashboard; the orders registry has no stage pipeline, so "buyurtma qatorlari" is stale.
+- [ ] ✅ `docs/10-giblab-reference.md:767` — Nima: For double-layer parts docs describe only the surface-bore depth rule; the code applies a different rule to milling depth and no rule at all to 
+- [ ] ✅ `docs/10-giblab-reference.md:769` — Nima: Docs state the panel-edge trim always exports as a raw path with `ToolOffset=右`; the code applies that rule only when `ms.c == "2"`.
+- [ ] ✅ `frontend/README.md:109` — Nima: README'ning `src/lib` tavsifi 7 fayldan faqat 4 tasini sanaydi — `guards.ts`, `queryClient.ts`, `scxDir.ts` tushib qolgan; `src/utils.ts` esa st
+- [ ] ✅ `frontend/src/components/Clients/AddClient.tsx:85` — The form is reset only on success, so closing the dialog mid-typing and reopening shows the abandoned draft plus its stale validation errors.
+- [ ] ✅ `frontend/src/components/Clients/ClientCombobox.tsx:38` — Closing the popover without selecting leaves `search`/`active` populated, so the next open shows the previous query's filtered list.
+- [ ] ✅ `frontend/src/components/Clients/ClientCombobox.tsx:93` — Keyboard navigation never scrolls the active option into view, so arrowing past the 5th result moves an invisible highlight inside the `max-h-64` list
+- [ ] ✅ `frontend/src/components/Common/ErrorScreen.tsx:20-22` — The "Bosh sahifaga" control nests a `<button>` inside an `<a>` (interactive content inside an anchor), instead of the `<Button asChild><Link>` pattern
+- [ ] ✅ `frontend/src/components/Common/TablePagination.tsx:9` — Nima: docs/06 says the range label sits on the left and the controls on the right; the whole block is right-aligned (`justify-end`).
+- [ ] ✅ `frontend/src/components/Orders/CustomRoutes.tsx:224` — The "Asosiy detalga biriktirish" option list reads `assembly_parent_id` from the server row only, ignoring pending `parents` edits — so a part already
+- [ ] ✅ `frontend/src/components/Orders/EditOrder.tsx:74` — EditOrder and MachineAssign both spread crudCallbacks (which already invalidates on onSettled) AND call an `onSaved` prop whose only implementation is
+- [ ] ✅ `frontend/src/components/Orders/MachineAssign.tsx:26` — `selection` is seeded from `order.machine_assignments` by a useState initializer, which runs once per mount — a refetch that brings different assignme
+- [ ] ✅ `frontend/src/components/Orders/MachineAssign.tsx:83` — A machine assignment can never be removed once made: the SelectField gets no `emptyLabel` so no empty option is rendered, the mutation body drops empt
+- [ ] ✅ `frontend/src/components/Orders/orderForm.tsx:59` — The "Izoh" FormField is copy-pasted into AddOrder and EditOrder with the only difference being a placeholder, contradicting the stated reason for keep
+- [ ] ✅ `frontend/src/components/People/PersonDialog.tsx:113` — form.posts is snapshotted in the useState initializer from the `posts` prop, so opening the dialog from the EDIT button before the posts query resolve
+- [ ] ✅ `frontend/src/components/People/PersonDialog.tsx:297` — `formatUzPhone` is called without the `prev` argument, re-introducing the backspace lock that argument exists to prevent.
+- [ ] ✅ `frontend/src/components/Sidebar/User.tsx:32` — The avatar falls back to initials of the literal word "Foydalanuvchi" while the name line right next to it renders empty, so a nameless account shows 
+- [ ] ✅ `frontend/src/components/Sidebar/User.tsx:82` — The "Sozlamalar" entry inverts the shadcn/Radix composition: the link wraps the menu item instead of the item wrapping the link, so a bare `<a>` sits 
+- [ ] ✅ `frontend/src/components/Terminal/CutmapView.tsx:390` — Matritsadan "xaritada ko'rsat" sakrashi detal topilmasa jimgina yo'qoladi: bayroq izlashdan OLDIN yoqiladi, xabar ham berilmaydi.
+- [ ] ✅ `frontend/src/components/Terminal/CutmapView.tsx:826` — `registerZoom` effekti har renderda qayta ishlaydi, chunki CutmapView unga inline arrow beradi — izoh esa "bir marta o'rnatiladi" deb yozadi.
+- [ ] ✅ `frontend/src/components/Terminal/CutmapView.tsx:86` — Popup bloklansa "PDF / Chop etish" jimgina hech narsa qilmaydi — foydalanuvchiga sabab aytilmaydi.
+- [ ] ✅ `frontend/src/components/Terminal/KioskOverlays.tsx:27` — `requestFullscreen()` returns a promise that is neither awaited nor caught — a denied/failed request becomes an unhandled rejection and the operator g
+- [ ] ✅ `frontend/src/components/Terminal/PrisadkaView.tsx:177` — Eski brauzer yo'lida hech narsa tekshirilmasdan "N ta SCX yuklab olindi" muvaffaqiyat toasti chiqadi — `<a download>` yo'li xatoni umuman ko'rmaydi, h
+- [ ] ✅ `frontend/src/components/Terminal/UpakovkaView.tsx:176` — Qadoqdan chiqarish tugmasida pending/disabled holati yo'q — ikki marta bosilsa ikkinchi DELETE 404 beradi va operatorga tushunarsiz xato toast chiqadi
+- [ ] ✅ `frontend/src/components/Terminal/UpakovkaView.tsx:81` — Faqat BIRINCHI ochiq qadoq ko'rsatiladi; backend bir buyurtmada ikkinchi ochiq qadoq yaratilishini taqiqlamaydi — ikkinchisi ekranda umuman ko'rinmayd
+- [ ] ✅ `frontend/src/components/Terminal/useKiosk.ts:88` — `useScanFocus` has no awareness of open modals, so while any of terminal.tsx's three ConfirmDialogs is open it keeps yanking focus every 2s (and on ev
+- [ ] ✅ `frontend/src/components/UserSettings/ChangePassword.tsx:55` — The whole form object is passed as the mutation payload, so `confirm_password` — a second copy of the new password — is sent to the server in the PATC
+- [ ] ✅ `frontend/src/components/ui/label.tsx:1` — Uchta ui faylida `"use client"` direktivasi qolgan; loyihada Next.js/RSC yo'q (Vite SPA), shuning uchun direktiva hech qanday ma'no bermaydi va 25 fay
+- [ ] ✅ `frontend/src/hooks/useBadgeScan.ts:33-42` — Beyjik skani `Enter` da `preventDefault` qilmaydi — parol formasi ochiq va maydon fokusda bo'lsa, skan UUID'ni maydonga yozib, formani ham yuborishga 
+- [ ] ✅ `frontend/src/hooks/useCurrentUser.ts:9` — `retry: false` umumiy factory'da emas, iste'molchida turibdi — aynan shu query key'ni ishlatadigan `tablo.tsx` esa uni bermaydi, ya'ni bitta query ikk
+- [ ] ✅ `frontend/src/lib/mes.ts:196-208 (POSITIONS) va frontend/src/routes/_layout/employees.tsx:206-207` — 13 of the 15 `ROLE_LABELS` values are repeated verbatim as `POSITIONS[].label`, so a label change has to be made in two tables — and one consumer chai
+- [ ] ✅ `frontend/src/lib/mes.ts:5,14,26,34,41,55,62,69,227,232` — Every label/colour map except ROLE_LABELS is typed `Record<string, string>`, so a new backend enum value silently renders a raw code — or literally th
+- [ ] ✅ `frontend/src/queries/mes.ts:70` — getOrdersQueryOptions types `status` as a free `string` and then casts it with `as never` to satisfy the generated OrderStatus enum — the same rename-
+- [ ] ✅ `frontend/src/queries/users.ts:16` — `getUsersQueryOptions` is the only query in the app that issues N sequential blocking requests, and it carries no `staleTime` — with the QueryClient's
+- [ ] ✅ `frontend/src/routes/_layout.tsx:24` — No route below the root declares an `errorComponent`, so any render crash inside an admin page bubbles to the root boundary and replaces the entire sh
+- [ ] ✅ `frontend/src/routes/_layout.tsx:36` — `useRouterState()` selektorsiz chaqirilgan — butun router holatiga obuna bo'lib, har holat o'zgarishida sidebar+Outlet qobig'ini qayta render qiladi; 
+- [ ] ✅ `frontend/src/routes/_layout/employees.tsx:319-320` — The "posts not loaded yet" guard is applied only to the Add button; the row Edit action can open the same dialog with an empty post list and a permane
+- [ ] ✅ `frontend/src/routes/_layout/employees.tsx:405,457,512` — Admin dialogs report errors with `detailMessage`, which prefixes every plain server message with a meaningless "XATO:" code.
+- [ ] ✅ `frontend/src/routes/_layout/logs.tsx:235` — `<TableRow>` ga `role="button"` berilgan — bu qatorning implicit `row` rolini bosib ketadi va jadval semantikasini buzadi (skrinriderda ustun/qator na
+- [ ] ✅ `frontend/src/routes/_layout/orders/$orderId.tsx:590-594 (input), 156-167 (cancel mutation), 581 (onOpenChange={setCancelOpen})` — cancelReason state hech qachon tozalanmaydi: dialog Escape/tashqariga bosib yopilsa (setCancelOpen(false), submit qilinmasdan) yoki muvaffaqiyatli bek
+- [ ] ✅ `frontend/src/routes/_layout/printers.tsx:496` — The 'Yangi agent' name field uses bare zod constraints with no messages, so an invalid name shows zod's built-in English error inside an otherwise ful
+- [ ] ✅ `frontend/src/routes/_layout/reports.tsx:159-166` — Ekrandagi "Buyurtmalar" jadvali va o'sha hisobotning Excel eksporti turli ustunlarni ko'rsatadi: JSON javobida kelgan `created_at` va `production_star
+- [ ] ✅ `frontend/src/routes/_layout/work-centers.tsx:150` — Jadval sarlavhasida (102-107 qatorlar) atigi 3 ta doimiy TableHead + shartli admin ustuni bor, ya'ni jami admin uchun 4, aks holda 3 ustun. EmptyRow'g
+

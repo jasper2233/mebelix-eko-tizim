@@ -407,7 +407,7 @@ Eslatma: SCX/CNC fayllar bridge orqali **o'tmaydi** — ular stanok kompyuterida
 | Hook | Manba | Vazifasi |
 |---|---|---|
 | `check-added-large-files`, `check-toml`, `check-yaml --unsafe` | `pre-commit-hooks` v5.0.0 | umumiy sanitariya |
-| `ruff --fix`, `ruff-format` | `ruff-pre-commit` v0.16.3 (`backend/uv.lock` dagi ruff bilan bir xil versiya) | Python lint + format, **faqat `^backend/`** |
+| `ruff --fix`, `ruff-format` | `ruff-pre-commit` v0.16.5 (`backend/uv.lock` dagi ruff bilan bir xil versiya) | Python lint + format, **faqat `^backend/`** |
 | `mypy` (local, `language: system`) | `uv --directory backend run mypy app` | type check — loyiha venv'i kerakligi uchun local hook (`make install` prereq) |
 | `biome-check` (local) | `cd frontend && npx --no-install biome check ...` | frontend lint — `frontend/biome.json` ni olishi uchun `frontend/` dan ishlaydi (`npm install` prereq) |
 
