@@ -91,7 +91,13 @@ def _dedupe_part_code(code: str, seen: set[str], product_code: str, warnings: li
     return renamed
 
 
-def _build_part(p: ET.Element, product: ParsedProduct, seen: set[str], warnings: list[str]) -> ParsedPart:
+def _build_part(
+    p: ET.Element,
+    product: ParsedProduct,
+    seen: set[str],
+    warnings: list[str],
+    auto_coded: set[str],
+) -> ParsedPart:
     """Bitta <part> elementidan ParsedPart. Kod va o'lcham shu yerda normallashtiriladi."""
     code = p.get("code") or p.get("part.code") or ""
     if not code:
@@ -100,9 +106,12 @@ def _build_part(p: ET.Element, product: ParsedProduct, seen: set[str], warnings:
         # kod yo'q, nomi "01"). Tartib raqamidan beramiz: GibLab'ning o'z sxemasi ham shu
         # (kod berilganda u "{blok}_{part.position}" ko'rinishida bo'ladi).
         code = f"{len(product.parts) + 1:03d}"
-        if len(product.parts) == 0:
+        # Ogohlantirish mahsulot bo'yicha bir marta. Faylning QISMAN kodsiz bo'lishi odatiy
+        # (kupe: 38/70 detal kodsiz) — birinchi detal tekshirilsa avto-kod jim berilardi.
+        if product.code not in auto_coded:
+            auto_coded.add(product.code)
             warnings.append(
-                f"{product.code}: faylda detal kodlari yo'q — tartib raqami bo'yicha berildi "
+                f"{product.code}: ba'zi detallarda kod yo'q — tartib raqami bo'yicha berildi "
                 f"(001, 002, ...). QR va SCX nomlari shu raqamga bog'lanadi."
             )
     # Kod fayl nomi va yo'l qismiga aylanadi (QR = SCX nomi) — yo'l belgilariga
@@ -340,6 +349,7 @@ def parse_project(content: bytes) -> ParsedProject:
     # --- products & parts ---
     part_by_file_id: dict[int, ParsedPart] = {}
     part_code_seen: dict[str, set[str]] = {}
+    auto_coded: set[str] = set()  # avto-kod ogohlantirishi berilgan mahsulotlar
     for g in products_goods:
         product_code = g.get("code") or g.get("name") or "PRODUCT"
         if re.search(r"[\\/]|\.\.", product_code):
@@ -355,7 +365,7 @@ def parse_project(content: bytes) -> ParsedProject:
         )
         seen = part_code_seen.setdefault(product.code, set())
         for p in g.findall("part"):
-            part = _build_part(p, product, seen, project.warnings)
+            part = _build_part(p, product, seen, project.warnings, auto_coded)
             product.parts.append(part)
             part_by_file_id[part.file_part_id] = part
         project.products.append(product)

@@ -40,10 +40,10 @@ backend/app/main.py
 
 ## `backend/app/main.py`
 
-**Maqsadi:** butun backend'ning kirish nuqtasi. Bor-yo'g'i 5 qator: `app.api`dagi yagona `router`ni va `core/config.py`dagi `settings`ni olib, `create_application()` factory'siga uzatadi.
+**Maqsadi:** butun backend'ning kirish nuqtasi. Bor-yo'g'i 5 qator: `app.api`dagi yagona `router`ni olib `create_application()` factory'siga uzatadi (`settings` factory ichida modul darajasida import qilinadi).
 
 ```python
-app = create_application(router=router, settings=settings)
+app = create_application(router=router)
 ```
 
 **Bog'lanishlar:** `backend/app/api/__init__.py` (router), `backend/app/core/config.py`, `backend/app/core/setup.py`. Uvicorn shu `app` obyektini ishga tushiradi.
@@ -61,7 +61,7 @@ app = create_application(router=router, settings=settings)
 
 | Guruh | Asosiy maydonlar |
 |---|---|
-| Application | `APP_NAME` (FastAPI `title`), `APP_VERSION` (`/health` va `/ready` hisobotida ishlatiladi) — description/license/contact sozlamalari olib tashlangan, metadata `setup.py`da literal yoziladi |
+| Application | `APP_NAME` (FastAPI `title`), `APP_VERSION` (FastAPI `version` + `/health` va `/ready` hisobotida) — description/license/contact sozlamalari olib tashlangan, metadata `setup.py`da literal yoziladi |
 | Crypto / JWT | `SECRET_KEY: SecretStr`, `ALGORITHM="HS256"`, `ACCESS_TOKEN_EXPIRE_MINUTES=30`, `REFRESH_TOKEN_EXPIRE_DAYS=7`, `DEVICE_REFRESH_TOKEN_EXPIRE_DAYS=90` (qurilma sessiyasi — monoblok/TABLO tsexda klaviatura yo'q, qayta parol termaydi; token har ishlatilganda yangilanadi, uzun muddat esa uzoq to'xtashdan keyin ham qayta kirish kerak bo'lmasligi uchun), `BCRYPT_ROUNDS=12` |
 | PostgreSQL | `POSTGRES_USER/PASSWORD/SERVER/PORT/DB`, `POSTGRES_ASYNC_PREFIX="postgresql+asyncpg://"`, `DB_POOL_SIZE=10`, `DB_MAX_OVERFLOW=20` |
 | First admin | `ADMIN_NAME/PHONE/USERNAME/PASSWORD` — startup'da yaratiladigan birinchi admin |
@@ -194,13 +194,14 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 - `check_redis_connection()` — ochilgan Redis klientlarni (`queue.pool`, `rate_limiter.client`) ping qiladi (retry bilan) va qaysilari tekshirilganini logga yozadi.
 - `set_threadpool_tokens()` — AnyIO thread-pool hajmini `THREADPOOL_TOKENS`ga ko'taradi (bloklovchi chaqiriqlar navbatda turib qolmasligi uchun).
 - `lifespan(app)` — modul darajasidagi `@asynccontextmanager` (pool ochish/yopish alohida wrapper funksiyalarsiz, shu yerda inline): threadpool → arq navbat pool (`queue.pool = await create_pool(...)`) + `rate_limiter.initialize(settings.REDIS_URL)` + ping → **WS real-time ko'prik**: alohida Redis klient ochilib `ws_manager.start_listener(...)` ishga tushiriladi (`core/ws.py`) → DB probe → `yield` → `finally`da WS listener to'xtatiladi, WS Redis klienti, `queue.pool` va `rate_limiter.client` yopiladi. Hech qanday shart yo'q — Redis ilovaning majburiy bog'liqligi, ko'tarilmasa startup probe'da yiqiladi.
-- `_install_docs_router(application, settings)` — docs siyosati:
+- `_install_docs_router(application)` — docs siyosati:
   - **production**: docs umuman yo'q;
   - **staging**: `/docs`, `/redoc`, `/openapi.json` faqat superuser uchun (`Depends(get_current_superuser)`);
   - **local**: ochiq.
-- `create_application(router, settings, **kwargs) -> FastAPI` — asosiy factory:
+  - `/openapi.json` handleri `application.openapi()` qaytaradi — title/description/version metadata'dan tushadi va sxema birinchi so'rovdan keyin keshlanadi.
+- `create_application(router) -> FastAPI` — asosiy factory:
   1. `setup_logging()` — JSON logging shu yerda faollashadi (import side-effect emas).
-  2. FastAPI metadata — `title` `settings.APP_NAME`dan, `description` (`"MebeliX API"`) esa literal (settings'dan emas; `license_info` yo'q — repo litsenziyasiz); **built-in docs har doim o'chiriladi** (`docs_url=None` va h.k.) — o'rniga shartli router o'rnatiladi.
+  2. FastAPI metadata — `title` `settings.APP_NAME`dan, `version` `settings.APP_VERSION`dan, `description` (`"MebeliX API"`) esa literal (settings'dan emas; `license_info` yo'q — repo litsenziyasiz); **built-in docs har doim o'chiriladi** (`docs_url=None` va h.k.) — o'rniga shartli router o'rnatiladi.
   3. Modul darajasidagi `lifespan` bilan `FastAPI(...)` yaratadi va berilgan `router`ni ulaydi.
   4. Middleware'lar: `RequestLoggingMiddleware`, `CORSMiddleware` (`allow_credentials=True` — cookie-auth uchun zarur), `ProxyHeadersMiddleware` (`FORWARDED_ALLOW_IPS` bilan) — busiz `request.client.host` har doim proxy IP bo'lib, barcha foydalanuvchilar bitta rate-limit bucket'iga tushib qolardi.
   5. `_install_metrics()` va `_install_docs_router()`.

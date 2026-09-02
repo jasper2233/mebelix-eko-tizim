@@ -5,7 +5,8 @@ from app.api.deps import AdminUser, CurrentUser, SessionDep, client_ip
 from app.api.routes._shared import drop_forbidden_nulls
 from app.core.exceptions import DuplicateValueException, NotFoundException
 from app.crud import crud_machines, crud_posts, log_action
-from app.models import BridgeAgent, Machine, PartRoute, Scan, User
+from app.models import BridgeAgent, Machine, Order, PartRoute, Scan, User
+from app.models.enums import OrderStatus
 from app.schemas.common import Message
 from app.schemas.machines import MachineCreate, MachineRead, MachineUpdate
 from app.services.scanning import crew_sessions
@@ -55,12 +56,18 @@ async def _blockers(db: SessionDep, machine_id: int) -> list[str]:
     if open_sessions:
         blockers.append(f"ochiq smena: {open_sessions} ta")
 
+    # Yopilgan buyurtma (bekor qilingan/topshirilgan) marshrutlari hech qachon
+    # tugallanmaydi — ularsiz filtr ish markazini abadiy o'chirilmas qilardi.
     unfinished = (
         await db.execute(
-            select(func.count(PartRoute.id)).where(
+            select(func.count(PartRoute.id))
+            .join(Order, Order.id == PartRoute.order_id)
+            .where(
                 PartRoute.machine_id == machine_id,
                 PartRoute.total_done < PartRoute.total_required,
                 PartRoute.is_deleted == False,  # noqa: E712
+                Order.status.notin_((OrderStatus.CANCELLED, OrderStatus.DELIVERED)),
+                Order.is_deleted == False,  # noqa: E712
             )
         )
     ).scalar_one()

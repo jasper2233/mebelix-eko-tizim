@@ -46,6 +46,9 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 
 ReportsUser = Annotated[User, Depends(require_roles(UserRole.MANAGER, UserRole.DIRECTOR))]
 
+# `material_usage[].kind` uch qiymatli (giblab/models.py: "sheet" | "band" | "hardware").
+_KIND_LABELS = {"sheet": "List", "band": "Kromka", "hardware": "Furnitura"}
+
 
 def _range(date_from: date | None, date_to: date | None) -> tuple[datetime, datetime]:
     """Default: last 30 days. Bounds are inclusive local (Asia/Tashkent) days."""
@@ -265,7 +268,7 @@ async def report_materials(
         return xlsx_response(
             "Material sarfi",
             ["Material", "Turi", "Birlik", "Jami sarf", "Buyurtmalar soni"],
-            [[r.name, "List" if r.kind == "sheet" else "Kromka", r.unit, round(r.total, 2), r.orders] for r in data],
+            [[r.name, _KIND_LABELS.get(r.kind, r.kind), r.unit, round(r.total, 2), r.orders] for r in data],
             f"materiallar_{report.date_from}_{report.date_to}.xlsx",
         )
     return report

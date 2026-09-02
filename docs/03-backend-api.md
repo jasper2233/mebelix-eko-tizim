@@ -262,7 +262,7 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | GET | `/api/v1/machines/` | login (har qanday) | Barcha ish markazlari, `list[MachineRead]` |
 | POST | `/api/v1/machines/` | `AdminUser` | 201; `post_id` mavjudligi va NOM TAKRORLANMASLIGI tekshiriladi (`_check_name`, registrga sezgir emas) — indeks `ix_machine_name` baribir rad etardi, lekin xabari tushunarsiz bo'lardi |
 | PATCH | `/api/v1/machines/{id}` | `AdminUser` | nom o'zgarsa takrorlanmasligi tekshiriladi; `post_id` o'zgarsa qayta tekshiriladi; **skan tarixi bor markazning posti o'zgarmaydi** (409) — o'tgan skanlar yangi post nomidan sanalib ketardi. `Machine` ning uchala ustuni ham NOT NULL, shuning uchun body'dagi explicit `null` `drop_forbidden_nulls` bilan tashlanadi (no-op) — ilgari `name: null` NOT NULL ustunga tushib 500 berardi |
-| DELETE | `/api/v1/machines/{id}` | `AdminUser` | Soft-delete, LEKIN **bog'lam bo'lsa 409** (`_blockers`): biriktirilgan hisob (`user.machine_id`), printer agenti, ochiq smena (`crew_sessions` — muddati o'tgani, 12 soatdan oshgani, hisobga OLINMAYDI: shu yerda yopiladi), tugallanmagan marshrut (`total_done < total_required`). Sabab xabarda nomlanadi |
+| DELETE | `/api/v1/machines/{id}` | `AdminUser` | Soft-delete, LEKIN **bog'lam bo'lsa 409** (`_blockers`): biriktirilgan hisob (`user.machine_id`), printer agenti, ochiq smena (`crew_sessions` — muddati o'tgani, 12 soatdan oshgani, hisobga OLINMAYDI: shu yerda yopiladi), tugallanmagan marshrut (`total_done < total_required`, LEKIN faqat ochiq buyurtmaniki — `order.status` `cancelled`/`delivered` bo'lganlari va o'chirilgan buyurtmalar sanalmaydi, aks holda bekor qilingan buyurtma markazni abadiy o'chirilmas qilardi). Sabab xabarda nomlanadi |
 
 **O'chirish nega to'sildi:** soft-delete FK'ni buzmaydi, lekin bog'lamni JIMGINA uzadi — qurilma hisobi E009 bilan kirolmaydi, agent skan-forvardi 409 beradi, tugallanmagan marshrutlar terminal ro'yxatidan yo'qoladi (filtr `machine_id` bo'yicha). Vaqtincha to'xtatish uchun o'chirish emas, `status` kerak.
 
@@ -522,7 +522,7 @@ Javob sxemalari `backend/app/schemas/tablo.py` da: `TabloMatrix` (`posts` — ty
 
 ## `backend/app/api/routes/reports.py` — Hisobotlar (TZ 11) va dashboard statistikasi
 
-**Maqsadi:** Boshqaruv hisobotlari. Rol: `require_roles(MANAGER, DIRECTOR)` (admin/superuser har doim o'tadi). Uch hisobot default JSON qaytaradi, `?format=xlsx` bilan Excel fayl stream qilinadi (TZ 11.4, `services/excel.xlsx_response`). Sana oralig'i berilmasa — oxirgi 30 kun, chegaralar Asia/Tashkent bo'yicha inklyuziv kunlar (`TASHKENT_TZ`, `app/core/config.py`). Javob sxemalari `backend/app/schemas/reports.py` da (8 model: `ProductivityReport`, `OrdersReport`, `MaterialsReport`, `DashboardStats` va ularning qator modellari).
+**Maqsadi:** Boshqaruv hisobotlari. Rol: `require_roles(MANAGER, DIRECTOR)` (admin/superuser har doim o'tadi). Uch hisobot default JSON qaytaradi, `?format=xlsx` bilan Excel fayl stream qilinadi (TZ 11.4, `services/excel.xlsx_response`). Sana oralig'i berilmasa — oxirgi 30 kun, chegaralar Asia/Tashkent bo'yicha inklyuziv kunlar (`TASHKENT_TZ`, `app/core/config.py`). `.xlsx` katakchalarida aware (UTC) `datetime` ham `TASHKENT_TZ` ga o'tkazib formatlanadi (`_cell`), ya'ni fayldagi soatlar UI bilan bir xil. Javob sxemalari `backend/app/schemas/reports.py` da (8 model: `ProductivityReport`, `OrdersReport`, `MaterialsReport`, `DashboardStats` va ularning qator modellari).
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|

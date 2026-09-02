@@ -98,7 +98,7 @@ Anketaning O'Z UI tili: `Section`, `Field`, `Num`, `NumInput`, `CheckGrid`, `Sha
 
 ### `frontend/src/components/Anketa/RoomPhotos.tsx`
 
-Xona rasmlari galereyasi. Rasmlar anketa JSONB'sida EMAS — `OrderFile(kind=DOCUMENT, meta.room_id)` da, shuning uchun avtosaqlash bilan aralashmaydi va o'z mutatsiyalarini yuritadi (`uploadRoomPhoto`, `deleteRoomPhoto`). Klient chegaralari: xonaga 6 rasm, har biri 5 MB gacha, faqat `image/*`.
+Xona rasmlari galereyasi. Rasmlar anketa JSONB'sida EMAS — `OrderFile(kind=DOCUMENT, meta.room_id)` da, shuning uchun avtosaqlash bilan aralashmaydi va o'z mutatsiyalarini yuritadi (`uploadRoomPhoto`, `deleteRoomPhoto`). Klient chegaralari: xonaga 6 rasm, har biri 5 MB gacha, MIME turi faqat `image/jpeg`/`image/png`/`image/webp` (`ACCEPTED` — backend `orders/survey.py` dagi `_ROOM_PHOTO_TYPES` bilan bir xil; `<input accept>` ham shundan quriladi, shuning uchun HEIC/GIF/SVG serverga bormasdan rad etiladi).
 
 ### `frontend/src/components/Anketa/RoomSummary.tsx`
 

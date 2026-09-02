@@ -19,6 +19,8 @@ import { API_BASE, handleError } from "@/utils"
 
 const MAX_PHOTOS = 6
 const MAX_PHOTO_MB = 5
+// Backend ro'yxati bilan bir xil: orders/survey.py `_ROOM_PHOTO_TYPES`
+const ACCEPTED = ["image/jpeg", "image/png", "image/webp"]
 
 /** Xona uchun taxminiy ko'rinish rasmlari — mijoz ko'rsatgan namuna/render.
  *  Butun panel drop-zona; rasm bosilsa to'liq hajmda ochiladi. */
@@ -67,8 +69,8 @@ export function RoomPhotos({
     const list = Array.from(files ?? [])
     let free = MAX_PHOTOS - photos.length
     for (const f of list) {
-      if (!f.type.startsWith("image/")) {
-        toast.error(`${f.name}: faqat rasm qo'shish mumkin`)
+      if (!ACCEPTED.includes(f.type)) {
+        toast.error(`${f.name}: faqat JPG, PNG yoki WEBP`)
         continue
       }
       if (f.size > MAX_PHOTO_MB * 1024 * 1024) {
@@ -162,7 +164,7 @@ export function RoomPhotos({
               <input
                 ref={input}
                 type="file"
-                accept="image/*"
+                accept={ACCEPTED.join(",")}
                 multiple
                 className="hidden"
                 onChange={(e) => {

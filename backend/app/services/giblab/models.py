@@ -143,7 +143,7 @@ class ParsedPart:
             return None
         base = XncOp(code=self.key, side2=False, dx=self.xnc_ops[0].dx, dy=self.xnc_ops[0].dy, dz=self.xnc_ops[0].dz)
         seen_bores: set[tuple[float, float, float, bool]] = set()
-        seen_edge: set[tuple[str, float, float, float]] = set()
+        seen_edge: set[tuple[str, float, float, float, float]] = set()
         for op in self.xnc_ops:
             for b in op.bores:
                 sig = (round(b["x"], 2), round(b["y"], 2), b["d"], b["thru"])
@@ -151,9 +151,11 @@ class ParsedPart:
                     seen_bores.add(sig)
                     base.bores.append(b)
             for b in op.edge_bores:
-                sig = (b["side"], round(b["pos"], 2), b["d"], round(b["dp"], 2))
-                if sig not in seen_edge:
-                    seen_edge.add(sig)
+                #: `z` imzoda SHART: qo'shqavat plitada bir tomonda bir xil pos/d/dp li,
+                #: lekin turli balandlikdagi teshiklar real — z'siz ikkinchisi yo'qolardi.
+                esig = (b["side"], round(b["pos"], 2), b["d"], round(b["dp"], 2), round(b["z"], 2))
+                if esig not in seen_edge:
+                    seen_edge.add(esig)
                     base.edge_bores.append(b)
             base.grooves.extend(op.grooves)
             base.mills.extend(op.mills)

@@ -39,9 +39,10 @@ hammasi (52/52), qolganlarida qisman — `kupe` 38/70, `kuxniya` 22/191, `TV_zon
 Nomida kod o'rniga `№` belgisi faqat `2001_Nukriddin` da turadi (52 tadan 48 tasida).
 
 Shu sababli parser kodsiz detalga tartib raqamidan kod beradi (`001`, `002`, ...) va
-ogohlantirish yozadi. Ogohlantirish faqat mahsulotning **birinchi** detali kodsiz bo'lganda
-chiqadi (`parser._build_part`): qisman kodli faylda (`kupe` 38/70 kabi) birinchi detalda kod
-bo'lsa, qolganlariga sun'iy kod berilsa ham xabar bo'lmaydi. Kod GibLab'da to'ldirilsa
+ogohlantirish yozadi. Ogohlantirish **har mahsulot uchun bir marta** — o'sha mahsulotda
+birinchi avto-kod berilganda — chiqadi (`parser._build_part`, `auto_coded` to'plami), detal
+qaysi o'rinda turishidan qat'i nazar: qisman kodli faylda (`kupe` 38/70 kabi) ham xabar
+bo'ladi, takrorlanmaydi. Kod GibLab'da to'ldirilsa
 yorliqda `312001_01_003 bok` kabi ma'noli qiymat chiqadi.
 
 ---
@@ -453,7 +454,10 @@ o'qimaydi — blob yagona manba.
 
 **Teshiklar xarita modelida.** Har detalning XNC dasturlari birlashtirilib (dublikatlar
 olib tashlanadi, `merged_machining`) xarita modeliga `holes` bo'limi sifatida yoziladi
-(`cutmap.py`). Bitta manbani ARRA terminal xaritasi (`CutmapView`/`SheetSvg`) ham,
+(`cutmap.py`). Dublikat imzosi: yuza teshigi — `(x, y, d, thru)`, qirra teshigi —
+`(side, pos, d, dp, z)`. Qirrada `z` SHART: qo'shqavat plitada bir tomonda bir xil
+pozitsiya/diametr/chuqurlikdagi, lekin turli balandlikdagi teshiklar real, `z`siz
+ikkinchisi dublikat deb tashlanardi (overlay ham, `xnc_summary` sanog'i ham kam chiqardi). Bitta manbani ARRA terminal xaritasi (`CutmapView`/`SheetSvg`) ham,
 yorliqdagi teshik eskizi (`labels.py`) ham o'qiydi.
 
 Boshqa optimizator sozlamalari: `csDirectCut` (birinchi rez yo'nalishi: 0 ixtiyoriy, 1 uzunlik
@@ -680,7 +684,7 @@ profil kesish (`CL` — tsexda bunday post yo'q), detal NOMI (u marshrutga ta'si
 
 | Holat | Xabar |
 |---|---|
-| Detal kodlari yo'q (2021 build) | tartib raqamidan berildi |
+| Detal kodi yo'q (to'liq yoki qisman) | tartib raqamidan berildi — mahsulotga bitta xabar |
 | Detal kodi takrorlangan | `-2` qo'shib saqlandi |
 | Manfiy o'lcham | moduli olindi (yozilmagan ikkinchi o'lcham `None` bo'lib qoladi, 0 ga aylanmaydi) |
 | Ishlov qo'shimchasi (detalda `allowance*` yoki CS da `cAllowanceWorkpiece`) | xaritada punktir chizilmaydi |

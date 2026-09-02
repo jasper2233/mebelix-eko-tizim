@@ -208,6 +208,13 @@ function OrdersTable({ params }: { params: RangeParams }) {
   )
 }
 
+// Backend `material_usage[].kind` uch qiymatli — reports.py dagi _KIND_LABELS oynasi.
+const MATERIAL_KIND_LABELS: Record<string, string> = {
+  sheet: "List",
+  band: "Kromka",
+  hardware: "Furnitura",
+}
+
 function MaterialsTable({ params }: { params: RangeParams }) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["reports", "materials", params],
@@ -232,7 +239,7 @@ function MaterialsTable({ params }: { params: RangeParams }) {
           data.rows.map((r) => (
             <TableRow key={`${r.name}-${r.kind}`}>
               <TableCell className="font-medium">{r.name}</TableCell>
-              <TableCell>{r.kind === "sheet" ? "List" : "Kromka"}</TableCell>
+              <TableCell>{MATERIAL_KIND_LABELS[r.kind] ?? r.kind}</TableCell>
               <TableCell className="num text-right font-semibold">
                 {Math.round(r.total * 100) / 100}
               </TableCell>

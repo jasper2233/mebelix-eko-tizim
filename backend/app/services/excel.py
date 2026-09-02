@@ -9,6 +9,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from app.core.config import TASHKENT_TZ
+
 _HEADER_FILL = PatternFill(start_color="2F496E", end_color="2F496E", fill_type="solid")
 _HEADER_FONT = Font(color="FFFFFF", bold=True)
 
@@ -49,7 +51,9 @@ def xlsx_response(title: str, headers: list[str], rows: list[list[Any]], filenam
 
 def _cell(v: Any) -> Any:
     if isinstance(v, datetime):
-        return v.strftime("%d.%m.%Y %H:%M")
+        # Aware (UTC) vaqtlar Toshkent zonasida ko'rsatiladi.
+        local = v.astimezone(TASHKENT_TZ) if v.tzinfo else v
+        return local.strftime("%d.%m.%Y %H:%M")
     if isinstance(v, date):
         return v.strftime("%d.%m.%Y")
     return v
