@@ -199,8 +199,13 @@ function MachineDialog({
     const post = posts.find((p) => String(p.id) === postId)
     setForm((f) => {
       if (!post || f.name.trim()) return { ...f, post_id: postId }
-      const used = machines.filter((m) => m.post_id === post.id).length
-      return { ...f, post_id: postId, name: `${post.name}-${used + 1}` }
+      // Sanoq emas, birinchi BO'SH suffiks: o'chirishdan keyin sanoq mavjud
+      // nomni taklif qilardi. Nom butun tsex bo'yicha unikal (backend
+      // registrsiz solishtiradi), shuning uchun hamma stanok tekshiriladi.
+      let n = 1
+      const taken = new Set(machines.map((m) => m.name.toLowerCase()))
+      while (taken.has(`${post.name}-${n}`.toLowerCase())) n++
+      return { ...f, post_id: postId, name: `${post.name}-${n}` }
     })
   }
 

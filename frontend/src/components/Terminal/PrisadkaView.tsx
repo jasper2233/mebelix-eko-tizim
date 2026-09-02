@@ -210,8 +210,12 @@ export function PrisadkaView({
   }
 
   const changeDir = async () => {
-    const dir = await pickDir()
-    if (dir) toast.success(`SCX papkasi: ${dir.name}`)
+    try {
+      const dir = await pickDir()
+      if (dir) toast.success(`SCX papkasi: ${dir.name}`)
+    } catch (e) {
+      toast.error(`Papkani tanlab bo'lmadi: ${(e as Error).message}`)
+    }
   }
 
   // ROVER rejimi: har nusxa ALOHIDA qator; qator tanlanadi, chop etish

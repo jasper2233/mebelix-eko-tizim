@@ -29,6 +29,11 @@ import {
   getTabloMatrixQueryOptions,
 } from "@/queries/mes"
 
+/** So'rov yiqilganda katak jim "—" ko'rsatmasligi uchun — bo'sh va buzuq
+ * holat bir xil ko'rinsa, direktor "navbat bo'sh" deb o'qiydi. */
+const cellFallback = (isError: boolean) =>
+  isError ? <span className="text-destructive">xato</span> : "—"
+
 export const Route = createFileRoute("/_layout/")({
   component: Dashboard,
   head: () => ({ meta: [{ title: "Boshqaruv paneli | MebeliX" }] }),
@@ -44,13 +49,13 @@ function Dashboard() {
     refetch: refetchMachines,
   } = useQuery(getMachinesQueryOptions())
   const canStats = isManagement(currentUser)
-  const { data: stats } = useQuery({
+  const { data: stats, isError: statsError } = useQuery({
     queryKey: ["reports", "dashboard"],
     queryFn: async () => (await ReportsService.reportDashboard()).data,
     enabled: Boolean(canStats),
     refetchInterval: 60_000,
   })
-  const { data: posts } = useQuery(getPostsQueryOptions())
+  const { data: posts, isError: postsError } = useQuery(getPostsQueryOptions())
   const {
     data: matrix,
     isLoading: matrixLoading,
@@ -125,7 +130,11 @@ function Dashboard() {
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.name}</TableCell>
                     <TableCell>
-                      {post ? <PostBadge code={post.code} /> : "—"}
+                      {post ? (
+                        <PostBadge code={post.code} />
+                      ) : (
+                        cellFallback(postsError)
+                      )}
                     </TableCell>
                     {/* Navbat — sahifadagi asosiy signal, shuning uchun eng katta */}
                     <TableCell className="num text-right">
@@ -141,11 +150,11 @@ function Dashboard() {
                           )}
                         </>
                       ) : (
-                        "—"
+                        cellFallback(statsError)
                       )}
                     </TableCell>
                     <TableCell className="num text-right">
-                      {stat?.today_scans ?? "—"}
+                      {stat ? stat.today_scans : cellFallback(statsError)}
                     </TableCell>
                     <TableCell>
                       <Badge

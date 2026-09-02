@@ -94,9 +94,11 @@ export function useTerminalScan({
       return
     }
 
-    // KROMKA/OVAL: har skan darhol yoziladi, lekin bir detal orasida 5s to'siq
-    const last = cooldownRef.current.get(value)
-    if (last && Date.now() - last < KROMKA_COOLDOWN_MS) {
+    // KROMKA/OVAL: har skan darhol yoziladi, lekin bir detal ustidagi har
+    // urinish orasida 5s to'siq — rad etilgan QR ham to'siqni ishga tushiradi,
+    // aks holda skanerning takror o'qishi yana bir so'rov va yana bir toast
+    // beradi.
+    if (cooled(value, KROMKA_COOLDOWN_MS)) {
       playWarning()
       toast.error(
         "Shu detal endigina skan qilindi — 5 soniyadan keyin qayta urining.",
@@ -128,7 +130,6 @@ export function useTerminalScan({
         toast.error(err)
         return
       }
-      cooldownRef.current.set(value, Date.now())
       onScan(value)
       return
     }
@@ -137,7 +138,6 @@ export function useTerminalScan({
     TerminalService.resolveTerminalQr({ path: { qr_text: value } })
       .then((r) => {
         openOrder(r.data.order_id)
-        cooldownRef.current.set(value, Date.now())
         onScan(value)
       })
       .catch(() => {

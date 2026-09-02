@@ -60,7 +60,7 @@ import {
   getBridgeAgentsQueryOptions,
   getMachinesQueryOptions,
 } from "@/queries/mes"
-import { handleError } from "@/utils"
+import { API_BASE, handleError } from "@/utils"
 
 export const Route = createFileRoute("/_layout/printers")({
   component: PrintersPage,
@@ -117,7 +117,7 @@ function CodeTtl({ expiresAt }: { expiresAt: string }) {
  */
 function AgentLogs({ agent }: { agent: BridgeAgentRead }) {
   const [open, setOpen] = useState(false)
-  const { data, isFetching } = useQuery({
+  const { data, isFetching, isError, refetch } = useQuery({
     queryKey: ["bridge-agents", agent.id, "logs"],
     queryFn: async () =>
       (
@@ -142,7 +142,14 @@ function AgentLogs({ agent }: { agent: BridgeAgentRead }) {
               yangilanadi.
             </DialogDescription>
           </DialogHeader>
-          {!data?.length ? (
+          {isError ? (
+            // Xatoni "log yo'q" deb ko'rsatish adminni agentni ayblashga
+            // majbur qilardi — server nosozligi alohida aytiladi.
+            <QueryError
+              message="Loglarni olishda xatolik yuz berdi."
+              onRetry={() => refetch()}
+            />
+          ) : !data?.length ? (
             <p className="py-8 text-center text-muted-foreground">
               {isFetching
                 ? "Yuklanmoqda..."
@@ -199,7 +206,7 @@ function PrintersPage() {
             Chek printerlari — ulanish kodi bilan o'rnatiladi, serverga kirish
             shart emas.{" "}
             <a
-              href="/api/v1/bridge-agents/download"
+              href={`${API_BASE}/api/v1/bridge-agents/download`}
               className="underline underline-offset-4"
               download
             >
@@ -493,7 +500,11 @@ function AgentRow({
 }
 
 const formSchema = z.object({
-  name: z.string().trim().min(2).max(100),
+  name: z
+    .string()
+    .trim()
+    .min(2, { message: "Nom kamida 2 ta belgidan iborat bo'lsin" })
+    .max(100, { message: "Nom ko'pi bilan 100 ta belgi" }),
   // Ish markazi YARATISHDA so'raladi (ilgari alohida qadam edi va esdan chiqib
   // qolardi). MAJBURIY EMAS: chek chiqarish va skan-forvard uchun u shart, lekin
   // ofisdagi beyjik printeriga ish markazi kerak emas — beyjik chop etish

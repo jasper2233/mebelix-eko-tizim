@@ -82,8 +82,11 @@ export async function pickDir(): Promise<FileSystemDirectoryHandle | null> {
     ).showDirectoryPicker({ mode: "readwrite" })
     await kvSet(KEY, h)
     return h
-  } catch {
-    return null // foydalanuvchi bekor qildi
+  } catch (e) {
+    // Faqat bekor qilish "jim" qaytadi; SecurityError/NotAllowedError kabi
+    // haqiqiy nosozlik chaqiruvchiga chiqsin — aks holda tugma jimgina o'lik
+    if ((e as DOMException)?.name === "AbortError") return null
+    throw e
   }
 }
 
