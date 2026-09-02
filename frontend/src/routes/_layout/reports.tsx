@@ -35,7 +35,8 @@ export const Route = createFileRoute("/_layout/reports")({
 
 type Kind = "productivity" | "orders" | "materials"
 
-// Backend bo'sh filtrda jimgina oxirgi 30 kunni qo'llaydi (reports.py `_range`),
+// Backend bo'sh filtrda jimgina oxirgi 30 kunni qo'llaydi (reports.py `_range`:
+// bugun-29 … bugun, chegaralar inklyuziv),
 // Excel eksporti ham aynan shu oraliqni oladi. Shuning uchun DatePicker'lar
 // o'sha default bilan boshlanadi — aks holda menejer bo'sh filtrni "hamma vaqt"
 // deb o'ylaydi. Sana LOKAL komponentlardan quriladi (DatePicker bilan bir xil).
@@ -48,7 +49,7 @@ function isoDay(offsetDays = 0): string {
 
 function ReportsPage() {
   const [kind, setKind] = useState<Kind>("productivity")
-  const [dateFrom, setDateFrom] = useState(() => isoDay(-30))
+  const [dateFrom, setDateFrom] = useState(() => isoDay(-29))
   const [dateTo, setDateTo] = useState(() => isoDay())
 
   const params = {

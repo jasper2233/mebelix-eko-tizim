@@ -175,15 +175,15 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/api/routes/clients.py:59` — Qidiruv faqat `phone` ustunini ko'radi, unikallik esa `phone_alt` ni ham qamraydi — ikkinchi raqami bo'yicha qidirilgan mijoz topilmaydi, garchi o'sha
 - [x] ✅ `backend/app/api/routes/employees.py:178` — Navbat (arq/Redis) ishlamayotganda infratuzilma nosozligi 403 Forbidden bilan qaytariladi — bu huquq xatosi kodi, klient uni "sizda ruxsat yo'q" deb k
 - [ ] ✅ `backend/app/api/routes/login.py:71-81,331-343` — The one-time-use refresh check is check-then-set, not atomic, so two concurrent replays of the same refresh token both succeed and neither triggers re
-- [ ] ✅ `backend/app/api/routes/orders/files.py:141-153` — download_order_scx_zip 404s only when the DB has no SCX rows; if the rows exist but the files are missing on disk it silently streams an empty or part
+- [x] ✅ `backend/app/api/routes/orders/files.py:141-153` — download_order_scx_zip 404s only when the DB has no SCX rows; if the rows exist but the files are missing on disk it silently streams an empty or part
 - [ ] ✅ `backend/app/api/routes/orders/files.py:228,257` — regenerate_order_scx unlinks the old SCX files from disk before writing the new ones and before commit, so any failure while generating leaves the ord
 - [ ] ✅ `backend/app/api/routes/pachka.py:404-433` — Qadoq cheki COMMITDAN KEYIN navbatga qo'yiladi va navbat yo'q bo'lsa jimgina tashlab yuboriladi — qadoq CLOSED bo'lib qoladi, QR cheki esa yo'q va uni
 - [ ] ✅ `backend/app/api/routes/pachka.py:48,67; backend/app/api/routes/terminal.py:803; backend/app/api/routes/orders/files.py:289` — Three domain helpers live inside route modules and are imported across routers — including a name-mangled private one — so `tmo.py` and `terminal.py` 
 - [ ] ✅ `backend/app/api/routes/pachka.py:57,320; backend/app/api/routes/tmo.py:45,260; backend/app/api/routes/scans.py:69,81` — `ScanRejected` ni 422 ga o'girish oltita joyda qo'lda yozilgan, holbuki terminal.py da aynan shu maqsad uchun `_scan_error()` helperi bor va hujjatda 
 - [x] ✅ `backend/app/api/routes/posts.py:27` — PATCH /posts/{id} has the same explicit-null hole: `{"name": null}` / `{"order_index": null}` / `{"requires_assignment_choice": null}` are written to 
 - [ ] ✅ `backend/app/api/routes/reports.py:253,261` — Material agregatsiyasi barqaror `code` ni butunlay e'tiborsiz qoldirib, faqat NOM bo'yicha guruhlaydi; `orders` esa buyurtmalarni emas, JSONB YOZUVLAR
-- [ ] ✅ `backend/app/api/routes/reports.py:53` — Sukut oralig'i 30 emas, 31 kun: chegaralar inklyuziv bo'lgani uchun `today-30 … today` 31 kalendar kunni qamraydi.
-- [ ] ✅ `backend/app/api/routes/tablo.py:164` — TABLO drill-down `_hidden_statuses` ni umuman qo'llamaydi — texnolog `/tablo/orders/{id}` orqali DRAFT/CANCELLED buyurtmaning raqami, loyiha nomi va d
+- [x] ✅ `backend/app/api/routes/reports.py:53` — Sukut oralig'i 30 emas, 31 kun: chegaralar inklyuziv bo'lgani uchun `today-30 … today` 31 kalendar kunni qamraydi.
+- [x] ✅ `backend/app/api/routes/tablo.py:164` — TABLO drill-down `_hidden_statuses` ni umuman qo'llamaydi — texnolog `/tablo/orders/{id}` orqali DRAFT/CANCELLED buyurtmaning raqami, loyiha nomi va d
 - [x] ✅ `backend/app/api/routes/terminal.py:132` — `read_terminal_context` agentni tartibsiz `.first()` bilan tanlaydi; `printer_agent` xuddi shu nuqson uchun ataylab deterministik tartib qo'ygan — bit
 - [x] ✅ `backend/app/api/routes/tmo.py:221` — Qadoq QR'i registrga sezgir bo'lmagan shart bilan aniqlanadi, lekin bazadan registrga SEZGIR qidiriladi: kichik harfli `pk-...` qadoq shoxiga kiradi v
 - [x] ✅ `backend/app/api/routes/users.py:237-239` — `delete_user` fetches the target before checking permission, so any logged-in non-superuser can enumerate which user ids exist (404 vs 403).
@@ -193,7 +193,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/core/config.py:160` — `upload_root()` resolves a relative `UPLOAD_DIR` against the process working directory, so the file-storage root (and the path-traversal baseline) mov
 - [x] ✅ `backend/app/core/ws.py:82` — _dispatch iterates self.clients by index while awaiting a send, so a socket that disconnects mid-fan-out mutates the list under the loop and the next 
 - [ ] ✅ `backend/app/core/ws.py:85` — _dispatch sends to every matching socket sequentially with await, so one stalled client blocks delivery to all others and stalls the whole pub/sub lis
-- [ ] ✅ `backend/app/crud/orders.py:17` — Order numbers use the UTC year while every other date boundary in the app uses Asia/Tashkent, so orders created between 00:00 and 05:00 Tashkent time 
+- [x] ✅ `backend/app/crud/orders.py:17` — Order numbers use the UTC year while every other date boundary in the app uses Asia/Tashkent, so orders created between 00:00 and 05:00 Tashkent time 
 - [x] ✅ `backend/app/crud/users.py:60` — `update()` dict kelganda uni NUSXALAMAYDI (`update_data = user_update`), so'ng `pop("password")` bilan CHAQIRUVCHINING dict'ini o'zgartiradi — chaqiru
 - [ ] ✅ `backend/app/models/base.py:26` — `is_deleted` is indexed on every table via the mixin, creating 18 near-useless boolean indexes — every query filters `is_deleted` together with a more
 - [ ] ✅ `backend/app/models/pachka.py:26-33` — Pachka.status is indexed twice (a standalone ix_pachka_status plus the status column of ix_pachka_order_status) but no query anywhere puts Pachka.stat
@@ -202,8 +202,8 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/services/giblab/ingest.py:316` — The sheet-material → plate-thickness map for the 32 mm double-layer SCX rule is built twice with the same comprehension.
 - [x] ✅ `backend/app/services/giblab/parser.py:131` — Manfiy o'lchamni modulga o'girishda `None` bo'lgan ikkinchi o'lcham 0.0 ga aylanadi — o'lchamsiz detal 0 mm o'lchamli detalga aylanib qoladi.
 - [x] ✅ `backend/app/services/giblab/parser.py:452` — `or` bilan berilgan zaxira qiymatlar fayldagi ANIQ nolni ham almashtiradi: torsovkasiz kesilgan listda `cTrimL="0"` xarita sarlavhasida 10 mm, `swSawt
-- [ ] ✅ `backend/app/services/labels.py:490-491` — Qadoq cheki 80×60 mm blankning pastki chetiga 2.1 mm qolguncha chiziladi — detal yorlig'ida ataylab qo'yilgan 4 mm zaxira qoidasi buzilgan.
-- [ ] ✅ `backend/app/services/labels.py:602-603` — The badge name's width trim only shrinks the LAST line, so a single word wider than 72 mm on the first line is drawn at full width and bleeds off both
+- [x] ✅ `backend/app/services/labels.py:490-491` — Qadoq cheki 80×60 mm blankning pastki chetiga 2.1 mm qolguncha chiziladi — detal yorlig'ida ataylab qo'yilgan 4 mm zaxira qoidasi buzilgan.
+- [x] ✅ `backend/app/services/labels.py:602-603` — The badge name's width trim only shrinks the LAST line, so a single word wider than 72 mm on the first line is drawn at full width and bleeds off both
 - [x] ✅ `backend/app/services/labels.py:604` — Beyjikda ism kesilganini aniqlash tekshiruvi qator ICHIDAGI bo'shliqlarni sanaydi, shuning uchun qisqa dum tashlab yuborilganda "…" qo'yilmaydi va ism
 - [x] ✅ `bridge-agent/README.md:47` — README navbatda chek turganda update hech qachon almashtirmaydi deb qat'iy aytadi; kodda esa kutish 3600 soniya (1 soat) bilan cheklangan — tiqilib qo
 - [x] ✅ `bridge-agent/agent.py:415` — _exchange serverning `detail` maydonini doim matn deb hisoblaydi; 4 belgidan qisqa kod kiritilganda FastAPI 422 qaytaradi va `detail` — lug'atlar RO'Y
@@ -223,8 +223,8 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `docs/10-giblab-reference.md:767` — Nima: For double-layer parts docs describe only the surface-bore depth rule; the code applies a different rule to milling depth and no rule at all to 
 - [x] ✅ `docs/10-giblab-reference.md:769` — Nima: Docs state the panel-edge trim always exports as a raw path with `ToolOffset=右`; the code applies that rule only when `ms.c == "2"`.
 - [x] ✅ `frontend/README.md:109` — Nima: README'ning `src/lib` tavsifi 7 fayldan faqat 4 tasini sanaydi — `guards.ts`, `queryClient.ts`, `scxDir.ts` tushib qolgan; `src/utils.ts` esa st
-- [ ] ✅ `frontend/src/components/Clients/AddClient.tsx:85` — The form is reset only on success, so closing the dialog mid-typing and reopening shows the abandoned draft plus its stale validation errors.
-- [ ] ✅ `frontend/src/components/Clients/ClientCombobox.tsx:38` — Closing the popover without selecting leaves `search`/`active` populated, so the next open shows the previous query's filtered list.
+- [x] ✅ `frontend/src/components/Clients/AddClient.tsx:85` — The form is reset only on success, so closing the dialog mid-typing and reopening shows the abandoned draft plus its stale validation errors.
+- [x] ✅ `frontend/src/components/Clients/ClientCombobox.tsx:38` — Closing the popover without selecting leaves `search`/`active` populated, so the next open shows the previous query's filtered list.
 - [ ] ✅ `frontend/src/components/Clients/ClientCombobox.tsx:93` — Keyboard navigation never scrolls the active option into view, so arrowing past the 5th result moves an invisible highlight inside the `max-h-64` list
 - [x] ✅ `frontend/src/components/Common/ErrorScreen.tsx:20-22` — The "Bosh sahifaga" control nests a `<button>` inside an `<a>` (interactive content inside an anchor), instead of the `<Button asChild><Link>` pattern
 - [x] ✅ `frontend/src/components/Common/TablePagination.tsx:9` — Nima: docs/06 says the range label sits on the left and the controls on the right; the whole block is right-aligned (`justify-end`).

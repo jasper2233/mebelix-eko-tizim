@@ -7,8 +7,8 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import defer
 
 from app.api.deps import CurrentUser, SessionDep
+from app.api.routes.orders._common import _get_visible_order
 from app.core.config import TASHKENT_TZ
-from app.crud import crud_orders
 from app.models import ORDER_FAT_COLUMNS, PART_FAT_COLUMNS, PRIORITY_RANK, Order, Part, PartRoute, Post, Product, Scan
 from app.models.enums import OrderStatus
 from app.schemas.tablo import StageAgg, TabloMatrix, TabloOrderDetail, TabloOrderRow, TabloPartRow, TabloPostCol
@@ -161,9 +161,11 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
 
 
 @router.get("/orders/{order_id}", response_model=TabloOrderDetail, operation_id="read_tablo_order")
-async def read_tablo_order(db: SessionDep, _: CurrentUser, order_id: int) -> TabloOrderDetail:
+async def read_tablo_order(db: SessionDep, current_user: CurrentUser, order_id: int) -> TabloOrderDetail:
     """Drill-down (TZ 9.5): SONI NAZORATI — every part × stage."""
-    order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
+    # Reestrdagi o'qish yo'li bilan bir xil ko'rinuvchanlik: texnologdan
+    # yashiringan buyurtma (DRAFT/CANCELLED) bu yerdan ham ochilmasin.
+    order = await _get_visible_order(db, current_user, order_id)
     posts = {p.id: p for p in (await db.execute(select(Post))).scalars()}
     rows = (
         await db.execute(

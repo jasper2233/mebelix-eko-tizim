@@ -144,11 +144,16 @@ async def download_order_scx_zip(db: SessionDep, current_user: StaffReadUser, or
         raise NotFoundException("SCX fayllar topilmadi.")
     root = upload_root()
     buf = io.BytesIO()
+    written = 0
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for row in rows:
             full_path = root / row.path
             if full_path.is_file():
                 zf.write(full_path, row.filename)
+                written += 1
+    # DB'da qator bor, lekin diskda fayl yo'q — bo'sh arxiv o'rniga aniq xato.
+    if not written:
+        raise NotFoundException("SCX fayllar diskda topilmadi.")
     return Response(
         content=buf.getvalue(),
         media_type="application/zip",

@@ -342,7 +342,7 @@ Tranzaksiya chegarasi: `delete` — sinfdagi **yagona o'zi commit qiladigan** me
 
 `BaseCRUD[Order]` + bitta maxsus metod:
 
-- `next_number(db) -> str` — joriy yil ichida ketma-ket buyurtma raqami (TZ 6.2.2): `B-{yil}-` prefiksli qatorlar orasidan raqam suffiksi (`split_part(number, '-', 3)`) **INTEGER ga cast qilinib** `MAX` olinadi, +1, `B-2026-001` formatida (`{seq:03d}`) qaytariladi. Cast ataylab: satr (leksikografik) max 999 dan keyin `"B-2026-999" > "B-2026-1000"` bo'lib raqamlashni sindirardi.
+- `next_number(db) -> str` — joriy yil ichida ketma-ket buyurtma raqami (TZ 6.2.2): `B-{yil}-` prefiksli qatorlar orasidan raqam suffiksi (`split_part(number, '-', 3)`) **INTEGER ga cast qilinib** `MAX` olinadi, +1, `B-2026-001` formatida (`{seq:03d}`) qaytariladi. **Yil `Asia/Tashkent` bo'yicha** (`TASHKENT_TZ`) — UTC yili 1-yanvar 00:00-05:00 mahalliy oralig'ida hali o'tgan yilni berardi. Cast ataylab: satr (leksikografik) max 999 dan keyin `"B-2026-999" > "B-2026-1000"` bo'lib raqamlashni sindirardi.
 
 Singleton: `crud_orders = CRUDOrder(Order)`.
 

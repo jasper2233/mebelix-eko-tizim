@@ -506,9 +506,11 @@ def render_pachka_label_png(d: PachkaLabelData) -> bytes:
         text(5, 39.5, "Loyiha", 2.9)
         text(5, 43, d.project_name[:18], 4.4, bold=True)
 
-    text(5, 50.5, "Detallar soni", 2.9)
-    text(5, 54, str(d.part_count), 4.4, bold=True)
-    text(46, 55.5, d.printed_at.strftime("%Y.%m.%d %H:%M"), 2.5, anchor="ra")
+    # Pastki bloklar 4 mm zaxirada tugaydi (detal yorlig'idagi qoida): termal
+    # chetda yeyilish bo'lgani uchun 55.5 mm dan pastga yozilmaydi.
+    text(5, 48, "Detallar soni", 2.9)
+    text(5, 51.5, str(d.part_count), 4.4, bold=True)
+    text(46, 53, d.printed_at.strftime("%Y.%m.%d %H:%M"), 2.5, anchor="ra")
 
     # QR o'ngda, katta: TMO va yuklashda uzoqdan skanerlanadi
     qr = qrcode.make(d.code, box_size=2, border=0)
@@ -619,11 +621,20 @@ def render_badge_png(d: BadgeLabelData) -> bytes:
         lines.append(current)
     if not lines:
         lines = [d.full_name[:20]]
-    while len(lines[-1]) > 1 and draw.textlength(lines[-1], font=name_font) > max_px:
-        lines[-1] = lines[-1][:-1]
-    # Bo'shliqlar IKKALA tomonda ham olib tashlanadi: aks holda qator ichidagi
-    # bo'shliqlar chapni shishirib, qisqa dum tashlanganini yashirib qo'yadi.
-    if len("".join(lines).replace(" ", "")) < len("".join(d.full_name.split())):
+    # Uchinchi qatorga tushgan so'zlar tashlangan (bo'shliqlar IKKALA tomonda
+    # olib tashlanadi, aks holda qator ichidagi bo'shliqlar qisqa dum
+    # tashlanganini yashirib qo'yadi) — qisqartirishdan OLDIN hisoblanadi.
+    dropped = len("".join(lines).replace(" ", "")) < len("".join(d.full_name.split()))
+    # HAR QATOR alohida kesiladi: birinchi so'zning o'zi 72mm dan uzun bo'lsa
+    # o'rash uni baribir qabul qiladi. "…" kesilgan qatorning O'ZIGA qo'shiladi
+    # va u bilan birga o'lchanadi — aks holda belgi butun ism kesilgandek ko'rinadi.
+    for i, line in enumerate(lines):
+        if draw.textlength(line, font=name_font) <= max_px:
+            continue
+        while len(line) > 1 and draw.textlength(f"{line}…", font=name_font) > max_px:
+            line = line[:-1]
+        lines[i] = line.rstrip() + "…"
+    if dropped and not lines[-1].endswith("…"):
         lines[-1] = lines[-1].rstrip() + "…"
 
     # Ism bloki PASTGA tekislanadi (y=20mm): bir qatorli ham, ikki qatorli ham

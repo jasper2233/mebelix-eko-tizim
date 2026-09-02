@@ -53,7 +53,8 @@ _KIND_LABELS = {"sheet": "List", "band": "Kromka", "hardware": "Furnitura"}
 def _range(date_from: date | None, date_to: date | None) -> tuple[datetime, datetime]:
     """Default: last 30 days. Bounds are inclusive local (Asia/Tashkent) days."""
     end_day = date_to or datetime.now(TASHKENT_TZ).date()
-    start_day = date_from or (end_day - timedelta(days=30))
+    # 29, 30 emas: chegaralar inklyuziv, ya'ni end_day - 29 … end_day = aynan 30 kalendar kun.
+    start_day = date_from or (end_day - timedelta(days=29))
     start = datetime.combine(start_day, time.min, tzinfo=TASHKENT_TZ)
     end = datetime.combine(end_day, time.max, tzinfo=TASHKENT_TZ)
     return start, end

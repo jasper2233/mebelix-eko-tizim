@@ -48,16 +48,24 @@ export function ClientCombobox({
   // biome-ignore lint/correctness/useExhaustiveDependencies: yangi natijada belgilangan qator boshiga qaytsin
   useEffect(() => setActive(0), [debounced])
 
+  // Yopilganda qidiruvni tozalaymiz — aks holda keyingi ochilishda eski filtr ko'rinadi
+  const changeOpen = (v: boolean) => {
+    setOpen(v)
+    if (!v) {
+      setSearch("")
+      setActive(0)
+    }
+  }
+
   const select = (id: string, name: string) => {
     onChange(id)
     setLabel(name)
-    setOpen(false)
-    setSearch("")
+    changeOpen(false)
   }
 
   return (
     // modal: Dialog ichida ochilganda pointer-events/scroll qulfi to'g'ri ishlashi uchun
-    <Popover open={open} onOpenChange={setOpen} modal>
+    <Popover open={open} onOpenChange={changeOpen} modal>
       <PopoverTrigger asChild>
         <Button
           type="button"

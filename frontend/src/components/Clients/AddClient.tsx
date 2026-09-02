@@ -105,6 +105,8 @@ export function AddClient({
           if (!v) onClose?.()
         } else {
           setOpen(v)
+          // Yopilganda qoralama va onBlur xatolari qolib ketmasin
+          if (!v) form.reset()
         }
       }}
     >
