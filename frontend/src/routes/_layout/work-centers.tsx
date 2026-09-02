@@ -96,64 +96,58 @@ function WorkCentersPage() {
       ) : isError ? (
         <QueryError onRetry={() => refetch()} />
       ) : (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ish markazi</TableHead>
-                <TableHead>Post</TableHead>
-                <TableHead>Holat</TableHead>
-                {admin && <TableHead className="w-20" />}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sorted.length ? (
-                sorted.map((m) => {
-                  const post = postById.get(m.post_id)
-                  return (
-                    <TableRow key={m.id}>
-                      <TableCell className="font-medium">{m.name}</TableCell>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Ish markazi</TableHead>
+              <TableHead>Post</TableHead>
+              <TableHead>Holat</TableHead>
+              {admin && <TableHead className="w-20" />}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sorted.length ? (
+              sorted.map((m) => {
+                const post = postById.get(m.post_id)
+                return (
+                  <TableRow key={m.id}>
+                    <TableCell className="font-medium">{m.name}</TableCell>
+                    <TableCell>
+                      {post && <PostBadge code={post.code} />}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={m.status === "active" ? "default" : "outline"}
+                        className={STATUS_STYLE[m.status]}
+                      >
+                        {MACHINE_STATUS_LABELS[m.status]}
+                      </Badge>
+                    </TableCell>
+                    {admin && (
                       <TableCell>
-                        {post && <PostBadge code={post.code} />}
+                        <div className="flex justify-end gap-1">
+                          <RowAction
+                            icon={Pencil}
+                            title="Tahrirlash"
+                            onClick={() => setEditFor(m)}
+                          />
+                          <RowAction
+                            icon={Trash2}
+                            title="O'chirish"
+                            danger
+                            onClick={() => setDeleteFor(m)}
+                          />
+                        </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            m.status === "active" ? "default" : "outline"
-                          }
-                          className={STATUS_STYLE[m.status]}
-                        >
-                          {MACHINE_STATUS_LABELS[m.status]}
-                        </Badge>
-                      </TableCell>
-                      {admin && (
-                        <TableCell>
-                          <div className="flex justify-end gap-1">
-                            <RowAction
-                              icon={Pencil}
-                              title="Tahrirlash"
-                              onClick={() => setEditFor(m)}
-                            />
-                            <RowAction
-                              icon={Trash2}
-                              title="O'chirish"
-                              danger
-                              onClick={() => setDeleteFor(m)}
-                            />
-                          </div>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  )
-                })
-              ) : (
-                <EmptyRow colSpan={admin ? 5 : 4}>
-                  Ish markazlari yo'q.
-                </EmptyRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                    )}
+                  </TableRow>
+                )
+              })
+            ) : (
+              <EmptyRow colSpan={admin ? 5 : 4}>Ish markazlari yo'q.</EmptyRow>
+            )}
+          </TableBody>
+        </Table>
       )}
       {(adding || editFor) && (
         <MachineDialog

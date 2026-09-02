@@ -2,6 +2,11 @@
 
 import type { UserRole } from "@/client"
 
+/** Beyjik QR'i = xodim UUID'i. Backend bilan umumiy shartnoma — bitta nusxa:
+ *  uni ikkala skan tinglagichi (`useBadgeScan`, `useTerminalScan`) shu yerdan oladi. */
+export const BADGE_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export const ORDER_STATUS_LABELS: Record<string, string> = {
   draft: "QORALAMA",
   technical_review: "TEXNOLOGDA",

@@ -6,7 +6,6 @@
 
 import { useQuery } from "@tanstack/react-query"
 import {
-  ArrowLeft,
   FolderCog,
   HardDriveDownload,
   Map as MapIcon,
@@ -16,7 +15,9 @@ import { useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
 
+import type { PrisadkaInstance, PrisadkaPartRow } from "@/client"
 import { TerminalService } from "@/client"
+import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
 import { TBtn } from "@/components/Terminal/TBtn"
 import {
@@ -43,6 +44,11 @@ import {
   scxFileUrl,
 } from "@/lib/scxDir"
 import { cn } from "@/lib/utils"
+
+/** Bu nusxaga chek chiqarish mumkinmi — ROVER tugmasi va PRISADKA chipida
+ *  qoida bitta: hali bajarilmagan, cheki chiqmagan, marshruti arradan boshlanmagan */
+const canPrintInstance = (p: PrisadkaPartRow, i: PrisadkaInstance) =>
+  !i.done && !i.label_printed && !p.arra_route
 
 export function PrisadkaView({
   orderId,
@@ -138,7 +144,7 @@ export function PrisadkaView({
       if (dirSupported()) {
         // BIR MARTA so'raladi: saqlangan papka bo'lsa ruxsatini yangilaymiz,
         // bo'lmasa tanlash dialogi ochiladi va tanlov eslab qolinadi
-        let dir = await getSavedDir(true)
+        let dir = await getSavedDir()
         if (!dir) dir = await pickDir()
         if (!dir) return // bekor qilindi
         // Har proyekt o'z papkasiga: "1007 Yangibozor" kabi — fayllar aralashmaydi
@@ -191,8 +197,7 @@ export function PrisadkaView({
   // sensor uchun katta nishon, chip ichidagi mayda tugma emas)
   if (!showScx) {
     const sel = instRows.find((r) => r.i.instance_id === selectedId) ?? null
-    const canPrint =
-      !!sel && !sel.i.done && !sel.i.label_printed && !sel.p.arra_route
+    const canPrint = !!sel && canPrintInstance(sel.p, sel.i)
     const sorted = [...instRows].sort(
       (a, b) =>
         Number(a.i.done) - Number(b.i.done) ||
@@ -213,15 +218,12 @@ export function PrisadkaView({
         {/* Tugma terminalning umumiy chap ustunida, Qulflash tepasida turadi */}
         {toolbarContainer && createPortal(printBtn, toolbarContainer)}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border bg-white">
-          <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2">
-            <Button
-              variant="outline"
-              className="h-12 px-4 text-base font-bold"
-              onClick={onBack}
-            >
-              <ArrowLeft /> Orqaga
-            </Button>
-            <div className="text-lg font-black">{data?.order_number}</div>
+          <PostHeader
+            className="flex-wrap"
+            onBack={onBack}
+            orderNumber={data?.order_number}
+            projectName={data?.project_name}
+          >
             {/* Imo-ishora ko'rinmas — ISHORASI bir marta, jadval tepasida.
                 Har qatorga takrorlansa 15 marta bir xil yozuv bo'lardi va
                 holat badge'i bilan zid o'qilardi. */}
@@ -229,7 +231,7 @@ export function PrisadkaView({
               Chekni bekor qilish: qatorni bosib turing
             </div>
             <PostProgress className="ml-auto" done={totDone} total={totReq} />
-          </div>
+          </PostHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">
             <table className="w-full text-base">
               <thead className="sticky top-0 z-10 bg-muted/80 text-left text-xs uppercase tracking-wider text-muted-foreground backdrop-blur">
@@ -385,15 +387,12 @@ export function PrisadkaView({
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl border bg-white">
-      <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2">
-        <Button
-          variant="outline"
-          className="h-12 px-4 text-base font-bold"
-          onClick={onBack}
-        >
-          <ArrowLeft /> Orqaga
-        </Button>
-        <div className="text-lg font-black">{data?.order_number}</div>
+      <PostHeader
+        className="flex-wrap"
+        onBack={onBack}
+        orderNumber={data?.order_number}
+        projectName={data?.project_name}
+      >
         <PostProgress className="ml-auto" done={totDone} total={totReq} />
         <div className="flex items-center gap-2">
           {/* Sensorli ekranda hover yo'q — ikonka yoniga yozuv shart */}
@@ -424,7 +423,7 @@ export function PrisadkaView({
             )}
           </LoadingButton>
         </div>
-      </div>
+      </PostHeader>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <table className="w-full text-base">
           <thead className="sticky top-0 z-10 bg-muted/80 text-left text-xs uppercase tracking-wider text-muted-foreground backdrop-blur">
@@ -484,7 +483,7 @@ export function PrisadkaView({
                             >
                               {i.qr_text}
                               {i.done && " ✓"}
-                              {!i.done && !i.label_printed && !p.arra_route && (
+                              {canPrintInstance(p, i) && (
                                 <button
                                   type="button"
                                   title="QR chek chiqarish"
@@ -501,9 +500,7 @@ export function PrisadkaView({
                           ))}
                         </div>
                       ) : p.files.length ? (
-                        // Nusxasiz fayl ro'yxati — HOLATSIZ: `done_qrs` ham
-                        // `instances` ham bitta manbadan keladi (terminal.py),
-                        // ya'ni nusxa yo'q joyda tugagan QR ham bo'lmaydi.
+                        // Nusxasiz fayl ro'yxati — HOLATSIZ: nusxa yo'q bo'lsa holat ham yo'q, faqat nomlar
                         <div className="flex flex-wrap gap-1 text-muted-foreground">
                           {p.files.map((f) => (
                             <span

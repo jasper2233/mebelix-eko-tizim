@@ -52,9 +52,7 @@ export function projectFolder(name: string): string {
 }
 
 /** Saqlangan papka (ruxsati tekshirilgan holda); yo'q yoki ruxsat berilmagan — null */
-export async function getSavedDir(
-  requestIfNeeded: boolean,
-): Promise<FileSystemDirectoryHandle | null> {
+export async function getSavedDir(): Promise<FileSystemDirectoryHandle | null> {
   try {
     const h = await kvGet<FileSystemDirectoryHandle>(KEY)
     if (!h) return null
@@ -64,7 +62,7 @@ export async function getSavedDir(
       requestPermission: (o: { mode: string }) => Promise<string>
     }
     let perm = await perms.queryPermission({ mode: "readwrite" })
-    if (perm !== "granted" && requestIfNeeded)
+    if (perm !== "granted")
       perm = await perms.requestPermission({ mode: "readwrite" })
     return perm === "granted" ? h : null
   } catch {

@@ -9,7 +9,7 @@
 // (`/orders/{id}` sahifasidagi tugma, faqat TAYYOR holatdan).
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Check, PackageCheck } from "lucide-react"
+import { Check, PackageCheck } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
@@ -19,8 +19,8 @@ import {
   playSuccess,
   playWarning,
 } from "@/components/Terminal/audio"
+import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
-import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { detailMessage } from "@/utils"
@@ -122,24 +122,11 @@ export function TmoView({
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl border bg-white">
-      <div className="flex items-center gap-3 border-b px-4 py-2">
-        <Button
-          variant="outline"
-          className="h-12 px-4 text-base font-bold"
-          onClick={onBack}
-        >
-          <ArrowLeft /> Orqaga
-        </Button>
-        <div className="min-w-0">
-          <div className="truncate text-lg font-black">
-            {data?.order_number}
-          </div>
-          {data?.project_name && (
-            <div className="truncate text-xs text-muted-foreground">
-              {data.project_name}
-            </div>
-          )}
-        </div>
+      <PostHeader
+        onBack={onBack}
+        orderNumber={data?.order_number}
+        projectName={data?.project_name}
+      >
         {/* Uchta son ATAYLAB alohida: omborchi "nechtasi keldi" va "nechtasini
             men skanerladim" ni ajratishi kerak. Bitta progress bar faqat
             skanerlanganini ko'rsatardi — kelgan-u hali qabul qilinmagani
@@ -164,7 +151,7 @@ export function TmoView({
             TOPSHIRILGAN
           </span>
         )}
-      </div>
+      </PostHeader>
 
       <Tabs
         value={tab}

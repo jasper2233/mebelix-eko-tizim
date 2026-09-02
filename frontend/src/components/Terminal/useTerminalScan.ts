@@ -15,9 +15,7 @@ import { toast } from "sonner"
 
 import { TerminalService } from "@/client"
 import { playError, playWarning } from "@/components/Terminal/audio"
-
-const BADGE_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+import { BADGE_RE } from "@/lib/mes"
 
 /** Bir xil QR ikki marta o'qilganda: umumiy to'siq 2s, kromkada 5s.
  *  Kromkada tomon = skan, ya'ni skanerning takror o'qishi bitta tomonni ikki

@@ -196,122 +196,118 @@ function OrdersPage() {
       ) : isError ? (
         <QueryError onRetry={() => refetch()} />
       ) : (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Buyurtma</TableHead>
-                <TableHead>Kontragent</TableHead>
-                <SortHead
-                  sort={sort}
-                  onToggle={toggleSort}
-                  label="Ochilgan"
-                  k="created_at"
-                />
-                <SortHead
-                  sort={sort}
-                  onToggle={toggleSort}
-                  label="Topshirish sanasi"
-                  k="deadline"
-                />
-                <SortHead
-                  sort={sort}
-                  onToggle={toggleSort}
-                  label="Prioritet"
-                  k="priority"
-                />
-                <SortHead
-                  sort={sort}
-                  onToggle={toggleSort}
-                  label="Umumiy narx"
-                  k="amount"
-                  className="text-right"
-                />
-                <SortHead
-                  sort={sort}
-                  onToggle={toggleSort}
-                  label="Qoldiq to'lov"
-                  k="left"
-                  className="text-right"
-                />
-                <TableHead>Holat</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.length ? (
-                rows.map((o) => (
-                  <TableRow
-                    key={o.id}
-                    className="cursor-pointer"
-                    onClick={() =>
-                      navigate({
-                        to: "/orders/$orderId",
-                        params: { orderId: String(o.id) },
-                      })
-                    }
-                  >
-                    <TableCell>
-                      <Link
-                        to="/orders/$orderId"
-                        params={{ orderId: String(o.id) }}
-                        className="block font-semibold text-primary hover:underline"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {o.number}
-                        {o.project_name && (
-                          <span className="block max-w-[220px] truncate text-xs font-normal text-muted-foreground">
-                            {o.project_name}
-                          </span>
-                        )}
-                      </Link>
-                    </TableCell>
-                    <TableCell
-                      className="max-w-[240px] truncate"
-                      title={o.client_name}
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Buyurtma</TableHead>
+              <TableHead>Kontragent</TableHead>
+              <SortHead
+                sort={sort}
+                onToggle={toggleSort}
+                label="Ochilgan"
+                k="created_at"
+              />
+              <SortHead
+                sort={sort}
+                onToggle={toggleSort}
+                label="Topshirish sanasi"
+                k="deadline"
+              />
+              <SortHead
+                sort={sort}
+                onToggle={toggleSort}
+                label="Prioritet"
+                k="priority"
+              />
+              <SortHead
+                sort={sort}
+                onToggle={toggleSort}
+                label="Umumiy narx"
+                k="amount"
+                className="text-right"
+              />
+              <SortHead
+                sort={sort}
+                onToggle={toggleSort}
+                label="Qoldiq to'lov"
+                k="left"
+                className="text-right"
+              />
+              <TableHead>Holat</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length ? (
+              rows.map((o) => (
+                <TableRow
+                  key={o.id}
+                  className="cursor-pointer"
+                  onClick={() =>
+                    navigate({
+                      to: "/orders/$orderId",
+                      params: { orderId: String(o.id) },
+                    })
+                  }
+                >
+                  <TableCell>
+                    <Link
+                      to="/orders/$orderId"
+                      params={{ orderId: String(o.id) }}
+                      className="block font-semibold text-primary hover:underline"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      {o.client_name}
-                    </TableCell>
-                    <TableCell className="num text-muted-foreground">
-                      {formatDate(o.created_at)}
-                    </TableCell>
-                    <TableCell className="num">
-                      {formatDate(o.deadline)}
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={
-                          PRIORITY_TEXT_CLASSES[o.priority] ??
-                          "text-muted-foreground"
-                        }
-                      >
-                        {PRIORITY_LABELS[o.priority] ?? o.priority}
-                      </span>
-                    </TableCell>
-                    <TableCell className="num text-right">
-                      {formatMoney(o.amount)}
-                    </TableCell>
-                    <TableCell className="num text-right">
-                      {o.amount != null
-                        ? formatMoney(remainingPayment(o))
-                        : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={o.status} />
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <EmptyRow colSpan={8}>
-                  {debounced
-                    ? `"${debounced}" bo'yicha buyurtma topilmadi.`
-                    : status
-                      ? "Bu holatda buyurtma yo'q."
-                      : 'Hali buyurtma yo\'q — birinchisini "Yangi buyurtma" bilan oching.'}
-                </EmptyRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                      {o.number}
+                      {o.project_name && (
+                        <span className="block max-w-[220px] truncate text-xs font-normal text-muted-foreground">
+                          {o.project_name}
+                        </span>
+                      )}
+                    </Link>
+                  </TableCell>
+                  <TableCell
+                    className="max-w-[240px] truncate"
+                    title={o.client_name}
+                  >
+                    {o.client_name}
+                  </TableCell>
+                  <TableCell className="num text-muted-foreground">
+                    {formatDate(o.created_at)}
+                  </TableCell>
+                  <TableCell className="num">
+                    {formatDate(o.deadline)}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={
+                        PRIORITY_TEXT_CLASSES[o.priority] ??
+                        "text-muted-foreground"
+                      }
+                    >
+                      {PRIORITY_LABELS[o.priority] ?? o.priority}
+                    </span>
+                  </TableCell>
+                  <TableCell className="num text-right">
+                    {formatMoney(o.amount)}
+                  </TableCell>
+                  <TableCell className="num text-right">
+                    {o.amount != null ? formatMoney(remainingPayment(o)) : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={o.status} />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <EmptyRow colSpan={8}>
+                {debounced
+                  ? `"${debounced}" bo'yicha buyurtma topilmadi.`
+                  : status
+                    ? "Bu holatda buyurtma yo'q."
+                    : 'Hali buyurtma yo\'q — birinchisini "Yangi buyurtma" bilan oching.'}
+              </EmptyRow>
+            )}
+          </TableBody>
+        </Table>
       )}
     </div>
   )

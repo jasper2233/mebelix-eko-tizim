@@ -543,10 +543,6 @@ export type CutmapBore = {
      * D
      */
     d: number;
-    /**
-     * Thru
-     */
-    thru: boolean;
 };
 
 /**
@@ -589,10 +585,6 @@ export type CutmapCell = {
      * Name
      */
     name: string;
-    /**
-     * Qty
-     */
-    qty: number;
     /**
      * Waste
      */
@@ -701,10 +693,6 @@ export type CutmapEdgeBore = {
      * Dp
      */
     dp: number;
-    /**
-     * Thru
-     */
-    thru: boolean;
 };
 
 /**
@@ -784,10 +772,6 @@ export type CutmapMaterial = {
      */
     name: string;
     /**
-     * Thick
-     */
-    thick?: number | null;
-    /**
      * Kerf
      */
     kerf?: number | null;
@@ -803,14 +787,6 @@ export type CutmapMaterial = {
      * Fill
      */
     fill?: number | null;
-    /**
-     * Kd
-     */
-    kd?: number | null;
-    /**
-     * Kk
-     */
-    kk?: number | null;
     /**
      * Ko
      */
@@ -1468,19 +1444,9 @@ export type MatrixPart = {
      */
     thickness: number | null;
     /**
-     * Label Num
-     */
-    label_num: number | null;
-    /**
      * Edges
      */
     edges: {
-        [key: string]: unknown;
-    };
-    /**
-     * Xnc Summary
-     */
-    xnc_summary: {
         [key: string]: unknown;
     };
     /**
@@ -2383,10 +2349,6 @@ export type PrisadkaPartRow = {
      */
     arra_route: boolean;
     /**
-     * Done Qrs
-     */
-    done_qrs?: Array<string>;
-    /**
      * Instances
      */
     instances?: Array<PrisadkaInstance>;
@@ -2582,14 +2544,6 @@ export type ScanResult = {
      * Qoldiq
      */
     qoldiq: number;
-    /**
-     * Scx File Ids
-     */
-    scx_file_ids?: Array<number>;
-    /**
-     * Project Name
-     */
-    project_name?: string | null;
     /**
      * Order Stage Completed
      */
@@ -4079,36 +4033,6 @@ export type DeleteEmployeeResponses = {
 
 export type DeleteEmployeeResponse = DeleteEmployeeResponses[keyof DeleteEmployeeResponses];
 
-export type ReadEmployeeData = {
-    body?: never;
-    path: {
-        /**
-         * Employee Id
-         */
-        employee_id: number;
-    };
-    query?: never;
-    url: '/api/v1/employees/{employee_id}';
-};
-
-export type ReadEmployeeErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type ReadEmployeeError = ReadEmployeeErrors[keyof ReadEmployeeErrors];
-
-export type ReadEmployeeResponses = {
-    /**
-     * Successful Response
-     */
-    200: EmployeeRead;
-};
-
-export type ReadEmployeeResponse = ReadEmployeeResponses[keyof ReadEmployeeResponses];
-
 export type UpdateEmployeeData = {
     body: EmployeeUpdate;
     path: {
@@ -4276,36 +4200,6 @@ export type DeleteMachineResponses = {
 };
 
 export type DeleteMachineResponse = DeleteMachineResponses[keyof DeleteMachineResponses];
-
-export type ReadMachineData = {
-    body?: never;
-    path: {
-        /**
-         * Machine Id
-         */
-        machine_id: number;
-    };
-    query?: never;
-    url: '/api/v1/machines/{machine_id}';
-};
-
-export type ReadMachineErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type ReadMachineError = ReadMachineErrors[keyof ReadMachineErrors];
-
-export type ReadMachineResponses = {
-    /**
-     * Successful Response
-     */
-    200: MachineRead;
-};
-
-export type ReadMachineResponse = ReadMachineResponses[keyof ReadMachineResponses];
 
 export type UpdateMachineData = {
     body: MachineUpdate;

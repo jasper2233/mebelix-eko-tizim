@@ -5,13 +5,12 @@
 // tugamagan detallar. Xato skan BEKOR QILISH (60s) bilan qaytariladi.
 
 import { useQuery } from "@tanstack/react-query"
-import { ArrowLeft } from "lucide-react"
 import { useEffect, useRef } from "react"
 
 import { TerminalService } from "@/client"
 import { OperationChips } from "@/components/Common/OperationChips"
+import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
-import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useScanFlash } from "@/hooks/useScanFlash"
 import { formatSize } from "@/lib/mes"
@@ -122,17 +121,9 @@ export function KromkaView({
     <div className="flex h-full min-h-0 gap-3">
       {/* CHAP: arradan kelgan detallar, progress joyida ko'rinadi */}
       <div className="flex min-w-0 flex-1 flex-col rounded-xl border bg-white">
-        <div className="flex items-center gap-3 border-b px-4 py-2">
-          <Button
-            variant="outline"
-            className="h-12 px-4 text-base font-bold"
-            onClick={onBack}
-          >
-            <ArrowLeft /> Orqaga
-          </Button>
-          <div className="text-lg font-black">{data?.order_number}</div>
+        <PostHeader onBack={onBack} orderNumber={data?.order_number}>
           <PostProgress className="ml-auto" done={totDone} total={totReq} />
-        </div>
+        </PostHeader>
         <div className="min-h-0 flex-1 overflow-y-auto">
           <table className="w-full text-base">
             <thead className="sticky top-0 z-10 bg-muted/80 text-left text-xs uppercase tracking-wider text-muted-foreground backdrop-blur">

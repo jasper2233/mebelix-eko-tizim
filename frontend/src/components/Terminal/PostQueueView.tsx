@@ -7,12 +7,12 @@
 // mumkin bo'lganlari chiqadi; skan qilinganda qator "Bajarilgan" ga o'tadi.
 
 import { useQuery } from "@tanstack/react-query"
-import { ArrowLeft, Check } from "lucide-react"
+import { Check } from "lucide-react"
 
 import { TerminalService } from "@/client"
 import { OperationChips } from "@/components/Common/OperationChips"
+import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
-import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatSize } from "@/lib/mes"
 
@@ -53,30 +53,17 @@ export function PostQueueView({
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl border bg-white">
-      <div className="flex items-center gap-3 border-b px-4 py-2">
-        <Button
-          variant="outline"
-          className="h-12 px-4 text-base font-bold"
-          onClick={onBack}
-        >
-          <ArrowLeft /> Orqaga
-        </Button>
-        <div className="min-w-0">
-          <div className="truncate text-lg font-black">
-            {data?.order_number}
-          </div>
-          {data?.project_name && (
-            <div className="truncate text-xs text-muted-foreground">
-              {data.project_name}
-            </div>
-          )}
-        </div>
+      <PostHeader
+        onBack={onBack}
+        orderNumber={data?.order_number}
+        projectName={data?.project_name}
+      >
         <PostProgress
           className="ml-auto"
           done={done.length}
           total={rows.length}
         />
-      </div>
+      </PostHeader>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="border-b px-4 py-2 text-base font-bold">

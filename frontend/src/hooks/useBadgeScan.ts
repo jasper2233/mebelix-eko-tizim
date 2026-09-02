@@ -11,8 +11,7 @@
 
 import { useEffect, useRef } from "react"
 
-const BADGE_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+import { BADGE_RE } from "@/lib/mes"
 
 /** Belgilar orasidagi tanaffus shundan oshsa — bu odam terayapti, bufer tozalanadi. */
 const GAP_MS = 120
