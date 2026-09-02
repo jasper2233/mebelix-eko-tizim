@@ -141,7 +141,7 @@ Asosiy nuqtalar:
   prod'da `""` (bo'sh — SDK yo'llari allaqachon `/api/v1` bilan boshlanadi,
   so'rovlar same-origin, Caddy orqali). Ikkinchi build-arg: `VITE_API_TIMEOUT_MS`.
 - **WebSocket qatlami** (`app/api/routes/ws.py`): `/api/v1/ws/events` — brauzer
-  real-time kanali (JWT cookie yoki `?token=` bilan auth, rolga qarab
+  real-time kanali (JWT — `Authorization: Bearer` header yoki access cookie bilan auth, `?token=` qabul qilinmaydi, rolga qarab
   terminal/tablo/dashboard scope, `ws_manager` fan-out); `/api/v1/ws/bridge` —
   bridge-agent uplink (per-agent token `Authorization: Bearer` headerda,
   `bridge_agent.token_hash` bo'yicha sha256 qidiruv; legacy umumiy `BRIDGE_TOKEN`

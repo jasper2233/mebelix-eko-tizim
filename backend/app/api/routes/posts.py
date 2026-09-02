@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from app.api.deps import AdminUser, CurrentUser, SessionDep, client_ip
+from app.api.routes._shared import drop_forbidden_nulls
 from app.crud import crud_posts, log_action
 from app.models import Post
 from app.schemas.posts import PostRead, PostUpdate
@@ -24,7 +25,8 @@ async def update_post(
     db: SessionDep, current_user: AdminUser, post_id: int, body: PostUpdate, request: Request
 ) -> Post:
     post = await crud_posts.get_or_404(db, "Post topilmadi.", id=post_id)
-    for field, value in body.model_dump(exclude_unset=True).items():
+    # Post'da nullable ustun yo'q: aniq `null` NOT NULL ustunga tushmasin (500 o'rniga no-op).
+    for field, value in drop_forbidden_nulls(body.model_dump(exclude_unset=True)).items():
         setattr(post, field, value)
     log_action(
         db,

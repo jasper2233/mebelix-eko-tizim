@@ -165,8 +165,8 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `Makefile:56-58` — `make format` runs ruff from the repo root, so it reformats files no linter in the project owns — `docs/*.md` python blocks and `bridge-agent/agent.py
 - [x] ✅ `docker-compose.prod.yml:56-62 | .env.example:60-66` — XFF ishonch diapazoni ikki joyda mustaqil belgilangan: .env dagi FORWARDED_ALLOW_IPS (backend/app/core/setup.py:174 da ProxyHeadersMiddleware shuni o'
 - [ ] ✅ `scripts/deploy.sh:102` — The auto-rollback path re-runs `up -d` with the old image TAG but never re-runs `caddy reload`, so a rolled-back stack keeps the new Caddyfile that wa
-- [ ] ✅ `scripts/deploy.sh:19` — `CADDY_HTTP_BIND` is read from `.env` without stripping surrounding quotes, while `SITE_ADDRESS` two lines below is explicitly de-quoted — a quoted bi
-- [ ] ✅ `scripts/setup.sh:1-3 & scripts/generate-client.sh:1-6` — `setup.sh` and `generate-client.sh` assume the caller's cwd is the repo root, while their two siblings `deploy.sh` and `backup.sh` both normalise cwd 
+- [x] ✅ `scripts/deploy.sh:19` — `CADDY_HTTP_BIND` is read from `.env` without stripping surrounding quotes, while `SITE_ADDRESS` two lines below is explicitly de-quoted — a quoted bi
+- [x] ✅ `scripts/setup.sh:1-3 & scripts/generate-client.sh:1-6` — `setup.sh` and `generate-client.sh` assume the caller's cwd is the repo root, while their two siblings `deploy.sh` and `backup.sh` both normalise cwd 
 
 ## Past (92)
 
@@ -180,16 +180,16 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `backend/app/api/routes/pachka.py:404-433` — Qadoq cheki COMMITDAN KEYIN navbatga qo'yiladi va navbat yo'q bo'lsa jimgina tashlab yuboriladi — qadoq CLOSED bo'lib qoladi, QR cheki esa yo'q va uni
 - [ ] ✅ `backend/app/api/routes/pachka.py:48,67; backend/app/api/routes/terminal.py:803; backend/app/api/routes/orders/files.py:289` — Three domain helpers live inside route modules and are imported across routers — including a name-mangled private one — so `tmo.py` and `terminal.py` 
 - [ ] ✅ `backend/app/api/routes/pachka.py:57,320; backend/app/api/routes/tmo.py:45,260; backend/app/api/routes/scans.py:69,81` — `ScanRejected` ni 422 ga o'girish oltita joyda qo'lda yozilgan, holbuki terminal.py da aynan shu maqsad uchun `_scan_error()` helperi bor va hujjatda 
-- [ ] ✅ `backend/app/api/routes/posts.py:27` — PATCH /posts/{id} has the same explicit-null hole: `{"name": null}` / `{"order_index": null}` / `{"requires_assignment_choice": null}` are written to 
+- [x] ✅ `backend/app/api/routes/posts.py:27` — PATCH /posts/{id} has the same explicit-null hole: `{"name": null}` / `{"order_index": null}` / `{"requires_assignment_choice": null}` are written to 
 - [ ] ✅ `backend/app/api/routes/reports.py:253,261` — Material agregatsiyasi barqaror `code` ni butunlay e'tiborsiz qoldirib, faqat NOM bo'yicha guruhlaydi; `orders` esa buyurtmalarni emas, JSONB YOZUVLAR
 - [ ] ✅ `backend/app/api/routes/reports.py:53` — Sukut oralig'i 30 emas, 31 kun: chegaralar inklyuziv bo'lgani uchun `today-30 … today` 31 kalendar kunni qamraydi.
 - [ ] ✅ `backend/app/api/routes/tablo.py:164` — TABLO drill-down `_hidden_statuses` ni umuman qo'llamaydi — texnolog `/tablo/orders/{id}` orqali DRAFT/CANCELLED buyurtmaning raqami, loyiha nomi va d
-- [ ] ✅ `backend/app/api/routes/terminal.py:132` — `read_terminal_context` agentni tartibsiz `.first()` bilan tanlaydi; `printer_agent` xuddi shu nuqson uchun ataylab deterministik tartib qo'ygan — bit
-- [ ] ✅ `backend/app/api/routes/tmo.py:221` — Qadoq QR'i registrga sezgir bo'lmagan shart bilan aniqlanadi, lekin bazadan registrga SEZGIR qidiriladi: kichik harfli `pk-...` qadoq shoxiga kiradi v
-- [ ] ✅ `backend/app/api/routes/users.py:237-239` — `delete_user` fetches the target before checking permission, so any logged-in non-superuser can enumerate which user ids exist (404 vs 403).
-- [ ] ✅ `backend/app/api/routes/ws.py:42-43` — /ws/events accepts the access token as a query parameter, which lands in proxy/access logs — the exact leak the sibling /ws/bridge endpoint was change
+- [x] ✅ `backend/app/api/routes/terminal.py:132` — `read_terminal_context` agentni tartibsiz `.first()` bilan tanlaydi; `printer_agent` xuddi shu nuqson uchun ataylab deterministik tartib qo'ygan — bit
+- [x] ✅ `backend/app/api/routes/tmo.py:221` — Qadoq QR'i registrga sezgir bo'lmagan shart bilan aniqlanadi, lekin bazadan registrga SEZGIR qidiriladi: kichik harfli `pk-...` qadoq shoxiga kiradi v
+- [x] ✅ `backend/app/api/routes/users.py:237-239` — `delete_user` fetches the target before checking permission, so any logged-in non-superuser can enumerate which user ids exist (404 vs 403).
+- [x] ✅ `backend/app/api/routes/ws.py:42-43` — /ws/events accepts the access token as a query parameter, which lands in proxy/access logs — the exact leak the sibling /ws/bridge endpoint was change
 - [ ] ✅ `backend/app/api/routes/ws.py:73-82` — /ws/events tokenni FAQAT ulanish paytida tekshiradi va ulanish umrida qayta tekshirmaydi — logout (token_version bump) yoki tokenning muddati tugashi 
-- [ ] ✅ `backend/app/commands/create_first_superuser.py:21` — Idempotentlik faqat `phone` bo'yicha tekshiriladi; `ADMIN_PHONE` o'zgartirilsa eski admin qatoridagi username tufayli INSERT `ix_user_username` ni buz
+- [x] ✅ `backend/app/commands/create_first_superuser.py:21` — Idempotentlik faqat `phone` bo'yicha tekshiriladi; `ADMIN_PHONE` o'zgartirilsa eski admin qatoridagi username tufayli INSERT `ix_user_username` ni buz
 - [ ] ✅ `backend/app/core/config.py:160` — `upload_root()` resolves a relative `UPLOAD_DIR` against the process working directory, so the file-storage root (and the path-traversal baseline) mov
 - [ ] ✅ `backend/app/core/ws.py:82` — _dispatch iterates self.clients by index while awaiting a send, so a socket that disconnects mid-fan-out mutates the list under the loop and the next 
 - [ ] ✅ `backend/app/core/ws.py:85` — _dispatch sends to every matching socket sequentially with await, so one stalled client blocks delivery to all others and stalls the whole pub/sub lis

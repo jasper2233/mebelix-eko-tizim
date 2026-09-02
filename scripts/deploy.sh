@@ -19,9 +19,19 @@ cd "$(dirname "$0")/.."
 TAG="${TAG:?TAG majburiy (masalan, git sha)}"
 STABLE_FILE=".stable_tag"
 COMPOSE="docker compose -f docker-compose.prod.yml"
+
+# .env da qiymat qo'shtirnoqlangan bo'lishi mumkin (`.env.example` da shu
+# konventsiya bor) — docker ham, pydantic ham uni bemalol o'qiydi, ya'ni
+# qo'shtirnoq sezilmasdan shu yergacha yetib keladi va URL'ni buzardi.
+env_get() { # $1 = .env kaliti; o'rab turgan qo'shtirnoq/apostrofni oladi
+    grep -E "^$1=" .env 2>/dev/null | tail -1 | cut -d= -f2- |
+        sed -e 's/^"\([^"]*\)"[[:space:]]*\(#.*\)\{0,1\}$/\1/;t' \
+            -e "s/^'\([^']*\)'[[:space:]]*\(#.*\)\{0,1\}\$/\1/;t" \
+            -e 's/[[:space:]]\{1,\}#.*$//' || true
+}
 # Smoke manzili .env dagi CADDY_HTTP_BIND bilan bitta manbadan — qotirilgan 8200
 # port bind default 80 bo'lgan o'rnatishda har deployni yolg'ondan yiqitardi
-BIND="$(grep -E '^CADDY_HTTP_BIND=' .env 2>/dev/null | tail -1 | cut -d= -f2- || true)"
+BIND="$(env_get CADDY_HTTP_BIND)"
 BIND="${BIND:-80}"
 case "$BIND" in *:*) ;; *) BIND="127.0.0.1:${BIND}" ;; esac
 
@@ -33,9 +43,7 @@ case "$BIND" in *:*) ;; *) BIND="127.0.0.1:${BIND}" ;; esac
 # Domen holatida smoke SHU MASHINADA qoladi: `--resolve` domenni 127.0.0.1 ga
 # bog'laydi, SNI to'g'ri ketadi va Caddy o'z sayt blokini tanlaydi. Tashqi DNS
 # ham, internet ham aralashmaydi.
-SITE="$(grep -E '^SITE_ADDRESS=' .env 2>/dev/null | tail -1 | cut -d= -f2- || true)"
-SITE="${SITE#\"}"
-SITE="${SITE%\"}"
+SITE="$(env_get SITE_ADDRESS)"
 case "$SITE" in
     ""|:*)  # bo'sh yoki `:80` / `:8443` — oddiy HTTP, yo'naltirish yo'q
         SMOKE_URL="${SMOKE_URL:-http://${BIND}/api/v1/ready}"

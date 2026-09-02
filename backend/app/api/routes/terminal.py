@@ -124,11 +124,16 @@ async def read_terminal_context(db: SessionDep, user: TerminalUser, ctx: Termina
 
     agent = (
         await db.execute(
-            select(BridgeAgent.last_seen_at, BridgeAgent.can_print).where(
+            select(BridgeAgent.last_seen_at, BridgeAgent.can_print)
+            .where(
                 BridgeAgent.machine_id == machine.id,
                 BridgeAgent.token_hash.is_not(None),
                 BridgeAgent.is_deleted == False,  # noqa: E712
             )
+            # DETERMINISTIK, `printer_agent` bilan bir xil tartib: bitta ish
+            # markazida ikki agent qolgan eski ma'lumotda eng oxirgi ko'ringani
+            # tanlanadi, aks holda header o'lik agentning holatini ko'rsatardi.
+            .order_by(BridgeAgent.last_seen_at.desc().nullslast(), BridgeAgent.id.desc())
         )
     ).first()
     if agent is not None:

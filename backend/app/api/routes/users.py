@@ -227,9 +227,10 @@ async def delete_user(
     request: Request,
 ) -> Message:
     """Soft-delete a user. Allowed for the user themselves or any superuser."""
-    db_user = await crud_users.get_or_404(db, "Foydalanuvchi topilmadi", id=user_id)
+    # Tekshiruv AVVAL: aks holda begona odam 404 va 403 farqidan qaysi id borligini bilib olardi
     if not current_user.is_superuser and user_id != current_user.id:
-        raise ForbiddenException()
+        raise ForbiddenException("Sizda yetarli huquq yo'q.")
+    db_user = await crud_users.get_or_404(db, "Foydalanuvchi topilmadi", id=user_id)
     # Qurilma va post hisoblari ODAM EMAS: TERMINAL monoblokning o'zi, post rollari esa
     # beyjik bilan ochilgan smena qaysi hisob nomidan yozilishini hal qiladi
     # (`login._terminal_user`). O'chirilsa o'sha postda beyjik kirishi o'ladi.

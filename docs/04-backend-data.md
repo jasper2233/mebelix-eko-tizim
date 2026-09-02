@@ -484,7 +484,7 @@ Prestart ketma-ketligi (`scripts/prestart.sh`: `alembic upgrade head` → `creat
 Idempotent bootstrap skript — birinchi admin foydalanuvchini yaratadi (`python -m app.commands.create_first_superuser` yoki deploy scriptidan chaqiriladi):
 
 - Ma'lumotlar `settings` dan: `ADMIN_NAME`, `ADMIN_PHONE`, `ADMIN_USERNAME`, `ADMIN_PASSWORD` (`backend/app/core/config.py`).
-- **Tirik** (`is_deleted=False`) `phone` bo'yicha tekshiradi — soft-o'chirilgan eski admin qatori yangi seed'ni bloklamaydi (`select(User).filter_by(phone=phone, is_deleted=False)`): mavjud bo'lsa hech narsa qilmaydi (log: "already exists"), bo'lmasa `is_active=True, is_superuser=True` bilan yaratadi (`role` server default bo'yicha `admin`).
+- **Tirik** (`is_deleted=False`) qatorlar orasidan TELEFON YOKI USERNAME bo'yicha tekshiradi (`or_(User.phone == phone, User.username == username)`, `scalars().first()`) — soft-o'chirilgan eski admin qatori yangi seed'ni bloklamaydi, `ADMIN_PHONE` rotatsiyasida esa eski `admin` username'i `ix_user_username` ni buzmaydi: mavjud bo'lsa hech narsa qilmaydi (log: "already exists"), bo'lmasa `is_active=True, is_superuser=True` bilan yaratadi (`role` server default bo'yicha `admin`).
 - Session `app.core.db.local_session` dan olinadi; parol `await get_password_hash(...)` bilan xeshlanadi (funksiya async).
 - E'tibor: `crud_users.create` emas, to'g'ridan-to'g'ri `User(...)` konstruktor ishlatadi (schema-validatsiyasiz bootstrap yo'li).
 

@@ -39,8 +39,15 @@ _SCOPE_BY_ROLE = {
 
 
 @router.websocket("/ws/events")
-async def ws_events(websocket: WebSocket, token: str | None = None) -> None:
-    raw_token = token or websocket.cookies.get(ACCESS_COOKIE_NAME)
+async def ws_events(websocket: WebSocket) -> None:
+    """Brauzer klientlari (TZ 2.3).
+
+    Auth: token `Authorization` headeridan, bo'lmasa access cookie'dan olinadi.
+    `?token=` query param ATAYLAB qabul qilinmaydi — u server access-loglariga
+    tushib token'ni sizdirardi (ws/bridge ham aynan shu sababdan headerga o'tgan).
+    """
+    header_token = websocket.headers.get("authorization", "").removeprefix("Bearer ").strip()
+    raw_token = header_token or websocket.cookies.get(ACCESS_COOKIE_NAME)
     async with local_session() as db:
         user = await resolve_user(db, raw_token) if raw_token else None
         if user is None:

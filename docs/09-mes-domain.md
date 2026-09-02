@@ -361,7 +361,8 @@ Buyurtma STATUSI baribir to'g'ri yozilardi — yo'qolgani faqat WS xabari edi.
 
 ## 4. Real-time (`app/core/ws.py`, `api/routes/ws.py`)
 
-- `/ws/events` — brauzer klientlar: JWT (cookie yoki `?token=`); rol → scope (terminal/tablo/dashboard),
+- `/ws/events` — brauzer klientlar: JWT (`Authorization: Bearer` header yoki access cookie; `?token=`
+  query ATAYLAB qabul qilinmaydi — access-loglariga sizardi); rol → scope (terminal/tablo/dashboard),
   post/ish markazi bo'yicha filtrlash; `ping`→`pong` heartbeat.
 - Fan-out Redis pub/sub (`mes:events`) orqali — gunicorn workerlar orasida; pool lifespan'da doim
   ochiladi (flag yo'q), publish xato bersa lokal yetkazishga tushadi.

@@ -2,6 +2,7 @@
 
 set -e
 set -x
+cd "$(dirname "$0")/.."
 
 cd backend
 uv run python -c "import app.main; import json; print(json.dumps(app.main.app.openapi()))" > ../openapi.json
