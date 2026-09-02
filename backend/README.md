@@ -40,7 +40,7 @@ Swagger UI: http://localhost:8000/docs (faqat non-production; `ENVIRONMENT=local
 ## ARQ worker (yorliq chop etish navbati)
 
 ```bash
-make worker         # uv --project backend run arq app.core.worker.WorkerSettings
+make worker         # uv --project backend run arq app.core.worker.WorkerSettings --custom-log-dict app.core.logger.ARQ_LOG_DICT
 ```
 
 ## Lint, migratsiya

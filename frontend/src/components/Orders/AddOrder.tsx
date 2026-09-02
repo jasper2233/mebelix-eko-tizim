@@ -69,7 +69,15 @@ export function AddOrder() {
   })
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    // Yopilganda formani tozalaymiz — aks holda keyingi ochilishda ko'rinmas
+    // (combobox unmount bo'lgani uchun nomsiz) mijoz forma ichida qolib ketardi
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o)
+        if (!o) form.reset()
+      }}
+    >
       <DialogTrigger asChild>
         <Button>
           <Plus /> Yangi buyurtma

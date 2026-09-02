@@ -17,12 +17,16 @@ import { useScanFlash } from "@/hooks/useScanFlash"
 import { formatSize } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 
-// GibLab qirra kalitlari — kromkachi tiliga (yorliqdagi bilan bir xil qisqartma)
-const SIDE_LABELS: Record<string, string> = {
-  l: "Chap",
-  r: "O'ng",
-  t: "Tepa",
-  b: "Past",
+// Kromka belgilari (GibLab EL simvoli) — yorliqda o'lcham yonida chiqadigan
+// harf. Tomon NOMI ("Chap"/"Tepa") ataylab berilmaydi: yorliq eskizi UZUN
+// tomonni vertikal chizadi, ya'ni `l`/`r`/`t`/`b` ning eskizdagi joyi detal
+// o'lchamiga qarab almashadi (labels.py `burilgan`) — qat'iy jadval odatiy
+// uzun detalda (length > width) eskizga 90° zid nom berardi.
+const edgeSymbols = (edges: Record<string, unknown>): string => {
+  const syms = Object.values(edges).map(
+    (e) => (e as { symbol?: string | null } | null)?.symbol || "\u2022",
+  )
+  return [...new Set(syms)].join(" ")
 }
 
 export function KromkaView({
@@ -174,9 +178,7 @@ export function KromkaView({
                       <td className="px-4 py-3 text-sm">
                         <b>{p.sides} tomon</b>
                         <span className="ml-1.5 text-muted-foreground">
-                          {Object.keys(p.edges)
-                            .map((k) => SIDE_LABELS[k] ?? k)
-                            .join(", ")}
+                          {edgeSymbols(p.edges)}
                         </span>
                       </td>
                     )}

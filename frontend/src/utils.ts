@@ -36,73 +36,70 @@ function holatXabari(status: number | undefined): string {
   return "So'rov bajarilmadi — qayta urinib ko'ring"
 }
 
-export function extractErrorMessage(err: unknown): string {
-  if (err instanceof AxiosError) {
-    if (err.code === AxiosError.ERR_NETWORK) {
-      return "Tarmoq xatosi — internet aloqasini tekshiring"
-    }
-    if (err.code === AxiosError.ECONNABORTED) {
-      return "So'rov vaqti tugadi — qayta urinib ko'ring"
-    }
-  }
+/** Har qanday xatoni {code, message} ga keltiradi — YAGONA zinapoya.
+ *
+ * `code` skan/terminal oqimi uchun ALOHIDA kerak (E001 ga qarab ovoz).
+ * `structured` — server haqiqiy MES konvertini (`{code, message}`) qaytarganini
+ * bildiradi; faqat shunda kod matnga qo'shib ko'rsatiladi, chunki qolgan
+ * hollarda kod bu yerda o'ylab topilgan yorliq ("XATO", "TARMOQ").
+ */
+export function detailParts(err: unknown): {
+  code: string
+  message: string
+  structured: boolean
+} {
+  const plain = (code: string, message: string) => ({
+    code,
+    message,
+    structured: false,
+  })
 
-  const errDetail = errorDetail(err)
+  if (err instanceof AxiosError && err.code === AxiosError.ERR_NETWORK)
+    return plain("TARMOQ", "Tarmoq xatosi — internet aloqasini tekshiring")
+  // Muddat tugashi skan oqimida ham tutilishi shart: aks holda sekin tarmoqda
+  // "Xatolik yuz berdi" ko'rsatilardi.
+  if (err instanceof AxiosError && err.code === AxiosError.ECONNABORTED)
+    return plain("KUTISH", "So'rov vaqti tugadi — qayta urinib ko'ring")
+
+  const detail = errorDetail(err)
   // FastAPI (pydantic) validatsiya xatosi: [{msg, loc, ...}]. `msg` INGLIZCHA
-  // ("Field required", "String should have at least 3 characters") va pydantic
-  // versiyasi bilan o'zgaradi — uni operatorga ko'rsatishning ma'nosi yo'q.
-  // Adminda ham zarari kam: gap qaysi maydonda ekani formada ko'rinib turadi.
-  if (Array.isArray(errDetail) && errDetail.length > 0) {
-    return "Kiritilgan ma'lumot noto'g'ri — tekshirib qayta yuboring"
-  }
+  // ("Field required") va pydantic versiyasi bilan o'zgaradi — uni operatorga
+  // ko'rsatishning ma'nosi yo'q. Massiv ham `object`, shuning uchun tuzilmali
+  // konvertdan OLDIN tekshiriladi.
+  if (Array.isArray(detail) && detail.length > 0)
+    return plain(
+      "XATO",
+      "Kiritilgan ma'lumot noto'g'ri — tekshirib qayta yuboring",
+    )
   // MES tuzilmali xatosi: {code: "E003", message: "..."} — skan va terminal
   // oqimlari shu konvertni qaytaradi. Busiz toast'ga "[object Object]" tushardi.
-  if (errDetail && typeof errDetail === "object") {
-    const { code, message } = errDetail as { code?: string; message?: string }
-    if (message) return code ? `${code}: ${message}` : message
-    if (code) return code
-  }
-  if (typeof errDetail === "string" && errDetail) return errDetail
-  // Tanada `detail` yo'q (5xx, HTML sahifa, proxy xatosi)
-  if (err instanceof AxiosError) return holatXabari(err.response?.status)
-  return "Xatolik yuz berdi — qayta urinib ko'ring"
-}
-
-/** MES tuzilmali xato konverti {code, message} ni ajratadi (skan/terminal oqimi).
- * extractErrorMessage'dan farqi: code ALOHIDA kerak bo'lganda (E001 ga qarab ovoz). */
-export function detailParts(err: unknown): { code: string; message: string } {
-  if (err instanceof AxiosError && err.code === AxiosError.ERR_NETWORK) {
-    return {
-      code: "TARMOQ",
-      message: "Tarmoq xatosi — internet aloqasini tekshiring",
-    }
-  }
-  // Muddat tugashi ilgari FAQAT `extractErrorMessage` da tutilardi: skan oqimi
-  // shu funksiyadan o'tadi va sekin tarmoqda "Xatolik yuz berdi" ko'rsatardi.
-  if (err instanceof AxiosError && err.code === AxiosError.ECONNABORTED) {
-    return { code: "KUTISH", message: "Server javob bermadi — qayta urining" }
-  }
-  const detail = errorDetail(err)
-  // FastAPI validatsiya xatosi: [{msg, loc, ...}] — massiv ham `object`, shuning
-  // uchun u tuzilmali konvertdan OLDIN tekshiriladi.
-  if (Array.isArray(detail) && detail.length > 0)
-    return {
-      code: "XATO",
-      message: "Kiritilgan ma'lumot noto'g'ri — tekshirib qayta yuboring",
-    }
   if (typeof detail === "object" && detail) {
     const { code, message } = detail as { code?: string; message?: string }
-    return { code: code ?? "XATO", message: message ?? "" }
+    // Bo'sh obyekt konvert emas — zinapoya holat xabariga tushsin
+    if (code || message)
+      return {
+        code: code ?? "XATO",
+        message: message ?? "",
+        structured: typeof code === "string",
+      }
   }
-  if (typeof detail === "string" && detail)
-    return { code: "XATO", message: detail }
-  return {
-    code: "XATO",
-    message: holatXabari(
-      err instanceof AxiosError ? err.response?.status : undefined,
-    ),
-  }
+  if (typeof detail === "string" && detail) return plain("XATO", detail)
+  // Tanada `detail` yo'q (5xx, HTML sahifa, proxy xatosi)
+  if (err instanceof AxiosError)
+    return plain("XATO", holatXabari(err.response?.status))
+  // Umuman so'rov emas — komponentdagi JS xatosi
+  return plain("XATO", "Xatolik yuz berdi — qayta urinib ko'ring")
 }
 
+/** Toast va xato sahifalari uchun bir qatorlik matn — kodsiz, agar kod
+ * serverdan kelmagan bo'lsa. */
+export function extractErrorMessage(err: unknown): string {
+  const { code, message, structured } = detailParts(err)
+  if (!message) return code
+  return structured ? `${code}: ${message}` : message
+}
+
+/** Skan/terminal uchun matn — kod HAR DOIM oldinda (operator uni aytib beradi). */
 export function detailMessage(err: unknown): string {
   const { code, message } = detailParts(err)
   return message ? `${code}: ${message}` : code

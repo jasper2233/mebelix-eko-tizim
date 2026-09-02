@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, or_, select
 
 from app.api.deps import AdminUser, SessionDep, StaffReadUser, client_ip
+from app.api.routes._shared import drop_forbidden_nulls
 from app.core.config import settings
 from app.core.exceptions import DuplicateValueException, NotFoundException
 from app.core.utils import queue
@@ -17,6 +18,9 @@ from app.services.scanning import end_employee_sessions
 from app.tasks import printing_agents
 
 router = APIRouter(prefix="/employees", tags=["employees"])
+
+#: PATCH da aniq `null` faqat shu ustunlarga ruxsat (qolganlari NOT NULL — 500 berardi).
+_NULLABLE_FIELDS = ("phone", "position", "user_id")
 
 
 async def _validate_post_ids(db: SessionDep, post_ids: list[int]) -> None:
@@ -111,8 +115,8 @@ async def update_employee(
     db: SessionDep, current_user: AdminUser, employee_id: int, body: EmployeeUpdate, request: Request
 ) -> Employee:
     employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
-    update_data = body.model_dump(exclude_unset=True)
-    if "assigned_post_ids" in update_data and update_data["assigned_post_ids"] is not None:
+    update_data = drop_forbidden_nulls(body.model_dump(exclude_unset=True), _NULLABLE_FIELDS)
+    if "assigned_post_ids" in update_data:
         await _validate_post_ids(db, update_data["assigned_post_ids"])
     if "user_id" in update_data:
         await _validate_user_link(db, update_data["user_id"], employee_id=employee.id)

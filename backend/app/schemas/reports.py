@@ -52,6 +52,8 @@ class OrdersReport(BaseModel):
 
 class MaterialUsageRow(BaseModel):
     name: str
+    # Katalog kodi (SKU) — bir nomli ikki material qatorini ajratadi; eski eksportlarda yo'q
+    code: str | None = None
     kind: str
     unit: str
     total: float

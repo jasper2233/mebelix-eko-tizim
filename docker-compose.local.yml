@@ -63,7 +63,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    command: arq app.core.worker.WorkerSettings
+    command: arq app.core.worker.WorkerSettings --custom-log-dict app.core.logger.ARQ_LOG_DICT
     env_file:
       - .env
     volumes:

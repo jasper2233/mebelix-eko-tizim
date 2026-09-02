@@ -95,7 +95,7 @@ services:
   worker:
     # api bilan bir xil image — alohida build shart emas
     image: ${REGISTRY:-ghcr.io/dshukriddinov}/mebelix-mes-backend:${TAG:-latest}
-    command: arq app.core.worker.WorkerSettings
+    command: arq app.core.worker.WorkerSettings --custom-log-dict app.core.logger.ARQ_LOG_DICT
     restart: always
     healthcheck:
       # `arq --check` Redis'dagi worker yozuvini o'qiydi (WorkerSettings da

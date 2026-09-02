@@ -47,6 +47,17 @@ export function ClientCombobox({
   })
   const items = data?.data ?? []
 
+  // Ko'rinadigan nomni tashqi `value` bilan sinxron ushlaymiz: forma reset
+  // qilinsa (`value` bo'shaydi) tugmada eski mijoz nomi qolib ketmasin.
+  useEffect(() => {
+    if (!value) setLabel("")
+  }, [value])
+
+  // `initialLabel` kech kelsa (buyurtma ma'lumoti yangilangach) ham yangilansin
+  useEffect(() => {
+    if (initialLabel) setLabel(initialLabel)
+  }, [initialLabel])
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: yangi natijada belgilangan qator boshiga qaytsin
   useEffect(() => setActive(0), [debounced])
 

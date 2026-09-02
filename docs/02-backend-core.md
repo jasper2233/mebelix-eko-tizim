@@ -141,7 +141,9 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 - `JsonFormatter(logging.Formatter)` — har bir log record'ni `{"timestamp", "level", "logger", "message"}` + mavjud bo'lsa `_EXTRA_FIELDS` (`request_id`, `method`, `path`, `status_code`, `duration_ms`) va `exc_info` bilan JSON'ga aylantiradi.
 - `setup_logging(level=logging.INFO)` — root logger handlerlarini stdout JSON handler bilan **almashtiradi** (`root.handlers = [handler]`). Import-time side-effect yo'q — har bir uzoq yashovchi entrypoint uni **explicit** chaqiradi: `create_application()` (`setup.py`) va arq worker (`core/worker.py`, modul yuklanishida). `app/commands/` dagi ikkala CLI komanda (`seed_defaults.py`, `create_first_superuser.py`) esa oddiy `logging.basicConfig(level=INFO)` bilan kifoyalanadi.
 
-**Bog'lanishlar:** `middleware.py` yozadigan `extra` maydonlar aynan `_EXTRA_FIELDS` bilan mos keladi; `setup.py` va `worker.py` `setup_logging`ni chaqiradi.
+- `ARQ_LOG_DICT` — arq CLI'ga `--custom-log-dict app.core.logger.ARQ_LOG_DICT` orqali uzatiladigan dictConfig: `arq` loggerini handlersiz qoldirib `propagate: True` qiladi. arq o'z dictConfig'ini `setup_logging()`dan **keyin** qo'llagani uchun (CLI avval `WorkerSettings`ni import qiladi), busiz har bir `arq.*` yozuvi ikki marta chiqadi — o'zining plain-matn handleri va root JSON handleri orqali.
+
+**Bog'lanishlar:** `middleware.py` yozadigan `extra` maydonlar aynan `_EXTRA_FIELDS` bilan mos keladi; `setup.py` va `worker.py` `setup_logging`ni chaqiradi; `ARQ_LOG_DICT`ni ikkala compose faylidagi worker komandasi ishlatadi.
 
 ---
 
@@ -214,7 +216,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 
 ## `backend/app/core/worker.py`
 
-**Maqsadi:** arq background worker konfiguratsiyasi — fon vazifalarni (background tasks) Redis navbati orqali bajaradigan alohida process. `arq app.core.worker.WorkerSettings` komandasi bilan ishga tushiriladi.
+**Maqsadi:** arq background worker konfiguratsiyasi — fon vazifalarni (background tasks) Redis navbati orqali bajaradigan alohida process. `arq app.core.worker.WorkerSettings --custom-log-dict app.core.logger.ARQ_LOG_DICT` komandasi bilan ishga tushiriladi (bayroq haqida: `logger.py` → `ARQ_LOG_DICT`).
 
 **Muhim elementlar:**
 

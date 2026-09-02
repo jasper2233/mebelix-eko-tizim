@@ -972,6 +972,10 @@ export class PachkaService {
      * Close Pachka
      *
      * Qadoqni yakunlash: yopiladi va cheki chop etishga yuboriladi.
+     *
+     * Chek chiqara olmasak (navbat o'chgan yoki postga printer biriktirilmagan)
+     * qadoq ATAYLAB yopilmaydi — yopilgan qadoqning chekini qayta chiqarish yo'li
+     * yo'q, shuning uchun xato aytiladi va qadoqlovchi qayta urinadi.
      */
     public static closePachka<ThrowOnError extends boolean = true>(options: Options<ClosePachkaData, ThrowOnError>): RequestResult<ClosePachkaResponses, ClosePachkaErrors, ThrowOnError> {
         return (options.client ?? client).post<ClosePachkaResponses, ClosePachkaErrors, ThrowOnError>({

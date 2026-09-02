@@ -6,6 +6,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import defer
 
 from app.api.deps import ManagerUser, SessionDep, StaffReadUser, client_ip
+from app.api.routes._shared import drop_forbidden_nulls
 from app.core.config import settings
 from app.core.exceptions import DuplicateValueException
 from app.crud import crud_clients, log_action
@@ -15,6 +16,9 @@ from app.schemas.clients import ClientCreate, ClientDetail, ClientOrderRow, Clie
 from app.schemas.common import Message, Paginated
 
 router = APIRouter(prefix="/clients", tags=["clients"])
+
+#: PATCH da aniq `null` faqat shu ustunlarga ruxsat (`full_name` NOT NULL — 500 berardi).
+_NULLABLE_FIELDS = ("phone", "phone_alt", "address", "notes")
 
 
 #: "Daromad" ta'rifi: yumshoq o'chirilmagan, BEKOR QILINMAGAN va narxi kiritilgan
@@ -205,7 +209,7 @@ async def update_client(
     db: SessionDep, current_user: ManagerUser, client_id: int, body: ClientUpdate, request: Request
 ) -> Client:
     client = await crud_clients.get_or_404(db, "Mijoz topilmadi.", id=client_id)
-    updates = body.model_dump(exclude_unset=True)
+    updates = drop_forbidden_nulls(body.model_dump(exclude_unset=True), _NULLABLE_FIELDS)
     for key in ("phone", "phone_alt"):
         if updates.get(key):
             await _ensure_phone_free(db, updates[key], exclude_id=client_id)

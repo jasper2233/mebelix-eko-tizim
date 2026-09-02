@@ -278,8 +278,13 @@ function MaterialsTable({ params }: { params: RangeParams }) {
       <TableBody>
         {data?.rows.length ? (
           data.rows.map((r) => (
-            <TableRow key={`${r.name}-${r.kind}`}>
-              <TableCell className="font-medium">{r.name}</TableCell>
+            <TableRow key={`${r.code ?? r.name}-${r.kind}`}>
+              <TableCell className="font-medium">
+                {r.name}
+                {r.code && (
+                  <span className="ml-2 text-muted-foreground">{r.code}</span>
+                )}
+              </TableCell>
               <TableCell>{MATERIAL_KIND_LABELS[r.kind] ?? r.kind}</TableCell>
               <TableCell className="num text-right font-semibold">
                 {Math.round(r.total * 100) / 100}

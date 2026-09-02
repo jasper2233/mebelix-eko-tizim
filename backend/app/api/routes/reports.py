@@ -253,16 +253,27 @@ async def report_materials(
     )
     agg: dict[tuple[str, str], MaterialUsageRow] = {}
     for usage in orders:
+        # `orders` — buyurtmalar soni, JSONB yozuvlar soni emas: bitta buyurtmada bir material
+        # bir necha marta uchrashi mumkin, ammo u faqat bir marta sanaladi.
+        seen: set[tuple[str, str]] = set()
         for item in usage or []:
-            key = (item["name"], item["kind"])
+            # Barqaror kalit — katalog kodi (SKU); eski eksportlarda `code` yo'q, o'shanda nomga qaytamiz.
+            key = (item.get("code") or item["name"], item["kind"])
             row = agg.get(key)
             if row is None:
                 row = MaterialUsageRow(
-                    name=item["name"], kind=item["kind"], unit=item.get("unit", ""), total=0.0, orders=0
+                    name=item["name"],
+                    code=item.get("code"),
+                    kind=item["kind"],
+                    unit=item.get("unit", ""),
+                    total=0.0,
+                    orders=0,
                 )
                 agg[key] = row
             row.total += float(item.get("count") or 0)
-            row.orders += 1
+            if key not in seen:
+                seen.add(key)
+                row.orders += 1
     data = sorted(agg.values(), key=lambda r: (-r.total, r.name))
     report = MaterialsReport(date_from=start.date(), date_to=end.date(), rows=data)
     if format == "xlsx":

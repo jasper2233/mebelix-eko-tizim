@@ -273,11 +273,18 @@ bir xil), `print_label` taski esa `skip:{id}` bilan jimgina o'tadi. Nusxalar mat
 kamayganda va `.project` qayta import qilinganda yumshoq o'chiriladi.
 
 **Qadoq cheki** — `PachkaLabelData` + `render_pachka_label_png()`, arq task `print_pachka_label`
-(qadoq yakunlanganda avtomatik). Tarkibi: logo, `QADOQ` + kod (4.6 mm bold), buyurtma raqami,
+(qadoq yakunlanganda avtomatik; chek chiqmaydigan bo'lsa qadoq umuman yopilmaydi — pastdagi
+"Qadoq cheki chiqmasa" ga qarang). Tarkibi: logo, `QADOQ` + kod (4.6 mm bold), buyurtma raqami,
 loyiha nomi, detallar soni, sana-vaqt va 28 mm QR (kod QR ostida ham takrorlanadi). Qadoq QR'i
 detal QR'idan ajralib turadi: `PK-` bilan boshlanadi va ostki chiziq umuman yo'q, shuning uchun
 `scanning._QR_RE` uni detal deb qabul qilmaydi — terminal skanni qaysi oqimga yuborishni shundan
 biladi.
+
+**Qadoq cheki chiqmasa** — `close_pachka` chekni chiqara olishini commitdan OLDIN tekshiradi:
+navbat (arq/Redis) o'chgan bo'lsa 503, postga printer biriktirilmagan bo'lsa 422 (`require_printer`
+→ `NoPrinterBound`). Ikkalasida ham qadoq OCHIQ qoladi va qadoqlovchi shu tugmani qayta bosadi.
+Sabab: yopilgan qadoqni qayta yopib bo'lmaydi (`_open_pachka` 403 beradi) va chekni qayta
+chiqaradigan endpoint YO'Q — ya'ni "yopildi, lekin cheki yo'q" holatidan chiqish yo'li ham yo'q.
 
 **Foydali atxot cheki** — `WasteLabelData` + `render_waste_label_png()`, arq task
 `print_waste_label`, yo'li `POST /terminal/waste/{waste_id}/label` (bekor qilish — o'sha path
@@ -485,6 +492,8 @@ direktor ham ko'radi.
     (tugaganlari yashil, pastda), o'ngda "Jarayonda" (2+ tomonli, boshlangan, tugamagan).
     Har skan darhol yoziladi (tomon = skan, `per_instance`); bir QR uchun 5 s to'siq;
     picker'da skan qilinsa proyekt o'zi ochiladi (`/qr/{qr}/order`); begona detalga aniq xato.
+    Kromka ustunida tomon NOMI emas, qirra simvollari — yorliq eskizi detal o'lchamiga
+    qarab buriladi (`labels.py` `burilgan`), shuning uchun qat'iy Chap/Tepa nomi to'g'ri kelmaydi.
   · **OVAL** — o'sha KromkaView `oval` rejimda: bir panel, tomonlar ustuni yo'q va `done/sides` o'rniga faqat tugagan/tugamagan belgisi. Har detal BITTA skan (`per_instance = 1`), shuning uchun hisoblagichning ma'nosi ham yo'q.
   · **PRISADKA** (`Terminal/PrisadkaView`) — detallar + SCX fayllar; "Hammasini yuklab olish"
     File System Access API bilan BIR MARTA tanlangan papkaga (IndexedDB'da saqlanadi,

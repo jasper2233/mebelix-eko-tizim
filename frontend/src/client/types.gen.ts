@@ -1360,6 +1360,10 @@ export type MaterialUsageRow = {
      */
     name: string;
     /**
+     * Code
+     */
+    code?: string | null;
+    /**
      * Kind
      */
     kind: string;

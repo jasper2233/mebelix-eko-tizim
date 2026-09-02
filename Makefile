@@ -25,7 +25,7 @@ run-backend: ## Run the FastAPI application locally with reload
 
 .PHONY: worker
 worker: ## Run the ARQ background worker
-	uv --project backend run arq $(WORKER_SETTINGS)
+	uv --project backend run arq $(WORKER_SETTINGS) --custom-log-dict app.core.logger.ARQ_LOG_DICT
 
 .PHONY: run-frontend
 run-frontend: ## Run frontend development server
