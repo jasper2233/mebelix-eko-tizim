@@ -202,8 +202,18 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
                         )
                         continue
                     material_placed += pat.mult
-                    rot = (
+                    # Avval to'g'ridan-to'g'ri moslik: deyarli kvadrat detalda
+                    # (masalan 400x399) ikkala test ham o'tadi, shuning uchun
+                    # aylantirilmagan joylashuv ustun turadi.
+                    fits_direct = (
                         part.length is not None
+                        and part.width is not None
+                        and abs(cell["w"] - part.length) < 1.5
+                        and abs(cell["h"] - part.width) < 1.5
+                    )
+                    rot = (
+                        not fits_direct
+                        and part.length is not None
                         and part.width is not None
                         and part.length != part.width
                         and abs(cell["w"] - part.width) < 1.5

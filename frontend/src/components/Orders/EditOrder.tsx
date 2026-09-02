@@ -32,7 +32,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { moneyToInput } from "@/lib/validation"
 import { crudCallbacks } from "@/queries/mes"
@@ -117,18 +116,6 @@ export function EditOrder({
               )}
             />
             <OrderFields control={form.control} />
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Izoh</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
             <DialogFooter className="pt-2">
               <LoadingButton type="submit" loading={mutation.isPending}>
                 Saqlash

@@ -325,7 +325,8 @@ detalning o'zi asosiy bo'la olmaydi (`orders._set_assembly_parent` tekshiradi).
 
 - **Marshrut birikish qadamida tugaydi**: `_set_custom_route` biriktirilgan detalga qadoqlash/TMO
   dumini QO'SHMAYDI — alohida detal endi mavjud emas, qadoqlovchi uni qidirmaydi.
-  `_check_assembly_match` asosiy detal marshrutida o'sha amal borligini talab qiladi.
+  `_check_assembly_match` asosiy detal marshrutida o'sha amal borligini talab qiladi — bog'lam
+  o'zgarganda ham, biriktirilgan detalning `route_codes` i qayta chizilganda ham.
 - **Skan kaskadi** (`scanning._close_assembly_children`): asosiy detal skani biriktirilgan
   detallarning birikish qadamini ham yopadi (`Scan.parent_scan_id` bilan bog'lanadi, bekor
   qilinganda birga qaytadi). Mayda detalning oldingi bosqichi tugamagan bo'lsa BUTUN skan E004
@@ -584,9 +585,10 @@ direktor ham ko'radi.
 
 ### Hisobot yordamchilari
 
-- `app/services/metrics.py: part_volume()` — TT 9.3.1 HAJM matematikasi (ARRA m², KROMKA metr,
-  qolganlari dona; OVAL birligi metr bo'lsa ham dona bilan approksimatsiya — egri qirraning
-  uzunligi detal bo'yicha saqlanmaydi),
+- `app/services/metrics.py: part_volume()` — TT 9.3.1 HAJM matematikasi (ARRA va UPAKOVKA m²
+  — ikkalasi ham `length × width / 1 000 000 × count`, KROMKA metr, qolganlari dona; OVAL
+  birligi metr bo'lsa ham dona bilan approksimatsiya — egri qirraning uzunligi detal
+  bo'yicha saqlanmaydi),
   reports va tablo uchun umumiy. `Part` obyektini emas, `length`/`width`/`count`/`edges`
   qiymatlarini oladi — TABLO o'n minglab marshrutni ORM obyekti sifatida qurmay,
   faqat shu to'rt ustunni tanlab olishi uchun (o'lchov: 669 ms → 175 ms).

@@ -6,6 +6,7 @@ import {
   ClientsService,
   EmployeesService,
   MachinesService,
+  type OrderStatus,
   OrdersService,
   PostsService,
   TabloService,
@@ -59,7 +60,7 @@ export const getEmployeesQueryOptions = (search?: string) =>
   })
 
 export const getOrdersQueryOptions = (
-  opts: { status?: string; search?: string } = {},
+  opts: { status?: OrderStatus | ""; search?: string } = {},
 ) =>
   queryOptions({
     queryKey: ["orders", opts.status ?? "", opts.search ?? ""],
@@ -67,7 +68,7 @@ export const getOrdersQueryOptions = (
       (
         await OrdersService.readOrders({
           query: {
-            status: (opts.status as never) || undefined,
+            status: opts.status || undefined,
             search: opts.search || undefined,
             limit: PAGE_SIZE,
           },

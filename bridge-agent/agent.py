@@ -926,33 +926,44 @@ async def flusher() -> None:
     diskda qolib, restartda IKKINCHI marta chiqardi (bitta detalga ikkita bir
     xil QR). Endi xavf oynasi bitta yorliq: chop etish o'rtasida o'chsa faqat
     o'sha yorliq takrorlanishi mumkin — printersiz idempotentlikda bundan
-    kichik oyna yo'q."""
+    kichik oyna yo'q.
+
+    Butun tanasi `except Exception` bilan o'ralgan: navbat faylini antivirus
+    yoki zaxira dasturi qulflab qo'yishi Windows'da odatiy hol, va ilgari
+    o'sha bitta OSError `asyncio.gather` orqali BUTUN agentni (chop etish +
+    skan-forvard) o'ldirardi — oynasiz exe hech narsa ko'rsatmasdan yo'q
+    bo'lardi. Endi xato logga yoziladi va 5 soniyadan keyin qayta urinamiz."""
     while True:
-        while True:
-            # Har aylanishda yangidan o'qiladi — snapshot eskirmaydi
-            jobs = local_drain()
-            if not jobs:
-                break
-            refresh_printer()
-            job = jobs[0]
-            # ALOHIDA OQIMDA: GDI chop etish bir necha soniya davom etadi va
-            # to'g'ridan-to'g'ri chaqirilganda hodisa siklini qotirardi — WS
-            # xabarlari o'qilmay, ack 15 soniyalik server chegarasidan
-            # kechikardi, server esa jobni qaytarib IKKINCHI yorliq chiqarardi.
-            if not await asyncio.to_thread(send_to_printer, job.get("png", "")):
-                log.info("Printer kutilmoqda — navbatda %d ta yorliq", len(jobs))
-                break
-            log.info("Yorliq chop etildi: instance %s", job.get("instance_id"))
-            # await'dan keyin fayl qayta o'qiladi: shu oraliqda kelganlar
-            # SAQLANADI. local_enqueue faqat oxiriga qo'shadi, ya'ni birinchi
-            # qator hali ham hozir chiqqan job — himoya sharti shunchaki
-            # kutilmagan holatga qarshi.
-            current = local_drain()
-            if current and current[0] == job:
-                current = current[1:]
-            else:
-                current = [j for j in current if j != job]
-            local_rewrite(current)
+        try:
+            while True:
+                # Har aylanishda yangidan o'qiladi — snapshot eskirmaydi
+                jobs = local_drain()
+                if not jobs:
+                    break
+                refresh_printer()
+                job = jobs[0]
+                # ALOHIDA OQIMDA: GDI chop etish bir necha soniya davom etadi va
+                # to'g'ridan-to'g'ri chaqirilganda hodisa siklini qotirardi — WS
+                # xabarlari o'qilmay, ack 15 soniyalik server chegarasidan
+                # kechikardi, server esa jobni qaytarib IKKINCHI yorliq chiqarardi.
+                if not await asyncio.to_thread(send_to_printer, job.get("png", "")):
+                    log.info("Printer kutilmoqda — navbatda %d ta yorliq", len(jobs))
+                    break
+                log.info("Yorliq chop etildi: instance %s", job.get("instance_id"))
+                # await'dan keyin fayl qayta o'qiladi: shu oraliqda kelganlar
+                # SAQLANADI. local_enqueue faqat oxiriga qo'shadi, ya'ni birinchi
+                # qator hali ham hozir chiqqan job — himoya sharti shunchaki
+                # kutilmagan holatga qarshi.
+                current = local_drain()
+                if current and current[0] == job:
+                    current = current[1:]
+                else:
+                    current = [j for j in current if j != job]
+                local_rewrite(current)
+        except Exception:  # noqa: BLE001 — vazifa o'lmasin, keyingi aylanishda qayta urinadi
+            log.exception("Navbatni oqizishda xato — 5s dan keyin qayta urinish")
+            await asyncio.sleep(5)
+            continue
         # Yangi job kelsa darhol, aks holda 5s da bir (printer tiklanishini kutish)
         with contextlib.suppress(TimeoutError):
             await asyncio.wait_for(FLUSH_EVENT.wait(), timeout=5)
@@ -1477,4 +1488,10 @@ if __name__ == "__main__":
         # Oyna yo'q - xato messagebox va log fayli orqali ko'rinadi
         if exc.code:
             _alert("MebeliX agenti", str(exc), error=True)
+        raise
+    except Exception as exc:  # noqa: BLE001 — jimgina o'lish o'rniga operatorga ko'rsatamiz
+        # log_shipper ham o'lgan bo'ladi: xabar serverga yetmaydi, shuning
+        # uchun yagona ko'rinadigan kanal — messagebox va agent.log
+        log.exception("Agent kutilmagan xato bilan to'xtadi")
+        _alert("MebeliX agenti", f"Agent to'xtadi: {exc}", error=True)
         raise

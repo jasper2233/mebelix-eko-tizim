@@ -56,8 +56,15 @@ export const toRequestBody = (data: FormValues) => ({
   notes: data.notes || null,
 })
 
-// Mijoz va izoh maydonlari dialoglarda qoladi — ular ikkalasida farq qiladi
-export function OrderFields({ control }: { control: Control<FormValues> }) {
+// Mijoz maydoni dialoglarda qoladi — u ikkalasida farq qiladi (EditOrder'da
+// mavjud mijoz yorlig'i bor va tasdiqlangan buyurtmada bloklanadi).
+export function OrderFields({
+  control,
+  notesPlaceholder,
+}: {
+  control: Control<FormValues>
+  notesPlaceholder?: string
+}) {
   return (
     <>
       <div className="grid grid-cols-2 gap-3">
@@ -148,6 +155,18 @@ export function OrderFields({ control }: { control: Control<FormValues> }) {
           )}
         />
       </div>
+      <FormField
+        control={control}
+        name="notes"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Izoh</FormLabel>
+            <FormControl>
+              <Input {...field} placeholder={notesPlaceholder} />
+            </FormControl>
+          </FormItem>
+        )}
+      />
     </>
   )
 }

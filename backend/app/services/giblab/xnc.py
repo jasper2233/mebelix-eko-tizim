@@ -201,11 +201,22 @@ def parse_xnc_program(code: str, program_xml: str, side: str | None = None) -> X
         last[(el.tag, attr)] = value
         return value
 
+    # `<ms enable="false">` — o'chirilgan kontur boshi. Uning `ml`/`mac` segmentlari
+    # o'chirilgan deb belgilanmaydi, shuning uchun ularni ham keyingi YOQILGAN `ms` gacha
+    # tashlaymiz: aks holda ular OLDINGI konturga payvandlanib panel bo'ylab soxta
+    # frezalash yo'li chiqarardi.
+    skip_contour = False
+
     for el in root:
         tag = el.tag
         # `enable="false"` — element o'chirilgan (default true). Uni bajarsak GibLab
         # ataylab o'chirgan teshik/pazni chizib, SCX'ga ham qo'shib qo'yardik.
         if not xml_bool(el.get("enable"), True):
+            skip_contour = skip_contour or tag == "ms"
+            continue
+        if tag == "ms":
+            skip_contour = False
+        elif skip_contour and tag in ("ml", "mac"):
             continue
         if tag == "tool":
             name, d = el.get("name"), el.get("d")

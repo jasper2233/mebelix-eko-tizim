@@ -32,7 +32,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { handleError } from "@/utils"
 
@@ -105,21 +104,9 @@ export function AddOrder() {
                 </FormItem>
               )}
             />
-            <OrderFields control={form.control} />
-            <FormField
+            <OrderFields
               control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Izoh</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="Maxsus talablar (masalan, qora kromka)"
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
+              notesPlaceholder="Maxsus talablar (masalan, qora kromka)"
             />
             <DialogFooter className="pt-2">
               <LoadingButton type="submit" loading={mutation.isPending}>

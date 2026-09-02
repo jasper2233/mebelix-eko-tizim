@@ -112,6 +112,29 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
         )
     ).tuples()
     by_key = {(product_code, part.code): part for product_code, part in parts}
+    # Buyurtmaning HAMMA tirik marshruti bitta so'rovda: sikl ichida har detal uchun
+    # alohida SELECT qilinmasin (detallar soni yuzlab bo'lishi mumkin).
+    live_by_part: dict[int, list[PartRoute]] = {}
+    for route in (
+        await db.execute(
+            select(PartRoute).where(
+                PartRoute.order_id == order.id,
+                PartRoute.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).scalars():
+        live_by_part.setdefault(route.part_id, []).append(route)
+
+    # Nostandart detalda marshrut TO'LIQ qo'lda — fayldan qurilgani o'chadi. Sikldan
+    # OLDIN va bitta UPDATE bilan: sikl ichida bo'lsa, avval qo'shilgan MANUAL
+    # qatorlar autoflush bo'lib qolar edi.
+    custom_ids = [by_key[key].id for key, entry in saved.items() if entry[0] and key in by_key]
+    if custom_ids:
+        await db.execute(
+            update(PartRoute)
+            .where(PartRoute.part_id.in_(custom_ids), PartRoute.is_deleted == False)  # noqa: E712
+            .values(is_deleted=True, deleted_at=datetime.now(UTC))
+        )
 
     # Yig'ma bog'lamlar marshrutdan OLDIN tiklanadi: dum (qadoqlash/TMO)
     # biriktirilgan detalga qo'shilmasligi shu bayroqqa qarab hal bo'ladi.
@@ -130,28 +153,12 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
             continue
         part.is_custom = was_custom
         if was_custom:
-            # Nostandart detalda marshrut TO'LIQ qo'lda — fayldan qurilgani o'chadi
-            await db.execute(
-                update(PartRoute)
-                .where(PartRoute.part_id == part.id, PartRoute.is_deleted == False)  # noqa: E712
-                .values(is_deleted=True, deleted_at=datetime.now(UTC))
-            )
+            # AUTO qatorlari yuqorida bitta UPDATE bilan allaqachon o'chirilgan.
             start_seq, seen = 1, set()
         else:
             # Standart detalda qo'lda qo'shilgan qadam fayl qadamlariga QO'SHIMCHA edi
             # (matritsadagi tugma) — fayl qadamlari joyida qoladi, bular ketidan tushadi.
-            live = (
-                (
-                    await db.execute(
-                        select(PartRoute).where(
-                            PartRoute.part_id == part.id,
-                            PartRoute.is_deleted == False,  # noqa: E712
-                        )
-                    )
-                )
-                .scalars()
-                .all()
-            )
+            live = live_by_part.get(part.id, [])
             start_seq = max((r.seq for r in live), default=0) + 1
             seen = {posts_by_id[r.post_id] for r in live if r.post_id in posts_by_id}
         edge_count = len(part.edges) or 1

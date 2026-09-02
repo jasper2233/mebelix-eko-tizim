@@ -328,7 +328,7 @@ getPostsQueryOptions()             // ["posts"], readPosts — staleTime 5 min (
 getMachinesQueryOptions()          // ["machines"], readMachines — staleTime 60s
 getClientsQueryOptions(search)     // ["clients", search] — search-parametrli, limit 100
 getEmployeesQueryOptions(search)   // ["employees", search]
-getOrdersQueryOptions({status, search, page}) // ["orders", status, search, page], skip = page*100
+getOrdersQueryOptions({status, search})  // ["orders", status, search] — status: OrderStatus | "" (client tipi, cast yo'q), limit 100
 getOrderQueryOptions(id)           // ["orders", id]
 getOrderMatrixQueryOptions(id)     // ["orders", id, "matrix"]
 getTerminalContextQueryOptions()   // ["terminal", "context"], refetchInterval 30s (admin ish markazi tuzatgach terminal o'zi tiklansin)

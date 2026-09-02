@@ -95,6 +95,7 @@ async def edit_order_matrix(
     # qadamini qo'shadi (buyurtma qadoqlansa HAMMA detal qadoqlanadi).
     packaging = order.needs_packaging
 
+    to_check: dict[int, Part] = {}
     for edit in body.edits:
         part = (
             await db.execute(
@@ -143,8 +144,13 @@ async def edit_order_matrix(
             # Marshrut o'zgarmadi, lekin dum o'zgardi — mavjud kodlardan qayta quramiz
             await _set_custom_route(db, order_id, part, await _route_codes(db, part), posts, packaging)
 
-        if parent_changed and part.assembly_parent_id is not None:
-            await _check_assembly_match(db, part)
+        # Marshrut qayta chizilganda ham tekshiriladi: bola allaqachon biriktirilgan
+        # bo'lsa (parent tegilmagan) yangi oxirgi qadam ota marshrutida yo'q bo'lishi mumkin.
+        # Tekshiruvning o'zi BATCH OXIRIDA (pastda): bitta PATCH'da ota marshrutiga amal
+        # qo'shilib bola o'sha amalda tugatilsa, id tartibida bola avval ishlanadi va ota
+        # hali eski bo'ladi — yakuniy holat bo'yicha tekshirish tartibga bog'liq emas.
+        if part.assembly_parent_id is not None and (parent_changed or edit.route_codes is not None):
+            to_check[part.id] = part
 
         for post_id, enabled in edit.stages.items():
             post = posts.get(post_id)
@@ -215,6 +221,9 @@ async def edit_order_matrix(
                 )
             for step in steps:
                 step.is_enabled = enabled
+
+    for part in to_check.values():
+        await _check_assembly_match(db, part)
 
     log_action(
         db,

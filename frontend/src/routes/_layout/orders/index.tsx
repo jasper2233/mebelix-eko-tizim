@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { ArrowDown, ArrowUp } from "lucide-react"
 import { useMemo, useState } from "react"
 
+import type { OrderStatus } from "@/client"
 import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
@@ -47,7 +48,7 @@ const PRIORITY_RANK: Record<string, number> = {
   urgent: 3,
 }
 
-const TABS = [
+const TABS: { value: OrderStatus | ""; label: string }[] = [
   { value: "", label: "Hammasi" },
   { value: "draft", label: "Qoralama" },
   { value: "technical_review", label: "Texnologda" },
@@ -102,7 +103,7 @@ function SortHead({
 
 function OrdersPage() {
   const navigate = useNavigate()
-  const [status, setStatus] = useState("")
+  const [status, setStatus] = useState<OrderStatus | "">("")
   const [search, setSearch] = useState("")
   const debounced = useDebounced(search.trim())
   const { data, isLoading, isError, refetch } = useQuery({
@@ -170,7 +171,10 @@ function OrdersPage() {
         actions={canCreate ? <AddOrder /> : undefined}
       />
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Tabs value={status} onValueChange={setStatus}>
+        <Tabs
+          value={status}
+          onValueChange={(v) => setStatus(v as OrderStatus | "")}
+        >
           <TabsList className="h-auto min-h-9 flex-wrap">
             {visibleTabs.map((t) => (
               <TabsTrigger key={t.value} value={t.value} className="text-xs">

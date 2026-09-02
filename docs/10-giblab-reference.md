@@ -249,6 +249,12 @@ joylashtirgan bo'lsa shuni ko'rsatamiz. Manba tizim bilan farq yo'q.
 EL operatsiyasiga havola; `eltMat` va boshqalar — lenta materiali nomi.
 Tomonlar: `t`/`b` — **uzunlik bo'ylab**, `l`/`r` — **kenglik bo'ylab**.
 
+Xaritada katakning `rot` bayrog'i shu belgilarni almashtiradi (`cutmap._edge_markers`:
+burilganda `eW=[t,b]`, `eH=[r,l]`). `rot` katak o'lchamidan aniqlanadi va **avval
+to'g'ridan-to'g'ri moslik** (`w≈length`, `h≈width`, ±1.5 mm) tekshiriladi; faqat u
+o'tmaganda almashgan moslik `rot=True` beradi. Deyarli kvadrat detalda (masalan
+400×399) ikkala test ham o'tadi — bunday holatda aylantirilmagan variant ustun turadi.
+
 **Paz tomon bo'yicha:** `grt` / `grb` / `grl` / `grr` — GR operatsiyasiga havola,
 `grts`/`grbs`/`grls`/`grrs` — qaysi tomondan (yuz=true, orqa=false). **Biz o'qimaymiz** — pazni XNC dasturi ichidagi
 `<gr>` elementlaridan aniqlaymiz. GR operatsiyasi ishlatilsa ogohlantirish chiqadi.
@@ -530,7 +536,11 @@ Korpusda `ac` doim 1 (3382 holat), lekin qator ishlatilsa ilgari bitta teshik ch
 **SCX faylga ham bittasi tushardi** — ya'ni dastgoh kam teshik teshardi. Endi kengaytiriladi.
 
 **`enable="false"`** — element o'chirilgan (default `true`). Ilgari o'qilmasdi, ya'ni GibLab
-ataylab o'chirgan teshik chizilib SCX'ga ham tushardi.
+ataylab o'chirgan teshik chizilib SCX'ga ham tushardi. **Kontur uzilishi:** o'chirilgan
+`<ms>` dan keyingi `ml`/`mac` larda odatda `enable` yozilmaydi, shuning uchun parser
+o'chirilgan kontur boshini ko'rgach keyingi **yoqilgan `<ms>` gacha** hamma `ml`/`mac` ni
+tashlaydi (`xnc.py`, `skip_contour`). Aks holda o'sha segmentlar **oldingi** konturga
+payvandlanib SCX'ga panel bo'ylab mavjud bo'lmagan frezalash yo'lini chiqarardi.
 
 `xy` alohida xavfli: u koordinata boshini belgilaydi, ya'ni e'tiborsiz qolsa undan keyingi
 **barcha teshik joylari xato** bo'ladi. Korpusda ikkalasi ham uchramaydi, lekin jimgina
@@ -714,6 +724,12 @@ Oxirgi ikkitasi parse'dan tashqarida: ular qo'lda chizilgan marshrutlarni qayta 
 saqlab tiklaydigan qadamdan chiqadi (`ingest.snapshot_custom_routes` / `restore_custom_routes`,
 xabarni `orders/files.py` upload handleri yozadi). Ikkalasi ham ataylab **yig'ma** — har detalga
 bitta xabar yozilsa, javobda faqat dastlabki bir nechtasi ko'rinib qolgani yo'qolardi.
+
+`restore_custom_routes` detallar soniga bog'liq bo'lmagan sonli so'rov qiladi: postlar,
+detallar va buyurtmaning HAMMA tirik marshruti bittadan SELECT bilan olinadi (marshrutlar
+`part_id -> [PartRoute]` lug'atiga solinadi), nostandart detallarning fayldan qurilgan
+qatorlari esa sikldan OLDIN bitta `UPDATE ... WHERE part_id IN (...)` bilan yumshoq
+o'chiriladi. Yangi MANUAL qatorlar `db.add` bilan qo'shiladi va tranzaksiya oxirida yoziladi.
 
 Bu xabarlar yuklash javobida ko'rsatiladi (dastlabki 3 tasi, qolgani soni bilan) va
 to'liq ro'yxat audit logga yoziladi (`POST /orders/{id}/upload`).

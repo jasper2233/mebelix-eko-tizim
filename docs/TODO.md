@@ -52,7 +52,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `backend/app/api/routes/orders/files.py:65,85` — The whole .project ingest — XML parse, blob decode, cut-map build, SCX XML generation and one synchronous write per SCX file — runs inline on the even
 - [ ] ✅ `backend/app/api/routes/orders/files.py:82-89` — wipe_previous_parse unlinks the old .project/SCX files from disk inside an uncommitted transaction; if ingest/restore later raises ParseError the DB i
 - [x] ✅ `backend/app/api/routes/orders/lifecycle.py:91,97-106,121` — On the number-collision retry path create_order reads client.full_name after db.rollback() has expired every identity-map object, so the documented re
-- [ ] ✅ `backend/app/api/routes/orders/matrix.py:134-147` — _check_assembly_match (which enforces that a child part's last route step exists in its assembly parent's route) only runs when assembly_parent_id its
+- [x] ✅ `backend/app/api/routes/orders/matrix.py:134-147` — _check_assembly_match (which enforces that a child part's last route step exists in its assembly parent's route) only runs when assembly_parent_id its
 - [ ] ✅ `backend/app/api/routes/orders/matrix.py:354-395` — The whole manual-route construction (edge_count, KROMKA first-pass rule, seen set, packaging/TMO tail) is written twice, in orders._set_custom_route a
 - [ ] ✅ `backend/app/api/routes/orders/matrix.py:409-451` — _resize_instances rewrites instance qr_text and adds copies but leaves the SCX files untouched, so SCX filenames stop matching the QR the doc guarante
 - [ ] ✅ `backend/app/api/routes/orders/matrix.py:426-439` — `_resize_instances` re-mints qr_text by the same rule but skips the collision pre-check ingest performs, so a count change can hit the unique index an
@@ -76,7 +76,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/schemas/posts.py:23` — `PostUpdate.order_index` bilan qilingan tahrir keyingi prestart'da `seed_defaults` tomonidan jimgina qaytarib tashlanadi.
 - [x] ✅ `backend/app/schemas/terminal.py:154` — `PrisadkaPartRow.done_qrs` amalda hech qachon ishlamaydi: uni o'qiydigan yagona shox faqat `instances` bo'sh bo'lganda ishga tushadi, ikkala ro'yxat e
 - [x] ✅ `backend/app/services/excel.py:52` — `_cell` `datetime` ni `TASHKENT_TZ` ga o'tkazmasdan formatlaydi, shuning uchun buyurtmalar hisobotining .xlsx eksporti UTC soatlarini (Toshkentdan 5 s
-- [ ] ✅ `backend/app/services/giblab/cutmap.py:198-204` — `rot` is computed only from the rotated-match test, so a near-square part placed UNROTATED is flagged as rotated and its kromka symbols are swapped.
+- [x] ✅ `backend/app/services/giblab/cutmap.py:198-204` — `rot` is computed only from the rotated-match test, so a near-square part placed UNROTATED is flagged as rotated and its kromka symbols are swapped.
 - [ ] ✅ `backend/app/services/giblab/ingest.py:222-226` — wipe_previous_parse unlinks the old .project and SCX files from disk before the ingest try/except, so a ParseError rolls the DB back to the old rows w
 - [ ] ✅ `backend/app/services/giblab/ingest.py:391` — A part that GibLab listed in the CS operation but never placed (usedCount=0) still gets an ARRA route step, so its ARRA counter can never be closed an
 - [x] ✅ `backend/app/services/giblab/models.py:154` — `merged_machining` da qirra teshiklari imzosi `z` ni hisobga olmaydi — bir tomonda bir xil pozitsiya/diametr/chuqurlikdagi, lekin BOSHQA balandlikdagi
@@ -86,12 +86,12 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/services/giblab/parser.py:452-453` — `_f()` returns `None` only when the attribute is absent, but here `or 10.0` also fires when the attribute is present and explicitly `0`. The surroundi
 - [x] ✅ `backend/app/services/giblab/scx.py:169` — A mill contour that contains only its `ms` head crashes `_offset_contour` with IndexError; the guard at line 169 only covers the empty-list case, whic
 - [ ] ✅ `backend/app/services/giblab/xnc.py:136` — `_groove()` xujjatlaydi (comment) va spesifikatsiya bo'yicha `gr` tegining `c` (korreksiya) atributi 1 yoki 2 bo'lsa paz o'q bo'ylab t/2 ga suriladiga
-- [ ] ✅ `backend/app/services/giblab/xnc.py:208` — `enable="false"` bo'lgan `<ms>` o'tkazib yuborilganda `current_contour` tozalanmaydi, shuning uchun o'chirilgan konturning `<ml>`/`<mac>` segmentlari 
+- [x] ✅ `backend/app/services/giblab/xnc.py:208` — `enable="false"` bo'lgan `<ms>` o'tkazib yuborilganda `current_contour` tozalanmaydi, shuning uchun o'chirilgan konturning `<ml>`/`<mac>` segmentlari 
 - [x] ✅ `backend/app/services/labels.py:47-49` — `load_label_data` nusxa/detal/buyurtmaning `is_deleted` bayrog'ini tekshirmaydi, shuning uchun `.png` endpointi yumshoq o'chirilgan nusxaga ham yorliq
-- [ ] ✅ `backend/app/services/metrics.py:27` — `part_volume` `Post.unit` ni o'qimaydi: UPAKOVKA posti birligi `m2` bo'lsa ham dona qaytaradi, natijada TABLO va dashboard "m²" yorlig'i ostida DONA s
+- [x] ✅ `backend/app/services/metrics.py:27` — `part_volume` `Post.unit` ni o'qimaydi: UPAKOVKA posti birligi `m2` bo'lsa ham dona qaytaradi, natijada TABLO va dashboard "m²" yorlig'i ostida DONA s
 - [ ] ✅ `backend/app/services/scanning.py:651-660` — `record_scan_at` dagi `except IntegrityError` bloki erishib bo'lmaydigan — poyga 422 emas, 500 beradi.
 - [x] ✅ `bridge-agent/agent.py:1244` — `_restart_self()` va `_apply_update()` .bat faylni `encoding="ascii"` bilan yozadi — Windows profil nomi ASCII bo'lmasa (masalan `Oʻktam`, kirillcha n
-- [ ] ✅ `bridge-agent/agent.py:780-801,914-950,1447-1454` — Navbat fayli bilan ishlashda (local_drain/local_rewrite/local_enqueue) hech qanday xato ushlanmaydi; bitta OSError (Windows'da antivirus/backup faylni
+- [x] ✅ `bridge-agent/agent.py:780-801,914-950,1447-1454` — Navbat fayli bilan ishlashda (local_drain/local_rewrite/local_enqueue) hech qanday xato ushlanmaydi; bitta OSError (Windows'da antivirus/backup faylni
 - [x] ✅ `docs/03-backend-api.md:282` — Hujjat PATCH /posts/{id} da «rang» (color) maydonini tahrirlash mumkin deydi — bunday maydon na sxemada, na modelda bor.
 - [x] ✅ `docs/03-backend-api.md:282` — docs/03 `PATCH /posts/{id}` ni "nom, rang, flaglar" deydi — `PostUpdate` da rang maydoni umuman yo'q, `order_index` esa sanalmagan.
 - [x] ✅ `docs/03-backend-api.md:57` — `client_ip`'s docstring claims the client IP is read in exactly one place and that X-Forwarded-For support would be a future change to this function o
@@ -197,7 +197,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/crud/users.py:60` — `update()` dict kelganda uni NUSXALAMAYDI (`update_data = user_update`), so'ng `pop("password")` bilan CHAQIRUVCHINING dict'ini o'zgartiradi — chaqiru
 - [ ] ✅ `backend/app/models/base.py:26` — `is_deleted` is indexed on every table via the mixin, creating 18 near-useless boolean indexes — every query filters `is_deleted` together with a more
 - [ ] ✅ `backend/app/models/pachka.py:26-33` — Pachka.status is indexed twice (a standalone ix_pachka_status plus the status column of ix_pachka_order_status) but no query anywhere puts Pachka.stat
-- [ ] ✅ `backend/app/services/giblab/ingest.py:145` — restore_custom_routes issues one extra round-trip per restored part (a SELECT for standard parts, an UPDATE for custom ones) instead of one query for 
+- [x] ✅ `backend/app/services/giblab/ingest.py:145` — restore_custom_routes issues one extra round-trip per restored part (a SELECT for standard parts, an UPDATE for custom ones) instead of one query for 
 - [ ] ✅ `backend/app/services/giblab/ingest.py:24` — The route snapshot carries only (is_custom, process codes, parent), so a technolog-disabled step comes back enabled and the part note is dropped on re
 - [x] ✅ `backend/app/services/giblab/ingest.py:316` — The sheet-material → plate-thickness map for the 32 mm double-layer SCX rule is built twice with the same comprehension.
 - [x] ✅ `backend/app/services/giblab/parser.py:131` — Manfiy o'lchamni modulga o'girishda `None` bo'lgan ikkinchi o'lcham 0.0 ga aylanadi — o'lchamsiz detal 0 mm o'lchamli detalga aylanib qoladi.
@@ -232,7 +232,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `frontend/src/components/Orders/EditOrder.tsx:74` — EditOrder and MachineAssign both spread crudCallbacks (which already invalidates on onSettled) AND call an `onSaved` prop whose only implementation is
 - [x] ✅ `frontend/src/components/Orders/MachineAssign.tsx:26` — `selection` is seeded from `order.machine_assignments` by a useState initializer, which runs once per mount — a refetch that brings different assignme
 - [ ] ✅ `frontend/src/components/Orders/MachineAssign.tsx:83` — A machine assignment can never be removed once made: the SelectField gets no `emptyLabel` so no empty option is rendered, the mutation body drops empt
-- [ ] ✅ `frontend/src/components/Orders/orderForm.tsx:59` — The "Izoh" FormField is copy-pasted into AddOrder and EditOrder with the only difference being a placeholder, contradicting the stated reason for keep
+- [x] ✅ `frontend/src/components/Orders/orderForm.tsx:59` — The "Izoh" FormField is copy-pasted into AddOrder and EditOrder with the only difference being a placeholder, contradicting the stated reason for keep
 - [x] ✅ `frontend/src/components/People/PersonDialog.tsx:113` — form.posts is snapshotted in the useState initializer from the `posts` prop, so opening the dialog from the EDIT button before the posts query resolve
 - [x] ✅ `frontend/src/components/People/PersonDialog.tsx:297` — `formatUzPhone` is called without the `prev` argument, re-introducing the backspace lock that argument exists to prevent.
 - [x] ✅ `frontend/src/components/Sidebar/User.tsx:32` — The avatar falls back to initials of the literal word "Foydalanuvchi" while the name line right next to it renders empty, so a nameless account shows 
@@ -251,7 +251,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/hooks/useCurrentUser.ts:9` — `retry: false` umumiy factory'da emas, iste'molchida turibdi — aynan shu query key'ni ishlatadigan `tablo.tsx` esa uni bermaydi, ya'ni bitta query ikk
 - [x] ✅ `frontend/src/lib/mes.ts:196-208 (POSITIONS) va frontend/src/routes/_layout/employees.tsx:206-207` — 13 of the 15 `ROLE_LABELS` values are repeated verbatim as `POSITIONS[].label`, so a label change has to be made in two tables — and one consumer chai
 - [ ] ✅ `frontend/src/lib/mes.ts:5,14,26,34,41,55,62,69,227,232` — Every label/colour map except ROLE_LABELS is typed `Record<string, string>`, so a new backend enum value silently renders a raw code — or literally th
-- [ ] ✅ `frontend/src/queries/mes.ts:70` — getOrdersQueryOptions types `status` as a free `string` and then casts it with `as never` to satisfy the generated OrderStatus enum — the same rename-
+- [x] ✅ `frontend/src/queries/mes.ts:70` — getOrdersQueryOptions types `status` as a free `string` and then casts it with `as never` to satisfy the generated OrderStatus enum — the same rename-
 - [x] ✅ `frontend/src/queries/users.ts:16` — `getUsersQueryOptions` is the only query in the app that issues N sequential blocking requests, and it carries no `staleTime` — with the QueryClient's
 - [x] ✅ `frontend/src/routes/_layout.tsx:24` — No route below the root declares an `errorComponent`, so any render crash inside an admin page bubbles to the root boundary and replaces the entire sh
 - [x] ✅ `frontend/src/routes/_layout.tsx:36` — `useRouterState()` selektorsiz chaqirilgan — butun router holatiga obuna bo'lib, har holat o'zgarishida sidebar+Outlet qobig'ini qayta render qiladi; 
