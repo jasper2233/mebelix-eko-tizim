@@ -604,7 +604,9 @@ def render_badge_png(d: BadgeLabelData) -> bytes:
         lines = [d.full_name[:20]]
     while len(lines[-1]) > 1 and draw.textlength(lines[-1], font=name_font) > max_px:
         lines[-1] = lines[-1][:-1]
-    if len("".join(lines)) < len(d.full_name.replace(" ", "")):
+    # Bo'shliqlar IKKALA tomonda ham olib tashlanadi: aks holda qator ichidagi
+    # bo'shliqlar chapni shishirib, qisqa dum tashlanganini yashirib qo'yadi.
+    if len("".join(lines).replace(" ", "")) < len("".join(d.full_name.split())):
         lines[-1] = lines[-1].rstrip() + "…"
 
     # Ism bloki PASTGA tekislanadi (y=20mm): bir qatorli ham, ikki qatorli ham

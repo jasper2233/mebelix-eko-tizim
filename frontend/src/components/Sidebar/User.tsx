@@ -79,12 +79,15 @@ export function User({ user }: { user?: UserRead | null }) {
               <UserInfo fullName={user.name} phone={user.phone} />
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <RouterLink to="/settings" onClick={handleMenuClick}>
-              <DropdownMenuItem>
+            {/* `asChild` — Radix `role="menuitem"` va roving-focus proplarini
+                anchor'ning o'ziga qo'yadi; teskari joylashuvda `role="menu"`
+                ichida rolsiz `<a>` qolib, klaviatura navigatsiyasi buzilardi. */}
+            <DropdownMenuItem asChild>
+              <RouterLink to="/settings" onClick={handleMenuClick}>
                 <Settings />
                 Sozlamalar
-              </DropdownMenuItem>
-            </RouterLink>
+              </RouterLink>
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={logout}>
               <LogOut />
               Chiqish

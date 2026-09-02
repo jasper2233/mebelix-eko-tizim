@@ -167,5 +167,12 @@ _validate_production_settings(settings)
 
 
 def upload_root() -> Path:
-    """UPLOAD_DIR absolyut root'i — barcha yuklamalar (project/scx/label) shu papka ostida."""
-    return Path(settings.UPLOAD_DIR).resolve()
+    """UPLOAD_DIR absolyut root'i — barcha yuklamalar (project/scx/label) shu papka ostida.
+
+    Nisbiy yo'l jarayon CWD'siga emas, `backend/` paket ildiziga bog'lanadi: aks holda
+    xizmat qayerdan ishga tushirilganiga qarab fayl ombori (va path-traversal bazasi) suriladi.
+    """
+    path = Path(settings.UPLOAD_DIR)
+    if not path.is_absolute():
+        path = Path(__file__).resolve().parents[2] / path
+    return path.resolve()

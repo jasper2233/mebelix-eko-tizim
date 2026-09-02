@@ -377,7 +377,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 **Maqsadi:** sidebar footeridagi foydalanuvchi kartasi va dropdown menyusi.
 
 - Ichki `UserInfo({ fullName, phone })` — tema tokenlaridagi `Avatar` (`bg-sidebar-primary` oltin fon, `text-sidebar-primary-foreground` matn) + `getInitials()` (`@/utils`) initsiallari (ism bo'sh bo'lsa "Foydalanuvchi" dan), ism va telefon. Yig'ilganda ism/telefon ustuni ham, yonidagi `ChevronsUpDown` ikonkasi ham `group-data-[collapsible=icon]:hidden` bilan yashiriladi — aks holda avatar 32px ga qisqargan tugmadan (`sidebarMenuButtonVariants` da `group-data-[collapsible=icon]:size-8!`) toshib chiqardi; dropdown ichidagi nusxaga bu qoida tegmaydi (sidebar `group`i unga ajdod emas), ya'ni menyuda ism ko'rinaveradi.
-- `User({ user }: { user?: UserRead | null })`: `user` bo'lmasa `null`. `SidebarMenuButton size="lg"` trigger → `DropdownMenu` (`side`: mobil bo'lsa "bottom", aks holda "right"): `DropdownMenuLabel` da yana `UserInfo`, so'ng "Sozlamalar" (`RouterLink to="/settings"`) va "Chiqish" (`useAuth().logout()`).
+- `User({ user }: { user?: UserRead | null })`: `user` bo'lmasa `null`. `SidebarMenuButton size="lg"` trigger → `DropdownMenu` (`side`: mobil bo'lsa "bottom", aks holda "right"): `DropdownMenuLabel` da yana `UserInfo`, so'ng "Sozlamalar" (`DropdownMenuItem asChild` ichida `RouterLink to="/settings"` — Radix `role="menuitem"` va roving-focus proplarini anchor'ning o'ziga qo'yadi) va "Chiqish" (`useAuth().logout()`).
 
 ---
 

@@ -412,7 +412,10 @@ def _exchange(url: str, code: str) -> tuple[str, str, str, str]:
     except urllib.error.HTTPError as exc:
         detail = ""
         with contextlib.suppress(Exception):
-            detail = json.loads(exc.read()).get("detail", "")
+            # 422 da `detail` — lug'atlar ro'yxati; xom pydantic tuzilmasini
+            # ko'rsatmaslik uchun faqat matn bo'lsa qabul qilamiz.
+            raw = json.loads(exc.read()).get("detail", "")
+            detail = raw if isinstance(raw, str) else ""
         raise _PairError(detail or f"Server rad etdi: {exc}") from None
     except OSError:
         raise _PairError(

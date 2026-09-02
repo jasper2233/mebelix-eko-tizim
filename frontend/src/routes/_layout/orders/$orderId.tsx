@@ -425,7 +425,8 @@ function OrderDetailPage() {
       {/* Texnolog ham tanlaydi: marshrutni u chizadi, ya'ni qaysi stanok
           qaysi ishni bajarishini yaxshiroq biladi. */}
       {(canManage || isTexnolog) && canEdit && order.project_uuid && (
-        <MachineAssign order={order} onSaved={invalidate} />
+        // key: buyurtma almashsa ichki `selection` holati qaytadan seed bo'lsin
+        <MachineAssign key={order.id} order={order} onSaved={invalidate} />
       )}
 
       {isTexnolog ? (

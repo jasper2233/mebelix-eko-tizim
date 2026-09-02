@@ -120,7 +120,7 @@ Backuplar `/var/backups/mebelix` da (deploy daraxtidan tashqarida), `BACKUP_KEEP
 
 ### Yuklangan fayllar (`UPLOAD_DIR`) va `uploads_data` volume
 
-Backend yuklangan fayllarni diskka yozadi (`backend/app/core/config.py`: `UPLOAD_DIR: str = "uploads"` — **nisbiy** yo'l, image ichidagi CWD `/app/backend` dan hisoblanadi, ya'ni `/app/backend/uploads`). Katalog tarkibi:
+Backend yuklangan fayllarni diskka yozadi (`backend/app/core/config.py`: `UPLOAD_DIR: str = "uploads"` — **nisbiy** yo'l, `backend/` paket ildizidan hisoblanadi, image ichida bu `/app/backend`, ya'ni `/app/backend/uploads`). Katalog tarkibi:
 
 | Kichik katalog | Nima | Yozuvchi |
 |---|---|---|
@@ -130,11 +130,11 @@ Backend yuklangan fayllarni diskka yozadi (`backend/app/core/config.py`: `UPLOAD
 
 (`agent/` katalogi endi ishlatilmaydi — u eski tarqatish oqimidan qolgan. `mebelix-agent.exe` ni hozir CI quradi va deploy uni `UPLOAD_DIR` dan tashqaridagi `agent-dist/` ga qo'yadi — `docker-compose.prod.yml` uni `api` konteynerga read-only mount qiladi (`- ./agent-dist:/app/backend/agent-dist:ro`), `GET /api/v1/bridge-agents/download` esa shu yerdan beradi; pastdagi "Agent o'rnatish" bo'limi.)
 
-DB'da faqat nisbiy yo'l saqlanadi (`OrderFile.path`), o'qishda `upload_root() / row.path` bilan qayta yig'iladi (`upload_root()` — `app/core/config.py` dagi helper: `Path(settings.UPLOAD_DIR).resolve()`, path-traversal tekshiruvlari ham shu root'ga nisbatan).
+DB'da faqat nisbiy yo'l saqlanadi (`OrderFile.path`), o'qishda `upload_root() / row.path` bilan qayta yig'iladi (`upload_root()` — `app/core/config.py` dagi helper: nisbiy `UPLOAD_DIR` ni `backend/` paket ildiziga bog'lab `resolve()` qiladi — CWD'ga emas, ya'ni ildiz xizmat qayerdan ishga tushirilganiga bog'liq emas; path-traversal tekshiruvlari ham shu root'ga nisbatan).
 
 **Prod'da doimiylik:** `docker-compose.prod.yml` da `api` xizmati `uploads_data` named volume'ini `/app/backend/uploads` ga mount qiladi. Mount nuqtasining o'zi image'da oldindan yaratilgan va `app:app` ga tegishli (`backend/Dockerfile` dagi `mkdir -p` + `chown`) — busiz Docker bo'sh volume'ni `root:root` bilan yaratar, uid 1000 ostidagi konteyner esa unga yozolmasdi (pastdagi "Dockerfile'lar" bo'limi). Volume bo'lmaganda fayllar konteyner qatlamida qolar va **har deploy'da (yangi image + konteyner almashishi) yo'qolar edi** — DB'dagi `OrderFile` yozuvlari qolib, fayl yo'q bo'lardi (`download_order_file` "Fayl diskda topilmadi" beradi). `worker` ga mount berilmagan: arq tasklari (`print_label`) faylga tegmaydi, yorliq DB ma'lumotidan chiziladi — `UPLOAD_DIR` ni faqat `api` route'lari o'qiydi.
 
-`docker-compose.local.yml` faqat `./backend/app` va `./scripts` ni mount qiladi — `uploads` uchun na bind-mount, na volume bor, ya'ni `make docker-local` rejimida yuklangan fayllar konteynerning yozuvchi qatlamida (`/app/backend/uploads`) qoladi va konteyner qayta yaratilganda yo'qoladi (lokal sinov uchun ataylab shunday). Hostda ishlaganda (`make run-backend`) fayllar `UPLOAD_DIR` nisbiy yo'li bo'yicha joriy katalogdagi `uploads/` ga tushadi — repo ichidagi `uploads/` ham, `backend/uploads/` ham `.gitignore` da. CI `rsync` `uploads` ni exclude qiladi, ya'ni deploy serverdagi fayllarga tegmaydi.
+`docker-compose.local.yml` faqat `./backend/app` va `./scripts` ni mount qiladi — `uploads` uchun na bind-mount, na volume bor, ya'ni `make docker-local` rejimida yuklangan fayllar konteynerning yozuvchi qatlamida (`/app/backend/uploads`) qoladi va konteyner qayta yaratilganda yo'qoladi (lokal sinov uchun ataylab shunday). Hostda ishlaganda (`make run-backend`, CWD = repo ildizi) fayllar baribir `backend/uploads/` ga tushadi: nisbiy `UPLOAD_DIR` paket ildiziga bog'langan, ya'ni konteyner bilan bir xil joyga (`.gitignore` da `uploads/` ham, `backend/uploads/` ham bor). CI `rsync` `uploads` ni exclude qiladi, ya'ni deploy serverdagi fayllarga tegmaydi.
 
 ### `caddy/Caddyfile` — reverse proxy va TLS
 

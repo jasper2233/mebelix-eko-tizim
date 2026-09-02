@@ -79,7 +79,10 @@ class WsManager:
 
     async def _dispatch(self, event: dict[str, Any]) -> None:
         dead: list[WsClient] = []
-        for client in self.clients:
+        # Snapshot SHART: `send_json` await'i paytida uzilgan mijoz
+        # `disconnect()` bilan ro'yxatni siljitadi va jonli ro'yxat ustidagi
+        # sikl keyingi ULANGAN mijozni jimgina o'tkazib yuboradi.
+        for client in list(self.clients):
             if not client.wants(event):
                 continue
             try:

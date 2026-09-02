@@ -190,8 +190,8 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/api/routes/ws.py:42-43` — /ws/events accepts the access token as a query parameter, which lands in proxy/access logs — the exact leak the sibling /ws/bridge endpoint was change
 - [ ] ✅ `backend/app/api/routes/ws.py:73-82` — /ws/events tokenni FAQAT ulanish paytida tekshiradi va ulanish umrida qayta tekshirmaydi — logout (token_version bump) yoki tokenning muddati tugashi 
 - [x] ✅ `backend/app/commands/create_first_superuser.py:21` — Idempotentlik faqat `phone` bo'yicha tekshiriladi; `ADMIN_PHONE` o'zgartirilsa eski admin qatoridagi username tufayli INSERT `ix_user_username` ni buz
-- [ ] ✅ `backend/app/core/config.py:160` — `upload_root()` resolves a relative `UPLOAD_DIR` against the process working directory, so the file-storage root (and the path-traversal baseline) mov
-- [ ] ✅ `backend/app/core/ws.py:82` — _dispatch iterates self.clients by index while awaiting a send, so a socket that disconnects mid-fan-out mutates the list under the loop and the next 
+- [x] ✅ `backend/app/core/config.py:160` — `upload_root()` resolves a relative `UPLOAD_DIR` against the process working directory, so the file-storage root (and the path-traversal baseline) mov
+- [x] ✅ `backend/app/core/ws.py:82` — _dispatch iterates self.clients by index while awaiting a send, so a socket that disconnects mid-fan-out mutates the list under the loop and the next 
 - [ ] ✅ `backend/app/core/ws.py:85` — _dispatch sends to every matching socket sequentially with await, so one stalled client blocks delivery to all others and stalls the whole pub/sub lis
 - [ ] ✅ `backend/app/crud/orders.py:17` — Order numbers use the UTC year while every other date boundary in the app uses Asia/Tashkent, so orders created between 00:00 and 05:00 Tashkent time 
 - [x] ✅ `backend/app/crud/users.py:60` — `update()` dict kelganda uni NUSXALAMAYDI (`update_data = user_update`), so'ng `pop("password")` bilan CHAQIRUVCHINING dict'ini o'zgartiradi — chaqiru
@@ -204,9 +204,9 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/services/giblab/parser.py:452` — `or` bilan berilgan zaxira qiymatlar fayldagi ANIQ nolni ham almashtiradi: torsovkasiz kesilgan listda `cTrimL="0"` xarita sarlavhasida 10 mm, `swSawt
 - [ ] ✅ `backend/app/services/labels.py:490-491` — Qadoq cheki 80×60 mm blankning pastki chetiga 2.1 mm qolguncha chiziladi — detal yorlig'ida ataylab qo'yilgan 4 mm zaxira qoidasi buzilgan.
 - [ ] ✅ `backend/app/services/labels.py:602-603` — The badge name's width trim only shrinks the LAST line, so a single word wider than 72 mm on the first line is drawn at full width and bleeds off both
-- [ ] ✅ `backend/app/services/labels.py:604` — Beyjikda ism kesilganini aniqlash tekshiruvi qator ICHIDAGI bo'shliqlarni sanaydi, shuning uchun qisqa dum tashlab yuborilganda "…" qo'yilmaydi va ism
+- [x] ✅ `backend/app/services/labels.py:604` — Beyjikda ism kesilganini aniqlash tekshiruvi qator ICHIDAGI bo'shliqlarni sanaydi, shuning uchun qisqa dum tashlab yuborilganda "…" qo'yilmaydi va ism
 - [x] ✅ `bridge-agent/README.md:47` — README navbatda chek turganda update hech qachon almashtirmaydi deb qat'iy aytadi; kodda esa kutish 3600 soniya (1 soat) bilan cheklangan — tiqilib qo
-- [ ] ✅ `bridge-agent/agent.py:415` — _exchange serverning `detail` maydonini doim matn deb hisoblaydi; 4 belgidan qisqa kod kiritilganda FastAPI 422 qaytaradi va `detail` — lug'atlar RO'Y
+- [x] ✅ `bridge-agent/agent.py:415` — _exchange serverning `detail` maydonini doim matn deb hisoblaydi; 4 belgidan qisqa kod kiritilganda FastAPI 422 qaytaradi va `detail` — lug'atlar RO'Y
 - [x] ✅ `docs/01-architecture.md:86` — Nima: The Redis-connection inventory misses the short-lived clients opened per request by the two bridge-agent log endpoints.
 - [x] ✅ `docs/03-backend-api.md:418` — Nima: The doc names only the label and file routes as ctx-free, but `/qr/{qr}/order` also runs without `TerminalCtx`.
 - [x] ✅ `docs/03-backend-api.md:422` — Nima: Doc says the only ways to open a shift are POST /terminal/session and /login/badge; password login on a post role also opens one.
@@ -230,13 +230,13 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/components/Common/TablePagination.tsx:9` — Nima: docs/06 says the range label sits on the left and the controls on the right; the whole block is right-aligned (`justify-end`).
 - [ ] ✅ `frontend/src/components/Orders/CustomRoutes.tsx:224` — The "Asosiy detalga biriktirish" option list reads `assembly_parent_id` from the server row only, ignoring pending `parents` edits — so a part already
 - [ ] ✅ `frontend/src/components/Orders/EditOrder.tsx:74` — EditOrder and MachineAssign both spread crudCallbacks (which already invalidates on onSettled) AND call an `onSaved` prop whose only implementation is
-- [ ] ✅ `frontend/src/components/Orders/MachineAssign.tsx:26` — `selection` is seeded from `order.machine_assignments` by a useState initializer, which runs once per mount — a refetch that brings different assignme
+- [x] ✅ `frontend/src/components/Orders/MachineAssign.tsx:26` — `selection` is seeded from `order.machine_assignments` by a useState initializer, which runs once per mount — a refetch that brings different assignme
 - [ ] ✅ `frontend/src/components/Orders/MachineAssign.tsx:83` — A machine assignment can never be removed once made: the SelectField gets no `emptyLabel` so no empty option is rendered, the mutation body drops empt
 - [ ] ✅ `frontend/src/components/Orders/orderForm.tsx:59` — The "Izoh" FormField is copy-pasted into AddOrder and EditOrder with the only difference being a placeholder, contradicting the stated reason for keep
 - [ ] ✅ `frontend/src/components/People/PersonDialog.tsx:113` — form.posts is snapshotted in the useState initializer from the `posts` prop, so opening the dialog from the EDIT button before the posts query resolve
 - [ ] ✅ `frontend/src/components/People/PersonDialog.tsx:297` — `formatUzPhone` is called without the `prev` argument, re-introducing the backspace lock that argument exists to prevent.
 - [ ] ✅ `frontend/src/components/Sidebar/User.tsx:32` — The avatar falls back to initials of the literal word "Foydalanuvchi" while the name line right next to it renders empty, so a nameless account shows 
-- [ ] ✅ `frontend/src/components/Sidebar/User.tsx:82` — The "Sozlamalar" entry inverts the shadcn/Radix composition: the link wraps the menu item instead of the item wrapping the link, so a bare `<a>` sits 
+- [x] ✅ `frontend/src/components/Sidebar/User.tsx:82` — The "Sozlamalar" entry inverts the shadcn/Radix composition: the link wraps the menu item instead of the item wrapping the link, so a bare `<a>` sits 
 - [ ] ✅ `frontend/src/components/Terminal/CutmapView.tsx:390` — Matritsadan "xaritada ko'rsat" sakrashi detal topilmasa jimgina yo'qoladi: bayroq izlashdan OLDIN yoqiladi, xabar ham berilmaydi.
 - [x] ✅ `frontend/src/components/Terminal/CutmapView.tsx:826` — `registerZoom` effekti har renderda qayta ishlaydi, chunki CutmapView unga inline arrow beradi — izoh esa "bir marta o'rnatiladi" deb yozadi.
 - [ ] ✅ `frontend/src/components/Terminal/CutmapView.tsx:86` — Popup bloklansa "PDF / Chop etish" jimgina hech narsa qilmaydi — foydalanuvchiga sabab aytilmaydi.
