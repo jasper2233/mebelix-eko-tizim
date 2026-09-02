@@ -102,7 +102,7 @@ oqimidan emas.
 
 ```
 backend/app/
-  api/routes/     99 endpoint (97 HTTP + 2 WS), `/v1` agregatorida 18 router
+  api/routes/     100 endpoint (98 HTTP + 2 WS), `/v1` agregatorida 18 router
   api/routes/orders/   5 modul: lifecycle · matrix · files · survey · _common
   models/         19 ORM model  ·  services/giblab/  .project parseri
   services/scanning.py   skan dvijoki (E001..E009 xato kodlari)
