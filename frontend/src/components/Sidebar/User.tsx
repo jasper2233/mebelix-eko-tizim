@@ -25,11 +25,14 @@ interface UserInfoProps {
 }
 
 function UserInfo({ fullName, phone }: UserInfoProps) {
+  // Beyj ham, ism qatori ham bitta manbadan — aks holda nomsiz hisobda
+  // "F" initsiali yonida bo'sh qator turardi.
+  const displayName = fullName || "Foydalanuvchi"
   return (
     <div className="flex w-full min-w-0 items-center gap-2.5">
       <Avatar className="size-8 shrink-0">
         <AvatarFallback className="bg-sidebar-primary font-semibold text-sidebar-primary-foreground">
-          {getInitials(fullName || "Foydalanuvchi")}
+          {getInitials(displayName)}
         </AvatarFallback>
       </Avatar>
       {/* Yig'ilgan rejimda tugma 32px ga qisqaradi — matn ustuni yashirilmasa
@@ -37,7 +40,7 @@ function UserInfo({ fullName, phone }: UserInfoProps) {
           tushardi. Portal ichidagi dropdown nusxasiga bu qoida tegmaydi
           (sidebar `group`i ajdod emas), ya'ni menyuda ism ko'rinaveradi. */}
       <div className="flex min-w-0 flex-col items-start group-data-[collapsible=icon]:hidden">
-        <p className="w-full truncate text-sm font-medium">{fullName}</p>
+        <p className="w-full truncate text-sm font-medium">{displayName}</p>
         <p className="w-full truncate text-xs opacity-70">{phone}</p>
       </div>
     </div>

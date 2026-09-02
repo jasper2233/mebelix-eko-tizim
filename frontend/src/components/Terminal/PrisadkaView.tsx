@@ -195,7 +195,12 @@ export function PrisadkaView({
           setProgress(n)
           await new Promise((r) => setTimeout(r, 300))
         }
-        toast.success(`${allFiles.length} ta SCX yuklab olindi`)
+        // `<a download>` natijani qaytarmaydi: server 404 bersa yoki brauzer
+        // yuklashni bloklasa ham JS bilmaydi — shu sabab "yuklab olindi" deb
+        // yolg'on va'da bermaymiz, operatorni yuklamalar ro'yxatiga yo'llaymiz
+        toast.success(
+          `${allFiles.length} ta SCX yuklash boshlandi — brauzer yuklamalarini tekshiring`,
+        )
       }
     } catch (e) {
       // Saqlangan papka o'chirilgan/ko'chirilgan yoki flesh olib qo'yilgan —

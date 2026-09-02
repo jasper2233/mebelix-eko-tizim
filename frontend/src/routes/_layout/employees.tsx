@@ -350,10 +350,14 @@ function PeoplePage() {
           onClose={() => setBadgeFor(null)}
         />
       )}
-      {(adding || editFor) && (
+      {/* "Hodim qo'shish" tugmasi kabi, TAHRIRLASH ham postlar kelguncha
+          kutadi: dialog lavozim/postni bir marta ochilishda o'qiydi va qayta
+          sinxronlamaydi — bo'sh katalog bilan ochilsa tsex xodimi "Kamida
+          bitta post tanlang" da qotib qolardi, saqlansa esa posti o'chardi. */}
+      {(adding || editFor) && posts && (
         <PersonDialog
           person={editFor}
-          posts={posts ?? []}
+          posts={posts}
           canManageAccounts={canManageAccounts}
           onClose={() => {
             setAdding(false)

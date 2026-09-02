@@ -106,7 +106,7 @@ export function PersonDialog({
     position: initialPosition,
     otherPosition:
       initialPosition === OTHER_POSITION ? (person?.position ?? "") : "",
-    phone: person?.phone ?? "",
+    phone: formatUzPhone(person?.phone ?? ""),
     // Postni DIALOG OCHILGANDA ham lavozimdan olamiz. Ilgari u faqat lavozim
     // QO'LDA almashtirilganda to'ldirilardi: admin tayyor turgan "Arrachi" ga
     // tegmasdan saqlasa, postsiz hodim yaratilardi va uning beyjigi ishlamasdi.
@@ -139,12 +139,10 @@ export function PersonDialog({
     }))
 
   const queryClient = useQueryClient()
-  // Payload EKRANDA ko'rinayotgan raqamdan quriladi. Ilgari u xom kiritmadan
-  // olinardi: "901234567" paste qilinsa ekranda to'g'ri "+998 90 123-45-67"
-  // turardi, serverga esa "+901234567" ketib 422 qaytarardi. Chala terilgan
-  // raqam ham shunday o'tib ketardi.
-  const phoneInput = formatUzPhone(form.phone)
-  const parsedPhone = optionalFormattedPhoneSchema.safeParse(phoneInput)
+  // Telefon FORMATLANGAN holda saqlanadi (boshqa 4 chaqiruvchidagi kabi), shu
+  // sabab payload ham, ko'rinish ham aynan shu satr: "901234567" paste qilinsa
+  // ekranda ham, serverda ham "+998 90 123-45-67" bo'ladi.
+  const parsedPhone = optionalFormattedPhoneSchema.safeParse(form.phone)
   const phone =
     parsedPhone.success && parsedPhone.data ? parsedPhone.data : null
 
@@ -261,7 +259,7 @@ export function PersonDialog({
         ? "Lavozim nomini yozing"
         : kind === "tsex" && form.posts.length === 0
           ? "Kamida bitta post tanlang"
-          : phoneInput !== "" && phone === null
+          : form.phone !== "" && phone === null
             ? "Telefon +998XXXXXXXXX formatida bo'lsin"
             : (kind === "ofis" || withLogin) && !phone
               ? "Kirish uchun telefon kerak — login o'shandan olinadi"
@@ -304,8 +302,10 @@ export function PersonDialog({
             }
           >
             <Input
-              value={formatUzPhone(form.phone)}
-              onChange={(e) => set("phone", e.target.value)}
+              value={form.phone}
+              onChange={(e) =>
+                set("phone", formatUzPhone(e.target.value, form.phone))
+              }
               placeholder="+998 90 123-45-67"
               inputMode="tel"
             />

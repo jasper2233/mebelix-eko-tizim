@@ -2,6 +2,7 @@
 // katta tugmadan iborat — tsexda qo'lqop bilan bosiladi.
 
 import { Expand, Lock } from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 
@@ -24,7 +25,11 @@ export function KioskOverlays({
           icon={<Expand className="size-16 opacity-80" />}
           title="Terminal to'liq ekranda ishlaydi"
           action="To'liq ekranga o'tish"
-          onAction={() => document.documentElement.requestFullscreen()}
+          onAction={() =>
+            document.documentElement
+              .requestFullscreen()
+              .catch(() => toast.error("To'liq ekranga o'tib bo'lmadi"))
+          }
         />
       )}
       {/* Qulf ekrani. Tugma bilan ochilmaydi: qulf tasodifiy tegishdan ham,

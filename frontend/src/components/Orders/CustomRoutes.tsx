@@ -232,12 +232,21 @@ export function CustomRoutes({
                 const parentId = parentOf(part.id, part.assembly_parent_id)
                 const mine = codes[codes.length - 1]
                 const kids = part.assembly_children ?? []
-                if (kids.length)
+                // Draftda shu detalni ota qilib tanlaganlar ham hisobga olinadi —
+                // aks holda A→B dan keyin B ga ota tanlab zanjir hosil bo'ladi
+                // (saqlashda 403) va selektor value'si variantlardan tashqarida qoladi.
+                const draftKids = parts.filter(
+                  (o) => o.id !== part.id && parents[o.id] === part.id,
+                )
+                if (kids.length || draftKids.length)
                   return (
                     <div className="mt-2 border-t pt-2 text-xs text-muted-foreground">
                       Asosiy detal —{" "}
                       <b className="text-foreground">
-                        {kids.map((k) => `${k.code} ×${k.count}`).join(", ")}
+                        {[
+                          ...kids.map((k) => `${k.code} ×${k.count}`),
+                          ...draftKids.map((o) => o.code),
+                        ].join(", ")}
                       </b>{" "}
                       biriktirilgan
                     </div>
@@ -245,7 +254,9 @@ export function CustomRoutes({
                 const options = parts.filter(
                   (o) =>
                     o.id !== part.id &&
-                    !o.assembly_parent_id &&
+                    // Saqlanmagan draftda ota olgan detal ham chiqmasin —
+                    // aks holda batch saqlash zanjir xatosi bilan yiqiladi.
+                    !parentOf(o.id, o.assembly_parent_id) &&
                     codesOf(o.id, o.routes).includes(mine),
                 )
                 return (

@@ -91,7 +91,10 @@ function printAllMaps(
   instancesByCell: Map<string, CutmapInstanceState[]>,
 ) {
   const w = window.open("", "_blank", "width=1000,height=800")
-  if (!w) return
+  if (!w) {
+    toast.error("Brauzer yangi oynani blokladi — popup'ga ruxsat bering")
+    return
+  }
   const blocks = materials
     .flatMap((m: Material) =>
       m.sheets.map(
@@ -406,7 +409,6 @@ export function CutmapView({
   useEffect(() => {
     if (!focusPartKey || !data?.model || focusApplied.current === focusPartKey)
       return
-    focusApplied.current = focusPartKey
     for (let mi = 0; mi < materials.length; mi++) {
       const shs = materials[mi].sheets ?? []
       for (let si = 0; si < shs.length; si++) {
@@ -414,6 +416,7 @@ export function CutmapView({
           (p) => !p.waste && p.key === focusPartKey,
         )
         if (hit) {
+          focusApplied.current = focusPartKey
           setMaterialIdx(mi)
           setSheetIdxRaw(si)
           setMarkedCell(hit.cell)
@@ -421,6 +424,10 @@ export function CutmapView({
         }
       }
     }
+    // Topilmadi: sababini aytamiz, lekin bayroqni baribir yozamiz —
+    // aks holda har refetch (60s) shu toastni qayta chiqarardi.
+    focusApplied.current = focusPartKey
+    toast.error("Bu detal kesish xaritasida joylashtirilmagan")
   }, [focusPartKey, data, materials])
 
   if (isLoading) return <Skeleton className="h-full w-full" />
