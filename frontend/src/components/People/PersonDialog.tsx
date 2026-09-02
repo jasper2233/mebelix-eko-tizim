@@ -38,7 +38,7 @@ import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
 import { OTHER_POSITION, POSITIONS } from "@/lib/mes"
-import { formatUzPhone } from "@/lib/validation"
+import { formatUzPhone, optionalFormattedPhoneSchema } from "@/lib/validation"
 import { detailMessage } from "@/utils"
 
 export type Access = "badge" | "password" | "both" | "none"
@@ -139,8 +139,14 @@ export function PersonDialog({
     }))
 
   const queryClient = useQueryClient()
-  const digits = form.phone.replace(/\D/g, "")
-  const phone = digits ? `+${digits}` : null
+  // Payload EKRANDA ko'rinayotgan raqamdan quriladi. Ilgari u xom kiritmadan
+  // olinardi: "901234567" paste qilinsa ekranda to'g'ri "+998 90 123-45-67"
+  // turardi, serverga esa "+901234567" ketib 422 qaytarardi. Chala terilgan
+  // raqam ham shunday o'tib ketardi.
+  const phoneInput = formatUzPhone(form.phone)
+  const parsedPhone = optionalFormattedPhoneSchema.safeParse(phoneInput)
+  const phone =
+    parsedPhone.success && parsedPhone.data ? parsedPhone.data : null
 
   // Lavozim turi o'zgarsa qarama-qarshi yozuv o'chiriladi (tsexdan ofisga
   // o'tgan odamning beyjigi bekor bo'ladi va aksincha). Bu JIM bo'lmasin.
@@ -255,13 +261,15 @@ export function PersonDialog({
         ? "Lavozim nomini yozing"
         : kind === "tsex" && form.posts.length === 0
           ? "Kamida bitta post tanlang"
-          : (kind === "ofis" || withLogin) && !phone
-            ? "Kirish uchun telefon kerak — login o'shandan olinadi"
-            : (kind === "ofis" || withLogin) &&
-                !person?.user &&
-                form.password.length === 0
-              ? "Parol kiriting"
-              : null
+          : phoneInput !== "" && phone === null
+            ? "Telefon +998XXXXXXXXX formatida bo'lsin"
+            : (kind === "ofis" || withLogin) && !phone
+              ? "Kirish uchun telefon kerak — login o'shandan olinadi"
+              : (kind === "ofis" || withLogin) &&
+                  !person?.user &&
+                  form.password.length === 0
+                ? "Parol kiriting"
+                : null
   const valid = missing === null
 
   // Ofis lavozimi kirish hisobi ochadi — buni faqat superuser qila oladi

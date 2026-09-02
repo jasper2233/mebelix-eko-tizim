@@ -44,9 +44,15 @@ qolganini lavozim hal qiladi.
   belgilangan) hisob `updateUser` bilan yangilanadi, shuning uchun `switching` shartida
   `&& !withLogin` turadi — busiz har tahrirda yolg'on destruktiv tasdiq chiqardi.
 - **O'chiq "Saqlash" sababini aytadi** (`missing`): "F.I.Sh yozing", "Lavozim nomini
-  yozing", "Kamida bitta post tanlang", "Kirish uchun telefon kerak — login
-  o'shandan olinadi" (ofis lavozimida ham, tsexda parol bilan kirishda ham),
-  "Parol kiriting".
+  yozing", "Kamida bitta post tanlang", "Telefon +998XXXXXXXXX formatida bo'lsin",
+  "Kirish uchun telefon kerak — login o'shandan olinadi" (ofis lavozimida ham,
+  tsexda parol bilan kirishda ham), "Parol kiriting".
+- **Telefon EKRANDAGI ko'rinishdan kanonlashtiriladi**: maydon `formatUzPhone` bilan
+  maskalanadi, payload esa o'sha maskadan `optionalFormattedPhoneSchema` orqali
+  `+998901234567` ga o'tkaziladi. Ilgari u xom kiritmadan raqamlarni yig'ib olardi:
+  "901234567" paste qilinsa ekranda to'g'ri "+998 90 123-45-67" turardi, serverga esa
+  "+901234567" ketardi; chala terilgan raqamda ham "Saqlash" faol qolib, server 422
+  qaytarardi. Endi naqshga mos kelmagan raqam `missing` bilan bloklanadi.
 - Parol va login qoidalari maydon ostida turadi — ilgari ular faqat serverdan xato
   bo'lib qaytardi (endi o'zbekcha: `schemas/users.py` `validate_password_strength`).
 
@@ -56,7 +62,7 @@ qolganini lavozim hal qiladi.
 
 **Maqsadi:** yangi mijoz yaratish dialogi (TZ 4.6) — mustaqil ham, boshqa forma ichidan ham ishlaydi.
 
-- zod: `full_name` (min 2 belgi), `phone`/`phone_alt` (`optionalFormattedPhoneSchema`), `address`, `notes`; telefon inputlari yozish paytida `formatUzPhone` bilan "+998 90 123-45-67" ko'rinishida maskalanadi (placeholder esa "+998 90 123 45 67"); submitda `optionalFormattedPhoneSchema` probel/chiziqchalarni olib tashlab kanonik `+998901234567` ga o'tkazadi.
+- zod: `full_name` (min 2 belgi), `phone`/`phone_alt` (`optionalFormattedPhoneSchema`), `address` (ko'pi bilan 255 belgi — backend ustuni `String(255)`; maydonda `maxLength={255}` va `FormMessage` bor, aks holda uzun manzilda submit sababsiz jim bloklanardi), `notes` (cheklovsiz — backend `Text`); telefon inputlari yozish paytida `formatUzPhone` bilan "+998 90 123-45-67" ko'rinishida maskalanadi (placeholder esa "+998 90 123 45 67"); submitda `optionalFormattedPhoneSchema` probel/chiziqchalarni olib tashlab kanonik `+998901234567` ga o'tkazadi.
 - Props: `trigger?` (default "+ Yangi mijoz" tugmasi o'rniga istalgan React node), `onCreated?(client)`, `client?` va `onClose?`. `Clients/ClientCombobox` popover footeri birinchi ikkitasidan foydalanib mijozni inline yaratadi va combobox'da avtomatik tanlaydi.
 - **Bu ayni paytda TAHRIRLASH dialogi ham:** `client` propi berilsa forma boshqariladigan rejimda ochiladi (`ochiq = true`, yopilishi `onClose` orqali). Ikkinchi nusxa yozilmagan, chunki maydonlar va tekshiruvlar aynan bir xil — nusxa bo'lsa telefon formati bir joyda o'zgarib, ikkinchisida qolardi.
 - Mutation: `client` berilmasa `ClientsService.createClient`, berilsa `ClientsService.updateClient` (`crudCallbacks` triosi — toast "Mijoz qo'shildi"/"Mijoz yangilandi" + xato + `["clients"]` invalidatsiyasi); muvaffaqiyatda reset, dialog yopiladi va FAQAT yaratishda `onCreated?.(client)` chaqiriladi.
@@ -296,14 +302,15 @@ Buyurtma sahifalari (`/orders`, `/orders/$orderId`) uchun dialog va jadval kompo
 - **"Nostandart" ustuni** (post ustunlaridan keyin): o'qish rejimida amber "✓" yoki "—", tahrirlashda `Checkbox` → `MatrixPartEdit.is_custom`. Belgilangan detal fayldan avtomatik marshrut olmaydi (mavjud avtomatik qadamlar yumshoq o'chadi, bayroq qaytarilsa aynan tiklanadi), marshrutini texnolog `Orders/CustomRoutes` da chizadi. Katakcha almashtirilganda shu detalning KUTAYOTGAN bosqich tanlovlari `stageEdits` dan olib tashlanadi: katakchalar qulflanishi faqat keyingi bosishlarni to'xtatadi, oldin belgilanganlari esa o'sha batchda `is_custom` bilan birga ketib, backend endigina qayta qurgan marshrutga tegib ketardi.
 - Boshqaruv qatorida detal qidiruvi ("Qidirish: kod yoki nom...") va `N / M detal` hisobi; jadval balandligi 70vh bilan chegaralangan, sarlavha sticky.
 - Har detal kodi yonida Map-ikonka — `/cutmap/$orderId?part=...` havolasi: kesish xaritasida detalning listi ochilib katagi belgilanadi (`CutmapView` `focusPartKey` oqimi).
-- `part.is_custom` bo'lsa detal nomi ostida amber belgi — "Nostandart · N qadam" yoki (marshrut hali chizilmagan bo'lsa) "Nostandart · marshrut yo'q", `title` da tushuntirish.
-- Ma'lumot: `getOrderMatrixQueryOptions(orderId)`; o'lchamlar `formatSize` (`@/lib/mes`) bilan.
+- `part.is_custom` bo'lsa detal nomi ostida amber belgi — "Nostandart · N qadam" yoki (marshrut hali chizilmagan bo'lsa) "Nostandart · marshrut yo'q", `title` da tushuntirish. N faqat TEXNOLOG chizgan qadamlar (`drawnSteps` yordamchisi: `is_enabled` va `TAIL_CODES` dan tashqari) — xom `routes.length` backend o'zi qo'shgan dumni (qadoqlash/TMO) va o'chirilgan qadamlarni ham sanab, `CustomRoutes` tabidagi marshrutdan 1-2 qadam ko'p ko'rsatardi.
+- Izoh inputi CONTROLLED (`value={noteEdits[part.id] ?? part.note ?? ""}`): qidiruv filtri qatorni unmount qilib qaytarganda `defaultValue` bilan kiritilgan matn ekrandan yo'qolib, `noteEdits` da qolib ketardi — texnolog server izohini ko'rib turib, saqlash o'sha ko'rinmas matnni yozardi.
+- Ma'lumot: `getOrderMatrixQueryOptions(orderId)`; o'lchamlar `formatSize` (`@/lib/mes`) bilan. So'rov yiqilsa Skeleton'dan keyin `Common/QueryError` chiziladi (`isError, refetch`) — ilgari xato bo'sh holatga tushib, texnolog "Detallar yo'q — avval .project fayl yuklanishi kerak" degan yolg'on sababni o'qirdi.
 
 ### `frontend/src/components/Orders/CustomRoutes.tsx`
 
 **Maqsadi:** "Nostandart detallar" tabi (TZ 6.3.3) — matritsada `is_custom` deb belgilangan detallarning marshrutini texnolog QO'LDA chizadi. Fayl bunday detalning yo'lini bilmaydi (nomdagi `{kodlar}` sintaksisi olib tashlangan, marshrut endi detal nomiga umuman bog'liq emas), shuning uchun yagona manba — texnologning shu ekrandagi tanlovi.
 
-- Props: `{ orderId: number; editable: boolean }`. Ma'lumot — `OrderMatrix` bilan AYNAN bitta query (`getOrderMatrixQueryOptions(orderId)`, TanStack dedupe qiladi), `parts.filter(p => p.is_custom)`; nostandart detal bo'lmasa tushuntirish matni chiqadi ("Detallar matritsasida 'Nostandart' ustunidan belgilang").
+- Props: `{ orderId: number; editable: boolean }`. Ma'lumot — `OrderMatrix` bilan AYNAN bitta query (`getOrderMatrixQueryOptions(orderId)`, TanStack dedupe qiladi), `parts.filter(p => p.is_custom)`; nostandart detal bo'lmasa tushuntirish matni chiqadi ("Detallar matritsasida 'Nostandart' ustunidan belgilang"). So'rov xatosida (`isError`) bo'sh holat emas, `Common/QueryError` chiziladi — aks holda 500 "nostandart detal yo'q" bo'lib ko'rinardi.
 - Har detal kartochkasida `PROCESS_OPS` ning 16 kodidan marshrut DUMI — `TAIL_CODES` (`@/lib/mes` — UPAKOVKA 15 va TMO 16) chiqarilib, qolgan 14 kodi tugma bo'lib chiziladi (`CODES` konstantasi, `title` da `kod · POST`) — qadoqlashni texnolog tanlamaydi, uni anketadagi "Upakovka qilish" bayrog'iga qarab backend oxirgi qadam qilib o'zi qo'shadi. Tugma bosilsa kod marshrut oxiriga QO'SHILADI va tanlangan tartibda raqamlanadi (1, 2, 3...); bitta jarayonni qayta bosish yangi qadam beradi (kromka → prisadka → yana kromka — shuning uchun tugmada `1,3` kabi bir necha raqam turishi mumkin), OXIRGI qadamni bosish esa uni bekor qiladi. O'ng tomonda joriy marshrut `7 / 11 / 8` ko'rinishida.
 - Validatsiya: marshrut bo'sh bo'lmasligi va `ROUTE_START_POSTS` (`@/lib/mes` — ARRA yoki ROVER) dan boshlanishi shart — chek shu birinchi postda chiqadi. Buzilgan detal kartochkasi qizil ramkada, tepada nechta ekani sanaladi, "Saqlash" tugmasi bloklanadi (backend ham marshrutsiz detalni ishlab chiqarishga o'tkazmaydi).
 - **Yig'ma buyum:** har nostandart detalni ASOSIY DETALGA biriktirish mumkin — kartochka pastida "Asosiy detalga biriktirish:" `SelectField` i (variantlar: o'zining oxirgi jarayoni bilan bir xil qadamga ega, hali hech kimga biriktirilmagan detallar). Biriktirilsa mayda detalning marshruti shu amalda TUGAYDI — qadoqlash/TMO faqat asosiy detalda. Bolalari bor detalda select o'rniga "Asosiy detal — `01_007 ×2` biriktirilgan" satri chiqadi. Tanlov `parents` state'da (`part_id -> assembly_parent_id`), saqlashda `edits[].assembly_parent_id` bo'lib ketadi (`0` = bog'lamni uzadi, backendga `null` yuboriladi).
@@ -373,7 +380,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 **Maqsadi:** navigatsiya menyusi ro'yxati.
 
 - Eksport: `type Item = { icon: LucideIcon; title: string; path: string; badge?: number }` va `Main({ items })`; `badge` bo'lsa (0 emas) band yonida `SidebarMenuBadge` chiqadi.
-- `useRouterState()` dan `currentPath` olinib `isActive = currentPath === item.path` aniqlanadi; aktiv bandda chapdan 3px oltin chiziq `before:` pseudo-element bilan (`data-[active=true]:before:...w-[3px]...before:bg-sidebar-primary`) va ikonka `text-sidebar-primary` ga o'tadi — inset soya tugmaning rounded burchaklarida qirqilib ko'rinmasdi.
+- `useRouterState()` dan `currentPath` olinib faollik aniqlanadi: ildiz (`/`) uchun qat'iy tenglik, qolgan bandlar uchun prefiks moslik (`currentPath === item.path || currentPath.startsWith(item.path + "/")`) — shu tufayli `/orders/123` da ham "Buyurtmalar" yonib turadi; aktiv bandda chapdan 3px oltin chiziq `before:` pseudo-element bilan (`data-[active=true]:before:...w-[3px]...before:bg-sidebar-primary`) va ikonka `text-sidebar-primary` ga o'tadi — inset soya tugmaning rounded burchaklarida qirqilib ko'rinmasdi.
 - Har band `SidebarMenuButton tooltip={item.title} asChild` ichida `RouterLink`; mobil rejimda bosilganda `setOpenMobile(false)` bilan panel yopiladi.
 
 ### `frontend/src/components/Sidebar/User.tsx`
@@ -663,7 +670,8 @@ PRIORITY_DOT_CLASSES/PRIORITY_TEXT_CLASSES/PRIORITY_BADGE_CLASSES, POST_COLORS,
 ORDER_STATUS_LABELS/COLORS, chipColors/mixTint, isCut, PROCESS_OPS (16 amal kodi →
 nom+post; OperationChips va CustomRoutes ishlatadi), TAIL_CODES (15/16 — tizim
 qo'shadigan dum; CustomRoutes uni ham tugmalardan, ham saqlangan marshrutdan
-chiqarib tashlaydi), STANDARD_MATRIX_POSTS,
+chiqarib tashlaydi, OrderMatrix esa "Nostandart · N qadam" sanog'idan),
+STANDARD_MATRIX_POSTS,
 ROUTE_START_POSTS, isAdmin/isSuperuser/isManagement/isProductionStaff,
 MACHINE_BOUND_ROLES, TERMINAL_STATUSES, formatSize),
 @/hooks (useAuth, useCurrentUser, useMobile, useDebounced, useScanFlash), sonner (toast),

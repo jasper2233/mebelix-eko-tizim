@@ -39,7 +39,14 @@ export function Main({ items }: MainProps) {
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => {
-            const isActive = currentPath === item.path
+            // Ichki sahifada ham ota band yonib tursin (/orders/123 -> "Buyurtmalar").
+            // Ildiz alohida: aks holda hamma yo'l "/" bilan boshlanib
+            // "Boshqaruv paneli" doim faol ko'rinardi.
+            const isActive =
+              item.path === "/"
+                ? currentPath === "/"
+                : currentPath === item.path ||
+                  currentPath.startsWith(`${item.path}/`)
 
             return (
               <SidebarMenuItem key={item.title}>

@@ -69,10 +69,11 @@ function BadgeCard({ pending }: { pending: boolean }) {
         strokeWidth="1.5"
         fill="none"
         className="mx-draw"
-        pathLength={1}
       >
-        <rect x="5" y="5" width="110" height="138" rx="10" />
-        <rect x="46" y="17" width="28" height="6" rx="3" />
+        {/* pathLength <g> da emas, har bir shaklda: `mx-draw` dagi
+            stroke-dasharray:1 aynan shu normallashtirishga tayanadi. */}
+        <rect x="5" y="5" width="110" height="138" rx="10" pathLength={1} />
+        <rect x="46" y="17" width="28" height="6" rx="3" pathLength={1} />
       </g>
       {/* QR: uchta burchak belgisi + o'ng-pastdagi modul to'plami. Tarqoq
           nuqta emas — QR grammatikasi: burchaklar tanish, o'ng-past to'la.

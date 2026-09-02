@@ -32,7 +32,7 @@ const formSchema = z.object({
   full_name: z.string().trim().min(2, "Kamida 2 belgi").max(150),
   phone: optionalFormattedPhoneSchema,
   phone_alt: optionalFormattedPhoneSchema,
-  address: z.string().max(255).optional(),
+  address: z.string().max(255, "Ko'pi bilan 255 belgi").optional(),
   notes: z.string().optional(),
 })
 
@@ -191,8 +191,9 @@ export function AddClient({
                 <FormItem>
                   <FormLabel>Manzil</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} maxLength={255} />
                   </FormControl>
+                  <FormMessage />
                 </FormItem>
               )}
             />

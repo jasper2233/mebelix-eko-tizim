@@ -7,6 +7,7 @@ import { Map as MapIcon, Pencil, X } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { type MatrixPart, OrdersService, type PostRead } from "@/client"
+import { QueryError } from "@/components/Common/QueryError"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -25,6 +26,7 @@ import {
   formatSize,
   POST_COLORS,
   STANDARD_MATRIX_POSTS,
+  TAIL_CODES,
 } from "@/lib/mes"
 import {
   crudCallbacks,
@@ -36,6 +38,14 @@ type StageEdits = Record<number, Record<number, boolean>> // part_id -> post_id 
 type NoteEdits = Record<number, string>
 type CustomEdits = Record<number, boolean> // part_id -> nostandart
 
+// Texnolog chizgan qadamlar soni: tizim dumi (qadoqlash/TMO) va o'chirilgan
+// qadamlar sanalmaydi — aks holda nishon Nostandart tabidagi marshrutdan
+// 1-2 qadam ko'p ko'rsatardi.
+const drawnSteps = (part: MatrixPart) =>
+  part.routes.filter(
+    (r) => r.is_enabled && !TAIL_CODES.includes(r.process_code),
+  ).length
+
 export function OrderMatrix({
   orderId,
   editable,
@@ -43,9 +53,12 @@ export function OrderMatrix({
   orderId: number
   editable: boolean
 }) {
-  const { data: matrix, isLoading } = useQuery(
-    getOrderMatrixQueryOptions(orderId),
-  )
+  const {
+    data: matrix,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery(getOrderMatrixQueryOptions(orderId))
   const { data: posts } = useQuery(getPostsQueryOptions())
   const [editMode, setEditMode] = useState(false)
   const [query, setQuery] = useState("")
@@ -104,6 +117,9 @@ export function OrderMatrix({
   })
 
   if (isLoading) return <Skeleton className="h-48 w-full" />
+  // Xatoni bo'sh holatdan oldin tekshiramiz: 500 da "detal yo'q" deyish
+  // texnologni yo'q faylni qayta yuklashga majburlardi.
+  if (isError) return <QueryError onRetry={() => refetch()} />
   if (!matrix?.parts.length) {
     return (
       <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
@@ -217,8 +233,8 @@ export function OrderMatrix({
                       className="mt-0.5 inline-block rounded-sm bg-amber-100 px-1.5 py-0.5 text-2xs font-bold text-amber-900"
                       title="Marshrutini texnolog qo'lda chizadi — Nostandart detallar tabida."
                     >
-                      {part.routes.length
-                        ? `Nostandart · ${part.routes.length} qadam`
+                      {drawnSteps(part)
+                        ? `Nostandart · ${drawnSteps(part)} qadam`
                         : "Nostandart · marshrut yo'q"}
                     </span>
                   )}
@@ -269,7 +285,7 @@ export function OrderMatrix({
                   {editMode ? (
                     <Input
                       className="h-8 min-w-[120px] text-xs"
-                      defaultValue={part.note ?? ""}
+                      value={noteEdits[part.id] ?? part.note ?? ""}
                       placeholder="Izoh..."
                       onChange={(e) =>
                         setNoteEdits((prev) => ({

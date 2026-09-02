@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 
 import { OrdersService } from "@/client"
+import { QueryError } from "@/components/Common/QueryError"
 import { SelectField } from "@/components/Common/SelectField"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
@@ -34,9 +35,12 @@ export function CustomRoutes({
   orderId: number
   editable: boolean
 }) {
-  const { data: matrix, isLoading } = useQuery(
-    getOrderMatrixQueryOptions(orderId),
-  )
+  const {
+    data: matrix,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery(getOrderMatrixQueryOptions(orderId))
   // part_id -> jarayon kodlari TARTIB bilan. Faqat tegilgan detallar bu yerda.
   const [draft, setDraft] = useState<Record<number, number[]>>({})
   // part_id -> asosiy detal id (0 = biriktirilmagan). Faqat tegilganlar.
@@ -78,6 +82,9 @@ export function CustomRoutes({
   })
 
   if (isLoading) return <Skeleton className="h-48 w-full" />
+  // Xato bo'sh holat bilan aralashmasin: 500 da "nostandart detal yo'q" degan
+  // yolg'on xabar o'rniga qayta urinish tugmasi ko'rinadi.
+  if (isError) return <QueryError onRetry={() => refetch()} />
 
   const parts = (matrix?.parts ?? []).filter((p) => p.is_custom)
   if (!parts.length) {
