@@ -5,7 +5,7 @@ materials auto-registry, SCX files and the cut map. Re-upload fully replaces pre
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +22,16 @@ logger = logging.getLogger(__name__)
 
 #: `(mahsulot kodi, detal kodi)` -> (nostandart bayrog'i, jarayon kodlari, asosiy detal kaliti)
 RouteSnapshot = dict[tuple[str, str], tuple[bool, list[int], tuple[str, str] | None]]
+
+
+_K = TypeVar("_K", str, PostCode)  # posts lug'ati ingest'da str, restore'da PostCode kalitli
+
+
+def _post(posts: dict[_K, Post], post_code: _K) -> Post:
+    post = posts.get(post_code)
+    if post is None:
+        raise ParseError(f"Post sozlanmagan: {post_code}. Administratorga murojaat qiling.")
+    return post
 
 
 async def snapshot_custom_routes(db: AsyncSession, order: Order) -> RouteSnapshot:
@@ -147,9 +157,7 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
         edge_count = len(part.edges) or 1
         for offset, code in enumerate(codes):
             post_code = PROCESS_POSTS[code]
-            post = posts.get(post_code)
-            if post is None:
-                raise ParseError(f"Post sozlanmagan: {post_code}. Administratorga murojaat qiling.")
+            post = _post(posts, post_code)
             # OVAL bu yerda YO'Q: oval kromkada detal bitta o'tishda ishlanadi — bitta skan.
             # KROMKA esa har qirrani alohida yopishtiradi, shuning uchun birinchi o'tishda
             # qirralar soni marta skanlanadi (takror kelsa — bitta).
@@ -176,9 +184,7 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
             tail = [(15, PostCode.UPAKOVKA)] if packaging else []
             tail.append((16, PostCode.TMO))
             for offset, (code, post_code) in enumerate(tail):
-                post = posts.get(post_code)
-                if post is None:
-                    raise ParseError(f"Post sozlanmagan: {post_code}. Administratorga murojaat qiling.")
+                post = _post(posts, post_code)
                 db.add(
                     PartRoute(
                         order_id=order.id,
@@ -241,7 +247,7 @@ def write_and_register_scx(
     scx_dir = upload_root / "scx" / str(order_id)
     scx_dir.mkdir(parents=True, exist_ok=True)
     created = 0
-    for filename, content, meta in build_scx_files(pp, qr_texts, plate_thickness=plate_thickness):
+    for filename, content in build_scx_files(pp, qr_texts, plate_thickness=plate_thickness):
         (scx_dir / filename).write_text(content, encoding="utf-8")
         db.add(
             OrderFile(
@@ -251,7 +257,6 @@ def write_and_register_scx(
                 path=str((scx_dir / filename).relative_to(upload_root)),
                 filename=filename,
                 size=len(content.encode()),
-                meta=meta,
             )
         )
         created += 1
@@ -377,7 +382,7 @@ async def ingest_project(
             # Rover/stolyarka/bo'yoq bu yerdan CHIQMAYDI: roverdan chiqqan detal keyin
             # bo'yalishi mumkinligini fayl bilmaydi — texnolog uni "nostandart" deb
             # belgilab, marshrutini o'zi chizadi.
-            # Post noma'lum bo'lsa `posts.get()` None beradi va tushunarli xato chiqadi.
+            # Post sozlanmagan bo'lsa `_post()` tushunarli ParseError beradi.
             steps: list[tuple[int, PostCode, int]] = []
             # ARRA — faqat listdan kesiladigan detalga. Optimizatsiya qilingan faylda
             # materiali ham, yorliq raqami ham yo'q detal umuman listga joylashtirilmagan
@@ -397,9 +402,7 @@ async def ingest_project(
             # Omborchi qabul qilmaguncha detal tugallanmagan bo'lib turadi.
             steps.append((16, PostCode.TMO, 1))
             for seq, (process_code, post_code, per_instance) in enumerate(steps, start=1):
-                post = posts.get(post_code)
-                if post is None:
-                    raise ParseError(f"Post sozlanmagan: {post_code}. Administratorga murojaat qiling.")
+                post = _post(posts, post_code)
                 db.add(
                     PartRoute(
                         order_id=order.id,

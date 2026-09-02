@@ -17,14 +17,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import TASHKENT_TZ, settings
 from app.core.ws import ws_manager
 from app.crud import log_action
-from app.models import Employee, Machine, Order, OrderFile, Part, PartInstance, PartRoute, Post, Scan, WorkSession
+from app.models import Employee, Machine, Order, Part, PartInstance, PartRoute, Post, Scan, WorkSession
 from app.models.enums import (
     POST_ROLES,
     EmployeeStatus,
-    FileKind,
     MachineStatus,
     OrderStatus,
-    PostCode,
     SessionStatus,
     UserRole,
 )
@@ -81,7 +79,6 @@ class ScanOutcome:
     #: Chek chiqarishdan tug'ilgan avto-skan (finalize_scan(auto=True) qo'yadi) —
     #: WS payload'iga chiqadi, terminal muvaffaqiyat bannerini bosishda ishlatadi
     auto: bool = False
-    scx_file_ids: list[int] = field(default_factory=list)
     order_stage_completed: bool = False
     order_completed: bool = False
     events: list[dict[str, Any]] = field(default_factory=list)
@@ -675,23 +672,6 @@ async def record_scan_at(
         qoldiq=route.total_required - route.total_done,
     )
 
-    # SCX served on EVERY scan at CNC posts (TZ 12.5).
-    if post.code in (PostCode.PRISADKA, PostCode.ROVER):
-        files = (
-            (
-                await db.execute(
-                    select(OrderFile.id).where(
-                        OrderFile.part_id == part.id,
-                        OrderFile.kind == FileKind.SCX,
-                        OrderFile.is_deleted == False,  # noqa: E712
-                    )
-                )
-            )
-            .scalars()
-            .all()
-        )
-        outcome.scx_file_ids = list(files)
-
     outcome.events.append(
         {
             "type": "scan.recorded",
@@ -818,8 +798,6 @@ async def finalize_scan(
             message=f"Skan{source}: {outcome.instance.qr_text} — {outcome.part.name}",
             meta=meta,
         )
-    # Avto-SCX proyekt papkasiga tushishi uchun (downloadScx subpapka nomi)
-    order = await db.get(Order, outcome.scan.order_id)
     await db.commit()
     await publish_scan_events([outcome])
     return ScanResult(
@@ -830,8 +808,6 @@ async def finalize_scan(
         part_name=outcome.part.name,
         instance_no=outcome.instance.instance_no,
         qoldiq=outcome.qoldiq,
-        scx_file_ids=outcome.scx_file_ids,
-        project_name=(order.project_name or order.number) if order else None,
         order_stage_completed=outcome.order_stage_completed,
         order_completed=outcome.order_completed,
     )

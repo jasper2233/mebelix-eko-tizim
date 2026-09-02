@@ -146,13 +146,10 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
 
         material: dict[str, Any] = {
             "name": cut.material_name,
-            "thick": cut.thickness,
             "kerf": cut.kerf,
             "trimL": cut.trim_l,
             "trimW": cut.trim_w,
             "fill": cut.stats.get("cFilling"),
-            "kd": cut.stats.get("cPartCount"),
-            "kk": cut.stats.get("cMaterialCount"),
             "ko": cut.stats.get("cWasteCount"),
             "dr": cut.stats.get("cTrimLength"),
             "kr": cut.stats.get("cTrimCount"),
@@ -189,7 +186,7 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
                     entry["business"] = bool(wdef and wdef.get("business"))
                     if wdef:  # useful size from the definition, not the raw cut (TZ 5.2.3)
                         entry["w"], entry["h"] = wdef["l"], wdef["w"]
-                    entry.update({"id": cell["part_id"], "qty": 0, "waste": True, "name": "atxot"})
+                    entry.update({"id": cell["part_id"], "waste": True, "name": "atxot"})
                 else:
                     part = parts_by_file_id.get(cell["part_id"])
                     if part is None:
@@ -213,7 +210,6 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
                             "num": part.label_num,
                             "name": part.name,
                             "rot": rot,
-                            "qty": 1,
                             "waste": False,
                             "eW": e_w,
                             "eH": e_h,
@@ -240,11 +236,8 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
             result.model["holes"][str(part.file_part_id)] = {
                 "l": part.length,
                 "w": part.width,
-                "bores": [{"x": b["x"], "y": b["y"], "d": b["d"], "thru": b["thru"]} for b in merged.bores],
-                "edge": [
-                    {"side": b["side"], "pos": b["pos"], "d": b["d"], "dp": b["dp"], "thru": b["thru"]}
-                    for b in merged.edge_bores
-                ],
+                "bores": [{"x": b["x"], "y": b["y"], "d": b["d"]} for b in merged.bores],
+                "edge": [{"side": b["side"], "pos": b["pos"], "d": b["d"], "dp": b["dp"]} for b in merged.edge_bores],
             }
 
     # Cross-check map instances vs part.count (catches blob/product mismatches early).

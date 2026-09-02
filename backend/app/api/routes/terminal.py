@@ -675,12 +675,6 @@ async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int
                 total=route.total_required,
                 files=files_by_part.get(part.id, []),
                 arra_route=part.id in arra_part_ids,
-                # Skan tugagan nusxalar QR'lari (fayl nomi bilan mos) — UI rang beradi
-                done_qrs=[
-                    i.qr_text
-                    for i in insts_by_part.get(part.id, [])
-                    if scan_counts.get((i.id, route.id), 0) >= route.per_instance
-                ],
                 # Nusxa darajasi: QR chiqarish tugmasi va holat uchun (helper instance_no bo'yicha saralaydi)
                 instances=[
                     PrisadkaInstance(
@@ -1242,7 +1236,11 @@ async def download_terminal_file(db: SessionDep, user: TerminalUser, file_id: in
     """SCX download at the machine browser (TZ 12.5) — served fresh on every scan."""
     row = (
         await db.execute(
-            select(OrderFile).where(OrderFile.id == file_id, OrderFile.is_deleted == False)  # noqa: E712
+            select(OrderFile).where(
+                OrderFile.id == file_id,
+                OrderFile.kind == FileKind.SCX,  # faqat SCX: boshqa turdagi fayllar ofis endpointidan, order-scoped
+                OrderFile.is_deleted == False,  # noqa: E712
+            )
         )
     ).scalar_one_or_none()
     if row is None:

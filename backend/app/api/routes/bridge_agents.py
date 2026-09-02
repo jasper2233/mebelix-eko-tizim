@@ -500,7 +500,7 @@ _AGENT_DIST = Path("agent-dist")
 
 @router.get("/latest", response_model=AgentRelease, operation_id="agent_latest_release")
 async def agent_latest_release() -> AgentRelease:
-    """Oxirgi agent versiyasi — agent har 6 soatda shu yerdan tekshiradi."""
+    """Oxirgi agent versiyasi — agent har 10 daqiqada va har qayta ulanishda shu yerdan tekshiradi."""
     manifest = _AGENT_DIST / "version.json"
     if not manifest.is_file():
         raise NotFoundException("Agent fayli serverda yo'q — CI hali qurmagan.")

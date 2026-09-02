@@ -151,7 +151,6 @@ class PrisadkaPartRow(BaseModel):
     total: int
     files: list[PrisadkaFile] = []
     arra_route: bool  # marshrutida ARRA bormi — bo'lmasa QR chek shu sahifadan chiqadi (ROVER)
-    done_qrs: list[str] = []  # skan tugagan nusxalar QR'lari (fayl nomi bilan mos) — UI rang beradi
     instances: list[PrisadkaInstance] = []
 
 
@@ -177,11 +176,6 @@ class ScanResult(BaseModel):
     part_name: str
     instance_no: int
     qoldiq: int  # remaining for this part at this post after the scan
-    scx_file_ids: list[int] = []  # served on EVERY scan for CNC posts (TZ 12.5)
-    # Hech bir klient o'qimaydi: har skandagi avto-SCX olib tashlangan (`f7f1a8d`).
-    # Papka nomi endi PRISADKA sahifasidagi "Hammasini yuklab olish" da
-    # `PrisadkaOrderState.project_name` dan olinadi. Maydon javobda qoldi.
-    project_name: str | None = None
     order_stage_completed: bool = False
     order_completed: bool = False
 
@@ -252,7 +246,6 @@ class CutmapCell(BaseModel):
     h: float
     id: int
     name: str
-    qty: int
     waste: bool
     #: Foydali atxot raqami (`WasteItem` bilan bog'laydi) — faqat `business` atxotda
     atx: int | None = None
@@ -283,15 +276,12 @@ class CutmapMaterial(BaseModel):
     """Bitta CS operatsiyasi = bitta list materiali, GibSaw reja ko'rsatkichlari bilan."""
 
     name: str
-    thick: float | None = None
     kerf: float | None = None
     trimL: float | None = None
     trimW: float | None = None
     #: Reja ko'rsatkichlari GibSaw statistikasidan keladi va fayl to'liq
     #: hisoblanmagan bo'lsa yo'q bo'lishi mumkin — shuning uchun ixtiyoriy.
     fill: float | None = None
-    kd: float | None = None
-    kk: float | None = None
     ko: float | None = None
     dr: float | None = None
     kr: float | None = None
@@ -304,7 +294,6 @@ class CutmapBore(BaseModel):
     x: float
     y: float
     d: float
-    thru: bool
 
 
 class CutmapEdgeBore(BaseModel):
@@ -314,7 +303,6 @@ class CutmapEdgeBore(BaseModel):
     pos: float
     d: float
     dp: float
-    thru: bool
 
 
 class CutmapHole(BaseModel):

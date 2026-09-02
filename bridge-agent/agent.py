@@ -736,7 +736,7 @@ SCAN_FORWARD = os.environ.get("SCAN_FORWARD", "1") != "0"
 FLUSH_EVENT = asyncio.Event()
 # Serverga (qayta) ulanildi — self_update darhol tekshiradi. Deploy WS'ni uzadi,
 # agent qayta ulanadi: yangi versiya deploy'dan daqiqalar ichida yetib boradi,
-# 6 soatlik navbatni kutmaydi.
+# 10 daqiqalik zaxira tekshiruvini kutmaydi.
 CONNECTED_EVENT = asyncio.Event()
 
 
@@ -1332,7 +1332,7 @@ async def self_update() -> None:
                     # etishni o'rtasida uzib, restartda o'sha chek IKKINCHI
                     # marta chiqishi mumkin edi (fayldan faqat muvaffaqiyatli
                     # chop etishdan KEYIN o'chiriladi). Navbat bo'shaguncha
-                    # 10 daqiqadan tekshirib turamiz — flusher odatda
+                    # 30 soniyadan tekshirib turamiz — flusher odatda
                     # soniyalarda bo'shatadi, yangilanish esa shoshmaydi.
                     log.info("Yangilanish tayyor, navbat/pairing tugashini kutmoqda")
                     new_exe.write_bytes(data)

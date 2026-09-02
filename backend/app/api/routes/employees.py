@@ -104,11 +104,6 @@ async def create_employee(db: SessionDep, current_user: AdminUser, body: Employe
     return employee
 
 
-@router.get("/{employee_id}", response_model=EmployeeRead, operation_id="read_employee")
-async def read_employee(db: SessionDep, _: StaffReadUser, employee_id: int) -> Employee:
-    return await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
-
-
 @router.patch("/{employee_id}", response_model=EmployeeRead, operation_id="update_employee")
 async def update_employee(
     db: SessionDep, current_user: AdminUser, employee_id: int, body: EmployeeUpdate, request: Request

@@ -237,9 +237,7 @@ class MatrixPart(BaseModel):
     length: float | None
     width: float | None
     thickness: float | None
-    label_num: int | None
     edges: dict[str, Any]
-    xnc_summary: dict[str, Any]
     note: str | None
     is_custom: bool
     #: Bu detal biriktirilgan ASOSIY detal (stolyarkada yaxlit buyumga aylanadi).

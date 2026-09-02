@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import func, select
 
 from app.api.deps import AdminUser, CurrentUser, SessionDep, client_ip
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import DuplicateValueException, NotFoundException
 from app.crud import crud_machines, crud_posts, log_action
 from app.models import BridgeAgent, Machine, PartRoute, Scan, User, WorkSession
 from app.models.enums import SessionStatus
@@ -84,7 +84,7 @@ async def _check_name(db: SessionDep, name: str, machine_id: int | None = None) 
     if machine_id is not None:
         query = query.where(Machine.id != machine_id)
     if (await db.execute(query)).scalar_one_or_none() is not None:
-        raise HTTPException(status_code=409, detail=f'"{name}" nomli ish markazi allaqachon bor.')
+        raise DuplicateValueException(f'"{name}" nomli ish markazi allaqachon bor.')
 
 
 @router.get("/", response_model=list[MachineRead], operation_id="read_machines")
@@ -115,11 +115,6 @@ async def create_machine(db: SessionDep, current_user: AdminUser, body: MachineC
     await db.commit()
     await db.refresh(machine)
     return machine
-
-
-@router.get("/{machine_id}", response_model=MachineRead, operation_id="read_machine")
-async def read_machine(db: SessionDep, _: CurrentUser, machine_id: int) -> Machine:
-    return await crud_machines.get_or_404(db, "Ish markazi topilmadi.", id=machine_id)
 
 
 @router.patch("/{machine_id}", response_model=MachineRead, operation_id="update_machine")

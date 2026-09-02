@@ -53,20 +53,6 @@ def include_object(obj: Any, name: str | None, type_: str, reflected: bool, comp
     return True
 
 
-def run_migrations_offline() -> None:
-    url = config.get_main_option("sqlalchemy.url")
-    context.configure(
-        url=url,
-        target_metadata=target_metadata,
-        literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
-        include_object=include_object,
-    )
-
-    with context.begin_transaction():
-        context.run_migrations()
-
-
 def do_run_migrations(connection: Connection) -> None:
     context.configure(connection=connection, target_metadata=target_metadata, include_object=include_object)
 
@@ -91,7 +77,5 @@ def run_migrations_online() -> None:
     asyncio.run(run_async_migrations())
 
 
-if context.is_offline_mode():
-    run_migrations_offline()
-else:
-    run_migrations_online()
+# Offline rejim ataylab yo'q: ikkita data-migratsiya `op.get_bind()` ishlatadi, u offline'da None.
+run_migrations_online()

@@ -228,8 +228,8 @@ def build_scx_files(
     part: ParsedPart,
     qr_texts: list[str],
     plate_thickness: float | None = None,
-) -> list[tuple[str, str, dict]]:
-    """Bitta detalning SCX fayllari: (filename, content, meta) ro'yxati.
+) -> list[tuple[str, str]]:
+    """Bitta detalning SCX fayllari: (filename, content) ro'yxati.
 
     HAR NUSXAGA bitta to'liq fayl (old + orqa Face=6 birlashgan), nomi va
     Panel ID = nusxa QR'i (100701_02_003_1.scx) — Nanxing skaneri yorliqdagi
@@ -238,11 +238,10 @@ def build_scx_files(
     """
     if not part.xnc_ops:
         return []
-    out: list[tuple[str, str, dict]] = []
-    codes = [op.code for op in part.xnc_ops]
+    out: list[tuple[str, str]] = []
     for qr in qr_texts:
         content = generate_scx(part, part.xnc_ops, qr, plate_thickness=plate_thickness)
-        out.append((f"{qr}.scx", content, {"codes": codes, "qr": qr}))
+        out.append((f"{qr}.scx", content))
     return out
 
 

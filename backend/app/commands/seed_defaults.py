@@ -33,8 +33,8 @@ POSTS: list[dict[str, object]] = [
         "unit": PostUnit.METER,
     },
     {
-        # Oval (egri) kromka: fayldan avto-aniqlanmaydi — texnolog matritsada
-        # belgilaydi (route per_instance=1, bitta skan = bosqich tugadi)
+        # Oval (egri) kromka: fayldan avto-aniqlanmaydi — matritsada ustuni yo'q,
+        # texnolog nostandart marshrutda qo'lda qo'shadi (per_instance=1, bitta skan = bosqich tugadi)
         "code": PostCode.OVAL,
         "name": "Oval kromka",
         "order_index": 3,
