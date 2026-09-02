@@ -75,6 +75,8 @@ services:
     environment:
       POSTGRES_SERVER: db
       REDIS_HOST: redis
+      # deploy.sh rollback'i 1 qiladi — eski image yangi sxemada migratsiyasiz ko'tariladi
+      SKIP_MIGRATIONS: ${SKIP_MIGRATIONS:-0}
     depends_on:
       db:
         condition: service_healthy

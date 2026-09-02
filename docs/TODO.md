@@ -4,7 +4,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 
 ## Yuqori (33)
 
-- [ ] ✅ `scripts/deploy.sh:104` — Migratsiyali deploy'da avto-rollback ishlamaydi: eski image `alembic upgrade head` noma'lum revision'da yiqiladi → api crash loop; rollback shoxiga stable image bilan `alembic stamp`/`downgrade` qadami kerak (repro: audit «Deploy-xavfsizlik»)
+- [x] ✅ `scripts/deploy.sh:104` — Migratsiyali deploy'da avto-rollback ishlamaydi: eski image `alembic upgrade head` noma'lum revision'da yiqiladi → api crash loop; rollback shoxiga stable image bilan `alembic stamp`/`downgrade` qadami kerak (repro: audit «Deploy-xavfsizlik»)
 - [ ] ✅ `backend/app/api/routes/orders/lifecycle.py:425` — Ish markazini PRODUCTION holatidagi buyurtmada qayta tanlash `order.machine_assignments` ni yangilaydi, lekin `PartRoute.machine_id` eski stanokda qol
 - [ ] ✅ `backend/app/api/routes/orders/matrix.py:200-203` — When a matrix stage checkbox is toggled on for a post that has no existing PartRoute step yet, the new step is always created with per_instance=1. For
 - [ ] ✅ `backend/app/api/routes/tmo.py:224-225` — Prefix check is case-insensitive via .upper(), but the original non-uppercased `qr` is then used for the actual pachka lookup (`_pachka_by_code(db, or

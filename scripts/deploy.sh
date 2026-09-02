@@ -6,8 +6,13 @@
 # u yerda build qilish saytni sekinlashtirardi.
 # Smoke yiqilsa oxirgi stable TAG'ga qaytariladi (.stable_tag fayli).
 #
-# Eslatma: rollback DB'ni downgrade QILMAYDI — migratsiyalar additiv (ustun/jadval
-# qo'shish) bo'lishi shart, eski kod yangi ustunlarni e'tiborsiz qoldiradi.
+# Rollback va DB: eski image YANGI sxema ustida SKIP_MIGRATIONS=1 bilan ko'tariladi
+# (uning alembic'i yangi revision'ni tanimaydi — `upgrade head` yiqilardi; stamp
+# qilinmaydi, alembic_version haqiqatni saqlaydi, keyingi deploy davom etadi).
+# Shuning uchun migratsiyalar oldingi reliz bilan MOS bo'lishi shart (expand/contract:
+# ustun/jadval qo'shish; o'chirish — kod uni ishlatmay qo'ygan KEYINGI relizda).
+# Additiv bo'lmagan migratsiya deploy qilinayotganda ROLLBACK_DOWNGRADE=1 bering:
+# rollback'dan oldin YANGI image bilan `alembic downgrade <eski head>` yuriladi.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -62,7 +67,10 @@ echo "==> Pull: TAG=$TAG"
 TAG="$TAG" $COMPOSE pull
 
 echo "==> Switch: TAG=$TAG"
-TAG="$TAG" $COMPOSE up -d
+# `|| true` emas, xabar bilan: api prestart'da (masalan migratsiya xatosi) yiqilsa
+# caddy `depends_on api: service_healthy` sabab `up -d` o'zi exit 1 beradi —
+# `set -e` shu yerda to'xtatsa smoke ham, rollback ham ishlamasdi.
+TAG="$TAG" $COMPOSE up -d || echo "==> up -d yiqildi (api ko'tarilmadi?) — smoke va rollback davom etadi" >&2
 
 # Caddyfile bind-mount (`./caddy/Caddyfile:/etc/caddy/Caddyfile:ro`), ya'ni
 # `up -d` uni O'ZGARGAN deb bilmaydi: compose faqat service ta'rifi (image, env,
@@ -98,8 +106,22 @@ fi
 
 echo "==> SMOKE FAILED: TAG=$TAG" >&2
 if [ -n "$STABLE" ]; then
-    echo "==> Rollback: stable=$STABLE" >&2
-    TAG="$STABLE" $COMPOSE up -d
+    if [ "${ROLLBACK_DOWNGRADE:-0}" = "1" ]; then
+        # Eski image'ning head'i = bazani tushiradigan nishon; downgrade'ni migratsiyani
+        # biladigan YANGI image bajaradi.
+        # stdout'da faqat head satr(lar)i; compose'ning "Container ... Created" xabarlari stderr'da qoladi
+        OLD_HEADS="$(TAG="$STABLE" $COMPOSE run --rm --no-deps api python -m alembic heads | awk '{print $1}' || true)"
+        OLD_HEAD="$(printf '%s\n' "$OLD_HEADS" | grep -c . | grep -qx 1 && echo "$OLD_HEADS" || true)"
+        if [ -n "$OLD_HEAD" ]; then
+            echo "==> Downgrade: $OLD_HEAD (TAG=$TAG image bilan)" >&2
+            TAG="$TAG" $COMPOSE run --rm --no-deps api python -m alembic downgrade "$OLD_HEAD" ||
+                echo "==> DOWNGRADE YIQILDI — sxema yangi holatda qoldi, eski image baribir migratsiyasiz ko'tariladi" >&2
+        else
+            echo "==> Eski head aniqlanmadi yoki bir nechta (${OLD_HEADS:-hech}) — downgrade o'tkazib yuborildi" >&2
+        fi
+    fi
+    echo "==> Rollback: stable=$STABLE (SKIP_MIGRATIONS=1 — sxema o'zgarmaydi)" >&2
+    TAG="$STABLE" SKIP_MIGRATIONS=1 $COMPOSE up -d || echo "==> rollback up -d yiqildi — smoke ko'rsatadi" >&2
     if smoke; then
         echo "==> Rollback OK — tizim stable=$STABLE da ishlayapti" >&2
     else
