@@ -121,6 +121,9 @@ class ParsedPart:
     material_name: str | None  # sheet good name
     edges: dict[str, dict[str, Any]]  # side(l/r/t/b) -> {"mat": name, "symbol": A}
     label_num: int | None = None  # CS stub order, file-global 1-based
+    # `usedCount="0"` -> GibLab detalni ataylab joylashtirmagan (material yetmagan yoki
+    # dizayner chiqarib tashlagan). Ro'yxatda turishi joylashtirilganini bildirmaydi (docs/10 §3.1).
+    placed: bool = True
     xnc_ops: list[XncOp] = field(default_factory=list)
 
     @property

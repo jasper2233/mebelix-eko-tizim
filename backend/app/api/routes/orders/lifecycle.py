@@ -59,6 +59,7 @@ from ._common import (
     _get_visible_order,
     _hidden_statuses,
     _require_editable,
+    stamp_route_machines,
 )
 
 # Prefiks va tag PARENT routerda (`orders/__init__.py`) — bu yerda takrorlansa
@@ -428,6 +429,10 @@ async def assign_order_machines(
             )
 
     order.machine_assignments = {str(k): v for k, v in body.assignments.items()}
+    # Ishlab chiqarishdagi buyurtmada tanlov o'zgarsa marshrut muhri ham
+    # yangilanishi shart, aks holda buyurtma eski stanokda qolib ketadi.
+    if order.status == OrderStatus.PRODUCTION:
+        await stamp_route_machines(db, order)
     log_action(
         db,
         module="orders",
@@ -564,25 +569,8 @@ async def start_order_production(
     if missing:
         raise ForbiddenException(f"Ish markazi tanlanmagan postlar: {', '.join(missing)}")
 
-    # Stamp the chosen machine on route rows so terminals filter by machine.
-    for pid in used_post_ids:
-        machine_id = order.machine_assignments.get(str(posts[pid].code))
-        if machine_id is not None:
-            routes = (
-                (
-                    await db.execute(
-                        select(PartRoute).where(
-                            PartRoute.order_id == order_id,
-                            PartRoute.post_id == pid,
-                            PartRoute.is_deleted == False,  # noqa: E712
-                        )
-                    )
-                )
-                .scalars()
-                .all()
-            )
-            for route in routes:
-                route.machine_id = machine_id
+    # Tanlangan stanokni marshrut qatorlariga muhrlash — terminal shu bo'yicha filtrlaydi.
+    await stamp_route_machines(db, order)
 
     order.status = OrderStatus.PRODUCTION
     order.production_started_at = datetime.now(UTC)

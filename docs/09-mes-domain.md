@@ -354,7 +354,10 @@ ham bor; aks holda `template`), va `upload_order_project` TEMPLATE faylni **422*
 `POST /{id}/start` (TECHNICAL_REVIEW → PRODUCTION) `.project` biriktirilgan bo'lishini va
 `requires_assignment_choice` postlar uchun `machine_assignments` ni talab qiladi; **marshrutsiz
 detal qolgan bo'lsa rad etadi** — u terminalda ham, TABLOda ham ko'rinmay, buyurtma usiz "tayyor"
-bo'lib qolardi.
+bo'lib qolardi. Tanlangan ish markazi `PartRoute.machine_id` ga muhrlanadi
+(`orders/_common.py: stamp_route_machines`) — terminal ro'yxati va skan tekshiruvi shu ustunga
+qaraydi. Ish markazi PRODUCTION holatida `POST /{id}/machines` bilan qayta tanlansa muhr ham
+o'sha yerda yangilanadi; aks holda buyurtma eski stanokda qolib, yangisida skan E001 berardi.
 `GET /orders/status-counts` — registr tablari uchun har status bo'yicha son. Frontendda
 qoldiq to'lov = `amount − advance_payment`, `advance ≤ amount` validatsiyasi bilan.
 

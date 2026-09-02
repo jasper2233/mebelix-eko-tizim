@@ -69,9 +69,10 @@ havola. Parser detallarni faqat `typeId="product"` goodlaridan oladi. Korpusdagi
 643 `part` mahsulotlarda, 41 tasi listlarda, 4 tasi pogonaj materiallarda.
 
 **Zaxira zagotovka konventsiyasi:** `count="10000"` — cheksiz zaxira, `usedCount` — necha dona
-ishlatilgan. Korpusdagi 4 pogonaj zagotovkasi (`l=3200` alyuminiy profil, quvur, LMDF)
-`usedCount="0"` — ya'ni CL hech qachon optimallashtirilmagan; ular detal emas, shuning uchun
-arrachiga tushmaydi.
+ishlatilgan (korpusda 595 detalda bor). Korpusdagi 4 pogonaj zagotovkasi (`l=3200` alyuminiy
+profil, quvur, LMDF) `usedCount="0"` — ya'ni CL hech qachon optimallashtirilmagan; ular detal
+emas, shuning uchun arrachiga tushmaydi. `usedCount="0"` umuman **joylashtirilmagan** degani:
+parser buni `ParsedPart.placed=False` qilib oladi va bunday detal ARRA vazifasini olmaydi (§3.1).
 
 `version` atributi — **build sanasi** `YYMMDDNN` ko'rinishida: `21052101` = 2021-05-21,
 `23051701` = 2023-05-17. Korpusda ikkala versiya ham bor. Detal kodining bor-yo'qligi BUILDGA emas, dizayner katalogni qanday to'ldirganiga bog'liq: bitta 21052101 buildida `4273_Dilmurod` da birorta `code` yo'q, `kuxniya` da esa 681 `part` elementining 169 tasida bor.
@@ -267,7 +268,6 @@ o'tmaganda almashgan moslik `rot=True` beradi. Deyarli kvadrat detalda (masalan
 | `minusCount` | Allaqachon tayyor turgan nusxalar | GibLab ularni kesishga qo'ymaydi, biz `count` bo'yicha hammasini ishlab chiqaramiz → ogohlantiramiz |
 | `description` | Izoh **va/yoki ishlov dasturi kodi**: `#nom` — yuz tomon, `##nom` — orqa tomon, bo'shliqsiz | Shablon kutubxonasidan ishlov. Bunday holatda faylda XNC operatsiyasi bo'lmaydi va butun ishlov yo'qoladi → ogohlantiramiz. Korpusda ishlatilmagan |
 | `dbId` | GibLab qoldig'ining 1C dagi ID'si | 1C integratsiyasi ishlatilsa paydo bo'ladi. Korpusda yo'q |
-| `usedCount` | Ishlatilgan miqdor | Qoldiq inventarizatsiyasi uchun. Korpusda 595 detalda bor |
 | `cTrimL` / `cTrimW` / `cTrimEL` / `cTrimEW` | **Faqat list/polosa uchun**: shu listning o'z torsovkasi. Manfiy (default −1) → operatsiyaning qiymati ishlatiladi | Bir listning torsovkasi boshqacha bo'lsa xarita sarlavhasidagi raqam shu list uchun xato bo'ladi. Korpusda ishlatilmagan |
 | `groupInBlock` / `groupInBlockMC` / `groupInBlockMaxC` | Detallarni blokka guruhlash | Optimizator sozlamasi. Korpusda yo'q |
 
@@ -293,7 +293,7 @@ Endi marshrut faqat MES ichida, ko'rinadigan joyda beriladi.
 
 **Fayldan chiqadigan marshrut — STANDART va qisqa** (`ingest.py`): ARRA (kod 1, CS ro'yxatiga
 tushgan — ya'ni materiali yoki yorliq raqami bor — detalga; ro'yxatda turgan, lekin
-joylashtirilmagan `usedCount="0"` detal ham oladi, §3.1) + KROMKA (kod 3, qirralar soni
+joylashtirilmagan `usedCount="0"` detal esa OLMAYDI, §3.1) + KROMKA (kod 3, qirralar soni
 bo'yicha) + PRISADKA (kod 6, XNC da **har qanday** ishlov — teshik, qirra teshigi, paz yoki
 freza — bo'lsa). Paz va freza ROVER bosqichini **yaratmaydi**: roverdan chiqqan detal keyin
 bo'yalishi ham mumkinligini fayl bilmaydi, ya'ni marshrutni fayldan taxmin qilib bo'lmaydi.
@@ -423,7 +423,11 @@ Muhim tushunchalar:
 
 CS operatsiyasida `<part>` ro'yxati bor, lekin **ro'yxatda bo'lish joylashtirilganini
 bildirmaydi**: `usedCount="0"` bo'lsa GibLab uni ataylab joylashtirmagan (material yetmagan
-yoki dizayner chiqarib tashlagan). `kuxniya.project` da uchta shunday detal bor.
+yoki dizayner chiqarib tashlagan). `kuxniya.project` da uchta shunday detal bor. Shuning uchun
+stub ro'yxati emas, detal ta'rifidagi `usedCount` hal qiladi: `0` bo'lsa `ParsedPart.placed`
+`False` bo'ladi va `ingest` unga ARRA qadamini ochmaydi (material nomi va yorliq raqami
+matritsada ko'rinib turaveradi). Aks holda arrachi hech qachon yopa olmaydigan vazifa
+paydo bo'lardi — detal kesish xaritasida umuman yo'q.
 
 **Mahsulot soni ko'paytmasi.** `<part count>` — BITTA mahsulotdagi soni; buyurtmadagi jami =
 u × `<good typeId="product" count>`. Xarita jami nusxani joylashtiradi: 205-korpusda
@@ -550,6 +554,13 @@ buzilmaslik uchun ogohlantirish qo'shilgan.
 umumiy "oldingi qiymat" merosidan farq qiladi. Parser atribut borligini alohida tekshiradi,
 aks holda ikkinchi paz birinchisining oxirigacha cho'zilib detalni kesib yuborardi.
 
+**Paz korreksiyasi.** `gr.c` (0=markaz, 1=o'ng, 2=chap) — korreksiya bo'lsa paz o'q bo'ylab
+`t/2` ga suriladi. Korpusdagi 180 pazda ham `c="0"` (markaz bo'yicha), shuning uchun SCX ga paz
+doim `ToolOffset=中` bilan yoziladi. `c="1"`/`c="2"` uchrasa siljish qo'llanmagan bo'lardi —
+paz jimgina noto'g'ri joyga chiqmasligi uchun parser bunday faylni **rad etadi**:
+`ParseError("XNC (kod): paz korreksiyasi qo'llab-quvvatlanmaydi (c=N).")` (`xnc.py`, `_groove`).
+Frezada (`ms.c`) korreksiya aksincha — o'qiladi va SCX da amalda qo'llanadi (§7).
+
 **Qirra teshigining balandligi.** `m` (Середина по Z, default `true`): `true` → teshik
 qalinlik **markazida**, `z` e'tiborsiz; `false` → `z` **absolyut** balandlik. 205-korpus buni
 bir ma'noda isbotlaydi: `m="false"` faqat markazdan chetlashganda yoziladi (z=7.5, 8.5, 10,
@@ -563,7 +574,6 @@ m=true` — 310 teshik markazda (16 mm) burg'ulanadi, 8 mm da emas.
 |---|---|---|
 | `comment` (barcha elementlarda) | Dizaynerning izohi, masalan `LED PAZ (H-4 G-5 dx-0)` | Ko'rsatadigan joy yo'q. Operator ekraniga chiqarish — kelajakdagi imkoniyat (korpusda 180 pazda va 44 frezada bor) |
 | `ms.sdp` / `ms.sxy` | Chuqurlik va gorizontal qadam (bir necha o'tishda frezalash) | Dastgoh ishi; SCX konturni bir marta beradi. Korpusda `sxy` 32 marta, `sdp` yo'q |
-| `ms.c` / `gr.c` | Radius korreksiyasi (0=markaz, 1=o'ng, 2=chap) | Korpusda `gr.c` 180 pazda ham **0 = markaz bo'yicha**, ya'ni bizning taxminimizga mos. `ms.c` esa SCX ga o'tadi |
 | `ms.in` / `ms.out` | Kirish/chiqish turi | Dastgoh sozlamasi (korpusda 99 marta) |
 | `ma.r` / `ma.dir` | Yoy radiusi (manfiy → yo'nalish teskari) va yo'nalishi | `ma` umuman o'qilmaydi — ogohlantirish |
 | `ml.dp` / `mac.dp` | Segmentning o'z chuqurligi | GibLab hech qachon yozmaydi (korpusda 354 `ml` va 25 `mac` da ham yo'q); chuqurlik `ms.dp` dan |

@@ -4,7 +4,9 @@
 # Oqim: pull (yiqilsa eski stack joyida qoladi) -> yangi TAG'ga switch -> smoke.
 # Image'lar CI'da (GitHub Actions) qurilib ghcr.io ga yuboriladi — bu server 1 vCPU,
 # u yerda build qilish saytni sekinlashtirardi.
-# Smoke yiqilsa oxirgi stable TAG'ga qaytariladi (.stable_tag fayli).
+# Smoke yiqilsa oxirgi stable TAG'ga qaytariladi (.stable_tag fayli) — FAQAT image TAG:
+# caddy/Caddyfile, compose va scriptlar diskda yangi holicha qoladi (rsync --delete eskisini
+# saqlamaydi), yuklangan Caddy konfigi ham qayta yuklanmaydi.
 #
 # Rollback va DB: eski image YANGI sxema ustida SKIP_MIGRATIONS=1 bilan ko'tariladi
 # (uning alembic'i yangi revision'ni tanimaydi — `upgrade head` yiqilardi; stamp
@@ -129,6 +131,9 @@ if [ -n "$STABLE" ]; then
         fi
     fi
     echo "==> Rollback: stable=$STABLE (SKIP_MIGRATIONS=1 — sxema o'zgarmaydi)" >&2
+    echo "    DIQQAT: rollback faqat image TAG ni qaytaradi. caddy/Caddyfile, compose va" >&2
+    echo "    scriptlar diskda YANGI holicha qoladi va Caddy xotirasidagi yangi konfig" >&2
+    echo "    joyida turadi — sabab konfigda bo'lsa rollback uni TUZATMAYDI (qo'lda tuzating)." >&2
     TAG="$STABLE" SKIP_MIGRATIONS=1 $COMPOSE up -d || echo "==> rollback up -d yiqildi — smoke ko'rsatadi" >&2
     if smoke; then
         echo "==> Rollback OK — tizim stable=$STABLE da ishlayapti" >&2

@@ -133,10 +133,16 @@ def _add_edge_bores(el: ET.Element, side: str, op: XncOp, num: _Num, tools: dict
         op.edge_bores.append({"side": side, "pos": pos + step * i, "z": z, "d": d, "dp": dp, "thru": False})
 
 
-def _groove(el: ET.Element, num: _Num) -> dict[str, Any]:
+def _groove(el: ET.Element, num: _Num, code: str) -> dict[str, Any]:
     """Paz. `x2`/`y2` yozilmasa SHU elementning `x1`/`y1` i olinadi (spetsifikatsiya) —
     bu umumiy "oldingi element" merosidan farq qiladi, shuning uchun atribut borligini
     o'zimiz tekshiramiz: aks holda oldingi pazning oxiri olinib paz noto'g'ri chizilardi."""
+    # `c` (korreksiya) korpusda doim 0 = markaz bo'yicha. 1/2 bo'lsa paz o'q bo'ylab t/2 ga
+    # suriladi — biz bu siljishni qo'llamaymiz (SCX ga doim markaz bo'yicha yozamiz), shuning
+    # uchun jimgina noto'g'ri geometriya chiqarish o'rniga faylni rad etamiz.
+    c = el.get("c")
+    if c not in (None, "0"):
+        raise ParseError(f"XNC ({code}): paz korreksiyasi qo'llab-quvvatlanmaydi (c={c}).")
     x1, y1 = num(el, "x1"), num(el, "y1")
     return {
         "x1": x1,
@@ -144,7 +150,6 @@ def _groove(el: ET.Element, num: _Num) -> dict[str, Any]:
         "x2": num(el, "x2") if el.get("x2") is not None else x1,
         "y2": num(el, "y2") if el.get("y2") is not None else y1,
         "dp": num(el, "dp"),
-        # `c` (korreksiya) korpusda doim 0 = markaz bo'yicha; 1/2 bo'lsa paz t/2 ga suriladi
         "t": num(el, "t", 4),
     }
 
@@ -231,7 +236,7 @@ def parse_xnc_program(code: str, program_xml: str, side: str | None = None) -> X
         elif tag in _EDGE_TAGS:
             _add_edge_bores(el, _EDGE_TAGS[tag], op, num, tools, dz)
         elif tag == "gr":
-            op.grooves.append(_groove(el, num))
+            op.grooves.append(_groove(el, num, code))
         elif tag == "ms":
             current_contour = [
                 {

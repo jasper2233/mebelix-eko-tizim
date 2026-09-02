@@ -5,13 +5,13 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 ## Yuqori (33)
 
 - [x] ✅ `scripts/deploy.sh:104` — Migratsiyali deploy'da avto-rollback ishlamaydi: eski image `alembic upgrade head` noma'lum revision'da yiqiladi → api crash loop; rollback shoxiga stable image bilan `alembic stamp`/`downgrade` qadami kerak (repro: audit «Deploy-xavfsizlik»)
-- [ ] ✅ `backend/app/api/routes/orders/lifecycle.py:425` — Ish markazini PRODUCTION holatidagi buyurtmada qayta tanlash `order.machine_assignments` ni yangilaydi, lekin `PartRoute.machine_id` eski stanokda qol
+- [x] ✅ `backend/app/api/routes/orders/lifecycle.py:425` — Ish markazini PRODUCTION holatidagi buyurtmada qayta tanlash `order.machine_assignments` ni yangilaydi, lekin `PartRoute.machine_id` eski stanokda qol
 - [x] ✅ `backend/app/api/routes/orders/matrix.py:200-203` — When a matrix stage checkbox is toggled on for a post that has no existing PartRoute step yet, the new step is always created with per_instance=1. For
 - [x] ✅ `backend/app/api/routes/tmo.py:224-225` — Prefix check is case-insensitive via .upper(), but the original non-uppercased `qr` is then used for the actual pachka lookup (`_pachka_by_code(db, or
 - [ ] ✅ `backend/app/models/base.py:23` — `updated_at` is declared nullable with `default=None` AND `server_default=current_timestamp(0)`, so SQLAlchemy omits it from the INSERT and every fres
 - [x] ✅ `backend/app/services/giblab/ingest.py:155` — restore_custom_routes appends restored MANUAL steps AFTER the freshly-ingested tail (UPAKOVKA/TMO), so TMO is no longer the last step of a standard pa
 - [x] ✅ `backend/app/services/giblab/ingest.py:78` — snapshot_custom_routes only sees parts that already have a MANUAL route row, so a part marked "Nostandart" (or bound to an assembly parent) before any
-- [ ] ✅ `backend/app/services/giblab/parser.py:463` — CS `<part>` ro'yxatidagi HAR bir stubga `label_num` beriladi, joylashtirilmagan (usedCount=0) detalga ham — ingest esa aynan `label_num is not None` n
+- [x] ✅ `backend/app/services/giblab/parser.py:463` — CS `<part>` ro'yxatidagi HAR bir stubga `label_num` beriladi, joylashtirilmagan (usedCount=0) detalga ham — ingest esa aynan `label_num is not None` n
 - [x] ✅ `backend/app/services/labels.py:230` — Loyiha nomi 26 belgigacha chiziladi, lekin QR bloki uni x=40 mm dan boshlab ustidan bosib o'chiradi — uzun loyiha nomining oxiri chekda umuman ko'rinm
 - [ ] ✅ `backend/app/services/scanning.py:518` — QR text is not order-scoped (uniqueness is only per order), so when two live PRODUCTION orders are built from the same GibLab product/part codes, ever
 - [x] ✅ `backend/app/services/scanning.py:656` — The `except IntegrityError` guard around `db.flush()` never fires — SQLAlchemy autoflushes the pending Scan INSERT inside the preceding `db.execute(up
@@ -85,11 +85,11 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/services/giblab/parser.py:372-377` — `<part>` havolasi yoki `program` i yo'q XNC operatsiyasi butunlay JIM tashlab yuboriladi — butun ishlov (teshik, paz, freza), PRISADKA qadami va SCX g
 - [x] ✅ `backend/app/services/giblab/parser.py:452-453` — `_f()` returns `None` only when the attribute is absent, but here `or 10.0` also fires when the attribute is present and explicitly `0`. The surroundi
 - [x] ✅ `backend/app/services/giblab/scx.py:169` — A mill contour that contains only its `ms` head crashes `_offset_contour` with IndexError; the guard at line 169 only covers the empty-list case, whic
-- [ ] ✅ `backend/app/services/giblab/xnc.py:136` — `_groove()` xujjatlaydi (comment) va spesifikatsiya bo'yicha `gr` tegining `c` (korreksiya) atributi 1 yoki 2 bo'lsa paz o'q bo'ylab t/2 ga suriladiga
+- [x] ✅ `backend/app/services/giblab/xnc.py:136` — `_groove()` xujjatlaydi (comment) va spesifikatsiya bo'yicha `gr` tegining `c` (korreksiya) atributi 1 yoki 2 bo'lsa paz o'q bo'ylab t/2 ga suriladiga
 - [x] ✅ `backend/app/services/giblab/xnc.py:208` — `enable="false"` bo'lgan `<ms>` o'tkazib yuborilganda `current_contour` tozalanmaydi, shuning uchun o'chirilgan konturning `<ml>`/`<mac>` segmentlari 
 - [x] ✅ `backend/app/services/labels.py:47-49` — `load_label_data` nusxa/detal/buyurtmaning `is_deleted` bayrog'ini tekshirmaydi, shuning uchun `.png` endpointi yumshoq o'chirilgan nusxaga ham yorliq
 - [x] ✅ `backend/app/services/metrics.py:27` — `part_volume` `Post.unit` ni o'qimaydi: UPAKOVKA posti birligi `m2` bo'lsa ham dona qaytaradi, natijada TABLO va dashboard "m²" yorlig'i ostida DONA s
-- [ ] ✅ `backend/app/services/scanning.py:651-660` — `record_scan_at` dagi `except IntegrityError` bloki erishib bo'lmaydigan — poyga 422 emas, 500 beradi.
+- [x] ✅ `backend/app/services/scanning.py:651-660` — `record_scan_at` dagi `except IntegrityError` bloki erishib bo'lmaydigan — poyga 422 emas, 500 beradi.
 - [x] ✅ `bridge-agent/agent.py:1244` — `_restart_self()` va `_apply_update()` .bat faylni `encoding="ascii"` bilan yozadi — Windows profil nomi ASCII bo'lmasa (masalan `Oʻktam`, kirillcha n
 - [x] ✅ `bridge-agent/agent.py:780-801,914-950,1447-1454` — Navbat fayli bilan ishlashda (local_drain/local_rewrite/local_enqueue) hech qanday xato ushlanmaydi; bitta OSError (Windows'da antivirus/backup faylni
 - [x] ✅ `docs/03-backend-api.md:282` — Hujjat PATCH /posts/{id} da «rang» (color) maydonini tahrirlash mumkin deydi — bunday maydon na sxemada, na modelda bor.
@@ -112,7 +112,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/components/Orders/OrderMatrix.tsx:46` — OrderMatrix and CustomRoutes destructure only `data`/`isLoading` from the matrix query, so a failed request renders a misleading "no parts yet" empty 
 - [x] ✅ `frontend/src/components/People/PersonDialog.tsx:142` — Phone is turned into a payload by stripping non-digits with no `PHONE_PATTERN` check, so a half-typed number is sent as e.g. `+99890` and the server 4
 - [x] ✅ `frontend/src/components/People/PersonDialog.tsx:146-150` — `switching` (which triggers the destructive-change confirm dialog) checks only whether the ORIGINAL person had any linked user account, not whether th
-- [ ] ✅ `frontend/src/components/People/PersonDialog.tsx:227` — User account and employee row are created in one non-atomic mutationFn; if the employee step fails, the created account is orphaned, invisible in the 
+- [x] ✅ `frontend/src/components/People/PersonDialog.tsx:227` — User account and employee row are created in one non-atomic mutationFn; if the employee step fails, the created account is orphaned, invisible in the 
 - [x] ✅ `frontend/src/components/Sidebar/AppSidebar.tsx:76` — The docs (and the code comment they mirror) claim the badge query adds no request because the registry page dedupes it. That only holds ON `/orders`. 
 - [x] ✅ `frontend/src/components/Sidebar/Main.tsx:43` — Active-item detection is a strict equality on the full pathname, so on any child route the sidebar shows NO highlighted item — the user loses their pl
 - [x] ✅ `frontend/src/components/Sidebar/Main.tsx:43` — Faqat aniq (exact) path solishtiriladi, shuning uchun ichki marshrutda (masalan /orders/$orderId — buyurtma detail sahifasi) sidebar'dagi "Buyurtmalar
@@ -137,7 +137,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/lib/scxDir.ts:89-91` — `pickDir` swallows every error as "user cancelled", so a real failure (SecurityError outside a user gesture, NotAllowedError) makes the "Hammasini yuk
 - [x] ✅ `frontend/src/lib/validation.ts:24-26, backend/app/schemas/users.py:35` — The "special character" rule differs between the two sides: `ʻ` and `ʼ` (the Uzbek oʻ/gʻ apostrophes) satisfy zod but not the server, so a password th
 - [x] ✅ `frontend/src/queries/mes.ts:33-58` — getClientsQueryOptions and getEmployeesQueryOptions ask for one 100-row page and never paginate, while the page header renders the server's FULL count
-- [ ] ✅ `frontend/src/routes/_layout/anketa.$orderId.tsx:146` — Debounce effekti oldingi save.mutate hali tugamagan bo'lsa ham (save.isPending tekshirilmaydi) yangi mutate chaqiradi; har ikkalasi ham survey'ning TO
+- [x] ✅ `frontend/src/routes/_layout/anketa.$orderId.tsx:146` — Debounce effekti oldingi save.mutate hali tugamagan bo'lsa ham (save.isPending tekshirilmaydi) yangi mutate chaqiradi; har ikkalasi ham survey'ning TO
 - [x] ✅ `frontend/src/routes/_layout/anketa.$orderId.tsx:294` — "Butun buyurtma uchun" katakchalari `CheckGrid` markupini qo'lda takrorlaydi va allaqachon undan uzoqlashgan — belgilangan xizmat sahifadagi boshqa ha
 - [x] ✅ `frontend/src/routes/_layout/anketa.$orderId.tsx:79` — `canEdit` faqat rolni tekshiradi, buyurtma holatini emas — topshirilgan/bekor qilingan buyurtmada menejer to'liq tahrirlanadigan forma oladi, lekin ha
 - [x] ✅ `frontend/src/routes/_layout/clients.tsx:53` — Clients registry silently shows only the newest 100 rows — `count` is fetched and thrown away, no pagination and no "N tadan" hint.
@@ -164,7 +164,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `Makefile:43-44 & frontend/package.json:10` — `make frontend-lint` ("Run frontend linting checks") is not a check — `npm run lint` is `biome check --write --unsafe`, which applies unsafe autofixes
 - [x] ✅ `Makefile:56-58` — `make format` runs ruff from the repo root, so it reformats files no linter in the project owns — `docs/*.md` python blocks and `bridge-agent/agent.py
 - [x] ✅ `docker-compose.prod.yml:56-62 | .env.example:60-66` — XFF ishonch diapazoni ikki joyda mustaqil belgilangan: .env dagi FORWARDED_ALLOW_IPS (backend/app/core/setup.py:174 da ProxyHeadersMiddleware shuni o'
-- [ ] ✅ `scripts/deploy.sh:102` — The auto-rollback path re-runs `up -d` with the old image TAG but never re-runs `caddy reload`, so a rolled-back stack keeps the new Caddyfile that wa
+- [x] ✅ `scripts/deploy.sh:102` — The auto-rollback path re-runs `up -d` with the old image TAG but never re-runs `caddy reload`, so a rolled-back stack keeps the new Caddyfile that wa
 - [x] ✅ `scripts/deploy.sh:19` — `CADDY_HTTP_BIND` is read from `.env` without stripping surrounding quotes, while `SITE_ADDRESS` two lines below is explicitly de-quoted — a quoted bi
 - [x] ✅ `scripts/setup.sh:1-3 & scripts/generate-client.sh:1-6` — `setup.sh` and `generate-client.sh` assume the caller's cwd is the repo root, while their two siblings `deploy.sh` and `backup.sh` both normalise cwd 
 
@@ -176,7 +176,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/api/routes/employees.py:178` — Navbat (arq/Redis) ishlamayotganda infratuzilma nosozligi 403 Forbidden bilan qaytariladi — bu huquq xatosi kodi, klient uni "sizda ruxsat yo'q" deb k
 - [x] ✅ `backend/app/api/routes/login.py:71-81,331-343` — The one-time-use refresh check is check-then-set, not atomic, so two concurrent replays of the same refresh token both succeed and neither triggers re
 - [x] ✅ `backend/app/api/routes/orders/files.py:141-153` — download_order_scx_zip 404s only when the DB has no SCX rows; if the rows exist but the files are missing on disk it silently streams an empty or part
-- [ ] ✅ `backend/app/api/routes/orders/files.py:228,257` — regenerate_order_scx unlinks the old SCX files from disk before writing the new ones and before commit, so any failure while generating leaves the ord
+- [x] ✅ `backend/app/api/routes/orders/files.py:228,257` — regenerate_order_scx unlinks the old SCX files from disk before writing the new ones and before commit, so any failure while generating leaves the ord
 - [ ] ✅ `backend/app/api/routes/pachka.py:404-433` — Qadoq cheki COMMITDAN KEYIN navbatga qo'yiladi va navbat yo'q bo'lsa jimgina tashlab yuboriladi — qadoq CLOSED bo'lib qoladi, QR cheki esa yo'q va uni
 - [x] ✅ `backend/app/api/routes/pachka.py:48,67; backend/app/api/routes/terminal.py:803; backend/app/api/routes/orders/files.py:289` — Three domain helpers live inside route modules and are imported across routers — including a name-mangled private one — so `tmo.py` and `terminal.py` 
 - [x] ✅ `backend/app/api/routes/pachka.py:57,320; backend/app/api/routes/tmo.py:45,260; backend/app/api/routes/scans.py:69,81` — `ScanRejected` ni 422 ga o'girish oltita joyda qo'lda yozilgan, holbuki terminal.py da aynan shu maqsad uchun `_scan_error()` helperi bor va hujjatda 
@@ -263,3 +263,6 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/routes/_layout/reports.tsx:159-166` — Ekrandagi "Buyurtmalar" jadvali va o'sha hisobotning Excel eksporti turli ustunlarni ko'rsatadi: JSON javobida kelgan `created_at` va `production_star
 - [x] ✅ `frontend/src/routes/_layout/work-centers.tsx:150` — Jadval sarlavhasida (102-107 qatorlar) atigi 3 ta doimiy TableHead + shartli admin ustuni bor, ya'ni jami admin uchun 4, aks holda 3 ustun. EmptyRow'g
 
+## Fix-loop davomida topilgan (2026-09-02, ochiq)
+
+- [ ] ⚠️ `frontend/src/components/People/PersonDialog.tsx` (`!account && userId !== null` shoxi) + `backend/app/api/routes/users.py:delete_user` — tsex xodimidan parol bilan kirish olib tashlanganda `deleteUser` POST_ROLES rolli shaxsiy hisobga uriladi va guard shartsiz 403 beradi («qurilma yoki post hisobi, odam emas»). Yo'l: bog'lami uzilgan (yetim) shaxsiy hisobni o'chirishga ruxsat berish yoki o'rniga `is_active=false`. Statik isbot: guard `role in POST_ROLES` (users.py) hodim bog'lamini tekshirmaydi.

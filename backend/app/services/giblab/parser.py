@@ -162,6 +162,9 @@ def _build_part(
         txt=xml_bool(p.get("txt")),
         material_name=None,
         edges=edges,
+        # Atribut yozilmasa (None) detal joylashtirilgan deb olinadi — korpusda uni faqat
+        # GibLab optimizatsiyadan keyin yozadi.
+        placed=_f(p, "usedCount") != 0,
     )
 
 

@@ -193,22 +193,9 @@ export function PersonDialog({
         return
       }
 
-      // Tsex hisobi HODIMDAN OLDIN ochiladi: hodim yozuvi darhol unga bog'lanadi,
-      // aks holda parol bilan kirgan odamning smenasi ochilmasdi (bog'lam yo'q).
       let userId = person?.user ? Number(person.user.id) : null
       const account = withLogin && chosen?.role
-      if (account && userId === null) {
-        const created = await UsersService.createUser({
-          body: {
-            name: form.name.trim(),
-            username: form.username.trim() || undefined,
-            phone: phone ?? "",
-            password: form.password,
-            role: chosen.role as UserRole,
-          },
-        })
-        userId = Number(created.data.id)
-      } else if (account && userId !== null) {
+      if (account && userId !== null) {
         await UsersService.updateUser({
           path: { user_id: userId },
           body: {
@@ -220,6 +207,11 @@ export function PersonDialog({
         })
       }
 
+      // Hodim yozuvi HISOBDAN OLDIN: ikki so'rov bitta tranzaksiya emas — hodim
+      // tushmasa hisob umuman ochilmaydi (yetim hisob ro'yxatda ko'rinmas, post
+      // rolini `delete_user` guard'i o'chirishga ham qo'ymaydi). Hisob keyin
+      // ochilib `updateEmployee({user_id})` bilan bog'lanadi — parol bilan kirgan
+      // odamning smenasi (`login._open_shift_for`) shu bog'lamdan ochiladi.
       const body = {
         full_name: form.name.trim(),
         position: positionText || null,
@@ -227,13 +219,31 @@ export function PersonDialog({
         assigned_post_ids: kind === "boshqa" ? [] : form.posts,
         user_id: account ? userId : null,
       }
-      if (person?.employee) {
+      let employeeId = person?.employee ? Number(person.employee.id) : null
+      if (employeeId !== null) {
         await EmployeesService.updateEmployee({
-          path: { employee_id: person.employee.id },
+          path: { employee_id: employeeId },
           body,
         })
       } else {
-        await EmployeesService.createEmployee({ body })
+        const created = await EmployeesService.createEmployee({ body })
+        employeeId = Number(created.data.id)
+      }
+      if (account && userId === null) {
+        const created = await UsersService.createUser({
+          body: {
+            name: form.name.trim(),
+            username: form.username.trim() || undefined,
+            phone: phone ?? "",
+            password: form.password,
+            role: chosen.role as UserRole,
+          },
+        })
+        userId = Number(created.data.id)
+        await EmployeesService.updateEmployee({
+          path: { employee_id: employeeId },
+          body: { user_id: userId },
+        })
       }
       // Hisob KERAK EMAS bo'lib qolsa yopiladi: ofisdan tsexga o'tkazilganda
       // (eski paroli bilan ofis paneliga kiraverardi) yoki tsex xodimidan

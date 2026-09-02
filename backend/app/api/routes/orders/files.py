@@ -242,10 +242,12 @@ async def regenerate_order_scx(db: SessionDep, current_user: TexnologUser, order
         .scalars()
         .all()
     )
+    # Yo'llar HOZIR yig'iladi, o'chirish esa commit'dan keyin: generatsiya yiqilsa DB
+    # rollback qatorlarni tiriltiradi, fayl esa diskda qolishi shart.
+    old_paths = [f.path for f in old_files]
     for f in old_files:
         f.is_deleted = True
         f.deleted_at = now
-        (root / f.path).unlink(missing_ok=True)
 
     plate_by_name = plate_thickness_map(project)
     created = 0
@@ -274,6 +276,22 @@ async def regenerate_order_scx(db: SessionDep, current_user: TexnologUser, order
         ip=client_ip(request),
     )
     await db.commit()
+    # Nom = nusxa QR'i, ya'ni yangi fayl eskisi bilan ustma-ust tushishi mumkin —
+    # hali ham tirik qator ishora qilayotgan yo'lga tegilmaydi.
+    live_paths = set(
+        (
+            await db.execute(
+                select(OrderFile.path).where(
+                    OrderFile.order_id == order.id,
+                    OrderFile.kind == FileKind.SCX,
+                    OrderFile.is_deleted == False,  # noqa: E712
+                )
+            )
+        ).scalars()
+    )
+    for path in old_paths:
+        if path not in live_paths:
+            (root / path).unlink(missing_ok=True)
     return Message(message=f"{created} ta SCX fayl qayta yaratildi — endi nomlar nusxa QR'i bilan.")
 
 

@@ -23,10 +23,14 @@ qolganini lavozim hal qiladi.
   `ofis` (4 ta, har biri `UserRole` ga ko'rsatadi), `boshqa` (nomi qo'lda — haydovchi,
   farrosh; post ham, hisob ham berilmaydi). Ko'rinadigan nom `ROLE_LABELS[role]` dan
   keladi, shuning uchun dialog va Hodimlar jadvalining "Lavozim" ustuni bir so'zni aytadi.
-- **Tsexda parol bilan kirish** — "Postda skaner yo'q" katakchasi. Belgilansa hisob HODIMDAN
-  OLDIN yaratiladi va `employee.user_id` darhol unga bog'lanadi: aks holda odam parol bilan
-  kirardi-yu, smenasi ochilmasdi (`login._open_shift_for` aynan shu bog'lamdan hodimni topadi).
-  Rol lavozim jadvalidan keladi (`POSITIONS[].role` — backend `POST_ROLES` bilan bir xil).
+- **Hodim yozuvi hisobdan OLDIN yaratiladi**, hisob keyin ochilib
+  `updateEmployee({user_id})` bilan bog'lanadi (`login._open_shift_for` aynan shu bog'lamdan
+  hodimni topadi). Rol lavozim jadvalidan keladi (`POSITIONS[].role` — backend `POST_ROLES`
+  bilan bir xil). Ikki so'rov bitta tranzaksiya EMAS: hodim yozuvi tushmasa hisob umuman
+  ochilmaydi. Ilgari hisob avval ochilib, hodim tushmasa YETIM qolardi (tsex roli Hodimlar
+  ro'yxatida yashiriladi — `employees.tsx`: `isDeviceAccount(u) || linked.has(...)`, qayta
+  urinish `crud_users.exists(phone)` da 409 ga urilardi); kompensatsion `deleteUser` esa
+  yaramasdi — post rolli hisobni `delete_user` guard'i 403 bilan qaytaradi.
 - **Post lavozimdan keladi**: "Arrachi" tanlansa ARRA belgilanadi. Dialog OCHILGANDA ham
   hisoblanadi (`postsFor`), faqat almashtirilganda emas — ilgari admin tayyor turgan
   lavozimga tegmasdan saqlasa POSTSIZ hodim yaratilardi va uning beyjigi ishlamasdi.

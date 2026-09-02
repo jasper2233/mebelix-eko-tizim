@@ -130,6 +130,11 @@ function AnketaPage() {
   surveyRef.current = survey
 
   const save = useMutation({
+    // Bir xil scope'li mutatsiyalar KETMA-KET bajariladi. Debounce taymeri
+    // oldingi so'rov hali ketayotganda yangisini boshlashi mumkin; har biri
+    // anketaning TO'LIQ nusxasini yuboradi, shuning uchun javoblar tartibi
+    // buzilsa eskiroq nusxa serverda oxirgi bo'lib qolardi (jimgina yo'qotish).
+    scope: { id: `order-survey-${id}` },
     mutationFn: (body: OrderSurvey) =>
       OrdersService.saveOrderSurvey({ path: { order_id: id }, body }),
     onSuccess: (_data, body) => {

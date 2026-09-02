@@ -12,7 +12,7 @@ from app.api.deps import SessionDep
 from app.core.config import TASHKENT_TZ
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.crud import crud_orders
-from app.models import Order, Post, Scan
+from app.models import Order, PartRoute, Post, Scan
 from app.models.enums import OrderStatus, PostCode, UserRole
 from app.models.user import User
 
@@ -110,3 +110,49 @@ async def _get_visible_order(db: SessionDep, user: User, order_id: int) -> Order
 #: Nostandart marshrut faqat shu postlardan boshlanadi: detal yo arrada kesiladi,
 #: yo roverda. Ikkalasi ham chek chiqaradi — boshqa post boshlansa detalda QR bo'lmaydi.
 _ROUTE_START_POSTS = (PostCode.ARRA, PostCode.ROVER)
+
+
+async def stamp_route_machines(db: SessionDep, order: Order) -> None:
+    """Tanlangan ish markazini buyurtma marshrut qatorlariga muhrlash.
+
+    Terminal ro'yxati ham, skan tekshiruvi ham `PartRoute.machine_id` ga
+    qaraydi — tanlov faqat `order.machine_assignments` da qolsa, buyurtma
+    yangi stanok terminalida ko'rinmaydi va skan E001 beradi. Shuning uchun
+    ishlab chiqarishga uzatishda ham, tanlov keyin o'zgartirilganda ham
+    muhrlash shu yerdan bo'ladi. Commit chaqiruvchida.
+    """
+    posts = {p.id: p for p in (await db.execute(select(Post))).scalars()}
+    used_post_ids = (
+        (
+            await db.execute(
+                select(PartRoute.post_id)
+                .where(
+                    PartRoute.order_id == order.id,
+                    PartRoute.is_enabled == True,  # noqa: E712
+                    PartRoute.is_deleted == False,  # noqa: E712
+                )
+                .distinct()
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for pid in used_post_ids:
+        machine_id = order.machine_assignments.get(str(posts[pid].code))
+        if machine_id is None:
+            continue
+        routes = (
+            (
+                await db.execute(
+                    select(PartRoute).where(
+                        PartRoute.order_id == order.id,
+                        PartRoute.post_id == pid,
+                        PartRoute.is_deleted == False,  # noqa: E712
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for route in routes:
+            route.machine_id = machine_id

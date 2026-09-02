@@ -474,8 +474,9 @@ async def ingest_project(
             # ARRA — faqat listdan kesiladigan detalga. Optimizatsiya qilingan faylda
             # materiali ham, yorliq raqami ham yo'q detal umuman listga joylashtirilmagan
             # (masalan kupe alyuminiy profillari) — unga ARRA vazifasi berilsa arrachi
-            # kesa olmaydigan soxta ish paydo bo'lardi.
-            if pp.material_name or pp.label_num is not None:
+            # kesa olmaydigan soxta ish paydo bo'lardi. CS ro'yxatida turgani ham yetarli
+            # emas: `usedCount="0"` detalni GibLab ataylab joylashtirmagan (`pp.placed`).
+            if pp.placed and (pp.material_name or pp.label_num is not None):
                 steps.append((1, PostCode.ARRA, 1))  # 1 = Raspil
             if pp.kromka_sides:
                 steps.append((3, PostCode.KROMKA, pp.kromka_sides))  # 3 = Kromka
