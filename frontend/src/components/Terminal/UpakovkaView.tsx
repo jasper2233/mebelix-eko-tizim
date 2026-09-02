@@ -10,6 +10,12 @@ import { useEffect, useRef } from "react"
 import { toast } from "sonner"
 
 import { PachkaService } from "@/client"
+import { QueryError } from "@/components/Common/QueryError"
+import {
+  playError,
+  playSuccess,
+  playWarning,
+} from "@/components/Terminal/audio"
 import { PostHeader } from "@/components/Terminal/PostHeader"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
@@ -30,7 +36,7 @@ export function UpakovkaView({
   registerScan?: (fn: ((qr: string) => void) | null) => void
 }) {
   const queryClient = useQueryClient()
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["terminal", "upakovka", orderId],
     queryFn: async () =>
       (await PachkaService.readUpakovkaOrder({ path: { order_id: orderId } }))
@@ -45,7 +51,10 @@ export function UpakovkaView({
     mutationFn: async () =>
       (await PachkaService.createPachka({ path: { order_id: orderId } })).data,
     onSuccess: put,
-    onError: (e) => toast.error(detailMessage(e)),
+    onError: (e) => {
+      playError()
+      toast.error(detailMessage(e))
+    },
   })
   const scan = useMutation({
     mutationFn: async (v: { pachkaId: number; qr: string }) =>
@@ -55,8 +64,18 @@ export function UpakovkaView({
           body: { qr_text: v.qr },
         })
       ).data,
-    onSuccess: put,
-    onError: (e) => toast.error(detailMessage(e)),
+    // Javob XABARI shu yerda tug'iladi: qadoqlash skani `registerScan` orqali
+    // ketadi va terminalning umumiy oqimini (ovoz + banner) chetlab o'tadi.
+    // Ilgari bu yerda faqat `put` bor edi — operator hech qanday javob olmasdi.
+    onSuccess: (d, v) => {
+      put(d)
+      playSuccess()
+      toast.success(`Qadoqqa qo'shildi: ${v.qr}`)
+    },
+    onError: (e) => {
+      playError()
+      toast.error(detailMessage(e))
+    },
   })
   const remove = useMutation({
     mutationFn: async (v: { pachkaId: number; instanceId: number }) =>
@@ -66,7 +85,10 @@ export function UpakovkaView({
         })
       ).data,
     onSuccess: put,
-    onError: (e) => toast.error(detailMessage(e)),
+    onError: (e) => {
+      playError()
+      toast.error(detailMessage(e))
+    },
   })
   const close = useMutation({
     mutationFn: async (pachkaId: number) =>
@@ -75,7 +97,10 @@ export function UpakovkaView({
       toast.success(r.message)
       queryClient.invalidateQueries({ queryKey: ["terminal", "upakovka"] })
     },
-    onError: (e) => toast.error(detailMessage(e)),
+    onError: (e) => {
+      playError()
+      toast.error(detailMessage(e))
+    },
   })
 
   const pachkas = data?.pachkas ?? []
@@ -89,6 +114,7 @@ export function UpakovkaView({
     registerScan?.((qr) => {
       const id = openRef.current
       if (id == null) {
+        playWarning()
         toast.error("Avval qadoq yarating")
         return
       }
@@ -98,6 +124,9 @@ export function UpakovkaView({
   }, [registerScan, scan.mutate])
 
   if (isLoading) return <Skeleton className="h-full w-full" />
+  // Xatoni yutib bo'lmaydi: aks holda kiosk "Ochiq qadoq yo'q" va "Hammasi
+  // qadoqlangan." deb yolg'on tinch holat ko'rsatardi.
+  if (isError) return <QueryError onRetry={() => refetch()} />
 
   const pending = data?.pending ?? []
   const closed = pachkas.filter((p) => p.status !== "open")

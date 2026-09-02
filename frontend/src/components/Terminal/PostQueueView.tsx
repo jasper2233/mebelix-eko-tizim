@@ -11,6 +11,7 @@ import { Check } from "lucide-react"
 
 import { TerminalService } from "@/client"
 import { OperationChips } from "@/components/Common/OperationChips"
+import { QueryError } from "@/components/Common/QueryError"
 import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -29,7 +30,7 @@ export function PostQueueView({
   orderId: number
   onBack: () => void
 }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["terminal", "queue", orderId],
     queryFn: async () =>
       (
@@ -41,6 +42,9 @@ export function PostQueueView({
   })
 
   if (isLoading) return <Skeleton className="h-full w-full" />
+  // Xato JIM yutilmasin: busiz `rows` bo'sh qolib, operator "Bu proyektda bu
+  // postga tegishli detal yo'q." ni o'qib postni ishsiz deb tashlab ketardi.
+  if (isError) return <QueryError onRetry={() => refetch()} />
 
   const rows = data?.rows ?? []
   const ready = rows.filter((r) => !r.done && r.ready)

@@ -17,6 +17,7 @@ import { toast } from "sonner"
 
 import type { PrisadkaInstance, PrisadkaPartRow } from "@/client"
 import { TerminalService } from "@/client"
+import { QueryError } from "@/components/Common/QueryError"
 import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
 import { TBtn } from "@/components/Terminal/TBtn"
@@ -75,7 +76,7 @@ export function PrisadkaView({
    * ustiga) portal qilinadi — alohida ikkinchi ustun ochilmasin */
   toolbarContainer: HTMLElement | null
 }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["terminal", "prisadka", orderId],
     queryFn: async () =>
       (
@@ -142,6 +143,9 @@ export function PrisadkaView({
   )
 
   if (isLoading) return <Skeleton className="h-full w-full" />
+  // Xatoni yutib bo'lmaydi: aks holda bo'sh `parts` "detal yo'q" degan
+  // YOLG'ON xabarga aylanadi va operator qayta urinish yo'lini ko'rmaydi
+  if (isError) return <QueryError onRetry={() => refetch()} />
   const allFiles = parts.flatMap((p) => p.files)
   const totDone = parts.reduce((s, p) => s + p.done, 0)
   const totReq = parts.reduce((s, p) => s + p.total, 0)
@@ -157,9 +161,11 @@ export function PrisadkaView({
         if (!dir) dir = await pickDir()
         if (!dir) return // bekor qilindi
         // Har proyekt o'z papkasiga: "1007 Yangibozor" kabi — fayllar aralashmaydi
-        const folder = projectFolder(
-          data?.project_name || data?.order_number || "scx",
-        )
+        // `projectFolder` faqat taqiqlangan belgilarni tozalaydi — natija
+        // bo'sh qolishi mumkin (" " kabi nom), bo'sh nom bilan papka ochilmaydi
+        const folder =
+          projectFolder(data?.project_name || data?.order_number || "scx") ||
+          "scx"
         const sub = await dir.getDirectoryHandle(folder, { create: true })
         let ok = 0
         for (const f of allFiles) {
@@ -191,6 +197,13 @@ export function PrisadkaView({
         }
         toast.success(`${allFiles.length} ta SCX yuklab olindi`)
       }
+    } catch (e) {
+      // Saqlangan papka o'chirilgan/ko'chirilgan yoki flesh olib qo'yilgan —
+      // tugma jimgina qaytmasin, operator papkani qayta tanlashi kerakligini bilsin
+      if ((e as Error)?.name !== "AbortError")
+        toast.error(
+          "SCX papkasini ochib bo'lmadi — Papka tugmasi bilan qayta tanlang",
+        )
     } finally {
       setProgress(null)
     }

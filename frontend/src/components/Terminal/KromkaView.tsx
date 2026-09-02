@@ -9,6 +9,7 @@ import { useEffect, useRef } from "react"
 
 import { TerminalService } from "@/client"
 import { OperationChips } from "@/components/Common/OperationChips"
+import { QueryError } from "@/components/Common/QueryError"
 import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -38,7 +39,7 @@ export function KromkaView({
   /** OVAL post: har detal 1 skan — Jarayonda paneli va tomonlar ustuni ortiqcha */
   oval?: boolean
 }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["terminal", "kromka", orderId],
     queryFn: async () =>
       (
@@ -90,6 +91,9 @@ export function KromkaView({
   )
 
   if (isLoading) return <Skeleton className="h-full w-full" />
+  // Xato JIM yutilmasin: busiz `data` undefined qolib, ro'yxat "Arradan kelgan
+  // detal yo'q" bo'lib ko'rinardi va kromkachi yo'q detallarni kutib turardi.
+  if (isError) return <QueryError onRetry={() => refetch()} />
 
   // Chap: arradan chiqqan nusxalar — tugaganlari yashil bo'lib PASTGA tushadi,
   // qilinmaganlari tepada (kromkachi navbatdagi ishni tepadan oladi)
