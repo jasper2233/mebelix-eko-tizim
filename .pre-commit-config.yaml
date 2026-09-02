@@ -10,7 +10,7 @@ repos:
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # backend/uv.lock dagi ruff bilan bir xil versiya (ruff-pre-commit teglari ruff relizlarini aks ettiradi)
-    rev: v0.16.3
+    rev: v0.16.5
     # Faqat `backend/` — CI ham shu qamrovni tekshiradi (ci.yml: `cd backend`).
     # Busiz hook `bridge-agent/agent.py` ni ham oladi, lekin u yerda ruff konfigi
     # yo'q: DEFAULT line-length 88 bilan CI hech qachon tekshirmaydigan uslubga
