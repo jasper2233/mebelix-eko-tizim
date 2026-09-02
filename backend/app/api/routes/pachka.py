@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 
 from app.api.deps import SessionDep, require_roles
-from app.core.exceptions import ForbiddenException, NotFoundException
+from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
 from app.core.ws import ws_manager
 from app.crud import crud_orders, crud_pachkas, log_action
 from app.models import Machine, Order, Pachka, PachkaItem, Part, PartInstance, PartRoute, Post, Product, Scan
@@ -163,11 +163,32 @@ async def read_upakovka_order(db: SessionDep, ctx: PackCtx, order_id: int) -> Up
     return await _state(db, order, post)
 
 
+async def _open_of(db: SessionDep, order_id: int) -> Pachka | None:
+    """Buyurtmadagi ochiq qadoq. Bir vaqtda faqat BITTASI bo'ladi: skan doim ochiq
+    qadoqqa tushadi va terminal ekrani ham faqat bittasini ko'rsatadi — ikkinchisi
+    ochilib qolsa u ekranda umuman ko'rinmay, yakunlab ham bo'lmay qolardi."""
+    return (
+        (
+            await db.execute(
+                select(Pachka).where(
+                    Pachka.order_id == order_id,
+                    Pachka.status == PachkaStatus.OPEN,
+                    Pachka.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+
 @router.post("/orders/{order_id}", response_model=UpakovkaOrderState, operation_id="create_pachka")
 async def create_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, order_id: int) -> UpakovkaOrderState:
     """Yangi qadoq ochish. Kod `PK-{buyurtma}-{NN}` — chekdagi QR matni ham shu."""
     _machine, post = ctx
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
+    if (other := await _open_of(db, order.id)) is not None:
+        raise DuplicateValueException(f"Bu buyurtmada ochiq qadoq bor: {other.code}. Avval uni yakunlang.")
     # Tartib raqami O'CHIRILGANLARNI ham sanaydi: kod qayta ishlatilsa eski chek
     # bilan yangi qadoq bir xil QR beradi va TMO da chalkashlik chiqadi.
     used = (await db.execute(select(func.count()).select_from(Pachka).where(Pachka.order_id == order.id))).scalar_one()
@@ -307,13 +328,62 @@ async def remove_from_pachka(
     return await _state(db, order, post)
 
 
+@router.post("/{pachka_id}/reopen", response_model=UpakovkaOrderState, operation_id="reopen_pachka")
+async def reopen_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, pachka_id: int) -> UpakovkaOrderState:
+    """Yopilgan qadoqni qayta ochish — `_open_pachka` va'da qiladigan "qayta oching".
+
+    Yopiq qadoqqa xato detal tushib qolsa yoki cheki yo'qolsa yagona yo'l shu:
+    qayta ochiladi, tuzatiladi va qayta yakunlanadi (yakunlash chekni navbatga
+    yangidan qo'yadi).
+    """
+    _machine, post = ctx
+    pachka = await crud_pachkas.get_or_404(db, "Qadoq topilmadi.", id=pachka_id)
+    if pachka.status == PachkaStatus.OPEN:
+        raise DuplicateValueException(f"Qadoq {pachka.code} allaqachon ochiq.")
+    if (other := await _open_of(db, pachka.order_id)) is not None:
+        raise DuplicateValueException(f"Bu buyurtmada ochiq qadoq bor: {other.code}. Avval uni yakunlang.")
+    order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=pachka.order_id)
+    # TMO qabul qilgan qadoq qayta ochilmaydi: nusxalarida jonli TMO skani bor — qayta
+    # ochib detal chiqarilsa UPAKOVKA skani bekor bo'ladi-yu, TMO skani turaveradi
+    # (marshrutda oxirgi qadam yopiq, oldingisi ochiq), TMO esa qayta qabul qila olmaydi.
+    tmo_scan = await db.execute(
+        select(Scan.id)
+        .join(PachkaItem, PachkaItem.instance_id == Scan.instance_id)
+        .join(Post, Post.id == Scan.post_id)
+        .where(
+            PachkaItem.pachka_id == pachka.id,
+            PachkaItem.is_deleted == False,  # noqa: E712
+            Scan.is_cancelled == False,  # noqa: E712
+            Scan.is_deleted == False,  # noqa: E712
+            Post.code == PostCode.TMO,
+        )
+        .limit(1)
+    )
+    if tmo_scan.scalar_one_or_none() is not None:
+        raise ForbiddenException(f"Qadoq {pachka.code} TMO ga qabul qilingan — qayta ochib bo'lmaydi.")
+
+    pachka.status = PachkaStatus.OPEN
+    pachka.closed_at = None
+    log_action(
+        db,
+        module="pachka",
+        action="reopened",
+        user_id=user.id,
+        entity_type="pachka",
+        entity_id=pachka.id,
+        message=f"Qadoq qayta ochildi: {pachka.code}",
+    )
+    await db.commit()
+    return await _state(db, order, post)
+
+
 @router.post("/{pachka_id}/close", response_model=Message, operation_id="close_pachka")
 async def close_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, pachka_id: int) -> Message:
     """Qadoqni yakunlash: yopiladi va cheki chop etishga yuboriladi.
 
     Chek chiqara olmasak (navbat o'chgan yoki postga printer biriktirilmagan)
-    qadoq ATAYLAB yopilmaydi — yopilgan qadoqning chekini qayta chiqarish yo'li
-    yo'q, shuning uchun xato aytiladi va qadoqlovchi qayta urinadi.
+    qadoq ATAYLAB yopilmaydi: qadoq ochiq qolgani qadoqlovchiga darhol qayta
+    urinish imkonini beradi (aks holda avval "Qayta ochish" kerak bo'lardi).
     """
     machine, post = ctx
     pachka = await _open_pachka(db, pachka_id)
@@ -333,9 +403,8 @@ async def close_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, pachka_id: 
     from app.core.utils import queue
     from app.tasks import NoPrinterBound, require_printer
 
-    # Chek chiqmaydigan bo'lsa qadoq YOPILMAYDI: yopilgan qadoqni qayta yopib
-    # bo'lmaydi va chekni qayta chiqarish yo'li yo'q — shuning uchun to'siq
-    # commitdan OLDIN tekshiriladi, qadoq esa ochiq qolib qayta urinishga imkon beradi.
+    # Chek chiqmaydigan bo'lsa qadoq YOPILMAYDI: to'siq commitdan OLDIN
+    # tekshiriladi, qadoq esa ochiq qolib darhol qayta urinishga imkon beradi.
     if queue.pool is None:
         # 503, 403 emas: navbat (arq/Redis) o'chgani infratuzilma nosozligi.
         raise HTTPException(

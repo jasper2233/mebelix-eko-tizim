@@ -717,7 +717,7 @@ profil kesish (`CL` — tsexda bunday post yo'q), detal NOMI (u marshrutga ta'si
 | XNC operatsiyada `<part>` havolasi yo'q | ishlov o'tkazib yuborildi (operatsiya `code`/`id` bilan) — PRISADKA qadami va SCX geometriyasi ham yo'qoladi |
 | XNC operatsiyada `program` yo'q | xuddi shunday — ishlov o'tkazib yuborildi (ilgari ikkalasi ham JIM tashlanardi) |
 | `description` da `#kod` | ishlov shablon nomi bilan berilgan, o'qilmaydi |
-| Xaritada joyi yo'q detal | arrachi ro'yxatiga tushmaydi — xarita EKRANIDA katagi yo'q; ARRA marshrut qadami esa CS ro'yxatida turgani uchun baribir yaratiladi (§2.3) |
+| Xaritada joyi yo'q detal | arrachi ro'yxatiga tushmaydi — xarita EKRANIDA katagi yo'q; `usedCount="0"` bo'lsa ARRA marshrut qadami ham ochilmaydi (`ParsedPart.placed`, §3.1) |
 | `turn` ≠ 0 | dastur aylantirilgan — aylantirish qo'llanmaydi, CNC'da tekshirish shart (`mirHor`/`mirVert` esa parse'da geometriyaga QO'LLANADI — `xnc.apply_mirror`) |
 | Blobsiz kesish operatsiyasi | material optimallashtirilmagan, xaritasi yo'q |
 | Nostandart marshrut tiklandi | qayta yuklashda N detalning qo'lda chizilgan marshruti qaytarildi |
@@ -741,6 +741,15 @@ detallar va buyurtmaning HAMMA tirik marshruti bittadan SELECT bilan olinadi (ma
 qatorlari esa sikldan OLDIN bitta `UPDATE ... WHERE part_id IN (...)` bilan yumshoq
 o'chiriladi. Yangi MANUAL qatorlar `db.add` bilan qo'shiladi va tranzaksiya oxirida yoziladi.
 
+Qadamlarning O'ZINI qurish `giblab/routes.py: build_manual_route()` da — YAGONA nusxa.
+Uni ham `restore_custom_routes`, ham matritsa tahriri (`orders/matrix.py: _set_custom_route`)
+chaqiradi: KROMKA birinchi o'tishda qirralar soni marta skanlanadi (takrorida bitta, OVAL doim
+bitta), qadoqlash/TMO dumi esa faqat biriktirilmagan detalga qo'shiladi. Qoida ish haqi va skan
+sonini belgilaydi, ya'ni ikki nusxada turgani bittasiga tegilishi bilan JIMGINA ajralib ketardi.
+Chaqiruvchilar farqi parametrlarda: `start_seq`/`seen` (standart detalda fayl qadamlaridan keyin)
+va `with_tail` (dum standart detalda joyida qoladi). Sozlanmagan post `ParseError` beradi —
+matritsa uni 404 ga o'raydi (`resolve_post`, xato matni ikkalasida bir xil).
+
 STANDART detalda tiklangan qadam DUMDAN (UPAKOVKA/TMO, `TAIL_CODES`) OLDIN turadi: `seq`
 dumsiz maksimumdan boshlanadi, dum esa `park_tail`/`unpark_tail` bilan qadamlar soniga
 suriladi (ikki qadamda — `(part_id, seq)` qisman UNIQUE indeks dublikatni satr-ma-satr
@@ -748,9 +757,17 @@ tekshiradi, to'g'ridan-to'g'ri surish o'rtada to'qnashardi). Marshrut matritsasi
 qadam ham AYNAN shu ikki helperdan foydalanadi (`orders/matrix.py`). Dum hisobga olinmasa
 tiklangan qadam TMO dan keyin tushib, `STRICT_STAGE_ORDER` da mangu `E004` berardi.
 
-`snapshot_custom_routes` esa `is_custom` va `assembly_parent_id` ni MANUAL qatorlardan emas,
-DETAL jadvalidan oladi (marshrut kodlari alohida so'rovda ustiga qo'shiladi): bayroq yoqilgan,
-lekin marshruti hali chizilmagan detal ham saqlanadi.
+`snapshot_custom_routes` esa `is_custom`, `assembly_parent_id` va texnolog IZOHINI (`part.note`)
+MANUAL qatorlardan emas, DETAL jadvalidan oladi (marshrut kodlari alohida so'rovda ustiga
+qo'shiladi): bayroq yoqilgan, lekin marshruti hali chizilmagan detal ham saqlanadi. Saqlanma —
+`PartSnapshot` dataklassi: `is_custom`, `parent_key`, `note`, `codes`, `disabled`. Oxirgisi —
+`is_enabled=False` qilingan JARAYON KODLARI, va u MANUAL qatorlar bilan cheklanmaydi: matritsadagi
+tugma fayldan qurilgan AUTO qadamni ham o'chira oladi, shuning uchun snapshot buyurtmaning HAMMA
+tirik qatorini o'qiydi. `restore_custom_routes` oxirida ular detal bo'yicha bitta
+`UPDATE ... SET is_enabled=false WHERE process_code IN (...)` bilan qaytariladi — aks holda
+qayta yuklash hamma qatorni default `is_enabled=True` bilan yaratib, texnolog o'chirib qo'ygan
+amalni JIMGINA qayta yoqardi. Izoh yoki o'chirilgan qadam uchungina saqlangan detal
+"marshrut tiklandi"/"marshruti yo'qoldi" sanog'iga KIRMAYDI (`PartSnapshot.has_route`).
 
 Bu xabarlar yuklash javobida ko'rsatiladi (dastlabki 3 tasi, qolgani soni bilan) va
 to'liq ro'yxat audit logga yoziladi (`POST /orders/{id}/upload`).
@@ -845,6 +862,8 @@ muzlatib qo'yardi (terminallar, TABLO, WebSocket bir vaqtning o'zida to'xtardi).
 - Blob: `csblob.py` (base64 binar + `self_check`), `cutmap.py` (vizual model + instance↔katakcha binding + `holes`; shu yerda `build_cutmap_state` — bazadan o'qib `CutmapState` yig'adigan servis, terminal va admin-panel route'lari uchun umumiy — va uning `arra_parts_query` yordamchisi)
 - Ishlov: `xnc.py` (dastur XML), `scx.py` (CNC fayl generatsiyasi)
 - DB'ga yozish: `ingest.py` (mahsulot/detal/nusxa/marshrut, material registri, sarf hisobi, SCX yozish)
+- Qo'lda chizilgan marshrut: `routes.py` (`build_manual_route`, `resolve_post`) — `ingest.py` ham,
+  `orders/matrix.py` ham shu yagona qoidadan foydalanadi (§7)
 - `giblab/__init__.py` faqat ikki nom eksport qiladi: `ParseError` va `parse_project`; `ingest`
   funksiyalari (`ingest_project`, `wipe_previous_parse`, `drop_stale_files`,
   `write_and_register_scx`, `snapshot_custom_routes`, `restore_custom_routes`,

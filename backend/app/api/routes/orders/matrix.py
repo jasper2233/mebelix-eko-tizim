@@ -20,6 +20,7 @@ from app.schemas.orders import MatrixEdit, MatrixPart, OrderMatrix, RouteCell
 from app.services.giblab import ParseError
 from app.services.giblab.ingest import park_tail, purge_replaced_scx, rebuild_order_scx, unpark_tail
 from app.services.giblab.models import DEFAULT_PROCESS_CODE, PROCESS_NAMES, PROCESS_POSTS, TAIL_CODES
+from app.services.giblab.routes import build_manual_route
 
 from ._common import _ROUTE_START_POSTS, _get_order, _get_visible_order, _require_editable
 
@@ -327,9 +328,9 @@ async def _set_custom_route(
 ) -> None:
     """Nostandart detal marshrutini jarayon kodlari ro'yxatidan qayta quradi.
 
-    Ro'yxat TARTIBLI va kod takrorlanishi mumkin ([3, 6, 3] — kromkaga qaytish).
-    KROMKA birinchi kelganda qirralar soni marta skanlanadi, takrorida bitta.
-    OVAL har doim bitta: oval kromkada detal bitta o'tishda ishlanadi."""
+    Bu yerda — tekshiruv va eski qadamlarni olib tashlash; qatorlarni qurish qoidasi
+    (KROMKA birinchi o'tish, qadoqlash/TMO dumi) `giblab.routes.build_manual_route` da,
+    qayta yuklashdagi tiklash bilan UMUMIY."""
     for code in codes:
         # 15/16 (qadoqlash, TMO) — dumni tizim qo'shadi, texnolog tanlamaydi
         if code not in PROCESS_POSTS or code in TAIL_CODES:
@@ -377,55 +378,13 @@ async def _set_custom_route(
         )
         .values(is_deleted=True, deleted_at=datetime.now(UTC))
     )
-    edge_count = len(part.edges) or 1
-    seen: set[PostCode] = set()
-    for seq, code in enumerate(codes, start=1):
-        post_code = PROCESS_POSTS[code]
-        post = by_code.get(post_code)
-        if post is None:
-            raise NotFoundException(f"Post sozlanmagan: {post_code}. Administratorga murojaat qiling.")
-        # OVAL bu yerda YO'Q: oval kromkada detal bitta o'tishda ishlanadi — bitta skan.
-        # KROMKA esa har qirrani alohida yopishtiradi, shuning uchun birinchi o'tishda
-        # qirralar soni marta skanlanadi (takror kelsa — bitta).
-        first_edge_pass = post_code == PostCode.KROMKA and post_code not in seen
-        seen.add(post_code)
-        per_instance = edge_count if first_edge_pass else 1
-        db.add(
-            PartRoute(
-                order_id=order_id,
-                part_id=part.id,
-                post_id=post.id,
-                seq=seq,
-                process_code=code,
-                source=RouteSource.MANUAL,
-                per_instance=per_instance,
-                total_required=part.count * per_instance,
-            )
-        )
-    # Qadoqlash va TMO — texnolog tanlamaydi. Qadoqlashni anketadagi bayroq
-    # qo'shadi, TMO esa HAR doim oxirgi qadam bo'ladi.
-    # Biriktirilgan MAYDA detalga dum QO'SHILMAYDI: u asosiy detalga yopishib
-    # yaxlit buyumga aylanadi, ya'ni alohida qadoqlanmaydi va TMO ga alohida
-    # kirmaydi — aks holda qadoqlovchi mavjud bo'lmagan detalni qidirardi.
-    if codes and part.assembly_parent_id is None:
-        tail = [(15, PostCode.UPAKOVKA)] if packaging else []
-        tail.append((16, PostCode.TMO))
-        for offset, (code, post_code) in enumerate(tail):
-            post = by_code.get(post_code)
-            if post is None:
-                raise NotFoundException(f"Post sozlanmagan: {post_code}. Administratorga murojaat qiling.")
-            db.add(
-                PartRoute(
-                    order_id=order_id,
-                    part_id=part.id,
-                    post_id=post.id,
-                    seq=len(codes) + 1 + offset,
-                    process_code=code,
-                    source=RouteSource.MANUAL,
-                    per_instance=1,
-                    total_required=part.count,
-                )
-            )
+    # Qadamlar va dum bitta joyda quriladi (giblab.routes) — qayta yuklashdagi tiklash
+    # ham aynan shu funksiyani chaqiradi, ya'ni skan soni qoidasi ajralib ketmaydi.
+    try:
+        build_manual_route(db, order_id, part, codes, by_code, packaging=packaging)
+    except ParseError as exc:
+        # Matritsa tahririda sozlanmagan post — 404 (fayl xatosi emas), matn o'sha.
+        raise NotFoundException(str(exc)) from None
 
 
 async def _resize_instances(db: SessionDep, part: Part, new_count: int) -> None:

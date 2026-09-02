@@ -13,7 +13,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/services/giblab/ingest.py:78` — snapshot_custom_routes only sees parts that already have a MANUAL route row, so a part marked "Nostandart" (or bound to an assembly parent) before any
 - [x] ✅ `backend/app/services/giblab/parser.py:463` — CS `<part>` ro'yxatidagi HAR bir stubga `label_num` beriladi, joylashtirilmagan (usedCount=0) detalga ham — ingest esa aynan `label_num is not None` n
 - [x] ✅ `backend/app/services/labels.py:230` — Loyiha nomi 26 belgigacha chiziladi, lekin QR bloki uni x=40 mm dan boshlab ustidan bosib o'chiradi — uzun loyiha nomining oxiri chekda umuman ko'rinm
-- [ ] ✅ `backend/app/services/scanning.py:518` — QR text is not order-scoped (uniqueness is only per order), so when two live PRODUCTION orders are built from the same GibLab product/part codes, ever
+- [x] ✅ `backend/app/services/scanning.py:518` — QR text is not order-scoped (uniqueness is only per order), so when two live PRODUCTION orders are built from the same GibLab product/part codes, ever
 - [x] ✅ `backend/app/services/scanning.py:656` — The `except IntegrityError` guard around `db.flush()` never fires — SQLAlchemy autoflushes the pending Scan INSERT inside the preceding `db.execute(up
 - [x] ✅ `frontend/src/components/Orders/CustomRoutes.tsx:124-125` — "Bekor qilish" (Cancel) tugmasi faqat setDraft({}) chaqiradi, setParents({}) emas. dirty holati draft VA parents ikkalasidan hisoblanadi (Object.keys(
 - [x] ✅ `frontend/src/components/Orders/CustomRoutes.tsx:88` — codesOf() reads every saved route step, including the system tail steps (15 UPAKOVKA / 16 TMO) that the backend appends itself, so a re-edited custom 
@@ -53,11 +53,11 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/api/routes/orders/files.py:82-89` — wipe_previous_parse unlinks the old .project/SCX files from disk inside an uncommitted transaction; if ingest/restore later raises ParseError the DB i
 - [x] ✅ `backend/app/api/routes/orders/lifecycle.py:91,97-106,121` — On the number-collision retry path create_order reads client.full_name after db.rollback() has expired every identity-map object, so the documented re
 - [x] ✅ `backend/app/api/routes/orders/matrix.py:134-147` — _check_assembly_match (which enforces that a child part's last route step exists in its assembly parent's route) only runs when assembly_parent_id its
-- [ ] ✅ `backend/app/api/routes/orders/matrix.py:354-395` — The whole manual-route construction (edge_count, KROMKA first-pass rule, seen set, packaging/TMO tail) is written twice, in orders._set_custom_route a
+- [x] ✅ `backend/app/api/routes/orders/matrix.py:354-395` — The whole manual-route construction (edge_count, KROMKA first-pass rule, seen set, packaging/TMO tail) is written twice, in orders._set_custom_route a
 - [x] ✅ `backend/app/api/routes/orders/matrix.py:409-451` — _resize_instances rewrites instance qr_text and adds copies but leaves the SCX files untouched, so SCX filenames stop matching the QR the doc guarante
 - [x] ✅ `backend/app/api/routes/orders/matrix.py:426-439` — `_resize_instances` re-mints qr_text by the same rule but skips the collision pre-check ingest performs, so a count change can hit the unique index an
 - [x] ✅ `backend/app/api/routes/pachka.py:256` — `get-or-404` is hand-rolled as `db.get(...)` + `is None or .is_deleted` + `NotFoundException` at seven sites, including inside `bridge_agents.py` whic
-- [ ] ✅ `backend/app/api/routes/pachka.py:261-262` — Yopilgan qadoq — o'lik nuqta: uni qayta ochish ham, chekini qayta chiqarish ham MUMKIN EMAS, lekin ikkala foydalanuvchi xabari ham buni mumkin deb va'
+- [x] ✅ `backend/app/api/routes/pachka.py:261-262` — Yopilgan qadoq — o'lik nuqta: uni qayta ochish ham, chekini qayta chiqarish ham MUMKIN EMAS, lekin ikkala foydalanuvchi xabari ham buni mumkin deb va'
 - [x] ✅ `backend/app/api/routes/reports.py:268` — Excel eksportda FURNITURA (`kind="hardware"`) qatorlari "Kromka" deb belgilanadi — `kind` uchta qiymatli, kod esa ikkitasini biladi.
 - [x] ✅ `backend/app/api/routes/terminal.py:282` — `read_terminal_orders` to'liq `Order` ORM obyektlarini `defer(*ORDER_FAT_COLUMNS)` siz o'qiydi — har terminal har 30 soniyada hamma PRODUCTION buyurtm
 - [x] ✅ `backend/app/api/routes/terminal.py:394` — KROMKA karta hisobidagi `need_sq` subquery buyurtma bo'yicha filtrlanmagan — u 30 soniyada bir chaqiriladigan endpointda butun `part_route` jadvalini 
@@ -78,7 +78,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/services/excel.py:52` — `_cell` `datetime` ni `TASHKENT_TZ` ga o'tkazmasdan formatlaydi, shuning uchun buyurtmalar hisobotining .xlsx eksporti UTC soatlarini (Toshkentdan 5 s
 - [x] ✅ `backend/app/services/giblab/cutmap.py:198-204` — `rot` is computed only from the rotated-match test, so a near-square part placed UNROTATED is flagged as rotated and its kromka symbols are swapped.
 - [x] ✅ `backend/app/services/giblab/ingest.py:222-226` — wipe_previous_parse unlinks the old .project and SCX files from disk before the ingest try/except, so a ParseError rolls the DB back to the old rows w
-- [ ] ✅ `backend/app/services/giblab/ingest.py:391` — A part that GibLab listed in the CS operation but never placed (usedCount=0) still gets an ARRA route step, so its ARRA counter can never be closed an
+- [x] ✅ `backend/app/services/giblab/ingest.py:391` — A part that GibLab listed in the CS operation but never placed (usedCount=0) still gets an ARRA route step, so its ARRA counter can never be closed an
 - [x] ✅ `backend/app/services/giblab/models.py:154` — `merged_machining` da qirra teshiklari imzosi `z` ni hisobga olmaydi — bir tomonda bir xil pozitsiya/diametr/chuqurlikdagi, lekin BOSHQA balandlikdagi
 - [x] ✅ `backend/app/services/giblab/parser.py:100` — Kodsiz detal ogohlantirishi faqat mahsulotning BIRINCHI detali kodsiz bo'lganda yoziladi — qisman kodsiz fayllarda (korpusdagi `kupe` 38/70, `kuxniya`
 - [x] ✅ `backend/app/services/giblab/parser.py:339` — The documented name-as-product-code fallback can produce a value longer than the `Product.code` column, crashing ingest instead of failing with a pars
@@ -188,7 +188,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/api/routes/tmo.py:221` — Qadoq QR'i registrga sezgir bo'lmagan shart bilan aniqlanadi, lekin bazadan registrga SEZGIR qidiriladi: kichik harfli `pk-...` qadoq shoxiga kiradi v
 - [x] ✅ `backend/app/api/routes/users.py:237-239` — `delete_user` fetches the target before checking permission, so any logged-in non-superuser can enumerate which user ids exist (404 vs 403).
 - [x] ✅ `backend/app/api/routes/ws.py:42-43` — /ws/events accepts the access token as a query parameter, which lands in proxy/access logs — the exact leak the sibling /ws/bridge endpoint was change
-- [ ] ✅ `backend/app/api/routes/ws.py:73-82` — /ws/events tokenni FAQAT ulanish paytida tekshiradi va ulanish umrida qayta tekshirmaydi — logout (token_version bump) yoki tokenning muddati tugashi 
+- [x] ✅ `backend/app/api/routes/ws.py:73-82` — /ws/events tokenni FAQAT ulanish paytida tekshiradi va ulanish umrida qayta tekshirmaydi — logout (token_version bump) yoki tokenning muddati tugashi 
 - [x] ✅ `backend/app/commands/create_first_superuser.py:21` — Idempotentlik faqat `phone` bo'yicha tekshiriladi; `ADMIN_PHONE` o'zgartirilsa eski admin qatoridagi username tufayli INSERT `ix_user_username` ni buz
 - [x] ✅ `backend/app/core/config.py:160` — `upload_root()` resolves a relative `UPLOAD_DIR` against the process working directory, so the file-storage root (and the path-traversal baseline) mov
 - [x] ✅ `backend/app/core/ws.py:82` — _dispatch iterates self.clients by index while awaiting a send, so a socket that disconnects mid-fan-out mutates the list under the loop and the next 
@@ -198,7 +198,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `backend/app/models/base.py:26` — `is_deleted` is indexed on every table via the mixin, creating 18 near-useless boolean indexes — every query filters `is_deleted` together with a more
 - [ ] ✅ `backend/app/models/pachka.py:26-33` — Pachka.status is indexed twice (a standalone ix_pachka_status plus the status column of ix_pachka_order_status) but no query anywhere puts Pachka.stat
 - [x] ✅ `backend/app/services/giblab/ingest.py:145` — restore_custom_routes issues one extra round-trip per restored part (a SELECT for standard parts, an UPDATE for custom ones) instead of one query for 
-- [ ] ✅ `backend/app/services/giblab/ingest.py:24` — The route snapshot carries only (is_custom, process codes, parent), so a technolog-disabled step comes back enabled and the part note is dropped on re
+- [x] ✅ `backend/app/services/giblab/ingest.py:24` — The route snapshot carries only (is_custom, process codes, parent), so a technolog-disabled step comes back enabled and the part note is dropped on re
 - [x] ✅ `backend/app/services/giblab/ingest.py:316` — The sheet-material → plate-thickness map for the 32 mm double-layer SCX rule is built twice with the same comprehension.
 - [x] ✅ `backend/app/services/giblab/parser.py:131` — Manfiy o'lchamni modulga o'girishda `None` bo'lgan ikkinchi o'lcham 0.0 ga aylanadi — o'lchamsiz detal 0 mm o'lchamli detalga aylanib qoladi.
 - [x] ✅ `backend/app/services/giblab/parser.py:452` — `or` bilan berilgan zaxira qiymatlar fayldagi ANIQ nolni ham almashtiradi: torsovkasiz kesilgan listda `cTrimL="0"` xarita sarlavhasida 10 mm, `swSawt
@@ -243,7 +243,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/components/Terminal/KioskOverlays.tsx:27` — `requestFullscreen()` returns a promise that is neither awaited nor caught — a denied/failed request becomes an unhandled rejection and the operator g
 - [x] ✅ `frontend/src/components/Terminal/PrisadkaView.tsx:177` — Eski brauzer yo'lida hech narsa tekshirilmasdan "N ta SCX yuklab olindi" muvaffaqiyat toasti chiqadi — `<a download>` yo'li xatoni umuman ko'rmaydi, h
 - [x] ✅ `frontend/src/components/Terminal/UpakovkaView.tsx:176` — Qadoqdan chiqarish tugmasida pending/disabled holati yo'q — ikki marta bosilsa ikkinchi DELETE 404 beradi va operatorga tushunarsiz xato toast chiqadi
-- [ ] ✅ `frontend/src/components/Terminal/UpakovkaView.tsx:81` — Faqat BIRINCHI ochiq qadoq ko'rsatiladi; backend bir buyurtmada ikkinchi ochiq qadoq yaratilishini taqiqlamaydi — ikkinchisi ekranda umuman ko'rinmayd
+- [x] ✅ `frontend/src/components/Terminal/UpakovkaView.tsx:81` — Faqat BIRINCHI ochiq qadoq ko'rsatiladi; backend bir buyurtmada ikkinchi ochiq qadoq yaratilishini taqiqlamaydi — ikkinchisi ekranda umuman ko'rinmayd
 - [x] ✅ `frontend/src/components/Terminal/useKiosk.ts:88` — `useScanFocus` has no awareness of open modals, so while any of terminal.tsx's three ConfirmDialogs is open it keeps yanking focus every 2s (and on ev
 - [x] ✅ `frontend/src/components/UserSettings/ChangePassword.tsx:55` — The whole form object is passed as the mutation payload, so `confirm_password` — a second copy of the new password — is sent to the server in the PATC
 - [x] ✅ `frontend/src/components/ui/label.tsx:1` — Uchta ui faylida `"use client"` direktivasi qolgan; loyihada Next.js/RSC yo'q (Vite SPA), shuning uchun direktiva hech qanday ma'no bermaydi va 25 fay

@@ -91,6 +91,20 @@ sababli bitta chek ID si va bitta bekor qilish tugmasini ko'rsatadi
   `_resize_instances` yangi QR'larni yozishdan OLDIN buyurtmadagi BOSHQA
   detallarning tirik `qr_text` larini o'qiydi va to'qnashsa 422 beradi
   (`orders/matrix.py`) — son o'zgarishi ham xuddi shu juftlikni yasashi mumkin.
+- **Buyurtmalararo to'qnashuv — faqat SKANDA ushlanadi**: QR buyurtmaga
+  bog'lanmagan va yagona indeks `(order_id, qr_text)` bo'yicha, ya'ni bir xil
+  GibLab kodlaridan yig'ilgan IKKI jonli buyurtma bitta QR ni ulashishi mumkin
+  (ingest tekshiruvi faqat BITTA buyurtma ichida ishlaydi). `record_scan_at`
+  mos keluvchi jonli qatorlarni oladi: PRODUCTION qatorlar birdan ko'p bo'lsa `E001`
+  (CANCELLED faqat E003 xabari uchun — qayta yaratilgan buyurtma to'qnashuv emas) — "Bu
+  QR bir nechta buyurtmada uchradi — managerga murojaat qiling". Ilgari
+  `ORDER BY order.id DESC` bilan jimgina eng yangi buyurtmaga yozilardi. Bu
+  himoya faqat skan dvijokida: `terminal.py resolve_terminal_qr` hali ham eng
+  yangisini tanlaydi, chek esa buyurtma raqamini chizmaydi (`labels.py` —
+  `LabelData` da `order_number` yo'q), shuning uchun operator faqat xato
+  xabaridan biladi. To'liq yechim — QR ni buyurtma bilan prefikslash — SCX
+  fayllarini qayta yaratish va chop etilgan cheklarni bekor qilishni talab
+  qiladi, ataylab qilinmagan.
 - **Skan format darvozasi**: `scanning.py` dagi `_QR_RE = ^.+_.+$` — kamida
   bitta `_` bo'lmagan QR bazaga murojaatdan oldin `E002` bilan rad etiladi.
   Shu sababli detal ID sidan ATAYLAB farqli prefiksli ikki QR turi bor:

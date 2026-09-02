@@ -129,14 +129,20 @@ to'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §2.3. Qoidalar:
   `snapshot_custom_routes()` qo'lda kiritilgan (`MANUAL`) qadamlarni `(mahsulot kodi, detal kodi)`
   kaliti bilan eslab qoladi — detal kodi fayl ichidagi `part@id` dan farqli o'laroq qayta
   eksportda ham o'zgarmaydi. Nostandart detallar ham, matritsadan qo'lda qadam qo'shilgan
-  STANDART detallar ham olinadi. `is_custom` va `assembly_parent_id` bayroqlari MANUAL
-  qatordan emas, DETALNING O'ZIDAN o'qiladi: "Nostandart" deb belgilangan yoki yig'maga
+  STANDART detallar ham olinadi. Qadamlar bilan birga faylda MAVJUD BO'LMAGAN yana ikki narsa
+  saqlanadi (`PartSnapshot`): texnolog IZOHI (`part.note`) va O'CHIRIB qo'yilgan qadamlarning
+  jarayon kodlari (`is_enabled=False`) — ikkalasi ham qayta yuklashda jimgina yo'qolardi
+  (izoh bo'shab qolardi, o'chirilgan amal esa qayta yonardi). O'chirilgan bayroq AUTO qadamda
+  ham turishi mumkin, shuning uchun snapshot buyurtmaning hamma tirik qatorini o'qiydi va
+  tiklash oxirida detal bo'yicha bitta `UPDATE`ni qaytaradi. `is_custom` va
+  `assembly_parent_id` bayroqlari MANUAL qatordan emas, DETALNING O'ZIDAN o'qiladi: "Nostandart" deb belgilangan yoki yig'maga
   biriktirilgan detalda hali bironta ham qo'lda qadam bo'lmasligi mumkin (matritsa bayroqni
   yoqqanda MANUAL qator YOZMAYDI, faqat AUTO qatorlarni yumshoq o'chiradi) — bayroqlar
   qatorlarga bog'lansa qayta yuklashda jimgina yo'qolardi. Ingest'dan keyin
   `restore_custom_routes()` ularni tiklaydi: nostandart detalda marshrut TO'LIQ qo'lda, ya'ni
   fayldan qurilgani o'chadi (kodlar saqlanmagan bo'lsa marshrut bo'sh qoladi — dum ham
-  qo'shilmaydi, `_set_custom_route` bilan bir xil qoida); standart detalda esa qo'lda
+  qo'shilmaydi). Qadamlarni qurish qoidasi `_set_custom_route` bilan BITTA:
+  ikkalasi ham `giblab/routes.py: build_manual_route()` ni chaqiradi; standart detalda esa qo'lda
   qo'shilgan qadam fayl qadamlariga QO'SHIMCHA edi — fayl qadamlari joyida qoladi,
   saqlanganlari DUMDAN (UPAKOVKA/TMO) OLDIN qo'yiladi va dum ular soniga suriladi
   (`park_tail`/`unpark_tail`, matritsadagi yangi qadam bilan bitta helper). Aks holda
@@ -162,6 +168,18 @@ to'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §2.3. Qoidalar:
   qolgan hammasini yopadi.
 - Terminal ro'yxatida biriktirilgan detallar alohida vazifa bo'lib chiqmaydi — asosiy detal
   qatorida "+ `01_007 ×2`" bo'lib ko'rinadi.
+
+**Nusxani topish — QR buyurtmaga bog'lanmagan** (`scanning.record_scan_at`). QR satri
+`{productCode}_{partCode}[_n]` (`docs/11`), yagona indeks esa faqat `(order_id, qr_text)`
+bo'yicha: bir xil GibLab kodlaridan yig'ilgan IKKI jonli buyurtma bitta QR ni ulashishi
+mumkin. Dvijok mos keluvchi jonli (PRODUCTION/CANCELLED) qatorlarni oladi; to'qnashuv deb FAQAT
+PRODUCTION qatorlar sanaladi (CANCELLED faqat E003 xabari uchun — bekor qilingan buyurtma o'sha
+.project dan qayta yaratilsa qr_text bir xil bo'ladi) va PRODUCTION qatorlar birdan
+ko'p bo'lsa `E001` — "Bu QR bir nechta buyurtmada uchradi — managerga murojaat qiling" —
+beradi. Ilgari `ORDER BY order.id DESC` bilan JIMGINA eng yangi buyurtmaga yozardi, ya'ni
+skan boshqa buyurtmaning hisobiga tushib ketardi. Diqqat: bu tekshiruv faqat skan
+dvijokida; `terminal.py resolve_terminal_qr` (QR → buyurtma sahifasi) hali ham eng
+yangisini tanlaydi.
 
 ### 3.2 Nusxa darajasidagi tayyorlik (`scanning.instance_stages`)
 
@@ -194,7 +212,9 @@ Buyurtma STATUSI baribir to'g'ri yozilardi — yo'qolgani faqat WS xabari edi.
 
 - `/ws/events` — brauzer klientlar: JWT (`Authorization: Bearer` header yoki access cookie; `?token=`
   query ATAYLAB qabul qilinmaydi — access-loglariga sizardi); rol → scope (terminal/tablo/dashboard),
-  post/ish markazi bo'yicha filtrlash; `ping`→`pong` heartbeat.
+  post/ish markazi bo'yicha filtrlash; `ping`→`pong` heartbeat. Heartbeat'da token har **300 s** da
+  qayta tekshiriladi (`_RECHECK_SECONDS`): logout (`token_version` bump), hisobni o'chirish yoki
+  muddat tugashi ochiq soketni ham **4401** bilan yopadi; DB xatosi ulanishni uzmaydi.
 - Fan-out Redis pub/sub (`mes:events`) orqali — gunicorn workerlar orasida; pool lifespan'da doim
   ochiladi (flag yo'q), publish xato bersa lokal yetkazishga tushadi.
 - `/ws/bridge` — tsex bridge-agenti (per-agent pairing tokeni: `Authorization: Bearer` header, sha256
@@ -282,9 +302,15 @@ biladi.
 
 **Qadoq cheki chiqmasa** — `close_pachka` chekni chiqara olishini commitdan OLDIN tekshiradi:
 navbat (arq/Redis) o'chgan bo'lsa 503, postga printer biriktirilmagan bo'lsa 422 (`require_printer`
-→ `NoPrinterBound`). Ikkalasida ham qadoq OCHIQ qoladi va qadoqlovchi shu tugmani qayta bosadi.
-Sabab: yopilgan qadoqni qayta yopib bo'lmaydi (`_open_pachka` 403 beradi) va chekni qayta
-chiqaradigan endpoint YO'Q — ya'ni "yopildi, lekin cheki yo'q" holatidan chiqish yo'li ham yo'q.
+→ `NoPrinterBound`). Ikkalasida ham qadoq OCHIQ qoladi va qadoqlovchi shu tugmani qayta bosadi — aks holda
+avval «Qayta ochish» qadamini bosish kerak bo'lardi.
+
+**Yopilgan qadoqni tuzatish** — `POST /pachka/{id}/reopen` (terminalda "Qayta ochish"
+tugmasi, yakunlangan qadoqlar ro'yxatida). Status OPEN ga qaytadi, `closed_at` tozalanadi,
+audit `reopened` yoziladi; qayta yakunlash chekni navbatga yangidan qo'yadi, ya'ni chekni
+qayta chiqarish yo'li ham shu. **Buyurtmada bir vaqtda faqat BITTA ochiq qadoq bo'ladi**
+(`_open_of`): `create_pachka` ham, `reopen_pachka` ham ikkinchisini 409 bilan rad etadi —
+terminal ekrani faqat bitta ochiq qadoqni ko'rsatadi, skan ham o'shanga tushadi. TMO ga qabul qilingan qadoq (nusxalarida jonli TMO skani bor) qayta OCHILMAYDI — 403; aks holda chiqarilgan detalning UPAKOVKA skani bekor bo'lib TMO skani qolar, marshrut o'rtasi ochilib qolardi.
 
 **Foydali atxot cheki** — `WasteLabelData` + `render_waste_label_png()`, arq task
 `print_waste_label`, yo'li `POST /terminal/waste/{waste_id}/label` (bekor qilish — o'sha path
@@ -342,7 +368,7 @@ O'rnatish qadamlari: [07-infra-devops.md](07-infra-devops.md) → "Chop etish in
 | `orders` | lifecycle (`/confirm`, `/start`, …) + `/status-counts` + `/upload` + `/matrix` + `/machines` + `/cutmap` + `/files/{id}` + `/files/scx.zip` (barcha SCX bitta arxivda, `StaffReadUser`) + `/scx/regenerate` (SCX qayta generatsiya, `TexnologUser`; `ingest.rebuild_order_scx` — `PATCH /matrix` bilan umumiy helper) + `/survey` + `/survey/photos[/{file_id}]` | o'qish: manager/texnolog/director (`StaffReadUser`); yozish: manager/texnolog (+admin/superuser); anketa yozuvi: `ManagerUser` |
 | `scans` | POST scan, DELETE undo (`/recent` olib tashlangan) | terminal + 9 operator rol |
 | `terminal` | `/context`, `/employees` ("Kim ishlayapti?" — shu postdagi faol hodimlar), `/session`, `/session/end`, `/orders` (loyiha kartalari: done/total post semantikasida — ARRA: NUSXA bo'yicha (done = chek∪skan, total = ARRA marshruti bor nusxalar soni; ikkalasi bir o'lchovda, chunki bir detalda ikkita ARRA qadami bo'lishi mumkin), KROMKA: detal bo'yicha, qolganlarida `PartRoute.total_done/total_required` qadam yig'indisi), `/orders/{id}/cutmap`, `/orders/{id}/kromka` (KROMKA/OVAL sahifasi), `/orders/{id}/prisadka` (detallar + SCX fayllar), `/orders/{id}/queue` (post navbati NUSXA darajasida — BOYOQ/STOLYARKA; postga bog'liq emas, kontekstdagi postni oladi), `/qr/{qr}/order` (QR→buyurtma), `/labels/{id}` POST (GoDEX navbat) / DELETE (chekni bekor qilish, manager/texnolog ham), `/waste/{id}/label` POST/DELETE (foydali atxot cheki — arrachi xaritadagi ATX katakdan, §5), `/labels/{id}.png`, `/files/{id}` | terminal + 9 operator rol; ish markazi/post konteksti (`_terminal_ctx` → `TerminalCtx`) har route'ga alohida qo'yiladi — yorliq/fayl route'lariga ataylab emas, ular ish markazisiz ham ishlaydi; javoblar typed (`app/schemas/terminal.py`: `TerminalOrderCard`, `QrOrderRef`, `Kromka*`/`Prisadka*` modellari — `list[dict]` yo'q) |
-| `pachka` | `/orders/{id}` GET (qadoqlash holati) / POST (yangi qadoq), `/{id}/scan` (detalni qadoqqa — bu AYNI paytda marshrutning UPAKOVKA qadami), `/{id}/items/{instance_id}` DELETE (xato skanni qaytarish — skan ham bekor bo'ladi), `/{id}/close` (yakunlash + chek) | terminal + operator rollar; faqat UPAKOVKA postida (`_pack_ctx`) |
+| `pachka` | `/orders/{id}` GET (qadoqlash holati) / POST (yangi qadoq — buyurtmada bitta ochiq qadoq), `/{id}/scan` (detalni qadoqqa — bu AYNI paytda marshrutning UPAKOVKA qadami), `/{id}/items/{instance_id}` DELETE (xato skanni qaytarish — skan ham bekor bo'ladi), `/{id}/reopen` (yopilganini qayta ochish), `/{id}/close` (yakunlash + chek) | terminal + operator rollar; faqat UPAKOVKA postida (`_pack_ctx`) |
 | `tmo` | `/orders/{id}` GET, `/orders/{id}/accept` (QABUL — `PK-...` bo'lsa qadoq ichidagi HAMMA nusxa bitta skanda, aks holda bitta detal), **`/orders/{id}/ship` ham OLIB TASHLANDI** — TMO da qadoq ro'yxati yo'q. **Buyurtmani TOPSHIRISH endpointi ham TMO da YO'Q** — u managerda (`orders.deliver_order`, faqat TAYYOR holatdan); TMO faqat qabul qiladi va hamma detal o'tgach buyurtma o'zi TAYYOR bo'ladi | terminal + operator rollar; faqat TMO postida (`_wh_ctx`) |
 | `tablo` | `/matrix`, `/orders/{id}` | istalgan auth |
 | `reports` | `/productivity`, `/orders`, `/materials` (+`?format=xlsx`), `/dashboard` | manager/director/admin |
@@ -511,7 +537,9 @@ direktor ham ko'radi.
   · **QADOQLASH** (`Terminal/UpakovkaView`) — "Qadoq yaratish" → detallarni birma-bir
     skanerlash → "Yakunlash" (chek QR bilan chiqadi). Tarkibni algoritm emas, qadoqlovchi
     belgilaydi; tizim faqat taxminiy og'irlikni KO'RSATADI (hajm × 700 kg/m³) va hech narsani
-    bloklamaydi. Bloklanadigan yagona narsa — marshrut tartibi.
+    bloklamaydi. Bloklanadigan yagona narsa — marshrut tartibi. O'ng ustundagi
+    "Yakunlangan" ro'yxatida har qadoqqa "Qayta ochish" tugmasi (ochiq qadoq turganda
+    bloklangan — buyurtmada bir vaqtda bitta ochiq qadoq bo'ladi).
   · **TMO** (`Terminal/TmoView`) — ikki tab. **Qabul**: TMO ga yetib kelganlar (qadoq kodi
     bilan), qadoq QR'i bitta skanda ichidagi hammasini qabul qiladi; pastda "Tsexda" ro'yxati,
     har detalga ishi TUGAGAN post yozilgan (omborchi uni o'sha yerdan topadi). Sarlavhada

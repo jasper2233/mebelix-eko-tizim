@@ -90,6 +90,18 @@ export function UpakovkaView({
       toast.error(detailMessage(e))
     },
   })
+  // Yopiq qadoqni tuzatishning YAGONA yo'li: qayta ochib, tuzatib, qayta yakunlash
+  // (yakunlash chekni navbatga yangidan qo'yadi).
+  const reopen = useMutation({
+    mutationFn: async (pachkaId: number) =>
+      (await PachkaService.reopenPachka({ path: { pachka_id: pachkaId } }))
+        .data,
+    onSuccess: put,
+    onError: (e) => {
+      playError()
+      toast.error(detailMessage(e))
+    },
+  })
   const close = useMutation({
     mutationFn: async (pachkaId: number) =>
       (await PachkaService.closePachka({ path: { pachka_id: pachkaId } })).data,
@@ -275,6 +287,17 @@ export function UpakovkaView({
               <span className="num ml-auto text-muted-foreground">
                 ~{p.weight_kg} kg
               </span>
+              {/* Ochiq qadoq borida bloklanadi: buyurtmada bir vaqtda bitta
+                  ochiq qadoq bo'ladi (backend ham 409 bilan rad etadi). */}
+              <LoadingButton
+                variant="ghost"
+                size="sm"
+                loading={reopen.isPending}
+                disabled={!!open}
+                onClick={() => reopen.mutate(p.id)}
+              >
+                Qayta ochish
+              </LoadingButton>
             </div>
           ))}
           {!closed.length && (

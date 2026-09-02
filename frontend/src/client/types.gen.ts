@@ -5039,6 +5039,36 @@ export type RemoveFromPachkaResponses = {
 
 export type RemoveFromPachkaResponse = RemoveFromPachkaResponses[keyof RemoveFromPachkaResponses];
 
+export type ReopenPachkaData = {
+    body?: never;
+    path: {
+        /**
+         * Pachka Id
+         */
+        pachka_id: number;
+    };
+    query?: never;
+    url: '/api/v1/pachka/{pachka_id}/reopen';
+};
+
+export type ReopenPachkaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReopenPachkaError = ReopenPachkaErrors[keyof ReopenPachkaErrors];
+
+export type ReopenPachkaResponses = {
+    /**
+     * Successful Response
+     */
+    200: UpakovkaOrderState;
+};
+
+export type ReopenPachkaResponse = ReopenPachkaResponses[keyof ReopenPachkaResponses];
+
 export type ClosePachkaData = {
     body?: never;
     path: {

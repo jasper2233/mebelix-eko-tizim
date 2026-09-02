@@ -3,9 +3,10 @@ materials auto-registry, SCX files and the cut map. Re-upload fully replaces pre
 (gate — `_require_editable`: PRODUCTION included, until the first live scan)."""
 
 import logging
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,18 +16,36 @@ from app.models import Order, OrderFile, Part, PartInstance, PartRoute, Post, Pr
 from app.models.enums import FileKind, PostCode, RouteSource
 
 from .cutmap import build_cutmap
-from .models import PROCESS_POSTS, TAIL_CODES, ParsedPart, ParsedProject, ParseError
+from .models import TAIL_CODES, ParsedPart, ParsedProject, ParseError
 from .parser import parse_project
+from .routes import build_manual_route, resolve_post
 from .scx import build_scx_files, plate_thickness_map
 
 logger = logging.getLogger(__name__)
 
 
-#: `(mahsulot kodi, detal kodi)` -> (nostandart bayrog'i, jarayon kodlari, asosiy detal kaliti)
-RouteSnapshot = dict[tuple[str, str], tuple[bool, list[int], tuple[str, str] | None]]
+@dataclass
+class PartSnapshot:
+    """Detalning fayldan TIKLANMAYDIGAN, ya'ni texnolog qo'li bilan kiritilgan holati."""
+
+    is_custom: bool
+    parent_key: tuple[str, str] | None = None
+    note: str | None = None  # texnolog izohi — faylda yo'q, qayta yuklashda yo'qolmasin
+    codes: list[int] = field(default_factory=list)  # QO'LDA chizilgan qadamlar, tartibli
+    #: `is_enabled=False` qilingan jarayon kodlari. Matritsadagi tugma postning HAMMA
+    #: qadamini birga o'chiradi, shuning uchun kod darajasida saqlash yetarli.
+    disabled: set[int] = field(default_factory=set)
+
+    @property
+    def has_route(self) -> bool:
+        """Marshrutga aloqador saqlanma — «tiklandi»/«yo'qoldi» hisobiga faqat shular kiradi
+        (izoh yoki o'chirilgan qadam uchungina saqlangan detal marshrut sanog'ini shishirmasin)."""
+        return bool(self.codes) or self.is_custom or self.parent_key is not None
 
 
-_K = TypeVar("_K", str, PostCode)  # posts lug'ati ingest'da str, restore'da PostCode kalitli
+#: `(mahsulot kodi, detal kodi)` -> saqlangan holat
+RouteSnapshot = dict[tuple[str, str], PartSnapshot]
+
 
 #: Dumni vaqtincha ko'chirish oralig'i — marshrutda hech qachon shuncha qadam bo'lmaydi.
 SEQ_PARK = 1000
@@ -59,13 +78,6 @@ async def unpark_tail(db: AsyncSession, part_id: int, shift: int) -> None:
     )
 
 
-def _post(posts: dict[_K, Post], post_code: _K) -> Post:
-    post = posts.get(post_code)
-    if post is None:
-        raise ParseError(f"Post sozlanmagan: {post_code}. Administratorga murojaat qiling.")
-    return post
-
-
 async def snapshot_custom_routes(db: AsyncSession, order: Order) -> RouteSnapshot:
     """Qo'lda kiritilgan marshrutlarni `(mahsulot kodi, detal kodi)` bo'yicha eslab qolish.
 
@@ -74,14 +86,16 @@ async def snapshot_custom_routes(db: AsyncSession, order: Order) -> RouteSnapsho
     farqli o'laroq qayta eksportda ham o'zgarmaydi (TZ 5.8).
 
     Nostandart detallar ham, matritsadan qo'lda qadam qo'shilgan STANDART detallar ham
-    olinadi — ikkalasi ham fayldan tiklanmaydi. Bayroqning o'zi ham saqlanadi."""
+    olinadi — ikkalasi ham fayldan tiklanmaydi. Bayroq, izoh va o'chirilgan qadamlar
+    ham shu yerda saqlanadi: ularning hech biri `.project` faylida yo'q."""
     # Yig'ma bog'lam ham eslab qolinadi: id qayta yuklashda o'zgaradi, shuning
     # uchun asosiy detal ham KOD bilan yoziladi.
     keys: dict[int, tuple[str, str]] = {}
     custom: dict[int, bool] = {}
-    for part_id, product_code, part_code, is_custom in (
+    notes: dict[int, str | None] = {}
+    for part_id, product_code, part_code, is_custom, note in (
         await db.execute(
-            select(Part.id, Product.code, Part.code, Part.is_custom)
+            select(Part.id, Product.code, Part.code, Part.is_custom, Part.note)
             .join(Product, Product.id == Part.product_id)
             .where(
                 Part.order_id == order.id,
@@ -91,6 +105,7 @@ async def snapshot_custom_routes(db: AsyncSession, order: Order) -> RouteSnapsho
     ).tuples():
         keys[part_id] = (product_code, part_code)
         custom[part_id] = is_custom
+        notes[part_id] = note
     parents: dict[int, tuple[str, str] | None] = {
         part_id: keys.get(parent_id) if parent_id is not None else None
         for part_id, parent_id in (
@@ -104,33 +119,44 @@ async def snapshot_custom_routes(db: AsyncSession, order: Order) -> RouteSnapsho
         ).tuples()
     }
 
+    # HAMMA tirik qadam olinadi (faqat MANUAL emas): o'chirilgan bayroq fayldan
+    # qurilgan AUTO qadamda ham turishi mumkin.
     rows = (
         await db.execute(
-            select(Part.id, Product.code, Part.code, Part.is_custom, PartRoute.process_code)
-            .join(Part, Part.product_id == Product.id)
-            .join(PartRoute, PartRoute.part_id == Part.id)
+            select(PartRoute.part_id, PartRoute.process_code, PartRoute.source, PartRoute.is_enabled)
+            .join(Part, Part.id == PartRoute.part_id)
             .where(
                 Part.order_id == order.id,
                 Part.is_deleted == False,  # noqa: E712
-                PartRoute.source == RouteSource.MANUAL,
                 PartRoute.is_deleted == False,  # noqa: E712
             )
-            .order_by(Product.code, Part.code, PartRoute.seq)
+            .order_by(PartRoute.part_id, PartRoute.seq)
         )
     ).tuples()
     saved: RouteSnapshot = {}
-    # Bayroqlar MANUAL qatorlardan EMAS, detalning O'ZIDAN olinadi: "Nostandart" deb
-    # belgilangan (yoki yig'maga biriktirilgan) detalda hali bironta ham qo'lda qadam
-    # bo'lmasligi mumkin — o'shanda bayroq qayta yuklashda jimgina yo'qolardi.
-    for part_id, key in keys.items():
-        if custom[part_id] or parents.get(part_id) is not None:
-            saved[key] = (custom[part_id], [], parents.get(part_id))
-    for part_id, product_code, part_code, is_custom, process_code in rows:
-        entry = saved.setdefault((product_code, part_code), (is_custom, [], parents.get(part_id)))
-        # Dum (qadoqlash/TMO) saqlanmaydi — tiklashda o'zi qo'shiladi. Saqlansa
-        # har qayta yuklashda ikkilanib borardi: ... UPAKOVKA TMO UPAKOVKA TMO.
-        if process_code not in TAIL_CODES:
-            entry[1].append(process_code)
+
+    def entry_for(part_id: int) -> PartSnapshot:
+        # Bayroq, izoh va ota-detal MANUAL qatorlardan EMAS, detalning O'ZIDAN olinadi:
+        # "Nostandart" deb belgilangan (yoki yig'maga biriktirilgan) detalda hali bironta
+        # ham qo'lda qadam bo'lmasligi mumkin — o'shanda bayroq jimgina yo'qolardi.
+        key = keys[part_id]
+        entry = saved.get(key)
+        if entry is None:
+            entry = saved[key] = PartSnapshot(
+                is_custom=custom[part_id], parent_key=parents.get(part_id), note=notes[part_id]
+            )
+        return entry
+
+    for part_id in keys:
+        if custom[part_id] or parents.get(part_id) is not None or notes[part_id] is not None:
+            entry_for(part_id)
+    for part_id, process_code, source, is_enabled in rows:
+        # Dum (qadoqlash/TMO) kodlar ro'yxatiga TUSHMAYDI — tiklashda o'zi qo'shiladi.
+        # Saqlansa har qayta yuklashda ikkilanib borardi: ... UPAKOVKA TMO UPAKOVKA TMO.
+        if source == RouteSource.MANUAL and process_code not in TAIL_CODES:
+            entry_for(part_id).codes.append(process_code)
+        if not is_enabled:
+            entry_for(part_id).disabled.add(process_code)
     return saved
 
 
@@ -167,7 +193,7 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
     # Nostandart detalda marshrut TO'LIQ qo'lda — fayldan qurilgani o'chadi. Sikldan
     # OLDIN va bitta UPDATE bilan: sikl ichida bo'lsa, avval qo'shilgan MANUAL
     # qatorlar autoflush bo'lib qolar edi.
-    custom_ids = [by_key[key].id for key, entry in saved.items() if entry[0] and key in by_key]
+    custom_ids = [by_key[key].id for key, entry in saved.items() if entry.is_custom and key in by_key]
     if custom_ids:
         await db.execute(
             update(PartRoute)
@@ -178,7 +204,7 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
     # Yig'ma bog'lamlar marshrutdan OLDIN tiklanadi: dum (qadoqlash/TMO)
     # biriktirilgan detalga qo'shilmasligi shu bayroqqa qarab hal bo'ladi.
     for key, entry in saved.items():
-        part, parent_key = by_key.get(key), entry[2]
+        part, parent_key = by_key.get(key), entry.parent_key
         if part is None:
             continue
         parent = by_key.get(parent_key) if parent_key else None
@@ -186,11 +212,13 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
 
     restored = 0
     for key, entry in saved.items():
-        was_custom, codes = entry[0], entry[1]
+        was_custom, codes = entry.is_custom, entry.codes
         part = by_key.get(key)
         if part is None:
             continue
         part.is_custom = was_custom
+        # Izoh ham fayldan kelmaydi: yangi detal uni doim bo'sh boshlaydi.
+        part.note = entry.note
         if was_custom:
             # AUTO qatorlari yuqorida bitta UPDATE bilan allaqachon o'chirilgan.
             start_seq, seen = 1, set()
@@ -204,55 +232,38 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
             seen = {posts_by_id[r.post_id] for r in live if r.post_id in posts_by_id}
             if codes:
                 await park_tail(db, part.id)
-        edge_count = len(part.edges) or 1
-        for offset, code in enumerate(codes):
-            post_code = PROCESS_POSTS[code]
-            post = _post(posts, post_code)
-            # OVAL bu yerda YO'Q: oval kromkada detal bitta o'tishda ishlanadi — bitta skan.
-            # KROMKA esa har qirrani alohida yopishtiradi, shuning uchun birinchi o'tishda
-            # qirralar soni marta skanlanadi (takror kelsa — bitta).
-            first_edge_pass = post_code == PostCode.KROMKA and post_code not in seen
-            seen.add(post_code)
-            per = edge_count if first_edge_pass else 1
-            db.add(
-                PartRoute(
-                    order_id=order.id,
-                    part_id=part.id,
-                    post_id=post.id,
-                    seq=start_seq + offset,
-                    process_code=code,
-                    source=RouteSource.MANUAL,
-                    per_instance=per,
-                    total_required=part.count * per,
-                )
-            )
+        # Nostandart detalning marshruti to'liq qayta yozilgani uchun dum (qadoqlash/TMO)
+        # ham shu yerda tiklanadi; standart detalda u fayldan qurilib joyida turadi.
+        build_manual_route(
+            db, order.id, part, codes, posts, packaging=packaging, start_seq=start_seq, seen=seen, with_tail=was_custom
+        )
         if not was_custom and codes:
             # Yangi qadamlar yozilsin, keyin dum ularning ustiga tushadi.
             await db.flush()
             await unpark_tail(db, part.id, len(codes))
-        # Nostandart detalning marshruti to'liq qayta yozilgani uchun qadoqlash va
-        # TMO qadamlari shu yerda tiklanadi (standart detalda ular AUTO bo'lib qoladi).
-        # Biriktirilgan MAYDA detalga dum qo'shilmaydi — u asosiy detalga
-        # yopishib yaxlit buyumga aylanadi (orders._set_custom_route bilan bir xil qoida).
-        if was_custom and codes and part.assembly_parent_id is None:
-            tail = [(15, PostCode.UPAKOVKA)] if packaging else []
-            tail.append((16, PostCode.TMO))
-            for offset, (code, post_code) in enumerate(tail):
-                post = _post(posts, post_code)
-                db.add(
-                    PartRoute(
-                        order_id=order.id,
-                        part_id=part.id,
-                        post_id=post.id,
-                        seq=start_seq + len(codes) + offset,
-                        process_code=code,
-                        source=RouteSource.MANUAL,
-                        per_instance=1,
-                        total_required=part.count,
-                    )
-                )
-        restored += 1
-    lost = [f"{p}_{c}" for (p, c) in saved if (p, c) not in by_key]
+        if entry.has_route:
+            restored += 1
+
+    # O'chirilgan qadamlar OXIRIDA, bitta UPDATE bilan: qayta yuklash HAMMA qatorni
+    # yangidan yaratadi (`is_enabled` default True), ya'ni texnolog o'chirib qo'ygan
+    # amal jimgina qayta yonardi. Manba ahamiyatsiz — matritsadagi tugma AUTO qadamni
+    # ham o'chira oladi, shuning uchun tirik qatorlarning hammasi bo'yicha yuriladi.
+    await db.flush()
+    for key, entry in saved.items():
+        part = by_key.get(key)
+        if part is None or not entry.disabled:
+            continue
+        await db.execute(
+            update(PartRoute)
+            .where(
+                PartRoute.part_id == part.id,
+                PartRoute.process_code.in_(entry.disabled),
+                PartRoute.is_deleted == False,  # noqa: E712
+            )
+            .values(is_enabled=False)
+        )
+
+    lost = [f"{p}_{c}" for (p, c), entry in saved.items() if entry.has_route and (p, c) not in by_key]
     return restored, lost
 
 
@@ -583,7 +594,7 @@ async def ingest_project(
             # Rover/stolyarka/bo'yoq bu yerdan CHIQMAYDI: roverdan chiqqan detal keyin
             # bo'yalishi mumkinligini fayl bilmaydi — texnolog uni "nostandart" deb
             # belgilab, marshrutini o'zi chizadi.
-            # Post sozlanmagan bo'lsa `_post()` tushunarli ParseError beradi.
+            # Post sozlanmagan bo'lsa `resolve_post()` tushunarli ParseError beradi.
             steps: list[tuple[int, PostCode, int]] = []
             # ARRA — faqat listdan kesiladigan detalga. Optimizatsiya qilingan faylda
             # materiali ham, yorliq raqami ham yo'q detal umuman listga joylashtirilmagan
@@ -604,7 +615,7 @@ async def ingest_project(
             # Omborchi qabul qilmaguncha detal tugallanmagan bo'lib turadi.
             steps.append((16, PostCode.TMO, 1))
             for seq, (process_code, post_code, per_instance) in enumerate(steps, start=1):
-                post = _post(posts, post_code)
+                post = resolve_post(posts, post_code)
                 db.add(
                     PartRoute(
                         order_id=order.id,

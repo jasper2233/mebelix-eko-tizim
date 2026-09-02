@@ -32,10 +32,29 @@ logger = logging.getLogger(__name__)
 
 WS_CLOSE_UNAUTHORIZED = 4401  # custom "unauthorized" close code (4000–4999 — application-defined)
 
+#: Ochiq `/ws/events` soketida tokenni qayta tekshirish oralig'i (soniya).
+#: `/ws/bridge` dagi `touch_agent` bilan bir xil qadam — DB'ga ortiqcha yuk bo'lmasin.
+_RECHECK_SECONDS = 300
+
 _SCOPE_BY_ROLE = {
     UserRole.TERMINAL: "terminal",
     UserRole.TABLO: "tablo",
 }
+
+
+async def _still_authorized(raw_token: str) -> bool:
+    """Ochiq soket uchun tokenni QAYTA tekshiradi.
+
+    Ilgari token faqat ulanish paytida tekshirilardi: logout (token_version
+    bump), foydalanuvchini o'chirish yoki tokenning muddati tugashi ochiq
+    brauzer soketiga umuman ta'sir qilmasdi — sahifa yopilmaguncha eventlar
+    oqishda davom etardi. DB xatosi ulanishni YIQITMAYDI (`touch_agent`
+    uslubi): vaqtinchalik nosozlik jonli kanalni uzmasin.
+    """
+    with contextlib.suppress(Exception):
+        async with local_session() as db:
+            return await resolve_user(db, raw_token) is not None
+    return True
 
 
 @router.websocket("/ws/events")
@@ -48,8 +67,11 @@ async def ws_events(websocket: WebSocket) -> None:
     """
     header_token = websocket.headers.get("authorization", "").removeprefix("Bearer ").strip()
     raw_token = header_token or websocket.cookies.get(ACCESS_COOKIE_NAME)
+    if not raw_token:
+        await websocket.close(code=WS_CLOSE_UNAUTHORIZED)
+        return
     async with local_session() as db:
-        user = await resolve_user(db, raw_token) if raw_token else None
+        user = await resolve_user(db, raw_token)
         if user is None:
             await websocket.close(code=WS_CLOSE_UNAUTHORIZED)
             return
@@ -77,10 +99,18 @@ async def ws_events(websocket: WebSocket) -> None:
         machine_id=user.machine_id,
     )
     await ws_manager.connect(client)
+    last_check = asyncio.get_event_loop().time()
     try:
         while True:
             # Heartbeat (TZ 2.3.2): clients ping every 30s; any payload is answered with pong.
             await websocket.receive_text()
+            now = asyncio.get_event_loop().time()
+            if now - last_check >= _RECHECK_SECONDS:
+                last_check = now
+                if not await _still_authorized(raw_token):
+                    logger.info("WS token bekor qilindi — ulanish uzildi: user=%s", user.id)
+                    await websocket.close(code=WS_CLOSE_UNAUTHORIZED)
+                    break
             with contextlib.suppress(Exception):
                 await websocket.send_json({"type": "pong"})
     except WebSocketDisconnect:
