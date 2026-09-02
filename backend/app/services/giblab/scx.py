@@ -27,7 +27,7 @@ import math
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
-from .models import ParsedPart, XncOp
+from .models import ParsedPart, ParsedProject, XncOp
 
 # Korpus ovozlari (D:\\MebeliX\\Scx): l:3988, r:3730, t:1435, b:1323 — qarshi ovoz <0.5%
 _EDGE_FACE = {"l": "4", "r": "3", "t": "1", "b": "2"}  # bore ham, band ham bir xil Face
@@ -222,6 +222,11 @@ def generate_scx(
         .toprettyxml(indent="  ", encoding=None)
         .replace('<?xml version="1.0" ?>', '<?xml version="1.0" encoding="UTF-8"?>')
     )
+
+
+def plate_thickness_map(project: ParsedProject) -> dict[str, float]:
+    """Material nomi -> plita qalinligi: qo'shqavat detal SCX'i uchun (generate_scx)."""
+    return {m.name: m.thickness for m in project.materials if m.kind == "sheet" and m.thickness}
 
 
 def build_scx_files(

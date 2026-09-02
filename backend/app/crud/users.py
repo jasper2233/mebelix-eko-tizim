@@ -57,7 +57,7 @@ class CRUDUser(BaseCRUD[User]):
     ) -> User:
         """Update user fields. Only fields present in `user_update` are touched. Commit chaqiruvchi zimmasida."""
         if isinstance(user_update, dict):
-            update_data = user_update
+            update_data = dict(user_update)
         else:
             update_data = user_update.model_dump(exclude_unset=True)
 

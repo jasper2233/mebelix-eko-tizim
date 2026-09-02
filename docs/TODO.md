@@ -194,24 +194,24 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `backend/app/core/ws.py:82` — _dispatch iterates self.clients by index while awaiting a send, so a socket that disconnects mid-fan-out mutates the list under the loop and the next 
 - [ ] ✅ `backend/app/core/ws.py:85` — _dispatch sends to every matching socket sequentially with await, so one stalled client blocks delivery to all others and stalls the whole pub/sub lis
 - [ ] ✅ `backend/app/crud/orders.py:17` — Order numbers use the UTC year while every other date boundary in the app uses Asia/Tashkent, so orders created between 00:00 and 05:00 Tashkent time 
-- [ ] ✅ `backend/app/crud/users.py:60` — `update()` dict kelganda uni NUSXALAMAYDI (`update_data = user_update`), so'ng `pop("password")` bilan CHAQIRUVCHINING dict'ini o'zgartiradi — chaqiru
+- [x] ✅ `backend/app/crud/users.py:60` — `update()` dict kelganda uni NUSXALAMAYDI (`update_data = user_update`), so'ng `pop("password")` bilan CHAQIRUVCHINING dict'ini o'zgartiradi — chaqiru
 - [ ] ✅ `backend/app/models/base.py:26` — `is_deleted` is indexed on every table via the mixin, creating 18 near-useless boolean indexes — every query filters `is_deleted` together with a more
 - [ ] ✅ `backend/app/models/pachka.py:26-33` — Pachka.status is indexed twice (a standalone ix_pachka_status plus the status column of ix_pachka_order_status) but no query anywhere puts Pachka.stat
 - [ ] ✅ `backend/app/services/giblab/ingest.py:145` — restore_custom_routes issues one extra round-trip per restored part (a SELECT for standard parts, an UPDATE for custom ones) instead of one query for 
 - [ ] ✅ `backend/app/services/giblab/ingest.py:24` — The route snapshot carries only (is_custom, process codes, parent), so a technolog-disabled step comes back enabled and the part note is dropped on re
-- [ ] ✅ `backend/app/services/giblab/ingest.py:316` — The sheet-material → plate-thickness map for the 32 mm double-layer SCX rule is built twice with the same comprehension.
+- [x] ✅ `backend/app/services/giblab/ingest.py:316` — The sheet-material → plate-thickness map for the 32 mm double-layer SCX rule is built twice with the same comprehension.
 - [ ] ✅ `backend/app/services/giblab/parser.py:131` — Manfiy o'lchamni modulga o'girishda `None` bo'lgan ikkinchi o'lcham 0.0 ga aylanadi — o'lchamsiz detal 0 mm o'lchamli detalga aylanib qoladi.
 - [ ] ✅ `backend/app/services/giblab/parser.py:452` — `or` bilan berilgan zaxira qiymatlar fayldagi ANIQ nolni ham almashtiradi: torsovkasiz kesilgan listda `cTrimL="0"` xarita sarlavhasida 10 mm, `swSawt
 - [ ] ✅ `backend/app/services/labels.py:490-491` — Qadoq cheki 80×60 mm blankning pastki chetiga 2.1 mm qolguncha chiziladi — detal yorlig'ida ataylab qo'yilgan 4 mm zaxira qoidasi buzilgan.
 - [ ] ✅ `backend/app/services/labels.py:602-603` — The badge name's width trim only shrinks the LAST line, so a single word wider than 72 mm on the first line is drawn at full width and bleeds off both
 - [ ] ✅ `backend/app/services/labels.py:604` — Beyjikda ism kesilganini aniqlash tekshiruvi qator ICHIDAGI bo'shliqlarni sanaydi, shuning uchun qisqa dum tashlab yuborilganda "…" qo'yilmaydi va ism
-- [ ] ✅ `bridge-agent/README.md:47` — README navbatda chek turganda update hech qachon almashtirmaydi deb qat'iy aytadi; kodda esa kutish 3600 soniya (1 soat) bilan cheklangan — tiqilib qo
+- [x] ✅ `bridge-agent/README.md:47` — README navbatda chek turganda update hech qachon almashtirmaydi deb qat'iy aytadi; kodda esa kutish 3600 soniya (1 soat) bilan cheklangan — tiqilib qo
 - [ ] ✅ `bridge-agent/agent.py:415` — _exchange serverning `detail` maydonini doim matn deb hisoblaydi; 4 belgidan qisqa kod kiritilganda FastAPI 422 qaytaradi va `detail` — lug'atlar RO'Y
-- [ ] ✅ `docs/01-architecture.md:86` — Nima: The Redis-connection inventory misses the short-lived clients opened per request by the two bridge-agent log endpoints.
-- [ ] ✅ `docs/03-backend-api.md:418` — Nima: The doc names only the label and file routes as ctx-free, but `/qr/{qr}/order` also runs without `TerminalCtx`.
-- [ ] ✅ `docs/03-backend-api.md:422` — Nima: Doc says the only ways to open a shift are POST /terminal/session and /login/badge; password login on a post role also opens one.
-- [ ] ✅ `docs/03-backend-api.md:57` — Nima: Docs claim nearly every route module imports `client_ip`; it is imported by 9 of the 18 route modules.
-- [ ] ✅ `docs/03-backend-api.md:603` — Nima: Eleven of the 47 `log_action` call sites never pass `ip`, and they are not scattered — the `pachka`, `tmo`, `scan` and `print` modules named in 
+- [x] ✅ `docs/01-architecture.md:86` — Nima: The Redis-connection inventory misses the short-lived clients opened per request by the two bridge-agent log endpoints.
+- [x] ✅ `docs/03-backend-api.md:418` — Nima: The doc names only the label and file routes as ctx-free, but `/qr/{qr}/order` also runs without `TerminalCtx`.
+- [x] ✅ `docs/03-backend-api.md:422` — Nima: Doc says the only ways to open a shift are POST /terminal/session and /login/badge; password login on a post role also opens one.
+- [x] ✅ `docs/03-backend-api.md:57` — Nima: Docs claim nearly every route module imports `client_ip`; it is imported by 9 of the 18 route modules.
+- [x] ✅ `docs/03-backend-api.md:603` — Nima: Eleven of the 47 `log_action` call sites never pass `ip`, and they are not scattered — the `pachka`, `tmo`, `scan` and `print` modules named in 
 - [ ] ✅ `docs/04-backend-data.md:174` — Nima: Doc says employees schemas import `PHONE_PATTERN`; they import the `validate_phone` validator instead — contradicting the doc's own §2.3 note.
 - [ ] ✅ `docs/05-frontend-app.md:292` — Nima: `["currentUser"]` iste'molchilari ro'yxati eskirgan — «admin jadvali» sahifasi yo'q, ro'yxatda `tablo.tsx` va boshqa oltita sahifa yetishmaydi.
 - [ ] ✅ `docs/05-frontend-app.md:49` — Nima: The biome ignore list in docs/05 omits `node_modules` and `openapi.json`, and does not mention the per-directory `overrides` block that adds the

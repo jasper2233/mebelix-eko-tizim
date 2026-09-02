@@ -764,7 +764,7 @@ eksportdan farq qilgan holatlar (dizayner keyin o'zgartirgan), generator xatosi 
 | Qirra teshik Face | l→4, r→3, t→1, b→2; l/r: X=0/Length, Y=Width−pos; t: X=pos **Y=Width**; b: X=pos **Y=0** |
 | Kromka lenta Face | qirra bilan bir xil (l4 r3 t1 b2); Edge'da `Pre_Milling`, `X`, `Y` atributlari |
 | Orqa (`_2`) dastur | ALOHIDA FAYL EMAS — yuza elementlari `Face="6"` bilan asosiy nusxa-fayliga (transform old bilan bir xil `x, W−y`) |
-| Qo'shqavat (2×plita) | eksport qalinligi plita bo'yicha (32→16), qirra Z ikki baravar kichik, yuza chuqurlik bir qatlamga kamayadi (35→19). Shart: dz ≈ 2×plita qalinligi (material bo'yicha, `ingest` dan) YOKI dz≈32; 18/26/40 o'zgarmaydi |
+| Qo'shqavat (2×plita) | eksport qalinligi plita bo'yicha (32→16), qirra Z ikki baravar kichik, yuza chuqurlik bir qatlamga kamayadi (35→19). Shart: dz ≈ 2×plita qalinligi (material bo'yicha — `scx.plate_thickness_map(project)`) YOKI dz≈32; 18/26/40 o'zgarmaydi |
 | Paz (Type 4) | Har `gr` ga bitta Machining: Face yuza bilan bir xil (old 5 / orqa 6); `X`=`x1`, `Y`=Width−`y1`, `EndX`=`x2`, `EndY`=Width−`y2`, `Z`=`EndZ`= eksport qalinligi (Panel `Thickness`), `Width`=`gr.t` (yozilmasa 4), `Depth`=`gr.dp`, `ToolOffset=中` |
 | Freza (Type 3) | KOMPENSATSIYALANGAN asbob-markazi yo'li: `ms.c`=2 harakatga chapga r, `c`=1 o'ngga, yoy radiusi mos o'zgaradi; `<Lines><Line Angle=…>` formati (Angle=0 chiziq, ±N yoy sweep'i); `c`=0 xom; panel cheti bo'ylab trim xom + `ToolOffset=右` |
 | Atributlar | Machining'da ketma-ket `ID` (1000+) va `IsGenCode="2"`, Panel'da `MachiningPoint="1"` |
@@ -773,7 +773,8 @@ eksportdan farq qilgan holatlar (dizayner keyin o'zgartirgan), generator xatosi 
 Eski buyurtmalar fayllari diskda eski konvensiyada qolgan bo'lsa — buyurtma sahifasidagi
 "SCX qayta yaratish" tugmasi (`POST /orders/{id}/scx/regenerate`). Birinchi yuklash ham,
 qayta yaratish ham bitta yo'ldan o'tadi — `ingest.write_and_register_scx()` (fayl nomi/joyi
-va `OrderFile` maydonlari bir joyda).
+va `OrderFile` maydonlari bir joyda); plita qalinligi jadvalini ikkala yo'l ham
+`scx.plate_thickness_map(project)` dan oladi.
 
 ---
 

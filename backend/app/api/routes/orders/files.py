@@ -24,6 +24,7 @@ from app.services.giblab.ingest import (
     wipe_previous_parse,
     write_and_register_scx,
 )
+from app.services.giblab.scx import plate_thickness_map
 
 from ._common import _get_order, _get_visible_order, _require_editable
 
@@ -227,7 +228,7 @@ async def regenerate_order_scx(db: SessionDep, current_user: TexnologUser, order
         f.deleted_at = now
         (root / f.path).unlink(missing_ok=True)
 
-    plate_by_name = {m.name: m.thickness for m in project.materials if m.kind == "sheet" and m.thickness}
+    plate_by_name = plate_thickness_map(project)
     created = 0
     for pp in project.all_parts:
         part = parts_by_key.get(pp.key)

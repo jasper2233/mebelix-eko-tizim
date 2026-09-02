@@ -44,7 +44,7 @@ Kod muddati o'tishi ulangan agentga ta'sir qilmaydi — token muddatsiz.
 
 Agent `GET /api/v1/bridge-agents/latest` dan versiyani so'raydi: startdan ~1 daqiqada, har QAYTA ULANISHDA (deploy = darhol trigger) va zaxira sifatida har 10 daqiqada — bo'sh agent yangilanishni soatlab kutmaydi.
 Yangisi bo'lsa JIM yangilanadi: exe'ni yuklab oladi, sha256 tekshiradi,
-`update.bat` orqali o'zini almashtirib qayta ishga tushadi (~10 soniya). Lokal navbatda chek turganda ALMASHMAYDI — bo'shashini kutadi (chop etish o'rtasida uzilsa bitta chek ikki marta chiqishi mumkin edi).
+`update.bat` orqali o'zini almashtirib qayta ishga tushadi (~10 soniya). Lokal navbatda chek turganda darhol ALMASHMAYDI — bo'shashini kutadi, ko'pi bilan 1 soat (chop etish o'rtasida uzilsa bitta chek ikki marta chiqishi mumkin edi; chegara esa tiqilib qolgan navbat yangilanishni mangu to'xtatmasligi uchun).
 Token va sozlamalar `%APPDATA%` da — ulanish saqlanadi; exe yo'li o'zgarmagani
 uchun avtostart ham amal qilaveradi. Flashka bilan tarqatish endi faqat BIRINCHI
 o'rnatishda kerak (yoki paneldagi havoladan). Panelda eski versiyali agent sariq

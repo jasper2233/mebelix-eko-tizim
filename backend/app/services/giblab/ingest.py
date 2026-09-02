@@ -15,7 +15,7 @@ from app.models.enums import FileKind, PostCode, RouteSource
 
 from .cutmap import build_cutmap
 from .models import PROCESS_POSTS, TAIL_CODES, ParsedPart, ParsedProject, ParseError
-from .scx import build_scx_files
+from .scx import build_scx_files, plate_thickness_map
 
 logger = logging.getLogger(__name__)
 
@@ -313,9 +313,7 @@ async def ingest_project(
     )
 
     # Plita qalinligi material nomi bo'yicha — qo'shqavat detal SCX'i uchun (scx.py)
-    _plate_thickness: dict[str, float] = {
-        m.name: m.thickness for m in project.materials if m.kind == "sheet" and m.thickness
-    }
+    _plate_thickness = plate_thickness_map(project)
 
     # --- products, parts, instances, routes, scx ---
     bindings_by_key: dict[str, list[Any]] = {}

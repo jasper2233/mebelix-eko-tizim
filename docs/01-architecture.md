@@ -83,7 +83,7 @@ MebeliX-Mes-System/
 |---|---|
 | Konteynerlash | Docker Compose — `local` (hot-reload, portlar ochiq) va `prod` (faqat Caddy tashqariga ochiq) |
 | Ma'lumotlar bazasi | PostgreSQL 15 |
-| Cache / queue | Redis 7 (ARQ queue + rate limit + WS pub/sub — uchta lifespan ulanishi, plyus har `/ws/bridge` agent ulanishi uchun alohida qisqa umrli klient) |
+| Cache / queue | Redis 7 (ARQ queue + rate limit + WS pub/sub — uchta lifespan ulanishi, plyus qisqa umrli klientlar: har `/ws/bridge` agent ulanishi va bridge-agent'ning pairing / log / revoke REST endpointlari) |
 | Reverse proxy | Caddy (prod, `SITE_ADDRESS` orqali auto-HTTPS / Let's Encrypt); port bindinglar `CADDY_HTTP_BIND`/`CADDY_HTTPS_BIND` bilan parametrlangan — mavjud host-nginx (ISPmanager) ortida ishlash rejimi uchun |
 | Static serving | nginx (frontend build, SPA fallback, 1 yillik asset cache) |
 | Sifat nazorati | pre-commit hooks (ruff, mypy, biome) + GitHub Actions CI (`.github/workflows/ci.yml`) |
@@ -165,6 +165,13 @@ Asosiy nuqtalar:
   da yopadi — u lifespan tomonidan boshqarilmaydi, startup probe'ga ham kirmaydi.
   Startup'dagi retry'li probe faqat birinchi ikkitasini tekshiradi (fail-fast
   boot); rate limit runtime'da ham fail-closed — Redis xatosida so'rov bloklanadi.
+- **Yana to'rtta qisqa umrli klient — `bridge_agents.py` da, har so'rovda**:
+  `_revoke_live_connection()` (POST `/{id}/code` va DELETE `/{id}` chaqiradi —
+  revoke bayrog'i + navbatni tozalash), POST `/pair` (bayroqni o'chirish),
+  POST `/logs` (agent log satrlarini `lpush`) va GET `/{id}/logs` (`lrange`).
+  Har biri `async with AsyncRedis.from_url(...)` — so'rov tugashi bilan yopiladi,
+  lifespan ham, startup probe ham ularni bilmaydi. Ulanish byudjetini
+  (`maxclients`, burst) hisoblashda shularni ham qo'shish kerak.
 - **ARQ worker** alohida konteyner/processda ishlaydi (`app/core/worker.py` →
   `WorkerSettings`), tasklar `app/tasks/` da ro'yxatdan o'tadi.
 - **Prod deploy TAG asosida**: image'lar CI'da qurilib `ghcr.io` ga yuboriladi

@@ -205,7 +205,6 @@ async def update_user(
             raise ForbiddenException("O'z hisobingizni nofaol qila olmaysiz.")
         if update_data.get("is_superuser") is False:
             raise ForbiddenException("O'zingizdan superuser huquqini ola olmaysiz.")
-    # `crud_users.update` parolni dict'dan POP qiladi — bayroq oldindan olinadi
     password_changed = bool(update_data.get("password"))
     updated_user = await crud_users.update(db=db, db_user=db_user, user_update=update_data)
     # Admin parolni almashtirsa egasining TIRIK sessiyalari ham uzilishi kerak:
