@@ -244,12 +244,19 @@ export function OrderMatrix({
                   {editMode ? (
                     <Checkbox
                       checked={customEdits[part.id] ?? part.is_custom}
-                      onCheckedChange={(v) =>
+                      onCheckedChange={(v) => {
                         setCustomEdits((prev) => ({
                           ...prev,
                           [part.id]: v === true,
                         }))
-                      }
+                        // Bayroq almashgach shu detalning kutayotgan bosqich
+                        // tanlovlari kuchini yo'qotadi: bitta saqlashda ular
+                        // backend qayta qurgan marshrutga tegib ketardi.
+                        setStageEdits((prev) => {
+                          const { [part.id]: _dropped, ...rest } = prev
+                          return rest
+                        })
+                      }}
                       aria-label={`${part.code} nostandart`}
                     />
                   ) : part.is_custom ? (
@@ -299,7 +306,9 @@ function MatrixCell({
   editMode: boolean
   /** Tahrirdagi holat (serverdagi emas): checkbox belgilangan zahoti katakchalar
    *  qulflansin — aks holda bitta saqlashda is_custom va stages birga ketib,
-   *  backend qo'lda chizilgan marshrutga tegib qo'yardi. */
+   *  backend qo'lda chizilgan marshrutga tegib qo'yardi. Qulf faqat KEYINGI
+   *  bosishlarni to'xtatadi; allaqachon belgilangan bosqichlarni checkbox'ning
+   *  o'zi `stageEdits` dan olib tashlaydi. */
   isCustom: boolean
   stageEdits: StageEdits
   setStageEdits: React.Dispatch<React.SetStateAction<StageEdits>>

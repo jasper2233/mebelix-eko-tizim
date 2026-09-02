@@ -406,7 +406,9 @@ chiqadi), **holes**, **texture**, **route_codes** (marshrut jarayon kodlari `seq
 — antialiasing yo'q, aks holda termodrayver dither qiladi. Koordinatalar mm da. Tarkibi:
 
 - chap ustun: `assets/label-logo.png` (threshold 160), `Formatka` + product kodi, detal kaliti,
-  loyiha nomi, kromka materiallari 2×2 (t/l/b/r, tagchiziq bilan), markazda katta `L x W = soni`,
+  loyiha nomi (`text(..., max_mm=34)` — `draw.textlength` bo'yicha QR chap chetigacha kesiladi;
+  ilgari 26 belgi limiti turardi va u QR'ni hisobga olmagani uchun uzun nomning dumi
+  QR ostida ko'rinmay qolardi), kromka materiallari 2×2 (t/l/b/r, tagchiziq bilan), markazda katta `L x W = soni`,
   `N_detal nomi`, teshik bo'lsa `assets/label-icon-drill.png` ikonkasi,
   marshrut ALOHIDA qatorda (`Marshrut: 7/11/8`, y=41.5mm — detal NOMIGA qo'shilmaydi, chunki nom
   24 belgida kesiladi va marshrut jimgina yo'qolardi). Marshrut satri **faqat nostandart detalda**

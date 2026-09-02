@@ -135,6 +135,14 @@ export const STANDARD_MATRIX_POSTS = ["ARRA", "KROMKA", "PRISADKA"]
 /** Nostandart marshrut faqat shulardan boshlanadi — chek o'sha postda chiqadi. */
 export const ROUTE_START_POSTS = ["ARRA", "ROVER"]
 
+/**
+ * Marshrut DUMI — texnolog tanlamaydigan, backend o'zi qo'shadigan qadamlar
+ * (backend `TAIL_CODES`, services/giblab/models.py bilan qo'lda oynalangan).
+ * Saqlangan marshrutni qayta o'qiganda ular filtrlanadi: aks holda tahrir
+ * dumni o'rtada qoldirib backendga qaytarardi.
+ */
+export const TAIL_CODES = [15, 16]
+
 // Rollar manbasi — backend enum'i (generatsiya qilingan UserRole); yorliq
 // yozilmagan yangi rol build'ni yiqitadi
 export const ROLE_LABELS: Record<UserRole, string> = {

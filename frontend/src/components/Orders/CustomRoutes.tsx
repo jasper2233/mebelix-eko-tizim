@@ -11,7 +11,12 @@ import { SelectField } from "@/components/Common/SelectField"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { formatSize, PROCESS_OPS, ROUTE_START_POSTS } from "@/lib/mes"
+import {
+  formatSize,
+  PROCESS_OPS,
+  ROUTE_START_POSTS,
+  TAIL_CODES,
+} from "@/lib/mes"
 import { crudCallbacks, getOrderMatrixQueryOptions } from "@/queries/mes"
 
 // Qadoqlash (15) va TMO (16) ro'yxatda YO'Q: ularni texnolog tanlamaydi — qadoqlashni anketadagi "Upakovka
@@ -19,7 +24,7 @@ import { crudCallbacks, getOrderMatrixQueryOptions } from "@/queries/mes"
 // qo'shadi. Tugma qo'yilsa ikkita manba paydo bo'lardi.
 const CODES = Object.keys(PROCESS_OPS)
   .map(Number)
-  .filter((c) => !["UPAKOVKA", "TMO"].includes(PROCESS_OPS[c].post))
+  .filter((c) => !TAIL_CODES.includes(c))
   .sort((a, b) => a - b)
 
 export function CustomRoutes({
@@ -84,8 +89,11 @@ export function CustomRoutes({
     )
   }
 
+  // Saqlangan marshrutda tizim DUMI (qadoqlash/TMO) ham bor — texnolog uni
+  // tanlamagan, demak tahrirda ko'rsatilmaydi va backendga qaytarilmaydi.
   const codesOf = (partId: number, routes: { process_code: number }[]) =>
-    draft[partId] ?? routes.map((r) => r.process_code)
+    draft[partId] ??
+    routes.map((r) => r.process_code).filter((c) => !TAIL_CODES.includes(c))
 
   const toggle = (partId: number, current: number[], code: number) => {
     const at = current.lastIndexOf(code)
@@ -121,7 +129,16 @@ export function CustomRoutes({
         {editable && (
           <div className="flex items-center gap-2">
             {dirty && (
-              <Button variant="ghost" size="sm" onClick={() => setDraft({})}>
+              <Button
+                variant="ghost"
+                size="sm"
+                // `dirty` ikkala holatdan hisoblanadi — biriktirish tanlovi
+                // tozalanmasa "Bekor qilish" dan keyin ham saqlashga ketardi.
+                onClick={() => {
+                  setDraft({})
+                  setParents({})
+                }}
+              >
                 Bekor qilish
               </Button>
             )}

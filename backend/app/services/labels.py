@@ -211,8 +211,23 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
 
     img, draw, mm = _canvas()
 
-    def text(x: float, y: float, t: str, size_mm: float, bold: bool = False, anchor: str = "la") -> None:
-        draw.text((x * mm, y * mm), t, fill="black", font=_font(size_mm, bold), anchor=anchor)
+    def text(
+        x: float,
+        y: float,
+        t: str,
+        size_mm: float,
+        bold: bool = False,
+        anchor: str = "la",
+        max_mm: float | None = None,
+    ) -> None:
+        """max_mm berilsa — matn shu kenglikka sig'guncha oxiridan kesiladi.
+        Belgi soni bilan cheklash yetarli emas: bir xil uzunlikdagi satrlar
+        turlicha keng chiqadi va uzuni qo'shni blok (QR) ostida ko'rinmay qoladi."""
+        font = _font(size_mm, bold)
+        if max_mm is not None:
+            while t and draw.textlength(t, font=font) > max_mm * mm:
+                t = t[:-1]
+        draw.text((x * mm, y * mm), t, fill="black", font=font, anchor=anchor)
 
     def edge_field(side: str, key: str) -> str:
         e = d.edges.get(side)
@@ -229,8 +244,10 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
     # (docs/11): prisadkachi shu yozuv bilan stanokdagi faylni solishtira oladi
     text(5, 9.5, d.qr_text[:20], 2.7)
 
-    # Loyiha (limit 26: kattaroq shriftda eskiz chizig'iga yetmasin)
-    text(5, 13.5, d.project_name[:26], 3.3, bold=True)
+    # Loyiha — QR chap chetigacha (x=40mm) sig'adigan kenglikka kesiladi, 1mm zaxira.
+    # Ilgari 26 belgi limiti turardi: u QR'ni hisobga olmasdi va uzun nomning dumi
+    # QR ostida ko'rinmay qolardi.
+    text(5, 13.5, d.project_name, 3.3, bold=True, max_mm=34)
 
     # Kromka 2x2 (tagchiziq bilan): chapda uzunlik tomonlari (t/b), o'ngda en (l/r)
     def edge_cell(x: float, y: float, mat: str) -> None:

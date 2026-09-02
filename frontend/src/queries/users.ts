@@ -22,6 +22,9 @@ export const getUsersQueryOptions = () =>
       }
       return { data, count: first.count }
     },
+    // Yuqoridagi ketma-ket sahifa sikli har oyna fokusida qaytadan
+    // ishlamasligi uchun (`getCurrentUserQueryOptions` bilan bir xil muddat).
+    staleTime: 5 * 60_000,
   })
 
 export const getCurrentUserQueryOptions = () =>
@@ -37,4 +40,8 @@ export const getCurrentUserQueryOptions = () =>
     // backend har so'rovda o'zi tekshiradi; parol/rol o'zgarsa 401 keladi va
     // `lib/queryClient.ts` dagi handler login'ga chiqaradi.
     staleTime: 5 * 60_000,
+    // Iste'molchida emas, shu yerda: aks holda `useCurrentUser` va `tablo.tsx`
+    // bitta ['currentUser'] kalitini ikki xil siyosat bilan kuzatgan bo'lardi.
+    // 401 da qayta urinish ma'nosiz — faqat login'ga o'tishni kechiktiradi.
+    retry: false,
   })

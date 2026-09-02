@@ -52,7 +52,9 @@ export const ChangePassword = () => {
     onError: handleError,
   })
 
-  const onSubmit = (data: FormData) => mutation.mutate(data)
+  // confirm_password faqat brauzerda tekshiriladi — serverga yuborilmaydi
+  const onSubmit = ({ current_password, new_password }: FormData) =>
+    mutation.mutate({ current_password, new_password })
 
   return (
     <div className="max-w-md">

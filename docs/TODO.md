@@ -12,12 +12,12 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `backend/app/services/giblab/ingest.py:155` — restore_custom_routes appends restored MANUAL steps AFTER the freshly-ingested tail (UPAKOVKA/TMO), so TMO is no longer the last step of a standard pa
 - [ ] ✅ `backend/app/services/giblab/ingest.py:78` — snapshot_custom_routes only sees parts that already have a MANUAL route row, so a part marked "Nostandart" (or bound to an assembly parent) before any
 - [ ] ✅ `backend/app/services/giblab/parser.py:463` — CS `<part>` ro'yxatidagi HAR bir stubga `label_num` beriladi, joylashtirilmagan (usedCount=0) detalga ham — ingest esa aynan `label_num is not None` n
-- [ ] ✅ `backend/app/services/labels.py:230` — Loyiha nomi 26 belgigacha chiziladi, lekin QR bloki uni x=40 mm dan boshlab ustidan bosib o'chiradi — uzun loyiha nomining oxiri chekda umuman ko'rinm
+- [x] ✅ `backend/app/services/labels.py:230` — Loyiha nomi 26 belgigacha chiziladi, lekin QR bloki uni x=40 mm dan boshlab ustidan bosib o'chiradi — uzun loyiha nomining oxiri chekda umuman ko'rinm
 - [ ] ✅ `backend/app/services/scanning.py:518` — QR text is not order-scoped (uniqueness is only per order), so when two live PRODUCTION orders are built from the same GibLab product/part codes, ever
 - [x] ✅ `backend/app/services/scanning.py:656` — The `except IntegrityError` guard around `db.flush()` never fires — SQLAlchemy autoflushes the pending Scan INSERT inside the preceding `db.execute(up
-- [ ] ✅ `frontend/src/components/Orders/CustomRoutes.tsx:124-125` — "Bekor qilish" (Cancel) tugmasi faqat setDraft({}) chaqiradi, setParents({}) emas. dirty holati draft VA parents ikkalasidan hisoblanadi (Object.keys(
-- [ ] ✅ `frontend/src/components/Orders/CustomRoutes.tsx:88` — codesOf() reads every saved route step, including the system tail steps (15 UPAKOVKA / 16 TMO) that the backend appends itself, so a re-edited custom 
-- [ ] ✅ `frontend/src/components/Orders/OrderMatrix.tsx:248` — Ticking "Nostandart" only locks FUTURE stage clicks; stage toggles already staged for that part are still sent in the same batch, which is exactly the
+- [x] ✅ `frontend/src/components/Orders/CustomRoutes.tsx:124-125` — "Bekor qilish" (Cancel) tugmasi faqat setDraft({}) chaqiradi, setParents({}) emas. dirty holati draft VA parents ikkalasidan hisoblanadi (Object.keys(
+- [x] ✅ `frontend/src/components/Orders/CustomRoutes.tsx:88` — codesOf() reads every saved route step, including the system tail steps (15 UPAKOVKA / 16 TMO) that the backend appends itself, so a re-edited custom 
+- [x] ✅ `frontend/src/components/Orders/OrderMatrix.tsx:248` — Ticking "Nostandart" only locks FUTURE stage clicks; stage toggles already staged for that part are still sent in the same batch, which is exactly the
 - [ ] ✅ `frontend/src/components/People/PersonDialog.tsx:150` — `switching` fires the destructive "kirish hisobi o'chiriladi" confirmation on EVERY edit of a tsex employee who has a personal login, even when the ac
 - [ ] ✅ `frontend/src/components/Terminal/CutmapView.tsx:203` — So'rov xatosi (500/tarmoq) operatorga "fayl GibLabda optimizatsiya qilinmagan (TEMPLATE)" deb ko'rsatiladi — API xatosi jimgina yashiriladi, `isError`
 - [ ] ✅ `frontend/src/components/Terminal/KromkaView.tsx:71` — Lokal skan tekshiruvi detalning BIRINCHI topilgan marshrut qadamiga qarab javob beradi — KROMKA marshrutda ikki marta bo'lsa, birinchi o'tish tugagach
@@ -245,14 +245,14 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `frontend/src/components/Terminal/UpakovkaView.tsx:176` — Qadoqdan chiqarish tugmasida pending/disabled holati yo'q — ikki marta bosilsa ikkinchi DELETE 404 beradi va operatorga tushunarsiz xato toast chiqadi
 - [ ] ✅ `frontend/src/components/Terminal/UpakovkaView.tsx:81` — Faqat BIRINCHI ochiq qadoq ko'rsatiladi; backend bir buyurtmada ikkinchi ochiq qadoq yaratilishini taqiqlamaydi — ikkinchisi ekranda umuman ko'rinmayd
 - [ ] ✅ `frontend/src/components/Terminal/useKiosk.ts:88` — `useScanFocus` has no awareness of open modals, so while any of terminal.tsx's three ConfirmDialogs is open it keeps yanking focus every 2s (and on ev
-- [ ] ✅ `frontend/src/components/UserSettings/ChangePassword.tsx:55` — The whole form object is passed as the mutation payload, so `confirm_password` — a second copy of the new password — is sent to the server in the PATC
+- [x] ✅ `frontend/src/components/UserSettings/ChangePassword.tsx:55` — The whole form object is passed as the mutation payload, so `confirm_password` — a second copy of the new password — is sent to the server in the PATC
 - [x] ✅ `frontend/src/components/ui/label.tsx:1` — Uchta ui faylida `"use client"` direktivasi qolgan; loyihada Next.js/RSC yo'q (Vite SPA), shuning uchun direktiva hech qanday ma'no bermaydi va 25 fay
 - [ ] ✅ `frontend/src/hooks/useBadgeScan.ts:33-42` — Beyjik skani `Enter` da `preventDefault` qilmaydi — parol formasi ochiq va maydon fokusda bo'lsa, skan UUID'ni maydonga yozib, formani ham yuborishga 
-- [ ] ✅ `frontend/src/hooks/useCurrentUser.ts:9` — `retry: false` umumiy factory'da emas, iste'molchida turibdi — aynan shu query key'ni ishlatadigan `tablo.tsx` esa uni bermaydi, ya'ni bitta query ikk
+- [x] ✅ `frontend/src/hooks/useCurrentUser.ts:9` — `retry: false` umumiy factory'da emas, iste'molchida turibdi — aynan shu query key'ni ishlatadigan `tablo.tsx` esa uni bermaydi, ya'ni bitta query ikk
 - [x] ✅ `frontend/src/lib/mes.ts:196-208 (POSITIONS) va frontend/src/routes/_layout/employees.tsx:206-207` — 13 of the 15 `ROLE_LABELS` values are repeated verbatim as `POSITIONS[].label`, so a label change has to be made in two tables — and one consumer chai
 - [ ] ✅ `frontend/src/lib/mes.ts:5,14,26,34,41,55,62,69,227,232` — Every label/colour map except ROLE_LABELS is typed `Record<string, string>`, so a new backend enum value silently renders a raw code — or literally th
 - [ ] ✅ `frontend/src/queries/mes.ts:70` — getOrdersQueryOptions types `status` as a free `string` and then casts it with `as never` to satisfy the generated OrderStatus enum — the same rename-
-- [ ] ✅ `frontend/src/queries/users.ts:16` — `getUsersQueryOptions` is the only query in the app that issues N sequential blocking requests, and it carries no `staleTime` — with the QueryClient's
+- [x] ✅ `frontend/src/queries/users.ts:16` — `getUsersQueryOptions` is the only query in the app that issues N sequential blocking requests, and it carries no `staleTime` — with the QueryClient's
 - [ ] ✅ `frontend/src/routes/_layout.tsx:24` — No route below the root declares an `errorComponent`, so any render crash inside an admin page bubbles to the root boundary and replaces the entire sh
 - [x] ✅ `frontend/src/routes/_layout.tsx:36` — `useRouterState()` selektorsiz chaqirilgan — butun router holatiga obuna bo'lib, har holat o'zgarishida sidebar+Outlet qobig'ini qayta render qiladi; 
 - [ ] ✅ `frontend/src/routes/_layout/employees.tsx:319-320` — The "posts not loaded yet" guard is applied only to the Add button; the row Edit action can open the same dialog with an empty post list and a permane
@@ -261,5 +261,5 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `frontend/src/routes/_layout/orders/$orderId.tsx:590-594 (input), 156-167 (cancel mutation), 581 (onOpenChange={setCancelOpen})` — cancelReason state hech qachon tozalanmaydi: dialog Escape/tashqariga bosib yopilsa (setCancelOpen(false), submit qilinmasdan) yoki muvaffaqiyatli bek
 - [ ] ✅ `frontend/src/routes/_layout/printers.tsx:496` — The 'Yangi agent' name field uses bare zod constraints with no messages, so an invalid name shows zod's built-in English error inside an otherwise ful
 - [ ] ✅ `frontend/src/routes/_layout/reports.tsx:159-166` — Ekrandagi "Buyurtmalar" jadvali va o'sha hisobotning Excel eksporti turli ustunlarni ko'rsatadi: JSON javobida kelgan `created_at` va `production_star
-- [ ] ✅ `frontend/src/routes/_layout/work-centers.tsx:150` — Jadval sarlavhasida (102-107 qatorlar) atigi 3 ta doimiy TableHead + shartli admin ustuni bor, ya'ni jami admin uchun 4, aks holda 3 ustun. EmptyRow'g
+- [x] ✅ `frontend/src/routes/_layout/work-centers.tsx:150` — Jadval sarlavhasida (102-107 qatorlar) atigi 3 ta doimiy TableHead + shartli admin ustuni bor, ya'ni jami admin uchun 4, aks holda 3 ustun. EmptyRow'g
 

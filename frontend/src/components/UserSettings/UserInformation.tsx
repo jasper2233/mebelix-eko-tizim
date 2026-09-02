@@ -94,6 +94,8 @@ export const UserInformation = () => {
     onSettled: () => {
       // Faqat profil keshi — kalitsiz chaqiruv BUTUN ilova querylarini qayta so'rardi
       queryClient.invalidateQueries({ queryKey: ["currentUser"] })
+      // Hodimlar ro'yxati ham shu foydalanuvchini ko'rsatadi (staleTime 5 daq) — eski ism qolmasin
+      queryClient.invalidateQueries({ queryKey: ["users"] })
     },
   })
 
