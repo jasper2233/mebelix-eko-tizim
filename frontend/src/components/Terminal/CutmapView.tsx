@@ -35,6 +35,7 @@ import {
   OrdersService,
   TerminalService,
 } from "@/client"
+import { QueryError } from "@/components/Common/QueryError"
 import { PartCard } from "@/components/Terminal/PartCard"
 import {
   type Sheet,
@@ -207,7 +208,9 @@ export function CutmapView({
   /** Matritsadan sakrash: shu kalitli detalning listi ochilib, katakchasi belgilanadi */
   focusPartKey?: string
 }) {
-  const { data, isLoading } = useQuery(getCutmapQueryOptions(orderId, admin))
+  const { data, isLoading, isError, refetch } = useQuery(
+    getCutmapQueryOptions(orderId, admin),
+  )
   // GibLab uslubi: bitta sahifa (material tablar + list grid), list -> xarita
   const [materialIdx, setMaterialIdx] = useState(0)
   const [sheetIdx, setSheetIdxRaw] = useState<number | null>(null)
@@ -421,6 +424,14 @@ export function CutmapView({
   }, [focusPartKey, data, materials])
 
   if (isLoading) return <Skeleton className="h-full w-full" />
+  // So'rov yiqilsa `data` undefined qoladi — quyidagi TEMPLATE xabari operatorga
+  // "fayl optimizatsiya qilinmagan" deb YOLG'ON sabab ko'rsatardi. Xato alohida.
+  if (isError)
+    return (
+      <div className="flex h-full items-center justify-center p-4">
+        <QueryError onRetry={() => refetch()} />
+      </div>
+    )
   if (!data?.model) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-center">

@@ -144,10 +144,12 @@ export function PersonDialog({
 
   // Lavozim turi o'zgarsa qarama-qarshi yozuv o'chiriladi (tsexdan ofisga
   // o'tgan odamning beyjigi bekor bo'ladi va aksincha). Bu JIM bo'lmasin.
+  // `!withLogin` SHART: shaxsiy logini saqlanayotgan tsex xodimini tahrirlashda
+  // hisob o'chmaydi (mutatsiya `updateUser` qiladi), demak tasdiq ham kerak emas.
   const switching =
     editing &&
     ((kind === "ofis" && !!person?.employee) ||
-      (kind !== "ofis" && !!person?.user))
+      (kind !== "ofis" && !!person?.user && !withLogin))
 
   const mutation = useMutation({
     mutationFn: async () => {

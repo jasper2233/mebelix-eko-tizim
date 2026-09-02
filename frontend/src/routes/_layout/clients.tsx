@@ -67,7 +67,9 @@ function ClientsPage() {
               : `${data.count} mijoz — aylanma bo'yicha tartiblangan`
             : "Buyurtmachilar reestri"
         }
-        actions={<AddClient />}
+        // Yaratish ham `ManagerUser` — direktorga tugma ko'rsatilmaydi, aks
+        // holda bosgach POST /clients dan 403 olardi.
+        actions={canWrite ? <AddClient /> : undefined}
       />
       <div className="mb-4 flex">
         <SearchInput

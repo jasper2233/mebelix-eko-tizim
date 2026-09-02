@@ -388,7 +388,8 @@ function TogglePerson({
           path: { employee_id: p.employee.id },
           body: { status: active ? "inactive" : "active" },
         })
-      } else if (p.user) {
+      }
+      if (p.user) {
         await UsersService.updateUser({
           path: { user_id: Number(p.user.id) },
           body: { is_active: !active },

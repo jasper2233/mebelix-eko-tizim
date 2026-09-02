@@ -40,6 +40,8 @@ import {
   FACADE_MATERIALS,
   FURNITURE_TYPES,
   HARDWARE_LEVELS,
+  MAX_MODULES,
+  MAX_ROOMS,
   ORDER_SERVICES,
   WALL_LETTERS,
 } from "@/lib/anketa"
@@ -273,9 +275,22 @@ function AnketaPage() {
           )
         })}
         {canEdit && (
-          <Button variant="outline" onClick={addRoom}>
-            <Plus /> Xona qo'shish
-          </Button>
+          <>
+            {/* Chegara backend bilan bir xil: oshib ketsa butun anketaning
+                avtosaqlashi 422 bilan yiqilardi. */}
+            <Button
+              variant="outline"
+              onClick={addRoom}
+              disabled={rooms.length >= MAX_ROOMS}
+            >
+              <Plus /> Xona qo'shish
+            </Button>
+            {rooms.length >= MAX_ROOMS && (
+              <span className="text-muted-foreground text-xs">
+                Eng ko'pi {MAX_ROOMS} xona
+              </span>
+            )}
+          </>
         )}
       </div>
 
@@ -670,15 +685,24 @@ function AnketaPage() {
                     </tbody>
                   </table>
                 </div>
-                <Button
-                  variant="outline"
-                  className="mt-2"
-                  onClick={() =>
-                    patch({ modules: [...(room.modules ?? []), { name: "" }] })
-                  }
-                >
-                  <Plus /> Qator qo'shish
-                </Button>
+                <div className="mt-2 flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={(room.modules ?? []).length >= MAX_MODULES}
+                    onClick={() =>
+                      patch({
+                        modules: [...(room.modules ?? []), { name: "" }],
+                      })
+                    }
+                  >
+                    <Plus /> Qator qo'shish
+                  </Button>
+                  {(room.modules ?? []).length >= MAX_MODULES && (
+                    <span className="text-muted-foreground text-xs">
+                      Eng ko'pi {MAX_MODULES} modul
+                    </span>
+                  )}
+                </div>
                 <div className="grid items-start gap-3 sm:grid-cols-2">
                   <Num
                     label="Umumiy uzunlik (pm)"

@@ -14,6 +14,7 @@ import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
 import { TmoService } from "@/client"
+import { QueryError } from "@/components/Common/QueryError"
 import {
   playError,
   playSuccess,
@@ -46,7 +47,7 @@ export function TmoView({
 }) {
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<"kelgan" | "qilingan">("kelgan")
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["terminal", "tmo", orderId],
     queryFn: async () =>
       (await TmoService.readTmoOrder({ path: { order_id: orderId } })).data,
@@ -115,6 +116,9 @@ export function TmoView({
   }, [registerScan, accept.mutate])
 
   if (isLoading) return <Skeleton className="h-full w-full" />
+  // Xato JIM yutilmasin: busiz `data` undefined qolib, bo'sh ro'yxat yashil
+  // "Hammasi qabul qilindi." ga aylanardi va omborchi ishni tugagan deb o'qirdi.
+  if (isError) return <QueryError onRetry={() => refetch()} />
 
   const pending = data?.pending ?? []
   const done = data?.done ?? []

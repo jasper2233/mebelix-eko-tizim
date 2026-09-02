@@ -79,6 +79,12 @@ export const EXTRA_SERVICES: Option[] = [
   { value: "oyna", label: "Oyna / ko'zgu" },
 ]
 
+/** Ro'yxat chegaralari — backend `Field(max_length=...)` bilan bir xil bo'lishi
+ *  SHART (schemas/orders.py: rooms=203-qator, modules=181-qator). Oshib ketsa
+ *  butun anketaning avtosaqlashi 422 bilan yiqiladi. */
+export const MAX_ROOMS = 10
+export const MAX_MODULES = 40
+
 /** O'lchov varag'i: devor harflari (A dan soat yo'nalishi bo'yicha) */
 export const WALL_LETTERS = ["A", "B", "C", "D", "E"] as const
 

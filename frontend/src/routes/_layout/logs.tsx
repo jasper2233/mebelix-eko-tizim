@@ -2,7 +2,7 @@
 // sahifalash bilan. Skan/chek kabi jonli oqimlar ham shu yerga yoziladi —
 // kim qachon nima qilganini bitta joydan topish uchun.
 
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { X } from "lucide-react"
 import { useState } from "react"
@@ -115,6 +115,9 @@ function LogsPage() {
   const q = useDebounced(search, 400)
 
   const { data, isLoading, isError, refetch } = useQuery({
+    // Sahifa/filtr almashganda eski natija ekranda qoladi: aks holda `data`
+    // bir zumga `undefined` bo'lib, "Jami" va sahifalash tugmalari yo'qoladi.
+    placeholderData: keepPreviousData,
     queryKey: ["audit-logs", module ?? "", q, day, page],
     queryFn: async () =>
       (

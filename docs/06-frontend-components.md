@@ -39,7 +39,10 @@ qolganini lavozim hal qiladi.
 - **Yozish yo'li lavozim turiga qarab:** `ofis` -> `UsersService` (hisob), aks holda
   `EmployeesService` (tsex yozuvi). Tur o'zgarsa qarama-qarshi yozuv o'chiriladi va
   buning uchun TASDIQ so'raladi ("beyjigi bekor qilinadi" / "kirish hisobi o'chiriladi") —
-  ilgari bu jimgina bo'lardi.
+  ilgari bu jimgina bo'lardi. Tasdiq FAQAT yozuv haqiqatan yo'qolganda chiqadi:
+  shaxsiy logini SAQLANAYOTGAN tsex xodimini tahrirlashda (`withLogin` — katakcha
+  belgilangan) hisob `updateUser` bilan yangilanadi, shuning uchun `switching` shartida
+  `&& !withLogin` turadi — busiz har tahrirda yolg'on destruktiv tasdiq chiqardi.
 - **O'chiq "Saqlash" sababini aytadi** (`missing`): "F.I.Sh yozing", "Lavozim nomini
   yozing", "Kamida bitta post tanlang", "Kirish uchun telefon kerak — login
   o'shandan olinadi" (ofis lavozimida ham, tsexda parol bilan kirishda ham),
@@ -388,6 +391,12 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 
 **Maqsadi:** ARRA kesish xaritasi (TZ 7.1.7) — GibSaw/GibLab uslubidagi ekran, GibCut litsenziyasi o'rnini bosadi. `routes/terminal.tsx` (operator) va `routes/_layout/cutmap.$orderId.tsx` (admin) ishlatadi; `admin` prop'ga qarab `OrdersService.readOrderCutmap` yoki `TerminalService.readTerminalCutmap` (`refetchInterval: 60_000`).
 
+**Xato holati TEMPLATE dan AJRATILGAN:** `useQuery` dan `isError, refetch` olinadi va
+Skeleton'dan keyin `Common/QueryError` chiziladi. Ilgari faqat `isLoading` tekshirilardi,
+ya'ni 500/tarmoq xatosida `data` undefined qolib operatorga "fayl GibLabda optimizatsiya
+qilinmagan (TEMPLATE)" degan YOLG'ON sabab ko'rsatilardi. TEMPLATE xabari endi faqat javob
+kelgan-u `model === null` bo'lganda chiqadi.
+
 **Props:** `orderId`, `onBack`, `admin?`, `postCode?: string` (default `"ARRA"`; `routes/terminal.tsx` ikkala chaqiruvda ham `ctx?.post_code` beradi — pastdagi "List egaligi"), `registerPrint?(fn)`, `statsContainer?: HTMLElement | null`, `toolbarContainer?: HTMLElement | null`, `focusPartKey?: string` — matritsadagi Map-havoladan (`/cutmap/$orderId?part=...`) kelganda detalning listini ochib katakni belgilaydi.
 
 **Kartochka QOLDIQ uchun ham BITTA**: `PartCard` detalni ham, ro'yxatga olingan qoldiqni ham aynan bir tartibda ko'rsatadi — sarlavhada katta `№` va yonida nom yoki o'lcham (qoldiqda qo'shimcha «QOLDIQ» bayrog'i), sarlavha OSTIDA chek ID si (`qr_text`) va holati (`✓ kesildi` / `✓ chek chiqarilgan`); keyin chizma, QR + ma'lumot, eng pastda to'liq kenglikdagi qizil «Chekni bekor qilish» (`h-14 w-full`) va «Yopish». Ilgari qoldiq alohida shox edi: bekor qilish «Yopish» ustida, ID umuman yo'q, o'lcham sarlavhada — bitta xaritada ikki xil kartochka. Qoldiqda faqat kromka ko'rsatilmaydi (u material, ishlov berilmaydi).
@@ -468,6 +477,9 @@ Chap toolbar tugmasi: ikonka + `text-2xs` yozuv (`index.css` da 0.6875rem), `h-1
 - **Qabul qilingan** — SERVERDAN keladigan ro'yxat (`TmoOrderState.done`): qabul qilingan nusxa, qadoq cheki (bo'lsa) va qabul vaqti, eng oxirgisi tepada. Ilgari bu ro'yxat faqat React state'da edi va sahifa yangilanganda YO'QOLARDI — omborchi o'zi qabul qilgan detallarni ko'rmasdi.
 - **Alohida "Qadoqlar" tabi YO'Q.** Qadoq faqat yorliq: har detal qatorida qaysi chek bilan kelgani yoziladi. Qadoq cheki (`PK-...`) skanerlansa `accept_into_tmo` ichidagi HAMMA nusxani birdan qabul qiladi, ya'ni natija baribir detal ro'yxatida ko'rinadi — omborchi uchun chek va yakka detal bir xil ishlaydi.
 - **"Buyurtmani topshirish" tugmasi OLIB TASHLANDI** (`deliver_tmo_order` endpointi bilan birga). TMO buyurtmani topshirmaydi: hamma detal TMO dan o'tgach buyurtma `record_scan_at` da o'zi TAYYOR (COMPLETED) bo'ladi, TOPSHIRILDI esa managerning amali (`/orders/{id}`, faqat TAYYOR holatdan).
+- **So'rov xatosi JIM yutilmaydi:** `isError` da `Common/QueryError` chiziladi. Ilgari
+  faqat `isLoading` tekshirilardi va xatoda bo'sh ro'yxat yashil "Hammasi qabul qilindi."
+  ga aylanardi — omborchi yiqilgan so'rovni tugallangan ish deb o'qirdi.
 - Sarlavhada `TMO ga keldi: arrived/total` va `Qabul qilindi: accepted/total` — omborchi oldida qancha ish turganini ko'rishi uchun (bitta progress bar faqat skanerlanganini ko'rsatardi).
 - `registerScan` HAR QANDAY skanni QABULGA yo'naltiradi (`accept.mutate(qr)`) — aktiv tab bunga ta'sir qilmaydi; qadoq cheki (`PK-...`) bo'lsa server `accept_into_tmo` ichida hamma nusxani birdan qabul qiladi.
 - **Skan javobini ekranning o'zi beradi** (ovoz + toast, `ScanStrip` WS orqali kechikib to'lganidan oldin): takror qabulda `playWarning()` + `toast.error("Allaqachon qabul qilingan: …")`, muvaffaqiyatda `playSuccess()` + `toast.success` (qadoq bo'lsa nechta detal qabul qilingani), xatoda `playError()` + serverdan kelgan xabar (`detailMessage`).
