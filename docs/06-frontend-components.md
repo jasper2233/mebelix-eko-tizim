@@ -21,7 +21,8 @@ qolganini lavozim hal qiladi.
 - **Lavozim** (`lib/mes.ts` `POSITIONS`) uch turga bo'linadi:
   `tsex` (9 ta, har biri postga ko'rsatadi — backend `POST_ROLES` bilan bir xil jadval),
   `ofis` (4 ta, har biri `UserRole` ga ko'rsatadi), `boshqa` (nomi qo'lda — haydovchi,
-  farrosh; post ham, hisob ham berilmaydi).
+  farrosh; post ham, hisob ham berilmaydi). Ko'rinadigan nom `ROLE_LABELS[role]` dan
+  keladi, shuning uchun dialog va Hodimlar jadvalining "Lavozim" ustuni bir so'zni aytadi.
 - **Tsexda parol bilan kirish** — "Postda skaner yo'q" katakchasi. Belgilansa hisob HODIMDAN
   OLDIN yaratiladi va `employee.user_id` darhol unga bog'lanadi: aks holda odam parol bilan
   kirardi-yu, smenasi ochilmasdi (`login._open_shift_for` aynan shu bog'lamdan hodimni topadi).
@@ -183,7 +184,7 @@ Jadval qatoridagi amal tugmasi: `icon`/`title`/`onClick`, buzuvchi amalga `dange
 
 ### `frontend/src/components/Common/TablePagination.tsx`
 
-Reyestr sahifalagichi: `page` (0 dan), `pageSize`, `total`, `onPage`. Tartib bitta — chapda "N tadan X–Y", o'ngda `[Oldingi] [k / n] [Keyingi]`. `total === 0` da `null` qaytaradi. Hozircha yagona chaqiruvchi — `logs` (PAGE=50); sahifa hajmi baribir prop bo'lib qoladi, chunki u qator balandligiga bog'liq va har reyestrda boshqacha bo'lishi mumkin.
+Reyestr sahifalagichi: `page` (0 dan), `pageSize`, `total`, `onPage`. Tartib bitta — butun blok o'ngga tekislangan (`justify-end`): avval "N tadan X–Y", keyin `[Oldingi] [k / n] [Keyingi]`. `total === 0` da `null` qaytaradi. Hozircha yagona chaqiruvchi — `logs` (PAGE=50); sahifa hajmi baribir prop bo'lib qoladi, chunki u qator balandligiga bog'liq va har reyestrda boshqacha bo'lishi mumkin.
 
 ### `frontend/src/components/Common/ErrorComponent.tsx`
 

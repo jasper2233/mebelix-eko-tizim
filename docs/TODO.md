@@ -220,14 +220,14 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `docs/08-packages.md:174` — Nima: `$schema` aniq versiyaga qotirilgan, `package.json` esa `^2.5.2` caret bergan — PATCH bump ham schema mos kelmasligini keltirib chiqaradi, hujja
 - [x] ✅ `docs/09-mes-domain.md:168` — Nima: The packing and TMO endpoints emit E001 for five reasons that are absent from the documented E001 list — the same overloading the doc says was s
 - [x] ✅ `docs/09-mes-domain.md:592` — Nima: StagePipeline is rendered only on the dashboard; the orders registry has no stage pipeline, so "buyurtma qatorlari" is stale.
-- [ ] ✅ `docs/10-giblab-reference.md:767` — Nima: For double-layer parts docs describe only the surface-bore depth rule; the code applies a different rule to milling depth and no rule at all to 
-- [ ] ✅ `docs/10-giblab-reference.md:769` — Nima: Docs state the panel-edge trim always exports as a raw path with `ToolOffset=右`; the code applies that rule only when `ms.c == "2"`.
-- [ ] ✅ `frontend/README.md:109` — Nima: README'ning `src/lib` tavsifi 7 fayldan faqat 4 tasini sanaydi — `guards.ts`, `queryClient.ts`, `scxDir.ts` tushib qolgan; `src/utils.ts` esa st
+- [x] ✅ `docs/10-giblab-reference.md:767` — Nima: For double-layer parts docs describe only the surface-bore depth rule; the code applies a different rule to milling depth and no rule at all to 
+- [x] ✅ `docs/10-giblab-reference.md:769` — Nima: Docs state the panel-edge trim always exports as a raw path with `ToolOffset=右`; the code applies that rule only when `ms.c == "2"`.
+- [x] ✅ `frontend/README.md:109` — Nima: README'ning `src/lib` tavsifi 7 fayldan faqat 4 tasini sanaydi — `guards.ts`, `queryClient.ts`, `scxDir.ts` tushib qolgan; `src/utils.ts` esa st
 - [ ] ✅ `frontend/src/components/Clients/AddClient.tsx:85` — The form is reset only on success, so closing the dialog mid-typing and reopening shows the abandoned draft plus its stale validation errors.
 - [ ] ✅ `frontend/src/components/Clients/ClientCombobox.tsx:38` — Closing the popover without selecting leaves `search`/`active` populated, so the next open shows the previous query's filtered list.
 - [ ] ✅ `frontend/src/components/Clients/ClientCombobox.tsx:93` — Keyboard navigation never scrolls the active option into view, so arrowing past the 5th result moves an invisible highlight inside the `max-h-64` list
-- [ ] ✅ `frontend/src/components/Common/ErrorScreen.tsx:20-22` — The "Bosh sahifaga" control nests a `<button>` inside an `<a>` (interactive content inside an anchor), instead of the `<Button asChild><Link>` pattern
-- [ ] ✅ `frontend/src/components/Common/TablePagination.tsx:9` — Nima: docs/06 says the range label sits on the left and the controls on the right; the whole block is right-aligned (`justify-end`).
+- [x] ✅ `frontend/src/components/Common/ErrorScreen.tsx:20-22` — The "Bosh sahifaga" control nests a `<button>` inside an `<a>` (interactive content inside an anchor), instead of the `<Button asChild><Link>` pattern
+- [x] ✅ `frontend/src/components/Common/TablePagination.tsx:9` — Nima: docs/06 says the range label sits on the left and the controls on the right; the whole block is right-aligned (`justify-end`).
 - [ ] ✅ `frontend/src/components/Orders/CustomRoutes.tsx:224` — The "Asosiy detalga biriktirish" option list reads `assembly_parent_id` from the server row only, ignoring pending `parents` edits — so a part already
 - [ ] ✅ `frontend/src/components/Orders/EditOrder.tsx:74` — EditOrder and MachineAssign both spread crudCallbacks (which already invalidates on onSettled) AND call an `onSaved` prop whose only implementation is
 - [ ] ✅ `frontend/src/components/Orders/MachineAssign.tsx:26` — `selection` is seeded from `order.machine_assignments` by a useState initializer, which runs once per mount — a refetch that brings different assignme
@@ -238,7 +238,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `frontend/src/components/Sidebar/User.tsx:32` — The avatar falls back to initials of the literal word "Foydalanuvchi" while the name line right next to it renders empty, so a nameless account shows 
 - [ ] ✅ `frontend/src/components/Sidebar/User.tsx:82` — The "Sozlamalar" entry inverts the shadcn/Radix composition: the link wraps the menu item instead of the item wrapping the link, so a bare `<a>` sits 
 - [ ] ✅ `frontend/src/components/Terminal/CutmapView.tsx:390` — Matritsadan "xaritada ko'rsat" sakrashi detal topilmasa jimgina yo'qoladi: bayroq izlashdan OLDIN yoqiladi, xabar ham berilmaydi.
-- [ ] ✅ `frontend/src/components/Terminal/CutmapView.tsx:826` — `registerZoom` effekti har renderda qayta ishlaydi, chunki CutmapView unga inline arrow beradi — izoh esa "bir marta o'rnatiladi" deb yozadi.
+- [x] ✅ `frontend/src/components/Terminal/CutmapView.tsx:826` — `registerZoom` effekti har renderda qayta ishlaydi, chunki CutmapView unga inline arrow beradi — izoh esa "bir marta o'rnatiladi" deb yozadi.
 - [ ] ✅ `frontend/src/components/Terminal/CutmapView.tsx:86` — Popup bloklansa "PDF / Chop etish" jimgina hech narsa qilmaydi — foydalanuvchiga sabab aytilmaydi.
 - [ ] ✅ `frontend/src/components/Terminal/KioskOverlays.tsx:27` — `requestFullscreen()` returns a promise that is neither awaited nor caught — a denied/failed request becomes an unhandled rejection and the operator g
 - [ ] ✅ `frontend/src/components/Terminal/PrisadkaView.tsx:177` — Eski brauzer yo'lida hech narsa tekshirilmasdan "N ta SCX yuklab olindi" muvaffaqiyat toasti chiqadi — `<a download>` yo'li xatoni umuman ko'rmaydi, h
@@ -246,10 +246,10 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `frontend/src/components/Terminal/UpakovkaView.tsx:81` — Faqat BIRINCHI ochiq qadoq ko'rsatiladi; backend bir buyurtmada ikkinchi ochiq qadoq yaratilishini taqiqlamaydi — ikkinchisi ekranda umuman ko'rinmayd
 - [ ] ✅ `frontend/src/components/Terminal/useKiosk.ts:88` — `useScanFocus` has no awareness of open modals, so while any of terminal.tsx's three ConfirmDialogs is open it keeps yanking focus every 2s (and on ev
 - [ ] ✅ `frontend/src/components/UserSettings/ChangePassword.tsx:55` — The whole form object is passed as the mutation payload, so `confirm_password` — a second copy of the new password — is sent to the server in the PATC
-- [ ] ✅ `frontend/src/components/ui/label.tsx:1` — Uchta ui faylida `"use client"` direktivasi qolgan; loyihada Next.js/RSC yo'q (Vite SPA), shuning uchun direktiva hech qanday ma'no bermaydi va 25 fay
+- [x] ✅ `frontend/src/components/ui/label.tsx:1` — Uchta ui faylida `"use client"` direktivasi qolgan; loyihada Next.js/RSC yo'q (Vite SPA), shuning uchun direktiva hech qanday ma'no bermaydi va 25 fay
 - [ ] ✅ `frontend/src/hooks/useBadgeScan.ts:33-42` — Beyjik skani `Enter` da `preventDefault` qilmaydi — parol formasi ochiq va maydon fokusda bo'lsa, skan UUID'ni maydonga yozib, formani ham yuborishga 
 - [ ] ✅ `frontend/src/hooks/useCurrentUser.ts:9` — `retry: false` umumiy factory'da emas, iste'molchida turibdi — aynan shu query key'ni ishlatadigan `tablo.tsx` esa uni bermaydi, ya'ni bitta query ikk
-- [ ] ✅ `frontend/src/lib/mes.ts:196-208 (POSITIONS) va frontend/src/routes/_layout/employees.tsx:206-207` — 13 of the 15 `ROLE_LABELS` values are repeated verbatim as `POSITIONS[].label`, so a label change has to be made in two tables — and one consumer chai
+- [x] ✅ `frontend/src/lib/mes.ts:196-208 (POSITIONS) va frontend/src/routes/_layout/employees.tsx:206-207` — 13 of the 15 `ROLE_LABELS` values are repeated verbatim as `POSITIONS[].label`, so a label change has to be made in two tables — and one consumer chai
 - [ ] ✅ `frontend/src/lib/mes.ts:5,14,26,34,41,55,62,69,227,232` — Every label/colour map except ROLE_LABELS is typed `Record<string, string>`, so a new backend enum value silently renders a raw code — or literally th
 - [ ] ✅ `frontend/src/queries/mes.ts:70` — getOrdersQueryOptions types `status` as a free `string` and then casts it with `as never` to satisfy the generated OrderStatus enum — the same rename-
 - [ ] ✅ `frontend/src/queries/users.ts:16` — `getUsersQueryOptions` is the only query in the app that issues N sequential blocking requests, and it carries no `staleTime` — with the QueryClient's

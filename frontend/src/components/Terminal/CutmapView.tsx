@@ -17,7 +17,14 @@ import {
   Plus,
   Printer,
 } from "lucide-react"
-import { Fragment, useEffect, useMemo, useRef, useState } from "react"
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { createPortal } from "react-dom"
 import { renderToStaticMarkup } from "react-dom/server"
 import { toast } from "sonner"
@@ -227,6 +234,15 @@ export function CutmapView({
     zout: () => void
     reset: () => void
   } | null>(null)
+  // Barqaror identifikatsiya: SheetSvg'dagi ro'yxatga olish effekti
+  // `[registerZoom]` ga bog'langan — inline arrow bo'lsa har renderda qayta
+  // ishlardi.
+  const registerZoom = useCallback(
+    (api: NonNullable<typeof zoomApi.current>) => {
+      zoomApi.current = api
+    },
+    [],
+  )
 
   // Chap qatordagi Chop etish: belgilangan detalning navbatdagi nusxasi
   // to'g'ridan-to'g'ri GoDEX navbatiga ketadi (dialog yo'q)
@@ -823,9 +839,7 @@ export function CutmapView({
                 onOpenPart={admin ? undefined : setSelected}
                 wastePrinted={wastePrinted}
                 selectedCell={markedCell}
-                registerZoom={(a) => {
-                  zoomApi.current = a
-                }}
+                registerZoom={registerZoom}
                 onSwipe={(dir) =>
                   sheetIdx !== null &&
                   setSheetIdx(

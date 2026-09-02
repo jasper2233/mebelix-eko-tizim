@@ -17,9 +17,9 @@ export function ErrorScreen({
       <p className="mb-4 text-center text-lg text-muted-foreground">
         {message}
       </p>
-      <Link to="/">
-        <Button>Bosh sahifaga</Button>
-      </Link>
+      <Button asChild>
+        <Link to="/">Bosh sahifaga</Link>
+      </Button>
     </div>
   )
 }

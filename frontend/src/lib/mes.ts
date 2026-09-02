@@ -193,25 +193,34 @@ type PositionKind = "tsex" | "ofis" | "boshqa"
 // Tsex lavozimida ham `role` bor: skaneri yo'q postda (ARRA) xodimga SHAXSIY
 // hisob ochiladi va u parol bilan kiradi. Rol backend `POST_ROLES` bilan bir xil
 // jadval — hisob roli o'sha post terminalini ochadi.
+// Yorliq ROLE_LABELS dan olinadi — rol nomi BITTA jadvalda yozilsin (ilgari
+// ikkalasi qo'lda takrorlanardi va beyjik bilan hisobot ayri ketishi mumkin edi).
+const position = (role: UserRole, kind: PositionKind, post?: string) => ({
+  label: ROLE_LABELS[role],
+  kind,
+  post,
+  role,
+})
+
 export const POSITIONS: {
   label: string
   kind: PositionKind
   post?: string
   role?: UserRole
 }[] = [
-  { label: "Arrachi", kind: "tsex", post: "ARRA", role: "arrachi" },
-  { label: "Kromkachi", kind: "tsex", post: "KROMKA", role: "kromkachi" },
-  { label: "Oval kromkachi", kind: "tsex", post: "OVAL", role: "ovalchi" },
-  { label: "Prisadkachi", kind: "tsex", post: "PRISADKA", role: "prisadkachi" },
-  { label: "Roverchi", kind: "tsex", post: "ROVER", role: "roverchi" },
-  { label: "Stolyar", kind: "tsex", post: "STOLYARKA", role: "stolyar" },
-  { label: "Bo'yoqchi", kind: "tsex", post: "BOYOQ", role: "boyoqchi" },
-  { label: "Qadoqlovchi", kind: "tsex", post: "UPAKOVKA", role: "upakovkachi" },
-  { label: "TMO omborchisi", kind: "tsex", post: "TMO", role: "omborchi" },
-  { label: "Menejer", kind: "ofis", role: "manager" },
-  { label: "Texnolog", kind: "ofis", role: "texnolog" },
-  { label: "Direktor", kind: "ofis", role: "director" },
-  { label: "Admin", kind: "ofis", role: "admin" },
+  position("arrachi", "tsex", "ARRA"),
+  position("kromkachi", "tsex", "KROMKA"),
+  position("ovalchi", "tsex", "OVAL"),
+  position("prisadkachi", "tsex", "PRISADKA"),
+  position("roverchi", "tsex", "ROVER"),
+  position("stolyar", "tsex", "STOLYARKA"),
+  position("boyoqchi", "tsex", "BOYOQ"),
+  position("upakovkachi", "tsex", "UPAKOVKA"),
+  position("omborchi", "tsex", "TMO"),
+  position("manager", "ofis"),
+  position("texnolog", "ofis"),
+  position("director", "ofis"),
+  position("admin", "ofis"),
 ]
 
 export const OTHER_POSITION = "Boshqa"

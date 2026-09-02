@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
  * Ilgari har reyestr o'zinikini yozardi va ikkitasi ikki xil chiqardi:
  * biri `[1 / 3][Oldingi][Keyingi]`, ikkinchisi `[N tadan X–Y][Oldingi][1 / 7]
  * [Keyingi]` — ya'ni sahifa raqami birida tugmalardan oldin, boshqasida
- * orasida turardi. Bu yerda tartib bitta: chapda oraliq, o'ngda boshqaruv.
+ * orasida turardi. Bu yerda tartib bitta: butun blok o'ngga tekislangan
+ * (`justify-end`) — avval oraliq yorlig'i, keyin boshqaruv tugmalari.
  *
  * Natija bo'sh bo'lsa umuman chizilmaydi — aks holda "1 / 1" va ikkala
  * o'chgan tugma osilib qolardi.

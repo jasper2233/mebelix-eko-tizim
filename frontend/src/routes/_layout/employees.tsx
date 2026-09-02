@@ -89,7 +89,6 @@ import {
   isSuperuser,
   MACHINE_BOUND_ROLES,
   OPERATOR_ROLES,
-  POSITIONS,
   ROLE_LABELS,
 } from "@/lib/mes"
 import {
@@ -200,11 +199,9 @@ function PeoplePage() {
         employee: null,
         user: u,
         name: u.name ?? u.username,
-        // Lavozim ustuni ROL yorlig'ini emas, LAVOZIM nomini ko'rsatadi —
-        // dialog ham shu ro'yxatdan o'qiydi, ikkalasi bir so'zni aytsin
-        position:
-          POSITIONS.find((x) => x.role === u.role)?.label ??
-          ROLE_LABELS[u.role],
+        // POSITIONS yorlig'i ham shu jadvaldan keladi, ya'ni dialog bilan
+        // lavozim ustuni bir so'zni aytadi
+        position: ROLE_LABELS[u.role],
         phone: u.phone,
         posts: [],
         access: "password",
