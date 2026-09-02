@@ -19,18 +19,27 @@ export function useMesWs(onEvent: (event: MesEvent) => void) {
     const connect = () => {
       const base = API_BASE || window.location.origin
       const url = `${base.replace(/^http/, "ws")}/api/v1/ws/events`
+      // Server har "ping"ga {"type":"pong"} qaytaradi (api/routes/ws.py).
+      // Javob KELMASA ulanish yarim-ochiq: TCP hali tirik ko'rinadi, lekin
+      // birorta ham event yetib kelmaydi. Busiz `online` faqat onclose'da
+      // o'chardi — indikator "JONLI" deb yolg'on gapirardi.
+      let lastPongAt = Date.now()
       socket = new WebSocket(url)
       socket.onopen = () => {
         setOnline(true)
-        heartbeat = setInterval(
-          () => socket?.readyState === 1 && socket.send("ping"),
-          30_000,
-        )
+        lastPongAt = Date.now()
+        heartbeat = setInterval(() => {
+          if (socket?.readyState !== 1) return
+          // Ikki davr pong'siz — soketni yopamiz, onclose reconnect qiladi
+          if (Date.now() - lastPongAt > 75_000) socket.close()
+          else socket.send("ping")
+        }, 30_000)
       }
       socket.onmessage = (e) => {
         try {
           const event = JSON.parse(e.data)
-          if (event.type && event.type !== "pong") handler.current(event)
+          if (event.type === "pong") lastPongAt = Date.now()
+          else if (event.type) handler.current(event)
         } catch {
           /* skip non-JSON frames */
         }

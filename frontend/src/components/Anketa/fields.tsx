@@ -27,6 +27,15 @@ export function Facts({ items }: { items: [string, string][] }) {
   )
 }
 
+/** Raqamli maydon chegaralari — backend `Field(ge=..., le=...)` bilan bir xil
+ *  bo'lishi SHART (schemas/orders.py: `_Mm`, `SurveyModule.count`,
+ *  `total_running_meters`). Bitta katakdagi chegaradan chiqqan son BUTUN
+ *  anketaning avtosaqlashini 422 bilan to'xtatadi, shuning uchun maydon o'sha
+ *  zahoti qizil bo'lib turadi. */
+export const MM_RANGE = { min: 0, max: 50_000 }
+export const PM_RANGE = { min: 0, max: 1000 }
+export const COUNT_RANGE = { min: 1, max: 999 }
+
 function numOrNull(v: string): number | null {
   // O'zbek/rus klaviaturasida o'nlik ajratgich vergul — "3,5" ni ham qabul qilamiz
   const n = Number(v.replace(",", "."))
@@ -40,32 +49,51 @@ export function NumInput({
   disabled,
   onChange,
   integer = false,
+  range,
   "aria-label": ariaLabel,
 }: {
   value: number | null | undefined
   disabled?: boolean
   onChange: (v: number | null) => void
   integer?: boolean
+  /** Backend chegarasi — shu fayldagi MM_RANGE / PM_RANGE / COUNT_RANGE
+   *  (schemas/orders.py aksi). Qiymat RAD ETILMAYDI — bu yozish
+   *  jarayonini buzardi; chegaradan chiqqan katak qizil bo'lib turadi, shunda
+   *  422 kelganda menejer qaysi katak aybdorligini o'zi izlamaydi. */
+  range?: { min: number; max: number }
   /** O'lchov varag'idagi maydonlarda ko'rinadigan `<label>` yo'q (jadval
    *  kataklari), shuning uchun nom shu yerdan beriladi. */
   "aria-label"?: string
 }) {
   const [raw, setRaw] = useState<string | null>(null)
+  // Buzilgan chegara — ham qizil ramka, ham ostidagi izoh uchun bitta manba
+  const bad =
+    range && value != null && (value < range.min || value > range.max)
+      ? range
+      : null
   return (
-    <Input
-      inputMode={integer ? "numeric" : "decimal"}
-      aria-label={ariaLabel}
-      // raqamlar bir xil kenglikda va o'ngga tekis — ustunni ko'z bilan qo'shish mumkin
-      className="num text-right"
-      disabled={disabled}
-      value={raw ?? value ?? ""}
-      onChange={(e) => {
-        setRaw(e.target.value)
-        const n = numOrNull(e.target.value)
-        onChange(n != null && integer ? Math.trunc(n) : n)
-      }}
-      onBlur={() => setRaw(null)}
-    />
+    <>
+      <Input
+        inputMode={integer ? "numeric" : "decimal"}
+        aria-label={ariaLabel}
+        aria-invalid={bad ? true : undefined}
+        // raqamlar bir xil kenglikda va o'ngga tekis — ustunni ko'z bilan qo'shish mumkin
+        className="num text-right"
+        disabled={disabled}
+        value={raw ?? value ?? ""}
+        onChange={(e) => {
+          setRaw(e.target.value)
+          const n = numOrNull(e.target.value)
+          onChange(n != null && integer ? Math.trunc(n) : n)
+        }}
+        onBlur={() => setRaw(null)}
+      />
+      {bad && (
+        <span className="mt-0.5 block text-destructive text-xs">
+          {bad.min}–{bad.max} oralig'ida bo'lsin
+        </span>
+      )}
+    </>
   )
 }
 
@@ -124,15 +152,22 @@ export function Num({
   value,
   disabled,
   onChange,
+  range,
 }: {
   label: string
   value: number | null | undefined
   disabled?: boolean
   onChange: (v: number | null) => void
+  range?: { min: number; max: number }
 }) {
   return (
     <Field label={label}>
-      <NumInput value={value} disabled={disabled} onChange={onChange} />
+      <NumInput
+        value={value}
+        disabled={disabled}
+        onChange={onChange}
+        range={range}
+      />
     </Field>
   )
 }

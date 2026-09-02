@@ -11,12 +11,14 @@ from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import delete, func, select, update
 
 from app.api.deps import SessionDep, StaffReadUser, TexnologUser, client_ip
+from app.core.config import upload_root
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.crud import log_action
 from app.models import Part, PartInstance, PartRoute, Post, Product, Scan
 from app.models.enums import PostCode, RouteSource
 from app.schemas.orders import MatrixEdit, MatrixPart, OrderMatrix, RouteCell
-from app.services.giblab.ingest import park_tail, unpark_tail
+from app.services.giblab import ParseError
+from app.services.giblab.ingest import park_tail, purge_replaced_scx, rebuild_order_scx, unpark_tail
 from app.services.giblab.models import DEFAULT_PROCESS_CODE, PROCESS_NAMES, PROCESS_POSTS, TAIL_CODES
 
 from ._common import _ROUTE_START_POSTS, _get_order, _get_visible_order, _require_editable
@@ -94,6 +96,10 @@ async def edit_order_matrix(
     packaging = order.needs_packaging
 
     to_check: dict[int, Part] = {}
+    # Soni o'zgargan bo'lsa nusxa QR'lari qayta nomlanadi — SCX fayl nomi = QR
+    # (docs/11), ya'ni fayllar ham qayta yaratilishi shart, aks holda Nanxing
+    # yorliqdagi QR bo'yicha dasturni topolmaydi.
+    counts_changed = False
     for edit in body.edits:
         part = (
             await db.execute(
@@ -108,6 +114,7 @@ async def edit_order_matrix(
 
         if edit.count is not None and edit.count != part.count:
             await _resize_instances(db, part, edit.count)
+            counts_changed = True
 
         # Nostandart bayrog'i marshrut manbasini almashtiradi. Avtomatik qadamlar
         # o'chirilmaydi — YUMSHOQ o'chiriladi, bayroq qaytarilsa aynan tiklanadi
@@ -212,6 +219,20 @@ async def edit_order_matrix(
     for part in to_check.values():
         await _check_assembly_match(db, part)
 
+    root = upload_root()
+    old_scx: list[str] = []
+    if counts_changed:
+        # `.project` diskda bo'lmasa (eski buyurtma) jim o'tamiz — matritsa tahriri
+        # shu sababdan yiqilmasin; texnolog SCX'ni keyin qo'lda qayta yaratadi.
+        try:
+            rebuilt = await rebuild_order_scx(db, order, root)
+        except ParseError as exc:
+            raise HTTPException(
+                status_code=422, detail=f"Saqlangan .project o'qilmadi, SCX qayta yaratilmadi: {exc}"
+            ) from None
+        if rebuilt is not None:
+            old_scx = rebuilt[1]
+
     log_action(
         db,
         module="orders",
@@ -223,6 +244,7 @@ async def edit_order_matrix(
         ip=client_ip(request),
     )
     await db.commit()
+    await purge_replaced_scx(db, order_id, old_scx, root)
     return await read_order_matrix(db, current_user, order_id)
 
 

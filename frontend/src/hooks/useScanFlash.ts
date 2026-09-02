@@ -21,25 +21,43 @@ export function useScanFlash<T>(
   rowIdPrefix: string,
 ): string | number | null {
   const prevRef = useRef<Map<string | number, number>>(new Map())
-  const [flashId, setFlashId] = useState<string | number | null>(null)
+  // `n` — o'zgarish hisoblagichi: bir qator ketma-ket ikki marta skan qilinsa
+  // (KROMKA'da 2 tomon) id o'zgarmaydi, lekin scroll baribir kerak — aynan
+  // ikkinchi skanda qator «tugagan» bo'lib saralashda pastga tushadi.
+  const [flash, setFlash] = useState<{ id: string | number; n: number } | null>(
+    null,
+  )
+  // Chaqiruvchilar getKey/getCount ni inline lambda bilan beradi: dep massivida
+  // tursa, setFlash keltirgan re-render effektni qayta ishga tushirib scroll
+  // taymerini bekor qilardi — avto-scroll hech qachon ishlamasdi.
+  const fnsRef = useRef({ getKey, getCount })
+  fnsRef.current = { getKey, getCount }
   useEffect(() => {
+    const { getKey: key, getCount: count } = fnsRef.current
     const prev = prevRef.current
     let changed: string | number | null = null
     for (const it of items) {
-      const old = prev.get(getKey(it))
-      if (old !== undefined && getCount(it) !== old) changed = getKey(it)
+      const old = prev.get(key(it))
+      if (old !== undefined && count(it) !== old) changed = key(it)
     }
-    prevRef.current = new Map(items.map((it) => [getKey(it), getCount(it)]))
+    prevRef.current = new Map(items.map((it) => [key(it), count(it)]))
     if (changed !== null) {
-      setFlashId(changed)
-      // Saralash qatorni siljitadi — yangi render joylashgach scroll qilamiz
-      const t = setTimeout(() => {
-        document
-          .getElementById(`${rowIdPrefix}${changed}`)
-          ?.scrollIntoView({ block: "center", behavior: "smooth" })
-      }, 150)
-      return () => clearTimeout(t)
+      const id = changed
+      setFlash((f) => ({ id, n: (f?.n ?? 0) + 1 }))
     }
-  }, [items, getKey, getCount, rowIdPrefix])
-  return flashId
+  }, [items])
+
+  // Scroll alohida effektda: u faqat o'zgarish bo'lganda ishlaydi, ro'yxatning
+  // har refetchida emas. Saralash qatorni siljitadi — yangi render joylashgach
+  // scroll qilamiz.
+  useEffect(() => {
+    if (flash === null) return
+    const t = setTimeout(() => {
+      document
+        .getElementById(`${rowIdPrefix}${flash.id}`)
+        ?.scrollIntoView({ block: "center", behavior: "smooth" })
+    }, 150)
+    return () => clearTimeout(t)
+  }, [flash, rowIdPrefix])
+  return flash?.id ?? null
 }

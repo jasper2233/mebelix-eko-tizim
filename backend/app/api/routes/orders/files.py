@@ -2,7 +2,6 @@
 
 import io
 import zipfile
-from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse
@@ -13,7 +12,7 @@ from app.api.deps import SessionDep, StaffReadUser, TexnologUser, client_ip
 from app.core.config import settings, upload_root
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.crud import log_action
-from app.models import OrderFile, Part, PartInstance, Post, Product
+from app.models import OrderFile, Post
 from app.models.enums import FileKind, OrderStatus, PostCode
 from app.schemas.common import Message
 from app.schemas.terminal import CutmapState
@@ -22,15 +21,15 @@ from app.services.giblab.cutmap import build_cutmap_state
 from app.services.giblab.ingest import (
     drop_stale_files,
     ingest_project,
+    purge_replaced_scx,
+    rebuild_order_scx,
     restore_custom_routes,
     restore_stale_files,
     snapshot_custom_routes,
     wipe_previous_parse,
-    write_and_register_scx,
 )
-from app.services.giblab.scx import plate_thickness_map
 
-from ._common import _get_order, _get_visible_order, _require_editable
+from ._common import _get_order, _get_visible_order, _require_editable, stamp_route_machines
 
 router = APIRouter()
 
@@ -94,6 +93,12 @@ async def upload_order_project(
     try:
         summary = await ingest_project(db, order, project, content, file.filename or "project.project", root)
         restored, lost = await restore_custom_routes(db, order, saved_routes)
+        if order.status == OrderStatus.PRODUCTION:
+            # Qayta yuklash HAMMA marshrut qatorini yangidan yaratadi va ular
+            # `machine_id=None` bo'ladi — ish markazi tanlovi (`machine_assignments`)
+            # joyida tursa ham marshrut o'sha postdagi HAMMA stanokda ko'rinardi.
+            # Muhr faqat "ishlab chiqarishga uzatish"da bosilardi, ya'ni qaytarilmasdi.
+            await stamp_route_machines(db, order)
     except Exception as exc:
         await db.rollback()
         restore_stale_files(stale_files, root)
@@ -156,17 +161,17 @@ async def download_order_scx_zip(db: SessionDep, current_user: StaffReadUser, or
     if not rows:
         raise NotFoundException("SCX fayllar topilmadi.")
     root = upload_root()
+    # DB'da qator bor, lekin diskda fayl yo'q — KAMCHIL arxiv bermaymiz. Prisadkachi
+    # ZIP'ni to'liq deb oladi, detal esa teshilmay qoladi; bittalab yuklashdagi
+    # `download_order_file` ham xuddi shu holatda 404 beradi.
+    missing = [row.filename for row in rows if not (root / row.path).is_file()]
+    if missing:
+        names = ", ".join(missing[:5]) + (f" va yana {len(missing) - 5} ta" if len(missing) > 5 else "")
+        raise NotFoundException(f"SCX fayllar diskda topilmadi: {names}. SCX'ni qayta yarating.")
     buf = io.BytesIO()
-    written = 0
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for row in rows:
-            full_path = root / row.path
-            if full_path.is_file():
-                zf.write(full_path, row.filename)
-                written += 1
-    # DB'da qator bor, lekin diskda fayl yo'q — bo'sh arxiv o'rniga aniq xato.
-    if not written:
-        raise NotFoundException("SCX fayllar diskda topilmadi.")
+            zf.write(root / row.path, row.filename)
     return Response(
         content=buf.getvalue(),
         media_type="application/zip",
@@ -181,89 +186,13 @@ async def regenerate_order_scx(db: SessionDep, current_user: TexnologUser, order
     marshrutlar va skanlarga TEGILMAYDI."""
     order = await _get_order(db, order_id)
     root = upload_root()
-
-    project_row = (
-        await db.execute(
-            select(OrderFile)
-            .where(
-                OrderFile.order_id == order.id,
-                OrderFile.kind == FileKind.PROJECT,
-                OrderFile.is_deleted == False,  # noqa: E712
-            )
-            .order_by(OrderFile.id.desc())
-            .limit(1)
-        )
-    ).scalar_one_or_none()
-    if project_row is None or not (root / project_row.path).is_file():
-        raise NotFoundException(".project fayli diskda topilmadi — qayta yaratib bo'lmaydi.")
-
-    project_path = root / project_row.path
     try:
-        project = await run_in_threadpool(lambda: parse_project(project_path.read_bytes()))
+        rebuilt = await rebuild_order_scx(db, order, root)
     except ParseError as exc:
         raise HTTPException(status_code=422, detail=f"Fayl o'qilmadi: {exc}") from None
-
-    # Mavjud detallar (matritsada soni o'zgargan bo'lishi mumkin — QR'lar bazadan olinadi)
-    parts_by_key: dict[str, Part] = {
-        f"{product_code}_{part.code}": part
-        for part, product_code in (
-            await db.execute(
-                select(Part, Product.code)
-                .join(Product, Product.id == Part.product_id)
-                .where(Part.order_id == order.id, Part.is_deleted == False)  # noqa: E712
-            )
-        ).all()
-    }
-    qr_by_part: dict[int, list[str]] = {}
-    for inst in (
-        (
-            await db.execute(
-                select(PartInstance)
-                .where(PartInstance.order_id == order.id, PartInstance.is_deleted == False)  # noqa: E712
-                .order_by(PartInstance.part_id, PartInstance.instance_no)
-            )
-        )
-        .scalars()
-        .all()
-    ):
-        qr_by_part.setdefault(inst.part_id, []).append(inst.qr_text)
-
-    now = datetime.now(UTC)
-    old_files = (
-        (
-            await db.execute(
-                select(OrderFile).where(
-                    OrderFile.order_id == order.id,
-                    OrderFile.kind == FileKind.SCX,
-                    OrderFile.is_deleted == False,  # noqa: E712
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-    # Yo'llar HOZIR yig'iladi, o'chirish esa commit'dan keyin: generatsiya yiqilsa DB
-    # rollback qatorlarni tiriltiradi, fayl esa diskda qolishi shart.
-    old_paths = [f.path for f in old_files]
-    for f in old_files:
-        f.is_deleted = True
-        f.deleted_at = now
-
-    plate_by_name = plate_thickness_map(project)
-    created = 0
-    for pp in project.all_parts:
-        part = parts_by_key.get(pp.key)
-        if part is None or not pp.xnc_ops:
-            continue
-        created += await write_and_register_scx(
-            db,
-            order.id,
-            part.id,
-            pp,
-            qr_by_part.get(part.id, []),
-            root,
-            plate_thickness=plate_by_name.get(pp.material_name or ""),
-        )
+    if rebuilt is None:
+        raise NotFoundException(".project fayli diskda topilmadi — qayta yaratib bo'lmaydi.")
+    created, old_paths = rebuilt
 
     log_action(
         db,
@@ -276,22 +205,7 @@ async def regenerate_order_scx(db: SessionDep, current_user: TexnologUser, order
         ip=client_ip(request),
     )
     await db.commit()
-    # Nom = nusxa QR'i, ya'ni yangi fayl eskisi bilan ustma-ust tushishi mumkin —
-    # hali ham tirik qator ishora qilayotgan yo'lga tegilmaydi.
-    live_paths = set(
-        (
-            await db.execute(
-                select(OrderFile.path).where(
-                    OrderFile.order_id == order.id,
-                    OrderFile.kind == FileKind.SCX,
-                    OrderFile.is_deleted == False,  # noqa: E712
-                )
-            )
-        ).scalars()
-    )
-    for path in old_paths:
-        if path not in live_paths:
-            (root / path).unlink(missing_ok=True)
+    await purge_replaced_scx(db, order.id, old_paths, root)
     return Message(message=f"{created} ta SCX fayl qayta yaratildi — endi nomlar nusxa QR'i bilan.")
 
 

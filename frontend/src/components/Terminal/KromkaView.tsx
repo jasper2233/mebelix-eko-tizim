@@ -64,16 +64,22 @@ export function KromkaView({
     // Eski yorliqlar: migratsiyadan oldin yagona nusxa ham `_1` bilan chop etilgan
     const candidates = raw.endsWith("_1") ? [raw, raw.slice(0, -2)] : [raw]
     for (const qr of candidates) {
-      for (const p of parts) {
+      // Detal marshrutda KROMKA'dan IKKI marta o'tishi mumkin ([3,6,3]) —
+      // backend har qadamga alohida qator qaytaradi. Shuning uchun birinchi
+      // topilgan qatorga qarab hukm chiqarib bo'lmaydi: qadamlardan bittasi
+      // ochiq bo'lsa skan haqli, aks holda birinchi o'tish tugagach ikkinchisi
+      // lokal bloklanardi.
+      const rows = parts.flatMap((p) => {
         const inst = p.instances.find((i) => i.qr_text === qr)
-        if (!inst) continue
-        if (!inst.arra_passed) return "Bu detal hali arradan chiqmagan."
-        if (inst.done >= p.sides)
-          return oval
-            ? "Bu detalning oval kromkasi allaqachon tugagan."
-            : "Bu detalning kromkasi allaqachon tugagan."
-        return null
-      }
+        return inst ? [{ p, inst }] : []
+      })
+      if (!rows.length) continue
+      if (!rows.some(({ inst }) => inst.arra_passed))
+        return "Bu detal hali arradan chiqmagan."
+      if (rows.some(({ p, inst }) => inst.done < p.sides)) return null
+      return oval
+        ? "Bu detalning oval kromkasi allaqachon tugagan."
+        : "Bu detalning kromkasi allaqachon tugagan."
     }
     return "NOTFOUND"
   }

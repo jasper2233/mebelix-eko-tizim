@@ -300,12 +300,30 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
 
     # ARRA'da "bajarildi" = chek chiqarilgan YOKI skan qilingan nusxa (kartadagi
     # foiz xarita bilan bir xil o'lchov bo'lsin). Boshqa postlarda faqat skan.
-    printed_by_order: dict[int, int] = {}
+    # Jami ham AYNAN shu o'lchovda — ARRA marshruti bor nusxalar soni. Ilgari jami
+    # `sum(total_required)` edi, ya'ni QADAM bo'yicha: detalda ikkita ARRA qadami
+    # bo'lsa (raspil + 45° kesish) done jami'ga hech qachon yetmasdi va proyekt
+    # arrachi ro'yxatidan tushmasdi.
+    arra_counts: dict[int, tuple[int, int]] = {}
     if post.code == PostCode.ARRA and order_ids:
-        printed_by_order = dict(
-            (
+        arra_counts = {
+            oid: (int(d or 0), int(t or 0))
+            for oid, d, t in (
                 await db.execute(
-                    select(PartInstance.order_id, func.count(func.distinct(PartInstance.id)))
+                    select(
+                        PartInstance.order_id,
+                        func.count(
+                            func.distinct(
+                                case(
+                                    (
+                                        (PartInstance.label_printed_at.isnot(None)) | (Scan.id.isnot(None)),
+                                        PartInstance.id,
+                                    )
+                                )
+                            )
+                        ),
+                        func.count(func.distinct(PartInstance.id)),
+                    )
                     # Faqat ARRA marshruti BOR detallar: aks holda arradan o'tmaydigan
                     # detalning cheki (masalan roverchi o'zi chiqargani) arra hisobini
                     # shishirib, jami'dan oshib ketardi va proyekt arrachi ro'yxatidan
@@ -327,14 +345,11 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
                     .where(
                         PartInstance.order_id.in_(order_ids),
                         PartInstance.is_deleted == False,  # noqa: E712
-                        (PartInstance.label_printed_at.isnot(None)) | (Scan.id.isnot(None)),
                     )
                     .group_by(PartInstance.order_id)
                 )
-            )
-            .tuples()
-            .all()
-        )
+            ).all()
+        }
     # Kartadagi "N list" faqat SHU postnikini sanashi kerak. Giyotina kesimi listni
     # chetdan chetgacha kesadi, ya'ni listning egasi bitta: yo arra (detallar
     # marshrutida ARRA qadami bor), yo rover (butun listni frezer kesadi).
@@ -413,9 +428,11 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
         }
     result: list[TerminalOrderCard] = []
     for o, done, total in rows:
-        done_val = printed_by_order.get(o.id, 0) if post.code == PostCode.ARRA else int(done or 0)
+        done_val = int(done or 0)
         total_val = int(total or 0)
-        if post.code == PostCode.KROMKA:
+        if post.code == PostCode.ARRA:
+            done_val, total_val = arra_counts.get(o.id, (0, 0))
+        elif post.code == PostCode.KROMKA:
             done_val, total_val = kromka_counts.get(o.id, (0, 0))
         # Ishi TUGAGAN proyekt ro'yxatni band qilmasin — qolgani keyingi
         # postlarning ishi. `done/total` shu POST bo'yicha hisoblanadi

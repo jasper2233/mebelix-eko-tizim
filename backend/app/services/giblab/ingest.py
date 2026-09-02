@@ -16,6 +16,7 @@ from app.models.enums import FileKind, PostCode, RouteSource
 
 from .cutmap import build_cutmap
 from .models import PROCESS_POSTS, TAIL_CODES, ParsedPart, ParsedProject, ParseError
+from .parser import parse_project
 from .scx import build_scx_files, plate_thickness_map
 
 logger = logging.getLogger(__name__)
@@ -349,6 +350,119 @@ async def write_and_register_scx(
             )
         )
     return len(written)
+
+
+async def rebuild_order_scx(db: AsyncSession, order: Order, upload_root: Path) -> tuple[int, list[str]] | None:
+    """SCX fayllarni saqlangan `.project` dan qayta yaratadi. Caller commits.
+
+    Qaytadi: `(yaratilgan fayl soni, almashtirilgan eski yo'llar)`, yoki `.project`
+    diskda bo'lmasa `None`. QR'lar BAZADAN olinadi — matritsada soni o'zgargan
+    detalning yangi nusxasi ham fayl oladi (fayl nomi = nusxa QR'i, TZ 5.8).
+    Eski yo'llarni commit'dan KEYIN `purge_replaced_scx` o'chiradi.
+    """
+    project_row = (
+        await db.execute(
+            select(OrderFile)
+            .where(
+                OrderFile.order_id == order.id,
+                OrderFile.kind == FileKind.PROJECT,
+                OrderFile.is_deleted == False,  # noqa: E712
+            )
+            .order_by(OrderFile.id.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if project_row is None or not (upload_root / project_row.path).is_file():
+        return None
+
+    project_path = upload_root / project_row.path
+    project = await run_in_threadpool(lambda: parse_project(project_path.read_bytes()))
+
+    parts_by_key: dict[str, Part] = {
+        f"{product_code}_{part.code}": part
+        for part, product_code in (
+            await db.execute(
+                select(Part, Product.code)
+                .join(Product, Product.id == Part.product_id)
+                .where(Part.order_id == order.id, Part.is_deleted == False)  # noqa: E712
+            )
+        ).all()
+    }
+    qr_by_part: dict[int, list[str]] = {}
+    for inst in (
+        (
+            await db.execute(
+                select(PartInstance)
+                .where(PartInstance.order_id == order.id, PartInstance.is_deleted == False)  # noqa: E712
+                .order_by(PartInstance.part_id, PartInstance.instance_no)
+            )
+        )
+        .scalars()
+        .all()
+    ):
+        qr_by_part.setdefault(inst.part_id, []).append(inst.qr_text)
+
+    now = datetime.now(UTC)
+    old_files = (
+        (
+            await db.execute(
+                select(OrderFile).where(
+                    OrderFile.order_id == order.id,
+                    OrderFile.kind == FileKind.SCX,
+                    OrderFile.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    # Yo'llar HOZIR yig'iladi, o'chirish esa commit'dan keyin: generatsiya yiqilsa DB
+    # rollback qatorlarni tiriltiradi, fayl esa diskda qolishi shart.
+    old_paths = [f.path for f in old_files]
+    for f in old_files:
+        f.is_deleted = True
+        f.deleted_at = now
+
+    plate_by_name = plate_thickness_map(project)
+    created = 0
+    for pp in project.all_parts:
+        part = parts_by_key.get(pp.key)
+        if part is None or not pp.xnc_ops:
+            continue
+        created += await write_and_register_scx(
+            db,
+            order.id,
+            part.id,
+            pp,
+            qr_by_part.get(part.id, []),
+            upload_root,
+            plate_thickness=plate_by_name.get(pp.material_name or ""),
+        )
+    return created, old_paths
+
+
+async def purge_replaced_scx(db: AsyncSession, order_id: int, old_paths: list[str], upload_root: Path) -> None:
+    """`rebuild_order_scx` almashtirgan eski fayllarni diskdan olib tashlaydi (commit'dan KEYIN).
+
+    Nom = nusxa QR'i, ya'ni yangi fayl eskisi bilan ustma-ust tushishi mumkin —
+    hali ham tirik qator ishora qilayotgan yo'lga tegilmaydi.
+    """
+    if not old_paths:
+        return
+    live_paths = set(
+        (
+            await db.execute(
+                select(OrderFile.path).where(
+                    OrderFile.order_id == order_id,
+                    OrderFile.kind == FileKind.SCX,
+                    OrderFile.is_deleted == False,  # noqa: E712
+                )
+            )
+        ).scalars()
+    )
+    for path in old_paths:
+        if path not in live_paths:
+            (upload_root / path).unlink(missing_ok=True)
 
 
 async def ingest_project(

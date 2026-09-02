@@ -13,9 +13,12 @@ import {
   CheckCard,
   CheckGrid,
   Choice,
+  COUNT_RANGE,
   Field,
+  MM_RANGE,
   Num,
   NumInput,
+  PM_RANGE,
   Section,
   ShapeChoice,
 } from "@/components/Anketa/fields"
@@ -410,21 +413,25 @@ function AnketaPage() {
                 label="Xona uzunligi (mm)"
                 value={room.room_length}
                 onChange={(v) => patch({ room_length: v })}
+                range={MM_RANGE}
               />
               <Num
                 label="Xona kengligi (mm)"
                 value={room.room_width}
                 onChange={(v) => patch({ room_width: v })}
+                range={MM_RANGE}
               />
               <Num
                 label="Xona balandligi (mm)"
                 value={room.room_height}
                 onChange={(v) => patch({ room_height: v })}
+                range={MM_RANGE}
               />
               <Num
                 label="Mebel devori uzunligi (mm)"
                 value={room.furniture_wall_length}
                 onChange={(v) => patch({ furniture_wall_length: v })}
+                range={MM_RANGE}
               />
             </div>
           </Section>
@@ -564,6 +571,7 @@ function AnketaPage() {
                         <NumInput
                           value={w.length}
                           onChange={(v) => setWall("length", v)}
+                          range={MM_RANGE}
                           aria-label={`${letter} devor — uzunligi (mm)`}
                         />
                         <span className="shrink-0 text-muted-foreground text-xs">
@@ -572,6 +580,7 @@ function AnketaPage() {
                         <NumInput
                           value={w.height}
                           onChange={(v) => setWall("height", v)}
+                          range={MM_RANGE}
                           aria-label={`${letter} devor — balandligi (mm)`}
                         />
                       </div>
@@ -636,6 +645,7 @@ function AnketaPage() {
                                 value={m.width}
                                 integer={true}
                                 onChange={(v) => setMod({ width: v })}
+                                range={MM_RANGE}
                                 aria-label={`${mi + 1}-modul — eni (mm)`}
                               />
                             </td>
@@ -644,6 +654,7 @@ function AnketaPage() {
                                 value={m.depth}
                                 integer={true}
                                 onChange={(v) => setMod({ depth: v })}
+                                range={MM_RANGE}
                                 aria-label={`${mi + 1}-modul — chuqurligi (mm)`}
                               />
                             </td>
@@ -652,6 +663,7 @@ function AnketaPage() {
                                 value={m.height}
                                 integer={true}
                                 onChange={(v) => setMod({ height: v })}
+                                range={MM_RANGE}
                                 aria-label={`${mi + 1}-modul — balandligi (mm)`}
                               />
                             </td>
@@ -660,6 +672,7 @@ function AnketaPage() {
                                 value={m.count}
                                 integer={true}
                                 onChange={(v) => setMod({ count: v })}
+                                range={COUNT_RANGE}
                                 aria-label={`${mi + 1}-modul — soni`}
                               />
                             </td>
@@ -718,11 +731,13 @@ function AnketaPage() {
                     label="Umumiy uzunlik (pm)"
                     value={room.total_running_meters}
                     onChange={(v) => patch({ total_running_meters: v })}
+                    range={PM_RANGE}
                   />
                   <Num
                     label="Umumiy balandlik (mm)"
                     value={room.total_height}
                     onChange={(v) => patch({ total_height: v })}
+                    range={MM_RANGE}
                   />
                 </div>
               </div>

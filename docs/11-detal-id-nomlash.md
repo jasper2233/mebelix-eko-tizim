@@ -113,7 +113,7 @@ sababli bitta chek ID si va bitta bekor qilish tugmasini ko'rsatadi
 
 | Joy | Manba kod |
 | --- | --- |
-| Bazadagi `part_instance.qr_text` | `ingest.py` (`ParsedPart.qr_texts` — property `giblab/models.py` da), matritsada son o'zgarsa `orders/matrix.py _resize_instances` |
+| Bazadagi `part_instance.qr_text` | `ingest.py` (`ParsedPart.qr_texts` — property `giblab/models.py` da), matritsada son o'zgarsa `orders/matrix.py _resize_instances` (o'sha PATCH ichida SCX fayllari ham `ingest.rebuild_order_scx` bilan qayta yaratiladi — nom QR bilan mos qolsin) |
 | Chekdagi matn qatori va QR | `services/labels.py` (`qr_text`; `qr_part_code` — `scanning.py` dan import) |
 | SCX fayl nomi va ichidagi Panel ID | `services/giblab/scx.py` (`build_scx_files`; nomlar ingestda parser bergan `qr_texts`dan, qayta yaratishda bazadagi QR'lardan) |
 | Skan tekshiruvi | `services/scanning.py` (aynan moslik + eski `_1` yorliqlar uchun fallback); `api/routes/terminal.py` (`resolve_terminal_qr` — o'sha fallbackning ikkinchi nusxasi); `api/routes/pachka.py` (qadoqqa skan — FAQAT aynan moslik, fallback yo'q) |
@@ -131,8 +131,11 @@ postlarda skan bo'lsa ham upakovkada o'tmaydi — chekni qayta chop etish kerak.
 
 Eski buyurtmalarning SCX fayllarini yangi nomlarga o'tkazish uchun
 `POST /orders/{order_id}/scx/regenerate` (texnolog huquqi) bor — fayllarni
-bazadagi QR'lardan qayta quradi (`orders/files.py regenerate_order_scx`, ingest
-bilan umumiy `write_and_register_scx` helperi orqali).
+bazadagi QR'lardan qayta quradi (`orders/files.py regenerate_order_scx` yupqa
+qobiq, ish `giblab/ingest.py rebuild_order_scx` da). Matritsada detal soni
+o'zgarganda `PATCH /orders/{id}/matrix` o'sha helperni O'ZI chaqiradi, ya'ni
+yangi nusxa fayli darhol paydo bo'ladi va texnolog qo'lda qayta yaratishi shart
+emas; `.project` diskda bo'lmasa qayta yaratish jim o'tkazib yuboriladi.
 
 ## Merge qilinmasligi haqida
 
