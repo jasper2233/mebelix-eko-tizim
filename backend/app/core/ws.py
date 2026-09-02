@@ -78,19 +78,16 @@ class WsManager:
         await self._dispatch(event)
 
     async def _dispatch(self, event: dict[str, Any]) -> None:
-        dead: list[WsClient] = []
         # Snapshot SHART: `send_json` await'i paytida uzilgan mijoz
         # `disconnect()` bilan ro'yxatni siljitadi va jonli ro'yxat ustidagi
         # sikl keyingi ULANGAN mijozni jimgina o'tkazib yuboradi.
-        for client in list(self.clients):
-            if not client.wants(event):
-                continue
-            try:
-                await client.socket.send_json(event)
-            except Exception:
-                dead.append(client)
-        for client in dead:
-            self.disconnect(client)
+        targets = [c for c in list(self.clients) if c.wants(event)]
+        # Fan-out PARALLEL: ketma-ket await'da bitta qotib qolgan mijoz
+        # qolganlarni ham, Redis tinglovchi siklini ham to'sib qo'yardi.
+        results = await asyncio.gather(*(client.socket.send_json(event) for client in targets), return_exceptions=True)
+        for client, result in zip(targets, results, strict=True):
+            if isinstance(result, Exception):
+                self.disconnect(client)
 
     async def start_listener(self, redis: Redis) -> None:
         self.redis = redis

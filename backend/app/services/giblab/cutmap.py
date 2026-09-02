@@ -13,6 +13,13 @@ Validated rules from the working prototype (GibCut Viewer):
 from dataclasses import dataclass, field
 from typing import Any
 
+from sqlalchemy import ColumnElement, Select, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import Order, Part, PartInstance, PartRoute, Post, Scan, WasteItem
+from app.models.enums import PostCode
+from app.schemas.terminal import CutmapInstanceState, CutmapModel, CutmapState, CutmapWasteItem
+
 from .csblob import BlobPattern, BlobRecord, decode_cs_blob, self_check
 from .models import ParsedPart, ParsedProject, ParseError
 
@@ -249,3 +256,112 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
     if problems:
         raise ParseError("Kesish xaritasi mos kelmadi: " + " · ".join(problems[:5]))
     return result
+
+
+def arra_parts_query(*where: ColumnElement[bool]) -> Select[tuple[int]]:
+    """Marshrutida yoqilgan ARRA qadami bor detallar (`part_id`) — listning egasi shundan aniqlanadi."""
+    return (
+        select(PartRoute.part_id)
+        .join(Post, Post.id == PartRoute.post_id)
+        .where(
+            Post.code == PostCode.ARRA,
+            PartRoute.is_enabled == True,  # noqa: E712
+            PartRoute.is_deleted == False,  # noqa: E712
+            *where,
+        )
+    )
+
+
+async def build_cutmap_state(db: AsyncSession, order: Order, post_id: int) -> CutmapState:
+    """ARRA terminali (7.1.7), ROVER terminali va admin paneldagi ko'rinish (10.3) uchun umumiy.
+
+    `done` — SHU postdagi skanlar bo'yicha: roverchi o'z listida o'zi kesganini ko'radi.
+    """
+    # Nostandart detallar — marshrutini texnolog qo'lda chizgan. Ular xaritada
+    # boshqa rang bilan turadi: arrachi ularni odatdagi detal deb o'ylab qo'ymasin
+    # (marshruti arradan boshlanmasligi ham mumkin, o'shanda skan qabul qilinmaydi).
+    custom_parts = set(
+        (
+            await db.execute(
+                select(Part.id).where(
+                    Part.order_id == order.id,
+                    Part.is_custom == True,  # noqa: E712
+                    Part.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    instances = (
+        (
+            await db.execute(
+                select(PartInstance).where(
+                    PartInstance.order_id == order.id,
+                    PartInstance.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    done_ids = set(
+        (
+            await db.execute(
+                select(Scan.instance_id).where(
+                    Scan.order_id == order.id,
+                    Scan.post_id == post_id,
+                    Scan.is_cancelled == False,  # noqa: E712
+                    Scan.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    arra_parts = set((await db.execute(arra_parts_query(PartRoute.order_id == order.id))).scalars().all())
+    waste_rows = (
+        (
+            await db.execute(
+                select(WasteItem).where(
+                    WasteItem.order_id == order.id,
+                    WasteItem.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return CutmapState(
+        order_id=order.id,
+        order_number=order.number,
+        waste_items=[
+            CutmapWasteItem(
+                id=w.id,
+                qr_text=w.qr_text,
+                sheet_no=w.sheet_no,
+                length=w.length,
+                width=w.width,
+                label_printed_at=w.label_printed_at,
+            )
+            for w in waste_rows
+        ],
+        # `Order.cutmap` — xom JSON ustuni (`dict[str, Any]`). Tekshiruvni
+        # Pydantic dict berilganda ham bajaradi; bu chaqiruv faqat mypy uchun,
+        # xatti-harakat o'zgarmaydi.
+        model=CutmapModel.model_validate(order.cutmap) if order.cutmap else None,
+        instances=[
+            CutmapInstanceState(
+                instance_id=i.id,
+                instance_no=i.instance_no,
+                qr_text=i.qr_text,
+                pattern_no=i.pattern_no,
+                cell_index=i.cell_index,
+                done=i.id in done_ids,
+                label_printed_at=i.label_printed_at,
+                custom=i.part_id in custom_parts,
+                arra_route=i.part_id in arra_parts,
+            )
+            for i in instances
+        ],
+    )

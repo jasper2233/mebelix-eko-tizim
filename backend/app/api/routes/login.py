@@ -68,10 +68,16 @@ def _issue_token_pair(response: Response, user: User) -> str:
     return access_token
 
 
-async def _is_refresh_token_used(jti: str) -> bool:
+async def _claim_refresh_jti(jti: str, max_age: int) -> bool:
+    """Tokenni ATOMIK «ishlatildi» deb belgilaydi. False = jti allaqachon ishlatilgan.
+
+    Bitta `SET NX`: ilgari EXISTS bilan tekshirib, keyin alohida SET qilinardi —
+    ikki parallel replay orasidagi oynada IKKALASI ham o'tib ketardi va bir martalik
+    kafolat ishlamasdi.
+    """
     if rate_limiter.client is None:  # No lifespan (tests/scripts) — Redis is always on in the app.
-        return False
-    return bool(await rate_limiter.client.exists(_USED_JTI_PREFIX + jti))
+        return True
+    return bool(await rate_limiter.client.set(_USED_JTI_PREFIX + jti, 1, ex=max_age, nx=True))
 
 
 async def mark_refresh_token_used(jti: str, max_age: int) -> None:
@@ -345,20 +351,17 @@ async def refresh_access_token(
     if not token_data:
         raise UnauthorizedException("Yaroqsiz yangilash tokeni.")
 
-    # One-time use: a replayed refresh token means the cookie was stolen or the client is broken —
-    # either way the whole session is revoked by bumping token_version.
-    if token_data.jti and await _is_refresh_token_used(token_data.jti):
-        user = await crud_users.get(db=db, id=token_data.user_id)
-        if user is not None:
-            await crud_users.increment_token_version(db=db, user=user)
-            await db.commit()  # revoke pastdagi raise'dan oldin saqlansin — aks holda rollback bo'lardi
-        raise UnauthorizedException("Token bekor qilingan.")
-
     user = await crud_users.get(db=db, id=token_data.user_id)
     if not user or not user.is_active or user.token_version != token_data.token_version:
         raise UnauthorizedException("Token bekor qilingan.")
 
-    if token_data.jti:
-        await mark_refresh_token_used(token_data.jti, refresh_days(user) * 24 * 60 * 60)
+    # One-time use: a replayed refresh token means the cookie was stolen or the client is broken —
+    # either way the whole session is revoked by bumping token_version. Tombstone AVVAL qo'yiladi
+    # (atomik claim), shuning uchun parallel ikki replaydan faqat bittasi o'tadi.
+    if token_data.jti and not await _claim_refresh_jti(token_data.jti, refresh_days(user) * 24 * 60 * 60):
+        await crud_users.increment_token_version(db=db, user=user)
+        await db.commit()  # revoke pastdagi raise'dan oldin saqlansin — aks holda rollback bo'lardi
+        raise UnauthorizedException("Token bekor qilingan.")
+
     access_token = _issue_token_pair(response, user)
     return {"access_token": access_token, "token_type": "bearer"}

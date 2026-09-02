@@ -48,6 +48,7 @@ from app.services.scanning import (
     finalize_scan,
     log_rejected_scan,
     record_scan_at,
+    scan_error,
 )
 from app.tasks import agent_revoked_key, print_queue_key
 
@@ -422,15 +423,9 @@ async def bridge_scan(
     # butun. Jimgina chetlab o'tamiz.
     _qr = body.qr_text.strip().upper()
     if _qr.startswith(("ATX-", "PK-")):
-        raise HTTPException(
-            status_code=422,
-            detail={"code": "SKIP", "message": "Bu QR detal skani emas — terminalda skanerlang."},
-        )
+        raise scan_error("SKIP", "Bu QR detal skani emas — terminalda skanerlang.")
     if _BADGE_RE.match(body.qr_text.strip()):
-        raise HTTPException(
-            status_code=422,
-            detail={"code": "BADGE", "message": "Beyjik skani — detal skani emas, o'tkazib yuborildi."},
-        )
+        raise scan_error("BADGE", "Beyjik skani — detal skani emas, o'tkazib yuborildi.")
     if agent.machine_id is None:
         raise HTTPException(
             status_code=409,
@@ -489,7 +484,7 @@ async def bridge_scan(
             post_id=post_id,
             machine_id=machine_id,
         )
-        raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
+        raise scan_error(exc.code, exc.message) from None
 
     return await finalize_scan(db, outcome, source=f" (stanok, {agent.name})", agent_id=agent.id)
 

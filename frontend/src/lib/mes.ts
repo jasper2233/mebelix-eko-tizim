@@ -1,6 +1,6 @@
 // MES domain constants: Uzbek labels + stage colors (TZ 3, 4.4, 6.1)
 
-import type { UserRole } from "@/client"
+import type { OrderStatus, UserRole } from "@/client"
 
 /** Beyjik QR'i = xodim UUID'i. Backend bilan umumiy shartnoma — bitta nusxa:
  *  uni ikkala skan tinglagichi (`useBadgeScan`, `useTerminalScan`) shu yerdan oladi. */
@@ -26,7 +26,10 @@ export const ORDER_STATUS_COLORS: Record<string, string> = {
 }
 
 // Terminal (yakuniy) holatlar: yakunlangan ish sanoqqa kirmaydi
-export const TERMINAL_STATUSES = ["delivered", "cancelled"] as const
+export const TERMINAL_STATUSES: readonly OrderStatus[] = [
+  "delivered",
+  "cancelled",
+]
 
 export const PRIORITY_LABELS: Record<string, string> = {
   low: "Past",
@@ -186,7 +189,7 @@ export const isProductionStaff = (u?: RoleUser | null) =>
 
 // Ish markazi bog'lami MAJBURIY rollar — qurilma akkauntlari (Admin dialoglarida
 // rol tanlovi, machine_id validatsiyasi va bog'lamni uzish shu ro'yxatdan)
-export const MACHINE_BOUND_ROLES = ["terminal", "tablo"] as const
+export const MACHINE_BOUND_ROLES: readonly UserRole[] = ["terminal", "tablo"]
 
 /** Lavozimlar — tizim biladigan ro'yxat. Lavozim odamning butun sozlamasini
  * hal qiladi, shuning uchun u dialogdagi YAGONA tanlov:
@@ -234,7 +237,7 @@ export const POSITIONS: {
 export const OTHER_POSITION = "Boshqa"
 
 // Operator rollar — o'z posti terminalini ko'radi (ish markazi/beyjik shart emas)
-export const OPERATOR_ROLES = [
+export const OPERATOR_ROLES: readonly UserRole[] = [
   "arrachi",
   "kromkachi",
   "ovalchi",
@@ -244,7 +247,7 @@ export const OPERATOR_ROLES = [
   "boyoqchi",
   "upakovkachi",
   "omborchi",
-] as const
+]
 
 export const EMPLOYEE_STATUS_LABELS: Record<string, string> = {
   active: "AKTIV",

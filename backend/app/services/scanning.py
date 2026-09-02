@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from fastapi import HTTPException
 from sqlalchemy import case, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -67,6 +68,15 @@ class ScanRejected(Exception):
         self.code = code
         self.message = message
         super().__init__(f"{code}: {message}")
+
+
+def scan_error(code: str, message: str) -> HTTPException:
+    """TZ 8.5 xato dialogi shakli: {code, message} — ScanRejected bilan bir xil JSON payload.
+
+    Skan xatosini HTTP ga o'girishning YAGONA joyi: route'lar `raise
+    scan_error(exc.code, exc.message) from None` deb yozadi.
+    """
+    return HTTPException(status_code=422, detail={"code": code, "message": message})
 
 
 @dataclass
@@ -303,6 +313,75 @@ async def active_session(db: AsyncSession, machine: Machine) -> WorkSession:
     if employee is None or employee.status != EmployeeStatus.ACTIVE:
         raise ScanRejected("E006", "Hodim nofaol. Adminga murojaat qiling.")
     return session
+
+
+async def instance_stages(
+    db: AsyncSession, order: Order, post: Post, by_part: dict[int, list[PartRoute]] | None = None
+) -> dict[int, tuple[bool, str]]:
+    """Har NUSXA uchun: `(shu postga tayyormi, OXIRGI bajarilgan bosqich nomi)`.
+
+    Bosqich nomi — ishi TUGAGAN post, kutilayotgani emas: detal jismonan o'sha
+    postdan keyin turadi, omborchi uni aynan o'sha yerdan topib oladi. Hali
+    hech qanday qadami bajarilmagan nusxada bo'sh satr qaytadi.
+
+    Hisob NUSXA bo'yicha, detal bo'yicha emas: 4 nusxali detalning bittasi
+    qadoqlansa, detal jami hali tugamagan bo'ladi — lekin o'sha bitta nusxa
+    TMO ga tayyor. Detal darajasida sanaganda u tsexda qolib ketardi va
+    omborchi qadoqlangan buyumni ro'yxatdan topa olmasdi.
+
+    `by_part` — chaqiruvchi marshrutni ALLAQACHON o'qigan bo'lsa (TMO sahifasi
+    uni `packaging` va TMO qadami uchun o'qiydi) o'sha lug'at uzatiladi, aks
+    holda aynan o'sha so'rov har sahifa so'rovida ikki marta ketardi.
+    """
+    if by_part is None:
+        by_part = {}
+        for r in (
+            await db.execute(
+                select(PartRoute).where(
+                    PartRoute.order_id == order.id,
+                    PartRoute.is_enabled == True,  # noqa: E712
+                    PartRoute.is_deleted == False,  # noqa: E712
+                )
+            )
+        ).scalars():
+            by_part.setdefault(r.part_id, []).append(r)
+
+    # Bitta agregat so'rov: (nusxa, qadam) -> nechta skan
+    counts = {
+        (instance_id, route_id): n
+        for instance_id, route_id, n in (
+            await db.execute(
+                select(Scan.instance_id, Scan.route_id, func.count())
+                .where(
+                    Scan.order_id == order.id,
+                    Scan.is_cancelled == False,  # noqa: E712
+                    Scan.is_deleted == False,  # noqa: E712
+                )
+                .group_by(Scan.instance_id, Scan.route_id)
+            )
+        ).all()
+    }
+    post_names = {p.id: p.name for p in (await db.execute(select(Post))).scalars()}
+
+    stages: dict[int, tuple[bool, str]] = {}
+    for instance_id, part_id in (
+        await db.execute(
+            select(PartInstance.id, PartInstance.part_id).where(
+                PartInstance.order_id == order.id,
+                PartInstance.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).all():
+        steps = sorted(by_part.get(part_id, []), key=lambda s: s.seq)
+        target = next((s for s in steps if s.post_id == post.id), None)
+        if target is None:
+            continue
+        before = [s for s in steps if s.seq < target.seq]
+        done = [s for s in before if counts.get((instance_id, s.id), 0) >= s.per_instance]
+        ready = len(done) == len(before)
+        last = post_names.get(done[-1].post_id, "") if done else ""
+        stages[instance_id] = (ready, last)
+    return stages
 
 
 async def _scans_done_map(db: AsyncSession, instance_id: int) -> dict[int, int]:

@@ -11,7 +11,7 @@ import {
   Tv,
   UserRound,
 } from "lucide-react"
-import type { UserRead } from "@/client"
+import type { OrderStatus, UserRead } from "@/client"
 import {
   Sidebar,
   SidebarContent,
@@ -83,9 +83,7 @@ export function AppSidebar() {
     enabled: canSeeOrders,
   })
   const activeOrders = Object.entries(counts ?? {})
-    .filter(
-      ([status]) => !(TERMINAL_STATUSES as readonly string[]).includes(status),
-    )
+    .filter(([status]) => !TERMINAL_STATUSES.includes(status as OrderStatus))
     .reduce((sum, [, n]) => sum + n, 0)
 
   const withBadges = items.map((i) =>

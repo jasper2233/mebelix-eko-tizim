@@ -115,7 +115,7 @@ to'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §2.3. Qoidalar:
 - **Marshrut faqat ARRA yoki ROVER'dan boshlanadi** (`_ROUTE_START_POSTS`, frontendda
   `ROUTE_START_POSTS`) — QR cheki aynan shu ikki postda chiqadi, boshqasidan boshlansa detal
   yorliqsiz qolardi.
-- `per_instance`: KROMKA marshrutda **BIRINCHI** kelganda qirralar soni marta skanlanadi (har qirra alohida yopishtiriladi), takror kelganda 1. OVAL esa HAR DOIM 1 — oval kromkada detal bitta o'tishda ishlanadi (`c3d97a1e5b02`). Qolgan postlarda bitta o'tish = bitta skan.
+- `per_instance`: KROMKA marshrutda **BIRINCHI** kelganda qirralar soni marta skanlanadi (har qirra alohida yopishtiriladi), takror kelganda 1. OVAL esa HAR DOIM 1 — oval kromkada detal bitta o'tishda ishlanadi (`c3d97a1e5b02`). Qolgan postlarda bitta o'tish = bitta skan. Qoida UCHALA yo'lda bir xil hisoblanadi: fayldan ingest (`ingest.py`), qo'lda marshrut (`_set_custom_route` — `first_edge_pass`) va matritsadagi bosqich katakchasi (`edit_order_matrix` — katakcha yoqilganda qadam hali yo'q, ya'ni bu birinchi o'tish). `total_required = part.count * per_instance`.
 - Qaysi amal ekanini endi nom emas, qadamning **`process_code`** i saqlaydi (kodlar postga
   ko'p-birga tushadi: 1 va 2 → ARRA, 3 va 4 → KROMKA, 9..14 → STOLYARKA). Terminal amal NOMINI
   chip bilan ko'rsatadi (`Common/OperationChips.tsx` — `processCode` + `postCode` qabul qiladi,
@@ -157,7 +157,10 @@ tugamaguncha keyingisi rad etiladi, xabar navbatdagi post nomini aytadi.
 
 **MANBALAR-ARO DEDUP:** bitta fizik skan IKKI yo'ldan kelishi mumkin (brauzer terminali va stanok agentining klaviatura kuzatuvchisi) — ular turli `client_event_id` beradi, ya'ni oddiy idempotentlik ushlamaydi. `per_instance == 1` qadamda ikkinchisi E008 bilan to'xtaydi, lekin KROMKA qirralari / PRISADKA tomonlarida u JIMGINA keyingi qirrani ham yopardi (real DB bilan isbotlangan: 2 qirralik qadam bitta skanda 2/2 bo'lardi). Endi bir xil (nusxa, qadam) bo'yicha 3 soniya ichidagi ikkinchi yozuv takror deb qabul qilinadi (`CROSS_SOURCE_WINDOW`, `scanning.py`).
 
-Rad etilgan skan `422 {"code": "E00x", "message": "..."}` qaytaradi. **Kod kim
+Rad etilgan skan `422 {"code": "E00x", "message": "..."}` qaytaradi. Bu shaklni
+YAGONA joy yasaydi — `services/scanning.py` dagi `scan_error(code, message)`;
+route'lar (`terminal.py`, `pachka.py`, `tmo.py`, `scans.py`, `bridge_agents.py`) `ScanRejected` ni
+ushlab aynan shuni ko'taradi. **Kod kim
 harakat qilishini aytadi, matn esa nima qilishini** — matn tahrirlanadi, kod
 barqaror qoladi, shuning uchun mantiq (terminal ovozi, hisobot guruhlashi)
 faqat kodga tayanadi. Ilgari terminal o'zbekcha xabardan "yakunlangan" bo'lagini
@@ -332,7 +335,7 @@ detalning o'zi asosiy bo'la olmaydi (`orders._set_assembly_parent` tekshiradi).
 - Terminal ro'yxatida biriktirilgan detallar alohida vazifa bo'lib chiqmaydi — asosiy detal
   qatorida "+ `01_007 ×2`" bo'lib ko'rinadi.
 
-### 3.2 Nusxa darajasidagi tayyorlik (`pachka.instance_stages`)
+### 3.2 Nusxa darajasidagi tayyorlik (`scanning.instance_stages`)
 
 `instance_stages(db, order, post)` → `instance_id -> (shu postga tayyormi, OXIRGI bajarilgan post
 nomi)`. Bitta agregat so'rov (`Scan` bo'yicha `(instance_id, route_id)` guruhlash), N+1 yo'q.

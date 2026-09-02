@@ -57,7 +57,7 @@ export const Route = createFileRoute("/terminal")({
     // (`users._check_machine` bog'lashni taqiqlaydi). Ilgari bu yerda admin va
     // superuser uchun istisno bor edi va ular "posti uchun ekran sozlanmagan"
     // degan chalg'ituvchi ekranga tushardi — go'yo sozlama buzuq.
-    if (me.role !== "terminal" && !OPERATOR_ROLES.includes(me.role as never)) {
+    if (me.role !== "terminal" && !OPERATOR_ROLES.includes(me.role)) {
       throw redirect({ to: "/" })
     }
   },
@@ -72,7 +72,7 @@ function TerminalPage() {
   } = useQuery(getTerminalContextQueryOptions())
   const { currentUser } = useCurrentUser()
   const { logout } = useAuth()
-  const isOperator = OPERATOR_ROLES.includes(currentUser?.role as never)
+  const isOperator = !!currentUser && OPERATOR_ROLES.includes(currentUser.role)
 
   const [scanOn, setScanOn] = useState(true)
   // Oxirgi skan URINISHI vaqti (muvaffaqiyat ham, xato ham) — avto-reload

@@ -17,6 +17,7 @@ from app.models.enums import FileKind, OrderStatus, PostCode
 from app.schemas.common import Message
 from app.schemas.terminal import CutmapState
 from app.services.giblab import ParseError, parse_project
+from app.services.giblab.cutmap import build_cutmap_state
 from app.services.giblab.ingest import (
     ingest_project,
     restore_custom_routes,
@@ -292,8 +293,6 @@ async def download_order_file(db: SessionDep, current_user: StaffReadUser, order
 @router.get("/{order_id}/cutmap", response_model=CutmapState, operation_id="read_order_cutmap")
 async def read_order_cutmap(db: SessionDep, current_user: StaffReadUser, order_id: int) -> CutmapState:
     """Kesish xaritalari (TZ 10.3): manager/texnolog view + browser-print for a paper copy."""
-    from app.api.routes.terminal import build_cutmap_state
-
     order = await _get_visible_order(db, current_user, order_id)
     arra_post = (await db.execute(select(Post).where(Post.code == PostCode.ARRA))).scalar_one_or_none()
     if arra_post is None:

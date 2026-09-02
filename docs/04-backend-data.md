@@ -359,19 +359,22 @@ def log_action(db, *, module, action, user_id=None, employee_id=None,
 
 ### 3.5 `backend/app/crud/__init__.py` — yupqa registrlar + re-export
 
-Paketda `__init__.py` dan tashqari **4 modul** bor: `base.py`, `orders.py`, `users.py`, `audit.py`. O'z metodi yo'q beshta registr uchun alohida fayl ham, bo'sh subclass ham yo'q — `BaseCRUD` to'g'ridan-to'g'ri shu yerda instansiyalanadi:
+Paketda `__init__.py` dan tashqari **4 modul** bor: `base.py`, `orders.py`, `users.py`, `audit.py`. O'z metodi yo'q sakkizta registr uchun alohida fayl ham, bo'sh subclass ham yo'q — `BaseCRUD` to'g'ridan-to'g'ri shu yerda instansiyalanadi:
 
 ```python
 crud_bridge_agents: BaseCRUD[BridgeAgent] = BaseCRUD(BridgeAgent)
 crud_clients: BaseCRUD[Client] = BaseCRUD(Client)
 crud_employees: BaseCRUD[Employee] = BaseCRUD(Employee)
 crud_machines: BaseCRUD[Machine] = BaseCRUD(Machine)
+crud_pachkas: BaseCRUD[Pachka] = BaseCRUD(Pachka)
+crud_part_instances: BaseCRUD[PartInstance] = BaseCRUD(PartInstance)
 crud_posts: BaseCRUD[Post] = BaseCRUD(Post)
+crud_waste_items: BaseCRUD[WasteItem] = BaseCRUD(WasteItem)
 ```
 
 Modelga maxsus metod kerak bo'lsa — `orders.py`/`users.py` kabi alohida subclass qilinadi. Registrlarning maxsus logikasi route qatlamida (masalan, employee badge regeneratsiyasi, client orders_count join'i, agent pairing'ining atomik `UPDATE` i).
 
-Re-export (`__all__`): **7 singleton** — `crud_bridge_agents`, `crud_clients`, `crud_employees`, `crud_machines`, `crud_orders`, `crud_posts`, `crud_users` — hamda `log_action`.
+Re-export (`__all__`): **10 singleton** — `crud_bridge_agents`, `crud_clients`, `crud_employees`, `crud_machines`, `crud_orders`, `crud_pachkas`, `crud_part_instances`, `crud_posts`, `crud_users`, `crud_waste_items` — hamda `log_action`.
 
 ---
 

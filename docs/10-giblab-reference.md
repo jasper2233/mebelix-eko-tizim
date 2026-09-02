@@ -795,7 +795,7 @@ va `OrderFile` maydonlari bir joyda); plita qalinligi jadvalini ikkala yo'l ham
 
 - Parser: `backend/app/services/giblab/parser.py` (tovarlar, detallar, operatsiyalar, advisory)
 - Umumiy modellar: `models.py` (`ParsedProject`/`ParsedPart`, `PROCESS_POSTS`, `xml_bool`, `ParseError`)
-- Blob: `csblob.py` (base64 binar + `self_check`), `cutmap.py` (vizual model + instance↔katakcha binding + `holes`)
+- Blob: `csblob.py` (base64 binar + `self_check`), `cutmap.py` (vizual model + instance↔katakcha binding + `holes`; shu yerda `build_cutmap_state` — bazadan o'qib `CutmapState` yig'adigan servis, terminal va admin-panel route'lari uchun umumiy — va uning `arra_parts_query` yordamchisi)
 - Ishlov: `xnc.py` (dastur XML), `scx.py` (CNC fayl generatsiyasi)
 - DB'ga yozish: `ingest.py` (mahsulot/detal/nusxa/marshrut, material registri, sarf hisobi, SCX yozish)
 - `giblab/__init__.py` faqat ikki nom eksport qiladi: `ParseError` va `parse_project`; `ingest`

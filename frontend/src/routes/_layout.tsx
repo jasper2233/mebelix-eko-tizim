@@ -30,7 +30,7 @@ export const Route = createFileRoute("/_layout")({
   beforeLoad: async () => {
     const me = await requireAuth()
     // Qurilma akkauntlari va operatorlar admin panelga kirmaydi — o'z ekraniga (TZ 3.4/3.5)
-    if (me.role === "terminal" || OPERATOR_ROLES.includes(me.role as never))
+    if (me.role === "terminal" || OPERATOR_ROLES.includes(me.role))
       throw redirect({ to: "/terminal" })
     if (me.role === "tablo") throw redirect({ to: "/tablo" })
   },

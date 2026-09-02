@@ -6,14 +6,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse
-from sqlalchemy import ColumnElement, Row, Select, case, func, select
+from sqlalchemy import Row, case, func, select
 from sqlalchemy.orm import defer
 
 from app.api.deps import SessionDep, client_ip, require_roles
 from app.core.config import upload_root
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.core.ws import ws_manager
-from app.crud import crud_orders, log_action
+from app.crud import crud_orders, crud_part_instances, crud_waste_items, log_action
 from app.models import (
     PRIORITY_RANK,
     BridgeAgent,
@@ -27,7 +27,6 @@ from app.models import (
     Post,
     Product,
     Scan,
-    WasteItem,
     WorkSession,
 )
 from app.models.enums import (
@@ -41,10 +40,7 @@ from app.models.enums import (
 from app.models.user import User
 from app.schemas.common import Message
 from app.schemas.terminal import (
-    CutmapInstanceState,
-    CutmapModel,
     CutmapState,
-    CutmapWasteItem,
     KromkaInstance,
     KromkaOrderState,
     KromkaPartRow,
@@ -61,6 +57,7 @@ from app.schemas.terminal import (
     TerminalEmployee,
     TerminalOrderCard,
 )
+from app.services.giblab.cutmap import arra_parts_query, build_cutmap_state
 from app.services.scanning import (
     ScanRejected,
     active_session,
@@ -68,23 +65,18 @@ from app.services.scanning import (
     crew_sessions,
     end_session,
     finalize_scan,
+    instance_stages,
     open_badge_session,
     record_scan_at,
     resolve_terminal,
     revoke_scan,
+    scan_error,
 )
 from app.tasks import NoPrinterBound, agent_online, require_printer
-
-from .pachka import instance_stages
 
 router = APIRouter(prefix="/terminal", tags=["terminal"])
 
 TerminalUser = Annotated[User, Depends(require_roles(UserRole.TERMINAL, *POST_ROLES))]
-
-
-def _scan_error(code: str, message: str) -> HTTPException:
-    """TZ 8.5 xato dialogi shakli: {code, message} — ScanRejected bilan bir xil JSON payload."""
-    return HTTPException(status_code=422, detail={"code": code, "message": message})
 
 
 async def _terminal_ctx(db: SessionDep, user: TerminalUser) -> tuple[Machine, Post]:
@@ -93,7 +85,7 @@ async def _terminal_ctx(db: SessionDep, user: TerminalUser) -> tuple[Machine, Po
     try:
         return await resolve_terminal(db, user)
     except ScanRejected as exc:
-        raise _scan_error(exc.code, exc.message) from None
+        raise scan_error(exc.code, exc.message) from None
 
 
 TerminalCtx = Annotated[tuple[Machine, Post], Depends(_terminal_ctx)]
@@ -195,14 +187,14 @@ async def start_terminal_session(
         try:
             employee = await badge_employee(db, body.badge_id, post)
         except ScanRejected as exc:
-            raise _scan_error(exc.code, exc.message) from None
+            raise scan_error(exc.code, exc.message) from None
     elif body.employee_id is not None:
         found = await db.get(Employee, body.employee_id)
         if found is None or found.is_deleted or found.status != EmployeeStatus.ACTIVE:
             raise NotFoundException("Hodim topilmadi yoki nofaol.")
         employee = found
         if post.id not in employee.assigned_post_ids:
-            raise _scan_error("E006", f"{employee.full_name} bu postda ishlay olmaydi ({post.name}).")
+            raise scan_error("E006", f"{employee.full_name} bu postda ishlay olmaydi ({post.name}).")
     else:
         raise NotFoundException("Hodim ko'rsatilmagan.")
 
@@ -255,20 +247,6 @@ async def end_terminal_session(
     for session in crew:
         await ws_manager.publish("session.ended", {"session_id": session.id, "machine_id": machine.id})
     return Message(message="Smena yakunlandi.")
-
-
-def _arra_parts(*where: ColumnElement[bool]) -> Select[tuple[int]]:
-    """Marshrutida yoqilgan ARRA qadami bor detallar (`part_id`) — listning egasi shundan aniqlanadi."""
-    return (
-        select(PartRoute.part_id)
-        .join(Post, Post.id == PartRoute.post_id)
-        .where(
-            Post.code == PostCode.ARRA,
-            PartRoute.is_enabled == True,  # noqa: E712
-            PartRoute.is_deleted == False,  # noqa: E712
-            *where,
-        )
-    )
 
 
 def _own_sheets(order: Order, own_nos: set[int] | None) -> int:
@@ -364,7 +342,7 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
     # 3 ta bo'lar va reja noto'g'ri chamalanardi.
     own_sheet_nos: dict[int, set[int]] | None = None
     if post.code in (PostCode.ARRA, PostCode.ROVER) and order_ids:
-        arra_parts = _arra_parts(PartRoute.order_id.in_(order_ids)).scalar_subquery()
+        arra_parts = arra_parts_query(PartRoute.order_id.in_(order_ids)).scalar_subquery()
         seen: dict[int, dict[int, set[bool]]] = {}
         for oid, pattern_no, has_arra in (
             await db.execute(
@@ -669,7 +647,7 @@ async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int
     # detalning QR cheki shu sahifadan chiqariladi. ARRA'li detalga bu yerdan
     # chek chiqarish TAQIQ — arra statistikasi ("chek chiqarilgan = kesilgan")
     # buzilardi, chek arrachi tomonidan chiqadi.
-    arra_part_ids = set((await db.execute(_arra_parts(PartRoute.order_id == order.id))).scalars().all())
+    arra_part_ids = set((await db.execute(arra_parts_query(PartRoute.order_id == order.id))).scalars().all())
 
     return PrisadkaOrderState(
         order_id=order.id,
@@ -807,101 +785,6 @@ async def read_terminal_post_queue(db: SessionDep, ctx: TerminalCtx, order_id: i
     )
 
 
-async def build_cutmap_state(db: SessionDep, order: Order, post_id: int) -> CutmapState:
-    """ARRA terminali (7.1.7), ROVER terminali va admin paneldagi ko'rinish (10.3) uchun umumiy.
-
-    `done` — SHU postdagi skanlar bo'yicha: roverchi o'z listida o'zi kesganini ko'radi.
-    """
-    # Nostandart detallar — marshrutini texnolog qo'lda chizgan. Ular xaritada
-    # boshqa rang bilan turadi: arrachi ularni odatdagi detal deb o'ylab qo'ymasin
-    # (marshruti arradan boshlanmasligi ham mumkin, o'shanda skan qabul qilinmaydi).
-    custom_parts = set(
-        (
-            await db.execute(
-                select(Part.id).where(
-                    Part.order_id == order.id,
-                    Part.is_custom == True,  # noqa: E712
-                    Part.is_deleted == False,  # noqa: E712
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-    instances = (
-        (
-            await db.execute(
-                select(PartInstance).where(
-                    PartInstance.order_id == order.id,
-                    PartInstance.is_deleted == False,  # noqa: E712
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-    done_ids = set(
-        (
-            await db.execute(
-                select(Scan.instance_id).where(
-                    Scan.order_id == order.id,
-                    Scan.post_id == post_id,
-                    Scan.is_cancelled == False,  # noqa: E712
-                    Scan.is_deleted == False,  # noqa: E712
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-    arra_parts = set((await db.execute(_arra_parts(PartRoute.order_id == order.id))).scalars().all())
-    waste_rows = (
-        (
-            await db.execute(
-                select(WasteItem).where(
-                    WasteItem.order_id == order.id,
-                    WasteItem.is_deleted == False,  # noqa: E712
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-    return CutmapState(
-        order_id=order.id,
-        order_number=order.number,
-        waste_items=[
-            CutmapWasteItem(
-                id=w.id,
-                qr_text=w.qr_text,
-                sheet_no=w.sheet_no,
-                length=w.length,
-                width=w.width,
-                label_printed_at=w.label_printed_at,
-            )
-            for w in waste_rows
-        ],
-        # `Order.cutmap` — xom JSON ustuni (`dict[str, Any]`). Tekshiruvni
-        # Pydantic dict berilganda ham bajaradi; bu chaqiruv faqat mypy uchun,
-        # xatti-harakat o'zgarmaydi.
-        model=CutmapModel.model_validate(order.cutmap) if order.cutmap else None,
-        instances=[
-            CutmapInstanceState(
-                instance_id=i.id,
-                instance_no=i.instance_no,
-                qr_text=i.qr_text,
-                pattern_no=i.pattern_no,
-                cell_index=i.cell_index,
-                done=i.id in done_ids,
-                label_printed_at=i.label_printed_at,
-                custom=i.part_id in custom_parts,
-                arra_route=i.part_id in arra_parts,
-            )
-            for i in instances
-        ],
-    )
-
-
 @router.post("/waste/{waste_id}/label", response_model=Message, operation_id="print_waste_item_label")
 async def print_waste_item_label(db: SessionDep, user: TerminalUser, waste_id: int) -> Message:
     """FOYDALI ATXOT cheki (GibLab `business` qoldig'i, GibSaw'dagi "Деловой
@@ -911,9 +794,7 @@ async def print_waste_item_label(db: SessionDep, user: TerminalUser, waste_id: i
     emas, saqlanadigan material. QR prefiksi ATX- bo'lgani uchun skan dvijoki
     uni detal deb qidirmaydi.
     """
-    w = await db.get(WasteItem, waste_id)
-    if w is None or w.is_deleted:
-        raise NotFoundException("Atxot yozuvi topilmadi.")
+    w = await crud_waste_items.get_or_404(db, "Atxot yozuvi topilmadi.", id=waste_id)
 
     print_machine: Machine | None = None
     try:
@@ -962,9 +843,7 @@ async def print_waste_item_label(db: SessionDep, user: TerminalUser, waste_id: i
 @router.post("/labels/{instance_id}", response_model=Message, operation_id="print_instance_label")
 async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: int) -> Message:
     """YORLIQ CHOP ETISH (TZ 7.1.4): on-demand, per selected cell. Queued to the bridge-agent."""
-    instance = await db.get(PartInstance, instance_id)
-    if instance is None or instance.is_deleted:
-        raise NotFoundException("Nusxa topilmadi.")
+    instance = await crud_part_instances.get_or_404(db, "Nusxa topilmadi.", id=instance_id)
 
     # Post aniqlanmasa (ish markazi yo'q terminal) tekshiruvsiz chiqadi — yorliq ko'rish uchun
     print_machine: Machine | None = None
@@ -972,13 +851,13 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
         print_machine, print_post = await resolve_terminal(db, user)
     except ScanRejected:
         print_post = None
-    arra_route = (await db.execute(_arra_parts(PartRoute.part_id == instance.part_id))).first()
+    arra_route = (await db.execute(arra_parts_query(PartRoute.part_id == instance.part_id))).first()
     # Marshruti arradan boshlanmagan detal arrachiga TEGISHLI EMAS: uning listini
     # frezer butunlay o'zi kesadi. Ilgari chek jimgina chiqar, skan esa E001 bilan
     # yutilar edi — katak "kesildi" bo'lib yashil qolar, roverchining chek tugmasi
     # esa `label_printed` sababli yo'qolardi va u qo'lda skanerlashga majbur bo'lardi.
     if print_post is not None and print_post.code == PostCode.ARRA and arra_route is None:
-        raise _scan_error("E001", "Bu detal roverda kesiladi — chekni rover terminalidan chiqaring.")
+        raise scan_error("E001", "Bu detal roverda kesiladi — chekni rover terminalidan chiqaring.")
 
     # CHEK = BOSQICH. Kesish postlarida chop etishning O'ZI bosqichni yopadi —
     # pastda avto-skan yoziladi. Skan esa smenasiz YOZILMAYDI (`Scan.employee_id`
@@ -999,7 +878,7 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
         try:
             crew_session = await active_session(db, print_machine)
         except ScanRejected as exc:
-            raise _scan_error(exc.code, exc.message) from None
+            raise scan_error(exc.code, exc.message) from None
 
     # `qr_text` SHU YERDA olinadi: quyida `record_scan` rad etilsa `db.rollback()`
     # chaqiriladi va u identity map'dagi HAMMA obyektni expire qiladi. O'shandan
@@ -1127,9 +1006,7 @@ async def cancel_waste_item_label(db: SessionDep, user: LabelCancelUser, waste_i
     bosqichi emas), shuning uchun faqat belgi tozalanadi va katak xaritada
     yana "chek chiqarilmagan" rangga qaytadi.
     """
-    w = await db.get(WasteItem, waste_id)
-    if w is None or w.is_deleted:
-        raise NotFoundException("Qoldiq yozuvi topilmadi.")
+    w = await crud_waste_items.get_or_404(db, "Qoldiq yozuvi topilmadi.", id=waste_id)
     w.label_printed_at = None
     log_action(
         db,
@@ -1148,9 +1025,7 @@ async def cancel_waste_item_label(db: SessionDep, user: LabelCancelUser, waste_i
 async def cancel_instance_label(db: SessionDep, user: LabelCancelUser, instance_id: int) -> Message:
     """Chekni bekor qilish (long press / admin xarita): noto'g'ri chiqarilgan yorliq
     katakni chop etilmagan holatga qaytaradi."""
-    instance = await db.get(PartInstance, instance_id)
-    if instance is None or instance.is_deleted:
-        raise NotFoundException("Nusxa topilmadi.")
+    instance = await crud_part_instances.get_or_404(db, "Nusxa topilmadi.", id=instance_id)
 
     # Kesish postlarida chek chiqarish skan ham yozadi ("chek = kesildi"), shuning
     # uchun bekor qilish o'sha skanni ham qaytarishi shart — aks holda katak yashil
@@ -1191,7 +1066,7 @@ async def cancel_instance_label(db: SessionDep, user: LabelCancelUser, instance_
         try:
             _, caller_post = await resolve_terminal(db, user)
         except ScanRejected as exc:
-            raise _scan_error(exc.code, exc.message) from None
+            raise scan_error(exc.code, exc.message) from None
         if caller_post.code not in (PostCode.ARRA, PostCode.ROVER):
             raise ForbiddenException("Chekni faqat kesish posti (ARRA yoki ROVER) bekor qila oladi.")
         # Skan dalili — bajarilgan ISHNI himoya qiladi (`total_done` qaytmasin)

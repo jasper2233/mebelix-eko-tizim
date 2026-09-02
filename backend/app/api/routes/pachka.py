@@ -15,7 +15,7 @@ from sqlalchemy import func, select
 from app.api.deps import SessionDep, require_roles
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.core.ws import ws_manager
-from app.crud import crud_orders, log_action
+from app.crud import crud_orders, crud_pachkas, log_action
 from app.models import Machine, Order, Pachka, PachkaItem, Part, PartInstance, PartRoute, Post, Product, Scan
 from app.models.enums import POST_ROLES, PachkaStatus, PostCode, UserRole
 from app.models.user import User
@@ -30,10 +30,12 @@ from app.schemas.terminal import (
 from app.services.scanning import (
     ScanRejected,
     active_session,
+    instance_stages,
     publish_scan_events,
     record_scan_at,
     resolve_terminal,
     revoke_scan,
+    scan_error,
 )
 
 router = APIRouter(prefix="/pachka", tags=["pachka"])
@@ -55,82 +57,13 @@ async def _pack_ctx(db: SessionDep, user: PackUser) -> tuple[Machine, Post]:
     try:
         machine, post = await resolve_terminal(db, user)
     except ScanRejected as exc:
-        raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
+        raise scan_error(exc.code, exc.message) from None
     if post.code != PostCode.UPAKOVKA:
         raise ForbiddenException("Bu sahifa faqat qadoqlash postida ochiladi.")
     return machine, post
 
 
 PackCtx = Annotated[tuple[Machine, Post], Depends(_pack_ctx)]
-
-
-async def instance_stages(
-    db: SessionDep, order: Order, post: Post, by_part: dict[int, list[PartRoute]] | None = None
-) -> dict[int, tuple[bool, str]]:
-    """Har NUSXA uchun: `(shu postga tayyormi, OXIRGI bajarilgan bosqich nomi)`.
-
-    Bosqich nomi — ishi TUGAGAN post, kutilayotgani emas: detal jismonan o'sha
-    postdan keyin turadi, omborchi uni aynan o'sha yerdan topib oladi. Hali
-    hech qanday qadami bajarilmagan nusxada bo'sh satr qaytadi.
-
-    Hisob NUSXA bo'yicha, detal bo'yicha emas: 4 nusxali detalning bittasi
-    qadoqlansa, detal jami hali tugamagan bo'ladi — lekin o'sha bitta nusxa
-    TMO ga tayyor. Detal darajasida sanaganda u tsexda qolib ketardi va
-    omborchi qadoqlangan buyumni ro'yxatdan topa olmasdi.
-
-    `by_part` — chaqiruvchi marshrutni ALLAQACHON o'qigan bo'lsa (TMO sahifasi
-    uni `packaging` va TMO qadami uchun o'qiydi) o'sha lug'at uzatiladi, aks
-    holda aynan o'sha so'rov har sahifa so'rovida ikki marta ketardi.
-    """
-    if by_part is None:
-        by_part = {}
-        for r in (
-            await db.execute(
-                select(PartRoute).where(
-                    PartRoute.order_id == order.id,
-                    PartRoute.is_enabled == True,  # noqa: E712
-                    PartRoute.is_deleted == False,  # noqa: E712
-                )
-            )
-        ).scalars():
-            by_part.setdefault(r.part_id, []).append(r)
-
-    # Bitta agregat so'rov: (nusxa, qadam) -> nechta skan
-    counts = {
-        (instance_id, route_id): n
-        for instance_id, route_id, n in (
-            await db.execute(
-                select(Scan.instance_id, Scan.route_id, func.count())
-                .where(
-                    Scan.order_id == order.id,
-                    Scan.is_cancelled == False,  # noqa: E712
-                    Scan.is_deleted == False,  # noqa: E712
-                )
-                .group_by(Scan.instance_id, Scan.route_id)
-            )
-        ).all()
-    }
-    post_names = {p.id: p.name for p in (await db.execute(select(Post))).scalars()}
-
-    stages: dict[int, tuple[bool, str]] = {}
-    for instance_id, part_id in (
-        await db.execute(
-            select(PartInstance.id, PartInstance.part_id).where(
-                PartInstance.order_id == order.id,
-                PartInstance.is_deleted == False,  # noqa: E712
-            )
-        )
-    ).all():
-        steps = sorted(by_part.get(part_id, []), key=lambda s: s.seq)
-        target = next((s for s in steps if s.post_id == post.id), None)
-        if target is None:
-            continue
-        before = [s for s in steps if s.seq < target.seq]
-        done = [s for s in before if counts.get((instance_id, s.id), 0) >= s.per_instance]
-        ready = len(done) == len(before)
-        last = post_names.get(done[-1].post_id, "") if done else ""
-        stages[instance_id] = (ready, last)
-    return stages
 
 
 async def _state(db: SessionDep, order: Order, post: Post) -> UpakovkaOrderState:
@@ -255,9 +188,7 @@ async def create_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, order_id: 
 
 
 async def _open_pachka(db: SessionDep, pachka_id: int) -> Pachka:
-    pachka = await db.get(Pachka, pachka_id)
-    if pachka is None or pachka.is_deleted:
-        raise NotFoundException("Qadoq topilmadi.")
+    pachka = await crud_pachkas.get_or_404(db, "Qadoq topilmadi.", id=pachka_id)
     if pachka.status != PachkaStatus.OPEN:
         raise ForbiddenException(f"Qadoq {pachka.code} yopilgan — avval qayta oching.")
     return pachka
@@ -285,12 +216,9 @@ async def scan_into_pachka(db: SessionDep, ctx: PackCtx, pachka_id: int, body: P
         )
     ).scalar_one_or_none()
     if instance is None:
-        raise HTTPException(status_code=422, detail={"code": "E001", "message": "Bunday QR topilmadi."})
+        raise scan_error("E001", "Bunday QR topilmadi.")
     if instance.order_id != pachka.order_id:
-        raise HTTPException(
-            status_code=422,
-            detail={"code": "E001", "message": "Bu detal boshqa buyurtmaga tegishli."},
-        )
+        raise scan_error("E001", "Bu detal boshqa buyurtmaga tegishli.")
     already = (
         await db.execute(
             select(PachkaItem).where(
@@ -302,10 +230,7 @@ async def scan_into_pachka(db: SessionDep, ctx: PackCtx, pachka_id: int, body: P
     if already is not None:
         other = await db.get(Pachka, already.pachka_id)
         name = other.code if other else "boshqa qadoq"
-        raise HTTPException(
-            status_code=422,
-            detail={"code": "E001", "message": f"Bu detal allaqachon {name} ichida."},
-        )
+        raise scan_error("E001", f"Bu detal allaqachon {name} ichida.")
 
     session = await active_session(db, machine)
     try:
@@ -319,7 +244,7 @@ async def scan_into_pachka(db: SessionDep, ctx: PackCtx, pachka_id: int, body: P
         )
     except ScanRejected as exc:
         await db.rollback()
-        raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
+        raise scan_error(exc.code, exc.message) from None
 
     db.add(PachkaItem(pachka_id=pachka.id, instance_id=instance.id))
     await db.commit()

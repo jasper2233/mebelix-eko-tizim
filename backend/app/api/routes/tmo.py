@@ -14,7 +14,7 @@ managerning amali (`orders.deliver_order`, faqat COMPLETED holatdan).
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 
 from app.api.deps import SessionDep, require_roles
@@ -30,9 +30,15 @@ from app.schemas.terminal import (
     TmoOrderState,
     TmoPending,
 )
-from app.services.scanning import ScanRejected, active_session, publish_scan_events, record_scan_at, resolve_terminal
-
-from .pachka import instance_stages
+from app.services.scanning import (
+    ScanRejected,
+    active_session,
+    instance_stages,
+    publish_scan_events,
+    record_scan_at,
+    resolve_terminal,
+    scan_error,
+)
 
 router = APIRouter(prefix="/tmo", tags=["tmo"])
 
@@ -43,7 +49,7 @@ async def _wh_ctx(db: SessionDep, user: WhUser) -> tuple[Machine, Post]:
     try:
         machine, post = await resolve_terminal(db, user)
     except ScanRejected as exc:
-        raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
+        raise scan_error(exc.code, exc.message) from None
     if post.code != PostCode.TMO:
         raise ForbiddenException("Bu sahifa faqat TMO postida ochiladi.")
     return machine, post
@@ -200,12 +206,9 @@ async def _pachka_by_code(db: SessionDep, order: Order, code: str) -> Pachka:
         )
     ).scalar_one_or_none()
     if pachka is None:
-        raise HTTPException(status_code=422, detail={"code": "E001", "message": f"{code} qadog'i topilmadi."})
+        raise scan_error("E001", f"{code} qadog'i topilmadi.")
     if pachka.order_id != order.id:
-        raise HTTPException(
-            status_code=422,
-            detail={"code": "E001", "message": "Bu qadoq boshqa buyurtmaga tegishli."},
-        )
+        raise scan_error("E001", "Bu qadoq boshqa buyurtmaga tegishli.")
     return pachka
 
 
@@ -260,7 +263,7 @@ async def accept_into_tmo(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: in
             )
         except ScanRejected as exc:
             await db.rollback()
-            raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
+            raise scan_error(exc.code, exc.message) from None
 
     log_action(
         db,

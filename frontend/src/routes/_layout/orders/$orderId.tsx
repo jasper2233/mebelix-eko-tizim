@@ -195,9 +195,7 @@ function OrderDetailPage() {
   const canEdit = order.can_edit ?? false
   // Fayl qayta yuklash faqat texnologda: marshrutni u tuzadi.
   const canUpload = isTexnolog && canEdit
-  const isTerminal = (TERMINAL_STATUSES as readonly string[]).includes(
-    order.status,
-  )
+  const isTerminal = TERMINAL_STATUSES.includes(order.status)
   const scxFiles = (order.files ?? []).filter((f) => f.kind === "scx")
   const fileUrl = (name: string | number) =>
     `${API_BASE}/api/v1/orders/${id}/files/${name}`

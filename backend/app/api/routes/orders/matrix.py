@@ -191,6 +191,10 @@ async def edit_order_matrix(
                     PartRoute.is_deleted == False,  # noqa: E712
                 )
                 await db.execute(update(PartRoute).where(*tail_where).values(seq=PartRoute.seq + _SEQ_PARK))
+                # KROMKA har qirrani alohida yopishtiradi — skan qirralar soni marta
+                # kutiladi (`_set_custom_route` va fayldan ingest ham shunday hisoblaydi).
+                # Bu yerda KROMKA qadami hali yo'q (`steps` bo'sh), ya'ni bu birinchi o'tish.
+                per_instance = (len(part.edges) or 1) if post.code == PostCode.KROMKA else 1
                 db.add(
                     PartRoute(
                         order_id=order_id,
@@ -199,8 +203,8 @@ async def edit_order_matrix(
                         seq=next_seq,
                         process_code=DEFAULT_PROCESS_CODE[post.code],
                         source=RouteSource.MANUAL,
-                        per_instance=1,
-                        total_required=part.count,
+                        per_instance=per_instance,
+                        total_required=part.count * per_instance,
                     )
                 )
                 await db.flush()

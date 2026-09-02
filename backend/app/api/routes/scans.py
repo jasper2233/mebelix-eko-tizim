@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 
 from app.api.deps import SessionDep, require_roles
@@ -20,6 +20,7 @@ from app.services.scanning import (
     log_rejected_scan,
     qr_part_code,
     record_scan,
+    scan_error,
 )
 
 router = APIRouter(prefix="/scans", tags=["scans"])
@@ -42,34 +43,28 @@ async def record_scan_endpoint(db: SessionDep, user: TerminalUser, body: ScanReq
             )
         ).scalar_one_or_none()
         if w is None:
-            raise HTTPException(
-                status_code=422,
-                detail={"code": "E002", "message": "Bunday qoldiq cheki ro'yxatda yo'q."},
-            )
+            raise scan_error("E002", "Bunday qoldiq cheki ro'yxatda yo'q.")
         order = await db.get(Order, w.order_id)
         chek = (
             w.label_printed_at.astimezone(TASHKENT_TZ).strftime("%d-%m %H:%M")
             if w.label_printed_at
             else "chiqarilmagan"
         )
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "code": "ATX",
-                "message": (
-                    f"QOLDIQ: {w.length:g} x {w.width:g} mm, {w.material_name}. "
-                    f"Buyurtma {order.number if order else '?'}"
-                    f"{' (' + order.project_name + ')' if order and order.project_name else ''}, "
-                    f"list {w.sheet_no}. Chek: {chek}."
-                ),
-            },
+        raise scan_error(
+            "ATX",
+            (
+                f"QOLDIQ: {w.length:g} x {w.width:g} mm, {w.material_name}. "
+                f"Buyurtma {order.number if order else '?'}"
+                f"{' (' + order.project_name + ')' if order and order.project_name else ''}, "
+                f"list {w.sheet_no}. Chek: {chek}."
+            ),
         )
     try:
         outcome = await record_scan(db, user=user, qr_text=body.qr_text, client_event_id=body.client_event_id)
     except ScanRejected as exc:
         # Rad etilgan urinish ham logga: kim nimani qayta/noto'g'ri skan qilganini ko'rish uchun
         await log_rejected_scan(db, exc, body.qr_text, user_id=user.id)
-        raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
+        raise scan_error(exc.code, exc.message) from None
 
     return await finalize_scan(db, outcome, user_id=user.id)
 
@@ -80,7 +75,7 @@ async def cancel_scan_endpoint(db: SessionDep, user: TerminalUser, scan_id: int)
         scan, events = await cancel_scan(db, user=user, scan_id=scan_id)
     except ScanRejected as exc:
         await db.rollback()
-        raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from None
+        raise scan_error(exc.code, exc.message) from None
     instance = await db.get(PartInstance, scan.instance_id)
     log_action(
         db,
