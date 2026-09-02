@@ -85,6 +85,7 @@ const ACTION_LABELS: Record<string, string> = {
   started: "boshlandi",
   ended: "tugadi",
   machine_linked: "ish markazi bog'landi",
+  machine_unlinked: "ish markazidan uzildi",
   can_print_changed: "chek chiqarish o'zgardi",
   scx_regenerated: "SCX qayta yaratildi",
   matrix_edited: "matritsa tahrirlandi",

@@ -56,7 +56,11 @@ async def read_clients(
     )
     if search:
         pattern = f"%{search.strip()}%"
-        query = query.where(or_(Client.full_name.ilike(pattern), Client.phone.ilike(pattern)))
+        # `phone_alt` ham qidiriladi: unikallik (`_ensure_phone_free`) ikkala
+        # ustunni qamraydi, ya'ni ikkinchi raqam bo'yicha mijoz TOPILISHI kerak.
+        query = query.where(
+            or_(Client.full_name.ilike(pattern), Client.phone.ilike(pattern), Client.phone_alt.ilike(pattern))
+        )
 
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
     # QIYMAT bo'yicha, "eng yangi" bo'yicha emas: ro'yxatning o'zi reyting bo'lib

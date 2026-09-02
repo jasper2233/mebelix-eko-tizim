@@ -150,13 +150,13 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `frontend/src/routes/_layout/reports.tsx:61` — Excel eksporti oddiy `<a href>` navigatsiyasi — xato holatida (403/500/sessiya tugagan) brauzer SPA dan chiqib ketib xom JSON xatosini ekranga chiqara
 - [x] ✅ `frontend/src/routes/_layout/work-centers.tsx:150` — The empty-state row spans one column more than the table has, so the 'Ish markazlari yo'q' cell overflows the table grid.
 - [x] ✅ `frontend/src/routes/_layout/work-centers.tsx:208` — The auto-suggested work-center name counts existing machines on the post, so after any deletion or manual rename it proposes a name that already exist
-- [ ] ✅ `frontend/src/routes/_layout/work-centers.tsx:65` — A failed `/posts` request is silently swallowed — only the machines query drives the error branch, so the page renders with a blank Post column and a 
+- [x] ✅ `frontend/src/routes/_layout/work-centers.tsx:65` — A failed `/posts` request is silently swallowed — only the machines query drives the error branch, so the page renders with a blank Post column and a 
 - [ ] ✅ `frontend/src/routes/login.tsx:135-136` — Post-choice dialogidan keyin badge.mutate ikkinchi marta ishga tushadi (postId bilan); u xato bersa (backend _badge_post/_post_machine/_terminal_user 
-- [ ] ✅ `frontend/src/routes/tablo.tsx:1025` — Drill sarlavhasida YOLG'ON "BOSHLANMAGAN" belgisi chiqadi: buyurtma matritsadan tushgan bo'lsa (TMO dan o'tgan) `row` undefined bo'ladi va `stallLabel
+- [x] ✅ `frontend/src/routes/tablo.tsx:1025` — Drill sarlavhasida YOLG'ON "BOSHLANMAGAN" belgisi chiqadi: buyurtma matritsadan tushgan bo'lsa (TMO dan o'tgan) `row` undefined bo'ladi va `stallLabel
 - [ ] ✅ `frontend/src/routes/tablo.tsx:136-168` — Xuddi shu sabab `useFitScale` da ham: drill ochilib yopilgach ResizeObserver uzilgan (detached) `tbody`/`main` ni kuzatib qoladi va shrift sig'dirish 
-- [ ] ✅ `frontend/src/routes/tablo.tsx:939` — Drill ko'rinishida yuklanish ham, xato ham ishlanmaydi — bo'sh sarlavha va bo'sh jadval chiqadi.
-- [ ] ✅ `frontend/src/routes/tablo.tsx:968` — TabloOrderDrill's `stall` badge is computed from `row?.idle_days`, but `row` becomes `undefined` both when the order genuinely never started (idle_day
-- [ ] ✅ `frontend/src/routes/terminal.tsx:328-335` — endSession mutatsiyasida onError yo'q — startShift, scanMutation, undoMutation hammasi xatoni toast.error bilan ko'rsatadi va playError() chaqiradi, l
+- [x] ✅ `frontend/src/routes/tablo.tsx:939` — Drill ko'rinishida yuklanish ham, xato ham ishlanmaydi — bo'sh sarlavha va bo'sh jadval chiqadi.
+- [x] ✅ `frontend/src/routes/tablo.tsx:968` — TabloOrderDrill's `stall` badge is computed from `row?.idle_days`, but `row` becomes `undefined` both when the order genuinely never started (idle_day
+- [x] ✅ `frontend/src/routes/terminal.tsx:328-335` — endSession mutatsiyasida onError yo'q — startShift, scanMutation, undoMutation hammasi xatoni toast.error bilan ko'rsatadi va playError() chaqiradi, l
 - [x] ✅ `frontend/src/routes/terminal.tsx:346-353` — The offline (E007) scan path is the only scan outcome that does not stamp `lastScanAtRef`, so the kiosk's "quiet time" gate can decide it is safe to a
 - [ ] ✅ `frontend/src/utils.ts:39` — `extractErrorMessage` and `detailParts` implement the same six-branch error ladder in the same file, duplicating two user-facing strings verbatim and 
 - [x] ✅ `.dockerignore:4` — `**/.env` naqshi faqat aynan `.env` nomini tutadi — `.env.server` kabi variantlar build kontekstiga uzatiladi (frontend'ning o'z `.dockerignore`'i esa
@@ -171,9 +171,9 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 ## Past (92)
 
 - [ ] ✅ `backend/app/models/pachka.py:30` — `Pachka.order_id` `index=True` ortiqcha (`ix_pachka_order_status` kompoziti qoplaydi); migratsiya (`op.drop_index("ix_pachka_order_id")`, down_revision `e5b73c04a19f`) tayyor edi, deploy-xavfsizlik sababli alohida kichik deploy'ga qoldirildi
-- [ ] ✅ `backend/app/api/routes/bridge_agents.py:130-140` — Ish markazi bog'lami UZILGANDA ham audit xabari «bog'landi … -> —» deb yoziladi — jurnal amalni teskari ko'rsatadi.
-- [ ] ✅ `backend/app/api/routes/clients.py:59` — Qidiruv faqat `phone` ustunini ko'radi, unikallik esa `phone_alt` ni ham qamraydi — ikkinchi raqami bo'yicha qidirilgan mijoz topilmaydi, garchi o'sha
-- [ ] ✅ `backend/app/api/routes/employees.py:178` — Navbat (arq/Redis) ishlamayotganda infratuzilma nosozligi 403 Forbidden bilan qaytariladi — bu huquq xatosi kodi, klient uni "sizda ruxsat yo'q" deb k
+- [x] ✅ `backend/app/api/routes/bridge_agents.py:130-140` — Ish markazi bog'lami UZILGANDA ham audit xabari «bog'landi … -> —» deb yoziladi — jurnal amalni teskari ko'rsatadi.
+- [x] ✅ `backend/app/api/routes/clients.py:59` — Qidiruv faqat `phone` ustunini ko'radi, unikallik esa `phone_alt` ni ham qamraydi — ikkinchi raqami bo'yicha qidirilgan mijoz topilmaydi, garchi o'sha
+- [x] ✅ `backend/app/api/routes/employees.py:178` — Navbat (arq/Redis) ishlamayotganda infratuzilma nosozligi 403 Forbidden bilan qaytariladi — bu huquq xatosi kodi, klient uni "sizda ruxsat yo'q" deb k
 - [ ] ✅ `backend/app/api/routes/login.py:71-81,331-343` — The one-time-use refresh check is check-then-set, not atomic, so two concurrent replays of the same refresh token both succeed and neither triggers re
 - [ ] ✅ `backend/app/api/routes/orders/files.py:141-153` — download_order_scx_zip 404s only when the DB has no SCX rows; if the rows exist but the files are missing on disk it silently streams an empty or part
 - [ ] ✅ `backend/app/api/routes/orders/files.py:228,257` — regenerate_order_scx unlinks the old SCX files from disk before writing the new ones and before commit, so any failure while generating leaves the ord

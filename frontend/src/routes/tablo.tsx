@@ -936,7 +936,7 @@ function TabloOrderDrill({
   onBack: () => void
   mode: Mode
 }) {
-  const { data } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["tablo", "order", orderId],
     queryFn: async () =>
       (await TabloService.readTabloOrder({ path: { order_id: orderId } })).data,
@@ -965,7 +965,7 @@ function TabloOrderDrill({
   // Buyurtma TMO dan o'tib taxtadan tushgan bo'lsa `row` yo'q: kontekst
   // ko'rinmaydi, qolgan hamma narsa ishlayveradi.
   const row = matrix?.orders.find((o) => o.id === orderId)
-  const stall = stallLabel(row?.idle_days)
+  const stall = row ? stallLabel(row.idle_days) : null
   const drillPosts = (matrix?.posts ?? [])
     .map((p) => p.code)
     // Detallar kelgunicha hammasi turadi: bo'sh ro'yxatdan to'liq ro'yxatga
@@ -997,7 +997,7 @@ function TabloOrderDrill({
         >
           <ArrowLeft className="size-6" /> Tablo
         </button>
-        <span className="text-4xl font-black">{data?.number ?? ""}</span>
+        <span className="text-4xl font-black">{data?.number ?? "…"}</span>
         <span className="text-2xl text-muted-foreground">
           {data?.name ?? ""}
         </span>
@@ -1040,110 +1040,126 @@ function TabloOrderDrill({
             oraliq 0. Aks holda `TabloCell` chizadigan `border-l` 8px bo'shliq
             ichida osilib qolardi va bitta detal to'qqiz alohida kartochkaga
             bo'linib ketardi. */}
-        <table className="w-full table-fixed border-separate border-spacing-x-0 border-spacing-y-2">
-          <colgroup>
-            <col className="w-[22%]" />
-            <col className="w-[8%]" />
-            {drillPosts.map((c) => (
-              <col
-                key={c}
-                style={{ width: `${70 / (drillPosts.length || 1)}%` }}
-              />
-            ))}
-          </colgroup>
-          <thead>
-            <tr className="text-2xl uppercase tracking-wider text-muted-foreground">
-              <th className="sticky top-0 z-10 bg-surface px-2 text-left">
-                Detal
-              </th>
-              <th className="sticky top-0 z-10 bg-surface px-2 text-center">
-                Soni
-              </th>
+        {isLoading ? (
+          <BrandLoader
+            size={120}
+            className="p-16 text-[#d9b34a]"
+            label="Yuklanmoqda"
+          />
+        ) : isError ? (
+          /* Devor ekrani: bo'sh sarlavha + bo'sh jadval o'rniga sabab.
+             Chiqish yo'li sarlavhadagi "Tablo" havolasi (va Esc) — bu yerga
+             ikkinchi tugma qo'shilmaydi. */
+          <p className="p-16 text-center text-3xl font-bold text-muted-foreground">
+            Buyurtma yuklanmadi. Qaytadan urinib ko'ring yoki «Tablo» ga
+            qayting.
+          </p>
+        ) : (
+          <table className="w-full table-fixed border-separate border-spacing-x-0 border-spacing-y-2">
+            <colgroup>
+              <col className="w-[22%]" />
+              <col className="w-[8%]" />
               {drillPosts.map((c) => (
-                <th
+                <col
                   key={c}
-                  className="sticky top-0 z-10 bg-surface px-2 text-center"
-                  style={{ color: POST_COLORS[c] }}
-                >
-                  {c}
-                </th>
+                  style={{ width: `${70 / (drillPosts.length || 1)}%` }}
+                />
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {/* Bosilgan qatordagi post yig'indilari ichkarida yo'qolardi:
+            </colgroup>
+            <thead>
+              <tr className="text-2xl uppercase tracking-wider text-muted-foreground">
+                <th className="sticky top-0 z-10 bg-surface px-2 text-left">
+                  Detal
+                </th>
+                <th className="sticky top-0 z-10 bg-surface px-2 text-center">
+                  Soni
+                </th>
+                {drillPosts.map((c) => (
+                  <th
+                    key={c}
+                    className="sticky top-0 z-10 bg-surface px-2 text-center"
+                    style={{ color: POST_COLORS[c] }}
+                  >
+                    {c}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {/* Bosilgan qatordagi post yig'indilari ichkarida yo'qolardi:
                 158 detalli buyurtmada "ARRA umuman qanday?" degan savolga
                 javob berish uchun orqaga qaytish kerak edi. Matritsadagi
                 JAMI qatori bilan bir xil shakl. */}
-            {parts.length > 0 && (
-              <tr className="bg-card">
-                <td
-                  className="rounded-l-md bg-primary px-3 py-3 font-black uppercase tracking-wider text-primary-foreground"
-                  style={{ fontSize: "var(--t-head)" }}
-                >
-                  Jami · {parts.length} detal
-                </td>
-                <td className="num border-l border-border/60 bg-primary/90 px-2 py-3 text-center text-3xl font-black text-primary-foreground">
-                  {parts.reduce((a, p) => a + p.count, 0)}
-                </td>
-                {drillPosts.map((c, i) => {
-                  let done = 0
-                  let total = 0
-                  for (const p of parts) {
-                    const st = p.stages[c]
-                    if (!st) continue
-                    done += st.done
-                    total += st.total
-                  }
-                  return (
-                    <td
-                      key={c}
-                      className={cn(
-                        "border-l border-border/60 bg-primary/90 px-2 py-3 text-center font-black text-primary-foreground",
-                        i === drillPosts.length - 1 && "rounded-r-md",
-                      )}
-                      style={{ fontSize: "var(--t-cell)" }}
-                    >
-                      {/* 99 ga cheklash FAQAT tugallanmagan katakda: JAMI
+              {parts.length > 0 && (
+                <tr className="bg-card">
+                  <td
+                    className="rounded-l-md bg-primary px-3 py-3 font-black uppercase tracking-wider text-primary-foreground"
+                    style={{ fontSize: "var(--t-head)" }}
+                  >
+                    Jami · {parts.length} detal
+                  </td>
+                  <td className="num border-l border-border/60 bg-primary/90 px-2 py-3 text-center text-3xl font-black text-primary-foreground">
+                    {parts.reduce((a, p) => a + p.count, 0)}
+                  </td>
+                  {drillPosts.map((c, i) => {
+                    let done = 0
+                    let total = 0
+                    for (const p of parts) {
+                      const st = p.stages[c]
+                      if (!st) continue
+                      done += st.done
+                      total += st.total
+                    }
+                    return (
+                      <td
+                        key={c}
+                        className={cn(
+                          "border-l border-border/60 bg-primary/90 px-2 py-3 text-center font-black text-primary-foreground",
+                          i === drillPosts.length - 1 && "rounded-r-md",
+                        )}
+                        style={{ fontSize: "var(--t-cell)" }}
+                      >
+                        {/* 99 ga cheklash FAQAT tugallanmagan katakda: JAMI
                           qatorida ✓ chizilmaydi, ya'ni to'liq bajarilgan post
                           "99%" bo'lib qotib qolardi. Matritsadagi JAMI bilan
                           bir xil qoida. */}
-                      {!total
-                        ? "—"
-                        : mode !== "foiz"
-                          ? `${done}/${total}`
-                          : done >= total
-                            ? "100%"
-                            : `${Math.min(99, Math.floor((done / total) * 100))}%`}
-                    </td>
-                  )
-                })}
-              </tr>
-            )}
-            {data?.parts.map((p) => (
-              <tr key={p.part_id} className="bg-card">
-                <td className="rounded-l-md px-3 py-3">
-                  <b className="num text-3xl">{p.code}</b>{" "}
-                  <span className="text-xl text-muted-foreground">
-                    {p.name}
-                  </span>
-                </td>
-                <td className="num border-l border-border/60 px-2 py-3 text-center text-3xl font-bold">
-                  {p.count}
-                </td>
-                {drillPosts.map((c, i) => (
-                  <TabloCell
-                    key={c}
-                    last={i === drillPosts.length - 1}
-                    stage={p.stages[c]}
-                    mode={mode === "hajm" ? "soni" : mode}
-                    dim={false}
-                  />
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                        {!total
+                          ? "—"
+                          : mode !== "foiz"
+                            ? `${done}/${total}`
+                            : done >= total
+                              ? "100%"
+                              : `${Math.min(99, Math.floor((done / total) * 100))}%`}
+                      </td>
+                    )
+                  })}
+                </tr>
+              )}
+              {data?.parts.map((p) => (
+                <tr key={p.part_id} className="bg-card">
+                  <td className="rounded-l-md px-3 py-3">
+                    <b className="num text-3xl">{p.code}</b>{" "}
+                    <span className="text-xl text-muted-foreground">
+                      {p.name}
+                    </span>
+                  </td>
+                  <td className="num border-l border-border/60 px-2 py-3 text-center text-3xl font-bold">
+                    {p.count}
+                  </td>
+                  {drillPosts.map((c, i) => (
+                    <TabloCell
+                      key={c}
+                      last={i === drillPosts.length - 1}
+                      stage={p.stages[c]}
+                      mode={mode === "hajm" ? "soni" : mode}
+                      dim={false}
+                    />
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </main>
     </div>
   )

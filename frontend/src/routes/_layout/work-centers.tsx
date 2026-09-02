@@ -56,13 +56,14 @@ const STATUS_STYLE: Record<string, string> = {
 }
 
 function WorkCentersPage() {
-  const {
-    data: machines,
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery(getMachinesQueryOptions())
-  const { data: posts } = useQuery(getPostsQueryOptions())
+  const machinesQ = useQuery(getMachinesQueryOptions())
+  const postsQ = useQuery(getPostsQueryOptions())
+  const machines = machinesQ.data
+  const posts = postsQ.data
+  // Postlarsiz jadval buzuq chiqadi (bo'sh Post ustuni, noto'g'ri tartib),
+  // shuning uchun ikkala so'rov ham yuklanish/xato holatini boshqaradi
+  const isLoading = machinesQ.isLoading || postsQ.isLoading
+  const isError = machinesQ.isError || postsQ.isError
   const { currentUser } = useCurrentUser()
   const admin = isAdmin(currentUser)
   const [adding, setAdding] = useState(false)
@@ -94,7 +95,12 @@ function WorkCentersPage() {
       {isLoading ? (
         <Skeleton className="h-64 w-full" />
       ) : isError ? (
-        <QueryError onRetry={() => refetch()} />
+        <QueryError
+          onRetry={() => {
+            machinesQ.refetch()
+            postsQ.refetch()
+          }}
+        />
       ) : (
         <Table>
           <TableHeader>

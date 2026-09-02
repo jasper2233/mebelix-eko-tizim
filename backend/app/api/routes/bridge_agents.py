@@ -130,14 +130,19 @@ async def update_bridge_agent(
             machine = await crud_machines.get_or_404(db, "Ish markazi topilmadi.", id=body.machine_id)
             machine_name = machine.name
         agent.machine_id = body.machine_id
+        linked = body.machine_id is not None
         log_action(
             db,
             module="bridge_agents",
-            action="machine_linked",
+            action="machine_linked" if linked else "machine_unlinked",
             user_id=current_user.id,
             entity_type="bridge_agent",
             entity_id=agent.id,
-            message=f"Agent ish markaziga bog'landi: {agent.name} -> {machine_name or '—'}",
+            message=(
+                f"Agent ish markaziga bog'landi: {agent.name} -> {machine_name}"
+                if linked
+                else f"Agent ish markazidan uzildi: {agent.name}"
+            ),
             ip=client_ip(request),
         )
     if body.can_print is not None:

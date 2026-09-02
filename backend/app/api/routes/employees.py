@@ -6,7 +6,7 @@ from sqlalchemy import func, or_, select
 
 from app.api.deps import AdminUser, SessionDep, StaffReadUser, client_ip
 from app.core.config import settings
-from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
+from app.core.exceptions import DuplicateValueException, NotFoundException
 from app.core.utils import queue
 from app.crud import crud_employees, crud_posts, crud_users, log_action
 from app.models import Employee
@@ -180,7 +180,9 @@ async def print_employee_badge(
     """
     employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
     if queue.pool is None:
-        raise ForbiddenException("Chop etish navbati ishlamayapti. Adminga murojaat qiling.")
+        # 503, 403 emas: navbat (arq/Redis) o'chgani infratuzilma nosozligi,
+        # operatorning huquqi bilan aloqasi yo'q.
+        raise HTTPException(status_code=503, detail="Chop etish navbati ishlamayapti. Adminga murojaat qiling.")
 
     agents = await printing_agents(db)
     if not agents:
