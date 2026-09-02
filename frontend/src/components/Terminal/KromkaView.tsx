@@ -84,7 +84,7 @@ export function KromkaView({
   // Oxirgi skan bo'lgan detal qatori keyingi skangacha ajralib turadi + avto-scroll
   const flashId = useScanFlash(
     parts,
-    (p) => p.part_id,
+    (p) => p.route_id,
     (p) => p.instances.reduce((s, i) => s + i.done, 0),
     "kv-row-",
   )
@@ -141,12 +141,12 @@ export function KromkaView({
                 return (
                   <tr
                     key={p.route_id}
-                    id={`kv-row-${p.part_id}`}
+                    id={`kv-row-${p.route_id}`}
                     className={cn(
                       "border-b last:border-0",
                       finished && "bg-green-50",
                       // Xatcho'p: holat rangini bosmaydi, chap chetda turadi
-                      flashId === p.part_id && "border-l-4 border-l-primary",
+                      flashId === p.route_id && "border-l-4 border-l-primary",
                     )}
                   >
                     <td className="num px-4 py-3 font-semibold">{p.code}</td>

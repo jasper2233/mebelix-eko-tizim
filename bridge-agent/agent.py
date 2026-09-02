@@ -49,7 +49,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.4.5"
+AGENT_VERSION = "1.4.6"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -1228,24 +1228,50 @@ def _newer(latest: str, current: str) -> bool:
         return False
 
 
+def _spawn_bat(name: str, text: str, yollar: dict[str, str]) -> bool:
+    """bat'ni ajratilgan cmd'da ishga tushiradi (DETACHED + NO_WINDOW: agent
+    o'lgandan keyin ham yashaydi, oyna ochmaydi).
+
+    Yo'llar bat MATNIGA emas, env orqali beriladi va ichkarida `%NOM%` bilan
+    ochiladi — shu sabab matn sof ASCII qoladi. Ilgari yo'l matnga yozilardi va
+    ASCII bo'lmagan Windows profil nomida (`%APPDATA%` ichida, masalan `Oʻktam`)
+    `write_text` UnicodeEncodeError bilan yiqilib, qayta ishga tushish ham,
+    avto-yangilanish ham JIMGINA o'lardi. Xato bo'lsa `False` — chaqiruvchi
+    `os._exit` qilmasin."""
+    import subprocess
+
+    try:
+        bat = CONFIG_DIR / name
+        bat.write_text(text, encoding="ascii")
+        subprocess.Popen(  # noqa: S602
+            ["cmd", "/c", str(bat)],
+            creationflags=0x00000008 | 0x08000000,
+            env={**os.environ, **yollar},
+        )
+    except Exception:  # noqa: BLE001 - sabab log'da, qaror chaqiruvchida
+        log.exception("%s ishga tushmadi", name)
+        return False
+    return True
+
+
 def _restart_self() -> None:
     """Agentni toza qayta ishga tushiradi (bat: eski jarayon o'lishini kutadi —
     mutex poygasi bo'lmasin). Tray'dan qayta ulashda ishlatiladi: eski token
     bilan ochilgan WS ulanishini uzishning eng ishonchli yo'li — yangi jarayon."""
-    import subprocess
-
-    exe = Path(sys.executable)
-    bat = CONFIG_DIR / "restart.bat"
-    bat.write_text(
+    if not _spawn_bat(
+        "restart.bat",
         "@echo off\r\n"
         "timeout /t 2 /nobreak >nul\r\n"
-        f'start "" "{exe}"\r\n'
-        f'del "%~f0"\r\n',
-        encoding="ascii",
-    )
-    subprocess.Popen(  # noqa: S602
-        ["cmd", "/c", str(bat)], creationflags=0x00000008 | 0x08000000
-    )
+        'start "" "%MBX_EXE%"\r\n'
+        'del "%~f0"\r\n',
+        {"MBX_EXE": sys.executable},
+    ):
+        _alert(
+            "MebeliX MES agent",
+            "Agentni qayta ishga tushirib bo'lmadi — uni qo'lda yopib qayta oching.",
+            error=True,
+        )
+        return
     log.info("Qayta ulash — agent qayta ishga tushmoqda")
     os._exit(0)
 
@@ -1274,25 +1300,19 @@ def _apply_update(new_exe: Path) -> None:
     """O'zini almashtirish: .bat agent chiqishini kutadi, exe'ni almashtiradi,
     qayta ishga tushiradi. Yo'l o'zgarmaydi — avtostart registri amal qilaveradi;
     token/sozlama %APPDATA% da — ulanish saqlanadi."""
-    import subprocess
-
-    exe = Path(sys.executable)
-    bat = CONFIG_DIR / "update.bat"
-    bat.write_text(
+    if not _spawn_bat(
+        "update.bat",
         "@echo off\r\n"
         "timeout /t 2 /nobreak >nul\r\n"
         ":kutish\r\n"
-        f'del "{exe}" >nul 2>&1\r\n'
-        f'if exist "{exe}" (timeout /t 1 /nobreak >nul & goto kutish)\r\n'
-        f'move /y "{new_exe}" "{exe}" >nul\r\n'
-        f'start "" "{exe}"\r\n'
-        f'del "%~f0"\r\n',
-        encoding="ascii",
-    )
-    # DETACHED + NO_WINDOW: bat agent o'lgandan keyin ham yashaydi, oyna ochmaydi
-    subprocess.Popen(  # noqa: S602
-        ["cmd", "/c", str(bat)], creationflags=0x00000008 | 0x08000000
-    )
+        'del "%MBX_EXE%" >nul 2>&1\r\n'
+        'if exist "%MBX_EXE%" (timeout /t 1 /nobreak >nul & goto kutish)\r\n'
+        'move /y "%MBX_NEW%" "%MBX_EXE%" >nul\r\n'
+        'start "" "%MBX_EXE%"\r\n'
+        'del "%~f0"\r\n',
+        {"MBX_EXE": sys.executable, "MBX_NEW": str(new_exe)},
+    ):
+        return  # sabab log'da; keyingi tekshiruv siklida qayta uriniladi
     log.info("Yangilanish qo'llanmoqda — agent qayta ishga tushadi")
     os._exit(0)  # navbat fayli fsync qilingan, tozalash shart emas
 

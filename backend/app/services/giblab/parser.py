@@ -26,6 +26,9 @@ from .xnc import apply_mirror, merge_xnc_ops, parse_xnc_program
 
 _EDGE_SIDES = ("l", "r", "t", "b")
 
+# `Product.code` ustuni — String(50) (models/order.py).
+_PRODUCT_CODE_MAX = 50
+
 # GibLab'da 9 xil operatsiya turi bor ("+Операция" ro'yxati). Biz uchtasini o'qiymiz
 # (CS, EL, XNC), uchtasi ataylab jim o'tkaziladi:
 #   LB — GibLab yorliq shablonlari; tizim o'z yorlig'ini chiqaradi (TZ 5.2.8).
@@ -126,9 +129,11 @@ def _build_part(p: ET.Element, product: ParsedProduct, seen: set[str], warnings:
     width = _f(p, "w") or _f(p, "dw") or _f(p, "cw") or _f(p, "jw")
     # Manfiy o'lcham fizik ma'noga ega emas — GibLab uni ba'zi X-profillarga bayroq
     # sifatida qo'yadi. Modul olamiz, aks holda hisobotlarda maydon manfiy chiqadi.
+    # Yozilmagan o'lcham (None) shundayligicha qoladi — 0 ga aylantirilmaydi.
     if (length or 0) < 0 or (width or 0) < 0:
         warnings.append(f"{product.code}/{code}: faylda manfiy o'lcham ({length}x{width}) — moduli olindi.")
-        length, width = abs(length or 0), abs(width or 0)
+        length = abs(length) if length is not None else None
+        width = abs(width) if width is not None else None
 
     name = (p.get("name") or "").strip() or code
 
@@ -339,6 +344,10 @@ def parse_project(content: bytes) -> ParsedProject:
         product_code = g.get("code") or g.get("name") or "PRODUCT"
         if re.search(r"[\\/]|\.\.", product_code):
             raise ParseError(f"Mahsulot kodida taqiqlangan belgi: {product_code!r}")
+        # Kodsiz eksportda yuqoridagi zaxira mahsulot NOMINI oladi, nom esa uzun bo'ladi.
+        # Product.code — VARCHAR(50): tekshirmasak ingest DB darajasida 500 bilan yiqilardi.
+        if len(product_code) > _PRODUCT_CODE_MAX:
+            raise ParseError(f"Mahsulot kodi juda uzun ({_PRODUCT_CODE_MAX} belgidan oshdi): {product_code!r}")
         product = ParsedProduct(
             code=product_code,
             name=g.get("name", ""),
@@ -365,8 +374,12 @@ def parse_project(content: bytes) -> ParsedProject:
             _apply_el_symbols(op_el, products_goods, part_by_file_id, bands)
 
         elif type_id == "XNC":
+            # Tashlab yuborilgan XNC = yo'qolgan ishlov (teshik, paz, freza) + PRISADKA qadami
+            # + SCX geometriyasi. Jimgina yo'qolmasin — texnolog buni ko'rishi shart.
+            op_ref = op_el.get("code") or f"id={_i(op_el, 'id')}"
             stub_el = op_el.find("part")
             if stub_el is None:
+                project.warnings.append(f"XNC operatsiya detalga bog'lanmagan, ishlov o'tkazib yuborildi: {op_ref}")
                 continue
             # Usually an HTML-escaped attribute (TZ 5.2.7); some exports keep <program> as a child.
             program = op_el.get("program")
@@ -375,6 +388,7 @@ def parse_project(content: bytes) -> ParsedProject:
                 if prog_el is not None:
                     program = ET.tostring(prog_el, encoding="unicode")
             if not program:
+                project.warnings.append(f"XNC operatsiyada dastur (program) yo'q, ishlov o'tkazib yuborildi: {op_ref}")
                 continue
             pid = _i(stub_el, "id")
             code = op_el.get("code") or ""
@@ -437,6 +451,11 @@ def _parse_cs_operation(
             "cFilling",
         )
     }
+    # Zaxira qiymatlar FAQAT atribut yozilmaganda (None) ishlaydi — faylda aniq `0` yozilgan
+    # bo'lsa (torsovkasiz kesish) o'sha 0 saqlanadi, aks holda arrachi yolg'on raqam ko'rardi.
+    kerf_raw = _f(tool, "swSawthick") if tool is not None else None
+    trim_l_raw = _f(op_el, "cTrimL")
+    trim_w_raw = _f(op_el, "cTrimW")
     cut = CutOperation(
         op_id=_i(op_el, "id"),
         material_name=sheet.get("name", "") if sheet is not None else "",
@@ -444,13 +463,13 @@ def _parse_cs_operation(
         # Yagona kerf manbasi (TZ 5.3.4). Yozilmasa GibLab o'zining standarti — 4.4 mm — bilan
         # optimallashtirgan (spetsifikatsiya, `swSawthick`), shuning uchun zaxira qiymat ham 4.4:
         # eski eksportda (`tool.cutting` bo'sh) arrachiga 3.0 deb yolg'on ko'rsatilardi.
-        kerf=(_f(tool, "swSawthick") if tool is not None else None) or 4.4,
+        kerf=4.4 if kerf_raw is None else kerf_raw,
         # Torsovka. Zaxira qiymatlar spetsifikatsiyadagi GibLab standarti (10 mm) — ilgari bu
         # yerda korpusdan olingan 2.0 turardi, ya'ni atribut yozilmagan faylda arrachi 2 mm
         # ko'rib, GibLab esa 10 mm bilan optimallashtirgan bo'lardi. Geometriyaga ta'sir qilmaydi
         # (torsovka blobdan, type=1), faqat xarita sarlavhasida ko'rsatiladi.
-        trim_l=(_f(op_el, "cTrimL") or 10.0),
-        trim_w=(_f(op_el, "cTrimW") or 10.0),
+        trim_l=10.0 if trim_l_raw is None else trim_l_raw,
+        trim_w=10.0 if trim_w_raw is None else trim_w_raw,
         stats=stats,
         data_blob=op_el.get("data") or None,
     )

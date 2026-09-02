@@ -395,12 +395,15 @@ Muhim tushunchalar:
 
 - **Kerf manbasi** — CS o'z dastgohini **`tool1`** atributi bilan ko'rsatadi: pilla qalinligi
   shu `tool.cutting` goodining `swSawthick` idan olinadi (`parser.py`, `_parse_cs_operation`).
-  `tool1` yozilmagan yoki noma'lum goodga ishora qilsa — spetsifikatsiyadagi 4.4 mm (§2.1)
+  `tool1` yozilmagan yoki noma'lum goodga ishora qilsa — spetsifikatsiyadagi 4.4 mm (§2.1).
+  Zaxira qiymat FAQAT atribut yozilmaganda ishlaydi: faylda aniq `swSawthick="0"` bo'lsa 0 qoladi
 - **Кратность (`mult`)** — bitta naqsh necha JISMONIY listda kesiladi. Xaritada `×mult`
   belgisi yo'q: `mult>1` naqsh render paytida har jismoniy list uchun alohida kartaga
   yoyiladi va list raqami `3c1`/`3c2` ko'rinishini oladi (`CutmapView.tsx`, `SheetSvg.tsx`)
 - **Torsovka** (`cTrimL`, `cTrimW`) — listning chetidan olinadigan qirqim, **spetsifikatsiya
   bo'yicha default 10 mm** (tsexning fayllarida doim 2 mm yozilgan; eski eksportda umuman yo'q).
+  Kerf kabi, 10 mm zaxirasi faqat atribut YOZILMAGANDA qo'llanadi — torsovkasiz kesilgan listda
+  `cTrimL="0"`/`cTrimW="0"` xarita sarlavhasida ham 0 bo'lib qoladi.
   `cTrimEL`/`cTrimEW` — pastdan va o'ngdan minimal chekinish, manfiy bo'lsa `cTrimL`/`cTrimW`
   ishlatiladi
 - **Deloviy qoldiq** — `waste="true" business="true"` bo'lgan `<part>`; foydali o'lchami
@@ -679,7 +682,7 @@ profil kesish (`CL` — tsexda bunday post yo'q), detal NOMI (u marshrutga ta'si
 |---|---|
 | Detal kodlari yo'q (2021 build) | tartib raqamidan berildi |
 | Detal kodi takrorlangan | `-2` qo'shib saqlandi |
-| Manfiy o'lcham | moduli olindi |
+| Manfiy o'lcham | moduli olindi (yozilmagan ikkinchi o'lcham `None` bo'lib qoladi, 0 ga aylanmaydi) |
 | Ishlov qo'shimchasi (detalda `allowance*` yoki CS da `cAllowanceWorkpiece`) | xaritada punktir chizilmaydi |
 | `minusCount` > 0 | to'liq miqdor ishlab chiqariladi |
 | `CL` operatsiyasi | profil kesish — ma'lumot, arrachiga bermaymiz |
@@ -687,6 +690,8 @@ profil kesish (`CL` — tsexda bunday post yo'q), detal NOMI (u marshrutga ta'si
 | XNC da noma'lum teg (`ma`, `xy`) | o'sha ishlov ko'rinmaydi |
 | Detalda 2 tadan ko'p XNC | hammasi saqlandi, skan sonini tekshirish kerak |
 | XNC operatsiya noma'lum detalga ishora qiladi | shu dasturning BUTUN ishlovi (teshik, paz, freza) detalga biriktirilmaydi va yo'qoladi |
+| XNC operatsiyada `<part>` havolasi yo'q | ishlov o'tkazib yuborildi (operatsiya `code`/`id` bilan) — PRISADKA qadami va SCX geometriyasi ham yo'qoladi |
+| XNC operatsiyada `program` yo'q | xuddi shunday — ishlov o'tkazib yuborildi (ilgari ikkalasi ham JIM tashlanardi) |
 | `description` da `#kod` | ishlov shablon nomi bilan berilgan, o'qilmaydi |
 | Xaritada joyi yo'q detal | arrachi ro'yxatiga tushmaydi — xarita EKRANIDA katagi yo'q; ARRA marshrut qadami esa CS ro'yxatida turgani uchun baribir yaratiladi (§2.3) |
 | `turn` ≠ 0 | dastur aylantirilgan — aylantirish qo'llanmaydi, CNC'da tekshirish shart (`mirHor`/`mirVert` esa parse'da geometriyaga QO'LLANADI — `xnc.apply_mirror`) |
@@ -694,11 +699,12 @@ profil kesish (`CL` — tsexda bunday post yo'q), detal NOMI (u marshrutga ta'si
 | Nostandart marshrut tiklandi | qayta yuklashda N detalning qo'lda chizilgan marshruti qaytarildi |
 | Marshruti yo'qolgan detal | qo'lda marshrut chizilgan detal yangi faylda topilmadi — kodlari sanab beriladi |
 
-Yarmi — 16 qatordan 8 tasi — `_advisories` da yig'iladi, qolgani boshqa joylarda: dastlabki
+18 qatordan 8 tasi `_advisories` da yig'iladi, qolgani boshqa joylarda: dastlabki
 uchtasi detal qurilishida yoziladi (`_build_part`, `_dedupe_part_code`), "Blobsiz kesish
 operatsiyasi" — `parse_project` generatsiyani aniqlaganda, "XNC operatsiya noma'lum detalga
 ishora qiladi" — dasturlar detalga biriktirilayotganda (`parse_project`, `merge_xnc_ops` dan
-oldin), "Xaritada joyi yo'q detal" esa xarita qurilgandan keyin `ingest.py` da.
+oldin), ikkita "XNC ... o'tkazib yuborildi" — operatsiyalar aylanmasida (`parse_project`),
+"Xaritada joyi yo'q detal" esa xarita qurilgandan keyin `ingest.py` da.
 
 Oxirgi ikkitasi parse'dan tashqarida: ular qo'lda chizilgan marshrutlarni qayta yuklashda
 saqlab tiklaydigan qadamdan chiqadi (`ingest.snapshot_custom_routes` / `restore_custom_routes`,
@@ -717,6 +723,9 @@ to'liq ro'yxat audit logga yoziladi (`POST /orders/{id}/upload`).
 - detal yoki mahsulot kodida `/`, `\` yoki `..` bo'lsa (`parser.py`) — kod QR/SCX fayl
   nomiga aylanadi, yo'l belgilari uploads tashqarisiga yozishga olib borardi; yuklangan
   fayl nomi ham faqat basename bilan saqlanadi (`ingest.py`);
+- mahsulot kodi 50 belgidan uzun bo'lsa (`parser.py`) — kodsiz eski eksportda zaxira sifatida
+  mahsulot NOMI olinadi, `Product.code` esa `VARCHAR(50)`: tekshiruvsiz ingest DB darajasida
+  500 bilan yiqilardi, endi tushunarli 422 qaytadi;
 - XNC ifodasi xavfsiz bo'lmasa yoki hisoblanmasa — §3.2;
 - XNC elementida majburiy atribut bo'lmasa va meros zanjirida ham qiymat bo'lmasa
   (`XNC (C1): <bf> da dp yo'q`) yoxud dastur XML'i buzilgan bo'lsa — §3.2;
@@ -764,9 +773,9 @@ eksportdan farq qilgan holatlar (dizayner keyin o'zgartirgan), generator xatosi 
 | Qirra teshik Face | l→4, r→3, t→1, b→2; l/r: X=0/Length, Y=Width−pos; t: X=pos **Y=Width**; b: X=pos **Y=0** |
 | Kromka lenta Face | qirra bilan bir xil (l4 r3 t1 b2); Edge'da `Pre_Milling`, `X`, `Y` atributlari |
 | Orqa (`_2`) dastur | ALOHIDA FAYL EMAS — yuza elementlari `Face="6"` bilan asosiy nusxa-fayliga (transform old bilan bir xil `x, W−y`) |
-| Qo'shqavat (2×plita) | eksport qalinligi plita bo'yicha (32→16), qirra Z ikki baravar kichik, yuza chuqurlik bir qatlamga kamayadi (35→19, `scx.py:139` `dp -= layer_cut`), freza chuqurligi eksport qalinligiga qirqiladi (30→16, `scx.py:176` `dp = min(dp, thick)`). Shart: dz ≈ 2×plita qalinligi (material bo'yicha — `scx.plate_thickness_map(project)`) YOKI dz≈32; 18/26/40 o'zgarmaydi. ⚠ Paz (Type 4) chuqurligiga HECH QANDAY qoida qo'llanmaydi: dz=32 da 30 mm paz 16 mm eksport qalinligidan chuqur bo'lib qoladi — ochiq savol, korpusda ovoz berilmagan |
+| Qo'shqavat (2×plita) | eksport qalinligi plita bo'yicha (32→16), qirra Z ikki baravar kichik, yuza chuqurlik bir qatlamga kamayadi (35→19, `scx.py:139` `dp -= layer_cut`), freza chuqurligi eksport qalinligiga qirqiladi (30→16, `scx.py:179` `dp = min(dp, thick)`). Shart: dz ≈ 2×plita qalinligi (material bo'yicha — `scx.plate_thickness_map(project)`) YOKI dz≈32; 18/26/40 o'zgarmaydi. ⚠ Paz (Type 4) chuqurligiga HECH QANDAY qoida qo'llanmaydi: dz=32 da 30 mm paz 16 mm eksport qalinligidan chuqur bo'lib qoladi — ochiq savol, korpusda ovoz berilmagan |
 | Paz (Type 4) | Har `gr` ga bitta Machining: Face yuza bilan bir xil (old 5 / orqa 6); `X`=`x1`, `Y`=Width−`y1`, `EndX`=`x2`, `EndY`=Width−`y2`, `Z`=`EndZ`= eksport qalinligi (Panel `Thickness`), `Width`=`gr.t` (yozilmasa 4), `Depth`=`gr.dp`, `ToolOffset=中` |
-| Freza (Type 3) | KOMPENSATSIYALANGAN asbob-markazi yo'li: `ms.c`=2 harakatga chapga r, `c`=1 o'ngga, yoy radiusi mos o'zgaradi; `<Lines><Line Angle=…>` formati (Angle=0 chiziq, ±N yoy sweep'i). Uch shox (`scx.py:184-197`): `c`=0 → xom yo'l, `ToolOffset=中`; `c`=2 VA kontur panel cheti bo'ylab (trim) → xom yo'l, `ToolOffset=右`; qolgan hamma holat, **jumladan panel cheti bo'ylab `c`=1** → `_offset_contour` bilan kompensatsiya, `ToolOffset=中` |
+| Freza (Type 3) | KOMPENSATSIYALANGAN asbob-markazi yo'li: `ms.c`=2 harakatga chapga r, `c`=1 o'ngga, yoy radiusi mos o'zgaradi; `<Lines><Line Angle=…>` formati (Angle=0 chiziq, ±N yoy sweep'i). Uch shox (`scx.py:187-200`): `c`=0 → xom yo'l, `ToolOffset=中`; `c`=2 VA kontur panel cheti bo'ylab (trim) → xom yo'l, `ToolOffset=右`; qolgan hamma holat, **jumladan panel cheti bo'ylab `c`=1** → `_offset_contour` bilan kompensatsiya, `ToolOffset=中`. Segmentsiz kontur (`<ms>` dan keyingi `ml`/`mac` `enable="false"`) tashlab yuboriladi — 2 nuqtadan kam bo'lsa `<Line>` ham chiqmaydi |
 | Atributlar | Machining'da ketma-ket `ID` (1000+) va `IsGenCode="2"`, Panel'da `MachiningPoint="1"` |
 | Fayl nomi | har nusxaga bitta to'liq fayl, nom/Panel ID = nusxa QR — yagona nusxada suffikssiz (`100701_02_003.scx`), takrorlanganda `_1.._n` (`100701_02_003_1.scx`) — Nanxing skaneri va chekdagi kod bir xil |
 

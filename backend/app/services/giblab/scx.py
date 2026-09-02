@@ -166,7 +166,10 @@ def generate_scx(
             )
 
         for contour in op.mills:
-            if not contour:
+            # Bir nuqtali kontur ham o'tkazib yuboriladi: <ms> dan keyingi ml/mac
+            # `enable="false"` bo'lsa faqat bosh nuqta qoladi — segment yo'q,
+            # ya'ni <Line> ham chiqmaydi, ofset esa bo'sh ro'yxatda yiqilardi.
+            if len(contour) < 2:
                 continue
             head = contour[0]
             radius = float(head.get("d") or 0) / 2

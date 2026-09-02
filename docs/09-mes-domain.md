@@ -433,7 +433,10 @@ terminal (POST /terminal/labels/{instance_id})   → label_printed_at + ws "labe
 ```
 
 `GET /terminal/labels/{instance_id}.png` — o'sha `render_label_png()` chiqishi to'g'ridan brauzerga;
-worker ham, GoDEX ham, bridge-agent ham shart emas.
+worker ham, GoDEX ham, bridge-agent ham shart emas. `load_label_data` nusxa, detal yoki
+buyurtmaning biri yumshoq o'chirilgan bo'lsa `None` qaytaradi — PNG 404 beradi (POST/DELETE bilan
+bir xil), `print_label` taski esa `skip:{id}` bilan jimgina o'tadi. Nusxalar matritsada count
+kamayganda va `.project` qayta import qilinganda yumshoq o'chiriladi.
 
 **Qadoq cheki** — `PachkaLabelData` + `render_pachka_label_png()`, arq task `print_pachka_label`
 (qadoq yakunlanganda avtomatik). Tarkibi: logo, `QADOQ` + kod (4.6 mm bold), buyurtma raqami,

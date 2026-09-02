@@ -154,6 +154,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
   - Klientdan kelgan `X-Request-ID`ni qabul qiladi, bo'lmasa `uuid4().hex` yaratadi; `request.state.request_id`ga saqlaydi va javob header'iga qo'shadi.
   - `NON_BUSINESS_PATHS`dagi pathlar (`/metrics`, health/ready) **loglanmaydi** — faqat header qo'shiladi. (Circular import oldini olish uchun `NON_BUSINESS_PATHS` `dispatch` ichida local import qilinadi.)
   - Boshqa so'rovlar uchun `time.perf_counter()` bilan davomiylik o'lchanadi va `logger.info("request", extra={request_id, method, path, status_code, duration_ms})` yoziladi — bu `logger.py`dagi `JsonFormatter` orqali JSON bo'lib chiqadi.
+  - Handler ushlanmagan istisno tashlasa, `call_next` `try/except BaseException` ichida: xuddi shu `extra` (lekin `status_code=500`) bilan `logger.exception("request")` yoziladi va istisno yuqoriga qayta uzatiladi. Ya'ni 500'lar ham `request_id` va `duration_ms` bilan strukturali logda ko'rinadi (javob header'ini Starlette'ning xato ishlovchisi shakllantirgani uchun unda `X-Request-ID` bo'lmaydi; korrelatsiya log orqali).
 
 **Bog'lanishlar:** `setup.py` (`create_application` uni ro'yxatga oladi, `NON_BUSINESS_PATHS` shu yerdan), `logger.py`.
 

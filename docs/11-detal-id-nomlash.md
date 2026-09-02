@@ -23,7 +23,7 @@ to'liq satrni saqlaydi. Oddiy raqamli kodlarda farq sezilmaydi.
 
 | Qism | Qayerdan | Ma'nosi |
 | --- | --- | --- |
-| `100701` | .project dagi mahsulot `code` (bo'lmasa `name`, u ham bo'lmasa `PRODUCT`) | buyurtma ichidagi mahsulot (masalan 1007-buyurtma, 01-shkaf) |
+| `100701` | .project dagi mahsulot `code` (bo'lmasa `name`, u ham bo'lmasa `PRODUCT`); 50 belgidan uzun bo'lsa `ParseError` — `Product.code` ustuni `VARCHAR(50)` | buyurtma ichidagi mahsulot (masalan 1007-buyurtma, 01-shkaf) |
 | `03_002` | .project dagi detal `code`, u bo'lmasa `part.code` atributi (GibLab sxemasi `{blok}_{part.position}` — `parser.py` izohi; namunaviy 5 faylda o'lchandi 2026-08-29: kodli 582 detalning 539 tasida oxirgi bo'lak aynan `part.position`. DIQQAT: `c9e5b2a41d78` migratsiyasining izohi buni `{blok}_{tovar}` deydi — o'sha izoh eskirgan, prod migratsiyasi tahrirlanmaydi); ikkalasi ham bo'lmasa parser tartib raqami beradi (`001`, `002`, ...) — ogohlantirish esa FAQAT mahsulotning BIRINCHI detali kodsiz bo'lganda chiqadi, o'rtadagi kodsiz detal jimgina raqamlanadi | detal turi |
 | `-2` | parser qo'shadi (`_dedupe_part_code`) | bir xil mahsulot KODI ichida IKKI detal bir xil kod bilan kelgan — ikkinchisi `-2` (uchinchisi `-3`, ...). `seen` to'plami `product.code` bo'yicha, ya'ni kodi bir xil ikki alohida `<good>` ham bitta to'plamni bo'lishadi. Bu BOSHQA detal, nusxa emas: odatda ko'zgu juftlik (chap/o'ng bok — teshiklari qarama-qarshi) yoki kromka tomoni farqli juftlik |
 | `_n` | ingest (`ParsedPart.qr_texts`) | nusxa raqami — FAQAT detal 1 dan ko'p nusxada bo'lsa (`_1.._count`). Yagona nusxada suffiks YO'Q |
@@ -81,6 +81,9 @@ sababli bitta chek ID si va bitta bekor qilish tugmasini ko'rsatadi
 - **Yo'l belgilariga taqiq**: detal yoki mahsulot kodida `\`, `/` yoki `..`
   bo'lsa parse `ParseError` bilan to'xtaydi ("... taqiqlangan belgi") — ID SCX
   fayl nomiga aylanadi, uploads tashqarisiga yozib bo'lmasin (`parser.py`).
+- **Mahsulot kodi uzunligi**: nom-zaxirasi ishlaganda kod 50 belgidan oshishi mumkin;
+  `parser.py` uni yozishdan OLDIN tekshiradi ("Mahsulot kodi juda uzun ..."), aks holda
+  `VARCHAR(50)` ustuni ingest paytida 500 berardi.
 - **ID to'qnashuvini oldindan aniqlash**: ikki HAR XIL detal bir xil QR bersa
   (masalan `010` kodli 2 nusxa va `010_2` kodli detal), ingest unique-indeks
   500 xatosi o'rniga do'stona `ParseError` beradi: "Detal ID to'qnashuvi: ..."

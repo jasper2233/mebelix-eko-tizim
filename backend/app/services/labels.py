@@ -43,12 +43,15 @@ class LabelData:
 
 async def load_label_data(db: AsyncSession, instance_id: int) -> LabelData | None:
     """Bitta nusxa uchun yorliq ma'lumotini DB'dan yig'adi (print task va PNG endpoint uchun umumiy)."""
+    # Yumshoq o'chirilgani ham yo'q hisoblanadi: matritsada count kamayganda yoki
+    # .project qayta import qilinganda nusxalar `is_deleted` bo'ladi — chek POST/DELETE
+    # ular uchun 404 beradi, PNG ham xuddi shunday qilishi kerak.
     instance = await db.get(PartInstance, instance_id)
-    if instance is None:
+    if instance is None or instance.is_deleted:
         return None
     part = await db.get(Part, instance.part_id)
     order = await db.get(Order, instance.order_id)
-    if part is None or order is None:
+    if part is None or part.is_deleted or order is None or order.is_deleted:
         return None
 
     # Cutmap'dan shu detal teshiklari: label_num -> file_part_id -> holes.
