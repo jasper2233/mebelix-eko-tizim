@@ -379,7 +379,7 @@ Re-export (`__all__`): **7 singleton** — `crud_bridge_agents`, `crud_clients`,
 
 ### 4.1 `backend/alembic.ini`
 
-Standart Alembic konfiguratsiya: `script_location = app/migrations`, `prepend_sys_path = .` (shuning uchun `backend/` katalogidan turib `alembic` ishga tushiriladi). `sqlalchemy.url` kaliti faylda UMUMAN yo'q — o'rnida faqat izoh turibdi: URL'ni runtime'da `env.py` `config.set_main_option("sqlalchemy.url", ...)` bilan `.env` dan **noldan quradi**, ya'ni parol repoga tushmaydi. Logging bo'limi: root/alembic/sqlalchemy loggerlar, console handler.
+Standart Alembic konfiguratsiya: `script_location = app/migrations`, `prepend_sys_path = .` (shuning uchun `backend/` katalogidan turib `alembic` ishga tushiriladi). `sqlalchemy.url` kaliti faylda UMUMAN yo'q — o'rnida faqat izoh turibdi: URL'ni runtime'da `env.py` `config.set_main_option("sqlalchemy.url", ...)` bilan `.env` dan **noldan quradi**, ya'ni parol repoga tushmaydi. Logging bo'limi: root/alembic/sqlalchemy loggerlar, console handler. `[post_write_hooks]` — yangi yaratilgan revision fayli ustidan ketma-ket `ruff check --fix` va `ruff format` ishlaydi (`ruff_check`, `ruff_format`), shuning uchun autogenerate natijasini CI lint darvozasi uchun qo'lda tuzatish shart emas.
 
 ### 4.2 `backend/app/migrations/env.py`
 
@@ -393,7 +393,7 @@ Async migration environment:
 
 ### 4.3 `backend/app/migrations/script.py.mako`
 
-Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skeleti, `revision`/`down_revision` identifikatorlari).
+Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skeleti, `revision`/`down_revision` identifikatorlari). Importlar loyihaning ruff qoidalariga moslangan: `from collections.abc import Sequence` (UP035) va isort tartibi `collections.abc` -> `typing` -> `sqlalchemy` -> `alembic` (I001).
 
 ### 4.4 Versiyalar zanjiri — `backend/app/migrations/versions/`
 

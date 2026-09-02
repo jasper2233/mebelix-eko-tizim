@@ -277,7 +277,7 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
 | GET | `/api/v1/posts/` | login (har qanday) | `order_index` bo'yicha tartiblangan postlar ro'yxati |
-| PATCH | `/api/v1/posts/{id}` | `AdminUser` | Post sozlamalarini yangilash (nom, rang, flaglar) |
+| PATCH | `/api/v1/posts/{id}` | `AdminUser` | Post sozlamalarini yangilash — `PostUpdate`: `name`, `order_index`, `requires_assignment_choice` |
 
 **Bog'lanishlar:** `backend/app/schemas/posts.py`, `backend/app/crud` (`crud_posts`, `log_action`), `backend/app/commands/seed_defaults.py`.
 

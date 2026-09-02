@@ -8,7 +8,8 @@ dist/
 
 # Environment & Virtual Envs
 .env
-.env.local
+.env.*
+!.env.example
 .venv
 venv/
 env/

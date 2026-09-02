@@ -2,6 +2,8 @@
 # qolgani daemon'ga behuda yuklanadi. frontend o'z konteksti (./frontend) va o'z .dockerignore'i bilan quriladi.
 .git
 **/.env
+# `**/.env` faqat aynan `.env` ni tutadi — variantlar (`.env.local`, `.env.server`) ham yopilsin
+**/.env.*
 **/.venv
 **/__pycache__
 **/.mypy_cache
