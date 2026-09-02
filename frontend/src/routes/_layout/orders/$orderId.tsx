@@ -103,6 +103,10 @@ function OrderDetailPage() {
   const cb = (msg: string) => crudCallbacks(queryClient, ["orders"], msg)
 
   const upload = async (file: File) => {
+    // In-flight qorovul: ikki ketma-ket tashlash (yoki yuklash paytida bosib
+    // ikkinchi fayl tanlash) ikkita POST yuborardi — buyurtma ikki marta
+    // ingest qilinar, unique indeks tufayli ikkinchisi 500 bilan tugardi.
+    if (uploading) return
     setUploading(true)
     try {
       const { data: res } = await OrdersService.uploadOrderProject({
@@ -335,7 +339,7 @@ function OrderDetailPage() {
             dragOver
               ? "border-primary bg-primary/5"
               : "border-muted-foreground/30 text-muted-foreground hover:border-primary/50"
-          }`}
+          } ${uploading ? "opacity-60" : ""}`}
         >
           <FileUp className="size-6" />
           <span className="font-medium">

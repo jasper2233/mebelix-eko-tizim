@@ -23,6 +23,10 @@ def validate_password_strength(v: str) -> str:
     massivni "Kiritilgan ma'lumot noto'g'ri — tekshirib qayta yuboring" ga
     almashtiradi. Admin ko'radigan matn `lib/validation.ts:passwordSchema` da
     qo'lda oynalangan — bu yerdagi qoidani o'zgartirsang, u yerni ham yangila.
+
+    "Belgi" qoidasi ATAYLAB ASCII (`[^A-Za-z0-9]`): `str.isalnum()` Unicode-aware
+    bo'lgani uchun oʻ/gʻ apostrofi (ʻ, ʼ — kategoriya Lm) "belgi" hisoblanmasdi,
+    natijada zod o'tkazgan parol serverda 422 bilan qaytardi.
     """
     if len(v) < 8:
         raise ValueError("Parol kamida 8 belgi bo'lsin")
@@ -32,7 +36,7 @@ def validate_password_strength(v: str) -> str:
         raise ValueError("Parolda kamida bitta KATTA harf bo'lsin")
     if not any(c.isdigit() for c in v):
         raise ValueError("Parolda kamida bitta raqam bo'lsin")
-    if not any(not c.isalnum() for c in v):
+    if not re.search(r"[^A-Za-z0-9]", v):
         raise ValueError("Parolda kamida bitta belgi bo'lsin (masalan ! yoki *)")
     return v
 

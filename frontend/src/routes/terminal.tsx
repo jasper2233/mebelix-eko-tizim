@@ -343,11 +343,15 @@ function TerminalPage() {
     kromkaScanRef,
     // Ikkilamchi to'siq: oldingi so'rov javob bermaguncha yangisi ketmaydi
     onBadge: (badge) => {
+      lastScanAtRef.current = Date.now()
       if (startShift.isPending) return
       startShift.mutate({ badge_id: badge })
     },
     onScan: (qr) => scanMutation.mutate(qr),
     onOffline: () => {
+      // Aloqasiz skan ham operator FAOL ekanining belgisi: avto-reload
+      // "tinchlik" o'lchovini boshqa yo'llar bilan bir xil yangilaymiz.
+      lastScanAtRef.current = Date.now()
       playError()
       setLastScan({
         kind: "error",

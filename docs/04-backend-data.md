@@ -172,7 +172,7 @@ Pydantic v2 schemalari — API request/response validatsiyasi. `backend/app/sche
 Umumiy validatsiya elementlari:
 
 - `PHONE_PATTERN = r"^\+998\d{9}$"` — O'zbekiston E.164 telefon regex'i (model'dagi `String(13)` bilan mos); uni hech bir sxema import qilmaydi — faqat shu modulning `validate_phone` funksiyasi ichida ishlatiladi. `clients.py` (`from .users import validate_phone`) ham, `employees.py` (`from app.schemas.users import validate_phone`) ham shu validatorni import qiladi (§2.3).
-- `validate_password_strength(v)` — parol kuchi: 8+ belgi, kichik harf, katta harf, raqam, maxsus belgi. Xato bo'lsa `ValueError`.
+- `validate_password_strength(v)` — parol kuchi: 8+ belgi, kichik harf, katta harf, raqam, maxsus belgi (ASCII `[^A-Za-z0-9]` — `lib/validation.ts` regexi bilan bir xil). Xato bo'lsa `ValueError`.
 - Qayta ishlatiladigan `Field` konstantalar: `_NAME_FIELD` (2–100, `employee.full_name` bilan bir xil — 30 belgi yetmasdi: "Abdurahmonov Abdurahmon Abdurahmonovich" 39 belgi), `_USERNAME_FIELD` (2–20, `^[a-z0-9]+$`), `_PHONE_FIELD`, `_OPTIONAL_PHONE_FIELD`.
 
 | Schema | Vazifasi | Muhim jihatlar |

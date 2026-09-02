@@ -50,6 +50,13 @@ import { cn } from "@/lib/utils"
 const canPrintInstance = (p: PrisadkaPartRow, i: PrisadkaInstance) =>
   !i.done && !i.label_printed && !p.arra_route
 
+/** ROVER qatorining kaliti — QADAM + NUSXA. Nostandart marshrutda bir detal
+ *  ROVER qadamini ikki marta olishi mumkin ([7, 6, 7]); yolg'iz `instance_id`
+ *  bilan ikki qator bir xil key/DOM id olardi va tanlov ikkalasini birdan
+ *  yoritardi. */
+const instKey = (r: { p: PrisadkaPartRow; i: PrisadkaInstance }) =>
+  `${r.p.route_id}:${r.i.instance_id}`
+
 export function PrisadkaView({
   orderId,
   onBack,
@@ -108,15 +115,17 @@ export function PrisadkaView({
   // null = yuklanmayapti; son = nechta fayl saqlandi (tugmada jonli 12/69)
   const [progress, setProgress] = useState<number | null>(null)
   // ROVER rejimi: qator (nusxa) tanlanadi, chop etish chapdagi katta tugmada
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   // PrisadkaPartRow'da files sxemada ixtiyoriy — bir joyda normallashtiramiz
   const parts = (data?.parts ?? []).map((p) => ({ ...p, files: p.files ?? [] }))
 
   // Oxirgi skan bo'lgan qator keyingi skangacha ajralib turadi + avto-scroll
+  // Kalit `route_id` — takroriy qadamda `part_id` ikki qatorni bitta kalitga
+  // siqib, har refetchda yolg'on "skan bo'ldi" xatcho'pini berardi
   const flashId = useScanFlash(
     parts,
-    (p) => p.part_id,
+    (p) => p.route_id,
     (p) => p.done,
     "pv-row-",
   )
@@ -127,7 +136,7 @@ export function PrisadkaView({
   )
   const instFlash = useScanFlash(
     instRows,
-    (r) => r.i.instance_id,
+    instKey,
     (r) => Number(r.i.done),
     "pv-inst-",
   )
@@ -196,7 +205,7 @@ export function PrisadkaView({
   // chapdagi katta tugmada (ARRA terminal bilan bir xil ishlash naqshi —
   // sensor uchun katta nishon, chip ichidagi mayda tugma emas)
   if (!showScx) {
-    const sel = instRows.find((r) => r.i.instance_id === selectedId) ?? null
+    const sel = instRows.find((r) => instKey(r) === selectedId) ?? null
     const canPrint = !!sel && canPrintInstance(sel.p, sel.i)
     const sorted = [...instRows].sort(
       (a, b) =>
@@ -243,87 +252,90 @@ export function PrisadkaView({
                 </tr>
               </thead>
               <tbody>
-                {sorted.map(({ p, i }) => (
-                  <tr
-                    key={i.instance_id}
-                    id={`pv-inst-${i.instance_id}`}
-                    onClick={() => setSelectedId(i.instance_id)}
-                    // Chek chiqarilgan nusxada uzoq bosish uni bekor qiladi —
-                    // lekin FAQAT o'z postida chiqarilganida. Ro'yxatda arradan
-                    // kelgan detallar ham turadi va ilgari ularda ham ishlardi:
-                    // roverchi arrachining kesish skanini qaytara olardi.
-                    onPointerDown={() =>
-                      i.label_printed &&
-                      ownLabel(p) &&
-                      holdStart({
-                        instance_id: i.instance_id,
-                        qr_text: i.qr_text,
-                        name: p.name,
-                      })
-                    }
-                    onPointerUp={holdEnd}
-                    onPointerLeave={holdEnd}
-                    onPointerCancel={holdEnd}
-                    className={cn(
-                      "cursor-pointer border-b last:border-0",
-                      i.done && "bg-green-50",
-                      selectedId === i.instance_id &&
-                        "bg-primary/10 ring-2 ring-inset ring-primary",
-                      // Xatcho'p tanlov bilan birga ko'rinadi — boshqa o'q
-                      instFlash === i.instance_id &&
-                        "border-l-4 border-l-primary",
-                    )}
-                  >
-                    <td className="num px-4 py-3 font-semibold">
-                      {i.qr_text}
-                      {/* Marshruti roverdan boshlangan detal — uni ROVER o'z
+                {sorted.map((r) => {
+                  const { p, i } = r
+                  const key = instKey(r)
+                  return (
+                    <tr
+                      key={key}
+                      id={`pv-inst-${key}`}
+                      onClick={() => setSelectedId(key)}
+                      // Chek chiqarilgan nusxada uzoq bosish uni bekor qiladi —
+                      // lekin FAQAT o'z postida chiqarilganida. Ro'yxatda arradan
+                      // kelgan detallar ham turadi va ilgari ularda ham ishlardi:
+                      // roverchi arrachining kesish skanini qaytara olardi.
+                      onPointerDown={() =>
+                        i.label_printed &&
+                        ownLabel(p) &&
+                        holdStart({
+                          instance_id: i.instance_id,
+                          qr_text: i.qr_text,
+                          name: p.name,
+                        })
+                      }
+                      onPointerUp={holdEnd}
+                      onPointerLeave={holdEnd}
+                      onPointerCancel={holdEnd}
+                      className={cn(
+                        "cursor-pointer border-b last:border-0",
+                        i.done && "bg-green-50",
+                        selectedId === key &&
+                          "bg-primary/10 ring-2 ring-inset ring-primary",
+                        // Xatcho'p tanlov bilan birga ko'rinadi — boshqa o'q
+                        instFlash === key && "border-l-4 border-l-primary",
+                      )}
+                    >
+                      <td className="num px-4 py-3 font-semibold">
+                        {i.qr_text}
+                        {/* Marshruti roverdan boshlangan detal — uni ROVER o'z
                           listidan kesadi. Ikonka bosilsa xarita o'sha katak
                           belgilangan holda ochiladi: 20 detalli listda uni
                           qidirib topguncha ancha vaqt ketardi. Ikonkaning
                           BORLIGI ayni paytda "chek shu yerda chiqadi" degani —
                           arradan kelgan detalda u yo'q (`ownLabel` bilan bir
                           xil shart: uzoq bosib bekor qilish ham shunga bog'liq). */}
-                      {ownLabel(p) && (
-                        <button
-                          type="button"
-                          title="Kesish xaritasida ko'rsatish"
-                          aria-label={`${i.qr_text} — kesish xaritasida ko'rsatish`}
-                          className="ml-2 inline-flex size-8 items-center justify-center rounded-md align-middle text-muted-foreground hover:bg-muted hover:text-primary"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onShowOnMap?.(p.code)
-                          }}
-                        >
-                          <MapIcon className="size-5" />
-                        </button>
-                      )}
-                    </td>
-                    <td className="max-w-[240px] truncate px-4 py-3">
-                      {p.name}
-                    </td>
-                    <td className="num whitespace-nowrap px-4 py-3 text-sm">
-                      {formatSize(p.length, p.width, p.thickness)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {/* Holat IKKILIK — boshqa hamma ekranda ham shunday
+                        {ownLabel(p) && (
+                          <button
+                            type="button"
+                            title="Kesish xaritasida ko'rsatish"
+                            aria-label={`${i.qr_text} — kesish xaritasida ko'rsatish`}
+                            className="ml-2 inline-flex size-8 items-center justify-center rounded-md align-middle text-muted-foreground hover:bg-muted hover:text-primary"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onShowOnMap?.(p.code)
+                            }}
+                          >
+                            <MapIcon className="size-5" />
+                          </button>
+                        )}
+                      </td>
+                      <td className="max-w-[240px] truncate px-4 py-3">
+                        {p.name}
+                      </td>
+                      <td className="num whitespace-nowrap px-4 py-3 text-sm">
+                        {formatSize(p.length, p.width, p.thickness)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {/* Holat IKKILIK — boshqa hamma ekranda ham shunday
                           (kromka, post navbati, kesish xaritasi). `label_printed`
                           holat emas: u NUSXANING bayrog'i va arradan kelgan
                           detalda allaqachon rost bo'ladi, ya'ni "chek chiqarilgan"
                           deb yozish oddiy kutayotgan qatorlarga ham tegib,
                           hech qanday ma'no bermasdi. */}
-                      <span
-                        className={cn(
-                          "rounded-md px-2.5 py-1 text-sm font-bold",
-                          i.done
-                            ? "bg-green-600 text-white"
-                            : "bg-muted text-muted-foreground",
-                        )}
-                      >
-                        {i.done ? "✓ Bajarildi" : "Bajarilmagan"}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                        <span
+                          className={cn(
+                            "rounded-md px-2.5 py-1 text-sm font-bold",
+                            i.done
+                              ? "bg-green-600 text-white"
+                              : "bg-muted text-muted-foreground",
+                          )}
+                        >
+                          {i.done ? "✓ Bajarildi" : "Bajarilmagan"}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
                 {!sorted.length && (
                   <tr>
                     <td
@@ -446,12 +458,12 @@ export function PrisadkaView({
                 return (
                   <tr
                     key={p.route_id}
-                    id={`pv-row-${p.part_id}`}
+                    id={`pv-row-${p.route_id}`}
                     className={cn(
                       "border-b last:border-0",
                       finished && "bg-green-50",
                       // Xatcho'p: holat rangini bosmaydi, chap chetda turadi
-                      flashId === p.part_id && "border-l-4 border-l-primary",
+                      flashId === p.route_id && "border-l-4 border-l-primary",
                     )}
                   >
                     <td className="num px-4 py-3 font-semibold">{p.code}</td>

@@ -100,7 +100,10 @@ export const UserInformation = () => {
   const onSubmit = (data: FormData) => {
     const updateData: UserUpdate = {}
     if (data.name !== currentUser?.name) {
-      updateData.name = data.name
+      // Zod bo'sh ismni `undefined` ga aylantiradi, u esa JSON tanadan tushib
+      // qolardi — server hech narsa yangilamas, toast esa "muvaffaqiyatli"
+      // derdi. Aniq `null` ismni haqiqatan tozalaydi.
+      updateData.name = data.name ?? null
     }
     if (data.phone !== currentUser?.phone) {
       updateData.phone = data.phone

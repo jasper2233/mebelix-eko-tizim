@@ -4,6 +4,10 @@ let ctx: AudioContext | null = null
 
 function beep(freq: number, durationMs: number, delayMs = 0) {
   ctx ??= new AudioContext()
+  // Stanok postida brauzer foydalanuvchi bosmasdan ochiladi (kiosk), shuning uchun
+  // kontekst "suspended" tug'iladi va signal jim qolardi. resume() asinxron —
+  // birinchi bip biroz kechikishi mumkin, keyingilari darrov chiqadi.
+  if (ctx.state === "suspended") void ctx.resume()
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
   osc.type = "square"

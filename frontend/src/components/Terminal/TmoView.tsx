@@ -64,6 +64,11 @@ export function TmoView({
           body: { qr_text: qr },
         })
       ).data,
+    // 30 s'lik fon so'rovi uchib turgan bo'lsa, uning ESKI javobi quyidagi
+    // `put` natijasini ustidan yozadi — qabul qilingan detal yana kutayotganlar
+    // ro'yxatiga qaytadi. Shuning uchun avval fon so'rovi bekor qilinadi.
+    onMutate: () =>
+      queryClient.cancelQueries({ queryKey: ["terminal", "tmo", orderId] }),
     // Muvaffaqiyat XABARI shu yerda tug'iladi: TMO skani `viewScanRef` orqali
     // ketadi va terminalning umumiy oqimini (ovoz + yashil banner) chetlab
     // o'tadi. Ilgari bu yerda faqat `put` bor edi — operator hech qanday
