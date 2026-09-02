@@ -54,7 +54,7 @@ Asosiy elementlar:
 | Nomi | Turi | Vazifasi |
 |---|---|---|
 | `SessionDep` | `Annotated[AsyncSession, Depends(async_get_db)]` | Har bir so'rov uchun async DB session |
-| `client_ip(request)` | funksiya | Audit log uchun mijoz IP'si BITTA joyda (`request.client.host`); kelajakda proxy ortida `X-Forwarded-For` o'qish kerak bo'lsa faqat shu funksiya o'zgaradi — deyarli barcha route modullar import qiladi |
+| `client_ip(request)` | funksiya | Audit log uchun mijoz IP'si BITTA joyda (`request.client.host`); `X-Forwarded-For` allaqachon `ProxyHeadersMiddleware` orqali qo'llanadi (`core/setup.py`) — funksiya faqat `request.client` ni o'qiydi. 22 route moduldan 12 tasi import qiladi |
 | `_oauth2_scheme` | `OAuth2PasswordBearer(tokenUrl="/api/v1/login/access-token", auto_error=False)` | Bearer token'ni ixtiyoriy o'qiydi; `auto_error=False` — header bo'lmasa 401 bermaydi, cookie fallback ishlaydi |
 | `_extract_token(request, bearer_token)` | funksiya | Avval `Authorization` header, keyin `ACCESS_COOKIE_NAME` cookie'dan token oladi |
 | `resolve_user(db, token)` | async funksiya | `verify_token(token, TokenType.ACCESS)` bilan tekshiradi, `crud_users.get(db, id=token_data.user_id)` orqali foydalanuvchini ID bo'yicha topadi; `is_active` va `token_version` mosligini tekshiradi. Ochiq nom — `ws.py` ham shu funksiyani chaqiradi |

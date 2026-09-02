@@ -144,7 +144,7 @@ function WorkCentersPage() {
                 )
               })
             ) : (
-              <EmptyRow colSpan={admin ? 5 : 4}>Ish markazlari yo'q.</EmptyRow>
+              <EmptyRow colSpan={admin ? 4 : 3}>Ish markazlari yo'q.</EmptyRow>
             )}
           </TableBody>
         </Table>

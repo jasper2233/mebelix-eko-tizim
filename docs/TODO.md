@@ -94,12 +94,12 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `bridge-agent/agent.py:780-801,914-950,1447-1454` — Navbat fayli bilan ishlashda (local_drain/local_rewrite/local_enqueue) hech qanday xato ushlanmaydi; bitta OSError (Windows'da antivirus/backup faylni
 - [x] ✅ `docs/03-backend-api.md:282` — Hujjat PATCH /posts/{id} da «rang» (color) maydonini tahrirlash mumkin deydi — bunday maydon na sxemada, na modelda bor.
 - [x] ✅ `docs/03-backend-api.md:282` — docs/03 `PATCH /posts/{id}` ni "nom, rang, flaglar" deydi — `PostUpdate` da rang maydoni umuman yo'q, `order_index` esa sanalmagan.
-- [ ] ✅ `docs/03-backend-api.md:57` — `client_ip`'s docstring claims the client IP is read in exactly one place and that X-Forwarded-For support would be a future change to this function o
-- [ ] ✅ `docs/04-backend-data.md:147` — Both the model comment and docs/04 say `WorkSession.user_id` is the TERMINAL device account, but the shift is also opened under a post-role account or
-- [ ] ✅ `docs/05-frontend-app.md:318` — Hujjat `staleTime: 5 min` guard'larning keshdan o'qishini ta'minlaydi deydi; aslida `ensureQueryData` staleTime'ni umuman hisobga olmaydi — kesh bor b
-- [ ] ✅ `docs/06-frontend-components.md:32` — Docs claim post assignment "isn't locked, one person can work two posts" — the dialog has no post picker at all and derives exactly one post from the 
-- [ ] ✅ `docs/06-frontend-components.md:560` — Doc says the only local change to select.tsx is dark: class removal ("boshqasi standart"), but SelectContent carries a deliberate, commented deviation
-- [ ] ✅ `docs/10-giblab-reference.md:787-789` — orders.py `ingest` submodulidan uchtasini emas, BESHTA funksiyani import qiladi — marshrut snapshot/restore juftligi ro'yxatdan tushib qolgan.
+- [x] ✅ `docs/03-backend-api.md:57` — `client_ip`'s docstring claims the client IP is read in exactly one place and that X-Forwarded-For support would be a future change to this function o
+- [x] ✅ `docs/04-backend-data.md:147` — Both the model comment and docs/04 say `WorkSession.user_id` is the TERMINAL device account, but the shift is also opened under a post-role account or
+- [x] ✅ `docs/05-frontend-app.md:318` — Hujjat `staleTime: 5 min` guard'larning keshdan o'qishini ta'minlaydi deydi; aslida `ensureQueryData` staleTime'ni umuman hisobga olmaydi — kesh bor b
+- [x] ✅ `docs/06-frontend-components.md:32` — Docs claim post assignment "isn't locked, one person can work two posts" — the dialog has no post picker at all and derives exactly one post from the 
+- [x] ✅ `docs/06-frontend-components.md:560` — Doc says the only local change to select.tsx is dark: class removal ("boshqasi standart"), but SelectContent carries a deliberate, commented deviation
+- [x] ✅ `docs/10-giblab-reference.md:787-789` — orders.py `ingest` submodulidan uchtasini emas, BESHTA funksiyani import qiladi — marshrut snapshot/restore juftligi ro'yxatdan tushib qolgan.
 - [ ] ✅ `frontend/nginx/index.conf:19` — `try_files` oxirida `=404` turgani uchun `/index.html` ichki redirect emas, FAYL tekshiruvi bo'ladi — SPA chuqur havolalari (`/orders/123`) `location 
 - [ ] ✅ `frontend/src/components/Anketa/RoomPhotos.tsx:70,165` — Klient MIME tekshiruvi serverdan kengroq: `image/*` o'tadi, lekin server faqat jpeg/png/webp qabul qiladi — iPhone'ning HEIC surati (yoki GIF/SVG) kli
 - [ ] ✅ `frontend/src/components/Clients/AddClient.tsx:158` — `address` has a 255-char zod limit but no `FormMessage` and no `maxLength`, so an over-long address silently blocks submit with no visible reason.
@@ -113,7 +113,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `frontend/src/components/People/PersonDialog.tsx:142` — Phone is turned into a payload by stripping non-digits with no `PHONE_PATTERN` check, so a half-typed number is sent as e.g. `+99890` and the server 4
 - [ ] ✅ `frontend/src/components/People/PersonDialog.tsx:146-150` — `switching` (which triggers the destructive-change confirm dialog) checks only whether the ORIGINAL person had any linked user account, not whether th
 - [ ] ✅ `frontend/src/components/People/PersonDialog.tsx:227` — User account and employee row are created in one non-atomic mutationFn; if the employee step fails, the created account is orphaned, invisible in the 
-- [ ] ✅ `frontend/src/components/Sidebar/AppSidebar.tsx:76` — The docs (and the code comment they mirror) claim the badge query adds no request because the registry page dedupes it. That only holds ON `/orders`. 
+- [x] ✅ `frontend/src/components/Sidebar/AppSidebar.tsx:76` — The docs (and the code comment they mirror) claim the badge query adds no request because the registry page dedupes it. That only holds ON `/orders`. 
 - [ ] ✅ `frontend/src/components/Sidebar/Main.tsx:43` — Active-item detection is a strict equality on the full pathname, so on any child route the sidebar shows NO highlighted item — the user loses their pl
 - [ ] ✅ `frontend/src/components/Sidebar/Main.tsx:43` — Faqat aniq (exact) path solishtiriladi, shuning uchun ichki marshrutda (masalan /orders/$orderId — buyurtma detail sahifasi) sidebar'dagi "Buyurtmalar
 - [ ] ✅ `frontend/src/components/Terminal/KromkaView.tsx:152-153` — Qator kaliti `route_id`, DOM id va `useScanFlash` kaliti `part_id` — bitta detal KROMKA'ni ikki marta olsa DOM id takrorlanadi va xatcho'p/avto-scroll
@@ -148,7 +148,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `frontend/src/routes/_layout/printers.tsx:202` — The mebelix-agent.exe download link is the only place in the whole frontend that builds an API URL without API_BASE, so whenever the API lives on a di
 - [ ] ✅ `frontend/src/routes/_layout/reports.tsx:40` — Sahifa ochilganda ikkala DatePicker bo'sh turadi, backend esa jimgina oxirgi 30 kunni qaytaradi; javobdagi haqiqiy oraliq (`date_from`/`date_to`) hech
 - [ ] ✅ `frontend/src/routes/_layout/reports.tsx:61` — Excel eksporti oddiy `<a href>` navigatsiyasi — xato holatida (403/500/sessiya tugagan) brauzer SPA dan chiqib ketib xom JSON xatosini ekranga chiqara
-- [ ] ✅ `frontend/src/routes/_layout/work-centers.tsx:150` — The empty-state row spans one column more than the table has, so the 'Ish markazlari yo'q' cell overflows the table grid.
+- [x] ✅ `frontend/src/routes/_layout/work-centers.tsx:150` — The empty-state row spans one column more than the table has, so the 'Ish markazlari yo'q' cell overflows the table grid.
 - [ ] ✅ `frontend/src/routes/_layout/work-centers.tsx:208` — The auto-suggested work-center name counts existing machines on the post, so after any deletion or manual rename it proposes a name that already exist
 - [ ] ✅ `frontend/src/routes/_layout/work-centers.tsx:65` — A failed `/posts` request is silently swallowed — only the machines query drives the error branch, so the page renders with a blank Post column and a 
 - [ ] ✅ `frontend/src/routes/login.tsx:135-136` — Post-choice dialogidan keyin badge.mutate ikkinchi marta ishga tushadi (postId bilan); u xato bersa (backend _badge_post/_post_machine/_terminal_user 

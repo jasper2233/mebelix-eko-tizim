@@ -73,8 +73,10 @@ export function AppSidebar() {
   const { currentUser } = useCurrentUser()
   const items = NAV_ITEMS.filter((i) => i.show(currentUser))
 
-  // Reyestr sahifasi ham AYNAN shu kalitni ishlatadi — TanStack dedupe qiladi,
-  // ya'ni sidebar qo'shimcha so'rov qo'shmaydi.
+  // Reyestr sahifasi ham AYNAN shu kalitni ishlatadi — /orders da TanStack
+  // dedupe qiladi, ya'ni sidebar u yerda qo'shimcha so'rov qo'shmaydi. Qolgan
+  // sahifalarda sidebar yagona obunachi: 30 soniyalik pollni o'zi yuritadi
+  // (`refetchInterval`, queries/mes.ts).
   const canSeeOrders = items.some((i) => i.path === "/orders")
   const { data: counts } = useQuery({
     ...getOrderStatusCountsQueryOptions(),

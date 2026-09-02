@@ -29,7 +29,9 @@ qolganini lavozim hal qiladi.
 - **Post lavozimdan keladi**: "Arrachi" tanlansa ARRA belgilanadi. Dialog OCHILGANDA ham
   hisoblanadi (`postsFor`), faqat almashtirilganda emas — ilgari admin tayyor turgan
   lavozimga tegmasdan saqlasa POSTSIZ hodim yaratilardi va uning beyjigi ishlamasdi.
-  Qulflanmaydi: bir odam ikki postda ishlashi mumkin.
+  Dialogda post tanlagichi YO'Q: katalog lavozimi ko'pi bilan BITTA post beradi, faqat
+  katalogda yo'q lavozim ("Boshqa") mavjud postlarni saqlaydi. Bir odamni ikki postga
+  qo'yish — hozircha mahsulot cheklovi (ma'lumot modeli `employee.posts` ro'yxatni ko'taradi).
 - **Lavozim MATNDAN emas MA'LUMOTDAN tiklanadi** (`positionOf`): ofis odamida
   `user.role`, tsex odamida biriktirilgan post bo'yicha. Matn bilan solishtirish
   "Manager" != "Menejer" da sinib, tahrirlash o'rniga ikkinchi yozuv yaratardi.
@@ -355,7 +357,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 **Maqsadi:** ilovaning asosiy yon paneli — brend, navigatsiya va foydalanuvchi menyusini yig'adi.
 
 - Modul darajasidagi `NAV_ITEMS` ro'yxati (TZ 3.7 rollar-modullar matritsasi, eksport — `routes/_layout.tsx` mobil sarlavhalari ham shu ro'yxatdan) 9 ta punkt beradi, har bandda `show(user)` predikati. Huquq predikatlari `@/lib/mes` dan — `isProductionStaff` / `isManagement` / `isAdmin`; **route guard'lar ham AYNAN shularni ishlatadi** (`lib/guards.requireAccess`), ya'ni menyuda ko'rinadigan sahifa albatta ochiladi. Bandlar: Boshqaruv paneli `/` va LIVE Tablo `/tablo` — hammaga (`show: () => true`; TABLO tsex zalidagi TV ekran); Buyurtmalar `/orders`, Ish markazlari `/work-centers` — `isProductionStaff` (boshqaruv + texnolog); Mijozlar `/clients`, Hodimlar `/employees`, Hisobotlar `/reports` — `isManagement` (admin/manager/direktor); MES agentlar `/printers` (`Printer` ikonkasi) va Loglar `/logs` (`ScrollText` ikonkasi) — `isAdmin` (superuser yoki `role === "admin"`); Foydalanuvchilar bandi OLIB TASHLANDI — u Hodimlar sahifasiga birlashtirildi (`/admin` endi redirect). **Rolga qarab navigatsiya**.
-- Buyurtmalar bandida jonli badge — faol buyurtmalar soni (`TERMINAL_STATUSES` — delivered/cancelled — dan boshqa statuslar yig'indisi): `getOrderStatusCountsQueryOptions()` reyestr sahifasi bilan AYNAN bitta query key'da, TanStack dedupe qiladi — sidebar qo'shimcha so'rov qo'shmaydi; `enabled` faqat `/orders` bandi ko'rinadigan rollarda.
+- Buyurtmalar bandida jonli badge — faol buyurtmalar soni (`TERMINAL_STATUSES` — delivered/cancelled — dan boshqa statuslar yig'indisi): `getOrderStatusCountsQueryOptions()` reyestr sahifasi bilan AYNAN bitta query key'da, ya'ni `/orders` da TanStack dedupe qiladi va sidebar qo'shimcha so'rov qo'shmaydi. Qolgan admin sahifalarida sidebar YAGONA obunachi — `refetchInterval: 30_000` pollni o'zi yuritadi (`queries/mes.ts`, `docs/05` §5 `queries/mes.ts`). `enabled` faqat `/orders` bandi ko'rinadigan rollarda.
 - `<Sidebar collapsible="icon">`: yig'ilganda faqat ikonkalar qoladi. Header'da `Link to="/"` — ichida faqat to'liq logo (`/assets/logo/logo-gold.png`, `h-9 w-auto`, `alt="MebeliX — bosh sahifa"`; login ekrani bilan bir xil brend), matn tuguni yo'q. Yig'ilganda BUTUN havola `group-data-[collapsible=icon]:hidden` bilan yashiriladi — brend tab sarlavhasi, favicon va login ekranida qoladi, bosh sahifa havolasi esa menyuning birinchi qatorida ("Boshqaruv paneli"). `SidebarTrigger` yig'ilgan railda `group-data-[collapsible=icon]:mx-auto` bilan markazga tushadi.
 - `SidebarContent` → `Main items={items}`; `SidebarFooter` → `User user={currentUser}`.
 
@@ -564,7 +566,7 @@ shadcn/ui asosidagi 25 ta primitiv. Ko'pchiligi standart generatsiya; quyidagi j
 | `loading-button.tsx` | LoadingButton (`ButtonProps` — fayl ichida, eksport emas) | `buttonVariants` (button.tsx dan import) | **To'liq custom** (pastda) |
 | `password-input.tsx` | PasswordInput | `Input` + Button | **To'liq custom** (pastda) |
 | `popover.tsx` | Popover, PopoverTrigger, PopoverContent | Radix Popover | Deyarli standart (`rounded-xl`, `p-3`, `align="start"`) |
-| `select.tsx` | Select, SelectTrigger/Content/Item/..., 10 ta eksport | Radix Select | `dark:` klasslar olib tashlangan (boshqasi standart) |
+| `select.tsx` | Select, SelectTrigger/Content/Item/..., 10 ta eksport | Radix Select | `dark:` klasslar olib tashlangan; `SelectContent` default'i `align="start"` (shadcn'da `center`) + `sideOffset={4}` — boshqa suzuvchi qatlamlar bilan bir xil |
 | `separator.tsx` | Separator | Radix Separator | Yo'q |
 | `sheet.tsx` | Sheet, SheetContent (side: top/right/bottom/left), ... | Radix Dialog | Yo'q; mobil sidebar shu orqali |
 | `sidebar.tsx` | 24 ta eksport: SidebarProvider, Sidebar, SidebarTrigger, SidebarMenu*, useSidebar, ... | shadcn sidebar block | **Ha, o'zgartirilgan** (pastda) |

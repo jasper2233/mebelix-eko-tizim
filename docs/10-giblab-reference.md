@@ -785,8 +785,10 @@ va `OrderFile` maydonlari bir joyda).
 - Ishlov: `xnc.py` (dastur XML), `scx.py` (CNC fayl generatsiyasi)
 - DB'ga yozish: `ingest.py` (mahsulot/detal/nusxa/marshrut, material registri, sarf hisobi, SCX yozish)
 - `giblab/__init__.py` faqat ikki nom eksport qiladi: `ParseError` va `parse_project`; `ingest`
-  funksiyalari (`ingest_project`, `wipe_previous_parse`, `write_and_register_scx`) submoduldan
-  to'g'ridan-to'g'ri olinadi (`orders/files.py`)
+  funksiyalari (`ingest_project`, `wipe_previous_parse`, `write_and_register_scx`,
+  `snapshot_custom_routes`, `restore_custom_routes`) submoduldan to'g'ridan-to'g'ri olinadi
+  (`orders/files.py`) — oxirgi juftlik qayta yuklashda qo'lda chizilgan marshrutlarni
+  saqlab tiklaydi (§7 ga qarang)
 - Korpus fayllari git'ga tushmaydi (`.gitignore`: `uploads/`), lekin lokal `uploads/projects/`
   da turadi — parser o'zgarishida real .project fayllarga qarshi qo'lda tekshiriladi
 - Hujjatdagi sanoqlar SAKKIZTA fayl bo'yicha o'lchangan: `01 shkaf`, `02 kitob javon`,
