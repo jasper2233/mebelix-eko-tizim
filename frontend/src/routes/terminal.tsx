@@ -341,7 +341,11 @@ function TerminalPage() {
     mapOrderId,
     viewScanRef,
     kromkaScanRef,
-    onBadge: (badge) => startShift.mutate({ badge_id: badge }),
+    // Ikkilamchi to'siq: oldingi so'rov javob bermaguncha yangisi ketmaydi
+    onBadge: (badge) => {
+      if (startShift.isPending) return
+      startShift.mutate({ badge_id: badge })
+    },
     onScan: (qr) => scanMutation.mutate(qr),
     onOffline: () => {
       playError()

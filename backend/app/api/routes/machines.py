@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import func, select
 
 from app.api.deps import AdminUser, CurrentUser, SessionDep, client_ip
+from app.api.routes._shared import drop_forbidden_nulls
 from app.core.exceptions import DuplicateValueException, NotFoundException
 from app.crud import crud_machines, crud_posts, log_action
 from app.models import BridgeAgent, Machine, PartRoute, Scan, User, WorkSession
@@ -122,8 +123,9 @@ async def update_machine(
     db: SessionDep, current_user: AdminUser, machine_id: int, body: MachineUpdate, request: Request
 ) -> Machine:
     machine = await crud_machines.get_or_404(db, "Ish markazi topilmadi.", id=machine_id)
-    update_data = body.model_dump(exclude_unset=True)
-    if update_data.get("name"):
+    # Machine ustunlarining hammasi NOT NULL — aniq `null` no-op, aks holda 500
+    update_data = drop_forbidden_nulls(body.model_dump(exclude_unset=True))
+    if "name" in update_data:
         await _check_name(db, update_data["name"], machine_id=machine.id)
     if "post_id" in update_data and update_data["post_id"] != machine.post_id:
         if await crud_posts.get(db, id=update_data["post_id"]) is None:

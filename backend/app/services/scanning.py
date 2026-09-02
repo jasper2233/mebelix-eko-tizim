@@ -650,16 +650,20 @@ async def record_scan_at(
         client_event_id=client_event_id,
     )
     db.add(scan)
-    # Inkrement SQL tomonda: ikki terminal bir vaqtda skanlasa Python tomonda
-    # o'qib-yozish (`+= 1`) bittasini yo'qotardi va qadam `total_required` ga
-    # hech qachon yetmasdi — buyurtma abadiy "tugamagan" bo'lib qolardi.
-    await db.execute(update(PartRoute).where(PartRoute.id == route.id).values(total_done=PartRoute.total_done + 1))
-    await db.refresh(route, ["total_done"])
+    # Flush AYNAN shu yerda: sessiyada `autoflush=True`, ya'ni keyingi har qanday
+    # `execute()` kutilayotgan INSERT'ni o'zi yuvadi va `client_event_id` unikal
+    # indeksi poygasi guard tashqarisida 500 bo'lib chiqardi.
     try:
         await db.flush()
     except IntegrityError:  # client_event_id race — treat as replay
         await db.rollback()
         raise ScanRejected("E001", "Takroriy scan aniqlandi. Qayta urining.") from None
+
+    # Inkrement SQL tomonda: ikki terminal bir vaqtda skanlasa Python tomonda
+    # o'qib-yozish (`+= 1`) bittasini yo'qotardi va qadam `total_required` ga
+    # hech qachon yetmasdi — buyurtma abadiy "tugamagan" bo'lib qolardi.
+    await db.execute(update(PartRoute).where(PartRoute.id == route.id).values(total_done=PartRoute.total_done + 1))
+    await db.refresh(route, ["total_done"])
 
     # Yig'ma buyum: shu qadamda asosiy detalga mayda detallar yopishtiriladi.
     # Ular alohida skanerlanmaydi — asosiy detalning skani ularnikini ham yopadi.

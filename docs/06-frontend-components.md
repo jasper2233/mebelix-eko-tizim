@@ -511,7 +511,7 @@ Chap toolbar tugmasi: ikonka + `text-2xs` yozuv (`index.css` da 0.6875rem), `h-1
 
 ### `frontend/src/components/Terminal/useTerminalScan.ts`
 
-**Maqsadi:** skan yo'naltirgichi — bitta QR to'rt manzilga ketishi mumkin: beyjik UUID → smena; ekranning o'z sinki (`viewScanRef` — qadoqlash/TMO, chunki detal qaysi qadoqqa tushishini faqat o'sha ekran biladi va qadoq QR'i `PK-...` umumiy yo'lda rad etilardi); KROMKA/OVAL lokal tekshiruvi (`kromkaScanRef`, 5 s to'siq, picker ochiq bo'lsa `/qr/{qr}/order` bilan proyektni o'zi ochadi); qolgani umumiy skan (2 s duplikat to'sig'i).
+**Maqsadi:** skan yo'naltirgichi — bitta QR to'rt manzilga ketishi mumkin: beyjik UUID → smena (u ham 2 s duplikat to'sig'i ostida — skanerning takror o'qishi ikkita `POST /terminal/session` yuborardi; `routes/terminal.tsx` da `startShift.isPending` ikkilamchi to'siq); ekranning o'z sinki (`viewScanRef` — qadoqlash/TMO, chunki detal qaysi qadoqqa tushishini faqat o'sha ekran biladi va qadoq QR'i `PK-...` umumiy yo'lda rad etilardi); KROMKA/OVAL lokal tekshiruvi (`kromkaScanRef`, 5 s to'siq, picker ochiq bo'lsa `/qr/{qr}/order` bilan proyektni o'zi ochadi); qolgani umumiy skan (2 s duplikat to'sig'i).
 
 ### `frontend/src/components/Terminal/usePrintLabel.ts`
 

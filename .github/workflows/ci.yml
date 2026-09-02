@@ -118,7 +118,14 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/mebelix-mes-${{ matrix.name }}:${{ github.sha }}
+          # Ikki teg bitta manifestga: `:<git sha>` rollback uchun (deploy.sh),
+          # `:latest` esa compose'dagi `${TAG:-latest}` defaultini haqiqiy
+          # image'ga bog'laydi — busiz TAG'siz `make docker-prod` manifest
+          # unknown bilan yiqilardi. Job faqat main-push'da yuradi (yuqoridagi
+          # `if`), ya'ni `:latest` doim main'ning oxirgi build'i.
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/mebelix-mes-${{ matrix.name }}:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/mebelix-mes-${{ matrix.name }}:latest
           # source labeli paketni repoga bog'laydi — busiz deploy jobning
           # GITHUB_TOKEN'i paketni tortishga huquq olmaydi
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}

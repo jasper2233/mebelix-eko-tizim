@@ -1,7 +1,7 @@
 // Terminalning SKAN YO'NALTIRGICHI: bitta QR to'rt xil manzilga ketishi mumkin.
 // Qoidalar terminal maketidan ajratilgan — bu domen mantiqi, joylashuv emas.
 //
-//   1. Beyjik UUID          -> smena ochish
+//   1. Beyjik UUID          -> smena ochish (2s duplikat to'sig'i ostida)
 //   2. Ekranning o'z sinki  -> qadoqlash/TMO (detal qaysi qadoqqa tushishini,
 //                              qabulmi yoki topshirishmi ekanini faqat o'sha
 //                              ekran biladi; qadoq QR'i `PK-...` umumiy yo'lda
@@ -64,6 +64,9 @@ export function useTerminalScan({
     const value = raw.trim()
     if (!value) return
     if (BADGE_RE.test(value)) {
+      // Skanerning takror o'qishi ikkita POST /terminal/session poygasini
+      // berardi — ikkalasi ham eski smenani yopib yangisini ochardi.
+      if (cooled(value, COOLDOWN_MS)) return
       onBadge(value)
       return
     }

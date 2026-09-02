@@ -34,7 +34,7 @@ export const Route = createFileRoute("/_layout")({
 })
 
 function Layout() {
-  const pathname = useRouterState().location.pathname
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
   const sectionTitle = sectionTitles[pathname]
 
   return (

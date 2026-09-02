@@ -219,10 +219,11 @@ async def accept_into_tmo(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: in
     machine, post = ctx
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
     qr = body.qr_text.strip()
+    qr_upper = qr.upper()  # qadoq kodlari doim UPPERCASE — prefiks ham, qidiruv ham shu registrda
     session = await active_session(db, machine)
 
-    if qr.upper().startswith("PK-"):
-        pachka = await _pachka_by_code(db, order, qr)
+    if qr_upper.startswith("PK-"):
+        pachka = await _pachka_by_code(db, order, qr_upper)
         if pachka.status == PachkaStatus.OPEN:
             raise ForbiddenException(f"{pachka.code} hali yopilmagan — qadoqlash tugamagan.")
         qrs = list(

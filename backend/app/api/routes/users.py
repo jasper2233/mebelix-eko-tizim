@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Query, Request
 
 from app.api.deps import CurrentUser, SessionDep, StaffReadUser, SuperUserDep, client_ip
+from app.api.routes._shared import drop_forbidden_nulls
 from app.core.config import settings
 from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
 from app.core.security import get_password_hash, verify_password
@@ -13,6 +14,8 @@ from app.schemas.common import Message, Paginated
 from app.schemas.users import UpdatePassword, UserAdminUpdate, UserCreate, UserRead, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+_NULLABLE_FIELDS = ("name", "machine_id")  # null = qiymatni olib tashlash (ish markazi bog'lamini uzish)
 
 
 async def _ensure_unique(db: SessionDep, *, phone: str | None, username: str | None, current: User) -> None:
@@ -26,15 +29,6 @@ async def _ensure_unique(db: SessionDep, *, phone: str | None, username: str | N
 def _derive_username_from_phone(phone: str) -> str:
     """Strip the `+` prefix to use the digits as a fallback username (e.g. `+998901234567` → `998901234567`)."""
     return phone.lstrip("+")
-
-
-_NULLABLE_FIELDS = ("name", "machine_id")  # null = qiymatni olib tashlash (ish markazi bog'lamini uzish)
-
-
-def _drop_forbidden_nulls(update_data: dict) -> dict:
-    """PATCH bodies may carry explicit `null`s; faqat haqiqatan nullable ustunlar
-    null qabul qiladi — qolganlari NOT NULL ustunga tushib 500 berardi."""
-    return {k: v for k, v in update_data.items() if v is not None or k in _NULLABLE_FIELDS}
 
 
 async def _check_machine(db: SessionDep, role: UserRole | None, machine_id: int | None) -> None:
@@ -125,7 +119,7 @@ async def update_user_me(
 ) -> UserRead:
     """Update the caller's own profile. Privilege flags are not in the schema, so escalation is impossible here."""
     await _ensure_unique(db, phone=values.phone, username=values.username, current=current_user)
-    update_data = _drop_forbidden_nulls(values.model_dump(exclude_unset=True))
+    update_data = drop_forbidden_nulls(values.model_dump(exclude_unset=True), _NULLABLE_FIELDS)
     updated_user = await crud_users.update(db=db, db_user=current_user, user_update=update_data)
     await db.commit()
     await db.refresh(updated_user)
@@ -191,7 +185,7 @@ async def update_user(
     db_user = await crud_users.get_or_404(db, "Foydalanuvchi topilmadi", id=user_id)
 
     await _ensure_unique(db, phone=values.phone, username=values.username, current=db_user)
-    update_data = _drop_forbidden_nulls(values.model_dump(exclude_unset=True))
+    update_data = drop_forbidden_nulls(values.model_dump(exclude_unset=True), _NULLABLE_FIELDS)
     if "role" in update_data or "machine_id" in update_data:
         await _check_machine(
             db,

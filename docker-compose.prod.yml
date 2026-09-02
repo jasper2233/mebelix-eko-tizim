@@ -49,7 +49,8 @@ services:
 
   api:
     # TAG (git sha) bilan teglash rollback uchun: scripts/deploy.sh smoke yiqilsa
-    # oxirgi stable TAG'ga qaytaradi. Default latest — lokal qo'lda ishga tushirishga.
+    # oxirgi stable TAG'ga qaytaradi. Default `latest` — CI har main-push'da sha bilan bir
+    # manifestga push qiladi (= main'ning oxirgi build'i); TAG'siz `make docker-prod` shunga tayanadi.
     # Image CI'da qurilib ghcr.io ga yuboriladi — serverda build yo'q (deploy.sh pull qiladi).
     # Lokal build kerak bo'lsa docker-compose.local.yml ishlatiladi.
     image: ${REGISTRY:-ghcr.io/dshukriddinov}/mebelix-mes-backend:${TAG:-latest}

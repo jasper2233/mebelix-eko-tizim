@@ -232,7 +232,6 @@ function LogsPage() {
                   key={r.id}
                   className="cursor-pointer focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
                   tabIndex={0}
-                  role="button"
                   onClick={() => setDetail(r)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {

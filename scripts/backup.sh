@@ -24,7 +24,15 @@ cd "$(dirname "$0")/.."
 # Shuning uchun faqat KERAKLI kalitlar o'qiladi, qiymat qo'shtirnoqlardan tozalanadi.
 env_get() { # $1 = kalit, $2 = fayl
     [ -f "$2" ] || return 0
-    sed -n "s/^${1}=//p" "$2" | tail -1 | sed 's/[[:space:]]*#.*$//; s/^"\(.*\)"$/\1/; s/^'"'"'\(.*\)'"'"'$/\1/'
+    # Qiymat python-dotenv qoidasi bo'yicha o'qiladi: avval qo'shtirnoq/apostrof
+    # yechiladi, izoh esa faqat OLDIDA bo'shliq bo'lgan `#` dan boshlanadi.
+    # Avval teskari edi — `#` dan keyingi hammasi kesilardi, ya'ni ichida `#` bor
+    # ADMIN_PASSWORD jimgina qirqilib, backup boshqa parol bilan shifrlanar va
+    # hujjatdagi retsept bilan ochilmasdi.
+    sed -n "s/^${1}=//p" "$2" | tail -1 |
+        sed -e 's/^"\([^"]*\)"[[:space:]]*\(#.*\)\{0,1\}$/\1/;t' \
+            -e "s/^'\([^']*\)'[[:space:]]*\(#.*\)\{0,1\}\$/\1/;t" \
+            -e 's/[[:space:]]\{1,\}#.*$//'
 }
 
 export POSTGRES_USER="$(env_get POSTGRES_USER .env)"

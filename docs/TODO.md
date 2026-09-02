@@ -7,14 +7,14 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `scripts/deploy.sh:104` — Migratsiyali deploy'da avto-rollback ishlamaydi: eski image `alembic upgrade head` noma'lum revision'da yiqiladi → api crash loop; rollback shoxiga stable image bilan `alembic stamp`/`downgrade` qadami kerak (repro: audit «Deploy-xavfsizlik»)
 - [ ] ✅ `backend/app/api/routes/orders/lifecycle.py:425` — Ish markazini PRODUCTION holatidagi buyurtmada qayta tanlash `order.machine_assignments` ni yangilaydi, lekin `PartRoute.machine_id` eski stanokda qol
 - [ ] ✅ `backend/app/api/routes/orders/matrix.py:200-203` — When a matrix stage checkbox is toggled on for a post that has no existing PartRoute step yet, the new step is always created with per_instance=1. For
-- [ ] ✅ `backend/app/api/routes/tmo.py:224-225` — Prefix check is case-insensitive via .upper(), but the original non-uppercased `qr` is then used for the actual pachka lookup (`_pachka_by_code(db, or
+- [x] ✅ `backend/app/api/routes/tmo.py:224-225` — Prefix check is case-insensitive via .upper(), but the original non-uppercased `qr` is then used for the actual pachka lookup (`_pachka_by_code(db, or
 - [ ] ✅ `backend/app/models/base.py:23` — `updated_at` is declared nullable with `default=None` AND `server_default=current_timestamp(0)`, so SQLAlchemy omits it from the INSERT and every fres
 - [ ] ✅ `backend/app/services/giblab/ingest.py:155` — restore_custom_routes appends restored MANUAL steps AFTER the freshly-ingested tail (UPAKOVKA/TMO), so TMO is no longer the last step of a standard pa
 - [ ] ✅ `backend/app/services/giblab/ingest.py:78` — snapshot_custom_routes only sees parts that already have a MANUAL route row, so a part marked "Nostandart" (or bound to an assembly parent) before any
 - [ ] ✅ `backend/app/services/giblab/parser.py:463` — CS `<part>` ro'yxatidagi HAR bir stubga `label_num` beriladi, joylashtirilmagan (usedCount=0) detalga ham — ingest esa aynan `label_num is not None` n
 - [ ] ✅ `backend/app/services/labels.py:230` — Loyiha nomi 26 belgigacha chiziladi, lekin QR bloki uni x=40 mm dan boshlab ustidan bosib o'chiradi — uzun loyiha nomining oxiri chekda umuman ko'rinm
 - [ ] ✅ `backend/app/services/scanning.py:518` — QR text is not order-scoped (uniqueness is only per order), so when two live PRODUCTION orders are built from the same GibLab product/part codes, ever
-- [ ] ✅ `backend/app/services/scanning.py:656` — The `except IntegrityError` guard around `db.flush()` never fires — SQLAlchemy autoflushes the pending Scan INSERT inside the preceding `db.execute(up
+- [x] ✅ `backend/app/services/scanning.py:656` — The `except IntegrityError` guard around `db.flush()` never fires — SQLAlchemy autoflushes the pending Scan INSERT inside the preceding `db.execute(up
 - [ ] ✅ `frontend/src/components/Orders/CustomRoutes.tsx:124-125` — "Bekor qilish" (Cancel) tugmasi faqat setDraft({}) chaqiradi, setParents({}) emas. dirty holati draft VA parents ikkalasidan hisoblanadi (Object.keys(
 - [ ] ✅ `frontend/src/components/Orders/CustomRoutes.tsx:88` — codesOf() reads every saved route step, including the system tail steps (15 UPAKOVKA / 16 TMO) that the backend appends itself, so a re-edited custom 
 - [ ] ✅ `frontend/src/components/Orders/OrderMatrix.tsx:248` — Ticking "Nostandart" only locks FUTURE stage clicks; stage toggles already staged for that part are still sent in the same batch, which is exactly the
@@ -22,7 +22,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `frontend/src/components/Terminal/CutmapView.tsx:203` — So'rov xatosi (500/tarmoq) operatorga "fayl GibLabda optimizatsiya qilinmagan (TEMPLATE)" deb ko'rsatiladi — API xatosi jimgina yashiriladi, `isError`
 - [ ] ✅ `frontend/src/components/Terminal/KromkaView.tsx:71` — Lokal skan tekshiruvi detalning BIRINCHI topilgan marshrut qadamiga qarab javob beradi — KROMKA marshrutda ikki marta bo'lsa, birinchi o'tish tugagach
 - [ ] ✅ `frontend/src/components/Terminal/TmoView.tsx:49` — So'rov yiqilganda TMO ekrani xatoni jim yutadi va yashil "Hammasi qabul qilindi." ko'rsatadi — omborchi ishni tugallangan deb o'ylaydi.
-- [ ] ✅ `frontend/src/components/Terminal/useTerminalScan.ts:68` — Badge UUIDs are dispatched before any cooldown check, so a scanner double-read fires two `startTerminalSession` POSTs — the documented 2s duplicate ba
+- [x] ✅ `frontend/src/components/Terminal/useTerminalScan.ts:68` — Badge UUIDs are dispatched before any cooldown check, so a scanner double-read fires two `startTerminalSession` POSTs — the documented 2s duplicate ba
 - [ ] ✅ `frontend/src/components/UserSettings/ChangePassword.tsx:23` — Full password-strength rules are applied to the EXISTING password field, so any account whose current password does not meet the new strength policy c
 - [ ] ✅ `frontend/src/hooks/useMesWs.ts:25` — The 30s heartbeat is write-only: the server's `pong` is explicitly discarded and no timer ever checks that a reply arrived, so a half-open WebSocket l
 - [ ] ✅ `frontend/src/hooks/useScanFlash.ts:43` — useScanFlash's auto-scroll timer is always cancelled before it fires, because every call site passes inline getKey/getCount lambdas that change identi
@@ -35,8 +35,8 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `frontend/src/routes/tablo.tsx:315` — Matritsa so'rovi xatosi jimgina yutiladi: TV ekranda "Aktiv buyurtmalar yo'q" chiqadi va JONLI belgisi yashil qoladi.
 - [ ] ✅ `frontend/src/routes/terminal.tsx:328` — `endSession` is the only terminal mutation with no `onError` — a failed "Yakunlash" produces no toast, no dialog close, and no visible feedback at all
 - [ ] ✅ `frontend/src/routes/terminal.tsx:387` — The undo ConfirmDialog turns into a dead modal: the 15s auto-clear nulls `lastScan` while the dialog is open, after which the confirm button is a sile
-- [ ] ✅ `docker-compose.prod.yml:55` — `${TAG:-latest}` default hech qachon mavjud emas — CI faqat `:<git sha>` tegini push qiladi, ya'ni hujjatda ko'rsatilgan `make docker-prod` (TAG'siz) 
-- [ ] ✅ `scripts/backup.sh:27` — `env_get` strips everything from the first `#` onward, so any `#` inside POSTGRES_USER / POSTGRES_DB / ADMIN_PASSWORD / TG_BOT_TOKEN silently truncate
+- [x] ✅ `docker-compose.prod.yml:55` — `${TAG:-latest}` default hech qachon mavjud emas — CI faqat `:<git sha>` tegini push qiladi, ya'ni hujjatda ko'rsatilgan `make docker-prod` (TAG'siz) 
+- [x] ✅ `scripts/backup.sh:27` — `env_get` strips everything from the first `#` onward, so any `#` inside POSTGRES_USER / POSTGRES_DB / ADMIN_PASSWORD / TG_BOT_TOKEN silently truncate
 
 ## O'rta (127)
 
@@ -44,7 +44,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `backend/app/api/routes/employees.py:78` — `search` beyjik UUID'ini SUBSTRING bo'yicha solishtiradi, ya'ni StaffReadUser (manager/texnolog/direktor) javobdan ataylab olib tashlangan `badge_id` 
 - [ ] ✅ `backend/app/api/routes/login.py:122` — `_open_shift_for` opens a WorkSession without writing an audit record, while both other session-open paths do.
 - [ ] ✅ `backend/app/api/routes/login.py:90` — Password login (success and failure) and logout write no audit row at all — only badge login does — so the Loglar page cannot answer "who logged into 
-- [ ] ✅ `backend/app/api/routes/machines.py:126` — PATCH /machines/{id} with an explicit `null` for `name` or `status` writes NULL into a NOT NULL column and ends in an uncaught IntegrityError (500) — 
+- [x] ✅ `backend/app/api/routes/machines.py:126` — PATCH /machines/{id} with an explicit `null` for `name` or `status` writes NULL into a NOT NULL column and ends in an uncaught IntegrityError (500) — 
 - [ ] ✅ `backend/app/api/routes/machines.py:51` — Muddati o'tgan (12 soatdan eski) smena ham «ochiq smena» to'sig'i sifatida sanaladi va ish markazini o'chirtirmaydi.
 - [ ] ✅ `backend/app/api/routes/machines.py:63` — Bekor qilingan buyurtmaning tugallanmagan marshrutlari ish markazini abadiy o'chirilmas qilib qo'yadi.
 - [ ] ✅ `backend/app/api/routes/orders/files.py:149` — download_order_scx_zip zips only SCX files that happen to exist on disk and silently drops any OrderFile row whose file is missing — no error, no warn
@@ -254,10 +254,10 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [ ] ✅ `frontend/src/queries/mes.ts:70` — getOrdersQueryOptions types `status` as a free `string` and then casts it with `as never` to satisfy the generated OrderStatus enum — the same rename-
 - [ ] ✅ `frontend/src/queries/users.ts:16` — `getUsersQueryOptions` is the only query in the app that issues N sequential blocking requests, and it carries no `staleTime` — with the QueryClient's
 - [ ] ✅ `frontend/src/routes/_layout.tsx:24` — No route below the root declares an `errorComponent`, so any render crash inside an admin page bubbles to the root boundary and replaces the entire sh
-- [ ] ✅ `frontend/src/routes/_layout.tsx:36` — `useRouterState()` selektorsiz chaqirilgan — butun router holatiga obuna bo'lib, har holat o'zgarishida sidebar+Outlet qobig'ini qayta render qiladi; 
+- [x] ✅ `frontend/src/routes/_layout.tsx:36` — `useRouterState()` selektorsiz chaqirilgan — butun router holatiga obuna bo'lib, har holat o'zgarishida sidebar+Outlet qobig'ini qayta render qiladi; 
 - [ ] ✅ `frontend/src/routes/_layout/employees.tsx:319-320` — The "posts not loaded yet" guard is applied only to the Add button; the row Edit action can open the same dialog with an empty post list and a permane
 - [ ] ✅ `frontend/src/routes/_layout/employees.tsx:405,457,512` — Admin dialogs report errors with `detailMessage`, which prefixes every plain server message with a meaningless "XATO:" code.
-- [ ] ✅ `frontend/src/routes/_layout/logs.tsx:235` — `<TableRow>` ga `role="button"` berilgan — bu qatorning implicit `row` rolini bosib ketadi va jadval semantikasini buzadi (skrinriderda ustun/qator na
+- [x] ✅ `frontend/src/routes/_layout/logs.tsx:235` — `<TableRow>` ga `role="button"` berilgan — bu qatorning implicit `row` rolini bosib ketadi va jadval semantikasini buzadi (skrinriderda ustun/qator na
 - [ ] ✅ `frontend/src/routes/_layout/orders/$orderId.tsx:590-594 (input), 156-167 (cancel mutation), 581 (onOpenChange={setCancelOpen})` — cancelReason state hech qachon tozalanmaydi: dialog Escape/tashqariga bosib yopilsa (setCancelOpen(false), submit qilinmasdan) yoki muvaffaqiyatli bek
 - [ ] ✅ `frontend/src/routes/_layout/printers.tsx:496` — The 'Yangi agent' name field uses bare zod constraints with no messages, so an invalid name shows zod's built-in English error inside an otherwise ful
 - [ ] ✅ `frontend/src/routes/_layout/reports.tsx:159-166` — Ekrandagi "Buyurtmalar" jadvali va o'sha hisobotning Excel eksporti turli ustunlarni ko'rsatadi: JSON javobida kelgan `created_at` va `production_star

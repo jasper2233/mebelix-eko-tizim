@@ -26,8 +26,7 @@ interface MainProps {
 
 export function Main({ items }: MainProps) {
   const { isMobile, setOpenMobile } = useSidebar()
-  const router = useRouterState()
-  const currentPath = router.location.pathname
+  const currentPath = useRouterState({ select: (s) => s.location.pathname })
 
   const handleMenuClick = () => {
     if (isMobile) {
