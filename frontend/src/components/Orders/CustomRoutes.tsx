@@ -128,11 +128,14 @@ export function CustomRoutes({
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">
-          Jarayonni bosing — tanlangan tartibda raqamlanadi. Bir jarayonni qayta
-          bosish yangi qadam qo'shadi; oxirgisini bosish bekor qiladi. Marshrut
-          Arra yoki Rover'dan boshlanishi shart.
-        </p>
+        {/* Ko'rsatma faqat tahrirda: o'qish rejimida tugma yo'q, "bosing" — chalg'itadi */}
+        {editable && (
+          <p className="text-xs text-muted-foreground">
+            Jarayonni bosing — tanlangan tartibda raqamlanadi. Bir jarayonni
+            qayta bosish yangi qadam qo'shadi; oxirgisini bosish bekor qiladi.
+            Marshrut Arra yoki Rover'dan boshlanishi shart.
+          </p>
+        )}
         {editable && (
           <div className="flex items-center gap-2">
             {dirty && (
@@ -280,6 +283,8 @@ export function CustomRoutes({
                       biriktirilgan
                     </div>
                   )
+                // O'qish rejimida biriktirilmagan detalda bo'sh select — shovqin
+                if (!editable && !parentId) return null
                 const options = parts.filter(
                   (o) =>
                     o.id !== part.id &&
