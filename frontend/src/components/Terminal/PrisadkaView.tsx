@@ -17,17 +17,7 @@ import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
 import { Serial } from "@/components/Terminal/Serial"
 import { TBtn } from "@/components/Terminal/TBtn"
-import {
-  useCancelLabel,
-  usePrintLabel,
-} from "@/components/Terminal/usePrintLabel"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { usePrintLabel } from "@/components/Terminal/usePrintLabel"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useScanFlash } from "@/hooks/useScanFlash"
@@ -69,7 +59,7 @@ export function PrisadkaView({
   showScx?: boolean
   /** ROVER: detalni kesish xaritasida ochish (faqat o'z listidagi detallarda —
    *  arradan kelgani rover xaritasida umuman yo'q) */
-  onShowOnMap?: (partCode: string) => void
+  onShowOnMap?: (partCode: string, openCard?: boolean) => void
   /** ROVER Chop etish tugmasi terminalning umumiy chap ustuniga (Qulflash
    * ustiga) portal qilinadi — alohida ikkinchi ustun ochilmasin */
   toolbarContainer: HTMLElement | null
@@ -87,22 +77,13 @@ export function PrisadkaView({
   // ROVER'da jarayon shu postdan boshlanishi mumkin (marshrutda ARRA yo'q) —
   // QR chek shu yerdan chiqariladi; keyin skan bilan ish yakunlanadi
   const printLabel = usePrintLabel("prisadka")
-  const cancelLabel = useCancelLabel()
   // Noto'g'ri chiqarilgan chek: uzoq bosish (~600ms) + tasdiq — ARRA xaritasidagi
   // bilan bir xil imo-ishora, operator bitta odatni o'rganadi. Tugma qilinmadi:
   // qatorlar tor va tasodifiy bosish chop etilgan chekni o'chirib yuborardi.
-  const [cancelTarget, setCancelTarget] = useState<{
-    instance_id: number
-    qr_text: string
-    name: string
-  } | null>(null)
   const pressRef = useRef<number | null>(null)
-  const holdStart = (t: {
-    instance_id: number
-    qr_text: string
-    name: string
-  }) => {
-    pressRef.current = window.setTimeout(() => setCancelTarget(t), 600)
+  const holdStart = (fn: () => void) => {
+    holdEnd()
+    pressRef.current = window.setTimeout(fn, 600)
   }
   /** Chek SHU postda chiqarilganmi — bekor qilish huquqi shunga bog'liq */
   const ownLabel = (p: { arra_route?: boolean | null }) =>
@@ -274,28 +255,17 @@ export function PrisadkaView({
                       key={key}
                       id={`pv-inst-${key}`}
                       onClick={() => setSelectedId(key)}
-                      // ARRA xaritasi bilan bir xil imo-ishora: ikki marta bosish
-                      // yoki uzoq bosish → chekni bekor qilish dialogi. Alohida
-                      // tugma yo'q — dialogning o'zida «Ha, bekor qilinsin» bor.
+                      // ARRA xaritasi bilan BIR XIL: ikki marta bosish yoki uzoq
+                      // bosish → xarita shu detalga o'tadi va detal KARTOCHKASI
+                      // ochiladi (chizma, QR, «Chekni bekor qilish» o'sha yerda).
+                      // Faqat rover o'zi kesadigan detalda — arradan kelgani bu
+                      // xaritada yo'q, cheki ham arrada chiqqan.
                       onDoubleClick={() =>
-                        i.label_printed &&
-                        ownLabel(p) &&
-                        setCancelTarget({
-                          instance_id: i.instance_id,
-                          qr_text: i.qr_text,
-                          name: p.name,
-                        })
+                        ownLabel(p) && onShowOnMap?.(p.code, true)
                       }
-                      // Uzoq bosish chekni bekor qiladi — FAQAT o'z postida chiqarilganida;
-                      // ilgari roverchi arrachining kesish skanini ham qaytara olardi.
                       onPointerDown={() =>
-                        i.label_printed &&
                         ownLabel(p) &&
-                        holdStart({
-                          instance_id: i.instance_id,
-                          qr_text: i.qr_text,
-                          name: p.name,
-                        })
+                        holdStart(() => onShowOnMap?.(p.code, true))
                       }
                       onPointerUp={holdEnd}
                       onPointerLeave={holdEnd}
@@ -382,49 +352,6 @@ export function PrisadkaView({
             </table>
           </div>
         </div>
-        {/* Long press tasdiq dialogi — ARRA xaritasidagi bilan bir xil matn */}
-        <Dialog
-          open={cancelTarget !== null}
-          onOpenChange={(v) => !v && setCancelTarget(null)}
-        >
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Chekni bekor qilasizmi?</DialogTitle>
-            </DialogHeader>
-            {cancelTarget && (
-              <p className="text-base">
-                {cancelTarget.name}{" "}
-                <span className="num text-muted-foreground">
-                  ({cancelTarget.qr_text})
-                </span>
-                <br />
-                Detal chop etilmagan holatga qaytadi, bosqich hisobi tiklanadi.
-              </p>
-            )}
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="h-14 flex-1 text-base font-bold"
-                onClick={() => setCancelTarget(null)}
-              >
-                Yo'q
-              </Button>
-              <LoadingButton
-                variant="destructive"
-                className="h-14 flex-1 text-base font-bold"
-                loading={cancelLabel.isPending}
-                onClick={() => {
-                  if (!cancelTarget) return
-                  cancelLabel.mutate(cancelTarget.instance_id, {
-                    onSuccess: () => setCancelTarget(null),
-                  })
-                }}
-              >
-                Ha, bekor qilinsin
-              </LoadingButton>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     )
   }

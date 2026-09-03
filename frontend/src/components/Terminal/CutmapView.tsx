@@ -195,6 +195,7 @@ export function CutmapView({
   statsContainer,
   toolbarContainer,
   focusPartKey,
+  openFocusedCard,
   postCode = "ARRA",
 }: {
   orderId: number
@@ -214,6 +215,10 @@ export function CutmapView({
   toolbarContainer?: HTMLElement | null
   /** Matritsadan sakrash: shu kalitli detalning listi ochilib, katakchasi belgilanadi */
   focusPartKey?: string
+  /** Fokus bilan birga detal KARTOCHKASI ham ochilsin (ROVER ro'yxatidan
+   *  ikki marta/uzoq bosish — ARRA katagidagi bilan bir xil dialog, chekni
+   *  bekor qilish o'sha yerda). */
+  openFocusedCard?: boolean
 }) {
   const { data, isLoading, isError, refetch } = useQuery(
     getCutmapQueryOptions(orderId, admin),
@@ -426,6 +431,7 @@ export function CutmapView({
           setMaterialIdx(mi)
           setSheetIdxRaw(si)
           setMarkedCell(hit.cell)
+          if (openFocusedCard) setSelected(hit)
           return
         }
       }
@@ -434,7 +440,7 @@ export function CutmapView({
     // aks holda har refetch (60s) shu toastni qayta chiqarardi.
     focusApplied.current = focusPartKey
     toast.error("Bu detal kesish xaritasida joylashtirilmagan")
-  }, [focusPartKey, data, materials])
+  }, [focusPartKey, openFocusedCard, data, materials])
 
   if (isLoading) return <Skeleton className="h-full w-full" />
   // So'rov yiqilsa `data` undefined qoladi — quyidagi TEMPLATE xabari operatorga
