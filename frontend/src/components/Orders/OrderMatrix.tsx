@@ -212,7 +212,8 @@ export function OrderMatrix({
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-background shadow-[0_1px_0_var(--border)]">
             <TableRow>
-              <TableHead className="min-w-[180px]">Detal</TableHead>
+              {/* «Kod» — terminal jadvallari bilan bir lug'at: Kod = detal turi, Detal ID = nusxa */}
+              <TableHead className="min-w-[180px]">Kod</TableHead>
               <TableHead>O'lchami</TableHead>
               <TableHead className="text-center">Soni</TableHead>
               {sortedPosts.map((p) => (
