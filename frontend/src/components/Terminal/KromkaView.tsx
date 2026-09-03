@@ -245,7 +245,14 @@ export function KromkaView({
                     Kromka
                   </th>
                 )}
-                <th className="px-4 py-2.5 text-right">Holat</th>
+                <th className="px-4 py-2.5 text-right">
+                  {/* Terminalda hover yo'q — izoh sarlavhaning o'zida: chip
+                      nusxa, raqam qilingan/jami tomon */}
+                  Nusxalar
+                  <span className="block text-2xs font-medium normal-case tracking-normal">
+                    qilingan / tomon · ✓ tugadi
+                  </span>
+                </th>
               </tr>
             </thead>
             <tbody>
