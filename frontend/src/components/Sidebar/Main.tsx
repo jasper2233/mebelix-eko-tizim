@@ -18,8 +18,10 @@ export type Item = {
   path: string
   /** Yonida ko'rinadigan jonli son (0 yoki undefined bo'lsa chiqmaydi) */
   badge?: number
-  /** Son nimani sanashi (hover'da) — reestrdagi «Hammasi» bilan farqi tushunarli bo'lsin */
+  /** Son nimani sanashi (hover'da) */
   badgeTitle?: string
+  /** `success` — yashil (amal kutayotgan narsa: topshirishga tayyor buyurtmalar) */
+  badgeTone?: "gold" | "success"
 }
 
 interface MainProps {
@@ -72,7 +74,11 @@ export function Main({ items }: MainProps) {
                 </SidebarMenuButton>
                 {item.badge ? (
                   <SidebarMenuBadge
-                    className="text-sidebar-primary"
+                    className={
+                      item.badgeTone === "success"
+                        ? "rounded-full bg-emerald-500/20 font-bold text-emerald-300"
+                        : "text-sidebar-primary"
+                    }
                     title={item.badgeTitle}
                   >
                     {item.badge}

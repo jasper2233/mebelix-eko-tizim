@@ -11,7 +11,7 @@ import {
   Tv,
   UserRound,
 } from "lucide-react"
-import type { OrderStatus, UserRead } from "@/client"
+import type { UserRead } from "@/client"
 import {
   Sidebar,
   SidebarContent,
@@ -20,12 +20,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
-import {
-  isAdmin,
-  isManagement,
-  isProductionStaff,
-  TERMINAL_STATUSES,
-} from "@/lib/mes"
+import { isAdmin, isManagement, isProductionStaff } from "@/lib/mes"
 import { getOrderStatusCountsQueryOptions } from "@/queries/mes"
 import { type Item, Main } from "./Main"
 import { User } from "./User"
@@ -80,16 +75,19 @@ export function AppSidebar() {
     ...getOrderStatusCountsQueryOptions(),
     enabled: canSeeOrders,
   })
-  const activeOrders = Object.entries(counts ?? {})
-    .filter(([status]) => !TERMINAL_STATUSES.includes(status as OrderStatus))
-    .reduce((sum, [, n]) => sum + n, 0)
+  // Badge = TOPSHIRISHGA TAYYOR buyurtmalar (tsex tugatgan, manager topshirishi
+  // kerak) — inbox belgisi kabi: amalga undaydi, 0 bo'lsa yo'q. Ilgari «faol
+  // buyurtmalar soni» (57) turardi — hech qanday amalga undamasdi va reestrdagi
+  // «Hammasi» bilan chalkashardi.
+  const ready = counts?.completed ?? 0
 
   const withBadges = items.map((i) =>
     i.path === "/orders"
       ? {
           ...i,
-          badge: activeOrders,
-          badgeTitle: "Faol buyurtmalar — topshirilgan va bekor qilinganlarsiz",
+          badge: ready,
+          badgeTone: "success" as const,
+          badgeTitle: "Topshirishga tayyor — tsex tugatgan buyurtmalar",
         }
       : i,
   )

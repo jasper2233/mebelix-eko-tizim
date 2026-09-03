@@ -1,11 +1,14 @@
+import { useQueryClient } from "@tanstack/react-query"
 import {
   CatchBoundary,
   createFileRoute,
   type ErrorComponentProps,
   Outlet,
   redirect,
+  useNavigate,
   useRouterState,
 } from "@tanstack/react-router"
+import { toast } from "sonner"
 
 import { MX_PATH, MX_VIEWBOX } from "@/components/Common/BrandLoader"
 import { AppSidebar, NAV_ITEMS } from "@/components/Sidebar/AppSidebar"
@@ -15,6 +18,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { useMesWs } from "@/hooks/useMesWs"
 import { requireAuth } from "@/lib/guards"
 import { OPERATOR_ROLES } from "@/lib/mes"
 
@@ -63,6 +67,28 @@ function Layout() {
     select: (s) => s.resolvedLocation?.pathname ?? "",
   })
   const sectionTitle = sectionTitles[pathname]
+
+  // Jonli xabar (butun admin qobig'i uchun): tsex buyurtmani tugatganda manager
+  // qaysi sahifada bo'lmasin toast + «Ochish». Har qanday `order.*` hodisasida
+  // buyurtma keshlari (reestr, holat sonlari → sidebar badge) darhol yangilanadi —
+  // 30 s pollni kutmasdan. Toast o'tkinchi, badge doimiy — ikkalasi birga.
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  useMesWs((event) => {
+    if (!event.type.startsWith("order.")) return
+    queryClient.invalidateQueries({ queryKey: ["orders"] })
+    if (event.type !== "order.completed") return
+    const orderId = String(event.payload.order_id ?? "")
+    const number = String(event.payload.order_number ?? "")
+    toast.success(`${number} tayyor — topshirishga tayyorlang`, {
+      duration: 15_000,
+      action: {
+        label: "Ochish",
+        onClick: () =>
+          navigate({ to: "/orders/$orderId", params: { orderId } }),
+      },
+    })
+  })
 
   return (
     <SidebarProvider>
