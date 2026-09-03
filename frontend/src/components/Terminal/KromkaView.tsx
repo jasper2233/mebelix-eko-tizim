@@ -37,8 +37,13 @@ function EdgeGlyph({
   const side = burilgan
     ? { chap: has("t"), ong: has("b"), past: has("l"), tepa: has("r") }
     : { chap: has("l"), ong: has("r"), tepa: has("t"), past: has("b") }
-  // Burilgan eskiz — bo'yiga (tik) to'rtburchak, tabiiy — eniga
-  const [w, h] = burilgan ? [18, 26] : [26, 18]
+  // Chekdagi kabi eskiz DOIM tik: uzun tomon vertikal, eni nisbatga qarab
+  // (labels.py: `bh = area_h; bw = bh * short/long`). `burilgan` faqat qaysi
+  // qirra qaysi tomonga tushishini hal qiladi, shaklni emas.
+  const long = Math.max(length ?? 0, width ?? 0)
+  const short = Math.min(length ?? 0, width ?? 0)
+  const h = 26
+  const w = long > 0 ? Math.max(8, Math.round((h * short) / long)) : 18
   const x = (30 - w) / 2
   const y = (30 - h) / 2
   const line = "stroke-amber-600"
@@ -219,7 +224,14 @@ export function KromkaView({
                 <th className="px-4 py-2.5">Kod</th>
                 <th className="px-4 py-2.5">Nomi</th>
                 <th className="px-4 py-2.5">O'lchami</th>
-                {!oval && <th className="px-4 py-2.5">Kromka</th>}
+                {!oval && (
+                  <th
+                    className="px-4 py-2.5"
+                    title="Eskiz — chekdagi bilan bir xil: qalin chiziq = kromka lentasi tushadigan tomon. Harf — lenta belgisi (GibLab EL xaritasi), chekda o'lcham yonida shu harf"
+                  >
+                    Kromka
+                  </th>
+                )}
                 <th className="px-4 py-2.5 text-right">Holat</th>
               </tr>
             </thead>
