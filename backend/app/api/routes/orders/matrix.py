@@ -14,12 +14,12 @@ from app.api.deps import SessionDep, StaffReadUser, TexnologUser, client_ip
 from app.core.config import upload_root
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.crud import log_action
-from app.models import Part, PartInstance, PartRoute, Post, Product, Scan
+from app.models import Order, Part, PartInstance, PartRoute, Post, Product, Scan
 from app.models.enums import PostCode, RouteSource
 from app.schemas.orders import MatrixEdit, MatrixPart, OrderMatrix, RouteCell
 from app.services.giblab import ParseError
 from app.services.giblab.ingest import park_tail, purge_replaced_scx, rebuild_order_scx, unpark_tail
-from app.services.giblab.models import DEFAULT_PROCESS_CODE, PROCESS_NAMES, PROCESS_POSTS, TAIL_CODES
+from app.services.giblab.models import DEFAULT_PROCESS_CODE, PROCESS_NAMES, PROCESS_POSTS, TAIL_CODES, instance_qr
 from app.services.giblab.routes import build_manual_route
 
 from ._common import _ROUTE_START_POSTS, _get_order, _get_visible_order, _require_editable
@@ -387,6 +387,7 @@ async def _set_custom_route(
 async def _resize_instances(db: SessionDep, part: Part, new_count: int) -> None:
     """Adjust physical copies + route totals when texnolog changes count (pre-production only)."""
     product_code = (await db.execute(select(Product.code).where(Product.id == part.product_id))).scalar_one()
+    order_number = (await db.execute(select(Order.number).where(Order.id == part.order_id))).scalar_one()
     instances = (
         (
             await db.execute(
@@ -405,7 +406,7 @@ async def _resize_instances(db: SessionDep, part: Part, new_count: int) -> None:
     # Count o'zgarganda BARCHA tirik nusxalar qayta normallanadi (1↔N o'tishda
     # eski QR konvensiyaga zid qolib ketmasin) — bosqich pre-production,
     # yorliqlar hali chop etilmagan.
-    new_qrs = {n: (key if new_count == 1 else f"{key}_{n}") for n in range(1, new_count + 1)}
+    new_qrs = {n: instance_qr(order_number, key, None if new_count == 1 else n) for n in range(1, new_count + 1)}
     # To'qnashuvni OLDINDAN aniqlash (ingest'dagi qr_owner tekshiruvining juftligi):
     # "010" (2 nusxa) va "010_2" kodli detal bir xil QR beradi — unique indeks
     # xom 500 bermasin, do'stona 422 chiqsin.

@@ -117,7 +117,8 @@ bridge-agent/agent.py    tsex kompyuteri: USB GoDEX + skan forvard
   ombori modullari olib tashlangan, migratsiyalari prodda qolgan). Ular
   `migrations/env.py` dagi `LEGACY_TABLES`/`LEGACY_COLUMNS` da sanab o'tilgan va
   `alembic check` ularni e'tiborsiz qoldiradi. Batafsil: `docs/04` §4.4.
-- Detal ID = chek = QR = SCX fayl nomi — **bitta satr**. Qoidasi `docs/11` da.
+- Detal ID = chek = QR = SCX fayl nomi = Panel ID — **bitta satr**, 2026-09-03 dan
+  `{buyurtma}_` prefiksli (`giblab/models.py: instance_qr`). Qoidasi `docs/11` da.
 - Enum matnlari backend (`models/enums.py`) va frontend (`lib/mes.ts`) da
   QO'LDA oynalangan; zod sxemasi (`lib/validation.ts`) ham backend
   `schemas/users.py` cheklovlariga qo'lda moslangan. Birini o'zgartirsang —

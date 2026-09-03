@@ -31,6 +31,7 @@ from app.models.enums import (
 )
 from app.models.user import User
 from app.schemas.terminal import ScanResult
+from app.services.giblab.models import strip_order_prefix
 
 #: Manbalar-aro dedup oynasi (pastdagi `record_scan_at` izohiga qarang)
 CROSS_SOURCE_WINDOW = timedelta(seconds=3)
@@ -44,7 +45,8 @@ def _utc(dt: datetime) -> datetime:
 
 
 def qr_part_code(qr: str, count: int) -> str:
-    """Nusxa QR'idan detal kodi: yagona nusxada QR = kodning o'zi, takrorlanganda _n olib tashlanadi."""
+    """Nusxa QR'idan detal kodi (`productCode_partCode`): buyurtma prefiksi va `_n` olib tashlanadi."""
+    qr = strip_order_prefix(qr)
     return qr if count == 1 else qr.rsplit("_", 1)[0]
 
 

@@ -1,9 +1,30 @@
 """Parsed .project data structures. Plain dataclasses — no ORM here."""
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
 from app.models.enums import PostCode
+
+# Nusxa ID = `{buyurtma}_{productCode}_{partCode}[_n]` (docs/11). Buyurtma qismi ID'ni
+# GLOBAL unikal qiladi: bir .project ikki buyurtmaga yuklansa cheklar bir xil QR olmaydi.
+# Uchala funksiya bir joyda — Nanxing Panel ID `-` ni qabul qilmasa `order_token`
+# ixchamlanadi (`B2026047`) va ORDER_PREFIX_RE shunga moslanadi, boshqa kod tegmaydi.
+ORDER_PREFIX_RE = re.compile(r"^B-\d{4}-\d+_")
+
+
+def order_token(number: str) -> str:
+    return number
+
+
+def instance_qr(order_number: str, key: str, n: int | None) -> str:
+    """Nusxa QR'i: yagona nusxa suffikssiz, takrorlanganda `_n`."""
+    return f"{order_token(order_number)}_{key}" + ("" if n is None else f"_{n}")
+
+
+def strip_order_prefix(qr: str) -> str:
+    """Eski (prefikssiz) yorliqlar ham yuradi — prefiks bo'lsa olib tashlanadi, bo'lmasa o'zi."""
+    return ORDER_PREFIX_RE.sub("", qr, count=1)
 
 
 class ParseError(ValueError):
@@ -132,9 +153,14 @@ class ParsedPart:
 
     @property
     def qr_texts(self) -> list[str]:
-        """Nusxa QR'lari: yagona nusxa suffikssiz — chekdagi kod, QR va SCX fayl
-        nomi bir xil bo'ladi (Nanxing skan mosligi); takrorlanganda _1.._n."""
+        """Fayl darajasidagi nusxa kalitlari (buyurtmasiz): faqat fayl ichidagi to'qnashuv tekshiruvi uchun."""
         return [self.key] if self.count == 1 else [f"{self.key}_{n}" for n in range(1, self.count + 1)]
+
+    def serial_qrs(self, order_number: str) -> list[str]:
+        """Haqiqiy nusxa QR'lari — chek, QR, SCX fayl nomi va Panel ID bir xil satr."""
+        if self.count == 1:
+            return [instance_qr(order_number, self.key, None)]
+        return [instance_qr(order_number, self.key, n) for n in range(1, self.count + 1)]
 
     @property
     def kromka_sides(self) -> int:

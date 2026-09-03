@@ -131,6 +131,14 @@ class PartInstance(BaseModel):
 
     __table_args__ = (
         Index("ix_part_instance_order_qr", "order_id", "qr_text", unique=True, postgresql_where=text("NOT is_deleted")),
+        # Serializatsiyalangan ID GLOBAL unikal (docs/11); eski prefikssiz qatorlar (jonli buyurtmalar
+        # orasida takrorlanishi mumkin) predikatdan tashqarida qoladi
+        Index(
+            "ix_part_instance_qr_serial",
+            "qr_text",
+            unique=True,
+            postgresql_where=text("NOT is_deleted AND qr_text ~ '^B-[0-9]{4}-[0-9]+_'"),
+        ),
         # Skan lookup aynan qr_text bo'yicha — issiq yo'l seq scan bo'lmasin
         Index("ix_part_instance_qr_text", "qr_text", postgresql_where=text("NOT is_deleted")),
     )

@@ -646,7 +646,7 @@ GibLab shabloniga qo'yiladigan maydonlar (109 ta), guruhlar bo'yicha:
 - **Ishlov**: `XNC1..XNC5` + `xncSide1..5` + `xncBSD1..5`
 
 MebeliX o'z yorlig'ini chiqaradi (`services/labels.py`): 80×60 mm, 203 dpi, 1-bit
-termoprinter uchun. Ichida QR (`{productCode}_{partCode}` — yagona nusxa suffikssiz, takrorlanganda `_{n}`), matn qatorida ham shu nusxa ID (QR va SCX nomi bilan bir xil satr; matn qatori 20 belgigacha qisqartiriladi, QR to'liq — [11-detal-id-nomlash.md](11-detal-id-nomlash.md)), detal nomi, loyiha nomi
+termoprinter uchun. Ichida QR (`{buyurtma}_{productCode}_{partCode}` — yagona nusxa suffikssiz, takrorlanganda `_{n}`; docs/11), matn qatorida ham shu nusxa ID (QR va SCX nomi bilan bir xil satr; matn qatori QR chap chetigacha (34 mm) sig'guncha 2.7 → 1.6 mm kichraytiriladi, sig'masa boshidan qisqaradi, QR to'liq — [11-detal-id-nomlash.md](11-detal-id-nomlash.md)), detal nomi, loyiha nomi
 (`order.project_name`, bo'sh bo'lsa buyurtma raqamiga tushadi), mahsulot kodi ("Formatka"
 qatori), material, o'lcham, kromka belgilari, teshik eskizi, burg'u ikonkasi va marshrut
 qatori (`Marshrut: 7/11/8` — jarayon kodlari tartib bilan, §2.3; nomga qo'shilmaydi, chunki
@@ -842,7 +842,7 @@ eksportdan farq qilgan holatlar (dizayner keyin o'zgartirgan), generator xatosi 
 | Paz (Type 4) | Har `gr` ga bitta Machining: Face yuza bilan bir xil (old 5 / orqa 6); `X`=`x1`, `Y`=Width−`y1`, `EndX`=`x2`, `EndY`=Width−`y2`, `Z`=`EndZ`= eksport qalinligi (Panel `Thickness`), `Width`=`gr.t` (yozilmasa 4), `Depth`=`gr.dp`, `ToolOffset=中` |
 | Freza (Type 3) | KOMPENSATSIYALANGAN asbob-markazi yo'li: `ms.c`=2 harakatga chapga r, `c`=1 o'ngga, yoy radiusi mos o'zgaradi; `<Lines><Line Angle=…>` formati (Angle=0 chiziq, ±N yoy sweep'i). Uch shox (`scx.py:187-200`): `c`=0 → xom yo'l, `ToolOffset=中`; `c`=2 VA kontur panel cheti bo'ylab (trim) → xom yo'l, `ToolOffset=右`; qolgan hamma holat, **jumladan panel cheti bo'ylab `c`=1** → `_offset_contour` bilan kompensatsiya, `ToolOffset=中`. Segmentsiz kontur (`<ms>` dan keyingi `ml`/`mac` `enable="false"`) tashlab yuboriladi — 2 nuqtadan kam bo'lsa `<Line>` ham chiqmaydi |
 | Atributlar | Machining'da ketma-ket `ID` (1000+) va `IsGenCode="2"`, Panel'da `MachiningPoint="1"` |
-| Fayl nomi | har nusxaga bitta to'liq fayl, nom/Panel ID = nusxa QR — yagona nusxada suffikssiz (`100701_02_003.scx`), takrorlanganda `_1.._n` (`100701_02_003_1.scx`) — Nanxing skaneri va chekdagi kod bir xil |
+| Fayl nomi | har nusxaga bitta to'liq fayl, nom/Panel ID = nusxa QR — `{buyurtma}_` prefiksli (docs/11), yagona nusxada suffikssiz (`B-2026-047_100701_02_003.scx`), takrorlanganda `_1.._n` (`B-2026-047_100701_02_003_1.scx`) — Nanxing skaneri va chekdagi kod bir xil |
 
 Eski buyurtmalar fayllari diskda eski konvensiyada qolgan bo'lsa — buyurtma sahifasidagi
 "SCX qayta yaratish" tugmasi (`POST /orders/{id}/scx/regenerate`). Birinchi yuklash ham,

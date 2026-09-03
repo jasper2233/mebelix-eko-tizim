@@ -20,7 +20,7 @@ from app.services.scanning import qr_part_code
 
 @dataclass
 class LabelData:
-    qr_text: str  # productCode_partCode[_n] — `_n` only when count > 1
+    qr_text: str  # {buyurtma}_productCode_partCode[_n] — `_n` faqat count > 1 (docs/11)
     part_code: str  # productCode_partCode (chek: "4202_8")
     part_name: str
     project_name: str
@@ -240,9 +240,17 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
     product_code = d.part_code.split("_", 1)[0]
     text(26, 1.5, "Formatka", 2.8)
     text(26, 4.8, product_code[:7], 3.7, bold=True)
-    # Nusxa ID (= QR matni = SCX fayl nomi), chekda 20 belgigacha qisqartirilgan
-    # (docs/11): prisadkachi shu yozuv bilan stanokdagi faylni solishtira oladi
-    text(5, 9.5, d.qr_text[:20], 2.7)
+    # Nusxa ID (= QR matni = SCX fayl nomi = Panel ID), QR chap chetigacha sig'diriladi:
+    # prisadkachi shu yozuv bilan stanokdagi faylni solishtira oladi (docs/11)
+    # ID dumi (nusxa raqami) kesilmasligi shart — sig'guncha kichraytiriladi; 1.6 mm da ham
+    # sig'masa BOSHIDAN (buyurtma prefiksidan) qisqartiriladi, QR baribir to'liq satr.
+    id_text = d.qr_text
+    id_size = next(
+        (s for s in (2.7, 2.4, 2.2, 2.0, 1.8, 1.6) if draw.textlength(id_text, font=_font(s)) <= 34 * mm), 1.6
+    )
+    while len(id_text) > 1 and draw.textlength(id_text, font=_font(id_size)) > 34 * mm:
+        id_text = id_text[1:]
+    text(5, 9.5, id_text, id_size)
 
     # Loyiha — QR chap chetigacha (x=40mm) sig'adigan kenglikka kesiladi, 1mm zaxira.
     # Ilgari 26 belgi limiti turardi: u QR'ni hisobga olmasdi va uzun nomning dumi

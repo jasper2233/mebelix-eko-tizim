@@ -573,6 +573,7 @@ async def ingest_project(
 
             # instances with cut-map cell binding
             cell_bindings = bindings_by_key.get(pp.key, [])
+            qrs = pp.serial_qrs(order.number)
             for n in range(1, pp.count + 1):
                 binding = cell_bindings[n - 1] if n - 1 < len(cell_bindings) else None
                 db.add(
@@ -580,7 +581,7 @@ async def ingest_project(
                         order_id=order.id,
                         part_id=part.id,
                         instance_no=n,
-                        qr_text=pp.qr_texts[n - 1],
+                        qr_text=qrs[n - 1],
                         pattern_no=binding.pattern_no if binding else None,
                         cell_index=binding.cell_index if binding else None,
                     )
@@ -631,7 +632,7 @@ async def ingest_project(
             # birlashgan, nom/ID = QR — Nanxing skaneri to'g'ridan-to'g'ri topadi).
             # plate: qo'shqavat detalda (32mm) eksport qalinligi plita bo'yicha
             plate = _plate_thickness.get(pp.material_name or "")
-            await write_and_register_scx(db, order.id, part.id, pp, pp.qr_texts, upload_root, plate_thickness=plate)
+            await write_and_register_scx(db, order.id, part.id, pp, qrs, upload_root, plate_thickness=plate)
 
     # --- order metadata ---
     # `code` — tsexning `goods.xls` katalogidagi SKU. Parser uni o'qiydi, lekin bu yerda
