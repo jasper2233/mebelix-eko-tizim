@@ -81,7 +81,6 @@ function TerminalPage() {
   const { logout } = useAuth()
   const isOperator = !!currentUser && OPERATOR_ROLES.includes(currentUser.role)
 
-  const [scanOn, setScanOn] = useState(true)
   // Oxirgi skan URINISHI vaqti (muvaffaqiyat ham, xato ham) — avto-reload
   // "tinchlik" o'lchovi; lastScan holatidan farqli, 15s da tozalanmaydi
   const lastScanAtRef = useRef(0)
@@ -243,7 +242,7 @@ function TerminalPage() {
   // interval/keydown fokusni tortadi, Radix trap darhol qaytaradi — churn
   const dialogOpen = logoutOpen || endFor !== null || undoFor !== null
   // Qulf ostida ham fokus kerak: qulfning kaliti — beyjik skani
-  useScanFocus(scanOn && !mapOpen && !dialogOpen, inputRef)
+  useScanFocus(!mapOpen && !dialogOpen, inputRef)
 
   // Smenaga QO'SHILISH rejimi: "+ Qo'shish" bosilgach keyingi tanlov brigadani
   // almashtirmaydi, ustiga qo'shadi. Sukut — almashtirish: ketayotgan odam
@@ -522,14 +521,14 @@ function TerminalPage() {
           <ScanLine
             className={cn(
               "absolute left-3 top-3 size-5",
-              scanOn && crew.length
+              crew.length
                 ? "animate-pulse text-primary"
                 : "text-muted-foreground",
             )}
           />
           <input
             ref={inputRef}
-            disabled={!scanOn || mapOpen}
+            disabled={mapOpen}
             // Maydon ichida tanlash QOLADI: skaner yozgan qiymatni qo'lda
             // to'g'rilash kerak bo'lib qolsa, ildizdagi `select-none` to'sib
             // qo'ymasin.
@@ -551,15 +550,11 @@ function TerminalPage() {
           )}
         />
 
-        {/* 48px toggle: qo'lqop bilan ham aniq; OFF holati qizil — skan to'xtagani ko'rinib tursin */}
-        <Button
-          variant={scanOn ? "outline" : "destructive"}
-          className="h-12 shrink-0 px-3 text-xs font-black"
-          onClick={() => setScanOn(!scanOn)}
-        >
-          <ScanLine className="size-5" />
-          {scanOn ? "SKAN ON" : "SKAN OFF"}
-        </Button>
+        {/* SKAN ON/OFF tugmasi OLIB TASHLANDI (2026-09-04): kioskda boshqa
+            matn maydoni yo'q, skan hech qachon «xalaqit» bermaydi, xato skan
+            60 s BEKOR QILISH bilan qaytadi — tugmaning yagona samarasi
+            tasodifan OFF qilib «skaner ishlamayapti» chaqiruvi edi. Skan
+            faqat avtomatik to'xtaydi: xarita ochiq / dialog ochiq. */}
 
         {/* Qulflash / Chiqish HEADERDA: ilgari 68px li chap ustunda turardi,
             9 postdan 7 tasida o'sha ustunda boshqa hech narsa yo'q edi —
