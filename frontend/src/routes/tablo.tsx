@@ -605,7 +605,7 @@ function TabloPage() {
                     return (
                       <td
                         key={p.id}
-                        className="num whitespace-nowrap bg-primary px-2 py-3 text-center font-black tabular-nums text-primary-foreground"
+                        className="num whitespace-nowrap bg-primary px-1 py-3 text-center font-black tabular-nums text-primary-foreground"
                         // Yig'indi butun tsex bo'yicha qo'shiladi — 5 xonali
                         // bo'lishi mumkin, shuning uchun bir pog'ona kichik
                         style={{ fontSize: "var(--t-head)" }}
@@ -831,7 +831,7 @@ function TabloCell({
         // Marshrutda YO'Q post. Chiziq raqam bilan bir xil kattalikda bo'lsa,
         // ish YO'QLIGI ish BORLIGI kabi baqiradi — taxtaning asosiy tekstursi
         // bo'sh kataklar bo'lib qoladi (bugun 9 ustundan 3 tasi butunlay bo'sh).
-        className="border-l border-border/60 px-2 py-3 text-center text-muted-foreground/50"
+        className="border-l border-border/60 px-1 py-3 text-center text-muted-foreground/50"
         style={{ fontSize: "var(--t-meta)" }}
       >
         —
@@ -877,7 +877,9 @@ function TabloCell({
         // uch xil grammatika bor edi (buyurtma 10px radius, muddat 0, katak 6px)
         // va oq katak taxta foni bilan atigi 1.29:1 kontrast berardi, ya'ni
         // "kartochka" chegarasi 5 metrdan umuman ko'rinmasdi.
-        "relative overflow-hidden whitespace-nowrap border-l border-border/60 px-2 py-3 text-center align-middle",
+        // px-1 (4px): 5 xonali juftlik ("11020/11220") 1854px da 127/131 px bilan
+        // chegarada turardi — 8 px zaxira qo'shildi (raqam katagida kesish taqiq).
+        "relative overflow-hidden whitespace-nowrap border-l border-border/60 px-1 py-3 text-center align-middle",
         last && "rounded-r-md",
         complete
           ? "bg-green-200/70"
