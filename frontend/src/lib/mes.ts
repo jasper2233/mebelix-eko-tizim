@@ -390,6 +390,21 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   badge_queued: "beyjik chop etishga yuborildi",
 }
 
+/** Skan xato kodlari — backend `services/scanning.py` `ScanRejected` docstring'i
+ * bilan QO'LDA oynalangan (kod barqaror, matn tahrirlanadi). Loglar panelida
+ * «E008» yolg'iz turmasin: kim harakat qilishi shu yerdan o'qiladi. */
+export const SCAN_ERROR_LABELS: Record<string, string> = {
+  E001: "Detal/plan mos kelmadi — operator chekni tekshiradi",
+  E002: "QR formati buzuq — chek qayta chop etiladi",
+  E003: "Buyurtma bekor qilingan — menejerga",
+  E004: "Navbat buzildi — oldingi bosqich kutiladi",
+  E005: "Aktiv smena yo'q — beyjik bilan kirish kerak",
+  E006: "Beyjik/hodim muammosi — admin",
+  E007: "Aloqa uzildi (terminalning o'zi beradi, server kodi emas)",
+  E008: "Ish allaqachon bajarilgan — xato emas, ogohlantirish",
+  E009: "Sozlama xatosi (post/ish markazi yo'q) — admin tuzatadi",
+}
+
 /** Fayl hajmi: 1 KB gacha bayt, 1 MB gacha KB, undan yuqori MB (1 kasr). */
 export function formatBytes(size: number | null | undefined): string {
   if (size == null) return "—"

@@ -35,7 +35,12 @@ import {
 } from "@/components/ui/table"
 import { useDebounced } from "@/hooks/useDebounced"
 import { requireAccess } from "@/lib/guards"
-import { AUDIT_ACTION_LABELS, formatDateTime, isAdmin } from "@/lib/mes"
+import {
+  AUDIT_ACTION_LABELS,
+  formatDateTime,
+  isAdmin,
+  SCAN_ERROR_LABELS,
+} from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import {
   getBridgeAgentsQueryOptions,
@@ -490,9 +495,17 @@ function DetailSheet({
               </Fact>
               <Fact label="Xato kodi">
                 {typeof meta.code === "string" && (
-                  <span className="num font-semibold text-red-700">
-                    {meta.code}
-                  </span>
+                  <>
+                    <span className="num font-semibold text-red-700">
+                      {meta.code}
+                    </span>
+                    {SCAN_ERROR_LABELS[meta.code] && (
+                      <span className="text-muted-foreground">
+                        {" — "}
+                        {SCAN_ERROR_LABELS[meta.code]}
+                      </span>
+                    )}
+                  </>
                 )}
               </Fact>
               <Fact label="Fayl">{uploadStats.join(" · ") || null}</Fact>

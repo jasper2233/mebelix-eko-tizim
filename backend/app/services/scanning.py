@@ -62,6 +62,9 @@ class ScanRejected(Exception):
       E009 SOZLAMA xatosi (post/ish markazi yo'q) — admin tuzatadi, operator emas
 
     E007 server kodi emas: aloqa uzilganda terminal frontendi o'zi hosil qiladi.
+
+    Frontend `lib/mes.ts` `SCAN_ERROR_LABELS` shu ro'yxatni QO'LDA oynalaydi (Loglar
+    paneli kod yonida izoh ko'rsatadi) — kod qo'shilsa/ma'nosi o'zgarsa ikkalasini yangila.
     """
 
     def __init__(self, code: str, message: str):
