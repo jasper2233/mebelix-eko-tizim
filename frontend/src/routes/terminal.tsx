@@ -89,15 +89,12 @@ function TerminalPage() {
   const [roverMap, setRoverMap] = useState(false)
   // Ro'yxatdagi xarita ikonkasi: xarita shu detal belgilangan holda ochiladi
   const [focusPart, setFocusPart] = useState<string | undefined>(undefined)
-  // Fokus bilan kartochka ham ochilsinmi (ro'yxatdan chekni bekor qilish yo'li)
-  const [focusCard, setFocusCard] = useState(false)
   const [mapOrderId, setMapOrderIdRaw] = useState<number | null>(null)
   const setMapOrderId = (v: number | null) => {
     setMapOrderIdRaw(v)
     if (v === null) {
       setRoverMap(false) // keyingi proyekt detallardan boshlansin
       setFocusPart(undefined)
-      setFocusCard(false)
     }
   }
   const [lastScan, setLastScan] = useState<LastScan>(null)
@@ -679,7 +676,6 @@ function TerminalPage() {
                 toolbarContainer={toolbarEl}
                 postCode={ctx?.post_code}
                 focusPartKey={focusPart}
-                openFocusedCard={focusCard}
               />
             ) : mapOrderId ? (
               <PrisadkaView
@@ -689,9 +685,8 @@ function TerminalPage() {
                 toolbarContainer={toolbarEl}
                 onShowOnMap={
                   ctx?.post_code === "ROVER"
-                    ? (partCode, openCard) => {
+                    ? (partCode) => {
                         setFocusPart(partCode)
-                        setFocusCard(!!openCard)
                         setRoverMap(true)
                       }
                     : undefined
