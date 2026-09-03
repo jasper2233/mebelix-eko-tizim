@@ -641,12 +641,19 @@ export function SheetSvg({
 
       if (tight) {
         const t = `${wv}×${hv}`
-        const fs = Math.min(
-          DIM_FS,
-          (wv * 0.9) / (t.length * CH),
-          (hv * 0.8) / (ASC + DESC),
-          DIM_MAX / zoom,
-        )
+        // Yo'nalish katak shakliga qarab: ingichka-uzun detalda (60×1490) gorizontal
+        // yozuv 60 mm ga sig'ish uchun 13 mm gacha tushardi; bo'yiga burilsa ~43 mm.
+        const fitAlong = (along: number, across: number) =>
+          Math.min(
+            DIM_FS,
+            (along * 0.9) / (t.length * CH),
+            (across * 0.8) / (ASC + DESC),
+            DIM_MAX / zoom,
+          )
+        const fsH = fitAlong(wv, hv)
+        const fsV = fitAlong(hv, wv)
+        const vertical = fsV > fsH
+        const fs = vertical ? fsV : fsH
         if (fs * zoom >= DIM_MIN)
           labels.push(
             <text
@@ -658,6 +665,7 @@ export function SheetSvg({
               fontWeight="700"
               textAnchor="middle"
               dominantBaseline="central"
+              transform={vertical ? `rotate(-90 ${cx} ${cy})` : undefined}
             >
               {t}
             </text>,
