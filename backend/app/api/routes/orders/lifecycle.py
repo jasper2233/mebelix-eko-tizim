@@ -578,10 +578,35 @@ async def start_order_production(
         .scalars()
         .all()
     )
+    # Tanlov TALAB qilinadigan post: aktiv stanok BITTA bo'lsa tanlaydigan narsa
+    # yo'q — o'zi biriktiriladi (UI ham bitta variantli selectni ko'rsatmaydi).
+    # Ikki va undan ko'p bo'lsa odam tanlashi shart — avvalgidek 403.
+    assignments = dict(order.machine_assignments)
+    for pid in used_post_ids:
+        post = posts[pid]
+        if not post.requires_assignment_choice or str(post.code) in assignments:
+            continue
+        active = (
+            (
+                await db.execute(
+                    select(Machine.id).where(
+                        Machine.post_id == pid,
+                        Machine.status == MachineStatus.ACTIVE,
+                        Machine.is_deleted == False,  # noqa: E712
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if len(active) == 1:
+            assignments[str(post.code)] = active[0]
+    if assignments != order.machine_assignments:
+        order.machine_assignments = assignments  # JSONB: yangi dict — o'zgarish aniqlansin
     missing = [
         posts[pid].code
         for pid in used_post_ids
-        if posts[pid].requires_assignment_choice and str(posts[pid].code) not in order.machine_assignments
+        if posts[pid].requires_assignment_choice and str(posts[pid].code) not in assignments
     ]
     if missing:
         raise ForbiddenException(f"Ish markazi tanlanmagan postlar: {', '.join(missing)}")

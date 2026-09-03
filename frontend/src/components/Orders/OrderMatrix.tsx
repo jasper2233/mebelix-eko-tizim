@@ -2,12 +2,13 @@
 // Read mode: progress cells. Edit mode (texnolog, pre-production): stage toggles + notes.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Pencil, X } from "lucide-react"
+import { ArrowUp, ChevronsUpDown, Pencil, X } from "lucide-react"
 import { useMemo, useState } from "react"
 import { createPortal } from "react-dom"
 
 import { type MatrixPart, OrdersService, type PostRead } from "@/client"
 import { QueryError } from "@/components/Common/QueryError"
+import { SearchInput } from "@/components/Common/SearchInput"
 import { PartMapButton } from "@/components/Orders/PartMapDialog"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -60,6 +61,9 @@ export function OrderMatrix({
   const { data: posts } = useQuery(getPostsQueryOptions())
   const [editMode, setEditMode] = useState(false)
   const [query, setQuery] = useState("")
+  // Nostandart detallar yuqorida — sarlavhadagi tugma bilan (texnolog avval
+  // qo'lda chiziladiganlarni ko'rib chiqadi)
+  const [customFirst, setCustomFirst] = useState(false)
   const [stageEdits, setStageEdits] = useState<StageEdits>({})
   const [noteEdits, setNoteEdits] = useState<NoteEdits>({})
   const [customEdits, setCustomEdits] = useState<CustomEdits>({})
@@ -137,6 +141,11 @@ export function OrderMatrix({
         `${p.product_code}_${p.code} ${p.name}`.toLowerCase().includes(q),
       )
     : matrix.parts
+  const orderedParts = customFirst
+    ? [...visibleParts].sort(
+        (a, b) => Number(b.is_custom) - Number(a.is_custom),
+      )
+    : visibleParts
 
   // Bitta boshqaruv qatori: qidiruv + hisob + marshrut tugmalari. Portal berilsa
   // tab'lar qatoriga (o'ngga) chiqadi — jadval ustida alohida qator qolmaydi.
@@ -149,11 +158,11 @@ export function OrderMatrix({
       }
     >
       <div className="flex items-center gap-2">
-        <Input
-          className="h-8 w-56 text-sm"
+        <SearchInput
+          className="w-56"
           placeholder="Qidirish: kod yoki nom..."
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={setQuery}
         />
         <span className="whitespace-nowrap text-xs text-muted-foreground">
           {q
@@ -206,12 +215,29 @@ export function OrderMatrix({
                   {p.code}
                 </TableHead>
               ))}
-              <TableHead className="text-center">Nostandart</TableHead>
+              <TableHead
+                className="text-center"
+                aria-sort={customFirst ? "descending" : "none"}
+              >
+                <button
+                  type="button"
+                  onClick={() => setCustomFirst((v) => !v)}
+                  className="inline-flex items-center gap-1 rounded-sm uppercase tracking-wider hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  title="Nostandart detallarni yuqoriga chiqarish"
+                >
+                  Nostandart
+                  {customFirst ? (
+                    <ArrowUp className="size-3.5" />
+                  ) : (
+                    <ChevronsUpDown className="size-3 opacity-40" />
+                  )}
+                </button>
+              </TableHead>
               <TableHead>Izoh</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {visibleParts.map((part) => (
+            {orderedParts.map((part) => (
               <TableRow key={part.id}>
                 <TableCell>
                   <span className="flex items-center gap-1.5">

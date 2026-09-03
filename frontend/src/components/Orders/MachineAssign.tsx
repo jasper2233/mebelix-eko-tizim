@@ -60,14 +60,22 @@ export function MachineAssign({ order }: { order: OrderDetail }) {
     ...cb,
   })
 
-  if (!choiceposts.length) return null
+  // Faqat HAQIQIY tanlov: postda 2+ aktiv stanok bo'lsa. Bittasi bo'lsa backend
+  // ishlab chiqarishga uzatishda o'zi biriktiradi — bitta variantli select
+  // odamga ortiqcha «majburiy qadam» edi.
+  const activeFor = (postId: number) =>
+    (machines ?? []).filter(
+      (m) => m.post_id === postId && m.status === "active",
+    )
+  const withChoice = choiceposts.filter((p) => activeFor(p.id).length >= 2)
+  if (!withChoice.length) return null
 
   return (
     // Bitta ixcham qator (karta emas): bitta select uchun sarlavhali karta
     // sahifada og'ir turardi.
     <div className="mb-6 flex flex-wrap items-center gap-3 text-sm">
       <span className="text-muted-foreground">Ish markazi:</span>
-      {choiceposts.map((post) => {
+      {withChoice.map((post) => {
         // Faqat AKTIV: ta'mirdagi/noaktivga server ham biriktirmaydi (409)
         const options = (machines ?? []).filter(
           (m) => m.post_id === post.id && m.status === "active",

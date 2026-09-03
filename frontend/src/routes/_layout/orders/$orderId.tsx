@@ -403,11 +403,15 @@ function OrderDetailPage() {
               : "border-muted-foreground/30 text-muted-foreground hover:border-primary/50"
           } ${uploading ? "opacity-60" : ""}`}
         >
-          <FileUp className="size-6" />
+          {/* Doimiy animatsiya YO'Q (shovqin); faqat fayl sudrab kelinganda
+              javob: matn almashadi, ikonka sakraydi — «shu yerga» degani */}
+          <FileUp className={`size-6 ${dragOver ? "animate-bounce" : ""}`} />
           <span className="font-medium">
             {uploading
               ? "Yuklanmoqda..."
-              : ".project faylni shu yerga tashlang yoki bosing"}
+              : dragOver
+                ? "Qo'yib yuboring"
+                : ".project faylni shu yerga tashlang yoki bosing"}
           </span>
           <span className="text-xs">
             GibLab eksport fayli — yuklangach tahlil avtomatik boshlanadi
