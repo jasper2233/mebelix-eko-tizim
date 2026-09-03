@@ -262,13 +262,7 @@ export function PrisadkaView({
                   <th className="px-4 py-2.5">Detal ID</th>
                   <th className="px-4 py-2.5">Nomi</th>
                   <th className="px-4 py-2.5">O'lchami</th>
-                  <th className="px-4 py-2.5 text-right">
-                    Holat
-                    <span className="block whitespace-nowrap text-2xs font-medium normal-case tracking-normal">
-                      ✓ bajarildi · rover kesadigani — chek chiqishi bilan ·
-                      arradan kelgani — skan bilan
-                    </span>
-                  </th>
+                  <th className="px-4 py-2.5 text-right">Holat</th>
                 </tr>
               </thead>
               <tbody>
