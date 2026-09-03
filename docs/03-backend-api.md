@@ -404,7 +404,8 @@ Yuklash cheklovlari (`orders/survey.py` dagi konstantalar):
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
-| GET | `/api/v1/audit-logs/` | `AdminUser` | `Paginated[AuditLogRead]`; filtrlar: `module`, `action`, `user_id`, `q` (xabar bo'yicha `ilike` qidiruv), `date_from`/`date_to` — kun chegaralari Asia/Tashkent vaqtida (`TASHKENT_TZ`; naive-UTC bo'lsa "bugun" filtri 00:00–05:00 yozuvlarni yo'qotardi) |
+| GET | `/api/v1/audit-logs/` | `AdminUser` | `Paginated[AuditLogRead]`; filtrlar: `module` (alias: `scan` so'rovi `scan` VA `scans` yozuvlarini oladi — prodda 19 ta qo'lda yozilgan `scans` yozuvi bor, kod doim `scan` yozadi; `_MODULE_ALIASES`), `action`, `user_id`, `q` (xabar bo'yicha `ilike` qidiruv), `date_from`/`date_to` — kun chegaralari Asia/Tashkent vaqtida (`_day_bounds`; naive-UTC bo'lsa "bugun" filtri 00:00–05:00 yozuvlarni yo'qotardi) |
+| GET | `/api/v1/audit-logs/summary` | `AdminUser` | `list[AuditSummaryRow]` — modul × amal bo'yicha sonlar (`date_from`/`date_to` bilan, ro'yxat filtri bilan bir xil); Loglar sahifasi tab'lari va amal chiplari shundan quriladi — qo'lda yuritiladigan kategoriya ro'yxati yo'q, bo'sh modul tab bo'lmaydi, yangi `log_action(module=…)` o'zi chiqadi. Alias'lar birlashtirilgan holda qaytadi |
 
 `AuditLogRead` sxemasi `backend/app/schemas/audit.py` da: user/employee, modul, amal, entity, xabar, `meta` (JSON), IP, vaqt, hamda `user_name`/`employee_name` ("kim" ustuni uchun `outerjoin` orqali — alohida so'rovsiz).
 

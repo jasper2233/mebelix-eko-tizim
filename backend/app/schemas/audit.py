@@ -21,3 +21,11 @@ class AuditLogRead(BaseModel):
     # Loglar sahifasi "kim" ustuni — alohida so'rovsiz
     user_name: str | None = None
     employee_name: str | None = None
+
+
+class AuditSummaryRow(BaseModel):
+    """Loglar sahifasi tab'lari: modul × amal bo'yicha yozuvlar soni (sana filtri bilan)."""
+
+    module: str
+    action: str
+    count: int

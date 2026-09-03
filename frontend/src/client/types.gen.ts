@@ -81,6 +81,26 @@ export type AuditLogRead = {
 };
 
 /**
+ * AuditSummaryRow
+ *
+ * Loglar sahifasi tab'lari: modul × amal bo'yicha yozuvlar soni (sana filtri bilan).
+ */
+export type AuditSummaryRow = {
+    /**
+     * Module
+     */
+    module: string;
+    /**
+     * Action
+     */
+    action: string;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * BadgeLoginRequest
  *
  * Beyjik skani = kirish. Post beyjik egasining biriktirilgan postlaridan aniqlanadi.
@@ -5279,6 +5299,42 @@ export type AcceptIntoTmoResponses = {
 };
 
 export type AcceptIntoTmoResponse = AcceptIntoTmoResponses[keyof AcceptIntoTmoResponses];
+
+export type ReadAuditSummaryData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Date From
+         */
+        date_from?: string | null;
+        /**
+         * Date To
+         */
+        date_to?: string | null;
+    };
+    url: '/api/v1/audit-logs/summary';
+};
+
+export type ReadAuditSummaryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadAuditSummaryError = ReadAuditSummaryErrors[keyof ReadAuditSummaryErrors];
+
+export type ReadAuditSummaryResponses = {
+    /**
+     * Response Read Audit Summary
+     *
+     * Successful Response
+     */
+    200: Array<AuditSummaryRow>;
+};
+
+export type ReadAuditSummaryResponse = ReadAuditSummaryResponses[keyof ReadAuditSummaryResponses];
 
 export type ReadAuditLogsData = {
     body?: never;
