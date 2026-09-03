@@ -234,8 +234,11 @@ async def delete_user(
     # Qurilma va post hisoblari ODAM EMAS: TERMINAL monoblokning o'zi, post rollari esa
     # beyjik bilan ochilgan smena qaysi hisob nomidan yozilishini hal qiladi
     # (`login._terminal_user`). O'chirilsa o'sha postda beyjik kirishi o'ladi.
+    # Post hisobi = seed yaratgan `username == str(role)` (seed_defaults). Tsex xodimining
+    # SHAXSIY logini ham post rolida bo'ladi — u odamniki, o'chirish mumkin (aks holda
+    # PersonDialog'dagi «loginni olib tashlash» 403 ga urilardi).
     role = UserRole(db_user.role)
-    if role in (UserRole.TERMINAL, UserRole.TABLO) or role in POST_ROLES:
+    if role in (UserRole.TERMINAL, UserRole.TABLO) or (role in POST_ROLES and db_user.username == str(role)):
         raise ForbiddenException(
             f"{db_user.username} — qurilma yoki post hisobi, odam emas. O'chirilsa o'sha postda "
             "beyjik bilan kirish ishlamay qoladi. Kerak bo'lsa nofaol qiling."

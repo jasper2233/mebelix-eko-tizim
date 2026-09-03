@@ -265,4 +265,4 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 
 ## Fix-loop davomida topilgan (2026-09-02, ochiq)
 
-- [ ] ⚠️ `frontend/src/components/People/PersonDialog.tsx` (`!account && userId !== null` shoxi) + `backend/app/api/routes/users.py:delete_user` — tsex xodimidan parol bilan kirish olib tashlanganda `deleteUser` POST_ROLES rolli shaxsiy hisobga uriladi va guard shartsiz 403 beradi («qurilma yoki post hisobi, odam emas»). Yo'l: bog'lami uzilgan (yetim) shaxsiy hisobni o'chirishga ruxsat berish yoki o'rniga `is_active=false`. Statik isbot: guard `role in POST_ROLES` (users.py) hodim bog'lamini tekshirmaydi.
+- [x] ⚠️ `frontend/src/components/People/PersonDialog.tsx` (`!account && userId !== null` shoxi) + `backend/app/api/routes/users.py:delete_user` — tsex xodimidan parol bilan kirish olib tashlanganda `deleteUser` POST_ROLES rolli shaxsiy hisobga uriladi va guard shartsiz 403 beradi («qurilma yoki post hisobi, odam emas»). Yo'l: bog'lami uzilgan (yetim) shaxsiy hisobni o'chirishga ruxsat berish yoki o'rniga `is_active=false`. Statik isbot: guard `role in POST_ROLES` (users.py) hodim bog'lamini tekshirmaydi.
