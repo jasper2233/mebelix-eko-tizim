@@ -4,13 +4,12 @@
 // Bitta jarayon takrorlanishi mumkin: kromka -> prisadka -> yana kromka.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Link } from "@tanstack/react-router"
-import { Map as MapIcon } from "lucide-react"
 import { useState } from "react"
 
 import { OrdersService } from "@/client"
 import { QueryError } from "@/components/Common/QueryError"
 import { SelectField } from "@/components/Common/SelectField"
+import { PartMapButton } from "@/components/Orders/PartMapDialog"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -190,16 +189,11 @@ export function CustomRoutes({
               <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span className="flex items-center gap-1.5 font-medium">
                   {part.product_code}_{part.code}
-                  {/* Matritsadagi kabi: detalning listi ochilib, katakchasi belgilanadi */}
-                  <Link
-                    to="/cutmap/$orderId"
-                    params={{ orderId: String(orderId) }}
-                    search={{ part: `${part.product_code}_${part.code}` }}
-                    className="text-muted-foreground/50 hover:text-primary"
-                    title="Kesish xaritasida ko'rsatish"
-                  >
-                    <MapIcon className="size-3.5" />
-                  </Link>
+                  {/* Xaritani shu yerda ko'rish (dialog) — sahifadan chiqilmaydi */}
+                  <PartMapButton
+                    orderId={orderId}
+                    partKey={`${part.product_code}_${part.code}`}
+                  />
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {part.name}

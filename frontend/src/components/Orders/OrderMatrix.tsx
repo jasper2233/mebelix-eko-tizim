@@ -2,13 +2,13 @@
 // Read mode: progress cells. Edit mode (texnolog, pre-production): stage toggles + notes.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Link } from "@tanstack/react-router"
-import { Map as MapIcon, Pencil, X } from "lucide-react"
+import { Pencil, X } from "lucide-react"
 import { useMemo, useState } from "react"
 import { createPortal } from "react-dom"
 
 import { type MatrixPart, OrdersService, type PostRead } from "@/client"
 import { QueryError } from "@/components/Common/QueryError"
+import { PartMapButton } from "@/components/Orders/PartMapDialog"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -218,16 +218,11 @@ export function OrderMatrix({
                     <span className="font-medium">
                       {part.product_code}_{part.code}
                     </span>
-                    {/* Xaritada ko'rsat: detalning listi ochilib, katakchasi belgilanadi */}
-                    <Link
-                      to="/cutmap/$orderId"
-                      params={{ orderId: String(orderId) }}
-                      search={{ part: `${part.product_code}_${part.code}` }}
-                      className="text-muted-foreground/50 hover:text-primary"
-                      title="Kesish xaritasida ko'rsatish"
-                    >
-                      <MapIcon className="size-3.5" />
-                    </Link>
+                    {/* Xaritani shu yerda ko'rish (dialog) — sahifadan chiqilmaydi */}
+                    <PartMapButton
+                      orderId={orderId}
+                      partKey={`${part.product_code}_${part.code}`}
+                    />
                   </span>
                   <span className="block max-w-[220px] truncate text-xs text-muted-foreground">
                     {part.name}
