@@ -23,10 +23,10 @@ export function BadgePrompt({
     <div className="flex flex-col items-center gap-4 py-2">
       <BadgeCard pending={pending} />
       <div className="text-center">
-        <p className="text-2xl font-bold tracking-tight">
+        <p className="text-2xl font-bold tracking-tight lg:text-3xl">
           {pending ? "Tekshirilmoqda..." : "Beyjikni skanerlang"}
         </p>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground lg:text-base">
           Smena avtomatik ochiladi
         </p>
       </div>
@@ -94,6 +94,22 @@ function BadgeCard({ pending }: { pending: boolean }) {
           <rect x="84" y="94" width="6" height="6" />
         </g>
       </g>
+      {/* Skan-chizig'i: QR ustidan har 2.8 s da bir marta o'tadi — "ekran
+          kutmoqda, kartani tuting" degani, matnsiz. Yumshoq (1.5 px, ≤0.35
+          xiralik): kioskda doimiy yaltirash bezovta qiladi. `pending` da
+          yo'q (QR navy'ga o'tgan — javob kutilmoqda), reduced-motion'da CSS
+          o'chiradi. */}
+      {!pending && (
+        <rect
+          x="26"
+          y="38"
+          width="68"
+          height="1.5"
+          rx="0.75"
+          fill={GOLD}
+          className="mx-scan"
+        />
+      )}
       {/* Kodning tagidagi bosilgan ism — haqiqiy beyjikda ham shunday turadi */}
       <g fill={NAVY} fillOpacity="0.16" className="mx-fade">
         <rect x="30" y="115" width="60" height="5" rx="2.5" />

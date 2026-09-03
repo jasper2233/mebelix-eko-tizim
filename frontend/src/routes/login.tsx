@@ -153,9 +153,10 @@ function Login() {
               tushadi va u yerda bitta ish turadi — beyjikni skanerlash. */}
           {/* Sahifa nomi eyebrow darajasida: sahifada bitta katta sarlavha
               qoladi — "Beyjikni skanerlang" (amal), "Kirish" u bilan
-              raqobatlashmaydi. */}
+              raqobatlashmaydi. `lg:` da bir pog'ona katta: login 17" kioskda
+              ham ochiladi (~70 sm), 11 px u yerda 3 mm. */}
           <div className="flex flex-col items-center gap-1.5">
-            <h1 className="text-2xs font-medium uppercase tracking-[0.3em] text-(--brand-gold-deep)">
+            <h1 className="text-2xs font-medium uppercase tracking-[0.3em] text-(--brand-gold-deep) lg:text-xs">
               MebeliX MES · Kirish
             </h1>
             {/* Chap paneldagi o'lcham chizig'ining aks-sadosi */}
@@ -299,7 +300,7 @@ function Login() {
             <Button
               type="button"
               variant="ghost"
-              className="text-muted-foreground underline decoration-muted-foreground/40 underline-offset-4 hover:decoration-current"
+              className="text-muted-foreground underline decoration-muted-foreground/40 underline-offset-4 hover:decoration-current lg:text-base"
               onClick={() => setShowPassword(!showPassword)}
             >
               {showPassword ? (

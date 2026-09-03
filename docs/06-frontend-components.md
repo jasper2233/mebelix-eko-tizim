@@ -169,6 +169,8 @@ react-hook-form ishlatmaydigan dialoglarda yorliq va maydon `Field` orqali beril
 - Nega TUGMA emas: skaner tugmasiz ishlaydi (klaviatura kabi yozadi), bosilganda hech nima qilmaydigan tugma — yolg'on afforadans. Punktir ramka ham shunday edi: bu loyihada punktir "faylni shu yerga tashlang" degani.
 - O'rniga beyjikning O'ZI chizilgan (inline SVG `BadgeCard`, 120×148): lentali karta va ichida QR — uchta burchak belgisi + o'ng-pastdagi modullar, ATAYLAB to'liq emas (ekrandagi kod skanerlanmasin). Chiziq tili `AuthLayout` chap panelidagi kesish xaritasi bilan bir xil (`mx-draw` konturi + `mx-fade`), rang navy/gold (`--brand-navy-deep` / `--brand-gold-deep`); karta konturi navy 0.45 opacity — 0.28 da och fonda «sharpa» bo'lib, QR belgilari havoda muallaq turardi.
 - Yagona prop `pending: boolean` — skan yuborilib javob kutilayotganda yozuv "Beyjikni skanerlang" o'rniga "Tekshirilmoqda..." bo'ladi va QR navy rangga o'tadi. Ostida doim "Smena avtomatik ochiladi".
+- Kutish holatida QR ustidan **skan-chizig'i** o'tadi (`mx-scan`: 1.5 px oltin, ≤0.35 xiralik, 2.8 s sikl, 1.4 s boshlang'ich kechikish — karta chizilib bo'lgach) — "ekran kutmoqda" degani, matnsiz; `pending` da chizilmaydi, `prefers-reduced-motion` da `display:none`. Pulsatsiya/porlash ATAYLAB yo'q — kioskda doimiy yaltirash bezovta qiladi.
+- O'lchamlar `lg:` da bir pog'ona katta (chaqiriq 24 → 30 px, ikkilamchi qator 14 → 16 px): login 17" kioskda ~70 sm dan o'qiladi; tokenlar admin bilan bir xil qoladi.
 
 ### `frontend/src/components/Common/BrandLoader.tsx`
 

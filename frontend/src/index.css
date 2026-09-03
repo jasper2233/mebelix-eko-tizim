@@ -253,6 +253,27 @@
   opacity: 0;
   animation: mx-fade 0.8s ease-out forwards;
 }
+/* Beyjik QR'i ustidagi skan-chizig'i: 62 px pastga (QR balandligi), chetlarda so'nadi */
+@keyframes mx-scan {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.35;
+  }
+  88% {
+    opacity: 0.35;
+  }
+  100% {
+    transform: translateY(62px);
+    opacity: 0;
+  }
+}
+.mx-scan {
+  opacity: 0;
+  animation: mx-scan 2.8s linear 1.4s infinite;
+}
 @media (prefers-reduced-motion: reduce) {
   .mx-draw {
     stroke-dashoffset: 0;
@@ -261,6 +282,9 @@
   .mx-fade {
     opacity: 1;
     animation: none;
+  }
+  .mx-scan {
+    display: none;
   }
   .mx-loader-path {
     stroke-dashoffset: 0;
