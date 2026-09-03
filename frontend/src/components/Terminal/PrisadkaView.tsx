@@ -268,7 +268,12 @@ export function PrisadkaView({
                   <th className="px-4 py-2.5">Detal ID</th>
                   <th className="px-4 py-2.5">Nomi</th>
                   <th className="px-4 py-2.5">O'lchami</th>
-                  <th className="px-4 py-2.5 text-right">Holat</th>
+                  <th className="px-4 py-2.5 text-right">
+                    Holat
+                    <span className="block whitespace-nowrap text-2xs font-medium normal-case tracking-normal">
+                      chek yo'q → chek chiqarilgan → ✓ skan
+                    </span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -334,21 +339,29 @@ export function PrisadkaView({
                         {formatSize(p.length, p.width, p.thickness)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {/* Holat IKKILIK — boshqa hamma ekranda ham shunday
-                          (kromka, post navbati, kesish xaritasi). `label_printed`
-                          holat emas: u NUSXANING bayrog'i va arradan kelgan
-                          detalda allaqachon rost bo'ladi, ya'ni "chek chiqarilgan"
-                          deb yozish oddiy kutayotgan qatorlarga ham tegib,
-                          hech qanday ma'no bermasdi. */}
+                        {/* Holat: arradan kelgan detalda IKKILIK (chek arrada
+                          chiqqan, bu yerda faqat skan). ROVER O'ZI KESADIGAN
+                          detalda uch bosqich — chek yo'q → chek chiqarilgan →
+                          ✓: chek shu tugma bilan chiqadi, chiqqanini ko'rmasa
+                          operator qatorni bosib o'chiq «Chop etish»ga qarab
+                          qolardi (sababi ko'rinmasdi) yoki ikkinchi chek so'rardi. */}
                         <span
                           className={cn(
                             "rounded-md px-2.5 py-1 text-sm font-bold",
                             i.done
                               ? "bg-green-600 text-white"
-                              : "bg-muted text-muted-foreground",
+                              : ownLabel(p) && i.label_printed
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-muted text-muted-foreground",
                           )}
                         >
-                          {i.done ? "✓ Bajarildi" : "Bajarilmagan"}
+                          {i.done
+                            ? "✓ Bajarildi"
+                            : ownLabel(p)
+                              ? i.label_printed
+                                ? "Chek chiqarilgan"
+                                : "Chek yo'q"
+                              : "Bajarilmagan"}
                         </span>
                       </td>
                     </tr>
