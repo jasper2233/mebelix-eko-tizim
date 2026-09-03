@@ -1314,6 +1314,47 @@ export type MachineCreate = {
 };
 
 /**
+ * MachineOverview
+ *
+ * Ish markazlari sahifasi uchun jonli holat — ro'yxat (`MachineRead`) o'zgarmaydi,
+ * u har select'da ishlatiladi; bu faqat sahifada, 60s poll bilan.
+ */
+export type MachineOverview = {
+    /**
+     * Machine Id
+     */
+    machine_id: number;
+    /**
+     * Accounts
+     */
+    accounts: Array<string>;
+    /**
+     * Agents
+     */
+    agents: Array<string>;
+    /**
+     * Agent Online
+     */
+    agent_online: boolean;
+    /**
+     * On Shift
+     */
+    on_shift: number;
+    /**
+     * Today Scans
+     */
+    today_scans: number;
+    /**
+     * Last Scan At
+     */
+    last_scan_at: string | null;
+    /**
+     * Unfinished Routes
+     */
+    unfinished_routes: number;
+};
+
+/**
  * MachineRead
  */
 export type MachineRead = {
@@ -4316,6 +4357,24 @@ export type CreateMachineResponses = {
 };
 
 export type CreateMachineResponse = CreateMachineResponses[keyof CreateMachineResponses];
+
+export type ReadMachinesOverviewData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/machines/overview';
+};
+
+export type ReadMachinesOverviewResponses = {
+    /**
+     * Response Read Machines Overview
+     *
+     * Successful Response
+     */
+    200: Array<MachineOverview>;
+};
+
+export type ReadMachinesOverviewResponse = ReadMachinesOverviewResponses[keyof ReadMachinesOverviewResponses];
 
 export type DeleteMachineData = {
     body?: never;

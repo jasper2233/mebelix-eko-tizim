@@ -1,14 +1,17 @@
+from datetime import UTC, datetime, time, timedelta
+
 from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import func, select
 
-from app.api.deps import AdminUser, CurrentUser, SessionDep, client_ip
+from app.api.deps import AdminUser, CurrentUser, SessionDep, StaffReadUser, client_ip
 from app.api.routes._shared import drop_forbidden_nulls
+from app.core.config import TASHKENT_TZ
 from app.core.exceptions import DuplicateValueException, NotFoundException
 from app.crud import crud_machines, crud_posts, log_action
-from app.models import BridgeAgent, Machine, Order, PartRoute, Scan, User
-from app.models.enums import OrderStatus
+from app.models import BridgeAgent, Machine, Order, PartRoute, Scan, User, WorkSession
+from app.models.enums import OrderStatus, SessionStatus
 from app.schemas.common import Message
-from app.schemas.machines import MachineCreate, MachineRead, MachineUpdate
+from app.schemas.machines import MachineCreate, MachineOverview, MachineRead, MachineUpdate
 from app.services.scanning import crew_sessions
 
 router = APIRouter(prefix="/machines", tags=["machines"])
@@ -94,6 +97,98 @@ async def read_machines(db: SessionDep, _: CurrentUser) -> list[Machine]:
     """All machines — small fixed set, no pagination. Terminals/TABLO need this for context too."""
     machines, _total = await crud_machines.get_multi(db, limit=500)
     return machines
+
+
+@router.get("/overview", response_model=list[MachineOverview], operation_id="read_machines_overview")
+async def read_machines_overview(db: SessionDep, _: StaffReadUser) -> list[MachineOverview]:
+    """Sahifa jadvali uchun jonli ustunlar: kim biriktirilgan, smenada nechta odam,
+    bugun nechta skan, oxirgi skan, biriktirilgan tugallanmagan qadamlar.
+    Ilgari sahifa uch ustun (nom/post/holat) edi — stanok ishlayaptimi, kim unda,
+    qaysi agent — javob yo'q edi. O'chirish to'siqlari (`_blockers`) ham shu
+    ma'lumotdan oldindan ko'rinadi."""
+    today_start = datetime.combine(datetime.now(TASHKENT_TZ).date(), time.min, tzinfo=TASHKENT_TZ).astimezone(UTC)
+    online_since = datetime.now(UTC) - timedelta(minutes=6)
+    machines = (
+        (await db.execute(select(Machine.id).where(Machine.is_deleted == False))).scalars().all()  # noqa: E712
+    )
+    accounts: dict[int, list[str]] = {}
+    for mid, username in (
+        await db.execute(
+            select(User.machine_id, User.username).where(User.machine_id.is_not(None), User.is_deleted == False)  # noqa: E712
+        )
+    ).all():
+        accounts.setdefault(mid, []).append(username)
+    agents: dict[int, list[str]] = {}
+    agent_online: dict[int, bool] = {}
+    for mid, name, seen, paired in (
+        await db.execute(
+            select(
+                BridgeAgent.machine_id, BridgeAgent.name, BridgeAgent.last_seen_at, BridgeAgent.token_hash.is_not(None)
+            ).where(BridgeAgent.machine_id.is_not(None), BridgeAgent.is_deleted == False)  # noqa: E712
+        )
+    ).all():
+        agents.setdefault(mid, []).append(name)
+        if paired and seen is not None and seen >= online_since:
+            agent_online[mid] = True
+    on_shift: dict[int, int] = {
+        mid: int(n)
+        for mid, n in (
+            await db.execute(
+                select(WorkSession.machine_id, func.count(func.distinct(WorkSession.employee_id)))
+                .where(
+                    WorkSession.status == SessionStatus.ACTIVE,
+                    WorkSession.created_at >= today_start,
+                    WorkSession.is_deleted == False,  # noqa: E712
+                )
+                .group_by(WorkSession.machine_id)
+            )
+        ).all()
+    }
+    live_scan = (Scan.is_cancelled == False, Scan.is_deleted == False)  # noqa: E712
+    scans: dict[int, tuple[int, datetime | None]] = {
+        mid: (int(today), last)
+        for mid, today, last in (
+            await db.execute(
+                select(
+                    Scan.machine_id,
+                    func.count(Scan.id).filter(Scan.created_at >= today_start),
+                    func.max(Scan.created_at),
+                )
+                .where(Scan.machine_id.is_not(None), *live_scan)
+                .group_by(Scan.machine_id)
+            )
+        ).all()
+    }
+    unfinished: dict[int, int] = {
+        mid: int(n)
+        for mid, n in (
+            await db.execute(
+                select(PartRoute.machine_id, func.count(PartRoute.id))
+                .join(Order, Order.id == PartRoute.order_id)
+                .where(
+                    PartRoute.machine_id.is_not(None),
+                    PartRoute.total_done < PartRoute.total_required,
+                    PartRoute.is_deleted == False,  # noqa: E712
+                    Order.status.notin_((OrderStatus.CANCELLED, OrderStatus.DELIVERED)),
+                    Order.is_deleted == False,  # noqa: E712
+                )
+                .group_by(PartRoute.machine_id)
+            )
+        ).all()
+    }
+    return [
+        MachineOverview(
+            machine_id=mid,
+            accounts=accounts.get(mid, []),
+            agents=agents.get(mid, []),
+            agent_online=agent_online.get(mid, False),
+            on_shift=on_shift.get(mid, 0),
+            today_scans=scans.get(mid, (0, None))[0],
+            last_scan_at=scans.get(mid, (0, None))[1],
+            unfinished_routes=unfinished.get(mid, 0),
+        )
+        for mid in machines
+    ]
 
 
 @router.post("/", response_model=MachineRead, status_code=201, operation_id="create_machine")

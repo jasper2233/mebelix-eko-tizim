@@ -1,9 +1,18 @@
+// Ish markazlari: har postdagi stanok/joy — nom, post, holat + JONLI ustunlar
+// (`/machines/overview`): kim biriktirilgan, smenada nechta odam, bugungi skan,
+// oxirgi skan, biriktirilgan tugallanmagan qadamlar. Admin uchun CRUD.
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { Pencil, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 
-import { type MachineRead, MachinesService, type PostRead } from "@/client"
+import {
+  type MachineOverview,
+  type MachineRead,
+  MachinesService,
+  type PostRead,
+} from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { EmptyRow } from "@/components/Common/EmptyRow"
 import { Field } from "@/components/Common/Field"
@@ -34,7 +43,14 @@ import {
 } from "@/components/ui/table"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { requireAccess } from "@/lib/guards"
-import { isAdmin, isProductionStaff, MACHINE_STATUS_LABELS } from "@/lib/mes"
+import {
+  formatAgo,
+  formatDateTime,
+  isAdmin,
+  isProductionStaff,
+  MACHINE_STATUS_LABELS,
+} from "@/lib/mes"
+import { cn } from "@/lib/utils"
 import {
   crudCallbacks,
   getMachinesQueryOptions,
@@ -55,9 +71,30 @@ const STATUS_STYLE: Record<string, string> = {
   inactive: "border-transparent bg-muted text-muted-foreground",
 }
 
+/** O'chirishga to'siqlar — server `_blockers` bilan bir xil ro'yxat, lekin
+ * tugma bosilmasdan OLDIN ko'rinadi (title). */
+function blockers(o: MachineOverview | undefined): string[] {
+  if (!o) return []
+  const out: string[] = []
+  if (o.accounts.length)
+    out.push(`biriktirilgan hisob: ${o.accounts.join(", ")}`)
+  if (o.agents.length) out.push(`MES agenti: ${o.agents.join(", ")}`)
+  if (o.on_shift) out.push(`ochiq smena: ${o.on_shift} ta`)
+  if (o.unfinished_routes)
+    out.push(`tugallanmagan marshrut: ${o.unfinished_routes} ta`)
+  return out
+}
+
 function WorkCentersPage() {
   const machinesQ = useQuery(getMachinesQueryOptions())
   const postsQ = useQuery(getPostsQueryOptions())
+  // Jonli ustunlar alohida so'rov: `MachineRead` ro'yxati har select'da
+  // ishlatiladi, unga statistika yuklab bo'lmaydi
+  const { data: overview } = useQuery({
+    queryKey: ["machines", "overview"],
+    queryFn: async () => (await MachinesService.readMachinesOverview()).data,
+    refetchInterval: 60_000,
+  })
   const machines = machinesQ.data
   const posts = postsQ.data
   // Postlarsiz jadval buzuq chiqadi (bo'sh Post ustuni, noto'g'ri tartib),
@@ -70,6 +107,7 @@ function WorkCentersPage() {
   const [editFor, setEditFor] = useState<MachineRead | null>(null)
   const [deleteFor, setDeleteFor] = useState<MachineRead | null>(null)
   const postById = new Map((posts ?? []).map((p) => [p.id, p]))
+  const ovById = new Map((overview ?? []).map((o) => [o.machine_id, o]))
   // Marshrut tartibida: ARRA, KROMKA, OVAL... Ilgari id tartibida chiqardi,
   // ya'ni yangi qo'shilgan arra ro'yxat oxirida, o'z posti yonida emas edi
   const sorted = [...(machines ?? [])].sort(
@@ -78,12 +116,13 @@ function WorkCentersPage() {
         (postById.get(b.post_id)?.order_index ?? 0) ||
       a.name.localeCompare(b.name),
   )
+  const colSpan = admin ? 8 : 7
 
   return (
     <div>
       <PageHeader
         title="Ish markazlari"
-        description="Har postdagi ish markazi — smena shu joyda ochiladi"
+        description="Har postdagi stanok yoki ish joyi — smena shu yerda ochiladi, skan shu nomdan yoziladi"
         actions={
           admin ? (
             <Button onClick={() => setAdding(true)} disabled={!posts}>
@@ -108,6 +147,22 @@ function WorkCentersPage() {
               <TableHead>Ish markazi</TableHead>
               <TableHead>Post</TableHead>
               <TableHead>Holat</TableHead>
+              <TableHead
+                className="text-right"
+                title="Bugun beyjik bilan ochilgan, hali yopilmagan smenalar"
+              >
+                Smenada
+              </TableHead>
+              <TableHead className="text-right" title="Bugungi skanlar">
+                Bugun
+              </TableHead>
+              <TableHead>Oxirgi skan</TableHead>
+              <TableHead
+                className="text-right"
+                title="Shu markazga biriktirilgan, hali tugallanmagan marshrut qadamlari (faol buyurtmalar)"
+              >
+                Navbatda
+              </TableHead>
               {admin && <TableHead className="w-20" />}
             </TableRow>
           </TableHeader>
@@ -115,9 +170,41 @@ function WorkCentersPage() {
             {sorted.length ? (
               sorted.map((m) => {
                 const post = postById.get(m.post_id)
+                const o = ovById.get(m.id)
+                const locks = blockers(o)
+                const quiet = !o?.today_scans && !o?.on_shift
                 return (
                   <TableRow key={m.id}>
-                    <TableCell className="font-medium">{m.name}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">{m.name}</div>
+                      {/* Bog'lamlar nom ostida: agent (onlayn nuqtasi bilan) va
+                          qurilma hisobi — ular o'chirishga ham to'siq */}
+                      {o && (o.agents.length > 0 || o.accounts.length > 0) && (
+                        <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                          {o.agents.length > 0 && (
+                            <span className="inline-flex items-center gap-1">
+                              <span
+                                className={cn(
+                                  "inline-block size-1.5 rounded-full",
+                                  o.agent_online
+                                    ? "bg-emerald-500"
+                                    : "bg-muted-foreground/40",
+                                )}
+                                title={
+                                  o.agent_online
+                                    ? "agent onlayn"
+                                    : "agent oflayn"
+                                }
+                              />
+                              agent: {o.agents.join(", ")}
+                            </span>
+                          )}
+                          {o.accounts.length > 0 && (
+                            <span>hisob: {o.accounts.join(", ")}</span>
+                          )}
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {post && <PostBadge code={post.code} />}
                     </TableCell>
@@ -129,6 +216,54 @@ function WorkCentersPage() {
                         {MACHINE_STATUS_LABELS[m.status]}
                       </Badge>
                     </TableCell>
+                    <TableCell className="num text-right">
+                      {o?.on_shift ? (
+                        <span className="font-semibold">
+                          {o.on_shift}{" "}
+                          <span className="font-normal text-muted-foreground">
+                            hodim
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="num text-right">
+                      {o?.today_scans ? (
+                        <span className="font-semibold">{o.today_scans}</span>
+                      ) : (
+                        <span className="text-muted-foreground">0</span>
+                      )}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        "num",
+                        quiet ? "text-muted-foreground" : "",
+                      )}
+                    >
+                      {o?.last_scan_at ? (
+                        <>
+                          <div>{formatDateTime(o.last_scan_at)}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatAgo(o.last_scan_at)}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          hali skan yo'q
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="num text-right">
+                      {o?.unfinished_routes ? (
+                        <span>
+                          {o.unfinished_routes}{" "}
+                          <span className="text-muted-foreground">qadam</span>
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     {admin && (
                       <TableCell>
                         <div className="flex justify-end gap-1">
@@ -137,10 +272,17 @@ function WorkCentersPage() {
                             title="Tahrirlash"
                             onClick={() => setEditFor(m)}
                           />
+                          {/* Server bog'lam bo'lsa 409 beradi; shu sabab tugma
+                              bosilmasdan oldin ko'rinsin */}
                           <RowAction
                             icon={Trash2}
-                            title="O'chirish"
+                            title={
+                              locks.length
+                                ? `O'chirib bo'lmaydi — ${locks.join("; ")}. Vaqtincha to'xtatish uchun NOAKTIV holati.`
+                                : "O'chirish"
+                            }
                             danger
+                            disabled={locks.length > 0}
                             onClick={() => setDeleteFor(m)}
                           />
                         </div>
@@ -150,7 +292,7 @@ function WorkCentersPage() {
                 )
               })
             ) : (
-              <EmptyRow colSpan={admin ? 4 : 3}>Ish markazlari yo'q.</EmptyRow>
+              <EmptyRow colSpan={colSpan}>Ish markazlari yo'q.</EmptyRow>
             )}
           </TableBody>
         </Table>
@@ -254,28 +396,29 @@ function MachineDialog({
         </DialogHeader>
 
         <div className="grid gap-3">
-          <Field label="Nomi">
-            <Input
-              value={form.name}
-              onChange={(e) => set("name", e.target.value)}
-              placeholder="01 ARRA"
-              maxLength={100}
-              autoFocus
+          {/* Avval POST: nom taklifi postdan keladi (ilgari nom birinchi turardi
+              va taklif hech qachon ishlamasdi — nom allaqachon yozilgan bo'lardi) */}
+          <Field label="Post">
+            <SelectField
+              value={form.post_id}
+              onChange={pickPost}
+              placeholder="Postni tanlang"
+              options={[...posts]
+                .sort((a, b) => a.order_index - b.order_index)
+                .map((p) => ({
+                  value: String(p.id),
+                  label: p.name,
+                  hint: p.code,
+                }))}
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Post">
-              <SelectField
-                value={form.post_id}
-                onChange={pickPost}
-                placeholder="Postni tanlang"
-                options={[...posts]
-                  .sort((a, b) => a.order_index - b.order_index)
-                  .map((p) => ({
-                    value: String(p.id),
-                    label: p.name,
-                    hint: p.code,
-                  }))}
+            <Field label="Nomi">
+              <Input
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder="Arra-1"
+                maxLength={100}
               />
             </Field>
             <Field label="Holat">
@@ -298,6 +441,10 @@ function MachineDialog({
               />
             </Field>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Nom monoblokda operatorga ko'rinadi — stanok ustidagi yozuvga mos
+            bo'lsin. Skan tarixi bor markazning posti keyin o'zgartirilmaydi.
+          </p>
         </div>
 
         <DialogFooter>

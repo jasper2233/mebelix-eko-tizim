@@ -53,7 +53,7 @@ import {
 } from "@/components/ui/table"
 import { useMesWs } from "@/hooks/useMesWs"
 import { requireAccess } from "@/lib/guards"
-import { formatDateTime, isAdmin } from "@/lib/mes"
+import { formatAgo, formatDateTime, isAdmin } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import {
   crudCallbacks,
@@ -72,15 +72,6 @@ export const Route = createFileRoute("/_layout/agents")({
 
 // Server last_seen_at ni har 5 daqiqada yangilaydi — 6 daqiqadan yangi bo'lsa onlayn
 const ONLINE_MS = 6 * 60 * 1000
-
-/** «8 soat oldin» — oflayn agent qachondan beri jim (absolyut sana yonida). */
-function ago(d: Date): string {
-  const min = Math.round((Date.now() - d.getTime()) / 60_000)
-  if (min < 1) return "hozir"
-  if (min < 60) return `${min} daqiqa oldin`
-  if (min < 24 * 60) return `${Math.round(min / 60)} soat oldin`
-  return `${Math.round(min / (24 * 60))} kun oldin`
-}
 
 /** AB12CD34 -> AB12-CD34: telefonda aytish oson */
 const fmtCode = (c: string) => `${c.slice(0, 4)}-${c.slice(4)}`
@@ -498,7 +489,7 @@ function AgentRow({
         {seen ? (
           <>
             <div className="num">{formatDateTime(agent.last_seen_at)}</div>
-            {!online && <div className="text-xs">{ago(seen)}</div>}
+            {!online && <div className="text-xs">{formatAgo(seen)}</div>}
           </>
         ) : (
           "Hali ulanmagan"

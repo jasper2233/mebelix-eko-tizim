@@ -405,6 +405,17 @@ export const SCAN_ERROR_LABELS: Record<string, string> = {
   E009: "Sozlama xatosi (post/ish markazi yo'q) — admin tuzatadi",
 }
 
+/** «8 soat oldin» — oflayn agent / oxirgi skan qachondan beri (absolyut sana yonida). */
+export function formatAgo(value: string | Date): string {
+  const t =
+    typeof value === "string" ? new Date(value).getTime() : value.getTime()
+  const min = Math.round((Date.now() - t) / 60_000)
+  if (min < 1) return "hozir"
+  if (min < 60) return `${min} daqiqa oldin`
+  if (min < 24 * 60) return `${Math.round(min / 60)} soat oldin`
+  return `${Math.round(min / (24 * 60))} kun oldin`
+}
+
 /** Fayl hajmi: 1 KB gacha bayt, 1 MB gacha KB, undan yuqori MB (1 kasr). */
 export function formatBytes(size: number | null | undefined): string {
   if (size == null) return "—"
