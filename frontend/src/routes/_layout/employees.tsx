@@ -219,24 +219,26 @@ function PeoplePage() {
       <PageHeader
         title="Hodimlar"
         description="Tsex ishchilari va ofis xodimlari — kirish usuli bilan"
+        // Qidiruv sarlavha qatorida (buyurtmalar/mijozlar bilan bir xil) —
+        // alohida qator bo'sh joy bilan vertikal joy yeb turardi
         actions={
-          canEdit ? (
-            // Postlar kelmaguncha dialog ochilmaydi: post bo'lmasa tsex
-            // lavozimida "Saqlash" o'chiq turadi va sababi ko'rinmaydi
-            <Button onClick={() => setAdding(true)} disabled={!posts}>
-              <Plus /> Hodim qo'shish
-            </Button>
-          ) : undefined
+          <div className="flex items-center gap-2">
+            <SearchInput
+              className="w-64"
+              placeholder="F.I.Sh bo'yicha"
+              value={search}
+              onChange={setSearch}
+            />
+            {canEdit && (
+              // Postlar kelmaguncha dialog ochilmaydi: post bo'lmasa tsex
+              // lavozimida "Saqlash" o'chiq turadi va sababi ko'rinmaydi
+              <Button onClick={() => setAdding(true)} disabled={!posts}>
+                <Plus /> Hodim qo'shish
+              </Button>
+            )}
+          </div>
         }
       />
-      <div className="mb-4 flex">
-        <SearchInput
-          className="ml-auto w-full max-w-xs"
-          placeholder="F.I.Sh bo'yicha"
-          value={search}
-          onChange={setSearch}
-        />
-      </div>
 
       {isLoading ? (
         <Skeleton className="h-64 w-full" />
@@ -255,7 +257,6 @@ function PeoplePage() {
               <TableHead>Lavozim</TableHead>
               <TableHead>Kirish</TableHead>
               <TableHead>Postlar</TableHead>
-              <TableHead>Holat</TableHead>
               <TableHead className="w-32">Amallar</TableHead>
             </TableRow>
           </TableHeader>
@@ -268,8 +269,20 @@ function PeoplePage() {
                 return (
                   <TableRow
                     key={p.employee ? `e${p.employee.id}` : `u${p.user?.id}`}
+                    // Nofaol hodim xira — holat ustuni yo'q: 30 ta bir xil
+                    // «AKTIV» pilli shovqin edi, holat faqat og'ganda ko'rinsin
+                    className={active ? undefined : "text-muted-foreground"}
                   >
-                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <span className="flex items-center gap-2">
+                        {p.name}
+                        {!active && (
+                          <Badge variant="secondary">
+                            {EMPLOYEE_STATUS_LABELS.inactive}
+                          </Badge>
+                        )}
+                      </span>
+                    </TableCell>
                     <TableCell>{p.position ?? "—"}</TableCell>
                     <TableCell>
                       <AccessCell access={p.access} />
@@ -285,22 +298,17 @@ function PeoplePage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={active ? "default" : "secondary"}>
-                        {active
-                          ? EMPLOYEE_STATUS_LABELS.active
-                          : EMPLOYEE_STATUS_LABELS.inactive}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5">
+                      {/* O'ngga tekislash: beyjik amali bo'lmagan qatorlarda
+                          qalam/chelak chapga surilib, ustun bo'lib o'qilmasdi */}
+                      <div className="flex items-center justify-end gap-1.5">
+                        {/* Boshqa amallar bilan bir tilda — ikonka; 25 qatorda
+                            matnli tugma og'ir edi */}
                         {canEdit && p.employee && p.access !== "none" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
+                          <RowAction
+                            icon={IdCard}
+                            title="Beyjik chop etish"
                             onClick={() => setBadgeFor(p.employee)}
-                          >
-                            <IdCard /> Beyjik
-                          </Button>
+                          />
                         )}
                         {(p.user ? canManageAccounts : canEdit) && (
                           <>
@@ -331,7 +339,7 @@ function PeoplePage() {
                 )
               })
             ) : (
-              <EmptyRow colSpan={6}>
+              <EmptyRow colSpan={5}>
                 {debounced
                   ? `"${debounced}" bo'yicha hodim topilmadi.`
                   : "Hali hodim yo'q — \"Hodim qo'shish\" bilan qo'shing."}
