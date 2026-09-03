@@ -81,10 +81,8 @@ function OrderDetailPage() {
     isError,
     refetch,
   } = useQuery(getOrderQueryOptions(id))
-  // Tab yorlig'idagi nostandart detallar soni. `enabled: false` — bu yerdan
-  // SO'ROV KETMAYDI (matritsani OrderMatrix/CustomRoutes o'zi yuklaydi), lekin
-  // kuzatuvchi keshga OBUNA bo'ladi: matritsa yuklangan yoki tahrirlangan
-  // zahoti yorliq qayta chiziladi. `getQueryData` bunday qilmasdi.
+  // Tab yorlig'idagi nostandart detallar soni: `enabled: false` — so'rov ketmaydi (matritsani OrderMatrix
+  // yuklaydi), lekin keshga OBUNA — yuklanganda/tahrirlanganda yorliq yangilanadi (`getQueryData` yo'q).
   const { data: matrix } = useQuery({
     ...getOrderMatrixQueryOptions(id),
     enabled: false,

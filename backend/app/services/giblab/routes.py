@@ -70,11 +70,8 @@ def build_manual_route(
                 total_required=part.count * per_instance,
             )
         )
-    # Qadoqlash va TMO — texnolog tanlamaydi. Qadoqlashni anketadagi bayroq qo'shadi,
-    # TMO esa HAR doim oxirgi qadam bo'ladi.
-    # Biriktirilgan MAYDA detalga dum QO'SHILMAYDI: u asosiy detalga yopishib yaxlit
-    # buyumga aylanadi, ya'ni alohida qadoqlanmaydi va TMO ga alohida kirmaydi —
-    # aks holda qadoqlovchi mavjud bo'lmagan detalni qidirardi.
+    # Dum (qadoqlash — anketa bayrog'i bilan, TMO — doim oxirgi) texnolog tanlamaydi. Biriktirilgan
+    # MAYDA detalga dum yo'q: u asosiy detal bilan qadoqlanadi va TMO ga alohida kirmaydi.
     if not (with_tail and codes and part.assembly_parent_id is None):
         return
     for offset, code in enumerate(c for c in TAIL_CODES if packaging or PROCESS_POSTS[c] is not PostCode.UPAKOVKA):

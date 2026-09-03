@@ -244,10 +244,8 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
         if entry.has_route:
             restored += 1
 
-    # O'chirilgan qadamlar OXIRIDA, bitta UPDATE bilan: qayta yuklash HAMMA qatorni
-    # yangidan yaratadi (`is_enabled` default True), ya'ni texnolog o'chirib qo'ygan
-    # amal jimgina qayta yonardi. Manba ahamiyatsiz — matritsadagi tugma AUTO qadamni
-    # ham o'chira oladi, shuning uchun tirik qatorlarning hammasi bo'yicha yuriladi.
+    # O'chirilgan qadamlar oxirida bitta UPDATE bilan: qayta yuklash hamma qatorni `is_enabled=True`
+    # bilan yaratadi — texnolog o'chirgan amal (matritsadan AUTO qadam ham) jim qayta yonardi.
     await db.flush()
     for key, entry in saved.items():
         part = by_key.get(key)

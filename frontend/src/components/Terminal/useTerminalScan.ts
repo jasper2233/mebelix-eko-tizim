@@ -94,10 +94,8 @@ export function useTerminalScan({
       return
     }
 
-    // KROMKA/OVAL: har skan darhol yoziladi, lekin bir detal ustidagi har
-    // urinish orasida 5s to'siq — rad etilgan QR ham to'siqni ishga tushiradi,
-    // aks holda skanerning takror o'qishi yana bir so'rov va yana bir toast
-    // beradi.
+    // KROMKA/OVAL: har skan darhol yoziladi, bir detalda urinishlar orasida 5 s to'siq — rad etilgan
+    // QR ham to'siqni yoqadi, aks holda skanerning takror o'qishi yana so'rov va toast berardi.
     if (cooled(value, KROMKA_COOLDOWN_MS)) {
       playWarning()
       toast.error(

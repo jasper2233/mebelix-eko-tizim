@@ -94,10 +94,8 @@ async def upload_order_project(
         summary = await ingest_project(db, order, project, content, file.filename or "project.project", root)
         restored, lost = await restore_custom_routes(db, order, saved_routes)
         if order.status == OrderStatus.PRODUCTION:
-            # Qayta yuklash HAMMA marshrut qatorini yangidan yaratadi va ular
-            # `machine_id=None` bo'ladi — ish markazi tanlovi (`machine_assignments`)
-            # joyida tursa ham marshrut o'sha postdagi HAMMA stanokda ko'rinardi.
-            # Muhr faqat "ishlab chiqarishga uzatish"da bosilardi, ya'ni qaytarilmasdi.
+            # Qayta yuklash marshrutlarni `machine_id=None` bilan yaratadi — ish markazi tanlovi
+            # turgan bo'lsa ham muhr qaytmasdi (u faqat "ishga uzatish"da bosilardi).
             await stamp_route_machines(db, order)
     except Exception as exc:
         await db.rollback()

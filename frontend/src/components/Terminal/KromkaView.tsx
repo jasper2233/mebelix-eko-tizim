@@ -17,11 +17,8 @@ import { useScanFlash } from "@/hooks/useScanFlash"
 import { formatSize } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 
-// Kromka belgilari (GibLab EL simvoli) — yorliqda o'lcham yonida chiqadigan
-// harf. Tomon NOMI ("Chap"/"Tepa") ataylab berilmaydi: yorliq eskizi UZUN
-// tomonni vertikal chizadi, ya'ni `l`/`r`/`t`/`b` ning eskizdagi joyi detal
-// o'lchamiga qarab almashadi (labels.py `burilgan`) — qat'iy jadval odatiy
-// uzun detalda (length > width) eskizga 90° zid nom berardi.
+// Kromka belgilari — yorliqdagi GibLab EL harfi. Tomon NOMI ("Chap") ataylab yo'q: eskiz uzun
+// tomonni vertikal chizadi, l/r/t/b joyi o'lchamga qarab almashadi (labels.py `burilgan`).
 const edgeSymbols = (edges: Record<string, unknown>): string => {
   const syms = Object.values(edges).map(
     (e) => (e as { symbol?: string | null } | null)?.symbol || "\u2022",
@@ -68,11 +65,8 @@ export function KromkaView({
     // Eski yorliqlar: migratsiyadan oldin yagona nusxa ham `_1` bilan chop etilgan
     const candidates = raw.endsWith("_1") ? [raw, raw.slice(0, -2)] : [raw]
     for (const qr of candidates) {
-      // Detal marshrutda KROMKA'dan IKKI marta o'tishi mumkin ([3,6,3]) —
-      // backend har qadamga alohida qator qaytaradi. Shuning uchun birinchi
-      // topilgan qatorga qarab hukm chiqarib bo'lmaydi: qadamlardan bittasi
-      // ochiq bo'lsa skan haqli, aks holda birinchi o'tish tugagach ikkinchisi
-      // lokal bloklanardi.
+      // Detal KROMKA'dan ikki marta o'tishi mumkin ([3,6,3]) — har qadamga alohida qator. Qadamlardan
+      // bittasi ochiq bo'lsa skan haqli; birinchi topilgan qatorga qarab hukm chiqarib bo'lmaydi.
       const rows = parts.flatMap((p) => {
         const inst = p.instances.find((i) => i.qr_text === qr)
         return inst ? [{ p, inst }] : []

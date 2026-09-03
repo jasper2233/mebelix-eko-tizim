@@ -206,10 +206,8 @@ def parse_xnc_program(code: str, program_xml: str, side: str | None = None) -> X
         last[(el.tag, attr)] = value
         return value
 
-    # `<ms enable="false">` — o'chirilgan kontur boshi. Uning `ml`/`mac` segmentlari
-    # o'chirilgan deb belgilanmaydi, shuning uchun ularni ham keyingi YOQILGAN `ms` gacha
-    # tashlaymiz: aks holda ular OLDINGI konturga payvandlanib panel bo'ylab soxta
-    # frezalash yo'li chiqarardi.
+    # `<ms enable="false">` — o'chirilgan kontur boshi; `ml`/`mac` segmentlari keyingi yoqilgan `ms`
+    # gacha tashlanadi, aks holda oldingi konturga payvandlanib soxta frezalash yo'li chiqardi.
     skip_contour = False
 
     for el in root:

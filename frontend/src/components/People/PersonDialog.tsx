@@ -207,11 +207,8 @@ export function PersonDialog({
         })
       }
 
-      // Hodim yozuvi HISOBDAN OLDIN: ikki so'rov bitta tranzaksiya emas — hodim
-      // tushmasa hisob umuman ochilmaydi (yetim hisob ro'yxatda ko'rinmas, post
-      // rolini `delete_user` guard'i o'chirishga ham qo'ymaydi). Hisob keyin
-      // ochilib `updateEmployee({user_id})` bilan bog'lanadi — parol bilan kirgan
-      // odamning smenasi (`login._open_shift_for`) shu bog'lamdan ochiladi.
+      // Hodim yozuvi HISOBDAN OLDIN (ikki so'rov bitta tranzaksiya emas): hodim tushsa hisob yetim qolmaydi.
+      // Hisob keyin `updateEmployee({user_id})` bilan bog'lanadi — parolli smena shu bog'lamdan ochiladi.
       const body = {
         full_name: form.name.trim(),
         position: positionText || null,

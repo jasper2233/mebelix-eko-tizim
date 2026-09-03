@@ -20,10 +20,8 @@ import { handleError } from "@/utils"
 
 const formSchema = z
   .object({
-    // Joriy parolga kuch sxemasi QO'LLANMAYDI (login formasidagi mulohaza):
-    // eski/seed parol bugungi siyosatga mos kelmasligi mumkin, backend ham uni
-    // faqat hash bilan solishtiradi. Aks holda zaif parolli hisob parolini
-    // umuman almashtira olmaydi.
+    // Joriy parolga kuch sxemasi QO'LLANMAYDI: eski/seed parol bugungi siyosatga mos kelmasligi mumkin,
+    // backend uni faqat hash bilan solishtiradi — aks holda parolni umuman almashtirib bo'lmasdi.
     current_password: z.string().min(1, { message: "Joriy parol majburiy" }),
     new_password: passwordSchema,
     confirm_password: z.string().min(1, { message: "Parolni tasdiqlang" }),

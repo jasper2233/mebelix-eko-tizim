@@ -19,10 +19,8 @@ export function useMesWs(onEvent: (event: MesEvent) => void) {
     const connect = () => {
       const base = API_BASE || window.location.origin
       const url = `${base.replace(/^http/, "ws")}/api/v1/ws/events`
-      // Server har "ping"ga {"type":"pong"} qaytaradi (api/routes/ws.py).
-      // Javob KELMASA ulanish yarim-ochiq: TCP hali tirik ko'rinadi, lekin
-      // birorta ham event yetib kelmaydi. Busiz `online` faqat onclose'da
-      // o'chardi — indikator "JONLI" deb yolg'on gapirardi.
+      // Server har "ping"ga {"type":"pong"} qaytaradi (ws.py). Pong kelmasa ulanish yarim-ochiq: TCP tirik,
+      // event kelmaydi — `online` faqat onclose'da o'chib indikator "JONLI" deb yolg'on gapirardi.
       let lastPongAt = Date.now()
       socket = new WebSocket(url)
       socket.onopen = () => {

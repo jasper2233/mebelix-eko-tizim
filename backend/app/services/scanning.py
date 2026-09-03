@@ -602,12 +602,8 @@ async def record_scan_at(
             break
     if not rows:
         raise ScanRejected("E001", "Bu detal uchun tugallanmagan plan topilmadi. Chekni tekshiring.")
-    # QR buyurtmaga bog'lanmagan (`{productCode}_{partCode}[_n]`, docs/11), indeks esa
-    # faqat (order_id, qr_text) bo'yicha yagona: bir xil GibLab kodlaridan yig'ilgan
-    # ikki jonli buyurtma bitta QR ni ulashishi mumkin. Bir nechta qator = qaysi
-    # buyurtmaga yozishni tanlab bo'lmaydi; jimgina eng yangisiga yozish o'rniga rad etamiz.
-    # CANCELLED qatorlar faqat E003 xabari uchun so'ralgan — to'qnashuv sanalmaydi:
-    # bekor qilingan buyurtma o'sha .project dan qayta yaratilsa qr_text bir xil bo'ladi.
+    # QR buyurtmaga bog'lanmagan (docs/11): ikki jonli buyurtma bitta QR ni ulashishi mumkin — jimgina
+    # eng yangisiga yozish o'rniga rad etamiz. CANCELLED faqat E003 xabari uchun, to'qnashuv emas.
     live = [r for r in rows if r[1].status == OrderStatus.PRODUCTION]
     if len(live) > 1:
         raise ScanRejected("E001", "Bu QR bir nechta buyurtmada uchradi — managerga murojaat qiling.")

@@ -36,13 +36,8 @@ function holatXabari(status: number | undefined): string {
   return "So'rov bajarilmadi — qayta urinib ko'ring"
 }
 
-/** Har qanday xatoni {code, message} ga keltiradi — YAGONA zinapoya.
- *
- * `code` skan/terminal oqimi uchun ALOHIDA kerak (E001 ga qarab ovoz).
- * `structured` — server haqiqiy MES konvertini (`{code, message}`) qaytarganini
- * bildiradi; faqat shunda kod matnga qo'shib ko'rsatiladi, chunki qolgan
- * hollarda kod bu yerda o'ylab topilgan yorliq ("XATO", "TARMOQ").
- */
+/** Har qanday xatoni {code, message} ga keltiradi — YAGONA zinapoya. `code` skan oqimi uchun (E001
+ *  → ovoz); `structured` — server haqiqiy MES konvertini qaytargan, shundagina kod matnga qo'shiladi. */
 export function detailParts(err: unknown): {
   code: string
   message: string

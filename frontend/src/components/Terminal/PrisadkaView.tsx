@@ -51,10 +51,8 @@ import { cn } from "@/lib/utils"
 const canPrintInstance = (p: PrisadkaPartRow, i: PrisadkaInstance) =>
   !i.done && !i.label_printed && !p.arra_route
 
-/** ROVER qatorining kaliti — QADAM + NUSXA. Nostandart marshrutda bir detal
- *  ROVER qadamini ikki marta olishi mumkin ([7, 6, 7]); yolg'iz `instance_id`
- *  bilan ikki qator bir xil key/DOM id olardi va tanlov ikkalasini birdan
- *  yoritardi. */
+/** ROVER qator kaliti — QADAM + NUSXA: nostandart marshrutda detal ROVER'ni ikki marta olishi
+ *  mumkin ([7,6,7]); yolg'iz `instance_id` ikki qatorga bir xil key/DOM id berardi. */
 const instKey = (r: { p: PrisadkaPartRow; i: PrisadkaInstance }) =>
   `${r.p.route_id}:${r.i.instance_id}`
 
@@ -282,10 +280,8 @@ export function PrisadkaView({
                       key={key}
                       id={`pv-inst-${key}`}
                       onClick={() => setSelectedId(key)}
-                      // Chek chiqarilgan nusxada uzoq bosish uni bekor qiladi —
-                      // lekin FAQAT o'z postida chiqarilganida. Ro'yxatda arradan
-                      // kelgan detallar ham turadi va ilgari ularda ham ishlardi:
-                      // roverchi arrachining kesish skanini qaytara olardi.
+                      // Uzoq bosish chekni bekor qiladi — FAQAT o'z postida chiqarilganida;
+                      // ilgari roverchi arrachining kesish skanini ham qaytara olardi.
                       onPointerDown={() =>
                         i.label_printed &&
                         ownLabel(p) &&

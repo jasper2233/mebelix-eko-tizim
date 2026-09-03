@@ -36,10 +36,8 @@ export const Route = createFileRoute("/_layout")({
   },
 })
 
-// Sahifa render crash'i uchun QOBIQ ICHIDAGI chegara. Marshrutning o'z
-// `errorComponent`i bu yerda yaramaydi: u aynan SHU marshrut komponentini —
-// ya'ni sidebar bilan header'ni ham — almashtiradi. Chegara `<Outlet/>`
-// atrofida turgani uchun faqat main kontenti yo'qoladi, navigatsiya qoladi.
+// Qobiq ICHIDAGI chegara: marshrutning o'z `errorComponent`i sidebar+header'ni ham almashtiradi;
+// `<Outlet/>` atrofidagi chegara faqat main kontentini almashtiradi, navigatsiya qoladi.
 function PageError({ error, reset }: ErrorComponentProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
@@ -59,10 +57,8 @@ function PageError({ error, reset }: ErrorComponentProps) {
 
 function Layout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  // Chegara reset kaliti — resolvedLocation: `location` navigatsiya boshlanishidayoq
-  // almashadi, matches esa yuklash tugagach; kalit erta o'zgarsa chegara ESKI
-  // (crash qilgan) match bilan qayta render bo'lib xatoga qaytadi va yangi
-  // sahifaga o'tganda ham «Xato» qolib ketadi.
+  // Reset kaliti — resolvedLocation: `location` navigatsiya boshlanishidayoq almashadi, chegara
+  // eski (crash qilgan) match bilan qayta render bo'lib «Xato» yangi sahifada ham qolardi.
   const resolvedPath = useRouterState({
     select: (s) => s.resolvedLocation?.pathname ?? "",
   })

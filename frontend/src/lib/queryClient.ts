@@ -36,10 +36,8 @@ export const queryClient = new QueryClient({
       // Tablo/terminal ekranlari o'z `refetchInterval` i bilan yangilanadi;
       // qolgan sahifalar uchun har alt-tab'da qayta so'rash ortiqcha yuk.
       refetchOnWindowFocus: false,
-      // Global `staleTime` ATAYLAB berilmagan: u bir joydan hamma sahifa
-      // xulqini o'zgartiradi, mutatsiyadan keyingi yangilanish esa
-      // `invalidateQueries` ga tayanadi. Kerak bo'lgan joyda so'rovning
-      // o'zida beriladi (`queries/`, `routes/`).
+      // Global `staleTime` ATAYLAB yo'q: u hamma sahifa xulqini bir joydan o'zgartiradi, yangilanish
+      // `invalidateQueries` ga tayanadi — kerak joyda so'rovning o'zida beriladi.
     },
   },
 })

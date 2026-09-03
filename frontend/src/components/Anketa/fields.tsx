@@ -27,11 +27,8 @@ export function Facts({ items }: { items: [string, string][] }) {
   )
 }
 
-/** Raqamli maydon chegaralari — backend `Field(ge=..., le=...)` bilan bir xil
- *  bo'lishi SHART (schemas/orders.py: `_Mm`, `SurveyModule.count`,
- *  `total_running_meters`). Bitta katakdagi chegaradan chiqqan son BUTUN
- *  anketaning avtosaqlashini 422 bilan to'xtatadi, shuning uchun maydon o'sha
- *  zahoti qizil bo'lib turadi. */
+/** Backend `Field(ge, le)` bilan bir xil (schemas/orders.py). Bitta katak chegaradan chiqsa
+ *  butun anketaning avtosaqlashi 422 bo'ladi — shuning uchun darhol qizil. */
 export const MM_RANGE = { min: 0, max: 50_000 }
 export const PM_RANGE = { min: 0, max: 1000 }
 export const COUNT_RANGE = { min: 1, max: 999 }
@@ -56,10 +53,8 @@ export function NumInput({
   disabled?: boolean
   onChange: (v: number | null) => void
   integer?: boolean
-  /** Backend chegarasi — shu fayldagi MM_RANGE / PM_RANGE / COUNT_RANGE
-   *  (schemas/orders.py aksi). Qiymat RAD ETILMAYDI — bu yozish
-   *  jarayonini buzardi; chegaradan chiqqan katak qizil bo'lib turadi, shunda
-   *  422 kelganda menejer qaysi katak aybdorligini o'zi izlamaydi. */
+  /** Backend chegarasi (MM_RANGE/PM_RANGE/COUNT_RANGE). Qiymat RAD ETILMAYDI (yozishni buzardi) —
+   *  katak qizil bo'lib turadi, 422 kelganda aybdor katak izlanmaydi. */
   range?: { min: number; max: number }
   /** O'lchov varag'idagi maydonlarda ko'rinadigan `<label>` yo'q (jadval
    *  kataklari), shuning uchun nom shu yerdan beriladi. */

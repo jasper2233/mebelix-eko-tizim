@@ -99,10 +99,8 @@ function Login() {
           employeeName: detail.employee_name ?? "",
           posts: detail.posts ?? [],
         })
-      // Boshqa har qanday xato (400/500) dialogni YOPADI. Aks holda dialogdagi
-      // post tugmasidan kelgan xato hech qayerda ko'rinmasdi: `choice` turgani
-      // uchun quyidagi `badgeError` bo'sh bo'lar, dialogning o'zida esa xato
-      // bloki yo'q — operator tugmani javobsiz takror bosaverardi.
+      // Boshqa xato (400/500) dialogni YOPADI: `choice` turganda `badgeError` bo'sh bo'lar, dialogda
+      // xato bloki yo'q — operator tugmani javobsiz takror bosaverardi.
       else setChoice(null)
     },
   })

@@ -150,11 +150,8 @@ async def edit_order_matrix(
             # Marshrut o'zgarmadi, lekin dum o'zgardi — mavjud kodlardan qayta quramiz
             await _set_custom_route(db, order_id, part, await _route_codes(db, part), posts, packaging)
 
-        # Marshrut qayta chizilganda ham tekshiriladi: bola allaqachon biriktirilgan
-        # bo'lsa (parent tegilmagan) yangi oxirgi qadam ota marshrutida yo'q bo'lishi mumkin.
-        # Tekshiruvning o'zi BATCH OXIRIDA (pastda): bitta PATCH'da ota marshrutiga amal
-        # qo'shilib bola o'sha amalda tugatilsa, id tartibida bola avval ishlanadi va ota
-        # hali eski bo'ladi — yakuniy holat bo'yicha tekshirish tartibga bog'liq emas.
+        # Bola marshruti qayta chizilganda ham tekshiriladi. Tekshiruvning o'zi BATCH OXIRIDA:
+        # ota+bola bitta PATCH'da kelsa id tartibi natijaga ta'sir qilmasin.
         if part.assembly_parent_id is not None and (parent_changed or edit.route_codes is not None):
             to_check[part.id] = part
 

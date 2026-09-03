@@ -300,10 +300,8 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
 
     # ARRA'da "bajarildi" = chek chiqarilgan YOKI skan qilingan nusxa (kartadagi
     # foiz xarita bilan bir xil o'lchov bo'lsin). Boshqa postlarda faqat skan.
-    # Jami ham AYNAN shu o'lchovda — ARRA marshruti bor nusxalar soni. Ilgari jami
-    # `sum(total_required)` edi, ya'ni QADAM bo'yicha: detalda ikkita ARRA qadami
-    # bo'lsa (raspil + 45° kesish) done jami'ga hech qachon yetmasdi va proyekt
-    # arrachi ro'yxatidan tushmasdi.
+    # Jami ham NUSXA bo'yicha: `sum(total_required)` qadam bo'yicha edi — ikki ARRA qadamli
+    # detal (raspil + 45°) hech qachon tugamas, proyekt arrachi ro'yxatidan tushmasdi.
     arra_counts: dict[int, tuple[int, int]] = {}
     if post.code == PostCode.ARRA and order_ids:
         arra_counts = {

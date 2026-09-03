@@ -81,10 +81,8 @@ function AnketaPage() {
   } = useQuery(getOrderQueryOptions(id))
   const { currentUser } = useCurrentUser()
 
-  // Backend ham AYNAN shu shartni qo'yadi (`orders/survey.py` `_editable_order`):
-  // yakunlangan/bekor qilingan buyurtmada yozish yo'llari 403 qaytaradi. Shart
-  // bu yerda bo'lmasa menejerga to'liq tahrirlanadigan forma ochilib, har
-  // avtosaqlash 403 bilan yo'qolardi.
+  // Backend ham shu shartni qo'yadi (`survey.py _editable_order` → 403): shart bo'lmasa menejerga
+  // tahrirlanadigan forma ochilib, har avtosaqlash 403 bilan yo'qolardi.
   const readOnlyStatus =
     order?.status === "delivered" || order?.status === "cancelled"
   const canEdit = isManager(currentUser) && !!order && !readOnlyStatus
@@ -133,10 +131,8 @@ function AnketaPage() {
   surveyRef.current = survey
 
   const save = useMutation({
-    // Bir xil scope'li mutatsiyalar KETMA-KET bajariladi. Debounce taymeri
-    // oldingi so'rov hali ketayotganda yangisini boshlashi mumkin; har biri
-    // anketaning TO'LIQ nusxasini yuboradi, shuning uchun javoblar tartibi
-    // buzilsa eskiroq nusxa serverda oxirgi bo'lib qolardi (jimgina yo'qotish).
+    // Bir xil scope'li mutatsiyalar KETMA-KET: debounce oldingi so'rov ketayotganda yangisini boshlaydi,
+    // har biri to'liq nusxa — javob tartibi buzilsa eskisi serverda oxirgi bo'lib qolardi.
     scope: { id: `order-survey-${id}` },
     mutationFn: (body: OrderSurvey) =>
       OrdersService.saveOrderSurvey({ path: { order_id: id }, body }),

@@ -126,11 +126,8 @@ const MODE_KEY = "tablo-mode"
 const MIN_FIT = 0.85
 
 function useFitScale<T>(rows: T[]) {
-  // Callback-ref, `useRef` emas: drill ochilib yopilganda butun jadval
-  // almashadi va `tbody` YANGI tugun bo'ladi. Element bog'liqlikda turgani
-  // uchun effekt qayta ishga tushadi — aks holda ResizeObserver UZILGAN
-  // tugunni kuzatib qolar va sig'dirish ekran o'lchami/rejim almashuviga
-  // javob bermay qo'yardi (faqat buyurtmalar SONI o'zgarganda tiklanardi).
+  // Callback-ref, `useRef` emas: drill yopilganda `tbody` YANGI tugun bo'ladi — element bog'liqlikda
+  // turmasa ResizeObserver uzilgan tugunni kuzatib qolar, sig'dirish ekran o'zgarishiga javob bermasdi.
   const [body, setBody] = useState<HTMLTableSectionElement | null>(null)
   const [fit, setFit] = useState(1)
 

@@ -1,9 +1,5 @@
-// Post ekranlarining umumiy sarlavhasi: "Orqaga" + buyurtma raqami + loyiha nomi.
-//
-// Besh ekran (TMO, UPAKOVKA, KROMKA, PRISADKA/ROVER, post navbati) shu blokni
-// so'zma-so'z ko'chirib yozgan edi va bir-biridan uzoqlashgandi — loyiha nomi
-// ba'zisida tushib qolgandi. O'ngdagi farqlar (progress, tugmalar, badge)
-// `children` orqali beriladi.
+// Post ekranlarining umumiy sarlavhasi ("Orqaga" + buyurtma + loyiha): besh ekran uni so'zma-so'z
+// ko'chirib yozgan va bir-biridan uzoqlashgan edi. O'ngdagi farqlar — `children`.
 
 import { ArrowLeft } from "lucide-react"
 import type { ReactNode } from "react"

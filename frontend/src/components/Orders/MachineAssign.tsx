@@ -99,10 +99,8 @@ export function MachineAssign({ order }: { order: OrderDetail }) {
         })}
         <LoadingButton
           loading={mutation.isPending}
-          // Faqat O'ZGARGANDA: shart "biror narsa tanlangan" bo'lsa
-          // biriktirishni bekor qilib bo'lmasdi; endi bo'sh tanlov ham
-          // yuboriladi (server dict'ni butunlay almashtiradi), lekin
-          // o'zgarmagan formada tugma bosilmaydi.
+          // Faqat O'ZGARGANDA: "biror narsa tanlangan" sharti biriktirishni bekor qilishga yo'l bermasdi;
+          // bo'sh tanlov ham yuboriladi (server dict'ni butunlay almashtiradi).
           disabled={norm(selection) === norm(assigned)}
           onClick={() => mutation.mutate()}
         >

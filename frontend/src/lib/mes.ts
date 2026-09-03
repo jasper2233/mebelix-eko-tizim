@@ -14,13 +14,8 @@ import type {
 export const BADGE_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-/**
- * Yorliq/rang xaritalari `satisfies` bilan backend enum'iga bog'langan
- * (`ROLE_LABELS` kabi): yangi qiymat qo'shilsa yoki kalit noto'g'ri yozilsa
- * build yiqiladi, tsex esa xom kod yoki `undefined` klass ko'rmaydi.
- * Tashqi tip `Record<string, ...>` qoladi — chaqiruvchilar kalitni API'dan xom
- * `string` sifatida oladi va o'z `?? fallback`ini saqlaydi.
- */
+/** Yorliq/rang xaritalari `satisfies` bilan backend enum'iga bog'langan: yangi/noto'g'ri kalit build'ni
+ *  yiqitadi. Tashqi tip `Record<string, ...>` — chaqiruvchilar kalitni API'dan xom `string` oladi. */
 export const ORDER_STATUS_LABELS: Record<string, string> = {
   draft: "QORALAMA",
   technical_review: "TEXNOLOGDA",
@@ -161,12 +156,8 @@ export const STANDARD_MATRIX_POSTS = ["ARRA", "KROMKA", "PRISADKA"]
 /** Nostandart marshrut faqat shulardan boshlanadi — chek o'sha postda chiqadi. */
 export const ROUTE_START_POSTS = ["ARRA", "ROVER"]
 
-/**
- * Marshrut DUMI — texnolog tanlamaydigan, backend o'zi qo'shadigan qadamlar
- * (backend `TAIL_CODES`, services/giblab/models.py bilan qo'lda oynalangan).
- * Saqlangan marshrutni qayta o'qiganda ular filtrlanadi: aks holda tahrir
- * dumni o'rtada qoldirib backendga qaytarardi.
- */
+/** Marshrut DUMI — backend o'zi qo'shadigan qadamlar (backend `TAIL_CODES` bilan qo'lda oynalangan).
+ *  Saqlangan marshrutni o'qiganda filtrlanadi, aks holda tahrir dumni o'rtada qoldirardi. */
 export const TAIL_CODES = [15, 16]
 
 // Rollar manbasi — backend enum'i (generatsiya qilingan UserRole); yorliq

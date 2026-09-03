@@ -36,10 +36,8 @@ def setup_logging() -> None:
     root.setLevel(logging.INFO)
 
 
-# arq CLI o'z dictConfig'ini setup_logging()dan KEYIN qo'llaydi, shuning uchun
-# `arq ... --custom-log-dict app.core.logger.ARQ_LOG_DICT` bilan uzatiladi:
-# aks holda arq.* yozuvlari o'z handleri (plain matn) va root JSON handleri
-# orqali ikki marta chiqadi.
+# arq CLI o'z dictConfig'ini setup_logging()dan KEYIN qo'llaydi — `--custom-log-dict` bilan
+# uzatilmasa arq.* yozuvlari plain + root JSON handleri orqali ikki marta chiqadi.
 ARQ_LOG_DICT: dict[str, Any] = {
     "version": 1,
     "disable_existing_loggers": False,

@@ -125,11 +125,8 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def POSTGRES_URI(self) -> str:
-        # Parol/foydalanuvchi DSN uchun band belgi (@ / : # ? %) tutishi mumkin — xom
-        # f-string bunday qiymatni jimgina noto'g'ri host/bazaga aylantiradi (`p@ss/w` →
-        # host='ss'). Shuning uchun user/password percent-encode qilinadi. Baza nomi EMAS:
-        # SQLAlchemy faqat user/password'ni unquote qiladi, database komponenti xom qoladi
-        # (bo'shliqli nom `judge%20b07` bo'lib ketardi — hakam Postgres bilan isbotladi).
+        # DSN'da band belgili parol (@ / : # ? %) xom f-string'da host/bazaga aylanadi — user/password
+        # percent-encode qilinadi. Baza nomi EMAS: SQLAlchemy faqat user/password'ni unquote qiladi.
         credentials = f"{quote(self.POSTGRES_USER, safe='')}:{quote(self.POSTGRES_PASSWORD, safe='')}"
         location = f"{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         return f"{credentials}@{location}"
