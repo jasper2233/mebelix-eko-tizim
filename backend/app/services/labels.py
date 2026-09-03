@@ -524,6 +524,20 @@ class PachkaLabelData:
     printed_at: datetime
 
 
+def _instagram_glyph(draw: Any, *, x_mm: float, y_mm: float, size_mm: float) -> None:
+    """Instagram belgisi PIL primitivlari bilan (rasm fayli yo'q): yumaloq kvadrat + halqa + nuqta.
+    1-bit termoprinterda 5 mm da toza chiqadi; matn «Instagram» o'rniga — o'qishga bog'liq emas."""
+    mm = _MM
+    x, y, sz = int(x_mm * mm), int(y_mm * mm), int(size_mm * mm)
+    w = max(2, sz // 13)
+    draw.rounded_rectangle((x, y, x + sz, y + sz), radius=int(sz * 0.28), outline="black", width=w)
+    c, r = x + sz / 2, sz * 0.22
+    draw.ellipse((c - r, y + sz / 2 - r, c + r, y + sz / 2 + r), outline="black", width=w)
+    dr = max(1.5, sz * 0.05)
+    dx, dy = x + sz * 0.74, y + sz * 0.26
+    draw.ellipse((dx - dr, dy - dr, dx + dr, dy + dr), fill="black")
+
+
 def render_pachka_label_png(d: PachkaLabelData) -> bytes:
     """80x60mm qadoq cheki PNG (203 dpi) — detal yorlig'i bilan bir xil o'lcham
     va bir xil printer zanjiri (bridge-agent + GoDEX).
@@ -570,8 +584,10 @@ def render_pachka_label_png(d: PachkaLabelData) -> bytes:
     text(62, 34.5, d.code[:22], 2.5, anchor="ma")
     # Brend — qadoq mijozga/transportga boradi (detal cheki bormaydi): matn, ikkinchi QR EMAS,
     # aks holda TMO/qadoq skanerlari noto'g'ri QR'ni o'qishi mumkin
-    text(77, 42, "Instagram", 2.4, anchor="ra")
-    text(77, 45.2, "@mebelix_uz", 3.6, bold=True, anchor="ra")
+    handle = "@mebelix_uz"
+    # O'ng pastda: loyiha qatori (y 43..48) va sana (x <= 46) bilan to'qnashmaydi
+    text(77, 50.2, handle, 3.4, bold=True, anchor="ra")
+    _instagram_glyph(draw, x_mm=77 - draw.textlength(handle, font=_font(3.4, True)) / mm - 6.6, y_mm=49.6, size_mm=5.2)
 
     return _to_1bit_png(img)
 
