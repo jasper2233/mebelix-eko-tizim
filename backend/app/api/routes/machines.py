@@ -178,12 +178,11 @@ async def read_machines_overview(db: SessionDep, _: StaffReadUser) -> list[Machi
     }
     # Navbat — terminal ro'yxati qoidasi (`terminal.py`: machine_id == men YOKI null),
     # qolgan skan bilan; faol buyurtmalar (PRODUCTION), yoqilgan qadamlar
-    post_of: dict[int, int] = {
-        mid: pid
-        for mid, pid in (
-            await db.execute(select(Machine.id, Machine.post_id).where(Machine.is_deleted == False))  # noqa: E712
-        ).all()
-    }
+    post_of: dict[int, int] = {}
+    for mid, pid in (
+        await db.execute(select(Machine.id, Machine.post_id).where(Machine.is_deleted == False))  # noqa: E712
+    ).all():
+        post_of[mid] = pid
     queue_rows = (
         await db.execute(
             select(PartRoute.post_id, PartRoute.machine_id, func.sum(PartRoute.total_required - PartRoute.total_done))
