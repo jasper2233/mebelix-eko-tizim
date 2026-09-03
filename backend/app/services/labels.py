@@ -319,20 +319,36 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
             post = str(PROCESS_POSTS.get(code, code))
             if not posts or posts[-1] != post:
                 posts.append(post)
-        rfont = _font(2.6, True)
-        line: list[str] = []
-        for post in posts:
-            if line and draw.textlength("·".join([*line, post]), font=rfont) > 43 * mm:
-                route_lines.append("·".join(line))
-                line = []
-            line.append(post)
-        if line:
-            route_lines.append("·".join(line))
-        text(5, 41.5, route_lines[0], 2.6, bold=True, max_mm=43)
-    # Mahsulot nomi — qadoqlovchi/TMO uchun (detal qaysi buyumniki)
-    if len(route_lines) > 1:
-        text(5, 45.3, route_lines[1], 2.6, bold=True, max_mm=43)
-    elif d.product_name:
+
+        def wrap(size: float) -> list[str]:
+            f = _font(size, True)
+            out: list[str] = []
+            line: list[str] = []
+            for post in posts:
+                if line and draw.textlength("·".join([*line, post]), font=f) > 43 * mm:
+                    out.append("·".join(line))
+                    line = []
+                line.append(post)
+            return [*out, "·".join(line)] if line else out
+
+        # Uzun yo'lak (kirib-chiqish takrorlari, 8–10 post) ham to'liq ko'rinsin: shrift
+        # kichrayadi, 2.1 mm dan 3 qator (material qatori 49 mm gacha sig'adi). 12+ post — dumi «…».
+        for rsize, max_lines, y0, pitch in (
+            (2.6, 2, 41.5, 3.8),
+            (2.3, 2, 41.5, 3.8),
+            (2.1, 3, 41.0, 2.6),
+            (1.9, 3, 41.0, 2.6),
+        ):
+            route_lines = wrap(rsize)
+            if len(route_lines) <= max_lines:
+                break
+        if len(route_lines) > max_lines:
+            route_lines = [*route_lines[: max_lines - 1], route_lines[max_lines - 1] + "…"]
+        for k, line_text in enumerate(route_lines):
+            text(5, y0 + k * pitch, line_text, rsize, bold=True, max_mm=43)
+    # Mahsulot nomi — qadoqlovchi/TMO uchun (detal qaysi buyumniki); marshrut bir qatordan
+    # oshsa o'sha joyni marshrut oladi (nostandart detal kam, marshrut muhimroq)
+    if d.product_name and len(route_lines) <= 1:
         text(5, 45.3, d.product_name, 2.9, max_mm=43)
 
     text(5, 49, d.material, 2.9, bold=True, max_mm=36)
