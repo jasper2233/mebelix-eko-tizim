@@ -646,13 +646,22 @@ GibLab shabloniga qo'yiladigan maydonlar (109 ta), guruhlar bo'yicha:
 - **Ishlov**: `XNC1..XNC5` + `xncSide1..5` + `xncBSD1..5`
 
 MebeliX o'z yorlig'ini chiqaradi (`services/labels.py`): 80×60 mm, 203 dpi, 1-bit
-termoprinter uchun. Ichida QR (`{buyurtma}_{productCode}_{partCode}` — yagona nusxa suffikssiz, takrorlanganda `_{n}`; docs/11), matn qatorida ham shu nusxa ID (QR va SCX nomi bilan bir xil satr; matn qatori QR chap chetigacha (34 mm) sig'guncha 2.7 → 1.6 mm kichraytiriladi, sig'masa boshidan qisqaradi, QR to'liq — [11-detal-id-nomlash.md](11-detal-id-nomlash.md)), detal nomi, loyiha nomi
-(`order.project_name`, bo'sh bo'lsa buyurtma raqamiga tushadi), mahsulot kodi ("Formatka"
-qatori), material, o'lcham, kromka belgilari, teshik eskizi, burg'u ikonkasi va marshrut
-qatori (`Marshrut: 7/11/8` — jarayon kodlari tartib bilan, §2.3; nomga qo'shilmaydi, chunki
-nom 24 belgida kesiladi va marshrut jimgina yo'qolardi). Marshrut satri **faqat nostandart
-detalda** chiqadi (`Part.is_custom`): standart detalning yo'li oldindan ma'lum va chekda joyni
-behuda band qilardi.
+termoprinter uchun. Tartib — tsexchi bir qarashda o'qiydigan qilib (2026-09-03 qayta ko'rildi,
+GibSaw `Universal.lbl`/`mebelix.lbl` bilan solishtirib): tepada logo yonida **N** (kesish
+xaritasidagi katak raqami, 5 mm — arrachi shu bilan ishlaydi) va ostida nusxa `2/3`; QR o'ngda
+(`{buyurtma}_{productCode}_{partCode}` — yagona nusxa suffikssiz, takrorlanganda `_{n}`; docs/11);
+nusxa ID matn qatori (QR va SCX nomi bilan bir xil satr; QR chap chetigacha (34 mm) sig'guncha
+2.7 → 1.6 mm kichraytiriladi, sig'masa boshidan qisqaradi — [11-detal-id-nomlash.md](11-detal-id-nomlash.md));
+loyiha nomi (`order.project_name`, bo'sh bo'lsa buyurtma raqami); kromka 2×2 katak — har katak
+tomon SIMVOLI bilan boshlanadi (`A PVX 2/19 …`) va eskizda o'sha harf o'z tomonining ichki
+chetida turadi (o'lcham raqamiga yopishmaydi); o'lcham `1840 x 580` (eng katta yozuv); detal
+nomi (N prefiksisiz); marshrut qatori — POST nomlari (`ARRA·KROMKA·PRISADKA`, jarayon kodlari
+`PROCESS_POSTS` orqali; dum UPAKOVKA/TMO yozilmaydi, ketma-ket bir post bitta; 43 mm ga
+sig'masa ikkinchi qatorga o'raladi va o'sha qatorda mahsulot nomi chiqmaydi); mahsulot nomi
+(`Product.name` — qadoqlovchi uchun); material; tekstura qulflangan bo'lsa `TEKSTURA`; burg'u
+ikonkasi (marshrut qatorining o'ngida); sana. Mahsulot kodi alohida chizilmaydi — u ID ichida.
+Marshrut satri **faqat nostandart detalda** chiqadi (`Part.is_custom`): standart detalning yo'li
+oldindan ma'lum va chekda joyni behuda band qilardi.
 
 **Qalinlik yorliqda chizilmaydi** — `LabelData.thickness` yuklanadi (`labels.py`), lekin
 `render_label_png` uni hech qayerda ishlatmaydi: o'lcham qatori faqat `uzunlik x kenglik = soni`.

@@ -14,7 +14,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import TASHKENT_TZ
-from app.models import Order, Part, PartInstance, PartRoute
+from app.models import Order, Part, PartInstance, PartRoute, Product
+from app.services.giblab.models import PROCESS_POSTS, TAIL_CODES
 from app.services.scanning import qr_part_code
 
 
@@ -39,6 +40,8 @@ class LabelData:
     #: Marshrut jarayon kodlari tartib bilan ("7/11/8"). Detal NOMIGA qo'shilmaydi —
     #: nom 24 belgida kesiladi va marshrut jimgina yo'qolardi.
     route_codes: list[int] = field(default_factory=list)
+    #: Mahsulot nomi ("Shkaf 2 eshikli") — qadoqlovchi detalni qaysi buyumga tegishli ekanini shundan biladi
+    product_name: str = ""
 
 
 async def load_label_data(db: AsyncSession, instance_id: int) -> LabelData | None:
@@ -51,6 +54,7 @@ async def load_label_data(db: AsyncSession, instance_id: int) -> LabelData | Non
         return None
     part = await db.get(Part, instance.part_id)
     order = await db.get(Order, instance.order_id)
+    product = await db.get(Product, part.product_id) if part else None
     if part is None or part.is_deleted or order is None or order.is_deleted:
         return None
 
@@ -111,6 +115,7 @@ async def load_label_data(db: AsyncSession, instance_id: int) -> LabelData | Non
         printed_at=datetime.now(UTC).astimezone(TASHKENT_TZ),
         holes=holes,
         texture=part.txt,
+        product_name=product.name if product else "",
     )
 
 
@@ -237,11 +242,18 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
     if not _paste_logo(img, width_mm=22, xy=(3 * mm, 1 * mm)):
         text(5, 1, "MEBELIX", 4, bold=True)
 
-    product_code = d.part_code.split("_", 1)[0]
-    text(26, 1.5, "Formatka", 2.8)
-    text(26, 4.8, product_code[:7], 3.7, bold=True)
+    # ============ CHAP USTUN (x 5..57) ============
+    # Tsexchi bir qarashda: N (xaritadagi katak raqami — arrachi shu bilan ishlaydi) va
+    # nusxa (2/3) tepada, logo yonida; mahsulot KODI chekda alohida chizilmaydi — u ID ichida.
+    if d.label_num:
+        n = f"N{d.label_num}"
+        text(26, 1.2, n, 5.0, bold=True)
+        if d.instance_no and d.count > 1:
+            text(26, 6.4, f"{d.instance_no}/{d.count}", 3.0, bold=True)
+    elif d.instance_no and d.count > 1:
+        text(26, 2.5, f"{d.instance_no}/{d.count}", 4.0, bold=True)
     # Nusxa ID (= QR matni = SCX fayl nomi = Panel ID), QR chap chetigacha sig'diriladi:
-    # prisadkachi shu yozuv bilan stanokdagi faylni solishtira oladi (docs/11)
+    # prisadkachi shu yozuv bilan stanokdagi faylni solishtira oladi (docs/11).
     # ID dumi (nusxa raqami) kesilmasligi shart — sig'guncha kichraytiriladi; 1.6 mm da ham
     # sig'masa BOSHIDAN (buyurtma prefiksidan) qisqartiriladi, QR baribir to'liq satr.
     id_text = d.qr_text
@@ -251,46 +263,38 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
     while len(id_text) > 1 and draw.textlength(id_text, font=_font(id_size)) > 34 * mm:
         id_text = id_text[1:]
     text(5, 9.5, id_text, id_size)
-
     # Loyiha — QR chap chetigacha (x=40mm) sig'adigan kenglikka kesiladi, 1mm zaxira.
-    # Ilgari 26 belgi limiti turardi: u QR'ni hisobga olmasdi va uzun nomning dumi
-    # QR ostida ko'rinmay qolardi.
     text(5, 13.5, d.project_name, 3.3, bold=True, max_mm=34)
 
-    # Kromka 2x2 (tagchiziq bilan): chapda uzunlik tomonlari (t/b), o'ngda en (l/r)
-    def edge_cell(x: float, y: float, mat: str) -> None:
+    # Kromka 2x2 (tagchiziq bilan): chapda uzunlik tomonlari (t/b), o'ngda en (l/r).
+    # Har katak SIMVOL bilan boshlanadi ("A PVX 2/19 …") — eskizdagi tomon harfi bilan
+    # to'g'ridan-to'g'ri mos keladi, kromkachi qaysi tomon ekanini solishtirmaydi.
+    def edge_cell(x: float, y: float, side: str) -> None:
+        mat = edge_field(side, "mat")
         if not mat:
             return
-        text(x, y, mat[:14], 2.9, bold=True)
+        sym = edge_field(side, "symbol")
+        text(x, y, f"{sym} {mat}".strip(), 2.9, bold=True, max_mm=22)
         draw.line(
             (int(x * mm), int((y + 3.4) * mm), int((x + 22) * mm), int((y + 3.4) * mm)),
             fill="black",
             width=2,
         )
 
-    edge_cell(5, 19, edge_field("t", "mat"))
-    edge_cell(29, 19, edge_field("l", "mat"))
-    edge_cell(5, 30, edge_field("b", "mat"))
-    edge_cell(29, 30, edge_field("r", "mat"))
+    edge_cell(5, 19, "t")
+    edge_cell(29, 19, "l")
+    edge_cell(5, 30, "b")
+    edge_cell(29, 30, "r")
 
-    # Katta o'lcham markazda (kromka qatorlari orasida): "1900 x 330 = 4"
+    # O'lcham — eng katta yozuv (arra va kromka shu bilan ishlaydi); nusxa soni tepada.
     if d.length and d.width:
-        size = f"{_n(d.length)} x {_n(d.width)}"
-        if d.count:
-            size += f" = {d.count}"
-        text(28, 24, size, 4.6, bold=True, anchor="ma")
+        text(28, 24, f"{_n(d.length)} x {_n(d.width)}", 4.6, bold=True, anchor="ma")
 
-    # N_detal nomi (mebelix.lbl index_name): 12_bok
-    label_name = f"{d.label_num}_{d.part_name}" if d.label_num else d.part_name
-    text(5, 36.5, label_name[:24], 3.3, bold=True)
+    # Detal nomi — N prefiksisiz (N tepada), 44 mm gacha (icon zonasi 49.5 dan boshlanadi)
+    text(5, 36.5, d.part_name, 3.3, bold=True, max_mm=44)
 
-    # Paz (П) va freza (Ф) belgilari olib tashlandi: ikkalasi ham marshrutga ta'sir
-    # qilmaydi (ROVER bosqichi fayldan avtomatik yaratilmaydi), ya'ni operatorga
-    # hech qanday ish ko'rsatmasdi. Teshik esa PRISADKA bosqichini beradi —
-    # sverlo ikonkasi qoladi.
+    # Sverlo ikonkasi Marshrut qatorining o'ngidagi bo'sh zonada (x49.5, y40)
     if d.xnc_summary.get("bores") or d.xnc_summary.get("edge_bores"):
-        # Sverlo ikonkasi Marshrut qatorining o'ngidagi bo'sh zonada (x49.5, y40):
-        # ID qatori endi buyurtma prefiksi bilan 37 mm gacha cho'ziladi, eski joy (x35, y9.4) ustiga tushardi
         drill_path = Path(__file__).resolve().parents[1] / "assets" / "label-icon-drill.png"
         isz = int(6 * mm)
         try:
@@ -302,24 +306,41 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
         except OSError:
             text(49.5, 40, "С", 3.2, bold=True)
 
-    # Marshrut — ALOHIDA qator (nomga qo'shilsa 24 belgi kesimida yo'qolardi).
-    # Kodlar tsexning "Jarayon uchun kodlar" jadvalidagi raqamlar.
+    # Marshrut — POST nomlari (raqamli jarayon kodlari tsexchiga ma'nosiz); dum
+    # (qadoqlash/TMO) har detalda bir xil, shuning uchun yozilmaydi; ketma-ket bir post bitta.
+    # 43 mm ga sig'masa ikkinchi qatorga o'raladi — o'sha qatorda mahsulot nomi o'rniga
+    # (nostandart detal kam, marshrut muhimroq).
+    route_lines: list[str] = []
     if d.route_codes:
-        text(5, 41.5, "Marshrut: " + "/".join(str(c) for c in d.route_codes), 2.9, bold=True)
+        posts: list[str] = []
+        for code in d.route_codes:
+            if code in TAIL_CODES:
+                continue
+            post = str(PROCESS_POSTS.get(code, code))
+            if not posts or posts[-1] != post:
+                posts.append(post)
+        rfont = _font(2.6, True)
+        line: list[str] = []
+        for post in posts:
+            if line and draw.textlength("·".join([*line, post]), font=rfont) > 43 * mm:
+                route_lines.append("·".join(line))
+                line = []
+            line.append(post)
+        if line:
+            route_lines.append("·".join(line))
+        text(5, 41.5, route_lines[0], 2.6, bold=True, max_mm=43)
+    # Mahsulot nomi — qadoqlovchi/TMO uchun (detal qaysi buyumniki)
+    if len(route_lines) > 1:
+        text(5, 45.3, route_lines[1], 2.6, bold=True, max_mm=43)
+    elif d.product_name:
+        text(5, 45.3, d.product_name, 2.9, max_mm=43)
 
-    # Material pastda; oxirgi qator BITTA: chapda N/nusxa, o'ngda sana-vaqt.
-    # Ikki qator paytida oxirgisi (y 56.2 + 2.9 ≈ 59mm) yorliq pastki chetiga
-    # tushib, termal printerda yeyilardi — endi 55.7mm da tugaydi (4mm zaxira)
-    text(5, 49, d.material[:24], 2.9, bold=True)
-    n = f"N{d.label_num}" if d.label_num else ""
-    copy = f"{d.instance_no}/{d.count}" if d.instance_no else ""
-    tail = f"{n} {copy}".strip()
-    if tail:
-        text(5, 52.8, tail, 2.9, bold=True)
+    text(5, 49, d.material, 2.9, bold=True, max_mm=36)
+    if d.texture:
+        text(42, 49, "TEKSTURA", 2.6, bold=True)
     text(52, 53.2, d.printed_at.strftime("%Y.%m.%d %H:%M"), 2.5, anchor="ra")
 
-    # ====== O'NG USTUN: QR (x 40..56), eskiz (x 58.5..73.5) ======
-    # QR tepada — to'liq nusxa kodi (skan oqimi)
+    # ============ O'NG USTUN: QR (tepada) + eskiz ============
     qr = qrcode.make(d.qr_text, box_size=2, border=0)
     qr_px = 16 * mm
     img.paste(qr.get_image().convert("RGB").resize((qr_px, qr_px)), (40 * mm, 1 * mm))
@@ -377,6 +398,18 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
                 draw.rectangle((bx, by - off - bt, bx + bw, by - off), fill="black")
             else:
                 draw.rectangle((bx, by + bh + off, bx + bw, by + bh + off + bt), fill="black")
+            # Tomon simvoli (A/B) o'sha tomonning ichki chetida — kromka katagidagi harf bilan mos
+            sym = edge_field(tomon, "symbol")[:3]
+            if sym:
+                sf = _font(2.8, bold=True)
+                if joy == "chap":
+                    draw.text((bx + int(0.8 * mm), by + bh // 2), sym, fill="black", font=sf, anchor="lm")
+                elif joy == "ong":
+                    draw.text((bx + bw - int(0.8 * mm), by + bh // 2), sym, fill="black", font=sf, anchor="rm")
+                elif joy == "tepa":
+                    draw.text((bx + bw // 2, by + int(0.6 * mm)), sym, fill="black", font=sf, anchor="ma")
+                else:
+                    draw.text((bx + bw // 2, by + bh - int(0.6 * mm)), sym, fill="black", font=sf, anchor="md")
 
         # Tekstura yo'nalishi: 3 ingichka chiziq UZUNLIK (`l` — teksturali
         # materialda birinchi o'lcham, tekstura qulflangan o'q) BO'YLAB.
@@ -437,21 +470,15 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
                         draw.line((xx, by + bh - tick, xx, by + bh), fill="black", width=2)
 
         # O'lchamlar: en pastda gorizontal, uzunlik o'ngda aylantirilgan (Universal size.top/left=false).
-        # Har o'lcham yoniga o'sha tomonlar kromka belgilari (xaritadagi "450 B" uslubi):
-        # uzunlik <- t/b tomonlar, en <- l/r tomonlar
-        # Uzun o'lcham yonida — o'sha o'lcham BO'YLAB ketadigan qirralar belgisi
-        uzun_tomonlar = ("t", "b") if burilgan else ("l", "r")
-        qisqa_tomonlar = ("l", "r") if burilgan else ("t", "b")
-        sym_long = "".join(edge_field(s, "symbol")[:3] for s in uzun_tomonlar)
-        sym_short = "".join(edge_field(s, "symbol")[:3] for s in qisqa_tomonlar)
+        # O'lchamlar — harfsiz (tomon simvollari eskiz ichida, o'z tomonida)
         draw.text(
             (bx + bw // 2, by + bh + off + bt + int(0.6 * mm)),
-            f"{_n(short_side)} {sym_short}".strip(),
+            _n(short_side),
             fill="black",
             font=_font(3.2, bold=True),
             anchor="ma",
         )
-        vt = f"{_n(long_side)} {sym_long}".strip()
+        vt = _n(long_side)
         vfont = _font(3.2, bold=True)
         vbb = draw.textbbox((0, 0), vt, font=vfont)
         vimg = Image.new("RGB", (int(vbb[2]) + 2, int(vbb[3]) + 2), "white")
