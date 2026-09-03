@@ -64,19 +64,62 @@ class MaterialsReport(BaseModel):
     rows: list[MaterialUsageRow]
 
 
-# ---------- 10.2.1 Dashboard: ish markazi yuklamasi + prognoz ----------
+# ---------- Dashboard ----------
 
 
-class MachineStat(BaseModel):
-    machine_id: int
+class DashboardToday(BaseModel):
+    scans: int
+    scans_yesterday: int
+    on_shift: int  # bugun beyjik bilan ochilgan va hali yopilmagan smenalar (hodim soni)
+    started: int  # bugun ishlab chiqarishga uzatilgan buyurtmalar
+    completed: int
+    delivered: int
+
+
+class DashboardOrders(BaseModel):
+    production: int
+    overdue: int  # jarayonda, muddati o'tgan
+    due_today: int
+    no_deadline: int  # jarayonda, muddati kiritilmagan
+    ready: int  # tayyor (COMPLETED), hali topshirilmagan
+
+
+class ReadyOrder(BaseModel):
+    id: int
+    number: str
+    client_name: str
+    project_name: str | None
+    completed_at: datetime
+    waiting_days: int
+
+
+class PostLoad(BaseModel):
+    post_id: int
+    code: str
     name: str
-    post_code: str
-    status: str
-    queue_scans: int  # remaining scans routed to this machine
-    queue_volume: float  # in the post's unit
     unit: str
+    queue_scans: int  # shu postda qolgan skanlar (barcha jarayondagi buyurtmalar)
+    queue_volume: float  # post birligida (m² / m / dona)
+    orders: int  # shu postda ishi qolgan buyurtmalar soni
     today_scans: int
+    down: list[str]  # ishlamayotgan (ta'mir/o'chirilgan) ish markazlari nomlari
+
+
+class TrendDay(BaseModel):
+    day: date
+    scans: int
+
+
+class DashboardMoney(BaseModel):
+    receivable: float  # narx − boshlang'ich to'lov, qoldig'i musbat buyurtmalar bo'yicha
+    orders: int
+    delivered_unpaid: int  # topshirilgan, lekin qoldiq bor
 
 
 class DashboardStats(BaseModel):
-    machines: list[MachineStat]
+    today: DashboardToday
+    orders: DashboardOrders
+    ready: list[ReadyOrder]
+    posts: list[PostLoad]
+    trend: list[TrendDay]  # oxirgi 14 kun, bo'sh kunlar 0 bilan
+    money: DashboardMoney | None  # faqat boshqaruv (manager/direktor/admin) uchun

@@ -473,7 +473,7 @@ direktor ham ko'radi.
 ## 7. Frontend tuzilishi
 
 - Dizayn tokenlar: `src/index.css` (post/status ranglari, `.num`, print CSS); domen konstantalar `src/lib/mes.ts`.
-- Imzo komponent: `Common/StagePipeline` — post zanjiri (dinamik, faqat dashboard'ning "Aktiv buyurtmalar" qatorlarida — `routes/_layout/index.tsx:205`; buyurtmalar reyestrida bosqich ustuni yo'q).
+- Imzo komponent: `Common/StagePipeline` — post zanjiri (dinamik; buyurtma sahifasi sarlavhasida `showLabels` bilan — `routes/_layout/orders/$orderId.tsx`; boshqaruv paneli endi uni ishlatmaydi — u yerda buyurtma kartalari yo'q, faqat kechikkan/to'xtab qolgan/tayyor ro'yxatlari; buyurtmalar reyestrida bosqich ustuni yo'q).
 - Routelar: `_layout/*` admin modullar (index — boshqaruv paneli, orders (`index` + `$orderId`),
   clients, employees, work-centers, reports, logs, printers, admin, settings,
   cutmap.$orderId, `anketa.$orderId`), `/terminal`, `/tablo`

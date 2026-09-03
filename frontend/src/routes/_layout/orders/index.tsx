@@ -37,6 +37,7 @@ import {
   formatMoney,
   isManager,
   isSuperuser,
+  ORDER_STATUS_LABELS,
   PRIORITY_LABELS,
   PRIORITY_RANK,
   PRIORITY_TEXT_CLASSES,
@@ -53,6 +54,12 @@ import { handleError } from "@/utils"
 export const Route = createFileRoute("/_layout/orders/")({
   component: OrdersPage,
   head: () => ({ meta: [{ title: "Buyurtmalar | MebeliX" }] }),
+  // Boshqaruv panelidagi «Hammasi» havolalari to'g'ri tabga tushsin
+  // (`/orders?status=completed`); noma'lum qiymat — «Hammasi».
+  validateSearch: (s: Record<string, unknown>): { status?: OrderStatus } =>
+    typeof s.status === "string" && s.status in ORDER_STATUS_LABELS
+      ? { status: s.status as OrderStatus }
+      : {},
 })
 
 type SortKey = "created_at" | "deadline" | "priority" | "amount" | "left"
@@ -132,7 +139,8 @@ function deadlineClass(o: {
 
 function OrdersPage() {
   const navigate = useNavigate()
-  const [status, setStatus] = useState<OrderStatus | "">("")
+  const initialStatus = Route.useSearch().status ?? ""
+  const [status, setStatus] = useState<OrderStatus | "">(initialStatus)
   const [search, setSearch] = useState("")
   const debounced = useDebounced(search.trim())
   const { data, isLoading, isError, refetch } = useQuery({

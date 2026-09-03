@@ -897,13 +897,98 @@ export type CutmapWasteItem = {
 };
 
 /**
+ * DashboardMoney
+ */
+export type DashboardMoney = {
+    /**
+     * Receivable
+     */
+    receivable: number;
+    /**
+     * Orders
+     */
+    orders: number;
+    /**
+     * Delivered Unpaid
+     */
+    delivered_unpaid: number;
+};
+
+/**
+ * DashboardOrders
+ */
+export type DashboardOrders = {
+    /**
+     * Production
+     */
+    production: number;
+    /**
+     * Overdue
+     */
+    overdue: number;
+    /**
+     * Due Today
+     */
+    due_today: number;
+    /**
+     * No Deadline
+     */
+    no_deadline: number;
+    /**
+     * Ready
+     */
+    ready: number;
+};
+
+/**
  * DashboardStats
  */
 export type DashboardStats = {
+    today: DashboardToday;
+    orders: DashboardOrders;
     /**
-     * Machines
+     * Ready
      */
-    machines: Array<MachineStat>;
+    ready: Array<ReadyOrder>;
+    /**
+     * Posts
+     */
+    posts: Array<PostLoad>;
+    /**
+     * Trend
+     */
+    trend: Array<TrendDay>;
+    money: DashboardMoney | null;
+};
+
+/**
+ * DashboardToday
+ */
+export type DashboardToday = {
+    /**
+     * Scans
+     */
+    scans: number;
+    /**
+     * Scans Yesterday
+     */
+    scans_yesterday: number;
+    /**
+     * On Shift
+     */
+    on_shift: number;
+    /**
+     * Started
+     */
+    started: number;
+    /**
+     * Completed
+     */
+    completed: number;
+    /**
+     * Delivered
+     */
+    delivered: number;
 };
 
 /**
@@ -1229,44 +1314,6 @@ export type MachineRead = {
      * Created At
      */
     created_at: string;
-};
-
-/**
- * MachineStat
- */
-export type MachineStat = {
-    /**
-     * Machine Id
-     */
-    machine_id: number;
-    /**
-     * Name
-     */
-    name: string;
-    /**
-     * Post Code
-     */
-    post_code: string;
-    /**
-     * Status
-     */
-    status: string;
-    /**
-     * Queue Scans
-     */
-    queue_scans: number;
-    /**
-     * Queue Volume
-     */
-    queue_volume: number;
-    /**
-     * Unit
-     */
-    unit: string;
-    /**
-     * Today Scans
-     */
-    today_scans: number;
 };
 
 /**
@@ -2088,6 +2135,48 @@ export type PaginatedUserRead = {
 export type PostCode = 'ARRA' | 'KROMKA' | 'OVAL' | 'PRISADKA' | 'ROVER' | 'STOLYARKA' | 'BOYOQ' | 'UPAKOVKA' | 'TMO';
 
 /**
+ * PostLoad
+ */
+export type PostLoad = {
+    /**
+     * Post Id
+     */
+    post_id: number;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Unit
+     */
+    unit: string;
+    /**
+     * Queue Scans
+     */
+    queue_scans: number;
+    /**
+     * Queue Volume
+     */
+    queue_volume: number;
+    /**
+     * Orders
+     */
+    orders: number;
+    /**
+     * Today Scans
+     */
+    today_scans: number;
+    /**
+     * Down
+     */
+    down: Array<string>;
+};
+
+/**
  * PostQueueRow
  *
  * Bitta NUSXA post navbatida (BOYOQ, keyinchalik STOLYARKA ham).
@@ -2413,6 +2502,36 @@ export type ReadyCheck = {
      * Timestamp
      */
     timestamp: string;
+};
+
+/**
+ * ReadyOrder
+ */
+export type ReadyOrder = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Number
+     */
+    number: string;
+    /**
+     * Client Name
+     */
+    client_name: string;
+    /**
+     * Project Name
+     */
+    project_name: string | null;
+    /**
+     * Completed At
+     */
+    completed_at: string;
+    /**
+     * Waiting Days
+     */
+    waiting_days: number;
 };
 
 /**
@@ -3158,6 +3277,20 @@ export type Token = {
      * Token Type
      */
     token_type: string;
+};
+
+/**
+ * TrendDay
+ */
+export type TrendDay = {
+    /**
+     * Day
+     */
+    day: string;
+    /**
+     * Scans
+     */
+    scans: number;
 };
 
 /**

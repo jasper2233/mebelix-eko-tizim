@@ -16,7 +16,6 @@ from app.api.deps import SessionDep, require_roles
 from app.core.config import TASHKENT_TZ
 from app.models import (
     ORDER_FAT_COLUMNS,
-    PART_FAT_COLUMNS,
     Client,
     Employee,
     Machine,
@@ -25,18 +24,24 @@ from app.models import (
     PartRoute,
     Post,
     Scan,
+    WorkSession,
 )
-from app.models.enums import POST_UNIT_LABELS, OrderStatus, PostUnit, UserRole
+from app.models.enums import POST_UNIT_LABELS, MachineStatus, OrderStatus, PostUnit, SessionStatus, UserRole
 from app.models.user import User
 from app.schemas.reports import (
+    DashboardMoney,
+    DashboardOrders,
     DashboardStats,
+    DashboardToday,
     EmployeeProductivity,
-    MachineStat,
     MaterialsReport,
     MaterialUsageRow,
     OrderReportRow,
     OrdersReport,
+    PostLoad,
     ProductivityReport,
+    ReadyOrder,
+    TrendDay,
 )
 from app.services.excel import xlsx_response
 from app.services.metrics import part_volume
@@ -44,6 +49,9 @@ from app.services.metrics import part_volume
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 ReportsUser = Annotated[User, Depends(require_roles(UserRole.MANAGER, UserRole.DIRECTOR))]
+# Boshqaruv paneli texnologga ham ochiq (ishlab chiqarish manzarasi uning ham ishi);
+# pul bloki esa faqat boshqaruvga — `report_dashboard` ichida ajratiladi.
+DashboardUser = Annotated[User, Depends(require_roles(UserRole.MANAGER, UserRole.DIRECTOR, UserRole.TEXNOLOG))]
 
 # `material_usage[].kind` uch qiymatli (giblab/models.py: "sheet" | "band" | "hardware").
 _KIND_LABELS = {"sheet": "List", "band": "Kromka", "hardware": "Furnitura"}
@@ -258,35 +266,113 @@ async def report_materials(
     return report
 
 
-# ---------- 10.2.1 Dashboard: ish markazi yuklamasi ----------
+# ---------- Boshqaruv paneli ----------
+
+_MANAGEMENT = (UserRole.ADMIN, UserRole.MANAGER, UserRole.DIRECTOR)
 
 
 @router.get("/dashboard", operation_id="report_dashboard")
-async def report_dashboard(db: SessionDep, _: ReportsUser) -> DashboardStats:
-    posts = {p.id: p for p in (await db.execute(select(Post))).scalars()}
-    machines = (
-        (
+async def report_dashboard(db: SessionDep, current_user: DashboardUser) -> DashboardStats:
+    """Bir so'rov — butun panel: bugungi puls, buyurtma sonlari, tayyorlar ro'yxati,
+    post yuklamasi, 14 kunlik skan tendensiyasi va (boshqaruvga) qoldiq to'lovlar.
+
+    Ilgari faqat ish markazi navbatini qaytarardi; panel qolganini 45 ta buyurtma
+    kartasini chizib «ko'rsatardi» — bu Tablo'ning ishi, panel esa javob berishi
+    kerak: bugun nima bo'lyapti, nima kechikdi, nimani topshirish kerak.
+    """
+    today = datetime.now(TASHKENT_TZ).date()
+    today_start = datetime.combine(today, time.min, tzinfo=TASHKENT_TZ).astimezone(UTC)
+    trend_start = today_start - timedelta(days=13)
+    kun = func.date(func.timezone(TASHKENT_TZ.key, Scan.created_at))
+    live_scan = (Scan.is_cancelled == False, Scan.is_deleted == False)  # noqa: E712
+
+    # --- skanlar: 14 kunlik tendensiya (bugun va kecha ham shundan) ---
+    trend_rows: dict[date, int] = {
+        d: int(n)
+        for d, n in (
             await db.execute(
-                select(Machine).where(Machine.is_deleted == False).order_by(Machine.name)  # noqa: E712
+                select(kun, func.count(Scan.id)).where(Scan.created_at >= trend_start, *live_scan).group_by(kun)
+            )
+        ).all()
+    }
+    trend = [
+        TrendDay(day=d, scans=int(trend_rows.get(d, 0))) for d in (today - timedelta(days=i) for i in range(13, -1, -1))
+    ]
+
+    # --- smenada: bugun ochilgan, hali yopilmagan ---
+    on_shift = (
+        await db.execute(
+            select(func.count(func.distinct(WorkSession.employee_id))).where(
+                WorkSession.status == SessionStatus.ACTIVE,
+                WorkSession.created_at >= today_start,
+                WorkSession.is_deleted == False,  # noqa: E712
             )
         )
+    ).scalar_one()
+
+    # --- buyurtma sonlari: bitta o'tish, filtrli agregatlar ---
+    in_prod = Order.status == OrderStatus.PRODUCTION
+    counts = (
+        await db.execute(
+            select(
+                func.count(Order.id).filter(in_prod),
+                func.count(Order.id).filter(in_prod, Order.deadline < today),
+                func.count(Order.id).filter(in_prod, Order.deadline == today),
+                func.count(Order.id).filter(in_prod, Order.deadline.is_(None)),
+                func.count(Order.id).filter(Order.status == OrderStatus.COMPLETED),
+                func.count(Order.id).filter(Order.production_started_at >= today_start),
+                func.count(Order.id).filter(Order.completed_at >= today_start),
+                func.count(Order.id).filter(Order.delivered_at >= today_start),
+            ).where(Order.is_deleted == False)  # noqa: E712
+        )
+    ).one()
+    production, overdue, due_today, no_deadline, ready_n, started, completed, delivered = (int(c) for c in counts)
+
+    # --- topshirishga tayyor: eng uzoq kutayotgani birinchi ---
+    ready_rows = (
+        await db.execute(
+            select(Order, Client.full_name)
+            .join(Client, Client.id == Order.client_id)
+            .options(*(defer(c) for c in ORDER_FAT_COLUMNS))
+            .where(Order.status == OrderStatus.COMPLETED, Order.is_deleted == False)  # noqa: E712
+            .order_by(Order.completed_at.asc().nulls_last(), Order.id)
+            .limit(50)
+        )
+    ).all()
+    ready = [
+        ReadyOrder(
+            id=o.id,
+            number=o.number,
+            client_name=name,
+            project_name=o.project_name,
+            completed_at=o.completed_at or o.created_at,
+            waiting_days=(today - (o.completed_at or o.created_at).astimezone(TASHKENT_TZ).date()).days,
+        )
+        for o, name in ready_rows
+    ]
+
+    # --- post yuklamasi: qolgan marshrut qadamlari (Tablo bilan bir xil hisob) ---
+    posts = (
+        (await db.execute(select(Post).where(Post.is_deleted == False).order_by(Post.order_index)))  # noqa: E712
         .scalars()
         .all()
     )
-    machines_by_post: dict[int, list[Machine]] = {}
-    for m in machines:
-        machines_by_post.setdefault(m.post_id, []).append(m)
-
     routes = (
         await db.execute(
-            select(PartRoute, Part)
+            select(
+                PartRoute.post_id,
+                PartRoute.order_id,
+                PartRoute.total_done,
+                PartRoute.total_required,
+                Part.length,
+                Part.width,
+                Part.count.label("part_count"),
+                Part.edges,
+            )
             .join(Part, Part.id == PartRoute.part_id)
             .join(Order, Order.id == PartRoute.order_id)
-            # part_volume faqat length/width/count/edges o'qiydi — qolgan JSONB
-            # ustunlar bekorga uzatilardi (navbat butun ishlab chiqarish bo'yicha)
-            .options(*(defer(c) for c in PART_FAT_COLUMNS))
             .where(
-                Order.status == OrderStatus.PRODUCTION,
+                in_prod,
                 Order.is_deleted == False,  # noqa: E712
                 PartRoute.is_enabled == True,  # noqa: E712
                 PartRoute.is_deleted == False,  # noqa: E712
@@ -294,55 +380,90 @@ async def report_dashboard(db: SessionDep, _: ReportsUser) -> DashboardStats:
             )
         )
     ).all()
-
-    queue: dict[int, dict[str, float]] = {m.id: {"scans": 0, "volume": 0.0} for m in machines}
-    for route, part in routes:
-        post = posts.get(route.post_id)
+    queue: dict[int, dict[str, float]] = {p.id: {"scans": 0, "volume": 0.0} for p in posts}
+    queue_orders: dict[int, set[int]] = {p.id: set() for p in posts}
+    posts_by_id = {p.id: p for p in posts}
+    for r in routes:
+        post = posts_by_id.get(r.post_id)
         if post is None:
             continue
-        remaining = route.total_required - route.total_done
-        vol = part_volume(str(post.code), length=part.length, width=part.width, count=part.count, edges=part.edges) * (
-            remaining / route.total_required if route.total_required else 0
-        )
-        if route.machine_id is not None and route.machine_id in queue:
-            targets = [route.machine_id]
-        else:
-            # ponytail: unassigned queue lands on the post's first machine; split when a post
-            # actually runs several unassigned machines in parallel.
-            post_machines = machines_by_post.get(route.post_id, [])
-            targets = [post_machines[0].id] if post_machines else []
-        for mid in targets:
-            queue[mid]["scans"] += remaining
-            queue[mid]["volume"] += vol
-
-    today_start = datetime.combine(datetime.now(TASHKENT_TZ).date(), time.min, tzinfo=TASHKENT_TZ).astimezone(UTC)
-    today_rows = (
-        await db.execute(
-            select(Scan.machine_id, func.count(Scan.id))
-            .where(
-                Scan.created_at >= today_start,
-                Scan.is_cancelled == False,  # noqa: E712
-                Scan.is_deleted == False,  # noqa: E712
+        remaining = r.total_required - r.total_done
+        vol = part_volume(str(post.code), length=r.length, width=r.width, count=r.part_count, edges=r.edges)
+        queue[r.post_id]["scans"] += remaining
+        queue[r.post_id]["volume"] += vol * (remaining / r.total_required if r.total_required else 0)
+        queue_orders[r.post_id].add(r.order_id)
+    today_by_post: dict[int, int] = {
+        pid: int(n)
+        for pid, n in (
+            await db.execute(
+                select(Scan.post_id, func.count(Scan.id))
+                .where(Scan.created_at >= today_start, *live_scan)
+                .group_by(Scan.post_id)
             )
-            .group_by(Scan.machine_id)
-        )
-    ).all()
-    today_by_machine = {mid: cnt for mid, cnt in today_rows if mid is not None}
-
-    stats: list[MachineStat] = []
-    for m in machines:
-        post = posts.get(m.post_id)
-        q = queue[m.id]
-        stats.append(
-            MachineStat(
-                machine_id=m.id,
-                name=m.name,
-                post_code=str(post.code) if post else "",
-                status=str(m.status),
-                queue_scans=int(q["scans"]),
-                queue_volume=round(q["volume"], 2),
-                unit=POST_UNIT_LABELS.get(PostUnit(post.unit), "") if post else "",
-                today_scans=today_by_machine.get(m.id, 0),
+        ).all()
+    }
+    down_by_post: dict[int, list[str]] = {}
+    for m in (
+        (
+            await db.execute(
+                select(Machine)
+                .where(Machine.is_deleted == False, Machine.status != MachineStatus.ACTIVE)  # noqa: E712
+                .order_by(Machine.name)
             )
         )
-    return DashboardStats(machines=stats)
+        .scalars()
+        .all()
+    ):
+        down_by_post.setdefault(m.post_id, []).append(m.name)
+    post_load = [
+        PostLoad(
+            post_id=p.id,
+            code=str(p.code),
+            name=p.name,
+            unit=POST_UNIT_LABELS.get(PostUnit(p.unit), ""),
+            queue_scans=int(queue[p.id]["scans"]),
+            queue_volume=round(queue[p.id]["volume"], 1),
+            orders=len(queue_orders[p.id]),
+            today_scans=int(today_by_post.get(p.id, 0)),
+            down=down_by_post.get(p.id, []),
+        )
+        for p in posts
+    ]
+
+    # --- qoldiq to'lovlar: faqat boshqaruvga ---
+    money: DashboardMoney | None = None
+    if current_user.is_superuser or current_user.role in _MANAGEMENT:
+        remaining = Order.amount - func.coalesce(Order.advance_payment, 0)
+        mrow = (
+            await db.execute(
+                select(
+                    func.coalesce(func.sum(remaining), 0),
+                    func.count(Order.id),
+                    func.count(Order.id).filter(Order.status == OrderStatus.DELIVERED),
+                ).where(
+                    Order.is_deleted == False,  # noqa: E712
+                    Order.status.not_in((OrderStatus.DRAFT, OrderStatus.CANCELLED)),
+                    Order.amount.is_not(None),
+                    remaining > 0,
+                )
+            )
+        ).one()
+        money = DashboardMoney(receivable=float(mrow[0]), orders=int(mrow[1]), delivered_unpaid=int(mrow[2]))
+
+    return DashboardStats(
+        today=DashboardToday(
+            scans=trend[-1].scans,
+            scans_yesterday=trend[-2].scans,
+            on_shift=int(on_shift),
+            started=started,
+            completed=completed,
+            delivered=delivered,
+        ),
+        orders=DashboardOrders(
+            production=production, overdue=overdue, due_today=due_today, no_deadline=no_deadline, ready=ready_n
+        ),
+        ready=ready,
+        posts=post_load,
+        trend=trend,
+        money=money,
+    )

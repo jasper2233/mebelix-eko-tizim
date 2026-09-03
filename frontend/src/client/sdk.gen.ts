@@ -1413,6 +1413,13 @@ export class ReportsService {
     
     /**
      * Report Dashboard
+     *
+     * Bir so'rov — butun panel: bugungi puls, buyurtma sonlari, tayyorlar ro'yxati,
+     * post yuklamasi, 14 kunlik skan tendensiyasi va (boshqaruvga) qoldiq to'lovlar.
+     *
+     * Ilgari faqat ish markazi navbatini qaytarardi; panel qolganini 45 ta buyurtma
+     * kartasini chizib «ko'rsatardi» — bu Tablo'ning ishi, panel esa javob berishi
+     * kerak: bugun nima bo'lyapti, nima kechikdi, nimani topshirish kerak.
      */
     public static reportDashboard<ThrowOnError extends boolean = true>(options?: Options<ReportDashboardData, ThrowOnError>): RequestResult<ReportDashboardResponses, unknown, ThrowOnError> {
         return (options?.client ?? client).get<ReportDashboardResponses, unknown, ThrowOnError>({
