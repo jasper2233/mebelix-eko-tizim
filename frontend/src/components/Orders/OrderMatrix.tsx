@@ -135,7 +135,16 @@ export function OrderMatrix({
     Object.keys(noteEdits).length > 0 ||
     Object.keys(customEdits).length > 0
 
-  const q = query.trim().toLowerCase()
+  // Qidiruv to'liq chek/QR satrini ham qabul qiladi: yorliqdan nusxalangan
+  // `B-2026-047_301401_01_001_2` → buyurtma prefiksi va `_n` nusxa raqami
+  // tashlanadi, `301401_01_001` qoladi (`_n` faqat 3 xonali detal kodidan
+  // KEYIN kesiladi — `4325_003` ning o'zi buzilmasin). Qator = DETAL (nusxa
+  // emas), shuning uchun jadvalda prefiks/`_n` ko'rsatilmaydi (docs/11).
+  const q = query
+    .trim()
+    .toLowerCase()
+    .replace(/^b-\d{4}-\d+_/, "")
+    .replace(/^(.*_\d{3})_\d+$/, "$1")
   const visibleParts = q
     ? matrix.parts.filter((p) =>
         `${p.product_code}_${p.code} ${p.name}`.toLowerCase().includes(q),
