@@ -396,22 +396,28 @@ function TerminalPage() {
     staleTime: 60_000,
   })
 
-  // BEKOR QILISH oynasi serverda 60 s (`SCAN_UNDO_SECONDS`, undan
-  // keyin faqat admin). Ekranda muddat taymeri KERAK EMAS: pastdagi tozalash
-  // 15 s da `lastScan`ni null qiladi va ScanStrip butunlay yo'qoladi — tugma
-  // server oynasi tugashidan ancha oldin ekrandan ketadi.
+  // BEKOR QILISH oynasi serverda 60 s (`SCAN_UNDO_SECONDS`, undan keyin
+  // faqat admin). Chiziq ham AYNAN 60 s turadi: ilgari 15 s da yo'qolar edi —
+  // tugma bilan birga, ya'ni 20-soniyada xatoni sezgan ishchi bekor qila
+  // olmasdi (server hali ruxsat bergan holda). Muddat taymeri yo'q — tugma
+  // bor ekan, bekor qilish mumkin.
   const canUndo = lastScan?.kind === "ok"
 
-  // Skan chizig'i 15s dan keyin o'zi yo'qoladi — ekranni band qilib turmasin;
+  // Skan chizig'i 60 s dan keyin o'zi yo'qoladi — ekranni band qilib turmasin;
   // har yangi skan taymerni qaytadan boshlaydi
   useEffect(() => {
     if (!lastScan) return
-    const t = setTimeout(() => setLastScan(null), 15_000)
+    const t = setTimeout(() => setLastScan(null), 60_000)
     return () => clearTimeout(t)
   }, [lastScan])
   const postColor = ctx
     ? (POST_COLORS[ctx.post_code] ?? "var(--primary)")
     : "var(--primary)"
+  // Chap toolbar ustuni kimga kerak: ARRA xarita ochiq (toolbar portal),
+  // ROVER proyekt ichida (Xarita/Chop etish). Qolganlarda — yo'q.
+  const leftColumn =
+    mapOrderId !== null &&
+    (ctx?.post_code === "ARRA" || ctx?.post_code === "ROVER")
 
   // Proyekt tanlagich: ARRA'dan boshqa hamma postda bir xil, faqat sarlavha
   // farq qiladi (kesish xaritasi bejigi ham faqat ARRA'da ma'noga ega)
@@ -456,7 +462,7 @@ function TerminalPage() {
         />
       )}
       {/* Header */}
-      <header className="flex items-center gap-4 border-b bg-card px-4 py-2 shadow-sm">
+      <header className="flex items-center gap-3 border-b bg-card px-4 py-2 shadow-sm">
         {/* Arrachi tilida bitta identitet: ish markazi nomi (post rangida) — "post/uskuna"
             taksonomiyasi olib tashlandi, ism yonidagi chipda */}
         <div
@@ -492,24 +498,23 @@ function TerminalPage() {
           onAdd={() => setJoining(true)}
         />
 
-        {/* Xarita ochiq bo'lsa skan o'rnini ixcham material statlari egallaydi */}
+        {/* Skan maydoni IXCHAM: ishchi unga yozmaydi, skaner yozadi — 448px li
+            matn maydoni header markazini bekorga egallardi. Endi holat chipi
+            ko'rinishida (224px): «Skan tayyor» / «Beyjik kuting»; skaner
+            yozgan matn bir zum ko'rinib turadi (nosozlikda foydali).
+            Xarita ochiq bo'lsa o'rnini ixcham material statlari egallaydi. */}
         <div
-          className={cn(
-            "relative mx-auto w-full max-w-md",
-            mapOpen && "hidden",
-          )}
+          className={cn("relative mx-auto w-44 shrink-0", mapOpen && "hidden")}
         >
-          <ScanLine className="absolute left-3 top-2.5 size-5 text-muted-foreground" />
+          <ScanLine className="absolute left-3 top-3 size-5 text-muted-foreground" />
           <input
             ref={inputRef}
             disabled={!scanOn || mapOpen}
             // Maydon ichida tanlash QOLADI: skaner yozgan qiymatni qo'lda
             // to'g'rilash kerak bo'lib qolsa, ildizdagi `select-none` to'sib
             // qo'ymasin.
-            className="h-12 w-full select-text rounded-lg border-2 border-primary/40 bg-card pl-10 pr-4 font-mono text-base outline-none focus:border-primary disabled:bg-muted"
-            placeholder={
-              crew.length ? "QR scan qiling..." : "Beyjik QR scan qiling..."
-            }
+            className="h-12 w-full select-text rounded-full border-2 border-primary/40 bg-card pl-10 pr-4 font-mono text-sm outline-none focus:border-primary disabled:bg-muted"
+            placeholder={crew.length ? "Skan tayyor" : "Beyjik kuting"}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 handleSubmit((e.target as HTMLInputElement).value)
@@ -536,6 +541,46 @@ function TerminalPage() {
           {scanOn ? "SKAN ON" : "SKAN OFF"}
         </Button>
 
+        {/* Qulflash / Chiqish HEADERDA: ilgari 68px li chap ustunda turardi,
+            9 postdan 7 tasida o'sha ustunda boshqa hech narsa yo'q edi —
+            kontentdan bekorga joy olardi. Chap ustun endi faqat xarita
+            toolbari bo'lganda (ARRA xarita, ROVER) chiziladi. */}
+        {/* Qulf — faqat ikonka: qulf belgisi universal, matn 1366px headerda
+            (2 kishilik brigada + chip + skan) sig'may CHIQISH ni kesardi */}
+        <Button
+          variant="outline"
+          className="h-12 w-12 shrink-0 text-amber-700 hover:text-amber-800"
+          aria-label="Qulflash"
+          title="Qulflash"
+          onClick={() => setLocked(true)}
+        >
+          <Lock className="size-6" />
+        </Button>
+        {/* Tsex hisobi bilan kirgan odam uchun bitta tugma: CHIQISH — hisobdan
+            ham chiqaradi, smenani ham yopadi (backend `logout` o'zi yopadi).
+            Sherikning smenasi sarlavhadagi chipini bosib yopiladi. Qurilma
+            hisobida (TERMINAL) chiqish yo'q — monoblok bir marta, o'rnatishda
+            kiradi; u yerda faqat smenani yakunlash. */}
+        {isOperator ? (
+          <Button
+            variant="destructive"
+            className="h-12 shrink-0 px-3 text-xs font-black"
+            onClick={() => setLogoutOpen(true)}
+          >
+            <LogOut className="size-5" />
+            CHIQISH
+          </Button>
+        ) : crew.length ? (
+          <Button
+            variant="destructive"
+            className="h-12 shrink-0 px-3 text-xs font-black"
+            onClick={() => setEndFor(crew[0] ?? null)}
+          >
+            <LogOut className="size-5" />
+            YAKUNLASH
+          </Button>
+        ) : null}
+
         {!online && (
           <div className="flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white">
             <WifiOff className="size-4" /> ALOQA YO'Q
@@ -545,54 +590,32 @@ function TerminalPage() {
 
       {/* Asosiy maydon — har postning O'Z ekrani: proyekt ro'yxati → post ekrani
           (ARRA'da kesish xaritasi). Umumiy vazifalar jadvali yo'q. */}
-      <main className="flex min-h-0 flex-1 gap-1.5 p-3 pl-1.5">
-        {/* Chap ustun: xarita toolbari (portal) tepada, qulf/chiqish doim pastda */}
-        <div className="flex w-[68px] shrink-0 flex-col gap-2">
-          {/* ROVER: detallar <-> kesish xaritasi. Terminalning barcha amallari
-              shu 68px chap ustunda — xarita toolbari ham shu yerga portal
-              qilinadi, ya'ni ikkita vertikal qator paydo bo'lmaydi. */}
-          {ctx?.post_code === "ROVER" && mapOrderId !== null && !roverMap && (
-            <TBtn label="Xarita" onClick={() => setRoverMap(true)}>
-              <Grid2x2 />
-            </TBtn>
-          )}
-          <div
-            ref={setToolbarEl}
-            className="flex flex-col gap-2 empty:hidden"
-          />
-          <div className="mt-auto flex flex-col gap-2">
-            <TBtn label="Qulflash" tone="warn" onClick={() => setLocked(true)}>
-              <Lock />
-            </TBtn>
-            {/* Tsex hisobi bilan kirgan odam uchun bitta tugma: CHIQISH.
-                U hisobdan ham chiqaradi, smenani ham yopadi (backend `logout`
-                o'zi yopadi). Ilgari avval "Yakunlash" chiqar, bosilgach ekran
-                hisobda qolgan holda "Kim ishlayapti?" ga tushib qolardi -
-                chiqish ikki bosqichli va chalkash edi.
-
-                Sherikning smenasi sarlavhadagi chipini bosib yopiladi.
-
-                Qurilma hisobida (TERMINAL) chiqish yo'q - monoblok bir marta,
-                o'rnatishda kiradi; u yerda faqat smenani yakunlash kerak. */}
-            {isOperator ? (
-              <TBtn
-                label="Chiqish"
-                tone="danger"
-                onClick={() => setLogoutOpen(true)}
-              >
-                <LogOut />
+      <main
+        className={cn(
+          "flex min-h-0 flex-1 gap-1.5 p-3",
+          leftColumn ? "pl-1.5" : "pl-3",
+        )}
+      >
+        {/* Chap ustun FAQAT xarita toolbari bo'lganda: ARRA xarita ochiq,
+            ROVER proyekt ichida (Xarita/Chop etish tugmalari + xarita
+            toolbari portal bilan shu yerga). Qolgan postlarda ustun yo'q —
+            kontent butun kenglikni oladi. Qulflash/Chiqish headerda. */}
+        {leftColumn && (
+          <div className="flex w-[68px] shrink-0 flex-col gap-2">
+            {/* ROVER: detallar <-> kesish xaritasi. Terminalning barcha amallari
+                shu 68px chap ustunda — xarita toolbari ham shu yerga portal
+                qilinadi, ya'ni ikkita vertikal qator paydo bo'lmaydi. */}
+            {ctx?.post_code === "ROVER" && mapOrderId !== null && !roverMap && (
+              <TBtn label="Xarita" onClick={() => setRoverMap(true)}>
+                <Grid2x2 />
               </TBtn>
-            ) : crew.length ? (
-              <TBtn
-                label="Yakunlash"
-                tone="danger"
-                onClick={() => setEndFor(crew[0] ?? null)}
-              >
-                <LogOut />
-              </TBtn>
-            ) : null}
+            )}
+            <div
+              ref={setToolbarEl}
+              className="flex flex-col gap-2 empty:hidden"
+            />
           </div>
-        </div>
+        )}
         {ctxLoading && !ctx ? (
           <Skeleton className="h-full flex-1" />
         ) : !ctx && ctxError ? (

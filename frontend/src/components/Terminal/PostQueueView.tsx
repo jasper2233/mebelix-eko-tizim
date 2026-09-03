@@ -82,6 +82,27 @@ export function PostQueueView({
           </div>
         ) : (
           <table className="w-full text-base">
+            {/* Sarlavha lug'ati hamma postda bir xil: «Detal ID» = nusxa
+                (chekdagi satr), «Kod» = detal turi */}
+            <thead className="bg-muted/60">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Detal ID
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Nomi
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  O'lchami
+                </th>
+                <th
+                  className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                  title="Detal hozir qaysi postda turibdi — o'sha yerdan olinadi"
+                >
+                  Qayerda
+                </th>
+              </tr>
+            </thead>
             <tbody>
               {ready.map((r) => (
                 <tr key={r.instance_id} className="border-b last:border-0">

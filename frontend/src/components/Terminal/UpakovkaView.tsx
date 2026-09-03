@@ -184,6 +184,23 @@ export function UpakovkaView({
                 </div>
               ) : (
                 <table className="w-full text-base">
+                  <thead className="bg-muted/60">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Kod
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Nomi
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        O'lchami
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Og'irligi
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground" />
+                    </tr>
+                  </thead>
                   <tbody>
                     {open.items.map((i) => (
                       <tr

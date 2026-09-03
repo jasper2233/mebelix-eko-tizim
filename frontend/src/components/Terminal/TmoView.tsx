@@ -197,6 +197,25 @@ export function TmoView({
             </div>
           ) : (
             <table className="w-full text-base">
+              <thead className="bg-muted/60">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Detal ID
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Nomi
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Qadoq
+                  </th>
+                  <th
+                    className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                    title="Detal hozir qaysi postda turibdi — o'sha yerdan olinadi"
+                  >
+                    Qayerda
+                  </th>
+                </tr>
+              </thead>
               <tbody>
                 {arrived.map((p) => (
                   <tr key={p.instance_id} className="border-b last:border-0">
@@ -259,6 +278,25 @@ export function TmoView({
             </div>
           ) : (
             <table className="w-full text-base">
+              <thead className="bg-muted/60">
+                <tr>
+                  <th
+                    className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                    colSpan={2}
+                  >
+                    Detal ID
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Nomi
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Qadoq
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Vaqt
+                  </th>
+                </tr>
+              </thead>
               <tbody>
                 {done.map((d) => (
                   <tr

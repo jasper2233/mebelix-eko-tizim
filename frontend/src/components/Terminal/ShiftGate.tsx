@@ -1,4 +1,4 @@
-import { UserRound, X } from "lucide-react"
+import { UserPlus, UserRound, X } from "lucide-react"
 
 import type { SessionRead, TerminalEmployee } from "@/client"
 import { Button } from "@/components/ui/button"
@@ -89,7 +89,7 @@ export function CrewChips({
   onAdd: () => void
 }) {
   return (
-    <div className="hidden shrink-0 items-center gap-1.5 md:flex">
+    <div className="hidden min-w-0 flex-1 items-center gap-1.5 overflow-hidden md:flex">
       <UserRound className="size-4 text-muted-foreground" />
       {crew
         .filter((s) => !s.is_me)
@@ -105,12 +105,14 @@ export function CrewChips({
             <X className="size-3.5 text-muted-foreground" />
           </button>
         ))}
+      {/* Havola emas, TUGMA: brigadaga qo'shilish — amal, ko'rinishi ham
+          shunday bo'lsin (ilgari xira «+ Qo'shish» matni edi) */}
       <Button
-        variant="ghost"
-        className="h-10 rounded-full text-muted-foreground"
+        variant="outline"
+        className="h-10 rounded-full px-3 font-bold"
         onClick={onAdd}
       >
-        + Qo'shish
+        <UserPlus className="size-4" /> Qo'shish
       </Button>
     </div>
   )

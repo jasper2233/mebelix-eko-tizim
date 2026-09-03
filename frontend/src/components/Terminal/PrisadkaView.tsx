@@ -462,7 +462,7 @@ export function PrisadkaView({
               <th className="px-4 py-2.5">Kod</th>
               <th className="px-4 py-2.5">Nomi</th>
               <th className="px-4 py-2.5">O'lchami</th>
-              <th className="px-4 py-2.5">Nusxalar (SCX)</th>
+              <th className="px-4 py-2.5">Detal ID · SCX</th>
               <th className="px-4 py-2.5 text-right">Bajarildi</th>
             </tr>
           </thead>

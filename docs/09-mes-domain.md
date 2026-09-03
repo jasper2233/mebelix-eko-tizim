@@ -560,7 +560,7 @@ direktor ham ko'radi.
   `onSuccess` da `playSuccess()` + toast, `onError` da `playError()`, ochiq qadoq yo'q /
   takror qabul holatida `playWarning()` (TT 8.4.3 — tsex shovqinida ovoz majburiy).
   Umumiy: majburiy to'liq ekran overlay, lock overlay, operator logout, 2 s umumiy QR cooldown
-  (TT 8.4.4), skan chizig'i 15 s da o'zi yo'qoladi, skan inputi fokussiz ham QR ni tutadi
+  (TT 8.4.4), skan chizig'i 60 s da o'zi yo'qoladi (server bekor qilish oynasi bilan teng), skan inputi fokussiz ham QR ni tutadi
   (birinchi tugmada fokus), yangi build uchun har 5 daqiqada `/` HEAD ETag tekshiruvi va xavfsiz
   paytda avto-reload.
 - WS hook: `hooks/useMesWs.ts` (reconnect + heartbeat + online flag).
