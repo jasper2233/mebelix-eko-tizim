@@ -5,7 +5,7 @@
 // yuklash faqat shu tugma orqali, operator xohlaganda.
 
 import { useQuery } from "@tanstack/react-query"
-import { HardDriveDownload, Map as MapIcon, Printer } from "lucide-react"
+import { HardDriveDownload, Map as MapIcon, Printer, Undo2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
@@ -232,15 +232,40 @@ export function PrisadkaView({
         Number(a.i.done) - Number(b.i.done) ||
         a.i.qr_text.localeCompare(b.i.qr_text),
     )
+    // Chekni bekor qilish — OCHIQ tugma (chap ustunda, «Chop etish» ostida),
+    // faqat tanlangan qatorning cheki shu postda chiqqan bo'lsa. Ilgari yagona
+    // yo'l uzoq bosish edi va sarlavhada «qatorni bosib turing» ishorasi
+    // buyurtma nomi yonida osilib turardi; uzoq bosish tez yo'l sifatida qoladi.
+    // Rover kesadigan detalda chek chiqishi = kesildi (avto-skan), ya'ni chek
+    // chiqqan nusxa darhol ✓ bo'ladi — bekor qilish aynan shu ✓ holatda kerak
+    // (uzoq bosish sharti bilan bir xil: `label_printed && ownLabel`).
+    const canCancel = !!sel && sel.i.label_printed && ownLabel(sel.p)
     const printBtn = (
-      <TBtn
-        label="Chop etish"
-        tone={canPrint ? "success" : "default"}
-        disabled={!canPrint || printLabel.isPending}
-        onClick={() => sel && printLabel.mutate(sel.i.instance_id)}
-      >
-        <Printer />
-      </TBtn>
+      <>
+        <TBtn
+          label="Chop etish"
+          tone={canPrint ? "success" : "default"}
+          disabled={!canPrint || printLabel.isPending}
+          onClick={() => sel && printLabel.mutate(sel.i.instance_id)}
+        >
+          <Printer />
+        </TBtn>
+        {canCancel && sel && (
+          <TBtn
+            label="Chek bekor"
+            tone="danger"
+            onClick={() =>
+              setCancelTarget({
+                instance_id: sel.i.instance_id,
+                qr_text: sel.i.qr_text,
+                name: sel.p.name,
+              })
+            }
+          >
+            <Undo2 />
+          </TBtn>
+        )}
+      </>
     )
     return (
       <div className="flex h-full min-h-0 gap-3">
@@ -253,12 +278,6 @@ export function PrisadkaView({
             orderNumber={data?.order_number}
             projectName={data?.project_name}
           >
-            {/* Imo-ishora ko'rinmas — ISHORASI bir marta, jadval tepasida.
-                Har qatorga takrorlansa 15 marta bir xil yozuv bo'lardi va
-                holat badge'i bilan zid o'qilardi. */}
-            <div className="text-sm text-muted-foreground">
-              Chekni bekor qilish: qatorni bosib turing
-            </div>
             <PostProgress className="ml-auto" done={totDone} total={totReq} />
           </PostHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -271,7 +290,7 @@ export function PrisadkaView({
                   <th className="px-4 py-2.5 text-right">
                     Holat
                     <span className="block whitespace-nowrap text-2xs font-medium normal-case tracking-normal">
-                      chek yo'q → chek chiqarilgan → ✓ skan
+                      chek yo'q → ✓ chek chiqdi = kesildi
                     </span>
                   </th>
                 </tr>
