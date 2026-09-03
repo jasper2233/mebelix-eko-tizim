@@ -18,6 +18,85 @@ import { useScanFlash } from "@/hooks/useScanFlash"
 import { formatSize } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 
+/** Qaysi tomonlarga kromka — CHEKDAGI eskiz bilan bir xil konvensiya
+ *  (labels.py `burilgan`): uzun tomon `length` bo'lsa eskiz 90° burilgan,
+ *  ya'ni t→chap, b→o'ng, l→past, r→tepa; aks holda tabiiy (l→chap, r→o'ng,
+ *  t→tepa, b→past). Kromkachi chekdagi rasm bilan solishtiradi — bu yerda
+ *  boshqa yo'nalish chalg'itardi. */
+function EdgeGlyph({
+  edges,
+  length,
+  width,
+}: {
+  edges: Record<string, unknown>
+  length: number | null | undefined
+  width: number | null | undefined
+}) {
+  const burilgan = (length ?? 0) > (width ?? 0)
+  const has = (k: string) => !!edges[k]
+  const side = burilgan
+    ? { chap: has("t"), ong: has("b"), past: has("l"), tepa: has("r") }
+    : { chap: has("l"), ong: has("r"), tepa: has("t"), past: has("b") }
+  // Burilgan eskiz — bo'yiga (tik) to'rtburchak, tabiiy — eniga
+  const [w, h] = burilgan ? [18, 26] : [26, 18]
+  const x = (30 - w) / 2
+  const y = (30 - h) / 2
+  const line = "stroke-amber-600"
+  return (
+    <svg viewBox="0 0 30 30" className="size-7 shrink-0" aria-hidden="true">
+      <title>Kromka tomonlari</title>
+      <rect
+        x={x}
+        y={y}
+        width={w}
+        height={h}
+        className="fill-muted stroke-muted-foreground/50"
+        strokeWidth="1"
+      />
+      {side.tepa && (
+        <line
+          x1={x}
+          y1={y}
+          x2={x + w}
+          y2={y}
+          className={line}
+          strokeWidth="3"
+        />
+      )}
+      {side.past && (
+        <line
+          x1={x}
+          y1={y + h}
+          x2={x + w}
+          y2={y + h}
+          className={line}
+          strokeWidth="3"
+        />
+      )}
+      {side.chap && (
+        <line
+          x1={x}
+          y1={y}
+          x2={x}
+          y2={y + h}
+          className={line}
+          strokeWidth="3"
+        />
+      )}
+      {side.ong && (
+        <line
+          x1={x + w}
+          y1={y}
+          x2={x + w}
+          y2={y + h}
+          className={line}
+          strokeWidth="3"
+        />
+      )}
+    </svg>
+  )
+}
+
 // Kromka belgilari — yorliqdagi GibLab EL harfi. Tomon NOMI ("Chap") ataylab yo'q: eskiz uzun
 // tomonni vertikal chizadi, l/r/t/b joyi o'lchamga qarab almashadi (labels.py `burilgan`).
 const edgeSymbols = (edges: Record<string, unknown>): string => {
@@ -166,6 +245,7 @@ export function KromkaView({
                       <OperationChips
                         processCode={p.process_code}
                         postCode={oval ? "OVAL" : "KROMKA"}
+                        defaultCode={oval ? 5 : 3}
                       />
                     </td>
                     <td className="num whitespace-nowrap px-4 py-3 text-sm">
@@ -173,9 +253,18 @@ export function KromkaView({
                     </td>
                     {!oval && (
                       <td className="whitespace-nowrap px-4 py-3 text-sm">
-                        <b>{p.sides} tomon</b>
-                        <span className="ml-1.5 text-muted-foreground">
-                          {edgeSymbols(p.edges)}
+                        <span className="inline-flex items-center gap-2">
+                          <EdgeGlyph
+                            edges={p.edges}
+                            length={p.length}
+                            width={p.width}
+                          />
+                          <span>
+                            <b>{p.sides} tomon</b>
+                            <span className="ml-1.5 text-muted-foreground">
+                              {edgeSymbols(p.edges)}
+                            </span>
+                          </span>
                         </span>
                       </td>
                     )}

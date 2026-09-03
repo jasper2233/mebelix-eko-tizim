@@ -3,7 +3,14 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { Grid2x2, Lock, LogOut, Printer, ScanLine, WifiOff } from "lucide-react"
+import {
+  Grid2x2,
+  Lock,
+  LogOut,
+  MonitorCog,
+  ScanLine,
+  WifiOff,
+} from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
@@ -481,11 +488,9 @@ function TerminalPage() {
             (printer / skaner). Cheklar baribir yo'qolmaydi — ogohlantirish. */}
         {(printerLive ?? ctx?.agent_online) === false && (
           <div className="flex shrink-0 items-center gap-1.5 rounded-md bg-red-600 px-2 py-1 text-sm font-bold text-white">
-            {ctx?.agent_prints ? (
-              <Printer className="size-4" />
-            ) : (
-              <ScanLine className="size-4" />
-            )}
+            {/* Belgisi sidebar «MES agentlar» bilan bir xil (MonitorCog):
+                agent — tsex kompyuteri, printer yoki skaner emas */}
+            <MonitorCog className="size-4" />
             AGENT UZILGAN
           </div>
         )}
@@ -506,7 +511,16 @@ function TerminalPage() {
         <div
           className={cn("relative mx-auto w-44 shrink-0", mapOpen && "hidden")}
         >
-          <ScanLine className="absolute left-3 top-3 size-5 text-muted-foreground" />
+          {/* Tayyor holatda ikonka yengil pulsatsiya qiladi — «skan kutyapman»
+              signali; skan o'chiq / smena yo'q bo'lsa jim kulrang */}
+          <ScanLine
+            className={cn(
+              "absolute left-3 top-3 size-5",
+              scanOn && crew.length
+                ? "animate-pulse text-primary"
+                : "text-muted-foreground",
+            )}
+          />
           <input
             ref={inputRef}
             disabled={!scanOn || mapOpen}
@@ -564,20 +578,22 @@ function TerminalPage() {
         {isOperator ? (
           <Button
             variant="destructive"
-            className="h-12 shrink-0 px-3 text-xs font-black"
+            className="h-12 w-12 shrink-0"
+            aria-label="Chiqish"
+            title="Chiqish"
             onClick={() => setLogoutOpen(true)}
           >
-            <LogOut className="size-5" />
-            CHIQISH
+            <LogOut className="size-6" />
           </Button>
         ) : crew.length ? (
           <Button
             variant="destructive"
-            className="h-12 shrink-0 px-3 text-xs font-black"
+            className="h-12 w-12 shrink-0"
+            aria-label="Smenani yakunlash"
+            title="Smenani yakunlash"
             onClick={() => setEndFor(crew[0] ?? null)}
           >
-            <LogOut className="size-5" />
-            YAKUNLASH
+            <LogOut className="size-6" />
           </Button>
         ) : null}
 

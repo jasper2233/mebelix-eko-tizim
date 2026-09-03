@@ -101,7 +101,7 @@ export function CrewChips({
             className="flex h-10 items-center gap-1.5 rounded-full border bg-card pl-3 pr-2 text-sm hover:border-destructive/50"
           >
             <span className="size-2 rounded-full bg-green-500" />
-            <b className="max-w-32 truncate">{s.employee_name}</b>
+            <b className="max-w-44 truncate">{s.employee_name}</b>
             <X className="size-3.5 text-muted-foreground" />
           </button>
         ))}
