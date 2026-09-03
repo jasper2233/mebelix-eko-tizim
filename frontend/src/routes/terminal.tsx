@@ -7,7 +7,7 @@ import {
   Grid2x2,
   Lock,
   LogOut,
-  MonitorCog,
+  MonitorX,
   ScanLine,
   WifiOff,
 } from "lucide-react"
@@ -487,10 +487,11 @@ function TerminalPage() {
             belgi yolg'iz o'zini tushuntirmaydi. Ikonka rolni aytadi
             (printer / skaner). Cheklar baribir yo'qolmaydi — ogohlantirish. */}
         {(printerLive ?? ctx?.agent_online) === false && (
-          <div className="flex shrink-0 items-center gap-1.5 rounded-md bg-red-600 px-2 py-1 text-sm font-bold text-white">
-            {/* Belgisi sidebar «MES agentlar» bilan bir xil (MonitorCog):
-                agent — tsex kompyuteri, printer yoki skaner emas */}
-            <MonitorCog className="size-4" />
+          <div className="flex shrink-0 animate-pulse items-center gap-1.5 rounded-md bg-red-600 px-2 py-1 text-sm font-bold text-white">
+            {/* Uzilgan monitor belgisi (MonitorX) — holatning o'zini aytadi;
+                sekin puls — alarm: tsexda qizil chipni ham ko'rmay o'tish oson.
+                Agent — tsex kompyuteri (sidebar MonitorCog bilan bir oila). */}
+            <MonitorX className="size-4" />
             AGENT UZILGAN
           </div>
         )}

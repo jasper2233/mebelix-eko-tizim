@@ -11,7 +11,7 @@ import {
   Map as MapIcon,
   Printer,
 } from "lucide-react"
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
 
@@ -118,6 +118,15 @@ export function PrisadkaView({
   }
   // null = yuklanmayapti; son = nechta fayl saqlandi (tugmada jonli 12/69)
   const [progress, setProgress] = useState<number | null>(null)
+  // Saqlangan SCX papkasining NOMI tugmada ko'rinadi: operator fayllar
+  // qayerga tushishini ko'rib tursin («Papka» yolg'iz o'zi nima ekanini aytmasdi)
+  const [dirName, setDirName] = useState<string | null>(null)
+  useEffect(() => {
+    if (!dirSupported()) return
+    getSavedDir()
+      .then((d) => setDirName(d?.name ?? null))
+      .catch(() => setDirName(null))
+  }, [])
   // ROVER rejimi: qator (nusxa) tanlanadi, chop etish chapdagi katta tugmada
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -220,7 +229,10 @@ export function PrisadkaView({
   const changeDir = async () => {
     try {
       const dir = await pickDir()
-      if (dir) toast.success(`SCX papkasi: ${dir.name}`)
+      if (dir) {
+        setDirName(dir.name)
+        toast.success(`SCX papkasi: ${dir.name}`)
+      }
     } catch (e) {
       toast.error(`Papkani tanlab bo'lmadi: ${(e as Error).message}`)
     }
@@ -434,11 +446,14 @@ export function PrisadkaView({
           {dirSupported() && (
             <Button
               variant="outline"
-              className="h-12 px-3 font-bold"
-              title="SCX papkasini almashtirish"
+              className="h-12 max-w-64 px-3 font-bold"
+              title="SCX fayllar tushadigan papkani almashtirish"
               onClick={changeDir}
             >
-              <FolderCog /> Papka
+              <FolderCog />
+              <span className="truncate">
+                {dirName ? `Papka: ${dirName}` : "SCX papkasi"}
+              </span>
             </Button>
           )}
           <LoadingButton
@@ -453,7 +468,9 @@ export function PrisadkaView({
               </span>
             ) : (
               <>
-                <HardDriveDownload /> Hammasini yuklab olish ({allFiles.length})
+                {/* «Hammasini yuklab olish» NIMANI va QAYERGA aytmasdi: SCX
+                    fayllar stanok o'qiydigan papkaga tushadi */}
+                <HardDriveDownload /> SCX → papkaga ({allFiles.length})
               </>
             )}
           </LoadingButton>
