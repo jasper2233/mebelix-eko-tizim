@@ -1,8 +1,8 @@
-// KROMKA post sahifasi — ikki panel:
-// chapda arradan chiqqan kromkali detallar: har skan darhol yoziladi, 1 tomonli
-// detal bitta skanda yashil bo'ladi, tugaganlari yashil bo'lib ro'yxatda qoladi.
-// O'ngda "Jarayonda" — faqat 2+ tomonli, kamida 1 tomoni skan qilingan, hali
-// tugamagan detallar. Xato skan BEKOR QILISH (60s) bilan qaytariladi.
+// KROMKA post sahifasi — bitta to'liq kenglikdagi jadval: arradan chiqqan
+// kromkali detallar, har skan darhol yoziladi. Jarayondagi (2+ tomonli, bir
+// tomoni skan qilingan, tugamagan) qatorlar TEPADA sariq fonda, tugaganlari
+// pastda yashil; sarlavhada «Jarayonda N». Xato skan BEKOR QILISH (60s) bilan
+// qaytariladi.
 
 import { useQuery } from "@tanstack/react-query"
 import { useEffect, useRef } from "react"
@@ -12,7 +12,6 @@ import { OperationChips } from "@/components/Common/OperationChips"
 import { QueryError } from "@/components/Common/QueryError"
 import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
-import { Serial } from "@/components/Terminal/Serial"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useScanFlash } from "@/hooks/useScanFlash"
 import { formatSize } from "@/lib/mes"
@@ -184,29 +183,33 @@ export function KromkaView({
   // detal yo'q" bo'lib ko'rinardi va kromkachi yo'q detallarni kutib turardi.
   if (isError) return <QueryError onRetry={() => refetch()} />
 
-  // Chap: arradan chiqqan nusxalar — tugaganlari yashil bo'lib PASTGA tushadi,
-  // qilinmaganlari tepada (kromkachi navbatdagi ishni tepadan oladi)
+  // Arradan chiqqan nusxalar, uch pog'ona: JARAYONDA (bir tomoni skan
+  // qilingan, tugamagan — kromkachi shuni davom ettiradi) tepada, keyin
+  // boshlanmaganlar, tugaganlari yashil bo'lib PASTDA. Ilgari o'ng tomonda
+  // alohida «Jarayonda» paneli bor edi — u jadvalning «Holat» ustunini
+  // takrorlar va jadvalni yarim kenglikka siqib, nusxa chiplarini ustma-ust
+  // (qatorni 4 barobar baland) qilib yuborardi. Endi jadval to'liq kenglikda,
+  // jarayondagi qator tepada va sariq fonda.
+  const tier = (p: { sides: number; instances: { done: number }[] }) => {
+    const started = p.instances.some((i) => i.done > 0 && i.done < p.sides)
+    if (started) return 0
+    return p.instances.every((i) => i.done >= p.sides) ? 2 : 1
+  }
   const leftParts = parts
     .map((p) => ({
       ...p,
       instances: p.instances.filter((i) => i.arra_passed),
     }))
     .filter((p) => p.instances.length > 0)
-    .sort((a, b) => {
-      const fin = (p: typeof a) =>
-        p.instances.every((i) => i.done >= p.sides) ? 1 : 0
-      return fin(a) - fin(b) || a.code.localeCompare(b.code)
-    })
-
-  // O'ng "Jarayonda": faqat 2+ tomonli, boshlangan-u tugamagan nusxalar
-  const inProgress = parts
-    .flatMap((p) =>
-      p.instances
-        .filter((i) => p.sides >= 2 && i.done > 0 && i.done < p.sides)
-        .map((i) => ({ part: p, inst: i })),
-    )
-    .sort((a, b) => a.part.code.localeCompare(b.part.code))
-
+    .sort((a, b) => tier(a) - tier(b) || a.code.localeCompare(b.code))
+  // Sarlavhadagi hisob: nechta nusxa yarim yo'lda (2+ tomonli, boshlangan)
+  const inProgressCount = parts.reduce(
+    (n, p) =>
+      n +
+      p.instances.filter((i) => p.sides >= 2 && i.done > 0 && i.done < p.sides)
+        .length,
+    0,
+  )
   const totDone = parts.reduce((s, p) => s + p.total_done, 0)
   const totReq = parts.reduce((s, p) => s + p.total_required, 0)
 
@@ -215,7 +218,17 @@ export function KromkaView({
       {/* CHAP: arradan kelgan detallar, progress joyida ko'rinadi */}
       <div className="flex min-w-0 flex-1 flex-col rounded-xl border bg-white">
         <PostHeader onBack={onBack} orderNumber={data?.order_number}>
-          <PostProgress className="ml-auto" done={totDone} total={totReq} />
+          {/* Yarim yo'ldagi nusxalar soni — ular jadval tepasida sariq */}
+          {!oval && inProgressCount > 0 && (
+            <span className="num ml-auto rounded-md bg-amber-100 px-2.5 py-1 text-sm font-bold text-amber-800">
+              Jarayonda {inProgressCount}
+            </span>
+          )}
+          <PostProgress
+            className={oval || !inProgressCount ? "ml-auto" : "ml-3"}
+            done={totDone}
+            total={totReq}
+          />
         </PostHeader>
         <div className="min-h-0 flex-1 overflow-y-auto">
           <table className="w-full text-base">
@@ -238,6 +251,7 @@ export function KromkaView({
             <tbody>
               {leftParts.map((p) => {
                 const finished = p.instances.every((i) => i.done >= p.sides)
+                const started = !finished && tier(p) === 0
                 return (
                   <tr
                     key={p.route_id}
@@ -245,6 +259,7 @@ export function KromkaView({
                     className={cn(
                       "border-b last:border-0",
                       finished && "bg-green-50",
+                      started && "bg-amber-50/70",
                       // Xatcho'p: holat rangini bosmaydi, chap chetda turadi
                       flashId === p.route_id && "border-l-4 border-l-primary",
                     )}
@@ -339,51 +354,6 @@ export function KromkaView({
           </table>
         </div>
       </div>
-
-      {/* O'NG: Jarayonda — 2+ tomonli, boshlangan, tugamagan. OVAL'da panel
-          yo'q: har detal bitta skanda tugaydi, jarayon bo'lmaydi */}
-      {oval ? null : (
-        <div className="flex min-w-0 flex-1 flex-col rounded-xl border bg-white">
-          <div className="border-b px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Jarayonda{" "}
-            {inProgress.length > 0 && (
-              <span className="num ml-1 rounded-sm bg-amber-100 px-1.5 py-0.5 text-amber-700">
-                {inProgress.length}
-              </span>
-            )}
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {inProgress.map(({ part, inst }) => (
-              <div
-                key={inst.instance_id}
-                className="flex items-center gap-3 border-b px-4 py-3 last:border-0"
-              >
-                <div className="min-w-0 flex-1">
-                  {/* To'liq nusxa ID — chekdagi satr bilan aynan bir xil */}
-                  <Serial
-                    code={inst.qr_text}
-                    className="block truncate text-lg font-bold"
-                  />
-                  <div className="truncate text-xs text-muted-foreground">
-                    {part.name} ·{" "}
-                    {formatSize(part.length, part.width, part.thickness)}
-                  </div>
-                </div>
-                <span className="num shrink-0 rounded-md bg-amber-100 px-3 py-1.5 text-xl font-black text-amber-700">
-                  {inst.done}/{part.sides}
-                </span>
-              </div>
-            ))}
-            {!inProgress.length && (
-              <p className="p-4 text-sm text-muted-foreground">
-                Jarayonda detal yo'q. QR skan qilinsa hisob darhol yoziladi: 1
-                tomonlisi shu zahoti yashil bo'ladi, ko'p tomonlisi tugaguncha
-                shu yerda turadi.
-              </p>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
