@@ -764,41 +764,13 @@ export type CutmapInstanceState = {
 /**
  * CutmapMaterial
  *
- * Bitta CS operatsiyasi = bitta list materiali, GibSaw reja ko'rsatkichlari bilan.
+ * Bitta CS operatsiyasi = bitta list materiali (reja ko'rsatkichlari chiqarilmaydi).
  */
 export type CutmapMaterial = {
     /**
      * Name
      */
     name: string;
-    /**
-     * Kerf
-     */
-    kerf?: number | null;
-    /**
-     * Triml
-     */
-    trimL?: number | null;
-    /**
-     * Trimw
-     */
-    trimW?: number | null;
-    /**
-     * Fill
-     */
-    fill?: number | null;
-    /**
-     * Ko
-     */
-    ko?: number | null;
-    /**
-     * Dr
-     */
-    dr?: number | null;
-    /**
-     * Kr
-     */
-    kr?: number | null;
     /**
      * Sheets
      */

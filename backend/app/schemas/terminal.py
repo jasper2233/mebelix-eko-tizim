@@ -273,18 +273,9 @@ class CutmapSheet(BaseModel):
 
 
 class CutmapMaterial(BaseModel):
-    """Bitta CS operatsiyasi = bitta list materiali, GibSaw reja ko'rsatkichlari bilan."""
+    """Bitta CS operatsiyasi = bitta list materiali (reja ko'rsatkichlari chiqarilmaydi)."""
 
     name: str
-    kerf: float | None = None
-    trimL: float | None = None
-    trimW: float | None = None
-    #: Reja ko'rsatkichlari GibSaw statistikasidan keladi va fayl to'liq
-    #: hisoblanmagan bo'lsa yo'q bo'lishi mumkin — shuning uchun ixtiyoriy.
-    fill: float | None = None
-    ko: float | None = None
-    dr: float | None = None
-    kr: float | None = None
     sheets: list[CutmapSheet] = Field(default_factory=list)
 
 

@@ -151,17 +151,9 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
         patterns = decode_cs_blob(cut.data_blob)
         problems.extend(f"{cut.material_name}: {p}" for p in self_check(patterns, cut.stats))
 
-        material: dict[str, Any] = {
-            "name": cut.material_name,
-            "kerf": cut.kerf,
-            "trimL": cut.trim_l,
-            "trimW": cut.trim_w,
-            "fill": cut.stats.get("cFilling"),
-            "ko": cut.stats.get("cWasteCount"),
-            "dr": cut.stats.get("cTrimLength"),
-            "kr": cut.stats.get("cTrimCount"),
-            "sheets": [],
-        }
+        # Reja ko'rsatkichlari (kerf/tirim/to'ldirish/atxot/rez) JSON'ga yozilmaydi —
+        # UI ularni ko'rsatmaydi (2026-09-03); `self_check` ularni fayldan to'g'ridan-to'g'ri oladi.
+        material: dict[str, Any] = {"name": cut.material_name, "sheets": []}
 
         material_placed = 0  # part cells × mult, compared to cPartCount below
         for pat in patterns:
