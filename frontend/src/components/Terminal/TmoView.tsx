@@ -22,6 +22,7 @@ import {
 } from "@/components/Terminal/audio"
 import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
+import { Serial } from "@/components/Terminal/Serial"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { detailMessage } from "@/utils"
@@ -167,13 +168,13 @@ export function TmoView({
         onValueChange={(v) => setTab(v as typeof tab)}
         className="flex min-h-0 flex-1 flex-col"
       >
-        <TabsList className="mx-4 mt-3 h-12 w-fit">
-          <TabsTrigger value="kelgan" className="h-10 px-6 text-base font-bold">
+        <TabsList className="mx-4 mt-3 h-14 w-fit">
+          <TabsTrigger value="kelgan" className="h-12 px-6 text-base font-bold">
             <PackageCheck /> Qabulga kelgan ({arrived.length})
           </TabsTrigger>
           <TabsTrigger
             value="qilingan"
-            className="h-10 px-6 text-base font-bold"
+            className="h-12 px-6 text-base font-bold"
           >
             <Check /> Qabul qilingan ({done.length})
           </TabsTrigger>
@@ -199,8 +200,8 @@ export function TmoView({
               <tbody>
                 {arrived.map((p) => (
                   <tr key={p.instance_id} className="border-b last:border-0">
-                    <td className="num px-4 py-2.5 font-semibold">
-                      {p.qr_text}
+                    <td className="px-4 py-2.5 text-lg font-semibold">
+                      <Serial code={p.qr_text} />
                     </td>
                     <td className="max-w-[280px] truncate px-4 py-2.5">
                       {p.part_name}
@@ -228,7 +229,9 @@ export function TmoView({
                 <tbody>
                   {inShop.map((p) => (
                     <tr key={p.instance_id} className="border-b last:border-0">
-                      <td className="num px-4 py-1.5">{p.qr_text}</td>
+                      <td className="px-4 py-1.5">
+                        <Serial code={p.qr_text} />
+                      </td>
                       <td className="max-w-[280px] truncate px-4 py-1.5">
                         {p.part_name}
                       </td>
@@ -265,8 +268,8 @@ export function TmoView({
                     <td className="w-10 py-2.5 pl-4 text-green-700">
                       <Check className="size-5" />
                     </td>
-                    <td className="num py-2.5 pr-4 font-semibold text-green-900">
-                      {d.qr_text}
+                    <td className="py-2.5 pr-4 font-semibold text-green-900">
+                      <Serial code={d.qr_text} />
                     </td>
                     <td className="max-w-[280px] truncate px-4 py-2.5 text-green-900">
                       {d.part_name}

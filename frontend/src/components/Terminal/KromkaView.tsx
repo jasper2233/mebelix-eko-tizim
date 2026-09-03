@@ -12,6 +12,7 @@ import { OperationChips } from "@/components/Common/OperationChips"
 import { QueryError } from "@/components/Common/QueryError"
 import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
+import { Serial } from "@/components/Terminal/Serial"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useScanFlash } from "@/hooks/useScanFlash"
 import { formatSize } from "@/lib/mes"
@@ -157,7 +158,9 @@ export function KromkaView({
                       flashId === p.route_id && "border-l-4 border-l-primary",
                     )}
                   >
-                    <td className="num px-4 py-3 font-semibold">{p.code}</td>
+                    <td className="num whitespace-nowrap px-4 py-3 font-semibold">
+                      {p.code}
+                    </td>
                     <td className="max-w-[240px] px-4 py-3">
                       <div className="truncate">{p.name}</div>
                       <OperationChips
@@ -169,7 +172,7 @@ export function KromkaView({
                       {formatSize(p.length, p.width, p.thickness)}
                     </td>
                     {!oval && (
-                      <td className="px-4 py-3 text-sm">
+                      <td className="whitespace-nowrap px-4 py-3 text-sm">
                         <b>{p.sides} tomon</b>
                         <span className="ml-1.5 text-muted-foreground">
                           {edgeSymbols(p.edges)}
@@ -256,9 +259,10 @@ export function KromkaView({
               >
                 <div className="min-w-0 flex-1">
                   {/* To'liq nusxa ID — chekdagi satr bilan aynan bir xil */}
-                  <div className="num truncate text-base font-semibold">
-                    {inst.qr_text}
-                  </div>
+                  <Serial
+                    code={inst.qr_text}
+                    className="block truncate text-lg font-bold"
+                  />
                   <div className="truncate text-xs text-muted-foreground">
                     {part.name} ·{" "}
                     {formatSize(part.length, part.width, part.thickness)}

@@ -20,6 +20,7 @@ import { TerminalService } from "@/client"
 import { QueryError } from "@/components/Common/QueryError"
 import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
+import { Serial } from "@/components/Terminal/Serial"
 import { TBtn } from "@/components/Terminal/TBtn"
 import {
   useCancelLabel,
@@ -303,8 +304,8 @@ export function PrisadkaView({
                         instFlash === key && "border-l-4 border-l-primary",
                       )}
                     >
-                      <td className="num px-4 py-3 font-semibold">
-                        {i.qr_text}
+                      <td className="px-4 py-3 text-lg font-semibold">
+                        <Serial code={i.qr_text} />
                         {/* Marshruti roverdan boshlangan detal — uni ROVER o'z
                           listidan kesadi. Ikonka bosilsa xarita o'sha katak
                           belgilangan holda ochiladi: 20 detalli listda uni
@@ -317,7 +318,7 @@ export function PrisadkaView({
                             type="button"
                             title="Kesish xaritasida ko'rsatish"
                             aria-label={`${i.qr_text} — kesish xaritasida ko'rsatish`}
-                            className="ml-2 inline-flex size-8 items-center justify-center rounded-md align-middle text-muted-foreground hover:bg-muted hover:text-primary"
+                            className="ml-2 inline-flex size-10 items-center justify-center rounded-md align-middle text-muted-foreground hover:bg-muted hover:text-primary"
                             onClick={(e) => {
                               e.stopPropagation()
                               onShowOnMap?.(p.code)
@@ -484,7 +485,9 @@ export function PrisadkaView({
                       flashId === p.route_id && "border-l-4 border-l-primary",
                     )}
                   >
-                    <td className="num px-4 py-3 font-semibold">{p.code}</td>
+                    <td className="num whitespace-nowrap px-4 py-3 font-semibold">
+                      {p.code}
+                    </td>
                     <td className="max-w-[240px] truncate px-4 py-3">
                       {p.name}
                     </td>
@@ -511,7 +514,7 @@ export function PrisadkaView({
                                     : "text-muted-foreground",
                               )}
                             >
-                              {i.qr_text}
+                              <Serial code={i.qr_text} />
                               {i.done && " ✓"}
                               {canPrintInstance(p, i) && (
                                 <button

@@ -460,6 +460,10 @@ kelgan-u `model === null` bo'lganda chiqadi.
 - Xarita mavjud bo'lmasa (`data.model` yo'q — fayl GibLabda optimizatsiya qilinmagan, TEMPLATE) tushuntirish matni + "Orqaga" tugmasi.
 - **Eksporti bitta:** `CutmapView`. `TBtn` va `PartCard` alohida fayllarga ajratilgan (pastda) — CutmapView ularni import qiladi.
 
+### `frontend/src/components/Terminal/Serial.tsx`
+
+**Maqsadi:** nusxa ID'ini (chekdagi satr bilan aynan bir xil) ko'rsatish — buyurtma prefiksi (`B-2026-047_`) **xira**, farqlovchi qism (`301401_01_001_1`) **qalin**, `whitespace-nowrap`, `title` da to'liq matn. ID `qr-serialization` bilan 32 belgigacha cho'zildi: prefiks har qatorda takrorlanadi va sarlavhada allaqachon turadi, ko'z farqlovchi qismga tushishi kerak. Prefikssiz eski ID regex'ga tushmaydi va o'zgarishsiz chiqadi. Ishlatiladi: `ScanStrip` (muvaffaqiyat kodi), `KromkaView` («Jarayonda»), `PrisadkaView` (nusxa katagi va SCX chiplari), `PostQueueView`, `TmoView` (uchala ro'yxat), `UpakovkaView` («Qadoqlanmagan»), `PartCard` (chek ID qatori va bekor qilish tugmasi). 2026-09-03 terminal auditida qo'shildi; o'sha auditda: detal KOD kataklari `whitespace-nowrap` (nostandart `…_016-2` ikki qatorga sinardi), KROMKA «N tomon» katagi nowrap, TMO tab'lari `h-12`, UPAKOVKA chiqarish/qayta ochish tugmalari `h-11`, PRISADKA xarita ikonkasi `size-10`, brigada chiplari va «+ Qo'shish» `h-10` (qo'lqop uchun ≥40px).
+
 ### `frontend/src/components/Terminal/TBtn.tsx`
 
 Chap toolbar tugmasi: ikonka + `text-2xs` yozuv (`index.css` da 0.6875rem), `h-16 w-full`, `TBTN_TONES` rang kodlari — default (oq fon, primary matn) / primary (asosiy nav) / warn (qulf; amber FON ataylab yo'q — xarita apelsini bilan qo'shilib ketardi, faqat ikonka rangi) / danger (chiqish) / success. Uchta chaqiruvchi: `CutmapView` (butun chap toolbar), `PrisadkaView` (ROVER "Chop etish", portal orqali) va `routes/terminal.tsx` (to'rtta tugma: "Xarita" — ROVER kesish xaritasi, "Qulflash", va sessiya tugmasi "Chiqish"/"Yakunlash"). Skan tugmasi YO'Q — skan avto-fokusli inputdan keladi (`useScanFocus`/`useTerminalScan`).
@@ -654,6 +658,10 @@ Eng katta ui fayl (~740 qator, 24 eksport). shadcn'ning rasmiy sidebar blokiga a
 - `SidebarHeader` (`p-2 pb-3`) va `SidebarFooter` (`gap-3 p-2`) padding'lari sozlangan; `SidebarInset` `bg-transparent` va **`min-w-0` SHART**: u flex elementi va sukut `min-width: auto` bilan keng kontent (loglar jadvali, chip qatori) SAHIFANI kengaytirib yubordi — sarlavhadagi tugmalar ekrandan chiqib ketdi va skroll sahifa darajasida paydo bo'lib, ichkaridagi `overflow-x-auto` konteynerlari ishlamay qoldi.
 - Muhim konstantalar: `SIDEBAR_WIDTH = "16rem"`, `SIDEBAR_WIDTH_ICON = "3rem"`, `SIDEBAR_WIDTH_MOBILE = "18rem"`, klaviatura yorlig'i **Ctrl/Cmd+B** (`SIDEBAR_KEYBOARD_SHORTCUT = "b"`).
 - Mobil rejimda `Sheet` ichida render qilinadi (`useIsMobile` — `@/hooks/useMobile`); `useSidebar()` hooki `{ state, open, setOpen, openMobile, setOpenMobile, isMobile, toggleSidebar }` kontekstini beradi — `Sidebar/Main.tsx` va `Sidebar/User.tsx` shundan foydalanadi.
+
+### `frontend/src/components/ui/dialog.tsx` (custom qism)
+
+`DialogContent` ga `max-h-[calc(100dvh-2rem)] overflow-y-auto` qo'shilgan (2026-09-03): shadcn default'ida balandlik chegarasi yo'q edi — terminaldagi `PartCard` dialogi (chizma + QR + tugmalar, ~790px) 17" monoblokning 768px ekraniga sig'may, SARLAVHASI (№ va nusxa ID) ekrandan tepaga chiqib ketar va aylantirib ham bo'lmasdi. Endi har qanday uzun dialog ichida aylanadi.
 
 ### `frontend/src/components/ui/loading-button.tsx` (custom)
 

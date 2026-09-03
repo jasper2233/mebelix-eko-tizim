@@ -6,6 +6,7 @@ import { RotateCw } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 
 import type { CutmapHole, CutmapInstanceState } from "@/client"
+import { Serial } from "@/components/Terminal/Serial"
 import {
   edgeBoreRect,
   edgeLocalXY,
@@ -44,8 +45,14 @@ function PartPreview({
   const local: SheetPart = { ...part, x: ox, y: oy, w: rw, h: rh }
   const ty = oy - 13
   const lx = ox - 13
+  // Balandlik chegarasi: chizma dialog kengligiga cho'zilib ~370px olar,
+  // dialog (chizma + QR + tugmalar) 17" monoblokning 768px ekraniga sig'may
+  // sarlavha kesilardi. 38dvh — 768 da ~290px, dialog ~710px bo'ladi.
   return (
-    <svg viewBox={`0 0 ${boxW} ${boxH}`} className="block h-auto w-full">
+    <svg
+      viewBox={`0 0 ${boxW} ${boxH}`}
+      className="block h-auto max-h-[38dvh] w-full"
+    >
       <title>Detal chizmasi</title>
       <rect
         x={ox}
@@ -298,7 +305,7 @@ export function PartCard({
               takrorlanardi. */}
           {chek && (
             <div className="num flex flex-wrap items-center gap-2 text-left text-base font-bold">
-              <span>{chek.qr}</span>
+              <Serial code={chek.qr} />
               {chek.done ? (
                 <span className="text-green-700">✓ kesildi</span>
               ) : chek.printed ? (
@@ -377,7 +384,7 @@ export function PartCard({
               >
                 Chekni bekor qilish
                 {cheklar.length > 1 && (
-                  <span className="num ml-2 text-sm font-normal">{c.qr}</span>
+                  <Serial code={c.qr} className="ml-2 text-sm font-normal" />
                 )}
               </LoadingButton>
             ) : null,

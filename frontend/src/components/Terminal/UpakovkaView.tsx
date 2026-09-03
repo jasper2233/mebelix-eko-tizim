@@ -17,6 +17,7 @@ import {
   playWarning,
 } from "@/components/Terminal/audio"
 import { PostHeader } from "@/components/Terminal/PostHeader"
+import { Serial } from "@/components/Terminal/Serial"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -189,7 +190,7 @@ export function UpakovkaView({
                         key={i.instance_id}
                         className="border-b last:border-0"
                       >
-                        <td className="num px-4 py-3 font-semibold">
+                        <td className="num whitespace-nowrap px-4 py-3 font-semibold">
                           {i.part_code}
                         </td>
                         <td className="max-w-[220px] truncate px-4 py-3">
@@ -204,7 +205,7 @@ export function UpakovkaView({
                         <td className="px-4 py-3 text-right">
                           <Button
                             variant="ghost"
-                            size="sm"
+                            className="h-11 w-11"
                             aria-label={`${i.part_code} ni chiqarish`}
                             // Ikki marta bosilsa ikkinchi DELETE 404 berardi
                             disabled={remove.isPending}
@@ -254,8 +255,8 @@ export function UpakovkaView({
                   !p.ready && "text-muted-foreground",
                 )}
               >
-                <span className="num font-semibold">{p.qr_text}</span>
-                <span className="truncate">{p.part_name}</span>
+                <Serial code={p.qr_text} className="shrink-0 font-semibold" />
+                <span className="min-w-0 truncate">{p.part_name}</span>
                 {!p.ready && (
                   <span className="ml-auto whitespace-nowrap text-xs">
                     tayyor emas
@@ -291,7 +292,7 @@ export function UpakovkaView({
                   ochiq qadoq bo'ladi (backend ham 409 bilan rad etadi). */}
               <LoadingButton
                 variant="ghost"
-                size="sm"
+                className="h-11 px-3"
                 loading={reopen.isPending}
                 disabled={!!open}
                 onClick={() => reopen.mutate(p.id)}

@@ -14,6 +14,7 @@ import { OperationChips } from "@/components/Common/OperationChips"
 import { QueryError } from "@/components/Common/QueryError"
 import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
+import { Serial } from "@/components/Terminal/Serial"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatSize } from "@/lib/mes"
 
@@ -84,8 +85,8 @@ export function PostQueueView({
             <tbody>
               {ready.map((r) => (
                 <tr key={r.instance_id} className="border-b last:border-0">
-                  <td className="num px-4 py-3 text-lg font-black">
-                    {r.qr_text}
+                  <td className="px-4 py-3 text-lg font-black">
+                    <Serial code={r.qr_text} />
                   </td>
                   <td className="max-w-[260px] px-4 py-3">
                     <div className="truncate">{r.part_name}</div>
@@ -145,8 +146,8 @@ export function PostQueueView({
                     key={r.instance_id}
                     className="border-b text-green-700 last:border-0"
                   >
-                    <td className="num px-4 py-1.5 font-semibold">
-                      {r.qr_text}
+                    <td className="px-4 py-1.5 font-semibold">
+                      <Serial code={r.qr_text} />
                     </td>
                     <td className="max-w-[260px] truncate px-4 py-1.5">
                       {r.part_name}

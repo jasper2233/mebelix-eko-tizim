@@ -3,6 +3,7 @@
 
 import { Undo2 } from "lucide-react"
 
+import { Serial } from "@/components/Terminal/Serial"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -45,9 +46,10 @@ export function ScanStrip({
     >
       {scan.kind === "ok" ? (
         <>
-          <span className="num text-xl font-black text-green-700">
-            {scan.code}
-          </span>
+          <Serial
+            code={scan.code}
+            className="text-xl font-black text-green-700"
+          />
           <span className="text-base text-green-800">
             Qoldiq: <b>{scan.qoldiq}</b>
             {birlik ? ` ${birlik}` : ""}

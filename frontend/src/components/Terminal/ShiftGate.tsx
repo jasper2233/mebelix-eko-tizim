@@ -98,7 +98,7 @@ export function CrewChips({
             key={s.id}
             type="button"
             onClick={() => onEnd(s)}
-            className="flex items-center gap-1.5 rounded-full border bg-card py-1.5 pl-3 pr-2 text-sm hover:border-destructive/50"
+            className="flex h-10 items-center gap-1.5 rounded-full border bg-card pl-3 pr-2 text-sm hover:border-destructive/50"
           >
             <span className="size-2 rounded-full bg-green-500" />
             <b className="max-w-32 truncate">{s.employee_name}</b>
@@ -107,8 +107,7 @@ export function CrewChips({
         ))}
       <Button
         variant="ghost"
-        size="sm"
-        className="rounded-full text-muted-foreground"
+        className="h-10 rounded-full text-muted-foreground"
         onClick={onAdd}
       >
         + Qo'shish
