@@ -289,18 +289,18 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
     # hech qanday ish ko'rsatmasdi. Teshik esa PRISADKA bosqichini beradi —
     # sverlo ikonkasi qoladi.
     if d.xnc_summary.get("bores") or d.xnc_summary.get("edge_bores"):
-        # Sverlo ikonkasi mahsulot kodi ("Formatka 305201") tagida — detal kodi
-        # (~x27 gacha), loyiha (y13.5+) va QR (x40+) oralig'idagi bo'sh joyda
+        # Sverlo ikonkasi Marshrut qatorining o'ngidagi bo'sh zonada (x49.5, y40):
+        # ID qatori endi buyurtma prefiksi bilan 37 mm gacha cho'ziladi, eski joy (x35, y9.4) ustiga tushardi
         drill_path = Path(__file__).resolve().parents[1] / "assets" / "label-icon-drill.png"
-        isz = int(4 * mm)  # nusxa ID qatori (past ~8.9) va loyiha qatori (13.5) orasiga sig'adi
+        isz = int(6 * mm)
         try:
             raw = Image.open(drill_path)
             flat = Image.new("RGB", raw.size, "white")
             flat.paste(raw, mask=raw.getchannel("A") if "A" in raw.getbands() else None)
             icon = flat.convert("L").point(_bw).convert("RGB").resize((isz, isz))
-            img.paste(icon, (int(35 * mm), int(9.4 * mm)))
+            img.paste(icon, (int(49.5 * mm), int(40 * mm)))
         except OSError:
-            text(35, 9.4, "С", 3.2, bold=True)
+            text(49.5, 40, "С", 3.2, bold=True)
 
     # Marshrut — ALOHIDA qator (nomga qo'shilsa 24 belgi kesimida yo'qolardi).
     # Kodlar tsexning "Jarayon uchun kodlar" jadvalidagi raqamlar.
