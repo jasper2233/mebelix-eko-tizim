@@ -1,6 +1,6 @@
 # MebeliX bridge-agent
 
-Printerli kompyuterdagi yengil servis (TZ 2.2.2): masofaviy serverdan chop etish
+Printerli kompyuterdagi yengil servis: masofaviy serverdan chop etish
 buyruqlarini olib, **USB yorliq printeriga** (GoDEX, Xprinter va b.) Windows drayveri orqali
 chiqaradi. Internet yoki printer uzilganda buyruqlar `print-queue.jsonl` faylida
 saqlanadi va aloqa tiklangach avtomatik bajariladi — yorliq yo'qolmaydi.
@@ -116,9 +116,9 @@ hamma narsa `agent.log` ga yoziladi, foydalanuvchiga esa faqat messagebox orqali
 gapiriladi.
 
 Eslatma: SCX fayllar bridge orqali o'tmaydi — ular stanok kompyuterida brauzer
-orqali yuklab olinadi (TZ 12.5).
+orqali yuklab olinadi.
 
-## Skan-forvard (TZ 12.5) — bitta skan, ikkala tizim
+## Skan-forvard — bitta skan, ikkala tizim
 
 Stanok (Nanxing) kompyuterida agent o'rnatilgan bo'lsa, skaner o'qigan QR:
 
