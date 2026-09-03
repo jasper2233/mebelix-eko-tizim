@@ -18,6 +18,8 @@ export type Item = {
   path: string
   /** Yonida ko'rinadigan jonli son (0 yoki undefined bo'lsa chiqmaydi) */
   badge?: number
+  /** Son nimani sanashi (hover'da) — reestrdagi «Hammasi» bilan farqi tushunarli bo'lsin */
+  badgeTitle?: string
 }
 
 interface MainProps {
@@ -69,7 +71,10 @@ export function Main({ items }: MainProps) {
                   </RouterLink>
                 </SidebarMenuButton>
                 {item.badge ? (
-                  <SidebarMenuBadge className="text-sidebar-primary">
+                  <SidebarMenuBadge
+                    className="text-sidebar-primary"
+                    title={item.badgeTitle}
+                  >
                     {item.badge}
                   </SidebarMenuBadge>
                 ) : null}

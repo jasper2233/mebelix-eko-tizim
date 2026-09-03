@@ -268,6 +268,8 @@ Reyestr sahifalagichi: `page` (0 dan), `pageSize`, `total`, `onPage`. Tartib bit
 - Props: yagona `stages: StageCell[]` (`{ code, done, total }`); har katak (`h-6 w-12`) `POST_COLORS[code]` rangida (`mixTint` fon + foizli progress chizig'i), ichida `done/total` (`--foreground` rangda — post rangi o'z tinti ustida AA dan o'tmasdi), tugallanganda "✓"; kataklar orasida ulovchi chiziqcha, `title` da `KOD: done/total (N%)`.
 - Dashboard'da (`routes/_layout/index.tsx`) ishlatiladi; xuddi shu vizual grammatika `Orders/OrderMatrix` va TABLO ekranida takrorlanadi.
 
+- `showLabels` — katak ostida post kodi (buyurtma sahifasida jadval ustunisiz turganda rangning o'zi bosqichni aytmaydi); dashboard jadvalida yo'q.
+
 ### `frontend/src/components/Common/StatusBadge.tsx`
 
 **Maqsadi:** buyurtma holati pill'i — `ORDER_STATUS_LABELS`/`ORDER_STATUS_COLORS` (`@/lib/mes`) asosida rangli nuqta + matn. Besh chaqiruvchi: dashboard, buyurtmalar ro'yxati, buyurtma sahifasi, hisobotlar va `Clients/ClientCard` dagi buyurtmalar jadvali.
@@ -321,6 +323,8 @@ Buyurtma sahifalari (`/orders`, `/orders/$orderId`) uchun dialog va jadval kompo
 - `part.is_custom` bo'lsa detal nomi ostida amber belgi — "Nostandart · N qadam" yoki (marshrut hali chizilmagan bo'lsa) "Nostandart · marshrut yo'q", `title` da tushuntirish. N faqat TEXNOLOG chizgan qadamlar (`drawnSteps` yordamchisi: `is_enabled` va `TAIL_CODES` dan tashqari) — xom `routes.length` backend o'zi qo'shgan dumni (qadoqlash/TMO) va o'chirilgan qadamlarni ham sanab, `CustomRoutes` tabidagi marshrutdan 1-2 qadam ko'p ko'rsatardi.
 - Izoh inputi CONTROLLED (`value={noteEdits[part.id] ?? part.note ?? ""}`): qidiruv filtri qatorni unmount qilib qaytarganda `defaultValue` bilan kiritilgan matn ekrandan yo'qolib, `noteEdits` da qolib ketardi — texnolog server izohini ko'rib turib, saqlash o'sha ko'rinmas matnni yozardi.
 - Ma'lumot: `getOrderMatrixQueryOptions(orderId)`; o'lchamlar `formatSize` (`@/lib/mes`) bilan. So'rov yiqilsa Skeleton'dan keyin `Common/QueryError` chiziladi (`isError, refetch`) — ilgari xato bo'sh holatga tushib, texnolog "Detallar yo'q — avval .project fayl yuklanishi kerak" degan yolg'on sababni o'qirdi.
+
+- Soni 0 detal (GibLab faylida shunday keladi, prod bazasida 2 ta): soni xira, bosqich kataklari «—» — ilgari 0/0 «✓» bo'lib «tayyor» degan yolg'on taassurot berardi.
 
 ### `frontend/src/components/Orders/CustomRoutes.tsx`
 
@@ -386,7 +390,7 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 **Maqsadi:** ilovaning asosiy yon paneli — brend, navigatsiya va foydalanuvchi menyusini yig'adi.
 
 - Modul darajasidagi `NAV_ITEMS` ro'yxati (rollar-modullar matritsasi, eksport — `routes/_layout.tsx` mobil sarlavhalari ham shu ro'yxatdan) 9 ta punkt beradi, har bandda `show(user)` predikati. Huquq predikatlari `@/lib/mes` dan — `isProductionStaff` / `isManagement` / `isAdmin`; **route guard'lar ham AYNAN shularni ishlatadi** (`lib/guards.requireAccess`), ya'ni menyuda ko'rinadigan sahifa albatta ochiladi. Bandlar: Boshqaruv paneli `/` va LIVE Tablo `/tablo` — hammaga (`show: => true`; TABLO tsex zalidagi TV ekran); Buyurtmalar `/orders`, Ish markazlari `/work-centers` — `isProductionStaff` (boshqaruv + texnolog); Mijozlar `/clients`, Hodimlar `/employees`, Hisobotlar `/reports` — `isManagement` (admin/manager/direktor); MES agentlar `/printers` (`Printer` ikonkasi) va Loglar `/logs` (`ScrollText` ikonkasi) — `isAdmin` (superuser yoki `role === "admin"`); Foydalanuvchilar bandi OLIB TASHLANDI — u Hodimlar sahifasiga birlashtirildi (`/admin` endi redirect). **Rolga qarab navigatsiya**.
-- Buyurtmalar bandida jonli badge — faol buyurtmalar soni (`TERMINAL_STATUSES` — delivered/cancelled — dan boshqa statuslar yig'indisi): `getOrderStatusCountsQueryOptions()` reyestr sahifasi bilan AYNAN bitta query key'da, ya'ni `/orders` da TanStack dedupe qiladi va sidebar qo'shimcha so'rov qo'shmaydi. Qolgan admin sahifalarida sidebar YAGONA obunachi — `refetchInterval: 30_000` pollni o'zi yuritadi (`queries/mes.ts`, `docs/05` §5 `queries/mes.ts`). `enabled` faqat `/orders` bandi ko'rinadigan rollarda.
+- Buyurtmalar bandida jonli badge — faol buyurtmalar soni (`TERMINAL_STATUSES` — delivered/cancelled — dan boshqa statuslar yig'indisi; hover'da `badgeTitle` — reestrdagi «Hammasi» soni bilan farqi tushunarli bo'lsin): `getOrderStatusCountsQueryOptions()` reyestr sahifasi bilan AYNAN bitta query key'da, ya'ni `/orders` da TanStack dedupe qiladi va sidebar qo'shimcha so'rov qo'shmaydi. Qolgan admin sahifalarida sidebar YAGONA obunachi — `refetchInterval: 30_000` pollni o'zi yuritadi (`queries/mes.ts`, `docs/05` §5 `queries/mes.ts`). `enabled` faqat `/orders` bandi ko'rinadigan rollarda.
 - `<Sidebar collapsible="icon">`: yig'ilganda faqat ikonkalar qoladi. Header'da `Link to="/"` — ichida faqat to'liq logo (`/assets/logo/logo-gold.png`, `h-9 w-auto`, `alt="MebeliX — bosh sahifa"`; login ekrani bilan bir xil brend), matn tuguni yo'q. Yig'ilganda BUTUN havola `group-data-[collapsible=icon]:hidden` bilan yashiriladi — brend tab sarlavhasi, favicon va login ekranida qoladi, bosh sahifa havolasi esa menyuning birinchi qatorida ("Boshqaruv paneli"). `SidebarTrigger` yig'ilgan railda `group-data-[collapsible=icon]:mx-auto` bilan markazga tushadi.
 - `SidebarContent` → `Main items={items}`; `SidebarFooter` → `User user={currentUser}`.
 

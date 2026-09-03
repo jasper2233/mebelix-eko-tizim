@@ -12,7 +12,7 @@ import {
   Truck,
   XCircle,
 } from "lucide-react"
-import { useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 
 import { OrdersService } from "@/client"
@@ -20,6 +20,7 @@ import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
 import { SectionTitle } from "@/components/Common/SectionTitle"
+import { StagePipeline } from "@/components/Common/StagePipeline"
 import { StatusBadge } from "@/components/Common/StatusBadge"
 import { CustomRoutes } from "@/components/Orders/CustomRoutes"
 import { EditOrder } from "@/components/Orders/EditOrder"
@@ -48,6 +49,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import {
+  deadlineTone,
   formatDate,
   formatDateTime,
   formatMoney,
@@ -56,6 +58,7 @@ import {
   isSuperuser,
   PRIORITY_LABELS,
   remainingPayment,
+  STANDARD_MATRIX_POSTS,
   TERMINAL_STATUSES,
 } from "@/lib/mes"
 import { cn } from "@/lib/utils"
@@ -63,6 +66,7 @@ import {
   crudCallbacks,
   getOrderMatrixQueryOptions,
   getOrderQueryOptions,
+  getPostsQueryOptions,
 } from "@/queries/mes"
 import { API_BASE, extractErrorMessage, handleError } from "@/utils"
 
@@ -87,6 +91,25 @@ function OrderDetailPage() {
     ...getOrderMatrixQueryOptions(id),
     enabled: false,
   })
+  const { data: posts } = useQuery(getPostsQueryOptions())
+  const stagesSummary = useMemo(() => {
+    const parts = matrix?.parts ?? []
+    return (posts ?? [])
+      .filter((p) => STANDARD_MATRIX_POSTS.includes(p.code))
+      .sort((a, b) => a.order_index - b.order_index)
+      .map((p) => {
+        let done = 0
+        let total = 0
+        for (const part of parts)
+          for (const r of part.routes)
+            if (r.post_id === p.id && r.is_enabled) {
+              done += r.total_done
+              total += r.total_required
+            }
+        return { code: p.code, done, total }
+      })
+      .filter((st) => st.total > 0)
+  }, [posts, matrix])
   const { currentUser } = useCurrentUser()
   const fileInput = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -206,6 +229,7 @@ function OrderDetailPage() {
   const fileUrl = (name: string | number) =>
     `${API_BASE}/api/v1/orders/${id}/files/${name}`
   const customCount = (matrix?.parts ?? []).filter((p) => p.is_custom).length
+  const deadlineToneValue = isTerminal ? "" : deadlineTone(order.deadline)
 
   // GibLab fayldagi typeId="simple" goodlar: petlya, yevrovint, dasta... (dona).
   // SKU kodlilar oldin: kodsizlar orasida dizaynerning 3D-model qoldiqlari ham
@@ -290,11 +314,18 @@ function OrderDetailPage() {
             )}
             {canManage && order.status === "completed" && (
               <Button onClick={() => setDeliverOpen(true)}>
-                <Truck /> TOPSHIRILDI
+                <Truck /> Topshirildi
               </Button>
             )}
+            {/* Bekor qilish — buzg'unchi amal, asosiy tugmalar bilan bir xil
+                og'irlikda emas (to'liq qizil har sahifada baqirardi); tasdiq
+                dialogi bor. */}
             {canManage && !isTerminal && order.status !== "cancelled" && (
-              <Button variant="destructive" onClick={() => setCancelOpen(true)}>
+              <Button
+                variant="outline"
+                className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => setCancelOpen(true)}
+              >
                 <XCircle /> Bekor qilish
               </Button>
             )}
@@ -355,7 +386,11 @@ function OrderDetailPage() {
         <div className="mb-6 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
           <Lock className="mt-0.5 size-4 shrink-0 text-amber-600" />
           <div>
-            <div className="font-medium">Tahrirlab bo'lmaydi</div>
+            {/* Aniq NIMA qulflangani: menejerning «Tahrirlash»i (narx, muddat,
+                prioritet) baribir ishlaydi — qulf faylga va marshrutga tegishli */}
+            <div className="font-medium">
+              Fayl va marshrutni o'zgartirib bo'lmaydi
+            </div>
             <div className="text-muted-foreground">
               {order.edit_blocked_reason}
             </div>
@@ -366,7 +401,27 @@ function OrderDetailPage() {
       <Card className="mb-6 grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
         <Meta label="Holat" value={<StatusBadge status={order.status} />} />
         <Meta label="Mijoz" value={order.client_name} />
-        <Meta label="Topshirish sanasi" value={formatDate(order.deadline)} />
+        <Meta
+          label="Topshirish sanasi"
+          value={
+            <span
+              className={
+                deadlineToneValue === "overdue"
+                  ? "font-semibold text-destructive"
+                  : deadlineToneValue === "today"
+                    ? "font-semibold text-amber-600"
+                    : ""
+              }
+            >
+              {formatDate(order.deadline)}
+              {deadlineToneValue === "overdue"
+                ? " · muddati o'tgan"
+                : deadlineToneValue === "today"
+                  ? " · bugun"
+                  : ""}
+            </span>
+          }
+        />
         <Meta
           label="Prioritet"
           value={PRIORITY_LABELS[order.priority] ?? order.priority}
@@ -417,6 +472,18 @@ function OrderDetailPage() {
             label="Topshirilgan"
             value={formatDateTime(order.delivered_at)}
           />
+        )}
+        {/* "Buyurtma qayerda turibdi?" — bosqichlar bo'yicha jamlanma, dashboard
+            bilan bir xil element; kartaning oxirida to'liq enda, meta ustunlarini
+            surmaydi. Matritsa katakchalaridan yig'iladi (matritsani pastdagi
+            OrderMatrix yuklaydi, bu yerda faqat keshga obuna). */}
+        {stagesSummary.length > 0 && (
+          <div className="col-span-full">
+            <Meta
+              label="Bosqichlar"
+              value={<StagePipeline stages={stagesSummary} showLabels />}
+            />
+          </div>
         )}
       </Card>
 

@@ -132,6 +132,18 @@ class OrderStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+#: Foydalanuvchiga ko'rinadigan xabarlar uchun — frontenddagi `ORDER_STATUS_LABELS`
+#: (lib/mes.ts) bilan AYNAN bir xil matn; birini o'zgartirsang ikkinchisini ham.
+ORDER_STATUS_LABELS: dict[OrderStatus, str] = {
+    OrderStatus.DRAFT: "QORALAMA",
+    OrderStatus.TECHNICAL_REVIEW: "TEXNOLOGDA",
+    OrderStatus.PRODUCTION: "JARAYONDA",
+    OrderStatus.COMPLETED: "TAYYOR",
+    OrderStatus.DELIVERED: "TOPSHIRILDI",
+    OrderStatus.CANCELLED: "BEKOR QILINGAN",
+}
+
+
 class OrderPriority(StrEnum):
     LOW = "low"
     MEDIUM = "medium"

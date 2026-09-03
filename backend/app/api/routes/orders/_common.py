@@ -13,7 +13,7 @@ from app.core.config import TASHKENT_TZ
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.crud import crud_orders
 from app.models import Order, PartRoute, Post, Scan
-from app.models.enums import OrderStatus, PostCode, UserRole
+from app.models.enums import ORDER_STATUS_LABELS, OrderStatus, PostCode, UserRole
 from app.models.user import User
 
 _EDITABLE_STATUSES = (OrderStatus.DRAFT, OrderStatus.TECHNICAL_REVIEW)
@@ -60,8 +60,8 @@ async def _edit_block_reason(db: SessionDep, order: Order) -> str | None:
     """
     if order.status not in _EDITABLE_IF_UNTOUCHED:
         return (
-            f"buyurtma holati «{order.status}». Faqat qoralama, texnik ko'rik yoki "
-            "hali ishlanmagan ishlab chiqarish buyurtmasi tahrirlanadi."
+            f"buyurtma holati «{ORDER_STATUS_LABELS[order.status]}». Faqat qoralama, texnologdagi "
+            "yoki hali ishlanmagan jarayondagi buyurtmaning fayli va marshruti o'zgartiriladi."
         )
     if order.status != OrderStatus.PRODUCTION:
         return None

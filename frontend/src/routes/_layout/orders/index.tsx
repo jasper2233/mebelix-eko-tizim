@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { ArrowDown, ArrowUp } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import type { OrderStatus } from "@/client"
@@ -23,6 +23,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useDebounced } from "@/hooks/useDebounced"
 import {
+  deadlineTone,
   formatDate,
   formatMoney,
   isManager,
@@ -30,10 +31,12 @@ import {
   PRIORITY_RANK,
   PRIORITY_TEXT_CLASSES,
   remainingPayment,
+  TERMINAL_STATUSES,
 } from "@/lib/mes"
 import {
   getOrderStatusCountsQueryOptions,
   getOrdersQueryOptions,
+  PAGE_SIZE,
 } from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/orders/")({
@@ -79,21 +82,41 @@ function SortHead({
         activeSort ? (activeSort.desc ? "descending" : "ascending") : "none"
       }
     >
+      {/* `uppercase` shu yerda ham: Tailwind preflight tugmada text-transform'ni
+          o'chiradi, shuning uchun saralanadigan sarlavhalar boshqalaridan farqli
+          (kichik harf) chiqardi. Nofaol holatda xira ikonka — saralash
+          mumkinligi ko'rinsin. */}
       <button
         type="button"
         onClick={() => onToggle(k)}
-        className="inline-flex items-center gap-1 rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        className="inline-flex items-center gap-1 rounded-sm uppercase tracking-wider hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       >
         {label}
-        {activeSort &&
-          (activeSort.desc ? (
+        {activeSort ? (
+          activeSort.desc ? (
             <ArrowDown className="size-3.5" />
           ) : (
             <ArrowUp className="size-3.5" />
-          ))}
+          )
+        ) : (
+          <ChevronsUpDown className="size-3 opacity-40" />
+        )}
       </button>
     </TableHead>
   )
+}
+
+/** Faol buyurtmada muddat ohangi: o'tgan — qizil, bugun — amber (tablo/terminal
+ *  bilan bir xil qoida). Yopilgan buyurtmada rang yo'q — u endi muddat emas. */
+function deadlineClass(o: {
+  deadline?: string | null
+  status: OrderStatus
+}): string {
+  if (TERMINAL_STATUSES.includes(o.status)) return ""
+  const tone = deadlineTone(o.deadline)
+  if (tone === "overdue") return "font-semibold text-destructive"
+  if (tone === "today") return "font-semibold text-amber-600"
+  return ""
 }
 
 function OrdersPage() {
@@ -272,7 +295,7 @@ function OrdersPage() {
                   <TableCell className="num text-muted-foreground">
                     {formatDate(o.created_at)}
                   </TableCell>
-                  <TableCell className="num">
+                  <TableCell className={`num ${deadlineClass(o)}`}>
                     {formatDate(o.deadline)}
                   </TableCell>
                   <TableCell>
@@ -289,7 +312,15 @@ function OrdersPage() {
                     {formatMoney(o.amount)}
                   </TableCell>
                   <TableCell className="num text-right">
-                    {o.amount != null ? formatMoney(remainingPayment(o)) : "—"}
+                    {/* Qarz yo'q — "0 so'm" emas, so'z: menejer ustunni qarz
+                        bo'yicha ko'zdan kechiradi, nol raqam ko'zga tashlanmaydi */}
+                    {o.amount == null ? (
+                      "—"
+                    ) : remainingPayment(o) <= 0 ? (
+                      <span className="text-muted-foreground">To'langan</span>
+                    ) : (
+                      formatMoney(remainingPayment(o))
+                    )}
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={o.status} />
@@ -307,6 +338,13 @@ function OrdersPage() {
             )}
           </TableBody>
         </Table>
+      )}
+      {/* Reestr bitta sahifa (PAGE_SIZE) — chegaraga yetganda jim kesilmasin */}
+      {rows.length >= PAGE_SIZE && (
+        <p className="mt-3 text-center text-xs text-muted-foreground">
+          Faqat oxirgi {PAGE_SIZE} ta buyurtma ko'rsatilmoqda — kerakligini
+          qidiruv yoki holat bo'yicha toping.
+        </p>
       )}
     </div>
   )

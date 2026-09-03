@@ -85,7 +85,13 @@ export function AppSidebar() {
     .reduce((sum, [, n]) => sum + n, 0)
 
   const withBadges = items.map((i) =>
-    i.path === "/orders" ? { ...i, badge: activeOrders } : i,
+    i.path === "/orders"
+      ? {
+          ...i,
+          badge: activeOrders,
+          badgeTitle: "Faol buyurtmalar — topshirilgan va bekor qilinganlarsiz",
+        }
+      : i,
   )
 
   return (

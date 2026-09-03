@@ -242,7 +242,14 @@ export function OrderMatrix({
                 <TableCell className="num whitespace-nowrap text-xs">
                   {formatSize(part.length, part.width, part.thickness)}
                 </TableCell>
-                <TableCell className="num text-center font-semibold">
+                <TableCell
+                  className={`num text-center ${part.count === 0 ? "text-muted-foreground/60" : "font-semibold"}`}
+                  title={
+                    part.count === 0
+                      ? "Faylda soni 0 — ishlab chiqarilmaydi"
+                      : undefined
+                  }
+                >
                   {part.count}
                 </TableCell>
                 {sortedPosts.map((post) => (
@@ -357,7 +364,9 @@ function MatrixCell({
     )
   }
 
-  if (!steps.length) {
+  // Soni 0 detal (faylda shunday keladi): 0/0 "✓" bo'lib "tayyor" degan
+  // yolg'on taassurot berardi — ishlab chiqarilmaydi, katak bo'sh.
+  if (!steps.length || part.count === 0) {
     return (
       <TableCell className="text-center text-muted-foreground/40">—</TableCell>
     )
