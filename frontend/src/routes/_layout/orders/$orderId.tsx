@@ -119,6 +119,9 @@ function OrderDetailPage() {
   const { currentUser } = useCurrentUser()
   const fileInput = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  const [matrixToolbarEl, setMatrixToolbarEl] = useState<HTMLDivElement | null>(
+    null,
+  )
   const [dragOver, setDragOver] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const navigate = useNavigate()
@@ -511,19 +514,29 @@ function OrderDetailPage() {
 
       {isTexnolog ? (
         <Tabs defaultValue="matrix">
-          <TabsList>
-            <TabsTrigger value="matrix">Detallar matritsasi</TabsTrigger>
-            <TabsTrigger value="custom">
-              Nostandart detallar{customCount ? ` (${customCount})` : ""}
-            </TabsTrigger>
-            {hardware.length > 0 && (
-              <TabsTrigger value="hardware">
-                Furnituralar ({hardware.length})
+          {/* Tab'lar chapda, matritsa boshqaruvi (qidiruv, hisob, tahrir) o'sha
+              qatorning o'ng tomonida — portal orqali; jadval ustida alohida
+              qator yo'q. Slot faqat matritsa tabida to'ladi. */}
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <TabsList>
+              <TabsTrigger value="matrix">Detallar matritsasi</TabsTrigger>
+              <TabsTrigger value="custom">
+                Nostandart detallar{customCount ? ` (${customCount})` : ""}
               </TabsTrigger>
-            )}
-          </TabsList>
+              {hardware.length > 0 && (
+                <TabsTrigger value="hardware">
+                  Furnituralar ({hardware.length})
+                </TabsTrigger>
+              )}
+            </TabsList>
+            <div ref={setMatrixToolbarEl} className="empty:hidden" />
+          </div>
           <TabsContent value="matrix">
-            <OrderMatrix orderId={id} editable={canEdit} />
+            <OrderMatrix
+              orderId={id}
+              editable={canEdit}
+              toolbarContainer={matrixToolbarEl}
+            />
           </TabsContent>
           <TabsContent value="custom">
             <CustomRoutes orderId={id} editable={canEdit} />

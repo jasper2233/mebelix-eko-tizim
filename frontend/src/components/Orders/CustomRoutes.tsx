@@ -191,40 +191,69 @@ export function CustomRoutes({
                   {formatSize(part.length, part.width, part.thickness)} ·{" "}
                   {part.count} dona
                 </span>
-                <span className="ml-auto num text-xs font-semibold">
-                  {codes.length ? codes.join(" / ") : "marshrut tanlanmagan"}
-                </span>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {CODES.map((code) => {
-                  const op = PROCESS_OPS[code]
-                  // Qadam raqamlari: bitta jarayon bir necha marta tanlansa hammasi
-                  const picks = codes
-                    .map((c, i) => (c === code ? i + 1 : 0))
-                    .filter(Boolean)
-                  return (
-                    <button
-                      key={code}
-                      type="button"
-                      disabled={!editable}
-                      onClick={() => toggle(part.id, codes, code)}
-                      className={
-                        picks.length
-                          ? "rounded-md border border-primary bg-primary/10 px-2 py-1 text-xs font-medium"
-                          : "rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-muted disabled:hover:bg-transparent"
-                      }
-                      title={`${code} · ${op.post}`}
-                    >
-                      {picks.length > 0 && (
-                        <span className="num mr-1 font-bold text-primary">
-                          {picks.join(",")}
-                        </span>
+              {/* Tanlangan marshrut — ZANJIR: raqamlangan nomlar tartibda. Ilgari
+                  o'ngda "1 / 3 / 11" kodlar turardi va tartibni 14 ta tugma orasidan
+                  raqam qidirib yig'ish kerak edi. */}
+              <div className="mb-2 flex flex-wrap items-center gap-1">
+                {codes.length ? (
+                  codes.map((c, i) => (
+                    <span key={`${i}-${c}`} className="flex items-center gap-1">
+                      {i > 0 && (
+                        <span className="text-muted-foreground/60">→</span>
                       )}
-                      {op.name}
-                    </button>
-                  )
-                })}
+                      <span
+                        className={`rounded-sm px-1.5 py-0.5 text-xs font-medium ${
+                          bad && i === 0
+                            ? "bg-red-100 text-red-900"
+                            : "bg-amber-100 text-amber-900"
+                        }`}
+                      >
+                        <span className="num mr-1 font-bold">{i + 1}</span>
+                        {PROCESS_OPS[c]?.name ?? c}
+                      </span>
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    marshrut tanlanmagan
+                  </span>
+                )}
               </div>
+              {/* Jarayon tugmalari faqat tahrirda: o'qish rejimida zanjirning o'zi
+                  yetarli, 14 ta o'chirilgan tugma shovqin edi. */}
+              {editable && (
+                <div className="flex flex-wrap gap-1.5">
+                  {CODES.map((code) => {
+                    const op = PROCESS_OPS[code]
+                    // Qadam raqamlari: bitta jarayon bir necha marta tanlansa hammasi
+                    const picks = codes
+                      .map((c, i) => (c === code ? i + 1 : 0))
+                      .filter(Boolean)
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        disabled={!editable}
+                        onClick={() => toggle(part.id, codes, code)}
+                        className={
+                          picks.length
+                            ? "rounded-md border border-primary bg-primary/10 px-2 py-1 text-xs font-medium"
+                            : "rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-muted disabled:hover:bg-transparent"
+                        }
+                        title={`${code} · ${op.post}`}
+                      >
+                        {picks.length > 0 && (
+                          <span className="num mr-1 font-bold text-primary">
+                            {picks.join(",")}
+                          </span>
+                        )}
+                        {op.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
 
               {/* Yig'ma buyum: mayda detal asosiy detalga yopishtiriladi. Biriktirilsa
                   uning marshruti shu amalda TUGAYDI — qadoqlash/TMO faqat asosiyda. */}

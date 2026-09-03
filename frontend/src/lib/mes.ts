@@ -156,6 +156,17 @@ export const STANDARD_MATRIX_POSTS = ["ARRA", "KROMKA", "PRISADKA"]
 /** Nostandart marshrut faqat shulardan boshlanadi — chek o'sha postda chiqadi. */
 export const ROUTE_START_POSTS = ["ARRA", "ROVER"]
 
+/** Texnolog chizgan marshrut — jarayon NOMLARI tartib bilan (dum va o'chirilgan
+ * qadamlar tashlanadi). Matritsa ustuni ham, Nostandart tabidagi zanjir ham shundan. */
+export function routeStepNames(
+  routes: { process_code: number; seq: number; is_enabled: boolean }[],
+): string[] {
+  return [...routes]
+    .filter((r) => r.is_enabled && !TAIL_CODES.includes(r.process_code))
+    .sort((a, b) => a.seq - b.seq)
+    .map((r) => PROCESS_OPS[r.process_code]?.name ?? String(r.process_code))
+}
+
 /** Marshrut DUMI — backend o'zi qo'shadigan qadamlar (backend `TAIL_CODES` bilan qo'lda oynalangan).
  *  Saqlangan marshrutni o'qiganda filtrlanadi, aks holda tahrir dumni o'rtada qoldirardi. */
 export const TAIL_CODES = [15, 16]

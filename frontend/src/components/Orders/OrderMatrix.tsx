@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import { Map as MapIcon, Pencil, X } from "lucide-react"
 import { useMemo, useState } from "react"
+import { createPortal } from "react-dom"
 
 import { type MatrixPart, OrdersService, type PostRead } from "@/client"
 import { QueryError } from "@/components/Common/QueryError"
@@ -25,6 +26,7 @@ import {
   chipColors,
   formatSize,
   POST_COLORS,
+  routeStepNames,
   STANDARD_MATRIX_POSTS,
   TAIL_CODES,
 } from "@/lib/mes"
@@ -49,9 +51,14 @@ const drawnSteps = (part: MatrixPart) =>
 export function OrderMatrix({
   orderId,
   editable,
+  toolbarContainer,
 }: {
   orderId: number
   editable: boolean
+  /** Boshqaruv qatori (qidiruv + hisob + tahrir tugmalari) shu elementga portal
+   *  qilinadi — buyurtma sahifasida tab'lar qatorining o'ng tomoni, alohida
+   *  qator o'rniga. Berilmasa jadval ustida o'z qatorida. */
+  toolbarContainer?: HTMLElement | null
 }) {
   const {
     data: matrix,
@@ -140,49 +147,55 @@ export function OrderMatrix({
       )
     : matrix.parts
 
+  // Bitta boshqaruv qatori: qidiruv + hisob + marshrut tugmalari. Portal berilsa
+  // tab'lar qatoriga (o'ngga) chiqadi — jadval ustida alohida qator qolmaydi.
+  const toolbar = (
+    <div
+      className={
+        toolbarContainer
+          ? "flex flex-wrap items-center justify-end gap-2"
+          : "mb-3 flex flex-wrap items-center justify-between gap-2"
+      }
+    >
+      <div className="flex items-center gap-2">
+        <Input
+          className="h-8 w-56 text-sm"
+          placeholder="Qidirish: kod yoki nom..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <span className="whitespace-nowrap text-xs text-muted-foreground">
+          {q
+            ? `${visibleParts.length} / ${matrix.parts.length} detal`
+            : `${matrix.parts.length} detal`}
+        </span>
+      </div>
+      {editable &&
+        (editMode ? (
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={exitEdit}>
+              <X /> Bekor qilish
+            </Button>
+            <LoadingButton
+              size="sm"
+              loading={mutation.isPending}
+              disabled={!hasEdits}
+              onClick={() => mutation.mutate()}
+            >
+              Saqlash
+            </LoadingButton>
+          </div>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => setEditMode(true)}>
+            <Pencil /> Marshrutni tahrirlash
+          </Button>
+        ))}
+    </div>
+  )
+
   return (
     <div>
-      {/* Bitta boshqaruv qatori: chapda qidiruv + hisob, o'ngda marshrut tugmalari —
-          ikki alohida qator vertikal joyni isrof qilib, chetlarni notekis qilardi */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Input
-            className="h-8 w-56 text-sm"
-            placeholder="Qidirish: kod yoki nom..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <span className="whitespace-nowrap text-xs text-muted-foreground">
-            {q
-              ? `${visibleParts.length} / ${matrix.parts.length} detal`
-              : `${matrix.parts.length} detal`}
-          </span>
-        </div>
-        {editable &&
-          (editMode ? (
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={exitEdit}>
-                <X /> Bekor qilish
-              </Button>
-              <LoadingButton
-                size="sm"
-                loading={mutation.isPending}
-                disabled={!hasEdits}
-                onClick={() => mutation.mutate()}
-              >
-                Saqlash
-              </LoadingButton>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setEditMode(true)}
-            >
-              <Pencil /> Marshrutni tahrirlash
-            </Button>
-          ))}
-      </div>
+      {toolbarContainer ? createPortal(toolbar, toolbarContainer) : toolbar}
       {/* Balandlik chegaralangan: uzun buyurtmada butun sahifa emas, jadval o'zi
           aylanadi, sarlavha esa yopishqoq — prisadkachi qaysi ustun ekanini yo'qotmaydi.
           Scroll konteyner — Table'ning o'z o'rami (data-slot), aks holda sticky ishlamaydi */}
@@ -234,7 +247,7 @@ export function OrderMatrix({
                       title="Marshrutini texnolog qo'lda chizadi — Nostandart detallar tabida."
                     >
                       {drawnSteps(part)
-                        ? `Nostandart · ${drawnSteps(part)} qadam`
+                        ? "Nostandart"
                         : "Nostandart · marshrut yo'q"}
                     </span>
                   )}
@@ -283,7 +296,20 @@ export function OrderMatrix({
                       aria-label={`${part.code} nostandart`}
                     />
                   ) : part.is_custom ? (
-                    <span className="font-bold text-amber-700">✓</span>
+                    // «✓» hech narsa demasdi — endi texnolog chizgan marshrutning
+                    // o'zi: raqamlangan qadamlar tartibda. Nostandart tabidagi
+                    // zanjir bilan bir xil manba (`routeStepNames`).
+                    <span className="inline-flex flex-wrap justify-center gap-1">
+                      {routeStepNames(part.routes).map((name, i) => (
+                        <span
+                          key={`${i}-${name}`}
+                          className="whitespace-nowrap rounded-sm bg-amber-100 px-1.5 py-0.5 text-2xs font-medium text-amber-900"
+                        >
+                          <span className="num mr-1 font-bold">{i + 1}</span>
+                          {name}
+                        </span>
+                      ))}
+                    </span>
                   ) : (
                     <span className="text-muted-foreground/40">—</span>
                   )}
