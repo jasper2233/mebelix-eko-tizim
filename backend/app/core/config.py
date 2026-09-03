@@ -78,7 +78,6 @@ class Settings(BaseSettings):
     # E004: detalning O'Z marshrutidagi oldingi qadam tugamaguncha skan qabul qilinmaydi.
     # Tsexda tartib qat'iy — operator o'tkazib yubora olmaydi (TZ 7.2.5).
     STRICT_STAGE_ORDER: bool = True
-    SESSION_MAX_HOURS: int = 12  # operator shift timeout (TZ 8.5 E005)
     SCAN_UNDO_SECONDS: int = 60  # BEKOR QILISH window (TZ 8.6)
 
     # === Printing (TZ 12.3 / 13.2) ===

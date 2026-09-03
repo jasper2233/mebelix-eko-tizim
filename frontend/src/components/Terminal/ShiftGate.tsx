@@ -69,8 +69,8 @@ export function ShiftGate({
 
 /** Sarlavhadagi brigada - faqat QO'SHILGAN sheriklar.
  *
- * Ikki kishi bir ish markazida ishlashi mumkin va detalni qaysi biri olganini
- * bilib bo'lmaydi, shuning uchun ish ular orasida bo'linadi.
+ * Ikki kishi bir ish markazida ishlashi mumkin; skan smenani ochgan odamga
+ * yoziladi (brigada bo'linishi yo'q — hisobot smena vaqtiga qaramaydi).
  *
  * Kirgan odamning O'ZI ro'yxatda ko'rinmaydi (`is_me`): u kimligini login
  * allaqachon aytgan va o'z ismini ko'rish unga hech narsa qo'shmaydi. Sherik

@@ -9,8 +9,8 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy import and_, func, or_, select
-from sqlalchemy.orm import aliased, defer
+from sqlalchemy import func, select
+from sqlalchemy.orm import defer
 
 from app.api.deps import SessionDep, require_roles
 from app.core.config import TASHKENT_TZ
@@ -25,7 +25,6 @@ from app.models import (
     PartRoute,
     Post,
     Scan,
-    WorkSession,
 )
 from app.models.enums import POST_UNIT_LABELS, OrderStatus, PostUnit, UserRole
 from app.models.user import User
@@ -73,56 +72,29 @@ async def report_productivity(
 ) -> ProductivityReport | StreamingResponse:
     start, end = _range(date_from, date_to)
 
-    # Brigada: bitta ish markazida ikki kishi ishlashi mumkin (ARRA — biri varaqni
-    # beradi, ikkinchisi detalni oladi) va detalni qaysi biri olganini bilishning
-    # iloji yo'q. Skan qatorida bitta `employee_id` bor — u LANGAR smena egasi,
-    # ya'ni uni sanash ishni butunlay bitta odamga yozardi. Shuning uchun hisob
-    # skan VAQTIDA ochiq bo'lgan smenalar bo'yicha yuritiladi va har skan ular
-    # orasida TENG bo'linadi: zavod bir ishga bir marta to'laydi.
-    #
-    # LEFT JOIN ataylab: `scan.machine_id` NULL bo'lishi mumkin (ish markazisiz yozuv),
-    # o'shanda mos smena topilmaydi va skan hisobdan tushib qolardi — bunday holda
-    # `COALESCE` uni eski yo'l bilan `scan.employee_id` ga yozadi, brigada = 1.
-    ws = aliased(WorkSession)
-    member = (
-        select(
-            Scan.created_at.label("at"),
-            func.coalesce(ws.employee_id, Scan.employee_id).label("employee_id"),
-            func.count().over(partition_by=Scan.id).label("crew_size"),
-        )
-        .outerjoin(
-            ws,
-            and_(
-                ws.machine_id == Scan.machine_id,
-                ws.is_deleted == False,  # noqa: E712
-                ws.created_at <= Scan.created_at,
-                or_(ws.ended_at.is_(None), ws.ended_at >= Scan.created_at),
-            ),
-        )
-        .where(
-            Scan.created_at.between(start, end),
-            Scan.is_cancelled == False,  # noqa: E712
-            Scan.is_deleted == False,  # noqa: E712
-        )
-        .subquery()
-    )
-
-    day = func.date_trunc("day", func.timezone(TASHKENT_TZ.key, member.c.at))
-    hour = func.date_trunc("hour", func.timezone(TASHKENT_TZ.key, member.c.at))
-    credited = func.sum(1.0 / member.c.crew_size)
+    # Skan uni urgan hodimga (langar smena egasi, `scan.employee_id`) TO'LIQ yoziladi —
+    # smena vaqt oynasi bo'yicha brigada orasida bo'lish olib tashlangan (2026-09-03).
+    day = func.date_trunc("day", func.timezone(TASHKENT_TZ.key, Scan.created_at))
+    hour = func.date_trunc("hour", func.timezone(TASHKENT_TZ.key, Scan.created_at))
+    total_scans = func.count(Scan.id)
     rows = (
         await db.execute(
             select(
                 Employee.id,
                 Employee.full_name,
                 Employee.position,
-                credited,
+                total_scans,
                 func.count(func.distinct(day)),
                 func.count(func.distinct(hour)),
             )
-            .join(member, member.c.employee_id == Employee.id)
+            .join(Scan, Scan.employee_id == Employee.id)
+            .where(
+                Scan.created_at.between(start, end),
+                Scan.is_cancelled == False,  # noqa: E712
+                Scan.is_deleted == False,  # noqa: E712
+            )
             .group_by(Employee.id, Employee.full_name, Employee.position)
-            .order_by(credited.desc())
+            .order_by(total_scans.desc())
         )
     ).all()
 
@@ -131,7 +103,7 @@ async def report_productivity(
             employee_id=eid,
             full_name=name,
             position=position,
-            total_scans=round(float(total), 1),
+            total_scans=int(total),
             active_days=days,
             per_day=round(float(total) / days, 1) if days else 0.0,
             per_hour=round(float(total) / hours, 1) if hours else 0.0,

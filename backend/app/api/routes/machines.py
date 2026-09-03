@@ -50,8 +50,8 @@ async def _blockers(db: SessionDep, machine_id: int) -> list[str]:
     if agents:
         blockers.append(f"printer agenti: {', '.join(agents)}")
 
-    # `crew_sessions` 12 soatlik muddatni o'zi qo'llaydi — yopishni unutilgan
-    # eskirgan smena o'chirishni abadiy bloklab turmasin (xom COUNT shunday qilardi).
+    # Smena muddati yo'q (2026-09-03): yopilmagan smena ish markazini o'chirishga
+    # to'sqinlik qiladi — avval terminalda «Chiqish» yoki logout bilan yopiladi.
     open_sessions = len(await crew_sessions(db, machine_id))
     if open_sessions:
         blockers.append(f"ochiq smena: {open_sessions} ta")

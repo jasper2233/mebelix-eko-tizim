@@ -11,9 +11,7 @@ class EmployeeProductivity(BaseModel):
     employee_id: int
     full_name: str
     position: str | None
-    #: Brigadada bo'lingan skan soni — KASR bo'lishi mumkin: ikki kishi birga
-    #: ishlagan skan har biriga 0.5 yoziladi (zavod bir ishga bir marta to'laydi).
-    total_scans: float
+    total_scans: int  # skan uni urgan hodimga to'liq (brigada bo'linishi yo'q)
     active_days: int
     per_day: float
     per_hour: float  # scans / distinct active hours — crude but honest

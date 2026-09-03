@@ -571,7 +571,7 @@ direktor ham ko'radi.
 
 ## 8. Sozlamalar (yangi env)
 
-Backend: `UPLOAD_DIR`, `MAX_PROJECT_FILE_SIZE`, `STRICT_STAGE_ORDER`, `SESSION_MAX_HOURS`,
+Backend: `UPLOAD_DIR`, `MAX_PROJECT_FILE_SIZE`, `STRICT_STAGE_ORDER`,
 `SCAN_UNDO_SECONDS`, `BRIDGE_TOKEN` — ixtiyoriy **legacy** moslik: bo'sh bo'lsa ham `/ws/bridge`
 ishlaydi (agentlar admin paneldagi pairing tokeni bilan ulanadi), faqat eski umumiy tokenli
 agentlar uchun to'ldiriladi.

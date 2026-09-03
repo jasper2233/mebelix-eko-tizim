@@ -56,7 +56,7 @@ class ScanRejected(Exception):
       E002  QR formati buzuq — chek qayta chop etiladi
       E003  buyurtma bekor qilingan — manager
       E004  navbat buzildi — oldingi bosqichni kutish kerak
-      E005  sessiya yo'q yoki muddati tugagan — beyjik
+      E005  aktiv smena yo'q — beyjik
       E006  beyjik muammosi — admin/hodim
       E008  ish allaqachon bajarilgan — xato emas, ogohlantirish
       E009  SOZLAMA xatosi (post/ish markazi yo'q) — admin tuzatadi, operator emas
@@ -276,29 +276,15 @@ async def crew_sessions(db: AsyncSession, machine_id: int) -> list[WorkSession]:
         .scalars()
         .all()
     )
-    live = []
-    for row in rows:
-        if await expire_if_stale(db, row) is not None:
-            live.append(row)
-    return live
-
-
-async def expire_if_stale(db: AsyncSession, session: WorkSession) -> WorkSession | None:
-    """12 soatlik smena muddati (TZ 8.5 E005): o'tgan bo'lsa yopib None qaytaradi.
-    Terminal ham, stanok skan-forvardi ham SHU tekshiruvdan o'tadi."""
-    if datetime.now(UTC) - _utc(session.created_at) > timedelta(hours=settings.SESSION_MAX_HOURS):
-        await end_session(db, session)
-        return None
-    return session
+    return list(rows)
 
 
 async def active_session(db: AsyncSession, machine: Machine) -> WorkSession:
     """Skan qaysi smenaga yoziladi — brigadaning BIRINCHI (smenani ochgan) a'zosi.
 
-    Skan qatorida bitta `employee_id` bor, brigadada esa bir necha odam. Kim aynan
-    shu detalni olganini bilib bo'lmaydi, shuning uchun skan langar smenaga
-    yoziladi, ish haqi va mahsuldorlik esa skan VAQTIDA ochiq bo'lgan smenalar
-    orasida bo'linadi (`reports.py`).
+    Skan qatorida bitta `employee_id` bor — langar smena egasi; hisobot ham skanni
+    unga to'liq yozadi (smena vaqti bo'yicha bo'lish yo'q — 2026-09-03 qarori).
+    Smena muddati YO'Q: u faqat «Chiqish», logout yoki keyingi kirish bilan yopiladi.
 
     Smena YAGONA yo'l bilan ochiladi — terminalda beyjik skani yoki ismni bosish
     (`open_badge_session`). Ilgari post rollari uchun "login = smena" shoxi bor
