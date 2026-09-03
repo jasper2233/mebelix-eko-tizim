@@ -15,6 +15,7 @@ import { Route as TabloRouteImport } from './routes/tablo'
 import { Route as TerminalRouteImport } from './routes/terminal'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
+import { Route as LayoutAgentsRouteImport } from './routes/_layout/agents'
 import { Route as LayoutClientsRouteImport } from './routes/_layout/clients'
 import { Route as LayoutEmployeesRouteImport } from './routes/_layout/employees'
 import { Route as LayoutLogsRouteImport } from './routes/_layout/logs'
@@ -54,6 +55,11 @@ const LayoutIndexRoute = LayoutIndexRouteImport.update({
 const LayoutAdminRoute = LayoutAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutAgentsRoute = LayoutAgentsRouteImport.update({
+  id: '/agents',
+  path: '/agents',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutClientsRoute = LayoutClientsRouteImport.update({
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/tablo': typeof TabloRoute
   '/terminal': typeof TerminalRoute
   '/admin': typeof LayoutAdminRoute
+  '/agents': typeof LayoutAgentsRoute
   '/clients': typeof LayoutClientsRoute
   '/employees': typeof LayoutEmployeesRoute
   '/logs': typeof LayoutLogsRoute
@@ -135,6 +142,7 @@ export interface FileRoutesByTo {
   '/tablo': typeof TabloRoute
   '/terminal': typeof TerminalRoute
   '/admin': typeof LayoutAdminRoute
+  '/agents': typeof LayoutAgentsRoute
   '/clients': typeof LayoutClientsRoute
   '/employees': typeof LayoutEmployeesRoute
   '/logs': typeof LayoutLogsRoute
@@ -155,6 +163,7 @@ export interface FileRoutesById {
   '/tablo': typeof TabloRoute
   '/terminal': typeof TerminalRoute
   '/_layout/admin': typeof LayoutAdminRoute
+  '/_layout/agents': typeof LayoutAgentsRoute
   '/_layout/clients': typeof LayoutClientsRoute
   '/_layout/employees': typeof LayoutEmployeesRoute
   '/_layout/logs': typeof LayoutLogsRoute
@@ -176,6 +185,7 @@ export interface FileRouteTypes {
     | '/tablo'
     | '/terminal'
     | '/admin'
+    | '/agents'
     | '/clients'
     | '/employees'
     | '/logs'
@@ -193,6 +203,7 @@ export interface FileRouteTypes {
     | '/tablo'
     | '/terminal'
     | '/admin'
+    | '/agents'
     | '/clients'
     | '/employees'
     | '/logs'
@@ -212,6 +223,7 @@ export interface FileRouteTypes {
     | '/tablo'
     | '/terminal'
     | '/_layout/admin'
+    | '/_layout/agents'
     | '/_layout/clients'
     | '/_layout/employees'
     | '/_layout/logs'
@@ -275,6 +287,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof LayoutAdminRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/agents': {
+      id: '/_layout/agents'
+      path: '/agents'
+      fullPath: '/agents'
+      preLoaderRoute: typeof LayoutAgentsRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/clients': {
@@ -359,6 +378,7 @@ declare module '@tanstack/react-router' {
 
 interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
+  LayoutAgentsRoute: typeof LayoutAgentsRoute
   LayoutClientsRoute: typeof LayoutClientsRoute
   LayoutEmployeesRoute: typeof LayoutEmployeesRoute
   LayoutLogsRoute: typeof LayoutLogsRoute
@@ -375,6 +395,7 @@ interface LayoutRouteChildren {
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRoute: LayoutAdminRoute,
+  LayoutAgentsRoute: LayoutAgentsRoute,
   LayoutClientsRoute: LayoutClientsRoute,
   LayoutEmployeesRoute: LayoutEmployeesRoute,
   LayoutLogsRoute: LayoutLogsRoute,

@@ -535,7 +535,7 @@ function BadgeDialog({
       /* private rejim — eslab qolinmaydi, ishlayveradi */
     }
   }
-  // Onlayn belgisi `printers.tsx` bilan bir qoida: 6 daqiqadan yangi `last_seen_at`
+  // Onlayn belgisi `agents.tsx` bilan bir qoida: 6 daqiqadan yangi `last_seen_at`
   const isOnline = (a: { last_seen_at?: string | null }) =>
     !!a.last_seen_at &&
     Date.now() - new Date(a.last_seen_at).getTime() < 6 * 60 * 1000

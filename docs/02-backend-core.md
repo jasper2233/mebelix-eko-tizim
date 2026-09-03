@@ -259,7 +259,7 @@ class WorkerSettings:
   (bu xato emas). `AGENT_ONLINE_WINDOW` (6 daqiqa) / `agent_online(last_seen_at)` faqat CHAQIRUVCHIDA:
   «Printer ulanmagan. Chek saqlandi — printer ulanganda o'zi chiqadi: {qr_text}» xabarini (atxot chekida —
   «Printer ulanmagan. Atxot cheki saqlandi — printer ulanganda chiqadi: {qr_text}») va terminal
-  header'idagi agent holatini shu chegara hal qiladi (frontend `printers.tsx` bilan aynan bir xil oyna).
+  header'idagi agent holatini shu chegara hal qiladi (frontend `agents.tsx` bilan aynan bir xil oyna).
   `employees.py` dagi beyjik chop etishda ish markazi yo'q, shuning uchun printer
   ATAYLAB tanlanadi: `agent_id` query parametri, berilmasa — chop eta oladigan
   yagona agent, bir nechta bo'lsa 422 va ro'yxat.

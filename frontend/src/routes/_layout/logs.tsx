@@ -600,11 +600,11 @@ function EntityLink({ type, id }: { type: string; id: number | null }) {
 
 const ENTITY_ROUTES: Record<
   string,
-  "/clients" | "/employees" | "/work-centers" | "/printers" | "/admin"
+  "/clients" | "/employees" | "/work-centers" | "/agents" | "/admin"
 > = {
   client: "/clients",
   employee: "/employees",
   machine: "/work-centers",
-  bridge_agent: "/printers",
+  bridge_agent: "/agents",
   user: "/admin",
 }

@@ -60,7 +60,7 @@ def print_queue_key(agent_id: int) -> str:
 
 
 #: Agent `last_seen_at` ni har 5 daqiqada yangilaydi — 6 daqiqadan yangi bo'lsa
-#: onlayn hisoblanadi (frontend `printers.tsx` bilan AYNAN bir xil chegara).
+#: onlayn hisoblanadi (frontend `agents.tsx` bilan AYNAN bir xil chegara).
 AGENT_ONLINE_WINDOW = timedelta(minutes=6)
 
 

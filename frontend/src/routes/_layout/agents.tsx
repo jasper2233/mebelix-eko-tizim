@@ -1,0 +1,703 @@
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { createFileRoute } from "@tanstack/react-router"
+import { FileText, KeyRound, Plus, Trash2 } from "lucide-react"
+import { useEffect, useState } from "react"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+
+import { type BridgeAgentRead, BridgeAgentsService } from "@/client"
+import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
+import { EmptyRow } from "@/components/Common/EmptyRow"
+import { PageHeader } from "@/components/Common/PageHeader"
+import { QueryError } from "@/components/Common/QueryError"
+import { RowAction } from "@/components/Common/RowAction"
+import { SelectField } from "@/components/Common/SelectField"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { LoadingButton } from "@/components/ui/loading-button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Switch } from "@/components/ui/switch"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { useMesWs } from "@/hooks/useMesWs"
+import { requireAccess } from "@/lib/guards"
+import { formatDateTime, isAdmin } from "@/lib/mes"
+import { cn } from "@/lib/utils"
+import {
+  crudCallbacks,
+  getBridgeAgentsQueryOptions,
+  getMachinesQueryOptions,
+} from "@/queries/mes"
+import { API_BASE, handleError } from "@/utils"
+
+export const Route = createFileRoute("/_layout/agents")({
+  component: AgentsPage,
+  // Backend ham AdminUser talab qiladi — guardsiz admin bo'lmagan odam bo'sh
+  // jadval ko'rib, 403 qaytaradigan endpointni har 10 soniyada so'rab turardi.
+  beforeLoad: requireAccess(isAdmin),
+  head: () => ({ meta: [{ title: "MES agentlar | MebeliX" }] }),
+})
+
+// Server last_seen_at ni har 5 daqiqada yangilaydi — 6 daqiqadan yangi bo'lsa onlayn
+const ONLINE_MS = 6 * 60 * 1000
+
+/** «8 soat oldin» — oflayn agent qachondan beri jim (absolyut sana yonida). */
+function ago(d: Date): string {
+  const min = Math.round((Date.now() - d.getTime()) / 60_000)
+  if (min < 1) return "hozir"
+  if (min < 60) return `${min} daqiqa oldin`
+  if (min < 24 * 60) return `${Math.round(min / 60)} soat oldin`
+  return `${Math.round(min / (24 * 60))} kun oldin`
+}
+
+/** AB12CD34 -> AB12-CD34: telefonda aytish oson */
+const fmtCode = (c: string) => `${c.slice(0, 4)}-${c.slice(4)}`
+
+/** Kodning qolgan muddati — backendda `PAIR_TTL` 15 daqiqa.
+ *
+ * Kodni ko'rsatib, muddatini yashirish odamni taxminga majbur qilardi: agent
+ * o'rnatilayotgan kompyuterga borguncha 12 daqiqa qoldimi yoki 20 soniyami —
+ * bilinmasdi. Muddati o'tgani esa faqat kod TERILGANDAN KEYIN ma'lum bo'lardi.
+ *
+ * Soat SHU komponent ichida: bo'lmasa har soniyada butun jadval qayta chizilardi.
+ */
+function CodeTtl({ expiresAt }: { expiresAt: string }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const qoldi = Math.max(
+    0,
+    Math.round((new Date(expiresAt).getTime() - now) / 1000),
+  )
+  return (
+    <span
+      className={cn(
+        "num mt-1 block text-xs tabular-nums",
+        // Oxirgi 2 daqiqa — endi yangi kod olish tezroq
+        qoldi <= 120
+          ? "font-semibold text-destructive"
+          : "text-muted-foreground",
+      )}
+    >
+      {Math.floor(qoldi / 60)}:{String(qoldi % 60).padStart(2, "0")} qoldi
+    </span>
+  )
+}
+
+/** Agent loglari — tsexdagi kompyuterga bormasdan nosozlikni ko'rish.
+ *
+ * Agent har 30 soniyada o'z log satrlarini serverga yuboradi; server ularni
+ * Redisda oxirgi 200 tasini saqlaydi. Ilgari admin operatordan tsexdagi
+ * kompyuterda log faylini ochishni so'rashga majbur edi — masofadan kirish yo'q.
+ */
+function AgentLogs({ agent }: { agent: BridgeAgentRead }) {
+  const [open, setOpen] = useState(false)
+  const { data, isFetching, isError, refetch } = useQuery({
+    queryKey: ["bridge-agents", agent.id, "logs"],
+    queryFn: async () =>
+      (
+        await BridgeAgentsService.readBridgeLogs({
+          path: { agent_id: agent.id },
+        })
+      ).data,
+    // `enabled` o'chgan so'rovda interval baribir ishlamaydi — dialog yopiq
+    // bo'lsa polling ham to'xtaydi
+    enabled: open,
+    refetchInterval: 10_000,
+  })
+  return (
+    <>
+      <RowAction icon={FileText} title="Loglar" onClick={() => setOpen(true)} />
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{agent.name} — loglar</DialogTitle>
+            <DialogDescription>
+              Agent yuborgan oxirgi satrlar, eng yangisi tepada. Har 30 soniyada
+              yangilanadi.
+            </DialogDescription>
+          </DialogHeader>
+          {isError ? (
+            // Xatoni "log yo'q" deb ko'rsatish adminni agentni ayblashga
+            // majbur qilardi — server nosozligi alohida aytiladi.
+            <QueryError
+              message="Loglarni olishda xatolik yuz berdi."
+              onRetry={() => refetch()}
+            />
+          ) : !data?.length ? (
+            <p className="py-8 text-center text-muted-foreground">
+              {isFetching
+                ? "Yuklanmoqda..."
+                : "Hali log yo'q — agent ulangach 30 soniya ichida keladi."}
+            </p>
+          ) : (
+            <pre className="max-h-[60vh] overflow-auto rounded-md bg-muted p-3 text-xs leading-relaxed">
+              {data.join("\n")}
+            </pre>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+function AgentsPage() {
+  // CI qurgan oxirgi exe versiyasi — eski agentlarni belgilash uchun.
+  // 404 = CI hali qurmagan (dev): belgi shunchaki chiqmaydi.
+  const { data: latest } = useQuery({
+    queryKey: ["bridge-agents", "latest"],
+    queryFn: async () =>
+      (await BridgeAgentsService.agentLatestRelease()).data.version,
+    retry: false,
+    staleTime: 10 * 60 * 1000,
+  })
+  const queryClient = useQueryClient()
+  const {
+    data: agents,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    ...getBridgeAgentsQueryOptions(),
+    // WS asosiy signal; 10s polling — zaxira (WS uzilib qolgan holat uchun)
+    refetchInterval: 10_000,
+  })
+  // Jonli holat: agent kod terib ulanishi bilan (bridge.paired/connected)
+  // sahifa DARHOL yangilanadi — pollingni kutmasdan
+  useMesWs((event) => {
+    if (event.type.startsWith("bridge.")) {
+      queryClient.invalidateQueries({ queryKey: ["bridge-agents"] })
+    }
+  })
+
+  return (
+    <div>
+      <PageHeader
+        title="MES agentlar"
+        // Havola CI qurgan exe'ga boradi — diskda eskirgan nusxa bo'lishi
+        // mumkin emas (2026-08-02 dagi olib tashlash sababi bartaraf)
+        description={
+          <>
+            Tsex kompyuterlari — chek printeri va stanok skanerini MES'ga
+            ulaydi. Ulanish kodi bilan o'rnatiladi, serverga kirish shart emas.{" "}
+            <a
+              href={`${API_BASE}/api/v1/bridge-agents/download`}
+              className="underline underline-offset-4"
+              download
+            >
+              mebelix-agent.exe yuklab olish
+            </a>
+          </>
+        }
+        actions={<AddAgent />}
+      />
+
+      <div className="mb-4 rounded-xl border bg-card p-4 text-sm">
+        <p className="mb-1 font-medium">
+          O'rnatish — tsex kompyuterida (printer yoki stanok skaneri ulangan)
+        </p>
+        <ol className="list-decimal space-y-0.5 pl-5 text-muted-foreground">
+          <li>
+            Chek chiqaradigan bo'lsa — GoDEX drayveri o'rnatilgan bo'lsin
+            (printer USB ulangan holda)
+          </li>
+          <li>"Yangi agent" bilan kod oling</li>
+          <li>
+            mebelix-agent.exe ni ishga tushirib kodni kiriting. Shundan keyin
+            agent fonda ishlaydi va kompyuter yonganda o'zi tushadi
+          </li>
+        </ol>
+      </div>
+
+      {isLoading ? (
+        <Skeleton className="h-64 w-full" />
+      ) : isError ? (
+        <QueryError onRetry={() => refetch()} />
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nomi</TableHead>
+              {/* Ulanish kodi alohida ustun EMAS — u faqat ulanmagan agentda
+                  bor, ulanganlarda ustun butunlay bo'sh turardi; endi Holat
+                  katagida «Kod kutilmoqda» ostida */}
+              <TableHead>Holat</TableHead>
+              <TableHead>Ish markazi (skan-forvard)</TableHead>
+              <TableHead>Chek chiqarish</TableHead>
+              <TableHead>Oxirgi ulanish</TableHead>
+              <TableHead className="w-24" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {agents?.length ? (
+              agents.map((a) => (
+                <AgentRow key={a.id} agent={a} latest={latest} />
+              ))
+            ) : (
+              <EmptyRow colSpan={6}>
+                Agentlar yo'q. "Yangi agent" bilan ulanish kodi yarating.
+              </EmptyRow>
+            )}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  )
+}
+
+function AgentRow({
+  agent,
+  latest,
+}: {
+  agent: BridgeAgentRead
+  latest?: string
+}) {
+  const queryClient = useQueryClient()
+  const [confirm, setConfirm] = useState<"code" | "delete" | null>(null)
+  // Ish markazi almashinuvi tasdiq bilan: noto'g'ri tanlov keyingi barcha skan-forvard
+  // skanlarini BOSHQA post nomidan yozadi — jimgina o'tib ketmasin
+  const [pendingMachine, setPendingMachine] = useState<number | null | "unset">(
+    "unset",
+  )
+  // Chek chiqarish belgisi ham tasdiq bilan: printersiz kompyuterda yoqilsa
+  // umumiy navbatdan chek "o'g'irlanadi", printerlida o'chirilsa chek to'xtaydi
+  const [pendingPrint, setPendingPrint] = useState<boolean | null>(null)
+  const { data: machines } = useQuery(getMachinesQueryOptions())
+  const cb = (msg: string) => crudCallbacks(queryClient, ["bridge-agents"], msg)
+
+  const printCb = cb("Saqlandi")
+  const togglePrint = useMutation({
+    mutationFn: (v: boolean) =>
+      BridgeAgentsService.updateBridgeAgent({
+        path: { agent_id: agent.id },
+        body: { can_print: v },
+      }),
+    ...printCb,
+    onSuccess: () => {
+      printCb.onSuccess()
+      setPendingPrint(null)
+    },
+  })
+
+  const linkCb = cb("Ish markazi bog'landi")
+  const linkMachine = useMutation({
+    mutationFn: (machineId: number | null) =>
+      BridgeAgentsService.updateBridgeAgent({
+        path: { agent_id: agent.id },
+        body: { machine_id: machineId },
+      }),
+    ...linkCb,
+    onSuccess: () => {
+      linkCb.onSuccess()
+      setPendingMachine("unset")
+    },
+  })
+  const pendingName =
+    pendingMachine !== "unset" && pendingMachine !== null
+      ? (machines?.find((m) => m.id === pendingMachine)?.name ?? "?")
+      : null
+
+  const regenCb = cb("Yangi ulanish kodi yaratildi")
+  const regen = useMutation({
+    mutationFn: () =>
+      BridgeAgentsService.regenerateBridgeCode({
+        path: { agent_id: agent.id },
+      }),
+    ...regenCb,
+    onSuccess: () => {
+      regenCb.onSuccess()
+      setConfirm(null)
+    },
+  })
+  const removeCb = cb("Agent bekor qilindi")
+  const remove = useMutation({
+    mutationFn: () =>
+      BridgeAgentsService.deleteBridgeAgent({ path: { agent_id: agent.id } }),
+    ...removeCb,
+    onSuccess: () => {
+      removeCb.onSuccess()
+      setConfirm(null)
+    },
+  })
+
+  const seen = agent.last_seen_at ? new Date(agent.last_seen_at) : null
+  // `paired` SHART: "yangi kod" bosilgach token bekor bo'ladi, lekin oxirgi
+  // ko'rinish vaqti eski qiymatida qolsa panel yana 6 daqiqa "Ulandi" deb
+  // YOLG'ON ko'rsatardi. Server endi revoke'da `last_seen_at` ni ham tozalaydi
+  // — bu shart eski yozuvlar va poyga holatlari uchun ikkinchi himoya.
+  const online = agent.paired && seen && Date.now() - seen.getTime() < ONLINE_MS
+
+  // null = eski (versiyasiz) exe. Versiya oxirgisidan orqada bo'lsa sariq:
+  // agent 6 soat ichida o'zi yangilanadi, undan keyin ham orqada tursa
+  // self-update ishlamayapti (log'ga qarash kerak). Oflaynda ham ko'rinadi —
+  // ilgari faqat onlaynda chiqardi, tungi tekshiruvda versiya ko'rinmasdi.
+  const behind = !!(agent.version && latest && agent.version !== latest)
+  const versionEl = agent.paired && (
+    <span
+      className={cn(
+        "num text-xs",
+        behind ? "font-semibold text-amber-600" : "text-muted-foreground",
+      )}
+    >
+      {agent.version
+        ? behind
+          ? `v${agent.version} → v${latest}`
+          : `v${agent.version}`
+        : "eski exe"}
+    </span>
+  )
+  // Agent nima qiladi — bir qarashda (ilgari ikki ustundan yig'ib chiqarish kerak edi)
+  const role = agent.can_print
+    ? agent.machine_id
+      ? "chek + skan-forvard"
+      : "faqat chek (ofis / beyjik)"
+    : agent.machine_id
+      ? "faqat skan-forvard"
+      : null
+
+  return (
+    <TableRow>
+      <TableCell>
+        <div className="font-medium">{agent.name}</div>
+        <div
+          className={cn(
+            "text-xs",
+            role ? "text-muted-foreground" : "font-semibold text-amber-700",
+          )}
+        >
+          {role ?? "ish yo'q — ish markazi yoki chek belgisi kerak"}
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {online ? (
+            <Badge>Onlayn</Badge>
+          ) : agent.paired ? (
+            // «Uzilgan» nosozlik deb o'qilardi — kechqurun o'chirilgan kompyuter
+            // ham shunday ko'rinardi. Oflayn + qachondan beri — Oxirgi ulanish ustunida.
+            <Badge variant="secondary">Oflayn</Badge>
+          ) : agent.pair_code ? (
+            <Badge variant="outline">Kod kutilmoqda</Badge>
+          ) : (
+            <Badge variant="outline">Kod muddati o'tgan</Badge>
+          )}
+          {versionEl}
+        </div>
+        {agent.pair_code && (
+          <div className="mt-1.5">
+            <code className="rounded-sm bg-muted px-2 py-1 font-semibold tracking-wider">
+              {fmtCode(agent.pair_code)}
+            </code>
+            {agent.pair_expires_at && (
+              <CodeTtl expiresAt={agent.pair_expires_at} />
+            )}
+          </div>
+        )}
+        {!agent.paired && !agent.pair_code && (
+          <div className="mt-1 text-xs text-muted-foreground">
+            «Yangi ulanish kodi» tugmasi bilan qayta bering
+          </div>
+        )}
+      </TableCell>
+      <TableCell>
+        {/* Skan-forvard: stanok skaneri o'qigan QR MES'ga shu stanok nomidan yoziladi */}
+        <SelectField
+          className="h-9 w-44"
+          value={agent.machine_id ? String(agent.machine_id) : ""}
+          emptyLabel="— bog'lanmagan"
+          options={(machines ?? []).map((m) => ({
+            value: String(m.id),
+            label: m.name,
+          }))}
+          onChange={(v) => {
+            const next = v ? Number(v) : null
+            if (next !== (agent.machine_id ?? null)) setPendingMachine(next)
+          }}
+        />
+        <ConfirmDialog
+          open={pendingMachine !== "unset"}
+          onOpenChange={(v) => !v && setPendingMachine("unset")}
+          title={
+            pendingName
+              ? `${pendingName} ish markaziga bog'lansinmi?`
+              : "Ish markazi bog'lami olib tashlansinmi?"
+          }
+          description={
+            pendingName
+              ? `${agent.name} kompyuteridagi skaner o'qigan QR endi "${pendingName}" nomidan yoziladi. Noto'g'ri ish markazi tanlansa skanlar boshqa postga yozilib ketadi.`
+              : `${agent.name} skan-forvardi o'chadi — skaner o'qigan QR MES'ga yozilmaydi (Nanxing'da ochilaveradi).`
+          }
+          confirmText={pendingName ? "Bog'lash" : "Olib tashlash"}
+          loading={linkMachine.isPending}
+          onConfirm={() => {
+            if (pendingMachine !== "unset") linkMachine.mutate(pendingMachine)
+          }}
+        />
+      </TableCell>
+      <TableCell>
+        <Switch
+          checked={agent.can_print}
+          onCheckedChange={(v) => setPendingPrint(v)}
+          aria-label="Chek chiqarish"
+        />
+        <ConfirmDialog
+          open={pendingPrint !== null}
+          onOpenChange={(v) => !v && setPendingPrint(null)}
+          title={
+            pendingPrint
+              ? "Chek chiqarish yoqilsinmi?"
+              : "Chek chiqarish o'chirilsinmi?"
+          }
+          description={
+            pendingPrint
+              ? `${agent.name} chek navbatidan ish oladi. Bu kompyuterda GoDEX printer ulangan bo'lishi SHART — aks holda cheklar shu yerga tushib, printerli agentga yetib bormaydi.`
+              : `${agent.name} chek navbatidan ish olmaydi — faqat skan-forvard va holat uchun ulanadi (printersiz stansiya uchun to'g'ri). Ulangan agentda ~5 daqiqada kuchga kiradi.`
+          }
+          confirmText={pendingPrint ? "Yoqish" : "O'chirish"}
+          loading={togglePrint.isPending}
+          onConfirm={() => {
+            if (pendingPrint !== null) togglePrint.mutate(pendingPrint)
+          }}
+        />
+      </TableCell>
+      <TableCell className="text-muted-foreground">
+        {seen ? (
+          <>
+            <div className="num">{formatDateTime(agent.last_seen_at)}</div>
+            {!online && <div className="text-xs">{ago(seen)}</div>}
+          </>
+        ) : (
+          "Hali ulanmagan"
+        )}
+      </TableCell>
+      <TableCell>
+        <div className="flex gap-1">
+          <AgentLogs agent={agent} />
+          <RowAction
+            icon={KeyRound}
+            title="Yangi ulanish kodi (eski token bekor bo'ladi)"
+            onClick={() => setConfirm("code")}
+          />
+          <RowAction
+            icon={Trash2}
+            title="Agentni bekor qilish"
+            danger
+            onClick={() => setConfirm("delete")}
+          />
+        </div>
+        <ConfirmDialog
+          open={confirm === "code"}
+          onOpenChange={(v) => !v && setConfirm(null)}
+          title={`${agent.name} uchun yangi kod?`}
+          description="Eski token bekor bo'ladi — o'sha kompyuter keyingi ulanishda rad etiladi va yangi kod bilan qayta ulanishi kerak."
+          confirmText="Yangi kod"
+          loading={regen.isPending}
+          onConfirm={() => regen.mutate()}
+        />
+        <ConfirmDialog
+          open={confirm === "delete"}
+          onOpenChange={(v) => !v && setConfirm(null)}
+          title={`${agent.name} bekor qilinsinmi?`}
+          description="Agent boshqa ulana olmaydi va chek chiqara olmaydi."
+          confirmText="Agentni bekor qilish"
+          cancelText="Yopish"
+          destructive
+          loading={remove.isPending}
+          onConfirm={() => remove.mutate()}
+        />
+      </TableCell>
+    </TableRow>
+  )
+}
+
+const formSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, { message: "Nom kamida 2 ta belgidan iborat bo'lsin" })
+    .max(100, { message: "Nom ko'pi bilan 100 ta belgi" }),
+  // Ish markazi YARATISHDA so'raladi (ilgari alohida qadam edi va esdan chiqib
+  // qolardi). MAJBURIY EMAS: chek chiqarish va skan-forvard uchun u shart, lekin
+  // ofisdagi beyjik printeriga ish markazi kerak emas — beyjik chop etish
+  // agentni faqat "chek chiqara oladi" belgisi bo'yicha tanlaydi.
+  machine_id: z.string(),
+})
+
+function AddAgent() {
+  const [open, setOpen] = useState(false)
+  const [created, setCreated] = useState<BridgeAgentRead | null>(null)
+  const queryClient = useQueryClient()
+  const { data: machines } = useQuery(getMachinesQueryOptions())
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: { name: "", machine_id: "" },
+  })
+
+  const mutation = useMutation({
+    mutationFn: async (data: z.infer<typeof formSchema>) =>
+      (
+        await BridgeAgentsService.createBridgeAgent({
+          body: {
+            name: data.name,
+            machine_id:
+              data.machine_id && data.machine_id !== "none"
+                ? Number(data.machine_id)
+                : null,
+          },
+        })
+      ).data,
+    onSuccess: (agent) => {
+      setCreated(agent)
+      form.reset()
+    },
+    onError: handleError,
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: ["bridge-agents"] }),
+  })
+
+  const close = (v: boolean) => {
+    setOpen(v)
+    if (!v) setCreated(null)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={close}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus /> Yangi agent
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        {created?.pair_code ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Ulanish kodi — {created.name}</DialogTitle>
+              <DialogDescription>
+                Printerli kompyuterda agentni ishga tushiring va shu kodni
+                kiriting. Kod 15 daqiqa amal qiladi va bir marta ishlaydi;
+                ulangandan keyin agent doimiy ishlaydi.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="rounded-lg bg-muted py-4 text-center font-bold text-3xl tracking-[0.3em]">
+              {fmtCode(created.pair_code)}
+            </div>
+            <Button onClick={() => close(false)}>Yopish</Button>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle>Yangi MES agenti</DialogTitle>
+              <DialogDescription>
+                Nom va ish markazini tanlang — shundan keyin ulanish kodi
+                beriladi.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit((d) => mutation.mutate(d))}
+                className="space-y-3"
+              >
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nomi</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Arrachi monoblok"
+                          autoFocus
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {/* Ish markazi KOD BERILISHIDAN OLDIN tanlanadi — chek shu
+                    markazga manzillanadi, skan-forvard esa shu stanok nomidan
+                    yoziladi. Bog'lanmagan agent ikkalasini ham qila olmaydi. */}
+                <FormField
+                  control={form.control}
+                  name="machine_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ish markazi</FormLabel>
+                      <FormDescription>
+                        Chek chiqarish va skan-forvard uchun shart. Faqat beyjik
+                        chop etadigan ofis printeri bo'lsa — bo'sh qoldiring.
+                      </FormDescription>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Tanlang" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">
+                            — bog'lanmagan (faqat beyjik)
+                          </SelectItem>
+                          {machines?.map((m) => (
+                            <SelectItem key={m.id} value={String(m.id)}>
+                              {m.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <LoadingButton
+                  type="submit"
+                  className="w-full"
+                  loading={mutation.isPending}
+                >
+                  Kod yaratish
+                </LoadingButton>
+              </form>
+            </Form>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}

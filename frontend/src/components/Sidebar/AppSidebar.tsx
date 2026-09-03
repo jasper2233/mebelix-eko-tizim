@@ -60,7 +60,7 @@ export const NAV_ITEMS: (Item & {
     // stanok skaneri ko'prigi); Prisadka agenti umuman chek chiqarmaydi.
     icon: MonitorCog,
     title: "MES agentlar",
-    path: "/printers",
+    path: "/agents",
     show: isAdmin,
   },
   { icon: ScrollText, title: "Loglar", path: "/logs", show: isAdmin },

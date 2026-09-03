@@ -128,7 +128,7 @@ export const getOrderStatusCountsQueryOptions = () =>
     refetchInterval: 30_000,
   })
 
-/** MES agentlar — loglar sahifasi lug'at sifatida, printers sahifasi jonli
+/** MES agentlar — loglar sahifasi lug'at sifatida, agentlar sahifasi (/agents) jonli
  *  ro'yxat sifatida ishlatadi. staleTime/refetchInterval har sahifaning o'zida
  *  (spread bilan): lug'atga 5 daqiqa kesh, jonli ro'yxatga 10s polling kerak. */
 export const getBridgeAgentsQueryOptions = () =>

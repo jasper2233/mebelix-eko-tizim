@@ -144,8 +144,8 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/routes/_layout/index.tsx:47` — Dashboard `stats` so'rovi (Navbatda/Bugun ustunlari) uchun xato holati umuman qayta ishlanmagan — so'rov yiqilsa ustunlar jimgina "—" ko'rsatadi va he
 - [x] ✅ `frontend/src/routes/_layout/orders/$orderId.tsx:105` — The .project drop zone has no in-flight guard, so a second drop (or a click that reopens the file dialog) while an upload is running fires a second up
 - [x] ✅ `frontend/src/routes/_layout/orders/$orderId.tsx:201` — customCount is read from the query cache with getQueryData() during render, which creates no subscription — the tab label's count is missing on first 
-- [x] ✅ `frontend/src/routes/_layout/printers.tsx:120` — The agent-log dialog swallows API errors: a failed `readBridgeLogs` request renders the 'no logs yet' hint instead of an error, so the admin blames th
-- [x] ✅ `frontend/src/routes/_layout/printers.tsx:202` — The mebelix-agent.exe download link is the only place in the whole frontend that builds an API URL without API_BASE, so whenever the API lives on a di
+- [x] ✅ `frontend/src/routes/_layout/agents.tsx:120` — The agent-log dialog swallows API errors: a failed `readBridgeLogs` request renders the 'no logs yet' hint instead of an error, so the admin blames th
+- [x] ✅ `frontend/src/routes/_layout/agents.tsx:202` — The mebelix-agent.exe download link is the only place in the whole frontend that builds an API URL without API_BASE, so whenever the API lives on a di
 - [x] ✅ `frontend/src/routes/_layout/reports.tsx:40` — Sahifa ochilganda ikkala DatePicker bo'sh turadi, backend esa jimgina oxirgi 30 kunni qaytaradi; javobdagi haqiqiy oraliq (`date_from`/`date_to`) hech
 - [x] ✅ `frontend/src/routes/_layout/reports.tsx:61` — Excel eksporti oddiy `<a href>` navigatsiyasi — xato holatida (403/500/sessiya tugagan) brauzer SPA dan chiqib ketib xom JSON xatosini ekranga chiqara
 - [x] ✅ `frontend/src/routes/_layout/work-centers.tsx:150` — The empty-state row spans one column more than the table has, so the 'Ish markazlari yo'q' cell overflows the table grid.
@@ -259,7 +259,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `frontend/src/routes/_layout/employees.tsx:405,457,512` — Admin dialogs report errors with `detailMessage`, which prefixes every plain server message with a meaningless "XATO:" code.
 - [x] ✅ `frontend/src/routes/_layout/logs.tsx:235` — `<TableRow>` ga `role="button"` berilgan — bu qatorning implicit `row` rolini bosib ketadi va jadval semantikasini buzadi (skrinriderda ustun/qator na
 - [x] ✅ `frontend/src/routes/_layout/orders/$orderId.tsx:590-594 (input), 156-167 (cancel mutation), 581 (onOpenChange={setCancelOpen})` — cancelReason state hech qachon tozalanmaydi: dialog Escape/tashqariga bosib yopilsa (setCancelOpen(false), submit qilinmasdan) yoki muvaffaqiyatli bek
-- [x] ✅ `frontend/src/routes/_layout/printers.tsx:496` — The 'Yangi agent' name field uses bare zod constraints with no messages, so an invalid name shows zod's built-in English error inside an otherwise ful
+- [x] ✅ `frontend/src/routes/_layout/agents.tsx:496` — The 'Yangi agent' name field uses bare zod constraints with no messages, so an invalid name shows zod's built-in English error inside an otherwise ful
 - [x] ✅ `frontend/src/routes/_layout/reports.tsx:159-166` — Ekrandagi "Buyurtmalar" jadvali va o'sha hisobotning Excel eksporti turli ustunlarni ko'rsatadi: JSON javobida kelgan `created_at` va `production_star
 - [x] ✅ `frontend/src/routes/_layout/work-centers.tsx:150` — Jadval sarlavhasida (102-107 qatorlar) atigi 3 ta doimiy TableHead + shartli admin ustuni bor, ya'ni jami admin uchun 4, aks holda 3 ustun. EmptyRow'g
 

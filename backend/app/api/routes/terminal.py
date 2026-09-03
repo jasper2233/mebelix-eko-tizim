@@ -927,7 +927,7 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
             status_code=422,
             detail=(
                 f"{print_post.name if print_post else 'Bu post'} ish markaziga printer biriktirilmagan — "
-                "chek yuborilmadi. Admin /printers sahifasida agentni ish markaziga bog'lashi kerak."
+                "chek yuborilmadi. Admin /agents sahifasida agentni ish markaziga bog'lashi kerak."
             ),
         ) from None
     print_agent_id = agent.id

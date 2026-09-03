@@ -192,7 +192,7 @@ async def print_employee_badge(
     if not agents:
         raise HTTPException(
             status_code=422,
-            detail="Chop etadigan printer yo'q. /printers sahifasida agentni ulang.",
+            detail="Chop etadigan printer yo'q. /agents sahifasida agentni ulang.",
         )
     if agent_id is not None:
         target = next((a for a in agents if a.id == agent_id), None)

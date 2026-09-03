@@ -344,7 +344,7 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   Menejer, texnolog va boshqa post terminallariga hech narsa kerak emas — ular
   brauzerdan tugmani bosadi.
 - **Ulanish (pairing)** — har printer o'z tokeni bilan ishlaydi, serverda yagona
-  umumiy token yo'q. Admin `/printers` sahifasida agent yaratadi va **8 belgili
+  umumiy token yo'q. Admin `/agents` sahifasida agent yaratadi va **8 belgili
   bir martalik kod** oladi (alifboda I/L/O/0/1 yo'q — telefonda aytganda
   adashtirmaydi; 15 daqiqa yashaydi). Tsex kompyuterida `mebelix-agent.exe`
   birinchi marta ishga tushganda `_pair()` kichik sozlash oynasini
@@ -393,14 +393,14 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
 - Tsex kompyuteriga Python ham, pip ham, SSH ham, serverdagi `.env` tahriri ham
   KERAK EMAS: agent PyInstaller onefile `mebelix-agent.exe` bo'lib yig'iladi —
   uni CI ning `agent` job'i quradi va `GET /bridge-agents/download` beradi. Admin
-  birinchi o'rnatishda exe'ni `/printers` sahifasidagi havoladan yuklab oladi,
+  birinchi o'rnatishda exe'ni `/agents` sahifasidagi havoladan yuklab oladi,
   ishga tushiradi va admin panel bergan kod kiritiladi; keyingisini agent o'zi
   qiladi — `self_update()` `GET /bridge-agents/latest` ni qayta ulanishda darhol
   va zaxira sifatida har 10 daqiqada tekshiradi, versiya yangi bo'lsa exe'ni
   tortib sha256 ni solishtiradi va `_apply_update()`/`_restart_self()` bilan
   JIM almashtiradi (navbatda chek turgan yoki pairing ketayotgan bo'lsa —
   bo'shaguncha, ko'pi bilan 1 soat kutadi).
-  Frontend tomoni: `frontend/src/routes/_layout/printers.tsx` ("MES agentlar",
+  Frontend tomoni: `frontend/src/routes/_layout/agents.tsx` ("MES agentlar",
   exe havolasi va har agentning `v<version> → v<latest>` belgisi) va sidebar
   yozuvi.
 - `render_label_png()` (`app/services/labels.py`) — 80×60 mm, 203 dpi

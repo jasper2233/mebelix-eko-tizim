@@ -295,7 +295,7 @@ Oqim:
 
 ### Admin panel — "MES agentlar"
 
-`frontend/src/routes/_layout/printers.tsx`, faqat admin. Sahifada: sarlavha tavsifidagi "mebelix-agent.exe yuklab olish" havolasi (`GET /api/v1/bridge-agents/download`), uch qatorli o'rnatish yo'riqnomasi va agentlar jadvali — nomi, holati (faqat ulangan agentda yonida versiya belgisi), joriy ulanish kodi, ish markazi bog'lami (skan-forvard), chek chiqarish ruxsati, oxirgi ulanish vaqti, amallar.
+`frontend/src/routes/_layout/agents.tsx`, faqat admin. Sahifada: sarlavha tavsifidagi "mebelix-agent.exe yuklab olish" havolasi (`GET /api/v1/bridge-agents/download`), uch qatorli o'rnatish yo'riqnomasi va agentlar jadvali — nomi, holati (faqat ulangan agentda yonida versiya belgisi), joriy ulanish kodi, ish markazi bog'lami (skan-forvard), chek chiqarish ruxsati, oxirgi ulanish vaqti, amallar.
 
 | Holat | Qachon |
 |---|---|
@@ -544,4 +544,4 @@ Frontend dev qo'llanmasi: nvm/fnm bilan Node o'rnatish, `npm install` + `npm run
 - `.github/workflows/ci.yml` → `backend/pyproject.toml` (uv sync, ruff/mypy), `caddy/Caddyfile` (`backend` job'ning `caddy validate` qadami — `deploy.sh` dagi `caddy reload` yiqilmasligi uchun), `frontend/.nvmrc` + `frontend/package-lock.json` (Node versiya va npm cache), `backend/Dockerfile` + `frontend/Dockerfile` → ghcr.io (`images` job), `scripts/deploy.sh` (deploy job — `TAG` + `REGISTRY`), Telegram secrets (notify job).
 - `scripts/generate-client.sh` → backend OpenAPI spec → `frontend/src/client/` (frontend va backend orasidagi kontrakt sinxronizatsiyasi).
 - Chop etish zanjiri: `backend/app/api/routes/terminal.py` (`POST /terminal/labels/{id}`) → `backend/app/tasks/__init__.py` (`print_label`) → `backend/app/services/labels.py` (`load_label_data` + `render_label_png` + `backend/app/assets/label-*.png`) → Redis `mes:print:queue:{agent_id}` → `backend/app/api/routes/ws.py` (`/ws/bridge`, `Authorization: Bearer`) → `bridge-agent/agent.py` (`_print_png_gdi`) → USB GoDEX.
-- Agent autentifikatsiyasi: `frontend/src/routes/_layout/printers.tsx` → `backend/app/api/routes/bridge_agents.py` (kod berish, `/pair`, `/scan`) → `bridge_agent` jadvali (`token_hash`, `last_seen_at`) → `backend/app/api/routes/ws.py` (`ws_bridge`, `touch_agent`) → `%APPDATA%\MebelixAgent\.env`.
+- Agent autentifikatsiyasi: `frontend/src/routes/_layout/agents.tsx` → `backend/app/api/routes/bridge_agents.py` (kod berish, `/pair`, `/scan`) → `bridge_agent` jadvali (`token_hash`, `last_seen_at`) → `backend/app/api/routes/ws.py` (`ws_bridge`, `touch_agent`) → `%APPDATA%\MebelixAgent\.env`.
