@@ -442,20 +442,28 @@ export function PrisadkaView({
       >
         <PostProgress className="ml-auto" done={totDone} total={totReq} />
         <div className="flex items-center gap-2">
-          {/* Sensorli ekranda hover yo'q — ikonka yoniga yozuv shart */}
-          {dirSupported() && (
-            <Button
-              variant="outline"
-              className="h-12 max-w-64 px-3 font-bold"
-              title="SCX fayllar tushadigan papkani almashtirish"
-              onClick={changeDir}
-            >
-              <FolderCog />
-              <span className="truncate">
-                {dirName ? `Papka: ${dirName}` : "SCX papkasi"}
+          {/* Papka — o'rnatish sozlamasi, operator amali EMAS: prisadkachi
+              faqat yuklab oladi. Tanlangan bo'lsa nomi xira izoh (qayerga
+              tushishini bilsin), tanlanmagan bo'lsa bitta tugma — birinchi
+              yuklashda ham dialog o'zi chiqadi. Almashtirish: brauzer sayt
+              ma'lumotini tozalash (admin), tugma yo'q. */}
+          {dirSupported() &&
+            (dirName ? (
+              <span
+                className="max-w-56 truncate text-sm text-muted-foreground"
+                title="SCX fayllar shu papkaga tushadi"
+              >
+                Papka: {dirName}
               </span>
-            </Button>
-          )}
+            ) : (
+              <Button
+                variant="outline"
+                className="h-12 px-3 font-bold"
+                onClick={changeDir}
+              >
+                <FolderCog /> SCX papkasi
+              </Button>
+            ))}
           <LoadingButton
             className="h-12 px-5 text-base font-bold"
             loading={progress !== null}
@@ -491,7 +499,7 @@ export function PrisadkaView({
               </th>
               <th className="px-4 py-2.5 text-right">
                 Skanlar
-                <span className="block text-2xs font-medium normal-case tracking-normal">
+                <span className="block whitespace-nowrap text-2xs font-medium normal-case tracking-normal">
                   qilingan / jami
                 </span>
               </th>

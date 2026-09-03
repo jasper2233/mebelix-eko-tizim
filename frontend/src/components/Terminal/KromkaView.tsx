@@ -249,7 +249,7 @@ export function KromkaView({
                   {/* Terminalda hover yo'q — izoh sarlavhaning o'zida: chip
                       nusxa, raqam qilingan/jami tomon */}
                   Nusxalar
-                  <span className="block text-2xs font-medium normal-case tracking-normal">
+                  <span className="block whitespace-nowrap text-2xs font-medium normal-case tracking-normal">
                     qilingan / tomon · ✓ tugadi
                   </span>
                 </th>
