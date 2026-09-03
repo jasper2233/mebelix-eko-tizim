@@ -65,12 +65,24 @@ function deadlineCountdown(value?: string | null): [string, string] {
  * soatlik chegara har kecha butun taxtani yoqardi (smena 18:30-18:40 da
  * tugaydi), kalendar kuni esa dam olishdan keyingi ertalab.
  */
-function stallLabel(idle?: number | null): string | null {
+function stallLabel(
+  idle: number | null | undefined,
+  started: boolean,
+): string | null {
   // RAQAMSIZ: qatorda allaqachon "N KUN" bor (muddat ustunida), va ikkinchi
   // kun hisobi qanday yozilmasin muddat deb o'qiladi.
-  if (idle == null) return "BOSHLANMAGAN"
-  return idle >= 2 ? "QIMIRLAMADI" : null
+  //
+  // Bitta chegara ikkala so'z uchun: 2 ish kuni harakat yo'q. Skani bo'lmagan
+  // buyurtma — «BOSHLANMAGAN» (backend bazani ishlab chiqarishga uzatilgan
+  // kundan hisoblaydi); ilgari u `idle == null` bo'lib DARHOL tamg'alanardi —
+  // bugun uzatilgan buyurtma ham, ya'ni teg shovqin edi.
+  if (idle == null || idle < 2) return null
+  return started ? "QIMIRLAMADI" : "BOSHLANMAGAN"
 }
+
+/** Buyurtmada kamida bitta skan bormi — bosqichlar jamlanmasidan. */
+const hasScans = (stages: Record<string, { done: number }>) =>
+  Object.values(stages).some((s) => s.done > 0)
 
 /** Devor ekrani uchun o'lcham shkalasi.
  *
@@ -605,7 +617,7 @@ function TabloPage() {
                 </tr>
               )}
               {(data?.orders ?? []).map((o) => {
-                const stall = stallLabel(o.idle_days)
+                const stall = stallLabel(o.idle_days, hasScans(o.stages))
                 return (
                   <tr
                     key={o.id}
@@ -986,7 +998,7 @@ function TabloOrderDrill({
   // Buyurtma TMO dan o'tib taxtadan tushgan bo'lsa `row` yo'q: kontekst
   // ko'rinmaydi, qolgan hamma narsa ishlayveradi.
   const row = matrix?.orders.find((o) => o.id === orderId)
-  const stall = row ? stallLabel(row.idle_days) : null
+  const stall = row ? stallLabel(row.idle_days, hasScans(row.stages)) : null
   const drillPosts = (matrix?.posts ?? [])
     .map((p) => p.code)
     // Detallar kelgunicha hammasi turadi: bo'sh ro'yxatdan to'liq ro'yxatga

@@ -153,11 +153,26 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
             status=str(o.status),
             priority=str(o.priority),
             stages={str(posts_by_id[pid].code): stage for (oid, pid), stage in agg.items() if oid == o.id},
-            idle_days=(sum(1 for d in ish_kunlari if d > last_day[o.id]) if o.id in last_day else None),
+            # Bazaviy kun: oxirgi skan, u bo'lmasa — ishlab chiqarishga uzatilgan kun.
+            # Ilgari skansiz buyurtma `None` bo'lib, frontend uni DARHOL «BOSHLANMAGAN»
+            # deb tamg'alardi — bugun uzatilgan buyurtma ham. Endi bir qoida: 2 ish
+            # kuni harakat yo'q — teg (skani bor-yo'qligidan qat'i nazar).
+            idle_days=_idle_days(ish_kunlari, last_day.get(o.id) or _prod_start_day(o)),
         )
         for o in orders
     ]
     return TabloMatrix(posts=[_post_col(p) for p in posts], orders=rows)
+
+
+def _prod_start_day(o: Order) -> date | None:
+    return o.production_started_at.astimezone(TASHKENT_TZ).date() if o.production_started_at else None
+
+
+def _idle_days(ish_kunlari: list[date], base: date | None) -> int | None:
+    """Bazaviy kundan keyingi TSEX ISHLAGAN kunlar soni; bazasi yo'q — `None`."""
+    if base is None:
+        return None
+    return sum(1 for d in ish_kunlari if d > base)
 
 
 @router.get("/orders/{order_id}", response_model=TabloOrderDetail, operation_id="read_tablo_order")
