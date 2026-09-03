@@ -49,7 +49,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.4.6"
+AGENT_VERSION = "1.4.7"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -1251,16 +1251,27 @@ def _spawn_bat(name: str, text: str, yollar: dict[str, str]) -> bool:
     ASCII bo'lmagan Windows profil nomida (`%APPDATA%` ichida, masalan `Oʻktam`)
     `write_text` UnicodeEncodeError bilan yiqilib, qayta ishga tushish ham,
     avto-yangilanish ham JIMGINA o'lardi. Xato bo'lsa `False` — chaqiruvchi
-    `os._exit` qilmasin."""
+    `os._exit` qilmasin.
+
+    `_PYI_*` o'zgaruvchilari ATAYLAB tozalanadi. PyInstaller onefile bootloader'i
+    ularni (`_PYI_ARCHIVE_FILE`, `_PYI_PARENT_PROCESS_LEVEL`) bola jarayonga
+    meros qoldiradi; 6.22 dan (2026-08, GHSA-9fxf-4qw3-ghmr) boshlab bola
+    jarayon OTA jarayonning exe yo'li o'ziniki bilan bir xilligini tekshiradi.
+    bat orqali qayta ishga tushgan agentning otasi cmd.exe (u ham darhol o'lib
+    ketadi) — tekshiruv «Security validation failure: failed to obtain
+    executable path for parent process!» bilan yiqilar, yangilangan agent
+    umuman turmasdi (Prisadka/Arra 2026-08-28). Meros bo'lmasa bootloader uni
+    mustaqil ilova deb oladi va tekshirmaydi."""
     import subprocess
 
     try:
         bat = CONFIG_DIR / name
         bat.write_text(text, encoding="ascii")
+        toza = {k: v for k, v in os.environ.items() if not k.startswith("_PYI_")}
         subprocess.Popen(  # noqa: S602
             ["cmd", "/c", str(bat)],
             creationflags=0x00000008 | 0x08000000,
-            env={**os.environ, **yollar},
+            env={**toza, **yollar},
         )
     except Exception:  # noqa: BLE001 - sabab log'da, qaror chaqiruvchida
         log.exception("%s ishga tushmadi", name)

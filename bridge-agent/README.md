@@ -53,6 +53,21 @@ o'rnatishda kerak (yoki paneldagi havoladan). Panelda eski versiyali agent sariq
 sha256 mos kelmasa (yarim yuklangan fayl) o'tkazib yuboriladi va keyingi siklda
 qayta urinadi. Dev-skript (exe emas) o'zini yangilamaydi.
 
+**v1.4.7 tuzatishi — «Security validation failure: failed to obtain executable
+path for parent process!»** Yangilanish/qayta ulash `.bat` orqali yangi exe'ni
+ishga tushiradi. PyInstaller 6.22+ bootloader'i bola jarayonga `_PYI_*` env
+o'zgaruvchilarini meros qoldiradi va ular bor bo'lsa OTA jarayon exe'sini
+tekshiradi — otasi `cmd.exe` bo'lgani uchun tekshiruv yiqilib, yangilangan
+agent turmasdi (faqat qo'lda/reboot'da ochilardi). Endi `_spawn_bat` shu
+o'zgaruvchilarni tozalab uzatadi. CI'da `pyinstaller` versiyasi qotirilgan.
+
+**Exe qayerda turishi kerak?** Istalgan LOKAL diskda, yozish huquqi bor
+papkada (`C:` shart emas — `D:\MebelixAgent\` ham bo'ladi): yangilanish exe'ni
+o'z joyida almashtiradi (Program Files ga admin kerak), avtostart yo'li har
+startda qayta yoziladi, sozlama esa `%APPDATA%\MebelixAgent` da. Tarmoq
+diski, flashka yoki «Yuklanmalar» ichidagi tasodifiy nusxa — yo'q: yuklanish
+paytida yo'q bo'lsa avtostart yiqiladi.
+
 Agentni ikki marta ishga tushirib bo'lmaydi: mutex ikkinchi nusxani to'xtatadi
 va xabar tray'ga yo'naltiradi. **Yangi kod bilan qayta ulash** — exe'ni qayta
 bosish EMAS (eski token amalda qolaveradi): tray menyusidan **"Qayta ulash
@@ -101,7 +116,7 @@ yo'qolmaydi — yorliqlar Redis navbatida turadi va agent qaytishi bilan chiqadi
 ## Dasturchi uchun: exe yig'ish
 
 ```bash
-pip install "websockets>=14" pywin32 pillow pynput pystray pyinstaller
+pip install "websockets>=14" pywin32 pillow pynput pystray "pyinstaller==6.22.2"
 pyinstaller --onefile --noconsole --icon mebelix.ico --name mebelix-agent agent.py
 ```
 
