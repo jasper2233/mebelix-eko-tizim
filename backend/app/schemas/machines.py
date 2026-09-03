@@ -27,7 +27,12 @@ class MachineOverview(BaseModel):
     on_shift: int  # bugun ochilgan, hali yopilmagan smenalar (hodim soni)
     today_scans: int
     last_scan_at: datetime | None
-    unfinished_routes: int  # shu markazga biriktirilgan, tugallanmagan qadamlar (faol buyurtmalar)
+    unfinished_routes: int  # shu markazga BIRIKTIRILGAN, tugallanmagan qadamlar — o'chirish to'sig'i (`_blockers`)
+    # Terminal navbati bilan bir xil qoida: biriktirilgan + postning biriktirilmagan
+    # ishi, QOLGAN SKAN bilan (boshqaruv paneli «navbatda» bilan bir birlik).
+    # ponytail: bir postda 2+ faol markaz bo'lsa biriktirilmagan ish ikkalasida ko'rinadi —
+    # terminalda ham shunday, kim oldin skan qilsa o'shaniki.
+    queue_scans: int
 
 
 class MachineCreate(BaseModel):

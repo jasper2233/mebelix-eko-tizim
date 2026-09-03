@@ -159,7 +159,7 @@ function WorkCentersPage() {
               <TableHead>Oxirgi skan</TableHead>
               <TableHead
                 className="text-right"
-                title="Shu markazga biriktirilgan, hali tugallanmagan marshrut qadamlari (faol buyurtmalar)"
+                title="Terminal navbati bilan bir xil: shu markazga biriktirilgan + postning biriktirilmagan ishi — qolgan skanlar"
               >
                 Navbatda
               </TableHead>
@@ -255,10 +255,12 @@ function WorkCentersPage() {
                       )}
                     </TableCell>
                     <TableCell className="num text-right">
-                      {o?.unfinished_routes ? (
+                      {/* Boshqaruv paneli «navbatda» bilan bir birlik (qolgan skan);
+                          biriktirilgan qadamlar soni o'chirish to'sig'ida qoladi */}
+                      {o?.queue_scans ? (
                         <span>
-                          {o.unfinished_routes}{" "}
-                          <span className="text-muted-foreground">qadam</span>
+                          {o.queue_scans}{" "}
+                          <span className="text-muted-foreground">skan</span>
                         </span>
                       ) : (
                         <span className="text-muted-foreground">—</span>

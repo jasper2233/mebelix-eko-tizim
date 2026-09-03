@@ -1352,6 +1352,10 @@ export type MachineOverview = {
      * Unfinished Routes
      */
     unfinished_routes: number;
+    /**
+     * Queue Scans
+     */
+    queue_scans: number;
 };
 
 /**

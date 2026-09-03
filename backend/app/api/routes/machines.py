@@ -176,6 +176,33 @@ async def read_machines_overview(db: SessionDep, _: StaffReadUser) -> list[Machi
             )
         ).all()
     }
+    # Navbat — terminal ro'yxati qoidasi (`terminal.py`: machine_id == men YOKI null),
+    # qolgan skan bilan; faol buyurtmalar (PRODUCTION), yoqilgan qadamlar
+    post_of: dict[int, int] = {
+        mid: pid
+        for mid, pid in (
+            await db.execute(select(Machine.id, Machine.post_id).where(Machine.is_deleted == False))  # noqa: E712
+        ).all()
+    }
+    queue_rows = (
+        await db.execute(
+            select(PartRoute.post_id, PartRoute.machine_id, func.sum(PartRoute.total_required - PartRoute.total_done))
+            .join(Order, Order.id == PartRoute.order_id)
+            .where(
+                PartRoute.total_done < PartRoute.total_required,
+                PartRoute.is_enabled == True,  # noqa: E712
+                PartRoute.is_deleted == False,  # noqa: E712
+                Order.status == OrderStatus.PRODUCTION,
+                Order.is_deleted == False,  # noqa: E712
+            )
+            .group_by(PartRoute.post_id, PartRoute.machine_id)
+        )
+    ).all()
+    queue: dict[int, int] = dict.fromkeys(machines, 0)
+    for post_id, machine_id, remaining in queue_rows:
+        for mid in machines:
+            if post_of.get(mid) == post_id and (machine_id is None or machine_id == mid):
+                queue[mid] += int(remaining)
     return [
         MachineOverview(
             machine_id=mid,
@@ -186,6 +213,7 @@ async def read_machines_overview(db: SessionDep, _: StaffReadUser) -> list[Machi
             today_scans=scans.get(mid, (0, None))[0],
             last_scan_at=scans.get(mid, (0, None))[1],
             unfinished_routes=unfinished.get(mid, 0),
+            queue_scans=queue.get(mid, 0),
         )
         for mid in machines
     ]
