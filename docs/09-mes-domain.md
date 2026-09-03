@@ -299,7 +299,9 @@ kamayganda va `.project` qayta import qilinganda yumshoq o'chiriladi.
 **Qadoq cheki** — `PachkaLabelData` + `render_pachka_label_png()`, arq task `print_pachka_label`
 (qadoq yakunlanganda avtomatik; chek chiqmaydigan bo'lsa qadoq umuman yopilmaydi — pastdagi
 "Qadoq cheki chiqmasa" ga qarang). Tarkibi: logo, `QADOQ` + kod (4.6 mm bold), buyurtma raqami,
-loyiha nomi, detallar soni, sana-vaqt va 28 mm QR (kod QR ostida ham takrorlanadi). Qadoq QR'i
+loyiha nomi, detallar soni, sana-vaqt, 28 mm QR (kod QR ostida ham takrorlanadi) va o'ng pastda brend
+`Instagram @mebelix_uz` — qadoq mijozga/transportga boradi (detal cheki bormaydi); matn, ikkinchi QR
+EMAS (TMO/qadoq skanerlari noto'g'ri QR'ni o'qimasin). Qadoq QR'i
 detal QR'idan ajralib turadi: `PK-` bilan boshlanadi va ostki chiziq umuman yo'q, shuning uchun
 `scanning._QR_RE` uni detal deb qabul qilmaydi — terminal skanni qaysi oqimga yuborishni shundan
 biladi.

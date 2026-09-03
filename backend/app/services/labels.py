@@ -568,6 +568,10 @@ def render_pachka_label_png(d: PachkaLabelData) -> bytes:
     qr_px = 28 * mm
     img.paste(qr.get_image().convert("RGB").resize((qr_px, qr_px)), (48 * mm, 4 * mm))
     text(62, 34.5, d.code[:22], 2.5, anchor="ma")
+    # Brend — qadoq mijozga/transportga boradi (detal cheki bormaydi): matn, ikkinchi QR EMAS,
+    # aks holda TMO/qadoq skanerlari noto'g'ri QR'ni o'qishi mumkin
+    text(77, 42, "Instagram", 2.4, anchor="ra")
+    text(77, 45.2, "@mebelix_uz", 3.6, bold=True, anchor="ra")
 
     return _to_1bit_png(img)
 
