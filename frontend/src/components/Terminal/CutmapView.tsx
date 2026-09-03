@@ -495,29 +495,9 @@ export function CutmapView({
   // avval chek bekor qilinadi (dublikat chek oqimni buzadi)
   const nextInstance = markedInsts.find((i) => !isCut(i))
 
-  // Reja ko'rsatkichlari (optimizatsiya sifati — atxot, to'ldirish, rez; va
-  // fayl yaratilganda hal bo'lgan stanok sozlamalari — arra kesimi, tirim)
-  // FAQAT texnologda: kesish paytida operator ular bilan hech narsa qilmaydi,
-  // terminalda esa ekran tor va 2 metrdan o'qiladi — ikkita ish raqami yirik
-  // shriftda to'qqiztasi 12px dan foydaliroq. Shu sababdan "Listlar 4-0=4 /
-  // Detallar 20-0=20" ham olib tashlangan: qancha qolgani listlar jadvalidan
-  // (har kartochka o'z holatini ko'rsatadi) va pastdagi progressdan ko'rinadi.
-  const planPairs: Array<[string, string | number]> = [
-    ["Atxot", material?.ko ?? "—"],
-    ["Rez, m", material?.dr?.toFixed?.(1) ?? material?.dr ?? "—"],
-    ["Rezlar", material?.kr ?? "—"],
-    [
-      "To'ldirish",
-      material?.fill ? `${(material.fill * 100).toFixed(1)}%` : "—",
-    ],
-    ["Arra", material?.kerf ?? "—"],
-    ["Tirim uz.", material?.trimL ?? "—"],
-    ["Tirim en", material?.trimW ?? "—"],
-  ]
-  const statPairs = admin ? planPairs : []
-  // GibSaw uslubi: qat'iy 3 qator, bandlar ustunlarga to'kiladi — hech qachon
-  // o'ramaydi, header balandligi o'smaydi, eni ~400px.
-  // Header info: list nomi (ochiq bo'lsa) + statlar — bitta portalda
+  // Reja ko'rsatkichlari (atxot, rez, to'ldirish, arra, tirim) hech qayerda
+  // chizilmaydi (2026-09-03 qarori) — operator ham, texnolog ham ular bilan ish qilmaydi.
+  // Header info: list nomi (ochiq bo'lsa) — bitta portalda
   const statsRow = material ? (
     <div
       className={`flex w-fit items-center gap-6 ${statsContainer ? "mx-auto" : ""}`}
@@ -533,18 +513,6 @@ export function CutmapView({
           <div className="truncate text-xs font-normal text-muted-foreground">
             {material.name}
           </div>
-        </div>
-      )}
-      {statPairs.length > 0 && (
-        <div
-          className="num grid w-fit grid-flow-col grid-rows-3 text-xs leading-[1.4]"
-          style={{ columnGap: "18px" }}
-        >
-          {statPairs.map(([l, v]) => (
-            <span key={l} className="whitespace-nowrap">
-              <span className="text-muted-foreground">{l}:</span> <b>{v}</b>
-            </span>
-          ))}
         </div>
       )}
     </div>
