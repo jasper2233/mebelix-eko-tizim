@@ -5,12 +5,7 @@
 // yuklash faqat shu tugma orqali, operator xohlaganda.
 
 import { useQuery } from "@tanstack/react-query"
-import {
-  FolderCog,
-  HardDriveDownload,
-  Map as MapIcon,
-  Printer,
-} from "lucide-react"
+import { HardDriveDownload, Map as MapIcon, Printer } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
@@ -226,18 +221,6 @@ export function PrisadkaView({
     }
   }
 
-  const changeDir = async () => {
-    try {
-      const dir = await pickDir()
-      if (dir) {
-        setDirName(dir.name)
-        toast.success(`SCX papkasi: ${dir.name}`)
-      }
-    } catch (e) {
-      toast.error(`Papkani tanlab bo'lmadi: ${(e as Error).message}`)
-    }
-  }
-
   // ROVER rejimi: har nusxa ALOHIDA qator; qator tanlanadi, chop etish
   // chapdagi katta tugmada (ARRA terminal bilan bir xil ishlash naqshi —
   // sensor uchun katta nishon, chip ichidagi mayda tugma emas)
@@ -442,28 +425,18 @@ export function PrisadkaView({
       >
         <PostProgress className="ml-auto" done={totDone} total={totReq} />
         <div className="flex items-center gap-2">
-          {/* Papka — o'rnatish sozlamasi, operator amali EMAS: prisadkachi
-              faqat yuklab oladi. Tanlangan bo'lsa nomi xira izoh (qayerga
-              tushishini bilsin), tanlanmagan bo'lsa bitta tugma — birinchi
-              yuklashda ham dialog o'zi chiqadi. Almashtirish: brauzer sayt
-              ma'lumotini tozalash (admin), tugma yo'q. */}
-          {dirSupported() &&
-            (dirName ? (
-              <span
-                className="max-w-56 truncate text-sm text-muted-foreground"
-                title="SCX fayllar shu papkaga tushadi"
-              >
-                Papka: {dirName}
-              </span>
-            ) : (
-              <Button
-                variant="outline"
-                className="h-12 px-3 font-bold"
-                onClick={changeDir}
-              >
-                <FolderCog /> SCX papkasi
-              </Button>
-            ))}
+          {/* Papka tugmasi YO'Q: papka birinchi yuklashda bir marta so'raladi
+              va eslab qolinadi — operator faqat yuklab oladi. Tanlangan papka
+              nomi xira izoh (qayerga tushishini bilsin). Almashtirish —
+              brauzer sayt ma'lumotini tozalash (admin). */}
+          {dirName && (
+            <span
+              className="max-w-56 truncate text-sm text-muted-foreground"
+              title="SCX fayllar shu papkaga tushadi"
+            >
+              Papka: {dirName}
+            </span>
+          )}
           <LoadingButton
             className="h-12 px-5 text-base font-bold"
             loading={progress !== null}
