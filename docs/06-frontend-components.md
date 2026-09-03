@@ -77,6 +77,8 @@ qolganini lavozim hal qiladi.
 - **Bu ayni paytda TAHRIRLASH dialogi ham:** `client` propi berilsa forma boshqariladigan rejimda ochiladi (`ochiq = true`, yopilishi `onClose` orqali). Ikkinchi nusxa yozilmagan, chunki maydonlar va tekshiruvlar aynan bir xil — nusxa bo'lsa telefon formati bir joyda o'zgarib, ikkinchisida qolardi.
 - Mutation: `client` berilmasa `ClientsService.createClient`, berilsa `ClientsService.updateClient` (`crudCallbacks` triosi — toast "Mijoz qo'shildi"/"Mijoz yangilandi" + xato + `["clients"]` invalidatsiyasi); muvaffaqiyatda reset, dialog yopiladi va FAQAT yaratishda `onCreated?.(client)` chaqiriladi. Yaratish rejimida dialog YOPILGANDA ham `form.reset()` bo'ladi — komponent unmount bo'lmagani uchun (faqat `DialogContent` ketadi) tashlab ketilgan qoralama va `onBlur` xatolari qayta ochilganda ko'rinib qolardi.
 
+- Trigger tugmasi `Plus` ikonkasi bilan («+ Yangi mijoz» matni emas — «Yangi buyurtma» bilan bir xil); telefon placeholder'i formatter chiqishi bilan bir xil (`+998 90 123-45-67`).
+
 ### `frontend/src/components/Clients/ClientCard.tsx`
 
 **Maqsadi:** mijoz kartochkasi — reyestrda qator ustiga bosilganda ochiladi (`clientId` berilsa `Dialog`, `sm:max-w-4xl`). Reyestrdagi savol "bu mijoz kim" emas, "bu mijoz nima buyurtma qilgan", shuning uchun asosiy joyni buyurtmalar jadvali egallaydi.
@@ -84,6 +86,8 @@ qolganini lavozim hal qiladi.
 - Ma'lumot: `ClientsService.readClientDetail` (`["clients", "detail", clientId]`, `enabled: clientId !== null`); yuklanayotganda `Skeleton`.
 - Sarlavhada ism + `Clients/ClientSegment`, tavsifda `N buyurtma · summa · aylanmaning X%`. Tepada kontakt qatori (telefon, qo'shimcha telefon, manzil, qo'shilgan sana, izoh) — ichki `Maydon` yordamchisi bilan.
 - Pastda buyurtmalar jadvali (`ui/table`): raqam `Link to="/orders/$orderId"` (kartochka yakuniy manzil emas, o'tish joyi), `Common/StatusBadge`, prioritet, muddat, summa; bo'sh bo'lsa `Common/EmptyRow`.
+
+- Buyurtmalar jadvali reestr bilan bir tilda: prioritet `PRIORITY_TEXT_CLASSES` rangida, muddat faol buyurtmada `deadlineTone` (o'tgan — qizil, bugun — amber), yangi **Qoldiq** ustuni (`remainingPayment`; ≤0 — «To'langan»); sarlavha tavsifida **qarz** — bekor qilinmagan buyurtmalar qoldiqlari yig'indisi (`ClientOrderRow.advance_payment` dan; «bizga qarzi bormi?» — kartochkadagi asosiy savol). Telefonlar `formatUzPhone` bilan.
 
 ### `frontend/src/components/Clients/ClientCombobox.tsx`
 

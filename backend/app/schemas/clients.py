@@ -48,6 +48,8 @@ class ClientOrderRow(BaseModel):
     priority: str
     deadline: date | None
     amount: Decimal | None
+    #: Qoldiq to'lov (qarz) kartochkada ko'rinsin — mijoz haqidagi asosiy savol.
+    advance_payment: Decimal | None = None
     created_at: datetime
 
 

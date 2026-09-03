@@ -27,6 +27,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useDebounced } from "@/hooks/useDebounced"
 import { requireAccess } from "@/lib/guards"
 import { formatDate, formatMoney, isManagement, isManager } from "@/lib/mes"
+import { formatUzPhone } from "@/lib/validation"
 import { getClientsQueryOptions, PAGE_SIZE } from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/clients")({
@@ -72,21 +73,26 @@ function ClientsPage() {
         }
         // Yaratish ham `ManagerUser` — direktorga tugma ko'rsatilmaydi, aks
         // holda bosgach POST /clients dan 403 olardi.
-        actions={canWrite ? <AddClient /> : undefined}
+        // Qidiruv sarlavha qatorida, tugma yonida — alohida qator bo'sh joy
+        // bilan vertikal joy yeb turardi (buyurtmalar reestrida ham qidiruv
+        // boshqaruv qatorida).
+        actions={
+          <div className="flex items-center gap-2">
+            <SearchInput
+              className="w-72"
+              placeholder="Ism yoki telefon bo'yicha qidirish"
+              value={search}
+              // Qidiruv o'zgarganda birinchi sahifaga: aks holda 3-sahifada
+              // turib qidirgan odam bo'sh jadval ko'rardi.
+              onChange={(v) => {
+                setSearch(v)
+                setPage(0)
+              }}
+            />
+            {canWrite && <AddClient />}
+          </div>
+        }
       />
-      <div className="mb-4 flex">
-        <SearchInput
-          className="ml-auto w-full max-w-xs"
-          placeholder="Ism yoki telefon bo'yicha qidirish"
-          value={search}
-          // Qidiruv o'zgarganda birinchi sahifaga: aks holda 3-sahifada
-          // turib qidirgan odam bo'sh jadval ko'rardi.
-          onChange={(v) => {
-            setSearch(v)
-            setPage(0)
-          }}
-        />
-      </div>
       {isLoading ? (
         <Skeleton className="h-64 w-full" />
       ) : isError ? (
@@ -100,7 +106,12 @@ function ClientsPage() {
               <TableHead className="text-right">Umumiy summa</TableHead>
               {/* "Reyting" emas, ABC: qisqartma ustun sarlavhasida
                     tushuntirilmaydi, har belgining tooltip'i bor. */}
-              <TableHead className="text-center">ABC</TableHead>
+              <TableHead
+                className="text-center"
+                title="ABC segment — aylanmadagi og'irlik: A — birinchi 80%, B — 80–95%, C — oxirgi 5%"
+              >
+                ABC
+              </TableHead>
               <TableHead>Qo'shilgan</TableHead>
               {canWrite && <TableHead />}
             </TableRow>
@@ -124,8 +135,9 @@ function ClientsPage() {
                     <span className="block truncate">{c.full_name}</span>
                     {/* Telefon nom ostida: alohida ustun kenglik yeb,
                           summa va ABC ni chetga surib yuborardi. */}
+                    {/* Telefon o'qiladigan formatda — buyurtma formasi bilan bir xil */}
                     <span className="num block text-sm text-muted-foreground">
-                      {c.phone ?? "—"}
+                      {c.phone ? formatUzPhone(c.phone) : "—"}
                     </span>
                   </TableCell>
                   <TableCell className="num text-right font-semibold">
@@ -158,10 +170,17 @@ function ClientsPage() {
                           title="Tahrirlash"
                           onClick={() => setEditFor(c)}
                         />
+                        {/* Buyurtmasi bor mijoz o'chirilmaydi (backend 409) —
+                            qatorda soni bor, tugma oldindan o'chiq */}
                         <RowAction
                           icon={Trash2}
-                          title="O'chirish"
+                          title={
+                            (c.orders_count ?? 0) > 0
+                              ? `${c.orders_count} ta buyurtmasi bor — o'chirib bo'lmaydi`
+                              : "O'chirish"
+                          }
                           danger
+                          disabled={(c.orders_count ?? 0) > 0}
                           onClick={() => setDeleteFor(c)}
                         />
                       </div>

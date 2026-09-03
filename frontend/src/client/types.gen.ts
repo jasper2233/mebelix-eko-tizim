@@ -440,6 +440,10 @@ export type ClientOrderRow = {
      */
     amount: string | null;
     /**
+     * Advance Payment
+     */
+    advance_payment?: string | null;
+    /**
      * Created At
      */
     created_at: string;

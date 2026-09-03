@@ -1,10 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { Plus } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-
 import { type ClientRead, ClientsService } from "@/client"
+
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -112,7 +113,11 @@ export function AddClient({
     >
       {!tahrir && (
         <DialogTrigger asChild>
-          {trigger ?? <Button>+ Yangi mijoz</Button>}
+          {trigger ?? (
+            <Button>
+              <Plus /> Yangi mijoz
+            </Button>
+          )}
         </DialogTrigger>
       )}
       <DialogContent className="sm:max-w-xl">
@@ -151,7 +156,7 @@ export function AddClient({
                       <Input
                         {...field}
                         inputMode="tel"
-                        placeholder="+998 90 123 45 67"
+                        placeholder="+998 90 123-45-67"
                         onChange={(e) =>
                           field.onChange(
                             formatUzPhone(e.target.value, field.value),
@@ -173,7 +178,7 @@ export function AddClient({
                       <Input
                         {...field}
                         inputMode="tel"
-                        placeholder="+998 90 123 45 67"
+                        placeholder="+998 90 123-45-67"
                         onChange={(e) =>
                           field.onChange(
                             formatUzPhone(e.target.value, field.value),

@@ -21,7 +21,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { formatDate, formatMoney, PRIORITY_LABELS } from "@/lib/mes"
+import {
+  deadlineTone,
+  formatDate,
+  formatMoney,
+  PRIORITY_LABELS,
+  PRIORITY_TEXT_CLASSES,
+  remainingPayment,
+  TERMINAL_STATUSES,
+} from "@/lib/mes"
+import { formatUzPhone } from "@/lib/validation"
 
 /** Mijoz kartochkasi: qator ustiga bosilganda ochiladi.
  *
@@ -47,6 +56,11 @@ export function ClientCard({
       ).data,
     enabled: clientId !== null,
   })
+  // Qarz = bekor qilinmagan buyurtmalarning qoldiq to'lovlari yig'indisi —
+  // mijoz kartochkasidagi asosiy savol («bizga qarzi bormi?»).
+  const debt = (data?.orders ?? [])
+    .filter((o) => o.status !== "cancelled" && o.amount != null)
+    .reduce((sum, o) => sum + Math.max(0, remainingPayment(o)), 0)
 
   return (
     <Dialog open={clientId !== null} onOpenChange={(v) => !v && onClose()}>
@@ -58,7 +72,9 @@ export function ClientCard({
           </DialogTitle>
           <DialogDescription>
             {data
-              ? `${data.orders_count} buyurtma · ${formatMoney(data.total_amount)} · aylanmaning ${(data.share_pct ?? 0).toFixed(1)}%`
+              ? `${data.orders_count} buyurtma · ${formatMoney(data.total_amount)} · aylanmaning ${(data.share_pct ?? 0).toFixed(1)}%${
+                  debt > 0 ? ` · qarz ${formatMoney(debt)}` : ""
+                }`
               : "Yuklanmoqda..."}
           </DialogDescription>
         </DialogHeader>
@@ -68,8 +84,16 @@ export function ClientCard({
         ) : (
           <>
             <div className="grid gap-3 rounded-lg border border-border p-3 text-sm sm:grid-cols-4">
-              <Maydon nom="Telefon" qiymat={data.phone} num />
-              <Maydon nom="Qo'shimcha telefon" qiymat={data.phone_alt} num />
+              <Maydon
+                nom="Telefon"
+                qiymat={data.phone ? formatUzPhone(data.phone) : null}
+                num
+              />
+              <Maydon
+                nom="Qo'shimcha telefon"
+                qiymat={data.phone_alt ? formatUzPhone(data.phone_alt) : null}
+                num
+              />
               <Maydon nom="Manzil" qiymat={data.address} />
               <Maydon nom="Qo'shilgan" qiymat={formatDate(data.created_at)} />
               {data.notes && (
@@ -91,6 +115,7 @@ export function ClientCard({
                     <TableHead>Prioritet</TableHead>
                     <TableHead>Muddat</TableHead>
                     <TableHead className="text-right">Summa</TableHead>
+                    <TableHead className="text-right">Qoldiq</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -115,19 +140,49 @@ export function ClientCard({
                         <TableCell>
                           <StatusBadge status={o.status} />
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {PRIORITY_LABELS[o.priority] ?? o.priority}
+                        {/* Reestr bilan bir xil: prioritet rangi, faol buyurtmada
+                            muddat ohangi (o'tgan — qizil, bugun — amber) */}
+                        <TableCell>
+                          <span
+                            className={
+                              PRIORITY_TEXT_CLASSES[o.priority] ??
+                              "text-muted-foreground"
+                            }
+                          >
+                            {PRIORITY_LABELS[o.priority] ?? o.priority}
+                          </span>
                         </TableCell>
-                        <TableCell className="num text-muted-foreground">
+                        <TableCell
+                          className={`num ${
+                            TERMINAL_STATUSES.includes(o.status as never)
+                              ? "text-muted-foreground"
+                              : deadlineTone(o.deadline) === "overdue"
+                                ? "font-semibold text-destructive"
+                                : deadlineTone(o.deadline) === "today"
+                                  ? "font-semibold text-amber-600"
+                                  : "text-muted-foreground"
+                          }`}
+                        >
                           {formatDate(o.deadline)}
                         </TableCell>
                         <TableCell className="num text-right font-semibold">
                           {formatMoney(o.amount)}
                         </TableCell>
+                        <TableCell className="num text-right">
+                          {o.amount == null ? (
+                            "—"
+                          ) : remainingPayment(o) <= 0 ? (
+                            <span className="text-muted-foreground">
+                              To'langan
+                            </span>
+                          ) : (
+                            formatMoney(remainingPayment(o))
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
-                    <EmptyRow colSpan={5}>
+                    <EmptyRow colSpan={6}>
                       Bu mijozda hali buyurtma yo'q.
                     </EmptyRow>
                   )}
