@@ -73,6 +73,15 @@ export const Route = createFileRoute("/_layout/printers")({
 // Server last_seen_at ni har 5 daqiqada yangilaydi — 6 daqiqadan yangi bo'lsa onlayn
 const ONLINE_MS = 6 * 60 * 1000
 
+/** «8 soat oldin» — oflayn agent qachondan beri jim (absolyut sana yonida). */
+function ago(d: Date): string {
+  const min = Math.round((Date.now() - d.getTime()) / 60_000)
+  if (min < 1) return "hozir"
+  if (min < 60) return `${min} daqiqa oldin`
+  if (min < 24 * 60) return `${Math.round(min / 60)} soat oldin`
+  return `${Math.round(min / (24 * 60))} kun oldin`
+}
+
 /** AB12CD34 -> AB12-CD34: telefonda aytish oson */
 const fmtCode = (c: string) => `${c.slice(0, 4)}-${c.slice(4)}`
 
@@ -203,8 +212,8 @@ function PrintersPage() {
         // mumkin emas (2026-08-02 dagi olib tashlash sababi bartaraf)
         description={
           <>
-            Chek printerlari — ulanish kodi bilan o'rnatiladi, serverga kirish
-            shart emas.{" "}
+            Tsex kompyuterlari — chek printeri va stanok skanerini MES'ga
+            ulaydi. Ulanish kodi bilan o'rnatiladi, serverga kirish shart emas.{" "}
             <a
               href={`${API_BASE}/api/v1/bridge-agents/download`}
               className="underline underline-offset-4"
@@ -219,11 +228,12 @@ function PrintersPage() {
 
       <div className="mb-4 rounded-xl border bg-card p-4 text-sm">
         <p className="mb-1 font-medium">
-          O'rnatish — printer ulangan kompyuterda
+          O'rnatish — tsex kompyuterida (printer yoki stanok skaneri ulangan)
         </p>
         <ol className="list-decimal space-y-0.5 pl-5 text-muted-foreground">
           <li>
-            GoDEX drayveri o'rnatilgan bo'lsin (printer USB ulangan holda)
+            Chek chiqaradigan bo'lsa — GoDEX drayveri o'rnatilgan bo'lsin
+            (printer USB ulangan holda)
           </li>
           <li>"Yangi agent" bilan kod oling</li>
           <li>
@@ -242,8 +252,10 @@ function PrintersPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Nomi</TableHead>
+              {/* Ulanish kodi alohida ustun EMAS — u faqat ulanmagan agentda
+                  bor, ulanganlarda ustun butunlay bo'sh turardi; endi Holat
+                  katagida «Kod kutilmoqda» ostida */}
               <TableHead>Holat</TableHead>
-              <TableHead>Ulanish kodi</TableHead>
               <TableHead>Ish markazi (skan-forvard)</TableHead>
               <TableHead>Chek chiqarish</TableHead>
               <TableHead>Oxirgi ulanish</TableHead>
@@ -256,7 +268,7 @@ function PrintersPage() {
                 <AgentRow key={a.id} agent={a} latest={latest} />
               ))
             ) : (
-              <EmptyRow colSpan={7}>
+              <EmptyRow colSpan={6}>
                 Agentlar yo'q. "Yangi agent" bilan ulanish kodi yarating.
               </EmptyRow>
             )}
@@ -349,50 +361,76 @@ function AgentRow({
   // — bu shart eski yozuvlar va poyga holatlari uchun ikkinchi himoya.
   const online = agent.paired && seen && Date.now() - seen.getTime() < ONLINE_MS
 
+  // null = eski (versiyasiz) exe. Versiya oxirgisidan orqada bo'lsa sariq:
+  // agent 6 soat ichida o'zi yangilanadi, undan keyin ham orqada tursa
+  // self-update ishlamayapti (log'ga qarash kerak). Oflaynda ham ko'rinadi —
+  // ilgari faqat onlaynda chiqardi, tungi tekshiruvda versiya ko'rinmasdi.
+  const behind = !!(agent.version && latest && agent.version !== latest)
+  const versionEl = agent.paired && (
+    <span
+      className={cn(
+        "num text-xs",
+        behind ? "font-semibold text-amber-600" : "text-muted-foreground",
+      )}
+    >
+      {agent.version
+        ? behind
+          ? `v${agent.version} → v${latest}`
+          : `v${agent.version}`
+        : "eski exe"}
+    </span>
+  )
+  // Agent nima qiladi — bir qarashda (ilgari ikki ustundan yig'ib chiqarish kerak edi)
+  const role = agent.can_print
+    ? agent.machine_id
+      ? "chek + skan-forvard"
+      : "faqat chek (ofis / beyjik)"
+    : agent.machine_id
+      ? "faqat skan-forvard"
+      : null
+
   return (
     <TableRow>
-      <TableCell className="font-medium">{agent.name}</TableCell>
       <TableCell>
-        {online ? (
-          <span className="inline-flex items-center gap-1.5">
-            <Badge>Ulandi</Badge>
-            {/* null = eski (versiyasiz) exe. Versiya oxirgisidan orqada bo'lsa
-                sariq: agent 6 soat ichida o'zi yangilanadi, undan keyin ham
-                orqada tursa self-update ishlamayapti (log'ga qarash kerak) */}
-            <span
-              className={
-                agent.version && latest && agent.version !== latest
-                  ? "num text-xs font-semibold text-amber-600"
-                  : "num text-xs text-muted-foreground"
-              }
-            >
-              {agent.version
-                ? agent.version !== latest && latest
-                  ? `v${agent.version} → v${latest}`
-                  : `v${agent.version}`
-                : "eski exe"}
-            </span>
-          </span>
-        ) : agent.paired ? (
-          <Badge variant="secondary">Uzilgan</Badge>
-        ) : agent.pair_code ? (
-          <Badge variant="outline">Kod kutilmoqda</Badge>
-        ) : (
-          <Badge variant="outline">Kod muddati o'tgan</Badge>
-        )}
+        <div className="font-medium">{agent.name}</div>
+        <div
+          className={cn(
+            "text-xs",
+            role ? "text-muted-foreground" : "font-semibold text-amber-700",
+          )}
+        >
+          {role ?? "ish yo'q — ish markazi yoki chek belgisi kerak"}
+        </div>
       </TableCell>
       <TableCell>
-        {agent.pair_code ? (
-          <>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {online ? (
+            <Badge>Onlayn</Badge>
+          ) : agent.paired ? (
+            // «Uzilgan» nosozlik deb o'qilardi — kechqurun o'chirilgan kompyuter
+            // ham shunday ko'rinardi. Oflayn + qachondan beri — Oxirgi ulanish ustunida.
+            <Badge variant="secondary">Oflayn</Badge>
+          ) : agent.pair_code ? (
+            <Badge variant="outline">Kod kutilmoqda</Badge>
+          ) : (
+            <Badge variant="outline">Kod muddati o'tgan</Badge>
+          )}
+          {versionEl}
+        </div>
+        {agent.pair_code && (
+          <div className="mt-1.5">
             <code className="rounded-sm bg-muted px-2 py-1 font-semibold tracking-wider">
               {fmtCode(agent.pair_code)}
             </code>
             {agent.pair_expires_at && (
               <CodeTtl expiresAt={agent.pair_expires_at} />
             )}
-          </>
-        ) : (
-          <span className="text-muted-foreground">—</span>
+          </div>
+        )}
+        {!agent.paired && !agent.pair_code && (
+          <div className="mt-1 text-xs text-muted-foreground">
+            «Yangi ulanish kodi» tugmasi bilan qayta bering
+          </div>
         )}
       </TableCell>
       <TableCell>
@@ -457,7 +495,14 @@ function AgentRow({
         />
       </TableCell>
       <TableCell className="text-muted-foreground">
-        {seen ? formatDateTime(agent.last_seen_at) : "Hali ulanmagan"}
+        {seen ? (
+          <>
+            <div className="num">{formatDateTime(agent.last_seen_at)}</div>
+            {!online && <div className="text-xs">{ago(seen)}</div>}
+          </>
+        ) : (
+          "Hali ulanmagan"
+        )}
       </TableCell>
       <TableCell>
         <div className="flex gap-1">
