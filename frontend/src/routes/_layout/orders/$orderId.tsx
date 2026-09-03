@@ -259,12 +259,12 @@ function OrderDetailPage() {
       >
         <ArrowLeft className="size-4" /> Buyurtmalar
       </Link>
-      {/* Sarlavha = raqam → holat → prioritet (badge'lar, terminal kartalari
-          bilan bir tilda). Fayl nomi bu yerda emas — u «Fayllar» blokida; fayl
-          yo'qligi esa amalga undaydi, shuning uchun qoladi. */}
+      {/* Sarlavha BITTA qator: raqam → holat → prioritet → bosqichlar (badge'lar
+          terminal kartalari bilan bir tilda). Fayl nomi bu yerda emas — u
+          «Fayllar» blokida; fayl yo'qligi esa amalga undaydi — description. */}
       <PageHeader
         title={order.number}
-        description={
+        titleAside={
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={order.status} />
             <span
@@ -275,11 +275,6 @@ function OrderDetailPage() {
             >
               {PRIORITY_LABELS[order.priority] ?? order.priority}
             </span>
-            {!order.project_name && (
-              <span className="text-muted-foreground">
-                Project fayl hali yuklanmagan
-              </span>
-            )}
             {/* Bosqichlar shu qatorda — «raqam → holat → qayerda turibdi» bitta
                 satr; alohida qator vertikal joy olib, sarlavhadan uzilardi */}
             {stagesSummary.length > 0 && (
@@ -289,6 +284,9 @@ function OrderDetailPage() {
               </>
             )}
           </div>
+        }
+        description={
+          order.project_name ? undefined : "Project fayl hali yuklanmagan"
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -416,6 +414,23 @@ function OrderDetailPage() {
         </div>
       )}
 
+      {/* Bekor qilingan buyurtma: sabab va kim — banner (kartada 2 katak sifatida
+          yo'qolib ketardi). Kim bekor qilgani bazada bor edi, ko'rsatilmasdi. */}
+      {order.status === "cancelled" && (
+        <div className="mb-6 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+          <XCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
+          <div>
+            <div className="font-medium">
+              Bekor qilingan
+              {order.cancelled_by_name ? ` — ${order.cancelled_by_name}` : ""}
+            </div>
+            {order.cancel_reason && (
+              <div className="text-muted-foreground">{order.cancel_reason}</div>
+            )}
+          </div>
+        </div>
+      )}
+
       {isTexnolog && order.edit_blocked_reason && (
         <div className="mb-6 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
           <Lock className="mt-0.5 size-4 shrink-0 text-amber-600" />
@@ -471,35 +486,23 @@ function OrderDetailPage() {
           value={`${order.parts_count} / ${order.instances_count}`}
         />
         <Meta label="Ochilgan" value={formatDateTime(order.created_at)} />
-        <Meta
-          label="Oxirgi tahrir"
-          value={
-            order.updated_at && order.updated_at !== order.created_at
-              ? formatDateTime(order.updated_at)
-              : "—"
-          }
-        />
-        <Meta
-          label="Fayl yuklangan"
-          value={
-            order.project_loaded_at
-              ? formatDateTime(order.project_loaded_at)
-              : "—"
-          }
-        />
-        {order.cancel_reason && (
-          <Meta label="Bekor sababi" value={order.cancel_reason} />
-        )}
-        {/* Kim bekor qilgani BAZADA bor edi (`cancelled_by_id`), lekin hech
-            qayerda ko'rsatilmasdi — foydalanuvchi sababni ko'rib, kimligini
-            audit logdan qidirishga majbur bo'lardi */}
-        {order.cancelled_by_name && (
-          <Meta label="Bekor qildi" value={order.cancelled_by_name} />
-        )}
-        {order.delivered_at && (
+        {/* DOIM 8 katak = 4 ustunda 2 to'liq qator: 9-chisi yolg'iz qatorda
+            qolardi. «Fayl yuklangan» — Fayllar blokidagi qatorda sana bor;
+            topshirilganda oxirgi tahrir o'rnida topshirish vaqti (u eng
+            oxirgi voqea); bekor ma'lumoti tepadagi bannerda. */}
+        {order.delivered_at ? (
           <Meta
             label="Topshirilgan"
             value={formatDateTime(order.delivered_at)}
+          />
+        ) : (
+          <Meta
+            label="Oxirgi tahrir"
+            value={
+              order.updated_at && order.updated_at !== order.created_at
+                ? formatDateTime(order.updated_at)
+                : "—"
+            }
           />
         )}
       </Card>

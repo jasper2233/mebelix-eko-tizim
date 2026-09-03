@@ -237,7 +237,9 @@ Reyestr sahifalagichi: `page` (0 dan), `pageSize`, `total`, `onPage`. Tartib bit
 
 **Maqsadi:** sahifa sarlavhasi — `title`, ixtiyoriy `description` va o'ng tomonda `actions` slot. Barcha `_layout` sahifalarida ishlatiladi (dashboard, orders ro'yxati va sahifasi, clients, employees, work-centers, reports, logs, printers, anketa, settings — 11 ta sahifa; `admin.tsx` sanoqqa kirmaydi — u endi redirect, chizadigan sarlavhasi yo'q); yagona istisno — `cutmap.$orderId.tsx`, unda sarlavha umuman yo'q (to'liq ekran).
 
-- `description` `div` ichida (`<p>` emas): buyurtma sahifasi unga badge qatorini beradi — `<p>` ichida blok element HTML'da noto'g'ri.
+- `description` `div` ichida (`<p>` emas) — `ReactNode` qabul qiladi, `<p>` ichida blok element HTML'da noto'g'ri bo'lardi.
+
+- `titleAside?: ReactNode` — sarlavha bilan BIR QATORDA (`flex-wrap`, tor ekranda pastga buqiladi): buyurtma sahifasi holat/prioritet badge'lari va bosqichlar zanjirini beradi — alohida qator o'rniga.
 
 ### `frontend/src/components/Common/PostBadge.tsx`
 
