@@ -492,6 +492,8 @@ function DeletePerson({
   )
 }
 
+const BADGE_PRINTER_KEY = "mes.badgePrinter"
+
 // Faqat `canEdit` (admin) beyjik tugmasini ko'radi, ya'ni dialog ochilgan
 // bo'lsa "yangi beyjik" huquqi ham bor
 function BadgeDialog({
@@ -510,9 +512,33 @@ function BadgeDialog({
   // ko'rsatilmaydi — ortiqcha qadam bo'lardi.
   const { data: agents } = useQuery(getBridgeAgentsQueryOptions())
   const printers = (agents ?? []).filter((a) => a.can_print && a.paired)
-  const [agentId, setAgentId] = useState<string>("")
-  const target =
-    agentId || (printers.length === 1 ? String(printers[0].id) : "")
+  // Oxirgi tanlangan printer eslab qolinadi (beyjik odatda bitta — ofis
+  // printeridan chiqadi): har safar ro'yxatdan qidirish ortiqcha qadam edi.
+  const [agentId, setAgentId] = useState<string>(() => {
+    try {
+      return localStorage.getItem(BADGE_PRINTER_KEY) ?? ""
+    } catch {
+      return ""
+    }
+  })
+  const remembered = printers.some((a) => String(a.id) === agentId)
+  const target = remembered
+    ? agentId
+    : printers.length === 1
+      ? String(printers[0].id)
+      : ""
+  const choose = (id: string) => {
+    setAgentId(id)
+    try {
+      localStorage.setItem(BADGE_PRINTER_KEY, id)
+    } catch {
+      /* private rejim — eslab qolinmaydi, ishlayveradi */
+    }
+  }
+  // Onlayn belgisi `printers.tsx` bilan bir qoida: 6 daqiqadan yangi `last_seen_at`
+  const isOnline = (a: { last_seen_at?: string | null }) =>
+    !!a.last_seen_at &&
+    Date.now() - new Date(a.last_seen_at).getTime() < 6 * 60 * 1000
   const print = useMutation({
     mutationFn: (id: number) =>
       EmployeesService.printEmployeeBadge({
@@ -565,14 +591,21 @@ function BadgeDialog({
             {/* `Field` — yorliq bilan maydon orasidagi bo'shliq va yorliqni
                 bosganda fokus. Yalang'och `Label` da bo'shliq yo'q edi. */}
             <Field label="Printer">
-              <Select value={target} onValueChange={setAgentId}>
+              <Select value={target} onValueChange={choose}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Tanlang" />
                 </SelectTrigger>
                 <SelectContent>
+                  {/* Oflayn printer ham tanlanadi — navbat agent qaytganda
+                      chiqadi; lekin holati ko'rinsin, «nega chiqmadi» bo'lmasin */}
                   {printers.map((a) => (
                     <SelectItem key={a.id} value={String(a.id)}>
                       {a.name}
+                      {!isOnline(a) && (
+                        <span className="ml-1 text-muted-foreground">
+                          · oflayn
+                        </span>
+                      )}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -581,8 +614,10 @@ function BadgeDialog({
           </div>
         )}
         <DialogFooter className="flex-col gap-2 sm:flex-col">
+          {/* Asosiy amal — chop etish (to'liq tugma); yangi beyjik berish —
+              qaytmaydigan, kamdan-kam amal: outline-destructive, dialogda
+              qichqirmasin (ilgari teskari edi: chop etish xira, qizil dominant) */}
           <LoadingButton
-            variant="outline"
             loading={print.isPending}
             disabled={printers.length > 1 && !target}
             onClick={() => print.mutate(employee.id)}
@@ -590,7 +625,8 @@ function BadgeDialog({
             <Printer /> Chop etish
           </LoadingButton>
           <LoadingButton
-            variant="destructive"
+            variant="outline"
+            className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
             loading={regen.isPending}
             onClick={() => setConfirmRegen(true)}
           >
