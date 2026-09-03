@@ -12,7 +12,6 @@ from app.api.deps import (
     ManagerUser,
     SessionDep,
     StaffReadUser,
-    SuperUserDep,
     client_ip,
 )
 from app.core.config import settings, upload_root
@@ -279,6 +278,10 @@ async def cancel_order(
     order = await _get_order(db, order_id)
     if order.status in (OrderStatus.DELIVERED, OrderStatus.CANCELLED):
         raise ForbiddenException("Bu buyurtmani bekor qilib bo'lmaydi.")
+    if order.status == OrderStatus.DRAFT:
+        # Qoralamada bekor qilish ma'nosiz (tijoriy ahamiyat yo'q) va u «Bekor
+        # qilingan» ro'yxatini xato ochilgan qoralamalar bilan to'ldirardi.
+        raise ForbiddenException("Qoralama bekor qilinmaydi — uni o'chiring.")
     order.status = OrderStatus.CANCELLED
     order.cancelled_at = datetime.now(UTC)
     order.cancel_reason = body.reason
@@ -301,28 +304,46 @@ async def cancel_order(
 
 
 @router.delete("/{order_id}", response_model=Message, operation_id="delete_order")
-async def delete_order(db: SessionDep, current_user: SuperUserDep, order_id: int, request: Request) -> Message:
-    """Bekor qilingan buyurtmani bazadan BUTUNLAY o'chiradi (dan keyingi tozalash).
+async def delete_order(db: SessionDep, current_user: ManagerUser, order_id: int, request: Request) -> Message:
+    """Buyurtmani o'chirish — IKKI yo'l, ikkalasida ham buyurtma qatori TOSHBITIK
+    bo'lib qoladi (`is_deleted`, ro'yxatlarda ko'rinmaydi): raqam qayta
+    berilmaydi (`next_number` maksimumni shu qatorlar bilan hisoblaydi) va
+    `audit_log.entity_id` yetim qolmaydi.
 
-    Bekor qilish tarixni SAQLAYDI — bu esa uni o'chiradi, ya'ni amal QAYTMAYDI.
-    Shuning uchun uchta chegara bor:
-
-    1. Faqat `CANCELLED` holatdagi buyurtma. Tirik buyurtmani o'chirish yo'li yo'q.
-    2. Faqat superuser. Bekor qilishning o'zi menejerda, o'chirish esa undan
-       qattiqroq: bu yagona qaytmaydigan amal.
-    3. Bekor qilinmagan skani bor buyurtma o'chirilmaydi. Skan — bajarilgan ish,
-       u ish haqiga kiradi (`reports.py`): o'chirilsa hodimning o'sha kunlik
-       hisobi jimgina kamayardi. Bunday buyurtma tsexda haqiqatan ishlangan,
-       ya'ni uni yo'q qilish emas, arxivda qoldirish kerak.
-
-    Yo'l-yo'lakay diskdagi fayllar ham o'chadi (`.project`, SCX, anketa rasmlari) —
-    aks holda buyurtma yozuvi ketib, o'nlab megabayt yetim fayl qolardi.
-    `audit_log` esa ATAYLAB qoladi: buyurtma bo'lgani va bekor qilingani tarixda
-    saqlanishi kerak, uning ustiga shu o'chirish ham yoziladi.
+    1. QORALAMA — menejer o'zi o'chiradi, sababsiz: hali tijoriy ahamiyati yo'q
+       (tasdiqlanmagan, fayl yo'q, tsexda ish yo'q). Ilgari yagona yo'l «bekor
+       qilish» edi va xato ochilgan qoralamalar «Bekor qilingan» ro'yxatini
+       to'ldirardi.
+    2. BEKOR QILINGAN — faqat superuser: bolalar (detallar, nusxalar, marshrut,
+       skanlar, qadoqlar) va diskdagi fayllar butunlay o'chadi. Bekor qilinmagan
+       skani bor buyurtma o'chirilmaydi: skan — bajarilgan ish, ish haqiga
+       kiradi (`reports.py`); bunday buyurtma arxivda qoladi.
+    Boshqa holatlar (texnologda, jarayonda, tayyor, topshirilgan) o'chirilmaydi —
+    avval bekor qilinadi (sabab bilan), tarix saqlanadi.
     """
     order = await _get_order(db, order_id)
+    if order.status == OrderStatus.DRAFT:
+        order.is_deleted = True
+        order.deleted_at = datetime.now(UTC)
+        log_action(
+            db,
+            module="orders",
+            action="deleted",
+            user_id=current_user.id,
+            entity_type="order",
+            entity_id=order_id,
+            message=f"Qoralama o'chirildi: {order.number}",
+            ip=client_ip(request),
+        )
+        await db.commit()
+        await ws_manager.publish("order.deleted", {"order_id": order_id, "order_number": order.number})
+        return Message(message=f"Qoralama o'chirildi: {order.number}")
     if order.status != OrderStatus.CANCELLED:
-        raise ForbiddenException("Faqat bekor qilingan buyurtmani o'chirish mumkin.")
+        raise ForbiddenException(
+            "Faqat qoralama yoki bekor qilingan buyurtma o'chiriladi. Avval bekor qiling — tarix saqlanadi."
+        )
+    if not current_user.is_superuser:
+        raise ForbiddenException("Bekor qilingan buyurtmani faqat superuser o'chiradi.")
 
     live_scans = (
         await db.execute(
@@ -360,7 +381,9 @@ async def delete_order(db: SessionDep, current_user: SuperUserDep, order_id: int
     await db.execute(update(Part).where(Part.order_id == order_id).values(assembly_parent_id=None))
     await db.execute(delete(Part).where(Part.order_id == order_id))
     await db.execute(delete(Product).where(Product.order_id == order_id))
-    await db.delete(order)
+    # Buyurtma qatori TOSHBITIK: raqam band qoladi, audit izi butun.
+    order.is_deleted = True
+    order.deleted_at = datetime.now(UTC)
 
     log_action(
         db,

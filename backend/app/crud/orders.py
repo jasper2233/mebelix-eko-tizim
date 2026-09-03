@@ -17,6 +17,10 @@ class CRUDOrder(BaseCRUD[Order]):
 
         Suffiks SQLda SON sifatida max qilinadi — satr (leksikografik) max
         999 dan keyin "B-2026-999" > "B-2026-1000" bo'lib raqamlashni sindirardi.
+
+        `is_deleted` filtri ATAYLAB yo'q: o'chirilgan buyurtma qatori toshbitik
+        bo'lib qoladi (`orders/lifecycle.py delete_order`) va uning raqami qayta
+        berilmaydi — mijozga aytilgan raqam ikkinchi buyurtmaga o'tib ketmasin.
         """
         year = datetime.now(TASHKENT_TZ).year
         prefix = f"B-{year}-"

@@ -183,8 +183,8 @@ function OrderDetailPage() {
       setDeliverOpen(false)
     },
   })
-  // O'chirish QAYTMAYDI: buyurtma, detallari va diskdagi fayllari ketadi.
-  // Shuning uchun faqat superuser va faqat BEKOR QILINGAN buyurtmada. Muvaffaqiyatdan
+  // O'chirish: QORALAMA — menejer, toshbitik (raqam band qoladi); BEKOR
+  // QILINGAN — superuser, detallar/fayllar butunlay ketadi. Muvaffaqiyatdan
   // keyin sahifa qoladigan joy yo'q — reestrga qaytamiz.
   const deleteCb = cb("Buyurtma o'chirildi")
   const remove = useMutation({
@@ -353,25 +353,37 @@ function OrderDetailPage() {
             {/* Bekor qilish — buzg'unchi amal, asosiy tugmalar bilan bir xil
                 og'irlikda emas (to'liq qizil har sahifada baqirardi); tasdiq
                 dialogi bor. */}
-            {canManage && !isTerminal && order.status !== "cancelled" && (
+            {/* Qoralama BEKOR qilinmaydi — o'chiriladi (tijoriy ahamiyati yo'q, sabab
+                so'rash ma'nosiz; xato qoralamalar «Bekor qilingan»ni to'ldirardi) */}
+            {canManage && order.status === "draft" && (
               <Button
                 variant="outline"
                 className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => setCancelOpen(true)}
+                onClick={() => setDeleteOpen(true)}
               >
-                <XCircle /> Bekor qilish
+                <Trash2 /> O'chirish
               </Button>
             )}
-            {isSuperuser(currentUser) &&
+            {canManage &&
               !isTerminal &&
-              order.status === "cancelled" && (
+              order.status !== "cancelled" &&
+              order.status !== "draft" && (
                 <Button
-                  variant="destructive"
-                  onClick={() => setDeleteOpen(true)}
+                  variant="outline"
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => setCancelOpen(true)}
                 >
-                  <Trash2 /> O'chirish
+                  <XCircle /> Bekor qilish
                 </Button>
               )}
+            {/* Bekor qilingandan keyingi tozalash — faqat superuser. Ilgari shartda
+                `!isTerminal` ham turardi — `cancelled` terminal holat, tugma HECH
+                QACHON chiqmasdi. */}
+            {isSuperuser(currentUser) && order.status === "cancelled" && (
+              <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+                <Trash2 /> O'chirish
+              </Button>
+            )}
           </div>
         }
       />
@@ -436,21 +448,24 @@ function OrderDetailPage() {
         </div>
       )}
 
-      {isTexnolog && order.edit_blocked_reason && (
-        <div className="mb-6 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
-          <Lock className="mt-0.5 size-4 shrink-0 text-amber-600" />
-          <div>
-            {/* Aniq NIMA qulflangani: menejerning «Tahrirlash»i (narx, muddat,
+      {/* Bekor qilinganda qulf banneri ortiqcha — qizil banner allaqachon aytadi */}
+      {isTexnolog &&
+        order.edit_blocked_reason &&
+        order.status !== "cancelled" && (
+          <div className="mb-6 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+            <Lock className="mt-0.5 size-4 shrink-0 text-amber-600" />
+            <div>
+              {/* Aniq NIMA qulflangani: menejerning «Tahrirlash»i (narx, muddat,
                 prioritet) baribir ishlaydi — qulf faylga va marshrutga tegishli */}
-            <div className="font-medium">
-              Fayl va marshrutni o'zgartirib bo'lmaydi
-            </div>
-            <div className="text-muted-foreground">
-              {order.edit_blocked_reason}
+              <div className="font-medium">
+                Fayl va marshrutni o'zgartirib bo'lmaydi
+              </div>
+              <div className="text-muted-foreground">
+                {order.edit_blocked_reason}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       <Card className="mb-6 grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
         <Meta label="Mijoz" value={order.client_name} />
@@ -698,9 +713,22 @@ function OrderDetailPage() {
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Buyurtmani butunlay o'chirish"
-        description={`${order.number} — buyurtma, uning detallari, marshrutlari va diskdagi fayllari (.project, SCX, anketa rasmlari) BUTUNLAY o'chadi. Bu amalni QAYTARIB BO'LMAYDI. Bekor qilish tarixi (audit izi) saqlanadi.`}
-        confirmText="BUTUNLAY O'CHIRISH"
+        title={
+          order.status === "draft"
+            ? "Qoralamani o'chirish"
+            : "Buyurtmani butunlay o'chirish"
+        }
+        description={
+          order.status === "draft"
+            ? `${order.number} qoralamasi o'chiriladi. Raqam band qoladi (qayta berilmaydi), amal audit logda saqlanadi.`
+            : `${order.number} — buyurtma, uning detallari, marshrutlari va diskdagi fayllari (.project, SCX, anketa rasmlari) BUTUNLAY o'chadi. Bu amalni QAYTARIB BO'LMAYDI. Bekor qilish tarixi (audit izi) saqlanadi.`
+        }
+        confirmText={
+          order.status === "draft" ? "O'chirish" : "BUTUNLAY O'CHIRISH"
+        }
+        // «Bekor qilish» bu sahifada buyurtma amali — dialogda qaytish tugmasi
+        // boshqacha nomlanadi, chalkashmasin
+        cancelText="Ortga"
         loading={remove.isPending}
         onConfirm={() => remove.mutate()}
       />
