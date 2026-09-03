@@ -90,6 +90,7 @@ function printAllMaps(
   materials: Material[],
   holes: Record<string, CutmapHole>,
   instancesByCell: Map<string, CutmapInstanceState[]>,
+  wastePrinted: Set<number>,
 ) {
   const w = window.open("", "_blank", "width=1000,height=800")
   if (!w) {
@@ -107,6 +108,7 @@ function printAllMaps(
               sheet={s}
               holes={holes}
               instancesByCell={instancesByCell}
+              wastePrinted={wastePrinted}
               onSelect={() => {}}
               selectedCell={null}
             />,
@@ -273,7 +275,9 @@ export function CutmapView({
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: ["terminal", "cutmap"] }),
   })
-  // Cheki chiqarilgan qoldiqlar (atx raqamlari) — SVG katakni yashil qiladi
+  // Cheki chiqarilgan qoldiqlar (atx raqamlari) — SVG katakni yashil qiladi.
+  // Ochiq list, ro'yxatdagi mini-xarita va PDF — uchalasi BIR XIL holatni oladi:
+  // ilgari faqat ochiq list olardi, ro'yxatda o'sha qoldiq chiqarilmagandek turardi.
   const wastePrinted = useMemo(() => {
     const out = new Set<number>()
     for (const w of data?.waste_items ?? []) {
@@ -475,7 +479,7 @@ export function CutmapView({
   }
 
   registerPrint?.(() =>
-    printAllMaps(data.order_number, materials, holes, cellInsts),
+    printAllMaps(data.order_number, materials, holes, cellInsts, wastePrinted),
   )
 
   // Material statistikasi — ixcham bir qator (terminalda SKAN ON qatoriga portal,
@@ -788,6 +792,7 @@ export function CutmapView({
                           sheet={s}
                           holes={holes}
                           instancesByCell={cellInsts}
+                          wastePrinted={wastePrinted}
                           onSelect={() => {}}
                           selectedCell={null}
                           thumbnail
