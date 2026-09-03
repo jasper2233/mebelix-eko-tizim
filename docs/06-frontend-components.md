@@ -521,6 +521,8 @@ Chap toolbar tugmasi: ikonka + `text-2xs` yozuv (`index.css` da 0.6875rem), `h-1
 - Skan alohida yo'l talab qilmaydi — terminalning umumiy skan mutatsiyasidan o'tadi, qator `done` bo'lib pastga tushadi.
 - **So'rov xatosi JIM yutilmaydi:** `isError` da `Common/QueryError` chiziladi. Ilgari faqat `isLoading` tekshirilardi va xatoda `rows` bo'sh qolib "Bu proyektda bu postga tegishli detal yo'q." chiqardi — operator postni ishsiz deb tashlab ketardi.
 
+2026-09-04 (terminal 4-qadam): qatorlar endi NUSXA emas, DETAL bo'yicha (Kromka naqshi): bitta detal = bitta qator (Kod / Nomi + amal chipi + material + izoh + yig'ma / O'lchami / Qayerda / Nusxalar), nusxalar №1…№n chip (kulrang «–» — navbatda, yashil ✓ — bajarildi; raqam = chek ID dumi), hali yetib kelmagan nusxalar chip emas — «+N yo'lda» va pastdagi umumiy izoh. Ilgari har nusxa alohida 4 qatorli satr edi: stolyarkada bitta detalning 16 nusxasi 2 ekran bo'lib ketardi. Tartib: ishi bor detallar tepada, tugaganlari pastda yashil; alohida «Bajarilgan» jadvali yo'q.
+
 ### `frontend/src/components/Terminal/UpakovkaView.tsx`
 
 **Maqsadi:** QADOQLASH post sahifasi. Chapda ochiq qadoq (kod, detallar soni, `~kg` — taxminiy, bloklamaydi), o'ngda "Qadoqlanmagan" va "Yakunlangan". Oqim: "Qadoq yaratish" → detallarni birma-bir skanerlash → "Qadoqni yakunlash" (chek QR bilan chiqadi). Har qatorda o'chirish tugmasi — xato skan qaytariladi va UPAKOVKA skani ham bekor bo'ladi. `registerScan` prop orqali terminalga skan qabul qiluvchi beradi: detal qaysi QADOQqa tushishini faqat shu ekran biladi.
