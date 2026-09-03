@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { groupThousands } from "@/lib/mes"
+
 // Mirror the limits enforced by the backend (see `backend/app/schemas/users.py`).
 // Keep these in sync when tightening or relaxing rules on either side.
 const PASSWORD_MIN_LENGTH = 8
@@ -49,21 +51,30 @@ function phoneDigits(s: string): string {
   return d.slice(0, 9)
 }
 
-/** API'dan kelgan Decimal-satrni ("14000000.00") input qiymatiga tayyorlaydi.
- * `formatMoneyInput` TO'G'RIDAN-TO'G'RI ishlatilsa nuqta o'chirilib kasr
- * raqamlar yopishib qolardi: "14000000.00" -> "1 400 000 000" (ikki ortiqcha
- * nol). Kasr qismi pulda doim .00 — tashlab yuboriladi. */
+/** API'dan kelgan Decimal-satrni ("14000000.00") input qiymatiga tayyorlaydi
+ * (`null` → ""). Kasr qoidasi `formatMoneyInput` da. */
 export function moneyToInput(value: string | null | undefined): string {
-  return formatMoneyInput(String(value ?? "").replace(/[.,]\d*$/, ""))
+  return formatMoneyInput(String(value ?? ""))
 }
 
-/** Pul maydoni avto-separatori: "5000000" → "5 000 000". Submit'da bo'shliqlar olib tashlanadi. */
+/** Pul maydoni avto-separatori: "5000000" → "5 000 000" (max 12 raqam);
+ * submit'da bo'shliqlar olib tashlanadi. Guruhlash qoidasi ko'rsatish bilan
+ * BITTA (`groupThousands`).
+ *
+ * So'm — BUTUN son (tiyin yo'q), shuning uchun birinchi `.` yoki `,` SONNING
+ * TUGASHI: undan keyingisi tashlanadi. Ilgari faqat raqamlar qoldirilardi va
+ * kasr nollari summaga yopishardi: "1500000.0" → "15 000 000" (ortiqcha nol),
+ * Excel/1C'dan qo'yilgan "5 000 000,00" → ×100; tahrirlashda API'ning
+ * "14000000.00" i ×100 (afad9f6 da faqat o'sha yo'l yamalgan edi). Vergul
+ * pulda minglik ajratgich sifatida hech qayerda ishlatilmaydi (ko'rsatish
+ * ham bo'shliq bilan) — demak u faqat kasr, taxmin yo'q. */
 export function formatMoneyInput(input: string): string {
   const d = input
+    .replace(/[.,][\s\S]*$/, "")
     .replace(/\D/g, "")
     .replace(/^0+(?=\d)/, "")
     .slice(0, 12)
-  return d.replace(/\B(?=(\d{3})+(?!\d))/g, " ")
+  return groupThousands(d)
 }
 
 /**

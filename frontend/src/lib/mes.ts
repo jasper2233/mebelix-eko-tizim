@@ -311,13 +311,24 @@ export function formatDateTime(value: string | null | undefined): string {
   return `${formatDate(value)} ${p2(d.getHours())}:${p2(d.getMinutes())}`
 }
 
-// Formatter bir marta quriladi — Intl.NumberFormat konstruktori qimmat, reestrda
-// esa har qatorda ikki marta chaqiriladi.
-const moneyFormat = new Intl.NumberFormat("uz-Latn-UZ")
+/** Raqamlar satrini minglik guruhlarga ajratadi: "5000000" → "5 000 000".
+ * PULNING YAGONA FORMAT QOIDASI — ko'rsatish (`formatMoney`) ham, kiritish
+ * maydoni (`lib/validation` `formatMoneyInput`) ham shu funksiyani ishlatadi.
+ * Ilgari ikki xil edi: ekranda `Intl uz-Latn` vergul bilan ("5,000,000"),
+ * maydonda bo'shliq — ekrandan nusxalab maydonga qo'yilganda vergul minglik
+ * ekanini taxmin qilishga to'g'ri kelardi. Endi vergul pulda hech qayerda
+ * minglik emas, ya'ni maydonda u faqat KASR bo'la oladi. */
+export function groupThousands(digits: string): string {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ")
+}
 
+/** So'm butun son (tiyin yo'q): API'dan kelgan "14000000.00" ham, hisoblangan
+ * qoldiq ham butunga yaxlitlanadi. */
 export function formatMoney(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === "") return "—"
-  return `${moneyFormat.format(Number(value))} so'm`
+  const n = Math.round(Number(value))
+  if (!Number.isFinite(n)) return "—"
+  return `${n < 0 ? "−" : ""}${groupThousands(String(Math.abs(n)))} so'm`
 }
 
 /** Qoldiq to'lov = umumiy narx − boshlang'ich to'lov. `amount` yo'qligini
