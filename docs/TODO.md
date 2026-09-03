@@ -8,7 +8,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/api/routes/orders/lifecycle.py:425` — Ish markazini PRODUCTION holatidagi buyurtmada qayta tanlash `order.machine_assignments` ni yangilaydi, lekin `PartRoute.machine_id` eski stanokda qol
 - [x] ✅ `backend/app/api/routes/orders/matrix.py:200-203` — When a matrix stage checkbox is toggled on for a post that has no existing PartRoute step yet, the new step is always created with per_instance=1. For
 - [x] ✅ `backend/app/api/routes/tmo.py:224-225` — Prefix check is case-insensitive via .upper(), but the original non-uppercased `qr` is then used for the actual pachka lookup (`_pachka_by_code(db, or
-- [ ] ✅ `backend/app/models/base.py:23` — `updated_at` is declared nullable with `default=None` AND `server_default=current_timestamp(0)`, so SQLAlchemy omits it from the INSERT and every fres
+- [x] ✅ `backend/app/models/base.py:23` — `updated_at` is declared nullable with `default=None` AND `server_default=current_timestamp(0)`, so SQLAlchemy omits it from the INSERT and every fres
 - [x] ✅ `backend/app/services/giblab/ingest.py:155` — restore_custom_routes appends restored MANUAL steps AFTER the freshly-ingested tail (UPAKOVKA/TMO), so TMO is no longer the last step of a standard pa
 - [x] ✅ `backend/app/services/giblab/ingest.py:78` — snapshot_custom_routes only sees parts that already have a MANUAL route row, so a part marked "Nostandart" (or bound to an assembly parent) before any
 - [x] ✅ `backend/app/services/giblab/parser.py:463` — CS `<part>` ro'yxatidagi HAR bir stubga `label_num` beriladi, joylashtirilmagan (usedCount=0) detalga ham — ingest esa aynan `label_num is not None` n
@@ -170,7 +170,7 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 
 ## Past (92)
 
-- [ ] ✅ `backend/app/models/pachka.py:30` — `Pachka.order_id` `index=True` ortiqcha (`ix_pachka_order_status` kompoziti qoplaydi); migratsiya (`op.drop_index("ix_pachka_order_id")`, down_revision `e5b73c04a19f`) tayyor edi, deploy-xavfsizlik sababli alohida kichik deploy'ga qoldirildi
+- [x] ✅ `backend/app/models/pachka.py:30` — `Pachka.order_id` `index=True` ortiqcha (`ix_pachka_order_status` kompoziti qoplaydi); migratsiya (`op.drop_index("ix_pachka_order_id")`, down_revision `e5b73c04a19f`) tayyor edi, deploy-xavfsizlik sababli alohida kichik deploy'ga qoldirildi
 - [x] ✅ `backend/app/api/routes/bridge_agents.py:130-140` — Ish markazi bog'lami UZILGANDA ham audit xabari «bog'landi … -> —» deb yoziladi — jurnal amalni teskari ko'rsatadi.
 - [x] ✅ `backend/app/api/routes/clients.py:59` — Qidiruv faqat `phone` ustunini ko'radi, unikallik esa `phone_alt` ni ham qamraydi — ikkinchi raqami bo'yicha qidirilgan mijoz topilmaydi, garchi o'sha
 - [x] ✅ `backend/app/api/routes/employees.py:178` — Navbat (arq/Redis) ishlamayotganda infratuzilma nosozligi 403 Forbidden bilan qaytariladi — bu huquq xatosi kodi, klient uni "sizda ruxsat yo'q" deb k
@@ -195,8 +195,8 @@ Manba: `docs/audit-2026-09-02.md`. Belgilash: `- [x]`. ✅ — repro bilan bajar
 - [x] ✅ `backend/app/core/ws.py:85` — _dispatch sends to every matching socket sequentially with await, so one stalled client blocks delivery to all others and stalls the whole pub/sub lis
 - [x] ✅ `backend/app/crud/orders.py:17` — Order numbers use the UTC year while every other date boundary in the app uses Asia/Tashkent, so orders created between 00:00 and 05:00 Tashkent time 
 - [x] ✅ `backend/app/crud/users.py:60` — `update()` dict kelganda uni NUSXALAMAYDI (`update_data = user_update`), so'ng `pop("password")` bilan CHAQIRUVCHINING dict'ini o'zgartiradi — chaqiru
-- [ ] ✅ `backend/app/models/base.py:26` — `is_deleted` is indexed on every table via the mixin, creating 18 near-useless boolean indexes — every query filters `is_deleted` together with a more
-- [ ] ✅ `backend/app/models/pachka.py:26-33` — Pachka.status is indexed twice (a standalone ix_pachka_status plus the status column of ix_pachka_order_status) but no query anywhere puts Pachka.stat
+- [x] ✅ `backend/app/models/base.py:26` — `is_deleted` is indexed on every table via the mixin, creating 18 near-useless boolean indexes — every query filters `is_deleted` together with a more
+- [x] ✅ `backend/app/models/pachka.py:26-33` — Pachka.status is indexed twice (a standalone ix_pachka_status plus the status column of ix_pachka_order_status) but no query anywhere puts Pachka.stat
 - [x] ✅ `backend/app/services/giblab/ingest.py:145` — restore_custom_routes issues one extra round-trip per restored part (a SELECT for standard parts, an UPDATE for custom ones) instead of one query for 
 - [x] ✅ `backend/app/services/giblab/ingest.py:24` — The route snapshot carries only (is_custom, process codes, parent), so a technolog-disabled step comes back enabled and the part note is dropped on re
 - [x] ✅ `backend/app/services/giblab/ingest.py:316` — The sheet-material → plate-thickness map for the 32 mm double-layer SCX rule is built twice with the same comprehension.

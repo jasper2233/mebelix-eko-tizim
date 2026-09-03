@@ -19,8 +19,8 @@ Barcha ORM modellari uchun umumiy ustunlarni beruvchi mixinlar. Hammasi SQLAlche
 | Klass | Beradigan ustunlar | Izoh |
 |---|---|---|
 | `IDMixin` | `id: int` | PK, autoincrement, `init=False` (constructor'da berilmaydi) |
-| `TimestampMixin` | `created_at`, `updated_at` | `DateTime(timezone=True)`; Python tomonda `datetime.now(UTC)`, DB tomonda `current_timestamp(0)` server default; `updated_at` — `onupdate` orqali avtomatik yangilanadi |
-| `SoftDeleteMixin` | `deleted_at`, `is_deleted` | Soft delete; `is_deleted` indekslangan |
+| `TimestampMixin` | `created_at`, `updated_at` | `DateTime(timezone=True)`; Python tomonda `datetime.now(UTC)`; `created_at` DB tomonda `current_timestamp(0)` server default. `updated_at` da server default YO'Q (`6a5051b7b420`): INSERT'da NULL qoladi, `onupdate` bilan yangilanadi — «hech tahrirlanmagan» = NULL (ilgari DB defaulti har yangi qatorga vaqt qo'yib, belgi hech qachon ishlamasdi; mavjud qatorlar migratsiyada to'ldirilgan) |
+| `SoftDeleteMixin` | `deleted_at`, `is_deleted` | Soft delete; `is_deleted` indekslanMAGAN — 19 ta `ix_*_is_deleted` `6a5051b7b420` da o'chirilgan (boolean tanlovsiz, issiq yo'llardagi PARTIAL `WHERE NOT is_deleted` indekslar qoladi) |
 | `BaseModel` | yuqoridagilarning hammasi | `__abstract__ = True`; `app.core.db.Base` + 3 mixin kombinatsiyasi |
 
 ```python
@@ -117,7 +117,7 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
 
 | Model / jadval | Muhim ustunlar | Unikal/muhim indekslar |
 |---|---|---|
-| `Pachka` | `order_id` FK (index), `code(40)` (`PK-B-2026-014-03` — chekdagi QR matni), `status` (`PachkaStatus`: open → closed → shipped, index), `closed_at`, `shipped_at` (TMO dan chiqarilgan payt), `created_by_id` FK user | PARTIAL UNIQUE `ix_pachka_code`; `ix_pachka_order_status`. Kod tartib raqami O'CHIRILGANLARNI ham sanaydi — qayta ishlatilsa eski chek bilan yangi qadoq bir xil QR berardi |
+| `Pachka` | `order_id` FK (index), `code(40)` (`PK-B-2026-014-03` — chekdagi QR matni), `status` (`PachkaStatus`: open → closed → shipped), `closed_at`, `shipped_at` (TMO dan chiqarilgan payt), `created_by_id` FK user | PARTIAL UNIQUE `ix_pachka_code`; `ix_pachka_order_id` (kod `status` ni yakka predikat qilmaydi — `ix_pachka_order_status`/`ix_pachka_status` `6a5051b7b420` da o'chirilgan). Kod tartib raqami O'CHIRILGANLARNI ham sanaydi — qayta ishlatilsa eski chek bilan yangi qadoq bir xil QR berardi |
 | `PachkaItem` | `pachka_id`/`instance_id` FK | **PARTIAL UNIQUE `ix_pachka_item_instance` `WHERE NOT is_deleted`** — bitta nusxa faqat bitta qadoqda; ikki qadoqqa tushsa TMO hisobi ikki marta chiqarilardi. Ochiq qadoqdan chiqarish — yumshoq o'chirish. `ix_pachka_item_pachka` (`pachka_id`) — qadoq tarkibini o'qish uchun |
 
 **Marshrut = tartibli qadamlar ketma-ketligi** (`d5a1c93b70e2`) — ilgari `part_route` tartibsiz post to'plami edi:
@@ -400,7 +400,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 
 ### 4.4 Versiyalar zanjiri — `backend/app/migrations/versions/`
 
-45 ta migratsiya, head: `e5b73c04a19f`.
+46 ta migratsiya, head: `6a5051b7b420`.
 
 **Olib tashlangan ikki modulning migratsiyalari ATAYLAB qoldirilgan** — OEE
 (37–39) va materiallar ombori (27–28). Modul kodi butunlay
@@ -422,7 +422,7 @@ bazada yolg'iz qolgan yana to'rttasi bor — `machine.capacity`,
 tug'ilgan, hech qaysi migratsiya ularni drop qilmagan). Jami **6 yetim jadval
 va 7 yetim ustun**; hammasi `migrations/env.py` dagi
 `LEGACY_TABLES`/`LEGACY_COLUMNS` da sanab o'tilgan va `include_object` ularni
-`alembic check` solishtiruvidan chiqaradi (4.2-bo'lim).
+`alembic check` solishtiruvidan chiqaradi (4.2-bo'lim). Ularning 6 ta `ix_<yetim>_is_deleted` indeksi ham joyida — `6a5051b7b420` faqat jonli modellarning 19 tasini o'chirgan (prodda 25 = 19 + 6).
 
 | # | Revision | Fayl | Nima qiladi |
 |---|---|---|---|
@@ -471,6 +471,7 @@ va 7 yetim ustun**; hammasi `migrations/env.py` dagi
 | 43 | `b8e4a71c92d5` | `b8e4a71c92d5_project_name_fayl_nomidan.py` | **`order.project_name` backfill** — bo'sh qolganlari `order_file` dagi `.project` yo'lining fayl nomidan to'ldiriladi. Sabab: nom ilgari fayl ichidagi `<root name=...>` dan olinardi, GibLab eksportlarining bir qismida esa u yo'q |
 | 44 | `af6809b43a73` | `af6809b43a73_waste_item_foydali_atxot_jadvali.py` | **`waste_item` jadvali** — foydali atxot (GibLab `business="true"`): `order_id`, `material_name`, `sheet_no`, `length`/`width`, `qr_text` (PARTIAL UNIQUE `ix_waste_item_qr_text`), `label_printed_at`. GibSaw'dagi «Деловой остаток» chekining muqobili; ombor moduli keyin shu jadval ustiga quriladi |
 | 45 | `e5b73c04a19f` | `e5b73c04a19f_user_name_100_belgi.py` | **`user.name` VARCHAR(30) → VARCHAR(100)** — `UserCreate`/`UserUpdate` allaqachon 100 belgigacha qabul qilardi (`_NAME_FIELD`, 2.1-bo'lim), ya'ni 31–100 belgili F.I.Sh validatsiyadan o'tib INSERT da yiqilardi; `employee.full_name` bilan tenglashtirildi. Downgrade avval `left(name, 30)` bilan qisqartiradi |
+| 46 | `6a5051b7b420` | `6a5051b7b420_drop_redundant_indexes_and_updated_at_.py` | **Ortiqcha indekslar + `updated_at` defaulti** — 19 ta `ix_*_is_deleted` (jonli jadvallar; yetimlar tegilmagan), `ix_pachka_order_status`, `ix_pachka_status` o'chirildi; 19 jadvalda `updated_at` `DROP DEFAULT` + to'ldirish (`updated_at - created_at < 1 s → NULL`). Eski kod bilan mos — rollback `SKIP_MIGRATIONS=1` bilan xavfsiz; downgrade hammasini qaytaradi (NULL → `created_at`). Scratch Postgres'da upgrade/check/downgrade/upgrade sinalgan |
 
 Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kind=DOCUMENT` + `meta` JSONB bilan ishlatiladi (1.4.1-bo'lim).
 

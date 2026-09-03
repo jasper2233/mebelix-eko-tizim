@@ -22,16 +22,11 @@ class Pachka(BaseModel):
 
     __tablename__ = "pachka"
 
-    __table_args__ = (
-        Index("ix_pachka_code", "code", unique=True, postgresql_where=text("NOT is_deleted")),
-        Index("ix_pachka_order_status", "order_id", "status"),
-    )
+    __table_args__ = (Index("ix_pachka_code", "code", unique=True, postgresql_where=text("NOT is_deleted")),)
 
     order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), index=True, kw_only=True)
     code: Mapped[str] = mapped_column(String(40), kw_only=True)  # PK-B-2026-014-03
-    status: Mapped[PachkaStatus] = mapped_column(
-        db_enum(PachkaStatus), default=PachkaStatus.OPEN, index=True, kw_only=True
-    )
+    status: Mapped[PachkaStatus] = mapped_column(db_enum(PachkaStatus), default=PachkaStatus.OPEN, kw_only=True)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
     #: O'LIK ustun: TMO dan jo'natish endpointi olib tashlangan, hech kim yozmaydi va
     #: o'qimaydi (`PachkaStatus.SHIPPED` ham shunday). Migratsiya bilan tushiriladi.
