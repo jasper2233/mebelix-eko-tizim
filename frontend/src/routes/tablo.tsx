@@ -665,15 +665,18 @@ function TabloPage() {
                           "kechikdi" bilan "to'xtagan" boshqa-boshqa faktlar.
                           Muddatsiz buyurtma ham to'xtab qolishi mumkin — prodda
                           shundaysi bor (4301_Komol, 463 skandan keyin jim). */}
-                      {/* Teg bo'lsa nom O'RNIGA chiqadi: 1920px da nomga 119-160px
-                          kerak, teg bilan yonma-yon 97px qoladi (o'lchandi).
-                          Ustunni kengaytirish ham yaramaydi — "1010/1274" post
-                          ustuniga sig'may qoladi. */}
+                      {/* Teg va nom BIRGA: nom qisqaradi (1920px da tegdan keyin
+                          ~97px qoladi — "2070 Rusta…"), teg butun. Ilgari teg nom
+                          O'RNIGA chiqardi va to'xtagan buyurtmaning qaysi loyiha
+                          ekani taxtada umuman ko'rinmasdi — aynan o'sha qatorlar
+                          eng kerakli paytda nomsiz qolardi. Ustunni kengaytirish
+                          yaramaydi — "1010/1274" post ustuniga sig'may qoladi. */}
                       <span className="flex items-baseline justify-between gap-2 overflow-hidden">
-                        {!stall && o.name && (
+                        {o.name && (
                           <span
-                            className="truncate text-muted-foreground"
+                            className="min-w-0 truncate text-muted-foreground"
                             style={{ fontSize: "var(--t-meta)" }}
+                            title={o.name}
                           >
                             {o.name}
                           </span>
