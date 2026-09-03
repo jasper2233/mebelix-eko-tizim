@@ -137,6 +137,10 @@ class PrisadkaInstance(BaseModel):
     qr_text: str
     label_printed: bool
     done: bool
+    #: Nusxa bo'yicha skanlar: prisadkada bir nusxa 2 skan talab qilishi mumkin
+    #: (`per_instance`) — chip yarim yo'lni ko'rsatsin (ilgari faqat done/undone edi)
+    scans: int = 0
+    need: int = 1
 
 
 class PrisadkaPartRow(BaseModel):

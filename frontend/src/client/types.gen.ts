@@ -2421,6 +2421,14 @@ export type PrisadkaInstance = {
      * Done
      */
     done: boolean;
+    /**
+     * Scans
+     */
+    scans?: number;
+    /**
+     * Need
+     */
+    need?: number;
 };
 
 /**

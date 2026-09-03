@@ -688,6 +688,8 @@ async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int
                         qr_text=i.qr_text,
                         label_printed=i.label_printed_at is not None,
                         done=scan_counts.get((i.id, route.id), 0) >= route.per_instance,
+                        scans=scan_counts.get((i.id, route.id), 0),
+                        need=route.per_instance,
                     )
                     for i in insts_by_part.get(part.id, [])
                 ],

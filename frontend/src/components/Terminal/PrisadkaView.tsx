@@ -52,6 +52,10 @@ import { cn } from "@/lib/utils"
 const canPrintInstance = (p: PrisadkaPartRow, i: PrisadkaInstance) =>
   !i.done && !i.label_printed && !p.arra_route
 
+/** Qator pog'onasi: 0 — yarim (boshlangan, tugamagan), 1 — boshlanmagan, 2 — tugagan */
+const partTier = (p: { done: number; total: number }) =>
+  p.done >= p.total ? 2 : p.done > 0 ? 0 : 1
+
 /** ROVER qator kaliti — QADAM + NUSXA: nostandart marshrutda detal ROVER'ni ikki marta olishi
  *  mumkin ([7,6,7]); yolg'iz `instance_id` ikki qatorga bir xil key/DOM id berardi. */
 const instKey = (r: { p: PrisadkaPartRow; i: PrisadkaInstance }) =>
@@ -462,18 +466,28 @@ export function PrisadkaView({
               <th className="px-4 py-2.5">Kod</th>
               <th className="px-4 py-2.5">Nomi</th>
               <th className="px-4 py-2.5">O'lchami</th>
-              <th className="px-4 py-2.5">Detal ID · SCX</th>
-              <th className="px-4 py-2.5 text-right">Bajarildi</th>
+              <th className="px-4 py-2.5">
+                Detal ID · SCX
+                <span className="block text-2xs font-medium normal-case tracking-normal">
+                  ✓ tugadi · sariq — chek chiqqan / yarim · 1/2 = skan
+                </span>
+              </th>
+              <th className="px-4 py-2.5 text-right">
+                Skanlar
+                <span className="block text-2xs font-medium normal-case tracking-normal">
+                  qilingan / jami
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
-            {/* Ish-navbat: qilinmaganlar tepada, tugaganlar (✓) pastga tushadi */}
+            {/* Ish-navbat (Kromka bilan bir qoida): YARIM qolganlar tepada
+                sariq, keyin boshlanmaganlar, tugaganlar (✓) pastda yashil */}
             {[...parts]
-              .sort(
-                (a, b) => Number(a.done >= a.total) - Number(b.done >= b.total),
-              )
+              .sort((a, b) => partTier(a) - partTier(b))
               .map((p) => {
                 const finished = p.done >= p.total
+                const started = !finished && p.done > 0
                 return (
                   <tr
                     key={p.route_id}
@@ -481,6 +495,7 @@ export function PrisadkaView({
                     className={cn(
                       "border-b last:border-0",
                       finished && "bg-green-50",
+                      started && "bg-amber-50/70",
                       // Xatcho'p: holat rangini bosmaydi, chap chetda turadi
                       flashId === p.route_id && "border-l-4 border-l-primary",
                     )}
@@ -509,13 +524,21 @@ export function PrisadkaView({
                                 "num inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5",
                                 i.done
                                   ? "bg-green-100 font-semibold text-green-700"
-                                  : i.label_printed
+                                  : (i.scans ?? 0) > 0 || i.label_printed
                                     ? "bg-amber-100 text-amber-700"
                                     : "text-muted-foreground",
                               )}
                             >
                               <Serial code={i.qr_text} />
-                              {i.done && " ✓"}
+                              {/* Bir nusxa 2+ skan talab qilsa (per_instance) yarim
+                                  yo'l ko'rinsin: «1/2» — ilgari chip faqat tugadi/
+                                  tugamadi edi va «Bajarildi 1/2» ustuni «2 nusxadan
+                                  1» deb o'qilardi */}
+                              {i.done
+                                ? " ✓"
+                                : (i.need ?? 1) > 1 && (i.scans ?? 0) > 0
+                                  ? ` ${i.scans}/${i.need}`
+                                  : ""}
                               {canPrintInstance(p, i) && (
                                 <button
                                   type="button"
