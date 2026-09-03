@@ -487,12 +487,17 @@ function TerminalPage() {
             belgi yolg'iz o'zini tushuntirmaydi. Ikonka rolni aytadi
             (printer / skaner). Cheklar baribir yo'qolmaydi — ogohlantirish. */}
         {(printerLive ?? ctx?.agent_online) === false && (
-          <div className="flex shrink-0 animate-pulse items-center gap-1.5 rounded-md bg-red-600 px-2 py-1 text-sm font-bold text-white">
-            {/* Uzilgan monitor belgisi (MonitorX) — holatning o'zini aytadi;
-                sekin puls — alarm: tsexda qizil chipni ham ko'rmay o'tish oson.
-                Agent — tsex kompyuteri (sidebar MonitorCog bilan bir oila). */}
-            <MonitorX className="size-4" />
-            AGENT UZILGAN
+          <div
+            className="flex h-12 w-12 shrink-0 animate-pulse items-center justify-center rounded-lg bg-red-600 text-white"
+            role="status"
+            title="MES agent uzilgan — chek chiqmaydi / stanok skani yozilmaydi"
+            aria-label="MES agent uzilgan"
+          >
+            {/* Faqat ikonka (qulf/chiqish bilan bir uslub): uzilgan ekran
+                belgisi + qizil + sekin puls — matnsiz ham «uzilgan» deydi,
+                header joyi tejaladi. Agent — tsex kompyuteri (sidebar
+                MonitorCog bilan bir oila). */}
+            <MonitorX className="size-6" />
           </div>
         )}
 
