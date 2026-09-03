@@ -135,6 +135,15 @@ const MODE_KEY = "tablo-mode"
  * aylantirib qoplaydi. 0.62 da 55" TV da buyurtma raqamining bosh harfi 7.9 mm
  * bo'lib ~1.6 m dan o'qilardi — taxta esa 5 m uchun osilgan.
  */
+/** Raqam KESILMAYDI: shrift belgilar soniga qarab kichrayadi — katak
+ * kengligidan (`cqw`, konteyner so'rovi) hisoblanadi, JS o'lchov yo'q.
+ * 0.66em — Archivo 900 tabular raqamining o'rtacha eni (jonli o'lchandi:
+ * 0.632em) + zaxira. Qisqa son (`33/37`) odatdagi shriftda qoladi — `min()`.
+ * Sabab: 1854px da faol katak 26.9px shrift bilan `1434/1499` ni (153px)
+ * 138px katakka sig'dirmay, `overflow-hidden` bilan KESARDI (B-2026-072). */
+const fitNum = (label: string, base: string) =>
+  `min(${base}, ${(100 / (label.length * 0.66)).toFixed(1)}cqw)`
+
 const MIN_FIT = 0.85
 
 function useFitScale<T>(rows: T[]) {
@@ -606,11 +615,18 @@ function TabloPage() {
                       <td
                         key={p.id}
                         className="num whitespace-nowrap bg-primary px-1 py-3 text-center font-black tabular-nums text-primary-foreground"
-                        // Yig'indi butun tsex bo'yicha qo'shiladi — 5 xonali
-                        // bo'lishi mumkin, shuning uchun bir pog'ona kichik
-                        style={{ fontSize: "var(--t-head)" }}
                       >
-                        {total ? label : "—"}
+                        {/* Yig'indi butun tsex bo'yicha — 5 xonali bo'lishi
+                            mumkin: bir pog'ona kichik shrift + belgi soniga
+                            qarab sig'dirish */}
+                        <div className="@container">
+                          <span
+                            className="block"
+                            style={{ fontSize: fitNum(label, "var(--t-head)") }}
+                          >
+                            {total ? label : "—"}
+                          </span>
+                        </div>
                       </td>
                     )
                   })}
@@ -935,21 +951,27 @@ function TabloCell({
           }}
         />
       )}
-      <span
-        style={{ fontSize: "var(--t-cell)" }}
-        className={cn(
-          "num relative block whitespace-nowrap font-black tabular-nums",
-          complete
-            ? "text-green-700"
-            : overdue
-              ? "text-red-700"
-              : dim || waiting
-                ? "text-muted-foreground"
-                : "",
-        )}
-      >
-        {complete ? "✓" : label}
-      </span>
+      <div className="@container relative">
+        <span
+          style={{
+            fontSize: complete
+              ? "var(--t-cell)"
+              : fitNum(label, "var(--t-cell)"),
+          }}
+          className={cn(
+            "num relative block whitespace-nowrap font-black tabular-nums",
+            complete
+              ? "text-green-700"
+              : overdue
+                ? "text-red-700"
+                : dim || waiting
+                  ? "text-muted-foreground"
+                  : "",
+          )}
+        >
+          {complete ? "✓" : label}
+        </span>
+      </div>
       {overdue && (
         <span
           className="relative block whitespace-nowrap font-bold text-red-700"
@@ -1152,19 +1174,32 @@ function TabloOrderDrill({
                           "border-l border-border/60 bg-primary/90 px-2 py-3 text-center font-black text-primary-foreground",
                           i === drillPosts.length - 1 && "rounded-r-md",
                         )}
-                        style={{ fontSize: "var(--t-cell)" }}
                       >
                         {/* 99 ga cheklash FAQAT tugallanmagan katakda: JAMI
                           qatorida ✓ chizilmaydi, ya'ni to'liq bajarilgan post
                           "99%" bo'lib qotib qolardi. Matritsadagi JAMI bilan
-                          bir xil qoida. */}
-                        {!total
-                          ? "—"
-                          : mode !== "foiz"
-                            ? `${done}/${total}`
-                            : done >= total
-                              ? "100%"
-                              : `${Math.min(99, Math.floor((done / total) * 100))}%`}
+                          bir xil qoida. Shrift belgi soniga qarab (`fitNum`). */}
+                        {(() => {
+                          const text = !total
+                            ? "—"
+                            : mode !== "foiz"
+                              ? `${done}/${total}`
+                              : done >= total
+                                ? "100%"
+                                : `${Math.min(99, Math.floor((done / total) * 100))}%`
+                          return (
+                            <div className="@container">
+                              <span
+                                className="block"
+                                style={{
+                                  fontSize: fitNum(text, "var(--t-cell)"),
+                                }}
+                              >
+                                {text}
+                              </span>
+                            </div>
+                          )
+                        })()}
                       </td>
                     )
                   })}
