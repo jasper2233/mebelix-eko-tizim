@@ -81,7 +81,9 @@ prifugovkadan keyin (kromkasiz) — shu sozlama `dl/dw` ma'nosini belgilaydi.
 **Standart marshrut (5.4) — fayldan chiqadigan uchta qadam, shu TARTIBDA:** ARRA (kod 1, listda
 joyi bor detalga, per_instance=1) → KROMKA (kod 3, per_instance = ell/elr/elt/elb soni) →
 PRISADKA (kod 6, XNC operatsiyasida teshik, paz yoki freza bo'lsa — `bf`/`bt`/`bb`/`bl`/`br`,
-`gr`/`oq`/`oh`, `ms`/`ml`/`mac`; per_instance = shunday operatsiyalar soni, `_2` → 2).
+`gr`/`oq`/`oh`, `ms`/`ml`/`mac`; per_instance = **1** — orqa yuz (`_2`) ham o'sha bitta skan, chunki SCX
+ikkala yuzni bitta faylga birlashtiradi va stanok bir yurgizishda ag'darib ishlaydi; ilgari old+orqa = 2
+skan talab qilinar, prisadkachi bitta detalni «0/2» deb ko'rardi — eski qadamlarni migratsiya 1 ga tushirgan).
 Fayldan boshqa qadam chiqmaydi; ustiga `ingest.py` tizim DUMINI qo'shadi — UPAKOVKA
 (kod 15, anketada `packaging` bo'lsa) va TMO (kod 16, DOIM, eng oxirgi qadam).
 

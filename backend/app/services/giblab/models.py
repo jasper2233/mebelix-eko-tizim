@@ -165,7 +165,7 @@ class ParsedPart:
         return base
 
     def prisadka_passes(self) -> int:
-        """PRISADKA qadamining per-instance skan soni (TZ 5.4.3, 7.3.3); 0 — qadam yo'q.
+        """PRISADKA qadami bormi: 1 — bitta skan (ikki yuzli ham), 0 — qadam yo'q (TZ 5.4.3, 7.3.3).
 
         FAQAT PRISADKA — ROVER bosqichi ataylab yaratilmaydi: roverdan chiqqan detal
         keyin bo'yalishi ham mumkin, ya'ni QOLGAN marshrutni fayldan chiqarib
@@ -177,7 +177,10 @@ class ParsedPart:
         ARRA -> TMO bo'ylab ishlov KO'RMASDAN o'tib ketardi va buni hech kim
         sezmasdi. 3152 buyurtmasida shunday ikki detal bor edi (har birida 7 paz).
         """
-        return sum(1 for op in self.xnc_ops if op.bores or op.edge_bores or op.grooves or any(op.mills))
+        # BITTA skan — yuzlar soni emas: SCX ikkala yuzni (old + orqa `_2`) bitta faylga
+        # birlashtiradi (scx.py, Face="6"), stanok bitta yurgizishda ag'darib ishlaydi. Ilgari
+        # old+orqa = 2 talab qilinar, prisadkachi bitta detalni «0/2 — 2 ta detal» deb ko'rardi.
+        return int(any(op.bores or op.edge_bores or op.grooves or any(op.mills) for op in self.xnc_ops))
 
 
 @dataclass
