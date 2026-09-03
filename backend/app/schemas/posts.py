@@ -15,7 +15,7 @@ class PostRead(BaseModel):
 
 
 class PostUpdate(BaseModel):
-    """The 9-post chain is fixed (TZ 4.4); only presentation/behavior fields are editable.
+    """The 9-post chain is fixed; only presentation/behavior fields are editable.
 
     `order_index` ataylab yo'q: uning yagona egasi `seed_defaults.POSTS`, u har
     prestart'da tartibni sinxronlaydi — PATCH bilan qilingan tahrir keyingi

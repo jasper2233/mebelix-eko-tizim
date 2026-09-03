@@ -1,4 +1,4 @@
-"""TABLO (TZ 9) javob sxemalari: buyurtma × bosqich matritsasi va drill-down."""
+"""TABLO javob sxemalari: buyurtma × bosqich matritsasi va drill-down."""
 
 from datetime import date
 

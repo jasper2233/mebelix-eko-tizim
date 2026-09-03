@@ -11,7 +11,7 @@ from .enums import FileKind, OrderPriority, OrderStatus, RouteSource, db_enum
 
 
 class Order(BaseModel):
-    """Production order (TZ 6). Lifecycle: DRAFT → TECHNICAL_REVIEW → PRODUCTION → COMPLETED → DELIVERED."""
+    """Production order. Lifecycle: DRAFT → TECHNICAL_REVIEW → PRODUCTION → COMPLETED → DELIVERED."""
 
     __tablename__ = "order"
 
@@ -31,16 +31,16 @@ class Order(BaseModel):
     notes: Mapped[str | None] = mapped_column(Text, default=None, kw_only=True)
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
 
-    # .project file metadata (set by texnolog upload; file name is informational only, TZ 6.2.2)
+    # .project file metadata (set by texnolog upload; file name is informational only)
     project_uuid: Mapped[str | None] = mapped_column(String(64), default=None, kw_only=True)
     project_name: Mapped[str | None] = mapped_column(String(255), default=None, kw_only=True)
     project_loaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
 
-    # Cut map visual model (TZ 5.7.5) built from CS data blob; rendered by ARRA terminal.
+    # Cut map visual model built from CS data blob; rendered by ARRA terminal.
     cutmap: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None, kw_only=True)
-    # Material consumption from the project file (TZ 11.3): [{name, code, kind, count, unit}]
+    # Material consumption from the project file: [{name, code, kind, count, unit}]
     material_usage: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default_factory=list, kw_only=True)
-    # Manager's machine choice per post: {"PRISADKA": 3, "ROVER": 5} (TZ 6.4.1)
+    # Manager's machine choice per post: {"PRISADKA": 3, "ROVER": 5}
     machine_assignments: Mapped[dict[str, int]] = mapped_column(JSONB, default_factory=dict, kw_only=True)
     # Mijoz anketasi + o'lchov varag'i, xonalar bo'yicha (qog'oz forma o'rniga).
     # Manager to'ldiradi, texnolog o'qiydi va shunga qarab dizayn yasaydi. Sxema: schemas/orders.OrderSurvey
@@ -73,7 +73,7 @@ ORDER_FAT_COLUMNS = (Order.cutmap, Order.survey, Order.material_usage, Order.mac
 
 
 class Product(BaseModel):
-    """Furniture item inside an order — <good typeId="product"> (TZ 5.2.2)."""
+    """Furniture item inside an order — <good typeId="product">."""
 
     __tablename__ = "product"
 
@@ -84,7 +84,7 @@ class Product(BaseModel):
 
 
 class Part(BaseModel):
-    """Part definition — <part> inside product. Stable key: productCode_partCode (TZ 5.8)."""
+    """Part definition — <part> inside product. Stable key: productCode_partCode."""
 
     __tablename__ = "part"
 
@@ -125,7 +125,7 @@ PART_FAT_COLUMNS = (Part.xnc_summary, Part.note)
 
 
 class PartInstance(BaseModel):
-    """Physical copy of a part. QR = productCode_partCode_n; each copy tracked separately (TZ 5.8.1)."""
+    """Physical copy of a part. QR = productCode_partCode_n; each copy tracked separately."""
 
     __tablename__ = "part_instance"
 
@@ -139,7 +139,7 @@ class PartInstance(BaseModel):
     part_id: Mapped[int] = mapped_column(ForeignKey("part.id"), index=True, kw_only=True)
     instance_no: Mapped[int] = mapped_column(kw_only=True)  # 1..count
     qr_text: Mapped[str] = mapped_column(String(120), kw_only=True)
-    # Cut map cell binding: which pattern sheet / cell this copy occupies (TZ 7.1.4)
+    # Cut map cell binding: which pattern sheet / cell this copy occupies
     pattern_no: Mapped[int | None] = mapped_column(default=None, kw_only=True)
     cell_index: Mapped[int | None] = mapped_column(default=None, kw_only=True)
     label_printed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
@@ -152,7 +152,7 @@ class PartInstance(BaseModel):
 
 class PartRoute(BaseModel):
     """Marshrutning BITTA qadami: detal shu postdan shu navbatda o'tadi.
-    QOLDIQ tez chiqishi uchun hisoblagichlar denormalizatsiya qilingan (TZ 5.4).
+    QOLDIQ tez chiqishi uchun hisoblagichlar denormalizatsiya qilingan.
 
     Bitta post marshrutda BIR NECHA MARTA uchrashi mumkin (kromka -> prisadka -> kromka),
     shuning uchun yagonalik `(part_id, seq)` bo'yicha — post bo'yicha EMAS."""

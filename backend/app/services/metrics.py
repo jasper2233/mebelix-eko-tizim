@@ -1,4 +1,4 @@
-"""Shared production volume math (TZ 9.3.1 HAJM)."""
+"""Shared production volume math (HAJM)."""
 
 from typing import Any
 

@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from pydantic import SecretStr, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Tsex mahalliy vaqti — hisobot/audit kunlari va chek timestamp'lari shu zonada (TZ 10.4).
+# Tsex mahalliy vaqti — hisobot/audit kunlari va chek timestamp'lari shu zonada.
 TASHKENT_TZ = ZoneInfo("Asia/Tashkent")
 
 # Defaults referenced both by `Settings` field defaults and by the production-readiness validator below.
@@ -71,16 +71,16 @@ class Settings(BaseSettings):
     MAX_PAGE_SIZE: int = 100
 
     # === File storage ===
-    UPLOAD_DIR: str = "uploads"  # project/scx/label files root (TZ 2.4.3); S3 mount later if needed
+    UPLOAD_DIR: str = "uploads"  # project/scx/label files root; S3 mount later if needed
     MAX_PROJECT_FILE_SIZE: int = 50 * 1024 * 1024  # .project files in the corpus are < 5 MB
 
-    # === Production floor (TZ 7–8) ===
+    # === Production floor ===
     # E004: detalning O'Z marshrutidagi oldingi qadam tugamaguncha skan qabul qilinmaydi.
-    # Tsexda tartib qat'iy — operator o'tkazib yubora olmaydi (TZ 7.2.5).
+    # Tsexda tartib qat'iy — operator o'tkazib yubora olmaydi.
     STRICT_STAGE_ORDER: bool = True
-    SCAN_UNDO_SECONDS: int = 60  # BEKOR QILISH window (TZ 8.6)
+    SCAN_UNDO_SECONDS: int = 60  # BEKOR QILISH window
 
-    # === Printing (TZ 12.3 / 13.2) ===
+    # === Printing ===
     # Yorliqlar bridge-agent navbati orqali USB GoDEX'ga boradi (G500-U'da tarmoq porti yo'q).
     # Legacy back-compat: printerlar admin paneldagi pairing tokeni bilan ulanadi
     # (bridge_agent.token_hash). Bu bo'sh bo'lsa ham /ws/bridge ishlayveradi.

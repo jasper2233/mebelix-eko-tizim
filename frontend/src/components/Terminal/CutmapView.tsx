@@ -1,4 +1,4 @@
-// ARRA kesish xaritasi (TZ 7.1.7) — GibSaw uslubidagi ekran: materiallar jadvali,
+// ARRA kesish xaritasi — GibSaw uslubidagi ekran: materiallar jadvali,
 // list kartochkalari, to'liq list SVG (detallar, kesim chiziqlari, teshiklar overlay),
 // detal kartochkasi (katta QR + YORLIQ CHOP ETISH). GibCut litsenziyasi o'rnini bosadi.
 

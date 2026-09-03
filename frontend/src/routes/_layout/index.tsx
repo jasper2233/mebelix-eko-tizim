@@ -98,7 +98,7 @@ function Dashboard() {
         }
       />
 
-      {/* Ish markazlari (TZ 10.2.1) — jadval, karta emas: beshta bir xil tuzilishli
+      {/* Ish markazlari — jadval, karta emas: beshta bir xil tuzilishli
           obyekt, har birida 3-5 raqam. Kartalar geterogen yoki rasm/amal talab
           qiladigan narsalar uchun; bir xil ustunli raqamlar solishtiriladi,
           ya'ni jadval zichroq va skanerlanadigan. Kartalar teng balandlikka
@@ -178,7 +178,7 @@ function Dashboard() {
         </p>
       )}
 
-      {/* Aktiv buyurtmalar progressi (TZ 10.2.2) */}
+      {/* Aktiv buyurtmalar progressi */}
       <SectionTitle>Aktiv buyurtmalar</SectionTitle>
       {matrixLoading ? (
         <Skeleton className="h-40 w-full" />

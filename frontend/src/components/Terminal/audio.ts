@@ -1,4 +1,4 @@
-// Audio signallari (TZ 8.4.3): tsex shovqinida majburiy. WebAudio — lokal, internetga bog'liq emas.
+// Audio signallari: tsex shovqinida majburiy. WebAudio — lokal, internetga bog'liq emas.
 
 let ctx: AudioContext | null = null
 

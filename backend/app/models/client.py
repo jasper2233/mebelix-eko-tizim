@@ -5,7 +5,7 @@ from .base import BaseModel
 
 
 class Client(BaseModel):
-    """Customer (TZ 4.6). orders_count is computed in queries, not stored."""
+    """Customer. orders_count is computed in queries, not stored."""
 
     __tablename__ = "client"
 

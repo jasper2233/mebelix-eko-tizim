@@ -39,7 +39,7 @@ async def _editable_order(db: SessionDep, order_id: int, nima: str = "anketasini
 async def save_order_survey(
     db: SessionDep, current_user: ManagerUser, order_id: int, body: OrderSurvey, request: Request
 ) -> Message:
-    """Mijoz anketasi va o'lchov varag'ini saqlaydi (TZ 6.2, qog'oz forma o'rniga).
+    """Mijoz anketasi va o'lchov varag'ini saqlaydi (qog'oz forma o'rniga).
 
     Butun anketa bir butun sifatida yoziladi — menejer to'ldirib boradi, texnolog o'qiydi.
     """

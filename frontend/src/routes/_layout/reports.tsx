@@ -1,4 +1,4 @@
-// Hisobotlar (TZ 11): mahsuldorlik, buyurtmalar holati, material sarfi + Excel eksport.
+// Hisobotlar: mahsuldorlik, buyurtmalar holati, material sarfi + Excel eksport.
 
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"

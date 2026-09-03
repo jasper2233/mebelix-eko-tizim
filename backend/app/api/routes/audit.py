@@ -17,7 +17,7 @@ router = APIRouter(prefix="/audit-logs", tags=["audit"])
 @router.get("/", response_model=Paginated[AuditLogRead], operation_id="read_audit_logs")
 async def read_audit_logs(
     db: SessionDep,
-    # Butun tizimning audit izi — faqat admin (TZ 10.11). Direktor ishlab
+    # Butun tizimning audit izi — faqat admin. Direktor ishlab
     # chiqarish ko'rsatkichlarini /reports dan oladi, xom hodisa jurnalidan emas.
     _: AdminUser,
     skip: Annotated[int, Query(ge=0)] = 0,

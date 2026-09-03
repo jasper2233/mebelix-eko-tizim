@@ -28,7 +28,7 @@ export type Sheet = Omit<CutmapSheet, "no"> & {
 // Xarita paneli kulrang (oq emas) — yorug' tsexda ko'z qamashtirmaydi, detallar ajralib turadi
 const PART_FILL = "#e88b00"
 const PART_SELECTED = "#2596be"
-// Chek chiqarilgan yoki skan qilingan katak — "kesildi" yashili (TZ 7.1.7).
+// Chek chiqarilgan yoki skan qilingan katak — "kesildi" yashili.
 // Tailwind green-500: kromka/prisadka nusxa chiplari (green-600) bilan bir
 // oilada — xarita ajralib qolmasin. List kartasi endi yengil tint
 // (green-50 fon, green-700 matn): to'ldirilgan katak SVG'da undan to'q
@@ -463,7 +463,7 @@ export function SheetSvg({
           : PART_FILL
 
     // ATXOT o'lchami. GibLab ro'yxatga olgan atxot (blob turi 4) foydali
-    // o'lchami bilan keladi — xom kesim emas (`cutmap.py`, TZ 5.2.3). Arra haqqi
+    // o'lchami bilan keladi — xom kesim emas (`cutmap.py`). Arra haqqi
     // (tur 1, ~0.5 mm chekka kesim) esa umuman katak bo'lmaydi, ya'ni bu yerga
     // tushmaydi. O'lcham ko'rsatilmasa arrachi atxotni ko'z bilan chamalab,
     // keyingi buyurtmaga yaraydimi-yo'qmi deb bilolmasdi.
@@ -802,7 +802,7 @@ export function SheetSvg({
     }
 
     return (
-      // biome-ignore lint/a11y/noStaticElementInteractions: SVG katakcha — 17" touch target (TZ 7.1.7)
+      // biome-ignore lint/a11y/noStaticElementInteractions: SVG katakcha — 17" touch target
       <g
         key={p.cell}
         onClick={() => {

@@ -1,4 +1,4 @@
-"""*.project XML parser (TZ 5.1–5.3).
+"""*.project XML parser.
 
 Hard rules from the 205-file corpus analysis:
 - A REAL XML parser only — regex is FORBIDDEN (old files contain `elb ="` with a space, 1014×).
@@ -31,7 +31,7 @@ _PRODUCT_CODE_MAX = 50
 
 # GibLab'da 9 xil operatsiya turi bor ("+Операция" ro'yxati). Biz uchtasini o'qiymiz
 # (CS, EL, XNC), uchtasi ataylab jim o'tkaziladi:
-#   LB — GibLab yorliq shablonlari; tizim o'z yorlig'ini chiqaradi (TZ 5.2.8).
+#   LB — GibLab yorliq shablonlari; tizim o'z yorlig'ini chiqaradi.
 #   O  — furnitura komplektatsiyasi; sanoqlar `typeId="simple"` goodlarining o'zida bor,
 #        ya'ni material registriga baribir tushadi.
 # CL — погонажный раскрой (profil kesish) alohida holat: uning detallari arrachiga
@@ -318,7 +318,7 @@ def parse_project(content: bytes) -> ParsedProject:
         generation="template",  # upgraded below if CS data is present
     )
 
-    # --- materials (auto-registry, TZ 4.5) ---
+    # --- materials (auto-registry) ---
     for gid, g in sheets.items():
         project.materials.append(
             ParsedMaterial(
@@ -374,7 +374,7 @@ def parse_project(content: bytes) -> ParsedProject:
         project.products.append(product)
 
     # --- operations ---
-    label_counter = 0  # file-global: matches GibSaw print order (TZ 5.8)
+    label_counter = 0  # file-global: matches GibSaw print order
     xnc_ops_by_part: dict[int, list] = {}
 
     for op_el in operations:
@@ -394,7 +394,7 @@ def parse_project(content: bytes) -> ParsedProject:
             if stub_el is None:
                 project.warnings.append(f"XNC operatsiya detalga bog'lanmagan, ishlov o'tkazib yuborildi: {op_ref}")
                 continue
-            # Usually an HTML-escaped attribute (TZ 5.2.7); some exports keep <program> as a child.
+            # Usually an HTML-escaped attribute; some exports keep <program> as a child.
             program = op_el.get("program")
             if program is None:
                 prog_el = op_el.find("program")
@@ -406,7 +406,7 @@ def parse_project(content: bytes) -> ParsedProject:
             pid = _i(stub_el, "id")
             code = op_el.get("code") or ""
             op = parse_xnc_program(code, program, op_el.get("side"))
-            # mirHor/mirVert geometriyaga darhol qo'llanadi (TZ 5.6.4) — SCX,
+            # mirHor/mirVert geometriyaga darhol qo'llanadi — SCX,
             # yorliq va xarita bir xil to'g'ri koordinatani ko'radi
             apply_mirror(op, xml_bool(op_el.get("mirHor")), xml_bool(op_el.get("mirVert")))
             xnc_ops_by_part.setdefault(pid, []).append(op)
@@ -420,7 +420,7 @@ def parse_project(content: bytes) -> ParsedProject:
             continue
         target.xnc_ops = merge_xnc_ops(ops)
 
-    # --- generation detection (TZ 5.3.3) ---
+    # --- generation detection ---
     has_blob = any(c.data_blob for c in project.cut_ops)
     if has_blob and project.uuid:
         project.generation = "processed"
@@ -445,7 +445,7 @@ def _parse_cs_operation(
     project: ParsedProject,
     label_counter: int,
 ) -> int:
-    """One CS = one sheet material (TZ 5.2.5). Returns the advanced file-global label counter."""
+    """One CS = one sheet material. Returns the advanced file-global label counter."""
     tool = cutting_tools.get(_i(op_el, "tool1"))
     material_el = _base_material(op_el)
     mat_gid = _i(material_el, "id") if material_el is not None else 0
@@ -473,7 +473,7 @@ def _parse_cs_operation(
         op_id=_i(op_el, "id"),
         material_name=sheet.get("name", "") if sheet is not None else "",
         thickness=_f(sheet, "t") if sheet is not None else None,
-        # Yagona kerf manbasi (TZ 5.3.4). Yozilmasa GibLab o'zining standarti — 4.4 mm — bilan
+        # Yagona kerf manbasi. Yozilmasa GibLab o'zining standarti — 4.4 mm — bilan
         # optimallashtirgan (spetsifikatsiya, `swSawthick`), shuning uchun zaxira qiymat ham 4.4:
         # eski eksportda (`tool.cutting` bo'sh) arrachiga 3.0 deb yolg'on ko'rsatilardi.
         kerf=4.4 if kerf_raw is None else kerf_raw,
@@ -486,7 +486,7 @@ def _parse_cs_operation(
         stats=stats,
         data_blob=op_el.get("data") or None,
     )
-    # Stub order = GibSaw label number (1-based, file-global) — TZ 5.2.3/5.8.
+    # Stub order = GibSaw label number (1-based, file-global) —
     for stub in op_el.findall("part"):
         pid = _i(stub, "id")
         label_counter += 1
@@ -495,7 +495,7 @@ def _parse_cs_operation(
             ref_part.label_num = label_counter
             ref_part.material_name = cut.material_name
             ref_part.thickness = cut.thickness
-    # Registered waste part defs live INSIDE the sheet good (TZ 5.2.3).
+    # Registered waste part defs live INSIDE the sheet good.
     if sheet is not None:
         for sp in sheet.findall("part"):
             if xml_bool(sp.get("waste")):
@@ -520,7 +520,7 @@ def _apply_el_symbols(
     bands: dict[int, ET.Element],
 ) -> None:
     """Attach the EL map symbol to every referencing part edge — part attrs point back
-    via el{side}="@operation#N" (TZ 5.1.2)."""
+    via el{side}="@operation#N"."""
     symbol = op_el.get("elSymbol")
     # Kromkalash operatsiyasida `used="base"` KLEY emas, LENTA ni bildiradi (spetsifikatsiya).
     # Detalning `el{side}Mat` i yozilmasligi mumkin (korpusda 779 qirradan 112 tasi) — o'shanda

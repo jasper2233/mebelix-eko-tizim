@@ -1,4 +1,4 @@
-// Texnolog matritsasi (TZ 6.3.3): rows = parts, columns = 6 posts.
+// Texnolog matritsasi: rows = parts, columns = 6 posts.
 // Read mode: progress cells. Edit mode (texnolog, pre-production): stage toggles + notes.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -338,7 +338,7 @@ function MatrixCell({
 
   if (editMode) {
     // Nostandart detalning marshruti alohida tabda chiziladi — bu yerda tegilmaydi.
-    // ARRA standart detal uchun majburiy (TZ 5.4.1).
+    // ARRA standart detal uchun majburiy.
     const locked = isCustom || post.code === "ARRA"
     return (
       <TableCell className="text-center">

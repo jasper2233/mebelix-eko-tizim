@@ -8,7 +8,7 @@ from app.models.enums import FileKind, OrderPriority, OrderStatus, PostCode, Rou
 
 
 class OrderRead(BaseModel):
-    """Registry row (TZ 10.3.1)."""
+    """Registry row."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -55,7 +55,7 @@ class OrderFileRead(BaseModel):
 
 
 class OrderDetail(OrderRead):
-    """Order card (TZ 10.3.3): metadata + files; the parts matrix comes from /matrix."""
+    """Order card: metadata + files; the parts matrix comes from /matrix."""
 
     machine_assignments: dict[str, int]
     project_uuid: str | None
@@ -81,7 +81,7 @@ class OrderDetail(OrderRead):
 
 
 class OrderCreate(BaseModel):
-    """Manager creates a DRAFT order (TZ 6.2). The number is auto-generated (B-2026-001)."""
+    """Manager creates a DRAFT order. The number is auto-generated (B-2026-001)."""
 
     model_config = ConfigDict(extra="ignore")
 
@@ -204,13 +204,13 @@ class OrderSurvey(BaseModel):
 
 
 class MachineAssignments(BaseModel):
-    """Manager's machine choice per post before production start (TZ 6.4)."""
+    """Manager's machine choice per post before production start."""
 
     assignments: dict[PostCode, int]
 
 
 class RouteCell(BaseModel):
-    """One matrix cell: part × post (TZ 6.3.3)."""
+    """One matrix cell: part × post."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -253,7 +253,7 @@ class OrderMatrix(BaseModel):
 
 
 class MatrixPartEdit(BaseModel):
-    """Texnolog edits one part's row (TZ 6.3.3): stages, note, count, custom route, assembly link."""
+    """Texnolog edits one part's row: stages, note, count, custom route, assembly link."""
 
     part_id: int
     note: str | None = None

@@ -1,4 +1,4 @@
-// Operator terminali (TZ 8): POS monoblokda fullscreen ochiq turadigan ekran.
+// Operator terminali: POS monoblokda fullscreen ochiq turadigan ekran.
 // Avto-skan input doim fokusda; beyjik UUID → sessiya, aks holda detal QR scan.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -229,7 +229,7 @@ function TerminalPage() {
     ),
   )
 
-  // Avto-skan: input doim fokusda (TZ 8.4.1). ARRA xaritasi ochiqda o'chadi
+  // Avto-skan: input doim fokusda. ARRA xaritasi ochiqda o'chadi
   // (input yashirin) — KROMKA proyekt sahifasida skan doim ishlashi kerak.
   const mapOpen = ctx?.post_code === "ARRA" && mapOrderId !== null
   // Tasdiq dialogi ochiqda ham o'chadi: input modaldan tashqarida, ya'ni
@@ -396,7 +396,7 @@ function TerminalPage() {
     staleTime: 60_000,
   })
 
-  // BEKOR QILISH oynasi serverda 60 s (TZ 8.6 — `SCAN_UNDO_SECONDS`, undan
+  // BEKOR QILISH oynasi serverda 60 s (`SCAN_UNDO_SECONDS`, undan
   // keyin faqat admin). Ekranda muddat taymeri KERAK EMAS: pastdagi tozalash
   // 15 s da `lastScan`ni null qiladi va ScanStrip butunlay yo'qoladi — tugma
   // server oynasi tugashidan ancha oldin ekrandan ketadi.
@@ -455,7 +455,7 @@ function TerminalPage() {
           onCancel={joining ? () => setJoining(false) : undefined}
         />
       )}
-      {/* Header (TZ 8.3.1) */}
+      {/* Header */}
       <header className="flex items-center gap-4 border-b bg-card px-4 py-2 shadow-sm">
         {/* Arrachi tilida bitta identitet: ish markazi nomi (post rangida) — "post/uskuna"
             taksonomiyasi olib tashlandi, ism yonidagi chipda */}

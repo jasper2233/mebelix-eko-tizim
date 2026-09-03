@@ -1,4 +1,4 @@
-"""XNC program parsing (TZ 5.5): the `program` attribute is an escaped inner XML document."""
+"""XNC program parsing: the `program` attribute is an escaped inner XML document."""
 
 import ast
 import re
@@ -73,7 +73,7 @@ def _eval_expr(expr: str, env: dict[str, float]) -> float:
 
 def _tool_diameter(name: str | None, tools: dict[str, float]) -> float | None:
     """The <tool> table's d attribute is the primary source; the digits in the name match it 100%
-    in the corpus (TZ 5.6.4) and serve as fallback."""
+    in the corpus and serve as fallback."""
     if not name:
         return None
     if name in tools:
@@ -116,7 +116,7 @@ def _add_face_bores(el: ET.Element, op: XncOp, num: _Num, tools: dict[str, float
 
 
 def _add_edge_bores(el: ET.Element, side: str, op: XncOp, num: _Num, tools: dict[str, float], dz: float) -> None:
-    # bt/bb carry x; bl/br carry y — only the along-edge coordinate exists (TZ 5.5)
+    # bt/bb carry x; bl/br carry y — only the along-edge coordinate exists
     pos = num(el, "x") if side in ("t", "b") else num(el, "y")
     dp = num(el, "dp")
     # `m` (Середина по Z, default true): true -> teshik qalinlik MARKAZIDA, `z` e'tiborsiz;
@@ -279,7 +279,7 @@ def parse_xnc_program(code: str, program_xml: str, side: str | None = None) -> X
 
 
 def apply_mirror(op: XncOp, mir_hor: bool, mir_vert: bool) -> None:
-    """Operatsiyadagi mirHor/mirVert ni geometriyaga QO'LLAYDI (TZ 5.6.4).
+    """Operatsiyadagi mirHor/mirVert ni geometriyaga QO'LLAYDI.
 
     GibLab bunday dasturni eksportda aks ettirib chiqaradi — biz ham parse
     bosqichida normallashtiramiz, shunda SCX, yorliq va kesish xaritasi
@@ -327,7 +327,7 @@ def apply_mirror(op: XncOp, mir_hor: bool, mir_vert: bool) -> None:
 
 def merge_xnc_ops(ops: list[XncOp]) -> list[XncOp]:
     """Detalning BARCHA XNC operatsiyalari saqlanadi; 'oxirgisi yutadi' — taqiqlangan
-    xato (TZ 5.2.7). Tartib: asosiy tomon, keyin _2.
+    xato. Tartib: asosiy tomon, keyin _2.
 
     Korpusda ko'pi bilan ikkita uchraydi, lekin GibLab ko'proq beradi: yorliq shabloni
     XNC1..XNC5 maydonlarini taklif qiladi (help/labels_ru.html). Ilgari bu yerda ikkitadan

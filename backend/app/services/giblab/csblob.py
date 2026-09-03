@@ -1,4 +1,4 @@
-"""CS `data` blob decoder (TZ 5.7): base64, UNENCRYPTED big-endian binary.
+"""CS `data` blob decoder: base64, UNENCRYPTED big-endian binary.
 
 Grammar verified byte-for-byte on 1144 patterns / 398 blobs; zero unknown bytes remain.
 This replaces the licensed GibCut/GibSaw station (~$4000) — MANDATORY for the ARRA post.
@@ -6,15 +6,15 @@ This replaces the licensed GibCut/GibSaw station (~$4000) — MANDATORY for the 
 Layout:
     u32=0, u32=1, u8=3, u32=N_pattern                # global header (constants)
     N × pattern block, each addressed relative to `dims`:
-        u32  mult          @dims-4    # pattern is cut on `mult` sheets; Σ = cMaterialCount
-        f64  L, W          @dims,+8   # sheet size
-        u32  stock_part_id @dims+16
+        u32 mult          @dims-4    # pattern is cut on `mult` sheets; Σ = cMaterialCount
+        f64 L, W          @dims,+8   # sheet size
+        u32 stock_part_id @dims+16
         u8   0             @dims+20
         4×f64 = -1.0       @dims+21   # signature (dims is found 21 bytes before it)
         ... statistics block (see fields below) ...
-        u32  Nr            @dims+113  # record count INCLUDING the slot
-        15B  slot          @dims+117  # ROOT-AXIS MARKER (TZ 5.7.3)
-        (Nr-1) × 15B       @dims+132  # preorder guillotine tree
+        u32 Nr            @dims+113 # record count INCLUDING the slot
+        15B slot          @dims+117 # ROOT-AXIS MARKER
+        (Nr-1) × 15B       @dims+132 # preorder guillotine tree
 
 15-byte record: u8 tag (depth = tag>>3, type = tag&7), f64 value (strip size, mm),
 u8 flag (0), u8 qty, i32 part_id (-1 = structural).
@@ -111,7 +111,7 @@ def decode_cs_blob(b64: str) -> list[BlobPattern]:
 
         slot = _parse_record(raw, dims + 117)
         slot_depth, slot_type, slot_value = slot[0], slot[1], slot[2]
-        # Root axis (TZ 5.7.3): null slot (type=1, v=0) → horizontal first cuts;
+        # Root axis: null slot (type=1, v=0) → horizontal first cuts;
         # a depth-1 trim record → vertical, and the slot IS the leading 2mm trim.
         # Torsovkasiz vertikal xaritada (205-korpus: XDF listlar) yetakchi qirqim yo'q —
         # slot birinchi HAQIQIY yozuvning o'zi (polosa/detal/qoldiq) bo'lib keladi; uni
@@ -162,10 +162,10 @@ def decode_cs_blob(b64: str) -> list[BlobPattern]:
 
 
 def self_check(patterns: list[BlobPattern], stats: dict[str, float]) -> list[str]:
-    """TZ 5.7.4 equalities. Any mismatch marks the file as broken (returned as messages).
+    """equalities. Any mismatch marks the file as broken (returned as messages).
 
     Note: cWasteAmount/cPartAmount are mult-multiplied in the CS attributes, but the
-    per-pattern areas are NOT — the comparison must apply mult (TZ 5.3.4).
+    per-pattern areas are NOT — the comparison must apply mult.
     """
     problems: list[str] = []
 

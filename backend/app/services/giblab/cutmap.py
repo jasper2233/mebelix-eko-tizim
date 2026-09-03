@@ -1,4 +1,4 @@
-"""Cut-map visual model builder (TZ 5.7.5) — the JSON the ARRA terminal renders.
+"""Cut-map visual model builder — the JSON the ARRA terminal renders.
 
 Validated rules from the working prototype (GibCut Viewer):
 - rot: placed size swapped vs the part definition → 90° rotated, ⟳ shown on the map;
@@ -70,10 +70,10 @@ def _place(
 ) -> float:
     """Place one preorder node whose slice starts at (x, y) inside a w×h region.
 
-    vertical=True → the slice runs along X (slice size = value × h);
-    otherwise along Y (w × value). qty expands into consecutive physical copies
-    (TZ 5.7.2). Children of an inner strip cut across the other axis.
-    Returns the consumed extent along the current axis.
+        vertical=True → the slice runs along X (slice size = value × h);
+        otherwise along Y (w × value). qty expands into consecutive physical copies
+    . Children of an inner strip cut across the other axis.
+        Returns the consumed extent along the current axis.
     """
     consumed = 0.0
     for _rep in range(max(node.qty, 1)):
@@ -98,10 +98,10 @@ def _place(
                     cursor += _place(child, rx, ry + cursor, rw, rh, False, cells, cuts)
                 else:
                     cursor += _place(child, rx + cursor, ry, rw, rh, True, cells, cuts)
-        # type 1 (trim/kerf) consumes space only — kerf is not drawn separately (TZ 5.7.2)
+        # type 1 (trim/kerf) consumes space only — kerf is not drawn separately
 
         consumed += node.value
-        # Guillotine cut at this boundary — edge-to-edge across the parent region (TZ 5.7.5).
+        # Guillotine cut at this boundary — edge-to-edge across the parent region.
         if vertical:
             cuts.append({"x1": x + consumed, "y1": y, "x2": x + consumed, "y2": y + h})
         else:
@@ -191,7 +191,7 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
                     # GibLab "business" atxoti — saqlanadigan foydali qoldiq;
                     # chek chiqarish va ombor trekingi faqat shularga.
                     entry["business"] = bool(wdef and wdef.get("business"))
-                    if wdef:  # useful size from the definition, not the raw cut (TZ 5.2.3)
+                    if wdef:  # useful size from the definition, not the raw cut
                         entry["w"], entry["h"] = wdef["l"], wdef["w"]
                     entry.update({"id": cell["part_id"], "waste": True, "name": "atxot"})
                 else:
@@ -246,7 +246,7 @@ def build_cutmap(project: ParsedProject) -> CutmapResult:
             problems.append(f"{cut.material_name}: joylashtirilgan detallar {material_placed} ≠ cPartCount {expected}")
         result.model["materials"].append(material)
 
-    # Holes overlay (TZ 5.7.5): merged XNC per part, duplicates removed.
+    # Holes overlay: merged XNC per part, duplicates removed.
     for part in project.all_parts:
         merged = part.merged_machining()
         if merged and (merged.bores or merged.edge_bores):

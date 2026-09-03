@@ -1,6 +1,6 @@
-"""Scan engine (TZ 7–8): instance-level pipeline control.
+"""Scan engine: instance-level pipeline control.
 
-Every physical copy has a unique QR (TZ 5.8), so validation is exact: a copy can be
+Every physical copy has a unique QR, so validation is exact: a copy can be
 scanned at post N only the allowed number of times (per_instance), and — in strict
 mode — only after THE SAME copy finished post N−1. Other copies never interfere.
 """
@@ -33,7 +33,7 @@ from app.schemas.terminal import ScanResult
 #: Manbalar-aro dedup oynasi (pastdagi `record_scan_at` izohiga qarang)
 CROSS_SOURCE_WINDOW = timedelta(seconds=3)
 
-_QR_RE = re.compile(r"^.+_.+$")  # {productCode}_{partCode}[_{n}] — yagona nusxada suffiks yo'q (TZ 5.8)
+_QR_RE = re.compile(r"^.+_.+$")  # {productCode}_{partCode}[_{n}] — yagona nusxada suffiks yo'q
 
 
 def _utc(dt: datetime) -> datetime:
@@ -47,19 +47,19 @@ def qr_part_code(qr: str, count: int) -> str:
 
 
 class ScanRejected(Exception):
-    """Skan xatosi: kod + o'zbekcha xabar (TZ 8.5 dialogi, 422 detail).
+    """Skan xatosi: kod + o'zbekcha xabar (dialogi, 422 detail).
 
     KOD KIM HARAKAT QILISHINI aytadi — matn beqaror (tahrirlanadi), kod barqaror:
     frontend ovozni, hisobot esa guruhlashni shunga qarab tanlaydi.
 
-      E001  detal/plan mos kelmadi — operator chekni tekshiradi
-      E002  QR formati buzuq — chek qayta chop etiladi
-      E003  buyurtma bekor qilingan — manager
-      E004  navbat buzildi — oldingi bosqichni kutish kerak
-      E005  aktiv smena yo'q — beyjik
-      E006  beyjik muammosi — admin/hodim
-      E008  ish allaqachon bajarilgan — xato emas, ogohlantirish
-      E009  SOZLAMA xatosi (post/ish markazi yo'q) — admin tuzatadi, operator emas
+      E001 detal/plan mos kelmadi — operator chekni tekshiradi
+      E002 QR formati buzuq — chek qayta chop etiladi
+      E003 buyurtma bekor qilingan — manager
+      E004 navbat buzildi — oldingi bosqichni kutish kerak
+      E005 aktiv smena yo'q — beyjik
+      E006 beyjik muammosi — admin/hodim
+      E008 ish allaqachon bajarilgan — xato emas, ogohlantirish
+      E009 SOZLAMA xatosi (post/ish markazi yo'q) — admin tuzatadi, operator emas
 
     E007 server kodi emas: aloqa uzilganda terminal frontendi o'zi hosil qiladi.
     """
@@ -71,7 +71,7 @@ class ScanRejected(Exception):
 
 
 def scan_error(code: str, message: str) -> HTTPException:
-    """TZ 8.5 xato dialogi shakli: {code, message} — ScanRejected bilan bir xil JSON payload.
+    """xato dialogi shakli: {code, message} — ScanRejected bilan bir xil JSON payload.
 
     Skan xatosini HTTP ga o'girishning YAGONA joyi: route'lar `raise
     scan_error(exc.code, exc.message) from None` deb yozadi.
@@ -187,7 +187,7 @@ async def badge_employee(db: AsyncSession, badge_id: str, post: Post) -> Employe
 async def open_badge_session(
     db: AsyncSession, *, user: User, machine: Machine, post: Post, employee: Employee, join: bool = False
 ) -> WorkSession:
-    """Smenani ochadi (TZ 8.2.2) — beyjik skani ham, ismni bosish ham shu yerga keladi.
+    """Smenani ochadi — beyjik skani ham, ismni bosish ham shu yerga keladi.
 
     `join=False` (sukut) BRIGADANI ALMASHTIRADI: ish markazidagi ochiq smenalar yopiladi.
     Bu ataylab sukut: ketayotgan odam "chiqish" ni bosishni unutsa, keyingi kirish
@@ -652,7 +652,7 @@ async def record_scan_at(
     if route.machine_id is not None and route.machine_id != machine.id:
         raise ScanRejected("E001", "Bu detal boshqa ish markaziga biriktirilgan.")
 
-    # Qat'iy tartib (TZ 7.2.5 / 8.5 E004): postlarning global tartibi emas, detalning
+    # Qat'iy tartib (E004): postlarning global tartibi emas, detalning
     # O'Z marshruti bo'yicha — nostandart marshrut roverdan boshlanishi mumkin.
     if settings.STRICT_STAGE_ORDER:
         pending = (
@@ -772,7 +772,7 @@ async def record_scan_at(
         }
     )
 
-    # Stage / order completion (TZ 7.1.8).
+    # Stage / order completion.
     stage_left = (
         await db.execute(
             select(func.count(PartRoute.id)).where(
@@ -980,7 +980,7 @@ async def revoke_scan(db: AsyncSession, scan: Scan, *, at: datetime | None = Non
 
 
 async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Scan, list[dict[str, Any]]]:
-    """BEKOR QILISH (TZ 8.6): only the last N seconds, same terminal session."""
+    """BEKOR QILISH: only the last N seconds, same terminal session."""
     machine, _ = await resolve_terminal(db, user)
     session = await active_session(db, machine)
 

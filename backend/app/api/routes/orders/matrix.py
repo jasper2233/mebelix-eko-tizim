@@ -1,6 +1,6 @@
 """Marshrut matritsasi (detal x qadam): texnolog shu yerda marshrutni chizadi.
 
-TZ 6.3.3. Qadamlar TARTIBLI (`PartRoute.seq`), bitta post marshrutda bir necha
+ Qadamlar TARTIBLI (`PartRoute.seq`), bitta post marshrutda bir necha
 marta uchrashi mumkin — shuning uchun katakcha emas, QADAM ustida ishlaydi.
 """
 
@@ -87,7 +87,7 @@ async def read_order_matrix(db: SessionDep, current_user: StaffReadUser, order_i
 async def edit_order_matrix(
     db: SessionDep, current_user: TexnologUser, order_id: int, body: MatrixEdit, request: Request
 ) -> OrderMatrix:
-    """Texnolog matrix edits (TZ 6.3.3): stage toggles, notes, rare count fixes. Pre-production only."""
+    """Texnolog matrix edits: stage toggles, notes, rare count fixes. Pre-production only."""
     order = await _get_order(db, order_id)
     await _require_editable(db, order, "Matritsani o'zgartirib bo'lmaydi")
 
@@ -401,7 +401,7 @@ async def _resize_instances(db: SessionDep, part: Part, new_count: int) -> None:
     )
     existing = {i.instance_no: i for i in instances}
     key = f"{product_code}_{part.code}"
-    # QR konvensiyasi (TZ 5.8): yagona nusxa suffikssiz, ko'p nusxada _1.._n.
+    # QR konvensiyasi: yagona nusxa suffikssiz, ko'p nusxada _1.._n.
     # Count o'zgarganda BARCHA tirik nusxalar qayta normallanadi (1↔N o'tishda
     # eski QR konvensiyaga zid qolib ketmasin) — bosqich pre-production,
     # yorliqlar hali chop etilmagan.

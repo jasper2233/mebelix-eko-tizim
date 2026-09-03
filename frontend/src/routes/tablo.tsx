@@ -1,4 +1,4 @@
-// TABLO (TZ 9): tsex zalidagi TV ekran — buyurtmalar × bosqichlar jonli matritsasi.
+// TABLO: tsex zalidagi TV ekran — buyurtmalar × bosqichlar jonli matritsasi.
 // Rejimlar: HAJM / SONI / FOIZ. Kontekst-aware: tablo user ish markazi ustuni ajratiladi.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"

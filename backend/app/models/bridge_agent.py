@@ -7,7 +7,7 @@ from .base import BaseModel
 
 
 class BridgeAgent(BaseModel):
-    """Printerli kompyuterdagi chop etish agenti (TZ 2.2.2).
+    """Printerli kompyuterdagi chop etish agenti.
 
     Admin panel bir martalik ulanish kodi beradi; agent birinchi ishga tushganda
     kodni doimiy tokenga almashtiradi (pairing). Kod 15 daqiqa yashaydi va bir
@@ -24,7 +24,7 @@ class BridgeAgent(BaseModel):
     pair_code: Mapped[str | None] = mapped_column(String(16), default=None, index=True, kw_only=True)
     pair_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
-    # Skan-forvard (TZ 12.5): stanok skaneri agent orqali MES'ga ham yozilsin —
+    # Skan-forvard: stanok skaneri agent orqali MES'ga ham yozilsin —
     # skan qaysi ish markazi/post nomidan yozilishini shu bog'lash hal qiladi
     machine_id: Mapped[int | None] = mapped_column(ForeignKey("machine.id"), default=None, kw_only=True)
     # Agent exe versiyasi (WS handshake'dagi X-Agent-Version) — admin paneldan

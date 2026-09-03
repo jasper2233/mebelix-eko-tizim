@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""MebeliX bridge-agent (TZ 2.2.2) — printerli kompyuterdagi yengil servis.
+r"""MebeliX bridge-agent — printerli kompyuterdagi yengil servis.
 
 Masofaviy serverga CHIQUVCHI (outbound) WebSocket bilan ulanadi, chop etish
 buyruqlarini qabul qiladi va GoDEX G500-U (USB) printerga Windows drayveri
@@ -19,8 +19,8 @@ gprinter, tsc, zebra, argox, postek). Boshqa rusum — PRINTER_NAME bilan.
 
 Env sozlamalari (ixtiyoriy, pairing o'zi to'ldiradi):
     MES_URL       — server manzili (wss://... yoki ws://host:8000)
-    BRIDGE_TOKEN  — token (pairing bergan yoki serverdagi umumiy token)
-    PRINTER_NAME  — printer nomini qo'lda berish (avto-topish o'rniga)
+    BRIDGE_TOKEN — token (pairing bergan yoki serverdagi umumiy token)
+    PRINTER_NAME — printer nomini qo'lda berish (avto-topish o'rniga)
     QUEUE_FILE    — lokal navbat fayli (default %APPDATA%\MebelixAgent\print-queue.jsonl)
 """
 
@@ -731,7 +731,7 @@ if "QUEUE_FILE" not in os.environ and _legacy_queue.is_file() and not QUEUE_FILE
     with contextlib.suppress(OSError):
         _legacy_queue.replace(QUEUE_FILE)
         log.info("Eski navbat fayli ko'chirildi: %s", QUEUE_FILE)
-# Skan-forvard (TZ 12.5): stanok skaneri (klaviatura-HID) terganini MES'ga ham
+# Skan-forvard: stanok skaneri (klaviatura-HID) terganini MES'ga ham
 # yuborish. SCAN_FORWARD=0 o'chiradi; pynput bo'lmasa o'zi jim o'chadi.
 SCAN_FORWARD = os.environ.get("SCAN_FORWARD", "1") != "0"
 
@@ -768,7 +768,7 @@ def mark_seen(job_id: str) -> None:
 
 
 def local_enqueue(job: dict) -> None:
-    """Durable local queue — survives agent restarts and power cuts (TZ 8.7).
+    """Durable local queue — survives agent restarts and power cuts.
 
     fsync SHART: usiz yozuv OS sahifa keshida qolar, ack esa serverga ketib
     bo'lgan bo'lardi — ack bilan lazy-writer orasidagi soniyalarda tok o'chsa
@@ -1089,7 +1089,7 @@ async def uplink() -> None:
                             log.info("Takroriy job tashlandi: %s", job_id)
                             continue
                         # Avval diskka — keyin belgi, keyin ack. Server ackdan
-                        # keyin jobni unutadi (TZ 2.2.2); yozish yiqilsa belgi
+                        # keyin jobni unutadi; yozish yiqilsa belgi
                         # ham qo'yilmaydi va serverning retry'si qabul qilinadi.
                         local_enqueue(msg)
                         mark_seen(job_id)
@@ -1156,7 +1156,7 @@ async def uplink() -> None:
 
 
 def start_scan_forward() -> None:
-    """Stanok skaneri o'qiganini MES'ga ham yuboradi (TZ 12.5).
+    """Stanok skaneri o'qiganini MES'ga ham yuboradi.
 
     Skaner klaviatura kabi teradi: juda tez ketma-ket belgilar + Enter = skan
     (odam terishi bunday tez emas — 50ms/belgi chegarasi ajratib beradi).

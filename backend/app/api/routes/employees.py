@@ -142,7 +142,7 @@ async def update_employee(
 
 @router.post("/{employee_id}/badge", response_model=EmployeeRead, operation_id="regenerate_badge")
 async def regenerate_badge(db: SessionDep, current_user: AdminUser, employee_id: int, request: Request) -> Employee:
-    """Lost badge (TZ 4.2): old badge stops working immediately, history stays on the same employee."""
+    """Lost badge: old badge stops working immediately, history stays on the same employee."""
     employee = await crud_employees.get_or_404(db, "Hodim topilmadi.", id=employee_id)
     old_badge = employee.badge_id
     employee.badge_id = str(uuid4())

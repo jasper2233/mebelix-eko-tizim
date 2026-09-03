@@ -29,7 +29,7 @@ from app.services.labels import (
 
 logger = logging.getLogger(__name__)
 
-PRINT_QUEUE_KEY = "mes:print:queue"  # kalit prefiksi (TZ 2.2.2); manzilsiz kalitning o'zi o'qilmaydi
+PRINT_QUEUE_KEY = "mes:print:queue"  # kalit prefiksi; manzilsiz kalitning o'zi o'qilmaydi
 
 
 def agent_revoked_key(agent_id: int) -> str:
@@ -172,7 +172,7 @@ async def _enqueue(ctx: dict[str, Any], ref_id: int, png_b64: str, agent_id: int
 
 
 async def print_label(ctx: dict[str, Any], instance_id: int, agent_id: int) -> str:
-    """Render the label PNG for one physical copy and queue it (TZ 7.1.4).
+    """Render the label PNG for one physical copy and queue it.
 
     LPUSH to the Redis print queue — the shop-floor bridge-agent draws the PNG on the
     USB GoDEX (G500-U) via the Windows driver. PNG is printer-dialect agnostic, so no

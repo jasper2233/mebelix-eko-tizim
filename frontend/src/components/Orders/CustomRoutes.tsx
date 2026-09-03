@@ -1,4 +1,4 @@
-// Nostandart detallar (TZ 6.3.3): matritsada "nostandart" deb belgilangan detallar
+// Nostandart detallar: matritsada "nostandart" deb belgilangan detallar
 // ro'yxati. Texnolog jarayonni bosib tanlaydi, tanlangan TARTIB raqamlanadi
 // (1, 2, 3...) va aynan shu ketma-ketlik ishlab chiqarish marshruti bo'ladi.
 // Bitta jarayon takrorlanishi mumkin: kromka -> prisadka -> yana kromka.

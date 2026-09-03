@@ -75,7 +75,7 @@ export function useKioskShell(canReload: () => boolean) {
   return fullscreen
 }
 
-/** Avto-skan (TZ 8.4.1): input doim fokusda. Skaner klaviatura sifatida yozadi,
+/** Avto-skan: input doim fokusda. Skaner klaviatura sifatida yozadi,
  *  fokus boshqa joyda bo'lsa belgilar yo'qolardi. */
 export function useScanFocus(
   enabled: boolean,

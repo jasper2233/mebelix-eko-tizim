@@ -1,4 +1,4 @@
-// PRISADKA post sahifasi (TZ 12.5): buyurtmaning prisadka detallari ro'yxati,
+// PRISADKA post sahifasi: buyurtmaning prisadka detallari ro'yxati,
 // har detalning SCX fayllari. "Hammasini yuklab olish" barcha SCX'ni BIR MARTA
 // tanlangan papkaga yozadi (File System Access API) — papka IndexedDB'da
 // saqlanadi, keyingi safar so'ralmaydi. SKAN esa hech qanday fayl yuklamaydi:

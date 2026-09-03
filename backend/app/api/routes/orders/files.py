@@ -38,7 +38,7 @@ router = APIRouter()
 async def upload_order_project(
     db: SessionDep, current_user: TexnologUser, order_id: int, file: UploadFile, request: Request
 ) -> Message:
-    """Texnolog uploads the .project file (TZ 6.3). Exactly ONE file per order; re-upload
+    """Texnolog uploads the .project file. Exactly ONE file per order; re-upload
     replaces all previous parse results.
 
     Ishlab chiqarishga uzatilgan buyurtmaga ham QAYTA yuklash mumkin — TO hech bir
@@ -73,7 +73,7 @@ async def upload_order_project(
         raise HTTPException(status_code=422, detail=str(exc)) from None
 
     if project.generation == "template":
-        # TZ 5.3.3: TEMPLATE = not yet optimized in GibLab — reject with the exact guidance text.
+        # TEMPLATE = not yet optimized in GibLab — reject with the exact guidance text.
         raise HTTPException(
             status_code=422,
             detail=(
@@ -235,7 +235,7 @@ async def download_order_file(db: SessionDep, current_user: StaffReadUser, order
 
 @router.get("/{order_id}/cutmap", response_model=CutmapState, operation_id="read_order_cutmap")
 async def read_order_cutmap(db: SessionDep, current_user: StaffReadUser, order_id: int) -> CutmapState:
-    """Kesish xaritalari (TZ 10.3): manager/texnolog view + browser-print for a paper copy."""
+    """Kesish xaritalari: manager/texnolog view + browser-print for a paper copy."""
     order = await _get_visible_order(db, current_user, order_id)
     arra_post = (await db.execute(select(Post).where(Post.code == PostCode.ARRA))).scalar_one_or_none()
     if arra_post is None:

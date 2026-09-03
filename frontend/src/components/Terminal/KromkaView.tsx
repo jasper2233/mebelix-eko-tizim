@@ -1,4 +1,4 @@
-// KROMKA post sahifasi — ikki panel (TZ 7.2):
+// KROMKA post sahifasi — ikki panel:
 // chapda arradan chiqqan kromkali detallar: har skan darhol yoziladi, 1 tomonli
 // detal bitta skanda yashil bo'ladi, tugaganlari yashil bo'lib ro'yxatda qoladi.
 // O'ngda "Jarayonda" — faqat 2+ tomonli, kamida 1 tomoni skan qilingan, hali

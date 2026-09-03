@@ -1,4 +1,4 @@
-"""Operator terminal API (TZ 8): context, badge sessions, post queue, ARRA cut map, files."""
+"""Operator terminal API: context, badge sessions, post queue, ARRA cut map, files."""
 
 from collections.abc import Sequence
 from datetime import UTC, datetime
@@ -625,7 +625,7 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
 @router.get("/orders/{order_id}/prisadka", response_model=PrisadkaOrderState, operation_id="read_terminal_prisadka")
 async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int) -> PrisadkaOrderState:
     """CNC post sahifasi (PRISADKA/ROVER): shu postga tegishli detallar +
-    SCX fayllari (stanok kompyuteriga yuklab olish uchun, TZ 12.5). ROVER'da
+    SCX fayllari (stanok kompyuteriga yuklab olish uchun). ROVER'da
     jarayon arradan EMAS, roverdan boshlanishi ham mumkin — shunday detallarga
     QR chekni shu sahifadan chiqarish uchun arra_route belgisi ham beriladi."""
     machine, post = ctx
@@ -699,7 +699,7 @@ async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int
 
 @router.get("/orders/{order_id}/cutmap", response_model=CutmapState, operation_id="read_terminal_cutmap")
 async def read_terminal_cutmap(db: SessionDep, ctx: TerminalCtx, order_id: int) -> CutmapState:
-    """Kesish xaritasi (TZ 7.1.7). Katak holati serverda — terminal qayta yonganda saqlanadi.
+    """Kesish xaritasi. Katak holati serverda — terminal qayta yonganda saqlanadi.
 
     ROVER ham ochadi: marshruti arradan boshlanmagan detallar butun listni frezerda
     kesish bilan chiqadi, ya'ni roverchiga ham joylashuv kerak. Har post O'Z skanlarini
@@ -857,7 +857,7 @@ async def print_waste_item_label(db: SessionDep, user: TerminalUser, waste_id: i
 
 @router.post("/labels/{instance_id}", response_model=Message, operation_id="print_instance_label")
 async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: int) -> Message:
-    """YORLIQ CHOP ETISH (TZ 7.1.4): on-demand, per selected cell. Queued to the bridge-agent."""
+    """YORLIQ CHOP ETISH: on-demand, per selected cell. Queued to the bridge-agent."""
     instance = await crud_part_instances.get_or_404(db, "Nusxa topilmadi.", id=instance_id)
 
     # Post aniqlanmasa (ish markazi yo'q terminal) tekshiruvsiz chiqadi — yorliq ko'rish uchun
@@ -1136,7 +1136,7 @@ async def render_instance_label(db: SessionDep, user: TerminalUser, instance_id:
 
 @router.get("/files/{file_id}", operation_id="download_terminal_file")
 async def download_terminal_file(db: SessionDep, user: TerminalUser, file_id: int) -> FileResponse:
-    """SCX download at the machine browser (TZ 12.5) — served fresh on every scan."""
+    """SCX download at the machine browser — served fresh on every scan."""
     row = (
         await db.execute(
             select(OrderFile).where(

@@ -1,4 +1,4 @@
-"""Yorliq renderi (TZ 5.8.2 / 13.2.2): 80×60 mm termal yorliq, 203 dpi (8 dot/mm).
+"""Yorliq renderi: 80×60 mm termal yorliq, 203 dpi (8 dot/mm).
 
 render_label_png PNG chizadi — bridge-agent uni USB GoDEX'ga Windows drayveri (GDI)
 orqali chiqaradi. Maket MES PRO chekiga (chek/IMG_4925.JPG) va GibSaw shablonlariga
@@ -20,7 +20,7 @@ from app.services.scanning import qr_part_code
 
 @dataclass
 class LabelData:
-    qr_text: str  # productCode_partCode[_n] — `_n` only when count > 1 (TZ 5.8)
+    qr_text: str  # productCode_partCode[_n] — `_n` only when count > 1
     part_code: str  # productCode_partCode (chek: "4202_8")
     part_name: str
     project_name: str

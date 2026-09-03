@@ -258,7 +258,7 @@ async def update_order(
 async def cancel_order(
     db: SessionDep, current_user: ManagerUser, order_id: int, body: OrderCancel, request: Request
 ) -> OrderRead:
-    """TZ 6.5: any stage; scans/history stay for audit; terminals are notified in real time."""
+    """any stage; scans/history stay for audit; terminals are notified in real time."""
     order = await _get_order(db, order_id)
     if order.status in (OrderStatus.DELIVERED, OrderStatus.CANCELLED):
         raise ForbiddenException("Bu buyurtmani bekor qilib bo'lmaydi.")
@@ -278,14 +278,14 @@ async def cancel_order(
     )
     await db.commit()
     await db.refresh(order)
-    # Terminals drop the tasks IMMEDIATELY (TZ 6.5) — real-time, all posts.
+    # Terminals drop the tasks IMMEDIATELY — real-time, all posts.
     await ws_manager.publish("order.cancelled", {"order_id": order.id, "order_number": order.number})
     return await _order_read_with_client(db, order)
 
 
 @router.delete("/{order_id}", response_model=Message, operation_id="delete_order")
 async def delete_order(db: SessionDep, current_user: SuperUserDep, order_id: int, request: Request) -> Message:
-    """Bekor qilingan buyurtmani bazadan BUTUNLAY o'chiradi (TZ 6.5 dan keyingi tozalash).
+    """Bekor qilingan buyurtmani bazadan BUTUNLAY o'chiradi (dan keyingi tozalash).
 
     Bekor qilish tarixni SAQLAYDI — bu esa uni o'chiradi, ya'ni amal QAYTMAYDI.
     Shuning uchun uchta chegara bor:
@@ -369,7 +369,7 @@ async def delete_order(db: SessionDep, current_user: SuperUserDep, order_id: int
 
 @router.post("/{order_id}/deliver", response_model=OrderRead, operation_id="deliver_order")
 async def deliver_order(db: SessionDep, current_user: ManagerUser, order_id: int, request: Request) -> OrderRead:
-    """TZ 10.3: TOPSHIRILDI — only from COMPLETED; date recorded automatically."""
+    """TOPSHIRILDI — only from COMPLETED; date recorded automatically."""
     order = await _get_order(db, order_id)
     if order.status != OrderStatus.COMPLETED:
         raise ForbiddenException("Faqat tayyor (COMPLETED) buyurtmani topshirish mumkin.")
@@ -395,7 +395,7 @@ async def deliver_order(db: SessionDep, current_user: ManagerUser, order_id: int
 async def assign_order_machines(
     db: SessionDep, current_user: ManagerOrTexnologUser, order_id: int, body: MachineAssignments, request: Request
 ) -> Message:
-    """Ish markazi tanlovi (TZ 6.4.1): bir postda bir nechta markaz bo'lsa qaysi biri.
+    """Ish markazi tanlovi: bir postda bir nechta markaz bo'lsa qaysi biri.
 
     Texnolog ham tanlaydi: marshrutni u chizadi va qaysi stanok qaysi ishni
     bajarishini menejerdan ko'ra yaxshiroq biladi. Tsexda ish boshlangach
@@ -476,7 +476,7 @@ async def confirm_order(db: SessionDep, current_user: ManagerUser, order_id: int
 async def start_order_production(
     db: SessionDep, current_user: ManagerOrTexnologUser, order_id: int, request: Request
 ) -> OrderRead:
-    """'Ishlab chiqarishga uzatish' (TZ 6.4.2): TECHNICAL_REVIEW → PRODUCTION.
+    """'Ishlab chiqarishga uzatish': TECHNICAL_REVIEW → PRODUCTION.
 
     Menejer ham, TEXNOLOG ham uzata oladi. TZ da bu faqat menejer amali edi, lekin
     tayyorlikni texnolog birinchi biladi: `.project` faylni u yuklaydi va nostandart

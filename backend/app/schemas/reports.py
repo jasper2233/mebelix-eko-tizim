@@ -1,4 +1,4 @@
-"""Hisobotlar (TZ 11) va dashboard (TZ 10.2.1) javob sxemalari."""
+"""Hisobotlar va dashboard javob sxemalari."""
 
 from datetime import date, datetime
 

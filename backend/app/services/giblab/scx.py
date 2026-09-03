@@ -1,4 +1,4 @@
-"""SCX file generation for CNC machines (TZ 5.6).
+"""SCX file generation for CNC machines.
 
 Konvensiya D:\\MebeliX\\Scx korpusidan keltirilgan (87 proyekt, 10500 qirra
 teshigi, 509-ovozlik Face6 transformi): GibLab'ning joriy eksporti bilan
@@ -43,7 +43,7 @@ def generate_scx(
 
     panel_id — Nanxing "Сканир" qidiruvi Panel ID bo'yicha ishlaydi: fayllar
     nusxa QR'i bilan nomlanadi (100701_02_003_1) va ID ham shu bo'ladi,
-    shunda yorliq skaneri faylni to'g'ridan-to'g'ri topadi (TZ 12.5).
+    shunda yorliq skaneri faylni to'g'ridan-to'g'ri topadi.
     plate_thickness — plita qalinligi: qo'shqavat detalda (dz ≈ 2×plita)
     eksport qalinligi va qirra Z shu masshtabga tushiriladi.
     """

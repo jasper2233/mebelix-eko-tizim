@@ -1,4 +1,4 @@
-"""Persist a parsed .project into the order (TZ 6.3): products, parts, instances, routes,
+"""Persist a parsed .project into the order: products, parts, instances, routes,
 materials auto-registry, SCX files and the cut map. Re-upload fully replaces previous results
 (gate — `_require_editable`: PRODUCTION included, until the first live scan)."""
 
@@ -83,7 +83,7 @@ async def snapshot_custom_routes(db: AsyncSession, order: Order) -> RouteSnapsho
 
     Qayta yuklash eski parse'ni butunlay o'chiradi — texnolog yuzlab detalga chizgan
     marshrut ham yo'qolardi. Kalit sifatida detal KODI olinadi: u fayl ichidagi ID'dan
-    farqli o'laroq qayta eksportda ham o'zgarmaydi (TZ 5.8).
+    farqli o'laroq qayta eksportda ham o'zgarmaydi.
 
     Nostandart detallar ham, matritsadan qo'lda qadam qo'shilgan STANDART detallar ham
     olinadi — ikkalasi ham fayldan tiklanmaydi. Bayroq, izoh va o'chirilgan qadamlar
@@ -266,7 +266,7 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
 
 
 async def wipe_previous_parse(db: AsyncSession, order: Order, upload_root: Path) -> list[str]:
-    """Re-upload replaces everything derived from the old file (TZ 6.3.1).
+    """Re-upload replaces everything derived from the old file.
 
     Eski `.project`/SCX fayllari diskdan O'CHIRILMAYDI — `<yo'l>.stale` ga qayta nomlanadi
     va yo'llar ro'yxati qaytariladi. Yangi ingest aynan o'sha nomlarga yozadi (SCX nomi = QR,
@@ -338,7 +338,7 @@ async def write_and_register_scx(
     upload_root: Path,
     plate_thickness: float | None = None,
 ) -> int:
-    """SCX fayllarni diskka yozib, har biriga OrderFile qatori qo'shadi (TZ 5.6.5 / 12.5).
+    """SCX fayllarni diskka yozib, har biriga OrderFile qatori qo'shadi.
 
     Ham birinchi ingest, ham "SCX qayta yaratish" (orders.regenerate_order_scx) shu yo'ldan
     o'tadi — fayl nomi/joyi va OrderFile maydonlari bir joyda. Nechta fayl yaratilgani qaytadi.
@@ -366,7 +366,7 @@ async def rebuild_order_scx(db: AsyncSession, order: Order, upload_root: Path) -
 
     Qaytadi: `(yaratilgan fayl soni, almashtirilgan eski yo'llar)`, yoki `.project`
     diskda bo'lmasa `None`. QR'lar BAZADAN olinadi — matritsada soni o'zgargan
-    detalning yangi nusxasi ham fayl oladi (fayl nomi = nusxa QR'i, TZ 5.8).
+    detalning yangi nusxasi ham fayl oladi (fayl nomi = nusxa QR'i).
     Eski yo'llarni commit'dan KEYIN `purge_replaced_scx` o'chiradi.
     """
     project_row = (
@@ -571,7 +571,7 @@ async def ingest_project(
             await db.flush()
             parts_created += 1
 
-            # instances with cut-map cell binding (TZ 5.8.1 / 7.1.4)
+            # instances with cut-map cell binding
             cell_bindings = bindings_by_key.get(pp.key, [])
             for n in range(1, pp.count + 1):
                 binding = cell_bindings[n - 1] if n - 1 < len(cell_bindings) else None
@@ -587,7 +587,7 @@ async def ingest_project(
                 )
                 instances_created += 1
 
-            # STANDART marshrut (TZ 5.4) — faqat fayl mazmunidan. Qadamlar TARTIBLI:
+            # STANDART marshrut — faqat fayl mazmunidan. Qadamlar TARTIBLI:
             # (process_code, post_code, per_instance); tartib skan navbatini belgilaydi.
             # Rover/stolyarka/bo'yoq bu yerdan CHIQMAYDI: roverdan chiqqan detal keyin
             # bo'yalishi mumkinligini fayl bilmaydi — texnolog uni "nostandart" deb
@@ -627,7 +627,7 @@ async def ingest_project(
                     )
                 )
 
-            # SCX (TZ 5.6.5 / 12.5): har nusxaga bitta TO'LIQ fayl (old + orqa Face=6
+            # SCX: har nusxaga bitta TO'LIQ fayl (old + orqa Face=6
             # birlashgan, nom/ID = QR — Nanxing skaneri to'g'ridan-to'g'ri topadi).
             # plate: qo'shqavat detalda (32mm) eksport qalinligi plita bo'yicha
             plate = _plate_thickness.get(pp.material_name or "")

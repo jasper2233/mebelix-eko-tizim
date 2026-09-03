@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         queue.pool = await create_pool(ArqRedisSettings(host=settings.REDIS_HOST, port=settings.REDIS_PORT))
         rate_limiter.initialize(settings.REDIS_URL)
         await check_redis_connection()
-        # Real-time bridge (TZ 2.3): cross-worker WS fan-out over Redis pub/sub.
+        # Real-time bridge: cross-worker WS fan-out over Redis pub/sub.
         ws_redis = AsyncRedis.from_url(settings.REDIS_URL)
         await ws_manager.start_listener(ws_redis)
 

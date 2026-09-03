@@ -1,4 +1,4 @@
-// Ish markazi tanlovi (TZ 6.4.1): posts with several machines get an explicit manager choice.
+// Ish markazi tanlovi: posts with several machines get an explicit manager choice.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"

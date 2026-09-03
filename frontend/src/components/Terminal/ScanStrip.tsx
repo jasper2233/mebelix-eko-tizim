@@ -21,10 +21,10 @@ export function ScanStrip({
   birlik,
 }: {
   scan: LastScan
-  /** Bekor qilish oynasi 60 s (TZ 8.6) — chaqiruvchi taymer bilan hisoblaydi */
+  /** Bekor qilish oynasi 60 s — chaqiruvchi taymer bilan hisoblaydi */
   canUndo: boolean
   onUndo: () => void
-  /** Qoldiq birligi — KROMKA'da "qirra" (har qirra alohida skan, TZ 5.4.3).
+  /** Qoldiq birligi — KROMKA'da "qirra" (har qirra alohida skan).
    *  Yalang'och "Qoldiq: 3" kromkachini adashtirardi: 3 nima — detalmi, skanmi?
    *  U 4 qirralik detalni 2 skan bilan "tugadi" deb ketar, prisadka esa E004
    *  bilan to'xtatardi. */

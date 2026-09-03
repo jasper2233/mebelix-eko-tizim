@@ -8,7 +8,7 @@ from .enums import SessionStatus, db_enum
 
 
 class WorkSession(BaseModel):
-    """Operator shift on a terminal, opened by badge scan (TZ 8.2). created_at = start time."""
+    """Operator shift on a terminal, opened by badge scan. created_at = start time."""
 
     __tablename__ = "work_session"
 
@@ -30,7 +30,7 @@ class Scan(BaseModel):
 
     Idempotentlik kaliti `client_event_id`: terminal UUID yuboradi, chek/qadoq/TMO/yig'ma
     oqimlari esa server tomonda DETERMINISTIK kalit yozadi (`cutprint-`, `pack-`, `wh-`, `asm-`).
-    Yagona indeks takrorni rad etadi (TZ 8.4.4) va u bekor qilingan qatorlarni HAM qamraydi —
+    Yagona indeks takrorni rad etadi va u bekor qilingan qatorlarni HAM qamraydi —
     bekor qilingan skan audit uchun qoladi (is_cancelled=True, hisoblagich qaytariladi).
     """
 

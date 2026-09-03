@@ -1,4 +1,4 @@
-"""Real-time bridge (TZ 2.3): WebSocket fan-out with Redis pub/sub across workers.
+"""Real-time bridge: WebSocket fan-out with Redis pub/sub across workers.
 
 Room model: every connection registers a scope + optional post/machine filters.
 Events published by API handlers go through Redis (`mes:events` channel) so all
@@ -33,7 +33,7 @@ class WsClient:
     machine_id: int | None = None
 
     def wants(self, event: dict[str, Any]) -> bool:
-        """Terminallar O'Z posti/ish markazi eventlarini oladi (TZ 2.3.2);
+        """Terminallar O'Z posti/ish markazi eventlarini oladi;
         dashboard va TABLO hammasini; nishonsiz event esa hammaga ketadi."""
         target_post = event.get("post_id")
         target_machine = event.get("machine_id")

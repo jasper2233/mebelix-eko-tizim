@@ -424,7 +424,7 @@ export class EmployeesService {
     /**
      * Regenerate Badge
      *
-     * Lost badge (TZ 4.2): old badge stops working immediately, history stays on the same employee.
+     * Lost badge: old badge stops working immediately, history stays on the same employee.
      */
     public static regenerateBadge<ThrowOnError extends boolean = true>(options: Options<RegenerateBadgeData, ThrowOnError>): RequestResult<RegenerateBadgeResponses, RegenerateBadgeErrors, ThrowOnError> {
         return (options.client ?? client).post<RegenerateBadgeResponses, RegenerateBadgeErrors, ThrowOnError>({
@@ -593,7 +593,7 @@ export class OrdersService {
     /**
      * Delete Order
      *
-     * Bekor qilingan buyurtmani bazadan BUTUNLAY o'chiradi (TZ 6.5 dan keyingi tozalash).
+     * Bekor qilingan buyurtmani bazadan BUTUNLAY o'chiradi (dan keyingi tozalash).
      *
      * Bekor qilish tarixni SAQLAYDI — bu esa uni o'chiradi, ya'ni amal QAYTMAYDI.
      * Shuning uchun uchta chegara bor:
@@ -651,7 +651,7 @@ export class OrdersService {
     /**
      * Cancel Order
      *
-     * TZ 6.5: any stage; scans/history stay for audit; terminals are notified in real time.
+     * any stage; scans/history stay for audit; terminals are notified in real time.
      */
     public static cancelOrder<ThrowOnError extends boolean = true>(options: Options<CancelOrderData, ThrowOnError>): RequestResult<CancelOrderResponses, CancelOrderErrors, ThrowOnError> {
         return (options.client ?? client).post<CancelOrderResponses, CancelOrderErrors, ThrowOnError>({
@@ -669,7 +669,7 @@ export class OrdersService {
     /**
      * Deliver Order
      *
-     * TZ 10.3: TOPSHIRILDI — only from COMPLETED; date recorded automatically.
+     * TOPSHIRILDI — only from COMPLETED; date recorded automatically.
      */
     public static deliverOrder<ThrowOnError extends boolean = true>(options: Options<DeliverOrderData, ThrowOnError>): RequestResult<DeliverOrderResponses, DeliverOrderErrors, ThrowOnError> {
         return (options.client ?? client).post<DeliverOrderResponses, DeliverOrderErrors, ThrowOnError>({
@@ -683,7 +683,7 @@ export class OrdersService {
     /**
      * Assign Order Machines
      *
-     * Ish markazi tanlovi (TZ 6.4.1): bir postda bir nechta markaz bo'lsa qaysi biri.
+     * Ish markazi tanlovi: bir postda bir nechta markaz bo'lsa qaysi biri.
      *
      * Texnolog ham tanlaydi: marshrutni u chizadi va qaysi stanok qaysi ishni
      * bajarishini menejerdan ko'ra yaxshiroq biladi. Tsexda ish boshlangach
@@ -720,7 +720,7 @@ export class OrdersService {
     /**
      * Start Order Production
      *
-     * 'Ishlab chiqarishga uzatish' (TZ 6.4.2): TECHNICAL_REVIEW → PRODUCTION.
+     * 'Ishlab chiqarishga uzatish': TECHNICAL_REVIEW → PRODUCTION.
      *
      * Menejer ham, TEXNOLOG ham uzata oladi. TZ da bu faqat menejer amali edi, lekin
      * tayyorlikni texnolog birinchi biladi: `.project` faylni u yuklaydi va nostandart
@@ -750,7 +750,7 @@ export class OrdersService {
     /**
      * Edit Order Matrix
      *
-     * Texnolog matrix edits (TZ 6.3.3): stage toggles, notes, rare count fixes. Pre-production only.
+     * Texnolog matrix edits: stage toggles, notes, rare count fixes. Pre-production only.
      */
     public static editOrderMatrix<ThrowOnError extends boolean = true>(options: Options<EditOrderMatrixData, ThrowOnError>): RequestResult<EditOrderMatrixResponses, EditOrderMatrixErrors, ThrowOnError> {
         return (options.client ?? client).patch<EditOrderMatrixResponses, EditOrderMatrixErrors, ThrowOnError>({
@@ -768,7 +768,7 @@ export class OrdersService {
     /**
      * Upload Order Project
      *
-     * Texnolog uploads the .project file (TZ 6.3). Exactly ONE file per order; re-upload
+     * Texnolog uploads the .project file. Exactly ONE file per order; re-upload
      * replaces all previous parse results.
      *
      * Ishlab chiqarishga uzatilgan buyurtmaga ham QAYTA yuklash mumkin — TO hech bir
@@ -838,7 +838,7 @@ export class OrdersService {
     /**
      * Read Order Cutmap
      *
-     * Kesish xaritalari (TZ 10.3): manager/texnolog view + browser-print for a paper copy.
+     * Kesish xaritalari: manager/texnolog view + browser-print for a paper copy.
      */
     public static readOrderCutmap<ThrowOnError extends boolean = true>(options: Options<ReadOrderCutmapData, ThrowOnError>): RequestResult<ReadOrderCutmapResponses, ReadOrderCutmapErrors, ThrowOnError> {
         return (options.client ?? client).get<ReadOrderCutmapResponses, ReadOrderCutmapErrors, ThrowOnError>({
@@ -852,7 +852,7 @@ export class OrdersService {
     /**
      * Save Order Survey
      *
-     * Mijoz anketasi va o'lchov varag'ini saqlaydi (TZ 6.2, qog'oz forma o'rniga).
+     * Mijoz anketasi va o'lchov varag'ini saqlaydi (qog'oz forma o'rniga).
      *
      * Butun anketa bir butun sifatida yoziladi — menejer to'ldirib boradi, texnolog o'qiydi.
      */
@@ -1173,7 +1173,7 @@ export class TerminalService {
      * Read Terminal Prisadka
      *
      * CNC post sahifasi (PRISADKA/ROVER): shu postga tegishli detallar +
-     * SCX fayllari (stanok kompyuteriga yuklab olish uchun, TZ 12.5). ROVER'da
+     * SCX fayllari (stanok kompyuteriga yuklab olish uchun). ROVER'da
      * jarayon arradan EMAS, roverdan boshlanishi ham mumkin — shunday detallarga
      * QR chekni shu sahifadan chiqarish uchun arra_route belgisi ham beriladi.
      */
@@ -1189,7 +1189,7 @@ export class TerminalService {
     /**
      * Read Terminal Cutmap
      *
-     * Kesish xaritasi (TZ 7.1.7). Katak holati serverda — terminal qayta yonganda saqlanadi.
+     * Kesish xaritasi. Katak holati serverda — terminal qayta yonganda saqlanadi.
      *
      * ROVER ham ochadi: marshruti arradan boshlanmagan detallar butun listni frezerda
      * kesish bilan chiqadi, ya'ni roverchiga ham joylashuv kerak. Har post O'Z skanlarini
@@ -1278,7 +1278,7 @@ export class TerminalService {
     /**
      * Print Instance Label
      *
-     * YORLIQ CHOP ETISH (TZ 7.1.4): on-demand, per selected cell. Queued to the bridge-agent.
+     * YORLIQ CHOP ETISH: on-demand, per selected cell. Queued to the bridge-agent.
      */
     public static printInstanceLabel<ThrowOnError extends boolean = true>(options: Options<PrintInstanceLabelData, ThrowOnError>): RequestResult<PrintInstanceLabelResponses, PrintInstanceLabelErrors, ThrowOnError> {
         return (options.client ?? client).post<PrintInstanceLabelResponses, PrintInstanceLabelErrors, ThrowOnError>({
@@ -1306,7 +1306,7 @@ export class TerminalService {
     /**
      * Download Terminal File
      *
-     * SCX download at the machine browser (TZ 12.5) — served fresh on every scan.
+     * SCX download at the machine browser — served fresh on every scan.
      */
     public static downloadTerminalFile<ThrowOnError extends boolean = true>(options: Options<DownloadTerminalFileData, ThrowOnError>): RequestResult<DownloadTerminalFileResponses, DownloadTerminalFileErrors, ThrowOnError> {
         return (options.client ?? client).get<DownloadTerminalFileResponses, DownloadTerminalFileErrors, ThrowOnError>({
@@ -1364,7 +1364,7 @@ export class TabloService {
     /**
      * Read Tablo Order
      *
-     * Drill-down (TZ 9.5): SONI NAZORATI — every part × stage.
+     * Drill-down: SONI NAZORATI — every part × stage.
      */
     public static readTabloOrder<ThrowOnError extends boolean = true>(options: Options<ReadTabloOrderData, ThrowOnError>): RequestResult<ReadTabloOrderResponses, ReadTabloOrderErrors, ThrowOnError> {
         return (options.client ?? client).get<ReadTabloOrderResponses, ReadTabloOrderErrors, ThrowOnError>({
@@ -1568,7 +1568,7 @@ export class BridgeAgentsService {
     /**
      * Bridge Scan
      *
-     * Skan-forvard (TZ 12.5): stanok skaneri o'qigan QR agent orqali MES'ga ham yoziladi.
+     * Skan-forvard: stanok skaneri o'qigan QR agent orqali MES'ga ham yoziladi.
      *
      * Auth — agentning doimiy tokeni (Bearer). Skan agentga bog'langan ish markazining
      * AKTIV sessiyasi nomidan yoziladi (monoblokda operator kirgan bo'lishi shart) —

@@ -1,4 +1,4 @@
-// SCX fayllar uchun doimiy papka (TZ 12.5): stanok kompyuterida BIR MARTA
+// SCX fayllar uchun doimiy papka: stanok kompyuterida BIR MARTA
 // tanlanadi (File System Access API), IndexedDB'da saqlanadi — keyingi yuklab
 // olishlar so'roqsiz o'sha papkaga tushadi. API bo'lmasa (eski brauzer)
 // chaqiruvchi oddiy <a download> ga qaytadi.

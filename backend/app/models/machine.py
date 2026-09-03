@@ -6,7 +6,7 @@ from .enums import MachineStatus, db_enum
 
 
 class Machine(BaseModel):
-    """Work center bound to a post (TZ 4.3) — UI da "Ish markazi".
+    """Work center bound to a post — UI da "Ish markazi".
 
     Not necessarily a machine tool: ARRA/KROMKA/OVAL/PRISADKA/ROVER have real
     equipment, STOLYARKA/BOYOQ/UPAKOVKA/TMO are crew + monoblok only. The class

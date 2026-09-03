@@ -1,4 +1,4 @@
-"""WebSocket endpoints: /ws/events (TZ 2.3, browser clients) and /ws/bridge (TZ 2.2.2,
+"""WebSocket endpoints: /ws/events (browser clients) and /ws/bridge (
 the shop-floor bridge-agent that executes print jobs on the local GoDEX)."""
 
 import asyncio
@@ -62,7 +62,7 @@ async def _still_authorized(raw_token: str) -> bool:
 
 @router.websocket("/ws/events")
 async def ws_events(websocket: WebSocket) -> None:
-    """Brauzer klientlari (TZ 2.3).
+    """Brauzer klientlari.
 
     Auth: token `Authorization` headeridan, bo'lmasa access cookie'dan olinadi.
     `?token=` query param ATAYLAB qabul qilinmaydi — u server access-loglariga
@@ -105,7 +105,7 @@ async def ws_events(websocket: WebSocket) -> None:
     last_check = asyncio.get_event_loop().time()
     try:
         while True:
-            # Heartbeat (TZ 2.3.2): clients ping every 30s; any payload is answered with pong.
+            # Heartbeat: clients ping every 30s; any payload is answered with pong.
             await websocket.receive_text()
             now = asyncio.get_event_loop().time()
             if now - last_check >= _RECHECK_SECONDS:
@@ -124,7 +124,7 @@ async def ws_events(websocket: WebSocket) -> None:
 
 @router.websocket("/ws/bridge")
 async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
-    """Bridge-agent uplink (TZ 2.2.2): outbound connection from the shop network.
+    """Bridge-agent uplink: outbound connection from the shop network.
 
     Auth: pairing orqali berilgan per-agent token (bridge_agent.token_hash) yoki
     legacy umumiy BRIDGE_TOKEN. Token Authorization headerda keladi — server

@@ -1,4 +1,4 @@
-"""Parsed .project data structures (TZ 5). Plain dataclasses — no ORM here."""
+"""Parsed .project data structures. Plain dataclasses — no ORM here."""
 
 from dataclasses import dataclass, field
 from typing import Any
@@ -109,7 +109,7 @@ class XncOp:
 
 @dataclass
 class ParsedPart:
-    file_part_id: int  # NOT stable across files — only for intra-file references (TZ 5.1.2)
+    file_part_id: int  # NOT stable across files — only for intra-file references
     product_code: str
     code: str
     name: str
@@ -132,7 +132,7 @@ class ParsedPart:
 
     @property
     def qr_texts(self) -> list[str]:
-        """Nusxa QR'lari (TZ 5.8): yagona nusxa suffikssiz — chekdagi kod, QR va SCX fayl
+        """Nusxa QR'lari: yagona nusxa suffikssiz — chekdagi kod, QR va SCX fayl
         nomi bir xil bo'ladi (Nanxing skan mosligi); takrorlanganda _1.._n."""
         return [self.key] if self.count == 1 else [f"{self.key}_{n}" for n in range(1, self.count + 1)]
 
@@ -141,7 +141,7 @@ class ParsedPart:
         return len(self.edges)
 
     def merged_machining(self) -> XncOp | None:
-        """Union of ALL XNC ops (not just two) for the holes overlay; duplicate bores removed (TZ 5.7.5)."""
+        """Union of ALL XNC ops (not just two) for the holes overlay; duplicate bores removed."""
         if not self.xnc_ops:
             return None
         base = XncOp(code=self.key, side2=False, dx=self.xnc_ops[0].dx, dy=self.xnc_ops[0].dy, dz=self.xnc_ops[0].dz)
@@ -165,7 +165,7 @@ class ParsedPart:
         return base
 
     def prisadka_passes(self) -> int:
-        """PRISADKA qadami bormi: 1 — bitta skan (ikki yuzli ham), 0 — qadam yo'q (TZ 5.4.3, 7.3.3).
+        """PRISADKA qadami bormi: 1 — bitta skan (ikki yuzli ham), 0 — qadam yo'q (7.3.3).
 
         FAQAT PRISADKA — ROVER bosqichi ataylab yaratilmaydi: roverdan chiqqan detal
         keyin bo'yalishi ham mumkin, ya'ni QOLGAN marshrutni fayldan chiqarib
@@ -193,12 +193,12 @@ class ParsedProduct:
 
 @dataclass
 class CutOperation:
-    """CS operation: one per sheet material (TZ 5.2.5)."""
+    """CS operation: one per sheet material."""
 
     op_id: int
     material_name: str
     thickness: float | None
-    kerf: float  # tool.cutting swSawthick — the ONLY source (TZ 5.3.4)
+    kerf: float  # tool.cutting swSawthick — the ONLY source
     trim_l: float
     trim_w: float
     stats: dict[str, float]  # cPartCount, cMaterialCount, cWasteAmount, ... (GibSaw indicators)

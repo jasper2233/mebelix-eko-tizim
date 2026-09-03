@@ -10,7 +10,7 @@ from app.models import Order
 
 class CRUDOrder(BaseCRUD[Order]):
     async def next_number(self, db: AsyncSession) -> str:
-        """B-2026-001 style, sequential within the current year (TZ 6.2.2).
+        """B-2026-001 style, sequential within the current year.
 
         Yil — Asia/Tashkent bo'yicha: UTC yili 1-yanvar 00:00-05:00 mahalliy
         oralig'ida hali o'tgan yilni ko'rsatib, raqamga eski prefiks berardi.

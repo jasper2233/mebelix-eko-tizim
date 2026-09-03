@@ -1,4 +1,4 @@
-// Kesish xaritalari — admin panel ko'rinishi (TZ 10.3): manager/texnolog ko'radi,
+// Kesish xaritalari — admin panel ko'rinishi: manager/texnolog ko'radi,
 // brauzer print orqali PDF/qog'oz nusxa chop etadi (arrachiga yoki mijozga).
 
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"

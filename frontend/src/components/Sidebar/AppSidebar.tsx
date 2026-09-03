@@ -30,7 +30,7 @@ import { getOrderStatusCountsQueryOptions } from "@/queries/mes"
 import { type Item, Main } from "./Main"
 import { User } from "./User"
 
-// Rolga qarab navigatsiya (TZ 3.7 rollar-modullar matritsasi).
+// Rolga qarab navigatsiya (rollar-modullar matritsasi).
 // Huquq predikatlari route guard'lari bilan BIR XIL manbadan (lib/mes) —
 // menyuda ko'rinib, ochilganda qaytarib yuboradigan sahifa bo'lmasligi uchun.
 // _layout.tsx mobil sarlavhalari ham SHU ro'yxatdan olinadi.

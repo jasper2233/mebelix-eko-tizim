@@ -1,4 +1,4 @@
-// WebSocket ulanish (TZ 2.3): avto-reconnect, 30s heartbeat, online holati.
+// WebSocket ulanish: avto-reconnect, 30s heartbeat, online holati.
 
 import { useEffect, useRef, useState } from "react"
 import { API_BASE } from "@/utils"

@@ -1,4 +1,4 @@
-"""Excel (.xlsx) export helper (TZ 11.4) — one sheet, header row + data rows."""
+"""Excel (.xlsx) export helper — one sheet, header row + data rows."""
 
 from datetime import date, datetime
 from io import BytesIO

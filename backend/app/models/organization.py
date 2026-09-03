@@ -9,7 +9,7 @@ class Organization(BaseModel):
 
     Oltita jadvaldagi `organization_id` FK hech qayerda filtrlanmaydi va hech
     qachon berilmaydi (`default=1`): ikkinchi tashkilot tayyor mexanizmni yoqish
-    emas, noldan yozish bo'ladi (TZ 4.1).
+    emas, noldan yozish bo'ladi.
     """
 
     __tablename__ = "organization"

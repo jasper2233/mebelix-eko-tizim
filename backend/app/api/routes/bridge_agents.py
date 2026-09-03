@@ -1,4 +1,4 @@
-"""Printer agentlari (TZ 2.2.2) — pairing oqimi (podpiska modeli uchun):
+"""Printer agentlari — pairing oqimi (podpiska modeli uchun):
 
 1. Admin panelda "Yangi agent" → 8 belgili bir martalik kod (15 daqiqa).
 2. Printerli kompyuterda agent (exe) birinchi ishga tushganda kodni so'raydi va
@@ -391,7 +391,7 @@ async def read_bridge_logs(db: SessionDep, _: AdminUser, agent_id: int) -> list[
 
 
 #: Beyjik QR'i — UUID (Employee.badge_id String(36)). Detal QR'ida esa DOIM `_`
-#: bo'ladi (TZ 5.8), ya'ni ikkalasi hech qachon chalkashmaydi.
+#: bo'ladi, ya'ni ikkalasi hech qachon chalkashmaydi.
 _BADGE_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 
@@ -401,7 +401,7 @@ async def bridge_scan(
     body: BridgeScanRequest,
     authorization: str = Header(default=""),
 ) -> ScanResult:
-    """Skan-forvard (TZ 12.5): stanok skaneri o'qigan QR agent orqali MES'ga ham yoziladi.
+    """Skan-forvard: stanok skaneri o'qigan QR agent orqali MES'ga ham yoziladi.
 
     Auth — agentning doimiy tokeni (Bearer). Skan agentga bog'langan ish markazining
     AKTIV sessiyasi nomidan yoziladi (monoblokda operator kirgan bo'lishi shart) —

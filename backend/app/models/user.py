@@ -30,8 +30,8 @@ class User(BaseModel):
     is_superuser: Mapped[bool] = mapped_column(default=False, kw_only=True)
     token_version: Mapped[int] = mapped_column(default=0, server_default="0", kw_only=True)
 
-    # TZ 3: admin/director/manager/texnolog — odamlar; terminal/tablo — ish markaziga
-    # bog'langan QURILMA hisoblari (TZ 8.1, B varianti). Post rollari (arrachi..omborchi)
+    # admin/director/manager/texnolog — odamlar; terminal/tablo — ish markaziga
+    # bog'langan QURILMA hisoblari (B varianti). Post rollari (arrachi..omborchi)
     # IKKI xil hisobda uchraydi: yuqoridagi `is_system` texnik hisob (faqat beyjik bilan
     # ochilgan smenani nomlaydi, `login._terminal_user`) va odamning SHAXSIY hisobi — u
     # parol bilan kiradi va `login._open_shift_for` `employee.user_id` orqali smenasini

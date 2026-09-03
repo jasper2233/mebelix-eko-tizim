@@ -1,4 +1,4 @@
-"""Scan registration and undo (TZ 8.4–8.6)."""
+"""Scan registration and undo."""
 
 from typing import Annotated
 

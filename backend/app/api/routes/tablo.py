@@ -1,4 +1,4 @@
-"""TABLO data API (TZ 9): orders × stages live matrix. Read-only, any authenticated device."""
+"""TABLO data API: orders × stages live matrix. Read-only, any authenticated device."""
 
 from datetime import date
 
@@ -162,7 +162,7 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
 
 @router.get("/orders/{order_id}", response_model=TabloOrderDetail, operation_id="read_tablo_order")
 async def read_tablo_order(db: SessionDep, current_user: CurrentUser, order_id: int) -> TabloOrderDetail:
-    """Drill-down (TZ 9.5): SONI NAZORATI — every part × stage."""
+    """Drill-down: SONI NAZORATI — every part × stage."""
     # Reestrdagi o'qish yo'li bilan bir xil ko'rinuvchanlik: texnologdan
     # yashiringan buyurtma (DRAFT/CANCELLED) bu yerdan ham ochilmasin.
     order = await _get_visible_order(db, current_user, order_id)

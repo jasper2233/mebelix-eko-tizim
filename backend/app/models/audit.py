@@ -8,7 +8,7 @@ from .base import BaseModel
 
 
 class AuditLog(BaseModel):
-    """System audit trail (TZ 10.11): who did what, when. created_at = event time."""
+    """System audit trail: who did what, when. created_at = event time."""
 
     __tablename__ = "audit_log"
 

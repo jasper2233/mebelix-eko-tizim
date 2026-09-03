@@ -7,7 +7,7 @@ from .enums import EmployeeStatus, db_enum
 
 
 class Employee(BaseModel):
-    """Shop-floor worker identified by badge QR (TZ 4.2). Distinct from system users."""
+    """Shop-floor worker identified by badge QR. Distinct from system users."""
 
     __tablename__ = "employee"
 

@@ -626,7 +626,7 @@ export type CutmapCell = {
 /**
  * CutmapCut
  *
- * Guillotine cut line — edge to edge across its parent region (TZ 5.7.5).
+ * Guillotine cut line — edge to edge across its parent region.
  */
 export type CutmapCut = {
     /**
@@ -698,7 +698,7 @@ export type CutmapEdgeBore = {
 /**
  * CutmapHole
  *
- * Bitta detalning birlashtirilgan XNC qatlami (TZ 5.7.5).
+ * Bitta detalning birlashtirilgan XNC qatlami.
  */
 export type CutmapHole = {
     /**
@@ -866,7 +866,7 @@ export type CutmapSheet = {
 /**
  * CutmapState
  *
- * ARRA cut-map screen payload (TZ 7.1.7): the visual model + live per-cell state.
+ * ARRA cut-map screen payload: the visual model + live per-cell state.
  */
 export type CutmapState = {
     /**
@@ -1206,7 +1206,7 @@ export type KromkaPartRow = {
 /**
  * MachineAssignments
  *
- * Manager's machine choice per post before production start (TZ 6.4).
+ * Manager's machine choice per post before production start.
  */
 export type MachineAssignments = {
     /**
@@ -1480,7 +1480,7 @@ export type MatrixPart = {
 /**
  * MatrixPartEdit
  *
- * Texnolog edits one part's row (TZ 6.3.3): stages, note, count, custom route, assembly link.
+ * Texnolog edits one part's row: stages, note, count, custom route, assembly link.
  */
 export type MatrixPartEdit = {
     /**
@@ -1538,7 +1538,7 @@ export type OrderCancel = {
 /**
  * OrderCreate
  *
- * Manager creates a DRAFT order (TZ 6.2). The number is auto-generated (B-2026-001).
+ * Manager creates a DRAFT order. The number is auto-generated (B-2026-001).
  */
 export type OrderCreate = {
     /**
@@ -1567,7 +1567,7 @@ export type OrderCreate = {
 /**
  * OrderDetail
  *
- * Order card (TZ 10.3.3): metadata + files; the parts matrix comes from /matrix.
+ * Order card: metadata + files; the parts matrix comes from /matrix.
  */
 export type OrderDetail = {
     /**
@@ -1741,7 +1741,7 @@ export type OrderPriority = 'low' | 'medium' | 'high' | 'urgent';
 /**
  * OrderRead
  *
- * Registry row (TZ 10.3.1).
+ * Registry row.
  */
 export type OrderRead = {
     /**
@@ -2223,7 +2223,7 @@ export type PostUnit = 'm2' | 'meter' | 'piece';
 /**
  * PostUpdate
  *
- * The 9-post chain is fixed (TZ 4.4); only presentation/behavior fields are editable.
+ * The 9-post chain is fixed; only presentation/behavior fields are editable.
  *
  * `order_index` ataylab yo'q: uning yagona egasi `seed_defaults.POSTS`, u har
  * prestart'da tartibni sinxronlaydi — PATCH bilan qilingan tahrir keyingi
@@ -2244,7 +2244,7 @@ export type PostUpdate = {
 /**
  * PrisadkaFile
  *
- * Detalning SCX fayli — stanok kompyuteriga yuklab olish uchun (TZ 12.5).
+ * Detalning SCX fayli — stanok kompyuteriga yuklab olish uchun.
  */
 export type PrisadkaFile = {
     /**
@@ -2430,7 +2430,7 @@ export type ReadyCheck = {
 /**
  * RouteCell
  *
- * One matrix cell: part × post (TZ 6.3.3).
+ * One matrix cell: part × post.
  */
 export type RouteCell = {
     /**

@@ -124,7 +124,7 @@ class KromkaOrderState(BaseModel):
 
 
 class PrisadkaFile(BaseModel):
-    """Detalning SCX fayli — stanok kompyuteriga yuklab olish uchun (TZ 12.5)."""
+    """Detalning SCX fayli — stanok kompyuteriga yuklab olish uchun."""
 
     id: int
     filename: str
@@ -165,7 +165,7 @@ class PrisadkaOrderState(BaseModel):
 
 class ScanRequest(BaseModel):
     qr_text: Annotated[str, Field(min_length=3, max_length=120)]
-    client_event_id: Annotated[str, Field(min_length=8, max_length=64)]  # client UUID (TZ 8.4.4)
+    client_event_id: Annotated[str, Field(min_length=8, max_length=64)]  # client UUID
 
 
 class ScanResult(BaseModel):
@@ -221,7 +221,7 @@ class CutmapDim(BaseModel):
 
 
 class CutmapCut(BaseModel):
-    """Guillotine cut line — edge to edge across its parent region (TZ 5.7.5)."""
+    """Guillotine cut line — edge to edge across its parent region."""
 
     x1: float
     y1: float
@@ -306,7 +306,7 @@ class CutmapEdgeBore(BaseModel):
 
 
 class CutmapHole(BaseModel):
-    """Bitta detalning birlashtirilgan XNC qatlami (TZ 5.7.5)."""
+    """Bitta detalning birlashtirilgan XNC qatlami."""
 
     l: float | None = None  # noqa: E741 — model kaliti, `length` deb o'zgartirib bo'lmaydi
     w: float | None = None
@@ -339,7 +339,7 @@ class CutmapWasteItem(BaseModel):
 
 
 class CutmapState(BaseModel):
-    """ARRA cut-map screen payload (TZ 7.1.7): the visual model + live per-cell state."""
+    """ARRA cut-map screen payload: the visual model + live per-cell state."""
 
     order_id: int
     order_number: str

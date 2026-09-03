@@ -1,4 +1,4 @@
-// MES domain constants: Uzbek labels + stage colors (TZ 3, 4.4, 6.1)
+// MES domain constants: Uzbek labels + stage colors (4.4, 6.1)
 
 import type {
   EmployeeStatus,

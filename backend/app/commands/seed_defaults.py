@@ -1,4 +1,4 @@
-"""Idempotent bootstrap: tashkilot, 9 ishlab chiqarish posti va post hisoblari (TZ 4.4).
+"""Idempotent bootstrap: tashkilot, 9 ishlab chiqarish posti va post hisoblari.
 
 Run: python -m app.commands.seed_defaults (called from prestart/setup scripts).
 """

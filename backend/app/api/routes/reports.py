@@ -1,7 +1,7 @@
-"""Reports (TZ 11): productivity, order status, material consumption + Excel export.
+"""Reports: productivity, order status, material consumption + Excel export.
 
-Every endpoint returns JSON by default; `?format=xlsx` streams an Excel file (TZ 11.4).
-Access: manager/director/admin (TZ 3.7).
+Every endpoint returns JSON by default; `?format=xlsx` streams an Excel file.
+Access: manager/director/admin.
 """
 
 from datetime import UTC, date, datetime, time, timedelta
