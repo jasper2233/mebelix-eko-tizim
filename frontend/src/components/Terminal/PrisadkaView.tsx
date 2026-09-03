@@ -5,7 +5,7 @@
 // yuklash faqat shu tugma orqali, operator xohlaganda.
 
 import { useQuery } from "@tanstack/react-query"
-import { HardDriveDownload, Map as MapIcon, Printer, Undo2 } from "lucide-react"
+import { HardDriveDownload, Map as MapIcon, Printer } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
@@ -232,40 +232,15 @@ export function PrisadkaView({
         Number(a.i.done) - Number(b.i.done) ||
         a.i.qr_text.localeCompare(b.i.qr_text),
     )
-    // Chekni bekor qilish — OCHIQ tugma (chap ustunda, «Chop etish» ostida),
-    // faqat tanlangan qatorning cheki shu postda chiqqan bo'lsa. Ilgari yagona
-    // yo'l uzoq bosish edi va sarlavhada «qatorni bosib turing» ishorasi
-    // buyurtma nomi yonida osilib turardi; uzoq bosish tez yo'l sifatida qoladi.
-    // Rover kesadigan detalda chek chiqishi = kesildi (avto-skan), ya'ni chek
-    // chiqqan nusxa darhol ✓ bo'ladi — bekor qilish aynan shu ✓ holatda kerak
-    // (uzoq bosish sharti bilan bir xil: `label_printed && ownLabel`).
-    const canCancel = !!sel && sel.i.label_printed && ownLabel(sel.p)
     const printBtn = (
-      <>
-        <TBtn
-          label="Chop etish"
-          tone={canPrint ? "success" : "default"}
-          disabled={!canPrint || printLabel.isPending}
-          onClick={() => sel && printLabel.mutate(sel.i.instance_id)}
-        >
-          <Printer />
-        </TBtn>
-        {canCancel && sel && (
-          <TBtn
-            label="Chek bekor"
-            tone="danger"
-            onClick={() =>
-              setCancelTarget({
-                instance_id: sel.i.instance_id,
-                qr_text: sel.i.qr_text,
-                name: sel.p.name,
-              })
-            }
-          >
-            <Undo2 />
-          </TBtn>
-        )}
-      </>
+      <TBtn
+        label="Chop etish"
+        tone={canPrint ? "success" : "default"}
+        disabled={!canPrint || printLabel.isPending}
+        onClick={() => sel && printLabel.mutate(sel.i.instance_id)}
+      >
+        <Printer />
+      </TBtn>
     )
     return (
       <div className="flex h-full min-h-0 gap-3">
@@ -290,7 +265,8 @@ export function PrisadkaView({
                   <th className="px-4 py-2.5 text-right">
                     Holat
                     <span className="block whitespace-nowrap text-2xs font-medium normal-case tracking-normal">
-                      chek yo'q → ✓ chek chiqdi = kesildi
+                      ✓ bajarildi · rover kesadigani — chek chiqishi bilan ·
+                      arradan kelgani — skan bilan
                     </span>
                   </th>
                 </tr>
@@ -304,6 +280,18 @@ export function PrisadkaView({
                       key={key}
                       id={`pv-inst-${key}`}
                       onClick={() => setSelectedId(key)}
+                      // ARRA xaritasi bilan bir xil imo-ishora: ikki marta bosish
+                      // yoki uzoq bosish → chekni bekor qilish dialogi. Alohida
+                      // tugma yo'q — dialogning o'zida «Ha, bekor qilinsin» bor.
+                      onDoubleClick={() =>
+                        i.label_printed &&
+                        ownLabel(p) &&
+                        setCancelTarget({
+                          instance_id: i.instance_id,
+                          qr_text: i.qr_text,
+                          name: p.name,
+                        })
+                      }
                       // Uzoq bosish chekni bekor qiladi — FAQAT o'z postida chiqarilganida;
                       // ilgari roverchi arrachining kesish skanini ham qaytara olardi.
                       onPointerDown={() =>
