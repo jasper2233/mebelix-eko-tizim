@@ -213,8 +213,11 @@ Buyurtma STATUSI baribir to'g'ri yozilardi — yo'qolgani faqat WS xabari edi.
 - `/ws/events` — brauzer klientlar: JWT (`Authorization: Bearer` header yoki access cookie; `?token=`
   query ATAYLAB qabul qilinmaydi — access-loglariga sizardi); rol → scope (terminal/tablo/dashboard),
   post/ish markazi bo'yicha filtrlash; `ping`→`pong` heartbeat. Heartbeat'da token har **300 s** da
-  qayta tekshiriladi (`_RECHECK_SECONDS`): logout (`token_version` bump), hisobni o'chirish yoki
-  muddat tugashi ochiq soketni ham **4401** bilan yopadi; DB xatosi ulanishni uzmaydi.
+  qayta tekshiriladi (`_RECHECK_SECONDS`): logout (`token_version` bump) yoki hisobni
+  o'chirish/nofaol qilish ochiq soketni ham **4401** bilan yopadi. Tekshiruv BEKOR QILINGANLIK
+  bo'yicha (`resolve_user(..., verify_exp=False)`): ulanishdagi access token 30 daqiqada eskiradi,
+  tablo/terminal soketi esa kun bo'yi ochiq — muddat bo'yicha uzish har ekranni yarim soatda
+  uzib qayta ulardi. DB xatosi ulanishni uzmaydi.
 - Fan-out Redis pub/sub (`mes:events`) orqali — gunicorn workerlar orasida; pool lifespan'da doim
   ochiladi (flag yo'q), publish xato bersa lokal yetkazishga tushadi.
 - `/ws/bridge` — tsex bridge-agenti (per-agent pairing tokeni: `Authorization: Bearer` header, sha256

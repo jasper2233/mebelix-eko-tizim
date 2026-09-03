@@ -71,10 +71,17 @@ def create_refresh_token(data: dict[str, Any], days: int | None = None) -> str:
     return _create_token(payload, TokenType.REFRESH, timedelta(days=days or settings.REFRESH_TOKEN_EXPIRE_DAYS))
 
 
-def verify_token(token: str, expected_token_type: TokenType) -> TokenData | None:
-    """Decode JWT and return TokenData if it matches expected type, else None."""
+def verify_token(token: str, expected_token_type: TokenType, *, verify_exp: bool = True) -> TokenData | None:
+    """Decode JWT and return TokenData if it matches expected type, else None.
+
+    `verify_exp=False` — faqat imzo/tur tekshiriladi, muddat emas: ochiq WS soketi
+    ulanishdagi tokenni BEKOR QILINGANI (token_version, is_active) bo'yicha qayta
+    tekshiradi, 30 daqiqalik access muddati bo'yicha emas.
+    """
     try:
-        payload = jwt.decode(token, SECRET_KEY.get_secret_value(), algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token, SECRET_KEY.get_secret_value(), algorithms=[ALGORITHM], options={"verify_exp": verify_exp}
+        )
     except jwt.PyJWTError:
         return None
 

@@ -24,9 +24,9 @@ def client_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
 
 
-async def resolve_user(db: AsyncSession, token: str) -> User | None:
+async def resolve_user(db: AsyncSession, token: str, *, verify_exp: bool = True) -> User | None:
     """Token -> User, sessiya hali amal qilsa. token_version bump = global revoke."""
-    token_data = verify_token(token, TokenType.ACCESS)
+    token_data = verify_token(token, TokenType.ACCESS, verify_exp=verify_exp)
     if token_data is None:
         return None
     user = await crud_users.get(db=db, id=token_data.user_id)

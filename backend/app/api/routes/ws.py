@@ -46,14 +46,17 @@ async def _still_authorized(raw_token: str) -> bool:
     """Ochiq soket uchun tokenni QAYTA tekshiradi.
 
     Ilgari token faqat ulanish paytida tekshirilardi: logout (token_version
-    bump), foydalanuvchini o'chirish yoki tokenning muddati tugashi ochiq
-    brauzer soketiga umuman ta'sir qilmasdi — sahifa yopilmaguncha eventlar
-    oqishda davom etardi. DB xatosi ulanishni YIQITMAYDI (`touch_agent`
-    uslubi): vaqtinchalik nosozlik jonli kanalni uzmasin.
+    bump) yoki foydalanuvchini o'chirish ochiq brauzer soketiga umuman ta'sir
+    qilmasdi — sahifa yopilmaguncha eventlar oqishda davom etardi. Tekshiruv
+    BEKOR QILINGANLIK bo'yicha (`verify_exp=False`): ulanishdagi access token
+    30 daqiqada eskiradi, tablo/terminal soketi esa kun bo'yi ochiq — muddat
+    bo'yicha uzish har ekranni yarim soatda uzib qayta ulardi. DB xatosi
+    ulanishni YIQITMAYDI (`touch_agent` uslubi): vaqtinchalik nosozlik jonli
+    kanalni uzmasin.
     """
     with contextlib.suppress(Exception):
         async with local_session() as db:
-            return await resolve_user(db, raw_token) is not None
+            return await resolve_user(db, raw_token, verify_exp=False) is not None
     return True
 
 
