@@ -593,23 +593,21 @@ export class OrdersService {
     /**
      * Delete Order
      *
-     * Bekor qilingan buyurtmani bazadan BUTUNLAY o'chiradi (dan keyingi tozalash).
+     * Buyurtmani o'chirish — IKKI yo'l, ikkalasida ham buyurtma qatori TOSHBITIK
+     * bo'lib qoladi (`is_deleted`, ro'yxatlarda ko'rinmaydi): raqam qayta
+     * berilmaydi (`next_number` maksimumni shu qatorlar bilan hisoblaydi) va
+     * `audit_log.entity_id` yetim qolmaydi.
      *
-     * Bekor qilish tarixni SAQLAYDI — bu esa uni o'chiradi, ya'ni amal QAYTMAYDI.
-     * Shuning uchun uchta chegara bor:
-     *
-     * 1. Faqat `CANCELLED` holatdagi buyurtma. Tirik buyurtmani o'chirish yo'li yo'q.
-     * 2. Faqat superuser. Bekor qilishning o'zi menejerda, o'chirish esa undan
-     * qattiqroq: bu yagona qaytmaydigan amal.
-     * 3. Bekor qilinmagan skani bor buyurtma o'chirilmaydi. Skan — bajarilgan ish,
-     * u ish haqiga kiradi (`reports.py`): o'chirilsa hodimning o'sha kunlik
-     * hisobi jimgina kamayardi. Bunday buyurtma tsexda haqiqatan ishlangan,
-     * ya'ni uni yo'q qilish emas, arxivda qoldirish kerak.
-     *
-     * Yo'l-yo'lakay diskdagi fayllar ham o'chadi (`.project`, SCX, anketa rasmlari) —
-     * aks holda buyurtma yozuvi ketib, o'nlab megabayt yetim fayl qolardi.
-     * `audit_log` esa ATAYLAB qoladi: buyurtma bo'lgani va bekor qilingani tarixda
-     * saqlanishi kerak, uning ustiga shu o'chirish ham yoziladi.
+     * 1. QORALAMA — menejer o'zi o'chiradi, sababsiz: hali tijoriy ahamiyati yo'q
+     * (tasdiqlanmagan, fayl yo'q, tsexda ish yo'q). Ilgari yagona yo'l «bekor
+     * qilish» edi va xato ochilgan qoralamalar «Bekor qilingan» ro'yxatini
+     * to'ldirardi.
+     * 2. BEKOR QILINGAN — faqat superuser: bolalar (detallar, nusxalar, marshrut,
+     * skanlar, qadoqlar) va diskdagi fayllar butunlay o'chadi. Bekor qilinmagan
+     * skani bor buyurtma o'chirilmaydi: skan — bajarilgan ish, ish haqiga
+     * kiradi (`reports.py`); bunday buyurtma arxivda qoladi.
+     * Boshqa holatlar (texnologda, jarayonda, tayyor, topshirilgan) o'chirilmaydi —
+     * avval bekor qilinadi (sabab bilan), tarix saqlanadi.
      */
     public static deleteOrder<ThrowOnError extends boolean = true>(options: Options<DeleteOrderData, ThrowOnError>): RequestResult<DeleteOrderResponses, DeleteOrderErrors, ThrowOnError> {
         return (options.client ?? client).delete<DeleteOrderResponses, DeleteOrderErrors, ThrowOnError>({

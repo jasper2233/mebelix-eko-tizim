@@ -1,15 +1,24 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronsUpDown, Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
+import { toast } from "sonner"
 
 import type { OrderStatus } from "@/client"
+import { type OrderRead, OrdersService } from "@/client"
+import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
 import { SearchInput } from "@/components/Common/SearchInput"
 import { StatusBadge } from "@/components/Common/StatusBadge"
 import { AddOrder } from "@/components/Orders/AddOrder"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -27,6 +36,7 @@ import {
   formatDate,
   formatMoney,
   isManager,
+  isSuperuser,
   PRIORITY_LABELS,
   PRIORITY_RANK,
   PRIORITY_TEXT_CLASSES,
@@ -38,6 +48,7 @@ import {
   getOrdersQueryOptions,
   PAGE_SIZE,
 } from "@/queries/mes"
+import { handleError } from "@/utils"
 
 export const Route = createFileRoute("/_layout/orders/")({
   component: OrdersPage,
@@ -173,6 +184,23 @@ function OrdersPage() {
 
   const { currentUser } = useCurrentUser()
   const canCreate = isManager(currentUser)
+  // Qatordan o'chirish: qoralama — menejer, bekor qilingan (tirik skansiz) —
+  // superuser. Har birini sahifasiga kirib tekshirish shart emas.
+  const queryClient = useQueryClient()
+  const [deleteTarget, setDeleteTarget] = useState<OrderRead | null>(null)
+  const remove = useMutation({
+    mutationFn: (orderId: number) =>
+      OrdersService.deleteOrder({ path: { order_id: orderId } }),
+    onSuccess: (r) => {
+      toast.success(r.data?.message ?? "O'chirildi")
+      setDeleteTarget(null)
+      queryClient.invalidateQueries({ queryKey: ["orders"] })
+    },
+    onError: handleError,
+  })
+  const canDeleteRow = (o: OrderRead) =>
+    (o.status === "draft" && canCreate) ||
+    (o.status === "cancelled" && isSuperuser(currentUser))
   // Qoralama va bekor qilinganlar texnologga ko'rinmaydi (backend ham filtrlaydi):
   // buyurtma texnolog navbatiga confirm'dan keyin tushadi
   const isTexnolog =
@@ -256,6 +284,7 @@ function OrdersPage() {
                 className="text-right"
               />
               <TableHead>Holat</TableHead>
+              <TableHead className="w-10" aria-label="Amallar" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -325,10 +354,33 @@ function OrdersPage() {
                   <TableCell>
                     <StatusBadge status={o.status} />
                   </TableCell>
+                  <TableCell className="pr-2">
+                    {canDeleteRow(o) && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        disabled={
+                          o.status === "cancelled" && (o.live_scans ?? 0) > 0
+                        }
+                        title={
+                          o.status === "cancelled" && (o.live_scans ?? 0) > 0
+                            ? `${o.live_scans} ta bekor qilinmagan skan — o'chirib bo'lmaydi`
+                            : "O'chirish"
+                        }
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setDeleteTarget(o)
+                        }}
+                      >
+                        <Trash2 />
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))
             ) : (
-              <EmptyRow colSpan={8}>
+              <EmptyRow colSpan={9}>
                 {debounced
                   ? `"${debounced}" bo'yicha buyurtma topilmadi.`
                   : status
@@ -340,6 +392,26 @@ function OrdersPage() {
         </Table>
       )}
       {/* Reestr bitta sahifa (PAGE_SIZE) — chegaraga yetganda jim kesilmasin */}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(v) => !v && setDeleteTarget(null)}
+        title={
+          deleteTarget?.status === "draft"
+            ? "Qoralamani o'chirish"
+            : "Buyurtmani butunlay o'chirish"
+        }
+        description={
+          deleteTarget?.status === "draft"
+            ? `${deleteTarget?.number} qoralamasi o'chiriladi. Raqam band qoladi (qayta berilmaydi), amal audit logda saqlanadi.`
+            : `${deleteTarget?.number} — buyurtma, uning detallari, marshrutlari va diskdagi fayllari BUTUNLAY o'chadi. Bu amalni QAYTARIB BO'LMAYDI. Bekor qilish tarixi (audit izi) saqlanadi.`
+        }
+        confirmText={
+          deleteTarget?.status === "draft" ? "O'chirish" : "BUTUNLAY O'CHIRISH"
+        }
+        cancelText="Ortga"
+        loading={remove.isPending}
+        onConfirm={() => deleteTarget && remove.mutate(deleteTarget.id)}
+      />
       {rows.length >= PAGE_SIZE && (
         <p className="mt-3 text-center text-xs text-muted-foreground">
           Faqat oxirgi {PAGE_SIZE} ta buyurtma ko'rsatilmoqda — kerakligini

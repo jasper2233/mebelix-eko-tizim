@@ -11,6 +11,10 @@ class OrderRead(BaseModel):
     """Registry row."""
 
     model_config = ConfigDict(from_attributes=True)
+    #: Bekor qilinmagan skanlar soni — FAQAT bekor qilingan buyurtmalar ro'yxatida
+    #: to'ldiriladi (`read_orders`): reestr qatoridagi «O'chirish» tugmasi shu songa
+    #: qarab yoqiladi/o'chadi (skan = ish haqi, bunday buyurtma o'chirilmaydi).
+    live_scans: int = 0
 
     id: int
     number: str
