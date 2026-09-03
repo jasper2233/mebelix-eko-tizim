@@ -15,8 +15,12 @@ export function PageHeader({
         <h1 className="text-xl font-bold tracking-tight md:text-2xl">
           {title}
         </h1>
+        {/* `div`: description badge qatori ham bo'lishi mumkin (buyurtma sahifasi) —
+            `<p>` ichida blok element HTML'da noto'g'ri */}
         {description && (
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          <div className="mt-1 text-sm text-muted-foreground">
+            {description}
+          </div>
         )}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}

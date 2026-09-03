@@ -338,6 +338,22 @@ export const remainingPayment = (o: {
   advance_payment?: string | number | null
 }) => Number(o.amount) - Number(o.advance_payment ?? 0)
 
+/** Fayl hajmi: 1 KB gacha bayt, 1 MB gacha KB, undan yuqori MB (1 kasr). */
+export function formatBytes(size: number | null | undefined): string {
+  if (size == null) return "—"
+  if (size < 1024) return `${size} B`
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`
+}
+
+/** Backend `FileKind` (models/enums.py) — foydalanuvchiga ko'rinadigan nom. */
+export const FILE_KIND_LABELS: Record<string, string> = {
+  project: "Project fayl",
+  scx: "SCX dasturi",
+  label_pdf: "Yorliq PDF",
+  document: "Hujjat",
+}
+
 export function formatSize(
   l?: number | null,
   w?: number | null,

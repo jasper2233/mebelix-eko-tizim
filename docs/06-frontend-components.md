@@ -237,6 +237,8 @@ Reyestr sahifalagichi: `page` (0 dan), `pageSize`, `total`, `onPage`. Tartib bit
 
 **Maqsadi:** sahifa sarlavhasi — `title`, ixtiyoriy `description` va o'ng tomonda `actions` slot. Barcha `_layout` sahifalarida ishlatiladi (dashboard, orders ro'yxati va sahifasi, clients, employees, work-centers, reports, logs, printers, anketa, settings — 11 ta sahifa; `admin.tsx` sanoqqa kirmaydi — u endi redirect, chizadigan sarlavhasi yo'q); yagona istisno — `cutmap.$orderId.tsx`, unda sarlavha umuman yo'q (to'liq ekran).
 
+- `description` `div` ichida (`<p>` emas): buyurtma sahifasi unga badge qatorini beradi — `<p>` ichida blok element HTML'da noto'g'ri.
+
 ### `frontend/src/components/Common/PostBadge.tsx`
 
 **Maqsadi:** bosqich (post) kodi chipi (ARRA, KROMKA, ...) — `POST_COLORS` + `chipColors(color, 12)` (`@/lib/mes`) asosida: matn post rangining to'qroq variantida (`78%, black` — WCAG AA kontrasti, sof rang tint fonda o'tmasdi), fon 12% oq tint. Avval `employees.tsx` va `work-centers.tsx` da qo'lda takrorlangan edi.

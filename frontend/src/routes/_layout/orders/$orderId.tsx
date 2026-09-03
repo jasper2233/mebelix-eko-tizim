@@ -4,6 +4,9 @@ import {
   ArrowLeft,
   CheckCheck,
   ClipboardList,
+  Download,
+  FileCode2,
+  FileText,
   FileUp,
   Lock,
   Map as MapIcon,
@@ -50,12 +53,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import {
   deadlineTone,
+  FILE_KIND_LABELS,
+  formatBytes,
   formatDate,
   formatDateTime,
   formatMoney,
   isAdmin,
   isManager,
   isSuperuser,
+  PRIORITY_BADGE_CLASSES,
   PRIORITY_LABELS,
   remainingPayment,
   STANDARD_MATRIX_POSTS,
@@ -249,12 +255,28 @@ function OrderDetailPage() {
       >
         <ArrowLeft className="size-4" /> Buyurtmalar
       </Link>
+      {/* Sarlavha = raqam → holat → prioritet (badge'lar, terminal kartalari
+          bilan bir tilda). Fayl nomi bu yerda emas — u «Fayllar» blokida; fayl
+          yo'qligi esa amalga undaydi, shuning uchun qoladi. */}
       <PageHeader
         title={order.number}
         description={
-          order.project_name
-            ? `Fayl nomi: ${order.project_name}`
-            : "Project fayl hali yuklanmagan"
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={order.status} />
+            <span
+              className={`rounded-sm px-2 py-0.5 text-xs font-black uppercase tracking-wider ${
+                PRIORITY_BADGE_CLASSES[order.priority] ??
+                "bg-muted text-muted-foreground"
+              }`}
+            >
+              {PRIORITY_LABELS[order.priority] ?? order.priority}
+            </span>
+            {!order.project_name && (
+              <span className="text-muted-foreground">
+                Project fayl hali yuklanmagan
+              </span>
+            )}
+          </div>
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -343,6 +365,16 @@ function OrderDetailPage() {
         }
       />
 
+      {/* "Buyurtma qayerda turibdi?" — sarlavhaning davomi, bir qarashda:
+          bosqichlar bo'yicha jamlanma (dashboard bilan bir xil element, post
+          nomlari bilan). Matritsa katakchalaridan yig'iladi — matritsani
+          pastdagi OrderMatrix yuklaydi, bu yerda faqat keshga obuna. */}
+      {stagesSummary.length > 0 && (
+        <div className="-mt-3 mb-6">
+          <StagePipeline stages={stagesSummary} showLabels />
+        </div>
+      )}
+
       {canUpload && (
         // biome-ignore lint/a11y/noStaticElementInteractions: drop zone — klaviatura uchun yonidagi tugma bor
         // biome-ignore lint/a11y/useKeyWithClickEvents: klaviatura yo'li headerdagi "Project fayl yuklash" tugmasi
@@ -399,7 +431,6 @@ function OrderDetailPage() {
       )}
 
       <Card className="mb-6 grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Meta label="Holat" value={<StatusBadge status={order.status} />} />
         <Meta label="Mijoz" value={order.client_name} />
         <Meta
           label="Topshirish sanasi"
@@ -421,10 +452,6 @@ function OrderDetailPage() {
                   : ""}
             </span>
           }
-        />
-        <Meta
-          label="Prioritet"
-          value={PRIORITY_LABELS[order.priority] ?? order.priority}
         />
         <Meta label="Umumiy narx" value={formatMoney(order.amount)} />
         <Meta
@@ -472,18 +499,6 @@ function OrderDetailPage() {
             label="Topshirilgan"
             value={formatDateTime(order.delivered_at)}
           />
-        )}
-        {/* "Buyurtma qayerda turibdi?" — bosqichlar bo'yicha jamlanma, dashboard
-            bilan bir xil element; kartaning oxirida to'liq enda, meta ustunlarini
-            surmaydi. Matritsa katakchalaridan yig'iladi (matritsani pastdagi
-            OrderMatrix yuklaydi, bu yerda faqat keshga obuna). */}
-        {stagesSummary.length > 0 && (
-          <div className="col-span-full">
-            <Meta
-              label="Bosqichlar"
-              value={<StagePipeline stages={stagesSummary} showLabels />}
-            />
-          </div>
         )}
       </Card>
 
@@ -559,34 +574,46 @@ function OrderDetailPage() {
               .map((f) => (
                 <li
                   key={f.id}
-                  className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm"
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm"
                 >
-                  <span className="truncate font-medium">{f.filename}</span>
-                  <span className="text-xs uppercase text-muted-foreground">
-                    {f.kind}
-                  </span>
-                  <a
-                    className="shrink-0 text-primary hover:underline"
-                    href={fileUrl(f.id)}
-                    download
+                  <FileText className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{f.filename}</div>
+                    <div className="num text-xs text-muted-foreground">
+                      {FILE_KIND_LABELS[f.kind] ?? f.kind} ·{" "}
+                      {formatBytes(f.size)} · {formatDateTime(f.created_at)}
+                    </div>
+                  </div>
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="icon-sm"
+                    title="Yuklab olish"
                   >
-                    Yuklab olish
-                  </a>
+                    <a href={fileUrl(f.id)} download>
+                      <Download />
+                    </a>
+                  </Button>
                 </li>
               ))}
             {scxFiles.length > 0 && (
               <li className="px-4 py-2.5 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium">
-                    SCX dasturlari ({scxFiles.length} ta)
-                  </span>
-                  <span className="text-xs uppercase text-muted-foreground">
-                    prisadka
-                  </span>
+                <div className="flex items-center gap-3">
+                  <FileCode2 className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium">SCX dasturlari</div>
+                    <div className="num text-xs text-muted-foreground">
+                      {scxFiles.length} ta · prisadka ·{" "}
+                      {formatBytes(
+                        scxFiles.reduce((sum, f) => sum + (f.size ?? 0), 0),
+                      )}
+                    </div>
+                  </div>
                   {isTexnolog && (
-                    <button
-                      type="button"
-                      className="shrink-0 rounded-sm text-xs text-muted-foreground hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground"
                       disabled={regenScx.isPending}
                       title="Fayllarni nusxa QR'i bilan qayta nomlash (Nanxing skan mosligi)"
                       onClick={() => regenScx.mutate()}
@@ -594,17 +621,15 @@ function OrderDetailPage() {
                       {regenScx.isPending
                         ? "Yaratilmoqda..."
                         : "Qayta yaratish"}
-                    </button>
+                    </Button>
                   )}
-                  <a
-                    className="shrink-0 font-medium text-primary hover:underline"
-                    href={fileUrl("scx.zip")}
-                    download
-                  >
-                    Hammasini yuklab olish (ZIP)
-                  </a>
+                  <Button asChild variant="outline" size="sm">
+                    <a href={fileUrl("scx.zip")} download>
+                      <Download /> ZIP
+                    </a>
+                  </Button>
                 </div>
-                <details className="mt-1.5">
+                <details className="mt-1.5 pl-7">
                   <summary className="cursor-pointer text-xs text-muted-foreground">
                     Ro'yxatni ko'rsatish
                   </summary>
