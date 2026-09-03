@@ -5,7 +5,6 @@ import { useState } from "react"
 
 import { type OrderDetail, OrdersService } from "@/client"
 import { SelectField } from "@/components/Common/SelectField"
-import { Card } from "@/components/ui/card"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { POST_COLORS } from "@/lib/mes"
 import {
@@ -64,49 +63,51 @@ export function MachineAssign({ order }: { order: OrderDetail }) {
   if (!choiceposts.length) return null
 
   return (
-    <Card className="mb-6 p-4">
-      <h2 className="mb-3 text-base font-semibold">Ish markazi tanlovi</h2>
-      <div className="flex flex-wrap items-end gap-4">
-        {choiceposts.map((post) => {
-          // Faqat AKTIV: ta'mirdagi/noaktivga server ham biriktirmaydi (409)
-          const options = (machines ?? []).filter(
-            (m) => m.post_id === post.id && m.status === "active",
-          )
-          return (
-            <div key={post.id} className="min-w-[200px]">
-              <div
-                className="mb-1 text-2xs font-bold uppercase tracking-wider"
-                style={{ color: POST_COLORS[post.code] }}
-              >
-                {post.code}
-              </div>
-              <SelectField
-                value={selection[post.code] ?? ""}
-                onChange={(v) =>
-                  setSelection((prev) => ({ ...prev, [post.code]: v }))
-                }
-                placeholder={
-                  options.length ? "Ish markazini tanlang" : "AKTIV markaz yo'q"
-                }
-                emptyLabel="Biriktirilmagan"
-                options={options.map((m) => ({
-                  value: String(m.id),
-                  label: m.name,
-                }))}
-              />
-            </div>
-          )
-        })}
-        <LoadingButton
-          loading={mutation.isPending}
-          // Faqat O'ZGARGANDA: "biror narsa tanlangan" sharti biriktirishni bekor qilishga yo'l bermasdi;
-          // bo'sh tanlov ham yuboriladi (server dict'ni butunlay almashtiradi).
-          disabled={norm(selection) === norm(assigned)}
-          onClick={() => mutation.mutate()}
-        >
-          Biriktirish
-        </LoadingButton>
-      </div>
-    </Card>
+    // Bitta ixcham qator (karta emas): bitta select uchun sarlavhali karta
+    // sahifada og'ir turardi.
+    <div className="mb-6 flex flex-wrap items-center gap-3 text-sm">
+      <span className="text-muted-foreground">Ish markazi:</span>
+      {choiceposts.map((post) => {
+        // Faqat AKTIV: ta'mirdagi/noaktivga server ham biriktirmaydi (409)
+        const options = (machines ?? []).filter(
+          (m) => m.post_id === post.id && m.status === "active",
+        )
+        return (
+          <div key={post.id} className="flex items-center gap-2">
+            <span
+              className="text-2xs font-bold uppercase tracking-wider"
+              style={{ color: POST_COLORS[post.code] }}
+            >
+              {post.code}
+            </span>
+            <SelectField
+              className="h-8 w-56"
+              value={selection[post.code] ?? ""}
+              onChange={(v) =>
+                setSelection((prev) => ({ ...prev, [post.code]: v }))
+              }
+              placeholder={
+                options.length ? "Ish markazini tanlang" : "AKTIV markaz yo'q"
+              }
+              emptyLabel="Biriktirilmagan"
+              options={options.map((m) => ({
+                value: String(m.id),
+                label: m.name,
+              }))}
+            />
+          </div>
+        )
+      })}
+      <LoadingButton
+        size="sm"
+        loading={mutation.isPending}
+        // Faqat O'ZGARGANDA: "biror narsa tanlangan" sharti biriktirishni bekor qilishga yo'l bermasdi;
+        // bo'sh tanlov ham yuboriladi (server dict'ni butunlay almashtiradi).
+        disabled={norm(selection) === norm(assigned)}
+        onClick={() => mutation.mutate()}
+      >
+        Biriktirish
+      </LoadingButton>
+    </div>
   )
 }

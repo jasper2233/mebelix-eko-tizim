@@ -296,19 +296,14 @@ export function OrderMatrix({
                       aria-label={`${part.code} nostandart`}
                     />
                   ) : part.is_custom ? (
-                    // «✓» hech narsa demasdi — endi texnolog chizgan marshrutning
-                    // o'zi: raqamlangan qadamlar tartibda. Nostandart tabidagi
-                    // zanjir bilan bir xil manba (`routeStepNames`).
-                    <span className="inline-flex flex-wrap justify-center gap-1">
-                      {routeStepNames(part.routes).map((name, i) => (
-                        <span
-                          key={`${i}-${name}`}
-                          className="whitespace-nowrap rounded-sm bg-amber-100 px-1.5 py-0.5 text-2xs font-medium text-amber-900"
-                        >
-                          <span className="num mr-1 font-bold">{i + 1}</span>
-                          {name}
-                        </span>
-                      ))}
+                    // «✓» hech narsa demasdi — endi marshrutning o'zi, BITTA
+                    // satr («Raspil → Kromka → G petlya o'ngdan»): chiplar tor
+                    // ustunda har biri alohida qatorga tushib, qatorni cho'zardi.
+                    <span
+                      className="block max-w-[260px] truncate text-xs"
+                      title={routeStepNames(part.routes).join(" → ")}
+                    >
+                      {routeStepNames(part.routes).join(" → ")}
                     </span>
                   ) : (
                     <span className="text-muted-foreground/40">—</span>

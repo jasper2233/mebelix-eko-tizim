@@ -64,7 +64,6 @@ import {
   PRIORITY_BADGE_CLASSES,
   PRIORITY_LABELS,
   remainingPayment,
-  STANDARD_MATRIX_POSTS,
   TERMINAL_STATUSES,
 } from "@/lib/mes"
 import { cn } from "@/lib/utils"
@@ -100,8 +99,10 @@ function OrderDetailPage() {
   const { data: posts } = useQuery(getPostsQueryOptions())
   const stagesSummary = useMemo(() => {
     const parts = matrix?.parts ?? []
+    // BARCHA postlar (nostandart marshrutdagi Rover/Stolyarka/Bo'yoq va dum —
+    // qadoqlash/TMO ham): dashboard bilan bir xil qamrov. Faqat standart uchtasi
+    // bo'lsa nostandart detal qayerdaligi ko'rinmasdi.
     return (posts ?? [])
-      .filter((p) => STANDARD_MATRIX_POSTS.includes(p.code))
       .sort((a, b) => a.order_index - b.order_index)
       .map((p) => {
         let done = 0
@@ -279,6 +280,14 @@ function OrderDetailPage() {
                 Project fayl hali yuklanmagan
               </span>
             )}
+            {/* Bosqichlar shu qatorda — «raqam → holat → qayerda turibdi» bitta
+                satr; alohida qator vertikal joy olib, sarlavhadan uzilardi */}
+            {stagesSummary.length > 0 && (
+              <>
+                <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
+                <StagePipeline stages={stagesSummary} showLabels />
+              </>
+            )}
           </div>
         }
         actions={
@@ -367,16 +376,6 @@ function OrderDetailPage() {
           </div>
         }
       />
-
-      {/* "Buyurtma qayerda turibdi?" — sarlavhaning davomi, bir qarashda:
-          bosqichlar bo'yicha jamlanma (dashboard bilan bir xil element, post
-          nomlari bilan). Matritsa katakchalaridan yig'iladi — matritsani
-          pastdagi OrderMatrix yuklaydi, bu yerda faqat keshga obuna. */}
-      {stagesSummary.length > 0 && (
-        <div className="-mt-3 mb-6">
-          <StagePipeline stages={stagesSummary} showLabels />
-        </div>
-      )}
 
       {canUpload && (
         // biome-ignore lint/a11y/noStaticElementInteractions: drop zone — klaviatura uchun yonidagi tugma bor
