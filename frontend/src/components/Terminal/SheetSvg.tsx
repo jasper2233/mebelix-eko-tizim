@@ -104,9 +104,13 @@ function dimFit(boylab: number, kondalang: number, matn: string, zoom: number) {
   const fs = Math.min(DIM_FS, DIM_MAX / zoom)
   const len = matn.length * fs * CH + 8
   // Matn UZUNLIGI o'z o'qiga, QALINLIGI ko'ndalangiga sig'ishi shart. Qalinlik
-  // = glyph bbox (ASC+DESC ≈ 1.12em) + 8 padding — fs emas: fs bilan
-  // tekshirilganda 52 mm li haqiqiy bbox 48 deb o'tib ketardi.
-  const qalin = fs * (ASC + DESC) + 8
+  // = glyph bbox (ASC+DESC ≈ 1.12em) + 4 — yozuv qirradan aynan 4 ichkarida
+  // turadi (pastdagi joylashuv), ya'ni bu joylashuv geometriyasining o'zi.
+  // fs bilan tekshirilganda 52 mm li haqiqiy bbox 48 deb o'tib ketardi; +8
+  // bilan esa 60 mm li strip (60×1490, tsexda odatiy) 61.76 > 60 deb ikkala
+  // o'lchamni ham yo'qotib, markazdagi birlashgan "60×1490" ga tushardi —
+  // qo'shni 100 mm li kataklardan farqli ko'rinardi.
+  const qalin = fs * (ASC + DESC) + 4
   const mode: "h" | "v" | null =
     len <= boylab && qalin <= kondalang
       ? "h"
@@ -582,7 +586,11 @@ export function SheetSvg({
         )
         if (fsN * zoom < 6) shown = ""
       }
-      if (availW < 16 || availH < 8) shown = ""
+      // Katakning O'ZI mitti bo'lsa nom yo'q. Ilgari `availW/availH` (butun
+      // en bo'ylab ayirilgan o'lcham bandi) tekshirilardi — 60×1490 stripda
+      // availW = 1.2 chiqib nom o'chirilardi, vaholanki o'lchamlar faqat
+      // BURCHAKDA turadi; haqiqiy teginishni pastdagi kesishish himoyasi ushlaydi.
+      if (wv < 16 || hv < 8) shown = ""
       if (tight) shown = "" // markazni birlashgan o'lcham egalladi
       // Tekstura yo'nalishi: 3 chiziq detalning `l` O'QI bo'ylab (teksturali
       // materialda birinchi o'lcham — tekstura qulflangan tomon). rot=false da
