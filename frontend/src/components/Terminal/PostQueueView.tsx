@@ -82,7 +82,6 @@ export function PostQueueView({
     if (r.done || r.ready) g.instances.push(r)
     else g.waiting++
   }
-  const readyTotal = rows.filter((r) => !r.done && r.ready).length
   const doneTotal = rows.filter((r) => r.done).length
   const waitingTotal = rows.filter((r) => !r.done && !r.ready).length
   // Tartib: ishi bor (navbatda nusxa) detallar tepada, tugaganlari pastda yashil
@@ -113,9 +112,6 @@ export function PostQueueView({
       </PostHeader>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="border-b px-4 py-2 text-base font-bold">
-          {label.ready} <span className="num">({readyTotal})</span>
-        </div>
         {!sorted.length ? (
           <div className="p-6 text-center text-muted-foreground">
             {rows.length
@@ -131,12 +127,9 @@ export function PostQueueView({
                 <th className="px-4 py-2.5">Kod</th>
                 <th className="px-4 py-2.5">Nomi</th>
                 <th className="px-4 py-2.5">O'lchami</th>
-                <th
-                  className="px-4 py-2.5"
-                  title="Detal hozir qaysi postda turibdi — o'sha yerdan olinadi"
-                >
-                  Qayerda
-                </th>
+                {/* Detal hozir qaysi postda turibdi — o'sha yerdan olinadi.
+                    «Qayerda» emas, «Qayerdan olish»: ustun amalni aytsin */}
+                <th className="px-4 py-2.5">Qayerdan olish</th>
                 <th className="px-4 py-2.5 text-right">
                   Nusxalar
                   <span className="block whitespace-nowrap text-2xs font-medium normal-case tracking-normal">

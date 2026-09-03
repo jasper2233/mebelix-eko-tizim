@@ -208,11 +208,8 @@ export function TmoView({
                   <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Qadoq
                   </th>
-                  <th
-                    className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                    title="Detal hozir qaysi postda turibdi — o'sha yerdan olinadi"
-                  >
-                    Qayerda
+                  <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Qayerdan olish
                   </th>
                 </tr>
               </thead>
