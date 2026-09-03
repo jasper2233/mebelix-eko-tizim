@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation } from "@tanstack/react-query"
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
 import type { AxiosError } from "axios"
+import { IdCard, KeyRound } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -150,11 +151,13 @@ function Login() {
         >
           {/* Markazlashgan: tsexdagi monoblokka kelgan odamning ko'zi markazga
               tushadi va u yerda bitta ish turadi — beyjikni skanerlash. */}
+          {/* Sahifa nomi eyebrow darajasida: sahifada bitta katta sarlavha
+              qoladi — "Beyjikni skanerlang" (amal), "Kirish" u bilan
+              raqobatlashmaydi. */}
           <div className="flex flex-col items-center gap-1.5">
-            <p className="text-2xs font-medium uppercase tracking-[0.3em] text-(--brand-gold-deep)">
-              MebeliX MES
-            </p>
-            <h1 className="text-3xl font-bold tracking-tight">Kirish</h1>
+            <h1 className="text-2xs font-medium uppercase tracking-[0.3em] text-(--brand-gold-deep)">
+              MebeliX MES · Kirish
+            </h1>
             {/* Chap paneldagi o'lcham chizig'ining aks-sadosi */}
             <svg
               width="96"
@@ -290,13 +293,24 @@ function Login() {
               ostida. Almashtirish qaytariladi: ilgari parolga o'tgan odam
               beyjikka qayta olmasdi. */}
           <div className="flex flex-col items-center border-t pt-5">
+            {/* Havola ko'rinishida (ikonka + doimiy underline): sensor
+                ekranda hover yo'q, kulrang ghost matn bosiladigan narsaga
+                o'xshamasdi. */}
             <Button
               type="button"
               variant="ghost"
-              className="text-muted-foreground"
+              className="text-muted-foreground underline decoration-muted-foreground/40 underline-offset-4 hover:decoration-current"
               onClick={() => setShowPassword(!showPassword)}
             >
-              {showPassword ? "Beyjik bilan kirish" : "Parol bilan kirish"}
+              {showPassword ? (
+                <>
+                  <IdCard /> Beyjik bilan kirish
+                </>
+              ) : (
+                <>
+                  <KeyRound /> Parol bilan kirish
+                </>
+              )}
             </Button>
           </div>
         </form>

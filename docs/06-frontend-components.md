@@ -167,7 +167,7 @@ react-hook-form ishlatmaydigan dialoglarda yorliq va maydon `Field` orqali beril
 **Maqsadi:** login ekranining beyjik chaqirig'i — `routes/login.tsx` da parol formasi yopiq bo'lganda ko'rinadi (`{!showPassword && <BadgePrompt pending={badge.isPending} />}`).
 
 - Nega TUGMA emas: skaner tugmasiz ishlaydi (klaviatura kabi yozadi), bosilganda hech nima qilmaydigan tugma — yolg'on afforadans. Punktir ramka ham shunday edi: bu loyihada punktir "faylni shu yerga tashlang" degani.
-- O'rniga beyjikning O'ZI chizilgan (inline SVG `BadgeCard`, 120×148): lentali karta va ichida QR — uchta burchak belgisi + o'ng-pastdagi modullar, ATAYLAB to'liq emas (ekrandagi kod skanerlanmasin). Chiziq tili `AuthLayout` chap panelidagi kesish xaritasi bilan bir xil (`mx-draw` konturi + `mx-fade`), rang navy/gold (`--brand-navy-deep` / `--brand-gold-deep`).
+- O'rniga beyjikning O'ZI chizilgan (inline SVG `BadgeCard`, 120×148): lentali karta va ichida QR — uchta burchak belgisi + o'ng-pastdagi modullar, ATAYLAB to'liq emas (ekrandagi kod skanerlanmasin). Chiziq tili `AuthLayout` chap panelidagi kesish xaritasi bilan bir xil (`mx-draw` konturi + `mx-fade`), rang navy/gold (`--brand-navy-deep` / `--brand-gold-deep`); karta konturi navy 0.45 opacity — 0.28 da och fonda «sharpa» bo'lib, QR belgilari havoda muallaq turardi.
 - Yagona prop `pending: boolean` — skan yuborilib javob kutilayotganda yozuv "Beyjikni skanerlang" o'rniga "Tekshirilmoqda..." bo'ladi va QR navy rangga o'tadi. Ostida doim "Smena avtomatik ochiladi".
 
 ### `frontend/src/components/Common/BrandLoader.tsx`
@@ -217,7 +217,7 @@ Reyestr sahifalagichi: `page` (0 dan), `pageSize`, `total`, `onPage`. Tartib bit
 
 ### `frontend/src/components/Common/Footer.tsx`
 
-**Maqsadi:** oddiy footer — `MebeliX MES · {joriy yil}`. `AuthLayout` ichida ishlatiladi.
+**Maqsadi:** oddiy footer — `MebeliX MES · {joriy yil}`. `AuthLayout` ichida ishlatiladi. Ustki chiziqsiz: login formasining o'z ajratgichi bor, 160 px oraliqda ikkita turli uzunlikdagi chiziq shovqin edi.
 
 ### `frontend/src/components/Common/NotFound.tsx`
 

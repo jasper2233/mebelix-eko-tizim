@@ -194,7 +194,9 @@ Ro'yxat sahifalarida umumiy naqsh: qidiruv maydoni `Common/SearchInput`, so'rov 
 
 **Beyjik — sahifaning ASOSIY yo'li, parol esa ikkinchisi.** Gap chastotada emas (skan ikkala holatda ham tinglanadi), BELGIDA: monoblokka kelgan odam forma ko'rsa terishga urinadi, chizilgan beyjik esa "kartani ko'taring" deydi. Ofis xodimi kuniga bir marta bitta tugma bosadi.
 
-Ikki ko'rinish ALMASHADI va tugma har ikkalasida BIR JOYDA — pastda, ajratgich ostida ("Parol bilan kirish" ↔ "Beyjik bilan kirish"). Bir tomonlama eshik bo'lmasin: ilgari parolga o'tgan odam beyjikka qayta olmasdi.
+Ikki ko'rinish ALMASHADI va tugma har ikkalasida BIR JOYDA — pastda, ajratgich ostida ("Parol bilan kirish" ↔ "Beyjik bilan kirish"). Bir tomonlama eshik bo'lmasin: ilgari parolga o'tgan odam beyjikka qayta olmasdi. Tugma HAVOLA ko'rinishida — ikonka (`KeyRound` / `IdCard`) + doimiy underline: sensor ekranda hover yo'q, kulrang ghost matn bosiladigan narsaga o'xshamasdi.
+
+Sarlavha iyerarxiyasi: sahifa nomi `h1` EYEBROW darajasida (`MEBELIX MES · KIRISH`, 0.3em tracking, gold-deep) + ostida oltin o'lcham chizig'i (chap panel imzosining aks-sadosi); yagona katta sarlavha — "Beyjikni skanerlang" (amal). Ilgari `Kirish` 3xl bold bo'lib u bilan raqobatlashardi. Chrome autofill'ning och-ko'k foni `index.css` dagi qatlamsiz `input:-webkit-autofill` qoidasi bilan surface rangiga qaytariladi (qatlamsiz — Input'dagi `shadow-xs` utility'dan ustun bo'lishi uchun).
 
 - **Tugma YO'Q va bo'lmaydi.** Skaner tugmasiz ishlaydi; bosilganda hech nima qilmaydigan tugma — yolg'on afforadans. Avvalgi punktir ramkali variant ham shu sababdan olib tashlandi: bu loyihada punktir "faylni shu yerga tashlang" degani (Buyurtmalardagi drag&drop), ya'ni bosiladigan narsa bo'lib ko'rinardi.
 - `Common/BadgePrompt` — chizilgan beyjik: lenta teshigi, QR (uchta burchak belgisi) va tagida bosilgan ism chiziqlari. Operator ekranga qaraganda qo'lidagi narsani ko'radi. Bo'yin lentasi ATAYLAB chizilmagan — ikki diagonal chiziq mo'ylovga o'xshab qolardi. Chiziq tili chap paneldagi kesish xaritasi bilan bir xil (`mx-draw`/`mx-fade`, reduced-motion xavfsiz).

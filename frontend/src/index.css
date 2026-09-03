@@ -279,3 +279,15 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Chrome autofill'ning och-ko'k foni palitra bilan urishadi — fon inset-soya
+   bilan surface rangiga qaytariladi. ATAYLAB qatlamsiz (`@layer` tashqarisida):
+   Input'dagi `shadow-xs` utility box-shadow'ni qayta yozadi, qatlamsiz qoida
+   esa har qanday qatlamdan ustun. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
+}

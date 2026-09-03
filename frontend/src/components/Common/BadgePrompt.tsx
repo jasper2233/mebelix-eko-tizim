@@ -65,7 +65,7 @@ function BadgeCard({ pending }: { pending: boolean }) {
           Teshikning o'zi "bu — beyjik" deyish uchun yetarli. */}
       <g
         stroke={NAVY}
-        strokeOpacity="0.28"
+        strokeOpacity="0.45"
         strokeWidth="1.5"
         fill="none"
         className="mx-draw"
