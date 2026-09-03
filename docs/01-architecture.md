@@ -109,7 +109,7 @@ flowchart LR
     B -->|HTTPS| C
     B <-->|"WS /api/v1/ws/events"| C
     G <-->|"outbound WS /api/v1/ws/bridge"| C
-    G -->|"POST /api/v1/bridge-agents/scan<br/>(skan-forvard, TZ 12.5)"| C
+    G -->|"POST /api/v1/bridge-agents/scan<br/>(skan-forvard)"| C
     G -->|"PNG -> Windows GDI<br/>(USB)"| PR
     C -->|"/api*, /docs*, /redoc*, /openapi.json"| A
     C -->|qolgan pathlar| N
@@ -325,7 +325,7 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   `SCAN_FORWARD` (default yoqiq, `0` o'chiradi);
   `_load_dotenv()` ularni shu tartibda o'qiydi: env var > exe yonidagi `.env` >
   `%APPDATA%\MebelixAgent\.env`.
-- **Skan-forvard (TZ 12.5)**: agent stanok skanerining (klaviatura-HID)
+- **Skan-forvard**: agent stanok skanerining (klaviatura-HID)
   terganini passiv kuzatadi (`start_scan_forward()`, pynput listener; juda tez
   ketma-ket belgilar + Enter = skan, <50 ms/belgi chegarasi odam terishidan
   ajratadi) va nusxasini `POST /api/v1/bridge-agents/scan` ga agent Bearer

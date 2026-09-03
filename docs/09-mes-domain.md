@@ -1,7 +1,6 @@
-# 09 — MES domen qatlami (TT bo'yicha implementatsiya)
+# 09 — MES domen qatlami
 
-Holat: **2026-08-29**. TT (Texnik Topshiriq) repodan tashqarida yuritiladi — quyidagi `TZ x.y` havolalari
-uning bo'lim raqamlari. Barcha fazalar implementatsiya qilingan — alohida `TODO.md` yuritilmaydi, holat shu hujjatlar to'plami va git tarixidan o'qiladi.
+Holat: **2026-09-03**. Barcha fazalar implementatsiya qilingan — alohida `TODO.md` yuritilmaydi, holat shu hujjatlar to'plami va git tarixidan o'qiladi.
 
 ## 1. Data model (`app/models/`)
 
@@ -232,7 +231,7 @@ Buyurtma STATUSI baribir to'g'ri yozilardi — yo'qolgani faqat WS xabari edi.
   HAR brpop siklida (~5 s) ushlaydi: jonli ulanish 4401 (`WS_CLOSE_UNAUTHORIZED`) bilan uziladi,
   qo'ldagi job navbatga qaytadi. Ilgari yagona tekshiruv 5 daqiqalik `touch_agent` edi va bekor
   qilingan token yana ~5 daqiqa chek chiqaraverardi (prod-repro bilan o'lchandi: 295 s).
-- **Skan-forvard (TZ 12.5)** — ish markazining o'z skaneri o'qigan QR MES'ga ham yoziladi: agent
+- **Skan-forvard** — ish markazining o'z skaneri o'qigan QR MES'ga ham yoziladi: agent
   klaviatura kiritishini tinglaydi (`pynput`; `SCAN_FORWARD=0` o'chiradi, pynput bo'lmasa jim
   o'chadi) va QR ko'rinishidagi tez terilgan qatorni `POST /bridge-agents/scan` ga agent tokeni
   bilan yuboradi. Skan agentga bog'langan ish markazi (`PATCH /bridge-agents/{id}` — `machine_id`,
@@ -377,7 +376,7 @@ O'rnatish qadamlari: [07-infra-devops.md](07-infra-devops.md) → "Chop etish in
 | `tmo` | `/orders/{id}` GET, `/orders/{id}/accept` (QABUL — `PK-...` bo'lsa qadoq ichidagi HAMMA nusxa bitta skanda, aks holda bitta detal), **`/orders/{id}/ship` ham OLIB TASHLANDI** — TMO da qadoq ro'yxati yo'q. **Buyurtmani TOPSHIRISH endpointi ham TMO da YO'Q** — u managerda (`orders.deliver_order`, faqat TAYYOR holatdan); TMO faqat qabul qiladi va hamma detal o'tgach buyurtma o'zi TAYYOR bo'ladi | terminal + operator rollar; faqat TMO postida (`_wh_ctx`) |
 | `tablo` | `/matrix`, `/orders/{id}` | istalgan auth |
 | `reports` | `/productivity`, `/orders`, `/materials` (+`?format=xlsx`), `/dashboard` | manager/director/admin |
-| `audit-logs` | filtrli ro'yxat (13 modul: scan, print, sessions, orders, pachka, tmo, bridge_agents, employees, users, clients, machines, posts, auth — backend `log_action(module=…)` qiymatlari va frontend `logs.tsx: CATEGORIES` bir xil; eski `ombor` nomi `e5b83c04d7a1` da `tmo` ga birlashtirilgan (o'sha migratsiya `materials` ni `stock` ga ham ko'chirgan — stock moduli olib tashlangach o'sha qatorlar bazada filtrsiz tarix bo'lib qoladi); rad etilgan skanlar ham — `module=scan, action=rejected`, §3) | faqat admin (`AdminUser`, TZ 10.11) — butun tizim audit izi; direktor ishlab chiqarish ko'rsatkichlarini `/reports` dan oladi |
+| `audit-logs` | filtrli ro'yxat (13 modul: scan, print, sessions, orders, pachka, tmo, bridge_agents, employees, users, clients, machines, posts, auth — backend `log_action(module=…)` qiymatlari va frontend `logs.tsx: CATEGORIES` bir xil; eski `ombor` nomi `e5b83c04d7a1` da `tmo` ga birlashtirilgan (o'sha migratsiya `materials` ni `stock` ga ham ko'chirgan — stock moduli olib tashlangach o'sha qatorlar bazada filtrsiz tarix bo'lib qoladi); rad etilgan skanlar ham — `module=scan, action=rejected`, §3) | faqat admin (`AdminUser`) — butun tizim audit izi; direktor ishlab chiqarish ko'rsatkichlarini `/reports` dan oladi |
 | `bridge-agents` | ro'yxat/yaratish, `/{id}` PATCH (ish markazi bog'lash + `can_print`), `/{id}/code` (yangi ulanish kodi), `/{id}` DELETE, `/pair`, `/scan` (skan-forvard, §4), `/logs` POST + `/{id}/logs` GET (agent loglari Redisda — `mes:agent:log:{id}`, oxirgi 200 satr, TTL 7 kun; admin panelda ko'rinadi, tsexdagi kompyuterga masofadan kirish yo'q), `/latest` + `/download` (agent avto-yangilanishi: `agent-dist/version.json` — versiya + sha256 — va `mebelix-agent.exe`; 2026-08-27 dan CI har deploy'da exe quradi, ya'ni eskirishning iloji yo'q) | admin (`AdminUser`); `/pair`, `/latest`, `/download` ochiq (router global auth'siz — agentda sessiya yo'q, exe sir emas), `/scan` va `/logs` agent tokeni bilan (Bearer → sha256) |
 
 ### Buyurtma lifecycle va to'lovlar

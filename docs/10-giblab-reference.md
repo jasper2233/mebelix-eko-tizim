@@ -359,7 +359,7 @@ GibLab "+Операция" ro'yxatida **to'qqiz tur** taklif qiladi:
 | `EL` | Кромкооблицовка — kromkalash | ✅ kromka simvoli va materiali |
 | `XNC` | Обработка — CNC ishlov | ✅ har qanday ishlov (teshik, paz, freza) → PRISADKA bosqichi; paz va freza geometriyasi faqat SCX da (yorliq eskizida yo'q — §2.3) |
 | `O` | Комплектация — furnitura komplekti | ataylab jim: sanoqlar `simple` goodlarida bor |
-| `LB` | Этикетки — yorliq shablonlari | ataylab jim: tizim o'z yorlig'ini chiqaradi (TZ 5.2.8) |
+| `LB` | Этикетки — yorliq shablonlari | ataylab jim: tizim o'z yorlig'ini chiqaradi |
 | `CL` | Погонажный раскрой — profil kesish | ataylab jim + **ma'lumot yoziladi**: tsexda profil kesish posti yo'q, profillar tayyor keladi |
 | `CN` | Нестинговый раскрой — CNC nesting | ❌ ogohlantirish. GibLab'ga 2021-05 da qo'shilgan |
 | `SP` | Обработка поверхности — yuza ishlovi | ❌ ogohlantirish |
@@ -645,7 +645,7 @@ GibLab shabloniga qo'yiladigan maydonlar (109 ta), guruhlar bo'yicha:
 - **Yig'ma**: `groove`, `drill`, `mill`
 - **Ishlov**: `XNC1..XNC5` + `xncSide1..5` + `xncBSD1..5`
 
-MebeliX o'z yorlig'ini chiqaradi (TZ 5.2.8, `services/labels.py`): 80×60 mm, 203 dpi, 1-bit
+MebeliX o'z yorlig'ini chiqaradi (`services/labels.py`): 80×60 mm, 203 dpi, 1-bit
 termoprinter uchun. Ichida QR (`{productCode}_{partCode}` — yagona nusxa suffikssiz, takrorlanganda `_{n}`), matn qatorida ham shu nusxa ID (QR va SCX nomi bilan bir xil satr; matn qatori 20 belgigacha qisqartiriladi, QR to'liq — [11-detal-id-nomlash.md](11-detal-id-nomlash.md)), detal nomi, loyiha nomi
 (`order.project_name`, bo'sh bo'lsa buyurtma raqamiga tushadi), mahsulot kodi ("Formatka"
 qatori), material, o'lcham, kromka belgilari, teshik eskizi, burg'u ikonkasi va marshrut

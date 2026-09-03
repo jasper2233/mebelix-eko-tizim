@@ -68,16 +68,16 @@ app = create_application(router=router)
 | Redis | `REDIS_HOST`, `REDIS_PORT` — navbat ham, rate limit ham, WS pub/sub ham shu bitta Redis'ga boradi (yoqish/o'chirish bayroqlari yo'q) |
 | Rate limit | `LOGIN_RATE_LIMIT_ATTEMPTS=5`/`LOGIN_RATE_LIMIT_PERIOD=300` — rate limit faqat login uchun ishlatiladi, umumiy default'lar yo'q |
 | Pagination | `DEFAULT_PAGE_SIZE=50`, `MAX_PAGE_SIZE=100` |
-| File storage | `UPLOAD_DIR="uploads"` (project/scx/label fayllar ildizi, TZ 2.4.3; nisbiy yo'l `backend/` paket ildiziga nisbatan), `MAX_PROJECT_FILE_SIZE` = 50 MB |
-| Production floor | `STRICT_STAGE_ORDER=True` (E004 — oldingi qadam tugamaguncha skanni bloklash, TZ 7.2.5; tartib postlarning global ketma-ketligidan emas, detalning O'Z marshrutidagi `seq` bo'yicha, chunki nostandart marshrut roverdan ham boshlanishi mumkin), `SCAN_UNDO_SECONDS=60` (BEKOR QILISH oynasi, TZ 8.6) |
-| Printing (TZ 12.3 / 13.2) | `BRIDGE_TOKEN=""` — **legacy**, ixtiyoriy: eski agentlar uchun umumiy token, u faqat `/ws/bridge` handshake'idan o'tkazadi (bunday agent chek OLMAYDI). Printerlar endi per-agent pairing orqali ulanadi (`bridge_agent` jadvali), shuning uchun bu sozlama bo'sh qolganda ham chop etish ishlaydi. Yorliqlar faqat shu navbat orqali USB GoDEX'ga boradi (G500-U'da tarmoq porti yo'q), shuning uchun printer manzili sozlamasi yo'q |
+| File storage | `UPLOAD_DIR="uploads"` (project/scx/label fayllar ildizi,; nisbiy yo'l `backend/` paket ildiziga nisbatan), `MAX_PROJECT_FILE_SIZE` = 50 MB |
+| Production floor | `STRICT_STAGE_ORDER=True` (E004 — oldingi qadam tugamaguncha skanni bloklash,; tartib postlarning global ketma-ketligidan emas, detalning O'Z marshrutidagi `seq` bo'yicha, chunki nostandart marshrut roverdan ham boshlanishi mumkin), `SCAN_UNDO_SECONDS=60` (BEKOR QILISH oynasi) |
+| Printing | `BRIDGE_TOKEN=""` — **legacy**, ixtiyoriy: eski agentlar uchun umumiy token, u faqat `/ws/bridge` handshake'idan o'tkazadi (bunday agent chek OLMAYDI). Printerlar endi per-agent pairing orqali ulanadi (`bridge_agent` jadvali), shuning uchun bu sozlama bo'sh qolganda ham chop etish ishlaydi. Yorliqlar faqat shu navbat orqali USB GoDEX'ga boradi (G500-U'da tarmoq porti yo'q), shuning uchun printer manzili sozlamasi yo'q |
 | Startup probes | `STARTUP_RETRY_MAX_ATTEMPTS=5`, `STARTUP_RETRY_DELAY_SECONDS=2` |
 | Threadpool | `THREADPOOL_TOKENS=100` (AnyIO sync-bridge slotlari) |
 | Reverse-proxy | `FORWARDED_ALLOW_IPS=["172.16.0.0/12"]` — X-Forwarded-* ga ishoniladigan upstream (compose tarmog'i). **`*` QO'YILMAYDI**: unda uvicorn XFF'ning eng CHAP, ya'ni mijoz bergan qiymatini oladi va login rate-limiti header almashtirish bilan aylanib o'tiladi (o'lchandi: 12 urinishdan 0 tasi bloklandi) |
 | Env / CORS | `ENVIRONMENT`, `CORS_ORIGINS=["http://localhost:5173"]`, `CORS_METHODS`, `CORS_HEADERS` |
 
 - Computed field'lar: `POSTGRES_URI` (`user:pass@host:port/db`) va `REDIS_URL` (`redis://host:port`). `POSTGRES_URI` da `POSTGRES_USER` va `POSTGRES_PASSWORD` `urllib.parse.quote(..., safe="")` bilan percent-encode qilinadi (band belgili parol DSN'ni buzmasin); `POSTGRES_DB` xom qoladi — SQLAlchemy baza komponentini unquote qilmaydi. Shu sababli `migrations/env.py` `set_main_option` ga berishdan oldin `%` ni ikkilantiradi (configparser uni interpolatsiya deb o'qiydi).
-- Modul darajasidagi eksportlar: `TASHKENT_TZ = ZoneInfo("Asia/Tashkent")` — tsex mahalliy vaqti, hisobot/audit kunlari va chek timestamp'lari shu zonada (TZ 10.4; `audit.py`, `reports.py`, `scans.py`, `tablo.py`, `orders/_common.py` route'lari, `services/labels.py`, `services/scanning.py` va `tasks/__init__.py` ishlatadi); `upload_root()` — `UPLOAD_DIR`ning absolyut `Path` ildizi. Nisbiy `UPLOAD_DIR` jarayon CWD'siga emas, `backend/` paket ildiziga (`Path(__file__).resolve().parents[2]`) bog'lanadi — ombor xizmat qayerdan ishga tushirilganiga qarab surilmasligi uchun; absolyut qiymat o'zgarishsiz ishlatiladi. Uni to'rtta route moduli import qiladi: `orders/files.py`, `orders/survey.py`, `orders/lifecycle.py` (o'chirishda fayllarni unlink qiladi), `terminal.py`. `services/giblab/ingest.py` esa `config`dan import qilmaydi — ildizni `upload_root: Path` PARAMETRI sifatida oladi, qiymatni `orders/files.py` (`root = upload_root()`) uzatadi.
+- Modul darajasidagi eksportlar: `TASHKENT_TZ = ZoneInfo("Asia/Tashkent")` — tsex mahalliy vaqti, hisobot/audit kunlari va chek timestamp'lari shu zonada (`audit.py`, `reports.py`, `scans.py`, `tablo.py`, `orders/_common.py` route'lari, `services/labels.py`, `services/scanning.py` va `tasks/__init__.py` ishlatadi); `upload_root()` — `UPLOAD_DIR`ning absolyut `Path` ildizi. Nisbiy `UPLOAD_DIR` jarayon CWD'siga emas, `backend/` paket ildiziga (`Path(__file__).resolve().parents[2]`) bog'lanadi — ombor xizmat qayerdan ishga tushirilganiga qarab surilmasligi uchun; absolyut qiymat o'zgarishsiz ishlatiladi. Uni to'rtta route moduli import qiladi: `orders/files.py`, `orders/survey.py`, `orders/lifecycle.py` (o'chirishda fayllarni unlink qiladi), `terminal.py`. `services/giblab/ingest.py` esa `config`dan import qilmaydi — ildizni `upload_root: Path` PARAMETRI sifatida oladi, qiymatni `orders/files.py` (`root = upload_root()`) uzatadi.
 - `_validate_production_settings(s)` — **har qanday non-LOCAL muhitda (STAGING ham, PRODUCTION ham) xavfsiz bo'lmagan default'lar bilan boot qilishni rad etadi** (faqat LOCAL o'tkazib yuboriladi): `SECRET_KEY`, `ADMIN_PASSWORD`, `POSTGRES_PASSWORD`, `ADMIN_PHONE` placeholder qiymatda qolgan bo'lsa YOKI `FORWARDED_ALLOW_IPS` ichida `*` bo'lsa `RuntimeError` ko'taradi (`*` app-level `ProxyHeadersMiddleware` orqali gunicorn'ning qat'iy `--forwarded-allow-ips` flagini bekor qiladi va rate-limit bypass'ini qaytarib ochadi). Modul import bo'lganda darhol ishlaydi (birinchi so'rovda emas, startup'da).
 - Modul oxirida global singleton: `settings = Settings()`.
 
@@ -243,7 +243,7 @@ class WorkerSettings:
 
 ### `backend/app/tasks/__init__.py` — ro'yxatga olingan vazifalar
 
-- `PRINT_QUEUE_KEY = "mes:print:queue"` — kalit prefiksi (TZ 2.2.2); manzilsiz kalitning o'zi endi o'qilmaydi. `print_queue_key(agent_id)` esa
+- `PRINT_QUEUE_KEY = "mes:print:queue"` — kalit prefiksi; manzilsiz kalitning o'zi endi o'qilmaydi. `print_queue_key(agent_id)` esa
   manzilli kalitni beradi: `agent_id` bo'lsa `mes:print:queue:{agent_id}`, bo'lmasa umumiy kalit.
   Chek SO'RAGAN ish markazining printeriga borishi uchun shunday: `ws.py` ulangan agent uchun
   `brpop([o'z kaliti], timeout=5)` qiladi — FAQAT o'ziga atalgan kalitdan oladi, umumiy
@@ -268,7 +268,7 @@ class WorkerSettings:
   manzillanadi, `ws.py` esa faqat o'z kalitini o'qiydi. Aynan umumiy navbat
   "ofisdagi test printeri tsexdagi chekni tortib oldi" nuqsonini bergan edi:
   kim birinchi `BRPOP` qilsa, chek o'shanikiga chiqardi.
-- `print_label(ctx, instance_id, agent_id=None)` — yorliq chiqarish vazifasi (TZ 7.1.4).
+- `print_label(ctx, instance_id, agent_id=None)` — yorliq chiqarish vazifasi.
   Bitta DB sessiyasida (`local_session`) `services/labels.py`dan:
   - `load_label_data(db, instance_id)` — `None` bo'lsa `"skip:{id}"` qaytarib chiqadi;
   - `render_label_png(data)` — o'sha yorliqning 80×60 mm / 203 dpi rasteri; `base64` bilan kodlanadi.
@@ -295,7 +295,7 @@ class WorkerSettings:
   beyjikda u mos ravishda `pachka_id`, `waste_id`, `employee_id` qiymatini olib yuradi; agent uni
   faqat log uchun ishlatadi, chop etish `png` bilan bo'ladi.
 
-**To'liq zanjir (TZ 2.2):**
+**To'liq zanjir:**
 
 ```
 terminal → POST /api/v1/terminal/labels/{instance_id}
@@ -321,7 +321,7 @@ Ulanishda token `Authorization: Bearer` headerda keladi (server access-loglariga
 
 Ulanish/uzilish/pairing panelga `bridge.connected` / `bridge.disconnected` / `bridge.paired` eventlari bilan (`ws_manager.publish`) tarqatiladi — admin "Printerlar" sahifasi pollingsiz yangilanadi.
 
-**Skan-forvard va printersiz stansiyalar (TZ 12.5).** `bridge_agent.machine_id` agentni ish markaziga bog'laydi: stanok skaneri o'qigan QR agent orqali `POST /api/v1/bridge-agents/scan` endpointiga (agent tokeni bilan) yuboriladi va bog'langan ish markazining terminalidagi AKTIV sessiya nomidan odatdagi skan yo'li bilan yoziladi. `can_print=False` agent (masalan, Nanxing skan-forvard stansiyasi — printeri yo'q) ulanib turadi, lekin chek OLMAYDI: BRPOP o'rniga 5s uxlaydi — aks holda chekni "o'g'irlab" lokalida qoldirardi. Shart aslida IKKITA (`if can_print and own_keys`): `own_keys` bo'sh bo'lgani uchun legacy umumiy `BRIDGE_TOKEN` bilan ulangan agent (`agent_id is None`) ham HECH QACHON chek olmaydi — u qaysi ish markazi ekani noma'lum, unga chek berish yana o'sha tasodif bo'lardi. Ya'ni legacy token faqat WS handshake'dan o'tkazadi: chop etish uchun ham, skan-forvard uchun ham (`/bridge-agents/scan` juftlangan tokenni talab qiladi) yaroqsiz. Ikkala maydonni admin `PATCH /api/v1/bridge-agents/{agent_id}` bilan boshqaradi (endpoint tafsilotlari: `docs/03-backend-api.md`).
+**Skan-forvard va printersiz stansiyalar.** `bridge_agent.machine_id` agentni ish markaziga bog'laydi: stanok skaneri o'qigan QR agent orqali `POST /api/v1/bridge-agents/scan` endpointiga (agent tokeni bilan) yuboriladi va bog'langan ish markazining terminalidagi AKTIV sessiya nomidan odatdagi skan yo'li bilan yoziladi. `can_print=False` agent (masalan, Nanxing skan-forvard stansiyasi — printeri yo'q) ulanib turadi, lekin chek OLMAYDI: BRPOP o'rniga 5s uxlaydi — aks holda chekni "o'g'irlab" lokalida qoldirardi. Shart aslida IKKITA (`if can_print and own_keys`): `own_keys` bo'sh bo'lgani uchun legacy umumiy `BRIDGE_TOKEN` bilan ulangan agent (`agent_id is None`) ham HECH QACHON chek olmaydi — u qaysi ish markazi ekani noma'lum, unga chek berish yana o'sha tasodif bo'lardi. Ya'ni legacy token faqat WS handshake'dan o'tkazadi: chop etish uchun ham, skan-forvard uchun ham (`/bridge-agents/scan` juftlangan tokenni talab qiladi) yaroqsiz. Ikkala maydonni admin `PATCH /api/v1/bridge-agents/{agent_id}` bilan boshqaradi (endpoint tafsilotlari: `docs/03-backend-api.md`).
 
 **Bog'liq fayllar (core'dan tashqarida):** `backend/app/models/bridge_agent.py` (`bridge_agent` jadvali: `organization_id`, `name`, `token_hash`, `pair_code`, `pair_expires_at`, `last_seen_at`, `machine_id` (FK `machine.id`, skan-forvard), `version` (agent exe versiyasi), `can_print` (default `True`)), migratsiyalar `d5e81a24c3b7` (pairing), `f4b8c2a91e55` (machine), `a7c3e9d12f04` (version), `d4f7a8c25e91` (can_print), `backend/app/crud/__init__.py` (`crud_bridge_agents` — `BaseCRUD[BridgeAgent]`, o'z moduli yo'q), `backend/app/schemas/bridge_agents.py`, `backend/app/api/routes/bridge_agents.py`.
 
@@ -329,11 +329,11 @@ Ulanish/uzilish/pairing panelga `bridge.connected` / `bridge.disconnected` / `br
 
 ## `backend/app/core/ws.py`
 
-**Maqsadi:** real-time ko'prik (TZ 2.3) — WebSocket klientlarga event fan-out. Gunicorn worker'lari aro tarqatish Redis pub/sub `mes:events` kanali orqali amalga oshadi (har bir worker faqat o'z lokal socketlarini ko'radi, kanal orqali hammasi bir xil eventni oladi).
+**Maqsadi:** real-time ko'prik — WebSocket klientlarga event fan-out. Gunicorn worker'lari aro tarqatish Redis pub/sub `mes:events` kanali orqali amalga oshadi (har bir worker faqat o'z lokal socketlarini ko'radi, kanal orqali hammasi bir xil eventni oladi).
 
 **Muhim elementlar:**
 
-- `WsClient` (dataclass) — bitta ulanish: `socket`, `scope` (`"terminal"` / `"tablo"` / `"dashboard"`) va ixtiyoriy `post_id`/`machine_id` filtrlar. `wants(event)` — dashboard VA TABLO hamma eventni oladi; target'siz eventlar broadcast; terminal faqat o'z `post_id`/`machine_id`siga mos eventlarni oladi (TZ 2.3.2). TABLO ataylab filtrsiz: u devor ekrani va BUTUN tsex matritsasini ko'rsatadi, qurilma hisobi esa majburan bitta ish markaziga bog'langan — filtr qolsa taxta faqat o'z postining skanlarini jonli ko'rardi.
+- `WsClient` (dataclass) — bitta ulanish: `socket`, `scope` (`"terminal"` / `"tablo"` / `"dashboard"`) va ixtiyoriy `post_id`/`machine_id` filtrlar. `wants(event)` — dashboard VA TABLO hamma eventni oladi; target'siz eventlar broadcast; terminal faqat o'z `post_id`/`machine_id`siga mos eventlarni oladi. TABLO ataylab filtrsiz: u devor ekrani va BUTUN tsex matritsasini ko'rsatadi, qurilma hisobi esa majburan bitta ish markaziga bog'langan — filtr qolsa taxta faqat o'z postining skanlarini jonli ko'rardi.
 - `WsManager` (modul-darajali singleton `ws_manager`):
   - `connect(client)` / `disconnect(client)` — lokal klientlar ro'yxatini boshqaradi (`accept` + qo'shish / olib tashlash).
   - `publish(event_type, payload, **targets)` — event quradi (`{"type", "payload"}` + `post_id`/`machine_id` target'lar) va Redis mavjud bo'lsa `mes:events` kanaliga `PUBLISH` qiladi; Redis yo'q (dev) yoki yiqilgan bo'lsa **lokal yetkazishga degradatsiya** qiladi (`_dispatch`).
