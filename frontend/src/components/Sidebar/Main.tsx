@@ -20,8 +20,6 @@ export type Item = {
   badge?: number
   /** Son nimani sanashi (hover'da) */
   badgeTitle?: string
-  /** `success` — yashil (amal kutayotgan narsa: topshirishga tayyor buyurtmalar) */
-  badgeTone?: "gold" | "success"
 }
 
 interface MainProps {
@@ -72,13 +70,11 @@ export function Main({ items }: MainProps) {
                     <span>{item.title}</span>
                   </RouterLink>
                 </SidebarMenuButton>
+                {/* Yashil: badge = amal kutayotgan narsa (topshirishga tayyor
+                    buyurtmalar) — hozircha yagona badge, umumlashtirilmagan */}
                 {item.badge ? (
                   <SidebarMenuBadge
-                    className={
-                      item.badgeTone === "success"
-                        ? "rounded-full bg-emerald-500/20 font-bold text-emerald-300"
-                        : "text-sidebar-primary"
-                    }
+                    className="rounded-full bg-emerald-500/20 font-bold text-emerald-300"
                     title={item.badgeTitle}
                   >
                     {item.badge}

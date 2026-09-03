@@ -162,28 +162,7 @@ async def read_orders(
 
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
     rows = (await db.execute(query.order_by(Order.id.desc()).offset(skip).limit(limit))).all()
-    items = [_order_read(order, client_name) for order, client_name in rows]
-    # Bekor qilinganlar ro'yxati: har qatorga tirik skan soni — superuser qaysi
-    # birini o'chira olishini sahifaga kirmasdan ko'rsin. Bitta guruhlangan so'rov.
-    cancelled_ids = [o.id for o in items if o.status == OrderStatus.CANCELLED]
-    if cancelled_ids:
-        live: dict[int, int] = {}
-        for order_id, n in (
-            await db.execute(
-                select(Scan.order_id, func.count(Scan.id))
-                .where(
-                    Scan.order_id.in_(cancelled_ids),
-                    Scan.is_cancelled == False,  # noqa: E712
-                    Scan.is_deleted == False,  # noqa: E712
-                )
-                .group_by(Scan.order_id)
-            )
-        ).all():
-            live[order_id] = n
-        for o in items:
-            if o.status == OrderStatus.CANCELLED:
-                o.live_scans = int(live.get(o.id, 0))
-    return Paginated(data=items, count=total)
+    return Paginated(data=[_order_read(order, client_name) for order, client_name in rows], count=total)
 
 
 # NOTE: /{order_id} dan OLDIN turishi shart — aks holda "status-counts" order_id deb o'qiladi.

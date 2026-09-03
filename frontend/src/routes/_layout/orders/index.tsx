@@ -360,14 +360,9 @@ function OrdersPage() {
                         variant="ghost"
                         size="icon-sm"
                         className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        disabled={
-                          o.status === "cancelled" && (o.live_scans ?? 0) > 0
-                        }
-                        title={
-                          o.status === "cancelled" && (o.live_scans ?? 0) > 0
-                            ? `${o.live_scans} ta bekor qilinmagan skan — o'chirib bo'lmaydi`
-                            : "O'chirish"
-                        }
+                        // Tirik skani bor bekor qilingan buyurtma — backend 403 bilan
+                        // sababini aytadi (toast); oldindan hisoblash ortiqcha edi
+                        title="O'chirish"
                         onClick={(e) => {
                           e.stopPropagation()
                           setDeleteTarget(o)

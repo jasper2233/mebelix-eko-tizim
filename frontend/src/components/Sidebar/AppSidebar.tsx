@@ -86,7 +86,6 @@ export function AppSidebar() {
       ? {
           ...i,
           badge: ready,
-          badgeTone: "success" as const,
           badgeTitle: "Topshirishga tayyor — tsex tugatgan buyurtmalar",
         }
       : i,

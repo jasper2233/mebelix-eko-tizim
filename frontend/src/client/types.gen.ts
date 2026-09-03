@@ -1543,10 +1543,6 @@ export type OrderCreate = {
  */
 export type OrderDetail = {
     /**
-     * Live Scans
-     */
-    live_scans?: number;
-    /**
      * Id
      */
     id: number;
@@ -1732,10 +1728,6 @@ export type OrderPriority = 'low' | 'medium' | 'high' | 'urgent';
  * Registry row.
  */
 export type OrderRead = {
-    /**
-     * Live Scans
-     */
-    live_scans?: number;
     /**
      * Id
      */
