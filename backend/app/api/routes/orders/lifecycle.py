@@ -21,6 +21,7 @@ from app.core.ws import ws_manager
 from app.crud import crud_clients, crud_orders, log_action
 from app.models import (
     ORDER_FAT_COLUMNS,
+    AuditLog,
     Client,
     Machine,
     Order,
@@ -217,6 +218,22 @@ async def read_order(db: SessionDep, current_user: StaffReadUser, order_id: int)
     detail.files = [OrderFileRead.model_validate(f) for f in files]
     detail.parts_count = parts_count
     detail.instances_count = instances_count
+    # Oxirgi amal — audit logning shu buyurtmaga tegishli eng yangi yozuvi
+    # (kim + nima + qachon). Bitta so'rov; log bo'lmasa maydonlar None.
+    last = (
+        await db.execute(
+            select(AuditLog, User)
+            .outerjoin(User, User.id == AuditLog.user_id)
+            .where(AuditLog.module == "orders", AuditLog.entity_id == order_id)
+            .order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+            .limit(1)
+        )
+    ).first()
+    if last is not None:
+        entry, actor = last
+        detail.last_action = entry.action
+        detail.last_action_at = entry.created_at
+        detail.last_action_by_name = (actor.name or actor.username) if actor else None
     # Tahrirlash mumkinmi — frontend tugmalarni shunga qarab yoqadi va SABABINI
     # ko'rsatadi. Qoida bitta joyda (`_require_editable`) bo'lishi uchun shu
     # yerda ham aynan o'sha helper chaqiriladi.

@@ -1656,6 +1656,18 @@ export type OrderDetail = {
      * Cancelled By Name
      */
     cancelled_by_name?: string | null;
+    /**
+     * Last Action
+     */
+    last_action?: string | null;
+    /**
+     * Last Action At
+     */
+    last_action_at?: string | null;
+    /**
+     * Last Action By Name
+     */
+    last_action_by_name?: string | null;
 };
 
 /**

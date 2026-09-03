@@ -78,6 +78,11 @@ class OrderDetail(OrderRead):
     #: Ilgari `cancelled_by_id` yozilardi-yu, hech qayerda o'qilmasdi: foydalanuvchi
     #: sababni ko'rar, kimligini esa faqat audit logdan qidirishga to'g'ri kelardi.
     cancelled_by_name: str | None = None
+    #: Oxirgi AMAL — audit logdan (module="orders", entity_id): kim, nima, qachon.
+    #: `updated_at` faqat vaqtni aytardi; «kim tahrirladi» degan savolga javob yo'q edi.
+    last_action: str | None = None
+    last_action_at: datetime | None = None
+    last_action_by_name: str | None = None
 
 
 class OrderCreate(BaseModel):

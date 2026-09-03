@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/table"
 import { useDebounced } from "@/hooks/useDebounced"
 import { requireAccess } from "@/lib/guards"
-import { formatDateTime, isAdmin } from "@/lib/mes"
+import { AUDIT_ACTION_LABELS, formatDateTime, isAdmin } from "@/lib/mes"
 import {
   getBridgeAgentsQueryOptions,
   getMachinesQueryOptions,
@@ -72,44 +72,6 @@ const CATEGORY_LABELS = Object.fromEntries(
 )
 
 // Amal slug'lari — odam tilida (yangi amal qo'shilsa shu yerga bitta qator)
-const ACTION_LABELS: Record<string, string> = {
-  recorded: "yozildi",
-  rejected: "rad etildi",
-  cancelled: "bekor qilindi",
-  label_sent: "chek yuborildi",
-  label_cancelled: "chek bekor qilindi",
-  waste_label_sent: "qoldiq cheki yuborildi",
-  waste_label_cancelled: "qoldiq cheki bekor qilindi",
-  created: "yaratildi",
-  updated: "o'zgartirildi",
-  deleted: "o'chirildi",
-  started: "boshlandi",
-  ended: "tugadi",
-  machine_linked: "ish markazi bog'landi",
-  machine_unlinked: "ish markazidan uzildi",
-  login: "tizimga kirdi",
-  login_failed: "kirish rad etildi",
-  logout: "tizimdan chiqdi",
-  can_print_changed: "chek chiqarish o'zgardi",
-  scx_regenerated: "SCX qayta yaratildi",
-  matrix_edited: "matritsa tahrirlandi",
-  code_regenerated: "yangi ulanish kodi",
-  paired: "ulandi",
-  badge_regenerated: "beyjik qayta yaratildi",
-  survey_saved: "anketa saqlandi",
-  survey_photo_added: "anketa rasmi qo'shildi",
-  survey_photo_deleted: "anketa rasmi o'chirildi",
-  delivered: "topshirildi",
-  confirmed: "tasdiqlandi",
-  production_started: "ishlab chiqarishga uzatildi",
-  machines_assigned: "ish markazlari biriktirildi",
-  project_uploaded: "fayl yuklandi",
-  accepted: "TMO ga qabul qilindi",
-  shipped: "yuklab jo'natildi",
-  closed: "yopildi",
-  item_removed: "pachkadan olindi",
-  badge_queued: "beyjik chop etishga yuborildi",
-}
 
 function LogsPage() {
   const [module, setModule] = useState<string | null>(null)
@@ -260,7 +222,7 @@ function LogsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="max-w-[480px] truncate">
-                    {r.message || (ACTION_LABELS[r.action] ?? r.action)}
+                    {r.message || (AUDIT_ACTION_LABELS[r.action] ?? r.action)}
                   </TableCell>
                 </TableRow>
               ))
@@ -290,7 +252,7 @@ function LogsPage() {
               <DialogHeader>
                 <DialogTitle>
                   {CATEGORY_LABELS[detail.module] ?? detail.module} —{" "}
-                  {ACTION_LABELS[detail.action] ?? detail.action}
+                  {AUDIT_ACTION_LABELS[detail.action] ?? detail.action}
                 </DialogTitle>
                 <DialogDescription>
                   {formatDateTime(detail.created_at)}

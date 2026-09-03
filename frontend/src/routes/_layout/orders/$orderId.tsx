@@ -52,6 +52,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import {
+  AUDIT_ACTION_LABELS,
   deadlineTone,
   FILE_KIND_LABELS,
   formatBytes,
@@ -481,9 +482,15 @@ function OrderDetailPage() {
             order.amount != null ? formatMoney(remainingPayment(order)) : "—"
           }
         />
+        {/* Birliklar bilan — «37 / 111» yalang'och raqam nimaligini aytmasdi */}
         <Meta
-          label="Detallar / nusxalar"
-          value={`${order.parts_count} / ${order.instances_count}`}
+          label="Detallar"
+          value={
+            <>
+              <span className="num">{order.parts_count}</span> xil ·{" "}
+              <span className="num">{order.instances_count}</span> dona
+            </>
+          }
         />
         <Meta label="Ochilgan" value={formatDateTime(order.created_at)} />
         {/* DOIM 8 katak = 4 ustunda 2 to'liq qator: 9-chisi yolg'iz qatorda
@@ -496,12 +503,28 @@ function OrderDetailPage() {
             value={formatDateTime(order.delivered_at)}
           />
         ) : (
+          // Oxirgi AMAL — audit logdan: qachon · kim, ostida nima («matritsa
+          // tahrirlandi»). `updated_at` faqat vaqt edi — «kim?» ga javob yo'q edi.
           <Meta
-            label="Oxirgi tahrir"
+            label="Oxirgi amal"
             value={
-              order.updated_at && order.updated_at !== order.created_at
-                ? formatDateTime(order.updated_at)
-                : "—"
+              order.last_action_at ? (
+                <>
+                  {formatDateTime(order.last_action_at)}
+                  {order.last_action_by_name &&
+                    ` · ${order.last_action_by_name}`}
+                  {order.last_action && (
+                    <div className="text-xs font-normal text-muted-foreground">
+                      {AUDIT_ACTION_LABELS[order.last_action] ??
+                        order.last_action}
+                    </div>
+                  )}
+                </>
+              ) : order.updated_at && order.updated_at !== order.created_at ? (
+                formatDateTime(order.updated_at)
+              ) : (
+                "—"
+              )
             }
           />
         )}

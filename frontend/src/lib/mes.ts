@@ -349,6 +349,47 @@ export const remainingPayment = (o: {
   advance_payment?: string | number | null
 }) => Number(o.amount) - Number(o.advance_payment ?? 0)
 
+/** Audit log amallari — foydalanuvchiga ko'rinadigan nom (Loglar sahifasi va
+ * buyurtma kartasidagi «Oxirgi amal»). Backend `log_action(action=...)` bilan qo'lda oynalangan. */
+export const AUDIT_ACTION_LABELS: Record<string, string> = {
+  recorded: "yozildi",
+  rejected: "rad etildi",
+  cancelled: "bekor qilindi",
+  label_sent: "chek yuborildi",
+  label_cancelled: "chek bekor qilindi",
+  waste_label_sent: "qoldiq cheki yuborildi",
+  waste_label_cancelled: "qoldiq cheki bekor qilindi",
+  created: "yaratildi",
+  updated: "o'zgartirildi",
+  deleted: "o'chirildi",
+  started: "boshlandi",
+  ended: "tugadi",
+  machine_linked: "ish markazi bog'landi",
+  machine_unlinked: "ish markazidan uzildi",
+  login: "tizimga kirdi",
+  login_failed: "kirish rad etildi",
+  logout: "tizimdan chiqdi",
+  can_print_changed: "chek chiqarish o'zgardi",
+  scx_regenerated: "SCX qayta yaratildi",
+  matrix_edited: "matritsa tahrirlandi",
+  code_regenerated: "yangi ulanish kodi",
+  paired: "ulandi",
+  badge_regenerated: "beyjik qayta yaratildi",
+  survey_saved: "anketa saqlandi",
+  survey_photo_added: "anketa rasmi qo'shildi",
+  survey_photo_deleted: "anketa rasmi o'chirildi",
+  delivered: "topshirildi",
+  confirmed: "tasdiqlandi",
+  production_started: "ishlab chiqarishga uzatildi",
+  machines_assigned: "ish markazlari biriktirildi",
+  project_uploaded: "fayl yuklandi",
+  accepted: "TMO ga qabul qilindi",
+  shipped: "yuklab jo'natildi",
+  closed: "yopildi",
+  item_removed: "pachkadan olindi",
+  badge_queued: "beyjik chop etishga yuborildi",
+}
+
 /** Fayl hajmi: 1 KB gacha bayt, 1 MB gacha KB, undan yuqori MB (1 kasr). */
 export function formatBytes(size: number | null | undefined): string {
   if (size == null) return "—"
