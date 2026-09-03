@@ -3,7 +3,7 @@
 
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { ArrowLeft, Printer } from "lucide-react"
-import { useRef } from "react"
+import { useRef, useState } from "react"
 
 import { CutmapView } from "@/components/Terminal/CutmapView"
 import { Button } from "@/components/ui/button"
@@ -21,21 +21,29 @@ function AdminCutmapPage() {
   const { part } = Route.useSearch()
   const navigate = useNavigate()
   const printRef = useRef<(() => void) | null>(null)
+  // Bitta sarlavha qatori (breadcrumb): "← Buyurtma" shu yerda, davomi —
+  // buyurtma raqami › Listlar › №list + list tugmalari — CutmapView'dan
+  // `statsContainer` portali orqali shu slotga tushadi.
+  const [crumbEl, setCrumbEl] = useState<HTMLDivElement | null>(null)
 
   return (
     <div className="flex h-[calc(100dvh-6rem)] flex-col md:h-[calc(100dvh-4rem)]">
-      <div className="print-hide mb-3 flex items-center gap-2">
+      <div className="print-hide mb-3 flex min-h-8 flex-wrap items-center gap-x-1.5 gap-y-1 text-sm">
         <Link
           to="/orders/$orderId"
           params={{ orderId }}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex shrink-0 items-center gap-1 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" /> Buyurtma
         </Link>
+        <div
+          ref={setCrumbEl}
+          className="flex min-w-0 flex-1 items-center gap-2"
+        />
         <Button
           variant="outline"
           size="sm"
-          className="ml-auto"
+          className="shrink-0"
           onClick={() => printRef.current?.()}
         >
           <Printer /> PDF / Chop etish
@@ -46,6 +54,7 @@ function AdminCutmapPage() {
           orderId={Number(orderId)}
           admin
           focusPartKey={part}
+          statsContainer={crumbEl}
           onBack={() =>
             navigate({ to: "/orders/$orderId", params: { orderId } })
           }

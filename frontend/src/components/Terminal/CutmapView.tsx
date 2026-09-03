@@ -11,6 +11,7 @@ import {
 import {
   ArrowLeft,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Maximize2,
   Minus,
@@ -204,7 +205,8 @@ export function CutmapView({
   postCode?: string
   /** Sahifa tepasidagi "PDF / Chop etish" tugmasi shu funksiyani chaqiradi (barcha xaritalar). */
   registerPrint?: (fn: () => void) => void
-  /** Material statistikasi shu elementga portal qilinadi (terminal header); yo'q bo'lsa xarita panelida qoladi */
+  /** Sarlavha shu elementga portal qilinadi: terminalda list nomi headerga,
+   *  adminda breadcrumb dumi + list tugmalari sahifa qatoriga; yo'q bo'lsa xarita ustida qoladi */
   statsContainer?: HTMLElement | null
   /** Toolbar tugmalari shu elementga portal qilinadi (terminal chap ustuni); yo'q bo'lsa o'z ustunida */
   toolbarContainer?: HTMLElement | null
@@ -497,76 +499,91 @@ export function CutmapView({
 
   // Reja ko'rsatkichlari (atxot, rez, to'ldirish, arra, tirim) hech qayerda
   // chizilmaydi (2026-09-03 qarori) — operator ham, texnolog ham ular bilan ish qilmaydi.
-  // Header info: list nomi (ochiq bo'lsa) — bitta portalda
-  const statsRow = material ? (
+  // Terminal header'i: ochiq list nomi (portal). List yopiq — hech narsa.
+  const sheetTitle = sheet && material && (
+    <>
+      №{sheet.disp ?? sheet.no} —{" "}
+      <span className="num">
+        {sheet.L} × {sheet.W} mm
+      </span>
+    </>
+  )
+  const statsRow = sheetTitle ? (
     <div
-      className={`flex w-fit items-center gap-6 ${statsContainer ? "mx-auto" : ""}`}
+      className={`w-fit min-w-0 max-w-[320px] text-base font-black ${statsContainer ? "mx-auto" : ""}`}
     >
-      {sheet && (
-        <div className="min-w-0 max-w-[320px] text-base font-black">
-          <div className="whitespace-nowrap">
-            №{sheet.disp ?? sheet.no} —{" "}
-            <span className="num">
-              {sheet.L} × {sheet.W} mm
-            </span>
-          </div>
-          <div className="truncate text-xs font-normal text-muted-foreground">
-            {material.name}
-          </div>
-        </div>
-      )}
+      <div className="whitespace-nowrap">{sheetTitle}</div>
+      <div className="truncate text-xs font-normal text-muted-foreground">
+        {material.name}
+      </div>
     </div>
   ) : null
 
-  // Web (admin) boshqaruvi: sichqonchaga mo'ljallangan ixcham qator — chapdagi
-  // 68px sensor ustuni 17" terminal uchun, webda u joy yeb qiyshiq ko'rinardi.
-  const webToolbar =
-    admin && sheetIdx !== null ? (
-      <div className="flex items-center gap-1.5">
-        <Button
-          variant="outline"
-          size="icon-sm"
-          disabled={sheetIdx === 0}
-          onClick={() => setSheetIdx(sheetIdx - 1)}
-          title="Oldingi list"
-        >
-          <ChevronUp />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          disabled={sheetIdx >= sheets.length - 1}
-          onClick={() => setSheetIdx(sheetIdx + 1)}
-          title="Keyingi list"
-        >
-          <ChevronDown />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          onClick={() => zoomApi.current?.zin()}
-          title="Kattalashtirish"
-        >
-          <Plus />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          onClick={() => zoomApi.current?.zout()}
-          title="Kichiklashtirish"
-        >
-          <Minus />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          onClick={() => zoomApi.current?.reset()}
-          title="To'liq ko'rinish"
-        >
-          <Maximize2 />
-        </Button>
-      </div>
-    ) : null
+  // Web (admin) sarlavhasi — BITTA qator breadcrumb: "← Buyurtma" (route'da)
+  // B-2026-066 › Listlar › №3 — 2750 × 1830 mm · material  [˄][˅][⤢].
+  // Ikki "orqaga" ustma-ust turmaydi; +/− yo'q — g'ildirak kursor nuqtasiga
+  // zoom qiladi, surish (pan) bor; ⤢ zoom'dan to'liq ko'rinishga qaytaradi.
+  const crumbSep = (
+    <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" />
+  )
+  const adminHeader = admin ? (
+    <>
+      <span className="shrink-0 text-muted-foreground">
+        {data.order_number}
+      </span>
+      {crumbSep}
+      {sheet && material && sheetIdx !== null ? (
+        <>
+          <button
+            type="button"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+            onClick={() => setSheetIdx(null)}
+          >
+            Listlar
+          </button>
+          {crumbSep}
+          <span className="min-w-0 truncate font-semibold text-foreground">
+            {sheetTitle}
+            <span className="font-normal text-muted-foreground">
+              {" "}
+              · {material.name}
+            </span>
+          </span>
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 border-r pr-2">
+            <Button
+              variant="outline"
+              size="icon-sm"
+              disabled={sheetIdx === 0}
+              onClick={() => setSheetIdx(sheetIdx - 1)}
+              title="Oldingi list"
+            >
+              <ChevronUp />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              disabled={sheetIdx >= sheets.length - 1}
+              onClick={() => setSheetIdx(sheetIdx + 1)}
+              title="Keyingi list"
+            >
+              <ChevronDown />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => zoomApi.current?.reset()}
+              title="To'liq ko'rinish"
+            >
+              <Maximize2 />
+            </Button>
+          </div>
+        </>
+      ) : (
+        <span className="font-semibold text-foreground">Kesish xaritalari</span>
+      )}
+    </>
+  ) : null
+  const header = admin ? adminHeader : statsRow
 
   const toolbarButtons = (
     <>
@@ -656,9 +673,7 @@ export function CutmapView({
 
   return (
     <div className="flex h-full gap-3">
-      {statsContainer
-        ? statsRow && createPortal(statsRow, statsContainer)
-        : null}
+      {statsContainer ? header && createPortal(header, statsContainer) : null}
 
       {/* Chap toolbar (GibLab joylashuvi): terminalda umumiy ustunga portal,
           admin sahifada o'z ustunida */}
@@ -671,19 +686,11 @@ export function CutmapView({
       )}
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-        {!statsContainer && (statsRow || webToolbar) && (
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-3">
-              {/* Orqaga-navigatsiya CHAPDA: "Listlar" o'ngda turganda odam
-                  odatiy chapdagi "← Buyurtma"ni bosib sahifadan chiqib ketardi */}
-              {admin && sheetIdx !== null && (
-                <Button size="sm" onClick={() => setSheetIdx(null)}>
-                  <ArrowLeft /> Listlar ro'yxati
-                </Button>
-              )}
-              {statsRow ?? <span />}
-            </div>
-            {webToolbar}
+        {/* Portal berilmagan — sarlavha xarita ustida (terminal: list nomi,
+            admin: breadcrumb qatori) */}
+        {!statsContainer && header && (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            {header}
           </div>
         )}
         {/* Shart `sheet` bo'yicha, `sheetIdx` bo'yicha EMAS: material almashsa
