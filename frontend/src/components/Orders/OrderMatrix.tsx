@@ -28,7 +28,6 @@ import {
   POST_COLORS,
   routeStepNames,
   STANDARD_MATRIX_POSTS,
-  TAIL_CODES,
 } from "@/lib/mes"
 import {
   crudCallbacks,
@@ -39,14 +38,6 @@ import {
 type StageEdits = Record<number, Record<number, boolean>> // part_id -> post_id -> enabled
 type NoteEdits = Record<number, string>
 type CustomEdits = Record<number, boolean> // part_id -> nostandart
-
-// Texnolog chizgan qadamlar soni: tizim dumi (qadoqlash/TMO) va o'chirilgan
-// qadamlar sanalmaydi — aks holda nishon Nostandart tabidagi marshrutdan
-// 1-2 qadam ko'p ko'rsatardi.
-const drawnSteps = (part: MatrixPart) =>
-  part.routes.filter(
-    (r) => r.is_enabled && !TAIL_CODES.includes(r.process_code),
-  ).length
 
 export function OrderMatrix({
   orderId,
@@ -241,16 +232,6 @@ export function OrderMatrix({
                   <span className="block max-w-[220px] truncate text-xs text-muted-foreground">
                     {part.name}
                   </span>
-                  {part.is_custom && (
-                    <span
-                      className="mt-0.5 inline-block rounded-sm bg-amber-100 px-1.5 py-0.5 text-2xs font-bold text-amber-900"
-                      title="Marshrutini texnolog qo'lda chizadi — Nostandart detallar tabida."
-                    >
-                      {drawnSteps(part)
-                        ? "Nostandart"
-                        : "Nostandart · marshrut yo'q"}
-                    </span>
-                  )}
                 </TableCell>
                 <TableCell className="num whitespace-nowrap text-xs">
                   {formatSize(part.length, part.width, part.thickness)}
@@ -299,12 +280,23 @@ export function OrderMatrix({
                     // «✓» hech narsa demasdi — endi marshrutning o'zi, BITTA
                     // satr («Raspil → Kromka → G petlya o'ngdan»): chiplar tor
                     // ustunda har biri alohida qatorga tushib, qatorni cho'zardi.
-                    <span
-                      className="block max-w-[260px] truncate text-xs"
-                      title={routeStepNames(part.routes).join(" → ")}
-                    >
-                      {routeStepNames(part.routes).join(" → ")}
-                    </span>
+                    // Nom ostidagi «Nostandart» belgisi olib tashlandi — ustunning
+                    // o'zi aytadi: marshrut bor (matn) yoki «marshrut yo'q» (amber).
+                    routeStepNames(part.routes).length ? (
+                      <span
+                        className="block max-w-[260px] truncate text-xs"
+                        title={routeStepNames(part.routes).join(" → ")}
+                      >
+                        {routeStepNames(part.routes).join(" → ")}
+                      </span>
+                    ) : (
+                      <span
+                        className="text-xs font-medium text-amber-700"
+                        title="Marshrutini texnolog Nostandart detallar tabida chizadi"
+                      >
+                        marshrut yo'q
+                      </span>
+                    )
                   ) : (
                     <span className="text-muted-foreground/40">—</span>
                   )}

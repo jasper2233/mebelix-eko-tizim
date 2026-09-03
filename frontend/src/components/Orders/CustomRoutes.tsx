@@ -4,6 +4,8 @@
 // Bitta jarayon takrorlanishi mumkin: kromka -> prisadka -> yana kromka.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Link } from "@tanstack/react-router"
+import { Map as MapIcon } from "lucide-react"
 import { useState } from "react"
 
 import { OrdersService } from "@/client"
@@ -13,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
+  chipColors,
   formatSize,
   POST_COLORS,
   PROCESS_OPS,
@@ -185,8 +188,18 @@ export function CustomRoutes({
               }
             >
               <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="font-medium">
+                <span className="flex items-center gap-1.5 font-medium">
                   {part.product_code}_{part.code}
+                  {/* Matritsadagi kabi: detalning listi ochilib, katakchasi belgilanadi */}
+                  <Link
+                    to="/cutmap/$orderId"
+                    params={{ orderId: String(orderId) }}
+                    search={{ part: `${part.product_code}_${part.code}` }}
+                    className="text-muted-foreground/50 hover:text-primary"
+                    title="Kesish xaritasida ko'rsatish"
+                  >
+                    <MapIcon className="size-3.5" />
+                  </Link>
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {part.name}
@@ -224,13 +237,24 @@ export function CustomRoutes({
                       onClick={() => toggle(part.id, codes, code)}
                       className={
                         picks.length
-                          ? "rounded-md border border-primary bg-primary/10 px-2 py-1 text-xs font-medium"
+                          ? "rounded-md border border-transparent px-2 py-1 text-xs font-medium"
                           : "rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-muted disabled:hover:bg-transparent"
+                      }
+                      // Tanlangan qadam POST rangida (matritsa chiplari bilan bir
+                      // til: ARRA apelsin, KROMKA ko'k-yashil…) — primary navy tizim
+                      // rang tiliga yot edi
+                      style={
+                        picks.length
+                          ? chipColors(
+                              POST_COLORS[op.post] ?? "var(--status-draft)",
+                              22,
+                            )
+                          : undefined
                       }
                       title={`${code} · ${op.post}`}
                     >
                       {picks.length > 0 && (
-                        <span className="num mr-1 font-bold text-primary">
+                        <span className="num mr-1 font-bold">
                           {picks.join(",")}
                         </span>
                       )}
@@ -238,10 +262,7 @@ export function CustomRoutes({
                       {/* Tanlanganda POST ham: «nechanchi bo'lib qaysi postga» —
                         ilgari faqat title'da edi */}
                       {picks.length > 0 && (
-                        <span
-                          className="ml-1 text-2xs font-bold uppercase"
-                          style={{ color: POST_COLORS[op.post] }}
-                        >
+                        <span className="ml-1 text-2xs font-bold uppercase opacity-80">
                           {op.post}
                         </span>
                       )}
