@@ -64,17 +64,15 @@ export function TmoView({
       const yangi = cached
         ? d.accepted - cached.rows.filter((r) => r.done).length
         : 1
+      // ID alohida qatorda: matn ichida u defisdan sinib ikkiga bo'linardi
       if (yangi <= 0) {
         playWarning()
-        toast.error(`Allaqachon qabul qilingan: ${qr}`)
+        toast.error("Allaqachon qabul qilingan", { description: qr })
         return
       }
       playSuccess()
-      toast.success(
-        yangi > 1
-          ? `Qadoq qabul qilindi — ${yangi} detal`
-          : `Qabul qilindi: ${qr}`,
-      )
+      if (yangi > 1) toast.success(`Qadoq qabul qilindi — ${yangi} detal`)
+      else toast.success("Qabul qilindi", { description: qr })
     },
     onError: (e) => {
       playError()

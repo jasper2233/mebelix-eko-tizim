@@ -101,6 +101,11 @@ export function PostQueueView({
       ),
     }))
     .sort((a, b) => tier(a) - tier(b) || a.key.localeCompare(b.key))
+  const isFinished = (g: Group) => g.instances.every((i) => i.done)
+  // «Qayerdan olish» — detal HOZIR turgan post (ishi tugagan oxirgisi).
+  // Bajarilgan qatorda ma'nosiz; hech bir qator ko'rsatmasa ustun ham yo'q —
+  // bo'sh ustun sarlavhasi "nimadir yetishmayapti" deb o'qilardi.
+  const showStage = sorted.some((g) => !isFinished(g) && g.first.stage)
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl border bg-white">
@@ -134,9 +139,11 @@ export function PostQueueView({
                 <th className="px-4 py-2.5">O'lchami</th>
                 {/* Detal hozir qaysi postda turibdi — o'sha yerdan olinadi.
                     «Qayerda» emas, «Qayerdan olish»: ustun amalni aytsin */}
-                <th className="whitespace-nowrap px-4 py-2.5">
-                  Qayerdan olish
-                </th>
+                {showStage && (
+                  <th className="whitespace-nowrap px-4 py-2.5">
+                    Qayerdan olish
+                  </th>
+                )}
                 <th className="px-4 py-2.5 text-right">
                   Nusxalar
                   <span className="block whitespace-nowrap text-2xs font-medium normal-case tracking-normal">
@@ -149,8 +156,7 @@ export function PostQueueView({
             <tbody>
               {sorted.map((g) => {
                 const r = g.first
-                const doneN = g.instances.filter((i) => i.done).length
-                const finished = doneN === g.instances.length
+                const finished = isFinished(g)
                 return (
                   <tr
                     key={g.key}
@@ -204,10 +210,11 @@ export function PostQueueView({
                     <td className="num whitespace-nowrap px-4 py-3 text-sm">
                       {formatSize(r.length, r.width, r.thickness)}
                     </td>
-                    {/* Hammasi bajarilgan qatorda «qayerdan olish» ma'nosiz */}
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {!finished && r.stage}
-                    </td>
+                    {showStage && (
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                        {!finished && r.stage}
+                      </td>
+                    )}
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap items-center justify-end gap-1.5">
                         {g.instances.map((i) => (
