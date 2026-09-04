@@ -161,6 +161,27 @@ o'zgarganda `PATCH /orders/{id}/matrix` o'sha helperni O'ZI chaqiradi, ya'ni
 yangi nusxa fayli darhol paydo bo'ladi va texnolog qo'lda qayta yaratishi shart
 emas; `.project` diskda bo'lmasa qayta yaratish jim o'tkazib yuboriladi.
 
+## Vaqtinchalik moslik: `strip_order_prefix` (OLIB TASHLASH KUTILMOQDA)
+
+Prefiks 2026-09-04 da prodga chiqdi. O'shagacha yuklangan buyurtmalarning cheklari
+prefikssiz (`100701_03_002`) va tsexda hafta-oylab yuradi — o'sha kuni prodda 5 290
+jonli prefikssiz nusxa, 3 334 chek chiqarilgan-u TMO ga topshirilmagan. Shu vaqt
+ichida skan yo'li ikkala shaklni qabul qiladi: `giblab/models.py: strip_order_prefix`
+prefiks bo'lsa olib tashlaydi, bo'lmasa satrni o'zgartirmaydi (`qr_part_code` chaqiradi).
+
+**Olib tashlash sharti** — prodda shu so'rov `0` qaytarsa:
+
+```sql
+SELECT count(*) FROM part_instance
+WHERE NOT is_deleted AND qr_text !~ '^B-[0-9]{4}-[0-9]+_';
+```
+
+Shunda ketadi: `strip_order_prefix` va `ORDER_PREFIX_RE` (`models.py`), `qr_part_code`
+dagi chaqiruv (`scanning.py`), shu bo'lim. `ix_part_instance_qr_serial` partial indeksi
+(`2f1649a8968e`) ham `WHERE` shartsiz oddiy UNIQUE ga aylanishi mumkin — alohida
+migratsiya. Tekshirish yo'li: `make check-migrations` + prod nusxasida `alembic upgrade`.
+Eslatma: `docs/04` yetim ustunlar ro'yxatiga tegmaydi — bu ustun emas, satr shakli.
+
 ## Merge qilinmasligi haqida
 
 Ba'zi `-2` juftliklar hamma jihatdan bir xil bo'lishi mumkin (teshigi ham).
