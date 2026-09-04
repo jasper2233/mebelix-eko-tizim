@@ -298,7 +298,7 @@ async def active_session(db: AsyncSession, machine: Machine) -> WorkSession:
     """
     crew = await crew_sessions(db, machine.id)
     if not crew:
-        raise ScanRejected("E005", "Aktiv smena yo'q. Terminalda ismingizni bosing yoki beyjikni scan qiling.")
+        raise ScanRejected("E005", "Aktiv smena yo'q. Terminalda ismingizni bosing yoki beyjikni skanerlang.")
     session = crew[0]
     employee = await db.get(Employee, session.employee_id)
     if employee is None or employee.status != EmployeeStatus.ACTIVE:
@@ -524,7 +524,7 @@ async def record_scan(
     # bo'lmaydi (E008). 2026-09-04 da proyekt tanlanmagan terminalda bajarilib
     # tasdiqlangan. Qadoq skani faqat `pachka.scan_into_pachka` orqali.
     if post.code == PostCode.UPAKOVKA:
-        raise ScanRejected("E002", "Qadoqlash skani faqat qadoq ichiga tushadi — proyektni tanlab, qadoq yarating.")
+        raise ScanRejected("E001", "Qadoqlash skani faqat qadoq ichiga tushadi — buyurtmani tanlab, qadoq yarating.")
     session = await active_session(db, machine)
     return await record_scan_at(
         db, machine=machine, post=post, session=session, qr_text=qr_text, client_event_id=client_event_id
@@ -598,15 +598,15 @@ async def record_scan_at(
         if rows:
             break
     if not rows:
-        raise ScanRejected("E001", "Bu detal uchun tugallanmagan plan topilmadi. Chekni tekshiring.")
+        raise ScanRejected("E001", "Bu chek hech bir buyurtmada topilmadi — chekni tekshiring.")
     # QR buyurtmaga bog'lanmagan (docs/11): ikki jonli buyurtma bitta QR ni ulashishi mumkin — jimgina
     # eng yangisiga yozish o'rniga rad etamiz. CANCELLED faqat E003 xabari uchun, to'qnashuv emas.
     live = [r for r in rows if r[1].status == OrderStatus.PRODUCTION]
     if len(live) > 1:
-        raise ScanRejected("E001", "Bu QR bir nechta buyurtmada uchradi — managerga murojaat qiling.")
+        raise ScanRejected("E001", "Bu QR bir nechta buyurtmada uchradi — menejerga murojaat qiling.")
     instance, order = live[0] if live else rows[0]
     if order.status == OrderStatus.CANCELLED:
-        raise ScanRejected("E003", "Buyurtma bekor qilingan. Managerga murojaat qiling.")
+        raise ScanRejected("E003", "Buyurtma bekor qilingan. Menejerga murojaat qiling.")
 
     part = await db.get(Part, instance.part_id)
     assert part is not None
@@ -682,7 +682,7 @@ async def record_scan_at(
             if done.get(prev.id, 0) < prev.per_instance:
                 prev_post = await db.get(Post, prev.post_id)
                 nom = prev_post.name if prev_post is not None else f"{prev.seq}-qadam"
-                raise ScanRejected("E004", f"Navbat: avval {nom}. Oldingi bosqich yakunlanmagan.")
+                raise ScanRejected("E004", f"Avval {nom} — oldingi bosqich hali yakunlanmagan.")
 
     # MANBALAR-ARO DEDUP. Bitta fizik skan IKKI yo'ldan kelishi mumkin: brauzer
     # terminali (`/scans`, client_event_id = crypto.randomUUID()) va stanok
@@ -739,7 +739,7 @@ async def record_scan_at(
         await db.flush()
     except IntegrityError:  # client_event_id race — treat as replay
         await db.rollback()
-        raise ScanRejected("E001", "Takroriy scan aniqlandi. Qayta urining.") from None
+        raise ScanRejected("E001", "Takroriy skan — qayta urining.") from None
 
     # Inkrement SQL tomonda: ikki terminal bir vaqtda skanlasa Python tomonda
     # o'qib-yozish (`+= 1`) bittasini yo'qotardi va qadam `total_required` ga
@@ -997,9 +997,9 @@ async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Sc
 
     scan = await db.get(Scan, scan_id)
     if scan is None or scan.is_deleted or scan.session_id != session.id:
-        raise ScanRejected("E001", "Scan topilmadi yoki bu sessiyaga tegishli emas.")
+        raise ScanRejected("E001", "Skan topilmadi yoki boshqa smenada yozilgan — bekor qilib bo'lmaydi.")
     if scan.is_cancelled:
-        raise ScanRejected("E001", "Bu scan allaqachon bekor qilingan.")
+        raise ScanRejected("E001", "Bu skan allaqachon bekor qilingan.")
     if datetime.now(UTC) - _utc(scan.created_at) > timedelta(seconds=settings.SCAN_UNDO_SECONDS):
         raise ScanRejected("E001", f"{settings.SCAN_UNDO_SECONDS} sekunddan ko'p o'tdi — faqat admin bekor qila oladi.")
 

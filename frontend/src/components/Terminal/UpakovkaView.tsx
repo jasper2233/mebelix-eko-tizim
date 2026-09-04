@@ -37,7 +37,7 @@ import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatSize } from "@/lib/mes"
 import { cn } from "@/lib/utils"
-import { detailMessage, detailParts } from "@/utils"
+import { detailParts, toastScanError } from "@/utils"
 
 /** Og'irlik TAXMINIY (hajm × zichlik); o'lchamsiz detalda 0 — «yengil» emas, noma'lum */
 const kg = (w: number | undefined) => (w ? `~${w} kg` : "—")
@@ -80,7 +80,7 @@ export function UpakovkaView({
   // bo'lishi mumkin — ekran «ochiq» deb turaverardi
   const fail = (e: unknown) => {
     playError()
-    toast.error(detailMessage(e))
+    toastScanError(e)
     invalidate()
   }
 
@@ -106,7 +106,7 @@ export function UpakovkaView({
       // postlardagi takroriy skan bilan bir)
       if (detailParts(e).code === "E008") playWarning()
       else playError()
-      toast.error(detailMessage(e))
+      toastScanError(e)
       invalidate()
     },
   })

@@ -94,7 +94,18 @@ export function extractErrorMessage(err: unknown): string {
   return structured ? `${code}: ${message}` : message
 }
 
-/** Skan/terminal uchun matn — kod HAR DOIM oldinda (operator uni aytib beradi). */
+/** Skan/terminal xatosi TOAST'i: ishchi XABARni o'qiydi, kod — kichik ikkinchi
+ * qatorda («Kod E008»; operator uni adminga aytadi, Loglar sahifasi izohlaydi).
+ * Ilgari sarlavha «E008: …» edi — kod ishchiga hech narsa demasdi. */
+export function toastScanError(err: unknown): void {
+  const { code, message, structured } = detailParts(err)
+  toast.error(
+    message || code,
+    structured ? { description: `Kod ${code}` } : undefined,
+  )
+}
+
+/** Skan/terminal uchun bir qatorlik matn — kod oldinda (holat sahifasi, log). */
 export function detailMessage(err: unknown): string {
   const { code, message } = detailParts(err)
   return message ? `${code}: ${message}` : code

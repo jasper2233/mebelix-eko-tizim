@@ -5,6 +5,7 @@ import { Undo2 } from "lucide-react"
 
 import { Serial } from "@/components/Terminal/Serial"
 import { Button } from "@/components/ui/button"
+import { scanWord } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 
 export type LastScan =
@@ -57,15 +58,23 @@ export function ScanStrip({
         </>
       ) : scan.kind === "info" ? (
         <>
-          <span className="text-lg font-black text-blue-700">{scan.code}</span>
+          <span className="text-lg font-black text-blue-700">
+            {scanWord(scan.code)}
+          </span>
           <span className="text-base text-blue-900">{scan.message}</span>
+          <span className="num text-xs text-blue-700/60">{scan.code}</span>
         </>
       ) : (
         <>
-          <span className="text-lg font-black text-red-700">{scan.code}</span>
+          {/* Sarlavha — so'z («NAVBAT», «TAKROR»), kod kichik: «E004» ishchiga
+              hech narsa demasdi */}
+          <span className="whitespace-nowrap text-lg font-black text-red-700">
+            {scanWord(scan.code)}
+          </span>
           <span className="truncate text-base text-red-800">
             {scan.message}
           </span>
+          <span className="num text-xs text-red-700/60">{scan.code}</span>
         </>
       )}
       <Button

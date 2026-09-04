@@ -405,6 +405,22 @@ export const SCAN_ERROR_LABELS: Record<string, string> = {
   E009: "Sozlama xatosi (post/ish markazi yo'q) — admin tuzatadi",
 }
 
+/** Terminal tasmasi uchun BIR SO'ZLIK sarlavha — «E008» ishchiga hech narsa
+ * demaydi, «TAKROR» esa uzoqdan o'qiladi. Kod xabar yonida kichik qoladi
+ * (operator uni adminga aytadi, Loglar sahifasi izohlaydi). */
+export const SCAN_CODE_WORDS: Record<string, string> = {
+  E001: "MOS EMAS",
+  E002: "CHEK BUZUQ",
+  E003: "BEKOR",
+  E004: "NAVBAT",
+  E005: "SMENA YO'Q",
+  E006: "BEYJIK",
+  E008: "TAKROR",
+  E009: "SOZLAMA",
+  ATX: "QOLDIQ",
+}
+export const scanWord = (code: string): string => SCAN_CODE_WORDS[code] ?? code
+
 /** «8 soat oldin» — oflayn agent / oxirgi skan qachondan beri (absolyut sana yonida). */
 export function formatAgo(value: string | Date): string {
   const t =

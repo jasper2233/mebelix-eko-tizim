@@ -29,7 +29,7 @@ import {
   playWarning,
 } from "@/components/Terminal/audio"
 import { PostQueueView } from "@/components/Terminal/PostQueueView"
-import { detailMessage } from "@/utils"
+import { toastScanError } from "@/utils"
 
 export function TmoView({
   orderId,
@@ -80,7 +80,7 @@ export function TmoView({
     },
     onError: (e) => {
       playError()
-      toast.error(detailMessage(e))
+      toastScanError(e)
     },
   })
 

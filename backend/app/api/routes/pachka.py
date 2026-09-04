@@ -301,8 +301,9 @@ async def scan_into_pachka(
             client_event_id=f"pack-{pachka.id}-{instance.id}",
         )
     except ScanRejected as exc:
-        await db.rollback()
-        # Rad etilgan urinish ham logga — /scans bilan bir: Loglar sahifasida ko'rinsin
+        # Rad etilgan urinish ham logga — /scans bilan bir: Loglar sahifasida ko'rinsin.
+        # Rollback `log_rejected_scan` ichida: undan OLDIN rollback qilinsa `user`
+        # eskiradi va `user.id` sinxron IO'ga (MissingGreenlet, 500) uradi.
         await log_rejected_scan(db, exc, qr, user_id=user.id)
         raise scan_error(exc.code, exc.message) from None
 

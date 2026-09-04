@@ -52,7 +52,7 @@ import { requireAuth } from "@/lib/guards"
 import { OPERATOR_ROLES, POST_COLORS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { getTerminalContextQueryOptions } from "@/queries/mes"
-import { detailMessage, detailParts } from "@/utils"
+import { detailMessage, detailParts, toastScanError } from "@/utils"
 
 export const Route = createFileRoute("/terminal")({
   component: TerminalPage,
@@ -231,7 +231,7 @@ function TerminalPage() {
           else playError()
           lastScanAtRef.current = Date.now()
           setLastScan({ kind: "error", code, message, at: Date.now() })
-          toast.error(message)
+          toast.error(message, { description: `Kod ${code}` })
         }
       },
       [invalidateWork, ctx, yangiXabar],
@@ -270,7 +270,7 @@ function TerminalPage() {
     },
     onError: (err) => {
       playError()
-      toast.error(detailMessage(err))
+      toastScanError(err)
     },
   })
 
@@ -322,7 +322,7 @@ function TerminalPage() {
       if (code === "E008") playWarning()
       else playError()
       // Shovqinli tsexda ovoz yetarli emas — xato toast bilan ham ko'rsatiladi
-      toast.error(detailMessage(err))
+      toastScanError(err)
       setLastScan({ kind: "error", code, message, at: Date.now() })
     },
   })
@@ -332,13 +332,13 @@ function TerminalPage() {
       ScansService.cancelScan({ path: { scan_id: scanId } }),
     onSuccess: () => {
       playWarning()
-      toast.success("Oxirgi scan bekor qilindi")
+      toast.success("Oxirgi skan bekor qilindi")
       setUndoFor(null)
       setLastScan(null)
       invalidateWork()
     },
     onError: (err) => {
-      toast.error(detailMessage(err))
+      toastScanError(err)
       setUndoFor(null)
     },
   })
@@ -350,7 +350,7 @@ function TerminalPage() {
       }),
     onError: (err) => {
       playError()
-      toast.error(detailMessage(err))
+      toastScanError(err)
       setEndFor(null)
     },
     onSettled: () =>
@@ -807,13 +807,13 @@ function TerminalPage() {
       <ConfirmDialog
         open={!!undoFor}
         onOpenChange={(v) => !v && setUndoFor(null)}
-        title="Oxirgi scanni bekor qilish"
+        title="Oxirgi skanni bekor qilish"
         description={
           undoFor
-            ? `${undoFor.code} scan bekor qilinadi, qoldiq qaytariladi.`
+            ? `${undoFor.code} skani bekor qilinadi, qoldiq qaytariladi.`
             : ""
         }
-        confirmText="Scanni bekor qilish"
+        confirmText="Skanni bekor qilish"
         cancelText="Yopish"
         destructive
         loading={undoMutation.isPending}
