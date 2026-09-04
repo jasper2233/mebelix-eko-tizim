@@ -13,6 +13,7 @@ import { type AuditLogRead, AuditService } from "@/client"
 import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
+import { RowOpenCell } from "@/components/Common/RowOpen"
 import { SearchInput } from "@/components/Common/SearchInput"
 import { TablePagination } from "@/components/Common/TablePagination"
 import { Button } from "@/components/ui/button"
@@ -296,6 +297,8 @@ function LogsPage() {
               {!module && <TableHead className="w-36">Kategoriya</TableHead>}
               <TableHead className="w-44">Amal</TableHead>
               <TableHead>Xabar</TableHead>
+              {/* Strelka ustuni — qator batafsil panelni ochadi */}
+              <TableHead className="w-8" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -339,10 +342,11 @@ function LogsPage() {
                   >
                     {r.message || "—"}
                   </TableCell>
+                  <RowOpenCell />
                 </TableRow>
               ))
             ) : (
-              <EmptyRow colSpan={module ? 4 : 5}>
+              <EmptyRow colSpan={module ? 5 : 6}>
                 Tanlangan filtr bo'yicha log topilmadi
               </EmptyRow>
             )}

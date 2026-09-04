@@ -209,6 +209,13 @@ Dialog maydoni yorlig'i — `useState` bilan yozilgan formalar uchun (`People/Pe
 
 Jadval qatoridagi amal tugmasi: `icon`/`title`/`onClick`, buzuvchi amalga `danger`. O'lcham bitta (`size="icon"` + `size-8`), `danger` odatda kulrang va faqat hoverda qizil. `aria-label` `title` dan olinadi.
 
+### `frontend/src/components/Common/RowOpen.tsx`
+
+**Maqsadi:** «bu qator nimadir ochadi» ishorasi — o'ng chetdagi kichik strelka (`RowOpenCell` = `w-8` katak + xira `ChevronRight`, `aria-hidden`; sarlavhada bo'sh `<TableHead className="w-8" />`). 2026-09-04: ilgari yagona belgi `cursor-pointer` edi, `TableRow` ning O'ZIDA esa `hover:bg-muted/50` bor — Hodimlar, Ish markazlari, MES agentlar va Hisobotlar qatorlari ham yonardi-yu, hech narsa ochmasdi, ya'ni yonish «bosiladi» degani emasdi.
+
+- Ishlatiladi FAQAT qator bosilganda nimadir ochiladigan uch jadvalda: `orders/index` (sahifa), `clients` (mijoz kartasi), `logs` (batafsil panel). Amal tugmalari (`RowAction`, o'chirish) O'Z ustunida qoladi — strelka ulardan KEYIN, alohida ustunda: bittasi «amal», ikkinchisi «ochish».
+- Tanlash uchun bosiladigan qator strelka OLMAYDI (terminal `PrisadkaView` — qator tanlanadi, hech narsa ochilmaydi); TABLO qatori ham olmaydi (uzoqdan o'qiladigan taxta, har qatordagi belgi shovqin).
+
 ### `frontend/src/components/Common/TablePagination.tsx`
 
 Reyestr sahifalagichi: `page` (0 dan), `pageSize`, `total`, `onPage`. Tartib bitta — butun blok o'ngga tekislangan (`justify-end`): avval "N tadan X–Y", keyin `[Oldingi] [k / n] [Keyingi]`. `total === 0` da `null` qaytaradi. Hozircha yagona chaqiruvchi — `logs` (PAGE=50); sahifa hajmi baribir prop bo'lib qoladi, chunki u qator balandligiga bog'liq va har reyestrda boshqacha bo'lishi mumkin.

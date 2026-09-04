@@ -12,6 +12,7 @@ import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
 import { RowAction } from "@/components/Common/RowAction"
+import { RowOpenCell } from "@/components/Common/RowOpen"
 import { SearchInput } from "@/components/Common/SearchInput"
 import { TablePagination } from "@/components/Common/TablePagination"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -114,6 +115,8 @@ function ClientsPage() {
               </TableHead>
               <TableHead>Qo'shilgan</TableHead>
               {canWrite && <TableHead />}
+              {/* Strelka ustuni — qator mijoz kartasini ochadi */}
+              <TableHead className="w-8" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -186,10 +189,11 @@ function ClientsPage() {
                       </div>
                     </TableCell>
                   )}
+                  <RowOpenCell />
                 </TableRow>
               ))
             ) : (
-              <EmptyRow colSpan={canWrite ? 6 : 5}>
+              <EmptyRow colSpan={canWrite ? 7 : 6}>
                 {debounced
                   ? `"${debounced}" bo'yicha mijoz topilmadi.`
                   : "Hali mijoz yo'q — \"+ Yangi mijoz\" bilan qo'shing."}

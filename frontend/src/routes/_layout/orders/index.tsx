@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
+import { RowOpenCell } from "@/components/Common/RowOpen"
 import { SearchInput } from "@/components/Common/SearchInput"
 import { StatusBadge } from "@/components/Common/StatusBadge"
 import { AddOrder } from "@/components/Orders/AddOrder"
@@ -293,6 +294,8 @@ function OrdersPage() {
               />
               <TableHead>Holat</TableHead>
               <TableHead className="w-10" aria-label="Amallar" />
+              {/* Strelka ustuni — qator sahifa ochadi */}
+              <TableHead className="w-8" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -380,10 +383,11 @@ function OrdersPage() {
                       </Button>
                     )}
                   </TableCell>
+                  <RowOpenCell />
                 </TableRow>
               ))
             ) : (
-              <EmptyRow colSpan={9}>
+              <EmptyRow colSpan={10}>
                 {debounced
                   ? `"${debounced}" bo'yicha buyurtma topilmadi.`
                   : status
