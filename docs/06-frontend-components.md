@@ -547,13 +547,13 @@ Chap toolbar tugmasi: ikonka + `text-2xs` yozuv (`index.css` da 0.6875rem), `h-1
 
 ### `frontend/src/components/Terminal/OrderPicker.tsx`
 
-**Maqsadi:** proyekt tanlagichi — HAMMA post sahifasi shundan boshlanadi. Kartada raqam, loyiha nomi, prioritet badge'i, materiallar, `done/total` progress va qoldiq, listlar soni, muddat rangi. `done/total` va `sheets_total` post semantikasida (backend `/terminal/orders` hisoblaydi: ARRA — chek∪skan, o'z listlari; KROMKA — detal bo'yicha). Props: `onPick`, `title?`, `showCutmapBadge?`.
+**Maqsadi:** proyekt tanlagichi — HAMMA post sahifasi shundan boshlanadi. Kartada LOYIHA NOMI katta (2026-09-04: raqam bilan o'rin almashdi — ishchi buyurtmani nomidan taniydi, chekda ham nom sarlavha; nomsiz buyurtmada raqam katta), raqam xira `num`, prioritet badge'i, materiallar, `done/total` progress va qoldiq, listlar soni, muddat rangi. `done/total` va `sheets_total` post semantikasida (backend `/terminal/orders` hisoblaydi: ARRA — chek∪skan, o'z listlari; KROMKA — detal bo'yicha). Props: `onPick`, `title?`, `showCutmapBadge?`.
 
 ### `frontend/src/components/Terminal/PostHeader.tsx`
 
-**Maqsadi:** post ekranlarining umumiy sarlavhasi — "Orqaga" tugmasi + buyurtma raqami + loyiha nomi. Ilgari beshta ekran shu blokni so'zma-so'z ko'chirib yozgan va bir-biridan uzoqlashgan edi (loyiha nomi ba'zisida tushib qolgandi).
+**Maqsadi:** post ekranlarining umumiy sarlavhasi — "Orqaga" tugmasi + LOYIHA NOMI (katta, `text-lg font-black`) + buyurtma raqami (xira, `num` — Detal ID prefiksi `B-2026-072_` bilan solishtirish uchun). 2026-09-04 gacha teskari edi; chekda (`labels.py`) ham loyiha nomi sarlavha, ishchi buyurtmani «Farhod parta» deb biladi. Ilgari beshta ekran shu blokni so'zma-so'z ko'chirib yozgan va bir-biridan uzoqlashgan edi (loyiha nomi ba'zisida tushib qolgandi).
 
-- Props: `onBack`, `orderNumber`, `projectName?` (sxemasida bu maydon yo'q post — KROMKA — bermaydi, o'shanda satr chizilmaydi), `className?`, `children?` (o'ngdagi farqlar: progress, tugmalar, badge).
+- Props: `onBack`, `orderNumber`, `projectName?` (bo'lmasa sarlavha raqamning o'zi; `KromkaOrderState` ham 2026-09-04 dan `project_name` beradi), `className?`, `children?` (o'ngdagi farqlar: progress, tugmalar, badge).
 - Chaqiruvchilar: `TmoView`, `UpakovkaView`, `KromkaView`, `PrisadkaView` (ROVER va SCX shoxlari), `PostQueueView`. Raqam `min-w-0`/`truncate` ichida — uzun raqamda ellips.
 
 ### `frontend/src/components/Terminal/PostProgress.tsx`
@@ -737,3 +737,5 @@ MACHINE_BOUND_ROLES, TERMINAL_STATUSES, formatSize),
 @/lib/anketa (variant kataloglari, labelOf/labelsOf), @/lib/scxDir (papka + scxFileUrl),
 @/utils (handleError, getInitials).
 ```
+
+2026-09-04 (terminal atamalar tozalovi, 1–4-qadam ekranlari): legendalar bir tartib va bir so'z — kulrang → sariq → «✓ bajarildi» (`KromkaView` «qilingan / tomon · ✓ bajarildi», `PrisadkaView` SCX jadvali «kulrang — chek yo'q · sariq — chek chiqqan, skan kutilmoqda · ✓ bajarildi», ilgari «✓ tugadi · … 1/2 = skan»); texnolog ishi bo'lgan xabarlar ishchiga buyruq bermaydi (`CutmapView` xarita yo'q — «Texnologga ayting», «(TEMPLATE)» va mavjud bo'lmagan «oddiy vazifalar ro'yxati» ketdi; `PartCard` ro'yxatsiz qoldiq — «texnolog project faylni qayta yuklashi kerak»); `PrisadkaView` SCX papkasi ochilmasa saqlangan handle tozalanadi (`scxDir.clearSavedDir`) — keyingi bosishda tanlash dialogi qayta ochiladi (toast o'chirilgan «Papka tugmasi»ga yo'llardi); `PostQueueView.LABELS` dan o'lik `ready` ketdi.

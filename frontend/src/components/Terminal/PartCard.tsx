@@ -363,8 +363,8 @@ export function PartCard({
             )}
             {waste && !wasteItem && (
               <div className="text-muted-foreground">
-                Bu qoldiq ro'yxatga olinmagan (eski yuklama) — project faylni
-                qayta yuklang.
+                Bu qoldiq ro'yxatda yo'q — texnolog project faylni qayta
+                yuklashi kerak.
               </div>
             )}
           </div>

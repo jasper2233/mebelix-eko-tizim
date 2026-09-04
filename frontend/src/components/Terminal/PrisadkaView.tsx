@@ -33,6 +33,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useScanFlash } from "@/hooks/useScanFlash"
 import { formatSize } from "@/lib/mes"
 import {
+  clearSavedDir,
   dirSupported,
   getSavedDir,
   pickDir,
@@ -212,10 +213,13 @@ export function PrisadkaView({
     } catch (e) {
       // Saqlangan papka o'chirilgan/ko'chirilgan yoki flesh olib qo'yilgan —
       // tugma jimgina qaytmasin, operator papkani qayta tanlashi kerakligini bilsin
-      if ((e as Error)?.name !== "AbortError")
+      if ((e as Error)?.name !== "AbortError") {
+        await clearSavedDir()
+        setDirName(null)
         toast.error(
-          "SCX papkasini ochib bo'lmadi — Papka tugmasi bilan qayta tanlang",
+          "SCX papkasini ochib bo'lmadi — qayta bosing va papkani tanlang",
         )
+      }
     } finally {
       setProgress(null)
     }
@@ -481,7 +485,8 @@ export function PrisadkaView({
               <th className="px-4 py-2.5">
                 Detal ID · SCX
                 <span className="block text-2xs font-medium normal-case tracking-normal">
-                  ✓ tugadi · sariq — chek chiqqan / yarim · 1/2 = skan
+                  kulrang — chek yo'q · sariq — chek chiqqan, skan kutilmoqda ·
+                  ✓ bajarildi
                 </span>
               </th>
               <th className="px-4 py-2.5 text-right">

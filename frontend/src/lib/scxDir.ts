@@ -70,6 +70,13 @@ export async function getSavedDir(): Promise<FileSystemDirectoryHandle | null> {
   }
 }
 
+/** Saqlangan papka o'chirilgan/ko'chirilgan — eslab qolinganini tashlaymiz,
+ *  keyingi bosishda tanlash dialogi qayta ochiladi (aks holda o'sha o'lik
+ *  handle har safar yiqilaverardi) */
+export function clearSavedDir(): Promise<void> {
+  return kvSet(KEY, null)
+}
+
 /** Papka tanlash dialogi — tanlangani saqlanadi (bir marta so'raladi) */
 export async function pickDir(): Promise<FileSystemDirectoryHandle | null> {
   try {

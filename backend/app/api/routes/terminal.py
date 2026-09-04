@@ -592,6 +592,7 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
     return KromkaOrderState(
         order_id=order.id,
         order_number=order.number,
+        project_name=order.project_name,
         parts=[
             KromkaPartRow(
                 part_id=part.id,

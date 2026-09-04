@@ -1219,6 +1219,10 @@ export type KromkaOrderState = {
      */
     order_number: string;
     /**
+     * Project Name
+     */
+    project_name: string | null;
+    /**
      * Parts
      */
     parts: Array<KromkaPartRow>;

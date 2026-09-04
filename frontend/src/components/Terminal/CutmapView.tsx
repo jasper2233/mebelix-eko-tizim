@@ -449,8 +449,8 @@ export function CutmapView({
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
         <p className="max-w-md text-muted-foreground">
-          Kesish xaritasi mavjud emas — fayl GibLabda optimizatsiya qilinmagan
-          (TEMPLATE). Oddiy vazifalar ro'yxatidan foydalaning.
+          Kesish xaritasi yo'q — fayl GibLabda optimizatsiya qilinmagan.
+          Texnologga ayting.
         </p>
         <Button
           variant="outline"

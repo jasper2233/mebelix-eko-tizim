@@ -16,7 +16,7 @@ export function PostHeader({
 }: {
   onBack: () => void
   orderNumber?: string
-  /** Sxemasida bu maydon yo'q post (KROMKA) bermaydi — o'shanda satr chizilmaydi */
+  /** Bo'lmasa (loyiha nomsiz buyurtma) sarlavha raqamning o'zi */
   projectName?: string | null
   className?: string
   children?: ReactNode
@@ -32,11 +32,16 @@ export function PostHeader({
       >
         <ArrowLeft /> Orqaga
       </Button>
+      {/* Loyiha nomi KATTA: chekda ham u sarlavha (labels.py), ishchi
+          buyurtmani «Farhod parta» deb biladi. Raqam xira — Detal ID
+          prefiksi (B-2026-072_) bilan solishtirish uchun yetadi. */}
       <div className="min-w-0">
-        <div className="truncate text-lg font-black">{orderNumber}</div>
+        <div className="truncate text-lg font-black">
+          {projectName || orderNumber}
+        </div>
         {projectName && (
-          <div className="truncate text-xs text-muted-foreground">
-            {projectName}
+          <div className="num truncate text-xs text-muted-foreground">
+            {orderNumber}
           </div>
         )}
       </div>

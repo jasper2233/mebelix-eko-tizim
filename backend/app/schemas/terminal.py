@@ -120,6 +120,7 @@ class KromkaOrderState(BaseModel):
 
     order_id: int
     order_number: str
+    project_name: str | None
     parts: list[KromkaPartRow]
 
 

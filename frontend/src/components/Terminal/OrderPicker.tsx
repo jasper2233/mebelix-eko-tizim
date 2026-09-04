@@ -65,10 +65,16 @@ export function OrderPicker({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="text-base font-black">{o.number}</div>
-                    <div className="truncate text-sm text-muted-foreground">
-                      {o.project_name ?? ""}
+                    {/* Loyiha nomi katta — PostHeader bilan bir: ishchi
+                        buyurtmani nomidan taniydi, raqam chek prefiksi */}
+                    <div className="truncate text-base font-black">
+                      {o.project_name || o.number}
                     </div>
+                    {o.project_name && (
+                      <div className="num text-sm text-muted-foreground">
+                        {o.number}
+                      </div>
+                    )}
                   </div>
                   {o.priority && (
                     <span

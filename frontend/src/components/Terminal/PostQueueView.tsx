@@ -22,9 +22,9 @@ import { formatSize } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 
 //: Post nomiga moslangan sarlavhalar — "bo'yalgan" stolyarkada mos kelmaydi.
-const LABELS: Record<string, { ready: string; done: string }> = {
-  BOYOQ: { ready: "Bo'yashga kelgan", done: "Bo'yalgan" },
-  STOLYARKA: { ready: "Stolyarkaga kelgan", done: "Bajarilgan" },
+const LABELS: Record<string, { done: string }> = {
+  BOYOQ: { done: "Bo'yalgan" },
+  STOLYARKA: { done: "Bajarilgan" },
 }
 
 /** Nusxa raqami — chekdagi ID dumi (`…_01_001_10` → 10); dumsiz yagona nusxa → 1 */
@@ -64,10 +64,7 @@ export function PostQueueView({
   if (isError) return <QueryError onRetry={() => refetch()} />
 
   const rows = data?.rows ?? []
-  const label = LABELS[data?.post_code ?? ""] ?? {
-    ready: "Ishga tayyor",
-    done: "Bajarilgan",
-  }
+  const label = LABELS[data?.post_code ?? ""] ?? { done: "Bajarilgan" }
   // Material faqat bo'yoqchiga kerak — u uchun bu RANG/pardoz («LMDF BELI
   // KARONA GLYANETS»). Stolyarda detal qo'lida, materiali chekda — shovqin.
   const showMaterial = data?.post_code === "BOYOQ"

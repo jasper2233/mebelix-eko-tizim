@@ -217,7 +217,11 @@ export function KromkaView({
     <div className="flex h-full min-h-0 gap-3">
       {/* CHAP: arradan kelgan detallar, progress joyida ko'rinadi */}
       <div className="flex min-w-0 flex-1 flex-col rounded-xl border bg-white">
-        <PostHeader onBack={onBack} orderNumber={data?.order_number}>
+        <PostHeader
+          onBack={onBack}
+          orderNumber={data?.order_number}
+          projectName={data?.project_name}
+        >
           {/* Yarim yo'ldagi nusxalar soni — ular jadval tepasida sariq */}
           {!oval && inProgressCount > 0 && (
             <span className="num ml-auto rounded-md bg-amber-100 px-2.5 py-1 text-sm font-bold text-amber-800">
@@ -250,7 +254,7 @@ export function KromkaView({
                       nusxa, raqam qilingan/jami tomon */}
                   Nusxalar
                   <span className="block whitespace-nowrap text-2xs font-medium normal-case tracking-normal">
-                    qilingan / tomon · ✓ tugadi
+                    qilingan / tomon · ✓ bajarildi
                   </span>
                 </th>
               </tr>
