@@ -16,7 +16,7 @@ import { TableCell } from "@/components/ui/table"
 
 export function RowOpenCell() {
   return (
-    <TableCell className="w-8 pr-3">
+    <TableCell className="w-6 px-1 md:w-8 md:pr-3 md:pl-2">
       {/* Bezak: qatorning o'zi bosiladi, strelka alohida nishon emas */}
       <ChevronRight
         aria-hidden

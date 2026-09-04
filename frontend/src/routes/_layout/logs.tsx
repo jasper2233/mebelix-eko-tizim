@@ -201,7 +201,7 @@ function LogsPage() {
       />
 
       {/* Modul tab'lari — sonlari bilan; faqat yozuvi bor modullar */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className="mb-3 flex flex-nowrap items-center gap-2 overflow-x-auto md:flex-wrap [&>*]:shrink-0">
         <FilterChip active={module === null} onClick={() => pickModule(null)}>
           Hammasi <Count n={allCount} />
         </FilterChip>
@@ -291,11 +291,21 @@ function LogsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-44">Vaqt</TableHead>
-              <TableHead className="w-44">Kim</TableHead>
+              {/* Telefonda Kim va Vaqt bitta ustun (odam qalin, vaqt xira) — Xabar
+                  uchun joy qoladi; md+ da alohida ustunlar */}
+              <TableHead className="md:w-44">
+                <span className="md:hidden">Kim · </span>Vaqt
+              </TableHead>
+              <TableHead className="hidden md:table-cell md:w-44">
+                Kim
+              </TableHead>
               {/* Modul tanlanganda kategoriya ustuni takror — yashiriladi */}
-              {!module && <TableHead className="w-36">Kategoriya</TableHead>}
-              <TableHead className="w-44">Amal</TableHead>
+              {!module && (
+                <TableHead className="hidden md:table-cell w-36">
+                  Kategoriya
+                </TableHead>
+              )}
+              <TableHead className="hidden md:table-cell w-44">Amal</TableHead>
               <TableHead>Xabar</TableHead>
               {/* Strelka ustuni — qator batafsil panelni ochadi */}
               <TableHead className="w-8" />
@@ -303,48 +313,58 @@ function LogsPage() {
           </TableHeader>
           <TableBody>
             {rows.length ? (
-              rows.map((r) => (
-                <TableRow
-                  key={r.id}
-                  className={cn(
-                    "cursor-pointer focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
-                    detail?.id === r.id && "bg-muted/60",
-                  )}
-                  tabIndex={0}
-                  onClick={() => setDetail(r)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault()
-                      setDetail(r)
-                    }
-                  }}
-                >
-                  <TableCell className="num whitespace-nowrap text-muted-foreground">
-                    {formatDateTimeSec(r.created_at)}
-                  </TableCell>
-                  <TableCell className="max-w-44 truncate">
-                    {/* Odam birinchi: skanda hodim ham, terminal hisobi ham bor */}
-                    {r.employee_name || r.user_name || (
-                      <span className="text-muted-foreground">tizim</span>
+              rows.map((r) => {
+                // Odam birinchi: skanda hodim ham, terminal hisobi ham bor
+                const who = r.employee_name || r.user_name || (
+                  <span className="text-muted-foreground">tizim</span>
+                )
+                return (
+                  <TableRow
+                    key={r.id}
+                    className={cn(
+                      "cursor-pointer focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+                      detail?.id === r.id && "bg-muted/60",
                     )}
-                  </TableCell>
-                  {!module && (
-                    <TableCell className="text-muted-foreground">
-                      {moduleLabel(r.module)}
-                    </TableCell>
-                  )}
-                  <TableCell>
-                    <ActionBadge action={r.action} />
-                  </TableCell>
-                  <TableCell
-                    className="max-w-[520px] truncate"
-                    title={r.message ?? undefined}
+                    tabIndex={0}
+                    onClick={() => setDetail(r)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        setDetail(r)
+                      }
+                    }}
                   >
-                    {r.message || "—"}
-                  </TableCell>
-                  <RowOpenCell />
-                </TableRow>
-              ))
+                    <TableCell className="num whitespace-normal text-muted-foreground md:whitespace-nowrap">
+                      <div className="font-medium text-foreground md:hidden">
+                        {who}
+                      </div>
+                      {formatDateTimeSec(r.created_at)}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell md:max-w-44 md:truncate">
+                      {who}
+                    </TableCell>
+                    {!module && (
+                      <TableCell className="hidden md:table-cell text-muted-foreground">
+                        {moduleLabel(r.module)}
+                      </TableCell>
+                    )}
+                    <TableCell className="hidden md:table-cell">
+                      <ActionBadge action={r.action} />
+                    </TableCell>
+                    {/* md+: qolgan kenglik + bir qator (`max-w-0` faqat nowrap bilan ishlaydi);
+                      telefonda 2 qator, uzun ID lar sindiriladi */}
+                    <TableCell
+                      className="max-md:wrap-anywhere max-md:whitespace-normal md:w-full md:max-w-0"
+                      title={r.message ?? undefined}
+                    >
+                      <div className="max-md:line-clamp-2 md:truncate">
+                        {r.message || "—"}
+                      </div>
+                    </TableCell>
+                    <RowOpenCell />
+                  </TableRow>
+                )
+              })
             ) : (
               <EmptyRow colSpan={module ? 5 : 6}>
                 Tanlangan filtr bo'yicha log topilmadi

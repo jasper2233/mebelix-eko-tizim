@@ -217,9 +217,9 @@ function ProductivityTable({ params }: { params: RangeParams }) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>#</TableHead>
+            <TableHead className="hidden md:table-cell">#</TableHead>
             <TableHead>Hodim</TableHead>
-            <TableHead>Lavozim</TableHead>
+            <TableHead className="hidden md:table-cell">Lavozim</TableHead>
             {/* `title` — ustun ma'nosi sarlavhaning o'zida (Mijozlar ABC kabi):
                 «skan» nima, «faol soat» nima — raqam yolg'iz o'zi tushuntirmaydi */}
             <TableHead
@@ -235,16 +235,19 @@ function ProductivityTable({ params }: { params: RangeParams }) {
               Ulush
             </TableHead>
             <TableHead
-              className="text-right"
+              className="hidden md:table-cell text-right"
               title="Kamida bitta skan bo'lgan kunlar"
             >
               Faol kunlar
             </TableHead>
-            <TableHead className="text-right" title="Skanlar ÷ faol kunlar">
+            <TableHead
+              className="hidden md:table-cell text-right"
+              title="Skanlar ÷ faol kunlar"
+            >
               Kuniga
             </TableHead>
             <TableHead
-              className="text-right"
+              className="hidden md:table-cell text-right"
               title="Skanlar ÷ kamida bitta skan bo'lgan soatlar — ish tempi, smena uzunligi emas"
             >
               Faol soatiga
@@ -255,11 +258,13 @@ function ProductivityTable({ params }: { params: RangeParams }) {
           {rows.length ? (
             rows.map((e, i) => (
               <TableRow key={e.employee_id}>
-                <TableCell className="num text-muted-foreground">
+                <TableCell className="hidden md:table-cell num text-muted-foreground">
                   {i + 1}
                 </TableCell>
                 <TableCell className="font-medium">{e.full_name}</TableCell>
-                <TableCell>{e.position ?? "—"}</TableCell>
+                <TableCell className="hidden md:table-cell">
+                  {e.position ?? "—"}
+                </TableCell>
                 <TableCell className="num text-right font-semibold">
                   {groupThousands(String(e.total_scans))}
                 </TableCell>
@@ -268,11 +273,15 @@ function ProductivityTable({ params }: { params: RangeParams }) {
                     ? `${Math.round((e.total_scans / total) * 100)}%`
                     : "—"}
                 </TableCell>
-                <TableCell className="num text-right">
+                <TableCell className="hidden md:table-cell num text-right">
                   {e.active_days}
                 </TableCell>
-                <TableCell className="num text-right">{e.per_day}</TableCell>
-                <TableCell className="num text-right">{e.per_hour}</TableCell>
+                <TableCell className="hidden md:table-cell num text-right">
+                  {e.per_day}
+                </TableCell>
+                <TableCell className="hidden md:table-cell num text-right">
+                  {e.per_hour}
+                </TableCell>
               </TableRow>
             ))
           ) : (
@@ -354,14 +363,16 @@ function OrdersTable({ params }: { params: RangeParams }) {
           <TableRow>
             <TableHead>Raqam</TableHead>
             <TableHead>Mijoz</TableHead>
-            <TableHead>Holat</TableHead>
-            <TableHead>Ochilgan</TableHead>
+            <TableHead className="hidden md:table-cell">Holat</TableHead>
+            <TableHead className="hidden md:table-cell">Ochilgan</TableHead>
             <TableHead>Muddat</TableHead>
-            <TableHead>Ishga tushgan</TableHead>
-            <TableHead>Tayyor</TableHead>
-            <TableHead>Topshirilgan</TableHead>
+            <TableHead className="hidden md:table-cell">
+              Ishga tushgan
+            </TableHead>
+            <TableHead className="hidden md:table-cell">Tayyor</TableHead>
+            <TableHead className="hidden md:table-cell">Topshirilgan</TableHead>
             <TableHead
-              className="text-right"
+              className="hidden md:table-cell text-right"
               title="Ishga tushgandan tayyor bo'lguncha"
             >
               Ishlab chiqarish
@@ -377,42 +388,42 @@ function OrdersTable({ params }: { params: RangeParams }) {
                 <TableRow key={r.number}>
                   <TableCell className="font-semibold">{r.number}</TableCell>
                   <TableCell
-                    className="max-w-[220px] truncate"
+                    className="max-w-[110px] truncate md:max-w-[220px]"
                     title={r.client_name}
                   >
                     {r.client_name}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <StatusBadge status={r.status} />
                   </TableCell>
-                  <TableCell className="num">
+                  <TableCell className="hidden md:table-cell num">
                     {formatDate(r.created_at)}
                   </TableCell>
-                  <TableCell className="num whitespace-nowrap">
-                    {formatDate(r.deadline)}
+                  <TableCell className="num whitespace-normal md:whitespace-nowrap">
+                    {formatDate(r.deadline)}{" "}
                     {/* Faol va kechikkan — qizil chip (hozir muammo); tugagan,
                         lekin kech — sariq matn (tarix, bugungi muammo emas) */}
                     {lateBy > 0 &&
                       (ACTIVE_STATUSES.has(r.status) ? (
-                        <span className="ml-1.5 rounded-sm bg-red-100 px-1.5 py-0.5 text-2xs font-bold text-red-700">
+                        <span className="ml-1.5 whitespace-nowrap rounded-sm bg-red-100 px-1.5 py-0.5 text-2xs font-bold text-red-700">
                           {lateBy} KUN KECH
                         </span>
                       ) : (
-                        <span className="ml-1.5 text-2xs font-semibold text-amber-700">
+                        <span className="ml-1.5 whitespace-nowrap text-2xs font-semibold text-amber-700">
                           {lateBy} kun kech
                         </span>
                       ))}
                   </TableCell>
-                  <TableCell className="num">
+                  <TableCell className="hidden md:table-cell num">
                     {formatDate(r.production_started_at)}
                   </TableCell>
-                  <TableCell className="num">
+                  <TableCell className="hidden md:table-cell num">
                     {formatDate(r.completed_at)}
                   </TableCell>
-                  <TableCell className="num">
+                  <TableCell className="hidden md:table-cell num">
                     {formatDate(r.delivered_at)}
                   </TableCell>
-                  <TableCell className="num text-right">
+                  <TableCell className="hidden md:table-cell num text-right">
                     {duration(r.production_started_at, r.completed_at)}
                   </TableCell>
                   {withReason && (

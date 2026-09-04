@@ -65,7 +65,7 @@ export function DatePicker({
             className={cn(
               "w-full justify-start gap-2 font-normal",
               !value && "text-muted-foreground",
-              value && "pr-10",
+              value && "pr-10 has-[>svg]:pr-10",
             )}
           >
             <CalendarDays className="size-4 shrink-0 opacity-70" />
