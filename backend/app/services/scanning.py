@@ -11,7 +11,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import Row, case, func, select, update
+from sqlalchemy import case, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -579,26 +579,24 @@ async def record_scan_at(
             duplicate=True,
         )
 
-    # Locate the copy among live orders. Eski chop etilgan yorliqlar (migratsiyadan
-    # oldin yagona nusxa ham `_1` bilan chiqqan) uchun suffikssiz variant ham sinaladi.
-    rows: list[Row[tuple[PartInstance, Order]]] = []
-    for cand in [qr, qr[:-2]] if qr.endswith("_1") else [qr]:
-        rows = list(
-            (
-                await db.execute(
-                    select(PartInstance, Order)
-                    .join(Order, Order.id == PartInstance.order_id)
-                    .where(
-                        PartInstance.qr_text == cand,
-                        PartInstance.is_deleted == False,  # noqa: E712
-                        Order.is_deleted == False,  # noqa: E712
-                        Order.status.in_([OrderStatus.PRODUCTION, OrderStatus.CANCELLED]),
-                    )
+    # Locate the copy among live orders — AYNAN moslik. 2026-08-02 gacha yagona nusxa
+    # ham `_1` bilan chop etilgan va shu uchun `qr[:-2]` fallback bor edi; 2026-09-04
+    # prod nusxasida bunday jonli nusxa 0 ta — olib tashlandi (u haqiqiy `_1` nusxani
+    # boshqa detalga moslashtirib yuborishi ham mumkin edi).
+    rows = list(
+        (
+            await db.execute(
+                select(PartInstance, Order)
+                .join(Order, Order.id == PartInstance.order_id)
+                .where(
+                    PartInstance.qr_text == qr,
+                    PartInstance.is_deleted == False,  # noqa: E712
+                    Order.is_deleted == False,  # noqa: E712
+                    Order.status.in_([OrderStatus.PRODUCTION, OrderStatus.CANCELLED]),
                 )
-            ).all()
-        )
-        if rows:
-            break
+            )
+        ).all()
+    )
     if not rows:
         raise ScanRejected("E001", "Bu chek hech bir buyurtmada topilmadi — chekni tekshiring.")
     # QR buyurtmaga bog'lanmagan (docs/11): ikki jonli buyurtma bitta QR ni ulashishi mumkin — jimgina

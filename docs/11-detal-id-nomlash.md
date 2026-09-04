@@ -136,20 +136,22 @@ sababli bitta chek ID si va bitta bekor qilish tugmasini ko'rsatadi
 | Bazadagi `part_instance.qr_text` | `ingest.py` (`ParsedPart.serial_qrs(order.number)` → `instance_qr` — `giblab/models.py`; `qr_texts` faqat fayl ichidagi to'qnashuv tekshiruvi uchun), matritsada son o'zgarsa `orders/matrix.py _resize_instances` (o'sha PATCH ichida SCX fayllari ham `ingest.rebuild_order_scx` bilan qayta yaratiladi — nom QR bilan mos qolsin) |
 | Chekdagi matn qatori va QR | `services/labels.py` (`qr_text`; `qr_part_code` — `scanning.py` dan import) |
 | SCX fayl nomi va ichidagi Panel ID | `services/giblab/scx.py` (`build_scx_files`; nomlar ingestda parser bergan `qr_texts`dan, qayta yaratishda bazadagi QR'lardan) |
-| Skan tekshiruvi | `services/scanning.py` (aynan moslik + eski `_1` yorliqlar uchun fallback); `api/routes/terminal.py` (`resolve_terminal_qr` — o'sha fallbackning ikkinchi nusxasi); `api/routes/pachka.py` (qadoqqa skan — FAQAT aynan moslik, fallback yo'q) |
-| Terminal UI (banner, navbat, arra, kromka, prisadka, TMO) | Asosan `qr_text` to'g'ridan ko'rsatiladi, qismlarga ajratilmaydi: ARRA (`PartCard`), navbat (`PostQueueView`), TMO (`TmoView`), PRISADKA nusxa chiplari, `KromkaView` ning «Jarayonda» paneli va O'Z skani banneri (`terminal.tsx` — `code: r.qr_text`). To'rt istisno: (a) KROMKA va PRISADKA jadvallarining «Kod» ustuni backend qurgan `{product_code}_{part.code}` ni, ya'ni `_n` SIZ satrni chiqaradi (sxema maydoni `code`, `terminal.py`) — `KromkaView` nusxalarida esa faqat `№{instance_no}`, `qr_text` `title=` tooltipida qoladi; (b) WS orqali kelgan BEGONA skan bannerida `part_code` chiqadi (`terminal.tsx` — `code: String(p.part_code ?? "")`); (c) `KromkaView` skan matnidan oxirgi `_1` ni kesib ham sinaydi (backend fallbackining frontend nusxasi); (d) navbatdagi YIG'MA bog'lami — detal ostidagi `Yig'ma:` qatori bolalar detallarini `{product_code}_{child.code} ×{har bir otaga soni}` deb yozadi, ya'ni yana `_n` SIZ kalit (`terminal.py` `PostQueueRow.assembly` → `PostQueueView`) |
+| Skan tekshiruvi | `services/scanning.py`, `api/routes/terminal.py` (`resolve_terminal_qr`), `api/routes/pachka.py` — uchalasi FAQAT aynan moslik (buyurtma prefiksi `strip_order_prefix` bilan olinadi, `_1` fallback 2026-09-04 da olib tashlangan) |
+| Terminal UI (banner, navbat, arra, kromka, prisadka, TMO) | Asosan `qr_text` to'g'ridan ko'rsatiladi, qismlarga ajratilmaydi: ARRA (`PartCard`), navbat (`PostQueueView`), TMO (`TmoView`), PRISADKA nusxa chiplari, `KromkaView` ning «Jarayonda» paneli va O'Z skani banneri (`terminal.tsx` — `code: r.qr_text`). To'rt istisno: (a) KROMKA va PRISADKA jadvallarining «Kod» ustuni backend qurgan `{product_code}_{part.code}` ni, ya'ni `_n` SIZ satrni chiqaradi (sxema maydoni `code`, `terminal.py`) — `KromkaView` nusxalarida esa faqat `№{instance_no}`, `qr_text` `title=` tooltipida qoladi; (b) WS orqali kelgan BEGONA skan bannerida `part_code` chiqadi (`terminal.tsx` — `code: String(p.part_code ?? "")`); (c) (olib tashlandi 2026-09-04 — `KromkaView` ham aynan moslik); (d) navbatdagi YIG'MA bog'lami — detal ostidagi `Yig'ma:` qatori bolalar detallarini `{product_code}_{child.code} ×{har bir otaga soni}` deb yozadi, ya'ni yana `_n` SIZ kalit (`terminal.py` `PostQueueRow.assembly` → `PostQueueView`) |
 | Terminal UI (upakovka) | 2026-09-04 dan boshqa postlar bilan bir: ochiq qadoq ichida `qr_text` (`Serial`, nusxa ko'rinadi — ilgari `part_code`, uch nusxa uch bir xil qator edi), o'ngdagi detallar ro'yxatida `part_code` + `№n` chiplar (`InstanceChip`). Skan aynan `qr_text` ni kutadi (fallback yo'q) |
 
 Ikki eski konvensiya. (1) 2026-09-03 gacha: buyurtma prefiksi YO'Q (`100701_03_002`) — o'shagacha
 yuklangan buyurtmalar va cheklar o'z holicha ishlaydi (aynan moslik, `strip_order_prefix`
 prefikssizni o'zgartirmaydi). (2) 2026-08-02 gacha: yagona nusxada ham `_1` yozilardi.
-Migratsiya `c9e5b2a41d78` mavjud bazani yangi qoidaga o'tkazgan; o'shagacha
-chop etilgan `_1` li yorliqlarni skan qilish fallback bilan ishlayveradi —
-lekin faqat post skani (`scanning.py`) va terminal QR qidiruvida
-(`terminal.py`). Qadoqqa skanda (`pachka.py`) fallback yo'q: nusxani o'zi
-aynan moslik bilan qidiradi va topolmay `E001` ("Bunday QR topilmadi") beradi,
-ya'ni dvijokdagi fallbackka gal ham tegmaydi. Eski `_1` li yorliq boshqa
-postlarda skan bo'lsa ham upakovkada o'tmaydi — chekni qayta chop etish kerak.
+Migratsiya `c9e5b2a41d78` mavjud bazani yangi qoidaga o'tkazgan. O'shagacha
+chop etilgan `_1` li yorliqlar uchun skanda `qr[:-2]` fallback bor edi
+(`scanning.py`, `terminal.py`, `KromkaView`); 2026-09-04 da prod nusxasida
+bunday jonli nusxa 0 ta ekani o'lchanib, uchala joydan olib tashlandi —
+fallback haqiqiy `_1` nusxani (`count>1`) `qr[:-2]` orqali boshqa detalga
+moslashtirib yuborishi ham mumkin edi. Endi HAMMA skan yo'li (post skani,
+terminal QR qidiruvi, qadoq) aynan moslik. (1)-konvensiya esa boshqa masala:
+prefikssiz cheklar tsexda yurar ekan `strip_order_prefix` qoladi — olib
+tashlash sharti: prodda `qr_text !~ '^B-\d{4}-\d+_'` bo'lgan jonli nusxa 0 ta.
 
 Eski buyurtmalarning SCX fayllarini yangi nomlarga o'tkazish uchun
 `POST /orders/{order_id}/scx/regenerate` (texnolog huquqi) bor — fayllarni

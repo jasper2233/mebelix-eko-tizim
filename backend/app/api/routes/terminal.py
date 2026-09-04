@@ -462,25 +462,21 @@ async def resolve_terminal_qr(db: SessionDep, user: TerminalUser, qr_text: str) 
     """Proyekt ro'yxatida turib QR skan qilinsa — qaysi buyurtmaga tegishli ekanini topadi
     (terminal o'sha proyekt sahifasini ochib yuboradi)."""
     qr = qr_text.strip()
-    row = None
-    # Eski yorliqlar: migratsiyadan oldin yagona nusxa ham `_1` bilan chop etilgan
-    for cand in [qr, qr[:-2]] if qr.endswith("_1") else [qr]:
-        row = (
-            await db.execute(
-                select(PartInstance.order_id, Order.number)
-                .join(Order, Order.id == PartInstance.order_id)
-                .where(
-                    PartInstance.qr_text == cand,
-                    PartInstance.is_deleted == False,  # noqa: E712
-                    Order.is_deleted == False,  # noqa: E712
-                    Order.status == OrderStatus.PRODUCTION,
-                )
-                .order_by(Order.id.desc())
-                .limit(1)
+    # Aynan moslik — eski `_1` fallback olib tashlandi (scanning.py bilan bir sabab)
+    row = (
+        await db.execute(
+            select(PartInstance.order_id, Order.number)
+            .join(Order, Order.id == PartInstance.order_id)
+            .where(
+                PartInstance.qr_text == qr,
+                PartInstance.is_deleted == False,  # noqa: E712
+                Order.is_deleted == False,  # noqa: E712
+                Order.status == OrderStatus.PRODUCTION,
             )
-        ).first()
-        if row is not None:
-            break
+            .order_by(Order.id.desc())
+            .limit(1)
+        )
+    ).first()
     if row is None:
         raise NotFoundException("Bu QR uchun aktiv buyurtma topilmadi.")
     return QrOrderRef(order_id=row.order_id, order_number=row.number)

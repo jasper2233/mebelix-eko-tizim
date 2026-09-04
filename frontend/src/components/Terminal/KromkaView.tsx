@@ -145,25 +145,21 @@ export function KromkaView({
 
   // Tekshiruv har renderda yangi data ko'radi, terminal esa bir marta ro'yxatga oladi
   const checkRef = useRef<(qr: string) => string | null>(() => "NOTFOUND")
-  checkRef.current = (raw: string): string | null => {
-    // Eski yorliqlar: migratsiyadan oldin yagona nusxa ham `_1` bilan chop etilgan
-    const candidates = raw.endsWith("_1") ? [raw, raw.slice(0, -2)] : [raw]
-    for (const qr of candidates) {
-      // Detal KROMKA'dan ikki marta o'tishi mumkin ([3,6,3]) — har qadamga alohida qator. Qadamlardan
-      // bittasi ochiq bo'lsa skan haqli; birinchi topilgan qatorga qarab hukm chiqarib bo'lmaydi.
-      const rows = parts.flatMap((p) => {
-        const inst = p.instances.find((i) => i.qr_text === qr)
-        return inst ? [{ p, inst }] : []
-      })
-      if (!rows.length) continue
-      if (!rows.some(({ inst }) => inst.arra_passed))
-        return "Bu detal hali arradan chiqmagan."
-      if (rows.some(({ p, inst }) => inst.done < p.sides)) return null
-      return oval
-        ? "Bu detalning oval kromkasi allaqachon tugagan."
-        : "Bu detalning kromkasi allaqachon tugagan."
-    }
-    return "NOTFOUND"
+  checkRef.current = (qr: string): string | null => {
+    // Aynan moslik — eski `_1` fallback olib tashlandi (backend bilan bir).
+    // Detal KROMKA'dan ikki marta o'tishi mumkin ([3,6,3]) — har qadamga alohida qator. Qadamlardan
+    // bittasi ochiq bo'lsa skan haqli; birinchi topilgan qatorga qarab hukm chiqarib bo'lmaydi.
+    const rows = parts.flatMap((p) => {
+      const inst = p.instances.find((i) => i.qr_text === qr)
+      return inst ? [{ p, inst }] : []
+    })
+    if (!rows.length) return "NOTFOUND"
+    if (!rows.some(({ inst }) => inst.arra_passed))
+      return "Bu detal hali arradan chiqmagan."
+    if (rows.some(({ p, inst }) => inst.done < p.sides)) return null
+    return oval
+      ? "Bu detalning oval kromkasi allaqachon tugagan."
+      : "Bu detalning kromkasi allaqachon tugagan."
   }
   useEffect(() => {
     registerScan?.((qr) => checkRef.current(qr))
