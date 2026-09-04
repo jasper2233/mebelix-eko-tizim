@@ -1131,7 +1131,7 @@ function TabloOrderDrill({
             qayting.
           </p>
         ) : (
-          <table className="w-full min-w-[44rem] table-fixed border-separate border-spacing-x-0 border-spacing-y-2">
+          <table className="w-full min-w-[56rem] table-fixed border-separate border-spacing-x-0 border-spacing-y-2">
             <colgroup>
               <col className="w-[22%]" />
               <col className="w-[8%]" />
@@ -1174,7 +1174,7 @@ function TabloOrderDrill({
                   >
                     Jami · {parts.length} detal
                   </td>
-                  <td className="num border-l border-border/60 bg-primary/90 px-2 py-3 text-center text-3xl font-black text-primary-foreground">
+                  <td className="num border-l border-border/60 bg-primary/90 px-2 py-3 text-center text-2xl font-black text-primary-foreground md:text-3xl">
                     {parts.reduce((a, p) => a + p.count, 0)}
                   </td>
                   {drillPosts.map((c, i) => {
@@ -1227,12 +1227,12 @@ function TabloOrderDrill({
               {data?.parts.map((p) => (
                 <tr key={p.part_id} className="bg-card">
                   <td className="rounded-l-md px-3 py-3">
-                    <b className="num text-3xl">{p.code}</b>{" "}
+                    <b className="num text-2xl md:text-3xl">{p.code}</b>{" "}
                     <span className="text-xl text-muted-foreground">
                       {p.name}
                     </span>
                   </td>
-                  <td className="num border-l border-border/60 px-2 py-3 text-center text-3xl font-bold">
+                  <td className="num border-l border-border/60 px-2 py-3 text-center text-2xl font-bold md:text-3xl">
                     {p.count}
                   </td>
                   {drillPosts.map((c, i) => (
