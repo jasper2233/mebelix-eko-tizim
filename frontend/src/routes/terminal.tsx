@@ -188,6 +188,9 @@ function TerminalPage() {
             "scan.cancelled",
             "order.started",
             "order.cancelled",
+            // Boshqa qadoqlash terminali qadoqni yopsa/to'ldirsa — 30 s kutilmasin
+            "pachka.item",
+            "pachka.closed",
           ].includes(event.type)
         ) {
           invalidateWork()
@@ -425,10 +428,11 @@ function TerminalPage() {
     mapOrderId !== null &&
     (ctx?.post_code === "ARRA" || ctx?.post_code === "ROVER")
 
-  // Proyekt tanlagich: ARRA'dan boshqa hamma postda bir xil, faqat sarlavha
-  // farq qiladi (kesish xaritasi bejigi ham faqat ARRA'da ma'noga ega)
-  const picker = (title: string) => (
-    <OrderPicker onPick={setMapOrderId} title={title} showCutmapBadge={false} />
+  // Buyurtma tanlagich: ARRA'dan boshqa hamma postda bir xil (kesish xaritasi
+  // bejigi faqat ARRA'da ma'noga ega). Sarlavha «Buyurtmalar» — admin bilan bir
+  // so'z; ilgari «Proyektlar — X uchun proyektni tanlang» postga qarab to'rt xil edi.
+  const picker = () => (
+    <OrderPicker onPick={setMapOrderId} showCutmapBadge={false} />
   )
 
   const scanStrip = (
@@ -693,7 +697,7 @@ function TerminalPage() {
                 }
               />
             ) : (
-              picker("Proyektlar — detallar uchun proyektni tanlang")
+              picker()
             )}
           </PostScreen>
         ) : ctx?.post_code === "UPAKOVKA" ? (
@@ -708,7 +712,7 @@ function TerminalPage() {
                 }}
               />
             ) : (
-              picker("Proyektlar — qadoqlash uchun proyektni tanlang")
+              picker()
             )}
           </PostScreen>
         ) : ["BOYOQ", "STOLYARKA"].includes(ctx?.post_code ?? "") ? (
@@ -720,7 +724,7 @@ function TerminalPage() {
                 onBack={() => setMapOrderId(null)}
               />
             ) : (
-              picker("Proyektlar — ish uchun proyektni tanlang")
+              picker()
             )}
           </PostScreen>
         ) : ctx?.post_code === "TMO" ? (
@@ -735,7 +739,7 @@ function TerminalPage() {
                 }}
               />
             ) : (
-              picker("Proyektlar — TMO uchun proyektni tanlang")
+              picker()
             )}
           </PostScreen>
         ) : ctx?.post_code === "KROMKA" || ctx?.post_code === "OVAL" ? (
@@ -752,7 +756,7 @@ function TerminalPage() {
                 oval={ctx?.post_code === "OVAL"}
               />
             ) : (
-              picker("Proyektlar — detallar uchun proyektni tanlang")
+              picker()
             )}
           </PostScreen>
         ) : (

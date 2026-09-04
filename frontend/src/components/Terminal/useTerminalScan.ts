@@ -90,6 +90,24 @@ export function useTerminalScan({
 
     if (postCode !== "KROMKA" && postCode !== "OVAL") {
       if (cooled(value, COOLDOWN_MS)) return
+      // QADOQLASH: skan faqat OCHIQ QADOQqa tushadi (umumiy yo'lni server ham E002
+      // bilan rad etadi — qadoqsiz UPAKOVKA skani detalni qadoqlab bo'lmaydigan
+      // qilardi). Bu shox faqat ro'yxat ochiqligida ishlaydi (ekran o'z skanini
+      // `viewScanRef` bilan oladi): KROMKA kabi QR'ning buyurtmasi ochiladi va
+      // qadoq yaratish so'raladi — xabar ro'yxatda emas, buyurtma ekranida.
+      if (postCode === "UPAKOVKA") {
+        TerminalService.resolveTerminalQr({ path: { qr_text: value } })
+          .then((r) => {
+            openOrder(r.data.order_id)
+            playWarning()
+            toast.error("Avval qadoq yarating, keyin detalni qayta skanerlang")
+          })
+          .catch(() => {
+            playError()
+            toast.error("Bu QR uchun aktiv buyurtma topilmadi.")
+          })
+        return
+      }
       onScan(value)
       return
     }
@@ -113,12 +131,12 @@ export function useTerminalScan({
             toast.error(
               r.data.order_id === mapOrderId
                 ? "Bu detal kromka bosqichiga kirmaydi."
-                : `Bu detal bu proyektga tegishli emas — ${r.data.order_number} proyektining detali.`,
+                : `Bu detal bu buyurtmaga tegishli emas — ${r.data.order_number} buyurtmasining detali.`,
             ),
           )
           .catch(() =>
             toast.error(
-              "Bu detal hech bir aktiv proyektda topilmadi. Chekni tekshiring.",
+              "Bu detal hech bir aktiv buyurtmada topilmadi. Chekni tekshiring.",
             ),
           )
         return
@@ -140,7 +158,7 @@ export function useTerminalScan({
       })
       .catch(() => {
         playError()
-        toast.error("Bu QR uchun aktiv proyekt topilmadi.")
+        toast.error("Bu QR uchun aktiv buyurtma topilmadi.")
       })
   }
 }

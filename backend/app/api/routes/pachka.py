@@ -31,6 +31,7 @@ from app.services.scanning import (
     ScanRejected,
     active_session,
     instance_stages,
+    log_rejected_scan,
     publish_scan_events,
     record_scan_at,
     resolve_terminal,
@@ -187,7 +188,7 @@ async def create_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, order_id: 
     """Yangi qadoq ochish. Kod `PK-{buyurtma}-{NN}` — chekdagi QR matni ham shu."""
     _machine, post = ctx
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
-    if (other := await _open_of(db, order.id)) is not None:
+    if (other := await _open_of(db, order.id)) is not None and not await _discard_if_empty(db, other, user_id=user.id):
         raise DuplicateValueException(f"Bu buyurtmada ochiq qadoq bor: {other.code}. Avval uni yakunlang.")
     # Tartib raqami O'CHIRILGANLARNI ham sanaydi: kod qayta ishlatilsa eski chek
     # bilan yangi qadoq bir xil QR beradi va TMO da chalkashlik chiqadi.
@@ -208,6 +209,34 @@ async def create_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, order_id: 
     return await _state(db, order, post)
 
 
+async def _discard_if_empty(db: SessionDep, pachka: Pachka, *, user_id: int) -> bool:
+    """Bo'sh ochiq qadoq tuzoq edi: yopib bo'lmaydi (403 «bo'sh»), yonida boshqasini
+    ochib/qayta ochib bo'lmaydi (409), o'chirish yo'li yo'q — qadoqlovchi «Qadoq
+    yaratish»ni xato bosgan bo'lsa ekran qotib qolardi. Ichida detal (skan, chek)
+    bo'lmagani uchun jimgina tashlanadi; tartib raqami baribir o'chirilganlarni sanaydi."""
+    n = (
+        await db.execute(
+            select(func.count())
+            .select_from(PachkaItem)
+            .where(PachkaItem.pachka_id == pachka.id, PachkaItem.is_deleted == False)  # noqa: E712
+        )
+    ).scalar_one()
+    if n:
+        return False
+    pachka.is_deleted = True
+    pachka.deleted_at = datetime.now(UTC)
+    log_action(
+        db,
+        module="pachka",
+        action="discarded",
+        user_id=user_id,
+        entity_type="pachka",
+        entity_id=pachka.id,
+        message=f"Bo'sh qadoq tashlandi: {pachka.code}",
+    )
+    return True
+
+
 async def _open_pachka(db: SessionDep, pachka_id: int) -> Pachka:
     pachka = await crud_pachkas.get_or_404(db, "Qadoq topilmadi.", id=pachka_id)
     if pachka.status != PachkaStatus.OPEN:
@@ -216,7 +245,9 @@ async def _open_pachka(db: SessionDep, pachka_id: int) -> Pachka:
 
 
 @router.post("/{pachka_id}/scan", response_model=UpakovkaOrderState, operation_id="scan_into_pachka")
-async def scan_into_pachka(db: SessionDep, ctx: PackCtx, pachka_id: int, body: PachkaScan) -> UpakovkaOrderState:
+async def scan_into_pachka(
+    db: SessionDep, user: PackUser, ctx: PackCtx, pachka_id: int, body: PachkaScan
+) -> UpakovkaOrderState:
     """Detalni qadoqqa skanerlash — bu AYNI PAYTDA marshrutning UPAKOVKA qadami.
 
     Skanni odatdagi dvijok yozadi, ya'ni qat'iy tartib shu yerda ham ishlaydi:
@@ -228,6 +259,10 @@ async def scan_into_pachka(db: SessionDep, ctx: PackCtx, pachka_id: int, body: P
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=pachka.order_id)
 
     qr = body.qr_text.strip()
+    # Qadoq (`PK-`) yoki qoldiq (`ATX-`) cheki — detal emas; «Bunday QR topilmadi»
+    # qadoqlovchiga o'z chekini buzuq deb o'qitardi.
+    if qr.upper().startswith(("PK-", "ATX-")):
+        raise scan_error("E001", "Bu qadoq/qoldiq cheki — detal chekini skanerlang.")
     instance = (
         await db.execute(
             select(PartInstance).where(
@@ -251,7 +286,9 @@ async def scan_into_pachka(db: SessionDep, ctx: PackCtx, pachka_id: int, body: P
     if already is not None:
         other = await db.get(Pachka, already.pachka_id)
         name = other.code if other else "boshqa qadoq"
-        raise scan_error("E001", f"Bu detal allaqachon {name} ichida.")
+        # E008 = «allaqachon bajarilgan» — boshqa postlardagi takroriy skan bilan bir:
+        # ogohlantirish ovozi, qizil xato emas (qadoqlovchi tekshirish uchun qayta skanerlaydi)
+        raise scan_error("E008", f"Bu detal allaqachon {name} ichida.")
 
     session = await active_session(db, machine)
     try:
@@ -265,6 +302,8 @@ async def scan_into_pachka(db: SessionDep, ctx: PackCtx, pachka_id: int, body: P
         )
     except ScanRejected as exc:
         await db.rollback()
+        # Rad etilgan urinish ham logga — /scans bilan bir: Loglar sahifasida ko'rinsin
+        await log_rejected_scan(db, exc, qr, user_id=user.id)
         raise scan_error(exc.code, exc.message) from None
 
     db.add(PachkaItem(pachka_id=pachka.id, instance_id=instance.id))
@@ -340,7 +379,9 @@ async def reopen_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, pachka_id:
     pachka = await crud_pachkas.get_or_404(db, "Qadoq topilmadi.", id=pachka_id)
     if pachka.status == PachkaStatus.OPEN:
         raise DuplicateValueException(f"Qadoq {pachka.code} allaqachon ochiq.")
-    if (other := await _open_of(db, pachka.order_id)) is not None:
+    if (other := await _open_of(db, pachka.order_id)) is not None and not await _discard_if_empty(
+        db, other, user_id=user.id
+    ):
         raise DuplicateValueException(f"Bu buyurtmada ochiq qadoq bor: {other.code}. Avval uni yakunlang.")
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=pachka.order_id)
     # TMO qabul qilgan qadoq qayta ochilmaydi: nusxalarida jonli TMO skani bor — qayta
@@ -439,6 +480,17 @@ async def close_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, pachka_id: 
     await db.commit()
 
     # Enqueue commitdan KEYIN: worker yopilgan qadoqni bazadan o'qiy olishi kerak.
-    await queue.pool.enqueue_job("print_pachka_label", pachka.id, agent.id)
+    # Tekshiruv bilan shu nuqta orasida navbat o'chgan bo'lsa qadoq YOPIQ-u cheksiz
+    # qolmasin: ochiq holatga qaytariladi, qadoqlovchi qayta bosadi.
+    try:
+        await queue.pool.enqueue_job("print_pachka_label", pachka.id, agent.id)
+    except Exception:
+        pachka.status = PachkaStatus.OPEN
+        pachka.closed_at = None
+        await db.commit()
+        raise HTTPException(
+            status_code=503,
+            detail="Chek navbatga tushmadi — qadoq ochiq qoldi. Qayta urinib ko'ring.",
+        ) from None
     await ws_manager.publish("pachka.closed", {"pachka_id": pachka.id, "code": pachka.code})
     return Message(message=f"Qadoq yakunlandi: {pachka.code} ({count} detal)")

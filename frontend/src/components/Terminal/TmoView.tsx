@@ -70,9 +70,13 @@ export function TmoView({
         toast.error("Allaqachon qabul qilingan", { description: qr })
         return
       }
-      playSuccess()
-      if (yangi > 1) toast.success(`Qadoq qabul qilindi — ${yangi} detal`)
-      else toast.success("Qabul qilindi", { description: qr })
+      // Yakka qabul o'z xabarini BERMAYDI: skan boshqa postlardagidek terminalning
+      // yashil tasmasi (WS `scan.recorded`) bilan ko'rinadi — ilgari ikki yashil
+      // xabar va ikki «bip» chiqardi. Qadoq (bir skan = N detal) — alohida xulosa.
+      if (yangi > 1) {
+        playSuccess()
+        toast.success(`Qadoq qabul qilindi — ${yangi} detal`)
+      }
     },
     onError: (e) => {
       playError()

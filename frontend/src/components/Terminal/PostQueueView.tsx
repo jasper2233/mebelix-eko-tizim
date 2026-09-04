@@ -16,6 +16,7 @@ import type { PostQueueRow } from "@/client"
 import { TerminalService } from "@/client"
 import { OperationChips } from "@/components/Common/OperationChips"
 import { QueryError } from "@/components/Common/QueryError"
+import { InstanceChip, instanceNo } from "@/components/Terminal/InstanceChip"
 import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -28,12 +29,6 @@ const LABELS: Record<string, { done: string; queued?: string }> = {
   BOYOQ: { done: "Bo'yalgan" },
   STOLYARKA: { done: "Bajarilgan" },
   TMO: { done: "Qabul qilindi", queued: "tayyor, qabul kutilmoqda" },
-}
-
-/** Nusxa raqami — chekdagi ID dumi (`…_01_001_10` → 10); dumsiz yagona nusxa → 1 */
-const instanceNo = (qr: string): number => {
-  const m = /_(\d+)$/.exec(qr)
-  return m ? Number(m[1]) : 1
 }
 
 type Group = {
@@ -128,7 +123,7 @@ export function PostQueueView({
           <div className="p-6 text-center text-muted-foreground">
             {rows.length
               ? "Bu postga yetib kelgan detal yo'q."
-              : "Bu proyektda bu postga tegishli detal yo'q."}
+              : "Bu buyurtmada bu postga tegishli detal yo'q."}
           </div>
         ) : (
           <table className="w-full text-base">
@@ -140,9 +135,7 @@ export function PostQueueView({
                 <th className="px-4 py-2.5">Nomi</th>
                 <th className="px-4 py-2.5">O'lchami</th>
                 {showStage && (
-                  <th className="whitespace-nowrap px-4 py-2.5">
-                    Oxirgi post
-                  </th>
+                  <th className="whitespace-nowrap px-4 py-2.5">Oxirgi post</th>
                 )}
                 <th className="px-4 py-2.5 text-right">
                   Nusxalar
@@ -218,23 +211,12 @@ export function PostQueueView({
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap items-center justify-end gap-1.5">
                         {g.instances.map((i) => (
-                          <span
+                          <InstanceChip
                             key={i.instance_id}
-                            title={i.qr_text}
-                            className={cn(
-                              "num rounded-md px-2.5 py-1 text-lg font-black",
-                              i.done
-                                ? "bg-green-600 text-white"
-                                : "bg-muted text-muted-foreground",
-                            )}
-                          >
-                            {g.instances.length > 1 && (
-                              <span className="mr-1 text-xs font-bold opacity-70">
-                                №{instanceNo(i.qr_text)}
-                              </span>
-                            )}
-                            {i.done ? "✓" : "–"}
-                          </span>
+                            qr={i.qr_text}
+                            done={i.done}
+                            many={g.instances.length > 1}
+                          />
                         ))}
                         {g.waiting > 0 && (
                           <span

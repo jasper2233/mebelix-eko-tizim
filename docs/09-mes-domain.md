@@ -539,11 +539,19 @@ direktor ham ko'radi.
     amal chipi (stolyarkada olti xil amal) va yig'ma buyum bo'lsa biriktirilgan mayda detallar.
     Sarlavhalar postga moslanadi (`LABELS`).
   · **QADOQLASH** (`Terminal/UpakovkaView`) — "Qadoq yaratish" → detallarni birma-bir
-    skanerlash → "Yakunlash" (chek QR bilan chiqadi). Tarkibni algoritm emas, qadoqlovchi
-    belgilaydi; tizim faqat taxminiy og'irlikni KO'RSATADI (hajm × 700 kg/m³) va hech narsani
-    bloklamaydi. Bloklanadigan yagona narsa — marshrut tartibi. O'ng ustundagi
-    "Yakunlangan" ro'yxatida har qadoqqa "Qayta ochish" tugmasi (ochiq qadoq turganda
-    bloklangan — buyurtmada bir vaqtda bitta ochiq qadoq bo'ladi).
+    skanerlash → "Qadoqni yakunlash" (chek QR bilan chiqadi). Tarkibni algoritm emas, qadoqlovchi
+    belgilaydi; tizim faqat taxminiy og'irlikni KO'RSATADI (hajm × 700 kg/m³, o'lchamsiz detalda
+    «—») va hech narsani bloklamaydi. Bloklanadigan yagona narsa — marshrut tartibi. 2026-09-04:
+    chapda ochiq qadoq (Detal ID bilan, oxirgi skan tepada), o'ngda buyurtma detallari boshqa
+    postlar naqshida (qator = detal, chiplar: kulrang — tayyor, ✓ — qadoqlangan, «+N yo'lda»),
+    sarlavhada QOLDIQ; skan muvaffaqiyati — terminalning umumiy yashil tasmasi (o'z toast'i yo'q).
+    «Qadoq yaratish» tayyor detal bo'lmasa o'chiq (bo'sh qadoq tuzoq edi; ochiq bo'sh qadoqni
+    `create`/`reopen` o'zi tashlaydi). Ro'yxat sahifasida skan qilinsa buyurtma ochiladi va
+    «Avval qadoq yarating» so'raladi; umumiy `/scans` yo'li UPAKOVKA da E002 bilan yopiq
+    (qadoqsiz UPAKOVKA skani detalni qadoqlab bo'lmaydigan qilardi). Tasmadagi BEKOR QILISH
+    qadoq skanini qaytarganda detal ochiq qadoqdan ham chiqadi. O'ng pastdagi "Yakunlangan"
+    ro'yxatida har qadoqqa "Qayta ochish" (ochiq qadoq turganda bloklangan — buyurtmada bir
+    vaqtda bitta ochiq qadoq bo'ladi).
   · **TMO** (`Terminal/TmoView` → umumiy `Terminal/PostQueueView`, 2026-09-04) — bitta
     ro'yxat, BOYOQ/STOLYARKA bilan bir naqsh: detal qatori, nusxa chiplari (kulrang — tayyor,
     qabul kutilmoqda; ✓ — qabul qilindi). Avtomatik qabul YO'Q: tsex «tugatdim», ombor «qo'limda» —

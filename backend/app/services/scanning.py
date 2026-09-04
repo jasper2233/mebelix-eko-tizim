@@ -24,6 +24,8 @@ from app.models.enums import (
     EmployeeStatus,
     MachineStatus,
     OrderStatus,
+    PachkaStatus,
+    PostCode,
     SessionStatus,
     UserRole,
 )
@@ -517,6 +519,12 @@ async def record_scan(
 ) -> ScanOutcome:
     """Validate and register one work unit. Caller commits and publishes outcome.events."""
     machine, post = await resolve_terminal(db, user)
+    # QADOQLASH posti umumiy yo'ldan skan olmaydi: qadoqsiz UPAKOVKA skani qadamni
+    # yopadi-yu, detal hech bir qadoqda bo'lmaydi — keyin uni qadoqqa skanerlab ham
+    # bo'lmaydi (E008). 2026-09-04 da proyekt tanlanmagan terminalda bajarilib
+    # tasdiqlangan. Qadoq skani faqat `pachka.scan_into_pachka` orqali.
+    if post.code == PostCode.UPAKOVKA:
+        raise ScanRejected("E002", "Qadoqlash skani faqat qadoq ichiga tushadi — proyektni tanlab, qadoq yarating.")
     session = await active_session(db, machine)
     return await record_scan_at(
         db, machine=machine, post=post, session=session, qr_text=qr_text, client_event_id=client_event_id
@@ -994,6 +1002,32 @@ async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Sc
         raise ScanRejected("E001", "Bu scan allaqachon bekor qilingan.")
     if datetime.now(UTC) - _utc(scan.created_at) > timedelta(seconds=settings.SCAN_UNDO_SECONDS):
         raise ScanRejected("E001", f"{settings.SCAN_UNDO_SECONDS} sekunddan ko'p o'tdi — faqat admin bekor qila oladi.")
+
+    # Qadoq skani (`pack-{qadoq}-{nusxa}`): detal qadoq ICHIDA turadi. Faqat skanni
+    # qaytarish detalni «qadoqda, lekin qadami ochiq» holatga tashlardi — qadoqlovchi
+    # uni qayta skanerlay olmaydi (allaqachon ichida), omborchi qabul qila olmaydi
+    # (E004): 2026-09-04 da lokalda BEKOR QILISH bilan bajarilib tasdiqlangan.
+    # Ochiq qadoqdan chiqariladi (`pachka.remove_from_pachka` bilan bir), yopiq
+    # qadoqda rad etiladi — avval «Qayta ochish».
+    if (scan.client_event_id or "").startswith("pack-"):
+        from app.models.pachka import Pachka, PachkaItem
+
+        row = (
+            await db.execute(
+                select(PachkaItem, Pachka.status, Pachka.code)
+                .join(Pachka, Pachka.id == PachkaItem.pachka_id)
+                .where(
+                    PachkaItem.instance_id == scan.instance_id,
+                    PachkaItem.is_deleted == False,  # noqa: E712
+                )
+            )
+        ).first()
+        if row is not None:
+            item, status, code = row
+            if status != PachkaStatus.OPEN:
+                raise ScanRejected("E001", f"Detal yopiq qadoqda ({code}) — avval qadoqni qayta oching.")
+            item.is_deleted = True
+            item.deleted_at = datetime.now(UTC)
 
     route = await revoke_scan(db, scan)
     events: list[dict[str, Any]] = [

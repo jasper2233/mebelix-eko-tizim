@@ -16,11 +16,9 @@ import {
 
 export function OrderPicker({
   onPick,
-  title = "Proyektlar — xarita uchun proyektni tanlang",
   showCutmapBadge = true,
 }: {
   onPick: (orderId: number) => void
-  title?: string
   showCutmapBadge?: boolean
 }) {
   const {
@@ -34,7 +32,7 @@ export function OrderPicker({
   })
   return (
     <div className="h-full overflow-y-auto rounded-xl border bg-card p-4">
-      <SectionTitle>{title}</SectionTitle>
+      <SectionTitle>Buyurtmalar</SectionTitle>
       {isError && (
         <div className="mb-3 rounded-lg border-2 border-red-500 bg-red-50 px-4 py-3 text-base font-bold text-red-700">
           Yuklashda xato — qayta urinilmoqda...
