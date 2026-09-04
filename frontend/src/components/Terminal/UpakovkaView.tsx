@@ -6,8 +6,8 @@
 //
 // Chap — OCHIQ qadoq (skan shu yerga tushadi), o'ng — buyurtmaning hamma detali
 // boshqa postlardagi naqshda: bitta detal = bitta qator, nusxalar chip (kulrang —
-// tayyor, ✓ — qadoqlangan, «+N yo'lda» — hali tsexda) va pastda yakunlangan
-// qadoqlar. 2026-09-04 gacha o'ng ro'yxat nusxa-nusxa edi (981 nusxali buyurtmada
+// tayyor, ✓ — qadoqlangan, «+N yo'lda» — hali tsexda); yakunlangan qadoqlar
+// chapda, ochiq qadoq ostida (qadoq tomonida). 2026-09-04 gacha o'ng ro'yxat nusxa-nusxa edi (981 nusxali buyurtmada
 // 981 qator), sarlavhada QOLDIQ yo'q, qadoq jadvalida faqat Kod (uch nusxa —
 // uch bir xil qator, qaysi birini chiqarishni bilib bo'lmasdi).
 //
@@ -334,22 +334,63 @@ export function UpakovkaView({
                 </table>
               )}
             </div>
-            <div className="border-t p-3">
-              <LoadingButton
-                className="h-14 w-full text-lg font-black"
-                loading={close.isPending}
-                disabled={!open.items?.length}
-                onClick={() => close.mutate(open.id)}
-              >
-                Qadoqni yakunlash
-              </LoadingButton>
-            </div>
           </>
+        )}
+
+        {/* Yakunlangan qadoqlar — QADOQ tomonida, ochiq qadoq ostida: o'ng ustun
+            faqat detallar uchun (uzun ro'yxat, unga joy kerak). Kamdan-kam
+            kerak (xato bo'lsa qayta ochish, nechta bo'ldi) — bir qatorlik
+            yozuv yetadi; tab/switcher ma'lumotni yashirardi. */}
+        {!!closed.length && (
+          <div className="border-t">
+            <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Yakunlangan <span className="num">({closed.length})</span>
+            </div>
+            <div className="max-h-[30dvh] overflow-y-auto">
+              {closed.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-baseline gap-3 border-t px-4 py-1 text-sm"
+                >
+                  <span className="num font-semibold">{p.code}</span>
+                  <span className="text-muted-foreground">
+                    <span className="num">{p.items?.length ?? 0}</span> detal
+                  </span>
+                  <span className="num text-muted-foreground">
+                    {kg(p.weight_kg)}
+                  </span>
+                  {/* Ochiq qadoq borida bloklanadi: buyurtmada bir vaqtda bitta
+                      ochiq qadoq bo'ladi (backend ham 409 bilan rad etadi). */}
+                  <LoadingButton
+                    variant="ghost"
+                    className="ml-auto h-9 px-3"
+                    loading={reopen.isPending && reopen.variables === p.id}
+                    disabled={!!open || reopen.isPending}
+                    onClick={() => reopen.mutate(p.id)}
+                  >
+                    Qayta ochish
+                  </LoadingButton>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {open && (
+          <div className="border-t p-3">
+            <LoadingButton
+              className="h-14 w-full text-lg font-black"
+              loading={close.isPending}
+              disabled={!open.items?.length}
+              onClick={() => close.mutate(open.id)}
+            >
+              Qadoqni yakunlash
+            </LoadingButton>
+          </div>
         )}
       </div>
 
-      {/* O'NG: buyurtma detallari (post navbati naqshi) + yakunlangan qadoqlar */}
-      <div className="flex w-[38%] min-w-[300px] flex-col gap-3">
+      {/* O'NG: buyurtma detallari (post navbati naqshi) — to'liq balandlik */}
+      <div className="flex w-[38%] min-w-[300px] flex-col">
         <div className="flex min-h-0 flex-1 flex-col rounded-xl border bg-white">
           <div className="flex items-baseline justify-between border-b px-4 py-2">
             <span className="text-base font-bold">Detallar</span>
@@ -412,44 +453,6 @@ export function UpakovkaView({
               tsexda — shu bosqichga yetib kelgach chip bo'lib chiqadi.
             </div>
           )}
-        </div>
-
-        <div className="flex max-h-[38%] min-h-0 flex-col rounded-xl border bg-white">
-          <div className="border-b px-4 py-2 text-base font-bold">
-            Yakunlangan <span className="num">({closed.length})</span>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {closed.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-baseline gap-2 border-b px-4 py-2 text-sm last:border-0"
-              >
-                <span className="num font-semibold">{p.code}</span>
-                <span className="text-muted-foreground">
-                  <span className="num">{p.items?.length ?? 0}</span> detal
-                </span>
-                <span className="num ml-auto text-muted-foreground">
-                  {kg(p.weight_kg)}
-                </span>
-                {/* Ochiq qadoq borida bloklanadi: buyurtmada bir vaqtda bitta
-                    ochiq qadoq bo'ladi (backend ham 409 bilan rad etadi). */}
-                <LoadingButton
-                  variant="ghost"
-                  className="h-11 px-3"
-                  loading={reopen.isPending && reopen.variables === p.id}
-                  disabled={!!open || reopen.isPending}
-                  onClick={() => reopen.mutate(p.id)}
-                >
-                  Qayta ochish
-                </LoadingButton>
-              </div>
-            ))}
-            {!closed.length && (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                Hali yakunlangan qadoq yo'q.
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </div>
