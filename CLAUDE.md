@@ -1,5 +1,5 @@
 <!--
-last_updated: 2026-08-26
+last_updated: 2026-09-04
 scope: butun repo
 owner: apayziev
 -->
@@ -23,15 +23,6 @@ cd frontend && npm run build              # tsc + vite
 make lint                                 # ruff + mypy birga
 make check-migrations                     # alembic upgrade head && alembic check (DB kerak)
 
-# Ishga tushirish
-make run-backend                          # uvicorn --reload
-make worker                               # ARQ worker (yorliq chop etish navbati)
-make run-frontend                         # vite dev
-make docker-local                         # postgres + redis + api + worker
-
-# Migratsiya
-make migrate                              # alembic upgrade head
-make makemigrations m="xabar"             # autogenerate
 
 # API klient (backend sxemasi o'zgarganda MAJBURIY)
 make frontend-gen                         # scripts/generate-client.sh
@@ -97,19 +88,6 @@ umuman ishlamagan.
 2026-08-26 auditining o'lchangan xulosasi (`docs/audit-2026-09-02.md` → «Metod»):
 eng ishonchli topilmalar bajarilgan skriptlardan chiqdi, 16.7M tokenlik agent
 oqimidan emas.
-
-## Tuzilish
-
-```
-backend/app/
-  api/routes/     100 endpoint (98 HTTP + 2 WS), `/v1` agregatorida 18 router
-  api/routes/orders/   5 modul: lifecycle · matrix · files · survey · _common
-  models/         19 ORM model  ·  services/giblab/  .project parseri
-  services/scanning.py   skan dvijoki (E001..E009 xato kodlari)
-  services/labels.py     80x60 mm yorliq PNG renderi
-frontend/src/routes/     TanStack Router, fayl asosidagi
-bridge-agent/agent.py    tsex kompyuteri: USB GoDEX + skan forvard
-```
 
 ## Bilib turish kerak
 
