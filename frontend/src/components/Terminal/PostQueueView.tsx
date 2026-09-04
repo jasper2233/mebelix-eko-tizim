@@ -163,22 +163,35 @@ export function PostQueueView({
                         processCode={r.process_code}
                         postCode={data?.post_code}
                       />
-                      {/* Bo'yoqchi uchun material = RANG */}
+                      {/* Har qator YORLIQLI: sariq/ko'k matn yolg'iz o'zi nima
+                          ekanini aytmasdi (material? yig'ma?). Bo'yoqchi uchun
+                          material = RANG. */}
                       {r.material && (
-                        <div className="truncate text-sm font-semibold text-amber-800">
-                          {r.material}
+                        <div className="truncate text-sm">
+                          <span className="text-muted-foreground">
+                            Material:{" "}
+                          </span>
+                          <span className="font-semibold text-amber-800">
+                            {r.material}
+                          </span>
                         </div>
                       )}
                       {r.note && (
-                        <div className="truncate text-sm text-muted-foreground">
+                        <div className="truncate text-sm">
+                          <span className="text-muted-foreground">Izoh: </span>
                           {r.note}
                         </div>
                       )}
                       {/* Yig'ma ro'yxati KESILMAYDI — stolyar aynan shuni o'qiydi
                           (qaysi mayda detallar bilan yig'iladi) */}
                       {!!r.assembly?.length && (
-                        <div className="num text-sm font-semibold text-blue-800">
-                          + {r.assembly.join(", ")}
+                        <div className="num text-sm">
+                          <span className="text-muted-foreground">
+                            Yig'ma:{" "}
+                          </span>
+                          <span className="font-semibold text-blue-800">
+                            {r.assembly.join(", ")}
+                          </span>
                         </div>
                       )}
                     </td>
