@@ -78,9 +78,9 @@ function ClientsPage() {
         // bilan vertikal joy yeb turardi (buyurtmalar reestrida ham qidiruv
         // boshqaruv qatorida).
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
             <SearchInput
-              className="w-72 max-w-full"
+              className="w-full md:w-72"
               placeholder="Ism yoki telefon bo'yicha qidirish"
               value={search}
               // Qidiruv o'zgarganda birinchi sahifaga: aks holda 3-sahifada

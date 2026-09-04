@@ -33,8 +33,11 @@ export function PageHeader({
       {/* `flex-wrap`: qidiruv + tugma birga kelganda (Mijozlar, Hodimlar) telefonda
           qator sig'maydi va butun sahifa yonga skroll bo'lardi — 390 px da
           o'lchandi (sahifa kengligi 441/434 px). Endi tugma pastga tushadi. */}
+      {/* Telefonda to'liq kenglik — ichidagi qidiruv `w-full` shunga tayanadi */}
       {actions && (
-        <div className="flex flex-wrap items-center gap-2">{actions}</div>
+        <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
+          {actions}
+        </div>
       )}
     </div>
   )

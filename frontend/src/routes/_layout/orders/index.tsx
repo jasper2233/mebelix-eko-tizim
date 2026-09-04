@@ -225,12 +225,17 @@ function OrdersPage() {
         description="Tizimdagi barcha shartnomalar va ishlab chiqarish holati"
         actions={canCreate ? <AddOrder /> : undefined}
       />
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      {/* Telefonda (390 px) holat tablari 3-2-2 bo'lib tasodifiy buqilardi.
+          Endi `<md`: tablar BIR qatorda yonga skroll (segment naqshi —
+          iOS/Android), qidiruv o'z qatorida to'liq kenglik. `md+`: avvalgidek
+          — tablar buqiladi, qidiruv o'ngda. */}
+      <div className="mb-4 flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
         <Tabs
           value={status}
           onValueChange={(v) => setStatus(v as OrderStatus | "")}
+          className="min-w-0 max-w-full"
         >
-          <TabsList className="h-auto min-h-9 flex-wrap">
+          <TabsList className="h-auto min-h-9 max-w-full flex-nowrap justify-start overflow-x-auto md:flex-wrap md:justify-center [&>*]:shrink-0">
             {visibleTabs.map((t) => (
               <TabsTrigger key={t.value} value={t.value} className="text-xs">
                 {t.label}
@@ -244,7 +249,7 @@ function OrdersPage() {
           </TabsList>
         </Tabs>
         <SearchInput
-          className="ml-auto w-full max-w-xs"
+          className="w-full md:ml-auto md:max-w-xs"
           placeholder="Raqam, nom yoki mijoz"
           value={search}
           onChange={setSearch}

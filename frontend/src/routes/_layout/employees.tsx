@@ -222,9 +222,9 @@ function PeoplePage() {
         // Qidiruv sarlavha qatorida (buyurtmalar/mijozlar bilan bir xil) —
         // alohida qator bo'sh joy bilan vertikal joy yeb turardi
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
             <SearchInput
-              className="w-64 max-w-full"
+              className="w-full md:w-64"
               placeholder="F.I.Sh bo'yicha"
               value={search}
               onChange={setSearch}
