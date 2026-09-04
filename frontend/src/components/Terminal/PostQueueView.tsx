@@ -129,7 +129,9 @@ export function PostQueueView({
                 <th className="px-4 py-2.5">O'lchami</th>
                 {/* Detal hozir qaysi postda turibdi — o'sha yerdan olinadi.
                     «Qayerda» emas, «Qayerdan olish»: ustun amalni aytsin */}
-                <th className="px-4 py-2.5">Qayerdan olish</th>
+                <th className="whitespace-nowrap px-4 py-2.5">
+                  Qayerdan olish
+                </th>
                 <th className="px-4 py-2.5 text-right">
                   Nusxalar
                   <span className="block whitespace-nowrap text-2xs font-medium normal-case tracking-normal">
@@ -154,7 +156,7 @@ export function PostQueueView({
                     <td className="num whitespace-nowrap px-4 py-3 font-semibold">
                       {r.part_code}
                     </td>
-                    <td className="max-w-[280px] px-4 py-3">
+                    <td className="max-w-[360px] px-4 py-3">
                       <div className="truncate">{r.part_name}</div>
                       {/* Bitta postda bir nechta amal bor (stolyarkada olti xil) */}
                       <OperationChips
@@ -172,8 +174,10 @@ export function PostQueueView({
                           {r.note}
                         </div>
                       )}
+                      {/* Yig'ma ro'yxati KESILMAYDI — stolyar aynan shuni o'qiydi
+                          (qaysi mayda detallar bilan yig'iladi) */}
                       {!!r.assembly?.length && (
-                        <div className="num truncate text-sm font-semibold text-blue-800">
+                        <div className="num text-sm font-semibold text-blue-800">
                           + {r.assembly.join(", ")}
                         </div>
                       )}
