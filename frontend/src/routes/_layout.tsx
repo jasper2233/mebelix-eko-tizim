@@ -114,7 +114,8 @@ function Layout() {
           <path d={MX_PATH} fill="currentColor" />
         </svg>
         <header className="relative z-10 flex h-12 shrink-0 items-center gap-2 border-b px-4 md:hidden">
-          <SidebarTrigger className="-ml-1 text-muted-foreground" />
+          {/* Telefonda 40 px nishon: `size-7` (28 px) barmoq uchun kichik edi */}
+          <SidebarTrigger className="-ml-1 size-10 text-muted-foreground [&_svg]:size-5" />
           {sectionTitle && <span className="font-medium">{sectionTitle}</span>}
         </header>
         <main className="relative z-10 flex-1 p-6 md:p-8">

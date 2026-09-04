@@ -410,6 +410,8 @@ Anketa variantlari katalogi — bazaga faqat `value` kodlari yoziladi, matnlar s
 
 Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app header/footer yo'q, mobil rejimda esa `routes/_layout.tsx` da yupqa header bor (`h-12`, `md:hidden`) — `SidebarTrigger` + joriy bo'lim sarlavhasi (`sectionTitles` — `NAV_ITEMS` dan quriladi).
 
+**Telefonda nishon o'lchamlari (2026-09-04, o'lchandi):** menyu bandlari `size="lg"` = 48 px (`Sidebar/Main.tsx`, `useSidebar().isMobile` bo'lganda; desktopda 32 px qoladi — sichqoncha), `_layout.tsx` dagi mobil header trigger `size-10` = 40 px (ilgari 28). Apple 44 / Google 48 minimum.
+
 ### `frontend/src/components/Sidebar/AppSidebar.tsx`
 
 **Maqsadi:** ilovaning asosiy yon paneli — brend, navigatsiya va foydalanuvchi menyusini yig'adi.

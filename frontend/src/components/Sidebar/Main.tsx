@@ -55,6 +55,9 @@ export function Main({ items }: MainProps) {
                 <SidebarMenuButton
                   tooltip={item.title}
                   isActive={isActive}
+                  // Telefonda 48 px (`lg`): 32 px band barmoq uchun kichik —
+                  // Apple 44 / Google 48 minimum; desktopda sichqoncha, 32 qoladi
+                  size={isMobile ? "lg" : "default"}
                   // Oltin chiziq pseudo-element sifatida: `inset` soya tugmaning
                   // rounded-lg burchaklari ortida qirqilib, deyarli ko'rinmasdi.
                   // Ikonka ham oltinga o'tadi — yig'ilgan railda yagona belgi shu.

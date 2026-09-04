@@ -399,7 +399,10 @@ function TabloPage() {
       // sahifaga sig'dirilmaydi (uni odam yaqindan ko'radi, varaqlay oladi).
       style={{ ...tabloScale(), "--t-fit": fitted.fit } as React.CSSProperties}
     >
-      <header className="flex items-center gap-4 border-b border-border bg-card px-5 py-2 shadow-sm">
+      {/* `flex-wrap`: telefon portretida (390 px) logo + rejim tugmalari +
+          JONLI + havola 651 px — buqilmasa butun sahifa yonga skroll bo'lardi.
+          TV/landshaftda bir qatorda qoladi. */}
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-card px-5 py-2 shadow-sm">
         {/* Brend sidebar va login bilan bitta manbadan — to'liq logo.
             Sarlavha devordagi ekranda faqat chrome: balandligi matritsadan
             olingan joy, shuning uchun logo h-12 dan oshmaydi. */}
@@ -467,11 +470,15 @@ function TabloPage() {
         ) : (
           /* `table-fixed` + aniq ulushlar: kenglik MAZMUNGA bog'liq bo'lmasin.
              Ilgari ustunlar mazmunga qarab 87px dan 187px gacha sakrardi.
+             `min-w-[52rem]`: telefon portretida (390 px) 11 ustun siqilib
+             buyurtma raqami «B.» bo'lib qolardi — endi jadval `<main>`
+             (overflow-auto) ichida yonga skroll, matn o'z o'lchamida;
+             landshaft (844 px) va TV'da min kenglik ishlamaydi.
 
              Gorizontal oraliq 0: qator yaxlit slab, kataklar uning ichidagi
              zonalar. 8px gorizontal oraliqda taxta foni qator ICHIDAN ko'rinib,
              bitta buyurtma to'qqiz alohida kartochkaga bo'linib ketardi. */
-          <table className="w-full table-fixed border-separate border-spacing-x-0 border-spacing-y-2">
+          <table className="w-full min-w-[52rem] table-fixed border-separate border-spacing-x-0 border-spacing-y-2">
             <colgroup>
               <col className="w-[14%]" />
               <col className="w-[13%]" />
