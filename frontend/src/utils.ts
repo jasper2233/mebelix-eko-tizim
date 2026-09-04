@@ -21,6 +21,17 @@ function errorDetail(err: unknown): unknown {
  *
  * Har xabar ikki savolga javob beradi: nima bo'ldi va endi nima qilay.
  */
+/** Starlette/FastAPI standart javoblari — biz yozmagan, inglizcha */
+const FASTAPI_DEFAULTS = new Set([
+  "Not Found",
+  "Method Not Allowed",
+  "Internal Server Error",
+  "Not authenticated",
+  "Unauthorized",
+  "Forbidden",
+  "Bad Request",
+])
+
 function holatXabari(status: number | undefined): string {
   if (status === undefined) return "Server javob bermadi — qayta urinib ko'ring"
   if (status === 401 || status === 403)
@@ -78,7 +89,18 @@ export function detailParts(err: unknown): {
         structured: typeof code === "string",
       }
   }
-  if (typeof detail === "string" && detail) return plain("XATO", detail)
+  // FastAPI/Starlette'ning O'Z inglizcha satrlari (noma'lum yo'l 404 «Not Found»,
+  // 405 «Method Not Allowed», deploy oralig'idagi versiya nomuvofiqligi) — holat
+  // bo'yicha o'zbekcha xabar; MES o'zi doim o'zbekcha `detail` beradi.
+  if (typeof detail === "string" && detail)
+    return plain(
+      "XATO",
+      FASTAPI_DEFAULTS.has(detail)
+        ? holatXabari(
+            err instanceof AxiosError ? err.response?.status : undefined,
+          )
+        : detail,
+    )
   // Tanada `detail` yo'q (5xx, HTML sahifa, proxy xatosi)
   if (err instanceof AxiosError)
     return plain("XATO", holatXabari(err.response?.status))
