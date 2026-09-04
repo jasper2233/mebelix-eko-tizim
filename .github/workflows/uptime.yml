@@ -1,0 +1,62 @@
+name: Uptime
+
+# Tashqi monitoring — serverning O'ZIDAN chiqmaydigan yagona signal.
+#
+# Nima uchun alohida: TLS'ni Caddy o'zi yangilaydi (ARI, muddatdan bir oy
+# oldin) va deploy smoke'i faqat deploy paytida ishlaydi. Yangilanish yiqilsa
+# yoki server o'lsa, birinchi xabar saytning o'lishi bo'lardi — serverdagi
+# cron ham u bilan birga o'ladi. Shuning uchun tekshiruv GitHub'dan.
+#
+# Ikki tekshiruv, ikkalasi ham faqat o'qiydi:
+#   1. https://mes.mebelix.uz/api/v1/ready — 200 (deploy smoke bilan bir URL)
+#   2. TLS sertifikat muddati — 14 kundan kam qolsa ogohlantirish
+#      (Caddy 30-kun atrofida yangilaydi; 14 kunga yetish = ~2 hafta
+#      ketma-ket yiqilish, ya'ni haqiqiy muammo, shovqin emas)
+#
+# Faqat MUAMMO bo'lsa Telegram'ga yozadi (ci.yml `notify` bilan bir bot/chat).
+# Har kuni 03:00 UTC = 08:00 Toshkent — ish boshlanishidan oldin.
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sayt va TLS
+        env:
+          SITE: mes.mebelix.uz
+          TG_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TG_CHAT_ID }}
+        run: |
+          set -u
+          problems=""
+
+          # curl ulanolmasa o'zi 000 chiqaradi va noldan farqli kod bilan tugaydi — `|| echo` qo'shsa 000000 bo'lardi
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$SITE/api/v1/ready"); code=${code:-000}
+          [ "$code" = "200" ] || problems="$problems
+          ❌ Sayt javob bermayapti: /api/v1/ready → $code"
+
+          end=$(echo | openssl s_client -connect "$SITE:443" -servername "$SITE" 2>/dev/null \
+                | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+          if [ -z "$end" ]; then
+            problems="$problems
+          ❌ TLS sertifikat o'qilmadi ($SITE:443)"
+          else
+            left=$(( ($(date -d "$end" +%s) - $(date +%s)) / 86400 ))
+            echo "TLS: $left kun qoldi ($end)"
+            [ "$left" -ge 14 ] || problems="$problems
+          ⚠️ TLS sertifikat $left kunda tugaydi ($end) — Caddy yangilamagan, serverda \`docker logs mebelix-mes-caddy-1\` ni ko'ring"
+          fi
+
+          echo "ready: $code"
+          [ -z "$problems" ] && { echo "OK"; exit 0; }
+
+          msg="🚨 MebeliX monitoring$problems
+          https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            -d chat_id="$TG_CHAT" --data-urlencode text="$msg" >/dev/null
+          echo "$problems"
+          exit 1

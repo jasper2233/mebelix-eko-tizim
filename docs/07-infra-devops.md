@@ -419,6 +419,14 @@ Ikkala ruff hook'ida `files: ^backend/` cheklovi bor — **pre-commit qamrovi CI
 
 Muhim: CLI'da ruff qamrovi kengroq — **ruff 0.16 markdown ichidagi python bloklarini ham formatlaydi** (0.15.20 `.md` fayllarni umuman ko'rmasdi). Shuning uchun `make format` ham hook/CI bilan bir xil toraytirilgan: `cd backend && uv run ruff format app && uv run ruff check app --fix`. Repo **ildizidan** (`ruff format .`) chaqirilsa `docs/*.md` dagi qo'lda tekislangan python bloklari va `bridge-agent/agent.py` (u yerda konfig yo'q → line-length 88) qayta yozilardi — bu fayllarni na hook, na CI tekshiradi, ya'ni o'zgarish sof zarar bo'lardi. Ildizdan ruff chaqirmang.
 
+### `.github/workflows/uptime.yml` — tashqi monitoring (kunlik)
+
+Serverning O'ZIDAN chiqmaydigan yagona signal (2026-09-04). TLS'ni Caddy o'zi yangilaydi (ACME ARI — LE bergan oynada, muddatdan ~1 oy oldin; serverda tekshirildi: `got renewal info` har ~6 soatda, `caddy_data` da `mes.mebelix.uz.json` renewal meta) va deploy smoke'i faqat deploy paytida ishlaydi. Yangilanish yiqilsa yoki server o'lsa serverdagi cron ham u bilan o'ladi — shuning uchun tekshiruv GitHub Actions'dan: `schedule: 0 3 * * *` (08:00 Toshkent, ish boshlanishidan oldin) + `workflow_dispatch`.
+
+Ikki tekshiruv, faqat o'qiydi: (1) `https://mes.mebelix.uz/api/v1/ready` → 200 (deploy smoke bilan bir URL); (2) `openssl s_client` bilan sertifikat muddati — **14 kundan kam** qolsa ogohlantirish (Caddy ~30-kunda yangilaydi; 14 ga yetish = ~2 hafta ketma-ket yiqilish, shovqin emas). Muammo bo'lsagina Telegram (`ci.yml` `notify` bilan bir `TG_BOT_TOKEN`/`TG_CHAT_ID`), job qizil; sog'lom kunda hech narsa yozmaydi. Skript lokalda uch yo'lda sinaldi: sog'lom sayt → OK, chegara sun'iy 400 kun → ogohlantirish matni, mavjud bo'lmagan host → ikki xato.
+
+Tarix: 2026-08-19 da xuddi shu xavotir uchun `scripts/backup.sh` ga certbot faylidan (`/etc/letsencrypt/...`) muddat o'qish yozilgan edi (`backup/local-f919d9f`, merge bo'lmagan) — 2026-08-26 dan server almashib TLS'ni Caddy o'zi beradi, host nginx/certbot yo'q, shuning uchun u variant o'lik va o'chirildi.
+
 ### `.github/workflows/ci.yml` — GitHub Actions
 
 `main` ga push va har bir pull request'da ishga tushadi; oltita job — `backend`, `frontend`, `images` va `agent` parallel (`images`/`agent` lint joblarini kutmaydi), `deploy` — to'rttalasiga (`needs: [backend, frontend, images, agent]`), `notify` — hammasiga:
