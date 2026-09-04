@@ -399,31 +399,35 @@ function TabloPage() {
       // sahifaga sig'dirilmaydi (uni odam yaqindan ko'radi, varaqlay oladi).
       style={{ ...tabloScale(), "--t-fit": fitted.fit } as React.CSSProperties}
     >
-      {/* `flex-wrap`: telefon portretida (390 px) logo + rejim tugmalari +
-          JONLI + havola 651 px — buqilmasa butun sahifa yonga skroll bo'lardi.
-          TV/landshaftda bir qatorda qoladi. */}
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-card px-5 py-2 shadow-sm">
+      {/* Telefon (`<md`): ikki qator, ATAYLAB tartib — 1) «← Boshqaruv paneli»
+          chapda, JONLI o'ngda (navigatsiya + holat), 2) uchta rejim tugmasi
+          to'liq kenglikda teng bo'lingan (barmoq nishoni). Logo telefonda
+          yashirin — 177 px joy yeydi, brend tab nomida va ilovada bor.
+          `md+` (TV, landshaft): bir qator, ilgarigidek. Oddiy `flex-wrap`
+          tasodifiy tartib berardi: tugmalar o'rtada, JONLI va havola keyingi
+          qatorda chapga yopishgan. */}
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-card px-3 py-2 shadow-sm md:flex-nowrap md:px-5">
         {/* Brend sidebar va login bilan bitta manbadan — to'liq logo.
             Sarlavha devordagi ekranda faqat chrome: balandligi matritsadan
             olingan joy, shuning uchun logo h-12 dan oshmaydi. */}
         <img
           src="/assets/logo/logo-gold.png"
           alt="MebeliX"
-          className="h-12 w-auto shrink-0"
+          className="hidden h-12 w-auto shrink-0 md:block"
         />
         {myMachine && (
           <span className="rounded-sm bg-secondary px-3 py-1.5 text-xl font-bold">
             JORIY NUQTA: {myMachine.name}
           </span>
         )}
-        <div className="mx-auto flex gap-2">
+        <div className="order-last flex w-full gap-2 md:order-none md:mx-auto md:w-auto">
           {MODES.map((m) => (
             <button
               type="button"
               key={m}
               onClick={() => setMode(m)}
               className={cn(
-                "rounded-sm px-4 py-2 text-xl font-black uppercase outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-95",
+                "flex-1 rounded-sm px-4 py-2 text-xl font-black uppercase outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-95 md:flex-none",
                 mode === m
                   ? "bg-(--brand-gold) text-foreground"
                   : "bg-secondary hover:bg-accent",
@@ -433,7 +437,6 @@ function TabloPage() {
             </button>
           ))}
         </div>
-        <LiveBadge online={online} updatedAt={dataUpdatedAt} />
         {/* Panelga qaytish faqat odam foydalanuvchiga: `tablo` roli qurilma
             akkaunti, u boshqa sahifaga kira olmaydi (_layout uni shu yerga
             qaytaradi). Busiz admin sidebar'dagi "LIVE Tablo" dan kelib
@@ -445,11 +448,14 @@ function TabloPage() {
         {me && me.role !== "tablo" && (
           <Link
             to="/"
-            className="inline-flex items-center gap-1.5 rounded-sm text-base font-semibold text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-sm text-base font-semibold md:order-last md:min-h-0 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
             <ArrowLeft className="size-5" /> Boshqaruv paneli
           </Link>
         )}
+        <div className="ml-auto md:ml-0">
+          <LiveBadge online={online} updatedAt={dataUpdatedAt} />
+        </div>
       </header>
 
       <main ref={autoScroll} className="min-h-0 flex-1 overflow-auto p-4">
