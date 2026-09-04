@@ -190,7 +190,7 @@ export function PostQueueView({
                       {!!r.assembly?.length && (
                         <div className="num text-sm">
                           <span className="text-muted-foreground">
-                            Biriktiriladi:{" "}
+                            Har nusxaga biriktiriladi:{" "}
                           </span>
                           <span className="font-semibold text-blue-800">
                             {r.assembly.join(", ")}
