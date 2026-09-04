@@ -364,7 +364,6 @@ Factory'lardan tashqarida sahifa/komponent ichida inline e'lon qilingan `useQuer
 | `["terminal", "prisadka", orderId]` | `components/Terminal/PrisadkaView.tsx` | `TerminalService.readTerminalPrisadka`, `refetchInterval` 30s |
 | `["terminal", "queue", orderId]` | `components/Terminal/PostQueueView.tsx` | `TerminalService.readTerminalPostQueue`, `refetchInterval` 30s |
 | `["terminal", "upakovka", orderId]` | `components/Terminal/UpakovkaView.tsx` | `PachkaService.readUpakovkaOrder`, `refetchInterval` 30s |
-| `["terminal", "tmo", orderId]` | `components/Terminal/TmoView.tsx` | `TmoService.readTmoOrder`, `refetchInterval` 30s |
 | `["terminal", "employees"]` | `routes/terminal.tsx` → `ShiftGate` | `TerminalService.readTerminalEmployees`, `enabled: gateOpen` (to'siq yopiq bo'lsa so'ralmaydi), `staleTime` 60s |
 | `["tablo", "order", orderId]` | `routes/tablo.tsx` → qator drill-down'i | `TabloService.readTabloOrder`, `refetchInterval` 30s |
 | `["reports", "dashboard"]` | `_layout/index.tsx` (Dashboard) | `ReportsService.reportDashboard`, `refetchInterval` 60s, `enabled: canStats` |

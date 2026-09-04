@@ -1,5 +1,6 @@
-// Post navbati sahifasi (BOYOQ, STOLYARKA): proyekt tanlangach shu postga
-// YETIB KELGAN nusxalar — DETAL bo'yicha guruhlab, nusxalar chip sifatida.
+// Post navbati sahifasi (BOYOQ, STOLYARKA, TMO — `TmoView` orqali): proyekt
+// tanlangach shu postga YETIB KELGAN nusxalar — DETAL bo'yicha guruhlab,
+// nusxalar chip sifatida.
 //
 // Umumiy "Navbatdagi vazifalar" detal darajasida agregat berardi ("qoldiq 6/6")
 // va navbatni hisobga olmasdi: operator hali arradan chiqmagan detalni ko'rib,
@@ -21,10 +22,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { formatSize } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 
-//: Post nomiga moslangan sarlavhalar — "bo'yalgan" stolyarkada mos kelmaydi.
-const LABELS: Record<string, { done: string }> = {
+//: Post nomiga moslangan legenda — "bo'yalgan" stolyarkada mos kelmaydi;
+//: omborda kulrang chip "navbatda" emas, "keldi, qabul kutilmoqda".
+const LABELS: Record<string, { done: string; queued?: string }> = {
   BOYOQ: { done: "Bo'yalgan" },
   STOLYARKA: { done: "Bajarilgan" },
+  TMO: { done: "Qabul qilindi", queued: "keldi, qabul kutilmoqda" },
 }
 
 /** Nusxa raqami — chekdagi ID dumi (`…_01_001_10` → 10); dumsiz yagona nusxa → 1 */
@@ -68,6 +71,8 @@ export function PostQueueView({
   // Material faqat bo'yoqchiga kerak — u uchun bu RANG/pardoz («LMDF BELI
   // KARONA GLYANETS»). Stolyarda detal qo'lida, materiali chekda — shovqin.
   const showMaterial = data?.post_code === "BOYOQ"
+  // Biriktirma ro'yxati yig'uvchiga kerak — omborchi uchun shovqin
+  const showAssembly = data?.post_code !== "TMO"
 
   // Detal bo'yicha guruh: bir detal ikki xil amal bilan kelishi mumkin
   // (stolyarkada) — kalitga amal kodi ham kiradi
@@ -135,7 +140,8 @@ export function PostQueueView({
                 <th className="px-4 py-2.5 text-right">
                   Nusxalar
                   <span className="block whitespace-nowrap text-2xs font-medium normal-case tracking-normal">
-                    kulrang — navbatda · ✓ {label.done.toLowerCase()}
+                    kulrang — {label.queued ?? "navbatda"} · ✓{" "}
+                    {label.done.toLowerCase()}
                   </span>
                 </th>
               </tr>
@@ -184,7 +190,7 @@ export function PostQueueView({
                       {/* Biriktiriladigan mayda detallar ro'yxati KESILMAYDI —
                           stolyar aynan shuni o'qiydi. So'z buyurtma sahifasi
                           bilan bir: «Asosiy detalga biriktirish». */}
-                      {!!r.assembly?.length && (
+                      {showAssembly && !!r.assembly?.length && (
                         <div className="num text-sm">
                           <span className="text-muted-foreground">
                             Har nusxaga biriktiriladi:{" "}
@@ -198,8 +204,9 @@ export function PostQueueView({
                     <td className="num whitespace-nowrap px-4 py-3 text-sm">
                       {formatSize(r.length, r.width, r.thickness)}
                     </td>
+                    {/* Hammasi bajarilgan qatorda «qayerdan olish» ma'nosiz */}
                     <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {r.stage}
+                      {!finished && r.stage}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap items-center justify-end gap-1.5">

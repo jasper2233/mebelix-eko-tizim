@@ -532,18 +532,11 @@ Chap toolbar tugmasi: ikonka + `text-2xs` yozuv (`index.css` da 0.6875rem), `h-1
 
 ### `frontend/src/components/Terminal/TmoView.tsx`
 
-**Maqsadi:** TMO post sahifasi, ikki tab (ikki xil ish bir ekranda aralashmasin).
+**Maqsadi:** TMO post sahifasi — 2026-09-04 dan faqat SKAN o'rami: ro'yxat umumiy `PostQueueView` (BOYOQ/STOLYARKA bilan bir naqsh — detal qatori, nusxa chiplari kulrang «keldi, qabul kutilmoqda» / ✓ «qabul qilindi», hali tsexdagilar «+N yo'lda» va pastdagi izoh). Umumiy `/terminal/orders/{id}/queue` TMO uchun ham aynan shu holatni beradi — uch buyurtmada `TmoOrderState` bilan son-ma-son solishtirildi (37/33/1/3, 981/0/872/109, 52/0/44/8).
 
-- **Qabul** — TMO ga yetib kelganlar (qadoq kodi bilan), skan `PK-...` bo'lsa qadoq ichidagi hammasini birdan qabul qiladi. Pastda "Tsexda" ro'yxati: har detalga ishi TUGAGAN post yozilgan (`stage`) — omborchi buyumni aynan o'sha yerdan topadi.
-- **Qabul qilingan** — SERVERDAN keladigan ro'yxat (`TmoOrderState.done`): qabul qilingan nusxa, qadoq cheki (bo'lsa) va qabul vaqti, eng oxirgisi tepada. Ilgari bu ro'yxat faqat React state'da edi va sahifa yangilanganda YO'QOLARDI — omborchi o'zi qabul qilgan detallarni ko'rmasdi.
-- **Alohida "Qadoqlar" tabi YO'Q.** Qadoq faqat yorliq: har detal qatorida qaysi chek bilan kelgani yoziladi. Qadoq cheki (`PK-...`) skanerlansa `accept_into_tmo` ichidagi HAMMA nusxani birdan qabul qiladi, ya'ni natija baribir detal ro'yxatida ko'rinadi — omborchi uchun chek va yakka detal bir xil ishlaydi.
-- **"Buyurtmani topshirish" tugmasi OLIB TASHLANDI** (`deliver_tmo_order` endpointi bilan birga). TMO buyurtmani topshirmaydi: hamma detal TMO dan o'tgach buyurtma `record_scan_at` da o'zi TAYYOR (COMPLETED) bo'ladi, TOPSHIRILDI esa managerning amali (`/orders/{id}`, faqat TAYYOR holatdan).
-- **So'rov xatosi JIM yutilmaydi:** `isError` da `Common/QueryError` chiziladi. Ilgari
-  faqat `isLoading` tekshirilardi va xatoda bo'sh ro'yxat yashil "Hammasi qabul qilindi."
-  ga aylanardi — omborchi yiqilgan so'rovni tugallangan ish deb o'qirdi.
-- Sarlavhada `TMO ga keldi: arrived/total` va `Qabul qilindi: accepted/total` — omborchi oldida qancha ish turganini ko'rishi uchun (bitta progress bar faqat skanerlanganini ko'rsatardi).
-- `registerScan` HAR QANDAY skanni QABULGA yo'naltiradi (`accept.mutate(qr)`) — aktiv tab bunga ta'sir qilmaydi; qadoq cheki (`PK-...`) bo'lsa server `accept_into_tmo` ichida hamma nusxani birdan qabul qiladi.
-- **Skan javobini ekranning o'zi beradi** (ovoz + toast, `ScanStrip` WS orqali kechikib to'lganidan oldin): takror qabulda `playWarning()` + `toast.error("Allaqachon qabul qilingan: …")`, muvaffaqiyatda `playSuccess()` + `toast.success` (qadoq bo'lsa nechta detal qabul qilingani), xatoda `playError()` + serverdan kelgan xabar (`detailMessage`).
+- Ilgari ikki tab («Qabulga kelgan» nusxa-nusxa ro'yxat + «Qabul qilingan» vaqti bilan) va sarlavhada uch son (`TMO ga keldi`, `Qabul qilindi`, QOLDIQ — ikkitasi bir xil) bor edi: 981 nusxali buyurtmada 872 qatorli ro'yxat, hech qachon to'lmaydigan «Qadoq» ustuni. `["terminal","tmo",orderId]` so'rovi ketdi, `read_tmo_order` endpointini frontend endi chaqirmaydi.
+- **Skan** (`registerScan` → `accept_into_tmo`): qadoq cheki (`PK-...`) detal QR'i emas — umumiy skan yo'li uni rad etardi; server ichidagi HAMMA nusxani birdan qabul qiladi. Javob `TmoOrderState.accepted` keshdagi ✓ chiplar soni bilan solishtiriladi: o'sgan bo'lsa ovoz + «Qabul qilindi: …» / «Qadoq qabul qilindi — N detal», o'smasa (takroriy skan, server 200 — `client_event_id` barqaror) ogohlantirish. Keyin navbat so'rovi invalidatsiya qilinadi.
+- **"Buyurtmani topshirish" tugmasi YO'Q** (`deliver_tmo_order` endpointi bilan birga). TMO buyurtmani topshirmaydi: hamma detal TMO dan o'tgach buyurtma `record_scan_at` da o'zi TAYYOR (COMPLETED) bo'ladi, TOPSHIRILDI esa managerning amali (`/orders/{id}`, faqat TAYYOR holatdan).
 
 ### `frontend/src/components/Terminal/OrderPicker.tsx`
 

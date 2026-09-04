@@ -544,25 +544,10 @@ direktor ham ko'radi.
     bloklamaydi. Bloklanadigan yagona narsa — marshrut tartibi. O'ng ustundagi
     "Yakunlangan" ro'yxatida har qadoqqa "Qayta ochish" tugmasi (ochiq qadoq turganda
     bloklangan — buyurtmada bir vaqtda bitta ochiq qadoq bo'ladi).
-  · **TMO** (`Terminal/TmoView`) — ikki tab. **Qabul**: TMO ga yetib kelganlar (qadoq kodi
-    bilan), qadoq QR'i bitta skanda ichidagi hammasini qabul qiladi; pastda "Tsexda" ro'yxati,
-    har detalga ishi TUGAGAN post yozilgan (omborchi uni o'sha yerdan topadi). Sarlavhada
-    ikki son: `TMO ga keldi: arrived/total` va `Qabul qilindi: accepted/total`.
-    **Qabul qilingan**: serverdan kelgan ro'yxat (`done`) — sahifa yangilansa ham qoladi.
-    Qadoq alohida tab EMAS, faqat yorliq — chek skanerlansa ichidagi hamma nusxa birdan
-    "Qabul qilingan" ga o'tadi. Ekranda TOPSHIRISH rejimi YO'Q: har qanday skan — QABUL.
-    Hamma detal qabul qilingach buyurtma o'zi COMPLETED bo'ladi, DELIVERED ni esa manager
-    qo'yadi (`POST /orders/{id}/deliver`).
-  Qadoqlash va TMO skani ekranning O'ZIDA yoziladi (`viewScanRef` — umumiy skan yo'li
-  chetlab o'tiladi): detal qaysi qadoqqa tushishini yoki TMO ga qabul qilinishini faqat
-  o'sha ekran biladi, qadoq QR'i esa umumiy yo'lda "QR noto'g'ri formatda" bo'lib rad etilardi.
-  Buning EVAZIGA javob xabarini shu ikki ekran O'ZI beradi: skan mutatsiyasining
-  `onSuccess` da `playSuccess()` + toast, `onError` da `playError()`, ochiq qadoq yo'q /
-  takror qabul holatida `playWarning()` (TT 8.4.3 — tsex shovqinida ovoz majburiy).
-  Umumiy: majburiy to'liq ekran overlay, lock overlay, operator logout, 2 s umumiy QR cooldown
-  (TT 8.4.4), skan chizig'i 60 s da o'zi yo'qoladi (server bekor qilish oynasi bilan teng), skan inputi fokussiz ham QR ni tutadi
-  (birinchi tugmada fokus), yangi build uchun har 5 daqiqada `/` HEAD ETag tekshiruvi va xavfsiz
-  paytda avto-reload.
+  · **TMO** (`Terminal/TmoView` → umumiy `Terminal/PostQueueView`, 2026-09-04) — bitta
+    ro'yxat, BOYOQ/STOLYARKA bilan bir naqsh: detal qatori, nusxa chiplari (kulrang — keldi,
+    qabul kutilmoqda; ✓ — qabul qilindi), hali tsexdagilar «+N yo'lda». Qadoq QR'i (`PK-…`)
+    bitta skanda ichidagi hammasini qabul qiladi (`accept_into_tmo`). Qadoq alohida tab EMAS.
 - WS hook: `hooks/useMesWs.ts` (reconnect + heartbeat + online flag).
 - Rol-marshrutlash: `_layout.tsx` beforeLoad (`lib/guards.ts: requireAuth`) — terminal va
   9 operator rol → `/terminal`, tablo → `/tablo` (qurilma/operator akkauntlar admin panelga

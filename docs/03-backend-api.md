@@ -487,7 +487,7 @@ faqat TMO postida.
 
 | Metod | Path | Izoh |
 |---|---|---|
-| GET | `/api/v1/tmo/orders/{id}` | `total` / **`arrived`** (TMO ga jismonan kelganlar — skan qilinganlar ham shunda) / `accepted` (skan qilinganlar), qabul qilingan nusxalar (`done`) va qabul qilinmaganlar (`pending`: `ready` + `stage` — ishi TUGAGAN post, omborchi detalni o'sha yerdan topadi), `packaging`. Alohida "Qadoqlar" ro'yxati YO'Q — qadoq har qatorda `pachka_code` yorlig'i sifatida ko'rinadi (qadoqsiz buyurtmada `null`): qadoq cheki skanerlanganda ichidagi hamma nusxa birdan qabul qilinadi, ya'ni natija baribir DETAL ro'yxatida ko'rinadi |
+| GET | `/api/v1/tmo/orders/{id}` | (frontend 2026-09-04 dan chaqirmaydi — TMO ro'yxati umumiy `/terminal/orders/{id}/queue` dan; sxema `accept` javobi uchun qoladi) |
 | POST | `/api/v1/tmo/orders/{id}/accept` | QABUL. QR `PK-` bilan boshlansa — qadoq: ichidagi HAMMA nusxa bitta skanda qabul qilinadi (omborchi qadoqni ochmaydi); aks holda bitta detal. Ochiq (yakunlanmagan) qadoq qabul qilinmaydi. `client_event_id="wh-{order}-{qr}"` — idempotent; WS `tmo.accepted` |
 
 TMO buyurtmani TOPSHIRMAYDI. Hamma detal TMO dan o'tgach buyurtma o'zi `COMPLETED` (tayyor) bo'ladi — statusni oxirgi marshrut qadami yopilganda `scanning.record_scan_at` qo'yadi. `DELIVERED` esa managerning alohida amali: `POST /api/v1/orders/{id}/deliver`, faqat `COMPLETED` holatdan.
