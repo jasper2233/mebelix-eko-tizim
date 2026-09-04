@@ -3,6 +3,7 @@ import tailwindcss from "@tailwindcss/vite"
 import { tanstackRouter } from "@tanstack/router-plugin/vite"
 import react from "@vitejs/plugin-react-swc"
 import { defineConfig } from "vite"
+import { webManifest } from "./src/icons/manifest-plugin"
 
 export default defineConfig({
   resolve: {
@@ -19,5 +20,6 @@ export default defineConfig({
     }),
     react(),
     tailwindcss(),
+    webManifest(),
   ],
 })
