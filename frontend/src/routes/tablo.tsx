@@ -1052,7 +1052,10 @@ function TabloOrderDrill({
       className="flex h-dvh flex-col bg-surface text-foreground"
       style={tabloScale()}
     >
-      <header className="flex items-center gap-4 border-b border-border bg-card px-5 py-3 shadow-sm">
+      {/* Telefonda (390 px) buqiladi: ilgari «← Tablo · raqam · nom · KECHIKDI ·
+          QIMIRLAMADI · nazorat» bir qatorda 882 px edi — raqam «B-/2026-/034» bo'lib
+          uch qatorga sinar, badge'lar ekrandan chiqib ketardi. `md+` (TV) — bir qator. */}
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border bg-card px-3 py-2 shadow-sm md:flex-nowrap md:px-5 md:py-3">
         {/* Qaytish havolasi tizimdagi boshqa sahifalar bilan bir xil naqsh:
             ArrowLeft + BORADIGAN JOY nomi, sarlavhadan oldin, chap tepada
             (`orders/$orderId` da "← Buyurtmalar"). Ilgari bu terminal
@@ -1067,8 +1070,10 @@ function TabloOrderDrill({
         >
           <ArrowLeft className="size-6" /> Tablo
         </button>
-        <span className="text-4xl font-black">{data?.number ?? "…"}</span>
-        <span className="text-2xl text-muted-foreground">
+        <span className="num whitespace-nowrap text-2xl font-black md:text-4xl">
+          {data?.number ?? "…"}
+        </span>
+        <span className="min-w-0 truncate text-lg text-muted-foreground md:text-2xl">
           {data?.name ?? ""}
         </span>
         {/* Bosilgan qator muddatni ko'rsatib turgan edi, ichkarida esa u
@@ -1080,7 +1085,7 @@ function TabloOrderDrill({
             return (
               <span
                 className={cn(
-                  "rounded-sm px-3 py-1 text-2xl font-black uppercase tracking-wider",
+                  "whitespace-nowrap rounded-sm px-2 py-0.5 text-base font-black uppercase tracking-wider md:px-3 md:py-1 md:text-2xl",
                   deadlineTone(row.deadline) === "overdue"
                     ? "bg-red-600 text-white"
                     : deadlineTone(row.deadline) === "today"
@@ -1093,12 +1098,13 @@ function TabloOrderDrill({
             )
           })()}
         {stall && (
-          <span className="rounded-sm bg-slate-700 px-3 py-1 text-2xl font-black uppercase tracking-wider text-white">
+          <span className="whitespace-nowrap rounded-sm bg-slate-700 px-2 py-0.5 text-base font-black uppercase tracking-wider text-white md:px-3 md:py-1 md:text-2xl">
             {stall}
           </span>
         )}
-        <span className="ml-auto text-xl font-bold uppercase tracking-widest text-muted-foreground">
-          {/* Hujayralar bilan bir xil rejim (hajm drill'da soni'ga tushadi) */}
+        <span className="ml-auto hidden text-xl font-bold uppercase tracking-widest text-muted-foreground md:inline">
+          {/* Hujayralar bilan bir xil rejim (hajm drill'da soni'ga tushadi);
+              telefonda yashirin — joy yo'q, rejim tugmalari matritsada ko'rinadi */}
           {mode === "foiz" ? "Foiz nazorati" : "Soni nazorati"}
         </span>
       </header>
@@ -1125,7 +1131,7 @@ function TabloOrderDrill({
             qayting.
           </p>
         ) : (
-          <table className="w-full table-fixed border-separate border-spacing-x-0 border-spacing-y-2">
+          <table className="w-full min-w-[44rem] table-fixed border-separate border-spacing-x-0 border-spacing-y-2">
             <colgroup>
               <col className="w-[22%]" />
               <col className="w-[8%]" />
