@@ -365,7 +365,7 @@ class PostQueueRow(BaseModel):
     ready: bool  # oldingi bosqichlar tugadimi (tugamagan bo'lsa skan rad etiladi)
     stage: str  # oxirgi bajarilgan post nomi — detal hozir qayerda turibdi
     done: bool  # shu postdagi qadam yopilgan
-    assembly: list[str] = []  # yig'ma buyum: biriktirilgan mayda detallar
+    assembly: list[str] = []  # yig'ma buyum: biriktirilgan mayda detallar, «kod ×N» — HAR BIR ota nusxaga N dona
 
 
 class PostQueueState(BaseModel):

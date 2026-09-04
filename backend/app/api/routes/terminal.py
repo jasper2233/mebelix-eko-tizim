@@ -757,6 +757,10 @@ async def read_terminal_post_queue(db: SessionDep, ctx: TerminalCtx, order_id: i
         )
 
     counts = await _post_scan_counts(db, order.id, post.id)
+    # Yig'ma qatori HAR BIR ota nusxaga nechta bola detal tushishini aytadi:
+    # `child.count` butun buyurtma bo'yicha (10 ota × 2 = 20), stolyar esa bitta
+    # buyumni yig'adi — «×20» uni chalg'itardi. Bo'linmasa jami bilan yoziladi.
+    parent_count = {p.id: p.count for _i, p, _pc, _r in rows}
     children: dict[int, list[str]] = {}
     for child, product_code in (
         await db.execute(
@@ -770,7 +774,10 @@ async def read_terminal_post_queue(db: SessionDep, ctx: TerminalCtx, order_id: i
         )
     ).all():
         assert child.assembly_parent_id is not None
-        children.setdefault(child.assembly_parent_id, []).append(f"{product_code}_{child.code} ×{child.count}")
+        pc = parent_count.get(child.assembly_parent_id) or 0
+        per = child.count // pc if pc and child.count % pc == 0 else None
+        label = f"×{per}" if per is not None else f"×{child.count} jami"
+        children.setdefault(child.assembly_parent_id, []).append(f"{product_code}_{child.code} {label}")
 
     out = [
         PostQueueRow(
