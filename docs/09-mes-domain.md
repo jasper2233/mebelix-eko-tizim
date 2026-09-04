@@ -550,7 +550,7 @@ direktor ham ko'radi.
     «Avval qadoq yarating» so'raladi; umumiy `/scans` yo'li UPAKOVKA da E002 bilan yopiq
     (qadoqsiz UPAKOVKA skani detalni qadoqlab bo'lmaydigan qilardi). Tasmadagi BEKOR QILISH
     qadoq skanini qaytarganda detal ochiq qadoqdan ham chiqadi. "Yakunlangan" qadoqlar chapda,
-    ochiq qadoq ostida ixcham qatorlar — har biriga "Qayta ochish" (ochiq qadoq turganda
+    ochiq qadoq ostida ixcham qatorlar (bosilsa ichidagi Detal ID'lar ochiladi) — har biriga "Qayta ochish" (ochiq qadoq turganda
     bloklangan — buyurtmada bir vaqtda bitta ochiq qadoq bo'ladi); o'ng ustun faqat detallar.
   · **TMO** (`Terminal/TmoView` → umumiy `Terminal/PostQueueView`, 2026-09-04) — bitta
     ro'yxat, BOYOQ/STOLYARKA bilan bir naqsh: detal qatori, nusxa chiplari (kulrang — tayyor,

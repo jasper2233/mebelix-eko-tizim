@@ -16,8 +16,8 @@
 // tasma + toast + ikki «bip» chiqardi.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { PackagePlus, Trash2 } from "lucide-react"
-import { useEffect, useRef } from "react"
+import { ChevronRight, PackagePlus, Trash2 } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
 import type { PachkaItemRow, UpakovkaPending } from "@/client"
@@ -149,6 +149,8 @@ export function UpakovkaView({
   // ro'yxatga oladi, ochiq qadoq esa har javobdan keyin o'zgaradi.
   const openRef = useRef<number | null>(null)
   openRef.current = open?.id ?? null
+  // Yopiq qadoqning ichi: qator bosilganda ochiladi (Detal ID + nomi)
+  const [shown, setShown] = useState<number | null>(null)
   useEffect(() => {
     registerScan?.((qr) => {
       const id = openRef.current
@@ -347,31 +349,64 @@ export function UpakovkaView({
               Yakunlangan <span className="num">({closed.length})</span>
             </div>
             <div className="max-h-[30dvh] overflow-y-auto">
-              {closed.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-baseline gap-3 border-t px-4 py-1 text-sm"
-                >
-                  <span className="num font-semibold">{p.code}</span>
-                  <span className="text-muted-foreground">
-                    <span className="num">{p.items?.length ?? 0}</span> detal
-                  </span>
-                  <span className="num text-muted-foreground">
-                    {kg(p.weight_kg)}
-                  </span>
-                  {/* Ochiq qadoq borida bloklanadi: buyurtmada bir vaqtda bitta
-                      ochiq qadoq bo'ladi (backend ham 409 bilan rad etadi). */}
-                  <LoadingButton
-                    variant="ghost"
-                    className="ml-auto h-9 px-3"
-                    loading={reopen.isPending && reopen.variables === p.id}
-                    disabled={!!open || reopen.isPending}
-                    onClick={() => reopen.mutate(p.id)}
-                  >
-                    Qayta ochish
-                  </LoadingButton>
-                </div>
-              ))}
+              {closed.map((p) => {
+                const opened = shown === p.id
+                return (
+                  <div key={p.id} className="border-t">
+                    <div className="flex items-center gap-3 px-4 py-1 text-sm">
+                      {/* Qator bosilsa ichi ochiladi: qadoqlovchi «№3 qaysi
+                          qadoqda?» ga yopiq qadoqni qayta ochmay javob oladi */}
+                      <button
+                        type="button"
+                        className="flex min-w-0 flex-1 items-baseline gap-3 py-1 text-left"
+                        aria-expanded={opened}
+                        onClick={() => setShown(opened ? null : p.id)}
+                      >
+                        <ChevronRight
+                          className={cn(
+                            "size-4 shrink-0 self-center text-muted-foreground transition-transform",
+                            opened && "rotate-90",
+                          )}
+                        />
+                        <span className="num font-semibold">{p.code}</span>
+                        <span className="text-muted-foreground">
+                          <span className="num">{p.items?.length ?? 0}</span>{" "}
+                          detal
+                        </span>
+                        <span className="num text-muted-foreground">
+                          {kg(p.weight_kg)}
+                        </span>
+                      </button>
+                      {/* Ochiq qadoq borida bloklanadi: buyurtmada bir vaqtda bitta
+                          ochiq qadoq bo'ladi (backend ham 409 bilan rad etadi). */}
+                      <LoadingButton
+                        variant="ghost"
+                        className="h-9 px-3"
+                        loading={reopen.isPending && reopen.variables === p.id}
+                        disabled={!!open || reopen.isPending}
+                        onClick={() => reopen.mutate(p.id)}
+                      >
+                        Qayta ochish
+                      </LoadingButton>
+                    </div>
+                    {opened && (
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 bg-muted/40 px-4 py-2 pl-11 text-sm">
+                        {(p.items ?? []).map((i) => (
+                          <div
+                            key={i.instance_id}
+                            className="flex min-w-0 gap-2"
+                          >
+                            <Serial code={i.qr_text} className="shrink-0" />
+                            <span className="truncate text-muted-foreground">
+                              {i.part_name}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
