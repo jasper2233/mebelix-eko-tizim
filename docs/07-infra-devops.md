@@ -166,6 +166,7 @@ Backend `X-Forwarded-*` headerlariga ishonishi ikki qatlamli: app-level `ProxyHe
 Frontend konteyneri ichida nginx `:80` da:
 
 - gzip (`text/*`, `application/json`, `application/javascript` va h.k., `gzip_min_length 1024`);
+- `location = /manifest.webmanifest` — `types { application/manifest+json webmanifest; }` + `no-cache`: nginx default `mime.types` da `.webmanifest` yo'q (`application/octet-stream` bo'lib ketardi, Chrome manifestni rad etadi va «o'rnatish» taklifi chiqmaydi); hash'siz nom bo'lgani uchun `index.html` kabi keshlanmaydi. 2026-09-04 da haqiqiy nginx 1.24 bilan lokal tekshirildi.
 - `location = /index.html` — `Cache-Control: no-cache`: `index.html` hech qachon keshlanmaydi, aks holda deploy'dan keyin brauzer eski hash'li assetlarga ishora qiluvchi eski SPA'ni ushlab qolib oq ekran berardi;
 - `location /` — `/usr/share/nginx/html` dan static, `try_files $uri $uri/ /index.html` (SPA fallback). Oxirgi parametr **URI** (`=404` kod emas): shundagina nginx ichki redirect qiladi va chuqur havola (`/orders/123`) ham yuqoridagi `location = /index.html` blokidan o'tib `no-cache` header'ini oladi — `=404` bilan tugaganda `index.html` joriy `location /` kontekstida fayl sifatida berilar va header'siz qolar edi;
 - static assetlar (`js/css/img/font`) uchun `expires 1y` + `Cache-Control: public, immutable`;

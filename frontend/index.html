@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MebeliX</title>
     <link rel="icon" type="image/png" href="/assets/images/favicon.png" />
+    <!-- O'rnatiladigan ilova (manifest) — service worker YO'Q, ataylab: skan
+         serverdagi tranzaksiya, oflayn kesh terminalni adashtiradi; yangilanish
+         index.html no-cache + hash'li assetlar + kiosk ETag tekshiruvi bilan.
+         O'rnatilgan holda display-mode: fullscreen — terminal overlay'i chiqmaydi. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#16233a" />
+    <meta name="application-name" content="MebeliX MES" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="MebeliX" />
+    <link rel="apple-touch-icon" href="/assets/images/icon-192.png" />
   </head>
   <body>
     <div id="root"></div>
