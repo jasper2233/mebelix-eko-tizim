@@ -63,3 +63,6 @@ bridge-agent/*.spec
 
 # Serverdagi shaxsiy credential fayllar faqatgina localda saqlansin, commit qilinmasin
 server_credentials.txt
+
+# FUSE (ntfs/exfat) o'chirilgan-u ochiq fayl arvohlari — vite public/ ni ushlab turganda paydo bo'ladi
+.fuse_hidden*
