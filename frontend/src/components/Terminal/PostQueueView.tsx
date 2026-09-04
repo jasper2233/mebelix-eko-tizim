@@ -1,6 +1,6 @@
 // Post navbati sahifasi (BOYOQ, STOLYARKA, TMO — `TmoView` orqali): proyekt
-// tanlangach shu postga YETIB KELGAN nusxalar — DETAL bo'yicha guruhlab,
-// nusxalar chip sifatida.
+// tanlangach shu postga TAYYOR (oldingi bosqichlari skanerlangan) nusxalar —
+// DETAL bo'yicha guruhlab, nusxalar chip sifatida.
 //
 // Umumiy "Navbatdagi vazifalar" detal darajasida agregat berardi ("qoldiq 6/6")
 // va navbatni hisobga olmasdi: operator hali arradan chiqmagan detalni ko'rib,
@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils"
 const LABELS: Record<string, { done: string; queued?: string }> = {
   BOYOQ: { done: "Bo'yalgan" },
   STOLYARKA: { done: "Bajarilgan" },
-  TMO: { done: "Qabul qilindi", queued: "keldi, qabul kutilmoqda" },
+  TMO: { done: "Qabul qilindi", queued: "tayyor, qabul kutilmoqda" },
 }
 
 /** Nusxa raqami — chekdagi ID dumi (`…_01_001_10` → 10); dumsiz yagona nusxa → 1 */
@@ -102,9 +102,11 @@ export function PostQueueView({
     }))
     .sort((a, b) => tier(a) - tier(b) || a.key.localeCompare(b.key))
   const isFinished = (g: Group) => g.instances.every((i) => i.done)
-  // «Qayerdan olish» — detal HOZIR turgan post (ishi tugagan oxirgisi).
-  // Bajarilgan qatorda ma'nosiz; hech bir qator ko'rsatmasa ustun ham yo'q —
-  // bo'sh ustun sarlavhasi "nimadir yetishmayapti" deb o'qilardi.
+  // «Oxirgi post» — detalning ishi TUGAGAN oxirgi post. Tizim faqat shuni
+  // biladi: detal jismonan yetib keldimi, kim tashiydi — bilmaydi, shuning
+  // uchun sarlavha FAKT («Qayerdan olish» omborchiga o'zi borib olsin degan
+  // buyruq bo'lib o'qilardi). Bajarilgan qatorda ma'nosiz; hech bir qator
+  // ko'rsatmasa ustun ham yo'q — bo'sh sarlavha "nimadir yetishmayapti" edi.
   const showStage = sorted.some((g) => !isFinished(g) && g.first.stage)
 
   return (
@@ -137,11 +139,9 @@ export function PostQueueView({
                 <th className="px-4 py-2.5">Kod</th>
                 <th className="px-4 py-2.5">Nomi</th>
                 <th className="px-4 py-2.5">O'lchami</th>
-                {/* Detal hozir qaysi postda turibdi — o'sha yerdan olinadi.
-                    «Qayerda» emas, «Qayerdan olish»: ustun amalni aytsin */}
                 {showStage && (
                   <th className="whitespace-nowrap px-4 py-2.5">
-                    Qayerdan olish
+                    Oxirgi post
                   </th>
                 )}
                 <th className="px-4 py-2.5 text-right">

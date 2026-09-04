@@ -1,7 +1,7 @@
 // TMO (Tayyor Mahsulot Ombori) post sahifasi — marshrutning oxirgi qadami.
 //
 // Ro'yxat — umumiy `PostQueueView` (BOYOQ/STOLYARKA bilan bir naqsh): detal
-// bo'yicha qator, nusxalar №n chip (kulrang — keldi, qabul kutilmoqda; ✓ —
+// bo'yicha qator, nusxalar №n chip (kulrang — tayyor, qabul kutilmoqda; ✓ —
 // qabul qilindi), hali tsexdagilar «+N yo'lda». Ilgari o'z ikki tabi bor edi:
 // 981 nusxali buyurtmada 872 qatorli ro'yxat, bir xil sonlar sarlavhada uch
 // joyda, hech qachon to'lmaydigan «Qadoq» ustuni. Umumiy navbat endpointi TMO

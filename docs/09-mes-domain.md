@@ -545,8 +545,9 @@ direktor ham ko'radi.
     "Yakunlangan" ro'yxatida har qadoqqa "Qayta ochish" tugmasi (ochiq qadoq turganda
     bloklangan — buyurtmada bir vaqtda bitta ochiq qadoq bo'ladi).
   · **TMO** (`Terminal/TmoView` → umumiy `Terminal/PostQueueView`, 2026-09-04) — bitta
-    ro'yxat, BOYOQ/STOLYARKA bilan bir naqsh: detal qatori, nusxa chiplari (kulrang — keldi,
-    qabul kutilmoqda; ✓ — qabul qilindi), hali tsexdagilar «+N yo'lda». Qadoq QR'i (`PK-…`)
+    ro'yxat, BOYOQ/STOLYARKA bilan bir naqsh: detal qatori, nusxa chiplari (kulrang — tayyor,
+    qabul kutilmoqda; ✓ — qabul qilindi). Avtomatik qabul YO'Q: tsex «tugatdim», ombor «qo'limda» —
+    farqi yo'qolgan detal, hali tsexdagilar «+N yo'lda». Qadoq QR'i (`PK-…`)
     bitta skanda ichidagi hammasini qabul qiladi (`accept_into_tmo`). Qadoq alohida tab EMAS.
 - WS hook: `hooks/useMesWs.ts` (reconnect + heartbeat + online flag).
 - Rol-marshrutlash: `_layout.tsx` beforeLoad (`lib/guards.ts: requireAuth`) — terminal va
