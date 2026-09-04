@@ -405,7 +405,9 @@ export const SCAN_ERROR_LABELS: Record<string, string> = {
   E009: "Sozlama xatosi (post/ish markazi yo'q) — admin tuzatadi",
 }
 
-/** Terminal tasmasi uchun BIR SO'ZLIK sarlavha — «E008» ishchiga hech narsa
+/** Terminal tasmasi uchun BIR SO'ZLIK sarlavha (yuqoridagi `SCAN_ERROR_LABELS`
+ * bilan JUFT: yangi kod qo'shilsa IKKALASIGA ham yoziladi — biri tasmada, biri
+ * Loglar panelida) — «E008» ishchiga hech narsa
  * demaydi, «TAKROR» esa uzoqdan o'qiladi. Kod xabar yonida kichik qoladi
  * (operator uni adminga aytadi, Loglar sahifasi izohlaydi). */
 export const SCAN_CODE_WORDS: Record<string, string> = {
