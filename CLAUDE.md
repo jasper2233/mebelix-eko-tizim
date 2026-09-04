@@ -85,9 +85,9 @@ make check-migrations                          # alembic upgrade head && alembic
 JIMGINA tuzatib exit 0 qaytaradi. 2026-08-26 gacha CI lint darvozasi shu sabab
 umuman ishlamagan.
 
-2026-08-26 auditining o'lchangan xulosasi (`docs/audit-2026-09-02.md` → «Metod»):
-eng ishonchli topilmalar bajarilgan skriptlardan chiqdi, 16.7M tokenlik agent
-oqimidan emas.
+2026-08-26 auditining o'lchangan xulosasi (hisobot `docs/audit-2026-09-02.md`,
+git tarixida — 2026-09-04 da o'chirildi, 252/252 band yopilgach): eng ishonchli
+topilmalar bajarilgan skriptlardan chiqdi, 16.7M tokenlik agent oqimidan emas.
 
 ## Bilib turish kerak
 
