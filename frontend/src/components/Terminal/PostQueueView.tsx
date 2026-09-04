@@ -68,6 +68,9 @@ export function PostQueueView({
     ready: "Ishga tayyor",
     done: "Bajarilgan",
   }
+  // Material faqat bo'yoqchiga kerak — u uchun bu RANG/pardoz («LMDF BELI
+  // KARONA GLYANETS»). Stolyarda detal qo'lida, materiali chekda — shovqin.
+  const showMaterial = data?.post_code === "BOYOQ"
 
   // Detal bo'yicha guruh: bir detal ikki xil amal bilan kelishi mumkin
   // (stolyarkada) — kalitga amal kodi ham kiradi
@@ -164,9 +167,8 @@ export function PostQueueView({
                         postCode={data?.post_code}
                       />
                       {/* Har qator YORLIQLI: sariq/ko'k matn yolg'iz o'zi nima
-                          ekanini aytmasdi (material? yig'ma?). Bo'yoqchi uchun
-                          material = RANG. */}
-                      {r.material && (
+                          ekanini aytmasdi (material? biriktirma?). */}
+                      {showMaterial && r.material && (
                         <div className="truncate text-sm">
                           <span className="text-muted-foreground">
                             Material:{" "}
@@ -182,12 +184,13 @@ export function PostQueueView({
                           {r.note}
                         </div>
                       )}
-                      {/* Yig'ma ro'yxati KESILMAYDI — stolyar aynan shuni o'qiydi
-                          (qaysi mayda detallar bilan yig'iladi) */}
+                      {/* Biriktiriladigan mayda detallar ro'yxati KESILMAYDI —
+                          stolyar aynan shuni o'qiydi. So'z buyurtma sahifasi
+                          bilan bir: «Asosiy detalga biriktirish». */}
                       {!!r.assembly?.length && (
                         <div className="num text-sm">
                           <span className="text-muted-foreground">
-                            Yig'ma:{" "}
+                            Biriktiriladi:{" "}
                           </span>
                           <span className="font-semibold text-blue-800">
                             {r.assembly.join(", ")}
