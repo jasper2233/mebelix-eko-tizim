@@ -130,17 +130,13 @@ class PartInstance(BaseModel):
     __tablename__ = "part_instance"
 
     __table_args__ = (
-        Index("ix_part_instance_order_qr", "order_id", "qr_text", unique=True, postgresql_where=text("NOT is_deleted")),
-        # Serializatsiyalangan ID GLOBAL unikal (docs/11); eski prefikssiz qatorlar (jonli buyurtmalar
-        # orasida takrorlanishi mumkin) predikatdan tashqarida qoladi
-        Index(
-            "ix_part_instance_qr_serial",
-            "qr_text",
-            unique=True,
-            postgresql_where=text("NOT is_deleted AND qr_text ~ '^B-[0-9]{4}-[0-9]+_'"),
-        ),
-        # Skan lookup aynan qr_text bo'yicha — issiq yo'l seq scan bo'lmasin
-        Index("ix_part_instance_qr_text", "qr_text", postgresql_where=text("NOT is_deleted")),
+        # Detal ID GLOBAL unikal (docs/11) va shu indeks skan lookup'ini ham yopadi.
+        # 2026-09-05 gacha predikatda `qr_text ~ '^B-...'` sharti bor edi — prefikssiz
+        # eski qatorlar jonli buyurtmalar orasida takrorlanishi mumkin edi, ular
+        # indeksdan tashqarida qolardi. Prodda bunday qator qolmadi (0), shart ketdi.
+        # Bitta indeks yetadi: global unikal (order_id, qr_text) juftini ham qamraydi,
+        # order bo'yicha skan esa `order_id` FK indeksidan yuradi.
+        Index("ix_part_instance_qr_serial", "qr_text", unique=True, postgresql_where=text("NOT is_deleted")),
     )
 
     order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), index=True, kw_only=True)

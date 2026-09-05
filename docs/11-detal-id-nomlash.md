@@ -101,11 +101,13 @@ sababli bitta chek ID si va bitta bekor qilish tugmasini ko'rsatadi
   (`orders/matrix.py`) — son o'zgarishi ham xuddi shu juftlikni yasashi mumkin.
 - **Buyurtmalararo to'qnashuv — prefiks bilan YECHILGAN** (2026-09-03): yangi
   yuklashlarda QR `{buyurtma}_...` bo'lgani uchun ikki buyurtma bitta QR ni ulasha olmaydi;
-  DB buni `ix_part_instance_qr_serial` (UNIQUE `qr_text WHERE NOT is_deleted AND
-  qr_text ~ '^B-[0-9]{4}-[0-9]+_'`) bilan kafolatlaydi. Eski (prefikssiz) qatorlar predikatdan
-  tashqarida: ular jonli buyurtmalar orasida takrorlanishi mumkin va `record_scan_at` shunda
-  PRODUCTION qatorlar birdan ko'p bo'lsa `E001` beradi (CANCELLED faqat E003 xabari uchun);
-  `terminal.py resolve_terminal_qr` eski format uchun hamon eng yangisini tanlaydi. Eski
+  DB buni `ix_part_instance_qr_serial` (UNIQUE `qr_text WHERE NOT is_deleted`) bilan
+  kafolatlaydi — 2026-09-05 dan predikatda prefiks sharti YO'Q (`9c4e1a7b2d03`), ya'ni
+  takrorlanish QANDAY shakldagi QR uchun ham bazada rad etiladi. Ilgari prefikssiz qatorlar
+  predikatdan tashqarida edi va jonli buyurtmalar orasida takrorlanishi mumkin edi;
+  `record_scan_at` shunda PRODUCTION qatorlar birdan ko'p bo'lsa `E001` berardi (CANCELLED
+  faqat E003 xabari uchun); `terminal.py resolve_terminal_qr` eski format uchun eng yangisini
+  tanlaydi. Eski
   jonli buyurtmalar yangi formatga O'TKAZILMAYDI (`qr_text` bazada o'zgarmaydi, `regenerate`
   ham bazadagi QR'dan quradi), LEKIN matritsada soni o'zgargan detal (`_resize_instances`)
   yangi prefiksli formatga o'tadi — bitta buyurtmada ikki format bo'lishi normal (bosqich
@@ -161,26 +163,30 @@ o'zgarganda `PATCH /orders/{id}/matrix` o'sha helperni O'ZI chaqiradi, ya'ni
 yangi nusxa fayli darhol paydo bo'ladi va texnolog qo'lda qayta yaratishi shart
 emas; `.project` diskda bo'lmasa qayta yaratish jim o'tkazib yuboriladi.
 
-## Vaqtinchalik moslik: `strip_order_prefix` (OLIB TASHLASH KUTILMOQDA)
+## `strip_order_prefix` — nega qoladi (2026-09-05 da yopilgan ish)
 
-Prefiks 2026-09-04 da prodga chiqdi. O'shagacha yuklangan buyurtmalarning cheklari
-prefikssiz (`100701_03_002`) va tsexda hafta-oylab yuradi — o'sha kuni prodda 5 290
-jonli prefikssiz nusxa, 3 334 chek chiqarilgan-u TMO ga topshirilmagan. Shu vaqt
-ichida skan yo'li ikkala shaklni qabul qiladi: `giblab/models.py: strip_order_prefix`
-prefiks bo'lsa olib tashlaydi, bo'lmasa satrni o'zgartirmaydi (`qr_part_code` chaqiradi).
-
-**Olib tashlash sharti** — prodda shu so'rov `0` qaytarsa:
+Prefiks 2026-09-04 da prodga chiqdi; o'shagacha yuklangan cheklar prefikssiz
+(`100701_03_002`) edi va vaqtincha moslik sifatida skan yo'li ikkala shaklni qabul
+qilardi. 2026-09-05 da prod MVP ma'lumotlari to'liq tozalandi, ya'ni
 
 ```sql
-SELECT count(*) FROM part_instance
-WHERE NOT is_deleted AND qr_text !~ '^B-[0-9]{4}-[0-9]+_';
+SELECT count(*) FROM part_instance WHERE NOT is_deleted AND qr_text !~ '^B-[0-9]{4}-[0-9]+_';
 ```
 
-Shunda ketadi: `strip_order_prefix` va `ORDER_PREFIX_RE` (`models.py`), `qr_part_code`
-dagi chaqiruv (`scanning.py`), shu bo'lim. `ix_part_instance_qr_serial` partial indeksi
-(`2f1649a8968e`) ham `WHERE` shartsiz oddiy UNIQUE ga aylanishi mumkin — alohida
-migratsiya. Tekshirish yo'li: `make check-migrations` + prod nusxasida `alembic upgrade`.
-Eslatma: `docs/04` yetim ustunlar ro'yxatiga tegmaydi — bu ustun emas, satr shakli.
+endi `0` qaytaradi. Ammo funksiyaning O'ZI olib tashlanmaydi — u vaqtinchalik moslik
+emas, DETAL KODINI chiqaruvchi kod: `scanning.py: qr_part_code` shu bilan prefiksni
+kesadi va terminal jadvalidagi «Kod» ustuni `100701_03_002` bo'lib ko'rinadi.
+O'lchab tekshirilgan (2026-09-05): chaqiruv olib tashlansa `qr_part_code` UI ga
+`B-2026-047_100701_03_002` beradi — regressiya. Shartli («prefiks bo'lmasa o'zgartirmaydi»)
+qolishi ham ataylab: ATX chiqindi yorlig'i va qo'lda kiritilgan kod shu yo'ldan o'tadi.
+
+Haqiqatan ketgan yagona narsa — indeks predikati: `ix_part_instance_qr_serial` endi
+oddiy `UNIQUE qr_text WHERE NOT is_deleted` (migratsiya `9c4e1a7b2d03`). Shundan keyin
+`ix_part_instance_order_qr` va `ix_part_instance_qr_text` ortiqcha bo'lib qoldi va
+o'chirildi: global unikal indeks (order_id, qr_text) juftini ham, skan lookup'ini ham
+qoplaydi; buyurtma bo'yicha skan `order_id` FK indeksidan yuradi. Prod nusxasida
+upgrade/downgrade/`alembic check` sinalgan, ikki buyurtmada bir xil QR rad etilishi
+o'lchab tasdiqlangan.
 
 ## Merge qilinmasligi haqida
 

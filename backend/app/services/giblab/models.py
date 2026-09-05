@@ -23,19 +23,13 @@ def instance_qr(order_number: str, key: str, n: int | None) -> str:
 
 
 def strip_order_prefix(qr: str) -> str:
-    """Eski (prefikssiz) yorliqlar ham yuradi — prefiks bo'lsa olib tashlanadi, bo'lmasa o'zi.
+    """Nusxa QR'idan buyurtma prefiksini oladi: `B-2026-047_100701_03_002` -> `100701_03_002`.
 
-    VAQTINCHALIK MOSLIK (2026-09-04 dan). Prefiks 2026-09-04 da chiqdi; o'shagacha
-    yuklangan buyurtmalarning cheklari prefikssiz va ular tsexda hafta-oylab yuradi
-    (o'sha kuni prodda: 5 290 jonli prefikssiz nusxa, 3 334 chek chiqarilgan-u TMO ga
-    topshirilmagan). Olib tashlash sharti — prodda shu so'rov 0 qaytarsa:
-
-        SELECT count(*) FROM part_instance
-        WHERE NOT is_deleted AND qr_text !~ '^B-[0-9]{4}-[0-9]+_';
-
-    Shunda: bu funksiya, `qr_part_code` dagi chaqiruvi va docs/11 «Vaqtinchalik
-    moslik» bo'limi ketadi; `ix_part_instance_qr_serial` partial indeksining
-    `WHERE` sharti ham oddiy UNIQUE ga aylanishi mumkin (alohida migratsiya).
+    Detal kodi shu yerdan chiqadi (`scanning.py: qr_part_code`) — terminal jadvalida
+    «Kod» ustuni prefikssiz ko'rinadi. Prefiks bo'lmasa satr o'zgarmaydi: 2026-09-04
+    gacha yuklangan cheklar prefikssiz edi (2026-09-05 da prodda bunday jonli nusxa
+    0 ta qoldi — MVP ma'lumotlari tozalandi), lekin shart himoya sifatida qoladi:
+    ATX chiqindi yorlig'i va qo'lda kiritilgan kod ham shu yo'ldan o'tadi.
     """
     return ORDER_PREFIX_RE.sub("", qr, count=1)
 

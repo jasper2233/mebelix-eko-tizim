@@ -171,7 +171,7 @@ to'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §2.3. Qoidalar:
   qatorida "+ `01_007 ×2`" bo'lib ko'rinadi.
 
 **Nusxani topish — QR buyurtmaga bog'lanmagan** (`scanning.record_scan_at`). QR satri
-2026-09-03 dan `{buyurtma}_{productCode}_{partCode}[_n]` (`docs/11`) — butun tizimda unikal (`ix_part_instance_qr_serial`); ESKI prefikssiz satrlarda yagona indeks faqat `(order_id, qr_text)`
+2026-09-03 dan `{buyurtma}_{productCode}_{partCode}[_n]` (`docs/11`) — butun tizimda unikal (`ix_part_instance_qr_serial`, 2026-09-05 dan predikat `WHERE NOT is_deleted` — shakldan qat'i nazar)
 bo'yicha: bir xil GibLab kodlaridan yig'ilgan IKKI jonli buyurtma bitta QR ni ulashishi
 mumkin. Dvijok mos keluvchi jonli (PRODUCTION/CANCELLED) qatorlarni oladi; to'qnashuv deb FAQAT
 PRODUCTION qatorlar sanaladi (CANCELLED faqat E003 xabari uchun — bekor qilingan buyurtma o'sha
@@ -470,8 +470,10 @@ direktor ham ko'radi.
 - Og'ir JSONB ustunlar ro'yxat so'rovlarida `defer()` bilan qoldiriladi:
   `ORDER_FAT_COLUMNS` (cutmap/survey/material_usage/machine_assignments) va
   `PART_FAT_COLUMNS` (xnc_summary/note) — `app/models/order.py` (o'lchov: reestr
-  284 ms → 5 ms). Skan issiq yo'li uchun `qr_text` partial indeksi
-  (`ix_part_instance_qr_text`, migratsiya `e8b1c6d94f27`).
+  284 ms → 5 ms). Skan issiq yo'li uchun `qr_text`
+  partial indeksi — 2026-09-05 dan UNIQUE `ix_part_instance_qr_serial`
+  (`WHERE NOT is_deleted`, `9c4e1a7b2d03`); ilgari alohida `ix_part_instance_qr_text`
+  bor edi (`e8b1c6d94f27`), unikal indeks uni qoplagani uchun o'chirildi.
 
 ## 7. Frontend tuzilishi
 
