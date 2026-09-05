@@ -76,6 +76,7 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
             select(
                 PartRoute.order_id,
                 PartRoute.post_id,
+                PartRoute.part_id,
                 PartRoute.total_done,
                 PartRoute.total_required,
                 Part.length,
@@ -130,6 +131,13 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
     )
 
     agg: dict[tuple[int, int], StageAgg] = {}
+    # Hajm HAR DETAL uchun postda BIR MARTA sanaladi. `part_volume` to'liq detal
+    # hajmini qaytaradi va `per_instance` ni bilmaydi, marshrutda esa bitta post
+    # ikki qator berishi mumkin — takror kod ([3, 6, 3]) yoki bitta postga tushadigan
+    # ikki xil amal (Raspil+45°, Kromka+Fasat). Har qatorda qo'shilsa 1000x500 detal
+    # 6 m qirrani 12 m qilib ko'rsatardi. `done`/`total` esa HAMMA qatordan yig'iladi —
+    # ular skan soni, ikki o'tish rostdan ikki skan.
+    seen_volume: set[tuple[int, int]] = set()
     for row in routes:
         key = (row.order_id, row.post_id)
         post = posts_by_id[row.post_id]
@@ -139,6 +147,9 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
             agg[key] = entry
         entry.done += row.total_done
         entry.total += row.total_required
+        if (row.part_id, row.post_id) in seen_volume:
+            continue
+        seen_volume.add((row.part_id, row.post_id))
         vol = part_volume(str(post.code), length=row.length, width=row.width, count=row.part_count, edges=row.edges)
         entry.volume_total += vol
         if row.total_required:

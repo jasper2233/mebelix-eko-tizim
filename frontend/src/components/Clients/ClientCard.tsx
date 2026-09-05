@@ -56,10 +56,15 @@ export function ClientCard({
       ).data,
     enabled: clientId !== null,
   })
-  // Qarz = bekor qilinmagan buyurtmalarning qoldiq to'lovlari yig'indisi —
-  // mijoz kartochkasidagi asosiy savol («bizga qarzi bormi?»).
+  // Qarz = qoldiq to'lovlar yig'indisi — mijoz kartochkasidagi asosiy savol
+  // («bizga qarzi bormi?»). QORALAMA KIRMAYDI: u hali tasdiqlanmagan, mijoz
+  // hech narsaga majbur emas. Boshqaruv panelidagi «qarz» ham aynan shu
+  // filtrni ishlatadi (`reports.py` money bloki) — ikki ekran bir xil raqam bersin.
   const debt = (data?.orders ?? [])
-    .filter((o) => o.status !== "cancelled" && o.amount != null)
+    .filter(
+      (o) =>
+        o.status !== "cancelled" && o.status !== "draft" && o.amount != null,
+    )
     .reduce((sum, o) => sum + Math.max(0, remainingPayment(o)), 0)
 
   return (

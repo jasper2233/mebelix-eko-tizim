@@ -467,6 +467,14 @@ direktor ham ko'radi.
   reports va tablo uchun umumiy. `Part` obyektini emas, `length`/`width`/`count`/`edges`
   qiymatlarini oladi — TABLO o'n minglab marshrutni ORM obyekti sifatida qurmay,
   faqat shu to'rt ustunni tanlab olishi uchun (o'lchov: 669 ms → 175 ms).
+  **Chaqiruvchidagi qoida: hajm HAR DETAL uchun postda BIR MARTA sanaladi**
+  (`tablo.py` va `reports.py` da `seen_volume` to'plami). `part_volume` to'liq detal
+  hajmini qaytaradi va `per_instance` ni bilmaydi, marshrutda esa bitta post ikki
+  qator berishi mumkin — takror kod (`[3, 6, 3]`) yoki bitta postga tushadigan ikki
+  xil amal (`Raspil`+`45° kesish`, `Kromka`+`Fasat kromka`). Har qatorda qo'shilganda
+  1000×500 detalning 6 m qirrasi 12 m bo'lib ko'rinardi va `hajm` rejimi hamma qirra
+  yopishtirilgan bo'lsa ham 50% ko'rsatardi. `done`/`total` esa HAMMA qatordan
+  yig'iladi — ular skan soni, ikki o'tish rostdan ikki skan.
 - `app/services/excel.py: xlsx_response()` — openpyxl bilan bitta varaqli .xlsx stream
   (reports `?format=xlsx` orqasida).
 - Og'ir JSONB ustunlar ro'yxat so'rovlarida `defer()` bilan qoldiriladi:

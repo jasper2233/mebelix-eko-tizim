@@ -564,7 +564,8 @@ function Tag({
 }
 
 function PostCard({ p }: { p: PostLoad }) {
-  // Dona birlikli postda hajm skan soniga teng — takror ko'rsatilmaydi
+  // Dona birlikli postda hajm detal sonini beradi va yonidagi skan sonidan
+  // yangilik qo'shmaydi — takror ko'rsatilmaydi
   const showVolume = p.queue_volume > 0 && p.unit !== "dona"
   const idle = p.queue_scans === 0 && p.today_scans === 0
   return (
