@@ -907,6 +907,9 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     # `MissingGreenlet` bilan yiqilardi: chek fizik chiqib turib, terminal xato
     # ko'rsatardi va operator chek chiqmadi deb o'ylardi.
     qr_text = instance.qr_text
+    # `user.id` ham SHU YERDA: `log_action` quyida rollbackdan KEYIN chaqiriladi va
+    # o'shanda `user` ham expire bo'lgan bo'ladi — o'qish MissingGreenlet berardi.
+    user_id = user.id
     instance.label_printed_at = datetime.now(UTC)
     # Chekni kim chiqargani nusxaning O'ZIDA qoladi — bekor qilish huquqi shundan
     instance.label_post_id = print_post.id if print_post is not None else None
@@ -1000,7 +1003,7 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
                 db,
                 module="print",
                 action="rejected",
-                user_id=user.id,
+                user_id=user_id,
                 entity_type="part_instance",
                 entity_id=instance_id,
                 message=f"Chek chiqdi, lekin bosqich yopilmadi: {qr_text} — {exc.message}",

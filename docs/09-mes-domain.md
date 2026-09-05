@@ -196,9 +196,11 @@ o'sha postdan keyin turadi va aynan o'sha yerdan olinadi.
 Qadoqlash, TMO va post navbati (BOYOQ/STOLYARKA) ekranlari shu yagona funksiyadan foydalanadi.
 
 Rad etilgan skan yakuni umumiy helperda — `log_rejected_scan()` (rollback + audit-log
-`module=scan, action=rejected` + commit): terminal (`scans.py`) ham, stanok skan-forvardi
-(`bridge_agents.py`) ham shu yo'ldan o'tadi, ya'ni operator ko'rmagan rad ham Loglar
-sahifasida qoladi. `GET /scans/recent` endpointi olib tashlangan.
+`module=scan, action=rejected` + commit): TO'RTALA skan yo'li ham shundan o'tadi —
+terminal (`scans.py`), qadoqqa skan (`pachka.py`), TMO qabuli (`tmo.py`) va stanok
+skan-forvardi (`bridge_agents.py`) — ya'ni operator ko'rmagan rad ham Loglar
+sahifasida qoladi. `user.id` helperga ARGUMENT sifatida beriladi: rollback helper
+ICHIDA, undan oldin qilinsa `user` eskirib `user.id` MissingGreenlet berardi. `GET /scans/recent` endpointi olib tashlangan.
 
 **WS eventlarini tarqatish — `publish_scan_events(outcomes)`** (`scanning.py`), FAQAT
 commitdan keyin chaqiriladi. Bitta skan uchun uni `finalize_scan` chaqiradi; TMO qabuli

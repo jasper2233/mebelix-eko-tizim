@@ -34,6 +34,7 @@ from app.services.scanning import (
     ScanRejected,
     active_session,
     instance_stages,
+    log_rejected_scan,
     publish_scan_events,
     record_scan_at,
     resolve_terminal,
@@ -262,7 +263,11 @@ async def accept_into_tmo(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: in
                 )
             )
         except ScanRejected as exc:
-            await db.rollback()
+            # Rad etilgan urinish ham logga — scans.py/pachka.py bilan bir xil:
+            # Loglar sahifasidagi "rejected" filtri TMO ni ham ko'rsin.
+            # Rollback helper ICHIDA: undan oldin qilinsa `user` eskirib
+            # `user.id` MissingGreenlet berardi.
+            await log_rejected_scan(db, exc, one, user_id=user.id)
             raise scan_error(exc.code, exc.message) from None
 
     log_action(
