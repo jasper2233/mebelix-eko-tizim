@@ -144,7 +144,7 @@ Xona surati uchun yangi jadval qo'shilmagan: `OrderFile` qatori `kind=FileKind.D
 
 | Model / jadval | Muhim ustunlar | Unikal/muhim indekslar |
 |---|---|---|
-| `WorkSession` | `employee_id` FK (index), `user_id` FK NULL (smenani ochgan hisob — ish markazining TERMINAL hisobi, post rolidagi texnik hisob yoki ishchining SHAXSIY hisobi), `machine_id` FK NULL, `post_id` FK, `status` (`SessionStatus`, index), `ended_at` | **Bitta ish markazida BIR NECHTA ochiq smena bo'lishi mumkin — brigada** (`crew_sessions`): ARRA da ikki kishi birga ishlaydi va detalni qaysi biri olganini bilishning iloji yo'q. Ilgari "bitta ish markazi = bitta smena" edi va ikkinchi kirish birinchisini jimgina yopib, undan keyingi hamma skan bitta odamga yozilardi. `Scan.session_id` LANGAR smenaga (brigadaning birinchisi) yoziladi, ish esa skan VAQTIDA ochiq bo'lgan smenalar orasida teng bo'linadi (`reports.py`). Smena terminalda ochiladi (beyjik skani yoki ismni bosish) yoki ishchi parol bilan kirganda avtomatik (`login._open_shift_for`). `SESSION_MAX_HOURS` (12 soat) dan oshgani avtomatik ENDED. `created_at` = boshlanish vaqti |
+| `WorkSession` | `employee_id` FK (index), `user_id` FK NULL (smenani ochgan hisob — ish markazining TERMINAL hisobi, post rolidagi texnik hisob yoki ishchining SHAXSIY hisobi), `machine_id` FK NULL, `post_id` FK, `status` (`SessionStatus`, index), `ended_at` | **Bitta ish markazida BIR NECHTA ochiq smena bo'lishi mumkin — brigada** (`crew_sessions`): ARRA da ikki kishi birga ishlaydi va detalni qaysi biri olganini bilishning iloji yo'q. Ilgari "bitta ish markazi = bitta smena" edi va ikkinchi kirish birinchisini jimgina yopib, undan keyingi hamma skan bitta odamga yozilardi. `Scan.session_id` LANGAR smenaga (brigadaning birinchisi) yoziladi, ish esa skan VAQTIDA ochiq bo'lgan smenalar orasida teng bo'linadi (`reports.py`). Smena terminalda ochiladi (beyjik skani yoki ismni bosish) yoki ishchi parol bilan kirganda avtomatik (`login._open_shift_for`). Smena MUDDATI YO'Q — u faqat «Chiqish» (`end_session`), logout yoki o'sha ish markazidagi keyingi kirish bilan yopiladi (`open_badge_session` `join=False` da brigadani almashtiradi). `created_at` = boshlanish vaqti |
 | `Scan` | `order_id`/`part_id`/`instance_id`/`route_id`/`post_id` FK, `machine_id` FK NULL, `employee_id` FK (index), `session_id` FK (index), `client_event_id(64)`, `is_cancelled`, `cancelled_at`, `parent_scan_id` FK NULL → `scan.id` (index) | `parent_scan_id` — YIG'MA BUYUM: asosiy detal skani biriktirilgan mayda detallarga ham skan yozadi, hosila qatorlar shu ustun orqali bog'lanadi va bekor qilinganda birga bekor bo'ladi (`c9d4e2f81a70`). UNIQUE `ix_scan_client_event_id` (idempotentlik — network replay rad etiladi); `ix_scan_order_post`; PARTIAL `ix_scan_instance_post` (`WHERE NOT is_cancelled`); `ix_scan_instance_route` (`instance_id`, `route_id`) — skan hisobi QADAM bo'yicha sanaladi (`scanning._scans_done`, issiq yo'l, `d5a1c93b70e2`); `ix_scan_created_at` — dashboard "bugungi skanlar" so'rovi uchun (`a7d3f1c48b26`). Bekor qilingan skan auditda qoladi, hisoblagich qayta oshiriladi |
 
 #### 1.4.2 `bridge_agent` — har printerga o'z tokeni (pairing)
@@ -307,7 +307,6 @@ Barcha model-CRUD klasslarning asosi. `ModelType` `app.models.base.BaseModel` bi
 
 ```python
 class BaseCRUD(Generic[ModelType]):
-    exclude_deleted: bool = True
     def __init__(self, model: type[ModelType]): ...
 ```
 
@@ -315,14 +314,14 @@ Asosiy metodlar (hammasi async, `AsyncSession` qabul qiladi):
 
 | Metod | Signatura (qisqartirilgan) | Vazifasi |
 |---|---|---|
-| `_build_query` | `(**kwargs) -> Select` | `**kwargs` — equality filterlar; `exclude_deleted=True` bo'lsa va caller `is_deleted` bermagan bo'lsa avtomatik `is_deleted == False` qo'shadi |
+| `_build_query` | `(**kwargs) -> Select` | `**kwargs` — equality filterlar; caller `is_deleted` ni ochiq bermagan bo'lsa avtomatik `is_deleted == False` qo'shadi |
 | `get` | `(db, **kwargs) -> ModelType \| None` | Istalgan field bo'yicha bitta yozuv (`scalar_one_or_none`) |
 | `get_or_404` | `(db, detail, **kwargs) -> ModelType` | `get` kabi, topilmasa (yoki soft-delete bo'lsa) `NotFoundException(detail)` (`app.core.exceptions`) — routelardagi qo'lda yozilgan get-or-404 bloklari o'rniga |
 | `get_multi` | `(db, offset=0, limit=100, **kwargs) -> (list, int)` | Sahifa + jami count (count subquery orqali, paginatsiyasiz); sahifa `ORDER BY id` bilan — barqaror tartib bo'lmasa Postgres sahifalarda qatorlarni takrorlashi/tushirib qoldirishi mumkin |
 | `exists` | `(db, **kwargs) -> bool` | Yozuv borligini tekshirish (count > 0) |
 | `delete` | `(db, **kwargs) -> bool` | **Soft delete**: `is_deleted=True`, `deleted_at=now(UTC)`; topilmasa `False` |
 
-Muhim xulq: qidiruvlar default holda o'chirilgan yozuvlarni **ko'rmaydi**; o'chirilganlarni ham olish uchun `is_deleted=True/False` ni explicit berish yoki `exclude_deleted` ni override qilish kerak.
+Muhim xulq: qidiruvlar default holda o'chirilgan yozuvlarni **ko'rmaydi**; o'chirilganlarni ham olish uchun `is_deleted=True/False` ni explicit berish kerak.
 
 Tranzaksiya chegarasi: `delete` — sinfdagi **yagona o'zi commit qiladigan** metod. Shu sababli u bilan birga `log_action` stage qilingan bo'lsa, audit qatori ham shu commitda ketadi; qolgan yozuv oqimlarida commit route qatlamining zimmasida.
 
@@ -332,10 +331,10 @@ Tranzaksiya chegarasi: `delete` — sinfdagi **yagona o'zi commit qiladigan** me
 
 | Metod | Vazifasi |
 |---|---|
-| `get_by_login(db, identifier)` | Identifier `+` bilan boshlansa `phone`, aks holda `username` bo'yicha qidiradi |
+| `_get_by_login(db, identifier)` | Identifier `+` bilan boshlansa `phone`, aks holda `username` bo'yicha qidiradi |
 | `create(db, user_create)` | Parolni `await get_password_hash(...)` (`backend/app/core/security.py`) bilan xeshlab yaratadi; faqat `flush` (INSERT shu yerda ketadi) — **commit route zimmasida**; caller pre-check qilsa ham, race'da yuzaga keladigan `IntegrityError` tutilib `DuplicateValueException` (409) qaytariladi |
 | `update(db, db_user, user_update)` | `UserUpdate` yoki `dict`; `exclude_unset=True` (partial); `password` kelsa avtomatik `hashed_password` ga xeshlanadi (`await`); faqat `flush` — commit route zimmasida; `IntegrityError` → `DuplicateValueException` (409) |
-| `authenticate(db, username_or_phone, password)` | `get_by_login` + `verify_password`; user **topilmasa ham** modul-darajali `_DUMMY_HASH` ustida `verify_password` bajariladi — javob vaqti user mavjudligini oshkor qilmaydi (timing attack himoyasi); `logger.warning` faqat user TOPILIB paroli noto'g'ri bo'lganda yoziladi — identifikator umuman topilmasa dummy-hash verify bajarilib JIMGINA `None` qaytadi (log yo'q); xatoda `None` |
+| `authenticate(db, username_or_phone, password)` | `_get_by_login` + `verify_password`; user **topilmasa ham** modul-darajali `_DUMMY_HASH` ustida `verify_password` bajariladi — javob vaqti user mavjudligini oshkor qilmaydi (timing attack himoyasi); `logger.warning` faqat user TOPILIB paroli noto'g'ri bo'lganda yoziladi — identifikator umuman topilmasa dummy-hash verify bajarilib JIMGINA `None` qaytadi (log yo'q); xatoda `None` |
 | `increment_token_version(db, user)` | `token_version += 1` — foydalanuvchining barcha access/refresh tokenlarini bekor qiladi; faqat `flush` — commit route zimmasida |
 
 ### 3.3 `backend/app/crud/orders.py` — `CRUDOrder`

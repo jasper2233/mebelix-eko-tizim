@@ -197,7 +197,7 @@ Browser                      FastAPI                        PostgreSQL/Redis
    |  (username/telefon+parol)  |                                 |
    |--------------------------->|                                 |
    |                            |-- RateLimit dependency -------->| Redis: brute-force tekshiruv
-   |                            |-- crud_users.authenticate ----->| DB: get_by_login
+   |                            |-- crud_users.authenticate ----->| DB: _get_by_login
    |                            |   (bcrypt verify, threadpool)   | (username yoki +998... telefon)
    |                            |                                 |
    |  Set-Cookie:               |                                 |
