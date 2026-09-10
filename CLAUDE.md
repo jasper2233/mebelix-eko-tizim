@@ -1,5 +1,5 @@
 <!--
-last_updated: 2026-09-04
+last_updated: 2026-09-10
 scope: butun repo
 owner: apayziev
 -->
@@ -72,14 +72,7 @@ haqiqiy bo'lishi — xulosa to'g'ri degani EMAS.
 har qanday da'vo ("bu poyga", "bu autoflush tufayli ishlamaydi") bajarilib
 tasdiqlanishi shart; mulohaza yetarli emas.
 
-**Mavjud orakllar** — da'vodan oldin shularni ishlat:
-
-```bash
-cd backend && uv run ruff check --no-fix app   # --no-fix SHART (pastga qarang)
-cd backend && uv run mypy app
-cd frontend && npx biome ci . && npm run build
-make check-migrations                          # alembic upgrade head && alembic check
-```
+**Mavjud orakllar** — da'vodan oldin `## Commands` dagi tekshiruv buyruqlarini ishlat.
 
 ⚠️ `pyproject.toml` da `fix = true` turibdi: `--no-fix` siz `ruff check` xatoni
 JIMGINA tuzatib exit 0 qaytaradi. 2026-08-26 gacha CI lint darvozasi shu sabab
