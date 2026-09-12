@@ -432,60 +432,11 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
                 else:
                     draw.text((bx + bw // 2, by + bh - int(0.6 * mm)), sym, fill="black", font=sf, anchor="md")
 
-        # PAZ/OVAL: freza qirra bo'ylab ketadigan tomon — kontur ICHIDA uzuq chiziq.
-        # Kromka chizig'idan ataylab farq qiladi: u TASHQARIDA va TUTASH, bu ICHKARIDA
-        # va UZUQ. Tomon NOMI ("o'ng") yozilmaydi — eskiz o'lchamga qarab buriladi
-        # (`burilgan`), ya'ni nom operatorni adashtirardi; u eskizdagi chiziqni detalning
-        # o'zi bilan solishtiradi. Tsex shikoyati 2026-09-12: oval kesilardi-yu, kromkachi
-        # qaysi tomon ekanini chekdan bilolmasdi (docs/09).
+        # Paz/freza ketadigan tomonlar — ro'yxat SHU YERDA kerak: tekstura chiziqlari
+        # ularga qarab siljiydi. CHIZISH esa teshiklardan KEYIN (pastda) — teshik
+        # doirasi oq bilan to'ldiriladi va uzuq chiziqning ustiga tushib, uni
+        # o'chirib qo'yardi (1200x350, 24 teshikli detalda o'lchangan).
         paz_tomonlari = [t for t in d.xnc_summary.get("mill_sides") or [] if t in qirra]
-        if paz_tomonlari:
-            ich = int(1.4 * mm)  # konturdan ichkariga
-            pt = max(2, int(0.6 * mm))
-            uzuq_max, oraliq_ulush = int(2 * mm), 0.6
-
-            def uzuq_chiziq(x1: int, y1: int, x2: int, y2: int) -> None:
-                """Uzuq chiziq: PIL'da dash yo'q, qo'lda bo'laklab chiziladi.
-
-                O'rtada bo'shliq qoldiriladi — o'sha joyda tomon simvoli (A/B) turadi va
-                chiziq uning ustidan o'tib harfni o'qib bo'lmas qilardi."""
-                # Harf uchun yarim bo'shliq. Qirra qisqa bo'lsa (ingichka detalning
-                # eni 5-15 mm) qat'iy 2.2 mm butun chiziqni yeb qo'yardi — bo'shliq
-                # qirra uzunligining oltidan biridan oshmaydi.
-                uzunlik = (y2 - y1) if x1 == x2 else (x2 - x1)
-                bosh = max(2, min(int(2.2 * mm), uzunlik // 6))
-                # Bo'lak ham qirraga moslashadi: 2 metrli plankaning 100 mm li
-                # qisqa qirrasi eskizda ~9 mm — qat'iy 2 mm li bo'lak bo'shliqdan
-                # keyin bittagina bo'lakni qoldirardi (o'lchangan).
-                uzuq = max(3, min(uzuq_max, uzunlik // 8))
-                oraliq = max(2, int(uzuq * oraliq_ulush))
-                if x1 == x2:
-                    orta = (y1 + y2) // 2
-                    y = y1
-                    while y < y2:
-                        oxir = min(y + uzuq, y2)
-                        if oxir < orta - bosh or y > orta + bosh:
-                            draw.rectangle((x1, y, x1 + pt, oxir), fill="black")
-                        y += uzuq + oraliq
-                else:
-                    orta = (x1 + x2) // 2
-                    x = x1
-                    while x < x2:
-                        oxir = min(x + uzuq, x2)
-                        if oxir < orta - bosh or x > orta + bosh:
-                            draw.rectangle((x, y1, oxir, y1 + pt), fill="black")
-                        x += uzuq + oraliq
-
-            for tomon in paz_tomonlari:
-                joy = qirra[tomon]
-                if joy == "chap":
-                    uzuq_chiziq(bx + ich, by + ich, bx + ich, by + bh - ich)
-                elif joy == "ong":
-                    uzuq_chiziq(bx + bw - ich - pt, by + ich, bx + bw - ich - pt, by + bh - ich)
-                elif joy == "tepa":
-                    uzuq_chiziq(bx + ich, by + ich, bx + bw - ich, by + ich)
-                else:
-                    uzuq_chiziq(bx + ich, by + bh - ich - pt, bx + bw - ich, by + bh - ich - pt)
 
         # Tekstura yo'nalishi: 3 ingichka chiziq UZUNLIK (`l` — teksturali
         # materialda birinchi o'lcham, tekstura qulflangan o'q) BO'YLAB.
@@ -572,6 +523,60 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
                         draw.line((xx, by, xx, by + tick), fill="black", width=2)
                     else:
                         draw.line((xx, by + bh - tick, xx, by + bh), fill="black", width=2)
+
+        # PAZ/OVAL: freza qirra bo'ylab ketadigan tomon — kontur ICHIDA uzuq chiziq.
+        # Kromka chizig'idan ataylab farq qiladi: u TASHQARIDA va TUTASH, bu ICHKARIDA
+        # va UZUQ. Tomon NOMI ("o'ng") yozilmaydi — eskiz o'lchamga qarab buriladi
+        # (`burilgan`), ya'ni nom operatorni adashtirardi; u eskizdagi chiziqni detalning
+        # o'zi bilan solishtiradi. Tsex shikoyati 2026-09-12: oval kesilardi-yu, kromkachi
+        # qaysi tomon ekanini chekdan bilolmasdi (docs/09).
+        if paz_tomonlari:
+            ich = int(1.4 * mm)  # konturdan ichkariga
+            pt = max(2, int(0.6 * mm))
+            uzuq_max, oraliq_ulush = int(2 * mm), 0.6
+
+            def uzuq_chiziq(x1: int, y1: int, x2: int, y2: int) -> None:
+                """Uzuq chiziq: PIL'da dash yo'q, qo'lda bo'laklab chiziladi.
+
+                O'rtada bo'shliq qoldiriladi — o'sha joyda tomon simvoli (A/B) turadi va
+                chiziq uning ustidan o'tib harfni o'qib bo'lmas qilardi."""
+                # Harf uchun yarim bo'shliq. Qirra qisqa bo'lsa (ingichka detalning
+                # eni 5-15 mm) qat'iy 2.2 mm butun chiziqni yeb qo'yardi — bo'shliq
+                # qirra uzunligining oltidan biridan oshmaydi.
+                uzunlik = (y2 - y1) if x1 == x2 else (x2 - x1)
+                bosh = max(2, min(int(2.2 * mm), uzunlik // 6))
+                # Bo'lak ham qirraga moslashadi: 2 metrli plankaning 100 mm li
+                # qisqa qirrasi eskizda ~9 mm — qat'iy 2 mm li bo'lak bo'shliqdan
+                # keyin bittagina bo'lakni qoldirardi (o'lchangan).
+                uzuq = max(3, min(uzuq_max, uzunlik // 8))
+                oraliq = max(2, int(uzuq * oraliq_ulush))
+                if x1 == x2:
+                    orta = (y1 + y2) // 2
+                    y = y1
+                    while y < y2:
+                        oxir = min(y + uzuq, y2)
+                        if oxir < orta - bosh or y > orta + bosh:
+                            draw.rectangle((x1, y, x1 + pt, oxir), fill="black")
+                        y += uzuq + oraliq
+                else:
+                    orta = (x1 + x2) // 2
+                    x = x1
+                    while x < x2:
+                        oxir = min(x + uzuq, x2)
+                        if oxir < orta - bosh or x > orta + bosh:
+                            draw.rectangle((x, y1, oxir, y1 + pt), fill="black")
+                        x += uzuq + oraliq
+
+            for tomon in paz_tomonlari:
+                joy = qirra[tomon]
+                if joy == "chap":
+                    uzuq_chiziq(bx + ich, by + ich, bx + ich, by + bh - ich)
+                elif joy == "ong":
+                    uzuq_chiziq(bx + bw - ich - pt, by + ich, bx + bw - ich - pt, by + bh - ich)
+                elif joy == "tepa":
+                    uzuq_chiziq(bx + ich, by + ich, bx + bw - ich, by + ich)
+                else:
+                    uzuq_chiziq(bx + ich, by + bh - ich - pt, bx + bw - ich, by + bh - ich - pt)
 
         # O'lchamlar: en pastda gorizontal, uzunlik o'ngda aylantirilgan (Universal size.top/left=false).
         # O'lchamlar — harfsiz (tomon simvollari eskiz ichida, o'z tomonida)
