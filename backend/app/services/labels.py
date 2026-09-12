@@ -497,16 +497,44 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
         # chiziladi (teshik ustida qolsin).
         if d.texture:
             w2 = 2  # kamida 2px: GDI kichraytirishda 1px yo'qoladi
+            # Tekstura chiziqlari paz UZUQ chizig'idan chetlanadi: ikkalasi ham eskiz
+            # ICHIDA va bir yo'nalishda bo'lishi mumkin. 2000x300 teksturali detalda
+            # (eskiz eni 7 mm) chekka tekstura chizig'i uzuq chiziq ustiga tushib,
+            # ikkalasi bitta chalkash dastaga aylanardi (o'lchangan). Shuning uchun
+            # paz bor tomondan `zona` qadar joy bo'shatiladi va uchta chiziq
+            # QOLGAN kenglikka markazlanadi.
+            zona = int(3.2 * mm)
+            paz_joy = {qirra[t] for t in paz_tomonlari}
             if burilgan:
                 tl = int(bh * 0.32)
-                gap = max(3, bw // 4)
-                for xx in (bx + bw // 2 - gap, bx + bw // 2, bx + bw // 2 + gap):
-                    draw.line((xx, by + (bh - tl) // 2, xx, by + (bh + tl) // 2), fill="black", width=w2)
+                chap = bx + (zona if "chap" in paz_joy else 0)
+                ong = bx + bw - (zona if "ong" in paz_joy else 0)
+                orta, kenglik = (chap + ong) // 2, max(6, ong - chap)
+                gap = max(3, kenglik // 4)
+                # Paz bo'lgan chekda balandligi bo'yicha ham markazdan chetlanadi:
+                # tor eskizda uch element (uzuq chiziq, qirra simvoli, tekstura)
+                # o'rtada to'planib qolardi. SILJISH ko'rinishida — pazsiz chekda
+                # nol, ya'ni chiqish yillar davomidagidek bayt-bayt o'zgarmaydi.
+                siljish = int(bh * 0.18) if paz_tomonlari else 0
+                for xx in (orta - gap, orta, orta + gap):
+                    draw.line(
+                        (xx, by + (bh - tl) // 2 - siljish, xx, by + (bh + tl) // 2 - siljish),
+                        fill="black",
+                        width=w2,
+                    )
             else:
                 tl = int(bw * 0.32)
-                gap = max(3, bh // 4)
-                for yy in (by + bh // 2 - gap, by + bh // 2, by + bh // 2 + gap):
-                    draw.line((bx + (bw - tl) // 2, yy, bx + (bw + tl) // 2, yy), fill="black", width=w2)
+                tepa = by + (zona if "tepa" in paz_joy else 0)
+                past = by + bh - (zona if "past" in paz_joy else 0)
+                orta, balandlik = (tepa + past) // 2, max(6, past - tepa)
+                gap = max(3, balandlik // 4)
+                siljish = int(bw * 0.18) if paz_tomonlari else 0
+                for yy in (orta - gap, orta, orta + gap):
+                    draw.line(
+                        (bx + (bw - tl) // 2 - siljish, yy, bx + (bw + tl) // 2 - siljish, yy),
+                        fill="black",
+                        width=w2,
+                    )
 
         # Haqiqiy sverlo o'rinlari (GibSaw'da yo'q — bizda cutmap'dan bor):
         # lokal (x bo'ylab uzunlik, y bo'ylab en) -> vertikal eskiz koordinatalari

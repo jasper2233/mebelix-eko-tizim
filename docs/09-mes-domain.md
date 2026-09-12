@@ -498,7 +498,11 @@ direktor ham ko'radi.
   dasturda `y=0` — `t`, `y=width` — `b`. Natija `part.xnc_summary["mill_sides"]` da
   (`sides` NOMI BAND — `1cfd3b2182fc` downgrade'i uni butun son deb o'qiydi). Chek eskizida
   o'sha qirra kontur ICHIDA UZUQ chiziq bilan chiziladi (kromka esa TASHQARIDA, tutash) +
-  «- - PAZ/OVAL» izohi; KROMKA/OVAL terminalida ham xuddi shunday. Sabab: 2026-09-12 da
+  «- - PAZ/OVAL» izohi. Paz bo'lgan chekda TEKSTURA chiziqlari ham siljiydi — paz turgan
+  qirradan 3.2 mm chetlanadi va balandligi bo'yicha markazdan 18% yuqoriga ko'chadi: ular
+  ham eskiz ichida va bir yo'nalishda, 2000×300 li teksturali detalda (eskiz eni 7 mm)
+  chekka tekstura chizig'i uzuq chiziq ustiga tushib, ikkalasi bitta chalkash dastaga
+  aylanardi. Pazi YO'Q chek bayt-bayt o'zgarmaydi (o'lchangan) — siljish nol; KROMKA/OVAL terminalida ham xuddi shunday. Sabab: 2026-09-12 da
   oval kesilgan detalda kromkachi qaysi tomon ekanini chekdan bilolmadi. Tomon NOMI
   ("o'ng") ATAYLAB yozilmaydi — eskiz uzun tomonni doim vertikal chizadi (`labels.py`
   `burilgan`), ya'ni nom eskizga zid tushardi. GibSaw'ning O'Z yorlig'i ham buni yechmagan:
