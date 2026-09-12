@@ -87,7 +87,7 @@ qolganini lavozim hal qiladi.
 - Sarlavhada ism + `Clients/ClientSegment`, tavsifda `N buyurtma · summa · aylanmaning X%`. Tepada kontakt qatori (telefon, qo'shimcha telefon, manzil, qo'shilgan sana, izoh) — ichki `Maydon` yordamchisi bilan.
 - Pastda buyurtmalar jadvali (`ui/table`): raqam `Link to="/orders/$orderId"` (kartochka yakuniy manzil emas, o'tish joyi), `Common/StatusBadge`, prioritet, muddat, summa; bo'sh bo'lsa `Common/EmptyRow`.
 
-- Buyurtmalar jadvali reestr bilan bir tilda: prioritet `PRIORITY_TEXT_CLASSES` rangida, muddat faol buyurtmada `deadlineTone` (o'tgan — qizil, bugun — amber), yangi **Qoldiq** ustuni (`remainingPayment`; ≤0 — «To'langan»); sarlavha tavsifida **qarz** — bekor qilinmagan buyurtmalar qoldiqlari yig'indisi (`ClientOrderRow.advance_payment` dan; «bizga qarzi bormi?» — kartochkadagi asosiy savol). Telefonlar `formatUzPhone` bilan.
+- Buyurtmalar jadvali reestr bilan bir tilda: prioritet `PRIORITY_TEXT_CLASSES` rangida, muddat faol buyurtmada `deadlineTone` (o'tgan — qizil, bugun — amber), yangi **Qoldiq** ustuni (`remainingPayment`; ≤0 — «To'langan»); sarlavha tavsifida **qarz** — bekor qilingan VA qoralama buyurtmalarsiz qoldiqlar yig'indisi (qoralama hali tasdiqlanmagan, mijoz hech narsaga majbur emas — boshqaruv panelidagi «qarz» bilan bir xil filtr, `3280acf`) (`ClientOrderRow.advance_payment` dan; «bizga qarzi bormi?» — kartochkadagi asosiy savol). Telefonlar `formatUzPhone` bilan.
 
 ### `frontend/src/components/Clients/ClientCombobox.tsx`
 
@@ -642,7 +642,7 @@ shadcn/ui asosidagi 25 ta primitiv. Ko'pchiligi standart generatsiya; quyidagi j
 | `card.tsx` | Card, `cardSurface` konstanta | native div | **Soddalashtirilgan custom**: faqat yuza (`rounded-xl border bg-card`), shadcn'ning 5 qismli Header/Title/... API'si ataylab yo'q; `<ul>`/`<details>` kabi teglar uchun `cardSurface` klassi ham eksport |
 | `checkbox.tsx` | Checkbox | Radix Checkbox | `dark:` klasslar olib tashlangan (boshqasi standart) |
 | `date-picker.tsx` | DatePicker | react-day-picker + Popover | **To'liq custom** (pastda) |
-| `dialog.tsx` | Dialog, DialogContent, DialogHeader/Footer/Title/Description, ... | Radix Dialog | Yo'q (`showCloseButton` prop — yangi shadcn standarti) |
+| `dialog.tsx` | Dialog, DialogContent, DialogHeader/Footer/Title/Description, ... | Radix Dialog | Yo'q (yopish tugmasi doim chiqadi; upstream shadcn'dagi `showCloseButton` propi bu nusxada yo'q) |
 | `dropdown-menu.tsx` | DropdownMenu* (Item `variant="destructive"` bilan), 15 ta eksport | Radix DropdownMenu | `dark:` klasslar olib tashlangan (boshqasi standart) |
 | `form.tsx` | Form, FormField, FormItem/Label/Control/Message, useFormField | react-hook-form + Radix Label | Yo'q |
 | `input.tsx` | Input | native `<input>` | `dark:` klasslar olib tashlangan (boshqasi standart) |

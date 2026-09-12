@@ -12,7 +12,7 @@ from app.core.config import TASHKENT_TZ
 from app.models import ORDER_FAT_COLUMNS, PART_FAT_COLUMNS, PRIORITY_RANK, Order, Part, PartRoute, Post, Product, Scan
 from app.models.enums import OrderStatus
 from app.schemas.tablo import StageAgg, TabloMatrix, TabloOrderDetail, TabloOrderRow, TabloPartRow, TabloPostCol
-from app.services.metrics import part_volume
+from app.services.metrics import VolumeShare, part_volume
 
 router = APIRouter(prefix="/tablo", tags=["tablo"])
 
@@ -131,13 +131,12 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
     )
 
     agg: dict[tuple[int, int], StageAgg] = {}
-    # Hajm HAR DETAL uchun postda BIR MARTA sanaladi. `part_volume` to'liq detal
-    # hajmini qaytaradi va `per_instance` ni bilmaydi, marshrutda esa bitta post
-    # ikki qator berishi mumkin — takror kod ([3, 6, 3]) yoki bitta postga tushadigan
-    # ikki xil amal (Raspil+45°, Kromka+Fasat). Har qatorda qo'shilsa 1000x500 detal
-    # 6 m qirrani 12 m qilib ko'rsatardi. `done`/`total` esa HAMMA qatordan yig'iladi —
-    # ular skan soni, ikki o'tish rostdan ikki skan.
-    seen_volume: set[tuple[int, int]] = set()
+    # Hajm HAR DETAL uchun postda BIR MARTA sanaladi, BAJARILGAN ulushi esa o'sha
+    # detalning shu postdagi hamma qatoridan yig'iladi — qoida va sababi
+    # `metrics.VolumeShare` da. `done`/`total` esa HAMMA qatordan yig'iladi: ular
+    # skan soni, ikki o'tish rostdan ikki skan.
+    # (detal, post) -> (agregat kaliti, ulush hisoblagichi)
+    part_vol: dict[tuple[int, int], tuple[tuple[int, int], VolumeShare]] = {}
     for row in routes:
         key = (row.order_id, row.post_id)
         post = posts_by_id[row.post_id]
@@ -147,13 +146,19 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
             agg[key] = entry
         entry.done += row.total_done
         entry.total += row.total_required
-        if (row.part_id, row.post_id) in seen_volume:
-            continue
-        seen_volume.add((row.part_id, row.post_id))
-        vol = part_volume(str(post.code), length=row.length, width=row.width, count=row.part_count, edges=row.edges)
-        entry.volume_total += vol
-        if row.total_required:
-            entry.volume_done += vol * (row.total_done / row.total_required)
+        pair = part_vol.get((row.part_id, row.post_id))
+        if pair is None:
+            vol = part_volume(str(post.code), length=row.length, width=row.width, count=row.part_count, edges=row.edges)
+            pair = (key, VolumeShare(volume=vol))
+            part_vol[(row.part_id, row.post_id)] = pair
+        share = pair[1]
+        share.scans += row.total_done
+        share.required += row.total_required
+
+    for agg_key, share in part_vol.values():
+        entry = agg[agg_key]
+        entry.volume_total += share.volume
+        entry.volume_done += share.share()
 
     rows = [
         TabloOrderRow(

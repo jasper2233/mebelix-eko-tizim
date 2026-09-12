@@ -250,6 +250,10 @@ async def accept_into_tmo(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: in
         note = f"TMO ga qabul qilindi: {qr}"
 
     outcomes = []
+    # `user.id` sikldan OLDIN: `record_scan_at` takroriy `client_event_id` poygasida
+    # ScanRejected'dan oldin O'ZI rollback qiladi va shundan keyin `user.id` ni o'qish
+    # MissingGreenlet -> 500 berardi (qadoqni ikki terminal bir vaqtda qabul qilsa).
+    user_id = user.id
     for one in qrs:
         try:
             outcomes.append(
@@ -265,9 +269,12 @@ async def accept_into_tmo(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: in
         except ScanRejected as exc:
             # Rad etilgan urinish ham logga — scans.py/pachka.py bilan bir xil:
             # Loglar sahifasidagi "rejected" filtri TMO ni ham ko'rsin.
-            # Rollback helper ICHIDA: undan oldin qilinsa `user` eskirib
-            # `user.id` MissingGreenlet berardi.
-            await log_rejected_scan(db, exc, one, user_id=user.id)
+            # `user_id` sikldan OLDIN olingan: `record_scan_at` takroriy
+            # `client_event_id` da ScanRejected'dan oldin O'ZI rollback qiladi va
+            # shundan keyin `user.id` ni o'qish MissingGreenlet -> 500 berardi.
+            # Kalit barqaror (`wh-{order}-{qr}`), qadoqni ikki TMO terminali bir
+            # vaqtda qabul qilsa poyga real.
+            await log_rejected_scan(db, exc, one, user_id=user_id)
             raise scan_error(exc.code, exc.message) from None
 
     log_action(

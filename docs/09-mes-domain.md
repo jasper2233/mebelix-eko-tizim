@@ -467,14 +467,19 @@ direktor ham ko'radi.
   reports va tablo uchun umumiy. `Part` obyektini emas, `length`/`width`/`count`/`edges`
   qiymatlarini oladi — TABLO o'n minglab marshrutni ORM obyekti sifatida qurmay,
   faqat shu to'rt ustunni tanlab olishi uchun (o'lchov: 669 ms → 175 ms).
-  **Chaqiruvchidagi qoida: hajm HAR DETAL uchun postda BIR MARTA sanaladi**
-  (`tablo.py` va `reports.py` da `seen_volume` to'plami). `part_volume` to'liq detal
-  hajmini qaytaradi va `per_instance` ni bilmaydi, marshrutda esa bitta post ikki
-  qator berishi mumkin — takror kod (`[3, 6, 3]`) yoki bitta postga tushadigan ikki
-  xil amal (`Raspil`+`45° kesish`, `Kromka`+`Fasat kromka`). Har qatorda qo'shilganda
-  1000×500 detalning 6 m qirrasi 12 m bo'lib ko'rinardi va `hajm` rejimi hamma qirra
-  yopishtirilgan bo'lsa ham 50% ko'rsatardi. `done`/`total` esa HAMMA qatordan
-  yig'iladi — ular skan soni, ikki o'tish rostdan ikki skan.
+  **Chaqiruvchidagi qoida: hajm HAR DETAL uchun postda BIR MARTA sanaladi, ULUSHI esa
+  o'sha juftlikning HAMMA qatoridan yig'iladi** — `metrics.VolumeShare` (`tablo.py` va
+  `reports.py` ikkalasi shundan yuradi; tablo BAJARILGANini, dashboard QOLGANini beradi).
+  `part_volume` to'liq detal hajmini qaytaradi va `per_instance` ni bilmaydi, marshrutda
+  esa bitta post ikki qator berishi mumkin — takror kod (`[3, 6, 3]`) yoki bitta postga
+  tushadigan ikki xil amal (`Raspil`+`45° kesish`, `Kromka`+`Fasat kromka`). Har qatorda
+  qo'shilganda 1000×500 detalning 6 m qirrasi 12 m bo'lib ko'rinardi (`3280acf` shuni
+  tuzatdi). Ulushni esa BIRINCHI uchragan qatordan olish yaramaydi: so'rovlarda `ORDER BY`
+  yo'q, ya'ni tartib heap tartibi — bitta qator yangilanishi (skan, `autovacuum`) bilan
+  o'zgaradi va bir xil ma'lumotda HAJM 0% dan 100% ga sakrardi, dashboardda esa
+  `queue_volume` ikki barobar farq qilardi (ikkalasi ham fixture bilan o'lchangan).
+  Yig'indi barqaror va SONI bilan bir xil javob beradi: 8/10 → 80%. `done`/`total` esa
+  HAMMA qatordan yig'iladi — ular skan soni, ikki o'tish rostdan ikki skan.
 - `app/services/excel.py: xlsx_response()` — openpyxl bilan bitta varaqli .xlsx stream
   (reports `?format=xlsx` orqasida).
 - Og'ir JSONB ustunlar ro'yxat so'rovlarida `defer()` bilan qoldiriladi:

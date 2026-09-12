@@ -59,14 +59,20 @@ async def record_scan_endpoint(db: SessionDep, user: TerminalUser, body: ScanReq
                 f"list {w.sheet_no}. Chek: {chek}."
             ),
         )
+    # `user.id` SHU YERDA: `record_scan_at` `client_event_id` unikal indeksi poygasida
+    # ScanRejected'dan OLDIN o'zi `rollback` qiladi (`scanning.py`), rollback esa identity
+    # map'dagi hamma obyektni expire qiladi — `except` ichida `user.id` ni o'qish lazy IO
+    # talab qilib `MissingGreenlet` -> 500 berardi (o'lchangan), ya'ni operator 422 o'rniga
+    # "Serverda xatolik" ko'rardi va rad etilgan skan Loglarga umuman tushmasdi.
+    user_id = user.id
     try:
         outcome = await record_scan(db, user=user, qr_text=body.qr_text, client_event_id=body.client_event_id)
     except ScanRejected as exc:
         # Rad etilgan urinish ham logga: kim nimani qayta/noto'g'ri skan qilganini ko'rish uchun
-        await log_rejected_scan(db, exc, body.qr_text, user_id=user.id)
+        await log_rejected_scan(db, exc, body.qr_text, user_id=user_id)
         raise scan_error(exc.code, exc.message) from None
 
-    return await finalize_scan(db, outcome, user_id=user.id)
+    return await finalize_scan(db, outcome, user_id=user_id)
 
 
 @router.delete("/{scan_id}", response_model=ScanHistoryItem, operation_id="cancel_scan")

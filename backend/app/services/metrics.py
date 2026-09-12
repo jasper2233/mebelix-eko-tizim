@@ -1,8 +1,36 @@
 """Shared production volume math (HAJM)."""
 
+from dataclasses import dataclass
 from typing import Any
 
 from app.models.enums import PostCode
+
+
+@dataclass(slots=True)
+class VolumeShare:
+    """Detalning BITTA postdagi hajmi va o'sha postdagi marshrut qatorlari yig'indisi.
+
+    `part_volume` TO'LIQ detal hajmini beradi, marshrutda esa bitta post ikki qator
+    berishi mumkin — takror kod (`[3, 6, 3]`) yoki bitta postga tushadigan ikki xil
+    amal (Raspil+45°, Kromka+Fasat). Shuning uchun hajm juftlik uchun BIR MARTA
+    yoziladi (`volume`), ulush esa o'sha juftlikning HAMMA qatoridan yig'iladi.
+
+    Ulushni birinchi uchragan qatordan olish YARAMAYDI: `tablo.py`/`reports.py`
+    so'rovlarida `ORDER BY` yo'q, ya'ni qator tartibi heap tartibi — bitta qator
+    yangilanishi (skan, `autovacuum`) bilan o'zgaradi va devordagi HAJM bir xil
+    ma'lumotda 100% dan 0% ga sakrardi (o'lchangan). Yig'indi esa barqaror va
+    SONI ustuni bilan bir xil javob beradi: 8/10 -> 80%.
+    """
+
+    volume: float
+    #: Ulush surati — chaqiruvchiga qarab BAJARILGAN (tablo) yoki QOLGAN (dashboard) skanlar
+    scans: int = 0
+    #: Ulush maxraji — o'sha juftlikdagi hamma qatorning `total_required` yig'indisi
+    required: int = 0
+
+    def share(self) -> float:
+        """Hajmning `scans/required` ulushi; qator talab qilmasa — 0."""
+        return self.volume * (self.scans / self.required) if self.required else 0.0
 
 
 def part_volume(

@@ -44,7 +44,7 @@ from app.schemas.reports import (
     TrendDay,
 )
 from app.services.excel import xlsx_response
-from app.services.metrics import part_volume
+from app.services.metrics import VolumeShare, part_volume
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -384,8 +384,10 @@ async def report_dashboard(db: SessionDep, current_user: DashboardUser) -> Dashb
     queue: dict[int, dict[str, float]] = {p.id: {"scans": 0, "volume": 0.0} for p in posts}
     queue_orders: dict[int, set[int]] = {p.id: set() for p in posts}
     posts_by_id = {p.id: p for p in posts}
-    # Hajm detal+post juftligi uchun BIR MARTA — sabab `tablo.py` dagi bilan bir xil.
-    seen_volume: set[tuple[int, int]] = set()
+    # Hajm detal+post juftligi uchun BIR MARTA, QOLGAN ulushi esa o'sha juftlikning
+    # hamma qatoridan yig'iladi — qoida va sababi `metrics.VolumeShare` da
+    # (`tablo.py` aynan shu hisobdan yuradi, faqat u BAJARILGANini oladi).
+    part_vol: dict[tuple[int, int], VolumeShare] = {}
     for r in routes:
         post = posts_by_id.get(r.post_id)
         if post is None:
@@ -393,11 +395,16 @@ async def report_dashboard(db: SessionDep, current_user: DashboardUser) -> Dashb
         remaining = r.total_required - r.total_done
         queue[r.post_id]["scans"] += remaining
         queue_orders[r.post_id].add(r.order_id)
-        if (r.part_id, r.post_id) in seen_volume:
-            continue
-        seen_volume.add((r.part_id, r.post_id))
-        vol = part_volume(str(post.code), length=r.length, width=r.width, count=r.part_count, edges=r.edges)
-        queue[r.post_id]["volume"] += vol * (remaining / r.total_required if r.total_required else 0)
+        share = part_vol.get((r.part_id, r.post_id))
+        if share is None:
+            vol = part_volume(str(post.code), length=r.length, width=r.width, count=r.part_count, edges=r.edges)
+            share = VolumeShare(volume=vol)
+            part_vol[(r.part_id, r.post_id)] = share
+        share.scans += remaining
+        share.required += r.total_required
+
+    for (_part_id, post_id), share in part_vol.items():
+        queue[post_id]["volume"] += share.share()
     today_by_post: dict[int, int] = {
         pid: int(n)
         for pid, n in (

@@ -183,7 +183,8 @@ class PartRoute(BaseModel):
     machine_id: Mapped[int | None] = mapped_column(ForeignKey("machine.id"), default=None, kw_only=True)
     source: Mapped[RouteSource] = mapped_column(db_enum(RouteSource), default=RouteSource.AUTO, kw_only=True)
     is_enabled: Mapped[bool] = mapped_column(default=True, kw_only=True)  # texnolog can switch off
-    # Scans needed per instance at this post (KROMKA: sides count; PRISADKA _2: 2; else 1)
+    # Scans needed per instance at this post (KROMKA: sides count; else 1 — PRISADKA ham
+    # bitta skan, ikki yuzli detalda ham: `giblab/models.py: prisadka_passes` 0 yoki 1 qaytaradi)
     per_instance: Mapped[int] = mapped_column(default=1, kw_only=True)
     total_required: Mapped[int] = mapped_column(default=0, kw_only=True)  # count × per_instance
     total_done: Mapped[int] = mapped_column(default=0, kw_only=True)

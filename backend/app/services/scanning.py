@@ -265,8 +265,10 @@ async def crew_sessions(db: AsyncSession, machine_id: int) -> list[WorkSession]:
     birinchisining smenasini jimgina yopardi, ya'ni undan keyingi hamma skan bitta
     odamga yozilardi.
 
-    Muddati o'tganlari shu yerda yopiladi, ya'ni chaqiruvchi faqat tirik smenalarni
-    ko'radi.
+    Smena MUDDATI YO'Q va bu yerda hech narsa yopilmaydi — faqat ACTIVE qatorlar
+    o'qiladi. Smena «Chiqish», logout yoki shu ish markazidagi keyingi kirish bilan
+    yopiladi (`active_session` bilan bir xil qoida; 12 soatlik avto-yopish 85d5833
+    da olib tashlangan, docs/04).
     """
     rows = list(
         (

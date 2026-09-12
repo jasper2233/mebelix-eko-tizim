@@ -564,8 +564,11 @@ function Tag({
 }
 
 function PostCard({ p }: { p: PostLoad }) {
-  // Dona birlikli postda hajm detal sonini beradi va yonidagi skan sonidan
-  // yangilik qo'shmaydi — takror ko'rsatilmaydi
+  // Dona birlikli postda hajm — DETAL soni, yonidagi skan soni esa qolgan skanlar.
+  // Odatdagi holatda (postga bitta marshrut qatori) ular teng, ya'ni takror; detal
+  // shu postdan ikki marta o'tsa hajm ulushga bo'linadi (`metrics.VolumeShare`) va
+  // ikki raqam ajraladi — o'shanda ham operatorga kerakligi SKAN soni, shuning
+  // uchun dona postda hajm ko'rsatilmaydi.
   const showVolume = p.queue_volume > 0 && p.unit !== "dona"
   const idle = p.queue_scans === 0 && p.today_scans === 0
   return (

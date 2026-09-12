@@ -441,7 +441,12 @@ async def bridge_scan(
     # bor va u identity map'dagi HAMMA obyektni expire qiladi. Undan keyin
     # `machine.id` ni o'qish lazy refresh talab qilib, async kontekstda
     # `MissingGreenlet` bilan 500 berardi — stanok skani jimgina yo'qolardi.
+    # `agent` ham SHU RO'YXATDA: u ham `db` dan yuklangan va rollback uni ham expire
+    # qiladi — `log_rejected_scan` chaqiruvida `agent.name`/`agent.id` argument sifatida
+    # o'qilardi, ya'ni takroriy `client_event_id` poygasida stanok skani 500 ga aylanib
+    # logga ham tushmasdi.
     machine_id, post_id = machine.id, post.id
+    agent_name, agent_id = agent.name, agent.id
     # Terminal bilan AYNAN bir xil qoida: `active_session` langar smenani beradi va
     # egasining nofaol emasligini ham tekshiradi. Ilgari bu yerda `crew[0]` to'g'ridan
     # olinardi — nofaol hodim langar bo'lsa terminal skanni rad etib, stanok skani
@@ -472,7 +477,7 @@ async def bridge_scan(
         )
     except ScanRejected as exc:
         await log_rejected_scan(
-            db, exc, body.qr_text, source=f" (stanok, {agent.name})", meta_extra={"agent_id": agent.id}
+            db, exc, body.qr_text, source=f" (stanok, {agent_name})", meta_extra={"agent_id": agent_id}
         )
         # Stanokdagi rad etilgan skan endi terminal ekraniga ham chiqadi. Bu
         # FAQAT shu yo'lga tegishli: terminalning o'z skani 422 javobning
