@@ -26,16 +26,24 @@ function EdgeGlyph({
   edges,
   length,
   width,
+  paz = [],
 }: {
   edges: Record<string, unknown>
   length: number | null | undefined
   width: number | null | undefined
+  /** Paz/freza ketadigan qirralar — chekdagi uzuq chiziq bilan bir xil manba */
+  paz?: string[]
 }) {
   const burilgan = (length ?? 0) > (width ?? 0)
   const has = (k: string) => !!edges[k]
+  const joy = (k: string) =>
+    burilgan
+      ? { t: "chap", b: "ong", l: "past", r: "tepa" }[k]
+      : { l: "chap", r: "ong", t: "tepa", b: "past" }[k]
   const side = burilgan
     ? { chap: has("t"), ong: has("b"), past: has("l"), tepa: has("r") }
     : { chap: has("l"), ong: has("r"), tepa: has("t"), past: has("b") }
+  const pazJoy = new Set(paz.map(joy))
   // Chekdagi kabi eskiz DOIM tik: uzun tomon vertikal, eni nisbatga qarab
   // (labels.py: `bh = area_h; bw = bh * short/long`). `burilgan` faqat qaysi
   // qirra qaysi tomonga tushishini hal qiladi, shaklni emas.
@@ -46,6 +54,7 @@ function EdgeGlyph({
   const x = (30 - w) / 2
   const y = (30 - h) / 2
   const line = "stroke-amber-600"
+  const pazLine = "stroke-sky-700 [stroke-dasharray:3_2]"
   return (
     <svg viewBox="0 0 30 30" className="size-7 shrink-0" aria-hidden="true">
       <title>Kromka tomonlari</title>
@@ -97,17 +106,64 @@ function EdgeGlyph({
           strokeWidth="3"
         />
       )}
+      {/* Paz/freza — chekdagidek kontur ICHIDA uzuq chiziq (kromka esa chekkada,
+          tutash). Tomon nomi yozilmaydi: eskiz o'lchamga qarab buriladi. */}
+      {pazJoy.has("tepa") && (
+        <line
+          x1={x + 2}
+          y1={y + 3}
+          x2={x + w - 2}
+          y2={y + 3}
+          className={pazLine}
+        />
+      )}
+      {pazJoy.has("past") && (
+        <line
+          x1={x + 2}
+          y1={y + h - 3}
+          x2={x + w - 2}
+          y2={y + h - 3}
+          className={pazLine}
+        />
+      )}
+      {pazJoy.has("chap") && (
+        <line
+          x1={x + 3}
+          y1={y + 2}
+          x2={x + 3}
+          y2={y + h - 2}
+          className={pazLine}
+        />
+      )}
+      {pazJoy.has("ong") && (
+        <line
+          x1={x + w - 3}
+          y1={y + 2}
+          x2={x + w - 3}
+          y2={y + h - 2}
+          className={pazLine}
+        />
+      )}
     </svg>
   )
 }
 
-// Kromka belgilari — yorliqdagi GibLab EL harfi. Tomon NOMI ("Chap") ataylab yo'q: eskiz uzun
-// tomonni vertikal chizadi, l/r/t/b joyi o'lchamga qarab almashadi (labels.py `burilgan`).
-const edgeSymbols = (edges: Record<string, unknown>): string => {
-  const syms = Object.values(edges).map(
-    (e) => (e as { symbol?: string | null } | null)?.symbol || "\u2022",
-  )
-  return [...new Set(syms)].join(" ")
+// Kromka lentalari — yorliqdagi GibLab EL harfi VA lenta nomi: "A — 1-19 kashmir".
+// Yolg'iz harf tsexda tushunarsiz edi (operator uni tomonlar TARTIBI deb o'ylagan,
+// 2026-09-12) — harf lenta TURINI bildiradi, tartibni emas: tomonlar istalgan
+// ketma-ketlikda skanlanadi. Tomon NOMI ("Chap") ataylab yo'q: eskiz uzun tomonni
+// vertikal chizadi, l/r/t/b joyi o'lchamga qarab almashadi (labels.py `burilgan`).
+const edgeBands = (edges: Record<string, unknown>): string => {
+  const juft = new Map<string, string>()
+  for (const e of Object.values(edges)) {
+    const q = e as { symbol?: string | null; mat?: string | null } | null
+    if (!q) continue
+    const sym = q.symbol || "\u2022"
+    if (!juft.has(sym)) juft.set(sym, (q.mat || "").trim())
+  }
+  return [...juft]
+    .map(([sym, mat]) => (mat ? `${sym} — ${mat}` : sym))
+    .join(" · ")
 }
 
 export function KromkaView({
@@ -237,14 +293,13 @@ export function KromkaView({
                 <th className="px-4 py-2.5">Kod</th>
                 <th className="px-4 py-2.5">Nomi</th>
                 <th className="px-4 py-2.5">O'lchami</th>
-                {!oval && (
-                  <th
-                    className="px-4 py-2.5"
-                    title="Eskiz — chekdagi bilan bir xil: qalin chiziq = kromka lentasi tushadigan tomon. Harf — lenta belgisi (GibLab EL xaritasi), chekda o'lcham yonida shu harf"
-                  >
-                    Kromka
-                  </th>
-                )}
+                <th className="px-4 py-2.5">
+                  {oval ? "Qirralar" : "Kromka"}
+                  <span className="block whitespace-nowrap text-2xs font-medium normal-case tracking-normal">
+                    qalin = lenta · uzuq = paz/oval · harf = lenta turi (tartib
+                    emas)
+                  </span>
+                </th>
                 <th className="px-4 py-2.5 text-right">
                   {/* Terminalda hover yo'q — izoh sarlavhaning o'zida: chip
                       nusxa, raqam qilingan/jami tomon */}
@@ -285,23 +340,32 @@ export function KromkaView({
                     <td className="num whitespace-nowrap px-4 py-3 text-sm">
                       {formatSize(p.length, p.width, p.thickness)}
                     </td>
-                    {!oval && (
-                      <td className="whitespace-nowrap px-4 py-3 text-sm">
-                        <span className="inline-flex items-center gap-2">
-                          <EdgeGlyph
-                            edges={p.edges}
-                            length={p.length}
-                            width={p.width}
-                          />
-                          <span>
-                            <b>{p.sides} tomon</b>
-                            <span className="ml-1.5 text-muted-foreground">
-                              {edgeSymbols(p.edges)}
-                            </span>
+                    <td className="px-4 py-3 text-sm">
+                      <span className="inline-flex items-center gap-2">
+                        <EdgeGlyph
+                          edges={p.edges}
+                          length={p.length}
+                          width={p.width}
+                          paz={p.paz_sides ?? []}
+                        />
+                        <span className="min-w-0">
+                          {!oval && <b>{p.sides} tomon</b>}
+                          <span
+                            className={cn(
+                              "block max-w-[220px] truncate text-xs text-muted-foreground",
+                              oval && "text-sm",
+                            )}
+                          >
+                            {edgeBands(p.edges)}
                           </span>
+                          {(p.paz_sides ?? []).length > 0 && (
+                            <span className="block text-xs font-semibold text-sky-700">
+                              paz/oval — eskizdagi uzuq chiziq
+                            </span>
+                          )}
                         </span>
-                      </td>
-                    )}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-right">
                       {/* Ish TUGAGANDA bitta aniq belgi — prisadkadagi bilan
                           bir xil. Ilgari bu yerda faqat nusxa chiplari turardi

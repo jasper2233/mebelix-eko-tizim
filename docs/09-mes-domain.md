@@ -482,6 +482,22 @@ direktor ham ko'radi.
   `queue_volume` ikki barobar farq qilardi (ikkalasi ham fixture bilan o'lchangan).
   Yig'indi barqaror va SONI bilan bir xil javob beradi: 8/10 → 80%. `done`/`total` esa
   HAMMA qatordan yig'iladi — ular skan soni, ikki o'tish rostdan ikki skan.
+- `app/services/giblab/models.py: XncOp.machined_sides(length, width)` — paz/freza QAYSI
+  QIRRA bo'ylab ketishini GEOMETRIYADAN chiqaradi (`l`/`r`/`t`/`b`). .project faylida tomon
+  atribut sifatida YO'Q: `<gr>` da faqat `x1/y1/x2/y2`, frezada esa kontur nuqtalari —
+  lekin qirradan 25 mm ichidagi nuqtalar qirra bo'ylab detal o'lchamining yarmini qoplasa,
+  o'sha qirra ishlanadi. Asbob qirradan tashqariga chiqadi (170 mm li detalda kontur
+  X=150..174 — normal), shuning uchun tashqi chegara yo'q; detal o'rtasidagi ariq hech bir
+  qirraga tegmaydi va ro'yxatga tushmaydi. O'q konvensiyasi `scx.py` bilan bir xil:
+  dasturda `y=0` — `t`, `y=width` — `b`. Natija `part.xnc_summary["mill_sides"]` da
+  (`sides` NOMI BAND — `1cfd3b2182fc` downgrade'i uni butun son deb o'qiydi). Chek eskizida
+  o'sha qirra kontur ICHIDA UZUQ chiziq bilan chiziladi (kromka esa TASHQARIDA, tutash) +
+  «- - PAZ/OVAL» izohi; KROMKA/OVAL terminalida ham xuddi shunday. Sabab: 2026-09-12 da
+  oval kesilgan detalda kromkachi qaysi tomon ekanini chekdan bilolmadi. Tomon NOMI
+  ("o'ng") ATAYLAB yozilmaydi — eskiz uzun tomonni doim vertikal chizadi (`labels.py`
+  `burilgan`), ya'ni nom eskizga zid tushardi. GibSaw'ning O'Z yorlig'i ham buni yechmagan:
+  `mebelix.lbl` da paz butun detal uchun bitta `groove` bayrog'i (bitta «П» harfi), tomon yo'q.
+  Eski detallarda `mill_sides` bo'sh — qiymat yuklashda hisoblanadi, backfill qilinmadi.
 - `app/services/excel.py: xlsx_response()` — openpyxl bilan bitta varaqli .xlsx stream
   (reports `?format=xlsx` orqasida).
 - Og'ir JSONB ustunlar ro'yxat so'rovlarida `defer()` bilan qoldiriladi:
@@ -546,7 +562,7 @@ direktor ham ko'radi.
     picker'da skan qilinsa proyekt o'zi ochiladi (`/qr/{qr}/order`); begona detalga aniq xato.
     Kromka ustunida tomon NOMI emas, qirra simvollari — yorliq eskizi detal o'lchamiga
     qarab buriladi (`labels.py` `burilgan`), shuning uchun qat'iy Chap/Tepa nomi to'g'ri kelmaydi.
-  · **OVAL** — o'sha KromkaView `oval` rejimda: bir panel, tomonlar ustuni yo'q va `done/sides` o'rniga faqat tugagan/tugamagan belgisi. Har detal BITTA skan (`per_instance = 1`), shuning uchun hisoblagichning ma'nosi ham yo'q.
+  · **OVAL** — o'sha KromkaView `oval` rejimda: bir panel va `done/sides` o'rniga faqat tugagan/tugamagan belgisi; qirralar ustuni 2026-09-12 dan OVAL da ham ko'rinadi (sarlavhasi «Qirralar») — ovalchi ham paz qaysi qirrada ekanini ko'rishi kerak. Har detal BITTA skan (`per_instance = 1`), shuning uchun hisoblagichning ma'nosi ham yo'q.
   · **PRISADKA** (`Terminal/PrisadkaView`) — detallar + SCX fayllar; "Hammasini yuklab olish"
     File System Access API bilan BIR MARTA tanlangan papkaga (IndexedDB'da saqlanadi,
     `lib/scxDir.ts`) proyekt nomli subpapka ochib yozadi (har skandagi avto-SCX olib tashlangan — faqat shu tugma).

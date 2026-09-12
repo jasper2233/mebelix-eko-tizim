@@ -1271,6 +1271,10 @@ export type KromkaPartRow = {
         [key: string]: unknown;
     };
     /**
+     * Paz Sides
+     */
+    paz_sides?: Array<string>;
+    /**
      * Process Code
      */
     process_code: number;

@@ -600,6 +600,7 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
                 thickness=part.thickness,
                 sides=route.per_instance,
                 edges=part.edges,
+                paz_sides=list((part.xnc_summary or {}).get("mill_sides") or []),
                 process_code=route.process_code,
                 total_done=route.total_done,
                 total_required=route.total_required,

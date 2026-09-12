@@ -565,6 +565,14 @@ async def ingest_project(
                     "edge_bores": len(merged.edge_bores) if merged else 0,
                     "grooves": len(merged.grooves) if merged else 0,
                     "mills": len(merged.mills) if merged else 0,
+                    # Paz/freza QAYSI qirrada — chek va KROMKA terminali shu ro'yxatdan
+                    # o'sha qirrani belgilaydi (`XncOp.machined_sides`). Ilgari faqat SON
+                    # saqlanardi va kromkachi oval qaysi tomonga tushishini chekdan
+                    # bilolmasdi (2026-09-12 tsex shikoyati).
+                    # `sides` NOMI BAND: `1cfd3b2182fc` downgrade'i uni BUTUN SON deb
+                    # o'qiydi (`(xnc_summary->>'sides')::int = 2` — ikki yuzli XNC detali).
+                    # Shuning uchun yangi kalit `mill_sides`.
+                    "mill_sides": merged.machined_sides(pp.length, pp.width) if merged else [],
                 },
             )
             db.add(part)

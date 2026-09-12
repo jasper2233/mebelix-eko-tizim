@@ -118,6 +118,13 @@ class ParsedMaterial:
     count: float | None = None  # sheets used / band meters bought
 
 
+#: Paz/freza qirraga «tegdi» deb sanaladigan masofa (mm) va qirra bo'ylab eng kam qamrov.
+#: 25 mm — asbob diametri (korpusda 8–16) + profil kengligi; ulush 0.5 — qisqa burchak
+#: kesigi (masalan 45° chamfer) butun qirrani ishlangan deb ko'rsatib yubormasin.
+_QIRRA_TASMASI = 25.0
+_QIRRA_ULUSHI = 0.5
+
+
 @dataclass
 class XncOp:
     """One <operation typeId="XNC"> after program XML is parsed. Usually two (front + back), but
@@ -133,6 +140,41 @@ class XncOp:
     grooves: list[dict[str, Any]] = field(default_factory=list)  # {x1, y1, x2, y2, dp, t}
     mills: list[list[dict[str, Any]]] = field(default_factory=list)  # contours: [{op, x, y, cx, cy, dir, dp}]
     unknown_tags: set[str] = field(default_factory=set)  # dasturda o'qilmagan teglar (ogohlantirish uchun)
+
+    def machined_sides(self, length: float | None, width: float | None) -> list[str]:
+        """Paz/freza QAYSI QIRRA bo'ylab ketadi — `l`/`r`/`t`/`b`, tartiblangan.
+
+        .project faylida tomon ATRIBUT sifatida yo'q (`<gr>` da faqat x1/y1/x2/y2,
+        frezada esa kontur nuqtalari) — lekin geometriyadan kelib chiqadi. Qoida:
+        qirradan `_QIRRA_TASMASI` mm ichidagi nuqtalarni ol; ular qirra bo'ylab
+        detal o'lchamining kamida yarmini qoplasa — o'sha qirra ishlanadi.
+        Asbob qirradan TASHQARIGA chiqadi (radius va kirish-chiqish), shuning uchun
+        tashqi chegara qo'yilmaydi: 170 mm li detalda kontur X=150..174 bo'lishi normal.
+
+        O'q konvensiyasi `scx.py` dagi bilan bir xil: dasturda `y=0` — `t` qirrasi,
+        `y=width` — `b` (shu sabab `scx.py` t ni `Y=Width` ga flip qiladi).
+
+        Ichkaridagi paz (masalan detal o'rtasidagi ariq) hech bir qirraga tegmaydi va
+        ro'yxatga tushmaydi — u kromkachining ishi emas.
+        """
+        if not length or not width:
+            return []
+        nuqtalar: list[tuple[float, float]] = []
+        for g in self.grooves:
+            nuqtalar += [(g["x1"], g["y1"]), (g["x2"], g["y2"])]
+        for contour in self.mills:
+            nuqtalar += [(q["x"], q["y"]) for q in contour if q.get("x") is not None and q.get("y") is not None]
+        topildi: list[str] = []
+        for tomon, yaqinmi, boylab, olcham in (
+            ("l", lambda x, y: x <= _QIRRA_TASMASI, lambda x, y: y, width),
+            ("r", lambda x, y: x >= length - _QIRRA_TASMASI, lambda x, y: y, width),
+            ("t", lambda x, y: y <= _QIRRA_TASMASI, lambda x, y: x, length),
+            ("b", lambda x, y: y >= width - _QIRRA_TASMASI, lambda x, y: x, length),
+        ):
+            shu = [boylab(x, y) for x, y in nuqtalar if yaqinmi(x, y)]
+            if len(shu) >= 2 and (max(shu) - min(shu)) >= olcham * _QIRRA_ULUSHI:
+                topildi.append(tomon)
+        return topildi
 
 
 @dataclass

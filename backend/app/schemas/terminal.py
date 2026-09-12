@@ -109,6 +109,9 @@ class KromkaPartRow(BaseModel):
     thickness: float | None
     sides: int  # har nusxa uchun kerakli skanlar = kromkalanadigan tomonlar
     edges: dict[str, Any] = {}
+    #: Paz/freza QAYSI qirrada (`l`/`r`/`t`/`b`) — `xnc_summary["mill_sides"]`, chek eskizidagi
+    #: uzuq chiziq bilan bir xil manba. 2026-09-12 gacha yuklangan detallarda bo'sh.
+    paz_sides: list[str] = []
     process_code: int  # 3 = Kromka, 4 = Fasat kromka, 5 = Oval kromka
     total_done: int
     total_required: int
