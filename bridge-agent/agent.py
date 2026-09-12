@@ -49,7 +49,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.4.7"
+AGENT_VERSION = "1.4.8"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -1170,11 +1170,38 @@ def start_scan_forward() -> None:
         log.info("pynput o'rnatilmagan — skan-forvard o'chiq")
         return
 
+    import ctypes
     import re
     import time as _time
     import urllib.error
     import urllib.request
     from uuid import uuid4
+
+    # MES terminali fokusda bo'lsa forvard YUBORILMAYDI. Sabab: forvard Nanxing
+    # dasturiga ketayotgan skanning NUSXASI; terminal sahifasi fokusda bo'lsa
+    # skanni brauzerning O'ZI yozadi va nusxa ikkinchi yozuvga aylanadi.
+    # 2026-09-12: KROMKA monoblokida internet yo'q edi, operator PRISADKA
+    # kompyuterining brauzerida KROMKA terminalini ochdi — bitta fizik skan
+    # KROMKA ga (brauzer) va PRISADKA ga (shu agent) yozildi, 37 ta detalda
+    # prisadka ish qilinmasdan "bajarildi" bo'lib qoldi.
+    # Sarlavha QISM-SATR bo'yicha solishtiriladi: brauzer oynaga " - Google Chrome"
+    # kabi quyruq qo'shadi. TABLO ("TABLO | MebeliX") va kirish ekrani
+    # ("Kirish | MebeliX") ataylab mos kelmaydi — ular skan yozmaydi.
+    terminal_title = "Terminal | MebeliX"
+
+    def _terminal_fokusda() -> bool:
+        """Fokusdagi oyna MES terminalimi. Xato bo'lsa — False (skan yo'qolmasin)."""
+        try:
+            user32 = ctypes.windll.user32
+            hwnd = user32.GetForegroundWindow()
+            if not hwnd:
+                return False
+            uzunlik = user32.GetWindowTextLengthW(hwnd)
+            bufer = ctypes.create_unicode_buffer(uzunlik + 1)
+            user32.GetWindowTextW(hwnd, bufer, uzunlik + 1)
+            return terminal_title in bufer.value
+        except Exception:  # noqa: BLE001 — Windows'siz muhit yoki API xatosi
+            return False
 
     scan_re = re.compile(r"^[0-9A-Za-z_\-]{6,64}$")
     # Beyjik (UUID) — detal QR'i EMAS: uni terminalning o'z oqimi qabul qiladi.
@@ -1221,6 +1248,9 @@ def start_scan_forward() -> None:
             if n >= 6 and scan_re.match(s) and (last[0] - first[0]) / n < 0.05:
                 if badge_re.match(s):
                     log.info("Beyjik skani — MES'ga yuborilmadi")
+                    return
+                if _terminal_fokusda():
+                    log.info("MES terminali fokusda — forvard yuborilmadi: %s", s)
                     return
                 threading.Thread(target=send, args=(s,), daemon=True).start()
             return

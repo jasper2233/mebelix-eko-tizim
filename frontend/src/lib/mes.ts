@@ -403,6 +403,7 @@ export const SCAN_ERROR_LABELS: Record<string, string> = {
   E007: "Aloqa uzildi (terminalning o'zi beradi, server kodi emas)",
   E008: "Ish allaqachon bajarilgan — xato emas, ogohlantirish",
   E009: "Sozlama xatosi (post/ish markazi yo'q) — admin tuzatadi",
+  E010: "Stanok forvardi takrori — skan terminalda yozilgan, hech kim aybdor emas",
 }
 
 /** Terminal tasmasi uchun BIR SO'ZLIK sarlavha (yuqoridagi `SCAN_ERROR_LABELS`

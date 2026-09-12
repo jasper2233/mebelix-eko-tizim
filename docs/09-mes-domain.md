@@ -195,6 +195,8 @@ o'sha postdan keyin turadi va aynan o'sha yerdan olinadi.
 
 Qadoqlash, TMO va post navbati (BOYOQ/STOLYARKA) ekranlari shu yagona funksiyadan foydalanadi.
 
+**Stanok forvardi qorovuli** (`AGENT_CROSS_POST_WINDOW` = 10 s, `scanning.py`): `from_agent=True` bilan kelgan skan, agar shu nusxa oxirgi 10 soniyada BOSHQA postda skan qilingan bo'lsa, `E010` bilan rad etiladi. 2026-09-12 da KROMKA monoblokida internet yo'q edi, operator PRISADKA kompyuterining brauzerida KROMKA terminalini ochdi — brauzer KROMKA ga yozdi, o'sha kompyuterdagi agent esa 0.19–0.54 s keyin PRISADKA ga; 37 ta detalda prisadka ishi qilinmasdan «bajarildi» bo'lib qoldi va krediti boshqa hodimga ketdi. 2026-08-27 dagi `CROSS_SOURCE_WINDOW` (3 s) buni to'smaydi — u AYNI qadamni (`route_id`) tekshiradi, bu yerda postlar boshqa-boshqa. Oyna prodda o'lchab tanlangan: 1202 ta agent skanidan faqat o'sha 37 tasi 10 soniyaga tushadi, qonuniylarining 5-protsentili 6 daq 44 s. Qoida FAQAT agent yo'liga tegishli — odamning terminaldagi skani hech qachon rad etilmaydi. Ikkinchi qatlam agentning o'zida: MES terminali fokusda bo'lsa forvard umuman yuborilmaydi (v1.4.8).
+
 Rad etilgan skan yakuni umumiy helperda — `log_rejected_scan()` (rollback + audit-log
 `module=scan, action=rejected` + commit): TO'RTALA skan yo'li ham shundan o'tadi —
 terminal (`scans.py`), qadoqqa skan (`pachka.py`), TMO qabuli (`tmo.py`) va stanok

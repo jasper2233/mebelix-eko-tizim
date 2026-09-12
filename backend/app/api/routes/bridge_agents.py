@@ -474,6 +474,7 @@ async def bridge_scan(
             session=session,
             qr_text=body.qr_text,
             client_event_id=body.client_event_id,
+            from_agent=True,
         )
     except ScanRejected as exc:
         await log_rejected_scan(
@@ -483,12 +484,18 @@ async def bridge_scan(
         # FAQAT shu yo'lga tegishli: terminalning o'z skani 422 javobning
         # o'zidan xabar oladi, ya'ni umumiy `log_rejected_scan` ga parametr
         # qo'shishning hojati yo'q.
-        await ws_manager.publish(
-            "scan.rejected",
-            {"qr_text": body.qr_text, "code": exc.code, "message": exc.message, "machine_id": machine_id},
-            post_id=post_id,
-            machine_id=machine_id,
-        )
+        #
+        # E010 — ISTISNO: u operatorning xatosi emas, skan aynan shu daqiqada
+        # terminalda MUVAFFAQIYATLI yozilgan, bu esa uning nusxasi. Ekranga qizil
+        # banner chiqarsak, ishi joyida bajarilgan odamga yolg'on xato ko'rsatgan
+        # bo'lardik. Audit yozuvi qoladi — naqsh Loglar sahifasidan ko'rinadi.
+        if exc.code != "E010":
+            await ws_manager.publish(
+                "scan.rejected",
+                {"qr_text": body.qr_text, "code": exc.code, "message": exc.message, "machine_id": machine_id},
+                post_id=post_id,
+                machine_id=machine_id,
+            )
         raise scan_error(exc.code, exc.message) from None
 
     return await finalize_scan(db, outcome, source=f" (stanok, {agent.name})", agent_id=agent.id)

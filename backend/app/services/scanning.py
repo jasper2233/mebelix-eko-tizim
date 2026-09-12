@@ -35,6 +35,17 @@ from app.services.giblab.models import strip_order_prefix
 
 #: Manbalar-aro dedup oynasi (pastdagi `record_scan_at` izohiga qarang)
 CROSS_SOURCE_WINDOW = timedelta(seconds=3)
+#: Stanok forvardi BOSHQA postdagi skandan keyin qancha vaqt ichida takror deb sanaladi.
+#: Agent pynput bilan O'Z kompyuteridagi HAR QANDAY skanni yuboradi va fokusdagi oynani
+#: bilmaydi: monoblokda internet yo'q bo'lib, operator boshqa post terminalini shu
+#: kompyuterning brauzerida ochsa, bitta fizik skan ikki postga yozilardi (2026-09-12:
+#: 37 ta detalda PRISADKA qadami ish qilinmasdan yopildi, KROMKA terminali Prisadka
+#: kompyuterida ochilgani uchun). Yuqoridagi 3 soniyalik oyna buni to'smaydi — u AYNI
+#: qadamni (`route_id`) tekshiradi, bu yerda esa postlar boshqa-boshqa.
+#: 10 soniya prodda o'lchab tanlangan: 1202 ta agent skanidan faqat o'sha 37 tasi shu
+#: oynaga tushadi, qonuniy skanlarning 5-protsentili — 6 daqiqa 44 soniya. Detalni bir
+#: stanokdan boshqasiga 10 soniyada olib o'tib bo'lmaydi.
+AGENT_CROSS_POST_WINDOW = timedelta(seconds=10)
 
 _QR_RE = re.compile(r"^.+_.+$")  # {productCode}_{partCode}[_{n}] — yagona nusxada suffiks yo'q
 
@@ -64,6 +75,7 @@ class ScanRejected(Exception):
       E006 beyjik muammosi — admin/hodim
       E008 ish allaqachon bajarilgan — xato emas, ogohlantirish
       E009 SOZLAMA xatosi (post/ish markazi yo'q) — admin tuzatadi, operator emas
+      E010 stanok forvardi takrori — hech kim aybdor emas, skan terminalda yozilgan
 
     E007 server kodi emas: aloqa uzilganda terminal frontendi o'zi hosil qiladi.
 
@@ -543,9 +555,15 @@ async def record_scan_at(
     session: WorkSession,
     qr_text: str,
     client_event_id: str,
+    from_agent: bool = False,
 ) -> ScanOutcome:
     """Core yozuv — kontekst tayyor bo'lganda. Terminal (user orqali) ham,
-    bridge-agent skan-forvardi (stanok bog'lami orqali) ham shu yo'ldan o'tadi."""
+    bridge-agent skan-forvardi (stanok bog'lami orqali) ham shu yo'ldan o'tadi.
+
+    `from_agent` — chaqiruvchi stanok forvardimi. Forvard ODAM harakati emas, u
+    kompyuterdagi skanerning nusxasi: shuning uchun unga qo'shimcha qorovul
+    qo'yiladi (pastdagi `AGENT_CROSS_POST_WINDOW`). Terminal, qadoq, TMO va chek
+    chiqarish yo'llari — odamning aniq harakati, ular tegilmaydi."""
     qr = qr_text.strip()
     if not _QR_RE.match(qr):
         raise ScanRejected("E002", "QR kodi noto'g'ri formatda. Chekni qaytadan chop eting.")
@@ -612,6 +630,34 @@ async def record_scan_at(
 
     part = await db.get(Part, instance.part_id)
     assert part is not None
+
+    # STANOK FORVARDI QOROVULI: shu nusxa hozirgina BOSHQA postda skan qilingan bo'lsa,
+    # bu forvard o'sha fizik skanning nusxasi — yozilmaydi. Sabab: agent o'z
+    # kompyuteridagi har qanday skanni eshitadi, brauzerda esa boshqa postning
+    # terminali ochiq bo'lishi mumkin (monoblok ishlamay qolganda tsex shunday qiladi).
+    # Faqat AGENT yo'liga tegishli: odamning terminaldagi skani hech qachon rad
+    # etilmaydi, aks holda operator o'z ishini yo'qotardi.
+    if from_agent:
+        yaqin_post = (
+            await db.execute(
+                select(Scan, Post.name)
+                .join(Post, Post.id == Scan.post_id)
+                .where(
+                    Scan.instance_id == instance.id,
+                    Scan.post_id != post.id,
+                    Scan.is_cancelled == False,  # noqa: E712
+                    Scan.is_deleted == False,  # noqa: E712
+                    Scan.created_at > datetime.now(UTC) - AGENT_CROSS_POST_WINDOW,
+                )
+                .order_by(Scan.created_at.desc())
+            )
+        ).first()
+        if yaqin_post is not None:
+            raise ScanRejected(
+                "E010",
+                f"Bu detal hozirgina {yaqin_post[1]} postida skan qilindi — "
+                "stanok nusxasi yozilmadi (bitta skan ikki postga tushmasin).",
+            )
 
     # Shu postdagi qadamlar navbat bo'yicha: birinchi TUGALLANMAGANI shu skanniki.
     # Post marshrutda takrorlanishi mumkin, shuning uchun bitta qator kutilmaydi.
