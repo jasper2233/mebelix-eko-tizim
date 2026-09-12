@@ -485,10 +485,9 @@ async def bridge_scan(
         # o'zidan xabar oladi, ya'ni umumiy `log_rejected_scan` ga parametr
         # qo'shishning hojati yo'q.
         #
-        # E010 — ISTISNO: u operatorning xatosi emas, skan aynan shu daqiqada
-        # terminalda MUVAFFAQIYATLI yozilgan, bu esa uning nusxasi. Ekranga qizil
-        # banner chiqarsak, ishi joyida bajarilgan odamga yolg'on xato ko'rsatgan
-        # bo'lardik. Audit yozuvi qoladi — naqsh Loglar sahifasidan ko'rinadi.
+        # E010 — ISTISNO: skan aynan shu daqiqada terminalda MUVAFFAQIYATLI yozilgan,
+        # bu esa uning nusxasi. Qizil banner ishini joyida bajargan odamga yolg'on
+        # xato ko'rsatgan bo'lardi. Audit yozuvi qoladi.
         if exc.code != "E010":
             await ws_manager.publish(
                 "scan.rejected",

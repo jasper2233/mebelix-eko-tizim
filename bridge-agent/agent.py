@@ -1177,16 +1177,10 @@ def start_scan_forward() -> None:
     import urllib.request
     from uuid import uuid4
 
-    # MES terminali fokusda bo'lsa forvard YUBORILMAYDI. Sabab: forvard Nanxing
-    # dasturiga ketayotgan skanning NUSXASI; terminal sahifasi fokusda bo'lsa
-    # skanni brauzerning O'ZI yozadi va nusxa ikkinchi yozuvga aylanadi.
-    # 2026-09-12: KROMKA monoblokida internet yo'q edi, operator PRISADKA
-    # kompyuterining brauzerida KROMKA terminalini ochdi — bitta fizik skan
-    # KROMKA ga (brauzer) va PRISADKA ga (shu agent) yozildi, 37 ta detalda
-    # prisadka ish qilinmasdan "bajarildi" bo'lib qoldi.
-    # Sarlavha QISM-SATR bo'yicha solishtiriladi: brauzer oynaga " - Google Chrome"
-    # kabi quyruq qo'shadi. TABLO ("TABLO | MebeliX") va kirish ekrani
-    # ("Kirish | MebeliX") ataylab mos kelmaydi — ular skan yozmaydi.
+    # MES terminali fokusda bo'lsa forvard YUBORILMAYDI: forvard Nanxing'ga ketayotgan
+    # skanning nusxasi, terminal fokusda bo'lsa skanni brauzerning O'ZI yozadi
+    # (2026-09-12 hodisasi — docs/09). Sarlavha QISM-SATR bo'yicha: brauzer oynaga
+    # " - Google Chrome" quyrug'ini qo'shadi; TABLO va kirish ekrani ataylab mos kelmaydi.
     terminal_title = "Terminal | MebeliX"
 
     def _terminal_fokusda() -> bool:

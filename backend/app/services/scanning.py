@@ -35,16 +35,10 @@ from app.services.giblab.models import strip_order_prefix
 
 #: Manbalar-aro dedup oynasi (pastdagi `record_scan_at` izohiga qarang)
 CROSS_SOURCE_WINDOW = timedelta(seconds=3)
-#: Stanok forvardi BOSHQA postdagi skandan keyin qancha vaqt ichida takror deb sanaladi.
-#: Agent pynput bilan O'Z kompyuteridagi HAR QANDAY skanni yuboradi va fokusdagi oynani
-#: bilmaydi: monoblokda internet yo'q bo'lib, operator boshqa post terminalini shu
-#: kompyuterning brauzerida ochsa, bitta fizik skan ikki postga yozilardi (2026-09-12:
-#: 37 ta detalda PRISADKA qadami ish qilinmasdan yopildi, KROMKA terminali Prisadka
-#: kompyuterida ochilgani uchun). Yuqoridagi 3 soniyalik oyna buni to'smaydi — u AYNI
-#: qadamni (`route_id`) tekshiradi, bu yerda esa postlar boshqa-boshqa.
-#: 10 soniya prodda o'lchab tanlangan: 1202 ta agent skanidan faqat o'sha 37 tasi shu
-#: oynaga tushadi, qonuniy skanlarning 5-protsentili — 6 daqiqa 44 soniya. Detalni bir
-#: stanokdan boshqasiga 10 soniyada olib o'tib bo'lmaydi.
+#: Stanok forvardi BOSHQA postdagi skandan keyin qancha vaqt ichida takror deb sanaladi
+#: (sabab va 2026-09-12 hodisasi — docs/09; yuqoridagi 3 s oyna buni to'smaydi, u AYNI
+#: qadamni tekshiradi). 10 soniya prodda o'lchangan: 1202 ta agent skanidan faqat o'sha
+#: 37 tasi shu oynaga tushadi, qonuniylarning 5-protsentili — 6 daqiqa 44 soniya.
 AGENT_CROSS_POST_WINDOW = timedelta(seconds=10)
 
 _QR_RE = re.compile(r"^.+_.+$")  # {productCode}_{partCode}[_{n}] — yagona nusxada suffiks yo'q
@@ -560,10 +554,10 @@ async def record_scan_at(
     """Core yozuv — kontekst tayyor bo'lganda. Terminal (user orqali) ham,
     bridge-agent skan-forvardi (stanok bog'lami orqali) ham shu yo'ldan o'tadi.
 
-    `from_agent` — chaqiruvchi stanok forvardimi. Forvard ODAM harakati emas, u
-    kompyuterdagi skanerning nusxasi: shuning uchun unga qo'shimcha qorovul
-    qo'yiladi (pastdagi `AGENT_CROSS_POST_WINDOW`). Terminal, qadoq, TMO va chek
-    chiqarish yo'llari — odamning aniq harakati, ular tegilmaydi."""
+    `from_agent` — chaqiruvchi stanok forvardimi: u odam harakati emas, skanerning
+    nusxasi, shuning uchun unga qo'shimcha qorovul qo'yiladi
+    (`AGENT_CROSS_POST_WINDOW`). Terminal, qadoq, TMO va chek chiqarish yo'llari
+    tegilmaydi — ular odamning aniq harakati."""
     qr = qr_text.strip()
     if not _QR_RE.match(qr):
         raise ScanRejected("E002", "QR kodi noto'g'ri formatda. Chekni qaytadan chop eting.")
@@ -631,12 +625,9 @@ async def record_scan_at(
     part = await db.get(Part, instance.part_id)
     assert part is not None
 
-    # STANOK FORVARDI QOROVULI: shu nusxa hozirgina BOSHQA postda skan qilingan bo'lsa,
-    # bu forvard o'sha fizik skanning nusxasi — yozilmaydi. Sabab: agent o'z
-    # kompyuteridagi har qanday skanni eshitadi, brauzerda esa boshqa postning
-    # terminali ochiq bo'lishi mumkin (monoblok ishlamay qolganda tsex shunday qiladi).
-    # Faqat AGENT yo'liga tegishli: odamning terminaldagi skani hech qachon rad
-    # etilmaydi, aks holda operator o'z ishini yo'qotardi.
+    # Shu nusxa hozirgina BOSHQA postda skan qilingan bo'lsa, forvard o'sha fizik
+    # skanning nusxasi — yozilmaydi (`AGENT_CROSS_POST_WINDOW`). Faqat agent yo'li:
+    # odamning terminaldagi skani rad etilsa, u o'z ishini yo'qotardi.
     if from_agent:
         yaqin_post = (
             await db.execute(
