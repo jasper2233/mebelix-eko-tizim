@@ -524,12 +524,10 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
                     else:
                         draw.line((xx, by + bh - tick, xx, by + bh), fill="black", width=2)
 
-        # PAZ/OVAL: freza qirra bo'ylab ketadigan tomon — kontur ICHIDA uzuq chiziq.
-        # Kromka chizig'idan ataylab farq qiladi: u TASHQARIDA va TUTASH, bu ICHKARIDA
-        # va UZUQ. Tomon NOMI ("o'ng") yozilmaydi — eskiz o'lchamga qarab buriladi
-        # (`burilgan`), ya'ni nom operatorni adashtirardi; u eskizdagi chiziqni detalning
-        # o'zi bilan solishtiradi. Tsex shikoyati 2026-09-12: oval kesilardi-yu, kromkachi
-        # qaysi tomon ekanini chekdan bilolmasdi (docs/09).
+        # PAZ/OVAL: freza ketadigan qirra — kontur ICHIDA uzuq chiziq (kromka esa
+        # TASHQARIDA va tutash). Tomon NOMI ("o'ng") yozilmaydi: eskiz o'lchamga qarab
+        # buriladi (`burilgan`), ya'ni nom eskizga zid tushardi — operator chiziqni
+        # detalning o'ziga solishtiradi. Sabab va o'lchovlar: docs/09.
         if paz_tomonlari:
             ich = int(1.4 * mm)  # konturdan ichkariga
             pt = max(2, int(0.6 * mm))
