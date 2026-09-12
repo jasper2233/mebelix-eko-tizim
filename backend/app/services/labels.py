@@ -437,14 +437,23 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
         if paz_tomonlari:
             ich = int(1.4 * mm)  # konturdan ichkariga
             pt = max(2, int(0.6 * mm))
-            uzuq, oraliq = int(2 * mm), int(1.2 * mm)
+            uzuq_max, oraliq_ulush = int(2 * mm), 0.6
 
             def uzuq_chiziq(x1: int, y1: int, x2: int, y2: int) -> None:
                 """Uzuq chiziq: PIL'da dash yo'q, qo'lda bo'laklab chiziladi.
 
                 O'rtada bo'shliq qoldiriladi — o'sha joyda tomon simvoli (A/B) turadi va
                 chiziq uning ustidan o'tib harfni o'qib bo'lmas qilardi."""
-                bosh = max(3, int(2.2 * mm))  # harf uchun yarim bo'shliq
+                # Harf uchun yarim bo'shliq. Qirra qisqa bo'lsa (ingichka detalning
+                # eni 5-15 mm) qat'iy 2.2 mm butun chiziqni yeb qo'yardi — bo'shliq
+                # qirra uzunligining oltidan biridan oshmaydi.
+                uzunlik = (y2 - y1) if x1 == x2 else (x2 - x1)
+                bosh = max(2, min(int(2.2 * mm), uzunlik // 6))
+                # Bo'lak ham qirraga moslashadi: 2 metrli plankaning 100 mm li
+                # qisqa qirrasi eskizda ~9 mm — qat'iy 2 mm li bo'lak bo'shliqdan
+                # keyin bittagina bo'lakni qoldirardi (o'lchangan).
+                uzuq = max(3, min(uzuq_max, uzunlik // 8))
+                oraliq = max(2, int(uzuq * oraliq_ulush))
                 if x1 == x2:
                     orta = (y1 + y2) // 2
                     y = y1
@@ -472,9 +481,6 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
                     uzuq_chiziq(bx + ich, by + ich, bx + bw - ich, by + ich)
                 else:
                     uzuq_chiziq(bx + ich, by + bh - ich - pt, bx + bw - ich, by + bh - ich - pt)
-            # Eskiz ostidagi bo'sh zonada izoh — uzuq chiziq nimani anglatishini
-            # birinchi ko'rgan operator ham tushunsin.
-            text(58.5, 50.5, "- - PAZ/OVAL", 2.6, bold=True, max_mm=20)
 
         # Tekstura yo'nalishi: 3 ingichka chiziq UZUNLIK (`l` — teksturali
         # materialda birinchi o'lcham, tekstura qulflangan o'q) BO'YLAB.
@@ -543,6 +549,20 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
             font=_font(3.2, bold=True),
             anchor="ma",
         )
+        # Uzuq chiziq izohi — EN raqamining ostida, qat'iy koordinatada EMAS: ingichka
+        # detalda (masalan 100x450) eskiz 46 mm balandlikka yetadi va raqam 51 mm ga
+        # tushadi — qat'iy y=50.5 dagi izoh uning ustiga bosilardi (o'lchangan).
+        if paz_tomonlari:
+            text(
+                (bx + bw // 2) / mm,
+                (by + bh + off + bt + int(0.6 * mm)) / mm + 4.0,
+                "- - PAZ/OVAL",
+                2.6,
+                bold=True,
+                anchor="ma",
+                max_mm=20,
+            )
+
         vt = _n(long_side)
         vfont = _font(3.2, bold=True)
         vbb = draw.textbbox((0, 0), vt, font=vfont)

@@ -118,11 +118,15 @@ class ParsedMaterial:
     count: float | None = None  # sheets used / band meters bought
 
 
-#: Paz/freza qirraga «tegdi» deb sanaladigan masofa (mm) va qirra bo'ylab eng kam qamrov.
-#: 25 mm — asbob diametri (korpusda 8–16) + profil kengligi; ulush 0.5 — qisqa burchak
-#: kesigi (masalan 45° chamfer) butun qirrani ishlangan deb ko'rsatib yubormasin.
-_QIRRA_TASMASI = 25.0
+#: Paz/freza qirraga «tegdi» deb sanaladigan masofa (mm). Qirra profili asbobi qirraning
+#: O'ZIDA yuradi (markaz radius qadar ichkarida), 12 mm — 16 mm li frezaning yarmi + zaxira.
+#: Ilgari 25 mm edi va qirradan 18 mm ichkaridagi DVP pazini ham «qirra» deb belgilardi.
+_QIRRA_TASMASI = 12.0
+#: Qirra ishlangan deb sanalishi uchun eng kam qamrov: o'lchamning yarmi, LEKIN 300 mm dan
+#: ko'p emas. Ulush yolg'iz bo'lsa uzun detalda yiqiladi — 2170 mm li detalning qirrasidagi
+#: 514 mm falts 0.24 ulush bilan tushib qolardi (prodda o'lchangan).
 _QIRRA_ULUSHI = 0.5
+_QIRRA_MIN_MM = 300.0
 
 
 @dataclass
@@ -145,34 +149,53 @@ class XncOp:
         """Paz/freza QAYSI QIRRA bo'ylab ketadi — `l`/`r`/`t`/`b`, tartiblangan.
 
         .project faylida tomon ATRIBUT sifatida yo'q (`<gr>` da faqat x1/y1/x2/y2,
-        frezada esa kontur nuqtalari) — lekin geometriyadan kelib chiqadi. Qoida:
-        qirradan `_QIRRA_TASMASI` mm ichidagi nuqtalarni ol; ular qirra bo'ylab
-        detal o'lchamining kamida yarmini qoplasa — o'sha qirra ishlanadi.
+        frezada esa kontur nuqtalari) — lekin geometriyadan kelib chiqadi.
+
+        Qoida KESMALAR bo'yicha: kesmaning IKKALA uchi ham qirradan `_QIRRA_TASMASI`
+        mm ichida bo'lsa, uning qirra bo'ylab uzunligi qo'shiladi; yig'indi
+        `_QIRRA_ULUSHI` ulushiga (lekin ko'pi bilan `_QIRRA_MIN_MM`) yetsa — qirra
+        ishlanadi. NUQTALAR bulutini olish YARAMAYDI: konturning kirish nuqtasi
+        (lead-in, masalan y=-10) tasmaga tushib, o'sha qirra bo'ylab hech qanday yo'l
+        bo'lmasa ham uni «ishlangan» qilib yuborardi — prodda 1200x350 detalda to'rt
+        qirraning to'rtalasi ham belgilanib ketgan edi (aslida uchtasi).
+
         Asbob qirradan TASHQARIGA chiqadi (radius va kirish-chiqish), shuning uchun
-        tashqi chegara qo'yilmaydi: 170 mm li detalda kontur X=150..174 bo'lishi normal.
+        tashqi chegara qo'yilmaydi: 170 mm li detalda kontur X=174 bo'lishi normal.
 
         O'q konvensiyasi `scx.py` dagi bilan bir xil: dasturda `y=0` — `t` qirrasi,
         `y=width` — `b` (shu sabab `scx.py` t ni `Y=Width` ga flip qiladi).
 
-        Ichkaridagi paz (masalan detal o'rtasidagi ariq) hech bir qirraga tegmaydi va
-        ro'yxatga tushmaydi — u kromkachining ishi emas.
+        Qirradan uzoqdagi paz (detal o'rtasidagi ariq, DVP uchun 18 mm ichkaridagi
+        yiv) ro'yxatga tushmaydi — u kromkachining ishi emas.
         """
         if not length or not width:
             return []
-        nuqtalar: list[tuple[float, float]] = []
+        # Tasma detal o'lchamidan kelib chiqib CHEKLANADI: eni 50 mm dan tor plankada
+        # qat'iy 25 mm ikkala uzun qirradan ham ichkariga tushib, O'RTADAGI pazni
+        # ikkala qirraga ham yozib qo'yardi (o'lchangan). Uchdan bir — tasma hech
+        # qachon detalning yarmidan oshmaydi, ya'ni ikki qirra kesishmaydi.
+        tasma_x = min(_QIRRA_TASMASI, length / 3)
+        tasma_y = min(_QIRRA_TASMASI, width / 3)
+        kesmalar: list[tuple[float, float, float, float]] = []
         for g in self.grooves:
-            nuqtalar += [(g["x1"], g["y1"]), (g["x2"], g["y2"])]
+            kesmalar.append((g["x1"], g["y1"], g["x2"], g["y2"]))
         for contour in self.mills:
-            nuqtalar += [(q["x"], q["y"]) for q in contour if q.get("x") is not None and q.get("y") is not None]
+            nuqta = [(q["x"], q["y"]) for q in contour if q.get("x") is not None and q.get("y") is not None]
+            kesmalar += [(a[0], a[1], b[0], b[1]) for a, b in zip(nuqta, nuqta[1:], strict=False)]
+
         topildi: list[str] = []
         for tomon, yaqinmi, boylab, olcham in (
-            ("l", lambda x, y: x <= _QIRRA_TASMASI, lambda x, y: y, width),
-            ("r", lambda x, y: x >= length - _QIRRA_TASMASI, lambda x, y: y, width),
-            ("t", lambda x, y: y <= _QIRRA_TASMASI, lambda x, y: x, length),
-            ("b", lambda x, y: y >= width - _QIRRA_TASMASI, lambda x, y: x, length),
+            ("l", lambda x, y: x <= tasma_x, lambda x, y: y, width),
+            ("r", lambda x, y: x >= length - tasma_x, lambda x, y: y, width),
+            ("t", lambda x, y: y <= tasma_y, lambda x, y: x, length),
+            ("b", lambda x, y: y >= width - tasma_y, lambda x, y: x, length),
         ):
-            shu = [boylab(x, y) for x, y in nuqtalar if yaqinmi(x, y)]
-            if len(shu) >= 2 and (max(shu) - min(shu)) >= olcham * _QIRRA_ULUSHI:
+            qoplam = sum(
+                abs(boylab(x2, y2) - boylab(x1, y1))
+                for x1, y1, x2, y2 in kesmalar
+                if yaqinmi(x1, y1) and yaqinmi(x2, y2)
+            )
+            if qoplam >= min(olcham * _QIRRA_ULUSHI, _QIRRA_MIN_MM):
                 topildi.append(tomon)
         return topildi
 

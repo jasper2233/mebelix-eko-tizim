@@ -36,14 +36,15 @@ function EdgeGlyph({
 }) {
   const burilgan = (length ?? 0) > (width ?? 0)
   const has = (k: string) => !!edges[k]
-  const joy = (k: string) =>
-    burilgan
-      ? { t: "chap", b: "ong", l: "past", r: "tepa" }[k]
-      : { l: "chap", r: "ong", t: "tepa", b: "past" }[k]
-  const side = burilgan
-    ? { chap: has("t"), ong: has("b"), past: has("l"), tepa: has("r") }
-    : { chap: has("l"), ong: has("r"), tepa: has("t"), past: has("b") }
-  const pazJoy = new Set(paz.map(joy))
+  // Xarita BITTA joyda: kromka ham, paz ham shundan o'qiydi (ilgari ikki shaklda
+  // yozilgan edi — biri tomon->joy, ikkinchisi joy->bormi).
+  const joy: Record<string, string> = burilgan
+    ? { t: "chap", b: "ong", l: "past", r: "tepa" }
+    : { l: "chap", r: "ong", t: "tepa", b: "past" }
+  const side = Object.fromEntries(
+    Object.entries(joy).map(([tomon, j]) => [j, has(tomon)]),
+  ) as Record<string, boolean>
+  const pazJoy = new Set(paz.map((t) => joy[t]))
   // Chekdagi kabi eskiz DOIM tik: uzun tomon vertikal, eni nisbatga qarab
   // (labels.py: `bh = area_h; bw = bh * short/long`). `burilgan` faqat qaysi
   // qirra qaysi tomonga tushishini hal qiladi, shaklni emas.
@@ -56,7 +57,7 @@ function EdgeGlyph({
   const line = "stroke-amber-600"
   const pazLine = "stroke-sky-700 [stroke-dasharray:3_2]"
   return (
-    <svg viewBox="0 0 30 30" className="size-7 shrink-0" aria-hidden="true">
+    <svg viewBox="0 0 30 30" className="size-8 shrink-0" aria-hidden="true">
       <title>Kromka tomonlari</title>
       <rect
         x={x}
@@ -295,7 +296,10 @@ export function KromkaView({
                 <th className="px-4 py-2.5">O'lchami</th>
                 <th className="px-4 py-2.5">
                   {oval ? "Qirralar" : "Kromka"}
-                  <span className="block whitespace-nowrap text-2xs font-medium normal-case tracking-normal">
+                  {/* `whitespace-nowrap` YO'Q: bu izoh bir qatorda 400 px dan oshib,
+                      jadval avto-layoutida ustunni ikki barobar kengaytirib yuborardi
+                      va Nomi/Nusxalar siqilardi (o'lchangan). Ikki qatorga bo'linadi. */}
+                  <span className="block max-w-[230px] text-2xs font-medium normal-case leading-tight tracking-normal">
                     qalin = lenta · uzuq = paz/oval · harf = lenta turi (tartib
                     emas)
                   </span>
@@ -350,12 +354,7 @@ export function KromkaView({
                         />
                         <span className="min-w-0">
                           {!oval && <b>{p.sides} tomon</b>}
-                          <span
-                            className={cn(
-                              "block max-w-[220px] truncate text-xs text-muted-foreground",
-                              oval && "text-sm",
-                            )}
-                          >
+                          <span className="block max-w-[240px] truncate text-sm text-muted-foreground">
                             {edgeBands(p.edges)}
                           </span>
                           {(p.paz_sides ?? []).length > 0 && (
@@ -414,7 +413,7 @@ export function KromkaView({
               {!leftParts.length && (
                 <tr>
                   <td
-                    colSpan={oval ? 4 : 5}
+                    colSpan={5}
                     className="h-32 text-center text-muted-foreground"
                   >
                     Arradan kelgan detal yo'q
