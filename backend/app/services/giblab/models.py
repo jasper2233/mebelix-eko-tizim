@@ -122,11 +122,45 @@ class ParsedMaterial:
 #: O'ZIDA yuradi (markaz radius qadar ichkarida), 12 mm — 16 mm li frezaning yarmi + zaxira.
 #: Ilgari 25 mm edi va qirradan 18 mm ichkaridagi DVP pazini ham «qirra» deb belgilardi.
 _QIRRA_TASMASI = 12.0
-#: Qirra ishlangan deb sanalishi uchun eng kam qamrov: o'lchamning yarmi, LEKIN 300 mm dan
-#: ko'p emas. Ulush yolg'iz bo'lsa uzun detalda yiqiladi — 2170 mm li detalning qirrasidagi
-#: 514 mm falts 0.24 ulush bilan tushib qolardi (prodda o'lchangan).
-_QIRRA_ULUSHI = 0.5
+#: Qirra ishlangan deb sanalishi uchun eng kam qamrov: o'lchamning shuncha ulushi, LEKIN
+#: `_QIRRA_MIN_MM` dan ko'p emas. Ikkala chegara ham prodda o'lchangan: yarim ulush uzun
+#: detalda yiqilardi (2170 mm li detalning qirrasidagi 514 mm falts 0.24 ulush bilan
+#: tushib qolardi), yolg'iz mutlaq chegara esa kichik detalning burchak kesigini butun
+#: qirra deb ko'rsatardi. 0.3 — R298 li burchak yoyi bilan ishlangan qirrani (164/368 mm)
+#: oladi, 400 mm li qirradagi 60 mm chamferni olmaydi.
+_QIRRA_ULUSHI = 0.3
 _QIRRA_MIN_MM = 300.0
+#: Yoyni (`mac`) shuncha bo'lakka bo'lib tekshiramiz — kontur yoyni IKKI nuqta bilan
+#: beradi, holbuki yoyning katta qismi qirra bo'ylab ketishi mumkin (R298 burchak).
+_YOY_BOLAK = 12
+
+
+def _yoy_kesmalari(
+    boshi: tuple[float, float], oxiri: tuple[float, float], markaz: tuple[float, float]
+) -> list[tuple[float, float, float, float]]:
+    """Yoyni to'g'ri kesmalarga bo'ladi (`machined_sides` uchun, SCX yozishga tegishli emas).
+
+    GibLab yoyni ikki nuqta + markaz bilan beradi. Ikki nuqtani to'g'ri chiziq deb olsak,
+    R298 li burchak yoyi bo'ylab ketgan profil qirra qamrovidan tushib qolardi.
+    """
+    import math
+
+    rx, ry = boshi[0] - markaz[0], boshi[1] - markaz[1]
+    radius = math.hypot(rx, ry)
+    if radius <= 0:
+        return [(boshi[0], boshi[1], oxiri[0], oxiri[1])]
+    a1 = math.atan2(ry, rx)
+    a2 = math.atan2(oxiri[1] - markaz[1], oxiri[0] - markaz[0])
+    # Qisqa yo'nalish: yoy 180° dan katta bo'lmasligini faraz qilamiz (burchak radiusi)
+    delta = (a2 - a1 + math.pi) % (2 * math.pi) - math.pi
+    nuqtalar = [
+        (
+            markaz[0] + radius * math.cos(a1 + delta * i / _YOY_BOLAK),
+            markaz[1] + radius * math.sin(a1 + delta * i / _YOY_BOLAK),
+        )
+        for i in range(_YOY_BOLAK + 1)
+    ]
+    return [(a[0], a[1], b[0], b[1]) for a, b in zip(nuqtalar, nuqtalar[1:], strict=False)]
 
 
 @dataclass
@@ -180,8 +214,17 @@ class XncOp:
         for g in self.grooves:
             kesmalar.append((g["x1"], g["y1"], g["x2"], g["y2"]))
         for contour in self.mills:
-            nuqta = [(q["x"], q["y"]) for q in contour if q.get("x") is not None and q.get("y") is not None]
-            kesmalar += [(a[0], a[1], b[0], b[1]) for a, b in zip(nuqta, nuqta[1:], strict=False)]
+            oldingi: tuple[float, float] | None = None
+            for q in contour:
+                if q.get("x") is None or q.get("y") is None:
+                    continue
+                shu = (q["x"], q["y"])
+                if oldingi is not None:
+                    if q.get("op") == "mac" and q.get("cx") is not None and q.get("cy") is not None:
+                        kesmalar += _yoy_kesmalari(oldingi, shu, (q["cx"], q["cy"]))
+                    else:
+                        kesmalar.append((oldingi[0], oldingi[1], shu[0], shu[1]))
+                oldingi = shu
 
         topildi: list[str] = []
         for tomon, yaqinmi, boylab, olcham in (

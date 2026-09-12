@@ -55,7 +55,8 @@ function EdgeGlyph({
   const x = (30 - w) / 2
   const y = (30 - h) / 2
   const line = "stroke-amber-600"
-  const pazLine = "stroke-sky-700 [stroke-dasharray:3_2]"
+  // Qalinligi 2: standart 1 px chiziq 17" monoblokda 0.25 mm bo'lib xira ko'rinardi.
+  const pazLine = "stroke-sky-700 [stroke-dasharray:4_2]"
   return (
     <svg viewBox="0 0 30 30" className="size-8 shrink-0" aria-hidden="true">
       <title>Kromka tomonlari</title>
@@ -116,6 +117,7 @@ function EdgeGlyph({
           x2={x + w - 2}
           y2={y + 3}
           className={pazLine}
+          strokeWidth="2"
         />
       )}
       {pazJoy.has("past") && (
@@ -125,6 +127,7 @@ function EdgeGlyph({
           x2={x + w - 2}
           y2={y + h - 3}
           className={pazLine}
+          strokeWidth="2"
         />
       )}
       {pazJoy.has("chap") && (
@@ -134,6 +137,7 @@ function EdgeGlyph({
           x2={x + 3}
           y2={y + h - 2}
           className={pazLine}
+          strokeWidth="2"
         />
       )}
       {pazJoy.has("ong") && (
@@ -143,6 +147,7 @@ function EdgeGlyph({
           x2={x + w - 3}
           y2={y + h - 2}
           className={pazLine}
+          strokeWidth="2"
         />
       )}
     </svg>

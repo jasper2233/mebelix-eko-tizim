@@ -485,10 +485,16 @@ direktor ham ko'radi.
 - `app/services/giblab/models.py: XncOp.machined_sides(length, width)` — paz/freza QAYSI
   QIRRA bo'ylab ketishini GEOMETRIYADAN chiqaradi (`l`/`r`/`t`/`b`). .project faylida tomon
   atribut sifatida YO'Q: `<gr>` da faqat `x1/y1/x2/y2`, frezada esa kontur nuqtalari —
-  lekin qirradan 25 mm ichidagi nuqtalar qirra bo'ylab detal o'lchamining yarmini qoplasa,
-  o'sha qirra ishlanadi. Asbob qirradan tashqariga chiqadi (170 mm li detalda kontur
-  X=150..174 — normal), shuning uchun tashqi chegara yo'q; detal o'rtasidagi ariq hech bir
-  qirraga tegmaydi va ro'yxatga tushmaydi. O'q konvensiyasi `scx.py` bilan bir xil:
+  lekin KESMALAR bo'yicha: ikkala uchi ham qirradan `min(12 mm, o'lcham/3)` ichida bo'lgan
+  kesmaning qirra bo'ylab uzunligi qo'shiladi va yig'indi `min(0.3 × o'lcham, 300 mm)` ga
+  yetsa — qirra ishlanadi. Yoy (`mac`) 12 bo'lakka ajratiladi: kontur yoyni ikki nuqta
+  bilan beradi, R298 li burchak esa qirraning yarmini egallaydi. NUQTALAR bulutini olish
+  YARAMAYDI — konturning kirish nuqtasi (lead-in, `y = -10`) qirra bo'ylab yo'l bo'lmasa
+  ham uni «ishlangan» qilib yuborardi (prodda 1200×350 detalda to'rt qirra ham belgilanib
+  ketgan edi). Asbob qirradan tashqariga chiqadi (170 mm li detalda kontur X=174 — normal),
+  shuning uchun tashqi chegara yo'q; detal o'rtasidagi ariq ham, qirradan 18 mm ichkaridagi
+  DVP pazi ham ro'yxatga tushmaydi. Chegaralarning har biri prod korpusida (21 loyiha,
+  981 detal) o'lchab tanlangan. O'q konvensiyasi `scx.py` bilan bir xil:
   dasturda `y=0` — `t`, `y=width` — `b`. Natija `part.xnc_summary["mill_sides"]` da
   (`sides` NOMI BAND — `1cfd3b2182fc` downgrade'i uni butun son deb o'qiydi). Chek eskizida
   o'sha qirra kontur ICHIDA UZUQ chiziq bilan chiziladi (kromka esa TASHQARIDA, tutash) +

@@ -392,7 +392,12 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
         bt = max(2, int(0.6 * mm))  # kromka chizig'i qalinligi
         # QR'dan keyin (kromka chizig'i ham QR'ga tegmasin — quiet zone)
         area_x, area_y = int(58.5 * mm), 3 * mm
-        area_w, area_h = 15 * mm, 46 * mm
+        # Paz bo'lsa eskiz 5 mm pasttan tugaydi: izoh EN raqamining ostiga tushadi va
+        # chekning «55.5 mm dan pastga yozilmaydi» qoidasi (termal chetda yeyilish,
+        # pastdagi izohga qarang) buzilmasin. Shuning uchun tomonlar eskiz o'lchamidan
+        # OLDIN hisoblanadi.
+        paz_tomonlari_bor = bool(d.xnc_summary.get("mill_sides"))
+        area_w, area_h = 15 * mm, (41 if paz_tomonlari_bor else 46) * mm
         bh = area_h
         bw = max(5 * mm, int(bh * short_side / long_side))
         if bw > area_w:
