@@ -531,6 +531,18 @@ direktor ham ko'radi.
   qirqilmaydi (qirqilsa 18 ta eskiz balandligida qo'shimcha bo'lak chiqardi). O'lchangan:
   paz/frezasi YO'Q 950/950 chek bayt-baytda bir xil, 18 ta pazli chekda esa eskiz
   piksel-piksel bir xil, faqat izoh matni «- - PAZ/OVAL» → «- - PAZ» bo'ldi.
+- **Qirraga tushmagan ishlov** (detal o'rtasidagi ariq, doira o'yiq) eskiz ICHIDA o'z joyi
+  bilan chiziladi — paz uzuq, freza tutash, izoh o'sha-o'sha. Sababi o'lchangan: prod
+  korpusida (45 loyiha, 2056 detal) ishlovli 123 detalning 63 tasida qirra aniqlanadi,
+  qolgan **60 tasi** esa chekda oddiy to'rtburchak bo'lib chiqardi — GibSaw yorlig'i ularga
+  hech bo'lmasa П/Ф bayrog'ini bosardi. Qirrasi ANIQLANGAN amal ikkinchi marta chizilmaydi:
+  unga chekkadagi chiziq yetadi, aks holda ikki qavat chiziq chiqardi.
+  Yo'llar `xnc_summary["groove_paths"]`/`["mill_paths"]` da saqlanadi — `XncOp.paths()`
+  yoyni SAQLASHDAN oldin vatarlarga bo'ladi, ya'ni chizuvchi tomonda yoy matematikasi yo'q.
+  `paths()` bir vaqtda `machined_sides` ning ham manbai: bitta geometriya, ikki iste'molchi.
+  O'lchangan: 1452 detalda refaktordan keyin aniqlash natijasi 0 farq; ishlovsiz 1933 chek
+  bayt-baytda bir xil; qirrasi bor 63 chek o'zgarmagan; 60 tasida yangi chiziq paydo bo'ldi
+  (hammasida piksel farqi bor, ya'ni hech biri ko'rinmay qolmagan).
 - `app/services/excel.py: xlsx_response()` — openpyxl bilan bitta varaqli .xlsx stream
   (reports `?format=xlsx` orqasida).
 - Og'ir JSONB ustunlar ro'yxat so'rovlarida `defer()` bilan qoldiriladi:

@@ -179,6 +179,30 @@ class XncOp:
     mills: list[list[dict[str, Any]]] = field(default_factory=list)  # contours: [{op, x, y, cx, cy, dir, dp}]
     unknown_tags: set[str] = field(default_factory=set)  # dasturda o'qilmagan teglar (ogohlantirish uchun)
 
+    def paths(self, tur: Literal["paz", "freza"]) -> list[list[tuple[float, float]]]:
+        """`tur` amalining yo'llari — poliliniya ro'yxati, yoylar vatarlarga bo'lingan.
+
+        BITTA manba, ikki iste'molchi: `machined_sides` bu yo'llarning kesmalarini
+        qirraga solishtiradi, chek eskizi esa o'sha yo'llarni chizadi. Yoy shu yerda
+        bo'linadi — chizuvchi tomonda yoy matematikasi qolmaydi.
+        """
+        if tur == "paz":
+            return [[(g["x1"], g["y1"]), (g["x2"], g["y2"])] for g in self.grooves]
+        yollar: list[list[tuple[float, float]]] = []
+        for contour in self.mills:
+            yol: list[tuple[float, float]] = []
+            for q in contour:
+                if q.get("x") is None or q.get("y") is None:
+                    continue
+                shu = (q["x"], q["y"])
+                if yol and q.get("op") == "mac" and q.get("cx") is not None and q.get("cy") is not None:
+                    yol += [(v[2], v[3]) for v in _yoy_kesmalari(yol[-1], shu, (q["cx"], q["cy"]))]
+                else:
+                    yol.append(shu)
+            if len(yol) >= 2:
+                yollar.append(yol)
+        return yollar
+
     def machined_sides(self, length: float | None, width: float | None, *, tur: Literal["paz", "freza"]) -> list[str]:
         """`tur` amali QAYSI QIRRA bo'ylab ketadi — `l`/`r`/`t`/`b`, tartiblangan.
 
@@ -213,22 +237,7 @@ class XncOp:
         # qachon detalning yarmidan oshmaydi, ya'ni ikki qirra kesishmaydi.
         tasma_x = min(_QIRRA_TASMASI, length / 3)
         tasma_y = min(_QIRRA_TASMASI, width / 3)
-        kesmalar: list[tuple[float, float, float, float]] = []
-        if tur == "paz":
-            kesmalar = [(g["x1"], g["y1"], g["x2"], g["y2"]) for g in self.grooves]
-        else:
-            for contour in self.mills:
-                oldingi: tuple[float, float] | None = None
-                for q in contour:
-                    if q.get("x") is None or q.get("y") is None:
-                        continue
-                    shu = (q["x"], q["y"])
-                    if oldingi is not None:
-                        if q.get("op") == "mac" and q.get("cx") is not None and q.get("cy") is not None:
-                            kesmalar += _yoy_kesmalari(oldingi, shu, (q["cx"], q["cy"]))
-                        else:
-                            kesmalar.append((oldingi[0], oldingi[1], shu[0], shu[1]))
-                    oldingi = shu
+        kesmalar = [(a[0], a[1], b[0], b[1]) for yol in self.paths(tur) for a, b in zip(yol, yol[1:], strict=False)]
 
         topildi: list[str] = []
         for tomon, yaqinmi, boylab, olcham in (
@@ -248,8 +257,21 @@ class XncOp:
 
 
 class MachinedSides(NamedTuple):
+    """Saqlangan ishlov: qaysi QIRRADA (chek chekkasidagi chiziq) va qayerda (eskiz ichi)."""
+
     paz: list[str]
     frez: list[str]
+    paz_yollari: list[list[list[float]]]
+    frez_yollari: list[list[list[float]]]
+
+
+def paths_json(yollar: list[list[tuple[float, float]]]) -> list[list[list[float]]]:
+    """`XncOp.paths` natijasini `xnc_summary` uchun ixchamlaydi.
+
+    Bir kasr yetadi: eskiz eng kattasida 15x41 mm, ya'ni 1 px ~ 0.13 mm detal
+    o'lchamining o'ndan biriga ham teng emas.
+    """
+    return [[[round(x, 1), round(y, 1)] for x, y in yol] for yol in yollar]
 
 
 def stored_machined_sides(xnc_summary: dict[str, Any] | None) -> MachinedSides:
@@ -261,8 +283,13 @@ def stored_machined_sides(xnc_summary: dict[str, Any] | None) -> MachinedSides:
     """
     xs = xnc_summary or {}
     if "groove_sides" not in xs:
-        return MachinedSides([], [])
-    return MachinedSides(list(xs.get("groove_sides") or []), list(xs.get("mill_sides") or []))
+        return MachinedSides([], [], [], [])
+    return MachinedSides(
+        list(xs.get("groove_sides") or []),
+        list(xs.get("mill_sides") or []),
+        list(xs.get("groove_paths") or []),
+        list(xs.get("mill_paths") or []),
+    )
 
 
 @dataclass

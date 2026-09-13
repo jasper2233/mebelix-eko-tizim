@@ -396,8 +396,8 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
         # va chekning «55.5 mm dan pastga yozilmaydi» qoidasi (termal chetda yeyilish,
         # pastdagi izohga qarang) buzilmasin. Shuning uchun tomonlar eskiz o'lchamidan
         # OLDIN hisoblanadi.
-        paz_hammasi, frez_hammasi = stored_machined_sides(d.xnc_summary)
-        ishlangan_bor = bool(paz_hammasi or frez_hammasi)
+        ishlov = stored_machined_sides(d.xnc_summary)
+        ishlangan_bor = bool(ishlov.paz or ishlov.frez or ishlov.paz_yollari or ishlov.frez_yollari)
         area_w, area_h = 15 * mm, (41 if ishlangan_bor else 46) * mm
         bh = area_h
         bw = max(5 * mm, int(bh * short_side / long_side))
@@ -437,8 +437,14 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
         # ularga qarab siljiydi. CHIZISH esa teshiklardan KEYIN (pastda) — teshik
         # doirasi oq bilan to'ldiriladi va chiziqning ustiga tushib, uni o'chirib
         # qo'yardi (1200x350, 24 teshikli detalda o'lchangan).
-        paz_tomonlari = [t for t in paz_hammasi if t in qirra]
-        frez_tomonlari = [t for t in frez_hammasi if t in qirra]
+        paz_tomonlari = [t for t in ishlov.paz if t in qirra]
+        frez_tomonlari = [t for t in ishlov.frez if t in qirra]
+        # Qirrasi ANIQLANMAGAN ishlov (detal o'rtasidagi ariq, doira o'yiq) eskiz ichida
+        # o'z joyi bilan chiziladi — prod korpusida ishlovli 123 detaldan 60 tasi shunday
+        # va ular chekda oddiy to'rtburchak bo'lib chiqardi (o'lchangan). Qirrasi bor
+        # amal ikki marta chizilmaydi: unga chekkadagi chiziq yetadi.
+        paz_yollari = [] if paz_tomonlari else ishlov.paz_yollari
+        frez_yollari = [] if frez_tomonlari else ishlov.frez_yollari
         # Bir qirrada ikkalasi ham bo'lsa paz g'olib (uzuq chiziq): prodda bunday detal
         # yo'q (21 loyihada 18 ta faqat pazli, 8 ta faqat frezali), o'lchangan.
         ishlangan_tomonlari = paz_tomonlari + [t for t in frez_tomonlari if t not in paz_tomonlari]
@@ -529,6 +535,48 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
                     else:
                         draw.line((xx, by + bh - tick, xx, by + bh), fill="black", width=2)
 
+        # Qirraga tushmagan ishlov — haqiqiy joyi bilan. Yo'llar ingest'da yoylari
+        # vatarlarga bo'lingan holda saqlanadi (`XncOp.paths`), shuning uchun bu yerda
+        # poliliniya chizishdan boshqa ish yo'q. Nuqta eskizdan tashqarida bo'lishi
+        # normal (asbob kirish yo'li x=-30 bo'lishi mumkin) — qirqib qo'yiladi.
+        if (paz_yollari or frez_yollari) and d.length and d.width:
+            ulush_x = bw / (d.width if burilgan else d.length)
+            ulush_y = bh / (d.length if burilgan else d.width)
+
+            def eskizga(x: float, y: float) -> tuple[int, int]:
+                gor, ver = (y, (d.length or 0) - x) if burilgan else (x, y)
+                return (
+                    min(max(bx + int(gor * ulush_x), bx), bx + bw),
+                    min(max(by + int(ver * ulush_y), by), by + bh),
+                )
+
+            def yol_chiz(yollar: list[list[list[float]]], *, uzuqmi: bool) -> None:
+                for yol in yollar:
+                    nuqtalar = [eskizga(n[0], n[1]) for n in yol]
+                    for (x1, y1), (x2, y2) in zip(nuqtalar, nuqtalar[1:], strict=False):
+                        if not uzuqmi:
+                            draw.line((x1, y1, x2, y2), fill="black", width=2)
+                            continue
+                        # Ixtiyoriy yo'nalishdagi uzuq chiziq — qirradagidan MAYDAROQ:
+                        # eskiz ichida tekstura va teshik bilan yonma-yon turadi.
+                        dx, dy = x2 - x1, y2 - y1
+                        uz = (dx * dx + dy * dy) ** 0.5
+                        if uz < 1:
+                            continue
+                        bolak, qadam = max(2, int(0.9 * mm)), max(4, int(1.5 * mm))
+                        t = 0.0
+                        while t < uz:
+                            t2 = min(t + bolak, uz)
+                            draw.line(
+                                (x1 + dx * t / uz, y1 + dy * t / uz, x1 + dx * t2 / uz, y1 + dy * t2 / uz),
+                                fill="black",
+                                width=2,
+                            )
+                            t += qadam
+
+            yol_chiz(frez_yollari, uzuqmi=False)
+            yol_chiz(paz_yollari, uzuqmi=True)
+
         # PAZ va FREZA ketadigan qirra — kontur ICHIDA chiziq (kromka esa TASHQARIDA):
         # paz UZUQ, freza TUTASH (nega ikki xil — `giblab/models.py: machined_sides`).
         # Tomon NOMI ("o'ng") yozilmaydi: eskiz
@@ -599,12 +647,17 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
         # Uzuq chiziq izohi — EN raqamining ostida, qat'iy koordinatada EMAS: ingichka
         # detalda (masalan 100x450) eskiz 46 mm balandlikka yetadi va raqam 51 mm ga
         # tushadi — qat'iy y=50.5 dagi izoh uning ustiga bosilardi (o'lchangan).
-        if ishlangan_tomonlari:
+        if ishlangan_tomonlari or paz_yollari or frez_yollari:
             text(
                 (bx + bw // 2) / mm,
                 (by + bh + off + bt + int(0.6 * mm)) / mm + 4.0,
                 "  ".join(
-                    belgi for belgi, bor in (("- - PAZ", paz_tomonlari), ("\u2014 FREZA", frez_tomonlari)) if bor
+                    belgi
+                    for belgi, bor in (
+                        ("- - PAZ", paz_tomonlari or paz_yollari),
+                        ("\u2014 FREZA", frez_tomonlari or frez_yollari),
+                    )
+                    if bor
                 ),
                 2.6,
                 bold=True,

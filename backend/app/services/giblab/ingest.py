@@ -16,7 +16,7 @@ from app.models import Order, OrderFile, Part, PartInstance, PartRoute, Post, Pr
 from app.models.enums import FileKind, PostCode, RouteSource
 
 from .cutmap import build_cutmap
-from .models import TAIL_CODES, ParsedPart, ParsedProject, ParseError
+from .models import TAIL_CODES, ParsedPart, ParsedProject, ParseError, paths_json
 from .parser import parse_project
 from .routes import build_manual_route, resolve_post
 from .scx import build_scx_files, plate_thickness_map
@@ -572,6 +572,11 @@ async def ingest_project(
                     # (`(xnc_summary->>'sides')::int = 2`), shuning uchun `mill_sides`.
                     "groove_sides": merged.machined_sides(pp.length, pp.width, tur="paz") if merged else [],
                     "mill_sides": merged.machined_sides(pp.length, pp.width, tur="freza") if merged else [],
+                    # Xom yo'llar — qirraga tushmagan ishlov (o'rtadagi ariq, doira o'yiq)
+                    # chek eskizida SHULARDAN chiziladi; qirradagisi uchun chekkadagi
+                    # chiziq yetadi. Korpusda o'rtacha 217 bayt, jami 26 KB (o'lchangan).
+                    "groove_paths": paths_json(merged.paths("paz")) if merged else [],
+                    "mill_paths": paths_json(merged.paths("freza")) if merged else [],
                 },
             )
             db.add(part)
