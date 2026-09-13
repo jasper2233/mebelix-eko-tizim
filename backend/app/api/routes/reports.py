@@ -16,6 +16,7 @@ from app.api.deps import SessionDep, require_roles
 from app.core.config import TASHKENT_TZ
 from app.models import (
     ORDER_FAT_COLUMNS,
+    AndonEvent,
     Client,
     Employee,
     Machine,
@@ -34,6 +35,10 @@ from app.schemas.reports import (
     DashboardStats,
     DashboardToday,
     EmployeeProductivity,
+    MachineTimeDay,
+    MachineTimeReport,
+    MachineTimeRow,
+    MachineTimeStop,
     MaterialsReport,
     MaterialUsageRow,
     OrderReportRow,
@@ -43,6 +48,7 @@ from app.schemas.reports import (
     ReadyOrder,
     TrendDay,
 )
+from app.services.andon import ANDON_STATES, andon_spans, machine_time, read_live
 from app.services.excel import xlsx_response
 from app.services.metrics import VolumeShare, part_volume
 
@@ -125,6 +131,135 @@ async def report_productivity(
             ["Hodim", "Lavozim", "Jami scan", "Faol kunlar", "Kuniga o'rtacha", "Soatiga o'rtacha"],
             [[e.full_name, e.position or "", e.total_scans, e.active_days, e.per_day, e.per_hour] for e in employees],
             f"mahsuldorlik_{report.date_from}_{report.date_to}.xlsx",
+        )
+    return report
+
+
+# ---------- Stanok vaqti (andon — signal ustuni) ----------
+
+#: Excel sarlavhalari va ustun tartibi — `ANDON_STATES` bilan bir xil tartib
+_ANDON_LABELS = {
+    "PROCESSING": "Ishlov",
+    "AWAIT_PART": "Detal kutish",
+    "IDLE": "Kutish",
+    "STOPPED": "Uzoq kutish",
+    "FAULT": "Avariya",
+    "OFF": "O'chiq",
+}
+#: Oraliq tugagandan keyin kelgan hodisa ham oraliq ichidagi holatni yopgan bo'lishi
+#: mumkin (masalan tungi OFF ertalab tugaydi) — shuncha kun keyingacha hodisa olinadi.
+_ANDON_TAIL = timedelta(days=3)
+_ANDON_STOPS_LIMIT = 200
+
+
+@router.get("/machine-time", operation_id="report_machine_time", response_model=MachineTimeReport)
+async def report_machine_time(
+    db: SessionDep,
+    _: ReportsUser,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    format: Annotated[Literal["json", "xlsx"], Query()] = "json",
+) -> MachineTimeReport | StreamingResponse:
+    """Stanok vaqti: signal ustuni (andon) bo'yicha qancha ishladi, kutdi, to'xtadi, o'chiq turdi.
+
+    Davomiyliklarni Pico o'zi o'lchaydi (`prev_duration_s`), hisob `services/andon.py`
+    dagi sof funksiyada. Hozir davom etayotgan holat faqat jonli holat (Redis) hali
+    tirik bo'lsa hozirgacha qo'shiladi — agent bilan aloqa yo'q bo'lsa noma'lum vaqt
+    taxmin qilinmaydi va "jami qayd" dan tushib qoladi.
+    """
+    start, end = _range(date_from, date_to)
+    now = datetime.now(UTC)
+    events = (
+        (
+            await db.execute(
+                select(AndonEvent.machine_id, AndonEvent.prev_state, AndonEvent.prev_duration_s, AndonEvent.happened_at)
+                .where(
+                    AndonEvent.kind == "state",
+                    AndonEvent.is_deleted == False,  # noqa: E712
+                    AndonEvent.happened_at >= start,
+                    AndonEvent.happened_at <= end + _ANDON_TAIL,
+                )
+                .order_by(AndonEvent.machine_id, AndonEvent.happened_at, AndonEvent.id)
+            )
+        )
+        .tuples()
+        .all()
+    )
+
+    # Tugamagan oxirgi holat: faqat oraliq hozirni o'z ichiga olsa va agent hali tirik bo'lsa
+    ongoing: dict[int, tuple[str, datetime]] = {}
+    if end >= now:
+        last_states = (
+            await db.execute(
+                select(AndonEvent.machine_id, AndonEvent.state, AndonEvent.happened_at)
+                .where(
+                    AndonEvent.kind == "state",
+                    AndonEvent.is_deleted == False,  # noqa: E712
+                    AndonEvent.state.is_not(None),
+                )
+                .distinct(AndonEvent.machine_id)
+                .order_by(AndonEvent.machine_id, AndonEvent.happened_at.desc(), AndonEvent.id.desc())
+            )
+        ).all()
+        live = await read_live(mid for mid, _state, _at in last_states)
+        ongoing = {
+            mid: (state, at)
+            for mid, state, at in last_states
+            if state is not None and live.get(mid, {}).get("state") == state
+        }
+
+    result = machine_time(andon_spans(events, ongoing), start, end, now)
+    ids = set(result.seconds)
+    names = dict((await db.execute(select(Machine.id, Machine.name).where(Machine.id.in_(ids)))).tuples().all())
+
+    rows = []
+    for mid in sorted(ids, key=lambda m: names.get(m, "")):
+        secs = result.seconds[mid]
+        total = sum(secs.values())
+        rows.append(
+            MachineTimeRow(
+                machine_id=mid,
+                machine_name=names.get(mid, f"#{mid}"),
+                seconds=secs,
+                total_s=total,
+                busy_pct=round(secs["PROCESSING"] * 100 / total, 1) if total else None,
+                faults=result.faults.get(mid, 0),
+            )
+        )
+    days = [MachineTimeDay(machine_id=mid, day=day, seconds=secs) for (mid, day), secs in sorted(result.days.items())]
+    stops = [
+        MachineTimeStop(
+            machine_id=s.machine_id,
+            machine_name=names.get(s.machine_id, f"#{s.machine_id}"),
+            state=s.state,
+            started_at=s.began,
+            ended_at=s.ended,
+            duration_s=int(((s.ended or now) - s.began).total_seconds()),
+        )
+        for s in result.stops[:_ANDON_STOPS_LIMIT]
+    ]
+    report = MachineTimeReport(date_from=start.date(), date_to=end.date(), rows=rows, days=days, stops=stops)
+    if format == "xlsx":
+        return xlsx_response(
+            "Stanok vaqti",
+            [
+                "Stanok",
+                *(f"{_ANDON_LABELS[s]} (soat)" for s in ANDON_STATES),
+                "Jami qayd (soat)",
+                "Ishlov ulushi, %",
+                "Avariyalar",
+            ],
+            [
+                [
+                    r.machine_name,
+                    *(round(r.seconds[s] / 3600, 2) for s in ANDON_STATES),
+                    round(r.total_s / 3600, 2),
+                    r.busy_pct if r.busy_pct is not None else "",
+                    r.faults,
+                ]
+                for r in rows
+            ],
+            f"stanok_vaqti_{report.date_from}_{report.date_to}.xlsx",
         )
     return report
 

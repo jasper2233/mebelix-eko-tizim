@@ -9,12 +9,14 @@ Xom hodisalar esa `andon_event` jadvalida (tarix, keyingi bosqichdagi OEE uchun)
 import json
 import logging
 from collections.abc import Iterable
+from dataclasses import dataclass, field
+from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from redis.asyncio import Redis as AsyncRedis
 from redis.exceptions import RedisError
 
-from app.core.config import settings
+from app.core.config import TASHKENT_TZ, settings
 
 logger = logging.getLogger(__name__)
 
@@ -68,4 +70,83 @@ async def read_live(machine_ids: Iterable[int]) -> dict[int, dict[str, Any]]:
             out[mid] = json.loads(raw)
         except ValueError:
             continue
+    return out
+
+
+#: Hisobotga kiradigan chiroq holatlari (Pico firmware `fsm.py`). BOOT — qurilma
+#: yuklanishi, stanok vaqti emas: hisobga kirmaydi.
+ANDON_STATES = ("PROCESSING", "AWAIT_PART", "IDLE", "STOPPED", "FAULT", "OFF")
+#: To'xtashlar ro'yxatiga tushadigan holatlar. OFF kirmaydi — har tun takrorlanadi va
+#: ro'yxatni haqiqiy avariyadan to'sib qo'yardi (u jami vaqtda baribir ko'rinadi).
+ANDON_STOP_STATES = ("FAULT", "STOPPED")
+
+
+@dataclass
+class AndonSpan:
+    """Bitta holat oralig'i (hisobot oralig'iga kesilmagan). `ended` None — hali davom etmoqda."""
+
+    machine_id: int
+    state: str
+    began: datetime
+    ended: datetime | None
+
+
+@dataclass
+class MachineTime:
+    """`machine_time` natijasi: soniyalar hisobot oralig'iga KESILGAN."""
+
+    seconds: dict[int, dict[str, int]] = field(default_factory=dict)
+    days: dict[tuple[int, date], dict[str, int]] = field(default_factory=dict)
+    stops: list[AndonSpan] = field(default_factory=list)
+    faults: dict[int, int] = field(default_factory=dict)
+
+
+def andon_spans(
+    events: Iterable[tuple[int, str | None, int | None, datetime]],
+    ongoing: dict[int, tuple[str, datetime]],
+) -> list[AndonSpan]:
+    """Hodisalardan holat oraliqlari.
+
+    `events` — `(machine_id, prev_state, prev_duration_s, happened_at)`: har `state` hodisasi
+    OLDINGI holat tugaganini aytadi — u `prev_duration_s` soniya davom etib `happened_at` da
+    tugagan. Davomiylikni Pico o'zi o'lchaydi, ya'ni agent uzilib hodisa kechikib kelsa ham
+    uzunlik to'g'ri qoladi (faqat joylashuvi qabul vaqtiga siljiydi).
+    `ongoing` — machine_id -> (joriy holat, boshlangan vaqt): tugamagan oxirgi holat.
+    """
+    spans = [
+        AndonSpan(mid, prev_state, at - timedelta(seconds=dur), at)
+        for mid, prev_state, dur, at in events
+        if prev_state is not None and prev_state in ANDON_STATES and dur is not None and dur >= 0
+    ]
+    spans += [AndonSpan(mid, state, began, None) for mid, (state, began) in ongoing.items() if state in ANDON_STATES]
+    return spans
+
+
+def machine_time(spans: Iterable[AndonSpan], start: datetime, end: datetime, now: datetime) -> MachineTime:
+    """Oraliqlarni [start, end] ga kesib stanok va kun (Toshkent) bo'yicha soniyalarga yig'adi.
+
+    Tugamagan oraliq `now` gacha hisoblanadi. Kun chegarasidan o'tgan oraliq (tungi OFF)
+    ikki kunga bo'linadi — har kun o'z vaqtini oladi."""
+    out = MachineTime()
+    cut_end = min(end, now)
+    for span in spans:
+        ended = span.ended or now
+        a, b = max(span.began, start), min(ended, cut_end)
+        if b <= a:
+            continue
+        per_machine = out.seconds.setdefault(span.machine_id, dict.fromkeys(ANDON_STATES, 0))
+        per_machine[span.state] += int((b - a).total_seconds())
+        cur = a
+        while cur < b:
+            local_day = cur.astimezone(TASHKENT_TZ).date()
+            next_midnight = datetime.combine(local_day + timedelta(days=1), time.min, tzinfo=TASHKENT_TZ)
+            seg_end = min(b, next_midnight)
+            per_day = out.days.setdefault((span.machine_id, local_day), dict.fromkeys(ANDON_STATES, 0))
+            per_day[span.state] += int((seg_end - cur).total_seconds())
+            cur = seg_end
+        if span.state in ANDON_STOP_STATES:
+            out.stops.append(span)
+            if span.state == "FAULT":
+                out.faults[span.machine_id] = out.faults.get(span.machine_id, 0) + 1
+    out.stops.sort(key=lambda s: s.began, reverse=True)
     return out

@@ -23,6 +23,42 @@ class ProductivityReport(BaseModel):
     employees: list[EmployeeProductivity]
 
 
+# ---------- Stanok vaqti (andon — signal ustuni) ----------
+
+
+class MachineTimeRow(BaseModel):
+    machine_id: int
+    machine_name: str
+    # holat -> soniya: PROCESSING, AWAIT_PART, IDLE, STOPPED, FAULT, OFF
+    seconds: dict[str, int]
+    total_s: int  # jami qayd etilgan vaqt — agent/Pico bilan aloqa yo'q paytlar kirmaydi
+    busy_pct: float | None  # ishlov / jami qayd — OEE Availability EMAS (reja vaqti yo'q)
+    faults: int  # oraliqqa tushgan avariyalar soni
+
+
+class MachineTimeDay(BaseModel):
+    machine_id: int
+    day: date  # Toshkent kuni
+    seconds: dict[str, int]
+
+
+class MachineTimeStop(BaseModel):
+    machine_id: int
+    machine_name: str
+    state: str  # FAULT | STOPPED
+    started_at: datetime
+    ended_at: datetime | None  # None — hali davom etmoqda
+    duration_s: int
+
+
+class MachineTimeReport(BaseModel):
+    date_from: date
+    date_to: date
+    rows: list[MachineTimeRow]
+    days: list[MachineTimeDay]
+    stops: list[MachineTimeStop]  # eng yangisi birinchi, ko'pi bilan 200 ta
+
+
 # ---------- 11.2 Buyurtmalar holati ----------
 
 

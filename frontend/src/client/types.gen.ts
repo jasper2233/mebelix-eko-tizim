@@ -1522,6 +1522,114 @@ export type MachineRead = {
 export type MachineStatus = 'active' | 'inactive' | 'repair';
 
 /**
+ * MachineTimeDay
+ */
+export type MachineTimeDay = {
+    /**
+     * Machine Id
+     */
+    machine_id: number;
+    /**
+     * Day
+     */
+    day: string;
+    /**
+     * Seconds
+     */
+    seconds: {
+        [key: string]: number;
+    };
+};
+
+/**
+ * MachineTimeReport
+ */
+export type MachineTimeReport = {
+    /**
+     * Date From
+     */
+    date_from: string;
+    /**
+     * Date To
+     */
+    date_to: string;
+    /**
+     * Rows
+     */
+    rows: Array<MachineTimeRow>;
+    /**
+     * Days
+     */
+    days: Array<MachineTimeDay>;
+    /**
+     * Stops
+     */
+    stops: Array<MachineTimeStop>;
+};
+
+/**
+ * MachineTimeRow
+ */
+export type MachineTimeRow = {
+    /**
+     * Machine Id
+     */
+    machine_id: number;
+    /**
+     * Machine Name
+     */
+    machine_name: string;
+    /**
+     * Seconds
+     */
+    seconds: {
+        [key: string]: number;
+    };
+    /**
+     * Total S
+     */
+    total_s: number;
+    /**
+     * Busy Pct
+     */
+    busy_pct: number | null;
+    /**
+     * Faults
+     */
+    faults: number;
+};
+
+/**
+ * MachineTimeStop
+ */
+export type MachineTimeStop = {
+    /**
+     * Machine Id
+     */
+    machine_id: number;
+    /**
+     * Machine Name
+     */
+    machine_name: string;
+    /**
+     * State
+     */
+    state: string;
+    /**
+     * Started At
+     */
+    started_at: string;
+    /**
+     * Ended At
+     */
+    ended_at: string | null;
+    /**
+     * Duration S
+     */
+    duration_s: number;
+};
+
+/**
  * MachineUpdate
  */
 export type MachineUpdate = {
@@ -6233,6 +6341,44 @@ export type ReportProductivityResponses = {
 };
 
 export type ReportProductivityResponse = ReportProductivityResponses[keyof ReportProductivityResponses];
+
+export type ReportMachineTimeData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Date From
+         */
+        date_from?: string | null;
+        /**
+         * Date To
+         */
+        date_to?: string | null;
+        /**
+         * Format
+         */
+        format?: 'json' | 'xlsx';
+    };
+    url: '/api/v1/reports/machine-time';
+};
+
+export type ReportMachineTimeErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReportMachineTimeError = ReportMachineTimeErrors[keyof ReportMachineTimeErrors];
+
+export type ReportMachineTimeResponses = {
+    /**
+     * Successful Response
+     */
+    200: MachineTimeReport;
+};
+
+export type ReportMachineTimeResponse = ReportMachineTimeResponses[keyof ReportMachineTimeResponses];
 
 export type ReportOrdersData = {
     body?: never;
