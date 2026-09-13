@@ -1,11 +1,11 @@
-// Hisobotlar: mahsuldorlik, buyurtmalar holati, material sarfi + Excel eksport.
+// Hisobotlar: mahsuldorlik, buyurtmalar holati, material sarfi, stanok vaqti + Excel eksport.
 
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { Download } from "lucide-react"
 import { type ReactNode, useState } from "react"
 
-import type { OrderReportRow } from "@/client"
+import type { MachineTimeDay, MachineTimeStop, OrderReportRow } from "@/client"
 import { ReportsService } from "@/client"
 import { client } from "@/client/client.gen"
 import { EmptyRow } from "@/components/Common/EmptyRow"
@@ -28,6 +28,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { requireAccess } from "@/lib/guards"
 import {
   formatDate,
+  formatDateTime,
   groupThousands,
   isManagement,
   ORDER_STATUS_LABELS,
@@ -41,7 +42,7 @@ export const Route = createFileRoute("/_layout/reports")({
   head: () => ({ meta: [{ title: "Hisobotlar | MebeliX" }] }),
 })
 
-type Kind = "productivity" | "orders" | "materials"
+type Kind = "productivity" | "orders" | "materials" | "machine-time"
 
 // Sana LOKAL komponentlardan (`toISOString` UTC ga siljitib kunni buzardi).
 function isoOf(d: Date): string {
@@ -125,7 +126,7 @@ function ReportsPage() {
     <div>
       <PageHeader
         title="Hisobotlar"
-        description="Mahsuldorlik, buyurtmalar holati va material sarfi"
+        description="Mahsuldorlik, buyurtmalar holati, material sarfi va stanok vaqti"
         actions={
           <Button
             variant="outline"
@@ -142,6 +143,7 @@ function ReportsPage() {
             <TabsTrigger value="productivity">Mahsuldorlik</TabsTrigger>
             <TabsTrigger value="orders">Buyurtmalar</TabsTrigger>
             <TabsTrigger value="materials">Material sarfi</TabsTrigger>
+            <TabsTrigger value="machine-time">Stanok vaqti</TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="ml-auto flex flex-wrap items-center gap-2 text-sm">
@@ -186,6 +188,7 @@ function ReportsPage() {
           {kind === "productivity" && <ProductivityTable params={params} />}
           {kind === "orders" && <OrdersTable params={params} />}
           {kind === "materials" && <MaterialsTable params={params} />}
+          {kind === "machine-time" && <MachineTimeReport params={params} />}
         </>
       )}
     </div>
@@ -582,5 +585,270 @@ function GroupRows({ label, rows }: { label: string; rows: MaterialRow[] }) {
         </TableRow>
       ))}
     </>
+  )
+}
+
+// ---------- Stanok vaqti (andon — signal ustuni) ----------
+
+// Holatlar backend `ANDON_STATES` tartibida (jadval ustunlari ham shu tartibda)
+const ANDON_COLUMNS: [string, string, string][] = [
+  ["PROCESSING", "Ishlov", "Detal stanok ichida, ishlov ketmoqda"],
+  [
+    "AWAIT_PART",
+    "Detal kutish",
+    "Chek skanerlangan, detal stanokka solinishi kutilmoqda",
+  ],
+  ["IDLE", "Kutish", "Sariq chiroq — kutish rejimi"],
+  ["STOPPED", "Uzoq kutish", "Sariq chiroq 15 daqiqadan uzoq yondi"],
+  ["FAULT", "Avariya", "Qizil chiroq"],
+  ["OFF", "O'chiq", "Hamma chiroq o'chiq — stanok o'chirilgan"],
+]
+
+// Diagramma guruhlari: rahbar savoli «qancha ishladi / kutdi / avariya / o'chiq».
+// Ranglar holatning MA'NOSI (yaxshi → yomon) — status palitrasi, seriya rangi emas;
+// yonida doim yozuv (legend) va jadval turadi, rang yolg'iz ma'no tashimaydi.
+const ANDON_GROUPS: {
+  key: string
+  label: string
+  color: string
+  states: string[]
+}[] = [
+  { key: "work", label: "Ishladi", color: "#0ca30c", states: ["PROCESSING"] },
+  {
+    key: "wait",
+    label: "Kutdi",
+    color: "#fab219",
+    states: ["AWAIT_PART", "IDLE", "STOPPED"],
+  },
+  { key: "fault", label: "Avariya", color: "#d03b3b", states: ["FAULT"] },
+  { key: "off", label: "O'chiq", color: "#9aa0a6", states: ["OFF"] },
+]
+
+const DAY_S = 86_400
+
+// 19 530 → "5 soat 26 daq"; 0 → "—"
+function hm(sec: number): string {
+  if (!sec) return "—"
+  const min = Math.round(sec / 60)
+  if (min < 1) return "<1 daq"
+  if (min < 60) return `${min} daq`
+  const h = Math.floor(min / 60)
+  return min % 60 ? `${h} soat ${min % 60} daq` : `${h} soat`
+}
+
+function MachineTimeReport({ params }: { params: RangeParams }) {
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["reports", "machine-time", params],
+    queryFn: async () =>
+      (await ReportsService.reportMachineTime({ query: params })).data,
+  })
+  if (isLoading) return <Skeleton className="h-64 w-full" />
+  if (isError) return <QueryError onRetry={() => refetch()} />
+  const rows = data?.rows ?? []
+  const days = data?.days ?? []
+  const stops = data?.stops ?? []
+  const totalRecorded = rows.reduce((s, r) => s + r.total_s, 0)
+  return (
+    <>
+      <Summary>
+        {rows.length} stanok · qayd etilgan vaqt {hm(totalRecorded)} · stanok
+        chiroqlaridan (Pico) avtomatik. «Ishlov ulushi» — ishlov ÷ qayd etilgan
+        vaqt, OEE emas; aloqa bo'lmagan vaqt hisobga kirmaydi.
+      </Summary>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Stanok</TableHead>
+            {ANDON_COLUMNS.map(([state, label, hint]) => (
+              <TableHead
+                key={state}
+                className="hidden text-right md:table-cell"
+                title={hint}
+              >
+                {label}
+              </TableHead>
+            ))}
+            <TableHead
+              className="text-right"
+              title="Barcha holatlar yig'indisi — agent yoki Pico bilan aloqa yo'q paytlar kirmaydi"
+            >
+              Qayd etilgan
+            </TableHead>
+            <TableHead
+              className="text-right"
+              title="Ishlov ÷ qayd etilgan vaqt. OEE Availability emas: reja (smena) vaqti hisobga olinmagan"
+            >
+              Ishlov ulushi
+            </TableHead>
+            <TableHead
+              className="text-right"
+              title="Qizil chiroq necha marta yondi"
+            >
+              Avariyalar
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.length ? (
+            rows.map((r) => (
+              <TableRow key={r.machine_id}>
+                <TableCell className="font-medium">{r.machine_name}</TableCell>
+                {ANDON_COLUMNS.map(([state]) => (
+                  <TableCell
+                    key={state}
+                    className="num hidden whitespace-nowrap text-right md:table-cell"
+                  >
+                    {hm(r.seconds[state] ?? 0)}
+                  </TableCell>
+                ))}
+                <TableCell className="num whitespace-nowrap text-right">
+                  {hm(r.total_s)}
+                </TableCell>
+                <TableCell className="num text-right font-semibold">
+                  {r.busy_pct == null ? "—" : `${r.busy_pct}%`}
+                </TableCell>
+                <TableCell className="num text-right">
+                  {r.faults || "—"}
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <EmptyRow colSpan={10}>
+              Tanlangan davrda stanok chiroqlaridan ma'lumot yo'q (signal ustuni
+              ulangan stanoklar hisobga olinadi).
+            </EmptyRow>
+          )}
+        </TableBody>
+      </Table>
+      {rows.map((r) => (
+        <MachineDays
+          key={r.machine_id}
+          name={r.machine_name}
+          days={days.filter((d) => d.machine_id === r.machine_id)}
+        />
+      ))}
+      {stops.length > 0 && <StopsTable stops={stops} />}
+    </>
+  )
+}
+
+function groupSeconds(d: MachineTimeDay, states: string[]): number {
+  return states.reduce((s, st) => s + (d.seconds[st] ?? 0), 0)
+}
+
+// Har kun — 24 soatlik trek: bo'yalgan qism holatlar, bo'sh qolgani «qayd yo'q».
+// Bitta o'q (vaqt), segmentlar orasida 2px oraliq; aniq qiymat — hover va jadvalda.
+function MachineDays({ name, days }: { name: string; days: MachineTimeDay[] }) {
+  if (!days.length) return null
+  return (
+    <section className="mt-6">
+      <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+        <h3 className="text-sm font-semibold">{name} — kunlar bo'yicha</h3>
+        <ul className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          {ANDON_GROUPS.map((g) => (
+            <li key={g.key} className="inline-flex items-center gap-1.5">
+              <span
+                className="inline-block size-2.5 rounded-sm"
+                style={{ backgroundColor: g.color }}
+              />
+              {g.label}
+            </li>
+          ))}
+          <li className="inline-flex items-center gap-1.5">
+            <span className="inline-block size-2.5 rounded-sm bg-muted" />
+            Qayd yo'q
+          </li>
+        </ul>
+      </div>
+      <div className="grid gap-1.5">
+        {days.map((d) => {
+          const parts = ANDON_GROUPS.map((g) => ({
+            ...g,
+            sec: groupSeconds(d, g.states),
+          })).filter((p) => p.sec > 0)
+          const summary = parts
+            .map((p) => `${p.label}: ${hm(p.sec)}`)
+            .join(" · ")
+          return (
+            <div
+              key={d.day}
+              className="grid grid-cols-[5.5rem_1fr] items-center gap-3"
+              title={summary}
+            >
+              <span className="num text-xs text-muted-foreground">
+                {formatDate(d.day)}
+              </span>
+              <div className="flex h-3 gap-[2px] overflow-hidden rounded-[4px] bg-muted">
+                {parts.map((p) => (
+                  <span
+                    key={p.key}
+                    className="h-full"
+                    style={{
+                      width: `${(p.sec / DAY_S) * 100}%`,
+                      backgroundColor: p.color,
+                    }}
+                    title={`${formatDate(d.day)} · ${p.label}: ${hm(p.sec)}`}
+                  />
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function StopsTable({ stops }: { stops: MachineTimeStop[] }) {
+  return (
+    <section className="mt-6">
+      <h3 className="mb-2 text-sm font-semibold">
+        To'xtashlar — avariya va uzoq kutish ({stops.length})
+      </h3>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Stanok</TableHead>
+            <TableHead>Holat</TableHead>
+            <TableHead>Boshlandi</TableHead>
+            <TableHead className="hidden md:table-cell">Tugadi</TableHead>
+            <TableHead className="text-right">Davomiyligi</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {stops.map((s) => (
+            <TableRow key={`${s.machine_id}-${s.started_at}`}>
+              <TableCell>{s.machine_name}</TableCell>
+              <TableCell>
+                <span
+                  className={
+                    s.state === "FAULT"
+                      ? "rounded-sm bg-red-100 px-1.5 py-0.5 text-xs font-semibold text-red-800"
+                      : "rounded-sm bg-orange-100 px-1.5 py-0.5 text-xs font-semibold text-orange-900"
+                  }
+                >
+                  {s.state === "FAULT" ? "Avariya" : "Uzoq kutish"}
+                </span>
+              </TableCell>
+              <TableCell className="num whitespace-nowrap">
+                {formatDateTime(s.started_at)}
+              </TableCell>
+              <TableCell className="num hidden whitespace-nowrap md:table-cell">
+                {s.ended_at ? (
+                  formatDateTime(s.ended_at)
+                ) : (
+                  <span className="font-semibold text-red-700">
+                    davom etmoqda
+                  </span>
+                )}
+              </TableCell>
+              <TableCell className="num whitespace-nowrap text-right">
+                {hm(s.duration_s)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </section>
   )
 }
