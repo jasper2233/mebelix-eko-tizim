@@ -58,6 +58,7 @@ from app.schemas.terminal import (
     TerminalOrderCard,
 )
 from app.services.giblab.cutmap import arra_parts_query, build_cutmap_state
+from app.services.giblab.models import stored_machined_sides
 from app.services.scanning import (
     ScanRejected,
     active_session,
@@ -584,6 +585,7 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
         )
 
     by_part = await _order_instances_by_part(db, order.id)
+    qirra_amali = {part.id: stored_machined_sides(part.xnc_summary) for _, part, _ in rows}
 
     return KromkaOrderState(
         order_id=order.id,
@@ -600,7 +602,8 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
                 thickness=part.thickness,
                 sides=route.per_instance,
                 edges=part.edges,
-                paz_sides=list((part.xnc_summary or {}).get("mill_sides") or []),
+                paz_sides=qirra_amali[part.id].paz,
+                frez_sides=qirra_amali[part.id].frez,
                 process_code=route.process_code,
                 total_done=route.total_done,
                 total_required=route.total_required,

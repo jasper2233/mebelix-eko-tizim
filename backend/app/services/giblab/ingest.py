@@ -565,11 +565,13 @@ async def ingest_project(
                     "edge_bores": len(merged.edge_bores) if merged else 0,
                     "grooves": len(merged.grooves) if merged else 0,
                     "mills": len(merged.mills) if merged else 0,
-                    # Paz/freza QAYSI qirrada — chek va KROMKA terminali shundan o'qiydi
+                    # Paz (ariq) va freza (kesib o'tadi) QAYSI qirrada — chek va KROMKA
+                    # terminali shundan o'qiydi, ikkalasi boshqa-boshqa belgi bilan
                     # (`XncOp.machined_sides`, sabab docs/09 da). `sides` NOMI BAND:
                     # `1cfd3b2182fc` downgrade'i uni BUTUN SON deb o'qiydi
                     # (`(xnc_summary->>'sides')::int = 2`), shuning uchun `mill_sides`.
-                    "mill_sides": merged.machined_sides(pp.length, pp.width) if merged else [],
+                    "groove_sides": merged.machined_sides(pp.length, pp.width, tur="paz") if merged else [],
+                    "mill_sides": merged.machined_sides(pp.length, pp.width, tur="freza") if merged else [],
                 },
             )
             db.add(part)

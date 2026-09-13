@@ -1275,6 +1275,10 @@ export type KromkaPartRow = {
      */
     paz_sides?: Array<string>;
     /**
+     * Frez Sides
+     */
+    frez_sides?: Array<string>;
+    /**
      * Process Code
      */
     process_code: number;

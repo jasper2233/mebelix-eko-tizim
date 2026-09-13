@@ -27,12 +27,15 @@ function EdgeGlyph({
   length,
   width,
   paz = [],
+  frez = [],
 }: {
   edges: Record<string, unknown>
   length: number | null | undefined
   width: number | null | undefined
-  /** Paz/freza ketadigan qirralar — chekdagi uzuq chiziq bilan bir xil manba */
+  /** Paz (ariq) ketadigan qirralar — chekdagi UZUQ chiziq bilan bir xil manba */
   paz?: string[]
+  /** Freza (kesib o'tadi) ketadigan qirralar — chekdagi TUTASH chiziq */
+  frez?: string[]
 }) {
   const burilgan = (length ?? 0) > (width ?? 0)
   const has = (k: string) => !!edges[k]
@@ -45,6 +48,7 @@ function EdgeGlyph({
     Object.entries(joy).map(([tomon, j]) => [j, has(tomon)]),
   ) as Record<string, boolean>
   const pazJoy = new Set(paz.map((t) => joy[t]))
+  const frezJoy = new Set(frez.map((t) => joy[t]))
   // Chekdagi kabi eskiz DOIM tik: uzun tomon vertikal, eni nisbatga qarab
   // (labels.py: `bh = area_h; bw = bh * short/long`). `burilgan` faqat qaysi
   // qirra qaysi tomonga tushishini hal qiladi, shaklni emas.
@@ -57,8 +61,25 @@ function EdgeGlyph({
   const line = "stroke-amber-600"
   // Qalinligi 2: standart 1 px chiziq 17" monoblokda 0.25 mm bo'lib xira ko'rinardi.
   const pazLine = "stroke-sky-700 [stroke-dasharray:4_2]"
+  const frezLine = "stroke-sky-700"
+  const ichki: Record<string, [number, number, number, number]> = {
+    tepa: [x + 2, y + 3, x + w - 2, y + 3],
+    past: [x + 2, y + h - 3, x + w - 2, y + h - 3],
+    chap: [x + 3, y + 2, x + 3, y + h - 2],
+    ong: [x + w - 3, y + 2, x + w - 3, y + h - 2],
+  }
+  // size-12 = 48 px = 17" monoblokda 12.6 mm; size-8 (8.4 mm) da uzuq/tutash farqi
+  // bilinmasdi. Qator ATIGI 1 px balandlashadi, size-16 esa 13 px qo'shardi (o'lchangan).
+  // BOSIB TURGANDA 2.2x (28 mm) — faqat CSS: modal EMAS. Terminalda dialog ochilsa
+  // skan fokusi o'chadi (`routes/terminal.tsx`: `dialogOpen`), ya'ni eskizni ochib
+  // qo'ygan kromkachining skani yo'qolardi. `origin-right` — o'lcham ustuni bilan
+  // orasidagi bo'sh joyga o'sadi, lenta matnini bosmaydi.
   return (
-    <svg viewBox="0 0 30 30" className="size-8 shrink-0" aria-hidden="true">
+    <svg
+      viewBox="0 0 30 30"
+      className="size-12 shrink-0 origin-right cursor-zoom-in transition-transform active:scale-[2.2]"
+      aria-hidden="true"
+    >
       <title>Kromka tomonlari</title>
       <rect
         x={x}
@@ -108,47 +129,22 @@ function EdgeGlyph({
           strokeWidth="3"
         />
       )}
-      {/* Paz/freza — chekdagidek kontur ICHIDA uzuq chiziq (kromka esa chekkada,
-          tutash). Tomon nomi yozilmaydi: eskiz o'lchamga qarab buriladi. */}
-      {pazJoy.has("tepa") && (
-        <line
-          x1={x + 2}
-          y1={y + 3}
-          x2={x + w - 2}
-          y2={y + 3}
-          className={pazLine}
-          strokeWidth="2"
-        />
-      )}
-      {pazJoy.has("past") && (
-        <line
-          x1={x + 2}
-          y1={y + h - 3}
-          x2={x + w - 2}
-          y2={y + h - 3}
-          className={pazLine}
-          strokeWidth="2"
-        />
-      )}
-      {pazJoy.has("chap") && (
-        <line
-          x1={x + 3}
-          y1={y + 2}
-          x2={x + 3}
-          y2={y + h - 2}
-          className={pazLine}
-          strokeWidth="2"
-        />
-      )}
-      {pazJoy.has("ong") && (
-        <line
-          x1={x + w - 3}
-          y1={y + 2}
-          x2={x + w - 3}
-          y2={y + h - 2}
-          className={pazLine}
-          strokeWidth="2"
-        />
+      {/* Paz/freza — chekdagidek kontur ICHIDA (kromka esa chekkada, tutash va
+          qalin). Tomon nomi yozilmaydi: eskiz o'lchamga qarab buriladi. */}
+      {Object.entries(ichki).map(([j, [x1, y1, x2, y2]]) =>
+        pazJoy.has(j) || frezJoy.has(j) ? (
+          <line
+            key={j}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            /* Bir qirrada ikkalasi bo'lsa PAZ g'olib — chek bilan bir xil
+               (`labels.py`: `ishlangan_tomonlari`). */
+            className={pazJoy.has(j) ? pazLine : frezLine}
+            strokeWidth="2"
+          />
+        ) : null,
       )}
     </svg>
   )
@@ -305,8 +301,8 @@ export function KromkaView({
                       jadval avto-layoutida ustunni ikki barobar kengaytirib yuborardi
                       va Nomi/Nusxalar siqilardi (o'lchangan). Ikki qatorga bo'linadi. */}
                   <span className="block max-w-[230px] text-2xs font-medium normal-case leading-tight tracking-normal">
-                    qalin = lenta · uzuq = paz/oval · harf = lenta turi (tartib
-                    emas)
+                    qalin = lenta · uzuq = paz · tutash = freza · harf = lenta
+                    turi (tartib emas)
                   </span>
                 </th>
                 <th className="px-4 py-2.5 text-right">
@@ -356,15 +352,23 @@ export function KromkaView({
                           length={p.length}
                           width={p.width}
                           paz={p.paz_sides ?? []}
+                          frez={p.frez_sides ?? []}
                         />
                         <span className="min-w-0">
                           {!oval && <b>{p.sides} tomon</b>}
                           <span className="block max-w-[240px] truncate text-sm text-muted-foreground">
                             {edgeBands(p.edges)}
                           </span>
-                          {(p.paz_sides ?? []).length > 0 && (
+                          {((p.paz_sides ?? []).length > 0 ||
+                            (p.frez_sides ?? []).length > 0) && (
                             <span className="block text-xs font-semibold text-sky-700">
-                              paz/oval — eskizdagi uzuq chiziq
+                              {[
+                                (p.paz_sides ?? []).length > 0 && "paz",
+                                (p.frez_sides ?? []).length > 0 && "freza",
+                              ]
+                                .filter(Boolean)
+                                .join(" + ")}{" "}
+                              — eskizdagi ichki chiziq
                             </span>
                           )}
                         </span>

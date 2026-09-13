@@ -2,7 +2,7 @@
 
 import re
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal, NamedTuple
 
 from app.models.enums import PostCode
 
@@ -179,8 +179,11 @@ class XncOp:
     mills: list[list[dict[str, Any]]] = field(default_factory=list)  # contours: [{op, x, y, cx, cy, dir, dp}]
     unknown_tags: set[str] = field(default_factory=set)  # dasturda o'qilmagan teglar (ogohlantirish uchun)
 
-    def machined_sides(self, length: float | None, width: float | None) -> list[str]:
-        """Paz/freza QAYSI QIRRA bo'ylab ketadi — `l`/`r`/`t`/`b`, tartiblangan.
+    def machined_sides(self, length: float | None, width: float | None, *, tur: Literal["paz", "freza"]) -> list[str]:
+        """`tur` amali QAYSI QIRRA bo'ylab ketadi — `l`/`r`/`t`/`b`, tartiblangan.
+
+        `paz` — `<gr>` (stanokda groove), detalga bir necha mm ariq; `freza` — kontur
+        (stanokda mill), chuqurligi detal qalinligicha, ya'ni kesib o'tadi.
 
         .project faylida tomon ATRIBUT sifatida yo'q (`<gr>` da faqat x1/y1/x2/y2,
         frezada esa kontur nuqtalari) — lekin geometriyadan kelib chiqadi.
@@ -211,20 +214,21 @@ class XncOp:
         tasma_x = min(_QIRRA_TASMASI, length / 3)
         tasma_y = min(_QIRRA_TASMASI, width / 3)
         kesmalar: list[tuple[float, float, float, float]] = []
-        for g in self.grooves:
-            kesmalar.append((g["x1"], g["y1"], g["x2"], g["y2"]))
-        for contour in self.mills:
-            oldingi: tuple[float, float] | None = None
-            for q in contour:
-                if q.get("x") is None or q.get("y") is None:
-                    continue
-                shu = (q["x"], q["y"])
-                if oldingi is not None:
-                    if q.get("op") == "mac" and q.get("cx") is not None and q.get("cy") is not None:
-                        kesmalar += _yoy_kesmalari(oldingi, shu, (q["cx"], q["cy"]))
-                    else:
-                        kesmalar.append((oldingi[0], oldingi[1], shu[0], shu[1]))
-                oldingi = shu
+        if tur == "paz":
+            kesmalar = [(g["x1"], g["y1"], g["x2"], g["y2"]) for g in self.grooves]
+        else:
+            for contour in self.mills:
+                oldingi: tuple[float, float] | None = None
+                for q in contour:
+                    if q.get("x") is None or q.get("y") is None:
+                        continue
+                    shu = (q["x"], q["y"])
+                    if oldingi is not None:
+                        if q.get("op") == "mac" and q.get("cx") is not None and q.get("cy") is not None:
+                            kesmalar += _yoy_kesmalari(oldingi, shu, (q["cx"], q["cy"]))
+                        else:
+                            kesmalar.append((oldingi[0], oldingi[1], shu[0], shu[1]))
+                    oldingi = shu
 
         topildi: list[str] = []
         for tomon, yaqinmi, boylab, olcham in (
@@ -241,6 +245,24 @@ class XncOp:
             if qoplam >= min(olcham * _QIRRA_ULUSHI, _QIRRA_MIN_MM):
                 topildi.append(tomon)
         return topildi
+
+
+class MachinedSides(NamedTuple):
+    paz: list[str]
+    frez: list[str]
+
+
+def stored_machined_sides(xnc_summary: dict[str, Any] | None) -> MachinedSides:
+    """Saqlangan `xnc_summary` dan paz/freza qirralari. Chek ham, terminal ham shundan.
+
+    `groove_sides` kaliti YO'Q satr 2026-09-13 dan oldin yozilgan: o'shanda `mill_sides`
+    da paz bilan freza BIRGA turardi, ya'ni uni freza deb o'qish pazni «kesib o'tadi»
+    qilib ko'rsatardi. Noto'g'ri belgi bo'shdan YOMONROQ — bunday satrda ikkalasi bo'sh.
+    """
+    xs = xnc_summary or {}
+    if "groove_sides" not in xs:
+        return MachinedSides([], [])
+    return MachinedSides(list(xs.get("groove_sides") or []), list(xs.get("mill_sides") or []))
 
 
 @dataclass

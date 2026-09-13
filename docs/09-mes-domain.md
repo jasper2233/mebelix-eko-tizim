@@ -482,14 +482,20 @@ direktor ham ko'radi.
   `queue_volume` ikki barobar farq qilardi (ikkalasi ham fixture bilan o'lchangan).
   Yig'indi barqaror va SONI bilan bir xil javob beradi: 8/10 → 80%. `done`/`total` esa
   HAMMA qatordan yig'iladi — ular skan soni, ikki o'tish rostdan ikki skan.
-- `app/services/giblab/models.py: XncOp.machined_sides(length, width)` — paz/freza QAYSI
-  QIRRA bo'ylab ketishini GEOMETRIYADAN chiqaradi (`l`/`r`/`t`/`b`); natija
-  `part.xnc_summary["mill_sides"]` da (`sides` NOMI BAND — `1cfd3b2182fc` downgrade'i uni
-  butun son deb o'qiydi). Sabab: 2026-09-12 da oval kesilgan detalda kromkachi qaysi tomon
-  ekanini chekdan bilolmadi; .project faylida tomon atribut sifatida YO'Q (`<gr>` da faqat
-  `x1/y1/x2/y2`, frezada kontur nuqtalari). GibSaw'ning o'z yorlig'i ham buni yechmagan —
-  `mebelix.lbl` da paz butun detalga bitta `groove` bayrog'i, tomonsiz.
-  **Qoida** (har chegara prod korpusida — 21 loyiha, 981 detal — o'lchab tanlangan):
+- `app/services/giblab/models.py: XncOp.machined_sides(length, width, tur=...)` — PAZ yoki
+  FREZA QAYSI QIRRA bo'ylab ketishini GEOMETRIYADAN chiqaradi (`l`/`r`/`t`/`b`); natija
+  `part.xnc_summary["groove_sides"]` va `["mill_sides"]` da (`sides` NOMI BAND —
+  `1cfd3b2182fc` downgrade'i uni butun son deb o'qiydi). Sabab: 2026-09-12 da oval kesilgan
+  detalda kromkachi qaysi tomon ekanini chekdan bilolmadi; .project faylida tomon atribut
+  sifatida YO'Q (`<gr>` da faqat `x1/y1/x2/y2`, frezada kontur nuqtalari).
+  **Ikki amal ALOHIDA** (`tur="paz"` / `tur="freza"`), chunki stanok buyrug'i ham har xil:
+  paz = `<gr>` = groove, detalga bir necha mm ariq; freza = kontur = mill, chuqurligi detal
+  qalinligicha, ya'ni kesib o'tadi. Prod korpusida o'lchandi: 51 paz 8..19 mm (qalinlikka
+  nisbat 0.50..1.19), 38 freza esa 16/16 mm — hammasi to'liq o'tuvchi. Ya'ni CHUQURLIK
+  ajratish uchun ishonchsiz, STRUKTURA (`<gr>` yoki kontur) esa aniq. GibSaw ham shu ikkisini
+  ajratadi (`mebelix.lbl`: `groove` → «П», `mill` → «Ф»), lekin faqat bor/yo'q bayrog'i
+  sifatida — qaysi qirra ekani yo'q.
+  **Qoida** (har chegara prod korpusida — 21 loyiha, 976 detal — o'lchab tanlangan):
   - KESMALAR bo'yicha: ikkala uchi ham qirradan `min(12 mm, o'lcham/3)` ichida bo'lgan
     kesmaning qirra bo'ylab uzunligi qo'shiladi; yig'indi `min(0.3 × o'lcham, 300 mm)` ga
     yetsa — qirra ishlanadi. NUQTALAR bulutini olish YARAMAYDI: konturning kirish nuqtasi
@@ -501,17 +507,30 @@ direktor ham ko'radi.
     uchun tashqi chegara yo'q; detal o'rtasidagi ariq ham, qirradan 18 mm ichkaridagi DVP
     pazi ham ro'yxatga TUSHMAYDI.
   - O'q konvensiyasi `scx.py` bilan bir xil: dasturda `y=0` — `t`, `y=width` — `b`.
-  Eski detallarda `mill_sides` bo'sh — qiymat yuklashda hisoblanadi, backfill qilinmadi.
-- **Chek eskizida** (`labels.py`) o'sha qirra kontur ICHIDA UZUQ chiziq bilan chiziladi
-  (kromka esa TASHQARIDA, tutash) + EN raqami ostida «- - PAZ/OVAL» izohi; KROMKA/OVAL
-  terminalida ham xuddi shunday. Tomon NOMI («o'ng») ATAYLAB yozilmaydi — eskiz uzun
-  tomonni doim vertikal chizadi (`burilgan`), ya'ni nom eskizga zid tushardi. Eskiz ichidagi
-  qolgan elementlar uzuq chiziqqa xalaqit bermasligi uchun: paz bo'lganda TEKSTURA chiziqlari
-  paz turgan qirradan 3.2 mm chetlanadi va markazdan 18% siljiydi (2000×300 teksturali
-  detalda eskiz eni 7 mm — chekka tekstura chizig'i uzuq chiziq ustiga tushardi), uzuq chiziq
-  esa TESHIKLARDAN KEYIN chiziladi (teshik oq doira bilan to'ldiriladi va chiziqni o'chirardi;
-  pazli 33 detaldan 27 tasida teshik ham bor). Pazi YO'Q chek bayt-bayt o'zgarmaydi —
-  948/948 detalda o'lchangan.
+  Eski detallarda ikkala ro'yxat ham bo'sh — qiymat yuklashda hisoblanadi, backfill
+  qilinmadi; `stored_machined_sides` `groove_sides` kaliti yo'q satrni SHUNDAY o'qiydi
+  (2026-09-13 gacha `mill_sides` da ikkalasi birga edi, uni freza deb o'qish pazni
+  «kesib o'tadi» qilib ko'rsatardi — noto'g'ri belgi bo'shdan yomonroq).
+  Ostona endi HAR TURGA ALOHIDA qo'yiladi, ya'ni matematik jihatdan
+  `paz ∪ freza ⊆` ilgarigi BIRLASHGAN hisob: bitta qirrada paz 200 mm + freza 200 mm
+  bo'lsa, birga 400 mm ostonadan o'tardi, alohida ikkalasi ham o'tmaydi. Prod korpusida
+  bunday detal YO'Q — 976 detalning 665 tasida ishlov bor, farq 0 chiqdi (o'lchangan).
+- **Chek eskizida** (`labels.py`) o'sha qirra kontur ICHIDA chiziq bilan chiziladi (kromka
+  esa TASHQARIDA, tutash va qalin): **paz — UZUQ chiziq**, **freza — TUTASH chiziq**, EN
+  raqami ostida esa «- - PAZ» / «— FREZA» izohi (ikkalasi bo'lsa ikkovi ham, 22 mm ga
+  sig'adi — eskiz markazi 66 mm da qat'iy). KROMKA/OVAL terminalida ham xuddi shunday.
+  Prodda bir qirrada ikkala amal ham uchramaydi (21 loyihada 18 detal faqat pazli, 8 tasi
+  faqat frezali) — baribir ikkalasi tushsa PAZ g'olib, chunki uzuq chiziq ko'proq ma'lumot
+  beradi. Tomon NOMI («o'ng») ATAYLAB yozilmaydi — eskiz uzun tomonni doim vertikal chizadi
+  (`burilgan`), ya'ni nom eskizga zid tushardi. Eskiz ichidagi qolgan elementlar chiziqqa
+  xalaqit bermasligi uchun: ishlangan qirra bo'lganda TEKSTURA chiziqlari o'sha qirradan
+  3.2 mm chetlanadi va markazdan 18% siljiydi (2000×300 teksturali detalda eskiz eni 7 mm —
+  chekka tekstura chizig'i chiziq ustiga tushardi), chiziqlar esa TESHIKLARDAN KEYIN
+  chiziladi (teshik oq doira bilan to'ldiriladi va chiziqni o'chirardi). Uzuq chiziqning
+  BO'LAK geometriyasi ham o'zgarmadi: bo'shliqqa tegadigan bo'lak butunligicha tashlanadi,
+  qirqilmaydi (qirqilsa 18 ta eskiz balandligida qo'shimcha bo'lak chiqardi). O'lchangan:
+  paz/frezasi YO'Q 950/950 chek bayt-baytda bir xil, 18 ta pazli chekda esa eskiz
+  piksel-piksel bir xil, faqat izoh matni «- - PAZ/OVAL» → «- - PAZ» bo'ldi.
 - `app/services/excel.py: xlsx_response()` — openpyxl bilan bitta varaqli .xlsx stream
   (reports `?format=xlsx` orqasida).
 - Og'ir JSONB ustunlar ro'yxat so'rovlarida `defer()` bilan qoldiriladi:
