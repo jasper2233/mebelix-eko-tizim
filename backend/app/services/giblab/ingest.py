@@ -3,6 +3,7 @@ materials auto-registry, SCX files and the cut map. Re-upload fully replaces pre
 (gate — `_require_editable`: PRODUCTION included, until the first live scan)."""
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -15,6 +16,7 @@ from starlette.concurrency import run_in_threadpool
 from app.models import Order, OrderFile, Part, PartInstance, PartRoute, Post, Product, WasteItem
 from app.models.enums import FileKind, PostCode, RouteSource
 
+from ..settings_service import CUSTOM_PART_SUFFIX, get_setting
 from .cutmap import build_cutmap
 from .models import TAIL_CODES, ParsedPart, ParsedProject, ParseError, paths_json
 from .parser import parse_project
@@ -160,6 +162,22 @@ async def snapshot_custom_routes(db: AsyncSession, order: Order) -> RouteSnapsho
     return saved
 
 
+def _nostandart_qoidasi(belgi: str) -> Callable[[str], bool]:
+    """Nomi `belgi` bilan tugagan detal — NOSTANDART (bazisda texnolog qo'yadi).
+
+    Sabab: belgilanmagan nostandart detal ishlab chiqarishga o'tib ketardi, chunki
+    uni faqat odam eslab qolishi kerak edi. Belgi nomda QOLADI — chek, terminal va
+    xaritada ko'rinadi, ya'ni ishchi nega nostandart ekanini o'qiydi.
+
+    Bo'sh belgi qoidani o'chiradi: `"x".endswith("")` har doim rost, ya'ni sozlama
+    tozalansa HAMMA detal nostandart bo'lib qolardi.
+    """
+    kesilgan = belgi.strip()
+    if not kesilgan:
+        return lambda _nom: False
+    return lambda nom: nom.strip().endswith(kesilgan)
+
+
 async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnapshot) -> tuple[int, list[str]]:
     """Saqlangan marshrutlarni yangi detallarga qaytarish. Qaytadi: (tiklangan, yo'qolgan)."""
     if not saved:
@@ -212,10 +230,14 @@ async def restore_custom_routes(db: AsyncSession, order: Order, saved: RouteSnap
 
     restored = 0
     for key, entry in saved.items():
-        was_custom, codes = entry.is_custom, entry.codes
         part = by_key.get(key)
         if part is None:
             continue
+        # FAYL G'OLIB: nomi belgi bilan tugagan detalni `ingest_project` allaqachon
+        # nostandart qilib qo'ygan. Snapshot uni PASAYTIRMAYDI — texnolog bayroqni
+        # qo'lda olib tashlagan bo'lsa ham, fayl hali ham nostandart deyapti; belgini
+        # bazisdagi NOMDAN olib tashlash kerak. Faqat KO'TARISH tomonga ishlaydi.
+        was_custom, codes = entry.is_custom or part.is_custom, entry.codes
         part.is_custom = was_custom
         # Izoh ham fayldan kelmaydi: yangi detal uni doim bo'sh boshlaydi.
         part.note = entry.note
@@ -483,6 +505,11 @@ async def ingest_project(
     upload_root: Path,
 ) -> dict[str, Any]:
     """Create all DB rows + files for a parsed PROCESSED project. Caller commits."""
+    # Nostandart qoidasi sozlamadan BIR MARTA o'qiladi: sikl ichida har detal uchun
+    # so'rov qilinsa yuzlab ortiqcha SELECT chiqardi.
+    nostandart = _nostandart_qoidasi(await get_setting(db, CUSTOM_PART_SUFFIX))
+    nostandart_ids: list[int] = []
+
     # Yuklangan fayl nomi yo'l qismisiz saqlanadi — "../" bilan uploads tashqarisiga
     # yozishning oldi olinadi
     original_filename = Path(original_filename).name or "project.project"
@@ -558,6 +585,7 @@ async def ingest_project(
                 thickness=pp.thickness,
                 txt=pp.txt,
                 material_name=pp.material_name,
+                is_custom=nostandart(pp.name),
                 label_num=pp.label_num,
                 edges=pp.edges,
                 xnc_summary={
@@ -582,6 +610,8 @@ async def ingest_project(
             db.add(part)
             await db.flush()
             parts_created += 1
+            if part.is_custom:
+                nostandart_ids.append(part.id)
 
             # instances with cut-map cell binding
             cell_bindings = bindings_by_key.get(pp.key, [])
@@ -662,6 +692,17 @@ async def ingest_project(
     # GibLab eksportlarining bir qismida u umuman bo'lmaydi: prodda 39 buyurtmadan faqat 19 tasida
     # nom bor edi, qolganlarida `.project` fayli yuklangan bo'lsa ham nom BO'SH qolardi va reestrda
     # ham, TABLOda ham ko'rinmasdi. Fayl nomi esa doim bor.
+    # Nomi bo'yicha nostandart bo'lgan detalning AUTO marshruti YUMSHOQ o'chiriladi —
+    # `restore_custom_routes` dagi bilan bir xil naqsh va bir xil sabab. Umuman
+    # qurmaslik yaramaydi: texnolog keyin bayroqni olib tashlasa (matritsadagi
+    # checkbox) tiklanadigan qator qolmasdi va detal marshrutsiz qolardi.
+    if nostandart_ids:
+        await db.execute(
+            update(PartRoute)
+            .where(PartRoute.part_id.in_(nostandart_ids), PartRoute.is_deleted == False)  # noqa: E712
+            .values(is_deleted=True, deleted_at=datetime.now(UTC))
+        )
+
     order.project_name = Path(original_filename).stem or project.name
     order.project_loaded_at = datetime.now(UTC)
     order.cutmap = cutmap.model if cutmap else None

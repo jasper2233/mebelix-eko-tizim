@@ -22,6 +22,7 @@ import { Route as LayoutLogsRouteImport } from './routes/_layout/logs'
 import { Route as LayoutPrintersRouteImport } from './routes/_layout/printers'
 import { Route as LayoutReportsRouteImport } from './routes/_layout/reports'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
+import { Route as LayoutSystemSettingsRouteImport } from './routes/_layout/system-settings'
 import { Route as LayoutWorkCentersRouteImport } from './routes/_layout/work-centers'
 import { Route as LayoutAnketaOrderIdRouteImport } from './routes/_layout/anketa.$orderId'
 import { Route as LayoutCutmapOrderIdRouteImport } from './routes/_layout/cutmap.$orderId'
@@ -92,6 +93,11 @@ const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutSystemSettingsRoute = LayoutSystemSettingsRouteImport.update({
+  id: '/system-settings',
+  path: '/system-settings',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutWorkCentersRoute = LayoutWorkCentersRouteImport.update({
   id: '/work-centers',
   path: '/work-centers',
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/printers': typeof LayoutPrintersRoute
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
+  '/system-settings': typeof LayoutSystemSettingsRoute
   '/work-centers': typeof LayoutWorkCentersRoute
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
@@ -149,6 +156,7 @@ export interface FileRoutesByTo {
   '/printers': typeof LayoutPrintersRoute
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
+  '/system-settings': typeof LayoutSystemSettingsRoute
   '/work-centers': typeof LayoutWorkCentersRoute
   '/': typeof LayoutIndexRoute
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
@@ -170,6 +178,7 @@ export interface FileRoutesById {
   '/_layout/printers': typeof LayoutPrintersRoute
   '/_layout/reports': typeof LayoutReportsRoute
   '/_layout/settings': typeof LayoutSettingsRoute
+  '/_layout/system-settings': typeof LayoutSystemSettingsRoute
   '/_layout/work-centers': typeof LayoutWorkCentersRoute
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
@@ -192,6 +201,7 @@ export interface FileRouteTypes {
     | '/printers'
     | '/reports'
     | '/settings'
+    | '/system-settings'
     | '/work-centers'
     | '/anketa/$orderId'
     | '/cutmap/$orderId'
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
     | '/printers'
     | '/reports'
     | '/settings'
+    | '/system-settings'
     | '/work-centers'
     | '/'
     | '/anketa/$orderId'
@@ -230,6 +241,7 @@ export interface FileRouteTypes {
     | '/_layout/printers'
     | '/_layout/reports'
     | '/_layout/settings'
+    | '/_layout/system-settings'
     | '/_layout/work-centers'
     | '/_layout/'
     | '/_layout/anketa/$orderId'
@@ -338,6 +350,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/system-settings': {
+      id: '/_layout/system-settings'
+      path: '/system-settings'
+      fullPath: '/system-settings'
+      preLoaderRoute: typeof LayoutSystemSettingsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/work-centers': {
       id: '/_layout/work-centers'
       path: '/work-centers'
@@ -385,6 +404,7 @@ interface LayoutRouteChildren {
   LayoutPrintersRoute: typeof LayoutPrintersRoute
   LayoutReportsRoute: typeof LayoutReportsRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
+  LayoutSystemSettingsRoute: typeof LayoutSystemSettingsRoute
   LayoutWorkCentersRoute: typeof LayoutWorkCentersRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
   LayoutAnketaOrderIdRoute: typeof LayoutAnketaOrderIdRoute
@@ -402,6 +422,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutPrintersRoute: LayoutPrintersRoute,
   LayoutReportsRoute: LayoutReportsRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
+  LayoutSystemSettingsRoute: LayoutSystemSettingsRoute,
   LayoutWorkCentersRoute: LayoutWorkCentersRoute,
   LayoutIndexRoute: LayoutIndexRoute,
   LayoutAnketaOrderIdRoute: LayoutAnketaOrderIdRoute,

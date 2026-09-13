@@ -19,6 +19,7 @@ from .organization import Organization
 from .pachka import Pachka, PachkaItem
 from .post import Post
 from .scan import Scan, WorkSession
+from .setting import SystemSetting
 from .user import User
 
 __all__ = [
@@ -42,6 +43,7 @@ __all__ = [
     "Post",
     "Product",
     "Scan",
+    "SystemSetting",
     "User",
     "WorkSession",
 ]

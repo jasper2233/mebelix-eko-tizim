@@ -8,6 +8,7 @@ import {
   IdCard,
   MonitorCog,
   ScrollText,
+  SlidersHorizontal,
   Tv,
   UserRound,
 } from "lucide-react"
@@ -64,6 +65,12 @@ export const NAV_ITEMS: (Item & {
     show: isAdmin,
   },
   { icon: ScrollText, title: "Loglar", path: "/logs", show: isAdmin },
+  {
+    icon: SlidersHorizontal,
+    title: "Tizim sozlamalari",
+    path: "/system-settings",
+    show: isAdmin,
+  },
 ]
 
 export function AppSidebar() {

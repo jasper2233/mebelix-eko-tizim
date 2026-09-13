@@ -3048,6 +3048,30 @@ export type SurveyWall = {
 };
 
 /**
+ * SystemSettingRead
+ */
+export type SystemSettingRead = {
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Value
+     */
+    value: string;
+};
+
+/**
+ * SystemSettingUpdate
+ */
+export type SystemSettingUpdate = {
+    /**
+     * Value
+     */
+    value: string;
+};
+
+/**
  * TabloMatrix
  */
 export type TabloMatrix = {
@@ -6006,6 +6030,54 @@ export type CancelScanResponses = {
 };
 
 export type CancelScanResponse = CancelScanResponses[keyof CancelScanResponses];
+
+export type ReadSystemSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/';
+};
+
+export type ReadSystemSettingsResponses = {
+    /**
+     * Response Read System Settings
+     *
+     * Successful Response
+     */
+    200: Array<SystemSettingRead>;
+};
+
+export type ReadSystemSettingsResponse = ReadSystemSettingsResponses[keyof ReadSystemSettingsResponses];
+
+export type UpdateSystemSettingData = {
+    body: SystemSettingUpdate;
+    path: {
+        /**
+         * Key
+         */
+        key: string;
+    };
+    query?: never;
+    url: '/api/v1/settings/{key}';
+};
+
+export type UpdateSystemSettingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateSystemSettingError = UpdateSystemSettingErrors[keyof UpdateSystemSettingErrors];
+
+export type UpdateSystemSettingResponses = {
+    /**
+     * Successful Response
+     */
+    200: SystemSettingRead;
+};
+
+export type UpdateSystemSettingResponse = UpdateSystemSettingResponses[keyof UpdateSystemSettingResponses];
 
 export type ReadTabloMatrixData = {
     body?: never;

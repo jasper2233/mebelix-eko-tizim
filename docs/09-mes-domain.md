@@ -98,7 +98,19 @@ mexanizmi butunlay olib tashlangan: nom qaytadan shunchaki nom, marshrut esa `pa
 tartibli qadamlar. Jarayon kodi → post o'girish `PROCESS_POSTS` (`giblab/models.py`) da qoladi —
 to'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §2.3. Qoidalar:
 
-- Bayroq `Part.is_custom` — texnolog detallar matritsasidagi "Nostandart" checkbox bilan qo'yadi.
+- Bayroq `Part.is_custom` IKKI yo'l bilan qo'yiladi: (1) texnolog detallar matritsasidagi
+  "Nostandart" checkbox bilan, (2) **yuklashda AVTOMAT** — detal nomi `custom_part_suffix`
+  sozlamasidagi belgi bilan tugasa (sukut `#`, admin «Tizim sozlamalari» sahifasida
+  o'zgartiradi). Sabab: belgilanmagan nostandart detal ishlab chiqarishga o'tib ketardi —
+  uni faqat odam eslab qolishi kerak edi. Belgi detal NOMIDA qoladi (chek, terminal va
+  xaritada ko'rinadi), chunki nom hech qayerda kalit emas — kalit `productCode_partCode`.
+  Bo'sh sozlama qoidani o'chiradi (`"x".endswith("")` har doim rost bo'lardi).
+  **Qayta yuklashda FAYL G'OLIB:** `restore_custom_routes` snapshotdagi bayroqni faqat
+  KO'TARADI (`entry.is_custom or part.is_custom`) — texnolog qo'lda bekor qilgan bo'lsa ham
+  nomi belgili detal yana nostandart bo'ladi; bekor qilish uchun belgini BAZISDAGI nomdan
+  olib tashlash kerak. Avtomatik belgilangan detalning AUTO marshruti qurib bo'lingach
+  yumshoq o'chiriladi (umuman qurilmasa, bayroq olingandan keyin tiklanadigan qator
+  qolmasdi va detal marshrutsiz qolardi — o'lchangan).
   Yoqilganda fayldan kelgan `AUTO` qadamlar YUMSHOQ o'chiriladi, bayroq qaytarilganda AYNAN
   tiklanadi (`orders/matrix.py: edit_order_matrix`) — fayl ma'lumotidan qayta hisoblash taxminiy bo'lardi.
 - Marshrutning o'zi alohida **"Nostandart detallar" tabida** chiziladi

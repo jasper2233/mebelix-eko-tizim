@@ -15,6 +15,7 @@ from .pachka import router as pachka_router
 from .posts import router as posts_router
 from .reports import router as reports_router
 from .scans import router as scans_router
+from .settings import router as settings_router
 from .tablo import router as tablo_router
 from .terminal import router as terminal_router
 from .tmo import router as tmo_router
@@ -38,6 +39,7 @@ router.include_router(tmo_router, dependencies=_protected)
 router.include_router(audit_router, dependencies=_protected)
 router.include_router(terminal_router, dependencies=_protected)
 router.include_router(scans_router, dependencies=_protected)
+router.include_router(settings_router, dependencies=_protected)
 router.include_router(tablo_router, dependencies=_protected)
 router.include_router(reports_router, dependencies=_protected)
 # Himoyasiz ulanadi: /pair ochiq bo'lishi shart, admin endpointlar o'z ichida AdminUser bilan

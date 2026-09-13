@@ -125,6 +125,12 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
 - Yagonalik `(part_id, post_id)` dan `(part_id, seq)` ga ko'chdi — shu sababli bitta post marshrutda **bir necha marta** uchrashi mumkin (kromka → prisadka → yana kromka). `ix_part_route_part_post` qidiruv uchun qoldi, lekin endi unique emas.
 - `process_code` kerak, chunki post nomining o'zi yetarli emas: STOLYARKA da 6 xil, KROMKA da 2 xil amal bor — operator qaysi biri kerakligini shu koddan biladi.
 - Skan tartibi postlarning global `order_index` idan emas, detalning O'Z `seq` i bo'yicha tekshiriladi (`services/scanning.py`) — nostandart marshrut global tartibni buzadi. Skan shu postdagi eng kichik `seq` li tugallanmagan qadamga yoziladi.
+- `SystemSetting` (`system_setting`, `7e6946ebd00d`) — ish vaqtida admin tahrirlaydigan
+  kalit/qiymat: `key(60)` unikal indeks, `value(255)`, `updated_by_id` FK → `user`. Qiymat
+  DOIM matn, o'qiydigan joy turga keltiradi (`services/settings_service.py`; `DEFAULTS` da
+  sukut qiymatlar, hozir bitta: `custom_part_suffix = "#"`). Nega `.env` emas: belgini
+  o'zgartirish uchun serverga kirib konteynerni qayta ishga tushirish kerak bo'lardi.
+  Nega kalit/qiymat: sahifaga keyin stanoklar sozlamalari qo'shiladi.
 - Standart (`is_custom=False`) detal fayldan faqat ARRA (kod 1) + KROMKA (kod 3, qirralar soni bo'yicha) + PRISADKA (kod 6) oladi; PRISADKA qadami HAR QANDAY ishlovda ochiladi — teshik, qirra teshigi, paz yoki freza (`giblab/models.py: ParsedPart.stage_sides`; ilgari faqat TESHIK sanalardi va paz/freza-only detal marshrutsiz qolardi — `a7c419e0b3d5`, §4.4). Paz/freza uchun alohida ROVER qadami ataylab yaratilmaydi — roverdan chiqqan detal keyin bo'yalishi mumkinligini fayl bilmaydi (geometriya baribir SCX va yorliq eskiziga ketadi).
 
 **Og'ir JSONB'larni defer qilish** — `order.py` da ikkita modul-darajali tuple: `ORDER_FAT_COLUMNS = (Order.cutmap, Order.survey, Order.material_usage, Order.machine_assignments)` va `PART_FAT_COLUMNS = (Part.xnc_summary, Part.note)`. Ro'yxat/hisobot so'rovlari ularni `defer()` bilan tashlab yuboradi — busiz 100 talik buyurtma reestri 2.2 MB kesish xaritasini bazadan tortib parse qilib tashlar edi (o'lchov: 284 ms → 5 ms). `Part.edges` ataylab ro'yxatda YO'Q — hajm hisobida kerak. Kartochka so'rovlarida ustunlar odatdagidek yuklanadi. `/terminal/orders` esa tuple'ning faqat yarmini — `survey` va `machine_assignments` ni — defer qiladi: `cutmap` va `material_usage` terminal kartasining o'zida ishlatiladi.

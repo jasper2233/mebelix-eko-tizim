@@ -277,6 +277,8 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
+| GET | `/api/v1/settings/` | `AdminUser` | Ish vaqtidagi sozlamalar ro'yxati — `DEFAULTS` dagi HAMMA kalit qaytadi, hali yozilmagani sukut qiymati bilan (sahifa bo'sh jadval ko'rmasin) |
+| PUT | `/api/v1/settings/{key}` | `AdminUser` | Sozlamani yozadi (bor bo'lsa yangilaydi). `DEFAULTS` da yo'q kalit — 404 («Bunday sozlama yo'q»): noma'lum kalit jimgina yozilib, hech kim o'qimasdi. Qiymat `strip()` qilinadi, uzunlik 8 belgi (suffiks, nom emas). Audit jurnaliga eski/yangi qiymat bilan yoziladi |
 | GET | `/api/v1/posts/` | login (har qanday) | `order_index` bo'yicha tartiblangan postlar ro'yxati |
 | PATCH | `/api/v1/posts/{id}` | `AdminUser` | Post sozlamalarini yangilash — `PostUpdate`: `name`, `requires_assignment_choice`. `order_index` ataylab TAHRIRLANMAYDI — uning yagona egasi `seed_defaults.POSTS`, u har prestart'da tartibni sinxronlaydi, ya'ni PATCH tahriri keyingi deploy'da jimgina yo'qolardi (`extra="ignore"`: eski klient yuborsa e'tiborsiz qoladi). `Post` ning uchala ustuni ham NOT NULL, shuning uchun body'dagi explicit `null` `drop_forbidden_nulls` bilan tashlanadi (no-op) — ilgari `name: null` NOT NULL ustunga tushib 500 berardi. Frontendda chaqiruvchi YO'Q (faqat generatsiya qilingan `src/client/sdk.gen.ts`) — endpoint qo'lda/admin so'rov uchun qolgan |
 
