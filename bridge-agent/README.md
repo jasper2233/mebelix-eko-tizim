@@ -85,6 +85,10 @@ Odatda qo'lda hech narsa yozilmaydi — birinchi ulanish ikkalasini ham to'ldira
 | `BRIDGE_TOKEN` | ulanishda olingan doimiy token (har agentda o'ziniki) |
 | `PRINTER_NAME` | printer nomini qo'lda berish (avto-topish o'rniga) |
 | `QUEUE_FILE` | lokal navbat fayli (default `%APPDATA%\MebelixAgent\print-queue.jsonl` — avtostartda ishchi papka System32 bo'lgani uchun nisbiy yo'l ishlamaydi) |
+| `ANDON` | stanok signal ustunini (Pico, USB) o'qish; default yoniq, `0` o'chiradi. Pico topilmagan kompyuterda o'zi jim turadi |
+| `ANDON_PORT` | Pico COM porti (bo'sh — Raspberry Pi VID `2E8A` bo'yicha o'zi topadi) |
+| `ANDON_TAKEOVER` | `0` — port band bo'lsa eski `PrisadkaMES.exe` ni to'xtatmaslik |
+| `ANDON_QUEUE_FILE` | andon navbati (default `%APPDATA%\MebelixAgent\andon-queue.jsonl`) |
 
 ## Ishlash tartibi
 
@@ -116,7 +120,7 @@ yo'qolmaydi — yorliqlar Redis navbatida turadi va agent qaytishi bilan chiqadi
 ## Dasturchi uchun: exe yig'ish
 
 ```bash
-pip install "websockets>=14" pywin32 pillow pynput pystray "pyinstaller==6.22.2"
+pip install "websockets>=14" pywin32 pillow pynput pystray pyserial "pyinstaller==6.22.2"
 pyinstaller --onefile --noconsole --icon mebelix.ico --name mebelix-agent agent.py
 ```
 
@@ -155,3 +159,34 @@ Ishlashi uchun:
 bog'liq. Stanok kompyuterida faqat **ENG (US)** layout qoldiring (Win+Space
 bilan tekshiring), aks holda `100701_02_003_1` o'rniga buzilgan matn tushadi —
 ham Nanxing, ham MES topa olmaydi.
+
+## Andon — stanok signal ustuni (v1.5.0+)
+
+Prisadka stanogining qizil/sariq/yashil chiroqlarini Raspberry Pi Pico o'qiydi
+(optopara orqali, firmware — `prisadka-mes-nanxing` repozitoriysi) va USB kabel
+orqali shu agentga beradi. Agent hodisalarni serverga yuboradi, stanok holati
+MebeliX'da jonli ko'rinadi.
+
+```
+signal ustuni ─optopara─► Pico ─USB─► agent: andon oqimi ─► andon-queue.jsonl
+                                                                   │ har 3 s
+                                              POST /api/v1/bridge-agents/andon
+```
+
+- Pico USB porti Raspberry Pi VID (`2E8A`) bo'yicha o'zi topiladi. Pico
+  bo'lmagan kompyuterda (arra, kromka...) andon qismi hech narsa qilmaydi.
+- Agent Pico'ga har 5 soniyada `PING` yuboradi — Pico uni 15 soniya eshitmasa
+  o'zini oflayn deb hisoblab, hodisalarni o'z buferiga yig'adi.
+- Hodisa avval diskdagi navbatga (fsync) yoziladi, server qabul qilgachgina
+  o'chadi — internet uzilsa ham yo'qolmaydi (20 000 tagacha, keyin eng eskisi).
+- Ish markazi Pico'dagi `MACHINE_ID` dan emas, agentning **ish markazi
+  bog'lanishidan** olinadi — agentga prisadka stanogi bog'langan bo'lishi shart
+  (usiz server `409` qaytaradi, hodisalar navbatda kutib turadi).
+- **Eski `PrisadkaMES.exe`:** bitta COM portni ikki dastur ocha olmaydi. Port
+  band bo'lsa va band qilgan `PrisadkaMES.exe` bo'lsa, agent uni **bir marta**
+  to'xtatadi va avtozapuskdan oladi (`andon-takeover.done` belgisi qo'yiladi,
+  keyin qayta tegmaydi). Uning `mes-data.db` bazasi o'chirilmaydi.
+  `ANDON_TAKEOVER=0` bu xatti-harakatni o'chiradi.
+- Andon qismi chek chop etish va skan-forvarddan to'liq ajralgan: alohida oqim,
+  alohida navbat fayli, alohida endpoint. Uning xatosi logga yoziladi, xolos.
+- Tray menyusida Pico ulangani ko'rinadi: `... · Andon: Pico ulandi · v1.5.0`.

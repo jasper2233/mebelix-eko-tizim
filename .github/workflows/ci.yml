@@ -161,7 +161,8 @@ jobs:
           # tekshira boshladi va bat orqali qayta ishga tushgan agent yiqildi
           # (agent.py `_spawn_bat`). Versiya ko'tarilsa — onefile restart oqimi
           # tsex kompyuterida qayta sinaladi, shunchaki "latest" olinmaydi.
-          pip install "websockets>=14" pywin32 pillow pynput pystray "pyinstaller==6.22.2"
+          # pyserial — andon: stanok signal ustunini o'qiydigan Pico USB porti (agent.py `start_andon`)
+          pip install "websockets>=14" pywin32 pillow pynput pystray pyserial "pyinstaller==6.22.2"
           pyinstaller --onefile --noconsole --icon bridge-agent/mebelix.ico --name mebelix-agent bridge-agent/agent.py
       - name: Manifest (versiya + sha256)
         shell: python
