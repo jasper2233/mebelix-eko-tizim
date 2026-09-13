@@ -565,17 +565,16 @@ async def ingest_project(
                     "edge_bores": len(merged.edge_bores) if merged else 0,
                     "grooves": len(merged.grooves) if merged else 0,
                     "mills": len(merged.mills) if merged else 0,
-                    # Paz (ariq) va freza (kesib o'tadi) QAYSI qirrada — chek va KROMKA
-                    # terminali shundan o'qiydi, ikkalasi boshqa-boshqa belgi bilan
-                    # (`XncOp.machined_sides`, sabab docs/09 da). `sides` NOMI BAND:
+                    # Paz va freza QAYSI qirrada — chek va KROMKA terminali shundan
+                    # o'qiydi (`XncOp.machined_sides`, sabab docs/09 da). `sides` NOMI BAND:
                     # `1cfd3b2182fc` downgrade'i uni BUTUN SON deb o'qiydi
                     # (`(xnc_summary->>'sides')::int = 2`), shuning uchun `mill_sides`.
                     "groove_sides": merged.machined_sides(pp.length, pp.width, tur="paz") if merged else [],
                     "mill_sides": merged.machined_sides(pp.length, pp.width, tur="freza") if merged else [],
-                    # Xom yo'llar — qirraga tushmagan ishlov (o'rtadagi ariq, doira o'yiq)
-                    # chek eskizida SHULARDAN chiziladi; qirradagisi uchun chekkadagi
-                    # chiziq yetadi. Ishlovli 123 detalda o'rtacha 209 bayt, jami 25 KB
-                    # (ixcham JSON, 45 loyihali korpusda o'lchangan).
+                    # Xom yo'llar — chek eskizi va kesish xaritasi kartochkasi qirraga
+                    # tushmagan ishlovni (o'rtadagi ariq, doira o'yiq) SHULARDAN chizadi.
+                    # Ishlovli 123 detalda o'rtacha 209 bayt, jami 25 KB (ixcham JSON,
+                    # 45 loyihali korpusda o'lchangan).
                     "groove_paths": paths_json(merged.paths("paz")) if merged else [],
                     "mill_paths": paths_json(merged.paths("freza")) if merged else [],
                 },
