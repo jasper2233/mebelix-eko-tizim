@@ -100,6 +100,28 @@ function PartPreview({
           />
         ) : null,
       )}
+      {/* Tekstura — xaritadagi varaq bilan bir xil qoida: `rot` bo'lsa tik, aks
+          holda yotiq 3 chiziq (uzunlik o'qi bo'ylab). KULRANG va ishlovdan OLDIN:
+          qora chiziq ko'k uzuq chiziqning bo'shliqlarini to'ldirib, pazni freza
+          qilib ko'rsatardi — chekda aynan shu o'lchab topilgan. */}
+      {part.txt &&
+        (() => {
+          const cx = ox + rw / 2
+          const cy = oy + rh / 2
+          const uz = ((part.rot ? rh : rw) * 0.22) | 0
+          const or_ = Math.min(((part.rot ? rw : rh) * 0.3) | 0, 11)
+          return [-or_, 0, or_].map((d) => (
+            <line
+              key={`tx${d}`}
+              x1={part.rot ? cx + d : cx - uz}
+              y1={part.rot ? cy - uz : cy + d}
+              x2={part.rot ? cx + d : cx + uz}
+              y2={part.rot ? cy + uz : cy + d}
+              stroke="#9ca3af"
+              strokeWidth="2"
+            />
+          ))
+        })()}
       {H?.bores?.map((b, i) => {
         const [cx, cy] = holeXY(local, H, b.x, b.y)
         return (
