@@ -111,6 +111,20 @@ to'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §2.3. Qoidalar:
   olib tashlash kerak. Avtomatik belgilangan detalning AUTO marshruti qurib bo'lingach
   yumshoq o'chiriladi (umuman qurilmasa, bayroq olingandan keyin tiklanadigan qator
   qolmasdi va detal marshrutsiz qolardi — o'lchangan).
+- **Nega belgi kerak — fayldan BASHORAT QILIB BO'LMAYDI** (2026-09-13, prodda 2070 detal,
+  shundan 93 nostandart — qayta o'lchamang, javob shu):
+  - Struktura belgilarining BIRORTASI ajratmaydi: kromkasiz (nostandartda 23.7%, standartda
+    19.2%), XNC ishlovsiz (36.6% / 27.1%), qalinlik < 10 mm (0% / 7.5%). Materiali yoki
+    yorliq raqami yo'q detal umuman yo'q (0 / 0).
+  - Sababi: texnolog nostandart deb belgilaganda marshrutga BO'YOQ (37 detal), ROVER
+    (28), OVAL KROMKA (21) yoki STOLYARKA (6) qadamini qo'shadi. Bularning hech biri
+    `.project` da yo'q va bo'lishi ham mumkin emas — bu mijoz buyurtmasidan keladigan
+    qaror. 93 tadan 25 tasida esa qo'lda chizilgan marshrut fayl bergani bilan AYNAN
+    bir xil, ya'ni belgilash marshrutni umuman o'zgartirmagan.
+  - Nomdagi «nostandart» so'zi ilgak EMAS: u 44 detalda bor, hammasi allaqachon
+    belgilangan (belgilanmagani 0) va faqat UCH buyurtmada (20, 24, 25) ishlatilgan —
+    odat emas, epizod. Shu sababli "so'z bor, belgi yo'q" ogohlantirishi qo'shilmadi:
+    u tarixiy ma'lumotda nol marta ishlagan bo'lardi.
   Yoqilganda fayldan kelgan `AUTO` qadamlar YUMSHOQ o'chiriladi, bayroq qaytarilganda AYNAN
   tiklanadi (`orders/matrix.py: edit_order_matrix`) — fayl ma'lumotidan qayta hisoblash taxminiy bo'lardi.
 - Marshrutning o'zi alohida **"Nostandart detallar" tabida** chiziladi
