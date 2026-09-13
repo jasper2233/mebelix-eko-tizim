@@ -80,16 +80,15 @@ function stallLabel(
   return started ? "QIMIRLAMADI" : "BOSHLANMAGAN"
 }
 
-/** Buyurtmada kamida bitta skan bormi — bosqichlar jamlanmasidan. */
 const hasScans = (stages: Record<string, { done: number }>) =>
   Object.values(stages).some((s) => s.done > 0)
 
 /** Devor ekrani uchun o'lcham shkalasi.
  *
  * Katak shriftini O'QISH istagi emas, USTUN KENGLIGI cheklaydi: jadvaldagi eng
- * uzun yorliq ("1010/1274") ustunga sig'ishi shart, aks holda ikki qatorga
- * o'ralib qator balandligini buzadi. Shu sabab yorliqlardan bo'shliq olib
- * tashlangan (" / " -> "/") — ikki belgi, ya'ni ~18% shrift.
+ * uzun yorliq ("1010/1274") ustunga sig'ishi shart; sig'masa `fitNum` uni
+ * kichraytiradi (katak `whitespace-nowrap`, ya'ni o'ralmaydi). Shu sabab
+ * yorliqlardan bo'shliq olib tashlangan (" / " -> "/") — ikki belgi, ~18% shrift.
  *
  * Ilgari katak `text-4xl` (36px) qotirilgan edi. PRODDA O'LCHANDI (1745px,
  * HAJM rejimi): `5.7 / 27.4 m²` ustunga sig'may uch qatorga o'ralardi va
@@ -125,16 +124,6 @@ function ageLabel(sec: number): string {
 const MODES: Mode[] = ["hajm", "soni", "foiz"]
 const MODE_KEY = "tablo-mode"
 
-/** Hamma qator bitta sahifaga sig'sin: sig'masa shrift kichrayadi.
- *
- * Prodda o'lchandi: 6 buyurtmadan keyin qolgani ko'rinmay qolardi, 40 tada
- * jadval ekrandan 7 barobar uzun edi. Ilgari sahifalarga bo'lib aylantirilardi
- * — o'z buyurtmangizni ko'rish uchun navbat kutish kerak edi.
- *
- * Siqish endi faqat KICHIK toshish uchun: `useIdleAutoScroll` katta toshishni
- * aylantirib qoplaydi. 0.62 da 55" TV da buyurtma raqamining bosh harfi 7.9 mm
- * bo'lib ~1.6 m dan o'qilardi — taxta esa 5 m uchun osilgan.
- */
 /** Raqam KESILMAYDI: shrift belgilar soniga qarab kichrayadi — katak
  * kengligidan (`cqw`, konteyner so'rovi) hisoblanadi, JS o'lchov yo'q.
  * 0.66em — Archivo 900 tabular raqamining o'rtacha eni (jonli o'lchandi:
@@ -146,6 +135,16 @@ const fitNum = (label: string, base: string) =>
 
 const MIN_FIT = 0.85
 
+/** Hamma qator bitta sahifaga sig'sin: sig'masa shrift kichrayadi.
+ *
+ * Prodda o'lchandi: 6 buyurtmadan keyin qolgani ko'rinmay qolardi, 40 tada
+ * jadval ekrandan 7 barobar uzun edi. Ilgari sahifalarga bo'lib aylantirilardi
+ * — o'z buyurtmangizni ko'rish uchun navbat kutish kerak edi.
+ *
+ * Siqish endi faqat KICHIK toshish uchun: `useIdleAutoScroll` katta toshishni
+ * aylantirib qoplaydi. 0.62 da 55" TV da buyurtma raqamining bosh harfi 7.9 mm
+ * bo'lib ~1.6 m dan o'qilardi — taxta esa 5 m uchun osilgan.
+ */
 function useFitScale<T>(rows: T[]) {
   // Callback-ref, `useRef` emas: drill yopilganda `tbody` YANGI tugun bo'ladi — element bog'liqlikda
   // turmasa ResizeObserver uzilgan tugunni kuzatib qolar, sig'dirish ekran o'zgarishiga javob bermasdi.
@@ -192,17 +191,6 @@ function useFitScale<T>(rows: T[]) {
   return { bodyRef: setBody, fit }
 }
 
-/** Jonlilik ko'rsatkichi — yashil nuqtaning O'ZI yetarli emas.
- *
- * Nuqta soket ochiqligini isbotlaydi, RAQAMLAR yangiligini emas: soket
- * ulangan, lekin hodisa kelmasa va so'rov yiqilsa, ekran eski raqamlarni
- * ko'rsatib turaveradi — nuqta esa xotirjam yashil qolardi. Shuning uchun
- * ma'lumot YOSHI o'lchanadi: normal holatda jonlilikni tepkilayotgan halqa
- * ko'rsatadi, yangilanish yiqilsa (90 s dan oshsa) yosh raqam bo'lib chiqadi.
- *
- * Soat SHU komponent ichida va 15 soniyada uriladi: bo'lmasa har tikda butun
- * matritsa (40 qator x 9 katak) qayta chizilardi.
- */
 /** Sig'magan qatorlarni O'ZI aylantiradi — odam tegsa to'xtaydi.
  *
  * Devordagi TV va stol ustidagi PC bitta sahifani ochadi. Ajratish uchun kiosk
@@ -264,6 +252,17 @@ function useIdleAutoScroll() {
   return ref
 }
 
+/** Jonlilik ko'rsatkichi — yashil nuqtaning O'ZI yetarli emas.
+ *
+ * Nuqta soket ochiqligini isbotlaydi, RAQAMLAR yangiligini emas: soket
+ * ulangan, lekin hodisa kelmasa va so'rov yiqilsa, ekran eski raqamlarni
+ * ko'rsatib turaveradi — nuqta esa xotirjam yashil qolardi. Shuning uchun
+ * ma'lumot YOSHI o'lchanadi: normal holatda jonlilikni tepkilayotgan halqa
+ * ko'rsatadi, yangilanish yiqilsa (90 s dan oshsa) yosh raqam bo'lib chiqadi.
+ *
+ * Soat SHU komponent ichida va 15 soniyada uriladi: bo'lmasa har tikda butun
+ * matritsa (40 qator x 9 katak) qayta chizilardi.
+ */
 function LiveBadge({
   online,
   updatedAt,
@@ -299,8 +298,8 @@ function LiveBadge({
       <span className="relative flex size-3 shrink-0">
         {live && (
           <span
-            /* Harakat o'chirilgan bo'lsa halqa yo'qoladi — jonlilikni
-               soniya hisoblagichi baribir isbotlab turadi */
+            /* `motion-reduce` da halqa yo'qoladi va "JONLI" qotib qoladi —
+               jonlilik faqat nosozlikda ("ESKI · 3d") ko'rinadi. */
             className="absolute inline-flex size-full animate-ping rounded-full bg-green-500 opacity-75 motion-reduce:hidden"
           />
         )}
@@ -385,8 +384,6 @@ function TabloPage() {
 
   const myMachine = machines?.find((m) => m.id === me?.machine_id)
   const contextPostId = myMachine?.post_id ?? null
-  // MIN_FIT da ham sig'magan qatorlar uchun: TV o'zi aylantiradi,
-  // stolda esa birinchi tegishda to'xtaydi.
   const autoScroll = useIdleAutoScroll()
 
   if (drill !== null)
@@ -689,9 +686,6 @@ function TabloPage() {
                         borderLeftStyle: "solid",
                       }}
                     >
-                      {/* Raqam BUTUN satrni oladi. Belgi bilan yonma-yon
-                          qo'yilganda "B-2026-036" -> "B-..." bo'lib kesilardi,
-                          ya'ni buyurtmaning O'ZINI aniqlab bo'lmasdi. */}
                       <span
                         className="block truncate font-bold leading-tight"
                         style={{ fontSize: "var(--t-order)" }}
@@ -1015,10 +1009,6 @@ function TabloOrderDrill({
   // Ustunlar matritsa postlaridan (order_index tartibida) — qotirilgan ro'yxat
   // OVAL kabi yangi postni ko'rsatmay qolardi
   const { data: matrix } = useQuery(getTabloMatrixQueryOptions())
-  // FAQAT shu buyurtma marshrutidagi postlar. Matritsada to'qqiztasi ham
-  // kerak (buyurtmalar har xil), lekin drill — BITTA buyurtma va uning
-  // marshruti ma'lum: prodda o'lchandi, 9 ustundan 2 tasi (OVAL, UPAKOVKA)
-  // 43 qatorning hammasida bo'sh turardi va yarim ekranni yeb yotardi.
   // Esc — detal ko'rinishidan chiqishning kutilgan yo'li
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -1036,6 +1026,10 @@ function TabloOrderDrill({
   // ko'rinmaydi, qolgan hamma narsa ishlayveradi.
   const row = matrix?.orders.find((o) => o.id === orderId)
   const stall = row ? stallLabel(row.idle_days, hasScans(row.stages)) : null
+  // FAQAT shu buyurtma marshrutidagi postlar. Matritsada to'qqiztasi ham
+  // kerak (buyurtmalar har xil), lekin drill — BITTA buyurtma va uning
+  // marshruti ma'lum: prodda o'lchandi, 9 ustundan 2 tasi (OVAL, UPAKOVKA)
+  // 43 qatorning hammasida bo'sh turardi va yarim ekranni yeb yotardi.
   const drillPosts = (matrix?.posts ?? [])
     .map((p) => p.code)
     // Detallar kelgunicha hammasi turadi: bo'sh ro'yxatdan to'liq ro'yxatga
