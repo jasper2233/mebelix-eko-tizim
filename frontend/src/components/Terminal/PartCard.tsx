@@ -108,8 +108,12 @@ function PartPreview({
         (() => {
           const cx = ox + rw / 2
           const cy = oy + rh / 2
-          const uz = ((part.rot ? rh : rw) * 0.22) | 0
-          const or_ = Math.min(((part.rot ? rw : rh) * 0.3) | 0, 11)
+          // Nisbatlar CHEKDAN olingan (`labels.py`: chiziq uzunligi 0.32,
+          // oraliq to'rtdan bir) — ishchi qo'lidagi chek bilan yonma-yon
+          // solishtiradi. Qat'iy piksel yo'q: karta o'lchami detal nisbatiga
+          // qarab o'zgaradi va chiziqlar u bilan birga kichrayadi.
+          const uz = (((part.rot ? rh : rw) * 0.32) / 2) | 0
+          const or_ = Math.max(3, ((part.rot ? rw : rh) / 4) | 0)
           return [-or_, 0, or_].map((d) => (
             <line
               key={`tx${d}`}
