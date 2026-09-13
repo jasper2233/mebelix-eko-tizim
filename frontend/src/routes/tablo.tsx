@@ -458,7 +458,7 @@ function TabloPage() {
         </div>
       </header>
 
-      <main ref={autoScroll} className="min-h-0 flex-1 overflow-auto p-4">
+      <main ref={autoScroll} className="min-h-0 flex-1 overflow-auto px-4 pb-4">
         {isLoading ? (
           <BrandLoader
             size={120}
@@ -484,7 +484,7 @@ function TabloPage() {
              Gorizontal oraliq 0: qator yaxlit slab, kataklar uning ichidagi
              zonalar. 8px gorizontal oraliqda taxta foni qator ICHIDAN ko'rinib,
              bitta buyurtma to'qqiz alohida kartochkaga bo'linib ketardi. */
-          <table className="w-full min-w-[52rem] table-fixed border-separate border-spacing-x-0 border-spacing-y-2">
+          <table className="mt-4 w-full min-w-[52rem] table-fixed border-separate border-spacing-x-0 border-spacing-y-2">
             <colgroup>
               <col className="w-[14%]" />
               <col className="w-[13%]" />
@@ -1108,7 +1108,7 @@ function TabloOrderDrill({
           {mode === "foiz" ? "Foiz nazorati" : "Soni nazorati"}
         </span>
       </header>
-      <main className="min-h-0 flex-1 overflow-auto p-4">
+      <main className="min-h-0 flex-1 overflow-auto px-4 pb-4">
         {/* Matritsadagi bilan bir xil sabab: kenglik mazmunga bog'liq bo'lmasin.
             Prodda o'lchandi — ustunlar 83px dan 175px gacha sakrardi, ya'ni
             "TMO" ustuni "STOLYARKA" dan ikki baravar tor edi. */}
@@ -1131,7 +1131,7 @@ function TabloOrderDrill({
             qayting.
           </p>
         ) : (
-          <table className="w-full min-w-[56rem] table-fixed border-separate border-spacing-x-0 border-spacing-y-2">
+          <table className="mt-4 w-full min-w-[56rem] table-fixed border-separate border-spacing-x-0 border-spacing-y-2">
             <colgroup>
               <col className="w-[22%]" />
               <col className="w-[8%]" />
