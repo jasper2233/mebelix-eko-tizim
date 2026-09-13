@@ -316,6 +316,25 @@ class CutmapHole(BaseModel):
     edge: list[CutmapEdgeBore] = Field(default_factory=list)
 
 
+class CutmapMachining(BaseModel):
+    """Detalning paz/freza ishlovi — chek eskizidagi bilan BITTA manba.
+
+    `CutmapHole` dan alohida, chunki u `order.cutmap` JSONB ichida yuklashda
+    muzlatilgan; bu esa har so'rovda `Part.xnc_summary` dan o'qiladi, ya'ni eski
+    buyurtmani qayta yuklash shart emas.
+    """
+
+    #: `CutmapHole` dagi kabi tayyor o'lcham — yo'l koordinatalari shunga nisbatan
+    #: (`holeXY` bilan bir xil konvensiya, burilgan katakda ham to'g'ri tushadi)
+    l: float | None = None  # noqa: E741 — `CutmapHole` bilan bir xil nom
+    w: float | None = None
+    paz_sides: list[str] = Field(default_factory=list)
+    frez_sides: list[str] = Field(default_factory=list)
+    #: Qirraga tushmagan ishlov yo'llari (mm): `[[[x, y], ...], ...]`
+    paz_paths: list[list[list[float]]] = Field(default_factory=list)
+    frez_paths: list[list[list[float]]] = Field(default_factory=list)
+
+
 class CutmapModel(BaseModel):
     """`order.cutmap` — kesish xaritasining vizual modeli (`build_cutmap` chiqishi).
 
@@ -346,6 +365,8 @@ class CutmapState(BaseModel):
     order_id: int
     order_number: str
     model: CutmapModel | None
+    #: Kalit — `CutmapCell.id` matn ko'rinishida, `model.holes` bilan bir xil
+    machining: dict[str, CutmapMachining] = {}
     instances: list[CutmapInstanceState]
     #: Foydali atxotlar (`business`) — katakdagi `atx` raqami orqali bog'lanadi
     waste_items: list[CutmapWasteItem] = []

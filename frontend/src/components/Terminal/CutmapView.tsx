@@ -468,6 +468,7 @@ export function CutmapView({
   const sheets: Sheet[] = material?.sheets ?? []
   const sheet = sheetIdx !== null ? sheets[sheetIdx] : undefined
   const holes = model.holes ?? {}
+  const machining = data.machining ?? {}
 
   const sheetDone = (s: Sheet) => {
     const cells = s.parts.filter((p) => !p.waste)
@@ -858,6 +859,7 @@ export function CutmapView({
         instancesByCell={cellInsts}
         onClose={() => setSelected(null)}
         holes={holes}
+        machining={machining}
         wasteItem={wasteItemFor(selected)}
         onCancelWaste={(id) => wasteCancel.mutate(id)}
         wasteCancelling={wasteCancel.isPending}

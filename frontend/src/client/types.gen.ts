@@ -786,6 +786,42 @@ export type CutmapInstanceState = {
 };
 
 /**
+ * CutmapMachining
+ *
+ * Detalning paz/freza ishlovi — chek eskizidagi bilan BITTA manba.
+ *
+ * `CutmapHole` dan alohida, chunki u `order.cutmap` JSONB ichida yuklashda
+ * muzlatilgan; bu esa har so'rovda `Part.xnc_summary` dan o'qiladi, ya'ni eski
+ * buyurtmani qayta yuklash shart emas.
+ */
+export type CutmapMachining = {
+    /**
+     * L
+     */
+    l?: number | null;
+    /**
+     * W
+     */
+    w?: number | null;
+    /**
+     * Paz Sides
+     */
+    paz_sides?: Array<string>;
+    /**
+     * Frez Sides
+     */
+    frez_sides?: Array<string>;
+    /**
+     * Paz Paths
+     */
+    paz_paths?: Array<Array<Array<number>>>;
+    /**
+     * Frez Paths
+     */
+    frez_paths?: Array<Array<Array<number>>>;
+};
+
+/**
  * CutmapMaterial
  *
  * Bitta CS operatsiyasi = bitta list materiali (reja ko'rsatkichlari chiqarilmaydi).
@@ -874,6 +910,12 @@ export type CutmapState = {
      */
     order_number: string;
     model: CutmapModel | null;
+    /**
+     * Machining
+     */
+    machining?: {
+        [key: string]: CutmapMachining;
+    };
     /**
      * Instances
      */

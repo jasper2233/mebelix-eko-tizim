@@ -16,12 +16,18 @@ from typing import Any
 from sqlalchemy import ColumnElement, Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Order, Part, PartInstance, PartRoute, Post, Scan, WasteItem
+from app.models import Order, Part, PartInstance, PartRoute, Post, Product, Scan, WasteItem
 from app.models.enums import PostCode
-from app.schemas.terminal import CutmapInstanceState, CutmapModel, CutmapState, CutmapWasteItem
+from app.schemas.terminal import (
+    CutmapInstanceState,
+    CutmapMachining,
+    CutmapModel,
+    CutmapState,
+    CutmapWasteItem,
+)
 
 from .csblob import BlobPattern, BlobRecord, decode_cs_blob, self_check
-from .models import ParsedPart, ParsedProject, ParseError
+from .models import ParsedPart, ParsedProject, ParseError, stored_machined_sides
 
 
 @dataclass
@@ -334,6 +340,39 @@ async def build_cutmap_state(db: AsyncSession, order: Order, post_id: int) -> Cu
         .scalars()
         .all()
     )
+    # Paz/freza — `Part.xnc_summary` dan HAR SO'ROVDA. `order.cutmap` ichiga
+    # yozilmaydi: u yuklashda muzlaydi, ya'ni eski buyurtma qayta yuklanmaguncha
+    # bo'sh qolardi. Kalit — chek va `holes` bilan bir xil `CutmapCell.id`.
+    model = CutmapModel.model_validate(order.cutmap) if order.cutmap else None
+    machining: dict[str, CutmapMachining] = {}
+    if model:
+        kalit_boyicha = {
+            f"{product_code}_{code}": (stored_machined_sides(xs), length, width)
+            for code, product_code, xs, length, width in (
+                await db.execute(
+                    select(Part.code, Product.code, Part.xnc_summary, Part.length, Part.width)
+                    .join(Product, Product.id == Part.product_id)
+                    .where(Part.order_id == order.id, Part.is_deleted == False)  # noqa: E712
+                )
+            ).all()
+        }
+        for material in model.materials:
+            for sheet in material.sheets:
+                for cell in sheet.parts:
+                    topilgan = kalit_boyicha.get(cell.key or "")
+                    if not topilgan:
+                        continue
+                    ishlov, length, width = topilgan
+                    if ishlov.paz or ishlov.frez or ishlov.paz_yollari or ishlov.frez_yollari:
+                        machining[str(cell.id)] = CutmapMachining(
+                            l=length,
+                            w=width,
+                            paz_sides=ishlov.paz,
+                            frez_sides=ishlov.frez,
+                            paz_paths=ishlov.paz_yollari,
+                            frez_paths=ishlov.frez_yollari,
+                        )
+
     return CutmapState(
         order_id=order.id,
         order_number=order.number,
@@ -348,10 +387,8 @@ async def build_cutmap_state(db: AsyncSession, order: Order, post_id: int) -> Cu
             )
             for w in waste_rows
         ],
-        # `Order.cutmap` — xom JSON ustuni (`dict[str, Any]`). Tekshiruvni
-        # Pydantic dict berilganda ham bajaradi; bu chaqiruv faqat mypy uchun,
-        # xatti-harakat o'zgarmaydi.
-        model=CutmapModel.model_validate(order.cutmap) if order.cutmap else None,
+        model=model,
+        machining=machining,
         instances=[
             CutmapInstanceState(
                 instance_id=i.id,

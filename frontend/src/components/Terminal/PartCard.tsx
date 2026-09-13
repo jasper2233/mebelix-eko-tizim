@@ -5,7 +5,7 @@
 import { RotateCw } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 
-import type { CutmapHole, CutmapInstanceState } from "@/client"
+import type { CutmapHole, CutmapInstanceState, CutmapMachining } from "@/client"
 import { Serial } from "@/components/Terminal/Serial"
 import {
   edgeBoreRect,
@@ -27,9 +27,11 @@ import { LoadingButton } from "@/components/ui/loading-button"
 function PartPreview({
   part,
   holes,
+  ishlov,
 }: {
   part: SheetPart
   holes: Record<string, CutmapHole>
+  ishlov?: CutmapMachining
 }) {
   const w = part.w
   const h = part.h
@@ -43,6 +45,18 @@ function PartPreview({
   const oy = (boxH - rh) / 2
   const H = holes[String(part.id)]
   const local: SheetPart = { ...part, x: ox, y: oy, w: rw, h: rh }
+  // Ishlov yo'llari detal koordinatasida (x uzunlik, y en) — teshik bilan BIR XIL
+  // fazoda, shuning uchun `holeXY` ishlatiladi: u burilgan katakni ham to'g'ri
+  // o'giradi. O'lchamni `ishlov` o'zi olib keladi, chunki teshigi yo'q detalda
+  // `H` umuman bo'lmaydi.
+  const yol = (yollar: number[][][] | undefined) =>
+    (yollar ?? []).map((y) =>
+      y
+        .map((n) =>
+          holeXY(local, { l: ishlov?.l, w: ishlov?.w }, n[0], n[1]).join(","),
+        )
+        .join(" "),
+    )
   const ty = oy - 13
   const lx = ox - 13
   // Balandlik chegarasi: chizma dialog kengligiga cho'zilib ~370px olar,
@@ -123,6 +137,34 @@ function PartPreview({
           />
         )
       })}
+      {/* Ishlov — chek eskizidagi bilan bir xil til: paz UZUQ, freza TUTASH.
+          Teshiklardan KEYIN, chunki teshik oq to'ldiriladi va chiziqni o'chirardi.
+          Detal chegarasida QIRQILADI: asbob kirish yo'li detaldan tashqarida
+          bo'lishi normal (x=-30), lekin chizmada u xatodek ko'rinardi. */}
+      <clipPath id={`ish-${part.id}`}>
+        <rect x={ox} y={oy} width={rw} height={rh} />
+      </clipPath>
+      <g clipPath={`url(#ish-${part.id})`}>
+        {yol(ishlov?.frez_paths).map((pts) => (
+          <polyline
+            key={`f${pts}`}
+            points={pts}
+            fill="none"
+            stroke="#0369a1"
+            strokeWidth="2"
+          />
+        ))}
+        {yol(ishlov?.paz_paths).map((pts) => (
+          <polyline
+            key={`p${pts}`}
+            points={pts}
+            fill="none"
+            stroke="#0369a1"
+            strokeWidth="2"
+            strokeDasharray="5 3"
+          />
+        ))}
+      </g>
       <line
         x1={ox}
         y1={ty}
@@ -193,6 +235,7 @@ export function PartCard({
   instancesByCell,
   onClose,
   holes,
+  machining,
   onCancelRequest,
   wasteItem,
   onCancelWaste,
@@ -203,6 +246,8 @@ export function PartCard({
   instancesByCell: Map<string, CutmapInstanceState[]>
   onClose: () => void
   holes: Record<string, CutmapHole>
+  /** Paz/freza — `CutmapState.machining`, kalit `part.id` (teshiklar bilan bir xil) */
+  machining?: Record<string, CutmapMachining>
   /** QOLDIQ katagi ochilganda — unga mos `waste_item`. Kartochka ATAYLAB
    *  bitta: qoldiq ham detal kabi belgilanadi, chap qatordagi "Chop etish"
    *  bilan chiqariladi va ikki marta bosishda shu kartochkada bekor qilinadi.
@@ -277,6 +322,7 @@ export function PartCard({
   const chek = cheklar.find((c) => !c.done) ?? cheklar[0]
   const qr = chek?.qr
   const nomer = waste ? part.atx : part.num
+  const ishlov = machining?.[String(part.id)]
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
@@ -315,7 +361,7 @@ export function PartCard({
           )}
         </DialogHeader>
         <div className="rounded-lg border bg-white p-2">
-          <PartPreview part={part} holes={holes} />
+          <PartPreview part={part} holes={holes} ishlov={ishlov} />
         </div>
         <div className="flex items-start gap-4">
           {qr && (
@@ -359,6 +405,25 @@ export function PartCard({
                     ))
                   })()}
                 </div>
+                {ishlov && (
+                  // Tomon NOMI ataylab yozilmaydi: katak burilgan bo'lishi mumkin
+                  // (`rot`), ya'ni `l/r/t/b` chizmadagi joyga to'g'ri kelmasligi
+                  // mumkin edi. Chizmada esa yo'l o'z joyida turadi.
+                  <div>
+                    Ishlov:{" "}
+                    {[
+                      ishlov.paz_paths?.length &&
+                        `paz ${ishlov.paz_paths.length} ta`,
+                      ishlov.frez_paths?.length &&
+                        `freza ${ishlov.frez_paths.length} ta`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}{" "}
+                    <span className="text-muted-foreground">
+                      — chizmada uzuq = paz, tutash = freza
+                    </span>
+                  </div>
+                )}
               </>
             )}
             {waste && !wasteItem && (
