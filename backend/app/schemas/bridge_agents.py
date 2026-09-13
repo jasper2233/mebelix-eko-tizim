@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class BridgeAgentRead(BaseModel):
@@ -75,3 +75,49 @@ class BridgeLogPush(BaseModel):
     marta kelishi mumkin, server esa ularni faqat oxirgi 200 tasini saqlaydi."""
 
     lines: list[str] = Field(default_factory=list, max_length=200)
+
+
+class AndonEventIn(BaseModel):
+    """Pico hodisasi (firmware `fsm.py`) — agent uni o'zgartirmasdan uzatadi, faqat
+    `ts` ni o'zi qo'yadi (USB rejimda Pico soatsiz).
+
+    Qolgan maydonlar (lamps, downtime_id, closes_downtime_id, wait_s, process_s ...)
+    `extra="allow"` bilan `payload` ga TO'LIQ tushadi — keyingi bosqich (to'xtashlar,
+    OEE) ularni shu yerdan oladi, ya'ni hozir sxemada sanab chiqish shart emas."""
+
+    model_config = ConfigDict(extra="allow")
+
+    type: Literal["state", "cycle"]
+    session: Annotated[str, Field(min_length=1, max_length=16, pattern=r"^[0-9A-Za-z_-]+$")]
+    seq: Annotated[int, Field(ge=0, le=2_000_000_000)]
+    ts: Annotated[int, Field(ge=0, le=4_102_444_800)] = 0
+    state: Annotated[str | None, Field(max_length=16, pattern=r"^[A-Z_]+$")] = None
+    prev_state: Annotated[str | None, Field(max_length=16, pattern=r"^[A-Z_]+$")] = None
+    # int4 ustun: chegara tekshiruvda bo'lmasa, katta qiymat INSERT da yiqilib BUTUN partiyani 500 qilardi
+    prev_duration_s: Annotated[int | None, Field(ge=0, le=2_000_000_000)] = None
+
+
+class AndonCurrent(BaseModel):
+    """Stanokning JONLI holati — agent oxirgi hodisa va snapshot'dan o'zi yig'adi."""
+
+    state: Annotated[str, Field(min_length=1, max_length=16)]
+    since: Annotated[int, Field(ge=0, le=4_102_444_800)]  # holat boshlangan vaqt, unix soniya
+    lamps: dict[str, str] = Field(default_factory=dict)
+    part_count: int | None = None
+
+
+class AndonPush(BaseModel):
+    """Agent partiyasi: navbatdagi hodisalar + jonli holat.
+
+    `events` ATAYLAB xom lug'atlar: bitta buzuq hodisa butun partiyani 422 bilan rad
+    etsa, agent uni qayta-qayta yuborib navbatni abadiy to'sib qo'yardi. Har hodisa
+    serverda alohida tekshiriladi, buzug'i sanab o'tkazib yuboriladi (`skipped`)."""
+
+    events: list[dict[str, Any]] = Field(default_factory=list, max_length=500)
+    current: AndonCurrent | None = None
+
+
+class AndonPushResult(BaseModel):
+    accepted: int  # yangi yozilgan hodisalar
+    duplicates: int  # allaqachon bor (agent qayta yuborgan)
+    skipped: int  # buzuq — yozilmadi
