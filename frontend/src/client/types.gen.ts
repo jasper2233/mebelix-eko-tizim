@@ -21,6 +21,69 @@ export type AgentRelease = {
 };
 
 /**
+ * AndonCurrent
+ *
+ * Stanokning JONLI holati — agent oxirgi hodisa va snapshot'dan o'zi yig'adi.
+ */
+export type AndonCurrent = {
+    /**
+     * State
+     */
+    state: string;
+    /**
+     * Since
+     */
+    since: number;
+    /**
+     * Lamps
+     */
+    lamps?: {
+        [key: string]: string;
+    };
+    /**
+     * Part Count
+     */
+    part_count?: number | null;
+};
+
+/**
+ * AndonPush
+ *
+ * Agent partiyasi: navbatdagi hodisalar + jonli holat.
+ *
+ * `events` ATAYLAB xom lug'atlar: bitta buzuq hodisa butun partiyani 422 bilan rad
+ * etsa, agent uni qayta-qayta yuborib navbatni abadiy to'sib qo'yardi. Har hodisa
+ * serverda alohida tekshiriladi, buzug'i sanab o'tkazib yuboriladi (`skipped`).
+ */
+export type AndonPush = {
+    /**
+     * Events
+     */
+    events?: Array<{
+        [key: string]: unknown;
+    }>;
+    current?: AndonCurrent | null;
+};
+
+/**
+ * AndonPushResult
+ */
+export type AndonPushResult = {
+    /**
+     * Accepted
+     */
+    accepted: number;
+    /**
+     * Duplicates
+     */
+    duplicates: number;
+    /**
+     * Skipped
+     */
+    skipped: number;
+};
+
+/**
  * AuditLogRead
  */
 export type AuditLogRead = {
@@ -1410,6 +1473,14 @@ export type MachineOverview = {
      * Queue Scans
      */
     queue_scans: number;
+    /**
+     * Andon State
+     */
+    andon_state?: string | null;
+    /**
+     * Andon Since
+     */
+    andon_since?: string | null;
 };
 
 /**
@@ -6475,6 +6546,37 @@ export type ReadBridgeLogsResponses = {
 };
 
 export type ReadBridgeLogsResponse = ReadBridgeLogsResponses[keyof ReadBridgeLogsResponses];
+
+export type PushAndonEventsData = {
+    body: AndonPush;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/bridge-agents/andon';
+};
+
+export type PushAndonEventsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PushAndonEventsError = PushAndonEventsErrors[keyof PushAndonEventsErrors];
+
+export type PushAndonEventsResponses = {
+    /**
+     * Successful Response
+     */
+    200: AndonPushResult;
+};
+
+export type PushAndonEventsResponse = PushAndonEventsResponses[keyof PushAndonEventsResponses];
 
 export type BridgeScanData = {
     body: BridgeScanRequest;

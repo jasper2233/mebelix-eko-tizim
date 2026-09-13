@@ -285,6 +285,19 @@ export const MACHINE_STATUS_LABELS: Record<string, string> = {
   repair: "TA'MIRDA",
 } satisfies Record<MachineStatus, string>
 
+/** Stanok signal ustuni (andon: Pico + MES agent) holatlari — `MachineOverview.andon_state`.
+ *  Backend enum'i YO'Q: qiymat Pico firmware'idan (`fsm.py`) xom keladi, shuning uchun
+ *  bu yerda bo'lmagan holat kodining o'zi bilan ko'rinadi. */
+export const ANDON_STATE_LABELS: Record<string, string> = {
+  PROCESSING: "Ishlov",
+  AWAIT_PART: "Detal kutilmoqda",
+  IDLE: "Kutish",
+  STOPPED: "Uzoq kutish",
+  FAULT: "Avariya",
+  OFF: "O'chiq",
+  BOOT: "Yoqilmoqda",
+}
+
 // Hamma joyda bir xil: kun.oy.yil (brauzer locale'iga bog'liq emas)
 const p2 = (n: number) => String(n).padStart(2, "0")
 
