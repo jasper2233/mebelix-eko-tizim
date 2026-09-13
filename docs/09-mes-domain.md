@@ -276,6 +276,7 @@ chiqadi), **holes**, **texture**, **route_codes** (marshrut jarayon kodlari `seq
   pastda material + sana + `N{label_num} {instance_no}/{count}`;
 - o'ng ustun: QR (`qrcode`, `d.qr_text`) tepada, ostida **vertikal detal eskizi** — ingichka kontur,
   kromka konturdan 1 mm tashqarida qalin chiziq, `texture` bo'lsa `l` O'QI bo'ylab 3 chiziq — yo'nalish eskizga ergashadi (`burilgan` bo'lsa vertikal, aks holda gorizontal; ilgari doim vertikal edi va 250×832 kabi l<w detalda chek teksturani 90° noto'g'ri ko'rsatib, kesish xaritasi bilan mos kelmasdi),
+  ishlangan qirra kontur ICHIDA chiziq bilan (paz uzuq, freza tutash) va qirraga tushmagan ishlov o'z joyi bilan — eskiz shunda 46 mm emas 41 mm (batafsil quyida, «`XncOp.machined_sides`»),
   cutmap'dagi **haqiqiy teshiklar** (`bores` aylana, `edge` qirra shtrixi; burilgan eskizda HAQIQIY 90° burilish `(x,y)→(y, l−x)` — xarita va GibSaw bilan bitta konvensiya, ilgari transpose/oyna edi), o'lchamlar en pastda va
   uzunlik o'ngda 90° aylantirilgan, har biri yoniga o'sha tomonlar kromka simvoli.
 
@@ -490,12 +491,15 @@ direktor ham ko'radi.
   sifatida YO'Q (`<gr>` da faqat `x1/y1/x2/y2`, frezada kontur nuqtalari).
   **Ikki amal ALOHIDA** (`tur="paz"` / `tur="freza"`), chunki stanok buyrug'i ham har xil:
   paz = `<gr>` = groove, detalga bir necha mm ariq; freza = kontur = mill, chuqurligi detal
-  qalinligicha, ya'ni kesib o'tadi. Prod korpusida o'lchandi: 51 paz 8..19 mm (qalinlikka
-  nisbat 0.50..1.19), 38 freza esa 16/16 mm — hammasi to'liq o'tuvchi. Ya'ni CHUQURLIK
-  ajratish uchun ishonchsiz, STRUKTURA (`<gr>` yoki kontur) esa aniq. GibSaw ham shu ikkisini
+  qalinligicha, ya'ni kesib o'tadi. Prod korpusida o'lchandi (45 loyiha, 2056 detal):
+  86 paz 8..20 mm, qalinlikka nisbat 0.50..1.25 — **21 tasi qalinlikdan CHUQUR** (16 mm
+  detalda 19-20 mm), ya'ni «ariq» ta'rifi ularga to'g'ri kelmaydi; 67 freza konturining
+  esa 67/67 da dp = qalinlik (66 ta 16/16, bittasi 18/18). Ya'ni CHUQURLIK ajratish uchun
+  ishonchsiz, STRUKTURA (`<gr>` yoki kontur) esa aniq. GibSaw ham shu ikkisini
   ajratadi (`mebelix.lbl`: `groove` → «П», `mill` → «Ф»), lekin faqat bor/yo'q bayrog'i
   sifatida — qaysi qirra ekani yo'q.
-  **Qoida** (har chegara prod korpusida — 21 loyiha, 976 detal — o'lchab tanlangan):
+  **Qoida** (chegaralar 21 loyihali korpusda tanlangan, keyin 45 loyiha / 2056 detalda
+  qayta o'lchangan — quyidagi raqamlarning HAMMASI shu kattaroq korpusdan):
   - KESMALAR bo'yicha: ikkala uchi ham qirradan `min(12 mm, o'lcham/3)` ichida bo'lgan
     kesmaning qirra bo'ylab uzunligi qo'shiladi; yig'indi `min(0.3 × o'lcham, 300 mm)` ga
     yetsa — qirra ishlanadi. NUQTALAR bulutini olish YARAMAYDI: konturning kirish nuqtasi
@@ -514,13 +518,13 @@ direktor ham ko'radi.
   Ostona endi HAR TURGA ALOHIDA qo'yiladi, ya'ni matematik jihatdan
   `paz ∪ freza ⊆` ilgarigi BIRLASHGAN hisob: bitta qirrada paz 200 mm + freza 200 mm
   bo'lsa, birga 400 mm ostonadan o'tardi, alohida ikkalasi ham o'tmaydi. Prod korpusida
-  bunday detal YO'Q — 976 detalning 665 tasida ishlov bor, farq 0 chiqdi (o'lchangan).
+  bunday detal YO'Q — 1496 detalda XNC dasturi bor, farq 0 chiqdi (o'lchangan).
 - **Chek eskizida** (`labels.py`) o'sha qirra kontur ICHIDA chiziq bilan chiziladi (kromka
   esa TASHQARIDA, tutash va qalin): **paz — UZUQ chiziq**, **freza — TUTASH chiziq**, EN
   raqami ostida esa «- - PAZ» / «— FREZA» izohi (ikkalasi bo'lsa ikkovi ham, 22 mm ga
   sig'adi — eskiz markazi 66 mm da qat'iy). KROMKA/OVAL terminalida ham xuddi shunday.
-  Prodda bir qirrada ikkala amal ham uchramaydi (21 loyihada 18 detal faqat pazli, 8 tasi
-  faqat frezali) — baribir ikkalasi tushsa PAZ g'olib, chunki uzuq chiziq ko'proq ma'lumot
+  Prodda bir qirrada ikkala amal ham uchramaydi (qirrasi aniqlangan 63 detalning 47 tasi
+  faqat pazli, 16 tasi faqat frezali, ustma-ust 0) — baribir ikkalasi tushsa PAZ g'olib, chunki uzuq chiziq ko'proq ma'lumot
   beradi. Tomon NOMI («o'ng») ATAYLAB yozilmaydi — eskiz uzun tomonni doim vertikal chizadi
   (`burilgan`), ya'ni nom eskizga zid tushardi. Eskiz ichidagi qolgan elementlar chiziqqa
   xalaqit bermasligi uchun: ishlangan qirra bo'lganda TEKSTURA chiziqlari o'sha qirradan
@@ -529,8 +533,9 @@ direktor ham ko'radi.
   chiziladi (teshik oq doira bilan to'ldiriladi va chiziqni o'chirardi). Uzuq chiziqning
   BO'LAK geometriyasi ham o'zgarmadi: bo'shliqqa tegadigan bo'lak butunligicha tashlanadi,
   qirqilmaydi (qirqilsa 18 ta eskiz balandligida qo'shimcha bo'lak chiqardi). O'lchangan:
-  paz/frezasi YO'Q 950/950 chek bayt-baytda bir xil, 18 ta pazli chekda esa eskiz
-  piksel-piksel bir xil, faqat izoh matni «- - PAZ/OVAL» → «- - PAZ» bo'ldi.
+  paz/frezasi ko'rinmaydigan 1993 chek (1933 ishlovsiz + 60 qirrasiz) bayt-baytda bir xil,
+  47 ta pazli chekda esa eskiz piksel-piksel bir xil, faqat izoh matni «- - PAZ/OVAL» →
+  «- - PAZ» bo'ldi; 16 ta frezali chekda uzuq chiziq tutashga aylandi (ko'zlangan).
 - **Qirraga tushmagan ishlov** (detal o'rtasidagi ariq, doira o'yiq) eskiz ICHIDA o'z joyi
   bilan chiziladi — paz uzuq, freza tutash, izoh o'sha-o'sha. Sababi o'lchangan: prod
   korpusida (45 loyiha, 2056 detal) ishlovli 123 detalning 63 tasida qirra aniqlanadi,
@@ -540,9 +545,15 @@ direktor ham ko'radi.
   Yo'llar `xnc_summary["groove_paths"]`/`["mill_paths"]` da saqlanadi — `XncOp.paths()`
   yoyni SAQLASHDAN oldin vatarlarga bo'ladi, ya'ni chizuvchi tomonda yoy matematikasi yo'q.
   `paths()` bir vaqtda `machined_sides` ning ham manbai: bitta geometriya, ikki iste'molchi.
-  O'lchangan: 1452 detalda refaktordan keyin aniqlash natijasi 0 farq; ishlovsiz 1933 chek
+  O'lchangan: 1496 detalda refaktordan keyin aniqlash natijasi 0 farq; ishlovsiz 1933 chek
   bayt-baytda bir xil; qirrasi bor 63 chek o'zgarmagan; 60 tasida yangi chiziq paydo bo'ldi
   (hammasida piksel farqi bor, ya'ni hech biri ko'rinmay qolmagan).
+  TEKSTURA bilan to'qnashuv: uzuq chiziqqa PARALLEL va ustma-ust tushgan tekstura chizig'i
+  uning bo'shliqlarini to'ldirib, PAZni FREZA qilib ko'rsatardi — 1784×283 teksturali
+  detalda (paz eni bo'ylab o'rtada) uzluksiz qora 14.5 mm ga yetgan, teksturasiz 1.8 mm
+  (o'lchangan). Shuning uchun yo'l bilan parallel tekstura chizig'i tashlanadi
+  (`_teksturasiz`); uchalasi ham tushib qolsa hech biri tashlanmaydi — tekstura
+  YO'NALISHI ham kerakli ma'lumot.
 - `app/services/excel.py: xlsx_response()` — openpyxl bilan bitta varaqli .xlsx stream
   (reports `?format=xlsx` orqasida).
 - Og'ir JSONB ustunlar ro'yxat so'rovlarida `defer()` bilan qoldiriladi:
@@ -607,7 +618,7 @@ direktor ham ko'radi.
     picker'da skan qilinsa proyekt o'zi ochiladi (`/qr/{qr}/order`); begona detalga aniq xato.
     Kromka ustunida tomon NOMI emas, qirra simvollari — yorliq eskizi detal o'lchamiga
     qarab buriladi (`labels.py` `burilgan`), shuning uchun qat'iy Chap/Tepa nomi to'g'ri kelmaydi.
-  · **OVAL** — o'sha KromkaView `oval` rejimda: bir panel va `done/sides` o'rniga faqat tugagan/tugamagan belgisi; qirralar ustuni 2026-09-12 dan OVAL da ham ko'rinadi (sarlavhasi «Qirralar») — ovalchi ham paz qaysi qirrada ekanini ko'rishi kerak. Har detal BITTA skan (`per_instance = 1`), shuning uchun hisoblagichning ma'nosi ham yo'q.
+  · **OVAL** — o'sha KromkaView `oval` rejimda: bir panel va `done/sides` o'rniga faqat tugagan/tugamagan belgisi; qirralar ustuni 2026-09-12 dan OVAL da ham ko'rinadi (sarlavhasi «Qirralar») — ovalchi ham paz/freza qaysi qirrada ekanini ko'rishi kerak (uzuq = paz, tutash = freza). Har detal BITTA skan (`per_instance = 1`), shuning uchun hisoblagichning ma'nosi ham yo'q.
   · **PRISADKA** (`Terminal/PrisadkaView`) — detallar + SCX fayllar; "Hammasini yuklab olish"
     File System Access API bilan BIR MARTA tanlangan papkaga (IndexedDB'da saqlanadi,
     `lib/scxDir.ts`) proyekt nomli subpapka ochib yozadi (har skandagi avto-SCX olib tashlangan — faqat shu tugma).

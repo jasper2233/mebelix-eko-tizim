@@ -297,7 +297,7 @@ joylashtirilmagan `usedCount="0"` detal esa OLMAYDI, §3.1) + KROMKA (kod 3, qir
 bo'yicha) + PRISADKA (kod 6, XNC da **har qanday** ishlov — teshik, qirra teshigi, paz yoki
 freza — bo'lsa). Paz va freza ROVER bosqichini **yaratmaydi**: roverdan chiqqan detal keyin
 bo'yalishi ham mumkinligini fayl bilmaydi, ya'ni marshrutni fayldan taxmin qilib bo'lmaydi.
-Paz/freza geometriyasi faqat SCX ga ketadi — yorliq eskizida ko'rinmaydi: eskiz `bores` va `edge` teshiklarinigina chizadi, П/Ф belgilari ataylab olib tashlangan (`labels.py:234`).
+Paz/freza geometriyasi SCX ga ham, YORLIQ ESKIZIGA ham ketadi (2026-09-12/13): qirra bo'ylab ketgani kontur ICHIDA chiziq bilan — paz UZUQ, freza TUTASH — va EN raqami ostida «- - PAZ» / «— FREZA» izohi; qirraga tushmagani (o'rtadagi ariq, doira o'yiq) esa eskiz ichida o'z joyi bilan (`labels.py: render_label_png`; manba `xnc_summary` dagi `groove_sides`/`mill_sides` va `groove_paths`/`mill_paths`, qoida — docs/09). GibSaw'ning detalga bitta П/Ф bayrog'i TAKRORLANMADI: bayroq emas, QAYSI QIRRA ko'rsatiladi.
 
 **Standartdan chetga chiqadigan hamma narsa — MES ichida.** Texnolog detallar matritsasida
 detalni "Nostandart" deb belgilaydi (`Part.is_custom`), so'ng "Nostandart detallar" tabida
@@ -357,7 +357,7 @@ GibLab "+Операция" ro'yxatida **to'qqiz tur** taklif qiladi:
 |---|---|---|
 | `CS` | Листовой раскрой — listni kesish | ✅ kesish xaritasi + yorliq raqamlari |
 | `EL` | Кромкооблицовка — kromkalash | ✅ kromka simvoli va materiali |
-| `XNC` | Обработка — CNC ishlov | ✅ har qanday ishlov (teshik, paz, freza) → PRISADKA bosqichi; paz va freza geometriyasi faqat SCX da (yorliq eskizida yo'q — §2.3) |
+| `XNC` | Обработка — CNC ishlov | ✅ har qanday ishlov (teshik, paz, freza) → PRISADKA bosqichi; paz/freza geometriyasi SCX ga VA yorliq eskiziga ketadi (qirra bo'ylab — uzuq/tutash chiziq, qirradan tashqarisi — eskiz ichidagi yo'l; §2.3) |
 | `O` | Комплектация — furnitura komplekti | ataylab jim: sanoqlar `simple` goodlarida bor |
 | `LB` | Этикетки — yorliq shablonlari | ataylab jim: tizim o'z yorlig'ini chiqaradi |
 | `CL` | Погонажный раскрой — profil kesish | ataylab jim + **ma'lumot yoziladi**: tsexda profil kesish posti yo'q, profillar tayyor keladi |

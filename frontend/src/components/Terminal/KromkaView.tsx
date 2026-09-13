@@ -319,6 +319,8 @@ export function KromkaView({
               {leftParts.map((p) => {
                 const finished = p.instances.every((i) => i.done >= p.sides)
                 const started = !finished && tier(p) === 0
+                const pazBor = (p.paz_sides ?? []).length > 0
+                const frezBor = (p.frez_sides ?? []).length > 0
                 return (
                   <tr
                     key={p.route_id}
@@ -359,13 +361,9 @@ export function KromkaView({
                           <span className="block max-w-[240px] truncate text-sm text-muted-foreground">
                             {edgeBands(p.edges)}
                           </span>
-                          {((p.paz_sides ?? []).length > 0 ||
-                            (p.frez_sides ?? []).length > 0) && (
+                          {(pazBor || frezBor) && (
                             <span className="block text-xs font-semibold text-sky-700">
-                              {[
-                                (p.paz_sides ?? []).length > 0 && "paz",
-                                (p.frez_sides ?? []).length > 0 && "freza",
-                              ]
+                              {[pazBor && "paz", frezBor && "freza"]
                                 .filter(Boolean)
                                 .join(" + ")}{" "}
                               — eskizdagi ichki chiziq

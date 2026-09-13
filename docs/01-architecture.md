@@ -418,6 +418,9 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   `route_codes` ni `part.is_custom` shartida to'ldiradi) — standart detalda
   ro'yxat bo'sh va qator umuman chizilmaydi; keyin material va sana; o'ng ustunda QR
   (`qrcode`, `instance.qr_text`) va vertikal detal eskizi.
+- Eskizda ishlangan qirra kontur ICHIDA chiziq bilan (paz uzuq, freza tutash) + EN
+  raqami ostida «- - PAZ»/«— FREZA» izohi, shunda eskiz 46 mm emas 41 mm balandlikda
+  chiziladi; qirraga tushmagan ishlov esa eskiz ichida o'z joyi bilan (batafsil docs/09).
 - Eskizda kromka konturdan 1 mm tashqarida qalin chiziq bilan, `part.txt` bo'lsa
   tekstura chiziqlari, va cutmap'dan HAQIQIY teshiklar: `load_label_data()`
   `order.cutmap["holes"][cell_id]` ni `part.label_num` bo'yicha topadi, `bores`

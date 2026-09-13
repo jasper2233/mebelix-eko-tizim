@@ -574,7 +574,8 @@ async def ingest_project(
                     "mill_sides": merged.machined_sides(pp.length, pp.width, tur="freza") if merged else [],
                     # Xom yo'llar — qirraga tushmagan ishlov (o'rtadagi ariq, doira o'yiq)
                     # chek eskizida SHULARDAN chiziladi; qirradagisi uchun chekkadagi
-                    # chiziq yetadi. Korpusda o'rtacha 217 bayt, jami 26 KB (o'lchangan).
+                    # chiziq yetadi. Ishlovli 123 detalda o'rtacha 209 bayt, jami 25 KB
+                    # (ixcham JSON, 45 loyihali korpusda o'lchangan).
                     "groove_paths": paths_json(merged.paths("paz")) if merged else [],
                     "mill_paths": paths_json(merged.paths("freza")) if merged else [],
                 },

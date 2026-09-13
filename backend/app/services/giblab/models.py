@@ -206,8 +206,9 @@ class XncOp:
     def machined_sides(self, length: float | None, width: float | None, *, tur: Literal["paz", "freza"]) -> list[str]:
         """`tur` amali QAYSI QIRRA bo'ylab ketadi — `l`/`r`/`t`/`b`, tartiblangan.
 
-        `paz` — `<gr>` (stanokda groove), detalga bir necha mm ariq; `freza` — kontur
-        (stanokda mill), chuqurligi detal qalinligicha, ya'ni kesib o'tadi.
+        `paz` — `<gr>` (stanokda groove), odatda ariq, LEKIN korpusdagi 86 pazdan
+        21 tasi qalinlikdan chuqur (16 mm detalda 19-20 mm) — ya'ni chuqurlik ajratmaydi,
+        struktura ajratadi; `freza` — kontur (stanokda mill), 67/67 da dp = qalinlik.
 
         .project faylida tomon ATRIBUT sifatida yo'q (`<gr>` da faqat x1/y1/x2/y2,
         frezada esa kontur nuqtalari) — lekin geometriyadan kelib chiqadi.

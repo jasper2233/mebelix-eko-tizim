@@ -156,6 +156,18 @@ _FONT_BOLD = (
 _MM = 8  # piksel/mm — 203 dpi (8 dot/mm), ya'ni 80x60 mm blank = 640x480 px
 
 
+def _teksturasiz(band: list[int], joylar: tuple[int, ...], tol: int) -> list[int]:
+    """Mid-yo'l bilan ustma-ust tushadigan tekstura chizig'ini tashlaydi.
+
+    Hammasi tushib qolsa — hech biri tashlanmaydi: tekstura YO'NALISHI ham kerakli
+    ma'lumot (250x832 detalda arrachilar aynan shundan shikoyat qilgan).
+    """
+    if not band:
+        return list(joylar)
+    qolgan = [j for j in joylar if all(abs(j - b) > tol + 1 for b in band)]
+    return qolgan or list(joylar)
+
+
 def _canvas() -> tuple[Any, Any, int]:
     """Bo'sh 80x60 mm blank — to'rtala chek shundan boshlanadi."""
     from PIL import Image, ImageDraw
@@ -446,8 +458,36 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
         paz_yollari = [] if paz_tomonlari else ishlov.paz_yollari
         frez_yollari = [] if frez_tomonlari else ishlov.frez_yollari
         # Bir qirrada ikkalasi ham bo'lsa paz g'olib (uzuq chiziq): prodda bunday detal
-        # yo'q (21 loyihada 18 ta faqat pazli, 8 ta faqat frezali), o'lchangan.
+        # yo'q (45 loyihada 47 ta faqat pazli, 16 ta faqat frezali, ustma-ust 0), o'lchangan.
         ishlangan_tomonlari = paz_tomonlari + [t for t in frez_tomonlari if t not in paz_tomonlari]
+
+        # Detal koordinatasi -> eskiz piksellari. Teshiklar bilan BIR XIL o'girish
+        # (yuqoridagi `gor, ver`), chunki ikkalasi ham bitta `ParsedPart` dan keladi.
+        # Nuqta detaldan tashqarida bo'lishi normal (freza kirish yo'li x=-30) —
+        # o'q bo'yicha eskiz chegarasiga bosiladi.
+        uzun_mm, en_mm = float(d.length or 1), float(d.width or 1)
+        ulush_x = bw / (en_mm if burilgan else uzun_mm)
+        ulush_y = bh / (uzun_mm if burilgan else en_mm)
+
+        def eskizga(x: float, y: float) -> tuple[int, int]:
+            gor, ver = (y, uzun_mm - x) if burilgan else (x, y)
+            return (
+                min(max(bx + int(gor * ulush_x), bx), bx + bw),
+                min(max(by + int(ver * ulush_y), by), by + bh),
+            )
+
+        # Tekstura chizig'i mid-yo'l bilan USTMA-UST tushmasin. Parallel va bir xil
+        # koordinatadagi tekstura chizig'i uzuq chiziqning bo'shliqlarini to'ldirib,
+        # PAZni FREZA qilib ko'rsatardi: 1784x283 teksturali detalda (paz eni bo'ylab
+        # o'rtada) uzluksiz qora 14.5 mm ga yetgan, teksturasiz 1.8 mm (o'lchangan).
+        band: list[int] = []
+        for yol in paz_yollari + frez_yollari:
+            nuqtalar = [eskizga(n[0], n[1]) for n in yol]
+            for (x1, y1), (x2, y2) in zip(nuqtalar, nuqtalar[1:], strict=False):
+                if burilgan and abs(x1 - x2) <= 2:  # tekstura vertikal — parallel yo'l
+                    band.append(x1)
+                elif not burilgan and abs(y1 - y2) <= 2:
+                    band.append(y1)
 
         # Tekstura yo'nalishi: 3 ingichka chiziq UZUNLIK (`l` — teksturali
         # materialda birinchi o'lcham, tekstura qulflangan o'q) BO'YLAB.
@@ -478,7 +518,7 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
                 # o'rtada to'planib qolardi. SILJISH ko'rinishida — pazsiz chekda
                 # nol, ya'ni chiqish yillar davomidagidek bayt-bayt o'zgarmaydi.
                 siljish = int(bh * 0.18) if ishlangan_tomonlari else 0
-                for xx in (orta - gap, orta, orta + gap):
+                for xx in _teksturasiz(band, (orta - gap, orta, orta + gap), w2):
                     draw.line(
                         (xx, by + (bh - tl) // 2 - siljish, xx, by + (bh + tl) // 2 - siljish),
                         fill="black",
@@ -491,7 +531,7 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
                 orta, balandlik = (tepa + past) // 2, max(6, past - tepa)
                 gap = max(3, balandlik // 4)
                 siljish = int(bw * 0.18) if ishlangan_tomonlari else 0
-                for yy in (orta - gap, orta, orta + gap):
+                for yy in _teksturasiz(band, (orta - gap, orta, orta + gap), w2):
                     draw.line(
                         (bx + (bw - tl) // 2 - siljish, yy, bx + (bw + tl) // 2 - siljish, yy),
                         fill="black",
@@ -537,18 +577,8 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
 
         # Qirraga tushmagan ishlov — haqiqiy joyi bilan. Yo'llar ingest'da yoylari
         # vatarlarga bo'lingan holda saqlanadi (`XncOp.paths`), shuning uchun bu yerda
-        # poliliniya chizishdan boshqa ish yo'q. Nuqta eskizdan tashqarida bo'lishi
-        # normal (asbob kirish yo'li x=-30 bo'lishi mumkin) — qirqib qo'yiladi.
-        if (paz_yollari or frez_yollari) and d.length and d.width:
-            ulush_x = bw / (d.width if burilgan else d.length)
-            ulush_y = bh / (d.length if burilgan else d.width)
-
-            def eskizga(x: float, y: float) -> tuple[int, int]:
-                gor, ver = (y, (d.length or 0) - x) if burilgan else (x, y)
-                return (
-                    min(max(bx + int(gor * ulush_x), bx), bx + bw),
-                    min(max(by + int(ver * ulush_y), by), by + bh),
-                )
+        # poliliniya chizishdan boshqa ish yo'q.
+        if paz_yollari or frez_yollari:
 
             def yol_chiz(yollar: list[list[list[float]]], *, uzuqmi: bool) -> None:
                 for yol in yollar:
@@ -612,7 +642,6 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
                         if min(b + uzuq, uzunlik) < orta - bosh or b > orta + bosh
                     ]
                 else:
-                    # Tutash chiziq bo'shliqni CHETLAB o'tib quriladi — qo'shimcha filtr shart emas
                     bolaklar = [(0, orta - bosh), (orta + bosh, uzunlik)]
                 for boshi, oxiri in bolaklar:
                     if boshi >= oxiri:
@@ -647,7 +676,7 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
         # Uzuq chiziq izohi — EN raqamining ostida, qat'iy koordinatada EMAS: ingichka
         # detalda (masalan 100x450) eskiz 46 mm balandlikka yetadi va raqam 51 mm ga
         # tushadi — qat'iy y=50.5 dagi izoh uning ustiga bosilardi (o'lchangan).
-        if ishlangan_tomonlari or paz_yollari or frez_yollari:
+        if ishlangan_bor:
             text(
                 (bx + bw // 2) / mm,
                 (by + bh + off + bt + int(0.6 * mm)) / mm + 4.0,
