@@ -1,11 +1,12 @@
 // Ish markazlari: har postdagi stanok/joy — nom, post, holat + JONLI ustunlar
-// (`/machines/overview`): kim biriktirilgan, smenada nechta odam, bugungi skan,
-// oxirgi skan, biriktirilgan tugallanmagan qadamlar. Admin uchun CRUD.
+// (`/machines/overview`): stanok signal ustuni (andon), kim biriktirilgan, smenada
+// nechta odam, bugungi skan, oxirgi skan, biriktirilgan tugallanmagan qadamlar.
+// Admin uchun CRUD.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { Pencil, Plus, Trash2 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import {
   type MachineOverview,
@@ -42,8 +43,10 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
+import { useMesWs } from "@/hooks/useMesWs"
 import { requireAccess } from "@/lib/guards"
 import {
+  ANDON_STATE_LABELS,
   formatAgo,
   formatDateTime,
   isAdmin,
@@ -71,6 +74,28 @@ const STATUS_STYLE: Record<string, string> = {
   inactive: "border-transparent bg-muted text-muted-foreground",
 }
 
+/** Stanok signal ustuni rangi: yashil — ishlayapti (miltillovchi nuqta — detal
+ * kutilmoqda), sariq/to'q sariq — kutish, qizil — avariya, kulrang — o'chiq.
+ * Rang yolg'iz emas, yonida doim matn turadi. */
+const ANDON_STYLE: Record<string, string> = {
+  PROCESSING: "border-emerald-300 bg-emerald-100 text-emerald-900",
+  AWAIT_PART: "border-emerald-300 bg-background text-emerald-800",
+  IDLE: "border-amber-300 bg-amber-50 text-amber-900",
+  STOPPED: "border-orange-300 bg-orange-100 text-orange-900",
+  FAULT: "border-red-300 bg-red-100 text-red-900",
+  OFF: "border-transparent bg-muted text-muted-foreground",
+  BOOT: "border-transparent bg-muted text-muted-foreground",
+}
+
+/** Holat qancha davom etayotgani: "hozirgina", "12 daq", "2 soat 5 daq". */
+function formatSince(iso: string): string {
+  const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000)
+  if (min < 1) return "hozirgina"
+  if (min < 60) return `${min} daq`
+  const h = Math.floor(min / 60)
+  return min % 60 ? `${h} soat ${min % 60} daq` : `${h} soat`
+}
+
 /** O'chirishga to'siqlar — server `_blockers` bilan bir xil ro'yxat, lekin
  * tugma bosilmasdan OLDIN ko'rinadi (title). */
 function blockers(o: MachineOverview | undefined): string[] {
@@ -95,6 +120,19 @@ function WorkCentersPage() {
     queryFn: async () => (await MachinesService.readMachinesOverview()).data,
     refetchInterval: 60_000,
   })
+  // Stanok holati o'zgarishi bilan jadval darhol yangilanadi — 60 s pollni kutmaydi
+  const queryClient = useQueryClient()
+  useMesWs((event) => {
+    if (event.type === "andon.state")
+      queryClient.invalidateQueries({ queryKey: ["machines", "overview"] })
+  })
+  // "12 daq" matni holat o'zgarmasa ham o'sib borsin (so'rov ma'lumoti o'zgarmasa
+  // komponent qayta chizilmaydi)
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 30_000)
+    return () => clearInterval(t)
+  }, [])
   const machines = machinesQ.data
   const posts = postsQ.data
   // Postlarsiz jadval buzuq chiqadi (bo'sh Post ustuni, noto'g'ri tartib),
@@ -116,7 +154,7 @@ function WorkCentersPage() {
         (postById.get(b.post_id)?.order_index ?? 0) ||
       a.name.localeCompare(b.name),
   )
-  const colSpan = admin ? 8 : 7
+  const colSpan = admin ? 9 : 8
 
   return (
     <div>
@@ -147,6 +185,9 @@ function WorkCentersPage() {
               <TableHead>Ish markazi</TableHead>
               <TableHead>Post</TableHead>
               <TableHead>Holat</TableHead>
+              <TableHead title="Stanok signal ustuni (andon) — chiroqlarni Pico o'qiydi, MES agenti yuboradi. Jonli: holat va qancha vaqtdan beri">
+                Stanok
+              </TableHead>
               <TableHead
                 className="text-right"
                 title="Bugun beyjik bilan ochilgan, hali yopilmagan smenalar"
@@ -215,6 +256,43 @@ function WorkCentersPage() {
                       >
                         {MACHINE_STATUS_LABELS[m.status]}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {o?.andon_state ? (
+                        <div>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "gap-1.5",
+                              ANDON_STYLE[o.andon_state] ??
+                                "border-transparent bg-muted text-muted-foreground",
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "inline-block size-1.5 rounded-full bg-current",
+                                o.andon_state === "AWAIT_PART" &&
+                                  "motion-safe:animate-pulse",
+                              )}
+                            />
+                            {ANDON_STATE_LABELS[o.andon_state] ?? o.andon_state}
+                          </Badge>
+                          {o.andon_since && (
+                            <div className="num text-xs text-muted-foreground">
+                              {formatSince(o.andon_since)}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        // Signal ustuni ulanmagan stanok ham, aloqasi uzilgani ham shu
+                        // ko'rinishda: server 90 s xabar olmasa holatni o'zi o'chiradi
+                        <span
+                          className="text-muted-foreground"
+                          title="Signal ustuni ulanmagan yoki MES agentidan 90 soniyadan beri xabar yo'q"
+                        >
+                          —
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="num text-right">
                       {o?.on_shift ? (

@@ -12,6 +12,7 @@ from app.models import BridgeAgent, Machine, Order, PartRoute, Scan, User, WorkS
 from app.models.enums import OrderStatus, SessionStatus
 from app.schemas.common import Message
 from app.schemas.machines import MachineCreate, MachineOverview, MachineRead, MachineUpdate
+from app.services.andon import read_live
 from app.services.scanning import crew_sessions
 
 router = APIRouter(prefix="/machines", tags=["machines"])
@@ -202,6 +203,8 @@ async def read_machines_overview(db: SessionDep, _: StaffReadUser) -> list[Machi
         for mid in machines:
             if post_of.get(mid) == post_id and (machine_id is None or machine_id == mid):
                 queue[mid] += int(remaining)
+    # Andon jonli holati Redis'da (`services/andon.py`); kalit yo'q — andon ulanmagan yoki aloqa yo'q
+    andon = await read_live(machines)
     return [
         MachineOverview(
             machine_id=mid,
@@ -213,6 +216,8 @@ async def read_machines_overview(db: SessionDep, _: StaffReadUser) -> list[Machi
             last_scan_at=scans.get(mid, (0, None))[1],
             unfinished_routes=unfinished.get(mid, 0),
             queue_scans=queue.get(mid, 0),
+            andon_state=andon[mid]["state"] if mid in andon else None,
+            andon_since=datetime.fromtimestamp(andon[mid]["since"], UTC) if mid in andon else None,
         )
         for mid in machines
     ]

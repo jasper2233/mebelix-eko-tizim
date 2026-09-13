@@ -380,6 +380,10 @@ Agent sozlamalari (bular **server `.env`** ida emas — printerli mashinada, `%A
 | `PRINTER_NAME` | avto-topish (rusumlar ro'yxati) | printer nomini qo'lda berish — faqat avto-topish mos kelmaganda |
 | `QUEUE_FILE` | `%APPDATA%\MebelixAgent\print-queue.jsonl` | lokal durable navbat fayli (avtostartda ishchi papka System32 — nisbiy yo'l ishlamaydi); eski o'rnatishlardagi exe yonidagi navbat fayli birinchi ishga tushishda avtomatik shu yerga ko'chiriladi |
 | `SCAN_FORWARD` | `1` (yoqiq) | stanok skanerini passiv kuzatib MES'ga forvard qilish; `0` o'chiradi |
+| `ANDON` | `1` (yoqiq) | stanok signal ustunini (Pico, USB) o'qib `POST /api/v1/bridge-agents/andon` ga yuborish; `0` o'chiradi. Pico topilmagan kompyuterda jim turadi |
+| `ANDON_PORT` | avto (VID `2E8A`) | Pico COM portini qo'lda berish |
+| `ANDON_TAKEOVER` | `1` (yoqiq) | port band bo'lsa eski `PrisadkaMES.exe` ni BIR MARTA to'xtatib avtozapuskdan olish (`andon-takeover.done`); `0` o'chiradi |
+| `ANDON_QUEUE_FILE` | `%APPDATA%\MebelixAgent\andon-queue.jsonl` | andon hodisalarining durable navbati (chek navbatidan alohida; 20 000 qatordan oshsa eng eskisi tashlanadi) |
 
 Navbat fayli `.gitignore` da (`bridge-agent/print-queue.jsonl`).
 
@@ -388,11 +392,11 @@ Navbat fayli `.gitignore` da (`bridge-agent/print-queue.jsonl`).
 `bridge-agent/` katalogida:
 
 ```bash
-pip install "websockets>=14" pywin32 pillow pynput pystray pyinstaller
+pip install "websockets>=14" pywin32 pillow pynput pystray pyserial pyinstaller
 pyinstaller --onefile --noconsole --icon mebelix.ico --name mebelix-agent agent.py
 ```
 
-`websockets>=14` majburiy — agent kodi v14+ API'siga (`additional_headers`) yozilgan, eski v13 shim olib tashlangan; v13 bilan yig'ilgan exe serverga ulanolmaydi. `pystray` ham majburiy: usiz qurilgan exe tray belgisisiz chiqadi (`start_tray` ImportError bilan jimgina o'chadi). Joriy `AGENT_VERSION` — `1.4.6`.
+`websockets>=14` majburiy — agent kodi v14+ API'siga (`additional_headers`) yozilgan, eski v13 shim olib tashlangan; v13 bilan yig'ilgan exe serverga ulanolmaydi. `pystray` ham majburiy: usiz qurilgan exe tray belgisisiz chiqadi (`start_tray` ImportError bilan jimgina o'chadi). `pyserial` ham shunday — usiz andon (Pico) qismi jimgina o'chadi (`start_andon`). Joriy `AGENT_VERSION` — `1.5.0`.
 
 Natijadagi `mebelix-agent.exe` ni **CI o'zi quradi va serverga qo'yadi** (`agent` job → `agent-dist/` artifact, deploy uni rsync bilan serverga eltadi): paneldagi havola ham, agentning `self_update()` i ham exe'ni `GET /api/v1/bridge-agents/download` dan, versiya/sha256 ni esa `GET /api/v1/bridge-agents/latest` dan oladi. Qo'lda (flashka) ko'chirish faqat serverga kirish yo'q bo'lganda kerak; binar repoda saqlanmaydi. Paneldagi versiya belgisi (handshake'dagi `X-Agent-Version` → `bridge_agent.version`) qaysi mashinada eski exe qolganini ko'rsatadi.
 

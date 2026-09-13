@@ -18,20 +18,26 @@ import re
 import secrets
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import FileResponse
+from pydantic import ValidationError
 from redis.asyncio import Redis as AsyncRedis
 from sqlalchemy import select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.api.deps import AdminUser, SessionDep, client_ip
 from app.core.config import settings
 from app.core.exceptions import DuplicateValueException, NotFoundException
 from app.core.ws import ws_manager
 from app.crud import crud_bridge_agents, crud_machines, log_action
-from app.models import BridgeAgent, Machine, Post
+from app.models import AndonEvent, BridgeAgent, Machine, Post
 from app.schemas.bridge_agents import (
     AgentRelease,
+    AndonEventIn,
+    AndonPush,
+    AndonPushResult,
     BridgeAgentCreate,
     BridgeAgentRead,
     BridgeAgentUpdate,
@@ -42,6 +48,7 @@ from app.schemas.bridge_agents import (
 )
 from app.schemas.common import Message
 from app.schemas.terminal import ScanResult
+from app.services.andon import save_live
 from app.services.scanning import (
     ScanRejected,
     active_session,
@@ -388,6 +395,110 @@ async def read_bridge_logs(db: SessionDep, _: AdminUser, agent_id: int) -> list[
     async with AsyncRedis.from_url(settings.REDIS_URL) as redis:
         rows = await redis.lrange(AGENT_LOG_KEY.format(agent_id), 0, AGENT_LOG_KEEP - 1)
     return [r.decode() if isinstance(r, bytes) else r for r in rows]
+
+
+#: Agent soati noto'g'ri bo'lsa kelajakdagi vaqt yozilmasin — shundan ko'p oldinga
+#: ketgan hodisa vaqti server vaqti bilan almashtiriladi.
+_ANDON_CLOCK_SKEW = timedelta(minutes=5)
+
+
+def _andon_time(ts: int, now: datetime) -> datetime:
+    """Hodisa vaqti: agent qo'ygan `ts`, bo'lmasa yoki kelajakda bo'lsa — server vaqti."""
+    if ts <= 0:
+        return now
+    at = datetime.fromtimestamp(ts, UTC)
+    return now if at > now + _ANDON_CLOCK_SKEW else at
+
+
+@router.post("/andon", response_model=AndonPushResult, operation_id="push_andon_events")
+async def push_andon_events(
+    db: SessionDep,
+    body: AndonPush,
+    authorization: str = Header(default=""),
+) -> AndonPushResult:
+    """Stanok signal ustuni (andon): agent Pico'dan USB orqali olgan hodisalarni yuboradi.
+
+    HTTP, `/ws/bridge` orqali emas — `/logs` bilan bir xil sabab: o'sha soketda chek
+    jo'natish va ack mantiqi bor, boshqa xabar ack o'rniga o'qilsa chop etish buzilardi.
+
+    Ish markazi agentning bog'lanishidan olinadi. Takror hodisa (`machine_id, session,
+    seq`) jimgina tashlanadi: agent javob ololmay qolsa partiyani qayta yuboradi.
+    200 javobda agent partiyani navbatdan o'chiradi — buzuq hodisa ham (`skipped`),
+    chunki qayta yuborish uni tuzatmaydi, navbatni esa abadiy to'sib qo'yardi.
+    """
+    agent = await _agent_by_token(db, authorization)
+    if agent.machine_id is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Agent ish markaziga bog'lanmagan — stanok holati qaysi ish markazniki ekani noma'lum.",
+        )
+    machine_id, agent_id = agent.machine_id, agent.id
+    now = datetime.now(UTC)
+
+    rows: list[dict[str, Any]] = []
+    skipped = 0
+    for raw in body.events:
+        try:
+            ev = AndonEventIn.model_validate(raw)
+        except ValidationError:
+            skipped += 1
+            continue
+        # NUL belgini Postgres na matnda, na JSONB da qabul qiladi — tekshiruvdan o'tib
+        # INSERT da yiqilsa, butun partiya 500 bo'lib agent navbatini to'sib qo'yardi
+        if "\\u0000" in json.dumps(raw):
+            skipped += 1
+            continue
+        rows.append(
+            {
+                "machine_id": machine_id,
+                "agent_id": agent_id,
+                "session": ev.session,
+                "seq": ev.seq,
+                "kind": ev.type,
+                "state": ev.state,
+                "prev_state": ev.prev_state,
+                "prev_duration_s": ev.prev_duration_s,
+                "happened_at": _andon_time(ev.ts, now),
+                "payload": ev.model_dump(),
+                "is_deleted": False,
+            }
+        )
+
+    accepted = 0
+    if rows:
+        inserted = await db.execute(
+            pg_insert(AndonEvent)
+            .values(rows)
+            .on_conflict_do_nothing(index_elements=["machine_id", "session", "seq"])
+            .returning(AndonEvent.id)
+        )
+        accepted = len(inserted.all())
+        await db.commit()
+
+    if body.current is not None:
+        live = {
+            "state": body.current.state,
+            "since": body.current.since,
+            "lamps": body.current.lamps,
+            "part_count": body.current.part_count,
+            "agent_id": agent_id,
+            "updated_at": int(now.timestamp()),
+        }
+        # Bir xil holat har 30 soniyada qayta keladi (TTL yangilanishi) — ekranlarga
+        # faqat haqiqiy o'zgarish tarqatiladi
+        if await save_live(machine_id, live):
+            await ws_manager.publish(
+                "andon.state",
+                {
+                    "machine_id": machine_id,
+                    "state": body.current.state,
+                    "since": body.current.since,
+                    "lamps": body.current.lamps,
+                },
+                machine_id=machine_id,
+            )
+
+    return AndonPushResult(accepted=accepted, duplicates=len(rows) - accepted, skipped=skipped)
 
 
 #: Beyjik QR'i — UUID (Employee.badge_id String(36)). Detal QR'ida esa DOIM `_`

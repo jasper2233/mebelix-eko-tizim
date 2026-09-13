@@ -131,6 +131,16 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   sukut qiymatlar, hozir bitta: `custom_part_suffix = "#"`). Nega `.env` emas: belgini
   o'zgartirish uchun serverga kirib konteynerni qayta ishga tushirish kerak bo'lardi.
   Nega kalit/qiymat: sahifaga keyin stanoklar sozlamalari qo'shiladi.
+- `AndonEvent` (`andon_event`, `5d8e2a61c0f4`) — stanok signal ustunidan (Pico → MES agent →
+  `POST /bridge-agents/andon`) kelgan XOM hodisa: `machine_id` FK (agent bog'lanishidan, Pico'dagi
+  `MACHINE_ID` matnidan emas), `agent_id` FK NULL, `session(16)` + `seq` (Pico kaliti — har
+  yuklanishda yangi sessiya, `seq` uning ichida uzluksiz), `kind(10)` (`state` | `cycle`),
+  `state`/`prev_state(16)`, `prev_duration_s`, `happened_at` (agent qo'ygan vaqt — USB rejimda Pico
+  soatsiz), `payload` JSONB (hodisaning o'zi, to'liq). Indekslar: `ix_andon_event_key`
+  UNIQUE `(machine_id, session, seq)` — qayta yuborish takrorini tashlaydi; `ix_andon_event_machine_at`
+  `(machine_id, happened_at)`. 1-bosqich: faqat xom tarix yig'iladi; to'xtashlar va OEE keyingi
+  bosqichda shu jadvaldan quriladi (eski `stop_reason`/`machine_stop` hali LEGACY). Jonli holat
+  jadvalda emas — Redis'da (`services/andon.py`).
 - Standart (`is_custom=False`) detal fayldan faqat ARRA (kod 1) + KROMKA (kod 3, qirralar soni bo'yicha) + PRISADKA (kod 6) oladi; PRISADKA qadami HAR QANDAY ishlovda ochiladi — teshik, qirra teshigi, paz yoki freza (`giblab/models.py: ParsedPart.stage_sides`; ilgari faqat TESHIK sanalardi va paz/freza-only detal marshrutsiz qolardi — `a7c419e0b3d5`, §4.4). Paz/freza uchun alohida ROVER qadami ataylab yaratilmaydi — roverdan chiqqan detal keyin bo'yalishi mumkinligini fayl bilmaydi (geometriya baribir SCX va yorliq eskiziga ketadi).
 
 **Og'ir JSONB'larni defer qilish** — `order.py` da ikkita modul-darajali tuple: `ORDER_FAT_COLUMNS = (Order.cutmap, Order.survey, Order.material_usage, Order.machine_assignments)` va `PART_FAT_COLUMNS = (Part.xnc_summary, Part.note)`. Ro'yxat/hisobot so'rovlari ularni `defer()` bilan tashlab yuboradi — busiz 100 talik buyurtma reestri 2.2 MB kesish xaritasini bazadan tortib parse qilib tashlar edi (o'lchov: 284 ms → 5 ms). `Part.edges` ataylab ro'yxatda YO'Q — hajm hisobida kerak. Kartochka so'rovlarida ustunlar odatdagidek yuklanadi. `/terminal/orders` esa tuple'ning faqat yarmini — `survey` va `machine_assignments` ni — defer qiladi: `cutmap` va `material_usage` terminal kartasining o'zida ishlatiladi.
@@ -299,6 +309,7 @@ Umumiy "NAVBATDAGI VAZIFALAR" jadvali (`TaskRow`) va `/terminal/tasks` endpointi
 | | `Paginated[T]` | Standart sahifalangan ro'yxat javobi: `{data: list[T], count: int}` — registr ro'yxatlarida (users, clients, employees, orders, audit). Postlar/ish markazlari/bridge-agentlar va terminal yordamchi ro'yxatlari (`terminal/employees`, `terminal/orders`) xom `list[...]` qaytaradi — sahifalanmaydi |
 | `backend/app/schemas/health.py` | `HealthCheck`, `ReadyCheck` | Liveness/readiness endpointlari; `ReadyCheck` `database` va `redis` holatini ham qaytaradi |
 | `backend/app/schemas/bridge_agents.py` | `BridgeAgentRead`, `BridgeAgentCreate`, `BridgeAgentUpdate`, `BridgeScanRequest`, `BridgePairRequest`, `BridgePairResponse`, `AgentRelease` (CI qurgan oxirgi agent exe — `version`, `sha256`; manbasi `agent-dist/version.json`), `BridgeLogPush` (agent log push tanasi — `lines`, ≤200) | MES agentlari (1.4.2-bo'lim): `BridgeAgentRead` `token_hash` o'rniga `paired: bool` beradi, `pair_code` faqat muddati o'tmagan bo'lsa; `BridgeAgentUpdate` — `machine_id`/`can_print` PATCH body; `BridgeScanRequest` — skan-forvard body (`POST /bridge-agents/scan`, javobi `ScanResult`); `BridgePairResponse.token` — tokenning yagona ko'rinishi |
+| `backend/app/schemas/bridge_agents.py` (andon) | `AndonEventIn`, `AndonCurrent`, `AndonPush`, `AndonPushResult` | `POST /bridge-agents/andon`: Pico hodisasi (`extra="allow"` — qolgan maydonlar `payload` ga to'liq tushadi), jonli holat, partiya (`events` — xom lug'atlar, har biri serverda alohida tekshiriladi) va natija (`accepted`/`duplicates`/`skipped`) |
 | `backend/app/schemas/tablo.py` | `StageAgg`, `TabloPostCol`, `TabloOrderRow`, `TabloMatrix`, `TabloPartRow`, `TabloOrderDetail` | TABLO javob modellari (avval `tablo.py` route ichida inline edi); `TabloMatrix.posts` endi typed (`TabloPostCol`) |
 | `backend/app/schemas/reports.py` | `EmployeeProductivity`, `ProductivityReport`, `OrderReportRow`, `OrdersReport`, `MaterialUsageRow`, `MaterialsReport`, `DashboardToday`, `DashboardOrders`, `ReadyOrder`, `PostLoad`, `TrendDay`, `DashboardMoney`, `DashboardStats` | Hisobot/dashboard javob modellari (avval `reports.py` route ichida inline edi) |
 | `backend/app/schemas/audit.py` | `AuditLogRead`, `AuditSummaryRow` | Loglar sahifasi qatori (avval route ichida inline edi) |
@@ -405,7 +416,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 
 ### 4.4 Versiyalar zanjiri — `backend/app/migrations/versions/`
 
-48 ta migratsiya, head: `2f1649a8968e`.
+51 ta migratsiya, head: `5d8e2a61c0f4`.
 
 **Olib tashlangan ikki modulning migratsiyalari ATAYLAB qoldirilgan** — OEE
 (37–39) va materiallar ombori (27–28). Modul kodi butunlay
@@ -480,6 +491,8 @@ va 7 yetim ustun**; hammasi `migrations/env.py` dagi
 | 47 | `1cfd3b2182fc` | `1cfd3b2182fc_prisadka_one_scan_per_instance.py` | **PRISADKA — bitta skan** (ma'lumot migratsiyasi): ikki yuzli detal (old + orqa `_2` XNC) qadamida `per_instance=2` edi — prisadkachi bitta detalni «0/2» deb ko'rar, bir QR'ni ikki marta skanlardi; SCX ikkala yuzni bitta faylga birlashtirgani uchun skan bitta. `per_instance>1` bo'lgan PRISADKA qadamlari → `per_instance=1, total_required=part.count` (prodda 29 ta; `total_done` tegilmaydi — bir marta skanlangan nusxa tugagan hisoblanadi). Downgrade `xnc_summary.sides=2` bo'yicha qaytaradi. Scratch'da upgrade/check/downgrade sinalgan |
 | 48 | `2f1649a8968e` | `2f1649a8968e_serial_part_instance_qr_unique_index.py` | **Seriyali detal ID unikal indeksi** — `ix_part_instance_qr_serial` (UNIQUE `qr_text`, PARTIAL `NOT is_deleted AND qr_text ~ '^B-[0-9]{4}-[0-9]+_'`): 2026-09-03 dan QR `{buyurtma}_...` (docs/11) va butun tizimda unikal; eski prefikssiz qatorlar predikatdan tashqarida (jonli buyurtmalar orasida takrorlanishi mumkin edi — indeks ularsiz yaratiladi). Scratch Postgres'da upgrade/check/downgrade sinalgan |
 | 49 | `9c4e1a7b2d03` | `9c4e1a7b2d03_part_instance_qr_single_unique_index.py` | **`part_instance` indekslari bittaga tushdi** — `ix_part_instance_qr_serial` predikati `NOT is_deleted` ga soddalashdi (prefiks sharti ketdi: 2026-09-05 MVP tozalashdan keyin prefikssiz jonli nusxa 0), ortiqcha `ix_part_instance_order_qr` va `ix_part_instance_qr_text` o'chirildi. Prod nusxasida upgrade/downgrade/`alembic check` va ikki buyurtmada bir xil QR rad etilishi sinalgan |
+| 50 | `7e6946ebd00d` | `7e6946ebd00d_system_setting_runtime_sozlamalar.py` | **`system_setting`** — ish vaqtida admin tahrirlaydigan kalit/qiymat sozlamalar (§1.4); birinchi kalit `custom_part_suffix` |
+| 51 | `5d8e2a61c0f4` | `5d8e2a61c0f4_andon_event_stanok_signal_ustuni.py` | **`andon_event`** — stanok signal ustunidan (Pico → MES agent) kelgan xom hodisalar (§1.4): UNIQUE `(machine_id, session, seq)`, `(machine_id, happened_at)` indeksi. Eski OEE jadvallariga (`stop_reason`, `machine_stop`) tegmaydi |
 
 Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kind=DOCUMENT` + `meta` JSONB bilan ishlatiladi (1.4.1-bo'lim).
 

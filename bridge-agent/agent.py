@@ -22,6 +22,11 @@ Env sozlamalari (ixtiyoriy, pairing o'zi to'ldiradi):
     BRIDGE_TOKEN — token (pairing bergan yoki serverdagi umumiy token)
     PRINTER_NAME — printer nomini qo'lda berish (avto-topish o'rniga)
     QUEUE_FILE    — lokal navbat fayli (default %APPDATA%\MebelixAgent\print-queue.jsonl)
+    ANDON         — stanok signal ustuni (Pico, USB) o'qish; 0 = o'chiq (default yoniq,
+                    Pico topilmagan kompyuterda o'zi jim turadi)
+    ANDON_PORT    — Pico COM porti (bo'sh = Raspberry Pi VID bo'yicha o'zi topadi)
+    ANDON_TAKEOVER — 0 = port band bo'lsa eski PrisadkaMES.exe ni to'xtatmaslik
+    ANDON_QUEUE_FILE — andon navbati (default %APPDATA%\MebelixAgent\andon-queue.jsonl)
 """
 
 import asyncio
@@ -31,6 +36,7 @@ import logging
 import os
 import sys
 import threading
+import time
 from collections import deque
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -49,7 +55,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.4.8"
+AGENT_VERSION = "1.5.0"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -735,6 +741,13 @@ if "QUEUE_FILE" not in os.environ and _legacy_queue.is_file() and not QUEUE_FILE
 # yuborish. SCAN_FORWARD=0 o'chiradi; pynput bo'lmasa o'zi jim o'chadi.
 SCAN_FORWARD = os.environ.get("SCAN_FORWARD", "1") != "0"
 
+# Andon: stanok signal ustunini Pico o'qiydi, USB orqali shu agentga beradi.
+# Pico bo'lmagan kompyuterda (arra, kromka...) hech narsa qilmaydi — faqat port qidiradi.
+ANDON = os.environ.get("ANDON", "1") != "0"
+ANDON_PORT = os.environ.get("ANDON_PORT", "")
+ANDON_TAKEOVER = os.environ.get("ANDON_TAKEOVER", "1") != "0"
+ANDON_QUEUE_FILE = Path(os.environ.get("ANDON_QUEUE_FILE") or (CONFIG_DIR / "andon-queue.jsonl"))
+
 # Yangi job kelganda flusher darhol uyg'onadi (5s siklni kutmaydi)
 FLUSH_EVENT = asyncio.Event()
 # Serverga (qayta) ulanildi — self_update darhol tekshiradi. Deploy WS'ni uzadi,
@@ -1256,6 +1269,370 @@ def start_scan_forward() -> None:
     log.info("Skan-forvard yoqildi — skaner o'qigani MES'ga ham boradi")
 
 
+# ── Andon: stanok signal ustuni (Pico, USB) ──────────────────────────────────
+#
+# Pico (MicroPython, `prisadka-mes-nanxing` firmware) stanok chiroqlarini o'qiydi
+# va USB serial orqali qatorlar yuboradi:
+#     Pico -> agent :  MES event {json}   holat o'zgarishi yoki detal sikli
+#                      MES state {json}   snapshot (har 30 s)
+#     agent -> Pico :  PING               har 5 s — Pico 15 s eshitmasa o'zini
+#                                         oflayn deb hisoblab buferga yig'adi
+# Boshqa qatorlar (print, traceback) — Pico jurnali.
+#
+# O'qish OQIMI (thread) hodisani diskdagi navbatga yozadi, `andon_shipper`
+# korutinasi navbatni serverga partiyalab yuboradi. Chek chop etish va skan-forvard
+# yo'llariga TEGILMAYDI: alohida fayl, alohida endpoint, har bosqich o'z xatosini
+# o'zi ushlaydi — andon yiqilsa ham chek chiqaveradi.
+
+_PICO_VID = 0x2E8A  # Raspberry Pi (RP2040)
+_ANDON_PING_S = 5
+_ANDON_BATCH = 200
+#: Internet uzoq yo'q bo'lsa navbat shundan oshmaydi — eng eskilari tashlanadi
+#: (bitta stanok kuniga ~1000 hodisa beradi, ya'ni bu ~20 kunlik zaxira).
+_ANDON_QUEUE_MAX = 20000
+_ANDON_WARN_EVERY_S = 600
+_PRISADKAMES_EXE = "PrisadkaMES.exe"
+#: Eski PrisadkaMES.exe bir marta to'xtatilgach qo'yiladi: kimdir uni keyin ataylab
+#: qayta o'rnatsa agent uni qayta-qayta o'ldirib yurmaydi, faqat logga yozadi.
+_ANDON_TAKEOVER_MARK = CONFIG_DIR / "andon-takeover.done"
+_CREATE_NO_WINDOW = 0x08000000
+
+ANDON_LOCK = threading.Lock()
+#: Stanokning jonli holati — o'qish oqimi yozadi, `andon_shipper` o'qiydi (lock ostida)
+ANDON_CURRENT: dict[str, Any] = {}
+#: Pico porti hozir ochiqmi (tray va jonli holat uchun)
+ANDON_CONNECTED = False
+
+
+def _andon_enqueue(event: dict[str, Any]) -> None:
+    """Hodisani navbat oxiriga yozadi. fsync — tok o'chsa ham hodisa diskda qoladi."""
+    with ANDON_LOCK, ANDON_QUEUE_FILE.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(event, ensure_ascii=False) + "\n")
+        f.flush()
+        os.fsync(f.fileno())
+
+
+def _andon_write(lines: list[str]) -> None:
+    """Navbatni atomik qayta yozadi. Chaqiruvchi ANDON_LOCK ni ushlab turadi."""
+    tmp = ANDON_QUEUE_FILE.with_suffix(".tmp")
+    with tmp.open("w", encoding="utf-8") as f:
+        f.write("".join(line + "\n" for line in lines))
+        f.flush()
+        os.fsync(f.fileno())
+    tmp.replace(ANDON_QUEUE_FILE)
+
+
+def _andon_peek(limit: int) -> tuple[list[dict[str, Any]], int]:
+    """Navbat boshidan `limit` ta qator: (hodisalar, o'qilgan qatorlar soni).
+
+    Buzuq qator ham SANALADI — ack'da birga o'chadi, lekin serverga yuborilmaydi."""
+    with ANDON_LOCK:
+        if not ANDON_QUEUE_FILE.exists():
+            return [], 0
+        lines = ANDON_QUEUE_FILE.read_text(encoding="utf-8").splitlines()
+        if len(lines) > _ANDON_QUEUE_MAX:
+            ortiqcha = len(lines) - _ANDON_QUEUE_MAX
+            lines = lines[ortiqcha:]
+            _andon_write(lines)
+            log.warning("Andon navbati to'ldi — eng eski %d ta hodisa tashlandi", ortiqcha)
+    batch = lines[:limit]
+    events: list[dict[str, Any]] = []
+    for line in batch:
+        with contextlib.suppress(ValueError):
+            item = json.loads(line)
+            if isinstance(item, dict):
+                events.append(item)
+    return events, len(batch)
+
+
+def _andon_ack(count: int) -> None:
+    """Server qabul qilgan partiyani navbat boshidan olib tashlaydi.
+
+    Shu orada oxiriga qo'shilganlar SAQLANADI: o'qish oqimi faqat oxiriga yozadi va
+    ikkala tomon ham ANDON_LOCK ostida ishlaydi."""
+    if count <= 0:
+        return
+    with ANDON_LOCK:
+        if not ANDON_QUEUE_FILE.exists():
+            return
+        lines = ANDON_QUEUE_FILE.read_text(encoding="utf-8").splitlines()
+        _andon_write(lines[count:])
+
+
+def _andon_line(text: str) -> None:
+    """Pico'dan kelgan bitta qator."""
+    if not text.startswith("MES "):
+        if text:
+            log.info("[pico] %s", text[:200])
+        return
+    try:
+        _, kind, payload = text.split(" ", 2)
+        data = json.loads(payload)
+    except ValueError:
+        log.warning("Andon: buzuq qator tashlandi: %s", text[:120])
+        return
+    if not isinstance(data, dict):
+        return
+    now = int(time.time())
+    if kind == "event":
+        # USB rejimda Pico soatsiz (`ts: 0`) — hodisa vaqti shu yerda qo'yiladi.
+        # `age_ms` (firmware yuborsa) — hodisa Pico buferida qancha kutib turgani.
+        if not data.get("ts"):
+            data["ts"] = now - int(data.get("age_ms") or 0) // 1000
+        _andon_enqueue(data)
+        if data.get("type") == "state" and data.get("state"):
+            with ANDON_LOCK:
+                ANDON_CURRENT.update(state=str(data["state"]), since=int(data["ts"]), lamps=data.get("lamps") or {})
+    elif kind == "state":
+        state = str(data.get("state") or "")
+        if not state:
+            return
+        with ANDON_LOCK:
+            # Holat o'zgarmagan bo'lsa boshlanish vaqti SAQLANADI: `since_s` butun
+            # soniya, har snapshotda qayta hisoblansa vaqt ±1 s sakrab, server har
+            # 30 soniyada "holat o'zgardi" deb ekranlarga xabar tarqatardi.
+            if ANDON_CURRENT.get("state") != state:
+                ANDON_CURRENT["since"] = now - int(data.get("since_s") or 0)
+            ANDON_CURRENT.update(state=state, lamps=data.get("lamps") or {}, part_count=data.get("part_count"))
+
+
+def _andon_session(port: Any) -> None:
+    """Ochiq port bilan ishlash: PING yuborish va qatorlarni o'qish. Port xatosida qaytadi."""
+    global ANDON_CONNECTED
+    ANDON_CONNECTED = True
+    next_ping = 0.0
+    pending = b""
+    try:
+        while True:
+            now = time.monotonic()
+            if now >= next_ping:
+                port.write(b"PING\n")
+                next_ping = now + _ANDON_PING_S
+            # timeout 0.2 s: vaqt tugasa YARIM qator ham qaytishi mumkin — yig'ib boramiz
+            chunk = port.readline()
+            if not chunk:
+                continue
+            pending += chunk
+            if not pending.endswith(b"\n"):
+                if len(pending) > 8192:  # yangi qatorsiz shovqin
+                    pending = b""
+                continue
+            line, pending = pending, b""
+            try:
+                _andon_line(line.decode("utf-8", "replace").strip())
+            except Exception:  # noqa: BLE001 — bitta qator o'qishni to'xtatmasin
+                log.exception("Andon: qatorni qayta ishlashda xato")
+    except Exception as exc:  # noqa: BLE001 — kabel sug'urildi yoki Pico qayta yuklandi
+        log.warning("Andon: Pico bilan aloqa uzildi (%s)", exc)
+    finally:
+        with ANDON_LOCK:
+            ANDON_CONNECTED = False
+            # Qayta ulanganda ESKI holat (va uning boshlanish vaqti) serverga ketmasin —
+            # Pico qayta yuklangan bo'lishi mumkin; yangi holat birinchi snapshotdan olinadi
+            ANDON_CURRENT.clear()
+        with contextlib.suppress(Exception):
+            port.close()
+
+
+def _andon_takeover() -> bool:
+    """Port band va uni eski PrisadkaMES.exe ushlab turgan bo'lsa — to'xtatib, avtozapuskdan oladi.
+
+    Andon ilgari alohida PrisadkaMES.exe (Telegram bot bilan) orqali o'qilardi; endi
+    Pico'ni shu agent o'qiydi, bitta COM portni esa ikki dastur ocha olmaydi.
+    `PrisadkaMES.exe --uninstall` CHAQIRILMAYDI: exe joyi noma'lum, u oxirida hamma
+    oynalar ustida xabar oynasi ochib, Nanxing dasturidan fokusni tortib olardi —
+    skaner cheki o'sha oynaga yozilib ketardi. O'sha buyruqning ikki ishi shu yerda
+    jim bajariladi. Bir marta (`_ANDON_TAKEOVER_MARK`). True — to'xtatildi."""
+    if not ANDON_TAKEOVER or _ANDON_TAKEOVER_MARK.exists():
+        return False
+    import subprocess
+
+    try:
+        royxat = subprocess.run(
+            ["tasklist", "/FI", f"IMAGENAME eq {_PRISADKAMES_EXE}", "/FO", "CSV", "/NH"],
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=15,
+            creationflags=_CREATE_NO_WINDOW,
+        ).stdout
+        # CSV: tizim tiliga bog'liq emas ("PrisadkaMES.exe","1234",...)
+        if not any(q.split(",")[0].strip('"').lower() == _PRISADKAMES_EXE.lower() for q in royxat.splitlines()):
+            return False
+        with contextlib.suppress(OSError):
+            import winreg
+
+            with winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Run",
+                0,
+                winreg.KEY_SET_VALUE,
+            ) as key:
+                winreg.DeleteValue(key, "PrisadkaMES")
+        natija = subprocess.run(
+            ["taskkill", "/F", "/IM", _PRISADKAMES_EXE],
+            capture_output=True,
+            timeout=15,
+            creationflags=_CREATE_NO_WINDOW,
+        )
+    except Exception as exc:  # noqa: BLE001 — tasklist/taskkill yo'q yoki qotdi
+        log.warning("Andon: PrisadkaMES.exe tekshirilmadi (%s)", exc)
+        return False
+    if natija.returncode != 0:
+        log.warning("Andon: PrisadkaMES.exe to'xtatilmadi (taskkill kodi %s)", natija.returncode)
+        return False
+    with contextlib.suppress(OSError):
+        _ANDON_TAKEOVER_MARK.write_text(
+            f"{time.strftime('%Y-%m-%d %H:%M:%S')} PrisadkaMES.exe to'xtatildi\n", encoding="utf-8"
+        )
+    log.warning("Andon: eski PrisadkaMES.exe to'xtatildi va avtozapuskdan olindi — Pico porti agentga o'tdi")
+    return True
+
+
+def _andon_loop() -> None:
+    """Pico'ni topadi, portni ochadi, uzilsa qayta ulanadi. Hech qachon qaytmaydi."""
+    import serial
+    from serial.tools import list_ports
+
+    # Manfiy boshlang'ich: avtostartda monotonic soat hali kichik — birinchi tekshiruv kechikmasin
+    ogohlantirildi = -float(_ANDON_WARN_EVERY_S)
+    tekshirildi = -60.0
+    while True:
+        try:
+            name = ANDON_PORT or next((p.device for p in list_ports.comports() if p.vid == _PICO_VID), "")
+            if not name:
+                time.sleep(5)
+                continue
+            try:
+                # write_timeout: Pico USB kiritishni o'qimay qo'ysa PING yozish abadiy qotib
+                # qolmasin — SerialTimeoutException bilan sessiya tugaydi va qayta ulanadi
+                port = serial.Serial(name, 115200, timeout=0.2, write_timeout=2)
+            except serial.SerialException as exc:
+                # tasklist har 5 soniyada emas — daqiqada bir marta yetarli
+                if time.monotonic() - tekshirildi >= 60:
+                    tekshirildi = time.monotonic()
+                    if _andon_takeover():
+                        time.sleep(3)
+                        continue
+                if time.monotonic() - ogohlantirildi >= _ANDON_WARN_EVERY_S:
+                    ogohlantirildi = time.monotonic()
+                    log.warning("Andon: %s ochilmadi — boshqa dastur band qilgan bo'lishi mumkin (%s)", name, exc)
+                time.sleep(5)
+                continue
+            log.info("Andon: Pico ulandi (%s)", name)
+            _andon_session(port)
+        except Exception:  # noqa: BLE001 — oqim o'lmasin, chek va skan yo'liga ta'sir qilmaydi
+            log.exception("Andon oqimida xato — qayta urinish")
+        time.sleep(3)
+
+
+def start_andon() -> None:
+    """Andon o'qish oqimini ishga tushiradi. pyserial o'rnatilmagan bo'lsa jim o'chadi."""
+    if not ANDON:
+        return
+    try:
+        import serial  # noqa: F401
+    except ImportError:
+        log.info("pyserial o'rnatilmagan — andon (Pico) o'chiq")
+        return
+    threading.Thread(target=_andon_loop, daemon=True, name="andon").start()
+
+
+def _andon_post(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+    """POST /bridge-agents/andon — (HTTP holat kodi, javob JSON). Tarmoq xatosi istisno bo'lib chiqadi."""
+    import urllib.error
+    import urllib.request
+
+    req = urllib.request.Request(
+        f"{_http_base()}/api/v1/bridge-agents/andon",
+        data=json.dumps(body, ensure_ascii=False).encode(),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {BRIDGE_TOKEN}",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            status, raw = int(resp.status), resp.read()
+    except urllib.error.HTTPError as exc:
+        status, raw = int(exc.code), b""
+    javob: dict[str, Any] = {}
+    with contextlib.suppress(ValueError):
+        parsed = json.loads(raw or b"{}")
+        if isinstance(parsed, dict):
+            javob = parsed
+    return status, javob
+
+
+def _andon_current() -> dict[str, Any] | None:
+    """Serverga yuboriladigan jonli holat — Pico ulangan va holat ma'lum bo'lsagina.
+
+    Qiymatlar turga keltiriladi: Pico'dan g'alati qiymat kelsa server butun partiyani
+    422 bilan rad etib, hodisalar ham ketmay qolardi."""
+    with ANDON_LOCK:
+        if not ANDON_CONNECTED or not ANDON_CURRENT.get("state"):
+            return None
+        cur = dict(ANDON_CURRENT)
+    lamps = cur.get("lamps")
+    part_count = cur.get("part_count")
+    return {
+        "state": str(cur["state"])[:16],
+        "since": max(0, int(cur.get("since") or time.time())),
+        "lamps": {str(k): str(v) for k, v in lamps.items()} if isinstance(lamps, dict) else {},
+        "part_count": part_count if isinstance(part_count, int) else None,
+    }
+
+
+async def andon_shipper() -> None:
+    """Andon navbatini serverga yuboradi; navbat bo'sh bo'lsa ham har 30 s jonli holatni
+    yangilaydi (server 90 s xabar olmasa "aloqa yo'q" ko'rsatadi).
+
+    Chek va skan yo'llaridan butunlay ajralgan: o'z fayli, o'z endpointi, butun tanasi
+    `except Exception` bilan — xatosi `asyncio.gather` orqali agentni yiqitmaydi."""
+    if not ANDON:
+        return
+    oxirgi = 0.0
+    ogohlantirildi = 0.0
+    while True:
+        await asyncio.sleep(3)
+        try:
+            if not BRIDGE_TOKEN:
+                continue
+            events, count = await asyncio.to_thread(_andon_peek, _ANDON_BATCH)
+            current = _andon_current()
+            if not count and (current is None or time.monotonic() - oxirgi < 30):
+                continue
+            body: dict[str, Any] = {"events": events}
+            if current is not None:
+                body["current"] = current
+            status, javob = await asyncio.to_thread(_andon_post, body)
+            if status == 422 and current is not None:
+                # Rad etilgan jonli holat bo'lishi mumkin — hodisalar u sababli yo'qolmasin:
+                # jonli holatsiz qayta urinamiz
+                log.warning("Andon: jonli holat rad etildi (422): %s", current)
+                status, javob = await asyncio.to_thread(_andon_post, {"events": events})
+            if status == 200:
+                oxirgi = time.monotonic()
+                await asyncio.to_thread(_andon_ack, count)
+                if javob.get("skipped"):
+                    log.warning("Andon: server %s ta buzuq hodisani yozmadi", javob.get("skipped"))
+                continue
+            if status == 422:
+                # Partiya shakli rad etildi — qayta yuborish tuzatmaydi, navbatni esa
+                # abadiy to'sib qo'yardi
+                log.error("Andon: server partiyani rad etdi (422) — %d ta qator tashlandi", count)
+                await asyncio.to_thread(_andon_ack, count)
+                continue
+            if time.monotonic() - ogohlantirildi >= _ANDON_WARN_EVERY_S:
+                ogohlantirildi = time.monotonic()
+                log.warning("Andon: server qabul qilmadi (HTTP %s) — hodisalar navbatda saqlanadi", status)
+        except Exception as exc:  # noqa: BLE001 — tarmoq yo'q; navbat diskda turadi
+            if time.monotonic() - ogohlantirildi >= _ANDON_WARN_EVERY_S:
+                ogohlantirildi = time.monotonic()
+                log.warning("Andon: yuborilmadi (%s) — hodisalar navbatda saqlanadi", exc)
+        await asyncio.sleep(30)
+
+
 def _newer(latest: str, current: str) -> bool:
     """'1.4.1' > '1.4.0'. Buzuq satr — yangilanish yo'q deb hisoblanadi."""
     try:
@@ -1468,7 +1845,8 @@ def start_tray() -> None:
 
     def holat(_item: object = None) -> str:
         rejim = PRINTER_NAME or "printer yo'q (skan-forvard)"
-        return f"{'Ulandi' if CONNECTED else 'Uzilgan'} · {rejim} · v{AGENT_VERSION}"
+        andon = " · Andon: Pico ulandi" if ANDON_CONNECTED else ""
+        return f"{'Ulandi' if CONNECTED else 'Uzilgan'} · {rejim}{andon} · v{AGENT_VERSION}"
 
     def open_logs(_icon: object = None, _item: object = None) -> None:
         with contextlib.suppress(Exception):
@@ -1510,8 +1888,9 @@ async def main() -> None:
     log.info("MebeliX MES agent v%s", AGENT_VERSION)
     log.info("Printer: %s", PRINTER_NAME or "TOPILMADI — yorliq printeri drayverini o'rnating")
     start_scan_forward()
+    start_andon()
     start_tray()
-    await asyncio.gather(uplink(), flusher(), log_shipper(), self_update())
+    await asyncio.gather(uplink(), flusher(), log_shipper(), self_update(), andon_shipper())
 
 
 if __name__ == "__main__":

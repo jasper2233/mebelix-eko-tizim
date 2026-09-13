@@ -33,6 +33,10 @@ class MachineOverview(BaseModel):
     # ponytail: bir postda 2+ faol markaz bo'lsa biriktirilmagan ish ikkalasida ko'rinadi —
     # terminalda ham shunday, kim oldin skan qilsa o'shaniki.
     queue_scans: int
+    # Stanok signal ustuni (andon: Pico + MES agent) — jonli holat: PROCESSING, AWAIT_PART,
+    # IDLE, STOPPED, FAULT, OFF. None — andon ulanmagan yoki 90 soniyadan beri xabar yo'q.
+    andon_state: str | None = None
+    andon_since: datetime | None = None  # joriy holat qachondan beri
 
 
 class MachineCreate(BaseModel):
