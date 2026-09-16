@@ -315,7 +315,8 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
 - `send_to_printer()` da bitta chiqish yo'li bor: `_print_png_gdi()` — Windows
   drayveri (`win32ui` + `ImageWin.Dib`), DEVMODE'da qog'oz `DMPAPER_USER`
   80×60 mm ga majburlanadi. Admin huquqi ham, printer share ham talab qilmaydi.
-  Printer xatosi `False` qaytaradi va job lokal navbatda qoladi.
+  Printer xatosi `False` qaytaradi va job lokal navbatda qoladi; o'qib bo'lmaydigan
+  (buzuq) PNG esa tashlanadi — navbat boshini abadiy to'smasin.
 - Printer AVTO-TOPILADI: `_detect_printer()` `win32print.EnumPrinters` ro'yxatidan
   nomida `godex`, `xprinter`, `gprinter`, `tsc`, `zebra`, `argox` yoki `postek`
   bor lokal printerni oladi (`_PRINTER_KEYWORDS` — tsexda GoDEX ham, Xprinter

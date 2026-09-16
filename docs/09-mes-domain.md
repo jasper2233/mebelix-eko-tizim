@@ -388,7 +388,8 @@ qamraydi — eski doimiy `cutprint-{id}` / `rvprint-{id}` va yangi vaqt tamg'ali
 lokal JSONL navbat `QUEUE_FILE` (printer/internet uzilganda yo'qotmaydi), flusher **event-driven** —
 `FLUSH_EVENT` bilan darhol uyg'onadi, 5 s faqat zaxira timeout. `send_to_printer(png_b64)` bitta
 yo'l: `_print_png_gdi()` — jobdagi PNG Windows drayveri orqali, DEVMODE'da qog'oz 80×60 mm ga
-majburlanadi. Xatoda `False` qaytadi va job lokal navbatda qoladi.
+majburlanadi. Xatoda `False` qaytadi va job lokal navbatda qoladi; buzuq PNG esa tashlanadi (`True`) —
+aks holda navbat boshida turib keyingi hamma yorliqni to'sardi.
 
 Printer **avto-topiladi**: `_detect_printer()` nomida tanish yorliq-printer rusumi bo'lgan lokal
 Windows printerini qidiradi (`_PRINTER_KEYWORDS`: `godex`, `xprinter`, `gprinter`, `tsc`, `zebra`,

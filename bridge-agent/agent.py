@@ -55,7 +55,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.5.0"
+AGENT_VERSION = "1.5.1"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -817,19 +817,14 @@ def local_rewrite(jobs: list[dict]) -> None:
     tmp.replace(QUEUE_FILE)
 
 
-def _print_png_gdi(png_b64: str) -> None:
-    """PNG yorliqni Windows drayveri orqali chiqaradi (GibSaw 'Used the printer driver'
-    rejimi bilan bir xil yo'l). DEVMODE'da qog'oz 80x60mm ga majburlanadi."""
-    import base64
-    import io as _io
-
+def _print_png_gdi(img: Any) -> None:
+    """Yorliq rasmini (PIL, RGB) Windows drayveri orqali chiqaradi (GibSaw 'Used the
+    printer driver' rejimi bilan bir xil yo'l). DEVMODE'da qog'oz 80x60mm ga majburlanadi."""
     import win32con
     import win32gui
     import win32print
     import win32ui
-    from PIL import Image, ImageWin
-
-    img = Image.open(_io.BytesIO(base64.b64decode(png_b64))).convert("RGB")
+    from PIL import ImageWin
 
     h = win32print.OpenPrinter(PRINTER_NAME)
     try:
@@ -887,8 +882,20 @@ def send_to_printer(png_b64: str) -> bool:
             "PNG'siz job tashlab yuborildi"
         )  # eski formatdagi yozuv navbatni to'smasin
         return True
+    import base64
+    import io as _io
+
+    from PIL import Image
+
     try:
-        _print_png_gdi(png_b64)
+        img = Image.open(_io.BytesIO(base64.b64decode(png_b64))).convert("RGB")
+    except Exception as exc:  # noqa: BLE001
+        # Buzuq PNG printer xatosi EMAS — qayta urinish uni tuzatmaydi. False qaytsa
+        # flusher navbat BOSHIDA to'xtab, orqasidagi hamma yorliqni abadiy to'sardi.
+        log.error("Buzuq yorliq tashlab yuborildi (PNG o'qilmadi): %s", exc)
+        return True
+    try:
+        _print_png_gdi(img)
         return True
     except Exception as exc:  # noqa: BLE001 — printer xatosi navbatda qolsin
         log.warning("Printer xatosi (%s): %s", PRINTER_NAME, exc)
@@ -988,7 +995,8 @@ def _repair() -> None:
     sozlamani tozalab, yangi kod so'raymiz. Busiz foydalanuvchi .env ni qo'lda
     o'chirishga majbur bo'lardi - agent esa fonda ishlab turgani uchun avval uni
     Task Manager orqali yopishi kerak edi (oyna yo'q, mutex ikkinchi nusxani
-    qo'ymaydi). Bekor qilinsa agent to'xtaydi."""
+    qo'ymaydi). Bekor qilinsa `_pair` SystemExit ko'taradi — `uplink` uni ushlab
+    30 s kutadi va qayta urinadi (agent to'xtamaydi, oyna yana ochiladi)."""
     global BRIDGE_TOKEN, MES_URL
 
     # .env ATAYIN o'chirilmaydi: muvaffaqiyatli pairing uni baribir qayta yozadi,
