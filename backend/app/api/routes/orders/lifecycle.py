@@ -14,6 +14,7 @@ from app.api.deps import (
     StaffReadUser,
     client_ip,
 )
+from app.api.routes._shared import drop_forbidden_nulls
 from app.core.config import settings, upload_root
 from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
 from app.core.ws import ws_manager
@@ -248,7 +249,10 @@ async def update_order(
     order = await _get_order(db, order_id)
     if order.status in (OrderStatus.DELIVERED, OrderStatus.CANCELLED):
         raise ForbiddenException("Yakunlangan yoki bekor qilingan buyurtmani o'zgartirib bo'lmaydi.")
-    update_data = body.model_dump(exclude_unset=True)
+    # `priority`/`client_id` NOT NULL — null 500 berardi. `amount` ham faqat qoralamada
+    # bo'shatiladi: `confirm_order` summasiz tasdiqlamaydi, keyin bo'shatish shu shartni aylanib o'tardi.
+    nullable = ("deadline", "advance_payment", "notes") + (("amount",) if order.status == OrderStatus.DRAFT else ())
+    update_data = drop_forbidden_nulls(body.model_dump(exclude_unset=True), nullable)
     if "client_id" in update_data:
         if order.status != OrderStatus.DRAFT and update_data["client_id"] != order.client_id:
             raise ForbiddenException("Mijozni faqat qoralama (DRAFT) holatida almashtirish mumkin.")
