@@ -126,9 +126,12 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
 - `process_code` kerak, chunki post nomining o'zi yetarli emas: STOLYARKA da 6 xil, KROMKA da 2 xil amal bor — operator qaysi biri kerakligini shu koddan biladi.
 - Skan tartibi postlarning global `order_index` idan emas, detalning O'Z `seq` i bo'yicha tekshiriladi (`services/scanning.py`) — nostandart marshrut global tartibni buzadi. Skan shu postdagi eng kichik `seq` li tugallanmagan qadamga yoziladi.
 - `SystemSetting` (`system_setting`, `7e6946ebd00d`) — ish vaqtida admin tahrirlaydigan
-  kalit/qiymat: `key(60)` unikal indeks, `value(255)`, `updated_by_id` FK → `user`. Qiymat
+  kalit/qiymat: `key(60)` unikal indeks, `value` (`Text`; `c1e8a4b7d9f2` gacha `String(255)`), `updated_by_id` FK → `user`. Qiymat
   DOIM matn, o'qiydigan joy turga keltiradi (`services/settings_service.py`; `DEFAULTS` da
-  sukut qiymatlar, hozir bitta: `custom_part_suffix = "#"`). Nega `.env` emas: belgini
+  sukut qiymatlar, hozir bitta: `custom_part_suffix = "#"`). `work_schedule` kaliti — ish jadvali
+  JSON'i (`schemas/settings.py: WorkSchedule` — smenalar, tanaffuslar, haftalik dam olish kunlari,
+  bayram sanalari); u `DEFAULTS` da YO'Q, o'z endpointi bor (`GET/PUT /settings/work-schedule`),
+  o'qish `get_work_schedule()`, qoidalar `schedule_error()`. Nega `.env` emas: belgini
   o'zgartirish uchun serverga kirib konteynerni qayta ishga tushirish kerak bo'lardi.
   Nega kalit/qiymat: sahifaga keyin stanoklar sozlamalari qo'shiladi.
 - `AndonEvent` (`andon_event`, `5d8e2a61c0f4`) — stanok signal ustunidan (Pico → MES agent →
@@ -493,6 +496,7 @@ va 7 yetim ustun**; hammasi `migrations/env.py` dagi
 | 49 | `9c4e1a7b2d03` | `9c4e1a7b2d03_part_instance_qr_single_unique_index.py` | **`part_instance` indekslari bittaga tushdi** — `ix_part_instance_qr_serial` predikati `NOT is_deleted` ga soddalashdi (prefiks sharti ketdi: 2026-09-05 MVP tozalashdan keyin prefikssiz jonli nusxa 0), ortiqcha `ix_part_instance_order_qr` va `ix_part_instance_qr_text` o'chirildi. Prod nusxasida upgrade/downgrade/`alembic check` va ikki buyurtmada bir xil QR rad etilishi sinalgan |
 | 50 | `7e6946ebd00d` | `7e6946ebd00d_system_setting_runtime_sozlamalar.py` | **`system_setting`** — ish vaqtida admin tahrirlaydigan kalit/qiymat sozlamalar (§1.4); birinchi kalit `custom_part_suffix` |
 | 51 | `5d8e2a61c0f4` | `5d8e2a61c0f4_andon_event_stanok_signal_ustuni.py` | **`andon_event`** — stanok signal ustunidan (Pico → MES agent) kelgan xom hodisalar (§1.4): UNIQUE `(machine_id, session, seq)`, `(machine_id, happened_at)` indeksi. Eski OEE jadvallariga (`stop_reason`, `machine_stop`) tegmaydi |
+| 52 | `c1e8a4b7d9f2` | `c1e8a4b7d9f2_system_setting_value_text.py` | **`system_setting.value` → `Text`** — ish jadvali (`work_schedule`) JSON bo'lib saqlanadi, bayramlar qo'shilgan sari 255 belgidan oshardi. Downgrade 255 dan uzun qiymatda ataylab yiqiladi (kesilgan JSON o'qib bo'lmaydi) |
 
 Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kind=DOCUMENT` + `meta` JSONB bilan ishlatiladi (1.4.1-bo'lim).
 

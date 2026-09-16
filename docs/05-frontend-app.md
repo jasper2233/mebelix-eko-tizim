@@ -166,7 +166,7 @@ __root.tsx                 → root layout (Outlet, devtools, 404/error)
 ├── terminal.tsx           → /terminal    (fullscreen operator POS ekrani, sidebar'siz)
 ├── tablo.tsx              → /tablo       (fullscreen tsex TV-tablosi, sidebar'siz)
 └── _layout.tsx            → pathless layout (auth guard + rol-router + sidebar shell)
-    └── system-settings.tsx → /system-settings (Tizim sozlamalari, `requireAccess(isAdmin)`)
+    └── system-settings.tsx → /system-settings (Tizim sozlamalari, `requireAccess(isAdmin)`: nostandart detal belgisi + "Ish jadvali" kartasi — smenalar (≤4, `<input type="time">`, yangi smena oldingisi tugagan vaqtdan boshlanadi), har smenaga tanaffuslar (≤10) va "Sof ish vaqti", haftalik dam olish kunlari (7 tugma), bayram sanalari (`DatePicker` + nom); butun jadval bitta "Saqlash" bilan `PUT /settings/work-schedule`, query key `["system-settings","work-schedule"]`; server qoidasi buzilsa uning o'zbekcha matni toast'da)
 ```
 
 Login maydoni IKKI xil qiymat oladi (foydalanuvchi nomi yoki telefon), shuning uchun jonli ajratgich SHARTLI: qiymatda faqat `+`, raqam, bo'shliq va tire bo'lsa VA kamida uch raqam terilgan bo'lsa `formatUzPhone` ishlaydi — `admin` kabi harfli nom tegilmaydi, qo'yib yozilgan (paste) raqam ham shu yo'ldan o'tadi. Yuborishda ajratgichlar olib tashlanadi; `_get_by_login` `+` bilan boshlangan qiymatni TELEFON deb qidiradi, raqamli loginlarda esa `phone = '+' + username` (prodda tekshirilgan), ya'ni formatlash kirishni buzmaydi.

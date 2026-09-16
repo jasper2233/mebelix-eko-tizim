@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import BaseModel
@@ -16,7 +16,9 @@ class SystemSetting(BaseModel):
     __tablename__ = "system_setting"
 
     key: Mapped[str] = mapped_column(String(60), unique=True, index=True, kw_only=True)
-    value: Mapped[str] = mapped_column(String(255), kw_only=True)
+    #: Text: ish jadvali (`work_schedule`) JSON bo'lib turadi — bayramlar qo'shilgan
+    #: sari 255 belgidan oshadi.
+    value: Mapped[str] = mapped_column(Text, kw_only=True)
     #: Kim oxirgi o'zgartirgani — audit jurnalida ham bor, lekin bu yerda
     #: sahifaning o'zida ko'rsatish uchun qo'l ostida turadi.
     updated_by_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), nullable=True, default=None)

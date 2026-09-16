@@ -1282,6 +1282,20 @@ export type HealthCheck = {
 };
 
 /**
+ * Holiday
+ */
+export type Holiday = {
+    /**
+     * Day
+     */
+    day: string;
+    /**
+     * Name
+     */
+    name?: string;
+};
+
+/**
  * KromkaInstance
  *
  * Bitta fizik nusxa KROMKA nazarida: nechta tomoni yopishtirilgan, arradan o'tganmi.
@@ -3860,6 +3874,69 @@ export type ValidationError = {
     };
 };
 
+/**
+ * WorkBreak
+ */
+export type WorkBreak = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Start
+     */
+    start: string;
+    /**
+     * End
+     */
+    end: string;
+};
+
+/**
+ * WorkSchedule
+ *
+ * Ish jadvali — OEE reja vaqti shundan: smenalar minus tanaffuslar, dam olish kunlarida 0.
+ *
+ * Hamma ish markaziga umumiy. Maydonlar orasidagi qoidalar (smenalar ustma-ust
+ * tushmasin, tanaffus smena ichida bo'lsin) — `settings_service.schedule_error`.
+ */
+export type WorkSchedule = {
+    /**
+     * Shifts
+     */
+    shifts?: Array<WorkShift>;
+    /**
+     * Days Off
+     */
+    days_off?: Array<number>;
+    /**
+     * Holidays
+     */
+    holidays?: Array<Holiday>;
+};
+
+/**
+ * WorkShift
+ */
+export type WorkShift = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Start
+     */
+    start: string;
+    /**
+     * End
+     */
+    end: string;
+    /**
+     * Breaks
+     */
+    breaks?: Array<WorkBreak>;
+};
+
 export type HealthApiV1HealthGetData = {
     body?: never;
     path?: never;
@@ -6227,6 +6304,47 @@ export type ReadSystemSettingsResponses = {
 };
 
 export type ReadSystemSettingsResponse = ReadSystemSettingsResponses[keyof ReadSystemSettingsResponses];
+
+export type ReadWorkScheduleData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/work-schedule';
+};
+
+export type ReadWorkScheduleResponses = {
+    /**
+     * Successful Response
+     */
+    200: WorkSchedule;
+};
+
+export type ReadWorkScheduleResponse = ReadWorkScheduleResponses[keyof ReadWorkScheduleResponses];
+
+export type UpdateWorkScheduleData = {
+    body: WorkSchedule;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/work-schedule';
+};
+
+export type UpdateWorkScheduleErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateWorkScheduleError = UpdateWorkScheduleErrors[keyof UpdateWorkScheduleErrors];
+
+export type UpdateWorkScheduleResponses = {
+    /**
+     * Successful Response
+     */
+    200: WorkSchedule;
+};
+
+export type UpdateWorkScheduleResponse = UpdateWorkScheduleResponses[keyof UpdateWorkScheduleResponses];
 
 export type UpdateSystemSettingData = {
     body: SystemSettingUpdate;
