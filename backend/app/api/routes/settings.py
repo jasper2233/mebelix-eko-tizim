@@ -6,6 +6,9 @@ from app.crud import log_action
 from app.schemas.settings import SystemSettingRead, SystemSettingUpdate, WorkSchedule
 from app.services.settings_service import (
     DEFAULTS,
+    IDLE_MINUTES_RANGE,
+    IDLE_OPERATOR_MINUTES,
+    IDLE_STAFF_MINUTES,
     WORK_SCHEDULE,
     get_setting,
     get_work_schedule,
@@ -65,7 +68,13 @@ async def update_system_setting(
         # Noma'lum kalitni yozib qo'yish jimgina "ishladi" deb ko'rinardi, lekin
         # uni hech kim o'qimasdi.
         raise NotFoundException("Bunday sozlama yo'q.")
-    row = await set_setting(db, key, body.value.strip(), current_user.id)
+    value = body.value.strip()
+    if key in (IDLE_OPERATOR_MINUTES, IDLE_STAFF_MINUTES):
+        low, high = IDLE_MINUTES_RANGE
+        if not (value.isascii() and value.isdigit() and low <= int(value) <= high):
+            raise HTTPException(status_code=422, detail=f"Daqiqa {low} dan {high} gacha butun son bo'lishi kerak.")
+        value = str(int(value))  # "090" -> "90"
+    row = await set_setting(db, key, value, current_user.id)
     log_action(
         db,
         module="settings",

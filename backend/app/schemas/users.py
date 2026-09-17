@@ -150,3 +150,8 @@ class UpdatePassword(BaseModel):
     @classmethod
     def new_password_strength(cls, v: str) -> str:
         return validate_password_strength(v)
+
+
+class IdleLimit(BaseModel):
+    #: Necha daqiqa harakatsizlikdan keyin chiqariladi; `None` — chiqarilmaydi (TABLO).
+    idle_minutes: int | None

@@ -1,6 +1,6 @@
 // Tizim sozlamalari: ish vaqtida admin o'zgartiradigan qiymatlar — nostandart
-// detal belgisi va ish jadvali (smenalar, tanaffuslar, dam olish kunlari; OEE
-// reja vaqti shundan hisoblanadi).
+// detal belgisi, harakatsizlikdan keyin chiqish chegarasi va ish jadvali (smenalar,
+// tanaffuslar, dam olish kunlari; OEE reja vaqti shundan hisoblanadi).
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
@@ -10,6 +10,7 @@ import { useEffect, useState } from "react"
 import {
   type Holiday,
   SettingsService,
+  type SystemSettingRead,
   type WorkBreak,
   type WorkSchedule,
   type WorkShift,
@@ -36,6 +37,11 @@ export const Route = createFileRoute("/_layout/system-settings")({
 })
 
 const SUFFIX_KEY = "custom_part_suffix"
+// Backend `settings_service.IDLE_*` va `IDLE_MINUTES_RANGE` bilan bir xil
+const IDLE_OPERATOR_KEY = "idle_logout_operator_minutes"
+const IDLE_STAFF_KEY = "idle_logout_staff_minutes"
+const IDLE_MIN = 10
+const IDLE_MAX = 1440
 
 function SystemSettingsPage() {
   const queryClient = useQueryClient()
@@ -99,7 +105,91 @@ function SystemSettingsPage() {
           </LoadingButton>
         </div>
       )}
+      {data && <IdleLogoutCard settings={data} />}
       <WorkScheduleCard />
+    </div>
+  )
+}
+
+/** Harakatsizlikdan keyin chiqish (`hooks/useIdleLogout.ts`, `backend/app/services/activity.py`). */
+function IdleLogoutCard({ settings }: { settings: SystemSettingRead[] }) {
+  const queryClient = useQueryClient()
+  const value = (key: string) =>
+    settings.find((s) => s.key === key)?.value ?? ""
+  const savedOperator = value(IDLE_OPERATOR_KEY)
+  const savedStaff = value(IDLE_STAFF_KEY)
+  const [operator, setOperator] = useState("")
+  const [staff, setStaff] = useState("")
+  useEffect(() => setOperator(savedOperator), [savedOperator])
+  useEffect(() => setStaff(savedStaff), [savedStaff])
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (operator !== savedOperator)
+        await SettingsService.updateSystemSetting({
+          path: { key: IDLE_OPERATOR_KEY },
+          body: { value: operator },
+        })
+      if (staff !== savedStaff)
+        await SettingsService.updateSystemSetting({
+          path: { key: IDLE_STAFF_KEY },
+          body: { value: staff },
+        })
+    },
+    ...crudCallbacks(queryClient, ["system-settings"], "Sozlama saqlandi"),
+  })
+
+  const valid = (v: string) =>
+    /^\d+$/.test(v) && Number(v) >= IDLE_MIN && Number(v) <= IDLE_MAX
+  const field = (label: string, v: string, set: (v: string) => void) => (
+    <Field label={label}>
+      <Input
+        type="number"
+        inputMode="numeric"
+        min={IDLE_MIN}
+        max={IDLE_MAX}
+        value={v}
+        aria-invalid={!valid(v)}
+        onChange={(e) => set(e.target.value)}
+      />
+    </Field>
+  )
+
+  return (
+    <div className={cn(cardSurface, "mt-6 max-w-xl space-y-4 p-4")}>
+      <div>
+        <h2 className="text-lg font-semibold">
+          Harakatsizlikdan keyin chiqish
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Shuncha daqiqa hech narsa bosilmasa, ekran login sahifasiga qaytadi
+          (tsexda smena ham yopiladi). Terminalda stanok skaneridan kelgan skan
+          ham harakat hisoblanadi. Beyjikli postda qayta kirish — beyjikni
+          skanerlash. Tsex — terminal va operator hisoblari; ofis — admin,
+          direktor, menejer, texnolog.
+        </p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {field("Tsex, daqiqa", operator, setOperator)}
+        {field("Ofis, daqiqa", staff, setStaff)}
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Ish jadvali tugashi hisobga olinmaydi — smena kechroq tugashi mumkin.
+        Tablo ekrani chiqarilmaydi. Tsex chegarasi tushlik tanaffusidan uzun
+        bo'lsin, aks holda tushlikda smena yopiladi. Oraliq: {IDLE_MIN}–
+        {IDLE_MAX}.
+      </p>
+      <LoadingButton
+        loading={mutation.isPending}
+        disabled={
+          !valid(operator) ||
+          !valid(staff) ||
+          (operator === savedOperator && staff === savedStaff)
+        }
+        onClick={() => mutation.mutate()}
+      >
+        Saqlash
+      </LoadingButton>
     </div>
   )
 }

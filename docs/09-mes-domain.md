@@ -34,7 +34,9 @@ bo'linadi (`app/models/enums.py`):
   OMBORCHI→TMO); odatdagi yo'l — `/login/badge`. Parol bilan kirish ROLGA emas, HISOB TURIGA
   bog'liq: seed yaratgan `is_system=True` hisob 401 oladi, odamning shaxsiy hisobi esa kiradi va
   smenasi avtomat ochiladi (§3.0.1) — skaneri yo'q post uchun (ARRA). Beyjik yo'lida smena
-  terminalda ochiladi (§3, §3.0.1). Ish markazi biriktirish shart
+  terminalda ochiladi (§3, §3.0.1). Smena HARAKATSIZLIK bilan yopiladi (ish jadvali bilan emas —
+  smena kechroq tugashi mumkin): brauzer chegaradan keyin login sahifasiga qaytaradi, worker esa
+  brauzersiz qolgan brigadani yopadi (`services/activity.py`, 04-backend-data.md §6). Ish markazi biriktirish shart
   emas: `resolve_terminal` postdan `scanning.post_machine` bilan topadi.
   `omborchi` rol KODI o'zgarmaydi (odamning kasbi), ekranda
   esa "TMO omborchisi" (`ROLE_LABELS`) — u ishlaydigan post nomi bilan.

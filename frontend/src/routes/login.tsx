@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query"
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
 import type { AxiosError } from "axios"
 import { IdCard, KeyRound } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
@@ -31,6 +31,7 @@ import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
 import { useAuth } from "@/hooks/useAuth"
 import { useBadgeScan } from "@/hooks/useBadgeScan"
+import { resetLastActivity } from "@/hooks/useIdleLogout"
 import { formatUzPhone } from "@/lib/validation"
 import { extractErrorMessage } from "@/utils"
 
@@ -70,6 +71,9 @@ type PostChoice = { id: number; code: string; name: string }
 function Login() {
   const navigate = useNavigate()
   const { loginMutation } = useAuth()
+  // Chiqishning hamma yo'li (tugma, harakatsizlik, 401) shu sahifaga keladi — eski faollik
+  // vaqti tozalanmasa, qayta kirgan zahoti `useIdleLogout` yana chiqarib yuborardi.
+  useEffect(resetLastActivity, [])
   const [formSchema] = useState(makeFormSchema)
   const [showPassword, setShowPassword] = useState(false)
   // Bir nechta postga biriktirilgan hodim: server 409 bilan ro'yxat qaytaradi

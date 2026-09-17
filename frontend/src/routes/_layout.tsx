@@ -18,6 +18,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { useIdleLogout } from "@/hooks/useIdleLogout"
 import { useMesWs } from "@/hooks/useMesWs"
 import { requireAuth } from "@/lib/guards"
 import { OPERATOR_ROLES } from "@/lib/mes"
@@ -67,6 +68,9 @@ function Layout() {
     select: (s) => s.resolvedLocation?.pathname ?? "",
   })
   const sectionTitle = sectionTitles[pathname]
+
+  // Harakatsizlikdan keyin login sahifasiga (chegara — Tizim sozlamalarida)
+  useIdleLogout()
 
   // Jonli xabar (butun admin qobig'i uchun): tsex buyurtmani tugatganda manager
   // qaysi sahifada bo'lmasin toast + «Ochish». Har qanday `order.*` hodisasida

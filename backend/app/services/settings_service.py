@@ -15,8 +15,16 @@ from app.schemas.settings import WorkSchedule
 #: bo'lib qolmasin — `str.endswith("")` har doim rost).
 CUSTOM_PART_SUFFIX = "custom_part_suffix"
 
+#: Harakatsizlikdan keyin chiqarish, daqiqa (`services/activity.py`). Tsex: TERMINAL
+#: va post rollari; ofis: qolganlar (TABLO chiqarilmaydi). 90 — tushlik (1 soat)
+#: smenani yopib qo'ymasin.
+IDLE_OPERATOR_MINUTES = "idle_logout_operator_minutes"
+IDLE_STAFF_MINUTES = "idle_logout_staff_minutes"
+#: `PUT /settings/{key}` shu oraliqdan tashqari qiymatni rad etadi.
+IDLE_MINUTES_RANGE = (10, 1440)
+
 #: Sahifada ko'rsatiladigan sozlamalar va ularning sukut qiymati.
-DEFAULTS: dict[str, str] = {CUSTOM_PART_SUFFIX: "#"}
+DEFAULTS: dict[str, str] = {CUSTOM_PART_SUFFIX: "#", IDLE_OPERATOR_MINUTES: "90", IDLE_STAFF_MINUTES: "240"}
 
 #: Ish jadvali (JSON). `DEFAULTS` da YO'Q: umumiy `PUT /settings/{key}` 8 belgilik
 #: qiymat qabul qiladi, jadvalning esa o'z sxemasi va o'z endpointi bor.
