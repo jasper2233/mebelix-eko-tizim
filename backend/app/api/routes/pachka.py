@@ -290,12 +290,14 @@ async def scan_into_pachka(
         # ogohlantirish ovozi, qizil xato emas (qadoqlovchi tekshirish uchun qayta skanerlaydi)
         raise scan_error("E008", f"Bu detal allaqachon {name} ichida.")
 
-    session = await active_session(db, machine)
     # `user.id` try'dan OLDIN: `record_scan_at` takroriy `client_event_id` poygasida
     # ScanRejected'dan oldin O'ZI rollback qiladi (`scanning.py`), rollback esa identity
     # map'ni expire qiladi — keyin `user.id` ni o'qish MissingGreenlet -> 500 berardi.
     user_id = user.id
     try:
+        # `active_session` ham try ICHIDA: smena yo'q (E005) yoki hodim nofaol (E006)
+        # ScanRejected beradi, exception handler esa yo'q — tashqarida 500 bo'lardi.
+        session = await active_session(db, machine)
         outcome = await record_scan_at(
             db,
             machine=machine,

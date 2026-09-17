@@ -109,7 +109,7 @@ Admin panelda "yangi kod" yoki "bekor qilish" bosilsa server jonli ulanishni **~
 kelgandagina (~3 soniya; transport xatosi endi hisobni NOLLAMAYDI — ilgari notekis
 tarmoqda ketma-ketlik hech yig'ilmasdi) saqlangan tokenni o'chirib, sozlash oynasini qayta
 ochadi — yangi kodni kiritsangiz ishlashda davom etadi. Oyna bekor qilinsa agent
-to'xtaydi. Boshqa har qanday xato (deploy paytidagi 502, kompyuter yonganda
+to'xtamaydi: 30 soniyadan keyin qayta urinadi va oyna yana ochiladi. Boshqa har qanday xato (deploy paytidagi 502, kompyuter yonganda
 tarmoq hali tik turmagani, server qayta yonayotgani) tokenni O'CHIRMAYDI —
 agent 5 soniyalik interval bilan jimgina qayta ulanadi, dialog ochilmaydi.
 

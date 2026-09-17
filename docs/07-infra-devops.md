@@ -350,7 +350,7 @@ Printer topilmasa job navbatda qoladi va log'da `Yorliq printeri topilmadi — d
 4. `win32gui.CreateDC("WINSPOOL", PRINTER_NAME, dm)` bilan shu DEVMODE'li DC ochiladi;
 5. rasm `HORZRES`/`VERTRES` ga proporsional (`min` scale) sig'diriladi va `ImageWin.Dib(img).draw(...)` bilan `StartDoc`/`StartPage` ichida chiziladi.
 
-Printer xatosi ushlanadi va `False` qaytariladi — job navbatda qoladi, yo'qolmaydi.
+Printer xatosi ushlanadi va `False` qaytariladi — job navbatda qoladi, yo'qolmaydi. ISTISNO — PNG'ning o'zi o'qilmasa (buzuq base64/rasm): bu printer xatosi emas, qayta urinish tuzatmaydi, shuning uchun job `log.error` bilan TASHLANADI (`True`) — aks holda flusher navbat boshida to'xtab, orqasidagi hamma yorliqni abadiy to'sardi (v1.5.1).
 
 ### Agent o'rnatish
 
@@ -367,7 +367,7 @@ Ishlayotganini admin paneldagi **Ulandi** belgisi bildiradi. Diagnostika ikki jo
 
 Ikkinchi nusxa ishga tushmaydi — `win32event.CreateMutex` bilan singleton. Oyna ko'rinmagani uchun foydalanuvchi "ishlayaptimi?" deb exe'ni qayta bosishi tabiiy; ikki agent bir printerga ulansa navbat ular orasida bo'linib ketardi.
 
-Token bekor qilinganda (admin "yangi kod" yoki "o'chirish" bosgan) handshake `403`/`4401` bilan rad etiladi. Agent tokenni faqat **ketma-ket 2 ta** 401/403 raddan keyin bekor deb hisoblaydi (`reject_streak`) va sozlash oynasini qayta ochadi — yangi kod kiritilsa ishlashda davom etadi, bekor qilinsa to'xtaydi. Saqlangan `.env` fayl o'chirilmaydi: muvaffaqiyatli pairing uni baribir qayta yozadi. Bu mexanizmsiz foydalanuvchi `.env` ni qo'lda o'chirib, avval fon jarayonini Task Manager'dan yopishga majbur bo'lardi.
+Token bekor qilinganda (admin "yangi kod" yoki "o'chirish" bosgan) handshake `403`/`4401` bilan rad etiladi. Agent tokenni faqat **ketma-ket 2 ta** 401/403 raddan keyin bekor deb hisoblaydi (`reject_streak`) va sozlash oynasini qayta ochadi — yangi kod kiritilsa ishlashda davom etadi. Bekor qilinsa agent TO'XTAMAYDI: `uplink` `SystemExit` ni ushlab 30 s kutadi va qayta urinadi, ya'ni oyna yana ochiladi (tray'dagi «Qayta ulash» yo'li ham ochiq). Saqlangan `.env` fayl o'chirilmaydi: muvaffaqiyatli pairing uni baribir qayta yozadi. Bu mexanizmsiz foydalanuvchi `.env` ni qo'lda o'chirib, avval fon jarayonini Task Manager'dan yopishga majbur bo'lardi.
 
 Streak nozik joyi: u faqat **muvaffaqiyatli ulanishda** va **auth bo'lmagan HTTP javobida** (deploy paytidagi 502/503 — token aybdor emas) nolga tushadi. Tarmoq uzilishi (TCP timeout, `except Exception` shoxi) uni nolga **tushirmaydi** — ilgari tushirardi va notekis tsex tarmog'ida ketma-ket 403 hech yig'ilmasdi (403 → timeout → 403 → …), ya'ni bekor qilingan agent yangi kod so'ramay qolardi.
 
@@ -396,7 +396,7 @@ pip install "websockets>=14" pywin32 pillow pynput pystray pyserial pyinstaller
 pyinstaller --onefile --noconsole --icon mebelix.ico --name mebelix-agent agent.py
 ```
 
-`websockets>=14` majburiy — agent kodi v14+ API'siga (`additional_headers`) yozilgan, eski v13 shim olib tashlangan; v13 bilan yig'ilgan exe serverga ulanolmaydi. `pystray` ham majburiy: usiz qurilgan exe tray belgisisiz chiqadi (`start_tray` ImportError bilan jimgina o'chadi). `pyserial` ham shunday — usiz andon (Pico) qismi jimgina o'chadi (`start_andon`). Joriy `AGENT_VERSION` — `1.5.0`.
+`websockets>=14` majburiy — agent kodi v14+ API'siga (`additional_headers`) yozilgan, eski v13 shim olib tashlangan; v13 bilan yig'ilgan exe serverga ulanolmaydi. `pystray` ham majburiy: usiz qurilgan exe tray belgisisiz chiqadi (`start_tray` ImportError bilan jimgina o'chadi). `pyserial` ham shunday — usiz andon (Pico) qismi jimgina o'chadi (`start_andon`). Joriy `AGENT_VERSION` — `1.5.1`.
 
 Natijadagi `mebelix-agent.exe` ni **CI o'zi quradi va serverga qo'yadi** (`agent` job → `agent-dist/` artifact, deploy uni rsync bilan serverga eltadi): paneldagi havola ham, agentning `self_update()` i ham exe'ni `GET /api/v1/bridge-agents/download` dan, versiya/sha256 ni esa `GET /api/v1/bridge-agents/latest` dan oladi. Qo'lda (flashka) ko'chirish faqat serverga kirish yo'q bo'lganda kerak; binar repoda saqlanmaydi. Paneldagi versiya belgisi (handshake'dagi `X-Agent-Version` → `bridge_agent.version`) qaysi mashinada eski exe qolganini ko'rsatadi.
 

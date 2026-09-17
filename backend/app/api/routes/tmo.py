@@ -224,7 +224,16 @@ async def accept_into_tmo(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: in
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
     qr = body.qr_text.strip()
     qr_upper = qr.upper()  # qadoq kodlari doim UPPERCASE — prefiks ham, qidiruv ham shu registrda
-    session = await active_session(db, machine)
+    # `user.id` sikldan OLDIN: `record_scan_at` takroriy `client_event_id` poygasida
+    # ScanRejected'dan oldin O'ZI rollback qiladi va shundan keyin `user.id` ni o'qish
+    # MissingGreenlet -> 500 berardi (qadoqni ikki terminal bir vaqtda qabul qilsa).
+    user_id = user.id
+    try:
+        session = await active_session(db, machine)
+    except ScanRejected as exc:
+        # Smena yo'q (E005) / hodim nofaol (E006) — exception handler yo'q, ushlanmasa 500.
+        await log_rejected_scan(db, exc, qr, user_id=user_id)
+        raise scan_error(exc.code, exc.message) from None
 
     if qr_upper.startswith("PK-"):
         pachka = await _pachka_by_code(db, order, qr_upper)
@@ -246,14 +255,22 @@ async def accept_into_tmo(db: SessionDep, user: WhUser, ctx: WhCtx, order_id: in
         )
         note = f"Qadoq qabul qilindi: {pachka.code} ({len(qrs)} detal)"
     else:
+        # Dvijok QR ni BUTUN tizimdan qidiradi: tekshiruvsiz boshqa buyurtmaning detali
+        # shu sahifadan o'sha buyurtmaga TMO skani bo'lib yozilardi (pachka.py dagi bilan bir).
+        owner = (
+            await db.execute(
+                select(PartInstance.order_id).where(
+                    PartInstance.qr_text == qr,
+                    PartInstance.is_deleted == False,  # noqa: E712
+                )
+            )
+        ).scalar_one_or_none()
+        if owner is not None and owner != order.id:
+            raise scan_error("E001", "Bu detal boshqa buyurtmaga tegishli.")
         qrs = [qr]
         note = f"TMO ga qabul qilindi: {qr}"
 
     outcomes = []
-    # `user.id` sikldan OLDIN: `record_scan_at` takroriy `client_event_id` poygasida
-    # ScanRejected'dan oldin O'ZI rollback qiladi va shundan keyin `user.id` ni o'qish
-    # MissingGreenlet -> 500 berardi (qadoqni ikki terminal bir vaqtda qabul qilsa).
-    user_id = user.id
     for one in qrs:
         try:
             outcomes.append(
