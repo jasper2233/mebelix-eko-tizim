@@ -7,11 +7,13 @@ from app.api.routes._shared import drop_forbidden_nulls
 from app.core.config import settings
 from app.core.exceptions import DuplicateValueException, ForbiddenException, NotFoundException
 from app.core.security import get_password_hash, verify_password
+from app.core.utils.rate_limit import rate_limiter
 from app.crud import crud_machines, crud_users, log_action
 from app.models.enums import POST_ROLES, UserRole
 from app.models.user import User
 from app.schemas.common import Message, Paginated
-from app.schemas.users import UpdatePassword, UserAdminUpdate, UserCreate, UserRead, UserUpdate
+from app.schemas.users import IdleLimit, UpdatePassword, UserAdminUpdate, UserCreate, UserRead, UserUpdate
+from app.services.activity import idle_minutes, touch_activity
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -109,6 +111,23 @@ async def read_users(
 @router.get("/me", response_model=UserRead, operation_id="read_user_me")
 async def read_users_me(current_user: CurrentUser) -> UserRead:
     return UserRead.model_validate(current_user)
+
+
+@router.get("/me/idle-limit", response_model=IdleLimit, operation_id="read_idle_limit")
+async def read_idle_limit(current_user: CurrentUser, db: SessionDep) -> IdleLimit:
+    """Harakatsizlik chegarasi — brauzer shundan keyin login sahifasiga qaytaradi (`useIdleLogout`)."""
+    return IdleLimit(idle_minutes=await idle_minutes(db, current_user))
+
+
+@router.post("/me/activity", response_model=Message, operation_id="touch_user_activity")
+async def touch_user_activity(current_user: CurrentUser) -> Message:
+    """Brauzerda haqiqiy harakat bo'ldi (bosish, klaviatura, shu ish markazidagi skan).
+
+    Polling so'rovlari faollik EMAS — ochiq qolgan sahifa o'zicha so'rov yuboraveradi.
+    Shu sabab faollik alohida, faqat odam harakatidan keyin yuboriladi (daqiqasiga ko'pi
+    bilan bir marta). Server undan refresh'ni rad etishda va ochiq smenani yopishda foydalanadi."""
+    await touch_activity(rate_limiter.client, current_user.id)
+    return Message(message="OK")
 
 
 @router.patch("/me", response_model=UserRead, operation_id="update_user_me")

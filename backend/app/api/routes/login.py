@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -23,6 +24,7 @@ from app.models import Employee, Machine, Post
 from app.models.enums import POST_ROLES, EmployeeStatus, UserRole
 from app.models.user import User
 from app.schemas.auth import BadgeLoginRequest, BadgeLoginResponse, BadgePostOption, Token
+from app.services.activity import idle_minutes, last_activity, touch_activity
 from app.services.scanning import MACHINE_MISSING, open_badge_session, post_machine
 
 router = APIRouter(prefix="/login", tags=["login"])
@@ -140,6 +142,7 @@ async def login_for_access_token(
     if POST_ROLES.get(UserRole(user.role)) is not None:
         await _open_shift_for(db, user, request)
 
+    await touch_activity(rate_limiter.client, user.id)
     access_token = _issue_token_pair(response, user)
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -346,6 +349,7 @@ async def login_with_badge(
         "session.started",
         {"session_id": session.id, "employee": employee.full_name, "machine_id": machine.id, "post_id": post.id},
     )
+    await touch_activity(rate_limiter.client, user.id)
     access_token = _issue_token_pair(response, user)
     return BadgeLoginResponse(
         access_token=access_token,
@@ -373,6 +377,14 @@ async def refresh_access_token(
     user = await crud_users.get(db=db, id=token_data.user_id)
     if not user or not user.is_active or user.token_version != token_data.token_version:
         raise UnauthorizedException("Token bekor qilingan.")
+
+    # Harakatsizlik chegarasi (`services/activity.py`) — jti claim'dan OLDIN: rad etilgan token
+    # yondirilmaydi, aks holda brauzerning keyingi urinishi «replay» bo'lib hisobning HAMMA
+    # qurilmasini chiqarib yuborardi. Faollik noma'lum bo'lsa (deploy'dan oldingi kirish) — ruxsat.
+    limit = await idle_minutes(db, user)
+    last = await last_activity(rate_limiter.client, user.id)
+    if limit is not None and last is not None and datetime.now(UTC) - last > timedelta(minutes=limit):
+        raise UnauthorizedException("Uzoq vaqt harakat bo'lmadi — qayta kiring.")
 
     # One-time use: a replayed refresh token means the cookie was stolen or the client is broken —
     # either way the whole session is revoked by bumping token_version. Tombstone AVVAL qo'yiladi

@@ -15,7 +15,11 @@ if TYPE_CHECKING:
 
 from app.core.config import TASHKENT_TZ
 from app.core.db import local_session
-from app.models import BridgeAgent, Employee, Order, Pachka, PachkaItem, WasteItem
+from app.core.ws import ws_manager
+from app.crud import log_action
+from app.models import BridgeAgent, Employee, Order, Pachka, PachkaItem, Scan, WasteItem, WorkSession
+from app.models.enums import SessionStatus
+from app.services.activity import last_activity
 from app.services.labels import (
     BadgeLabelData,
     PachkaLabelData,
@@ -26,6 +30,7 @@ from app.services.labels import (
     render_pachka_label_png,
     render_waste_label_png,
 )
+from app.services.settings_service import IDLE_OPERATOR_MINUTES, get_setting
 
 logger = logging.getLogger(__name__)
 
@@ -265,6 +270,85 @@ async def print_badge(ctx: dict[str, Any], employee_id: int, agent_id: int) -> s
         ).decode()
 
     return await _enqueue(ctx, employee_id, png_b64, agent_id, "Beyjik")
+
+
+all_tasks = [print_label, print_pachka_label, print_waste_label, print_badge]
+
+
+#: Worker cron oralig'i — smena chegara oshgandan ko'pi bilan shuncha keyin yopiladi.
+IDLE_SWEEP_MINUTES = 10
+
+
+async def close_idle_sessions(ctx: dict[str, Any]) -> str:
+    """Harakatsiz BRIGADANING ochiq smenalarini yopadi (cron, `IDLE_SWEEP_MINUTES` da bir).
+
+    Brauzer ochiq bo'lsa uni o'zi login sahifasiga qaytaradi va logout smenani yopadi.
+    Bu — brauzer YO'Q holat uchun: monoblok o'chirilgan, oyna yopilgan. Ilgari smena
+    muddati yo'q edi va Prisadka smenasi 12 kun ochiq turib qolgan (2026-09-05 dan).
+
+    Brigada birga baholanadi: skan langar smenaga yoziladi (`active_session`), ya'ni
+    sherigining smenasida skan bo'lmaydi — alohida baholansa ishlab turgan sherik yopilardi.
+    Faollik = eng so'nggisi: smena ochilishi, brigada smenalariga yozilgan skan (bazadan —
+    Redis tozalansa ham, brauzer yopiq stanok skaneri ishlasa ham to'g'ri) va smenani
+    ochgan hisobning brauzerdagi harakati. Ish jadvali ATAYLAB hisobga olinmaydi —
+    smena kechroq tugashi mumkin.
+
+    `ended_at` — yopilgan payt emas, OXIRGI FAOLLIK: odam 18:00 da ketgan bo'lsa smena
+    19:40 da emas, 18:00 da tugagan.
+    """
+    redis = ctx.get("redis")
+    now = datetime.now(UTC)
+    closed: list[WorkSession] = []
+    async with local_session() as db:
+        limit = timedelta(minutes=int(await get_setting(db, IDLE_OPERATOR_MINUTES)))
+        open_sessions = (
+            await db.execute(
+                select(WorkSession).where(
+                    WorkSession.status == SessionStatus.ACTIVE,
+                    WorkSession.is_deleted == False,  # noqa: E712
+                )
+            )
+        ).scalars()
+        crews: dict[int | None, list[WorkSession]] = {}
+        for session in open_sessions:
+            crews.setdefault(session.machine_id, []).append(session)
+
+        for crew in crews.values():
+            seen = [session.created_at for session in crew]
+            last_scan = (
+                await db.execute(select(func.max(Scan.created_at)).where(Scan.session_id.in_([s.id for s in crew])))
+            ).scalar()
+            if last_scan is not None:
+                seen.append(last_scan)
+            for user_id in {session.user_id for session in crew if session.user_id is not None}:
+                if (at := await last_activity(redis, user_id)) is not None:
+                    seen.append(at)
+            last = max(seen)
+            if now - last <= limit:
+                continue
+            # ponytail: shu oraliqda kelgan skan yopilgan smenaga yozilishi mumkin (millisekundlar
+            # oynasi, faqat aynan chegarada qaytgan odamda). Qator qulfi kerak bo'lsa — FOR UPDATE.
+            for session in crew:
+                session.status = SessionStatus.ENDED
+                session.ended_at = last
+                log_action(
+                    db,
+                    module="sessions",
+                    action="ended",
+                    employee_id=session.employee_id,
+                    entity_type="session",
+                    entity_id=session.id,
+                    message=f"Harakatsizlik: {int(limit.total_seconds() // 60)} daqiqa ish bo'lmadi",
+                )
+                closed.append(session)
+        await db.commit()
+
+    # Worker protsessida WS mijozlari yo'q — hodisa Redis kanali orqali API workerlariga boradi
+    if redis is not None:
+        ws_manager.redis = redis
+    for session in closed:
+        await ws_manager.publish("session.ended", {"session_id": session.id, "machine_id": session.machine_id})
+    return f"closed:{len(closed)}"
 
 
 all_tasks = [print_label, print_pachka_label, print_waste_label, print_badge]

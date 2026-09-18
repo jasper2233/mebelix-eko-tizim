@@ -128,7 +128,9 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
 - `SystemSetting` (`system_setting`, `7e6946ebd00d`) — ish vaqtida admin tahrirlaydigan
   kalit/qiymat: `key(60)` unikal indeks, `value` (`Text`; `c1e8a4b7d9f2` gacha `String(255)`), `updated_by_id` FK → `user`. Qiymat
   DOIM matn, o'qiydigan joy turga keltiradi (`services/settings_service.py`; `DEFAULTS` da
-  sukut qiymatlar, hozir bitta: `custom_part_suffix = "#"`). `work_schedule` kaliti — ish jadvali
+  sukut qiymatlar: `custom_part_suffix = "#"`, `idle_logout_operator_minutes = "90"` va
+  `idle_logout_staff_minutes = "240"` — harakatsizlik chegarasi, `services/activity.py`;
+  `PUT /settings/{key}` ular uchun 10..1440 butun sonni talab qiladi). `work_schedule` kaliti — ish jadvali
   JSON'i (`schemas/settings.py: WorkSchedule` — smenalar, tanaffuslar, haftalik dam olish kunlari,
   bayram sanalari); u `DEFAULTS` da YO'Q, o'z endpointi bor (`GET/PUT /settings/work-schedule`),
   o'qish `get_work_schedule()`, qoidalar `schedule_error()`. Nega `.env` emas: belgini
@@ -163,7 +165,7 @@ Xona surati uchun yangi jadval qo'shilmagan: `OrderFile` qatori `kind=FileKind.D
 
 | Model / jadval | Muhim ustunlar | Unikal/muhim indekslar |
 |---|---|---|
-| `WorkSession` | `employee_id` FK (index), `user_id` FK NULL (smenani ochgan hisob — ish markazining TERMINAL hisobi, post rolidagi texnik hisob yoki ishchining SHAXSIY hisobi), `machine_id` FK NULL, `post_id` FK, `status` (`SessionStatus`, index), `ended_at` | **Bitta ish markazida BIR NECHTA ochiq smena bo'lishi mumkin — brigada** (`crew_sessions`): ARRA da ikki kishi birga ishlaydi va detalni qaysi biri olganini bilishning iloji yo'q. Ilgari "bitta ish markazi = bitta smena" edi va ikkinchi kirish birinchisini jimgina yopib, undan keyingi hamma skan bitta odamga yozilardi. `Scan.session_id` LANGAR smenaga (brigadaning birinchisi) yoziladi; hisobotda esa skan TO'LIQ `scan.employee_id` ga yoziladi — smena oynasi bo'yicha brigadaga bo'lish (1/crew_size) `85d5833` da olib tashlangan (`reports.py`). Smena terminalda ochiladi (beyjik skani yoki ismni bosish) yoki ishchi parol bilan kirganda avtomatik (`login._open_shift_for`). Smena MUDDATI YO'Q — u faqat «Chiqish» (`end_session`), logout yoki o'sha ish markazidagi keyingi kirish bilan yopiladi (`open_badge_session` `join=False` da brigadani almashtiradi). `created_at` = boshlanish vaqti |
+| `WorkSession` | `employee_id` FK (index), `user_id` FK NULL (smenani ochgan hisob — ish markazining TERMINAL hisobi, post rolidagi texnik hisob yoki ishchining SHAXSIY hisobi), `machine_id` FK NULL, `post_id` FK, `status` (`SessionStatus`, index), `ended_at` | **Bitta ish markazida BIR NECHTA ochiq smena bo'lishi mumkin — brigada** (`crew_sessions`): ARRA da ikki kishi birga ishlaydi va detalni qaysi biri olganini bilishning iloji yo'q. Ilgari "bitta ish markazi = bitta smena" edi va ikkinchi kirish birinchisini jimgina yopib, undan keyingi hamma skan bitta odamga yozilardi. `Scan.session_id` LANGAR smenaga (brigadaning birinchisi) yoziladi; hisobotda esa skan TO'LIQ `scan.employee_id` ga yoziladi — smena oynasi bo'yicha brigadaga bo'lish (1/crew_size) `85d5833` da olib tashlangan (`reports.py`). Smena terminalda ochiladi (beyjik skani yoki ismni bosish) yoki ishchi parol bilan kirganda avtomatik (`login._open_shift_for`). Smenaning qat'iy MUDDATI YO'Q (ish jadvali tugashi bilan ham kesilmaydi — smena kechroq tugashi mumkin) — u «Chiqish» (`end_session`), logout (qurilma hisobida shu hisob ochgan brigada ham), o'sha ish markazidagi keyingi kirish (`open_badge_session` `join=False` da brigadani almashtiradi) yoki HARAKATSIZLIK bilan yopiladi: worker cron `close_idle_sessions` (§6) brigada `idle_logout_operator_minutes` davomida ish qilmasa uni yopadi, `ended_at` = oxirgi faollik. `created_at` = boshlanish vaqti |
 | `Scan` | `order_id`/`part_id`/`instance_id`/`route_id`/`post_id` FK, `machine_id` FK NULL, `employee_id` FK (index), `session_id` FK (index), `client_event_id(64)`, `is_cancelled`, `cancelled_at`, `parent_scan_id` FK NULL → `scan.id` (index) | `parent_scan_id` — YIG'MA BUYUM: asosiy detal skani biriktirilgan mayda detallarga ham skan yozadi, hosila qatorlar shu ustun orqali bog'lanadi va bekor qilinganda birga bekor bo'ladi (`c9d4e2f81a70`). UNIQUE `ix_scan_client_event_id` (idempotentlik — network replay rad etiladi); `ix_scan_order_post`; PARTIAL `ix_scan_instance_post` (`WHERE NOT is_cancelled`); `ix_scan_instance_route` (`instance_id`, `route_id`) — skan hisobi QADAM bo'yicha sanaladi (`scanning._scans_done`, issiq yo'l, `d5a1c93b70e2`); `ix_scan_created_at` — dashboard "bugungi skanlar" so'rovi uchun (`a7d3f1c48b26`). Bekor qilingan skan auditda qoladi, hisoblagich qayta oshiriladi |
 
 #### 1.4.2 `bridge_agent` — har printerga o'z tokeni (pairing)
@@ -547,7 +549,7 @@ hisobning raqami bilan to'qnashardi (UNIQUE buzilib prestart yiqilardi).
 
 ## 6. Tasks — ARQ background workers
 
-`backend/app/tasks/__init__.py` — package bitta fayldan iborat, to'rtta registered task:
+`backend/app/tasks/__init__.py` — package bitta fayldan iborat, to'rtta navbat task'i va bitta cron:
 
 | Task | Vazifasi |
 |---|---|
@@ -582,6 +584,18 @@ all_tasks = [print_label, print_pachka_label, print_waste_label, print_badge]
 ```
 
 Worker konfiguratsiyasi (ARQ `WorkerSettings`) ro'yxatni `all_tasks` dan oladi; yangi task qo'shilganda shu ro'yxatga kiritilishi kerak. ARQ konvensiyasi: birinchi argument worker context (`ctx`).
+
+**Cron `close_idle_sessions(ctx)`** — `WorkerSettings.cron_jobs`, har `IDLE_SWEEP_MINUTES` (10) daqiqada
+(`unique` — bir nechta worker bo'lsa ham bir marta). Ochiq `work_session` lar ish markazi bo'yicha
+BRIGADAGA guruhlanadi va birga baholanadi (skan langar smenaga yoziladi — sherik alohida baholansa
+ishlab turib yopilardi). Brigada faolligi = eng so'nggisi: smena ochilishi, brigada smenalariga yozilgan
+skan (`max(scan.created_at)`, BAZADAN — Redis tozalansa ham, brauzer yopiq stanok skaneri ishlasa ham
+to'g'ri) va smenani ochgan hisobning brauzerdagi harakati (Redis `mes:activity:user:{id}`,
+`services/activity.py`). `idle_logout_operator_minutes` dan eski bo'lsa smenalar `ENDED`, `ended_at` =
+oxirgi faollik (yopilgan payt emas), audit `sessions/ended` («Harakatsizlik: N daqiqa ish bo'lmadi»,
+`user_id` yo'q) va WS `session.ended` (worker `ws_manager.redis` ga o'z Redis ulanishini beradi — WS
+mijozlari API protsessida). Natija `closed:{n}`. Ish jadvali ATAYLAB hisobga olinmaydi. Oldingi holat:
+smena muddatsiz edi va Prisadka smenasi 2026-09-05 dan ochiq turib qolgan.
 
 ---
 

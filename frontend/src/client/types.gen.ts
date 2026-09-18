@@ -1296,6 +1296,16 @@ export type Holiday = {
 };
 
 /**
+ * IdleLimit
+ */
+export type IdleLimit = {
+    /**
+     * Idle Minutes
+     */
+    idle_minutes: number | null;
+};
+
+/**
  * KromkaInstance
  *
  * Bitta fizik nusxa KROMKA nazarida: nechta tomoni yopishtirilgan, arradan o'tganmi.
@@ -4170,6 +4180,38 @@ export type UpdateUserMeResponses = {
 };
 
 export type UpdateUserMeResponse = UpdateUserMeResponses[keyof UpdateUserMeResponses];
+
+export type ReadIdleLimitData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/users/me/idle-limit';
+};
+
+export type ReadIdleLimitResponses = {
+    /**
+     * Successful Response
+     */
+    200: IdleLimit;
+};
+
+export type ReadIdleLimitResponse = ReadIdleLimitResponses[keyof ReadIdleLimitResponses];
+
+export type TouchUserActivityData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/users/me/activity';
+};
+
+export type TouchUserActivityResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type TouchUserActivityResponse = TouchUserActivityResponses[keyof TouchUserActivityResponses];
 
 export type UpdatePasswordMeData = {
     body: UpdatePassword;

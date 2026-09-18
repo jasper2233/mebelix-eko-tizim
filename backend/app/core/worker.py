@@ -1,12 +1,13 @@
 import asyncio
 import logging
 
+from arq import cron
 from arq.connections import RedisSettings
 from arq.worker import Worker
 
 from app.core.health import check_database_connection
 from app.core.logger import setup_logging
-from app.tasks import all_tasks
+from app.tasks import IDLE_SWEEP_MINUTES, all_tasks, close_idle_sessions
 
 from .config import settings
 
@@ -32,6 +33,9 @@ async def shutdown(ctx: Worker) -> None:
 
 class WorkerSettings:
     functions = all_tasks
+    # Harakatsiz smenalarni yopish (`services/activity.py`). `unique` (sukut) — bir nechta
+    # worker nusxasi bo'lsa ham bitta davrda bitta marta ishlaydi.
+    cron_jobs = [cron(close_idle_sessions, minute=set(range(0, 60, IDLE_SWEEP_MINUTES)))]
     redis_settings = RedisSettings(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
     on_startup = startup
     on_shutdown = shutdown

@@ -1,14 +1,14 @@
 import contextlib
 
 from fastapi import APIRouter, Request, Response
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.api.deps import CurrentUser, SessionDep, client_ip
 from app.api.routes.login import mark_refresh_token_used, refresh_days
 from app.core.security import REFRESH_COOKIE_NAME, TokenType, clear_auth_cookies, verify_token
 from app.crud import log_action
 from app.models import Employee, WorkSession
-from app.models.enums import SessionStatus
+from app.models.enums import SessionStatus, UserRole
 from app.schemas.common import Message
 from app.services.scanning import end_session
 
@@ -46,13 +46,20 @@ async def logout(
     Faqat O'Z smenasi yopiladi - beyjik bilan qo'shilgan sherigining smenasiga
     tegilmaydi, u boshqa odam va o'zi chiqadi.
     """
+    mine = Employee.user_id == current_user.id
+    # QURILMA hisobi (TERMINAL yoki post rolidagi texnik hisob) hech bir hodimga
+    # bog'lanmagan — beyjik bilan ochilgan smenalar `work_session.user_id` da shu hisob
+    # nomidan yoziladi (`login._terminal_user`). Ilgari ular chiqishda yopilmasdi va
+    # harakatsizlikdan chiqarilgan monoblokning brigadasi tun bo'yi ochiq qolardi.
+    if current_user.is_system or UserRole(current_user.role) == UserRole.TERMINAL:
+        mine = or_(mine, WorkSession.user_id == current_user.id)
     sessions = (
         (
             await db.execute(
                 select(WorkSession)
                 .join(Employee, Employee.id == WorkSession.employee_id)
                 .where(
-                    Employee.user_id == current_user.id,
+                    mine,
                     WorkSession.status == SessionStatus.ACTIVE,
                     WorkSession.is_deleted == False,  # noqa: E712
                 )

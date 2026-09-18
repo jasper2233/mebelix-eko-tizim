@@ -47,6 +47,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/hooks/useAuth"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
+import { useIdleLogout } from "@/hooks/useIdleLogout"
 import { useMesWs } from "@/hooks/useMesWs"
 import { requireAuth } from "@/lib/guards"
 import { OPERATOR_ROLES, POST_COLORS } from "@/lib/mes"
@@ -78,6 +79,7 @@ function TerminalPage() {
     error: ctxError,
   } = useQuery(getTerminalContextQueryOptions())
   const { currentUser } = useCurrentUser()
+  const touchActivity = useIdleLogout()
   const { logout } = useAuth()
   const isOperator = !!currentUser && OPERATOR_ROLES.includes(currentUser.role)
 
@@ -197,6 +199,10 @@ function TerminalPage() {
         }
         const p = event.payload
         if (!ctx || p.machine_id !== ctx.machine_id) return
+        // Stanok skaneri skani ham faollik: Prisadka operatori Nanxing dasturida ishlaydi
+        // va brauzerga umuman tegmaydi — busiz ishlab turgan odam chiqarib yuborilardi.
+        if (event.type === "scan.recorded" || event.type === "scan.rejected")
+          touchActivity()
         if (event.type === "bridge.connected") setPrinterLive(true)
         else if (event.type === "bridge.disconnected") setPrinterLive(false)
         if (event.type === "scan.recorded") {
@@ -234,7 +240,7 @@ function TerminalPage() {
           toast.error(message, { description: `Kod ${code}` })
         }
       },
-      [invalidateWork, ctx, yangiXabar],
+      [invalidateWork, ctx, yangiXabar, touchActivity],
     ),
   )
 
@@ -578,8 +584,9 @@ function TerminalPage() {
         {/* Tsex hisobi bilan kirgan odam uchun bitta tugma: CHIQISH — hisobdan
             ham chiqaradi, smenani ham yopadi (backend `logout` o'zi yopadi).
             Sherikning smenasi sarlavhadagi chipini bosib yopiladi. Qurilma
-            hisobida (TERMINAL) chiqish yo'q — monoblok bir marta, o'rnatishda
-            kiradi; u yerda faqat smenani yakunlash. */}
+            hisobida (TERMINAL) chiqish TUGMASI yo'q — u yerda faqat smenani
+            yakunlash. Harakatsizlik chegarasi oshsa esa u ham login sahifasiga
+            qaytadi (`useIdleLogout`) va qayta kirish — beyjik skani. */}
         {isOperator ? (
           <Button
             variant="destructive"
