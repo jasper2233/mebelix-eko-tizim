@@ -228,8 +228,11 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 ```python
 class WorkerSettings:
     functions = all_tasks                      # backend/app/tasks dan
-    # harakatsiz smenalarni yopish, har 10 daqiqada (04-backend-data.md §6)
-    cron_jobs = [cron(close_idle_sessions, minute=set(range(0, 60, IDLE_SWEEP_MINUTES)))]
+    # harakatsiz smenalarni yopish (10 daq) va Pico to'xtashlarini yozish (5 daq) — 04-backend-data.md §6
+    cron_jobs = [
+        cron(close_idle_sessions, minute=set(range(0, 60, IDLE_SWEEP_MINUTES))),
+        cron(sync_downtimes, minute=set(range(0, 60, DOWNTIME_SWEEP_MINUTES))),
+    ]
     redis_settings = RedisSettings(host=..., port=...)
     on_startup = startup
     on_shutdown = shutdown
@@ -241,7 +244,7 @@ class WorkerSettings:
 
 - `handle_signals` endi o'rnatilmaydi (default `True`): `docker stop`da SIGTERM to'g'ri ushlanib, bajarilayotgan joblar tugatiladi yoki qayta navbatga qo'yiladi.
 
-**Bog'lanishlar:** `config.py`, `setup.py` (`check_database_connection`), `backend/app/tasks/__init__.py` (`all_tasks = [print_label, print_pachka_label, print_waste_label, print_badge]`, cron `close_idle_sessions`). Web-process `utils/queue.py`dagi pool orqali vazifalarni shu worker navbatiga qo'yadi.
+**Bog'lanishlar:** `config.py`, `setup.py` (`check_database_connection`), `backend/app/tasks/__init__.py` (`all_tasks = [print_label, print_pachka_label, print_waste_label, print_badge]`, cron `close_idle_sessions`, `sync_downtimes`). Web-process `utils/queue.py`dagi pool orqali vazifalarni shu worker navbatiga qo'yadi.
 
 ### `backend/app/tasks/__init__.py` — ro'yxatga olingan vazifalar
 

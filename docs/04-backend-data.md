@@ -130,7 +130,8 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   DOIM matn, o'qiydigan joy turga keltiradi (`services/settings_service.py`; `DEFAULTS` da
   sukut qiymatlar: `custom_part_suffix = "#"`, `idle_logout_operator_minutes = "90"` va
   `idle_logout_staff_minutes = "240"` — harakatsizlik chegarasi, `services/activity.py`;
-  `PUT /settings/{key}` ular uchun 10..1440 butun sonni talab qiladi). `work_schedule` kaliti — ish jadvali
+  `stop_prompt_idle_minutes = "5"` — sariq chiroq shuncha daqiqadan uzoq yonsa to'xtash, `services/downtimes.py`;
+  `PUT /settings/{key}` butun son kalitlarini `INT_RANGES` bo'yicha tekshiradi: 10..1440 va 1..120). `work_schedule` kaliti — ish jadvali
   JSON'i (`schemas/settings.py: WorkSchedule` — smenalar, tanaffuslar, haftalik dam olish kunlari,
   bayram sanalari); u `DEFAULTS` da YO'Q, o'z endpointi bor (`GET/PUT /settings/work-schedule`),
   o'qish `get_work_schedule()`, qoidalar `schedule_error()`. Nega `.env` emas: belgini
@@ -143,9 +144,29 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   `state`/`prev_state(16)`, `prev_duration_s`, `happened_at` (agent qo'ygan vaqt — USB rejimda Pico
   soatsiz), `payload` JSONB (hodisaning o'zi, to'liq). Indekslar: `ix_andon_event_key`
   UNIQUE `(machine_id, session, seq)` — qayta yuborish takrorini tashlaydi; `ix_andon_event_machine_at`
-  `(machine_id, happened_at)`. 1-bosqich: faqat xom tarix yig'iladi; to'xtashlar va OEE keyingi
-  bosqichda shu jadvaldan quriladi (eski `stop_reason`/`machine_stop` hali LEGACY). Jonli holat
+  `(machine_id, happened_at)`. Xom tarix; to'xtashlar shu jadvaldan `downtime` ga chiqariladi
+  (quyida), OEE hisoboti keyingi bosqich (eski `stop_reason`/`machine_stop` LEGACY). Jonli holat
   jadvalda emas — Redis'da (`services/andon.py`).
+- `DowntimeReason` (`downtime_reason`, `9e4b7c1d2a60`) — to'xtash sabablari ro'yxati, admin Tizim
+  sozlamalarida yuritadi: `name(60)`, `is_planned` (rejali — tushlik, sozlash; OEE reja vaqtidan
+  chiqariladi), `needs_note` (izohsiz saqlanmaydi, masalan «Boshqa»), `order_index`, `is_active`.
+  O'chirilmaydi — `is_active=False`. Nomi `stop_reason` emas: o'sha nomdagi LEGACY jadval prodda turibdi.
+- `Downtime` (`downtime`, `9e4b7c1d2a60`) — stanok to'xtashi: `machine_id` FK, `kind`
+  (`DowntimeKind`: `fault` qizil, `off` hammasi o'chiq, `idle` sariq chegaradan uzoq, `lock` qulf
+  tugmasi), `start_key(40)`, `started_at`, `ended_at` (NULL — davom etmoqda), `reason_id` FK NULL,
+  `note`, `employee_id` FK NULL (kiritgan — langar smena hodimi), `reason_at`. Indekslar:
+  `ix_downtime_machine_key` UNIQUE `(machine_id, start_key)`, `ix_downtime_machine_started`.
+  Pico turlari `services/downtimes.sync_machine` da `andon_event` dan QAYTA HISOBLANADI (idempotent):
+  ketma-ket to'xtash holatlari bitta oraliq, `start_key` = boshlagan hodisa `{session}-{seq}`, mavjud
+  yozuvning faqat `ended_at` i yangilanadi — sabab tegilmaydi. `STOPPED` = `IDLE` (Pico sariqni 300 s
+  dan keyin STOPPED deb qayta yuboradi); STOPPED birinchi kelgan bo'lsa boshlanish
+  `happened_at − prev_duration_s`. Sessiya almashsa (Pico qayta yuklandi) oraliq o'sha sessiyaning
+  oxirgi hodisasida yopiladi — keyingi vaqt noma'lum. `idle` faqat `stop_prompt_idle_minutes` dan
+  uzoq bo'lsa yoziladi (vaqt sariq yongan paytdan, Pico `idle_timeout_s` ga bog'liq emas). Oyna 12
+  soat, eng eski ochiq yozuvgacha va undan oldingi «ishlayapti» hodisasigacha kengaytiriladi — aks
+  holda oyna to'xtash o'rtasidan boshlanib, u ikkinchi kalit bilan qayta yozilardi. `lock` yozuvini
+  `POST /terminal/downtimes/lock` yaratadi, `scanning.open_badge_session` yopadi (`close_open_locks`);
+  qulf ostida BOSHLANGAN Pico to'xtashi sababni qulfdan ko'chirib oladi.
 - Standart (`is_custom=False`) detal fayldan faqat ARRA (kod 1) + KROMKA (kod 3, qirralar soni bo'yicha) + PRISADKA (kod 6) oladi; PRISADKA qadami HAR QANDAY ishlovda ochiladi — teshik, qirra teshigi, paz yoki freza (`giblab/models.py: ParsedPart.stage_sides`; ilgari faqat TESHIK sanalardi va paz/freza-only detal marshrutsiz qolardi — `a7c419e0b3d5`, §4.4). Paz/freza uchun alohida ROVER qadami ataylab yaratilmaydi — roverdan chiqqan detal keyin bo'yalishi mumkinligini fayl bilmaydi (geometriya baribir SCX va yorliq eskiziga ketadi).
 
 **Og'ir JSONB'larni defer qilish** — `order.py` da ikkita modul-darajali tuple: `ORDER_FAT_COLUMNS = (Order.cutmap, Order.survey, Order.material_usage, Order.machine_assignments)` va `PART_FAT_COLUMNS = (Part.xnc_summary, Part.note)`. Ro'yxat/hisobot so'rovlari ularni `defer()` bilan tashlab yuboradi — busiz 100 talik buyurtma reestri 2.2 MB kesish xaritasini bazadan tortib parse qilib tashlar edi (o'lchov: 284 ms → 5 ms). `Part.edges` ataylab ro'yxatda YO'Q — hajm hisobida kerak. Kartochka so'rovlarida ustunlar odatdagidek yuklanadi. `/terminal/orders` esa tuple'ning faqat yarmini — `survey` va `machine_assignments` ni — defer qiladi: `cutmap` va `material_usage` terminal kartasining o'zida ishlatiladi.
@@ -290,7 +311,7 @@ Barcha mm-o'lchamlar umumiy alias orqali: `_Mm = Annotated[float | None, Field(d
 | `ShiftStart` | Smenani boshlash — IKKI yo'l, natijasi bir xil: `badge_id` (8–36 belgi, optional — skaneri bor postda bitta harakat) yoki `employee_id` (ekrandagi ro'yxatdan ismni bosish — ARRA da skaner yo'q). `join: bool = False` — brigadaga QO'SHILISH; sukut `False` almashtiradi (chiqishni unutish xavfsiz tomonga og'sin) |
 | `TerminalEmployee` | "Kim ishlayapti?" ro'yxatidagi tugma: `id`, `full_name`, `position` |
 | `SessionRead` | Sessiya: `id`, `employee_id` + join qilinadigan `employee_name`, `machine_id`, `post_id`, `status`, `created_at`, `ended_at`, `is_me` — shu smenani KIRGAN odamning o'ziniki: tsex hisobi bilan kirgan operator o'zini brigada chipida ko'rmasligi kerak, chip faqat QO'SHILGAN sherik uchun |
-| `TerminalContext` | Terminal konteksti: `machine_id`/`machine_name`, `post_id`/`post_code`/`post_name` + `crew: list[SessionRead]` — ish markazidagi HAMMA ochiq smena (brigada, 1.4-bo'lim); bo'sh ro'yxat = hali hech kim smenani boshlamagan. `agent_online` — `None` = ish markaziga agent biriktirilmagan (chek chiqmaydi), aks holda paneldagi bilan bir xil 6 daqiqalik oyna (skan-forvard-only agent ham qamraladi: u o'lsa skanlar MES'ga jimgina tushmay qolardi; jonli o'zgarish `bridge.connected/disconnected` dan); `agent_prints` — biriktirilgan agent chek chiqaradimi (`can_print`), `agent_online` `None` bo'lsa ma'nosiz |
+| `TerminalContext` | Terminal konteksti: `machine_id`/`machine_name`, `post_id`/`post_code`/`post_name` + `crew: list[SessionRead]` — ish markazidagi HAMMA ochiq smena (brigada, 1.4-bo'lim); bo'sh ro'yxat = hali hech kim smenani boshlamagan. `agent_online` — `None` = ish markaziga agent biriktirilmagan (chek chiqmaydi), aks holda paneldagi bilan bir xil 6 daqiqalik oyna (skan-forvard-only agent ham qamraladi: u o'lsa skanlar MES'ga jimgina tushmay qolardi; jonli o'zgarish `bridge.connected/disconnected` dan); `agent_prints` — biriktirilgan agent chek chiqaradimi (`can_print`), `agent_online` `None` bo'lsa ma'nosiz; `has_andon` — so'nggi 7 kunda Pico hodisasi kelgan (terminal to'xtash sababini faqat shunda so'raydi) |
 | `TerminalOrderCard` | Terminal proyekt tanlagichi kartasi (`/terminal/orders`): `done`/`total` post turiga moslangan, `materials` (arrachi partiyalab kesadi), `sheets_total`, `has_cutmap` |
 | `QrOrderRef` | QR qaysi aktiv buyurtmaga tegishli (`/terminal/qr/{qr}/order`): `order_id` + `order_number` |
 | `KromkaInstance`, `KromkaPartRow`, `KromkaOrderState` | KROMKA post sahifasi (`order_number`, `project_name` — sarlavha uchun): har nusxaning `done` (yopishtirilgan tomonlar) + `arra_passed` flagi; qator darajasida `sides`, `total_done`/`total_required`, `process_code`, `route_id`. Nusxaning `done` hisobi QADAM bo'yicha (`_post_scan_counts` → `{(instance_id, route_id): count}`) — post bo'yicha sanalsa takror kromka o'tishida birinchi o'tishning skanlari ikkinchisini ham "bajarildi" qilib ko'rsatardi |
@@ -318,6 +339,7 @@ Umumiy "NAVBATDAGI VAZIFALAR" jadvali (`TaskRow`) va `/terminal/tasks` endpointi
 | `backend/app/schemas/tablo.py` | `StageAgg`, `TabloPostCol`, `TabloOrderRow`, `TabloMatrix`, `TabloPartRow`, `TabloOrderDetail` | TABLO javob modellari (avval `tablo.py` route ichida inline edi); `TabloMatrix.posts` endi typed (`TabloPostCol`) |
 | `backend/app/schemas/reports.py` | `EmployeeProductivity`, `ProductivityReport`, `OrderReportRow`, `OrdersReport`, `MaterialUsageRow`, `MaterialsReport`, `DashboardToday`, `DashboardOrders`, `ReadyOrder`, `PostLoad`, `TrendDay`, `DashboardMoney`, `DashboardStats`, `MachineTimeRow`, `MachineTimeDay`, `MachineTimeStop`, `MachineTimeReport` | Hisobot/dashboard javob modellari; `MachineTime*` — `GET /reports/machine-time` (stanok vaqti, andon) (avval `reports.py` route ichida inline edi) |
 | `backend/app/schemas/audit.py` | `AuditLogRead`, `AuditSummaryRow` | Loglar sahifasi qatori (avval route ichida inline edi) |
+| `backend/app/schemas/downtimes.py` | `DowntimeReasonRead`, `DowntimeReasonCreate`, `DowntimeReasonUpdate`, `DowntimeRead`, `DowntimeReasonInput` | To'xtash sabablari (admin CRUD — `name` 1..60) va terminal: `DowntimeRead` (`id`, `kind`, `started_at`, `ended_at`, `reason_id`), `DowntimeReasonInput` (`reason_id`, `note` ≤500). Satrlar `str_strip_whitespace` |
 
 ---
 
@@ -421,7 +443,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 
 ### 4.4 Versiyalar zanjiri — `backend/app/migrations/versions/`
 
-51 ta migratsiya, head: `5d8e2a61c0f4`.
+53 ta migratsiya, head: `9e4b7c1d2a60`.
 
 **Olib tashlangan ikki modulning migratsiyalari ATAYLAB qoldirilgan** — OEE
 (37–39) va materiallar ombori (27–28). Modul kodi butunlay
@@ -499,6 +521,7 @@ va 7 yetim ustun**; hammasi `migrations/env.py` dagi
 | 50 | `7e6946ebd00d` | `7e6946ebd00d_system_setting_runtime_sozlamalar.py` | **`system_setting`** — ish vaqtida admin tahrirlaydigan kalit/qiymat sozlamalar (§1.4); birinchi kalit `custom_part_suffix` |
 | 51 | `5d8e2a61c0f4` | `5d8e2a61c0f4_andon_event_stanok_signal_ustuni.py` | **`andon_event`** — stanok signal ustunidan (Pico → MES agent) kelgan xom hodisalar (§1.4): UNIQUE `(machine_id, session, seq)`, `(machine_id, happened_at)` indeksi. Eski OEE jadvallariga (`stop_reason`, `machine_stop`) tegmaydi |
 | 52 | `c1e8a4b7d9f2` | `c1e8a4b7d9f2_system_setting_value_text.py` | **`system_setting.value` → `Text`** — ish jadvali (`work_schedule`) JSON bo'lib saqlanadi, bayramlar qo'shilgan sari 255 belgidan oshardi. Downgrade 255 dan uzun qiymatda ataylab yiqiladi (kesilgan JSON o'qib bo'lmaydi) |
+| 53 | `9e4b7c1d2a60` | `9e4b7c1d2a60_downtime_toxtash_sabablari.py` | **`downtime_reason`, `downtime`** — to'xtash sabablari va stanok to'xtashlari (§1.4): `downtime.kind` VARCHAR(30) enum (`native_enum=False`), UNIQUE `(machine_id, start_key)`, `(machine_id, started_at)` indeksi. LEGACY `stop_reason`/`machine_stop` ga tegilmaydi |
 
 Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kind=DOCUMENT` + `meta` JSONB bilan ishlatiladi (1.4.1-bo'lim).
 
@@ -521,9 +544,9 @@ Idempotent bootstrap skript — birinchi admin foydalanuvchini yaratadi (`python
 
 ### 5.2 `backend/app/commands/seed_defaults.py`
 
-Idempotent bootstrap — default tashkilot va 9 ishlab chiqarish postini ta'minlaydi (`python -m app.commands.seed_defaults`, prestart/setup scriptlardan chaqiriladi):
+Idempotent bootstrap — 9 ishlab chiqarish posti va post hisoblarini ta'minlaydi (`python -m app.commands.seed_defaults`, prestart/setup scriptlardan chaqiriladi):
 
-- Tashkilot: `select(Organization).limit(1)` — DB'da **birorta ham** tashkilot bo'lmasa `Organization(name="Mebelix")` yaratadi. Kod o'zgarmagan, lekin bu shox endi **hech qachon ishlamaydi**: org qatorini `1393a241b793` migratsiyasi qo'yadi (4.4-bo'lim), seed uni faqat topib qoldiradi.
+- Tashkilot: seed'da YO'Q — org qatorini `1393a241b793` migratsiyasi qo'yadi (4.4-bo'lim); ilgari shu yerda turgan `select(Organization)` shoxi o'lik edi va olib tashlangan.
 - Postlar: mavjud `code` lar to'plami bilan solishtirib, yetishmaganlarini `POSTS` ro'yxatidan qo'shadi — 9 post (`ARRA`…`BOYOQ` + `UPAKOVKA` + `TMO`, `OVAL` 3-o'rinda) `order_index` 1–10, `unit` (m2/meter/piece; `UPAKOVKA` — `m2`, ish haqi qadoqlangan kvadratura bo'yicha, `TMO` — `piece`); faqat `ROVER` — `requires_assignment_choice=True`; BOYOQ'da ish markazi tanlash shart emas — bo'yoq kamerasi bitta. **`order_index` 5 ataylab bo'sh** — olib tashlangan `PAZ` o'rni: tartib faqat nisbiy ishlatiladi, qayta raqamlash esa mavjud bazalarda bekorga siljish beradi. Mavjud postning `order_index` i ro'yxatdan farq qilsa sinxronlanadi (yangi post qo'shilganda tartib siljiydi).
 
 **Post hisoblari** (`_seed_post_accounts`) — har post uchun BITTA texnik hisob (`arrachi`,
@@ -596,6 +619,11 @@ oxirgi faollik (yopilgan payt emas), audit `sessions/ended` («Harakatsizlik: N 
 `user_id` yo'q) va WS `session.ended` (worker `ws_manager.redis` ga o'z Redis ulanishini beradi — WS
 mijozlari API protsessida). Natija `closed:{n}`. Ish jadvali ATAYLAB hisobga olinmaydi. Oldingi holat:
 smena muddatsiz edi va Prisadka smenasi 2026-09-05 dan ochiq turib qolgan.
+
+**Cron `sync_downtimes(ctx)`** — har `DOWNTIME_SWEEP_MINUTES` (5) daqiqada. So'nggi `SYNC_WINDOW` (12 soat)
+ichida `andon_event` kelgan har ish markazi uchun `services/downtimes.sync_machine` (§1.4 `Downtime`) +
+commit. Terminal ochiq bo'lmasa ham to'xtashlar yozilib, yopilib turadi (hisobot terminalga bog'liq
+bo'lmasin); terminal esa `GET /terminal/downtimes/pending` da o'zi ham sinxronlaydi. Natija `synced:{n}`.
 
 ---
 

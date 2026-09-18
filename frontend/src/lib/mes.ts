@@ -1,6 +1,7 @@
 // MES domain constants: Uzbek labels + stage colors (4.4, 6.1)
 
 import type {
+  DowntimeKind,
   EmployeeStatus,
   MachineStatus,
   OrderPriority,
@@ -298,6 +299,14 @@ export const ANDON_STATE_LABELS: Record<string, string> = {
   BOOT: "Yoqilmoqda",
 }
 
+/** To'xtash turi — backend `models/enums.py: DowntimeKind` bilan QO'LDA oynalangan. */
+export const DOWNTIME_KIND_LABELS: Record<string, string> = {
+  fault: "Avariya",
+  off: "Stanok o'chiq",
+  idle: "Stanok ishlamayapti",
+  lock: "Qulflangan",
+} satisfies Record<DowntimeKind, string>
+
 // Hamma joyda bir xil: kun.oy.yil (brauzer locale'iga bog'liq emas)
 const p2 = (n: number) => String(n).padStart(2, "0")
 
@@ -401,6 +410,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   closed: "yopildi",
   item_removed: "pachkadan olindi",
   badge_queued: "beyjik chop etishga yuborildi",
+  reason_set: "to'xtash sababi kiritildi",
+  locked: "sabab bilan qulflandi",
 }
 
 /** Skan xato kodlari — backend `services/scanning.py` `ScanRejected` docstring'i

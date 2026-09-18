@@ -166,3 +166,15 @@ class FileKind(StrEnum):
 class SessionStatus(StrEnum):
     ACTIVE = "active"
     ENDED = "ended"
+
+
+class DowntimeKind(StrEnum):
+    """To'xtash turi (`downtime.kind`). Frontenddagi `DOWNTIME_KIND_LABELS` (lib/mes.ts) bilan qo'lda oynalangan.
+
+    FAULT/OFF/IDLE — Pico signal ustunidan chiqarilgan (`services/downtimes.py`), LOCK — operator
+    qulf tugmasi bilan o'zi e'lon qilgan to'xtash."""
+
+    FAULT = "fault"  # qizil chiroq — avariya
+    OFF = "off"  # hamma chiroq o'chiq (Pico quvvatda, stanok o'chiq)
+    IDLE = "idle"  # sariq chiroq chegaradan uzoq — stanok ishlamayapti
+    LOCK = "lock"  # operator ketishdan oldin sababni aytib ekranni qulfladi

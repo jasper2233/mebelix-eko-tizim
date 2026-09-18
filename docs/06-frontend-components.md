@@ -587,6 +587,15 @@ Chap toolbar tugmasi: ikonka + `text-2xs` yozuv (`index.css` da 0.6875rem), `h-1
 
 **Maqsadi:** ikkita to'siq ekrani — majburiy to'liq ekran (`requestFullscreen` user-gesture talab qiladi, shuning uchun tugma) va qulf. Ikkalasi bitta ichki `Overlay` maketidan. `requestFullscreen()` rad etilishi mumkin (iframe, brauzer sozlamasi), shuning uchun promise `.catch` bilan tutiladi va operator "To'liq ekranga o'tib bo'lmadi" toast'ini ko'radi — aks holda jim unhandled rejection bo'lardi.
 
+Qulf ekranida `lockReason` berilsa (qulf tugmasida sabab tanlangan) matn «To'xtash sababi: X. Ochish uchun beyjikni skanerlang» bo'ladi.
+
+### `frontend/src/components/Terminal/DowntimeReason.tsx`
+
+**Maqsadi:** stanok to'xtashi sababini smenadagi hodim kiritadi (`docs/12-oee.md` §7, endpointlar `docs/03` — `downtimes.py`). Ikki eksport, bitta ichki `ReasonGrid` (rejasiz/rejali guruhlar, `h-16` katta tugmalar; `needs_note` sabab tanlansa izoh maydoni chiqadi va bo'sh izohda «Saqlash» o'chadi) va `Who` (kim kiritadi — brigada ismlari).
+
+- `StopReasonPrompt({ crew, suppressed, onVisibleChange })` — Pico to'xtashi: `PENDING_KEY` so'rovining birinchi yozuvi; sarlavha qizilda «Avariya — nima bo'ldi?», qolganida «Stanok ishlamayapti — nima sababdan?», tur yorlig'i (`DOWNTIME_KIND_LABELS`), vaqt oralig'i, davomiyligi (1 s da yangilanadi), davom etayotgan bo'lsa «davom etmoqda»; bir nechta bo'lsa «yana N ta to'xtash sababsiz». «Keyinroq (10 daq)» / yopish — `SNOOZE_MS`. Ko'rinish holati `onVisibleChange` bilan `terminal.tsx` ga qaytadi (skan fokusi to'xtaydi).
+- `LockReasonDialog({ open, crew, onCancel, onLocked })` — qulf tugmasi: sabab → «Saqlash va qulflash» (`lockWithDowntimeReason`) → `onLocked(sabab nomi)`. Sabablar ro'yxati bo'sh bo'lsa ogohlantirish va «Sababsiz qulflash» (`onLocked(null)`) — ro'yxat kiritilmagani ishni to'smaydi.
+
 ### `frontend/src/components/Terminal/useKiosk.ts`
 
 **Maqsadi:** kiosk qobig'i. `useKioskShell(canReload)` — kontekst menyusini o'chirish (sensorda long press chekni bekor qilish uchun kerak), to'liq ekran holati (Fullscreen API yoki `display-mode`), yangi build tekshiruvi (`/` HEAD ETag, 5 daqiqada) va XAVFSIZ paytda avto-reload (`canReload()` — xarita yopiq va `QUIET_MS`=2 daqiqa skan bo'lmagan). `useScanFocus(enabled, inputRef)` — avto-skan inputini fokusda ushlash (2 s interval) va fokussiz terilgan birinchi belgida fokusni qaytarish. `terminal.tsx` `enabled` ni ARRA xaritasi ochiqda (input yashirin) VA tasdiq dialogi ochiqda (`logoutOpen`/`endFor`/`undoFor`) o'chiradi: input modaldan tashqarida, ya'ni aks holda interval fokusni tortadi, Radix fokus tuzog'i darhol qaytaradi — bemaqsad focus/blur churn. Dialog yopilgach effekt qayta yoqiladi va `focus()` darhol chaqiriladi.

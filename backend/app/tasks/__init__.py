@@ -17,9 +17,10 @@ from app.core.config import TASHKENT_TZ
 from app.core.db import local_session
 from app.core.ws import ws_manager
 from app.crud import log_action
-from app.models import BridgeAgent, Employee, Order, Pachka, PachkaItem, Scan, WasteItem, WorkSession
+from app.models import AndonEvent, BridgeAgent, Employee, Order, Pachka, PachkaItem, Scan, WasteItem, WorkSession
 from app.models.enums import SessionStatus
 from app.services.activity import last_activity
+from app.services.downtimes import SYNC_WINDOW, sync_machine
 from app.services.labels import (
     BadgeLabelData,
     PachkaLabelData,
@@ -270,6 +271,30 @@ async def print_badge(ctx: dict[str, Any], employee_id: int, agent_id: int) -> s
         ).decode()
 
     return await _enqueue(ctx, employee_id, png_b64, agent_id, "Beyjik")
+
+
+#: To'xtashlarni qayta hisoblash oralig'i. Terminal ochiq bo'lsa u o'zi ham hisoblaydi (sababni
+#: so'rash uchun) — bu cron kompyuter/terminal o'chiq paytdagi to'xtashlar ham yozilsin deb.
+DOWNTIME_SWEEP_MINUTES = 5
+
+
+async def sync_downtimes(ctx: dict[str, Any]) -> str:
+    """Oxirgi hisob oynasida Pico hodisasi kelgan HAR ish markazining to'xtashlarini yozadi (`services/downtimes`)."""
+    now = datetime.now(UTC)
+    async with local_session() as db:
+        machine_ids = (
+            (
+                await db.execute(
+                    select(AndonEvent.machine_id).where(AndonEvent.happened_at >= now - SYNC_WINDOW).distinct()
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for machine_id in machine_ids:
+            await sync_machine(db, machine_id, now)
+        await db.commit()
+    return f"synced:{len(machine_ids)}"
 
 
 all_tasks = [print_label, print_pachka_label, print_waste_label, print_badge]

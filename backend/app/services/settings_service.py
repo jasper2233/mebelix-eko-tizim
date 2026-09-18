@@ -20,11 +20,24 @@ CUSTOM_PART_SUFFIX = "custom_part_suffix"
 #: smenani yopib qo'ymasin.
 IDLE_OPERATOR_MINUTES = "idle_logout_operator_minutes"
 IDLE_STAFF_MINUTES = "idle_logout_staff_minutes"
-#: `PUT /settings/{key}` shu oraliqdan tashqari qiymatni rad etadi.
-IDLE_MINUTES_RANGE = (10, 1440)
+#: Sariq chiroq (stanok ishlamayapti) shuncha daqiqa yonsa to'xtash yoziladi va sababi so'raladi.
+#: Vaqt sariq yongan paytdan — Pico `idle_timeout_s` ga bog'liq emas (`services/downtimes.py`).
+STOP_PROMPT_IDLE_MINUTES = "stop_prompt_idle_minutes"
+
+#: Butun son sozlamalar va ularning ruxsat etilgan oralig'i — `PUT /settings/{key}` tashqarisini rad etadi.
+INT_RANGES: dict[str, tuple[int, int]] = {
+    IDLE_OPERATOR_MINUTES: (10, 1440),
+    IDLE_STAFF_MINUTES: (10, 1440),
+    STOP_PROMPT_IDLE_MINUTES: (1, 120),
+}
 
 #: Sahifada ko'rsatiladigan sozlamalar va ularning sukut qiymati.
-DEFAULTS: dict[str, str] = {CUSTOM_PART_SUFFIX: "#", IDLE_OPERATOR_MINUTES: "90", IDLE_STAFF_MINUTES: "240"}
+DEFAULTS: dict[str, str] = {
+    CUSTOM_PART_SUFFIX: "#",
+    IDLE_OPERATOR_MINUTES: "90",
+    IDLE_STAFF_MINUTES: "240",
+    STOP_PROMPT_IDLE_MINUTES: "5",
+}
 
 #: Ish jadvali (JSON). `DEFAULTS` da YO'Q: umumiy `PUT /settings/{key}` 8 belgilik
 #: qiymat qabul qiladi, jadvalning esa o'z sxemasi va o'z endpointi bor.

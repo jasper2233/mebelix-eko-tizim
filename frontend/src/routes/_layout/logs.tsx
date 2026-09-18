@@ -65,6 +65,7 @@ const MODULE_LABELS: Record<string, string> = {
   print: "Chek",
   tmo: "TMO",
   sessions: "Smenalar",
+  downtime: "To'xtashlar",
   orders: "Buyurtmalar",
   pachka: "Pachkalar",
   bridge_agents: "MES agentlar",
@@ -74,6 +75,7 @@ const MODULE_LABELS: Record<string, string> = {
   machines: "Ish markazlari",
   posts: "Postlar",
   auth: "Kirish/chiqish",
+  settings: "Sozlamalar",
 }
 const MODULE_ORDER = Object.keys(MODULE_LABELS)
 
@@ -88,6 +90,9 @@ const ENTITY_LABELS: Record<string, string> = {
   client: "Mijoz",
   machine: "Ish markazi",
   user: "Foydalanuvchi",
+  downtime: "To'xtash",
+  downtime_reason: "To'xtash sababi",
+  system_setting: "Sozlama",
 }
 
 // Salbiy amallar qizil, yakunlovchi milestone'lar yashil — ro'yxatda ko'z
