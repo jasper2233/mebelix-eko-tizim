@@ -1,5 +1,6 @@
 // Tizim sozlamalari: ish vaqtida admin o'zgartiradigan qiymatlar — nostandart
-// detal belgisi, harakatsizlikdan keyin chiqish chegarasi va ish jadvali (smenalar,
+// detal belgisi, harakatsizlikdan keyin chiqish chegarasi, to'xtash sabablari, ideal sikl
+// (OEE Performance) va ish jadvali (smenalar,
 // tanaffuslar, dam olish kunlari; OEE reja vaqti shundan hisoblanadi).
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -11,6 +12,7 @@ import {
   type DowntimeReasonRead,
   type DowntimeReasonUpdate,
   type Holiday,
+  type IdealCycle,
   SettingsService,
   type SystemSettingRead,
   type WorkBreak,
@@ -111,6 +113,7 @@ function SystemSettingsPage() {
       )}
       {data && <IdleLogoutCard settings={data} />}
       {data && <DowntimeReasonsCard settings={data} />}
+      <IdealCycleCard />
       <WorkScheduleCard />
     </div>
   )
@@ -447,6 +450,119 @@ const span = (start: string, end: string) =>
 const plusHours = (clock: string, hours: number) => {
   const t = (minutes(clock) + hours * 60) % 1440
   return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`
+}
+
+// ---------- Ideal sikl (OEE Performance, Prisadka) ----------
+
+// Backend `schemas/settings.py: IdealCycle` / `Seconds` bilan bir xil (0..600 s)
+const IDEAL_MAX = 600
+const IDEAL_FIELDS: { key: keyof IdealCycle; label: string; hint: string }[] = [
+  {
+    key: "load_s",
+    label: "Har detalga, s",
+    hint: "Skan, qo'yish, qisish, olish",
+  },
+  { key: "bore_s", label: "Yuza teshik, s", hint: "Har bir teshikka" },
+  { key: "edge_bore_s", label: "Qirra teshik, s", hint: "Har bir teshikka" },
+  { key: "groove_s", label: "Paz, s", hint: "Har bir pazga" },
+  { key: "mill_s", label: "Freza, s", hint: "Har bir konturga" },
+]
+
+/** Prisadka ideal sikli: detalning ideal vaqti = har detalga + ishlovlar soni × soniya
+ *  (`backend/app/services/performance.py`). Hisobotlar → «Stanok vaqti» dagi Performance shundan. */
+function IdealCycleCard() {
+  const queryClient = useQueryClient()
+  const queryKey = ["system-settings", "ideal-cycle"]
+  const { data, isError, refetch } = useQuery({
+    queryKey,
+    queryFn: async () => (await SettingsService.readIdealCycle()).data,
+  })
+  const [draft, setDraft] = useState<Record<string, string>>({})
+  useEffect(() => {
+    if (data)
+      setDraft(
+        Object.fromEntries(
+          IDEAL_FIELDS.map((f) => [f.key, String(data[f.key] ?? 0)]),
+        ),
+      )
+  }, [data])
+  const num = (key: string) => Number(draft[key])
+  const fieldValid = (key: string) =>
+    (draft[key] ?? "").trim() !== "" &&
+    Number.isFinite(num(key)) &&
+    num(key) >= 0 &&
+    num(key) <= IDEAL_MAX
+  const valid = IDEAL_FIELDS.every((f) => fieldValid(f.key))
+  const dirty =
+    !!data && IDEAL_FIELDS.some((f) => num(f.key) !== (data[f.key] ?? 0))
+  const save = useMutation({
+    mutationFn: () =>
+      SettingsService.updateIdealCycle({
+        body: Object.fromEntries(
+          IDEAL_FIELDS.map((f) => [f.key, num(f.key)]),
+        ) as IdealCycle,
+      }),
+    ...crudCallbacks(queryClient, queryKey, "Ideal sikl saqlandi"),
+  })
+  // Jonli misol — raqam qanchalik ma'noli ekanini sekundomer bilan solishtirish uchun
+  const sample = (b: number, e: number, g: number, m: number) =>
+    valid
+      ? `${Math.round((num("load_s") + b * num("bore_s") + e * num("edge_bore_s") + g * num("groove_s") + m * num("mill_s")) * 10) / 10} s`
+      : "—"
+
+  return (
+    <div className={cn(cardSurface, "mt-6 max-w-3xl space-y-4 p-4")}>
+      <div>
+        <h2 className="text-lg font-semibold">Ideal sikl (Prisadka)</h2>
+        <p className="text-sm text-muted-foreground">
+          OEE Performance shundan hisoblanadi: detalning ideal vaqti = har
+          detalga vaqt + teshik, paz va frezalar soni × soniya. Detaldagi
+          ishlovlar soni loyiha faylidan olinadi. Boshlang'ich qiymatlar
+          TAXMINIY — tsexda sekundomer bilan 5–10 detalni o'lchab to'g'rilang.
+        </p>
+      </div>
+      {isError ? (
+        <QueryError onRetry={() => refetch()} />
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {IDEAL_FIELDS.map((f) => (
+              <Field key={f.key} label={f.label}>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  max={IDEAL_MAX}
+                  step={0.5}
+                  value={draft[f.key] ?? ""}
+                  title={f.hint}
+                  aria-invalid={!fieldValid(f.key)}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, [f.key]: e.target.value }))
+                  }
+                />
+              </Field>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Misol: 6 yuza teshikli detal — {sample(6, 0, 0, 0)}; 10 yuza va 4
+            qirra teshik, 1 paz, 1 freza — {sample(10, 4, 1, 1)}. Oraliq: 0–
+            {IDEAL_MAX} s. O'zgartirilsa hisobot o'tgan kunlarni ham yangi
+            qiymat bilan qayta hisoblaydi. Performance 100% dan oshsa —
+            qiymatlar yumshoq; Hisobotlar → «Stanok vaqti» da ideal vaqt Pico
+            o'lchagan sikl vaqti bilan yonma-yon turadi.
+          </p>
+          <LoadingButton
+            loading={save.isPending}
+            disabled={!valid || !dirty}
+            onClick={() => save.mutate()}
+          >
+            Saqlash
+          </LoadingButton>
+        </>
+      )}
+    </div>
+  )
 }
 
 function netWork(shift: Shift): string {

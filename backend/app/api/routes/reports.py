@@ -35,6 +35,7 @@ from app.models.enums import (
     DowntimeKind,
     MachineStatus,
     OrderStatus,
+    PostCode,
     PostUnit,
     SessionStatus,
     UserRole,
@@ -61,10 +62,16 @@ from app.schemas.reports import (
     TrendDay,
 )
 from app.services.andon import ANDON_STATES, andon_spans, machine_time, read_live
-from app.services.availability import DayTotals, StopRun, availability, plan_windows
+from app.services.availability import DayTotals, StopRun, availability, inside, plan_windows
 from app.services.excel import xlsx_response
 from app.services.metrics import VolumeShare, part_volume
-from app.services.settings_service import STOP_PROMPT_IDLE_MINUTES, get_setting, get_work_schedule
+from app.services.performance import ideal_seconds
+from app.services.settings_service import (
+    STOP_PROMPT_IDLE_MINUTES,
+    get_ideal_cycle,
+    get_setting,
+    get_work_schedule,
+)
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -301,11 +308,83 @@ async def report_machine_time(
     }
     names = dict((await db.execute(select(Machine.id, Machine.name).where(Machine.id.in_(ids)))).tuples().all())
 
+    # OEE Performance (Prisadka): KUZATILGAN ish vaqtida skanerlangan detallarning ideal vaqti ÷ ishlagan vaqt.
+    # Ma'lumotsiz vaqtdagi skan sanalmaydi — o'sha vaqt `run_s` ga ham kirmagan, aks holda foiz shishardi.
+    ideal = await get_ideal_cycle(db)
+    prisadka_ids = set(
+        (
+            await db.execute(
+                select(Machine.id)
+                .join(Post, Post.id == Machine.post_id)
+                .where(Machine.id.in_(ids), Post.code == PostCode.PRISADKA)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    ideal_by: dict[tuple[int, date], list[float]] = {}  # (stanok, kun) -> [ideal soniya, detallar]
+    measured: dict[int, list[float]] = {}  # stanok -> [o'lchangan sikl soniya, sikllar]
+    if prisadka_ids:
+        counts = [
+            func.coalesce(Part.xnc_summary[key].as_integer(), 0) for key in ("bores", "edge_bores", "grooves", "mills")
+        ]
+        scan_rows = (
+            (
+                await db.execute(
+                    select(Scan.machine_id, Scan.created_at, *counts)
+                    .join(Part, Part.id == Scan.part_id)
+                    .where(
+                        Scan.machine_id.in_(prisadka_ids),
+                        Scan.is_cancelled == False,  # noqa: E712
+                        Scan.is_deleted == False,  # noqa: E712
+                        Scan.created_at >= start,
+                        Scan.created_at <= end,
+                    )
+                )
+            )
+            .tuples()
+            .all()
+        )
+        for mid, at, bores, edge_bores, grooves, mills in scan_rows:
+            if mid is not None and inside(avail[mid].observed, at):
+                cell = ideal_by.setdefault((mid, at.astimezone(TASHKENT_TZ).date()), [0.0, 0])
+                cell[0] += ideal_seconds(ideal, bores, edge_bores, grooves, mills)
+                cell[1] += 1
+        cycle_rows = (
+            (
+                await db.execute(
+                    select(AndonEvent.machine_id, AndonEvent.happened_at, AndonEvent.payload).where(
+                        AndonEvent.kind == "cycle",
+                        AndonEvent.is_deleted == False,  # noqa: E712
+                        AndonEvent.machine_id.in_(prisadka_ids),
+                        AndonEvent.happened_at >= start,
+                        AndonEvent.happened_at <= end,
+                    )
+                )
+            )
+            .tuples()
+            .all()
+        )
+        for mid, at, payload in cycle_rows:
+            # `payload` — Pico'dan kelgan xom JSON (`AndonEventIn` extra="allow"):
+            # maydon yo'q yoki son emas bo'lishi mumkin
+            seconds = sum(
+                v for v in (payload.get("wait_s"), payload.get("process_s")) if type(v) in (int, float) and v > 0
+            )
+            if payload.get("completed") is not False and seconds > 0 and inside(avail[mid].observed, at):
+                cell = measured.setdefault(mid, [0.0, 0])
+                cell[0] += seconds
+                cell[1] += 1
+
+    def perf(mid: int, ideal_s: float, run_s: int) -> float | None:
+        return round(ideal_s * 100 / run_s, 1) if mid in prisadka_ids and run_s > 0 else None
+
     rows = []
     for mid in sorted(ids, key=lambda m: names.get(m, "")):
         secs = result.seconds.get(mid) or dict.fromkeys(ANDON_STATES, 0)
         total = sum(secs.values())
         a = avail[mid].total
+        ideal_total = sum(v[0] for (m, _d), v in ideal_by.items() if m == mid)
         rows.append(
             MachineTimeRow(
                 machine_id=mid,
@@ -332,6 +411,11 @@ async def report_machine_time(
                     )
                     for r in avail[mid].reasons
                 ],
+                parts=int(sum(v[1] for (m, _d), v in ideal_by.items() if m == mid)),
+                ideal_s=round(ideal_total),
+                performance_pct=perf(mid, ideal_total, a.run_s),
+                cycles=int(measured.get(mid, [0.0, 0])[1]),
+                measured_cycle_s=round(measured.get(mid, [0.0, 0])[0]),
             )
         )
     empty_day = DayTotals()
@@ -351,6 +435,9 @@ async def report_machine_time(
                 no_data_s=d.no_data_s,
                 run_s=d.run_s,
                 availability_pct=d.availability_pct,
+                parts=int(ideal_by.get((mid, day), [0.0, 0])[1]),
+                ideal_s=round(ideal_by.get((mid, day), [0.0, 0])[0]),
+                performance_pct=perf(mid, ideal_by.get((mid, day), [0.0, 0])[0], d.run_s),
             )
         )
     stops = [
@@ -372,6 +459,7 @@ async def report_machine_time(
         stops=stops,
         schedule_set=bool(schedule.shifts),
         idle_threshold_min=idle_minutes,
+        ideal_cycle=ideal,
     )
     if format == "xlsx":
         return xlsx_response(
@@ -385,6 +473,9 @@ async def report_machine_time(
                 "Rejali to'xtash (soat)",
                 "Availability, %",
                 "Qamrov, %",
+                "Detallar",
+                "Ideal vaqt (soat)",
+                "Performance, %",
                 *(f"{_ANDON_LABELS[s]} (soat)" for s in ANDON_STATES),
                 "Jami qayd (soat)",
                 "Ishlov ulushi, %",
@@ -400,6 +491,9 @@ async def report_machine_time(
                     round(r.planned_stop_s / 3600, 2),
                     r.availability_pct if r.availability_pct is not None else "",
                     r.coverage_pct if r.coverage_pct is not None else "",
+                    r.parts,
+                    round(r.ideal_s / 3600, 2),
+                    r.performance_pct if r.performance_pct is not None else "",
                     *(round(r.seconds[s] / 3600, 2) for s in ANDON_STATES),
                     round(r.total_s / 3600, 2),
                     r.busy_pct if r.busy_pct is not None else "",

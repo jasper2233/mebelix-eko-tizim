@@ -16,6 +16,7 @@ Oraliqlar `services/andon.andon_spans` dan olinadi, `downtime` jadvali esa faqat
 shunda jadval paydo bo'lishidan oldingi kunlar ham to'g'ri hisoblanadi.
 """
 
+from bisect import bisect_right
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
@@ -83,6 +84,15 @@ class Availability:
     total: DayTotals = field(default_factory=DayTotals)
     days: dict[date, DayTotals] = field(default_factory=dict)
     reasons: list[ReasonTotals] = field(default_factory=list)
+    #: Ish vaqtining Pico ma'lumoti BOR qismi (birlashtirilgan, tartiblangan) — Performance shu
+    #: oraliqdagi skanlarni sanaydi: ma'lumotsiz vaqt `run_s` ga kirmaydi, detali ham kirmasin.
+    observed: list[Interval] = field(default_factory=list)
+
+
+def inside(intervals: list[Interval], at: datetime) -> bool:
+    """`at` birlashtirilgan (`_merge`) oraliqlardan birining ichidami."""
+    i = bisect_right(intervals, at, key=lambda iv: iv[0]) - 1
+    return i >= 0 and at < intervals[i][1]
 
 
 def _minutes(clock: str) -> int:
@@ -226,7 +236,7 @@ def availability(
         "unplanned_stop_s": _by_day(_merge(unplanned)),
         "no_data_s": _by_day(_subtract(windows, known)),
     }
-    out = Availability(reasons=sorted(reasons.values(), key=lambda r: -r.seconds))
+    out = Availability(reasons=sorted(reasons.values(), key=lambda r: -r.seconds), observed=_intersect(windows, known))
     for name, per_day in parts.items():
         for day, seconds in per_day.items():
             totals = out.days.setdefault(day, DayTotals())

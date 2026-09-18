@@ -669,6 +669,16 @@ function MachineTimeReport({ params }: { params: RangeParams }) {
         </p>
       )}
       <AvailabilityTable rows={rows} />
+      {rows
+        .filter((r) => r.parts > 0 || r.cycles > 0)
+        .map((r) => (
+          <p key={r.machine_id} className="mt-2 text-sm text-muted-foreground">
+            {r.machine_name} — Performance kalibri: {r.parts} detalning ideal
+            vaqti {hm(r.ideal_s)}, Pico o'lchagan {r.cycles} sikl{" "}
+            {hm(r.measured_cycle_s)}. Ideal vaqt o'lchangandan ancha katta
+            bo'lsa koeffitsiyentlar yumshoq (Tizim sozlamalari → «Ideal sikl»).
+          </p>
+        ))}
       {rows.map((r) => (
         <ReasonsTable key={r.machine_id} row={r} />
       ))}
@@ -797,6 +807,18 @@ function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
           <TableHead className="text-right" title="Ishladi ÷ reja vaqti">
             Availability
           </TableHead>
+          <TableHead
+            className="hidden text-right md:table-cell"
+            title="Kuzatilgan ish vaqtida skanerlangan detallar"
+          >
+            Detallar
+          </TableHead>
+          <TableHead
+            className="text-right"
+            title="Detallarning ideal sikl vaqti ÷ ishlagan vaqt. Faqat Prisadka; koeffitsiyentlar — Tizim sozlamalari → «Ideal sikl»"
+          >
+            Performance
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -825,10 +847,16 @@ function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
               <TableCell className="num text-right font-semibold">
                 {pct(r.availability_pct)}
               </TableCell>
+              <TableCell className="num hidden text-right md:table-cell">
+                {r.parts || "—"}
+              </TableCell>
+              <TableCell className="num text-right font-semibold">
+                {pct(r.performance_pct)}
+              </TableCell>
             </TableRow>
           ))
         ) : (
-          <EmptyRow colSpan={8}>
+          <EmptyRow colSpan={10}>
             Signal ustuni (Pico) ulangan stanok yo'q.
           </EmptyRow>
         )}
@@ -949,7 +977,7 @@ function MachineDays({ name, days }: { name: string; days: MachineTimeDay[] }) {
               </div>
               <span
                 className="num text-right text-xs font-semibold"
-                title={`Availability: ishladi ${hm(d.run_s)} ÷ reja vaqti ${hm(d.planned_s)}`}
+                title={`Availability: ishladi ${hm(d.run_s)} ÷ reja vaqti ${hm(d.planned_s)}${d.performance_pct == null ? "" : ` · Performance ${d.performance_pct}% (${d.parts} detal)`}`}
               >
                 {pct(d.availability_pct)}
               </span>

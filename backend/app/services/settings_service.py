@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import SystemSetting
-from app.schemas.settings import WorkSchedule
+from app.schemas.settings import IdealCycle, WorkSchedule
 
 #: Bazisda detal nomi shu belgi bilan tugasa — yuklashda NOSTANDART.
 #: Bo'sh qiymat qoidani BUTUNLAY o'chiradi (belgisiz hamma detal nostandart
@@ -42,6 +42,8 @@ DEFAULTS: dict[str, str] = {
 #: Ish jadvali (JSON). `DEFAULTS` da YO'Q: umumiy `PUT /settings/{key}` 8 belgilik
 #: qiymat qabul qiladi, jadvalning esa o'z sxemasi va o'z endpointi bor.
 WORK_SCHEDULE = "work_schedule"
+#: Prisadka ideal sikli koeffitsiyentlari (JSON, `IdealCycle`) — o'z endpointi bilan, jadval kabi.
+IDEAL_CYCLE = "ideal_cycle_prisadka"
 
 _DAY = 24 * 60
 
@@ -82,6 +84,12 @@ async def get_work_schedule(db: AsyncSession) -> WorkSchedule:
     """Saqlangan ish jadvali; hali kiritilmagan bo'lsa bo'sh jadval."""
     raw = await get_setting(db, WORK_SCHEDULE)
     return WorkSchedule.model_validate_json(raw) if raw else WorkSchedule()
+
+
+async def get_ideal_cycle(db: AsyncSession) -> IdealCycle:
+    """Saqlangan koeffitsiyentlar; hali kiritilmagan bo'lsa sxemadagi TAXMINIY sukut qiymatlar."""
+    raw = await get_setting(db, IDEAL_CYCLE)
+    return IdealCycle.model_validate_json(raw) if raw else IdealCycle()
 
 
 def _minutes(clock: str) -> int:

@@ -4,6 +4,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel
 
+from app.schemas.settings import IdealCycle
+
 # ---------- 11.1.1 Hodim mahsuldorligi ----------
 
 
@@ -52,6 +54,12 @@ class MachineTimeRow(BaseModel):
     availability_pct: float | None  # run_s / planned_s; reja vaqti 0 bo'lsa None
     coverage_pct: float | None  # ish vaqtining qancha qismida Pico ma'lumoti bor
     reasons: list[AvailabilityReason]  # ko'p vaqt olgani birinchi
+    # --- OEE Performance (`services/performance.py`) — faqat Prisadka ish markazlarida, qolganida 0 / None
+    parts: int  # kuzatilgan ish vaqtida skanerlangan detallar
+    ideal_s: int  # o'sha detallarning ideal sikl vaqti yig'indisi
+    performance_pct: float | None  # ideal_s / run_s; 100 dan oshsa KESILMAYDI — koeffitsiyent yumshoqligi belgisi
+    cycles: int  # Pico o'lchagan tugallangan sikllar (kalibrlash uchun)
+    measured_cycle_s: int  # ularning wait_s + process_s yig'indisi — ideal_s bilan solishtiriladi
 
 
 class MachineTimeDay(BaseModel):
@@ -65,6 +73,9 @@ class MachineTimeDay(BaseModel):
     no_data_s: int
     run_s: int
     availability_pct: float | None
+    parts: int
+    ideal_s: int
+    performance_pct: float | None
 
 
 class MachineTimeStop(BaseModel):
@@ -84,6 +95,7 @@ class MachineTimeReport(BaseModel):
     stops: list[MachineTimeStop]  # eng yangisi birinchi, ko'pi bilan 200 ta
     schedule_set: bool  # ish jadvalida smena bormi — yo'q bo'lsa Availability hisoblanmaydi
     idle_threshold_min: int  # sariq chiroq shundan uzoq yonsa to'xtash (`stop_prompt_idle_minutes`)
+    ideal_cycle: IdealCycle  # Performance shu koeffitsiyentlar bilan hisoblangan
 
 
 # ---------- 11.2 Buyurtmalar holati ----------
