@@ -5,7 +5,12 @@ import { createFileRoute } from "@tanstack/react-router"
 import { Download } from "lucide-react"
 import { type ReactNode, useState } from "react"
 
-import type { MachineTimeDay, MachineTimeStop, OrderReportRow } from "@/client"
+import type {
+  MachineTimeDay,
+  MachineTimeRow,
+  MachineTimeStop,
+  OrderReportRow,
+} from "@/client"
 import { ReportsService } from "@/client"
 import { client } from "@/client/client.gen"
 import { EmptyRow } from "@/components/Common/EmptyRow"
@@ -651,10 +656,26 @@ function MachineTimeReport({ params }: { params: RangeParams }) {
   return (
     <>
       <Summary>
-        {rows.length} stanok · qayd etilgan vaqt {hm(totalRecorded)} · stanok
-        chiroqlaridan (Pico) avtomatik. «Ishlov ulushi» — ishlov ÷ qayd etilgan
-        vaqt, OEE emas; aloqa bo'lmagan vaqt hisobga kirmaydi.
+        {rows.length} stanok · Availability = ishladi ÷ reja vaqti. Reja vaqti
+        ish jadvalidan (smena − tanaffus − rejali to'xtashlar); ish vaqtida
+        Pico'dan ma'lumot yo'qligi to'xtash deb sanaladi. Sariq chiroq{" "}
+        {data?.idle_threshold_min ?? 5} daqiqadan qisqa yonsa — mikro-to'xtash,
+        Availability'ga kirmaydi.
       </Summary>
+      {data && !data.schedule_set && (
+        <p className="mb-3 text-sm text-destructive">
+          Ish jadvali kiritilmagan — reja vaqti 0, Availability hisoblanmaydi.
+          Tizim sozlamalari → «Ish jadvali» da smenalarni kiriting.
+        </p>
+      )}
+      <AvailabilityTable rows={rows} />
+      {rows.map((r) => (
+        <ReasonsTable key={r.machine_id} row={r} />
+      ))}
+      <h3 className="mt-8 mb-2 text-sm font-semibold">
+        Chiroq holatlari — qayd etilgan vaqt {hm(totalRecorded)} (butun sutka,
+        ish vaqtidan tashqarisi ham)
+      </h3>
       <Table>
         <TableHeader>
           <TableRow>
@@ -673,12 +694,6 @@ function MachineTimeReport({ params }: { params: RangeParams }) {
               title="Barcha holatlar yig'indisi — agent yoki Pico bilan aloqa yo'q paytlar kirmaydi"
             >
               Qayd etilgan
-            </TableHead>
-            <TableHead
-              className="text-right"
-              title="Ishlov ÷ qayd etilgan vaqt. OEE Availability emas: reja (smena) vaqti hisobga olinmagan"
-            >
-              Ishlov ulushi
             </TableHead>
             <TableHead
               className="text-right"
@@ -704,16 +719,13 @@ function MachineTimeReport({ params }: { params: RangeParams }) {
                 <TableCell className="num whitespace-nowrap text-right">
                   {hm(r.total_s)}
                 </TableCell>
-                <TableCell className="num text-right font-semibold">
-                  {r.busy_pct == null ? "—" : `${r.busy_pct}%`}
-                </TableCell>
                 <TableCell className="num text-right">
                   {r.faults || "—"}
                 </TableCell>
               </TableRow>
             ))
           ) : (
-            <EmptyRow colSpan={10}>
+            <EmptyRow colSpan={9}>
               Tanlangan davrda stanok chiroqlaridan ma'lumot yo'q (signal ustuni
               ulangan stanoklar hisobga olinadi).
             </EmptyRow>
@@ -729,6 +741,149 @@ function MachineTimeReport({ params }: { params: RangeParams }) {
       ))}
       {stops.length > 0 && <StopsTable stops={stops} />}
     </>
+  )
+}
+
+// ---------- OEE Availability (backend `services/availability.py`) ----------
+
+function pct(v: number | null | undefined): string {
+  return v == null ? "—" : `${v}%`
+}
+
+// Availability = ishladi ÷ reja vaqti. Rang YO'Q: maqsad foizi hali belgilanmagan
+// (docs/12 «Ochiq»), chegarasiz yashil/qizil esa yolg'on baho bo'lardi.
+function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Stanok</TableHead>
+          <TableHead
+            className="text-right"
+            title="Smena vaqti − tanaffuslar − rejali to'xtashlar"
+          >
+            Reja vaqti
+          </TableHead>
+          <TableHead
+            className="text-right"
+            title="Reja vaqti − rejasiz to'xtashlar − ma'lumotsiz vaqt"
+          >
+            Ishladi
+          </TableHead>
+          <TableHead
+            className="hidden text-right md:table-cell"
+            title="Avariya, o'chiq va uzoq sariq chiroq — sababi rejasiz yoki kiritilmagan"
+          >
+            Rejasiz to'xtash
+          </TableHead>
+          <TableHead
+            className="hidden text-right md:table-cell"
+            title="Ish vaqtida Pico'dan ma'lumot kelmagan — to'xtash deb sanaladi"
+          >
+            Ma'lumot yo'q
+          </TableHead>
+          <TableHead
+            className="hidden text-right md:table-cell"
+            title="Rejali sababli to'xtashlar (tushlik, sozlash) — reja vaqtidan chiqarilgan"
+          >
+            Rejali to'xtash
+          </TableHead>
+          <TableHead
+            className="hidden text-right md:table-cell"
+            title="Ish vaqtining qancha qismida Pico ma'lumoti bor"
+          >
+            Qamrov
+          </TableHead>
+          <TableHead className="text-right" title="Ishladi ÷ reja vaqti">
+            Availability
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.length ? (
+          rows.map((r) => (
+            <TableRow key={r.machine_id}>
+              <TableCell className="font-medium">{r.machine_name}</TableCell>
+              <TableCell className="num whitespace-nowrap text-right">
+                {hm(r.planned_s)}
+              </TableCell>
+              <TableCell className="num whitespace-nowrap text-right">
+                {hm(r.run_s)}
+              </TableCell>
+              <TableCell className="num hidden whitespace-nowrap text-right md:table-cell">
+                {hm(r.unplanned_stop_s)}
+              </TableCell>
+              <TableCell className="num hidden whitespace-nowrap text-right md:table-cell">
+                {hm(r.no_data_s)}
+              </TableCell>
+              <TableCell className="num hidden whitespace-nowrap text-right md:table-cell">
+                {hm(r.planned_stop_s)}
+              </TableCell>
+              <TableCell className="num hidden text-right md:table-cell">
+                {pct(r.coverage_pct)}
+              </TableCell>
+              <TableCell className="num text-right font-semibold">
+                {pct(r.availability_pct)}
+              </TableCell>
+            </TableRow>
+          ))
+        ) : (
+          <EmptyRow colSpan={8}>
+            Signal ustuni (Pico) ulangan stanok yo'q.
+          </EmptyRow>
+        )}
+      </TableBody>
+    </Table>
+  )
+}
+
+function ReasonsTable({ row }: { row: MachineTimeRow }) {
+  if (!row.reasons.length) return null
+  return (
+    <section className="mt-6">
+      <h3 className="mb-2 text-sm font-semibold">
+        {row.machine_name} — to'xtash sabablari (ish vaqti ichida)
+      </h3>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Sabab</TableHead>
+            <TableHead>Turi</TableHead>
+            <TableHead className="text-right">Soni</TableHead>
+            <TableHead className="text-right">Vaqt</TableHead>
+            <TableHead
+              className="text-right"
+              title="To'xtash vaqti ÷ jadval bo'yicha ish vaqti"
+            >
+              Ish vaqtidan ulush
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {row.reasons.map((x) => (
+            <TableRow key={x.reason_id ?? "none"}>
+              <TableCell
+                className={
+                  x.reason_id == null ? "text-muted-foreground" : "font-medium"
+                }
+              >
+                {x.name}
+              </TableCell>
+              <TableCell>{x.is_planned ? "Rejali" : "Rejasiz"}</TableCell>
+              <TableCell className="num text-right">{x.count}</TableCell>
+              <TableCell className="num whitespace-nowrap text-right">
+                {hm(x.seconds)}
+              </TableCell>
+              <TableCell className="num text-right">
+                {row.shift_s
+                  ? `${Math.round((x.seconds * 1000) / row.shift_s) / 10}%`
+                  : "—"}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </section>
   )
 }
 
@@ -758,6 +913,7 @@ function MachineDays({ name, days }: { name: string; days: MachineTimeDay[] }) {
             <span className="inline-block size-2.5 rounded-sm bg-muted" />
             Qayd yo'q
           </li>
+          <li>o'ngda — kun Availability'si</li>
         </ul>
       </div>
       <div className="grid gap-1.5">
@@ -772,7 +928,7 @@ function MachineDays({ name, days }: { name: string; days: MachineTimeDay[] }) {
           return (
             <div
               key={d.day}
-              className="grid grid-cols-[5.5rem_1fr] items-center gap-3"
+              className="grid grid-cols-[5.5rem_1fr_3.5rem] items-center gap-3"
               title={summary}
             >
               <span className="num text-xs text-muted-foreground">
@@ -791,6 +947,12 @@ function MachineDays({ name, days }: { name: string; days: MachineTimeDay[] }) {
                   />
                 ))}
               </div>
+              <span
+                className="num text-right text-xs font-semibold"
+                title={`Availability: ishladi ${hm(d.run_s)} ÷ reja vaqti ${hm(d.planned_s)}`}
+              >
+                {pct(d.availability_pct)}
+              </span>
             </div>
           )
         })}

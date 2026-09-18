@@ -1566,7 +1566,7 @@ export class SettingsService {
     /**
      * Create Downtime Reason
      *
-     * Egasining ro'yxati (`oee to'xtalishlar.xlsx`) kodga yozilmaydi — admin shu yerdan kiritadi.
+     * Ro'yxat kodga yozilmaydi (statik bo'lib qolmasin) — egasining ro'yxatini ham admin shu yerdan kiritadi.
      */
     public static createDowntimeReason<ThrowOnError extends boolean = true>(options: Options<CreateDowntimeReasonData, ThrowOnError>): RequestResult<CreateDowntimeReasonResponses, CreateDowntimeReasonErrors, ThrowOnError> {
         return (options.client ?? client).post<CreateDowntimeReasonResponses, CreateDowntimeReasonErrors, ThrowOnError>({
@@ -1642,7 +1642,11 @@ export class ReportsService {
     /**
      * Report Machine Time
      *
-     * Stanok vaqti: signal ustuni (andon) bo'yicha qancha ishladi, kutdi, to'xtadi, o'chiq turdi.
+     * Stanok vaqti va OEE Availability: signal ustuni (andon) bo'yicha qancha ishladi, kutdi, to'xtadi.
+     *
+     * Availability = ishlagan / reja vaqti (`services/availability.py`): reja vaqti ish jadvalidan,
+     * to'xtashlar chiroq holatlaridan, sabab va «rejali» belgisi `downtime` jadvalidan. Ish vaqtidan
+     * tashqaridagi holat (tungi OFF, tushlik) hisobga kirmaydi; ish vaqtida ma'lumot yo'qligi — to'xtash.
      *
      * Davomiyliklarni Pico o'zi o'lchaydi (`prev_duration_s`), hisob `services/andon.py`
      * dagi sof funksiyada. Hozir davom etayotgan holat faqat jonli holat (Redis) hali

@@ -583,6 +583,9 @@ direktor ham ko'radi.
   (o'lchangan). Shuning uchun yo'l bilan parallel tekstura chizig'i tashlanadi
   (`_teksturasiz`); uchalasi ham tushib qolsa hech biri tashlanmaydi — tekstura
   YO'NALISHI ham kerakli ma'lumot.
+- `app/services/availability.py` — OEE Availability sof funksiyalari (`plan_windows`, `stop_runs`, `availability`):
+  reja vaqti ish jadvalidan, to'xtashlar chiroq holatlaridan, sabab `downtime` dan; `GET /reports/machine-time`
+  ishlatadi (docs/12 §4.5).
 - `app/services/excel.py: xlsx_response()` — openpyxl bilan bitta varaqli .xlsx stream
   (reports `?format=xlsx` orqasida).
 - Og'ir JSONB ustunlar ro'yxat so'rovlarida `defer()` bilan qoldiriladi:
