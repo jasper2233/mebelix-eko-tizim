@@ -58,6 +58,9 @@ backups/
 /scx/
 /stanok rasmlar/
 
+# egasining to'xtash sabablari fayli — ro'yxat docs/12 §4.4 da, admin paneldan kiritiladi
+/oee to'xtalishlar.xlsx
+
 # pyinstaller artefaktlari
 bridge-agent/*.spec
 
