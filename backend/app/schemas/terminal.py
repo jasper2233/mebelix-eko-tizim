@@ -65,6 +65,9 @@ class TerminalContext(BaseModel):
     #: Biriktirilgan agent chek chiqaradimi (ikonka tanlash uchun): True — printer,
     #: False — faqat skan-forvard. agent_online None bo'lsa ma'nosiz.
     agent_prints: bool = False
+    #: Stanok signal ustuni (Pico) ulangan — to'xtash sababi oynasi va qulfdagi sabab faqat shunda.
+    #: Oxirgi 7 kunda hodisa kelganmi (`andon_event`): Pico'siz postda sabab so'rash ma'nosiz.
+    has_andon: bool = False
 
 
 class TerminalOrderCard(BaseModel):

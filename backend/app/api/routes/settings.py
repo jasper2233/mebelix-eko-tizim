@@ -1,14 +1,15 @@
 from fastapi import APIRouter, HTTPException, Request
+from sqlalchemy import func, select
 
 from app.api.deps import AdminUser, SessionDep, client_ip
 from app.core.exceptions import NotFoundException
 from app.crud import log_action
+from app.models import DowntimeReason
+from app.schemas.downtimes import DowntimeReasonCreate, DowntimeReasonRead, DowntimeReasonUpdate
 from app.schemas.settings import SystemSettingRead, SystemSettingUpdate, WorkSchedule
 from app.services.settings_service import (
     DEFAULTS,
-    IDLE_MINUTES_RANGE,
-    IDLE_OPERATOR_MINUTES,
-    IDLE_STAFF_MINUTES,
+    INT_RANGES,
     WORK_SCHEDULE,
     get_setting,
     get_work_schedule,
@@ -69,8 +70,8 @@ async def update_system_setting(
         # uni hech kim o'qimasdi.
         raise NotFoundException("Bunday sozlama yo'q.")
     value = body.value.strip()
-    if key in (IDLE_OPERATOR_MINUTES, IDLE_STAFF_MINUTES):
-        low, high = IDLE_MINUTES_RANGE
+    if (bounds := INT_RANGES.get(key)) is not None:
+        low, high = bounds
         if not (value.isascii() and value.isdigit() and low <= int(value) <= high):
             raise HTTPException(status_code=422, detail=f"Daqiqa {low} dan {high} gacha butun son bo'lishi kerak.")
         value = str(int(value))  # "090" -> "90"
@@ -87,3 +88,74 @@ async def update_system_setting(
     )
     await db.commit()
     return SystemSettingRead(key=row.key, value=row.value)
+
+
+# --- To'xtash sabablari (terminal oynasidagi ro'yxat) ---------------------------------------
+
+
+@router.get("/downtime-reasons", response_model=list[DowntimeReasonRead], operation_id="read_downtime_reasons")
+async def read_downtime_reasons(db: SessionDep, _: AdminUser) -> list[DowntimeReason]:
+    """Hamma sabab, nofaollari ham — admin ularni qayta yoqishi mumkin."""
+    return list(
+        (
+            await db.execute(
+                select(DowntimeReason)
+                .where(DowntimeReason.is_deleted == False)  # noqa: E712
+                .order_by(DowntimeReason.is_planned, DowntimeReason.order_index, DowntimeReason.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+
+@router.post(
+    "/downtime-reasons", response_model=DowntimeReasonRead, status_code=201, operation_id="create_downtime_reason"
+)
+async def create_downtime_reason(
+    db: SessionDep, current_user: AdminUser, body: DowntimeReasonCreate, request: Request
+) -> DowntimeReason:
+    """Ro'yxat kodga yozilmaydi (statik bo'lib qolmasin) — egasining ro'yxatini ham admin shu yerdan kiritadi."""
+    last = (
+        await db.execute(select(func.max(DowntimeReason.order_index)).where(DowntimeReason.is_deleted == False))  # noqa: E712
+    ).scalar()
+    reason = DowntimeReason(
+        name=body.name, is_planned=body.is_planned, needs_note=body.needs_note, order_index=(last or 0) + 1
+    )
+    db.add(reason)
+    await db.flush()
+    log_action(
+        db,
+        module="settings",
+        action="created",
+        user_id=current_user.id,
+        entity_type="downtime_reason",
+        entity_id=reason.id,
+        message=f"To'xtash sababi qo'shildi: {reason.name}",
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return reason
+
+
+@router.patch("/downtime-reasons/{reason_id}", response_model=DowntimeReasonRead, operation_id="update_downtime_reason")
+async def update_downtime_reason(
+    db: SessionDep, current_user: AdminUser, reason_id: int, body: DowntimeReasonUpdate, request: Request
+) -> DowntimeReason:
+    reason = await db.get(DowntimeReason, reason_id)
+    if reason is None or reason.is_deleted:
+        raise NotFoundException("Sabab topilmadi.")
+    for field, value in body.model_dump(exclude_unset=True, exclude_none=True).items():
+        setattr(reason, field, value)
+    log_action(
+        db,
+        module="settings",
+        action="updated",
+        user_id=current_user.id,
+        entity_type="downtime_reason",
+        entity_id=reason.id,
+        message=f"To'xtash sababi o'zgardi: {reason.name}" + ("" if reason.is_active else " (nofaol)"),
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return reason

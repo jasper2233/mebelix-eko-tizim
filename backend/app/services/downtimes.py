@@ -1,0 +1,180 @@
+"""Stanok to'xtashlari — Pico xom hodisalaridan (`andon_event`) chiqariladi, sababni smenadagi hodim kiritadi.
+
+Qarorlar (2026-09-17, docs/12-oee.md §7):
+- qizil chiroq (FAULT) va hammasi o'chiq (OFF) — darhol to'xtash;
+- sariq chiroq (IDLE, Pico keyin STOPPED deb ham yuboradi) — Tizim sozlamalaridagi
+  `stop_prompt_idle_minutes` dan uzoq yonsa to'xtash. Vaqt SARIQ YONGAN PAYTDAN sanaladi,
+  Pico'ning `idle_timeout_s` sozlamasiga bog'liq emas;
+- qulf tugmasi (LOCK) — operator sababni o'zi aytib to'xtatadi; shu oraliqda boshlangan Pico
+  to'xtashi sababni qulfdan oladi va qayta so'ralmaydi.
+
+Yozuvlar IDEMPOTENT: hisob har safar hodisalardan qaytadan yuritiladi va `start_key` (to'xtashni
+boshlagan hodisa) bo'yicha mavjud yozuvning faqat `ended_at` i yangilanadi — sabab tegilmaydi.
+"""
+
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+
+from sqlalchemy import func, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import AndonEvent, Downtime
+from app.models.enums import DowntimeKind
+from app.services.settings_service import STOP_PROMPT_IDLE_MINUTES, get_setting
+
+#: Pico holati -> to'xtash turi. Qolgan holatlar (PROCESSING, AWAIT_PART, BOOT ...) — stanok ishlayapti.
+_STOP_KIND = {
+    "FAULT": DowntimeKind.FAULT,
+    "OFF": DowntimeKind.OFF,
+    "IDLE": DowntimeKind.IDLE,
+    "STOPPED": DowntimeKind.IDLE,
+}
+#: Qayta hisoblash oynasi. Undan uzoq davom etayotgan (yopilmagan) to'xtash ham qamraladi:
+#: oyna eng eski ochiq yozuvgacha va undan oldingi "ishlayapti" hodisasigacha kengaytiriladi.
+SYNC_WINDOW = timedelta(hours=12)
+
+
+@dataclass
+class _Run:
+    kind: DowntimeKind
+    key: str
+    session: str
+    start: datetime
+    end: datetime | None = None
+
+
+def _runs(events: list[AndonEvent]) -> list[_Run]:
+    """Holat hodisalarini to'xtash oraliqlariga bo'ladi. Oxirgisi davom etayotgan bo'lsa `end=None`.
+
+    Pico sessiyasi almashsa (qayta yuklandi — kompyuter o'chgan/uxlagan) oldingi to'xtash o'sha
+    sessiyaning OXIRGI hodisasida yopiladi: undan keyin nima bo'lgani noma'lum (docs/12 — ma'lumotsiz
+    vaqt alohida hisoblanadi, bu yerda taxmin qilinmaydi)."""
+    out: list[_Run] = []
+    cur: _Run | None = None
+    prev: AndonEvent | None = None
+    for ev in events:
+        kind = _STOP_KIND.get(ev.state or "")
+        if cur is not None and prev is not None and (ev.session != cur.session or kind != cur.kind):
+            cur.end = ev.happened_at if ev.session == cur.session else prev.happened_at
+            out.append(cur)
+            cur = None
+        if kind is not None and cur is None:
+            start = ev.happened_at
+            # Sariq birinchi marta STOPPED bo'lib kelgan bo'lsa (IDLE hodisasi oynadan tashqarida
+            # yoki yo'qolgan) — boshlanish Pico o'lchagan IDLE davomiyligidan tiklanadi.
+            if ev.state == "STOPPED" and ev.prev_state == "IDLE" and ev.prev_duration_s:
+                start -= timedelta(seconds=ev.prev_duration_s)
+            cur = _Run(kind=kind, key=f"{ev.session}-{ev.seq}", session=ev.session, start=start)
+        prev = ev
+    if cur is not None:
+        out.append(cur)
+    return out
+
+
+async def sync_machine(db: AsyncSession, machine_id: int, now: datetime) -> None:
+    """Ish markazining Pico to'xtashlarini `downtime` jadvaliga yozadi yoki yangilaydi. Commit chaqiruvchida."""
+    earliest_open = (
+        await db.execute(
+            select(func.min(Downtime.started_at)).where(
+                Downtime.machine_id == machine_id,
+                Downtime.kind != DowntimeKind.LOCK,
+                Downtime.ended_at.is_(None),
+                Downtime.is_deleted == False,  # noqa: E712
+            )
+        )
+    ).scalar()
+    since = now - SYNC_WINDOW
+    if earliest_open is not None and earliest_open < since:
+        since = earliest_open
+    # Oyna to'xtash O'RTASIDAN boshlanmasin: aks holda o'sha to'xtash boshqa kalit bilan ikkinchi
+    # marta yozilardi. Oyna oldingi "ishlayapti" hodisasiga surib qo'yiladi.
+    working_before = (
+        await db.execute(
+            select(func.max(AndonEvent.happened_at)).where(
+                AndonEvent.machine_id == machine_id,
+                AndonEvent.kind == "state",
+                AndonEvent.state.notin_(list(_STOP_KIND)),
+                AndonEvent.happened_at <= since,
+            )
+        )
+    ).scalar()
+    if working_before is not None:
+        since = working_before
+
+    events = list(
+        (
+            await db.execute(
+                select(AndonEvent)
+                .where(
+                    AndonEvent.machine_id == machine_id,
+                    AndonEvent.kind == "state",
+                    AndonEvent.happened_at >= since,
+                )
+                .order_by(AndonEvent.happened_at, AndonEvent.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    threshold = timedelta(minutes=int(await get_setting(db, STOP_PROMPT_IDLE_MINUTES)))
+    runs = [r for r in _runs(events) if r.kind != DowntimeKind.IDLE or (r.end or now) - r.start >= threshold]
+    if not runs:
+        return
+
+    existing = {
+        d.start_key: d
+        for d in (
+            await db.execute(
+                select(Downtime).where(
+                    Downtime.machine_id == machine_id,
+                    Downtime.start_key.in_([r.key for r in runs]),
+                )
+            )
+        ).scalars()
+    }
+    locks = list(
+        (
+            await db.execute(
+                select(Downtime).where(
+                    Downtime.machine_id == machine_id,
+                    Downtime.kind == DowntimeKind.LOCK,
+                    Downtime.reason_id.is_not(None),
+                    (Downtime.ended_at.is_(None)) | (Downtime.ended_at >= since),
+                    Downtime.is_deleted == False,  # noqa: E712
+                )
+            )
+        ).scalars()
+    )
+    for run in runs:
+        row = existing.get(run.key)
+        if row is not None:
+            if row.ended_at != run.end:
+                row.ended_at = run.end
+            continue
+        row = Downtime(machine_id=machine_id, kind=run.kind, start_key=run.key, started_at=run.start, ended_at=run.end)
+        lock = next(
+            (lk for lk in locks if lk.started_at <= run.start and (lk.ended_at is None or run.start <= lk.ended_at)),
+            None,
+        )
+        if lock is not None:
+            # Operator ketishdan oldin sababni aytgan — qulf ostida boshlangan to'xtash qayta so'ralmaydi
+            row.reason_id, row.note, row.employee_id, row.reason_at = lock.reason_id, lock.note, lock.employee_id, now
+        db.add(row)
+    await db.flush()
+
+
+async def close_open_locks(db: AsyncSession, machine_id: int, at: datetime) -> None:
+    """Qulf to'xtashini yopadi — kimdir shu ish markazida smenani ochdi yoki qulfni beyjik bilan ochdi.
+
+    `scanning.open_badge_session` chaqiradi: beyjik kirishi, terminaldagi tanlov va parol bilan
+    kirish HAMMASI shu yerdan o'tadi. Commit chaqiruvchida."""
+    await db.execute(
+        update(Downtime)
+        .where(
+            Downtime.machine_id == machine_id,
+            Downtime.kind == DowntimeKind.LOCK,
+            Downtime.ended_at.is_(None),
+            Downtime.is_deleted == False,  # noqa: E712
+        )
+        .values(ended_at=at)
+    )

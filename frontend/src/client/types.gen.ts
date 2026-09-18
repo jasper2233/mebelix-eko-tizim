@@ -1117,6 +1117,127 @@ export type DashboardToday = {
 };
 
 /**
+ * DowntimeKind
+ *
+ * To'xtash turi (`downtime.kind`). Frontenddagi `DOWNTIME_KIND_LABELS` (lib/mes.ts) bilan qo'lda oynalangan.
+ *
+ * FAULT/OFF/IDLE — Pico signal ustunidan chiqarilgan (`services/downtimes.py`), LOCK — operator
+ * qulf tugmasi bilan o'zi e'lon qilgan to'xtash.
+ */
+export type DowntimeKind = 'fault' | 'off' | 'idle' | 'lock';
+
+/**
+ * DowntimeRead
+ */
+export type DowntimeRead = {
+    /**
+     * Id
+     */
+    id: number;
+    kind: DowntimeKind;
+    /**
+     * Started At
+     */
+    started_at: string;
+    /**
+     * Ended At
+     */
+    ended_at: string | null;
+    /**
+     * Reason Id
+     */
+    reason_id: number | null;
+};
+
+/**
+ * DowntimeReasonCreate
+ */
+export type DowntimeReasonCreate = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Is Planned
+     */
+    is_planned?: boolean;
+    /**
+     * Needs Note
+     */
+    needs_note?: boolean;
+};
+
+/**
+ * DowntimeReasonInput
+ */
+export type DowntimeReasonInput = {
+    /**
+     * Reason Id
+     */
+    reason_id: number;
+    /**
+     * Note
+     */
+    note?: string;
+};
+
+/**
+ * DowntimeReasonRead
+ */
+export type DowntimeReasonRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Is Planned
+     */
+    is_planned: boolean;
+    /**
+     * Needs Note
+     */
+    needs_note: boolean;
+    /**
+     * Order Index
+     */
+    order_index: number;
+    /**
+     * Is Active
+     */
+    is_active: boolean;
+};
+
+/**
+ * DowntimeReasonUpdate
+ */
+export type DowntimeReasonUpdate = {
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Is Planned
+     */
+    is_planned?: boolean | null;
+    /**
+     * Needs Note
+     */
+    needs_note?: boolean | null;
+    /**
+     * Order Index
+     */
+    order_index?: number | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean | null;
+};
+
+/**
  * EmployeeCreate
  */
 export type EmployeeCreate = {
@@ -3439,6 +3560,10 @@ export type TerminalContext = {
      * Agent Prints
      */
     agent_prints?: boolean;
+    /**
+     * Has Andon
+     */
+    has_andon?: boolean;
 };
 
 /**
@@ -6274,6 +6399,97 @@ export type DownloadTerminalFileResponses = {
     200: unknown;
 };
 
+export type ReadTerminalDowntimeReasonsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/terminal/downtime-reasons';
+};
+
+export type ReadTerminalDowntimeReasonsResponses = {
+    /**
+     * Response Read Terminal Downtime Reasons
+     *
+     * Successful Response
+     */
+    200: Array<DowntimeReasonRead>;
+};
+
+export type ReadTerminalDowntimeReasonsResponse = ReadTerminalDowntimeReasonsResponses[keyof ReadTerminalDowntimeReasonsResponses];
+
+export type ReadPendingDowntimesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/terminal/downtimes/pending';
+};
+
+export type ReadPendingDowntimesResponses = {
+    /**
+     * Response Read Pending Downtimes
+     *
+     * Successful Response
+     */
+    200: Array<DowntimeRead>;
+};
+
+export type ReadPendingDowntimesResponse = ReadPendingDowntimesResponses[keyof ReadPendingDowntimesResponses];
+
+export type SetDowntimeReasonData = {
+    body: DowntimeReasonInput;
+    path: {
+        /**
+         * Downtime Id
+         */
+        downtime_id: number;
+    };
+    query?: never;
+    url: '/api/v1/terminal/downtimes/{downtime_id}/reason';
+};
+
+export type SetDowntimeReasonErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SetDowntimeReasonError = SetDowntimeReasonErrors[keyof SetDowntimeReasonErrors];
+
+export type SetDowntimeReasonResponses = {
+    /**
+     * Successful Response
+     */
+    200: DowntimeRead;
+};
+
+export type SetDowntimeReasonResponse = SetDowntimeReasonResponses[keyof SetDowntimeReasonResponses];
+
+export type LockWithDowntimeReasonData = {
+    body: DowntimeReasonInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/terminal/downtimes/lock';
+};
+
+export type LockWithDowntimeReasonErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type LockWithDowntimeReasonError = LockWithDowntimeReasonErrors[keyof LockWithDowntimeReasonErrors];
+
+export type LockWithDowntimeReasonResponses = {
+    /**
+     * Successful Response
+     */
+    200: DowntimeRead;
+};
+
+export type LockWithDowntimeReasonResponse = LockWithDowntimeReasonResponses[keyof LockWithDowntimeReasonResponses];
+
 export type RecordScanData = {
     body: ScanRequest;
     path?: never;
@@ -6417,6 +6633,79 @@ export type UpdateSystemSettingResponses = {
 };
 
 export type UpdateSystemSettingResponse = UpdateSystemSettingResponses[keyof UpdateSystemSettingResponses];
+
+export type ReadDowntimeReasonsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/downtime-reasons';
+};
+
+export type ReadDowntimeReasonsResponses = {
+    /**
+     * Response Read Downtime Reasons
+     *
+     * Successful Response
+     */
+    200: Array<DowntimeReasonRead>;
+};
+
+export type ReadDowntimeReasonsResponse = ReadDowntimeReasonsResponses[keyof ReadDowntimeReasonsResponses];
+
+export type CreateDowntimeReasonData = {
+    body: DowntimeReasonCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/downtime-reasons';
+};
+
+export type CreateDowntimeReasonErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateDowntimeReasonError = CreateDowntimeReasonErrors[keyof CreateDowntimeReasonErrors];
+
+export type CreateDowntimeReasonResponses = {
+    /**
+     * Successful Response
+     */
+    201: DowntimeReasonRead;
+};
+
+export type CreateDowntimeReasonResponse = CreateDowntimeReasonResponses[keyof CreateDowntimeReasonResponses];
+
+export type UpdateDowntimeReasonData = {
+    body: DowntimeReasonUpdate;
+    path: {
+        /**
+         * Reason Id
+         */
+        reason_id: number;
+    };
+    query?: never;
+    url: '/api/v1/settings/downtime-reasons/{reason_id}';
+};
+
+export type UpdateDowntimeReasonErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateDowntimeReasonError = UpdateDowntimeReasonErrors[keyof UpdateDowntimeReasonErrors];
+
+export type UpdateDowntimeReasonResponses = {
+    /**
+     * Successful Response
+     */
+    200: DowntimeReasonRead;
+};
+
+export type UpdateDowntimeReasonResponse = UpdateDowntimeReasonResponses[keyof UpdateDowntimeReasonResponses];
 
 export type ReadTabloMatrixData = {
     body?: never;

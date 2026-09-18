@@ -9,10 +9,13 @@ import { Button } from "@/components/ui/button"
 export function KioskOverlays({
   fullscreen,
   locked,
+  lockReason,
   onLogout,
 }: {
   fullscreen: boolean
   locked: boolean
+  /** Qulflashda aytilgan to'xtash sababi — qulf ekranida ko'rinadi (o'tgan odam nega turganini bilsin) */
+  lockReason?: string | null
   /** Beyjiksiz hisob (operator roli) qulf ostida qolib ketmasin — chiqish yo'li */
   onLogout: () => void
 }) {
@@ -40,7 +43,11 @@ export function KioskOverlays({
         <Overlay
           icon={<Lock className="size-16 opacity-80" />}
           title="Ekran qulflangan"
-          hint="Ochish uchun beyjikni skanerlang"
+          hint={
+            lockReason
+              ? `To'xtash sababi: ${lockReason}. Ochish uchun beyjikni skanerlang`
+              : "Ochish uchun beyjikni skanerlang"
+          }
           action="Chiqish"
           actionVariant="ghost"
           onAction={onLogout}

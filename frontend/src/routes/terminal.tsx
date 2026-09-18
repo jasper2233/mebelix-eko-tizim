@@ -27,6 +27,11 @@ import {
   playWarning,
 } from "@/components/Terminal/audio"
 import { CutmapView } from "@/components/Terminal/CutmapView"
+import {
+  LockReasonDialog,
+  PENDING_KEY,
+  StopReasonPrompt,
+} from "@/components/Terminal/DowntimeReason"
 import { KioskOverlays } from "@/components/Terminal/KioskOverlays"
 import { KromkaView } from "@/components/Terminal/KromkaView"
 import { OrderPicker } from "@/components/Terminal/OrderPicker"
@@ -130,6 +135,13 @@ function TerminalPage() {
     code: string
   } | null>(null)
   const [logoutOpen, setLogoutOpen] = useState(false)
+  // To'xtash sababi (Pico ulangan ish markazida): o'zi chiqadigan oyna va qulf oldidan so'rov
+  const [stopPromptOpen, setStopPromptOpen] = useState(false)
+  const [lockAsk, setLockAsk] = useState(false)
+  const [lockReason, setLockReason] = useState<string | null>(null)
+  useEffect(() => {
+    if (!locked) setLockReason(null)
+  }, [locked])
   // Yakunlanayotgan smena — brigadada kim ekani muhim (biri ketib, ikkinchisi
   // qolishi odatiy hol)
   const [endFor, setEndFor] = useState<SessionRead | null>(null)
@@ -199,6 +211,9 @@ function TerminalPage() {
         }
         const p = event.payload
         if (!ctx || p.machine_id !== ctx.machine_id) return
+        // Pico holati o'zgardi (masalan qizil yondi) — sababsiz to'xtashlar darhol qayta so'raladi
+        if (event.type === "andon.state")
+          queryClient.invalidateQueries({ queryKey: PENDING_KEY })
         // Stanok skaneri skani ham faollik: Prisadka operatori Nanxing dasturida ishlaydi
         // va brauzerga umuman tegmaydi — busiz ishlab turgan odam chiqarib yuborilardi.
         if (event.type === "scan.recorded" || event.type === "scan.rejected")
@@ -240,7 +255,7 @@ function TerminalPage() {
           toast.error(message, { description: `Kod ${code}` })
         }
       },
-      [invalidateWork, ctx, yangiXabar, touchActivity],
+      [invalidateWork, ctx, yangiXabar, touchActivity, queryClient],
     ),
   )
 
@@ -249,7 +264,12 @@ function TerminalPage() {
   const mapOpen = ctx?.post_code === "ARRA" && mapOrderId !== null
   // Tasdiq dialogi ochiqda ham o'chadi: input modaldan tashqarida, ya'ni
   // interval/keydown fokusni tortadi, Radix trap darhol qaytaradi — churn
-  const dialogOpen = logoutOpen || endFor !== null || undoFor !== null
+  const dialogOpen =
+    logoutOpen ||
+    endFor !== null ||
+    undoFor !== null ||
+    stopPromptOpen ||
+    lockAsk
   // Qulf ostida ham fokus kerak: qulfning kaliti — beyjik skani
   useScanFocus(!mapOpen && !dialogOpen, inputRef)
 
@@ -465,6 +485,7 @@ function TerminalPage() {
       <KioskOverlays
         fullscreen={fullscreen}
         locked={locked}
+        lockReason={lockReason}
         onLogout={() => logout()}
       />
       {/* Smena ochilmaguncha ish maydoni o'rniga ismlar turadi — alohida oqim
@@ -577,7 +598,10 @@ function TerminalPage() {
           className="h-12 w-12 shrink-0 text-amber-700 hover:text-amber-800"
           aria-label="Qulflash"
           title="Qulflash"
-          onClick={() => setLocked(true)}
+          // Pico ulangan va smena ochiq — avval sabab so'raladi (`LockReasonDialog`)
+          onClick={() =>
+            ctx?.has_andon && crew.length ? setLockAsk(true) : setLocked(true)
+          }
         >
           <Lock className="size-6" />
         </Button>
@@ -784,6 +808,25 @@ function TerminalPage() {
         )}
       </main>
 
+      {ctx?.has_andon && (
+        <>
+          <StopReasonPrompt
+            crew={crew}
+            suppressed={locked || lockAsk || !fullscreen}
+            onVisibleChange={setStopPromptOpen}
+          />
+          <LockReasonDialog
+            open={lockAsk}
+            crew={crew}
+            onCancel={() => setLockAsk(false)}
+            onLocked={(name) => {
+              setLockAsk(false)
+              setLocked(true)
+              setLockReason(name)
+            }}
+          />
+        </>
+      )}
       <ConfirmDialog
         open={logoutOpen}
         onOpenChange={setLogoutOpen}

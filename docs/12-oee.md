@@ -17,7 +17,7 @@ OEE          = Availability × Performance × Quality
 |---|---|---|
 | Smena, tanaffus, dam olish kunlari | Tizim sozlamalari → "Ish jadvali" (§4.1) | ✅ bor |
 | Stanok holati va davomiyligi | Pico signal ustuni → `andon_event` (§3.1) | ✅ bor, qamrovi yetarli emas (§5) |
-| To'xtash sababi | — | ❌ yo'q (ro'yxat ham, kiritish joyi ham) |
+| To'xtash sababi | `downtime` + `downtime_reason`, terminal oynasi (§4.4) | ✅ bor; ro'yxatni admin kiritadi — egasining ro'yxati §4.4 da |
 | Detallar soni | MES skanlari (`scan`) + Pico sikllari | ✅ bor, o'zaro deyarli mos (§5) |
 | Ideal sikl vaqti | `part.xnc_summary` (teshik/paz/freza) + koeffitsiyentlar | ❌ koeffitsiyentlar yo'q |
 | Brak | — | ❌ yo'q |
@@ -127,6 +127,36 @@ Prisadka operatori Nanxing'da ishlaydi, skan agent orqali keladi. Uch qatlam:
 Logout endi qurilma hisobida (TERMINAL / texnik post hisobi) shu hisob ochgan brigadani ham yopadi —
 ilgari beyjik bilan ochilgan smena chiqishda yopilmasdi.
 
+### 4.4 To'xtash sabablari (2026-09-17)
+
+§7 qarorlarining kodi. To'xtashlar `andon_event` dan chiqariladi, alohida Pico o'zgarishi kerak emas.
+
+| Qism | Qayerda | Nima qiladi |
+| --- | --- | --- |
+| Jadvallar | `downtime_reason`, `downtime` (migratsiya `9e4b7c1d2a60`, docs/04) | sabablar ro'yxati; to'xtash: tur, boshlanish/tugash, sabab, izoh, kiritgan hodim |
+| Hisob | `services/downtimes.sync_machine` | qizil (FAULT) va OFF — darhol; sariq (IDLE/STOPPED) — `stop_prompt_idle_minutes` dan uzoq bo'lsa, vaqt sariq yongan paytdan. Idempotent, sabab qayta hisobda tegilmaydi |
+| Worker | `tasks.sync_downtimes` (5 daq) | terminal yopiq bo'lsa ham to'xtashlar yozilib, yopilib turadi |
+| Terminal | `GET /terminal/downtimes/pending` (30 s + `andon.state` WS), `Terminal/DowntimeReason.tsx` | sababsiz to'xtash bo'lsa oyna o'zi chiqadi; faqat Pico ulangan ish markazida (`has_andon`) va smena ochiq bo'lsa; «Keyinroq» — 10 daqiqa |
+| Qulf | `POST /terminal/downtimes/lock` | qulf tugmasi avval sabab so'raydi; qulf beyjik bilan ochilganda (`open_badge_session`) yopiladi, uning ostida boshlangan Pico to'xtashi sababni oladi |
+| Sozlamalar | Tizim sozlamalari → «To'xtash sabablari» | chegara (sukut 5, 1..120) va IKKI ro'yxat — «Rejali» va «Rejasiz» alohida, har birining o'z qo'shish maydoni: nom, «Izoh majburiy», «Faol», narigi guruhga o'tkazish (o'chirish yo'q) |
+
+Faqat SHU SMENAGA tegishli to'xtash so'raladi (oldingi smenaniki sababsiz qoladi). Ro'yxat bo'sh
+bo'lsa hech narsa so'ralmaydi, qulf sababsiz qulflanadi — ro'yxat kiritilmagani ishni to'smaydi.
+Tekshiruv: bir martalik PGlite skripti (repoda saqlanmaydi) 22/22 — takrorlanmaslik, 12 soatlik
+oynadan uzun to'xtash, IDLE hodisasi yo'qolib STOPPED birinchi kelgani, sessiya almashishi, chegara, qulfdan sabab
+ko'chishi, smena filtri; brauzerda soxta API bilan terminal va sozlamalar oqimi.
+
+Egasining ro'yxati (`oee to'xtalishlar.xlsx`, `Лист1` B4:C13; imlo to'g'rilangan, tartib faylnikidek):
+- Rejali: Tushlik, Smena yo'q, Tanaffus, Majlis, Kofe tanaffusi, Tozalash, Arra almashtirish, Moylash,
+  Sozlash, Sifat nazorati.
+- Rejasiz: Elektr yo'q, Remont, Nosozlik, Avariya holati, Hojatxona, Operator yo'q, Buyurtma yo'q,
+  Mahsulot yo'q, Mahsulot brak, Yangi buyurtmani olib kelish.
+«Izoh majburiy» egasi belgilamagan. Ro'yxat kodga YOZILMAYDI (statik bo'lib qolmasin, 2026-09-18):
+admin uni Tizim sozlamalarida shu ikki guruhga kiritadi va keyin o'zi yuritadi.
+
+Hali yo'q: ish vaqtidan tashqaridagi OFF ni avtomat «Smena tugadi» qilish, sababni holatga
+(qizil/sariq) bog'lash, Availability hisoboti (§6.5).
+
 ## 5. Prod auditi natijalari (2026-09-16)
 
 Davr: 2026-09-14 09:36 — 2026-09-16 15:16, faqat Prisadka (ish markazi 1, agent v1.5.0, `can_print=false`).
@@ -160,9 +190,8 @@ ya'ni keyingi detal skani ham sanalardi. SQL'da 5 s ga tuzatildi — qayta ishga
    har kuni beyjik bilan ochilishini tekshirish.
 3. **Chiroq tasnifi** — tsexda yashil miltillash davrini o'lchash, firmware `MIN_STATE_MS` /
    `BLINK_WINDOW_MS` ni moslash; `idle_timeout_s` ni mikro-to'xtash chegarasi bilan bir xil qilish.
-4. **To'xtash sabablari** — ro'yxat (nom, rejali/rejasiz, qaysi holatga mos, izoh majburiymi) va
-   kiritish: Pico ochgan har to'xtash avtomatik yoziladi, sababni smenada ishlayotgan hodim tanlaydi
-   (§7); ish vaqtidan tashqaridagi OFF avtomatik "Smena tugadi".
+4. **To'xtash sabablari** — kiritish qilindi, egasining ro'yxati keldi (§4.4). Qolgani: admin ro'yxatni
+   prodda Tizim sozlamalariga kiritadi; ish vaqtidan tashqaridagi OFF avtomatik "Smena tugadi".
 5. **Availability hisoboti** — ish jadvali + to'xtashlar; "Stanok vaqti" tab'i o'rniga.
 6. **Performance** — skan↔sikl FIFO bog'lash (prototip `mes/bridge.py` mantiqi), ideal sikl
    formulasi: yuklash + teshik × s + paz × s + freza × s, koeffitsiyentlar 2–4 hafta ma'lumotdan.
@@ -237,11 +266,12 @@ ya'ni keyingi detal skani ham sanalardi. SQL'da 5 s ga tuzatildi — qayta ishga
        skan ularni qayta yopadi (bir martalik PGlite skripti, 25/25 — qadoq/TMO, yig'ma, Prisadka, `-B2`);
      - buyurtma "tayyor" bo'lsa "jarayonda" ga qaytadi. **"Topshirilgan" buyurtmada brak tasdiqlanmaydi.**
   Ko'rinishi lokal prototipda (soxta API bilan) egasiga ko'rsatilgan — repoga chiqarilmagan, haqiqiy kod hali yo'q.
+- **To'xtash sabablari ro'yxati (2026-09-18, egasidan)** — `oee to'xtalishlar.xlsx`: 10 rejali, 10 rejasiz (§4.4).
+  Kodga YOZILMAYDI — statik bo'lib qolmasin: admin Tizim sozlamalarida «Rejali» va «Rejasiz» ro'yxatlariga alohida kiritadi.
 
 ### Ochiq
 
-- Egasining to'xtash sabablari fayli (`oee to'xtalishlar.xlsx`) va ularning qaysilari rejali.
-- Mikro-to'xtash chegarasi (tavsiya: 5 daqiqa).
+- Mikro-to'xtash chegarasi — Tizim sozlamalarida (sukut 5 daqiqa), tsexda sinab moslanadi.
 - Juda qisqa avariyalar (prod median 12 s) ham so'ralsinmi yoki chegara qo'yilsinmi.
 - Ideal sikl: formula (tavsiya) yoki bitta raqam.
 - Brak sabablari ro'yxati; menejer uzoq tasdiqlamasa (masalan 1 soat) eslatma kerakmi.

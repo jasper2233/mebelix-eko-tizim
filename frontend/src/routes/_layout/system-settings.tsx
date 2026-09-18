@@ -4,10 +4,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { Plus, Trash2 } from "lucide-react"
+import { ArrowRightLeft, Plus, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import {
+  type DowntimeReasonRead,
+  type DowntimeReasonUpdate,
   type Holiday,
   SettingsService,
   type SystemSettingRead,
@@ -18,8 +20,10 @@ import {
 import { Field } from "@/components/Common/Field"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
+import { RowAction } from "@/components/Common/RowAction"
 import { Button } from "@/components/ui/button"
 import { cardSurface } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
@@ -37,7 +41,7 @@ export const Route = createFileRoute("/_layout/system-settings")({
 })
 
 const SUFFIX_KEY = "custom_part_suffix"
-// Backend `settings_service.IDLE_*` va `IDLE_MINUTES_RANGE` bilan bir xil
+// Backend `settings_service.IDLE_*` va `INT_RANGES` bilan bir xil
 const IDLE_OPERATOR_KEY = "idle_logout_operator_minutes"
 const IDLE_STAFF_KEY = "idle_logout_staff_minutes"
 const IDLE_MIN = 10
@@ -106,6 +110,7 @@ function SystemSettingsPage() {
         </div>
       )}
       {data && <IdleLogoutCard settings={data} />}
+      {data && <DowntimeReasonsCard settings={data} />}
       <WorkScheduleCard />
     </div>
   )
@@ -190,6 +195,221 @@ function IdleLogoutCard({ settings }: { settings: SystemSettingRead[] }) {
       >
         Saqlash
       </LoadingButton>
+    </div>
+  )
+}
+
+// Backend `settings_service.STOP_PROMPT_IDLE_MINUTES` va `INT_RANGES` bilan bir xil
+const STOP_PROMPT_KEY = "stop_prompt_idle_minutes"
+const STOP_MIN = 1
+const STOP_MAX = 120
+
+const REASONS_KEY = ["system-settings", "downtime-reasons"]
+
+const reasonFlag = (checked: boolean, label: string, onChange: () => void) => (
+  // biome-ignore lint/a11y/noLabelWithoutControl: Checkbox label ichida (Field bilan bir xil)
+  <label className="flex items-center gap-1.5 whitespace-nowrap text-sm">
+    <Checkbox checked={checked} onCheckedChange={onChange} />
+    {label}
+  </label>
+)
+
+/** Bitta guruh — egasining ro'yxatidagi ustun kabi: «Rejali» yoki «Rejasiz», o'z ro'yxati va o'z
+ *  qo'shish maydoni bilan. `is_planned` ni GURUH beradi, shuning uchun qatorda «Rejali» belgisi
+ *  yo'q — noto'g'ri tushgan sabab strelka bilan narigi guruhga o'tkaziladi (o'chirish yo'q). */
+function ReasonGroup({
+  planned,
+  reasons,
+  onUpdate,
+}: {
+  planned: boolean
+  reasons: DowntimeReasonRead[]
+  onUpdate: (id: number, body: DowntimeReasonUpdate) => void
+}) {
+  const queryClient = useQueryClient()
+  const [name, setName] = useState("")
+  const callbacks = crudCallbacks(queryClient, REASONS_KEY, "Sabab qo'shildi")
+  const create = useMutation({
+    mutationFn: () =>
+      SettingsService.createDowntimeReason({
+        body: { name: name.trim(), is_planned: planned, needs_note: false },
+      }),
+    ...callbacks,
+    onSuccess: () => {
+      callbacks.onSuccess()
+      setName("")
+    },
+  })
+  const canAdd = name.trim() !== "" && !create.isPending
+
+  return (
+    <div className="space-y-2">
+      <div>
+        <div className="flex items-baseline justify-between">
+          <h3 className="font-semibold">{planned ? "Rejali" : "Rejasiz"}</h3>
+          <span className="num text-xs text-muted-foreground">
+            {reasons.length} ta
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {planned
+            ? "OEE reja vaqtidan chiqariladi — Availability'ni tushirmaydi."
+            : "Reja vaqti ichidagi yo'qotish — Availability'ni tushiradi."}
+        </p>
+      </div>
+      {reasons.length === 0 && (
+        <p className="text-sm text-muted-foreground">Hali sabab yo'q.</p>
+      )}
+      {reasons.map((r) => (
+        <div
+          key={r.id}
+          className={cn(
+            "flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2",
+            !r.is_active && "opacity-50",
+          )}
+        >
+          <Input
+            defaultValue={r.name}
+            maxLength={60}
+            className="h-9 min-w-40 flex-1"
+            onBlur={(e) => {
+              const next = e.target.value.trim()
+              if (next && next !== r.name) onUpdate(r.id, { name: next })
+            }}
+          />
+          {reasonFlag(r.needs_note, "Izoh majburiy", () =>
+            onUpdate(r.id, { needs_note: !r.needs_note }),
+          )}
+          {reasonFlag(r.is_active, "Faol", () =>
+            onUpdate(r.id, { is_active: !r.is_active }),
+          )}
+          <RowAction
+            icon={ArrowRightLeft}
+            title={planned ? "Rejasizga o'tkazish" : "Rejaliga o'tkazish"}
+            onClick={() => onUpdate(r.id, { is_planned: !planned })}
+          />
+        </div>
+      ))}
+      <div className="flex items-center gap-2 rounded-lg border border-dashed px-3 py-2">
+        <Input
+          value={name}
+          maxLength={60}
+          placeholder={planned ? "Masalan: Tushlik" : "Masalan: Elektr yo'q"}
+          className="h-9 flex-1"
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && canAdd) create.mutate()
+          }}
+        />
+        <LoadingButton
+          size="sm"
+          loading={create.isPending}
+          disabled={!canAdd}
+          onClick={() => create.mutate()}
+        >
+          <Plus /> Qo'shish
+        </LoadingButton>
+      </div>
+    </div>
+  )
+}
+
+/** To'xtash sabablari: terminal oynasi qachon chiqadi va qaysi sabablar tanlanadi
+ *  (`components/Terminal/DowntimeReason.tsx`, `backend/app/services/downtimes.py`). */
+function DowntimeReasonsCard({ settings }: { settings: SystemSettingRead[] }) {
+  const queryClient = useQueryClient()
+  const saved = settings.find((s) => s.key === STOP_PROMPT_KEY)?.value ?? ""
+  const [minutes, setMinutes] = useState("")
+  useEffect(() => setMinutes(saved), [saved])
+  const saveMinutes = useMutation({
+    mutationFn: () =>
+      SettingsService.updateSystemSetting({
+        path: { key: STOP_PROMPT_KEY },
+        body: { value: minutes },
+      }),
+    ...crudCallbacks(queryClient, ["system-settings"], "Sozlama saqlandi"),
+  })
+  const minutesValid =
+    /^\d+$/.test(minutes) &&
+    Number(minutes) >= STOP_MIN &&
+    Number(minutes) <= STOP_MAX
+
+  const {
+    data: reasons = [],
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: REASONS_KEY,
+    queryFn: async () => (await SettingsService.readDowntimeReasons()).data,
+  })
+  const update = useMutation({
+    mutationFn: (v: { id: number; body: DowntimeReasonUpdate }) =>
+      SettingsService.updateDowntimeReason({
+        path: { reason_id: v.id },
+        body: v.body,
+      }),
+    ...crudCallbacks(queryClient, REASONS_KEY, "Sabab o'zgardi"),
+  })
+
+  return (
+    <div className={cn(cardSurface, "mt-6 max-w-5xl space-y-5 p-4")}>
+      <div>
+        <h2 className="text-lg font-semibold">To'xtash sabablari</h2>
+        <p className="text-sm text-muted-foreground">
+          Pico ulangan stanokda terminal to'xtash sababini o'zi so'raydi: qizil
+          chiroq (avariya) va hamma chiroq o'chganda darhol, sariq chiroq
+          quyidagi chegaradan uzoq yonsa. Qulf tugmasi ham avval sababni
+          so'raydi. Sababni smenada ishlayotgan hodim tanlaydi.
+        </p>
+      </div>
+      <div className="flex items-end gap-3">
+        <Field label="Stanok ishlamasa sabab so'ralsin, daqiqa">
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={STOP_MIN}
+            max={STOP_MAX}
+            value={minutes}
+            aria-invalid={!minutesValid}
+            onChange={(e) => setMinutes(e.target.value)}
+            className="w-40"
+          />
+        </Field>
+        <LoadingButton
+          loading={saveMinutes.isPending}
+          disabled={!minutesValid || minutes === saved}
+          onClick={() => saveMinutes.mutate()}
+        >
+          Saqlash
+        </LoadingButton>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Vaqt sariq chiroq yongan paytdan sanaladi. Juda kichik qiymat (1–2
+        daqiqa) detal almashtirish kabi oddiy kutishlarda ham oyna chiqaradi.
+        Oraliq: {STOP_MIN}–{STOP_MAX}.
+      </p>
+
+      <section className="space-y-3">
+        {isError ? (
+          <QueryError onRetry={() => refetch()} />
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {[true, false].map((planned) => (
+              <ReasonGroup
+                key={String(planned)}
+                planned={planned}
+                reasons={reasons.filter((r) => r.is_planned === planned)}
+                onUpdate={(id, body) => update.mutate({ id, body })}
+              />
+            ))}
+          </div>
+        )}
+        <p className="text-sm text-muted-foreground">
+          Ikkala ro'yxat ham bo'sh bo'lsa terminal sabab so'ramaydi, qulf esa
+          sababsiz ishlaydi. Sabab o'chirilmaydi — eski to'xtashlar sababini
+          yo'qotmasin; kerak bo'lmasa "Faol" belgisini oling.
+        </p>
+      </section>
     </div>
   )
 }

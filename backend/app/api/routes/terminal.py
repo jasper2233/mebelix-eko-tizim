@@ -1,7 +1,7 @@
 """Operator terminal API: context, badge sessions, post queue, ARRA cut map, files."""
 
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -16,6 +16,7 @@ from app.core.ws import ws_manager
 from app.crud import crud_orders, crud_part_instances, crud_waste_items, log_action
 from app.models import (
     PRIORITY_RANK,
+    AndonEvent,
     BridgeAgent,
     Employee,
     Machine,
@@ -132,6 +133,13 @@ async def read_terminal_context(db: SessionDep, user: TerminalUser, ctx: Termina
     if agent is not None:
         out.agent_online = agent_online(agent.last_seen_at)
         out.agent_prints = bool(agent.can_print)
+    out.has_andon = (
+        await db.execute(
+            select(AndonEvent.id)
+            .where(AndonEvent.machine_id == machine.id, AndonEvent.happened_at >= datetime.now(UTC) - timedelta(days=7))
+            .limit(1)
+        )
+    ).first() is not None
     for session in await crew_sessions(db, machine.id):
         employee = await db.get(Employee, session.employee_id)
         out.crew.append(

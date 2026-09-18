@@ -31,6 +31,7 @@ from app.models.enums import (
 )
 from app.models.user import User
 from app.schemas.terminal import ScanResult
+from app.services.downtimes import close_open_locks
 from app.services.giblab.models import strip_order_prefix
 
 #: Manbalar-aro dedup oynasi (pastdagi `record_scan_at` izohiga qarang)
@@ -210,6 +211,9 @@ async def open_badge_session(
 
     Bir odamni ikki marta qo'shib bo'lmaydi: mavjud smenasi qaytariladi.
     """
+    # Qulf beyjik bilan ochiladi va u aynan shu yerga keladi — qulf to'xtashi (LOCK) shu paytda
+    # tugaydi. Qaytib kelgan odamning o'z smenasi ochiq bo'lsa ham (pastdagi erta qaytish).
+    await close_open_locks(db, machine.id, datetime.now(UTC))
     crew = await crew_sessions(db, machine.id)
     mine = next((s for s in crew if s.employee_id == employee.id), None)
     if mine is not None:

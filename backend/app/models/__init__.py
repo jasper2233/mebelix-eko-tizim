@@ -2,6 +2,7 @@ from .andon import AndonEvent
 from .audit import AuditLog
 from .bridge_agent import BridgeAgent
 from .client import Client
+from .downtime import Downtime, DowntimeReason
 from .employee import Employee
 from .machine import Machine
 from .order import (
@@ -31,6 +32,8 @@ __all__ = [
     "AuditLog",
     "BridgeAgent",
     "Client",
+    "Downtime",
+    "DowntimeReason",
     "Employee",
     "Machine",
     "Order",
