@@ -18,6 +18,7 @@ OEE          = Availability × Performance × Quality
 | Smena, tanaffus, dam olish kunlari | Tizim sozlamalari → "Ish jadvali" (§4.1) | ✅ bor |
 | Stanok holati va davomiyligi | Pico signal ustuni → `andon_event` (§3.1) | ✅ bor, qamrovi yetarli emas (§5) |
 | To'xtash sababi | `downtime` + `downtime_reason`, terminal oynasi (§4.4) | ✅ bor; ro'yxatni admin kiritadi — egasining ro'yxati §4.4 da |
+| **Availability hisobi** | `services/availability.py`, Hisobotlar → «Stanok vaqti» (§4.5) | ✅ bor (2026-09-18) |
 | Detallar soni | MES skanlari (`scan`) + Pico sikllari | ✅ bor, o'zaro deyarli mos (§5) |
 | Ideal sikl vaqti | `part.xnc_summary` (teshik/paz/freza) + koeffitsiyentlar | ❌ koeffitsiyentlar yo'q |
 | Brak | — | ❌ yo'q |
@@ -31,7 +32,7 @@ OEE          = Availability × Performance × Quality
   da (docs/04 §4.4). **Xulosa: operator ekraniga DOIMIY tugma qo'shilmaydi** — sabab va brakni smenadagi hodim kerak paytda chiqadigan oynada kiritadi (§7).
 - **2026-09-13..14** — andon: Pico stanok chiroqlarini o'qiydi, MES agent v1.5.0 USB orqali olib
   `POST /bridge-agents/andon` ga yuboradi → `andon_event` (xom hodisalar) + Redis jonli holat;
-  "Ish markazlari" sahifasida jonli holat, "Hisobotlar → Stanok vaqti" (VAQTINCHALIK, OEE emas).
+  "Ish markazlari" sahifasida jonli holat, "Hisobotlar → Stanok vaqti" (2026-09-18 dan Availability bilan, §4.5).
 - **2026-09-16** — prod ma'lumot auditi (§5) va ish jadvali sozlamalari (§4.1).
 
 ## 3. Ma'lumot manbalari
@@ -154,8 +155,44 @@ Egasining ro'yxati (`oee to'xtalishlar.xlsx`, `Лист1` B4:C13; imlo to'g'rila
 «Izoh majburiy» egasi belgilamagan. Ro'yxat kodga YOZILMAYDI (statik bo'lib qolmasin, 2026-09-18):
 admin uni Tizim sozlamalarida shu ikki guruhga kiritadi va keyin o'zi yuritadi.
 
-Hali yo'q: ish vaqtidan tashqaridagi OFF ni avtomat «Smena tugadi» qilish, sababni holatga
-(qizil/sariq) bog'lash, Availability hisoboti (§6.5).
+Hali yo'q: sababni holatga (qizil/sariq) bog'lash. Ish vaqtidan tashqaridagi OFF ni avtomat «Smena tugadi»
+qilish KERAK BO'LMADI — hisobot uni ish jadvali bilan o'zi kesadi (§4.5).
+
+### 4.5 Availability hisoboti (2026-09-18)
+
+OEE'ning birinchi hisoblangan qismi. Alohida endpoint EMAS — `GET /reports/machine-time` kengaytirildi
+(Hisobotlar → «Stanok vaqti»; Excel eksport o'sha yo'ldan), hisob `services/availability.py` dagi sof funksiyalarda.
+
+```
+ish vaqti    = jadvaldagi smenalar − tanaffuslar              (dam olish kuni va bayramda 0, hozirgacha)
+reja vaqti   = ish vaqti − REJALI sababli to'xtashlar
+ishladi      = reja vaqti − rejasiz to'xtashlar − ma'lumotsiz vaqt
+Availability = ishladi ÷ reja vaqti                           (reja vaqti 0 bo'lsa hisoblanmaydi)
+```
+
+| Qoida | Nega |
+| --- | --- |
+| To'xtash — §4.4 bilan BIR XIL: qizil va OFF darhol, sariq `stop_prompt_idle_minutes` dan uzoq bo'lsa | qisqa sariq — mikro-to'xtash: u Performance yo'qotishi, Availability emas |
+| Ish vaqtida Pico'dan ma'lumot yo'q — TO'XTASH | §7 qarori; alohida «Ma'lumot yo'q» va «Qamrov» ustunlarida ko'rinadi, toki qamrov muammosi (§5) Availability'ni nega tushirayotgani ko'rinib tursin |
+| Ish vaqtidan tashqaridagi holat hisobga kirmaydi | tungi OFF va tushlikdagi OFF jadval bilan o'zi kesiladi — «Smena tugadi» sababi va uni avtomat qo'yish KERAK EMAS |
+| Sabab `downtime` dan VAQT bo'yicha olinadi (eng ko'p ustma-ust tushgan yozuv), to'xtashning o'zi esa `andon_event` dan | `downtime` jadvali 2026-09-18 da paydo bo'ldi — undan oldingi kunlar ham to'g'ri hisoblanadi; oraliq to'xtash o'rtasidan boshlansa ham sabab topiladi |
+| LOCK yozuvlari kirmaydi | qulf vaqt tashimaydi: stanok to'xtaganini Pico yozadi, qulf ostida boshlangan to'xtash sababni `sync_machine` da allaqachon olgan |
+| Smena BOSHLANGAN kuniga tegishli | 22:00 da boshlangan tungi smena ertasi dam olish kuni bo'lsa ham 06:00 gacha davom etadi; dam olish kuni kechqurun smena boshlanmaydi |
+| Signal ustuni ulangan HAR ish markazi kiradi | butun davr jim turgan stanok hisobotdan tushib qolmay, 0% bo'lib ko'rinadi |
+| Rang yo'q | maqsad foizi hali belgilanmagan («Ochiq») — chegarasiz yashil/qizil yolg'on baho bo'lardi |
+
+Sahifada: Availability jadvali (reja vaqti, ishladi, rejasiz to'xtash, ma'lumot yo'q, rejali to'xtash, qamrov, foiz),
+to'xtash sabablari bo'yicha taqsimot (sababsizi alohida qator), kunlik trek yonida kun foizi; eski chiroq holatlari jadvali
+va to'xtashlar ro'yxati pastda qoldi. Ish jadvali kiritilmagan bo'lsa qizil izoh chiqadi va foiz hisoblanmaydi.
+
+Tekshiruv (bir martalik skriptlar, repoda saqlanmaydi): sof funksiyalar 31/31 — qo'lda hisoblangan kun (67.4%),
+tungi smena va yarim tun bo'linishi, dam olish kunidan oldingi/keyingi smena, mikro-to'xtash, oraliq chegarasidagi
+to'xtash, «hozir»gacha kesish, jadvalsiz holat; haqiqiy handler PGlite'da 18/18 — rejali sabab reja vaqtidan
+chiqishi, LOCK sababi e'tiborsiz qolishi, jim stanok 0%, Pico'siz stanok kirmasligi, Excel; sahifa headless
+Chrome'da 14/14 — sonlar backend javobi bilan bir xil, 1366 va 700 px'da toshmaydi.
+
+Cheklov: chegara (`stop_prompt_idle_minutes`) o'zgartirilsa o'tgan kunlar ham yangi chegara bilan qayta hisoblanadi
+(to'xtashlar saqlanmaydi, har safar hodisalardan chiqariladi).
 
 ## 5. Prod auditi natijalari (2026-09-16)
 
@@ -191,8 +228,9 @@ ya'ni keyingi detal skani ham sanalardi. SQL'da 5 s ga tuzatildi — qayta ishga
 3. **Chiroq tasnifi** — tsexda yashil miltillash davrini o'lchash, firmware `MIN_STATE_MS` /
    `BLINK_WINDOW_MS` ni moslash; `idle_timeout_s` ni mikro-to'xtash chegarasi bilan bir xil qilish.
 4. **To'xtash sabablari** — kiritish qilindi, egasining ro'yxati keldi (§4.4). Qolgani: admin ro'yxatni
-   prodda Tizim sozlamalariga kiritadi; ish vaqtidan tashqaridagi OFF avtomatik "Smena tugadi".
-5. **Availability hisoboti** — ish jadvali + to'xtashlar; "Stanok vaqti" tab'i o'rniga.
+   prodda Tizim sozlamalariga kiritadi.
+5. **Availability hisoboti** — qilindi (§4.5). Qolgani: prodda ish jadvali kiritilganini tekshirish (usiz foiz
+   hisoblanmaydi); qamrov (1-band) tuzatilmaguncha foiz past chiqadi — «Ma'lumot yo'q» ustuni shuni ko'rsatadi.
 6. **Performance** — skan↔sikl FIFO bog'lash (prototip `mes/bridge.py` mantiqi), ideal sikl
    formulasi: yuklash + teshik × s + paz × s + freza × s, koeffitsiyentlar 2–4 hafta ma'lumotdan.
 7. **Quality** — brak qaydi (sabab, aybdor post); belgilovchi — smenada ishlayotgan hodim (§7).

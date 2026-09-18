@@ -164,6 +164,32 @@ export type AuditSummaryRow = {
 };
 
 /**
+ * AvailabilityReason
+ */
+export type AvailabilityReason = {
+    /**
+     * Reason Id
+     */
+    reason_id: number | null;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Is Planned
+     */
+    is_planned: boolean;
+    /**
+     * Seconds
+     */
+    seconds: number;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * BadgeLoginRequest
  *
  * Beyjik skani = kirish. Post beyjik egasining biriktirilgan postlaridan aniqlanadi.
@@ -1684,6 +1710,34 @@ export type MachineTimeDay = {
     seconds: {
         [key: string]: number;
     };
+    /**
+     * Shift S
+     */
+    shift_s: number;
+    /**
+     * Planned Stop S
+     */
+    planned_stop_s: number;
+    /**
+     * Planned S
+     */
+    planned_s: number;
+    /**
+     * Unplanned Stop S
+     */
+    unplanned_stop_s: number;
+    /**
+     * No Data S
+     */
+    no_data_s: number;
+    /**
+     * Run S
+     */
+    run_s: number;
+    /**
+     * Availability Pct
+     */
+    availability_pct: number | null;
 };
 
 /**
@@ -1710,6 +1764,14 @@ export type MachineTimeReport = {
      * Stops
      */
     stops: Array<MachineTimeStop>;
+    /**
+     * Schedule Set
+     */
+    schedule_set: boolean;
+    /**
+     * Idle Threshold Min
+     */
+    idle_threshold_min: number;
 };
 
 /**
@@ -1742,6 +1804,42 @@ export type MachineTimeRow = {
      * Faults
      */
     faults: number;
+    /**
+     * Shift S
+     */
+    shift_s: number;
+    /**
+     * Planned Stop S
+     */
+    planned_stop_s: number;
+    /**
+     * Planned S
+     */
+    planned_s: number;
+    /**
+     * Unplanned Stop S
+     */
+    unplanned_stop_s: number;
+    /**
+     * No Data S
+     */
+    no_data_s: number;
+    /**
+     * Run S
+     */
+    run_s: number;
+    /**
+     * Availability Pct
+     */
+    availability_pct: number | null;
+    /**
+     * Coverage Pct
+     */
+    coverage_pct: number | null;
+    /**
+     * Reasons
+     */
+    reasons: Array<AvailabilityReason>;
 };
 
 /**

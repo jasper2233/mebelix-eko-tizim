@@ -26,6 +26,14 @@ class ProductivityReport(BaseModel):
 # ---------- Stanok vaqti (andon — signal ustuni) ----------
 
 
+class AvailabilityReason(BaseModel):
+    reason_id: int | None  # None — sabab kiritilmagan
+    name: str
+    is_planned: bool
+    seconds: int  # to'xtashning ISH VAQTI ichidagi qismi
+    count: int
+
+
 class MachineTimeRow(BaseModel):
     machine_id: int
     machine_name: str
@@ -34,12 +42,29 @@ class MachineTimeRow(BaseModel):
     total_s: int  # jami qayd etilgan vaqt — agent/Pico bilan aloqa yo'q paytlar kirmaydi
     busy_pct: float | None  # ishlov / jami qayd — OEE Availability EMAS (reja vaqti yo'q)
     faults: int  # oraliqqa tushgan avariyalar soni
+    # --- OEE Availability (`services/availability.py`). Ish jadvali kiritilmagan bo'lsa hammasi 0 / None.
+    shift_s: int  # jadval bo'yicha ish vaqti: smenalar minus tanaffuslar, hozirgacha
+    planned_stop_s: int  # REJALI sababli to'xtashlar — reja vaqtidan chiqariladi
+    planned_s: int  # reja vaqti = shift_s - planned_stop_s
+    unplanned_stop_s: int  # rejasiz yoki sababi kiritilmagan to'xtashlar
+    no_data_s: int  # ish vaqtida Pico'dan ma'lumot yo'q — to'xtash deb sanaladi (2026-09-17 qarori)
+    run_s: int  # ishlagan = planned_s - unplanned_stop_s - no_data_s
+    availability_pct: float | None  # run_s / planned_s; reja vaqti 0 bo'lsa None
+    coverage_pct: float | None  # ish vaqtining qancha qismida Pico ma'lumoti bor
+    reasons: list[AvailabilityReason]  # ko'p vaqt olgani birinchi
 
 
 class MachineTimeDay(BaseModel):
     machine_id: int
     day: date  # Toshkent kuni
     seconds: dict[str, int]
+    shift_s: int
+    planned_stop_s: int
+    planned_s: int
+    unplanned_stop_s: int
+    no_data_s: int
+    run_s: int
+    availability_pct: float | None
 
 
 class MachineTimeStop(BaseModel):
@@ -57,6 +82,8 @@ class MachineTimeReport(BaseModel):
     rows: list[MachineTimeRow]
     days: list[MachineTimeDay]
     stops: list[MachineTimeStop]  # eng yangisi birinchi, ko'pi bilan 200 ta
+    schedule_set: bool  # ish jadvalida smena bormi — yo'q bo'lsa Availability hisoblanmaydi
+    idle_threshold_min: int  # sariq chiroq shundan uzoq yonsa to'xtash (`stop_prompt_idle_minutes`)
 
 
 # ---------- 11.2 Buyurtmalar holati ----------

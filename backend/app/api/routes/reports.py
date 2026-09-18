@@ -4,12 +4,13 @@ Every endpoint returns JSON by default; `?format=xlsx` streams an Excel file.
 Access: manager/director/admin.
 """
 
+from collections.abc import Callable, Sequence
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import defer
 
 from app.api.deps import SessionDep, require_roles
@@ -18,6 +19,8 @@ from app.models import (
     ORDER_FAT_COLUMNS,
     AndonEvent,
     Client,
+    Downtime,
+    DowntimeReason,
     Employee,
     Machine,
     Order,
@@ -27,9 +30,18 @@ from app.models import (
     Scan,
     WorkSession,
 )
-from app.models.enums import POST_UNIT_LABELS, MachineStatus, OrderStatus, PostUnit, SessionStatus, UserRole
+from app.models.enums import (
+    POST_UNIT_LABELS,
+    DowntimeKind,
+    MachineStatus,
+    OrderStatus,
+    PostUnit,
+    SessionStatus,
+    UserRole,
+)
 from app.models.user import User
 from app.schemas.reports import (
+    AvailabilityReason,
     DashboardMoney,
     DashboardOrders,
     DashboardStats,
@@ -49,8 +61,10 @@ from app.schemas.reports import (
     TrendDay,
 )
 from app.services.andon import ANDON_STATES, andon_spans, machine_time, read_live
+from app.services.availability import DayTotals, StopRun, availability, plan_windows
 from app.services.excel import xlsx_response
 from app.services.metrics import VolumeShare, part_volume
+from app.services.settings_service import STOP_PROMPT_IDLE_MINUTES, get_setting, get_work_schedule
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -152,6 +166,23 @@ _ANDON_TAIL = timedelta(days=3)
 _ANDON_STOPS_LIMIT = 200
 
 
+def _reason_lookup(
+    rows: Sequence[tuple[int, datetime, datetime | None, int, str, bool]], now: datetime
+) -> Callable[[StopRun], tuple[int, str, bool] | None]:
+    """To'xtashga sabab: shu ish markazining sababi kiritilgan `downtime` yozuvlaridan ENG KO'P ustma-ust
+    tushgani. Kalit bo'yicha emas, vaqt bo'yicha: hisobot oralig'i to'xtash o'rtasidan boshlansa ham topiladi."""
+
+    def find(run: StopRun) -> tuple[int, str, bool] | None:
+        best: tuple[float, tuple[int, str, bool]] | None = None
+        for _mid, began, ended, reason_id, name, is_planned in rows:
+            overlap = (min(run.ended, ended or now) - max(run.began, began)).total_seconds()
+            if overlap > 0 and (best is None or overlap > best[0]):
+                best = (overlap, (reason_id, name, is_planned))
+        return best[1] if best else None
+
+    return find
+
+
 @router.get("/machine-time", operation_id="report_machine_time", response_model=MachineTimeReport)
 async def report_machine_time(
     db: SessionDep,
@@ -160,7 +191,11 @@ async def report_machine_time(
     date_to: date | None = None,
     format: Annotated[Literal["json", "xlsx"], Query()] = "json",
 ) -> MachineTimeReport | StreamingResponse:
-    """Stanok vaqti: signal ustuni (andon) bo'yicha qancha ishladi, kutdi, to'xtadi, o'chiq turdi.
+    """Stanok vaqti va OEE Availability: signal ustuni (andon) bo'yicha qancha ishladi, kutdi, to'xtadi.
+
+    Availability = ishlagan / reja vaqti (`services/availability.py`): reja vaqti ish jadvalidan,
+    to'xtashlar chiroq holatlaridan, sabab va «rejali» belgisi `downtime` jadvalidan. Ish vaqtidan
+    tashqaridagi holat (tungi OFF, tushlik) hisobga kirmaydi; ish vaqtida ma'lumot yo'qligi — to'xtash.
 
     Davomiyliklarni Pico o'zi o'lchaydi (`prev_duration_s`), hisob `services/andon.py`
     dagi sof funksiyada. Hozir davom etayotgan holat faqat jonli holat (Redis) hali
@@ -208,14 +243,69 @@ async def report_machine_time(
             if state is not None and live.get(mid, {}).get("state") == state
         }
 
-    result = machine_time(andon_spans(events, ongoing), start, end, now)
-    ids = set(result.seconds)
+    spans = andon_spans(events, ongoing)
+    result = machine_time(spans, start, end, now)
+
+    # OEE Availability: ish jadvali + to'xtashlar. Signal ustuni ulangan HAR ish markazi kiradi —
+    # butun davr o'chiq turgan stanok hisobotdan tushib qolmay, 0% bo'lib ko'rinsin.
+    andon_ids = (
+        (
+            await db.execute(
+                select(Machine.id).where(
+                    Machine.is_deleted == False,  # noqa: E712
+                    select(AndonEvent.id).where(AndonEvent.machine_id == Machine.id).exists(),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    ids = set(result.seconds) | set(andon_ids)
+    schedule = await get_work_schedule(db)
+    idle_minutes = int(await get_setting(db, STOP_PROMPT_IDLE_MINUTES))
+    windows = plan_windows(schedule, start, min(end, now))
+    reason_rows = (
+        (
+            await db.execute(
+                select(
+                    Downtime.machine_id,
+                    Downtime.started_at,
+                    Downtime.ended_at,
+                    DowntimeReason.id,
+                    DowntimeReason.name,
+                    DowntimeReason.is_planned,
+                )
+                .join(DowntimeReason, DowntimeReason.id == Downtime.reason_id)
+                .where(
+                    Downtime.is_deleted == False,  # noqa: E712
+                    # Qulf (LOCK) vaqt tashimaydi: stanokning o'zi to'xtaganini Pico yozadi va
+                    # qulf ostida boshlangan to'xtash sababni `sync_machine` da allaqachon olgan.
+                    Downtime.kind != DowntimeKind.LOCK,
+                    Downtime.started_at <= end,
+                    or_(Downtime.ended_at.is_(None), Downtime.ended_at >= start),
+                )
+            )
+        )
+        .tuples()
+        .all()
+    )
+    avail = {
+        mid: availability(
+            [s for s in spans if s.machine_id == mid],
+            windows,
+            timedelta(minutes=idle_minutes),
+            now,
+            _reason_lookup([r for r in reason_rows if r[0] == mid], now),
+        )
+        for mid in ids
+    }
     names = dict((await db.execute(select(Machine.id, Machine.name).where(Machine.id.in_(ids)))).tuples().all())
 
     rows = []
     for mid in sorted(ids, key=lambda m: names.get(m, "")):
-        secs = result.seconds[mid]
+        secs = result.seconds.get(mid) or dict.fromkeys(ANDON_STATES, 0)
         total = sum(secs.values())
+        a = avail[mid].total
         rows.append(
             MachineTimeRow(
                 machine_id=mid,
@@ -224,9 +314,45 @@ async def report_machine_time(
                 total_s=total,
                 busy_pct=round(secs["PROCESSING"] * 100 / total, 1) if total else None,
                 faults=result.faults.get(mid, 0),
+                shift_s=a.shift_s,
+                planned_stop_s=a.planned_stop_s,
+                planned_s=a.planned_s,
+                unplanned_stop_s=a.unplanned_stop_s,
+                no_data_s=a.no_data_s,
+                run_s=a.run_s,
+                availability_pct=a.availability_pct,
+                coverage_pct=a.coverage_pct,
+                reasons=[
+                    AvailabilityReason(
+                        reason_id=r.reason_id,
+                        name=r.name or "Sabab kiritilmagan",
+                        is_planned=r.is_planned,
+                        seconds=r.seconds,
+                        count=r.count,
+                    )
+                    for r in avail[mid].reasons
+                ],
             )
         )
-    days = [MachineTimeDay(machine_id=mid, day=day, seconds=secs) for (mid, day), secs in sorted(result.days.items())]
+    empty_day = DayTotals()
+    day_keys = set(result.days) | {(mid, day) for mid, a_m in avail.items() for day in a_m.days}
+    days = []
+    for mid, day in sorted(day_keys):
+        d = avail[mid].days.get(day, empty_day)
+        days.append(
+            MachineTimeDay(
+                machine_id=mid,
+                day=day,
+                seconds=result.days.get((mid, day)) or dict.fromkeys(ANDON_STATES, 0),
+                shift_s=d.shift_s,
+                planned_stop_s=d.planned_stop_s,
+                planned_s=d.planned_s,
+                unplanned_stop_s=d.unplanned_stop_s,
+                no_data_s=d.no_data_s,
+                run_s=d.run_s,
+                availability_pct=d.availability_pct,
+            )
+        )
     stops = [
         MachineTimeStop(
             machine_id=s.machine_id,
@@ -238,12 +364,27 @@ async def report_machine_time(
         )
         for s in result.stops[:_ANDON_STOPS_LIMIT]
     ]
-    report = MachineTimeReport(date_from=start.date(), date_to=end.date(), rows=rows, days=days, stops=stops)
+    report = MachineTimeReport(
+        date_from=start.date(),
+        date_to=end.date(),
+        rows=rows,
+        days=days,
+        stops=stops,
+        schedule_set=bool(schedule.shifts),
+        idle_threshold_min=idle_minutes,
+    )
     if format == "xlsx":
         return xlsx_response(
             "Stanok vaqti",
             [
                 "Stanok",
+                "Reja vaqti (soat)",
+                "Ishladi (soat)",
+                "Rejasiz to'xtash (soat)",
+                "Ma'lumot yo'q (soat)",
+                "Rejali to'xtash (soat)",
+                "Availability, %",
+                "Qamrov, %",
                 *(f"{_ANDON_LABELS[s]} (soat)" for s in ANDON_STATES),
                 "Jami qayd (soat)",
                 "Ishlov ulushi, %",
@@ -252,6 +393,13 @@ async def report_machine_time(
             [
                 [
                     r.machine_name,
+                    round(r.planned_s / 3600, 2),
+                    round(r.run_s / 3600, 2),
+                    round(r.unplanned_stop_s / 3600, 2),
+                    round(r.no_data_s / 3600, 2),
+                    round(r.planned_stop_s / 3600, 2),
+                    r.availability_pct if r.availability_pct is not None else "",
+                    r.coverage_pct if r.coverage_pct is not None else "",
                     *(round(r.seconds[s] / 3600, 2) for s in ANDON_STATES),
                     round(r.total_s / 3600, 2),
                     r.busy_pct if r.busy_pct is not None else "",
