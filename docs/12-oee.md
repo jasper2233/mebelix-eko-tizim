@@ -20,7 +20,8 @@ OEE          = Availability × Performance × Quality
 | To'xtash sababi | `downtime` + `downtime_reason`, terminal oynasi (§4.4) | ✅ bor; ro'yxatni admin kiritadi — egasining ro'yxati §4.4 da |
 | **Availability hisobi** | `services/availability.py`, Hisobotlar → «Stanok vaqti» (§4.5) | ✅ bor (2026-09-18) |
 | Detallar soni | MES skanlari (`scan`) + Pico sikllari | ✅ bor, o'zaro deyarli mos (§5) |
-| Ideal sikl vaqti | `part.xnc_summary` (teshik/paz/freza) + koeffitsiyentlar | ❌ koeffitsiyentlar yo'q |
+| Ideal sikl vaqti | `part.xnc_summary` (teshik/paz/freza) + koeffitsiyentlar (Tizim sozlamalari, §4.6) | ⚠️ bor, qiymatlar TAXMINIY — sekundomer bilan to'g'rilash kerak |
+| **Performance hisobi** | `services/performance.py`, Hisobotlar → «Stanok vaqti» (§4.6) | ✅ bor (2026-09-18), faqat Prisadka |
 | Brak | — | ❌ yo'q |
 
 ## 2. Tarix
@@ -194,6 +195,48 @@ Chrome'da 14/14 — sonlar backend javobi bilan bir xil, 1366 va 700 px'da toshm
 Cheklov: chegara (`stop_prompt_idle_minutes`) o'zgartirilsa o'tgan kunlar ham yangi chegara bilan qayta hisoblanadi
 (to'xtashlar saqlanmaydi, har safar hodisalardan chiqariladi).
 
+### 4.6 Ideal sikl va Performance (2026-09-18)
+
+```
+ideal vaqt (detal) = har detalga + yuza teshik × s + qirra teshik × s + paz × s + freza × s
+Performance        = Σ ideal vaqt (kuzatilgan ish vaqtida skanerlangan detallar) ÷ ishladi
+```
+
+Bitta raqam EMAS, formula: skanerlangan detalda teshiklar soni p10 = 2, p50 = 6, p90 = 15, eng ko'pi 40 (§5) — bitta
+raqam operator tezligini emas, o'sha kungi mahsulot aralashmasini o'lchardi. Koeffitsiyentlar kodga qotmagan: admin
+Tizim sozlamalari → «Ideal sikl (Prisadka)» da yuritadi (`GET/PUT /settings/ideal-cycle`, `system_setting` kaliti
+`ideal_cycle_prisadka`). Hisob `services/performance.py`, natija `GET /reports/machine-time` da (Hisobotlar → «Stanok vaqti»).
+
+**Boshlang'ich qiymatlar TAXMINIY** (egasi: «taxminiy raqamlar qo'yib tur») — 2026-09-16 auditidan chiqarilgan:
+
+| Koeffitsiyent | Sukut | Asos |
+| --- | --- | --- |
+| Har detalga (skan, qo'yish, qisish, olish) | 15 s | median detal 6 teshik, median sikl 3 s kutish + ~24 s ishlov = 27 s → 27 − 6 × 2 |
+| Yuza teshik | 2 s | ishlov vaqti p10 ≈ 15 s (kam teshikli) va median ≈ 24 s (6 teshik) orasidagi farq |
+| Qirra teshik | 2.5 s | gorizontal shpindel pozitsiyalanadi — yuza teshikdan biroz sekin (taxmin) |
+| Paz | 8 s | ~1 m o'tish + pozitsiyalash (taxmin) |
+| Freza konturi | 12 s | taxmin |
+
+Tsexda sekundomer bilan 5–10 detalni o'lchab to'g'rilash KERAK. Sahifa shunga yordam beradi: kartada jonli misol
+(6 teshikli detal — 27 s), hisobotda «Performance kalibri» qatori — detallarning ideal vaqti va Pico o'lchagan sikl
+vaqti (`wait_s + process_s`) yonma-yon. Performance 100% dan oshsa kesilmaydi — bu koeffitsiyentlar yumshoqligining belgisi.
+
+| Qoida | Nega |
+| --- | --- |
+| Skan↔sikl bog'lash KERAK EMAS | yig'indi darajasida skanlar (detalga bog'langan) va ishlagan vaqt (§4.5) yetadi; bog'lash faqat koeffitsiyentlarni o'lchovdan aniq chiqarish uchun, keyinga |
+| Faqat KUZATILGAN ish vaqtidagi skan sanaladi | ma'lumotsiz vaqt «ishladi» ga kirmaydi — o'sha paytdagi detal sanalsa foiz shishardi; tushlik va jadvaldan tashqari skan ham kirmaydi |
+| Faqat posti PRISADKA bo'lgan ish markazi | formula teshik/paz/freza haqida — boshqa postga (kromka — metr) mos emas, u yerda «—» |
+| Koeffitsiyentlar post bo'yicha BITTA to'plam | Pico hozir bitta Prisadkada; boshqa tezlikdagi ikkinchi stanok chiqsa sozlama `machine_id` bo'yicha lug'atga aylantiriladi (`ponytail:` izohi) |
+| Koeffitsiyent o'zgarsa o'tgan kunlar ham qayta hisoblanadi | ideal vaqt saqlanmaydi, har safar hisoblanadi — kalibrlashda butun tarix birdan to'g'rilanadi |
+
+Ma'lum kamchilik: ikki tomonli detal ag'dariladi (qo'shimcha vaqt), lekin bu belgi saqlanmaydi — parser orqa tomon
+dasturini old tomonga qo'shib yuboradi. Kerak bo'lsa parserga maydon qo'shib, oltinchi koeffitsiyent kiritiladi.
+
+Tekshiruv (bir martalik skriptlar): haqiqiy handler va sozlama endpointlari PGlite'da 22/22 — bekor qilingan, tushlikdagi,
+ma'lumotsiz vaqtdagi va jim kundagi skanlar sanalmasligi, buzuq/tugallanmagan Pico sikllari, Kromka stanogida «—»,
+saqlash + audit, yangi koeffitsiyent o'tgan kunga ta'siri, Excel; karta va hisobot headless Chrome'da 19/19.
+§4.5 orakllari (31/31, 18/18) qayta o'tdi.
+
 ## 5. Prod auditi natijalari (2026-09-16)
 
 Davr: 2026-09-14 09:36 — 2026-09-16 15:16, faqat Prisadka (ish markazi 1, agent v1.5.0, `can_print=false`).
@@ -231,8 +274,9 @@ ya'ni keyingi detal skani ham sanalardi. SQL'da 5 s ga tuzatildi — qayta ishga
    prodda Tizim sozlamalariga kiritadi.
 5. **Availability hisoboti** — qilindi (§4.5). Qolgani: prodda ish jadvali kiritilganini tekshirish (usiz foiz
    hisoblanmaydi); qamrov (1-band) tuzatilmaguncha foiz past chiqadi — «Ma'lumot yo'q» ustuni shuni ko'rsatadi.
-6. **Performance** — skan↔sikl FIFO bog'lash (prototip `mes/bridge.py` mantiqi), ideal sikl
-   formulasi: yuklash + teshik × s + paz × s + freza × s, koeffitsiyentlar 2–4 hafta ma'lumotdan.
+6. **Performance** — qilindi (§4.6), koeffitsiyentlar TAXMINIY. Qolgani: tsexda sekundomer bilan o'lchab Tizim
+   sozlamalarida to'g'rilash; keyin (ixtiyoriy) skan↔sikl FIFO bog'lash (prototip `mes/bridge.py` mantiqi) —
+   koeffitsiyentlarni 2–4 haftalik o'lchovdan chiqarish uchun.
 7. **Quality** — brak qaydi (sabab, aybdor post); belgilovchi — smenada ishlayotgan hodim (§7).
 
 ## 7. Qarorlar
@@ -306,12 +350,14 @@ ya'ni keyingi detal skani ham sanalardi. SQL'da 5 s ga tuzatildi — qayta ishga
   Ko'rinishi lokal prototipda (soxta API bilan) egasiga ko'rsatilgan — repoga chiqarilmagan, haqiqiy kod hali yo'q.
 - **To'xtash sabablari ro'yxati (2026-09-18, egasidan)** — `oee to'xtalishlar.xlsx`: 10 rejali, 10 rejasiz (§4.4).
   Kodga YOZILMAYDI — statik bo'lib qolmasin: admin Tizim sozlamalarida «Rejali» va «Rejasiz» ro'yxatlariga alohida kiritadi.
+- **Ideal sikl (2026-09-18)** — bitta raqam emas, FORMULA; koeffitsiyentlar admin paneldan kiritiladi (§4.6).
+  Boshlang'ich qiymatlar taxminiy qo'yildi (egasi shunday dedi) — tsexda o'lchab to'g'rilanadi.
 
 ### Ochiq
 
 - Mikro-to'xtash chegarasi — Tizim sozlamalarida (sukut 5 daqiqa), tsexda sinab moslanadi.
 - Juda qisqa avariyalar (prod median 12 s) ham so'ralsinmi yoki chegara qo'yilsinmi.
-- Ideal sikl: formula (tavsiya) yoki bitta raqam.
+- Ideal sikl koeffitsiyentlarining HAQIQIY qiymatlari (hozir taxminiy, §4.6) — sekundomer o'lchovi.
 - Brak sabablari ro'yxati; menejer uzoq tasdiqlamasa (masalan 1 soat) eslatma kerakmi.
 - Qayta ishlab chiqarilgan detalning kesish joyi: qoldiq (atxot) varaqdanmi, yangi varaqdanmi.
 - Maqsad OEE foizi (tablo/hisobot rangi uchun).

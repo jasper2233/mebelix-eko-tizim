@@ -6,11 +6,13 @@ from app.core.exceptions import NotFoundException
 from app.crud import log_action
 from app.models import DowntimeReason
 from app.schemas.downtimes import DowntimeReasonCreate, DowntimeReasonRead, DowntimeReasonUpdate
-from app.schemas.settings import SystemSettingRead, SystemSettingUpdate, WorkSchedule
+from app.schemas.settings import IdealCycle, SystemSettingRead, SystemSettingUpdate, WorkSchedule
 from app.services.settings_service import (
     DEFAULTS,
+    IDEAL_CYCLE,
     INT_RANGES,
     WORK_SCHEDULE,
+    get_ideal_cycle,
     get_setting,
     get_work_schedule,
     schedule_error,
@@ -54,6 +56,35 @@ async def update_work_schedule(
         message=(
             f"Ish jadvali o'zgardi: {len(body.shifts)} smena, "
             f"{len(body.days_off)} dam olish kuni, {len(body.holidays)} bayram sanasi"
+        ),
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return body
+
+
+# NOTE: `/ideal-cycle` ham `/{key}` dan OLDIN — sabab yuqoridagidek.
+@router.get("/ideal-cycle", response_model=IdealCycle, operation_id="read_ideal_cycle")
+async def read_ideal_cycle(db: SessionDep, _: AdminUser) -> IdealCycle:
+    """Prisadka ideal sikli koeffitsiyentlari (OEE Performance); kiritilmagan bo'lsa taxminiy sukut qiymatlar."""
+    return await get_ideal_cycle(db)
+
+
+@router.put("/ideal-cycle", response_model=IdealCycle, operation_id="update_ideal_cycle")
+async def update_ideal_cycle(db: SessionDep, current_user: AdminUser, body: IdealCycle, request: Request) -> IdealCycle:
+    """Beshta koeffitsiyent BIRGA almashtiriladi. Hisobot o'tgan kunlarni ham yangi qiymat bilan qayta hisoblaydi."""
+    row = await set_setting(db, IDEAL_CYCLE, body.model_dump_json(), current_user.id)
+    await db.flush()  # yangi qatorning id si audit yozuviga tushsin
+    log_action(
+        db,
+        module="settings",
+        action="updated",
+        user_id=current_user.id,
+        entity_type="system_setting",
+        entity_id=row.id,
+        message=(
+            f"Ideal sikl o'zgardi: detalga {body.load_s:g} s, yuza teshik {body.bore_s:g} s, "
+            f"qirra teshik {body.edge_bore_s:g} s, paz {body.groove_s:g} s, freza {body.mill_s:g} s"
         ),
         ip=client_ip(request),
     )

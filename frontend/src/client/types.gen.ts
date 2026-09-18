@@ -1443,6 +1443,38 @@ export type Holiday = {
 };
 
 /**
+ * IdealCycle
+ *
+ * Prisadka ideal sikli koeffitsiyentlari, soniya — OEE Performance (`services/performance.py`).
+ *
+ * Sukut qiymatlar TAXMINIY (2026-09-18, egasi «taxminiy raqamlar qo'yib tur» dedi): 2026-09-16 prod
+ * auditidan — o'rtacha detal 6 teshik, median sikl 3 s kutish + ~24 s ishlov = 27 s; formula shu
+ * detalga 15 + 6 × 2 = 27 s beradi. Admin Tizim sozlamalarida sekundomer o'lchovi bilan to'g'rilaydi.
+ */
+export type IdealCycle = {
+    /**
+     * Load S
+     */
+    load_s?: number;
+    /**
+     * Bore S
+     */
+    bore_s?: number;
+    /**
+     * Edge Bore S
+     */
+    edge_bore_s?: number;
+    /**
+     * Groove S
+     */
+    groove_s?: number;
+    /**
+     * Mill S
+     */
+    mill_s?: number;
+};
+
+/**
  * IdleLimit
  */
 export type IdleLimit = {
@@ -1738,6 +1770,18 @@ export type MachineTimeDay = {
      * Availability Pct
      */
     availability_pct: number | null;
+    /**
+     * Parts
+     */
+    parts: number;
+    /**
+     * Ideal S
+     */
+    ideal_s: number;
+    /**
+     * Performance Pct
+     */
+    performance_pct: number | null;
 };
 
 /**
@@ -1772,6 +1816,7 @@ export type MachineTimeReport = {
      * Idle Threshold Min
      */
     idle_threshold_min: number;
+    ideal_cycle: IdealCycle;
 };
 
 /**
@@ -1840,6 +1885,26 @@ export type MachineTimeRow = {
      * Reasons
      */
     reasons: Array<AvailabilityReason>;
+    /**
+     * Parts
+     */
+    parts: number;
+    /**
+     * Ideal S
+     */
+    ideal_s: number;
+    /**
+     * Performance Pct
+     */
+    performance_pct: number | null;
+    /**
+     * Cycles
+     */
+    cycles: number;
+    /**
+     * Measured Cycle S
+     */
+    measured_cycle_s: number;
 };
 
 /**
@@ -6701,6 +6766,47 @@ export type UpdateWorkScheduleResponses = {
 };
 
 export type UpdateWorkScheduleResponse = UpdateWorkScheduleResponses[keyof UpdateWorkScheduleResponses];
+
+export type ReadIdealCycleData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/ideal-cycle';
+};
+
+export type ReadIdealCycleResponses = {
+    /**
+     * Successful Response
+     */
+    200: IdealCycle;
+};
+
+export type ReadIdealCycleResponse = ReadIdealCycleResponses[keyof ReadIdealCycleResponses];
+
+export type UpdateIdealCycleData = {
+    body: IdealCycle;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/ideal-cycle';
+};
+
+export type UpdateIdealCycleErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateIdealCycleError = UpdateIdealCycleErrors[keyof UpdateIdealCycleErrors];
+
+export type UpdateIdealCycleResponses = {
+    /**
+     * Successful Response
+     */
+    200: IdealCycle;
+};
+
+export type UpdateIdealCycleResponse = UpdateIdealCycleResponses[keyof UpdateIdealCycleResponses];
 
 export type UpdateSystemSettingData = {
     body: SystemSettingUpdate;
