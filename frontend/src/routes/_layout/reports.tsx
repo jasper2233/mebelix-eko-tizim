@@ -5,12 +5,7 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { Download } from "lucide-react"
 import { type ReactNode, useState } from "react"
 
-import type {
-  MachineTimeDay,
-  MachineTimeRow,
-  MachineTimeStop,
-  OrderReportRow,
-} from "@/client"
+import type { MachineTimeDay, MachineTimeRow, OrderReportRow } from "@/client"
 import { ReportsService } from "@/client"
 import { client } from "@/client/client.gen"
 import { EmptyRow } from "@/components/Common/EmptyRow"
@@ -34,7 +29,6 @@ import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { requireAccess } from "@/lib/guards"
 import {
   formatDate,
-  formatDateTime,
   groupThousands,
   isAdmin,
   isManagement,
@@ -653,7 +647,6 @@ function MachineTimeReport({ params }: { params: RangeParams }) {
   if (isError) return <QueryError onRetry={() => refetch()} />
   const rows = data?.rows ?? []
   const days = data?.days ?? []
-  const stops = data?.stops ?? []
   const totalRecorded = rows.reduce((s, r) => s + r.total_s, 0)
   return (
     <>
@@ -760,7 +753,6 @@ function MachineTimeReport({ params }: { params: RangeParams }) {
           days={days.filter((d) => d.machine_id === r.machine_id)}
         />
       ))}
-      {stops.length > 0 && <StopsTable stops={stops} />}
     </>
   )
 }
@@ -950,6 +942,23 @@ function ReasonsTable({ row }: { row: MachineTimeRow }) {
           </TableRow>
         </TableHeader>
         <TableBody>
+          {/* JAMI — rahbarga kerak bo'lgan yagona yig'indi: ketma-ket to'xtashlar
+              ro'yxati (2026-09-19 da olib tashlandi) o'rnini shu qator egallaydi. */}
+          <TableRow className="bg-muted/50 font-semibold">
+            <TableCell>Jami to'xtash</TableCell>
+            <TableCell>—</TableCell>
+            <TableCell className="num text-right">
+              {row.reasons.reduce((n, x) => n + x.count, 0)}
+            </TableCell>
+            <TableCell className="num whitespace-nowrap text-right">
+              {hm(row.reasons.reduce((n, x) => n + x.seconds, 0))}
+            </TableCell>
+            <TableCell className="num text-right">
+              {row.shift_s
+                ? `${Math.round((row.reasons.reduce((n, x) => n + x.seconds, 0) * 1000) / row.shift_s) / 10}%`
+                : "—"}
+            </TableCell>
+          </TableRow>
           {row.reasons.map((x) => (
             <TableRow key={x.reason_id ?? "none"}>
               <TableCell
@@ -1047,60 +1056,6 @@ function MachineDays({ name, days }: { name: string; days: MachineTimeDay[] }) {
           )
         })}
       </div>
-    </section>
-  )
-}
-
-function StopsTable({ stops }: { stops: MachineTimeStop[] }) {
-  return (
-    <section className="mt-6">
-      <h3 className="mb-2 text-sm font-semibold">
-        To'xtashlar — avariya va uzoq kutish ({stops.length})
-      </h3>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Stanok</TableHead>
-            <TableHead>Holat</TableHead>
-            <TableHead>Boshlandi</TableHead>
-            <TableHead className="hidden md:table-cell">Tugadi</TableHead>
-            <TableHead className="text-right">Davomiyligi</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {stops.map((s) => (
-            <TableRow key={`${s.machine_id}-${s.started_at}`}>
-              <TableCell>{s.machine_name}</TableCell>
-              <TableCell>
-                <span
-                  className={
-                    s.state === "FAULT"
-                      ? "rounded-sm bg-red-100 px-1.5 py-0.5 text-xs font-semibold text-red-800"
-                      : "rounded-sm bg-orange-100 px-1.5 py-0.5 text-xs font-semibold text-orange-900"
-                  }
-                >
-                  {s.state === "FAULT" ? "Avariya" : "Uzoq kutish"}
-                </span>
-              </TableCell>
-              <TableCell className="num whitespace-nowrap">
-                {formatDateTime(s.started_at)}
-              </TableCell>
-              <TableCell className="num hidden whitespace-nowrap md:table-cell">
-                {s.ended_at ? (
-                  formatDateTime(s.ended_at)
-                ) : (
-                  <span className="font-semibold text-red-700">
-                    davom etmoqda
-                  </span>
-                )}
-              </TableCell>
-              <TableCell className="num whitespace-nowrap text-right">
-                {hm(s.duration_s)}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
     </section>
   )
 }

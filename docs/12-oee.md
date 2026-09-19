@@ -187,8 +187,10 @@ Availability = ishladi ÷ reja vaqti                           (reja vaqti 0 bo'
 | Rang yo'q | maqsad foizi hali belgilanmagan («Ochiq») — chegarasiz yashil/qizil yolg'on baho bo'lardi |
 
 Sahifada: Availability jadvali (reja vaqti, ishladi, rejasiz to'xtash, ma'lumot yo'q, rejali to'xtash, qamrov, foiz),
-to'xtash sabablari bo'yicha taqsimot (sababsizi alohida qator), kunlik trek yonida kun foizi; eski chiroq holatlari jadvali
-va to'xtashlar ro'yxati pastda qoldi. Ish jadvali kiritilmagan bo'lsa qizil izoh chiqadi va foiz hisoblanmaydi.
+to'xtash sabablari bo'yicha taqsimot — tepasida **«Jami to'xtash»** qatori (sababsizi alohida qator), kunlik trek yonida
+kun foizi va chiroq holatlari jadvali. **To'xtashlarning bittalab ro'yxati 2026-09-19 da OLIB TASHLANDI** (egasining
+so'rovi): ketma-ket o'nlab qator o'qilmasdi, kerakli narsa — umumiy to'xtash vaqti va uning sabablari. Avariya SONI
+jadvalda qoldi — u «necha marta» degan boshqa savol. Ish jadvali kiritilmagan bo'lsa qizil izoh chiqadi va foiz hisoblanmaydi.
 
 Tekshiruv (bir martalik skriptlar, repoda saqlanmaydi): sof funksiyalar 31/31 — qo'lda hisoblangan kun (67.4%),
 tungi smena va yarim tun bo'linishi, dam olish kunidan oldingi/keyingi smena, mikro-to'xtash, oraliq chegarasidagi

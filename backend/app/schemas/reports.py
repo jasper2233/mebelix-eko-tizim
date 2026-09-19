@@ -85,21 +85,11 @@ class MachineTimeDay(BaseModel):
     oee_pct: float | None
 
 
-class MachineTimeStop(BaseModel):
-    machine_id: int
-    machine_name: str
-    state: str  # FAULT | STOPPED
-    started_at: datetime
-    ended_at: datetime | None  # None — hali davom etmoqda
-    duration_s: int
-
-
 class MachineTimeReport(BaseModel):
     date_from: date
     date_to: date
     rows: list[MachineTimeRow]
     days: list[MachineTimeDay]
-    stops: list[MachineTimeStop]  # eng yangisi birinchi, ko'pi bilan 200 ta
     schedule_set: bool  # ish jadvalida smena bormi — yo'q bo'lsa Availability hisoblanmaydi
     idle_threshold_min: int  # sariq chiroq shundan uzoq yonsa to'xtash (`stop_prompt_idle_minutes`)
     ideal_cycle: IdealCycle  # Performance shu koeffitsiyentlar bilan hisoblangan

@@ -1882,10 +1882,6 @@ export type MachineTimeReport = {
      */
     days: Array<MachineTimeDay>;
     /**
-     * Stops
-     */
-    stops: Array<MachineTimeStop>;
-    /**
      * Schedule Set
      */
     schedule_set: boolean;
@@ -1994,36 +1990,6 @@ export type MachineTimeRow = {
      * Oee Pct
      */
     oee_pct: number | null;
-};
-
-/**
- * MachineTimeStop
- */
-export type MachineTimeStop = {
-    /**
-     * Machine Id
-     */
-    machine_id: number;
-    /**
-     * Machine Name
-     */
-    machine_name: string;
-    /**
-     * State
-     */
-    state: string;
-    /**
-     * Started At
-     */
-    started_at: string;
-    /**
-     * Ended At
-     */
-    ended_at: string | null;
-    /**
-     * Duration S
-     */
-    duration_s: number;
 };
 
 /**

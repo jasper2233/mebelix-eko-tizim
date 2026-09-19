@@ -52,7 +52,6 @@ from app.schemas.reports import (
     MachineTimeDay,
     MachineTimeReport,
     MachineTimeRow,
-    MachineTimeStop,
     MaterialsReport,
     MaterialUsageRow,
     OrderReportRow,
@@ -171,7 +170,6 @@ _ANDON_LABELS = {
 #: Oraliq tugagandan keyin kelgan hodisa ham oraliq ichidagi holatni yopgan bo'lishi
 #: mumkin (masalan tungi OFF ertalab tugaydi) — shuncha kun keyingacha hodisa olinadi.
 _ANDON_TAIL = timedelta(days=3)
-_ANDON_STOPS_LIMIT = 200
 
 
 def _reason_lookup(
@@ -478,23 +476,11 @@ async def report_machine_time(
                 ),
             )
         )
-    stops = [
-        MachineTimeStop(
-            machine_id=s.machine_id,
-            machine_name=names.get(s.machine_id, f"#{s.machine_id}"),
-            state=s.state,
-            started_at=s.began,
-            ended_at=s.ended,
-            duration_s=int(((s.ended or now) - s.began).total_seconds()),
-        )
-        for s in result.stops[:_ANDON_STOPS_LIMIT]
-    ]
     report = MachineTimeReport(
         date_from=start.date(),
         date_to=end.date(),
         rows=rows,
         days=days,
-        stops=stops,
         schedule_set=bool(schedule.shifts),
         idle_threshold_min=idle_minutes,
         ideal_cycle=ideal,

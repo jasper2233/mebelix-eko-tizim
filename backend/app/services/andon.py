@@ -76,9 +76,6 @@ async def read_live(machine_ids: Iterable[int]) -> dict[int, dict[str, Any]]:
 #: Hisobotga kiradigan chiroq holatlari (Pico firmware `fsm.py`). BOOT — qurilma
 #: yuklanishi, stanok vaqti emas: hisobga kirmaydi.
 ANDON_STATES = ("PROCESSING", "AWAIT_PART", "IDLE", "STOPPED", "FAULT", "OFF")
-#: To'xtashlar ro'yxatiga tushadigan holatlar. OFF kirmaydi — har tun takrorlanadi va
-#: ro'yxatni haqiqiy avariyadan to'sib qo'yardi (u jami vaqtda baribir ko'rinadi).
-ANDON_STOP_STATES = ("FAULT", "STOPPED")
 
 
 @dataclass
@@ -93,11 +90,14 @@ class AndonSpan:
 
 @dataclass
 class MachineTime:
-    """`machine_time` natijasi: soniyalar hisobot oralig'iga KESILGAN."""
+    """`machine_time` natijasi: soniyalar hisobot oralig'iga KESILGAN.
+
+    To'xtashlarning BITTALAB ro'yxati ataylab yo'q (2026-09-19): rahbarga kerakli narsa —
+    umumiy to'xtash vaqti va uning sabablari (`services/availability.py`), ketma-ket
+    o'nlab qator emas. Avariya SONI qoladi: u «necha marta» degan boshqa savol."""
 
     seconds: dict[int, dict[str, int]] = field(default_factory=dict)
     days: dict[tuple[int, date], dict[str, int]] = field(default_factory=dict)
-    stops: list[AndonSpan] = field(default_factory=list)
     faults: dict[int, int] = field(default_factory=dict)
 
 
@@ -144,9 +144,6 @@ def machine_time(spans: Iterable[AndonSpan], start: datetime, end: datetime, now
             per_day = out.days.setdefault((span.machine_id, local_day), dict.fromkeys(ANDON_STATES, 0))
             per_day[span.state] += int((seg_end - cur).total_seconds())
             cur = seg_end
-        if span.state in ANDON_STOP_STATES:
-            out.stops.append(span)
-            if span.state == "FAULT":
-                out.faults[span.machine_id] = out.faults.get(span.machine_id, 0) + 1
-    out.stops.sort(key=lambda s: s.began, reverse=True)
+        if span.state == "FAULT":
+            out.faults[span.machine_id] = out.faults.get(span.machine_id, 0) + 1
     return out
