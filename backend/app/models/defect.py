@@ -1,7 +1,10 @@
-from sqlalchemy import ForeignKey, Index, String, Text
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import BaseModel
+from .enums import DefectStatus, db_enum
 
 
 class PartDefect(BaseModel):
@@ -40,3 +43,19 @@ class PartDefect(BaseModel):
     employee_id: Mapped[int | None] = mapped_column(ForeignKey("employee.id"), default=None, kw_only=True)
     reason: Mapped[str] = mapped_column(String(60), kw_only=True)
     note: Mapped[str | None] = mapped_column(Text, default=None, kw_only=True)
+    #: Menejer qarori. Operator faqat qayd qiladi — kim aybdor va qayerdan qayta
+    #: boshlanishini u bilmaydi (docs/12 §7).
+    status: Mapped[DefectStatus] = mapped_column(
+        db_enum(DefectStatus), default=DefectStatus.PENDING, index=True, kw_only=True
+    )
+    #: Aybdor QADAM (`part_route`), post emas: bitta post marshrutda ikki marta uchrashi
+    #: mumkin (Kromka → Prisadka → Kromka). `None` — material nuqsoni yoki aniqlanmagan.
+    blame_route_id: Mapped[int | None] = mapped_column(ForeignKey("part_route.id"), default=None, kw_only=True)
+    #: O'sha qadamda skanerlagan hodim — tasdiqlash paytida SURATGA olinadi: keyingi
+    #: bekor qilish yoki qayta skan aybni boshqa odamga ko'chirib yubormasin.
+    blame_employee_id: Mapped[int | None] = mapped_column(ForeignKey("employee.id"), default=None, kw_only=True)
+    #: Qayta ishlab chiqarish QAYSI qadamdan boshlanadi (tasdiqlashda majburiy).
+    #: Hozircha faqat QAROR yozuvi — remake oqimi hali yo'q (docs/12 §7).
+    restart_route_id: Mapped[int | None] = mapped_column(ForeignKey("part_route.id"), default=None, kw_only=True)
+    reviewed_by_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)

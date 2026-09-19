@@ -1,6 +1,7 @@
 // MES domain constants: Uzbek labels + stage colors (4.4, 6.1)
 
 import type {
+  DefectStatus,
   DowntimeKind,
   EmployeeStatus,
   MachineStatus,
@@ -298,6 +299,14 @@ export const ANDON_STATE_LABELS: Record<string, string> = {
   OFF: "O'chiq",
   BOOT: "Yoqilmoqda",
 }
+
+/** Brak holati — backend `models/enums.py: DefectStatus` bilan QO'LDA oynalangan.
+ *  Operator faqat qayd qiladi, qarorni menejer «Brak» sahifasida beradi. */
+export const DEFECT_STATUS_LABELS: Record<string, string> = {
+  pending: "Tasdiq kutmoqda",
+  confirmed: "Tasdiqlangan",
+  rejected: "Brak emas",
+} satisfies Record<DefectStatus, string>
 
 /** To'xtash turi — backend `models/enums.py: DowntimeKind` bilan QO'LDA oynalangan. */
 export const DOWNTIME_KIND_LABELS: Record<string, string> = {

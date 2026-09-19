@@ -9,10 +9,12 @@ import {
   MonitorCog,
   ScrollText,
   SlidersHorizontal,
+  TriangleAlert,
   Tv,
   UserRound,
 } from "lucide-react"
 import type { UserRead } from "@/client"
+import { DefectsService } from "@/client"
 import {
   Sidebar,
   SidebarContent,
@@ -21,7 +23,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
-import { isAdmin, isManagement, isProductionStaff } from "@/lib/mes"
+import { isAdmin, isManagement, isManager, isProductionStaff } from "@/lib/mes"
 import { getOrderStatusCountsQueryOptions } from "@/queries/mes"
 import { type Item, Main } from "./Main"
 import { User } from "./User"
@@ -47,6 +49,12 @@ export const NAV_ITEMS: (Item & {
     title: "Ish markazlari",
     path: "/work-centers",
     show: isProductionStaff,
+  },
+  {
+    icon: TriangleAlert,
+    title: "Brak",
+    path: "/defects",
+    show: isManager,
   },
   {
     icon: BarChart3,
@@ -90,6 +98,16 @@ export function AppSidebar() {
   // «Hammasi» bilan chalkashardi.
   const ready = counts?.completed ?? 0
 
+  // Brak belgisi: menejer hali ko'rmagan braklar — inbox mantig'i, 0 bo'lsa chiqmaydi
+  const canSeeDefects = items.some((i) => i.path === "/defects")
+  const { data: defects } = useQuery({
+    queryKey: ["defects", "pending-count"],
+    queryFn: async () =>
+      (await DefectsService.readPendingDefectCount()).data.count,
+    refetchInterval: 60_000,
+    enabled: canSeeDefects,
+  })
+
   const withBadges = items.map((i) =>
     i.path === "/orders"
       ? {
@@ -97,7 +115,13 @@ export function AppSidebar() {
           badge: ready,
           badgeTitle: "Topshirishga tayyor — tsex tugatgan buyurtmalar",
         }
-      : i,
+      : i.path === "/defects"
+        ? {
+            ...i,
+            badge: defects ?? 0,
+            badgeTitle: "Tasdiq kutayotgan brak",
+          }
+        : i,
   )
 
   return (

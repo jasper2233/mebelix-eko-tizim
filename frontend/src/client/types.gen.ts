@@ -1166,6 +1166,16 @@ export type DefectCreate = {
 };
 
 /**
+ * DefectPending
+ */
+export type DefectPending = {
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * DefectRead
  */
 export type DefectRead = {
@@ -1185,6 +1195,7 @@ export type DefectRead = {
      * Note
      */
     note: string | null;
+    status: DefectStatus;
     /**
      * Created At
      */
@@ -1205,6 +1216,157 @@ export type DefectReasons = {
      * Reasons
      */
     reasons?: Array<string>;
+};
+
+/**
+ * DefectReview
+ *
+ * Menejer qarori. `rejected` — «brak emas»: Quality'ga kirmaydi.
+ *
+ * Tasdiqlashda `restart_route_id` MAJBURIY — «qayerdan qayta boshlanadi» degan savol
+ * qarorning o'zi; `blame_route_id` esa ixtiyoriy: material nuqsonida ayb hech kimda emas.
+ */
+export type DefectReview = {
+    status: DefectStatus;
+    /**
+     * Blame Route Id
+     */
+    blame_route_id?: number | null;
+    /**
+     * Restart Route Id
+     */
+    restart_route_id?: number | null;
+};
+
+/**
+ * DefectRow
+ *
+ * Brak sahifasining bitta qatori — menejer qaror qabul qilishi uchun yetarli kontekst.
+ */
+export type DefectRow = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+    status: DefectStatus;
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Note
+     */
+    note: string | null;
+    /**
+     * Qr Text
+     */
+    qr_text: string;
+    /**
+     * Order Id
+     */
+    order_id: number;
+    /**
+     * Order Number
+     */
+    order_number: string;
+    /**
+     * Part Code
+     */
+    part_code: string;
+    /**
+     * Part Name
+     */
+    part_name: string;
+    /**
+     * Post Name
+     */
+    post_name: string;
+    /**
+     * Machine Name
+     */
+    machine_name: string | null;
+    /**
+     * Employee Name
+     */
+    employee_name: string | null;
+    /**
+     * Steps
+     */
+    steps: Array<DefectStep>;
+    /**
+     * Blame Route Id
+     */
+    blame_route_id: number | null;
+    /**
+     * Blame Employee Name
+     */
+    blame_employee_name: string | null;
+    /**
+     * Restart Route Id
+     */
+    restart_route_id: number | null;
+    /**
+     * Reviewed At
+     */
+    reviewed_at: string | null;
+    /**
+     * Reviewed By
+     */
+    reviewed_by: string | null;
+};
+
+/**
+ * DefectStatus
+ *
+ * Brak yozuvining holati (`part_defect.status`).
+ *
+ * Operator faqat QAYD qiladi (PENDING) — menejer tasdiqlaydi yoki «brak emas» deb rad etadi.
+ * OEE Quality REJECTED dan boshqasini sanaydi: tasdiq kechiksa ham raqam jonli qoladi, rad
+ * etilgani esa hisobdan chiqadi. Frontenddagi `DEFECT_STATUS_LABELS` (lib/mes.ts) bilan
+ * qo'lda oynalangan.
+ */
+export type DefectStatus = 'pending' | 'confirmed' | 'rejected';
+
+/**
+ * DefectStep
+ *
+ * Detal marshrutining bitta qadami — menejer aybdorni va qayta boshlash nuqtasini
+ * SHU ro'yxatdan tanlaydi. Post emas, QADAM: bitta post marshrutda ikki marta uchrashi
+ * mumkin (Kromka → Prisadka → Kromka).
+ */
+export type DefectStep = {
+    /**
+     * Route Id
+     */
+    route_id: number;
+    /**
+     * Seq
+     */
+    seq: number;
+    /**
+     * Post Code
+     */
+    post_code: string;
+    /**
+     * Post Name
+     */
+    post_name: string;
+    /**
+     * Process Code
+     */
+    process_code: number;
+    /**
+     * Employee Id
+     */
+    employee_id: number | null;
+    /**
+     * Employee Name
+     */
+    employee_name: string | null;
 };
 
 /**
@@ -6780,6 +6942,84 @@ export type UnmarkDefectResponses = {
 };
 
 export type UnmarkDefectResponse = UnmarkDefectResponses[keyof UnmarkDefectResponses];
+
+export type ReadDefectsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Status
+         */
+        status?: DefectStatus | null;
+    };
+    url: '/api/v1/defects/';
+};
+
+export type ReadDefectsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadDefectsError = ReadDefectsErrors[keyof ReadDefectsErrors];
+
+export type ReadDefectsResponses = {
+    /**
+     * Response Read Defects
+     *
+     * Successful Response
+     */
+    200: Array<DefectRow>;
+};
+
+export type ReadDefectsResponse = ReadDefectsResponses[keyof ReadDefectsResponses];
+
+export type ReadPendingDefectCountData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/defects/pending-count';
+};
+
+export type ReadPendingDefectCountResponses = {
+    /**
+     * Successful Response
+     */
+    200: DefectPending;
+};
+
+export type ReadPendingDefectCountResponse = ReadPendingDefectCountResponses[keyof ReadPendingDefectCountResponses];
+
+export type ReviewDefectData = {
+    body: DefectReview;
+    path: {
+        /**
+         * Defect Id
+         */
+        defect_id: number;
+    };
+    query?: never;
+    url: '/api/v1/defects/{defect_id}/review';
+};
+
+export type ReviewDefectErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReviewDefectError = ReviewDefectErrors[keyof ReviewDefectErrors];
+
+export type ReviewDefectResponses = {
+    /**
+     * Successful Response
+     */
+    200: DefectRow;
+};
+
+export type ReviewDefectResponse = ReviewDefectResponses[keyof ReviewDefectResponses];
 
 export type RecordScanData = {
     body: ScanRequest;

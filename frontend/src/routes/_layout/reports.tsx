@@ -653,10 +653,11 @@ function MachineTimeReport({ params }: { params: RangeParams }) {
       <Summary>
         {rows.length} stanok · Availability = ishladi ÷ reja vaqti. Reja vaqti
         ish jadvalidan (smena − tanaffus − rejali to'xtashlar); ish vaqtida
-        Pico'dan ma'lumot yo'qligi to'xtash deb sanaladi. Sariq chiroq{" "}
-        {data?.idle_threshold_min ?? 5} daqiqadan qisqa yonsa — mikro-to'xtash,
-        Availability'ga kirmaydi. Quality = (detallar − brak) ÷ detallar: brak
-        kiritilmagan bo'lsa 100%. OEE = Availability × Performance × Quality.
+        Pico'dan qayd kelmasa stanok O'CHIQ deb qabul qilinadi va to'xtash
+        bo'lib sanaladi. Sariq chiroq {data?.idle_threshold_min ?? 5} daqiqadan
+        qisqa yonsa — mikro-to'xtash, Availability'ga kirmaydi. Quality =
+        (detallar − brak) ÷ detallar: brak kiritilmagan bo'lsa 100%. OEE =
+        Availability × Performance × Quality.
       </Summary>
       {data && !data.schedule_set && (
         <p className="mb-3 text-sm text-destructive">
@@ -813,9 +814,9 @@ function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
           </TableHead>
           <TableHead
             className="hidden text-right md:table-cell"
-            title="Ish vaqtida Pico'dan ma'lumot kelmagan — to'xtash deb sanaladi"
+            title="Ish vaqtida Pico'dan hech qanday qayd kelmagan — stanok O'CHIQ deb qabul qilinadi (Prisadka Nanxing kompyuterisiz ishlamaydi, Pico ham o'sha kompyuterdan quvvat oladi), ya'ni to'xtash bo'lib sanaladi"
           >
-            Ma'lumot yo'q
+            O'chiq (qaydsiz)
           </TableHead>
           <TableHead
             className="hidden text-right md:table-cell"
@@ -1010,7 +1011,7 @@ function MachineDays({ name, days }: { name: string; days: MachineTimeDay[] }) {
           ))}
           <li className="inline-flex items-center gap-1.5">
             <span className="inline-block size-2.5 rounded-sm bg-muted" />
-            Qayd yo'q
+            O'chiq (qaydsiz)
           </li>
           <li>o'ngda — kun Availability'si</li>
         </ul>

@@ -178,3 +178,16 @@ class DowntimeKind(StrEnum):
     OFF = "off"  # hamma chiroq o'chiq (Pico quvvatda, stanok o'chiq)
     IDLE = "idle"  # sariq chiroq chegaradan uzoq — stanok ishlamayapti
     LOCK = "lock"  # operator ketishdan oldin sababni aytib ekranni qulfladi
+
+
+class DefectStatus(StrEnum):
+    """Brak yozuvining holati (`part_defect.status`).
+
+    Operator faqat QAYD qiladi (PENDING) — menejer tasdiqlaydi yoki «brak emas» deb rad etadi.
+    OEE Quality REJECTED dan boshqasini sanaydi: tasdiq kechiksa ham raqam jonli qoladi, rad
+    etilgani esa hisobdan chiqadi. Frontenddagi `DEFECT_STATUS_LABELS` (lib/mes.ts) bilan
+    qo'lda oynalangan."""
+
+    PENDING = "pending"  # kutmoqda — menejer hali ko'rmagan
+    CONFIRMED = "confirmed"  # tasdiqlandi: aybdor qadam va qayta boshlash nuqtasi belgilangan
+    REJECTED = "rejected"  # «brak emas» — Quality'ga kirmaydi

@@ -33,6 +33,7 @@ from app.models import (
 )
 from app.models.enums import (
     POST_UNIT_LABELS,
+    DefectStatus,
     DowntimeKind,
     MachineStatus,
     OrderStatus,
@@ -385,6 +386,9 @@ async def report_machine_time(
                 await db.execute(
                     select(PartDefect.machine_id, PartDefect.created_at).where(
                         PartDefect.machine_id.in_(prisadka_ids),
+                        # «Brak emas» deb rad etilgani sanalmaydi; tasdiq kutayotgani SANALADI —
+                        # aks holda tasdiq kechikkanda OEE aslidan yaxshi ko'rinib turardi
+                        PartDefect.status != DefectStatus.REJECTED,
                         PartDefect.is_deleted == False,  # noqa: E712
                         PartDefect.created_at >= start,
                         PartDefect.created_at <= end,
@@ -493,7 +497,7 @@ async def report_machine_time(
                 "Reja vaqti (soat)",
                 "Ishladi (soat)",
                 "Rejasiz to'xtash (soat)",
-                "Ma'lumot yo'q (soat)",
+                "O'chiq/qaydsiz (soat)",
                 "Rejali to'xtash (soat)",
                 "Availability, %",
                 "Qamrov, %",

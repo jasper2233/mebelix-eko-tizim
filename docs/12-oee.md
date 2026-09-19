@@ -259,11 +259,17 @@ OEE     = Availability × Performance × Quality
 | Sabablar | Tizim sozlamalari → «Brak sabablari» (`system_setting.defect_reasons`, JSON ro'yxat) | alohida jadval EMAS: sabab yozuvga matn bo'lib ko'chiriladi, ya'ni ro'yxatdan olib tashlangani eski yozuvda o'qilaveradi |
 | Terminal | `Terminal/DefectDialog.tsx` + skan tasmasidagi BRAK tugmasi | oxirgi MUVAFFAQIYATLI skan turganda tugma chiqadi; oyna sabab tugmalari va ixtiyoriy izoh; ro'yxat bo'sh bo'lsa tugma umuman chizilmaydi |
 | API | `GET /terminal/defect-reasons`, `POST /terminal/defects`, `DELETE /terminal/defects/{id}` (docs/03) | belgilash va noto'g'ri bosilganini qaytarish (yumshoq o'chirish) |
+| Menejer qarori | `/defects` sahifasi (`routes/_layout/defects.tsx`), `GET /defects`, `POST /defects/{id}/review` | tasdiqlaydi yoki «brak emas» deb rad etadi; aybdor QADAM (post emas) va qayta boshlash nuqtasi belgilanadi; sidebar belgisida kutayotganlar soni |
 | Hisob | `services/performance.py: quality_pct` / `oee_pct`, `GET /reports/machine-time` | «Stanok vaqti» dagi «Brak», «Quality» va «OEE» ustunlari, kunlik trekda ham |
 
 | Qoida | Nega |
 | --- | --- |
-| Brak SKANNI bekor qilmaydi, marshrutni qayta ochmaydi | hozir u faqat O'LCHANADI; remake oqimi (`-B1` nusxa, yangi chek, aybdor post) §7 da tasvirlangan va hali yozilmagan — Quality esa undan oldin ham kerak |
+| Brak SKANNI bekor qilmaydi, marshrutni qayta ochmaydi | hozir u faqat O'LCHANADI va QAROR yoziladi; remake oqimi (`-B1` nusxa, yangi chek, marshrutni qayta ochish) §7 da tasvirlangan va hali yozilmagan |
+| Quality REJECTED dan boshqasini sanaydi (kutayotgani ham kiradi) | tasdiq kechikkanda OEE aslidan yaxshi ko'rinib turardi; «brak emas» deb rad etilgani esa hisobdan chiqadi |
+| Ayb POST emas, QADAM (`part_route`) bo'yicha | bitta post marshrutda ikki marta uchraydi (Kromka → Prisadka → Kromka) — «Kromka aybdor» degani qaysi o'tish ekanini aytmaydi |
+| Aybdor hodim tasdiqlashda SURATGA olinadi (`blame_employee_id`) | keyin skan bekor qilinsa yoki qayta skanerlansa ayb boshqa odamga ko'chib ketardi |
+| Tasdiqda qayta boshlash qadami MAJBURIY, ayb ixtiyoriy | «qayerdan qayta boshlanadi» — qarorning o'zi; material nuqsonida esa ayb hech kimda emas |
+| Qaror qayta o'zgartiriladi | noto'g'ri bosilgani tuzatilsin; operator esa menejer ko'rib chiqqan brakni o'chira olmaydi (422) |
 | Braklar detallar bilan BIR XIL filtrda sanaladi (kuzatilgan ish vaqti) | aks holda surat va maxraj boshqa-boshqa vaqtdan yig'ilib, foiz «100 dan katta» yoki «manfiy» bo'lib chiqardi |
 | Brakni faqat SKAN yozilgan post belgilaydi (`scan.post_id != post.id` → 403) | bitta nusxa ikki postdan ikki marta brak qilinsa Quality ikki barobar tushardi |
 | Bitta skan — bitta brak (takror urinish 422) | tugma katta, tasodifiy ikki marta bosish real |
@@ -272,12 +278,18 @@ OEE     = Availability × Performance × Quality
 | Brak detaldan ko'p chiqsa 0% da to'xtaydi | kechagi skan bugun brak qilinsa foiz manfiy bo'lib ketardi |
 | Quality faqat PRISADKA ish markazida | detallar (maxraj) faqat o'sha yerda sanaladi (§4.6); brakni boshqa post ham belgilay oladi, lekin uning Quality ustuni hali yo'q |
 
-Tekshiruv (bir martalik skript, repoda saqlanmaydi): sof funksiyalar 13/13 — brak yo'q → 100%,
+Tekshiruv (bir martalik skriptlar, repoda saqlanmaydi): HAQIQIY Postgres'da to'liq hisobot
+18/18 (bir kunlik ekilgan ma'lumot: reja 7.5 soat, ishladi 5.5 soat, A 73.3%, qamrov 87.5%,
+P 81.8%, Q 90.0%, OEE 54.0%; tushlikdagi, ma'lumotsiz vaqtdagi va bekor qilingan skan
+sanalmaydi, o'chirilgan brak ham) va tasdiqlash oqimi 15/15 (rad etilgani Quality'dan
+chiqadi — 93.3%, aybdor hodim suratga olinadi, qadamsiz tasdiq va begona qadam 422, qaror
+o'zgartiriladi, sidebar soni). Sof funksiyalar 13/13 — brak yo'q → 100%,
 2/10 → 80%, 1/3 → 66.7%, detalsiz → `None`, brak > detal → 0%, `A=75 · P=80 · Q=100` → OEE 60%,
 uchtasidan biri `None` bo'lsa OEE ham `None`.
 
-Hali yo'q: qayta ishlab chiqarish oqimi (§7), brak sababini keyin tuzatish, brak bo'yicha
-Pareto/hisobot sahifasi, aybdor post.
+Hali yo'q: qayta ishlab chiqarish oqimining O'ZI (§7 — eski skanlarni bekor qilish, `-B1`
+nusxa va uning SCX fayli, marshrutni tanlangan qadamdan qayta ochish, qadoqdan chiqarish),
+brak bo'yicha Pareto/statistika sahifasi, aybdor hodim kesimidagi hisobot.
 
 ## 5. Prod auditi natijalari (2026-09-16)
 
@@ -319,9 +331,10 @@ ya'ni keyingi detal skani ham sanalardi. SQL'da 5 s ga tuzatildi — qayta ishga
 6. **Performance** — qilindi (§4.6), koeffitsiyentlar TAXMINIY. Qolgani: tsexda sekundomer bilan o'lchab Tizim
    sozlamalarida to'g'rilash; keyin (ixtiyoriy) skan↔sikl FIFO bog'lash (prototip `mes/bridge.py` mantiqi) —
    koeffitsiyentlarni 2–4 haftalik o'lchovdan chiqarish uchun.
-7. **Quality** — brak qaydi qilindi (§4.7): terminalda BRAK tugmasi, Quality va OEE hisobotda.
+7. **Quality** — brak qaydi va MENEJER TASDIG'I qilindi (§4.7): terminalda BRAK tugmasi,
+   `/defects` sahifasida tasdiq/rad va aybdor qadam, Quality va OEE hisobotda.
    Qolgani: admin sabablar ro'yxatini kiritsin; keyin qayta ishlab chiqarish oqimi (§7) —
-   `-B1` nusxa, yangi chek, aybdor post va marshrutni qayta ochish.
+   `-B1` nusxa, yangi chek va marshrutni qayta ochish.
 
 ## 7. Qarorlar
 

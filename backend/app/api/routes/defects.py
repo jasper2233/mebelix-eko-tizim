@@ -17,6 +17,7 @@ from app.api.routes.terminal import TerminalCtx, TerminalUser
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.crud import log_action
 from app.models import PartDefect, Scan
+from app.models.enums import DefectStatus
 from app.schemas.defects import DefectCreate, DefectRead
 from app.services.scanning import active_session
 from app.services.settings_service import get_defect_reasons
@@ -102,6 +103,9 @@ async def unmark_defect(
     defect = await db.get(PartDefect, defect_id)
     if defect is None or defect.is_deleted or defect.machine_id != machine.id:
         raise NotFoundException("Brak yozuvi topilmadi.")
+    if defect.status != DefectStatus.PENDING:
+        # Menejer qaror qabul qilib bo'lgan — operator uni jimgina o'chira olmaydi
+        raise HTTPException(status_code=422, detail="Bu brakni menejer ko'rib chiqqan — o'zgartirishni undan so'rang.")
     defect.is_deleted = True
     defect.deleted_at = datetime.now(UTC)
     log_action(
