@@ -6,7 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { ArrowRightLeft, Plus, Trash2 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { type ReactNode, useEffect, useState } from "react"
 
 import {
   type DowntimeReasonRead,
@@ -30,13 +30,33 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { requireAccess } from "@/lib/guards"
 import { formatDate, isAdmin } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { crudCallbacks } from "@/queries/mes"
 
+// Sozlamalar MAVZU bo'yicha tablarga bo'lingan (ilgari beshta karta bitta uzun ustunda, har xil kenglikda
+// turardi). Tab URL'da (`?tab=`): sahifa yangilansa joyida qoladi va boshqa sahifadan aniq tabga havola
+// berish mumkin (Hisobotlar → «Stanok vaqti» dagi izohlar).
+const SETTINGS_TABS = [
+  { value: "general", label: "Umumiy" },
+  { value: "schedule", label: "Ish jadvali" },
+  { value: "downtime", label: "To'xtash sabablari" },
+  { value: "ideal", label: "Ideal sikl" },
+] as const
+type SettingsTab = (typeof SETTINGS_TABS)[number]["value"]
+const TAB_PANEL = "data-[state=inactive]:hidden"
+
 export const Route = createFileRoute("/_layout/system-settings")({
   component: SystemSettingsPage,
+  // Kalit DOIM qaytadi (noto'g'ri qiymatda `undefined`): router ota marshrutning XOM search'ini
+  // natijaga qo'shadi, ya'ni `{}` qaytarilsa `?tab=xato` o'tib ketib, hech bir tab faol bo'lmay qolardi.
+  validateSearch: (s: Record<string, unknown>): { tab?: SettingsTab } => ({
+    tab: SETTINGS_TABS.some((t) => t.value === s.tab)
+      ? (s.tab as SettingsTab)
+      : undefined,
+  }),
   // `lib/mes` dagi `isAdmin` izohi shu sahifani nomma-nom sanab o'tadi
   beforeLoad: requireAccess(isAdmin),
   head: () => ({ meta: [{ title: "Tizim sozlamalari | MebeliX" }] }),
@@ -50,12 +70,80 @@ const IDLE_MIN = 10
 const IDLE_MAX = 1440
 
 function SystemSettingsPage() {
-  const queryClient = useQueryClient()
+  const tab = Route.useSearch().tab ?? "general"
+  const navigate = Route.useNavigate()
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["system-settings"],
     queryFn: async () => (await SettingsService.readSystemSettings()).data,
   })
-  const saqlangan = data?.find((s) => s.key === SUFFIX_KEY)?.value ?? ""
+  // Kalit/qiymat sozlamalari uch kartaga kerak — kelmaguncha o'sha joyda skelet yoki xato
+  const withSettings = (
+    render: (settings: SystemSettingRead[]) => ReactNode,
+  ) =>
+    isLoading ? (
+      <Skeleton className="h-48 w-full" />
+    ) : isError || !data ? (
+      <QueryError onRetry={() => refetch()} />
+    ) : (
+      render(data)
+    )
+
+  return (
+    <div>
+      <PageHeader
+        title="Tizim sozlamalari"
+        description="O'zgarish saqlangan zahoti kuchga kiradi — tizimni qayta ishga tushirish shart emas."
+      />
+      {/* Bitta kenglik (`max-w-5xl`) — kartalarning o'ng cheti tekis. Matn qatori o'qishga qulay
+          uzunlikda qolsin deb paragraflar `max-w-prose`. */}
+      <Tabs
+        value={tab}
+        onValueChange={(v) =>
+          navigate({ search: { tab: v as SettingsTab }, replace: true })
+        }
+        className="max-w-5xl gap-4 [&_p]:max-w-prose"
+      >
+        <div className="max-w-full overflow-x-auto [scrollbar-width:none]">
+          <TabsList className="h-9">
+            {SETTINGS_TABS.map((t) => (
+              <TabsTrigger key={t.value} value={t.value}>
+                {t.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+        {/* `forceMount` + yashirish: tab almashganda kartadagi SAQLANMAGAN qoralama (masalan yarim
+            kiritilgan ish jadvali) yo'qolmasin — Radix sukutda faol bo'lmagan tabni DOM'dan olib tashlaydi. */}
+        <TabsContent value="general" forceMount className={TAB_PANEL}>
+          <div className="grid items-start gap-4 lg:grid-cols-2">
+            {withSettings((settings) => (
+              <>
+                <CustomSuffixCard settings={settings} />
+                <IdleLogoutCard settings={settings} />
+              </>
+            ))}
+          </div>
+        </TabsContent>
+        <TabsContent value="schedule" forceMount className={TAB_PANEL}>
+          <WorkScheduleCard />
+        </TabsContent>
+        <TabsContent value="downtime" forceMount className={TAB_PANEL}>
+          {withSettings((settings) => (
+            <DowntimeReasonsCard settings={settings} />
+          ))}
+        </TabsContent>
+        <TabsContent value="ideal" forceMount className={TAB_PANEL}>
+          <IdealCycleCard />
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+}
+
+/** Nostandart detal belgisi (`backend/app/services/giblab/ingest.py`). */
+function CustomSuffixCard({ settings }: { settings: SystemSettingRead[] }) {
+  const queryClient = useQueryClient()
+  const saqlangan = settings.find((x) => x.key === SUFFIX_KEY)?.value ?? ""
   const [suffix, setSuffix] = useState("")
   // Server qiymati kelgach maydon bir marta to'ldiriladi; keyin foydalanuvchi
   // yozayotganini 60s refetch bosib ketmasin.
@@ -71,50 +159,37 @@ function SystemSettingsPage() {
   })
 
   return (
-    <div>
-      <PageHeader
-        title="Tizim sozlamalari"
-        description="Ish vaqtida o'zgaradigan qiymatlar — konteynerni qayta ishga tushirish shart emas."
-      />
-      {isLoading ? (
-        <Skeleton className="h-32 w-full max-w-xl" />
-      ) : isError ? (
-        <QueryError onRetry={() => refetch()} />
-      ) : (
-        <div className="max-w-xl space-y-4 rounded-lg border bg-card p-4">
-          <Field label="Nostandart detal belgisi">
-            <Input
-              value={suffix}
-              maxLength={8}
-              placeholder="#"
-              onChange={(e) => setSuffix(e.target.value)}
-            />
-          </Field>
-          <p className="text-sm text-muted-foreground">
-            Bazisda detal nomi shu belgi bilan tugasa, u yuklashda{" "}
-            <b>nostandart</b> deb belgilanadi va fayldan avtomatik marshrut
-            olmaydi — marshrutini texnolog «Nostandart detallar» tabida chizadi.
-            Belgi detal nomida qoladi, ya'ni chekda ham ko'rinadi. Qo'lda
-            belgilash o'z joyida: matritsadagi «Nostandart» ustuni.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Bo'sh qoldirilsa qoida <b>o'chadi</b> — hech bir detal avtomatik
-            belgilanmaydi. Qoida faqat YANGI yuklashda ishlaydi, mavjud
-            buyurtmalarga tegmaydi.
-          </p>
-          <LoadingButton
-            loading={mutation.isPending}
-            disabled={suffix.trim() === saqlangan.trim()}
-            onClick={() => mutation.mutate()}
-          >
-            Saqlash
-          </LoadingButton>
-        </div>
-      )}
-      {data && <IdleLogoutCard settings={data} />}
-      {data && <DowntimeReasonsCard settings={data} />}
-      <IdealCycleCard />
-      <WorkScheduleCard />
+    <div className={cn(cardSurface, "space-y-4 p-4")}>
+      <div>
+        <h2 className="text-lg font-semibold">Nostandart detal belgisi</h2>
+        <p className="text-sm text-muted-foreground">
+          Bazisda detal nomi shu belgi bilan tugasa, u yuklashda{" "}
+          <b>nostandart</b> deb belgilanadi va marshrutini texnolog «Nostandart
+          detallar» tabida chizadi.
+        </p>
+      </div>
+      <Field label="Belgi">
+        <Input
+          value={suffix}
+          maxLength={8}
+          placeholder="#"
+          className="w-40"
+          onChange={(e) => setSuffix(e.target.value)}
+        />
+      </Field>
+      <p className="text-sm text-muted-foreground">
+        Belgi detal nomida qoladi, ya'ni chekda ham ko'rinadi. Qo'lda belgilash
+        o'z joyida: matritsadagi «Nostandart» ustuni. Bo'sh qoldirilsa qoida{" "}
+        <b>o'chadi</b>. Qoida faqat YANGI yuklashda ishlaydi, mavjud
+        buyurtmalarga tegmaydi.
+      </p>
+      <LoadingButton
+        loading={mutation.isPending}
+        disabled={suffix.trim() === saqlangan.trim()}
+        onClick={() => mutation.mutate()}
+      >
+        Saqlash
+      </LoadingButton>
     </div>
   )
 }
@@ -164,7 +239,7 @@ function IdleLogoutCard({ settings }: { settings: SystemSettingRead[] }) {
   )
 
   return (
-    <div className={cn(cardSurface, "mt-6 max-w-xl space-y-4 p-4")}>
+    <div className={cn(cardSurface, "space-y-4 p-4")}>
       <div>
         <h2 className="text-lg font-semibold">
           Harakatsizlikdan keyin chiqish
@@ -355,7 +430,7 @@ function DowntimeReasonsCard({ settings }: { settings: SystemSettingRead[] }) {
   })
 
   return (
-    <div className={cn(cardSurface, "mt-6 max-w-5xl space-y-5 p-4")}>
+    <div className={cn(cardSurface, "space-y-5 p-4")}>
       <div>
         <h2 className="text-lg font-semibold">To'xtash sabablari</h2>
         <p className="text-sm text-muted-foreground">
@@ -375,7 +450,7 @@ function DowntimeReasonsCard({ settings }: { settings: SystemSettingRead[] }) {
             value={minutes}
             aria-invalid={!minutesValid}
             onChange={(e) => setMinutes(e.target.value)}
-            className="w-40"
+            className="w-full"
           />
         </Field>
         <LoadingButton
@@ -511,7 +586,7 @@ function IdealCycleCard() {
       : "—"
 
   return (
-    <div className={cn(cardSurface, "mt-6 max-w-3xl space-y-4 p-4")}>
+    <div className={cn(cardSurface, "space-y-4 p-4")}>
       <div>
         <h2 className="text-lg font-semibold">Ideal sikl (Prisadka)</h2>
         <p className="text-sm text-muted-foreground">
@@ -600,7 +675,7 @@ function WorkScheduleCard() {
     ),
   })
 
-  if (isLoading) return <Skeleton className="h-64 w-full max-w-3xl" />
+  if (isLoading) return <Skeleton className="h-64 w-full" />
   if (isError) return <QueryError onRetry={() => refetch()} />
 
   const setShift = (i: number, patch: Partial<Shift>) =>
@@ -643,7 +718,7 @@ function WorkScheduleCard() {
   const changed = JSON.stringify(draft) !== JSON.stringify(data)
 
   return (
-    <div className={cn(cardSurface, "mt-6 max-w-3xl space-y-6 p-4")}>
+    <div className={cn(cardSurface, "space-y-6 p-4")}>
       <div>
         <h2 className="text-lg font-semibold">Ish jadvali</h2>
         <p className="text-sm text-muted-foreground">

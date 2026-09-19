@@ -1,7 +1,7 @@
 // Hisobotlar: mahsuldorlik, buyurtmalar holati, material sarfi, stanok vaqti + Excel eksport.
 
 import { useMutation, useQuery } from "@tanstack/react-query"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { Download } from "lucide-react"
 import { type ReactNode, useState } from "react"
 
@@ -30,11 +30,13 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { requireAccess } from "@/lib/guards"
 import {
   formatDate,
   formatDateTime,
   groupThousands,
+  isAdmin,
   isManagement,
   ORDER_STATUS_LABELS,
 } from "@/lib/mes"
@@ -665,7 +667,11 @@ function MachineTimeReport({ params }: { params: RangeParams }) {
       {data && !data.schedule_set && (
         <p className="mb-3 text-sm text-destructive">
           Ish jadvali kiritilmagan — reja vaqti 0, Availability hisoblanmaydi.
-          Tizim sozlamalari → «Ish jadvali» da smenalarni kiriting.
+          Smenalarni{" "}
+          <SettingsRef tab="schedule">
+            Tizim sozlamalari → «Ish jadvali»
+          </SettingsRef>{" "}
+          da kiriting.
         </p>
       )}
       <AvailabilityTable rows={rows} />
@@ -676,7 +682,11 @@ function MachineTimeReport({ params }: { params: RangeParams }) {
             {r.machine_name} — Performance kalibri: {r.parts} detalning ideal
             vaqti {hm(r.ideal_s)}, Pico o'lchagan {r.cycles} sikl{" "}
             {hm(r.measured_cycle_s)}. Ideal vaqt o'lchangandan ancha katta
-            bo'lsa koeffitsiyentlar yumshoq (Tizim sozlamalari → «Ideal sikl»).
+            bo'lsa koeffitsiyentlar yumshoq —{" "}
+            <SettingsRef tab="ideal">
+              Tizim sozlamalari → «Ideal sikl»
+            </SettingsRef>
+            .
           </p>
         ))}
       {rows.map((r) => (
@@ -755,6 +765,28 @@ function MachineTimeReport({ params }: { params: RangeParams }) {
 }
 
 // ---------- OEE Availability (backend `services/availability.py`) ----------
+
+/** Sozlamaning aniq tabiga havola. `/system-settings` ni faqat admin ocha oladi (guard) —
+ *  boshqa rolga bosilmaydigan oddiy matn: bosib bosh sahifaga uloqtirilmasin. */
+function SettingsRef({
+  tab,
+  children,
+}: {
+  tab: "schedule" | "ideal"
+  children: ReactNode
+}) {
+  const { currentUser } = useCurrentUser()
+  if (!isAdmin(currentUser)) return <>{children}</>
+  return (
+    <Link
+      to="/system-settings"
+      search={{ tab }}
+      className="font-medium underline underline-offset-2"
+    >
+      {children}
+    </Link>
+  )
+}
 
 function pct(v: number | null | undefined): string {
   return v == null ? "—" : `${v}%`
