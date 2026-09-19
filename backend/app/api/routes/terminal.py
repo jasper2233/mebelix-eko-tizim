@@ -43,6 +43,7 @@ from app.schemas.common import Message
 from app.schemas.terminal import (
     CutmapState,
     KromkaInstance,
+    KromkaMeasurement,
     KromkaOrderState,
     KromkaPartRow,
     PostQueueRow,
@@ -629,6 +630,50 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
             for route, part, product_code in rows
         ],
     )
+
+
+#: Terminal ekranida ko'rsatiladigan oxirgi o'lchovlar soni — tasmaga shuncha sig'adi.
+_KROMKA_OLCHOV_N = 8
+
+
+@router.get("/kromka/measurements", response_model=list[KromkaMeasurement], operation_id="read_kromka_measurements")
+async def read_kromka_measurements(db: SessionDep, _: TerminalUser, ctx: TerminalCtx) -> list[KromkaMeasurement]:
+    """Kromka stansiyasi (Pico) o'lchagan oxirgi detallar — SHU ish markazida.
+
+    1-bosqich kuzatuv: faqat ko'rsatadi. Stansiya ulanmagan postda bo'sh ro'yxat
+    qaytadi va ekranda hech narsa chizilmaydi."""
+    machine, _post = ctx
+    rows = (
+        (
+            await db.execute(
+                select(AndonEvent.happened_at, AndonEvent.payload)
+                .where(
+                    AndonEvent.machine_id == machine.id,
+                    AndonEvent.kind == "olchov",
+                    AndonEvent.is_deleted == False,  # noqa: E712
+                )
+                .order_by(AndonEvent.happened_at.desc(), AndonEvent.id.desc())
+                .limit(_KROMKA_OLCHOV_N)
+            )
+        )
+        .tuples()
+        .all()
+    )
+
+    def son(v: object) -> float | None:
+        return float(v) if isinstance(v, (int, float)) else None
+
+    return [
+        KromkaMeasurement(
+            at=at,
+            length_mm=son(payload.get("L")),
+            code=str(payload.get("kod") or "?"),
+            d1_mm=son(payload.get("L1")),
+            d2_mm=son(payload.get("L2")),
+            speed=son(payload.get("v_olch")),
+        )
+        for at, payload in rows
+    ]
 
 
 @router.get("/orders/{order_id}/prisadka", response_model=PrisadkaOrderState, operation_id="read_terminal_prisadka")

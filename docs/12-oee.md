@@ -313,6 +313,39 @@ Hali yo'q: `-B1` yangi nusxa va uning SCX fayli (hozir eski ID va eski chek qayt
 ishlatiladi), buyurtma kartasidagi «BRAK n» belgisi, brak bo'yicha Pareto/statistika
 sahifasi, aybdor hodim kesimidagi hisobot.
 
+### 4.8 Kromka stansiyasi — kuzatuv (2026-09-19, 1-bosqich)
+
+Kromkada ikkinchi Pico bor: u chiroq emas, **detal uzunligini** ikkita to'siq datchigi bilan
+o'lchaydi (alohida repo — `jasper2233/kromka-stansiya-OYY`, firmware v1.14). 1-bosqichda u
+faqat KUZATILADI: hech narsa bloklanmaydi, skan oqimiga tegilmaydi. Foyda darhol —
+**KROMKA uchun ham Availability** va o'lchov tarixi.
+
+| Qism | Qayerda | Nima qiladi |
+| --- | --- | --- |
+| Tur aniqlash | `bridge-agent/agent.py: _andon_line` | Prisadka `MES event {...}` deb yozadi, kromka YALANG'OCH JSON (`{"ev":"olchov"}`) — birinchi tushunarli qatordan aniqlanadi, `ANDON_TUR` env bilan majburlash mumkin |
+| Yurak urishi | o'sha faylda `_andon_session` | Kromka Pico'si 3 soniya BUYRUQ ko'rmasa hodisalarni RAM ga yig'a boshlaydi — unga har soniyada `HB`, prisadkaga 5 soniyalik `PING` |
+| Kalit | `_kromka_kalit` | Kromka firmware'i `session`/`seq` ni yubormaydi — agent beradi (har ulanishda yangi sessiya), shuning uchun serverdagi `(machine_id, session, seq)` unikal indeksi qayta yuborishni o'zi tashlaydi |
+| Buferdan kelgani | `_kromka_line` | `eski_ms` — hodisa Pico xotirasida qancha kutgani; `ts = hozir − eski_ms`, aks holda tun bo'yi yig'ilgani bitta daqiqaga tiqilardi |
+| Qabul | `POST /bridge-agents/andon` (o'sha endpoint) | `AndonEventIn.type` ga kromka turlari qo'shildi: `olchov`, `uskuna`, `tezlik`, `ogoh`, `avariya_toxtash`, `boot`. Yangi jadval YO'Q — xom hodisa `andon_event.payload` da |
+| Oraliqlar | `services/andon.py: uskuna_spans` | Kromka Pico'si holat DAVOMIYLIGINI o'lchamaydi (prisadkadagi `prev_duration_s` yo'q) — oraliq hodisalar orasidan quriladi: `holat=1` → PROCESSING, `0` → OFF. Oxirgi oraliq faqat agent hozir aloqada bo'lsa ochiq qoladi |
+| Terminal | `Terminal/KromkaView: StationStrip` + `GET /terminal/kromka/measurements` | Sarlavha ostida oxirgi o'lchov: `mm`, Pico kodi (OK/FARQ/FAQAT1/FAQAT2), D1/D2, tezlik va oldingi 7 tasi. Stansiyasiz postda umuman chizilmaydi |
+
+**1-bosqichga kirmaydi**: QR bog'lash, kutilgan o'lcham, MOS/NOMOS verdikti, avtomatik skan,
+avtomatik brak, kalibrlash UI si va `SET` yuborish (Pico `kal.json` dagi oxirgi sozlama bilan
+ishlayveradi), sirena/lampa mantiqi.
+
+Tekshiruv (bir martalik skript): **19/19** — ularning sinov bazasidan tiklangan 214 ta HAQIQIY
+Pico qatori agent parseridan o'tdi (tur aniqlandi, `seq` uzluksiz, `eski_ms` vaqti tiklandi,
+`CHOP` matni tashlandi, prisadka formati buzilmadi), 44 hodisa endpointga qabul qilindi va
+takror yuborishda 0 ta yangi yozuv, xom maydonlar (`L`, `kod`) saqlandi, kunlik hisobotda
+reja 9 soat / ishladi 7 soat / **Availability 77.8%**, Performance va Quality esa `—`
+(Prisadka emas).
+
+Ma'lum cheklov (ularning firmware'ida, bizda emas): mayda bo'lak (10 m/min da 8 mm dan uzun
+har narsa) D1→D2 navbatiga tushib juftlikni siljitadi — prod ma'lumotida 8 ta soxta
+«tezlik nomuvofiq» va bir nechta bema'ni uzunlik shundan. 1-bosqichda zararsiz (faqat
+yoziladi), lekin **avtomatik skanga o'tishdan oldin tuzatilishi shart**.
+
 ## 5. Prod auditi natijalari (2026-09-16)
 
 Davr: 2026-09-14 09:36 — 2026-09-16 15:16, faqat Prisadka (ish markazi 1, agent v1.5.0, `can_print=false`).

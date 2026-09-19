@@ -78,16 +78,21 @@ class BridgeLogPush(BaseModel):
 
 
 class AndonEventIn(BaseModel):
-    """Pico hodisasi (firmware `fsm.py`) — agent uni o'zgartirmasdan uzatadi, faqat
-    `ts` ni o'zi qo'yadi (USB rejimda Pico soatsiz).
+    """Pico hodisasi — agent uni o'zgartirmasdan uzatadi, faqat `ts` ni (USB rejimda
+    Pico soatsiz), kromka uchun esa `session`/`seq` ni ham o'zi qo'yadi (o'sha firmware
+    ularni yubormaydi).
 
-    Qolgan maydonlar (lamps, downtime_id, closes_downtime_id, wait_s, process_s ...)
-    `extra="allow"` bilan `payload` ga TO'LIQ tushadi — keyingi bosqich (to'xtashlar,
-    OEE) ularni shu yerdan oladi, ya'ni hozir sxemada sanab chiqish shart emas."""
+    Qolgan maydonlar (lamps, wait_s, process_s, L, L1, L2, kod, holat ...) `extra="allow"`
+    bilan `payload` ga TO'LIQ tushadi — hisob-kitob ularni shu yerdan oladi, ya'ni har
+    firmware o'zgarishida sxemani yangilash shart emas."""
 
     model_config = ConfigDict(extra="allow")
 
-    type: Literal["state", "cycle"]
+    #: PRISADKA signal ustuni — `state` (chiroq holati) va `cycle` (detal sikli);
+    #: KROMKA o'lchash stansiyasi — `olchov`, `uskuna` (RUN kirishi), `tezlik`,
+    #: `ogoh` (datchik nosozligi), `avariya_toxtash`, `boot`. Ro'yxat YOPIQ: noma'lum
+    #: turni hech kim o'qimasdi, agent esa xatoni ko'rmay navbatni bo'shatardi.
+    type: Literal["state", "cycle", "olchov", "uskuna", "tezlik", "ogoh", "avariya_toxtash", "boot"]
     session: Annotated[str, Field(min_length=1, max_length=16, pattern=r"^[0-9A-Za-z_-]+$")]
     seq: Annotated[int, Field(ge=0, le=2_000_000_000)]
     ts: Annotated[int, Field(ge=0, le=4_102_444_800)] = 0

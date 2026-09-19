@@ -88,6 +88,43 @@ class AndonSpan:
     ended: datetime | None
 
 
+def uskuna_spans(
+    events: Iterable[tuple[int, dict[str, Any], datetime]],
+    live: set[int],
+) -> list[AndonSpan]:
+    """KROMKA stansiyasi hodisalaridan holat oraliqlari.
+
+    Prisadka signal ustuni har holat tugaganda uning DAVOMIYLIGINI beradi
+    (`prev_duration_s`, Pico o'zi o'lchaydi) — `andon_spans` shuni ishlatadi.
+    Kromka Pico'sida chiroq yo'q: u faqat RUN kirishi o'zgarganda `uskuna`
+    hodisasini yuboradi (`holat` 0/1). Shuning uchun oraliq SHU YERDA quriladi:
+    har hodisa oldingisini yopadi, oxirgisi `now` gacha davom etadi.
+
+    `holat=1` → PROCESSING (lenta yuryapti), `holat=0` → OFF. OFF ataylab: bizda
+    u DARHOL to'xtash deb sanaladi, sariq chiroqning mikro-to'xtash chegarasi esa
+    kromkada ma'nosiz — u yerda «kutish» degan oraliq holat umuman yo'q.
+
+    `events` — `(machine_id, payload, happened_at)`, VAQT bo'yicha tartiblangan.
+    `live` — hozir aloqada turgan ish markazlari: faqat ular uchun OXIRGI oraliq
+    ochiq qoldiriladi (hozirgacha davom etadi). Agent jim bo'lsa oxirgi hodisadan
+    keyingi vaqt NOMA'LUM — u oraliq umuman qo'shilmaydi va hisobotda «stanok
+    o'chiq» bo'lib chiqadi (bizdagi umumiy qoida).
+    """
+    ochiq: dict[int, AndonSpan] = {}
+    spans: list[AndonSpan] = []
+    for machine_id, payload, at in events:
+        holat = "PROCESSING" if payload.get("holat") else "OFF"
+        oldingi = ochiq.get(machine_id)
+        if oldingi is not None:
+            if oldingi.state == holat:
+                continue  # takror hodisa — oraliq bo'linmaydi
+            oldingi.ended = at
+            spans.append(oldingi)
+        ochiq[machine_id] = AndonSpan(machine_id, holat, at, None)
+    spans += [span for mid, span in ochiq.items() if mid in live]
+    return spans
+
+
 @dataclass
 class MachineTime:
     """`machine_time` natijasi: soniyalar hisobot oralig'iga KESILGAN.

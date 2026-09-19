@@ -87,6 +87,7 @@ Odatda qo'lda hech narsa yozilmaydi — birinchi ulanish ikkalasini ham to'ldira
 | `QUEUE_FILE` | lokal navbat fayli (default `%APPDATA%\MebelixAgent\print-queue.jsonl` — avtostartda ishchi papka System32 bo'lgani uchun nisbiy yo'l ishlamaydi) |
 | `ANDON` | stanok signal ustunini (Pico, USB) o'qish; default yoniq, `0` o'chiradi. Pico topilmagan kompyuterda o'zi jim turadi |
 | `ANDON_PORT` | Pico COM porti (bo'sh — Raspberry Pi VID `2E8A` bo'yicha o'zi topadi) |
+| `ANDON_TUR` | Pico turi: `prisadka` (signal ustuni) yoki `kromka` (o'lchash stansiyasi). Bo'sh — birinchi qatordan o'zi aniqlaydi |
 | `ANDON_TAKEOVER` | `0` — port band bo'lsa eski `PrisadkaMES.exe` ni to'xtatmaslik |
 | `ANDON_QUEUE_FILE` | andon navbati (default `%APPDATA%\MebelixAgent\andon-queue.jsonl`) |
 
@@ -189,4 +190,19 @@ signal ustuni ─optopara─► Pico ─USB─► agent: andon oqimi ─► ando
   `ANDON_TAKEOVER=0` bu xatti-harakatni o'chiradi.
 - Andon qismi chek chop etish va skan-forvarddan to'liq ajralgan: alohida oqim,
   alohida navbat fayli, alohida endpoint. Uning xatosi logga yoziladi, xolos.
-- Tray menyusida Pico ulangani ko'rinadi: `... · Andon: Pico ulandi · v1.5.0`.
+- Tray menyusida Pico ulangani ko'rinadi: `... · Andon: Pico ulandi · v1.6.0`.
+
+## Kromka stansiyasi Pico'si (v1.6.0+)
+
+Ikkinchi xil Pico: kromka uskunasida detal uzunligini ikkita to'siq datchigi bilan
+o'lchaydi (firmware alohida repoda). Agent ikkalasini ham o'qiydi:
+
+| | Prisadka (signal ustuni) | Kromka (o'lchash) |
+|---|---|---|
+| Qator | `MES event {...}` | yalang'och `{"ev":"olchov",...}` |
+| Yurak urishi | `PING` har 5 s | **`HB` har 1 s** — Pico 3 s buyruq ko'rmasa hodisalarni RAM ga yig'adi |
+| Kalit | firmware `session`/`seq` beradi | **agent** beradi (har ulanishda yangi sessiya) |
+| Buferdan kelgani | `age_ms` | `eski_ms` — ikkalasida ham vaqt shundan tiklanadi |
+
+Tur birinchi tushunarli qatordan aniqlanadi; bitta kompyuterda ikki Pico bo'lsa
+`ANDON_TUR` va `ANDON_PORT` bilan aniq ko'rsatiladi.

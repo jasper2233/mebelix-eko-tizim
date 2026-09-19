@@ -25,6 +25,7 @@ Env sozlamalari (ixtiyoriy, pairing o'zi to'ldiradi):
     ANDON         — stanok signal ustuni (Pico, USB) o'qish; 0 = o'chiq (default yoniq,
                     Pico topilmagan kompyuterda o'zi jim turadi)
     ANDON_PORT    — Pico COM porti (bo'sh = Raspberry Pi VID bo'yicha o'zi topadi)
+    ANDON_TUR     — Pico turi: prisadka | kromka (bo'sh = birinchi qatordan o'zi aniqlaydi)
     ANDON_TAKEOVER — 0 = port band bo'lsa eski PrisadkaMES.exe ni to'xtatmaslik
     ANDON_QUEUE_FILE — andon navbati (default %APPDATA%\MebelixAgent\andon-queue.jsonl)
 """
@@ -41,6 +42,7 @@ from collections import deque
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 # websockets>=14 shart: additional_headers= va InvalidStatus.response.status_code
 # API'si ishlatiladi (exe hozir 16.x bilan yig'iladi — README'dagi install qatori)
@@ -55,7 +57,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.5.1"
+AGENT_VERSION = "1.6.0"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -1196,7 +1198,6 @@ def start_scan_forward() -> None:
     import time as _time
     import urllib.error
     import urllib.request
-    from uuid import uuid4
 
     # MES terminali fokusda bo'lsa forvard YUBORILMAYDI: forvard Nanxing'ga ketayotgan
     # skanning nusxasi, terminal fokusda bo'lsa skanni brauzerning O'ZI yozadi
@@ -1293,7 +1294,20 @@ def start_scan_forward() -> None:
 # o'zi ushlaydi — andon yiqilsa ham chek chiqaveradi.
 
 _PICO_VID = 0x2E8A  # Raspberry Pi (RP2040)
+#: Ikki xil Pico bor va ikkalasi ham shu VID bilan keladi:
+#:   PRISADKA — signal ustuni, qatorlari "MES event {...}" ko'rinishida (firmware `fsm.py`);
+#:   KROMKA   — uzunlik o'lchash stansiyasi, YALANG'OCH JSON qator: {"ev":"olchov",...}.
+#: Tur BIRINCHI tushunarli qatordan aniqlanadi; `ANDON_TUR` env bilan majburlash mumkin
+#: (bitta kompyuterga ikki Pico ulansa yoki qurilma jim tursa).
+_TUR_PRISADKA, _TUR_KROMKA = "prisadka", "kromka"
+#: Kromka Pico'si `XOST_MS` = 3 s ichida BUYRUQ ko'rmasa o'zini «stansiya yo'q» deb
+#: hisoblaydi va hodisalarni RAM ga yig'a boshlaydi (300 ta, keyin eng eskisi tushadi).
+#: Shuning uchun unga har soniyada `HB` yuboriladi; prisadkaga 5 soniyalik `PING` yetadi.
 _ANDON_PING_S = 5
+_KROMKA_HB_S = 1
+#: Kromkadan MES ga yoziladigan hodisalar. `holat`/`pong`/`kal`/`kalib_rejim`/`yigilgan`
+#: — javob va diagnostika qatorlari, tarixga kerak emas.
+_KROMKA_EVENTS = ("olchov", "ogoh", "uskuna", "tezlik", "avariya_toxtash", "boot")
 _ANDON_BATCH = 200
 #: Internet uzoq yo'q bo'lsa navbat shundan oshmaydi — eng eskilari tashlanadi
 #: (bitta stanok kuniga ~1000 hodisa beradi, ya'ni bu ~20 kunlik zaxira).
@@ -1306,6 +1320,12 @@ _ANDON_TAKEOVER_MARK = CONFIG_DIR / "andon-takeover.done"
 _CREATE_NO_WINDOW = 0x08000000
 
 ANDON_LOCK = threading.Lock()
+#: Aniqlangan Pico turi va kromka hodisalari uchun kalit. Kromka firmware'i
+#: prisadkadagi `session`/`seq` ni yubormaydi, shuning uchun ularni AGENT beradi:
+#: `session` har ulanishda yangi, `seq` uning ichida uzluksiz — serverdagi
+#: `(machine_id, session, seq)` unikal indeksi qayta yuborilgan partiyani o'zi tashlaydi.
+ANDON_TUR: dict[str, Any] = {"tur": os.environ.get("ANDON_TUR", "").strip().lower() or None,
+                             "session": "", "seq": 0}
 #: Stanokning jonli holati — o'qish oqimi yozadi, `andon_shipper` o'qiydi (lock ostida)
 ANDON_CURRENT: dict[str, Any] = {}
 #: Pico porti hozir ochiqmi (tray va jonli holat uchun)
@@ -1367,12 +1387,73 @@ def _andon_ack(count: int) -> None:
         _andon_write(lines[count:])
 
 
+def _kromka_kalit() -> tuple[str, int]:
+    """Kromka hodisasiga (session, seq) beradi — firmware ularni yubormaydi."""
+    if not ANDON_TUR["session"]:
+        ANDON_TUR["session"] = uuid4().hex[:8]
+        ANDON_TUR["seq"] = 0
+    ANDON_TUR["seq"] += 1
+    return str(ANDON_TUR["session"]), int(ANDON_TUR["seq"])
+
+
+def _kromka_line(data: dict[str, Any]) -> None:
+    """KROMKA stansiyasi Pico'sidan bitta hodisa (`{"ev": ...}`).
+
+    Hodisa xom holida uzatiladi (server `payload` ga to'liq yozadi), agent faqat
+    uchta narsa qo'shadi: `type` (server sxemasi shuni kutadi), `ts` va `(session, seq)`.
+
+    `eski_ms` — hodisa Pico xotirasida qancha kutgani (stansiya/agent uzilgan payt).
+    Vaqt shundan tiklanadi, aks holda tun bo'yi yig'ilgani bitta daqiqaga tiqilardi.
+    """
+    ev = str(data.get("ev") or "")
+    if ev not in _KROMKA_EVENTS:
+        return
+    now = int(time.time())
+    data["type"] = ev
+    data["ts"] = now - int(data.get("eski_ms") or 0) // 1000
+    data["session"], data["seq"] = _kromka_kalit()
+    _andon_enqueue(data)
+
+    # Jonli holat: kromkada chiroq yo'q — uskuna kirishi (RUN) bor. Ishlayapti =
+    # PROCESSING, to'xtagan = OFF (bizda OFF darhol to'xtash deb sanaladi, sariq
+    # chiroqning mikro-to'xtash chegarasi bu yerda ma'nosiz).
+    if ev == "uskuna":
+        holat = "PROCESSING" if data.get("holat") else "OFF"
+        with ANDON_LOCK:
+            if ANDON_CURRENT.get("state") != holat:
+                ANDON_CURRENT["since"] = int(data["ts"])
+            ANDON_CURRENT.update(state=holat, lamps={})
+    elif ev == "tezlik":
+        with ANDON_LOCK:
+            ANDON_CURRENT["part_count"] = None
+
+
 def _andon_line(text: str) -> None:
-    """Pico'dan kelgan bitta qator."""
+    """Pico'dan kelgan bitta qator — ikkala firmware ham shu yerdan o'tadi.
+
+    Tur BIRINCHI tushunarli qatordan aniqlanadi: prisadka `MES ...` deb yozadi,
+    kromka esa yalang'och JSON. Aniqlangach `_andon_session` PING/HB oralig'ini
+    shunga moslaydi."""
+    if text.startswith("{"):
+        try:
+            data = json.loads(text)
+        except ValueError:
+            log.warning("Andon: buzuq JSON qator tashlandi: %s", text[:120])
+            return
+        if not isinstance(data, dict) or "ev" not in data:
+            return
+        if ANDON_TUR["tur"] != _TUR_KROMKA:
+            ANDON_TUR["tur"] = _TUR_KROMKA
+            log.info("Andon: KROMKA stansiyasi Pico'si aniqlandi")
+        _kromka_line(data)
+        return
     if not text.startswith("MES "):
         if text:
             log.info("[pico] %s", text[:200])
         return
+    if ANDON_TUR["tur"] != _TUR_PRISADKA:
+        ANDON_TUR["tur"] = _TUR_PRISADKA
+        log.info("Andon: PRISADKA signal ustuni Pico'si aniqlandi")
     try:
         _, kind, payload = text.split(" ", 2)
         data = json.loads(payload)
@@ -1405,17 +1486,26 @@ def _andon_line(text: str) -> None:
 
 
 def _andon_session(port: Any) -> None:
-    """Ochiq port bilan ishlash: PING yuborish va qatorlarni o'qish. Port xatosida qaytadi."""
+    """Ochiq port bilan ishlash: yurak urishi yuborish va qatorlarni o'qish.
+
+    Tur ANIQLANGUNCHA har soniyada `PING`: kromka Pico'si uni ham «stansiya tirik»
+    deb hisoblaydi (uning chegarasi 3 s), prisadka esa `pong` bilan javob beradi.
+    Tur aniqlangach oraliq o'ziga moslanadi — kromkaga `HB` (1 s), prisadkaga
+    `PING` (5 s)."""
     global ANDON_CONNECTED
     ANDON_CONNECTED = True
+    ANDON_TUR["session"] = ""          # har ulanish — yangi kalit
     next_ping = 0.0
     pending = b""
     try:
         while True:
             now = time.monotonic()
             if now >= next_ping:
-                port.write(b"PING\n")
-                next_ping = now + _ANDON_PING_S
+                kromka = ANDON_TUR["tur"] == _TUR_KROMKA
+                port.write(b"HB\n" if kromka else b"PING\n")
+                next_ping = now + (
+                    _KROMKA_HB_S if kromka else (_ANDON_PING_S if ANDON_TUR["tur"] else _KROMKA_HB_S)
+                )
             # timeout 0.2 s: vaqt tugasa YARIM qator ham qaytishi mumkin — yig'ib boramiz
             chunk = port.readline()
             if not chunk:

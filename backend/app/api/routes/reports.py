@@ -62,7 +62,7 @@ from app.schemas.reports import (
     ReadyOrder,
     TrendDay,
 )
-from app.services.andon import ANDON_STATES, andon_spans, machine_time, read_live
+from app.services.andon import ANDON_STATES, andon_spans, machine_time, read_live, uskuna_spans
 from app.services.availability import DayTotals, StopRun, availability, inside, plan_windows
 from app.services.excel import xlsx_response
 from app.services.metrics import VolumeShare, part_volume
@@ -241,7 +241,29 @@ async def report_machine_time(
             if state is not None and live.get(mid, {}).get("state") == state
         }
 
-    spans = andon_spans(events, ongoing)
+    # KROMKA stansiyasi: u chiroq emas, RUN kirishini yuboradi (`uskuna`) va holat
+    # davomiyligini o'lchamaydi — oraliqlar hodisalar orasidan quriladi. Oxirgi
+    # oraliq faqat agent hozir aloqada bo'lsa ochiq qoladi (`services/andon.py`).
+    uskuna_rows = (
+        (
+            await db.execute(
+                select(AndonEvent.machine_id, AndonEvent.payload, AndonEvent.happened_at)
+                .where(
+                    AndonEvent.kind == "uskuna",
+                    AndonEvent.is_deleted == False,  # noqa: E712
+                    # Oraliqdan OLDINGI oxirgi hodisa ham kerak: u oraliq boshidagi
+                    # holatni belgilaydi (stanok kecha yoqilgan bo'lsa bugun ham ishlayapti).
+                    AndonEvent.happened_at >= start - _ANDON_TAIL,
+                    AndonEvent.happened_at <= end + _ANDON_TAIL,
+                )
+                .order_by(AndonEvent.happened_at, AndonEvent.id)
+            )
+        )
+        .tuples()
+        .all()
+    )
+    tirik = set(await read_live({mid for mid, _p, _at in uskuna_rows})) if uskuna_rows else set()
+    spans = andon_spans(events, ongoing) + uskuna_spans(uskuna_rows, tirik)
     result = machine_time(spans, start, end, now)
 
     # OEE Availability: ish jadvali + to'xtashlar. Signal ustuni ulangan HAR ish markazi kiradi —

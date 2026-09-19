@@ -133,6 +133,23 @@ class KromkaOrderState(BaseModel):
     parts: list[KromkaPartRow]
 
 
+class KromkaMeasurement(BaseModel):
+    """Kromka stansiyasi (Pico + ikki datchik) o'lchagan bitta detal — XOM ko'rsatkich.
+
+    1-bosqich KUZATUV: o'lchov hech narsani bloklamaydi va skanga bog'lanmaydi —
+    operator uni ekranda ko'radi, MES esa tarixga yozadi (`andon_event`, `kind='olchov'`).
+    Kutilgan o'lcham bilan solishtirish keyingi bosqichda (QR bog'lash)."""
+
+    at: datetime
+    #: Yakuniy uzunlik, mm (ikki datchik o'rtachasi yoki bittasi)
+    length_mm: float | None
+    #: Pico kodi: OK — ikkalasi mos, FARQ — chegaradan oshdi, FAQAT1/FAQAT2 — bitta datchik
+    code: str
+    d1_mm: float | None
+    d2_mm: float | None
+    speed: float | None
+
+
 class PrisadkaFile(BaseModel):
     """Detalning SCX fayli — stanok kompyuteriga yuklab olish uchun."""
 

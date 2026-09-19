@@ -1740,6 +1740,42 @@ export type KromkaInstance = {
 };
 
 /**
+ * KromkaMeasurement
+ *
+ * Kromka stansiyasi (Pico + ikki datchik) o'lchagan bitta detal — XOM ko'rsatkich.
+ *
+ * 1-bosqich KUZATUV: o'lchov hech narsani bloklamaydi va skanga bog'lanmaydi —
+ * operator uni ekranda ko'radi, MES esa tarixga yozadi (`andon_event`, `kind='olchov'`).
+ * Kutilgan o'lcham bilan solishtirish keyingi bosqichda (QR bog'lash).
+ */
+export type KromkaMeasurement = {
+    /**
+     * At
+     */
+    at: string;
+    /**
+     * Length Mm
+     */
+    length_mm: number | null;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * D1 Mm
+     */
+    d1_mm: number | null;
+    /**
+     * D2 Mm
+     */
+    d2_mm: number | null;
+    /**
+     * Speed
+     */
+    speed: number | null;
+};
+
+/**
  * KromkaOrderState
  *
  * KROMKA post sahifasi (proyekt ochilganda): faqat kromkali detallar.
@@ -6467,6 +6503,24 @@ export type ReadTerminalKromkaResponses = {
 };
 
 export type ReadTerminalKromkaResponse = ReadTerminalKromkaResponses[keyof ReadTerminalKromkaResponses];
+
+export type ReadKromkaMeasurementsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/terminal/kromka/measurements';
+};
+
+export type ReadKromkaMeasurementsResponses = {
+    /**
+     * Response Read Kromka Measurements
+     *
+     * Successful Response
+     */
+    200: Array<KromkaMeasurement>;
+};
+
+export type ReadKromkaMeasurementsResponse = ReadKromkaMeasurementsResponses[keyof ReadKromkaMeasurementsResponses];
 
 export type ReadTerminalPrisadkaData = {
     body?: never;

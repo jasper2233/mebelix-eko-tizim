@@ -168,6 +168,47 @@ const edgeBands = (edges: Record<string, unknown>): string => {
     .join(" · ")
 }
 
+/** Kromka stansiyasi (Pico + ikki datchik) o'lchagan oxirgi detallar.
+ *
+ *  1-BOSQICH — KUZATUV: o'lchov hech narsani bloklamaydi va skanga bog'lanmaydi.
+ *  Operator raqamni ko'radi, MES tarixga yozadi. Kutilgan o'lcham bilan solishtirish
+ *  (QR bog'lash) keyingi bosqichda. Stansiya ulanmagan postda tasma umuman chizilmaydi. */
+function StationStrip() {
+  const { data } = useQuery({
+    queryKey: ["terminal", "kromka", "measurements"],
+    queryFn: async () => (await TerminalService.readKromkaMeasurements()).data,
+    // Pico har detalda hodisa beradi; 10 s — ekrandagi raqam «tirik» ko'rinishi uchun yetarli
+    refetchInterval: 10_000,
+  })
+  const rows = data ?? []
+  if (!rows.length) return null
+  const [last, ...prev] = rows
+  return (
+    <div className="flex items-center gap-3 border-b bg-sky-50/70 px-4 py-2">
+      <span className="text-xs font-bold uppercase tracking-wider text-sky-900">
+        Stansiya o'lchovi
+      </span>
+      <span className="num text-2xl font-black text-sky-900">
+        {last.length_mm?.toFixed(1) ?? "—"}
+        <span className="ml-1 text-sm font-bold">mm</span>
+      </span>
+      {/* Pico kodi: OK — ikkala datchik mos; FARQ/FAQAT1/FAQAT2 — datchik muammosi */}
+      {last.code !== "OK" && (
+        <span className="rounded-md bg-amber-200 px-2 py-0.5 text-xs font-black text-amber-900">
+          {last.code}
+        </span>
+      )}
+      <span className="text-xs text-sky-800">
+        D1 {last.d1_mm?.toFixed(1) ?? "—"} · D2 {last.d2_mm?.toFixed(1) ?? "—"}
+        {last.speed ? ` · ${last.speed.toFixed(1)} m/min` : ""}
+      </span>
+      <span className="num ml-auto truncate text-xs text-sky-700/70">
+        {prev.map((r) => r.length_mm?.toFixed(0) ?? "—").join(" · ")}
+      </span>
+    </div>
+  )
+}
+
 export function KromkaView({
   orderId,
   onBack,
@@ -288,6 +329,7 @@ export function KromkaView({
             total={totReq}
           />
         </PostHeader>
+        <StationStrip />
         <div className="min-h-0 flex-1 overflow-y-auto">
           <table className="w-full text-base">
             <thead className="sticky top-0 z-10 bg-muted/80 text-left text-xs uppercase tracking-wider text-muted-foreground backdrop-blur">
