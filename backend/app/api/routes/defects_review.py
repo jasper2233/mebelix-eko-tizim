@@ -19,10 +19,12 @@ from sqlalchemy.orm import defer
 
 from app.api.deps import ManagerUser, SessionDep, client_ip
 from app.core.exceptions import NotFoundException
+from app.core.ws import ws_manager
 from app.crud import log_action
 from app.models import Employee, Machine, Order, Part, PartDefect, PartInstance, PartRoute, Post, Scan, User
 from app.models.enums import DefectStatus
 from app.schemas.defects import DefectPending, DefectReview, DefectRow, DefectStep
+from app.services.defects import reopen_from_step
 
 router = APIRouter(prefix="/defects", tags=["defects"])
 
@@ -246,6 +248,10 @@ async def review_defect(
     defect.status = body.status
     defect.reviewed_by_id = current_user.id
     defect.reviewed_at = datetime.now(UTC)
+    # Tasdiq = ishni QAYTA OCHISH: tanlangan qadamdan keyingi skanlar bekor qilinadi va
+    # detal o'sha postning ro'yxatida o'zidan paydo bo'ladi (`services/defects.py`).
+    # Rad etishda hech narsa tiklanmaydi — jismoniy ish allaqachon qilingan.
+    events = await reopen_from_step(db, defect) if body.status == DefectStatus.CONFIRMED else []
     log_action(
         db,
         module="defect",
@@ -254,11 +260,16 @@ async def review_defect(
         entity_type="defect",
         entity_id=defect.id,
         message=(
-            f"Brak tasdiqlandi: {defect.reason}"
+            f"Brak tasdiqlandi: {defect.reason} — {len(events)} skan qaytarildi"
             if body.status == DefectStatus.CONFIRMED
             else f"«Brak emas» deb rad etildi: {defect.reason}"
         ),
         ip=client_ip(request),
     )
     await db.commit()
+    # Terminal ekranlari darhol yangilansin: har bekor qilingan skan o'z postiga
+    for event in events:
+        await ws_manager.publish(
+            event["type"], event["payload"], post_id=event["post_id"], machine_id=event["machine_id"]
+        )
     return (await _rows(db, status=None, defect_id=defect.id))[0]

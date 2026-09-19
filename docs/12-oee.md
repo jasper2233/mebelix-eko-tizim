@@ -260,11 +260,16 @@ OEE     = Availability × Performance × Quality
 | Terminal | `Terminal/DefectDialog.tsx` + skan tasmasidagi BRAK tugmasi | oxirgi MUVAFFAQIYATLI skan turganda tugma chiqadi; oyna sabab tugmalari va ixtiyoriy izoh; ro'yxat bo'sh bo'lsa tugma umuman chizilmaydi |
 | API | `GET /terminal/defect-reasons`, `POST /terminal/defects`, `DELETE /terminal/defects/{id}` (docs/03) | belgilash va noto'g'ri bosilganini qaytarish (yumshoq o'chirish) |
 | Menejer qarori | `/defects` sahifasi (`routes/_layout/defects.tsx`), `GET /defects`, `POST /defects/{id}/review` | tasdiqlaydi yoki «brak emas» deb rad etadi; aybdor QADAM (post emas) va qayta boshlash nuqtasi belgilanadi; sidebar belgisida kutayotganlar soni |
+| Qayta ochish | `services/defects.py: reopen_from_step` (tasdiqda avtomatik) | tanlangan qadamdan KEYINGI skanlar `revoke_scan` bilan bekor qilinadi, qadoqdan chiqariladi, kesish postidan boshlansa chek ham qaytariladi |
 | Hisob | `services/performance.py: quality_pct` / `oee_pct`, `GET /reports/machine-time` | «Stanok vaqti» dagi «Brak», «Quality» va «OEE» ustunlari, kunlik trekda ham |
 
 | Qoida | Nega |
 | --- | --- |
-| Brak SKANNI bekor qilmaydi, marshrutni qayta ochmaydi | hozir u faqat O'LCHANADI va QAROR yoziladi; remake oqimi (`-B1` nusxa, yangi chek, marshrutni qayta ochish) §7 da tasvirlangan va hali yozilmagan |
+| QAYD skanni bekor qilmaydi, TASDIQ esa bekor qiladi | operator faqat o'lchov uchun belgilaydi; ishni qaytadan boshlash — menejer qarori. Shuning uchun qayta ochish `review` ichida, `mark_defect` da emas |
+| Qayta ochish uchun ALOHIDA ro'yxat yozilmadi | har post o'z ishini MARSHRUTDAN o'qiydi: qadam yopilmagan bo'lsa detal o'sha postda turadi, oldingilari yopiq bo'lsa «tayyor», keyingilari E004 bilan kutadi. Skanlarni qaytarishning o'zi kifoya — detal ARRA'da bo'lsa faqat arrada, kromkaga o'tsa faqat kromkada ko'rinadi |
+| Nusxa ID o'zgarmaydi (`-B1` YO'Q) | docs §7 da `-B1` rejalashtirilgan, lekin u yangi `PartInstance`, yangi SCX fayl va kesish xaritasidagi katak bog'lamini talab qiladi — alohida qadam. Hozir eski chek AMAL QILADI: arrachi o'sha katakdan yangi chek chiqaradi, kromkachi o'sha QR ni skanerlaydi |
+| Yopiq qadoqdan ham chiqariladi | terminaldagi bekor qilish yopiq qadoqni rad etadi (qadoqlovchi o'zi qayta ochsin), bu esa MENEJER qarori — brak detal qadoqda qolsa omborga yaroqsiz buyum ketardi |
+| Rad etish hech narsani tiklamaydi | jismoniy ish allaqachon qilingan; noto'g'ri tasdiqdan keyin skanlarni qo'lda qaytarish kerak |
 | Quality REJECTED dan boshqasini sanaydi (kutayotgani ham kiradi) | tasdiq kechikkanda OEE aslidan yaxshi ko'rinib turardi; «brak emas» deb rad etilgani esa hisobdan chiqadi |
 | Ayb POST emas, QADAM (`part_route`) bo'yicha | bitta post marshrutda ikki marta uchraydi (Kromka → Prisadka → Kromka) — «Kromka aybdor» degani qaysi o'tish ekanini aytmaydi. **NOSTANDART detalda ham xuddi shunday**: texnolog qo'lda chizgan qatorlar o'sha `part_route` jadvalida turadi, qaror ularni O'ZGARTIRMAYDI, remake esa yangi `-B1` nusxaga o'sha `part_id` ni beradi (§7 qarori) — saqlangan `restart_route_id` o'shanda ham to'g'ri qadamni ko'rsatadi |
 | Texnolog O'CHIRGAN qadam (`is_enabled=false`) ro'yxatda yo'q va tanlanmaydi (422) | detal u yerdan o'tmagan: na ayb, na qayta boshlash nuqtasi bo'la oladi |
@@ -272,6 +277,7 @@ OEE     = Availability × Performance × Quality
 | Tasdiqda qayta boshlash qadami MAJBURIY, ayb ixtiyoriy | «qayerdan qayta boshlanadi» — qarorning o'zi; material nuqsonida esa ayb hech kimda emas |
 | Qaror qayta o'zgartiriladi | noto'g'ri bosilgani tuzatilsin; operator esa menejer ko'rib chiqqan brakni o'chira olmaydi (422) |
 | Braklar detallar bilan BIR XIL filtrda sanaladi (kuzatilgan ish vaqti) | aks holda surat va maxraj boshqa-boshqa vaqtdan yig'ilib, foiz «100 dan katta» yoki «manfiy» bo'lib chiqardi |
+| Tasdiqlangan brakning BEKOR QILINGAN skani hisobda QOLADI (`defect_scan_ids`) | tasdiq nusxani qayta ochib skanini bekor qiladi; u sanoqdan tushib ketsa brak IKKI marta jazolanardi — detal Performance'dan ham chiqardi, Quality'dan ham ayirilardi. O'lchangan: tasdiqdan keyin ham `parts` 600, `ideal_s` 16200, Quality 93.3% |
 | Brakni faqat SKAN yozilgan post belgilaydi (`scan.post_id != post.id` → 403) | bitta nusxa ikki postdan ikki marta brak qilinsa Quality ikki barobar tushardi |
 | Bitta skan — bitta brak (takror urinish 422) | tugma katta, tasodifiy ikki marta bosish real |
 | Sabab ro'yxatdan bo'lishi shart (422 «Sahifani yangilang») | terminal eskirgan ro'yxatni ko'rsatib turgan bo'lishi mumkin |
@@ -287,13 +293,19 @@ chiqadi — 93.3%, aybdor hodim suratga olinadi, qadamsiz tasdiq va begona qadam
 o'zgartiriladi, sidebar soni) va NOSTANDART marshrut 14/14 (`[Kromka(3), Prisadka(6),
 Kromka(4)]` + o'chirilgan qadam: ro'yxat tartibi va amal kodlari, har qadamdagi hodim,
 IKKINCHI Kromkani ayb qilib tanlash birinchisidan farq qiladi, o'chirilgan va begona
-detalning qadami 422, marshrut qatorlari va `is_custom` bayrog'i tegilmagan). Sof funksiyalar 13/13 — brak yo'q → 100%,
+detalning qadami 422, marshrut qatorlari va `is_custom` bayrog'i tegilmagan) hamda QAYTA
+OCHISH 15/15 (ARRA → KROMKA → PRISADKA → QADOQLASH to'liq bajarilgan, COMPLETED buyurtma,
+yopiq qadoqdagi detal: ARRA'dan tasdiqlangach to'rtala hisoblagich 0 ga qaytdi, chek va
+`label_post_id` tozalandi, qadoqdan chiqdi, buyurtma «jarayonda» bo'ldi; keyin KROMKA skani
+E004 bilan rad etildi, ARRA skanidan SO'NG kromkada «tayyor» bo'ldi, PRISADKA esa yana E004
+— ya'ni ish ketma-ket yuradi). Tasdiqlash oqilida (17/17) tasdiqdan
+keyin ham `parts` 600 va `ideal_s` 16200 bo'lib qolishi alohida tekshiriladi. Sof funksiyalar 13/13 — brak yo'q → 100%,
 2/10 → 80%, 1/3 → 66.7%, detalsiz → `None`, brak > detal → 0%, `A=75 · P=80 · Q=100` → OEE 60%,
 uchtasidan biri `None` bo'lsa OEE ham `None`.
 
-Hali yo'q: qayta ishlab chiqarish oqimining O'ZI (§7 — eski skanlarni bekor qilish, `-B1`
-nusxa va uning SCX fayli, marshrutni tanlangan qadamdan qayta ochish, qadoqdan chiqarish),
-brak bo'yicha Pareto/statistika sahifasi, aybdor hodim kesimidagi hisobot.
+Hali yo'q: `-B1` yangi nusxa va uning SCX fayli (hozir eski ID va eski chek qayta
+ishlatiladi), buyurtma kartasidagi «BRAK n» belgisi, brak bo'yicha Pareto/statistika
+sahifasi, aybdor hodim kesimidagi hisobot.
 
 ## 5. Prod auditi natijalari (2026-09-16)
 

@@ -308,9 +308,6 @@ async def report_machine_time(
     }
     names = dict((await db.execute(select(Machine.id, Machine.name).where(Machine.id.in_(ids)))).tuples().all())
 
-    # OEE Performance (Prisadka): KUZATILGAN ish vaqtida skanerlangan detallarning ideal vaqti ÷ ishlagan vaqt.
-    # Ma'lumotsiz vaqtdagi skan sanalmaydi — o'sha vaqt `run_s` ga ham kirmagan, aks holda foiz shishardi.
-    ideal = await get_ideal_cycle(db)
     prisadka_ids = set(
         (
             await db.execute(
@@ -322,6 +319,43 @@ async def report_machine_time(
         .scalars()
         .all()
     )
+    # OEE Quality: BRAK (`part_defect`) — detallar bilan BIR XIL filtr (kuzatilgan ish vaqti),
+    # aks holda surat va maxraj boshqa-boshqa vaqtdan yig'ilardi. Brak kiritilmagan bo'lsa
+    # Quality 100% bo'lib qoladi: ayiriladigan narsa yo'q.
+    defects_by: dict[tuple[int, date], int] = {}
+    #: Tasdiqlangan brak nusxaning skanini BEKOR QILADI (`services/defects.reopen_from_step`).
+    #: O'sha skan Performance va Quality hisobida BARIBIR sanalishi kerak: ish qilingan (vaqt
+    #: ketgan), mahsulot esa yaroqsiz. Aks holda brak ikki marta jazolanardi — detal ham
+    #: chiqib ketardi (P tushardi), ham brak bo'lib ayirilardi (Q tushardi).
+    defect_scan_ids: set[int] = set()
+    if prisadka_ids:
+        defect_rows = (
+            (
+                await db.execute(
+                    select(PartDefect.machine_id, PartDefect.created_at, PartDefect.scan_id).where(
+                        PartDefect.machine_id.in_(prisadka_ids),
+                        # «Brak emas» deb rad etilgani sanalmaydi; tasdiq kutayotgani SANALADI —
+                        # aks holda tasdiq kechikkanda OEE aslidan yaxshi ko'rinib turardi
+                        PartDefect.status != DefectStatus.REJECTED,
+                        PartDefect.is_deleted == False,  # noqa: E712
+                        PartDefect.created_at >= start,
+                        PartDefect.created_at <= end,
+                    )
+                )
+            )
+            .tuples()
+            .all()
+        )
+        for mid, at, scan_id in defect_rows:
+            if mid is not None and inside(avail[mid].observed, at):
+                key = (mid, at.astimezone(TASHKENT_TZ).date())
+                defects_by[key] = defects_by.get(key, 0) + 1
+                if scan_id is not None:
+                    defect_scan_ids.add(scan_id)
+
+    # OEE Performance (Prisadka): KUZATILGAN ish vaqtida skanerlangan detallarning ideal vaqti ÷ ishlagan vaqt.
+    # Ma'lumotsiz vaqtdagi skan sanalmaydi — o'sha vaqt `run_s` ga ham kirmagan, aks holda foiz shishardi.
+    ideal = await get_ideal_cycle(db)
     ideal_by: dict[tuple[int, date], list[float]] = {}  # (stanok, kun) -> [ideal soniya, detallar]
     measured: dict[int, list[float]] = {}  # stanok -> [o'lchangan sikl soniya, sikllar]
     if prisadka_ids:
@@ -335,7 +369,8 @@ async def report_machine_time(
                     .join(Part, Part.id == Scan.part_id)
                     .where(
                         Scan.machine_id.in_(prisadka_ids),
-                        Scan.is_cancelled == False,  # noqa: E712
+                        # Brak deb belgilangan skan bekor qilingan bo'lsa ham sanaladi (yuqoriga qarang)
+                        or_(Scan.is_cancelled == False, Scan.id.in_(defect_scan_ids)),  # noqa: E712
                         Scan.is_deleted == False,  # noqa: E712
                         Scan.created_at >= start,
                         Scan.created_at <= end,
@@ -375,33 +410,6 @@ async def report_machine_time(
                 cell = measured.setdefault(mid, [0.0, 0])
                 cell[0] += seconds
                 cell[1] += 1
-
-    # OEE Quality: BRAK (`part_defect`) — detallar bilan BIR XIL filtr (kuzatilgan ish vaqti),
-    # aks holda surat va maxraj boshqa-boshqa vaqtdan yig'ilardi. Brak kiritilmagan bo'lsa
-    # Quality 100% bo'lib qoladi: ayiriladigan narsa yo'q.
-    defects_by: dict[tuple[int, date], int] = {}
-    if prisadka_ids:
-        defect_rows = (
-            (
-                await db.execute(
-                    select(PartDefect.machine_id, PartDefect.created_at).where(
-                        PartDefect.machine_id.in_(prisadka_ids),
-                        # «Brak emas» deb rad etilgani sanalmaydi; tasdiq kutayotgani SANALADI —
-                        # aks holda tasdiq kechikkanda OEE aslidan yaxshi ko'rinib turardi
-                        PartDefect.status != DefectStatus.REJECTED,
-                        PartDefect.is_deleted == False,  # noqa: E712
-                        PartDefect.created_at >= start,
-                        PartDefect.created_at <= end,
-                    )
-                )
-            )
-            .tuples()
-            .all()
-        )
-        for mid, at in defect_rows:
-            if mid is not None and inside(avail[mid].observed, at):
-                key = (mid, at.astimezone(TASHKENT_TZ).date())
-                defects_by[key] = defects_by.get(key, 0) + 1
 
     def perf(mid: int, ideal_s: float, run_s: int) -> float | None:
         return round(ideal_s * 100 / run_s, 1) if mid in prisadka_ids and run_s > 0 else None

@@ -91,7 +91,7 @@ function DefectsPage() {
     <div>
       <PageHeader
         title="Brak"
-        description="Operator terminalda belgilaydi, menejer tasdiqlaydi. Tasdiqlangan brak OEE Quality'ga kiradi, «brak emas» deb rad etilgani esa chiqib ketadi."
+        description="Operator terminalda belgilaydi, menejer tasdiqlaydi. Tasdiqlanganda detal tanlangan qadamdan QAYTA ochiladi — o'sha postning ro'yxatida bajarilmagan bo'lib paydo bo'ladi va keyingi postlarga tartib bilan o'tadi. «Brak emas» deb rad etilgani esa OEE Quality'dan chiqadi."
       />
       <Tabs
         value={tab}
@@ -332,6 +332,14 @@ function ReviewDialog({
           </>
         )}
 
+        {/* Tasdiq nima qilishini ochiq aytish: bu qaytarib bo'lmaydigan amal —
+            keyingi skanlar bekor qilinadi va ish qaytadan boshlanadi. */}
+        <p className="text-sm text-muted-foreground">
+          Tasdiqlansa shu qadamdan keyingi skanlar bekor qilinadi: detal o'sha
+          postda qayta paydo bo'ladi (kesish xaritasida katak odatdagi rangga
+          qaytadi), qadoqda bo'lsa undan chiqariladi, buyurtma esa «tayyor» dan
+          «jarayonda» ga qaytadi. Rad etish hech narsani tiklamaydi.
+        </p>
         <div className="flex items-center gap-3">
           <LoadingButton
             variant="outline"
