@@ -37,22 +37,18 @@ class AvailabilityReason(BaseModel):
 
 
 class MachineTimeRow(BaseModel):
+    """Bitta stanokning davr bo'yicha yakuni. Sahifada arifmetika KO'RINIB tursin:
+    `reja vaqti − to'xtash = ishladi`, keyin uchala foiz va ularning ko'paytmasi."""
+
     machine_id: int
     machine_name: str
-    # holat -> soniya: PROCESSING, AWAIT_PART, IDLE, STOPPED, FAULT, OFF
-    seconds: dict[str, int]
-    total_s: int  # jami qayd etilgan vaqt — agent/Pico bilan aloqa yo'q paytlar kirmaydi
-    busy_pct: float | None  # ishlov / jami qayd — OEE Availability EMAS (reja vaqti yo'q)
-    faults: int  # oraliqqa tushgan avariyalar soni
     # --- OEE Availability (`services/availability.py`). Ish jadvali kiritilmagan bo'lsa hammasi 0 / None.
     shift_s: int  # jadval bo'yicha ish vaqti: smenalar minus tanaffuslar, hozirgacha
-    planned_stop_s: int  # REJALI sababli to'xtashlar — reja vaqtidan chiqariladi
-    planned_s: int  # reja vaqti = shift_s - planned_stop_s
+    planned_s: int  # reja vaqti = ish vaqti − REJALI sababli to'xtashlar
     unplanned_stop_s: int  # rejasiz yoki sababi kiritilmagan to'xtashlar
-    no_data_s: int  # ish vaqtida Pico'dan ma'lumot yo'q — to'xtash deb sanaladi (2026-09-17 qarori)
+    no_data_s: int  # ish vaqtida Pico'dan qayd yo'q — stanok O'CHIQ deb sanaladi (2026-09-17 qarori)
     run_s: int  # ishlagan = planned_s - unplanned_stop_s - no_data_s
     availability_pct: float | None  # run_s / planned_s; reja vaqti 0 bo'lsa None
-    coverage_pct: float | None  # ish vaqtining qancha qismida Pico ma'lumoti bor
     reasons: list[AvailabilityReason]  # ko'p vaqt olgani birinchi
     # --- OEE Performance (`services/performance.py`) — faqat Prisadka ish markazlarida, qolganida 0 / None
     parts: int  # kuzatilgan ish vaqtida skanerlangan detallar
@@ -67,19 +63,16 @@ class MachineTimeRow(BaseModel):
 
 
 class MachineTimeDay(BaseModel):
+    """Kunlik trek uchun: rangli chiziq (`seconds`) va o'sha kunning yakuni."""
+
     machine_id: int
     day: date  # Toshkent kuni
+    # holat -> soniya: PROCESSING, AWAIT_PART, IDLE, STOPPED, FAULT, OFF — trek shundan chiziladi
     seconds: dict[str, int]
-    shift_s: int
-    planned_stop_s: int
     planned_s: int
-    unplanned_stop_s: int
-    no_data_s: int
     run_s: int
     availability_pct: float | None
     parts: int
-    ideal_s: int
-    performance_pct: float | None
     defects: int
     quality_pct: float | None
     oee_pct: float | None

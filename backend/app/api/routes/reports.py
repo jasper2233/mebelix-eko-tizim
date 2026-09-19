@@ -159,15 +159,6 @@ async def report_productivity(
 
 # ---------- Stanok vaqti (andon — signal ustuni) ----------
 
-#: Excel sarlavhalari va ustun tartibi — `ANDON_STATES` bilan bir xil tartib
-_ANDON_LABELS = {
-    "PROCESSING": "Ishlov",
-    "AWAIT_PART": "Detal kutish",
-    "IDLE": "Kutish",
-    "STOPPED": "Uzoq kutish",
-    "FAULT": "Avariya",
-    "OFF": "O'chiq",
-}
 #: Oraliq tugagandan keyin kelgan hodisa ham oraliq ichidagi holatni yopgan bo'lishi
 #: mumkin (masalan tungi OFF ertalab tugaydi) — shuncha kun keyingacha hodisa olinadi.
 _ANDON_TAIL = timedelta(days=3)
@@ -416,8 +407,6 @@ async def report_machine_time(
 
     rows = []
     for mid in sorted(ids, key=lambda m: names.get(m, "")):
-        secs = result.seconds.get(mid) or dict.fromkeys(ANDON_STATES, 0)
-        total = sum(secs.values())
         a = avail[mid].total
         ideal_total = sum(v[0] for (m, _d), v in ideal_by.items() if m == mid)
         parts_total = int(sum(v[1] for (m, _d), v in ideal_by.items() if m == mid))
@@ -427,18 +416,12 @@ async def report_machine_time(
             MachineTimeRow(
                 machine_id=mid,
                 machine_name=names.get(mid, f"#{mid}"),
-                seconds=secs,
-                total_s=total,
-                busy_pct=round(secs["PROCESSING"] * 100 / total, 1) if total else None,
-                faults=result.faults.get(mid, 0),
                 shift_s=a.shift_s,
-                planned_stop_s=a.planned_stop_s,
                 planned_s=a.planned_s,
                 unplanned_stop_s=a.unplanned_stop_s,
                 no_data_s=a.no_data_s,
                 run_s=a.run_s,
                 availability_pct=a.availability_pct,
-                coverage_pct=a.coverage_pct,
                 reasons=[
                     AvailabilityReason(
                         reason_id=r.reason_id,
@@ -464,27 +447,24 @@ async def report_machine_time(
     days = []
     for mid, day in sorted(day_keys):
         d = avail[mid].days.get(day, empty_day)
+        day_parts = int(ideal_by.get((mid, day), [0.0, 0])[1])
+        day_defects = defects_by.get((mid, day), 0)
+        day_quality = quality_pct(day_parts, day_defects)
         days.append(
             MachineTimeDay(
                 machine_id=mid,
                 day=day,
                 seconds=result.days.get((mid, day)) or dict.fromkeys(ANDON_STATES, 0),
-                shift_s=d.shift_s,
-                planned_stop_s=d.planned_stop_s,
                 planned_s=d.planned_s,
-                unplanned_stop_s=d.unplanned_stop_s,
-                no_data_s=d.no_data_s,
                 run_s=d.run_s,
                 availability_pct=d.availability_pct,
-                parts=int(ideal_by.get((mid, day), [0.0, 0])[1]),
-                ideal_s=round(ideal_by.get((mid, day), [0.0, 0])[0]),
-                performance_pct=perf(mid, ideal_by.get((mid, day), [0.0, 0])[0], d.run_s),
-                defects=defects_by.get((mid, day), 0),
-                quality_pct=quality_pct(int(ideal_by.get((mid, day), [0.0, 0])[1]), defects_by.get((mid, day), 0)),
+                parts=day_parts,
+                defects=day_defects,
+                quality_pct=day_quality,
                 oee_pct=oee_pct(
                     d.availability_pct,
                     perf(mid, ideal_by.get((mid, day), [0.0, 0])[0], d.run_s),
-                    quality_pct(int(ideal_by.get((mid, day), [0.0, 0])[1]), defects_by.get((mid, day), 0)),
+                    day_quality,
                 ),
             )
         )
@@ -498,48 +478,35 @@ async def report_machine_time(
         ideal_cycle=ideal,
     )
     if format == "xlsx":
+        # Ustunlar sahifadagi jadval bilan AYNAN bir xil — ikki joyda ikki xil raqam bo'lmasin
         return xlsx_response(
             "Stanok vaqti",
             [
                 "Stanok",
                 "Reja vaqti (soat)",
+                "To'xtash (soat)",
                 "Ishladi (soat)",
-                "Rejasiz to'xtash (soat)",
-                "O'chiq/qaydsiz (soat)",
-                "Rejali to'xtash (soat)",
                 "Availability, %",
-                "Qamrov, %",
                 "Detallar",
                 "Ideal vaqt (soat)",
                 "Performance, %",
                 "Brak",
                 "Quality, %",
                 "OEE, %",
-                *(f"{_ANDON_LABELS[s]} (soat)" for s in ANDON_STATES),
-                "Jami qayd (soat)",
-                "Ishlov ulushi, %",
-                "Avariyalar",
             ],
             [
                 [
                     r.machine_name,
                     round(r.planned_s / 3600, 2),
+                    round((r.unplanned_stop_s + r.no_data_s) / 3600, 2),
                     round(r.run_s / 3600, 2),
-                    round(r.unplanned_stop_s / 3600, 2),
-                    round(r.no_data_s / 3600, 2),
-                    round(r.planned_stop_s / 3600, 2),
                     r.availability_pct if r.availability_pct is not None else "",
-                    r.coverage_pct if r.coverage_pct is not None else "",
                     r.parts,
                     round(r.ideal_s / 3600, 2),
                     r.performance_pct if r.performance_pct is not None else "",
                     r.defects,
                     r.quality_pct if r.quality_pct is not None else "",
                     r.oee_pct if r.oee_pct is not None else "",
-                    *(round(r.seconds[s] / 3600, 2) for s in ANDON_STATES),
-                    round(r.total_s / 3600, 2),
-                    r.busy_pct if r.busy_pct is not None else "",
-                    r.faults,
                 ]
                 for r in rows
             ],

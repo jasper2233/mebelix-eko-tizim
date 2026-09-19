@@ -186,9 +186,13 @@ Availability = ishladi ÷ reja vaqti                           (reja vaqti 0 bo'
 | Signal ustuni ulangan HAR ish markazi kiradi | butun davr jim turgan stanok hisobotdan tushib qolmay, 0% bo'lib ko'rinadi |
 | Rang yo'q | maqsad foizi hali belgilanmagan («Ochiq») — chegarasiz yashil/qizil yolg'on baho bo'lardi |
 
-Sahifada: Availability jadvali (reja vaqti, ishladi, rejasiz to'xtash, ma'lumot yo'q, rejali to'xtash, qamrov, foiz),
-to'xtash sabablari bo'yicha taqsimot — tepasida **«Jami to'xtash»** qatori (sababsizi alohida qator), kunlik trek yonida
-kun foizi va chiroq holatlari jadvali. **To'xtashlarning bittalab ro'yxati 2026-09-19 da OLIB TASHLANDI** (egasining
+Sahifada (2026-09-19 da SODDALASHTIRILDI — ortiqcha ustunlar olib tashlandi, arifmetika ko'rinib tursin):
+**Stanok · Reja vaqti · To'xtash · Ishladi · Availability · Detallar · Performance · Brak · Quality · OEE**,
+ya'ni `reja vaqti − to'xtash = ishladi`. «To'xtash» ustuni rejasiz to'xtashlar bilan qaydsiz vaqtni BIRGA beradi
+(ikkalasi ham reja ichidagi yo'qotish), sabablar taqsimoti esa ularni ajratadi: «Jami to'xtash» qatori + har sabab
++ «Qayd yo'q — stanok o'chiq» qatori. Olib tashlanganlar: «Ma'lumot yo'q» va «Qamrov» ustunlari, «Rejali to'xtash»
+ustuni (sabablar jadvalida `Turi = Rejali` bo'lib turibdi) va butun «Chiroq holatlari» jadvali (PROCESSING/IDLE/…
+soatlari BUTUN sutka bo'yicha edi — ikkinchi maxraj foizlarni chalkashtirardi; holatlar kunlik rangli trekda qoldi). **To'xtashlarning bittalab ro'yxati 2026-09-19 da OLIB TASHLANDI** (egasining
 so'rovi): ketma-ket o'nlab qator o'qilmasdi, kerakli narsa — umumiy to'xtash vaqti va uning sabablari. Avariya SONI
 jadvalda qoldi — u «necha marta» degan boshqa savol. Ish jadvali kiritilmagan bo'lsa qizil izoh chiqadi va foiz hisoblanmaydi.
 

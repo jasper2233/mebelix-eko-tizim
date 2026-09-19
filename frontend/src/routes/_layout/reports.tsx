@@ -591,20 +591,6 @@ function GroupRows({ label, rows }: { label: string; rows: MaterialRow[] }) {
 
 // ---------- Stanok vaqti (andon — signal ustuni) ----------
 
-// Holatlar backend `ANDON_STATES` tartibida (jadval ustunlari ham shu tartibda)
-const ANDON_COLUMNS: [string, string, string][] = [
-  ["PROCESSING", "Ishlov", "Detal stanok ichida, ishlov ketmoqda"],
-  [
-    "AWAIT_PART",
-    "Detal kutish",
-    "Chek skanerlangan, detal stanokka solinishi kutilmoqda",
-  ],
-  ["IDLE", "Kutish", "Sariq chiroq — kutish rejimi"],
-  ["STOPPED", "Uzoq kutish", "Sariq chiroq 15 daqiqadan uzoq yondi"],
-  ["FAULT", "Avariya", "Qizil chiroq"],
-  ["OFF", "O'chiq", "Hamma chiroq o'chiq — stanok o'chirilgan"],
-]
-
 // Diagramma guruhlari: rahbar savoli «qancha ishladi / kutdi / avariya / o'chiq».
 // Ranglar holatning MA'NOSI (yaxshi → yomon) — status palitrasi, seriya rangi emas;
 // yonida doim yozuv (legend) va jadval turadi, rang yolg'iz ma'no tashimaydi.
@@ -647,17 +633,15 @@ function MachineTimeReport({ params }: { params: RangeParams }) {
   if (isError) return <QueryError onRetry={() => refetch()} />
   const rows = data?.rows ?? []
   const days = data?.days ?? []
-  const totalRecorded = rows.reduce((s, r) => s + r.total_s, 0)
   return (
     <>
       <Summary>
-        {rows.length} stanok · Availability = ishladi ÷ reja vaqti. Reja vaqti
-        ish jadvalidan (smena − tanaffus − rejali to'xtashlar); ish vaqtida
-        Pico'dan qayd kelmasa stanok O'CHIQ deb qabul qilinadi va to'xtash
-        bo'lib sanaladi. Sariq chiroq {data?.idle_threshold_min ?? 5} daqiqadan
-        qisqa yonsa — mikro-to'xtash, Availability'ga kirmaydi. Quality =
-        (detallar − brak) ÷ detallar: brak kiritilmagan bo'lsa 100%. OEE =
-        Availability × Performance × Quality.
+        {rows.length} stanok · Reja vaqti (ish jadvali − rejali to'xtash) −
+        to'xtash = ishladi. Availability = ishladi ÷ reja vaqti, Performance =
+        detallarning ideal vaqti ÷ ishladi, Quality = (detallar − brak) ÷
+        detallar, OEE = uchalasining ko'paytmasi. Pico'dan qayd kelmagan vaqt
+        stanok o'chiq deb sanaladi; sariq chiroq {data?.idle_threshold_min ?? 5}{" "}
+        daqiqadan qisqa yonsa — mikro-to'xtash, hisobga kirmaydi.
       </Summary>
       {data && !data.schedule_set && (
         <p className="mb-3 text-sm text-destructive">
@@ -687,66 +671,6 @@ function MachineTimeReport({ params }: { params: RangeParams }) {
       {rows.map((r) => (
         <ReasonsTable key={r.machine_id} row={r} />
       ))}
-      <h3 className="mt-8 mb-2 text-sm font-semibold">
-        Chiroq holatlari — qayd etilgan vaqt {hm(totalRecorded)} (butun sutka,
-        ish vaqtidan tashqarisi ham)
-      </h3>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Stanok</TableHead>
-            {ANDON_COLUMNS.map(([state, label, hint]) => (
-              <TableHead
-                key={state}
-                className="hidden text-right md:table-cell"
-                title={hint}
-              >
-                {label}
-              </TableHead>
-            ))}
-            <TableHead
-              className="text-right"
-              title="Barcha holatlar yig'indisi — agent yoki Pico bilan aloqa yo'q paytlar kirmaydi"
-            >
-              Qayd etilgan
-            </TableHead>
-            <TableHead
-              className="text-right"
-              title="Qizil chiroq necha marta yondi"
-            >
-              Avariyalar
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.length ? (
-            rows.map((r) => (
-              <TableRow key={r.machine_id}>
-                <TableCell className="font-medium">{r.machine_name}</TableCell>
-                {ANDON_COLUMNS.map(([state]) => (
-                  <TableCell
-                    key={state}
-                    className="num hidden whitespace-nowrap text-right md:table-cell"
-                  >
-                    {hm(r.seconds[state] ?? 0)}
-                  </TableCell>
-                ))}
-                <TableCell className="num whitespace-nowrap text-right">
-                  {hm(r.total_s)}
-                </TableCell>
-                <TableCell className="num text-right">
-                  {r.faults || "—"}
-                </TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <EmptyRow colSpan={9}>
-              Tanlangan davrda stanok chiroqlaridan ma'lumot yo'q (signal ustuni
-              ulangan stanoklar hisobga olinadi).
-            </EmptyRow>
-          )}
-        </TableBody>
-      </Table>
       {rows.map((r) => (
         <MachineDays
           key={r.machine_id}
@@ -796,46 +720,25 @@ function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
           <TableHead>Stanok</TableHead>
           <TableHead
             className="text-right"
-            title="Smena vaqti − tanaffuslar − rejali to'xtashlar"
+            title="Ish jadvalidagi smena vaqti minus tanaffuslar va rejali to'xtashlar (tushlik, sozlash)"
           >
             Reja vaqti
           </TableHead>
           <TableHead
             className="text-right"
-            title="Reja vaqti − rejasiz to'xtashlar − ma'lumotsiz vaqt"
+            title="Rejasiz to'xtashlar va Pico'dan qayd kelmagan vaqt (stanok o'chiq) — sabablari pastdagi jadvalda"
           >
+            To'xtash
+          </TableHead>
+          <TableHead className="text-right" title="Reja vaqti − to'xtash">
             Ishladi
-          </TableHead>
-          <TableHead
-            className="hidden text-right md:table-cell"
-            title="Avariya, o'chiq va uzoq sariq chiroq — sababi rejasiz yoki kiritilmagan"
-          >
-            Rejasiz to'xtash
-          </TableHead>
-          <TableHead
-            className="hidden text-right md:table-cell"
-            title="Ish vaqtida Pico'dan hech qanday qayd kelmagan — stanok O'CHIQ deb qabul qilinadi (Prisadka Nanxing kompyuterisiz ishlamaydi, Pico ham o'sha kompyuterdan quvvat oladi), ya'ni to'xtash bo'lib sanaladi"
-          >
-            O'chiq (qaydsiz)
-          </TableHead>
-          <TableHead
-            className="hidden text-right md:table-cell"
-            title="Rejali sababli to'xtashlar (tushlik, sozlash) — reja vaqtidan chiqarilgan"
-          >
-            Rejali to'xtash
-          </TableHead>
-          <TableHead
-            className="hidden text-right md:table-cell"
-            title="Ish vaqtining qancha qismida Pico ma'lumoti bor"
-          >
-            Qamrov
           </TableHead>
           <TableHead className="text-right" title="Ishladi ÷ reja vaqti">
             Availability
           </TableHead>
           <TableHead
             className="hidden text-right md:table-cell"
-            title="Kuzatilgan ish vaqtida skanerlangan detallar"
+            title="Ishlagan vaqtda skanerlangan detallar (brak bo'lgani ham sanaladi)"
           >
             Detallar
           </TableHead>
@@ -847,7 +750,7 @@ function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
           </TableHead>
           <TableHead
             className="hidden text-right md:table-cell"
-            title="Terminalda BRAK deb belgilangan detallar (sabablar ro'yxati — Tizim sozlamalari → «Brak sabablari»)"
+            title="Terminalda BRAK deb belgilangan detallar («brak emas» deb rad etilgani sanalmaydi)"
           >
             Brak
           </TableHead>
@@ -874,19 +777,10 @@ function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
                 {hm(r.planned_s)}
               </TableCell>
               <TableCell className="num whitespace-nowrap text-right">
+                {hm(r.unplanned_stop_s + r.no_data_s)}
+              </TableCell>
+              <TableCell className="num whitespace-nowrap text-right">
                 {hm(r.run_s)}
-              </TableCell>
-              <TableCell className="num hidden whitespace-nowrap text-right md:table-cell">
-                {hm(r.unplanned_stop_s)}
-              </TableCell>
-              <TableCell className="num hidden whitespace-nowrap text-right md:table-cell">
-                {hm(r.no_data_s)}
-              </TableCell>
-              <TableCell className="num hidden whitespace-nowrap text-right md:table-cell">
-                {hm(r.planned_stop_s)}
-              </TableCell>
-              <TableCell className="num hidden text-right md:table-cell">
-                {pct(r.coverage_pct)}
               </TableCell>
               <TableCell className="num text-right font-semibold">
                 {pct(r.availability_pct)}
@@ -911,7 +805,7 @@ function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
             </TableRow>
           ))
         ) : (
-          <EmptyRow colSpan={13}>
+          <EmptyRow colSpan={10}>
             Signal ustuni (Pico) ulangan stanok yo'q.
           </EmptyRow>
         )}
@@ -921,7 +815,32 @@ function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
 }
 
 function ReasonsTable({ row }: { row: MachineTimeRow }) {
-  if (!row.reasons.length) return null
+  // Pico qayd qilmagan vaqt ham to'xtash (stanok o'chiq), lekin uning SABABI yo'q —
+  // shuning uchun u `reasons` da emas. Jadvalga alohida qator bo'lib qo'shiladi,
+  // aks holda «Jami to'xtash» yuqoridagi «To'xtash» ustunidan kam chiqib chalkashtirardi.
+  const items = [
+    ...row.reasons.map((r) => ({
+      key: String(r.reason_id ?? "none"),
+      name: r.name,
+      kind: r.is_planned ? "Rejali" : "Rejasiz",
+      count: r.count,
+      seconds: r.seconds,
+      muted: r.reason_id == null,
+    })),
+    ...(row.no_data_s > 0
+      ? [
+          {
+            key: "no-data",
+            name: "Qayd yo'q — stanok o'chiq",
+            kind: "Rejasiz",
+            count: 0,
+            seconds: row.no_data_s,
+            muted: true,
+          },
+        ]
+      : []),
+  ]
+  if (!items.length) return null
   return (
     <section className="mt-6">
       <h3 className="mb-2 text-sm font-semibold">
@@ -949,28 +868,26 @@ function ReasonsTable({ row }: { row: MachineTimeRow }) {
             <TableCell>Jami to'xtash</TableCell>
             <TableCell>—</TableCell>
             <TableCell className="num text-right">
-              {row.reasons.reduce((n, x) => n + x.count, 0)}
+              {items.reduce((n, x) => n + x.count, 0) || "—"}
             </TableCell>
             <TableCell className="num whitespace-nowrap text-right">
-              {hm(row.reasons.reduce((n, x) => n + x.seconds, 0))}
+              {hm(items.reduce((n, x) => n + x.seconds, 0))}
             </TableCell>
             <TableCell className="num text-right">
               {row.shift_s
-                ? `${Math.round((row.reasons.reduce((n, x) => n + x.seconds, 0) * 1000) / row.shift_s) / 10}%`
+                ? `${Math.round((items.reduce((n, x) => n + x.seconds, 0) * 1000) / row.shift_s) / 10}%`
                 : "—"}
             </TableCell>
           </TableRow>
-          {row.reasons.map((x) => (
-            <TableRow key={x.reason_id ?? "none"}>
+          {items.map((x) => (
+            <TableRow key={x.key}>
               <TableCell
-                className={
-                  x.reason_id == null ? "text-muted-foreground" : "font-medium"
-                }
+                className={x.muted ? "text-muted-foreground" : "font-medium"}
               >
                 {x.name}
               </TableCell>
-              <TableCell>{x.is_planned ? "Rejali" : "Rejasiz"}</TableCell>
-              <TableCell className="num text-right">{x.count}</TableCell>
+              <TableCell>{x.kind}</TableCell>
+              <TableCell className="num text-right">{x.count || "—"}</TableCell>
               <TableCell className="num whitespace-nowrap text-right">
                 {hm(x.seconds)}
               </TableCell>
@@ -1049,7 +966,7 @@ function MachineDays({ name, days }: { name: string; days: MachineTimeDay[] }) {
               </div>
               <span
                 className="num text-right text-xs font-semibold"
-                title={`Availability: ishladi ${hm(d.run_s)} ÷ reja vaqti ${hm(d.planned_s)}${d.performance_pct == null ? "" : ` · Performance ${d.performance_pct}% (${d.parts} detal)`}${d.quality_pct == null ? "" : ` · Quality ${d.quality_pct}% (${d.defects} brak)`}${d.oee_pct == null ? "" : ` · OEE ${d.oee_pct}%`}`}
+                title={`Availability: ishladi ${hm(d.run_s)} ÷ reja vaqti ${hm(d.planned_s)}${d.parts ? ` · ${d.parts} detal` : ""}${d.quality_pct == null ? "" : ` · Quality ${d.quality_pct}% (${d.defects} brak)`}${d.oee_pct == null ? "" : ` · OEE ${d.oee_pct}%`}`}
               >
                 {pct(d.availability_pct)}
               </span>

@@ -1953,6 +1953,8 @@ export type MachineStatus = 'active' | 'inactive' | 'repair';
 
 /**
  * MachineTimeDay
+ *
+ * Kunlik trek uchun: rangli chiziq (`seconds`) va o'sha kunning yakuni.
  */
 export type MachineTimeDay = {
     /**
@@ -1970,25 +1972,9 @@ export type MachineTimeDay = {
         [key: string]: number;
     };
     /**
-     * Shift S
-     */
-    shift_s: number;
-    /**
-     * Planned Stop S
-     */
-    planned_stop_s: number;
-    /**
      * Planned S
      */
     planned_s: number;
-    /**
-     * Unplanned Stop S
-     */
-    unplanned_stop_s: number;
-    /**
-     * No Data S
-     */
-    no_data_s: number;
     /**
      * Run S
      */
@@ -2001,14 +1987,6 @@ export type MachineTimeDay = {
      * Parts
      */
     parts: number;
-    /**
-     * Ideal S
-     */
-    ideal_s: number;
-    /**
-     * Performance Pct
-     */
-    performance_pct: number | null;
     /**
      * Defects
      */
@@ -2056,6 +2034,9 @@ export type MachineTimeReport = {
 
 /**
  * MachineTimeRow
+ *
+ * Bitta stanokning davr bo'yicha yakuni. Sahifada arifmetika KO'RINIB tursin:
+ * `reja vaqti − to'xtash = ishladi`, keyin uchala foiz va ularning ko'paytmasi.
  */
 export type MachineTimeRow = {
     /**
@@ -2067,31 +2048,9 @@ export type MachineTimeRow = {
      */
     machine_name: string;
     /**
-     * Seconds
-     */
-    seconds: {
-        [key: string]: number;
-    };
-    /**
-     * Total S
-     */
-    total_s: number;
-    /**
-     * Busy Pct
-     */
-    busy_pct: number | null;
-    /**
-     * Faults
-     */
-    faults: number;
-    /**
      * Shift S
      */
     shift_s: number;
-    /**
-     * Planned Stop S
-     */
-    planned_stop_s: number;
     /**
      * Planned S
      */
@@ -2112,10 +2071,6 @@ export type MachineTimeRow = {
      * Availability Pct
      */
     availability_pct: number | null;
-    /**
-     * Coverage Pct
-     */
-    coverage_pct: number | null;
     /**
      * Reasons
      */
