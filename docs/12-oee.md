@@ -327,6 +327,7 @@ faqat KUZATILADI: hech narsa bloklanmaydi, skan oqimiga tegilmaydi. Foyda darhol
 | Kalit | `_kromka_kalit` | Kromka firmware'i `session`/`seq` ni yubormaydi — agent beradi (har ulanishda yangi sessiya), shuning uchun serverdagi `(machine_id, session, seq)` unikal indeksi qayta yuborishni o'zi tashlaydi |
 | Buferdan kelgani | `_kromka_line` | `eski_ms` — hodisa Pico xotirasida qancha kutgani; `ts = hozir − eski_ms`, aks holda tun bo'yi yig'ilgani bitta daqiqaga tiqilardi |
 | Qabul | `POST /bridge-agents/andon` (o'sha endpoint) | `AndonEventIn.type` ga kromka turlari qo'shildi: `olchov`, `uskuna`, `tezlik`, `ogoh`, `avariya_toxtash`, `boot`. Yangi jadval YO'Q — xom hodisa `andon_event.payload` da |
+| Joriy holat | agent har 30 s `HOLAT` so'raydi (`_kromka_holat`) | Kromka `uskuna` ni faqat RUN kirishi O'ZGARGANDA yuboradi — stanok ertalab yoqilib, agent kunduzi ulansa hech narsa kelmasdi. `HOLAT` javobidagi `uskuna` o'sha lahzadagi holat; **o'zgargan bo'lsagina** hodisa yoziladi (`manba: "holat"`), aks holda oraliqlar maydalanardi |
 | Oraliqlar | `services/andon.py: uskuna_spans` | Kromka Pico'si holat DAVOMIYLIGINI o'lchamaydi (prisadkadagi `prev_duration_s` yo'q) — oraliq hodisalar orasidan quriladi: `holat=1` → PROCESSING, `0` → OFF. Oxirgi oraliq faqat agent hozir aloqada bo'lsa ochiq qoladi |
 | Terminal | `Terminal/KromkaView: StationStrip` + `GET /terminal/kromka/measurements` | Sarlavha ostida oxirgi o'lchov: `mm`, Pico kodi (OK/FARQ/FAQAT1/FAQAT2), D1/D2, tezlik va oldingi 7 tasi. Stansiyasiz postda umuman chizilmaydi |
 
@@ -334,7 +335,7 @@ faqat KUZATILADI: hech narsa bloklanmaydi, skan oqimiga tegilmaydi. Foyda darhol
 avtomatik brak, kalibrlash UI si va `SET` yuborish (Pico `kal.json` dagi oxirgi sozlama bilan
 ishlayveradi), sirena/lampa mantiqi.
 
-Tekshiruv (bir martalik skript): **19/19** — ularning sinov bazasidan tiklangan 214 ta HAQIQIY
+Tekshiruv (bir martalik skript): **24/24** — ularning sinov bazasidan tiklangan 214 ta HAQIQIY
 Pico qatori agent parseridan o'tdi (tur aniqlandi, `seq` uzluksiz, `eski_ms` vaqti tiklandi,
 `CHOP` matni tashlandi, prisadka formati buzilmadi), 44 hodisa endpointga qabul qilindi va
 takror yuborishda 0 ta yangi yozuv, xom maydonlar (`L`, `kod`) saqlandi, kunlik hisobotda

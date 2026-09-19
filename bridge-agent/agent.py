@@ -57,7 +57,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.6.0"
+AGENT_VERSION = "1.6.1"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -1396,6 +1396,30 @@ def _kromka_kalit() -> tuple[str, int]:
     return str(ANDON_TUR["session"]), int(ANDON_TUR["seq"])
 
 
+#: Kromka Pico'sidan joriy holat SO'RALADIGAN oraliq. `uskuna` hodisasi faqat RUN
+#: kirishi O'ZGARGANDA keladi — stanok ertalab yoqilgan bo'lsa-yu agent kunduzi
+#: ulansa, hech qanday hodisa kelmaydi va MES «ma'lumot yo'q» deb qolardi.
+#: `HOLAT` javobidagi `uskuna` — o'sha lahzadagi haqiqiy holat.
+_KROMKA_HOLAT_S = 30
+
+
+def _kromka_holat(data: dict[str, Any]) -> None:
+    """`HOLAT` javobi: joriy holatni o'qiydi va O'ZGARGAN bo'lsa hodisa qilib yozadi.
+
+    O'zgarmagan bo'lsa hech narsa yozilmaydi — aks holda har 30 soniyada bir xil
+    yozuv tushib, oraliqlar maydalanib ketardi."""
+    if "uskuna" not in data:
+        return
+    if data.get("ver"):
+        ANDON_TUR["ver"] = str(data["ver"])
+    holat = 1 if data.get("uskuna") else 0
+    if ANDON_TUR.get("uskuna") == holat:
+        return
+    ANDON_TUR["uskuna"] = holat
+    # `manba` — bu yozuv chekka o'zgarishidan emas, SO'ROVDAN olingani ko'rinib tursin
+    _kromka_line({"ev": "uskuna", "holat": holat, "manba": "holat"})
+
+
 def _kromka_line(data: dict[str, Any]) -> None:
     """KROMKA stansiyasi Pico'sidan bitta hodisa (`{"ev": ...}`).
 
@@ -1418,6 +1442,7 @@ def _kromka_line(data: dict[str, Any]) -> None:
     # PROCESSING, to'xtagan = OFF (bizda OFF darhol to'xtash deb sanaladi, sariq
     # chiroqning mikro-to'xtash chegarasi bu yerda ma'nosiz).
     if ev == "uskuna":
+        ANDON_TUR["uskuna"] = 1 if data.get("holat") else 0
         holat = "PROCESSING" if data.get("holat") else "OFF"
         with ANDON_LOCK:
             if ANDON_CURRENT.get("state") != holat:
@@ -1445,7 +1470,10 @@ def _andon_line(text: str) -> None:
         if ANDON_TUR["tur"] != _TUR_KROMKA:
             ANDON_TUR["tur"] = _TUR_KROMKA
             log.info("Andon: KROMKA stansiyasi Pico'si aniqlandi")
-        _kromka_line(data)
+        if data.get("ev") == "holat":
+            _kromka_holat(data)
+        else:
+            _kromka_line(data)
         return
     if not text.startswith("MES "):
         if text:
@@ -1495,7 +1523,9 @@ def _andon_session(port: Any) -> None:
     global ANDON_CONNECTED
     ANDON_CONNECTED = True
     ANDON_TUR["session"] = ""          # har ulanish — yangi kalit
+    ANDON_TUR["uskuna"] = None         # holat noma'lum: birinchi javob yoziladi
     next_ping = 0.0
+    next_holat = 0.0
     pending = b""
     try:
         while True:
@@ -1506,6 +1536,11 @@ def _andon_session(port: Any) -> None:
                 next_ping = now + (
                     _KROMKA_HB_S if kromka else (_ANDON_PING_S if ANDON_TUR["tur"] else _KROMKA_HB_S)
                 )
+            # Joriy holatni so'rab turish — faqat kromkada (prisadka o'zi har 30 s
+            # snapshot yuboradi)
+            if ANDON_TUR["tur"] == _TUR_KROMKA and now >= next_holat:
+                port.write(b"HOLAT\n")
+                next_holat = now + _KROMKA_HOLAT_S
             # timeout 0.2 s: vaqt tugasa YARIM qator ham qaytishi mumkin — yig'ib boramiz
             chunk = port.readline()
             if not chunk:
