@@ -1,7 +1,7 @@
 // Oxirgi skan natijasi + BEKOR QILISH. Har post ekranining tepasida turadi:
 // tsex shovqinida ovoz signaliga ishonib bo'lmaydi, natija ko'rinib turishi kerak.
 
-import { Undo2 } from "lucide-react"
+import { TriangleAlert, Undo2 } from "lucide-react"
 
 import { Serial } from "@/components/Terminal/Serial"
 import { Button } from "@/components/ui/button"
@@ -20,12 +20,16 @@ export function ScanStrip({
   scan,
   canUndo,
   onUndo,
+  onDefect,
   birlik,
 }: {
   scan: LastScan
   /** Bekor qilish oynasi 60 s — chaqiruvchi taymer bilan hisoblaydi */
   canUndo: boolean
   onUndo: () => void
+  /** BRAK — detal yaroqsiz chiqdi (OEE Quality). Berilmasa tugma chizilmaydi:
+   *  brak sabablari ro'yxati hali kiritilmagan bo'lsa bosadigan narsa yo'q. */
+  onDefect?: () => void
   /** Qoldiq birligi — KROMKA'da "qirra" (har qirra alohida skan).
    *  Yalang'och "Qoldiq: 3" kromkachini adashtirardi: 3 nima — detalmi, skanmi?
    *  U 4 qirralik detalni 2 skan bilan "tugadi" deb ketar, prisadka esa E004
@@ -77,9 +81,23 @@ export function ScanStrip({
           <span className="num text-xs text-red-700/60">{scan.code}</span>
         </>
       )}
+      {/* BRAK faqat MUVAFFAQIYATLI skanda: belgilanadigan narsa — o'sha skan.
+          Bekor qilish bilan yonma-yon, lekin ajralib tursin deb outline. */}
+      {ok && onDefect && (
+        <Button
+          variant="outline"
+          className="ml-auto h-12 shrink-0 border-2 border-red-500 px-4 text-sm font-black text-red-700 hover:bg-red-100 hover:text-red-800"
+          onClick={onDefect}
+        >
+          <TriangleAlert /> BRAK
+        </Button>
+      )}
       <Button
         variant="destructive"
-        className="ml-auto h-12 shrink-0 px-4 text-sm font-black"
+        className={cn(
+          "h-12 shrink-0 px-4 text-sm font-black",
+          !(ok && onDefect) && "ml-auto",
+        )}
         disabled={!canUndo}
         onClick={onUndo}
       >

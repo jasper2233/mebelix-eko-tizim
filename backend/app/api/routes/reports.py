@@ -25,6 +25,7 @@ from app.models import (
     Machine,
     Order,
     Part,
+    PartDefect,
     PartRoute,
     Post,
     Scan,
@@ -65,7 +66,7 @@ from app.services.andon import ANDON_STATES, andon_spans, machine_time, read_liv
 from app.services.availability import DayTotals, StopRun, availability, inside, plan_windows
 from app.services.excel import xlsx_response
 from app.services.metrics import VolumeShare, part_volume
-from app.services.performance import ideal_seconds
+from app.services.performance import ideal_seconds, oee_pct, quality_pct
 from app.services.settings_service import (
     STOP_PROMPT_IDLE_MINUTES,
     get_ideal_cycle,
@@ -376,6 +377,30 @@ async def report_machine_time(
                 cell[0] += seconds
                 cell[1] += 1
 
+    # OEE Quality: BRAK (`part_defect`) — detallar bilan BIR XIL filtr (kuzatilgan ish vaqti),
+    # aks holda surat va maxraj boshqa-boshqa vaqtdan yig'ilardi. Brak kiritilmagan bo'lsa
+    # Quality 100% bo'lib qoladi: ayiriladigan narsa yo'q.
+    defects_by: dict[tuple[int, date], int] = {}
+    if prisadka_ids:
+        defect_rows = (
+            (
+                await db.execute(
+                    select(PartDefect.machine_id, PartDefect.created_at).where(
+                        PartDefect.machine_id.in_(prisadka_ids),
+                        PartDefect.is_deleted == False,  # noqa: E712
+                        PartDefect.created_at >= start,
+                        PartDefect.created_at <= end,
+                    )
+                )
+            )
+            .tuples()
+            .all()
+        )
+        for mid, at in defect_rows:
+            if mid is not None and inside(avail[mid].observed, at):
+                key = (mid, at.astimezone(TASHKENT_TZ).date())
+                defects_by[key] = defects_by.get(key, 0) + 1
+
     def perf(mid: int, ideal_s: float, run_s: int) -> float | None:
         return round(ideal_s * 100 / run_s, 1) if mid in prisadka_ids and run_s > 0 else None
 
@@ -385,6 +410,9 @@ async def report_machine_time(
         total = sum(secs.values())
         a = avail[mid].total
         ideal_total = sum(v[0] for (m, _d), v in ideal_by.items() if m == mid)
+        parts_total = int(sum(v[1] for (m, _d), v in ideal_by.items() if m == mid))
+        defects_total = sum(n for (m, _d), n in defects_by.items() if m == mid)
+        row_quality = quality_pct(parts_total, defects_total)
         rows.append(
             MachineTimeRow(
                 machine_id=mid,
@@ -411,11 +439,14 @@ async def report_machine_time(
                     )
                     for r in avail[mid].reasons
                 ],
-                parts=int(sum(v[1] for (m, _d), v in ideal_by.items() if m == mid)),
+                parts=parts_total,
                 ideal_s=round(ideal_total),
                 performance_pct=perf(mid, ideal_total, a.run_s),
                 cycles=int(measured.get(mid, [0.0, 0])[1]),
                 measured_cycle_s=round(measured.get(mid, [0.0, 0])[0]),
+                defects=defects_total,
+                quality_pct=row_quality,
+                oee_pct=oee_pct(a.availability_pct, perf(mid, ideal_total, a.run_s), row_quality),
             )
         )
     empty_day = DayTotals()
@@ -438,6 +469,13 @@ async def report_machine_time(
                 parts=int(ideal_by.get((mid, day), [0.0, 0])[1]),
                 ideal_s=round(ideal_by.get((mid, day), [0.0, 0])[0]),
                 performance_pct=perf(mid, ideal_by.get((mid, day), [0.0, 0])[0], d.run_s),
+                defects=defects_by.get((mid, day), 0),
+                quality_pct=quality_pct(int(ideal_by.get((mid, day), [0.0, 0])[1]), defects_by.get((mid, day), 0)),
+                oee_pct=oee_pct(
+                    d.availability_pct,
+                    perf(mid, ideal_by.get((mid, day), [0.0, 0])[0], d.run_s),
+                    quality_pct(int(ideal_by.get((mid, day), [0.0, 0])[1]), defects_by.get((mid, day), 0)),
+                ),
             )
         )
     stops = [
@@ -476,6 +514,9 @@ async def report_machine_time(
                 "Detallar",
                 "Ideal vaqt (soat)",
                 "Performance, %",
+                "Brak",
+                "Quality, %",
+                "OEE, %",
                 *(f"{_ANDON_LABELS[s]} (soat)" for s in ANDON_STATES),
                 "Jami qayd (soat)",
                 "Ishlov ulushi, %",
@@ -494,6 +535,9 @@ async def report_machine_time(
                     r.parts,
                     round(r.ideal_s / 3600, 2),
                     r.performance_pct if r.performance_pct is not None else "",
+                    r.defects,
+                    r.quality_pct if r.quality_pct is not None else "",
+                    r.oee_pct if r.oee_pct is not None else "",
                     *(round(r.seconds[s] / 3600, 2) for s in ANDON_STATES),
                     round(r.total_s / 3600, 2),
                     r.busy_pct if r.busy_pct is not None else "",

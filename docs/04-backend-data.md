@@ -136,7 +136,10 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   bayram sanalari); u `DEFAULTS` da YO'Q, o'z endpointi bor (`GET/PUT /settings/work-schedule`),
   o'qish `get_work_schedule()`, qoidalar `schedule_error()`. `ideal_cycle_prisadka` kaliti — Prisadka ideal sikli
   koeffitsiyentlari JSON'i (`schemas/settings.py: IdealCycle`, har biri 0..600 s; sukut qiymatlar TAXMINIY va
-  sxemaning o'zida: 15 / 2 / 2.5 / 8 / 12), `GET/PUT /settings/ideal-cycle`, o'qish `get_ideal_cycle()`. Nega `.env` emas: belgini
+  sxemaning o'zida: 15 / 2 / 2.5 / 8 / 12), `GET/PUT /settings/ideal-cycle`, o'qish `get_ideal_cycle()`.
+  `defect_reasons` kaliti — BRAK sabablari JSON'i (`schemas/settings.py: DefectReasons`, ≤30 ta, har biri
+  ≤40 belgi), `GET/PUT /settings/defect-reasons`, o'qish `get_defect_reasons()`; terminal uni
+  `GET /terminal/defect-reasons` orqali oladi. Alohida jadval ATAYLAB emas (docs/12 §4.7). Nega `.env` emas: belgini
   o'zgartirish uchun serverga kirib konteynerni qayta ishga tushirish kerak bo'lardi.
   Nega kalit/qiymat: sahifaga keyin stanoklar sozlamalari qo'shiladi.
 - `AndonEvent` (`andon_event`, `5d8e2a61c0f4`) — stanok signal ustunidan (Pico → MES agent →
@@ -149,6 +152,15 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   `(machine_id, happened_at)`. Xom tarix; to'xtashlar shu jadvaldan `downtime` ga chiqariladi
   (quyida), OEE hisoboti keyingi bosqich (eski `stop_reason`/`machine_stop` LEGACY). Jonli holat
   jadvalda emas — Redis'da (`services/andon.py`).
+- `PartDefect` (`part_defect`, `b3f5c17a9d84`) — BRAK qilingan nusxa, OEE Quality shundan:
+  `order_id`/`part_id`/`instance_id` FK, `scan_id` FK NULL (qaysi skandan keyin belgilangan —
+  bitta skan ikki marta brak qilinmasin), `machine_id` FK NULL, `post_id` FK, `employee_id` FK NULL
+  (belgilagan — langar smena hodimi), `reason(60)`, `note`. Indekslar: `ix_part_defect_machine_at`
+  `(machine_id, created_at)` — hisobot shu bo'yicha sanaydi, `ix_part_defect_instance`.
+  Sabab MATN bo'lib saqlanadi, FK EMAS: ro'yxat `system_setting.defect_reasons` da va admin uni
+  o'zgartirsa eski yozuvning ma'nosi buzilmaydi. Nomi `defect` EMAS — o'sha nomdagi jadval
+  `a1c9d4f2b60e` da tushirilgan (`downtime_reason` bilan bir xil sabab). Brak skanni BEKOR
+  QILMAYDI va marshrutni qayta ochmaydi (docs/12 §4.7).
 - `DowntimeReason` (`downtime_reason`, `9e4b7c1d2a60`) — to'xtash sabablari ro'yxati, admin Tizim
   sozlamalarida yuritadi: `name(60)`, `is_planned` (rejali — tushlik, sozlash; OEE reja vaqtidan
   chiqariladi), `needs_note` (izohsiz saqlanmaydi, masalan «Boshqa»), `order_index`, `is_active`.
@@ -341,6 +353,7 @@ Umumiy "NAVBATDAGI VAZIFALAR" jadvali (`TaskRow`) va `/terminal/tasks` endpointi
 | `backend/app/schemas/tablo.py` | `StageAgg`, `TabloPostCol`, `TabloOrderRow`, `TabloMatrix`, `TabloPartRow`, `TabloOrderDetail` | TABLO javob modellari (avval `tablo.py` route ichida inline edi); `TabloMatrix.posts` endi typed (`TabloPostCol`) |
 | `backend/app/schemas/reports.py` | `EmployeeProductivity`, `ProductivityReport`, `OrderReportRow`, `OrdersReport`, `MaterialUsageRow`, `MaterialsReport`, `DashboardToday`, `DashboardOrders`, `ReadyOrder`, `PostLoad`, `TrendDay`, `DashboardMoney`, `DashboardStats`, `AvailabilityReason`, `MachineTimeRow`, `MachineTimeDay`, `MachineTimeStop`, `MachineTimeReport` | Hisobot/dashboard javob modellari; `MachineTime*` — `GET /reports/machine-time` (stanok vaqti, andon) — 2026-09-18 dan OEE Availability maydonlari bilan (`shift_s`, `planned_stop_s`, `planned_s`, `unplanned_stop_s`, `no_data_s`, `run_s`, `availability_pct`, `coverage_pct`, `reasons`; Performance: `parts`, `ideal_s`, `performance_pct`, `cycles`, `measured_cycle_s`; hisobotda `schedule_set`, `idle_threshold_min`, `ideal_cycle`) (avval `reports.py` route ichida inline edi) |
 | `backend/app/schemas/audit.py` | `AuditLogRead`, `AuditSummaryRow` | Loglar sahifasi qatori (avval route ichida inline edi) |
+| `backend/app/schemas/defects.py` | `DefectCreate`, `DefectRead` | Brak: `scan_id` (nusxa emas — tasmadagi skan), `reason` (ro'yxatdan, matn bo'lib ko'chiriladi), `note` ≤500 |
 | `backend/app/schemas/downtimes.py` | `DowntimeReasonRead`, `DowntimeReasonCreate`, `DowntimeReasonUpdate`, `DowntimeRead`, `DowntimeReasonInput` | To'xtash sabablari (admin CRUD — `name` 1..60) va terminal: `DowntimeRead` (`id`, `kind`, `started_at`, `ended_at`, `reason_id`), `DowntimeReasonInput` (`reason_id`, `note` ≤500). Satrlar `str_strip_whitespace` |
 
 ---
@@ -445,7 +458,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 
 ### 4.4 Versiyalar zanjiri — `backend/app/migrations/versions/`
 
-53 ta migratsiya, head: `9e4b7c1d2a60`.
+54 ta migratsiya, head: `b3f5c17a9d84`.
 
 **Olib tashlangan ikki modulning migratsiyalari ATAYLAB qoldirilgan** — OEE
 (37–39) va materiallar ombori (27–28). Modul kodi butunlay
@@ -523,6 +536,7 @@ va 7 yetim ustun**; hammasi `migrations/env.py` dagi
 | 50 | `7e6946ebd00d` | `7e6946ebd00d_system_setting_runtime_sozlamalar.py` | **`system_setting`** — ish vaqtida admin tahrirlaydigan kalit/qiymat sozlamalar (§1.4); birinchi kalit `custom_part_suffix` |
 | 51 | `5d8e2a61c0f4` | `5d8e2a61c0f4_andon_event_stanok_signal_ustuni.py` | **`andon_event`** — stanok signal ustunidan (Pico → MES agent) kelgan xom hodisalar (§1.4): UNIQUE `(machine_id, session, seq)`, `(machine_id, happened_at)` indeksi. Eski OEE jadvallariga (`stop_reason`, `machine_stop`) tegmaydi |
 | 52 | `c1e8a4b7d9f2` | `c1e8a4b7d9f2_system_setting_value_text.py` | **`system_setting.value` → `Text`** — ish jadvali (`work_schedule`) JSON bo'lib saqlanadi, bayramlar qo'shilgan sari 255 belgidan oshardi. Downgrade 255 dan uzun qiymatda ataylab yiqiladi (kesilgan JSON o'qib bo'lmaydi) |
+| 54 | `b3f5c17a9d84` | `b3f5c17a9d84_part_defect_brak_qaydi.py` | **`part_defect`** — brak qaydi (§1.4), OEE Quality manbai: `(machine_id, created_at)` va `(instance_id)` indekslari. Eski `defect` jadvali `a1c9d4f2b60e` da tushirilgan, nom qayta ishlatilmaydi |
 | 53 | `9e4b7c1d2a60` | `9e4b7c1d2a60_downtime_toxtash_sabablari.py` | **`downtime_reason`, `downtime`** — to'xtash sabablari va stanok to'xtashlari (§1.4): `downtime.kind` VARCHAR(30) enum (`native_enum=False`), UNIQUE `(machine_id, start_key)`, `(machine_id, started_at)` indeksi. LEGACY `stop_reason`/`machine_stop` ga tegilmaydi |
 
 Anketa **xona rasmlari** uchun migratsiya yo'q: mavjud `order_file` jadvali `kind=DOCUMENT` + `meta` JSONB bilan ishlatiladi (1.4.1-bo'lim).

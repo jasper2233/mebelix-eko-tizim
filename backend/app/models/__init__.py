@@ -2,6 +2,7 @@ from .andon import AndonEvent
 from .audit import AuditLog
 from .bridge_agent import BridgeAgent
 from .client import Client
+from .defect import PartDefect
 from .downtime import Downtime, DowntimeReason
 from .employee import Employee
 from .machine import Machine
@@ -42,6 +43,7 @@ __all__ = [
     "Pachka",
     "PachkaItem",
     "Part",
+    "PartDefect",
     "PartInstance",
     "PartRoute",
     "WasteItem",

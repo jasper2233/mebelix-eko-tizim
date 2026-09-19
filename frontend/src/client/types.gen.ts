@@ -1143,6 +1143,71 @@ export type DashboardToday = {
 };
 
 /**
+ * DefectCreate
+ *
+ * Brak: operator skanerlagan nusxani BRAK deb belgilaydi (terminal skan tasmasi).
+ *
+ * Nusxa emas, SKAN beriladi: tasmada aynan shu skan turibdi va uning ish markazi,
+ * posti hamda nusxasi allaqachon ma'lum — terminal QR ni qayta yubormaydi.
+ */
+export type DefectCreate = {
+    /**
+     * Scan Id
+     */
+    scan_id: number;
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Note
+     */
+    note?: string;
+};
+
+/**
+ * DefectRead
+ */
+export type DefectRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Instance Id
+     */
+    instance_id: number;
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Note
+     */
+    note: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * DefectReasons
+ *
+ * Brak sabablari — terminaldagi BRAK oynasida tugma bo'lib chiqadi (OEE Quality).
+ *
+ * Alohida jadval EMAS (`downtime_reason` dan farqli): sabab `part_defect.reason` ga
+ * MATN bo'lib ko'chiriladi, ya'ni FK ham, `is_active` ham kerak emas — ro'yxatdan
+ * olib tashlangan sabab eski yozuvlarda o'qilaveradi.
+ */
+export type DefectReasons = {
+    /**
+     * Reasons
+     */
+    reasons?: Array<string>;
+};
+
+/**
  * DowntimeKind
  *
  * To'xtash turi (`downtime.kind`). Frontenddagi `DOWNTIME_KIND_LABELS` (lib/mes.ts) bilan qo'lda oynalangan.
@@ -1782,6 +1847,18 @@ export type MachineTimeDay = {
      * Performance Pct
      */
     performance_pct: number | null;
+    /**
+     * Defects
+     */
+    defects: number;
+    /**
+     * Quality Pct
+     */
+    quality_pct: number | null;
+    /**
+     * Oee Pct
+     */
+    oee_pct: number | null;
 };
 
 /**
@@ -1905,6 +1982,18 @@ export type MachineTimeRow = {
      * Measured Cycle S
      */
     measured_cycle_s: number;
+    /**
+     * Defects
+     */
+    defects: number;
+    /**
+     * Quality Pct
+     */
+    quality_pct: number | null;
+    /**
+     * Oee Pct
+     */
+    oee_pct: number | null;
 };
 
 /**
@@ -6653,6 +6742,79 @@ export type LockWithDowntimeReasonResponses = {
 
 export type LockWithDowntimeReasonResponse = LockWithDowntimeReasonResponses[keyof LockWithDowntimeReasonResponses];
 
+export type ReadTerminalDefectReasonsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/terminal/defect-reasons';
+};
+
+export type ReadTerminalDefectReasonsResponses = {
+    /**
+     * Response Read Terminal Defect Reasons
+     *
+     * Successful Response
+     */
+    200: Array<string>;
+};
+
+export type ReadTerminalDefectReasonsResponse = ReadTerminalDefectReasonsResponses[keyof ReadTerminalDefectReasonsResponses];
+
+export type MarkDefectData = {
+    body: DefectCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/terminal/defects';
+};
+
+export type MarkDefectErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MarkDefectError = MarkDefectErrors[keyof MarkDefectErrors];
+
+export type MarkDefectResponses = {
+    /**
+     * Successful Response
+     */
+    201: DefectRead;
+};
+
+export type MarkDefectResponse = MarkDefectResponses[keyof MarkDefectResponses];
+
+export type UnmarkDefectData = {
+    body?: never;
+    path: {
+        /**
+         * Defect Id
+         */
+        defect_id: number;
+    };
+    query?: never;
+    url: '/api/v1/terminal/defects/{defect_id}';
+};
+
+export type UnmarkDefectErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UnmarkDefectError = UnmarkDefectErrors[keyof UnmarkDefectErrors];
+
+export type UnmarkDefectResponses = {
+    /**
+     * Successful Response
+     */
+    200: DefectRead;
+};
+
+export type UnmarkDefectResponse = UnmarkDefectResponses[keyof UnmarkDefectResponses];
+
 export type RecordScanData = {
     body: ScanRequest;
     path?: never;
@@ -6807,6 +6969,47 @@ export type UpdateIdealCycleResponses = {
 };
 
 export type UpdateIdealCycleResponse = UpdateIdealCycleResponses[keyof UpdateIdealCycleResponses];
+
+export type ReadDefectReasonsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/defect-reasons';
+};
+
+export type ReadDefectReasonsResponses = {
+    /**
+     * Successful Response
+     */
+    200: DefectReasons;
+};
+
+export type ReadDefectReasonsResponse = ReadDefectReasonsResponses[keyof ReadDefectReasonsResponses];
+
+export type UpdateDefectReasonsData = {
+    body: DefectReasons;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/defect-reasons';
+};
+
+export type UpdateDefectReasonsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateDefectReasonsError = UpdateDefectReasonsErrors[keyof UpdateDefectReasonsErrors];
+
+export type UpdateDefectReasonsResponses = {
+    /**
+     * Successful Response
+     */
+    200: DefectReasons;
+};
+
+export type UpdateDefectReasonsResponse = UpdateDefectReasonsResponses[keyof UpdateDefectReasonsResponses];
 
 export type UpdateSystemSettingData = {
     body: SystemSettingUpdate;

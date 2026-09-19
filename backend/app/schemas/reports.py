@@ -60,6 +60,10 @@ class MachineTimeRow(BaseModel):
     performance_pct: float | None  # ideal_s / run_s; 100 dan oshsa KESILMAYDI — koeffitsiyent yumshoqligi belgisi
     cycles: int  # Pico o'lchagan tugallangan sikllar (kalibrlash uchun)
     measured_cycle_s: int  # ularning wait_s + process_s yig'indisi — ideal_s bilan solishtiriladi
+    # --- OEE Quality (`part_defect` — terminaldagi BRAK tugmasi). Brak kiritilmagan bo'lsa 100%
+    defects: int  # kuzatilgan ish vaqtida brak deb belgilangan nusxalar
+    quality_pct: float | None  # (detallar − brak) ÷ detallar; detal sanalmagan bo'lsa None
+    oee_pct: float | None  # Availability × Performance × Quality; uchtasidan biri yo'q bo'lsa None
 
 
 class MachineTimeDay(BaseModel):
@@ -76,6 +80,9 @@ class MachineTimeDay(BaseModel):
     parts: int
     ideal_s: int
     performance_pct: float | None
+    defects: int
+    quality_pct: float | None
+    oee_pct: float | None
 
 
 class MachineTimeStop(BaseModel):

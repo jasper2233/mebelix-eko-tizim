@@ -1,6 +1,8 @@
 # 12 — OEE (Prisadka): holat, bajarilgan ishlar va reja
 
-Holat: **2026-09-17**. OEE hali hisoblanmaydi — bu hujjat poydevor qayerda turganini,
+Holat: **2026-09-19**. OEE'ning uchala qismi ham hisoblanadi (Availability, Performance,
+Quality) va hisobotda `A × P × Q` raqami chiqadi — lekin qiymatlar ma'lumot qamroviga va
+TAXMINIY koeffitsiyentlarga bog'liq (§5, §4.6). Bu hujjat poydevor qayerda turganini,
 prod ma'lumoti nimani ko'rsatganini va keyingi qadamlarni yozadi.
 
 ## 1. OEE nima va har qismi qayerdan olinadi
@@ -22,7 +24,9 @@ OEE          = Availability × Performance × Quality
 | Detallar soni | MES skanlari (`scan`) + Pico sikllari | ✅ bor, o'zaro deyarli mos (§5) |
 | Ideal sikl vaqti | `part.xnc_summary` (teshik/paz/freza) + koeffitsiyentlar (Tizim sozlamalari, §4.6) | ⚠️ bor, qiymatlar TAXMINIY — sekundomer bilan to'g'rilash kerak |
 | **Performance hisobi** | `services/performance.py`, Hisobotlar → «Stanok vaqti» (§4.6) | ✅ bor (2026-09-18), faqat Prisadka |
-| Brak | — | ❌ yo'q |
+| Brak | `part_defect` — terminal skan tasmasidagi BRAK tugmasi (§4.7) | ✅ bor (2026-09-19); qayta ishlab chiqarish (remake) YO'Q |
+| **Quality hisobi** | `services/performance.py: quality_pct`, Hisobotlar → «Stanok vaqti» (§4.7) | ✅ bor (2026-09-19) |
+| **OEE = A × P × Q** | `services/performance.py: oee_pct`, o'sha hisobot ustuni (§4.7) | ✅ bor (2026-09-19) |
 
 ## 2. Tarix
 
@@ -237,6 +241,42 @@ ma'lumotsiz vaqtdagi va jim kundagi skanlar sanalmasligi, buzuq/tugallanmagan Pi
 saqlash + audit, yangi koeffitsiyent o'tgan kunga ta'siri, Excel; karta va hisobot headless Chrome'da 19/19.
 §4.5 orakllari (31/31, 18/18) qayta o'tdi.
 
+### 4.7 Brak va Quality (2026-09-19)
+
+OEE'ning uchinchi qismi. Egasining qoidasi: **brak kiritilmasa Quality 100%**, kiritilsa
+uning ulushi ayiriladi.
+
+```
+Quality = (detallar − brak) ÷ detallar        (detal sanalmagan bo'lsa hisoblanmaydi)
+OEE     = Availability × Performance × Quality
+```
+
+| Qism | Qayerda | Nima qiladi |
+| --- | --- | --- |
+| Jadval | `part_defect` (migratsiya `b3f5c17a9d84`, docs/04) | brak qilingan NUSXA: buyurtma/detal/nusxa, skan, ish markazi, post, belgilagan hodim, sabab (MATN), izoh |
+| Sabablar | Tizim sozlamalari → «Brak sabablari» (`system_setting.defect_reasons`, JSON ro'yxat) | alohida jadval EMAS: sabab yozuvga matn bo'lib ko'chiriladi, ya'ni ro'yxatdan olib tashlangani eski yozuvda o'qilaveradi |
+| Terminal | `Terminal/DefectDialog.tsx` + skan tasmasidagi BRAK tugmasi | oxirgi MUVAFFAQIYATLI skan turganda tugma chiqadi; oyna sabab tugmalari va ixtiyoriy izoh; ro'yxat bo'sh bo'lsa tugma umuman chizilmaydi |
+| API | `GET /terminal/defect-reasons`, `POST /terminal/defects`, `DELETE /terminal/defects/{id}` (docs/03) | belgilash va noto'g'ri bosilganini qaytarish (yumshoq o'chirish) |
+| Hisob | `services/performance.py: quality_pct` / `oee_pct`, `GET /reports/machine-time` | «Stanok vaqti» dagi «Brak», «Quality» va «OEE» ustunlari, kunlik trekda ham |
+
+| Qoida | Nega |
+| --- | --- |
+| Brak SKANNI bekor qilmaydi, marshrutni qayta ochmaydi | hozir u faqat O'LCHANADI; remake oqimi (`-B1` nusxa, yangi chek, aybdor post) §7 da tasvirlangan va hali yozilmagan — Quality esa undan oldin ham kerak |
+| Braklar detallar bilan BIR XIL filtrda sanaladi (kuzatilgan ish vaqti) | aks holda surat va maxraj boshqa-boshqa vaqtdan yig'ilib, foiz «100 dan katta» yoki «manfiy» bo'lib chiqardi |
+| Brakni faqat SKAN yozilgan post belgilaydi (`scan.post_id != post.id` → 403) | bitta nusxa ikki postdan ikki marta brak qilinsa Quality ikki barobar tushardi |
+| Bitta skan — bitta brak (takror urinish 422) | tugma katta, tasodifiy ikki marta bosish real |
+| Sabab ro'yxatdan bo'lishi shart (422 «Sahifani yangilang») | terminal eskirgan ro'yxatni ko'rsatib turgan bo'lishi mumkin |
+| Detal sanalmagan bo'lsa Quality `None` (—), 0% emas | 0% «hammasi brak» degan yolg'on baho bo'lardi |
+| Brak detaldan ko'p chiqsa 0% da to'xtaydi | kechagi skan bugun brak qilinsa foiz manfiy bo'lib ketardi |
+| Quality faqat PRISADKA ish markazida | detallar (maxraj) faqat o'sha yerda sanaladi (§4.6); brakni boshqa post ham belgilay oladi, lekin uning Quality ustuni hali yo'q |
+
+Tekshiruv (bir martalik skript, repoda saqlanmaydi): sof funksiyalar 13/13 — brak yo'q → 100%,
+2/10 → 80%, 1/3 → 66.7%, detalsiz → `None`, brak > detal → 0%, `A=75 · P=80 · Q=100` → OEE 60%,
+uchtasidan biri `None` bo'lsa OEE ham `None`.
+
+Hali yo'q: qayta ishlab chiqarish oqimi (§7), brak sababini keyin tuzatish, brak bo'yicha
+Pareto/hisobot sahifasi, aybdor post.
+
 ## 5. Prod auditi natijalari (2026-09-16)
 
 Davr: 2026-09-14 09:36 — 2026-09-16 15:16, faqat Prisadka (ish markazi 1, agent v1.5.0, `can_print=false`).
@@ -277,7 +317,9 @@ ya'ni keyingi detal skani ham sanalardi. SQL'da 5 s ga tuzatildi — qayta ishga
 6. **Performance** — qilindi (§4.6), koeffitsiyentlar TAXMINIY. Qolgani: tsexda sekundomer bilan o'lchab Tizim
    sozlamalarida to'g'rilash; keyin (ixtiyoriy) skan↔sikl FIFO bog'lash (prototip `mes/bridge.py` mantiqi) —
    koeffitsiyentlarni 2–4 haftalik o'lchovdan chiqarish uchun.
-7. **Quality** — brak qaydi (sabab, aybdor post); belgilovchi — smenada ishlayotgan hodim (§7).
+7. **Quality** — brak qaydi qilindi (§4.7): terminalda BRAK tugmasi, Quality va OEE hisobotda.
+   Qolgani: admin sabablar ro'yxatini kiritsin; keyin qayta ishlab chiqarish oqimi (§7) —
+   `-B1` nusxa, yangi chek, aybdor post va marshrutni qayta ochish.
 
 ## 7. Qarorlar
 
@@ -299,7 +341,7 @@ ya'ni keyingi detal skani ham sanalardi. SQL'da 5 s ga tuzatildi — qayta ishga
      (`stop_prompt_idle_minutes`, sukut 5, 1..120) o'tgach. Vaqtni SERVER sariq yongan paytdan sanaydi —
      Pico `idle_timeout_s` ga bog'liq emas, chegarani o'zgartirish uchun Pico'ga tegilmaydi.
   Qizil yonsa — ~3–5 soniya (Pico 1.2 s barqarorlik + agent har 3 s yuboradi + WS).
-- **Brak oqimi:**
+- **Brak oqimi** (1-band 2026-09-19 da bajarildi — §4.7; qolgan bandlar hali yo'q)**:**
   1. **Hodim** detalni skanerlaydi, skan chizig'idagi BRAK tugmasini bosadi va faqat NIMA bo'lganini tanlaydi.
   2. Qayta ishlab chiqarish so'rovi **avtomat** yaratiladi ("Kutmoqda").
   3. **Menejer** (admin → Brak sahifasi, sidebar belgisida kutayotganlar soni) belgilaydi:

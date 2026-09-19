@@ -662,7 +662,8 @@ function MachineTimeReport({ params }: { params: RangeParams }) {
         ish jadvalidan (smena − tanaffus − rejali to'xtashlar); ish vaqtida
         Pico'dan ma'lumot yo'qligi to'xtash deb sanaladi. Sariq chiroq{" "}
         {data?.idle_threshold_min ?? 5} daqiqadan qisqa yonsa — mikro-to'xtash,
-        Availability'ga kirmaydi.
+        Availability'ga kirmaydi. Quality = (detallar − brak) ÷ detallar: brak
+        kiritilmagan bo'lsa 100%. OEE = Availability × Performance × Quality.
       </Summary>
       {data && !data.schedule_set && (
         <p className="mb-3 text-sm text-destructive">
@@ -851,6 +852,24 @@ function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
           >
             Performance
           </TableHead>
+          <TableHead
+            className="hidden text-right md:table-cell"
+            title="Terminalda BRAK deb belgilangan detallar (sabablar ro'yxati — Tizim sozlamalari → «Brak sabablari»)"
+          >
+            Brak
+          </TableHead>
+          <TableHead
+            className="text-right"
+            title="(detallar − brak) ÷ detallar. Brak kiritilmagan bo'lsa 100%"
+          >
+            Quality
+          </TableHead>
+          <TableHead
+            className="text-right"
+            title="Availability × Performance × Quality — uchtasi ham hisoblanganda"
+          >
+            OEE
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -885,10 +904,21 @@ function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
               <TableCell className="num text-right font-semibold">
                 {pct(r.performance_pct)}
               </TableCell>
+              <TableCell className="num hidden text-right md:table-cell">
+                {r.defects || "—"}
+              </TableCell>
+              <TableCell className="num text-right font-semibold">
+                {pct(r.quality_pct)}
+              </TableCell>
+              {/* OEE — uchala ko'rsatkich ko'paytmasi; jadvaldagi YAKUNIY raqam,
+                  shuning uchun qolganlaridan qalinroq */}
+              <TableCell className="num text-right text-base font-black">
+                {pct(r.oee_pct)}
+              </TableCell>
             </TableRow>
           ))
         ) : (
-          <EmptyRow colSpan={10}>
+          <EmptyRow colSpan={13}>
             Signal ustuni (Pico) ulangan stanok yo'q.
           </EmptyRow>
         )}
@@ -1009,7 +1039,7 @@ function MachineDays({ name, days }: { name: string; days: MachineTimeDay[] }) {
               </div>
               <span
                 className="num text-right text-xs font-semibold"
-                title={`Availability: ishladi ${hm(d.run_s)} ÷ reja vaqti ${hm(d.planned_s)}${d.performance_pct == null ? "" : ` · Performance ${d.performance_pct}% (${d.parts} detal)`}`}
+                title={`Availability: ishladi ${hm(d.run_s)} ÷ reja vaqti ${hm(d.planned_s)}${d.performance_pct == null ? "" : ` · Performance ${d.performance_pct}% (${d.parts} detal)`}${d.quality_pct == null ? "" : ` · Quality ${d.quality_pct}% (${d.defects} brak)`}${d.oee_pct == null ? "" : ` · OEE ${d.oee_pct}%`}`}
               >
                 {pct(d.availability_pct)}
               </span>

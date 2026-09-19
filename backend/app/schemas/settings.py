@@ -43,6 +43,16 @@ class IdealCycle(BaseModel):
     mill_s: Seconds = 12
 
 
+class DefectReasons(BaseModel):
+    """Brak sabablari — terminaldagi BRAK oynasida tugma bo'lib chiqadi (OEE Quality).
+
+    Alohida jadval EMAS (`downtime_reason` dan farqli): sabab `part_defect.reason` ga
+    MATN bo'lib ko'chiriladi, ya'ni FK ham, `is_active` ham kerak emas — ro'yxatdan
+    olib tashlangan sabab eski yozuvlarda o'qilaveradi."""
+
+    reasons: list[Name] = Field(default_factory=list, max_length=30)
+
+
 class WorkBreak(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 

@@ -44,6 +44,7 @@ const SETTINGS_TABS = [
   { value: "schedule", label: "Ish jadvali" },
   { value: "downtime", label: "To'xtash sabablari" },
   { value: "ideal", label: "Ideal sikl" },
+  { value: "defect", label: "Brak sabablari" },
 ] as const
 type SettingsTab = (typeof SETTINGS_TABS)[number]["value"]
 const TAB_PANEL = "data-[state=inactive]:hidden"
@@ -134,6 +135,9 @@ function SystemSettingsPage() {
         </TabsContent>
         <TabsContent value="ideal" forceMount className={TAB_PANEL}>
           <IdealCycleCard />
+        </TabsContent>
+        <TabsContent value="defect" forceMount className={TAB_PANEL}>
+          <DefectReasonsCard />
         </TabsContent>
       </Tabs>
     </div>
@@ -530,6 +534,9 @@ const plusHours = (clock: string, hours: number) => {
 // ---------- Ideal sikl (OEE Performance, Prisadka) ----------
 
 // Backend `schemas/settings.py: IdealCycle` / `Seconds` bilan bir xil (0..600 s)
+// Backend `schemas/settings.py: DefectReasons` bilan bir xil (30 ta, har biri `Name` — 40 belgi)
+const MAX_DEFECT_REASONS = 30
+
 const IDEAL_MAX = 600
 const IDEAL_FIELDS: { key: keyof IdealCycle; label: string; hint: string }[] = [
   {
@@ -636,6 +643,105 @@ function IdealCycleCard() {
           </LoadingButton>
         </>
       )}
+    </div>
+  )
+}
+
+// ---------- Brak sabablari (OEE Quality) ----------
+
+/** Brak sabablari — terminaldagi BRAK oynasida tugma bo'lib chiqadi. Alohida jadval EMAS:
+ *  sabab brak yozuviga MATN bo'lib ko'chiriladi (`part_defect.reason`), ya'ni ro'yxatdan
+ *  olib tashlangan sabab eski yozuvlarda o'qilaveradi va "nofaol" belgisi kerak emas. */
+function DefectReasonsCard() {
+  const queryClient = useQueryClient()
+  const queryKey = ["system-settings", "defect-reasons"]
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey,
+    queryFn: async () => (await SettingsService.readDefectReasons()).data,
+  })
+  const [draft, setDraft] = useState<string[]>([])
+  const [yangi, setYangi] = useState("")
+  useEffect(() => {
+    if (data) setDraft(data.reasons ?? [])
+  }, [data])
+
+  const save = useMutation({
+    mutationFn: () =>
+      SettingsService.updateDefectReasons({ body: { reasons: draft } }),
+    ...crudCallbacks(queryClient, queryKey, "Brak sabablari saqlandi"),
+  })
+  const nom = yangi.trim()
+  const canAdd =
+    nom !== "" && !draft.includes(nom) && draft.length < MAX_DEFECT_REASONS
+  const add = () => {
+    setDraft((d) => [...d, nom])
+    setYangi("")
+  }
+  const changed = JSON.stringify(draft) !== JSON.stringify(data?.reasons ?? [])
+
+  if (isLoading) return <Skeleton className="h-48 w-full" />
+  if (isError) return <QueryError onRetry={() => refetch()} />
+
+  return (
+    <div className={cn(cardSurface, "space-y-4 p-4")}>
+      <div>
+        <h2 className="text-lg font-semibold">Brak sabablari</h2>
+        <p className="text-sm text-muted-foreground">
+          Operator detalni skanerlab, skan tasmasidagi BRAK tugmasini bosganda
+          shu tugmalar chiqadi. OEE Quality shundan hisoblanadi: (detallar −
+          brak) ÷ detallar; brak kiritilmasa 100%.
+        </p>
+      </div>
+      {draft.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          Hali sabab yo'q — terminalda BRAK tugmasi umuman ko'rinmaydi.
+        </p>
+      )}
+      <ul className="grid gap-2 sm:grid-cols-2">
+        {draft.map((r) => (
+          <li
+            key={r}
+            className="flex items-center justify-between gap-2 rounded-lg border px-3 py-1.5"
+          >
+            <span className="truncate font-medium">{r}</span>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`${r} sababini o'chirish`}
+              onClick={() => setDraft((d) => d.filter((x) => x !== r))}
+            >
+              <Trash2 />
+            </Button>
+          </li>
+        ))}
+      </ul>
+      <div className="flex items-center gap-2 rounded-lg border border-dashed px-3 py-2">
+        <Input
+          value={yangi}
+          maxLength={40}
+          placeholder="Masalan: O'lcham noto'g'ri"
+          className="h-9 flex-1"
+          onChange={(e) => setYangi(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && canAdd) add()
+          }}
+        />
+        <Button size="sm" disabled={!canAdd} onClick={add}>
+          <Plus /> Qo'shish
+        </Button>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Sabab o'chirilsa ESKI brak yozuvlari o'zgarmaydi — ularda sabab matn
+        bo'lib saqlangan. Ko'pi bilan {MAX_DEFECT_REASONS} ta. Brak skanni bekor
+        qilmaydi va marshrutni qayta ochmaydi: hozircha faqat o'lchanadi.
+      </p>
+      <LoadingButton
+        loading={save.isPending}
+        disabled={!changed}
+        onClick={() => save.mutate()}
+      >
+        Saqlash
+      </LoadingButton>
     </div>
   )
 }

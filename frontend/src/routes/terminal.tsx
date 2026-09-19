@@ -28,6 +28,10 @@ import {
 } from "@/components/Terminal/audio"
 import { CutmapView } from "@/components/Terminal/CutmapView"
 import {
+  DefectDialog,
+  useDefectReasons,
+} from "@/components/Terminal/DefectDialog"
+import {
   LockReasonDialog,
   PENDING_KEY,
   StopReasonPrompt,
@@ -135,6 +139,13 @@ function TerminalPage() {
     code: string
   } | null>(null)
   const [logoutOpen, setLogoutOpen] = useState(false)
+  // BRAK — oxirgi skanni yaroqsiz deb belgilash (OEE Quality). Skan dialog OCHILGANDA
+  // suratga olinadi: keyingi skan tasmani almashtirsa ham oyna boshqa detalga o'tmaydi.
+  const [defectFor, setDefectFor] = useState<{
+    scanId: number
+    code: string
+  } | null>(null)
+  const defectReasons = useDefectReasons()
   // To'xtash sababi (Pico ulangan ish markazida): o'zi chiqadigan oyna va qulf oldidan so'rov
   const [stopPromptOpen, setStopPromptOpen] = useState(false)
   const [lockAsk, setLockAsk] = useState(false)
@@ -268,6 +279,7 @@ function TerminalPage() {
     logoutOpen ||
     endFor !== null ||
     undoFor !== null ||
+    defectFor !== null ||
     stopPromptOpen ||
     lockAsk
   // Qulf ostida ham fokus kerak: qulfning kaliti — beyjik skani
@@ -468,6 +480,13 @@ function TerminalPage() {
       onUndo={() =>
         lastScan?.kind === "ok" &&
         setUndoFor({ scanId: lastScan.scanId, code: lastScan.code })
+      }
+      onDefect={
+        defectReasons.length
+          ? () =>
+              lastScan?.kind === "ok" &&
+              setDefectFor({ scanId: lastScan.scanId, code: lastScan.code })
+          : undefined
       }
       birlik={ctx?.post_code === "KROMKA" ? "qirra" : undefined}
     />
@@ -827,6 +846,12 @@ function TerminalPage() {
           />
         </>
       )}
+      <DefectDialog
+        scan={defectFor}
+        crew={crew}
+        reasons={defectReasons}
+        onClose={() => setDefectFor(null)}
+      />
       <ConfirmDialog
         open={logoutOpen}
         onOpenChange={setLogoutOpen}

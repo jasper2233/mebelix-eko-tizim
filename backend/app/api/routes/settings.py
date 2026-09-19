@@ -6,12 +6,14 @@ from app.core.exceptions import NotFoundException
 from app.crud import log_action
 from app.models import DowntimeReason
 from app.schemas.downtimes import DowntimeReasonCreate, DowntimeReasonRead, DowntimeReasonUpdate
-from app.schemas.settings import IdealCycle, SystemSettingRead, SystemSettingUpdate, WorkSchedule
+from app.schemas.settings import DefectReasons, IdealCycle, SystemSettingRead, SystemSettingUpdate, WorkSchedule
 from app.services.settings_service import (
     DEFAULTS,
+    DEFECT_REASONS,
     IDEAL_CYCLE,
     INT_RANGES,
     WORK_SCHEDULE,
+    get_defect_reasons,
     get_ideal_cycle,
     get_setting,
     get_work_schedule,
@@ -86,6 +88,36 @@ async def update_ideal_cycle(db: SessionDep, current_user: AdminUser, body: Idea
             f"Ideal sikl o'zgardi: detalga {body.load_s:g} s, yuza teshik {body.bore_s:g} s, "
             f"qirra teshik {body.edge_bore_s:g} s, paz {body.groove_s:g} s, freza {body.mill_s:g} s"
         ),
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return body
+
+
+# NOTE: `/defect-reasons` ham `/{key}` dan OLDIN — sabab yuqoridagidek.
+@router.get("/defect-reasons", response_model=DefectReasons, operation_id="read_defect_reasons")
+async def read_defect_reasons(db: SessionDep, _: AdminUser) -> DefectReasons:
+    """Brak sabablari (OEE Quality) — terminaldagi BRAK oynasida shu tugmalar chiqadi."""
+    return await get_defect_reasons(db)
+
+
+@router.put("/defect-reasons", response_model=DefectReasons, operation_id="update_defect_reasons")
+async def update_defect_reasons(
+    db: SessionDep, current_user: AdminUser, body: DefectReasons, request: Request
+) -> DefectReasons:
+    """Ro'yxat BUTUNICHA almashtiriladi. Eski brak yozuvlari tegilmaydi — ularda sabab MATN
+    bo'lib saqlangan (`part_defect.reason`), ya'ni ro'yxatdan olib tashlansa ham o'qiladi."""
+    body.reasons = [r for i, r in enumerate(body.reasons) if r not in body.reasons[:i]]  # takrorni tashlaydi
+    row = await set_setting(db, DEFECT_REASONS, body.model_dump_json(), current_user.id)
+    await db.flush()  # yangi qatorning id si audit yozuviga tushsin
+    log_action(
+        db,
+        module="settings",
+        action="updated",
+        user_id=current_user.id,
+        entity_type="system_setting",
+        entity_id=row.id,
+        message=f"Brak sabablari o'zgardi: {len(body.reasons)} ta",
         ip=client_ip(request),
     )
     await db.commit()

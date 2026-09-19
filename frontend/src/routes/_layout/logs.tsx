@@ -66,6 +66,7 @@ const MODULE_LABELS: Record<string, string> = {
   tmo: "TMO",
   sessions: "Smenalar",
   downtime: "To'xtashlar",
+  defect: "Brak",
   orders: "Buyurtmalar",
   pachka: "Pachkalar",
   bridge_agents: "MES agentlar",
@@ -92,6 +93,7 @@ const ENTITY_LABELS: Record<string, string> = {
   user: "Foydalanuvchi",
   downtime: "To'xtash",
   downtime_reason: "To'xtash sababi",
+  defect: "Brak",
   system_setting: "Sozlama",
 }
 

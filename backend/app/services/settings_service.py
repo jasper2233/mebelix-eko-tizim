@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import SystemSetting
-from app.schemas.settings import IdealCycle, WorkSchedule
+from app.schemas.settings import DefectReasons, IdealCycle, WorkSchedule
 
 #: Bazisda detal nomi shu belgi bilan tugasa — yuklashda NOSTANDART.
 #: Bo'sh qiymat qoidani BUTUNLAY o'chiradi (belgisiz hamma detal nostandart
@@ -44,6 +44,8 @@ DEFAULTS: dict[str, str] = {
 WORK_SCHEDULE = "work_schedule"
 #: Prisadka ideal sikli koeffitsiyentlari (JSON, `IdealCycle`) — o'z endpointi bilan, jadval kabi.
 IDEAL_CYCLE = "ideal_cycle_prisadka"
+#: Brak sabablari (JSON, `DefectReasons`) — terminaldagi BRAK oynasi shundan.
+DEFECT_REASONS = "defect_reasons"
 
 _DAY = 24 * 60
 
@@ -90,6 +92,12 @@ async def get_ideal_cycle(db: AsyncSession) -> IdealCycle:
     """Saqlangan koeffitsiyentlar; hali kiritilmagan bo'lsa sxemadagi TAXMINIY sukut qiymatlar."""
     raw = await get_setting(db, IDEAL_CYCLE)
     return IdealCycle.model_validate_json(raw) if raw else IdealCycle()
+
+
+async def get_defect_reasons(db: AsyncSession) -> DefectReasons:
+    """Brak sabablari; kiritilmagan bo'lsa bo'sh ro'yxat — terminalda BRAK tugmasi umuman chiqmaydi."""
+    raw = await get_setting(db, DEFECT_REASONS)
+    return DefectReasons.model_validate_json(raw) if raw else DefectReasons()
 
 
 def _minutes(clock: str) -> int:
