@@ -594,6 +594,10 @@ function GroupRows({ label, rows }: { label: string; rows: MaterialRow[] }) {
 // Diagramma guruhlari: rahbar savoli «qancha ishladi / kutdi / avariya / o'chiq».
 // Ranglar holatning MA'NOSI (yaxshi → yomon) — status palitrasi, seriya rangi emas;
 // yonida doim yozuv (legend) va jadval turadi, rang yolg'iz ma'no tashimaydi.
+//: Stanok o'chiq — Pico OFF deb yozgani ham, umuman qayd kelmagani ham (egasining
+//: qarori: qayd yo'q = stanok o'chiq), shuning uchun trekda ikkalasi bir rangda.
+const OFF_COLOR = "#9aa0a6"
+
 const ANDON_GROUPS: {
   key: string
   label: string
@@ -608,7 +612,7 @@ const ANDON_GROUPS: {
     states: ["AWAIT_PART", "IDLE", "STOPPED"],
   },
   { key: "fault", label: "Avariya", color: "#d03b3b", states: ["FAULT"] },
-  { key: "off", label: "O'chiq", color: "#9aa0a6", states: ["OFF"] },
+  { key: "off", label: "O'chiq", color: OFF_COLOR, states: ["OFF"] },
 ]
 
 const DAY_S = 86_400
@@ -726,7 +730,7 @@ function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
           </TableHead>
           <TableHead
             className="text-right"
-            title="Rejasiz to'xtashlar va Pico'dan qayd kelmagan vaqt (stanok o'chiq) — sabablari pastdagi jadvalda"
+            title="Rejasiz to'xtashlar va stanok o'chiq turgan vaqt — sabablari pastdagi jadvalda"
           >
             To'xtash
           </TableHead>
@@ -815,9 +819,9 @@ function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
 }
 
 function ReasonsTable({ row }: { row: MachineTimeRow }) {
-  // Pico qayd qilmagan vaqt ham to'xtash (stanok o'chiq), lekin uning SABABI yo'q —
-  // shuning uchun u `reasons` da emas. Jadvalga alohida qator bo'lib qo'shiladi,
-  // aks holda «Jami to'xtash» yuqoridagi «To'xtash» ustunidan kam chiqib chalkashtirardi.
+  // Pico qayd qilmagan vaqt STANOK O'CHIQ deb sanaladi (egasining qarori) — uning
+  // sababi yo'q, shuning uchun `reasons` da emas. Jadvalga o'sha nom bilan qator
+  // bo'lib qo'shiladi, aks holda «Jami to'xtash» yuqoridagi ustundan kam chiqardi.
   const items = [
     ...row.reasons.map((r) => ({
       key: String(r.reason_id ?? "none"),
@@ -831,7 +835,7 @@ function ReasonsTable({ row }: { row: MachineTimeRow }) {
       ? [
           {
             key: "no-data",
-            name: "Qayd yo'q — stanok o'chiq",
+            name: "Stanok o'chiq",
             kind: "Rejasiz",
             count: 0,
             seconds: row.no_data_s,
@@ -926,10 +930,6 @@ function MachineDays({ name, days }: { name: string; days: MachineTimeDay[] }) {
               {g.label}
             </li>
           ))}
-          <li className="inline-flex items-center gap-1.5">
-            <span className="inline-block size-2.5 rounded-sm bg-muted" />
-            O'chiq (qaydsiz)
-          </li>
           <li>o'ngda — kun Availability'si</li>
         </ul>
       </div>
@@ -951,7 +951,12 @@ function MachineDays({ name, days }: { name: string; days: MachineTimeDay[] }) {
               <span className="num text-xs text-muted-foreground">
                 {formatDate(d.day)}
               </span>
-              <div className="flex h-3 gap-[2px] overflow-hidden rounded-[4px] bg-muted">
+              {/* Bo'yalmagan qism = qayd kelmagan vaqt. U ham O'CHIQ rangida: stanok
+                  o'chiq deb sanaladi, ya'ni legendada alohida band kerak emas. */}
+              <div
+                className="flex h-3 gap-[2px] overflow-hidden rounded-[4px]"
+                style={{ backgroundColor: OFF_COLOR }}
+              >
                 {parts.map((p) => (
                   <span
                     key={p.key}
