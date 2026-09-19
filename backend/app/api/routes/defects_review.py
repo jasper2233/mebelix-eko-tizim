@@ -31,7 +31,15 @@ _LIMIT = 300
 
 
 async def _steps(db: AsyncSession, part_ids: set[int]) -> dict[int, list[DefectStep]]:
-    """Detal marshruti + har qadamda skanerlagan hodim (oxirgi bekor qilinmagan skan)."""
+    """Detal marshruti + har qadamda skanerlagan hodim (oxirgi bekor qilinmagan skan).
+
+    Marshrut detal TURIGA bog'langan (`part_route.part_id`, `seq` tartibi) va NOSTANDART
+    detalda ham xuddi shunday o'qiladi — texnolog qo'lda chizgan qatorlar shu jadvalda
+    turadi. Shuning uchun qaror POST emas, QADAM bo'yicha yoziladi: `[Kromka, Prisadka,
+    Kromka]` marshrutida «Kromka aybdor» qaysi o'tish ekanini aytmaydi, «2. Prisadka» esa
+    aniq. Kelajakdagi remake ham shu qatorlarni O'ZGARTIRMAYDI — yangi `-B1` nusxa o'sha
+    `part_id` ni oladi (docs/12 §7 qarori), ya'ni saqlangan `restart_route_id` o'shanda ham
+    to'g'ri qadamni ko'rsatib turadi."""
     if not part_ids:
         return {}
     rows = (
@@ -41,6 +49,9 @@ async def _steps(db: AsyncSession, part_ids: set[int]) -> dict[int, list[DefectS
                 .join(Post, Post.id == PartRoute.post_id)
                 .where(
                     PartRoute.part_id.in_(part_ids),
+                    # Texnolog O'CHIRGAN qadam ro'yxatda turmaydi: detal u yerdan o'tmagan,
+                    # ya'ni na ayb, na qayta boshlash nuqtasi bo'la oladi.
+                    PartRoute.is_enabled == True,  # noqa: E712
                     PartRoute.is_deleted == False,  # noqa: E712
                 )
                 .order_by(PartRoute.part_id, PartRoute.seq)
@@ -198,6 +209,7 @@ async def review_defect(
                     select(PartRoute.id).where(
                         PartRoute.id.in_(tanlangan),
                         PartRoute.part_id == defect.part_id,
+                        PartRoute.is_enabled == True,  # noqa: E712
                         PartRoute.is_deleted == False,  # noqa: E712
                     )
                 )

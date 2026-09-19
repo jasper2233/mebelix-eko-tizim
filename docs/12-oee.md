@@ -266,7 +266,8 @@ OEE     = Availability × Performance × Quality
 | --- | --- |
 | Brak SKANNI bekor qilmaydi, marshrutni qayta ochmaydi | hozir u faqat O'LCHANADI va QAROR yoziladi; remake oqimi (`-B1` nusxa, yangi chek, marshrutni qayta ochish) §7 da tasvirlangan va hali yozilmagan |
 | Quality REJECTED dan boshqasini sanaydi (kutayotgani ham kiradi) | tasdiq kechikkanda OEE aslidan yaxshi ko'rinib turardi; «brak emas» deb rad etilgani esa hisobdan chiqadi |
-| Ayb POST emas, QADAM (`part_route`) bo'yicha | bitta post marshrutda ikki marta uchraydi (Kromka → Prisadka → Kromka) — «Kromka aybdor» degani qaysi o'tish ekanini aytmaydi |
+| Ayb POST emas, QADAM (`part_route`) bo'yicha | bitta post marshrutda ikki marta uchraydi (Kromka → Prisadka → Kromka) — «Kromka aybdor» degani qaysi o'tish ekanini aytmaydi. **NOSTANDART detalda ham xuddi shunday**: texnolog qo'lda chizgan qatorlar o'sha `part_route` jadvalida turadi, qaror ularni O'ZGARTIRMAYDI, remake esa yangi `-B1` nusxaga o'sha `part_id` ni beradi (§7 qarori) — saqlangan `restart_route_id` o'shanda ham to'g'ri qadamni ko'rsatadi |
+| Texnolog O'CHIRGAN qadam (`is_enabled=false`) ro'yxatda yo'q va tanlanmaydi (422) | detal u yerdan o'tmagan: na ayb, na qayta boshlash nuqtasi bo'la oladi |
 | Aybdor hodim tasdiqlashda SURATGA olinadi (`blame_employee_id`) | keyin skan bekor qilinsa yoki qayta skanerlansa ayb boshqa odamga ko'chib ketardi |
 | Tasdiqda qayta boshlash qadami MAJBURIY, ayb ixtiyoriy | «qayerdan qayta boshlanadi» — qarorning o'zi; material nuqsonida esa ayb hech kimda emas |
 | Qaror qayta o'zgartiriladi | noto'g'ri bosilgani tuzatilsin; operator esa menejer ko'rib chiqqan brakni o'chira olmaydi (422) |
@@ -283,7 +284,10 @@ Tekshiruv (bir martalik skriptlar, repoda saqlanmaydi): HAQIQIY Postgres'da to'l
 P 81.8%, Q 90.0%, OEE 54.0%; tushlikdagi, ma'lumotsiz vaqtdagi va bekor qilingan skan
 sanalmaydi, o'chirilgan brak ham) va tasdiqlash oqimi 15/15 (rad etilgani Quality'dan
 chiqadi — 93.3%, aybdor hodim suratga olinadi, qadamsiz tasdiq va begona qadam 422, qaror
-o'zgartiriladi, sidebar soni). Sof funksiyalar 13/13 — brak yo'q → 100%,
+o'zgartiriladi, sidebar soni) va NOSTANDART marshrut 14/14 (`[Kromka(3), Prisadka(6),
+Kromka(4)]` + o'chirilgan qadam: ro'yxat tartibi va amal kodlari, har qadamdagi hodim,
+IKKINCHI Kromkani ayb qilib tanlash birinchisidan farq qiladi, o'chirilgan va begona
+detalning qadami 422, marshrut qatorlari va `is_custom` bayrog'i tegilmagan). Sof funksiyalar 13/13 — brak yo'q → 100%,
 2/10 → 80%, 1/3 → 66.7%, detalsiz → `None`, brak > detal → 0%, `A=75 · P=80 · Q=100` → OEE 60%,
 uchtasidan biri `None` bo'lsa OEE ham `None`.
 
