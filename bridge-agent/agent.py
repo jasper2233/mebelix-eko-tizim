@@ -25,7 +25,8 @@ Env sozlamalari (ixtiyoriy, pairing o'zi to'ldiradi):
     ANDON         — stanok signal ustuni (Pico, USB) o'qish; 0 = o'chiq (default yoniq,
                     Pico topilmagan kompyuterda o'zi jim turadi)
     ANDON_PORT    — Pico COM porti (bo'sh = Raspberry Pi VID bo'yicha o'zi topadi)
-    ANDON_TUR     — Pico turi: prisadka | kromka (bo'sh = birinchi qatordan o'zi aniqlaydi)
+    ANDON_TUR     — Pico turi: prisadka | kromka | rover (bo'sh = birinchi qatordan o'zi aniqlaydi)
+    ROVER_T_REASON, ROVER_AUTO_SHUTDOWN — rover Pico'siga yuboriladigan sozlama
     ANDON_TAKEOVER — 0 = port band bo'lsa eski PrisadkaMES.exe ni to'xtatmaslik
     ANDON_QUEUE_FILE — andon navbati (default %APPDATA%\MebelixAgent\andon-queue.jsonl)
 """
@@ -57,7 +58,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.6.1"
+AGENT_VERSION = "1.7.0"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -749,6 +750,14 @@ ANDON = os.environ.get("ANDON", "1") != "0"
 ANDON_PORT = os.environ.get("ANDON_PORT", "")
 ANDON_TAKEOVER = os.environ.get("ANDON_TAKEOVER", "1") != "0"
 ANDON_QUEUE_FILE = Path(os.environ.get("ANDON_QUEUE_FILE") or (CONFIG_DIR / "andon-queue.jsonl"))
+#: ROVER Pico'siga yuboriladigan sozlama. Avtomatik o'chirish 1-bosqichda O'CHIQ:
+#: avval qancha bo'sh turish qayd bo'layotgani ko'riladi, taymerlar tsexdagi real
+#: ritmga moslanadi, keyingina rele yoqiladi (noto'g'ri o'chirish ishni to'xtatadi).
+ROVER_AUTO_SHUTDOWN = os.environ.get("ROVER_AUTO_SHUTDOWN", "0") != "0"
+#: Pico shu soniyadan uzun to'xtashni alohida hodisa qilib yozadi. MES'dagi umumiy
+#: chegara bilan bir xil (5 daqiqa) — aks holda undan qisqa to'xtash Pico jurnalida
+#: umuman ko'rinmasdi.
+ROVER_T_REASON = int(os.environ.get("ROVER_T_REASON", "300"))
 
 # Yangi job kelganda flusher darhol uyg'onadi (5s siklni kutmaydi)
 FLUSH_EVENT = asyncio.Event()
@@ -1299,7 +1308,7 @@ _PICO_VID = 0x2E8A  # Raspberry Pi (RP2040)
 #:   KROMKA   — uzunlik o'lchash stansiyasi, YALANG'OCH JSON qator: {"ev":"olchov",...}.
 #: Tur BIRINCHI tushunarli qatordan aniqlanadi; `ANDON_TUR` env bilan majburlash mumkin
 #: (bitta kompyuterga ikki Pico ulansa yoki qurilma jim tursa).
-_TUR_PRISADKA, _TUR_KROMKA = "prisadka", "kromka"
+_TUR_PRISADKA, _TUR_KROMKA, _TUR_ROVER = "prisadka", "kromka", "rover"
 #: Kromka Pico'si `XOST_MS` = 3 s ichida BUYRUQ ko'rmasa o'zini «stansiya yo'q» deb
 #: hisoblaydi va hodisalarni RAM ga yig'a boshlaydi (300 ta, keyin eng eskisi tushadi).
 #: Shuning uchun unga har soniyada `HB` yuboriladi; prisadkaga 5 soniyalik `PING` yetadi.
@@ -1308,6 +1317,17 @@ _KROMKA_HB_S = 1
 #: Kromkadan MES ga yoziladigan hodisalar. `holat`/`pong`/`kal`/`kalib_rejim`/`yigilgan`
 #: — javob va diagnostika qatorlari, tarixga kerak emas.
 _KROMKA_EVENTS = ("olchov", "ogoh", "uskuna", "tezlik", "avariya_toxtash", "boot")
+#: ROVER (CNC 2130) Pico'si IKKI TOMONLAMA gaplashadi — kromkadan farqi shu. Undan
+#: hodisa olish uchun unga har 10 soniyada kompyuter vaqti yuborilishi SHART: 30 s
+#: jim qolsa u «kompyuter yo'q» deb biladi va hodisalarni fleshga yig'a boshlaydi.
+_ROVER_TIME_S = 10
+#: Hodisa TASDIQ (`ack`) kelmaguncha Pico xotirasida qoladi va har 10 s qayta keladi.
+#: Tasdiq faqat SERVER yozgandan keyin beriladi (`andon_shipper`), ya'ni internet
+#: uzilsa hodisa Pico'da ham, navbatda ham saqlanib turadi.
+_ROVER_SESSION = "rover"
+#: Rover hodisasining `seq` i fleshda saqlanadi va hech qachon takrorlanmaydi —
+#: shuning uchun serverdagi `(machine_id, session, seq)` kaliti aynan shu juftlik
+#: bilan ishlaydi va qayta yuborilgan hodisa jimgina tashlanadi.
 _ANDON_BATCH = 200
 #: Internet uzoq yo'q bo'lsa navbat shundan oshmaydi — eng eskilari tashlanadi
 #: (bitta stanok kuniga ~1000 hodisa beradi, ya'ni bu ~20 kunlik zaxira).
@@ -1453,6 +1473,122 @@ def _kromka_line(data: dict[str, Any]) -> None:
             ANDON_CURRENT["part_count"] = None
 
 
+#: ROVER Pico'si bilan aloqa holati. O'qish OQIMI va yuborish TASKI ikkalasi ham
+#: tegadi — har ikkalasi `ANDON_LOCK` ostida.
+ROVER: dict[str, Any] = {
+    "boot": None,      # Pico yuklanishlar soni (hodisa vaqtini tiklashda kerak)
+    "ack_upto": 0,     # server YOZGAN eng katta uzluksiz seq
+    "ack_sent": 0,     # Pico'ga aytilgan oxirgi tasdiq
+    "config": False,   # sozlama shu ulanishda yuborildimi
+    "holat": None,     # oxirgi ishlash holati — faqat O'ZGARISH hodisaga aylanadi
+    "seen": 0,         # navbatga olingan eng katta hodisa seq'i
+}
+
+
+def _rover_line(data: dict[str, Any]) -> None:
+    """ROVER (CNC 2130) Pico'sidan bitta xabar: `hello` / `state` / `event` / `log`.
+
+    Bu firmware kromkadan boshqacha ishlaydi: u DAVOMIYLIKNI o'zi o'lchaydi va
+    tugagan davrni tayyor hodisa qilib beradi (`POWER_ON`, `SPINDLE_IDLE`,
+    `AUTO_SHUTDOWN` ...). Ular xom holida serverga uzatiladi — tasdiqlanmaguncha
+    Pico ularni qayta-qayta yuboraveradi, ya'ni agent o'chib qolsa ham yo'qolmaydi.
+
+    Jonli holat (span va «ishladi» vaqti) esa `state` xabaridan olinadi: `run`
+    o'zgarganda kromkadagi bilan BIR XIL `uskuna` hodisasi yoziladi, shuning uchun
+    serverdagi to'xtash/OEE zanjiri qayta yozilmaydi."""
+    kind = str(data.get("t") or "")
+    if kind == "hello":
+        with ANDON_LOCK:
+            ROVER["boot"] = data.get("boot")
+            # Pico allaqachon tasdiqlangan hodisalarni qayta yubormaydi — biz ham
+            # o'sha joydan davom etamiz, aks holda eski seq'ni qayta tasdiqlardik
+            ROVER["ack_upto"] = ROVER["ack_sent"] = int(data.get("last_ack") or 0)
+            # Tasdiqlanganidan keyingilari qayta keladi — o'shalardan boshlab qabul qilamiz
+            ROVER["seen"] = int(data.get("last_ack") or 0)
+            ROVER["config"] = False
+            ROVER["holat"] = None
+        log.info(
+            "Andon: ROVER Pico'si — %s, yuklanish #%s, seq=%s, tasdiqlangan=%s%s",
+            data.get("machine"), data.get("boot"), data.get("seq"), data.get("last_ack"),
+            ", vaqt so'radi" if data.get("need_time") else "",
+        )
+    elif kind == "state":
+        _rover_state(data)
+    elif kind == "event":
+        _rover_event(data)
+    elif kind == "log":
+        log.info("[pico] %s", str(data.get("msg"))[:200])
+
+
+def _rover_state(data: dict[str, Any]) -> None:
+    """Har 10 soniyalik holat xabari — jonli holat va RUN o'zgarishi.
+
+    Hodisa faqat O'ZGARISHDA yoziladi: aks holda kuniga 8000 dan ortiq bir xil
+    qator bazaga tushardi (kromkada ham shu qoida)."""
+    pwr = 1 if data.get("pwr") else 0
+    run = 1 if data.get("run") else 0
+    holat = 1 if (pwr and run) else 0
+    # Stanok o'chiq bo'lsa OFF; yoqiq-u shpindel aylanmasa IDLE (bo'sh turish);
+    # aylanayotgan bo'lsa PROCESSING. Ekrandagi nomlar `lib/mes.ts` dan.
+    state = "PROCESSING" if run else ("IDLE" if pwr else "OFF")
+    now = int(time.time())
+    with ANDON_LOCK:
+        oldingi = ROVER["holat"]
+        ROVER["holat"] = holat
+        if ANDON_CURRENT.get("state") != state:
+            ANDON_CURRENT["since"] = now
+        ANDON_CURRENT.update(state=state, lamps={}, part_count=None)
+    if oldingi == holat:
+        return
+    session, seq = _kromka_kalit()
+    _andon_enqueue({
+        "type": "uskuna", "ev": "uskuna", "holat": holat, "manba": "rover",
+        "pwr": pwr, "run": run, "home": 1 if data.get("home") else 0,
+        "maint": 1 if data.get("maint") else 0, "relay": 1 if data.get("relay") else 0,
+        "idle_sec": data.get("idle_sec"), "on_sec": data.get("on_sec"),
+        "ts": now, "session": session, "seq": seq,
+    })
+
+
+def _rover_event(data: dict[str, Any]) -> None:
+    """Pico o'lchab tugatgan davr (`POWER_ON`, `SPINDLE_IDLE`, `AUTO_SHUTDOWN` ...).
+
+    Xom holida saqlanadi: `seq` Pico'niki (takrorlanmaydi), `session` esa doimiy
+    `rover` — server takrorni o'zi tashlaydi. Vaqt: hodisa TUGAGAN payt, Pico soati
+    noma'lum bo'lsa (`start`/`end` = null) — hozirgi vaqt, davomiylik esa xabarning
+    ichida qoladi."""
+    seq = data.get("seq")
+    if not isinstance(seq, int) or isinstance(seq, bool) or seq <= 0:
+        return
+    # Tasdiq kelmaguncha Pico o'sha hodisani har 10 soniyada QAYTA yuboradi — navbatga
+    # bir marta olinadi. Serverdagi unikal indeks ham tashlardi, lekin u paytgacha
+    # navbat va trafik bekorga to'lardi.
+    with ANDON_LOCK:
+        if seq <= int(ROVER["seen"]):
+            return
+        ROVER["seen"] = seq
+    data = dict(data)
+    # Pico hodisaning turini `type` da beradi (POWER_ON, SPINDLE_IDLE ...), server
+    # sxemasi esa `type` ni O'ZI uchun band qilgan — asl turi `rover_type` da qoladi,
+    # aks holda «qanday hodisa» degan asosiy ma'lumot yo'qolardi.
+    data["rover_type"] = data.get("type")
+    data["type"] = "rover"
+    data["session"] = _ROVER_SESSION
+    data["seq"] = seq
+    data["ts"] = _rover_ts(data.get("end")) or int(time.time())
+    _andon_enqueue(data)
+
+
+def _rover_ts(iso: Any) -> int | None:
+    """Pico bergan mahalliy vaqt (`2026-09-15T14:32:11`) — unix soniyaga."""
+    if not isinstance(iso, str) or len(iso) < 19:
+        return None
+    try:
+        return int(time.mktime(time.strptime(iso[:19], "%Y-%m-%dT%H:%M:%S")))
+    except (ValueError, OverflowError):
+        return None
+
+
 def _andon_line(text: str) -> None:
     """Pico'dan kelgan bitta qator — ikkala firmware ham shu yerdan o'tadi.
 
@@ -1465,7 +1601,17 @@ def _andon_line(text: str) -> None:
         except ValueError:
             log.warning("Andon: buzuq JSON qator tashlandi: %s", text[:120])
             return
-        if not isinstance(data, dict) or "ev" not in data:
+        if not isinstance(data, dict):
+            return
+        # Ikkala JSON firmware'i ham `{` bilan boshlanadi, kalit so'zi farq qiladi:
+        # kromka `{"ev": ...}`, rover `{"t": ...}`.
+        if isinstance(data.get("t"), str):
+            if ANDON_TUR["tur"] != _TUR_ROVER:
+                ANDON_TUR["tur"] = _TUR_ROVER
+                log.info("Andon: ROVER (CNC 2130) Pico'si aniqlandi")
+            _rover_line(data)
+            return
+        if "ev" not in data:
             return
         if ANDON_TUR["tur"] != _TUR_KROMKA:
             ANDON_TUR["tur"] = _TUR_KROMKA
@@ -1513,6 +1659,45 @@ def _andon_line(text: str) -> None:
             ANDON_CURRENT.update(state=state, lamps=data.get("lamps") or {}, part_count=data.get("part_count"))
 
 
+def _rover_send(port: Any, obj: dict[str, Any]) -> None:
+    port.write((json.dumps(obj) + "\n").encode())
+
+
+def _rover_time(port: Any) -> None:
+    """Kompyuter vaqti — Pico'da soat moduli yo'q, kun vaqti faqat shundan keladi."""
+    lt = time.localtime()
+    _rover_send(port, {"t": "time", "ts": [lt.tm_year, lt.tm_mon, lt.tm_mday,
+                                           lt.tm_hour, lt.tm_min, lt.tm_sec]})
+
+
+def _rover_ack(port: Any) -> None:
+    """Server YOZGAN hodisalarni Pico'ga tasdiqlaydi (u shundan keyin ularni o'chiradi).
+
+    Tasdiq serverdan oldin berilsa, internet uzilgan paytdagi hodisa Pico'da ham
+    o'chib, bizda ham yozilmay yo'qolardi."""
+    with ANDON_LOCK:
+        upto, sent = int(ROVER["ack_upto"]), int(ROVER["ack_sent"])
+        if upto <= sent:
+            return
+        ROVER["ack_sent"] = upto
+    _rover_send(port, {"t": "ack", "seq": upto})
+
+
+def _rover_config(port: Any) -> None:
+    """Sozlama — har ulanishda bir marta. Pico uni fleshga saqlaydi.
+
+    1-bosqichda avtomatik o'chirish O'CHIQ: stanokni o'chirish qaroriga o'tishdan
+    oldin tsexda qancha bo'sh turish yig'ilayotgani ko'riladi."""
+    with ANDON_LOCK:
+        if ROVER["config"] or ROVER["boot"] is None:
+            return
+        ROVER["config"] = True
+    _rover_send(port, {"t": "config", "t_reason": ROVER_T_REASON,
+                       "auto_shutdown": ROVER_AUTO_SHUTDOWN})
+    log.info("Andon: ROVER sozlamasi yuborildi (t_reason=%s, auto_shutdown=%s)",
+             ROVER_T_REASON, ROVER_AUTO_SHUTDOWN)
+
+
 def _andon_session(port: Any) -> None:
     """Ochiq port bilan ishlash: yurak urishi yuborish va qatorlarni o'qish.
 
@@ -1524,13 +1709,24 @@ def _andon_session(port: Any) -> None:
     ANDON_CONNECTED = True
     ANDON_TUR["session"] = ""          # har ulanish — yangi kalit
     ANDON_TUR["uskuna"] = None         # holat noma'lum: birinchi javob yoziladi
+    with ANDON_LOCK:
+        ROVER.update(boot=None, config=False, holat=None, seen=0)
     next_ping = 0.0
     next_holat = 0.0
     pending = b""
     try:
         while True:
             now = time.monotonic()
-            if now >= next_ping:
+            if ANDON_TUR["tur"] == _TUR_ROVER:
+                # ROVER: `PING`/`HB` o'rniga kompyuter VAQTI. U ham «kompyuter shu
+                # yerda» degan belgi: 30 s jim qolsak Pico hodisalarni fleshga yig'a
+                # boshlaydi. Tasdiq va sozlama ham shu yerdan ketadi.
+                if now >= next_ping:
+                    _rover_time(port)
+                    next_ping = now + _ROVER_TIME_S
+                _rover_ack(port)
+                _rover_config(port)
+            elif now >= next_ping:
                 kromka = ANDON_TUR["tur"] == _TUR_KROMKA
                 port.write(b"HB\n" if kromka else b"PING\n")
                 next_ping = now + (
@@ -1716,6 +1912,20 @@ def _andon_current() -> dict[str, Any] | None:
     }
 
 
+def _rover_acked(events: list[dict[str, Any]]) -> None:
+    """Server qabul qilgan partiyadagi eng katta ROVER seq — keyingi `ack` uchun.
+
+    Navbat FIFO, ya'ni bu seq gacha hammasi allaqachon yozilgan: Pico esa aynan
+    «uzilishsiz saqlangan eng katta seq» ni kutadi."""
+    seqlar = [e.get("seq") for e in events if e.get("session") == _ROVER_SESSION]
+    eng = max((s for s in seqlar if isinstance(s, int)), default=0)
+    if not eng:
+        return
+    with ANDON_LOCK:
+        if eng > int(ROVER["ack_upto"]):
+            ROVER["ack_upto"] = eng
+
+
 async def andon_shipper() -> None:
     """Andon navbatini serverga yuboradi; navbat bo'sh bo'lsa ham har 30 s jonli holatni
     yangilaydi (server 90 s xabar olmasa "aloqa yo'q" ko'rsatadi).
@@ -1747,6 +1957,7 @@ async def andon_shipper() -> None:
             if status == 200:
                 oxirgi = time.monotonic()
                 await asyncio.to_thread(_andon_ack, count)
+                _rover_acked(events)
                 if javob.get("skipped"):
                     log.warning("Andon: server %s ta buzuq hodisani yozmadi", javob.get("skipped"))
                 continue

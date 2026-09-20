@@ -25,9 +25,11 @@ OEE          = Availability × Performance × Quality
 | Ideal sikl vaqti | `part.xnc_summary` (teshik/paz/freza) + koeffitsiyentlar (Tizim sozlamalari, §4.6) | ⚠️ bor, qiymatlar TAXMINIY — sekundomer bilan to'g'rilash kerak |
 | **Performance hisobi** | `services/performance.py`, Hisobotlar → «Stanok vaqti» (§4.6, kromka — §4.9) | ✅ bor: Prisadka (2026-09-18) va Kromka (2026-09-20) |
 | **Kromka o'lchovi ↔ detal** | `services/kromka.py`, Tizim sozlamalari → «Kromka o'lchovi» (§4.10) | ⚠️ hukm bor (mos/ortiqcha/nomos), lekin KUZATUV: datchik xato o'lchayapti, avtomatik brak o'chirilgan (2026-09-20) |
+| **ROVER (CNC 2130) kuzatuvi** | `bridge-agent/agent.py` (v1.7.0), `andon_event.kind='rover'` (§4.13) | ✅ bor (2026-09-20): holat, to'xtash va Pico hodisalari; rele hali o'chiq |
 | **OEE kesim sanasi** | `settings_service.OEE_START_DATE`, Tizim sozlamalari → «Ish jadvali» (§4.12) | ✅ bor (2026-09-20): kesimdan oldingi kunlar hisobotga kirmaydi |
 | **Quality hisobi** | `services/performance.py: quality_pct`, Hisobotlar → «Stanok vaqti» (§4.7, kromka — §4.11) | ✅ bor: Prisadka (2026-09-19) va Kromka (2026-09-20) |
 | Brak | `part_defect` — terminal skan tasmasidagi BRAK tugmasi (§4.7) | ✅ bor (2026-09-19); qayta ishlab chiqarish (remake) YO'Q |
+| **ROVER (CNC 2130) kuzatuvi** | `bridge-agent/agent.py` (v1.7.0), `andon_event.kind='rover'` (§4.13) | ✅ bor (2026-09-20): holat, to'xtash va Pico hodisalari; rele hali o'chiq |
 | **OEE kesim sanasi** | `settings_service.OEE_START_DATE`, Tizim sozlamalari → «Ish jadvali» (§4.12) | ✅ bor (2026-09-20): kesimdan oldingi kunlar hisobotga kirmaydi |
 | **Quality hisobi** | `services/performance.py: quality_pct`, Hisobotlar → «Stanok vaqti» (§4.7) | ✅ bor (2026-09-19) |
 | **OEE = A × P × Q** | `services/performance.py: oee_pct`, o'sha hisobot ustuni (§4.7) | ✅ bor (2026-09-19) |
@@ -511,6 +513,52 @@ Tekshiruv (bir martalik skript, haqiqiy Postgres): **15/15** — bir xil ikki ku
 15-sentabr); kesimsiz 2 kun / 20 o'tish / reja 18 soat, kesim 15-sentabrga qo'yilgach 1 kun /
 10 o'tish / reja 9 soat va `date_from` 15-sentabrga surildi; butunlay kesimdan oldingi oraliq
 bo'sh hisobot qaytardi; kesim olib tashlanganda ikkala kun qaytdi.
+
+### 4.13 ROVER (CNC 2130) — kuzatuv (2026-09-20, 1-bosqich)
+
+Uchinchi Pico turi. Firmware ularniki (`jasper2233/cnc2130-oyy-mes`) va **tegilmaydi** —
+moslashish agent tomonda. Undan oldingi ikkitasidan asosiy farqi: bu Pico **ikki
+tomonlama** ishlaydi va gapirish uchun kompyuterni eshitishi kerak.
+
+| Signal | Nimani bildiradi |
+| --- | --- |
+| `S_PWR` | stanok tarmoqqa ulangan (24 V, asosiy kalit orqasidan) |
+| `S_RUN` | chastotnikning «ishlamoqda» chiqishi — **shpindel aylanyapti** |
+| `S_HOME` | stanok 0 nuqtada (induktiv datchik) |
+| `S_MAINT` | shkafdagi ta'mirlash kaliti — avtomatik o'chirishni bloklaydi |
+
+Agent uchta narsani qiladi: har 10 soniyada **kompyuter vaqtini** yuboradi (Pico'da
+soat moduli yo'q va 30 s jim qolsa u hodisalarni fleshga yig'a boshlaydi), server
+yozgandan KEYIN **`ack`** qaytaradi, ulanishda bir marta **sozlama** yuboradi.
+
+| Qoida | Nega |
+| --- | --- |
+| `ack` faqat server yozgach | erta tasdiqlansa, internet uzilgan paytdagi hodisa Pico'da o'chib, bizda ham yozilmay yo'qolardi |
+| `run` o'zgarishi — kromkadagi BIR XIL `uskuna` hodisasi | to'xtash, bo'sh yurish va Availability zanjiri qayta yozilmaydi (`services/downtimes.py`) |
+| Bir xil holat qayta yozilmaydi | `state` har 10 soniyada keladi: kuniga 8000 dan ortiq bir xil qator bazaga tushardi |
+| Pico hodisasi xom holida saqlanadi (`kind="rover"`, asl turi `payload.rover_type`) | `POWER_ON`/`SPINDLE_IDLE`/`AUTO_SHUTDOWN` davomiyliklari Pico'ning o'z hisoblagichidan — agent o'chiq turgan davr uchun yagona manba |
+| Takror kelgan hodisa navbatga bir marta tushadi | tasdiq kelmaguncha Pico uni har 10 soniyada qayta yuboradi |
+| `t_reason` = 300 s yuboriladi | MES dagi umumiy chegara bilan bir xil; Pico'ning sukut qiymati (15 daqiqa) bilan undan qisqa to'xtash umuman yozilmasdi |
+| `auto_shutdown` = **o'chiq** | rele stanokni o'chiradi: avval tsexda qancha bo'sh turish yig'ilayotgani ko'riladi, taymerlar real ritmga moslanadi (docs/12 §6) |
+
+**Hozircha YO'Q:** rele (avtomatik o'chirish), ish markazi darajasidagi sozlama
+paneli, rover hodisalaridan to'xtash yasash (sabab bizning `uskuna` zanjiridan
+so'raladi — ikki manba bo'lsa operatordan bitta narsa uchun ikki marta so'ralardi),
+`start_job`/`planned_stop` buyruqlari.
+
+**Ma'lum cheklov:** agent o'chiq turgan davrda `state` kelmaydi, ya'ni o'sha vaqt
+hisobotda «stanok o'chiq» bo'lib qoladi — Pico'ning o'zi esa o'sha davrni `POWER_ON`
+hodisasi bilan bergan bo'ladi. Ikkalasini birlashtirish keyingi bosqichda.
+
+Tekshiruv (bir martalik skript, haqiqiy Postgres): **23/23** — ULARNING firmware'i
+kompyuterda yurgizildi (soxta `machine`/USB), chiqqan qatorlar BIZNING agent
+parseridan o'tdi, natija haqiqiy `POST /bridge-agents/andon` handleriga berildi:
+tur ROVER deb aniqlandi (kromka deb emas), sozlama bir marta ketdi va Pico uni
+QABUL QILDI (300 s dan qisqa 200 s lik to'xtash hodisa bermadi, 360 s lik berdi),
+`run` o'zgarishlari `uskuna` bo'lib yozildi (`0·1·0·1·0`), takror yuborilgan hodisa
+navbatga bir marta tushdi, `POWER_ON` va `SPINDLE_IDLE` xom maydonlari bilan bazaga
+tushdi, takror partiya 0 ta yangi yozuv berdi, RUN tushishidan to'xtash yozildi,
+tasdiq esa FAQAT server yozgandan keyin va bir marta ketdi.
 
 ## 5. Prod auditi natijalari (2026-09-16)
 

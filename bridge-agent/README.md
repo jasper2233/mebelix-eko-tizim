@@ -87,7 +87,9 @@ Odatda qo'lda hech narsa yozilmaydi — birinchi ulanish ikkalasini ham to'ldira
 | `QUEUE_FILE` | lokal navbat fayli (default `%APPDATA%\MebelixAgent\print-queue.jsonl` — avtostartda ishchi papka System32 bo'lgani uchun nisbiy yo'l ishlamaydi) |
 | `ANDON` | stanok signal ustunini (Pico, USB) o'qish; default yoniq, `0` o'chiradi. Pico topilmagan kompyuterda o'zi jim turadi |
 | `ANDON_PORT` | Pico COM porti (bo'sh — Raspberry Pi VID `2E8A` bo'yicha o'zi topadi) |
-| `ANDON_TUR` | Pico turi: `prisadka` (signal ustuni) yoki `kromka` (o'lchash stansiyasi). Bo'sh — birinchi qatordan o'zi aniqlaydi |
+| `ANDON_TUR` | Pico turi: `prisadka` (signal ustuni), `kromka` (o'lchash stansiyasi) yoki `rover` (CNC 2130). Bo'sh — birinchi qatordan o'zi aniqlaydi |
+| `ROVER_T_REASON` | Rover Pico'siga yuboriladigan chegara, soniya (default `300`): shundan uzun to'xtash hodisa bo'lib yoziladi |
+| `ROVER_AUTO_SHUTDOWN` | `1` bo'lsa rover Pico'si taymer bo'yicha stanokni o'chiradi (default `0` — kuzatuv) |
 | `ANDON_TAKEOVER` | `0` — port band bo'lsa eski `PrisadkaMES.exe` ni to'xtatmaslik |
 | `ANDON_QUEUE_FILE` | andon navbati (default `%APPDATA%\MebelixAgent\andon-queue.jsonl`) |
 
@@ -206,3 +208,38 @@ o'lchaydi (firmware alohida repoda). Agent ikkalasini ham o'qiydi:
 
 Tur birinchi tushunarli qatordan aniqlanadi; bitta kompyuterda ikki Pico bo'lsa
 `ANDON_TUR` va `ANDON_PORT` bilan aniq ko'rsatiladi.
+
+## Rover Pico'si — CNC 2130 (v1.7.0+)
+
+Uchinchi xil Pico (firmware alohida repoda: `jasper2233/cnc2130-oyy-mes`). Oldingi
+ikkitasidan farqi — **ikki tomonlama** aloqa: bu Pico gapirish uchun kompyuterni
+eshitishi SHART.
+
+| | Kromka | Rover (CNC 2130) |
+|---|---|---|
+| Qator | `{"ev": ...}` | `{"t": ...}` (`hello`/`state`/`event`/`log`) |
+| Yurak urishi | agent `HB` yuboradi | agent **kompyuter VAQTINI** yuboradi (har 10 s). 30 s jim qolsa Pico «kompyuter yo'q» deb hodisalarni fleshga yig'a boshlaydi |
+| Soat | Pico'da yo'q, vaqt agentdan | xuddi shunday (DS3231 ulanmagan) |
+| Tasdiq | yo'q | **bor**: hodisa `ack` kelmaguncha Pico'da qoladi va har 10 s qayta keladi |
+| Kalit | agent beradi | hodisaniki — Pico'ning `seq` i (fleshda saqlanadi, takrorlanmaydi) |
+
+**Tasdiq qoidasi:** agent `{"t":"ack","seq":N}` ni FAQAT server hodisani yozgandan
+keyin yuboradi (`andon_shipper` → `_rover_acked`). Erta tasdiqlansa, internet
+uzilgan paytdagi hodisa Pico'da o'chib, bizda ham yozilmay yo'qolardi.
+
+**Nima yoziladi:**
+- `state` (har 10 s) — jonli holat; `run` o'zgarganda kromkadagi bilan BIR XIL
+  `uskuna` hodisasi (`holat` 1/0), ya'ni serverdagi to'xtash/OEE zanjiri o'zgarmaydi.
+  Bir xil holat qayta yozilmaydi.
+- `event` — Pico o'zi o'lchab tugatgan davr (`POWER_ON`, `SPINDLE_IDLE`,
+  `UNPLANNED_STOP`, `AUTO_SHUTDOWN`, `SHUTDOWN_FAILED`, `POWER_CYCLE`,
+  `PLANNED_STOP`, `LOG_FULL`). Serverga `kind="rover"` bo'lib boradi, asl turi
+  `payload.rover_type` da (`type` ni server sxemasi o'zi uchun band qilgan).
+
+**Sozlama** har ulanishda bir marta yuboriladi: `t_reason` (default 300 s — MES
+dagi umumiy chegara bilan bir xil) va `auto_shutdown` (default **o'chiq**:
+avtomatik o'chirishga tsexda kuzatuvdan keyin o'tiladi).
+
+Portni faqat BITTA dastur ocha oladi: agent ochgach ularning `usb_panel.html`
+sahifasi va `tools/stanok.py` ishlamaydi. Windows'da *USB selective suspend*
+o'chirilgan bo'lsin, aks holda port uxlab qoladi.
