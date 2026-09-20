@@ -331,6 +331,12 @@ faqat KUZATILADI: hech narsa bloklanmaydi, skan oqimiga tegilmaydi. Foyda darhol
 | Oraliqlar | `services/andon.py: uskuna_spans` | Kromka Pico'si holat DAVOMIYLIGINI o'lchamaydi (prisadkadagi `prev_duration_s` yo'q) — oraliq hodisalar orasidan quriladi: `holat=1` → PROCESSING, `0` → OFF. Oxirgi oraliq faqat agent hozir aloqada bo'lsa ochiq qoladi |
 | Terminal | `Terminal/KromkaView: StationStrip` + `GET /terminal/kromka/measurements` | Sarlavha ostida oxirgi o'lchov: `mm`, Pico kodi (OK/FARQ/FAQAT1/FAQAT2), D1/D2, tezlik va oldingi 7 tasi. Stansiyasiz postda umuman chizilmaydi |
 
+Ma'lumot sifatini o'lchash uchun `scripts/kromka_audit.sql` — faqat o'qiydigan SQL
+(o'sha `oee_audit.sql` naqshi, 10 bo'lim): qamrov, kunlik sanoq, Pico kodlari taqsimoti
+(`OK`/`FARQ`/`FAQAT1`/`FAQAT2`), D1−D2 farqi (median/p90/max), tezlik tarqoqligi, MAYDA
+bo'laklar soni, ogohlantirishlar, kunlik ishlagan vaqt, uzilishlar va oxirgi 15 o'lchov.
+Qayerda ishga tushirish — fayl boshida.
+
 **1-bosqichga kirmaydi**: QR bog'lash, kutilgan o'lcham, MOS/NOMOS verdikti, avtomatik skan,
 avtomatik brak, kalibrlash UI si va `SET` yuborish (Pico `kal.json` dagi oxirgi sozlama bilan
 ishlayveradi), sirena/lampa mantiqi.
