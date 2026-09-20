@@ -140,7 +140,7 @@ ilgari beyjik bilan ochilgan smena chiqishda yopilmasdi.
 | Qism | Qayerda | Nima qiladi |
 | --- | --- | --- |
 | Jadvallar | `downtime_reason`, `downtime` (migratsiya `9e4b7c1d2a60`, docs/04) | sabablar ro'yxati; to'xtash: tur, boshlanish/tugash, sabab, izoh, kiritgan hodim |
-| Hisob | `services/downtimes.sync_machine` | qizil (FAULT) va OFF — darhol; sariq (IDLE/STOPPED) — `stop_prompt_idle_minutes` dan uzoq bo'lsa, vaqt sariq yongan paytdan. Idempotent, sabab qayta hisobda tegilmaydi |
+| Hisob | `services/downtimes.sync_machine` | PRISADKA: qizil (FAULT) va OFF — darhol; sariq (IDLE/STOPPED) — `stop_prompt_idle_minutes` dan uzoq bo'lsa, vaqt sariq yongan paytdan. **KROMKA** (2026-09-20): `uskuna` hodisasi, `holat=0` → `OFF`, unga ham CHEGARA qo'llanadi — lenta detal qo'yish uchun qisqa to'xtaydi va har 40 soniyalik pauzada sabab so'ralsa operator oynani o'qimay yopishga o'rganardi. Qisqa to'xtash HISOBGA baribir kiradi (Availability oraliqlardan), faqat sababi so'ralmaydi. Idempotent, sabab qayta hisobda tegilmaydi |
 | Worker | `tasks.sync_downtimes` (5 daq) | terminal yopiq bo'lsa ham to'xtashlar yozilib, yopilib turadi |
 | Terminal | `GET /terminal/downtimes/pending` (30 s + `andon.state` WS), `Terminal/DowntimeReason.tsx` | sababsiz to'xtash bo'lsa oyna o'zi chiqadi; faqat Pico ulangan ish markazida (`has_andon`) va smena ochiq bo'lsa; «Keyinroq» — 10 daqiqa |
 | Qulf | `POST /terminal/downtimes/lock` | qulf tugmasi avval sabab so'raydi; qulf beyjik bilan ochilganda (`open_badge_session`) yopiladi, uning ostida boshlangan Pico to'xtashi sababni oladi |
@@ -159,6 +159,11 @@ Egasining ro'yxati (`oee to'xtalishlar.xlsx`, `Лист1` B4:C13; imlo to'g'rila
   Mahsulot yo'q, Mahsulot brak, Yangi buyurtmani olib kelish.
 «Izoh majburiy» egasi belgilamagan. Ro'yxat kodga YOZILMAYDI (statik bo'lib qolmasin, 2026-09-18):
 admin uni Tizim sozlamalarida shu ikki guruhga kiritadi va keyin o'zi yuritadi.
+
+Kromka to'xtashlari tekshiruvi (bir martalik skript, haqiqiy Postgres): **15/15** — 2 daqiqalik
+to'xtash yozilmaydi, 1 soatlik yoziladi (`OFF`), tugash vaqti to'g'ri, qayta hisobda yangi yozuv
+chiqmaydi, ochiq to'xtash ochiq qoladi; sabab kiritilgach hisobotda REJALI bo'lib reja vaqtidan
+chiqadi va taqsimotda o'z qatori bilan ko'rinadi.
 
 Hali yo'q: sababni holatga (qizil/sariq) bog'lash. Ish vaqtidan tashqaridagi OFF ni avtomat «Smena tugadi»
 qilish KERAK BO'LMADI — hisobot uni ish jadvali bilan o'zi kesadi (§4.5).

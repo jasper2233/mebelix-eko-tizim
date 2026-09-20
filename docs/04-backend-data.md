@@ -175,7 +175,8 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   tugmasi), `start_key(40)`, `started_at`, `ended_at` (NULL — davom etmoqda), `reason_id` FK NULL,
   `note`, `employee_id` FK NULL (kiritgan — langar smena hodimi), `reason_at`. Indekslar:
   `ix_downtime_machine_key` UNIQUE `(machine_id, start_key)`, `ix_downtime_machine_started`.
-  Pico turlari `services/downtimes.sync_machine` da `andon_event` dan QAYTA HISOBLANADI (idempotent):
+  Pico turlari `services/downtimes.sync_machine` da `andon_event` dan QAYTA HISOBLANADI (idempotent;
+  2026-09-20 dan KROMKA ning `uskuna` hodisalari ham — `holat=0` → `OFF`, chegara bilan):
   ketma-ket to'xtash holatlari bitta oraliq, `start_key` = boshlagan hodisa `{session}-{seq}`, mavjud
   yozuvning faqat `ended_at` i yangilanadi — sabab tegilmaydi. `STOPPED` = `IDLE` (Pico sariqni 300 s
   dan keyin STOPPED deb qayta yuboradi); STOPPED birinchi kelgan bo'lsa boshlanish

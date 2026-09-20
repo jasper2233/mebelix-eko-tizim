@@ -8,6 +8,13 @@ Qarorlar (2026-09-17, docs/12-oee.md §7):
 - qulf tugmasi (LOCK) — operator sababni o'zi aytib to'xtatadi; shu oraliqda boshlangan Pico
   to'xtashi sababni qulfdan oladi va qayta so'ralmaydi.
 
+KROMKA stansiyasi (2026-09-20) boshqacha gapiradi: unda chiroq yo'q, RUN kirishi bor va u
+faqat O'ZGARGANDA `uskuna` hodisasi keladi (`holat` 0/1). `holat=0` — lenta to'xtagan, ya'ni
+to'xtash (`OFF`). Bunga ham `stop_prompt_idle_minutes` chegarasi qo'llanadi: kromkada lenta
+detal qo'yish uchun qisqa to'xtaydi va har 40 soniyalik pauzada sabab so'ralsa, operator
+oynani o'qimasdan yopishga o'rganib qolardi. Chegaradan qisqa to'xtash HISOBGA baribir kiradi
+(Availability oraliqlardan hisoblanadi) — faqat SABAB so'ralmaydi.
+
 Yozuvlar IDEMPOTENT: hisob har safar hodisalardan qaytadan yuritiladi va `start_key` (to'xtashni
 boshlagan hodisa) bo'yicha mavjud yozuvning faqat `ended_at` i yangilanadi — sabab tegilmaydi.
 """
@@ -15,7 +22,7 @@ boshlagan hodisa) bo'yicha mavjud yozuvning faqat `ended_at` i yangilanadi — s
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AndonEvent, Downtime
@@ -41,6 +48,22 @@ class _Run:
     session: str
     start: datetime
     end: datetime | None = None
+    #: Sabab so'rash uchun chegara qo'llanadimi (sariq chiroq va kromka to'xtashlari uchun ha)
+    chegarali: bool = False
+
+
+def _stop_kind(ev: AndonEvent) -> tuple[DowntimeKind | None, bool]:
+    """Hodisa to'xtash boshlaydimi: `(turi, chegarali)`.
+
+    PRISADKA (`state`) — chiroq holati bo'yicha; qizil va hammasi o'chiq DARHOL, sariq
+    chegaradan uzoq bo'lsa. KROMKA (`uskuna`) — RUN kirishi: `holat=0` to'xtash, unga ham
+    chegara qo'llanadi (yuqoridagi izoh)."""
+    if ev.kind == "state":
+        kind = _STOP_KIND.get(ev.state or "")
+        return kind, kind == DowntimeKind.IDLE
+    if ev.kind == "uskuna":
+        return (None, False) if (ev.payload or {}).get("holat") else (DowntimeKind.OFF, True)
+    return None, False
 
 
 def _runs(events: list[AndonEvent]) -> list[_Run]:
@@ -53,7 +76,7 @@ def _runs(events: list[AndonEvent]) -> list[_Run]:
     cur: _Run | None = None
     prev: AndonEvent | None = None
     for ev in events:
-        kind = _STOP_KIND.get(ev.state or "")
+        kind, chegarali = _stop_kind(ev)
         if cur is not None and prev is not None and (ev.session != cur.session or kind != cur.kind):
             cur.end = ev.happened_at if ev.session == cur.session else prev.happened_at
             out.append(cur)
@@ -64,7 +87,7 @@ def _runs(events: list[AndonEvent]) -> list[_Run]:
             # yoki yo'qolgan) — boshlanish Pico o'lchagan IDLE davomiyligidan tiklanadi.
             if ev.state == "STOPPED" and ev.prev_state == "IDLE" and ev.prev_duration_s:
                 start -= timedelta(seconds=ev.prev_duration_s)
-            cur = _Run(kind=kind, key=f"{ev.session}-{ev.seq}", session=ev.session, start=start)
+            cur = _Run(kind=kind, key=f"{ev.session}-{ev.seq}", session=ev.session, start=start, chegarali=chegarali)
         prev = ev
     if cur is not None:
         out.append(cur)
@@ -88,12 +111,16 @@ async def sync_machine(db: AsyncSession, machine_id: int, now: datetime) -> None
         since = earliest_open
     # Oyna to'xtash O'RTASIDAN boshlanmasin: aks holda o'sha to'xtash boshqa kalit bilan ikkinchi
     # marta yozilardi. Oyna oldingi "ishlayapti" hodisasiga surib qo'yiladi.
+    # «Ishlayapti» hodisasi: prisadkada to'xtash bo'lmagan chiroq holati, kromkada `holat=1`
+    ishlayapti = or_(
+        and_(AndonEvent.kind == "state", AndonEvent.state.notin_(list(_STOP_KIND))),
+        and_(AndonEvent.kind == "uskuna", AndonEvent.payload["holat"].as_integer() == 1),
+    )
     working_before = (
         await db.execute(
             select(func.max(AndonEvent.happened_at)).where(
                 AndonEvent.machine_id == machine_id,
-                AndonEvent.kind == "state",
-                AndonEvent.state.notin_(list(_STOP_KIND)),
+                ishlayapti,
                 AndonEvent.happened_at <= since,
             )
         )
@@ -107,7 +134,7 @@ async def sync_machine(db: AsyncSession, machine_id: int, now: datetime) -> None
                 select(AndonEvent)
                 .where(
                     AndonEvent.machine_id == machine_id,
-                    AndonEvent.kind == "state",
+                    AndonEvent.kind.in_(("state", "uskuna")),
                     AndonEvent.happened_at >= since,
                 )
                 .order_by(AndonEvent.happened_at, AndonEvent.id)
@@ -117,7 +144,9 @@ async def sync_machine(db: AsyncSession, machine_id: int, now: datetime) -> None
         .all()
     )
     threshold = timedelta(minutes=int(await get_setting(db, STOP_PROMPT_IDLE_MINUTES)))
-    runs = [r for r in _runs(events) if r.kind != DowntimeKind.IDLE or (r.end or now) - r.start >= threshold]
+    # Chegara sariq chiroqqa (prisadka) va kromka to'xtashlariga qo'llanadi — qisqasi
+    # mikro-to'xtash, uning sababi so'ralmaydi
+    runs = [r for r in _runs(events) if not r.chegarali or (r.end or now) - r.start >= threshold]
     if not runs:
         return
 
