@@ -25,6 +25,7 @@ OEE          = Availability × Performance × Quality
 | Ideal sikl vaqti | `part.xnc_summary` (teshik/paz/freza) + koeffitsiyentlar (Tizim sozlamalari, §4.6) | ⚠️ bor, qiymatlar TAXMINIY — sekundomer bilan to'g'rilash kerak |
 | **Performance hisobi** | `services/performance.py`, Hisobotlar → «Stanok vaqti» (§4.6, kromka — §4.9) | ✅ bor: Prisadka (2026-09-18) va Kromka (2026-09-20) |
 | **Kromka o'lchovi ↔ detal** | `services/kromka.py`, Tizim sozlamalari → «Kromka o'lchovi» (§4.10) | ✅ bor (2026-09-20): mos/ortiqcha/nomos hukmi, NOMOS'da brak oynasi |
+| **Quality hisobi** | `services/performance.py: quality_pct`, Hisobotlar → «Stanok vaqti» (§4.7, kromka — §4.11) | ✅ bor: Prisadka (2026-09-19) va Kromka (2026-09-20) |
 | Brak | `part_defect` — terminal skan tasmasidagi BRAK tugmasi (§4.7) | ✅ bor (2026-09-19); qayta ishlab chiqarish (remake) YO'Q |
 | **Quality hisobi** | `services/performance.py: quality_pct`, Hisobotlar → «Stanok vaqti» (§4.7) | ✅ bor (2026-09-19) |
 | **OEE = A × P × Q** | `services/performance.py: oee_pct`, o'sha hisobot ustuni (§4.7) | ✅ bor (2026-09-19) |
@@ -391,7 +392,7 @@ keyingi detalni qo'yguncha ketadigan vaqt. Tizim sozlamalari → «Ideal sikl» 
 | Har QIRRA alohida o'tish | to'rt qirrali detal to'rt marta o'tadi va to'rtalasi sanaladi — stanok rostdan shuncha ish qilgan (Prisadkadagi «bitta detal = bitta sikl» emas) |
 | Faqat KUZATILGAN ish vaqtidagi o'tish | Prisadkadagi bilan bir xil qoida: ma'lumotsiz vaqt `run_s` ga kirmaydi, o'sha paytdagi detal ham sanalmasin |
 | O'lchamsiz yoki tezliksiz hodisa tashlanadi | `FAQAT1/FAQAT2` da uzunlik bo'lishi mumkin, lekin `L` yo'q bo'lsa ideal vaqtni hisoblab bo'lmaydi |
-| Kromkada **Quality hisoblanmaydi** (`—`), demak OEE ham | o'lchov endi detalga bog'landi (§4.10), lekin Quality maxraji hali ochiq: Performance QIRRA bo'yicha, brak esa DETAL bo'yicha sanaladi. «Brak yo'q» deb 100% ko'rsatish yolg'on baho bo'lardi |
+| Kromkada Quality ham hisoblanadi (§4.11), ya'ni OEE to'liq | birlik ikkala tomonda ham QIRRA O'TISHI: kromkada bitta skan = bitta qirra (`per_instance`), o'lchov ham qirra bo'yicha keladi |
 | `gap_s` o'zgarsa o'tgan kunlar qayta hisoblanadi | ideal vaqt saqlanmaydi — kalibrlashda butun tarix birdan to'g'rilanadi |
 
 Tekshiruv (bir martalik skript, haqiqiy Postgres): **10/10** — 2000 mm @ 18 m/min bitta
@@ -442,6 +443,43 @@ o'tish `ortiqcha`; 300 mm `nomos` va eng yaqin kutilgan (430) ko'rsatildi; ikki 
 detalda eni o'lchovi `nomos`; `FAQAT1` — `shubhali`; 30 daqiqalik eski skan va bekor
 qilingan skan bog'lanmadi; takror partiya kvotani qayta yopmadi; terminal tasmasi va
 admin oqimi hukm, detal nomi va kutilgan o'lchamni qaytardi.
+
+### 4.11 Kromka Quality (2026-09-20)
+
+```
+Quality = (qirra o'tishlari − brak) ÷ qirra o'tishlari
+```
+
+Prisadkadagi formulaning AYNAN o'zi, faqat birlik boshqa: kromkada ish birligi detal emas,
+**qirra o'tishi**. Maxraj — stansiya o'lchagan o'tishlar (Performance bilan bitta manba),
+surat — o'sha o'tishlardagi brak. Ikkalasi bir xil birlikda, chunki KROMKA qadamida
+`per_instance` = qirralar soni: operator har qirrani alohida skanerlaydi va `part_defect`
+har skanga bittadan yoziladi.
+
+**Brak qayerdan keladi.** Ikki yo'l, bitta jadval:
+
+1. **Stansiya o'zi** — o'lchov hech bir kutilgan tomonga mos kelmasa (`nomos`, §4.10), qayd
+   DARHOL ochiladi: sababi vaqtincha «O'lcham mos emas», izohda o'lchangan va kutilgan
+   raqam. Terminal o'sha zahoti oyna ochadi va operator aniq sababni tanlaydi — o'sha qator
+   YANGILANADI, ikkinchisi yaratilmaydi. Operator oynani yopib ketsa ham qayd qoladi: aks
+   holda o'lchangan nuqson hech qayerda qolmay, Quality aslidan yaxshi ko'rinardi.
+2. **Operator qo'lda** — skan tasmasidagi BRAK tugmasi (§4.7), prisadkadagi kabi.
+
+Yakuniy hakam — **menejer**: rad etilgan qayd Quality'ga kirmaydi, ya'ni soxta signal
+(datchik shovqini, noto'g'ri bog'langan skan) hisobni buzmaydi.
+
+| Qoida | Nega |
+| --- | --- |
+| Brak vaqti = O'LCHOV vaqti, qator yozilgan lahza emas | agent oflayn turib partiyani kechroq yuborsa, brak o'zi sodir bo'lgan KUNGA tushsin — hisobot braklarni kunlarga ajratadi |
+| Braklangan o'tish maxrajda QOLADI | ish qilingan (vaqt ketgan), mahsulot yaroqsiz — aks holda brak ikki marta jazolanardi (§4.7 dagi bilan bir xil qoida) |
+| `ortiqcha`/`shubhali`/`skanersiz` qayd OCHMAYDI | to'g'ri o'lchamdagi takroriy o'tish brak emas; datchik kodi OK bo'lmaganda esa detalni ayblab bo'lmaydi |
+| Bitta o'tishga bitta qayd | qirra ikki marta brak bo'lib Quality qo'sh tushmasin (`scan_id` bo'yicha tekshiriladi) |
+
+Tekshiruv (bir martalik skript, haqiqiy Postgres, haqiqiy endpointlar): **21/21** — 10 nusxa ×
+4 qirra = 40 o'tish, bittasi 300 mm bo'lib chiqdi: qayd O'ZI ochildi (`pending`, o'sha skanga
+bog'landi, izohda «300.0 mm»), hisobotda 40 o'tish / 1 brak / **Quality 97.5%**,
+Availability 88.9%, OEE = A×P×Q; operator sabab tanlaganda yangi qator chiqmadi va Quality
+o'zgarmadi; menejer rad etgach brak 0 va Quality 100% bo'ldi.
 
 ## 5. Prod auditi natijalari (2026-09-16)
 

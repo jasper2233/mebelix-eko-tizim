@@ -754,13 +754,13 @@ function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
           </TableHead>
           <TableHead
             className="hidden text-right md:table-cell"
-            title="Terminalda BRAK deb belgilangan detallar («brak emas» deb rad etilgani sanalmaydi)"
+            title="BRAK deb belgilangan detallar: terminaldagi tugma bilan yoki kromkada o'lcham mos kelmaganda stansiya o'zi ochgan qayd («brak emas» deb rad etilgani sanalmaydi)"
           >
             Brak
           </TableHead>
           <TableHead
             className="text-right"
-            title="(detallar − brak) ÷ detallar. Brak kiritilmagan bo'lsa 100%. Kromkada hali hisoblanmaydi — brak detalga bog'lanmagan (QR bog'lash keyingi bosqich)"
+            title="(detallar − brak) ÷ detallar. Brak kiritilmagan bo'lsa 100%. Kromkada birlik — QIRRA o'tishi: bitta skan ham, bitta o'lchov ham bitta qirra"
           >
             Quality
           </TableHead>

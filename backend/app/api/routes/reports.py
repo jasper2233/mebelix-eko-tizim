@@ -361,6 +361,22 @@ async def report_machine_time(
         .scalars()
         .all()
     )
+    kromka_ids = set(
+        (
+            await db.execute(
+                select(Machine.id)
+                .join(Post, Post.id == Machine.post_id)
+                .where(Machine.id.in_(ids), Post.code == PostCode.KROMKA)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    #: Quality hisoblanadigan stanoklar. Kromkada BITTA SKAN = BITTA QIRRA o'tishi
+    #: (`per_instance` = qirralar soni), o'lchov ham qirra bo'yicha keladi — ya'ni surat
+    #: va maxraj bir xil birlikda. Boshqa postlarda o'lchov manbasi yo'q, Quality `—`.
+    quality_ids = prisadka_ids | kromka_ids
+
     # OEE Quality: BRAK (`part_defect`) — detallar bilan BIR XIL filtr (kuzatilgan ish vaqti),
     # aks holda surat va maxraj boshqa-boshqa vaqtdan yig'ilardi. Brak kiritilmagan bo'lsa
     # Quality 100% bo'lib qoladi: ayiriladigan narsa yo'q.
@@ -370,12 +386,12 @@ async def report_machine_time(
     #: ketgan), mahsulot esa yaroqsiz. Aks holda brak ikki marta jazolanardi — detal ham
     #: chiqib ketardi (P tushardi), ham brak bo'lib ayirilardi (Q tushardi).
     defect_scan_ids: set[int] = set()
-    if prisadka_ids:
+    if quality_ids:
         defect_rows = (
             (
                 await db.execute(
                     select(PartDefect.machine_id, PartDefect.created_at, PartDefect.scan_id).where(
-                        PartDefect.machine_id.in_(prisadka_ids),
+                        PartDefect.machine_id.in_(quality_ids),
                         # «Brak emas» deb rad etilgani sanalmaydi; tasdiq kutayotgani SANALADI —
                         # aks holda tasdiq kechikkanda OEE aslidan yaxshi ko'rinib turardi
                         PartDefect.status != DefectStatus.REJECTED,
@@ -402,17 +418,6 @@ async def report_machine_time(
     # (`services/performance.kromka_ideal_seconds`). Uzunlikni stansiyaning o'zi o'lchaydi,
     # ya'ni bu yerda taxminiy koeffitsiyent yo'q; sozlanadigani — detallar oralig'i.
     ideal_kromka = await get_ideal_cycle_kromka(db)
-    kromka_ids = set(
-        (
-            await db.execute(
-                select(Machine.id)
-                .join(Post, Post.id == Machine.post_id)
-                .where(Machine.id.in_(ids), Post.code == PostCode.KROMKA)
-            )
-        )
-        .scalars()
-        .all()
-    )
     ideal_by: dict[tuple[int, date], list[float]] = {}  # (stanok, kun) -> [ideal soniya, detallar]
     measured: dict[int, list[float]] = {}  # stanok -> [o'lchangan sikl soniya, sikllar]
     if prisadka_ids:
@@ -505,7 +510,7 @@ async def report_machine_time(
             cell[1] += 1
 
     def perf(mid: int, ideal_s: float, run_s: int) -> float | None:
-        return round(ideal_s * 100 / run_s, 1) if mid in (prisadka_ids | kromka_ids) and run_s > 0 else None
+        return round(ideal_s * 100 / run_s, 1) if mid in quality_ids and run_s > 0 else None
 
     rows = []
     for mid in sorted(ids, key=lambda m: names.get(m, "")):
@@ -516,7 +521,7 @@ async def report_machine_time(
         # Quality FAQAT brak sanaladigan ish markazida. Kromkada brak hali detalga
         # bog'lanmagan (QR bog'lash — keyingi bosqich), shuning uchun u yerda `parts` bor
         # bo'lsa ham Quality hisoblanmaydi: «brak yo'q» emas, «hali o'lchanmaydi».
-        row_quality = quality_pct(parts_total, defects_total) if mid in prisadka_ids else None
+        row_quality = quality_pct(parts_total, defects_total) if mid in quality_ids else None
         rows.append(
             MachineTimeRow(
                 machine_id=mid,
@@ -554,7 +559,7 @@ async def report_machine_time(
         d = avail[mid].days.get(day, empty_day)
         day_parts = int(ideal_by.get((mid, day), [0.0, 0])[1])
         day_defects = defects_by.get((mid, day), 0)
-        day_quality = quality_pct(day_parts, day_defects) if mid in prisadka_ids else None
+        day_quality = quality_pct(day_parts, day_defects) if mid in quality_ids else None
         days.append(
             MachineTimeDay(
                 machine_id=mid,

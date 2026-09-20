@@ -19,6 +19,7 @@ from app.crud import log_action
 from app.models import PartDefect, Scan
 from app.models.enums import DefectStatus
 from app.schemas.defects import DefectCreate, DefectRead
+from app.services.kromka import AUTO_DEFECT_REASON
 from app.services.scanning import active_session
 from app.services.settings_service import get_defect_reasons
 
@@ -53,16 +54,36 @@ async def mark_defect(
         raise HTTPException(status_code=422, detail="Bunday brak sababi yo'q. Sahifani yangilang.")
     already = (
         await db.execute(
-            select(PartDefect.id).where(
+            select(PartDefect).where(
                 PartDefect.scan_id == scan.id,
                 PartDefect.is_deleted == False,  # noqa: E712
             )
         )
-    ).first()
-    if already is not None:
-        raise HTTPException(status_code=422, detail="Bu skan allaqachon brak deb belgilangan.")
-
+    ).scalar_one_or_none()
     session = await active_session(db, machine)  # E005/E006 — smena yo'q yoki hodim nofaol
+    if already is not None:
+        # Kromka stansiyasi o'lchov mos kelmaganda qaydni O'ZI ochadi (`services/kromka.py`)
+        # va terminalda shu oyna chiqadi — operator tanlagan sabab o'sha qatorga yoziladi.
+        # Ikkinchi qator yaratilsa bitta qirra ikki marta brak bo'lib Quality qo'sh tushardi.
+        if already.reason != AUTO_DEFECT_REASON or already.status != DefectStatus.PENDING:
+            raise HTTPException(status_code=422, detail="Bu skan allaqachon brak deb belgilangan.")
+        already.reason = body.reason
+        already.note = body.note or already.note
+        already.employee_id = session.employee_id
+        log_action(
+            db,
+            module="defect",
+            action="updated",
+            user_id=user.id,
+            employee_id=session.employee_id,
+            entity_type="defect",
+            entity_id=already.id,
+            message=f"Brak sababi: {body.reason} — {post.name}",
+            ip=client_ip(request),
+        )
+        await db.commit()
+        return already
+
     defect = PartDefect(
         order_id=scan.order_id,
         part_id=scan.part_id,

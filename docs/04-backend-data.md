@@ -169,7 +169,11 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   Sabab MATN bo'lib saqlanadi, FK EMAS: ro'yxat `system_setting.defect_reasons` da va admin uni
   o'zgartirsa eski yozuvning ma'nosi buzilmaydi. Nomi `defect` EMAS — o'sha nomdagi jadval
   `a1c9d4f2b60e` da tushirilgan (`downtime_reason` bilan bir xil sabab). Brak skanni BEKOR
-  QILMAYDI va marshrutni qayta ochmaydi (docs/12 §4.7).
+  QILMAYDI va marshrutni qayta ochmaydi (docs/12 §4.7). Qatorni terminaldagi BRAK tugmasi
+  yoki KROMKA stansiyasi ochadi: o'lchov kutilgan tomonga mos kelmasa (`nomos`)
+  `services/kromka.py` sababi «O'lcham mos emas» bo'lgan PENDING qayd yozadi va uning
+  `created_at` i O'LCHOV vaqtiga qo'yiladi (oflayn partiya kechroq kelsa ham brak o'z
+  kuniga tushsin); operator terminalda aniq sababni tanlasa AYNAN shu qator yangilanadi.
 - `KromkaMeasurement` (`kromka_measurement`, `e9c1b7d40a26`) — kromka stansiyasi o'lchovining
   HUKMI (xom hodisa `andon_event` da o'zgarmasdan qoladi): `machine_id` FK, `measured_at`,
   `code(10)` (Pico kodi), `verdict` (`KromkaVerdict`: `mos`/`nomos`/`ortiqcha`/`shubhali`/

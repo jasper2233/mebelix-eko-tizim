@@ -517,7 +517,9 @@ ochiladi: `ScanStrip` dagi BRAK tugmasi, va KROMKA'da WS `kromka.measure` hodisa
 kelmadi, operator faqat sababni tanlaydi. Avto-ochilish sabablar ro'yxati BO'SH bo'lsa
 ishlamaydi (`defectReasonsRef` — WS callback `useCallback` ichida, ref bo'lmasa sabablar
 kechroq yuklanganda eski bo'sh massiv ko'rinardi). `ortiqcha` hukmi oyna OCHMAYDI: to'g'ri
-o'lchamdagi takroriy o'tish brak emas.
+o'lchamdagi takroriy o'tish brak emas. `nomos` da brak qaydi SERVERDA allaqachon ochilgan
+(sababi vaqtincha «O'lcham mos emas») — oynada tanlangan sabab o'sha qatorni yangilaydi,
+ya'ni operator oynani yopib ketsa ham nuqson yo'qolmaydi (docs/12 §4.11).
 
 ### `frontend/src/components/Terminal/KromkaView.tsx`
 
