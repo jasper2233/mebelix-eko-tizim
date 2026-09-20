@@ -1776,6 +1776,49 @@ export type KromkaMeasurement = {
 };
 
 /**
+ * KromkaMeasurementRow
+ *
+ * Kromka stansiyasi o'lchagan bitta detal — admin panelidagi JONLI oqim uchun.
+ *
+ * Terminaldagi `KromkaMeasurement` bilan bir xil maydonlar, ustiga ish markazi:
+ * admin bir nechta stanokni bitta ro'yxatda ko'radi.
+ */
+export type KromkaMeasurementRow = {
+    /**
+     * Machine Id
+     */
+    machine_id: number;
+    /**
+     * Machine Name
+     */
+    machine_name: string;
+    /**
+     * At
+     */
+    at: string;
+    /**
+     * Length Mm
+     */
+    length_mm: number | null;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * D1 Mm
+     */
+    d1_mm: number | null;
+    /**
+     * D2 Mm
+     */
+    d2_mm: number | null;
+    /**
+     * Speed
+     */
+    speed: number | null;
+};
+
+/**
  * KromkaOrderState
  *
  * KROMKA post sahifasi (proyekt ochilganda): faqat kromkali detallar.
@@ -5259,6 +5302,24 @@ export type ReadMachinesOverviewResponses = {
 };
 
 export type ReadMachinesOverviewResponse = ReadMachinesOverviewResponses[keyof ReadMachinesOverviewResponses];
+
+export type ReadKromkaMeasurementFeedData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/machines/kromka-measurements';
+};
+
+export type ReadKromkaMeasurementFeedResponses = {
+    /**
+     * Response Read Kromka Measurement Feed
+     *
+     * Successful Response
+     */
+    200: Array<KromkaMeasurementRow>;
+};
+
+export type ReadKromkaMeasurementFeedResponse = ReadKromkaMeasurementFeedResponses[keyof ReadKromkaMeasurementFeedResponses];
 
 export type DeleteMachineData = {
     body?: never;

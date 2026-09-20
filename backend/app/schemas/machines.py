@@ -53,3 +53,20 @@ class MachineUpdate(BaseModel):
     post_id: int | None = None
     name: Annotated[str | None, Field(min_length=2, max_length=100, default=None)]
     status: MachineStatus | None = None
+
+
+class KromkaMeasurementRow(BaseModel):
+    """Kromka stansiyasi o'lchagan bitta detal — admin panelidagi JONLI oqim uchun.
+
+    Terminaldagi `KromkaMeasurement` bilan bir xil maydonlar, ustiga ish markazi:
+    admin bir nechta stanokni bitta ro'yxatda ko'radi."""
+
+    machine_id: int
+    machine_name: str
+    at: datetime
+    length_mm: float | None
+    #: OK — ikkala datchik mos; FARQ — chegaradan oshdi; FAQAT1/FAQAT2 — bitta datchik ko'rmagan
+    code: str
+    d1_mm: float | None
+    d2_mm: float | None
+    speed: float | None

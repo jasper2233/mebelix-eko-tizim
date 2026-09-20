@@ -397,6 +397,11 @@ async def read_bridge_logs(db: SessionDep, _: AdminUser, agent_id: int) -> list[
     return [r.decode() if isinstance(r, bytes) else r for r in rows]
 
 
+#: Bitta partiyadan ko'pi bilan shuncha o'lchov ekranlarga tarqatiladi. Oflayn agent
+#: yuzlab yig'ilgan hodisani birdan yuborishi mumkin — ularning hammasini jonli oqimga
+#: quyish ekranni ham, WS kanalini ham ko'mib tashlardi; tarix baribir bazada.
+_KROMKA_LIVE_MAX = 5
+
 #: Agent soati noto'g'ri bo'lsa kelajakdagi vaqt yozilmasin — shundan ko'p oldinga
 #: ketgan hodisa vaqti server vaqti bilan almashtiriladi.
 _ANDON_CLOCK_SKEW = timedelta(minutes=5)
@@ -474,6 +479,29 @@ async def push_andon_events(
         )
         accepted = len(inserted.all())
         await db.commit()
+
+        # KROMKA o'lchovi — admin paneliga DARHOL. Sahifa 30 soniyalik pollni kutmaydi:
+        # «qanday o'lchamli detal o'tdi» degan savolga javob o'sha lahzada kerak.
+        # Takror (`duplicates`) yuborilganda xabar chiqmasligi uchun faqat YANGI
+        # yozuvlar bo'lganda tarqatiladi.
+        if accepted:
+            for row in rows[-_KROMKA_LIVE_MAX:]:
+                if row["kind"] != "olchov":
+                    continue
+                payload = row["payload"]
+                await ws_manager.publish(
+                    "kromka.measure",
+                    {
+                        "machine_id": machine_id,
+                        "at": row["happened_at"].isoformat(),
+                        "length_mm": payload.get("L"),
+                        "code": payload.get("kod") or "?",
+                        "d1_mm": payload.get("L1"),
+                        "d2_mm": payload.get("L2"),
+                        "speed": payload.get("v_olch"),
+                    },
+                    machine_id=machine_id,
+                )
 
     if body.current is not None:
         live = {

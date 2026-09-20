@@ -42,6 +42,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { KromkaLive } from "@/components/WorkCenters/KromkaLive"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useMesWs } from "@/hooks/useMesWs"
 import { requireAccess } from "@/lib/guards"
@@ -388,6 +389,9 @@ function WorkCentersPage() {
           }}
         />
       )}
+      {/* Kromka stansiyasi o'lchovlari — jadval ostida, jonli. Stansiya yo'q bo'lsa
+          butun blok chizilmaydi (komponentning o'zi qaror qiladi). */}
+      <KromkaLive />
       <DeleteMachine machine={deleteFor} onClose={() => setDeleteFor(null)} />
     </div>
   )

@@ -329,6 +329,7 @@ faqat KUZATILADI: hech narsa bloklanmaydi, skan oqimiga tegilmaydi. Foyda darhol
 | Qabul | `POST /bridge-agents/andon` (o'sha endpoint) | `AndonEventIn.type` ga kromka turlari qo'shildi: `olchov`, `uskuna`, `tezlik`, `ogoh`, `avariya_toxtash`, `boot`. Yangi jadval YO'Q — xom hodisa `andon_event.payload` da |
 | Joriy holat | agent har 30 s `HOLAT` so'raydi (`_kromka_holat`) | Kromka `uskuna` ni faqat RUN kirishi O'ZGARGANDA yuboradi — stanok ertalab yoqilib, agent kunduzi ulansa hech narsa kelmasdi. `HOLAT` javobidagi `uskuna` o'sha lahzadagi holat; **o'zgargan bo'lsagina** hodisa yoziladi (`manba: "holat"`), aks holda oraliqlar maydalanardi |
 | Oraliqlar | `services/andon.py: uskuna_spans` | Kromka Pico'si holat DAVOMIYLIGINI o'lchamaydi (prisadkadagi `prev_duration_s` yo'q) — oraliq hodisalar orasidan quriladi: `holat=1` → PROCESSING, `0` → OFF. Oxirgi oraliq faqat agent hozir aloqada bo'lsa ochiq qoladi |
+| Admin panel | `WorkCenters/KromkaLive` + `GET /machines/kromka-measurements` + WS `kromka.measure` | «Ish markazlari» sahifasi ostida JONLI oqim: detal o'tishi bilan qator chiqadi (vaqt, mm, Pico kodi, D1/D2, tezlik, stanok), eng yangisi bir marta yashil uriladi. Bitta partiyadan ko'pi bilan 5 ta xabar tarqatiladi — oflayn agent yuzlab yig'ilganini birdan yuborsa ekran ko'milmasin |
 | Terminal | `Terminal/KromkaView: StationStrip` + `GET /terminal/kromka/measurements` | Sarlavha ostida oxirgi o'lchov: `mm`, Pico kodi (OK/FARQ/FAQAT1/FAQAT2), D1/D2, tezlik va oldingi 7 tasi. Stansiyasiz postda umuman chizilmaydi |
 
 Ma'lumot sifatini o'lchash uchun `scripts/kromka_audit.sql` — faqat o'qiydigan SQL
@@ -341,7 +342,7 @@ Qayerda ishga tushirish — fayl boshida.
 avtomatik brak, kalibrlash UI si va `SET` yuborish (Pico `kal.json` dagi oxirgi sozlama bilan
 ishlayveradi), sirena/lampa mantiqi.
 
-Tekshiruv (bir martalik skript): **24/24** — ularning sinov bazasidan tiklangan 214 ta HAQIQIY
+Tekshiruv (bir martalik skript): **27/27** — ularning sinov bazasidan tiklangan 214 ta HAQIQIY
 Pico qatori agent parseridan o'tdi (tur aniqlandi, `seq` uzluksiz, `eski_ms` vaqti tiklandi,
 `CHOP` matni tashlandi, prisadka formati buzilmadi), 44 hodisa endpointga qabul qilindi va
 takror yuborishda 0 ta yangi yozuv, xom maydonlar (`L`, `kod`) saqlandi, kunlik hisobotda
