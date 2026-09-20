@@ -19,18 +19,19 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import KromkaMeasurement, Part, PartDefect, PartInstance, Scan
-from app.models.enums import DefectStatus, KromkaVerdict
+from app.models import KromkaMeasurement, Part, PartInstance, Scan
+from app.models.enums import KromkaVerdict
 
 #: `Part.edges` kalitlari qaysi o'lchamga tegishli: yuqori/past qirra detal
 #: UZUNLIGI bo'ylab ketadi, chap/o'ng qirra ENI bo'ylab.
 _SIDE_GROUP = {"t": "length", "b": "length", "l": "width", "r": "width"}
 
-#: NOMOS o'lchov O'ZI brak qaydini ochadi va sababi shu matn bo'ladi. Operator
-#: terminaldagi oynada aniq sababni tanlasa, AYNAN shu qator yangilanadi
-#: (`api/routes/defects.py: mark_defect`) — ikkinchi qator yaratilmaydi.
-#: Qayd operator oynani yopib ketsa ham qoladi: yakuniy hakam — menejer
-#: (rad etilgan brak Quality'ga kirmaydi, docs/12 §4.7).
+#: 2026-09-20 gacha `nomos` o'lchov brak qaydini O'ZI ochardi. Tsexda datchik uzunlikka
+#: qarab XATO o'lchayotgani aniqlandi — o'sha qaydlar soxta bo'lib chiqdi, shuning uchun
+#: avtomatik brak O'CHIRILDI (`d4b8e1f37c92` eski qatorlarni tozalagan). Brak faqat
+#: operator skandan keyin BRAK tugmasini bossa yoziladi. O'lchov hozircha KUZATUV:
+#: hukmi ekranda ko'rinadi, hech narsani bloklamaydi va hech kimni ayblamaydi.
+#: Datchik to'g'rilangach shu qator qaytariladi (docs/12 §4.10).
 AUTO_DEFECT_REASON = "O'lcham mos emas"
 
 
@@ -102,7 +103,8 @@ async def bind_measurement(
     * `mos` — guruhdan bo'sh joy bor va o'lcham dopusk ichida: qirra yopildi.
     * `ortiqcha` — o'lcham to'g'ri, lekin o'sha guruh kvotasi tugagan: OGOHLANTIRISH.
       Brak emas — ikki marta o'tkazish (qayta lentalash) normal hodisa.
-    * `nomos` — hech bir guruhga to'g'ri kelmadi: terminal brak oynasini ochadi.
+    * `nomos` — hech bir guruhga to'g'ri kelmadi. HOZIRCHA hech narsa qilmaydi:
+      faqat ekranda ko'rinadi (datchik ishonchsiz — yuqoridagi izoh).
     """
     measured = payload.get("L")
     code = str(payload.get("kod") or "?")[:10]
@@ -133,48 +135,7 @@ async def bind_measurement(
                 progress[row.side_group]["done"] += 1
 
     db.add(row)
-    if row.verdict == KromkaVerdict.NOMOS and scan is not None:
-        await _auto_defect(db, row, scan)
     return BindResult(row=row, progress=progress, scan_id=row.scan_id, part_name=part_name, qr_text=qr_text)
-
-
-async def _auto_defect(db: AsyncSession, row: KromkaMeasurement, scan: Scan) -> None:
-    """NOMOS — brak qaydi DARHOL ochiladi (tasdiq kutadi).
-
-    Nega qayd terminalni kutmaydi: oyna faqat ekran yonib turganda ochiladi, operator
-    esa uni yopib ketishi mumkin — o'shanda o'lchangan nuqson hech qayerda qolmasdi va
-    Quality aslidan yaxshi ko'rinardi. Qaydni menejer rad etishi mumkin, ya'ni soxta
-    signal hisobga kirmaydi."""
-    bor = (
-        await db.execute(
-            select(PartDefect.id).where(
-                PartDefect.scan_id == scan.id,
-                PartDefect.is_deleted == False,  # noqa: E712
-            )
-        )
-    ).first()
-    if bor is not None:
-        return  # bu o'tish uchun qayd allaqachon bor (operator qo'lda belgilagan)
-    olchangan = f"{float(row.measured_mm):.1f}" if row.measured_mm is not None else "?"
-    kutilgan = f"{float(row.expected_mm):.0f}" if row.expected_mm is not None else "?"
-    db.add(
-        PartDefect(
-            order_id=scan.order_id,
-            part_id=scan.part_id,
-            instance_id=scan.instance_id,
-            scan_id=scan.id,
-            machine_id=scan.machine_id,
-            post_id=scan.post_id,
-            employee_id=scan.employee_id,
-            reason=AUTO_DEFECT_REASON,
-            note=f"Stansiya o'lchovi: {olchangan} mm, kutilgan {kutilgan} mm.",
-            status=DefectStatus.PENDING,
-            # Vaqt — O'LCHOV vaqti, qator yozilgan lahza emas: agent oflayn turib
-            # partiyani kechroq yuborsa, brak o'zi sodir bo'lgan KUNGA tushsin
-            # (hisobot braklarni `created_at` bo'yicha kunlarga ajratadi)
-            created_at=row.measured_at,
-        )
-    )
 
 
 def _judge(row: KromkaMeasurement, progress: dict[str, dict[str, float]], measured: float, tol: float) -> None:

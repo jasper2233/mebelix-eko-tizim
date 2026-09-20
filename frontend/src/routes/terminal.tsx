@@ -146,10 +146,6 @@ function TerminalPage() {
     code: string
   } | null>(null)
   const defectReasons = useDefectReasons()
-  // WS callback `useCallback` ichida — ro'yxatni ref orqali o'qiydi, aks holda
-  // sabablar kechroq yuklanganda callback eski bo'sh massivni ko'rardi
-  const defectReasonsRef = useRef<string[]>([])
-  defectReasonsRef.current = defectReasons
   // To'xtash sababi (Pico ulangan ish markazida): o'zi chiqadigan oyna va qulf oldidan so'rov
   const [stopPromptOpen, setStopPromptOpen] = useState(false)
   const [lockAsk, setLockAsk] = useState(false)
@@ -233,23 +229,14 @@ function TerminalPage() {
         // va brauzerga umuman tegmaydi — busiz ishlab turgan odam chiqarib yuborilardi.
         if (event.type === "scan.recorded" || event.type === "scan.rejected")
           touchActivity()
-        // Kromka stansiyasi o'lchadi: tasma darhol yangilanadi, o'lcham kutilganiga
-        // MOS KELMASA (nomos) brak oynasi o'zi ochiladi va operator sababni tanlaydi.
-        // Ortiqcha o'tish (to'g'ri o'lcham, kvota tugagan) oyna ochmaydi — u brak emas.
-        if (event.type === "kromka.measure") {
+        // Kromka stansiyasi o'lchadi — tasma darhol yangilanadi. Brak oynasi
+        // O'ZI ochilMAYDI: datchik uzunlikka qarab xato o'lchayotgani aniqlandi
+        // (2026-09-20), ya'ni «mos emas» hukmi ishonchsiz. Brak faqat operator
+        // BRAK tugmasini bosganda yoziladi (docs/12 §4.10).
+        if (event.type === "kromka.measure")
           queryClient.invalidateQueries({
             queryKey: ["terminal", "kromka", "measurements"],
           })
-          if (
-            p.verdict === "nomos" &&
-            p.scan_id &&
-            defectReasonsRef.current.length
-          )
-            setDefectFor({
-              scanId: Number(p.scan_id),
-              code: String(p.qr_text ?? ""),
-            })
-        }
         if (event.type === "bridge.connected") setPrinterLive(true)
         else if (event.type === "bridge.disconnected") setPrinterLive(false)
         if (event.type === "scan.recorded") {

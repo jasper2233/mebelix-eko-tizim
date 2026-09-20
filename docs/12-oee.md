@@ -24,7 +24,7 @@ OEE          = Availability × Performance × Quality
 | Detallar soni | MES skanlari (`scan`) + Pico sikllari | ✅ bor, o'zaro deyarli mos (§5) |
 | Ideal sikl vaqti | `part.xnc_summary` (teshik/paz/freza) + koeffitsiyentlar (Tizim sozlamalari, §4.6) | ⚠️ bor, qiymatlar TAXMINIY — sekundomer bilan to'g'rilash kerak |
 | **Performance hisobi** | `services/performance.py`, Hisobotlar → «Stanok vaqti» (§4.6, kromka — §4.9) | ✅ bor: Prisadka (2026-09-18) va Kromka (2026-09-20) |
-| **Kromka o'lchovi ↔ detal** | `services/kromka.py`, Tizim sozlamalari → «Kromka o'lchovi» (§4.10) | ✅ bor (2026-09-20): mos/ortiqcha/nomos hukmi, NOMOS'da brak oynasi |
+| **Kromka o'lchovi ↔ detal** | `services/kromka.py`, Tizim sozlamalari → «Kromka o'lchovi» (§4.10) | ⚠️ hukm bor (mos/ortiqcha/nomos), lekin KUZATUV: datchik xato o'lchayapti, avtomatik brak o'chirilgan (2026-09-20) |
 | **OEE kesim sanasi** | `settings_service.OEE_START_DATE`, Tizim sozlamalari → «Ish jadvali» (§4.12) | ✅ bor (2026-09-20): kesimdan oldingi kunlar hisobotga kirmaydi |
 | **Quality hisobi** | `services/performance.py: quality_pct`, Hisobotlar → «Stanok vaqti» (§4.7, kromka — §4.11) | ✅ bor: Prisadka (2026-09-19) va Kromka (2026-09-20) |
 | Brak | `part_defect` — terminal skan tasmasidagi BRAK tugmasi (§4.7) | ✅ bor (2026-09-19); qayta ishlab chiqarish (remake) YO'Q |
@@ -420,7 +420,7 @@ operator qaysi tomonni oldin qo'ysa, o'sha guruhdan bitta joy yopiladi.
 | --- | --- | --- |
 | `mos` | guruhda bo'sh joy bor va \|o'lchangan − kutilgan\| ≤ dopusk | qirra yopiladi, tasmada «kutilgan 520» ko'rinadi |
 | `ortiqcha` | o'lcham to'g'ri, lekin o'sha guruh kvotasi tugagan | faqat OGOHLANTIRISH: qayta lentalash normal hodisa, brak emas |
-| `nomos` | hech bir guruhga dopusk ichida to'g'ri kelmadi | terminalda **brak oynasi o'zi ochiladi**, operator sababni tanlaydi (`part_defect`, menejer tasdig'iga tushadi) |
+| `nomos` | hech bir guruhga dopusk ichida to'g'ri kelmadi | **hozircha hech narsa qilmaydi** — faqat ekranda ko'rinadi (quyidagi «Datchik ishonchsiz» bandiga qarang) |
 | `shubhali` | Pico kodi `OK` emas (FARQ/FAQAT1/FAQAT2) yoki detalning o'lchami/qirra ro'yxati yo'q | hukm chiqarilmaydi — datchikka ishonib detalni ayblab bo'lmaydi |
 | `skanersiz` | oyna ichida skan yo'q | tarixga yoziladi, hech kimni ayblamaydi |
 
@@ -433,6 +433,16 @@ yopgani to'g'riroq.
 nol dopusk har detalni brak qilardi; `kromka_bind_minutes` (bog'lash oynasi, sukut 10
 daqiqa, 1..240) — undan eski skan bog'lanmaydi, aks holda tushlikdan keyingi o'lchov
 ertalabki detalga yopishib qolardi.
+
+> **Datchik ishonchsiz (2026-09-20).** Tsexda stansiya uzunlikka qarab xato o'lchayotgani
+> aniqlandi, ya'ni `nomos` hukmining o'zi noto'g'ri bo'lishi mumkin. Shuning uchun
+> **avtomatik brak O'CHIRILDI**: `nomos` na brak qaydini ochadi, na terminalda oyna
+> chiqaradi. Brak faqat operator skandan keyin BRAK tugmasini bosganda yoziladi.
+> O'sha paytgacha yozilgan avtomatik qaydlar `d4b8e1f37c92` ko'chirishida yumshoq
+> o'chirilgan (faqat tasdiq kutayotganlari — menejer ko'rgan qarorga tegilmagan).
+> O'lchov hozir KUZATUV: raqam, kutilgan o'lcham va farq ekranda ko'rinadi — aynan shu
+> ko'rsatkichlar datchikni to'g'rilashda kerak bo'ladi. Datchik to'g'rilangach avtomatik
+> brakni qaytarish uchun `services/kromka.py` dagi `_auto_defect` tiklanadi.
 
 Hukm `kromka_measurement` jadvalida (xom hodisa `andon_event` da o'zgarmasdan qoladi),
 mantiq `services/kromka.py` da, chaqiruv joyi — agent partiyasi qabul qilinadigan
@@ -458,30 +468,28 @@ surat — o'sha o'tishlardagi brak. Ikkalasi bir xil birlikda, chunki KROMKA qad
 `per_instance` = qirralar soni: operator har qirrani alohida skanerlaydi va `part_defect`
 har skanga bittadan yoziladi.
 
-**Brak qayerdan keladi.** Ikki yo'l, bitta jadval:
+**Brak qayerdan keladi.** Hozir bitta yo'l:
 
-1. **Stansiya o'zi** — o'lchov hech bir kutilgan tomonga mos kelmasa (`nomos`, §4.10), qayd
-   DARHOL ochiladi: sababi vaqtincha «O'lcham mos emas», izohda o'lchangan va kutilgan
-   raqam. Terminal o'sha zahoti oyna ochadi va operator aniq sababni tanlaydi — o'sha qator
-   YANGILANADI, ikkinchisi yaratilmaydi. Operator oynani yopib ketsa ham qayd qoladi: aks
-   holda o'lchangan nuqson hech qayerda qolmay, Quality aslidan yaxshi ko'rinardi.
-2. **Operator qo'lda** — skan tasmasidagi BRAK tugmasi (§4.7), prisadkadagi kabi.
+1. **Operator qo'lda** — skan tasmasidagi BRAK tugmasi (§4.7), prisadkadagi kabi. **Hozir
+   YAGONA yo'l shu.**
+2. ~~Stansiya o'zi (`nomos` o'lchov)~~ — 2026-09-20 da O'CHIRILDI: datchik uzunlikka qarab
+   xato o'lchaydi, ya'ni avtomatik qaydlar soxta chiqdi (§4.10 dagi izoh). Datchik
+   to'g'rilangach qaytariladi.
 
 Yakuniy hakam — **menejer**: rad etilgan qayd Quality'ga kirmaydi, ya'ni soxta signal
 (datchik shovqini, noto'g'ri bog'langan skan) hisobni buzmaydi.
 
 | Qoida | Nega |
 | --- | --- |
-| Brak vaqti = O'LCHOV vaqti, qator yozilgan lahza emas | agent oflayn turib partiyani kechroq yuborsa, brak o'zi sodir bo'lgan KUNGA tushsin — hisobot braklarni kunlarga ajratadi |
 | Braklangan o'tish maxrajda QOLADI | ish qilingan (vaqt ketgan), mahsulot yaroqsiz — aks holda brak ikki marta jazolanardi (§4.7 dagi bilan bir xil qoida) |
-| `ortiqcha`/`shubhali`/`skanersiz` qayd OCHMAYDI | to'g'ri o'lchamdagi takroriy o'tish brak emas; datchik kodi OK bo'lmaganda esa detalni ayblab bo'lmaydi |
 | Bitta o'tishga bitta qayd | qirra ikki marta brak bo'lib Quality qo'sh tushmasin (`scan_id` bo'yicha tekshiriladi) |
 
-Tekshiruv (bir martalik skript, haqiqiy Postgres, haqiqiy endpointlar): **21/21** — 10 nusxa ×
-4 qirra = 40 o'tish, bittasi 300 mm bo'lib chiqdi: qayd O'ZI ochildi (`pending`, o'sha skanga
-bog'landi, izohda «300.0 mm»), hisobotda 40 o'tish / 1 brak / **Quality 97.5%**,
-Availability 88.9%, OEE = A×P×Q; operator sabab tanlaganda yangi qator chiqmadi va Quality
-o'zgarmadi; menejer rad etgach brak 0 va Quality 100% bo'ldi.
+Tekshiruv (bir martalik skript, haqiqiy Postgres, haqiqiy endpointlar): **18/18** — 10 nusxa ×
+4 qirra = 40 o'tish, bittasi 300 mm bo'lib chiqdi: brak qaydi OCHILMADI (hukm esa yozildi va
+o'sha skanga bog'landi), Quality 100%; operator BRAK tugmasini bosgach 40 o'tish / 1 brak /
+**Quality 97.5%**, Availability 88.9%, OEE = A×P×Q; menejer rad etgach brak 0 va Quality 100%;
+qo'lda qo'yilgan eski avtomatik qayd `d4b8e1f37c92` ko'chirishidan keyin brak ro'yxatidan ham,
+Quality hisobidan ham chiqib ketdi.
 
 ### 4.12 OEE qaysi kundan hisoblanadi (2026-09-20)
 

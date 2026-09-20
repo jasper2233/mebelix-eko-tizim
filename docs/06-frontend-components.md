@@ -511,15 +511,10 @@ sabablar ro'yxati bo'sh bo'lmaganda (`onDefect` berilmasa umuman chizilmaydi). D
 tugmalar to'ridan oladi (klaviatura yo'q), izoh IXTIYORIY — majburiy qilinsa operator eng oson
 sababni bosib ketardi. Belgilanayotgan skan dialog OCHILGANDA suratga olinadi (`undoFor` bilan bir
 naqsh): keyingi skan tasmani almashtirsa ham oyna boshqa detalga o'tmaydi. `routes/terminal.tsx`
-uni `dialogOpen` ga qo'shadi — dialog ochiqda skan fokusi o'chadi. Oyna IKKI yo'l bilan
-ochiladi: `ScanStrip` dagi BRAK tugmasi, va KROMKA'da WS `kromka.measure` hodisasi
-`verdict === "nomos"` bo'lganda O'ZI (docs/12 §4.10) — o'lchov kutilgan tomonga mos
-kelmadi, operator faqat sababni tanlaydi. Avto-ochilish sabablar ro'yxati BO'SH bo'lsa
-ishlamaydi (`defectReasonsRef` — WS callback `useCallback` ichida, ref bo'lmasa sabablar
-kechroq yuklanganda eski bo'sh massiv ko'rinardi). `ortiqcha` hukmi oyna OCHMAYDI: to'g'ri
-o'lchamdagi takroriy o'tish brak emas. `nomos` da brak qaydi SERVERDA allaqachon ochilgan
-(sababi vaqtincha «O'lcham mos emas») — oynada tanlangan sabab o'sha qatorni yangilaydi,
-ya'ni operator oynani yopib ketsa ham nuqson yo'qolmaydi (docs/12 §4.11).
+uni `dialogOpen` ga qo'shadi — dialog ochiqda skan fokusi o'chadi. Oyna FAQAT `ScanStrip` dagi BRAK
+tugmasidan ochiladi. 2026-09-20 da qisqa vaqt KROMKA'da WS `kromka.measure` hodisasi
+`verdict === "nomos"` bo'lganda o'zi ochilardi — datchik uzunlikka qarab xato o'lchagani
+aniqlangach olib tashlandi (docs/12 §4.10); o'lchov endi faqat tasmada ko'rinadi.
 
 ### `frontend/src/components/Terminal/KromkaView.tsx`
 
