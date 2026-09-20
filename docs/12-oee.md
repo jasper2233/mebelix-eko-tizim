@@ -23,7 +23,7 @@ OEE          = Availability × Performance × Quality
 | **Availability hisobi** | `services/availability.py`, Hisobotlar → «Stanok vaqti» (§4.5) | ✅ bor (2026-09-18) |
 | Detallar soni | MES skanlari (`scan`) + Pico sikllari | ✅ bor, o'zaro deyarli mos (§5) |
 | Ideal sikl vaqti | `part.xnc_summary` (teshik/paz/freza) + koeffitsiyentlar (Tizim sozlamalari, §4.6) | ⚠️ bor, qiymatlar TAXMINIY — sekundomer bilan to'g'rilash kerak |
-| **Performance hisobi** | `services/performance.py`, Hisobotlar → «Stanok vaqti» (§4.6) | ✅ bor (2026-09-18), faqat Prisadka |
+| **Performance hisobi** | `services/performance.py`, Hisobotlar → «Stanok vaqti» (§4.6, kromka — §4.9) | ✅ bor: Prisadka (2026-09-18) va Kromka (2026-09-20) |
 | Brak | `part_defect` — terminal skan tasmasidagi BRAK tugmasi (§4.7) | ✅ bor (2026-09-19); qayta ishlab chiqarish (remake) YO'Q |
 | **Quality hisobi** | `services/performance.py: quality_pct`, Hisobotlar → «Stanok vaqti» (§4.7) | ✅ bor (2026-09-19) |
 | **OEE = A × P × Q** | `services/performance.py: oee_pct`, o'sha hisobot ustuni (§4.7) | ✅ bor (2026-09-19) |
@@ -358,6 +358,33 @@ Ma'lum cheklov (ularning firmware'ida, bizda emas): mayda bo'lak (10 m/min da 8 
 har narsa) D1→D2 navbatiga tushib juftlikni siljitadi — prod ma'lumotida 8 ta soxta
 «tezlik nomuvofiq» va bir nechta bema'ni uzunlik shundan. 1-bosqichda zararsiz (faqat
 yoziladi), lekin **avtomatik skanga o'tishdan oldin tuzatilishi shart**.
+
+### 4.9 Kromka Performance (2026-09-20)
+
+```
+ideal vaqt (bitta o'tish) = L / v + oraliq
+Performance               = Σ ideal vaqt ÷ ishlagan vaqt
+```
+
+Prisadkadagi kabi TAXMINIY koeffitsiyentlar to'plami kerak emas: kromkada mahsuldorlikni
+lenta belgilaydi, `L` ni stansiyaning o'zi o'lchaydi, `v` ni (10/18 m/min) Pico yuboradi.
+Sozlanadigan yagona qiymat — **detallar orasidagi bo'shliq** (`gap_s`, sukut 3 s): operator
+keyingi detalni qo'yguncha ketadigan vaqt. Tizim sozlamalari → «Ideal sikl» → «Ideal sikl
+(Kromka)» (`GET/PUT /settings/ideal-cycle-kromka`, kalit `ideal_cycle_kromka`).
+
+| Qoida | Nega |
+| --- | --- |
+| Manba — STANSIYA o'lchovlari (`andon_event`, `kind='olchov'`), skanlar emas | o'lchov lentaning o'ziga bog'langan; skan esa odam harakatiga — operator kech skanerlasa Performance tushib ketardi |
+| Har QIRRA alohida o'tish | to'rt qirrali detal to'rt marta o'tadi va to'rtalasi sanaladi — stanok rostdan shuncha ish qilgan (Prisadkadagi «bitta detal = bitta sikl» emas) |
+| Faqat KUZATILGAN ish vaqtidagi o'tish | Prisadkadagi bilan bir xil qoida: ma'lumotsiz vaqt `run_s` ga kirmaydi, o'sha paytdagi detal ham sanalmasin |
+| O'lchamsiz yoki tezliksiz hodisa tashlanadi | `FAQAT1/FAQAT2` da uzunlik bo'lishi mumkin, lekin `L` yo'q bo'lsa ideal vaqtni hisoblab bo'lmaydi |
+| Kromkada **Quality hisoblanmaydi** (`—`), demak OEE ham | brak hali detalga bog'lanmagan: QR bog'lash va NOMOS → avtomatik brak keyingi bosqich. «Brak yo'q» deb 100% ko'rsatish yolg'on baho bo'lardi |
+| `gap_s` o'zgarsa o'tgan kunlar qayta hisoblanadi | ideal vaqt saqlanmaydi — kalibrlashda butun tarix birdan to'g'rilanadi |
+
+Tekshiruv (bir martalik skript, haqiqiy Postgres): **10/10** — 2000 mm @ 18 m/min bitta
+o'tish 9.67 s; 200 o'tish sanaldi (smenadan oldingi, ma'lumotsiz vaqtdagi va o'lchamsiz
+hodisalar sanalmadi); ideal 1933 s, ishladi 8 soat, Performance 6.7%; `gap_s` 3 → 6 qilinganda
+ideal 2533 s ga o'sdi; Quality va OEE `—` bo'lib qoldi.
 
 ## 5. Prod auditi natijalari (2026-09-16)
 

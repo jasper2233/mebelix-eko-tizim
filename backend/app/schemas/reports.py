@@ -4,7 +4,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel
 
-from app.schemas.settings import IdealCycle
+from app.schemas.settings import IdealCycle, IdealCycleKromka
 
 # ---------- 11.1.1 Hodim mahsuldorligi ----------
 
@@ -85,7 +85,8 @@ class MachineTimeReport(BaseModel):
     days: list[MachineTimeDay]
     schedule_set: bool  # ish jadvalida smena bormi — yo'q bo'lsa Availability hisoblanmaydi
     idle_threshold_min: int  # sariq chiroq shundan uzoq yonsa to'xtash (`stop_prompt_idle_minutes`)
-    ideal_cycle: IdealCycle  # Performance shu koeffitsiyentlar bilan hisoblangan
+    ideal_cycle: IdealCycle  # Prisadka Performance'i shu koeffitsiyentlar bilan hisoblangan
+    ideal_cycle_kromka: IdealCycleKromka  # Kromkada sozlanadigani — detallar oralig'i
 
 
 # ---------- 11.2 Buyurtmalar holati ----------

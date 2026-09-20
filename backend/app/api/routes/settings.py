@@ -6,15 +6,24 @@ from app.core.exceptions import NotFoundException
 from app.crud import log_action
 from app.models import DowntimeReason
 from app.schemas.downtimes import DowntimeReasonCreate, DowntimeReasonRead, DowntimeReasonUpdate
-from app.schemas.settings import DefectReasons, IdealCycle, SystemSettingRead, SystemSettingUpdate, WorkSchedule
+from app.schemas.settings import (
+    DefectReasons,
+    IdealCycle,
+    IdealCycleKromka,
+    SystemSettingRead,
+    SystemSettingUpdate,
+    WorkSchedule,
+)
 from app.services.settings_service import (
     DEFAULTS,
     DEFECT_REASONS,
     IDEAL_CYCLE,
+    IDEAL_CYCLE_KROMKA,
     INT_RANGES,
     WORK_SCHEDULE,
     get_defect_reasons,
     get_ideal_cycle,
+    get_ideal_cycle_kromka,
     get_setting,
     get_work_schedule,
     schedule_error,
@@ -88,6 +97,35 @@ async def update_ideal_cycle(db: SessionDep, current_user: AdminUser, body: Idea
             f"Ideal sikl o'zgardi: detalga {body.load_s:g} s, yuza teshik {body.bore_s:g} s, "
             f"qirra teshik {body.edge_bore_s:g} s, paz {body.groove_s:g} s, freza {body.mill_s:g} s"
         ),
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return body
+
+
+# NOTE: `/ideal-cycle-kromka` ham `/{key}` dan OLDIN — sabab yuqoridagidek.
+@router.get("/ideal-cycle-kromka", response_model=IdealCycleKromka, operation_id="read_ideal_cycle_kromka")
+async def read_ideal_cycle_kromka(db: SessionDep, _: AdminUser) -> IdealCycleKromka:
+    """Kromka ideal sikli: detallar orasidagi bo'shliq (soniya). Qolganini lenta va
+    o'lchangan uzunlik belgilaydi — taxminiy koeffitsiyent yo'q."""
+    return await get_ideal_cycle_kromka(db)
+
+
+@router.put("/ideal-cycle-kromka", response_model=IdealCycleKromka, operation_id="update_ideal_cycle_kromka")
+async def update_ideal_cycle_kromka(
+    db: SessionDep, current_user: AdminUser, body: IdealCycleKromka, request: Request
+) -> IdealCycleKromka:
+    """Hisobot o'tgan kunlarni ham yangi qiymat bilan qayta hisoblaydi (ideal vaqt saqlanmaydi)."""
+    row = await set_setting(db, IDEAL_CYCLE_KROMKA, body.model_dump_json(), current_user.id)
+    await db.flush()  # yangi qatorning id si audit yozuviga tushsin
+    log_action(
+        db,
+        module="settings",
+        action="updated",
+        user_id=current_user.id,
+        entity_type="system_setting",
+        entity_id=row.id,
+        message=f"Kromka ideal sikli o'zgardi: detallar oralig'i {body.gap_s:g} s",
         ip=client_ip(request),
     )
     await db.commit()

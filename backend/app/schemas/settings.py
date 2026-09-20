@@ -43,6 +43,22 @@ class IdealCycle(BaseModel):
     mill_s: Seconds = 12
 
 
+class IdealCycleKromka(BaseModel):
+    """Kromka ideal sikli — OEE Performance (`services/performance.py`).
+
+    Prisadkadagi kabi TAXMINIY koeffitsiyentlar to'plami emas: kromkada ideal vaqtni
+    LENTA belgilaydi va uzunlikni stansiyaning o'zi o'lchaydi, ya'ni
+
+        ideal vaqt (bitta o'tish) = L / v  +  oraliq
+
+    `L` — o'lchangan uzunlik (mm), `v` — nominal tezlik (10 yoki 18 m/min, Pico beradi).
+    Sozlanadigan yagona narsa — detallar orasidagi bo'shliq: operator keyingi detalni
+    qo'yguncha ketadigan vaqt. Tsexda sekundomer bilan aniqlanadi."""
+
+    #: Detallar orasidagi bo'shliq, soniya — lentaga keyingi detal qo'yilguncha
+    gap_s: Seconds = 3
+
+
 class DefectReasons(BaseModel):
     """Brak sabablari — terminaldagi BRAK oynasida tugma bo'lib chiqadi (OEE Quality).
 

@@ -66,10 +66,11 @@ from app.services.andon import ANDON_STATES, andon_spans, machine_time, read_liv
 from app.services.availability import DayTotals, StopRun, availability, inside, plan_windows
 from app.services.excel import xlsx_response
 from app.services.metrics import VolumeShare, part_volume
-from app.services.performance import ideal_seconds, oee_pct, quality_pct
+from app.services.performance import ideal_seconds, kromka_ideal_seconds, oee_pct, quality_pct
 from app.services.settings_service import (
     STOP_PROMPT_IDLE_MINUTES,
     get_ideal_cycle,
+    get_ideal_cycle_kromka,
     get_setting,
     get_work_schedule,
 )
@@ -369,6 +370,21 @@ async def report_machine_time(
     # OEE Performance (Prisadka): KUZATILGAN ish vaqtida skanerlangan detallarning ideal vaqti ÷ ishlagan vaqt.
     # Ma'lumotsiz vaqtdagi skan sanalmaydi — o'sha vaqt `run_s` ga ham kirmagan, aks holda foiz shishardi.
     ideal = await get_ideal_cycle(db)
+    # KROMKA: ideal vaqtni lenta belgilaydi — har O'TISH uchun `L / v + oraliq`
+    # (`services/performance.kromka_ideal_seconds`). Uzunlikni stansiyaning o'zi o'lchaydi,
+    # ya'ni bu yerda taxminiy koeffitsiyent yo'q; sozlanadigani — detallar oralig'i.
+    ideal_kromka = await get_ideal_cycle_kromka(db)
+    kromka_ids = set(
+        (
+            await db.execute(
+                select(Machine.id)
+                .join(Post, Post.id == Machine.post_id)
+                .where(Machine.id.in_(ids), Post.code == PostCode.KROMKA)
+            )
+        )
+        .scalars()
+        .all()
+    )
     ideal_by: dict[tuple[int, date], list[float]] = {}  # (stanok, kun) -> [ideal soniya, detallar]
     measured: dict[int, list[float]] = {}  # stanok -> [o'lchangan sikl soniya, sikllar]
     if prisadka_ids:
@@ -424,8 +440,44 @@ async def report_machine_time(
                 cell[0] += seconds
                 cell[1] += 1
 
+    if kromka_ids:
+        # Manba — STANSIYA o'lchovlari: har hodisa bitta jismoniy o'tish. Detal to'rt
+        # qirrali bo'lsa to'rt marta o'tadi va to'rtalasi ham sanaladi — stanok rostdan
+        # shuncha ish qilgan. Skanlar bu yerda ishlatilmaydi: ular odam harakatiga
+        # bog'liq, o'lchov esa lentaning o'ziga.
+        olchov_rows = (
+            (
+                await db.execute(
+                    select(AndonEvent.machine_id, AndonEvent.happened_at, AndonEvent.payload).where(
+                        AndonEvent.kind == "olchov",
+                        AndonEvent.is_deleted == False,  # noqa: E712
+                        AndonEvent.machine_id.in_(kromka_ids),
+                        AndonEvent.happened_at >= start,
+                        AndonEvent.happened_at <= end,
+                    )
+                )
+            )
+            .tuples()
+            .all()
+        )
+        for mid, at, payload in olchov_rows:
+            if mid is None or not inside(avail[mid].observed, at):
+                continue
+            uzunlik = payload.get("L")
+            tezlik = payload.get("v_nom") or payload.get("v_olch")
+            sek = kromka_ideal_seconds(
+                ideal_kromka,
+                float(uzunlik) if type(uzunlik) in (int, float) else None,
+                float(tezlik) if type(tezlik) in (int, float) else None,
+            )
+            if sek is None:
+                continue
+            cell = ideal_by.setdefault((mid, at.astimezone(TASHKENT_TZ).date()), [0.0, 0])
+            cell[0] += sek
+            cell[1] += 1
+
     def perf(mid: int, ideal_s: float, run_s: int) -> float | None:
-        return round(ideal_s * 100 / run_s, 1) if mid in prisadka_ids and run_s > 0 else None
+        return round(ideal_s * 100 / run_s, 1) if mid in (prisadka_ids | kromka_ids) and run_s > 0 else None
 
     rows = []
     for mid in sorted(ids, key=lambda m: names.get(m, "")):
@@ -433,7 +485,10 @@ async def report_machine_time(
         ideal_total = sum(v[0] for (m, _d), v in ideal_by.items() if m == mid)
         parts_total = int(sum(v[1] for (m, _d), v in ideal_by.items() if m == mid))
         defects_total = sum(n for (m, _d), n in defects_by.items() if m == mid)
-        row_quality = quality_pct(parts_total, defects_total)
+        # Quality FAQAT brak sanaladigan ish markazida. Kromkada brak hali detalga
+        # bog'lanmagan (QR bog'lash — keyingi bosqich), shuning uchun u yerda `parts` bor
+        # bo'lsa ham Quality hisoblanmaydi: «brak yo'q» emas, «hali o'lchanmaydi».
+        row_quality = quality_pct(parts_total, defects_total) if mid in prisadka_ids else None
         rows.append(
             MachineTimeRow(
                 machine_id=mid,
@@ -471,7 +526,7 @@ async def report_machine_time(
         d = avail[mid].days.get(day, empty_day)
         day_parts = int(ideal_by.get((mid, day), [0.0, 0])[1])
         day_defects = defects_by.get((mid, day), 0)
-        day_quality = quality_pct(day_parts, day_defects)
+        day_quality = quality_pct(day_parts, day_defects) if mid in prisadka_ids else None
         days.append(
             MachineTimeDay(
                 machine_id=mid,
@@ -498,6 +553,7 @@ async def report_machine_time(
         schedule_set=bool(schedule.shifts),
         idle_threshold_min=idle_minutes,
         ideal_cycle=ideal,
+        ideal_cycle_kromka=ideal_kromka,
     )
     if format == "xlsx":
         # Ustunlar sahifadagi jadval bilan AYNAN bir xil — ikki joyda ikki xil raqam bo'lmasin

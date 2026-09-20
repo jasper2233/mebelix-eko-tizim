@@ -742,13 +742,13 @@ function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
           </TableHead>
           <TableHead
             className="hidden text-right md:table-cell"
-            title="Ishlagan vaqtda skanerlangan detallar (brak bo'lgani ham sanaladi)"
+            title="Prisadkada: ishlagan vaqtda skanerlangan detallar (brak bo'lgani ham sanaladi). Kromkada: stansiya o'lchagan o'tishlar — to'rt qirrali detal to'rt marta sanaladi"
           >
             Detallar
           </TableHead>
           <TableHead
             className="text-right"
-            title="Detallarning ideal sikl vaqti ÷ ishlagan vaqt. Faqat Prisadka; koeffitsiyentlar — Tizim sozlamalari → «Ideal sikl»"
+            title="Ideal vaqt ÷ ishlagan vaqt. Prisadkada ideal vaqt teshik/paz/freza soniga qarab, kromkada uzunlik ÷ lenta tezligi + oraliq. Sozlamalar — Tizim sozlamalari → «Ideal sikl»"
           >
             Performance
           </TableHead>
@@ -760,7 +760,7 @@ function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
           </TableHead>
           <TableHead
             className="text-right"
-            title="(detallar − brak) ÷ detallar. Brak kiritilmagan bo'lsa 100%"
+            title="(detallar − brak) ÷ detallar. Brak kiritilmagan bo'lsa 100%. Kromkada hali hisoblanmaydi — brak detalga bog'lanmagan (QR bog'lash keyingi bosqich)"
           >
             Quality
           </TableHead>

@@ -12,7 +12,7 @@ qiymatlar TAXMINIY — docs/12 §4.6). Skan↔sikl bog'lash kerak emas: yig'indi
 (MES) va ishlagan vaqt (`services/availability.py`) yetadi.
 """
 
-from app.schemas.settings import IdealCycle
+from app.schemas.settings import IdealCycle, IdealCycleKromka
 
 # ponytail: koeffitsiyentlar POST bo'yicha bitta to'plam — Pico hozir faqat bitta Prisadkada.
 # Boshqa tezlikdagi ikkinchi stanok paydo bo'lsa: sozlamani `machine_id -> IdealCycle` lug'atiga aylantirish.
@@ -21,6 +21,22 @@ from app.schemas.settings import IdealCycle
 def ideal_seconds(c: IdealCycle, bores: int, edge_bores: int, grooves: int, mills: int) -> float:
     """Bitta detalning ideal sikl vaqti, soniya."""
     return c.load_s + bores * c.bore_s + edge_bores * c.edge_bore_s + grooves * c.groove_s + mills * c.mill_s
+
+
+def kromka_ideal_seconds(c: IdealCycleKromka, length_mm: float | None, speed_m_min: float | None) -> float | None:
+    """Kromkada bitta O'TISHNING ideal vaqti, soniya. O'lcham yoki tezlik yo'q bo'lsa `None`.
+
+        ideal = L / v + oraliq        (v m/min dan mm/s ga: v * 1000 / 60)
+
+    Detal necha qirrasi bo'lsa shuncha marta o'tadi — har o'tish alohida sanaladi, chunki
+    stanok rostdan ham shuncha ish qilgan (Prisadkadagi «bitta detal = bitta sikl» emas).
+
+    Nega Prisadkadagi kabi taxminiy koeffitsiyent kerak emas: kromkada mahsuldorlikni
+    lenta tezligi belgilaydi, uzunlikni esa stansiya O'LCHAYDI — ya'ni ideal vaqt
+    o'lchovdan chiqadi, taxmindan emas."""
+    if not length_mm or not speed_m_min or length_mm <= 0 or speed_m_min <= 0:
+        return None
+    return length_mm / (speed_m_min * 1000.0 / 60.0) + c.gap_s
 
 
 def quality_pct(parts: int, defects: int) -> float | None:

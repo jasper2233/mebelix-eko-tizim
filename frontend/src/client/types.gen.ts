@@ -1702,6 +1702,27 @@ export type IdealCycle = {
 };
 
 /**
+ * IdealCycleKromka
+ *
+ * Kromka ideal sikli — OEE Performance (`services/performance.py`).
+ *
+ * Prisadkadagi kabi TAXMINIY koeffitsiyentlar to'plami emas: kromkada ideal vaqtni
+ * LENTA belgilaydi va uzunlikni stansiyaning o'zi o'lchaydi, ya'ni
+ *
+ * ideal vaqt (bitta o'tish) = L / v  +  oraliq
+ *
+ * `L` — o'lchangan uzunlik (mm), `v` — nominal tezlik (10 yoki 18 m/min, Pico beradi).
+ * Sozlanadigan yagona narsa — detallar orasidagi bo'shliq: operator keyingi detalni
+ * qo'yguncha ketadigan vaqt. Tsexda sekundomer bilan aniqlanadi.
+ */
+export type IdealCycleKromka = {
+    /**
+     * Gap S
+     */
+    gap_s?: number;
+};
+
+/**
  * IdleLimit
  */
 export type IdleLimit = {
@@ -2109,6 +2130,7 @@ export type MachineTimeReport = {
      */
     idle_threshold_min: number;
     ideal_cycle: IdealCycle;
+    ideal_cycle_kromka: IdealCycleKromka;
 };
 
 /**
@@ -7245,6 +7267,47 @@ export type UpdateIdealCycleResponses = {
 };
 
 export type UpdateIdealCycleResponse = UpdateIdealCycleResponses[keyof UpdateIdealCycleResponses];
+
+export type ReadIdealCycleKromkaData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/ideal-cycle-kromka';
+};
+
+export type ReadIdealCycleKromkaResponses = {
+    /**
+     * Successful Response
+     */
+    200: IdealCycleKromka;
+};
+
+export type ReadIdealCycleKromkaResponse = ReadIdealCycleKromkaResponses[keyof ReadIdealCycleKromkaResponses];
+
+export type UpdateIdealCycleKromkaData = {
+    body: IdealCycleKromka;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/ideal-cycle-kromka';
+};
+
+export type UpdateIdealCycleKromkaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateIdealCycleKromkaError = UpdateIdealCycleKromkaErrors[keyof UpdateIdealCycleKromkaErrors];
+
+export type UpdateIdealCycleKromkaResponses = {
+    /**
+     * Successful Response
+     */
+    200: IdealCycleKromka;
+};
+
+export type UpdateIdealCycleKromkaResponse = UpdateIdealCycleKromkaResponses[keyof UpdateIdealCycleKromkaResponses];
 
 export type ReadDefectReasonsData = {
     body?: never;

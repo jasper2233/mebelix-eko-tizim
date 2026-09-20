@@ -134,7 +134,10 @@ function SystemSettingsPage() {
           ))}
         </TabsContent>
         <TabsContent value="ideal" forceMount className={TAB_PANEL}>
-          <IdealCycleCard />
+          <div className="space-y-6">
+            <IdealCycleCard />
+            <KromkaCycleCard />
+          </div>
         </TabsContent>
         <TabsContent value="defect" forceMount className={TAB_PANEL}>
           <DefectReasonsCard />
@@ -742,6 +745,81 @@ function DefectReasonsCard() {
       >
         Saqlash
       </LoadingButton>
+    </div>
+  )
+}
+
+/** Kromka ideal sikli. Prisadkadan FARQI: u yerda beshta taxminiy koeffitsiyent bor,
+ *  bu yerda esa ideal vaqtni lenta belgilaydi va uzunlikni stansiya O'LCHAYDI —
+ *  sozlanadigan yagona narsa detallar orasidagi bo'shliq
+ *  (`backend/app/services/performance.py: kromka_ideal_seconds`). */
+function KromkaCycleCard() {
+  const queryClient = useQueryClient()
+  const queryKey = ["system-settings", "ideal-cycle-kromka"]
+  const { data, isError, refetch } = useQuery({
+    queryKey,
+    queryFn: async () => (await SettingsService.readIdealCycleKromka()).data,
+  })
+  const [gap, setGap] = useState("")
+  useEffect(() => {
+    if (data) setGap(String(data.gap_s ?? 0))
+  }, [data])
+  const n = Number(gap)
+  const valid =
+    gap.trim() !== "" && Number.isFinite(n) && n >= 0 && n <= IDEAL_MAX
+  const save = useMutation({
+    mutationFn: () =>
+      SettingsService.updateIdealCycleKromka({ body: { gap_s: n } }),
+    ...crudCallbacks(queryClient, queryKey, "Kromka sikli saqlandi"),
+  })
+  // Jonli misol: 2000 mm li detal 18 m/min da — lenta vaqti + oraliq
+  const misol = (mm: number, v: number) =>
+    valid ? `${Math.round((mm / ((v * 1000) / 60) + n) * 10) / 10} s` : "—"
+
+  return (
+    <div className={cn(cardSurface, "space-y-4 p-4")}>
+      <div>
+        <h2 className="text-lg font-semibold">Ideal sikl (Kromka)</h2>
+        <p className="text-sm text-muted-foreground">
+          Kromkada ideal vaqtni lenta belgilaydi:{" "}
+          <b>ideal = uzunlik ÷ tezlik + oraliq</b>. Uzunlikni stansiyaning o'zi
+          o'lchaydi, tezlikni (10 yoki 18 m/min) Pico yuboradi — shuning uchun
+          taxminiy koeffitsiyent yo'q. Sozlanadigan yagona qiymat: operator
+          keyingi detalni qo'yguncha ketadigan bo'shliq.
+        </p>
+      </div>
+      {isError ? (
+        <QueryError onRetry={() => refetch()} />
+      ) : (
+        <>
+          <Field label="Detallar orasidagi bo'shliq, s">
+            <Input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={IDEAL_MAX}
+              step={0.5}
+              value={gap}
+              aria-invalid={!valid}
+              className="w-40"
+              onChange={(e) => setGap(e.target.value)}
+            />
+          </Field>
+          <p className="text-sm text-muted-foreground">
+            Misol: 2000 mm detal 18 m/min da — {misol(2000, 18)}; 800 mm detal
+            10 m/min da — {misol(800, 10)}. Har qirra alohida o'tish: to'rt
+            qirrali detal to'rt marta sanaladi. Tsexda sekundomer bilan
+            o'lchang.
+          </p>
+          <LoadingButton
+            loading={save.isPending}
+            disabled={!valid || n === (data?.gap_s ?? 0)}
+            onClick={() => save.mutate()}
+          >
+            Saqlash
+          </LoadingButton>
+        </>
+      )}
     </div>
   )
 }
