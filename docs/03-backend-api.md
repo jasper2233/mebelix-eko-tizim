@@ -294,6 +294,9 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | GET | `/api/v1/settings/ideal-cycle-kromka` | `AdminUser` | **Kromka ideal sikli** (`IdealCycleKromka`: `gap_s` — detallar orasidagi bo'shliq, 0..600 s, sukut 3). Qolganini lenta va o'lchangan uzunlik belgilaydi: `ideal = L / v + gap_s`. `/{key}` dan OLDIN |
 | PUT | `/api/v1/settings/ideal-cycle-kromka` | `AdminUser` | Saqlaydi (`system_setting` kaliti `ideal_cycle_kromka`); hisobot o'tgan kunlarni ham yangi qiymat bilan qayta hisoblaydi. Audit `settings/updated` |
 
+| GET | `/api/v1/settings/oee-start` | `AdminUser` | **OEE qaysi kundan hisoblanadi** (`OeeStart`: `start` — ISO sana yoki `null`). `/{key}` dan OLDIN |
+| PUT | `/api/v1/settings/oee-start` | `AdminUser` | Saqlaydi (`system_setting` kaliti `oee_start_date`; bo'sh — cheklov yo'q). Shu kundan OLDINGI kunlar «Stanok vaqti» hisobotiga UMUMAN kirmaydi — qaydlar o'chirilmaydi, faqat hisobdan tashqarida qoladi. Sana 10 belgi, ya'ni umumiy `PUT /{key}` (8 belgi) unga yaramaydi — o'z endpointi shundan. Audit `settings/updated` |
+
 Kromka o'lchovining ikki sozlamasi umumiy `PUT /settings/{key}` orqali boradi (butun son, `INT_RANGES`):
 `kromka_tolerance_mm` (dopusk, sukut 3, 1..50) va `kromka_bind_minutes` (skanga bog'lash oynasi,
 sukut 10, 1..240) — docs/12 §4.10.

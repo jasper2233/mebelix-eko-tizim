@@ -105,3 +105,12 @@ class WorkSchedule(BaseModel):
     days_off: list[Annotated[int, Field(ge=1, le=7)]] = Field(default_factory=list, max_length=7)
     #: Bayram va boshqa ishlanmaydigan sanalar.
     holidays: list[Holiday] = Field(default_factory=list, max_length=366)
+
+
+class OeeStart(BaseModel):
+    """OEE hisobi shu kundan boshlanadi. `None` — cheklov yo'q (butun tarix).
+
+    Sana `system_setting` da ISO satr bo'lib yotadi; umumiy `PUT /settings/{key}` unga
+    yaramaydi (u 8 belgi oladi), shuning uchun o'z endpointi bor — ish jadvali kabi."""
+
+    start: date | None = None

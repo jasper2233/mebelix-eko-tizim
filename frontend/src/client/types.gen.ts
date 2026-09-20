@@ -2156,6 +2156,10 @@ export type MachineTimeReport = {
     idle_threshold_min: number;
     ideal_cycle: IdealCycle;
     ideal_cycle_kromka: IdealCycleKromka;
+    /**
+     * Oee Start
+     */
+    oee_start: string | null;
 };
 
 /**
@@ -2450,6 +2454,21 @@ export type Message = {
      * Message
      */
     message: string;
+};
+
+/**
+ * OeeStart
+ *
+ * OEE hisobi shu kundan boshlanadi. `None` — cheklov yo'q (butun tarix).
+ *
+ * Sana `system_setting` da ISO satr bo'lib yotadi; umumiy `PUT /settings/{key}` unga
+ * yaramaydi (u 8 belgi oladi), shuning uchun o'z endpointi bor — ish jadvali kabi.
+ */
+export type OeeStart = {
+    /**
+     * Start
+     */
+    start?: string | null;
 };
 
 /**
@@ -7333,6 +7352,47 @@ export type UpdateIdealCycleKromkaResponses = {
 };
 
 export type UpdateIdealCycleKromkaResponse = UpdateIdealCycleKromkaResponses[keyof UpdateIdealCycleKromkaResponses];
+
+export type ReadOeeStartData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/oee-start';
+};
+
+export type ReadOeeStartResponses = {
+    /**
+     * Successful Response
+     */
+    200: OeeStart;
+};
+
+export type ReadOeeStartResponse = ReadOeeStartResponses[keyof ReadOeeStartResponses];
+
+export type UpdateOeeStartData = {
+    body: OeeStart;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/oee-start';
+};
+
+export type UpdateOeeStartErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateOeeStartError = UpdateOeeStartErrors[keyof UpdateOeeStartErrors];
+
+export type UpdateOeeStartResponses = {
+    /**
+     * Successful Response
+     */
+    200: OeeStart;
+};
+
+export type UpdateOeeStartResponse = UpdateOeeStartResponses[keyof UpdateOeeStartResponses];
 
 export type ReadDefectReasonsData = {
     body?: never;

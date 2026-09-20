@@ -72,6 +72,7 @@ from app.services.settings_service import (
     STOP_PROMPT_IDLE_MINUTES,
     get_ideal_cycle,
     get_ideal_cycle_kromka,
+    get_oee_start,
     get_setting,
     get_work_schedule,
 )
@@ -183,6 +184,44 @@ def _reason_lookup(
     return find
 
 
+def _machine_time_xlsx(report: MachineTimeReport) -> StreamingResponse:
+    """Excel varianti — ustunlar sahifadagi jadval bilan AYNAN bir xil.
+    Ikki joyda ikki xil raqam chiqmasin uchun bitta funksiyada."""
+    return xlsx_response(
+        "Stanok vaqti",
+        [
+            "Stanok",
+            "Reja vaqti (soat)",
+            "To'xtash (soat)",
+            "Ishladi (soat)",
+            "Availability, %",
+            "Detallar",
+            "Ideal vaqt (soat)",
+            "Performance, %",
+            "Brak",
+            "Quality, %",
+            "OEE, %",
+        ],
+        [
+            [
+                r.machine_name,
+                round(r.planned_s / 3600, 2),
+                round((r.unplanned_stop_s + r.no_data_s) / 3600, 2),
+                round(r.run_s / 3600, 2),
+                r.availability_pct if r.availability_pct is not None else "",
+                r.parts,
+                round(r.ideal_s / 3600, 2),
+                r.performance_pct if r.performance_pct is not None else "",
+                r.defects,
+                r.quality_pct if r.quality_pct is not None else "",
+                r.oee_pct if r.oee_pct is not None else "",
+            ]
+            for r in report.rows
+        ],
+        f"stanok_vaqti_{report.date_from}_{report.date_to}.xlsx",
+    )
+
+
 @router.get("/machine-time", operation_id="report_machine_time", response_model=MachineTimeReport)
 async def report_machine_time(
     db: SessionDep,
@@ -203,7 +242,27 @@ async def report_machine_time(
     taxmin qilinmaydi va "jami qayd" dan tushib qoladi.
     """
     start, end = _range(date_from, date_to)
+    # OEE kesim sanasi: undan oldingi kunlar hisobotga UMUMAN kirmaydi (sozlamada,
+    # `settings_service.OEE_START_DATE`). Tsexda OEE jadval/sabab/ideal sikl sozlangandan
+    # keyin ma'no kasb etadi — undan oldingi qayd o'rtachani pastga tortardi.
+    oee_start = await get_oee_start(db)
+    if oee_start is not None:
+        start = max(start, datetime.combine(oee_start, time.min, tzinfo=TASHKENT_TZ))
     now = datetime.now(UTC)
+    if start > end:
+        # So'ralgan oraliq BUTUNLAY kesimdan oldin — hisoblanadigan narsa yo'q
+        bosh = MachineTimeReport(
+            date_from=start.date(),
+            date_to=end.date(),
+            rows=[],
+            days=[],
+            schedule_set=bool((await get_work_schedule(db)).shifts),
+            idle_threshold_min=int(await get_setting(db, STOP_PROMPT_IDLE_MINUTES)),
+            ideal_cycle=await get_ideal_cycle(db),
+            ideal_cycle_kromka=await get_ideal_cycle_kromka(db),
+            oee_start=oee_start,
+        )
+        return _machine_time_xlsx(bosh) if format == "xlsx" else bosh
     events = (
         (
             await db.execute(
@@ -587,42 +646,10 @@ async def report_machine_time(
         idle_threshold_min=idle_minutes,
         ideal_cycle=ideal,
         ideal_cycle_kromka=ideal_kromka,
+        oee_start=oee_start,
     )
     if format == "xlsx":
-        # Ustunlar sahifadagi jadval bilan AYNAN bir xil — ikki joyda ikki xil raqam bo'lmasin
-        return xlsx_response(
-            "Stanok vaqti",
-            [
-                "Stanok",
-                "Reja vaqti (soat)",
-                "To'xtash (soat)",
-                "Ishladi (soat)",
-                "Availability, %",
-                "Detallar",
-                "Ideal vaqt (soat)",
-                "Performance, %",
-                "Brak",
-                "Quality, %",
-                "OEE, %",
-            ],
-            [
-                [
-                    r.machine_name,
-                    round(r.planned_s / 3600, 2),
-                    round((r.unplanned_stop_s + r.no_data_s) / 3600, 2),
-                    round(r.run_s / 3600, 2),
-                    r.availability_pct if r.availability_pct is not None else "",
-                    r.parts,
-                    round(r.ideal_s / 3600, 2),
-                    r.performance_pct if r.performance_pct is not None else "",
-                    r.defects,
-                    r.quality_pct if r.quality_pct is not None else "",
-                    r.oee_pct if r.oee_pct is not None else "",
-                ]
-                for r in rows
-            ],
-            f"stanok_vaqti_{report.date_from}_{report.date_to}.xlsx",
-        )
+        return _machine_time_xlsx(report)
     return report
 
 

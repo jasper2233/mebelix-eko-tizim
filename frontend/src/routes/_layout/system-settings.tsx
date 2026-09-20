@@ -126,7 +126,10 @@ function SystemSettingsPage() {
           </div>
         </TabsContent>
         <TabsContent value="schedule" forceMount className={TAB_PANEL}>
-          <WorkScheduleCard />
+          <div className="space-y-6">
+            <WorkScheduleCard />
+            <OeeStartCard />
+          </div>
         </TabsContent>
         <TabsContent value="downtime" forceMount className={TAB_PANEL}>
           {withSettings((settings) => (
@@ -983,6 +986,81 @@ function netWork(shift: Shift): string {
     span(shift.start, shift.end) -
     shift.breaks.reduce((sum, b) => sum + span(b.start, b.end), 0)
   return `${Math.floor(total / 60)} soat ${total % 60} daqiqa`
+}
+
+/** OEE qaysi KUNDAN hisoblanadi. Sozlamalar (ish jadvali, to'xtash sabablari, ideal sikl)
+ *  kiritilgungacha yig'ilgan qayd o'rtachani pastga tortadi — tsex raqamga ishonmay qo'yadi.
+ *  Ma'lumot o'chirilmaydi, faqat «Stanok vaqti» hisobotidan tashqarida qoladi. */
+function OeeStartCard() {
+  const queryClient = useQueryClient()
+  const queryKey = ["system-settings", "oee-start"]
+  const { data, isError, refetch } = useQuery({
+    queryKey,
+    queryFn: async () => (await SettingsService.readOeeStart()).data,
+  })
+  const saved = data?.start ?? ""
+  const [day, setDay] = useState("")
+  useEffect(() => setDay(saved), [saved])
+  const save = useMutation({
+    mutationFn: () =>
+      SettingsService.updateOeeStart({ body: { start: day || null } }),
+    ...crudCallbacks(queryClient, queryKey, "Sozlama saqlandi"),
+  })
+  const bugun = new Date().toLocaleDateString("sv-SE")
+
+  return (
+    <div className={cn(cardSurface, "space-y-4 p-4")}>
+      <div>
+        <h2 className="text-lg font-semibold">OEE qaysi kundan hisoblanadi</h2>
+        <p className="text-sm text-muted-foreground">
+          Shu kundan OLDINGI kunlar «Stanok vaqti» hisobotiga umuman kirmaydi.
+          OEE ish jadvali, to'xtash sabablari va ideal sikl kiritilgandan keyin
+          ma'noga ega — undan oldingi qayd (yarim ulangan stansiya, jadvalsiz
+          kun, sinov ma'lumoti) ko'rsatkichni pastga tortadi. Qayddlarning o'zi
+          o'chirilmaydi, ular joyida qoladi.
+        </p>
+      </div>
+      {isError ? (
+        <QueryError onRetry={() => refetch()} />
+      ) : (
+        <>
+          <div className="flex flex-wrap items-end gap-3">
+            <Field label="Boshlanish sanasi">
+              <DatePicker
+                value={day}
+                onChange={setDay}
+                placeholder="Cheklov yo'q"
+                className="w-56"
+              />
+            </Field>
+            <Button
+              variant="outline"
+              disabled={day === bugun}
+              onClick={() => setDay(bugun)}
+            >
+              Bugundan
+            </Button>
+            {day && (
+              <Button variant="ghost" onClick={() => setDay("")}>
+                Cheklovni olib tashlash
+              </Button>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Bo'sh qoldirilsa butun tarix hisoblanadi. Sana keyin ham
+            o'zgartiriladi — hisobot har safar qaytadan hisoblanadi.
+          </p>
+          <LoadingButton
+            loading={save.isPending}
+            disabled={day === saved}
+            onClick={() => save.mutate()}
+          >
+            Saqlash
+          </LoadingButton>
+        </>
+      )}
+    </div>
+  )
 }
 
 function WorkScheduleCard() {

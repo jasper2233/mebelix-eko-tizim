@@ -10,6 +10,7 @@ from app.schemas.settings import (
     DefectReasons,
     IdealCycle,
     IdealCycleKromka,
+    OeeStart,
     SystemSettingRead,
     SystemSettingUpdate,
     WorkSchedule,
@@ -20,10 +21,12 @@ from app.services.settings_service import (
     IDEAL_CYCLE,
     IDEAL_CYCLE_KROMKA,
     INT_RANGES,
+    OEE_START_DATE,
     WORK_SCHEDULE,
     get_defect_reasons,
     get_ideal_cycle,
     get_ideal_cycle_kromka,
+    get_oee_start,
     get_setting,
     get_work_schedule,
     schedule_error,
@@ -126,6 +129,41 @@ async def update_ideal_cycle_kromka(
         entity_type="system_setting",
         entity_id=row.id,
         message=f"Kromka ideal sikli o'zgardi: detallar oralig'i {body.gap_s:g} s",
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return body
+
+
+#: Kesim sanasi olib tashlanganda audit yozuvida turadigan matn
+_CHEKLOVSIZ = "cheklov yo'q"
+
+
+# NOTE: `/oee-start` ham `/{key}` dan OLDIN — sabab yuqoridagidek.
+@router.get("/oee-start", response_model=OeeStart, operation_id="read_oee_start")
+async def read_oee_start(db: SessionDep, _: AdminUser) -> OeeStart:
+    """OEE hisobi qaysi kundan boshlanadi (bo'sh — butun tarix)."""
+    return OeeStart(start=await get_oee_start(db))
+
+
+@router.put("/oee-start", response_model=OeeStart, operation_id="update_oee_start")
+async def update_oee_start(db: SessionDep, current_user: AdminUser, body: OeeStart, request: Request) -> OeeStart:
+    """Shu kundan OLDINGI kunlar «Stanok vaqti» hisobotiga umuman kirmaydi.
+
+    Nega kerak: tsexda OEE ish jadvali, to'xtash sabablari va ideal sikl sozlangandan
+    KEYIN ma'no kasb etadi. Undan oldingi qayd (yarim ulangan Pico, jadvalsiz kun,
+    sinov ma'lumoti) o'rtacha ko'rsatkichni pastga tortib, raqamga ishonchni yo'qotardi.
+    Ma'lumotning o'zi o'chirilmaydi — faqat hisobotdan tashqarida qoladi."""
+    row = await set_setting(db, OEE_START_DATE, body.start.isoformat() if body.start else "", current_user.id)
+    await db.flush()  # yangi qatorning id si audit yozuviga tushsin
+    log_action(
+        db,
+        module="settings",
+        action="updated",
+        user_id=current_user.id,
+        entity_type="system_setting",
+        entity_id=row.id,
+        message=f"OEE hisobi boshlanishi: {body.start.isoformat() if body.start else _CHEKLOVSIZ}",
         ip=client_ip(request),
     )
     await db.commit()

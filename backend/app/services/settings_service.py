@@ -4,6 +4,8 @@
 o'zgartiradi va konteynerni qayta ishga tushirish shart emas.
 """
 
+from datetime import date
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -67,6 +69,11 @@ IDEAL_CYCLE = "ideal_cycle_prisadka"
 IDEAL_CYCLE_KROMKA = "ideal_cycle_kromka"
 #: Brak sabablari (JSON, `DefectReasons`) — terminaldagi BRAK oynasi shundan.
 DEFECT_REASONS = "defect_reasons"
+#: OEE shu KUNDAN boshlab hisoblanadi (ISO sana, bo'sh — cheklov yo'q). Undan oldingi
+#: kunlar hisobotga UMUMAN kirmaydi: ish jadvali, sabablar va ideal sikl sozlanmagan
+#: paytdagi qayd OEE'ni pastga tortib, raqamni ishonchsiz qilardi. `DEFAULTS` da YO'Q —
+#: umumiy `PUT /settings/{key}` 8 belgi oladi, sana esa 10 (o'z endpointi bor).
+OEE_START_DATE = "oee_start_date"
 
 _DAY = 24 * 60
 
@@ -119,6 +126,12 @@ async def get_ideal_cycle_kromka(db: AsyncSession) -> IdealCycleKromka:
     """Kromka koeffitsiyenti; kiritilmagan bo'lsa sxemadagi sukut (3 s oraliq)."""
     raw = await get_setting(db, IDEAL_CYCLE_KROMKA)
     return IdealCycleKromka.model_validate_json(raw) if raw else IdealCycleKromka()
+
+
+async def get_oee_start(db: AsyncSession) -> date | None:
+    """OEE qaysi kundan hisoblanadi; kiritilmagan bo'lsa None — hamma tarix."""
+    raw = await get_setting(db, OEE_START_DATE)
+    return date.fromisoformat(raw) if raw else None
 
 
 async def get_defect_reasons(db: AsyncSession) -> DefectReasons:

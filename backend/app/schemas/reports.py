@@ -87,6 +87,8 @@ class MachineTimeReport(BaseModel):
     idle_threshold_min: int  # sariq chiroq shundan uzoq yonsa to'xtash (`stop_prompt_idle_minutes`)
     ideal_cycle: IdealCycle  # Prisadka Performance'i shu koeffitsiyentlar bilan hisoblangan
     ideal_cycle_kromka: IdealCycleKromka  # Kromkada sozlanadigani — detallar oralig'i
+    #: OEE shu kundan hisoblanadi; undan oldingi kunlar hisobotdan tushirilgan (None — cheklov yo'q)
+    oee_start: date | None
 
 
 # ---------- 11.2 Buyurtmalar holati ----------

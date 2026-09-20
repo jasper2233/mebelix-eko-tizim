@@ -647,6 +647,18 @@ function MachineTimeReport({ params }: { params: RangeParams }) {
         stanok o'chiq deb sanaladi; sariq chiroq {data?.idle_threshold_min ?? 5}{" "}
         daqiqadan qisqa yonsa — mikro-to'xtash, hisobga kirmaydi.
       </Summary>
+      {/* Kesim sanasi qo'yilgan bo'lsa — hisobot nimani ko'rsatayotgani ochiq aytilsin,
+          aks holda "kecha ishlagan edik-ku" degan savol javobsiz qolardi */}
+      {data?.oee_start && (
+        <p className="mb-3 text-sm text-muted-foreground">
+          OEE {data.oee_start} dan boshlab hisoblanadi — undan oldingi kunlar
+          hisobotga kirmaydi (qaydlar joyida, faqat hisobdan tashqarida). Sanani{" "}
+          <SettingsRef tab="schedule">
+            Tizim sozlamalari → «Ish jadvali»
+          </SettingsRef>{" "}
+          da o'zgartirasiz.
+        </p>
+      )}
       {data && !data.schedule_set && (
         <p className="mb-3 text-sm text-destructive">
           Ish jadvali kiritilmagan — reja vaqti 0, Availability hisoblanmaydi.

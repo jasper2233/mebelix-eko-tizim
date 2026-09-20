@@ -131,6 +131,8 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   sukut qiymatlar: `custom_part_suffix = "#"`, `idle_logout_operator_minutes = "90"` va
   `idle_logout_staff_minutes = "240"` — harakatsizlik chegarasi, `services/activity.py`;
   `stop_prompt_idle_minutes = "5"` — sariq chiroq shuncha daqiqadan uzoq yonsa to'xtash, `services/downtimes.py`;
+  `oee_start_date` — OEE shu KUNDAN hisoblanadi (ISO sana; bo'sh — butun tarix; `DEFAULTS` da yo'q,
+  o'z endpointi bor, chunki umumiy `PUT /{key}` 8 belgi oladi);
   `kromka_tolerance_mm = "3"` (1..50) — kromka o'lchovining dopuski, mm;
   `kromka_bind_minutes = "10"` (1..240) — o'lchov shuncha daqiqa ichidagi oxirgi skanga bog'lanadi;
   `kromka_idle_minutes = "10"` (1..240) — kromkada lenta yuryapti-yu shuncha daqiqa detal o'tmasa,

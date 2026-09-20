@@ -25,8 +25,10 @@ OEE          = Availability × Performance × Quality
 | Ideal sikl vaqti | `part.xnc_summary` (teshik/paz/freza) + koeffitsiyentlar (Tizim sozlamalari, §4.6) | ⚠️ bor, qiymatlar TAXMINIY — sekundomer bilan to'g'rilash kerak |
 | **Performance hisobi** | `services/performance.py`, Hisobotlar → «Stanok vaqti» (§4.6, kromka — §4.9) | ✅ bor: Prisadka (2026-09-18) va Kromka (2026-09-20) |
 | **Kromka o'lchovi ↔ detal** | `services/kromka.py`, Tizim sozlamalari → «Kromka o'lchovi» (§4.10) | ✅ bor (2026-09-20): mos/ortiqcha/nomos hukmi, NOMOS'da brak oynasi |
+| **OEE kesim sanasi** | `settings_service.OEE_START_DATE`, Tizim sozlamalari → «Ish jadvali» (§4.12) | ✅ bor (2026-09-20): kesimdan oldingi kunlar hisobotga kirmaydi |
 | **Quality hisobi** | `services/performance.py: quality_pct`, Hisobotlar → «Stanok vaqti» (§4.7, kromka — §4.11) | ✅ bor: Prisadka (2026-09-19) va Kromka (2026-09-20) |
 | Brak | `part_defect` — terminal skan tasmasidagi BRAK tugmasi (§4.7) | ✅ bor (2026-09-19); qayta ishlab chiqarish (remake) YO'Q |
+| **OEE kesim sanasi** | `settings_service.OEE_START_DATE`, Tizim sozlamalari → «Ish jadvali» (§4.12) | ✅ bor (2026-09-20): kesimdan oldingi kunlar hisobotga kirmaydi |
 | **Quality hisobi** | `services/performance.py: quality_pct`, Hisobotlar → «Stanok vaqti» (§4.7) | ✅ bor (2026-09-19) |
 | **OEE = A × P × Q** | `services/performance.py: oee_pct`, o'sha hisobot ustuni (§4.7) | ✅ bor (2026-09-19) |
 
@@ -480,6 +482,27 @@ Tekshiruv (bir martalik skript, haqiqiy Postgres, haqiqiy endpointlar): **21/21*
 bog'landi, izohda «300.0 mm»), hisobotda 40 o'tish / 1 brak / **Quality 97.5%**,
 Availability 88.9%, OEE = A×P×Q; operator sabab tanlaganda yangi qator chiqmadi va Quality
 o'zgarmadi; menejer rad etgach brak 0 va Quality 100% bo'ldi.
+
+### 4.12 OEE qaysi kundan hisoblanadi (2026-09-20)
+
+Sozlamalar to'liq kiritilgunicha yig'ilgan qayd OEE ni pastga tortadi: ish jadvali yo'q kunda
+reja vaqti 0, yarim ulangan stansiyada o'tishlar sanalmaydi, sinov ma'lumoti esa umuman ish
+emas. Shuning uchun **kesim sanasi** bor: `oee_start_date` (Tizim sozlamalari → «Ish jadvali»
+→ «OEE qaysi kundan hisoblanadi», `GET/PUT /settings/oee-start`).
+
+- Undan oldingi kunlar «Stanok vaqti» hisobotiga **umuman kirmaydi** — qatorlar ham, kunlik
+  yoyilma ham, Excel ham. So'ralgan oraliqning boshi kesimga **surib qo'yiladi**.
+- Butun oraliq kesimdan oldin bo'lsa — bo'sh hisobot (xato emas).
+- **Ma'lumot O'CHIRILMAYDI**: `andon_event`, `downtime`, `scan`, `part_defect` joyida qoladi;
+  kesim faqat HISOBGA ta'sir qiladi va istalgan payt orqaga surilsa hamma narsa qaytadi.
+- Bo'sh qiymat — cheklov yo'q (butun tarix), sukut holat shu.
+- Hisobot sahifasi kesim qo'yilganda buni ochiq yozadi, aks holda «kecha ishlagan edik-ku»
+  degan savol javobsiz qolardi.
+
+Tekshiruv (bir martalik skript, haqiqiy Postgres): **15/15** — bir xil ikki kun (14 va
+15-sentabr); kesimsiz 2 kun / 20 o'tish / reja 18 soat, kesim 15-sentabrga qo'yilgach 1 kun /
+10 o'tish / reja 9 soat va `date_from` 15-sentabrga surildi; butunlay kesimdan oldingi oraliq
+bo'sh hisobot qaytardi; kesim olib tashlanganda ikkala kun qaytdi.
 
 ## 5. Prod auditi natijalari (2026-09-16)
 
