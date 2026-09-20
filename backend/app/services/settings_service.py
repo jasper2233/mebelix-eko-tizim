@@ -23,12 +23,18 @@ IDLE_STAFF_MINUTES = "idle_logout_staff_minutes"
 #: Sariq chiroq (stanok ishlamayapti) shuncha daqiqa yonsa to'xtash yoziladi va sababi so'raladi.
 #: Vaqt sariq yongan paytdan — Pico `idle_timeout_s` ga bog'liq emas (`services/downtimes.py`).
 STOP_PROMPT_IDLE_MINUTES = "stop_prompt_idle_minutes"
+#: KROMKA bo'sh yurishi: lenta yuryapti (RUN yoqiq), lekin shuncha daqiqa bitta ham detal
+#: o'tmadi — material/buyurtma yo'q yoki operator ketgan. O'sha vaqt «ishladi» ga kirmasin
+#: (`services/andon.split_idle`). Alohida chegara: to'xtash 5 daqiqada so'raladi, bo'sh
+#: yurish esa uzunroq bo'lishi normal — detal almashtirish ritmi jazolanmasin.
+KROMKA_IDLE_MINUTES = "kromka_idle_minutes"
 
 #: Butun son sozlamalar va ularning ruxsat etilgan oralig'i — `PUT /settings/{key}` tashqarisini rad etadi.
 INT_RANGES: dict[str, tuple[int, int]] = {
     IDLE_OPERATOR_MINUTES: (10, 1440),
     IDLE_STAFF_MINUTES: (10, 1440),
     STOP_PROMPT_IDLE_MINUTES: (1, 120),
+    KROMKA_IDLE_MINUTES: (1, 240),
 }
 
 #: Sahifada ko'rsatiladigan sozlamalar va ularning sukut qiymati.
@@ -37,6 +43,7 @@ DEFAULTS: dict[str, str] = {
     IDLE_OPERATOR_MINUTES: "90",
     IDLE_STAFF_MINUTES: "240",
     STOP_PROMPT_IDLE_MINUTES: "5",
+    KROMKA_IDLE_MINUTES: "10",
 }
 
 #: Ish jadvali (JSON). `DEFAULTS` da YO'Q: umumiy `PUT /settings/{key}` 8 belgilik

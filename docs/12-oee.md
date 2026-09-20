@@ -144,7 +144,8 @@ ilgari beyjik bilan ochilgan smena chiqishda yopilmasdi.
 | Worker | `tasks.sync_downtimes` (5 daq) | terminal yopiq bo'lsa ham to'xtashlar yozilib, yopilib turadi |
 | Terminal | `GET /terminal/downtimes/pending` (30 s + `andon.state` WS), `Terminal/DowntimeReason.tsx` | sababsiz to'xtash bo'lsa oyna o'zi chiqadi; faqat Pico ulangan ish markazida (`has_andon`) va smena ochiq bo'lsa; «Keyinroq» — 10 daqiqa |
 | Qulf | `POST /terminal/downtimes/lock` | qulf tugmasi avval sabab so'raydi; qulf beyjik bilan ochilganda (`open_badge_session`) yopiladi, uning ostida boshlangan Pico to'xtashi sababni oladi |
-| Sozlamalar | Tizim sozlamalari → «To'xtash sabablari» | chegara (sukut 5, 1..120) va IKKI ro'yxat — «Rejali» va «Rejasiz» alohida, har birining o'z qo'shish maydoni: nom, «Izoh majburiy», «Faol», narigi guruhga o'tkazish (o'chirish yo'q) |
+| Bo'sh yurish (kromka) | `services/andon.split_idle` + `downtimes._bosh_yurish` | lenta YURYAPTI (RUN yoqiq), lekin `kromka_idle_minutes` (sukut 10) davomida bitta ham detal o'tmadi — bu ham to'xtash (`IDLE`): sabab so'raladi va o'sha vaqt «ishladi» dan chiqadi. Manba — o'lchovlar orasidagi tirqish: RUN kirishi «bo'sh yuryapti» deb aytmaydi |
+| Sozlamalar | Tizim sozlamalari → «To'xtash sabablari» | chegara (sukut 5, 1..120), **kromka bo'sh yurishi** (sukut 10, 1..240) va IKKI ro'yxat — «Rejali» va «Rejasiz» alohida, har birining o'z qo'shish maydoni: nom, «Izoh majburiy», «Faol», narigi guruhga o'tkazish (o'chirish yo'q) |
 
 Faqat SHU SMENAGA tegishli to'xtash so'raladi (oldingi smenaniki sababsiz qoladi). Ro'yxat bo'sh
 bo'lsa hech narsa so'ralmaydi, qulf sababsiz qulflanadi — ro'yxat kiritilmagani ishni to'smaydi.
@@ -159,6 +160,16 @@ Egasining ro'yxati (`oee to'xtalishlar.xlsx`, `Лист1` B4:C13; imlo to'g'rila
   Mahsulot yo'q, Mahsulot brak, Yangi buyurtmani olib kelish.
 «Izoh majburiy» egasi belgilamagan. Ro'yxat kodga YOZILMAYDI (statik bo'lib qolmasin, 2026-09-18):
 admin uni Tizim sozlamalarida shu ikki guruhga kiritadi va keyin o'zi yuritadi.
+
+Kromkada bo'sh yurish alohida chegara bilan (`kromka_idle_minutes`): to'xtash 5 daqiqada
+so'raladi, bo'sh yurish esa uzunroq bo'lishi normal — detal almashtirish ritmi jazolanmasin.
+Yo'qotish IKKI marta sanalmaydi: bo'sh yurish `run_s` dan chiqadi, ya'ni Performance maxraji
+ham qisqaradi. **Bitta ham o'lchov bermagan stanok TEGILMAYDI**: datchigi buzuq yoki ulanmagan
+stansiya butun kunni «bo'sh yurish» qilib ko'rsatardi — apparat nosozligi ishlab chiqarish
+yo'qotishi bo'lib yozilardi va Availability nolga tushardi. O'lchov yo'qligi «lenta bo'sh»
+emas, «bilmaymiz» degani (datchik nosozligini Pico `ogoh` bilan alohida aytadi).
+Tekshiruv **12/12** — 2 soatlik jimlik `IDLE` yozuvi bo'ldi (boshlanishi oxirgi
+o'lchovdan), terminal sabab so'radi, qayta hisobda ikkilanmadi, Availability 66.3%.
 
 Kromka to'xtashlari tekshiruvi (bir martalik skript, haqiqiy Postgres): **15/15** — 2 daqiqalik
 to'xtash yozilmaydi, 1 soatlik yoziladi (`OFF`), tugash vaqti to'g'ri, qayta hisobda yangi yozuv

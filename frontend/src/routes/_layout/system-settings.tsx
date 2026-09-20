@@ -288,6 +288,9 @@ function IdleLogoutCard({ settings }: { settings: SystemSettingRead[] }) {
 const STOP_PROMPT_KEY = "stop_prompt_idle_minutes"
 const STOP_MIN = 1
 const STOP_MAX = 120
+// Backend `settings_service.KROMKA_IDLE_MINUTES` va `INT_RANGES` bilan bir xil
+const KROMKA_IDLE_KEY = "kromka_idle_minutes"
+const KROMKA_IDLE_MAX = 240
 
 const REASONS_KEY = ["system-settings", "downtime-reasons"]
 
@@ -406,6 +409,21 @@ function DowntimeReasonsCard({ settings }: { settings: SystemSettingRead[] }) {
   const saved = settings.find((s) => s.key === STOP_PROMPT_KEY)?.value ?? ""
   const [minutes, setMinutes] = useState("")
   useEffect(() => setMinutes(saved), [saved])
+  const savedIdle = settings.find((s) => s.key === KROMKA_IDLE_KEY)?.value ?? ""
+  const [idle, setIdle] = useState("")
+  useEffect(() => setIdle(savedIdle), [savedIdle])
+  const idleValid =
+    /^\d+$/.test(idle) &&
+    Number(idle) >= STOP_MIN &&
+    Number(idle) <= KROMKA_IDLE_MAX
+  const saveIdle = useMutation({
+    mutationFn: () =>
+      SettingsService.updateSystemSetting({
+        path: { key: KROMKA_IDLE_KEY },
+        body: { value: idle },
+      }),
+    ...crudCallbacks(queryClient, ["system-settings"], "Sozlama saqlandi"),
+  })
   const saveMinutes = useMutation({
     mutationFn: () =>
       SettingsService.updateSystemSetting({
@@ -469,9 +487,41 @@ function DowntimeReasonsCard({ settings }: { settings: SystemSettingRead[] }) {
         </LoadingButton>
       </div>
       <p className="text-sm text-muted-foreground">
-        Vaqt sariq chiroq yongan paytdan sanaladi. Juda kichik qiymat (1–2
-        daqiqa) detal almashtirish kabi oddiy kutishlarda ham oyna chiqaradi.
-        Oraliq: {STOP_MIN}–{STOP_MAX}.
+        Vaqt sariq chiroq yongan paytdan sanaladi. Kromkada lenta to'xtagan
+        paytdan (RUN kirishi). Juda kichik qiymat (1–2 daqiqa) detal
+        almashtirish kabi oddiy kutishlarda ham oyna chiqaradi. Oraliq:{" "}
+        {STOP_MIN}–{STOP_MAX}.
+      </p>
+
+      {/* Kromkada IKKINCHI holat bor: lenta yuryapti, lekin detal o'tmayapti.
+          RUN kirishi buni aytmaydi — o'lchovlar orasidagi tirqish aytadi. */}
+      <div className="flex items-end gap-3">
+        <Field label="Kromka bo'sh yursa (detal o'tmasa), daqiqa">
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={STOP_MIN}
+            max={KROMKA_IDLE_MAX}
+            value={idle}
+            aria-invalid={!idleValid}
+            onChange={(e) => setIdle(e.target.value)}
+            className="w-40"
+          />
+        </Field>
+        <LoadingButton
+          loading={saveIdle.isPending}
+          disabled={!idleValid || idle === savedIdle}
+          onClick={() => saveIdle.mutate()}
+        >
+          Saqlash
+        </LoadingButton>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Lenta yuryapti-yu, shuncha daqiqa bitta ham detal o'tmasa — bu ham
+        to'xtash (material yo'q, buyurtma yo'q, operator ketgan): sabab
+        so'raladi va o'sha vaqt «ishladi» dan chiqadi. To'xtash chegarasidan
+        uzunroq bo'lgani ma'qul — detal almashtirish ritmi jazolanmasin. Oraliq:{" "}
+        {STOP_MIN}–{KROMKA_IDLE_MAX}.
       </p>
 
       <section className="space-y-3">

@@ -62,12 +62,13 @@ from app.schemas.reports import (
     ReadyOrder,
     TrendDay,
 )
-from app.services.andon import ANDON_STATES, andon_spans, machine_time, read_live, uskuna_spans
+from app.services.andon import ANDON_STATES, andon_spans, machine_time, read_live, split_idle, uskuna_spans
 from app.services.availability import DayTotals, StopRun, availability, inside, plan_windows
 from app.services.excel import xlsx_response
 from app.services.metrics import VolumeShare, part_volume
 from app.services.performance import ideal_seconds, kromka_ideal_seconds, oee_pct, quality_pct
 from app.services.settings_service import (
+    KROMKA_IDLE_MINUTES,
     STOP_PROMPT_IDLE_MINUTES,
     get_ideal_cycle,
     get_ideal_cycle_kromka,
@@ -264,7 +265,34 @@ async def report_machine_time(
         .all()
     )
     tirik = set(await read_live({mid for mid, _p, _at in uskuna_rows})) if uskuna_rows else set()
-    spans = andon_spans(events, ongoing) + uskuna_spans(uskuna_rows, tirik)
+    kromka_spans = uskuna_spans(uskuna_rows, tirik)
+    if kromka_spans:
+        # Lenta yuryapti, lekin uzoq vaqt detal o'tmagan qismi — BO'SH YURISH (`IDLE`):
+        # u «ishladi» ga kirmasligi kerak (`services/andon.split_idle`). Yo'qotish shu bilan
+        # Availability'ga ko'chadi, Performance maxraji (`run_s`) esa qisqaradi — ya'ni
+        # bitta yo'qotish ikki marta jazolanmaydi.
+        olchov_vaqtlari: dict[int, list[datetime]] = {}
+        for olchov_mid, olchov_at in (
+            (
+                await db.execute(
+                    select(AndonEvent.machine_id, AndonEvent.happened_at)
+                    .where(
+                        AndonEvent.kind == "olchov",
+                        AndonEvent.is_deleted == False,  # noqa: E712
+                        AndonEvent.machine_id.in_({sp.machine_id for sp in kromka_spans}),
+                        AndonEvent.happened_at >= start - _ANDON_TAIL,
+                        AndonEvent.happened_at <= end + _ANDON_TAIL,
+                    )
+                    .order_by(AndonEvent.happened_at)
+                )
+            )
+            .tuples()
+            .all()
+        ):
+            olchov_vaqtlari.setdefault(olchov_mid, []).append(olchov_at)
+        kromka_gap = timedelta(minutes=int(await get_setting(db, KROMKA_IDLE_MINUTES)))
+        kromka_spans = split_idle(kromka_spans, olchov_vaqtlari, kromka_gap, now)
+    spans = andon_spans(events, ongoing) + kromka_spans
     result = machine_time(spans, start, end, now)
 
     # OEE Availability: ish jadvali + to'xtashlar. Signal ustuni ulangan HAR ish markazi kiradi —

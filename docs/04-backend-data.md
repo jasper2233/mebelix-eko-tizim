@@ -131,6 +131,8 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   sukut qiymatlar: `custom_part_suffix = "#"`, `idle_logout_operator_minutes = "90"` va
   `idle_logout_staff_minutes = "240"` — harakatsizlik chegarasi, `services/activity.py`;
   `stop_prompt_idle_minutes = "5"` — sariq chiroq shuncha daqiqadan uzoq yonsa to'xtash, `services/downtimes.py`;
+  `kromka_idle_minutes = "10"` (1..240) — kromkada lenta yuryapti-yu shuncha daqiqa detal o'tmasa,
+  bo'sh yurish deb sanaladi (`services/andon.split_idle`);
   `PUT /settings/{key}` butun son kalitlarini `INT_RANGES` bo'yicha tekshiradi: 10..1440 va 1..120). `work_schedule` kaliti — ish jadvali
   JSON'i (`schemas/settings.py: WorkSchedule` — smenalar, tanaffuslar, haftalik dam olish kunlari,
   bayram sanalari); u `DEFAULTS` da YO'Q, o'z endpointi bor (`GET/PUT /settings/work-schedule`),

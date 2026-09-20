@@ -27,7 +27,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AndonEvent, Downtime
 from app.models.enums import DowntimeKind
-from app.services.settings_service import STOP_PROMPT_IDLE_MINUTES, get_setting
+from app.services.andon import split_idle, uskuna_spans
+from app.services.settings_service import KROMKA_IDLE_MINUTES, STOP_PROMPT_IDLE_MINUTES, get_setting
 
 #: Pico holati -> to'xtash turi. Qolgan holatlar (PROCESSING, AWAIT_PART, BOOT ...) — stanok ishlayapti.
 _STOP_KIND = {
@@ -94,6 +95,46 @@ def _runs(events: list[AndonEvent]) -> list[_Run]:
     return out
 
 
+async def _bosh_yurish(
+    db: AsyncSession, machine_id: int, events: list[AndonEvent], since: datetime, now: datetime
+) -> list[_Run]:
+    """KROMKA: lenta yuryapti, lekin uzoq vaqt detal o'tmadi — bu ham to'xtash (`IDLE`).
+
+    RUN kirishi «bo'sh yuryapti» deb aytmaydi, stansiya esa har detalni o'lchaydi:
+    ikki o'lchov orasidagi uzoq tirqish lenta bo'sh aylanganini bildiradi (material yo'q,
+    buyurtma yo'q, operator ketgan). Chegarasi ALOHIDA (`kromka_idle_minutes`, sukut 10):
+    to'xtash 5 daqiqada so'raladi, bo'sh yurish esa uzunroq bo'lishi normal.
+
+    Kalit `idle-{boshlanish unix}` — barqaror: boshlanish oxirgi o'lchov yoki lentaning
+    yonish lahzasi, ya'ni qayta hisobda o'zgarmaydi va yozuv ikkilanmaydi."""
+    uskuna = [e for e in events if e.kind == "uskuna"]
+    if not uskuna:
+        return []
+    gap = timedelta(minutes=int(await get_setting(db, KROMKA_IDLE_MINUTES)))
+    olchovlar = (
+        (
+            await db.execute(
+                select(AndonEvent.happened_at).where(
+                    AndonEvent.machine_id == machine_id,
+                    AndonEvent.kind == "olchov",
+                    AndonEvent.happened_at >= since,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    spans = uskuna_spans(
+        [(e.machine_id, e.payload or {}, e.happened_at) for e in uskuna],
+        {machine_id},  # oxirgi oraliq shu hisob uchun hozirgacha cho'ziladi
+    )
+    return [
+        _Run(kind=DowntimeKind.IDLE, key=f"idle-{int(sp.began.timestamp())}", session="", start=sp.began, end=sp.ended)
+        for sp in split_idle(spans, {machine_id: sorted(olchovlar)}, gap, now)
+        if sp.state == "IDLE"
+    ]
+
+
 async def sync_machine(db: AsyncSession, machine_id: int, now: datetime) -> None:
     """Ish markazining Pico to'xtashlarini `downtime` jadvaliga yozadi yoki yangilaydi. Commit chaqiruvchida."""
     earliest_open = (
@@ -147,6 +188,7 @@ async def sync_machine(db: AsyncSession, machine_id: int, now: datetime) -> None
     # Chegara sariq chiroqqa (prisadka) va kromka to'xtashlariga qo'llanadi — qisqasi
     # mikro-to'xtash, uning sababi so'ralmaydi
     runs = [r for r in _runs(events) if not r.chegarali or (r.end or now) - r.start >= threshold]
+    runs += await _bosh_yurish(db, machine_id, events, since, now)
     if not runs:
         return
 

@@ -125,6 +125,46 @@ def uskuna_spans(
     return spans
 
 
+def split_idle(
+    spans: Iterable[AndonSpan],
+    measurements: dict[int, list[datetime]],
+    gap: timedelta,
+    now: datetime,
+) -> list[AndonSpan]:
+    """Ishlayotgan oraliqni O'LCHOVLAR bo'yicha bo'ladi: uzoq vaqt detal o'tmagan qismi — IDLE.
+
+    Kromkada «kutish» degan signal yo'q: RUN yoqiq bo'lsa lenta yuryapti, detal bor-yo'qligini
+    kirish aytmaydi. Lekin stansiya har detalni o'lchaydi — ya'ni ikki o'lchov orasidagi uzoq
+    tirqish lenta BO'SH aylanganini bildiradi (material yo'q, buyurtma yo'q, operator ketgan).
+    O'sha vaqt «ishladi» ga kirsa Availability yolg'on ko'tarilardi.
+
+    `gap` — bo'sh yurish chegarasi (`kromka_idle_minutes`). Undan qisqa tirqish — detal
+    almashtirish, oddiy ish ritmi.
+
+    Faqat PROCESSING bo'linadi: to'xtash (OFF) allaqachon yo'qotish.
+
+    MUHIM: bitta ham o'lchov bo'lmagan stanok TEGILMAYDI. Aks holda datchigi buzuq yoki
+    ulanmagan stansiya butun kunni «bo'sh yurish» deb ko'rsatardi — ya'ni apparat nosozligi
+    ishlab chiqarish yo'qotishi bo'lib yozilardi va Availability nolga tushardi. O'lchov
+    yo'qligi «lenta bo'sh» degani emas, «bilmaymiz» degani; bilmagan narsani ayblamaymiz.
+    Datchik nosozligini Pico o'zi alohida aytadi (`ogoh`: javob_yoq, iflos)."""
+    out: list[AndonSpan] = []
+    for span in spans:
+        if span.state != "PROCESSING" or not measurements.get(span.machine_id):
+            out.append(span)
+            continue
+        end = span.ended or now
+        belgilar = [t for t in measurements.get(span.machine_id, []) if span.began <= t <= end]
+        cur = span.began
+        for t in [*belgilar, end]:
+            if t - cur >= gap:
+                out.append(AndonSpan(span.machine_id, "IDLE", cur, t))
+            elif t > cur:
+                out.append(AndonSpan(span.machine_id, "PROCESSING", cur, t))
+            cur = t
+    return out
+
+
 @dataclass
 class MachineTime:
     """`machine_time` natijasi: soniyalar hisobot oralig'iga KESILGAN.
