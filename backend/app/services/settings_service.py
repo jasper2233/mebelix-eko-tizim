@@ -28,6 +28,14 @@ STOP_PROMPT_IDLE_MINUTES = "stop_prompt_idle_minutes"
 #: (`services/andon.split_idle`). Alohida chegara: to'xtash 5 daqiqada so'raladi, bo'sh
 #: yurish esa uzunroq bo'lishi normal — detal almashtirish ritmi jazolanmasin.
 KROMKA_IDLE_MINUTES = "kromka_idle_minutes"
+#: Kromka o'lchovining DOPUSKI, mm: o'lchangan uzunlik kutilganidan shuncha farq qilsa
+#: ham «mos» sanaladi. Lenta detalni harakatda o'lchaydi — tezlik va datchik kechikishi
+#: bir necha millimetr beradi, nol dopusk har bir detalni brak qilardi.
+KROMKA_TOLERANCE_MM = "kromka_tolerance_mm"
+#: O'lchov skan bilan bog'lanadigan oyna, daqiqa: o'lchovdan shuncha vaqt oldin
+#: yozilgan OXIRGI skan o'sha detal deb olinadi. Undan eskisi bog'lanmaydi —
+#: tushlikdan keyin kelgan o'lchov ertalabki detalga yopishib qolmasin.
+KROMKA_BIND_MINUTES = "kromka_bind_minutes"
 
 #: Butun son sozlamalar va ularning ruxsat etilgan oralig'i — `PUT /settings/{key}` tashqarisini rad etadi.
 INT_RANGES: dict[str, tuple[int, int]] = {
@@ -35,6 +43,8 @@ INT_RANGES: dict[str, tuple[int, int]] = {
     IDLE_STAFF_MINUTES: (10, 1440),
     STOP_PROMPT_IDLE_MINUTES: (1, 120),
     KROMKA_IDLE_MINUTES: (1, 240),
+    KROMKA_TOLERANCE_MM: (1, 50),
+    KROMKA_BIND_MINUTES: (1, 240),
 }
 
 #: Sahifada ko'rsatiladigan sozlamalar va ularning sukut qiymati.
@@ -44,6 +54,8 @@ DEFAULTS: dict[str, str] = {
     IDLE_STAFF_MINUTES: "240",
     STOP_PROMPT_IDLE_MINUTES: "5",
     KROMKA_IDLE_MINUTES: "10",
+    KROMKA_TOLERANCE_MM: "3",
+    KROMKA_BIND_MINUTES: "10",
 }
 
 #: Ish jadvali (JSON). `DEFAULTS` da YO'Q: umumiy `PUT /settings/{key}` 8 belgilik

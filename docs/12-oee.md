@@ -24,6 +24,7 @@ OEE          = Availability × Performance × Quality
 | Detallar soni | MES skanlari (`scan`) + Pico sikllari | ✅ bor, o'zaro deyarli mos (§5) |
 | Ideal sikl vaqti | `part.xnc_summary` (teshik/paz/freza) + koeffitsiyentlar (Tizim sozlamalari, §4.6) | ⚠️ bor, qiymatlar TAXMINIY — sekundomer bilan to'g'rilash kerak |
 | **Performance hisobi** | `services/performance.py`, Hisobotlar → «Stanok vaqti» (§4.6, kromka — §4.9) | ✅ bor: Prisadka (2026-09-18) va Kromka (2026-09-20) |
+| **Kromka o'lchovi ↔ detal** | `services/kromka.py`, Tizim sozlamalari → «Kromka o'lchovi» (§4.10) | ✅ bor (2026-09-20): mos/ortiqcha/nomos hukmi, NOMOS'da brak oynasi |
 | Brak | `part_defect` — terminal skan tasmasidagi BRAK tugmasi (§4.7) | ✅ bor (2026-09-19); qayta ishlab chiqarish (remake) YO'Q |
 | **Quality hisobi** | `services/performance.py: quality_pct`, Hisobotlar → «Stanok vaqti» (§4.7) | ✅ bor (2026-09-19) |
 | **OEE = A × P × Q** | `services/performance.py: oee_pct`, o'sha hisobot ustuni (§4.7) | ✅ bor (2026-09-19) |
@@ -345,8 +346,8 @@ faqat KUZATILADI: hech narsa bloklanmaydi, skan oqimiga tegilmaydi. Foyda darhol
 | Qabul | `POST /bridge-agents/andon` (o'sha endpoint) | `AndonEventIn.type` ga kromka turlari qo'shildi: `olchov`, `uskuna`, `tezlik`, `ogoh`, `avariya_toxtash`, `boot`. Yangi jadval YO'Q — xom hodisa `andon_event.payload` da |
 | Joriy holat | agent har 30 s `HOLAT` so'raydi (`_kromka_holat`) | Kromka `uskuna` ni faqat RUN kirishi O'ZGARGANDA yuboradi — stanok ertalab yoqilib, agent kunduzi ulansa hech narsa kelmasdi. `HOLAT` javobidagi `uskuna` o'sha lahzadagi holat; **o'zgargan bo'lsagina** hodisa yoziladi (`manba: "holat"`), aks holda oraliqlar maydalanardi |
 | Oraliqlar | `services/andon.py: uskuna_spans` | Kromka Pico'si holat DAVOMIYLIGINI o'lchamaydi (prisadkadagi `prev_duration_s` yo'q) — oraliq hodisalar orasidan quriladi: `holat=1` → PROCESSING, `0` → OFF. Oxirgi oraliq faqat agent hozir aloqada bo'lsa ochiq qoladi |
-| Admin panel | `WorkCenters/KromkaLive` + `GET /machines/kromka-measurements` + WS `kromka.measure` | «Ish markazlari» sahifasi ostida JONLI oqim: detal o'tishi bilan qator chiqadi (vaqt, mm, Pico kodi, D1/D2, tezlik, stanok), eng yangisi bir marta yashil uriladi. Bitta partiyadan ko'pi bilan 5 ta xabar tarqatiladi — oflayn agent yuzlab yig'ilganini birdan yuborsa ekran ko'milmasin |
-| Terminal | `Terminal/KromkaView: StationStrip` + `GET /terminal/kromka/measurements` | Sarlavha ostida oxirgi o'lchov: `mm`, Pico kodi (OK/FARQ/FAQAT1/FAQAT2), D1/D2, tezlik va oldingi 7 tasi. Stansiyasiz postda umuman chizilmaydi |
+| Admin panel | `WorkCenters/KromkaLive` + `GET /machines/kromka-measurements` + WS `kromka.measure` | «Ish markazlari» sahifasi ostida JONLI oqim: detal o'tishi bilan qator chiqadi (vaqt, mm, HUKM, kutilgan o'lcham va farq, detal nomi + chek ID si, stanok), eng yangisi bir marta yashil uriladi. Pico kodi faqat `OK` bo'lmaganda ko'rsatiladi. Bitta partiyadan ko'pi bilan 5 ta xabar tarqatiladi — oflayn agent yuzlab yig'ilganini birdan yuborsa ekran ko'milmasin |
+| Terminal | `Terminal/KromkaView: StationStrip` + `GET /terminal/kromka/measurements` | Sarlavha ostida oxirgi o'lchov: `mm`, hukm, kutilgan o'lcham, detal nomi va oldingi 7 tasi. `nomos` kelganda brak oynasi o'zi ochiladi (`routes/terminal.tsx`, WS `kromka.measure`). Stansiyasiz postda umuman chizilmaydi |
 
 Ma'lumot sifatini o'lchash uchun `scripts/kromka_audit.sql` — faqat o'qiydigan SQL
 (o'sha `oee_audit.sql` naqshi, 10 bo'lim): qamrov, kunlik sanoq, Pico kodlari taqsimoti
@@ -354,9 +355,9 @@ Ma'lumot sifatini o'lchash uchun `scripts/kromka_audit.sql` — faqat o'qiydigan
 bo'laklar soni, ogohlantirishlar, kunlik ishlagan vaqt, uzilishlar va oxirgi 15 o'lchov.
 Qayerda ishga tushirish — fayl boshida.
 
-**1-bosqichga kirmaydi**: QR bog'lash, kutilgan o'lcham, MOS/NOMOS verdikti, avtomatik skan,
-avtomatik brak, kalibrlash UI si va `SET` yuborish (Pico `kal.json` dagi oxirgi sozlama bilan
-ishlayveradi), sirena/lampa mantiqi.
+**1-bosqichga kirmagan**: QR bog'lash, kutilgan o'lcham va MOS/NOMOS verdikti — ular 2026-09-20
+da qo'shildi (§4.10). Hali YO'Q: avtomatik skan (o'lchov skan o'rnini bosishi), kalibrlash UI si
+va `SET` yuborish (Pico `kal.json` dagi oxirgi sozlama bilan ishlayveradi), sirena/lampa mantiqi.
 
 Tekshiruv (bir martalik skript): **27/27** — ularning sinov bazasidan tiklangan 214 ta HAQIQIY
 Pico qatori agent parseridan o'tdi (tur aniqlandi, `seq` uzluksiz, `eski_ms` vaqti tiklandi,
@@ -367,8 +368,9 @@ reja 9 soat / ishladi 7 soat / **Availability 77.8%**, Performance va Quality es
 
 Ma'lum cheklov (ularning firmware'ida, bizda emas): mayda bo'lak (10 m/min da 8 mm dan uzun
 har narsa) D1→D2 navbatiga tushib juftlikni siljitadi — prod ma'lumotida 8 ta soxta
-«tezlik nomuvofiq» va bir nechta bema'ni uzunlik shundan. 1-bosqichda zararsiz (faqat
-yoziladi), lekin **avtomatik skanga o'tishdan oldin tuzatilishi shart**.
+«tezlik nomuvofiq» va bir nechta bema'ni uzunlik shundan. Bunday o'lchov Pico kodini `OK` dan
+chiqaradi, ya'ni hukmi `shubhali` bo'ladi va hech kimni ayblamaydi (§4.10) — lekin
+**avtomatik skanga o'tishdan oldin tuzatilishi shart**.
 
 ### 4.9 Kromka Performance (2026-09-20)
 
@@ -389,13 +391,57 @@ keyingi detalni qo'yguncha ketadigan vaqt. Tizim sozlamalari → «Ideal sikl» 
 | Har QIRRA alohida o'tish | to'rt qirrali detal to'rt marta o'tadi va to'rtalasi sanaladi — stanok rostdan shuncha ish qilgan (Prisadkadagi «bitta detal = bitta sikl» emas) |
 | Faqat KUZATILGAN ish vaqtidagi o'tish | Prisadkadagi bilan bir xil qoida: ma'lumotsiz vaqt `run_s` ga kirmaydi, o'sha paytdagi detal ham sanalmasin |
 | O'lchamsiz yoki tezliksiz hodisa tashlanadi | `FAQAT1/FAQAT2` da uzunlik bo'lishi mumkin, lekin `L` yo'q bo'lsa ideal vaqtni hisoblab bo'lmaydi |
-| Kromkada **Quality hisoblanmaydi** (`—`), demak OEE ham | brak hali detalga bog'lanmagan: QR bog'lash va NOMOS → avtomatik brak keyingi bosqich. «Brak yo'q» deb 100% ko'rsatish yolg'on baho bo'lardi |
+| Kromkada **Quality hisoblanmaydi** (`—`), demak OEE ham | o'lchov endi detalga bog'landi (§4.10), lekin Quality maxraji hali ochiq: Performance QIRRA bo'yicha, brak esa DETAL bo'yicha sanaladi. «Brak yo'q» deb 100% ko'rsatish yolg'on baho bo'lardi |
 | `gap_s` o'zgarsa o'tgan kunlar qayta hisoblanadi | ideal vaqt saqlanmaydi — kalibrlashda butun tarix birdan to'g'rilanadi |
 
 Tekshiruv (bir martalik skript, haqiqiy Postgres): **10/10** — 2000 mm @ 18 m/min bitta
 o'tish 9.67 s; 200 o'tish sanaldi (smenadan oldingi, ma'lumotsiz vaqtdagi va o'lchamsiz
 hodisalar sanalmadi); ideal 1933 s, ishladi 8 soat, Performance 6.7%; `gap_s` 3 → 6 qilinganda
 ideal 2533 s ga o'sdi; Quality va OEE `—` bo'lib qoldi.
+
+### 4.10 Kromka: o'lchovni detalga bog'lash (2026-09-20)
+
+Stansiya uzunlikni o'lchaydi, lekin QAYSI detal ekanini bilmaydi. Bog'lash modeli —
+**oxirgi skan**: operator detalni odatdagidek skanerlaydi, so'ng lentaga qo'yadi;
+o'lchov kelganda shu ish markazidagi oxirgi bekor qilinmagan skan (`kromka_bind_minutes`
+oynasi ichida) o'sha detal deb olinadi. «Joriy detal» degan alohida holat saqlanmaydi —
+terminal qulasa yoki agent qayta ulansa ham skan bazada turaveradi.
+
+**Tomonlar guruh bo'yicha sanaladi, nom bo'yicha emas.** 430×520 detalning t/b qirrasi
+520 mm, l/r qirrasi 430 mm; kutilgan to'plam — `{520, 520, 430, 430}` (`Part.edges` dan,
+lentalanmaydigan tomon umuman kirmaydi). Bir xil uzunlikdagi ikki qirrani o'lchov ajrata
+olmaydi va ajratishi SHART EMAS — ikkalasi ham lentalanadi. **Tartib ahamiyatsiz:**
+operator qaysi tomonni oldin qo'ysa, o'sha guruhdan bitta joy yopiladi.
+
+| Hukm | Qachon | Nima bo'ladi |
+| --- | --- | --- |
+| `mos` | guruhda bo'sh joy bor va \|o'lchangan − kutilgan\| ≤ dopusk | qirra yopiladi, tasmada «kutilgan 520» ko'rinadi |
+| `ortiqcha` | o'lcham to'g'ri, lekin o'sha guruh kvotasi tugagan | faqat OGOHLANTIRISH: qayta lentalash normal hodisa, brak emas |
+| `nomos` | hech bir guruhga dopusk ichida to'g'ri kelmadi | terminalda **brak oynasi o'zi ochiladi**, operator sababni tanlaydi (`part_defect`, menejer tasdig'iga tushadi) |
+| `shubhali` | Pico kodi `OK` emas (FARQ/FAQAT1/FAQAT2) yoki detalning o'lchami/qirra ro'yxati yo'q | hukm chiqarilmaydi — datchikka ishonib detalni ayblab bo'lmaydi |
+| `skanersiz` | oyna ichida skan yo'q | tarixga yoziladi, hech kimni ayblamaydi |
+
+Kvadratga yaqin detalda ikkala guruh ham dopuskka tushishi mumkin — bo'sh joyi bori
+tanlanadi: operator o'lchov ajrata olmagan joyda ishni to'xtatib turgandan ko'ra qirrani
+yopgani to'g'riroq.
+
+**Sozlamalar** (Tizim sozlamalari → «Brak sabablari» → «Kromka o'lchovi»):
+`kromka_tolerance_mm` (dopusk, sukut 3 mm, 1..50) — lenta detalni HARAKATDA o'lchaydi,
+nol dopusk har detalni brak qilardi; `kromka_bind_minutes` (bog'lash oynasi, sukut 10
+daqiqa, 1..240) — undan eski skan bog'lanmaydi, aks holda tushlikdan keyingi o'lchov
+ertalabki detalga yopishib qolardi.
+
+Hukm `kromka_measurement` jadvalida (xom hodisa `andon_event` da o'zgarmasdan qoladi),
+mantiq `services/kromka.py` da, chaqiruv joyi — agent partiyasi qabul qilinadigan
+`POST /bridge-agents/andon`. Faqat YANGI hodisalar bog'lanadi: agent partiyani qayta
+yuborsa kvota ikkinchi marta yopilmasin.
+
+Tekshiruv (bir martalik skript, haqiqiy Postgres, haqiqiy endpointlar): **20/20** —
+eni birinchi o'tsa ham mos; 1.5 mm farq dopusk ichida; to'rt qirra yopilgach beshinchi
+o'tish `ortiqcha`; 300 mm `nomos` va eng yaqin kutilgan (430) ko'rsatildi; ikki tomonli
+detalda eni o'lchovi `nomos`; `FAQAT1` — `shubhali`; 30 daqiqalik eski skan va bekor
+qilingan skan bog'lanmadi; takror partiya kvotani qayta yopmadi; terminal tasmasi va
+admin oqimi hukm, detal nomi va kutilgan o'lchamni qaytardi.
 
 ## 5. Prod auditi natijalari (2026-09-16)
 

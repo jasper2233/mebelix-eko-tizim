@@ -67,6 +67,10 @@ class KromkaMeasurementRow(BaseModel):
     length_mm: float | None
     #: OK — ikkala datchik mos; FARQ — chegaradan oshdi; FAQAT1/FAQAT2 — bitta datchik ko'rmagan
     code: str
-    d1_mm: float | None
-    d2_mm: float | None
-    speed: float | None
+    #: mos · ortiqcha · nomos · shubhali · skanersiz (`models/enums.py: KromkaVerdict`)
+    verdict: str
+    expected_mm: float | None
+    delta_mm: float | None
+    part_name: str | None
+    qr_text: str | None
+    scan_id: int | None

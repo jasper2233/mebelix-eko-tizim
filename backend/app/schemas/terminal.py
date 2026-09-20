@@ -134,20 +134,26 @@ class KromkaOrderState(BaseModel):
 
 
 class KromkaMeasurement(BaseModel):
-    """Kromka stansiyasi (Pico + ikki datchik) o'lchagan bitta detal — XOM ko'rsatkich.
+    """Kromka stansiyasi o'lchagan bitta detal — HUKMI bilan (`kromka_measurement`).
 
-    1-bosqich KUZATUV: o'lchov hech narsani bloklamaydi va skanga bog'lanmaydi —
-    operator uni ekranda ko'radi, MES esa tarixga yozadi (`andon_event`, `kind='olchov'`).
-    Kutilgan o'lcham bilan solishtirish keyingi bosqichda (QR bog'lash)."""
+    O'lchov o'sha ish markazidagi oxirgi skanga bog'lanadi: shuning uchun raqamning
+    yonida detal nomi va kutilgan o'lcham ham turadi. Datchiklarning xom qiymatlari
+    (D1/D2, tezlik) `andon_event` da qoladi — ekranda ular operatorga kerak emas,
+    diagnostika `scripts/kromka_audit.sql` da."""
 
     at: datetime
     #: Yakuniy uzunlik, mm (ikki datchik o'rtachasi yoki bittasi)
     length_mm: float | None
     #: Pico kodi: OK — ikkalasi mos, FARQ — chegaradan oshdi, FAQAT1/FAQAT2 — bitta datchik
     code: str
-    d1_mm: float | None
-    d2_mm: float | None
-    speed: float | None
+    #: mos · ortiqcha · nomos · shubhali · skanersiz (`models/enums.py: KromkaVerdict`)
+    verdict: str
+    expected_mm: float | None
+    delta_mm: float | None
+    part_name: str | None
+    qr_text: str | None
+    #: NOMOS bo'lganda terminal shu skan uchun brak oynasini ochadi
+    scan_id: int | None
 
 
 class PrisadkaFile(BaseModel):

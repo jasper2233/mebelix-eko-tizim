@@ -131,6 +131,8 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   sukut qiymatlar: `custom_part_suffix = "#"`, `idle_logout_operator_minutes = "90"` va
   `idle_logout_staff_minutes = "240"` — harakatsizlik chegarasi, `services/activity.py`;
   `stop_prompt_idle_minutes = "5"` — sariq chiroq shuncha daqiqadan uzoq yonsa to'xtash, `services/downtimes.py`;
+  `kromka_tolerance_mm = "3"` (1..50) — kromka o'lchovining dopuski, mm;
+  `kromka_bind_minutes = "10"` (1..240) — o'lchov shuncha daqiqa ichidagi oxirgi skanga bog'lanadi;
   `kromka_idle_minutes = "10"` (1..240) — kromkada lenta yuryapti-yu shuncha daqiqa detal o'tmasa,
   bo'sh yurish deb sanaladi (`services/andon.split_idle`);
   `PUT /settings/{key}` butun son kalitlarini `INT_RANGES` bo'yicha tekshiradi: 10..1440 va 1..120). `work_schedule` kaliti — ish jadvali
@@ -168,6 +170,16 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   o'zgartirsa eski yozuvning ma'nosi buzilmaydi. Nomi `defect` EMAS — o'sha nomdagi jadval
   `a1c9d4f2b60e` da tushirilgan (`downtime_reason` bilan bir xil sabab). Brak skanni BEKOR
   QILMAYDI va marshrutni qayta ochmaydi (docs/12 §4.7).
+- `KromkaMeasurement` (`kromka_measurement`, `e9c1b7d40a26`) — kromka stansiyasi o'lchovining
+  HUKMI (xom hodisa `andon_event` da o'zgarmasdan qoladi): `machine_id` FK, `measured_at`,
+  `code(10)` (Pico kodi), `verdict` (`KromkaVerdict`: `mos`/`nomos`/`ortiqcha`/`shubhali`/
+  `skanersiz`, index), `measured_mm` NULL (kod OK bo'lmasa o'lcham yo'q), `scan_id`/`instance_id`/
+  `order_id` FK NULL, `side_group(10)` (`length` yoki `width` — qaysi GURUHdan bitta qirra
+  yopildi), `expected_mm`, `delta_mm` (hammasi `Numeric(9,1)`). Indekslar:
+  `ix_kromka_measurement_machine_at` `(machine_id, measured_at)`, `ix_kromka_measurement_instance`.
+  Tomon NOMI (t/b/l/r) ATAYLAB saqlanmaydi: bir xil uzunlikdagi ikki qirrani o'lchov ajrata
+  olmaydi va ajratishi shart emas — ikkalasi ham lentalanadi, tartib befarq. Bog'lash mantiqi
+  `services/kromka.py`, qoidasi docs/12 §4.10.
 - `DowntimeReason` (`downtime_reason`, `9e4b7c1d2a60`) — to'xtash sabablari ro'yxati, admin Tizim
   sozlamalarida yuritadi: `name(60)`, `is_planned` (rejali — tushlik, sozlash; OEE reja vaqtidan
   chiqariladi), `needs_note` (izohsiz saqlanmaydi, masalan «Boshqa»), `order_index`, `is_active`.

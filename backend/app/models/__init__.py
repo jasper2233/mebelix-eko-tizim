@@ -5,6 +5,7 @@ from .client import Client
 from .defect import PartDefect
 from .downtime import Downtime, DowntimeReason
 from .employee import Employee
+from .kromka import KromkaMeasurement
 from .machine import Machine
 from .order import (
     ORDER_FAT_COLUMNS,
@@ -36,6 +37,7 @@ __all__ = [
     "Downtime",
     "DowntimeReason",
     "Employee",
+    "KromkaMeasurement",
     "Machine",
     "Order",
     "OrderFile",

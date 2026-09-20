@@ -49,6 +49,7 @@ from app.schemas.bridge_agents import (
 from app.schemas.common import Message
 from app.schemas.terminal import ScanResult
 from app.services.andon import save_live
+from app.services.kromka import bind_measurement
 from app.services.scanning import (
     ScanRejected,
     active_session,
@@ -57,6 +58,7 @@ from app.services.scanning import (
     record_scan_at,
     scan_error,
 )
+from app.services.settings_service import KROMKA_BIND_MINUTES, KROMKA_TOLERANCE_MM, get_setting
 from app.tasks import agent_revoked_key, print_queue_key
 
 router = APIRouter(prefix="/bridge-agents", tags=["bridge-agents"])
@@ -475,30 +477,45 @@ async def push_andon_events(
             pg_insert(AndonEvent)
             .values(rows)
             .on_conflict_do_nothing(index_elements=["machine_id", "session", "seq"])
-            .returning(AndonEvent.id)
+            .returning(AndonEvent.session, AndonEvent.seq)
         )
-        accepted = len(inserted.all())
+        yangi = {(session, seq) for session, seq in inserted.all()}
+        accepted = len(yangi)
         await db.commit()
 
-        # KROMKA o'lchovi — admin paneliga DARHOL. Sahifa 30 soniyalik pollni kutmaydi:
-        # «qanday o'lchamli detal o'tdi» degan savolga javob o'sha lahzada kerak.
-        # Takror (`duplicates`) yuborilganda xabar chiqmasligi uchun faqat YANGI
-        # yozuvlar bo'lganda tarqatiladi.
-        if accepted:
-            for row in rows[-_KROMKA_LIVE_MAX:]:
-                if row["kind"] != "olchov":
-                    continue
+        # KROMKA o'lchovi: avval DETALGA bog'lanadi (oxirgi skan), so'ng admin
+        # paneliga DARHOL uzatiladi — sahifa 30 soniyalik pollni kutmaydi.
+        # Faqat YANGI yozuvlar: agent partiyani qayta yuborsa o'lchov ikki marta
+        # sanalib, qirra kvotasini bekordan yopib qo'yardi.
+        olchovlar = [r for r in rows if r["kind"] == "olchov" and (r["session"], r["seq"]) in yangi]
+        if olchovlar:
+            tolerance = float(await get_setting(db, KROMKA_TOLERANCE_MM) or 3)
+            window = timedelta(minutes=int(await get_setting(db, KROMKA_BIND_MINUTES) or 10))
+            natijalar = [
+                await bind_measurement(
+                    db, machine_id, row["happened_at"], row["payload"], tolerance_mm=tolerance, window=window
+                )
+                for row in olchovlar
+            ]
+            await db.commit()
+            nom = await db.scalar(select(Machine.name).where(Machine.id == machine_id)) or ""
+            for row, natija in list(zip(olchovlar, natijalar, strict=True))[-_KROMKA_LIVE_MAX:]:
                 payload = row["payload"]
                 await ws_manager.publish(
                     "kromka.measure",
                     {
                         "machine_id": machine_id,
                         "at": row["happened_at"].isoformat(),
+                        "machine_name": nom,
                         "length_mm": payload.get("L"),
                         "code": payload.get("kod") or "?",
-                        "d1_mm": payload.get("L1"),
-                        "d2_mm": payload.get("L2"),
-                        "speed": payload.get("v_olch"),
+                        "verdict": natija.row.verdict.value,
+                        "expected_mm": float(natija.row.expected_mm) if natija.row.expected_mm else None,
+                        "delta_mm": float(natija.row.delta_mm) if natija.row.delta_mm is not None else None,
+                        "part_name": natija.part_name,
+                        "qr_text": natija.qr_text,
+                        "scan_id": natija.scan_id,
+                        "progress": natija.progress,
                     },
                     machine_id=machine_id,
                 )

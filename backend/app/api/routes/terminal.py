@@ -30,6 +30,9 @@ from app.models import (
     Scan,
     WorkSession,
 )
+from app.models import (
+    KromkaMeasurement as KromkaMeasurementRecord,
+)
 from app.models.enums import (
     POST_ROLES,
     EmployeeStatus,
@@ -638,21 +641,27 @@ _KROMKA_OLCHOV_N = 8
 
 @router.get("/kromka/measurements", response_model=list[KromkaMeasurement], operation_id="read_kromka_measurements")
 async def read_kromka_measurements(db: SessionDep, _: TerminalUser, ctx: TerminalCtx) -> list[KromkaMeasurement]:
-    """Kromka stansiyasi (Pico) o'lchagan oxirgi detallar — SHU ish markazida.
+    """Kromka stansiyasi o'lchagan oxirgi detallar — SHU ish markazida, hukmi bilan.
 
-    1-bosqich kuzatuv: faqat ko'rsatadi. Stansiya ulanmagan postda bo'sh ro'yxat
-    qaytadi va ekranda hech narsa chizilmaydi."""
+    Hukm o'lchov kelganda qo'yiladi (`services/kromka.py`): o'lchov o'sha lahzadagi
+    oxirgi skanga bog'lanadi. Stansiya ulanmagan postda bo'sh ro'yxat qaytadi va
+    ekranda hech narsa chizilmaydi."""
     machine, _post = ctx
     rows = (
         (
             await db.execute(
-                select(AndonEvent.happened_at, AndonEvent.payload)
-                .where(
-                    AndonEvent.machine_id == machine.id,
-                    AndonEvent.kind == "olchov",
-                    AndonEvent.is_deleted == False,  # noqa: E712
+                select(
+                    KromkaMeasurementRecord,
+                    Part.name,
+                    PartInstance.qr_text,
                 )
-                .order_by(AndonEvent.happened_at.desc(), AndonEvent.id.desc())
+                .outerjoin(PartInstance, PartInstance.id == KromkaMeasurementRecord.instance_id)
+                .outerjoin(Part, Part.id == PartInstance.part_id)
+                .where(
+                    KromkaMeasurementRecord.machine_id == machine.id,
+                    KromkaMeasurementRecord.is_deleted == False,  # noqa: E712
+                )
+                .order_by(KromkaMeasurementRecord.measured_at.desc(), KromkaMeasurementRecord.id.desc())
                 .limit(_KROMKA_OLCHOV_N)
             )
         )
@@ -660,19 +669,23 @@ async def read_kromka_measurements(db: SessionDep, _: TerminalUser, ctx: Termina
         .all()
     )
 
-    def son(v: object) -> float | None:
-        return float(v) if isinstance(v, (int, float)) else None
+    def son(v: float | None) -> float | None:
+        # Numeric ustun Decimal bo'lib keladi — JSON uchun float
+        return float(v) if v is not None else None
 
     return [
         KromkaMeasurement(
-            at=at,
-            length_mm=son(payload.get("L")),
-            code=str(payload.get("kod") or "?"),
-            d1_mm=son(payload.get("L1")),
-            d2_mm=son(payload.get("L2")),
-            speed=son(payload.get("v_olch")),
+            at=row.measured_at,
+            length_mm=son(row.measured_mm),
+            code=row.code,
+            verdict=row.verdict.value,
+            expected_mm=son(row.expected_mm),
+            delta_mm=son(row.delta_mm),
+            part_name=part_name,
+            qr_text=qr_text,
+            scan_id=row.scan_id,
         )
-        for at, payload in rows
+        for row, part_name, qr_text in rows
     ]
 
 

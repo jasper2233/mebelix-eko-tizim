@@ -11,6 +11,7 @@ import { useCallback, useState } from "react"
 
 import { type KromkaMeasurementRow, MachinesService } from "@/client"
 import { useMesWs } from "@/hooks/useMesWs"
+import { KROMKA_VERDICT_LABELS, KROMKA_VERDICT_STYLE } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 
 /** Ekranda turadigan qatorlar. Tarix bazada — bu faqat «hozir nima o'tyapti» oynasi. */
@@ -18,7 +19,6 @@ const LIMIT = 20
 
 /** Pico kodi: OK dan boshqasi — datchik muammosi, ko'zga tashlanib tursin. */
 const CODE_STYLE: Record<string, string> = {
-  OK: "bg-emerald-100 text-emerald-900",
   FARQ: "bg-amber-200 text-amber-900",
   FAQAT1: "bg-orange-200 text-orange-900",
   FAQAT2: "bg-orange-200 text-orange-900",
@@ -82,14 +82,33 @@ export function KromkaLive() {
             <span
               className={cn(
                 "shrink-0 rounded-md px-2 py-0.5 text-xs font-black",
-                CODE_STYLE[r.code] ?? "bg-muted text-muted-foreground",
+                KROMKA_VERDICT_STYLE[r.verdict] ?? "bg-muted",
               )}
             >
-              {r.code}
+              {KROMKA_VERDICT_LABELS[r.verdict] ?? r.verdict}
             </span>
-            <span className="num text-xs text-muted-foreground">
-              D1 {r.d1_mm?.toFixed(1) ?? "—"} · D2 {r.d2_mm?.toFixed(1) ?? "—"}
-              {r.speed ? ` · ${r.speed.toFixed(1)} m/min` : ""}
+            {/* Datchik muammosi bo'lgandagina Pico kodi ko'rsatiladi */}
+            {r.code !== "OK" && (
+              <span
+                className={cn(
+                  "shrink-0 rounded-md px-2 py-0.5 text-xs font-black",
+                  CODE_STYLE[r.code] ?? "bg-muted text-muted-foreground",
+                )}
+              >
+                {r.code}
+              </span>
+            )}
+            {/* Kutilgan o'lcham — qaysi tomon o'tgani shundan ko'rinadi */}
+            {r.expected_mm != null && (
+              <span className="num text-xs text-muted-foreground">
+                kutilgan {r.expected_mm.toFixed(0)}
+                {r.delta_mm != null &&
+                  ` · farq ${r.delta_mm > 0 ? "+" : ""}${r.delta_mm.toFixed(1)}`}
+              </span>
+            )}
+            <span className="truncate text-xs text-muted-foreground">
+              {r.part_name ?? "—"}
+              {r.qr_text ? ` · ${r.qr_text}` : ""}
             </span>
             <span className="ml-auto truncate text-xs text-muted-foreground">
               {r.machine_name}

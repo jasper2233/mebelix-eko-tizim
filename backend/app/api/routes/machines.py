@@ -8,7 +8,20 @@ from app.api.routes._shared import drop_forbidden_nulls
 from app.core.config import TASHKENT_TZ
 from app.core.exceptions import DuplicateValueException, NotFoundException
 from app.crud import crud_machines, crud_posts, log_action
-from app.models import AndonEvent, BridgeAgent, Machine, Order, PartRoute, Scan, User, WorkSession
+from app.models import (
+    BridgeAgent,
+    Machine,
+    Order,
+    Part,
+    PartInstance,
+    PartRoute,
+    Scan,
+    User,
+    WorkSession,
+)
+from app.models import (
+    KromkaMeasurement as KromkaMeasurementRecord,
+)
 from app.models.enums import OrderStatus, SessionStatus
 from app.schemas.common import Message
 from app.schemas.machines import (
@@ -240,19 +253,19 @@ _KROMKA_LIVE_N = 20
 async def read_kromka_measurement_feed(db: SessionDep, _: StaffReadUser) -> list[KromkaMeasurementRow]:
     """Kromka stansiyalari o'lchagan oxirgi detallar — admin paneldagi jonli oqim.
 
-    Marshrut `/{machine_id}` dan OLDIN turishi shart, aks holda «kromka-measurements»
-    ish markazi id'si deb o'qilardi. Yangi o'lchov WS `kromka.measure` bilan darhol
-    qo'shiladi; bu endpoint faqat sahifa ochilganda chaqiriladi."""
+    Har qator DETALGA bog'langan (`services/kromka.py`): kutilgan o'lcham va hukm
+    shu yerda ko'rinadi. Marshrut `/{machine_id}` dan OLDIN turishi shart, aks holda
+    «kromka-measurements» ish markazi id'si deb o'qilardi. Yangi o'lchov WS
+    `kromka.measure` bilan darhol qo'shiladi; bu endpoint sahifa ochilganda chaqiriladi."""
     rows = (
         (
             await db.execute(
-                select(AndonEvent.machine_id, Machine.name, AndonEvent.happened_at, AndonEvent.payload)
-                .join(Machine, Machine.id == AndonEvent.machine_id)
-                .where(
-                    AndonEvent.kind == "olchov",
-                    AndonEvent.is_deleted == False,  # noqa: E712
-                )
-                .order_by(AndonEvent.happened_at.desc(), AndonEvent.id.desc())
+                select(KromkaMeasurementRecord, Machine.name, Part.name, PartInstance.qr_text)
+                .join(Machine, Machine.id == KromkaMeasurementRecord.machine_id)
+                .outerjoin(PartInstance, PartInstance.id == KromkaMeasurementRecord.instance_id)
+                .outerjoin(Part, Part.id == PartInstance.part_id)
+                .where(KromkaMeasurementRecord.is_deleted == False)  # noqa: E712
+                .order_by(KromkaMeasurementRecord.measured_at.desc(), KromkaMeasurementRecord.id.desc())
                 .limit(_KROMKA_LIVE_N)
             )
         )
@@ -260,21 +273,25 @@ async def read_kromka_measurement_feed(db: SessionDep, _: StaffReadUser) -> list
         .all()
     )
 
-    def son(v: object) -> float | None:
-        return float(v) if isinstance(v, (int, float)) else None
+    def son(v: float | None) -> float | None:
+        # Numeric ustun Decimal bo'lib keladi — JSON uchun float
+        return float(v) if v is not None else None
 
     return [
         KromkaMeasurementRow(
-            machine_id=machine_id,
-            machine_name=name,
-            at=at,
-            length_mm=son(payload.get("L")),
-            code=str(payload.get("kod") or "?"),
-            d1_mm=son(payload.get("L1")),
-            d2_mm=son(payload.get("L2")),
-            speed=son(payload.get("v_olch")),
+            machine_id=row.machine_id,
+            machine_name=machine_name,
+            at=row.measured_at,
+            length_mm=son(row.measured_mm),
+            code=row.code,
+            verdict=row.verdict.value,
+            expected_mm=son(row.expected_mm),
+            delta_mm=son(row.delta_mm),
+            part_name=part_name,
+            qr_text=qr_text,
+            scan_id=row.scan_id,
         )
-        for machine_id, name, at, payload in rows
+        for row, machine_name, part_name, qr_text in rows
     ]
 
 

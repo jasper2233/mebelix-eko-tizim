@@ -14,7 +14,11 @@ import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useScanFlash } from "@/hooks/useScanFlash"
-import { formatSize } from "@/lib/mes"
+import {
+  formatSize,
+  KROMKA_VERDICT_LABELS,
+  KROMKA_VERDICT_STYLE,
+} from "@/lib/mes"
 import { cn } from "@/lib/utils"
 
 /** Qaysi tomonlarga kromka — CHEKDAGI eskiz bilan bir xil konvensiya
@@ -168,17 +172,20 @@ const edgeBands = (edges: Record<string, unknown>): string => {
     .join(" · ")
 }
 
-/** Kromka stansiyasi (Pico + ikki datchik) o'lchagan oxirgi detallar.
+/** Kromka stansiyasi o'lchagan oxirgi detallar — HUKMI bilan.
  *
- *  1-BOSQICH — KUZATUV: o'lchov hech narsani bloklamaydi va skanga bog'lanmaydi.
- *  Operator raqamni ko'radi, MES tarixga yozadi. Kutilgan o'lcham bilan solishtirish
- *  (QR bog'lash) keyingi bosqichda. Stansiya ulanmagan postda tasma umuman chizilmaydi. */
+ *  O'lchov o'sha ish markazidagi oxirgi skanga bog'lanadi (`services/kromka.py`),
+ *  shuning uchun tasmada raqam yonida kutilgan o'lcham va qolgan tomonlar turadi:
+ *  «520 mm — 2/2 · 430 mm — 1/2». Tartib ahamiyatsiz — operator qaysi tomonni
+ *  oldin qo'ysa, o'sha guruhdan bitta joy yopiladi. Mos kelmagan o'lchovda brak
+ *  oynasi o'zi ochiladi (`routes/terminal.tsx`), bu tasma faqat ko'rsatadi.
+ *  Stansiya ulanmagan postda tasma umuman chizilmaydi. */
 function StationStrip() {
   const { data } = useQuery({
     queryKey: ["terminal", "kromka", "measurements"],
     queryFn: async () => (await TerminalService.readKromkaMeasurements()).data,
-    // Pico har detalda hodisa beradi; 10 s — ekrandagi raqam «tirik» ko'rinishi uchun yetarli
-    refetchInterval: 10_000,
+    // WS har o'lchovda ro'yxatni yangilaydi; poll — soket uzilgan holat uchun zaxira
+    refetchInterval: 30_000,
   })
   const rows = data ?? []
   if (!rows.length) return null
@@ -192,15 +199,25 @@ function StationStrip() {
         {last.length_mm?.toFixed(1) ?? "—"}
         <span className="ml-1 text-sm font-bold">mm</span>
       </span>
+      <span
+        className={cn(
+          "rounded-md px-2 py-0.5 text-xs font-black",
+          KROMKA_VERDICT_STYLE[last.verdict] ?? "bg-muted",
+        )}
+      >
+        {KROMKA_VERDICT_LABELS[last.verdict] ?? last.verdict}
+      </span>
       {/* Pico kodi: OK — ikkala datchik mos; FARQ/FAQAT1/FAQAT2 — datchik muammosi */}
       {last.code !== "OK" && (
         <span className="rounded-md bg-amber-200 px-2 py-0.5 text-xs font-black text-amber-900">
           {last.code}
         </span>
       )}
-      <span className="text-xs text-sky-800">
-        D1 {last.d1_mm?.toFixed(1) ?? "—"} · D2 {last.d2_mm?.toFixed(1) ?? "—"}
-        {last.speed ? ` · ${last.speed.toFixed(1)} m/min` : ""}
+      <span className="num text-xs text-sky-800">
+        {last.expected_mm != null
+          ? `kutilgan ${last.expected_mm.toFixed(0)} mm`
+          : "kutilgan o'lcham yo'q"}
+        {last.part_name ? ` · ${last.part_name}` : ""}
       </span>
       <span className="num ml-auto truncate text-xs text-sky-700/70">
         {prev.map((r) => r.length_mm?.toFixed(0) ?? "—").join(" · ")}

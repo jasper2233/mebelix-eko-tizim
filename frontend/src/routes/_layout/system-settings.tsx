@@ -140,7 +140,12 @@ function SystemSettingsPage() {
           </div>
         </TabsContent>
         <TabsContent value="defect" forceMount className={TAB_PANEL}>
-          <DefectReasonsCard />
+          <div className="space-y-6">
+            <DefectReasonsCard />
+            {withSettings((settings) => (
+              <KromkaBindCard settings={settings} />
+            ))}
+          </div>
         </TabsContent>
       </Tabs>
     </div>
@@ -291,6 +296,11 @@ const STOP_MAX = 120
 // Backend `settings_service.KROMKA_IDLE_MINUTES` va `INT_RANGES` bilan bir xil
 const KROMKA_IDLE_KEY = "kromka_idle_minutes"
 const KROMKA_IDLE_MAX = 240
+// Backend `settings_service.KROMKA_TOLERANCE_MM` / `KROMKA_BIND_MINUTES` bilan bir xil
+const KROMKA_TOL_KEY = "kromka_tolerance_mm"
+const KROMKA_TOL_MAX = 50
+const KROMKA_BIND_KEY = "kromka_bind_minutes"
+const KROMKA_BIND_MAX = 240
 
 const REASONS_KEY = ["system-settings", "downtime-reasons"]
 
@@ -795,6 +805,100 @@ function DefectReasonsCard() {
       >
         Saqlash
       </LoadingButton>
+    </div>
+  )
+}
+
+/** Kromka o'lchovining DOPUSKI va skanga bog'lash oynasi
+ *  (`backend/app/services/kromka.py`). Ikkalasi ham brak qachon e'lon qilinishini
+ *  hal qiladi, shuning uchun brak sabablari bilan bitta tabda. */
+function KromkaBindCard({ settings }: { settings: SystemSettingRead[] }) {
+  const queryClient = useQueryClient()
+  const savedTol = settings.find((x) => x.key === KROMKA_TOL_KEY)?.value ?? ""
+  const savedBind = settings.find((x) => x.key === KROMKA_BIND_KEY)?.value ?? ""
+  const [tol, setTol] = useState("")
+  const [bind, setBind] = useState("")
+  useEffect(() => setTol(savedTol), [savedTol])
+  useEffect(() => setBind(savedBind), [savedBind])
+  const ok = (v: string, max: number) =>
+    /^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= max
+  const saqla = (key: string, value: string) =>
+    SettingsService.updateSystemSetting({ path: { key }, body: { value } })
+  const saveTol = useMutation({
+    mutationFn: () => saqla(KROMKA_TOL_KEY, tol),
+    ...crudCallbacks(queryClient, ["system-settings"], "Sozlama saqlandi"),
+  })
+  const saveBind = useMutation({
+    mutationFn: () => saqla(KROMKA_BIND_KEY, bind),
+    ...crudCallbacks(queryClient, ["system-settings"], "Sozlama saqlandi"),
+  })
+
+  return (
+    <div className={cn(cardSurface, "space-y-5 p-4")}>
+      <div>
+        <h2 className="text-lg font-semibold">Kromka o'lchovi</h2>
+        <p className="text-sm text-muted-foreground">
+          Stansiya o'lchagan uzunlik detalning kutilgan tomoni bilan
+          solishtiriladi. Tomonlar <b>guruh</b> bo'yicha sanaladi (uzunlik va
+          eni), tartib ahamiyatsiz: operator qaysi tomonni oldin qo'ysa, o'sha
+          guruhdan bitta joy yopiladi. Mos kelmasa terminalda brak oynasi
+          ochiladi va operator sababni tanlaydi.
+        </p>
+      </div>
+      <div className="flex items-end gap-3">
+        <Field label="Dopusk, mm">
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={KROMKA_TOL_MAX}
+            value={tol}
+            aria-invalid={!ok(tol, KROMKA_TOL_MAX)}
+            className="w-40"
+            onChange={(e) => setTol(e.target.value)}
+          />
+        </Field>
+        <LoadingButton
+          loading={saveTol.isPending}
+          disabled={!ok(tol, KROMKA_TOL_MAX) || tol === savedTol}
+          onClick={() => saveTol.mutate()}
+        >
+          Saqlash
+        </LoadingButton>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Lenta detalni HARAKATDA o'lchaydi — tezlik va datchik kechikishi bir
+        necha millimetr beradi. Juda kichik dopusk har detalni brak qilib
+        ko'rsatadi, juda kattasi haqiqiy xatoni o'tkazib yuboradi. Oraliq: 1–
+        {KROMKA_TOL_MAX}.
+      </p>
+      <div className="flex items-end gap-3">
+        <Field label="Skanga bog'lash oynasi, daqiqa">
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={KROMKA_BIND_MAX}
+            value={bind}
+            aria-invalid={!ok(bind, KROMKA_BIND_MAX)}
+            className="w-40"
+            onChange={(e) => setBind(e.target.value)}
+          />
+        </Field>
+        <LoadingButton
+          loading={saveBind.isPending}
+          disabled={!ok(bind, KROMKA_BIND_MAX) || bind === savedBind}
+          onClick={() => saveBind.mutate()}
+        >
+          Saqlash
+        </LoadingButton>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        O'lchov shu ish markazidagi <b>oxirgi skan</b>ga bog'lanadi. Undan
+        eskisi bog'lanmaydi: tushlikdan keyin kelgan o'lchov ertalabki detalga
+        yopishib qolmasin. Skan topilmasa o'lchov «skansiz» bo'lib tarixga
+        yoziladi va hech kimni ayblamaydi. Oraliq: 1–{KROMKA_BIND_MAX}.
+      </p>
     </div>
   )
 }

@@ -191,3 +191,15 @@ class DefectStatus(StrEnum):
     PENDING = "pending"  # kutmoqda — menejer hali ko'rmagan
     CONFIRMED = "confirmed"  # tasdiqlandi: aybdor qadam va qayta boshlash nuqtasi belgilangan
     REJECTED = "rejected"  # «brak emas» — Quality'ga kirmaydi
+
+
+class KromkaVerdict(StrEnum):
+    """Kromka stansiyasi o'lchovining hukmi (`kromka_measurement.verdict`).
+
+    Frontenddagi `KROMKA_VERDICT_LABELS` (lib/mes.ts) bilan qo'lda oynalangan."""
+
+    MOS = "mos"  # kutilgan tomonga to'g'ri keldi — qirra yopildi
+    NOMOS = "nomos"  # o'lcham mos emas: brak oynasi ochiladi
+    ORTIQCHA = "ortiqcha"  # o'lcham to'g'ri, lekin bu tomon kvotasi tugagan — OGOHLANTIRISH, brak emas
+    SHUBHALI = "shubhali"  # Pico kodi OK emas (FARQ/FAQAT1/FAQAT2) — hukm chiqarilmaydi
+    SKANERSIZ = "skanersiz"  # skan topilmadi — o'lchov tarixga yoziladi, hukm yo'q

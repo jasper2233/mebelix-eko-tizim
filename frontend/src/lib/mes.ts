@@ -493,3 +493,22 @@ export function formatSize(
   const base = `${l ?? "?"} × ${w ?? "?"}`
   return t ? `${base} × ${t} mm` : `${base} mm`
 }
+
+/** Kromka o'lchovining hukmi — backend `models/enums.py: KromkaVerdict` bilan
+ *  QO'LDA oynalangan (birini o'zgartirsang, ikkinchisini ham). */
+export const KROMKA_VERDICT_LABELS: Record<string, string> = {
+  mos: "Mos",
+  nomos: "Mos emas",
+  ortiqcha: "Ortiqcha o'tish",
+  shubhali: "Shubhali",
+  skanersiz: "Skansiz",
+}
+
+/** Hukm rangi: mos — yashil, mos emas — qizil, qolgani — sariq/kulrang. */
+export const KROMKA_VERDICT_STYLE: Record<string, string> = {
+  mos: "bg-emerald-100 text-emerald-900",
+  nomos: "bg-red-200 text-red-900",
+  ortiqcha: "bg-amber-200 text-amber-900",
+  shubhali: "bg-amber-100 text-amber-900",
+  skanersiz: "bg-muted text-muted-foreground",
+}

@@ -1763,11 +1763,12 @@ export type KromkaInstance = {
 /**
  * KromkaMeasurement
  *
- * Kromka stansiyasi (Pico + ikki datchik) o'lchagan bitta detal — XOM ko'rsatkich.
+ * Kromka stansiyasi o'lchagan bitta detal — HUKMI bilan (`kromka_measurement`).
  *
- * 1-bosqich KUZATUV: o'lchov hech narsani bloklamaydi va skanga bog'lanmaydi —
- * operator uni ekranda ko'radi, MES esa tarixga yozadi (`andon_event`, `kind='olchov'`).
- * Kutilgan o'lcham bilan solishtirish keyingi bosqichda (QR bog'lash).
+ * O'lchov o'sha ish markazidagi oxirgi skanga bog'lanadi: shuning uchun raqamning
+ * yonida detal nomi va kutilgan o'lcham ham turadi. Datchiklarning xom qiymatlari
+ * (D1/D2, tezlik) `andon_event` da qoladi — ekranda ular operatorga kerak emas,
+ * diagnostika `scripts/kromka_audit.sql` da.
  */
 export type KromkaMeasurement = {
     /**
@@ -1783,17 +1784,29 @@ export type KromkaMeasurement = {
      */
     code: string;
     /**
-     * D1 Mm
+     * Verdict
      */
-    d1_mm: number | null;
+    verdict: string;
     /**
-     * D2 Mm
+     * Expected Mm
      */
-    d2_mm: number | null;
+    expected_mm: number | null;
     /**
-     * Speed
+     * Delta Mm
      */
-    speed: number | null;
+    delta_mm: number | null;
+    /**
+     * Part Name
+     */
+    part_name: string | null;
+    /**
+     * Qr Text
+     */
+    qr_text: string | null;
+    /**
+     * Scan Id
+     */
+    scan_id: number | null;
 };
 
 /**
@@ -1826,17 +1839,29 @@ export type KromkaMeasurementRow = {
      */
     code: string;
     /**
-     * D1 Mm
+     * Verdict
      */
-    d1_mm: number | null;
+    verdict: string;
     /**
-     * D2 Mm
+     * Expected Mm
      */
-    d2_mm: number | null;
+    expected_mm: number | null;
     /**
-     * Speed
+     * Delta Mm
      */
-    speed: number | null;
+    delta_mm: number | null;
+    /**
+     * Part Name
+     */
+    part_name: string | null;
+    /**
+     * Qr Text
+     */
+    qr_text: string | null;
+    /**
+     * Scan Id
+     */
+    scan_id: number | null;
 };
 
 /**

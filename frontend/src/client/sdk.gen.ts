@@ -543,9 +543,10 @@ export class MachinesService {
      *
      * Kromka stansiyalari o'lchagan oxirgi detallar — admin paneldagi jonli oqim.
      *
-     * Marshrut `/{machine_id}` dan OLDIN turishi shart, aks holda «kromka-measurements»
-     * ish markazi id'si deb o'qilardi. Yangi o'lchov WS `kromka.measure` bilan darhol
-     * qo'shiladi; bu endpoint faqat sahifa ochilganda chaqiriladi.
+     * Har qator DETALGA bog'langan (`services/kromka.py`): kutilgan o'lcham va hukm
+     * shu yerda ko'rinadi. Marshrut `/{machine_id}` dan OLDIN turishi shart, aks holda
+     * «kromka-measurements» ish markazi id'si deb o'qilardi. Yangi o'lchov WS
+     * `kromka.measure` bilan darhol qo'shiladi; bu endpoint sahifa ochilganda chaqiriladi.
      */
     public static readKromkaMeasurementFeed<ThrowOnError extends boolean = true>(options?: Options<ReadKromkaMeasurementFeedData, ThrowOnError>): RequestResult<ReadKromkaMeasurementFeedResponses, unknown, ThrowOnError> {
         return (options?.client ?? client).get<ReadKromkaMeasurementFeedResponses, unknown, ThrowOnError>({
@@ -1255,10 +1256,11 @@ export class TerminalService {
     /**
      * Read Kromka Measurements
      *
-     * Kromka stansiyasi (Pico) o'lchagan oxirgi detallar — SHU ish markazida.
+     * Kromka stansiyasi o'lchagan oxirgi detallar — SHU ish markazida, hukmi bilan.
      *
-     * 1-bosqich kuzatuv: faqat ko'rsatadi. Stansiya ulanmagan postda bo'sh ro'yxat
-     * qaytadi va ekranda hech narsa chizilmaydi.
+     * Hukm o'lchov kelganda qo'yiladi (`services/kromka.py`): o'lchov o'sha lahzadagi
+     * oxirgi skanga bog'lanadi. Stansiya ulanmagan postda bo'sh ro'yxat qaytadi va
+     * ekranda hech narsa chizilmaydi.
      */
     public static readKromkaMeasurements<ThrowOnError extends boolean = true>(options?: Options<ReadKromkaMeasurementsData, ThrowOnError>): RequestResult<ReadKromkaMeasurementsResponses, unknown, ThrowOnError> {
         return (options?.client ?? client).get<ReadKromkaMeasurementsResponses, unknown, ThrowOnError>({
