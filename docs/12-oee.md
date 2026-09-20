@@ -146,7 +146,7 @@ ilgari beyjik bilan ochilgan smena chiqishda yopilmasdi.
 | Qism | Qayerda | Nima qiladi |
 | --- | --- | --- |
 | Jadvallar | `downtime_reason`, `downtime` (migratsiya `9e4b7c1d2a60`, docs/04) | sabablar ro'yxati; to'xtash: tur, boshlanish/tugash, sabab, izoh, kiritgan hodim |
-| Hisob | `services/downtimes.sync_machine` | PRISADKA: qizil (FAULT) va OFF — darhol; sariq (IDLE/STOPPED) — `stop_prompt_idle_minutes` dan uzoq bo'lsa, vaqt sariq yongan paytdan. **KROMKA** (2026-09-20): `uskuna` hodisasi, `holat=0` → `OFF`, unga ham CHEGARA qo'llanadi — lenta detal qo'yish uchun qisqa to'xtaydi va har 40 soniyalik pauzada sabab so'ralsa operator oynani o'qimay yopishga o'rganardi. Qisqa to'xtash HISOBGA baribir kiradi (Availability oraliqlardan), faqat sababi so'ralmaydi. Idempotent, sabab qayta hisobda tegilmaydi |
+| Hisob | `services/downtimes.sync_machine` | HAR QANDAY to'xtash `stop_prompt_idle_minutes` dan uzoq davom etsagina sabab so'raydi (2026-09-20 tsex talabi): prisadkada qizil (FAULT), OFF va sariq (IDLE/STOPPED), kromka va roverda `uskuna` `holat=0` → `OFF`. Vaqt to'xtash BOSHLANGAN paytdan. Qisqa to'xtash HISOBGA baribir kiradi (Availability oraliqlardan), faqat sababi so'ralmaydi. Idempotent, sabab qayta hisobda tegilmaydi |
 | Worker | `tasks.sync_downtimes` (5 daq) | terminal yopiq bo'lsa ham to'xtashlar yozilib, yopilib turadi |
 | Terminal | `GET /terminal/downtimes/pending` (30 s + `andon.state` WS), `Terminal/DowntimeReason.tsx` | sababsiz to'xtash bo'lsa oyna o'zi chiqadi; faqat Pico ulangan ish markazida (`has_andon`) va smena ochiq bo'lsa; «Keyinroq» — 10 daqiqa |
 | Qulf | `POST /terminal/downtimes/lock` | qulf tugmasi avval sabab so'raydi; qulf beyjik bilan ochilganda (`open_badge_session`) yopiladi, uning ostida boshlangan Pico to'xtashi sababni oladi |
@@ -199,7 +199,7 @@ Availability = ishladi ÷ reja vaqti                           (reja vaqti 0 bo'
 
 | Qoida | Nega |
 | --- | --- |
-| To'xtash — §4.4 bilan BIR XIL: qizil va OFF darhol, sariq `stop_prompt_idle_minutes` dan uzoq bo'lsa | qisqa sariq — mikro-to'xtash: u Performance yo'qotishi, Availability emas |
+| To'xtash — §4.4 bilan BIR XIL: har qanday turi `stop_prompt_idle_minutes` dan uzoq bo'lsa | qisqa to'xtash — mikro-to'xtash: u Performance yo'qotishi, Availability emas |
 | Ish vaqtida Pico'dan ma'lumot yo'q — TO'XTASH | §7 qarori; alohida «Ma'lumot yo'q» va «Qamrov» ustunlarida ko'rinadi, toki qamrov muammosi (§5) Availability'ni nega tushirayotgani ko'rinib tursin |
 | Ish vaqtidan tashqaridagi holat hisobga kirmaydi | tungi OFF va tushlikdagi OFF jadval bilan o'zi kesiladi — «Smena tugadi» sababi va uni avtomat qo'yish KERAK EMAS |
 | Sabab `downtime` dan VAQT bo'yicha olinadi (eng ko'p ustma-ust tushgan yozuv), to'xtashning o'zi esa `andon_event` dan | `downtime` jadvali 2026-09-18 da paydo bo'ldi — undan oldingi kunlar ham to'g'ri hisoblanadi; oraliq to'xtash o'rtasidan boshlansa ham sabab topiladi |
@@ -620,11 +620,15 @@ ya'ni keyingi detal skani ham sanalardi. SQL'da 5 s ga tuzatildi — qayta ishga
   1. **Qulf tugmasi** (mavjud tugma) — hodim ketishdan oldin sababni o'zi tanlaydi, "Saqlash va
      qulflash" dan keyin ekran qulflanadi; sabab qulf ekranida ko'rinadi. To'xtash qulflangan
      paytdan beyjik bilan ochilguncha; shu oraliqda Pico ochgan to'xtash qayta so'ralmaydi.
-  2. **Qizil yonsa** (FAULT) — oyna darhol chiqadi.
-  3. **Stanok uzoq ishlamasa** (sariq) — Tizim sozlamalaridagi «Uzoq to'xtash, daqiqa»
-     (`stop_prompt_idle_minutes`, sukut 5, 1..120) o'tgach. Vaqtni SERVER sariq yongan paytdan sanaydi —
-     Pico `idle_timeout_s` ga bog'liq emas, chegarani o'zgartirish uchun Pico'ga tegilmaydi.
-  Qizil yonsa — ~3–5 soniya (Pico 1.2 s barqarorlik + agent har 3 s yuboradi + WS).
+  2. **Stanok to'xtasa** — turidan QAT'I NAZAR (qizil/avariya, hamma chiroq o'chgani, sariq,
+     kromka yoki rover lentasining to'xtashi) Tizim sozlamalaridagi «Uzoq to'xtash, daqiqa»
+     (`stop_prompt_idle_minutes`, sukut 5, 1..120) o'tgach. Vaqtni SERVER to'xtash boshlangan
+     paytdan sanaydi — Pico `idle_timeout_s` ga bog'liq emas, chegarani o'zgartirish uchun
+     Pico'ga tegilmaydi.
+  **2026-09-20 da o'zgardi:** ilgari qizil chiroq va «hamma chiroq o'chiq» DARHOL so'rardi.
+  Tsexda bir daqiqalik kutishda ham oyna chiqib turgani uchun qoida bitta bo'ldi: hamma
+  to'xtash bir xil chegaradan o'tadi. Qisqa to'xtash hisobdan chiqmaydi — faqat sababi
+  so'ralmaydi.
 - **Brak oqimi** (1-band 2026-09-19 da bajarildi — §4.7; qolgan bandlar hali yo'q)**:**
   1. **Hodim** detalni skanerlaydi, skan chizig'idagi BRAK tugmasini bosadi va faqat NIMA bo'lganini tanlaydi.
   2. Qayta ishlab chiqarish so'rovi **avtomat** yaratiladi ("Kutmoqda").

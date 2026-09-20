@@ -1,19 +1,21 @@
 """Stanok to'xtashlari — Pico xom hodisalaridan (`andon_event`) chiqariladi, sababni smenadagi hodim kiritadi.
 
-Qarorlar (2026-09-17, docs/12-oee.md §7):
-- qizil chiroq (FAULT) va hammasi o'chiq (OFF) — darhol to'xtash;
-- sariq chiroq (IDLE, Pico keyin STOPPED deb ham yuboradi) — Tizim sozlamalaridagi
-  `stop_prompt_idle_minutes` dan uzoq yonsa to'xtash. Vaqt SARIQ YONGAN PAYTDAN sanaladi,
-  Pico'ning `idle_timeout_s` sozlamasiga bog'liq emas;
+Qarorlar (2026-09-17, docs/12-oee.md §7; chegara qoidasi 2026-09-20 da o'zgardi):
+- HAR QANDAY to'xtash — qizil chiroq (FAULT), hamma chiroq o'chgani (OFF), sariq chiroq
+  (IDLE/STOPPED), kromka va rover lentasining to'xtashi — Tizim sozlamalaridagi
+  `stop_prompt_idle_minutes` dan UZOQ davom etsagina sabab so'raydi. Ilgari qizil va
+  o'chiq holat darhol so'rardi: tsexda bir daqiqalik kutishda ham oyna chiqib, operator
+  uni o'qimasdan yopishga o'rganib qolardi (2026-09-20 tsex talabi);
+- vaqt to'xtash BOSHLANGAN paytdan sanaladi, Pico'ning `idle_timeout_s` iga bog'liq emas;
 - qulf tugmasi (LOCK) — operator sababni o'zi aytib to'xtatadi; shu oraliqda boshlangan Pico
-  to'xtashi sababni qulfdan oladi va qayta so'ralmaydi.
+  to'xtashi sababni qulfdan oladi va qayta so'ralmaydi (unga chegara qo'llanmaydi).
 
-KROMKA stansiyasi (2026-09-20) boshqacha gapiradi: unda chiroq yo'q, RUN kirishi bor va u
-faqat O'ZGARGANDA `uskuna` hodisasi keladi (`holat` 0/1). `holat=0` — lenta to'xtagan, ya'ni
-to'xtash (`OFF`). Bunga ham `stop_prompt_idle_minutes` chegarasi qo'llanadi: kromkada lenta
-detal qo'yish uchun qisqa to'xtaydi va har 40 soniyalik pauzada sabab so'ralsa, operator
-oynani o'qimasdan yopishga o'rganib qolardi. Chegaradan qisqa to'xtash HISOBGA baribir kiradi
-(Availability oraliqlardan hisoblanadi) — faqat SABAB so'ralmaydi.
+KROMKA va ROVER (2026-09-20) boshqacha gapiradi: ularda chiroq yo'q, RUN kirishi bor va u
+faqat O'ZGARGANDA `uskuna` hodisasi keladi (`holat` 0/1). `holat=0` — lenta/shpindel to'xtagan,
+ya'ni to'xtash (`OFF`).
+
+Chegaradan qisqa to'xtash HISOBGA baribir kiradi (Availability oraliqlardan hisoblanadi) —
+faqat SABAB so'ralmaydi.
 
 Yozuvlar IDEMPOTENT: hisob har safar hodisalardan qaytadan yuritiladi va `start_key` (to'xtashni
 boshlagan hodisa) bo'yicha mavjud yozuvning faqat `ended_at` i yangilanadi — sabab tegilmaydi.
@@ -49,22 +51,18 @@ class _Run:
     session: str
     start: datetime
     end: datetime | None = None
-    #: Sabab so'rash uchun chegara qo'llanadimi (sariq chiroq va kromka to'xtashlari uchun ha)
-    chegarali: bool = False
 
 
-def _stop_kind(ev: AndonEvent) -> tuple[DowntimeKind | None, bool]:
-    """Hodisa to'xtash boshlaydimi: `(turi, chegarali)`.
+def _stop_kind(ev: AndonEvent) -> DowntimeKind | None:
+    """Hodisa to'xtash boshlaydimi va qaysi turdagi.
 
-    PRISADKA (`state`) — chiroq holati bo'yicha; qizil va hammasi o'chiq DARHOL, sariq
-    chegaradan uzoq bo'lsa. KROMKA (`uskuna`) — RUN kirishi: `holat=0` to'xtash, unga ham
-    chegara qo'llanadi (yuqoridagi izoh)."""
+    PRISADKA (`state`) — chiroq holati bo'yicha; KROMKA/ROVER (`uskuna`) — RUN kirishi
+    bo'yicha. Chegara TURGA bog'liq emas: hammasiga bir xil qo'llanadi (yuqoridagi izoh)."""
     if ev.kind == "state":
-        kind = _STOP_KIND.get(ev.state or "")
-        return kind, kind == DowntimeKind.IDLE
+        return _STOP_KIND.get(ev.state or "")
     if ev.kind == "uskuna":
-        return (None, False) if (ev.payload or {}).get("holat") else (DowntimeKind.OFF, True)
-    return None, False
+        return None if (ev.payload or {}).get("holat") else DowntimeKind.OFF
+    return None
 
 
 def _runs(events: list[AndonEvent]) -> list[_Run]:
@@ -77,7 +75,7 @@ def _runs(events: list[AndonEvent]) -> list[_Run]:
     cur: _Run | None = None
     prev: AndonEvent | None = None
     for ev in events:
-        kind, chegarali = _stop_kind(ev)
+        kind = _stop_kind(ev)
         if cur is not None and prev is not None and (ev.session != cur.session or kind != cur.kind):
             cur.end = ev.happened_at if ev.session == cur.session else prev.happened_at
             out.append(cur)
@@ -88,7 +86,7 @@ def _runs(events: list[AndonEvent]) -> list[_Run]:
             # yoki yo'qolgan) — boshlanish Pico o'lchagan IDLE davomiyligidan tiklanadi.
             if ev.state == "STOPPED" and ev.prev_state == "IDLE" and ev.prev_duration_s:
                 start -= timedelta(seconds=ev.prev_duration_s)
-            cur = _Run(kind=kind, key=f"{ev.session}-{ev.seq}", session=ev.session, start=start, chegarali=chegarali)
+            cur = _Run(kind=kind, key=f"{ev.session}-{ev.seq}", session=ev.session, start=start)
         prev = ev
     if cur is not None:
         out.append(cur)
@@ -185,9 +183,9 @@ async def sync_machine(db: AsyncSession, machine_id: int, now: datetime) -> None
         .all()
     )
     threshold = timedelta(minutes=int(await get_setting(db, STOP_PROMPT_IDLE_MINUTES)))
-    # Chegara sariq chiroqqa (prisadka) va kromka to'xtashlariga qo'llanadi — qisqasi
-    # mikro-to'xtash, uning sababi so'ralmaydi
-    runs = [r for r in _runs(events) if not r.chegarali or (r.end or now) - r.start >= threshold]
+    # Chegara HAMMA to'xtashga qo'llanadi (qizil chiroq ham): undan qisqasi — mikro-to'xtash,
+    # uning sababi so'ralmaydi. Availability bunga bog'liq emas, u oraliqlardan hisoblanadi.
+    runs = [r for r in _runs(events) if (r.end or now) - r.start >= threshold]
     runs += await _bosh_yurish(db, machine_id, events, since, now)
     if not runs:
         return

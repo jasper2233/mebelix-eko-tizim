@@ -472,9 +472,10 @@ function DowntimeReasonsCard({ settings }: { settings: SystemSettingRead[] }) {
       <div>
         <h2 className="text-lg font-semibold">To'xtash sabablari</h2>
         <p className="text-sm text-muted-foreground">
-          Pico ulangan stanokda terminal to'xtash sababini o'zi so'raydi: qizil
-          chiroq (avariya) va hamma chiroq o'chganda darhol, sariq chiroq
-          quyidagi chegaradan uzoq yonsa. Qulf tugmasi ham avval sababni
+          Pico ulangan stanokda terminal to'xtash sababini o'zi so'raydi —
+          to'xtash quyidagi chegaradan uzoq davom etsa. Qoida hamma turga bir
+          xil: qizil chiroq (avariya), hamma chiroq o'chgani, sariq chiroq,
+          kromka va rover lentasining to'xtashi. Qulf tugmasi ham avval sababni
           so'raydi. Sababni smenada ishlayotgan hodim tanlaydi.
         </p>
       </div>
@@ -500,10 +501,12 @@ function DowntimeReasonsCard({ settings }: { settings: SystemSettingRead[] }) {
         </LoadingButton>
       </div>
       <p className="text-sm text-muted-foreground">
-        Vaqt sariq chiroq yongan paytdan sanaladi. Kromkada lenta to'xtagan
-        paytdan (RUN kirishi). Juda kichik qiymat (1–2 daqiqa) detal
-        almashtirish kabi oddiy kutishlarda ham oyna chiqaradi. Oraliq:{" "}
-        {STOP_MIN}–{STOP_MAX}.
+        Vaqt to'xtash BOSHLANGAN paytdan sanaladi: prisadkada chiroq o'zgargan
+        lahzadan, kromka va roverda lenta/shpindel to'xtagan paytdan (RUN
+        kirishi). Juda kichik qiymat (1–2 daqiqa) detal almashtirish kabi oddiy
+        kutishlarda ham oyna chiqaradi. Chegaradan qisqa to'xtash hisobdan
+        chiqmaydi — Availability oraliqlardan hisoblanadi, faqat sababi
+        so'ralmaydi. Oraliq: {STOP_MIN}–{STOP_MAX}.
       </p>
 
       {/* Kromkada IKKINCHI holat bor: lenta yuryapti, lekin detal o'tmayapti.
