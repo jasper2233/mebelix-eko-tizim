@@ -1992,13 +1992,10 @@ def _newer(latest: str, current: str) -> bool:
 def _spawn_bat(name: str, text: str, yollar: dict[str, str]) -> bool:
     """bat'ni oynasiz cmd'da ishga tushiradi — agent o'lgandan keyin ham yashaydi.
 
-    FAQAT `CREATE_NO_WINDOW`. Ilgari `DETACHED_PROCESS | CREATE_NO_WINDOW`
-    turardi, Microsoft esa bu ikkisini bir-birini ISTISNO qiladi deb yozadi va
-    amalda `DETACHED_PROCESS` g'olib chiqadi: konsolsiz qolgan cmd o'ziga YANGI
-    konsol ajratadi. Windowsda o'lchandi — `if exist CON` bat ichida rost
-    qaytardi, ya'ni jim ketishi kerak bo'lgan yangilanish tsexda qora oyna
-    ochardi (operator shuni suratga olib yubordi). Bola jarayon ota o'lsa ham
-    yashaydi: Windowsda buning uchun `DETACHED_PROCESS` kerak emas.
+    FAQAT `CREATE_NO_WINDOW` — `DETACHED_PROCESS` QO'SHILMAYDI: Microsoft
+    ularni bir-birini istisno qiladi deydi va konsolsiz qolgan cmd o'ziga yangi,
+    KO'RINADIGAN konsol ajratadi. Bola jarayonning otadan keyin yashashi uchun
+    `DETACHED_PROCESS` kerak emas.
 
     Yo'llar bat MATNIGA emas, env orqali beriladi va ichkarida `%NOM%` bilan
     ochiladi — shu sabab matn sof ASCII qoladi. Ilgari yo'l matnga yozilardi va
@@ -2079,21 +2076,9 @@ def _apply_update(new_exe: Path) -> None:
     """O'zini almashtirish. Yo'l o'zgarmaydi — avtostart registri amal qilaveradi;
     token/sozlama %APPDATA% da — ulanish saqlanadi.
 
-    Almashtirish agent HALI TIRIK ekan bajariladi: Windows ishlab turgan exe'ni
-    O'CHIRISHGA ruxsat bermaydi, lekin QAYTA NOMLASHGA beradi. Shuning uchun eski
-    exe `.old` ga suriladi, yangisi uning o'rniga qo'yiladi — ikkalasi ham shu
-    yerda, xatosi tekshirilgan holda. Almashtirib bo'lmasa agent O'LMAYDI: sabab
-    log'ga yoziladi, ishlayveradi va keyingi siklda qayta uriniladi.
-
-    Ilgari bu ish agent o'lgandan KEYIN, bat ichida qilinardi va bat eski exe
-    o'chguncha CHEKSIZ kutardi (`:kutish`, limitsiz). Exe'ni o'chirib bo'lmaydigan
-    mashinada — masalan `Program Files` ga o'rnatilgan, README ham u yerga admin
-    kerakligini yozadi, agent esa oddiy foydalanuvchi huquqida ishlaydi — bu
-    abadiy tsiklga aylanardi: yangi exe joyiga ko'chmasdi, `start` qatoriga
-    umuman yetilmasdi va monoblok qayta yuklangunicha AGENTSIZ qolardi (chek
-    chiqmas, skan ketmasdi). Qayta yuklashda avtostart eski exe'ni ko'tarar, ya'ni
-    yangilanish jimgina yo'qolardi — tsexda "ba'zi monobloklar yangilanmaydi" aynan
-    shu edi.
+    Agent HALI TIRIK ekan almashtiriladi: Windows ishlab turgan exe'ni
+    o'chirishga qo'ymaydi, lekin QAYTA NOMLASHGA qo'yadi. Almashtirib bo'lmasa
+    agent O'LMAYDI — monoblok agentsiz qolmasligi kerak (`docs/07`).
     """
     import shutil
 
@@ -2105,16 +2090,11 @@ def _apply_update(new_exe: Path) -> None:
         log.warning("Yangilanish: exe qayta nomlanmadi (%s) — o'tkazib yuborildi", xato)
         return
     try:
-        # `shutil.move`, `Path.replace` EMAS: yangi exe `%APPDATA%` da yuklanadi,
-        # agentning o'zi esa boshqa diskda turishi mumkin (README `D:\MebelixAgent\`
-        # ni ochiq ruxsat etadi). `replace` bunda `WinError 17 — cannot move the
-        # file to a different disk drive` beradi (o'lchandi), `move` esa disklar
-        # orasida nusxalab ko'chadi. Nishon yo'q (exe hozirgina `.old` ga surildi),
-        # ya'ni `move` ning "papka ichiga tashlash" xulqi bu yerda yuzaga kelmaydi.
+        # `Path.replace` EMAS: yangi exe `%APPDATA%` da, agent esa boshqa diskda
+        # turishi mumkin va `replace` disklar orasida `WinError 17` beradi.
         shutil.move(str(new_exe), str(exe))
     except OSError as xato:
-        # Eskisini QAYTARIB qo'yamiz. Aks holda avtostart yo'lida fayl qolmas va
-        # monoblok qayta yuklangach butunlay agentsiz bo'lardi.
+        # Eskisini qaytaramiz — avtostart yo'lida fayl qolishi shart.
         try:
             eski.replace(exe)
         except OSError:
@@ -2123,11 +2103,8 @@ def _apply_update(new_exe: Path) -> None:
             log.warning("Yangilanish: yangi exe ko'chmadi (%s) — eskisi tiklandi", xato)
         return
 
-    # Bu yerdan keyin exe ALLAQACHON yangi. Bat faqat eski jarayon o'lishini kutib
-    # uni ishga tushiradi. Kutish belgisi — `.old` ni o'chira olish: u ishlab turgan
-    # jarayonning fayli, jarayon o'lguncha o'chmaydi. Limit bor va u o'tsa ham
-    # `start` BAJARILADI: kutish muvaffaqiyatsiz bo'lsa ham monoblok agentsiz
-    # qolmasligi kerak, qolgani — yonida yotgan `.old` fayl.
+    # Exe allaqachon yangi; bat faqat eski jarayon o'lishini kutadi — belgisi
+    # `.old` ni o'chira olish. Limit o'tsa ham `start` BAJARILADI.
     if not _spawn_bat(
         "update.bat",
         "@echo off\r\n"
@@ -2142,8 +2119,7 @@ def _apply_update(new_exe: Path) -> None:
         'del "%~f0"\r\n',
         {"MBX_EXE": str(exe), "MBX_OLD": str(eski)},
     ):
-        # Exe almashdi, lekin uni ishga tushiradigan bat ketmadi: agent TIRIK
-        # qoladi (eski kod bilan) va keyingi qayta ishga tushishda yangisi turadi.
+        # Exe almashdi, bat ketmadi: agent tirik qoladi, yangisi keyingi startda.
         log.warning("Yangilanish qo'llandi, lekin qayta ishga tushirish bat'i ketmadi")
         return
     log.info("Yangilanish qo'llanmoqda — agent qayta ishga tushadi")

@@ -149,10 +149,9 @@ _MM = 8  # piksel/mm — 203 dpi (8 dot/mm), ya'ni 80x60 mm blank = 640x480 px
 def _teksturasiz(band: list[tuple[int, int]], joylar: tuple[int, ...]) -> list[int]:
     """Boshqa element bilan ustma-ust tushadigan tekstura chizig'ini tashlaydi.
 
-    `band` — `(markaz, tolerantlik)` juftliklari. Ikki xil to'sqinlik bor va
-    ularning KENGLIGI har xil: paz/freza mid-yo'li ingichka (chiziq qalinligi),
-    tomon simvoli esa harf o'lchamida — shuning uchun tolerantlik juftlik ichida
-    beriladi, bitta umumiy qiymat emas.
+    `band` — `(markaz, tolerantlik)` juftliklari: to'sqinliklarning KENGLIGI har
+    xil (paz mid-yo'li chiziq qalinligida, tomon simvoli harf o'lchamida), ya'ni
+    bitta umumiy tolerantlik yaramaydi.
 
     Hammasi tushib qolsa — hech biri tashlanmaydi: tekstura YO'NALISHI ham kerakli
     ma'lumot (250x832 detalda arrachilar aynan shundan shikoyat qilgan).
@@ -455,10 +454,8 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
         # Bir qirrada ikkalasi ham bo'lsa paz g'olib (uzuq chiziq): prodda bunday detal
         # yo'q (45 loyihada 47 ta faqat pazli, 16 ta faqat frezali, ustma-ust 0), o'lchangan.
         ishlangan_tomonlari = paz_tomonlari + [t for t in frez_tomonlari if t not in paz_tomonlari]
-        # Qaysi tomonda HARF (A/B) chiziladi — yuqoridagi kromka sikli bilan bir
-        # shart. Ikki joyda kerak: ishlangan qirra chizig'i harfga bo'shliq
-        # qoldiradi, tekstura esa harfdan chetlanadi. Ilgari ikkalasi ham harf
-        # bor-yo'qligini BILMASDI (pastdagi izohlarga qara).
+        # Qaysi tomonda HARF (A/B) chiziladi — kromka sikli bilan bir shart.
+        # Qirra chizig'i unga bo'shliq qoldiradi, tekstura esa undan chetlanadi.
         harfli_tomonlar = {t for t in qirra if d.edges.get(t) and edge_field(t, "symbol")[:3]}
 
         # Detal koordinatasi -> eskiz piksellari. Teshiklar bilan BIR XIL o'girish
@@ -480,7 +477,7 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
         # koordinatadagi tekstura chizig'i uzuq chiziqning bo'shliqlarini to'ldirib,
         # PAZni FREZA qilib ko'rsatardi: 1784x283 teksturali detalda (paz eni bo'ylab
         # o'rtada) uzluksiz qora 14.5 mm ga yetgan, teksturasiz 1.8 mm (o'lchangan).
-        yol_tol = 3  # tekstura chizig'i 2 px: markazlari 3 px dan yaqin bo'lsa qo'shiladi
+        yol_tol = 3  # tekstura chizig'i 2 px + 1
         band: list[tuple[int, int]] = []
         for yol in paz_yollari + frez_yollari:
             nuqtalar = [eskizga(n[0], n[1]) for n in yol]
@@ -507,12 +504,8 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
             # ishlangan qirra tomonidan `zona` qadar joy bo'shatiladi va uchta chiziq
             # QOLGAN kenglikka markazlanadi.
             zona = int(3.2 * mm)
-            # Tomon simvoli ham joy egallaydi — u kromkalangan qirraning ICHKI
-            # chetida turadi. Ilgari faqat ishlangan qirra hisobga olinardi va
-            # ingichka plankada tekstura chizig'i harf ustiga tushardi
-            # (o'lchandi: 1784x283 detalda eskiz eni 6.5 mm, harf enining
-            # 62-88% ida, tekstura chizig'i 75% da). Harf uchun kamroq joy
-            # kerak: 2.8 mm shrift ichki chetdan 0.8 mm da, ya'ni ~2.5 mm.
+            # Tomon simvoli ham joy egallaydi, ishlangan qirradan kamrog'ini:
+            # 2.8 mm shrift ichki chetdan 0.8 mm da = ~2.5 mm.
             harf_zona = int(2.6 * mm)
             paz_joy = {qirra[t] for t in ishlangan_tomonlari}
             harf_joy = {qirra[t] for t in harfli_tomonlar}
@@ -523,23 +516,13 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
                     return zona
                 return harf_zona if j in harf_joy else 0
 
-            # `bosh_joy` faqat chiziqlar TARQALADIGAN o'qda ishlaydi. PERPENDIKULYAR
-            # juftlikdagi harf esa aynan MARKAZDA turadi — o'rtadagi chiziq ketadigan
-            # joyda, ya'ni chetlanish unga yordam bermaydi. O'lchandi: 100x1088
-            # detalda chap qirra harfi x 514..527 / y 181..195, o'rtadagi tekstura
-            # chizig'i esa x 515..527 / y 188..189 — harfning ko'ndalang tayog'i
-            # ustiga tushib uni qalinlashtirardi. Shuning uchun harf ham `band` ga
-            # kiradi, lekin O'Z tolerantligi bilan: yo'l ingichka, harf esa shrift
-            # o'lchamida.
+            # `bosh_joy` faqat chiziqlar TARQALADIGAN o'qda ishlaydi; perpendikulyar
+            # juftlikdagi harf markazda qoladi, shuning uchun u `band` ga kiradi.
             if burilgan:
-                # Chiziqlar x bo'ylab tarqaladi; tepa/past harfi x bo'yicha markazda
-                # va kengligi ~0.6 shrift (2.8 mm), ya'ni yarmi 0.85 mm.
-                harf_orta = {"tepa", "past"} & harf_joy
+                harf_orta = {"tepa", "past"} & harf_joy  # harf ENI: 2.8 mm x 0.6 / 2
                 harf_band = (bx + bw // 2, int(0.85 * mm) + w2)
             else:
-                # Chiziqlar y bo'ylab; chap/ong harfi y bo'yicha markazda va bu safar
-                # uning BALANDLIGI muhim — to'liq shrift, yarmi 1.4 mm.
-                harf_orta = {"chap", "ong"} & harf_joy
+                harf_orta = {"chap", "ong"} & harf_joy  # harf BALANDLIGI: 2.8 mm / 2
                 harf_band = (by + bh // 2, int(1.4 * mm) + w2)
             tband = band + ([harf_band] if harf_orta else [])
 
@@ -656,12 +639,9 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
                 """Qirra bo'ylab chiziq — PIL'da dash yo'q, qo'lda bo'laklab chiziladi.
 
                 O'rtadagi bo'shliq FAQAT `harfli` bo'lganda qoldiriladi: u aynan
-                tomon simvoli (A/B) uchun va chiziq uning ustidan o'tsa harf
-                o'qilmasdi. Kromkalanmagan qirrada harf CHIZILMAYDI, bo'shliq esa
-                ilgari baribir qolardi — uzluksiz qirra profili IKKITA alohida
-                amal bo'lib ko'rinardi (o'lchandi: 300x400 kromkasiz detalda o'ng
-                freza chizig'i y=35..87 va y=121..173, o'rtada 33 px = 4 mm,
-                eskiz balandligining 21% i)."""
+                tomon simvoli (A/B) uchun. Kromkalanmagan qirrada harf
+                chizilmaydi, ya'ni bo'shliq ham kerak emas — aks holda uzluksiz
+                profil ikkita alohida amal bo'lib ko'rinadi."""
                 # Harf uchun yarim bo'shliq. Qirra qisqa bo'lsa (ingichka detalning
                 # eni 5-15 mm) qat'iy 2.2 mm butun chiziqni yeb qo'yardi — bo'shliq
                 # qirra uzunligining oltidan biridan oshmaydi.
