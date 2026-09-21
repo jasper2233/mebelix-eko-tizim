@@ -34,10 +34,12 @@ KROMKA_IDLE_MINUTES = "kromka_idle_minutes"
 #: ham «mos» sanaladi. Lenta detalni harakatda o'lchaydi — tezlik va datchik kechikishi
 #: bir necha millimetr beradi, nol dopusk har bir detalni brak qilardi.
 KROMKA_TOLERANCE_MM = "kromka_tolerance_mm"
-#: O'lchov skan bilan bog'lanadigan oyna, daqiqa: o'lchovdan shuncha vaqt oldin
-#: yozilgan OXIRGI skan o'sha detal deb olinadi. Undan eskisi bog'lanmaydi —
-#: tushlikdan keyin kelgan o'lchov ertalabki detalga yopishib qolmasin.
-KROMKA_BIND_MINUTES = "kromka_bind_minutes"
+#: O'lchov skan bilan bog'lanadigan oyna, SONIYA. Detal birinchi datchikka kirgan
+#: lahza (`o'lchov vaqti − ish_ms`) atrofida shuncha soniya ichidagi skanlar nomzod
+#: bo'ladi. 2026-09-21 gacha bu «oxirgi skan, N daqiqa ichida» edi va prodda xato
+#: berardi: detal datchiklar orasida 8–15 soniya yuradi, operator esa 4–10 soniyada
+#: bir marta skanerlaydi — o'lchov keyingi detalning skaniga yopishardi.
+KROMKA_BIND_WINDOW_S = "kromka_bind_window_s"
 
 #: Butun son sozlamalar va ularning ruxsat etilgan oralig'i — `PUT /settings/{key}` tashqarisini rad etadi.
 INT_RANGES: dict[str, tuple[int, int]] = {
@@ -46,7 +48,7 @@ INT_RANGES: dict[str, tuple[int, int]] = {
     STOP_PROMPT_IDLE_MINUTES: (1, 120),
     KROMKA_IDLE_MINUTES: (1, 240),
     KROMKA_TOLERANCE_MM: (1, 50),
-    KROMKA_BIND_MINUTES: (1, 240),
+    KROMKA_BIND_WINDOW_S: (5, 600),
 }
 
 #: Sahifada ko'rsatiladigan sozlamalar va ularning sukut qiymati.
@@ -57,7 +59,7 @@ DEFAULTS: dict[str, str] = {
     STOP_PROMPT_IDLE_MINUTES: "5",
     KROMKA_IDLE_MINUTES: "10",
     KROMKA_TOLERANCE_MM: "3",
-    KROMKA_BIND_MINUTES: "10",
+    KROMKA_BIND_WINDOW_S: "20",
 }
 
 #: Ish jadvali (JSON). `DEFAULTS` da YO'Q: umumiy `PUT /settings/{key}` 8 belgilik

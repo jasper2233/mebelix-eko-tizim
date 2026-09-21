@@ -134,7 +134,9 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   `oee_start_date` — OEE shu KUNDAN hisoblanadi (ISO sana; bo'sh — butun tarix; `DEFAULTS` da yo'q,
   o'z endpointi bor, chunki umumiy `PUT /{key}` 8 belgi oladi);
   `kromka_tolerance_mm = "3"` (1..50) — kromka o'lchovining dopuski, mm;
-  `kromka_bind_minutes = "10"` (1..240) — o'lchov shuncha daqiqa ichidagi oxirgi skanga bog'lanadi;
+  `kromka_bind_window_s = "20"` (5..600) — o'lchov detal DATCHIKKA KIRGAN lahza atrofidagi
+  shuncha soniyalik oynadan skan qidiradi (2026-09-21 gacha `kromka_bind_minutes` — «oxirgi
+  skan» modeli, u prodda xato bog'lardi, docs/12 §4.10);
   `kromka_idle_minutes = "10"` (1..240) — kromkada lenta yuryapti-yu shuncha daqiqa detal o'tmasa,
   bo'sh yurish deb sanaladi (`services/andon.split_idle`);
   `PUT /settings/{key}` butun son kalitlarini `INT_RANGES` bo'yicha tekshiradi: 10..1440 va 1..120). `work_schedule` kaliti — ish jadvali

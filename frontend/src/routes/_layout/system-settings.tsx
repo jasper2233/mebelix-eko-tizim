@@ -302,8 +302,8 @@ const KROMKA_IDLE_MAX = 240
 // Backend `settings_service.KROMKA_TOLERANCE_MM` / `KROMKA_BIND_MINUTES` bilan bir xil
 const KROMKA_TOL_KEY = "kromka_tolerance_mm"
 const KROMKA_TOL_MAX = 50
-const KROMKA_BIND_KEY = "kromka_bind_minutes"
-const KROMKA_BIND_MAX = 240
+const KROMKA_BIND_KEY = "kromka_bind_window_s"
+const KROMKA_BIND_MAX = 600
 
 const REASONS_KEY = ["system-settings", "downtime-reasons"]
 
@@ -879,7 +879,7 @@ function KromkaBindCard({ settings }: { settings: SystemSettingRead[] }) {
         {KROMKA_TOL_MAX}.
       </p>
       <div className="flex items-end gap-3">
-        <Field label="Skanga bog'lash oynasi, daqiqa">
+        <Field label="Skanga bog'lash oynasi, soniya">
           <Input
             type="number"
             inputMode="numeric"
@@ -900,10 +900,13 @@ function KromkaBindCard({ settings }: { settings: SystemSettingRead[] }) {
         </LoadingButton>
       </div>
       <p className="text-sm text-muted-foreground">
-        O'lchov shu ish markazidagi <b>oxirgi skan</b>ga bog'lanadi. Undan
-        eskisi bog'lanmaydi: tushlikdan keyin kelgan o'lchov ertalabki detalga
-        yopishib qolmasin. Skan topilmasa o'lchov «skansiz» bo'lib tarixga
-        yoziladi va hech kimni ayblamaydi. Oraliq: 1–{KROMKA_BIND_MAX}.
+        Detal birinchi datchikka <b>kirgan lahza</b> hisoblanadi (o'lchov
+        vaqtidan lenta yurish vaqti ayiriladi) va shu lahza atrofidagi skanlar
+        nomzod bo'ladi; ular orasidan o'lchamga mos keladigani tanlanadi. Oxirgi
+        skanga bog'lash XATO berardi: detal datchiklar orasida 8–15 soniya
+        yuradi, operator esa 4–10 soniyada bir marta skanerlaydi — o'lchov
+        keyingi detalga yopishib qolardi. Skan topilmasa o'lchov «skansiz»
+        bo'lib yoziladi va hech kimni ayblamaydi. Oraliq: 5–{KROMKA_BIND_MAX}.
       </p>
     </div>
   )

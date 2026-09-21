@@ -298,8 +298,8 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | PUT | `/api/v1/settings/oee-start` | `AdminUser` | Saqlaydi (`system_setting` kaliti `oee_start_date`; bo'sh — cheklov yo'q). Shu kundan OLDINGI kunlar «Stanok vaqti» hisobotiga UMUMAN kirmaydi — qaydlar o'chirilmaydi, faqat hisobdan tashqarida qoladi. Sana 10 belgi, ya'ni umumiy `PUT /{key}` (8 belgi) unga yaramaydi — o'z endpointi shundan. Audit `settings/updated` |
 
 Kromka o'lchovining ikki sozlamasi umumiy `PUT /settings/{key}` orqali boradi (butun son, `INT_RANGES`):
-`kromka_tolerance_mm` (dopusk, sukut 3, 1..50) va `kromka_bind_minutes` (skanga bog'lash oynasi,
-sukut 10, 1..240) — docs/12 §4.10.
+`kromka_tolerance_mm` (dopusk, sukut 3, 1..50) va `kromka_bind_window_s` (skanga bog'lash oynasi
+— detal datchikka kirgan lahza atrofida, sukut 20 soniya, 5..600) — docs/12 §4.10.
 | GET | `/api/v1/settings/defect-reasons` | `AdminUser` | **Brak sabablari** (`DefectReasons`: `reasons` ≤30 ta, har biri ≤40 belgi) — terminaldagi BRAK oynasida shu tugmalar chiqadi (OEE Quality, docs/12 §4.7). `/{key}` dan OLDIN ro'yxatga olingan |
 | PUT | `/api/v1/settings/defect-reasons` | `AdminUser` | Ro'yxat BUTUNICHA almashtiriladi, takrorlari tashlanadi. Eski brak yozuvlari TEGILMAYDI — ularda sabab matn bo'lib saqlangan (`part_defect.reason`). Audit `settings/updated` |
 | PUT | `/api/v1/settings/{key}` | `AdminUser` | Sozlamani yozadi (bor bo'lsa yangilaydi). `DEFAULTS` da yo'q kalit — 404 («Bunday sozlama yo'q»): noma'lum kalit jimgina yozilib, hech kim o'qimasdi. Qiymat `strip()` qilinadi, uzunlik 8 belgi (suffiks, nom emas). Butun son kalitlari (`settings_service.INT_RANGES`) — faqat ASCII butun son chegarada: `idle_logout_operator_minutes` / `idle_logout_staff_minutes` 10..1440, `stop_prompt_idle_minutes` 1..120; aks holda 422 oddiy satr «Daqiqa {min} dan {max} gacha butun son bo'lishi kerak.»; "060" → "60" bo'lib saqlanadi. Audit jurnaliga eski/yangi qiymat bilan yoziladi |

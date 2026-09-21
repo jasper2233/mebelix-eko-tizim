@@ -58,7 +58,7 @@ from app.services.scanning import (
     record_scan_at,
     scan_error,
 )
-from app.services.settings_service import KROMKA_BIND_MINUTES, KROMKA_TOLERANCE_MM, get_setting
+from app.services.settings_service import KROMKA_BIND_WINDOW_S, KROMKA_TOLERANCE_MM, get_setting
 from app.tasks import agent_revoked_key, print_queue_key
 
 router = APIRouter(prefix="/bridge-agents", tags=["bridge-agents"])
@@ -490,7 +490,7 @@ async def push_andon_events(
         olchovlar = [r for r in rows if r["kind"] == "olchov" and (r["session"], r["seq"]) in yangi]
         if olchovlar:
             tolerance = float(await get_setting(db, KROMKA_TOLERANCE_MM) or 3)
-            window = timedelta(minutes=int(await get_setting(db, KROMKA_BIND_MINUTES) or 10))
+            window = timedelta(seconds=int(await get_setting(db, KROMKA_BIND_WINDOW_S) or 20))
             natijalar = [
                 await bind_measurement(
                     db, machine_id, row["happened_at"], row["payload"], tolerance_mm=tolerance, window=window

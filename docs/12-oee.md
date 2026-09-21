@@ -425,10 +425,19 @@ ideal 2533 s ga o'sdi; Quality va OEE `—` bo'lib qoldi.
 ### 4.10 Kromka: o'lchovni detalga bog'lash (2026-09-20)
 
 Stansiya uzunlikni o'lchaydi, lekin QAYSI detal ekanini bilmaydi. Bog'lash modeli —
-**oxirgi skan**: operator detalni odatdagidek skanerlaydi, so'ng lentaga qo'yadi;
-o'lchov kelganda shu ish markazidagi oxirgi bekor qilinmagan skan (`kromka_bind_minutes`
-oynasi ichida) o'sha detal deb olinadi. «Joriy detal» degan alohida holat saqlanmaydi —
-terminal qulasa yoki agent qayta ulansa ham skan bazada turaveradi.
+**kirish lahzasi**: detal birinchi datchikka kirgan payt hisoblanadi
+(`kirish = o'lchov vaqti − ish_ms`, `ish_ms` — Pico bergan D1→D2 yurish vaqti) va shu
+lahza atrofidagi skanlar nomzod bo'ladi (`kromka_bind_window_s`, sukut ±20 s). Nomzodlar
+ichidan O'LCHAMGA mos keladigani tanlanadi. «Joriy detal» degan alohida holat
+saqlanmaydi — terminal qulasa yoki agent qayta ulansa ham skan bazada turaveradi.
+
+> **Nega «oxirgi skan» emas (2026-09-21).** Prodda har detal ikki marta chiqdi: avval
+> «mos emas», keyin «mos». Sabab — vaqt siljishi: detal datchiklar orasida 8–15 soniya
+> yuradi (2553 mm, 10 yoki 18 m/min), operator esa 4–10 soniyada bir marta skanerlaydi,
+> ya'ni endi kelgan o'lchov 2–4 ta skan OLDINGI detalniki. Xatoni stansiya egasi topdi va
+> yechimini yozib berdi (`docs/onlayn_mes_hodisalar.md` o'z repolarida). Nomzod topilmasa
+> o'lchov **brak deb belgilanmaydi** — `skanersiz` bo'ladi: bu ko'pincha juftlash xatosi,
+> detal nuqsoni emas.
 
 **Tomonlar guruh bo'yicha sanaladi, nom bo'yicha emas.** 430×520 detalning t/b qirrasi
 520 mm, l/r qirrasi 430 mm; kutilgan to'plam — `{520, 520, 430, 430}` (`Part.edges` dan,
@@ -450,9 +459,9 @@ yopgani to'g'riroq.
 
 **Sozlamalar** (Tizim sozlamalari → «Brak sabablari» → «Kromka o'lchovi»):
 `kromka_tolerance_mm` (dopusk, sukut 3 mm, 1..50) — lenta detalni HARAKATDA o'lchaydi,
-nol dopusk har detalni brak qilardi; `kromka_bind_minutes` (bog'lash oynasi, sukut 10
-daqiqa, 1..240) — undan eski skan bog'lanmaydi, aks holda tushlikdan keyingi o'lchov
-ertalabki detalga yopishib qolardi.
+nol dopusk har detalni brak qilardi; `kromka_bind_window_s` (bog'lash oynasi, sukut **20 soniya**,
+5..600) — kirish lahzasidan shuncha soniya oldin/keyin yozilgan skanlar nomzod bo'ladi.
+Oyna ikki tomonlama: operator detalni lentaga qo'ygandan keyin ham skanerlashi mumkin.
 
 > **Datchik ishonchsiz (2026-09-20).** Tsexda stansiya uzunlikka qarab xato o'lchayotgani
 > aniqlandi, ya'ni `nomos` hukmining o'zi noto'g'ri bo'lishi mumkin. Shuning uchun
@@ -469,12 +478,14 @@ mantiq `services/kromka.py` da, chaqiruv joyi — agent partiyasi qabul qilinadi
 `POST /bridge-agents/andon`. Faqat YANGI hodisalar bog'lanadi: agent partiyani qayta
 yuborsa kvota ikkinchi marta yopilmasin.
 
-Tekshiruv (bir martalik skript, haqiqiy Postgres, haqiqiy endpointlar): **20/20** —
+Tekshiruv (bir martalik skript, haqiqiy Postgres, haqiqiy endpointlar): **23/23** —
 eni birinchi o'tsa ham mos; 1.5 mm farq dopusk ichida; to'rt qirra yopilgach beshinchi
 o'tish `ortiqcha`; 300 mm `nomos` va eng yaqin kutilgan (430) ko'rsatildi; ikki tomonli
-detalda eni o'lchovi `nomos`; `FAQAT1` — `shubhali`; 30 daqiqalik eski skan va bekor
+detalda eni o'lchovi `nomos`; `FAQAT1` — `shubhali`; oynadan tashqaridagi va bekor
 qilingan skan bog'lanmadi; takror partiya kvotani qayta yopmadi; terminal tasmasi va
-admin oqimi hukm, detal nomi va kutilgan o'lchamni qaytardi.
+admin oqimi hukm, detal nomi va kutilgan o'lchamni qaytardi. **Hal qiluvchi band:**
+operator har 5 soniyada bitta detal skanerlagan, lenta esa har detalni 15 soniyada
+o'tkazgan holatda to'rtala o'lchov O'Z skaniga bog'landi — bittasiga yopishib qolmadi.
 
 ### 4.11 Kromka Quality (2026-09-20)
 

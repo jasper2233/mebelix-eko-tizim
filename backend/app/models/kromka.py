@@ -14,9 +14,10 @@ class KromkaMeasurement(BaseModel):
     qaysi nusxaga tegishli, qaysi tomon guruhi (uzunlik yoki eni) yopildi, kutilgan
     o'lcham qancha edi va farq qancha.
 
-    Bog'lash qoidasi (`services/kromka.py`): o'lchov kelganda SHU ish markazidagi
-    OXIRGI skan olinadi (`kromka_bind_minutes` oynasi ichida). Ya'ni «joriy detal»
-    degan alohida holat saqlanmaydi — uni skanning o'zi bildiradi.
+    Bog'lash qoidasi (`services/kromka.py`): detal BIRINCHI DATCHIKKA KIRGAN lahza
+    hisoblanadi (o'lchov vaqtidan `ish_ms` ayiriladi) va shu lahza atrofidagi
+    skanlardan o'lchamga mos keladigani tanlanadi (`kromka_bind_window_s`).
+    Ya'ni «joriy detal» degan alohida holat saqlanmaydi — uni skanning o'zi bildiradi.
 
     Tomon NOMI (t/b/l/r) saqlanmaydi, GURUHI saqlanadi: bir xil uzunlikdagi ikki
     qirrani o'lchov ajrata olmaydi va ajratishi ham shart emas — ikkalasi ham

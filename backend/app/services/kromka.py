@@ -1,9 +1,19 @@
 """Kromka o'lchovini DETALGA bog'lash (`docs/12-oee.md` §4.10).
 
-Model — OXIRGI SKAN: operator detalni skanerlaydi, so'ng uni lentaga qo'yadi.
-O'lchov kelganda shu ish markazidagi oxirgi skan (`kromka_bind_minutes` oynasi
-ichida) o'sha detalni bildiradi. «Joriy detal» degan alohida holat saqlanmaydi:
-terminal qulasa ham, agent qayta ulansa ham skan bazada turaveradi.
+Model — KIRISH VAQTI: detal birinchi datchikka kirgan lahzaga eng yaqin skan.
+
+2026-09-21 gacha «oxirgi skan» olinardi va bu prodda XATO berdi: detal D1 dan D2
+gacha 8–15 soniya yuradi (2553 mm oraliq, 10 yoki 18 m/min), operator esa 4–10
+soniyada bir marta skanerlaydi — ya'ni endi kelgan o'lchov 2–4 ta skan OLDINGI
+detalniki. Har detal MES da ikki marta chiqardi: avval «mos emas», keyin «mos»
+(stansiya egasining o'lchovi, `docs/onlayn_mes_hodisalar.md`).
+
+Endi kirish lahzasi o'lchovdan hisoblanadi: `kirish = o'lchov vaqti − ish_ms`
+(`ish_ms` — Pico bergan D1→D2 yurish vaqti). Nomzod skanlar shu lahza atrofidagi
+oynadan olinadi (`kromka_bind_window_s`, sukut ±20 s) va ular orasidan O'LCHAMGA
+mos keladigani tanlanadi: 289 mm o'lchov 700 mm lik detalga yozilib qolmasin.
+«Joriy detal» degan alohida holat saqlanmaydi: terminal qulasa ham, agent qayta
+ulansa ham skan bazada turaveradi.
 
 Tomonlar GURUH bo'yicha sanaladi, nom bo'yicha emas: 430x520 detalning t/b qirrasi
 520 mm, l/r qirrasi 430 mm — bir xil uzunlikdagi ikki qirrani o'lchov ajrata
@@ -67,22 +77,40 @@ def edge_quota(part: Part) -> dict[str, dict[str, float]]:
     return quota
 
 
-async def _last_scan(db: AsyncSession, machine_id: int, at: datetime, window: timedelta) -> Scan | None:
-    """Shu stanokdagi oxirgi bekor qilinmagan skan — o'lchovdan oldingi oyna ichida."""
-    return (
-        await db.execute(
-            select(Scan)
-            .where(
-                Scan.machine_id == machine_id,
-                Scan.is_cancelled == False,  # noqa: E712
-                Scan.is_deleted == False,  # noqa: E712
-                Scan.created_at <= at,
-                Scan.created_at >= at - window,
+async def _nomzodlar(db: AsyncSession, machine_id: int, kirish: datetime, window: timedelta) -> list[Scan]:
+    """Kirish lahzasi atrofidagi bekor qilinmagan skanlar — eng yaqini birinchi.
+
+    Oyna IKKI TOMONLAMA: operator detalni lentaga qo'ygandan KEYIN ham skanerlashi
+    mumkin (chek qo'lida qoladi), shuning uchun kirishdan keyingi skan ham nomzod."""
+    rows = (
+        (
+            await db.execute(
+                select(Scan)
+                .where(
+                    Scan.machine_id == machine_id,
+                    Scan.is_cancelled == False,  # noqa: E712
+                    Scan.is_deleted == False,  # noqa: E712
+                    Scan.created_at >= kirish - window,
+                    Scan.created_at <= kirish + window,
+                )
+                .order_by(Scan.created_at)
             )
-            .order_by(Scan.created_at.desc())
-            .limit(1)
         )
-    ).scalar_one_or_none()
+        .scalars()
+        .all()
+    )
+    return sorted(rows, key=lambda r: abs((r.created_at - kirish).total_seconds()))
+
+
+def _kirish(at: datetime, payload: dict[str, Any]) -> datetime:
+    """Detal BIRINCHI datchikka kirgan lahza: o'lchov vaqtidan yurish vaqti ayiriladi.
+
+    `ish_ms` — Pico o'lchagan D1→D2 vaqti (millisekund). Bo'lmasa (eski proshivka
+    yoki FAQAT1/FAQAT2) o'lchov vaqtining o'zi olinadi."""
+    ish_ms = payload.get("ish_ms")
+    if not isinstance(ish_ms, (int, float)) or isinstance(ish_ms, bool) or ish_ms <= 0:
+        return at
+    return at - timedelta(milliseconds=min(float(ish_ms), 120_000))
 
 
 async def bind_measurement(
@@ -100,6 +128,8 @@ async def bind_measurement(
     * `shubhali` — Pico kodi OK emas (bitta datchik ishlagan yoki farq katta): o'lcham
       ishonchsiz, DETALNI ayblash mumkin emas.
     * `skanersiz` — oyna ichida skan yo'q: detal kim ekani noma'lum, faqat tarix.
+      Juftlash XATOSI ham shu yerga tushadi (stansiya egasining tavsiyasi): nomzod
+      topilmasa brak deb belgilanmaydi.
     * `mos` — guruhdan bo'sh joy bor va o'lcham dopusk ichida: qirra yopildi.
     * `ortiqcha` — o'lcham to'g'ri, lekin o'sha guruh kvotasi tugagan: OGOHLANTIRISH.
       Brak emas — ikki marta o'tkazish (qayta lentalash) normal hodisa.
@@ -120,15 +150,16 @@ async def bind_measurement(
     part_name: str | None = None
     qr_text: str | None = None
     if code == "OK" and measured:
-        scan = await _last_scan(db, machine_id, at, window)
-        if scan is None:
+        kirish = _kirish(at, payload)
+        tanlov = await _tanla(db, machine_id, kirish, window, float(measured), tolerance_mm)
+        if tanlov is None:
             row.verdict = KromkaVerdict.SKANERSIZ
         else:
+            scan, progress = tanlov
             row.scan_id, row.instance_id, row.order_id = scan.id, scan.instance_id, scan.order_id
             part = await db.get(Part, scan.part_id)
             instance = await db.get(PartInstance, scan.instance_id)
             part_name, qr_text = (part.name if part else None), (instance.qr_text if instance else None)
-            progress = await _progress(db, scan.instance_id, part)
             _judge(row, progress, float(measured), tolerance_mm)
             if row.verdict == KromkaVerdict.MOS and row.side_group:
                 # Yangi qator hali yozilmagan — terminal ko'radigan hisobga qo'lda qo'shiladi
@@ -136,6 +167,39 @@ async def bind_measurement(
 
     db.add(row)
     return BindResult(row=row, progress=progress, scan_id=row.scan_id, part_name=part_name, qr_text=qr_text)
+
+
+async def _tanla(
+    db: AsyncSession,
+    machine_id: int,
+    kirish: datetime,
+    window: timedelta,
+    measured: float,
+    tol: float,
+) -> tuple[Scan, dict[str, dict[str, float]]] | None:
+    """Kirish lahzasi atrofidagi skanlardan SHU o'lchovga mos keladiganini tanlaydi.
+
+    Tartib (stansiya egasining tavsiyasi, `docs/onlayn_mes_hodisalar.md` §5):
+    1. o'lchamga mos va qirrasi hali yopilmagan skan — vaqt bo'yicha eng yaqini;
+    2. o'lchamga mos, lekin kvotasi tugagani (takroriy o'tish);
+    3. hech biri mos kelmasa — vaqt bo'yicha eng yaqini (hukmi `nomos` bo'ladi).
+    Bo'sh oyna — `None`: bu brak emas, juftlash uchun ma'lumot yo'q."""
+    ochiq: tuple[Scan, dict[str, dict[str, float]]] | None = None
+    tugagan: tuple[Scan, dict[str, dict[str, float]]] | None = None
+    birinchi: tuple[Scan, dict[str, dict[str, float]]] | None = None
+    for scan in await _nomzodlar(db, machine_id, kirish, window):
+        progress = await _progress(db, scan.instance_id, await db.get(Part, scan.part_id))
+        if birinchi is None:
+            birinchi = (scan, progress)
+        mos = [g for g, sl in progress.items() if abs(measured - sl["expected"]) <= tol]
+        if not mos:
+            continue
+        if ochiq is None and any(progress[g]["done"] < progress[g]["quota"] for g in mos):
+            ochiq = (scan, progress)
+            break  # eng yaqini va qirrasi ochiq — qidirishning ma'nosi yo'q
+        if tugagan is None:
+            tugagan = (scan, progress)
+    return ochiq or tugagan or birinchi
 
 
 def _judge(row: KromkaMeasurement, progress: dict[str, dict[str, float]], measured: float, tol: float) -> None:
