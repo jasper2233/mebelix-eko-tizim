@@ -4142,18 +4142,6 @@ export type TerminalOrderCard = {
      * Has Cutmap
      */
     has_cutmap: boolean;
-    /**
-     * Band M
-     */
-    band_m?: number | null;
-    /**
-     * Band Kinds
-     */
-    band_kinds?: number;
-    /**
-     * Holes
-     */
-    holes?: number | null;
 };
 
 /**

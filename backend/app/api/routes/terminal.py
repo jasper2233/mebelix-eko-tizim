@@ -285,12 +285,6 @@ def _bandlar(order: Order) -> list[BandUsage]:
     return sorted(bandlar, key=lambda b: -b.metres)
 
 
-def _band_jami(order: Order) -> float | None:
-    """Kartadagi bitta son. Kromkasiz buyurtmada `None` — nol yozuv shovqin."""
-    jami = round(sum(b.metres for b in _bandlar(order)), 1)
-    return jami or None
-
-
 def _own_sheets(order: Order, own_nos: set[int] | None) -> int:
     """Kartadagi "N list" — SHU postniki. `mult` (bir naqsh necha marta kesiladi) sanaladi.
 
@@ -466,42 +460,6 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
                 )
             ).all()
         }
-    # CNC kartasi uchun teshiklar. Faqat SHU postga marshrutlangan detallar —
-    # kartadagi son sahifadagi ro'yxat bilan mos kelishi kerak. Marshrut bitta
-    # detalda ikki marta uchrashi mumkin (`distinct`), aks holda detal ikki marta
-    # sanalardi.
-    teshiklar: dict[int, tuple[int, int]] = {}
-    if post.code in (PostCode.PRISADKA, PostCode.ROVER) and order_ids:
-        rota = (
-            select(PartRoute.part_id)
-            .where(
-                PartRoute.order_id.in_(order_ids),
-                PartRoute.post_id == post.id,
-                PartRoute.is_enabled == True,  # noqa: E712
-                PartRoute.is_deleted == False,  # noqa: E712
-            )
-            .distinct()
-            .subquery()
-        )
-        teshiklar = {
-            oid: (int(yuza or 0), int(qirra or 0))
-            for oid, yuza, qirra in (
-                await db.execute(
-                    select(
-                        Part.order_id,
-                        func.sum(func.coalesce(Part.xnc_summary["bores"].as_integer(), 0) * Part.count),
-                        func.sum(func.coalesce(Part.xnc_summary["edge_bores"].as_integer(), 0) * Part.count),
-                    )
-                    .join(rota, rota.c.part_id == Part.id)
-                    .where(
-                        Part.order_id.in_(order_ids),
-                        Part.is_deleted == False,  # noqa: E712
-                    )
-                    .group_by(Part.order_id)
-                )
-            ).all()
-        }
-
     result: list[TerminalOrderCard] = []
     for o, done, total in rows:
         done_val = int(done or 0)
@@ -517,8 +475,6 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
         # postlarda tugagan proyektlar ro'yxatda abadiy turaverardi.
         if total_val > 0 and done_val >= total_val:
             continue
-        band_m = _band_jami(o) if post.code == PostCode.KROMKA else None
-        holes = sum(teshiklar[o.id]) if o.id in teshiklar else None
         result.append(
             TerminalOrderCard(
                 id=o.id,
@@ -528,19 +484,10 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
                 priority=o.priority,
                 done=done_val,
                 total=total_val,
-                # Plita nomi — FAQAT o'z hajm soni yo'q postda (amalda arra va
-                # CNC marshruti yo'q rover). Aks holda kartada ikkita hajm qatori
-                # chiqardi; karta allaqachon zich va bitta signal yetadi.
-                materials=(
-                    [m["name"] for m in o.material_usage if m.get("kind") == "sheet"]
-                    if band_m is None and holes is None
-                    else []
-                ),
+                # karta uchun: arrachi plita bo'yicha partiyalab kesadi
+                materials=[m["name"] for m in o.material_usage if m.get("kind") == "sheet"],
                 sheets_total=_own_sheets(o, own_sheet_nos.get(o.id, set()) if own_sheet_nos is not None else None),
                 has_cutmap=o.cutmap is not None,
-                band_m=band_m,
-                band_kinds=len(_bandlar(o)) if post.code == PostCode.KROMKA else 0,
-                holes=holes,
             )
         )
     return result

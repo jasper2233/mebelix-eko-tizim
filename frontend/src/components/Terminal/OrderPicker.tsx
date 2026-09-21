@@ -15,23 +15,6 @@ import {
   PRIORITY_LABELS,
 } from "@/lib/mes"
 
-/** Postning ish hajmi — QISQA, buyurtma raqami yoniga sig'adi.
- *
- * Arrada `null` qaytaradi: u yerda hajm = plita nomlari va ular uzun (prodda
- * uchtagacha, har biri 20+ belgi), raqam yoniga siqilsa ikkalasi ham o'qilmas
- * bo'lardi — arra o'z qatorini saqlab qoladi. */
-function postHajmi(o: {
-  band_m?: number | null
-  band_kinds?: number
-  holes?: number | null
-}): string | null {
-  if (o.band_m != null) {
-    const xil = (o.band_kinds ?? 0) > 1 ? ` · ${o.band_kinds} xil` : ""
-    return `${Math.round(o.band_m)} m kromka${xil}`
-  }
-  return o.holes != null ? `${o.holes} teshik` : null
-}
-
 export function OrderPicker({
   onPick,
   showCutmapBadge = true,
@@ -92,28 +75,9 @@ export function OrderPicker({
                     <div className="truncate text-base font-black">
                       {o.project_name || o.number}
                     </div>
-                    {/* Raqam va SHU postning ish hajmi BITTA qatorda — karta
-                        allaqachon zich, alohida qator uni bekorga cho'zardi.
-                        Raqam qisqaradi, hajm QISQARMAYDI (`shrink-0`): raqam
-                        chek prefiksi bo'lib tanish, hajm esa operator ish
-                        boshlashdan oldin o'qiydigan yagona son. Loyiha nomsiz
-                        buyurtmada raqam yuqorida sarlavha bo'ladi, shuning
-                        uchun bu qator faqat hajmni ko'rsatadi. */}
-                    {(o.project_name || postHajmi(o)) && (
-                      <div className="flex items-baseline gap-1.5 text-sm">
-                        {o.project_name && (
-                          <span className="num min-w-0 truncate text-muted-foreground">
-                            {o.number}
-                          </span>
-                        )}
-                        {o.project_name && postHajmi(o) && (
-                          <span className="text-muted-foreground">·</span>
-                        )}
-                        {postHajmi(o) && (
-                          <span className="shrink-0 font-semibold">
-                            {postHajmi(o)}
-                          </span>
-                        )}
+                    {o.project_name && (
+                      <div className="num text-sm text-muted-foreground">
+                        {o.number}
                       </div>
                     )}
                   </div>
@@ -129,11 +93,13 @@ export function OrderPicker({
                   )}
                 </div>
                 {/* Material — arrachi arradagi plita bo'yicha partiyalab kesadi.
-                    Server buni FAQAT arrada to'ldiradi: kromka metri va teshik
-                    soni yuqorida, raqam qatorida. Kromka TAQSIMOTI kartada
-                    umuman yo'q — uchta material nomi sig'maydi va `truncate`
-                    aynan muhim qismini kesadi; u buyurtma ochilganda ro'yxat
-                    ustida turadi. */}
+                    Kromka metri va teshik soni kartada ATAYLAB yo'q: ular
+                    buyurtma TANLASHGA ta'sir qilmaydi (ro'yxat prioritet va
+                    muddat bo'yicha tartiblangan, lenta bo'yicha partiyalash esa
+                    operatorning emas, rejaning qarori), karta esa takrorlanuvchi
+                    plitka — qarorni o'zgartirmaydigan har qator butun grid
+                    bo'ylab ko'payadi. Ular buyurtma ochilganda, aynan skladga
+                    borish daqiqasida ko'rsatiladi (`KromkaView` / `PrisadkaView`). */}
                 {!!o.materials?.length && (
                   <div className="mt-1 truncate text-sm font-semibold">
                     {o.materials.join(" · ")}

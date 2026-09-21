@@ -83,16 +83,6 @@ class TerminalOrderCard(BaseModel):
     materials: list[str] = []  # karta uchun: arrachi plita bo'yicha partiyalab kesadi
     sheets_total: int
     has_cutmap: bool
-    #: Post uchun ish hajmi — kartada bitta qator. Faqat SHU postga tegishlisi
-    #: to'ldiriladi, qolganlari `None`: plita materiali arrachiniki, kromka metri
-    #: kromkachiniki. KROMKA'da `band_m` — GibLab hisoblagan sarf (`material_usage`,
-    #: `kind="band"`), ya'ni qirqim zaxirasi bilan; xom geometrik yig'indidan 7-11%
-    #: yuqori (ikki buyurtmada o'lchandi). Texnolog GibLab hisobotida shu raqamni
-    #: ko'radi — tsexda ikki xil son aylanmasin.
-    band_m: float | None = None
-    band_kinds: int = 0
-    #: PRISADKA/ROVER: buyurtmadagi jami teshik (yuza + qirra).
-    holes: int | None = None
 
 
 class QrOrderRef(BaseModel):
