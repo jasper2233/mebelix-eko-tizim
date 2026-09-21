@@ -450,6 +450,11 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
         # Bir qirrada ikkalasi ham bo'lsa paz g'olib (uzuq chiziq): prodda bunday detal
         # yo'q (45 loyihada 47 ta faqat pazli, 16 ta faqat frezali, ustma-ust 0), o'lchangan.
         ishlangan_tomonlari = paz_tomonlari + [t for t in frez_tomonlari if t not in paz_tomonlari]
+        # Qaysi tomonda HARF (A/B) chiziladi — yuqoridagi kromka sikli bilan bir
+        # shart. Ikki joyda kerak: ishlangan qirra chizig'i harfga bo'shliq
+        # qoldiradi, tekstura esa harfdan chetlanadi. Ilgari ikkalasi ham harf
+        # bor-yo'qligini BILMASDI (pastdagi izohlarga qara).
+        harfli_tomonlar = {t for t in qirra if d.edges.get(t) and edge_field(t, "symbol")[:3]}
 
         # Detal koordinatasi -> eskiz piksellari. Teshiklar bilan BIR XIL o'girish
         # (yuqoridagi `gor, ver`), chunki ikkalasi ham bitta `ParsedPart` dan keladi.
@@ -496,11 +501,26 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
             # ishlangan qirra tomonidan `zona` qadar joy bo'shatiladi va uchta chiziq
             # QOLGAN kenglikka markazlanadi.
             zona = int(3.2 * mm)
+            # Tomon simvoli ham joy egallaydi — u kromkalangan qirraning ICHKI
+            # chetida turadi. Ilgari faqat ishlangan qirra hisobga olinardi va
+            # ingichka plankada tekstura chizig'i harf ustiga tushardi
+            # (o'lchandi: 1784x283 detalda eskiz eni 6.5 mm, harf enining
+            # 62-88% ida, tekstura chizig'i 75% da). Harf uchun kamroq joy
+            # kerak: 2.8 mm shrift ichki chetdan 0.8 mm da, ya'ni ~2.5 mm.
+            harf_zona = int(2.6 * mm)
             paz_joy = {qirra[t] for t in ishlangan_tomonlari}
+            harf_joy = {qirra[t] for t in harfli_tomonlar}
+
+            def bosh_joy(j: str) -> int:
+                """`j` tomonida teksturaga TEGMAYDIGAN qadar bo'sh joy."""
+                if j in paz_joy:
+                    return zona
+                return harf_zona if j in harf_joy else 0
+
             if burilgan:
                 tl = int(bh * 0.32)
-                chap = bx + (zona if "chap" in paz_joy else 0)
-                ong = bx + bw - (zona if "ong" in paz_joy else 0)
+                chap = bx + bosh_joy("chap")
+                ong = bx + bw - bosh_joy("ong")
                 orta, kenglik = (chap + ong) // 2, max(6, ong - chap)
                 gap = max(3, kenglik // 4)
                 # Paz bo'lgan chekda balandligi bo'yicha ham markazdan chetlanadi:
@@ -516,8 +536,8 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
                     )
             else:
                 tl = int(bw * 0.32)
-                tepa = by + (zona if "tepa" in paz_joy else 0)
-                past = by + bh - (zona if "past" in paz_joy else 0)
+                tepa = by + bosh_joy("tepa")
+                past = by + bh - bosh_joy("past")
                 orta, balandlik = (tepa + past) // 2, max(6, past - tepa)
                 gap = max(3, balandlik // 4)
                 siljish = int(bw * 0.18) if ishlangan_tomonlari else 0
@@ -606,16 +626,21 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
             ich = int(1.4 * mm)  # konturdan ichkariga
             pt = max(2, int(0.6 * mm))
 
-            def qirra_chizigi(x1: int, y1: int, x2: int, y2: int, *, uzuqmi: bool) -> None:
+            def qirra_chizigi(x1: int, y1: int, x2: int, y2: int, *, uzuqmi: bool, harfli: bool) -> None:
                 """Qirra bo'ylab chiziq — PIL'da dash yo'q, qo'lda bo'laklab chiziladi.
 
-                O'rtada bo'shliq qoldiriladi — o'sha joyda tomon simvoli (A/B) turadi va
-                chiziq uning ustidan o'tib harfni o'qib bo'lmas qilardi."""
+                O'rtadagi bo'shliq FAQAT `harfli` bo'lganda qoldiriladi: u aynan
+                tomon simvoli (A/B) uchun va chiziq uning ustidan o'tsa harf
+                o'qilmasdi. Kromkalanmagan qirrada harf CHIZILMAYDI, bo'shliq esa
+                ilgari baribir qolardi — uzluksiz qirra profili IKKITA alohida
+                amal bo'lib ko'rinardi (o'lchandi: 300x400 kromkasiz detalda o'ng
+                freza chizig'i y=35..87 va y=121..173, o'rtada 33 px = 4 mm,
+                eskiz balandligining 21% i)."""
                 # Harf uchun yarim bo'shliq. Qirra qisqa bo'lsa (ingichka detalning
                 # eni 5-15 mm) qat'iy 2.2 mm butun chiziqni yeb qo'yardi — bo'shliq
                 # qirra uzunligining oltidan biridan oshmaydi.
                 uzunlik = (y2 - y1) if x1 == x2 else (x2 - x1)
-                bosh = max(2, min(int(2.2 * mm), uzunlik // 6))
+                bosh = max(2, min(int(2.2 * mm), uzunlik // 6)) if harfli else 0
                 orta = uzunlik // 2
                 if uzuqmi:
                     # Bo'lak ham qirraga moslashadi: 2 metrli plankaning 100 mm li
@@ -629,10 +654,12 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
                     bolaklar = [
                         (b, min(b + uzuq, uzunlik))
                         for b in range(0, uzunlik, qadam)
-                        if min(b + uzuq, uzunlik) < orta - bosh or b > orta + bosh
+                        if not harfli or min(b + uzuq, uzunlik) < orta - bosh or b > orta + bosh
                     ]
-                else:
+                elif harfli:
                     bolaklar = [(0, orta - bosh), (orta + bosh, uzunlik)]
+                else:
+                    bolaklar = [(0, uzunlik)]
                 for boshi, oxiri in bolaklar:
                     if boshi >= oxiri:
                         continue
@@ -643,16 +670,17 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
 
             for tomon in ishlangan_tomonlari:
                 joy, uzuqmi = qirra[tomon], tomon in paz_tomonlari
+                harfli = tomon in harfli_tomonlar
                 if joy == "chap":
-                    qirra_chizigi(bx + ich, by + ich, bx + ich, by + bh - ich, uzuqmi=uzuqmi)
+                    qirra_chizigi(bx + ich, by + ich, bx + ich, by + bh - ich, uzuqmi=uzuqmi, harfli=harfli)
                 elif joy == "ong":
                     x = bx + bw - ich - pt
-                    qirra_chizigi(x, by + ich, x, by + bh - ich, uzuqmi=uzuqmi)
+                    qirra_chizigi(x, by + ich, x, by + bh - ich, uzuqmi=uzuqmi, harfli=harfli)
                 elif joy == "tepa":
-                    qirra_chizigi(bx + ich, by + ich, bx + bw - ich, by + ich, uzuqmi=uzuqmi)
+                    qirra_chizigi(bx + ich, by + ich, bx + bw - ich, by + ich, uzuqmi=uzuqmi, harfli=harfli)
                 else:
                     y = by + bh - ich - pt
-                    qirra_chizigi(bx + ich, y, bx + bw - ich, y, uzuqmi=uzuqmi)
+                    qirra_chizigi(bx + ich, y, bx + bw - ich, y, uzuqmi=uzuqmi, harfli=harfli)
 
         # O'lchamlar: en pastda gorizontal, uzunlik o'ngda aylantirilgan (Universal size.top/left=false).
         # O'lchamlar — harfsiz (tomon simvollari eskiz ichida, o'z tomonida)

@@ -555,7 +555,14 @@ direktor ham ko'radi.
   Prodda bir qirrada ikkala amal ham uchramaydi (qirrasi aniqlangan 63 detalning 47 tasi
   faqat pazli, 16 tasi faqat frezali, ustma-ust 0) — baribir ikkalasi tushsa PAZ g'olib, chunki uzuq chiziq ko'proq ma'lumot
   beradi. Tomon NOMI («o'ng») ATAYLAB yozilmaydi — eskiz uzun tomonni doim vertikal chizadi
-  (`burilgan`), ya'ni nom eskizga zid tushardi. Eskiz ichidagi qolgan elementlar chiziqqa
+  (`burilgan`), ya'ni nom eskizga zid tushardi. Chiziq o'rtasidagi BO'SHLIQ — faqat tomon simvoli (A/B) uchun,
+  ya'ni u FAQAT o'sha qirra KROMKALANGAN bo'lsa qoldiriladi (2026-09-21). Ilgari
+  bo'shliq doim qolardi va kromkasiz qirrada uzluksiz profil IKKITA alohida amal
+  bo'lib ko'rinardi — o'lchandi: 300×400 kromkasiz detalda o'ng freza chizig'i
+  `y=35..87` va `y=121..173`, orasida 33 px = 4 mm, eskiz balandligining 21% i;
+  tuzatishdan keyin `y=35..173` uzluksiz, kromka qo'yilganda esa bo'shliq va uning
+  ichidagi harf o'z joyida qoladi (ikkalasi ham render qilib o'lchangan).
+  Eskiz ichidagi qolgan elementlar chiziqqa
   xalaqit bermasligi uchun: ishlangan qirra bo'lganda TEKSTURA chiziqlari o'sha qirradan
   3.2 mm chetlanadi va markazdan 18% siljiydi (2000×300 teksturali detalda eskiz eni 7 mm —
   chekka tekstura chizig'i chiziq ustiga tushardi), chiziqlar esa TESHIKLARDAN KEYIN
@@ -583,6 +590,12 @@ direktor ham ko'radi.
   (o'lchangan). Shuning uchun yo'l bilan parallel tekstura chizig'i tashlanadi
   (`_teksturasiz`); uchalasi ham tushib qolsa hech biri tashlanmaydi — tekstura
   YO'NALISHI ham kerakli ma'lumot.
+  TOMON SIMVOLI bilan to'qnashuv (2026-09-21): harf kromkalangan qirraning ICHKI chetida
+  turadi va teksturaga ilgari e'tiborsiz edi — ingichka plankada u harf ustiga tushardi.
+  Endi harfli tomon ham joy bo'shatadi, lekin ishlangan qirradan KAMROQ: 2.6 mm
+  (2.8 mm shrift ichki chetdan 0.8 mm da, ya'ni ~2.5 mm egallaydi), ishlangan qirrada esa
+  3.2 mm. O'lchangan: 1784×283 detalda (eskiz eni 52 px, kromka `b`) tekstura chiziqlari
+  eni bo'yicha 25% va 75% da turardi — 75% aynan harf ustiga tushardi; endi 15% va 31%.
 - `app/services/availability.py` — OEE Availability sof funksiyalari (`plan_windows`, `stop_runs`, `availability`):
   reja vaqti ish jadvalidan, to'xtashlar chiroq holatlaridan, sabab `downtime` dan; `GET /reports/machine-time`
   ishlatadi (docs/12 §4.5).
