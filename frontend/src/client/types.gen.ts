@@ -3877,6 +3877,68 @@ export type SystemSettingUpdate = {
 };
 
 /**
+ * TabloDefectRow
+ */
+export type TabloDefectRow = {
+    /**
+     * At
+     */
+    at: string;
+    /**
+     * Part Name
+     */
+    part_name: string;
+    /**
+     * Qr Text
+     */
+    qr_text: string;
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Status
+     */
+    status: string;
+};
+
+/**
+ * TabloMachineDetail
+ *
+ * Stanok kartasini bosganda: uch davr OEE si va shu stanokning oxirgi hodisalari.
+ */
+export type TabloMachineDetail = {
+    /**
+     * Machine Id
+     */
+    machine_id: number;
+    /**
+     * Machine Name
+     */
+    machine_name: string;
+    /**
+     * Post Name
+     */
+    post_name: string;
+    /**
+     * Periods
+     */
+    periods: Array<TabloPeriod>;
+    /**
+     * Recent Scans
+     */
+    recent_scans: Array<TabloScanRow>;
+    /**
+     * Defects
+     */
+    defects: Array<TabloDefectRow>;
+    /**
+     * Stops
+     */
+    stops: Array<TabloStopRow>;
+};
+
+/**
  * TabloMachineRow
  *
  * Devordagi stanok taxtasining bitta kartasi — Pico ulangan BITTA ish markazi.
@@ -3949,6 +4011,10 @@ export type TabloMachineRow = {
      * Pending Reasons
      */
     pending_reasons: number;
+    /**
+     * Window From
+     */
+    window_from?: string | null;
     /**
      * Last Mm
      */
@@ -4068,6 +4134,50 @@ export type TabloPartRow = {
 };
 
 /**
+ * TabloPeriod
+ *
+ * Bitta davr (bugun / hafta / oy) yakuni — kartani bosganda ochiladigan oynada.
+ */
+export type TabloPeriod = {
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Planned S
+     */
+    planned_s: number;
+    /**
+     * Run S
+     */
+    run_s: number;
+    /**
+     * Availability Pct
+     */
+    availability_pct: number | null;
+    /**
+     * Parts
+     */
+    parts: number;
+    /**
+     * Defects
+     */
+    defects: number;
+    /**
+     * Performance Pct
+     */
+    performance_pct: number | null;
+    /**
+     * Quality Pct
+     */
+    quality_pct: number | null;
+    /**
+     * Oee Pct
+     */
+    oee_pct: number | null;
+};
+
+/**
  * TabloPostCol
  *
  * Matritsa ustuni — post metadatasi (frontend ustun sarlavhalari shu bilan chiziladi).
@@ -4093,6 +4203,56 @@ export type TabloPostCol = {
      * Order Index
      */
     order_index: number;
+};
+
+/**
+ * TabloScanRow
+ *
+ * Stanokda bajarilgan oxirgi ishlardan bittasi.
+ */
+export type TabloScanRow = {
+    /**
+     * At
+     */
+    at: string;
+    /**
+     * Part Name
+     */
+    part_name: string;
+    /**
+     * Qr Text
+     */
+    qr_text: string;
+    /**
+     * Employee
+     */
+    employee: string | null;
+};
+
+/**
+ * TabloStopRow
+ */
+export type TabloStopRow = {
+    /**
+     * Started At
+     */
+    started_at: string;
+    /**
+     * Ended At
+     */
+    ended_at: string | null;
+    /**
+     * Seconds
+     */
+    seconds: number;
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * Reason
+     */
+    reason: string | null;
 };
 
 /**
@@ -7643,6 +7803,36 @@ export type ReadTabloMachinesResponses = {
 };
 
 export type ReadTabloMachinesResponse = ReadTabloMachinesResponses[keyof ReadTabloMachinesResponses];
+
+export type ReadTabloMachineData = {
+    body?: never;
+    path: {
+        /**
+         * Machine Id
+         */
+        machine_id: number;
+    };
+    query?: never;
+    url: '/api/v1/tablo/machines/{machine_id}';
+};
+
+export type ReadTabloMachineErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadTabloMachineError = ReadTabloMachineErrors[keyof ReadTabloMachineErrors];
+
+export type ReadTabloMachineResponses = {
+    /**
+     * Successful Response
+     */
+    200: TabloMachineDetail;
+};
+
+export type ReadTabloMachineResponse = ReadTabloMachineResponses[keyof ReadTabloMachineResponses];
 
 export type ReadTabloMatrixData = {
     body?: never;

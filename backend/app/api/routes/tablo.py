@@ -1,6 +1,6 @@
 """TABLO data API: orders × stages live matrix. Read-only, any authenticated device."""
 
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
@@ -11,16 +11,20 @@ from app.api.deps import CurrentUser, SessionDep
 from app.api.routes.orders._common import _get_visible_order
 from app.api.routes.reports import report_machine_time
 from app.core.config import TASHKENT_TZ
+from app.core.exceptions import NotFoundException
 from app.models import (
     ORDER_FAT_COLUMNS,
     PART_FAT_COLUMNS,
     PRIORITY_RANK,
     Downtime,
+    DowntimeReason,
     Employee,
     KromkaMeasurement,
     Machine,
     Order,
     Part,
+    PartDefect,
+    PartInstance,
     PartRoute,
     Post,
     Product,
@@ -30,15 +34,22 @@ from app.models import (
 from app.models.enums import DowntimeKind, OrderStatus, SessionStatus
 from app.schemas.tablo import (
     StageAgg,
+    TabloDefectRow,
+    TabloMachineDetail,
     TabloMachineRow,
     TabloMatrix,
     TabloOrderDetail,
     TabloOrderRow,
     TabloPartRow,
+    TabloPeriod,
     TabloPostCol,
+    TabloScanRow,
+    TabloStopRow,
 )
 from app.services.andon import read_live
+from app.services.availability import plan_windows
 from app.services.metrics import VolumeShare, part_volume
+from app.services.settings_service import get_work_schedule
 
 router = APIRouter(prefix="/tablo", tags=["tablo"])
 
@@ -69,6 +80,11 @@ async def read_tablo_machines(db: SessionDep, user: CurrentUser) -> list[TabloMa
         .all()
     )
     kun_boshi = datetime.combine(bugun, time.min, tzinfo=TASHKENT_TZ)
+    # Hisob qaysi lahzadan beri yuritilyapti: bugungi BIRINCHI ish oynasining boshi.
+    # Kartada «08:00 dan beri · 3 soat 40 daq» bo'lib chiqadi — taxtaga qaragan odam
+    # raqam nimaga nisbatan ekanini so'ramasin.
+    oynalar = plan_windows(await get_work_schedule(db), kun_boshi, datetime.now(UTC))
+    oyna_boshi = oynalar[0][0] if oynalar else None
     sababsiz = dict(
         (
             await db.execute(
@@ -149,6 +165,7 @@ async def read_tablo_machines(db: SessionDep, user: CurrentUser) -> list[TabloMa
                 quality_pct=r.quality_pct,
                 oee_pct=r.oee_pct,
                 pending_reasons=sababsiz.get(r.machine_id, 0),
+                window_from=oyna_boshi,
                 last_mm=float(olchov.measured_mm) if olchov and olchov.measured_mm is not None else None,
                 last_verdict=olchov.verdict.value if olchov else None,
                 last_part=None,
@@ -177,6 +194,123 @@ async def read_tablo_machines(db: SessionDep, user: CurrentUser) -> list[TabloMa
 # 669 ms -> 175 ms) OLDIN olingan. 2026-08-26 da qayta o'lchandi: 19 buyurtma
 # uchun 84-120 ms, og'ir qism `part_route` agregatsiyasi. Oyna endi umuman
 # kerak emas: ro'yxatni TMO ning o'zi cheklaydi.
+
+
+#: Kartani bosganda ochiladigan oynadagi ro'yxatlar uzunligi — devor ekrani emas,
+#: usta qo'lidagi oyna: aylantirmasdan ko'rinadigan uzunlik yetarli.
+_DETAIL_N = 15
+
+
+@router.get("/machines/{machine_id}", response_model=TabloMachineDetail, operation_id="read_tablo_machine")
+async def read_tablo_machine(db: SessionDep, user: CurrentUser, machine_id: int) -> TabloMachineDetail:
+    """Bitta stanok: bugungi/haftalik/oylik OEE va oxirgi hodisalari.
+
+    OEE uchala davrda ham «Stanok vaqti» hisobotidan olinadi (uch chaqiruv) — taxtadagi
+    raqam bilan hisobotdagi raqam bitta manbadan chiqsin. Bu oyna TV da emas, ustaning
+    bosishi bilan ochiladi, ya'ni uch marta hisoblash narxi joyida."""
+    machine = await db.get(Machine, machine_id)
+    if machine is None or machine.is_deleted:
+        raise NotFoundException("Ish markazi topilmadi.")
+    post = await db.get(Post, machine.post_id)
+    bugun = datetime.now(TASHKENT_TZ).date()
+
+    davrlar: list[TabloPeriod] = []
+    for nom, kun in (("Bugun", 0), ("7 kun", 6), ("30 kun", 29)):
+        hisobot = await report_machine_time(db, user, date_from=bugun - timedelta(days=kun), date_to=bugun)
+        if isinstance(hisobot, StreamingResponse):  # pragma: no cover — format="json"
+            continue
+        r = next((x for x in hisobot.rows if x.machine_id == machine_id), None)
+        davrlar.append(
+            TabloPeriod(
+                label=nom,
+                planned_s=r.planned_s if r else 0,
+                run_s=r.run_s if r else 0,
+                availability_pct=r.availability_pct if r else None,
+                parts=r.parts if r else 0,
+                defects=r.defects if r else 0,
+                performance_pct=r.performance_pct if r else None,
+                quality_pct=r.quality_pct if r else None,
+                oee_pct=r.oee_pct if r else None,
+            )
+        )
+
+    skanlar = [
+        TabloScanRow(at=at, part_name=part_name, qr_text=qr, employee=ism)
+        for at, part_name, qr, ism in (
+            (
+                await db.execute(
+                    select(Scan.created_at, Part.name, PartInstance.qr_text, Employee.full_name)
+                    .join(Part, Part.id == Scan.part_id)
+                    .join(PartInstance, PartInstance.id == Scan.instance_id)
+                    .outerjoin(Employee, Employee.id == Scan.employee_id)
+                    .where(
+                        Scan.machine_id == machine_id,
+                        Scan.is_cancelled == False,  # noqa: E712
+                        Scan.is_deleted == False,  # noqa: E712
+                    )
+                    .order_by(Scan.created_at.desc())
+                    .limit(_DETAIL_N)
+                )
+            )
+            .tuples()
+            .all()
+        )
+    ]
+    braklar = [
+        TabloDefectRow(at=at, part_name=part_name, qr_text=qr, reason=sabab, status=holat.value)
+        for at, part_name, qr, sabab, holat in (
+            (
+                await db.execute(
+                    select(PartDefect.created_at, Part.name, PartInstance.qr_text, PartDefect.reason, PartDefect.status)
+                    .join(Part, Part.id == PartDefect.part_id)
+                    .join(PartInstance, PartInstance.id == PartDefect.instance_id)
+                    .where(
+                        PartDefect.machine_id == machine_id,
+                        PartDefect.is_deleted == False,  # noqa: E712
+                    )
+                    .order_by(PartDefect.created_at.desc())
+                    .limit(_DETAIL_N)
+                )
+            )
+            .tuples()
+            .all()
+        )
+    ]
+    hozir = datetime.now(UTC)
+    toxtashlar = [
+        TabloStopRow(
+            started_at=boshi,
+            ended_at=oxiri,
+            seconds=int(((oxiri or hozir) - boshi).total_seconds()),
+            kind=turi.value,
+            reason=sabab,
+        )
+        for boshi, oxiri, turi, sabab in (
+            (
+                await db.execute(
+                    select(Downtime.started_at, Downtime.ended_at, Downtime.kind, DowntimeReason.name)
+                    .outerjoin(DowntimeReason, DowntimeReason.id == Downtime.reason_id)
+                    .where(
+                        Downtime.machine_id == machine_id,
+                        Downtime.is_deleted == False,  # noqa: E712
+                    )
+                    .order_by(Downtime.started_at.desc())
+                    .limit(_DETAIL_N)
+                )
+            )
+            .tuples()
+            .all()
+        )
+    ]
+    return TabloMachineDetail(
+        machine_id=machine_id,
+        machine_name=machine.name,
+        post_name=post.name if post else "",
+        periods=davrlar,
+        recent_scans=skanlar,
+        defects=braklar,
+        stops=toxtashlar,
+    )
 
 
 @router.get("/matrix", response_model=TabloMatrix, operation_id="read_tablo_matrix")

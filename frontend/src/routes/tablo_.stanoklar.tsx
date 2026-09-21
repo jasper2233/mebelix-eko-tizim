@@ -13,9 +13,20 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import { type TabloMachineRow, TabloService } from "@/client"
 import { BrandLoader } from "@/components/Common/BrandLoader"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { useMesWs } from "@/hooks/useMesWs"
 import { requireAuth } from "@/lib/guards"
-import { ANDON_STATE_LABELS, KROMKA_VERDICT_LABELS } from "@/lib/mes"
+import {
+  ANDON_STATE_LABELS,
+  DEFECT_STATUS_LABELS,
+  DOWNTIME_KIND_LABELS,
+  KROMKA_VERDICT_LABELS,
+} from "@/lib/mes"
 import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/tablo_/stanoklar")({
@@ -96,13 +107,35 @@ function Metric({
   )
 }
 
-function MachineCard({ row }: { row: TabloMachineRow }) {
+/** "08:00" — hisob qaysi lahzadan beri yuritilyapti. */
+const soatDaqiqa = (iso: string | null | undefined) =>
+  iso
+    ? new Date(iso).toLocaleTimeString("uz-UZ", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null
+
+function MachineCard({
+  row,
+  onOpen,
+}: {
+  row: TabloMachineRow
+  onOpen: () => void
+}) {
   const tone = row.state ? (TONE[row.state] ?? TONE.OFF) : LINK_LOST
   const holat = row.state
     ? (ANDON_STATE_LABELS[row.state] ?? row.state)
     : "ALOQA YO'Q"
+  const boshi = soatDaqiqa(row.window_from)
   return (
-    <article className="flex min-w-0 flex-col overflow-hidden rounded-2xl bg-slate-900 ring-1 ring-slate-700/70">
+    // Bosilganda shu stanokning tafsiloti ochiladi (kunlik/haftalik/oylik OEE,
+    // oxirgi ishlar, brak va to'xtashlar). Devor ekranida bosilmaydi — zarari yo'q.
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex w-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl bg-slate-900 text-left ring-1 ring-slate-700/70 transition hover:ring-2 hover:ring-amber-400/60"
+    >
       {/* Holat lentasi — kartaning eng katta va eng uzoqdan ko'rinadigan qismi */}
       <div
         className={cn(
@@ -134,10 +167,17 @@ function MachineCard({ row }: { row: TabloMachineRow }) {
         </div>
 
         <div className="num text-base text-slate-400">
-          Bugun ish {soat(row.run_s)} · to'xtash {soat(row.stop_s)} ·{" "}
-          {row.parts} detal
+          Ish {soat(row.run_s)} · to'xtash {soat(row.stop_s)} · {row.parts}{" "}
+          detal
           {row.defects > 0 ? ` · ${row.defects} brak` : ""}
         </div>
+        {/* Raqam NIMAGA nisbatan ekani: reja vaqti hozirgi lahzada kesiladi —
+            soat 11 da 3 soat, 18:00 da to'liq smena */}
+        {boshi && (
+          <div className="num text-sm text-slate-500">
+            {boshi} dan beri · reja {soat(row.planned_s)}
+          </div>
+        )}
 
         {/* OEE to'rtligi: A · P · Q va ko'paytmasi */}
         <div className="flex gap-4 border-t border-slate-800 pt-3">
@@ -179,11 +219,206 @@ function MachineCard({ row }: { row: TabloMachineRow }) {
           </div>
         )}
       </div>
-    </article>
+    </button>
   )
 }
 
 const QUERY_KEY = ["tablo", "machines"]
+
+/** Kartani bosganda: shu stanokning kunlik/haftalik/oylik OEE si va oxirgi hodisalari.
+ *
+ *  Devor ekrani uchun emas — usta yoki menejer bosadi, shuning uchun bu yerda mayda
+ *  shrift va ro'yxatlar bo'lishi mumkin. */
+function MachineDialog({
+  machineId,
+  onClose,
+}: {
+  machineId: number | null
+  onClose: () => void
+}) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["tablo", "machine", machineId],
+    queryFn: async () =>
+      (
+        await TabloService.readTabloMachine({
+          path: { machine_id: machineId as number },
+        })
+      ).data,
+    enabled: machineId != null,
+  })
+
+  return (
+    <Dialog open={machineId != null} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto border-slate-700 bg-slate-900 text-slate-100 sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-black uppercase">
+            {data?.machine_name ?? "Stanok"}
+            <span className="ml-3 text-base font-normal text-slate-400">
+              {data?.post_name}
+            </span>
+          </DialogTitle>
+        </DialogHeader>
+
+        {isLoading || !data ? (
+          <BrandLoader />
+        ) : (
+          <div className="space-y-6">
+            {/* Uch davr — bir xil ustunlar, taqqoslash uchun yonma-yon */}
+            <table className="w-full text-base">
+              <thead className="text-left text-xs uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="py-1">Davr</th>
+                  <th className="py-1 text-right">Reja</th>
+                  <th className="py-1 text-right">Ishladi</th>
+                  <th className="py-1 text-right">A</th>
+                  <th className="py-1 text-right">P</th>
+                  <th className="py-1 text-right">Q</th>
+                  <th className="py-1 text-right">OEE</th>
+                  <th className="py-1 text-right">Detal</th>
+                  <th className="py-1 text-right">Brak</th>
+                </tr>
+              </thead>
+              <tbody className="num">
+                {data.periods.map((p) => (
+                  <tr key={p.label} className="border-t border-slate-800">
+                    <td className="py-2 font-bold uppercase">{p.label}</td>
+                    <td className="py-2 text-right text-slate-400">
+                      {soat(p.planned_s)}
+                    </td>
+                    <td className="py-2 text-right text-slate-400">
+                      {soat(p.run_s)}
+                    </td>
+                    <td className="py-2 text-right">
+                      {foiz(p.availability_pct)}
+                    </td>
+                    <td className="py-2 text-right">
+                      {foiz(p.performance_pct)}
+                    </td>
+                    <td className="py-2 text-right">{foiz(p.quality_pct)}</td>
+                    <td className="py-2 text-right text-lg font-black text-amber-300">
+                      {foiz(p.oee_pct)}
+                    </td>
+                    <td className="py-2 text-right text-slate-400">
+                      {p.parts}
+                    </td>
+                    <td className="py-2 text-right text-slate-400">
+                      {p.defects}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <Section title="Oxirgi to'xtashlar va avariyalar">
+              {data.stops.length === 0 ? (
+                <Empty>To'xtash yozilmagan.</Empty>
+              ) : (
+                data.stops.map((r) => (
+                  <Row
+                    key={`${r.started_at}-${r.kind}`}
+                    left={`${vaqt(r.started_at)} · ${DOWNTIME_KIND_LABELS[r.kind] ?? r.kind}`}
+                    right={soat(r.seconds)}
+                    note={
+                      r.reason ??
+                      (r.ended_at ? "sabab kiritilmagan" : "davom etyapti")
+                    }
+                    tone={r.kind === "fault" ? "text-red-300" : undefined}
+                  />
+                ))
+              )}
+            </Section>
+
+            <Section title="Brak">
+              {data.defects.length === 0 ? (
+                <Empty>Brak qayd qilinmagan.</Empty>
+              ) : (
+                data.defects.map((r) => (
+                  <Row
+                    key={`${r.at}-${r.qr_text}`}
+                    left={`${vaqt(r.at)} · ${r.part_name}`}
+                    right={DEFECT_STATUS_LABELS[r.status] ?? r.status}
+                    note={`${r.reason} · ${r.qr_text}`}
+                    tone="text-red-300"
+                  />
+                ))
+              )}
+            </Section>
+
+            <Section title="Oxirgi bajarilgan ishlar">
+              {data.recent_scans.length === 0 ? (
+                <Empty>Skan yo'q.</Empty>
+              ) : (
+                data.recent_scans.map((r) => (
+                  <Row
+                    key={`${r.at}-${r.qr_text}`}
+                    left={`${vaqt(r.at)} · ${r.part_name}`}
+                    right={r.employee ?? ""}
+                    note={r.qr_text}
+                  />
+                ))
+              )}
+            </Section>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function Section({
+  title,
+  children,
+}: {
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <section>
+      <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-slate-400">
+        {title}
+      </h3>
+      <div className="divide-y divide-slate-800 rounded-xl bg-slate-950/60">
+        {children}
+      </div>
+    </section>
+  )
+}
+
+const Empty = ({ children }: { children: React.ReactNode }) => (
+  <p className="px-3 py-3 text-slate-500">{children}</p>
+)
+
+function Row({
+  left,
+  right,
+  note,
+  tone,
+}: {
+  left: string
+  right: string
+  note?: string
+  tone?: string
+}) {
+  return (
+    <div className="flex items-baseline gap-3 px-3 py-2">
+      <span className={cn("num min-w-0 flex-1 truncate", tone)}>{left}</span>
+      {note && (
+        <span className="num hidden truncate text-sm text-slate-500 sm:block">
+          {note}
+        </span>
+      )}
+      <span className="num shrink-0 font-bold text-slate-300">{right}</span>
+    </div>
+  )
+}
+
+const vaqt = (iso: string) =>
+  new Date(iso).toLocaleString("uz-UZ", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
 
 function StanoklarPage() {
   const queryClient = useQueryClient()
@@ -221,6 +456,7 @@ function StanoklarPage() {
     return () => clearInterval(t)
   }, [])
 
+  const [ochiq, setOchiq] = useState<number | null>(null)
   const rows = data ?? []
   return (
     <div className="min-h-screen bg-slate-950 p-6 text-slate-100">
@@ -249,10 +485,15 @@ function StanoklarPage() {
       ) : (
         <div className="grid gap-5 lg:grid-cols-2 2xl:grid-cols-3">
           {rows.map((row) => (
-            <MachineCard key={row.machine_id} row={row} />
+            <MachineCard
+              key={row.machine_id}
+              row={row}
+              onOpen={() => setOchiq(row.machine_id)}
+            />
           ))}
         </div>
       )}
+      <MachineDialog machineId={ochiq} onClose={() => setOchiq(null)} />
     </div>
   )
 }
