@@ -9,9 +9,8 @@
 // DIZAYN. Karta — tsexning o'z buyumi: kesilgan PANEL, chap chekkasida kromka
 // lentasi. Holat aynan shu lentaning rangi bilan beriladi (eng uzoqdan ko'rinadigan
 // element), panelning o'zi tinch qoladi. Ekranda YAGONA oltin raqam bor — OEE:
-// taxtaga qaragan odam avval uni, keyin qolganini o'qiydi. Ish oynasi («08:00 dan
-// beri») har kartada takrorlanmaydi — u hamma stanokka bir xil, shuning uchun
-// sarlavhada bir marta turadi.
+// taxtaga qaragan odam avval uni, keyin qolganini o'qiydi. Sarlavhada ortiqcha
+// izoh yo'q: nom, soat va qaytish havolasi — xolos.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
@@ -82,14 +81,6 @@ function davomiyligi(iso: string | null | undefined): string {
   if (d < 60) return `${d} daq`
   return `${Math.floor(d / 60)} soat ${d % 60} daq`
 }
-
-const soatDaqiqa = (iso: string | null | undefined) =>
-  iso
-    ? new Date(iso).toLocaleTimeString("uz-UZ", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : null
 
 /** OEE ning uch tarkibi: nom, ustun, foiz. Ustun raqamdan oldin o'qiladi —
  *  qaysi biri stanokni pastga tortayotgani bir qarashda ko'rinadi. */
@@ -508,19 +499,11 @@ function StanoklarPage() {
 
   const [ochiq, setOchiq] = useState<number | null>(null)
   const rows = data ?? []
-  // Ish oynasi hamma stanokka bir xil — sarlavhada bir marta, kartalarda emas
-  const boshi = soatDaqiqa(rows[0]?.window_from)
-  const reja = rows[0] ? soat(rows[0].planned_s) : null
 
   return (
     <div className="min-h-screen bg-[#0E1116] px-8 py-7 text-[#E7EAEF]">
       <header className="mb-7 flex flex-wrap items-baseline gap-x-6 gap-y-2">
         <h1 className="text-4xl font-black tracking-tight">Stanoklar</h1>
-        {boshi && reja && (
-          <p className="num text-xl text-[#8B95A5]">
-            Smena {boshi} da boshlandi, shundan beri {reja} hisoblanmoqda
-          </p>
-        )}
         <span className="num ml-auto text-2xl font-semibold text-[#C8D0DC]">
           {new Date().toLocaleTimeString("uz-UZ", {
             hour: "2-digit",
