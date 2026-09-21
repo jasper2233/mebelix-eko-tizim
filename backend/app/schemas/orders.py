@@ -279,3 +279,36 @@ class MatrixPartEdit(BaseModel):
 
 class MatrixEdit(BaseModel):
     edits: list[MatrixPartEdit]
+
+
+class InstanceStep(BaseModel):
+    """Nusxaning bitta marshrut qadami va undagi holati."""
+
+    seq: int
+    post_code: str
+    #: Shu qadamda kerakli skanlar (kromkada — qirralar soni)
+    need: int
+    done: int
+
+
+class InstanceTrace(BaseModel):
+    """One instance: its route and where it physically is."""
+
+    qr_text: str
+    order_id: int
+    order_number: str
+    order_status: OrderStatus
+    part_name: str
+    instance_no: int
+    #: Sukut YO'Q: u generatsiya qilingan TS tipida maydonni ixtiyoriy qilardi.
+    steps: list[InstanceStep]
+    #: Oxirgi SKAN qaysi postda bo'lgan — detal jismonan o'sha yerda.
+    #: Bu «oxirgi tugagan qadam» EMAS: 4 qirrali kromka detalida 2 ta skan
+    #: bo'lsa qadam tugamagan, lekin detal KROMKAda turibdi.
+    last_post: str | None = None
+    last_at: datetime | None = None
+    #: Kutilayotgan birinchi TUGAMAGAN qadam — ish shu yerda to'xtagan
+    next_post: str | None = None
+    #: Ochiq brak (`pending`/`confirmed`) qaysi postda belgilangan
+    defect_post: str | None = None
+    defect_reason: str | None = None

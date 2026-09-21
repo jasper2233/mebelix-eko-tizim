@@ -4,9 +4,8 @@
 // takrorlanadi va sarlavhada allaqachon turadi — ko'z farqlovchi qismga tushsin.
 // Prefikssiz eski ID'lar o'zgarishsiz chiqadi (regex mos kelmaydi).
 
+import { ORDER_PREFIX } from "@/lib/mes"
 import { cn } from "@/lib/utils"
-
-const ORDER_PREFIX = /^(B-\d{4}-\d+_)(.+)$/i
 
 export function Serial({
   code,
@@ -15,13 +14,13 @@ export function Serial({
   code: string
   className?: string
 }) {
-  const m = ORDER_PREFIX.exec(code)
+  const prefiks = ORDER_PREFIX.exec(code)?.[0]
   return (
     <span className={cn("num whitespace-nowrap", className)} title={code}>
-      {m ? (
+      {prefiks ? (
         <>
-          <span className="font-medium text-muted-foreground">{m[1]}</span>
-          {m[2]}
+          <span className="font-medium text-muted-foreground">{prefiks}</span>
+          {code.slice(prefiks.length)}
         </>
       ) : (
         code

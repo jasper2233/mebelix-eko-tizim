@@ -19,6 +19,7 @@ import { RowOpenCell } from "@/components/Common/RowOpen"
 import { SearchInput } from "@/components/Common/SearchInput"
 import { StatusBadge } from "@/components/Common/StatusBadge"
 import { AddOrder } from "@/components/Orders/AddOrder"
+import { looksLikePartId, PartTrace } from "@/components/Orders/PartTrace"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -37,6 +38,7 @@ import {
   formatDate,
   formatMoney,
   isManager,
+  isProductionStaff,
   isSuperuser,
   ORDER_STATUS_LABELS,
   PRIORITY_LABELS,
@@ -140,13 +142,20 @@ function deadlineClass(o: {
 
 function OrdersPage() {
   const navigate = useNavigate()
+  const { currentUser } = useCurrentUser()
   const initialStatus = Route.useSearch().status ?? ""
   const [status, setStatus] = useState<OrderStatus | "">(initialStatus)
   const [search, setSearch] = useState("")
   const debounced = useDebounced(search.trim())
+  // Detal ID kiritilsa reestr emas, nusxa izi ko'rsatiladi — bitta maydon,
+  // ikki javob. Buyurtma so'rovi shu paytda o'chadi: Detal ID shaklidagi matn
+  // buyurtma raqami/nomi/mijoziga tushmaydi, javob doim bo'sh bo'lardi.
+  const detalQidiruvi = isProductionStaff(currentUser)
+  const detalRejimi = detalQidiruvi && looksLikePartId(debounced)
   const { data, isLoading, isError, refetch } = useQuery({
     ...getOrdersQueryOptions({ status, search: debounced }),
     placeholderData: keepPreviousData,
+    enabled: !detalRejimi,
   })
   const { data: counts } = useQuery(getOrderStatusCountsQueryOptions())
   const tabCount = (value: string) =>
@@ -191,7 +200,6 @@ function OrdersPage() {
     )
   }, [data, sort])
 
-  const { currentUser } = useCurrentUser()
   const canCreate = isManager(currentUser)
   // Qatordan o'chirish: qoralama — menejer, bekor qilingan (tirik skansiz) —
   // superuser. Har birini sahifasiga kirib tekshirish shart emas.
@@ -250,12 +258,18 @@ function OrdersPage() {
         </Tabs>
         <SearchInput
           className="w-full md:ml-auto md:max-w-xs"
-          placeholder="Raqam, nom yoki mijoz"
+          placeholder={
+            detalQidiruvi
+              ? "Raqam, nom, mijoz yoki detal ID"
+              : "Raqam, nom yoki mijoz"
+          }
           value={search}
           onChange={setSearch}
         />
       </div>
-      {isLoading ? (
+      {detalRejimi ? (
+        <PartTrace q={debounced} />
+      ) : isLoading ? (
         <Skeleton className="h-64 w-full" />
       ) : isError ? (
         <QueryError onRetry={() => refetch()} />

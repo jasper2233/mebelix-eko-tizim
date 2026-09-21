@@ -26,6 +26,7 @@ import {
 import {
   chipColors,
   formatSize,
+  ORDER_PREFIX,
   POST_COLORS,
   routeStepNames,
   STANDARD_MATRIX_POSTS,
@@ -143,7 +144,7 @@ export function OrderMatrix({
   const q = query
     .trim()
     .toLowerCase()
-    .replace(/^b-\d{4}-\d+_/, "")
+    .replace(ORDER_PREFIX, "")
     .replace(/^(.*_\d{3})_\d+$/, "$1")
   const visibleParts = q
     ? matrix.parts.filter((p) =>

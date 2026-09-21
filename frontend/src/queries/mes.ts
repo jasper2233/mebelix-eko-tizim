@@ -81,6 +81,13 @@ export const getOrdersQueryOptions = (
       ).data,
   })
 
+export const getInstanceTraceQueryOptions = (q: string) =>
+  queryOptions({
+    queryKey: ["orders", "instances", q],
+    queryFn: async () =>
+      (await OrdersService.traceInstances({ query: { q } })).data,
+  })
+
 export const getOrderQueryOptions = (orderId: number) =>
   queryOptions({
     queryKey: ["orders", orderId],

@@ -350,6 +350,31 @@ Buyurtma sahifalari (`/orders`, `/orders/$orderId`) uchun dialog va jadval kompo
 
 - Soni 0 detal (GibLab faylida shunday keladi, prod bazasida 2 ta): soni xira, bosqich kataklari «—» — ilgari 0/0 «✓» bo'lib «tayyor» degan yolg'on taassurot berardi.
 
+### `frontend/src/components/Orders/PartTrace.tsx`
+
+**Maqsadi:** «Bu detal qayerda?» — OFIS javobi. Tsexda operator javobni o'z postidagi ro'yxatdan oladi (kromka sahifasida kelmagan nusxa qaysi postda turgani chipda yozilgan); ofisda savol boshqa — buyurtma nimadan to'xtab qoldi, detal kimda qolib ketdi.
+
+- **Alohida maydon YO'Q.** Reestrdagi bitta qidiruv maydoni ikki javob beradi: `looksLikePartId(q)` rost bo'lsa jadval o'rniga shu panel chiqadi, buyurtma so'rovi esa `enabled: false` bo'ladi (bunday matn hech qachon raqam/nom/mijozga tushmaydi, javob doim bo'sh bo'lardi).
+- **Ajratgich — SHAKL bo'yicha, «`_` bor» emas.** «Pastki chiziq bor» qoidasi sinalib RAD ETILDI: prodda 82 buyurtmaning **45 tasida** loyiha nomida `_` bor (`3168_Muzaffar`, `4357_Murod_aka`), ya'ni u buyurtmalarning yarmini qidirishni buzardi. O'rniga ikki naqsh (prodda 5802 nusxa, 82 buyurtma, 46 mijozda o'lchangan):
+
+  | Naqsh | Detal ID qamrovi | Yolg'on ijobiy (raqam/loyiha/mijoz) |
+  |---|---|---|
+  | `ORDER_PREFIX` = `^B-\d{4}-\d+_` (`lib/mes`) | **5802/5802** | **0** |
+  | `PREFIKSSIZ` = `^\d{3,6}_\d{1,3}_` | qisman | **0** |
+
+  Birinchisi chekda yozilgani — odam aynan shuni ko'chiradi; ikkinchisi buyurtma prefiksisiz, faqat detal kodini yozganlar uchun. Prefiks naqshi `lib/mes.ts: ORDER_PREFIX` da YAGONA: ilgari u `Serial`, `OrderMatrix` qidiruvi va bu yerda uch marta qo'lda yozilgandi va uchinchisi `\d{3}` bilan TOR edi — yilning 1000-buyurtmasi (`B-2026-1000_...`) tanilmay qolardi, chunki `next_number` `:03d` (MINIMAL kenglik) bilan yozadi.
+- Ma'lumot — `getInstanceTraceQueryOptions(q)` → `GET /orders/instances?q=` (`StaffReadUser`: manager, texnolog, direktor, admin; frontda `isProductionStaff` bilan bir xil to'plam). Yangi ma'lumot yig'ilmaydi — backend `Scan` + `PartRoute` + `PartDefect` dan hisoblaydi.
+- Har nusxa — kartochka-havola (buyurtma sahifasiga): Detal ID (`num`, primary) → detal nomi · buyurtma raqami → marshrut. Marshrut YANGI element emas — `Common/StagePipeline showLabels` qayta ishlatiladi (`steps[].post_code/done/need`), ya'ni ofis buyurtma sahifasida va dashboardda ko'rgan bilan BIR XIL vizual grammatika. Nostandart marshrut avtomatik to'g'ri chiqadi: kataklar detalning O'Z marshrutidan keladi (prodda 9 xil shakl tekshirildi — KROMKA'siz, PRISADKA'siz va 4 qirrali variantlar).
+- Ostida bitta satr matn, TO'RT holatda:
+  - `last_post != next_post` — «**KROMKA** dan o'tgan · 2 soat oldin → **PRISADKA** navbatida»;
+  - `last_post == next_post` — detal shu postda hali **ish ostida**: «**KROMKA** da — ish ostida (2/4) · oxirgi skan 2 soat oldin». Bu holat ko'p qadamli postlarda odatiy (kromkada `per_instance` 4 gacha); ajratilmasa matn «KROMKA dan o'tgan → KROMKA navbatida» bo'lib bema'ni chiqardi;
+  - skansiz — «Hali skanlanmagan — **ARRA** dan boshlanadi»;
+  - marshrutsiz — «Marshrut belgilanmagan» (aks holda «— dan boshlanadi» bo'lib chiqardi).
+
+  `last_post` — oxirgi SKAN qaysi postda bo'lgani (detal jismonan o'sha yerda), «oxirgi TUGAGAN qadam» EMAS (`scanning.instance_stages` dan farqi shunda).
+- Ochiq brak (`pending`/`confirmed`) bo'lsa pastda qizil satr: «BRAK · KROMKA — sabab». Rad etilgan (`rejected`) brak KO'RSATILMAYDI.
+- Chegara 50 nusxa; yetilganda «Detal ID ni to'liqroq kiriting» eslatmasi.
+
 ### `frontend/src/components/Orders/CustomRoutes.tsx`
 
 **Maqsadi:** "Nostandart detallar" tabi — matritsada `is_custom` deb belgilangan detallarning marshrutini texnolog QO'LDA chizadi. Fayl bunday detalning yo'lini bilmaydi (nomdagi `{kodlar}` sintaksisi olib tashlangan, marshrut endi detal nomiga umuman bog'liq emas), shuning uchun yagona manba — texnologning shu ekrandagi tanlovi.

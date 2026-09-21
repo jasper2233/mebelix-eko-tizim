@@ -1753,6 +1753,83 @@ export type IdleLimit = {
 };
 
 /**
+ * InstanceStep
+ *
+ * Nusxaning bitta marshrut qadami va undagi holati.
+ */
+export type InstanceStep = {
+    /**
+     * Seq
+     */
+    seq: number;
+    /**
+     * Post Code
+     */
+    post_code: string;
+    /**
+     * Need
+     */
+    need: number;
+    /**
+     * Done
+     */
+    done: number;
+};
+
+/**
+ * InstanceTrace
+ *
+ * One instance: its route and where it physically is.
+ */
+export type InstanceTrace = {
+    /**
+     * Qr Text
+     */
+    qr_text: string;
+    /**
+     * Order Id
+     */
+    order_id: number;
+    /**
+     * Order Number
+     */
+    order_number: string;
+    order_status: OrderStatus;
+    /**
+     * Part Name
+     */
+    part_name: string;
+    /**
+     * Instance No
+     */
+    instance_no: number;
+    /**
+     * Steps
+     */
+    steps: Array<InstanceStep>;
+    /**
+     * Last Post
+     */
+    last_post?: string | null;
+    /**
+     * Last At
+     */
+    last_at?: string | null;
+    /**
+     * Next Post
+     */
+    next_post?: string | null;
+    /**
+     * Defect Post
+     */
+    defect_post?: string | null;
+    /**
+     * Defect Reason
+     */
+    defect_reason?: string | null;
+};
+
+/**
  * KromkaInstance
  *
  * Bitta fizik nusxa KROMKA nazarida: nechta tomoni yopishtirilgan va YETIB KELGANMI.
@@ -5535,6 +5612,42 @@ export type UpdatePostResponses = {
 };
 
 export type UpdatePostResponse = UpdatePostResponses[keyof UpdatePostResponses];
+
+export type TraceInstancesData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Q
+         */
+        q: string;
+        /**
+         * Status
+         */
+        status?: OrderStatus | null;
+    };
+    url: '/api/v1/orders/instances';
+};
+
+export type TraceInstancesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TraceInstancesError = TraceInstancesErrors[keyof TraceInstancesErrors];
+
+export type TraceInstancesResponses = {
+    /**
+     * Response Trace Instances
+     *
+     * Successful Response
+     */
+    200: Array<InstanceTrace>;
+};
+
+export type TraceInstancesResponse = TraceInstancesResponses[keyof TraceInstancesResponses];
 
 export type ReadOrdersData = {
     body?: never;
