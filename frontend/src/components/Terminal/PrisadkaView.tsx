@@ -17,6 +17,7 @@ import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
 import { Serial } from "@/components/Terminal/Serial"
 import { TBtn } from "@/components/Terminal/TBtn"
+import { useDragScroll } from "@/components/Terminal/useDragScroll"
 import {
   useCancelLabel,
   usePrintLabel,
@@ -75,6 +76,9 @@ export function PrisadkaView({
    * ustiga) portal qilinadi — alohida ikkinchi ustun ochilmasin */
   toolbarContainer: HTMLElement | null
 }) {
+  // Monoblokda barmoq bilan surib aylantirish — scrollbar qo'lqopda tortilmaydi
+  const listScroll = useDragScroll()
+  const scxScroll = useDragScroll()
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["terminal", "prisadka", orderId],
     queryFn: async () =>
@@ -259,7 +263,11 @@ export function PrisadkaView({
           >
             <PostProgress className="ml-auto" done={totDone} total={totReq} />
           </PostHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div
+            className="min-h-0 flex-1 overflow-y-auto"
+            ref={listScroll.ref}
+            {...listScroll.props}
+          >
             <table className="w-full text-base">
               <thead className="sticky top-0 z-10 bg-muted/80 text-left text-xs uppercase tracking-wider text-muted-foreground backdrop-blur">
                 <tr>
@@ -475,7 +483,11 @@ export function PrisadkaView({
           </LoadingButton>
         </div>
       </PostHeader>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        className="min-h-0 flex-1 overflow-y-auto"
+        ref={scxScroll.ref}
+        {...scxScroll.props}
+      >
         <table className="w-full text-base">
           <thead className="sticky top-0 z-10 bg-muted/80 text-left text-xs uppercase tracking-wider text-muted-foreground backdrop-blur">
             <tr>

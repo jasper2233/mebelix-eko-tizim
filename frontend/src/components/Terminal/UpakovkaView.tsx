@@ -32,6 +32,7 @@ import { InstanceChip, instanceNo } from "@/components/Terminal/InstanceChip"
 import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
 import { Serial } from "@/components/Terminal/Serial"
+import { useDragScroll } from "@/components/Terminal/useDragScroll"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -61,6 +62,10 @@ export function UpakovkaView({
    *  detal qaysi QADOQqa tushishini faqat shu ekran biladi. */
   registerScan?: (fn: ((qr: string) => void) | null) => void
 }) {
+  // Monoblokda barmoq bilan surib aylantirish — scrollbar qo'lqopda tortilmaydi
+  const listScroll = useDragScroll()
+  const pickScroll = useDragScroll()
+  const doneScroll = useDragScroll()
   const queryClient = useQueryClient()
   const key = ["terminal", "upakovka", orderId]
   const { data, isLoading, isError, refetch } = useQuery({
@@ -276,7 +281,11 @@ export function UpakovkaView({
                 {kg(open.weight_kg)}
               </span>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div
+              className="min-h-0 flex-1 overflow-y-auto"
+              ref={listScroll.ref}
+              {...listScroll.props}
+            >
               {!open.items?.length ? (
                 <div className="p-6 text-center text-muted-foreground">
                   Detalni skanerlang — u shu qadoqqa tushadi.
@@ -348,7 +357,11 @@ export function UpakovkaView({
             <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Yakunlangan <span className="num">({closed.length})</span>
             </div>
-            <div className="max-h-[30dvh] overflow-y-auto">
+            <div
+              className="max-h-[30dvh] overflow-y-auto"
+              ref={pickScroll.ref}
+              {...pickScroll.props}
+            >
               {closed.map((p) => {
                 const opened = shown === p.id
                 return (
@@ -433,7 +446,11 @@ export function UpakovkaView({
               kulrang — tayyor · ✓ qadoqlangan
             </span>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div
+            className="min-h-0 flex-1 overflow-y-auto"
+            ref={doneScroll.ref}
+            {...doneScroll.props}
+          >
             {!rows.length ? (
               <div className="p-4 text-center text-sm text-muted-foreground">
                 {pending.length

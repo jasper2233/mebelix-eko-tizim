@@ -19,6 +19,7 @@ import { QueryError } from "@/components/Common/QueryError"
 import { InstanceChip, instanceNo } from "@/components/Terminal/InstanceChip"
 import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
+import { useDragScroll } from "@/components/Terminal/useDragScroll"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatSize } from "@/lib/mes"
 import { cn } from "@/lib/utils"
@@ -45,6 +46,8 @@ export function PostQueueView({
   orderId: number
   onBack: () => void
 }) {
+  // Monoblokda barmoq bilan surib aylantirish — scrollbar qo'lqopda tortilmaydi
+  const listScroll = useDragScroll()
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["terminal", "queue", orderId],
     queryFn: async () =>
@@ -118,7 +121,11 @@ export function PostQueueView({
         />
       </PostHeader>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        className="min-h-0 flex-1 overflow-y-auto"
+        ref={listScroll.ref}
+        {...listScroll.props}
+      >
         {!sorted.length ? (
           <div className="p-6 text-center text-muted-foreground">
             {rows.length

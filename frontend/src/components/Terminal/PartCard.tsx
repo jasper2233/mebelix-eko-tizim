@@ -23,8 +23,10 @@ import {
 } from "@/components/ui/dialog"
 import { LoadingButton } from "@/components/ui/loading-button"
 
-/** Tanlangan detal mini-chizmasi: o'lcham strelkalari + teshiklar (GibSaw «Чертеж детали»). */
-function PartPreview({
+/** Tanlangan detal mini-chizmasi: o'lcham strelkalari + teshiklar (GibSaw «Чертеж детали»).
+ *  KROMKA luppasi ham shuni chizadi (`KromkaView`) — kromkachi qo'lidagi detalni
+ *  ayni shu chizmaga moslaydi, ya'ni ikkala joyda BIR XIL bo'lishi shart. */
+export function PartPreview({
   part,
   holes,
   ishlov,

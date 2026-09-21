@@ -5,13 +5,17 @@
 // qaytariladi.
 
 import { useQuery } from "@tanstack/react-query"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 
-import { TerminalService } from "@/client"
+import { type KromkaPartRow, TerminalService } from "@/client"
 import { OperationChips } from "@/components/Common/OperationChips"
 import { QueryError } from "@/components/Common/QueryError"
+import { PartPreview } from "@/components/Terminal/PartCard"
 import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
+import type { SheetPart } from "@/components/Terminal/SheetSvg"
+import { useDragScroll } from "@/components/Terminal/useDragScroll"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useScanFlash } from "@/hooks/useScanFlash"
 import {
@@ -32,6 +36,9 @@ function EdgeGlyph({
   width,
   paz = [],
   frez = [],
+  className = "size-16",
+  band = 3,
+  minW = 8,
 }: {
   edges: Record<string, unknown>
   length: number | null | undefined
@@ -40,6 +47,20 @@ function EdgeGlyph({
   paz?: string[]
   /** Freza (kesib o'tadi) ketadigan qirralar — chekdagi TUTASH chiziq */
   frez?: string[]
+  /** Jadvalda `size-16`, luppa qatlamida katta o'lcham */
+  className?: string
+  /** Kromka chizig'i, viewBox birligida. Luppada KICHIK bo'lishi kerak:
+   *  strokeWidth viewBox birligida, ya'ni eskiz bilan birga kattalashadi —
+   *  jadvaldagi 3 birlik (6.4 px) luppada 35 px = 9.2 mm plitaga aylanardi. */
+  band?: number
+  /** Eskiz enining PASTKI chegarasi, viewBox birligida.
+   *  Jadvalda 8 kerak: sokl (100x1775) haqiqiy nisbatda 1.46 birlik = 3 px
+   *  bo'lib, 64 px eskizda ko'rinmasdi. Luppada esa 352 px — o'sha 1.46
+   *  birlik 17 px, ya'ni HAQIQIY nisbatni ko'rsatish mumkin (klamp detalni
+   *  5.5 barobar kengaytirib yuborardi — o'lchangan). Luppada 4: haqiqiy
+   *  1.46 birlikda panel 17.6 px bo'lib, 11.7 px lik kromka belgisi uni
+   *  deyarli to'ldirardi — qaysi qirra ishlanishi ko'rinmasdi. */
+  minW?: number
 }) {
   const burilgan = (length ?? 0) > (width ?? 0)
   const has = (k: string) => !!edges[k]
@@ -59,10 +80,27 @@ function EdgeGlyph({
   const long = Math.max(length ?? 0, width ?? 0)
   const short = Math.min(length ?? 0, width ?? 0)
   const h = 26
-  const w = long > 0 ? Math.max(8, Math.round((h * short) / long)) : 18
+  const w = long > 0 ? Math.max(minW, Math.round((h * short) / long)) : 18
+  // Kromka chizig'i panel enining CHORAGIDAN oshmasin: tor detalda (sokl)
+  // belgi panelni to'ldirib, qaysi qirra ishlanishi ko'rinmay qolardi.
+  const bandW = Math.min(band, w / 4)
   const x = (30 - w) / 2
   const y = (30 - h) / 2
-  const line = "stroke-amber-600"
+  // Kromka chizig'i — loyihaning siyoh rangi (`--foreground: #1c2b42`), SOF
+  // QORA emas: eskiz UI elementi, ya'ni qolgan jadval matni bilan bir xil
+  // token'da bo'lishi kerak. Chekdagi `#111` dan farqi 1.33x — 2px chiziqda
+  // ko'zga bilinmaydi, shuning uchun kromkachi uchun ikkalasi bir xil qora.
+  // Ilgari amber edi va uch sababdan yaramasdi:
+  // (1) kontrast chegarada — amber-600 oq qatorda 3.19x, `bg-amber-50/70`
+  //     (jarayonda) da 3.10x, `bg-green-50` (bajarildi) da 3.04x; WCAG SC
+  //     1.4.11 minimumi 3.0x, `foreground` esa 13.6-14.3x. 17" monoblokda
+  //     kontrast birinchi yo'qoladi (docs/06);
+  // (2) bu jadvalda amber HOLAT rangi — qator foni, "Jarayonda N" belgisi va
+  //     chek chiqarilgan nusxa chipi amber; bitta rang ikki ma'noda edi;
+  // (3) chekda qora, luppada (`PartPreview`) qora — faqat jadval farq qilardi.
+  // Luppa xom `#111` da QOLADI: u UI emas, termal chekning nusxasi —
+  // `PartPreview` butunlay bosma ranglarda ishlaydi (`#d2d2d2`, `#242424`).
+  const line = "stroke-foreground"
   // Qalinligi 2: standart 1 px chiziq 17" monoblokda 0.25 mm bo'lib xira ko'rinardi.
   const pazLine = "stroke-sky-700 [stroke-dasharray:4_2]"
   const frezLine = "stroke-sky-700"
@@ -72,16 +110,19 @@ function EdgeGlyph({
     chap: [x + 3, y + 2, x + 3, y + h - 2],
     ong: [x + w - 3, y + 2, x + w - 3, y + h - 2],
   }
-  // size-12 = 48 px = 17" monoblokda 12.6 mm; size-8 (8.4 mm) da uzuq/tutash farqi
-  // bilinmasdi. Qator ATIGI 1 px balandlashadi, size-16 esa 13 px qo'shardi (o'lchangan).
-  // BOSIB TURGANDA 2.2x (28 mm) — faqat CSS: modal EMAS. Terminalda dialog ochilsa
-  // skan fokusi o'chadi (`routes/terminal.tsx`: `dialogOpen`), ya'ni eskizni ochib
-  // qo'ygan kromkachining skani yo'qolardi. `origin-right` — o'lcham ustuni bilan
-  // orasidagi bo'sh joyga o'sadi, lenta matnini bosmaydi.
+  // Jadvalda size-16 = 64 px = 17" monoblokda 16.8 mm. Ilgari size-12 (12.6 mm)
+  // edi va tsexda kichik deb topildi; size-8 (8.4 mm) da uzuq/tutash farqi
+  // umuman bilinmasdi. NARXI o'lchangan (haqiqiy ilovada): qator 82 -> 95 px.
+  // Kattalashtirish ENDI JADVAL ICHIDA EMAS (`EdgeZoom` qatlamida) — ilgari
+  // `active:scale-[2.2]` ishlatilardi va u ikki sababdan yetarli emas edi:
+  // (1) `thead` `sticky z-10`, eskiz esa `position:static; z-index:auto` —
+  //     tepadagi qatorda kattalashgan eskizning 71 px i sarlavha ORQASIDA
+  //     qolardi (o'lchangan); scroller ham uni kesardi;
+  // (2) 2.2x = 141 px (37 mm) da qaysi tomon ishlanishi baribir aniq emasdi.
   return (
     <svg
       viewBox="0 0 30 30"
-      className="size-12 shrink-0 origin-right cursor-zoom-in transition-transform active:scale-[2.2]"
+      className={`${className} shrink-0`}
       aria-hidden="true"
     >
       <title>Kromka tomonlari</title>
@@ -93,44 +134,47 @@ function EdgeGlyph({
         className="fill-muted stroke-muted-foreground/50"
         strokeWidth="1"
       />
+      {/* Chiziq qirraning ICHIGA suriladi (`bandW / 2`): markazda tursa yarmi
+          tashqarida qolib, tor detalni (sokl: panel 8 birlik, chiziq 3) ko'zga
+          kengroq ko'rsatardi — panel nisbati buzilardi. */}
       {side.tepa && (
         <line
           x1={x}
-          y1={y}
+          y1={y + bandW / 2}
           x2={x + w}
-          y2={y}
+          y2={y + bandW / 2}
           className={line}
-          strokeWidth="3"
+          strokeWidth={bandW}
         />
       )}
       {side.past && (
         <line
           x1={x}
-          y1={y + h}
+          y1={y + h - bandW / 2}
           x2={x + w}
-          y2={y + h}
+          y2={y + h - bandW / 2}
           className={line}
-          strokeWidth="3"
+          strokeWidth={bandW}
         />
       )}
       {side.chap && (
         <line
-          x1={x}
+          x1={x + bandW / 2}
           y1={y}
-          x2={x}
+          x2={x + bandW / 2}
           y2={y + h}
           className={line}
-          strokeWidth="3"
+          strokeWidth={bandW}
         />
       )}
       {side.ong && (
         <line
-          x1={x + w}
+          x1={x + w - bandW / 2}
           y1={y}
-          x2={x + w}
+          x2={x + w - bandW / 2}
           y2={y + h}
           className={line}
-          strokeWidth="3"
+          strokeWidth={bandW}
         />
       )}
       {/* Paz/freza — chekdagidek kontur ICHIDA (kromka esa chekkada, tutash va
@@ -170,6 +214,107 @@ const edgeBands = (edges: Record<string, unknown>): string => {
   return [...juft]
     .map(([sym, mat]) => (mat ? `${sym} — ${mat}` : sym))
     .join(" · ")
+}
+
+/** KROMKA qatoridan `PartPreview` uchun sintetik katak.
+ *
+ *  Chek va kesish xaritasi bilan BITTA konvensiya (`labels.py` `burilgan`):
+ *  eskiz uzun tomonni doim vertikal chizadi, `rot` esa teshik koordinatasini
+ *  (x,y)->(y, l-x) o'giradi. `eW`/`eH` — kromka chiziqlari: xaritada ularni
+ *  backend hisoblaydi (`cutmap._edge_markers`), bu yerda esa `edges` dan o'sha
+ *  qoida bo'yicha yig'iladi.
+ */
+function zoomCell(row: KromkaPartRow): SheetPart {
+  const L = row.length ?? 0
+  const W = row.width ?? 0
+  const burilgan = L > W
+  const e = (row.edges ?? {}) as Record<string, unknown>
+  const bor = (k: string) => (e[k] ? "1" : null)
+  // burilgan: t->chap, b->ong, l->past, r->tepa; aks holda tabiiy
+  const eW = burilgan ? [bor("t"), bor("b")] : [bor("l"), bor("r")]
+  const eH = burilgan ? [bor("r"), bor("l")] : [bor("t"), bor("b")]
+  return {
+    cell: 0,
+    id: row.part_id,
+    name: row.name,
+    waste: false,
+    x: 0,
+    y: 0,
+    // Chizma maydoni: uzun tomon vertikal
+    w: burilgan ? W : L,
+    h: burilgan ? L : W,
+    rot: burilgan,
+    eW,
+    eH,
+  }
+}
+
+/** Luppa qatlami — eskizni KATTA ko'rsatadi.
+ *
+ *  Nega jadval ichida emas: `thead` `sticky z-10`, eskiz esa oddiy oqimda —
+ *  tepadagi qatorda `scale()` bilan kattalashgan eskizning yarmi sarlavha
+ *  ORQASIDA qolardi (o'lchangan: 141 px dan 71 px i yashirin), scroller ham
+ *  kesardi. `fixed` qatlam ikkala to'siqdan ham chiqadi.
+ *
+ *  Nega Dialog EMAS: `routes/terminal.tsx` dagi `dialogOpen` skan fokusini
+ *  o'chiradi (`useScanFocus`), ya'ni eskizni ochib qo'ygan kromkachining skani
+ *  yo'qolardi. Bu shunchaki ustiga chizilgan qatlam — holat o'zgarmaydi,
+ *  `pointer-events-none` bilan hech qanday hodisani ham yutmaydi. */
+function EdgeZoom({ row }: { row: KromkaPartRow }) {
+  return createPortal(
+    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60">
+      <div className="flex items-center gap-8 rounded-2xl border bg-white px-10 py-8 shadow-2xl">
+        {/* Teshigi bor detalda CHEKDAGI chizmaning o'zi (`PartPreview`) —
+            teshik o'rinlari yo'nalishni bir ma'noli qiladi: simmetrik detalda
+            (ikkala uzun qirra bir xil) qaysi qirra lentalanishini faqat shu
+            ajratadi, detal teskari ushlansa chizma ham teskari bo'ladi.
+            Prodda o'lchangan: kromkali detallarning 67% i shunday, ularning
+            89% ida teshik bor. Teshiksiz detalda sodda eskiz qoladi. */}
+        <div className="w-[26rem] shrink-0">
+          {row.holes ? (
+            <PartPreview
+              part={zoomCell(row)}
+              holes={{ [row.part_id]: row.holes }}
+            />
+          ) : (
+            <EdgeGlyph
+              edges={row.edges ?? {}}
+              length={row.length}
+              width={row.width}
+              paz={row.paz_sides ?? []}
+              frez={row.frez_sides ?? []}
+              className="size-[22rem]"
+              band={1}
+              minW={4}
+            />
+          )}
+        </div>
+        <div className="min-w-0 max-w-[26rem]">
+          <div className="truncate text-3xl font-black">{row.name}</div>
+          <div className="num mt-1 text-xl text-muted-foreground">
+            {formatSize(row.length, row.width, row.thickness)}
+          </div>
+          <div className="mt-4 text-2xl font-bold">{row.sides} tomon</div>
+          <div className="mt-1 text-lg text-muted-foreground">
+            {edgeBands(row.edges ?? {})}
+          </div>
+          {((row.paz_sides ?? []).length > 0 ||
+            (row.frez_sides ?? []).length > 0) && (
+            <div className="mt-3 text-lg font-semibold text-sky-700">
+              {[
+                (row.paz_sides ?? []).length > 0 && "paz",
+                (row.frez_sides ?? []).length > 0 && "freza",
+              ]
+                .filter(Boolean)
+                .join(" + ")}{" "}
+              — eskizdagi ichki chiziq
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  )
 }
 
 /** Kromka stansiyasi o'lchagan oxirgi detallar — HUKMI bilan.
@@ -240,6 +385,45 @@ export function KromkaView({
   /** OVAL post: har detal 1 skan — Jarayonda paneli va tomonlar ustuni ortiqcha */
   oval?: boolean
 }) {
+  // Monoblokda barmoq bilan surib aylantirish — scrollbar qo'lqopda tortilmaydi
+  const listScroll = useDragScroll()
+  // Luppa: eskiz BIR MARTA bosilsa ochiladi, qayta bosilsa yopiladi.
+  const [zoom, setZoom] = useState<KromkaPartRow | null>(null)
+  const tap = useRef<{ x: number; y: number; id: number | null } | null>(null)
+  // Luppa boshqaruvi BITTA joyda: hujjat darajasidagi tap.
+  //
+  // `pointerdown` da nuqta va nishon eslab qolinadi, `pointerup` da 8 px dan
+  // kam surilgan bo'lsa BOSISH deb hisoblanadi. Surilgan bo'lsa — bu ro'yxatni
+  // aylantirish (`useDragScroll`), luppaga tegilmaydi.
+  //
+  // Qoida: o'sha eskiz bosilsa yopiladi, boshqasi bosilsa o'shanga almashadi,
+  // eskizdan tashqari joy bosilsa yopiladi. Alohida "X" tugmasi kerak emas —
+  // 17" monoblokda har qanday bosish allaqachon yopadi.
+  useEffect(() => {
+    const down = (e: PointerEvent) => {
+      const el = (e.target as HTMLElement | null)?.closest?.("[data-glyph]")
+      const id = el ? Number((el as HTMLElement).dataset.glyph) : null
+      tap.current = { x: e.clientX, y: e.clientY, id }
+    }
+    const up = (e: PointerEvent) => {
+      const t = tap.current
+      tap.current = null
+      if (!t) return
+      if (Math.abs(e.clientX - t.x) > 8 || Math.abs(e.clientY - t.y) > 8) return
+      setZoom((cur) => {
+        if (t.id === null) return null
+        if (cur && cur.route_id === t.id) return null
+        return rowsRef.current.find((r) => r.route_id === t.id) ?? null
+      })
+    }
+    document.addEventListener("pointerdown", down, true)
+    document.addEventListener("pointerup", up, true)
+    return () => {
+      document.removeEventListener("pointerdown", down, true)
+      document.removeEventListener("pointerup", up, true)
+    }
+  }, [])
+
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["terminal", "kromka", orderId],
     queryFn: async () =>
@@ -250,6 +434,10 @@ export function KromkaView({
       ).data,
     refetchInterval: 30_000,
   })
+  // Luppa effekti bo'sh deps bilan ishlaydi (listener bir marta qo'yiladi),
+  // shuning uchun joriy qatorlarga ref orqali murojaat qiladi.
+  const rowsRef = useRef<KromkaPartRow[]>([])
+  rowsRef.current = data?.parts ?? []
 
   // KromkaPartRow'da edges/instances sxemada ixtiyoriy — bir joyda normallashtiramiz,
   // quyida hamma joyda oddiy massiv/obyekt sifatida ishlatiladi
@@ -327,6 +515,7 @@ export function KromkaView({
 
   return (
     <div className="flex h-full min-h-0 gap-3">
+      {zoom && <EdgeZoom row={zoom} />}
       {/* CHAP: arradan kelgan detallar, progress joyida ko'rinadi */}
       <div className="flex min-w-0 flex-1 flex-col rounded-xl border bg-white">
         <PostHeader
@@ -347,7 +536,11 @@ export function KromkaView({
           />
         </PostHeader>
         <StationStrip />
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div
+          className="min-h-0 flex-1 overflow-y-auto"
+          ref={listScroll.ref}
+          {...listScroll.props}
+        >
           <table className="w-full text-base">
             <thead className="sticky top-0 z-10 bg-muted/80 text-left text-xs uppercase tracking-wider text-muted-foreground backdrop-blur">
               <tr>
@@ -408,15 +601,28 @@ export function KromkaView({
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <span className="inline-flex items-center gap-2">
-                        <EdgeGlyph
-                          edges={p.edges}
-                          length={p.length}
-                          width={p.width}
-                          paz={p.paz_sides ?? []}
-                          frez={p.frez_sides ?? []}
-                        />
+                        {/* Eskiz — BIR MARTA bosilsa luppa ochiladi, qayta
+                            bosilsa yopiladi. Bosib turish EMAS: qo'lqopda
+                            uzluksiz tegib turish ishonchsiz va qo'l band
+                            bo'ladi. Mantiq bitta joyda — quyidagi effektda. */}
+                        <span
+                          className="cursor-zoom-in"
+                          data-glyph={p.route_id}
+                        >
+                          <EdgeGlyph
+                            edges={p.edges}
+                            length={p.length}
+                            width={p.width}
+                            paz={p.paz_sides ?? []}
+                            frez={p.frez_sides ?? []}
+                          />
+                        </span>
                         <span className="min-w-0">
-                          {!oval && <b>{p.sides} tomon</b>}
+                          {/* `text-xl` (20 px = 5.2 mm) TEKIN: eskiz 64 px
+                              bo'lgach qator balandligini o'sha belgilaydi, matn
+                              ustuni esa 64 px gacha bemalol o'sadi — o'lchangan,
+                              qator 94 px da qoladi. */}
+                          {!oval && <b className="text-xl">{p.sides} tomon</b>}
                           <span className="block max-w-[240px] truncate text-sm text-muted-foreground">
                             {edgeBands(p.edges)}
                           </span>

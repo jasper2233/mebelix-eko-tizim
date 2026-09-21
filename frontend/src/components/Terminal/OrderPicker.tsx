@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 
 import { TerminalService } from "@/client"
 import { SectionTitle } from "@/components/Common/SectionTitle"
+import { useDragScroll } from "@/components/Terminal/useDragScroll"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   deadlineTone,
@@ -21,6 +22,8 @@ export function OrderPicker({
   onPick: (orderId: number) => void
   showCutmapBadge?: boolean
 }) {
+  // Monoblokda barmoq bilan surib aylantirish — scrollbar qo'lqopda tortilmaydi
+  const listScroll = useDragScroll()
   const {
     data: orders,
     isLoading,
@@ -31,7 +34,11 @@ export function OrderPicker({
     refetchInterval: 30_000,
   })
   return (
-    <div className="h-full overflow-y-auto rounded-xl border bg-card p-4">
+    <div
+      className="h-full overflow-y-auto rounded-xl border bg-card p-4"
+      ref={listScroll.ref}
+      {...listScroll.props}
+    >
       <SectionTitle>Buyurtmalar</SectionTitle>
       {isError && (
         <div className="mb-3 rounded-lg border-2 border-red-500 bg-red-50 px-4 py-3 text-base font-bold text-red-700">
