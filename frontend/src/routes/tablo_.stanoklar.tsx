@@ -5,6 +5,13 @@
 // Raqamlar «Stanok vaqti» hisobotidan keladi (server o'sha handlerni bugungi kun
 // uchun chaqiradi) — devordagi taxta va hisobot hech qachon ikki xil raqam
 // ko'rsatmaydi.
+//
+// DIZAYN. Karta — tsexning o'z buyumi: kesilgan PANEL, chap chekkasida kromka
+// lentasi. Holat aynan shu lentaning rangi bilan beriladi (eng uzoqdan ko'rinadigan
+// element), panelning o'zi tinch qoladi. Ekranda YAGONA oltin raqam bor — OEE:
+// taxtaga qaragan odam avval uni, keyin qolganini o'qiydi. Ish oynasi («08:00 dan
+// beri») har kartada takrorlanmaydi — u hamma stanokka bir xil, shuning uchun
+// sarlavhada bir marta turadi.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
@@ -37,77 +44,44 @@ export const Route = createFileRoute("/tablo_/stanoklar")({
   },
 })
 
-/** Holat rangi. `null` — Pico yoki agentdan 90 soniyadan beri xabar yo'q:
- *  bu «o'chiq» EMAS va o'chiq bilan bir xil ko'rinmasligi kerak — nosozlik
- *  aynan shu farqda bilinadi (chiziqli fon + «ALOQA YO'Q» yozuvi). */
-const TONE: Record<string, { band: string; dot: string; label: string }> = {
-  PROCESSING: {
-    band: "bg-emerald-500",
-    dot: "bg-emerald-300",
-    label: "text-emerald-50",
-  },
-  AWAIT_PART: {
-    band: "bg-emerald-600",
-    dot: "bg-emerald-300",
-    label: "text-emerald-50",
-  },
-  IDLE: { band: "bg-amber-500", dot: "bg-amber-200", label: "text-amber-950" },
-  STOPPED: {
-    band: "bg-orange-600",
-    dot: "bg-orange-200",
-    label: "text-orange-50",
-  },
-  FAULT: { band: "bg-red-600", dot: "bg-red-200", label: "text-red-50" },
-  OFF: { band: "bg-slate-600", dot: "bg-slate-300", label: "text-slate-100" },
-  BOOT: { band: "bg-sky-600", dot: "bg-sky-200", label: "text-sky-50" },
+/** Kromka lentasining rangi = stanok holati. Holat `null` bo'lsa — Pico yoki
+ *  agentdan 90 soniyadan beri xabar yo'q: lenta CHIZIQLI bo'ladi va «o'chiq»
+ *  bilan aralashmaydi. Nosozlik aynan shu farqda bilinadi. */
+const BAND: Record<string, string> = {
+  PROCESSING: "bg-[#3FB27F]",
+  AWAIT_PART: "bg-[#3FB27F]",
+  IDLE: "bg-[#E2A32D]",
+  STOPPED: "bg-[#D2751F]",
+  FAULT: "bg-[#D9534F]",
+  OFF: "bg-[#4A5464]",
+  BOOT: "bg-[#4E8FD1]",
 }
-const LINK_LOST = {
-  band: "bg-slate-700 [background-image:repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(255,255,255,.08)_10px,rgba(255,255,255,.08)_20px)]",
-  dot: "bg-slate-400",
-  label: "text-slate-200",
-}
-
-/** "12 daq" / "2 soat 5 daq" — devor ekranida soniya keraksiz, sana esa o'qilmaydi. */
-function davomiyligi(iso: string | null | undefined): string {
-  if (!iso) return ""
-  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000)
-  const d = Math.floor(s / 60)
-  if (d < 60) return `${d} daq`
-  return `${Math.floor(d / 60)} soat ${d % 60} daq`
+const BAND_LOST =
+  "bg-[#39424F] [background-image:repeating-linear-gradient(135deg,transparent,transparent_9px,rgba(255,255,255,.10)_9px,rgba(255,255,255,.10)_18px)]"
+const HOLAT_MATN: Record<string, string> = {
+  PROCESSING: "text-[#6ED4A6]",
+  AWAIT_PART: "text-[#6ED4A6]",
+  IDLE: "text-[#F0C060]",
+  STOPPED: "text-[#EE9A4D]",
+  FAULT: "text-[#F08581]",
+  OFF: "text-[#8B95A5]",
+  BOOT: "text-[#7FB4E6]",
 }
 
 const soat = (s: number) =>
   `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}`
 const foiz = (v: number | null | undefined) => (v == null ? "—" : `${v}%`)
 
-/** OEE ning bitta ko'rsatkichi: katta raqam + ostida yorliq va ustun.
- *  Ustun uzoqdan o'qiladi — raqamni ko'rmasdan ham «past/baland» bilinadi. */
-function Metric({
-  label,
-  value,
-  tone,
-}: {
-  label: string
-  value: number | null | undefined
-  tone: string
-}) {
-  const pct = value == null ? 0 : Math.max(0, Math.min(100, value))
-  return (
-    <div className="min-w-0 flex-1">
-      <div className="num text-3xl font-black leading-none text-white">
-        {foiz(value)}
-      </div>
-      <div className="mt-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-        {label}
-      </div>
-      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-700">
-        <div className={cn("h-full", tone)} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
+/** "14 daq" / "2 soat 5 daq" — devor ekranida soniya keraksiz, sana o'qilmaydi. */
+function davomiyligi(iso: string | null | undefined): string {
+  if (!iso) return ""
+  const d = Math.floor(
+    Math.max(0, (Date.now() - new Date(iso).getTime()) / 60000),
   )
+  if (d < 60) return `${d} daq`
+  return `${Math.floor(d / 60)} soat ${d % 60} daq`
 }
 
-/** "08:00" — hisob qaysi lahzadan beri yuritilyapti. */
 const soatDaqiqa = (iso: string | null | undefined) =>
   iso
     ? new Date(iso).toLocaleTimeString("uz-UZ", {
@@ -116,6 +90,45 @@ const soatDaqiqa = (iso: string | null | undefined) =>
       })
     : null
 
+/** OEE ning uch tarkibi: nom, ustun, foiz. Ustun raqamdan oldin o'qiladi —
+ *  qaysi biri stanokni pastga tortayotgani bir qarashda ko'rinadi. */
+function Qism({
+  nom,
+  qiymat,
+  rang,
+}: {
+  nom: string
+  qiymat: number | null | undefined
+  rang: string
+}) {
+  const pct = qiymat == null ? 0 : Math.max(0, Math.min(100, qiymat))
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-28 shrink-0 text-base text-[#8B95A5]">{nom}</span>
+      <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-sm bg-[#232B36]">
+        <span
+          className={cn("block h-full rounded-sm", rang)}
+          style={{ width: `${pct}%` }}
+        />
+      </span>
+      <span className="num w-16 shrink-0 text-right text-xl font-bold text-[#E7EAEF]">
+        {foiz(qiymat)}
+      </span>
+    </div>
+  )
+}
+
+/** Chapda nima, o'ngda qancha. «A · B · C» satri o'rniga — uzoqdan raqamlar
+ *  bir-biriga qo'shilib ketmaydi. */
+function Fakt({ nom, qiymat }: { nom: string; qiymat: string }) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <span className="text-base text-[#8B95A5]">{nom}</span>
+      <span className="num text-lg font-semibold text-[#C8D0DC]">{qiymat}</span>
+    </div>
+  )
+}
+
 function MachineCard({
   row,
   onOpen,
@@ -123,112 +136,128 @@ function MachineCard({
   row: TabloMachineRow
   onOpen: () => void
 }) {
-  const tone = row.state ? (TONE[row.state] ?? TONE.OFF) : LINK_LOST
+  const ishlayapti = row.state === "PROCESSING" || row.state === "AWAIT_PART"
   const holat = row.state
     ? (ANDON_STATE_LABELS[row.state] ?? row.state)
-    : "ALOQA YO'Q"
-  const boshi = soatDaqiqa(row.window_from)
-  // Sxemada sukut qiymatli maydon (`= 0`) ixtiyoriy bo'lib generatsiya qilinadi
+    : "Aloqa yo'q"
   const mos = row.mos_count ?? 0
   const nomos = row.nomos_count ?? 0
+
   return (
-    // Bosilganda shu stanokning tafsiloti ochiladi (kunlik/haftalik/oylik OEE,
-    // oxirgi ishlar, brak va to'xtashlar). Devor ekranida bosilmaydi — zarari yo'q.
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl bg-slate-900 text-left ring-1 ring-slate-700/70 transition hover:ring-2 hover:ring-amber-400/60"
+      className="group flex w-full min-w-0 overflow-hidden rounded-md bg-[#171C24] text-left outline-none ring-1 ring-[#232B36] focus-visible:ring-2 focus-visible:ring-[#D9B34A]"
     >
-      {/* Holat lentasi — kartaning eng katta va eng uzoqdan ko'rinadigan qismi */}
-      <div
+      {/* Kromka lentasi — holatning o'zi. Kartadagi eng uzoqdan ko'rinadigan narsa. */}
+      <span
         className={cn(
-          "flex items-baseline gap-3 px-5 py-3",
-          tone.band,
-          tone.label,
+          "w-4 shrink-0",
+          row.state ? (BAND[row.state] ?? BAND.OFF) : BAND_LOST,
         )}
-      >
-        <span className="truncate text-2xl font-black uppercase">
-          {row.machine_name}
-        </span>
-        <span className="ml-auto whitespace-nowrap text-2xl font-black uppercase">
-          {holat}
-        </span>
-        <span className="num whitespace-nowrap text-xl font-bold opacity-90">
-          {davomiyligi(row.since)}
-        </span>
-      </div>
+      />
 
-      <div className="flex min-w-0 flex-col gap-3 p-5">
-        {/* Smena: bo'sh bo'lsa QIZIL — smenasiz sabab so'ralmaydi va hisobot buziladi */}
-        <div
+      <div className="flex min-w-0 flex-1 flex-col gap-5 px-6 py-5">
+        <div className="flex min-w-0 items-baseline gap-4">
+          <h2 className="truncate text-3xl font-black tracking-tight text-[#E7EAEF]">
+            {row.machine_name}
+          </h2>
+          <span
+            className={cn(
+              "ml-auto flex shrink-0 items-center gap-2 text-2xl font-bold",
+              row.state ? (HOLAT_MATN[row.state] ?? "") : "text-[#8B95A5]",
+            )}
+          >
+            {ishlayapti && (
+              <span className="size-2.5 rounded-full bg-current motion-safe:animate-pulse" />
+            )}
+            {holat}
+          </span>
+          {row.since && (
+            <span className="num shrink-0 text-xl text-[#8B95A5]">
+              {davomiyligi(row.since)}
+            </span>
+          )}
+        </div>
+
+        {/* Smena — kim javobgar. Ochilmagan bo'lsa sabab ham so'ralmaydi va
+            hisobot ham buziladi, shuning uchun bu qizil xabar. */}
+        <p
           className={cn(
-            "truncate text-lg font-bold",
-            row.crew.length ? "text-slate-200" : "text-red-400",
+            "-mt-3 truncate text-xl",
+            row.crew.length ? "text-[#C8D0DC]" : "text-[#F08581]",
           )}
         >
-          {row.crew.length ? row.crew.join(" · ") : "Smena ochilmagan"}
-        </div>
+          {row.crew.length ? row.crew.join(", ") : "Smena ochilmagan"}
+        </p>
 
-        <div className="num text-base text-slate-400">
-          Ish {soat(row.run_s)} · to'xtash {soat(row.stop_s)} · {row.parts}{" "}
-          detal
-          {row.defects > 0 ? ` · ${row.defects} brak` : ""}
-        </div>
-        {/* Raqam NIMAGA nisbatan ekani: reja vaqti hozirgi lahzada kesiladi —
-            soat 11 da 3 soat, 18:00 da to'liq smena */}
-        {boshi && (
-          <div className="num text-sm text-slate-500">
-            {boshi} dan beri · reja {soat(row.planned_s)}
-          </div>
-        )}
-
-        {/* OEE to'rtligi: A · P · Q va ko'paytmasi */}
-        <div className="flex gap-4 border-t border-slate-800 pt-3">
-          <Metric
-            label="Availability"
-            value={row.availability_pct}
-            tone="bg-sky-400"
-          />
-          <Metric
-            label="Performance"
-            value={row.performance_pct}
-            tone="bg-violet-400"
-          />
-          <Metric label="Quality" value={row.quality_pct} tone="bg-teal-400" />
-          <div className="min-w-0 flex-1 border-l border-slate-800 pl-4">
-            <div className="num text-4xl font-black leading-none text-amber-300">
+        {/* Yagona oltin raqam — OEE. Uch tarkibi yonida, ustunlari bilan. */}
+        <div className="flex items-center gap-8">
+          {/* Kenglik QOTIRILGAN: «1.2%», «1%» va «—» har xil joy egallaydi va
+              ustunlar kartadan kartaga siljib ketardi — devor ekranida bu
+              darhol ko'zga tashlanadi */}
+          <div className="w-40 shrink-0">
+            {/* Oltin — FAQAT haqiqiy raqam uchun. Hisoblanmagan OEE («—») kulrang:
+                aks holda bo'sh chiziq ekrandagi eng qimmat rangni egallab turardi */}
+            <div
+              className={cn(
+                "num text-6xl font-black leading-none",
+                row.oee_pct == null ? "text-[#4A5464]" : "text-[#D9B34A]",
+              )}
+            >
               {foiz(row.oee_pct)}
             </div>
-            <div className="mt-1 text-[11px] font-bold uppercase tracking-wider text-amber-500/80">
-              OEE
-            </div>
+            <div className="mt-1.5 text-base text-[#8B95A5]">OEE</div>
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <Qism
+              nom="Availability"
+              qiymat={row.availability_pct}
+              rang="bg-[#4E8FD1]"
+            />
+            <Qism
+              nom="Performance"
+              qiymat={row.performance_pct}
+              rang="bg-[#9B7FD4]"
+            />
+            <Qism nom="Quality" qiymat={row.quality_pct} rang="bg-[#3FB27F]" />
           </div>
         </div>
 
-        {/* KROMKA: bugun nechta o'lchov kutilgan tomonga MOS tushdi, nechtasi yo'q.
-            «Mos emas» qizil — lenta yoki detal bilan muammo borligining birinchi belgisi. */}
+        <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2 border-t border-[#232B36] pt-4">
+          <Fakt nom="Ishladi" qiymat={soat(row.run_s)} />
+          <Fakt nom="To'xtadi" qiymat={soat(row.stop_s)} />
+          <Fakt nom="Detal" qiymat={String(row.parts)} />
+          {row.defects > 0 && <Fakt nom="Brak" qiymat={String(row.defects)} />}
+        </div>
+
+        {/* KROMKA: bugun nechta o'lchov kutilgan tomonga tushdi, nechtasi yo'q */}
         {(mos > 0 || nomos > 0 || row.last_mm != null) && (
-          <div className="num flex flex-wrap items-baseline gap-x-3 text-base">
-            <span className="text-emerald-300">{mos} mos</span>
-            <span className={nomos > 0 ? "text-red-300" : "text-slate-500"}>
+          <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+            <span className="num text-lg text-[#6ED4A6]">{mos} mos</span>
+            <span
+              className={cn(
+                "num text-lg",
+                nomos > 0 ? "text-[#F08581]" : "text-[#5D6675]",
+              )}
+            >
               {nomos} mos emas
             </span>
             {row.last_mm != null && (
-              <span className="truncate text-slate-400">
+              <span className="num truncate text-lg text-[#8B95A5]">
                 oxirgi {row.last_mm.toFixed(0)} mm
                 {row.last_verdict
-                  ? ` · ${KROMKA_VERDICT_LABELS[row.last_verdict] ?? row.last_verdict}`
+                  ? `, ${(KROMKA_VERDICT_LABELS[row.last_verdict] ?? row.last_verdict).toLowerCase()}`
                   : ""}
               </span>
             )}
           </div>
         )}
 
-        {/* Sababsiz to'xtashlar — operator oynani yopib ketgani shu yerda ko'rinadi */}
         {row.pending_reasons > 0 && (
-          <div className="truncate rounded-lg bg-red-500/15 px-3 py-2 text-base font-bold text-red-300">
-            ⚠ {row.pending_reasons} to'xtashga sabab kiritilmagan
-          </div>
+          <p className="truncate rounded-sm bg-[#D9534F]/15 px-4 py-2.5 text-lg font-semibold text-[#F08581]">
+            {row.pending_reasons} to'xtashga sabab kiritilmagan
+          </p>
         )}
       </div>
     </button>
@@ -237,10 +266,9 @@ function MachineCard({
 
 const QUERY_KEY = ["tablo", "machines"]
 
-/** Kartani bosganda: shu stanokning kunlik/haftalik/oylik OEE si va oxirgi hodisalari.
- *
- *  Devor ekrani uchun emas — usta yoki menejer bosadi, shuning uchun bu yerda mayda
- *  shrift va ro'yxatlar bo'lishi mumkin. */
+/** Kartani bosganda: shu stanokning kunlik/haftalik/oylik OEE si va oxirgi
+ *  hodisalari. Devor ekrani uchun emas — usta yoki menejer bosadi, shuning
+ *  uchun bu yerda mayda shrift va ro'yxatlar bo'lishi mumkin. */
 function MachineDialog({
   machineId,
   onClose,
@@ -261,11 +289,11 @@ function MachineDialog({
 
   return (
     <Dialog open={machineId != null} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto border-slate-700 bg-slate-900 text-slate-100 sm:max-w-4xl">
+      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto border-[#232B36] bg-[#12161D] text-[#E7EAEF] sm:max-w-4xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-black uppercase">
+          <DialogTitle className="flex items-baseline gap-3 text-3xl font-black tracking-tight">
             {data?.machine_name ?? "Stanok"}
-            <span className="ml-3 text-base font-normal text-slate-400">
+            <span className="text-lg font-normal text-[#8B95A5]">
               {data?.post_name}
             </span>
           </DialogTitle>
@@ -274,46 +302,45 @@ function MachineDialog({
         {isLoading || !data ? (
           <BrandLoader />
         ) : (
-          <div className="space-y-6">
-            {/* Uch davr — bir xil ustunlar, taqqoslash uchun yonma-yon */}
-            <table className="w-full text-base">
-              <thead className="text-left text-xs uppercase tracking-wider text-slate-500">
+          <div className="space-y-7">
+            <table className="w-full">
+              <thead className="text-left text-sm text-[#8B95A5]">
                 <tr>
-                  <th className="py-1">Davr</th>
-                  <th className="py-1 text-right">Reja</th>
-                  <th className="py-1 text-right">Ishladi</th>
-                  <th className="py-1 text-right">A</th>
-                  <th className="py-1 text-right">P</th>
-                  <th className="py-1 text-right">Q</th>
-                  <th className="py-1 text-right">OEE</th>
-                  <th className="py-1 text-right">Detal</th>
-                  <th className="py-1 text-right">Brak</th>
+                  <th className="pb-2 font-normal">Davr</th>
+                  <th className="pb-2 text-right font-normal">Reja</th>
+                  <th className="pb-2 text-right font-normal">Ishladi</th>
+                  <th className="pb-2 text-right font-normal">Availability</th>
+                  <th className="pb-2 text-right font-normal">Performance</th>
+                  <th className="pb-2 text-right font-normal">Quality</th>
+                  <th className="pb-2 text-right font-normal">OEE</th>
+                  <th className="pb-2 text-right font-normal">Detal</th>
+                  <th className="pb-2 text-right font-normal">Brak</th>
                 </tr>
               </thead>
-              <tbody className="num">
+              <tbody className="num text-base">
                 {data.periods.map((p) => (
-                  <tr key={p.label} className="border-t border-slate-800">
-                    <td className="py-2 font-bold uppercase">{p.label}</td>
-                    <td className="py-2 text-right text-slate-400">
+                  <tr key={p.label} className="border-t border-[#232B36]">
+                    <td className="py-2.5 font-semibold">{p.label}</td>
+                    <td className="py-2.5 text-right text-[#8B95A5]">
                       {soat(p.planned_s)}
                     </td>
-                    <td className="py-2 text-right text-slate-400">
+                    <td className="py-2.5 text-right text-[#8B95A5]">
                       {soat(p.run_s)}
                     </td>
-                    <td className="py-2 text-right">
+                    <td className="py-2.5 text-right">
                       {foiz(p.availability_pct)}
                     </td>
-                    <td className="py-2 text-right">
+                    <td className="py-2.5 text-right">
                       {foiz(p.performance_pct)}
                     </td>
-                    <td className="py-2 text-right">{foiz(p.quality_pct)}</td>
-                    <td className="py-2 text-right text-lg font-black text-amber-300">
+                    <td className="py-2.5 text-right">{foiz(p.quality_pct)}</td>
+                    <td className="py-2.5 text-right text-xl font-black text-[#D9B34A]">
                       {foiz(p.oee_pct)}
                     </td>
-                    <td className="py-2 text-right text-slate-400">
+                    <td className="py-2.5 text-right text-[#8B95A5]">
                       {p.parts}
                     </td>
-                    <td className="py-2 text-right text-slate-400">
+                    <td className="py-2.5 text-right text-[#8B95A5]">
                       {p.defects}
                     </td>
                   </tr>
@@ -321,20 +348,20 @@ function MachineDialog({
               </tbody>
             </table>
 
-            <Section title="Oxirgi to'xtashlar va avariyalar">
+            <Section title="To'xtashlar va avariyalar">
               {data.stops.length === 0 ? (
                 <Empty>To'xtash yozilmagan.</Empty>
               ) : (
                 data.stops.map((r) => (
                   <Row
                     key={`${r.started_at}-${r.kind}`}
-                    left={`${vaqt(r.started_at)} · ${DOWNTIME_KIND_LABELS[r.kind] ?? r.kind}`}
+                    left={`${vaqt(r.started_at)}  ${DOWNTIME_KIND_LABELS[r.kind] ?? r.kind}`}
                     right={soat(r.seconds)}
                     note={
                       r.reason ??
                       (r.ended_at ? "sabab kiritilmagan" : "davom etyapti")
                     }
-                    tone={r.kind === "fault" ? "text-red-300" : undefined}
+                    tone={r.kind === "fault" ? "text-[#F08581]" : undefined}
                   />
                 ))
               )}
@@ -347,10 +374,10 @@ function MachineDialog({
                 data.defects.map((r) => (
                   <Row
                     key={`${r.at}-${r.qr_text}`}
-                    left={`${vaqt(r.at)} · ${r.part_name}`}
+                    left={`${vaqt(r.at)}  ${r.part_name}`}
                     right={DEFECT_STATUS_LABELS[r.status] ?? r.status}
-                    note={`${r.reason} · ${r.qr_text}`}
-                    tone="text-red-300"
+                    note={`${r.reason}, ${r.qr_text}`}
+                    tone="text-[#F08581]"
                   />
                 ))
               )}
@@ -358,12 +385,12 @@ function MachineDialog({
 
             <Section title="Oxirgi bajarilgan ishlar">
               {data.recent_scans.length === 0 ? (
-                <Empty>Skan yo'q.</Empty>
+                <Empty>Bu stanokda skan yo'q.</Empty>
               ) : (
                 data.recent_scans.map((r) => (
                   <Row
                     key={`${r.at}-${r.qr_text}`}
-                    left={`${vaqt(r.at)} · ${r.part_name}`}
+                    left={`${vaqt(r.at)}  ${r.part_name}`}
                     right={r.employee ?? ""}
                     note={r.qr_text}
                   />
@@ -386,10 +413,8 @@ function Section({
 }) {
   return (
     <section>
-      <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-slate-400">
-        {title}
-      </h3>
-      <div className="divide-y divide-slate-800 rounded-xl bg-slate-950/60">
+      <h3 className="mb-2 text-base font-semibold text-[#C8D0DC]">{title}</h3>
+      <div className="divide-y divide-[#1D232C] rounded-sm bg-[#0E1116]">
         {children}
       </div>
     </section>
@@ -397,7 +422,7 @@ function Section({
 }
 
 const Empty = ({ children }: { children: React.ReactNode }) => (
-  <p className="px-3 py-3 text-slate-500">{children}</p>
+  <p className="px-4 py-3 text-[#5D6675]">{children}</p>
 )
 
 function Row({
@@ -412,14 +437,14 @@ function Row({
   tone?: string
 }) {
   return (
-    <div className="flex items-baseline gap-3 px-3 py-2">
+    <div className="flex items-baseline gap-4 px-4 py-2.5">
       <span className={cn("num min-w-0 flex-1 truncate", tone)}>{left}</span>
       {note && (
-        <span className="num hidden truncate text-sm text-slate-500 sm:block">
+        <span className="num hidden truncate text-sm text-[#5D6675] sm:block">
           {note}
         </span>
       )}
-      <span className="num shrink-0 font-bold text-slate-300">{right}</span>
+      <span className="num shrink-0 font-semibold text-[#C8D0DC]">{right}</span>
     </div>
   )
 }
@@ -462,7 +487,7 @@ function StanoklarPage() {
       [queryClient],
     ),
   )
-  // Holat davomiyligi («12 daq») o'zi sanab tursin — usiz raqam qotib qolardi
+  // Holat davomiyligi va yuqoridagi soat o'zi sanab tursin — usiz qotib qolardi
   useEffect(() => {
     const t = setInterval(() => tik((n) => n + 1), 30_000)
     return () => clearInterval(t)
@@ -470,32 +495,43 @@ function StanoklarPage() {
 
   const [ochiq, setOchiq] = useState<number | null>(null)
   const rows = data ?? []
+  // Ish oynasi hamma stanokka bir xil — sarlavhada bir marta, kartalarda emas
+  const boshi = soatDaqiqa(rows[0]?.window_from)
+  const reja = rows[0] ? soat(rows[0].planned_s) : null
+
   return (
-    <div className="min-h-screen bg-slate-950 p-6 text-slate-100">
-      <header className="mb-5 flex items-baseline gap-4">
+    <div className="min-h-screen bg-[#0E1116] px-8 py-7 text-[#E7EAEF]">
+      <header className="mb-7 flex flex-wrap items-baseline gap-x-6 gap-y-2">
         <Link
           to="/tablo"
-          className="flex items-center gap-2 text-slate-400 hover:text-slate-200"
+          className="flex items-center gap-2 text-lg text-[#5D6675] outline-none hover:text-[#C8D0DC] focus-visible:text-[#C8D0DC]"
         >
-          <ArrowLeft className="size-5" /> TABLO
+          <ArrowLeft className="size-5" />
+          Buyurtmalar
         </Link>
-        <h1 className="text-3xl font-black uppercase tracking-wide">
-          Stanoklar
-        </h1>
-        <span className="text-base text-slate-500">
-          Pico ulangan ish markazlari · bugungi OEE
+        <h1 className="text-4xl font-black tracking-tight">Stanoklar</h1>
+        {boshi && reja && (
+          <p className="num text-xl text-[#8B95A5]">
+            Smena {boshi} da boshlandi, shundan beri {reja} hisoblanmoqda
+          </p>
+        )}
+        <span className="num ml-auto text-2xl font-semibold text-[#C8D0DC]">
+          {new Date().toLocaleTimeString("uz-UZ", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
         </span>
       </header>
 
       {isLoading ? (
         <BrandLoader />
       ) : rows.length === 0 ? (
-        <p className="text-xl text-slate-400">
-          Signal ustuni ulangan ish markazi yo'q — agent va Pico ulangach bu
-          yerda paydo bo'ladi.
+        <p className="max-w-prose text-2xl text-[#8B95A5]">
+          Hali bitta ham stanok ulanmagan. Pico va agent ishga tushgach stanok
+          shu yerda o'zi paydo bo'ladi.
         </p>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-2 2xl:grid-cols-3">
+        <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(38rem,1fr))]">
           {rows.map((row) => (
             <MachineCard
               key={row.machine_id}
