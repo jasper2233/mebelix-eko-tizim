@@ -1,6 +1,6 @@
 """TABLO javob sxemalari: buyurtma × bosqich matritsasi va drill-down."""
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -67,3 +67,94 @@ class TabloOrderDetail(BaseModel):
     number: str
     name: str | None
     parts: list[TabloPartRow]
+
+
+class TabloMachineRow(BaseModel):
+    """Devordagi stanok taxtasining bitta kartasi — Pico ulangan BITTA ish markazi.
+
+    Raqamlar «Stanok vaqti» hisobotining AYNAN o'zidan (bugungi kun uchun): taxta
+    va hisobot hech qachon boshqa-boshqa raqam ko'rsatmasin."""
+
+    machine_id: int
+    machine_name: str
+    post_name: str
+    #: Jonli holat (Redis): PROCESSING / AWAIT_PART / IDLE / STOPPED / FAULT / OFF.
+    #: `None` — Pico yoki agentdan 90 soniyadan beri xabar yo'q (kartada «aloqa yo'q»).
+    state: str | None
+    since: datetime | None  # holat qachondan beri
+    crew: list[str]  # smenadagi hodimlar; bo'sh — smena ochilmagan
+    #: Bugungi OEE — hisobotdagi ustunlar bilan bir xil
+    planned_s: int
+    run_s: int
+    stop_s: int  # rejasiz to'xtash + ma'lumotsiz vaqt
+    availability_pct: float | None
+    parts: int
+    performance_pct: float | None
+    defects: int
+    quality_pct: float | None
+    oee_pct: float | None
+    #: Sababi kiritilmagan to'xtashlar (bugun) — operator oynani yopib ketgan bo'lsa ko'rinadi
+    pending_reasons: int
+    #: Hisob QAYSI lahzadan beri yuritilayotgani — kartada «08:00 dan beri» bo'lib
+    #: yoziladi. Reja vaqti hozirgi lahzada kesiladi: 11:00 da 3 soat, 18:00 da to'liq smena
+    window_from: datetime | None = None
+    #: KROMKA: bugungi o'lchovlar hisobi — kutilgan tomonga MOS tushgani va
+    #: tushmagani. Ikki raqam devor ekranida «lenta to'g'ri ishlayaptimi» degan
+    #: savolga javob beradi; nolga teng bo'lsa qator umuman chizilmaydi.
+    mos_count: int = 0
+    nomos_count: int = 0
+    #: KROMKA: oxirgi o'lchov (mm, hukm, detal nomi). Boshqa postda bo'sh
+    last_mm: float | None = None
+    last_verdict: str | None = None
+    last_part: str | None = None
+
+
+class TabloPeriod(BaseModel):
+    """Bitta davr (bugun / hafta / oy) yakuni — kartani bosganda ochiladigan oynada."""
+
+    label: str
+    planned_s: int
+    run_s: int
+    availability_pct: float | None
+    parts: int
+    defects: int
+    performance_pct: float | None
+    quality_pct: float | None
+    oee_pct: float | None
+
+
+class TabloScanRow(BaseModel):
+    """Stanokda bajarilgan oxirgi ishlardan bittasi."""
+
+    at: datetime
+    part_name: str
+    qr_text: str
+    employee: str | None
+
+
+class TabloDefectRow(BaseModel):
+    at: datetime
+    part_name: str
+    qr_text: str
+    reason: str
+    status: str  # pending | confirmed | rejected
+
+
+class TabloStopRow(BaseModel):
+    started_at: datetime
+    ended_at: datetime | None
+    seconds: int  # davom etayotgani hozirgacha
+    kind: str  # off | fault | idle | lock
+    reason: str | None  # None — sabab kiritilmagan
+
+
+class TabloMachineDetail(BaseModel):
+    """Stanok kartasini bosganda: uch davr OEE si va shu stanokning oxirgi hodisalari."""
+
+    machine_id: int
+    machine_name: str
+    post_name: str
+    periods: list[TabloPeriod]  # bugun, 7 kun, 30 kun
+    recent_scans: list[TabloScanRow]
+    defects: list[TabloDefectRow]
+    stops: list[TabloStopRow]

@@ -26,10 +26,12 @@ OEE          = Availability × Performance × Quality
 | **Performance hisobi** | `services/performance.py`, Hisobotlar → «Stanok vaqti» (§4.6, kromka — §4.9) | ✅ bor: Prisadka (2026-09-18) va Kromka (2026-09-20) |
 | **Kromka o'lchovi ↔ detal** | `services/kromka.py`, Tizim sozlamalari → «Kromka o'lchovi» (§4.10) | ⚠️ hukm bor (mos/ortiqcha/nomos), lekin KUZATUV: datchik xato o'lchayapti, avtomatik brak o'chirilgan (2026-09-20) |
 | **ROVER (CNC 2130) kuzatuvi** | `bridge-agent/agent.py` (v1.7.0), `andon_event.kind='rover'` (§4.13) | ✅ bor (2026-09-20): holat, to'xtash va Pico hodisalari; rele hali o'chiq |
+| **Devordagi stanok taxtasi** | `/tablo/stanoklar`, `GET /tablo/machines` | ✅ bor (2026-09-21): jonli holat, smena, bugungi A·P·Q·OEE, sababsiz to'xtashlar, «aloqa yo'q» ajratilgan |
 | **OEE kesim sanasi** | `settings_service.OEE_START_DATE`, Tizim sozlamalari → «Ish jadvali» (§4.12) | ✅ bor (2026-09-20): kesimdan oldingi kunlar hisobotga kirmaydi |
 | **Quality hisobi** | `services/performance.py: quality_pct`, Hisobotlar → «Stanok vaqti» (§4.7, kromka — §4.11) | ✅ bor: Prisadka (2026-09-19) va Kromka (2026-09-20) |
 | Brak | `part_defect` — terminal skan tasmasidagi BRAK tugmasi (§4.7) | ✅ bor (2026-09-19); qayta ishlab chiqarish (remake) YO'Q |
 | **ROVER (CNC 2130) kuzatuvi** | `bridge-agent/agent.py` (v1.7.0), `andon_event.kind='rover'` (§4.13) | ✅ bor (2026-09-20): holat, to'xtash va Pico hodisalari; rele hali o'chiq |
+| **Devordagi stanok taxtasi** | `/tablo/stanoklar`, `GET /tablo/machines` | ✅ bor (2026-09-21): jonli holat, smena, bugungi A·P·Q·OEE, sababsiz to'xtashlar, «aloqa yo'q» ajratilgan |
 | **OEE kesim sanasi** | `settings_service.OEE_START_DATE`, Tizim sozlamalari → «Ish jadvali» (§4.12) | ✅ bor (2026-09-20): kesimdan oldingi kunlar hisobotga kirmaydi |
 | **Quality hisobi** | `services/performance.py: quality_pct`, Hisobotlar → «Stanok vaqti» (§4.7) | ✅ bor (2026-09-19) |
 | **OEE = A × P × Q** | `services/performance.py: oee_pct`, o'sha hisobot ustuni (§4.7) | ✅ bor (2026-09-19) |

@@ -25,6 +25,7 @@ import { Route as LayoutReportsRouteImport } from './routes/_layout/reports'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutSystemSettingsRouteImport } from './routes/_layout/system-settings'
 import { Route as LayoutWorkCentersRouteImport } from './routes/_layout/work-centers'
+import { Route as TabloStanoklarRouteImport } from './routes/tablo_.stanoklar'
 import { Route as LayoutAnketaOrderIdRouteImport } from './routes/_layout/anketa.$orderId'
 import { Route as LayoutCutmapOrderIdRouteImport } from './routes/_layout/cutmap.$orderId'
 import { Route as LayoutOrdersIndexRouteImport } from './routes/_layout/orders/index'
@@ -109,6 +110,11 @@ const LayoutWorkCentersRoute = LayoutWorkCentersRouteImport.update({
   path: '/work-centers',
   getParentRoute: () => LayoutRoute,
 } as any)
+const TabloStanoklarRoute = TabloStanoklarRouteImport.update({
+  id: '/tablo_/stanoklar',
+  path: '/tablo/stanoklar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LayoutAnketaOrderIdRoute = LayoutAnketaOrderIdRouteImport.update({
   id: '/anketa/$orderId',
   path: '/anketa/$orderId',
@@ -146,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof LayoutSettingsRoute
   '/system-settings': typeof LayoutSystemSettingsRoute
   '/work-centers': typeof LayoutWorkCentersRoute
+  '/tablo/stanoklar': typeof TabloStanoklarRoute
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
@@ -166,6 +173,7 @@ export interface FileRoutesByTo {
   '/settings': typeof LayoutSettingsRoute
   '/system-settings': typeof LayoutSystemSettingsRoute
   '/work-centers': typeof LayoutWorkCentersRoute
+  '/tablo/stanoklar': typeof TabloStanoklarRoute
   '/': typeof LayoutIndexRoute
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
@@ -189,6 +197,7 @@ export interface FileRoutesById {
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/system-settings': typeof LayoutSystemSettingsRoute
   '/_layout/work-centers': typeof LayoutWorkCentersRoute
+  '/tablo_/stanoklar': typeof TabloStanoklarRoute
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/_layout/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
@@ -213,6 +222,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/system-settings'
     | '/work-centers'
+    | '/tablo/stanoklar'
     | '/anketa/$orderId'
     | '/cutmap/$orderId'
     | '/orders/$orderId'
@@ -233,6 +243,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/system-settings'
     | '/work-centers'
+    | '/tablo/stanoklar'
     | '/'
     | '/anketa/$orderId'
     | '/cutmap/$orderId'
@@ -255,6 +266,7 @@ export interface FileRouteTypes {
     | '/_layout/settings'
     | '/_layout/system-settings'
     | '/_layout/work-centers'
+    | '/tablo_/stanoklar'
     | '/_layout/'
     | '/_layout/anketa/$orderId'
     | '/_layout/cutmap/$orderId'
@@ -267,6 +279,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   TabloRoute: typeof TabloRoute
   TerminalRoute: typeof TerminalRoute
+  TabloStanoklarRoute: typeof TabloStanoklarRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -383,6 +396,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutWorkCentersRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/tablo_/stanoklar': {
+      id: '/tablo_/stanoklar'
+      path: '/tablo/stanoklar'
+      fullPath: '/tablo/stanoklar'
+      preLoaderRoute: typeof TabloStanoklarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_layout/anketa/$orderId': {
       id: '/_layout/anketa/$orderId'
       path: '/anketa/$orderId'
@@ -460,6 +480,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   TabloRoute: TabloRoute,
   TerminalRoute: TerminalRoute,
+  TabloStanoklarRoute: TabloStanoklarRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

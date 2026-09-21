@@ -41,6 +41,9 @@ export ADMIN_PASSWORD="$(env_get ADMIN_PASSWORD .env)"
 # Telegram kalitlari ixtiyoriy: bo'lsa nusxa yuboriladi, bo'lmasa lokal backup yetarli
 export TG_BOT_TOKEN="$(env_get TG_BOT_TOKEN .backup.env)"
 export TG_CHAT_ID="$(env_get TG_CHAT_ID .backup.env)"
+# Guruhda mavzular (topics) yoqilgan bo'lsa nusxa SHU mavzuga tushadi; bo'sh bo'lsa
+# oddiy chatga — ya'ni eski o'rnatishlarda hech narsa o'zgarmaydi
+export TG_TOPIC_ID="$(env_get TG_TOPIC_ID .backup.env)"
 
 : "${POSTGRES_USER:?.env da POSTGRES_USER topilmadi}"
 : "${POSTGRES_DB:?.env da POSTGRES_DB topilmadi}"
@@ -71,8 +74,12 @@ send_tg() { # $1 = fayl, $2 = izoh
     # `|| resp=...`: tarmoq xatosida (DNS/connect/timeout) curl non-zero qaytaradi
     # va `set -e` ostida BUTUN skript shu yerda to'xtardi — yuklangan fayllar
     # backupi va retention (`find -delete`) umuman bajarilmasdi.
+    # `if` SHART: `[ -n ... ] && arr=(...)` bo'sh qiymatda 1 qaytaradi va skript
+    # `set -e` ostida shu yerda to'xtardi — backup umuman yuborilmasdi
+    local topic=()
+    if [ -n "${TG_TOPIC_ID:-}" ]; then topic=(-F message_thread_id="$TG_TOPIC_ID"); fi
     resp=$(curl -s --connect-timeout 10 --max-time 300 \
-        -F chat_id="$TG_CHAT_ID" -F document=@"$1" -F caption="$2" \
+        -F chat_id="$TG_CHAT_ID" "${topic[@]}" -F document=@"$1" -F caption="$2" \
         "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendDocument") ||
         resp='{"ok":false,"description":"curl xatosi (tarmoq yoki timeout)"}'
     echo "$resp" | grep -q '"ok":true' &&
