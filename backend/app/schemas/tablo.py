@@ -1,6 +1,6 @@
 """TABLO javob sxemalari: buyurtma × bosqich matritsasi va drill-down."""
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -67,3 +67,35 @@ class TabloOrderDetail(BaseModel):
     number: str
     name: str | None
     parts: list[TabloPartRow]
+
+
+class TabloMachineRow(BaseModel):
+    """Devordagi stanok taxtasining bitta kartasi — Pico ulangan BITTA ish markazi.
+
+    Raqamlar «Stanok vaqti» hisobotining AYNAN o'zidan (bugungi kun uchun): taxta
+    va hisobot hech qachon boshqa-boshqa raqam ko'rsatmasin."""
+
+    machine_id: int
+    machine_name: str
+    post_name: str
+    #: Jonli holat (Redis): PROCESSING / AWAIT_PART / IDLE / STOPPED / FAULT / OFF.
+    #: `None` — Pico yoki agentdan 90 soniyadan beri xabar yo'q (kartada «aloqa yo'q»).
+    state: str | None
+    since: datetime | None  # holat qachondan beri
+    crew: list[str]  # smenadagi hodimlar; bo'sh — smena ochilmagan
+    #: Bugungi OEE — hisobotdagi ustunlar bilan bir xil
+    planned_s: int
+    run_s: int
+    stop_s: int  # rejasiz to'xtash + ma'lumotsiz vaqt
+    availability_pct: float | None
+    parts: int
+    performance_pct: float | None
+    defects: int
+    quality_pct: float | None
+    oee_pct: float | None
+    #: Sababi kiritilmagan to'xtashlar (bugun) — operator oynani yopib ketgan bo'lsa ko'rinadi
+    pending_reasons: int
+    #: KROMKA: oxirgi o'lchov (mm, hukm, detal nomi). Boshqa postda bo'sh
+    last_mm: float | None = None
+    last_verdict: str | None = None
+    last_part: str | None = None

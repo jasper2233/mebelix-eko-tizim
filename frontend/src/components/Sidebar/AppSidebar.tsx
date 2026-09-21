@@ -4,6 +4,7 @@ import {
   BarChart3,
   ClipboardList,
   Factory,
+  Gauge,
   Home,
   IdCard,
   MonitorCog,
@@ -64,6 +65,13 @@ export const NAV_ITEMS: (Item & {
   },
   // TABLO — tsex zalidagi TV ekran
   { icon: Tv, title: "LIVE Tablo", path: "/tablo", show: () => true },
+  // Ikkinchi TV ekran: Pico ulangan stanoklarning jonli holati va bugungi OEE si
+  {
+    icon: Gauge,
+    title: "Stanoklar",
+    path: "/tablo/stanoklar",
+    show: () => true,
+  },
   {
     // MonitorCog, Printer emas: agent — tsex KOMPYUTERI (chek printeri +
     // stanok skaneri ko'prigi); Prisadka agenti umuman chek chiqarmaydi.

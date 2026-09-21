@@ -3,7 +3,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, ArrowRight } from "lucide-react"
 import {
   useCallback,
   useEffect,
@@ -450,6 +450,14 @@ function TabloPage() {
             <ArrowLeft className="size-5" /> Boshqaruv paneli
           </Link>
         )}
+        {/* Ikkinchi taxtaga o'tish — devordagi ekranda ham kerak (tablo hisobi
+            boshqaruv panelini ko'rmaydi), shuning uchun rol sharti YO'Q */}
+        <Link
+          to="/tablo/stanoklar"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-sm text-base font-semibold text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        >
+          Stanoklar <ArrowRight className="size-5" />
+        </Link>
         <div className="ml-auto md:ml-0">
           <LiveBadge online={online} updatedAt={dataUpdatedAt} />
         </div>

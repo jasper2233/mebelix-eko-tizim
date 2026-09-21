@@ -1,20 +1,161 @@
 """TABLO data API: orders × stages live matrix. Read-only, any authenticated device."""
 
-from datetime import date
+from datetime import UTC, date, datetime, time
 
 from fastapi import APIRouter
-from sqlalchemy import func, select, text
+from fastapi.responses import StreamingResponse
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.orm import defer
 
 from app.api.deps import CurrentUser, SessionDep
 from app.api.routes.orders._common import _get_visible_order
+from app.api.routes.reports import report_machine_time
 from app.core.config import TASHKENT_TZ
-from app.models import ORDER_FAT_COLUMNS, PART_FAT_COLUMNS, PRIORITY_RANK, Order, Part, PartRoute, Post, Product, Scan
-from app.models.enums import OrderStatus
-from app.schemas.tablo import StageAgg, TabloMatrix, TabloOrderDetail, TabloOrderRow, TabloPartRow, TabloPostCol
+from app.models import (
+    ORDER_FAT_COLUMNS,
+    PART_FAT_COLUMNS,
+    PRIORITY_RANK,
+    Downtime,
+    Employee,
+    KromkaMeasurement,
+    Machine,
+    Order,
+    Part,
+    PartRoute,
+    Post,
+    Product,
+    Scan,
+    WorkSession,
+)
+from app.models.enums import DowntimeKind, OrderStatus, SessionStatus
+from app.schemas.tablo import (
+    StageAgg,
+    TabloMachineRow,
+    TabloMatrix,
+    TabloOrderDetail,
+    TabloOrderRow,
+    TabloPartRow,
+    TabloPostCol,
+)
+from app.services.andon import read_live
 from app.services.metrics import VolumeShare, part_volume
 
 router = APIRouter(prefix="/tablo", tags=["tablo"])
+
+
+@router.get("/machines", response_model=list[TabloMachineRow], operation_id="read_tablo_machines")
+async def read_tablo_machines(db: SessionDep, user: CurrentUser) -> list[TabloMachineRow]:
+    """Stanok taxtasi: Pico ulangan ish markazlarining JONLI holati va BUGUNGI OEE si.
+
+    Raqamlar «Stanok vaqti» hisobotini bugungi kun uchun chaqirib olinadi — taxta
+    va hisobot bitta manbadan gapirsin. Hisobotga faqat andon hodisasi bor ish
+    markazlari tushadi, ya'ni «faqat Pico ulanganlari» filtri o'zidan chiqadi.
+
+    Jonli holat Redis'dan (`read_live`): kalit yo'q bo'lsa `state = None` —
+    bu «o'chiq» EMAS, «aloqa yo'q» (agent yoki Pico 90 soniyadan beri jim)."""
+    bugun = datetime.now(TASHKENT_TZ).date()
+    hisobot = await report_machine_time(db, user, date_from=bugun, date_to=bugun)
+    if isinstance(hisobot, StreamingResponse) or not hisobot.rows:  # pragma: no cover — format="json"
+        return []
+    ids = [r.machine_id for r in hisobot.rows]
+    jonli = await read_live(ids)
+    postlar = dict(
+        (
+            await db.execute(
+                select(Machine.id, Post.name).join(Post, Post.id == Machine.post_id).where(Machine.id.in_(ids))
+            )
+        )
+        .tuples()
+        .all()
+    )
+    kun_boshi = datetime.combine(bugun, time.min, tzinfo=TASHKENT_TZ)
+    sababsiz = dict(
+        (
+            await db.execute(
+                select(Downtime.machine_id, func.count())
+                .where(
+                    Downtime.machine_id.in_(ids),
+                    Downtime.kind != DowntimeKind.LOCK,
+                    Downtime.reason_id.is_(None),
+                    Downtime.is_deleted == False,  # noqa: E712
+                    or_(Downtime.ended_at.is_(None), Downtime.ended_at >= kun_boshi),
+                )
+                .group_by(Downtime.machine_id)
+            )
+        )
+        .tuples()
+        .all()
+    )
+    # Smenadagi brigada: bitta so'rovda hamma ish markazi bo'yicha (stanok boshiga
+    # alohida so'rov taxtani 9 ta ortiqcha zapros bilan yuklardi)
+    brigada: dict[int, list[str]] = {}
+    for mid, ism in (
+        (
+            await db.execute(
+                select(WorkSession.machine_id, Employee.full_name)
+                .join(Employee, Employee.id == WorkSession.employee_id)
+                .where(
+                    WorkSession.machine_id.in_(ids),
+                    WorkSession.status == SessionStatus.ACTIVE,
+                    WorkSession.is_deleted == False,  # noqa: E712
+                )
+                .order_by(WorkSession.created_at)
+            )
+        )
+        .tuples()
+        .all()
+    ):
+        if mid is not None:
+            brigada.setdefault(mid, []).append(ism)
+
+    # Oxirgi o'lchov — faqat kromkada bor (`kromka_measurement`); bitta so'rovda
+    # har stanokning eng yangisi olinadi
+    olchovlar = {
+        row.machine_id: row
+        for row in (
+            await db.execute(
+                select(KromkaMeasurement)
+                .where(
+                    KromkaMeasurement.machine_id.in_(ids),
+                    KromkaMeasurement.is_deleted == False,  # noqa: E712
+                )
+                .distinct(KromkaMeasurement.machine_id)
+                .order_by(KromkaMeasurement.machine_id, KromkaMeasurement.measured_at.desc())
+            )
+        )
+        .scalars()
+        .all()
+    }
+
+    rows: list[TabloMachineRow] = []
+    for r in hisobot.rows:
+        live = jonli.get(r.machine_id)
+        olchov = olchovlar.get(r.machine_id)
+        rows.append(
+            TabloMachineRow(
+                machine_id=r.machine_id,
+                machine_name=r.machine_name,
+                post_name=postlar.get(r.machine_id, ""),
+                state=str(live["state"]) if live and live.get("state") else None,
+                since=datetime.fromtimestamp(live["since"], UTC) if live and live.get("since") else None,
+                crew=brigada.get(r.machine_id, []),
+                planned_s=r.planned_s,
+                run_s=r.run_s,
+                stop_s=r.unplanned_stop_s + r.no_data_s,
+                availability_pct=r.availability_pct,
+                parts=r.parts,
+                performance_pct=r.performance_pct,
+                defects=r.defects,
+                quality_pct=r.quality_pct,
+                oee_pct=r.oee_pct,
+                pending_reasons=sababsiz.get(r.machine_id, 0),
+                last_mm=float(olchov.measured_mm) if olchov and olchov.measured_mm is not None else None,
+                last_verdict=olchov.verdict.value if olchov else None,
+                last_part=None,
+            )
+        )
+    return rows
+
 
 # TABLO'da FAQAT ishlab chiqarishdagi buyurtmalar ko'rinadi.
 #

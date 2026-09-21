@@ -3877,6 +3877,93 @@ export type SystemSettingUpdate = {
 };
 
 /**
+ * TabloMachineRow
+ *
+ * Devordagi stanok taxtasining bitta kartasi — Pico ulangan BITTA ish markazi.
+ *
+ * Raqamlar «Stanok vaqti» hisobotining AYNAN o'zidan (bugungi kun uchun): taxta
+ * va hisobot hech qachon boshqa-boshqa raqam ko'rsatmasin.
+ */
+export type TabloMachineRow = {
+    /**
+     * Machine Id
+     */
+    machine_id: number;
+    /**
+     * Machine Name
+     */
+    machine_name: string;
+    /**
+     * Post Name
+     */
+    post_name: string;
+    /**
+     * State
+     */
+    state: string | null;
+    /**
+     * Since
+     */
+    since: string | null;
+    /**
+     * Crew
+     */
+    crew: Array<string>;
+    /**
+     * Planned S
+     */
+    planned_s: number;
+    /**
+     * Run S
+     */
+    run_s: number;
+    /**
+     * Stop S
+     */
+    stop_s: number;
+    /**
+     * Availability Pct
+     */
+    availability_pct: number | null;
+    /**
+     * Parts
+     */
+    parts: number;
+    /**
+     * Performance Pct
+     */
+    performance_pct: number | null;
+    /**
+     * Defects
+     */
+    defects: number;
+    /**
+     * Quality Pct
+     */
+    quality_pct: number | null;
+    /**
+     * Oee Pct
+     */
+    oee_pct: number | null;
+    /**
+     * Pending Reasons
+     */
+    pending_reasons: number;
+    /**
+     * Last Mm
+     */
+    last_mm?: number | null;
+    /**
+     * Last Verdict
+     */
+    last_verdict?: string | null;
+    /**
+     * Last Part
+     */
+    last_part?: string | null;
+};
+
+/**
  * TabloMatrix
  */
 export type TabloMatrix = {
@@ -7538,6 +7625,24 @@ export type UpdateDowntimeReasonResponses = {
 };
 
 export type UpdateDowntimeReasonResponse = UpdateDowntimeReasonResponses[keyof UpdateDowntimeReasonResponses];
+
+export type ReadTabloMachinesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/tablo/machines';
+};
+
+export type ReadTabloMachinesResponses = {
+    /**
+     * Response Read Tablo Machines
+     *
+     * Successful Response
+     */
+    200: Array<TabloMachineRow>;
+};
+
+export type ReadTabloMachinesResponse = ReadTabloMachinesResponses[keyof ReadTabloMachinesResponses];
 
 export type ReadTabloMatrixData = {
     body?: never;
