@@ -44,7 +44,28 @@ Kod muddati o'tishi ulangan agentga ta'sir qilmaydi — token muddatsiz.
 
 Agent `GET /api/v1/bridge-agents/latest` dan versiyani so'raydi: startdan ~1 daqiqada, har QAYTA ULANISHDA (deploy = darhol trigger) va zaxira sifatida har 10 daqiqada — bo'sh agent yangilanishni soatlab kutmaydi.
 Yangisi bo'lsa JIM yangilanadi: exe'ni yuklab oladi, sha256 tekshiradi,
-`update.bat` orqali o'zini almashtirib qayta ishga tushadi (~10 soniya). Lokal navbatda chek turganda darhol ALMASHMAYDI — bo'shashini kutadi, ko'pi bilan 1 soat (chop etish o'rtasida uzilsa bitta chek ikki marta chiqishi mumkin edi; chegara esa tiqilib qolgan navbat yangilanishni mangu to'xtatmasligi uchun).
+o'zini almashtirib qayta ishga tushadi (~10 soniya).
+
+**Almashtirish agent HALI TIRIK ekan bo'ladi.** Windows ishlab turgan exe'ni
+o'chirishga ruxsat bermaydi, lekin qayta nomlashga beradi (o'lchangan) —
+shuning uchun eski exe `mebelix-agent.exe.old` ga suriladi va yangisi uning
+o'rniga qo'yiladi. Bu ikkalasi ham xatosi tekshirilgan holda bajariladi:
+almashtirib bo'lmasa agent O'LMAYDI, sabab `agent.log` ga yoziladi va keyingi
+siklda qayta uriniladi. `update.bat` endi faqat eski jarayon o'lishini kutib
+yangi exe'ni ishga tushiradi, kutish esa CHEGARALANGAN (60 urinish) va chegara
+o'tsa ham `start` baribir bajariladi.
+
+> **2026-09-21 gacha bo'lgan xato.** Ilgari almashtirish agent `os._exit(0)`
+> qilgandan KEYIN, bat ichida bo'lardi va bat eski exe o'chguncha CHEKSIZ
+> kutardi. Exe'ni o'chirib bo'lmaydigan mashinada (`Program Files` — pastga
+> qara) bu abadiy tsiklga aylanardi: monoblok qayta yuklangunicha AGENTSIZ
+> qolardi, keyin esa avtostart ESKI exe'ni ko'tarardi, ya'ni yangilanish
+> jimgina yo'qolardi. Bir xil yangilanish bir monoblokda o'tib, boshqasida
+> o'tmasligining sababi shu edi. Tsiklni operator qora konsol oynasi sifatida
+> ko'rardi — u ham xato: `_spawn_bat` `DETACHED_PROCESS | CREATE_NO_WINDOW`
+> uzatardi, Microsoft esa bu ikkisini bir-birini istisno qiladi deb yozadi va
+> konsolsiz qolgan cmd o'ziga yangi konsol ajratardi. Endi faqat
+> `CREATE_NO_WINDOW`. Lokal navbatda chek turganda darhol ALMASHMAYDI — bo'shashini kutadi, ko'pi bilan 1 soat (chop etish o'rtasida uzilsa bitta chek ikki marta chiqishi mumkin edi; chegara esa tiqilib qolgan navbat yangilanishni mangu to'xtatmasligi uchun).
 Token va sozlamalar `%APPDATA%` da — ulanish saqlanadi; exe yo'li o'zgarmagani
 uchun avtostart ham amal qilaveradi. Flashka bilan tarqatish endi faqat BIRINCHI
 o'rnatishda kerak (yoki paneldagi havoladan). Panelda eski versiyali agent sariq
@@ -63,8 +84,10 @@ o'zgaruvchilarni tozalab uzatadi. CI'da `pyinstaller` versiyasi qotirilgan.
 
 **Exe qayerda turishi kerak?** Istalgan LOKAL diskda, yozish huquqi bor
 papkada (`C:` shart emas — `D:\MebelixAgent\` ham bo'ladi): yangilanish exe'ni
-o'z joyida almashtiradi (Program Files ga admin kerak), avtostart yo'li har
-startda qayta yoziladi, sozlama esa `%APPDATA%\MebelixAgent` da. Tarmoq
+o'z joyida almashtiradi — `Program Files` ga admin kerak, ya'ni u yerga
+o'rnatilgan agent O'ZINI YANGILAY OLMAYDI (yangilanish har siklda jim
+o'tkazib yuboriladi, `agent.log` da "exe qayta nomlanmadi" qatori chiqadi),
+avtostart yo'li har startda qayta yoziladi, sozlama esa `%APPDATA%\MebelixAgent` da. Tarmoq
 diski, flashka yoki «Yuklanmalar» ichidagi tasodifiy nusxa — yo'q: yuklanish
 paytida yo'q bo'lsa avtostart yiqiladi.
 
