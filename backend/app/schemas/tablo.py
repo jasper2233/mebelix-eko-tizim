@@ -98,6 +98,11 @@ class TabloMachineRow(BaseModel):
     #: Hisob QAYSI lahzadan beri yuritilayotgani — kartada «08:00 dan beri» bo'lib
     #: yoziladi. Reja vaqti hozirgi lahzada kesiladi: 11:00 da 3 soat, 18:00 da to'liq smena
     window_from: datetime | None = None
+    #: KROMKA: bugungi o'lchovlar hisobi — kutilgan tomonga MOS tushgani va
+    #: tushmagani. Ikki raqam devor ekranida «lenta to'g'ri ishlayaptimi» degan
+    #: savolga javob beradi; nolga teng bo'lsa qator umuman chizilmaydi.
+    mos_count: int = 0
+    nomos_count: int = 0
     #: KROMKA: oxirgi o'lchov (mm, hukm, detal nomi). Boshqa postda bo'sh
     last_mm: float | None = None
     last_verdict: str | None = None

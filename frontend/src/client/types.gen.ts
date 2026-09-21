@@ -4016,6 +4016,14 @@ export type TabloMachineRow = {
      */
     window_from?: string | null;
     /**
+     * Mos Count
+     */
+    mos_count?: number;
+    /**
+     * Nomos Count
+     */
+    nomos_count?: number;
+    /**
      * Last Mm
      */
     last_mm?: number | null;

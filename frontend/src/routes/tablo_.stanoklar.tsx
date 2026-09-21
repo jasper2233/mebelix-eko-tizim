@@ -128,6 +128,9 @@ function MachineCard({
     ? (ANDON_STATE_LABELS[row.state] ?? row.state)
     : "ALOQA YO'Q"
   const boshi = soatDaqiqa(row.window_from)
+  // Sxemada sukut qiymatli maydon (`= 0`) ixtiyoriy bo'lib generatsiya qilinadi
+  const mos = row.mos_count ?? 0
+  const nomos = row.nomos_count ?? 0
   return (
     // Bosilganda shu stanokning tafsiloti ochiladi (kunlik/haftalik/oylik OEE,
     // oxirgi ishlar, brak va to'xtashlar). Devor ekranida bosilmaydi — zarari yo'q.
@@ -202,13 +205,22 @@ function MachineCard({
           </div>
         </div>
 
-        {/* Postga xos qator: kromkada oxirgi o'lchov */}
-        {row.last_mm != null && (
-          <div className="num truncate text-base text-sky-300">
-            Oxirgi o'lchov {row.last_mm.toFixed(0)} mm
-            {row.last_verdict
-              ? ` · ${KROMKA_VERDICT_LABELS[row.last_verdict] ?? row.last_verdict}`
-              : ""}
+        {/* KROMKA: bugun nechta o'lchov kutilgan tomonga MOS tushdi, nechtasi yo'q.
+            «Mos emas» qizil — lenta yoki detal bilan muammo borligining birinchi belgisi. */}
+        {(mos > 0 || nomos > 0 || row.last_mm != null) && (
+          <div className="num flex flex-wrap items-baseline gap-x-3 text-base">
+            <span className="text-emerald-300">{mos} mos</span>
+            <span className={nomos > 0 ? "text-red-300" : "text-slate-500"}>
+              {nomos} mos emas
+            </span>
+            {row.last_mm != null && (
+              <span className="truncate text-slate-400">
+                oxirgi {row.last_mm.toFixed(0)} mm
+                {row.last_verdict
+                  ? ` · ${KROMKA_VERDICT_LABELS[row.last_verdict] ?? row.last_verdict}`
+                  : ""}
+              </span>
+            )}
           </div>
         )}
 

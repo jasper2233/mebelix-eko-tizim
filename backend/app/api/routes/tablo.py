@@ -31,7 +31,7 @@ from app.models import (
     Scan,
     WorkSession,
 )
-from app.models.enums import DowntimeKind, OrderStatus, SessionStatus
+from app.models.enums import DowntimeKind, KromkaVerdict, OrderStatus, SessionStatus
 from app.schemas.tablo import (
     StageAgg,
     TabloDefectRow,
@@ -124,6 +124,27 @@ async def read_tablo_machines(db: SessionDep, user: CurrentUser) -> list[TabloMa
         if mid is not None:
             brigada.setdefault(mid, []).append(ism)
 
+    # Bugungi o'lchov hisobi (kromka): kutilganiga mos tushgani va tushmagani.
+    # `ortiqcha`/`shubhali`/`skanersiz` alohida sanalmaydi — ular na detalning,
+    # na lentaning aybi (takroriy o'tish, datchik kodi, skan yo'qligi).
+    hukmlar: dict[int, dict[str, int]] = {}
+    for mid, hukm, soni in (
+        (
+            await db.execute(
+                select(KromkaMeasurement.machine_id, KromkaMeasurement.verdict, func.count())
+                .where(
+                    KromkaMeasurement.machine_id.in_(ids),
+                    KromkaMeasurement.measured_at >= kun_boshi,
+                    KromkaMeasurement.is_deleted == False,  # noqa: E712
+                )
+                .group_by(KromkaMeasurement.machine_id, KromkaMeasurement.verdict)
+            )
+        )
+        .tuples()
+        .all()
+    ):
+        hukmlar.setdefault(mid, {})[hukm.value] = soni
+
     # Oxirgi o'lchov — faqat kromkada bor (`kromka_measurement`); bitta so'rovda
     # har stanokning eng yangisi olinadi
     olchovlar = {
@@ -166,6 +187,8 @@ async def read_tablo_machines(db: SessionDep, user: CurrentUser) -> list[TabloMa
                 oee_pct=r.oee_pct,
                 pending_reasons=sababsiz.get(r.machine_id, 0),
                 window_from=oyna_boshi,
+                mos_count=hukmlar.get(r.machine_id, {}).get(KromkaVerdict.MOS.value, 0),
+                nomos_count=hukmlar.get(r.machine_id, {}).get(KromkaVerdict.NOMOS.value, 0),
                 last_mm=float(olchov.measured_mm) if olchov and olchov.measured_mm is not None else None,
                 last_verdict=olchov.verdict.value if olchov else None,
                 last_part=None,
