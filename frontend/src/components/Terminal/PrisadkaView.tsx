@@ -449,6 +449,22 @@ export function PrisadkaView({
         orderNumber={data?.order_number}
         projectName={data?.project_name}
       >
+        {/* Ish hajmi SARLAVHA qatorida, alohida qator emas: tsex paneli
+            1366×768 va balandlik tanqis. Yuza va qirra ALOHIDA — qirra
+            teshigi boshqa o'rnatishni talab qiladi, ya'ni bu operator uchun
+            reja, shunchaki son emas. Sanoq sahifadagi detallar bo'yicha. */}
+        {!!(data?.holes_face || data?.holes_edge) && (
+          <span className="flex items-baseline gap-1.5">
+            <span className="num text-lg font-black">
+              {(data.holes_face ?? 0) + (data.holes_edge ?? 0)}
+            </span>
+            <span className="text-sm text-muted-foreground">
+              teshik · yuza{" "}
+              <span className="num font-semibold">{data.holes_face}</span> ·
+              qirra <span className="num font-semibold">{data.holes_edge}</span>
+            </span>
+          </span>
+        )}
         <PostProgress className="ml-auto" done={totDone} total={totReq} />
         <div className="flex items-center gap-2">
           {/* Papka tugmasi YO'Q: papka birinchi yuklashda bir marta so'raladi
@@ -483,23 +499,6 @@ export function PrisadkaView({
           </LoadingButton>
         </div>
       </PostHeader>
-      {/* Ish hajmi. Yuza va qirra ALOHIDA: qirra teshigi boshqa o'rnatishni
-          talab qiladi, ya'ni bu operator uchun reja, shunchaki son emas.
-          Sanoq SAHIFADAGI detallar bo'yicha — karta bilan bir xil manba. */}
-      {!!(data?.holes_face || data?.holes_edge) && (
-        <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 border-b bg-muted/40 px-4 py-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Teshik
-          </span>
-          <span className="num text-lg font-black">
-            {(data.holes_face ?? 0) + (data.holes_edge ?? 0)}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            yuza <span className="num font-semibold">{data.holes_face}</span> ·
-            qirra <span className="num font-semibold">{data.holes_edge}</span>
-          </span>
-        </div>
-      )}
       <div
         className="min-h-0 flex-1 overflow-y-auto"
         ref={scxScroll.ref}

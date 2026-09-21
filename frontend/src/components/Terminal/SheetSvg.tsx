@@ -49,7 +49,7 @@ const PART_CUSTOM = "#a78bfa"
  * qo'llanib uzoq bosish yiqilardi — sinov panelida esa ishlardi. Aynan shu
  * farq kuzatilgan.
  *
- * 30px = 17" 1920x1080 da ~6 mm. Sichqoncha qo'yib qo'yilganda NOL piksel
+ * 30px = tsex paneli (17″ 1366×768 — `DefectDialog`, `DowntimeReason`) da ~8 mm. Sichqoncha qo'yib qo'yilganda NOL piksel
  * qimirlaydi, ya'ni keng chegara sichqonchaga hech qanday zarar qilmaydi. */
 const LP_SLOP = 30
 

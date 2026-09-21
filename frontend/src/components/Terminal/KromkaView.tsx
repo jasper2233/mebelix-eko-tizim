@@ -519,10 +519,27 @@ export function KromkaView({
       {/* CHAP: arradan kelgan detallar, progress joyida ko'rinadi */}
       <div className="flex min-w-0 flex-1 flex-col rounded-xl border bg-white">
         <PostHeader
+          className="flex-wrap"
           onBack={onBack}
           orderNumber={data?.order_number}
           projectName={data?.project_name}
         >
+          {/* Qaysi lentadan qancha kerak — kromkachi ishni boshlashdan OLDIN
+              skladdan aynan shu rulonlarni olib keladi. Son GibLab'ning O'Z
+              hisobi (qirqim zaxirasi bilan), ya'ni texnolog ko'radigan raqam.
+              SARLAVHA qatorida, alohida qator emas: tsex paneli 1366×768 va
+              BALANDLIK tanqis — 40 px lik qator jadvalning yana bir qatoriga
+              teng. Eni yetadi (o'lchandi: sarlavha 473 + lentalar 473 = 934,
+              panelda 1366). Beshta lentadan ko'p bo'lsa `flex-wrap` ikkinchi
+              qatorga tushiradi — ya'ni eng yomon holat avvalgi ko'rinish. */}
+          {data?.bands?.map((b) => (
+            <span key={b.name} className="flex items-baseline gap-1.5">
+              <span className="text-sm font-semibold">{b.name}</span>
+              <span className="num text-lg font-black">
+                {Math.round(b.metres)} m
+              </span>
+            </span>
+          ))}
           {/* Yarim yo'ldagi nusxalar soni — ular jadval tepasida sariq */}
           {!oval && inProgressCount > 0 && (
             <span className="num ml-auto rounded-md bg-amber-100 px-2.5 py-1 text-sm font-bold text-amber-800">
@@ -536,27 +553,6 @@ export function KromkaView({
           />
         </PostHeader>
         <StationStrip />
-        {/* Qaysi lentadan qancha kerak — kromkachi ishni boshlashdan OLDIN
-            skladdan aynan shu rulonlarni olib keladi. Son GibLab'ning O'Z
-            hisobi (qirqim zaxirasi bilan), ya'ni texnolog ko'radigan raqam.
-            Doim ochiq: tsex ekranida bosilmagan narsa ko'rilmaydi. Kulrang —
-            yuqoridagi moviy StationStrip o'zgaruvchan HOLAT, bu esa o'zgarmas
-            ish ma'lumoti; ikkalasi rang bo'yicha raqobatlashmasin. */}
-        {!!data?.bands?.length && (
-          <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 border-b bg-muted/40 px-4 py-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Kerak
-            </span>
-            {data.bands.map((b) => (
-              <span key={b.name} className="flex items-baseline gap-1.5">
-                <span className="text-sm font-semibold">{b.name}</span>
-                <span className="num text-lg font-black">
-                  {Math.round(b.metres)} m
-                </span>
-              </span>
-            ))}
-          </div>
-        )}
         <div
           className="min-h-0 flex-1 overflow-y-auto"
           ref={listScroll.ref}
