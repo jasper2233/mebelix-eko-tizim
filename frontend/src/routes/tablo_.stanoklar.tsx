@@ -14,8 +14,7 @@
 // sarlavhada bir marta turadi.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowLeft } from "lucide-react"
+import { createFileRoute } from "@tanstack/react-router"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { type TabloMachineRow, TabloService } from "@/client"
@@ -502,13 +501,6 @@ function StanoklarPage() {
   return (
     <div className="min-h-screen bg-[#0E1116] px-8 py-7 text-[#E7EAEF]">
       <header className="mb-7 flex flex-wrap items-baseline gap-x-6 gap-y-2">
-        <Link
-          to="/tablo"
-          className="flex items-center gap-2 text-lg text-[#5D6675] outline-none hover:text-[#C8D0DC] focus-visible:text-[#C8D0DC]"
-        >
-          <ArrowLeft className="size-5" />
-          Buyurtmalar
-        </Link>
         <h1 className="text-4xl font-black tracking-tight">Stanoklar</h1>
         {boshi && reja && (
           <p className="num text-xl text-[#8B95A5]">
