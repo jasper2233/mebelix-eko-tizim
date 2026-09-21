@@ -338,7 +338,7 @@ sahifasi, aybdor hodim kesimidagi hisobot.
 ### 4.8 Kromka stansiyasi — kuzatuv (2026-09-19, 1-bosqich)
 
 Kromkada ikkinchi Pico bor: u chiroq emas, **detal uzunligini** ikkita to'siq datchigi bilan
-o'lchaydi (alohida repo — `jasper2233/kromka-stansiya-OYY`, firmware v1.14). 1-bosqichda u
+o'lchaydi (alohida repo — `jasper2233/kromka-stansiya-OYY`, firmware **v1.16**). 1-bosqichda u
 faqat KUZATILADI: hech narsa bloklanmaydi, skan oqimiga tegilmaydi. Foyda darhol —
 **KROMKA uchun ham Availability** va o'lchov tarixi.
 
@@ -348,7 +348,7 @@ faqat KUZATILADI: hech narsa bloklanmaydi, skan oqimiga tegilmaydi. Foyda darhol
 | Yurak urishi | o'sha faylda `_andon_session` | Kromka Pico'si 3 soniya BUYRUQ ko'rmasa hodisalarni RAM ga yig'a boshlaydi — unga har soniyada `HB`, prisadkaga 5 soniyalik `PING` |
 | Kalit | `_kromka_kalit` | Kromka firmware'i `session`/`seq` ni yubormaydi — agent beradi (har ulanishda yangi sessiya), shuning uchun serverdagi `(machine_id, session, seq)` unikal indeksi qayta yuborishni o'zi tashlaydi |
 | Buferdan kelgani | `_kromka_line` | `eski_ms` — hodisa Pico xotirasida qancha kutgani; `ts = hozir − eski_ms`, aks holda tun bo'yi yig'ilgani bitta daqiqaga tiqilardi |
-| Qabul | `POST /bridge-agents/andon` (o'sha endpoint) | `AndonEventIn.type` ga kromka turlari qo'shildi: `olchov`, `uskuna`, `tezlik`, `ogoh`, `avariya_toxtash`, `boot`. Yangi jadval YO'Q — xom hodisa `andon_event.payload` da |
+| Qabul | `POST /bridge-agents/andon` (o'sha endpoint) | `AndonEventIn.type` ga kromka turlari qo'shildi: `olchov`, `uskuna`, `tezlik`, `ogoh`, `avariya_toxtash`, `boot`, `tiqilish`. Yangi jadval YO'Q — xom hodisa `andon_event.payload` da |
 | Joriy holat | agent har 30 s `HOLAT` so'raydi (`_kromka_holat`) | Kromka `uskuna` ni faqat RUN kirishi O'ZGARGANDA yuboradi — stanok ertalab yoqilib, agent kunduzi ulansa hech narsa kelmasdi. `HOLAT` javobidagi `uskuna` o'sha lahzadagi holat; **o'zgargan bo'lsagina** hodisa yoziladi (`manba: "holat"`), aks holda oraliqlar maydalanardi |
 | Oraliqlar | `services/andon.py: uskuna_spans` | Kromka Pico'si holat DAVOMIYLIGINI o'lchamaydi (prisadkadagi `prev_duration_s` yo'q) — oraliq hodisalar orasidan quriladi: `holat=1` → PROCESSING, `0` → OFF. Oxirgi oraliq faqat agent hozir aloqada bo'lsa ochiq qoladi |
 | Admin panel | `WorkCenters/KromkaLive` + `GET /machines/kromka-measurements` + WS `kromka.measure` | «Ish markazlari» sahifasi ostida JONLI oqim: detal o'tishi bilan qator chiqadi (vaqt, mm, HUKM, kutilgan o'lcham va farq, detal nomi + chek ID si, stanok), eng yangisi bir marta yashil uriladi. Pico kodi faqat `OK` bo'lmaganda ko'rsatiladi. Bitta partiyadan ko'pi bilan 5 ta xabar tarqatiladi — oflayn agent yuzlab yig'ilganini birdan yuborsa ekran ko'milmasin |
@@ -359,6 +359,17 @@ Ma'lumot sifatini o'lchash uchun `scripts/kromka_audit.sql` — faqat o'qiydigan
 (`OK`/`FARQ`/`FAQAT1`/`FAQAT2`), D1−D2 farqi (median/p90/max), tezlik tarqoqligi, MAYDA
 bo'laklar soni, ogohlantirishlar, kunlik ishlagan vaqt, uzilishlar va oxirgi 15 o'lchov.
 Qayerda ishga tushirish — fayl boshida.
+
+**Firmware v1.16 (2026-09-21) nimani o'zgartirdi va bizda nima qilindi:**
+
+| Ularda | Bizda |
+| --- | --- |
+| **`tiqilish` hodisasi**: D1 va D2 dagi vaqtlar bir-biriga mos kelmasa (detallar birga o'tgan yoki biri datchik ostida turib qolgan) soxta o'lcham chiqarilmaydi — `{"ev":"tiqilish","sabab":"birga_otdi"\|"vaqt_mos_emas","n":N,"L2":…,"L1":[…]}` yuboriladi va avariya yonadi | Agent oq ro'yxatiga va `AndonEventIn.type` ga qo'shildi, xom holida `andon_event` ga tushadi; `scripts/kromka_audit.sql` §11 uni sanaydi. **Har tiqilish = o'lchanmay qolgan detal**, ya'ni Performance shuncha kam ko'rsatadi |
+| Navbatdagi yozuv endi vaqt bo'yicha TASHLANMAYDI (muddat 5 barobar uzun, datchik ostida detal turganda umuman sanalmaydi) | O'zimizda o'zgarish shart emas: bu aynan biz 2026-09-19 da «avtomatik skanga o'tishdan oldin tuzatilsin» degan nuqson edi — navbat siljib, keyingi o'lchovlar boshqa detalning yozuvi bilan juftlanardi |
+| Tezlik nominaldan uzoq chiqsa, uzunlik NOMINAL tezlik bilan hisoblanadi (ilgari o'lchangani ishlatilardi) | O'lchov endi tiqilishdan keyin ham ishonchli; `ogoh: tezlik_nomuvofiq` baribir keladi |
+| Stansiya 3 soniya jim qolsa Pico USB ga UMUMAN yozmaydi (CDC buferi to'lib dastur qotmasin), muhim hodisalar RAM ga yig'iladi | Agent har soniyada `HB` yuboradi — bizda o'zgarish yo'q. Foydasi bor: agent to'xtaganda Pico endi qotmaydi |
+| Qorovul (WDT 8 s) — faqat stansiya bilan ishlaganda yoqiladi | — |
+| Avariya boshlanganda `{"ev":"holat","alarm":1}` keladi, ichida `uskuna` YO'Q | Agentdagi `_kromka_holat` bunday xabarni allaqachon e'tiborsiz qoldiradi (`if "uskuna" not in data`), ya'ni avariya «stanok to'xtadi» bo'lib yozilmaydi |
 
 **1-bosqichga kirmagan**: QR bog'lash, kutilgan o'lcham va MOS/NOMOS verdikti — ular 2026-09-20
 da qo'shildi (§4.10). Hali YO'Q: avtomatik skan (o'lchov skan o'rnini bosishi), kalibrlash UI si
@@ -371,11 +382,18 @@ takror yuborishda 0 ta yangi yozuv, xom maydonlar (`L`, `kod`) saqlandi, kunlik 
 reja 9 soat / ishladi 7 soat / **Availability 77.8%**, Performance va Quality esa `—`
 (Prisadka emas).
 
-Ma'lum cheklov (ularning firmware'ida, bizda emas): mayda bo'lak (10 m/min da 8 mm dan uzun
-har narsa) D1→D2 navbatiga tushib juftlikni siljitadi — prod ma'lumotida 8 ta soxta
-«tezlik nomuvofiq» va bir nechta bema'ni uzunlik shundan. Bunday o'lchov Pico kodini `OK` dan
-chiqaradi, ya'ni hukmi `shubhali` bo'ladi va hech kimni ayblamaydi (§4.10) — lekin
-**avtomatik skanga o'tishdan oldin tuzatilishi shart**.
+Ma'lum cheklov (ularning firmware'ida, bizda emas): shovqin chegarasi hamon VAQT bo'yicha
+(`MIN_US = 50 ms` = 10 m/min da 8 mm), ya'ni mayda bo'lak D1→D2 navbatiga tushaveradi.
+**Lekin v1.16 dan u zararsiz**: juftlash endi uzunliklarni solishtiradi va mos kelmasa
+`tiqilish` beradi — soxta uzunlik chiqmaydi, navbat ham siljimaydi. Avtomatik skanga
+o'tishdan oldin chegarani uzunlikka bog'lash hamon foydali bo'lardi (har mayda bo'lak
+bekorga avariya yoqadi), lekin endi bu BLOKLOVCHI emas.
+
+Tekshiruv (v1.16 o'zgarishlari, bir martalik skript): **11/11** — `tiqilish` hodisasi agent
+oq ro'yxatidan o'tdi va xom holida bazaga tushdi (sabab, `L2`, `L1` ro'yxati), buferdan
+kelgani `eski_ms` bo'yicha 30 soniya orqaga surildi, avariya xabari (`alarm=1`, `uskuna`siz)
+soxta «to'xtadi» hodisasi yasamadi, firmware versiyasi `1.16` deb o'qildi, server hammasini
+qabul qildi.
 
 ### 4.9 Kromka Performance (2026-09-20)
 

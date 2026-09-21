@@ -90,11 +90,15 @@ class AndonEventIn(BaseModel):
 
     #: PRISADKA signal ustuni — `state` (chiroq holati) va `cycle` (detal sikli);
     #: KROMKA o'lchash stansiyasi — `olchov`, `uskuna` (RUN kirishi), `tezlik`,
-    #: `ogoh` (datchik nosozligi), `avariya_toxtash`, `boot`; ROVER (CNC 2130) —
+    #: `ogoh` (datchik nosozligi), `avariya_toxtash`, `boot`, `tiqilish` (proshivka v1.16:
+    #: detallar birga o'tgan yoki datchik ostida turib qolgan — o'lchov chiqmagan);
+    #: ROVER (CNC 2130) —
     #: `rover` (Pico o'zi o'lchab tugatgan davr: POWER_ON, SPINDLE_IDLE, AUTO_SHUTDOWN ...)
     #: va o'sha stanokning RUN o'zgarishi uchun o'sha `uskuna`. Ro'yxat YOPIQ: noma'lum
     #: turni hech kim o'qimasdi, agent esa xatoni ko'rmay navbatni bo'shatardi.
-    type: Literal["state", "cycle", "olchov", "uskuna", "tezlik", "ogoh", "avariya_toxtash", "boot", "rover"]
+    type: Literal[
+        "state", "cycle", "olchov", "uskuna", "tezlik", "ogoh", "avariya_toxtash", "boot", "tiqilish", "rover"
+    ]
     session: Annotated[str, Field(min_length=1, max_length=16, pattern=r"^[0-9A-Za-z_-]+$")]
     seq: Annotated[int, Field(ge=0, le=2_000_000_000)]
     ts: Annotated[int, Field(ge=0, le=4_102_444_800)] = 0

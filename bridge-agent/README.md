@@ -209,6 +209,14 @@ o'lchaydi (firmware alohida repoda). Agent ikkalasini ham o'qiydi:
 Tur birinchi tushunarli qatordan aniqlanadi; bitta kompyuterda ikki Pico bo'lsa
 `ANDON_TUR` va `ANDON_PORT` bilan aniq ko'rsatiladi.
 
+**Firmware v1.16 (2026-09-21):** yangi hodisa `tiqilish` — detallar birga o'tgan yoki
+biri datchik ostida turib qolgan, ya'ni o'lchov chiqmagan (soxta uzunlik o'rniga hodisa
+va avariya). Agent uni ham uzatadi. Yana: stansiya 3 soniya jim qolsa Pico USB ga umuman
+yozmaydi va hodisalarni RAM ga yig'adi — agent har soniyada `HB` yuborgani uchun bizda
+o'zgarish kerak emas. Avariya xabarida (`{"ev":"holat","alarm":1}`) `uskuna` maydoni
+bo'lmaydi va agent uni holat sifatida O'QIMAYDI — aks holda avariya «stanok to'xtadi»
+bo'lib yozilardi.
+
 ## Rover Pico'si — CNC 2130 (v1.7.0+)
 
 Uchinchi xil Pico (firmware alohida repoda: `jasper2233/cnc2130-oyy-mes`). Oldingi

@@ -29,7 +29,7 @@ SELECT m.name AS stanok, e.kind AS tur, count(*) AS soni,
        max(e.happened_at AT TIME ZONE 'Asia/Tashkent') AS oxirgi
 FROM andon_event e JOIN machine m ON m.id = e.machine_id
 WHERE e.happened_at > now() - interval '14 days'
-  AND e.kind IN ('olchov', 'uskuna', 'tezlik', 'ogoh', 'avariya_toxtash', 'boot')
+  AND e.kind IN ('olchov', 'uskuna', 'tezlik', 'ogoh', 'avariya_toxtash', 'boot', 'tiqilish')
 GROUP BY 1, 2 ORDER BY 1, 3 DESC;
 
 \echo ''
@@ -38,6 +38,7 @@ SELECT (e.happened_at AT TIME ZONE 'Asia/Tashkent')::date AS kun,
        count(*) FILTER (WHERE e.kind = 'olchov') AS olchov,
        count(*) FILTER (WHERE e.kind = 'uskuna') AS uskuna_ozgarishi,
        count(*) FILTER (WHERE e.kind = 'ogoh')   AS ogoh,
+       count(*) FILTER (WHERE e.kind = 'tiqilish') AS tiqilish,
        count(*) FILTER (WHERE e.payload ? 'eski_ms') AS buferdan
 FROM andon_event e
 WHERE e.happened_at > now() - interval '14 days' AND e.kind <> 'state'
@@ -142,3 +143,16 @@ SELECT (happened_at AT TIME ZONE 'Asia/Tashkent') AS vaqt,
 FROM andon_event
 WHERE kind = 'olchov' AND happened_at > now() - interval '14 days'
 ORDER BY happened_at DESC LIMIT 15;
+
+\echo ''
+\echo '=== 11. TIQILISH (proshivka v1.16): detallar birga otgan yoki datchik ostida qolgan ==='
+\echo '    Har tiqilish = olchanmay qolgan detal(lar). Performance shuncha kam korsatadi.'
+\echo '    sabab: birga_otdi = ikki detal qoshilib otgan; vaqt_mos_emas = D1 va D2 vaqti mos kelmadi.'
+SELECT (happened_at AT TIME ZONE 'Asia/Tashkent') AS vaqt,
+       payload->>'sabab' AS sabab,
+       payload->>'n'     AS olchanmagan_detal,
+       payload->>'L2'    AS d2_mm,
+       payload->>'L1'    AS d1_mm_royxati
+FROM andon_event
+WHERE kind = 'tiqilish' AND happened_at > now() - interval '14 days'
+ORDER BY happened_at DESC LIMIT 30;

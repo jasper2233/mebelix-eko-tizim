@@ -1314,9 +1314,11 @@ _TUR_PRISADKA, _TUR_KROMKA, _TUR_ROVER = "prisadka", "kromka", "rover"
 #: Shuning uchun unga har soniyada `HB` yuboriladi; prisadkaga 5 soniyalik `PING` yetadi.
 _ANDON_PING_S = 5
 _KROMKA_HB_S = 1
-#: Kromkadan MES ga yoziladigan hodisalar. `holat`/`pong`/`kal`/`kalib_rejim`/`yigilgan`
+#: Kromkadan MES ga yoziladigan hodisalar (`tiqilish` — proshivka v1.16 dan: detallar
+#: birga o'tgan yoki datchik ostida turib qolgan, o'lchov chiqmagan).
+#: `holat`/`pong`/`kal`/`kalib_rejim`/`yigilgan`
 #: — javob va diagnostika qatorlari, tarixga kerak emas.
-_KROMKA_EVENTS = ("olchov", "ogoh", "uskuna", "tezlik", "avariya_toxtash", "boot")
+_KROMKA_EVENTS = ("olchov", "ogoh", "uskuna", "tezlik", "avariya_toxtash", "boot", "tiqilish")
 #: ROVER (CNC 2130) Pico'si IKKI TOMONLAMA gaplashadi — kromkadan farqi shu. Undan
 #: hodisa olish uchun unga har 10 soniyada kompyuter vaqti yuborilishi SHART: 30 s
 #: jim qolsa u «kompyuter yo'q» deb biladi va hodisalarni fleshga yig'a boshlaydi.
