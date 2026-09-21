@@ -495,8 +495,13 @@ export function PrisadkaView({
             ) : (
               <>
                 {/* «Hammasini yuklab olish» NIMANI va QAYERGA aytmasdi: SCX
-                    fayllar stanok o'qiydigan papkaga tushadi */}
-                <HardDriveDownload /> SCX → papkaga ({allFiles.length})
+                    fayllar stanok o'qiydigan papkaga tushadi. Raqam yonida
+                    BIRLIK bor — o'sha qatorda «Qoldiq N» ham turadi va ikkalasi
+                    boshqa narsani sanaydi: fayl detal bo'yicha (ikki tomonli
+                    detalda ikkita), qoldiq esa shu postdagi NUSXALAR bo'yicha.
+                    Prodda o'lchangan: 117 fayl 109 detalda, buyurtmada esa 146
+                    nusxa — ya'ni sonlar bugun teng bo'lsa ham ertaga ajraladi. */}
+                <HardDriveDownload /> SCX → papkaga ({allFiles.length} fayl)
               </>
             )}
           </LoadingButton>
