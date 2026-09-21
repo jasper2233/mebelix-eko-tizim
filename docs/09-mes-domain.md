@@ -596,6 +596,16 @@ direktor ham ko'radi.
   (2.8 mm shrift ichki chetdan 0.8 mm da, ya'ni ~2.5 mm egallaydi), ishlangan qirrada esa
   3.2 mm. O'lchangan: 1784×283 detalda (eskiz eni 52 px, kromka `b`) tekstura chiziqlari
   eni bo'yicha 25% va 75% da turardi — 75% aynan harf ustiga tushardi; endi 15% va 31%.
+  Chetlanish faqat chiziqlar TARQALADIGAN o'qda ishlaydi, PERPENDIKULYAR juftlikdagi harf
+  esa markazda — o'rtadagi chiziq ketadigan joyda. Shuning uchun u `_teksturasiz` ning
+  `band` iga ham kiradi, lekin O'Z tolerantligi bilan: yo'l mid-chizig'i ingichka
+  (3 px), harf esa shrift o'lchamida (tik chiziqlarda eni 0.85 mm, yotiqlarda balandligi
+  1.4 mm, ustiga chiziq qalinligi). Shu sababli `_teksturasiz` endi `(markaz, tolerantlik)`
+  juftliklarini oladi, bitta umumiy `tol` emas. O'lchangan: 100×1088 detalda chap qirra
+  harfi `x 514..527 / y 181..195`, o'rtadagi chiziq esa `x 515..527 / y 188..189` — harfning
+  ko'ndalang tayog'i ustiga tushardi; tuzatishdan keyin o'sha chiziq tashlanadi va eskizning
+  qolgan qismi PIKSEL-PIKSEL o'zgarishsiz (o'lchangan: 9 piksel farq, faqat o'sha chiziq;
+  boshqa uch chekda — 2108×100 juftligi va kromkasiz 440×1500 — 0 piksel).
 - `app/services/availability.py` — OEE Availability sof funksiyalari (`plan_windows`, `stop_runs`, `availability`):
   reja vaqti ish jadvalidan, to'xtashlar chiroq holatlaridan, sabab `downtime` dan; `GET /reports/machine-time`
   ishlatadi (docs/12 §4.5).

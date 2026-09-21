@@ -146,15 +146,20 @@ _FONT_BOLD = (
 _MM = 8  # piksel/mm — 203 dpi (8 dot/mm), ya'ni 80x60 mm blank = 640x480 px
 
 
-def _teksturasiz(band: list[int], joylar: tuple[int, ...], tol: int) -> list[int]:
-    """Mid-yo'l bilan ustma-ust tushadigan tekstura chizig'ini tashlaydi.
+def _teksturasiz(band: list[tuple[int, int]], joylar: tuple[int, ...]) -> list[int]:
+    """Boshqa element bilan ustma-ust tushadigan tekstura chizig'ini tashlaydi.
+
+    `band` — `(markaz, tolerantlik)` juftliklari. Ikki xil to'sqinlik bor va
+    ularning KENGLIGI har xil: paz/freza mid-yo'li ingichka (chiziq qalinligi),
+    tomon simvoli esa harf o'lchamida — shuning uchun tolerantlik juftlik ichida
+    beriladi, bitta umumiy qiymat emas.
 
     Hammasi tushib qolsa — hech biri tashlanmaydi: tekstura YO'NALISHI ham kerakli
     ma'lumot (250x832 detalda arrachilar aynan shundan shikoyat qilgan).
     """
     if not band:
         return list(joylar)
-    qolgan = [j for j in joylar if all(abs(j - b) > tol + 1 for b in band)]
+    qolgan = [j for j in joylar if all(abs(j - b) > t for b, t in band)]
     return qolgan or list(joylar)
 
 
@@ -475,14 +480,15 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
         # koordinatadagi tekstura chizig'i uzuq chiziqning bo'shliqlarini to'ldirib,
         # PAZni FREZA qilib ko'rsatardi: 1784x283 teksturali detalda (paz eni bo'ylab
         # o'rtada) uzluksiz qora 14.5 mm ga yetgan, teksturasiz 1.8 mm (o'lchangan).
-        band: list[int] = []
+        yol_tol = 3  # tekstura chizig'i 2 px: markazlari 3 px dan yaqin bo'lsa qo'shiladi
+        band: list[tuple[int, int]] = []
         for yol in paz_yollari + frez_yollari:
             nuqtalar = [eskizga(n[0], n[1]) for n in yol]
             for (x1, y1), (x2, y2) in zip(nuqtalar, nuqtalar[1:], strict=False):
                 if burilgan and abs(x1 - x2) <= 2:  # tekstura vertikal — parallel yo'l
-                    band.append(x1)
+                    band.append((x1, yol_tol))
                 elif not burilgan and abs(y1 - y2) <= 2:
-                    band.append(y1)
+                    band.append((y1, yol_tol))
 
         # Tekstura yo'nalishi: 3 ingichka chiziq UZUNLIK (`l` — teksturali
         # materialda birinchi o'lcham, tekstura qulflangan o'q) BO'YLAB.
@@ -517,6 +523,26 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
                     return zona
                 return harf_zona if j in harf_joy else 0
 
+            # `bosh_joy` faqat chiziqlar TARQALADIGAN o'qda ishlaydi. PERPENDIKULYAR
+            # juftlikdagi harf esa aynan MARKAZDA turadi — o'rtadagi chiziq ketadigan
+            # joyda, ya'ni chetlanish unga yordam bermaydi. O'lchandi: 100x1088
+            # detalda chap qirra harfi x 514..527 / y 181..195, o'rtadagi tekstura
+            # chizig'i esa x 515..527 / y 188..189 — harfning ko'ndalang tayog'i
+            # ustiga tushib uni qalinlashtirardi. Shuning uchun harf ham `band` ga
+            # kiradi, lekin O'Z tolerantligi bilan: yo'l ingichka, harf esa shrift
+            # o'lchamida.
+            if burilgan:
+                # Chiziqlar x bo'ylab tarqaladi; tepa/past harfi x bo'yicha markazda
+                # va kengligi ~0.6 shrift (2.8 mm), ya'ni yarmi 0.85 mm.
+                harf_orta = {"tepa", "past"} & harf_joy
+                harf_band = (bx + bw // 2, int(0.85 * mm) + w2)
+            else:
+                # Chiziqlar y bo'ylab; chap/ong harfi y bo'yicha markazda va bu safar
+                # uning BALANDLIGI muhim — to'liq shrift, yarmi 1.4 mm.
+                harf_orta = {"chap", "ong"} & harf_joy
+                harf_band = (by + bh // 2, int(1.4 * mm) + w2)
+            tband = band + ([harf_band] if harf_orta else [])
+
             if burilgan:
                 tl = int(bh * 0.32)
                 chap = bx + bosh_joy("chap")
@@ -528,7 +554,7 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
                 # o'rtada to'planib qolardi. SILJISH ko'rinishida — pazsiz chekda
                 # nol, ya'ni chiqish yillar davomidagidek bayt-bayt o'zgarmaydi.
                 siljish = int(bh * 0.18) if ishlangan_tomonlari else 0
-                for xx in _teksturasiz(band, (orta - gap, orta, orta + gap), w2):
+                for xx in _teksturasiz(tband, (orta - gap, orta, orta + gap)):
                     draw.line(
                         (xx, by + (bh - tl) // 2 - siljish, xx, by + (bh + tl) // 2 - siljish),
                         fill="black",
@@ -541,7 +567,7 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
                 orta, balandlik = (tepa + past) // 2, max(6, past - tepa)
                 gap = max(3, balandlik // 4)
                 siljish = int(bw * 0.18) if ishlangan_tomonlari else 0
-                for yy in _teksturasiz(band, (orta - gap, orta, orta + gap), w2):
+                for yy in _teksturasiz(tband, (orta - gap, orta, orta + gap)):
                     draw.line(
                         (bx + (bw - tl) // 2 - siljish, yy, bx + (bw + tl) // 2 - siljish, yy),
                         fill="black",
