@@ -14,7 +14,7 @@
 // sarlavhada bir marta turadi.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { type TabloMachineRow, TabloService } from "@/client"
@@ -32,8 +32,10 @@ import {
   DEFECT_STATUS_LABELS,
   DOWNTIME_KIND_LABELS,
   KROMKA_VERDICT_LABELS,
+  OPERATOR_ROLES,
 } from "@/lib/mes"
 import { cn } from "@/lib/utils"
+import { getCurrentUserQueryOptions } from "@/queries/users"
 
 export const Route = createFileRoute("/tablo_/stanoklar")({
   component: StanoklarPage,
@@ -492,6 +494,18 @@ function StanoklarPage() {
     return () => clearInterval(t)
   }, [])
 
+  // Qaytish havolasi: manzil DOIM "/" — rolni `_layout` guard'i o'zi hal qiladi
+  // (terminal va post rollari `/terminal` ga, tablo hisobi esa `/tablo` ga).
+  // TABLO hisobiga havola ko'rsatilmaydi: u boshqaruv panelini ko'rmaydi va
+  // bosilsa shu yerga qaytib kelardi.
+  const { data: me } = useQuery(getCurrentUserQueryOptions())
+  const qaytish =
+    me && me.role !== "tablo"
+      ? me.role === "terminal" || OPERATOR_ROLES.includes(me.role)
+        ? "Terminal"
+        : "Boshqaruv paneli"
+      : null
+
   const [ochiq, setOchiq] = useState<number | null>(null)
   const rows = data ?? []
   // Ish oynasi hamma stanokka bir xil — sarlavhada bir marta, kartalarda emas
@@ -513,6 +527,14 @@ function StanoklarPage() {
             minute: "2-digit",
           })}
         </span>
+        {qaytish && (
+          <Link
+            to="/"
+            className="text-lg text-[#5D6675] outline-none hover:text-[#C8D0DC] focus-visible:text-[#C8D0DC]"
+          >
+            {qaytish}
+          </Link>
+        )}
       </header>
 
       {isLoading ? (
