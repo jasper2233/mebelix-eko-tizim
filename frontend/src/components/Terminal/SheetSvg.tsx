@@ -186,6 +186,24 @@ export function edgeBoreRect(
 // keng bo'lib, listning o'zi shuncha kichik render bo'lardi.
 const PAD = 68
 
+/** Detal TO'LIQ kesilganmi. Katakning rangi ham, listning tugagani ham SHU
+ *  qoidaga tayanadi — ikki joyda ikki ta'rif bo'lib ketmasin. */
+const kesildi = (insts: CutmapInstanceState[], waste?: boolean) =>
+  !waste && insts.length > 0 && insts.every(isCut)
+
+/** «List tugadi» belgisining o'lchami va cheti — `base.w` ULUSHI sifatida,
+ *  keyin `zoom` ga bo'linadi, ya'ni yaqinlashtirilganda ham ekranda bir xil
+ *  kattalikda qoladi (yozuvlardagi `DIM_MAX / zoom` bilan bir qoida).
+ *
+ *  GibSaw ham aynan shunday qiladi (`GibSaw.exe` ichidagi jar o'qildi,
+ *  `xsmp/gibsaw/k.a(Graphics2D,int,q)` oxiri): xarita transformini
+ *  `setTransform` bilan bekor qiladi, keyin `scale(4,4)` va
+ *  `drawImage(ok48, 8, 8)` — ya'ni 48x48 ikonka panelning (32,32) nuqtasida
+ *  192x192 px bo'lib turadi, KATAK o'lchamiga umuman bog'liq emas. Biz 0.14
+ *  oldik: ~1100 px enidagi xaritada ~154 px, GibSaw'nikidan bir oz kichik. */
+const OK_ULUSH = 0.14
+const OK_CHET = 0.022
+
 export function SheetSvg({
   sheet,
   holes,
@@ -428,11 +446,38 @@ export function SheetSvg({
   // ikkalasi bir vaqtda mumkin emas, chunki joy chegaralangan.
   const zoom = vb ? base.w / Math.max(1, vb.w) : 1
 
+  // LIST TUGADIMI — GibSaw bilan bir xil mantiq. GibSaw'da bu `o.l` bayroqlar
+  // massivi va `o.q()` uni shunday to'ldiradi:
+  //     l[listIndeksi] = (kesilganlar soni) == (jami)
+  // ya'ni belgi DETALGA emas, LISTGA tegishli. Bu bizda muhim: xaritadagi
+  // katakning qisqa tomoni 70 mm gacha tushadi (o'lchandi: 148 katakdan 39
+  // tasi 150 mm dan ingichka), ya'ni har katakka belgi qo'yish o'lchov
+  // muammosiga olib kelardi. Listga bitta katta belgi bu muammoni umuman
+  // tug'dirmaydi.
+  //
+  // Farq: GibSaw ikki toifani (`a[]` va `b[]`) qo'shib hisoblaydi va atxotni
+  // ham "kesildi" deb belgilash mumkin. Bizda qoldiq "kesilmaydi", uning cheki
+  // CHIQARILADI — bu boshqa amal, shuning uchun hisobga OLINMAYDI: list
+  // arrachining ishi tugaganda tugagan deb belgilanadi.
+  const ishKataklari = sheet.parts.filter((p) => !p.waste)
+  const listTugadi =
+    ishKataklari.length > 0 &&
+    ishKataklari.every((p) =>
+      kesildi(instancesByCell.get(`${sheet.no}:${p.cell}`) ?? [], p.waste),
+    )
+
+  // Belgi ko'rinib turgan viewBox burchagida — GibSaw uni panel burchagiga
+  // qo'ygani bilan bir xil natija: pan qilinganda ham, yaqinlashtirilganda ham
+  // o'z joyida va bir xil kattalikda qoladi.
+  const okRam = vb ?? base
+  const okO = (base.w * OK_ULUSH) / zoom
+  const okC = (base.w * OK_CHET) / zoom
+
   const partNodes = sheet.parts.map((p) => {
     const insts = instancesByCell.get(`${sheet.no}:${p.cell}`) ?? []
     // "Kesildi" ta'rifi @/lib/mes'dagi isCut da — bitta manba
     const doneCount = insts.filter(isCut).length
-    const allDone = !p.waste && insts.length > 0 && doneCount === insts.length
+    const allDone = kesildi(insts, p.waste)
     const selected = selectedCell === p.cell
     // 128px balandlikdagi kartochka preview'ida teshiklar, tekstura chiziqlari,
     // o'lcham zanjiri va yozuvlar piksel ostida qoladi, lekin to'liq hisoblanib
@@ -1110,6 +1155,33 @@ export function SheetSvg({
       ))}
       {dimNodes}
       {!thumbnail && <g pointerEvents="none">{labels}</g>}
+      {/* LIST TUGADI. Ranglar XOM hex'da — xarita `renderToStaticMarkup` orqali
+          Tailwind'siz oynaga chop etiladi (`CutmapView`), class u yerga yetib
+          bormaydi. Oq galochka + to'q halqa: qora-oq printerda ham, rang
+          ko'rmaslikda ham belgi rangdan emas, SHAKLDAN o'qiladi. */}
+      {listTugadi && (
+        <g
+          pointerEvents="none"
+          transform={`translate(${okRam.x + okC},${okRam.y + okC}) scale(${okO / 100})`}
+        >
+          <circle
+            cx="50"
+            cy="50"
+            r="45"
+            fill="#22c55e"
+            stroke="#0a4d26"
+            strokeWidth="6"
+          />
+          <path
+            d="M28 52 L44 68 L73 31"
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="12"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </g>
+      )}
     </svg>
   )
 }

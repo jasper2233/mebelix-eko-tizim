@@ -2409,6 +2409,9 @@ $ grep -n 'm
 
 ### 81. Kesish xaritasida «kesilgan / kesilmagan» YOLG'IZ rang bilan aytiladi — deuteranopiyada ikkala rang bir xil bo'lib qoladi (1.01×)
 
+- **Holat:** QISMAN BAJARILDI (2026-09-21) — «list tugadi» belgisi qo'shildi
+  (GibSaw mantig'i: detalga emas, listga). RANG qismi OCHIQ: kesilmagan/kesilgan
+  hamon apelsin/yashil, ya'ni katak darajasida ikkinchi belgi hali yo'q.
 - **Joy:** `frontend/src/components/Terminal/SheetSvg.tsx:29-42,459-467`
 - **Turi:** Xatolik (foydalanish qulayligi)
 - **Kod:** `const PART_FILL = "#e88b00"` / `const PART_DONE = "#22c55e"`
@@ -2424,9 +2427,16 @@ uchta joy, uchalasi ham yuqorida). Bitta nusxali detalda, ya'ni ko'pchilikda,
 rang YAGONA signal.
 
 Apelsin `#e88b00` deuteranopiyada `#adad00` ga, yashil `#22c55e` esa `#aaaa63`
-ga aylanadi — ikkalasi ham xira sariq, yorug'lik kontrasti **1.01×**. Bu
-WCAG 2.2 SC 1.4.1 (Use of Color) buzilishi: ma'lumot faqat rang orqali
-berilmasligi kerak. Qizil-yashil rang ko'rmaslik erkaklarning ~8% ida
+ga aylanadi — ikkalasi ham xira sariq, yorug'lik kontrasti **1.01×**, ya'ni
+WCAG SC 1.4.11 ning 3.0× chegarasidan o'tmaydi. Bu WCAG 2.2 SC 1.4.1 (Use of
+Color) buzilishi ham: ma'lumot faqat rang orqali berilmasligi kerak.
+
+ANIQLASHTIRISH (2026-09-21, birinchi yozuv haddan oshirgan edi): 1.01× bu
+YORUG'LIK kontrasti. Idrok darajasida ular bir xil EMAS — deuteranopiyada
+dE*ab = 34.5 (xroma 72.4 va 38.0), ya'ni dixromat ularni tusi bilan hamon
+ajrata oladi. Muammo yo'qolmaydi, lekin uning og'irligi «butunlay bir xil»
+emas, «yagona ishonchli kanal (yorug'lik) bo'sh» darajasida: 17" monoblokda
+chang, yorug'lik aksi va kichik katakda aynan xroma birinchi yo'qoladi. Qizil-yashil rang ko'rmaslik erkaklarning ~8% ida
 uchraydi, arrachi esa deyarli har doim erkak. Bunday arrachi uchun kesish
 xaritasi — ishning asosiy hujjati — «nima kesildi, nima qoldi» degan
 savolga umuman javob bermaydi.
@@ -2467,6 +2477,32 @@ $ python cvd-cutmap.py
 Ikkinchi belgi yo'qligi: `grep -n 'allDone' SheetSvg.tsx` -> 435 (ta'rif),
 463 (fill), 553 (hisoblagichni yashirish). Boshqa ishlatilishi yo'q.
 ```
+
+**GibSaw qanday hal qilgan** (2026-09-21 da o'rganildi)
+
+Arrachi biladigan original ilova — GibSaw — xuddi shu masalani boshqacha
+yechgan. `GibSaw.exe` ichidagi jar dekompilyatsiya qilindi (skript:
+`scratchpad/jvmdis.py`, obfuscatsiya qilingan, JDK yo'q):
+
+- **Kesilgan detal yashil emas, KUL bo'ladi** — `colorPanel` rgb(200,200,200),
+  kesilmagani `colorPart` rgb(255,165,0). Ya'ni rang o'chadi, tus almashmaydi.
+  Deuteranopiyada apelsin `#c5c500` (sariq), kul `#c8c8c8` (neytral) bo'ladi:
+  dE*ab = **79.9**, xroma 79.8 va **0.0**. Bu buzilmagan o'qdagi farq, shuning
+  uchun bizdagi 34.5 dan ikki barobar ishonchli.
+- **Joriy katak ustiga 45° DIAGONAL SHTRIX** — `k.a(Paint,Paint,int)` 30×30
+  plitka yasaydi, foniga `colorPanel`, ustiga bitta `drawLine(0,0,30,30)`.
+  Ya'ni taklif qilinayotgan shtrix GibSaw'da allaqachon bor.
+- **Galochka DETALGA emas, LISTGA qo'yiladi** — `o.l[listIndeksi]` bayroq
+  massivi, `l[i] = (kesilgan soni == jami soni)` (`o.q()`). Chizilishi:
+  `setTransform(saqlangan)` → `scale(4,4)` → `drawImage(ok48, 8, 8)`, ya'ni
+  48×48 ikonka 192×192 px bo'lib panelning (32,32) nuqtasida, o'lchamga
+  bog'liq bo'lmagan holda. Shu sababli GibSaw'da «kichik katakka galochka
+  sig'maydi» muammosi UMUMAN yo'q. O'sha bayroqni listlar ro'yxati ham
+  ko'rsatadi (`R.getListCellRendererComponent`).
+
+Xulosa: bizning ikkinchi belgi taklifimiz GibSaw konvensiyasiga mos, ammo
+RANG TANLOVI mos emas — biz apelsin→yashil qilganmiz, GibSaw
+apelsin→kul qiladi. Arrachi ikkinchisini allaqachon biladi.
 
 **Taklif**
 
