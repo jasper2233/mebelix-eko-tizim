@@ -22,6 +22,7 @@ import {
   formatSize,
   KROMKA_VERDICT_LABELS,
   KROMKA_VERDICT_STYLE,
+  POST_COLORS,
 } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 
@@ -458,8 +459,13 @@ export function KromkaView({
       return inst ? [{ p, inst }] : []
     })
     if (!rows.length) return "NOTFOUND"
-    if (!rows.some(({ inst }) => inst.arra_passed))
-      return "Bu detal hali arradan chiqmagan."
+    // Xabar MARSHRUTDAN: nostandart detalda oldingi qadam arra bo'lmasligi
+    // mumkin (prodda `ARRA -> PRISADKA -> KROMKA` uchraydi).
+    const kutayotgan = rows.find(({ inst }) => !inst.ready)
+    if (!rows.some(({ inst }) => inst.ready))
+      return kutayotgan?.inst.at
+        ? `Bu detal hali ${kutayotgan.inst.at}da.`
+        : "Bu detal hali bu postga yetib kelmagan."
     if (rows.some(({ p, inst }) => inst.done < p.sides)) return null
     return oval
       ? "Bu detalning oval kromkasi allaqachon tugagan."
@@ -490,17 +496,24 @@ export function KromkaView({
   // takrorlar va jadvalni yarim kenglikka siqib, nusxa chiplarini ustma-ust
   // (qatorni 4 barobar baland) qilib yuborardi. Endi jadval to'liq kenglikda,
   // jarayondagi qator tepada va sariq fonda.
-  const tier = (p: { sides: number; instances: { done: number }[] }) => {
+  // `ready` HAM hisobga olinadi: hali kelmagan nusxa «tugagan» bo'la olmaydi,
+  // aks holda qator pastga, yashillar orasiga tushib ko'zdan yo'qolardi.
+  const tier = (p: {
+    sides: number
+    instances: { done: number; ready: boolean }[]
+  }) => {
     const started = p.instances.some((i) => i.done > 0 && i.done < p.sides)
     if (started) return 0
-    return p.instances.every((i) => i.done >= p.sides) ? 2 : 1
+    return p.instances.every((i) => i.ready && i.done >= p.sides) ? 2 : 1
   }
+  // Kelmagan nusxalar ham KO'RINADI — faqat skanlab bo'lmaydigan ko'rinishda.
+  // Ilgari `i.ready` bo'yicha filtrlanardi va detal butunlay yo'qolardi:
+  // kromkachi sarlavhada 71/72 ni ko'rib, yetishmayotgani QAYSI detal ekanini
+  // bilolmasdi. Bundan yomoni — `finished` o'sha FILTRLANGAN ro'yxat ustida
+  // hisoblanib, bir nusxasi kelgan, ikkinchisi arrada turgan detal qatori
+  // yashil «✓ Bajarildi» bo'lib chiqardi.
   const leftParts = parts
-    .map((p) => ({
-      ...p,
-      instances: p.instances.filter((i) => i.arra_passed),
-    }))
-    .filter((p) => p.instances.length > 0)
+    .slice()
     .sort((a, b) => tier(a) - tier(b) || a.code.localeCompare(b.code))
   // Sarlavhadagi hisob: nechta nusxa yarim yo'lda (2+ tomonli, boshlangan)
   const inProgressCount = parts.reduce(
@@ -600,7 +613,10 @@ export function KromkaView({
             </thead>
             <tbody>
               {leftParts.map((p) => {
-                const finished = p.instances.every((i) => i.done >= p.sides)
+                // `ready` shart: kelmagan nusxasi bor detal YASHIL bo'lmaydi
+                const finished = p.instances.every(
+                  (i) => i.ready && i.done >= p.sides,
+                )
                 const started = !finished && tier(p) === 0
                 const pazBor = (p.paz_sides ?? []).length > 0
                 const frezBor = (p.frez_sides ?? []).length > 0
@@ -682,31 +698,69 @@ export function KromkaView({
                         </span>
                       ) : (
                         <div className="flex flex-wrap items-center justify-end gap-1.5">
-                          {p.instances.map((i) => (
-                            <span
-                              key={i.instance_id}
-                              title={i.qr_text}
-                              className={cn(
-                                "num rounded-md px-2.5 py-1 text-lg font-black",
-                                i.done >= p.sides
-                                  ? "bg-green-600 text-white"
-                                  : i.done > 0
-                                    ? "bg-amber-100 text-amber-700"
-                                    : "bg-muted text-muted-foreground",
-                              )}
-                            >
-                              {p.instances.length > 1 && (
-                                <span className="mr-1 text-xs font-bold opacity-70">
-                                  №{i.instance_no}
-                                </span>
-                              )}
-                              {i.done >= p.sides
-                                ? "✓"
-                                : oval
-                                  ? "–"
-                                  : `${i.done}/${p.sides}`}
-                            </span>
-                          ))}
+                          {/* HALI KELMAGAN nusxa — UZUQ kontur: skanlab bo'lmaydi,
+                              va shakl buni rangdan oldin aytadi. Ichida raqam
+                              emas, DETAL QAYERDALIGI turadi (`at`) — kromkachi
+                              nimani kutayotganini va kimdan so'rashini biladi.
+                              Rang o'sha POSTNIKI (`POST_COLORS`): ilovaning
+                              qolgan joyida ham arra sariq, prisadka ko'k —
+                              operator rangdan taniydi. Brak bo'lsa qizil: detal
+                              umuman kelmasligi mumkin, kutish ma'nosiz. */}
+                          {p.instances.map((i) =>
+                            !i.ready ? (
+                              <span
+                                key={i.instance_id}
+                                title={`${i.qr_text} — ${i.defect ? "brak qilingan" : "hali yetib kelmagan"}`}
+                                className="num rounded-md border-2 border-dashed px-2 py-0.5 text-sm font-bold"
+                                style={
+                                  i.defect
+                                    ? {
+                                        borderColor: "var(--status-cancelled)",
+                                        color: "var(--status-cancelled)",
+                                      }
+                                    : {
+                                        borderColor:
+                                          POST_COLORS[i.at ?? ""] ??
+                                          "var(--border)",
+                                        color:
+                                          POST_COLORS[i.at ?? ""] ??
+                                          "var(--muted-foreground)",
+                                      }
+                                }
+                              >
+                                {p.instances.length > 1 && (
+                                  <span className="mr-1 text-xs opacity-70">
+                                    №{i.instance_no}
+                                  </span>
+                                )}
+                                {i.defect ? "brak" : (i.at ?? "yo'lda")}
+                              </span>
+                            ) : (
+                              <span
+                                key={i.instance_id}
+                                title={i.qr_text}
+                                className={cn(
+                                  "num rounded-md px-2.5 py-1 text-lg font-black",
+                                  i.done >= p.sides
+                                    ? "bg-green-600 text-white"
+                                    : i.done > 0
+                                      ? "bg-amber-100 text-amber-700"
+                                      : "bg-muted text-muted-foreground",
+                                )}
+                              >
+                                {p.instances.length > 1 && (
+                                  <span className="mr-1 text-xs font-bold opacity-70">
+                                    №{i.instance_no}
+                                  </span>
+                                )}
+                                {i.done >= p.sides
+                                  ? "✓"
+                                  : oval
+                                    ? "–"
+                                    : `${i.done}/${p.sides}`}
+                              </span>
+                            ),
+                          )}
                         </div>
                       )}
                     </td>

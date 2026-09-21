@@ -93,13 +93,32 @@ class QrOrderRef(BaseModel):
 
 
 class KromkaInstance(BaseModel):
-    """Bitta fizik nusxa KROMKA nazarida: nechta tomoni yopishtirilgan, arradan o'tganmi."""
+    """Bitta fizik nusxa KROMKA nazarida: nechta tomoni yopishtirilgan va YETIB KELGANMI."""
 
     instance_id: int
     instance_no: int
     qr_text: str
     done: int  # shu nusxada bajarilgan kromka skanlari (tomonlar)
-    arra_passed: bool  # chek chiqarilgan yoki ARRA skan bor — kesilgan hisoblanadi
+    #: Shu qadamdan OLDINGI yoqilgan qadam tugaganmi — ya'ni skanlash mumkinmi.
+    #: Ilgari bu `arra_passed` edi va ARRA'ga QOTIRILGAN bo'lgan; u faqat standart
+    #: marshrutda to'g'ri ishlardi. Prodda o'lchandi: 3002 kromka qadamining
+    #: 33 tasida kromkadan oldingi qadam ARRA emas (23 PRISADKA, 10 STOLYARKA —
+    #: hammasi nostandart marshrut). Ularda `arra_passed` arra kesishi bilanoq rost
+    #: bo'lar, detal esa hali prisadkada turardi: kromkachi ro'yxatda ko'rib, izlab,
+    #: topa olmasdi.
+    ready: bool
+    #: `ready=false` da — detal HOZIR qaysi postda: marshrutdagi birinchi TUGAMAGAN
+    #: qadam. `null` faqat `ready=true` da. Post KODI (`ARRA`, `PRISADKA`) — nomi
+    #: emas: `POST_COLORS` (frontend) kod bo'yicha rang beradi va tsexda o'sha
+    #: so'zlar ishlatiladi.
+    #:
+    #: DIQQAT: `instance_stages()` dan FARQLI. U ishi TUGAGAN postni qaytaradi
+    #: («detal jismonan o'sha yerda»), bu esa KUTILAYOTGAN qadamni. Chiziqli
+    #: marshrutda ikkalasi bir joyni ko'rsatadi, uzilishda esa emas — shuning
+    #: uchun ikkisi bir xil deb hisoblab bo'lmaydi.
+    at: str | None = None
+    #: Ochiq braki bor (`pending`/`confirmed`). `rejected` — «brak emas», belgilanmaydi.
+    defect: bool = False
 
 
 class KromkaPartRow(BaseModel):

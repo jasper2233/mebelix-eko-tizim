@@ -23,6 +23,7 @@ from app.models import (
     Order,
     OrderFile,
     Part,
+    PartDefect,
     PartInstance,
     PartRoute,
     Post,
@@ -35,6 +36,7 @@ from app.models import (
 )
 from app.models.enums import (
     POST_ROLES,
+    DefectStatus,
     EmployeeStatus,
     FileKind,
     OrderStatus,
@@ -540,6 +542,92 @@ async def _post_route_rows(
     ).all()
 
 
+async def _joylashuv(
+    db: SessionDep, order_id: int
+) -> tuple[dict[tuple[int, int], tuple[bool, str | None]], dict[int, list[PartInstance]]]:
+    """Har (nusxa, qadam) uchun: shu qadamga YETIB KELGANMI va kelmagan bo'lsa QAYERDA.
+
+    Javob `({(instance_id, route_id): (ready, at)}, nusxalar)`. `ready` — shu
+    qadamdan oldingi yoqilgan qadamlarning HAMMASI tugagan; `at` — tugamaganlarining
+    birinchisi (ya'ni detal jismonan o'sha postda), `ready` bo'lsa `None`.
+    Nusxalar ham qaytariladi: chaqiruvchiga ular baribir kerak va ikki marta
+    yuklash bitta so'rovni bekorga takrorlardi.
+
+    Nega postga emas, QADAMGA tayanadi: bitta post marshrutda ikki marta uchraydi
+    (kromka -> prisadka -> kromka) va post bo'yicha hisoblasak birinchi o'tishning
+    skanlari ikkinchisini ham «tugagan» qilib ko'rsatardi.
+
+    Nega ARRA'ga qotirib bo'lmaydi: prodda 3002 kromka qadamidan 33 tasida oldingi
+    qadam ARRA emas (23 PRISADKA, 10 STOLYARKA — nostandart marshrutlar,
+    `ARRA -> PRISADKA -> KROMKA` kabi).
+    """
+    qadamlar = (
+        await db.execute(
+            select(PartRoute.id, PartRoute.part_id, PartRoute.seq, PartRoute.per_instance, Post.code)
+            .join(Post, Post.id == PartRoute.post_id)
+            .where(
+                PartRoute.order_id == order_id,
+                PartRoute.is_enabled == True,  # noqa: E712
+                PartRoute.is_deleted == False,  # noqa: E712
+            )
+            .order_by(PartRoute.part_id, PartRoute.seq)
+        )
+    ).all()
+    detal_qadamlari: dict[int, list[Any]] = {}
+    for q in qadamlar:
+        detal_qadamlari.setdefault(q.part_id, []).append(q)
+
+    # Butun buyurtma bo'yicha bitta so'rov: (nusxa, qadam) -> skan soni
+    sanoq: dict[tuple[int, int], int] = {
+        (iid, rid): int(n)
+        for iid, rid, n in (
+            await db.execute(
+                select(Scan.instance_id, Scan.route_id, func.count(Scan.id))
+                .where(
+                    Scan.order_id == order_id,
+                    Scan.is_cancelled == False,  # noqa: E712
+                    Scan.is_deleted == False,  # noqa: E712
+                )
+                .group_by(Scan.instance_id, Scan.route_id)
+            )
+        ).all()
+    }
+    nusxalar = await _order_instances_by_part(db, order_id)
+
+    natija: dict[tuple[int, int], tuple[bool, str | None]] = {}
+    for part_id, steps in detal_qadamlari.items():
+        for i in nusxalar.get(part_id, []):
+            oldingilar: list[Any] = []
+            for q in steps:
+                # Skaner bilan BITTA qoida: `scanning.py` ham xom `per_instance`
+                # bilan solishtiradi (`done < step.per_instance`). `max(1, ...)`
+                # qo'ysak, nol qadamda ikki joy ikki xil hukm chiqarardi.
+                tugamagan = next(
+                    (o for o in oldingilar if sanoq.get((i.id, o.id), 0) < o.per_instance),
+                    None,
+                )
+                natija[(i.id, q.id)] = (tugamagan is None, None if tugamagan is None else tugamagan.code)
+                oldingilar.append(q)
+    return natija, nusxalar
+
+
+async def _ochiq_braklar(db: SessionDep, order_id: int) -> set[int]:
+    """Ochiq braki bor nusxalar. `rejected` — «brak emas», kirmaydi."""
+    return set(
+        (
+            await db.execute(
+                select(PartDefect.instance_id).where(
+                    PartDefect.order_id == order_id,
+                    PartDefect.status.in_((DefectStatus.PENDING, DefectStatus.CONFIRMED)),
+                    PartDefect.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+
 async def _post_scan_counts(db: SessionDep, order_id: int, post_id: int) -> dict[tuple[int, int], int]:
     """Har nusxaning shu postdagi haqiqiy skanlari QADAM bo'yicha: {(instance_id, route_id): count}.
 
@@ -597,7 +685,9 @@ def _teshik(xarita: dict[int, dict[str, Any]], label_num: int | None) -> CutmapH
 @router.get("/orders/{order_id}/kromka", response_model=KromkaOrderState, operation_id="read_terminal_kromka")
 async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) -> KromkaOrderState:
     """KROMKA/OVAL sahifasi: buyurtmaning shu postdagi detallari, har nusxada tomon-progress
-    (OVAL'da 0/1) va arradan o'tganlik (chek chiqarilgan yoki ARRA skan bor)."""
+    (OVAL'da 0/1) va YETIB KELGANLIK — marshrutdagi oldingi qadam tugaganmi (`_joylashuv`).
+    Kelmagan nusxa ham qaytariladi, `at` bilan: kromkachi yetishmayotgani qaysi detal
+    ekanini va qayerdaligini ko'rishi kerak."""
     machine, post = ctx
     if post.code not in (PostCode.KROMKA, PostCode.OVAL):
         raise ForbiddenException("Bu sahifa faqat KROMKA yoki OVAL postida ko'rsatiladi.")
@@ -607,27 +697,9 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
     rows = await _post_route_rows(db, order.id, post.id, machine.id)
     kromka_done = await _post_scan_counts(db, order.id, post.id)
 
-    arra_post_id = (
-        await db.execute(select(Post.id).where(Post.code == PostCode.ARRA, Post.is_deleted == False))  # noqa: E712
-    ).scalar_one_or_none()
-    arra_scanned: set[int] = set()
-    if arra_post_id is not None:
-        arra_scanned = set(
-            (
-                await db.execute(
-                    select(Scan.instance_id).where(
-                        Scan.order_id == order.id,
-                        Scan.post_id == arra_post_id,
-                        Scan.is_cancelled == False,  # noqa: E712
-                        Scan.is_deleted == False,  # noqa: E712
-                    )
-                )
-            )
-            .scalars()
-            .all()
-        )
+    joy, by_part = await _joylashuv(db, order.id)
+    braklar = await _ochiq_braklar(db, order.id)
 
-    by_part = await _order_instances_by_part(db, order.id)
     qirra_amali = {part.id: stored_machined_sides(part.xnc_summary) for _, part, _ in rows}
     # Teshik o'rinlari CHEK bilan bitta manbadan — kromkachi qo'lidagi detalni
     # eskizga moslab, qaysi qirra lentalanishini aniqlaydi. Xarita BIR MARTA
@@ -662,7 +734,9 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
                         instance_no=i.instance_no,
                         qr_text=i.qr_text,
                         done=int(kromka_done.get((i.id, route.id), 0)),
-                        arra_passed=i.label_printed_at is not None or i.id in arra_scanned,
+                        ready=joy.get((i.id, route.id), (True, None))[0],
+                        at=joy.get((i.id, route.id), (True, None))[1],
+                        defect=i.id in braklar,
                     )
                     for i in by_part.get(part.id, [])
                 ],

@@ -1755,7 +1755,7 @@ export type IdleLimit = {
 /**
  * KromkaInstance
  *
- * Bitta fizik nusxa KROMKA nazarida: nechta tomoni yopishtirilgan, arradan o'tganmi.
+ * Bitta fizik nusxa KROMKA nazarida: nechta tomoni yopishtirilgan va YETIB KELGANMI.
  */
 export type KromkaInstance = {
     /**
@@ -1775,9 +1775,17 @@ export type KromkaInstance = {
      */
     done: number;
     /**
-     * Arra Passed
+     * Ready
      */
-    arra_passed: boolean;
+    ready: boolean;
+    /**
+     * At
+     */
+    at?: string | null;
+    /**
+     * Defect
+     */
+    defect?: boolean;
 };
 
 /**
