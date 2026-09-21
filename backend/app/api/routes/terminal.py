@@ -517,6 +517,8 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
         # postlarda tugagan proyektlar ro'yxatda abadiy turaverardi.
         if total_val > 0 and done_val >= total_val:
             continue
+        band_m = _band_jami(o) if post.code == PostCode.KROMKA else None
+        holes = sum(teshiklar[o.id]) if o.id in teshiklar else None
         result.append(
             TerminalOrderCard(
                 id=o.id,
@@ -526,13 +528,19 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
                 priority=o.priority,
                 done=done_val,
                 total=total_val,
-                # karta uchun: arrachi plita bo'yicha partiyalab kesadi
-                materials=[m["name"] for m in o.material_usage if m.get("kind") == "sheet"],
+                # Plita nomi — FAQAT o'z hajm soni yo'q postda (amalda arra va
+                # CNC marshruti yo'q rover). Aks holda kartada ikkita hajm qatori
+                # chiqardi; karta allaqachon zich va bitta signal yetadi.
+                materials=(
+                    [m["name"] for m in o.material_usage if m.get("kind") == "sheet"]
+                    if band_m is None and holes is None
+                    else []
+                ),
                 sheets_total=_own_sheets(o, own_sheet_nos.get(o.id, set()) if own_sheet_nos is not None else None),
                 has_cutmap=o.cutmap is not None,
-                band_m=_band_jami(o) if post.code == PostCode.KROMKA else None,
+                band_m=band_m,
                 band_kinds=len(_bandlar(o)) if post.code == PostCode.KROMKA else 0,
-                holes=(sum(teshiklar[o.id]) if o.id in teshiklar else None),
+                holes=holes,
             )
         )
     return result

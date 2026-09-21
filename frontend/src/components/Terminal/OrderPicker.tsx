@@ -15,19 +15,21 @@ import {
   PRIORITY_LABELS,
 } from "@/lib/mes"
 
-/** Kartadagi ish hajmi qatori. Faqat bittasi to'ladi — qaysi biri, postga bog'liq. */
-function hajm(o: {
+/** Postning ish hajmi — QISQA, buyurtma raqami yoniga sig'adi.
+ *
+ * Arrada `null` qaytaradi: u yerda hajm = plita nomlari va ular uzun (prodda
+ * uchtagacha, har biri 20+ belgi), raqam yoniga siqilsa ikkalasi ham o'qilmas
+ * bo'lardi — arra o'z qatorini saqlab qoladi. */
+function postHajmi(o: {
   band_m?: number | null
   band_kinds?: number
   holes?: number | null
-  materials?: string[] | null
-}): string {
+}): string | null {
   if (o.band_m != null) {
     const xil = (o.band_kinds ?? 0) > 1 ? ` · ${o.band_kinds} xil` : ""
     return `${Math.round(o.band_m)} m kromka${xil}`
   }
-  if (o.holes != null) return `${o.holes} teshik`
-  return o.materials?.join(" · ") ?? ""
+  return o.holes != null ? `${o.holes} teshik` : null
 }
 
 export function OrderPicker({
@@ -90,9 +92,28 @@ export function OrderPicker({
                     <div className="truncate text-base font-black">
                       {o.project_name || o.number}
                     </div>
-                    {o.project_name && (
-                      <div className="num text-sm text-muted-foreground">
-                        {o.number}
+                    {/* Raqam va SHU postning ish hajmi BITTA qatorda — karta
+                        allaqachon zich, alohida qator uni bekorga cho'zardi.
+                        Raqam qisqaradi, hajm QISQARMAYDI (`shrink-0`): raqam
+                        chek prefiksi bo'lib tanish, hajm esa operator ish
+                        boshlashdan oldin o'qiydigan yagona son. Loyiha nomsiz
+                        buyurtmada raqam yuqorida sarlavha bo'ladi, shuning
+                        uchun bu qator faqat hajmni ko'rsatadi. */}
+                    {(o.project_name || postHajmi(o)) && (
+                      <div className="flex items-baseline gap-1.5 text-sm">
+                        {o.project_name && (
+                          <span className="num min-w-0 truncate text-muted-foreground">
+                            {o.number}
+                          </span>
+                        )}
+                        {o.project_name && postHajmi(o) && (
+                          <span className="text-muted-foreground">·</span>
+                        )}
+                        {postHajmi(o) && (
+                          <span className="shrink-0 font-semibold">
+                            {postHajmi(o)}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -107,17 +128,15 @@ export function OrderPicker({
                     </span>
                   )}
                 </div>
-                {/* Bitta qator — SHU postning ish hajmi. Arrada plita nomi
-                    (partiyalab kesadi), kromkada necha metr lenta kerakligi,
-                    CNC'da teshik soni. Post-ga tegishlisini SERVER tanlaydi:
-                    `/terminal/orders` post kontekstida javob beradi, ya'ni
-                    kartada begona postning raqami umuman paydo bo'lmaydi.
-                    Kromka TAQSIMOTI bu yerda emas — uchta material nomi kartaga
-                    sig'maydi va `truncate` aynan muhim qismini kesadi; u
-                    buyurtma ochilganda ro'yxat ustida turadi. */}
-                {hajm(o) && (
+                {/* Material — arrachi arradagi plita bo'yicha partiyalab kesadi.
+                    Server buni FAQAT arrada to'ldiradi: kromka metri va teshik
+                    soni yuqorida, raqam qatorida. Kromka TAQSIMOTI kartada
+                    umuman yo'q — uchta material nomi sig'maydi va `truncate`
+                    aynan muhim qismini kesadi; u buyurtma ochilganda ro'yxat
+                    ustida turadi. */}
+                {!!o.materials?.length && (
                   <div className="mt-1 truncate text-sm font-semibold">
-                    {hajm(o)}
+                    {o.materials.join(" · ")}
                   </div>
                 )}
                 <div className="mt-2">
