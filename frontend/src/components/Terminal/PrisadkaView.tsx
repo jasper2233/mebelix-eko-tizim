@@ -494,14 +494,17 @@ export function PrisadkaView({
               </span>
             ) : (
               <>
-                {/* «Hammasini yuklab olish» NIMANI va QAYERGA aytmasdi: SCX
-                    fayllar stanok o'qiydigan papkaga tushadi. Raqam yonida
-                    BIRLIK bor — o'sha qatorda «Qoldiq N» ham turadi va ikkalasi
-                    boshqa narsani sanaydi: fayl detal bo'yicha (ikki tomonli
-                    detalda ikkita), qoldiq esa shu postdagi NUSXALAR bo'yicha.
-                    Prodda o'lchangan: 117 fayl 109 detalda, buyurtmada esa 146
-                    nusxa — ya'ni sonlar bugun teng bo'lsa ham ertaga ajraladi. */}
-                <HardDriveDownload /> SCX → papkaga ({allFiles.length} fayl)
+                {/* Yorliqda AMAL va uning QAMROVI: ikonka — saqlash, `SCX` —
+                    nima, son — nechta (`Delete (3)` naqshi: bosishdan oldin nima
+                    bo'lishini aytadi). MANZIL yorliqda YO'Q — u tugmaning ishi
+                    emas: papka tanlangach yonida `Papka: <nom>` turadi,
+                    tanlanmagan bo'lsa bosishda brauzer o'zi so'raydi. Ilgari
+                    «→ papkaga» yozilardi va o'sha yorliqni takrorlardi.
+                    Birlik (`fayl`) esa QOLADI: o'sha qatorda «Qoldiq N» ham bor
+                    va ikkalasi boshqa narsani sanaydi — fayl detal bo'yicha
+                    (ikki tomonli detalda ikkita), qoldiq shu postdagi NUSXALAR
+                    bo'yicha (o'lchandi: 117 fayl / 109 detal / 146 nusxa). */}
+                <HardDriveDownload /> SCX ({allFiles.length} fayl)
               </>
             )}
           </LoadingButton>
