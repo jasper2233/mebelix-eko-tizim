@@ -83,6 +83,16 @@ class TerminalOrderCard(BaseModel):
     materials: list[str] = []  # karta uchun: arrachi plita bo'yicha partiyalab kesadi
     sheets_total: int
     has_cutmap: bool
+    #: Post uchun ish hajmi — kartada bitta qator. Faqat SHU postga tegishlisi
+    #: to'ldiriladi, qolganlari `None`: plita materiali arrachiniki, kromka metri
+    #: kromkachiniki. KROMKA'da `band_m` — GibLab hisoblagan sarf (`material_usage`,
+    #: `kind="band"`), ya'ni qirqim zaxirasi bilan; xom geometrik yig'indidan 7-11%
+    #: yuqori (ikki buyurtmada o'lchandi). Texnolog GibLab hisobotida shu raqamni
+    #: ko'radi — tsexda ikki xil son aylanmasin.
+    band_m: float | None = None
+    band_kinds: int = 0
+    #: PRISADKA/ROVER: buyurtmadagi jami teshik (yuza + qirra).
+    holes: int | None = None
 
 
 class QrOrderRef(BaseModel):
@@ -131,6 +141,14 @@ class KromkaPartRow(BaseModel):
     instances: list[KromkaInstance] = []
 
 
+class BandUsage(BaseModel):
+    """Bitta kromka lentasi va uning buyurtmadagi sarfi (GibLab hisobi, metr)."""
+
+    name: str
+    code: str | None = None
+    metres: float
+
+
 class KromkaOrderState(BaseModel):
     """KROMKA post sahifasi (proyekt ochilganda): faqat kromkali detallar."""
 
@@ -138,6 +156,9 @@ class KromkaOrderState(BaseModel):
     order_number: str
     project_name: str | None
     parts: list[KromkaPartRow]
+    #: Qaysi lentadan qancha kerak — kromkachi ishni boshlashdan oldin
+    #: skladdan aynan shu rulonlarni olib keladi. Kartada jami, bu yerda taqsimot.
+    bands: list[BandUsage] = []
 
 
 class KromkaMeasurement(BaseModel):
@@ -205,6 +226,10 @@ class PrisadkaOrderState(BaseModel):
     order_number: str
     project_name: str | None
     parts: list[PrisadkaPartRow]
+    #: Ish hajmi: yuza va qirra teshiklari ALOHIDA — qirra teshigi boshqa
+    #: o'rnatishni talab qiladi, ya'ni bu operator uchun reja, shunchaki son emas.
+    holes_face: int = 0
+    holes_edge: int = 0
 
 
 class ScanRequest(BaseModel):

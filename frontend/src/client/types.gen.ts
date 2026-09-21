@@ -232,6 +232,26 @@ export type BadgeLoginResponse = {
 };
 
 /**
+ * BandUsage
+ *
+ * Bitta kromka lentasi va uning buyurtmadagi sarfi (GibLab hisobi, metr).
+ */
+export type BandUsage = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Code
+     */
+    code?: string | null;
+    /**
+     * Metres
+     */
+    metres: number;
+};
+
+/**
  * Body_login_access_token
  */
 export type BodyLoginAccessToken = {
@@ -1886,6 +1906,10 @@ export type KromkaOrderState = {
      * Parts
      */
     parts: Array<KromkaPartRow>;
+    /**
+     * Bands
+     */
+    bands?: Array<BandUsage>;
 };
 
 /**
@@ -3312,6 +3336,14 @@ export type PrisadkaOrderState = {
      * Parts
      */
     parts: Array<PrisadkaPartRow>;
+    /**
+     * Holes Face
+     */
+    holes_face?: number;
+    /**
+     * Holes Edge
+     */
+    holes_edge?: number;
 };
 
 /**
@@ -4110,6 +4142,18 @@ export type TerminalOrderCard = {
      * Has Cutmap
      */
     has_cutmap: boolean;
+    /**
+     * Band M
+     */
+    band_m?: number | null;
+    /**
+     * Band Kinds
+     */
+    band_kinds?: number;
+    /**
+     * Holes
+     */
+    holes?: number | null;
 };
 
 /**

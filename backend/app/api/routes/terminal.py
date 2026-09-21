@@ -44,6 +44,7 @@ from app.models.enums import (
 from app.models.user import User
 from app.schemas.common import Message
 from app.schemas.terminal import (
+    BandUsage,
     CutmapHole,
     CutmapState,
     KromkaInstance,
@@ -263,6 +264,33 @@ async def end_terminal_session(
     return Message(message="Smena yakunlandi.")
 
 
+def _bandlar(order: Order) -> list[BandUsage]:
+    """Buyurtmadagi kromka lentalari va sarfi (metr), ko'pdan ozga.
+
+    Manba — GibLab'ning O'Z hisobi (`material_usage`, `kind="band"`), qirralarni
+    qo'shib chiqish EMAS: GibLab qirqim zaxirasini qo'shadi va ikki buyurtmada
+    o'lchanganda farq 7-11% bo'ldi. Texnolog GibLab hisobotida shu sonni ko'radi.
+
+    Guruhlash NOM bo'yicha — `code` ko'pincha bo'sh (prodda 3 tadan 2 tasida).
+    """
+    bandlar = [
+        BandUsage(
+            name=(m.get("name") or "?").strip(),
+            code=(m.get("code") or None),
+            metres=round(float(m.get("count") or 0), 1),
+        )
+        for m in (order.material_usage or [])
+        if m.get("kind") == "band"
+    ]
+    return sorted(bandlar, key=lambda b: -b.metres)
+
+
+def _band_jami(order: Order) -> float | None:
+    """Kartadagi bitta son. Kromkasiz buyurtmada `None` — nol yozuv shovqin."""
+    jami = round(sum(b.metres for b in _bandlar(order)), 1)
+    return jami or None
+
+
 def _own_sheets(order: Order, own_nos: set[int] | None) -> int:
     """Kartadagi "N list" — SHU postniki. `mult` (bir naqsh necha marta kesiladi) sanaladi.
 
@@ -438,6 +466,42 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
                 )
             ).all()
         }
+    # CNC kartasi uchun teshiklar. Faqat SHU postga marshrutlangan detallar —
+    # kartadagi son sahifadagi ro'yxat bilan mos kelishi kerak. Marshrut bitta
+    # detalda ikki marta uchrashi mumkin (`distinct`), aks holda detal ikki marta
+    # sanalardi.
+    teshiklar: dict[int, tuple[int, int]] = {}
+    if post.code in (PostCode.PRISADKA, PostCode.ROVER) and order_ids:
+        rota = (
+            select(PartRoute.part_id)
+            .where(
+                PartRoute.order_id.in_(order_ids),
+                PartRoute.post_id == post.id,
+                PartRoute.is_enabled == True,  # noqa: E712
+                PartRoute.is_deleted == False,  # noqa: E712
+            )
+            .distinct()
+            .subquery()
+        )
+        teshiklar = {
+            oid: (int(yuza or 0), int(qirra or 0))
+            for oid, yuza, qirra in (
+                await db.execute(
+                    select(
+                        Part.order_id,
+                        func.sum(func.coalesce(Part.xnc_summary["bores"].as_integer(), 0) * Part.count),
+                        func.sum(func.coalesce(Part.xnc_summary["edge_bores"].as_integer(), 0) * Part.count),
+                    )
+                    .join(rota, rota.c.part_id == Part.id)
+                    .where(
+                        Part.order_id.in_(order_ids),
+                        Part.is_deleted == False,  # noqa: E712
+                    )
+                    .group_by(Part.order_id)
+                )
+            ).all()
+        }
+
     result: list[TerminalOrderCard] = []
     for o, done, total in rows:
         done_val = int(done or 0)
@@ -466,6 +530,9 @@ async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[Termina
                 materials=[m["name"] for m in o.material_usage if m.get("kind") == "sheet"],
                 sheets_total=_own_sheets(o, own_sheet_nos.get(o.id, set()) if own_sheet_nos is not None else None),
                 has_cutmap=o.cutmap is not None,
+                band_m=_band_jami(o) if post.code == PostCode.KROMKA else None,
+                band_kinds=len(_bandlar(o)) if post.code == PostCode.KROMKA else 0,
+                holes=(sum(teshiklar[o.id]) if o.id in teshiklar else None),
             )
         )
     return result
@@ -616,6 +683,7 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
         order_id=order.id,
         order_number=order.number,
         project_name=order.project_name,
+        bands=_bandlar(order),
         parts=[
             KromkaPartRow(
                 part_id=part.id,
@@ -745,10 +813,15 @@ async def read_terminal_prisadka(db: SessionDep, ctx: TerminalCtx, order_id: int
     # buzilardi, chek arrachi tomonidan chiqadi.
     arra_part_ids = set((await db.execute(arra_parts_query(PartRoute.order_id == order.id))).scalars().all())
 
+    # Teshiklar SAHIFADAGI detallar bo'yicha — `rows` allaqachon shu postga
+    # marshrutlangan; boshqa manbadan olinsa karta va ro'yxat farq qilardi.
+    teshikli = {part.id: part for _, part, _ in rows}
     return PrisadkaOrderState(
         order_id=order.id,
         order_number=order.number,
         project_name=order.project_name,
+        holes_face=sum(int((p.xnc_summary or {}).get("bores") or 0) * p.count for p in teshikli.values()),
+        holes_edge=sum(int((p.xnc_summary or {}).get("edge_bores") or 0) * p.count for p in teshikli.values()),
         parts=[
             PrisadkaPartRow(
                 part_id=part.id,

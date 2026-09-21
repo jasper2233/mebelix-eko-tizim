@@ -15,6 +15,21 @@ import {
   PRIORITY_LABELS,
 } from "@/lib/mes"
 
+/** Kartadagi ish hajmi qatori. Faqat bittasi to'ladi — qaysi biri, postga bog'liq. */
+function hajm(o: {
+  band_m?: number | null
+  band_kinds?: number
+  holes?: number | null
+  materials?: string[] | null
+}): string {
+  if (o.band_m != null) {
+    const xil = (o.band_kinds ?? 0) > 1 ? ` · ${o.band_kinds} xil` : ""
+    return `${Math.round(o.band_m)} m kromka${xil}`
+  }
+  if (o.holes != null) return `${o.holes} teshik`
+  return o.materials?.join(" · ") ?? ""
+}
+
 export function OrderPicker({
   onPick,
   showCutmapBadge = true,
@@ -92,10 +107,17 @@ export function OrderPicker({
                     </span>
                   )}
                 </div>
-                {/* Material — arrachi arradagi plita bo'yicha partiyalab kesadi */}
-                {!!o.materials?.length && (
+                {/* Bitta qator — SHU postning ish hajmi. Arrada plita nomi
+                    (partiyalab kesadi), kromkada necha metr lenta kerakligi,
+                    CNC'da teshik soni. Post-ga tegishlisini SERVER tanlaydi:
+                    `/terminal/orders` post kontekstida javob beradi, ya'ni
+                    kartada begona postning raqami umuman paydo bo'lmaydi.
+                    Kromka TAQSIMOTI bu yerda emas — uchta material nomi kartaga
+                    sig'maydi va `truncate` aynan muhim qismini kesadi; u
+                    buyurtma ochilganda ro'yxat ustida turadi. */}
+                {hajm(o) && (
                   <div className="mt-1 truncate text-sm font-semibold">
-                    {o.materials.join(" · ")}
+                    {hajm(o)}
                   </div>
                 )}
                 <div className="mt-2">

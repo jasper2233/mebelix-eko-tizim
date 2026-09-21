@@ -536,6 +536,27 @@ export function KromkaView({
           />
         </PostHeader>
         <StationStrip />
+        {/* Qaysi lentadan qancha kerak — kromkachi ishni boshlashdan OLDIN
+            skladdan aynan shu rulonlarni olib keladi. Son GibLab'ning O'Z
+            hisobi (qirqim zaxirasi bilan), ya'ni texnolog ko'radigan raqam.
+            Doim ochiq: tsex ekranida bosilmagan narsa ko'rilmaydi. Kulrang —
+            yuqoridagi moviy StationStrip o'zgaruvchan HOLAT, bu esa o'zgarmas
+            ish ma'lumoti; ikkalasi rang bo'yicha raqobatlashmasin. */}
+        {!!data?.bands?.length && (
+          <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 border-b bg-muted/40 px-4 py-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Kerak
+            </span>
+            {data.bands.map((b) => (
+              <span key={b.name} className="flex items-baseline gap-1.5">
+                <span className="text-sm font-semibold">{b.name}</span>
+                <span className="num text-lg font-black">
+                  {Math.round(b.metres)} m
+                </span>
+              </span>
+            ))}
+          </div>
+        )}
         <div
           className="min-h-0 flex-1 overflow-y-auto"
           ref={listScroll.ref}
