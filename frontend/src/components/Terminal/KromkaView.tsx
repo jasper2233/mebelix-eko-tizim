@@ -532,14 +532,28 @@ export function KromkaView({
               teng. Eni yetadi (o'lchandi: sarlavha 473 + lentalar 473 = 934,
               panelda 1366). Beshta lentadan ko'p bo'lsa `flex-wrap` ikkinchi
               qatorga tushiradi — ya'ni eng yomon holat avvalgi ko'rinish. */}
-          {data?.bands?.map((b) => (
-            <span key={b.name} className="flex items-baseline gap-1.5">
-              <span className="text-sm font-semibold">{b.name}</span>
-              <span className="num text-lg font-black">
-                {Math.round(b.metres)} m
-              </span>
-            </span>
-          ))}
+          {!!data?.bands?.length && (
+            /* BITTA guruh, ajratuvchi chiziq bilan. Ilgari har lenta sarlavhaning
+               alohida bolasi edi va hamma oraliq bir xil (`gap-3`) bo'lgani uchun
+               ular sarlavha blokining DAVOMI bo'lib o'qilardi — qatorning vertikal
+               markazida turib, loyiha nomi bilan buyurtma raqami ORASIGA
+               kirib qolardi (o'lchandi: sarlavha bloki y 88..132, lentalar
+               markazi y≈110 — aynan nom bilan raqam chegarasi).
+               TO'LDIRILGAN blok, ingichka chiziq emas: chiziq oraliqqa va
+               vertikal joylashuvga bog'liq, fon esa alohida OBYEKT bo'lib
+               o'qiladi va sarlavhadagi «Jarayonda N» belgisi bilan bir tilda.
+               O'rash `flex-wrap` uchun ham to'g'ri — lentalar uzilib qolmaydi. */
+            <div className="ml-1 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg bg-muted px-3 py-1">
+              {data.bands.map((b) => (
+                <span key={b.name} className="flex items-baseline gap-1.5">
+                  <span className="text-sm font-semibold">{b.name}</span>
+                  <span className="num text-lg font-black">
+                    {Math.round(b.metres)} m
+                  </span>
+                </span>
+              ))}
+            </div>
+          )}
           {/* Yarim yo'ldagi nusxalar soni — ular jadval tepasida sariq */}
           {!oval && inProgressCount > 0 && (
             <span className="num ml-auto rounded-md bg-amber-100 px-2.5 py-1 text-sm font-bold text-amber-800">

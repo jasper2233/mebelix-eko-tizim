@@ -454,7 +454,10 @@ export function PrisadkaView({
             teshigi boshqa o'rnatishni talab qiladi, ya'ni bu operator uchun
             reja, shunchaki son emas. Sanoq sahifadagi detallar bo'yicha. */}
         {!!(data?.holes_face || data?.holes_edge) && (
-          <span className="flex items-baseline gap-1.5">
+          /* To'ldirilgan blok — kromkadagi bilan bir sabab: sarlavhadagi hamma
+             oraliq bir xil bo'lsa, bu ma'lumot loyiha nomi bilan raqam orasiga
+             kirib qolgandek ko'rinadi (ikkisi ikki qator, bu esa markazda). */
+          <span className="ml-1 flex items-baseline gap-1.5 rounded-lg bg-muted px-3 py-1">
             <span className="num text-lg font-black">
               {(data.holes_face ?? 0) + (data.holes_edge ?? 0)}
             </span>
