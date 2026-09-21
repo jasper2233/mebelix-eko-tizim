@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse
@@ -44,6 +44,7 @@ from app.models.enums import (
 from app.models.user import User
 from app.schemas.common import Message
 from app.schemas.terminal import (
+    CutmapHole,
     CutmapState,
     KromkaInstance,
     KromkaMeasurement,
@@ -62,7 +63,7 @@ from app.schemas.terminal import (
     TerminalEmployee,
     TerminalOrderCard,
 )
-from app.services.giblab.cutmap import arra_parts_query, build_cutmap_state
+from app.services.giblab.cutmap import arra_parts_query, build_cutmap_state, holes_by_label_num
 from app.services.giblab.models import stored_machined_sides
 from app.services.scanning import (
     ScanRejected,
@@ -563,6 +564,14 @@ async def _order_instances_by_part(db: SessionDep, order_id: int) -> dict[int, l
     return by_part
 
 
+def _teshik(xarita: dict[int, dict[str, Any]], label_num: int | None) -> CutmapHole | None:
+    """JSONB dan kelgan xom dict ni sxemaga o'giradi (mypy uchun ham aniq tur)."""
+    if label_num is None:
+        return None
+    raw = xarita.get(label_num)
+    return CutmapHole.model_validate(raw) if raw else None
+
+
 @router.get("/orders/{order_id}/kromka", response_model=KromkaOrderState, operation_id="read_terminal_kromka")
 async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) -> KromkaOrderState:
     """KROMKA/OVAL sahifasi: buyurtmaning shu postdagi detallari, har nusxada tomon-progress
@@ -598,6 +607,10 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
 
     by_part = await _order_instances_by_part(db, order.id)
     qirra_amali = {part.id: stored_machined_sides(part.xnc_summary) for _, part, _ in rows}
+    # Teshik o'rinlari CHEK bilan bitta manbadan — kromkachi qo'lidagi detalni
+    # eskizga moslab, qaysi qirra lentalanishini aniqlaydi. Xarita BIR MARTA
+    # quriladi: har detal uchun alohida qidirish O(detal x katak) bo'lardi.
+    teshiklar = holes_by_label_num(order.cutmap)
 
     return KromkaOrderState(
         order_id=order.id,
@@ -616,6 +629,7 @@ async def read_terminal_kromka(db: SessionDep, ctx: TerminalCtx, order_id: int) 
                 edges=part.edges,
                 paz_sides=qirra_amali[part.id].paz,
                 frez_sides=qirra_amali[part.id].frez,
+                holes=_teshik(teshiklar, part.label_num),
                 process_code=route.process_code,
                 total_done=route.total_done,
                 total_required=route.total_required,

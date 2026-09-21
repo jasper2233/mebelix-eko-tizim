@@ -118,6 +118,13 @@ class KromkaPartRow(BaseModel):
     #: (`stored_machined_sides` darvozasi — o'shangacha `mill_sides` da ikkalasi birga edi).
     paz_sides: list[str] = []
     frez_sides: list[str] = []
+    #: Teshik o'rinlari — CHEKDAGI eskiz bilan BITTA manba (`cutmap["holes"]`).
+    #: Kromkachiga yo'nalish uchun kerak: simmetrik detalda (masalan ikkala uzun
+    #: qirra bir xil) qaysi qirra lentalanishini faqat teshik joyi ajratadi —
+    #: detal teskari ushlansa eskiz ham teskari bo'ladi va xato ko'rinmaydi.
+    #: Prod ma'lumotida o'lchangan: kromkali detallarning 67% ida bir juftdan
+    #: faqat bittasi lentalanadi, ularning 89% ida teshik bor.
+    holes: "CutmapHole | None" = None
     process_code: int  # 3 = Kromka, 4 = Fasat kromka, 5 = Oval kromka
     total_done: int
     total_required: int
@@ -527,3 +534,8 @@ class TmoOrderState(BaseModel):
     #: Hali qabul qilinmaganlar: `ready=True` — TMO da turibdi (skanerlash mumkin),
     #: `ready=False` — hali tsexda (`stage` qaysi postdaligini aytadi).
     pending: list[TmoPending] = []
+
+
+# `KromkaPartRow.holes` shu fayldagi `CutmapHole` ga havola qiladi, u esa
+# pastroqda e'lon qilingan — oldinga havolani shu yerda hal qilamiz.
+KromkaPartRow.model_rebuild()

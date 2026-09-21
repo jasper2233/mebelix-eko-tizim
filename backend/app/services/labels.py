@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import TASHKENT_TZ
 from app.models import Order, Part, PartInstance, PartRoute, Product
+from app.services.giblab.cutmap import holes_by_label_num
 from app.services.giblab.models import PROCESS_POSTS, TAIL_CODES, stored_machined_sides
 from app.services.scanning import qr_part_code
 
@@ -63,19 +64,8 @@ async def load_label_data(db: AsyncSession, instance_id: int) -> LabelData | Non
     # (cutmap.py `part.file_part_id` / `part.label_num`), ya'ni bir xil `num` li
     # barcha kataklar bir xil `id` ga ega — boshqa varaqda qidirish natijani o'zgartirmaydi.
     holes = None
-    if order.cutmap and part.label_num is not None:
-        cell = next(
-            (
-                c
-                for mat in order.cutmap.get("materials", [])
-                for sheet in mat.get("sheets", [])
-                for c in sheet.get("parts", [])
-                if not c.get("waste") and c.get("num") == part.label_num
-            ),
-            None,
-        )
-        if cell:
-            holes = order.cutmap.get("holes", {}).get(str(cell.get("id")))
+    if part.label_num is not None:
+        holes = holes_by_label_num(order.cutmap).get(part.label_num)
 
     # Marshrut faqat NOSTANDART detalda chiqadi: uni texnolog qo'lda chizgan va
     # operator qaysi bosqichdan keyin qayerga yuborishni chekdan bilishi kerak.

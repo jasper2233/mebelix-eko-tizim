@@ -404,3 +404,34 @@ async def build_cutmap_state(db: AsyncSession, order: Order, post_id: int) -> Cu
             for i in instances
         ],
     )
+
+
+def holes_by_label_num(cutmap: dict[str, Any] | None) -> dict[int, dict[str, Any]]:
+    """`part.label_num` -> o'sha detalning XNC qatlami (`cutmap["holes"][cell_id]`).
+
+    Kataklardagi `id` va `num` bitta `part` dan keladi (yuqoridagi
+    `part.file_part_id` / `part.label_num`), ya'ni bir xil `num` li barcha
+    kataklar bir xil `id` ga ega — birinchi mos katak yetarli, boshqa varaqda
+    qidirish natijani o'zgartirmaydi.
+
+    Chek ham (`services/labels.py`), KROMKA terminali ham shu xaritadan o'qiydi:
+    kromkachi qo'lidagi detalni eskizga moslashi uchun teshik o'rinlari ikkala
+    joyda BIR XIL bo'lishi shart. Ilgari bu qidiruv faqat `labels.py` ichida
+    edi va terminal eskizi teshiksiz chizilardi.
+    """
+    if not cutmap:
+        return {}
+    holes = cutmap.get("holes") or {}
+    out: dict[int, dict[str, Any]] = {}
+    for mat in cutmap.get("materials", []):
+        for sheet in mat.get("sheets", []):
+            for cell in sheet.get("parts", []):
+                if cell.get("waste"):
+                    continue
+                num = cell.get("num")
+                if num is None or num in out:
+                    continue
+                h = holes.get(str(cell.get("id")))
+                if h:
+                    out[int(num)] = h
+    return out

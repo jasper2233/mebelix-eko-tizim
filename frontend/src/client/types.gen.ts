@@ -1938,6 +1938,7 @@ export type KromkaPartRow = {
      * Frez Sides
      */
     frez_sides?: Array<string>;
+    holes?: CutmapHole | null;
     /**
      * Process Code
      */
