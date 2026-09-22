@@ -1,14 +1,14 @@
 """GibSaw yorliq shablonidagi (`*.lbl`) ichki rasmlarni ajratib oladi.
 
 `mebelix.lbl` — XML, rasmlari `imgdata="data:image/png;base64,…"` sifatida
-ICHIGA yozilgan. `backend/app/assets/label-logo.png` va `label-icon-drill.png`
-o'sha yerdan olingan, lekin qanday olingani hech qayerda qolmagan edi — bu
-skript shu bo'shliqni yopadi va qolganini ham chiqaradi.
+ICHIGA yozilgan. `backend/app/assets/label-logo.png` o'sha yerdan olingan, lekin
+qanday olingani hech qayerda qolmagan edi — bu skript shu bo'shliqni yopadi va
+mashina belgilarini ham chiqaradi.
 
 NOMLASH. Har rasm `<if condition="…">` ichida turadi va shart uning MA'NOSI:
 
     groove  — Пазование        paz
-    drill   — Сверление        teshik (MESda ishlatiladi)
+    drill   — Сверление        teshik
     mill    — Фрезерование     freza / radius
     rabbet  — chorak (falts)
     part.twodetails            detal ikki bo'lakdan
@@ -21,10 +21,11 @@ ISHLATISH:
     uv run --with pillow python scripts/extract-label-icons.py \\
         "<mebelix.lbl>" design/label-icons
 
-Chiqish papkasi ATAYLAB `design/` ostida: hozircha faqat `drill` ishlatiladi,
-qolganiga ma'lumot manbai yo'q (`rabbet`, `twodetails`) yoki chekda allaqachon
-boshqacha ko'rsatilgan (`groove`/`mill` — eskizdagi chiziq uslubi bilan).
-Kerak bo'lganda shu yerdan `backend/app/assets/` ga ko'chiriladi.
+Chiqish papkasi ATAYLAB `design/` ostida: MES chekida belgilarning HECH BIRI
+chizilmaydi. `groove`/`mill`/`drill` chekda allaqachon eskizning o'zida — paz
+va freza chiziq uslubi bilan, teshik o'z joyida aylana bilan (docs/09);
+`rabbet` va `twodetails` uchun esa MESda ma'lumot manbai yo'q. Kerak bo'lganda
+shu yerdan `backend/app/assets/` ga ko'chiriladi.
 """
 
 import base64

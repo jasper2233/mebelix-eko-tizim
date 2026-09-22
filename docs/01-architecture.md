@@ -421,8 +421,8 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   (34 mm) sig'guncha kichraytiriladi — `labels.py`, QR esa to'liq satrni saqlaydi,
   [11-detal-id-nomlash.md](./11-detal-id-nomlash.md)),
   loyiha nomi, 2×2 kromka katakchalari (tagchiziqli), katta
-  `L x W = count`, `N_nom`, teshik bo'lsa-yu eskiz uni chiza olmasa
-  `app/assets/label-icon-drill.png` ikonkasi (zaxira — `docs/09`), **marshrut qatori** (`Marshrut: 7/11/8` — jarayon kodlari `seq`
+  `L x W = count`, `N_nom` (teshik alohida ikonka bilan EMAS, eskizda o'z joyida
+  aylana bo'lib — `docs/09`), **marshrut qatori** (`Marshrut: 7/11/8` — jarayon kodlari `seq`
   tartibida, y=41.5 mm; detal NOMIGA qo'shilmaydi, chunki nom 24 belgida
   kesiladi). Marshrut FAQAT nostandart detalda chiqadi (`load_label_data()`
   `route_codes` ni `part.is_custom` shartida to'ldiradi) — standart detalda

@@ -215,8 +215,6 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
     Ustunlar tartibi mebelix.lbl bo'yicha: chap ustun — matnlar, o'ng ustun —
     QR (tepada) va detal eskizi vertikal (ostida). 1-bit, antialiasing'siz.
     """
-    from pathlib import Path
-
     import qrcode
     from PIL import Image, ImageDraw
 
@@ -299,32 +297,10 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
     # Detal nomi — N prefiksisiz (N tepada), 44 mm gacha (icon zonasi 49.5 dan boshlanadi)
     text(5, 36.5, d.part_name, 3.3, bold=True, max_mm=44)
 
-    # Sverlo ikonkasi Marshrut qatorining o'ngidagi bo'sh zonada (x49.5, y40) —
-    # FAQAT ZAXIRA: eskiz teshiklarni chiza olmaganda. Ikkita haqiqiy loyihada
-    # teshikli 188 detalning HAMMASIDA eskiz har teshikni o'z joyida chizgan,
-    # soni ham aynan mos — ya'ni belgi takror edi (kromka va paz/freza ham chekda
-    # faqat eskizda turadi). Lekin belgi `xnc_summary` dan, aylanalar `order.cutmap`
-    # dan keladi; kesish xaritasisiz loyihada aylanalar yo'q va shunda belgi
-    # teshik haqidagi YAGONA signal bo'lib qoladi.
-    eskizda_teshik = bool(
-        d.length
-        and d.width
-        and d.holes
-        and d.holes.get("l")
-        and d.holes.get("w")
-        and (d.holes.get("bores") or d.holes.get("edge"))
-    )
-    if (d.xnc_summary.get("bores") or d.xnc_summary.get("edge_bores")) and not eskizda_teshik:
-        drill_path = Path(__file__).resolve().parents[1] / "assets" / "label-icon-drill.png"
-        isz = int(6 * mm)
-        try:
-            raw = Image.open(drill_path)
-            flat = Image.new("RGB", raw.size, "white")
-            flat.paste(raw, mask=raw.getchannel("A") if "A" in raw.getbands() else None)
-            icon = flat.convert("L").point(_bw).convert("RGB").resize((isz, isz))
-            img.paste(icon, (int(49.5 * mm), int(40 * mm)))
-        except OSError:
-            text(49.5, 40, "С", 3.2, bold=True)
+    # Sverlo IKONKASI YO'Q: teshik eskizda o'z joyida aylana bo'lib chiziladi (pastda).
+    # Ikonka ikkita haqiqiy loyihadagi teshikli 188 detalning HAMMASIDA shu aylanalarni
+    # takrorlardi; paz/freza ham chekda faqat eskizda turadi. Aylanalar `order.cutmap`
+    # dan keladi, u esa har doim yuklangan `.project` dan yasaladi.
 
     # Marshrut — POST nomlari (raqamli jarayon kodlari tsexchiga ma'nosiz); dum
     # (qadoqlash/TMO) har detalda bir xil, shuning uchun yozilmaydi; ketma-ket bir post bitta.
