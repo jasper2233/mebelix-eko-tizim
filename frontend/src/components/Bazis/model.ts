@@ -5,6 +5,8 @@
  * JSON'ni sezilarli kattalashtiradi, sahifa esa telefonda ochiladi.
  */
 
+import { MAT_RANG } from "./matRang.gen"
+
 export type BazisPanel = {
   /** Detal kodi (`01_005`) — MESdagi `Part.code` ning aynan o'zi. Bo'sh bo'lishi mumkin. */
   id: string
@@ -50,7 +52,10 @@ export type PublicProduct = { code: string; name: string; panels: number }
 /** Material rangi. Mebel ohangi — kamalak emas: bir xil materialdagi detallar
  * bir xil ko'rinadi, ya'ni yig'uvchi "bular bitta plitadan" ekanini rangdan
  * biladi. Ro'yxat tugasa boshidan aylanadi. */
-/** Material NOMIDAN ko'rinish. Kalit so'zlar 437 ta haqiqiy buyurtmadagi
+/** Material NOMIDAN ko'rinish — KATALOGDA topilmagan nomlar uchun ZAXIRA yo'l.
+ * Birinchi navbat `MAT_RANG` da (`matRang.gen.ts`, ishlatilishning 84% i).
+ *
+ * Kalit so'zlar 437 ta haqiqiy buyurtmadagi
  * 162 material nomidan olingan (85 753 ishlatilish), o'ylab topilmagan:
  * `kromka PVC 06-19 oq`, `LDSP DUB VATAN TEKSTURA`, `AKRIL KASHMIR GLYANETS`.
  *
@@ -157,7 +162,43 @@ const tafovut = (hex: string, nom: string): string => {
   return `#${((R << 16) | (G << 8) | B).toString(16).padStart(6, "0")}`
 }
 
+/** Material nomini katalog kaliti holiga keltiradi.
+ *
+ * `scripts/bazis-material-colors.py: norm()` bilan QO'LDA oynalangan —
+ * birini o'zgartirsang ikkinchisini ham, aks holda jadval kaliti mos
+ * kelmay qoladi va rang jimgina regexga tushib ketadi.
+ *
+ * Texnolog Bazisda plita kvadraturasini va yetkazuvchini nomga qo'shadi
+ * (`LDSP DUB VOTAN 5.03 kv.  Khatdekor`), katalogda esa `LDSP DUB VATAN`
+ * turadi — shu shovqin olib tashlanadi. */
+const normMat = (nom: string): string =>
+  nom
+    .toLowerCase()
+    .trim()
+    .replace(/\d+[.,]\d+\s*kv\.?/g, " ")
+    .replace(/\d{3,4}\s*[xх*]\s*\d{3,4}(\s*[xх*]\s*\d+)?(\s*mm)?/g, " ")
+    .replace(/\(\s*\d+\s*mm\s*\)/g, " ")
+    .replace(/\b\d+\s*mm\b/g, " ")
+    .replace(/khatde[ck]or|kronospan|xitoy|mestniy|местный/g, " ")
+    .replace(/\bagt\b|\bbir tomon\b/g, " ")
+    .replace(/votan/g, "vatan")
+    .replace(/mokrik/g, "mokriy")
+    .replace(/beliy?/g, "beli")
+    .replace(/tiilla/g, "tilla")
+    .replace(/glyans/g, "glyanets")
+    .replace(/mativiy/g, "matviy")
+    .replace(/[^a-z0-9а-яё ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+
+/** Panel rangi. Katalogdagi HAQIQIY rangga TEGILMAYDI — u tekstura rasmining
+ * o'rtachasi yoki katalogda yozilgan rang, ya'ni taxmin emas. Tafovut faqat
+ * regex zaxirasiga qo'llanadi: u yerda rang baribir taxminiy va bir kalitga
+ * tushgan ikki materialni ajratib turish kerak. Bir xil rang chiqqan ikki
+ * dekor rostdan bir xil ko'rinadi — yaltiroqligi `materialRoughness` da. */
 export const materialColor = (nom: string): string => {
+  const katalog = MAT_RANG[normMat(nom)]
+  if (katalog) return katalog
   for (const [naqsh, rang] of RANGLAR)
     if (naqsh.test(nom)) return tafovut(rang, nom)
   return tafovut(ZAXIRA[hash(nom) % ZAXIRA.length], nom)

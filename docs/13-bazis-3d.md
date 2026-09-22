@@ -518,7 +518,27 @@ bekor qilinadi. Busiz pinch paytida ikkinchi barmoqning `pointerup` i o'z
 tushgan nuqtasidan 8 px narida bo'lgani uchun "bosish" deb hisoblanib,
 tanlangan detalni YO'QOTARDI (telefonda takrorlanib tasdiqlandi).
 
-**Ko'rinish material NOMIDAN chiqariladi** (`model.ts`), indeksdan emas.
+**Ko'rinish KATALOGDAN, topilmasa material nomidan.** Birinchi navbat
+`matRang.gen.ts` jadvalida — u Bazis katalogidan (`BAZA 1.FDB`) va tekstura
+rasmlaridan `scripts/bazis-material-colors.py` bilan yasaladi va **460 ta
+haqiqiy modeldagi panellarning 84% ini qoplaydi** (213 yozuv, 7 KB).
+
+Rang manbai: teksturaning o'rtacha rangi, teksturasiz yozuvlarda katalogdagi
+`PARAM_1`. Nomlar normallashtiriladi (texnolog plita kvadraturasini va
+yetkazuvchini nomga qo'shadi: `LDSP DUB VOTAN 5.03 kv.  Khatdekor`), aniq
+topilmagani so'zlar kesishuvi bo'yicha moslanadi — moslash GENERATSIYA
+paytida hal qilinadi, brauzerda taxmin yo'q. `normMat` (`model.ts`) va
+`norm()` (skript) QO'LDA oynalangan; 140 ta haqiqiy nomda ikkalasi bir xil
+kalit berishi tekshirilgan.
+
+Nega kerak edi: regexning o'zi bilan teksturasi bor materiallarning **28% i**
+sezilarli xato rang olardi — `LDSP INTERNO ZOLOTA` oltin chiqardi (aslida oq
+marmar, farq 183), `LDSP KASPIY TYOMNIY` jigarrang chiqardi (aslida ko'kish
+kulrang, 87), `LMDF AZIYA` kulrang chiqardi (aslida to'q qizil-jigar, 285).
+Katalog rangiga TEGILMAYDI — u taxmin emas, shuning uchun tafovut (pastda)
+faqat regex zaxirasiga qo'llanadi.
+
+**Zaxira — material NOMIDAN** (`model.ts`), indeksdan emas.
 Kalit so'zlar 437 buyurtmadagi 162 material nomidan olingan (85 753
 ishlatilish), o'ylab topilmagan: `oq` 25.4%, `glyanets` 10.7%, `mokriy` 9.0%,
 `dub` 8.7%, `sasna` 8.5%, `qora` 8.5%, `matviy` 7.8%, `kashmir` 5.8%.
@@ -537,11 +557,16 @@ Ilgari rang `mats` massividagi O'RINDAN olinardi — ya'ni aynan bir xil
 material bir mahsulotda bej, boshqasida kulrang chiqardi va bitta
 buyurtmaning ikki mahsulotini solishtirgan usta chalg'irdi.
 
-**Nega Bazis katalogidan emas.** `BAZA 1.FDB` da rang bor (`PARAM_1`), lekin u
-teksturali materialda ANDOZA: 90 yozuvdan 89 tasi bir xil `#F6B67F`
-(o'lchandi). Haqiqiy rang faqat teksturasizlarida — 64 yozuv, 37 xil rang.
-Ya'ni katalog bu qoidaning o'rnini bosmaydi; haqiqiy ko'rinish TEKSTURA
-rasmida, va u alohida bosqich.
+**Katalogdagi `PARAM_1` ni yolg'iz ishlatib bo'lmaydi:** teksturali
+materialda u ANDOZA — 108 yozuvdan 107 tasi bir xil `8369910` (`#f6b67f`).
+Shuning uchun rang avval TEKSTURA rasmidan olinadi, `PARAM_1` esa faqat
+teksturasiz yozuvlarda. U yerdagi `0` (qora) va `16777215` (oq) haqiqiy: bu
+qiymatli teksturasiz yozuvlarning hammasi rostdan qora yoki oq buyum
+(`1-19 qora`, `LDSP OQ GLYANETS`).
+
+Qolgan 16% — katalogda umuman yo'q nomlar, asosan `zamena material` (8.3%)
+kabi o'rin bosarlar; ular regex zaxirasiga tushadi. Teksturaning O'ZINI
+chizish alohida bosqich.
 
 **Tanlash — bosish, surish emas:** 8 pikseldan ortiq surilgan bosish
 aylantirish deb qabul qilinadi. Qidiruv faol bo'lsa faqat TOPILGANLAR
