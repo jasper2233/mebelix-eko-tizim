@@ -42,9 +42,10 @@ MebeliX-Mes-System/
 ├── design/           # Dizayn MANBALARI — build'ga kirmaydi (`.dockerignore`):
 │                     #   logo/ — brend masterlarining to'liq to'plami (tilla/navy/qora,
 │                     #     gorizontal/vertikal, logo va ikonka)
-│                     #   label-icons/ — chek ikonkalari, `mebelix.lbl` dan ajratilgan
+│                     #   label-icons/ — chek ikonkalari, GibSaw shablonidan ajratilgan
 │                     #     (`scripts/extract-label-icons.py`): paz, teshik, freza,
-│                     #     chorak, ikki bo'lakli detal
+│                     #     chorak, ikki bo'lakli detal — asl 40x40; `drill-hires.png`
+│                     #     esa qo'lda qayta chizilgani, `backend/app/assets/` dagi nusxa
 │                     #   Ishlatiladigan nusxalar `frontend/public/assets/logo/` va
 │                     #   `backend/app/assets/` da; kerak bo'lsa shu yerdan ko'chiriladi
 ├── docker-compose.local.yml

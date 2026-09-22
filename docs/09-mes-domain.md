@@ -302,7 +302,12 @@ chiqadi), **holes**, **texture**, **route_codes** (marshrut jarayon kodlari `seq
 `holes` — `order.cutmap` dan shu detal katakchasi bo'yicha
 (`part.label_num` → cutmap `parts[].num` → `cutmap.holes[cell.id]`).
 
-**`render_label_png(d, scale=1)` — asosiy maket** (GibSaw `mebelix.lbl` uslubi). 80×60 mm,
+**`render_label_png(d, scale=1)` — asosiy maket** (GibSaw `mebelix.lbl` uslubi).
+
+> GibSaw sexda **endi chek bosmaydi** — hamma chekni MES bosadi. Uning
+> o'rnatmasi faqat MA'LUMOTNOMA sifatida saqlanadi (shu sababli undagi
+> `GibSaw.ini: label=Universal.lbl` sozlamasini biznikiga moslash shart emas —
+> shablonlar bir-biridan mustaqil). 80×60 mm,
 203 dpi (8 dot/mm → 640×480 px), oxirida `point(... , "1")` bilan sof 1-bit; `draw.fontmode = "1"`
 — antialiasing yo'q, aks holda termodrayver dither qiladi. Koordinatalar mm da. Tarkibi:
 
