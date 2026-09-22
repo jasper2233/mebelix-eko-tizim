@@ -2,12 +2,17 @@
 name: judge
 description: Semantic judgment — "is this comment lying about the code", "does this doc paragraph contradict the implementation", "is this abstraction pointless", "is this a real race condition". For questions that require reasoning and where two engineers could disagree. Use `census` for counting or grep, `reader` for plain file reading.
 tools: Read, Grep, Glob, Bash
-# Opus, not Fable (since 2026-09-22): `opus` resolves to Opus 5.5 on the
-# Anthropic API, which Anthropic calls "the new leading model" — ahead of
-# Fable 5.1 on all nine benchmarks in its launch table (Terminal-Bench 4.0
-# 66.4 vs 55.8, FrontierCode 54.4 vs 50.3), at $4/$20 per MTok against $10/$50.
-# `effort: high` stays EXPLICIT: Opus 5.5 defaults to `medium`, one level
-# below every other model, and only the hard questions reach this agent.
+# Opus 5.5 (measured 2026-09-23 on claims whose answers were settled by
+# execution: Opus@high and Fable 5.1@high on 8, Opus@medium and Sonnet 5@high
+# on the last 4). Every arm reached the right verdict every time. They
+# differed on:
+#   - verbatim quotes (rule 2): Opus 100% at both efforts; Fable elided one
+#     line; Sonnet spliced or elided the quote in 2 of 4 claims.
+#   - cost per claim: Opus@high $0.13, Opus@medium $0.11, Fable $0.46 (3.5x
+#     more, and 2x slower).
+# `effort: high` over the `medium` default is a judgment call, not a
+# measurement: the tests did not separate the two, the difference is ~11%,
+# and a wrong verdict from this agent costs more than that.
 model: opus
 effort: high
 ---
