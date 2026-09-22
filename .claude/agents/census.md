@@ -5,8 +5,9 @@ tools: Read, Grep, Glob, Bash
 # Choice rule for all three agents: accuracy first, cost is not a criterion.
 # A tie in a test every model passes proves nothing, so a tie goes to the
 # stronger model. Measured 2026-09-23 with a hidden ground truth: Haiku 4.5
-# 7/8 (it missed a match in a nested folder), Sonnet 5 8/8. Opus was not run
-# as census; it takes the job on that tie rule. Haiku 4.5 also ignores `effort`.
+# 7/8 (it missed a match in a nested folder), Sonnet 5 8/8, and Opus@medium
+# 8/8 in a later round on the same tasks. Opus takes the tie as the stronger
+# model. Haiku 4.5 also ignores `effort`.
 model: opus
 effort: medium
 ---

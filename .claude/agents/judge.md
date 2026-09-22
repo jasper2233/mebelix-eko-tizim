@@ -10,11 +10,12 @@ tools: Read, Grep, Glob, Bash
 #     line; Sonnet spliced or elided the quote in 2 of 4 claims.
 #   - cost per claim: Opus@high $0.13, Opus@medium $0.11, Fable $0.46 (3.5x
 #     more, and 2x slower). Fable was not more accurate, so the price is moot.
-# `xhigh` is not measured: medium and high tied. Accuracy comes first
-# (census.md), the hardest questions come here, and it matches the
-# main loop's own `effortLevel`.
+# `high`, measured: medium and high tied, so the tie goes to high. xhigh was then
+# tested on the same 8 claims: verdicts 8/8 again, but in one claim it joined
+# lines into a single quote and cited a line number 2 off. High had no such
+# error in 8 claims, so xhigh brought no extra accuracy and was 1.7x slower.
 model: opus
-effort: xhigh
+effort: high
 ---
 
 You are the judge. Only questions a script CANNOT settle reach you.

@@ -3,11 +3,11 @@ name: reader
 description: Reads files end to end and extracts structured facts — "what does this module do, what does it call, which endpoints does it expose". For work heavier than counting but still free of judgment. If a verdict on whether code is right or wrong is needed, use `judge`.
 tools: Read, Grep, Glob, Bash
 # Opus, accuracy first (see census.md for the rule). Measured 2026-09-23:
-# Sonnet@medium, Opus@low and Haiku all extracted every item exactly, so
-# extraction did not separate them. Verbatim quoting did. As judge, Sonnet
-# spliced or elided quotes in 2 of 4 claims and Opus in 0 of 12, and
-# verbatim quotes are this agent's rule 2. `high` is not measured: reading
-# every file to EOF is thoroughness, and effort sets how much work is spent.
+# Sonnet@medium, Opus@low, Opus@high (8/8 each) and Haiku (4/4) all
+# extracted every item exactly, so extraction did not separate them.
+# Verbatim quoting did. As judge, Sonnet spliced or elided quotes in 2 of 4
+# claims and Opus@high/medium in 0 of 12, and verbatim quotes are this
+# agent's rule 2.
 model: opus
 effort: high
 ---

@@ -63,7 +63,7 @@ Birinchi mos qatorda to'xta — pastdan boshlama.
 | **Javobi determinlashgan** | **Hech qanday model emas — skript yoz** (endpoint ro'yxati, import grafi, migratsiya zanjiri, versiya solishtirish) |
 | Mexanik sanash / grep | `census` (opus, effort medium) |
 | Fayl o'qib fakt chiqarish | `reader` (opus, effort high) |
-| Semantik hukm, ziddiyat, haqiqiy bug | `judge` (opus = Opus 5.5, effort xhigh) |
+| Semantik hukm, ziddiyat, haqiqiy bug | `judge` (opus = Opus 5.5, effort high) |
 
 Model tanlash qoidasi: avval ANIQLIK, narx mezon emas. Test ikki modelni ajrata
 olmasa (hammasi o'tsa) — bu ular teng degani emas, kuchlirog'i olinadi.
