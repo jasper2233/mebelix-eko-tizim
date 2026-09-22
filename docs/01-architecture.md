@@ -39,7 +39,10 @@ MebeliX-Mes-System/
 │                     #   daraxtidan tashqarida — CI rsync --delete o'chirib yubormasin;
 │                     #   Telegram ixtiyoriy nusxa)
 ├── docs/             # Ushbu hujjatlar to'plami
-├── design/           # Logo masterlari (frontend build'iga kirmaydi)
+├── design/           # Brend masterlarining TO'LIQ to'plami — logo/ikonka, tilla/navy,
+│                     #   gorizontal va vertikal. Build'ga kirmaydi (`.dockerignore`).
+│                     #   `frontend/public/assets/logo/` da esa FAQAT kod murojaat
+│                     #   qiladiganlari turadi; kerak bo'lsa shu yerdan nusxa olinadi
 ├── docker-compose.local.yml
 ├── docker-compose.prod.yml
 └── Makefile          # Dev operatsiyalar kirish nuqtasi (prod deploy: CI + scripts/deploy.sh)
