@@ -2,15 +2,13 @@
 name: census
 description: Mechanical enumeration — "list every export in this directory", "where is this symbol used", "which files does nobody import". For counting and grep work where the answer is the same every time and no judgment is involved. If asked to assess code QUALITY, this is the wrong agent — use `judge`.
 tools: Read, Grep, Glob, Bash
-# Sonnet, not Haiku (measured 2026-09-23, 8 runs each on tasks with a hidden
-# ground truth). Haiku 4.5 got 7/8 — it missed a match in a nested routes/
-# subfolder — while Sonnet 5 got 8/8. Haiku also cost the same on average
-# ($0.045 vs $0.046 per task) and was 2x and 4.4x SLOWER in the two rounds,
-# because it needed up to 17 turns where Sonnet needed 3-5. Haiku 4.5 also
-# has no effort control: its transcript records no `effort` at all, so
-# `effort: low` on it did nothing.
-model: sonnet
-effort: low
+# Choice rule for all three agents: accuracy first, cost is not a criterion.
+# A tie in a test every model passes proves nothing, so a tie goes to the
+# stronger model. Measured 2026-09-23 with a hidden ground truth: Haiku 4.5
+# 7/8 (it missed a match in a nested folder), Sonnet 5 8/8. Opus was not run
+# as census; it takes the job on that tie rule. Haiku 4.5 also ignores `effort`.
+model: opus
+effort: medium
 ---
 
 You are a mechanical enumerator. You do not form opinions — you count.

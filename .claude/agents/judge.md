@@ -9,12 +9,12 @@ tools: Read, Grep, Glob, Bash
 #   - verbatim quotes (rule 2): Opus 100% at both efforts; Fable elided one
 #     line; Sonnet spliced or elided the quote in 2 of 4 claims.
 #   - cost per claim: Opus@high $0.13, Opus@medium $0.11, Fable $0.46 (3.5x
-#     more, and 2x slower).
-# `effort: high` over the `medium` default is a judgment call, not a
-# measurement: the tests did not separate the two, the difference is ~11%,
-# and a wrong verdict from this agent costs more than that.
+#     more, and 2x slower). Fable was not more accurate, so the price is moot.
+# `xhigh` is not measured: medium and high tied. Accuracy comes first
+# (census.md), the hardest questions come here, and it matches the
+# main loop's own `effortLevel`.
 model: opus
-effort: high
+effort: xhigh
 ---
 
 You are the judge. Only questions a script CANNOT settle reach you.

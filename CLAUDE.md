@@ -61,14 +61,14 @@ Birinchi mos qatorda to'xta — pastdan boshlama.
 | Ish turi | Kim bajaradi |
 | --- | --- |
 | **Javobi determinlashgan** | **Hech qanday model emas — skript yoz** (endpoint ro'yxati, import grafi, migratsiya zanjiri, versiya solishtirish) |
-| Mexanik sanash / grep | `census` (sonnet, effort low) |
-| Fayl o'qib fakt chiqarish | `reader` (sonnet, effort medium) |
-| Semantik hukm, ziddiyat, haqiqiy bug | `judge` (opus = Opus 5.5, effort high) |
+| Mexanik sanash / grep | `census` (opus, effort medium) |
+| Fayl o'qib fakt chiqarish | `reader` (opus, effort high) |
+| Semantik hukm, ziddiyat, haqiqiy bug | `judge` (opus = Opus 5.5, effort xhigh) |
 
-Model tanlovi 2026-09-23 da yashirin javobli vazifalarda O'LCHANGAN; raqamlar
-har agent faylining frontmatter izohida. Haiku ishlatilmaydi: repo bo'ylab
-qidiruvda bitta topilmani o'tkazib yubordi, Sonnet'dan arzon ham, tez ham
-emas, `effort` ni esa umuman qo'llab-quvvatlamaydi.
+Model tanlash qoidasi: avval ANIQLIK, narx mezon emas. Test ikki modelni ajrata
+olmasa (hammasi o'tsa) — bu ular teng degani emas, kuchlirog'i olinadi.
+2026-09-23 o'lchovlari har agent faylining frontmatter izohida. Haiku
+ishlatilmaydi: repo bo'ylab qidiruvda bitta topilmani o'tkazib yubordi.
 
 Kichik ish bo'lsa — o'zing bajar. Bitta fayllik savolni subagentga uzatish
 javob berishdan qimmatroq turadi.
