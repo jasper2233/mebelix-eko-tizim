@@ -310,7 +310,11 @@ chiqadi), **holes**, **texture**, **route_codes** (marshrut jarayon kodlari `seq
   loyiha nomi (`text(..., max_mm=34)` — `draw.textlength` bo'yicha QR chap chetigacha kesiladi;
   ilgari 26 belgi limiti turardi va u QR'ni hisobga olmagani uchun uzun nomning dumi
   QR ostida ko'rinmay qolardi), kromka materiallari 2×2 (t/l/b/r, tagchiziq bilan), markazda katta `L x W = soni`,
-  `N_detal nomi`, teshik bo'lsa `assets/label-icon-drill.png` ikonkasi,
+  `N_detal nomi`, teshik bo'lsa `assets/label-icon-drill.png` ikonkasi (GibSaw shablonidagi
+  `if(drill)` belgisining yuqori aniqlikdagi nusxasi; shablonda yana TO'RTTA belgi bor —
+  paz, freza, chorak va ikki bo'lakli detal — ular `design/label-icons/` da turadi:
+  paz/freza chekda ALLAQACHON eskizdagi chiziq uslubi bilan ko'rsatiladi, chorak va
+  ikki bo'lak uchun esa MESda ma'lumot manbai yo'q),
   marshrut ALOHIDA qatorda (`Marshrut: 7/11/8`, y=41.5mm — detal NOMIGA qo'shilmaydi, chunki nom
   24 belgida kesiladi va marshrut jimgina yo'qolardi). Marshrut satri **faqat nostandart detalda**
   (`part.is_custom`) chiqadi: standart detalning yo'li oldindan ma'lum, chekda u joyni behuda band
