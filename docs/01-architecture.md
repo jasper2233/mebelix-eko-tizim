@@ -44,8 +44,9 @@ MebeliX-Mes-System/
 │                     #     gorizontal/vertikal, logo va ikonka)
 │                     #   label-icons/ — chek ikonkalari, GibSaw shablonidan ajratilgan
 │                     #     (`scripts/extract-label-icons.py`): paz, teshik, freza,
-│                     #     chorak, ikki bo'lakli detal — asl 40x40; `drill-hires.png`
-│                     #     esa qo'lda qayta chizilgani, `backend/app/assets/` dagi nusxa
+│                     #     chorak, ikki bo'lakli detal — shablondagi asl 40x40 holida.
+│                     #     Chekda ishlatiladigani `backend/app/assets/` da: u qo'lda
+│                     #     qayta chizilgan, aniqroq nusxa (281x268)
 │                     #   Ishlatiladigan nusxalar `frontend/public/assets/logo/` va
 │                     #   `backend/app/assets/` da; kerak bo'lsa shu yerdan ko'chiriladi
 ├── docker-compose.local.yml
