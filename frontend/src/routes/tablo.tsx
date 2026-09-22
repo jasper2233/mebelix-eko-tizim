@@ -437,7 +437,7 @@ function TabloPage() {
             Sarlavha devordagi ekranda faqat chrome: balandligi matritsadan
             olingan joy, shuning uchun logo h-12 dan oshmaydi. */}
         <img
-          src="/assets/logo/logo-gold.png"
+          src="/assets/logo/logo-navy.png"
           alt="MebeliX"
           className="hidden h-12 w-auto shrink-0 md:block"
         />
