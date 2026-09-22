@@ -17,9 +17,10 @@ Nusxa ikki xil:
 
 * ODDIY NUSXA — masterning bayt-baytiga o'zi. Tekshiruv — baytlar.
 * HOSILA — boshqa format: PWA ikonkasi (tilla belgi navy plitada), favicon,
-  `.ico`, agent ichidagi base64. Tekshiruv — KO'RINISH: PNG baytlari Pillow/zlib
-  versiyasiga qarab o'zgaradi, ko'rinish esa yo'q. Chidam (`_CHIDAM`) sub-piksel
-  resample farqini o'tkazadi, rang/o'lcham/joy o'zgarishini ushlaydi.
+  `.ico`, agent ichidagi base64. Tekshiruv — dekodlangan PIKSELLAR, aynan. Baytlar
+  emas: PNG/ICO siqilishi OS'ga qarab farq qiladi, piksellar esa yo'q (o'lchangan,
+  Pillow 12.3.0, Windows va Linux: 8 faylning 8 tasida bayt boshqa, 14 chiqishning
+  14 tasida piksel bir xil). Pillow yangilanib piksellar o'zgarsa — `--write`.
 
 PWA retsepti ikonkalarni yaratgan commitlardan olingan (`a2d4b26`, `997ec37`,
 `60c270b`): fon `#2F496E` -> `#16233A` vertikal gradient, belgi `any`/apple da
@@ -33,9 +34,10 @@ import io
 import re
 import sys
 from collections.abc import Callable
+from functools import partial
 from pathlib import Path
 
-from PIL import IcoImagePlugin, Image, ImageChops, ImageDraw, ImageFilter
+from PIL import IcoImagePlugin, Image, ImageChops, ImageDraw
 
 R = Path(__file__).resolve().parents[1]
 MASTER = R / "design" / "logo"
@@ -47,20 +49,6 @@ RADIUS = 0.18
 ICO_OLCHAMLAR = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
 #: Agent oynasi va tray uchun balandlik (`agent.py` shuni kutadi).
 AGENT_BALANDLIK = 112
-#: Ko'rinish farqi chidami — ikkala rasm 1 px Gauss bilan yumshatilgach kanal farqining
-#: O'RTACHASI va 99.5-PERSENTILI. Kalibrlangan: hozirgi hosilalar o'rtacha <= 2.0,
-#: p99.5 <= 49 (asl PWA ikonkalar boshqa vositada yasalgan, belgi cheti sub-piksel
-#: siljigan — ko'z ilg'amaydi). Sun'iy buzilishlar: belgi 5% katta, 4 px siljigan,
-#: rangi boshqa, fon yassi, burchak yumaloqmas — o'rtacha >= 6.4, p99.5 >= 162; eng
-#: yengili, BUTUN ikonka 16% siqilgani — o'rtacha 2.9, lekin p99.5 108. Shuning uchun
-#: p99.5 chegarasi 49 bilan 108 ning o'rtasida.
-_CHIDAM = (4.0, 80)
-#: LOKAL nuqson chidami. p99.5 piksellarning 0.5% ini ataylab e'tiborsiz qoldiradi,
-#: shuning uchun 512 lik ikonkaga chizilgan 36x36 lik qizil kvadrat ikkala chidamdan
-#: ham o'tib ketardi (o'lchangan). Blur 2 px bo'lsa sub-piksel chet siljishi so'nadi:
-#: hozirgi hosilalarda max farq 49 dan oshmaydi. Yaxlit dog' esa so'nmaydi — 10 px
-#: lik kvadratda ham max 217.
-_LOKAL = (2, 128)
 
 #: nusxa -> master (bayt-baytiga)
 NUSXALAR = {
@@ -135,31 +123,16 @@ def _png(im: Image.Image) -> bytes:
     return buf.getvalue()
 
 
-def _farq(a: Image.Image, b: Image.Image) -> str | None:
-    """Ko'rinish farqi chidamdan oshsa — sababi, aks holda None."""
-    a, b = a.convert("RGBA"), b.convert("RGBA")
+def _farq(kutilgan: Image.Image, bor: Image.Image) -> str | None:
+    """Dekodlangan RGBA piksellar aynan teng bo'lmasa — sababi, aks holda None."""
+    a, b = kutilgan.convert("RGBA"), bor.convert("RGBA")
     if a.size != b.size:
         return f"o'lcham {b.size}, kutilgan {a.size}"
-    d = ImageChops.difference(a.filter(ImageFilter.GaussianBlur(1)), b.filter(ImageFilter.GaussianBlur(1)))
-    r, g, k, al = d.split()
-    # har piksel uchun to'rt kanal farqining eng kattasi, so'ng uning taqsimoti
-    hist = ImageChops.lighter(ImageChops.lighter(r, g), ImageChops.lighter(k, al)).histogram()
-    jami = sum(hist)
-    ortacha = sum(i * n for i, n in enumerate(hist)) / jami
-    yigindi, p995 = 0, 255
-    for i, n in enumerate(hist):
-        yigindi += n
-        if yigindi >= jami * 0.995:
-            p995 = i
-            break
-    if ortacha >= _CHIDAM[0] or p995 >= _CHIDAM[1]:
-        return f"ko'rinish farqi: o'rtacha {ortacha:.1f}, p99.5 {p995} (chidam {_CHIDAM[0]} / {_CHIDAM[1]})"
-    radius, chegara = _LOKAL
-    d2 = ImageChops.difference(a.filter(ImageFilter.GaussianBlur(radius)), b.filter(ImageFilter.GaussianBlur(radius)))
-    eng_katta = max(yuqori for _, yuqori in d2.getextrema())
-    if eng_katta >= chegara:
-        return f"lokal nuqson: blur {radius} dan keyin max farq {eng_katta} (chidam {chegara})"
-    return None
+    if a.tobytes() == b.tobytes():
+        return None
+    # `alpha_only=False`: sukut bo'yicha RGBA da faqat alfa qaraladi va shaffofligi
+    # bir xil, rangi boshqa piksel sohadan tushib qolardi (hukm yuqorida baribir baytda)
+    return f"piksellar farq qiladi, soha {ImageChops.difference(a, b).getbbox(alpha_only=False)}"
 
 
 def _agent_b64() -> str:
@@ -169,69 +142,104 @@ def _agent_b64() -> str:
     return "".join(re.findall(r'"([^"]*)"', m.group(2)))
 
 
-def tekshir() -> list[str]:
-    xatolar: list[str] = []
-    for nusxa, master in NUSXALAR.items():
-        if (R / nusxa).read_bytes() != (MASTER / master).read_bytes():
-            xatolar.append(f"{nusxa}: design/logo/{master} dan farq qiladi")
-    for yol, yasa in HOSILALAR.items():
-        sabab = _farq(yasa(), Image.open(R / yol))
-        if sabab:
-            xatolar.append(f"{yol}: {sabab}")
+def _ico() -> Image.Image:
+    return _markazda("icon-navy.png", 256)
+
+
+def _ico_farq() -> str | None:
+    if not (R / ICO).exists():
+        return "fayl yo'q"
     buf = io.BytesIO()
-    _markazda("icon-navy.png", 256).save(buf, format="ICO", sizes=ICO_OLCHAMLAR)
+    _ico().save(buf, format="ICO", sizes=ICO_OLCHAMLAR)
     buf.seek(0)
     kutilgan = IcoImagePlugin.IcoFile(buf)
     with (R / ICO).open("rb") as f:
         ico = IcoImagePlugin.IcoFile(f)
         if sorted(ico.sizes()) != ICO_OLCHAMLAR:
-            xatolar.append(f"{ICO}: o'lchamlar {sorted(ico.sizes())}")
-        else:
-            # HAR KADR: faqat 256 solishtirilsa, Explorer'dagi 16x16 ni kimdir o'zgartirsa
-            # sezilmasdi. Kutilgani — generatorning o'zi yozadigan ICO ning shu kadri
-            # (kichik kadrlarni Pillow 256 dan yasaydi). Mavjud fayl hamma kadrda chidam
-            # ichida: o'rtacha <= 2.7, p99.5 <= 43.
-            for olcham in ICO_OLCHAMLAR:
-                sabab = _farq(kutilgan.getimage(olcham), ico.getimage(olcham))
-                if sabab:
-                    xatolar.append(f"{ICO} ({olcham[0]}px): {sabab}")
+            return f"o'lchamlar {sorted(ico.sizes())}"
+        # HAR KADR: faqat 256 solishtirilsa, Explorer'dagi 16x16 ni kimdir o'zgartirsa
+        # sezilmasdi. Kutilgani — generatorning o'zi yozadigan ICO ning shu kadri
+        # (kichik kadrlarni Pillow 256 dan yasaydi).
+        farqli = [f"{o[0]}px" for o in ICO_OLCHAMLAR if _farq(kutilgan.getimage(o), ico.getimage(o))]
+    return f"{', '.join(farqli)} kadrida piksellar farq qiladi" if farqli else None
+
+
+def _nusxa_farq(nusxa: str, master: str) -> str | None:
+    if (R / nusxa).exists() and (R / nusxa).read_bytes() == (MASTER / master).read_bytes():
+        return None
+    return f"design/logo/{master} dan farq qiladi"
+
+
+def _hosila_farq(yol: str, yasa: Callable[[], Image.Image]) -> str | None:
+    return _farq(yasa(), Image.open(R / yol)) if (R / yol).exists() else "fayl yo'q"
+
+
+def _agent_farq() -> str | None:
     sabab = _farq(_agent_logo(), Image.open(io.BytesIO(base64.b64decode(_agent_b64()))))
-    if sabab:
-        xatolar.append(f"{AGENT} _LOGO_B64: {sabab}")
-    return xatolar
+    return f"_LOGO_B64: {sabab}" if sabab else None
 
 
-def yoz() -> None:
+def farqlar() -> dict[str, str]:
+    """Masterga mos KELMAGAN aktivlar: yo'l -> sabab. Bittasi bitta qator."""
+    tekshiruvlar: list[tuple[str, Callable[[], str | None]]] = [
+        *((n, partial(_nusxa_farq, n, m)) for n, m in NUSXALAR.items()),
+        *((y, partial(_hosila_farq, y, f)) for y, f in HOSILALAR.items()),
+        (ICO, _ico_farq),
+        (AGENT, _agent_farq),
+    ]
+    out: dict[str, str] = {}
+    for yol, tekshir in tekshiruvlar:
+        try:
+            sabab = tekshir()
+        except (OSError, SyntaxError, ValueError) as e:
+            # Buzuq fayl ham FARQ: `--write` uni qayta yozib tuzatishi kerak, yiqilmasligi.
+            # Pillow'da o'qilmaydigan/kesilgan rasm — OSError, ICO emas — SyntaxError,
+            # base64 buzuq — binascii.Error (ValueError).
+            sabab = f"o'qib bo'lmadi ({e})"
+        if sabab:
+            out[yol] = sabab
+    return out
+
+
+def yoz(farqli: set[str]) -> None:
+    """Faqat farq qilganini yozadi: piksellari bir xil faylni boshqa OS'da qayta
+    kodlash baytlarni o'zgartirib, ko'rinishi bir xil diff qoldirardi."""
     for nusxa, master in NUSXALAR.items():
-        (R / nusxa).write_bytes((MASTER / master).read_bytes())
+        if nusxa in farqli:
+            (R / nusxa).write_bytes((MASTER / master).read_bytes())
     for yol, yasa in HOSILALAR.items():
-        (R / yol).write_bytes(_png(yasa()))
-    _markazda("icon-navy.png", 256).save(R / ICO, format="ICO", sizes=ICO_OLCHAMLAR)
-    b64 = base64.b64encode(_png(_agent_logo())).decode()
-    satrlar = "\n".join(f'    "{b64[i : i + 96]}"' for i in range(0, len(b64), 96))
-    manba = (R / AGENT).read_text(encoding="utf-8")
-    # `newline="\n"`: Windows'da sukut bo'yicha butun fayl CRLF bo'lib yozilardi,
-    # repo siyosati esa LF (`.gitattributes: * text=auto eol=lf`)
-    (R / AGENT).write_text(
-        _B64_BLOK.sub(lambda m: m.group(1) + satrlar + m.group(3), manba), encoding="utf-8", newline="\n"
-    )
+        if yol in farqli:
+            (R / yol).write_bytes(_png(yasa()))
+    if ICO in farqli:
+        _ico().save(R / ICO, format="ICO", sizes=ICO_OLCHAMLAR)
+    if AGENT in farqli:
+        b64 = base64.b64encode(_png(_agent_logo())).decode()
+        satrlar = "\n".join(f'    "{b64[i : i + 96]}"' for i in range(0, len(b64), 96))
+        manba = (R / AGENT).read_text(encoding="utf-8")
+        # `newline="\n"`: Windows'da sukut bo'yicha butun fayl CRLF bo'lib yozilardi,
+        # repo siyosati esa LF (`.gitattributes: * text=auto eol=lf`)
+        (R / AGENT).write_text(
+            _B64_BLOK.sub(lambda m: m.group(1) + satrlar + m.group(3), manba), encoding="utf-8", newline="\n"
+        )
 
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--check", action="store_true", help="nusxalar masterga mosmi (CI)")
-    g.add_argument("--write", action="store_true", help="hamma nusxani masterdan qayta yasaydi")
-    if p.parse_args().write:
-        yoz()
-    xatolar = tekshir()
-    for x in xatolar:
-        print(f"  FARQ  {x}")
+    g.add_argument("--write", action="store_true", help="masterdan farq qilgan nusxalarni qayta yasaydi")
+    yozilsin = p.parse_args().write
+    farq = farqlar()
+    if yozilsin and farq:
+        yoz(set(farq))
+        farq = farqlar()
+    for yol, sabab in farq.items():
+        print(f"  FARQ  {yol}: {sabab}")
     jami = len(NUSXALAR) + len(HOSILALAR) + 2
-    print(f"{jami - len(xatolar)}/{jami} brend aktivi masterga mos")
-    if xatolar:
+    print(f"{jami - len(farq)}/{jami} brend aktivi masterga mos")
+    if farq:
         print("Tuzatish: `cd backend && uv run python ../scripts/brand-assets.py --write` (design/logo/ o'zgargach)")
-    return 1 if xatolar else 0
+    return 1 if farq else 0
 
 
 if __name__ == "__main__":
