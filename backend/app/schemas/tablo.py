@@ -9,6 +9,10 @@ class StageAgg(BaseModel):
     post_id: int
     done: int
     total: int
+    #: Shu postda HOZIR boshlash mumkin bo'lgan ish bormi — postlarning global
+    #: tartibi emas, har detalning O'Z marshruti bo'yicha (`scanning.py` E004).
+    #: Bir buyurtmada bir vaqtda bir nechtasi tayyor bo'ladi; o'lchov docs/03.
+    ready: bool = False
     #: Post birligidagi hajm (m² / metr / dona) — FAQAT matritsada. Drill-down
     #: (`/tablo/orders/{id}`) bu yerga qadam SONINI takrorlaydi va uni hech kim
     #: o'qimaydi: u yerda frontend "hajm" rejimini "soni" ga almashtiradi.
@@ -60,6 +64,10 @@ class TabloPartRow(BaseModel):
     name: str
     count: int
     stages: dict[str, StageAgg]
+    #: Post kodlari marshrut tartibida, TAKRORI bilan — FAQAT bu tartib ustun
+    #: tartibidan (`order_index`) farq qilganda; `None` = qator chapdan o'ngga
+    #: to'g'ri o'qiladi. Shart «nostandart» emas, ataylab — sabab docs/03 da.
+    route_order: list[str] | None = None
 
 
 class TabloOrderDetail(BaseModel):

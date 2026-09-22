@@ -3800,6 +3800,10 @@ export type StageAgg = {
      */
     total: number;
     /**
+     * Ready
+     */
+    ready?: boolean;
+    /**
      * Volume Total
      */
     volume_total: number;
@@ -4256,6 +4260,10 @@ export type TabloPartRow = {
     stages: {
         [key: string]: StageAgg;
     };
+    /**
+     * Route Order
+     */
+    route_order?: Array<string> | null;
 };
 
 /**

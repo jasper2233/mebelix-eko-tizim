@@ -161,15 +161,27 @@ function useFitScale<T>(rows: T[]) {
     const measure = () => {
       const trs = [...body.querySelectorAll("tr")]
       if (trs.length < 2) return setFit(1)
-      const jami = trs[0].getBoundingClientRect().height
-      const qator = trs[1].getBoundingClientRect().height
+      // Qator BALANDLIGI emas, QADAMI: `border-spacing-y-2` (8px) `tr` ning
+      // o'z balandligiga kirmaydi. 20 qatorda bu 8x19+16 = 168px — ikki
+      // qatorcha, ya'ni taxta sig'adiganidan ko'pini sig'adi deb o'ylardi.
+      const yuqori = (i: number) => trs[i].getBoundingClientRect().top
+      const jami =
+        trs.length > 1
+          ? yuqori(1) - yuqori(0)
+          : trs[0].getBoundingClientRect().height
+      const qator =
+        trs.length > 2
+          ? yuqori(2) - yuqori(1)
+          : trs[1].getBoundingClientRect().height
       const head =
         body.previousElementSibling?.getBoundingClientRect().height ?? 0
       const pad = getComputedStyle(scroller)
+      const jadval = body.closest("table")
       const joy =
         scroller.clientHeight -
         Number.parseFloat(pad.paddingTop) -
         Number.parseFloat(pad.paddingBottom) -
+        (jadval ? Number.parseFloat(getComputedStyle(jadval).marginTop) : 0) -
         head -
         jami
       // Qator balandligi shriftga chiziqli bog'liq emas (padding qo'shiladi),
@@ -203,6 +215,22 @@ function useFitScale<T>(rows: T[]) {
  */
 const DWELL_MS = 9_000
 const IDLE_MS = 10_000
+
+/** Sticky JAMI uchun sarlavha balandligi: yorliqlar yopishardi-yu, yig'indi
+ *  qatori aylanishning birinchi qadamidayoq ekrandan chiqib ketardi. */
+function useHeadOffset() {
+  const [head, setHead] = useState<HTMLTableSectionElement | null>(null)
+  const [top, setTop] = useState(0)
+  useLayoutEffect(() => {
+    if (!head) return
+    const measure = () => setTop(head.getBoundingClientRect().height)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(head)
+    return () => ro.disconnect()
+  }, [head])
+  return { headRef: setHead, top }
+}
 
 function useIdleAutoScroll() {
   const ref = useRef<HTMLElement>(null)
@@ -346,6 +374,7 @@ function TabloPage() {
     getTabloMatrixQueryOptions(),
   )
   const fitted = useFitScale(data?.orders ?? [])
+  const jamiTop = useHeadOffset()
   const closeDrill = useCallback(() => setDrill(null), [])
 
   const { online } = useMesWs(
@@ -492,12 +521,15 @@ function TabloPage() {
                 />
               ))}
             </colgroup>
-            <thead>
+            <thead ref={jamiTop.headRef}>
               <tr
                 className="uppercase tracking-wider text-muted-foreground"
                 style={{ fontSize: "var(--t-head)" }}
               >
-                <th className="sticky top-0 z-10 bg-surface px-2 text-left">
+                {/* `left-0`: 864px dan tor ekranda jadval yonga skroll qiladi
+                    va busiz identifikator ustuni ekrandan chiqib ketardi —
+                    o'ngdagi raqamlar kimniki ekani bilinmasdi. */}
+                <th className="sticky left-0 top-0 z-20 bg-surface px-2 text-left">
                   Buyurtma
                 </th>
                 <th className="sticky top-0 z-10 bg-surface px-2 text-left">
@@ -536,8 +568,8 @@ function TabloPage() {
               {data && data.orders.length > 0 && (
                 <tr>
                   <td
-                    className="rounded-l-lg bg-primary px-3 py-3 font-black uppercase tracking-wider text-primary-foreground"
-                    style={{ fontSize: "var(--t-head)" }}
+                    className="sticky left-0 z-[18] rounded-l-lg bg-primary px-3 py-3 font-black uppercase tracking-wider text-primary-foreground"
+                    style={{ fontSize: "var(--t-head)", top: jamiTop.top }}
                   >
                     {/* Nechta buyurtma jamlanganini AYTISH kerak: usiz "363 / 437"
                         qancha ish ustidan olingani noma'lum qoladi, va qatorlar
@@ -571,11 +603,12 @@ function TabloPage() {
                     return (
                       <td
                         className={cn(
-                          "px-3 py-3 text-center font-black",
+                          "sticky z-[8] px-3 py-3 text-center font-black",
                           kech
                             ? "bg-red-600 text-white"
                             : "bg-primary/90 text-primary-foreground",
                         )}
+                        style={{ top: jamiTop.top }}
                       >
                         {son ? (
                           <>
@@ -624,7 +657,8 @@ function TabloPage() {
                     return (
                       <td
                         key={p.id}
-                        className="num whitespace-nowrap bg-primary px-1 py-3 text-center font-black tabular-nums text-primary-foreground"
+                        className="num sticky z-[8] whitespace-nowrap bg-primary px-1 py-3 text-center font-black tabular-nums text-primary-foreground"
+                        style={{ top: jamiTop.top }}
                       >
                         {/* Yig'indi butun tsex bo'yicha — 5 xonali bo'lishi
                             mumkin: bir pog'ona kichik shrift + belgi soniga
@@ -675,7 +709,7 @@ function TabloPage() {
                         tugashi bir qarashda ko'rinadi. */}
                     <td
                       className={cn(
-                        "rounded-l-md px-3 py-3",
+                        "sticky left-0 z-[5] rounded-l-md bg-inherit px-3 py-3",
                         // To'rttala prioritet rangi — buyurtma formasi va
                         // reestr bilan bir xil (PRIORITY_EDGE). Tsex talabi:
                         // taxtada faqat shoshilinch emas, hammasi ko'rinsin.
@@ -769,16 +803,10 @@ function TabloPage() {
                       })()}
                     </td>
                     {(() => {
-                      // Qat'iy tartib (STRICT_STAGE_ORDER): ROVER boshlanmasa
-                      // STOLYARKA ham boshlanolmaydi. Ya'ni ishlanmagan HAR post
-                      // "BOSHLANMADI" deb qichqirsa, bitta fakt uch marta
-                      // aytiladi va operator qaysi biri O'ZINIKI ekanini
-                      // ajratolmaydi. Faqat BIRINCHISI harakat talab qiladi.
+                      // Backend `ready` si — detalning O'Z marshruti bo'yicha.
+                      // Ilgari ustun tartibidagi birinchi tugallanmagan post
+                      // olinardi (buyurtma = bitta konveyer farazi), docs/03.
                       const posts = data?.posts ?? []
-                      const blocker = posts.find((p) => {
-                        const st = o.stages[p.code]
-                        return st?.total && st.done < st.total
-                      })
                       return posts.map((p, i) => (
                         <TabloCell
                           last={i === posts.length - 1}
@@ -787,7 +815,7 @@ function TabloPage() {
                           mode={mode}
                           dim={Boolean(contextPostId && p.id !== contextPostId)}
                           deadline={o.deadline}
-                          blocker={blocker?.id === p.id}
+                          actionable={Boolean(o.stages[p.code]?.ready)}
                         />
                       ))
                     })()}
@@ -818,7 +846,8 @@ function TabloCell({
   dim,
   last = false,
   deadline,
-  blocker = false,
+  actionable = false,
+  steps,
 }: {
   stage?: {
     done: number
@@ -831,8 +860,10 @@ function TabloCell({
   /** Qatordagi OXIRGI katak — slabning o'ng chekkasini yumaloqlaydi. */
   last?: boolean
   deadline?: string | null
-  // Marshrutdagi BIRINCHI tugallanmagan post — harakat aynan shu yerda kerak
-  blocker?: boolean
+  /** Shu postda HOZIR boshlash mumkin bo'lgan ish bormi (backend `ready`). */
+  actionable?: boolean
+  /** Marshrutdagi qadam raqamlari — bitta post ikki marta uchrashi mumkin. */
+  steps?: number[]
 }) {
   // Skan kelib qiymat oshganda katak bir marta yashil uriladi (kamayishda —
   // skan bekor qilinganda — urilmaydi: bu tuzatish, yutuq emas).
@@ -876,12 +907,13 @@ function TabloCell({
   // ularni ham qizil qilish yagona signalni uch marta takrorlab, aynan
   // qayerga borish kerakligini yashirardi.
   const overdue =
-    blocker &&
+    actionable &&
     !complete &&
     deadlineTone(deadline) === "overdue" &&
     stage.done === 0
   // To'siqdan keyingi ishlanmagan postlar — susaytiriladi, qichqirmaydi
-  const waiting = !blocker && !complete && stage.done === 0
+  // «Bloklangan»: ish bor, lekin oldingi qadam tugamagan — xira qoladi
+  const waiting = !actionable && !complete && stage.done === 0
 
   let label: string
   // Birlik ustun sarlavhasida, kasr esa devor ekranida shovqin.
@@ -987,6 +1019,18 @@ function TabloCell({
           BOSHLANMADI
         </span>
       )}
+      {!!steps?.length && (
+        <span
+          className={cn(
+            "num absolute right-1 top-0 font-bold leading-none",
+            // Qizil katakda `muted` 4.46:1 — 14px uchun past; `red-700` 5.27:1
+            overdue ? "text-red-700" : "text-muted-foreground",
+          )}
+          style={{ fontSize: "var(--t-badge)" }}
+        >
+          {steps.join(",")}
+        </span>
+      )}
     </td>
   )
 }
@@ -1030,6 +1074,9 @@ function TabloOrderDrill({
   // kerak (buyurtmalar har xil), lekin drill — BITTA buyurtma va uning
   // marshruti ma'lum: prodda o'lchandi, 9 ustundan 2 tasi (OVAL, UPAKOVKA)
   // 43 qatorning hammasida bo'sh turardi va yarim ekranni yeb yotardi.
+  // `route_order` faqat tartib farq qilganda keladi = belgi oladigan qatorlar
+  const nostandart = parts.filter((p) => p.route_order).length
+  const jamiTop = useHeadOffset()
   const drillPosts = (matrix?.posts ?? [])
     .map((p) => p.code)
     // Detallar kelgunicha hammasi turadi: bo'sh ro'yxatdan to'liq ro'yxatga
@@ -1059,7 +1106,8 @@ function TabloOrderDrill({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-sm font-semibold text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          // `min-h-11` — taxtadagi qaytish havolasi bilan bir xil teginish maydoni
+          className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-sm font-semibold text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 md:min-h-0"
           style={{ fontSize: "var(--t-order)" }}
         >
           <ArrowLeft className="size-6" /> Tablo
@@ -1116,8 +1164,9 @@ function TabloOrderDrill({
             className="p-16 text-[#d9b34a]"
             label="Yuklanmoqda"
           />
-        ) : isError ? (
-          /* Devor ekrani: bo'sh sarlavha + bo'sh jadval o'rniga sabab.
+        ) : isError && !data ? (
+          /* `&& !data`: yiqilgan FON yangilanishi yuklangan jadvalni tashlamasin.
+             Devor ekrani: bo'sh sarlavha + bo'sh jadval o'rniga sabab.
              Chiqish yo'li sarlavhadagi "Tablo" havolasi (va Esc) — bu yerga
              ikkinchi tugma qo'shilmaydi. */
           <p className="p-16 text-center text-3xl font-bold text-muted-foreground">
@@ -1136,9 +1185,9 @@ function TabloOrderDrill({
                 />
               ))}
             </colgroup>
-            <thead>
+            <thead ref={jamiTop.headRef}>
               <tr className="text-2xl uppercase tracking-wider text-muted-foreground">
-                <th className="sticky top-0 z-10 bg-surface px-2 text-left">
+                <th className="sticky left-0 top-0 z-20 bg-surface px-2 text-left">
                   Detal
                 </th>
                 <th className="sticky top-0 z-10 bg-surface px-2 text-center">
@@ -1163,12 +1212,18 @@ function TabloOrderDrill({
               {parts.length > 0 && (
                 <tr className="bg-card">
                   <td
-                    className="rounded-l-md bg-primary px-3 py-3 font-black uppercase tracking-wider text-primary-foreground"
-                    style={{ fontSize: "var(--t-head)" }}
+                    className="sticky left-0 z-[18] rounded-l-md bg-primary px-3 py-3 font-black uppercase tracking-wider text-primary-foreground"
+                    style={{ fontSize: "var(--t-head)", top: jamiTop.top }}
                   >
                     Jami · {parts.length} detal
+                    {/* Qisqa, ataylab: to'liq ibora 768px da katakni 22px
+                        balandlatib, JAMI qatorini ikki satrga sindirardi. */}
+                    {nostandart > 0 && ` · ${nostandart} nostandart`}
                   </td>
-                  <td className="num border-l border-border/60 bg-primary/90 px-2 py-3 text-center text-2xl font-black text-primary-foreground md:text-3xl">
+                  <td
+                    className="num sticky z-[8] border-l border-border/60 bg-primary/90 px-2 py-3 text-center text-2xl font-black text-primary-foreground md:text-3xl"
+                    style={{ top: jamiTop.top }}
+                  >
                     {parts.reduce((a, p) => a + p.count, 0)}
                   </td>
                   {drillPosts.map((c, i) => {
@@ -1184,9 +1239,10 @@ function TabloOrderDrill({
                       <td
                         key={c}
                         className={cn(
-                          "border-l border-border/60 bg-primary/90 px-2 py-3 text-center font-black text-primary-foreground",
+                          "sticky z-[8] border-l border-border/60 bg-primary/90 px-2 py-3 text-center font-black text-primary-foreground",
                           i === drillPosts.length - 1 && "rounded-r-md",
                         )}
+                        style={{ top: jamiTop.top }}
                       >
                         {/* 99 ga cheklash FAQAT tugallanmagan katakda: JAMI
                           qatorida ✓ chizilmaydi, ya'ni to'liq bajarilgan post
@@ -1220,7 +1276,7 @@ function TabloOrderDrill({
               )}
               {data?.parts.map((p) => (
                 <tr key={p.part_id} className="bg-card">
-                  <td className="rounded-l-md px-3 py-3">
+                  <td className="sticky left-0 z-[5] rounded-l-md bg-inherit px-3 py-3">
                     <b className="num text-2xl md:text-3xl">{p.code}</b>{" "}
                     <span className="text-xl text-muted-foreground">
                       {p.name}
@@ -1236,6 +1292,10 @@ function TabloOrderDrill({
                       stage={p.stages[c]}
                       mode={mode === "hajm" ? "soni" : mode}
                       dim={false}
+                      actionable={Boolean(p.stages[c]?.ready)}
+                      steps={p.route_order?.flatMap((x, k) =>
+                        x === c ? [k + 1] : [],
+                      )}
                     />
                   ))}
                 </tr>

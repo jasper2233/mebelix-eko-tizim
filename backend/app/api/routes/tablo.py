@@ -1,6 +1,7 @@
 """TABLO data API: orders × stages live matrix. Read-only, any authenticated device."""
 
 from datetime import UTC, date, datetime, time, timedelta
+from typing import Any
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
@@ -375,6 +376,7 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
                 PartRoute.order_id,
                 PartRoute.post_id,
                 PartRoute.part_id,
+                PartRoute.seq,
                 PartRoute.total_done,
                 PartRoute.total_required,
                 Part.length,
@@ -428,6 +430,20 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
         .all()
     )
 
+    # Har detalning `seq` bo'yicha BIRINCHI tugallanmagan qadami — tayyor;
+    # undan keyingilari shu detal uchun bloklangan. Detal darajasi yetarli:
+    # nusxa darajasidagi hisob bilan prodda AYNAN bir xil chiqdi (35 juftlik,
+    # farq 0), ya'ni qo'shimcha so'rov keraksiz.
+    qadamlar: dict[int, list[Any]] = {}
+    for row in routes:
+        qadamlar.setdefault(row.part_id, []).append(row)
+    tayyor: set[tuple[int, int]] = set()
+    for detal in qadamlar.values():
+        for r in sorted(detal, key=lambda x: x.seq):
+            if r.total_done < r.total_required:
+                tayyor.add((r.order_id, r.post_id))
+                break
+
     agg: dict[tuple[int, int], StageAgg] = {}
     # Hajm HAR DETAL uchun postda BIR MARTA sanaladi, BAJARILGAN ulushi esa o'sha
     # detalning shu postdagi hamma qatoridan yig'iladi — qoida va sababi
@@ -440,7 +456,14 @@ async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
         post = posts_by_id[row.post_id]
         entry = agg.get(key)
         if entry is None:
-            entry = StageAgg(post_id=row.post_id, done=0, total=0, volume_total=0.0, volume_done=0.0)
+            entry = StageAgg(
+                post_id=row.post_id,
+                done=0,
+                total=0,
+                volume_total=0.0,
+                volume_done=0.0,
+                ready=key in tayyor,
+            )
             agg[key] = entry
         entry.done += row.total_done
         entry.total += row.total_required
@@ -496,6 +519,7 @@ async def read_tablo_order(db: SessionDep, current_user: CurrentUser, order_id: 
     # yashiringan buyurtma (DRAFT/CANCELLED) bu yerdan ham ochilmasin.
     order = await _get_visible_order(db, current_user, order_id)
     posts = {p.id: p for p in (await db.execute(select(Post))).scalars()}
+    tartib = {str(p.code): p.order_index for p in posts.values()}
     rows = (
         await db.execute(
             select(PartRoute, Part, Product.code)
@@ -508,11 +532,15 @@ async def read_tablo_order(db: SessionDep, current_user: CurrentUser, order_id: 
                 PartRoute.is_enabled == True,  # noqa: E712
                 PartRoute.is_deleted == False,  # noqa: E712
             )
-            .order_by(Product.code, Part.code)
+            .order_by(Product.code, Part.code, PartRoute.seq)
         )
     ).all()
 
     parts: dict[int, TabloPartRow] = {}
+    marshrut: dict[int, list[str]] = {}
+    #: Birinchi tugallanmagan qadamdan KEYIN shu detal bloklangan — qatorlar
+    #: `seq` bo'yicha kelgani uchun buni yo'l-yo'lakay belgilash yetarli.
+    bloklangan: set[int] = set()
     for route, part, product_code in rows:
         row = parts.get(part.id)
         if row is None:
@@ -524,6 +552,11 @@ async def read_tablo_order(db: SessionDep, current_user: CurrentUser, order_id: 
         # Katakcha post bo'yicha bo'lgani uchun qadamlar QO'SHILADI — aks holda
         # oxirgi qadam oldingisining ustiga yozilib, bajarilgan ish yo'qolardi.
         key = str(posts[route.post_id].code)
+        marshrut.setdefault(part.id, []).append(key)
+        tugamagan = route.total_done < route.total_required
+        tayyor_mi = tugamagan and part.id not in bloklangan
+        if tugamagan:
+            bloklangan.add(part.id)
         agg = row.stages.get(key)
         if agg is None:
             row.stages[key] = StageAgg(
@@ -532,12 +565,20 @@ async def read_tablo_order(db: SessionDep, current_user: CurrentUser, order_id: 
                 total=route.total_required,
                 volume_total=float(route.total_required),
                 volume_done=float(route.total_done),
+                ready=tayyor_mi,
             )
         else:
             agg.done += route.total_done
             agg.total += route.total_required
             agg.volume_total += float(route.total_required)
             agg.volume_done += float(route.total_done)
+            # Takrorlangan post: ikkinchi tashrif tayyor bo'lsa katak ham tayyor
+            agg.ready = agg.ready or tayyor_mi
+    # Takror SAQLANADI: `dict.fromkeys` bilan [K, P, K] -> [K, P] bo'lib ustun
+    # tartibiga teng chiqadi va belgi yo'qoladi. Sabab va o'lchov: docs/03.
+    for pid, kodlar in marshrut.items():
+        if kodlar != sorted(kodlar, key=lambda c: tartib[c]):
+            parts[pid].route_order = kodlar
     return TabloOrderDetail(id=order.id, number=order.number, name=order.project_name, parts=list(parts.values()))
 
 

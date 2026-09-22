@@ -275,6 +275,9 @@
   animation: mx-scan 2.8s linear 1.4s infinite;
 }
 @media (prefers-reduced-motion: reduce) {
+  .animate-cell-flash {
+    animation: none;
+  }
   .mx-draw {
     stroke-dashoffset: 0;
     animation: none;
