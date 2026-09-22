@@ -55,6 +55,12 @@ AGENT_BALANDLIK = 112
 #: yengili, BUTUN ikonka 16% siqilgani — o'rtacha 2.9, lekin p99.5 108. Shuning uchun
 #: p99.5 chegarasi 49 bilan 108 ning o'rtasida.
 _CHIDAM = (4.0, 80)
+#: LOKAL nuqson chidami. p99.5 piksellarning 0.5% ini ataylab e'tiborsiz qoldiradi,
+#: shuning uchun 512 lik ikonkaga chizilgan 36x36 lik qizil kvadrat ikkala chidamdan
+#: ham o'tib ketardi (o'lchangan). Blur 2 px bo'lsa sub-piksel chet siljishi so'nadi:
+#: hozirgi hosilalarda max farq 49 dan oshmaydi. Yaxlit dog' esa so'nmaydi — 10 px
+#: lik kvadratda ham max 217.
+_LOKAL = (2, 128)
 
 #: nusxa -> master (bayt-baytiga)
 NUSXALAR = {
@@ -148,6 +154,11 @@ def _farq(a: Image.Image, b: Image.Image) -> str | None:
             break
     if ortacha >= _CHIDAM[0] or p995 >= _CHIDAM[1]:
         return f"ko'rinish farqi: o'rtacha {ortacha:.1f}, p99.5 {p995} (chidam {_CHIDAM[0]} / {_CHIDAM[1]})"
+    radius, chegara = _LOKAL
+    d2 = ImageChops.difference(a.filter(ImageFilter.GaussianBlur(radius)), b.filter(ImageFilter.GaussianBlur(radius)))
+    eng_katta = max(yuqori for _, yuqori in d2.getextrema())
+    if eng_katta >= chegara:
+        return f"lokal nuqson: blur {radius} dan keyin max farq {eng_katta} (chidam {chegara})"
     return None
 
 
