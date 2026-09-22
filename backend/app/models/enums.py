@@ -161,6 +161,11 @@ class FileKind(StrEnum):
     SCX = "scx"
     LABEL_PDF = "label_pdf"
     DOCUMENT = "document"
+    #: Bazis `.b3d` — yig'uvchi uchun 3D model manbai. `.project` dan FARQLI:
+    #: bitta buyurtmada MAHSULOT SONICHA bo'ladi (prodda o'lchandi — bitta
+    #: buyurtmada 3 tagacha). `OrderFile.part_id` emas, `meta["product_code"]`
+    #: bilan mahsulotga bog'lanadi: `.b3d` sarlavhasidagi `Code` = `Product.code`.
+    BAZIS = "bazis"
 
 
 class SessionStatus(StrEnum):

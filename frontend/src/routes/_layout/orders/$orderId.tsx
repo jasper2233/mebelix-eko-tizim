@@ -25,6 +25,7 @@ import { QueryError } from "@/components/Common/QueryError"
 import { SectionTitle } from "@/components/Common/SectionTitle"
 import { StagePipeline } from "@/components/Common/StagePipeline"
 import { StatusBadge } from "@/components/Common/StatusBadge"
+import { BazisPanel } from "@/components/Orders/BazisPanel"
 import { CustomRoutes } from "@/components/Orders/CustomRoutes"
 import { EditOrder } from "@/components/Orders/EditOrder"
 import { MachineAssign } from "@/components/Orders/MachineAssign"
@@ -572,6 +573,7 @@ function OrderDetailPage() {
                   Furnituralar ({hardware.length})
                 </TabsTrigger>
               )}
+              <TabsTrigger value="bazis">3D model</TabsTrigger>
             </TabsList>
             <div ref={setMatrixToolbarEl} className="empty:hidden" />
           </div>
@@ -584,6 +586,11 @@ function OrderDetailPage() {
           </TabsContent>
           <TabsContent value="custom">
             <CustomRoutes orderId={id} editable={canEdit} />
+          </TabsContent>
+          <TabsContent value="bazis">
+            {/* Yuklash `canEdit` ga bog'liq EMAS: model ishlab chiqarish
+                tugagach, yig'uv paytida kerak bo'ladi. */}
+            <BazisPanel orderId={id} canUpload canShare />
           </TabsContent>
           <TabsContent value="hardware">
             <Table>
@@ -619,6 +626,11 @@ function OrderDetailPage() {
           {/* Matritsani faqat texnolog tahrirlaydi — bu shox unga tegishli emas */}
           <SectionTitle>Detallar matritsasi</SectionTitle>
           <OrderMatrix orderId={id} editable={false} />
+          {/* Havolani mijozga ko'pincha menejer uzatadi, shuning uchun bu shoxda ham */}
+          <div className="mt-8">
+            <SectionTitle>3D model</SectionTitle>
+            <BazisPanel orderId={id} canUpload={false} canShare={canManage} />
+          </div>
         </>
       )}
 

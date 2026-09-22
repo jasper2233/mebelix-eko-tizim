@@ -489,6 +489,7 @@ export const FILE_KIND_LABELS: Record<string, string> = {
   scx: "SCX dasturi",
   label_pdf: "Yorliq PDF",
   document: "Hujjat",
+  bazis: "Bazis 3D modeli",
 }
 
 export function formatSize(

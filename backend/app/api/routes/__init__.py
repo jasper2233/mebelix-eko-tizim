@@ -16,6 +16,7 @@ from .machines import router as machines_router
 from .orders import router as orders_router
 from .pachka import router as pachka_router
 from .posts import router as posts_router
+from .public import router as public_router
 from .reports import router as reports_router
 from .scans import router as scans_router
 from .settings import router as settings_router
@@ -28,6 +29,9 @@ from .ws import router as ws_router
 router = APIRouter(prefix="/v1")
 router.include_router(health_router)
 router.include_router(login_router)
+# Yig'uvchiga beriladigan 3D havola — YAGONA autentifikatsiyasiz modul, shu
+# sababli `_protected` dan TASHQARIDA (himoyasi `public.py` da tushuntirilgan).
+router.include_router(public_router)
 
 _protected = [Depends(get_current_user)]
 router.include_router(logout_router, dependencies=_protected)

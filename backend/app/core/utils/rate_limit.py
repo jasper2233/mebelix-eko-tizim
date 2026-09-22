@@ -65,10 +65,19 @@ class RateLimit:
         self.period = period
 
     def _key(self, request: Request) -> str:
+        """Kalit: IP + marshrut SHABLONI + oyna.
+
+        Shablon (`/public/3d/{token}`), real yo'l EMAS. Yo'lning o'zi olinsa,
+        parametrli marshrutda har so'rov boshqa kalitga tushardi va cheklov
+        umuman ishlamasdi: 1000 ta xato token -> 1000 ta Redis kaliti, har
+        birida hisob 1. Doimiy yo'lli marshrutlarda (`/login/access-token`)
+        shablon yo'lning aynan o'zi, ya'ni ular uchun hech narsa o'zgarmaydi.
+        """
         ip = request.client.host if request.client else "unknown"
+        shablon = getattr(request.scope.get("route"), "path", None) or request.url.path
         now = int(datetime.now(UTC).timestamp())
         window_start = now - (now % self.period)
-        return f"ratelimit:{ip}:{request.url.path}:{window_start}"
+        return f"ratelimit:{ip}:{shablon}:{window_start}"
 
     async def __call__(self, request: Request) -> None:
         """Route bog'liqligi: faqat tekshiradi, hisobni oshirmaydi."""

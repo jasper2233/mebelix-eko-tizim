@@ -13,6 +13,7 @@ import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as TabloRouteImport } from './routes/tablo'
 import { Route as TerminalRouteImport } from './routes/terminal'
+import { Route as R3dTokenRouteImport } from './routes/3d.$token'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 import { Route as LayoutAgentsRouteImport } from './routes/_layout/agents'
@@ -48,6 +49,11 @@ const TabloRoute = TabloRouteImport.update({
 const TerminalRoute = TerminalRouteImport.update({
   id: '/terminal',
   path: '/terminal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const R3dTokenRoute = R3dTokenRouteImport.update({
+  id: '/3d/$token',
+  path: '/3d/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutIndexRoute = LayoutIndexRouteImport.update({
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/tablo': typeof TabloRoute
   '/terminal': typeof TerminalRoute
+  '/3d/$token': typeof R3dTokenRoute
   '/admin': typeof LayoutAdminRoute
   '/agents': typeof LayoutAgentsRoute
   '/clients': typeof LayoutClientsRoute
@@ -162,6 +169,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/tablo': typeof TabloRoute
   '/terminal': typeof TerminalRoute
+  '/3d/$token': typeof R3dTokenRoute
   '/admin': typeof LayoutAdminRoute
   '/agents': typeof LayoutAgentsRoute
   '/clients': typeof LayoutClientsRoute
@@ -186,6 +194,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/tablo': typeof TabloRoute
   '/terminal': typeof TerminalRoute
+  '/3d/$token': typeof R3dTokenRoute
   '/_layout/admin': typeof LayoutAdminRoute
   '/_layout/agents': typeof LayoutAgentsRoute
   '/_layout/clients': typeof LayoutClientsRoute
@@ -211,6 +220,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/tablo'
     | '/terminal'
+    | '/3d/$token'
     | '/admin'
     | '/agents'
     | '/clients'
@@ -232,6 +242,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/tablo'
     | '/terminal'
+    | '/3d/$token'
     | '/admin'
     | '/agents'
     | '/clients'
@@ -255,6 +266,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/tablo'
     | '/terminal'
+    | '/3d/$token'
     | '/_layout/admin'
     | '/_layout/agents'
     | '/_layout/clients'
@@ -279,6 +291,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   TabloRoute: typeof TabloRoute
   TerminalRoute: typeof TerminalRoute
+  R3dTokenRoute: typeof R3dTokenRoute
   TabloStanoklarRoute: typeof TabloStanoklarRoute
 }
 
@@ -310,6 +323,13 @@ declare module '@tanstack/react-router' {
       path: '/terminal'
       fullPath: '/terminal'
       preLoaderRoute: typeof TerminalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/3d/$token': {
+      id: '/3d/$token'
+      path: '/3d/$token'
+      fullPath: '/3d/$token'
+      preLoaderRoute: typeof R3dTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout/': {
@@ -480,6 +500,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   TabloRoute: TabloRoute,
   TerminalRoute: TerminalRoute,
+  R3dTokenRoute: R3dTokenRoute,
   TabloStanoklarRoute: TabloStanoklarRoute,
 }
 export const routeTree = rootRouteImport

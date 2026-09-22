@@ -390,6 +390,30 @@ Buyurtma sahifalari (`/orders`, `/orders/$orderId`) uchun dialog va jadval kompo
 
 ---
 
+### `frontend/src/components/Orders/BazisPanel.tsx`
+
+Buyurtma sahifasidagi **«3D model»** bloki. Ikki qism: yig'uvchiga beriladigan ochiq havola va Bazis modellari ro'yxati. Format va himoya — [13-bazis-3d.md](13-bazis-3d.md).
+
+- **`ShareBlock`** — havola yopiq bo'lsa bitta tugma va uning NIMA qilishi ochiq yozilgan («uni olgan har kim modelni ko'ra oladi — tizimga kirmasdan. Boshqa buyurtmalar ochilmaydi»). Ochilgach: **QR** (`qrcode.react`, 116 px) + manzil + «Nusxalash» / «Yangilash» / «Yopish». QR ataylab: usta telefoni bilan bir skanda ochadi, 36 belgili tokenni terib o'tirmaydi; ekrandan ham, chop etilgan varaqdan ham ishlaydi. To'liq manzilni BRAUZER yig'adi (`window.location.origin` + `/3d/{token}`) — backend o'z domenini bilmaydi va sozlama qo'shilmadi. Huquq ikkiga bo'lingan: `canShare` (menejer ham — havolani mijozga ko'pincha u uzatadi, backend `ManagerOrTexnologUser`) va `canUpload` (faqat texnolog, `.project` bilan bir xil qoida). Direktorda havola yo'q bo'lsa blok umuman chizilmaydi — unga aytadigan gap yo'q.
+- **Yuklash** — `.b3d` uchun tashlash maydoni, `multiple`: bitta buyurtmada bir nechta mahsulot bo'ladi. Fayllar KETMA-KET yuboriladi (har biri serverda ~1 s CPU oladi, bir vaqtda yuborilsa ishchilar band bo'lardi); har birining xatosi alohida toast, qolganlari to'xtamaydi.
+- **Ro'yxat** — kartada Bazis eskizi (`GET /orders/{id}/bazis/{file_id}/thumb`), mahsulot nomi va kodi, detal soni, ogohlantirishlar (masalan «kodli mahsulot bu buyurtmada topilmadi»). O'chirish faqat `canUpload` da.
+
+## Bazis 3D komponentlari — `frontend/src/components/Bazis/`
+
+Ochiq sahifaning (`routes/3d.$token.tsx`) yadrosi. Uch fayl, aniq chegara bilan: **`model.ts`** — ma'lumot va sof funksiyalar, **`scene.ts`** — three.js (Reactdan MUSTAQIL, chunki har kadrda React holatini yangilash telefonda kadr tezligini yo'qotardi), **`ModelViewer.tsx`** — ikkisini ulaydigan React qatlami.
+
+### `frontend/src/components/Bazis/model.ts`
+
+`BazisModel` / `BazisPanel` tiplari — backend `services/bazis/viewer.py` bilan QO'LDA oynalangan (kalitlar qisqa: `p`, `q`, `o`, `e`). Qolgani sof funksiyalar: `materialColor` (sakkiz mebel ohangidagi rang aylanadi — bir xil plitadagi detallar bir xil ko'rinadi), `isGlass` (`oyna|shisha|stek|стек|зерк|экран` — ular yarim shaffof chiziladi, aks holda ortidagi javonlar yo'qolardi), `matchPanel` (kod yoki nom bo'yicha; XOM ko'rinish ham tekshiriladi, chunki faqat normallashtirilgani bilan `01_0` kabi TUGALLANMAGAN kod hech narsa topmasdi).
+
+### `frontend/src/components/Bazis/scene.ts`
+
+`createScene(canvas, onPick)` -> `{ load, setSelected, setFound, setPose, focusOn, nishonniQaytar, resetView, dispose }`. **`setPose(ochiq, explode)`** — ikkala ko'rinish holati BITTA chaqiruvda: har panelning yopiq va ochiq holati orasida `lerp`/`slerp` (harakat ma'lumoti `.b3d` dan, docs/13 §2.7) va ustiga ajratish. Ikki alohida chaqiruv har kadrda panel massivini ikki marta aylantirardi va kamera masofasini ikki joyda hisoblardi. Kamera masofasi eslab qolinmaydi — joriy masofa nisbat bilan kengaytiriladi, shuning uchun foydalanuvchining zoom'i saqlanadi. Kamera tween'i BITTA tutqichda (`tween`): yangi tween eskisini bekor qiladi. Yoritish `RoomEnvironment` (PMREM) + KAMERAGA biriktirilgan yo'nalish yorug'ligi, tone mapping `NeutralToneMapping`, fon esa WebGL'da emas — `ModelViewer` dagi CSS gradient (kanvas `alpha: true`). Mahsulot tagida gradient kontakt soyasi (`shadowMap` emas — 268 panelda ikkinchi o'tish qimmat), ochilganda o'chadi. Panel — konturdan ekstruziya (`ExtrudeGeometry`, aylana kesmalar `Shape.holes` ga), har panelda `EdgesGeometry` qirra chizig'i, xira holatda u yashiriladi (aks holda tanlangan detal ustida "qafas" bo'lib qolardi). Materiallar `mat:holat` kaliti bilan keshlanadi va `clear()` da dispose qilinadi. Pan O'CHIRILGAN (mahsulot markazda turadi), aylantirish cheklanmagan (tagini ham ko'rish mumkin), masshtab `minDistance`/`maxDistance` bilan. Kamera gabaritni KAMERA ramkasiga proyeksiyalab sig'diradi; telefonda chegaralovchi burchak gorizontal bo'lgani uchun ikki burchakning kichigi olinadi va ekran burilganda (foydalanuvchi hali kamerani qo'zg'atmagan bo'lsa) qayta sig'diriladi. Tanlash — `pointerup`, 8 pikseldan ortiq surilgan bosish aylantirish deb qabul qilinadi; qidiruv faol bo'lsa nur faqat TOPILGANLARGA uriladi. Kadr faqat kerak bo'lganda chiziladi (`controls.update()` + "kir" bayrog'i) — batareya uchun.
+
+### `frontend/src/components/Bazis/ModelViewer.tsx`
+
+`focusOn` — qidiruv ro'yxatidan tanlanganda kamera detalga olib boriladi (sig'dirish masofasining 62% i: atrofi ko'rinib tursin); nishon panelning JORIY pozasidan olinadi, 3D da bosilganda esa kamera qimirlamaydi. Kartochka yopilganda `nishonniQaytar` nishonni ham, masofani ham qaytaradi — fokus vaqtinchalik chekinish. Kanvas ustidagi qatlam: o'ngda **segmentli tanlov** («Yopiq / Ochiq / Ajratilgan» — ikonka va yozuv bilan; holatlar bir-birini istisno qiladi, shuning uchun tugmalar to'plami emas) va yonida ko'rinishni tiklash tugmasi (44 px — barmoq o'lchami), pastda doimiy qidiruv maydoni va tanlangan detal kartochkasi (kod, nomi, o'lchami, materiali, kromkasi — chetlar material va eni bo'yicha guruhlanadi, chunki chet RAQAMI ustaga hech narsa demaydi). Qidiruvda bir xil kodli nusxalar bitta qatorga yig'iladi (`×2`): chap va o'ng eshik bir xil detal, ro'yxatda ikki marta chiqib xatodek ko'rinardi.
+
 ## Anketa sahifasi — `frontend/src/routes/_layout/anketa.$orderId.tsx`
 
 Buyurtma anketasi (mijoz so'rovnomasi + o'lchov varag'i) sahifasi — ~790 qator. Ilgari UI bo'laklari ham shu faylning o'zida turardi; hozir ular `components/Anketa/` da (`fields.tsx`, `RoomPhotos.tsx`, `RoomSummary.tsx`) — sahifa faqat holat, saqlash va bo'limlar tartibini yuritadi. Variantlar katalogi alohida: `frontend/src/lib/anketa.ts`.

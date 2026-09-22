@@ -252,6 +252,66 @@ export type BandUsage = {
 };
 
 /**
+ * BazisModelRead
+ *
+ * Bitta `.b3d` = bitta mahsulot. Texnolog ro'yxatida shu ko'rinadi.
+ */
+export type BazisModelRead = {
+    /**
+     * File Id
+     */
+    file_id: number;
+    /**
+     * Product Code
+     */
+    product_code: string;
+    /**
+     * Product Name
+     */
+    product_name: string;
+    /**
+     * Filename
+     */
+    filename: string;
+    /**
+     * Size
+     */
+    size: number | null;
+    /**
+     * Panels
+     */
+    panels: number;
+    /**
+     * Matched
+     */
+    matched: boolean;
+    /**
+     * Warnings
+     */
+    warnings: Array<string>;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * BazisState
+ *
+ * Buyurtmaning 3D holati.
+ */
+export type BazisState = {
+    /**
+     * Models
+     */
+    models: Array<BazisModelRead>;
+    /**
+     * Share Token
+     */
+    share_token: string | null;
+};
+
+/**
  * Body_login_access_token
  */
 export type BodyLoginAccessToken = {
@@ -279,6 +339,16 @@ export type BodyLoginAccessToken = {
      * Client Secret
      */
     client_secret?: string | null;
+};
+
+/**
+ * Body_upload_order_bazis
+ */
+export type BodyUploadOrderBazis = {
+    /**
+     * File
+     */
+    file: Blob | File;
 };
 
 /**
@@ -1641,7 +1711,7 @@ export type EmployeeUpdate = {
 /**
  * FileKind
  */
-export type FileKind = 'project' | 'scx' | 'label_pdf' | 'document';
+export type FileKind = 'project' | 'scx' | 'label_pdf' | 'document' | 'bazis';
 
 /**
  * HTTPValidationError
@@ -3504,6 +3574,42 @@ export type ProductivityReport = {
 };
 
 /**
+ * PublicOrder
+ *
+ * Ochiq sahifa sarlavhasi: buyurtma raqami va mahsulotlar.
+ */
+export type PublicOrder = {
+    /**
+     * Number
+     */
+    number: string;
+    /**
+     * Products
+     */
+    products: Array<PublicProduct>;
+};
+
+/**
+ * PublicProduct
+ *
+ * Ochiq sahifadagi mahsulot kartochkasi.
+ */
+export type PublicProduct = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Panels
+     */
+    panels: number;
+};
+
+/**
  * QrOrderRef
  *
  * QR qaysi aktiv buyurtmaga tegishli (/terminal/qr/{qr}/order) — terminal o'sha sahifani ochadi.
@@ -5035,6 +5141,100 @@ export type RefreshAccessTokenResponses = {
 
 export type RefreshAccessTokenResponse = RefreshAccessTokenResponses[keyof RefreshAccessTokenResponses];
 
+export type ReadPublicOrderData = {
+    body?: never;
+    path: {
+        /**
+         * Token
+         */
+        token: string;
+    };
+    query?: never;
+    url: '/api/v1/public/3d/{token}';
+};
+
+export type ReadPublicOrderErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadPublicOrderError = ReadPublicOrderErrors[keyof ReadPublicOrderErrors];
+
+export type ReadPublicOrderResponses = {
+    /**
+     * Successful Response
+     */
+    200: PublicOrder;
+};
+
+export type ReadPublicOrderResponse = ReadPublicOrderResponses[keyof ReadPublicOrderResponses];
+
+export type ReadPublicModelData = {
+    body?: never;
+    path: {
+        /**
+         * Token
+         */
+        token: string;
+        /**
+         * Code
+         */
+        code: string;
+    };
+    query?: never;
+    url: '/api/v1/public/3d/{token}/{code}/model';
+};
+
+export type ReadPublicModelErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadPublicModelError = ReadPublicModelErrors[keyof ReadPublicModelErrors];
+
+export type ReadPublicModelResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type ReadPublicThumbData = {
+    body?: never;
+    path: {
+        /**
+         * Token
+         */
+        token: string;
+        /**
+         * Code
+         */
+        code: string;
+    };
+    query?: never;
+    url: '/api/v1/public/3d/{token}/{code}/thumb';
+};
+
+export type ReadPublicThumbErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadPublicThumbError = ReadPublicThumbErrors[keyof ReadPublicThumbErrors];
+
+export type ReadPublicThumbResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
 export type LogoutData = {
     body?: never;
     path?: never;
@@ -6542,6 +6742,192 @@ export type DeleteRoomPhotoResponses = {
 };
 
 export type DeleteRoomPhotoResponse = DeleteRoomPhotoResponses[keyof DeleteRoomPhotoResponses];
+
+export type ReadOrderBazisData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/orders/{order_id}/bazis';
+};
+
+export type ReadOrderBazisErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadOrderBazisError = ReadOrderBazisErrors[keyof ReadOrderBazisErrors];
+
+export type ReadOrderBazisResponses = {
+    /**
+     * Successful Response
+     */
+    200: BazisState;
+};
+
+export type ReadOrderBazisResponse = ReadOrderBazisResponses[keyof ReadOrderBazisResponses];
+
+export type UploadOrderBazisData = {
+    body: BodyUploadOrderBazis;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/orders/{order_id}/bazis';
+};
+
+export type UploadOrderBazisErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UploadOrderBazisError = UploadOrderBazisErrors[keyof UploadOrderBazisErrors];
+
+export type UploadOrderBazisResponses = {
+    /**
+     * Successful Response
+     */
+    201: BazisModelRead;
+};
+
+export type UploadOrderBazisResponse = UploadOrderBazisResponses[keyof UploadOrderBazisResponses];
+
+export type ReadOrderBazisThumbData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+        /**
+         * File Id
+         */
+        file_id: number;
+    };
+    query?: never;
+    url: '/api/v1/orders/{order_id}/bazis/{file_id}/thumb';
+};
+
+export type ReadOrderBazisThumbErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadOrderBazisThumbError = ReadOrderBazisThumbErrors[keyof ReadOrderBazisThumbErrors];
+
+export type ReadOrderBazisThumbResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type CloseOrderShareData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/orders/{order_id}/bazis/share';
+};
+
+export type CloseOrderShareErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CloseOrderShareError = CloseOrderShareErrors[keyof CloseOrderShareErrors];
+
+export type CloseOrderShareResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type CloseOrderShareResponse = CloseOrderShareResponses[keyof CloseOrderShareResponses];
+
+export type OpenOrderShareData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/orders/{order_id}/bazis/share';
+};
+
+export type OpenOrderShareErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type OpenOrderShareError = OpenOrderShareErrors[keyof OpenOrderShareErrors];
+
+export type OpenOrderShareResponses = {
+    /**
+     * Successful Response
+     */
+    200: BazisState;
+};
+
+export type OpenOrderShareResponse = OpenOrderShareResponses[keyof OpenOrderShareResponses];
+
+export type DeleteOrderBazisData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+        /**
+         * File Id
+         */
+        file_id: number;
+    };
+    query?: never;
+    url: '/api/v1/orders/{order_id}/bazis/{file_id}';
+};
+
+export type DeleteOrderBazisErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteOrderBazisError = DeleteOrderBazisErrors[keyof DeleteOrderBazisErrors];
+
+export type DeleteOrderBazisResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type DeleteOrderBazisResponse = DeleteOrderBazisResponses[keyof DeleteOrderBazisResponses];
 
 export type ReadUpakovkaOrderData = {
     body?: never;

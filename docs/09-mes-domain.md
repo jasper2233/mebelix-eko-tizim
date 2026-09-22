@@ -241,6 +241,20 @@ YUBORARDI: `scan.recorded` boshqa terminallarga bormasdi (terminal ekranidagi jo
 uni tinglaydi), `order.stage_completed`/`order.completed` esa efirga umuman chiqmasdi.
 Buyurtma STATUSI baribir to'g'ri yozilardi — yo'qolgani faqat WS xabari edi.
 
+## 3. Bazis parser (`app/services/bazis/`)
+
+Ikkinchi manba fayl — mebel loyihalash tizimi **Bazis**ning `.b3d` fayli. GibLab `.project` dan farqi: `.project` NIMA kesilishini aytadi (detal ro'yxati, kesish xaritasi), `.b3d` esa detal QAYERGA ketishini (uch o'lchovli joylashuv). Ikkinchisi faqat yig'uvchiga kerak va MESda ilgari umuman yo'q edi.
+
+| Fayl | Vazifasi |
+|---|---|
+| `models.py` | `ParsedBazis`, `BazisPanel`, `BazisEdge`, `BazisParseError` — oddiy dataclass, ORM yo'q (`giblab` naqshi) |
+| `parser.py` | `read_b3d(bytes) -> ParsedBazis` — konteyner, daraxt, kontur, iyerarxik joylashuv |
+| `viewer.py` | `dump_model(ParsedBazis) -> bytes` — brauzerga tayyor JSON (yuklashda BIR MARTA yasaladi) |
+
+Format hujjatlashtirilmagan; teskari muhandislik natijasi va har bir qarorning O'LCHOVI — [13-bazis-3d.md](13-bazis-3d.md). Parserning ikki ishlab chiqarish qarori: **iterativ** (rekursiv prototip 64 MB stek talab qilardi — web ishchisida yaramaydi) va **`Undo` shoxida to'xtash** (fayl hajmining 13–90% i, undan hech narsa kerak emas va 22 namunadan 6 tasida o'qilmaydi).
+
+MES bilan bog'lanish kaliti — sarlavhadagi `Code` = `Product.code`. Detal kodlari (`01_005`) mahsulotlar ICHIDA qayta boshlanadi, ya'ni ular bo'yicha bog'lab bo'lmaydi.
+
 ## 4. Real-time (`app/core/ws.py`, `api/routes/ws.py`)
 
 - `/ws/events` — brauzer klientlar: JWT (`Authorization: Bearer` header yoki access cookie; `?token=`

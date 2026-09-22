@@ -315,7 +315,7 @@ Kromka o'lchovining ikki sozlamasi umumiy `PUT /settings/{key}` orqali boradi (b
 
 ## `backend/app/api/routes/orders/` — Buyurtmalar (hayot sikli, matritsa, fayllar, anketa)
 
-**Maqsadi:** Eng katta route moduli (22 endpoint) — MAVZU bo'yicha oltiga bo'lingan paket: `lifecycle.py` (hayot sikli), `matrix.py` (marshrut matritsasi), `files.py` (`.project`/SCX/cutmap), `survey.py` (anketa), `trace.py` (detal nusxasining izi) va `_common.py` (ko'rinish + tahrirlash qoidalari). `__init__.py` prefiks, tag va ro'yxatga olish TARTIBINI beradi; sub-routerlar yalang'och `APIRouter()` — tag ularda takrorlansa `include_router` uni qo'shib yuboradi va generatsiya qilingan klientda metod ikki klassga tushadi. Endpoint yo'llari, `operation_id` lari va marshrut tartibi bo'lishdan oldingi holat bilan AYNAN bir xil — buyurtma hayot sikli: `DRAFT → TECHNICAL_REVIEW → PRODUCTION → COMPLETED → DELIVERED` (+ istalgan bosqichda `CANCELLED`). Tahrirlash cheklovlari `_edit_block_reason` atrofida qurilgan: `_EDITABLE_STATUSES = (DRAFT, TECHNICAL_REVIEW)` va ularga qo'shimcha `PRODUCTION` — tsexda tirik skan bo'lmasa (quyida «Qachon tahrirlash mumkin»).
+**Maqsadi:** Eng katta route moduli (28 endpoint) — MAVZU bo'yicha yettiga bo'lingan paket: `lifecycle.py` (hayot sikli), `matrix.py` (marshrut matritsasi), `files.py` (`.project`/SCX/cutmap), `survey.py` (anketa), `trace.py` (detal nusxasining izi), `bazis.py` (3D model va ochiq havola) va `_common.py` (ko'rinish + tahrirlash qoidalari). `__init__.py` prefiks, tag va ro'yxatga olish TARTIBINI beradi; sub-routerlar yalang'och `APIRouter()` — tag ularda takrorlansa `include_router` uni qo'shib yuboradi va generatsiya qilingan klientda metod ikki klassga tushadi. Endpoint yo'llari, `operation_id` lari va marshrut tartibi bo'lishdan oldingi holat bilan AYNAN bir xil — buyurtma hayot sikli: `DRAFT → TECHNICAL_REVIEW → PRODUCTION → COMPLETED → DELIVERED` (+ istalgan bosqichda `CANCELLED`). Tahrirlash cheklovlari `_edit_block_reason` atrofida qurilgan: `_EDITABLE_STATUSES = (DRAFT, TECHNICAL_REVIEW)` va ularga qo'shimcha `PRODUCTION` — tsexda tirik skan bo'lmasa (quyida «Qachon tahrirlash mumkin»).
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|
@@ -341,6 +341,12 @@ Kromka o'lchovining ikki sozlamasi umumiy `PUT /settings/{key}` orqali boradi (b
 | GET | `/api/v1/orders/{id}/files/scx.zip` | `StaffReadUser` | Barcha SCX fayllar (`_get_visible_order`) bitta ZIP arxivda (`{number}_scx.zip`) — prisadkachi stanokka bittalab emas, bitta arxiv ko'chiradi; DB'da SCX qatori yo'q bo'lsa 404, qatorlardan BIRORTASINING fayli diskda topilmasa ham 404 — yetishmayotgan nomlar (birinchi 5 tasi) xato matnida sanaladi va KAMCHIL arxiv berilmaydi: prisadkachi uni to'liq deb olib detalni teshmay qoldirardi; bittalab yuklashdagi `download_order_file` ham xuddi shu holatda 404 |
 | POST | `/api/v1/orders/{id}/scx/regenerate` | `TexnologUser` | SCX fayllarni saqlangan `.project`dan qayta yaratadi (eski buyurtmani yangi nomlashga o'tkazish: har nusxa = QR nomli fayl). Butun ish `ingest.rebuild_order_scx` da — `PATCH /matrix` soni o'zgarganda AYNAN shu helperni chaqiradi, ya'ni endpoint yupqa qobiq; detallar/marshrutlar/skanlarga TEGILMAYDI; eski SCX qatorlari `is_deleted` bilan belgilanadi, fayllar esa diskdan faqat `commit`dan KEYIN (`ingest.purge_replaced_scx`) va faqat hech bir tirik qator ularga ishora qilmasa o'chiriladi (generatsiya yiqilsa DB rollback qatorlarni tiriltiradi — fayl diskda qolishi shart; nom = nusxa QR'i, ya'ni yangi fayl eskisi bilan ustma-ust tushishi mumkin); `.project` diskda bo'lmasa 404 |
 | GET | `/api/v1/orders/{id}/cutmap` | `StaffReadUser` | Kesish xaritasi holati (`_get_visible_order`) — admin-panel ko'rinishi va brauzer-print; terminal bilan umumiy `build_cutmap_state` (ARRA posti) |
+| GET | `/api/v1/orders/{id}/bazis` | `StaffReadUser` | Buyurtmaning 3D modellari (`BazisModelRead` ro'yxati: mahsulot kodi/nomi, detal soni, `matched`, ogohlantirishlar) va ochiq havola tokeni. To'liq manzilni FRONTEND yig'adi (`window.location.origin`) — server o'z domenini bilmaydi |
+| POST | `/api/v1/orders/{id}/bazis` | `TexnologUser` | 201; bitta MAHSULOTning Bazis `.b3d` fayli (bitta buyurtmada bir nechta). `read_b3d` threadpool'da (20 MB fayl ~1 s CPU); `Code` bo'yicha `Product` qidiriladi, topilmasa model baribir saqlanadi va ogohlantirish qaytadi; diskka uchta fayl yoziladi (`.b3d`, `.json`, `.png`); bir xil kodli eski model yumshoq o'chiriladi. Chegara 40 MB. **`can_edit` ga bog'liq EMAS** — model yig'uv paytida, ish tugagandan keyin kerak. Batafsil: [13-bazis-3d.md](13-bazis-3d.md) |
+| GET | `/api/v1/orders/{id}/bazis/{file_id}/thumb` | `StaffReadUser` | Bazis chizgan 256×256 PNG — texnolog TO'G'RI fayl yuklaganini shundan ko'radi |
+| POST | `/api/v1/orders/{id}/bazis/share` | `ManagerOrTexnologUser` | Ochiq havolani ochadi yoki YANGILAYDI (`order.share_token = uuid4`); yangilash eski havolani o'ldiradi. `{file_id}` marshrutidan OLDIN e'lon qilingan |
+| DELETE | `/api/v1/orders/{id}/bazis/share` | `ManagerOrTexnologUser` | Havolani yopadi — ochilgan manzil shu zahoti 404 |
+| DELETE | `/api/v1/orders/{id}/bazis/{file_id}` | `TexnologUser` | Modelni va uning uchala faylini o'chiradi |
 
 **Yashirin holat qorovuli:** texnolog (superuser bo'lmagan) uchun DRAFT va CANCELLED buyurtmalar ro'yxatdan tushadi (`_hidden_statuses`) va to'g'ridan ID bilan ham ochilmaydi — `_get_visible_order` oltita o'qish yo'lida: `GET /{id}`, `/matrix`, `/files/{file_id}`, `/files/scx.zip`, `/cutmap`, hamda TABLO drill-down `GET /tablo/orders/{id}`. Mutatsiyalarga ATAYLAB tarqatilmagan: bekor qilingan buyurtmaga fayl yuklashga urinish "topilmadi" emas, sababni aytadigan xato berishi kerak.
 
@@ -428,6 +434,18 @@ Yuklash cheklovlari (`orders/survey.py` dagi konstantalar):
 **Bog'lanishlar:** `backend/app/schemas/orders.py`, `backend/app/models/order.py` (`Order.survey`), `backend/app/services/giblab` (`ParseError`, `parse_project`; `ingest.py` dan `ingest_project`, `wipe_previous_parse`, `write_and_register_scx`), `backend/app/core/ws.py` (`ws_manager`), `backend/app/services/giblab/cutmap.py` (`build_cutmap_state`), `backend/app/services/giblab/routes.py` (`build_manual_route` — matritsa va qayta yuklash uchun umumiy), frontend tomoni: `frontend/src/routes/_layout/anketa.$orderId.tsx`, `frontend/src/lib/anketa.ts`.
 
 ---
+
+## `backend/app/api/routes/public.py` — OCHIQ 3D havola (autentifikatsiyasiz)
+
+**Maqsadi:** Yig'uvchiga beriladigan havola. MESdagi YAGONA autentifikatsiyasiz modul, shuning uchun `_protected` dan TASHQARIDA ro'yxatga olinadi (`routes/__init__.py`). Himoya «imkoniyat-havola» (capability URL) naqshida: manzilda buyurtma raqami emas, `uuid4` token; har so'rov TOKEN bo'yicha buyurtmani topadi, ya'ni `order_id` bu modulga tashqaridan hech qachon kirmaydi; yopilgan token 404 (403 emas). Javoblarda mijoz ma'lumoti, narx va ishlab chiqarish holati YO'Q. Batafsil: [13-bazis-3d.md](13-bazis-3d.md) §5.
+
+| Metod | Path | Rol | Izoh |
+|---|---|---|---|
+| GET | `/api/v1/public/3d/{token}` | — | `PublicOrder`: buyurtma raqami va 3D modeli bor mahsulotlar (`code`, `name`, `panels`) |
+| GET | `/api/v1/public/3d/{token}/{code}/model` | — | Yuklashda yasalgan model JSON (4–53 KB, gzip'dan keyin 0.4–7 KB). Yo'l DBdagi qatordan olinadi — manzildagi `code` diskka tegmaydi |
+| GET | `/api/v1/public/3d/{token}/{code}/thumb` | — | Bazis eskizi (PNG 256×256) |
+
+Modul darajasida: `RateLimit(limit=60, period=300)` bog'liqlik sifatida (faqat XATO urinish hisoblanadi — `_order` topmasa `hit()` chaqiradi), javob sarlavhalarida `X-Robots-Tag: noindex, nofollow` va `Referrer-Policy: no-referrer`.
 
 ## `backend/app/api/routes/audit.py` — Audit jurnali
 

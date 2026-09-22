@@ -15,7 +15,11 @@ class Order(BaseModel):
 
     __tablename__ = "order"
 
-    __table_args__ = (Index("ix_order_number", "number", unique=True, postgresql_where=text("NOT is_deleted")),)
+    __table_args__ = (
+        Index("ix_order_number", "number", unique=True, postgresql_where=text("NOT is_deleted")),
+        # Qisman: yumshoq o'chirilgan buyurtma tokenni band qilib turmasin.
+        Index("ix_order_share_token", "share_token", unique=True, postgresql_where=text("NOT is_deleted")),
+    )
 
     organization_id: Mapped[int] = mapped_column(ForeignKey("organization.id"), default=1, kw_only=True)
     number: Mapped[str] = mapped_column(String(20), kw_only=True)  # B-2026-001, auto
@@ -35,6 +39,12 @@ class Order(BaseModel):
     project_uuid: Mapped[str | None] = mapped_column(String(64), default=None, kw_only=True)
     project_name: Mapped[str | None] = mapped_column(String(255), default=None, kw_only=True)
     project_loaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
+
+    #: Yig'uvchi/mijoz uchun OCHIQ havola tokeni (`/3d/{token}`). Buyurtma
+    #: RAQAMI emas, ataylab: raqam bo'lsa uni o'zgartirib butun sexning
+    #: buyurtmalarini ochib chiqish mumkin edi. `Employee.badge_id` naqshi —
+    #: `uuid4`, qayta generatsiya = bekor qilish. `None` = havola berilmagan.
+    share_token: Mapped[str | None] = mapped_column(String(36), default=None, kw_only=True)
 
     # Cut map visual model built from CS data blob; rendered by ARRA terminal.
     cutmap: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None, kw_only=True)
