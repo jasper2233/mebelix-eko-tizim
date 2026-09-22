@@ -63,7 +63,7 @@ Birinchi mos qatorda to'xta — pastdan boshlama.
 | **Javobi determinlashgan** | **Hech qanday model emas — skript yoz** (endpoint ro'yxati, import grafi, migratsiya zanjiri, versiya solishtirish) |
 | Mexanik sanash / grep | `census` (haiku) |
 | Fayl o'qib fakt chiqarish | `reader` (sonnet) |
-| Semantik hukm, ziddiyat, haqiqiy bug | `judge` (fable→opus) |
+| Semantik hukm, ziddiyat, haqiqiy bug | `judge` (opus = Opus 5.5, effort high) |
 
 Kichik ish bo'lsa — o'zing bajar. Bitta fayllik savolni subagentga uzatish
 javob berishdan qimmatroq turadi.

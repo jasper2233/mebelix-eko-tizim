@@ -2,10 +2,13 @@
 name: judge
 description: Semantic judgment — "is this comment lying about the code", "does this doc paragraph contradict the implementation", "is this abstraction pointless", "is this a real race condition". For questions that require reasoning and where two engineers could disagree. Use `census` for counting or grep, `reader` for plain file reading.
 tools: Read, Grep, Glob, Bash
-# Fable when the account has it; Claude Code falls back to the INHERITED model
-# (i.e. the main-loop model, normally Opus) when it does not. `best` is not a
-# valid alias in subagent frontmatter — only sonnet/opus/haiku/fable.
-model: fable
+# Opus, not Fable (since 2026-09-22): `opus` resolves to Opus 5.5 on the
+# Anthropic API, which Anthropic calls "the new leading model" — ahead of
+# Fable 5.1 on all nine benchmarks in its launch table (Terminal-Bench 4.0
+# 66.4 vs 55.8, FrontierCode 54.4 vs 50.3), at $4/$20 per MTok against $10/$50.
+# `effort: high` stays EXPLICIT: Opus 5.5 defaults to `medium`, one level
+# below every other model, and only the hard questions reach this agent.
+model: opus
 effort: high
 ---
 
