@@ -330,7 +330,7 @@ Termoprinter uchun ikki qat'iy qoida kodga o'rnatilgan: `draw.fontmode = "1"` (a
 | Fayl | Qayerda |
 |---|---|
 | `label-logo.png` | yorliq tepa-chapida, 160 threshold bilan 1-bit qilinadi; ochib bo'lmasa `MEBELIX` matni fallback |
-| `label-icon-drill.png` | teshik bor detallarda sverlo ikonkasi (alpha oq fonga flatten qilinadi); ochib bo'lmasa `С` harfi fallback |
+| `label-icon-drill.png` | sverlo ikonkasi — FAQAT teshikli detal eskizida teshik chizilmaganda (kesish xaritasisiz loyiha); alpha oq fonga flatten qilinadi; ochib bo'lmasa `С` harfi fallback |
 
 **Shrift eslatmasi.** `_FONT_REGULAR` / `_FONT_BOLD` ro'yxatlari tartib bilan sinaladi: Windows (`C:/Windows/Fonts/arial.ttf`, `arialbd.ttf`) → Debian Liberation Sans (`/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf` / `-Bold.ttf`) → zaxira DejaVu; hech biri topilmasa `ImageFont.load_default()` ga tushadi. `backend/Dockerfile` final stage'i `curl` bilan birga `fonts-liberation` ni ham o'rnatadi, shuning uchun server tomonda PNG (`/labels/{id}.png` endpointi va `print_label` task'idagi `render_label_png`) ham TTF shriftda chiqadi — qo'shimcha paket kerak emas. Liberation Sans Arial bilan metrik mos, ya'ni Windowsda sozlangan maket serverda ham aynan shunday joylashadi (DejaVu kengroq va maketni siljitgani uchun faqat zaxira).
 

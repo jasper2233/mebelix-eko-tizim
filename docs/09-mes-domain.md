@@ -315,7 +315,13 @@ chiqadi), **holes**, **texture**, **route_codes** (marshrut jarayon kodlari `seq
   loyiha nomi (`text(..., max_mm=34)` — `draw.textlength` bo'yicha QR chap chetigacha kesiladi;
   ilgari 26 belgi limiti turardi va u QR'ni hisobga olmagani uchun uzun nomning dumi
   QR ostida ko'rinmay qolardi), kromka materiallari 2×2 (t/l/b/r, tagchiziq bilan), markazda katta `L x W = soni`,
-  `N_detal nomi`, teshik bo'lsa `assets/label-icon-drill.png` ikonkasi (GibSaw shablonidagi
+  `N_detal nomi`, teshik bo'lsa-yu eskiz uni chiza olmasa `assets/label-icon-drill.png`
+  ikonkasi — **faqat ZAXIRA**. Belgi `xnc_summary` dan, eskizdagi aylanalar esa
+  `order.cutmap` dan keladi; ikkita haqiqiy loyihada (1213 Jahongir, 2083 Anvar) teshikli
+  188 detalning HAMMASIDA eskiz har teshikni o'z joyida chizgan, soni ham aynan mos, ya'ni
+  belgi takror edi — paz/freza ham chekda faqat eskizda turadi. Kesish xaritasisiz
+  loyihada esa aylanalar yo'q va belgi teshik haqidagi yagona signal bo'lib qoladi
+  (belgining o'zi — GibSaw shablonidagi
   `if(drill)` belgisining yuqori aniqlikdagi nusxasi; shablonda yana TO'RTTA belgi bor —
   paz, freza, chorak va ikki bo'lakli detal — ular `design/label-icons/` da turadi:
   paz/freza chekda ALLAQACHON eskizdagi chiziq uslubi bilan ko'rsatiladi, chorak va
