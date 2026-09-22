@@ -43,13 +43,11 @@ MebeliX-Mes-System/
 │                     #   bazis-material-colors.py (Bazis katalogidan material ranglari)
 ├── docs/             # Ushbu hujjatlar to'plami
 ├── design/           # Dizayn MANBALARI — build'ga kirmaydi (`.dockerignore`):
-│                     #   logo/ — brend masterlarining to'liq to'plami (tilla/navy/qora,
-│                     #     gorizontal/vertikal, logo va ikonka)
+│                     #   logo/ — brend masterlari (tilla/navy/qora, logo va ikonka)
 │                     #   label-icons/ — chek ikonkalari, GibSaw shablonidan ajratilgan
 │                     #     (`scripts/extract-label-icons.py`): paz, teshik, freza,
 │                     #     chorak, ikki bo'lakli detal — shablondagi asl 40x40 holida.
-│                     #     Chekda ishlatiladigani `backend/app/assets/` da: u qo'lda
-│                     #     qayta chizilgan, aniqroq nusxa (281x268)
+│                     #     Faqat ma'lumotnoma: MES chekida hech biri chizilmaydi (docs/09)
 │                     #   Ishlatiladigan nusxalar (frontend, backend, agent) QO'LDA
 │                     #   ko'chirilmaydi: `scripts/brand-assets.py --write` yasaydi,
 │                     #   CI `--check` bilan masterga mosligini tekshiradi
