@@ -311,7 +311,11 @@ chiqadi), **holes**, **texture**, **route_codes** (marshrut jarayon kodlari `seq
 203 dpi (8 dot/mm → 640×480 px), oxirida `point(... , "1")` bilan sof 1-bit; `draw.fontmode = "1"`
 — antialiasing yo'q, aks holda termodrayver dither qiladi. Koordinatalar mm da. Tarkibi:
 
-- chap ustun: `assets/label-logo.png` (threshold 160), `Formatka` + product kodi, detal kaliti,
+- chap ustun: `assets/logo-black.png` — `design/logo/logo-black.png` ning aynan nusxasi
+  (avval chek eniga LANCZOS bilan kichraytiriladi, keyin threshold 160; natija eni bo'yicha
+  keshlanadi — 2806x760 masterni har chekda ochish ~12 ms edi). Ilgari GibSaw
+  `Universal.lbl` dan olingan 469x148 nusxa turardi va u ~16% SIQILGAN edi (nisbat 3.11,
+  brendniki 3.69) — har chekda logo cho'zilib chiqardi, `Formatka` + product kodi, detal kaliti,
   loyiha nomi (`text(..., max_mm=34)` — `draw.textlength` bo'yicha QR chap chetigacha kesiladi;
   ilgari 26 belgi limiti turardi va u QR'ni hisobga olmagani uchun uzun nomning dumi
   QR ostida ko'rinmay qolardi), kromka materiallari 2×2 (t/l/b/r, tagchiziq bilan), markazda katta `L x W = soni`,

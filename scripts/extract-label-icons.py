@@ -1,9 +1,10 @@
 """GibSaw yorliq shablonidagi (`*.lbl`) ichki rasmlarni ajratib oladi.
 
 `mebelix.lbl` — XML, rasmlari `imgdata="data:image/png;base64,…"` sifatida
-ICHIGA yozilgan. `backend/app/assets/label-logo.png` o'sha yerdan olingan, lekin
-qanday olingani hech qayerda qolmagan edi — bu skript shu bo'shliqni yopadi va
-mashina belgilarini ham chiqaradi.
+ICHIGA yozilgan. Ilgari chek logotipi (`label-logo.png`) GibSaw shablonidan qo'lda
+olingan edi va qanday olingani hech qayerda qolmagan edi — bu skript shu
+bo'shliqni yopadi. `mebelix.lbl` dagi 2806x760 qora logotip hozir
+`design/logo/logo-black.png` va chekda aynan shu ishlatiladi.
 
 NOMLASH. Har rasm `<if condition="…">` ichida turadi va shart uning MA'NOSI:
 

@@ -65,7 +65,7 @@ Jadvalda ko'rsatilmagan, lekin manifestda e'lon qilingan runtime paketlar (lock 
 
 Bu uchtasining **haqiqiy ishlatilishi** (99cebc3 dagi `render_label_png()` qayta yozilishidan keyin) — hammasi `backend/app/services/labels.py` da, importlar funksiya ichida (modul importi og'irlashmasin):
 
-- **pillow** — `Image`, `ImageDraw`, `ImageFont`, to'rtala render funksiyasi ichida. Detal yorlig'i 80×60 mm, 203 dpi → 640×480 px; hammasida `draw.fontmode = "1"` bilan antialiasing o'chirilgan (termoprinter 1-bit, aks holda drayver dither qiladi). `render_label_png()`, `render_pachka_label_png()` va `render_waste_label_png()` `backend/app/assets/label-logo.png` ni ochadi (beyjik logosiz).
+- **pillow** — `Image`, `ImageDraw`, `ImageFont`, to'rtala render funksiyasi ichida. Detal yorlig'i 80×60 mm, 203 dpi → 640×480 px; hammasida `draw.fontmode = "1"` bilan antialiasing o'chirilgan (termoprinter 1-bit, aks holda drayver dither qiladi). `render_label_png()`, `render_pachka_label_png()` va `render_waste_label_png()` `backend/app/assets/logo-black.png` ni ochadi (beyjik logosiz).
 - **qrcode** — `qrcode.make(..., box_size=..., border=0)` xuddi shu to'rtala funksiya ichida: `d.qr_text` (detal), `d.code` (pachka), `d.qr_text` (foydali atxot), `d.badge_id` (beyjik). Pillow o'rnatilgani uchun PIL image qaytaradi va to'g'ridan-to'g'ri yorliq rasmiga joylashtiriladi.
 - **tzdata** — `ZoneInfo("Asia/Tashkent")` uchun IANA ma'lumoti (Windows'da tizimda yo'q). 2026-08-05 dan konstanta bitta joyda — `app.core.config.TASHKENT_TZ`; `labels.py` uni `printed_at` uchun import qiladi (`load_label_data()`), `app/tasks/__init__.py` (`print_pachka_label` va `print_waste_label` dagi `printed_at`), `app/api/routes/audit.py`, `reports.py`, `scans.py`, `tablo.py`, `orders/_common.py` va `app/services/scanning.py` ham shu konstantani ishlatadi.
 
@@ -132,7 +132,7 @@ Hech biri topilmasa `ImageFont.load_default()` ga tushadi (kichik bitmap shrift 
 
 `backend/Dockerfile` final stage'da `curl` bilan birga `fonts-liberation` ham o'rnatiladi (`apt-get install -y --no-install-recommends curl fonts-liberation`) — konteynerda `LiberationSans-Regular.ttf` topiladi va yorliq `load_default()` ga tushmaydi. `fonts-dejavu-core` o'rnatilmagan: DejaVu yo'llari faqat boshqa muhitlar uchun zaxira.
 
-Yorliq rasm asseti — `backend/app/assets/label-logo.png` — image'ga `COPY backend /app/backend` orqali, wheel'ga esa `[tool.hatch.build.targets.wheel] include = ["app/"]` orqali tushadi.
+Yorliq rasm asseti — `backend/app/assets/logo-black.png` (`design/logo/` dagi masterning nusxasi) — image'ga `COPY backend /app/backend` orqali, wheel'ga esa `[tool.hatch.build.targets.wheel] include = ["app/"]` orqali tushadi.
 
 ## Ataylab ushlab qolingan versiyalar (ceilinglar)
 

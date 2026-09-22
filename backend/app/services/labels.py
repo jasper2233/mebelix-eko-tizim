@@ -8,6 +8,7 @@ asoslangan. EZPL yo'q: G500-U'da tarmoq porti yo'q, RAW dialekt kerak emas.
 import io
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from functools import lru_cache
 from typing import Any
 
 from sqlalchemy import select
@@ -122,7 +123,7 @@ def _bw(v: int) -> int:
 
 
 # --- PNG render: GibSaw shablonlari asosidagi maket (80x60mm), mm-koordinatalarda ---
-# Manba ikkita: Universal.lbl (kromka konturdan tashqarida, QR/eskiz joylashuvi, logo) va
+# Manba ikkita: Universal.lbl (kromka konturdan tashqarida, QR/eskiz joylashuvi) va
 # mebelix.lbl (ustunlar tartibi, index_name "12_bok"). Har joyda qaysi biridan olingani yozilgan.
 # GDI chop etish (bridge-agent PRINTER_NAME rejimi) va brauzer ko'rinishi uchun
 # yagona manba. QR kutubxona bilan chiziladi — printer dialektiga bog'liq emas.
@@ -185,18 +186,34 @@ def _font(size_mm: float, bold: bool = False) -> Any:
     return ImageFont.load_default()
 
 
-def _paste_logo(img: Any, *, width_mm: float, xy: tuple[int, int]) -> bool:
-    """Logo — Universal.lbl dan ajratilgan, threshold qilingan.
-    Fayl o'qilmasa False; chaqiruvchi o'rniga matn yozadi."""
+@lru_cache(maxsize=4)
+def _logo(width_px: int) -> Any:
+    """Chek eniga tayyor 1-bit logo. Manba — brend masteri: `assets/logo-black.png`
+    `design/logo/logo-black.png` ning aynan nusxasi (logo-navy/logo-gold bilan bir
+    chizma, 2806x760).
+
+    Ilgari GibSaw `Universal.lbl` dan olingan 469x148 nusxa turardi: u ~16% SIQILGAN
+    edi (nisbat 3.11, brendniki 3.69) va har chekda logo cho'zilib chiqardi.
+
+    AVVAL kichraytiriladi, KEYIN threshold: 2806 px dan 176 px ga tushganda qirra
+    antialiasing'i shaklni saqlaydi. Natija jarayon bo'yi KESHDA — katta masterni
+    har chekda ochish ~12 ms edi (partiyada soniyalar), en esa atigi ikki xil.
+    Xato keshlanmaydi: fayl o'qilmasa har chaqiruvda `OSError` qaytadi."""
     from pathlib import Path
 
     from PIL import Image
 
+    raw = Image.open(Path(__file__).resolve().parents[1] / "assets" / "logo-black.png").convert("RGBA")
+    flat = Image.new("L", raw.size, 255)
+    flat.paste(raw.convert("L"), mask=raw.getchannel("A"))
+    kichik = flat.resize((width_px, round(width_px * flat.height / flat.width)), Image.Resampling.LANCZOS)
+    return kichik.point(_bw).convert("RGB")
+
+
+def _paste_logo(img: Any, *, width_mm: float, xy: tuple[int, int]) -> bool:
+    """Fayl o'qilmasa False; chaqiruvchi o'rniga matn yozadi."""
     try:
-        logo_path = Path(__file__).resolve().parents[1] / "assets" / "label-logo.png"
-        logo = Image.open(logo_path).convert("L").point(_bw).convert("RGB")
-        lw = int(width_mm * _MM)
-        img.paste(logo.resize((lw, int(lw * logo.height / logo.width))), xy)
+        img.paste(_logo(int(width_mm * _MM)), xy)
     except OSError:
         return False
     return True
