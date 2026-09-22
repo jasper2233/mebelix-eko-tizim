@@ -36,6 +36,11 @@ jobs:
         run: cd backend && uv run ruff check --no-fix app && uv run ruff format --check app
       - name: Types (mypy)
         run: cd backend && uv run mypy app
+      - name: Brend aktivlari (design/logo/ bilan mos)
+        # Logo/ikonka nusxalari QO'LDA tahrirlanmaydi — `scripts/brand-assets.py` ularni
+        # design/logo/ dan yasaydi. Qo'lda ko'chirilganda masterdan jimgina ajralardi
+        # (chek logotipi 16% siqilib qolgan edi) — sabab skriptning o'zida.
+        run: cd backend && uv run python ../scripts/brand-assets.py --check
       - name: Migratsiya drifti (alembic check)
         # Toza bazaga BUTUN zanjirni qo'llaydi (ya'ni "prodda ishlagan, toza bazada
         # yiqiladigan" migratsiya shu yerda tutiladi), keyin modelni natija sxema

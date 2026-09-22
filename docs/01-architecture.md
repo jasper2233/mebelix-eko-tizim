@@ -37,7 +37,10 @@ MebeliX-Mes-System/
 ├── scripts/          # setup.sh, prestart.sh, generate-client.sh, deploy.sh (TAG deploy + avto-rollback),
 │                     #   backup.sh (kunlik shifrlangan DB backup → /var/backups/mebelix, ya'ni deploy
 │                     #   daraxtidan tashqarida — CI rsync --delete o'chirib yubormasin;
-│                     #   Telegram ixtiyoriy nusxa)
+│                     #   Telegram ixtiyoriy nusxa),
+│                     #   brand-assets.py (logo nusxalari design/logo/ dan; CI --check),
+│                     #   extract-label-icons.py (GibSaw shablonidan chek belgilari),
+│                     #   bazis-material-colors.py (Bazis katalogidan material ranglari)
 ├── docs/             # Ushbu hujjatlar to'plami
 ├── design/           # Dizayn MANBALARI — build'ga kirmaydi (`.dockerignore`):
 │                     #   logo/ — brend masterlarining to'liq to'plami (tilla/navy/qora,
@@ -47,8 +50,9 @@ MebeliX-Mes-System/
 │                     #     chorak, ikki bo'lakli detal — shablondagi asl 40x40 holida.
 │                     #     Chekda ishlatiladigani `backend/app/assets/` da: u qo'lda
 │                     #     qayta chizilgan, aniqroq nusxa (281x268)
-│                     #   Ishlatiladigan nusxalar `frontend/public/assets/logo/` va
-│                     #   `backend/app/assets/` da; kerak bo'lsa shu yerdan ko'chiriladi
+│                     #   Ishlatiladigan nusxalar (frontend, backend, agent) QO'LDA
+│                     #   ko'chirilmaydi: `scripts/brand-assets.py --write` yasaydi,
+│                     #   CI `--check` bilan masterga mosligini tekshiradi
 ├── docker-compose.local.yml
 ├── docker-compose.prod.yml
 └── Makefile          # Dev operatsiyalar kirish nuqtasi (prod deploy: CI + scripts/deploy.sh)

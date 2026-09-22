@@ -19,6 +19,7 @@ cd backend && uv run ruff check --no-fix app && uv run ruff format --check app
 cd backend && uv run mypy app
 cd frontend && npx biome ci .
 cd frontend && npm run build              # tsc + vite
+cd backend && uv run python ../scripts/brand-assets.py --check   # logo nusxalari design/logo/ ga mosmi
 
 make lint                                 # ruff + mypy birga
 make check-migrations                     # alembic upgrade head && alembic check (DB kerak)
@@ -37,6 +38,11 @@ make frontend-gen                         # scripts/generate-client.sh
 - **Generatsiya qilingan, qo'lda tahrirlanmaydi:** `frontend/src/client/**`,
   `frontend/src/routeTree.gen.ts`. Birinchisi `make frontend-gen` bilan,
   ikkinchisi TanStack Router bilan qayta yaraladi.
+- **Brend aktivlari:** manba — FAQAT `design/logo/`. Undagi logoni o'zgartirsang
+  `cd backend && uv run python ../scripts/brand-assets.py --write` — u
+  `frontend/public/assets/logo/`, `frontend/src/icons/`, favicon, `backend/app/assets/`,
+  `bridge-agent/mebelix.ico` va `agent.py: _LOGO_B64` ni qayta yasaydi. Ularni qo'lda
+  tahrirlama — CI `--check` bilan yiqiladi.
 - **Til:** foydalanuvchi ko'radigan hamma matn (UI, API xato xabarlari) —
   **o'zbekcha**, istisnosiz. Kod identifikatorlari va commit'lar — inglizcha.
   Izohlar asosan o'zbekcha.

@@ -62,8 +62,8 @@ AGENT_VERSION = "1.7.1"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
-# konstanta — dev skriptda ham, exe'da ham bir xil ishlaydi. Manba:
-# frontend/public/assets/logo/icon-navy.png (scripts yo'q — shu izoh manba).
+# konstanta — dev skriptda ham, exe'da ham bir xil ishlaydi. QO'LDA TAHRIRLANMAYDI:
+# design/logo/icon-navy.png dan `scripts/brand-assets.py --write` yasaydi, CI tekshiradi.
 _LOGO_B64 = (
     "iVBORw0KGgoAAAANSUhEUgAAAJoAAABwCAYAAADmIGnzAAAKMWlDQ1BJQ0MgUHJvZmlsZQAAeJydlndUU9kWh8+9N71QkhCK"
     "lNBraFICSA29SJEuKjEJEErAkAAiNkRUcERRkaYIMijggKNDkbEiioUBUbHrBBlE1HFwFBuWSWStGd+8ee/Nm98f935rn73P"

@@ -51,6 +51,10 @@ frontend-format: ## Frontendni formatlaydi va tuzatadi (biome check --write --un
 frontend-gen: ## Generate frontend client from OpenAPI spec
 	./scripts/generate-client.sh
 
+.PHONY: brand-assets
+brand-assets: ## Brend nusxalari design/logo/ ga mosmi (CI ham shuni chaqiradi); yangilash: --write
+	cd backend && uv run python ../scripts/brand-assets.py --check
+
 .PHONY: lint
 lint: ## Run linting checks (ruff check + format check + mypy, CI bilan bir xil)
 	cd backend && uv run ruff check --no-fix app && uv run ruff format --check app
