@@ -48,8 +48,13 @@ _OLCHAM_TURI = 9000
 _UCHBURCHAK = struct.Struct("<9f9f3f6fI")
 #: Bo'lim boshi: ajratgich + siqilganlik bayrog'i (`00` xom, `01` zlib).
 _AJRATGICH = b"\x01\x00\x00\xff"
-#: Himoya: buzuq faylda cheksiz aylanmaslik uchun tugun chegarasi.
-_MAX_TUGUN = 20_000_000
+#: Model daraxtining tugun chegarasi. 463 ta haqiqiy faylda eng ko'pi 309 331
+#: (median 25 952); Python'da har tugun ~380 bayt xotira. Ilgari 20 mln edi —
+#: 105 KB lik qasddan yasalgan fayl (bitta ildiz + millionlab 9 baytli barg)
+#: 2.4 GB xotira olib, 7.5 GB gacha borardi (`_MAX_OCHILGAN` faqat zlib dan
+#: chiqqan baytni cheklaydi, daraxtni emas). 1 mln — eng kattasidan 3 barobar,
+#: eng yomon holat ~380 MB. Oshsa — fayl rad etiladi (qisman daraxt emas).
+_MAX_TUGUN = 1_000_000
 #: Ochilgan model uchun tom chegara. Namunalardagi eng kattasi 32 MB; zlib esa
 #: nolli bufer bilan 1000:1 siqiladi, ya'ni chegarasiz 40 MB lik fayl 40 GB ga
 #: ochilib butun backendni xotirasiz qoldirishi mumkin edi.
@@ -174,6 +179,7 @@ class _Oqim:
         # Har element: [tugun, qolgan bola]
         stek: list[list[Any]] = []
 
+        # Sikl `break`/`return` siz tugasa (`else`) — tugun chegarasi oshdi
         for _ in range(_MAX_TUGUN):
             if self.pos >= len(self.buf):
                 break
@@ -209,6 +215,8 @@ class _Oqim:
                 stek.pop()
             if not stek:
                 break
+        else:
+            raise BazisParseError(f"Bazis fayli juda katta (model {_MAX_TUGUN:,} tugundan oshdi).".replace(",", " "))
 
         if stek:
             self.warnings.append(f"{len(stek)} ta tugun to'liq o'qilmadi")
@@ -988,6 +996,19 @@ def read_b3d(content: bytes) -> ParsedBazis:
     Fayl tanilmasa `BazisParseError`; qisman o'qilsa natija `warnings` bilan
     qaytadi — texnologga ko'rsatish uchun.
     """
+    try:
+        return _read_b3d(content)
+    except BazisParseError:
+        raise
+    except (ValueError, OverflowError, IndexError, struct.error) as e:
+        # Buzuq yoki qasddan yasalgan fayl: 1e200 li o'q vektori (`** 2` toshadi),
+        # NaN kromka elementi (`int(nan)`), ajratgichdan keyin uzilgan bo'lim.
+        # Ilgari yo'nalish faqat `BazisParseError` ni ushlardi va bular 500
+        # berardi — endi texnologga tushunarli 422.
+        raise BazisParseError("Bazis fayli buzilgan — model o'qilmadi.") from e
+
+
+def _read_b3d(content: bytes) -> ParsedBazis:
     if not content.startswith(b"BZ85"):
         raise BazisParseError("Bu Bazis fayli emas (sarlavha `BZ85` emas).")
 
