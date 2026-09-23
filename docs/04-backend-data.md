@@ -611,6 +611,10 @@ diapazondagi birinchi bo'sh raqamni beradi va u rolga biriktirilib qoladi —
 aks holda ro'yxat o'rtasiga yangi rol qo'shilganda indeks siljib, mavjud
 hisobning raqami bilan to'qnashardi (UNIQUE buzilib prestart yiqilardi).
 
+### 5.3 `backend/app/commands/rebuild_bazis_models.py`
+
+Saqlangan Bazis modellarining brauzer JSON'ini joriy parser bilan qayta yasaydi (`python -m app.commands.rebuild_bazis_models`, QO'LDA — parser o'zgargan deploydan keyin): model JSON'i yuklashda bir marta yoziladi, `.b3d` esa diskda qoladi (`uploads/bazis/{order_id}/{kod}.b3d`), ya'ni texnolog qayta yuklashi shart emas. Idempotent — o'zgarmagan JSON qayta yozilmaydi; parser yiqilgan faylning eski JSON'i joyida qoladi va logga yoziladi. Prestart'ga QO'SHILMAGAN: 460 faylda bitta model 1.7 s gacha CPU oladi (docs/13 §4).
+
 `backend/app/commands/__init__.py` — bo'sh (faqat package marker).
 
 ---

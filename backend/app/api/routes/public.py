@@ -37,8 +37,10 @@ _SHARE_RATE_LIMIT = RateLimit(limit=60, period=300)
 router = APIRouter(prefix="/public", tags=["public"], dependencies=[Depends(_SHARE_RATE_LIMIT)])
 
 #: Qidiruv tizimlari ochiq havolani indekslamasin; havolani faqat uni olgan
-#: odam bilishi kerak.
-_HEADERS = {"X-Robots-Tag": "noindex, nofollow", "Referrer-Policy": "no-referrer"}
+#: odam bilishi kerak. `no-cache`: model qayta yuklanganda token va manzil
+#: o'zgarmaydi, fayl esa o'sha joyda yangilanadi — brauzer eskisini taxminiy
+#: "yangilik" bilan qayta ishlatmasin, har safar ETag bo'yicha so'rasin.
+_HEADERS = {"X-Robots-Tag": "noindex, nofollow", "Referrer-Policy": "no-referrer", "Cache-Control": "no-cache"}
 
 
 async def _order(db: SessionDep, request: Request, token: str) -> Order:
@@ -113,5 +115,5 @@ async def read_public_model(db: SessionDep, request: Request, token: str, code: 
 
 @router.get("/3d/{token}/{code}/thumb", operation_id="read_public_thumb")
 async def read_public_thumb(db: SessionDep, request: Request, token: str, code: str) -> FileResponse:
-    """Bazis chizib qo'ygan 256x256 eskiz — kartochka rasmi."""
+    """Mahsulot kartochkasi rasmi: Bazis eskizi, foni shaffof, kesilgan va kattalashtirilgan."""
     return FileResponse(await _fayl(db, request, token, code, ".png"), media_type="image/png", headers=_HEADERS)

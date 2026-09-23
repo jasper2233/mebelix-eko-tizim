@@ -251,7 +251,7 @@ Ikkinchi manba fayl — mebel loyihalash tizimi **Bazis**ning `.b3d` fayli. GibL
 | `parser.py` | `read_b3d(bytes) -> ParsedBazis` — konteyner, daraxt, kontur, iyerarxik joylashuv |
 | `viewer.py` | `dump_model(ParsedBazis) -> bytes` — brauzerga tayyor JSON (yuklashda BIR MARTA yasaladi) |
 
-Format hujjatlashtirilmagan; teskari muhandislik natijasi va har bir qarorning O'LCHOVI — [13-bazis-3d.md](13-bazis-3d.md). Parserning ikki ishlab chiqarish qarori: **iterativ** (rekursiv prototip 64 MB stek talab qilardi — web ishchisida yaramaydi) va **`Undo` shoxida to'xtash** (fayl hajmining 13–90% i, undan hech narsa kerak emas va 22 namunadan 6 tasida o'qilmaydi).
+Format hujjatlashtirilmagan; teskari muhandislik natijasi va har bir qarorning O'LCHOVI — [13-bazis-3d.md](13-bazis-3d.md). Parserning ikki ishlab chiqarish qarori: **iterativ** (rekursiv prototip 64 MB stek talab qilardi — web ishchisida yaramaydi) va **`Undo` shoxida to'xtash** (fayl hajmining 13–90% i, undan hech narsa kerak emas va panellar undan OLDIN keladi).
 
 MES bilan bog'lanish kaliti — sarlavhadagi `Code` = `Product.code`. Detal kodlari (`01_005`) mahsulotlar ICHIDA qayta boshlanadi, ya'ni ular bo'yicha bog'lab bo'lmaydi.
 

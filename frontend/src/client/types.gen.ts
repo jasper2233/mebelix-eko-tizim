@@ -6781,7 +6781,12 @@ export type UploadOrderBazisData = {
          */
         order_id: number;
     };
-    query?: never;
+    query?: {
+        /**
+         * Tasdiq
+         */
+        tasdiq?: boolean;
+    };
     url: '/api/v1/orders/{order_id}/bazis';
 };
 

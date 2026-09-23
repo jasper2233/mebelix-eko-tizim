@@ -11,10 +11,15 @@
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { ChevronLeft, PackageX } from "lucide-react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { PublicService } from "@/client"
 import { ModelViewer } from "@/components/Bazis/ModelViewer"
-import type { BazisModel, PublicProduct } from "@/components/Bazis/model"
+import {
+  type BazisModel,
+  gabarit,
+  MODEL_VERSIYA,
+  type PublicProduct,
+} from "@/components/Bazis/model"
 import { BrandLoader } from "@/components/Common/BrandLoader"
 import { Button } from "@/components/ui/button"
 import { API_BASE } from "@/utils"
@@ -91,7 +96,7 @@ function ProductGrid({
                   bo'ladi («01 Kuxniya» ikkita), ularni faqat kod ajratadi.
                   Ilgari kartada faqat nom va detal soni bor edi. */}
               <div className="mt-0.5 flex items-baseline gap-1.5 text-muted-foreground text-xs">
-                <span className="font-mono">{p.code}</span>
+                <span className="num">{p.code}</span>
                 <span aria-hidden>·</span>
                 <span className="tabular-nums">{p.panels} detal</span>
               </div>
@@ -121,7 +126,10 @@ function PublicModelPage() {
   const model = useQuery({
     queryKey: ["public-3d", token, joriy],
     enabled: joriy !== null,
-    staleTime: Number.POSITIVE_INFINITY, // model o'zgarmaydi: qayta yuklashda havola ham yangilanadi
+    // Ochiq sahifa ichida qayta so'ramaymiz. Texnolog modelni qayta yuklasa
+    // havola O'ZGARMAYDI, fayl o'sha manzilda yangilanadi — sahifani yangilash
+    // kifoya: javob `Cache-Control: no-cache` bilan keladi (public.py).
+    staleTime: Number.POSITIVE_INFINITY,
     queryFn: async () =>
       (
         await PublicService.readPublicModel({
@@ -129,6 +137,13 @@ function PublicModelPage() {
         })
       ).data as unknown as BazisModel,
   })
+  // Faqat ochilayotgan modelda — boshqa versiyadagisi baribir chizilmaydi
+  const olchami = useMemo(() => {
+    const m = model.data
+    if (!joriy || m?.v !== MODEL_VERSIYA) return null
+    const g = gabarit(m)
+    return g.some((v) => v > 0) ? g : null
+  }, [model.data, joriy])
 
   if (order.isPending) {
     return (
@@ -186,13 +201,28 @@ function PublicModelPage() {
           <div className="truncate font-semibold leading-tight">
             {nomi ?? <span className="tabular-nums">{order.data.number}</span>}
           </div>
-          <div className="truncate text-muted-foreground text-xs">
-            {nomi ? (
-              <span className="tabular-nums">{order.data.number}</span>
-            ) : (
-              "Detalni topish uchun mahsulotni tanlang"
-            )}
-          </div>
+          {nomi ? (
+            <div className="flex min-w-0 gap-1 text-muted-foreground text-xs">
+              {/* Tor ekranda faqat buyurtma raqami qisqaradi: o'lcham o'rtasidan
+                  kesilsa («3200 × 4…») noto'g'ri raqam o'qilardi (360 px da) */}
+              <span className="truncate tabular-nums">{order.data.number}</span>
+              {/* Umumiy o'lcham — BOSMASDAN: usta birinchi so'raydigan savol
+                  "qancha joy egallaydi". Modelning o'zida chiziq yo'q — u doim
+                  ko'rinib turib, detallarni to'sardi. */}
+              {olchami && (
+                <span
+                  className="shrink-0 whitespace-nowrap tabular-nums"
+                  title="Eni × bo'yi × chuqurligi"
+                >
+                  · {olchami.join(" × ")} mm
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="truncate text-muted-foreground text-xs">
+              Detalni topish uchun mahsulotni tanlang
+            </div>
+          )}
         </div>
         {/* TO'LIQ logotip, ikonka emas: sahifani MebeliX xodimi emas, usta
             yoki mijoz ochadi va ular MX belgisini tanimaydi — havolani kim
@@ -217,6 +247,13 @@ function PublicModelPage() {
           <PackageX className="size-8 text-muted-foreground" />
           <p className="text-muted-foreground text-sm">
             Model ochilmadi. Sahifani yangilang.
+          </p>
+        </div>
+      ) : model.data.v !== MODEL_VERSIYA ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
+          <PackageX className="size-8 text-muted-foreground" />
+          <p className="max-w-xs text-muted-foreground text-sm">
+            Bu model eskirgan. Texnolog uni MESga qayta yuklasin.
           </p>
         </div>
       ) : (

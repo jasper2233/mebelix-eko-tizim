@@ -6,6 +6,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { AxiosError } from "axios"
 import {
   AlertTriangle,
   Check,
@@ -20,9 +21,12 @@ import { QRCodeSVG } from "qrcode.react"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { OrdersService } from "@/client"
+import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
+import { QueryError } from "@/components/Common/QueryError"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { LoadingButton } from "@/components/ui/loading-button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { API_BASE, handleError } from "@/utils"
 
 const thumbUrl = (orderId: number, fileId: number) =>
@@ -30,6 +34,9 @@ const thumbUrl = (orderId: number, fileId: number) =>
 
 /** To'liq manzilni brauzer yig'adi: server o'z domenini bilmaydi. */
 const shareUrl = (token: string) => `${window.location.origin}/3d/${token}`
+
+/** Server 409 bilan qaytargan fayl: nomi buyurtmadagi mahsulotnikiga mos emas */
+type NomFarqi = { file: File; xabar: string }
 
 function ShareBlock({
   orderId,
@@ -42,13 +49,18 @@ function ShareBlock({
 }) {
   const qc = useQueryClient()
   const [copied, setCopied] = useState(false)
+  /** Ikkalasi ham ustalardagi havolani O'LDIRADI — bir bosishda emas, so'rab */
+  const [tasdiq, setTasdiq] = useState<"yangilash" | "yopish" | null>(null)
   const yangilash = () =>
     qc.invalidateQueries({ queryKey: ["order-bazis", orderId] })
 
   const open = useMutation({
     mutationFn: () =>
       OrdersService.openOrderShare({ path: { order_id: orderId } }),
-    onSuccess: yangilash,
+    onSuccess: () => {
+      setTasdiq(null)
+      yangilash()
+    },
     onError: handleError,
   })
   const close = useMutation({
@@ -56,6 +68,7 @@ function ShareBlock({
       OrdersService.closeOrderShare({ path: { order_id: orderId } }),
     onSuccess: () => {
       toast.success("Havola yopildi")
+      setTasdiq(null)
       yangilash()
     },
     onError: handleError,
@@ -115,20 +128,19 @@ function ShareBlock({
           </Button>
           {canShare && (
             <>
+              {/* Yangilash — havola begonaga tushib qolgandagi yagona chora */}
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => open.mutate()}
+                onClick={() => setTasdiq("yangilash")}
                 disabled={open.isPending}
-                // Yangilash — havola begonaga tushib qolgandagi yagona chora
-                title="Eski havola ishlamay qoladi"
               >
                 <RefreshCw /> Yangilash
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => close.mutate()}
+                onClick={() => setTasdiq("yopish")}
                 disabled={close.isPending}
               >
                 <Link2Off /> Yopish
@@ -137,6 +149,20 @@ function ShareBlock({
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={tasdiq !== null}
+        onOpenChange={(ochiq) => !ochiq && setTasdiq(null)}
+        title={tasdiq === "yopish" ? "Havolani yopish" : "Havolani yangilash"}
+        description={
+          tasdiq === "yopish"
+            ? "Havola va QR shu zahoti ishlamay qoladi — ustalar modelni ocholmaydi."
+            : "Eski havola va QR endi ochilmaydi — ustalarga yangisini berish kerak bo'ladi."
+        }
+        confirmText={tasdiq === "yopish" ? "Yopish" : "Yangilash"}
+        destructive
+        loading={open.isPending || close.isPending}
+        onConfirm={() => (tasdiq === "yopish" ? close.mutate() : open.mutate())}
+      />
     </Card>
   )
 }
@@ -156,6 +182,11 @@ export function BazisPanel({
   const fileInput = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [nomFarqi, setNomFarqi] = useState<NomFarqi[]>([])
+  const [ochiriladi, setOchiriladi] = useState<{
+    fileId: number
+    code: string
+  } | null>(null)
 
   const state = useQuery({
     queryKey: ["order-bazis", orderId],
@@ -171,47 +202,66 @@ export function BazisPanel({
       }),
     onSuccess: () => {
       toast.success("Model o'chirildi")
+      setOchiriladi(null)
       qc.invalidateQueries({ queryKey: ["order-bazis", orderId] })
     },
     onError: handleError,
   })
 
   /** Bir nechta faylni KETMA-KET yuboramiz: har biri serverda 1 soniyagacha
-   * CPU oladi, bir vaqtda yuborilsa ishchilar band bo'lib qolardi. */
-  const upload = async (files: File[]) => {
+   * CPU oladi, bir vaqtda yuborilsa ishchilar band bo'lib qolardi.
+   *
+   * Mahsulot nomi farq qilgan fayllar (409) YIG'ILADI va oxirida BITTA
+   * dialogda so'raladi: server ularni yozmagan, texnolog nomlarni ko'rib
+   * `tasdiq` bilan qayta yuboradi. */
+  const upload = async (files: File[], tasdiq = false) => {
     const b3d = files.filter((f) => f.name.toLowerCase().endsWith(".b3d"))
     if (!b3d.length) {
       toast.error("Faqat Bazis .b3d fayli qabul qilinadi")
       return
     }
     setBusy(true)
+    const farqli: NomFarqi[] = []
     try {
       for (const file of b3d) {
         try {
           const { data } = await OrdersService.uploadOrderBazis({
             path: { order_id: orderId },
+            query: { tasdiq },
             body: { file },
           })
           toast.success(
-            `${data.product_code} — ${data.panels} detal${data.matched ? "" : " (mahsulot topilmadi)"}`,
+            `${data.product_code} — ${data.panels} detal${data.matched ? "" : " (detallar bog'lanmadi — ogohlantirishni qarang)"}`,
           )
         } catch (err) {
-          handleError(err)
+          if (err instanceof AxiosError && err.response?.status === 409) {
+            const detail = (err.response.data as { detail?: unknown })?.detail
+            farqli.push({ file, xabar: String(detail ?? "") })
+          } else {
+            handleError(err)
+          }
         }
       }
     } finally {
       setBusy(false)
+      setNomFarqi(farqli)
       qc.invalidateQueries({ queryKey: ["order-bazis", orderId] })
     }
   }
 
-  const models = state.data?.models ?? []
+  // Holat kelmaguncha havola bloki CHIZILMAYDI: ilgari yuklanish va xato
+  // paytida "havola yo'q" kartochkasi chiqardi, uning «Havolani ochish»
+  // tugmasi esa YANGI token berib, ustalardagi ishlab turgan havolani o'ldirardi.
+  if (state.isPending) return <Skeleton className="h-48 w-full" />
+  if (state.isError) return <QueryError onRetry={() => state.refetch()} />
+
+  const models = state.data.models
 
   return (
     <div className="space-y-4">
       <ShareBlock
         orderId={orderId}
-        token={state.data?.share_token ?? null}
+        token={state.data.share_token ?? null}
         canShare={canShare}
       />
 
@@ -287,7 +337,12 @@ export function BazisPanel({
                       variant="ghost"
                       size="icon"
                       className="-mt-1 -mr-1 size-8"
-                      onClick={() => remove.mutate(m.file_id)}
+                      onClick={() =>
+                        setOchiriladi({
+                          fileId: m.file_id,
+                          code: m.product_code,
+                        })
+                      }
                       disabled={remove.isPending}
                       aria-label="O'chirish"
                     >
@@ -309,6 +364,47 @@ export function BazisPanel({
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={ochiriladi !== null}
+        onOpenChange={(ochiq) => !ochiq && setOchiriladi(null)}
+        title="Modelni o'chirish"
+        description={`${ochiriladi?.code ?? ""} modeli fayllari bilan o'chiriladi — uni qayta yuklash kerak bo'ladi. Havola ochiq qolsa, qolgan modellar ko'rinaveradi.`}
+        confirmText="O'chirish"
+        destructive
+        loading={remove.isPending}
+        onConfirm={() => ochiriladi && remove.mutate(ochiriladi.fileId)}
+      />
+
+      <ConfirmDialog
+        open={nomFarqi.length > 0}
+        onOpenChange={(ochiq) => !ochiq && setNomFarqi([])}
+        title="Mahsulot nomi mos emas"
+        description={
+          <span className="block space-y-2">
+            {nomFarqi.map(({ file, xabar }) => (
+              <span key={file.name} className="block">
+                <span className="font-medium text-foreground">
+                  {file.name}:
+                </span>{" "}
+                {xabar}
+              </span>
+            ))}
+            <span className="block">
+              Fayl yuklanmadi. Baribir yuklansa, u ochiq havolada shu mahsulot
+              kodi bilan chiqadi va chekdagi Detal ID uning detallarini topadi.
+            </span>
+          </span>
+        }
+        confirmText="Baribir yuklash"
+        loading={busy}
+        onConfirm={() =>
+          upload(
+            nomFarqi.map((f) => f.file),
+            true,
+          )
+        }
+      />
     </div>
   )
 }

@@ -40,7 +40,7 @@ MebeliX-Mes-System/
 │                     #   Telegram ixtiyoriy nusxa),
 │                     #   brand-assets.py (logo nusxalari design/logo/ dan; CI --check),
 │                     #   extract-label-icons.py (GibSaw shablonidan chek belgilari),
-│                     #   bazis-material-colors.py (Bazis katalogidan material ranglari)
+│                     #   bazis-material-colors.py (Bazis katalogidan material ranglari va teksturalari)
 ├── docs/             # Ushbu hujjatlar to'plami
 ├── design/           # Dizayn MANBALARI — build'ga kirmaydi (`.dockerignore`):
 │                     #   logo/ — brend masterlari (tilla/navy/qora, logo va ikonka)

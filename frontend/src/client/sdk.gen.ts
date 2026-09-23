@@ -167,7 +167,7 @@ export class PublicService {
     /**
      * Read Public Thumb
      *
-     * Bazis chizib qo'ygan 256x256 eskiz — kartochka rasmi.
+     * Mahsulot kartochkasi rasmi: Bazis eskizi, foni shaffof, kesilgan va kattalashtirilgan.
      */
     public static readPublicThumb<ThrowOnError extends boolean = true>(options: Options<ReadPublicThumbData, ThrowOnError>): RequestResult<ReadPublicThumbResponses, ReadPublicThumbErrors, ThrowOnError> {
         return (options.client ?? client).get<ReadPublicThumbResponses, ReadPublicThumbErrors, ThrowOnError>({
@@ -1048,6 +1048,9 @@ export class OrdersService {
      *
      * Ishlab chiqarishdagi buyurtmaga ham yuklanadi: model aynan yig'uv paytida,
      * ya'ni ish tugagandan KEYIN kerak bo'ladi.
+     *
+     * Fayldagi mahsulot nomi buyurtmanikidan farq qilsa — 409 va hech narsa
+     * yozilmaydi; texnolog nomlarni ko'rib tasdiqlasa (`tasdiq=true`) yuklanadi.
      */
     public static uploadOrderBazis<ThrowOnError extends boolean = true>(options: Options<UploadOrderBazisData, ThrowOnError>): RequestResult<UploadOrderBazisResponses, UploadOrderBazisErrors, ThrowOnError> {
         return (options.client ?? client).post<UploadOrderBazisResponses, UploadOrderBazisErrors, ThrowOnError>({

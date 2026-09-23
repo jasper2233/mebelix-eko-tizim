@@ -161,8 +161,9 @@ export const ROUTE_START_POSTS = ["ARRA", "ROVER"]
 /** Detal ID boshidagi buyurtma prefiksi (`B-2026-047_`, docs/11). `\d+`, `\d{3}`
  * emas: `next_number` uni `:03d` bilan yozadi — bu MINIMAL kenglik, ya'ni
  * yilning 1000-buyurtmasi `B-2026-1000`. Backenddagi `giblab/models.py:
- * ORDER_PREFIX_RE` bilan bir xil bo'lishi shart. Uch iste'molchi: `Serial`,
- * `OrderMatrix` qidiruvi, `PartTrace` ajratgichi. */
+ * ORDER_PREFIX_RE` bilan bir xil bo'lishi shart. To'rt iste'molchi: `Serial`,
+ * `OrderMatrix` qidiruvi, `PartTrace` ajratgichi, 3D ko'ruvchi qidiruvi
+ * (`Bazis/model.ts: matchPanel`). */
 export const ORDER_PREFIX = /^B-\d{4}-\d+_/i
 
 /** Texnolog chizgan marshrut — jarayon NOMLARI tartib bilan (dum va o'chirilgan

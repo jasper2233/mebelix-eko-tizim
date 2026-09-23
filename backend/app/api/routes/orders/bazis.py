@@ -5,7 +5,7 @@ bitta ochiq havola ochiladi va u ustaga yoki mijozga beriladi. Ochiq tomoni —
 `api/routes/public.py`.
 
 Yuklashda model brauzerga tayyor JSON'ga aylantiriladi va diskda saqlanadi:
-ochiq sahifa parserni umuman ishga tushirmaydi (namunalarda 2 s gacha CPU).
+ochiq sahifa parserni umuman ishga tushirmaydi (460 faylda 1.7 s gacha CPU).
 """
 
 import re
@@ -25,7 +25,7 @@ from app.models import Order, OrderFile, Product
 from app.models.enums import FileKind
 from app.schemas.bazis import BazisModelRead, BazisState
 from app.schemas.common import Message
-from app.services.bazis import BazisParseError, dump_model, read_b3d, thumbnail_png
+from app.services.bazis import BazisParseError, ParsedBazis, dump_model, read_b3d, thumbnail_png
 
 from ._common import _get_order, _get_visible_order
 
@@ -48,6 +48,15 @@ def _kod_fayl(code: str) -> str:
     if not tozalangan:
         raise HTTPException(status_code=422, detail="Bazis faylida mahsulot kodi yo'q — Bazisda kodni to'ldiring.")
     return tozalangan
+
+
+def _nomi(nom: str) -> str:
+    return " ".join(nom.split()).casefold()
+
+
+def _tayyorla(parsed: ParsedBazis) -> tuple[bytes, bytes | None]:
+    """Diskka yoziladigan model JSON'i va eskiz — ikkalasi ham sof CPU."""
+    return dump_model(parsed), thumbnail_png(parsed.thumbnail) if parsed.thumbnail else None
 
 
 def model_paths(root: Path, order_id: int, code: str) -> tuple[Path, Path, Path]:
@@ -97,7 +106,12 @@ async def read_order_bazis(db: SessionDep, current_user: StaffReadUser, order_id
 
 @router.post("/{order_id}/bazis", response_model=BazisModelRead, status_code=201, operation_id="upload_order_bazis")
 async def upload_order_bazis(
-    db: SessionDep, current_user: TexnologUser, order_id: int, file: UploadFile, request: Request
+    db: SessionDep,
+    current_user: TexnologUser,
+    order_id: int,
+    file: UploadFile,
+    request: Request,
+    tasdiq: bool = False,
 ) -> BazisModelRead:
     """Bitta mahsulotning Bazis faylini yuklaydi.
 
@@ -106,6 +120,9 @@ async def upload_order_bazis(
 
     Ishlab chiqarishdagi buyurtmaga ham yuklanadi: model aynan yig'uv paytida,
     ya'ni ish tugagandan KEYIN kerak bo'ladi.
+
+    Fayldagi mahsulot nomi buyurtmanikidan farq qilsa — 409 va hech narsa
+    yozilmaydi; texnolog nomlarni ko'rib tasdiqlasa (`tasdiq=true`) yuklanadi.
     """
     order = await _get_order(db, order_id)
     if not (file.filename or "").lower().endswith(".b3d"):
@@ -115,13 +132,20 @@ async def upload_order_bazis(
         raise HTTPException(status_code=422, detail=f"Fayl {MAX_BAZIS_FILE_SIZE // 1024**2} MB dan katta bo'lmasin.")
 
     try:
-        # Sof CPU: namunalarda 2 soniyagacha. Event loop'da bajarilsa TABLO ham,
+        # Sof CPU: 460 faylda 1.7 s gacha. Event loop'da bajarilsa TABLO ham,
         # terminallar ham shu vaqtga muzlardi (`.project` bilan bir xil sabab).
         parsed = await run_in_threadpool(read_b3d, content)
     except BazisParseError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None
     if not parsed.panels:
         raise HTTPException(status_code=422, detail="Bu Bazis faylida bitta ham detal yo'q.")
+    try:
+        # Eskiz (to'kish, kesish, Lanczos, palitra) ham 100-225 ms CPU — u ham oqimda.
+        model_json, eskiz_png = await run_in_threadpool(_tayyorla, parsed)
+    except ValueError:
+        raise HTTPException(
+            status_code=422, detail="Bazis faylida buzuq son bor (NaN yoki cheksiz) — faylni Bazisda qayta saqlang."
+        ) from None
 
     kod = _kod_fayl(parsed.code)
     product = (
@@ -134,20 +158,36 @@ async def upload_order_bazis(
         )
     ).scalar_one_or_none()
 
-    root = upload_root()
-    b3d, model, eskiz = model_paths(root, order_id, kod)
-    b3d.parent.mkdir(parents=True, exist_ok=True)
-    await run_in_threadpool(b3d.write_bytes, content)
-    await run_in_threadpool(model.write_bytes, dump_model(parsed))
-    if parsed.thumbnail:
-        await run_in_threadpool(eskiz.write_bytes, thumbnail_png(parsed.thumbnail))
-
     ogohlar = list(parsed.warnings)
     if product is None:
         ogohlar.append(
             f"`{parsed.code}` kodli mahsulot bu buyurtmada topilmadi — model ko'rinadi, "
             "lekin detallari MES detallari bilan bog'lanmaydi."
         )
+    elif _nomi(product.name) != _nomi(parsed.name):
+        # Bazis raqamlari mijozlar orasida takrorlanadi: `2083 Ilyos aka` ham,
+        # `2083 Anvar` ham `208301` kodli. Kod bo'yicha bog'lansa boshqa mijozning
+        # TV zonasi bu buyurtmaning kupesi deb ko'rsatilardi (36 detal kodi mos,
+        # o'lchami 0/36). `.project` dagi mahsulot nomi va `.b3d` dagi nom — ikkalasi
+        # ham Bazisning `Article.Name` idan (GibLab eksport skripti), ya'ni to'g'ri
+        # faylda ular mos keladi.
+        #
+        # Ogohlantirish bilan yuklash YETMAYDI: model baribir shu kod bilan ochiq
+        # sahifada chiqib, chekdagi Detal ID uning panellarini AYNAN topardi —
+        # usta boshqa o'lchamdagi detalni ko'rardi. Shuning uchun FAYL YOZILMASDAN
+        # rad etiladi; nom rostdan o'zgargan bo'lsa texnolog tasdiqlaydi.
+        farq = f"Bu buyurtmadagi `{parsed.code}` mahsuloti «{product.name}», Bazis faylidagisi esa «{parsed.name}»"
+        if not tasdiq:
+            raise HTTPException(status_code=409, detail=f"{farq} — fayl boshqa buyurtmaniki bo'lishi mumkin.")
+        ogohlar.append(f"{farq} — texnolog tasdiqlab yukladi.")
+
+    root = upload_root()
+    b3d, model, eskiz = model_paths(root, order_id, kod)
+    b3d.parent.mkdir(parents=True, exist_ok=True)
+    await run_in_threadpool(b3d.write_bytes, content)
+    await run_in_threadpool(model.write_bytes, model_json)
+    if eskiz_png is not None:
+        await run_in_threadpool(eskiz.write_bytes, eskiz_png)
 
     # Solishtirish TOZALANGAN kod bo'yicha: `2083.01` va `208301` bir xil
     # faylga yoziladi, ya'ni eskisini almashtirmasak diskda bittasi ikkinchisini
@@ -164,7 +204,7 @@ async def upload_order_bazis(
         meta={
             "product_code": parsed.code,
             "product_name": product.name if product else parsed.name,
-            "panels": len(parsed.panels),
+            "panels": parsed.part_count,
             "matched": product is not None,
             "warnings": ogohlar,
         },
@@ -178,7 +218,7 @@ async def upload_order_bazis(
         user_id=current_user.id,
         entity_type="order",
         entity_id=order.id,
-        message=f"Bazis modeli yuklandi: {parsed.code} ({len(parsed.panels)} detal)",
+        message=f"Bazis modeli yuklandi: {parsed.code} ({parsed.part_count} detal)",
         meta={"product_code": parsed.code, "replaced": len(eski), "warnings": ogohlar},
         ip=client_ip(request),
     )

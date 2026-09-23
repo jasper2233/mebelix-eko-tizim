@@ -1,9 +1,9 @@
 """`.b3d` dan brauzer uchun model JSON'i.
 
 Yuklashda BIR MARTA yasaladi va diskda saqlanadi: ochiq sahifa uni o'qib
-beradi, xolos. Har so'rovda qayta o'qish mumkin emas edi — eng katta fayl
-~2 soniya CPU oladi, ochiq (autentifikatsiyasiz) bir necha so'rov butun sexni
-sekinlashtirardi.
+beradi, xolos. Har so'rovda qayta o'qish mumkin emas edi — eng og'ir fayl
+1.7 s CPU oladi (460 faylda o'lchandi), ochiq (autentifikatsiyasiz) bir
+necha so'rov butun sexni sekinlashtirardi.
 
 Kalitlar qisqa (`p`, `q`, `o`): 268 panelli mahsulotda uzun nomlar JSON'ni
 kattalashtiradi, sahifa esa asosan planshet va telefonda ochiladi.
@@ -15,10 +15,18 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageFilter
 
-from .models import BazisPanel, ParsedBazis
+from .models import BazisDim, BazisFurniture, BazisMesh, BazisPanel, ParsedBazis
 
-#: Model versiyasi. Frontend eskirgan faylni shundan taniydi.
-VERSION = 1
+#: Model versiyasi. JSON yuklashda bir marta yoziladi, shuning uchun shakli
+#: o'zgarsa eski fayl diskda qoladi: frontend (`model.ts: MODEL_VERSIYA`) boshqa
+#: versiyani chizmaydi va "texnolog modelni qayta yuklasin" deydi. 2 — `h`
+#: (chiziqdan chizilgan kesmalar), `g` (harakat birligi), `cp`/`r` (profil
+#: kesimi, tekstura tolasi), `meshes`/`furn` (furnitura va texnika) qo'shildi,
+#: kontur uchlari bo'yicha ulanadi. Keyinroq ixtiyoriy `d` (bazischining
+#: o'lchamlari) qo'shildi — versiya OSHIRILMADI: kaliti yo'q eski model ham to'g'ri
+#: chiziladi (faqat o'lchamsiz), oshirilsa frontend saqlangan hamma modelni
+#: "eskirgan" deb rad etardi (`3d.$token.tsx` qat'iy tenglik bilan solishtiradi).
+VERSION = 2
 #: Eskiz fonini to'kishdagi rang chidamliligi. 10 da ichkaridagi OQ panel
 #: saqlanib qoladi; 30 da to'kish ichkariga sizib o'tib, oq fasadni ham
 #: yeb qo'yadi (4 namunada o'lchandi).
@@ -95,6 +103,9 @@ def _panel(p: BazisPanel, mat: dict[str, int]) -> dict[str, Any]:
         "q": [round(v, 5) for v in p.quat],
         "o": _yumaloq(p.poly, 1),
     }
+    if p.holes:
+        # Rakovina, plita kabi to'g'ri chiziqli kesmalar: 41 305 paneldan 494 tasida.
+        out["h"] = [_yumaloq(h, 1) for h in p.holes]
     if p.circles:
         out["c"] = _yumaloq(p.circles, 1)
     if p.animated:
@@ -103,9 +114,53 @@ def _panel(p: BazisPanel, mat: dict[str, int]) -> dict[str, Any]:
         # maydon `p`/`q` ning nusxasi bo'lardi va JSON'ni bekorga shishirardi.
         out["po"] = [round(v, 1) for v in p.pos_open]
         out["qo"] = [round(v, 5) for v in p.quat_open]
+        # Harakat birligi: tortmaning 5 paneli birga ochilishi kerak. Brauzer
+        # buni harakatdan taxmin qila olmaydi — bir ilgak chizig'idagi ustma-ust
+        # eshiklar ham, bir ustundagi tortmalar ham AYNAN bir xil harakatlanadi.
+        if p.group is not None:
+            out["g"] = p.group
     if p.is_round:
         # Konturi aylana: `o` — taqribiy ko'pburchak.
         out["rd"] = 1
+    if p.clip:
+        # Profil uchidagi 45° kesimlar (163 profil) — busiz ramka burchaklari ustma-ust
+        out["cp"] = p.clip
+    if p.grain_x:
+        # Tekstura tolasi kontur X bo'ylab (Bazis `TexDir = 1`); sukut — Y bo'ylab
+        out["r"] = 1
+    return out
+
+
+def _mesh(m: BazisMesh, mat: dict[str, int]) -> list[list[Any]]:
+    """Qismlar: `[material, uchlar, normallar, uchburchak indekslari]`. Uch 0.1 mm,
+    normal 0.001 aniqlikda — tutqich/ilgak uchun yetarli, JSON esa ikki barobar kichik."""
+    return [
+        [mat[q.mat_name], [round(v, 1) for v in q.positions], [round(v, 3) for v in q.normals], q.indices]
+        for q in m.parts
+    ]
+
+
+def _furnitura(f: BazisFurniture) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "k": f.mesh,
+        "n": f.name,
+        "p": [round(v, 1) for v in f.pos],
+        "q": [round(v, 5) for v in f.quat],
+    }
+    if f.animated:
+        # Eshikdagi tutqich eshik bilan birga ochiladi — birligi ham eshikniki
+        out["po"] = [round(v, 1) for v in f.pos_open]
+        out["qo"] = [round(v, 5) for v in f.quat_open]
+        if f.group is not None:
+            out["g"] = f.group
+    return out
+
+
+def _olcham(d: BazisDim) -> dict[str, Any]:
+    """`{v, a, b, o, g?}` — qiymat, o'lchangan ikki nuqta va chiziqning surilishi."""
+    out: dict[str, Any] = {"v": d.value, "a": d.a, "b": d.b, "o": d.o}
+    if d.group is not None:
+        out["g"] = d.group
     return out
 
 
@@ -113,21 +168,31 @@ def build_model(parsed: ParsedBazis) -> dict[str, Any]:
     """Mahsulotning brauzerga tayyor tavsifi."""
     nomlar: list[str] = []
     mat: dict[str, int] = {}
-    for p in parsed.panels:
-        # FAQAT panel materiali. Kromka materiali ham shu ro'yxatda edi, lekin
-        # brauzer uni ishlatmaydi (§3.1) va `mats` ni bekorga uzaytirardi.
-        if p.mat_name not in mat:
-            mat[p.mat_name] = len(nomlar)
-            nomlar.append(p.mat_name)
-    return {
+    # FAQAT panel va furnitura qismlarining materiali. Kromka materiali ham shu
+    # ro'yxatda edi, lekin brauzer uni ishlatmaydi (§3.1) va `mats` ni bekorga uzaytirardi.
+    for nom in [p.mat_name for p in parsed.panels] + [q.mat_name for m in parsed.meshes for q in m.parts]:
+        if nom not in mat:
+            mat[nom] = len(nomlar)
+            nomlar.append(nom)
+    out: dict[str, Any] = {
         "v": VERSION,
         "code": parsed.code,
         "name": parsed.name,
         "mats": nomlar,
         "panels": [_panel(p, mat) for p in parsed.panels],
+        "meshes": [_mesh(m, mat) for m in parsed.meshes],
+        "furn": [_furnitura(f) for f in parsed.furniture],
     }
+    if parsed.dims:
+        out["d"] = [_olcham(d) for d in parsed.dims]
+    return out
 
 
 def dump_model(parsed: ParsedBazis) -> bytes:
-    """Diskka yoziladigan ko'rinish — bo'shliqsiz, UTF-8 saqlangan holda."""
-    return json.dumps(build_model(parsed), ensure_ascii=False, separators=(",", ":")).encode()
+    """Diskka yoziladigan ko'rinish — bo'shliqsiz, UTF-8 saqlangan holda.
+
+    Buzuq faylda son NaN/cheksiz bo'lsa `ValueError`: `json.dumps` sukut bo'yicha
+    `NaN` yozadi, brauzerning `JSON.parse` esa uni rad etadi — yuklash
+    "muvaffaqiyatli" bo'lib, ochiq sahifa model chiza olmay qolardi.
+    """
+    return json.dumps(build_model(parsed), ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode()
