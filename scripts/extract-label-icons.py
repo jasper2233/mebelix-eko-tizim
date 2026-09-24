@@ -22,11 +22,12 @@ ISHLATISH:
     uv run --with pillow python scripts/extract-label-icons.py \\
         "<mebelix.lbl>" design/label-icons
 
-Chiqish papkasi ATAYLAB `design/` ostida: MES chekida belgilarning HECH BIRI
-chizilmaydi. `groove`/`mill`/`drill` chekda allaqachon eskizning o'zida — paz
-va freza chiziq uslubi bilan, teshik o'z joyida aylana bilan (docs/09);
-`rabbet` va `twodetails` uchun esa MESda ma'lumot manbai yo'q. Kerak bo'lganda
-shu yerdan `backend/app/assets/` ga ko'chiriladi.
+Chiqish papkasi ATAYLAB `design/` ostida — bular asl 40x40 masterlar. Chekda
+faqat sverlo chiziladi, u ham shu 40x40 dan emas: termoprinterning 1-bit
+quvuri uchun qayta chizilgan `design/label-icons/drill-hires.png` dan
+(`backend/app/assets/label-icon-drill.png` ga `scripts/brand-assets.py`
+ko'chiradi, docs/09). `groove`/`mill` chekda eskizning o'zida chiziq uslubi
+bilan; `rabbet` va `twodetails` uchun MESda ma'lumot manbai yo'q.
 """
 
 import base64

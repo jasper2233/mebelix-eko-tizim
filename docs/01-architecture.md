@@ -38,7 +38,7 @@ MebeliX-Mes-System/
 │                     #   backup.sh (kunlik shifrlangan DB backup → /var/backups/mebelix, ya'ni deploy
 │                     #   daraxtidan tashqarida — CI rsync --delete o'chirib yubormasin;
 │                     #   Telegram ixtiyoriy nusxa),
-│                     #   brand-assets.py (logo nusxalari design/logo/ dan; CI --check),
+│                     #   brand-assets.py (logo va chek ikonkasi nusxalari design/ dan; CI --check),
 │                     #   extract-label-icons.py (GibSaw shablonidan chek belgilari),
 │                     #   bazis-material-colors.py (Bazis katalogidan material ranglari va teksturalari)
 ├── docs/             # Ushbu hujjatlar to'plami
@@ -46,8 +46,8 @@ MebeliX-Mes-System/
 │                     #   logo/ — brend masterlari (tilla/navy/qora, logo va ikonka)
 │                     #   label-icons/ — chek ikonkalari, GibSaw shablonidan ajratilgan
 │                     #     (`scripts/extract-label-icons.py`): paz, teshik, freza,
-│                     #     chorak, ikki bo'lakli detal — shablondagi asl 40x40 holida.
-│                     #     Faqat ma'lumotnoma: MES chekida hech biri chizilmaydi (docs/09)
+│                     #     chorak, ikki bo'lakli detal — shablondagi asl 40x40 holida;
+│                     #     drill-hires.png — chekdagi sverlo ikonkasining masteri (docs/09)
 │                     #   Ishlatiladigan nusxalar (frontend, backend, agent) QO'LDA
 │                     #   ko'chirilmaydi: `scripts/brand-assets.py --write` yasaydi,
 │                     #   CI `--check` bilan masterga mosligini tekshiradi
@@ -423,8 +423,8 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   (34 mm) sig'guncha kichraytiriladi — `labels.py`, QR esa to'liq satrni saqlaydi,
   [11-detal-id-nomlash.md](./11-detal-id-nomlash.md)),
   loyiha nomi, 2×2 kromka katakchalari (tagchiziqli), katta
-  `L x W = count`, `N_nom` (teshik alohida ikonka bilan EMAS, eskizda o'z joyida
-  aylana bo'lib — `docs/09`), **marshrut qatori** (`Marshrut: 7/11/8` — jarayon kodlari `seq`
+  `L x W = count`, `N_nom`, teshik bo'lsa `app/assets/label-icon-drill.png` ikonkasi
+  (teshikning o'zi eskizda ham o'z joyida aylana bo'lib — `docs/09`), **marshrut qatori** (`Marshrut: 7/11/8` — jarayon kodlari `seq`
   tartibida, y=41.5 mm; detal NOMIGA qo'shilmaydi, chunki nom 24 belgida
   kesiladi). Marshrut FAQAT nostandart detalda chiqadi (`load_label_data()`
   `route_codes` ni `part.is_custom` shartida to'ldiradi) — standart detalda

@@ -319,16 +319,22 @@ chiqadi), **holes**, **texture**, **route_codes** (marshrut jarayon kodlari `seq
   loyiha nomi (`text(..., max_mm=34)` — `draw.textlength` bo'yicha QR chap chetigacha kesiladi;
   ilgari 26 belgi limiti turardi va u QR'ni hisobga olmagani uchun uzun nomning dumi
   QR ostida ko'rinmay qolardi), kromka materiallari 2×2 (t/l/b/r, tagchiziq bilan), markazda katta `L x W = soni`,
-  `N_detal nomi`. **Sverlo ikonkasi YO'Q** (2026-09-22 da olib tashlandi): teshik eskizda
-  o'z joyida aylana bo'lib chiziladi, ikonka esa shuni takrorlardi — ikkita haqiqiy
-  loyihada (1213 Jahongir, 2083 Anvar) teshikli 188 detalning HAMMASIDA eskiz har teshikni
-  chizgan, soni ham `xnc_summary` bilan aynan mos. Paz/freza ham chekda faqat eskizda
-  turadi. Aylanalar `order.cutmap` dan keladi, u esa har doim yuklangan `.project` dan
-  yasaladi (optimallashtirilmagan SHABLON fayl yuklansa `cutmap` bo'lmaydi — lekin unda
-  ARRA xaritasining o'zi bo'sh, ya'ni buyurtma baribir ishga yaramaydi). GibSaw
-  shablonidagi beshala mashina belgisi (paz, sverlo, freza, chorak, ikki bo'lakli detal)
-  `design/label-icons/` da asl holida turadi; chorak va ikki bo'lak uchun MESda ma'lumot
-  manbai yo'q,
+  `N_detal nomi`. **Sverlo ikonkasi** — detalda teshik bo'lsa (`xnc_summary` da `bores`
+  yoki `edge_bores`) HAR DOIM, marshrut qatorining o'ngida (x=49.5, y=40 mm, 6×6 mm;
+  `app/assets/label-icon-drill.png`). Teshikning o'zi eskizda ham o'z joyida aylana bo'lib
+  chiziladi — lekin bu takror EMAS, vazifasi boshqa: eskiz teshik QAYERDA ekanini aytadi,
+  ikonka bir qarashda "detal sverloga boradi" deydi. 2026-09-22 da takror deb olib
+  tashlangan edi (ikki loyihada eskiz har teshikni chizgani o'lchangan edi) va 24-da
+  qaytarildi — egasi chekda ko'rmay qolganini aytdi: prodda teshikli 3050 detalning 447
+  tasida eskizda atigi 1-4 ta ~1 mm lik nuqta turadi (faqat mayda yuza teshigi, qirrasiz),
+  saralayotgan ishchi uni ko'rmay o'tadi, standart detalda esa marshrut qatori ham yo'q.
+  Prodning 4432 detali yangi kod bilan chizildi: teshikli 3050 tasining hammasida ikonka
+  bor, teshiksiz 1382 tasining birortasida yo'q. Paz/freza uchun ikonka yo'q — ular eskizda
+  chiziq bo'lib turadi. GibSaw shablonidagi beshala mashina belgisi (paz, sverlo, freza,
+  chorak, ikki bo'lakli detal) `design/label-icons/` da asl 40x40 holida turadi; chekdagi
+  sverlo — 1-bit quvur uchun qayta chizilgan `drill-hires.png` ning nusxasi (asl 40x40
+  48 px da shashkaga aylanib kul rang bosilardi). Chorak va ikki bo'lak uchun MESda
+  ma'lumot manbai yo'q,
   marshrut ALOHIDA qatorda (`Marshrut: 7/11/8`, y=41.5mm — detal NOMIGA qo'shilmaydi, chunki nom
   24 belgida kesiladi va marshrut jimgina yo'qolardi). Marshrut satri **faqat nostandart detalda**
   (`part.is_custom`) chiqadi: standart detalning yo'li oldindan ma'lum, chekda u joyni behuda band

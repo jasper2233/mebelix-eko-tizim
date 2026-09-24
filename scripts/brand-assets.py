@@ -1,4 +1,5 @@
-"""Brend aktivlarining YAGONA manbasi — `design/logo/`. Qolgan hamma nusxa shundan.
+"""Brend aktivlarining YAGONA manbasi — `design/` (logolar `design/logo/`, chek
+ikonkasi `design/label-icons/`). Qolgan hamma nusxa shundan.
 
 NEGA. Backend image, frontend image va bridge-agent `.exe` alohida quriladi va har
 biri faqat o'z papkasini ko'radi (`.dockerignore` da `design`, frontend konteksti
@@ -50,12 +51,15 @@ ICO_OLCHAMLAR = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (
 #: Agent oynasi va tray uchun balandlik (`agent.py` shuni kutadi).
 AGENT_BALANDLIK = 112
 
-#: nusxa -> master (bayt-baytiga)
+#: nusxa -> master (bayt-baytiga), ikkalasi ham repo ildizidan
 NUSXALAR = {
-    "frontend/public/assets/logo/logo-gold.png": "logo-gold.png",
-    "frontend/public/assets/logo/logo-navy.png": "logo-navy.png",
-    "frontend/public/assets/logo/icon-navy.png": "icon-navy.png",
-    "backend/app/assets/logo-black.png": "logo-black.png",
+    "frontend/public/assets/logo/logo-gold.png": "design/logo/logo-gold.png",
+    "frontend/public/assets/logo/logo-navy.png": "design/logo/logo-navy.png",
+    "frontend/public/assets/logo/icon-navy.png": "design/logo/icon-navy.png",
+    "backend/app/assets/logo-black.png": "design/logo/logo-black.png",
+    # Chekdagi sverlo ikonkasi — termoprinterning 1-bit quvuri uchun QAYTA chizilgan
+    # 281x268 (asl 40x40 `drill.png` 48 px da shashkaga aylanib kul rang bosilardi)
+    "backend/app/assets/label-icon-drill.png": "design/label-icons/drill-hires.png",
 }
 
 
@@ -165,9 +169,9 @@ def _ico_farq() -> str | None:
 
 
 def _nusxa_farq(nusxa: str, master: str) -> str | None:
-    if (R / nusxa).exists() and (R / nusxa).read_bytes() == (MASTER / master).read_bytes():
+    if (R / nusxa).exists() and (R / nusxa).read_bytes() == (R / master).read_bytes():
         return None
-    return f"design/logo/{master} dan farq qiladi"
+    return f"{master} dan farq qiladi"
 
 
 def _hosila_farq(yol: str, yasa: Callable[[], Image.Image]) -> str | None:
@@ -206,7 +210,7 @@ def yoz(farqli: set[str]) -> None:
     kodlash baytlarni o'zgartirib, ko'rinishi bir xil diff qoldirardi."""
     for nusxa, master in NUSXALAR.items():
         if nusxa in farqli:
-            (R / nusxa).write_bytes((MASTER / master).read_bytes())
+            (R / nusxa).write_bytes((R / master).read_bytes())
     for yol, yasa in HOSILALAR.items():
         if yol in farqli:
             (R / yol).write_bytes(_png(yasa()))
@@ -238,7 +242,7 @@ def main() -> int:
     jami = len(NUSXALAR) + len(HOSILALAR) + 2
     print(f"{jami - len(farq)}/{jami} brend aktivi masterga mos")
     if farq:
-        print("Tuzatish: `cd backend && uv run python ../scripts/brand-assets.py --write` (design/logo/ o'zgargach)")
+        print("Tuzatish: `cd backend && uv run python ../scripts/brand-assets.py --write` (design/ o'zgargach)")
     return 1 if farq else 0
 
 

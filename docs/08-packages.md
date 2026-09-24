@@ -132,7 +132,7 @@ Hech biri topilmasa `ImageFont.load_default()` ga tushadi (kichik bitmap shrift 
 
 `backend/Dockerfile` final stage'da `curl` bilan birga `fonts-liberation` ham o'rnatiladi (`apt-get install -y --no-install-recommends curl fonts-liberation`) — konteynerda `LiberationSans-Regular.ttf` topiladi va yorliq `load_default()` ga tushmaydi. `fonts-dejavu-core` o'rnatilmagan: DejaVu yo'llari faqat boshqa muhitlar uchun zaxira.
 
-Yorliq rasm asseti — `backend/app/assets/logo-black.png` (`design/logo/` dagi masterning nusxasi) — image'ga `COPY backend /app/backend` orqali, wheel'ga esa `[tool.hatch.build.targets.wheel] include = ["app/"]` orqali tushadi.
+Yorliq rasm assetlari — `backend/app/assets/logo-black.png` va `label-icon-drill.png` (`design/` dagi masterlarning nusxasi) — image'ga `COPY backend /app/backend` orqali, wheel'ga esa `[tool.hatch.build.targets.wheel] include = ["app/"]` orqali tushadi.
 
 ## Ataylab ushlab qolingan versiyalar (ceilinglar)
 
