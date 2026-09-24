@@ -78,7 +78,7 @@ _CODE_LEN = 8
 PAIR_TTL = timedelta(minutes=15)
 
 
-def _new_code() -> str:
+def new_pair_code() -> str:
     return "".join(secrets.choice(_CODE_ALPHABET) for _ in range(_CODE_LEN))
 
 
@@ -186,7 +186,7 @@ async def create_bridge_agent(
     agent = BridgeAgent(
         name=body.name,
         machine_id=body.machine_id,
-        pair_code=_new_code(),
+        pair_code=new_pair_code(),
         pair_expires_at=datetime.now(UTC) + PAIR_TTL,
     )
     db.add(agent)
@@ -219,7 +219,7 @@ async def regenerate_bridge_code(
     """
     agent = await crud_bridge_agents.get_or_404(db, "Agent topilmadi.", id=agent_id)
     agent.token_hash = None
-    agent.pair_code = _new_code()
+    agent.pair_code = new_pair_code()
     agent.pair_expires_at = datetime.now(UTC) + PAIR_TTL
     # Panel DARHOL "Uzilgan" ko'rsatsin: `last_seen_at` eski qiymatida qolsa
     # 6 daqiqalik onlayn oynasi tufayli "Ulandi" deb yolg'on ko'rsatardi.

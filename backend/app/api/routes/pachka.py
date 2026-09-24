@@ -9,7 +9,7 @@ xona — hech biri bloklamaydi: qaror qadoqlovchida.
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func, select
 
 from app.api.deps import SessionDep, require_roles
@@ -38,6 +38,7 @@ from app.services.scanning import (
     revoke_scan,
     scan_error,
 )
+from app.services.terminal_device import require_print_device
 
 router = APIRouter(prefix="/pachka", tags=["pachka"])
 
@@ -429,7 +430,7 @@ async def reopen_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, pachka_id:
 
 
 @router.post("/{pachka_id}/close", response_model=Message, operation_id="close_pachka")
-async def close_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, pachka_id: int) -> Message:
+async def close_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, pachka_id: int, request: Request) -> Message:
     """Qadoqni yakunlash: yopiladi va cheki chop etishga yuboriladi.
 
     Chek chiqara olmasak (navbat o'chgan yoki postga printer biriktirilmagan)
@@ -437,6 +438,12 @@ async def close_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, pachka_id: 
     urinish imkonini beradi (aks holda avval "Qayta ochish" kerak bo'lardi).
     """
     machine, post = ctx
+    # Yopish = qadoq cheki. Ulangan monobloki bor ish markazida telefondan
+    # yopilsa chek postdagi printerdan egasiz chiqardi (`services/terminal_device.py`)
+    try:
+        await require_print_device(db, request, user, machine)
+    except ScanRejected as exc:
+        raise scan_error(exc.code, exc.message) from None
     pachka = await _open_pachka(db, pachka_id)
     count = (
         await db.execute(

@@ -22,6 +22,7 @@ from .scans import router as scans_router
 from .settings import router as settings_router
 from .tablo import router as tablo_router
 from .terminal import router as terminal_router
+from .terminal_devices import router as terminal_devices_router
 from .tmo import router as tmo_router
 from .users import router as users_router
 from .ws import router as ws_router
@@ -45,6 +46,7 @@ router.include_router(pachka_router, dependencies=_protected)
 router.include_router(tmo_router, dependencies=_protected)
 router.include_router(audit_router, dependencies=_protected)
 router.include_router(terminal_router, dependencies=_protected)
+router.include_router(terminal_devices_router, dependencies=_protected)
 router.include_router(downtimes_router, dependencies=_protected)
 router.include_router(defects_router, dependencies=_protected)  # brak qaydi (/terminal prefiksi)
 router.include_router(defects_review_router, dependencies=_protected)  # brakni menejer tasdiqlaydi

@@ -4531,6 +4531,114 @@ export type TerminalContext = {
      * Has Andon
      */
     has_andon?: boolean;
+    /**
+     * Print Lock
+     */
+    print_lock?: boolean;
+    /**
+     * Print Allowed
+     */
+    print_allowed?: boolean;
+    /**
+     * Print Device Name
+     */
+    print_device_name?: string | null;
+    /**
+     * Print Pairing
+     */
+    print_pairing?: boolean;
+};
+
+/**
+ * TerminalDeviceCreate
+ */
+export type TerminalDeviceCreate = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Machine Id
+     */
+    machine_id: number;
+};
+
+/**
+ * TerminalDevicePairRequest
+ */
+export type TerminalDevicePairRequest = {
+    /**
+     * Code
+     */
+    code: string;
+};
+
+/**
+ * TerminalDevicePairResponse
+ *
+ * Token javobda YO'Q — u faqat httpOnly cookie'da, sahifa skripti uni ko'rmaydi.
+ */
+export type TerminalDevicePairResponse = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Machine Name
+     */
+    machine_name: string;
+};
+
+/**
+ * TerminalDeviceRead
+ *
+ * Admin ro'yxati. pair_code faqat hali ulanmagan qurilmada — ro'yxat admin-only.
+ */
+export type TerminalDeviceRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Machine Id
+     */
+    machine_id: number;
+    /**
+     * Machine Name
+     */
+    machine_name?: string | null;
+    /**
+     * Paired
+     */
+    paired: boolean;
+    /**
+     * Pair Code
+     */
+    pair_code: string | null;
+    /**
+     * Pair Expires At
+     */
+    pair_expires_at: string | null;
+    /**
+     * Last Seen At
+     */
+    last_seen_at: string | null;
+    /**
+     * Paired At
+     */
+    paired_at?: string | null;
+    /**
+     * Paired User Agent
+     */
+    paired_user_agent?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
 };
 
 /**
@@ -7722,6 +7830,134 @@ export type DownloadTerminalFileResponses = {
      */
     200: unknown;
 };
+
+export type ReadTerminalDevicesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/terminal-devices/';
+};
+
+export type ReadTerminalDevicesResponses = {
+    /**
+     * Response Read Terminal Devices
+     *
+     * Successful Response
+     */
+    200: Array<TerminalDeviceRead>;
+};
+
+export type ReadTerminalDevicesResponse = ReadTerminalDevicesResponses[keyof ReadTerminalDevicesResponses];
+
+export type CreateTerminalDeviceData = {
+    body: TerminalDeviceCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/terminal-devices/';
+};
+
+export type CreateTerminalDeviceErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateTerminalDeviceError = CreateTerminalDeviceErrors[keyof CreateTerminalDeviceErrors];
+
+export type CreateTerminalDeviceResponses = {
+    /**
+     * Successful Response
+     */
+    201: TerminalDeviceRead;
+};
+
+export type CreateTerminalDeviceResponse = CreateTerminalDeviceResponses[keyof CreateTerminalDeviceResponses];
+
+export type RegenerateTerminalDeviceCodeData = {
+    body?: never;
+    path: {
+        /**
+         * Device Id
+         */
+        device_id: number;
+    };
+    query?: never;
+    url: '/api/v1/terminal-devices/{device_id}/code';
+};
+
+export type RegenerateTerminalDeviceCodeErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RegenerateTerminalDeviceCodeError = RegenerateTerminalDeviceCodeErrors[keyof RegenerateTerminalDeviceCodeErrors];
+
+export type RegenerateTerminalDeviceCodeResponses = {
+    /**
+     * Successful Response
+     */
+    200: TerminalDeviceRead;
+};
+
+export type RegenerateTerminalDeviceCodeResponse = RegenerateTerminalDeviceCodeResponses[keyof RegenerateTerminalDeviceCodeResponses];
+
+export type DeleteTerminalDeviceData = {
+    body?: never;
+    path: {
+        /**
+         * Device Id
+         */
+        device_id: number;
+    };
+    query?: never;
+    url: '/api/v1/terminal-devices/{device_id}';
+};
+
+export type DeleteTerminalDeviceErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteTerminalDeviceError = DeleteTerminalDeviceErrors[keyof DeleteTerminalDeviceErrors];
+
+export type DeleteTerminalDeviceResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type DeleteTerminalDeviceResponse = DeleteTerminalDeviceResponses[keyof DeleteTerminalDeviceResponses];
+
+export type PairTerminalDeviceData = {
+    body: TerminalDevicePairRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/terminal-devices/pair';
+};
+
+export type PairTerminalDeviceErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PairTerminalDeviceError = PairTerminalDeviceErrors[keyof PairTerminalDeviceErrors];
+
+export type PairTerminalDeviceResponses = {
+    /**
+     * Successful Response
+     */
+    200: TerminalDevicePairResponse;
+};
+
+export type PairTerminalDeviceResponse = PairTerminalDeviceResponses[keyof PairTerminalDeviceResponses];
 
 export type ReadTerminalDowntimeReasonsData = {
     body?: never;

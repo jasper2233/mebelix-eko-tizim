@@ -70,6 +70,7 @@ const MODULE_LABELS: Record<string, string> = {
   orders: "Buyurtmalar",
   pachka: "Pachkalar",
   bridge_agents: "MES agentlar",
+  terminal_devices: "Chek qurilmalari",
   employees: "Hodimlar",
   users: "Foydalanuvchilar",
   clients: "Mijozlar",
@@ -87,6 +88,7 @@ const ENTITY_LABELS: Record<string, string> = {
   session: "Smena",
   waste_item: "Qoldiq",
   bridge_agent: "MES agent",
+  terminal_device: "Chek qurilmasi",
   employee: "Hodim",
   client: "Mijoz",
   machine: "Ish markazi",
@@ -101,6 +103,7 @@ const ENTITY_LABELS: Record<string, string> = {
 // darhol rad/bekor qatorlarga tushsin (1 077 rad etilgan skan 15 273 orasida).
 const NEGATIVE = new Set([
   "rejected",
+  "device_rejected",
   "login_failed",
   "cancelled",
   "deleted",

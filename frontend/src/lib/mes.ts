@@ -395,6 +395,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   rejected: "rad etildi",
   cancelled: "bekor qilindi",
   label_sent: "chek yuborildi",
+  device_rejected: "ulanmagan qurilmadan chek rad etildi",
   label_cancelled: "chek bekor qilindi",
   waste_label_sent: "qoldiq cheki yuborildi",
   waste_label_cancelled: "qoldiq cheki bekor qilindi",
@@ -445,6 +446,8 @@ export const SCAN_ERROR_LABELS: Record<string, string> = {
   E008: "Ish allaqachon bajarilgan — xato emas, ogohlantirish",
   E009: "Sozlama xatosi (post/ish markazi yo'q) — admin tuzatadi",
   E010: "Stanok forvardi takrori — skan terminalda yozilgan, hech kim aybdor emas",
+  E011: "Chek ulanmagan qurilmadan (telefon) so'raldi — faqat post monobloki chiqaradi",
+  E012: "Chek allaqachon chiqarilgan — qayta chiqarish faqat bekor qilish orqali",
 }
 
 /** Terminal tasmasi uchun BIR SO'ZLIK sarlavha (yuqoridagi `SCAN_ERROR_LABELS`
@@ -461,6 +464,8 @@ export const SCAN_CODE_WORDS: Record<string, string> = {
   E006: "BEYJIK",
   E008: "TAKROR",
   E009: "SOZLAMA",
+  E011: "QURILMA",
+  E012: "CHIQQAN",
   ATX: "QOLDIQ",
 }
 export const scanWord = (code: string): string => SCAN_CODE_WORDS[code] ?? code
