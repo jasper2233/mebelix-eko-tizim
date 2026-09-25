@@ -121,16 +121,27 @@ Rollar (`api/deps.py`):
 
 ## 5. Sahifa — `/warehouse`
 
-`routes/_layout/warehouse.tsx`. Chapda **kategoriya daraxti** (katalog harfi →
-guruh, yonida sanoq), o'ngda jadval: kod (monoshrift, birinchi ustun — omborchi
-javonda aynan shuni izlaydi), nomi (ostida guruh · o'lcham · matritsa), artikul,
-qoldiq, joy, xarid va sotuv narxi. Chegaradan past qoldiq **qizil**, tooltip'da
-chegara ko'rsatiladi.
+`routes/_layout/warehouse.tsx`. Filtrlar kodning tuzilishini takrorlaydi:
 
-Sarlavha qatorida qidiruv va «**Kam qolgan**» tugmasi — omborchining birinchi
-savoli «nimani buyurtma qilish kerak»; chegara qo'yilmagan pozitsiya bu ro'yxatga
-tushmaydi. Qalam tugmasi (faqat yozish huquqi bo'lsa) ombor maydonlarini
-tahrirlaydigan dialogni ochadi.
+- **Katalog harfi** — `Tabs` (Hammasi / Material / Furnitura / Xizmat, yonida
+  sanoq). Kodning birinchi qismi va eng yirik bo'linish, doim ko'rinib turadi.
+- **Guruh** — `SelectField` (35 ta, tab qatoriga sig'maydi). Yorlig'i nomi,
+  yonida kod va sanoq. Tanlov qiymati **to'liq kod** (`M-LG`), faqat guruh harfi
+  emas: `LG` ikki katalogda ham bor — `M-LG` (LEGE fasad paneli) va `X-LG`
+  (logistika), shuning uchun harfning o'zi bilan filtrlaganda «Hammasi» tabida
+  boshqa katalogning pozitsiyalari qo'shilib ketardi.
+- **Holat** va «**Kam qolgan**» — omborchining birinchi savoli «nimani buyurtma
+  qilish kerak»; chegara qo'yilmagan pozitsiya bu ro'yxatga tushmaydi.
+
+Chap ustunli daraxt ISHLATILMAYDI (2026-09-25 da almashtirildi): u 256 px joy
+yeb, jadvalni gorizontal aylantirishga majbur qilardi — `Sotuv` ustuni ekrandan
+chiqib ketgandi va filtr loyihaning qolgan sahifalariga o'xshamasdi.
+
+Jadval: kod (monoshrift, birinchi ustun — omborchi javonda aynan shuni izlaydi),
+nomi (ostida guruh · o'lcham · matritsa), artikul, qoldiq, joy, xarid va sotuv
+narxi. Chegaradan past qoldiq **qizil**, tooltip'da chegara ko'rsatiladi. Qalam
+tugmasi (faqat yozish huquqi bo'lsa) ombor maydonlarini tahrirlaydigan dialogni
+ochadi.
 
 Tekshiruv: `scripts/oracles/catalog_oracle.py` — **32/32** (kod formati, takror
 yo'qligi, daraxt sanoqlari, filtrlar va qidiruv, artikulning matn bo'lib

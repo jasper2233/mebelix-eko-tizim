@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MebeliX — Sotuv listi</title>
+<style>
+  * { -webkit-tap-highlight-color: transparent; }
+  body { margin:0; background:#f6f7f8; font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; color:#1f2937; -webkit-font-smoothing:antialiased; }
+  input::placeholder { color:#b6bcc4; }
+  input:focus-visible, select:focus-visible, button:focus-visible { outline:2px solid #ef7d1a; outline-offset:1px; }
+
+  .page { min-height:100vh; padding:28px 32px 60px; box-sizing:border-box; }
+  .wrap { max-width:1280px; margin:0 auto; display:flex; flex-direction:column; gap:20px; }
+  .topbar { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; flex-wrap:wrap; }
+  .h1 { font-size:28px; font-weight:700; letter-spacing:-0.3px; line-height:1.15; }
+
+  .btn { font:inherit; font-size:14px; font-weight:600; padding:9px 16px; border-radius:6px; cursor:pointer; }
+  .btn-primary { border:1px solid #ef7d1a; background:#ef7d1a; color:#fff; }
+  .btn-primary:hover { background:#d96c11; border-color:#d96c11; }
+  .btn-ghost { border:1px solid #e6e8eb; background:#fff; color:#1f2937; }
+  .btn-ghost:hover { background:#f3f4f6; border-color:#d7dade; }
+
+  .card { background:#fff; border:1px solid #e6e8eb; border-radius:8px; display:flex; flex-direction:column; }
+  .card-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 20px; border-bottom:1px solid #eef0f2; background:#fafbfc; }
+  .kicker { font-size:11px; font-weight:700; letter-spacing:0.09em; color:#8a919b; }
+  .card-body { display:grid; grid-template-columns:1fr 1fr; gap:14px 16px; padding:18px 20px 20px; }
+  .field { display:flex; flex-direction:column; gap:6px; }
+  .span2 { grid-column:span 2; }
+  .lbl { font-size:10.5px; font-weight:700; letter-spacing:0.08em; color:#8a919b; }
+  .fld { width:100%; box-sizing:border-box; padding:8px 10px; border:1px solid #e6e8eb; border-radius:5px; font:inherit; font-size:14.5px; color:#1f2937; background:#fff; }
+  select.fld { cursor:pointer; }
+  .tnum { font-variant-numeric:tabular-nums; }
+
+  .table-scroll { overflow-x:auto; overflow-y:visible; }
+  .sheet-table { width:100%; border-collapse:collapse; table-layout:fixed; min-width:1016px; }
+  .sheet-table thead tr { background:#fafbfc; }
+  .sheet-table th { text-align:left; padding:11px 10px; font-size:11px; font-weight:700; letter-spacing:0.08em; color:#8a919b; border-bottom:1px solid #eef0f2; }
+  .sheet-table th.r { text-align:right; }
+  .sheet-table th:first-child { padding-left:22px; }
+  .sheet-table th:last-child { padding-right:22px; }
+  .sheet-table tbody tr { border-bottom:1px solid #f1f3f5; }
+  .sheet-table td { padding:6px 10px; }
+  .sheet-table td:first-child { padding-left:22px; }
+  .sheet-table td:last-child { padding-right:22px; }
+  .rowno { font-size:14px; color:#8a919b; font-variant-numeric:tabular-nums; }
+  .ci { width:100%; box-sizing:border-box; padding:7px 9px; border:1px solid transparent; border-radius:5px; font:inherit; background:transparent; font-size:14px; color:#1f2937; }
+  .ci:hover { border-color:#e6e8eb; }
+  .ci:focus { border-color:#ef7d1a; background:#fff; outline:none; }
+  .ci.name { font-weight:600; }
+  .ci.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .ci.disc { color:#a4630f; }
+  .ci.note { font-size:13px; color:#6b7280; }
+  .artikul { padding:0 9px 3px; font-size:11px; font-weight:600; letter-spacing:0.05em; font-variant-numeric:tabular-nums; color:#b6bcc4; }
+  .sumcell { text-align:right; font-size:14px; font-weight:700; font-variant-numeric:tabular-nums; color:#1f2937; }
+  .del { width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; border:1px solid #e6e8eb; background:#fff; color:#9aa1aa; border-radius:5px; font:inherit; font-size:14px; line-height:1; cursor:pointer; }
+  .del:hover { border-color:#e3b3ab; background:#fdf1ef; color:#c0392b; }
+  .addrow { padding:8px 14px; border:1px dashed #cfd4da; background:#fff; color:#4b5563; border-radius:6px; font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+  .addrow:hover { border-color:#ef7d1a; color:#c76418; }
+
+  .doc-in { box-sizing:border-box; padding:2px 5px; border:1px solid #cfd4da; border-radius:3px; font:inherit; font-size:12.5px; color:#111; background:#fff; }
+  .contract-doc table { width:100%; border-collapse:collapse; }
+  .contract-doc th, .contract-doc td { border:1px solid #1d1d1d; }
+  .contract-doc th { padding:7px 8px; font-size:12px; font-weight:700; text-align:center; line-height:1.3; }
+  .contract-doc td { padding:6px 8px; font-size:12px; }
+  .sigline { display:grid; grid-template-columns:1fr 1fr; align-items:end; gap:10px; padding-bottom:4px; border-bottom:1px solid #1d1d1d; min-height:34px; }
+  .sigval { text-align:right; font-weight:700; }
+
+  @media print {
+    body { background:#fff; }
+    .page { padding:0; min-height:0; }
+    .no-print { display:none !important; }
+    input, select, textarea { border-color:transparent !important; background:transparent !important; }
+    .table-scroll { overflow:visible !important; }
+    .sheet-table { min-width:0 !important; width:100% !important; table-layout:fixed; font-size:11px; }
+    .sheet-table th, .sheet-table td { padding:4px 6px !important; font-size:11px !important; word-break:break-word; }
+    .sheet-table input { padding:0 !important; font-size:11px !important; }
+    .sheet-table tr { page-break-inside:avoid; }
+    .contract-doc { max-width:none !important; border:0 !important; padding:0 !important; }
+    .contract-doc tr { page-break-inside:avoid; }
+  }
+</style>
+<style id="pagerule">@page { size: A4 landscape; margin: 10mm; }</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="wrap">
+
+    <div class="topbar">
+      <div class="h1">Sotuv listi</div>
+      <div class="no-print" style="display:flex;align-items:center;gap:10px">
+        <button id="btnNew" class="btn btn-ghost" style="display:none">Yangi list</button>
+        <button id="btnBack" class="btn btn-ghost" style="display:none">← Listga qaytish</button>
+        <button id="btnMain" class="btn btn-primary">Shartnoma</button>
+      </div>
+    </div>
+
+    <!-- ══════════════ A. SOTUV LISTI ══════════════ -->
+    <div id="viewList" style="display:flex;flex-direction:column;gap:20px">
+
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start">
+        <div class="card">
+          <div class="card-head">
+            <div class="kicker">MIJOZ</div>
+            <div style="font-size:12px;color:#b6bcc4">Xaridor ma'lumotlari</div>
+          </div>
+          <div class="card-body">
+            <div class="field span2">
+              <div class="lbl">F.I.SH. / TASHKILOT</div>
+              <input class="fld" data-head="client" placeholder="Masalan: Jahongir Rustamov" style="font-size:15.5px;font-weight:600">
+            </div>
+            <div class="field">
+              <div class="lbl">TELEFON</div>
+              <input class="fld tnum" data-head="phone" placeholder="+998 __ ___ __ __">
+            </div>
+            <div class="field">
+              <div class="lbl">MIJOZ TURI</div>
+              <select class="fld" data-head="ctype">
+                <option>Jismoniy shaxs</option>
+                <option>Yuridik shaxs</option>
+                <option>Diler</option>
+              </select>
+            </div>
+            <div class="field span2">
+              <div class="lbl">MANZIL / YETKAZIB BERISH</div>
+              <input class="fld" data-head="addr" placeholder="Shahar, tuman, ko'cha, uy">
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div class="kicker">BUYURTMA</div></div>
+          <div class="card-body">
+            <div class="field">
+              <div class="lbl">BUYURTMA №</div>
+              <input class="fld tnum" data-head="order" placeholder="B-2026-000" style="font-weight:600">
+            </div>
+            <div class="field">
+              <div class="lbl">SOTUVCHI</div>
+              <input class="fld" data-head="seller" placeholder="Xodim F.I.Sh.">
+            </div>
+            <div class="field">
+              <div class="lbl">SANA</div>
+              <input class="fld tnum" type="date" data-head="dateISO">
+            </div>
+            <div class="field">
+              <div class="lbl">TOPSHIRISH MUDDATI</div>
+              <input class="fld tnum" type="date" data-head="dueISO">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 22px;border-bottom:1px solid #eef0f2">
+          <div style="font-size:16px;font-weight:700">Mahsulotlar</div>
+          <div id="rowCount" style="font-size:13px;color:#6b7280">0 ta qator</div>
+        </div>
+        <div class="table-scroll">
+          <table class="sheet-table">
+            <thead>
+              <tr>
+                <th style="width:46px">№</th>
+                <th style="width:320px">MAHSULOT NOMI</th>
+                <th class="r" style="width:86px">SONI</th>
+                <th class="r" style="width:130px">NARXI</th>
+                <th class="r" style="width:120px">CHEGIRMA</th>
+                <th class="r" style="width:140px">SUMMA</th>
+                <th style="width:150px">IZOH</th>
+                <th class="no-print" style="width:44px"></th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+        <div class="no-print" style="padding:14px 22px;border-top:1px solid #eef0f2;background:#fafbfc">
+          <button id="btnAdd" class="addrow">+ Yangi qator</button>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end">
+        <div style="width:100%;max-width:400px;background:#fff;border:1px solid #e6e8eb;border-radius:8px;padding:20px 22px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+            <div style="font-size:14px;color:#6b7280">Mahsulotlar summasi</div>
+            <div id="subtotal" class="tnum" style="font-size:15px;font-weight:600">0</div>
+          </div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+            <div style="font-size:14px;color:#6b7280">Chegirma</div>
+            <div id="discount" class="tnum" style="font-size:15px;font-weight:600;color:#a4630f">− 0</div>
+          </div>
+          <div style="height:1px;background:#eef0f2"></div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+            <div style="font-size:13px;font-weight:700;letter-spacing:0.06em;color:#8a919b">JAMI SUMMA</div>
+            <div style="font-size:26px;font-weight:700;letter-spacing:-0.4px" class="tnum"><span id="total">0</span> <span style="font-size:14px;font-weight:600;color:#6b7280">so'm</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap;padding:8px 4px;font-size:13px;color:#6b7280">
+        <div style="display:flex;flex-direction:column;gap:26px"><div>Sotuvchi imzosi</div><div style="width:200px;border-bottom:1px solid #cfd4da"></div></div>
+        <div style="display:flex;flex-direction:column;gap:26px"><div>Mijoz imzosi</div><div style="width:200px;border-bottom:1px solid #cfd4da"></div></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ B. SHARTNOMA ══════════════ -->
+    <div id="viewContract" style="display:none">
+      <div class="contract-doc" style="width:100%;max-width:860px;margin:0 auto;box-sizing:border-box;background:#fff;border:1px solid #e6e8eb;border-radius:8px;padding:40px 44px 44px;font-family:Georgia,'Times New Roman',serif;font-size:13px;line-height:1.5;color:#1d1d1d">
+
+        <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px">
+          <div style="justify-self:start;padding:3px 12px;background:#6b7280;color:#fff;border-radius:3px;font-size:11.5px;font-weight:700;letter-spacing:0.02em">Umumiy</div>
+          <div style="font-size:17px;font-weight:700;letter-spacing:0.04em;text-align:center">SHARTNOMA № <span id="cOrder"></span></div>
+          <div style="justify-self:end;font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:17px;font-weight:700;letter-spacing:-0.2px">Mebeli<span style="color:#ef7d1a">X</span></div>
+        </div>
+        <div style="height:1px;background:#1d1d1d;margin:12px 0 14px"></div>
+
+        <div style="display:flex;justify-content:space-between;gap:20px;font-weight:700;font-size:13px">
+          <div>Qabul qilingan: <span id="cDate"></span></div>
+          <div>Tayyor bo'lishi: <span id="cDue"></span></div>
+        </div>
+
+        <div style="margin-top:12px;text-align:justify">
+          Mazkur buyurtma-shartnoma bir tomondan <b>"MebeliX"</b> (telefon:
+          <input class="doc-in" data-head="orgPhone" placeholder="__ ___ __ __" style="width:130px">, keyingi o'rinlarda <b>"Ijrochi"</b> deb ataladi) va ikkinchi tomondan fuqaro
+          <input class="doc-in" data-head="client" placeholder="Buyurtmachi F.I.Sh." style="width:210px;font-weight:700"> (telefon:
+          <input class="doc-in" data-head="phone" placeholder="__ ___ __ __" style="width:130px">, keyingi o'rinlarda <b>"Buyurtmachi"</b> deb ataladi) o'rtasida quyidagilar bo'yicha tuzildi:
+        </div>
+
+        <div style="margin-top:10px;text-align:justify">
+          1. Ijrochi ushbu shartnoma va uning ilovasiga (spesifikatsiyaga) muvofiq mahsulotlarni tayyorlash hamda xizmatlar ko'rsatish, Buyurtmachi esa ularni qabul qilish va to'lovni amalga oshirish majburiyatini oladi.
+        </div>
+
+        <div style="margin:18px 0 10px;text-align:center;font-size:14px;font-weight:700;letter-spacing:0.08em;color:#6b7280">SPESIFIKATSIYA</div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width:34px">№</th>
+              <th>Mahsulot nomi, Rangi va O'lchamlari / Xizmat turi</th>
+              <th style="width:150px">Izoh</th>
+              <th style="width:74px">Miqdori</th>
+              <th style="width:100px">Narxi (so'm)</th>
+              <th style="width:110px">Jami (so'm)</th>
+            </tr>
+          </thead>
+          <tbody id="cBody">
+            <tr><td colspan="6" style="padding:5px 8px;font-size:12.5px;font-weight:700;text-align:center">Mahsulotlar:</td></tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="5" style="text-align:right;font-weight:700;letter-spacing:0.02em">JAMI TO'LOV SUMMASI:</td>
+              <td id="cTotal" style="text-align:right;font-weight:700;font-variant-numeric:tabular-nums"></td>
+            </tr>
+          </tfoot>
+        </table>
+        <div style="margin-top:6px;font-size:12px;color:#6b7280">Jami summa so'z bilan: <span id="cWords"></span> so'm.</div>
+
+        <div style="margin:18px 0 8px;text-align:center;font-size:13.5px;font-weight:700;letter-spacing:0.06em;color:#6b7280">ALOHIDA SHARTLAR / ОСОБЫЕ УСЛОВИЯ</div>
+
+        <div style="border:1px solid #1d1d1d;padding:12px 14px;font-size:12.5px;line-height:1.55">
+          <div>1. Men, tanlagan dekor va kromka ushbu hujjatda ko'rsatilgan parametrlar va ranglarga to'liq mos keladi.</div>
+          <div>2. O'lchamlar hamda kromka yopishtiriladigan taraflarni diqqat bilan tekshirib chiqdim.</div>
+          <div>3. Buyurtma tayyor bo'lgach, ushbu hujjatda keltirilgan o'lchamlar bo'yicha hech qanday e'tirozim yo'q.</div>
+          <div>4. Ishlab chiqarish muddati to'lov amalga oshirilgan kundan boshlab hisoblanishini tasdiqlayman.</div>
+          <div>5. Mijoz tomonidan olib ketilmagan, ishlab chiqarish jarayoni natijasida qolgan yoki u tomonidan qabul qilib olinmagan detallar korxona hududida 3 (uch) kalendar kuni davomida saqlanadi.</div>
+          <div style="height:1px;background:#1d1d1d;margin:10px 0"></div>
+          <div>1. Я подтверждаю, что выбранные мной декор и кромка полностью соответствуют параметрам и цветам, указанным в данном документе.</div>
+          <div>2. Я внимательно проверил размеры, а также стороны, на которые будет наклеена кромка.</div>
+          <div>3. После изготовления заказа я не имею никаких претензий по размерам, указанным в данном документе.</div>
+          <div>4. Подтверждаю, что срок изготовления рассчитывается с даты фактического осуществления оплаты.</div>
+          <div>5. Детали, не вывезенные Заказчиком, оставшиеся в результате производственного процесса либо не принятые им, подлежат хранению на территории предприятия в течение 3 (трёх) календарных дней.</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:26px">
+          <div>
+            <div style="text-align:center;font-size:14px;font-weight:700;letter-spacing:0.03em">"IJROCHI" / "ИСПОЛНИТЕЛЬ"</div>
+            <div style="display:flex;flex-direction:column;gap:18px;margin-top:16px">
+              <div class="sigline"><div>Mas'ul shaxs:</div><div style="text-align:right"><input class="doc-in" data-head="resp" style="width:100%;font-weight:700;text-align:right"></div></div>
+              <div class="sigline"><div>Sotuvchi:</div><div class="sigval" id="cSeller"></div></div>
+              <div class="sigline"><div>Texnolog:</div><div style="text-align:right"><input class="doc-in" data-head="tech" style="width:100%;font-weight:700;text-align:right"></div></div>
+              <div class="sigline"><div>Bazischi:</div><div style="text-align:right"><input class="doc-in" data-head="base" style="width:100%;font-weight:700;text-align:right"></div></div>
+            </div>
+          </div>
+          <div>
+            <div style="text-align:center;font-size:14px;font-weight:700;letter-spacing:0.03em">"BUYURTMACHI" / "ЗАКАЗЧИК"</div>
+            <div style="display:flex;flex-direction:column;gap:18px;margin-top:16px">
+              <div class="sigline"><div>F.I.SH:</div><div class="sigval" id="cClient"></div></div>
+              <div class="sigline"><div>Imzo:</div><div></div></div>
+              <div class="sigline"><div>Sana:</div><div style="text-align:right" id="cDate2"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ───────── yordamchi funksiyalar ───────── */
+
+  var fmt = function (n) {
+    var v = Math.round(Number(n) || 0);
+    return String(Math.abs(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  };
+
+  var TR = { '\u02bb': '', '\u02bc': '', "'": '', '\u2018': '', '\u2019': '', '\u045e': 'U', '\u049b': 'Q', '\u0493': 'G', '\u04b3': 'H' };
+
+  // Ombor artikuli: mahsulot nomidan 3 harf + qator tartibi. Xodim tahrirlay olmaydi.
+  var makeCode = function (name, i) {
+    var clean = String(name || '').split('').map(function (c) {
+      return TR[c] !== undefined ? TR[c] : c;
+    }).join('').toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').trim();
+    if (!clean) return 'FUR-' + String(i + 1).padStart(3, '0');
+    var w = clean.split(/\s+/);
+    var stem = (w.length > 1 ? w[0].slice(0, 2) + w[1].slice(0, 1) : w[0].slice(0, 3)).padEnd(3, 'X');
+    return 'FUR-' + stem + '-' + String(i + 1).padStart(3, '0');
+  };
+
+  var ONES = ['', 'bir', 'ikki', 'uch', "to'rt", 'besh', 'olti', 'yetti', 'sakkiz', "to'qqiz"];
+  var TENS = ['', "o'n", 'yigirma', "o'ttiz", 'qirq', 'ellik', 'oltmish', 'yetmish', 'sakson', "to'qson"];
+  var under1000 = function (n) {
+    var out = [];
+    if (n >= 100) out.push(ONES[Math.floor(n / 100)] + ' yuz');
+    var t = n % 100;
+    if (t >= 10) out.push(TENS[Math.floor(t / 10)]);
+    if (t % 10) out.push(ONES[t % 10]);
+    return out.join(' ');
+  };
+  var words = function (n) {
+    n = Math.round(Number(n) || 0);
+    if (n === 0) return 'nol';
+    var parts = [];
+    [[1e9, 'milliard'], [1e6, 'million'], [1e3, 'ming']].forEach(function (s) {
+      var c = Math.floor(n / s[0]);
+      if (c > 0) { parts.push(under1000(c) + ' ' + s[1]); n -= c * s[0]; }
+    });
+    if (n > 0) parts.push(under1000(n));
+    return parts.join(' ');
+  };
+
+  var todayISO = function () {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  };
+  var dmy = function (iso) {
+    if (!iso) return '__.__.____';
+    var p = String(iso).split('-');
+    return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : iso;
+  };
+  var num = function (s) {
+    var v = parseFloat(String(s).replace(/\s/g, '').replace(',', '.').replace(/[^0-9.]/g, ''));
+    return isNaN(v) ? 0 : v;
+  };
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ───────── holat (state) ───────── */
+
+  var STORE = 'mebelix.sotuv-listi.v1';
+
+  var blank = function () {
+    return {
+      view: 'list',
+      head: { client: '', phone: '', ctype: 'Jismoniy shaxs', addr: '', order: '', seller: '',
+              dateISO: todayISO(), dueISO: '', orgPhone: '', resp: '', tech: '', base: '' },
+      seq: 4,
+      rows: [
+        { id: 1, name: '', qty: 0, price: 0, disc: 0, note: '' },
+        { id: 2, name: '', qty: 0, price: 0, disc: 0, note: '' },
+        { id: 3, name: '', qty: 0, price: 0, disc: 0, note: '' }
+      ]
+    };
+  };
+
+  var state = blank();
+
+  var load = function () {
+    try {
+      var raw = localStorage.getItem(STORE);
+      if (!raw) return;
+      var s = JSON.parse(raw);
+      if (s && s.head && Array.isArray(s.rows) && s.rows.length) {
+        state.head = Object.assign(blank().head, s.head);
+        state.rows = s.rows;
+        state.seq = s.seq || s.rows.length + 1;
+      }
+    } catch (e) { /* saqlash mavjud emas — ishga xalal bermaydi */ }
+  };
+
+  var save = function () {
+    try {
+      localStorage.setItem(STORE, JSON.stringify({ head: state.head, rows: state.rows, seq: state.seq }));
+    } catch (e) { /* ignore */ }
+  };
+
+  /* ───────── sarlavha maydonlari ───────── */
+
+  var headInputs = [];
+
+  var bindHead = function () {
+    headInputs = Array.prototype.slice.call(document.querySelectorAll('[data-head]'));
+    headInputs.forEach(function (el) {
+      var k = el.getAttribute('data-head');
+      var ev = el.tagName === 'SELECT' || el.type === 'date' ? 'change' : 'input';
+      el.addEventListener(ev, function () {
+        state.head[k] = el.value;
+        syncHead(el);
+        save();
+      });
+      if (el.type === 'date') el.addEventListener('input', function () { state.head[k] = el.value; syncHead(el); save(); });
+    });
+  };
+
+  // bir maydon ikki joyda bo'lishi mumkin (list + shartnoma) — ikkalasini tenglashtiradi
+  var syncHead = function (except) {
+    headInputs.forEach(function (el) {
+      if (el === except) return;
+      var k = el.getAttribute('data-head');
+      if (el.value !== (state.head[k] || '')) el.value = state.head[k] || '';
+    });
+    $('cSeller').textContent = state.head.seller || '';
+    $('cClient').textContent = state.head.client || '';
+    $('cOrder').textContent = state.head.order || '';
+    $('cDate').textContent = dmy(state.head.dateISO);
+    $('cDate2').textContent = dmy(state.head.dateISO);
+    $('cDue').textContent = dmy(state.head.dueISO);
+  };
+
+  /* ───────── jadval qatorlari ───────── */
+
+  var tbody = $('tbody');
+
+  var makeRow = function (r) {
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td><span class="rowno"></span></td>' +
+      '<td><input class="ci name" placeholder="Mahsulot nomi">' +
+        '<div class="artikul" title="Ombor artikuli — avtomatik, tahrirlanmaydi"></div></td>' +
+      '<td><input class="ci num qty" placeholder="0"></td>' +
+      '<td><input class="ci num price" placeholder="0"></td>' +
+      '<td><input class="ci num disc" placeholder="0"></td>' +
+      '<td class="sumcell"></td>' +
+      '<td><input class="ci note" placeholder="—"></td>' +
+      '<td class="no-print" style="text-align:right"><button class="del" title="O\'chirish">\u00d7</button></td>';
+
+    var nameEl = tr.querySelector('.name');
+    var qtyEl = tr.querySelector('.qty');
+    var priceEl = tr.querySelector('.price');
+    var discEl = tr.querySelector('.disc');
+    var noteEl = tr.querySelector('.note');
+
+    nameEl.value = r.name || '';
+    noteEl.value = r.note || '';
+    qtyEl.value = r.qty ? String(r.qty).replace('.', ',') : '';
+    priceEl.value = r.price ? fmt(r.price) : '';
+    discEl.value = r.disc ? fmt(r.disc) : '';
+
+    nameEl.addEventListener('input', function () { r.name = nameEl.value; paintRow(r, tr); save(); });
+    noteEl.addEventListener('input', function () { r.note = noteEl.value; save(); });
+
+    // oxirgi qatorning Izoh maydonida Tab → yangi qator ochiladi
+    noteEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Tab' && !e.shiftKey && state.rows[state.rows.length - 1] === r) {
+        e.preventDefault();
+        addRow();
+      }
+    });
+
+    [[qtyEl, 'qty'], [priceEl, 'price'], [discEl, 'disc']].forEach(function (pair) {
+      var el = pair[0], key = pair[1];
+      el.addEventListener('input', function () { r[key] = num(el.value); paintRow(r, tr); paintTotals(); save(); });
+      el.addEventListener('blur', function () {
+        el.value = r[key] ? (key === 'qty' ? String(r[key]).replace('.', ',') : fmt(r[key])) : '';
+      });
+      el.addEventListener('focus', function () { el.select(); });
+    });
+
+    tr.querySelector('.del').addEventListener('click', function () {
+      if (state.rows.length === 1) return;
+      state.rows = state.rows.filter(function (x) { return x !== r; });
+      tr.remove();
+      renumber(); paintTotals(); save();
+    });
+
+    tbody.appendChild(tr);
+    paintRow(r, tr);
+    return tr;
+  };
+
+  var paintRow = function (r, tr) {
+    var i = state.rows.indexOf(r);
+    tr.querySelector('.rowno').textContent = i + 1;
+    tr.querySelector('.artikul').textContent = makeCode(r.name, i);
+    tr.querySelector('.sumcell').textContent = fmt(Math.max(0, r.qty * r.price - r.disc));
+  };
+
+  var renumber = function () {
+    var trs = tbody.querySelectorAll('tr');
+    state.rows.forEach(function (r, i) { if (trs[i]) paintRow(r, trs[i]); });
+    $('rowCount').textContent = state.rows.length + ' ta qator';
+  };
+
+  var addRow = function () {
+    var r = { id: state.seq++, name: '', qty: 0, price: 0, disc: 0, note: '' };
+    state.rows.push(r);
+    var tr = makeRow(r);
+    renumber(); paintTotals(); save();
+    requestAnimationFrame(function () { tr.querySelector('.name').focus(); });
+  };
+
+  var paintTotals = function () {
+    var subtotal = state.rows.reduce(function (a, r) { return a + r.qty * r.price; }, 0);
+    var discount = state.rows.reduce(function (a, r) { return a + Math.min(r.disc, r.qty * r.price); }, 0);
+    var total = Math.max(0, subtotal - discount);
+    $('subtotal').textContent = fmt(subtotal);
+    $('discount').textContent = '\u2212 ' + fmt(discount);
+    $('total').textContent = fmt(total);
+    return total;
+  };
+
+  /* ───────── shartnoma ───────── */
+
+  var buildContract = function () {
+    var body = $('cBody');
+    body.innerHTML = '<tr><td colspan="6" style="padding:5px 8px;font-size:12.5px;font-weight:700;text-align:center">Mahsulotlar:</td></tr>';
+    state.rows.forEach(function (r, i) {
+      var tr = document.createElement('tr');
+      var cell = function (txt, st) { var td = document.createElement('td'); td.style.cssText = st || ''; td.textContent = txt; return td; };
+      tr.appendChild(cell(i + 1, 'text-align:center'));
+      tr.appendChild(cell(r.name || ''));
+      tr.appendChild(cell(r.note || '', 'color:#6b7280'));
+      tr.appendChild(cell(r.qty ? String(r.qty).replace('.', ',') : '', 'text-align:center;font-variant-numeric:tabular-nums'));
+      tr.appendChild(cell(r.price ? fmt(r.price) : '', 'text-align:right;font-variant-numeric:tabular-nums'));
+      tr.appendChild(cell(fmt(Math.max(0, r.qty * r.price - r.disc)), 'text-align:right;font-weight:700;font-variant-numeric:tabular-nums'));
+      body.appendChild(tr);
+    });
+    var total = paintTotals();
+    $('cTotal').textContent = fmt(total);
+    $('cWords').textContent = words(total);
+    syncHead(null);
+  };
+
+  /* ───────── ko'rinish almashish ───────── */
+
+  var setView = function (v) {
+    state.view = v;
+    var list = v === 'list';
+    $('viewList').style.display = list ? 'flex' : 'none';
+    $('viewContract').style.display = list ? 'none' : 'block';
+    $('btnBack').style.display = list ? 'none' : '';
+    $('btnNew').style.display = list ? '' : 'none';
+    $('btnMain').textContent = list ? 'Shartnoma' : 'Chop etish';
+    $('pagerule').textContent = list
+      ? '@page { size: A4 landscape; margin: 10mm; }'
+      : '@page { size: A4 portrait; margin: 14mm; }';
+    if (!list) buildContract();
+    window.scrollTo(0, 0);
+  };
+
+  /* ───────── ishga tushirish ───────── */
+
+  load();
+  bindHead();
+  headInputs.forEach(function (el) { el.value = state.head[el.getAttribute('data-head')] || ''; });
+  syncHead(null);
+  state.rows.forEach(function (r) { makeRow(r); });
+  renumber();
+  paintTotals();
+
+  $('btnAdd').addEventListener('click', addRow);
+  $('btnMain').addEventListener('click', function () {
+    if (state.view === 'contract') { window.print(); return; }
+    setView('contract');
+  });
+  $('btnBack').addEventListener('click', function () { setView('list'); });
+  $('btnNew').addEventListener('click', function () {
+    if (!confirm('Yangi list ochilsinmi? Joriy ma\'lumotlar o\'chadi.')) return;
+    state = blank();
+    try { localStorage.removeItem(STORE); } catch (e) {}
+    tbody.innerHTML = '';
+    headInputs.forEach(function (el) { el.value = state.head[el.getAttribute('data-head')] || ''; });
+    syncHead(null);
+    state.rows.forEach(function (r) { makeRow(r); });
+    renumber(); paintTotals();
+  });
+
+  // Ctrl/Cmd+P → joriy ko'rinish chop etiladi
+  window.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'enter') { e.preventDefault(); addRow(); }
+  });
+})();
+</script>
+</body>
+</html>
