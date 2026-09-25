@@ -411,6 +411,14 @@ qabul qildi.
 esa har 5 soniyada qayta yuboraveradi — agent har takrorni YANGI hodisa deb yozardi (bitta
 o'lchov daqiqada 12 marta), Performance ham, o'lchov tarixi ham shishib ketardi.
 
+**Bu prodda ro'y berdi.** Pico v1.22 ga 2026-09-24 10:16 da o'tgan (ularning stansiya
+bazasidagi `boot` yozuvi: `"ver": "1.22"`, `"sabab": "wdt"`), prod agenti esa 1.7.1 edi —
+«Ish markazlari» sahifasida bitta o'lchov (2026-09-24 18:40:12, 821.2 mm) 18 marta chiqdi.
+O'sha kunlarda yig'ilgani **`scripts/kromka_dedup.sql`** bilan tozalanadi: kalit — Pico'ning
+o'z `xb`/`xq` si, ya'ni takrorlik taxmin emas; har guruhdan eng birinchi yozuv qoladi,
+qolgani YUMSHOQ o'chiriladi (`is_deleted`), `xb`/`xq` siz eski yozuvlarga tegilmaydi.
+`-v faqat_hisobot=1` bilan avval faqat sanab ko'rsatadi.
+
 Tekshiruv (v1.19–v1.22, bir martalik skript): **15/15** — Pico takror yuborgan ikkita o'lchov
 navbatga bir marta tushdi, kalit `xb`/`xq` dan olindi, `boot` dagi `sabab: wdt` saqlandi,
 `sig` va `yigilgan` yozilmadi, server yozmaguncha `ACK` yo'q, server yozgach bitta qator
@@ -628,6 +636,7 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `kromka_v122_oracle.py` (15/15) | §4.8, proshivka v1.19-v1.22 |
 | `rover_oracle.py` (19/19) | §4.13 |
 | `tablo_machines_oracle.py` (29/29) | `docs/05` — stanok taxtasi |
+| `kromka_dedup_oracle.py` (17/17) | `scripts/kromka_dedup.sql` — v1.22 takrorlarini tozalash |
 
 ## 5. Prod auditi natijalari (2026-09-16)
 

@@ -48,4 +48,5 @@ cd backend && set -a && . /tmp/oee_test.env && set +a \
 | `kromka_v122_oracle.py` | Proshivka v1.19-v1.22: `xb`/`xq` kaliti, takror hodisa, `ACK` faqat server yozgach, `sig`/`yigilgan` uzatilmasligi |
 | `rover_oracle.py` | CNC 2130: `hello`/`state`/`event`, `rover_type`, tasdiq (`ack`) tartibi, vaqt va sozlama yuborish |
 | `tablo_machines_oracle.py` | Stanok taxtasi (`GET /tablo/machines`) — raqamlar hisobotning aynan o'zidan |
+| `kromka_dedup_oracle.py` | `scripts/kromka_dedup.sql`: takrorlar o'chadi, haqiqiylari qoladi, hisobot to'g'rilanadi, ikkinchi yurgizish xavfsiz |
 | `demo_seed.py` | Orakl fixture'i ustiga lokal demo ma'lumot (skript emas, ko'rsatish uchun) |
