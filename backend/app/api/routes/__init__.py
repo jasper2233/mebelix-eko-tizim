@@ -4,6 +4,7 @@ from app.api.deps import get_current_user
 
 from .audit import router as audit_router
 from .bridge_agents import router as bridge_agents_router
+from .catalog import router as catalog_router
 from .clients import router as clients_router
 from .defects import router as defects_router
 from .defects_review import router as defects_review_router
@@ -43,6 +44,7 @@ router.include_router(posts_router, dependencies=_protected)
 router.include_router(orders_router, dependencies=_protected)
 router.include_router(pachka_router, dependencies=_protected)
 router.include_router(tmo_router, dependencies=_protected)
+router.include_router(catalog_router, dependencies=_protected)  # mahsulotlar ombori katalogi
 router.include_router(audit_router, dependencies=_protected)
 router.include_router(terminal_router, dependencies=_protected)
 router.include_router(downtimes_router, dependencies=_protected)

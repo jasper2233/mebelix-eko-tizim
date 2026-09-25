@@ -1,0 +1,138 @@
+# 14. Mahsulotlar ombori — katalog
+
+Tsexning katalogi: **material, furnitura va xizmat** pozitsiyalari, har birining
+qat'iy kodi, artikuli, narxi va ombordagi qoldig'i. Manba — Google Sheets'dagi
+`Katalog.xlsx`; MESda u `catalog_item` jadvalida va `/warehouse` sahifasida.
+
+2026-09-25 holatiga **2662 pozitsiya**: M 2131, F 490, X 41.
+
+## 1. Kodlash tizimi
+
+Kod TO'RT qismdan iborat va **hech qachon o'zgarmaydi**:
+
+```
+M  –  LD  –  054  –  03
+│     │     │      └── VARIANT  (2 raqam) — matritsa, rang yoki o'lcham
+│     │     └───────── MODEL    (3 raqam) — dekor yoki model raqami
+│     └─────────────── GURUH    (2 harf)  — LD, RC, PT …
+└───────────────────── KATALOG  (1 harf)  — M / F / X
+```
+
+| Harf | Katalog | Nima kiradi |
+| --- | --- | --- |
+| `M` | Material | Plita, dekor, stolishnitsa, fasad paneli |
+| `F` | Furnitura | Petlya, yo'naltirgich, tutqich, kromka, krepyoj |
+| `X` | Xizmat | Raskroy, prisadka, kromkalash, montaj |
+
+**Variant raqami** har bo'limda o'z ma'nosiga ega. `M-LD` va `M-LM` (LDSP va
+LMDF dekorlari) da u MATRITSA va QAT'IY biriktirilgan:
+
+| 01 | 02 | 03 | 04 | 05 | 06 | 07 | 08 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| glyanets | glatkiy | tekstura | shagren | kamin | koja | shpon | tomchi |
+
+Qolgan bo'limlarda variant ketma-ket beriladi (01, 02, 03 …) va rang yoki
+o'lchamni bildiradi.
+
+Qat'iy qoidalar (katalog egasining qarori, varaqdagi «KODLASH TIZIMI» bo'limi):
+
+- Kod bir marta beriladi va o'zgarmaydi — mahsulot sotuvdan chiqsa ham kodi band qoladi
+- Bir kod = bir mahsulot; o'chirilgan pozitsiyaning kodi qayta ishlatilmaydi
+- O'lcham har doim MM da (`2750x1830x16`, `350`)
+
+## 2. Jadval — `catalog_item`
+
+Migratsiya `6d9d9f645802`. **Bitta jadval**: M, F va X bir xil kod tuzilishiga va
+bir xil narx/qoldiq ustunlariga ega, uchta jadval bo'lsa har so'rov `UNION`
+bo'lardi va «bir kod = bir mahsulot» qoidasini hech kim ushlab turolmasdi — u
+aynan shu jadvaldagi **unikal indeks** (`ix_catalog_item_code`).
+
+| Ustun | Izoh |
+| --- | --- |
+| `code` | To'liq kod (`M-LD-054-03`) — unikal, katalogning yagona kaliti |
+| `catalog`, `group_code`, `model_no`, `variant_no` | Kodning qismlari ALOHIDA ustun sifatida: kategoriya daraxti va saralash shulardan, matnni qayta bo'lish shart emas |
+| `group_name` | Guruh nomi (`LDSP dekorlar`) — kodda yo'q, varaqdan keladi |
+| `name`, `unit`, `size_text`, `thickness_mm`, `article` | Nomi, birligi (`list`/`dona`/`metr`), o'lchami, qalinligi, zavod artikuli |
+| `decor_no`, `decor_name`, `matrix`, `image_url` | Dekor bo'yicha pozitsiyalar uchun (`M-LD`, `M-LM`) |
+| `quantity`, `min_quantity`, `location` | Ombor: qoldiq, eng kam qoldiq (undan past — «kam qolgan»), javon |
+| `purchase_price`, `sale_price`, `status` | Xarid/sotuv narxi (`Numeric`), `Aktiv` yoki `Arxiv` |
+| `note`, `extra` | Izoh va varaqdagi qolgan maydonlar (`Rang`, `Xarakteristika`, `Nachinka`, `Model nomi`, `Tur`, `Variant`) JSONB da |
+
+Alohida `catalog_group` jadvali **yo'q**: guruh 33 ta va nomi kod bilan birga
+varaqdan keladi, daraxt esa `GROUP BY catalog, group_code` bilan quriladi.
+Alohida jadval bo'lsa import har safar ikkitasini sinxronlashi kerak edi.
+
+Nega `stock_item` emas: u (va `stock_move`, `sale`, `payment`) — olib tashlangan
+materiallar ombori modulidan qolgan **yetim jadval**, prodda bo'sh turibdi va
+`LEGACY_TABLES` da e'tiborsiz qoldiriladi (`docs/04` §4.4). Ustunlari boshqa
+modelga tegishli edi.
+
+## 3. Yuklash — `scripts/catalog_import.py`
+
+Ikki qadam, ikki sabab:
+
+```bash
+# 1. Varaqdan CSV (faqat lokalda — xlsx binar, diff'i ko'rinmaydi)
+cd backend && uv run python ../scripts/catalog_import.py --xlsx ../docs/Katalog.xlsx
+
+# 2. CSV dan bazaga (lokalda yoki serverda — CSV deploy bilan boradi)
+cd backend && uv run python ../scripts/catalog_import.py --apply
+```
+
+Serverda:
+
+```bash
+cd /opt/mebelix-mes && docker compose -f docker-compose.prod.yml exec -T api \
+  python /app/scripts/catalog_import.py --apply
+```
+
+Qoidalar:
+
+- **Upsert KOD bo'yicha.** Qayta yurgizish xavfsiz: mavjud pozitsiya yangilanadi,
+  takror yozuv paydo bo'lmaydi.
+- **`quantity`, `min_quantity`, `location` TEGILMAYDI.** Ular omborchining ishi va
+  varaqda umuman yo'q — import ularning ustiga yozib ketsa, qoldiq har yuklashda
+  nolga qaytardi.
+- Kod qoidaga mos kelmasa satr **tashlanadi** va sababi `stderr` ga yoziladi:
+  katalogning butun ma'nosi kodda, «deyarli to'g'ri» kod keyin hech narsaga ulanmaydi.
+- Ma'lumot MIGRATSIYADA emas: katalog o'zgarib turadi, prodga qo'llangan
+  migratsiya esa tahrirlanmaydi.
+
+Varaqdan **olinmaydigan** ustunlar: `Nom holati` (hamma satrda bir xil matn —
+legenda), `Nima tuzatildi` (varaqni tozalash jurnali), `Foyda` va `Marja %`
+(sotuv − xarid), `1 list m²` (o'lchamdan kelib chiqadi). `Maxsulotlar`
+varag'idagi `RASM` ustuni buzuq formula (`#ERROR!`) — rasm havolasi `Dekorlar`
+varag'idan `Dekor №` bo'yicha ulanadi.
+
+## 4. API — `/api/v1/catalog`
+
+| Metod | Yo'l | Kim | Nima qiladi |
+| --- | --- | --- | --- |
+| GET | `/catalog/groups` | `WarehouseReadUser` | Kategoriya daraxti: katalog → guruh, har birida nechta pozitsiya + katalog bo'yicha jami |
+| GET | `/catalog/items` | `WarehouseReadUser` | Ro'yxat. Filtrlar: `catalog`, `group_code`, `status`, `low_stock`, `search` (kod, nom, artikul, dekor nomi bo'ylab), `skip`/`limit` |
+| PATCH | `/catalog/items/{id}` | `WarehouseUser` | Qoldiq, eng kam qoldiq, joylashuv, narxlar, holat, izoh. Kod/nom/o'lcham bu yerdan O'ZGARMAYDI — ular varaqdan keladi |
+
+Rollar (`api/deps.py`):
+
+- **O'qish** — menejer, texnolog, direktor, **omborchi**. Katalogda narx bor,
+  shuning uchun tsex rollariga ochilmaydi.
+- **Yozish** — menejer va omborchi. Texnolog va direktor katalogni ko'radi, lekin
+  qoldiqni ular yuritmaydi.
+
+## 5. Sahifa — `/warehouse`
+
+`routes/_layout/warehouse.tsx`. Chapda **kategoriya daraxti** (katalog harfi →
+guruh, yonida sanoq), o'ngda jadval: kod (monoshrift, birinchi ustun — omborchi
+javonda aynan shuni izlaydi), nomi (ostida guruh · o'lcham · matritsa), artikul,
+qoldiq, joy, xarid va sotuv narxi. Chegaradan past qoldiq **qizil**, tooltip'da
+chegara ko'rsatiladi.
+
+Sarlavha qatorida qidiruv va «**Kam qolgan**» tugmasi — omborchining birinchi
+savoli «nimani buyurtma qilish kerak»; chegara qo'yilmagan pozitsiya bu ro'yxatga
+tushmaydi. Qalam tugmasi (faqat yozish huquqi bo'lsa) ombor maydonlarini
+tahrirlaydigan dialogni ochadi.
+
+Tekshiruv: `scripts/oracles/catalog_oracle.py` — **32/32** (kod formati, takror
+yo'qligi, daraxt sanoqlari, filtrlar va qidiruv, artikulning matn bo'lib
+qolishi, dekor rasmining ulanishi, qoldiq yozilishi, «kam qolgan», qayta
+importda qoldiqning saqlanishi).

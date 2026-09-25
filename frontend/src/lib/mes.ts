@@ -221,6 +221,13 @@ export const isManagement = (u?: RoleUser | null) =>
 /** Ishlab chiqarish sahifalari (buyurtmalar, ish markazlari): boshqaruv + texnolog */
 export const isProductionStaff = (u?: RoleUser | null) =>
   isManagement(u) || u?.role === "texnolog"
+/** Mahsulotlar ombori katalogini KO'RISH (backend `WarehouseReadUser`) */
+export const isWarehouseStaff = (u?: RoleUser | null) =>
+  isProductionStaff(u) || u?.role === "omborchi"
+/** Qoldiq, joylashuv va narxni YOZISH (backend `WarehouseUser`): texnolog va
+ *  direktor katalogni ko'radi, lekin qoldiqni ular yuritmaydi */
+export const isWarehouseWriter = (u?: RoleUser | null) =>
+  isManager(u) || u?.role === "omborchi"
 
 // Ish markazi bog'lami MAJBURIY rollar — qurilma akkauntlari (Admin dialoglarida
 // rol tanlovi, machine_id validatsiyasi va bog'lamni uzish shu ro'yxatdan)

@@ -519,6 +519,193 @@ export type BridgeScanRequest = {
 };
 
 /**
+ * CatalogGroup
+ *
+ * Kategoriya daraxtining bitta bandi — `M-LD`, «LDSP dekorlar», 836 pozitsiya.
+ */
+export type CatalogGroup = {
+    /**
+     * Catalog
+     */
+    catalog: string;
+    /**
+     * Group Code
+     */
+    group_code: string;
+    /**
+     * Group Name
+     */
+    group_name: string;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * CatalogItemRead
+ */
+export type CatalogItemRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Catalog
+     */
+    catalog: string;
+    /**
+     * Group Code
+     */
+    group_code: string;
+    /**
+     * Group Name
+     */
+    group_name: string;
+    /**
+     * Model No
+     */
+    model_no: number;
+    /**
+     * Variant No
+     */
+    variant_no: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Unit
+     */
+    unit: string | null;
+    /**
+     * Size Text
+     */
+    size_text: string | null;
+    /**
+     * Thickness Mm
+     */
+    thickness_mm: string | null;
+    /**
+     * Article
+     */
+    article: string | null;
+    /**
+     * Decor No
+     */
+    decor_no: number | null;
+    /**
+     * Decor Name
+     */
+    decor_name: string | null;
+    /**
+     * Matrix
+     */
+    matrix: string | null;
+    /**
+     * Image Url
+     */
+    image_url: string | null;
+    /**
+     * Quantity
+     */
+    quantity: string;
+    /**
+     * Min Quantity
+     */
+    min_quantity: string | null;
+    /**
+     * Location
+     */
+    location: string | null;
+    /**
+     * Purchase Price
+     */
+    purchase_price: string | null;
+    /**
+     * Sale Price
+     */
+    sale_price: string | null;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Note
+     */
+    note: string | null;
+    /**
+     * Extra
+     */
+    extra: {
+        [key: string]: unknown;
+    };
+};
+
+/**
+ * CatalogItemUpdate
+ *
+ * Omborchi tahrirlaydigan maydonlar.
+ *
+ * Kod, nom, guruh va o'lcham ATAYLAB yo'q: ular katalogdan (`Katalog.xlsx` →
+ * `scripts/catalog_import.py`) keladi va shu yerda o'zgartirilsa keyingi
+ * yuklashda ustiga yozilardi. Kod esa umuman o'zgarmaydi — katalog qoidasi.
+ */
+export type CatalogItemUpdate = {
+    /**
+     * Quantity
+     */
+    quantity?: number | string | null;
+    /**
+     * Min Quantity
+     */
+    min_quantity?: number | string | null;
+    /**
+     * Location
+     */
+    location?: string | null;
+    /**
+     * Purchase Price
+     */
+    purchase_price?: number | string | null;
+    /**
+     * Sale Price
+     */
+    sale_price?: number | string | null;
+    /**
+     * Status
+     */
+    status?: string | null;
+    /**
+     * Note
+     */
+    note?: string | null;
+};
+
+/**
+ * CatalogTree
+ *
+ * Butun daraxt + har katalogdagi jami. Bitta so'rovda: ro'yxat sahifasi
+ * ochilishi bilan chap ustun ham, sanoqlar ham kerak bo'ladi.
+ */
+export type CatalogTree = {
+    /**
+     * Groups
+     */
+    groups: Array<CatalogGroup>;
+    /**
+     * Totals
+     */
+    totals: {
+        [key: string]: number;
+    };
+};
+
+/**
  * ClientCreate
  */
 export type ClientCreate = {
@@ -3170,6 +3357,20 @@ export type PaginatedAuditLogRead = {
      * Data
      */
     data: Array<AuditLogRead>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * Paginated[CatalogItemRead]
+ */
+export type PaginatedCatalogItemRead = {
+    /**
+     * Data
+     */
+    data: Array<CatalogItemRead>;
     /**
      * Count
      */
@@ -7177,6 +7378,106 @@ export type AcceptIntoTmoResponses = {
 };
 
 export type AcceptIntoTmoResponse = AcceptIntoTmoResponses[keyof AcceptIntoTmoResponses];
+
+export type ReadCatalogGroupsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/catalog/groups';
+};
+
+export type ReadCatalogGroupsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CatalogTree;
+};
+
+export type ReadCatalogGroupsResponse = ReadCatalogGroupsResponses[keyof ReadCatalogGroupsResponses];
+
+export type ReadCatalogItemsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Catalog
+         */
+        catalog?: string | null;
+        /**
+         * Group Code
+         */
+        group_code?: string | null;
+        /**
+         * Status
+         */
+        status?: 'Aktiv' | 'Arxiv' | null;
+        /**
+         * Low Stock
+         */
+        low_stock?: boolean;
+        /**
+         * Search
+         */
+        search?: string | null;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/catalog/items';
+};
+
+export type ReadCatalogItemsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadCatalogItemsError = ReadCatalogItemsErrors[keyof ReadCatalogItemsErrors];
+
+export type ReadCatalogItemsResponses = {
+    /**
+     * Successful Response
+     */
+    200: PaginatedCatalogItemRead;
+};
+
+export type ReadCatalogItemsResponse = ReadCatalogItemsResponses[keyof ReadCatalogItemsResponses];
+
+export type UpdateCatalogItemData = {
+    body: CatalogItemUpdate;
+    path: {
+        /**
+         * Item Id
+         */
+        item_id: number;
+    };
+    query?: never;
+    url: '/api/v1/catalog/items/{item_id}';
+};
+
+export type UpdateCatalogItemErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateCatalogItemError = UpdateCatalogItemErrors[keyof UpdateCatalogItemErrors];
+
+export type UpdateCatalogItemResponses = {
+    /**
+     * Successful Response
+     */
+    200: CatalogItemRead;
+};
+
+export type UpdateCatalogItemResponse = UpdateCatalogItemResponses[keyof UpdateCatalogItemResponses];
 
 export type ReadAuditSummaryData = {
     body?: never;

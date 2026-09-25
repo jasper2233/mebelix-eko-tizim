@@ -17,6 +17,7 @@ Loyihaning to'liq texnik hujjatlari. Har bir fayl o'z subsystemidagi **har bir m
 | [11-detal-id-nomlash.md](11-detal-id-nomlash.md) | Detal ID qoidasi: `{mahsulot}_{kod}[-N][_n]` — chek = QR = SCX nomi; `-N` kod to'qnashuvi (boshqa detal), `_n` nusxa raqami; qo'llanadigan joylar va misollar |
 | [12-oee.md](12-oee.md) | OEE (Prisadka): formula va har qismining manbasi, tarix (2026-08-21 qaytarilgan modul, andon), Pico signal ustuni shartnomasi, ish jadvali sozlamalari, `scripts/oee_audit.sql` va prod auditi natijalari, `scripts/oracles/` dagi tekshiruv skriptlari (§4.14), keyingi qadamlar, ochiq qarorlar, xavflar |
 | [13-bazis-3d.md](13-bazis-3d.md) | Bazis `.b3d` formati (teskari muhandislik: konteyner, daraxt kodlashi, kontur segmentlari, iyerarxik joylashuv) va yig'uvchiga ochiq 3D havola moduli: MES bilan bog'lanish kaliti, oqim, capability-URL himoyasi, endpointlar, frontend sahnasi va chegaralar |
+| [14-mahsulotlar-ombori.md](14-mahsulotlar-ombori.md) | Mahsulotlar ombori katalogi: to'rt qismli kodlash tizimi (katalog/guruh/model/variant) va matritsa raqamlari, `catalog_item` jadvali, `scripts/catalog_import.py` (varaq → CSV → baza, qoldiqqa tegmaydigan upsert), `/catalog` endpointlari va rollari, `/warehouse` sahifasi |
 
 ## Yangilab borish
 

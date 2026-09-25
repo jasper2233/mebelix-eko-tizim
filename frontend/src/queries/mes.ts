@@ -3,6 +3,7 @@ import { toast } from "sonner"
 
 import {
   BridgeAgentsService,
+  CatalogService,
   ClientsService,
   EmployeesService,
   MachinesService,
@@ -16,6 +17,51 @@ import { handleError } from "@/utils"
 
 // Small reference sets are fetched whole; registries pull up to the backend max page.
 export const PAGE_SIZE = 100 // backend MAX_PAGE_SIZE
+
+/** Mahsulotlar ombori: kategoriya daraxti. Kamdan-kam o'zgaradi (katalog
+ *  import bilan yangilanadi), shuning uchun uzoq `staleTime`. */
+export const getCatalogGroupsQueryOptions = () =>
+  queryOptions({
+    queryKey: ["catalog", "groups"],
+    queryFn: async () => (await CatalogService.readCatalogGroups()).data,
+    staleTime: 5 * 60_000,
+  })
+
+export type CatalogFilter = {
+  catalog?: string
+  groupCode?: string
+  status?: "Aktiv" | "Arxiv"
+  lowStock?: boolean
+  search?: string
+}
+
+export const getCatalogItemsQueryOptions = (filter: CatalogFilter, skip = 0) =>
+  queryOptions({
+    queryKey: [
+      "catalog",
+      "items",
+      filter.catalog ?? "",
+      filter.groupCode ?? "",
+      filter.status ?? "",
+      filter.lowStock ?? false,
+      filter.search ?? "",
+      skip,
+    ],
+    queryFn: async () =>
+      (
+        await CatalogService.readCatalogItems({
+          query: {
+            catalog: filter.catalog || undefined,
+            group_code: filter.groupCode || undefined,
+            status: filter.status || undefined,
+            low_stock: filter.lowStock || undefined,
+            search: filter.search || undefined,
+            skip,
+            limit: PAGE_SIZE,
+          },
+        })
+      ).data,
+  })
 
 export const getPostsQueryOptions = () =>
   queryOptions({

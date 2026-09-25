@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import {
   BarChart3,
+  Boxes,
   ClipboardList,
   Factory,
   Gauge,
@@ -24,7 +25,13 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
-import { isAdmin, isManagement, isManager, isProductionStaff } from "@/lib/mes"
+import {
+  isAdmin,
+  isManagement,
+  isManager,
+  isProductionStaff,
+  isWarehouseStaff,
+} from "@/lib/mes"
 import { getOrderStatusCountsQueryOptions } from "@/queries/mes"
 import { type Item, Main } from "./Main"
 import { User } from "./User"
@@ -42,6 +49,12 @@ export const NAV_ITEMS: (Item & {
     title: "Buyurtmalar",
     path: "/orders",
     show: isProductionStaff,
+  },
+  {
+    icon: Boxes,
+    title: "Mahsulotlar ombori",
+    path: "/warehouse",
+    show: isWarehouseStaff,
   },
   { icon: UserRound, title: "Mijozlar", path: "/clients", show: isManagement },
   { icon: IdCard, title: "Hodimlar", path: "/employees", show: isManagement },

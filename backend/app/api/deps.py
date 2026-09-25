@@ -85,4 +85,13 @@ ManagerOrTexnologUser = Annotated[User, Depends(require_roles(UserRole.MANAGER, 
 StaffReadUser = Annotated[
     User, Depends(require_roles(UserRole.MANAGER, UserRole.TEXNOLOG, UserRole.DIRECTOR))
 ]  # read-only lists shared by office roles
+#: Mahsulotlar ombori katalogi. O'QISH — ofis rollari va OMBORCHI: katalogda
+#: narx ham bor, shuning uchun tsex rollariga ochilmaydi.
+WarehouseReadUser = Annotated[
+    User,
+    Depends(require_roles(UserRole.MANAGER, UserRole.TEXNOLOG, UserRole.DIRECTOR, UserRole.OMBORCHI)),
+]
+#: YOZISH (qoldiq, joylashuv, narx) — omborchi va menejer. Texnolog va direktor
+#: katalogni ko'radi, lekin qoldiqni ular yuritmaydi.
+WarehouseUser = Annotated[User, Depends(require_roles(UserRole.MANAGER, UserRole.OMBORCHI))]
 AdminUser = Annotated[User, Depends(require_roles(UserRole.ADMIN))]
