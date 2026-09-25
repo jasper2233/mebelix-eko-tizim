@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
-import { createFileRoute } from "@tanstack/react-router"
-import { Pencil } from "lucide-react"
+import { createFileRoute, Link } from "@tanstack/react-router"
+import { Pencil, ReceiptText } from "lucide-react"
 import { useState } from "react"
 
 import type { CatalogItemRead } from "@/client"
@@ -135,12 +135,21 @@ function WarehousePage() {
             : "Katalog: material, furnitura va xizmatlar"
         }
         actions={
-          <SearchInput
-            className="w-full md:w-80"
-            placeholder="Kod, nom, artikul yoki dekor"
-            value={search}
-            onChange={filtr(setSearch)}
-          />
+          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
+            <SearchInput
+              className="w-full md:w-72"
+              placeholder="Kod, nom, artikul yoki dekor"
+              value={search}
+              onChange={filtr(setSearch)}
+            />
+            {/* Sotuv listi katalogdan qatorlarni oladi — shuning uchun kirish
+                joyi shu yerda, alohida menyu bandi emas */}
+            <Button asChild>
+              <Link to="/sotuv">
+                <ReceiptText className="size-4" /> Sotuv listi
+              </Link>
+            </Button>
+          </div>
         }
       />
 

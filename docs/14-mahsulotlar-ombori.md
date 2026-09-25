@@ -167,3 +167,38 @@ Tekshiruv: `scripts/oracles/catalog_oracle.py` — **32/32** (kod formati, takro
 yo'qligi, daraxt sanoqlari, filtrlar va qidiruv, artikulning matn bo'lib
 qolishi, dekor rasmining ulanishi, qoldiq yozilishi, «kam qolgan», qayta
 importda qoldiqning saqlanishi).
+
+## 6. Sotuv listi — `/sotuv`
+
+Ombor sahifasidagi «**Sotuv listi**» tugmasi ochadi. Manba — tsexning qog'oz
+namunasi (`docs/mebelix-sotuv-listi.html`, mustaqil prototip); MESga
+ko'chirilganda ikki narsa o'zgardi:
+
+1. **Ranglar MESniki** — prototip apelsin (`#ef7d1a`) edi, sahifa esa loyihaning
+   o'z tokenlarida (kechki ko'k + oltin) va o'z komponentlarida (`Table`,
+   `Input`, `SelectField`) yozilgan.
+2. **Artikul HAQIQIY.** Prototipdagi `makeCode()` mahsulot nomidan
+   `FUR-BEL-001` yasardi — omborda unday kod yo'q edi. Endi qator KATALOGDAN
+   tanlanadi (`CatalogPicker` → `GET /catalog/items?search=`): kod, zavod
+   artikuli, birlik va **sotuv narxi** o'zi to'ladi. Narx qulflanmaydi —
+   chegirma va kelishuv narxi sotuvchining ishi.
+
+Katalogda yo'q narsa uchun qator erkin matn bo'lib qolaveradi (bir martalik
+xizmat, mijozning o'z materiali) — ostida «katalogda yo'q — erkin qator» deb
+turadi.
+
+Ikki ko'rinish, bitta ma'lumot:
+
+| Ko'rinish | Nima | Qog'oz |
+| --- | --- | --- |
+| **List** | Mijoz va buyurtma kartalari, qatorlar (soni · narx · chegirma · summa), jami, imzo chiziqlari | A4 **ko'ndalang** — sakkiz ustun |
+| **Shartnoma** | Spesifikatsiya (kod · artikul ustuni bilan), jami summa **so'z bilan** (`lib/mes: moneyToWords`), alohida shartlar, imzo bloklari | A4 **bo'yiga**, serif shrift |
+
+`@page` qoidasi ko'rinishga qarab almashadi; sahifadagi boshqaruvlar
+`print-hide` bilan chop etishdan chiqariladi (`index.css` dagi umumiy qoida).
+
+**Bazaga yozilmaydi** (2026-09-25): list brauzerda saqlanadi
+(`localStorage`, `mebelix.sotuv-listi.v1`) va qog'oz hujjat sifatida chop
+etiladi. Ya'ni u boshqa kompyuterda ko'rinmaydi va MES hisobotlariga kirmaydi.
+Bazaga ko'chirilsa: `sale_sheet` + `sale_sheet_row` jadvallari, buyurtmaga
+bog'lanish va saqlash kaliti versiyasini oshirish kerak.

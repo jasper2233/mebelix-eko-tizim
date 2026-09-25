@@ -388,6 +388,63 @@ export function groupThousands(digits: string): string {
 
 /** So'm butun son (tiyin yo'q): API'dan kelgan "14000000.00" ham, hisoblangan
  * qoldiq ham butunga yaxlitlanadi. */
+const BIRLIK = [
+  "",
+  "bir",
+  "ikki",
+  "uch",
+  "to'rt",
+  "besh",
+  "olti",
+  "yetti",
+  "sakkiz",
+  "to'qqiz",
+]
+const ONLIK = [
+  "",
+  "o'n",
+  "yigirma",
+  "o'ttiz",
+  "qirq",
+  "ellik",
+  "oltmish",
+  "yetmish",
+  "sakson",
+  "to'qson",
+]
+
+const uchXona = (n: number): string => {
+  const out: string[] = []
+  if (n >= 100) out.push(`${BIRLIK[Math.floor(n / 100)]} yuz`)
+  const t = n % 100
+  if (t >= 10) out.push(ONLIK[Math.floor(t / 10)])
+  if (t % 10) out.push(BIRLIK[t % 10])
+  return out.join(" ")
+}
+
+/** Summani SO'Z bilan — shartnomada summa raqam bilan ham, so'z bilan ham
+ *  yoziladi (hujjat talabi: raqamni keyin tuzatib bo'lmasin). Tiyin yo'q. */
+export function moneyToWords(
+  value: string | number | null | undefined,
+): string {
+  let n = Math.round(Number(value) || 0)
+  if (n <= 0) return "nol"
+  const parts: string[] = []
+  for (const [birlik, nom] of [
+    [1e9, "milliard"],
+    [1e6, "million"],
+    [1e3, "ming"],
+  ] as const) {
+    const c = Math.floor(n / birlik)
+    if (c > 0) {
+      parts.push(`${uchXona(c)} ${nom}`)
+      n -= c * birlik
+    }
+  }
+  if (n > 0) parts.push(uchXona(n))
+  return parts.join(" ")
+}
+
 export function formatMoney(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === "") return "—"
   const n = Math.round(Number(value))
