@@ -26,13 +26,17 @@ import { isWarehouseOnly, OPERATOR_ROLES } from "@/lib/mes"
 // Mobil sarlavhalar sidebar menyusi bilan BITTA manbadan (NAV_ITEMS) —
 // "/settings" menyuda yo'q (foydalanuvchi dropdown'ida), alohida qo'shiladi.
 const sectionTitles: Record<string, string> = {
-  ...Object.fromEntries(NAV_ITEMS.map((i) => [i.path, i.title])),
+  // Bitta yo'lda bir nechta band bo'lishi mumkin (ombor kategoriyalari) —
+  // sarlavha ASOSIY bandniki, ya'ni qidiruvsizi
+  ...Object.fromEntries(
+    NAV_ITEMS.filter((i) => !i.search).map((i) => [i.path, i.title]),
+  ),
   "/settings": "Sozlamalar",
 }
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     const me = await requireAuth()
     // Qurilma akkauntlari va operatorlar admin panelga kirmaydi — o'z ekraniga
     if (me.role === "terminal" || OPERATOR_ROLES.includes(me.role))
@@ -40,7 +44,11 @@ export const Route = createFileRoute("/_layout")({
     if (me.role === "tablo") throw redirect({ to: "/tablo" })
     // Mahsulot omborchisining boshqa sahifasi yo'q — boshqaruv paneli o'rniga
     // to'g'ri omborga. Aks holda kirgan joyi bo'm-bo'sh ekran bo'lardi.
-    if (isWarehouseOnly(me)) throw redirect({ to: "/warehouse" })
+    // Yo'nalish FAQAT boshqa sahifadan: `/warehouse` ning O'ZI ham shu layout
+    // ichida, ya'ni shartsiz yo'naltirish cheksiz halqa berardi (`/terminal` va
+    // `/tablo` da bunday emas — ular layoutdan tashqarida).
+    if (isWarehouseOnly(me) && !location.pathname.startsWith("/warehouse"))
+      throw redirect({ to: "/warehouse" })
   },
 })
 

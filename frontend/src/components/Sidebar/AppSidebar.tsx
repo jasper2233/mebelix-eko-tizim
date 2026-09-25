@@ -6,14 +6,17 @@ import {
   ClipboardList,
   Factory,
   Gauge,
+  Hammer,
   Home,
   IdCard,
+  Layers,
   MonitorCog,
   ScrollText,
   SlidersHorizontal,
   TriangleAlert,
   Tv,
   UserRound,
+  Wrench,
 } from "lucide-react"
 import type { UserRead } from "@/client"
 import { DefectsService } from "@/client"
@@ -41,6 +44,10 @@ import { User } from "./User"
 // Huquq predikatlari route guard'lari bilan BIR XIL manbadan (lib/mes) —
 // menyuda ko'rinib, ochilganda qaytarib yuboradigan sahifa bo'lmasligi uchun.
 // _layout.tsx mobil sarlavhalari ham SHU ro'yxatdan olinadi.
+//: Katalog harflarining ekrandagi nomi va ikonkasi (`docs/14` §1)
+const KATEGORIYA_NOM = { M: "Material", F: "Furnitura", X: "Xizmat" } as const
+const KATEGORIYA_IKONKA = { M: Layers, F: Wrench, X: Hammer } as const
+
 export const NAV_ITEMS: (Item & {
   show: (user: UserRead | null | undefined) => boolean
 })[] = [
@@ -64,6 +71,18 @@ export const NAV_ITEMS: (Item & {
     path: "/warehouse",
     show: isWarehouseStaff,
   },
+  // Katalogning asosiy kategoriyalari — kodning BIRINCHI harfi (`docs/14` §1).
+  // Sahifa ichida takrorlanmaydi: ilgari o'sha uchtasi sarlavha ostida tab
+  // bo'lib ham turardi — bitta tanlov ikki joyda ikki xil ko'rinishda edi.
+  // Ombor sahifasini ochadigan HAR rolga ko'rinadi.
+  ...(["M", "F", "X"] as const).map((harf) => ({
+    icon: KATEGORIYA_IKONKA[harf],
+    title: KATEGORIYA_NOM[harf],
+    path: "/warehouse",
+    search: { katalog: harf },
+    nested: true,
+    show: isWarehouseStaff,
+  })),
   { icon: UserRound, title: "Mijozlar", path: "/clients", show: isManagement },
   { icon: IdCard, title: "Hodimlar", path: "/employees", show: isManagement },
   {
@@ -85,13 +104,20 @@ export const NAV_ITEMS: (Item & {
     show: isManagement,
   },
   // TABLO — tsex zalidagi TV ekran
-  { icon: Tv, title: "LIVE Tablo", path: "/tablo", show: () => true },
+  {
+    icon: Tv,
+    title: "LIVE Tablo",
+    path: "/tablo",
+    show: (u) => !isWarehouseOnly(u),
+  },
   // Ikkinchi TV ekran: Pico ulangan stanoklarning jonli holati va bugungi OEE si
   {
     icon: Gauge,
     title: "Stanoklar",
     path: "/tablo/stanoklar",
-    show: () => true,
+    // Mahsulot omborchisiga tsex ekranlari kerak emas — uning o'rnida
+    // katalog kategoriyalari turadi
+    show: (u) => !isWarehouseOnly(u),
   },
   {
     // MonitorCog, Printer emas: agent — tsex KOMPYUTERI (chek printeri +

@@ -21,7 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CatalogEdit } from "@/components/Warehouse/CatalogEdit"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useDebounced } from "@/hooks/useDebounced"
@@ -38,22 +37,28 @@ export const Route = createFileRoute("/_layout/warehouse")({
   component: WarehousePage,
   beforeLoad: requireAccess(isWarehouseStaff),
   head: () => ({ meta: [{ title: "Mahsulotlar ombori | MebeliX" }] }),
+  // Katalog va guruh MANZILDA: yon menyudagi kategoriya havolalari shu yerga
+  // tushadi, havola nusxalab yuborilsa ham o'sha ro'yxat ochiladi.
+  validateSearch: (
+    s: Record<string, unknown>,
+  ): { katalog?: string; guruh?: string } => ({
+    katalog:
+      typeof s.katalog === "string" && /^[MFX]$/.test(s.katalog)
+        ? s.katalog
+        : undefined,
+    guruh:
+      typeof s.guruh === "string" && /^[MFX]-[A-Z]{2}$/.test(s.guruh)
+        ? s.guruh
+        : undefined,
+  }),
 })
-
-//: Katalog harfining ma'nosi — kod o'zi aytmaydi (`docs/14` §1)
-const KATALOG: { value: string; label: string }[] = [
-  { value: "", label: "Hammasi" },
-  { value: "M", label: "Material" },
-  { value: "F", label: "Furnitura" },
-  { value: "X", label: "Xizmat" },
-]
 
 function WarehousePage() {
   const { currentUser } = useCurrentUser()
   const canWrite = isWarehouseWriter(currentUser)
-  const [catalog, setCatalog] = useState("")
-  //: `M-LD` ko'rinishidagi TO'LIQ guruh kodi (katalog harfi bilan)
-  const [guruh, setGuruh] = useState("")
+  const navigate = Route.useNavigate()
+  // Katalog harfi va TO'LIQ guruh kodi (`M-LD`) manzildan keladi
+  const { katalog: catalog = "", guruh = "" } = Route.useSearch()
   const [status, setStatus] = useState("")
   const [lowStock, setLowStock] = useState(false)
   const [search, setSearch] = useState("")
@@ -87,12 +92,26 @@ function WarehousePage() {
       setPage(0)
     }
 
+  // Manzildagi filtr — sahifa ham nolga qaytadi
+  const yonalt = (next: { katalog?: string; guruh?: string }) => {
+    setPage(0)
+    navigate({ search: next, replace: true })
+  }
+
+  const guruhlarHammasi = tree.data?.groups ?? []
+  // Tanlangan kategoriya sarlavhada aytiladi: sahifada tab yo'q (ular yon
+  // menyuda), ya'ni qaysi ro'yxat ochiqligini boshqa hech narsa ko'rsatmaydi
+  const kategoriya = { M: "Material", F: "Furnitura", X: "Xizmat" }[catalog]
+  const guruhNomi = guruhlarHammasi.find(
+    (g) => `${g.catalog}-${g.group_code}` === guruh,
+  )?.group_name
+
   // Guruh ro'yxati TANLANGAN katalog ichidan. Tanlov qiymati TO'LIQ kod
   // (`M-LG`), faqat `group_code` emas: `LG` ikki katalogda ham bor — `M-LG`
   // (LEGE fasad paneli) va `X-LG` (logistika), `KM`/`KR` esa kromka nomini
   // ikkovida takrorlaydi. Faqat guruh harfi bilan filtrlaganda «Hammasi»
   // tanlangan holatda boshqa katalogning pozitsiyalari ham chiqib ketardi.
-  const guruhlar = (tree.data?.groups ?? [])
+  const guruhlar = guruhlarHammasi
     .filter((g) => !catalog || g.catalog === catalog)
     .map((g) => ({
       value: `${g.catalog}-${g.group_code}`,
@@ -100,18 +119,19 @@ function WarehousePage() {
       hint: `${g.catalog}-${g.group_code} · ${g.count}`,
     }))
 
-  const soni = (harf: string) =>
-    harf
-      ? (tree.data?.totals[harf] ?? 0)
-      : Object.values(tree.data?.totals ?? {}).reduce((a, b) => a + b, 0)
-
   return (
     <div>
       <PageHeader
         title="Mahsulotlar ombori"
         description={
           data
-            ? `${data.count} pozitsiya${debounced ? " topildi" : ""} — kod, artikul va qoldiq bilan`
+            ? [
+                guruhNomi ?? kategoriya,
+                `${data.count} pozitsiya${debounced ? " topildi" : ""}`,
+                "kod, artikul va qoldiq bilan",
+              ]
+                .filter(Boolean)
+                .join(" · ")
             : "Katalog: material, furnitura va xizmatlar"
         }
         actions={
@@ -124,35 +144,13 @@ function WarehousePage() {
         }
       />
 
-      {/* Katalog harfi — kodning BIRINCHI qismi, ya'ni eng yirik bo'linish.
-          Tab sifatida: uchta band, doim ko'rinib turadi, bir bosishda almashadi.
-          Guruh (35 ta) esa ro'yxatga sig'maydi — u ochiluvchi tanlovda. */}
-      <Tabs
-        value={catalog}
-        onValueChange={(v) => {
-          setCatalog(v)
-          setGuruh("") // boshqa katalogning guruhi tanlanib qolmasin
-          setPage(0)
-        }}
-        className="mb-4"
-      >
-        <TabsList className="h-9">
-          {KATALOG.map((k) => (
-            <TabsTrigger key={k.value} value={k.value}>
-              {k.label}
-              <span className="num ml-1.5 text-muted-foreground">
-                {soni(k.value)}
-              </span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <SelectField
           className="w-full sm:w-64"
           value={guruh}
-          onChange={filtr(setGuruh)}
+          onChange={(v) =>
+            yonalt({ katalog: catalog || undefined, guruh: v || undefined })
+          }
           options={guruhlar}
           placeholder="Guruh"
           emptyLabel="Barcha guruhlar"

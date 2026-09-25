@@ -16,6 +16,12 @@ export type Item = {
   icon: LucideIcon
   title: string
   path: string
+  /** Manzil qidiruv qismi — bitta sahifaning bir nechta ko'rinishi uchun
+   *  (mahsulot omborining kategoriyalari). Berilsa, band FAQAT o'sha qidiruv
+   *  bilan faol bo'ladi: aks holda uchala kategoriya birdan yonib turardi. */
+  search?: Record<string, string>
+  /** Ichki band — kichikroq va chekinma bilan chiziladi */
+  nested?: boolean
   /** Yonida ko'rinadigan jonli son (0 yoki undefined bo'lsa chiqmaydi) */
   badge?: number
   /** Son nimani sanashi (hover'da) */
@@ -29,6 +35,9 @@ interface MainProps {
 export function Main({ items }: MainProps) {
   const { isMobile, setOpenMobile } = useSidebar()
   const currentPath = useRouterState({ select: (s) => s.location.pathname })
+  const currentSearch = useRouterState({
+    select: (s) => s.location.search as Record<string, unknown>,
+  })
 
   const handleMenuClick = () => {
     if (isMobile) {
@@ -44,11 +53,19 @@ export function Main({ items }: MainProps) {
             // Ichki sahifada ham ota band yonib tursin (/orders/123 -> "Buyurtmalar").
             // Ildiz alohida: aks holda hamma yo'l "/" bilan boshlanib
             // "Boshqaruv paneli" doim faol ko'rinardi.
-            const isActive =
+            const pathMos =
               item.path === "/"
                 ? currentPath === "/"
                 : currentPath === item.path ||
                   currentPath.startsWith(`${item.path}/`)
+            // Qidiruvli band: qiymatlari ham mos kelsa faol. Qidiruvsiz band
+            // esa o'z sahifasining HAR qanday ko'rinishida faol qoladi.
+            const isActive =
+              pathMos &&
+              (!item.search ||
+                Object.entries(item.search).every(
+                  ([k, v]) => currentSearch[k] === v,
+                ))
 
             return (
               <SidebarMenuItem key={item.title}>
@@ -63,12 +80,17 @@ export function Main({ items }: MainProps) {
                   // Ikonka ham oltinga o'tadi — yig'ilgan railda yagona belgi shu.
                   className={cn(
                     "relative",
+                    item.nested && "h-8 pl-7 text-sm",
                     "data-[active=true]:before:absolute data-[active=true]:before:inset-y-1 data-[active=true]:before:left-0 data-[active=true]:before:w-[3px] data-[active=true]:before:rounded-full data-[active=true]:before:bg-sidebar-primary",
                     "data-[active=true]:[&>svg]:text-sidebar-primary",
                   )}
                   asChild
                 >
-                  <RouterLink to={item.path} onClick={handleMenuClick}>
+                  <RouterLink
+                    to={item.path}
+                    search={item.search}
+                    onClick={handleMenuClick}
+                  >
                     <item.icon />
                     <span>{item.title}</span>
                   </RouterLink>

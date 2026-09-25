@@ -124,16 +124,24 @@ omborchisi: tsex roli, `POST_ROLES` da `PostCode.TMO` ga bog'langan, beyjik bila
 kiradi va `_layout` uni `/terminal` ga yuboradi — ya'ni u bu sahifani hech qachon
 ocha olmaydi. Xomashyo ombori uchun 2026-09-25 da alohida OFIS roli qo'shildi:
 **`skladchi`**, ekranda «Mahsulot omborchisi». U parol bilan kiradi, kirgach
-to'g'ri `/warehouse` ga tushadi va menyuda boshqa band ko'rmaydi. Enum
+to'g'ri `/warehouse` ga tushadi (yo'naltirish FAQAT boshqa sahifadan — `/warehouse`
+ning o'zi ham `_layout` ichida, shartsiz yo'naltirish cheksiz halqa berardi) va
+menyuda ombor, uning uch kategoriyasi va sozlamalaridan boshqa band ko'rmaydi:
+LIVE Tablo va Stanoklar tsex ekranlari, ombor ishiga aloqasi yo'q. Enum
 `native_enum=False` bo'lgani uchun migratsiya kerak emas (`models/enums.py:8`).
 
 ## 5. Sahifa — `/warehouse`
 
 `routes/_layout/warehouse.tsx`. Filtrlar kodning tuzilishini takrorlaydi:
 
-- **Katalog harfi** — `Tabs` (Hammasi / Material / Furnitura / Xizmat, yonida
-  sanoq). Kodning birinchi qismi va eng yirik bo'linish, doim ko'rinib turadi.
-- **Guruh** — `SelectField` (35 ta, tab qatoriga sig'maydi). Yorlig'i nomi,
+- **Katalog harfi** — YON MENYUDA, ombor bandi ostida uchta kichik band
+  (Material / Furnitura / Xizmat). Sahifaning o'zida tab YO'Q: bitta tanlov ikki
+  joyda ikki xil ko'rinishda turardi. Sahifa sukut bo'yicha HAMMASINI ko'rsatadi
+  (`/warehouse` qidiruvsiz), kategoriya esa manzilga yoziladi —
+  `/warehouse?katalog=M`. Tanlangani sarlavha ostida aytiladi
+  («Material · 2131 pozitsiya»), aks holda qaysi ro'yxat ochiqligini hech narsa
+  ko'rsatmasdi.
+- **Guruh** — `SelectField` (35 ta, menyuga sig'maydi). Yorlig'i nomi,
   yonida kod va sanoq. Tanlov qiymati **to'liq kod** (`M-LG`), faqat guruh harfi
   emas: `LG` ikki katalogda ham bor — `M-LG` (LEGE fasad paneli) va `X-LG`
   (logistika), shuning uchun harfning o'zi bilan filtrlaganda «Hammasi» tabida
@@ -144,6 +152,10 @@ to'g'ri `/warehouse` ga tushadi va menyuda boshqa band ko'rmaydi. Enum
 Chap ustunli daraxt ISHLATILMAYDI (2026-09-25 da almashtirildi): u 256 px joy
 yeb, jadvalni gorizontal aylantirishga majbur qilardi — `Sotuv` ustuni ekrandan
 chiqib ketgandi va filtr loyihaning qolgan sahifalariga o'xshamasdi.
+
+Katalog va guruh MANZILDA (`?katalog=M&guruh=M-LD`, `validateSearch`): menyudagi
+havola shu bilan ishlaydi va havola nusxalab yuborilsa ham o'sha ro'yxat
+ochiladi. Holat va «Kam qolgan» esa sahifaning o'z holatida — ular o'tkinchi.
 
 Jadval: kod (monoshrift, birinchi ustun — omborchi javonda aynan shuni izlaydi),
 nomi (ostida guruh · o'lcham · matritsa), artikul, qoldiq, joy, xarid va sotuv
