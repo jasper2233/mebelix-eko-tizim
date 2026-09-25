@@ -74,21 +74,46 @@ HAVING count(*) > 1
 ORDER BY count(*) DESC, 2 DESC
 LIMIT 10;
 
+-- O'lchov tarixida `xb`/`xq` ustuni yo'q — yagona ko'prik VAQT. Shu ko'rinish
+-- har vaqt tamg'asini O'Z hodisasiga bog'laydi va FAQAT bir ma'noli bog'langanini
+-- qoldiradi: bitta soniyaga ikki xil `xq` tushgan bo'lsa, qaysi yozuv qaysinisi
+-- ekanini ayta olmaymiz — unday vaqtlarga umuman tegilmaydi.
+CREATE TEMP VIEW olchov_vaqt AS
+SELECT machine_id, happened_at, min(xb) AS xb, min(xq) AS xq
+FROM (
+    SELECT DISTINCT e.machine_id, e.happened_at,
+           e.payload->>'xb' AS xb, e.payload->>'xq' AS xq
+    FROM andon_event e
+    WHERE e.kind = 'olchov' AND e.payload ? 'xb' AND e.payload ? 'xq'
+) t
+GROUP BY machine_id, happened_at
+HAVING count(*) = 1;
+
 \echo ''
 \echo '=== 3. O''LCHOV TARIXIDAGI takrorlar (kromka_measurement) ==='
 SELECT m.name AS stanok,
        (k.measured_at AT TIME ZONE 'Asia/Tashkent')::date AS kun,
-       count(*) - count(DISTINCT k.measured_at) AS ortiqcha,
-       count(DISTINCT k.measured_at) AS haqiqiy
+       count(*) - count(DISTINCT (v.xb, v.xq)) AS ortiqcha,
+       count(DISTINCT (v.xb, v.xq)) AS haqiqiy
 FROM kromka_measurement k
 JOIN machine m ON m.id = k.machine_id
+JOIN olchov_vaqt v ON v.machine_id = k.machine_id AND v.happened_at = k.measured_at
 WHERE NOT k.is_deleted
-  AND (k.machine_id, k.measured_at) IN (
-        SELECT e.machine_id, e.happened_at
-        FROM andon_event e
-        WHERE e.kind = 'olchov' AND e.payload ? 'xb' AND e.payload ? 'xq'
-        GROUP BY e.machine_id, e.happened_at, e.payload->>'xb', e.payload->>'xq'
-        HAVING count(*) > 1)
+GROUP BY 1, 2
+ORDER BY 2, 1;
+
+\echo ''
+\echo '=== 3b. Hodisasiga BOG''LANMAGAN o''lchovlar (tegilmaydi) ==='
+-- Vaqti ikki xil `xq` ga tegishli bo'lgan yoki umuman hodisasi topilmagan yozuvlar.
+-- Ular tozalashga kirmaydi: qaysi biri takror ekanini ayta olmaymiz.
+SELECT m.name AS stanok,
+       (k.measured_at AT TIME ZONE 'Asia/Tashkent')::date AS kun,
+       count(*) AS tegilmaydi
+FROM kromka_measurement k
+JOIN machine m ON m.id = k.machine_id
+LEFT JOIN olchov_vaqt v ON v.machine_id = k.machine_id AND v.happened_at = k.measured_at
+WHERE NOT k.is_deleted AND v.happened_at IS NULL
+  AND k.measured_at >= (SELECT min(happened_at) FROM andon_event WHERE payload ? 'xb')
 GROUP BY 1, 2
 ORDER BY 2, 1;
 
@@ -101,25 +126,19 @@ BEGIN;
 
 \echo ''
 \echo '=== 4. TOZALASH: o''lchov tarixi (avval — u hodisa vaqtiga tayanadi) ==='
-WITH takror_vaqt AS (
-    -- Pico QAYTA yuborgan hodisalarning aniq vaqtlari: shu lahzalardagina
-    -- o'lchov nusxasi takror bo'lishi mumkin. Boshqa vaqtga tegilmaydi —
-    -- ikki haqiqiy detal bir soniyada o'tolmaydi (tranzit 8-15 s), lekin
-    -- tozalashni taxminga emas, Pico aytgan faktga bog'lab qo'yamiz.
-    SELECT e.machine_id, e.happened_at
-    FROM andon_event e
-    WHERE e.kind = 'olchov' AND e.payload ? 'xb' AND e.payload ? 'xq'
-    GROUP BY e.machine_id, e.happened_at, e.payload->>'xb', e.payload->>'xq'
-    HAVING count(*) > 1
-),
-ortiqcha AS (
+WITH ortiqcha AS (
+    -- Har o'lchov vaqti o'z hodisasiga (`xb`,`xq`) bog'lanadi va HAR HODISAGA
+    -- BITTA yozuv qoldiriladi. Nega `measured_at` ning o'zi yetmaydi: agent 1.7.1
+    -- har takrorda vaqtni `hozir − eski_ms` deb qayta hisoblagan, ya'ni bitta
+    -- hodisaning nusxalari bir necha xil soniyaga tarqalib ketgan (prodda
+    -- 2026-09-24: 185 hodisa, 881 xil vaqt tamg'asi).
     SELECT k.id
     FROM (
         SELECT k.id,
-               row_number() OVER (PARTITION BY k.machine_id, k.measured_at
+               row_number() OVER (PARTITION BY v.machine_id, v.xb, v.xq
                                   ORDER BY k.id) AS n
         FROM kromka_measurement k
-        JOIN takror_vaqt t ON t.machine_id = k.machine_id AND t.happened_at = k.measured_at
+        JOIN olchov_vaqt v ON v.machine_id = k.machine_id AND v.happened_at = k.measured_at
         WHERE NOT k.is_deleted
     ) k
     WHERE k.n > 1

@@ -128,13 +128,18 @@ async def main() -> None:
         # RUN yoqiq: 08:00-17:00
         hodisa("uskuna", T(8), {"ev": "uskuna", "holat": 1, "xb": XB, "xq": 1})
         hodisa("uskuna", T(17), {"ev": "uskuna", "holat": 0, "xb": XB, "xq": 60})
-        # 30 ta HAQIQIY o'lchov — har biri NUSXA marta qayta kelgan
+        # 30 ta HAQIQIY o'lchov — har biri NUSXA marta qayta kelgan.
+        # MUHIM: agent 1.7.1 har takrorda vaqtni `hozir − eski_ms` deb QAYTA hisoblagan,
+        # ya'ni bitta hodisaning nusxalari bir necha xil soniyaga tarqalgan (prodda
+        # 2026-09-24: 185 hodisa, 881 xil vaqt tamg'asi). Shu siljish shu yerda ham bor —
+        # `measured_at` ning o'zi bo'yicha tozalash YETMAYDI.
         for i in range(30):
             at = T(8) + timedelta(minutes=i * 2)
-            for _ in range(NUSXA):
-                hodisa("olchov", at, {"ev": "olchov", "L": 900.0, "kod": "OK", "v_nom": 18,
-                                      "xb": XB, "xq": 2 + i})
-                db.add(KromkaMeasurement(machine_id=stanok.id, measured_at=at, code="OK",
+            for j in range(NUSXA):
+                siljigan = at + timedelta(seconds=j % 4)   # 0,1,2,3 s — o'sha hodisa
+                hodisa("olchov", siljigan, {"ev": "olchov", "L": 900.0, "kod": "OK", "v_nom": 18,
+                                            "xb": XB, "xq": 2 + i})
+                db.add(KromkaMeasurement(machine_id=stanok.id, measured_at=siljigan, code="OK",
                                          verdict=KromkaVerdict.MOS, measured_mm=900.0,
                                          expected_mm=900.0, delta_mm=0.0, side_group="length",
                                          scan_id=skan.id, instance_id=nusxa.id, order_id=buyurtma.id))
@@ -198,14 +203,21 @@ async def main() -> None:
 
         olchov_qoldi = await db.scalar(select(func.count()).select_from(KromkaMeasurement)
                                        .where(KromkaMeasurement.is_deleted == False))  # noqa: E712
-        natija.append(("o'lchov tarixi: 30 takror + 1 eski", olchov_qoldi, 31))
+        # Har HODISAGA bitta: 30 + tegilmaydigan eski yozuv. Vaqt bo'yicha tozalash
+        # bu yerda 30 × 4 = 120 satr qoldirardi — kalit `xb`/`xq` bo'lgani shu uchun muhim.
+        natija.append(("o'lchov tarixi: har hodisaga BITTA yozuv", olchov_qoldi, 31))
 
         keyin = await report_machine_time(db, admin, date_from=KECHA.date(), date_to=KECHA.date())
         r1 = keyin.rows[0]
         natija.append(("tozalashdan KEYIN detal soni haqiqiy", r1.parts, 33))
         # 197.5 s ÷ 10680 s — endi Pico rostdan qilgan ish
         natija.append(("tozalashdan KEYIN Performance haqiqiy", r1.performance_pct, 1.8))
-        natija.append(("ishlagan vaqt o'zgarmadi", r1.run_s, r0.run_s))
+        # Ishlagan vaqt deyarli o'zgarmaydi: bo'sh yurish chegarasi o'lchov BELGILARIGA
+        # tayanadi, takror nusxalar esa o'sha belgilarni bir necha soniyaga cho'zib
+        # turgan edi. Farq siljish oynasidan katta bo'lsa — tozalash ortiqcha yozuvni
+        # emas, haqiqiy o'lchovni o'chirgan bo'lardi.
+        natija.append(("ishlagan vaqt siljish oynasidan ortiq o'zgarmadi",
+                       abs(r1.run_s - r0.run_s) <= 4, True))
         natija.append(("Performance tushdi (haqiqiy)", r1.performance_pct < r0.performance_pct, True))
 
         # Ikkinchi marta yurgizish xavfsiz (idempotent)

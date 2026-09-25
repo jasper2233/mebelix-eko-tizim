@@ -414,10 +414,24 @@ o'lchov daqiqada 12 marta), Performance ham, o'lchov tarixi ham shishib ketardi.
 **Bu prodda ro'y berdi.** Pico v1.22 ga 2026-09-24 10:16 da o'tgan (ularning stansiya
 bazasidagi `boot` yozuvi: `"ver": "1.22"`, `"sabab": "wdt"`), prod agenti esa 1.7.1 edi —
 «Ish markazlari» sahifasida bitta o'lchov (2026-09-24 18:40:12, 821.2 mm) 18 marta chiqdi.
+O'lchangan hajm (2026-09-24, faqat Kromka-1): `olchov` — 185 haqiqiy, **231 709 ortiqcha**;
+`uskuna` — 27 ga 24 844; `boot` — 1 ga 1968. Bitta o'lchov 1500 martagacha takrorlangan
+(15:44:47, 1198.9 mm — 1544 nusxa): Pico har 5 soniyada qayta yuborgan, agent esa soat
+15:25 dan 17:40 gacha shuni yozib turgan.
+
 O'sha kunlarda yig'ilgani **`scripts/kromka_dedup.sql`** bilan tozalanadi: kalit — Pico'ning
 o'z `xb`/`xq` si, ya'ni takrorlik taxmin emas; har guruhdan eng birinchi yozuv qoladi,
 qolgani YUMSHOQ o'chiriladi (`is_deleted`), `xb`/`xq` siz eski yozuvlarga tegilmaydi.
 `-v faqat_hisobot=1` bilan avval faqat sanab ko'rsatadi.
+
+⚠️ **O'lchov tarixida (`kromka_measurement`) `xb`/`xq` ustuni yo'q, yagona ko'prik — VAQT,
+lekin vaqt ham takrorlanmaydi.** Agent 1.7.1 har takrorda `ts = hozir − eski_ms` deb qayta
+hisoblagan, ya'ni bitta hodisaning nusxalari bir necha soniyaga tarqalgan: prodda 185 hodisaga
+**881** xil vaqt tamg'asi to'g'ri kelgan. Shuning uchun skript avval har vaqt tamg'asini o'z
+hodisasiga bog'laydi (`olchov_vaqt` vaqtinchalik ko'rinishi) va HAR HODISAGA bitta yozuv
+qoldiradi. Bir soniyaga ikki xil `xq` tushgan bo'lsa — o'sha vaqtga UMUMAN tegilmaydi va
+hisobotning 3b bo'limida alohida sanaladi. Vaqt bo'yicha tozalash bu yerda 881 satr qoldirib,
+o'lchov tarixini hamon ~5 barobar shishgan holda qoldirardi.
 
 Tekshiruv (v1.19–v1.22, bir martalik skript): **15/15** — Pico takror yuborgan ikkita o'lchov
 navbatga bir marta tushdi, kalit `xb`/`xq` dan olindi, `boot` dagi `sabab: wdt` saqlandi,
