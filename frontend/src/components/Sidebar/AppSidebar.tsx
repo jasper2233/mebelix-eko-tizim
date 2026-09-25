@@ -30,6 +30,7 @@ import {
   isManagement,
   isManager,
   isProductionStaff,
+  isWarehouseOnly,
   isWarehouseStaff,
 } from "@/lib/mes"
 import { getOrderStatusCountsQueryOptions } from "@/queries/mes"
@@ -43,7 +44,14 @@ import { User } from "./User"
 export const NAV_ITEMS: (Item & {
   show: (user: UserRead | null | undefined) => boolean
 })[] = [
-  { icon: Home, title: "Boshqaruv paneli", path: "/", show: () => true },
+  // Mahsulot omborchisining boshqaruv paneli yo'q: u `_layout` guard'ida
+  // to'g'ri omborga yo'naltiriladi, menyuda esa bo'sh havola qolmasin
+  {
+    icon: Home,
+    title: "Boshqaruv paneli",
+    path: "/",
+    show: (u) => !isWarehouseOnly(u),
+  },
   {
     icon: ClipboardList,
     title: "Buyurtmalar",

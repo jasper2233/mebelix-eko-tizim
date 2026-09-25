@@ -114,10 +114,18 @@ varag'idan `Dekor №` bo'yicha ulanadi.
 
 Rollar (`api/deps.py`):
 
-- **O'qish** — menejer, texnolog, direktor, **omborchi**. Katalogda narx bor,
+- **O'qish** — menejer, texnolog, direktor, **skladchi**. Katalogda narx bor,
   shuning uchun tsex rollariga ochilmaydi.
-- **Yozish** — menejer va omborchi. Texnolog va direktor katalogni ko'radi, lekin
-  qoldiqni ular yuritmaydi.
+- **Yozish** — menejer va **skladchi**. Texnolog va direktor katalogni ko'radi,
+  lekin qoldiqni ular yuritmaydi.
+
+⚠️ **`skladchi` ≠ `omborchi`.** `omborchi` — TAYYOR mahsulot ombori (TMO)
+omborchisi: tsex roli, `POST_ROLES` da `PostCode.TMO` ga bog'langan, beyjik bilan
+kiradi va `_layout` uni `/terminal` ga yuboradi — ya'ni u bu sahifani hech qachon
+ocha olmaydi. Xomashyo ombori uchun 2026-09-25 da alohida OFIS roli qo'shildi:
+**`skladchi`**, ekranda «Mahsulot omborchisi». U parol bilan kiradi, kirgach
+to'g'ri `/warehouse` ga tushadi va menyuda boshqa band ko'rmaydi. Enum
+`native_enum=False` bo'lgani uchun migratsiya kerak emas (`models/enums.py:8`).
 
 ## 5. Sahifa — `/warehouse`
 

@@ -21,7 +21,7 @@ import {
 import { useIdleLogout } from "@/hooks/useIdleLogout"
 import { useMesWs } from "@/hooks/useMesWs"
 import { requireAuth } from "@/lib/guards"
-import { OPERATOR_ROLES } from "@/lib/mes"
+import { isWarehouseOnly, OPERATOR_ROLES } from "@/lib/mes"
 
 // Mobil sarlavhalar sidebar menyusi bilan BITTA manbadan (NAV_ITEMS) —
 // "/settings" menyuda yo'q (foydalanuvchi dropdown'ida), alohida qo'shiladi.
@@ -38,6 +38,9 @@ export const Route = createFileRoute("/_layout")({
     if (me.role === "terminal" || OPERATOR_ROLES.includes(me.role))
       throw redirect({ to: "/terminal" })
     if (me.role === "tablo") throw redirect({ to: "/tablo" })
+    // Mahsulot omborchisining boshqa sahifasi yo'q — boshqaruv paneli o'rniga
+    // to'g'ri omborga. Aks holda kirgan joyi bo'm-bo'sh ekran bo'lardi.
+    if (isWarehouseOnly(me)) throw redirect({ to: "/warehouse" })
   },
 })
 

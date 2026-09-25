@@ -24,6 +24,11 @@ class UserRole(StrEnum):
     BOYOQCHI = "boyoqchi"
     UPAKOVKACHI = "upakovkachi"
     OMBORCHI = "omborchi"
+    #: Mahsulotlar (xomashyo) ombori — OFIS roli, parol bilan kiradi va faqat
+    #: katalogni ko'radi. `omborchi` dan farqi: u TAYYOR mahsulot (TMO) omborchisi,
+    #: tsex roli va beyjik bilan ishlaydi. `POST_ROLES` da ATAYLAB yo'q — bu
+    #: lavozimning posti ham, terminali ham yo'q.
+    SKLADCHI = "skladchi"
 
 
 class PostCode(StrEnum):

@@ -85,13 +85,15 @@ ManagerOrTexnologUser = Annotated[User, Depends(require_roles(UserRole.MANAGER, 
 StaffReadUser = Annotated[
     User, Depends(require_roles(UserRole.MANAGER, UserRole.TEXNOLOG, UserRole.DIRECTOR))
 ]  # read-only lists shared by office roles
-#: Mahsulotlar ombori katalogi. O'QISH — ofis rollari va OMBORCHI: katalogda
+#: Mahsulotlar ombori katalogi. O'QISH — ofis rollari va SKLADCHI: katalogda
 #: narx ham bor, shuning uchun tsex rollariga ochilmaydi.
+#: `OMBORCHI` bu yerda YO'Q — u TAYYOR mahsulot (TMO) omborchisi, tsex roli
+#: (`POST_ROLES`) va terminalda ishlaydi (`models/enums.py`).
 WarehouseReadUser = Annotated[
     User,
-    Depends(require_roles(UserRole.MANAGER, UserRole.TEXNOLOG, UserRole.DIRECTOR, UserRole.OMBORCHI)),
+    Depends(require_roles(UserRole.MANAGER, UserRole.TEXNOLOG, UserRole.DIRECTOR, UserRole.SKLADCHI)),
 ]
-#: YOZISH (qoldiq, joylashuv, narx) — omborchi va menejer. Texnolog va direktor
+#: YOZISH (qoldiq, joylashuv, narx) — skladchi va menejer. Texnolog va direktor
 #: katalogni ko'radi, lekin qoldiqni ular yuritmaydi.
-WarehouseUser = Annotated[User, Depends(require_roles(UserRole.MANAGER, UserRole.OMBORCHI))]
+WarehouseUser = Annotated[User, Depends(require_roles(UserRole.MANAGER, UserRole.SKLADCHI))]
 AdminUser = Annotated[User, Depends(require_roles(UserRole.ADMIN))]

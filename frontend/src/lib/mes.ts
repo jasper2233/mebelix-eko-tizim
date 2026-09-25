@@ -199,6 +199,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   boyoqchi: "Bo'yoqchi",
   upakovkachi: "Qadoqlovchi",
   omborchi: "TMO omborchisi",
+  skladchi: "Mahsulot omborchisi",
 }
 
 // Sahifa huquqi BITTA joyda: sidebar menyusi ham, route guard ham shu ikkisini
@@ -221,13 +222,18 @@ export const isManagement = (u?: RoleUser | null) =>
 /** Ishlab chiqarish sahifalari (buyurtmalar, ish markazlari): boshqaruv + texnolog */
 export const isProductionStaff = (u?: RoleUser | null) =>
   isManagement(u) || u?.role === "texnolog"
-/** Mahsulotlar ombori katalogini KO'RISH (backend `WarehouseReadUser`) */
+/** Mahsulotlar ombori katalogini KO'RISH (backend `WarehouseReadUser`).
+ *  `omborchi` bu yerda YO'Q: u TAYYOR mahsulot (TMO) omborchisi — tsex roli,
+ *  `OPERATOR_ROLES` ichida va `_layout` uni terminalga yuboradi. */
 export const isWarehouseStaff = (u?: RoleUser | null) =>
-  isProductionStaff(u) || u?.role === "omborchi"
+  isProductionStaff(u) || u?.role === "skladchi"
 /** Qoldiq, joylashuv va narxni YOZISH (backend `WarehouseUser`): texnolog va
  *  direktor katalogni ko'radi, lekin qoldiqni ular yuritmaydi */
 export const isWarehouseWriter = (u?: RoleUser | null) =>
-  isManager(u) || u?.role === "omborchi"
+  isManager(u) || u?.role === "skladchi"
+/** Faqat omborni ko'radigan rol — boshqa sahifalari yo'q, kirgach to'g'ri
+ *  `/warehouse` ga tushadi (`_layout` guard'i) */
+export const isWarehouseOnly = (u?: RoleUser | null) => u?.role === "skladchi"
 
 // Ish markazi bog'lami MAJBURIY rollar — qurilma akkauntlari (Admin dialoglarida
 // rol tanlovi, machine_id validatsiyasi va bog'lamni uzish shu ro'yxatdan)
@@ -270,6 +276,7 @@ export const POSITIONS: {
   position("boyoqchi", "tsex", "BOYOQ"),
   position("upakovkachi", "tsex", "UPAKOVKA"),
   position("omborchi", "tsex", "TMO"),
+  position("skladchi", "ofis"),
   position("manager", "ofis"),
   position("texnolog", "ofis"),
   position("director", "ofis"),

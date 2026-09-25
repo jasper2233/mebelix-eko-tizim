@@ -5124,7 +5124,7 @@ export type UserRead = {
 /**
  * UserRole
  */
-export type UserRole = 'admin' | 'director' | 'manager' | 'texnolog' | 'terminal' | 'tablo' | 'arrachi' | 'kromkachi' | 'ovalchi' | 'prisadkachi' | 'roverchi' | 'stolyar' | 'boyoqchi' | 'upakovkachi' | 'omborchi';
+export type UserRole = 'admin' | 'director' | 'manager' | 'texnolog' | 'terminal' | 'tablo' | 'arrachi' | 'kromkachi' | 'ovalchi' | 'prisadkachi' | 'roverchi' | 'stolyar' | 'boyoqchi' | 'upakovkachi' | 'omborchi' | 'skladchi';
 
 /**
  * UserUpdate

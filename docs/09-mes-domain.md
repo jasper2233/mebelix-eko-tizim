@@ -40,6 +40,12 @@ bo'linadi (`app/models/enums.py`):
   emas: `resolve_terminal` postdan `scanning.post_machine` bilan topadi.
   `omborchi` rol KODI o'zgarmaydi (odamning kasbi), ekranda
   esa "TMO omborchisi" (`ROLE_LABELS`) — u ishlaydigan post nomi bilan.
+- **`skladchi` — «Mahsulot omborchisi»** (2026-09-25): mahsulotlar (xomashyo) ombori katalogini
+  yuritadi (`docs/14`). OFIS roli — parol bilan kiradi, `POST_ROLES` da ATAYLAB yo'q: bu
+  lavozimning posti ham, terminali ham yo'q. `_layout` uni to'g'ri `/warehouse` ga yuboradi va
+  menyuda boshqa band ko'rsatilmaydi. **`omborchi` bilan chalkashtirmaslik kerak**: u TAYYOR
+  mahsulot omborchisi, tsex roli va terminalda ishlaydi. Ikki xil ombor, ikki xil odam —
+  shuning uchun ikki xil rol.
 
 ### 1.1 Atamalar (kelishilgan — kodda ham, ekranda ham shu)
 
