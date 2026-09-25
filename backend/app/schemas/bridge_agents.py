@@ -79,8 +79,8 @@ class BridgeLogPush(BaseModel):
 
 class AndonEventIn(BaseModel):
     """Pico hodisasi — agent uni o'zgartirmasdan uzatadi, faqat `ts` ni (USB rejimda
-    Pico soatsiz), kromka uchun esa `session`/`seq` ni ham o'zi qo'yadi (o'sha firmware
-    ularni yubormaydi).
+    Pico soatsiz), kromka uchun esa `session`/`seq` ni ham (proshivka v1.22 dan ular
+    Pico'ning `xb`/`xq` si, undan oldingisida agent o'zi beradi).
 
     Qolgan maydonlar (lamps, wait_s, process_s, L, L1, L2, kod, holat ...) `extra="allow"`
     bilan `payload` ga TO'LIQ tushadi — hisob-kitob ularni shu yerdan oladi, ya'ni har

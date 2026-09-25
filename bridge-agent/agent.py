@@ -58,7 +58,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.7.1"
+AGENT_VERSION = "1.8.0"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -1319,6 +1319,8 @@ _KROMKA_HB_S = 1
 #: `holat`/`pong`/`kal`/`kalib_rejim`/`yigilgan`
 #: — javob va diagnostika qatorlari, tarixga kerak emas.
 _KROMKA_EVENTS = ("olchov", "ogoh", "uskuna", "tezlik", "avariya_toxtash", "boot", "tiqilish")
+#: v1.20 dan kelgan `sig` (lampa fazasi — MES tovushni shundan boshlaydi) va
+#: `yigilgan` (xotira hisoboti) ATAYLAB ro'yxatda yo'q: ular MESga yozilmaydi.
 #: ROVER (CNC 2130) Pico'si IKKI TOMONLAMA gaplashadi — kromkadan farqi shu. Undan
 #: hodisa olish uchun unga har 10 soniyada kompyuter vaqti yuborilishi SHART: 30 s
 #: jim qolsa u «kompyuter yo'q» deb biladi va hodisalarni fleshga yig'a boshlaydi.
@@ -1409,8 +1411,23 @@ def _andon_ack(count: int) -> None:
         _andon_write(lines[count:])
 
 
+#: KROMKA Pico'si bilan tasdiq (ACK) holati — proshivka v1.22 dan.
+#: Har muhim hodisa `xb` (yonish belgisi) va `xq` (shu yonishdagi raqami) bilan
+#: keladi va Pico uni `ACK <xb> <xq>` kelmaguncha HAR 5 SONIYADA QAYTA yuboradi.
+#: Tasdiqsiz agent har takrorni yangi hodisa deb yozardi: bitta o'lchov daqiqada
+#: 12 marta sanalib, Performance ham, o'lchov tarixi ham shishib ketardi.
+KROMKA: dict[str, Any] = {
+    "xb": None,      # Pico'ning joriy yonish belgisi (o'zgarsa hisob noldan)
+    "seen": 0,       # navbatga olingan eng katta `xq` — takror shundan past keladi
+    "ack": set(),    # server YOZGAN, lekin Pico'ga hali aytilmagan `xq` lar
+}
+
+
 def _kromka_kalit() -> tuple[str, int]:
-    """Kromka hodisasiga (session, seq) beradi — firmware ularni yubormaydi."""
+    """Kromka hodisasiga (session, seq) beradi — ESKI firmware ularni yubormaydi.
+
+    v1.22 dan kalit Pico'ning o'zidan keladi (`xb`/`xq`), bu esa faqat undan
+    oldingi proshivkalar uchun zaxira yo'l."""
     if not ANDON_TUR["session"]:
         ANDON_TUR["session"] = uuid4().hex[:8]
         ANDON_TUR["seq"] = 0
@@ -1457,7 +1474,10 @@ def _kromka_line(data: dict[str, Any]) -> None:
     now = int(time.time())
     data["type"] = ev
     data["ts"] = now - int(data.get("eski_ms") or 0) // 1000
-    data["session"], data["seq"] = _kromka_kalit()
+    kalit = _kromka_xbxq(data)
+    if kalit is None:
+        return                       # Pico takror yuborgan — navbatda allaqachon bor
+    data["session"], data["seq"] = kalit
     _andon_enqueue(data)
 
     # Jonli holat: kromkada chiroq yo'q — uskuna kirishi (RUN) bor. Ishlayapti =
@@ -1591,6 +1611,56 @@ def _rover_ts(iso: Any) -> int | None:
         return None
 
 
+def _kromka_xbxq(data: dict[str, Any]) -> tuple[str, int] | None:
+    """(session, seq) — v1.22 da Pico'ning `xb`/`xq` sidan, eskisida agentdan.
+
+    `None` — bu hodisa allaqachon navbatga olingan (Pico tasdiq kutib qayta
+    yuborgan). Serverdagi unikal indeks ham uni tashlardi, lekin u paytgacha
+    navbat va trafik bekorga to'lardi."""
+    xb, xq = data.get("xb"), data.get("xq")
+    if not isinstance(xb, str) or not xb or isinstance(xq, bool) or not isinstance(xq, int) or xq <= 0:
+        return _kromka_kalit()
+    with ANDON_LOCK:
+        if KROMKA["xb"] != xb:
+            # Pico qayta yongan: raqamlar 1 dan boshlanadi, eski tasdiqlar ham keraksiz
+            KROMKA.update(xb=xb, seen=0, ack=set())
+        if xq <= int(KROMKA["seen"]):
+            return None
+        KROMKA["seen"] = xq
+    return xb[:16], xq
+
+
+def _kromka_acked(events: list[dict[str, Any]]) -> None:
+    """Server yozgan kromka hodisalari — keyingi `ACK` uchun navbatga."""
+    with ANDON_LOCK:
+        xb = KROMKA["xb"]
+        if not xb:
+            return
+        for e in events:
+            seq = e.get("seq")
+            if e.get("session") == str(xb)[:16] and isinstance(seq, int) and not isinstance(seq, bool):
+                KROMKA["ack"].add(seq)
+
+
+#: Bitta `ACK` qatoriga sig'adigan raqamlar soni. Pico bir qadamda 40 tagacha
+#: yozuvni qayta yuboradi — javob ham shuncha bo'lsa yetadi, qator ham qisqa qoladi.
+_KROMKA_ACK_MAX = 40
+
+
+def _kromka_ack(port: Any) -> None:
+    """Server YOZGAN hodisalarni Pico'ga tasdiqlaydi — u shundan keyin o'chiradi.
+
+    Tasdiq serverdan oldin berilsa, internet uzilgan paytdagi o'lchov Pico'da
+    ham o'chib, bizda ham yozilmay yo'qolardi (rover bilan bir xil qoida)."""
+    with ANDON_LOCK:
+        xb = KROMKA["xb"]
+        if not xb or not KROMKA["ack"]:
+            return
+        raqamlar = sorted(KROMKA["ack"])[:_KROMKA_ACK_MAX]
+        KROMKA["ack"].difference_update(raqamlar)
+    port.write(f"ACK {xb} {' '.join(str(q) for q in raqamlar)}\n".encode())
+
+
 def _andon_line(text: str) -> None:
     """Pico'dan kelgan bitta qator — ikkala firmware ham shu yerdan o'tadi.
 
@@ -1713,6 +1783,9 @@ def _andon_session(port: Any) -> None:
     ANDON_TUR["uskuna"] = None         # holat noma'lum: birinchi javob yoziladi
     with ANDON_LOCK:
         ROVER.update(boot=None, config=False, holat=None, seen=0)
+        # Pico'ning yonish belgisi o'zgarmagan bo'lishi mumkin (faqat kabel uzilgan):
+        # `seen` ni saqlaymiz, aks holda u qayta yuborayotgan hammasi takror yozilardi
+        KROMKA["ack"] = set()
     next_ping = 0.0
     next_holat = 0.0
     pending = b""
@@ -1736,9 +1809,11 @@ def _andon_session(port: Any) -> None:
                 )
             # Joriy holatni so'rab turish — faqat kromkada (prisadka o'zi har 30 s
             # snapshot yuboradi)
-            if ANDON_TUR["tur"] == _TUR_KROMKA and now >= next_holat:
-                port.write(b"HOLAT\n")
-                next_holat = now + _KROMKA_HOLAT_S
+            if ANDON_TUR["tur"] == _TUR_KROMKA:
+                if now >= next_holat:
+                    port.write(b"HOLAT\n")
+                    next_holat = now + _KROMKA_HOLAT_S
+                _kromka_ack(port)
             # timeout 0.2 s: vaqt tugasa YARIM qator ham qaytishi mumkin — yig'ib boramiz
             chunk = port.readline()
             if not chunk:
@@ -1960,6 +2035,7 @@ async def andon_shipper() -> None:
                 oxirgi = time.monotonic()
                 await asyncio.to_thread(_andon_ack, count)
                 _rover_acked(events)
+                _kromka_acked(events)
                 if javob.get("skipped"):
                     log.warning("Andon: server %s ta buzuq hodisani yozmadi", javob.get("skipped"))
                 continue

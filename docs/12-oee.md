@@ -340,7 +340,7 @@ sahifasi, aybdor hodim kesimidagi hisobot.
 ### 4.8 Kromka stansiyasi — kuzatuv (2026-09-19, 1-bosqich)
 
 Kromkada ikkinchi Pico bor: u chiroq emas, **detal uzunligini** ikkita to'siq datchigi bilan
-o'lchaydi (alohida repo — `jasper2233/kromka-stansiya-OYY`, firmware **v1.16**). 1-bosqichda u
+o'lchaydi (alohida repo — `jasper2233/kromka-stansiya-OYY`, firmware **v1.22**). 1-bosqichda u
 faqat KUZATILADI: hech narsa bloklanmaydi, skan oqimiga tegilmaydi. Foyda darhol —
 **KROMKA uchun ham Availability** va o'lchov tarixi.
 
@@ -348,7 +348,7 @@ faqat KUZATILADI: hech narsa bloklanmaydi, skan oqimiga tegilmaydi. Foyda darhol
 | --- | --- | --- |
 | Tur aniqlash | `bridge-agent/agent.py: _andon_line` | Prisadka `MES event {...}` deb yozadi, kromka YALANG'OCH JSON (`{"ev":"olchov"}`) — birinchi tushunarli qatordan aniqlanadi, `ANDON_TUR` env bilan majburlash mumkin |
 | Yurak urishi | o'sha faylda `_andon_session` | Kromka Pico'si 3 soniya BUYRUQ ko'rmasa hodisalarni RAM ga yig'a boshlaydi — unga har soniyada `HB`, prisadkaga 5 soniyalik `PING` |
-| Kalit | `_kromka_kalit` | Kromka firmware'i `session`/`seq` ni yubormaydi — agent beradi (har ulanishda yangi sessiya), shuning uchun serverdagi `(machine_id, session, seq)` unikal indeksi qayta yuborishni o'zi tashlaydi |
+| Kalit | `_kromka_xbxq`, `_kromka_kalit` | v1.22 dan kalit Pico'nikidir: `xb` (yonish belgisi) → `session`, `xq` → `seq`. Undan oldingi proshivkada agent o'zi beradi (har ulanishda yangi sessiya). Ikkala holatda ham serverdagi `(machine_id, session, seq)` unikal indeksi qayta yuborishni tashlaydi |
 | Buferdan kelgani | `_kromka_line` | `eski_ms` — hodisa Pico xotirasida qancha kutgani; `ts = hozir − eski_ms`, aks holda tun bo'yi yig'ilgani bitta daqiqaga tiqilardi |
 | Qabul | `POST /bridge-agents/andon` (o'sha endpoint) | `AndonEventIn.type` ga kromka turlari qo'shildi: `olchov`, `uskuna`, `tezlik`, `ogoh`, `avariya_toxtash`, `boot`, `tiqilish`. Yangi jadval YO'Q — xom hodisa `andon_event.payload` da |
 | Joriy holat | agent har 30 s `HOLAT` so'raydi (`_kromka_holat`) | Kromka `uskuna` ni faqat RUN kirishi O'ZGARGANDA yuboradi — stanok ertalab yoqilib, agent kunduzi ulansa hech narsa kelmasdi. `HOLAT` javobidagi `uskuna` o'sha lahzadagi holat; **o'zgargan bo'lsagina** hodisa yoziladi (`manba: "holat"`), aks holda oraliqlar maydalanardi |
@@ -396,6 +396,27 @@ oq ro'yxatidan o'tdi va xom holida bazaga tushdi (sabab, `L2`, `L1` ro'yxati), b
 kelgani `eski_ms` bo'yicha 30 soniya orqaga surildi, avariya xabari (`alarm=1`, `uskuna`siz)
 soxta «to'xtadi» hodisasi yasamadi, firmware versiyasi `1.16` deb o'qildi, server hammasini
 qabul qildi.
+
+**Firmware v1.19–v1.22 (2026-09-22…24) nimani o'zgartirdi va bizda nima qilindi:**
+
+| Ularda | Bizda |
+| --- | --- |
+| **v1.19 — navbat sig'imi masofadan hisoblanadi** (`D / 150 mm + 4`, ko'pi bilan 40; ilgari qotib qolgan 12 ta edi). Kalta detallar ketma-ket tiqilganda navbat to'lib, eng eski yozuv D2 tasdig'isiz chiqib ketardi (`FAQAT1`) va navbat siljirdi | Bu aynan biz 2026-09-21 da ko'rgan nuqson edi — bitta detal ikki marta (avval xato, keyin to'g'ri) yozilardi. Bizdagi javob (kirish vaqti bo'yicha juftlash, §4.10) o'z kuchida qoladi: u firmware nuqsonini emas, TRANZIT vaqtini hisobga oladi |
+| **v1.19 — juftlash chegarasi torroq**: 25% o'rniga 3% yoki kamida 30 mm | 650 va 800 mm detallar endi «bir xil» deb juftlanmaydi, ya'ni soxta uzunlik kamayadi. Bizda o'zgarish shart emas |
+| **v1.20 — OVOZ Pico'dan olib tashlandi** (GP16 PWM yo'q, oyoq doim past). Rele har almashganda `{"ev":"sig","r":"avariya\|qr\|test\|idle","on":0\|1,"ms":..}` keladi — tovushni MES o'z dinamigidan, AYNAN shu xabar bo'yicha chalishi kerak | `sig` agent oq ro'yxatiga QO'SHILMADI: u lampa fazasi, OEE yoki o'lchov tarixiga hech narsa qo'shmaydi, har miltillashda bitta hodisa bo'lib `andon_event` ni shishirardi. Tovush bizda YO'Q (stansiya sahifasi ularniki, MES terminali emas) |
+| **v1.21 — qayta yuklanish sababi**: `boot` hodisasida `sabab` (`tok` — ta'minot, `wdt` — qorovul yoki qo'lda `reset`), `HOLAT` javobida esa `sabab` va `up` (yonganidan beri, ms) | Xom holida `andon_event.payload` ga tushadi (`extra="allow"`) — sxemaga tegilmadi. Kromka Pico'si kunduzi `wdt` bilan qayta yonsa, buni endi bazadan ko'rish mumkin |
+| **v1.22 — hodisalar TASDIQ bilan**: `olchov`, `ogoh`, `avariya_toxtash`, `tiqilish`, `uskuna`, `boot` har biri `xb` (yonish belgisi, 8 hex) va `xq` (shu yonishdagi raqam) oladi va `ACK <xb> <xq…>` kelmaguncha RAM da qoladi (300 tagacha), har 5 soniyada 40 tagacha qayta yuboriladi | Agent **1.8.0**: kalit endi Pico'niki — `xb` → `session`, `xq` → `seq` (`_kromka_xbxq`). Qayta yuborilgani navbatga TUSHMAYDI (`seen` dan past), tasdiq esa FAQAT server 200 qaytargandan keyin beriladi (`_kromka_acked` → `_kromka_ack`), ya'ni internet uzilgan paytdagi o'lchov Pico'da ham o'chib, bizda ham yozilmay yo'qolmaydi. Yangi `xb` — hisob noldan. Eski proshivka avvalgidek agent kalitida ishlayveradi |
+
+⚠️ **Agent 1.8.0 dan pastini v1.22 Pico bilan ishlatib bo'lmaydi**: u `ACK` yubormaydi, Pico
+esa har 5 soniyada qayta yuboraveradi — agent har takrorni YANGI hodisa deb yozardi (bitta
+o'lchov daqiqada 12 marta), Performance ham, o'lchov tarixi ham shishib ketardi.
+
+Tekshiruv (v1.19–v1.22, bir martalik skript): **15/15** — Pico takror yuborgan ikkita o'lchov
+navbatga bir marta tushdi, kalit `xb`/`xq` dan olindi, `boot` dagi `sabab: wdt` saqlandi,
+`sig` va `yigilgan` yozilmadi, server yozmaguncha `ACK` yo'q, server yozgach bitta qator
+(`ACK a1b2c3d4 1 2 3`) ketdi va ikkinchi marta takrorlanmadi, yangi `xb` da hisob noldan
+boshlandi, `xb`/`xq` siz eski hodisaga agent o'zi kalit berdi; server partiyani ikki marta
+olganda 3 accepted / 3 duplicates.
 
 ### 4.9 Kromka Performance (2026-09-20)
 
@@ -590,6 +611,23 @@ QABUL QILDI (300 s dan qisqa 200 s lik to'xtash hodisa bermadi, 360 s lik berdi)
 navbatga bir marta tushdi, `POWER_ON` va `SPINDLE_IDLE` xom maydonlari bilan bazaga
 tushdi, takror partiya 0 ta yangi yozuv berdi, RUN tushishidan to'xtash yozildi,
 tasdiq esa FAQAT server yozgandan keyin va bir marta ketdi.
+
+### 4.14 Orakllar qayerda turadi (2026-09-25)
+
+Loyihada test yo'q (ataylab), ya'ni xulq haqidagi har bir da'vo bir martalik
+SKRIPT bilan tasdiqlanadi. Ilgari ular `/tmp` da yozilardi va macOS tozalashi
+ularni ikki marta yeb ketdi — OEE bo'yicha yig'ilgan hamma tekshiruv yo'qoldi.
+Endi ular repoda: **`scripts/oracles/`** (CI ularni CHAQIRMAYDI — bu test to'plami
+emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
+
+| Skript | Qaysi bo'lim |
+| --- | --- |
+| `oee_oracle.py` (31/31) | §4.1, §4.5-4.7, §4.9, §4.12 — A/P/Q/OEE, tanaffus, to'xtash chegarasi, bo'sh yurish, kesim sanasi, rejaning hozirgacha kesilishi |
+| `kromka_bind_oracle.py` (23/23) | §4.10 |
+| `kromka_v116_oracle.py` (11/11) | §4.8 |
+| `kromka_v122_oracle.py` (15/15) | §4.8, proshivka v1.19-v1.22 |
+| `rover_oracle.py` (19/19) | §4.13 |
+| `tablo_machines_oracle.py` (29/29) | `docs/05` — stanok taxtasi |
 
 ## 5. Prod auditi natijalari (2026-09-16)
 

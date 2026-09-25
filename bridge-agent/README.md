@@ -226,8 +226,9 @@ o'lchaydi (firmware alohida repoda). Agent ikkalasini ham o'qiydi:
 |---|---|---|
 | Qator | `MES event {...}` | yalang'och `{"ev":"olchov",...}` |
 | Yurak urishi | `PING` har 5 s | **`HB` har 1 s** — Pico 3 s buyruq ko'rmasa hodisalarni RAM ga yig'adi |
-| Kalit | firmware `session`/`seq` beradi | **agent** beradi (har ulanishda yangi sessiya) |
+| Kalit | firmware `session`/`seq` beradi | **v1.22+**: Pico'ning `xb` (yonish belgisi) → `session`, `xq` → `seq`. Eskisida — agent beradi (har ulanishda yangi sessiya) |
 | Buferdan kelgani | `age_ms` | `eski_ms` — ikkalasida ham vaqt shundan tiklanadi |
+| Tasdiq | yo'q | **v1.22+**: `ACK <xb> <xq…>` — server YOZGANDAN keyin |
 
 Tur birinchi tushunarli qatordan aniqlanadi; bitta kompyuterda ikki Pico bo'lsa
 `ANDON_TUR` va `ANDON_PORT` bilan aniq ko'rsatiladi.
@@ -239,6 +240,25 @@ yozmaydi va hodisalarni RAM ga yig'adi — agent har soniyada `HB` yuborgani uch
 o'zgarish kerak emas. Avariya xabarida (`{"ev":"holat","alarm":1}`) `uskuna` maydoni
 bo'lmaydi va agent uni holat sifatida O'QIMAYDI — aks holda avariya «stanok to'xtadi»
 bo'lib yozilardi.
+
+**Firmware v1.19–v1.22 (2026-09-22…24), agent 1.8.0:**
+
+- **v1.22 — tasdiq (ACK).** Muhim hodisa (`olchov`, `ogoh`, `avariya_toxtash`,
+  `tiqilish`, `uskuna`, `boot`) `xb` (yonish belgisi, 8 hex) va `xq` (raqam) bilan
+  keladi va Pico RAM ida (300 tagacha) `ACK <xb> <xq…>` kelmaguncha qoladi — har
+  5 soniyada 40 tagacha qayta yuboriladi. Agent `xb`/`xq` ni to'g'ridan-to'g'ri
+  `session`/`seq` qilib oladi (`_kromka_xbxq`), takrorni navbatga umuman qo'ymaydi
+  va tasdiqni FAQAT server 200 qaytargandan keyin yozadi (`_kromka_acked` →
+  `_kromka_ack`). Aks holda uzilgan internetdagi o'lchov Pico'da ham o'chib,
+  bizda ham yozilmay yo'qolardi — rover bilan bir xil qoida.
+  ⚠️ **Agent 1.8.0 dan pastini v1.22 Pico bilan ishlatib bo'lmaydi**: tasdiq
+  bo'lmagach Pico qayta yuboraveradi, agent esa har takrorni yangi hodisa deb yozadi.
+- **v1.21 — qayta yuklanish sababi.** `boot` da `sabab` (`tok` | `wdt`), `HOLAT`
+  javobida `sabab` va `up` (ms). Xom holida `payload` ga tushadi, kod o'zgarmadi.
+- **v1.20 — ovoz Pico'dan MES tomoniga o'tdi.** Rele almashganda `{"ev":"sig",...}`
+  keladi. Agent uni UZATMAYDI: lampa fazasi bizda ishlatilmaydi va har miltillash
+  `andon_event` ga bitta yozuv bo'lardi. `yigilgan` (xotira hisoboti) ham shunday.
+- **v1.19 — navbat sig'imi va juftlash chegarasi** — Pico ichida, agentga tegmaydi.
 
 ## Rover Pico'si — CNC 2130 (v1.7.0+)
 
