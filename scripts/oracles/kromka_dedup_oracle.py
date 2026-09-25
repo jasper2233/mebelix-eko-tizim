@@ -143,6 +143,15 @@ async def main() -> None:
                                          verdict=KromkaVerdict.MOS, measured_mm=900.0,
                                          expected_mm=900.0, delta_mm=0.0, side_group="length",
                                          scan_id=skan.id, instance_id=nusxa.id, order_id=buyurtma.id))
+        # BIR SONIYAGA ikki HAR XIL hodisa tushgan (prodda 3b bo'limida 5911 satr shunday
+        # edi): ikkalasi ham qolishi, nusxalari o'chishi kerak. Ajratuvchi — o'lcham.
+        for xq, mm in ((90, 500.0), (91, 600.0)):
+            for _ in range(5):
+                hodisa("olchov", T(8, 30, 30), {"ev": "olchov", "L": mm, "kod": "OK",
+                                                "v_nom": 18, "xb": XB, "xq": xq})
+                db.add(KromkaMeasurement(machine_id=stanok.id, measured_at=T(8, 30, 30), code="OK",
+                                         verdict=KromkaVerdict.MOS, measured_mm=mm,
+                                         expected_mm=mm, delta_mm=0.0, side_group="length"))
         # ESKI proshivkadan (xb/xq YO'Q) kelgan yozuv — unga TEGILMASLIGI kerak
         hodisa("olchov", T(16), {"ev": "olchov", "L": 640.0, "kod": "OK", "v_nom": 10})
         db.add(KromkaMeasurement(machine_id=stanok.id, measured_at=T(16), code="OK",
@@ -154,7 +163,7 @@ async def main() -> None:
                                  "xb": XB, "xq": 51})
         await db.commit()
 
-        kutilgan_hodisa = 2 + 30 * NUSXA + 3
+        kutilgan_hodisa = 2 + 30 * NUSXA + 10 + 3
         jami = await db.scalar(select(func.count()).select_from(AndonEvent))
         natija.append(("fixture: takrorlar bilan hodisa", jami, kutilgan_hodisa))
 
@@ -162,8 +171,8 @@ async def main() -> None:
         r0 = oldin.rows[0]
         # Takrorlar tufayli 30 ta o'tish 30 × NUSXA bo'lib sanalgan (+3 ta yolg'iz yozuv),
         # ideal vaqt ham shuncha shishgan: 2177.5 s ÷ 10680 s = 20.4%
-        natija.append(("tozalashdan OLDIN detal soni shishgan", r0.parts, 30 * NUSXA + 3))
-        natija.append(("tozalashdan OLDIN Performance shishgan", r0.performance_pct, 20.4))
+        natija.append(("tozalashdan OLDIN detal soni shishgan", r0.parts, 30 * NUSXA + 13))
+        natija.append(("tozalashdan OLDIN Performance shishgan", r0.performance_pct, 20.8))
 
     # ---------- FAQAT HISOBOT: hech narsa o'zgarmasligi kerak ----------
     chiqish = sqlni_yurgiz(faqat_hisobot=True)
@@ -183,10 +192,10 @@ async def main() -> None:
             .where(AndonEvent.is_deleted == False)  # noqa: E712
             .group_by(AndonEvent.kind).order_by(AndonEvent.kind))).tuples().all()
         natija.append(("takrorlar o'chdi, haqiqiylari qoldi",
-                       dict(qolgan), {"olchov": 33, "uskuna": 2}))
+                       dict(qolgan), {"olchov": 35, "uskuna": 2}))
         ochirilgan = await db.scalar(select(func.count()).select_from(AndonEvent)
                                      .where(AndonEvent.is_deleted == True))  # noqa: E712
-        natija.append(("o'chirilgani = ortiqcha nusxalar", ochirilgan, 30 * (NUSXA - 1)))
+        natija.append(("o'chirilgani = ortiqcha nusxalar", ochirilgan, 30 * (NUSXA - 1) + 8))
         yumshoq = await db.scalar(select(func.count()).select_from(AndonEvent)
                                   .where(AndonEvent.is_deleted == True,  # noqa: E712
                                          AndonEvent.deleted_at.is_not(None)))
@@ -200,18 +209,22 @@ async def main() -> None:
             AndonEvent.is_deleted == False,  # noqa: E712
             AndonEvent.happened_at == T(15)))
         natija.append(("bir soniyadagi HAR XIL xq qoldi", bir_soniya, 2))
+        tuqnash = await db.scalar(select(func.count()).select_from(KromkaMeasurement).where(
+            KromkaMeasurement.is_deleted == False,  # noqa: E712
+            KromkaMeasurement.measured_at == T(8, 30, 30)))
+        natija.append(("bir soniyada ikki hodisa — ikkalasi ham qoldi", tuqnash, 2))
 
         olchov_qoldi = await db.scalar(select(func.count()).select_from(KromkaMeasurement)
                                        .where(KromkaMeasurement.is_deleted == False))  # noqa: E712
         # Har HODISAGA bitta: 30 + tegilmaydigan eski yozuv. Vaqt bo'yicha tozalash
         # bu yerda 30 × 4 = 120 satr qoldirardi — kalit `xb`/`xq` bo'lgani shu uchun muhim.
-        natija.append(("o'lchov tarixi: har hodisaga BITTA yozuv", olchov_qoldi, 31))
+        natija.append(("o'lchov tarixi: har hodisaga BITTA yozuv", olchov_qoldi, 33))
 
         keyin = await report_machine_time(db, admin, date_from=KECHA.date(), date_to=KECHA.date())
         r1 = keyin.rows[0]
-        natija.append(("tozalashdan KEYIN detal soni haqiqiy", r1.parts, 33))
+        natija.append(("tozalashdan KEYIN detal soni haqiqiy", r1.parts, 35))
         # 197.5 s ÷ 10680 s — endi Pico rostdan qilgan ish
-        natija.append(("tozalashdan KEYIN Performance haqiqiy", r1.performance_pct, 1.8))
+        natija.append(("tozalashdan KEYIN Performance haqiqiy", r1.performance_pct, 1.9))
         # Ishlagan vaqt deyarli o'zgarmaydi: bo'sh yurish chegarasi o'lchov BELGILARIGA
         # tayanadi, takror nusxalar esa o'sha belgilarni bir necha soniyaga cho'zib
         # turgan edi. Farq siljish oynasidan katta bo'lsa — tozalash ortiqcha yozuvni

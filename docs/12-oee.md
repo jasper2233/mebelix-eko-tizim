@@ -424,14 +424,20 @@ o'z `xb`/`xq` si, ya'ni takrorlik taxmin emas; har guruhdan eng birinchi yozuv q
 qolgani YUMSHOQ o'chiriladi (`is_deleted`), `xb`/`xq` siz eski yozuvlarga tegilmaydi.
 `-v faqat_hisobot=1` bilan avval faqat sanab ko'rsatadi.
 
-⚠️ **O'lchov tarixida (`kromka_measurement`) `xb`/`xq` ustuni yo'q, yagona ko'prik — VAQT,
-lekin vaqt ham takrorlanmaydi.** Agent 1.7.1 har takrorda `ts = hozir − eski_ms` deb qayta
-hisoblagan, ya'ni bitta hodisaning nusxalari bir necha soniyaga tarqalgan: prodda 185 hodisaga
-**881** xil vaqt tamg'asi to'g'ri kelgan. Shuning uchun skript avval har vaqt tamg'asini o'z
-hodisasiga bog'laydi (`olchov_vaqt` vaqtinchalik ko'rinishi) va HAR HODISAGA bitta yozuv
-qoldiradi. Bir soniyaga ikki xil `xq` tushgan bo'lsa — o'sha vaqtga UMUMAN tegilmaydi va
-hisobotning 3b bo'limida alohida sanaladi. Vaqt bo'yicha tozalash bu yerda 881 satr qoldirib,
-o'lchov tarixini hamon ~5 barobar shishgan holda qoldirardi.
+⚠️ **O'lchov tarixida (`kromka_measurement`) `xb`/`xq` ustuni yo'q — ko'prik (VAQT, O'LCHAM).**
+Ikkalasi ham kerakligi prod raqamlarida ko'rindi:
+
+- **Vaqtning o'zi kalit emas.** Agent 1.7.1 har takrorda `ts = hozir − eski_ms` deb qayta
+  hisoblagan, ya'ni bitta hodisaning nusxalari bir necha soniyaga tarqalgan: prodda 185
+  hodisaga **881** xil vaqt tamg'asi to'g'ri kelgan. Vaqt bo'yicha guruhlash har tamg'aga
+  bittadan yozuv qoldirib, tarixni ~5 barobar shishgan holda tashlab ketardi.
+- **O'lcham ham kerak.** Bir soniyaga ikki HAR XIL hodisa tushgani **5911** satrda uchradi;
+  o'lcham ularni ajratadi va ikkala haqiqiy o'lchov ham saqlanib qoladi.
+
+Shuning uchun `olchov_hodisa` ko'rinishi har (vaqt, o'lcham) juftligini o'z hodisasiga
+bog'laydi va tozalash HAR HODISAGA bitta yozuv qoldiradi. Bir soniyada bir xil o'lchamli
+ikki hodisa bo'lsa — o'sha juftlikka UMUMAN tegilmaydi va hisobotning 3b bo'limida
+alohida sanaladi.
 
 Tekshiruv (v1.19–v1.22, bir martalik skript): **15/15** — Pico takror yuborgan ikkita o'lchov
 navbatga bir marta tushdi, kalit `xb`/`xq` dan olindi, `boot` dagi `sabab: wdt` saqlandi,

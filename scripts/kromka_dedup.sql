@@ -74,45 +74,61 @@ HAVING count(*) > 1
 ORDER BY count(*) DESC, 2 DESC
 LIMIT 10;
 
--- O'lchov tarixida `xb`/`xq` ustuni yo'q — yagona ko'prik VAQT. Shu ko'rinish
--- har vaqt tamg'asini O'Z hodisasiga bog'laydi va FAQAT bir ma'noli bog'langanini
--- qoldiradi: bitta soniyaga ikki xil `xq` tushgan bo'lsa, qaysi yozuv qaysinisi
--- ekanini ayta olmaymiz — unday vaqtlarga umuman tegilmaydi.
-CREATE TEMP VIEW olchov_vaqt AS
-SELECT machine_id, happened_at, min(xb) AS xb, min(xq) AS xq
+-- O'lchov tarixida `xb`/`xq` ustuni yo'q — ko'prik (VAQT, O'LCHAM). Bu ko'rinish
+-- har juftlikni O'Z hodisasiga bog'laydi va FAQAT bir ma'noli bog'langanini qoldiradi:
+-- bitta soniyada bir xil o'lchamli ikki hodisa bo'lsa, qaysi yozuv qaysinisi ekanini
+-- ayta olmaymiz — unday juftlikka umuman tegilmaydi (3b bo'limida sanaladi).
+--
+-- Nega VAQTNING o'zi kalit emas: agent 1.7.1 har takrorda vaqtni `hozir − eski_ms`
+-- deb qayta hisoblagan, ya'ni BITTA hodisaning nusxalari bir necha xil soniyaga
+-- tarqalgan (prodda 2026-09-24: 185 hodisa, 881 xil vaqt tamg'asi). Vaqt bo'yicha
+-- guruhlash har tamg'aga bittadan yozuv qoldirib, tarixni hamon shishgan qoldirardi.
+-- Nega O'LCHAM ham kerak: bir soniyaga ikki HAR XIL hodisa tushgan (prodda 5911 satr) —
+-- o'lcham ularni ajratadi va ikkalasi ham saqlanib qoladi.
+CREATE TEMP VIEW olchov_hodisa AS
+SELECT machine_id, happened_at, mm, min(xb) AS xb, min(xq) AS xq
 FROM (
     SELECT DISTINCT e.machine_id, e.happened_at,
+           round((e.payload->>'L')::numeric, 1) AS mm,
            e.payload->>'xb' AS xb, e.payload->>'xq' AS xq
     FROM andon_event e
     WHERE e.kind = 'olchov' AND e.payload ? 'xb' AND e.payload ? 'xq'
 ) t
-GROUP BY machine_id, happened_at
+GROUP BY machine_id, happened_at, mm
 HAVING count(*) = 1;
 
 \echo ''
 \echo '=== 3. O''LCHOV TARIXIDAGI takrorlar (kromka_measurement) ==='
 SELECT m.name AS stanok,
        (k.measured_at AT TIME ZONE 'Asia/Tashkent')::date AS kun,
-       count(*) - count(DISTINCT (v.xb, v.xq)) AS ortiqcha,
-       count(DISTINCT (v.xb, v.xq)) AS haqiqiy
+       count(*) AS jami,
+       count(DISTINCT (v.xb, v.xq)) AS qoladi,
+       count(*) - count(DISTINCT (v.xb, v.xq)) AS ortiqcha
 FROM kromka_measurement k
 JOIN machine m ON m.id = k.machine_id
-JOIN olchov_vaqt v ON v.machine_id = k.machine_id AND v.happened_at = k.measured_at
+JOIN olchov_hodisa v
+  ON v.machine_id = k.machine_id
+ AND v.happened_at = k.measured_at
+ AND v.mm IS NOT DISTINCT FROM k.measured_mm
 WHERE NOT k.is_deleted
 GROUP BY 1, 2
+HAVING count(*) > count(DISTINCT (v.xb, v.xq))
 ORDER BY 2, 1;
 
 \echo ''
 \echo '=== 3b. Hodisasiga BOG''LANMAGAN o''lchovlar (tegilmaydi) ==='
--- Vaqti ikki xil `xq` ga tegishli bo'lgan yoki umuman hodisasi topilmagan yozuvlar.
--- Ular tozalashga kirmaydi: qaysi biri takror ekanini ayta olmaymiz.
+-- Mos hodisa topilmagan yoki bir ma'noli bog'lanmagan yozuvlar: eski proshivka davri,
+-- `L` siz kodlar (FAQAT1/FAQAT2), yoki bir soniyada bir xil o'lchamli ikki hodisa.
 SELECT m.name AS stanok,
        (k.measured_at AT TIME ZONE 'Asia/Tashkent')::date AS kun,
        count(*) AS tegilmaydi
 FROM kromka_measurement k
 JOIN machine m ON m.id = k.machine_id
-LEFT JOIN olchov_vaqt v ON v.machine_id = k.machine_id AND v.happened_at = k.measured_at
-WHERE NOT k.is_deleted AND v.happened_at IS NULL
+LEFT JOIN olchov_hodisa v
+       ON v.machine_id = k.machine_id
+      AND v.happened_at = k.measured_at
+      AND v.mm IS NOT DISTINCT FROM k.measured_mm
+WHERE NOT k.is_deleted AND v.machine_id IS NULL
   AND k.measured_at >= (SELECT min(happened_at) FROM andon_event WHERE payload ? 'xb')
 GROUP BY 1, 2
 ORDER BY 2, 1;
@@ -127,21 +143,20 @@ BEGIN;
 \echo ''
 \echo '=== 4. TOZALASH: o''lchov tarixi (avval — u hodisa vaqtiga tayanadi) ==='
 WITH ortiqcha AS (
-    -- Har o'lchov vaqti o'z hodisasiga (`xb`,`xq`) bog'lanadi va HAR HODISAGA
-    -- BITTA yozuv qoldiriladi. Nega `measured_at` ning o'zi yetmaydi: agent 1.7.1
-    -- har takrorda vaqtni `hozir − eski_ms` deb qayta hisoblagan, ya'ni bitta
-    -- hodisaning nusxalari bir necha xil soniyaga tarqalib ketgan (prodda
-    -- 2026-09-24: 185 hodisa, 881 xil vaqt tamg'asi).
-    SELECT k.id
+    -- Har HODISAGA bitta yozuv qoladi (ko'prik yuqoridagi `olchov_hodisa`).
+    SELECT t.id
     FROM (
         SELECT k.id,
                row_number() OVER (PARTITION BY v.machine_id, v.xb, v.xq
                                   ORDER BY k.id) AS n
         FROM kromka_measurement k
-        JOIN olchov_vaqt v ON v.machine_id = k.machine_id AND v.happened_at = k.measured_at
+        JOIN olchov_hodisa v
+          ON v.machine_id = k.machine_id
+         AND v.happened_at = k.measured_at
+         AND v.mm IS NOT DISTINCT FROM k.measured_mm
         WHERE NOT k.is_deleted
-    ) k
-    WHERE k.n > 1
+    ) t
+    WHERE t.n > 1
 )
 UPDATE kromka_measurement k
 SET is_deleted = true, deleted_at = now()
