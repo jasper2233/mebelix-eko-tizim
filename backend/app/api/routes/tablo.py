@@ -4,8 +4,8 @@ from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 
 from fastapi import APIRouter
-from sqlalchemy import func, or_, select, text
-from sqlalchemy.orm import defer
+from sqlalchemy import func, or_, select, text, true
+from sqlalchemy.orm import aliased, defer
 
 from app.api.deps import CurrentUser, SessionDep
 from app.api.routes.orders._common import _get_visible_order
@@ -147,18 +147,24 @@ async def read_tablo_machines(db: SessionDep, user: CurrentUser) -> list[TabloMa
 
     # Oxirgi o'lchov — faqat kromkada bor (`kromka_measurement`); bitta so'rovda
     # har stanokning eng yangisi olinadi
+    # Har stanokning OXIRGI o'lchovi — LATERAL + LIMIT 1: `(machine_id, measured_at)` indeksidan
+    # orqaga bitta qator. `DISTINCT ON` butun jadvalni (yumshoq o'chirilgan 231 ming dublikat
+    # bilan) o'qib saralardi: prod nusxasida 43 ms, va u tarix bilan o'sardi (taxta 15 s da bir so'raydi)
+    oxirgi = (
+        select(KromkaMeasurement)
+        .where(
+            KromkaMeasurement.machine_id == Machine.id,
+            KromkaMeasurement.is_deleted == False,  # noqa: E712
+        )
+        .order_by(KromkaMeasurement.measured_at.desc(), KromkaMeasurement.id.desc())
+        .limit(1)
+        .lateral()
+    )
+    oxirgi_olchov = aliased(KromkaMeasurement, oxirgi)
     olchovlar = {
         row.machine_id: row
         for row in (
-            await db.execute(
-                select(KromkaMeasurement)
-                .where(
-                    KromkaMeasurement.machine_id.in_(ids),
-                    KromkaMeasurement.is_deleted == False,  # noqa: E712
-                )
-                .distinct(KromkaMeasurement.machine_id)
-                .order_by(KromkaMeasurement.machine_id, KromkaMeasurement.measured_at.desc())
-            )
+            await db.execute(select(oxirgi_olchov).select_from(Machine).join(oxirgi, true()).where(Machine.id.in_(ids)))
         )
         .scalars()
         .all()

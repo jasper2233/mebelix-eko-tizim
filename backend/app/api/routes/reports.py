@@ -301,17 +301,28 @@ async def build_machine_time_report(
     # Tugamagan oxirgi holat: faqat oraliq hozirni o'z ichiga olsa va agent hali tirik bo'lsa
     ongoing: dict[int, tuple[str, datetime]] = {}
     if end >= now:
+        # Har ish markazining OXIRGI holati — «guruhdagi oxirgi qator» LATERAL + LIMIT 1 bilan:
+        # `ix_andon_event_live (kind, machine_id, happened_at)` dan har stanokka bitta qator
+        # o'qiladi. `DISTINCT ON` butun `state` tarixini o'qib saralardi — narxi tarix bilan
+        # o'sardi (2026-09-26 da 6 282 qator, 7,5 ms), bu esa stanok soniga bog'liq xolos.
+        oxirgi = (
+            select(AndonEvent.state, AndonEvent.happened_at)
+            .where(
+                AndonEvent.machine_id == Machine.id,
+                AndonEvent.kind == "state",
+                AndonEvent.is_deleted == False,  # noqa: E712
+                AndonEvent.state.is_not(None),
+            )
+            .order_by(AndonEvent.happened_at.desc(), AndonEvent.id.desc())
+            .limit(1)
+            .lateral()
+        )
         last_states = (
             await db.execute(
-                select(AndonEvent.machine_id, AndonEvent.state, AndonEvent.happened_at)
-                .where(
-                    AndonEvent.kind == "state",
-                    AndonEvent.is_deleted == False,  # noqa: E712
-                    AndonEvent.state.is_not(None),
-                    faqat(AndonEvent.machine_id),
-                )
-                .distinct(AndonEvent.machine_id)
-                .order_by(AndonEvent.machine_id, AndonEvent.happened_at.desc(), AndonEvent.id.desc())
+                select(Machine.id, oxirgi.c.state, oxirgi.c.happened_at)
+                .join(oxirgi, true())
+                .where(faqat(Machine.id))
+                .order_by(Machine.id)
             )
         ).all()
         live = await read_live(mid for mid, _state, _at in last_states)
