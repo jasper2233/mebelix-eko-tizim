@@ -12,6 +12,24 @@ services:
     image: postgres:15-alpine
     restart: always
     logging: *logging
+    # Sukutdagi sozlama 128 MB bufer bilan 4 GB serverda kesh urilishi 85,6% edi
+    # (2026-09-26). Baza (~470 MB) buferga to'liq sig'adi. `pg_stat_statements` va
+    # 500 ms dan uzun so'rov logi — «Tizim holati» sahifasi va tahlil uchun: ilgari
+    # qaysi so'rov og'irligini baza o'zi aytmasdi. Parallel so'rov /dev/shm ishlatadi,
+    # Docker'ning 64 MB standarti 16 MB work_mem bilan yetmasligi mumkin — 256 MB.
+    # DIQQAT: compose o'zgarishi rollback'da qaytmaydi (deploy.sh) — bu buyruq
+    # postgres:15-alpine da prod nusxasi bilan sinalgan.
+    command: >
+      postgres
+      -c shared_buffers=512MB
+      -c effective_cache_size=2GB
+      -c work_mem=16MB
+      -c maintenance_work_mem=128MB
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=top
+      -c log_min_duration_statement=500
+      -c track_io_timing=on
+    shm_size: 256mb
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

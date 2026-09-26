@@ -6,6 +6,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-fastapi_db}
+    # Prod bilan bir xil kengaytma: «Tizim holati» sahifasining so'rovlar bo'limi
+    # busiz bo'sh qoladi (docker-compose.prod.yml dagi izoh)
+    command: postgres -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=top
     ports:
       # Faqat loopback: dev mashina tsex tarmog'ida — default parolli Postgres
       # butun tarmoqqa ochilib qolmasin
