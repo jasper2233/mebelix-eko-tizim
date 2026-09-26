@@ -14,12 +14,14 @@ import {
 import { TabloService } from "@/client"
 import { BrandLoader } from "@/components/Common/BrandLoader"
 import { useMesWs } from "@/hooks/useMesWs"
+import { useThrottled } from "@/hooks/useThrottled"
 import { requireAuth } from "@/lib/guards"
 import { deadlineTone, POST_COLORS, PRIORITY_EDGE } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import {
   getMachinesQueryOptions,
   getTabloMatrixQueryOptions,
+  TABLO_WS_THROTTLE_MS,
 } from "@/queries/mes"
 import { getCurrentUserQueryOptions } from "@/queries/users"
 
@@ -377,14 +379,22 @@ function TabloPage() {
   const jamiTop = useHeadOffset()
   const closeDrill = useCallback(() => setDrill(null), [])
 
+  // Tablo tsexdagi HAMMA hodisani oladi — har skanda butun matritsani qayta
+  // so'rash (bitta hisob ~150 ms) ochiq ekranlar soniga ko'payib server vaqtining
+  // 63% ini olardi va boshqa postlarning so'rovlarini 2-4 barobar sekinlatardi
+  // (2026-09-26 o'lchovi). Birinchi hodisa darhol, keyingilari 10 s da bir.
+  const refreshTablo = useThrottled(
+    () => queryClient.invalidateQueries({ queryKey: ["tablo"] }),
+    TABLO_WS_THROTTLE_MS,
+  )
   const { online } = useMesWs(
     useCallback(
       (event) => {
         if (event.type.startsWith("scan.") || event.type.startsWith("order.")) {
-          queryClient.invalidateQueries({ queryKey: ["tablo"] })
+          refreshTablo()
         }
       },
-      [queryClient],
+      [refreshTablo],
     ),
   )
 

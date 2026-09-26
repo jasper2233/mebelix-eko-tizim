@@ -58,6 +58,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useIdleLogout } from "@/hooks/useIdleLogout"
 import { useMesWs } from "@/hooks/useMesWs"
+import { useThrottled } from "@/hooks/useThrottled"
 import { requireAuth } from "@/lib/guards"
 import { OPERATOR_ROLES, POST_COLORS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
@@ -186,6 +187,10 @@ function TerminalPage() {
       }),
     [queryClient],
   )
+  // WS hodisalari to'lqin bo'lib keladi (TMO qadog'i — har detalga bitta
+  // `scan.recorded`): har biriga ekranni qayta so'ramaymiz, 500 ms ichidagilari
+  // bitta so'rovga jamlanadi (`useThrottled` — birinchisi darhol, oxirgisi kafolatli)
+  const invalidateWorkWs = useThrottled(invalidateWork, 500)
 
   // STANOK SKANERIDAN kelgan skanni ham ekranda ko'rsatamiz.
   //
@@ -213,12 +218,15 @@ function TerminalPage() {
             "scan.cancelled",
             "order.started",
             "order.cancelled",
-            // Boshqa qadoqlash terminali qadoqni yopsa/to'ldirsa — 30 s kutilmasin
-            "pachka.item",
-            "pachka.closed",
-          ].includes(event.type)
+          ].includes(event.type) ||
+          // Boshqa qadoqlash terminali qadoqni yopsa/to'ldirsa — 30 s kutilmasin.
+          // Faqat QADOQLASHda: bu hodisalar post manzilisiz keladi va boshqa
+          // postlarda (TMO navbati ham qadoqqa bog'liq emas) ekranni bekorga
+          // qayta so'ratardi — har qadoqlash skani tsexdagi HAMMA terminalga
+          (ctx?.post_code === "UPAKOVKA" &&
+            ["pachka.item", "pachka.closed"].includes(event.type))
         ) {
-          invalidateWork()
+          invalidateWorkWs()
         }
         const p = event.payload
         if (!ctx || p.machine_id !== ctx.machine_id) return
@@ -274,7 +282,7 @@ function TerminalPage() {
           toast.error(message, { description: `Kod ${code}` })
         }
       },
-      [invalidateWork, ctx, yangiXabar, touchActivity, queryClient],
+      [invalidateWorkWs, ctx, yangiXabar, touchActivity, queryClient],
     ),
   )
 

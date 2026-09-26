@@ -16,6 +16,7 @@ import { cardSurface } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useMesWs } from "@/hooks/useMesWs"
+import { useThrottled } from "@/hooks/useThrottled"
 import {
   formatDate,
   formatMoney,
@@ -24,7 +25,7 @@ import {
   POST_COLORS,
 } from "@/lib/mes"
 import { cn } from "@/lib/utils"
-import { getTabloMatrixQueryOptions } from "@/queries/mes"
+import { getTabloMatrixQueryOptions, TABLO_WS_THROTTLE_MS } from "@/queries/mes"
 
 export const Route = createFileRoute("/_layout/")({
   component: Dashboard,
@@ -92,14 +93,18 @@ function Dashboard() {
     enabled: canSee,
   })
 
+  // Matritsa tablo bilan bir xil qoida bo'yicha: har skanda emas, 10 s da bir
+  // (birinchisi darhol) — sababi `routes/tablo.tsx` dagi izohda
+  const refreshMatrix = useThrottled(
+    () => queryClient.invalidateQueries({ queryKey: ["tablo"] }),
+    TABLO_WS_THROTTLE_MS,
+  )
   const { online } = useMesWs((event) => {
-    if (event.type.startsWith("scan.")) {
-      queryClient.invalidateQueries({ queryKey: ["tablo"] })
-    }
+    if (event.type.startsWith("scan.")) refreshMatrix()
     // Skan oqimida panelni har skanda qayta so'ramaymiz (60s poll yetadi);
     // buyurtma va smena hodisalari kam, ular darhol aks etsin.
     if (event.type.startsWith("order.") || event.type.startsWith("session.")) {
-      queryClient.invalidateQueries({ queryKey: ["tablo"] })
+      refreshMatrix()
       queryClient.invalidateQueries({ queryKey: ["reports", "dashboard"] })
     }
   })

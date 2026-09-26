@@ -158,6 +158,10 @@ export const getTerminalContextQueryOptions = () =>
     refetchInterval: 30_000,
   })
 
+/** WS hodisasidan keyin matritsa ko'pi bilan shuncha vaqtda bir qayta so'raladi
+ *  (`hooks/useThrottled`): tablo va boshqaruv paneli tsexdagi har skanni oladi. */
+export const TABLO_WS_THROTTLE_MS = 10_000
+
 /** TABLO matritsasi — /tablo va boshqaruv paneli ikkalasi ham shu bitta so'rovdan
  *  oziqlanadi (avval har birida alohida yozilgan edi). */
 export const getTabloMatrixQueryOptions = () =>
