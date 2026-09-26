@@ -21,6 +21,7 @@ from .public import router as public_router
 from .reports import router as reports_router
 from .scans import router as scans_router
 from .settings import router as settings_router
+from .system import router as system_router
 from .tablo import router as tablo_router
 from .terminal import router as terminal_router
 from .tmo import router as tmo_router
@@ -54,6 +55,7 @@ router.include_router(scans_router, dependencies=_protected)
 router.include_router(settings_router, dependencies=_protected)
 router.include_router(tablo_router, dependencies=_protected)
 router.include_router(reports_router, dependencies=_protected)
+router.include_router(system_router, dependencies=_protected)  # «Tizim holati» (admin)
 # Himoyasiz ulanadi: /pair ochiq bo'lishi shart, admin endpointlar o'z ichida AdminUser bilan
 router.include_router(bridge_agents_router)
 router.include_router(ws_router)  # WebSocket auth is handled inside the endpoint

@@ -151,7 +151,7 @@ async def printing_agents(db: "AsyncSession") -> "Sequence[Row]":
     ).all()
 
 
-def _print_job(ref_id: int, png_b64: str) -> str:
+def _print_job(ref_id: int, png_b64: str, queued_at: datetime | None = None) -> str:
     """Bitta chop etish topshirig'i. `job_id` — HAR YUBORISHDA yangi.
 
     Agent shu `job_id` bo'yicha takrorni tashlaydi. `ref_id` bu vazifani
@@ -164,7 +164,12 @@ def _print_job(ref_id: int, png_b64: str) -> str:
     u `pachka_id`/`waste_id`/`employee_id` bo'ladi. Nom MEROS: uni `ref_id` ga
     o'zgartirish `bridge-agent/agent.py` ni ham yangilashni talab qiladi.
     """
-    return json.dumps({"type": "print", "job_id": uuid4().hex, "instance_id": ref_id, "png": png_b64})
+    job: dict[str, Any] = {"type": "print", "job_id": uuid4().hex, "instance_id": ref_id, "png": png_b64}
+    if queued_at is not None:
+        # Navbatga qo'yilgan lahza (unix soniya) — agent qabul qilganda `/ws/bridge`
+        # chek kechikishini o'lchaydi («Tizim holati»). Agent noma'lum maydonni e'tiborsiz qoldiradi.
+        job["queued_at"] = queued_at.timestamp()
+    return json.dumps(job)
 
 
 async def _enqueue(ctx: dict[str, Any], ref_id: int, png_b64: str, agent_id: int, label: str) -> str:
@@ -173,7 +178,7 @@ async def _enqueue(ctx: dict[str, Any], ref_id: int, png_b64: str, agent_id: int
     if redis is None:
         logger.error("%s %s uchun Redis navbati mavjud emas", label, ref_id)
         return f"lost:{ref_id}"
-    await redis.lpush(print_queue_key(agent_id), _print_job(ref_id, png_b64))
+    await redis.lpush(print_queue_key(agent_id), _print_job(ref_id, png_b64, ctx.get("enqueue_time")))
     return f"queued:{ref_id}"
 
 

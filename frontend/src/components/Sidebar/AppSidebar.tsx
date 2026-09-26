@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import {
+  Activity,
   BarChart3,
   Boxes,
   ClipboardList,
@@ -128,6 +129,13 @@ export const NAV_ITEMS: (Item & {
     show: isAdmin,
   },
   { icon: ScrollText, title: "Loglar", path: "/logs", show: isAdmin },
+  // Server tezligi: sekin endpointlar, event loop bloklari, chek kechikishi
+  {
+    icon: Activity,
+    title: "Tizim holati",
+    path: "/system-health",
+    show: isAdmin,
+  },
   {
     icon: SlidersHorizontal,
     title: "Tizim sozlamalari",

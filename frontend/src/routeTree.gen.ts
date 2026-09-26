@@ -25,6 +25,7 @@ import { Route as LayoutPrintersRouteImport } from './routes/_layout/printers'
 import { Route as LayoutReportsRouteImport } from './routes/_layout/reports'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutSotuvRouteImport } from './routes/_layout/sotuv'
+import { Route as LayoutSystemHealthRouteImport } from './routes/_layout/system-health'
 import { Route as LayoutSystemSettingsRouteImport } from './routes/_layout/system-settings'
 import { Route as LayoutWarehouseRouteImport } from './routes/_layout/warehouse'
 import { Route as LayoutWorkCentersRouteImport } from './routes/_layout/work-centers'
@@ -113,6 +114,11 @@ const LayoutSotuvRoute = LayoutSotuvRouteImport.update({
   path: '/sotuv',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutSystemHealthRoute = LayoutSystemHealthRouteImport.update({
+  id: '/system-health',
+  path: '/system-health',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutSystemSettingsRoute = LayoutSystemSettingsRouteImport.update({
   id: '/system-settings',
   path: '/system-settings',
@@ -170,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
   '/sotuv': typeof LayoutSotuvRoute
+  '/system-health': typeof LayoutSystemHealthRoute
   '/system-settings': typeof LayoutSystemSettingsRoute
   '/warehouse': typeof LayoutWarehouseRoute
   '/work-centers': typeof LayoutWorkCentersRoute
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
   '/sotuv': typeof LayoutSotuvRoute
+  '/system-health': typeof LayoutSystemHealthRoute
   '/system-settings': typeof LayoutSystemSettingsRoute
   '/warehouse': typeof LayoutWarehouseRoute
   '/work-centers': typeof LayoutWorkCentersRoute
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/_layout/reports': typeof LayoutReportsRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/sotuv': typeof LayoutSotuvRoute
+  '/_layout/system-health': typeof LayoutSystemHealthRoute
   '/_layout/system-settings': typeof LayoutSystemSettingsRoute
   '/_layout/warehouse': typeof LayoutWarehouseRoute
   '/_layout/work-centers': typeof LayoutWorkCentersRoute
@@ -249,6 +258,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/sotuv'
+    | '/system-health'
     | '/system-settings'
     | '/warehouse'
     | '/work-centers'
@@ -273,6 +283,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/sotuv'
+    | '/system-health'
     | '/system-settings'
     | '/warehouse'
     | '/work-centers'
@@ -299,6 +310,7 @@ export interface FileRouteTypes {
     | '/_layout/reports'
     | '/_layout/settings'
     | '/_layout/sotuv'
+    | '/_layout/system-health'
     | '/_layout/system-settings'
     | '/_layout/warehouse'
     | '/_layout/work-centers'
@@ -433,6 +445,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSotuvRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/system-health': {
+      id: '/_layout/system-health'
+      path: '/system-health'
+      fullPath: '/system-health'
+      preLoaderRoute: typeof LayoutSystemHealthRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/system-settings': {
       id: '/_layout/system-settings'
       path: '/system-settings'
@@ -503,6 +522,7 @@ interface LayoutRouteChildren {
   LayoutReportsRoute: typeof LayoutReportsRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutSotuvRoute: typeof LayoutSotuvRoute
+  LayoutSystemHealthRoute: typeof LayoutSystemHealthRoute
   LayoutSystemSettingsRoute: typeof LayoutSystemSettingsRoute
   LayoutWarehouseRoute: typeof LayoutWarehouseRoute
   LayoutWorkCentersRoute: typeof LayoutWorkCentersRoute
@@ -524,6 +544,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutReportsRoute: LayoutReportsRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutSotuvRoute: LayoutSotuvRoute,
+  LayoutSystemHealthRoute: LayoutSystemHealthRoute,
   LayoutSystemSettingsRoute: LayoutSystemSettingsRoute,
   LayoutWarehouseRoute: LayoutWarehouseRoute,
   LayoutWorkCentersRoute: LayoutWorkCentersRoute,

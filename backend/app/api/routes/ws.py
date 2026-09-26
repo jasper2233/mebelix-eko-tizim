@@ -8,12 +8,14 @@ import json
 import logging
 import secrets
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from redis.asyncio import Redis as AsyncRedis
 from sqlalchemy import select, update
 
 from app.api.deps import resolve_user
+from app.core import perf
 from app.core.config import settings
 from app.core.db import local_session
 from app.core.security import ACCESS_COOKIE_NAME
@@ -246,8 +248,10 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
             src_key, raw = popped
             job = raw.decode() if isinstance(raw, bytes) else raw
             job_id = ""
+            parsed: dict[str, Any] = {}
             with contextlib.suppress(Exception):
-                job_id = json.loads(job).get("job_id", "")
+                parsed = json.loads(job)
+                job_id = parsed.get("job_id", "")
             delivered = False  # nack yo'lida "yetkazildi" deb yozilmasin
             try:
                 # 10s dan KECH kelgan ping-javob soketda qolib keyingi jobning
@@ -290,6 +294,7 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
                     break
                 if delivered:
                     logger.info("Chek yetkazildi: agent=%s job=%s", agent_id, job_id)
+                    perf.record_delivered(agent_id, parsed)
             except Exception as exc:
                 logger.warning(
                     "Chek yetkazilmadi, navbatga qaytarildi: agent=%s job=%s sabab=%s",

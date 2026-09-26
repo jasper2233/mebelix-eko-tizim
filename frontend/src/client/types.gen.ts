@@ -1420,6 +1420,32 @@ export type DashboardToday = {
 };
 
 /**
+ * DbStatement
+ */
+export type DbStatement = {
+    /**
+     * Calls
+     */
+    calls: number;
+    /**
+     * Total Ms
+     */
+    total_ms: number;
+    /**
+     * Mean Ms
+     */
+    mean_ms: number;
+    /**
+     * Rows
+     */
+    rows: number;
+    /**
+     * Query
+     */
+    query: string;
+};
+
+/**
  * DefectCreate
  *
  * Brak: operator skanerlagan nusxani BRAK deb belgilaydi (terminal skan tasmasi).
@@ -1896,6 +1922,44 @@ export type EmployeeUpdate = {
 };
 
 /**
+ * EndpointStat
+ */
+export type EndpointStat = {
+    /**
+     * Method
+     */
+    method: string;
+    /**
+     * Route
+     */
+    route: string;
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * P50 Ms
+     */
+    p50_ms: number;
+    /**
+     * P95 Ms
+     */
+    p95_ms: number;
+    /**
+     * Max Ms
+     */
+    max_ms: number;
+    /**
+     * Total S
+     */
+    total_s: number;
+    /**
+     * Errors
+     */
+    errors: number;
+};
+
+/**
  * FileKind
  */
 export type FileKind = 'project' | 'scx' | 'label_pdf' | 'document' | 'bazis';
@@ -2007,6 +2071,20 @@ export type IdleLimit = {
      * Idle Minutes
      */
     idle_minutes: number | null;
+};
+
+/**
+ * InflightRequest
+ */
+export type InflightRequest = {
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Elapsed Ms
+     */
+    elapsed_ms: number;
 };
 
 /**
@@ -2321,6 +2399,30 @@ export type KromkaPartRow = {
      * Instances
      */
     instances?: Array<KromkaInstance>;
+};
+
+/**
+ * LagIncident
+ *
+ * Ishchining event loop'i bloklangan payt: shu vaqt ichida o'sha ishchidagi HAMMA so'rov kutgan.
+ */
+export type LagIncident = {
+    /**
+     * At
+     */
+    at: string;
+    /**
+     * Lag Ms
+     */
+    lag_ms: number;
+    /**
+     * Pid
+     */
+    pid: number;
+    /**
+     * Inflight
+     */
+    inflight: Array<InflightRequest>;
 };
 
 /**
@@ -3627,6 +3729,30 @@ export type PostUpdate = {
 };
 
 /**
+ * PrintStat
+ *
+ * Chek job'i navbatga qo'yilgandan agent qabul qilguncha (tugma bosilishidan ~40 ms keyin boshlanadi).
+ */
+export type PrintStat = {
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * P50 S
+     */
+    p50_s: number | null;
+    /**
+     * P95 S
+     */
+    p95_s: number | null;
+    /**
+     * Max S
+     */
+    max_s: number | null;
+};
+
+/**
  * PrisadkaFile
  *
  * Detalning SCX fayli — stanok kompyuteriga yuklab olish uchun.
@@ -4311,6 +4437,41 @@ export type SurveyWall = {
      * Height
      */
     height?: number | null;
+};
+
+/**
+ * SystemPerf
+ */
+export type SystemPerf = {
+    /**
+     * Minutes
+     */
+    minutes: number;
+    /**
+     * Requests
+     */
+    requests: number;
+    /**
+     * Endpoints
+     */
+    endpoints: Array<EndpointStat>;
+    /**
+     * Lag Incidents
+     */
+    lag_incidents: Array<LagIncident>;
+    labels: PrintStat;
+    /**
+     * Db Available
+     */
+    db_available: boolean;
+    /**
+     * Db Since
+     */
+    db_since: string | null;
+    /**
+     * Db Top
+     */
+    db_top: Array<DbStatement>;
 };
 
 /**
@@ -8941,6 +9102,36 @@ export type ReportDashboardResponses = {
 };
 
 export type ReportDashboardResponse = ReportDashboardResponses[keyof ReportDashboardResponses];
+
+export type ReadSystemPerfData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Minutes
+         */
+        minutes?: number;
+    };
+    url: '/api/v1/system/perf';
+};
+
+export type ReadSystemPerfErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadSystemPerfError = ReadSystemPerfErrors[keyof ReadSystemPerfErrors];
+
+export type ReadSystemPerfResponses = {
+    /**
+     * Successful Response
+     */
+    200: SystemPerf;
+};
+
+export type ReadSystemPerfResponse = ReadSystemPerfResponses[keyof ReadSystemPerfResponses];
 
 export type ReadBridgeAgentsData = {
     body?: never;
