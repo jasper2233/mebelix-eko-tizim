@@ -3,11 +3,13 @@
 Jonli holat jadvalda EMAS: u har necha soniyada yangilanadi va faqat oxirgisi
 kerak. Kalit TTL bilan yoziladi: agent xabar bermay qo'ysa holat o'zi yo'qoladi va
 sahifa "aloqa yo'q" ko'rsatadi — eskirgan "Ishlov" yolg'on ko'rinib turmaydi.
-Xom hodisalar esa `andon_event` jadvalida (tarix, keyingi bosqichdagi OEE uchun).
+Xom hodisalar esa `andon_event` jadvalida: tarix va OEE hisobi (`services/availability.py`,
+`api/routes/reports.py`).
 """
 
 import json
 import logging
+from bisect import bisect_left, bisect_right
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
@@ -147,14 +149,20 @@ def split_idle(
     ulanmagan stansiya butun kunni «bo'sh yurish» deb ko'rsatardi — ya'ni apparat nosozligi
     ishlab chiqarish yo'qotishi bo'lib yozilardi va Availability nolga tushardi. O'lchov
     yo'qligi «lenta bo'sh» degani emas, «bilmaymiz» degani; bilmagan narsani ayblamaymiz.
-    Datchik nosozligini Pico o'zi alohida aytadi (`ogoh`: javob_yoq, iflos)."""
+    Datchik nosozligini Pico o'zi alohida aytadi (`ogoh`: javob_yoq, iflos).
+
+    `measurements` ro'yxatlari VAQT BO'YICHA SARALANGAN bo'lishi shart (ikkala chaqiruvchi
+    ham shunday beradi): oraliqdagi o'lchovlar ikkilik qidiruv bilan kesib olinadi. Ilgari
+    har oraliq butun ro'yxatni aylanardi — (oraliqlar × o'lchovlar), 6 kunlik oynada 1,5 s
+    CPU edi (2026-09-26 o'lchovi)."""
     out: list[AndonSpan] = []
     for span in spans:
-        if span.state != "PROCESSING" or not measurements.get(span.machine_id):
+        belgilar_hammasi = measurements.get(span.machine_id)
+        if span.state != "PROCESSING" or not belgilar_hammasi:
             out.append(span)
             continue
         end = span.ended or now
-        belgilar = [t for t in measurements.get(span.machine_id, []) if span.began <= t <= end]
+        belgilar = belgilar_hammasi[bisect_left(belgilar_hammasi, span.began) : bisect_right(belgilar_hammasi, end)]
         cur = span.began
         for t in [*belgilar, end]:
             if t - cur >= gap:
