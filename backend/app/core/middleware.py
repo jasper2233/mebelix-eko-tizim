@@ -48,9 +48,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         except BaseException:
             # Ushlanmagan istisno ham strukturali logga tushsin, keyin yuqoriga uzatiladi.
             logger.exception("request", extra=_extra(500))
+            # «Tizim holati» ham: aks holda yiqilgan so'rov 5xx ustunidan ham, vaqtlardan ham tushib qolardi
+            perf.record_request(request.method, _route_template(request), (time.perf_counter() - start) * 1000, 500)
             raise
         finally:
-            perf.inflight.pop(id(request), None)
+            perf.finish(id(request))
 
         response.headers[REQUEST_ID_HEADER] = request_id
         logger.info("request", extra=_extra(response.status_code))
@@ -63,11 +65,15 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 def _route_template(request: Request) -> str:
     """`/api/v1/terminal/labels/8930` -> `/api/v1/terminal/labels/{instance_id}`: har id alohida qator bo'lmasin.
 
-    `scope["route"].path` bu yerda yaramaydi — u ichki routerning o'z yo'li (`/status-counts`),
-    ota prefikslarsiz. Shablon haqiqiy yo'ldan, yo'l parametrlarining qiymatini nomi bilan
-    almashtirib yasaladi. Route topilmagan (404) so'rovda parametr yo'q — xom yo'l o'rniga bitta nom.
+    `scope["route"].path` — ichki routerning O'Z shabloni, ota prefikslarsiz (`/{order_id}/matrix`);
+    u haqiqiy yo'lning OXIRI. Prefiks (parametrsiz) haqiqiy yo'lning boshidan olinadi. Qiymat
+    bo'yicha almashtirish emas: id statik segmentga yoki boshqa id ga teng bo'lsa (`/orders/5/files/5`)
+    noto'g'ri qator yasardi. Route topilmagan (404) so'rov — xom yo'l o'rniga bitta nom.
     """
-    if request.scope.get("route") is None:
+    route = request.scope.get("route")
+    shablon = getattr(route, "path", None)
+    if not isinstance(shablon, str):
         return "(topilmadi)"
-    nomlar = {str(v): k for k, v in request.path_params.items()}
-    return "/".join(f"{{{nomlar[s]}}}" if s in nomlar else s for s in request.url.path.split("/"))
+    qism = shablon.strip("/").split("/") if shablon.strip("/") else []
+    yol = request.url.path.strip("/").split("/")
+    return "/" + "/".join(yol[: len(yol) - len(qism)] + qism)

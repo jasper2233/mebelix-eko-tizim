@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import time
+from collections import deque
 from collections.abc import Coroutine
 from typing import Any
 
@@ -44,6 +45,10 @@ LAG_ALERT_S = 0.2
 
 #: Shu ishchida hozir ishlayotgan so'rovlar: kalit -> (yo'l, boshlangan perf_counter)
 inflight: dict[int, tuple[str, float]] = {}
+#: Yaqinda TUGAGAN so'rovlar: (yo'l, boshlangan, tugagan). Blok so'rovning OXIRIDA bo'lsa
+#: (o'qish, keyin hisob, keyin javob) so'rov monitor uyg'onguncha tugab ulguradi — aybdor
+#: shu yerdan topiladi (tekshiruvda 6 tadan 5 ta shunday blok aybdorsiz yozilgani ushlangan)
+recent: deque[tuple[str, float, float]] = deque(maxlen=64)
 
 _client: AsyncRedis | None = None
 _tasks: set[asyncio.Task[None]] = set()
@@ -72,6 +77,13 @@ def _fire(coro: Coroutine[Any, Any, None]) -> None:
     task.add_done_callback(_tasks.discard)
 
 
+def finish(key: int) -> None:
+    """So'rov tugadi: ishlayotganlardan olib, «yaqinda tugaganlar» ga qo'yadi."""
+    item = inflight.pop(key, None)
+    if item is not None:
+        recent.append((item[0], item[1], time.perf_counter()))
+
+
 def record_request(method: str, route: str, ms: float, status: int) -> None:
     """Bitta so'rov: `vaqt|METHOD|/route/{param}|ms|status`."""
     _fire(_push(REQ_KEY, f"{time.time():.3f}|{method}|{route}|{ms:.1f}|{status}", REQ_KEEP))
@@ -88,15 +100,19 @@ def record_delivered(agent_id: int | None, job: dict[str, Any]) -> None:
 
 async def lag_monitor() -> None:
     """Ishchi hayoti davomida: loop kechikib uyg'onsa — blok, o'sha paytdagi so'rovlar bilan yoziladi."""
-    loop = asyncio.get_running_loop()
     while True:
-        t0 = loop.time()
+        t0 = time.perf_counter()
         await asyncio.sleep(LAG_STEP_S)
-        lag = loop.time() - t0 - LAG_STEP_S
+        now = time.perf_counter()
+        lag = now - t0 - LAG_STEP_S
         if lag < LAG_ALERT_S:
             continue
-        now = time.perf_counter()
-        busy = sorted(((path, round((now - st) * 1000)) for path, st in inflight.values()), key=lambda x: -x[1])
+        # Blok [t0, now] ichida bo'lgan: hali ishlayotganlar + shu oraliqda tugaganlar
+        busy = sorted(
+            [(path, round((now - st) * 1000)) for path, st in inflight.values()]
+            + [(path, round((end - st) * 1000)) for path, st, end in recent if end >= t0],
+            key=lambda x: -x[1],
+        )
         logger.warning("Event loop %d ms bloklandi; ishlab turgan so'rovlar: %s", lag * 1000, busy[:5])
         record = {"ts": time.time(), "lag_ms": round(lag * 1000), "pid": os.getpid(), "inflight": busy[:8]}
         await _push(LAG_KEY, json.dumps(record), LAG_KEEP)

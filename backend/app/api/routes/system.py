@@ -3,6 +3,7 @@ bloklangan, chek agentga qancha vaqtda yetadi, bazada qaysi so'rov og'ir. Manba 
 (Redis, ikkala gunicorn ishchisidan umumiy) va `pg_stat_statements`."""
 
 import json
+import math
 import time
 from collections import defaultdict
 from datetime import UTC, datetime
@@ -32,8 +33,8 @@ _LAG_SHOW = 50
 
 
 def _pct(sorted_xs: list[float], q: float) -> float:
-    """Eng yaqin rang bo'yicha persentil (ro'yxat saralangan, bo'sh emas)."""
-    return sorted_xs[min(len(sorted_xs) - 1, int(q * len(sorted_xs)))]
+    """Eng yaqin rang bo'yicha persentil: ceil(q*n)-chi element (ro'yxat saralangan, bo'sh emas)."""
+    return sorted_xs[max(0, math.ceil(q * len(sorted_xs)) - 1)]
 
 
 @router.get("/perf", response_model=SystemPerf, operation_id="read_system_perf")
