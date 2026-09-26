@@ -1,6 +1,6 @@
 import { Link as RouterLink, useRouterState } from "@tanstack/react-router"
 import { ChevronRight, type LucideIcon } from "lucide-react"
-import { useEffect, useId, useState } from "react"
+import type { ReactNode } from "react"
 
 import {
   SidebarGroup,
@@ -22,8 +22,8 @@ export type SubItem = {
   path: string
   /** Havolaning qidiruv qismi (`?katalog=M`) */
   search?: Record<string, string>
-  /** Qaysi manzilda faol: bitta sahifaning bir nechta ko'rinishi — «Hammasi» ham,
-   *  kategoriya ham `/warehouse`; qidiruvni sahifa qanday o'qisa shunday solishtiriladi */
+  /** Qaysi manzilda faol: bitta sahifaning bir nechta ko'rinishi — ota ham, kategoriyalar
+   *  ham `/warehouse`; qidiruvni sahifa qanday o'qisa shunday solishtiriladi */
   match: (search: Search) => boolean
 }
 
@@ -31,8 +31,7 @@ export type Item = {
   icon: LucideIcon
   title: string
   path: string
-  /** Ichki bandlar — berilsa band YIG'ILADIGAN GURUH bo'ladi: bosilsa ochiladi/yopiladi,
-   *  o'zi havola emas (sahifaning o'ziga «Hammasi» bandi olib boradi) */
+  /** Bo'limlar — ota sahifa ichida bo'lganda ostida ko'rinadi (`NavGroup`) */
   children?: SubItem[]
   /** Yonida ko'rinadigan jonli son (0 yoki undefined bo'lsa chiqmaydi) */
   badge?: number
@@ -134,10 +133,13 @@ function NavLink({
   item,
   isActive,
   onNavigate,
+  trailing,
 }: {
   item: Item
   isActive: boolean
   onNavigate: () => void
+  /** Qator oxiridagi belgi (bo'limli bandning strelkasi) */
+  trailing?: ReactNode
 }) {
   const { isMobile } = useSidebar()
   return (
@@ -169,20 +171,22 @@ function NavLink({
             />
           </>
         )}
+        {trailing}
       </RouterLink>
     </SidebarMenuButton>
   )
 }
 
-/** Yig'iladigan guruh (Mahsulotlar ombori -> Hammasi / Material / Furnitura / Xizmat).
+/** Bo'limli band (Mahsulotlar ombori -> Material / Furnitura / Xizmat).
  *
- *  Standart holatda YOPIQ — menyu qisqa turadi; joriy sahifa guruh ichida bo'lsa o'zi
- *  ochiladi (shadcn sidebar-07 `defaultOpen={item.isActive}`, Primer NavList). Ota qator
- *  faqat ochib-yopadi (`aria-expanded`, Enter/Space — WAI-ARIA disclosure): ham havola,
- *  ham tugma bo'lgan «split» qatorni NN/g navigatsiyada tavsiya qilmaydi — sahifaning
- *  o'ziga ichidagi «Hammasi» olib boradi. Ota qator faqat guruh YOPIQ va ichidagi sahifa
- *  ochiq bo'lganda yonadi: bir vaqtda bitta «siz shu yerdasiz» belgisi (Primer).
- *  Yig'ilgan railda ichki bandlar ko'rinmaydi — ota qator oddiy havola bo'ladi. */
+ *  Ota qator — butun katalogga HAVOLA (alohida «Hammasi» bandi kerak emas: ota o'zi shu).
+ *  Bo'limlar ombor ichida bo'lganda ko'rinadi, boshqa sahifada menyu qisqa turadi — joriy
+ *  bo'lim guruhini ochib ko'rsatish (shadcn sidebar-07 `defaultOpen={item.isActive}`, Primer
+ *  NavList). Qo'lda ochib-yopish holati yo'q: bitta qator ikki ish qilmaydi (NN/g «split»).
+ *  Faol: kategoriya tanlangan bo'lsa — o'sha bo'lim, butun katalog ochiq bo'lsa — ota; bir
+ *  vaqtda bitta. Telefonda omborga BIRINCHI marta bosilganda menyu yopilmaydi — ochilgan
+ *  bo'limlar ko'rinsin; ombor ichida bosilsa odatdagidek yopiladi. Yig'ilgan railda
+ *  bo'limlar ko'rinmaydi (48 px ustunda joy yo'q). */
 function NavGroup({
   item,
   subItems,
@@ -197,51 +201,36 @@ function NavGroup({
   onNavigate: () => void
 }) {
   const { isMobile, state } = useSidebar()
-  const [open, setOpen] = useState(inside)
-  const listId = useId()
-  // Guruh ichidagi sahifaga (boshqa joydan havola bilan ham) kelinganda ochiladi;
-  // chiqib ketganda yopilmaydi — foydalanuvchi o'zi ochgan bo'lishi mumkin
-  useEffect(() => {
-    if (inside) setOpen(true)
-  }, [inside])
-
-  if (state === "collapsed" && !isMobile) {
-    return (
-      <SidebarMenuItem>
-        <NavLink item={item} isActive={inside} onNavigate={onNavigate} />
-      </SidebarMenuItem>
-    )
-  }
+  const rail = state === "collapsed" && !isMobile
+  const current = inside
+    ? subItems.find((sub) => sub.match(currentSearch))
+    : undefined
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton
-        type="button"
-        tooltip={item.title}
-        isActive={!open && inside}
-        aria-expanded={open}
-        aria-controls={listId}
-        onClick={() => setOpen((v) => !v)}
-        size={isMobile ? "lg" : "default"}
-        className={ACTIVE_BAR}
-      >
-        <item.icon />
-        <span>{item.title}</span>
-        <ChevronRight
-          aria-hidden
-          className={cn(
-            "ml-auto transition-transform duration-150 motion-reduce:transition-none",
-            open && "rotate-90",
-          )}
-        />
-      </SidebarMenuButton>
-      {open && (
-        <SidebarMenu id={listId} className="mt-1">
+      <NavLink
+        item={item}
+        isActive={rail ? inside : inside && !current}
+        onNavigate={inside ? onNavigate : () => {}}
+        trailing={
+          !rail && (
+            <ChevronRight
+              aria-hidden
+              className={cn(
+                "ml-auto transition-transform duration-150 motion-reduce:transition-none",
+                inside && "rotate-90",
+              )}
+            />
+          )
+        }
+      />
+      {inside && !rail && (
+        <SidebarMenu aria-label={item.title} className="mt-1">
           {subItems.map((sub) => (
             <SidebarMenuItem key={sub.title}>
               <SidebarMenuButton
                 tooltip={sub.title}
-                isActive={inside && sub.match(currentSearch)}
+                isActive={sub === current}
                 // Ichki band kichikroq va chekinma bilan; telefonda baribir 44 px
                 className={cn(
                   ACTIVE_BAR,

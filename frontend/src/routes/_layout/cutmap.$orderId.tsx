@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 
 export const Route = createFileRoute("/_layout/cutmap/$orderId")({
   component: AdminCutmapPage,
-  head: () => ({ meta: [{ title: "Kesish xaritasi | MebeliX" }] }),
+  head: () => ({ meta: [{ title: "Kesish xaritalari | MebeliX" }] }),
   // ?part=305201_01_014 — matritsadan "xaritada ko'rsat" sakrashi
   validateSearch: (s: Record<string, unknown>): { part?: string } =>
     typeof s.part === "string" && s.part ? { part: s.part } : {},

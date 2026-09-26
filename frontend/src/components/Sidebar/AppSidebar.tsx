@@ -49,7 +49,7 @@ import { User } from "./User"
 const KATEGORIYA_NOM = { M: "Material", F: "Furnitura", X: "Xizmat" } as const
 const KATEGORIYA_IKONKA = { M: Layers, F: Bolt, X: Hammer } as const
 //: Ombor sahifasi katalogni qanday o'qisa shunday: guruh berilsa undan (`M-LD` -> M), aks holda
-//: `katalog`; ikkalasi yo'q — «Hammasi» (`routes/_layout/warehouse.tsx`)
+//: `katalog`; ikkalasi yo'q — butun katalog (`routes/_layout/warehouse.tsx`)
 const katalogOf = (s: Record<string, unknown>): string =>
   typeof s.guruh === "string" && s.guruh
     ? s.guruh.slice(0, 1)
@@ -74,23 +74,16 @@ export const NAV_ITEMS: (Item & {
     path: "/orders",
     show: isProductionStaff,
   },
-  // Yig'iladigan guruh: standart holatda yopiq, ombor sahifasida o'zi ochiladi (`Main.tsx`
-  // NavGroup). Ichida — katalogning asosiy kategoriyalari, kodning BIRINCHI harfi (`docs/14`
-  // §1). Sahifa ichida takrorlanmaydi: ilgari o'sha uchtasi sarlavha ostida tab bo'lib ham
-  // turardi — bitta tanlov ikki joyda ikki xil ko'rinishda edi. Ota qator faqat ochib-yopadi,
-  // shuning uchun butun katalogga «Hammasi» olib boradi (ota bilan bir tushuncha — bir belgi).
+  // Ota — butun katalog; bo'limlari ombor ichida ko'rinadi (`Main.tsx` NavGroup). Bo'lim —
+  // katalogning asosiy kategoriyasi, kodning BIRINCHI harfi (`docs/14` §1). Sahifa ichida
+  // takrorlanmaydi: ilgari o'sha uchtasi sarlavha ostida tab bo'lib ham turardi — bitta tanlov
+  // ikki joyda ikki xil ko'rinishda edi.
   {
     icon: Boxes,
     title: "Mahsulotlar ombori",
     path: "/warehouse",
     show: isWarehouseStaff,
     children: [
-      {
-        icon: Boxes,
-        title: "Hammasi",
-        path: "/warehouse",
-        match: (s) => katalogOf(s) === "",
-      },
       ...(["M", "F", "X"] as const).map((harf) => ({
         icon: KATEGORIYA_IKONKA[harf],
         title: KATEGORIYA_NOM[harf],
@@ -248,7 +241,11 @@ export function AppSidebar() {
           <SidebarTrigger className="ml-auto text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:mx-auto" />
         </div>
       </SidebarHeader>
-      <SidebarContent>
+      {/* Menyu ekranga sig'masa (telefonda 48 px qatorlar) aylantiriladi — brauzerning O'Z
+          scroll chizig'i qoladi (NN/g: «Offer a scrollbar if an area has scrolling content»),
+          faqat to'q fonga moslangan: standart och kulrang, Windows'da strelkali chiziq menyuni
+          kesib turardi. Telefonlarda (iOS/Android) chiziq baribir faqat aylantirganda chiqadi */}
+      <SidebarContent className="[scrollbar-color:color-mix(in_oklab,var(--sidebar-foreground)_35%,transparent)_transparent] [scrollbar-width:thin]">
         <Main items={withBadges} />
       </SidebarContent>
       <SidebarFooter>

@@ -1,10 +1,5 @@
-// Kesish xaritasi belgisi — lucide'da mosi yo'q. `Grid2x2` teng to'rt katak: odatda «katak
-// ko'rinishi» (Fluent `Grid`, Drive, Finder) yoki «oyna» (Material `window`, lucide teglari:
-// window, skylight). `Map` esa geografik xarita. Haqiqiy kesish xaritasi — BITTA list, uni tekis
-// kesimlar TENG BO'LMAGAN bo'laklarga ajratadi. Tsex ishlatadigan GibLab «Раскроить» tugmasini
-// aynan shunday chizadi (giblab.com/images/icons/cuttingsheet.gif): yotiq list, bo'ylama kesim,
-// ikki tomonida turli ko'ndalang kesimlar. Shu shakl lucide uslubida (24 katak, chiziq 2).
-// Ishlatiladi: terminal «Xarita», buyurtma «Kesish xaritalari», «Kesish xaritasida ko'rsatish».
+// Kesish xaritasi belgisi: lucide'da mosi yo'q (sabablari — docs/06 «Belgilar lug'ati»).
+// GibLab «Раскроить» shakli — yotiq list, teng bo'lmagan bo'laklar — lucide uslubida.
 
 import { createLucideIcon } from "lucide-react"
 
