@@ -8,7 +8,6 @@ import {
   FileCode2,
   FileText,
   FileUp,
-  Grid2x2,
   Lock,
   Play,
   Trash2,
@@ -17,9 +16,9 @@ import {
 } from "lucide-react"
 import { useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
-
 import { OrdersService, type ProjectUploadResult } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
+import { CutMap } from "@/components/Common/CutMapIcon"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
 import { SectionTitle } from "@/components/Common/SectionTitle"
@@ -354,7 +353,7 @@ function OrderDetailPage() {
             {order.project_uuid != null && (
               <Button asChild variant="outline">
                 <Link to="/cutmap/$orderId" params={{ orderId }}>
-                  <Grid2x2 /> Kesish xaritalari
+                  <CutMap /> Kesish xaritalari
                 </Link>
               </Button>
             )}

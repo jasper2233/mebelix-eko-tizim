@@ -26,11 +26,8 @@ import { isWarehouseOnly, OPERATOR_ROLES } from "@/lib/mes"
 // Mobil sarlavhalar sidebar menyusi bilan BITTA manbadan (NAV_ITEMS) —
 // "/settings" menyuda yo'q (foydalanuvchi dropdown'ida), alohida qo'shiladi.
 const sectionTitles: Record<string, string> = {
-  // Bitta yo'lda bir nechta band bo'lishi mumkin (ombor kategoriyalari) —
-  // sarlavha ASOSIY bandniki, ya'ni qidiruvsizi
-  ...Object.fromEntries(
-    NAV_ITEMS.filter((i) => !i.search).map((i) => [i.path, i.title]),
-  ),
+  // Ombor kategoriyalari guruh ICHIDA (`children`) — sarlavha ota bandniki
+  ...Object.fromEntries(NAV_ITEMS.map((i) => [i.path, i.title])),
   "/settings": "Sozlamalar",
 }
 

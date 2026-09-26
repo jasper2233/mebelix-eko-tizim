@@ -4,7 +4,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import {
-  Grid2x2,
   Lock,
   LogOut,
   MonitorX,
@@ -22,6 +21,7 @@ import {
   TerminalService,
 } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
+import { CutMap } from "@/components/Common/CutMapIcon"
 import {
   playError,
   playSuccess,
@@ -695,7 +695,7 @@ function TerminalPage() {
                 qilinadi, ya'ni ikkita vertikal qator paydo bo'lmaydi. */}
             {ctx?.post_code === "ROVER" && mapOrderId !== null && !roverMap && (
               <TBtn label="Xarita" onClick={() => setRoverMap(true)}>
-                <Grid2x2 />
+                <CutMap />
               </TBtn>
             )}
             <div

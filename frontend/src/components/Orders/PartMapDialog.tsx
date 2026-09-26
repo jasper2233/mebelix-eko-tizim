@@ -6,8 +6,9 @@
 // sichqonchani ushlab turib zoom qilib bo'lmaydi, jest taxmin qilinmaydi.
 
 import { Link } from "@tanstack/react-router"
-import { ExternalLink, Grid2x2 } from "lucide-react"
+import { ExternalLink } from "lucide-react"
 import { useState } from "react"
+import { CutMap } from "@/components/Common/CutMapIcon"
 
 import { CutmapView } from "@/components/Terminal/CutmapView"
 import { Button } from "@/components/ui/button"
@@ -38,7 +39,7 @@ export function PartMapButton({
           setOpen(true)
         }}
       >
-        <Grid2x2 className="size-3.5" />
+        <CutMap className="size-3.5" />
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="flex h-[88vh] flex-col gap-3 p-4 sm:max-w-[min(1400px,96vw)]">

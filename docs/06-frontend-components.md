@@ -169,14 +169,18 @@ olmaydi. 2026-09-26 auditi (100 belgi, 219 joy, skript bilan sanalgan) shu qoida
 | Tizim holati (server sog'lig'i) | `Activity` (puls chizig'i) | Grafana `heart-rate`, GitHub `pulse` bilan bir odat; ilovada BOSHQA joyda ishlatilmaydi |
 | Jonli ma'lumot / aloqa uzildi | `Radio` / `WifiOff` | Boshqaruv paneli «JONLI», terminal «ALOQA YO'Q». Tarmoq bo'lmagan xato uchun `WifiOff` emas — `TriangleAlert` |
 | Buyurtmalar / Anketa | `ClipboardList` / `ClipboardPen` | Anketa — to'ldiriladigan shakl; ikkalasi bir belgi edi |
-| Kesish xaritasi | `Grid2x2` | Terminal, buyurtma sahifasi, detal dialogi, prisadka — hammasi bitta. `Map` (buklangan geografik xarita, teglari: location, travel) ishlatilmaydi |
+| Kesish xaritasi | `CutMap` (`Common/CutMapIcon.tsx`, maxsus) | Terminal «Xarita», buyurtma «Kesish xaritalari», «Kesish xaritasida ko'rsatish» — hammasi bitta. Lucide'da mosi yo'q: `Grid2x2` — teng to'rt katak, odatda «katak ko'rinishi» (Fluent `Grid`: «Used to represent grid view in products») yoki «oyna» (lucide teglari: window, skylight); `Map` — geografik xarita. Maxsus belgi GibLab «Раскроить» (`giblab.com/images/icons/cuttingsheet.gif`) shaklida: yotiq list, teng bo'lmagan kesimlar |
 | Loglar | `ScrollText` | Menyu ham, agent loglari ham |
 | Tasdiqlash | `Check` | `CheckCheck` (ikki belgi — «o'qildi») emas |
 | Kattalashtirish / kichraytirish | `ZoomIn` / `ZoomOut` | `Plus` ilovada faqat «qo'shish» |
 | Yangi hujjat (list) | `FilePlus` | `RotateCcw` — «qaytarish/tiklash» (3D ko'rinishni tiklash) |
-| Ombor kategoriyalari | Material `Layers`, Furnitura `Bolt`, Xizmat `Hammer` | Furnitura — mahkamlagich (lucide teglari: nut, screw, parts), asbob emas |
+| Ombor kategoriyalari | Hammasi `Boxes` (ota bilan bir tushuncha), Material `Layers`, Furnitura `Bolt`, Xizmat `Hammer` | Furnitura — mahkamlagich (lucide teglari: nut, screw, parts), asbob emas |
 | Havola ishlamaydi | `Link2Off` | Havolani yopish ham shu belgi (`BazisPanel`) |
 | Umumiy ogohlantirish / xato | `TriangleAlert` | Brak ham shu (menyu, terminal BRAK tugmasi, brak dialogi) — brak «muammo» sinfi; alternativalar qadoq (`PackageX`), bekor qilish (`CircleX`) yoki xavfsizlik (`ShieldX`) ma'nosi bilan to'qnashardi |
+
+### `frontend/src/components/Common/CutMapIcon.tsx`
+
+`CutMap` — kesish xaritasining maxsus belgisi (`createLucideIcon`, lucide uslubi: 24 katak, chiziq 2). Yotiq list (`rect 20×14`), bo'ylama kesim va ikki tomonida turli ko'ndalang kesimlar — 5 ta teng bo'lmagan bo'lak, GibLab «Раскроить» belgisi kabi. Lucide'dagi eng yaqin stok nomzodlar solishtirildi: `panels-top-left`/`table-2` «maket/jadval», `layout-*` bo'shliqli kartochkalar (bitta list emas), `grid-2x2` teng kataklar. Sabablari «Belgilar lug'ati» jadvalida.
 
 ### Dialog kengligi qoidasi
 
@@ -504,10 +508,11 @@ Claude.com uslubidagi yon panel: trigger sidebar ichida; desktopda alohida app h
 
 **Maqsadi:** navigatsiya menyusi ro'yxati.
 
-- Eksport: `type Item = { icon: LucideIcon; title: string; path: string; search?; nested?; badge?: number; badgeTitle?: string; alert?: "warn" | "bad"; alertTitle?: string }` va `Main({ items })`; `badge` bo'lsa (0 emas) band yonida yashil `SidebarMenuBadge` chiqadi (amal kutayotgan narsa: topshirishga tayyor buyurtmalar, tasdiq kutayotgan brak).
+- Eksport: `type Item = { icon: LucideIcon; title: string; path: string; children?: SubItem[]; badge?: number; badgeTitle?: string; alert?: "warn" | "bad"; alertTitle?: string }`, `type SubItem = { icon; title; path; search?; match(search) }` va `Main({ items })`; `badge` bo'lsa (0 emas) band yonida yashil `SidebarMenuBadge` chiqadi (amal kutayotgan narsa: topshirishga tayyor buyurtmalar, tasdiq kutayotgan brak).
 - `alert` — son emas, OGOHLANTIRISH (hozircha faqat «Tizim holati»): ochiq menyuda qizil/sariq doira ichida «!» (`bg-red-500/25 text-red-200` yoki `bg-amber-400/25 text-amber-200`, sidebar fonida kontrast 6,95 va 5,65:1), yig'ilgan railda badge yashirinadi — o'rniga ikonka ustida nuqta (`group-data-[collapsible=icon]:block`). Havolada `title={alertTitle}` va ekran o'qigich uchun sr-only «— muammo bor / e'tibor bering»; badge'ning o'zi `aria-hidden`. Holat faqat rang bilan berilmaydi.
 - `useRouterState()` dan `currentPath` olinib faollik aniqlanadi: ildiz (`/`) uchun qat'iy tenglik, qolgan bandlar uchun prefiks moslik (`currentPath === item.path || currentPath.startsWith(item.path + "/")`) — shu tufayli `/orders/123` da ham "Buyurtmalar" yonib turadi; aktiv bandda chapdan 3px oltin chiziq `before:` pseudo-element bilan (`data-[active=true]:before:...w-[3px]...before:bg-sidebar-primary`) va ikonka `text-sidebar-primary` ga o'tadi — inset soya tugmaning rounded burchaklarida qirqilib ko'rinmasdi.
 - Har band `SidebarMenuButton tooltip={item.title} asChild` ichida `RouterLink`; mobil rejimda bosilganda `setOpenMobile(false)` bilan panel yopiladi.
+- **`children` li band — `NavGroup` (yig'iladigan guruh, hozircha faqat «Mahsulotlar ombori»).** Qoidalar 2026-09-26 tadqiqotidan (birlamchi manbalar tekshirilgan): standart holatda YOPIQ, joriy sahifa guruh ichida bo'lsa o'zi ochiladi (shadcn sidebar-07 `defaultOpen={item.isActive}`, Primer NavList `useState(defaultOpen ?? hasCurrentItem)`); chiqib ketganda yopilmaydi — foydalanuvchi o'zi ochgan bo'lishi mumkin. Ota qator faqat ochib-yopadi — `<button type="button" aria-expanded aria-controls>`, o'ngda buriladigan `ChevronRight` (`motion-reduce` da animatsiyasiz), Enter/Space (WAI-ARIA disclosure). Ham havola, ham tugma bo'lgan «split» qator yo'q (NN/g: navigatsiyada foydalanuvchi bitta yorliq ikki ish qilishini kutmaydi) — sahifaning o'ziga ichidagi birinchi band «Hammasi» olib boradi (NN/g tavsiyasi). Ota qator faqat guruh YOPIQ va ichidagi sahifa ochiq bo'lganda yonadi — bir vaqtda bitta «siz shu yerdasiz» (Primer `active={!isOpen && containsCurrentItem}`). Ichki band faolligi `match(search)` bilan — sahifa qidiruvni qanday o'qisa shunday (ombor: `guruh` berilsa undan, aks holda `katalog`). Yig'ilgan railda ichki bandlar ko'rinmaydi, ota qator oddiy havola (`/warehouse`) — ilgari railda uchta qo'shimcha kategoriya ikonkasi turardi. Telefonda ota 48 px, ichki bandlar 44 px (ilgari 32 px edi). Brauzerda tekshirilgan: yopiq/ochiq holat, klaviatura, `?guruh=F-..` da Furnitura, rail, telefon.
 
 ### `frontend/src/components/Sidebar/User.tsx`
 

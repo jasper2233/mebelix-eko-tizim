@@ -5,13 +5,13 @@
 // yuklash faqat shu tugma orqali, operator xohlaganda.
 
 import { useQuery } from "@tanstack/react-query"
-import { Grid2x2, HardDriveDownload, Printer } from "lucide-react"
+import { HardDriveDownload, Printer } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
-
 import type { PrisadkaInstance, PrisadkaPartRow } from "@/client"
 import { TerminalService } from "@/client"
+import { CutMap } from "@/components/Common/CutMapIcon"
 import { QueryError } from "@/components/Common/QueryError"
 import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
@@ -341,7 +341,7 @@ export function PrisadkaView({
                               onShowOnMap?.(p.code)
                             }}
                           >
-                            <Grid2x2 className="size-5" />
+                            <CutMap className="size-5" />
                           </button>
                         )}
                       </td>

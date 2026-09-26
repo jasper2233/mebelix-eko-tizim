@@ -48,6 +48,14 @@ import { User } from "./User"
 //: Katalog harflarining ekrandagi nomi va ikonkasi (`docs/14` §1)
 const KATEGORIYA_NOM = { M: "Material", F: "Furnitura", X: "Xizmat" } as const
 const KATEGORIYA_IKONKA = { M: Layers, F: Bolt, X: Hammer } as const
+//: Ombor sahifasi katalogni qanday o'qisa shunday: guruh berilsa undan (`M-LD` -> M), aks holda
+//: `katalog`; ikkalasi yo'q — «Hammasi» (`routes/_layout/warehouse.tsx`)
+const katalogOf = (s: Record<string, unknown>): string =>
+  typeof s.guruh === "string" && s.guruh
+    ? s.guruh.slice(0, 1)
+    : typeof s.katalog === "string"
+      ? s.katalog
+      : ""
 
 export const NAV_ITEMS: (Item & {
   show: (user: UserRead | null | undefined) => boolean
@@ -66,24 +74,32 @@ export const NAV_ITEMS: (Item & {
     path: "/orders",
     show: isProductionStaff,
   },
+  // Yig'iladigan guruh: standart holatda yopiq, ombor sahifasida o'zi ochiladi (`Main.tsx`
+  // NavGroup). Ichida — katalogning asosiy kategoriyalari, kodning BIRINCHI harfi (`docs/14`
+  // §1). Sahifa ichida takrorlanmaydi: ilgari o'sha uchtasi sarlavha ostida tab bo'lib ham
+  // turardi — bitta tanlov ikki joyda ikki xil ko'rinishda edi. Ota qator faqat ochib-yopadi,
+  // shuning uchun butun katalogga «Hammasi» olib boradi (ota bilan bir tushuncha — bir belgi).
   {
     icon: Boxes,
     title: "Mahsulotlar ombori",
     path: "/warehouse",
     show: isWarehouseStaff,
+    children: [
+      {
+        icon: Boxes,
+        title: "Hammasi",
+        path: "/warehouse",
+        match: (s) => katalogOf(s) === "",
+      },
+      ...(["M", "F", "X"] as const).map((harf) => ({
+        icon: KATEGORIYA_IKONKA[harf],
+        title: KATEGORIYA_NOM[harf],
+        path: "/warehouse",
+        search: { katalog: harf },
+        match: (s: Record<string, unknown>) => katalogOf(s) === harf,
+      })),
+    ],
   },
-  // Katalogning asosiy kategoriyalari — kodning BIRINCHI harfi (`docs/14` §1).
-  // Sahifa ichida takrorlanmaydi: ilgari o'sha uchtasi sarlavha ostida tab
-  // bo'lib ham turardi — bitta tanlov ikki joyda ikki xil ko'rinishda edi.
-  // Ombor sahifasini ochadigan HAR rolga ko'rinadi.
-  ...(["M", "F", "X"] as const).map((harf) => ({
-    icon: KATEGORIYA_IKONKA[harf],
-    title: KATEGORIYA_NOM[harf],
-    path: "/warehouse",
-    search: { katalog: harf },
-    nested: true,
-    show: isWarehouseStaff,
-  })),
   { icon: UserRound, title: "Mijozlar", path: "/clients", show: isManagement },
   { icon: IdCard, title: "Hodimlar", path: "/employees", show: isManagement },
   {
