@@ -160,7 +160,8 @@ async def read_terminal_context(db: SessionDep, user: TerminalUser, ctx: Termina
                 is_me=bool(employee and employee.user_id == user.id),
             )
         )
-    # `crew_sessions` muddati o'tgan smenalarni yopadi — o'sha yozuv saqlanishi kerak
+    # O'qish tranzaksiyasini yopadi. Ilgari `crew_sessions` muddati o'tgan smenalarni shu
+    # yerda yopardi va yozuv saqlanishi kerak edi; 85d5833 dan beri u hech narsa yozmaydi
     await db.commit()
     return out
 

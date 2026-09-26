@@ -4,13 +4,12 @@ from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 
 from fastapi import APIRouter
-from fastapi.responses import StreamingResponse
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.orm import defer
 
 from app.api.deps import CurrentUser, SessionDep
 from app.api.routes.orders._common import _get_visible_order
-from app.api.routes.reports import report_machine_time
+from app.api.routes.reports import build_machine_time_report
 from app.core.config import TASHKENT_TZ
 from app.core.exceptions import NotFoundException
 from app.models import (
@@ -66,8 +65,8 @@ async def read_tablo_machines(db: SessionDep, user: CurrentUser) -> list[TabloMa
     Jonli holat Redis'dan (`read_live`): kalit yo'q bo'lsa `state = None` —
     bu «o'chiq» EMAS, «aloqa yo'q» (agent yoki Pico 90 soniyadan beri jim)."""
     bugun = datetime.now(TASHKENT_TZ).date()
-    hisobot = await report_machine_time(db, user, date_from=bugun, date_to=bugun)
-    if isinstance(hisobot, StreamingResponse) or not hisobot.rows:  # pragma: no cover — format="json"
+    hisobot = await build_machine_time_report(db, bugun, bugun)
+    if not hisobot.rows:
         return []
     ids = [r.machine_id for r in hisobot.rows]
     jonli = await read_live(ids)
@@ -230,8 +229,9 @@ async def read_tablo_machine(db: SessionDep, user: CurrentUser, machine_id: int)
     """Bitta stanok: bugungi/haftalik/oylik OEE va oxirgi hodisalari.
 
     OEE uchala davrda ham «Stanok vaqti» hisobotidan olinadi (uch chaqiruv) — taxtadagi
-    raqam bilan hisobotdagi raqam bitta manbadan chiqsin. Bu oyna TV da emas, ustaning
-    bosishi bilan ochiladi, ya'ni uch marta hisoblash narxi joyida."""
+    raqam bilan hisobotdagi raqam bitta manbadan chiqsin. Hisob faqat SHU stanok bo'yicha
+    (`only`): ilgari har chaqiruv butun tsexni hisoblab, oyna prodda 5,2 s ochilardi va
+    shundan 1,8 s serverning ishchisini band qilardi (2026-09-26 o'lchovi)."""
     machine = await db.get(Machine, machine_id)
     if machine is None or machine.is_deleted:
         raise NotFoundException("Ish markazi topilmadi.")
@@ -240,9 +240,7 @@ async def read_tablo_machine(db: SessionDep, user: CurrentUser, machine_id: int)
 
     davrlar: list[TabloPeriod] = []
     for nom, kun in (("Bugun", 0), ("7 kun", 6), ("30 kun", 29)):
-        hisobot = await report_machine_time(db, user, date_from=bugun - timedelta(days=kun), date_to=bugun)
-        if isinstance(hisobot, StreamingResponse):  # pragma: no cover — format="json"
-            continue
+        hisobot = await build_machine_time_report(db, bugun - timedelta(days=kun), bugun, only=frozenset({machine_id}))
         r = next((x for x in hisobot.rows if x.machine_id == machine_id), None)
         davrlar.append(
             TabloPeriod(

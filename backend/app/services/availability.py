@@ -7,10 +7,13 @@ Formula (docs/12-oee.md §1):
     ishlagan     = reja vaqti − rejasiz to'xtashlar − ma'lumotsiz vaqt
     Availability = ishlagan ÷ reja vaqti
 
-To'xtash qoidasi `services/downtimes.py` bilan BIR XIL: qizil (FAULT) va hammasi o'chiq (OFF) —
-darhol; sariq (IDLE/STOPPED) — `stop_prompt_idle_minutes` dan uzoq yonsa, qisqasi mikro-to'xtash
-(Performance yo'qotishi, Availability emas). Pico'dan ma'lumot yo'q vaqt — to'xtash (2026-09-17
-qarori: Prisadka Nanxing kompyuterisiz ishlamaydi, Pico shu kompyuterdan quvvat oladi).
+To'xtash qoidasi: qizil (FAULT) va hammasi o'chiq (OFF) — darhol; sariq (IDLE/STOPPED) —
+`stop_prompt_idle_minutes` dan uzoq yonsa, qisqasi mikro-to'xtash (Performance yo'qotishi,
+Availability emas). Sabab SO'RASH qoidasi (`services/downtimes.py`) 2026-09-20 dan boshqacha:
+chegara HAMMA to'xtashga qo'llanadi — ya'ni qisqa qizil/o'chiq to'xtash Availability'ni
+tushiradi, lekin sababi so'ralmaydi va hisobotda «Sabab kiritilmagan» bo'lib chiqadi.
+Pico'dan ma'lumot yo'q vaqt — to'xtash (2026-09-17 qarori: Prisadka Nanxing kompyuterisiz
+ishlamaydi, Pico shu kompyuterdan quvvat oladi).
 
 Oraliqlar `services/andon.andon_spans` dan olinadi, `downtime` jadvali esa faqat SABAB uchun:
 shunda jadval paydo bo'lishidan oldingi kunlar ham to'g'ri hisoblanadi.

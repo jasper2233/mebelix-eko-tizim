@@ -10,8 +10,9 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, or_, select
-from sqlalchemy.orm import defer
+from sqlalchemy import ColumnElement, func, or_, select, true
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import InstrumentedAttribute, defer
 
 from app.api.deps import SessionDep, require_roles
 from app.core.config import TASHKENT_TZ
@@ -241,6 +242,22 @@ async def report_machine_time(
     tirik bo'lsa hozirgacha qo'shiladi — agent bilan aloqa yo'q bo'lsa noma'lum vaqt
     taxmin qilinmaydi va "jami qayd" dan tushib qoladi.
     """
+    report = await build_machine_time_report(db, date_from, date_to)
+    return _machine_time_xlsx(report) if format == "xlsx" else report
+
+
+async def build_machine_time_report(
+    db: AsyncSession, date_from: date | None, date_to: date | None, only: frozenset[int] | None = None
+) -> MachineTimeReport:
+    """«Stanok vaqti» hisobining o'zi — route (JSON/xlsx) va tablo umumiy, qoidasi yuqorida.
+
+    `only` berilsa faqat shu ish markazlarining ma'lumoti o'qiladi. Hisob har ish markazi
+    uchun mustaqil, ya'ni ularning qatorlari `only` siz hisobdagi bilan AYNAN bir xil —
+    tablodagi bitta stanok oynasi butun tsexni uch marta (1/7/30 kun) hisoblamasin."""
+
+    def faqat(col: InstrumentedAttribute[int]) -> ColumnElement[bool]:
+        return col.in_(only) if only is not None else true()
+
     start, end = _range(date_from, date_to)
     # OEE kesim sanasi: undan oldingi kunlar hisobotga UMUMAN kirmaydi (sozlamada,
     # `settings_service.OEE_START_DATE`). Tsexda OEE jadval/sabab/ideal sikl sozlangandan
@@ -262,7 +279,7 @@ async def report_machine_time(
             ideal_cycle_kromka=await get_ideal_cycle_kromka(db),
             oee_start=oee_start,
         )
-        return _machine_time_xlsx(bosh) if format == "xlsx" else bosh
+        return bosh
     events = (
         (
             await db.execute(
@@ -272,6 +289,7 @@ async def report_machine_time(
                     AndonEvent.is_deleted == False,  # noqa: E712
                     AndonEvent.happened_at >= start,
                     AndonEvent.happened_at <= end + _ANDON_TAIL,
+                    faqat(AndonEvent.machine_id),
                 )
                 .order_by(AndonEvent.machine_id, AndonEvent.happened_at, AndonEvent.id)
             )
@@ -290,6 +308,7 @@ async def report_machine_time(
                     AndonEvent.kind == "state",
                     AndonEvent.is_deleted == False,  # noqa: E712
                     AndonEvent.state.is_not(None),
+                    faqat(AndonEvent.machine_id),
                 )
                 .distinct(AndonEvent.machine_id)
                 .order_by(AndonEvent.machine_id, AndonEvent.happened_at.desc(), AndonEvent.id.desc())
@@ -316,6 +335,7 @@ async def report_machine_time(
                     # holatni belgilaydi (stanok kecha yoqilgan bo'lsa bugun ham ishlayapti).
                     AndonEvent.happened_at >= start - _ANDON_TAIL,
                     AndonEvent.happened_at <= end + _ANDON_TAIL,
+                    faqat(AndonEvent.machine_id),
                 )
                 .order_by(AndonEvent.happened_at, AndonEvent.id)
             )
@@ -362,6 +382,7 @@ async def report_machine_time(
                 select(Machine.id).where(
                     Machine.is_deleted == False,  # noqa: E712
                     select(AndonEvent.id).where(AndonEvent.machine_id == Machine.id).exists(),
+                    faqat(Machine.id),
                 )
             )
         )
@@ -391,6 +412,7 @@ async def report_machine_time(
                     Downtime.kind != DowntimeKind.LOCK,
                     Downtime.started_at <= end,
                     or_(Downtime.ended_at.is_(None), Downtime.ended_at >= start),
+                    faqat(Downtime.machine_id),
                 )
             )
         )
@@ -409,28 +431,19 @@ async def report_machine_time(
     }
     names = dict((await db.execute(select(Machine.id, Machine.name).where(Machine.id.in_(ids)))).tuples().all())
 
-    prisadka_ids = set(
+    post_kodi = dict(
         (
             await db.execute(
-                select(Machine.id)
+                select(Machine.id, Post.code)
                 .join(Post, Post.id == Machine.post_id)
-                .where(Machine.id.in_(ids), Post.code == PostCode.PRISADKA)
+                .where(Machine.id.in_(ids), Post.code.in_((PostCode.PRISADKA, PostCode.KROMKA)))
             )
         )
-        .scalars()
+        .tuples()
         .all()
     )
-    kromka_ids = set(
-        (
-            await db.execute(
-                select(Machine.id)
-                .join(Post, Post.id == Machine.post_id)
-                .where(Machine.id.in_(ids), Post.code == PostCode.KROMKA)
-            )
-        )
-        .scalars()
-        .all()
-    )
+    prisadka_ids = {mid for mid, kod in post_kodi.items() if kod == PostCode.PRISADKA}
+    kromka_ids = {mid for mid, kod in post_kodi.items() if kod == PostCode.KROMKA}
     #: Quality hisoblanadigan stanoklar. Kromkada BITTA SKAN = BITTA QIRRA o'tishi
     #: (`per_instance` = qirralar soni), o'lchov ham qirra bo'yicha keladi — ya'ni surat
     #: va maxraj bir xil birlikda. Boshqa postlarda o'lchov manbasi yo'q, Quality `—`.
@@ -637,7 +650,7 @@ async def report_machine_time(
                 ),
             )
         )
-    report = MachineTimeReport(
+    return MachineTimeReport(
         date_from=start.date(),
         date_to=end.date(),
         rows=rows,
@@ -648,9 +661,6 @@ async def report_machine_time(
         ideal_cycle_kromka=ideal_kromka,
         oee_start=oee_start,
     )
-    if format == "xlsx":
-        return _machine_time_xlsx(report)
-    return report
 
 
 # ---------- 11.2 Buyurtmalar holati ----------

@@ -280,7 +280,7 @@ async def crew_sessions(db: AsyncSession, machine_id: int) -> list[WorkSession]:
     yopiladi (`active_session` bilan bir xil qoida; 12 soatlik avto-yopish 85d5833
     da olib tashlangan, docs/04).
     """
-    rows = list(
+    return list(
         (
             await db.execute(
                 select(WorkSession)
@@ -295,7 +295,6 @@ async def crew_sessions(db: AsyncSession, machine_id: int) -> list[WorkSession]:
         .scalars()
         .all()
     )
-    return list(rows)
 
 
 async def active_session(db: AsyncSession, machine: Machine) -> WorkSession:
