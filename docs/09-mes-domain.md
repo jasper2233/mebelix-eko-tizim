@@ -679,7 +679,7 @@ direktor ham ko'radi.
 - Imzo komponent: `Common/StagePipeline` — post zanjiri (dinamik; buyurtma sahifasi sarlavhasida `showLabels` bilan — `routes/_layout/orders/$orderId.tsx`; boshqaruv paneli endi uni ishlatmaydi — u yerda buyurtma kartalari yo'q, faqat kechikkan/to'xtab qolgan/tayyor ro'yxatlari; buyurtmalar reyestrida bosqich ustuni yo'q).
 - Routelar: `_layout/*` admin modullar (index — boshqaruv paneli, orders (`index` + `$orderId`),
   clients, employees, work-centers, reports, logs, printers, admin, settings, system-health
-  («Tizim holati», `requireAccess(isAdmin)`, 30 s da yangilanadi, oyna 15/60/180 daq),
+  («Tizim holati», `requireAccess(isAdmin)`, 30/120 s da yangilanadi, oyna 15 daq / 1 / 3 / 12 soat, qator → endpoint tafsiloti; yon menyuda holat belgisi),
   cutmap.$orderId, `anketa.$orderId`), `/terminal`, `/tablo`
   ("Jami" yig'indi qatori + rejimlar + drill-down; sarlavhada brend logo, ish markaziga bog'langan
   tablo akkauntida "JORIY NUQTA" chipi, onlayn indikatori va tablo bo'lmagan rollarga "Boshqaruv

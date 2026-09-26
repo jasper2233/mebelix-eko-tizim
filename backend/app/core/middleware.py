@@ -31,8 +31,13 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             return response
 
         start = time.perf_counter()
-        # «Tizim holati»: loop bloklanganda qaysi so'rovlar ishlab turgani (`core/perf.py`)
-        perf.inflight[id(request)] = (request.url.path, start)
+        # «Tizim holati»: loop bloklanganda qaysi so'rovlar ishlab turgani (`core/perf.py`). Nom
+        # muzlash paytida hisoblanadi: routingdan keyin — shablon, undan oldin — xom yo'l; metod bilan,
+        # aks holda bir yo'ldagi GET va PATCH bitta endpoint bo'lib ko'rinardi
+        perf.inflight[id(request)] = (
+            lambda: f"{request.method} {_route_template(request) if 'route' in request.scope else request.url.path}",
+            start,
+        )
 
         def _extra(status_code: int) -> dict[str, object]:
             return {

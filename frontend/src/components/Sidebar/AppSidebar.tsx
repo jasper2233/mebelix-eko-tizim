@@ -20,7 +20,7 @@ import {
   Wrench,
 } from "lucide-react"
 import type { UserRead } from "@/client"
-import { DefectsService } from "@/client"
+import { DefectsService, SystemService } from "@/client"
 import {
   Sidebar,
   SidebarContent,
@@ -171,6 +171,27 @@ export function AppSidebar() {
     enabled: canSeeDefects,
   })
 
+  // Tizim holati belgisi: oxirgi 15 daqiqada muammo bo'lsa admin sahifani ochmasdan
+  // ko'radi. Hukm backendda (`services/system_health.py`) — sahifa bilan bir manba.
+  const canSeeHealth = items.some((i) => i.path === "/system-health")
+  const { data: health } = useQuery({
+    queryKey: ["system", "status"],
+    queryFn: async () => (await SystemService.readSystemStatus()).data,
+    refetchInterval: 60_000,
+    enabled: canSeeHealth,
+  })
+  const alarm =
+    health && (health.level === "bad" || health.level === "warn")
+      ? {
+          alert: health.level,
+          alertTitle: `Oxirgi ${health.minutes} daqiqa: ${health.findings[0]?.text ?? ""}${
+            health.findings.length > 1
+              ? ` (yana ${health.findings.length - 1} ta)`
+              : ""
+          }`,
+        }
+      : {}
+
   const withBadges = items.map((i) =>
     i.path === "/orders"
       ? {
@@ -184,7 +205,9 @@ export function AppSidebar() {
             badge: defects ?? 0,
             badgeTitle: "Tasdiq kutayotgan brak",
           }
-        : i,
+        : i.path === "/system-health"
+          ? { ...i, ...alarm }
+          : i,
   )
 
   return (

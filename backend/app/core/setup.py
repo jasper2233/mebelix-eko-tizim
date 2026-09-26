@@ -38,8 +38,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     """Open Redis pools, verify connections, then yield. Closes pools on shutdown."""
     set_threadpool_tokens()
     ws_redis: AsyncRedis | None = None
-    # Har gunicorn ishchisi o'z loop'ini o'lchaydi («Tizim holati», `core/perf.py`)
-    lag_task = asyncio.create_task(perf.lag_monitor())
+    # Har gunicorn ishchisi o'z loop'ini o'lchaydi, o'lchovni soniyasiga bir yozadi («Tizim holati», `core/perf.py`)
+    perf_tasks = [asyncio.create_task(perf.lag_monitor()), asyncio.create_task(perf.flush_loop())]
     try:
         queue.pool = await create_pool(ArqRedisSettings(host=settings.REDIS_HOST, port=settings.REDIS_PORT))
         rate_limiter.initialize(settings.REDIS_URL)
@@ -51,7 +51,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         await check_database_connection()
         yield
     finally:
-        lag_task.cancel()
+        for task in perf_tasks:
+            task.cancel()
+        await perf.flush()  # oxirgi soniya yo'qolmasin
         await ws_manager.stop_listener()
         if ws_redis is not None:
             await ws_redis.aclose()

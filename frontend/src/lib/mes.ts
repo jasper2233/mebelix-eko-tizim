@@ -480,6 +480,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   login_failed: "kirish rad etildi",
   logout: "tizimdan chiqdi",
   can_print_changed: "chek chiqarish o'zgardi",
+  db_stats_reset: "baza statistikasi nollandi",
   scx_regenerated: "SCX qayta yaratildi",
   matrix_edited: "matritsa tahrirlandi",
   code_regenerated: "yangi ulanish kodi",

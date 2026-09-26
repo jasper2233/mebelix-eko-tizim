@@ -77,6 +77,7 @@ const MODULE_LABELS: Record<string, string> = {
   posts: "Postlar",
   auth: "Kirish/chiqish",
   settings: "Sozlamalar",
+  system: "Tizim holati",
 }
 const MODULE_ORDER = Object.keys(MODULE_LABELS)
 

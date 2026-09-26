@@ -73,7 +73,7 @@ MebeliX-Mes-System/
 | Background jobs | ARQ (Redis asosli queue, alohida worker process) |
 | Yorliq renderi | Pillow (80×60 mm PNG chizish, 1-bit chiqish) + qrcode (QR) — `app/services/labels.py` |
 | Rate limiting | Redis asosli, fail-closed (Redis yiqilsa so'rovlar bloklanadi — brute-force himoya o'chib qolmasligi uchun) |
-| Observability | prometheus-fastapi-instrumentator (`/metrics`), JSON structured logging + X-Request-ID, «Tizim holati» (`core/perf.py` → Redis: so'rov vaqtlari route shabloni bo'yicha, event loop bloklari aybdori bilan — 50 ms qadam, 200 ms chegara, chek kechikishi; `pg_stat_statements`; `GET /api/v1/system/perf` admin, sahifa `/system-health`) |
+| Observability | prometheus-fastapi-instrumentator (`/metrics`), JSON structured logging + X-Request-ID, «Tizim holati» (`core/perf.py` → Redis: so'rov vaqtlari route shabloni va ishchi pid bilan, event loop bloklari ehtimoliy aybdori bilan — 50 ms qadam, 200 ms chegara, chek kechikishi; soniyada bir paket bilan yoziladi; tahlil va topilmalar `services/system_health.py`; chek navbatlari; `pg_stat_statements`; `GET /api/v1/system/{perf,perf/endpoint,status}` admin, sahifa `/system-health`, yon menyuda holat belgisi) |
 | Package manager | uv |
 
 ### Frontend
@@ -177,10 +177,12 @@ Asosiy nuqtalar:
   da yopadi — u lifespan tomonidan boshqarilmaydi, startup probe'ga ham kirmaydi.
   Startup'dagi retry'li probe faqat birinchi ikkitasini tekshiradi (fail-fast
   boot); rate limit runtime'da ham fail-closed — Redis xatosida so'rov bloklanadi.
-  Lifespan har gunicorn ishchisida `perf.lag_monitor()` vazifasini ham boshlaydi
-  (event loop bloklarini o'lchaydi) va to'xtashda bekor qiladi; u va har so'rov
-  (`RequestLoggingMiddleware`) `core/perf.py` ning O'Z klienti orqali yozadi —
-  lifespan ulanishlaridan alohida, xato bo'lsa so'rovni yiqitmaydi.
+  Lifespan har gunicorn ishchisida `perf.lag_monitor()` (event loop bloklarini
+  o'lchaydi) va `perf.flush_loop()` vazifalarini ham boshlaydi, to'xtashda bekor
+  qilib oxirgi paketni yozadi. Monitor ham, har so'rov (`RequestLoggingMiddleware`)
+  ham faqat xotiradagi buferga qo'shadi; `flush_loop` uni soniyada bir marta
+  `core/perf.py` ning O'Z klienti orqali bitta paketda yozadi — lifespan
+  ulanishlaridan alohida, xato bo'lsa so'rovni yiqitmaydi.
 - **Yana to'rtta qisqa umrli klient — `bridge_agents.py` da, har so'rovda**:
   `_revoke_live_connection()` (POST `/{id}/code` va DELETE `/{id}` chaqiradi —
   revoke bayrog'i + navbatni tozalash), POST `/pair` (bayroqni o'chirish),

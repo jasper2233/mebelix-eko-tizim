@@ -7,7 +7,8 @@
 // ko'rib bilardi.
 //
 // Strelka FAQAT qator bosilganda sahifa/dialog/panel ochiladigan jadvallarda:
-// Buyurtmalar (sahifa), Kontragentlar (karta), Loglar (panel). Tanlash uchun
+// Buyurtmalar (sahifa), Kontragentlar (karta), Loglar (panel), Tizim holati
+// endpointlari (tafsilot paneli). Tanlash uchun
 // bosiladigan qator (terminal PRISADKA) strelka OLMAYDI — u hech narsa ochmaydi.
 
 import { ChevronRight } from "lucide-react"

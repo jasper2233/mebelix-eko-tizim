@@ -1922,6 +1922,106 @@ export type EmployeeUpdate = {
 };
 
 /**
+ * EndpointBucket
+ */
+export type EndpointBucket = {
+    /**
+     * At
+     */
+    at: string;
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * P50 Ms
+     */
+    p50_ms: number | null;
+    /**
+     * Max Ms
+     */
+    max_ms: number | null;
+    /**
+     * Slow
+     */
+    slow: number;
+    /**
+     * Errors
+     */
+    errors: number;
+};
+
+/**
+ * EndpointDetail
+ */
+export type EndpointDetail = {
+    /**
+     * Method
+     */
+    method: string;
+    /**
+     * Route
+     */
+    route: string;
+    /**
+     * Minutes
+     */
+    minutes: number;
+    /**
+     * Covered From
+     */
+    covered_from: string | null;
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * P50 Ms
+     */
+    p50_ms: number | null;
+    /**
+     * P95 Ms
+     */
+    p95_ms: number | null;
+    /**
+     * Max Ms
+     */
+    max_ms: number | null;
+    /**
+     * Errors
+     */
+    errors: number;
+    /**
+     * Bucket Minutes
+     */
+    bucket_minutes: number;
+    /**
+     * Buckets
+     */
+    buckets: Array<EndpointBucket>;
+    /**
+     * Slow Count
+     */
+    slow_count: number;
+    /**
+     * Slow Frozen Share
+     */
+    slow_frozen_share: number | null;
+    /**
+     * Cause
+     */
+    cause: string;
+    /**
+     * Slowest
+     */
+    slowest: Array<SlowRequest>;
+    /**
+     * Error Times
+     */
+    error_times: Array<string>;
+};
+
+/**
  * EndpointStat
  */
 export type EndpointStat = {
@@ -1963,6 +2063,50 @@ export type EndpointStat = {
  * FileKind
  */
 export type FileKind = 'project' | 'scx' | 'label_pdf' | 'document' | 'bazis';
+
+/**
+ * Finding
+ *
+ * Bitta topilma — tayyor jumla. `route` berilsa sahifa uni endpoint tafsilotiga bog'laydi.
+ */
+export type Finding = {
+    /**
+     * Level
+     */
+    level: 'warn' | 'bad';
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Method
+     */
+    method?: string | null;
+    /**
+     * Route
+     */
+    route?: string | null;
+};
+
+/**
+ * FreezeMatch
+ *
+ * Sekin so'rov davomida o'sha ishchida bo'lgan eng uzun muzlash.
+ */
+export type FreezeMatch = {
+    /**
+     * At
+     */
+    at: string;
+    /**
+     * Lag Ms
+     */
+    lag_ms: number;
+    /**
+     * Inflight
+     */
+    inflight: Array<InflightRequest>;
+};
 
 /**
  * HTTPValidationError
@@ -2404,7 +2548,8 @@ export type KromkaPartRow = {
 /**
  * LagIncident
  *
- * Ishchining event loop'i bloklangan payt: shu vaqt ichida o'sha ishchidagi HAMMA so'rov kutgan.
+ * Ishchining event loop'i kech uyg'ongan payt (bitta uzun ish yoki ketma-ket qisqa ishlar): shu vaqt
+ * ichida o'sha ishchidagi so'rovlar navbatda turgan.
  */
 export type LagIncident = {
     /**
@@ -3731,7 +3876,8 @@ export type PostUpdate = {
 /**
  * PrintStat
  *
- * Chek job'i navbatga qo'yilgandan agent qabul qilguncha (tugma bosilishidan ~40 ms keyin boshlanadi).
+ * Chek: POST uni arq navbatiga qo'ygandan agent qabul qilguncha — worker chizishi va agent
+ * navbati kiradi, qog'ozga chiqishi kirmaydi.
  */
 export type PrintStat = {
     /**
@@ -3983,6 +4129,38 @@ export type QrOrderRef = {
      * Order Number
      */
     order_number: string;
+};
+
+/**
+ * QueueStat
+ *
+ * Agentning chek navbati hozir: nechta kutyapti, eng eskisi necha soniyadan beri.
+ */
+export type QueueStat = {
+    /**
+     * Agent Id
+     */
+    agent_id: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Machine Name
+     */
+    machine_name: string | null;
+    /**
+     * Last Seen At
+     */
+    last_seen_at: string | null;
+    /**
+     * Pending
+     */
+    pending: number;
+    /**
+     * Oldest S
+     */
+    oldest_s: number | null;
 };
 
 /**
@@ -4250,6 +4428,33 @@ export type ShiftStart = {
 };
 
 /**
+ * SlowRequest
+ */
+export type SlowRequest = {
+    /**
+     * At
+     */
+    at: string;
+    /**
+     * Ms
+     */
+    ms: number;
+    /**
+     * Status
+     */
+    status: number;
+    /**
+     * Pid
+     */
+    pid: number | null;
+    /**
+     * Frozen Ms
+     */
+    frozen_ms: number | null;
+    freeze: FreezeMatch | null;
+};
+
+/**
  * StageAgg
  */
 export type StageAgg = {
@@ -4448,18 +4653,59 @@ export type SystemPerf = {
      */
     minutes: number;
     /**
+     * Level
+     */
+    level: 'ok' | 'warn' | 'bad' | 'nodata';
+    /**
+     * Findings
+     */
+    findings: Array<Finding>;
+    thresholds: Thresholds;
+    /**
+     * Covered From
+     */
+    covered_from: string | null;
+    /**
+     * Covered Minutes
+     */
+    covered_minutes: number;
+    /**
      * Requests
      */
     requests: number;
+    /**
+     * Pids
+     */
+    pids: Array<number>;
     /**
      * Endpoints
      */
     endpoints: Array<EndpointStat>;
     /**
+     * Lag Count
+     */
+    lag_count: number;
+    /**
+     * Lag Long Count
+     */
+    lag_long_count: number;
+    /**
+     * Lag Longest Ms
+     */
+    lag_longest_ms: number;
+    /**
+     * Lag Total Ms
+     */
+    lag_total_ms: number;
+    /**
      * Lag Incidents
      */
     lag_incidents: Array<LagIncident>;
     labels: PrintStat;
+    /**
+     * Queues
+     */
+    queues: Array<QueueStat>;
     /**
      * Db Available
      */
@@ -4496,6 +4742,26 @@ export type SystemSettingUpdate = {
      * Value
      */
     value: string;
+};
+
+/**
+ * SystemStatus
+ *
+ * Yon menyudagi belgi: oxirgi `minutes` daqiqa holati.
+ */
+export type SystemStatus = {
+    /**
+     * Minutes
+     */
+    minutes: number;
+    /**
+     * Level
+     */
+    level: 'ok' | 'warn' | 'bad' | 'nodata';
+    /**
+     * Findings
+     */
+    findings: Array<Finding>;
 };
 
 /**
@@ -4991,6 +5257,54 @@ export type TerminalOrderCard = {
      * Has Cutmap
      */
     has_cutmap: boolean;
+};
+
+/**
+ * Thresholds
+ *
+ * Rang chegaralari — backend topilmalari ham, sahifa jadvalini bo'yash ham shulardan.
+ */
+export type Thresholds = {
+    /**
+     * P95 Warn Ms
+     */
+    p95_warn_ms: number;
+    /**
+     * P95 Bad Ms
+     */
+    p95_bad_ms: number;
+    /**
+     * P50 Warn Ms
+     */
+    p50_warn_ms: number;
+    /**
+     * P50 Bad Ms
+     */
+    p50_bad_ms: number;
+    /**
+     * Lag Bad Ms
+     */
+    lag_bad_ms: number;
+    /**
+     * Lag Warn Count
+     */
+    lag_warn_count: number;
+    /**
+     * Label Warn S
+     */
+    label_warn_s: number;
+    /**
+     * Label Bad S
+     */
+    label_bad_s: number;
+    /**
+     * Min Count
+     */
+    min_count: number;
+    /**
+     * Queue Stuck S
+     */
+    queue_stuck_s: number;
 };
 
 /**
@@ -9103,6 +9417,22 @@ export type ReportDashboardResponses = {
 
 export type ReportDashboardResponse = ReportDashboardResponses[keyof ReportDashboardResponses];
 
+export type ReadSystemStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/system/status';
+};
+
+export type ReadSystemStatusResponses = {
+    /**
+     * Successful Response
+     */
+    200: SystemStatus;
+};
+
+export type ReadSystemStatusResponse = ReadSystemStatusResponses[keyof ReadSystemStatusResponses];
+
 export type ReadSystemPerfData = {
     body?: never;
     path?: never;
@@ -9132,6 +9462,60 @@ export type ReadSystemPerfResponses = {
 };
 
 export type ReadSystemPerfResponse = ReadSystemPerfResponses[keyof ReadSystemPerfResponses];
+
+export type ReadSystemPerfEndpointData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Method
+         */
+        method: string;
+        /**
+         * Route
+         */
+        route: string;
+        /**
+         * Minutes
+         */
+        minutes?: number;
+    };
+    url: '/api/v1/system/perf/endpoint';
+};
+
+export type ReadSystemPerfEndpointErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadSystemPerfEndpointError = ReadSystemPerfEndpointErrors[keyof ReadSystemPerfEndpointErrors];
+
+export type ReadSystemPerfEndpointResponses = {
+    /**
+     * Successful Response
+     */
+    200: EndpointDetail;
+};
+
+export type ReadSystemPerfEndpointResponse = ReadSystemPerfEndpointResponses[keyof ReadSystemPerfEndpointResponses];
+
+export type ResetSystemDbStatsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/system/db-stats/reset';
+};
+
+export type ResetSystemDbStatsResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type ResetSystemDbStatsResponse = ResetSystemDbStatsResponses[keyof ResetSystemDbStatsResponses];
 
 export type ReadBridgeAgentsData = {
     body?: never;
