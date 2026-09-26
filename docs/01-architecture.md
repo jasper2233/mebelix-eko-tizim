@@ -5,9 +5,10 @@
 **MebeliX MES** — mebel ishlab chiqarishni boshqarish tizimi (Manufacturing Execution
 System) uchun to'liq ishlaydigan fullstack ilova. FastAPI fullstack template
 poydevorida (JWT + httpOnly cookie auth, users boshqaruvi) **to'liq MES domeni**
-qurilgan: `/v1` agregatorida **18 ta router** (health, login, logout, users,
-clients, employees, machines, posts, orders, pachka, tmo, audit,
-terminal, scans, tablo, reports, bridge-agents, ws), **19 ta ORM model**
+qurilgan: `/v1` agregatorida **25 ta router** (health, login, public, logout, users,
+clients, employees, machines, posts, orders, pachka, tmo, catalog, audit,
+terminal, downtimes, defects, defects-review, scans, settings, tablo, reports,
+system, bridge-agents, ws), **19 ta ORM model**
 (Order/Product/Part/PartInstance/PartRoute/OrderFile/WasteItem, Client, Employee,
 Machine, Post, Organization, Pachka/PachkaItem, Scan/WorkSession, AuditLog,
 BridgeAgent, User) va **15 ta `UserRole`** (admin, director, manager, texnolog, terminal,
@@ -72,7 +73,7 @@ MebeliX-Mes-System/
 | Background jobs | ARQ (Redis asosli queue, alohida worker process) |
 | Yorliq renderi | Pillow (80×60 mm PNG chizish, 1-bit chiqish) + qrcode (QR) — `app/services/labels.py` |
 | Rate limiting | Redis asosli, fail-closed (Redis yiqilsa so'rovlar bloklanadi — brute-force himoya o'chib qolmasligi uchun) |
-| Observability | prometheus-fastapi-instrumentator (`/metrics`), JSON structured logging + X-Request-ID |
+| Observability | prometheus-fastapi-instrumentator (`/metrics`), JSON structured logging + X-Request-ID, «Tizim holati» (`core/perf.py` → Redis: so'rov vaqtlari route shabloni bo'yicha, event loop bloklari aybdori bilan — 50 ms qadam, 200 ms chegara, chek kechikishi; `pg_stat_statements`; `GET /api/v1/system/perf` admin, sahifa `/system-health`) |
 | Package manager | uv |
 
 ### Frontend
@@ -94,7 +95,7 @@ MebeliX-Mes-System/
 |---|---|
 | Konteynerlash | Docker Compose — `local` (hot-reload, portlar ochiq) va `prod` (faqat Caddy tashqariga ochiq) |
 | Ma'lumotlar bazasi | PostgreSQL 15 |
-| Cache / queue | Redis 7 (ARQ queue + rate limit + WS pub/sub — uchta lifespan ulanishi, plyus qisqa umrli klientlar: har `/ws/bridge` agent ulanishi va bridge-agent'ning pairing / log / revoke REST endpointlari) |
+| Cache / queue | Redis 7 (ARQ queue + rate limit + WS pub/sub — uchta lifespan ulanishi, «Tizim holati» ro'yxatlari (`mes:perf:*`) — `core/perf.py` ning har process'da bitta uzoq umrli klienti, plyus qisqa umrli klientlar: har `/ws/bridge` agent ulanishi va bridge-agent'ning pairing / log / revoke REST endpointlari) |
 | Reverse proxy | Caddy (prod, `SITE_ADDRESS` orqali auto-HTTPS / Let's Encrypt); port bindinglar `CADDY_HTTP_BIND`/`CADDY_HTTPS_BIND` bilan parametrlangan — mavjud host-nginx (ISPmanager) ortida ishlash rejimi uchun |
 | Static serving | nginx (frontend build, SPA fallback, 1 yillik asset cache) |
 | Sifat nazorati | pre-commit hooks (ruff, mypy, biome) + GitHub Actions CI (`.github/workflows/ci.yml`) |
@@ -176,20 +177,26 @@ Asosiy nuqtalar:
   da yopadi — u lifespan tomonidan boshqarilmaydi, startup probe'ga ham kirmaydi.
   Startup'dagi retry'li probe faqat birinchi ikkitasini tekshiradi (fail-fast
   boot); rate limit runtime'da ham fail-closed — Redis xatosida so'rov bloklanadi.
+  Lifespan har gunicorn ishchisida `perf.lag_monitor()` vazifasini ham boshlaydi
+  (event loop bloklarini o'lchaydi) va to'xtashda bekor qiladi; u va har so'rov
+  (`RequestLoggingMiddleware`) `core/perf.py` ning O'Z klienti orqali yozadi —
+  lifespan ulanishlaridan alohida, xato bo'lsa so'rovni yiqitmaydi.
 - **Yana to'rtta qisqa umrli klient — `bridge_agents.py` da, har so'rovda**:
   `_revoke_live_connection()` (POST `/{id}/code` va DELETE `/{id}` chaqiradi —
   revoke bayrog'i + navbatni tozalash), POST `/pair` (bayroqni o'chirish),
   POST `/logs` (agent log satrlarini `lpush`) va GET `/{id}/logs` (`lrange`).
   Har biri `async with AsyncRedis.from_url(...)` — so'rov tugashi bilan yopiladi,
   lifespan ham, startup probe ham ularni bilmaydi. Ulanish byudjetini
-  (`maxclients`, burst) hisoblashda shularni ham qo'shish kerak.
+  (`maxclients`, burst) hisoblashda shularni ham, `core/perf.py` ning har api
+  ishchisidagi bitta uzoq umrli klientini ham qo'shish kerak.
 - **ARQ worker** alohida konteyner/processda ishlaydi (`app/core/worker.py` →
   `WorkerSettings`), tasklar `app/tasks/` da ro'yxatdan o'tadi.
 - **Prod deploy TAG asosida**: image'lar CI'da qurilib `ghcr.io` ga yuboriladi
   (`ghcr.io/<owner>/mebelix-mes-backend/frontend:${TAG}`, TAG = git sha);
   `scripts/deploy.sh` serverda faqat `pull` + switch qiladi, smoke
   (`/api/v1/ready`) yiqilsa `.stable_tag`dagi oxirgi stable TAG'ga avto-rollback.
-  Serverda build yo'q — u 1 vCPU / 2 GB, build saytni sekinlashtirardi.
+  Serverda build yo'q — u 2 vCPU / 4 GB (2026-09-26: `nproc` 2, 3,9 GB), build saytni
+  sekinlashtirardi; Postgres ham shu hajmga sozlangan (`docs/07`).
 - `api` konteyneri startida `scripts/prestart.sh` **alembic migratsiya + birinchi
   superuser + default org/postlar seed** (`seed_defaults`) ni bajaradi. `worker`
   konteyneri prestart'ni chaqirmaydi (to'g'ridan-to'g'ri
@@ -245,7 +252,7 @@ Browser (React)                FastAPI                        PostgreSQL
    |  UsersService, cookie avto)  |                               |
    |----------------------------->|                               |
    |         ProxyHeadersMiddleware (real client IP) -> CORS ->   |
-   |         RequestLoggingMiddleware (X-Request-ID, JSON log)    |
+   |   RequestLoggingMiddleware (X-Request-ID, JSON log, perf)    |
    |                              |                               |
    |                              |-- get_current_user dep ------>| JWT decode +
    |                              |   (CurrentUser/SuperUserDep)  | token_version tekshiruv
@@ -257,7 +264,8 @@ Browser (React)                FastAPI                        PostgreSQL
 ```
 
 - Router ierarxiyasi: `/api` root → `/v1` agregator; auth **router darajasida**
-  qo'llanadi (`health`, `login` ochiq; `logout`, `users` va 12 ta MES routeri
+  qo'llanadi (`health`, `login`, `public` ochiq; `logout`, `users` va 18 ta MES routeri
+  — jumladan `system` («Tizim holati», endpoint ichida yana `AdminUser`) —
   `get_current_user` ortida; `ws` va `bridge-agents` routerlari auth'ni o'zlari
   hal qiladi — `bridge-agents` da `/pair` ochiq bo'lishi shart, `/scan` va
   `POST /logs` agentning Bearer tokeni bilan, `GET /latest` va `GET /download`
@@ -269,7 +277,7 @@ Browser (React)                FastAPI                        PostgreSQL
   `_layout.tsx`, `terminal.tsx`, `tablo.tsx` da; rolga bog'liq sahifalar
   `requireAccess(<predikat>)` bilan, predikatlar `src/lib/mes.ts` da:
   `isManagement` (clients, employees, reports), `isProductionStaff`
-  (work-centers), `isAdmin` (logs, printers) — sidebar (`NAV_ITEMS.show`) ham
+  (work-centers), `isAdmin` (logs, agents, system-settings, system-health) — sidebar (`NAV_ITEMS.show`) ham
   aynan shu predikatlarni ishlatadi. `isSuperuser` esa guard EMAS: `/admin`
   route'i faqat `/employees` ga redirect qiladi, predikat esa `employees.tsx`
   ichida `canManageAccounts` sifatida ishlatiladi (hisob yozish chegarasi). `/orders` da
@@ -297,7 +305,7 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
    |                 |                     | load_label_data(db, id)         |              |
    |                 |                     | render_label_png() -> base64    |              |
    |                 |                     | LPUSH mes:print:queue:{agent_id} ->|            |
-   |                 |  /ws/bridge: brpop -> {type,job_id,instance_id,png}-->|              |
+   |                 |  /ws/bridge: brpop -> {type,job_id,instance_id,png,queued_at?}-->|
    |                 |<---------- ack {"ok": true} (agent diskka yozgach) ---|              |
    |                 |                     |                 |  JSONL -> flusher -> GDI --->|
 ```
@@ -309,7 +317,8 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   (`all_tasks`): `print_label` (detal), `print_pachka_label` (qadoq),
   `print_waste_label` (foydali atxot) va `print_badge` (hodim beyjigi) — hammasi
   yorliqni render qilib faqat Redis navbatiga qo'yadi.
-  Job JSON: `{"type":"print","job_id","instance_id","png"}` — `job_id`
+  Job JSON: `{"type":"print","job_id","instance_id","png"[,"queued_at"]}` (`queued_at` —
+  arq navbatga qo'ygan lahza, unix soniya, bo'lsa qo'shiladi; agent e'tiborsiz qoldiradi) — `job_id`
   HAR yuborishda yangi uuid, agent shu bo'yicha takrorni tashlaydi (`instance_id`
   bu vazifani bajara olmaydi: chek bekor qilinsa o'sha nusxa qayta ishlatiladi) →
   `LPUSH print_queue_key(agent_id)` — `agent_id` bo'lsa `mes:print:queue:{agent_id}`,
@@ -319,7 +328,8 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
 - `/ws/bridge` (`app/api/routes/ws.py`) navbatni `brpop(timeout=5)` bilan so'radi;
   bo'sh bo'lsa `{"type":"ping"}` heartbeat yuboradi (yarim ochiq TCP tez o'lsin).
   Ack kelmasa yoki nak bo'lsa job `rpush` bilan navbatga qaytariladi — uzilishda
-  yorliq yo'qolmaydi.
+  yorliq yo'qolmaydi. Ack kelgach `perf.record_delivered` navbatdan agentgacha bo'lgan
+  vaqtni `mes:perf:print` ga yozadi («Tizim holati» — «Chek: navbatdan agentgacha»).
 - bridge-agent job'ni AVVAL diskka (`print-queue.jsonl`) yozadi, keyin ack qaytaradi —
   server ackdan keyin jobni unutadi. `FLUSH_EVENT` bilan flusher darhol uyg'onadi
   (aks holda 5 s siklda printer tiklanishini kutadi).

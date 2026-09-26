@@ -157,8 +157,11 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   `state`/`prev_state(16)`, `prev_duration_s`, `happened_at` (agent qo'ygan vaqt — USB rejimda Pico
   soatsiz), `payload` JSONB (hodisaning o'zi, to'liq). Indekslar: `ix_andon_event_key`
   UNIQUE `(machine_id, session, seq)` — qayta yuborish takrorini tashlaydi; `ix_andon_event_machine_at`
-  `(machine_id, happened_at)`. Xom tarix; to'xtashlar shu jadvaldan `downtime` ga chiqariladi
-  (quyida), OEE hisoboti keyingi bosqich (eski `stop_reason`/`machine_stop` LEGACY). Jonli holat
+  `(machine_id, happened_at)` va qisman `ix_andon_event_live (kind, machine_id, happened_at) WHERE NOT
+  is_deleted` (`9f09e20f7587` — hisobot/tablo so'rovlari 2026-09-24 da yumshoq o'chirilgan ~258 ming Pico
+  dublikatiga tegmaydi; prod nusxasida Kromka-1 oynasi 2,0 → 1,1 s). Xom tarix; to'xtashlar shu jadvaldan
+  `downtime` ga chiqariladi (quyida), OEE shu jadvaldan hisoblanadi (`services/availability.py`,
+  `api/routes/reports.py`; eski `stop_reason`/`machine_stop` LEGACY). Jonli holat
   jadvalda emas — Redis'da (`services/andon.py`).
 - `PartDefect` (`part_defect`, `b3f5c17a9d84`) — BRAK qilingan nusxa, OEE Quality shundan:
   `order_id`/`part_id`/`instance_id` FK, `scan_id` FK NULL (qaysi skandan keyin belgilangan —
@@ -383,6 +386,7 @@ Umumiy "NAVBATDAGI VAZIFALAR" jadvali (`TaskRow`) va `/terminal/tasks` endpointi
 | `backend/app/schemas/tablo.py` | `StageAgg`, `TabloPostCol`, `TabloOrderRow`, `TabloMatrix`, `TabloPartRow`, `TabloOrderDetail` | TABLO javob modellari (avval `tablo.py` route ichida inline edi); `TabloMatrix.posts` endi typed (`TabloPostCol`) |
 | `backend/app/schemas/reports.py` | `EmployeeProductivity`, `ProductivityReport`, `OrderReportRow`, `OrdersReport`, `MaterialUsageRow`, `MaterialsReport`, `DashboardToday`, `DashboardOrders`, `ReadyOrder`, `PostLoad`, `TrendDay`, `DashboardMoney`, `DashboardStats`, `AvailabilityReason`, `MachineTimeRow`, `MachineTimeDay`, `MachineTimeStop`, `MachineTimeReport` | Hisobot/dashboard javob modellari; `MachineTime*` — `GET /reports/machine-time` (stanok vaqti, andon) — 2026-09-18 dan OEE Availability maydonlari bilan (`shift_s`, `planned_stop_s`, `planned_s`, `unplanned_stop_s`, `no_data_s`, `run_s`, `availability_pct`, `coverage_pct`, `reasons`; Performance: `parts`, `ideal_s`, `performance_pct`, `cycles`, `measured_cycle_s`; hisobotda `schedule_set`, `idle_threshold_min`, `ideal_cycle`) (avval `reports.py` route ichida inline edi) |
 | `backend/app/schemas/audit.py` | `AuditLogRead`, `AuditSummaryRow` | Loglar sahifasi qatori (avval route ichida inline edi) |
+| `backend/app/schemas/system.py` | `EndpointStat`, `InflightRequest`, `LagIncident`, `PrintStat`, `DbStatement`, `SystemPerf` | «Tizim holati» — `GET /system/perf` javobi (`core/perf.py` o'lchovlari + `pg_stat_statements`); kengaytma yuklanmagan bo'lsa `db_available=false`, `db_since` — `pg_stat_statements_info.stats_reset` |
 | `backend/app/schemas/defects.py` | `DefectCreate`, `DefectRead`, `DefectStep`, `DefectRow`, `DefectReview`, `DefectPending` | Brak: `scan_id` (nusxa emas — tasmadagi skan), `reason` (ro'yxatdan, matn bo'lib ko'chiriladi), `note` ≤500 |
 | `backend/app/schemas/downtimes.py` | `DowntimeReasonRead`, `DowntimeReasonCreate`, `DowntimeReasonUpdate`, `DowntimeRead`, `DowntimeReasonInput` | To'xtash sabablari (admin CRUD — `name` 1..60) va terminal: `DowntimeRead` (`id`, `kind`, `started_at`, `ended_at`, `reason_id`), `DowntimeReasonInput` (`reason_id`, `note` ≤500). Satrlar `str_strip_whitespace` |
 
@@ -488,7 +492,7 @@ Yangi revision fayllari uchun standart shablon (`upgrade()` / `downgrade()` skel
 
 ### 4.4 Versiyalar zanjiri — `backend/app/migrations/versions/`
 
-58 ta migratsiya, head: `c7a2f4e19b03`.
+61 ta migratsiya, head: `9f09e20f7587`.
 
 **Olib tashlangan ikki modulning migratsiyalari ATAYLAB qoldirilgan** — OEE
 (37–39) va materiallar ombori (27–28). Modul kodi butunlay
@@ -566,6 +570,9 @@ va 7 yetim ustun**; hammasi `migrations/env.py` dagi
 | 50 | `7e6946ebd00d` | `7e6946ebd00d_system_setting_runtime_sozlamalar.py` | **`system_setting`** — ish vaqtida admin tahrirlaydigan kalit/qiymat sozlamalar (§1.4); birinchi kalit `custom_part_suffix` |
 | 51 | `5d8e2a61c0f4` | `5d8e2a61c0f4_andon_event_stanok_signal_ustuni.py` | **`andon_event`** — stanok signal ustunidan (Pico → MES agent) kelgan xom hodisalar (§1.4): UNIQUE `(machine_id, session, seq)`, `(machine_id, happened_at)` indeksi. Eski OEE jadvallariga (`stop_reason`, `machine_stop`) tegmaydi |
 | 52 | `c1e8a4b7d9f2` | `c1e8a4b7d9f2_system_setting_value_text.py` | **`system_setting.value` → `Text`** — ish jadvali (`work_schedule`) JSON bo'lib saqlanadi, bayramlar qo'shilgan sari 255 belgidan oshardi. Downgrade 255 dan uzun qiymatda ataylab yiqiladi (kesilgan JSON o'qib bo'lmaydi) |
+| 61 | `9f09e20f7587` | `9f09e20f7587_andon_event_live_index.py` | **`andon_event`** qisman indeks `ix_andon_event_live (kind, machine_id, happened_at) WHERE NOT is_deleted` — hisobot/tablo so'rovlari 2026-09-24 da `scripts/kromka_dedup.sql` yumshoq o'chirgan Pico dublikatlarini o'qimaydi. Ma'lumotga tegmaydi |
+| 60 | `d058ecddc8fe` | `d058ecddc8fe_pg_stat_statements.py` | `CREATE EXTENSION IF NOT EXISTS pg_stat_statements` — kutubxona `shared_preload_libraries` bilan yuklanadi (docker-compose.*.yml); yuklanmagan serverda CREATE o'tadi, ko'rinishni o'qish xato beradi va «Tizim holati» «yoqilmagan» deydi. Downgrade kengaytmani o'chiradi |
+| 59 | `6d9d9f645802` | `6d9d9f645802_catalog_item_mahsulotlar_ombori_katalogi.py` | **`catalog_item`** — mahsulotlar ombori katalogi (`docs/14`); ma'lumot bu migratsiyada yozilmaydi (`scripts/catalog_import.py`) |
 | 58 | `c7a2f4e19b03` | `c7a2f4e19b03_bazis_modeli_va_ochiq_havola.py` | **`order.share_token(36)`** + PARTIAL UNIQUE `ix_order_share_token` (`NOT is_deleted`) — yig'uvchiga beriladigan ochiq 3D havola ([13-bazis-3d.md](13-bazis-3d.md)). `FileKind.BAZIS` uchun DDL YO'Q: `db_enum` `native_enum=False` bilan VARCHAR yaratadi, check-cheklov yo'q |
 | 55 | `d7a2f4e61c58` | `d7a2f4e61c58_part_defect_menejer_tasdigi.py` | **`part_defect`**: `status` (VARCHAR enum, `server_default='pending'` — mavjud qatorlar uchun), aybdor/qayta boshlash qadami, tasdiqlagan hisob va vaqti (§1.4) |
 | 54 | `b3f5c17a9d84` | `b3f5c17a9d84_part_defect_brak_qaydi.py` | **`part_defect`** — brak qaydi (§1.4), OEE Quality manbai: `(machine_id, created_at)` va `(instance_id)` indekslari. Eski `defect` jadvali `a1c9d4f2b60e` da tushirilgan, nom qayta ishlatilmaydi |
@@ -637,7 +644,7 @@ Saqlangan Bazis modellarining brauzer JSON'ini joriy parser bilan qayta yasaydi 
 
 1. `app.services.labels.load_label_data(db, instance_id)` — nusxa/detal/buyurtma ma'lumoti va cutmap teshiklari yig'iladi; topilmasa `skip:{instance_id}`.
 2. `render_label_png(data)` → `base64` (`png_b64`). Yagona format — PNG: GoDEX G500-U faqat USB, agent rasmni Windows drayveri (GDI) orqali chizadi, printer dialekti kerak emas.
-3. ARQ worker kontekstidagi Redis'ga `LPUSH`: `print_queue_key(agent_id)` ro'yxatiga (`mes:print:queue:{agent_id}`, manzilsiz bo'lsa `mes:print:queue`) JSON job `{"type": "print", "job_id", "instance_id", "png"}` → `queued:{instance_id}`.
+3. ARQ worker kontekstidagi Redis'ga `LPUSH`: `print_queue_key(agent_id)` ro'yxatiga (`mes:print:queue:{agent_id}`, manzilsiz bo'lsa `mes:print:queue`) JSON job `{"type": "print", "job_id", "instance_id", "png"[, "queued_at"]}` (`queued_at` — arq `ctx["enqueue_time"]` unix soniyada; `/ws/bridge` chek kechikishini o'lchaydi) → `queued:{instance_id}`.
 4. Worker kontekstida Redis bo'lmasa — `logger.error` + `lost:{instance_id}`.
 
 To'liq zanjir:
@@ -650,7 +657,7 @@ Terminal "Chop etish"
   -> bridge-agent: print-queue.jsonl (durable) -> Windows GDI -> USB GoDEX
 ```
 
-`/ws/bridge` (`backend/app/api/routes/ws.py`) jobni ack (`{"ok": true}`) kelmasa `rpush` bilan navbatga qaytaradi — yorliq yo'qolmaydi. Auth **per-agent**: token `Authorization: Bearer` headerda keladi (query param eski agentlar uchun fallback), sha256 xeshi bo'yicha tirik `bridge_agent` qatori qidiriladi — topilmasa 4401 (`WS_CLOSE_UNAUTHORIZED` konstantasi). Serverda sozlama kerak emas, printer admin paneldan ulanadi (1.4.2-bo'lim). `settings.BRIDGE_TOKEN` faqat **legacy** back-compat sifatida qoldi: bo'sh bo'lsa e'tiborga olinmaydi, to'ldirilgan bo'lsa eski umumiy tokenli agent ham o'tadi (bunday ulanishning jadvalda qatori yo'q — `last_seen_at` yangilanmaydi, panelda ham ko'rinmaydi).
+`/ws/bridge` (`backend/app/api/routes/ws.py`) jobni ack (`{"ok": true}`) kelmasa `rpush` bilan navbatga qaytaradi — yorliq yo'qolmaydi. Ack kelgach `perf.record_delivered` navbatdan agentgacha bo'lgan vaqtni `mes:perf:print` ga yozadi («Tizim holati»). Auth **per-agent**: token `Authorization: Bearer` headerda keladi (query param eski agentlar uchun fallback), sha256 xeshi bo'yicha tirik `bridge_agent` qatori qidiriladi — topilmasa 4401 (`WS_CLOSE_UNAUTHORIZED` konstantasi). Serverda sozlama kerak emas, printer admin paneldan ulanadi (1.4.2-bo'lim). `settings.BRIDGE_TOKEN` faqat **legacy** back-compat sifatida qoldi: bo'sh bo'lsa e'tiborga olinmaydi, to'ldirilgan bo'lsa eski umumiy tokenli agent ham o'tadi (bunday ulanishning jadvalda qatori yo'q — `last_seen_at` yangilanmaydi, panelda ham ko'rinmaydi).
 
 Bridge-agent (`bridge-agent/agent.py`) faqat printer ulangan kompyuterga o'rnatiladi — menejer, texnolog va boshqa post terminallariga hech narsa kerak emas. Birinchi ishga tushganda `_pair()` sozlash oynasini ochadi (`_pair_dialog()` — tkinter, server manzili + ulanish kodi; tkinter bo'lmasa `_pair_console()` zaxirasi), `_exchange()` kodni tokenga almashtiradi va `%APPDATA%\MebelixAgent\.env` ga yozadi — token allaqachon bo'lsa oyna umuman ochilmaydi. Ulangandan keyin `_register_autostart()` agentni `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` ga yozadi, exe esa `--noconsole` bilan qurilgan — kompyuter yonganda oynasiz fonda o'zi tushadi. Exe qo'lda tarqatiladi (server download endpointi yo'q). Printerni `_detect_printer()` avtomatik topadi (nomida `godex` bor Windows printeri); env'lari: `MES_URL`, `BRIDGE_TOKEN` (pairing to'ldiradi), `PRINTER_NAME` (ixtiyoriy, qo'lda override), `QUEUE_FILE`, `SCAN_FORWARD` (default yoqilgan; `0` — klaviatura-skaner forvardini o'chiradi). Pairing `.env` ni qayta yozganda faqat `MES_URL`/`BRIDGE_TOKEN` yangilanadi — qo'lda yozilgan qolgan kalitlar saqlanadi.
 

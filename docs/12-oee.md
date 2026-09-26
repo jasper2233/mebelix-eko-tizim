@@ -152,7 +152,7 @@ ilgari beyjik bilan ochilgan smena chiqishda yopilmasdi.
 | Worker | `tasks.sync_downtimes` (5 daq) | terminal yopiq bo'lsa ham to'xtashlar yozilib, yopilib turadi |
 | Terminal | `GET /terminal/downtimes/pending` (30 s + `andon.state` WS), `Terminal/DowntimeReason.tsx` | sababsiz to'xtash bo'lsa oyna o'zi chiqadi; faqat Pico ulangan ish markazida (`has_andon`) va smena ochiq bo'lsa; «Keyinroq» — 10 daqiqa |
 | Qulf | `POST /terminal/downtimes/lock` | qulf tugmasi avval sabab so'raydi; qulf beyjik bilan ochilganda (`open_badge_session`) yopiladi, uning ostida boshlangan Pico to'xtashi sababni oladi |
-| Bo'sh yurish (kromka) | `services/andon.split_idle` + `downtimes._bosh_yurish` | lenta YURYAPTI (RUN yoqiq), lekin `kromka_idle_minutes` (sukut 10) davomida bitta ham detal o'tmadi — bu ham to'xtash (`IDLE`): sabab so'raladi va o'sha vaqt «ishladi» dan chiqadi. Manba — o'lchovlar orasidagi tirqish: RUN kirishi «bo'sh yuryapti» deb aytmaydi |
+| Bo'sh yurish (kromka) | `services/andon.split_idle` + `downtimes._bosh_yurish` | lenta YURYAPTI (RUN yoqiq), lekin `kromka_idle_minutes` (sukut 10) davomida bitta ham detal o'tmadi — bu ham to'xtash (`IDLE`): sabab so'raladi va o'sha vaqt «ishladi» dan chiqadi. Manba — o'lchovlar orasidagi tirqish: RUN kirishi «bo'sh yuryapti» deb aytmaydi. O'lchovlar ro'yxati VAQT BO'YICHA SARALANGAN bo'lishi shart: har oraliqqa tegishlilari ikkilik qidiruv bilan kesiladi (ilgari har oraliq butun ro'yxatni aylanardi — 6 kunlik oynada 1,66 s, endi 0,024 s, natija bir xil) |
 | Sozlamalar | Tizim sozlamalari → «To'xtash sabablari» | chegara (sukut 5, 1..120), **kromka bo'sh yurishi** (sukut 10, 1..240) va IKKI ro'yxat — «Rejali» va «Rejasiz» alohida, har birining o'z qo'shish maydoni: nom, «Izoh majburiy», «Faol», narigi guruhga o'tkazish (o'chirish yo'q) |
 
 Faqat SHU SMENAGA tegishli to'xtash so'raladi (oldingi smenaniki sababsiz qoladi). Ro'yxat bo'sh
@@ -201,7 +201,7 @@ Availability = ishladi ÷ reja vaqti                           (reja vaqti 0 bo'
 
 | Qoida | Nega |
 | --- | --- |
-| To'xtash — §4.4 bilan BIR XIL: har qanday turi `stop_prompt_idle_minutes` dan uzoq bo'lsa | qisqa to'xtash — mikro-to'xtash: u Performance yo'qotishi, Availability emas |
+| To'xtash: qizil (FAULT) va o'chiq (OFF) — darhol; sariq (IDLE/STOPPED) — `stop_prompt_idle_minutes` dan uzoq bo'lsa (`availability.stop_runs`). §4.4 dagi sabab SO'RASH qoidasi bundan farq qiladi: u 2026-09-20 dan chegarani HAMMA turga qo'llaydi — qisqa qizil/o'chiq to'xtash Availability'ni tushiradi, lekin sababi so'ralmaydi va «Sabab kiritilmagan» bo'lib chiqadi | qisqa sariq to'xtash — mikro-to'xtash: u Performance yo'qotishi, Availability emas |
 | Ish vaqtida Pico'dan ma'lumot yo'q — TO'XTASH | §7 qarori; alohida «Ma'lumot yo'q» va «Qamrov» ustunlarida ko'rinadi, toki qamrov muammosi (§5) Availability'ni nega tushirayotgani ko'rinib tursin |
 | Ish vaqtidan tashqaridagi holat hisobga kirmaydi | tungi OFF va tushlikdagi OFF jadval bilan o'zi kesiladi — «Smena tugadi» sababi va uni avtomat qo'yish KERAK EMAS |
 | Sabab `downtime` dan VAQT bo'yicha olinadi (eng ko'p ustma-ust tushgan yozuv), to'xtashning o'zi esa `andon_event` dan | `downtime` jadvali 2026-09-18 da paydo bo'ldi — undan oldingi kunlar ham to'g'ri hisoblanadi; oraliq to'xtash o'rtasidan boshlansa ham sabab topiladi |

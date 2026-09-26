@@ -275,7 +275,9 @@ MES bilan bog'lanish kaliti — sarlavhadagi `Code` = `Product.code`. Detal kodl
   ochiladi (flag yo'q), publish xato bersa lokal yetkazishga tushadi.
 - `/ws/bridge` — tsex bridge-agenti (per-agent pairing tokeni: `Authorization: Bearer` header, sha256
   → `bridge_agent.token_hash`; umumiy `BRIDGE_TOKEN` faqat legacy moslik): Redis `mes:print:queue:{agent_id}`
-  dan chop etish joblarini oladi, ack qilinmagan job qayta navbatga qaytadi. `can_print=False`
+  dan chop etish joblarini oladi, ack qilinmagan job qayta navbatga qaytadi; ack kelgach job'ning
+  `queued_at` idan shu paytgacha bo'lgan vaqt `perf.record_delivered` bilan `mes:perf:print` ga
+  yoziladi («Tizim holati» — «Chek: navbatdan agentgacha»). `can_print=False`
   agent (printersiz skan-forvard stansiyasi) navbatdan job OLMAYDI — brpop o'rniga sleep, aks
   holda u umumiy navbatdan chekni "o'g'irlab" lokalida qoldirardi. `touch_agent()` har
   5 daqiqada `last_seen_at` (va `can_print` ni) yangilaydi — bu ZAXIRA tekshiruv. Token bekor
@@ -361,7 +363,7 @@ terminal (POST /terminal/labels/{instance_id})   → label_printed_at + ws "labe
   (DELETE o'sha path — chekni bekor qilish: label_printed_at=None + ws "label.cancelled";
    ARRA UI'da chiqarilgan katak yashil="kesildi", qayta chop etish bekor qilishdan keyingina)
   → arq task print_label (app/tasks/__init__.py)
-     · render_label_png → LPUSH mes:print:queue:{agent_id} = {type, job_id, instance_id, png(base64)}
+     · render_label_png → LPUSH mes:print:queue:{agent_id} = {type, job_id, instance_id, png(base64)[, queued_at]}
   → /ws/bridge (per-agent token auth: Bearer → sha256 bridge_agent.token_hash; Redis brpop + ack;
      ack kelmasa rpush bilan navbatga qaytadi)
   → bridge-agent/agent.py → print-queue.jsonl → Windows GDI → USB GoDEX
@@ -665,14 +667,19 @@ direktor ham ko'radi.
   284 ms → 5 ms). Skan issiq yo'li uchun `qr_text`
   partial indeksi — 2026-09-05 dan UNIQUE `ix_part_instance_qr_serial`
   (`WHERE NOT is_deleted`, `9c4e1a7b2d03`); ilgari alohida `ix_part_instance_qr_text`
-  bor edi (`e8b1c6d94f27`), unikal indeks uni qoplagani uchun o'chirildi.
+  bor edi (`e8b1c6d94f27`), unikal indeks uni qoplagani uchun o'chirildi. `andon_event` da
+  qisman `ix_andon_event_live (kind, machine_id, happened_at) WHERE NOT is_deleted`
+  (`9f09e20f7587`): hisobot va tablo so'rovlari 2026-09-24 dagi yumshoq o'chirilgan ~258 ming
+  Pico dublikatiga umuman tegmaydi (prod nusxasida Kromka-1 oynasi 2,0 → 1,1 s, hisobotlar 16–33%
+  tez).
 
 ## 7. Frontend tuzilishi
 
 - Dizayn tokenlar: `src/index.css` (post/status ranglari, `.num`, print CSS); domen konstantalar `src/lib/mes.ts`.
 - Imzo komponent: `Common/StagePipeline` — post zanjiri (dinamik; buyurtma sahifasi sarlavhasida `showLabels` bilan — `routes/_layout/orders/$orderId.tsx`; boshqaruv paneli endi uni ishlatmaydi — u yerda buyurtma kartalari yo'q, faqat kechikkan/to'xtab qolgan/tayyor ro'yxatlari; buyurtmalar reyestrida bosqich ustuni yo'q).
 - Routelar: `_layout/*` admin modullar (index — boshqaruv paneli, orders (`index` + `$orderId`),
-  clients, employees, work-centers, reports, logs, printers, admin, settings,
+  clients, employees, work-centers, reports, logs, printers, admin, settings, system-health
+  («Tizim holati», `requireAccess(isAdmin)`, 30 s da yangilanadi, oyna 15/60/180 daq),
   cutmap.$orderId, `anketa.$orderId`), `/terminal`, `/tablo`
   ("Jami" yig'indi qatori + rejimlar + drill-down; sarlavhada brend logo, ish markaziga bog'langan
   tablo akkauntida "JORIY NUQTA" chipi, onlayn indikatori va tablo bo'lmagan rollarga "Boshqaruv
@@ -682,7 +689,7 @@ direktor ham ko'radi.
   yuklash soatiga bir marta va faqat drill-down yopiq bo'lganda. Katak qiymati OSHGANDA bir marta
   0.9 s yashil uriladi (`animate-cell-flash` / `@keyframes mx-cell-flash`, `src/index.css`) —
   devordagi ekranda o'zgargan raqamni ilib oladigan yagona signal; kamayishda (skan bekor
-  qilinganda) urilmaydi. Yon menyu — `Sidebar/AppSidebar.tsx: NAV_ITEMS` (9 band); mobil
+  qilinganda) urilmaydi. Yon menyu — `Sidebar/AppSidebar.tsx: NAV_ITEMS` (14 band); mobil
   sarlavhalar (`_layout.tsx: sectionTitles`) shu ro'yxatdan + `/settings`.
 - Anketa UI: `_layout/anketa.$orderId.tsx` — xonalar pill bilan almashadi, 7 ta bo'lim + yopiladigan
   "O'lchov varag'i". Xona pillidagi × uni o'chiradi (tasdiq dialogi bilan; bitta xona qolganda ×

@@ -8,7 +8,7 @@ Umumiy arxitektura oqimi:
 backend/app/main.py
   └── create_application(router, settings)        # core/setup.py
         ├── Settings (env → pydantic)             # core/config.py
-        ├── lifespan: Redis pool'lar + WS pub/sub listener + DB probe   # core/setup.py, core/ws.py
+        ├── lifespan: perf.lag_monitor + Redis pool'lar + WS pub/sub listener + DB probe   # core/setup.py, core/ws.py, core/perf.py
         ├── RequestLoggingMiddleware              # core/middleware.py
         ├── CORSMiddleware, ProxyHeadersMiddleware
         ├── Prometheus /metrics
@@ -26,7 +26,8 @@ backend/app/main.py
 | `backend/app/core/exceptions.py` | Umumiy HTTP exception klasslari (o'zbekcha xabarlar bilan) |
 | `backend/app/core/health.py` | DB va Redis health-check funksiyalari |
 | `backend/app/core/logger.py` | JSON formatdagi structured logging (stdout) |
-| `backend/app/core/middleware.py` | `X-Request-ID` + so'rov loglash middleware'i |
+| `backend/app/core/middleware.py` | `X-Request-ID` + so'rov loglash middleware'i; «Tizim holati» uchun so'rov davomiyligini route shabloni bilan yozadi va ishlayotgan so'rovlarni ro'yxatga oladi (`core/perf.py`) |
+| `backend/app/core/perf.py` | «Tizim holati» o'lchovlari Redis'da, ikkala gunicorn ishchisidan umumiy: `mes:perf:req` (so'rovlar, 20 000), `mes:perf:lag` (event loop bloklari, 500), `mes:perf:print` (chek kechikishi, 5 000) — LTRIM bilan cheklangan; `record_request`, `record_delivered`, `finish`, `lag_monitor`, `read_lists` |
 | `backend/app/core/security.py` | bcrypt parol hash, JWT token, httpOnly cookie'lar |
 | `backend/app/core/setup.py` | Application factory, lifespan, probe'lar, metrics, docs |
 | `backend/app/core/worker.py` | arq background worker konfiguratsiyasi |
@@ -65,7 +66,7 @@ app = create_application(router=router)
 | Crypto / JWT | `SECRET_KEY: SecretStr`, `ALGORITHM="HS256"`, `ACCESS_TOKEN_EXPIRE_MINUTES=30`, `REFRESH_TOKEN_EXPIRE_DAYS=7`, `DEVICE_REFRESH_TOKEN_EXPIRE_DAYS=90` (qurilma sessiyasi — monoblok/TABLO tsexda klaviatura yo'q, qayta parol termaydi; token har ishlatilganda yangilanadi, uzun muddat esa uzoq to'xtashdan keyin ham qayta kirish kerak bo'lmasligi uchun), `BCRYPT_ROUNDS=12` |
 | PostgreSQL | `POSTGRES_USER/PASSWORD/SERVER/PORT/DB`, `POSTGRES_ASYNC_PREFIX="postgresql+asyncpg://"`, `DB_POOL_SIZE=10`, `DB_MAX_OVERFLOW=20` |
 | First admin | `ADMIN_NAME/PHONE/USERNAME/PASSWORD` — startup'da yaratiladigan birinchi admin |
-| Redis | `REDIS_HOST`, `REDIS_PORT` — navbat ham, rate limit ham, WS pub/sub ham shu bitta Redis'ga boradi (yoqish/o'chirish bayroqlari yo'q) |
+| Redis | `REDIS_HOST`, `REDIS_PORT` — navbat ham, rate limit ham, WS pub/sub ham, «Tizim holati» ro'yxatlari (`mes:perf:*`, `core/perf.py` o'z klienti bilan) ham shu bitta Redis'ga boradi (yoqish/o'chirish bayroqlari yo'q) |
 | Rate limit | `LOGIN_RATE_LIMIT_ATTEMPTS=5`/`LOGIN_RATE_LIMIT_PERIOD=300` — rate limit faqat login uchun ishlatiladi, umumiy default'lar yo'q |
 | Pagination | `DEFAULT_PAGE_SIZE=50`, `MAX_PAGE_SIZE=100` |
 | File storage | `UPLOAD_DIR="uploads"` (project/scx/label fayllar ildizi,; nisbiy yo'l `backend/` paket ildiziga nisbatan), `MAX_PROJECT_FILE_SIZE` = 50 MB |
@@ -149,16 +150,28 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 
 ## `backend/app/core/middleware.py`
 
-**Maqsadi:** har bir so'rovga `X-Request-ID` biriktirish va tugagach structured log yozish.
+**Maqsadi:** har bir so'rovga `X-Request-ID` biriktirish, tugagach structured log yozish va «Tizim holati» o'lchovini (`core/perf.py`) berish.
 
 - `REQUEST_ID_HEADER = "X-Request-ID"`.
 - `RequestLoggingMiddleware(BaseHTTPMiddleware)`:
   - Klientdan kelgan `X-Request-ID`ni qabul qiladi, bo'lmasa `uuid4().hex` yaratadi; `request.state.request_id`ga saqlaydi va javob header'iga qo'shadi.
   - `NON_BUSINESS_PATHS`dagi pathlar (`/metrics`, health/ready) **loglanmaydi** — faqat header qo'shiladi. (Circular import oldini olish uchun `NON_BUSINESS_PATHS` `dispatch` ichida local import qilinadi.)
   - Boshqa so'rovlar uchun `time.perf_counter()` bilan davomiylik o'lchanadi va `logger.info("request", extra={request_id, method, path, status_code, duration_ms})` yoziladi — bu `logger.py`dagi `JsonFormatter` orqali JSON bo'lib chiqadi.
-  - Handler ushlanmagan istisno tashlasa, `call_next` `try/except BaseException` ichida: xuddi shu `extra` (lekin `status_code=500`) bilan `logger.exception("request")` yoziladi va istisno yuqoriga qayta uzatiladi. Ya'ni 500'lar ham `request_id` va `duration_ms` bilan strukturali logda ko'rinadi (javob header'ini Starlette'ning xato ishlovchisi shakllantirgani uchun unda `X-Request-ID` bo'lmaydi; korrelatsiya log orqali).
+  - **«Tizim holati»:** `call_next` dan oldin so'rov `perf.inflight` ga yoziladi (yo'l, boshlanish), `finally` da `perf.finish` uni olib «yaqinda tugaganlar» ga (`perf.recent`) qo'yadi — event loop bloki so'rov OXIRIDA bo'lsa ham aybdor topilsin. Javobdan keyin `perf.record_request(method, route shabloni, ms, status)`. Shablon (`_route_template`): `scope["route"].path` ichki routerning o'z yo'li, ota prefikslarsiz (`/{order_id}/matrix`) — u haqiqiy yo'lning OXIRI, prefiks haqiqiy yo'ldan olinadi; qiymat bo'yicha almashtirilmaydi (`/orders/5/files/5`). Route topilmasa (404) — `(topilmadi)`.
+  - Handler ushlanmagan istisno tashlasa, `call_next` `try/except BaseException` ichida: xuddi shu `extra` (lekin `status_code=500`) bilan `logger.exception("request")` yoziladi, «Tizim holati» ga ham 500 bo'lib yoziladi va istisno yuqoriga qayta uzatiladi. Ya'ni 500'lar ham `request_id` va `duration_ms` bilan strukturali logda ko'rinadi (javob header'ini Starlette'ning xato ishlovchisi shakllantirgani uchun unda `X-Request-ID` bo'lmaydi; korrelatsiya log orqali).
 
-**Bog'lanishlar:** `setup.py` (`create_application` uni ro'yxatga oladi, `NON_BUSINESS_PATHS` shu yerdan), `logger.py`.
+**Bog'lanishlar:** `setup.py` (`create_application` uni ro'yxatga oladi, `NON_BUSINESS_PATHS` shu yerdan), `logger.py`, `perf.py` (`inflight`, `finish`, `record_request`).
+
+## `backend/app/core/perf.py`
+
+**Maqsadi:** «Tizim holati» sahifasining (`GET /system/perf`, `docs/03`) manbasi — server tezligini o'zi o'lchab boradi. 2026-09-26 da tsexdagi 5–10 soniyalik kutish sababi (bitta so'rov ishchining event loop'ini ~7 s CPU bilan band qilib, o'sha ishchidagi HAMMA so'rovni kuttirgan) loglardan qo'lda qidirilgan edi.
+
+- Yozuvlar Redis ro'yxatlarida, ikkala gunicorn ishchisidan umumiy, `LPUSH` + `LTRIM`: `mes:perf:req` (`vaqt|METHOD|route|ms|status`, 20 000), `mes:perf:lag` (JSON, 500), `mes:perf:print` (`vaqt|agent|soniya`, 5 000). Klient modul darajasida, birinchi ishlatilganda ochiladi (`AsyncRedis.from_url(settings.REDIS_URL)`).
+- Yozish so'rovni kuttirmaydi va yiqitmaydi: fon vazifasi (`asyncio.create_task`, kuchli havola `_tasks` da), xato faqat debug logga.
+- `lag_monitor()` — har ishchida lifespan boshlaydi: har 50 ms uyg'onadi, 200 ms dan kech uyg'onsa blok deb yozadi, o'sha oraliqda ishlab turgan va tugagan so'rovlar bilan (eng uzoq davom etgani birinchi — odatda aybdor). Qadam — o'lchov xatosi: 0,5 s qadamda 0,6 s blok 204 ms deb yozilgani sinovda ushlangan.
+- `record_delivered(agent_id, job)` — `/ws/bridge` ack'dan keyin chaqiradi: job'dagi `queued_at` dan hozirgacha (`tasks._print_job`); `queued_at` siz eski job va tanitilmagan agent o'lchanmaydi.
+
+**Bog'lanishlar:** `middleware.py`, `setup.py` (lifespan), `api/routes/ws.py`, `api/routes/system.py`, `config.py`.
 
 ---
 
@@ -195,7 +208,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 - `check_database_connection()` — engine orqali `SELECT 1` probe (retry bilan).
 - `check_redis_connection()` — ochilgan Redis klientlarni (`queue.pool`, `rate_limiter.client`) ping qiladi (retry bilan) va qaysilari tekshirilganini logga yozadi.
 - `set_threadpool_tokens()` — AnyIO thread-pool hajmini `THREADPOOL_TOKENS`ga ko'taradi (bloklovchi chaqiriqlar navbatda turib qolmasligi uchun).
-- `lifespan(app)` — modul darajasidagi `@asynccontextmanager` (pool ochish/yopish alohida wrapper funksiyalarsiz, shu yerda inline): threadpool → arq navbat pool (`queue.pool = await create_pool(...)`) + `rate_limiter.initialize(settings.REDIS_URL)` + ping → **WS real-time ko'prik**: alohida Redis klient ochilib `ws_manager.start_listener(...)` ishga tushiriladi (`core/ws.py`) → DB probe → `yield` → `finally`da WS listener to'xtatiladi, WS Redis klienti, `queue.pool` va `rate_limiter.client` yopiladi. Hech qanday shart yo'q — Redis ilovaning majburiy bog'liqligi, ko'tarilmasa startup probe'da yiqiladi.
+- `lifespan(app)` — modul darajasidagi `@asynccontextmanager` (pool ochish/yopish alohida wrapper funksiyalarsiz, shu yerda inline): threadpool → `lag_task = asyncio.create_task(perf.lag_monitor())` (har gunicorn ishchisi o'z loop'ini o'lchaydi, «Tizim holati») → arq navbat pool (`queue.pool = await create_pool(...)`) + `rate_limiter.initialize(settings.REDIS_URL)` + ping → **WS real-time ko'prik**: alohida Redis klient ochilib `ws_manager.start_listener(...)` ishga tushiriladi (`core/ws.py`) → DB probe → `yield` → `finally`da `lag_task` bekor qilinadi, WS listener to'xtatiladi, WS Redis klienti, `queue.pool` va `rate_limiter.client` yopiladi. Hech qanday shart yo'q — Redis ilovaning majburiy bog'liqligi, ko'tarilmasa startup probe'da yiqiladi.
 - `_install_docs_router(application)` — docs siyosati:
   - **production**: docs umuman yo'q;
   - **staging**: `/docs`, `/redoc`, `/openapi.json` faqat superuser uchun (`Depends(get_current_superuser)`);
@@ -210,7 +223,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 - `NON_BUSINESS_PATHS = ["/metrics", "/api/v1/health", "/api/v1/ready"]` — metrics'dan ham, access-log'dan ham chiqarib tashlanadigan pathlar (yagona manba — single source of truth).
 - `_install_metrics(application)` — `prometheus_fastapi_instrumentator` orqali `/metrics` endpoint (gzip, schema'da ko'rinmaydi). Endpoint autentifikatsiyasiz, shuning uchun prod'da Caddy uni tashqariga UMUMAN chiqarmaydi: `handle /metrics` har doim 403 qaytaradi (`caddy/Caddyfile`) — ilgarigi `remote_ip private_ranges` matcher olib tashlangan, chunki Caddy host-nginx ortida turgani uchun har bir tashqi so'rov ham private range'dan kelgandek ko'rinardi. Metrikalarga faqat compose tarmog'i ichidan, to'g'ridan-to'g'ri `api:8000/metrics` orqali borish mumkin; repoda scraper (Prometheus/Grafana) xizmatining o'zi yo'q.
 
-**Bog'lanishlar:** `config.py`, `db.py`, `logger.py` (`setup_logging`), `middleware.py`, `ws.py` (`ws_manager`), `utils/queue.py`, `utils/rate_limit.py`, `backend/app/api/deps.py` (`get_current_superuser`); `main.py` va `worker.py` bu modulni ishlatadi.
+**Bog'lanishlar:** `config.py`, `db.py`, `logger.py` (`setup_logging`), `middleware.py`, `ws.py` (`ws_manager`), `utils/queue.py`, `utils/rate_limit.py`, `perf.py` (`lag_monitor`), `backend/app/api/deps.py` (`get_current_superuser`); `main.py` va `worker.py` bu modulni ishlatadi.
 
 ---
 
@@ -281,7 +294,9 @@ class WorkerSettings:
   **Nega PNG:** GoDEX G500-U USB bilan ishlaydi va bridge-agent uni Windows drayveri (GDI) orqali chizadi — PNG printer dialektiga bog'liq emas.
 
   So'ng arq context'idagi Redis (`ctx["redis"]`) orqali `LPUSH print_queue_key(agent_id)`, job JSON:
-  `{"type": "print", "job_id", "instance_id", "png"}` (`png` — base64 PNG). `job_id` — har
+  `{"type": "print", "job_id", "instance_id", "png"[, "queued_at"]}` (`png` — base64 PNG; `queued_at` — arq
+  `ctx["enqueue_time"]` unix soniyada, bo'lsa qo'shiladi; `/ws/bridge` ack'da chek kechikishini o'lchaydi,
+  agent noma'lum maydonni e'tiborsiz qoldiradi). `job_id` — har
   yuborishda yangi `uuid4().hex`: agent takror yetkazilgan jobni aynan shu kalit bo'yicha tashlaydi
   (`SEEN_JOBS`). Natija `"queued:{id}"`. Redis mavjud bo'lmasa — xato loglanadi, `"lost:{id}"`.
 - Qolgan uchta vazifa AYNAN shu zanjirdan o'tadi (`_print_job` + `LPUSH print_queue_key(agent_id)`,
@@ -296,6 +311,8 @@ class WorkerSettings:
     qo'yadi; brauzerdan chop etish o'rniga shu yo'l, chunki brauzer drayverdagi saqlangan qog'oz
     o'lchamiga tayanardi va 80×60 bo'lmasa kontent yorliqqa sig'masdi.
 
+  `_print_job(ref_id, png_b64, queued_at)` ni `_enqueue` `ctx.get("enqueue_time")` bilan chaqiradi — to'rttala
+  chop etish vazifasi `queued_at` bilan ketadi.
   Job JSON'dagi maydon nomi hamma vazifada `instance_id` (`_print_job` umumiy) — qadoq, atxot va
   beyjikda u mos ravishda `pachka_id`, `waste_id`, `employee_id` qiymatini olib yuradi; agent uni
   faqat log uchun ishlatadi, chop etish `png` bilan bo'ladi.
@@ -312,7 +329,7 @@ terminal → POST /api/v1/terminal/labels/{instance_id}
   → arq worker: render_label_png → LPUSH mes:print:queue:{agent_id}
   → /ws/bridge (per-agent token auth; faqat juftlangan (agent_id bor) va can_print=True
      agent BRPOP qiladi; brpop([o'z kaliti]); ack talab qilinadi, ack kelmasa src_key ga
-     RPUSH bilan qaytariladi)
+     RPUSH bilan qaytariladi; ack kelgach perf.record_delivered → mes:perf:print — chek kechikishi)
   → bridge-agent → print-queue.jsonl (durable) → Windows GDI (_print_png_gdi) → USB GoDEX G500-U
 ```
 
@@ -391,5 +408,5 @@ Ikkalasi ham bo'sh — faqat Python package marker vazifasini bajaradi, hech qan
 
 - **Yagona konfiguratsiya manbasi:** hamma narsa `Settings` singleton'idan keladi; har qanday non-local (staging/production) muhitda xavfsiz bo'lmagan default'lar bilan boot bloklanadi.
 - **Fail-fast startup, fail-closed rate limit:** DB/Redis ulanishi startup'da retry bilan tekshiriladi (ishlamasa ilova ko'tarilmaydi); runtime'da Redis yiqilsa rate limit **fail-closed** ishlaydi — cheklangan endpointlar 429 qaytaradi (brute-force himoyasi jimgina o'chib qolmaydi). Uni o'chiradigan sozlama yo'q.
-- **Kuzatuvchanlik (observability):** JSON loglar + `X-Request-ID` korrelatsiyasi + Prometheus `/metrics`; health/ready pathlari shovqin qilmasligi uchun `NON_BUSINESS_PATHS` orqali chiqarib tashlangan.
+- **Kuzatuvchanlik (observability):** JSON loglar + `X-Request-ID` korrelatsiyasi + Prometheus `/metrics` + «Tizim holati» (`core/perf.py` → `GET /system/perf`, admin: endpoint vaqtlari route shabloni bo'yicha, event loop bloklari aybdori bilan, chek kechikishi, `pg_stat_statements` dan og'ir SQL); health/ready pathlari shovqin qilmasligi uchun `NON_BUSINESS_PATHS` orqali chiqarib tashlangan.
 - **Xavfsizlik defaults:** httpOnly + SameSite=Strict cookie'lar, HS256 JWT (access/refresh ajratilgan, `token_version` bilan revocation, refresh'da unikal `jti`), bcrypt (hash ham, verify ham) threadpool'da, docs production'da yopiq.
