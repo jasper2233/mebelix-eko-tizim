@@ -183,11 +183,9 @@ async def sync_machine(db: AsyncSession, machine_id: int, now: datetime) -> None
         .all()
     )
     threshold = timedelta(minutes=int(await get_setting(db, STOP_PROMPT_IDLE_MINUTES)))
-    # Chegara HAMMA to'xtashga qo'llanadi (qizil chiroq ham): undan qisqasi — mikro-to'xtash,
-    # uning sababi so'ralmaydi. Availability bunga bog'liq emas, u oraliqlardan hisoblanadi.
-    runs = [r for r in _runs(events) if (r.end or now) - r.start >= threshold]
-    runs += await _bosh_yurish(db, machine_id, events, since, now)
-    if not runs:
+    stops = _runs(events)
+    bosh = await _bosh_yurish(db, machine_id, events, since, now)
+    if not stops and not bosh:
         return
 
     existing = {
@@ -196,11 +194,26 @@ async def sync_machine(db: AsyncSession, machine_id: int, now: datetime) -> None
             await db.execute(
                 select(Downtime).where(
                     Downtime.machine_id == machine_id,
-                    Downtime.start_key.in_([r.key for r in runs]),
+                    Downtime.start_key.in_([r.key for r in [*stops, *bosh]]),
                 )
             )
         ).scalars()
     }
+    # Chegara HAMMA to'xtashga qo'llanadi (qizil chiroq ham): undan qisqasi — mikro-to'xtash,
+    # uning sababi so'ralmaydi. Availability bunga bog'liq emas, u oraliqlardan hisoblanadi.
+    # Lekin OCHIQ yozuv filtrdan qat'i nazar yangilanadi: ochiq paytida yozilgan to'xtash keyin
+    # qisqa bo'lib yopilishi mumkin (Pico "o'chdi" hodisasidan keyin kompyuter o'chsa, oraliq
+    # o'sha sessiyaning oxirgi hodisasida — ya'ni boshlanishida — yopiladi). Filtr uni ham
+    # tashlasa yozuv MANGU ochiq qolardi va oynani (`since`) o'zi bilan orqaga tortardi:
+    # 2026-09-26 da Kromka-1 ning 16 ta shunday yozuvi oynani 6 kunga cho'zgan, har so'rov
+    # ~7 s CPU yeb o'sha jarayondagi boshqa so'rovlarni (chek chiqarish ham) kuttirgan.
+    # Yopilgan yozuvga tegilmaydi — avvalgidek.
+    runs = [
+        r
+        for r in stops
+        if (r.end or now) - r.start >= threshold or (r.key in existing and existing[r.key].ended_at is None)
+    ] + bosh
+
     locks = list(
         (
             await db.execute(

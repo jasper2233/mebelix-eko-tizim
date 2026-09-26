@@ -199,7 +199,9 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   Pico turlari `services/downtimes.sync_machine` da `andon_event` dan QAYTA HISOBLANADI (idempotent;
   2026-09-20 dan KROMKA va ROVER ning `uskuna` hodisalari ham — `holat=0` → `OFF`, chegara bilan):
   ketma-ket to'xtash holatlari bitta oraliq, `start_key` = boshlagan hodisa `{session}-{seq}`, mavjud
-  yozuvning faqat `ended_at` i yangilanadi — sabab tegilmaydi. `STOPPED` = `IDLE` (Pico sariqni 300 s
+  yozuvning faqat `ended_at` i yangilanadi — sabab tegilmaydi (chegara faqat yangi yozuvga: ochiq yozuv
+  qisqa oraliq bo'lib yopilsa ham yangilanadi, aks holda mangu ochiq qolib hisob oynasini cho'zardi —
+  `docs/12` §7). `STOPPED` = `IDLE` (Pico sariqni 300 s
   dan keyin STOPPED deb qayta yuboradi); STOPPED birinchi kelgan bo'lsa boshlanish
   `happened_at − prev_duration_s`. Sessiya almashsa (Pico qayta yuklandi) oraliq o'sha sessiyaning
   oxirgi hodisasida yopiladi — keyingi vaqt noma'lum. `idle` faqat `stop_prompt_idle_minutes` dan
