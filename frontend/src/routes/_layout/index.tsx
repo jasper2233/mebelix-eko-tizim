@@ -3,7 +3,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { Activity, ArrowRight } from "lucide-react"
+import { ArrowRight, Radio, WifiOff } from "lucide-react"
 import type { ReactNode } from "react"
 
 import type { PostLoad, ReadyOrder, TabloOrderRow, TrendDay } from "@/client"
@@ -132,7 +132,13 @@ function Dashboard() {
                 : "bg-red-100 text-red-700",
             )}
           >
-            <Activity className="size-3.5" />
+            {/* Puls chizig'i (Activity) — «Tizim holati» belgisi; bu yerda ma'no boshqa: jonli
+                efir. Uzilish — terminaldagi «ALOQA YO'Q» bilan bir xil belgi */}
+            {online ? (
+              <Radio className="size-3.5" />
+            ) : (
+              <WifiOff className="size-3.5" />
+            )}
             {online ? "JONLI" : "ALOQA YO'Q"}
           </span>
         }

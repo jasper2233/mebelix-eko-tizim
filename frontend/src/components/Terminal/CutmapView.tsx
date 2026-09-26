@@ -14,9 +14,9 @@ import {
   ChevronRight,
   ChevronUp,
   Maximize2,
-  Minus,
-  Plus,
   Printer,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react"
 import {
   Fragment,
@@ -565,14 +565,14 @@ export function CutmapView({
         disabled={sheetIdx === null}
         onClick={() => zoomApi.current?.zin()}
       >
-        <Plus />
+        <ZoomIn />
       </TBtn>
       <TBtn
         label="Kichik"
         disabled={sheetIdx === null}
         onClick={() => zoomApi.current?.zout()}
       >
-        <Minus />
+        <ZoomOut />
       </TBtn>
       <TBtn
         label="To'liq"

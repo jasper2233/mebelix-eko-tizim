@@ -9,6 +9,7 @@ import {
   LogOut,
   MonitorX,
   ScanLine,
+  TriangleAlert,
   WifiOff,
 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -709,7 +710,7 @@ function TerminalPage() {
           /* Kontekst xatosi (masalan postda ish markazi yo'q) yutilmasin — sabab
              ekranda tursin, aks holda "hech nima chiqmayapti" bo'lib qoladi */
           <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-            <WifiOff className="size-12 text-destructive/60" />
+            <TriangleAlert className="size-12 text-destructive/60" />
             <div className="max-w-md text-lg font-bold text-destructive">
               {detailMessage(ctxError)}
             </div>

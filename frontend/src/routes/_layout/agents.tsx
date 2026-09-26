@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { FileText, KeyRound, Plus, Trash2 } from "lucide-react"
+import { KeyRound, Plus, ScrollText, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -132,7 +132,11 @@ function AgentLogs({ agent }: { agent: BridgeAgentRead }) {
   })
   return (
     <>
-      <RowAction icon={FileText} title="Loglar" onClick={() => setOpen(true)} />
+      <RowAction
+        icon={ScrollText}
+        title="Loglar"
+        onClick={() => setOpen(true)}
+      />
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>

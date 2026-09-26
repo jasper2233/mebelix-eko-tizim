@@ -2,14 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import {
   ArrowLeft,
-  CheckCheck,
-  ClipboardList,
+  Check,
+  ClipboardPen,
   Download,
   FileCode2,
   FileText,
   FileUp,
+  Grid2x2,
   Lock,
-  Map as MapIcon,
   Play,
   Trash2,
   Truck,
@@ -310,7 +310,7 @@ function OrderDetailPage() {
                 loading={confirm.isPending}
                 onClick={() => confirm.mutate()}
               >
-                <CheckCheck /> Tasdiqlash
+                <Check /> Tasdiqlash
               </LoadingButton>
             )}
             {canUpload && (
@@ -348,13 +348,13 @@ function OrderDetailPage() {
               )}
             <Button asChild variant="outline">
               <Link to="/anketa/$orderId" params={{ orderId }}>
-                <ClipboardList /> Anketa
+                <ClipboardPen /> Anketa
               </Link>
             </Button>
             {order.project_uuid != null && (
               <Button asChild variant="outline">
                 <Link to="/cutmap/$orderId" params={{ orderId }}>
-                  <MapIcon /> Kesish xaritalari
+                  <Grid2x2 /> Kesish xaritalari
                 </Link>
               </Button>
             )}

@@ -5,7 +5,7 @@
 // yuklash faqat shu tugma orqali, operator xohlaganda.
 
 import { useQuery } from "@tanstack/react-query"
-import { HardDriveDownload, Map as MapIcon, Printer } from "lucide-react"
+import { Grid2x2, HardDriveDownload, Printer } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
@@ -341,7 +341,7 @@ export function PrisadkaView({
                               onShowOnMap?.(p.code)
                             }}
                           >
-                            <MapIcon className="size-5" />
+                            <Grid2x2 className="size-5" />
                           </button>
                         )}
                       </td>

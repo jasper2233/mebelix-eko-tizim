@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowLeft, Plus, Printer, RotateCcw, X } from "lucide-react"
+import { ArrowLeft, FilePlus, Plus, Printer, X } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import type { CatalogItemRead } from "@/client"
@@ -202,7 +202,7 @@ function SotuvPage() {
                 variant="ghost"
                 onClick={() => setSheet(bosh(currentUser?.name ?? ""))}
               >
-                <RotateCcw className="size-4" /> Yangi list
+                <FilePlus className="size-4" /> Yangi list
               </Button>
               <Button
                 variant={shartnoma ? "default" : "outline"}

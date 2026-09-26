@@ -10,7 +10,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { ChevronLeft, PackageX } from "lucide-react"
+import { ChevronLeft, Link2Off, PackageX } from "lucide-react"
 import { useMemo, useState } from "react"
 import { PublicService } from "@/client"
 import { ModelViewer } from "@/components/Bazis/ModelViewer"
@@ -156,7 +156,7 @@ function PublicModelPage() {
   if (order.isError || !order.data) {
     return (
       <Bosh>
-        <PackageX className="size-10 text-muted-foreground" />
+        <Link2Off className="size-10 text-muted-foreground" />
         <div className="font-semibold text-lg">Havola ishlamaydi</div>
         <p className="max-w-xs text-muted-foreground text-sm">
           Havola yopilgan yoki noto'g'ri ko'chirilgan. Buyurtmani bergan

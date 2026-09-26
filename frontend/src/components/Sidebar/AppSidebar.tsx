@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router"
 import {
   Activity,
   BarChart3,
+  Bolt,
   Boxes,
   ClipboardList,
   Factory,
@@ -17,7 +18,6 @@ import {
   TriangleAlert,
   Tv,
   UserRound,
-  Wrench,
 } from "lucide-react"
 import type { UserRead } from "@/client"
 import { DefectsService, SystemService } from "@/client"
@@ -47,7 +47,7 @@ import { User } from "./User"
 // _layout.tsx mobil sarlavhalari ham SHU ro'yxatdan olinadi.
 //: Katalog harflarining ekrandagi nomi va ikonkasi (`docs/14` §1)
 const KATEGORIYA_NOM = { M: "Material", F: "Furnitura", X: "Xizmat" } as const
-const KATEGORIYA_IKONKA = { M: Layers, F: Wrench, X: Hammer } as const
+const KATEGORIYA_IKONKA = { M: Layers, F: Bolt, X: Hammer } as const
 
 export const NAV_ITEMS: (Item & {
   show: (user: UserRead | null | undefined) => boolean
