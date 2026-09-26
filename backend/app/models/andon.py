@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Index, String
+from sqlalchemy import DateTime, ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -30,6 +30,11 @@ class AndonEvent(BaseModel):
     __table_args__ = (
         Index("ix_andon_event_key", "machine_id", "session", "seq", unique=True),
         Index("ix_andon_event_machine_at", "machine_id", "happened_at"),
+        # Hisobot va tablo so'rovlari (tur + stanok + vaqt, `NOT is_deleted`). 2026-09-24 da
+        # Pico dublikatlari (`scripts/kromka_dedup.sql`) YUMSHOQ o'chirilgan — ~258 ming qator
+        # jadvalda qolgan va umumiy indeks bo'yicha o'qilib keyin tashlanardi. Qisman indeks ularga
+        # umuman tegmaydi: Kromka-1 oynasi 2,0 -> 1,1 s, hisobotlar 16-33% tez (prod nusxasida).
+        Index("ix_andon_event_live", "kind", "machine_id", "happened_at", postgresql_where=text("NOT is_deleted")),
     )
 
     machine_id: Mapped[int] = mapped_column(ForeignKey("machine.id"), kw_only=True)
