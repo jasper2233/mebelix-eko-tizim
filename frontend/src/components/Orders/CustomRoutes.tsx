@@ -49,9 +49,11 @@ export function CustomRoutes({
   // part_id -> asosiy detal id (0 = biriktirilmagan). Faqat tegilganlar.
   const [parents, setParents] = useState<Record<number, number>>({})
   const queryClient = useQueryClient()
+  // Buyurtmaning o'zi ham (matritsa uning ostida): marshrut o'zgarsa sahifadagi
+  // "xaritada joyi yo'q" banneri server qayta hisoblagan ro'yxat bilan yangilanadi
   const cb = crudCallbacks(
     queryClient,
-    ["orders", orderId, "matrix"],
+    ["orders", orderId],
     "Marshrutlar saqlandi",
   )
 

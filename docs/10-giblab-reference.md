@@ -728,22 +728,24 @@ profil kesish (`CL` — tsexda bunday post yo'q), detal NOMI (u marshrutga ta'si
 | XNC operatsiyada `<part>` havolasi yo'q | ishlov o'tkazib yuborildi (operatsiya `code`/`id` bilan) — PRISADKA qadami va SCX geometriyasi ham yo'qoladi |
 | XNC operatsiyada `program` yo'q | xuddi shunday — ishlov o'tkazib yuborildi (ilgari ikkalasi ham JIM tashlanardi) |
 | `description` da `#kod` | ishlov shablon nomi bilan berilgan, o'qilmaydi |
-| Xaritada joyi yo'q detal | arrachi ro'yxatiga tushmaydi — xarita EKRANIDA katagi yo'q; `usedCount="0"` bo'lsa ARRA marshrut qadami ham ochilmaydi (`ParsedPart.placed`, §3.1) |
+| Xaritada joyi yo'q detal | arrachi ro'yxatiga tushmaydi — xarita EKRANIDA katagi yo'q; `usedCount="0"` bo'lsa ARRA marshrut qadami ham ochilmaydi (`ParsedPart.placed`, §3.1). To'liq ro'yxat yuklash javobining `unplaced_parts` maydonida — texnolog uni yopilmaydigan oynada ko'radi |
 | `turn` ≠ 0 | dastur aylantirilgan — aylantirish qo'llanmaydi, CNC'da tekshirish shart (`mirHor`/`mirVert` esa parse'da geometriyaga QO'LLANADI — `xnc.apply_mirror`) |
 | Blobsiz kesish operatsiyasi | material optimallashtirilmagan, xaritasi yo'q |
 | Nostandart marshrut tiklandi | qayta yuklashda N detalning qo'lda chizilgan marshruti qaytarildi |
 | Marshruti yo'qolgan detal | qo'lda marshrut chizilgan detal yangi faylda topilmadi — kodlari sanab beriladi |
+| Marshrutida Arra bor, lekin xaritada joyi yo'q | tiklangan qo'lda marshrut xaritada katagi yo'q detalga «Raspil» qaytargan — arrachi uni ko'rmaydi, chek chiqmaydi, `/start` rad etadi; soni beriladi, ro'yxat javobning `unplaced_arra_parts` maydonida |
 
-18 qatordan 8 tasi `_advisories` da yig'iladi, qolgani boshqa joylarda: dastlabki
+19 qatordan 8 tasi `_advisories` da yig'iladi, qolgani boshqa joylarda: dastlabki
 uchtasi detal qurilishida yoziladi (`_build_part`, `_dedupe_part_code`), "Blobsiz kesish
 operatsiyasi" — `parse_project` generatsiyani aniqlaganda, "XNC operatsiya noma'lum detalga
 ishora qiladi" — dasturlar detalga biriktirilayotganda (`parse_project`, `merge_xnc_ops` dan
 oldin), ikkita "XNC ... o'tkazib yuborildi" — operatsiyalar aylanmasida (`parse_project`),
 "Xaritada joyi yo'q detal" esa xarita qurilgandan keyin `ingest.py` da.
 
-Oxirgi ikkitasi parse'dan tashqarida: ular qo'lda chizilgan marshrutlarni qayta yuklashda
+Oxirgi uchtasi parse'dan tashqarida: ular qo'lda chizilgan marshrutlarni qayta yuklashda
 saqlab tiklaydigan qadamdan chiqadi (`ingest.snapshot_custom_routes` / `restore_custom_routes`,
-xabarni `orders/files.py` upload handleri yozadi). Ikkalasi ham ataylab **yig'ma** — har detalga
+xabarni `orders/files.py` upload handleri yozadi; uchinchisining ro'yxatini tiklashdan keyin
+`giblab/cutmap.py: unplaced_arra_parts` hisoblaydi). Uchalasi ham ataylab **yig'ma** — har detalga
 bitta xabar yozilsa, javobda faqat dastlabki bir nechtasi ko'rinib qolgani yo'qolardi.
 
 `restore_custom_routes` detallar soniga bog'liq bo'lmagan sonli so'rov qiladi: postlar,
@@ -780,8 +782,11 @@ qayta yuklash hamma qatorni default `is_enabled=True` bilan yaratib, texnolog o'
 amalni JIMGINA qayta yoqardi. Izoh yoki o'chirilgan qadam uchungina saqlangan detal
 "marshrut tiklandi"/"marshruti yo'qoldi" sanog'iga KIRMAYDI (`PartSnapshot.has_route`).
 
-Bu xabarlar yuklash javobida ko'rsatiladi (dastlabki 3 tasi, qolgani soni bilan) va
-to'liq ro'yxat audit logga yoziladi (`POST /orders/{id}/upload`).
+Bu xabarlar yuklash javobining `message` matnida dastlabki 3 tasi (qolgani soni bilan),
+`warnings` maydonida esa to'liq qaytadi; to'liq ro'yxat audit logga ham yoziladi
+(`POST /orders/{id}/upload`). Kesish xaritasida joyi yo'q detal bo'lsa frontend toast o'rniga
+o'zi yopilmaydigan oyna ochadi (`Orders/UnplacedParts.tsx`) — 4 soniyalik toastni texnolog
+ko'rmay qolardi.
 
 **Fayl butunlay rad etiladigan holatlar** (`ParseError` → HTTP 422, ogohlantirish emas):
 

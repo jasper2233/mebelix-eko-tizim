@@ -52,6 +52,7 @@ from app.schemas.orders import (
     OrderRead,
     OrderUpdate,
 )
+from app.services.giblab.cutmap import unplaced_arra_parts
 
 from ._common import (
     _ROUTE_START_POSTS,
@@ -239,6 +240,8 @@ async def read_order(db: SessionDep, current_user: StaffReadUser, order_id: int)
     # yerda ham aynan o'sha helper chaqiriladi.
     detail.edit_blocked_reason = await _edit_block_reason(db, order)
     detail.can_edit = detail.edit_blocked_reason is None
+    # Doimiy banner uchun: arrachi ko'rmaydigan, lekin arradan o'tishi kerak bo'lgan detallar
+    detail.unplaced_arra_parts = await unplaced_arra_parts(db, order.id)
     return detail
 
 
@@ -587,6 +590,18 @@ async def start_order_production(
     if bad_start:
         raise ForbiddenException(
             f"Marshruti Arra yoki Rover'dan boshlanmagan detallar bor: {_first_n(bad_start)}. Ularga chek chiqmaydi."
+        )
+
+    # Marshrutida ARRA bor, lekin kesish xaritasida joyi yo'q detal: arra terminali chekni
+    # faqat xaritadagi katakdan chiqaradi, ya'ni bu detal hech qachon kesilgan bo'lmaydi va
+    # buyurtma arrada qotadi. 2026-09-26 da B-2026-088 aynan shunday uzatilgan (GibLab'da
+    # listga joylanmagan stoleshnitsaga texnolog qo'lda "Raspil" chizgan).
+    joysiz = await unplaced_arra_parts(db, order_id)
+    if joysiz:
+        raise ForbiddenException(
+            f"Kesish xaritasida joyi yo'q, lekin marshrutida Arra bor detallar: {_first_n(joysiz)}. "
+            "Arrachi ularni ko'rmaydi va cheki chiqmaydi. GibLab'da listga joylab .project ni qayta "
+            "yuklang (detal Rover'da kesilsa — nostandart marshrutni Arra o'rniga Rover'dan boshlang)."
         )
 
     posts = {p.id: p for p in (await db.execute(select(Post))).scalars()}

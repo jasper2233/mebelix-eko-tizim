@@ -472,7 +472,9 @@ ham bor; aks holda `template`), va `upload_order_project` TEMPLATE faylni **422*
 `POST /{id}/start` (TECHNICAL_REVIEW → PRODUCTION) `.project` biriktirilgan bo'lishini va
 `requires_assignment_choice` postlar uchun `machine_assignments` ni talab qiladi; **marshrutsiz
 detal qolgan bo'lsa rad etadi** — u terminalda ham, TABLOda ham ko'rinmay, buyurtma usiz "tayyor"
-bo'lib qolardi. Tanlangan ish markazi `PartRoute.machine_id` ga muhrlanadi
+bo'lib qolardi. Marshrutida Arra bor-u kesish xaritasida katagi yo'q detal bo'lsa ham rad etadi:
+arrachi chekni faqat xaritadagi katakdan chiqaradi, ya'ni bunday detal hech qachon kesilmaydi va
+buyurtma arrada qotadi (`giblab/cutmap.py: unplaced_arra_parts`, batafsil `docs/03`). Tanlangan ish markazi `PartRoute.machine_id` ga muhrlanadi
 (`orders/_common.py: stamp_route_machines`) — terminal ro'yxati va skan tekshiruvi shu ustunga
 qaraydi. Ish markazi PRODUCTION holatida `POST /{id}/machines` bilan qayta tanlansa muhr ham
 o'sha yerda yangilanadi; aks holda buyurtma eski stanokda qolib, yangisida skan E001 berardi.

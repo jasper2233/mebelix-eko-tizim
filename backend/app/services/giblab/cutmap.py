@@ -13,7 +13,7 @@ Validated rules from the working prototype (GibCut Viewer):
 from dataclasses import dataclass, field
 from typing import Any
 
-from sqlalchemy import ColumnElement, Select, select
+from sqlalchemy import ColumnElement, Select, exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Order, Part, PartInstance, PartRoute, Post, Product, Scan, WasteItem
@@ -278,6 +278,38 @@ def arra_parts_query(*where: ColumnElement[bool]) -> Select[tuple[int]]:
             *where,
         )
     )
+
+
+async def unplaced_arra_parts(db: AsyncSession, order_id: int) -> list[str]:
+    """Marshrutida ARRA bor, lekin nusxasi kesish xaritasida joyi YO'Q detallar — "kod (nom)".
+
+    Arra terminali chekni faqat xaritadagi katakdan chiqaradi (`CutmapView`
+    `pattern_no == null` nusxani umuman ko'rsatmaydi). Fayldan kelgan marshrut
+    bunday detalga ARRA bermaydi (`ingest`: `pp.placed`), lekin texnolog uni
+    nostandart qilib qo'lda "Raspil" chizishi mumkin — shunda arrachi uni
+    ko'rmaydi, chek chiqmaydi va buyurtma arrada abadiy qotadi (2026-09-26,
+    B-2026-088: GibLab'da listga joylanmagan uchta stoleshnitsa).
+    Buyurtma sahifasining banneri, yuklash javobi va "ishlab chiqarishga
+    uzatish" to'sig'i shu BITTA ro'yxatdan foydalanadi.
+    """
+    rows = (
+        await db.execute(
+            select(Product.code, Part.code, Part.name)
+            .join(Product, Product.id == Part.product_id)
+            .where(
+                Part.order_id == order_id,
+                Part.is_deleted == False,  # noqa: E712
+                Part.id.in_(arra_parts_query(PartRoute.order_id == order_id)),
+                exists().where(
+                    PartInstance.part_id == Part.id,
+                    PartInstance.is_deleted == False,  # noqa: E712
+                    PartInstance.pattern_no.is_(None),
+                ),
+            )
+            .order_by(Product.code, Part.code)
+        )
+    ).all()
+    return [f"{product_code}_{code} ({name})" for product_code, code, name in rows]
 
 
 async def build_cutmap_state(db: AsyncSession, order: Order, post_id: int) -> CutmapState:

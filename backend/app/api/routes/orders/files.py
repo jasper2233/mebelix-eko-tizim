@@ -15,9 +15,10 @@ from app.crud import log_action
 from app.models import OrderFile, Post
 from app.models.enums import FileKind, OrderStatus, PostCode
 from app.schemas.common import Message
+from app.schemas.orders import ProjectUploadResult
 from app.schemas.terminal import CutmapState
 from app.services.giblab import ParseError, parse_project
-from app.services.giblab.cutmap import build_cutmap_state
+from app.services.giblab.cutmap import build_cutmap_state, unplaced_arra_parts
 from app.services.giblab.ingest import (
     drop_stale_files,
     ingest_project,
@@ -34,10 +35,10 @@ from ._common import _get_order, _get_visible_order, _require_editable, stamp_ro
 router = APIRouter()
 
 
-@router.post("/{order_id}/upload", response_model=Message, operation_id="upload_order_project")
+@router.post("/{order_id}/upload", response_model=ProjectUploadResult, operation_id="upload_order_project")
 async def upload_order_project(
     db: SessionDep, current_user: TexnologUser, order_id: int, file: UploadFile, request: Request
-) -> Message:
+) -> ProjectUploadResult:
     """Texnolog uploads the .project file. Exactly ONE file per order; re-upload
     replaces all previous parse results.
 
@@ -110,6 +111,14 @@ async def upload_order_project(
     if lost:
         names = ", ".join(lost[:5]) + (f" va yana {len(lost) - 5} ta" if len(lost) > 5 else "")
         summary["warnings"].append(f"Yangi faylda topilmagani uchun marshruti yo'qolgan detallar: {names}")
+    # Tiklangan qo'lda marshrut xaritada joyi yo'q detalga "Raspil" qaytargan bo'lishi
+    # mumkin — bunday detalni arrachi ko'rmaydi, uzatish ham rad etiladi (`/start`)
+    arra_joysiz = await unplaced_arra_parts(db, order.id)
+    if arra_joysiz:
+        summary["warnings"].append(
+            f"Marshrutida Arra bor, lekin kesish xaritasida joyi yo'q {len(arra_joysiz)} ta detal — "
+            "arrachi ularni ko'rmaydi va cheki chiqmaydi."
+        )
 
     log_action(
         db,
@@ -133,7 +142,12 @@ async def upload_order_project(
         text += f" Diqqat ({len(warnings)}): " + " | ".join(warnings[:3])
         if len(warnings) > 3:
             text += f" | va yana {len(warnings) - 3} ta (audit logda to'liq)"
-    return Message(message=text)
+    return ProjectUploadResult(
+        message=text,
+        warnings=warnings,
+        unplaced_parts=summary.get("unplaced", []),
+        unplaced_arra_parts=arra_joysiz,
+    )
 
 
 # NOTE: /{order_id}/files/{file_id} dan OLDIN turishi shart — aks holda

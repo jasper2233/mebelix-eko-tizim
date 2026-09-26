@@ -74,6 +74,10 @@ class OrderDetail(OrderRead):
     #: Tahrirlab bo'lmasa — SABABI: "ARRA postida 12 ta skan (26-08 10:15)".
     #: Tugmani jimgina o'chirib qo'yish texnologni sababsiz qoldirardi.
     edit_blocked_reason: str | None = None
+    #: Marshrutida ARRA bor, lekin kesish xaritasida joyi yo'q detallar ("kod (nom)").
+    #: Bo'sh bo'lmasa buyurtma sahifasida doimiy banner turadi va "ishlab chiqarishga
+    #: uzatish" rad etiladi — arrachi ularni ko'rmaydi, chek chiqmaydi (`unplaced_arra_parts`).
+    unplaced_arra_parts: list[str] = []
     #: Kim bekor qilgan — ISM, id emas: kartochkada "Bekor sababi" yonida turadi.
     #: Ilgari `cancelled_by_id` yozilardi-yu, hech qayerda o'qilmasdi: foydalanuvchi
     #: sababni ko'rar, kimligini esa faqat audit logdan qidirishga to'g'ri kelardi.
@@ -83,6 +87,24 @@ class OrderDetail(OrderRead):
     last_action: str | None = None
     last_action_at: datetime | None = None
     last_action_by_name: str | None = None
+
+
+class ProjectUploadResult(BaseModel):
+    """`.project` yuklash natijasi. `message` — qisqa xulosa (toast uchun).
+
+    Ilgari javob faqat `message` edi: ogohlantirishlar birinchi 3 tasigacha kesilib
+    shu matnga qo'shilar, frontend esa uni 4 soniyalik yashil toastda ko'rsatardi —
+    «Kesish xaritasida joyi yo'q» ogohlantirishi ko'zdan qochgan (B-2026-088).
+    Endi ro'yxatlar to'liq keladi va frontend ularni yopilmaydigan oynada ko'rsatadi.
+    """
+
+    message: str
+    #: Tahlilning HAMMA ogohlantirishlari (kesilmagan)
+    warnings: list[str] = []
+    #: Kesish xaritasida joyi yo'q detallar ("kod (nom)") — arrachi ekranida ko'rinmaydi
+    unplaced_parts: list[str] = []
+    #: Ulardan marshrutida ARRA borlari (tiklangan qo'lda marshrut) — uzatish rad etiladi
+    unplaced_arra_parts: list[str] = []
 
 
 class OrderCreate(BaseModel):

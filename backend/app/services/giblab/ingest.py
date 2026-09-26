@@ -735,9 +735,13 @@ async def ingest_project(
     # Kesish xaritasi qurilgan bo'lsa: unda joyi yo'q detallarni texnolog bilishi shart.
     # Ikki sabab bo'ladi — (a) listdan kesilmaydigan profil, (b) GibLab uni ataylab
     # joylashtirmagan (usedCount=0), ya'ni material yetmagan yoki dizayner chiqarib tashlagan.
+    unplaced: list[str] = []
     if cutmap:
         placed = {b.part_key for b in cutmap.bindings}
         ghosts = [p for p in project.all_parts if p.key not in placed]
+        # To'liq ro'yxat yuklash javobiga ham ketadi — texnolog oynada hammasini ko'radi
+        # (ogohlantirish matnidagi 5 ta nom va 4 soniyalik toast ko'zdan qochgan edi)
+        unplaced = [f"{p.key} ({p.name})" for p in ghosts]
         if ghosts:
             names = ", ".join(f"{p.code} ({p.name})" for p in ghosts[:5])
             more = f" va yana {len(ghosts) - 5} ta" if len(ghosts) > 5 else ""
@@ -752,4 +756,5 @@ async def ingest_project(
         "instances": instances_created,
         "materials": len(project.materials),
         "warnings": project.warnings,
+        "unplaced": unplaced,
     }

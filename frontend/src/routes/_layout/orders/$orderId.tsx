@@ -18,7 +18,7 @@ import {
 import { useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 
-import { OrdersService } from "@/client"
+import { OrdersService, type ProjectUploadResult } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
@@ -30,6 +30,10 @@ import { CustomRoutes } from "@/components/Orders/CustomRoutes"
 import { EditOrder } from "@/components/Orders/EditOrder"
 import { MachineAssign } from "@/components/Orders/MachineAssign"
 import { OrderMatrix } from "@/components/Orders/OrderMatrix"
+import {
+  UnplacedArraBanner,
+  UploadWarningsDialog,
+} from "@/components/Orders/UnplacedParts"
 import { Button } from "@/components/ui/button"
 import { Card, cardSurface } from "@/components/ui/card"
 import {
@@ -122,6 +126,10 @@ function OrderDetailPage() {
   const { currentUser } = useCurrentUser()
   const fileInput = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  // Xaritada joyi yo'q detal bo'lsa — yuklash natijasi toast emas, yopilmaydigan oyna
+  const [uploadResult, setUploadResult] = useState<ProjectUploadResult | null>(
+    null,
+  )
   const [matrixToolbarEl, setMatrixToolbarEl] = useState<HTMLDivElement | null>(
     null,
   )
@@ -156,7 +164,11 @@ function OrderDetailPage() {
       })
       // Server javobida detal soni va tahlil ogohlantirishlari bor (kodsiz detal,
       // takroriy kod, xaritada joyi yo'q detal) — ilgari ular ko'rsatilmasdi.
-      toast.success(res.message)
+      // Xaritada joyi yo'q detal bo'lsa oyna ochiladi: 4 soniyalik toastda bu
+      // ogohlantirish ko'zdan qochib, B-2026-088 arrada qotib qolgan edi.
+      if (res.unplaced_parts?.length || res.unplaced_arra_parts?.length)
+        setUploadResult(res)
+      else toast.success(res.message)
       invalidate()
     } catch (err) {
       toast.error(extractErrorMessage(err as never))
@@ -448,6 +460,17 @@ function OrderDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Arrachi ko'rmaydigan detallar — hamma ofis roli ko'radi, muammo bor ekan turadi */}
+      <UnplacedArraBanner
+        parts={order.unplaced_arra_parts ?? []}
+        status={order.status}
+        canEdit={order.can_edit ?? false}
+      />
+      <UploadWarningsDialog
+        result={uploadResult}
+        onClose={() => setUploadResult(null)}
+      />
 
       {/* Bekor qilinganda qulf banneri ortiqcha — qizil banner allaqachon aytadi */}
       {isTexnolog &&

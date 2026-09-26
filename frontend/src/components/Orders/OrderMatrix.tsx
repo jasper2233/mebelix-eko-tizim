@@ -75,9 +75,11 @@ export function OrderMatrix({
     setCustomEdits({})
   }
   const queryClient = useQueryClient()
+  // Buyurtmaning o'zi ham (matritsa uning ostida): marshrut o'zgarsa sahifadagi
+  // "xaritada joyi yo'q" banneri server qayta hisoblagan ro'yxat bilan yangilanadi
   const cb = crudCallbacks(
     queryClient,
-    ["orders", orderId, "matrix"],
+    ["orders", orderId],
     "Matritsa saqlandi",
   )
 

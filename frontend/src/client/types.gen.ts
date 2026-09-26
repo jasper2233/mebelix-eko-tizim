@@ -2994,6 +2994,10 @@ export type OrderDetail = {
      */
     edit_blocked_reason?: string | null;
     /**
+     * Unplaced Arra Parts
+     */
+    unplaced_arra_parts?: Array<string>;
+    /**
      * Cancelled By Name
      */
     cancelled_by_name?: string | null;
@@ -3772,6 +3776,35 @@ export type ProductivityReport = {
      * Employees
      */
     employees: Array<EmployeeProductivity>;
+};
+
+/**
+ * ProjectUploadResult
+ *
+ * `.project` yuklash natijasi. `message` — qisqa xulosa (toast uchun).
+ *
+ * Ilgari javob faqat `message` edi: ogohlantirishlar birinchi 3 tasigacha kesilib
+ * shu matnga qo'shilar, frontend esa uni 4 soniyalik yashil toastda ko'rsatardi —
+ * «Kesish xaritasida joyi yo'q» ogohlantirishi ko'zdan qochgan (B-2026-088).
+ * Endi ro'yxatlar to'liq keladi va frontend ularni yopilmaydigan oynada ko'rsatadi.
+ */
+export type ProjectUploadResult = {
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Warnings
+     */
+    warnings?: Array<string>;
+    /**
+     * Unplaced Parts
+     */
+    unplaced_parts?: Array<string>;
+    /**
+     * Unplaced Arra Parts
+     */
+    unplaced_arra_parts?: Array<string>;
 };
 
 /**
@@ -6725,7 +6758,7 @@ export type UploadOrderProjectResponses = {
     /**
      * Successful Response
      */
-    200: Message;
+    200: ProjectUploadResult;
 };
 
 export type UploadOrderProjectResponse = UploadOrderProjectResponses[keyof UploadOrderProjectResponses];
