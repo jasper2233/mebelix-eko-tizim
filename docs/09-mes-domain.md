@@ -330,7 +330,7 @@ nostandart detalda to'ldiriladi), **product_name**.
   (count>1 bo'lsa) `{instance_no}/{count}`, ostida nusxa ID (= QR matni; mahsulot kodi alohida
   chizilmaydi — u ID ichida), loyiha nomi (`text(..., max_mm=34)` — `draw.textlength` bo'yicha QR chap chetigacha kesiladi;
   ilgari 26 belgi limiti turardi va u QR'ni hisobga olmagani uchun uzun nomning dumi
-  QR ostida ko'rinmay qolardi), kromka materiallari 2×2 (t/l/b/r, tagchiziq bilan), markazda katta `L x W`,
+  QR ostida ko'rinmay qolardi), kromka materiallari 2×2 (t/l/b/r, tagchiziq bilan; har katak tomon simvoli bilan boshlanadi — `A PVX 2/19 …`, eskizdagi harf bilan bir xil), markazda katta `L x W`,
   detal nomi (N prefiksisiz, 44 mm da kesiladi). **Sverlo ikonkasi** — detalda teshik bo'lsa (`xnc_summary` da `bores`
   yoki `edge_bores`) HAR DOIM, marshrut qatorining o'ngida (x=49.5, y=40 mm, 6×6 mm;
   `app/assets/label-icon-drill.png`). Teshikning o'zi eskizda ham o'z joyida aylana bo'lib
@@ -357,7 +357,7 @@ nostandart detalda to'ldiriladi), **product_name**.
   kromka konturdan 1 mm tashqarida qalin chiziq, `texture` bo'lsa `l` O'QI bo'ylab 3 chiziq — yo'nalish eskizga ergashadi (`burilgan` bo'lsa vertikal, aks holda gorizontal; ilgari doim vertikal edi va 250×832 kabi l<w detalda chek teksturani 90° noto'g'ri ko'rsatib, kesish xaritasi bilan mos kelmasdi),
   ishlangan qirra kontur ICHIDA chiziq bilan (paz uzuq, freza tutash) va qirraga tushmagan ishlov o'z joyi bilan — eskiz shunda 46 mm emas 41 mm (batafsil quyida, «`XncOp.machined_sides`»),
   cutmap'dagi **haqiqiy teshiklar** (`bores` aylana, `edge` qirra shtrixi; burilgan eskizda HAQIQIY 90° burilish `(x,y)→(y, l−x)` — xarita va GibSaw bilan bitta konvensiya, ilgari transpose/oyna edi), o'lchamlar en pastda va
-  uzunlik o'ngda 90° aylantirilgan, har biri yoniga o'sha tomonlar kromka simvoli.
+  uzunlik o'ngda 90° aylantirilgan — raqamlar harfsiz; tomon simvoli (A/B) eskiz ICHIDA, o'sha tomonning ichki chetida chiziladi.
 
 Chiziqlar `width=2` — GDI kichraytirishda 1 px chiziq yo'qoladi.
 
@@ -462,9 +462,14 @@ O'rnatish qadamlari: [07-infra-devops.md](07-infra-devops.md) → "Chop etish in
 | `pachka` | `/orders/{id}` GET (qadoqlash holati) / POST (yangi qadoq — buyurtmada bitta ochiq qadoq), `/{id}/scan` (detalni qadoqqa — bu AYNI paytda marshrutning UPAKOVKA qadami), `/{id}/items/{instance_id}` DELETE (xato skanni qaytarish — skan ham bekor bo'ladi), `/{id}/reopen` (yopilganini qayta ochish), `/{id}/close` (yakunlash + chek) | terminal + operator rollar; faqat UPAKOVKA postida (`_pack_ctx`) |
 | `tmo` | `/orders/{id}` GET, `/orders/{id}/accept` (QABUL — `PK-...` bo'lsa qadoq ichidagi HAMMA nusxa bitta skanda, aks holda bitta detal), **`/orders/{id}/ship` ham OLIB TASHLANDI** — TMO da qadoq ro'yxati yo'q. **Buyurtmani TOPSHIRISH endpointi ham TMO da YO'Q** — u managerda (`orders.deliver_order`, faqat TAYYOR holatdan); TMO faqat qabul qiladi va hamma detal o'tgach buyurtma o'zi TAYYOR bo'ladi | terminal + operator rollar; faqat TMO postida (`_wh_ctx`) |
 | `tablo` | `/matrix`, `/orders/{id}`, `/machines` + `/machines/{id}` (stanok taxtasi — `/tablo/stanoklar`, docs/03) | istalgan auth |
-| `reports` | `/productivity`, `/orders`, `/materials` (+`?format=xlsx`), `/dashboard` | manager/director/admin |
+| `reports` | `/productivity`, `/machine-time`, `/orders`, `/materials` (+`?format=xlsx`), `/dashboard` | manager/director/admin (`ReportsUser`); `/dashboard` — texnolog ham (`DashboardUser`; `money` bloki faqat boshqaruvga) |
 | `audit-logs` | filtrli ro'yxat + `summary` (modul × amal sonlari). Modullar backend `log_action(module=…)` qiymatlari (scan, print, sessions, orders, pachka, tmo, bridge_agents, employees, users, clients, machines, posts, auth, downtime, defect, settings, system, catalog); frontend tab'larni `summary`dan quradi — qo'lda ro'yxat YO'Q, faqat `MODULE_LABELS` tarjimasi. `scans` (19 ta qo'lda yozilgan yozuv) `scan` bilan bitta modul deb o'qiladi (`_MODULE_ALIASES`). Eski `ombor` nomi `e5b83c04d7a1` da `tmo` ga birlashtirilgan | admin (`AdminUser`) |
-| `bridge-agents` | ro'yxat/yaratish, `/{id}` PATCH (ish markazi bog'lash + `can_print`), `/{id}/code` (yangi ulanish kodi), `/{id}` DELETE, `/pair`, `/scan` (skan-forvard, §4), `/logs` POST + `/{id}/logs` GET (agent loglari Redisda — `mes:agent:log:{id}`, oxirgi 200 satr, TTL 7 kun; admin panelda ko'rinadi, tsexdagi kompyuterga masofadan kirish yo'q), `/latest` + `/download` (agent avto-yangilanishi: `agent-dist/version.json` — versiya + sha256 — va `mebelix-agent.exe`; 2026-08-27 dan CI har deploy'da exe quradi, ya'ni eskirishning iloji yo'q) | admin (`AdminUser`); `/pair`, `/latest`, `/download` ochiq (router global auth'siz — agentda sessiya yo'q, exe sir emas), `/scan` va `/logs` agent tokeni bilan (Bearer → sha256) |
+| `bridge-agents` | ro'yxat/yaratish, `/{id}` PATCH (ish markazi bog'lash + `can_print`), `/{id}/code` (yangi ulanish kodi), `/{id}` DELETE, `/pair`, `/scan` (skan-forvard, §4), `/andon` POST (stanok signal ustuni hodisalari, docs/03), `/logs` POST + `/{id}/logs` GET (agent loglari Redisda — `mes:agent:log:{id}`, oxirgi 200 satr, TTL 7 kun; admin panelda ko'rinadi, tsexdagi kompyuterga masofadan kirish yo'q), `/latest` + `/download` (agent avto-yangilanishi: `agent-dist/version.json` — versiya + sha256 — va `mebelix-agent.exe`; 2026-08-27 dan CI har deploy'da exe quradi, ya'ni eskirishning iloji yo'q) | admin (`AdminUser`); `/pair`, `/latest`, `/download` ochiq (router global auth'siz — agentda sessiya yo'q, exe sir emas), `/scan`, `/logs` va `/andon` agent tokeni bilan (Bearer → sha256) |
+| `settings` | `/` GET + `/{key}` PUT, `/work-schedule`, `/ideal-cycle`, `/ideal-cycle-kromka`, `/oee-start`, `/defect-reasons` (har biri GET/PUT), `/downtime-reasons` GET/POST + `/{id}` PATCH — OEE sozlamalari (docs/12 §4, docs/03) | admin (`AdminUser`) |
+| `downtimes` + `defects` (`/terminal` prefiksi) | `/downtime-reasons`, `/downtimes/pending`, `/downtimes/{id}/reason`, `/downtimes/lock` (to'xtash sababi, docs/12 §4.4); `/defect-reasons`, `/defects` POST + `/defects/{id}` DELETE (brak qaydi, docs/12 §4.7) | terminal + 9 operator rol; `TerminalCtx` |
+| `defects` (`defects_review.py`) | `/` (`status` berilmasa — HAMMA holat), `/pending-count`, `/{id}/review` (brakni tasdiqlash) | manager (`ManagerUser`) |
+| `catalog` | `/groups`, `/items` (sahifalangan), `/items/{id}` PATCH — mahsulotlar ombori katalogi (docs/14 §4) | o'qish: manager/texnolog/director/skladchi (`WarehouseReadUser`); yozish: manager/skladchi (`WarehouseUser`) |
+| `system` | `/status`, `/perf`, `/perf/endpoint`, `/db-stats/reset` POST — «Tizim holati» (docs/03) | admin (`AdminUser`) |
 
 ### Buyurtma lifecycle va to'lovlar
 

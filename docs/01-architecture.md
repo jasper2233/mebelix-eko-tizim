@@ -458,7 +458,7 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   (8 dot/mm → 640×480 px). `draw.fontmode = "1"` (antialiasing yo'q) va yakuniy
   `convert("L").point(v < 160)` — chiqish sof 1-bit, drayver dither qilmasin.
   Maket: chap ustunda logo (`app/assets/logo-black.png` — brend masterining nusxasi),
-  uning yonida `N{label_num}` va nusxa `n/soni` (mahsulot kodi alohida chizilmaydi — u ID ichida),
+  uning yonida `N{label_num}` va nusxa `n/soni` (soni > 1 bo'lsa; mahsulot kodi alohida chizilmaydi — u ID ichida),
   nusxa ID (QR matni va SCX fayl nomi bilan bir xil satr; matn qatori QR chap chetigacha
   (34 mm) sig'guncha kichraytiriladi — `labels.py`, QR esa to'liq satrni saqlaydi,
   [11-detal-id-nomlash.md](./11-detal-id-nomlash.md)),
@@ -467,10 +467,11 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   (teshikning o'zi eskizda ham o'z joyida aylana bo'lib — `docs/09`), **marshrut qatori** (POST nomlari
   `·` bilan, masalan `ARRA·KROMKA·PRISADKA` — jarayon kodlari `seq` tartibida `PROCESS_POSTS`
   orqali postga aylanadi, dum (`TAIL_CODES`) yozilmaydi, ketma-ket bir xil post bitta;
-  y=41.5 mm, 43 mm ga sig'masa keyingi qatorga o'raladi). Marshrut FAQAT nostandart detalda chiqadi (`load_label_data()`
+  y=41.5 mm, 43 mm ga sig'masa keyingi qatorga o'raladi — uzun yo'lakda shrift kichrayib
+  3 qatorgacha (y=41.0 dan), undan ortig'i «…»). Marshrut FAQAT nostandart detalda chiqadi (`load_label_data()`
   `route_codes` ni `part.is_custom` shartida to'ldiradi) — standart detalda
   ro'yxat bo'sh va qator umuman chizilmaydi; keyin mahsulot nomi (marshrut bir qatordan
-  oshmasa), material va sana; o'ng ustunda QR
+  oshmasa), material (tekstura bo'lsa yonida `TEKSTURA`) va sana; o'ng ustunda QR
   (`qrcode`, `instance.qr_text`) va vertikal detal eskizi.
 - Eskizda ishlangan qirra kontur ICHIDA chiziq bilan (paz uzuq, freza tutash) + EN
   raqami ostida «- - PAZ»/«— FREZA» izohi, shunda eskiz 46 mm emas 41 mm balandlikda

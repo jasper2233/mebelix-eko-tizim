@@ -306,10 +306,10 @@ Paz/freza geometriyasi SCX ga ham, YORLIQ ESKIZIGA ham ketadi (2026-09-12/13): q
 
 **Tekstura yo'nalishi.** GibSaw shablonida tekstura PARAMETRI yo'q: eskizni uning ichki `<part>` elementi chizadi (`mebelix.lbl`: `x=55 y=12 w=21 h=39 optimalTurn="true"`) va chiziqlarni o'zi qo'yadi. Bizda qoida ochiq: tekstura `l` (uzunlik) o'qi bo'ylab, chizmada u qaysi tomonga tushsa — shu tomonga (`labels.py` da `burilgan`, `SheetSvg`/`PartCard` da `rot`). Namuna varaq bilan o'lchab solishtirildi: 300×400, 284×400 va 368×400 detallarda ikkalasi ham YOTIQ beradi. **Kvadrat detalda farq qiladi** — 400×400 da GibSaw TIK, bizda YOTIQ: `burilgan = length > width` teng bo'lganda `False`, ya'ni «uzun tomon» tushunchasi yo'q va tanlov shartli. Ataylab tenglashtirilmadi: bizning eskiz o'z ichida izchil (tekstura ham, qirra harflari ham BITTA `qirra` xaritasidan), ya'ni ishchi chekni DETALNING O'ZIGA solishtirganda to'g'ri chiqadi; kvadratda `burilgan` ni o'zgartirish qirra harflarini ham ko'chirib yuborardi.
 
-**Standartdan chetga chiqadigan hamma narsa — MES ichida.** Texnolog detallar matritsasida
-detalni "Nostandart" deb belgilaydi (`Part.is_custom`), so'ng "Nostandart detallar" tabida
-jarayonlarni **bosgan tartibda** marshrut chiziladi (1, 2, 3, ...). Bitta post takror kelishi
-mumkin — kromka → prisadka → yana kromka. Marshrutning o'zi qanday saqlanishi (`seq` +
+**Standartdan chetga chiqadigan hamma narsa — MES ichida.** Detal "Nostandart" (`Part.is_custom`)
+bo'ladi — texnolog detallar matritsasidagi checkbox bilan yoki yuklashda nom belgisi bilan
+(yuqorida), so'ng "Nostandart detallar" tabida jarayonlarni **bosgan tartibda** marshrut
+chiziladi (1, 2, 3, ...). Bitta post takror kelishi mumkin — kromka → prisadka → yana kromka. Marshrutning o'zi qanday saqlanishi (`seq` +
 `process_code`, `per_instance` hisobi, skan navbati) — [09-mes-domain.md](09-mes-domain.md) §2.
 
 **Shuning uchun jarayon kodlari jadvali qoladi** — u endi fayldan emas, nostandart tabidan

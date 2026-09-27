@@ -304,7 +304,7 @@ Oqim:
 
 | Holat | Qachon |
 |---|---|
-| `Onlayn` | `last_seen_at` 6 daqiqadan yangi (server 5 daqiqada bir yangilaydi — bitta sikl zaxira) |
+| `Onlayn` | ulangan (`paired`) va `last_seen_at` 6 daqiqadan yangi (server 5 daqiqada bir yangilaydi — bitta sikl zaxira) |
 | `Oflayn` | ulangan (token bor), lekin oxirgi 6 daqiqada ko'rinmadi («Uzilgan» emas — kechqurun o'chirilgan kompyuter nosozlik deb o'qilmasin) |
 | `Kod kutilmoqda` | kod berilgan, agent hali ulanmagan; kod va qolgan muddat shu katakda |
 | `Kod muddati o'tgan` | 15 daqiqa o'tdi, agent ulanmadi — "yangi kod" kerak |
@@ -327,7 +327,7 @@ Har agent qatorida **"Loglar"** dialogi bor (`AgentLogs` → `GET /{id}/logs`). 
 `print_label` task jobga base64 `png` va har yuborishda yangi `job_id` soladi — job JSON:
 `{"type": "print", "job_id", "instance_id", "png"[, "queued_at"]}`; agent takrorni `job_id` bo'yicha tashlaydi. `queued_at` (ixtiyoriy, arq navbatga qo'ygan lahza, unix soniya) server uchun — chek kechikishini o'lchaydi; agent uni e'tiborsiz qoldiradi. PNG printer dialektiga bog'liq emas — server hech qanday xom printer formatini generatsiya qilmaydi, chizishni Windows drayveri bajaradi.
 
-PNG maketi GibSaw `mebelix.lbl` ga taqlid qiladi (ammo paz/freza GibSaw'dagidek bitta П/Ф bayrog'i emas — eskizda QAYSI QIRRA ekani chiziladi, docs/09): chap ustun — logo, `Formatka` + zakaz kodi, detal kodi, loyiha nomi, 2×2 kromka jadvali (tagchiziq bilan), katta `L x W = count`, `N_detal` nomi, marshrut qatori (`Marshrut: 7/11/8` — `LabelData.route_codes`, y=41.5 mm; detal nomiga qo'shilmaydi, chunki nom 24 belgida kesiladi), material va sana; o'ng ustun — QR (tepada, `qrcode` kutubxonasi bilan chiziladi) va vertikal detal eskizi. Eskizda kromka konturdan 1 mm tashqarida qalin chiziq bilan, `d.texture` bo'lsa uzunlik bo'ylab 3 ta chiziq, `d.holes` (cutmap'dan olingan haqiqiy teshiklar) aylana/qirra tikkalari bilan chiziladi.
+PNG maketi GibSaw `mebelix.lbl` ga taqlid qiladi (ammo paz/freza GibSaw'dagidek bitta П/Ф bayrog'i emas — eskizda QAYSI QIRRA ekani chiziladi, docs/09): chap ustun — logo, yonida katak raqami `N{label_num}` va (count > 1 bo'lsa) nusxa `n/soni`, nusxa ID (= QR matni; 34 mm ga sig'guncha kichraytiriladi), loyiha nomi, 2×2 kromka jadvali (tomon simvoli + material, tagchiziq bilan), katta `L x W`, detal nomi (N prefiksisiz, 44 mm kenglikka kesiladi), teshikli detalda sverlo ikonkasi (`label-icon-drill.png`, x=49.5, y=40 mm), marshrut qatori (faqat nostandart detalda: `LabelData.route_codes` post NOMLARIGA aylantirilib `·` bilan qo'shiladi, masalan `ROVER·STOLYARKA·BOYOQ`; qadoqlash/TMO dumi — `TAIL_CODES` — yozilmaydi; y=41.5 mm, 43 mm ga sig'masa 2–3 qatorga o'raladi, 3 qatorga ham sig'masa oxiri «…»), mahsulot nomi (marshrut bir qatordan oshsa uning o'rnini marshrut oladi), material (`d.texture` bo'lsa yonida `TEKSTURA`) va sana; o'ng ustun — QR (tepada, `qrcode` kutubxonasi bilan chiziladi) va vertikal detal eskizi. Eskizda kromka konturdan 1 mm tashqarida qalin chiziq bilan, `d.texture` bo'lsa uzunlik bo'ylab 3 ta chiziq, `d.holes` (cutmap'dan olingan haqiqiy teshiklar) aylana/qirra tikkalari bilan chiziladi.
 
 Termoprinter uchun ikki qat'iy qoida kodga o'rnatilgan: `draw.fontmode = "1"` (antialiasing o'chiq) va yakuniy `img.convert("L").point(… , "1")` — har piksel sof qora yoki oq. Aks holda drayver dither qiladi va QR skanerlanmay qoladi. Shuningdek barcha chiziqlar kamida 2 px (`width=2`, qalinroqlari `max(2, int(<mm> * mm))`) — GDI kichraytirishda 1 px chiziq yo'qolib ketadi.
 

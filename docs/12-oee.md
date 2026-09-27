@@ -353,9 +353,10 @@ faqat KUZATILADI: hech narsa bloklanmaydi, skan oqimiga tegilmaydi. Foyda darhol
 | Terminal | `Terminal/KromkaView: StationStrip` + `GET /terminal/kromka/measurements` | Sarlavha ostida oxirgi o'lchov: `mm`, hukm, kutilgan o'lcham, detal nomi va oldingi 7 tasi. WS `kromka.measure` tasmani darhol yangilaydi (`routes/terminal.tsx`); `nomos` da brak oynasi O'ZI ochilmaydi — datchik ishonchsiz (§4.10), brak faqat operator BRAK tugmasi bilan. Stansiyasiz postda umuman chizilmaydi |
 
 Ma'lumot sifatini o'lchash uchun `scripts/kromka_audit.sql` — faqat o'qiydigan SQL
-(o'sha `oee_audit.sql` naqshi, 10 bo'lim): qamrov, kunlik sanoq, Pico kodlari taqsimoti
+(o'sha `oee_audit.sql` naqshi, 11 bo'lim): qamrov, kunlik sanoq, Pico kodlari taqsimoti
 (`OK`/`FARQ`/`FAQAT1`/`FAQAT2`), D1−D2 farqi (median/p90/max), tezlik tarqoqligi, MAYDA
-bo'laklar soni, ogohlantirishlar, kunlik ishlagan vaqt, uzilishlar va oxirgi 15 o'lchov.
+bo'laklar soni, ogohlantirishlar, kunlik ishlagan vaqt, uzilishlar, oxirgi 15 o'lchov va
+tiqilishlar (v1.16).
 Qayerda ishga tushirish — fayl boshida.
 
 **Firmware v1.16 (2026-09-21) nimani o'zgartirdi va bizda nima qilindi:**
