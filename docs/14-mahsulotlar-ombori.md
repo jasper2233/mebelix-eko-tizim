@@ -135,8 +135,8 @@ LIVE Tablo va Stanoklar tsex ekranlari, ombor ishiga aloqasi yo'q. Enum
 `routes/_layout/warehouse.tsx`. Filtrlar kodning tuzilishini takrorlaydi:
 
 - **Katalog harfi** — YON MENYUDA, «Mahsulotlar ombori» ostida
-  (Material / Furnitura / Xizmat). Ota band — butun katalogga havola; bo'limlar ombor
-  sahifasida ko'rinadi, boshqa sahifada menyu qisqa turadi. Sahifaning o'zida tab YO'Q: bitta tanlov ikki
+  (Material / Furnitura / Xizmat). Yopiq «Mahsulotlar ombori»ni bosish butun katalogni
+  ochib bo'limlarni ko'rsatadi, ochiqni bosish bo'limlarni yopadi; boshqa sahifada menyu qisqa turadi. Sahifaning o'zida tab YO'Q: bitta tanlov ikki
   joyda ikki xil ko'rinishda turardi. Sahifa sukut bo'yicha HAMMASINI ko'rsatadi
   (`/warehouse` qidiruvsiz), kategoriya esa manzilga yoziladi —
   `/warehouse?katalog=M`. Tanlangani sarlavha ostida aytiladi

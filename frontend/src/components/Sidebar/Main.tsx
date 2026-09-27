@@ -1,6 +1,12 @@
 import { Link as RouterLink, useRouterState } from "@tanstack/react-router"
 import { ChevronRight, type LucideIcon } from "lucide-react"
-import type { ReactNode } from "react"
+import {
+  type MouseEvent,
+  type ReactNode,
+  useEffect,
+  useId,
+  useState,
+} from "react"
 
 import {
   SidebarGroup,
@@ -134,12 +140,18 @@ function NavLink({
   isActive,
   onNavigate,
   trailing,
+  expanded,
+  controls,
 }: {
   item: Item
   isActive: boolean
-  onNavigate: () => void
+  /** `preventDefault()` qilinsa sahifaga o'tilmaydi (bo'limli bandni yopish) */
+  onNavigate: (e: MouseEvent<HTMLAnchorElement>) => void
   /** Qator oxiridagi belgi (bo'limli bandning strelkasi) */
   trailing?: ReactNode
+  /** Bo'limli band: bo'limlar ochiqmi (`aria-expanded`) va ular qaysi ro'yxat */
+  expanded?: boolean
+  controls?: string
 }) {
   const { isMobile } = useSidebar()
   return (
@@ -152,7 +164,13 @@ function NavLink({
       className={ACTIVE_BAR}
       asChild
     >
-      <RouterLink to={item.path} onClick={onNavigate} title={item.alertTitle}>
+      <RouterLink
+        to={item.path}
+        onClick={onNavigate}
+        title={item.alertTitle}
+        aria-expanded={expanded}
+        aria-controls={controls}
+      >
         <item.icon />
         <span>{item.title}</span>
         {item.alert && (
@@ -179,14 +197,15 @@ function NavLink({
 
 /** Bo'limli band (Mahsulotlar ombori -> Material / Furnitura / Xizmat).
  *
- *  Ota qator — butun katalogga HAVOLA (alohida «Hammasi» bandi kerak emas: ota o'zi shu).
- *  Bo'limlar ombor ichida bo'lganda ko'rinadi, boshqa sahifada menyu qisqa turadi — joriy
- *  bo'lim guruhini ochib ko'rsatish (shadcn sidebar-07 `defaultOpen={item.isActive}`, Primer
- *  NavList). Qo'lda ochib-yopish holati yo'q: bitta qator ikki ish qilmaydi (NN/g «split»).
- *  Faol: kategoriya tanlangan bo'lsa — o'sha bo'lim, butun katalog ochiq bo'lsa — ota; bir
- *  vaqtda bitta. Telefonda omborga BIRINCHI marta bosilganda menyu yopilmaydi — ochilgan
- *  bo'limlar ko'rinsin; ombor ichida bosilsa odatdagidek yopiladi. Yig'ilgan railda
- *  bo'limlar ko'rinmaydi (48 px ustunda joy yo'q). */
+ *  Bitta qoida: YOPIQ bandni bosish — omborni (butun katalogni) ochadi va bo'limlarni
+ *  ko'rsatadi; OCHIQ bandni bosish — bo'limlarni yopadi, sahifa o'zgarmaydi (`preventDefault`,
+ *  TanStack Link shunda o'tmaydi). Butun katalogga qaytish ham shu: yopib, qayta ochish —
+ *  alohida «Hammasi» bandi kerak emas. Ombordan chiqilganda bo'limlar o'zi yopiladi, kirilganda
+ *  (boshqa havola bilan ham) o'zi ochiladi — boshqa sahifada menyu qisqa turadi (shadcn
+ *  sidebar-07 `defaultOpen={item.isActive}`, Primer NavList). Faol: bo'lim tanlangan bo'lsa —
+ *  o'sha; butun katalog yoki bo'limlar yopiq bo'lsa — ota; bir vaqtda bitta. Telefonda ota
+ *  bosilganda menyu yopilmaydi (bo'limlar ko'rinsin / yopilgani ko'rinsin), bo'lim bosilganda
+ *  yopiladi. Yig'ilgan railda bo'limlar yo'q — ota oddiy havola (48 px ustunda joy yo'q). */
 function NavGroup({
   item,
   subItems,
@@ -202,30 +221,50 @@ function NavGroup({
 }) {
   const { isMobile, state } = useSidebar()
   const rail = state === "collapsed" && !isMobile
+  const [open, setOpen] = useState(inside)
+  const listId = useId()
+  useEffect(() => {
+    setOpen(inside)
+  }, [inside])
   const current = inside
     ? subItems.find((sub) => sub.match(currentSearch))
     : undefined
+
+  if (rail) {
+    return (
+      <SidebarMenuItem>
+        <NavLink item={item} isActive={inside} onNavigate={onNavigate} />
+      </SidebarMenuItem>
+    )
+  }
 
   return (
     <SidebarMenuItem>
       <NavLink
         item={item}
-        isActive={rail ? inside : inside && !current}
-        onNavigate={inside ? onNavigate : () => {}}
+        isActive={inside && (!open || !current)}
+        expanded={open}
+        controls={open ? listId : undefined}
+        onNavigate={(e) => {
+          if (open) {
+            e.preventDefault()
+            setOpen(false)
+          } else {
+            setOpen(true)
+          }
+        }}
         trailing={
-          !rail && (
-            <ChevronRight
-              aria-hidden
-              className={cn(
-                "ml-auto transition-transform duration-150 motion-reduce:transition-none",
-                inside && "rotate-90",
-              )}
-            />
-          )
+          <ChevronRight
+            aria-hidden
+            className={cn(
+              "ml-auto transition-transform duration-150 motion-reduce:transition-none",
+              open && "rotate-90",
+            )}
+          />
         }
       />
-      {inside && !rail && (
-        <SidebarMenu aria-label={item.title} className="mt-1">
+      {open && (
+        <SidebarMenu id={listId} aria-label={item.title} className="mt-1">
           {subItems.map((sub) => (
             <SidebarMenuItem key={sub.title}>
               <SidebarMenuButton
