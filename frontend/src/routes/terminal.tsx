@@ -41,6 +41,10 @@ import { KioskOverlays } from "@/components/Terminal/KioskOverlays"
 import { KromkaView } from "@/components/Terminal/KromkaView"
 import { OrderPicker } from "@/components/Terminal/OrderPicker"
 import { PostQueueView } from "@/components/Terminal/PostQueueView"
+import {
+  PrintDeviceChip,
+  PrintDeviceDialog,
+} from "@/components/Terminal/PrintDevice"
 import { PrisadkaView } from "@/components/Terminal/PrisadkaView"
 import { type LastScan, ScanStrip } from "@/components/Terminal/ScanStrip"
 import { CrewChips, ShiftGate } from "@/components/Terminal/ShiftGate"
@@ -152,6 +156,8 @@ function TerminalPage() {
   const [stopPromptOpen, setStopPromptOpen] = useState(false)
   const [lockAsk, setLockAsk] = useState(false)
   const [lockReason, setLockReason] = useState<string | null>(null)
+  // Chek qurilmasi oynasi (kod kiritish / «chek chiqmaydi» izohi)
+  const [deviceOpen, setDeviceOpen] = useState(false)
   useEffect(() => {
     if (!locked) setLockReason(null)
   }, [locked])
@@ -231,6 +237,10 @@ function TerminalPage() {
         }
         const p = event.payload
         if (!ctx || p.machine_id !== ctx.machine_id) return
+        // Admin shu ish markaziga kod berdi / qurilmani uzdi — «Qurilmani ulash»
+        // yoki «chek chiqmaydi» belgisi sahifa yangilanmasdan paydo bo'lsin
+        if (event.type.startsWith("terminal_device."))
+          queryClient.invalidateQueries({ queryKey: ["terminal", "context"] })
         // Pico holati o'zgardi (masalan qizil yondi) — sababsiz to'xtashlar darhol qayta so'raladi
         if (event.type === "andon.state")
           queryClient.invalidateQueries({ queryKey: PENDING_KEY })
@@ -298,7 +308,8 @@ function TerminalPage() {
     undoFor !== null ||
     defectFor !== null ||
     stopPromptOpen ||
-    lockAsk
+    lockAsk ||
+    deviceOpen
   // Qulf ostida ham fokus kerak: qulfning kaliti — beyjik skani
   useScanFocus(!mapOpen && !dialogOpen, inputRef)
 
@@ -565,6 +576,10 @@ function TerminalPage() {
             <MonitorX className="size-6" />
           </div>
         )}
+
+        {/* Chek qurilmasi: telefonda «chek chiqmaydi», admin kod bergan
+            monoblokda «Qurilmani ulash». Boshqa holatda hech narsa. */}
+        <PrintDeviceChip ctx={ctx} onOpen={() => setDeviceOpen(true)} />
 
         {/* Brigada — ixcham chiplar (alohida qator o'rniga, vertikal joy tejaladi).
             Ismni bosish o'sha odamning smenasini yakunlaydi. */}
@@ -862,6 +877,11 @@ function TerminalPage() {
           />
         </>
       )}
+      <PrintDeviceDialog
+        ctx={ctx}
+        open={deviceOpen}
+        onOpenChange={setDeviceOpen}
+      />
       <DefectDialog
         scan={defectFor}
         crew={crew}

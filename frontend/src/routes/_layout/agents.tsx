@@ -2,14 +2,16 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { KeyRound, Plus, ScrollText, Trash2 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import { type BridgeAgentRead, BridgeAgentsService } from "@/client"
+import { TerminalDevicesSection } from "@/components/Agents/TerminalDevices"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
+import { CodeTtl, fmtCode } from "@/components/Common/PairCode"
 import { QueryError } from "@/components/Common/QueryError"
 import { RowAction } from "@/components/Common/RowAction"
 import { SelectField } from "@/components/Common/SelectField"
@@ -72,42 +74,6 @@ export const Route = createFileRoute("/_layout/agents")({
 
 // Server last_seen_at ni har 5 daqiqada yangilaydi — 6 daqiqadan yangi bo'lsa onlayn
 const ONLINE_MS = 6 * 60 * 1000
-
-/** AB12CD34 -> AB12-CD34: telefonda aytish oson */
-const fmtCode = (c: string) => `${c.slice(0, 4)}-${c.slice(4)}`
-
-/** Kodning qolgan muddati — backendda `PAIR_TTL` 15 daqiqa.
- *
- * Kodni ko'rsatib, muddatini yashirish odamni taxminga majbur qilardi: agent
- * o'rnatilayotgan kompyuterga borguncha 12 daqiqa qoldimi yoki 20 soniyami —
- * bilinmasdi. Muddati o'tgani esa faqat kod TERILGANDAN KEYIN ma'lum bo'lardi.
- *
- * Soat SHU komponent ichida: bo'lmasa har soniyada butun jadval qayta chizilardi.
- */
-function CodeTtl({ expiresAt }: { expiresAt: string }) {
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(id)
-  }, [])
-  const qoldi = Math.max(
-    0,
-    Math.round((new Date(expiresAt).getTime() - now) / 1000),
-  )
-  return (
-    <span
-      className={cn(
-        "num mt-1 block text-xs tabular-nums",
-        // Oxirgi 2 daqiqa — endi yangi kod olish tezroq
-        qoldi <= 120
-          ? "font-semibold text-destructive"
-          : "text-muted-foreground",
-      )}
-    >
-      {Math.floor(qoldi / 60)}:{String(qoldi % 60).padStart(2, "0")} qoldi
-    </span>
-  )
-}
 
 /** Agent loglari — tsexdagi kompyuterga bormasdan nosozlikni ko'rish.
  *
@@ -270,6 +236,8 @@ function AgentsPage() {
           </TableBody>
         </Table>
       )}
+
+      <TerminalDevicesSection />
     </div>
   )
 }

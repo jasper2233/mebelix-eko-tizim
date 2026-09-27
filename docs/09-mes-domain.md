@@ -4,7 +4,7 @@ Holat: **2026-09-03**. Barcha fazalar implementatsiya qilingan — alohida `TODO
 
 ## 1. Data model (`app/models/`)
 
-26 jadval (`user` bilan), hammasi `BaseModel` (ID + timestamps + soft-delete). Quyida MES domenining asosiy jadvallari; OEE/andon jadvallari (`andon_event`, `downtime`, `downtime_reason`, `part_defect`, `kromka_measurement`) va `system_setting` — docs/12, `catalog_item` — docs/14:
+27 jadval (`user` bilan), hammasi `BaseModel` (ID + timestamps + soft-delete). Quyida MES domenining asosiy jadvallari (jumladan chek qurilmasi `terminal_device`); OEE/andon jadvallari (`andon_event`, `downtime`, `downtime_reason`, `part_defect`, `kromka_measurement`) va `system_setting` — docs/12, `catalog_item` — docs/14:
 
 | Jadval | Mazmun | TT |
 |---|---|---|
@@ -23,6 +23,7 @@ Holat: **2026-09-03**. Barcha fazalar implementatsiya qilingan — alohida `TODO
 | `audit_log` | Kim-qachon-nima (`crud/audit.py: log_action`, tranzaksiya ichida) | 10.11 |
 | `waste_item` | FOYDALI atxot (GibLab `business="true"`) — saqlashga arziydigan yirik qoldiq: `qr_text` = `ATX-{buyurtma}-{n}` (PARTIAL UNIQUE), material, list raqami, foydali o'lcham va `label_printed_at`. Mayda qoldiq bu jadvalga tushmaydi (GibSaw xulqi bilan bir xil). Marshrutda yurmaydi — vazifasi chek chiqarib ID ni yo'qotmaslik | 5.7.5 |
 | `bridge_agent` | Printerli kompyuterdagi chop etish agenti: `name`, `token_hash` (sha256, unique), bir martalik `pair_code` + `pair_expires_at` (15 daqiqa), `last_seen_at` (panelda "Ulandi"/"Uzilgan"); migratsiya `d5e81a24c3b7`. Qo'shimcha: `machine_id` — skan-forvard bog'lash (`f4b8c2a91e55`), `version` — agent exe versiyasi, WS handshake `X-Agent-Version` dan (`a7c3e9d12f04`), `can_print` — False bo'lsa printersiz stansiya chek navbatidan job olmaydi (`d4f7a8c25e91`) | 2.2.2 |
+| `terminal_device` | Ish markazida chek CHIQARA OLADIGAN post qurilmasi (monoblok brauzeri): `name`, `machine_id` (NOT NULL — qurilma aynan shu ish markazining chekini chiqaradi), `token_hash` (httpOnly cookie `terminal_device` dagi tokenning sha256 xeshi, unique; null = hali ulanmagan yoki kod qayta berilgan), bir martalik `pair_code` + `pair_expires_at` (8 belgi, 15 daqiqa — `bridge_agent` bilan bitta generator, `bridge_agents.new_pair_code`), `last_seen_at` (daqiqasiga ko'pi bilan bir marta yoziladi), `paired_at` + `paired_user_agent` (kod QAYSI brauzerda kiritilgani — admin panelda telefon/kompyuter bo'lib ko'rinadi); migratsiya `b3e7c5a90d14`. Qoidasi — §5 «Chek qurilmasi» | — |
 
 `user` jadvaliga qo'shildi: `role` (`UserRole`, 16 a'zo) + `machine_id`. Rollar uch guruhga
 bo'linadi (`app/models/enums.py`):
@@ -38,6 +39,11 @@ bo'linadi (`app/models/enums.py`):
   smena kechroq tugashi mumkin): brauzer chegaradan keyin login sahifasiga qaytaradi, worker esa
   brauzersiz qolgan brigadani yopadi (`services/activity.py`, 04-backend-data.md §6). Ish markazi biriktirish shart
   emas: `resolve_terminal` postdan `scanning.post_machine` bilan topadi.
+  Natijasi: hisob ODAMGA bog'langan, qurilmaga emas — arrachi o'z hisobiga TELEFONDAN kirsa ham
+  ARRA ish markazi aniqlanadi va chek postdagi printerdan chiqardi (2026-09-24: bitta nusxaning
+  ikki bir xil cheki ikki xil detalga yopishtirilgan). Shuning uchun chek chiqarish alohida
+  qurilma qulfi bilan cheklanadi — `terminal_device`, §5 «Chek qurilmasi»; skan, xarita va
+  smena telefondan ham ishlayveradi.
   `omborchi` rol KODI o'zgarmaydi (odamning kasbi), ekranda
   esa "TMO omborchisi" (`ROLE_LABELS`) — u ishlaydigan post nomi bilan.
 - **`skladchi` — «Mahsulot omborchisi»** (2026-09-25): mahsulotlar (xomashyo) ombori katalogini
@@ -364,9 +370,11 @@ Chiziqlar `width=2` — GDI kichraytirishda 1 px chiziq yo'qoladi.
 Zanjir (terminal → printer) — GoDEX G500-U faqat USB, tarmoq porti yo'q, shuning uchun bitta yo'l:
 
 ```
-terminal (POST /terminal/labels/{instance_id})   → label_printed_at + ws "label.printed"
+terminal (POST /terminal/labels/{instance_id})   → chek qurilmasi tekshiruvi (E011, pastda «Chek qurilmasi»)
+  → label_printed_at (atomik: faqat NULL bo'lsa yoziladi, aks holda E012) + ws "label.printed"
   (DELETE o'sha path — chekni bekor qilish: label_printed_at=None + ws "label.cancelled";
-   ARRA UI'da chiqarilgan katak yashil="kesildi", qayta chop etish bekor qilishdan keyingina)
+   ARRA UI'da chiqarilgan katak yashil="kesildi", qayta chop etish faqat bekor qilishdan
+   keyin — server ham E012 bilan to'sadi)
   → arq task print_label (app/tasks/__init__.py)
      · render_label_png → LPUSH mes:print:queue:{agent_id} = {type, job_id, instance_id, png(base64)[, queued_at]}
   → /ws/bridge (per-agent token auth: Bearer → sha256 bridge_agent.token_hash; Redis brpop + ack;
@@ -375,7 +383,10 @@ terminal (POST /terminal/labels/{instance_id})   → label_printed_at + ws "labe
 ```
 
 `GET /terminal/labels/{instance_id}.png` — o'sha `render_label_png()` chiqishi to'g'ridan brauzerga;
-worker ham, GoDEX ham, bridge-agent ham shart emas. `load_label_data` nusxa, detal yoki
+worker ham, GoDEX ham, bridge-agent ham shart emas. 2026-09-24 dan FAQAT ofisga
+(`LabelImageUser` = `require_roles(MANAGER, TEXNOLOG)`, admin/superuser o'zi o'tadi) — terminal va
+post hisoblari 403 oladi: rasm istalgan printerdan chiqariladigan to'liq chek, telefondagi operator
+u orqali E011/E012 ni aylanib o'tardi. Tsex frontendi uni chaqirmaydi. `load_label_data` nusxa, detal yoki
 buyurtmaning biri yumshoq o'chirilgan bo'lsa `None` qaytaradi — PNG 404 beradi (POST/DELETE bilan
 bir xil), `print_label` taski esa `skip:{id}` bilan jimgina o'tadi. Nusxalar matritsada count
 kamayganda va `.project` qayta import qilinganda yumshoq o'chiriladi.
@@ -394,7 +405,11 @@ biladi.
 **Qadoq cheki chiqmasa** — `close_pachka` chekni chiqara olishini commitdan OLDIN tekshiradi:
 navbat (arq/Redis) o'chgan bo'lsa 503, postga printer biriktirilmagan bo'lsa 422 (`require_printer`
 → `NoPrinterBound`). Ikkalasida ham qadoq OCHIQ qoladi va qadoqlovchi shu tugmani qayta bosadi — aks holda
-avval «Qayta ochish» qadamini bosish kerak bo'lardi.
+avval «Qayta ochish» qadamini bosish kerak bo'lardi. Undan ham OLDIN — `_open_pachka` va
+bo'sh qadoq tekshiruvidan oldin — chek qurilmasi tekshiriladi (`require_print_device`, E011):
+ulangan monobloki bor UPAKOVKA ish markazida qadoqni telefondan yakunlab bo'lmaydi, qadoq OCHIQ
+qoladi. Qadoq chekida E012 qorovuli yo'q — uni qayta chiqarish yo'li «Qayta ochish» + qayta
+yakunlash (pastda).
 
 **Yopilgan qadoqni tuzatish** — `POST /pachka/{id}/reopen` (terminalda "Qayta ochish"
 tugmasi, yakunlangan qadoqlar ro'yxatida). Status OPEN ga qaytadi, `closed_at` tozalanadi,
@@ -410,7 +425,9 @@ marshrut/skan tekshiruvi YO'Q — atxot ish bosqichi emas, saqlanadigan material
 bekor qilishda qaytariladigan skan ham yo'q, faqat `label_printed_at` tozalanadi.
 `label_printed_at` ARQ vazifasida emas, ENDPOINTNING o'zida yoziladi — aks holda terminal
 darhol qayta so'raganda katak rangi o'zgarmay qolardi. Eskiz yo'q: atxot to'rtburchak, chekda
-katta O'LCHAM, material, buyurtma·loyiha·list va QR (`ATX-{buyurtma}-{n}`).
+katta O'LCHAM, material, buyurtma·loyiha·list va QR (`ATX-{buyurtma}-{n}`). Detal cheki bilan bir xil ikki
+qorovul bu yerda ham: chek qurilmasi (E011) va `_claim_label` — `label_printed_at` faqat bo'sh
+bo'lsa yoziladi, aks holda E012; qayta chiqarish DELETE (bekor qilish) yoki brak qayta ochilishidan keyin.
 
 **Hodim beyjigi** — `BadgeLabelData` + `render_badge_png()`, arq task `print_badge`, yo'li
 `POST /employees/{employee_id}/print` (`AdminUser`). Maket: lavozim (kichik) → ism (katta) → QR
@@ -436,6 +453,57 @@ Chekni bekor qilish (`DELETE /terminal/labels/{id}`) shu avto-skanni ham bekor q
 `total_done` ni qaytaradi; operator qo'lda qilgan skanga tegilmaydi. Qidiruv ikkala shaklni ham
 qamraydi — eski doimiy `cutprint-{id}` / `rvprint-{id}` va yangi vaqt tamg'ali `cutprint-{id}-%`.
 
+**Bir nusxa — bir chek (E012).** `label_printed_at` SHARTLI yoziladi: `terminal._claim_label`
+bitta ORM `UPDATE … WHERE id = ? AND label_printed_at IS NULL RETURNING id` bajaradi (detal
+nusxasida `label_post_id` ham shu so'rovda), navbatga qo'yishdan OLDIN. 0 qator qaytsa — chek
+allaqachon chiqarilgan: 422 `{code: "E012"}`, xabarda chiqarilgan vaqt (Asia/Tashkent, `DD-MM HH:MM`)
+va «avval eskisini bekor qiling». Ikki parallel so'rovda ikkinchisining UPDATE'i birinchisining
+commit'ini kutadi va 0 qator oladi. Ilgari server tekshirmasdi: xarita eskirgan bo'lsa (ikki
+qurilmada ochiq yoki tugma ikki marta bosilgan) bitta nusxaning ikki cheki chiqardi — 2026-09-24
+da ular ikki xil detalga yopishtirilgan va kromkada detal «chiqmagan» ko'rinib qolgan. Qayta
+chiqarish yo'li — bekor qilish (`DELETE`; menejer tasdiqlagan brak kesish postidan qayta
+ochilsa ham `label_printed_at` tozalanadi); terminal UI ham qayta chop etishni bloklaydi (§7). Foydali atxot cheki (`WasteItem`) ham shu helperdan o'tadi.
+
+**Chek qurilmasi (E011, `terminal_device`).** Terminal hisobi ODAMGA bog'langan (`resolve_terminal`
+postni roldan, ish markazini hisob/postdan oladi, §1), shuning uchun telefondan kirgan operatorning
+cheki ham postdagi printerdan chiqardi. Qoida (`services/terminal_device.py`): ish markazida
+kamida bitta ULANGAN (`token_hash` bor, o'chirilmagan) qurilma bo'lsa, chek FAQAT shu
+qurilmalardan birining `terminal_device` cookie'si bor brauzerdan chiqadi. `require_print_device`
+uchala chek yo'lining BOSHIDA — hech narsa yozilmasdan va navbatga qo'yilmasdan — chaqiriladi:
+`print_instance_label`, `print_waste_item_label` va `pachka.close_pachka` (qadoq cheki). Bekor qilish
+ham shu qoidadan o'tadi: `cancel_instance_label` va `cancel_waste_item_label` terminal/post hisobida
+(`_is_office` emas) ham E011 beradi — aks holda telefon chekni bekor qilar, monoblok esa o'sha
+nusxaga ikkinchi, bir xil chek chiqarardi (E012 faqat bekor qilinMAGAN chekni himoya qiladi).
+Menejer/texnolog/admin admin webdagi xaritadan tekshiruvsiz bekor qiladi. Rad
+etilsa rollback + audit `module=print, action=device_rejected` (`meta`: kod va brauzer
+user-agent'i) + commit, so'ng 422 `{code: "E011", message: "Chekni faqat <ish markazi>
+monoblokidan chiqarish mumkin — …"}` (`log_rejected_scan` naqshi). Ish markazi aniqlanmasa
+tekshirilmaydi — u holda `require_printer(None)` baribir 422 beradi. Mos qurilmada `last_seen_at`
+yangilanadi (daqiqasiga ko'pi bilan bir marta).
+
+Ulanish (`api/routes/terminal_devices.py`): admin /agents sahifasining «Chek qurilmalari (post
+monobloklari)» bo'limida (`Agents/TerminalDevices.tsx`) qurilma yaratadi (nom + ish markazi) va
+8 belgili bir martalik kod oladi (15 daqiqa, MES agenti bilan bitta generator). Postning
+monoblokida terminal ochiq bo'lsa sarlavhada «Qurilmani ulash» chiqadi
+(`TerminalContext.print_pairing` — ish markazida kodi amal qilayotgan qurilma bor); kod
+`POST /terminal-devices/pair` ga yuboriladi. Kod faqat chaqiruvchining O'Z ish markazidagi
+qurilmaga ishlaydi (`TerminalCtx`; boshqa markaz kodi — 400 «Bu kod «…» ish markazi uchun…»),
+UPDATE atomik — bir kodni ikki brauzer yuborsa bittasi yutadi. Javobda token YO'Q: u httpOnly
+cookie `terminal_device` ga yoziladi (`samesite=strict`, LOCAL dan tashqarida `secure`, `max-age`
+400 kun — Chrome chegarasi); `GET /terminal/context` mos cookie'ni har ochilishda qayta yozadi,
+ya'ni ishlab turgan monoblokda u tugamaydi. Admin panelda kod kiritilgan brauzer user-agent'idan
+«TELEFON» (qizil) yoki «Windows/Linux/Mac kompyuter» ko'rinadi — kodni telefonga kiritib olgan
+ishchi darhol seziladi.
+
+ATAYLAB qilingan qarorlar: kod berilgan, lekin hali KIRITILMAGAN qurilma cheklovni YOQMAYDI (aks
+holda kod yaratilgan lahzadan monoblokda kiritilguncha post chek chiqara olmasdi); yagona
+qurilmaning kodi qayta berilsa (`POST /terminal-devices/{id}/code` — eski token darhol bekor) yoki
+u o'chirilsa, qayta ulanguncha cheklov O'CHADI — admin tasdiq oynasi va DELETE javobi buni aytadi;
+qurilmasi yo'q ish markazida xulq avvalgidek. Faqat chek CHIQARISH va BEKOR QILISH to'siladi — skan, xarita, smena
+telefondan ham ishlayveradi; chek tugmalari ham yashirilmaydi, to'siq serverda. E011/E012 matnlari
+backend `services/scanning.py` `ScanRejected` docstring'i va frontend `lib/mes.ts`
+`SCAN_ERROR_LABELS` / `SCAN_CODE_WORDS` (E011 «QURILMA», E012 «CHIQQAN») da qo'lda oynalangan.
+
 `bridge-agent/agent.py` — tsexdagi mustaqil servis (websockets + pywin32 + Pillow): outbound WS,
 lokal JSONL navbat `QUEUE_FILE` (printer/internet uzilganda yo'qotmaydi), flusher **event-driven** —
 `FLUSH_EVENT` bilan darhol uyg'onadi, 5 s faqat zaxira timeout. `send_to_printer(png_b64)` bitta
@@ -458,13 +526,14 @@ O'rnatish qadamlari: [07-infra-devops.md](07-infra-devops.md) → "Chop etish in
 | `clients/employees/machines/posts` | CRUD + qidiruv; `employees` da qo'shimcha ikki amal: `/{id}/badge` POST (yo'qolgan beyjik — yangi `badge_id`, eskisi darhol bloklanadi, tarix o'sha hodimda qoladi) va `/{id}/print` POST (beyjik YORLIG'INI chop etish navbatiga — `print_badge`, printer `agent_id` bilan yoki yagona agent, §5) | rol-based (`api/deps.py: require_roles`); `employees` yozuv amallari `AdminUser` |
 | `orders` | lifecycle (`/confirm`, `/start`, …) + `/status-counts` + `/upload` + `/matrix` + `/machines` + `/cutmap` + `/files/{id}` + `/files/scx.zip` (barcha SCX bitta arxivda, `StaffReadUser`) + `/scx/regenerate` (SCX qayta generatsiya, `TexnologUser`; `ingest.rebuild_order_scx` — `PATCH /matrix` bilan umumiy helper) + `/survey` + `/survey/photos[/{file_id}]` | o'qish: manager/texnolog/director (`StaffReadUser`); yozish: manager/texnolog (+admin/superuser); anketa yozuvi: `ManagerUser` |
 | `scans` | POST scan, DELETE undo (`/recent` olib tashlangan) | terminal + 9 operator rol |
-| `terminal` | `/context`, `/employees` ("Kim ishlayapti?" — shu postdagi faol hodimlar), `/session`, `/session/end`, `/orders` (loyiha kartalari: done/total post semantikasida — ARRA: NUSXA bo'yicha (done = chek∪skan, total = ARRA marshruti bor nusxalar soni; ikkalasi bir o'lchovda, chunki bir detalda ikkita ARRA qadami bo'lishi mumkin), KROMKA: detal bo'yicha, qolganlarida `PartRoute.total_done/total_required` qadam yig'indisi), `/orders/{id}/cutmap`, `/orders/{id}/kromka` (KROMKA/OVAL sahifasi), `/orders/{id}/prisadka` (detallar + SCX fayllar), `/orders/{id}/queue` (post navbati NUSXA darajasida — BOYOQ/STOLYARKA; postga bog'liq emas, kontekstdagi postni oladi), `/qr/{qr}/order` (QR→buyurtma), `/labels/{id}` POST (GoDEX navbat) / DELETE (chekni bekor qilish, manager/texnolog ham), `/waste/{id}/label` POST/DELETE (foydali atxot cheki — arrachi xaritadagi ATX katakdan, §5), `/labels/{id}.png`, `/files/{id}` | terminal + 9 operator rol; ish markazi/post konteksti (`_terminal_ctx` → `TerminalCtx`) har route'ga alohida qo'yiladi — yorliq/fayl route'lariga ataylab emas, ular ish markazisiz ham ishlaydi; javoblar typed (`app/schemas/terminal.py`: `TerminalOrderCard`, `QrOrderRef`, `Kromka*`/`Prisadka*` modellari — `list[dict]` yo'q) |
+| `terminal` | `/context` (+ chek qurilmasi holati: `print_lock`, `print_allowed`, `print_device_name`, `print_pairing`; mos `terminal_device` cookie'sini qayta yozadi, §5), `/employees` ("Kim ishlayapti?" — shu postdagi faol hodimlar), `/session`, `/session/end`, `/orders` (loyiha kartalari: done/total post semantikasida — ARRA: NUSXA bo'yicha (done = chek∪skan, total = ARRA marshruti bor nusxalar soni; ikkalasi bir o'lchovda, chunki bir detalda ikkita ARRA qadami bo'lishi mumkin), KROMKA: detal bo'yicha, qolganlarida `PartRoute.total_done/total_required` qadam yig'indisi), `/orders/{id}/cutmap`, `/orders/{id}/kromka` (KROMKA/OVAL sahifasi), `/orders/{id}/prisadka` (detallar + SCX fayllar), `/orders/{id}/queue` (post navbati NUSXA darajasida — BOYOQ/STOLYARKA; postga bog'liq emas, kontekstdagi postni oladi), `/qr/{qr}/order` (QR→buyurtma), `/labels/{id}` POST (GoDEX navbat; E011 — ulanmagan qurilma, E012 — chek allaqachon chiqarilgan, §5) / DELETE (chekni bekor qilish, manager/texnolog ham — qayta chiqarish yo'li (kesish postidan qayta ochilgan brak ham tozalaydi); terminal/post hisobida E011 ham, §5), `/waste/{id}/label` POST/DELETE (foydali atxot cheki — arrachi xaritadagi ATX katakdan; E011/E012 ham, §5), `/labels/{id}.png` (FAQAT manager/texnolog + admin/superuser — terminal/post hisobiga 403, §5), `/files/{id}` | terminal + 9 operator rol (`.png` bundan mustasno); ish markazi/post konteksti (`_terminal_ctx` → `TerminalCtx`) har route'ga alohida qo'yiladi — yorliq/fayl route'lariga ataylab emas, ular ish markazisiz ham ishlaydi; javoblar typed (`app/schemas/terminal.py`: `TerminalOrderCard`, `QrOrderRef`, `Kromka*`/`Prisadka*` modellari — `list[dict]` yo'q) |
 | `pachka` | `/orders/{id}` GET (qadoqlash holati) / POST (yangi qadoq — buyurtmada bitta ochiq qadoq), `/{id}/scan` (detalni qadoqqa — bu AYNI paytda marshrutning UPAKOVKA qadami), `/{id}/items/{instance_id}` DELETE (xato skanni qaytarish — skan ham bekor bo'ladi), `/{id}/reopen` (yopilganini qayta ochish), `/{id}/close` (yakunlash + chek) | terminal + operator rollar; faqat UPAKOVKA postida (`_pack_ctx`) |
 | `tmo` | `/orders/{id}` GET, `/orders/{id}/accept` (QABUL — `PK-...` bo'lsa qadoq ichidagi HAMMA nusxa bitta skanda, aks holda bitta detal), **`/orders/{id}/ship` ham OLIB TASHLANDI** — TMO da qadoq ro'yxati yo'q. **Buyurtmani TOPSHIRISH endpointi ham TMO da YO'Q** — u managerda (`orders.deliver_order`, faqat TAYYOR holatdan); TMO faqat qabul qiladi va hamma detal o'tgach buyurtma o'zi TAYYOR bo'ladi | terminal + operator rollar; faqat TMO postida (`_wh_ctx`) |
 | `tablo` | `/matrix`, `/orders/{id}`, `/machines` + `/machines/{id}` (stanok taxtasi — `/tablo/stanoklar`, docs/03) | istalgan auth |
 | `reports` | `/productivity`, `/machine-time`, `/orders`, `/materials` (+`?format=xlsx`), `/dashboard` | manager/director/admin (`ReportsUser`); `/dashboard` — texnolog ham (`DashboardUser`; `money` bloki faqat boshqaruvga) |
-| `audit-logs` | filtrli ro'yxat + `summary` (modul × amal sonlari). Modullar backend `log_action(module=…)` qiymatlari (scan, print, sessions, orders, pachka, tmo, bridge_agents, employees, users, clients, machines, posts, auth, downtime, defect, settings, system, catalog); frontend tab'larni `summary`dan quradi — qo'lda ro'yxat YO'Q, faqat `MODULE_LABELS` tarjimasi. `scans` (19 ta qo'lda yozilgan yozuv) `scan` bilan bitta modul deb o'qiladi (`_MODULE_ALIASES`). Eski `ombor` nomi `e5b83c04d7a1` da `tmo` ga birlashtirilgan | admin (`AdminUser`) |
+| `audit-logs` | filtrli ro'yxat + `summary` (modul × amal sonlari). Modullar backend `log_action(module=…)` qiymatlari (scan, print, sessions, orders, pachka, tmo, bridge_agents, terminal_devices, employees, users, clients, machines, posts, auth, downtime, defect, settings, system, catalog); frontend tab'larni `summary`dan quradi — qo'lda ro'yxat YO'Q, faqat `MODULE_LABELS` tarjimasi. `scans` (19 ta qo'lda yozilgan yozuv) `scan` bilan bitta modul deb o'qiladi (`_MODULE_ALIASES`). Eski `ombor` nomi `e5b83c04d7a1` da `tmo` ga birlashtirilgan | admin (`AdminUser`) |
 | `bridge-agents` | ro'yxat/yaratish, `/{id}` PATCH (ish markazi bog'lash + `can_print`), `/{id}/code` (yangi ulanish kodi), `/{id}` DELETE, `/pair`, `/scan` (skan-forvard, §4), `/andon` POST (stanok signal ustuni hodisalari, docs/03), `/logs` POST + `/{id}/logs` GET (agent loglari Redisda — `mes:agent:log:{id}`, oxirgi 200 satr, TTL 7 kun; admin panelda ko'rinadi, tsexdagi kompyuterga masofadan kirish yo'q), `/latest` + `/download` (agent avto-yangilanishi: `agent-dist/version.json` — versiya + sha256 — va `mebelix-agent.exe`; 2026-08-27 dan CI har deploy'da exe quradi, ya'ni eskirishning iloji yo'q) | admin (`AdminUser`); `/pair`, `/latest`, `/download` ochiq (router global auth'siz — agentda sessiya yo'q, exe sir emas), `/scan`, `/logs` va `/andon` agent tokeni bilan (Bearer → sha256) |
+| `terminal-devices` | chek qurilmalari (§5 «Chek qurilmasi»): `/` GET (ro'yxat; `pair_code` faqat hali amal qilayotgan kodda) / POST (yaratish — nom + ish markazi, kod beriladi), `/{id}/code` POST (yangi kod — eski token darhol bekor), `/{id}` DELETE (javob ish markazida ulangan qurilma qolmagani — cheklov o'chganini aytadi), `/pair` POST (kod → httpOnly cookie `terminal_device`; kod faqat chaqiruvchining O'Z ish markazidagi qurilmaga). O'zgarishlar WS `terminal_device.code` / `.paired` / `.deleted` (payload'da `machine_id`) bilan terminal va admin sahifasiga yetadi; audit moduli `terminal_devices` (`created`, `code_regenerated`, `deleted`, `paired` — kod kiritilgan brauzer user-agent'i bilan) | admin (`AdminUser`); `/pair` — terminal + 9 operator rol (`TerminalUser` + `TerminalCtx`) |
 | `settings` | `/` GET + `/{key}` PUT, `/work-schedule`, `/ideal-cycle`, `/ideal-cycle-kromka`, `/oee-start`, `/defect-reasons` (har biri GET/PUT), `/downtime-reasons` GET/POST + `/{id}` PATCH — OEE sozlamalari (docs/12 §4, docs/03) | admin (`AdminUser`) |
 | `downtimes` + `defects` (`/terminal` prefiksi) | `/downtime-reasons`, `/downtimes/pending`, `/downtimes/{id}/reason`, `/downtimes/lock` (to'xtash sababi, docs/12 §4.4); `/defect-reasons`, `/defects` POST + `/defects/{id}` DELETE (brak qaydi, docs/12 §4.7) | terminal + 9 operator rol; `TerminalCtx` |
 | `defects` (`defects_review.py`) | `/` (`status` berilmasa — HAMMA holat), `/pending-count`, `/{id}/review` (brakni tasdiqlash) | manager (`ManagerUser`) |
@@ -687,7 +756,7 @@ direktor ham ko'radi.
 - Dizayn tokenlar: `src/index.css` (post/status ranglari, `.num`, print CSS); domen konstantalar `src/lib/mes.ts`.
 - Imzo komponent: `Common/StagePipeline` — post zanjiri (dinamik; buyurtma sahifasi sarlavhasida `showLabels` bilan — `routes/_layout/orders/$orderId.tsx`; boshqaruv paneli endi uni ishlatmaydi — u yerda buyurtma kartalari yo'q, faqat kechikkan/to'xtab qolgan/tayyor ro'yxatlari; buyurtmalar reyestrida bosqich ustuni yo'q).
 - Routelar: `_layout/*` admin modullar (index — boshqaruv paneli, orders (`index` + `$orderId`),
-  clients, employees, work-centers, warehouse, sotuv, defects, reports, agents, logs, settings, system-settings
+  clients, employees, work-centers, warehouse, sotuv, defects, reports, agents (MES agentlar + «Chek qurilmalari» bo'limi, `Agents/TerminalDevices.tsx`), logs, settings, system-settings
   (`printers` → `/agents`, `admin` → `/employees` — faqat eski havolalar uchun redirect), system-health
   («Tizim holati», `requireAccess(isAdmin)`, 30/120 s da yangilanadi, oyna 15 daq / 1 / 3 / 12 soat, qator → endpoint tafsiloti; yon menyuda holat belgisi),
   cutmap.$orderId, `anketa.$orderId`), `/terminal`, `/tablo`
@@ -726,7 +795,7 @@ direktor ham ko'radi.
     `Terminal/SheetSvg`; `printAllMaps` — har list A4 landscape). NOSTANDART detal xaritada
     BINAFSHA (`CutmapInstanceState.custom` ← `Part.is_custom`, `PART_CUSTOM`) — marshrutini
     texnolog qo'lda chizgan, u arradan boshlanmasligi ham mumkin. Chek chiqarilgan katak YASHIL
-    ("kesildi") — nostandart detal ham; qayta chop etish bloklanadi; long press (~600ms) + tasdiq
+    ("kesildi") — nostandart detal ham; qayta chop etish bloklanadi (server ham — E012, §5); long press (~600ms) + tasdiq
     dialogi chekni bekor qiladi va katak o'z rangiga qaytadi (admin webdagi xaritada —
     kartochkadagi tugma). FOYDALI ATXOT katagi ham xuddi shu ekranda va shu oqimda:
     `POST /terminal/waste/{id}/label` chek chiqaradi, DELETE bekor qiladi, cheki chiqarilgani
@@ -771,6 +840,15 @@ direktor ham ko'radi.
     qabul kutilmoqda; ✓ — qabul qilindi). Avtomatik qabul YO'Q: tsex «tugatdim», ombor «qo'limda» —
     farqi yo'qolgan detal, hali tsexdagilar «+N yo'lda». Qadoq QR'i (`PK-…`)
     bitta skanda ichidagi hammasini qabul qiladi (`accept_into_tmo`). Qadoq alohida tab EMAS.
+  · **Chek qurilmasi** (`Terminal/PrintDevice.tsx`, sarlavhada, hamma postda) — `PrintDeviceChip`
+    faqat muammo bo'lsa chiziladi: `print_lock && print_allowed === false` bo'lsa qizil «Chek
+    chiqmaydi» (telefon / ulanmagan kompyuter; chek tugmalari yashirilmaydi — server E011 bilan
+    rad etadi), admin kod bergan va shu brauzer hali ulanmagan bo'lsa
+    (`print_pairing && !print_device_name`) — sariq «Qurilmani ulash»; ikkalasi ham
+    `PrintDeviceDialog` ni ochadi (kod kiritish → `POST /terminal-devices/pair`; oyna ochiqda skan
+    fokusi to'xtaydi). WS `terminal_device.*` (payload'dagi `machine_id` o'z ish markaziga teng
+    bo'lsa) kontekstni qayta so'raydi — belgi sahifa yangilanmasdan paydo bo'ladi. Admin tomoni —
+    `/agents` dagi `Agents/TerminalDevices.tsx` (§5 «Chek qurilmasi»).
 - WS hook: `hooks/useMesWs.ts` (reconnect + heartbeat + online flag).
 - Rol-marshrutlash: `_layout.tsx` beforeLoad (`lib/guards.ts: requireAuth`) — terminal va
   9 operator rol → `/terminal`, tablo → `/tablo` (qurilma/operator akkauntlar admin panelga

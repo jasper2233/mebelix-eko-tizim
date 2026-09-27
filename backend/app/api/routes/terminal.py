@@ -6,11 +6,11 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse
-from sqlalchemy import Row, case, func, select
+from sqlalchemy import Row, case, func, select, update
 from sqlalchemy.orm import defer
 
 from app.api.deps import SessionDep, client_ip, require_roles
-from app.core.config import upload_root
+from app.core.config import TASHKENT_TZ, upload_root
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.core.ws import ws_manager
 from app.crud import crud_orders, crud_part_instances, crud_waste_items, log_action
@@ -29,6 +29,7 @@ from app.models import (
     Post,
     Product,
     Scan,
+    WasteItem,
     WorkSession,
 )
 from app.models import (
@@ -82,6 +83,14 @@ from app.services.scanning import (
     revoke_scan,
     scan_error,
 )
+from app.services.terminal_device import (
+    DEVICE_COOKIE,
+    pairing_open,
+    print_device,
+    require_print_device,
+    set_device_cookie,
+    touch_device,
+)
 from app.tasks import NoPrinterBound, agent_online, require_printer
 
 router = APIRouter(prefix="/terminal", tags=["terminal"])
@@ -109,7 +118,9 @@ def _session_read(session: WorkSession, employee_name: str, *, is_me: bool = Fal
 
 
 @router.get("/context", response_model=TerminalContext, operation_id="read_terminal_context")
-async def read_terminal_context(db: SessionDep, user: TerminalUser, ctx: TerminalCtx) -> TerminalContext:
+async def read_terminal_context(
+    db: SessionDep, user: TerminalUser, ctx: TerminalCtx, request: Request, response: Response
+) -> TerminalContext:
     machine, post = ctx
     out = TerminalContext(
         machine_id=machine.id,
@@ -148,6 +159,18 @@ async def read_terminal_context(db: SessionDep, user: TerminalUser, ctx: Termina
             .limit(1)
         )
     ).first() is not None
+    # Chek qurilmasi: terminal sarlavhasida «Chek chiqmaydi» / «Qurilmani ulash»
+    # belgisi shundan chiqadi. Chek tugmalari yashirilMAYDI — to'siq serverda (E011)
+    locked, device = await print_device(db, request, machine)
+    out.print_lock = locked
+    out.print_allowed = not locked or device is not None
+    out.print_pairing = await pairing_open(db, machine)
+    if device is not None:
+        out.print_device_name = device.name
+        await touch_device(db, device)
+        # Cookie muddati har ochilishda yangilanadi — ishlab turgan monoblokda
+        # u hech qachon tugamaydi (`DEVICE_COOKIE_MAX_AGE` izohi)
+        set_device_cookie(response, request.cookies[DEVICE_COOKIE])
     for session in await crew_sessions(db, machine.id):
         employee = await db.get(Employee, session.employee_id)
         out.crew.append(
@@ -993,8 +1016,43 @@ async def read_terminal_post_queue(db: SessionDep, ctx: TerminalCtx, order_id: i
     )
 
 
+async def _require_print_device(db: SessionDep, request: Request, user: User, machine: Machine | None) -> None:
+    try:
+        await require_print_device(db, request, user, machine)
+    except ScanRejected as exc:
+        raise scan_error(exc.code, exc.message) from None
+
+
+async def _claim_label(db: SessionDep, model: type[PartInstance] | type[WasteItem], row_id: int, **values: Any) -> None:
+    """BIR NUSXA — BIR CHEK: `label_printed_at` faqat bo'sh bo'lsa yoziladi (atomik).
+
+    Ilgari server tekshirmasdi: katak bosilganda xarita eskirgan bo'lsa (ikki
+    qurilmada ochiq, yoki tugma ikki marta bosilgan) bitta nusxaning ikki cheki
+    chiqardi — 2026-09-24 da ular ikki xil detalga yopishtirilgan va kromkada
+    detal "chiqmagan" ko'rinib qolgan. Ikki parallel so'rovda ikkinchisining
+    UPDATE'i birinchisining commit'ini kutadi va 0 qator qaytaradi.
+    Qayta chiqarish — faqat bekor qilish orqali (terminal ham shunday qiladi).
+    """
+    claimed = (
+        await db.execute(
+            update(model)
+            .where(model.id == row_id, model.label_printed_at.is_(None))
+            .values(label_printed_at=datetime.now(UTC), **values)
+            .returning(model.id)
+        )
+    ).first()
+    if claimed is not None:
+        return
+    printed_at = (await db.execute(select(model.label_printed_at).where(model.id == row_id))).scalar_one_or_none()
+    vaqt = f" ({printed_at.astimezone(TASHKENT_TZ).strftime('%d-%m %H:%M')})" if printed_at else ""
+    raise scan_error(
+        "E012",
+        f"Bu chek allaqachon chiqarilgan{vaqt}. Qayta chiqarish kerak bo'lsa — avval eskisini bekor qiling.",
+    )
+
+
 @router.post("/waste/{waste_id}/label", response_model=Message, operation_id="print_waste_item_label")
-async def print_waste_item_label(db: SessionDep, user: TerminalUser, waste_id: int) -> Message:
+async def print_waste_item_label(db: SessionDep, user: TerminalUser, waste_id: int, request: Request) -> Message:
     """FOYDALI ATXOT cheki (GibLab `business` qoldig'i, GibSaw'dagi "Деловой
     остаток" chekining muqobili): kesish xaritasidagi atxot katagidan chiqariladi.
 
@@ -1009,6 +1067,7 @@ async def print_waste_item_label(db: SessionDep, user: TerminalUser, waste_id: i
         print_machine, _waste_post = await resolve_terminal(db, user)
     except ScanRejected:
         pass
+    await _require_print_device(db, request, user, print_machine)
 
     from app.core.utils import queue
 
@@ -1034,7 +1093,7 @@ async def print_waste_item_label(db: SessionDep, user: TerminalUser, waste_id: i
     # worker hali ishlamagan bo'lar va katak rangi o'zgarmasdi — faqat keyingi
     # yangilashda ko'rinardi. Detal chekida bunday muammo yo'q edi, ya'ni bitta
     # xaritada ikki xil xulq.
-    w.label_printed_at = datetime.now(UTC)
+    await _claim_label(db, WasteItem, w.id)
     printer_kutilmoqda = not agent_online(agent.last_seen_at)
     if queue.pool is not None:
         await queue.pool.enqueue_job("print_waste_label", waste_id, agent.id)
@@ -1049,7 +1108,7 @@ async def print_waste_item_label(db: SessionDep, user: TerminalUser, waste_id: i
 
 
 @router.post("/labels/{instance_id}", response_model=Message, operation_id="print_instance_label")
-async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: int) -> Message:
+async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: int, request: Request) -> Message:
     """YORLIQ CHOP ETISH: on-demand, per selected cell. Queued to the bridge-agent."""
     instance = await crud_part_instances.get_or_404(db, "Nusxa topilmadi.", id=instance_id)
 
@@ -1060,6 +1119,7 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
         print_machine, print_post = await resolve_terminal(db, user)
     except ScanRejected:
         print_post = None
+    await _require_print_device(db, request, user, print_machine)
     arra_route = (await db.execute(arra_parts_query(PartRoute.part_id == instance.part_id))).first()
     # Marshruti arradan boshlanmagan detal arrachiga TEGISHLI EMAS: uning listini
     # frezer butunlay o'zi kesadi. Ilgari chek jimgina chiqar, skan esa E001 bilan
@@ -1098,9 +1158,8 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     # `user.id` ham SHU YERDA: `log_action` quyida rollbackdan KEYIN chaqiriladi va
     # o'shanda `user` ham expire bo'lgan bo'ladi — o'qish MissingGreenlet berardi.
     user_id = user.id
-    instance.label_printed_at = datetime.now(UTC)
     # Chekni kim chiqargani nusxaning O'ZIDA qoladi — bekor qilish huquqi shundan
-    instance.label_post_id = print_post.id if print_post is not None else None
+    await _claim_label(db, PartInstance, instance.id, label_post_id=print_post.id if print_post is not None else None)
     log_action(
         db,
         module="print",
@@ -1209,15 +1268,32 @@ LabelCancelUser = Annotated[
 ]
 
 
+def _is_office(user: User) -> bool:
+    """Ofis rollari (menejer/texnolog/admin) chekni admin webdagi xaritadan bekor qiladi —
+    ularga post/qurilma tekshiruvi qo'llanmaydi (terminal konteksti yo'q, E009 bo'lardi)."""
+    return user.is_superuser or UserRole(user.role) in (UserRole.MANAGER, UserRole.TEXNOLOG, UserRole.ADMIN)
+
+
 @router.delete("/waste/{waste_id}/label", response_model=Message, operation_id="cancel_waste_item_label")
-async def cancel_waste_item_label(db: SessionDep, user: LabelCancelUser, waste_id: int) -> Message:
+async def cancel_waste_item_label(db: SessionDep, user: LabelCancelUser, waste_id: int, request: Request) -> Message:
     """Qoldiq chekini bekor qilish: `label_printed_at` tozalanadi.
 
     Detal chekidan farqi — bu yerda qaytariladigan skan yo'q (qoldiq ish
     bosqichi emas), shuning uchun faqat belgi tozalanadi va katak xaritada
     yana "chek chiqarilmagan" rangga qaytadi.
+
+    Chek qurilmasi: bekor qilish ham chop etish bilan bir xil to'siladi (E011) —
+    aks holda telefon chekni bekor qilar, monoblok esa o'sha qoldiqqa ikkinchi,
+    bir xil chek chiqarardi (E012 faqat BEKOR QILINMAGAN chekni himoya qiladi).
     """
     w = await crud_waste_items.get_or_404(db, "Qoldiq yozuvi topilmadi.", id=waste_id)
+    if not _is_office(user):
+        cancel_machine: Machine | None = None
+        try:
+            cancel_machine, _cancel_post = await resolve_terminal(db, user)
+        except ScanRejected:
+            pass
+        await _require_print_device(db, request, user, cancel_machine)
     w.label_printed_at = None
     log_action(
         db,
@@ -1233,7 +1309,7 @@ async def cancel_waste_item_label(db: SessionDep, user: LabelCancelUser, waste_i
 
 
 @router.delete("/labels/{instance_id}", response_model=Message, operation_id="cancel_instance_label")
-async def cancel_instance_label(db: SessionDep, user: LabelCancelUser, instance_id: int) -> Message:
+async def cancel_instance_label(db: SessionDep, user: LabelCancelUser, instance_id: int, request: Request) -> Message:
     """Chekni bekor qilish (long press / admin xarita): noto'g'ri chiqarilgan yorliq
     katakni chop etilmagan holatga qaytaradi."""
     instance = await crud_part_instances.get_or_404(db, "Nusxa topilmadi.", id=instance_id)
@@ -1269,15 +1345,14 @@ async def cancel_instance_label(db: SessionDep, user: LabelCancelUser, instance_
     #
     # Menejer/texnolog/admin — ataylab istisno: proyekt ro'yxatdan tushib
     # bo'lgach arrachi xaritani ocholmaydi, oxirgi xato chekni texnolog tuzatadi.
-    if not user.is_superuser and UserRole(user.role) not in (
-        UserRole.MANAGER,
-        UserRole.TEXNOLOG,
-        UserRole.ADMIN,
-    ):
+    if not _is_office(user):
         try:
-            _, caller_post = await resolve_terminal(db, user)
+            caller_machine, caller_post = await resolve_terminal(db, user)
         except ScanRejected as exc:
             raise scan_error(exc.code, exc.message) from None
+        # Chek qurilmasi: telefondan bekor qilib, monoblokdan ikkinchi bir xil
+        # chek chiqarish yo'li yopiladi (chop etish bilan bir xil qoida, E011)
+        await _require_print_device(db, request, user, caller_machine)
         if caller_post.code not in (PostCode.ARRA, PostCode.ROVER):
             raise ForbiddenException("Chekni faqat kesish posti (ARRA yoki ROVER) bekor qila oladi.")
         # Skan dalili — bajarilgan ISHNI himoya qiladi (`total_done` qaytmasin)
@@ -1319,9 +1394,17 @@ async def cancel_instance_label(db: SessionDep, user: LabelCancelUser, instance_
     return Message(message=f"Chek bekor qilindi: {instance.qr_text}")
 
 
+# Chek rasmi FAQAT ofisga (menejer/texnolog; admin va superuser `require_roles`
+# da o'zi o'tadi). Terminal va post hisoblari uni ko'rmaydi: rasm istalgan
+# printerdan chiqariladigan to'liq chek — telefondagi arrachi uni olib, E011 va
+# E012 ni aylanib o'tib chekni o'zi chop eta olardi. Tsexda uni hech kim
+# chaqirmaydi: terminal chekni GoDEX agenti orqali chiqaradi.
+LabelImageUser = Annotated[User, Depends(require_roles(UserRole.MANAGER, UserRole.TEXNOLOG))]
+
+
 @router.get("/labels/{instance_id}.png", operation_id="render_instance_label")
-async def render_instance_label(db: SessionDep, user: TerminalUser, instance_id: int) -> Response:
-    """Yorliqning PNG ko'rinishi — brauzerdan istalgan printerga chop etish uchun (GoDEX shart emas)."""
+async def render_instance_label(db: SessionDep, _: LabelImageUser, instance_id: int) -> Response:
+    """Yorliqning PNG ko'rinishi (ofis uchun) — brauzerdan istalgan printerga chop etish (GoDEX shart emas)."""
     from app.services.labels import load_label_data, render_label_png
 
     data = await load_label_data(db, instance_id)

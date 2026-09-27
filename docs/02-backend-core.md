@@ -80,7 +80,7 @@ app = create_application(router=router)
 | Env / CORS | `ENVIRONMENT`, `CORS_ORIGINS=["http://localhost:5173"]`, `CORS_METHODS`, `CORS_HEADERS` |
 
 - Computed field'lar: `POSTGRES_URI` (`user:pass@host:port/db`) va `REDIS_URL` (`redis://host:port`). `POSTGRES_URI` da `POSTGRES_USER` va `POSTGRES_PASSWORD` `urllib.parse.quote(..., safe="")` bilan percent-encode qilinadi (band belgili parol DSN'ni buzmasin); `POSTGRES_DB` xom qoladi — SQLAlchemy baza komponentini unquote qilmaydi. Shu sababli `migrations/env.py` `set_main_option` ga berishdan oldin `%` ni ikkilantiradi (configparser uni interpolatsiya deb o'qiydi).
-- Modul darajasidagi eksportlar: `TASHKENT_TZ = ZoneInfo("Asia/Tashkent")` — tsex mahalliy vaqti, hisobot/audit kunlari va chek timestamp'lari shu zonada (`audit.py`, `machines.py`, `reports.py`, `scans.py`, `tablo.py`, `orders/_common.py` route'lari, `crud/orders.py`, `services/andon.py`, `services/availability.py`, `services/excel.py`, `services/labels.py`, `services/scanning.py`, `services/system_health.py` va `tasks/__init__.py` ishlatadi); `upload_root()` — `UPLOAD_DIR`ning absolyut `Path` ildizi. Nisbiy `UPLOAD_DIR` jarayon CWD'siga emas, `backend/` paket ildiziga (`Path(__file__).resolve().parents[2]`) bog'lanadi — ombor xizmat qayerdan ishga tushirilganiga qarab surilmasligi uchun; absolyut qiymat o'zgarishsiz ishlatiladi. Uni yettita route moduli import qiladi: `orders/files.py`, `orders/survey.py`, `orders/lifecycle.py` (o'chirishda fayllarni unlink qiladi), `orders/bazis.py`, `orders/matrix.py`, `public.py`, `terminal.py`; hamda `commands/rebuild_bazis_models.py`. `services/giblab/ingest.py` esa `config`dan import qilmaydi — ildizni `upload_root: Path` PARAMETRI sifatida oladi, qiymatni `orders/files.py` va `orders/matrix.py` (`root = upload_root()`; matritsa tahririda `rebuild_order_scx`/`purge_replaced_scx` ga) uzatadi.
+- Modul darajasidagi eksportlar: `TASHKENT_TZ = ZoneInfo("Asia/Tashkent")` — tsex mahalliy vaqti, hisobot/audit kunlari va chek timestamp'lari shu zonada (`audit.py`, `machines.py`, `reports.py`, `scans.py`, `tablo.py`, `terminal.py` (E012 xabaridagi chek vaqti), `orders/_common.py` route'lari, `crud/orders.py`, `services/andon.py`, `services/availability.py`, `services/excel.py`, `services/labels.py`, `services/scanning.py`, `services/system_health.py` va `tasks/__init__.py` ishlatadi); `upload_root()` — `UPLOAD_DIR`ning absolyut `Path` ildizi. Nisbiy `UPLOAD_DIR` jarayon CWD'siga emas, `backend/` paket ildiziga (`Path(__file__).resolve().parents[2]`) bog'lanadi — ombor xizmat qayerdan ishga tushirilganiga qarab surilmasligi uchun; absolyut qiymat o'zgarishsiz ishlatiladi. Uni yettita route moduli import qiladi: `orders/files.py`, `orders/survey.py`, `orders/lifecycle.py` (o'chirishda fayllarni unlink qiladi), `orders/bazis.py`, `orders/matrix.py`, `public.py`, `terminal.py`; hamda `commands/rebuild_bazis_models.py`. `services/giblab/ingest.py` esa `config`dan import qilmaydi — ildizni `upload_root: Path` PARAMETRI sifatida oladi, qiymatni `orders/files.py` va `orders/matrix.py` (`root = upload_root()`; matritsa tahririda `rebuild_order_scx`/`purge_replaced_scx` ga) uzatadi.
 - `_validate_production_settings(s)` — **har qanday non-LOCAL muhitda (STAGING ham, PRODUCTION ham) xavfsiz bo'lmagan default'lar bilan boot qilishni rad etadi** (faqat LOCAL o'tkazib yuboriladi): `SECRET_KEY`, `ADMIN_PASSWORD`, `POSTGRES_PASSWORD`, `ADMIN_PHONE` placeholder qiymatda qolgan bo'lsa YOKI `FORWARDED_ALLOW_IPS` ichida `*` bo'lsa `RuntimeError` ko'taradi (`*` app-level `ProxyHeadersMiddleware` orqali gunicorn'ning qat'iy `--forwarded-allow-ips` flagini bekor qiladi va rate-limit bypass'ini qaytarib ochadi). Modul import bo'lganda darhol ishlaydi (birinchi so'rovda emas, startup'da).
 - Modul oxirida global singleton: `settings = Settings()`.
 
@@ -213,6 +213,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 - Cookie'lar:
   - `set_auth_cookie(response, key, value, max_age)` — `httponly=True`, `samesite="strict"` (klassik CSRF vektorini neytrallaydi), `secure` faqat non-LOCAL muhitlarda (muhit solishtiruvi `set_auth_cookie` ichida, alohida helper yo'q), local'da oddiy HTTP ustida ishlashi uchun o'chirilgan.
   - `clear_auth_cookies(response)` — ikkala cookie'ni o'chiradi (logout).
+  - **Uchinchi httpOnly cookie — `terminal_device` (chek qurilmasi) — bu modulda EMAS.** Uni `services/terminal_device.py: set_device_cookie(response, token)` yozadi. Bayroqlar auth cookie'lari bilan bir xil (`httponly=True`, `samesite="strict"`, `secure` faqat non-LOCAL'da — solishtiruv o'sha funksiya ichida takrorlangan), muddati esa `DEVICE_COOKIE_MAX_AGE` = 400 kun (Chrome cookie muddatini 400 kun bilan cheklaydi). Ikki joyda yoziladi: `POST /api/v1/terminal-devices/pair` (bir martalik kod tokenga almashganda) va `GET /api/v1/terminal/context` (cookie ish markazining ulangan qurilmasiga mos kelsa har ochilishda qayta yoziladi — ishlab turgan monoblokda muddati tugamaydi). Bazada faqat sha256 xeshi (`terminal_device.token_hash`). `clear_auth_cookies` uni o'chirmaydi: logout'dan keyin ham monoblok "ulangan qurilma" bo'lib qoladi; ulanishni admin "yangi kod" yoki "o'chirish" bilan bekor qiladi (tasks bo'limidagi «Chek qurilmasi» bandi).
 
 **Bog'lanishlar:** `config.py` (`settings`, `EnvironmentOption`), `backend/app/schemas/auth.py` (`TokenData`); auth endpointlari va `api/deps.py` shu funksiyalarni ishlatadi.
 
@@ -304,6 +305,28 @@ class WorkerSettings:
   manzillanadi, `ws.py` esa faqat o'z kalitini o'qiydi. Aynan umumiy navbat
   "ofisdagi test printeri tsexdagi chekni tortib oldi" nuqsonini bergan edi:
   kim birinchi `BRPOP` qilsa, chek o'shanikiga chiqardi.
+- **Navbatga qo'yishdan OLDINGI yana ikki to'siq (endpoint'da, vazifada emas).**
+  1. *Chek qurilmasi (E011).* `print_instance_label`, `print_waste_item_label` (`terminal.py`) va
+     `close_pachka` (`pachka.py`) `require_printer`dan oldin, hech narsa yozilmasdan
+     `services/terminal_device.py: require_print_device(db, request, user, machine)` ni chaqiradi.
+     Ish markazida kamida bitta ULANGAN (`token_hash` bor, o'chirilmagan) `terminal_device` bo'lsa,
+     so'rov shulardan birining `terminal_device` cookie'sini olib kelishi SHART. Aks holda: rollback,
+     audit-log (`module="print"`, `action="device_rejected"`, `meta` da user-agent), commit,
+     so'ng E011 (`scan_error` → 422 `{code, message}`), chek YUBORILMAYDI. Ulangan qurilmasi yo'q ish
+     markazida cheklov yo'q; kodi berilgan, lekin hali kiritilmagan qurilma ham cheklovni yoqmaydi.
+     Ish markazi aniqlanmasa (`machine is None`) tekshiruv o'tkazib yuboriladi — `require_printer(None)`
+     baribir 422 beradi. Chekni BEKOR QILISH (`cancel_instance_label`, `cancel_waste_item_label`) ham
+     tsex hisobida shu tekshiruvdan o'tadi (ofis — menejer/texnolog/admin — `_is_office` bilan chetlab
+     o'tadi): aks holda telefon chekni bekor qilar, monoblok esa o'sha nusxaga ikkinchi, bir xil chek chiqarardi (E012 faqat BEKOR QILINMAGAN chekni himoya qiladi). Faqat chek chiqarish va bekor qilish to'siladi: skan, xarita, smena
+     telefondan ham ishlaydi.
+  2. *Bir nusxa — bir chek (E012).* Detal va atxot chekida `terminal.py: _claim_label` `label_printed_at` ni
+     atomik `UPDATE ... WHERE id=? AND label_printed_at IS NULL RETURNING id` bilan band qiladi.
+     0 qator qaytsa E012 («Bu chek allaqachon chiqarilgan (dd-mm HH:MM)…», vaqt `TASHKENT_TZ` da)
+     va job navbatga QO'YILMAYDI. Ikki parallel so'rovda ikkinchisining UPDATE'i birinchisining commit'ini
+     kutadi va 0 qator oladi. Qayta chiqarish faqat `label_printed_at` tozalangandan keyin: bekor
+     qilish (`DELETE /terminal/labels/{instance_id}`, `DELETE /terminal/waste/{waste_id}/label`) yoki
+     menejer tasdiqlagan, kesish postidan qayta ochilgan brak (`services/defects.py: reopen_from_step`).
+  Beyjik (`employees.py` → `print_badge`) ikkala to'siqdan ham o'tmaydi.
 - `print_label(ctx, instance_id, agent_id)` — yorliq chiqarish vazifasi (`agent_id` majburiy, standart qiymati yo'q — agentni unutgan chaqiruvchi `TypeError` oladi).
   Bitta DB sessiyasida (`local_session`) `services/labels.py`dan:
   - `load_label_data(db, instance_id)` — `None` bo'lsa `"skip:{id}"` qaytarib chiqadi;
@@ -320,10 +343,12 @@ class WorkerSettings:
 - Qolgan uchta vazifa AYNAN shu zanjirdan o'tadi (`_print_job` + `LPUSH print_queue_key(agent_id)`,
   `skip:`/`queued:`/`lost:` natijalari) — faqat render qilinadigan ma'lumot boshqacha:
   - `print_pachka_label(ctx, pachka_id, agent_id)` — qadoq cheki (`render_pachka_label_png`;
-    buyurtma raqami, loyiha nomi, qadoqdagi detallar soni). `pachka.py` qadoq yopilganda qo'yadi.
+    buyurtma raqami, loyiha nomi, qadoqdagi detallar soni). `pachka.py` qadoq yopilganda qo'yadi
+    (`close_pachka` eng avval `require_print_device` ni chaqiradi — E011 bo'lsa qadoq yopilmaydi, ochiq qoladi).
   - `print_waste_label(ctx, waste_id, agent_id)` — FOYDALI ATXOT cheki (`render_waste_label_png`;
     `ATX-` prefiksli QR, material, o'lcham, list raqami). `terminal.py` dagi
-    `POST /terminal/waste/{waste_id}/label` qo'yadi; `label_printed_at` ni ENDPOINT yozadi, vazifa emas —
+    `POST /terminal/waste/{waste_id}/label` qo'yadi (avval `require_print_device` — E011); `label_printed_at` ni
+    ENDPOINT yozadi (`_claim_label` — band bo'lsa E012 va job qo'yilmaydi), vazifa emas —
     aks holda javob bilan yozuv orasida poyga bo'lib, kesish xaritasidagi katak darhol yangilanmasdi.
   - `print_badge(ctx, employee_id, agent_id)` — hodim beyjigi (`render_badge_png`). `employees.py`
     qo'yadi; brauzerdan chop etish o'rniga shu yo'l, chunki brauzer drayverdagi saqlangan qog'oz
@@ -339,7 +364,12 @@ class WorkerSettings:
 
 ```
 terminal → POST /api/v1/terminal/labels/{instance_id}
-  → label_printed_at + label_post_id yoziladi (hali commit qilinmagan)
+  → require_print_device(db, request, user, machine)            ← holat o'zgarishidan OLDIN
+     (ish markazida ulangan terminal_device bor-u, cookie mos kelmasa: rollback +
+     audit-log print/device_rejected + commit → E011 → 422, chek YUBORILMAYDI)
+  → _claim_label: UPDATE part_instance SET label_printed_at, label_post_id
+     WHERE id=? AND label_printed_at IS NULL RETURNING id (hali commit qilinmagan;
+     0 qator → E012 → 422, chek YUBORILMAYDI)
   → require_printer(db, machine_id) → shu ish markazining printeri
      (biriktirilmagan bo'lsa NoPrinterBound → 422, chek YUBORILMAYDI)
   → queue.pool.enqueue_job("print_label", instance_id, agent_id)   ← commit'dan OLDIN
@@ -351,9 +381,9 @@ terminal → POST /api/v1/terminal/labels/{instance_id}
   → bridge-agent → print-queue.jsonl (durable) → Windows GDI (_print_png_gdi) → USB GoDEX G500-U
 ```
 
-Bridge-agent faqat printer ulangan kompyuterga o'rnatiladi va yorliq printerini nomidan o'zi topadi (`_detect_printer` — nomida `godex`/`xprinter`/`gprinter`/`tsc`/`zebra`/`argox`/`postek` bor birinchi Windows printeri; tsexda GoDEX ham, Xprinter ham bor); `PRINTER_NAME` env faqat qo'lda override uchun. Tsexdagi kompyuterda `mebelix-agent.exe` (PyInstaller onefile) ishlaydi — Python ham, pip ham, serverdagi `.env` tahriri ham kerak emas. Menejer, texnolog va boshqa terminallarga hech narsa o'rnatilmaydi — ular brauzerdan tugmani bosadi.
+Bridge-agent faqat printer ulangan kompyuterga o'rnatiladi va yorliq printerini nomidan o'zi topadi (`_detect_printer` — nomida `godex`/`xprinter`/`gprinter`/`tsc`/`zebra`/`argox`/`postek` bor birinchi Windows printeri; tsexda GoDEX ham, Xprinter ham bor); `PRINTER_NAME` env faqat qo'lda override uchun. Tsexdagi kompyuterda `mebelix-agent.exe` (PyInstaller onefile) ishlaydi — Python ham, pip ham, serverdagi `.env` tahriri ham kerak emas. Menejer, texnolog va boshqa terminallarga hech narsa o'rnatilmaydi — ular brauzerdan tugmani bosadi. Istisno: ish markaziga chek qurilmasi (`terminal_device`) ULANGAN bo'lsa, o'sha ish markazining cheki faqat ulangan brauzerdan (postning monoblokidan) chiqadi — boshqa qurilmadan, masalan shaxsiy hisob bilan kirilgan telefondan, bosilgan tugma E011 oladi (quyida «Chek qurilmasi» bandi). Chekning PNG rasmi (`GET /terminal/labels/{instance_id}.png`) ham faqat ofisga: `require_roles(MANAGER, TEXNOLOG)` (admin/superuser o'zi o'tadi), terminal va post hisoblari 403 oladi — aks holda telefondagi rasm istalgan printerdan chiqarilib, E011 va E012 aylanib o'tilardi.
 
-**`/ws/bridge` autentifikatsiyasi — per-agent pairing.** Admin panel har bir printerli kompyuter uchun 8 belgili bir martalik ulanish kodi beradi (alifboda I/L/O/0/1 yo'q — telefonda aytganda adashtirmaydi; TTL 15 daqiqa). Agent birinchi ishga tushganda kodni ochiq `POST /api/v1/bridge-agents/pair` endpointi orqali doimiy tokenga almashtiradi; bazada tokenning faqat sha256 xeshi qoladi (`bridge_agent.token_hash`, unikal) — token o'zi bir marta, pair javobida beriladi.
+**`/ws/bridge` autentifikatsiyasi — per-agent pairing.** Admin panel har bir printerli kompyuter uchun 8 belgili bir martalik ulanish kodi beradi (alifboda I/L/O/0/1 yo'q — telefonda aytganda adashtirmaydi; TTL 15 daqiqa; generator — `bridge_agents.py: new_pair_code()` + `PAIR_TTL`, chek qurilmalari (`terminal_devices.py`) ham aynan shularni import qiladi). Agent birinchi ishga tushganda kodni ochiq `POST /api/v1/bridge-agents/pair` endpointi orqali doimiy tokenga almashtiradi; bazada tokenning faqat sha256 xeshi qoladi (`bridge_agent.token_hash`, unikal) — token o'zi bir marta, pair javobida beriladi.
 
 Ulanishda token `Authorization: Bearer` headerda keladi (server access-loglariga tushmasligi uchun; `?token=` query eski agentlar uchun fallback). Tekshiruv tartibi: avval legacy `settings.BRIDGE_TOKEN` bilan `secrets.compare_digest` orqali solishtiriladi, mos kelmasa token sha256'si bo'yicha `bridge_agent` jadvalidan qidiriladi; topilmasa socket `WS_CLOSE_UNAUTHORIZED` (4401) bilan yopiladi. Handshake'dagi `X-Agent-Version` header agent exe versiyasi sifatida saqlanadi. Ulanish davomida har 300 soniyada `touch_agent()` ishlaydi — `last_seen_at`ni yangilaydi (paneldagi "Ulandi"), `version`ni yozadi va `can_print`ni qayta o'qiydi (admin belgini o'zgartirsa ~5 daqiqada kuchga kiradi). **Bekor qilish esa deyarli DARHOL kuchga kiradi:** `bridge_agents.py` "yangi kod"/"o'chirish"da `agent_revoked_key(agent_id)` Redis bayrog'ini 10 daqiqaga qo'yadi, `/ws/bridge` esa uni HAR brpop iteratsiyasida o'qiydi — kechikish ≤ ~5 s. Ilgari yagona tekshiruv o'sha 300 soniyalik `touch_agent()` edi va bekor qilingan token shu vaqt davomida chek olib chop etaverardi (prod-repro bilan o'lchangan: 295 s); endi `touch_agent()` — zaxira tekshiruv: agent qatori yo'q bo'lsa yoki `token_hash` almashgan bo'lsa u ham 4401 bilan uzadi. Ikkala yo'lda ham qo'lda turgan job `rpush` bilan AYNAN kelgan kalitiga qaytariladi — yo'qolmaydi.
 
@@ -364,6 +394,15 @@ Ulanish/uzilish/pairing panelga `bridge.connected` / `bridge.disconnected` / `br
 **Skan-forvard va printersiz stansiyalar.** `bridge_agent.machine_id` agentni ish markaziga bog'laydi: stanok skaneri o'qigan QR agent orqali `POST /api/v1/bridge-agents/scan` endpointiga (agent tokeni bilan) yuboriladi va bog'langan ish markazining terminalidagi AKTIV sessiya nomidan odatdagi skan yo'li bilan yoziladi. `can_print=False` agent (masalan, Nanxing skan-forvard stansiyasi — printeri yo'q) ulanib turadi, lekin chek OLMAYDI: BRPOP o'rniga 5s uxlaydi — aks holda chekni "o'g'irlab" lokalida qoldirardi. Shart aslida IKKITA (`if can_print and own_keys`): `own_keys` bo'sh bo'lgani uchun legacy umumiy `BRIDGE_TOKEN` bilan ulangan agent (`agent_id is None`) ham HECH QACHON chek olmaydi — u qaysi ish markazi ekani noma'lum, unga chek berish yana o'sha tasodif bo'lardi. Ya'ni legacy token faqat WS handshake'dan o'tkazadi: chop etish uchun ham, skan-forvard uchun ham (`/bridge-agents/scan` juftlangan tokenni talab qiladi) yaroqsiz. Ikkala maydonni admin `PATCH /api/v1/bridge-agents/{agent_id}` bilan boshqaradi (endpoint tafsilotlari: `docs/03-backend-api.md`).
 
 **Bog'liq fayllar (core'dan tashqarida):** `backend/app/models/bridge_agent.py` (`bridge_agent` jadvali: `organization_id`, `name`, `token_hash`, `pair_code`, `pair_expires_at`, `last_seen_at`, `machine_id` (FK `machine.id`, skan-forvard), `version` (agent exe versiyasi), `can_print` (default `True`)), migratsiyalar `d5e81a24c3b7` (pairing), `f4b8c2a91e55` (machine), `a7c3e9d12f04` (version), `d4f7a8c25e91` (can_print), `backend/app/crud/__init__.py` (`crud_bridge_agents` — `BaseCRUD[BridgeAgent]`, o'z moduli yo'q), `backend/app/schemas/bridge_agents.py`, `backend/app/api/routes/bridge_agents.py`.
+
+**Chek qurilmasi (`terminal_device`) — chek chiqarishni post monoblokiga bog'lash.** Terminal hisobi odamga bog'langan: `resolve_terminal` postni roldan, ish markazini hisobdan oladi. Shuning uchun arrachi shaxsiy hisobi bilan telefondan kirganda ham chek ARRA printeridan chiqardi — 2026-09-24 da bitta nusxaning ikki bir xil cheki ikki xil detalga yopishtirilgan. Ulanish `bridge_agent` naqshida:
+1. Admin `/agents` sahifasining ikkinchi bo'limida qurilma yaratadi (`POST /api/v1/terminal-devices/`, `machine_id` majburiy) va 8 belgili bir martalik kod oladi (`new_pair_code()`, 15 daqiqa).
+2. Postning monoblokida terminal header'ida «Qurilmani ulash» tugmasi chiqadi (`TerminalContext.print_pairing` — ish markazida kodi amal qilayotgan qurilma bor). Kod `POST /api/v1/terminal-devices/pair` ga yuboriladi: endpoint `TerminalUser` + `TerminalCtx` talab qiladi, ya'ni kod faqat chaqiruvchining O'Z ish markazidagi qurilmada ishlaydi (atomik `UPDATE ... WHERE machine_id=? ... RETURNING`; aks holda 400, kod boshqa ish markaziniki bo'lsa o'sha ish markazi nomi aytiladi). `paired_at` va `paired_user_agent` saqlanadi — admin panelda qurilma turi (telefon/kompyuter) shundan ko'rinadi.
+3. Javobda token YO'Q — u faqat httpOnly `terminal_device` cookie'sida (yuqorida `core/security.py` bandi).
+
+Tekshiruv `services/terminal_device.py: print_device()` da. Cheklov yoqilgan = ish markazida kamida bitta ulangan, o'chirilmagan qurilma bor; cookie xeshi `hmac.compare_digest` bilan solishtiriladi. Qurilmaning `last_seen_at` i daqiqasiga ko'pi bilan bir marta yangilanadi (`touch_device`, `_SEEN_EVERY`). Kodni qayta berish (`POST /terminal-devices/{device_id}/code`) eski tokenni darhol bekor qiladi (`token_hash`, `last_seen_at`, `paired_at`, `paired_user_agent` tozalanadi); o'chirish (`DELETE /terminal-devices/{device_id}`, soft delete) ham. Ish markazining yagona ulangan qurilmasi shunday ketsa cheklov qayta ulanguncha o'chadi — `DELETE` javobi buni aytadi. Terminal kontekstida `print_lock` / `print_allowed` / `print_device_name` / `print_pairing` maydonlari bor: `print_lock && !print_allowed` bo'lsa header qizil «Chek chiqmaydi» belgisini ko'rsatadi, chek tugmalari esa yashirilmaydi — to'siq serverda (E011). Admin paneli va terminal pollingni kutmasdan darhol yangilanadi (`terminal_device.code` / `terminal_device.paired` / `terminal_device.deleted` eventlari, `machine_id` bilan; admin ro'yxatida 30 s polling faqat zaxira).
+
+**Bog'liq fayllar:** `backend/app/models/terminal_device.py` (`terminal_device` jadvali: `organization_id`, `name`, `machine_id` (FK `machine.id`, NOT NULL), `token_hash` (unikal), `pair_code`, `pair_expires_at`, `last_seen_at`, `paired_at`, `paired_user_agent`), migratsiya `b3e7c5a90d14`, `backend/app/crud/__init__.py` (`crud_terminal_devices`), `backend/app/schemas/terminal_devices.py`, `backend/app/api/routes/terminal_devices.py` (5 ta endpoint: 4 tasi admin, `pair` — terminal), `backend/app/services/terminal_device.py`.
 
 ---
 
@@ -427,4 +466,4 @@ Ikkalasi ham bo'sh — faqat Python package marker vazifasini bajaradi, hech qan
 - **Yagona konfiguratsiya manbasi:** hamma narsa `Settings` singleton'idan keladi; har qanday non-local (staging/production) muhitda xavfsiz bo'lmagan default'lar bilan boot bloklanadi.
 - **Fail-fast startup, fail-closed rate limit:** DB/Redis ulanishi startup'da retry bilan tekshiriladi (ishlamasa ilova ko'tarilmaydi); runtime'da Redis yiqilsa rate limit **fail-closed** ishlaydi — cheklangan endpointlar 429 qaytaradi (brute-force himoyasi jimgina o'chib qolmaydi). Uni o'chiradigan sozlama yo'q.
 - **Kuzatuvchanlik (observability):** JSON loglar + `X-Request-ID` korrelatsiyasi + Prometheus `/metrics` + «Tizim holati» (`core/perf.py` → `services/system_health.py` → `GET /system/*`, admin: endpoint vaqtlari route shabloni bo'yicha va har endpoint tafsiloti, event loop bloklari ehtimoliy aybdori bilan, chek kechikishi va navbati, `pg_stat_statements` dan og'ir SQL; yon menyuda holat belgisi); health/ready pathlari shovqin qilmasligi uchun `NON_BUSINESS_PATHS` orqali chiqarib tashlangan.
-- **Xavfsizlik defaults:** httpOnly + SameSite=Strict cookie'lar, HS256 JWT (access/refresh ajratilgan, `token_version` bilan revocation, refresh'da unikal `jti`), bcrypt (hash ham, verify ham) threadpool'da, docs production'da yopiq.
+- **Xavfsizlik defaults:** httpOnly + SameSite=Strict cookie'lar (auth juftligi — `core/security.py`, chek qurilmasining `terminal_device` cookie'si — `services/terminal_device.py`, bayroqlari bir xil), HS256 JWT (access/refresh ajratilgan, `token_version` bilan revocation, refresh'da unikal `jti`), bcrypt (hash ham, verify ham) threadpool'da, docs production'da yopiq.

@@ -242,17 +242,24 @@ openssl enc -d -aes-256-cbc -pbkdf2 -in FILE.tar.gz.enc | tar -xz            # f
 
 Printer tsexda, server esa masofada (`mes.mebelix.uz`) turadi. GoDEX G500-U **faqat USB** — unda tarmoq porti umuman yo'q, ya'ni printerga IP orqali murojaat qilish imkoni yo'q. Shuning uchun oraliqda **bridge-agent** — printer ulangan kompyuterda ishlaydigan, serverga **chiquvchi** (outbound) WebSocket ochadigan servis. Manbasi bitta Python fayl (`bridge-agent/agent.py`), tsexga esa u **Windows exe** (`mebelix-agent.exe`) sifatida boradi — o'rnatiladigan mashinada Python ham, kutubxona ham kerak emas. Tsex tarmog'ida hech qanday port ochilmaydi, oq IP kerak emas.
 
-Agent faqat **tsex kompyuterlariga** o'rnatiladi — printer ulangan kompyuterga (chek) va/yoki stanok skaneri yoki signal ustuni (Pico) ulangan stanok kompyuteriga (skan-forvard, andon; `can_print` o'chiq bo'lishi mumkin); menejer, texnolog va oddiy post terminallariga hech narsa kerak emas — ular brauzerdan tugmani bosadi.
+Agent faqat **tsex kompyuterlariga** o'rnatiladi — printer ulangan kompyuterga (chek) va/yoki stanok skaneri yoki signal ustuni (Pico) ulangan stanok kompyuteriga (skan-forvard, andon; `can_print` o'chiq bo'lishi mumkin); menejer, texnolog va oddiy post terminallariga hech narsa kerak emas — ular brauzerdan tugmani bosadi. Istisno: ish markaziga **chek qurilmasi** ulangan bo'lsa, o'sha ish markazining cheki faqat ulangan monoblok brauzeridan chiqadi — bu ham o'rnatiladigan dastur emas, brauzerdagi httpOnly cookie (pastdagi "Chek qurilmalari" bo'limi).
 
 ### Zanjir (uchdan-uchgacha)
 
 ```
 Terminal (arrachi)
   POST /api/v1/terminal/labels/{instance_id}          (backend/app/api/routes/terminal.py)
-    ├── instance.label_printed_at = now()
-    ├── ws_manager.publish("label.printed", …)         → brauzerlarga live yangilanish
-    └── require_printer(db, machine_id) → arq enqueue_job("print_label", instance_id, agent_id)
-          (agent biriktirilmagan bo'lsa NoPrinterBound → 422, chek YUBORILMAYDI)
+    ├── require_print_device(db, request, user, machine) (backend/app/services/terminal_device.py)
+    │     (ish markazida ULANGAN chek qurilmasi bor, brauzer cookie'si esa mos emas → E011 → 422:
+    │      chek yozilmaydi, navbatga qo'yilmaydi, urinish audit-logga tushadi; "Chek qurilmalari" bo'limi)
+    ├── _claim_label: UPDATE … SET label_printed_at = now() WHERE id = ? AND label_printed_at IS NULL RETURNING id
+    │     (0 qator = chek allaqachon chiqarilgan → E012 → 422; qayta chiqarish bekor
+    │      qilishdan keyin — DELETE /terminal/labels/{id} (yoki brak qayta ochilganda);
+    │      atxot cheki ham shunday)
+    ├── require_printer(db, machine_id) → arq enqueue_job("print_label", instance_id, agent_id)
+    │     (agent biriktirilmagan bo'lsa NoPrinterBound → 422, chek YUBORILMAYDI)
+    ├── commit                                         (navbatga qo'yish commit'dan OLDIN)
+    └── ws_manager.publish("label.printed", …)         → brauzerlarga live yangilanish
           ↓
   print_label task                                     (backend/app/tasks/__init__.py)
     ├── load_label_data(db, instance_id)               (backend/app/services/labels.py)
@@ -300,7 +307,7 @@ Oqim:
 
 ### Admin panel — "MES agentlar"
 
-`frontend/src/routes/_layout/agents.tsx`, faqat admin. Sahifada: sarlavha tavsifidagi "mebelix-agent.exe yuklab olish" havolasi (`GET /api/v1/bridge-agents/download`), uch qatorli o'rnatish yo'riqnomasi va agentlar jadvali — nomi (ostida rol: «chek + skan-forvard» / «faqat chek (ofis / beyjik)» / «faqat skan-forvard» / «ish yo'q»), holati (ulangan — `paired` — agentda onlayn ham, oflayn ham yonida versiya belgisi; ulanmagan agentda shu katakda ulanish kodi — alohida kod ustuni yo'q), ish markazi bog'lami (skan-forvard), chek chiqarish ruxsati, oxirgi ulanish vaqti, amallar.
+`frontend/src/routes/_layout/agents.tsx`, faqat admin. Sahifada: sarlavha tavsifidagi "mebelix-agent.exe yuklab olish" havolasi (`GET /api/v1/bridge-agents/download`), uch qatorli o'rnatish yo'riqnomasi va agentlar jadvali — nomi (ostida rol: «chek + skan-forvard» / «faqat chek (ofis / beyjik)» / «faqat skan-forvard» / «ish yo'q»), holati (ulangan — `paired` — agentda onlayn ham, oflayn ham yonida versiya belgisi; ulanmagan agentda shu katakda ulanish kodi — alohida kod ustuni yo'q), ish markazi bog'lami (skan-forvard), chek chiqarish ruxsati, oxirgi ulanish vaqti, amallar. Agentlar jadvali ostida ikkinchi bo'lim — **"Chek qurilmalari (post monobloklari)"** (`frontend/src/components/Agents/TerminalDevices.tsx`; pastdagi alohida bo'lim).
 
 | Holat | Qachon |
 |---|---|
@@ -315,6 +322,26 @@ Amallar: **yangi kod** (`POST /{id}/code` — eski tokenni ham bekor qiladi, kom
 
 Har agent qatorida **"Loglar"** dialogi bor (`AgentLogs` → `GET /{id}/logs`). Zanjir: agent har **30 sekundda** bufer log satrlarini `POST /bridge-agents/logs` ga yuboradi (`log_shipper`, HTTP — ataylab `/ws/bridge` orqali emas: o'sha soketda log xabari job ack'i o'rniga o'qilib chop etishni buzardi; yuborilmasa satrlar tashlab yuboriladi, fayl nusxasi baribir kompyuterda qoladi), server ularni Redis ro'yxatida saqlaydi (`mes:agent:log:{id}`, oxirgi `AGENT_LOG_KEEP = 200` satr, TTL 7 kun). Tsexga bormasdan diagnostika qilishning asosiy yo'li aynan shu.
 
+### Chek qurilmalari — chek faqat post monoblokidan (2026-09-24)
+
+Terminal hisobi qurilmaga emas, ODAMGA bog'langan: `resolve_terminal` postni roldan, ish markazini hisobdan oladi. Ya'ni arrachi o'z hisobi bilan TELEFONDAN kirganda ham chek postdagi printerdan chiqardi — 2026-09-24 da shu yo'l bilan bitta nusxaning ikki bir xil cheki chiqib, ikki xil detalga yopishtirilgan. Yechim ikki qatlamli: (1) **chek qurilmalari** — `/agents` sahifasining ikkinchi bo'limi "Chek qurilmalari (post monobloklari)" (backend: `backend/app/api/routes/terminal_devices.py`, `backend/app/services/terminal_device.py`, jadval `terminal_device`, migratsiya `b3e7c5a90d14` — faqat `create_table` + ikki indeks, ya'ni additiv, expand/contract qoidasiga mos); (2) **bir nusxa — bir chek**: `_claim_label` atomik UPDATE'i (yuqoridagi zanjir, `E012`).
+
+Oqim — agent pairing'i naqshida, kod generatori va muddati ham o'sha (`bridge_agents.new_pair_code`, `PAIR_TTL` 15 daqiqa):
+
+1. **Kod.** Admin "Yangi qurilma" → nom + ish markazi (MAJBURIY) → 8 belgili bir martalik kod (`POST /api/v1/terminal-devices/`, `AdminUser`).
+2. **Kiritish.** Shu ish markazi terminalida sarlavhada «Qurilmani ulash» tugmasi chiqadi (`context.print_pairing` va brauzer hali ulanmagan; WS `terminal_device.*` hodisasi bilan sahifa yangilanmasdan). Kod `POST /api/v1/terminal-devices/pair` ga ketadi — u admin emas, TERMINAL hisobi bilan ishlaydi (`TerminalUser` + `TerminalCtx`) va kod faqat O'Z ish markazining qurilmasiga mos keladi: arra kodi rover monoblokida kiritilsa 400 (kod boshqa ish markaziniki bo'lsa xabar o'sha ish markazini nomlaydi). UPDATE atomik — bitta kodni ikki brauzer yuborsa faqat bittasi yutadi. Kod qaysi brauzerda kiritilgani (user-agent) saqlanadi: panel qurilma turini ko'rsatadi, telefon bo'lsa qizil **TELEFON** ogohlantirishi bilan — "Qurilmani ulash" o'sha ish markazi hisobidagi telefonda ham chiqadi, ya'ni kodni monoblokdan boshqa joyda kiritib qo'yish ko'rinib turishi kerak.
+3. **Cookie.** Javobda token YO'Q: u httpOnly cookie `terminal_device` ga yoziladi, bazada — sha256 xeshi. Cookie auth cookie'lari bilan bir xil qoidada (`backend/app/core/security.py`): `SameSite=Strict`, `Secure` — non-LOCAL muhitda. `max-age` 400 kun (Chrome chegarasi); `GET /terminal/context` har ochilishda (cookie mos kelsa) uni qayta yozadi, ya'ni ishlab turgan monoblokda u tugamaydi.
+
+Qoida (`require_print_device`): ish markazida kamida bitta ULANGAN (`token_hash` bor, o'chirilmagan) qurilma bo'lsa, detal cheki (`POST /terminal/labels/{id}`), atxot cheki (`POST /terminal/waste/{id}/label`) va qadoq cheki (`POST /pachka/{id}/close`) faqat shu qurilmalardan birining cookie'si bor brauzerdan o'tadi. Aks holda chek yozilmasdan va navbatga qo'yilmasdan `E011` (422) qaytadi, urinish esa audit-logga tushadi (`module=print`, `action=device_rejected`, user-agent bilan) — admin Loglar sahifasida kim qaysi qurilmadan chek so'raganini ko'radi. Ataylab qilingan qarorlar:
+
+- ulangan qurilmasi yo'q ish markazida cheklov YO'Q — avvalgidek har qurilmadan chiqadi (joriy qilish bosqichma-bosqich);
+- kodi berilgan, lekin hali kiritilmagan qurilma cheklovni YOQMAYDI — aks holda kod yaratilgan lahzadan monoblokda kiritilguncha post chek chiqara olmasdi;
+- "yangi kod" (`POST /terminal-devices/{id}/code`) eski tokenni DARHOL bekor qiladi; ish markazining YAGONA qurilmasida bu qayta ulanguncha cheklovni o'chiradi (admin tasdiq oynasida shu yozilgan). "O'chirish" (`DELETE /terminal-devices/{id}`, soft delete) ham shunday — javob xabari ish markazida ulangan qurilma qolmaganini (cheklov o'chganini) aytadi;
+- faqat CHEK to'siladi — skan, xarita, smena telefondan ham ishlayveradi. Chek tugmalari yashirilmaydi (to'siq serverda); rad etiladigan brauzerda terminal sarlavhasida qizil «Chek chiqmaydi» tugmasi turadi (`print_lock && !print_allowed`);
+- chek RASMI (`GET /terminal/labels/{id}.png`) ham endi faqat ofisga — aks holda telefondagi ishchi rasmni olib chekni boshqa printerdan chiqara olardi (yuqoridagi "Yorliq PNG" jadvali).
+
+**Infra tomonda o'zgarish yo'q:** yangi `.env` kaliti ham, Caddyfile/compose tahriri ham kerak emas — cookie same-origin `/api*` so'rovlari bilan auth cookie'lari o'tgan yo'ldan o'tadi. **Ops eslatmasi:** token BRAUZER profilida turadi — monoblok almashsa, brauzer ma'lumotlari (cookie) tozalansa yoki boshqa brauzer ochilsa o'sha ish markazida chek chiqmaydi (E011); admin qurilmaga "yangi kod" berib qayta ulaydi.
+
 ### Yorliq PNG — bitta format
 
 `backend/app/services/labels.py` da yorliqning yagona chiqish formati bor:
@@ -322,7 +349,7 @@ Har agent qatorida **"Loglar"** dialogi bor (`AgentLogs` → `GET /{id}/logs`). 
 | Funksiya | Chiqish | Kim ishlatadi |
 |---|---|---|
 | `load_label_data(db, instance_id)` | `LabelData` (DB'dan yig'iladi, cutmap'dagi haqiqiy teshiklar bilan) | `print_label` task va PNG endpoint uchun umumiy manba |
-| `render_label_png(d)` | 80×60 mm, 203 dpi (8 dot/mm → 640×480 px), **1-bit** PNG | agent'ning Windows GDI yo'li; `GET /api/v1/terminal/labels/{id}.png` (brauzerdan istalgan printerga) |
+| `render_label_png(d)` | 80×60 mm, 203 dpi (8 dot/mm → 640×480 px), **1-bit** PNG | agent'ning Windows GDI yo'li; `GET /api/v1/terminal/labels/{id}.png` — brauzerdan istalgan printerga, **faqat ofis** (menejer/texnolog, admin/superuser; terminal va post hisoblari 403: telefondagi ishchi rasmni olib E011/E012 ni aylanib o'tmasin) |
 
 `print_label` task jobga base64 `png` va har yuborishda yangi `job_id` soladi — job JSON:
 `{"type": "print", "job_id", "instance_id", "png"[, "queued_at"]}`; agent takrorni `job_id` bo'yicha tashlaydi. `queued_at` (ixtiyoriy, arq navbatga qo'ygan lahza, unix soniya) server uchun — chek kechikishini o'lchaydi; agent uni e'tiborsiz qoldiradi. PNG printer dialektiga bog'liq emas — server hech qanday xom printer formatini generatsiya qilmaydi, chizishni Windows drayveri bajaradi.
@@ -565,3 +592,4 @@ Frontend dev qo'llanmasi: nvm/fnm bilan Node o'rnatish, `npm install` + `npm run
 - `scripts/generate-client.sh` → backend OpenAPI spec → `frontend/src/client/` (frontend va backend orasidagi kontrakt sinxronizatsiyasi).
 - Chop etish zanjiri: `backend/app/api/routes/terminal.py` (`POST /terminal/labels/{id}`) → `backend/app/tasks/__init__.py` (`print_label`) → `backend/app/services/labels.py` (`load_label_data` + `render_label_png` + `backend/app/assets/label-*.png`) → Redis `mes:print:queue:{agent_id}` → `backend/app/api/routes/ws.py` (`/ws/bridge`, `Authorization: Bearer`) → `bridge-agent/agent.py` (`_print_png_gdi`) → USB GoDEX.
 - Agent autentifikatsiyasi: `frontend/src/routes/_layout/agents.tsx` → `backend/app/api/routes/bridge_agents.py` (kod berish, `/pair`, `/scan`) → `bridge_agent` jadvali (`token_hash`, `last_seen_at`) → `backend/app/api/routes/ws.py` (`ws_bridge`, `touch_agent`) → `%APPDATA%\MebelixAgent\.env`.
+- Chek qurilmasi: `frontend/src/components/Agents/TerminalDevices.tsx` (admin, kod berish) + `frontend/src/components/Terminal/PrintDevice.tsx` (monoblokda kod kiritish) → `backend/app/api/routes/terminal_devices.py` (`/pair` → httpOnly cookie `terminal_device`) → `terminal_device` jadvali (`token_hash`, `pair_code`, `last_seen_at`) → `backend/app/services/terminal_device.py` (`require_print_device`) ← `terminal.py` (detal/atxot cheki) va `pachka.py` (`close_pachka`).

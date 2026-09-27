@@ -66,6 +66,8 @@ class ScanRejected(Exception):
       E008 ish allaqachon bajarilgan — xato emas, ogohlantirish
       E009 SOZLAMA xatosi (post/ish markazi yo'q) — admin tuzatadi, operator emas
       E010 stanok forvardi takrori — hech kim aybdor emas, skan terminalda yozilgan
+      E011 chek ulanmagan qurilmadan (telefon) — faqat post monobloki (`terminal_device`)
+      E012 chek allaqachon chiqarilgan — qayta chiqarish faqat bekor qilish orqali
 
     E007 server kodi emas: aloqa uzilganda terminal frontendi o'zi hosil qiladi.
 

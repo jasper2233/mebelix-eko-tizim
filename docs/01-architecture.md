@@ -5,13 +5,13 @@
 **MebeliX MES** — mebel ishlab chiqarishni boshqarish tizimi (Manufacturing Execution
 System) uchun to'liq ishlaydigan fullstack ilova. FastAPI fullstack template
 poydevorida (JWT + httpOnly cookie auth, users boshqaruvi) **to'liq MES domeni**
-qurilgan: `/v1` agregatorida **25 ta router** (health, login, public, logout, users,
+qurilgan: `/v1` agregatorida **26 ta router** (health, login, public, logout, users,
 clients, employees, machines, posts, orders, pachka, tmo, catalog, audit,
-terminal, downtimes, defects, defects-review, scans, settings, tablo, reports,
-system, bridge-agents, ws), **26 ta ORM model**
+terminal, terminal-devices, downtimes, defects, defects-review, scans, settings, tablo,
+reports, system, bridge-agents, ws), **27 ta ORM model**
 (Order/Product/Part/PartInstance/PartRoute/OrderFile/WasteItem, Client, Employee,
 Machine, Post, Organization, Pachka/PachkaItem, Scan/WorkSession, AuditLog,
-BridgeAgent, User, CatalogItem, PartDefect, Downtime/DowntimeReason, AndonEvent,
+BridgeAgent, TerminalDevice, User, CatalogItem, PartDefect, Downtime/DowntimeReason, AndonEvent,
 KromkaMeasurement, SystemSetting) va **16 ta `UserRole`** (admin, director, manager,
 texnolog, terminal, tablo, skladchi + 9 ta post operatori roli: arrachi, kromkachi, ovalchi,
 prisadkachi, roverchi, stolyar, boyoqchi, upakovkachi, omborchi).
@@ -176,6 +176,13 @@ Asosiy nuqtalar:
   Windows drayveri orqali USB GoDEX'ga chiqadi. G500-U'da tarmoq porti yo'q,
   shuning uchun yagona transport shu. Batafsil:
   [4.3](#43-yorliq-chop-etish-zanjiri).
+- **Chek qurilmasi qulfi va takror chek to'sig'i**: ish markaziga post monobloki
+  ulangan bo'lsa (`terminal_device`, httpOnly `terminal_device` cookie), detal,
+  atxot va qadoq cheki faqat o'sha brauzerdan chiqadi — telefondan yoki boshqa
+  kompyuterdan so'ralsa `E011`. Bitta nusxaning ikkinchi cheki esa `E012` bilan
+  rad etiladi (`label_printed_at IS NULL` sharti bilan atomik UPDATE). Chek
+  rasmi (`GET /terminal/labels/{id}.png`) terminal/post hisoblariga yopiq.
+  Batafsil: [4.3](#43-yorliq-chop-etish-zanjiri).
 - **Uchta lifespan Redis ulanishi**: ARQ job queue pool, rate limiting klienti va
   WebSocket pub/sub uchun alohida `ws_redis` (`AsyncRedis.from_url`, `mes:events`
   kanali — gunicorn worker'lar orasida `ws_manager` fan-out'ini ta'minlaydi).
@@ -282,10 +289,12 @@ Browser (React)                FastAPI                        PostgreSQL
 ```
 
 - Router ierarxiyasi: `/api` root → `/v1` agregator; auth **router darajasida**
-  qo'llanadi (`health`, `login`, `public` ochiq; `logout`, `users` va 18 ta MES routeri
-  — jumladan `system` («Tizim holati», endpoint ichida yana `AdminUser`) —
-  `get_current_user` ortida; `ws` va `bridge-agents` routerlari auth'ni o'zlari
-  hal qiladi — `bridge-agents` da `/pair` ochiq bo'lishi shart, `/scan`,
+  qo'llanadi (`health`, `login`, `public` ochiq; `logout`, `users` va 19 ta MES routeri
+  — jumladan `system` («Tizim holati», endpoint ichida yana `AdminUser`) va
+  `terminal-devices` (uning `/pair` i `bridge-agents` nikidan farqli OCHIQ EMAS,
+  `TerminalUser` + `TerminalCtx` talab qiladi) — `get_current_user` ortida; `ws` va
+  `bridge-agents` routerlari auth'ni o'zlari hal qiladi — `bridge-agents` da `/pair` ochiq
+  bo'lishi shart, `/scan`,
   `POST /logs` va `POST /andon` agentning Bearer tokeni bilan, `GET /latest` va `GET /download`
   esa umuman ochiq (agentda sessiya yo'q, exe sir emas); qolgan admin endpointlar
   har biri `AdminUser` bilan himoyalangan).
@@ -319,7 +328,9 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
    |                 |                     |                 |               |              |
    | POST /api/v1/terminal/labels/{instance_id}              |               |              |
    |---------------->|                     |                 |               |              |
-   |                 | label_printed_at=now (DB)             |               |              |
+   |                 | require_print_device (cookie; E011)   |               |              |
+   |                 | UPDATE label_printed_at=now           |               |              |
+   |                 |   WHERE ... IS NULL (0 qator: E012)   |               |              |
    |                 | enqueue_job("print_label", id) ------>|               |              |
    |                 | ws_manager: "label.printed"           |               |              |
    |                 |                     |<----------------|               |              |
@@ -332,8 +343,55 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
 ```
 
 - `POST /terminal/labels/{instance_id}` (`print_instance_label`,
-  `app/api/routes/terminal.py`) — `PartInstance.label_printed_at` yoziladi, ARQ'ga
-  `print_label` job qo'yiladi, `label.printed` WS eventi tarqatiladi.
+  `app/api/routes/terminal.py`) — avval `require_print_device` (chek qurilmasi,
+  pastda), keyin `_claim_label()` `label_printed_at` ni ATOMIK yozadi:
+  `UPDATE ... WHERE id=? AND label_printed_at IS NULL RETURNING id`. 0 qator
+  qaytsa (nusxaning cheki allaqachon chiqqan: xarita ikki qurilmada ochiq yoki
+  tugma ikki marta bosilgan) — `E012` (422 `{code, message}`, chiqqan vaqti
+  Toshkent vaqtida `dd-mm HH:MM`), job yaratilmaydi. Qayta chiqarish faqat
+  bekor qilish orqali (`DELETE /terminal/labels/{instance_id}`). Muvaffaqiyatda
+  `label_post_id` ham shu UPDATE'da yoziladi, ARQ'ga `print_label` job
+  qo'yiladi, `label.printed` WS eventi tarqatiladi. Atxot cheki
+  (`POST /terminal/waste/{waste_id}/label`) ham aynan shu ikki tekshiruvdan o'tadi.
+- **Chek qurilmasi (post monobloki)**: terminal hisobi qurilmaga emas, odamga
+  bog'langan (`resolve_terminal` postni roldan, ish markazini hisobdan oladi).
+  Shuning uchun arrachi telefondan o'z hisobiga kirsa ham chek postdagi printerdan
+  chiqardi — 2026-09-24 da bitta nusxaning ikki bir xil cheki ikki xil detalga
+  yopishtirilgan. Yechim — `terminal_device` jadvali
+  (`app/models/terminal_device.py`, migratsiya `b3e7c5a90d14`): `organization_id`,
+  `name`, `machine_id` (MAJBURIY), `token_hash` (tokenning sha256'i, unique),
+  `pair_code`, `pair_expires_at`, `last_seen_at` (daqiqasiga ko'pi bilan bir
+  marta yoziladi), `paired_at` va `paired_user_agent` (kod qaysi brauzerda
+  kiritilgani). Kod `bridge_agent` bilan bir xil: `new_pair_code()` (8 belgi) va
+  `PAIR_TTL` (15 daqiqa) `bridge_agents.py` dan olinadi.
+  `/terminal-devices` routeri (`app/api/routes/terminal_devices.py`, sxemalar
+  `app/schemas/terminal_devices.py`): `GET /` ro'yxat, `POST /` qurilma + kod,
+  `POST /{id}/code` yangi kod (`token_hash`, `last_seen_at`, `paired_at`,
+  `paired_user_agent` tozalanadi — eski brauzer darhol bekor), `DELETE /{id}`
+  soft-delete (javob matni ish markazida ulangan qurilma qolmagani, ya'ni
+  cheklov o'chganini aytadi) — barchasi `AdminUser`. `POST /pair` esa
+  `TerminalUser` + `TerminalCtx` bilan: kod faqat chaqiruvchining O'Z ish
+  markazidagi qurilmaga ishlaydi (atomik `UPDATE ... RETURNING`); boshqa ish
+  markazining kodi bo'lsa 400 xato matni o'sha ish markazini aytadi. Javobda
+  token YO'Q: u httpOnly `terminal_device` cookie'siga yoziladi
+  (`samesite=strict`, LOCAL'dan tashqarida `secure`, 400 kun). `GET
+  /terminal/context` mos cookie'ni har safar qayta yozadi, ya'ni ishlab turgan
+  monoblokda muddat tugamaydi. WS eventlari: `terminal_device.code`,
+  `terminal_device.paired`, `terminal_device.deleted` (payloadda `machine_id`).
+  Tekshiruv — `app/services/terminal_device.py: require_print_device()`. U
+  `print_instance_label`, `print_waste_item_label` va `close_pachka` (qadoq cheki)
+  da hech narsa yozilmasdan va navbatga qo'yilmasdan OLDIN chaqiriladi. Ish
+  markazida kamida bitta ULANGAN (`token_hash` bor, o'chirilmagan) qurilma bo'lsa,
+  so'rov shulardan biriga mos cookie bilan kelishi shart. Aks holda: rollback,
+  audit log (`module="print"`, `action="device_rejected"`, user-agent bilan),
+  commit va `E011` (422). Ataylab shunday qilingan:
+  - kodi kutilayotgan (hali ulanmagan) qurilma cheklovni YOQMAYDI;
+  - ish markazidagi yagona qurilmaga yangi kod berilsa, qayta ulanguncha cheklov
+    o'chadi;
+  - qurilmasiz ish markazi avvalgidek ishlaydi.
+  Faqat chek chiqarish to'siladi — skan, xarita va smena telefondan ham
+  ishlayveradi. Ish markazi aniqlanmasa tekshiruv o'tkazib yuboriladi
+  (`require_printer(None)` baribir 422 beradi).
 - `app/tasks/__init__.py` da to'rtta chop etish taski ro'yxatdan o'tadi
   (`all_tasks`): `print_label` (detal), `print_pachka_label` (qadoq),
   `print_waste_label` (foydali atxot) va `print_badge` (hodim beyjigi) — hammasi
@@ -452,8 +510,13 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   JIM almashtiradi (navbatda chek turgan yoki pairing ketayotgan bo'lsa —
   bo'shaguncha, ko'pi bilan 1 soat kutadi).
   Frontend tomoni: `frontend/src/routes/_layout/agents.tsx` ("MES agentlar",
-  exe havolasi va har agentning `v<version> → v<latest>` belgisi) va sidebar
-  yozuvi.
+  exe havolasi va har agentning `v<version> → v<latest>` belgisi). Sahifaning
+  ikkinchi bo'limi — «Chek qurilmalari (post monobloklari)»,
+  `components/Agents/TerminalDevices.tsx` (kod qaysi brauzerda kiritilgani
+  user-agent'dan taxmin qilinadi, telefon bo'lsa «TELEFON» ogohlantirishi).
+  Sidebar yozuvi ham bor. Kod ko'rinishi (`fmtCode`, `AB12-CD34`) va qolgan
+  muddat soati (`CodeTtl`) ikkala bo'lim uchun umumiy —
+  `components/Common/PairCode.tsx`.
 - `render_label_png()` (`app/services/labels.py`) — 80×60 mm, 203 dpi
   (8 dot/mm → 640×480 px). `draw.fontmode = "1"` (antialiasing yo'q) va yakuniy
   `convert("L").point(v < 160)` — chiqish sof 1-bit, drayver dither qilmasin.
@@ -481,7 +544,10 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   `order.cutmap["holes"][cell_id]` ni `part.label_num` bo'yicha topadi, `bores`
   aylana, `edge` esa qirradan ichkariga chiziqcha bo'lib chiziladi.
 - `GET /terminal/labels/{instance_id}.png` (`render_instance_label`) o'sha PNG'ni
-  brauzerga beradi — GoDEX bo'lmasa istalgan printerdan chop etish yo'li.
+  brauzerga beradi — GoDEX bo'lmasa istalgan printerdan chop etish yo'li. Endi
+  FAQAT ofis uchun: `require_roles(MANAGER, TEXNOLOG)` (admin va superuser o'zi
+  o'tadi), terminal va post hisoblari 403 oladi — aks holda telefondagi arrachi
+  rasmni olib `E011`/`E012` ni aylanib o'tib chekni o'zi chop eta olardi.
 
 ### 4.4 Buyurtma anketasi (mijoz so'rovnomasi + o'lchov varag'i)
 
@@ -570,6 +636,19 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
   kartochka ICHIDA: terminalda `ConfirmDialog` orqali, adminda to'g'ridan-to'g'ri.
   Material statistikasi terminal header'iga portal qilinadi — xarita
   balandligidan joy olmaydi.
+- Chek qurilmasi terminalda: `GET /terminal/context` to'rtta maydon qaytaradi —
+  `print_lock` (ish markazida ulangan qurilma bor), `print_allowed` (shu brauzer
+  chek chiqara oladimi), `print_device_name` va `print_pairing` (kodi
+  kutilayotgan qurilma bor). `components/Terminal/PrintDevice.tsx` dagi
+  `PrintDeviceChip` header'da faqat muammo bo'lsa chiziladi:
+  - `print_lock && !print_allowed` — qizil «Chek chiqmaydi»;
+  - `print_pairing && !print_device_name` — sariq «Qurilmani ulash».
+  Ikkalasi ham bosilganda `PrintDeviceDialog` ochiladi (kod kiritish →
+  `POST /terminal-devices/pair`). `terminal_device.*` WS eventlari (shu ish
+  markazining `machine_id` si bilan) kontekstni qayta so'ratadi — admin kod
+  bergach tugma sahifa yangilanmasdan chiqadi. Xaritadagi «Chop etish»
+  tugmasining o'zi bekitilmaydi: to'siq serverda (`E011`). Tasmadagi so'zlar
+  `lib/mes.ts` (`SCAN_CODE_WORDS`) da: `E011` «QURILMA», `E012` «CHIQQAN».
 - `components/Terminal/SheetSvg.tsx` (yangi) — bitta listning to'liq SVG renderi:
   detallar, ATXOT kataklari, kesim chiziqlari, teshiklar (`holeXY`,
   `edgeLocalXY`, `edgeBoreRect`), o'lchamlar zanjiri, zoom/pan/swipe;

@@ -68,6 +68,16 @@ class TerminalContext(BaseModel):
     #: Stanok signal ustuni (Pico) ulangan — to'xtash sababi oynasi va qulfdagi sabab faqat shunda.
     #: Oxirgi 7 kunda hodisa kelganmi (`andon_event`): Pico'siz postda sabab so'rash ma'nosiz.
     has_andon: bool = False
+    #: Ish markazida ulangan chek qurilmasi (`terminal_device`) bor — chek faqat undan
+    #: chiqadi. False = cheklov yo'q, har qurilmadan chiqadi (qurilma ulanmagan post).
+    print_lock: bool = False
+    #: SHU brauzer chek chiqara oladimi. print_lock=False bo'lsa doim True.
+    print_allowed: bool = True
+    #: Shu brauzer ulangan qurilma bo'lsa — uning nomi (admin bergan)
+    print_device_name: str | None = None
+    #: Ish markazida kodi kutilayotgan qurilma bor — terminal "Qurilmani ulash"
+    #: tugmasini ko'rsatadi (admin kodni yaratgan, monoblokda hali kiritilmagan)
+    print_pairing: bool = False
 
 
 class TerminalOrderCard(BaseModel):
