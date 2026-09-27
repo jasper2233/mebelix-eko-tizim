@@ -1,4 +1,5 @@
 import asyncio
+import gc
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -37,6 +38,12 @@ def set_threadpool_tokens() -> None:
 async def lifespan(app: FastAPI) -> AsyncGenerator:
     """Open Redis pools, verify connections, then yield. Closes pools on shutdown."""
     set_threadpool_tokens()
+    # Import paytida yaratilgan ~216 ming doimiy obyekt (modullar, sxemalar, marshrutlar) GC'ning har
+    # to'liq yig'imida qayta ko'rilardi: prodda har safar ~120 ms loop to'xtashi. Muzlatilgach 4–11 ms
+    # (prod probe, 2026-09-27). Avval yig'iladi: muzlatilgan chiqindi keyin hech qachon tozalanmaydi.
+    # Monitor'dan OLDIN — ishga tushishdagi bir martalik yig'im muzlash bo'lib yozilmasin
+    gc.collect()
+    gc.freeze()
     ws_redis: AsyncRedis | None = None
     # Har gunicorn ishchisi o'z loop'ini o'lchaydi, o'lchovni soniyasiga bir yozadi («Tizim holati», `core/perf.py`)
     perf_tasks = [asyncio.create_task(perf.lag_monitor()), asyncio.create_task(perf.flush_loop())]

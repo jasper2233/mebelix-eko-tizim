@@ -6,7 +6,8 @@ loglardan qo'lda, soatlab qidirildi. Bu modul o'sha savollarga doimiy javob yozi
 
 - har so'rov davomiyligi (route shabloni va ishchi pid bilan);
 - event loop bloki: loop kechikib uyg'onsa, o'sha paytda ISHLAB TURGAN (yoki shu orada
-  tugagan) so'rovlar ro'yxati bilan — eng uzoq ishlayotgani ehtimoliy aybdor;
+  tugagan) so'rovlar ro'yxati bilan — eng uzoq ishlayotgani ehtimoliy aybdor — va shundan
+  qanchasini Python GC olgani;
 - chek kechikishi: job navbatga qo'yilgandan agent qabul qilguncha.
 
 Yozish so'rovni kuttirmaydi va yiqitmaydi: qator xotiradagi buferga qo'shiladi,
@@ -18,6 +19,7 @@ LTRIM bilan cheklangan, bufer ham.
 """
 
 import asyncio
+import gc
 import json
 import logging
 import os
@@ -65,6 +67,13 @@ inflight: dict[int, tuple[Callable[[], str], float]] = {}
 #: (o'qish, keyin hisob, keyin javob) so'rov monitor uyg'onguncha tugab ulguradi — aybdor
 #: shu yerdan topiladi (tekshiruvda 6 tadan 5 ta shunday blok aybdorsiz yozilgani ushlangan)
 recent: deque[tuple[Callable[[], str], float, float]] = deque(maxlen=64)
+
+#: Shu ishchida Python GC yig'imlariga ketgan jami vaqt (s). Muzlash yozuvi o'z oynasidagi farqni
+#: oladi — «shundan GC»: 2026-09-27 prodda to'liq yig'im ~120 ms edi va qisqa muzlashlarning bir
+#: qismi aynan shu bo'lgani probe'da ko'rindi; jonli ishchida esa ko'rinmasdi. GC GIL ostida
+#: ishlaydi, ya'ni qaysi oqimda bo'lmasin loop'ni to'xtatadi — hammasi sanaladi.
+_gc_spent = 0.0
+_gc_t0 = 0.0
 
 _buf: dict[str, list[str]] = {REQ_KEY: [], LAG_KEY: [], PRINT_KEY: []}
 _client: AsyncRedis | None = None
@@ -130,15 +139,35 @@ def record_delivered(agent_id: int | None, job: dict[str, Any]) -> None:
     _add(PRINT_KEY, f"{time.time():.3f}|{agent_id}|{time.time() - queued_at:.3f}")
 
 
+def _gc_watch(phase: str, info: dict[str, int]) -> None:
+    global _gc_spent, _gc_t0
+    if phase == "start":
+        _gc_t0 = time.perf_counter()
+    else:
+        _gc_spent += time.perf_counter() - _gc_t0
+
+
 async def lag_monitor() -> None:
     """Ishchi hayoti davomida: loop kechikib uyg'onsa — blok, o'sha paytdagi so'rovlar bilan yoziladi."""
+    gc.callbacks.append(_gc_watch)
+    try:
+        await _watch_loop()
+    finally:
+        gc.callbacks.remove(_gc_watch)
+
+
+async def _watch_loop() -> None:
     while True:
         t0 = time.perf_counter()
+        gc0 = _gc_spent
         await asyncio.sleep(LAG_STEP_S)
         now = time.perf_counter()
         lag = now - t0 - LAG_STEP_S
         if lag < LAG_ALERT_S:
             continue
+        # Oyna [t0, now] uyquni ham o'z ichiga oladi: uyqu paytida boshlangan GC'ning kechikishdan oldingi
+        # qismi ham sanaladi — shuning uchun kechikishdan oshmaydi; xatosi kechikishning o'zi kabi ±qadam
+        gc_s = min(_gc_spent - gc0, lag)
         # Kechikish [t0, now] ichida: hali ishlayotganlar + shu oraliqda tugaganlar — shu oraliqda kamida bir
         # qadam (50 ms) ishlaganlari. Kechikish bitta blok emas, ketma-ket callback'lar ham bo'lishi mumkin,
         # ya'ni so'rov uning ICHIDA boshlanib CPU yegan bo'lishi mumkin (boshlanish bo'yicha kesish uni
@@ -149,8 +178,19 @@ async def lag_monitor() -> None:
             + [(name(), round((end - st) * 1000)) for name, st, end in recent if end - max(st, t0) >= LAG_STEP_S],
             key=lambda x: -x[1],
         )
-        logger.warning("Event loop %d ms bloklandi; ishlab turgan so'rovlar: %s", lag * 1000, busy[:5])
-        record = {"ts": time.time(), "lag_ms": round(lag * 1000), "pid": os.getpid(), "inflight": busy[:8]}
+        logger.warning(
+            "Event loop %d ms bloklandi (shundan GC %d ms); ishlab turgan so'rovlar: %s",
+            lag * 1000,
+            gc_s * 1000,
+            busy[:5],
+        )
+        record = {
+            "ts": time.time(),
+            "lag_ms": round(lag * 1000),
+            "pid": os.getpid(),
+            "inflight": busy[:8],
+            "gc_ms": round(gc_s * 1000),
+        }
         _add(LAG_KEY, json.dumps(record))
 
 

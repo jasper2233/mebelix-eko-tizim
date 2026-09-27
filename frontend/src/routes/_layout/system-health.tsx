@@ -592,7 +592,10 @@ function Body({
             uyg'ongan — bitta uzun hisob yoki ketma-ket ko'p qisqa ishlar sabab.
             Shu vaqt ichida o'sha ishchidagi so'rovlar, yangi kelganlari ham,
             navbatda turgan. Qatordagi birinchi so'rov o'sha paytda eng uzoq
-            ishlayotgani — ehtimoliy sabab; eng uzoq 8 tasi ko'rsatiladi.
+            ishlayotgani — ehtimoliy sabab; eng uzoq 8 tasi ko'rsatiladi. «GC» —
+            shu vaqtning qanchasini Python'ning xotira tozalagichi olgani: u
+            ishlaganda ham loop to'xtaydi. «—» — yozuv bu o'lchov qo'shilishidan
+            oldingi.
             {data.lag_count > data.lag_incidents.length &&
               ` ${data.lag_count} tadan oxirgi ${data.lag_incidents.length} tasi ko'rsatilgan.`}
           </>
@@ -603,6 +606,9 @@ function Body({
             <TableRow>
               <TableHead>Vaqt</TableHead>
               <TableHead className="text-right">Davomiyligi</TableHead>
+              <TableHead className="hidden text-right md:table-cell">
+                Shundan GC
+              </TableHead>
               <TableHead className="hidden text-right md:table-cell">
                 pid
               </TableHead>
@@ -628,6 +634,13 @@ function Body({
                       )}
                     >
                       {dur(i.lag_ms)}
+                      {/* Telefonda alohida ustun jadvalni yana 77 px kengaytirardi */}
+                      <div className="text-xs font-normal text-muted-foreground md:hidden">
+                        GC {i.gc_ms == null ? "—" : dur(i.gc_ms)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="num hidden text-right text-muted-foreground md:table-cell">
+                      {i.gc_ms == null ? "—" : dur(i.gc_ms)}
                     </TableCell>
                     <TableCell className="num hidden text-right md:table-cell">
                       {i.pid}
@@ -655,7 +668,7 @@ function Body({
                 )
               })
             ) : (
-              <EmptyRow colSpan={4}>Bu oraliqda server muzlamagan</EmptyRow>
+              <EmptyRow colSpan={5}>Bu oraliqda server muzlamagan</EmptyRow>
             )}
           </TableBody>
         </Table>
@@ -1061,7 +1074,8 @@ function SlowWhy({ s }: { s: EndpointDetail["slowest"][number] }) {
   return (
     <>
       Vaqtining {Math.round((s.frozen_ms / s.ms) * 100)}% i ishchi muzlagan
-      paytga to'g'ri keladi (muzlash {dur(s.freeze.lag_ms)}).
+      paytga to'g'ri keladi (muzlash {dur(s.freeze.lag_ms)}
+      {s.freeze.gc_ms ? `, shundan GC ${dur(s.freeze.gc_ms)}` : ""}).
       {eng && (
         <>
           {" "}

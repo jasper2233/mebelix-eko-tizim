@@ -45,6 +45,7 @@ def _incident(g: sh.Lag) -> LagIncident:
         lag_ms=g.lag_ms,
         pid=g.pid,
         inflight=[InflightRequest(path=p, elapsed_ms=ms) for p, ms in g.inflight],
+        gc_ms=g.gc_ms,
     )
 
 
@@ -181,6 +182,7 @@ async def read_system_perf_endpoint(_: AdminUser, method: str, route: str, minut
                     at=sh.to_dt(lag.ts),
                     lag_ms=lag.lag_ms,
                     inflight=[InflightRequest(path=p, elapsed_ms=e) for p, e in lag.inflight],
+                    gc_ms=lag.gc_ms,
                 )
                 if lag is not None
                 else None,

@@ -5,12 +5,15 @@ from typing import Any
 
 from fastapi import APIRouter
 from sqlalchemy import func, or_, select, text, true
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, defer
 
 from app.api.deps import CurrentUser, SessionDep
 from app.api.routes.orders._common import _get_visible_order
 from app.api.routes.reports import build_machine_time_report
+from app.core.coalesce import Coalesced
 from app.core.config import TASHKENT_TZ
+from app.core.db import local_session
 from app.core.exceptions import NotFoundException
 from app.models import (
     ORDER_FAT_COLUMNS,
@@ -342,7 +345,23 @@ async def read_tablo_machine(db: SessionDep, user: CurrentUser, machine_id: int)
 
 
 @router.get("/matrix", response_model=TabloMatrix, operation_id="read_tablo_matrix")
-async def read_tablo_matrix(db: SessionDep, _: CurrentUser) -> TabloMatrix:
+async def read_tablo_matrix(_: CurrentUser) -> TabloMatrix:
+    # Javob foydalanuvchiga bog'liq emas va hamma ekran uni bir paytda so'raydi — ishchida bir vaqtda
+    # bitta hisob, qolganlar kutadi; javob so'rov kelganidan eski bo'lmaydi (`core/coalesce.py`)
+    return await _matrix()
+
+
+async def _fresh_matrix() -> TabloMatrix:
+    # O'z sessiyasi: hisob uni boshlagan so'rovdan uzoq yashashi mumkin (o'sha mijoz uzilsa ham
+    # boshqalar kutyapti), so'rovning SessionDep'i esa so'rov bilan yopiladi
+    async with local_session() as db:
+        return await build_tablo_matrix(db)
+
+
+_matrix = Coalesced(_fresh_matrix)
+
+
+async def build_tablo_matrix(db: AsyncSession) -> TabloMatrix:
     posts = (
         (await db.execute(select(Post).where(Post.is_deleted == False).order_by(Post.order_index)))  # noqa: E712
         .scalars()

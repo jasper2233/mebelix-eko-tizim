@@ -62,6 +62,8 @@ class LagIncident(BaseModel):
     #: O'sha paytda ishlab turgan (yoki shu orada tugagan) so'rovlar — "METOD /shablon", eng uzoq
     #: ishlayotgani birinchi, ko'pi bilan 8 ta (`perf.lag_monitor`)
     inflight: list[InflightRequest]
+    #: Shundan Python GC yig'imlari (±50 ms); `None` — yozuv bu o'lchovdan oldingi
+    gc_ms: int | None = None
 
 
 class PrintStat(BaseModel):
@@ -146,6 +148,7 @@ class FreezeMatch(BaseModel):
     at: datetime
     lag_ms: int
     inflight: list[InflightRequest]
+    gc_ms: int | None = None  # `LagIncident.gc_ms` kabi
 
 
 class SlowRequest(BaseModel):

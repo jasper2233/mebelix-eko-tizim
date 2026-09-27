@@ -2106,6 +2106,10 @@ export type FreezeMatch = {
      * Inflight
      */
     inflight: Array<InflightRequest>;
+    /**
+     * Gc Ms
+     */
+    gc_ms?: number | null;
 };
 
 /**
@@ -2568,6 +2572,10 @@ export type LagIncident = {
      * Inflight
      */
     inflight: Array<InflightRequest>;
+    /**
+     * Gc Ms
+     */
+    gc_ms?: number | null;
 };
 
 /**

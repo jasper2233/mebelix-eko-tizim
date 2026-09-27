@@ -98,6 +98,8 @@ class Lag(NamedTuple):
     pid: int
     #: "METOD /shablon" (eskisi — faqat yo'l), eng uzoq ishlayotgani birinchi, ko'pi bilan 8 ta
     inflight: list[tuple[str, int]]
+    #: Shundan Python GC yig'imlari; `None` — yozuv bu o'lchov qo'shilishidan (2026-09-27) oldingi
+    gc_ms: int | None = None
 
     @property
     def start(self) -> float:
@@ -119,7 +121,13 @@ def lag_ts(line: str) -> float:
 
 def parse_lag(line: str) -> Lag:
     rec = json.loads(line)
-    return Lag(ts=rec["ts"], lag_ms=rec["lag_ms"], pid=rec["pid"], inflight=[(p, ms) for p, ms in rec["inflight"]])
+    return Lag(
+        ts=rec["ts"],
+        lag_ms=rec["lag_ms"],
+        pid=rec["pid"],
+        inflight=[(p, ms) for p, ms in rec["inflight"]],
+        gc_ms=rec.get("gc_ms"),
+    )
 
 
 @dataclass(slots=True)
