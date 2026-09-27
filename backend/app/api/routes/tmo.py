@@ -191,7 +191,7 @@ async def _state(db: SessionDep, order: Order, post: Post) -> TmoOrderState:
 
 @router.get("/orders/{order_id}", response_model=TmoOrderState, operation_id="read_tmo_order")
 async def read_tmo_order(db: SessionDep, ctx: WhCtx, order_id: int) -> TmoOrderState:
-    """TMO sahifasi: qadoqlar, qabul qilinmagan nusxalar, topshirish holati."""
+    """Buyurtmaning TMO holati. Frontend 2026-09-04 dan chaqirmaydi (docs/03)."""
     _machine, post = ctx
     order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
     return await _state(db, order, post)

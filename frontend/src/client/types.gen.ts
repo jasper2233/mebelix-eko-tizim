@@ -5350,7 +5350,7 @@ export type TmoDone = {
 /**
  * TmoOrderState
  *
- * TMO post sahifasi: qabul (skan) va topshirish tablari uchun bitta holat.
+ * Buyurtmaning TMO holati: kelgan/qabul qilingan sonlar va nusxalar ro'yxati.
  */
 export type TmoOrderState = {
     /**

@@ -1235,7 +1235,7 @@ export class TmoService {
     /**
      * Read Tmo Order
      *
-     * TMO sahifasi: qadoqlar, qabul qilinmagan nusxalar, topshirish holati.
+     * Buyurtmaning TMO holati. Frontend 2026-09-04 dan chaqirmaydi (docs/03).
      */
     public static readTmoOrder<ThrowOnError extends boolean = true>(options: Options<ReadTmoOrderData, ThrowOnError>): RequestResult<ReadTmoOrderResponses, ReadTmoOrderErrors, ThrowOnError> {
         return (options.client ?? client).get<ReadTmoOrderResponses, ReadTmoOrderErrors, ThrowOnError>({

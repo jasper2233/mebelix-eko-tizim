@@ -97,8 +97,9 @@ function formatSince(iso: string): string {
   return min % 60 ? `${h} soat ${min % 60} daq` : `${h} soat`
 }
 
-/** O'chirishga to'siqlar — server `_blockers` bilan bir xil ro'yxat, lekin
- * tugma bosilmasdan OLDIN ko'rinadi (title). */
+/** O'chirishga to'siqlar tugma bosilmasdan OLDIN (title) — server `_blockers` ning
+ * taxminiy nusxasi. Ochiq smena `on_shift` dan olinadi, u faqat BUGUN ochilgan
+ * smenalarni sanaydi: kechadan qolgan smenada tugma faol, server esa 409 beradi. */
 function blockers(o: MachineOverview | undefined): string[] {
   if (!o) return []
   const out: string[] = []

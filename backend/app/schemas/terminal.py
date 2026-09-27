@@ -550,7 +550,7 @@ class TmoDone(BaseModel):
 
 
 class TmoOrderState(BaseModel):
-    """TMO post sahifasi: qabul (skan) va topshirish tablari uchun bitta holat."""
+    """Buyurtmaning TMO holati: kelgan/qabul qilingan sonlar va nusxalar ro'yxati."""
 
     order_id: int
     order_number: str
