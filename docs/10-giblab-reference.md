@@ -98,15 +98,16 @@ Bitta teg, oltita turdagi ma'lumot uchun:
 | `sheet` | Listli material. `l`/`w`/`t` (default 2750×1830×18), `count` | ✅ material registri |
 | `band` | Pogonaj material — kromka lentasi, profil, quvur. `w`/`t`, `count` metrda | ✅ material registri |
 | `simple` | **Furnitura**: petlya, yevrovint, dasta, napravlyayushiye. `unit`, `count`, `cost` | ✅ material registri (`hardware`) |
-| `tool.cutting` | Kesish dastgohi sozlamalari. **`swSawthick` — pilla qalinligi (kerf), default 4.4 mm**. Qaysi good ekanini CS operatsiyasining `tool1` atributi ko'rsatadi (§3.1) | ✅ faqat kerf |
+| `tool.cutting` | Kesish dastgohi sozlamalari. **`swSawthick` — pilla qalinligi (kerf), default 4.4 mm**. Qaysi good ekanini CS operatsiyasining `tool1` atributi ko'rsatadi (§3.1) | ❌ o'qilmaydi (xarita blobdan chiziladi; kerf 2026-09-27 gacha o'qilardi, lekin 2026-09-03 dan hech qayerda ko'rsatilmasdi) |
 | `tool.edgeline` | Kromkalash dastgohi. `elRestSide`, **`elWidthPreJoint` — prifugovka kengligi** | ❌ o'qilmaydi (qiymati hech qayerda ishlatilmasdi, 2026-08-05 da olib tashlandi) |
 
 `tool.cutting` ning qolgan atributlari (`swPackageHeight`, `swMaxturns`, `swSort`,
 `swSortInBand`, `swComplexBand`, `swMinSizeBand`, `swMaxSizeBand`, `swMaxLengthBand`,
-`swMinPruning`) — **optimizator sozlamalari**: GibLab xaritani ular bilan hisoblagan. Biz
-xaritani qayta hisoblamaymiz, shuning uchun o'qilmaydi. Korpusda eski eksportda `tool.cutting`
-butunlay bo'sh keladi — o'shanda kerf spetsifikatsiyadagi standart 4.4 mm bo'ladi
-(ilgari bu yerda 3.0 turardi, ya'ni arrachiga GibLab ishlatganidan boshqa raqam ko'rinardi).
+`swMinPruning`) ham, `swSawthick` ham — **optimizator sozlamalari**: GibLab xaritani ular bilan
+hisoblagan. Biz xaritani qayta hisoblamaymiz (kerf va torsovka blob geometriyasida allaqachon
+bor), shuning uchun o'qilmaydi (`parser.py` modul izohi). Korpusda eski eksportda `tool.cutting`
+butunlay bo'sh keladi — GibLab o'shanda spetsifikatsiyadagi standart 4.4 mm kerf bilan hisoblagan
+(MES ilgari bu holatda arrachiga 3.0 ko'rsatardi).
 
 `elWidthPreJoint` — §2.2 dagi `l/w` → `jl/jw` farqini tushuntiruvchi qiymat: kromkalash
 dastgohi har tomondan shuncha mm oladi. Korpusda hamma joyda 1 mm.
@@ -149,9 +150,9 @@ faqat materiallar va kromka katalogdan olinadi. 812 tovarda kod bor, 57 tasida y
 | eski 8 fayl | 1/105 — dizayner lotincha nom yozgan (`LDSP DUB VATAN TEKSTURA`), kod bo'sh |
 
 Shu sababli `material_usage` ga `code` ham yoziladi: katalog ishlatilgandan keyin barqaror
-kalit **nom emas, kod**. Material hisoboti hozir `(name, kind)` bo'yicha yig'adi — bir material
-eski va yangi nom bilan ikki qatorga bo'linadi. Kod bo'yicha yig'ishga o'tish tarixiy
-hisobotlarni o'zgartiradi, shuning uchun alohida qaror talab qiladi.
+kalit **nom emas, kod**. Material hisoboti `(code yoki name, kind)` bo'yicha yig'adi
+(`reports.py`): kodi bir xil yozuvlar nomi farq qilsa ham bitta qatorga tushadi, `code` siz
+eski eksportlarda esa kalit nom bo'lib qoladi.
 
 Ikkinchi varaq (`Лист3`) — katalogni `dict_goods(id, parent_id, isfolder, code, name, unit,
 thickness, length, width)` jadvaliga yuklaydigan **SQL-INSERT generatori** (formulali 5 qator,
@@ -268,7 +269,7 @@ o'tmaganda almashgan moslik `rot=True` beradi. Deyarli kvadrat detalda (masalan
 | `minusCount` | Allaqachon tayyor turgan nusxalar | GibLab ularni kesishga qo'ymaydi, biz `count` bo'yicha hammasini ishlab chiqaramiz → ogohlantiramiz |
 | `description` | Izoh **va/yoki ishlov dasturi kodi**: `#nom` — yuz tomon, `##nom` — orqa tomon, bo'shliqsiz | Shablon kutubxonasidan ishlov. Bunday holatda faylda XNC operatsiyasi bo'lmaydi va butun ishlov yo'qoladi → ogohlantiramiz. Korpusda ishlatilmagan |
 | `dbId` | GibLab qoldig'ining 1C dagi ID'si | 1C integratsiyasi ishlatilsa paydo bo'ladi. Korpusda yo'q |
-| `cTrimL` / `cTrimW` / `cTrimEL` / `cTrimEW` | **Faqat list/polosa uchun**: shu listning o'z torsovkasi. Manfiy (default −1) → operatsiyaning qiymati ishlatiladi | Bir listning torsovkasi boshqacha bo'lsa xarita sarlavhasidagi raqam shu list uchun xato bo'ladi. Korpusda ishlatilmagan |
+| `cTrimL` / `cTrimW` / `cTrimEL` / `cTrimEW` | **Faqat list/polosa uchun**: shu listning o'z torsovkasi. Manfiy (default −1) → operatsiyaning qiymati ishlatiladi | Torsovka raqami bizda umuman ko'rsatilmaydi (xarita blobdan chiziladi, torsovka unda bor) — faqat format uchun. Korpusda ishlatilmagan |
 | `groupInBlock` / `groupInBlockMC` / `groupInBlockMaxC` | Detallarni blokka guruhlash | Optimizator sozlamasi. Korpusda yo'q |
 
 **Deloviy qoldiqlar — ATX cheki bo'lib chiqadi.** Korpusda 13 ta `waste="true" business="true"`
@@ -283,8 +284,12 @@ sifatida qaytaradi (`scans.py`) — qoldiq ish bosqichi emas, saqlanadigan mater
 
 ### 2.3 Detal nomi va jarayon kodlari
 
-**Detal nomi — faqat nom.** `name` atributi qanday bo'lsa shunday olinadi (bo'sh bo'lsa
-kod qo'yiladi — `parser.py`, `_build_part`) va marshrutga **umuman ta'sir qilmaydi**.
+**Detal nomi — asosan nom.** `name` atributi qanday bo'lsa shunday olinadi (bo'sh bo'lsa
+kod qo'yiladi — `parser.py`, `_build_part`). Yagona istisno: nomi `custom_part_suffix`
+sozlamasidagi belgi (sukut `#`) bilan tugagan detal yuklashda nostandart deb belgilanadi
+(`ingest.py`, `_nostandart_qoidasi`) va fayldan qurilgan marshruti yumshoq o'chiriladi —
+marshrutni texnolog chizadi; belgi nomda qoladi ([09-mes-domain.md](09-mes-domain.md) §2).
+Bundan boshqa hech narsa nomdan o'qilmaydi.
 Ilgari bu yerda figurali qavs sintaksisi turardi (`eshik {7;11;8}` — nomdagi kodlar
 fayl bosqichlarini butunlay almashtirardi); u **butunlay olib tashlandi**. Sabab: marshrut
 ko'rinmas yozuv qoidasiga bog'lanib qolardi — bitta noto'g'ri belgi butun ro'yxatni rad
@@ -333,7 +338,7 @@ kod o'zgarsa ikkalasi birga yangilanadi. Ziddiyat chiqsa — bajariladigan manba
 | 16 | TMO qabuli | TMO |
 
 Paz uchun ALOHIDA kod yo'q — paz alohida post emas. Avtomatik marshrutda u (freza bilan birga)
-kod 6 — PRISADKA qadamiga qo'shiladi (`stage_sides()`); frezer stanogi kerak bo'lsa ROVER ni
+kod 6 — PRISADKA qadamiga qo'shiladi (`ParsedPart.prisadka_passes()`); frezer stanogi kerak bo'lsa ROVER ni
 texnolog nostandart tabida qo'lda chizadi, fayldan ROVER yaratilmaydi.
 
 **15 va 16 tsexning varag'ida yo'q** — ular jarayon emas, marshrutning oxirgi bosqichlari va
@@ -347,7 +352,8 @@ qo'shiladi, saqlansa har yuklashda ikkilanib borardi.
 **Kod postdan ko'ra aniqroq.** Bitta post bir necha kodga to'g'ri keladi (STOLYARKA da
 oltita amal, KROMKA da ikkita), shuning uchun marshrut qadami postni ham, kodni ham saqlaydi
 (`PartRoute.post_id` + `process_code`) — aks holda "baget" bilan "G petlya o'ngdan" bir xil
-ko'rinardi va yorliqdagi marshrut qatori ("Marshrut: 7/11/8") ma'nosini yo'qotardi.
+ko'rinardi. Yorliqdagi marshrut qatori esa kodni emas, POST nomlarini chiqaradi
+(`ARRA·KROMKA·PRISADKA` — §5, `labels.py`).
 
 ---
 
@@ -403,16 +409,15 @@ har birida daraxt ko'rinishidagi kesish yozuvlari. `csblob.py` uni ochadi.
 Muhim tushunchalar:
 
 - **Kerf manbasi** — CS o'z dastgohini **`tool1`** atributi bilan ko'rsatadi: pilla qalinligi
-  shu `tool.cutting` goodining `swSawthick` idan olinadi (`parser.py`, `_parse_cs_operation`).
-  `tool1` yozilmagan yoki noma'lum goodga ishora qilsa — spetsifikatsiyadagi 4.4 mm (§2.1).
-  Zaxira qiymat FAQAT atribut yozilmaganda ishlaydi: faylda aniq `swSawthick="0"` bo'lsa 0 qoladi
+  shu `tool.cutting` goodining `swSawthick` ida (yozilmasa — spetsifikatsiyadagi 4.4 mm, §2.1).
+  Biz uni o'qimaymiz: blobdagi `type=1` yozuvlar kerf/torsovka joyini allaqachon egallaydi
+  (`cutmap.py`), alohida raqam hech qayerda ko'rsatilmaydi (2026-09-27 da o'qish ham olib tashlandi)
 - **Кратность (`mult`)** — bitta naqsh necha JISMONIY listda kesiladi. Xaritada `×mult`
   belgisi yo'q: `mult>1` naqsh render paytida har jismoniy list uchun alohida kartaga
   yoyiladi va list raqami `3c1`/`3c2` ko'rinishini oladi (`CutmapView.tsx`, `SheetSvg.tsx`)
 - **Torsovka** (`cTrimL`, `cTrimW`) — listning chetidan olinadigan qirqim, **spetsifikatsiya
   bo'yicha default 10 mm** (tsexning fayllarida doim 2 mm yozilgan; eski eksportda umuman yo'q).
-  Kerf kabi, 10 mm zaxirasi faqat atribut YOZILMAGANDA qo'llanadi — torsovkasiz kesilgan listda
-  `cTrimL="0"`/`cTrimW="0"` xarita sarlavhasida ham 0 bo'lib qoladi.
+  Kerf kabi o'qilmaydi va ko'rsatilmaydi — torsovka qirqimi blob geometriyasida bor.
   `cTrimEL`/`cTrimEW` — pastdan va o'ngdan minimal chekinish, manfiy bo'lsa `cTrimL`/`cTrimW`
   ishlatiladi
 - **Deloviy qoldiq** — `waste="true" business="true"` bo'lgan `<part>`; foydali o'lchami
@@ -446,9 +451,11 @@ ikki eski faylda 10 ta shunday CS bor) — bunda fayl `template` deb belgilanadi
 HTTP 422 bilan **rad etiladi** ("Bu fayl GibLabda hali optimizatsiya qilinmagan..." —
 `orders/files.py`, upload). `processed` bo'lishi uchun blob bilan birga `project.uuid` ham bo'lishi
 shart (`parser.py`). Lekin optimallashtirilgan faylda ham bitta materialni optimallashtirmaslik
-mumkin: o'shanda uning detallari arrachiga tushib, xaritasi bo'lmaydi. Xarita quruvchi bunday
-operatsiyani jimgina o'tkazib yuboradi (nusxa tekshiruvi nolni sanamaydi), shuning uchun parser
-materialni **nomi bilan** aytadi.
+mumkin: o'shanda uning detallari fayldan ARRA qadamini oladi (materiali bor), lekin xaritada
+katagi yo'q — arrachi ularni ko'rmaydi, chek chiqmaydi va `/start` buyurtmani material
+optimallashtirilib fayl qayta yuklanguncha rad etadi (`cutmap.unplaced_arra_parts`). Xarita
+quruvchi bunday operatsiyani jimgina o'tkazib yuboradi (nusxa tekshiruvi nolni sanamaydi),
+shuning uchun parser materialni **nomi bilan** aytadi.
 
 **`draw` — xaritaning ikkinchi ko'rinishi.** `cSaveDrawCut="true"` bo'lsa GibLab xaritani
 blobdan tashqari **o'qiladigan XML** ko'rinishida ham yozadi:
@@ -511,8 +518,10 @@ baribir kod oxiridagi `_2` bo'yicha aniqlanadi (`xnc.py`, `parse_xnc_program`). 
 ishga tushadi.
 
 `turn`/`mirHor`/`mirVert` korpusdagi 505 dasturda ham standart holatda (0 / false / false).
-Ular ishlatilsa koordinatalarni o'zgartirmaymiz, ya'ni teshiklar boshqa joyga tushardi —
-shuning uchun jimgina xato chiqarish o'rniga ogohlantiriladi.
+`mirHor`/`mirVert` ishlatilsa parse paytida geometriyaga qo'llanadi (`xnc.apply_mirror`:
+x' = dx − x va l↔r, y' = dy − y va t↔b). `turn` esa qo'llanmaydi — koordinatalar o'zgarmaydi,
+ya'ni teshiklar boshqa joyga tushadi — shuning uchun jimgina xato chiqarish o'rniga
+ogohlantiriladi (SCX'ni CNC'da tekshirish shart).
 
 Spetsifikatsiyadagi element to'plami:
 
@@ -608,9 +617,10 @@ aylanib o'tilardi — 2026-08-26 da o'lchandi: `dz.__pow__(9)` hisoblanib ketdi,
 
 **Nechta dastur bo'lishi mumkin?** Korpusda detalga ko'pi bilan ikkita. Lekin GibLab ko'proq
 beradi — yorliq shabloni `XNC1..XNC5` maydonlarini taklif qiladi. Shuning uchun parser
-sonini cheklamaydi: hammasini saqlaydi va ikkitadan ko'p bo'lsa ogohlantiradi
-(`stage_sides()` ishlovi bor — teshik, paz yoki freza — har operatsiyaga bitta PRISADKA
-skani beradi, §2.3).
+sonini cheklamaydi: hammasini saqlaydi va ikkitadan ko'p bo'lsa texnolog g'ayrioddiy
+dasturlarni tekshirishi uchun ogohlantiradi. Skan soniga ta'sir qilmaydi
+(`ParsedPart.prisadka_passes()`: ishlov bor bo'lsa — teshik, paz yoki freza — operatsiyalar
+sonidan qat'i nazar bitta PRISADKA skani, §2.3).
 
 ---
 
@@ -665,9 +675,9 @@ ikonkasi (marshrut qatorining o'ngida); sana. Mahsulot kodi alohida chizilmaydi 
 Marshrut satri **faqat nostandart detalda** chiqadi (`Part.is_custom`): standart detalning yo'li
 oldindan ma'lum va chekda joyni behuda band qilardi.
 
-**Qalinlik yorliqda chizilmaydi** — `LabelData.thickness` yuklanadi (`labels.py`), lekin
-`render_label_png` uni hech qayerda ishlatmaydi: o'lcham qatori faqat `uzunlik x kenglik = soni`.
-Qalinlik bazada va detallar matritsasida qoladi.
+**Qalinlik yorliqda chizilmaydi** — u yorliqqa umuman yuklanmaydi (`LabelData` da qalinlik
+maydoni yo'q, `labels.py`): o'lcham qatori faqat `uzunlik x kenglik`. Qalinlik bazada va
+detallar matritsasida qoladi.
 
 Sabab: GibLab yorlig'i skan qilinadigan QR bermaydi va MebeliX'ning bosqichma-bosqich
 kuzatuvi aynan shu QR ga tayanadi.
@@ -708,8 +718,8 @@ o'lcham zanjiri), teshik/paz/freza (XNC), yorliq raqami, SCX generatsiyasi.
 
 **Ataylab e'tiborsiz:** GibLab yorliq shablonlari (`LB`), optimizatsiya va narx parametrlari
 (GibLab ichida ishlaydi, biz natijasini iste'mol qilamiz), arra postprotsessorlari,
-profil kesish (`CL` — tsexda bunday post yo'q), detal NOMI (u marshrutga ta'sir qilmaydi —
-§2.3).
+profil kesish (`CL` — tsexda bunday post yo'q), detal NOMI (`custom_part_suffix` belgisidan
+tashqari — u detalni nostandart qiladi, §2.3), kerf va torsovka (xarita blobda tayyor — §3.1).
 
 **Ogohlantirish beradigan holatlar** (`parser.py`, `ingest.py`, `orders/files.py`):
 
@@ -723,7 +733,7 @@ profil kesish (`CL` — tsexda bunday post yo'q), detal NOMI (u marshrutga ta'si
 | `CL` operatsiyasi | profil kesish — ma'lumot, arrachiga bermaymiz |
 | `CN`/`SP`/`GR` operatsiyasi | import qilinmaydi, bosqich yo'qoladi |
 | XNC da noma'lum teg (`ma`, `xy`) | o'sha ishlov ko'rinmaydi |
-| Detalda 2 tadan ko'p XNC | hammasi saqlandi, skan sonini tekshirish kerak |
+| Detalda 2 tadan ko'p XNC | hammasi saqlandi, PRISADKA qadami baribir bitta skan — ishlov dasturlarini tekshirish kerak |
 | XNC operatsiya noma'lum detalga ishora qiladi | shu dasturning BUTUN ishlovi (teshik, paz, freza) detalga biriktirilmaydi va yo'qoladi |
 | XNC operatsiyada `<part>` havolasi yo'q | ishlov o'tkazib yuborildi (operatsiya `code`/`id` bilan) — PRISADKA qadami va SCX geometriyasi ham yo'qoladi |
 | XNC operatsiyada `program` yo'q | xuddi shunday — ishlov o'tkazib yuborildi (ilgari ikkalasi ham JIM tashlanardi) |
@@ -733,7 +743,7 @@ profil kesish (`CL` — tsexda bunday post yo'q), detal NOMI (u marshrutga ta'si
 | Blobsiz kesish operatsiyasi | material optimallashtirilmagan, xaritasi yo'q |
 | Nostandart marshrut tiklandi | qayta yuklashda N detalning qo'lda chizilgan marshruti qaytarildi |
 | Marshruti yo'qolgan detal | qo'lda marshrut chizilgan detal yangi faylda topilmadi — kodlari sanab beriladi |
-| Marshrutida Arra bor, lekin xaritada joyi yo'q | tiklangan qo'lda marshrut xaritada katagi yo'q detalga «Raspil» qaytargan — arrachi uni ko'rmaydi, chek chiqmaydi, `/start` rad etadi; soni beriladi, ro'yxat javobning `unplaced_arra_parts` maydonida |
+| Marshrutida Arra bor, lekin xaritada joyi yo'q | tiklangan qo'lda marshrut xaritada katagi yo'q detalga «Raspil» qaytargan yoki optimallashtirilmagan (blobsiz) materialning detali fayldan ARRA olgan — arrachi uni ko'rmaydi, chek chiqmaydi, `/start` rad etadi; soni beriladi, ro'yxat javobning `unplaced_arra_parts` maydonida |
 
 19 qatordan 8 tasi `_advisories` da yig'iladi, qolgani boshqa joylarda: dastlabki
 uchtasi detal qurilishida yoziladi (`_build_part`, `_dedupe_part_code`), "Blobsiz kesish
@@ -744,15 +754,19 @@ oldin), ikkita "XNC ... o'tkazib yuborildi" — operatsiyalar aylanmasida (`pars
 
 Oxirgi uchtasi parse'dan tashqarida: ular qo'lda chizilgan marshrutlarni qayta yuklashda
 saqlab tiklaydigan qadamdan chiqadi (`ingest.snapshot_custom_routes` / `restore_custom_routes`,
-xabarni `orders/files.py` upload handleri yozadi; uchinchisining ro'yxatini tiklashdan keyin
-`giblab/cutmap.py: unplaced_arra_parts` hisoblaydi). Uchalasi ham ataylab **yig'ma** — har detalga
+xabarni `orders/files.py` upload handleri yozadi; uchinchisining ro'yxatini har yuklashda
+tiklashdan keyin `giblab/cutmap.py: unplaced_arra_parts` hisoblaydi — u blobsiz material
+detallarini ham ushlaydi). Uchalasi ham ataylab **yig'ma** — har detalga
 bitta xabar yozilsa, javobda faqat dastlabki bir nechtasi ko'rinib qolgani yo'qolardi.
 
-`restore_custom_routes` detallar soniga bog'liq bo'lmagan sonli so'rov qiladi: postlar,
+`restore_custom_routes` da SELECT'lar soni detallar soniga bog'liq emas: postlar,
 detallar va buyurtmaning HAMMA tirik marshruti bittadan SELECT bilan olinadi (marshrutlar
 `part_id -> [PartRoute]` lug'atiga solinadi), nostandart detallarning fayldan qurilgan
 qatorlari esa sikldan OLDIN bitta `UPDATE ... WHERE part_id IN (...)` bilan yumshoq
-o'chiriladi. Yangi MANUAL qatorlar `db.add` bilan qo'shiladi va tranzaksiya oxirida yoziladi.
+o'chiriladi. Nostandart detalning yangi MANUAL qatorlari `db.add` bilan qo'shiladi va keyingi
+flush'da (eng kechi — sikldan keyingi `db.flush()`) yoziladi. Qo'lda qadami bor STANDART detal
+esa detal boshiga `park_tail` (UPDATE) + flush (yangi qatorlar shu yerda yoziladi) +
+`unpark_tail` (UPDATE) oladi; o'chirilgan qadami bor detal oxirida bitta `UPDATE` oladi (quyida).
 
 Qadamlarning O'ZINI qurish `giblab/routes.py: build_manual_route()` da — YAGONA nusxa.
 Uni ham `restore_custom_routes`, ham matritsa tahriri (`orders/matrix.py: _set_custom_route`)
@@ -803,6 +817,8 @@ ko'rmay qolardi.
 - XNC ifodasi xavfsiz bo'lmasa yoki hisoblanmasa — §3.2;
 - XNC elementida majburiy atribut bo'lmasa va meros zanjirida ham qiymat bo'lmasa
   (`XNC (C1): <bf> da dp yo'q`) yoxud dastur XML'i buzilgan bo'lsa — §3.2;
+- XNC raqamli atributi buzilgan bo'lsa (`d="5,0"`, `ac="inf"` —
+  `XNC dasturida noto'g'ri raqam (kod): ...`, `xnc.parse_xnc_program`) — ilgari 500 edi;
 - marshrut qadami uchun post bazada sozlanmagan bo'lsa (`Post sozlanmagan: {post_code}` —
   `ingest.py`).
 
@@ -818,7 +834,8 @@ joyida qoladi.
 Rasmiy hujjat (`help/format_ru.html`) 31 blokda 289 atribut ta'riflaydi. Ulardan yarmiga
 yaqini o'qiladi, qolgani ataylab tashlanadi (2026-08-05 refactor'ida o'qilib-u hech qayerda
 ishlatilmaydigan maydonlar — `elRestSide`, `rl`/`rw`, `currency`, `version` — o'qishdan ham
-olib tashlandi). Tashlanganlar to'rt guruhga bo'linadi:
+olib tashlandi; 2026-09-27 da xuddi shu sababdan `swSawthick`, CS dagi `cTrimL`/`cTrimW` va
+`cWasteCount`/`cFilling` statistikalari ham). Tashlanganlar to'rt guruhga bo'linadi:
 
 | Guruh | Nechta | Nega |
 |---|---|---|
@@ -881,11 +898,13 @@ muzlatib qo'yardi (terminallar, TABLO, WebSocket bir vaqtning o'zida to'xtardi).
 - Qo'lda chizilgan marshrut: `routes.py` (`build_manual_route`, `resolve_post`) — `ingest.py` ham,
   `orders/matrix.py` ham shu yagona qoidadan foydalanadi (§7)
 - `giblab/__init__.py` faqat ikki nom eksport qiladi: `ParseError` va `parse_project`; `ingest`
-  funksiyalari (`ingest_project`, `wipe_previous_parse`, `drop_stale_files`,
-  `write_and_register_scx`, `snapshot_custom_routes`, `restore_custom_routes`,
-  `park_tail`/`unpark_tail`) submoduldan to'g'ridan-to'g'ri olinadi
-  (`orders/files.py`) — oxirgi juftlik qayta yuklashda qo'lda chizilgan marshrutlarni
-  saqlab tiklaydi (§7 ga qarang)
+  funksiyalari submoduldan to'g'ridan-to'g'ri olinadi: `orders/files.py` — `ingest_project`,
+  `wipe_previous_parse`, `drop_stale_files`, `restore_stale_files`, `purge_replaced_scx`,
+  `rebuild_order_scx`, `snapshot_custom_routes`, `restore_custom_routes` (oxirgi juftlik qayta
+  yuklashda qo'lda chizilgan marshrutlarni saqlab tiklaydi, dumni ichida `park_tail`/`unpark_tail`
+  bilan suradi — §7); `orders/matrix.py` — `park_tail`/`unpark_tail`, `purge_replaced_scx`,
+  `rebuild_order_scx`. `write_and_register_scx` tashqariga chiqmaydi — uni `ingest.py` ichida
+  `ingest_project` va `rebuild_order_scx` chaqiradi (§7.2)
 - Korpus fayllari git'ga tushmaydi (`.gitignore`: `uploads/`), lekin lokal `uploads/projects/`
   da turadi — parser o'zgarishida real .project fayllarga qarshi qo'lda tekshiriladi
 - Hujjatdagi sanoqlar SAKKIZTA fayl bo'yicha o'lchangan: `01 shkaf`, `02 kitob javon`,

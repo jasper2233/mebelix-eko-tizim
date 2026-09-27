@@ -7,7 +7,8 @@ owner: apayziev
 # MebeliX MES
 
 Mebel tsexi uchun MES. FastAPI + PostgreSQL + Redis backend, React SPA frontend,
-Windows'da ishlaydigan `bridge-agent` (yorliq chop etish + skan forvard).
+Windows'da ishlaydigan `bridge-agent` (yorliq chop etish + skan forvard + andon:
+stanok signal ustuni Pico'sidan USB orqali hodisalar).
 
 ## Commands
 

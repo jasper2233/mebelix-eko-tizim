@@ -8,16 +8,19 @@ poydevorida (JWT + httpOnly cookie auth, users boshqaruvi) **to'liq MES domeni**
 qurilgan: `/v1` agregatorida **25 ta router** (health, login, public, logout, users,
 clients, employees, machines, posts, orders, pachka, tmo, catalog, audit,
 terminal, downtimes, defects, defects-review, scans, settings, tablo, reports,
-system, bridge-agents, ws), **19 ta ORM model**
+system, bridge-agents, ws), **26 ta ORM model**
 (Order/Product/Part/PartInstance/PartRoute/OrderFile/WasteItem, Client, Employee,
 Machine, Post, Organization, Pachka/PachkaItem, Scan/WorkSession, AuditLog,
-BridgeAgent, User) va **15 ta `UserRole`** (admin, director, manager, texnolog, terminal,
-tablo + 9 ta post operatori roli: arrachi, kromkachi, ovalchi,
+BridgeAgent, User, CatalogItem, PartDefect, Downtime/DowntimeReason, AndonEvent,
+KromkaMeasurement, SystemSetting) va **16 ta `UserRole`** (admin, director, manager,
+texnolog, terminal, tablo, skladchi + 9 ta post operatori roli: arrachi, kromkachi, ovalchi,
 prisadkachi, roverchi, stolyar, boyoqchi, upakovkachi, omborchi).
 Material katalogi (`materials` routeri, `Material` modeli, `MaterialType`
-enumi) va materiallar ombori (`stock` routeri, `StockItem`/`Sale`/`Payment`/
-`StockMove` modellari, `material_omborchi` roli) olib tashlangan — bazadagi
-jadvallari va migratsiyalari qolgan, lekin kod ularga tegmaydi.
+enumi) olib tashlangan, uning `material` jadvali ham `d2b71f4c86e9` migratsiyasi
+bilan o'chirilgan. Materiallar ombori (`stock` routeri, `StockItem`/`Sale`/`Payment`/
+`StockMove` modellari, `material_omborchi` roli) ham olib tashlangan — lekin uning
+jadvallari (`stock_item`, `sale`, `payment`, `stock_move`) va migratsiyalari bazada
+qolgan (`LEGACY_TABLES`), kod ularga tegmaydi.
 Domen tafsilotlari uchun [09-mes-domain.md](./09-mes-domain.md) ga qarang.
 
 Barcha UI matnlari va API xato xabarlari **o'zbek tilida** — istisnosiz:
@@ -36,12 +39,16 @@ MebeliX-Mes-System/
 │                     #   mebelix-agent.exe bo'lib yig'iladi, panel kodi bilan ulanadi (pairing)
 ├── caddy/            # Caddy reverse proxy konfiguratsiyasi (prod)
 ├── scripts/          # setup.sh, prestart.sh, generate-client.sh, deploy.sh (TAG deploy + avto-rollback),
-│                     #   backup.sh (kunlik shifrlangan DB backup → /var/backups/mebelix, ya'ni deploy
+│                     #   backup.sh (kunlik shifrlangan DB + yuklangan fayllar backupi → /var/backups/mebelix, ya'ni deploy
 │                     #   daraxtidan tashqarida — CI rsync --delete o'chirib yubormasin;
 │                     #   Telegram ixtiyoriy nusxa),
 │                     #   brand-assets.py (logo va chek ikonkasi nusxalari design/ dan; CI --check),
 │                     #   extract-label-icons.py (GibSaw shablonidan chek belgilari),
-│                     #   bazis-material-colors.py (Bazis katalogidan material ranglari va teksturalari)
+│                     #   bazis-material-colors.py (Bazis katalogidan material ranglari va teksturalari),
+│                     #   catalog_import.py + catalog.csv (ombor katalogi: varaq → CSV → baza, docs/14),
+│                     #   oee_audit.sql, kromka_audit.sql (faqat o'qiydigan auditlar),
+│                     #   kromka_dedup.sql (v1.22 takrorlarini tozalash) — docs/12,
+│                     #   oracles/ (bir martalik tekshiruv skriptlari, CI chaqirmaydi — docs/12 §4.14)
 ├── docs/             # Ushbu hujjatlar to'plami
 ├── design/           # Dizayn MANBALARI — build'ga kirmaydi (`.dockerignore`):
 │                     #   logo/ — brend masterlari (tilla/navy/qora, logo va ikonka)
@@ -95,7 +102,7 @@ MebeliX-Mes-System/
 |---|---|
 | Konteynerlash | Docker Compose — `local` (hot-reload, portlar ochiq) va `prod` (faqat Caddy tashqariga ochiq) |
 | Ma'lumotlar bazasi | PostgreSQL 15 |
-| Cache / queue | Redis 7 (ARQ queue + rate limit + WS pub/sub — uchta lifespan ulanishi, «Tizim holati» ro'yxatlari (`mes:perf:*`) — `core/perf.py` ning har process'da bitta uzoq umrli klienti, plyus qisqa umrli klientlar: har `/ws/bridge` agent ulanishi va bridge-agent'ning pairing / log / revoke REST endpointlari) |
+| Cache / queue | Redis 7 (ARQ queue + rate limit + WS pub/sub — uchta lifespan ulanishi, «Tizim holati» ro'yxatlari (`mes:perf:*`) — `core/perf.py` ning har process'da bitta uzoq umrli klienti, plyus qisqa umrli klientlar: har `/ws/bridge` agent ulanishi, bridge-agent'ning pairing / log / revoke REST endpointlari va andon jonli holati (`services/andon.py`)) |
 | Reverse proxy | Caddy (prod, `SITE_ADDRESS` orqali auto-HTTPS / Let's Encrypt); port bindinglar `CADDY_HTTP_BIND`/`CADDY_HTTPS_BIND` bilan parametrlangan — mavjud host-nginx (ISPmanager) ortida ishlash rejimi uchun |
 | Static serving | nginx (frontend build, SPA fallback, 1 yillik asset cache) |
 | Sifat nazorati | pre-commit hooks (ruff, mypy, biome) + GitHub Actions CI (`.github/workflows/ci.yml`) |
@@ -163,7 +170,7 @@ Asosiy nuqtalar:
   (`render_label_png`) ni Redis `mes:print:queue:{agent_id}` ro'yxatiga qo'yadi
   (`require_printer` har chekni AYNAN bir agentga manzillaydi; printer
   biriktirilmagan bo'lsa endpoint 422 beradi va job umuman yaratilmaydi —
-  umumiy `mes:print:queue` faqat eski joblar uchun qolgan) →
+  umumiy `mes:print:queue` endi faqat kalit prefiksi, `ws.py` uni o'qimaydi) →
   `/ws/bridge` uni printerli kompyuterdagi `bridge-agent/agent.py` ga uzatadi
   (agent lokal JSONL navbatga yozib ack qaytaradi — yorliq yo'qolmaydi) →
   Windows drayveri orqali USB GoDEX'ga chiqadi. G500-U'da tarmoq porti yo'q,
@@ -186,11 +193,16 @@ Asosiy nuqtalar:
   ham faqat xotiradagi buferga qo'shadi; `flush_loop` uni soniyada bir marta
   `core/perf.py` ning O'Z klienti orqali bitta paketda yozadi — lifespan
   ulanishlaridan alohida, xato bo'lsa so'rovni yiqitmaydi.
-- **Yana to'rtta qisqa umrli klient — `bridge_agents.py` da, har so'rovda**:
+- **Yana oltita qisqa umrli klient, har chaqiruvda** — `services/andon.py` da
+  ikkitasi: `save_live()` (POST `/bridge-agents/andon`, jonli holat kelganda) va
+  `read_live()` (`machines/overview`, `reports/machine-time` hisoboti va uni
+  chaqiradigan `tablo/machines`, `tablo/machines/{id}` — bitta so'rovda bir necha
+  marta, ketma-ket);
+  qolgan to'rttasi `bridge_agents.py` da:
   `_revoke_live_connection()` (POST `/{id}/code` va DELETE `/{id}` chaqiradi —
   revoke bayrog'i + navbatni tozalash), POST `/pair` (bayroqni o'chirish),
   POST `/logs` (agent log satrlarini `lpush`) va GET `/{id}/logs` (`lrange`).
-  Har biri `async with AsyncRedis.from_url(...)` — so'rov tugashi bilan yopiladi,
+  Har biri `async with AsyncRedis.from_url(...)` — chaqiruv tugashi bilan yopiladi,
   lifespan ham, startup probe ham ularni bilmaydi. Ulanish byudjetini
   (`maxclients`, burst) hisoblashda shularni ham, `core/perf.py` ning har api
   ishchisidagi bitta uzoq umrli klientini ham qo'shish kerak.
@@ -202,8 +214,9 @@ Asosiy nuqtalar:
   (`/api/v1/ready`) yiqilsa `.stable_tag`dagi oxirgi stable TAG'ga avto-rollback.
   Serverda build yo'q — u 2 vCPU / 4 GB (2026-09-26: `nproc` 2, 3,9 GB), build saytni
   sekinlashtirardi; Postgres ham shu hajmga sozlangan (`docs/07`).
-- `api` konteyneri startida `scripts/prestart.sh` **alembic migratsiya + birinchi
-  superuser + default org/postlar seed** (`seed_defaults`) ni bajaradi. `worker`
+- `api` konteyneri startida `scripts/prestart.sh` **alembic migratsiya (default org
+  qatorini `1393a241b793` migratsiyasi qo'yadi) + birinchi superuser + postlar va
+  post hisoblari seed** (`seed_defaults`) ni bajaradi. `worker`
   konteyneri prestart'ni chaqirmaydi (to'g'ridan-to'g'ri
   `arq app.core.worker.WorkerSettings`) — ikki jarayon bir vaqtda
   `alembic upgrade head` qilib migratsiya poygasiga tushmasin.
@@ -272,17 +285,18 @@ Browser (React)                FastAPI                        PostgreSQL
   qo'llanadi (`health`, `login`, `public` ochiq; `logout`, `users` va 18 ta MES routeri
   — jumladan `system` («Tizim holati», endpoint ichida yana `AdminUser`) —
   `get_current_user` ortida; `ws` va `bridge-agents` routerlari auth'ni o'zlari
-  hal qiladi — `bridge-agents` da `/pair` ochiq bo'lishi shart, `/scan` va
-  `POST /logs` agentning Bearer tokeni bilan, `GET /latest` va `GET /download`
+  hal qiladi — `bridge-agents` da `/pair` ochiq bo'lishi shart, `/scan`,
+  `POST /logs` va `POST /andon` agentning Bearer tokeni bilan, `GET /latest` va `GET /download`
   esa umuman ochiq (agentda sessiya yo'q, exe sir emas); qolgan admin endpointlar
   har biri `AdminUser` bilan himoyalangan).
 - Frontend'da route guard'lar `beforeLoad`da ishlaydi (`src/lib/guards.ts`):
   `requireAuth()` (`queryClient.ensureQueryData(getCurrentUserQueryOptions())`
   — keshdan o'qiydi, 401 → `/login`) —
-  `_layout.tsx`, `terminal.tsx`, `tablo.tsx` da; rolga bog'liq sahifalar
+  `_layout.tsx`, `terminal.tsx`, `tablo.tsx`, `tablo_.stanoklar.tsx` da; rolga bog'liq sahifalar
   `requireAccess(<predikat>)` bilan, predikatlar `src/lib/mes.ts` da:
-  `isManagement` (clients, employees, reports), `isProductionStaff`
-  (work-centers), `isAdmin` (logs, agents, system-settings, system-health) — sidebar (`NAV_ITEMS.show`) ham
+  `isManager` (defects), `isManagement` (clients, employees, reports), `isProductionStaff`
+  (work-centers), `isWarehouseStaff` (warehouse, sotuv),
+  `isAdmin` (logs, agents, system-settings, system-health) — sidebar (`NAV_ITEMS.show`) ham
   aynan shu predikatlarni ishlatadi. `isSuperuser` esa guard EMAS: `/admin`
   route'i faqat `/employees` ga redirect qiladi, predikat esa `employees.tsx`
   ichida `canManageAccounts` sifatida ishlatiladi (hisob yozish chegarasi). `/orders` da
@@ -290,7 +304,9 @@ Browser (React)                FastAPI                        PostgreSQL
   isProductionStaff`) va `_layout` redirectlari orqali bilvosita chiqadi.
   `_layout.tsx` rolga qarab yo'naltiradi — `terminal` va operator
   rollari (`arrachi`...`omborchi`, `OPERATOR_ROLES`) → `/terminal`, `tablo` →
-  `/tablo` (qurilma/operator akkauntlari admin panelga kirmaydi);
+  `/tablo` (qurilma/operator akkauntlari admin panelga kirmaydi), `skladchi`
+  (`isWarehouseOnly`) → `/warehouse` — faqat `OMBOR_YOLLARI` (`/warehouse`, `/sotuv`,
+  `/settings`) dan tashqarida, chunki ular shu layout ichida;
   `login.tsx` teskari
   guard bilan sessiyali foydalanuvchini `/`ga qaytaradi.
 - Parallel so'rovlarda 401 kelsa, interceptor ularni navbatga qo'yib bitta refresh
@@ -326,8 +342,9 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   arq navbatga qo'ygan lahza, unix soniya, bo'lsa qo'shiladi; agent e'tiborsiz qoldiradi) — `job_id`
   HAR yuborishda yangi uuid, agent shu bo'yicha takrorni tashlaydi (`instance_id`
   bu vazifani bajara olmaydi: chek bekor qilinsa o'sha nusxa qayta ishlatiladi) →
-  `LPUSH print_queue_key(agent_id)` — `agent_id` bo'lsa `mes:print:queue:{agent_id}`,
-  bo'lmasa umumiy `mes:print:queue` (yangi job u yerga tushmaydi). Redis yo'q
+  `LPUSH print_queue_key(agent_id)` — HAR DOIM `mes:print:queue:{agent_id}`:
+  `agent_id` majburiy (taskda standart qiymati yo'q); umumiy `mes:print:queue` faqat
+  kalit prefiksi, `ws.py` uni o'qimaydi. Redis yo'q
   bo'lsa job `lost:` bilan yakunlanadi va xato log'ga yoziladi. Server printerga
   to'g'ridan-to'g'ri chiqmaydi — yagona yo'l bridge-agent.
 - `/ws/bridge` (`app/api/routes/ws.py`) navbatni `brpop(timeout=5)` bilan so'radi;
@@ -349,7 +366,10 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   ham bor, ro'yxat ataylab keng) — drayver o'rnatilsa bas, sozlash shart emas.
   `PRINTER_NAME` faqat qo'lda override uchun. Agent env'lari:
   `MES_URL`, `BRIDGE_TOKEN`, `PRINTER_NAME` (ixtiyoriy), `QUEUE_FILE`,
-  `SCAN_FORWARD` (default yoqiq, `0` o'chiradi);
+  `SCAN_FORWARD` (default yoqiq, `0` o'chiradi); andon (Pico) uchun `ANDON`
+  (default yoqiq, `0` o'chiradi), `ANDON_PORT`, `ANDON_TAKEOVER` (default yoqiq),
+  `ANDON_QUEUE_FILE` (docs/07), `ANDON_TUR` (docs/12); ROVER Pico sozlamalari
+  `ROVER_AUTO_SHUTDOWN` (default o'chiq) va `ROVER_T_REASON` (default 300 s);
   `_load_dotenv()` ularni shu tartibda o'qiydi: env var > exe yonidagi `.env` >
   `%APPDATA%\MebelixAgent\.env`.
 - **Skan-forvard**: agent stanok skanerining (klaviatura-HID)
@@ -395,7 +415,10 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
   `AdminUser`. `POST /pair` OCHIQ: atomik `UPDATE ... RETURNING` bilan bitta kodni
   ikki kompyuter bir vaqtda ishlata olmaydi, xato esa yagona umumiy matn — kod
   bor-yo'qligi oshkor bo'lmaydi. `POST /scan` — skan-forvard (auth: agentning
-  Bearer tokeni). `POST /logs` — agent o'z log satrlarini yuboradi (o'sha agent
+  Bearer tokeni). `POST /andon` — agent Pico'dan olgan signal ustuni (va KROMKA
+  o'lchovi) hodisalari hamda jonli holat (o'sha agent Bearer tokeni; ish markazi
+  agent bog'lanishidan, bog'lanmagan bo'lsa 409; xom hodisa `andon_event` ga,
+  jonli holat Redis'ga — docs/12). `POST /logs` — agent o'z log satrlarini yuboradi (o'sha agent
   Bearer tokeni; ataylab HTTP, `/ws/bridge` emas — log ack o'rniga o'qilsa chop
   etish buzilardi), `GET /{id}/logs` — admin ularni panelda o'qiydi (`AdminUser`,
   Redis'da oxirgi satrlar). `GET /latest` (versiya + sha256) va `GET /download`
@@ -405,8 +428,9 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
 - `/ws/bridge` tokenni `Authorization: Bearer` headerdan oladi (server
   access-loglariga tushmasin; `?token=` eski agentlar uchun fallback). Legacy
   `settings.BRIDGE_TOKEN` `compare_digest` bilan hamon qabul qilinadi; aks holda
-  sha256 xesh `bridge_agent` da qidiriladi, topilmasa ulanish 4401
-  (`WS_CLOSE_UNAUTHORIZED`) bilan yopiladi. Handshake'dagi `X-Agent-Version`
+  sha256 xesh `bridge_agent` da qidiriladi, topilmasa handshake HTTP 403 bilan rad
+  etiladi (`accept()` dan oldingi `close(WS_CLOSE_UNAUTHORIZED)` ni uvicorn 403 qilib
+  yuboradi; 4401 kodi faqat ochilgan soketni yopishda yetib boradi). Handshake'dagi `X-Agent-Version`
   headeri `BridgeAgent.version` ga yoziladi — admin panelda qaysi kompyuterda
   eski exe qolgani ko'rinadi. `can_print=false` agent chek navbatidan ish
   OLMAYDI (aks holda umumiy navbatdan chekni "o'g'irlab" lokalida qoldirardi).
@@ -433,17 +457,20 @@ Terminal          FastAPI              ARQ worker          Redis        bridge-a
 - `render_label_png()` (`app/services/labels.py`) — 80×60 mm, 203 dpi
   (8 dot/mm → 640×480 px). `draw.fontmode = "1"` (antialiasing yo'q) va yakuniy
   `convert("L").point(v < 160)` — chiqish sof 1-bit, drayver dither qilmasin.
-  Maket: chap ustunda logo (`app/assets/logo-black.png` — brend masterining nusxasi), `Formatka` + zakaz kodi,
+  Maket: chap ustunda logo (`app/assets/logo-black.png` — brend masterining nusxasi),
+  uning yonida `N{label_num}` va nusxa `n/soni` (mahsulot kodi alohida chizilmaydi — u ID ichida),
   nusxa ID (QR matni va SCX fayl nomi bilan bir xil satr; matn qatori QR chap chetigacha
   (34 mm) sig'guncha kichraytiriladi — `labels.py`, QR esa to'liq satrni saqlaydi,
   [11-detal-id-nomlash.md](./11-detal-id-nomlash.md)),
-  loyiha nomi, 2×2 kromka katakchalari (tagchiziqli), katta
-  `L x W = count`, `N_nom`, teshik bo'lsa `app/assets/label-icon-drill.png` ikonkasi
-  (teshikning o'zi eskizda ham o'z joyida aylana bo'lib — `docs/09`), **marshrut qatori** (`Marshrut: 7/11/8` — jarayon kodlari `seq`
-  tartibida, y=41.5 mm; detal NOMIGA qo'shilmaydi, chunki nom 24 belgida
-  kesiladi). Marshrut FAQAT nostandart detalda chiqadi (`load_label_data()`
+  loyiha nomi, 2×2 kromka katakchalari (simvol + material, tagchiziqli), katta
+  `L x W`, detal nomi (N prefiksisiz, 44 mm gacha), teshik bo'lsa `app/assets/label-icon-drill.png` ikonkasi
+  (teshikning o'zi eskizda ham o'z joyida aylana bo'lib — `docs/09`), **marshrut qatori** (POST nomlari
+  `·` bilan, masalan `ARRA·KROMKA·PRISADKA` — jarayon kodlari `seq` tartibida `PROCESS_POSTS`
+  orqali postga aylanadi, dum (`TAIL_CODES`) yozilmaydi, ketma-ket bir xil post bitta;
+  y=41.5 mm, 43 mm ga sig'masa keyingi qatorga o'raladi). Marshrut FAQAT nostandart detalda chiqadi (`load_label_data()`
   `route_codes` ni `part.is_custom` shartida to'ldiradi) — standart detalda
-  ro'yxat bo'sh va qator umuman chizilmaydi; keyin material va sana; o'ng ustunda QR
+  ro'yxat bo'sh va qator umuman chizilmaydi; keyin mahsulot nomi (marshrut bir qatordan
+  oshmasa), material va sana; o'ng ustunda QR
   (`qrcode`, `instance.qr_text`) va vertikal detal eskizi.
 - Eskizda ishlangan qirra kontur ICHIDA chiziq bilan (paz uzuq, freza tutash) + EN
   raqami ostida «- - PAZ»/«— FREZA» izohi, shunda eskiz 46 mm emas 41 mm balandlikda
@@ -582,13 +609,17 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
 | [09-mes-domain.md](./09-mes-domain.md) | MES domeni: data model, GibLab parser, scan engine, cutmap, chop etish, terminal/tablo/reports API va frontend tuzilishi. |
 | [10-giblab-reference.md](./10-giblab-reference.md) | GibLab manba tizim ma'lumotnomasi: `.project` fayl formati, ma'lumot modeli, operatsiya turlari — parser nimaga tayanishini asoslaydi. |
 | [11-detal-id-nomlash.md](./11-detal-id-nomlash.md) | Detal ID nomlash qoidasi: chek, QR, SCX fayl nomi va `qr_text` — hammasi bitta satr (Nanxing skan mosligi). |
+| [12-oee.md](./12-oee.md) | OEE (Prisadka): formula va har qismining manbasi, andon (Pico signal ustuni) shartnomasi, ish jadvali sozlamalari, `scripts/oee_audit.sql` auditi, `scripts/oracles/` tekshiruv skriptlari. |
+| [13-bazis-3d.md](./13-bazis-3d.md) | Bazis `.b3d` formati (teskari muhandislik) va yig'uvchiga ochiq 3D havola moduli: bog'lanish kaliti, capability-URL himoyasi, endpointlar, frontend sahnasi. |
+| [14-mahsulotlar-ombori.md](./14-mahsulotlar-ombori.md) | Mahsulotlar ombori katalogi: kodlash tizimi, `catalog_item` jadvali, `scripts/catalog_import.py` (varaq → CSV → baza), `/catalog` endpointlari va rollari, `/warehouse` sahifasi. |
 
 ## 6. Kod yozish konventsiyalari
 
 Sifat nazorati ikki qatlamda: **pre-commit hooks** (`.pre-commit-config.yaml`,
 `make install-hooks` bilan o'rnatiladi) va **GitHub Actions CI**
 (`.github/workflows/ci.yml`, `main`ga push va har PR'da): `backend` job — ruff
-check/format (`--no-fix` bilan), mypy, migratsiya drifti (`postgres:15-alpine`
+check/format (`--no-fix` bilan), mypy, brend aktivlari (`scripts/brand-assets.py --check`
+— nusxalar `design/` masteriga mosmi), migratsiya drifti (`postgres:15-alpine`
 servisida `alembic upgrade head && alembic check` — modelga ustun qo'shib
 migratsiya yozilmasa CI qizil) va Caddyfile validate (`caddy:2-alpine`
 konteynerida `caddy validate` — buzuq konfig deploydan OLDIN tutiladi);
@@ -598,9 +629,12 @@ yuboradi (matritsa, GHA layer keshi bilan); `agent` job — `windows-latest` da
 PyInstaller bilan `mebelix-agent.exe` va `version.json` (versiya + sha256)
 quriladi hamda `agent-dist` artefakti bo'lib yuklanadi (`deploy` uni serverdagi
 `agent-dist/` ga tushiradi); `deploy` job — yashil `main`
-push'da kod `/opt/mebelix-mes`ga rsync qilinadi, server ghcr'ga login
+push'da kod `/opt/mebelix-mes`ga rsync qilinadi, serverdagi `.backup.env`
+(`TG_BOT_TOKEN`, `TG_CHAT_ID`, `TG_TOPIC_ID` — kunlik backup'ning Telegram nusxasi uchun)
+qayta yoziladi, server ghcr'ga login
 qiladi, `TAG=<git sha> REGISTRY=... scripts/deploy.sh` ishga tushadi va
-public smoke (`https://mes.mebelix.uz/api/v1/ready`) tekshiriladi;
+public smoke (`https://mes.mebelix.uz/api/v1/ready`, `curl --connect-timeout 5
+--max-time 15`) tekshiriladi;
 `notify` job — Telegram xabari. Notify ataylab ALOHIDA job
 (`if: always()`, `needs: [backend, frontend, images, agent, deploy]`):
 `deploy` ichida turganda CI yiqilsa butun job skip bo'lib, xabar umuman
@@ -622,8 +656,9 @@ job yiqilgani ko'rsatiladi.
 - **mypy** — `app.*` modullari uchun `disallow_untyped_defs = true`, ya'ni barcha
   funksiyalar to'liq type-annotated bo'lishi shart. Local hook sifatida
   `uv --directory backend run mypy app` bilan ishlaydi.
-- Package manager — **uv**; barcha buyruqlar `uv --project backend run ...`
-  orqali.
+- Package manager — **uv**; buyruqlar `cd backend && uv run ...` (lint, format,
+  migratsiya, `cmd`, `brand-assets`, CI) yoki `uv --project backend run ...`
+  (`run-backend`, `worker`, `install-hooks`) orqali.
 
 ### Frontend (TypeScript)
 

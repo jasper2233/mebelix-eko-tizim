@@ -124,8 +124,10 @@ omborchisi: tsex roli, `POST_ROLES` da `PostCode.TMO` ga bog'langan, beyjik bila
 kiradi va `_layout` uni `/terminal` ga yuboradi — ya'ni u bu sahifani hech qachon
 ocha olmaydi. Xomashyo ombori uchun 2026-09-25 da alohida OFIS roli qo'shildi:
 **`skladchi`**, ekranda «Mahsulot omborchisi». U parol bilan kiradi, kirgach
-to'g'ri `/warehouse` ga tushadi (yo'naltirish FAQAT boshqa sahifadan — `/warehouse`
-ning o'zi ham `_layout` ichida, shartsiz yo'naltirish cheksiz halqa berardi) va
+to'g'ri `/warehouse` ga tushadi (yo'naltirish FAQAT o'z yo'llaridan tashqarida —
+`_layout.tsx: OMBOR_YOLLARI` = `/warehouse`, `/sotuv`, `/settings`; ular ham `_layout`
+ichida, shartsiz yo'naltirish cheksiz halqa berardi. `/settings` 2026-09-27 da qo'shildi —
+ilgari «Sozlamalar» havolasi uni omborga qaytarardi, parolini o'zi almashtira olmasdi) va
 menyuda ombor, uning uch kategoriyasi va sozlamalaridan boshqa band ko'rmaydi:
 LIVE Tablo va Stanoklar tsex ekranlari, ombor ishiga aloqasi yo'q. Enum
 `native_enum=False` bo'lgani uchun migratsiya kerak emas (`models/enums.py:8`).
@@ -145,8 +147,8 @@ LIVE Tablo va Stanoklar tsex ekranlari, ombor ishiga aloqasi yo'q. Enum
 - **Guruh** — `SelectField` (35 ta, menyuga sig'maydi). Yorlig'i nomi,
   yonida kod va sanoq. Tanlov qiymati **to'liq kod** (`M-LG`), faqat guruh harfi
   emas: `LG` ikki katalogda ham bor — `M-LG` (LEGE fasad paneli) va `X-LG`
-  (logistika), shuning uchun harfning o'zi bilan filtrlaganda «Hammasi» tabida
-  boshqa katalogning pozitsiyalari qo'shilib ketardi.
+  (logistika), shuning uchun harfning o'zi bilan filtrlaganda katalog tanlanmagan
+  (butun katalog) holatda boshqa katalogning pozitsiyalari qo'shilib ketardi.
 - **Holat** va «**Kam qolgan**» — omborchining birinchi savoli «nimani buyurtma
   qilish kerak»; chegara qo'yilmagan pozitsiya bu ro'yxatga tushmaydi.
 
@@ -164,8 +166,9 @@ narxi. Chegaradan past qoldiq **qizil**, tooltip'da chegara ko'rsatiladi. Qalam
 tugmasi (faqat yozish huquqi bo'lsa) ombor maydonlarini tahrirlaydigan dialogni
 ochadi.
 
-Tekshiruv: `scripts/oracles/catalog_oracle.py` — **32/32** (kod formati, takror
-yo'qligi, daraxt sanoqlari, filtrlar va qidiruv, artikulning matn bo'lib
+Tekshiruv: `scripts/oracles/catalog_oracle.py` — **36/36** (kod formati, takror
+yo'qligi, rollar huquqi — skladchi o'qiydi va yozadi, texnolog faqat o'qiydi, TMO
+omborchisi kirmaydi, daraxt sanoqlari, filtrlar va qidiruv, artikulning matn bo'lib
 qolishi, dekor rasmining ulanishi, qoldiq yozilishi, «kam qolgan», qayta
 importda qoldiqning saqlanishi).
 
@@ -192,7 +195,7 @@ Ikki ko'rinish, bitta ma'lumot:
 
 | Ko'rinish | Nima | Qog'oz |
 | --- | --- | --- |
-| **List** | Mijoz va buyurtma kartalari, qatorlar (soni · narx · chegirma · summa), jami, imzo chiziqlari | A4 **ko'ndalang** — sakkiz ustun |
+| **List** | Mijoz va buyurtma kartalari, qatorlar (soni · narx · chegirma · summa), jami, imzo chiziqlari | A4 **ko'ndalang** — yetti ustun (ekrandagi o'chirish ustuni chop etilmaydi) |
 | **Shartnoma** | Spesifikatsiya (kod · artikul ustuni bilan), jami summa **so'z bilan** (`lib/mes: moneyToWords`), alohida shartlar, imzo bloklari | A4 **bo'yiga**, serif shrift |
 
 `@page` qoidasi ko'rinishga qarab almashadi; sahifadagi boshqaruvlar

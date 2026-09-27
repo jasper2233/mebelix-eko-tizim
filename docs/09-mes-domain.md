@@ -4,7 +4,7 @@ Holat: **2026-09-03**. Barcha fazalar implementatsiya qilingan — alohida `TODO
 
 ## 1. Data model (`app/models/`)
 
-19 jadval, hammasi `BaseModel` (ID + timestamps + soft-delete):
+26 jadval (`user` bilan), hammasi `BaseModel` (ID + timestamps + soft-delete). Quyida MES domenining asosiy jadvallari; OEE/andon jadvallari (`andon_event`, `downtime`, `downtime_reason`, `part_defect`, `kromka_measurement`) va `system_setting` — docs/12, `catalog_item` — docs/14:
 
 | Jadval | Mazmun | TT |
 |---|---|---|
@@ -14,17 +14,17 @@ Holat: **2026-09-03**. Barcha fazalar implementatsiya qilingan — alohida `TODO
 | `employee` | Beyjik egasi (badge_id UUID partial-unique, assigned_post_ids JSONB) | 4.2 |
 | `client` | Mijoz (FIO, telefonlar, manzil, izoh; `client_type`/`inn` o'lik ustunlar sifatida olib tashlangan — migratsiya `c7f2d84a91b3`) | 4.6 |
 | `order` | B-YYYY-NNN (yil — `Asia/Tashkent` bo'yicha, `crud/orders.next_number`), status DRAFT→…→DELIVERED/CANCELLED (qoralama bekor qilinmaydi — o'chiriladi: `is_deleted` toshbitik, raqam band qoladi; bekor — tasdiqlangandan keyin, sabab bilan; superuser bekor qilinganni tozalaydi — bolalar/fayllar ketadi, qator toshbitik); `amount` + `advance_payment` Numeric(14,2) (boshlang'ich to'lov, migratsiya `7d2c9f5e1b3a`); `cutmap` JSONB (5.7.5 modeli), `machine_assignments`, `material_usage`; `survey` JSONB — mijoz anketasi + o'lchov varag'i (migratsiya `a91c7d34f6e2`, §6.2) | 6 |
-| `product`/`part`/`part_instance` | Fayl tarkibi; instance QR = `{buyurtma}_productCode_partCode` (yagona nusxa) / `..._n` (takror; 2026-09-03 dan, eski qatorlar prefikssiz — docs/11), kesish xaritasi katakchasiga bog'langan (pattern_no, cell_index); `part.is_custom` — nostandart detal bayrog'i (marshrutini texnolog qo'lda chizadi, migratsiya `e7c4b208af13`); `part.assembly_parent_id` — yig'ma buyum: mayda detal qaysi ASOSIY detalga yopishtiriladi (`c9d4e2f81a70`, §3.1) | 5.8 |
+| `product`/`part`/`part_instance` | Fayl tarkibi; instance QR = `{buyurtma}_productCode_partCode` (yagona nusxa) / `..._n` (takror; 2026-09-03 dan, eski qatorlar prefikssiz — docs/11), kesish xaritasi katakchasiga bog'langan (pattern_no, cell_index); `part.is_custom` — nostandart detal bayrog'i (marshrutini texnolog qo'lda chizadi, migratsiya `e7c4b208af13`); `part.assembly_parent_id` — yig'ma buyum: mayda detal qaysi ASOSIY detalga yopishtiriladi (`c9d4e2f81a70`, §2 «Marshrut birikish qadamida tugaydi») | 5.8 |
 | `part_route` | Marshrutning BITTA QADAMI: `seq` (tartib, 1 dan) + post + `process_code` (1..16 — aynan qaysi amal: 1..14 texnolog tanlaydigan amallar, 15/16 — tizim qo'shadigan dum, `TAIL_CODES`) + per_instance (KROMKA tomonlar), total_required/done — QOLDIQ shu yerda. Yagonalik `(part_id, seq)` bo'yicha (`ix_part_route_part_seq`), post bo'yicha EMAS: bitta post marshrutda bir necha marta uchrashi mumkin (kromka → prisadka → yana kromka). Migratsiya `d5a1c93b70e2` | 5.4 |
 | `scan` | Muvaffaqiyatli ish birligi; `client_event_id` UNIQUE (idempotency), bekor qilish belgisi; `parent_scan_id` — yig'ma buyumda asosiy detal skani yozgan hosila qatorlar (birga bekor bo'ladi, `c9d4e2f81a70`) | 8.4 |
-| `pachka`/`pachka_item` | Qadoq va uning tarkibi (`7e2e0ae9f7f3`): `code` = chekdagi QR (`PK-{buyurtma}-{NN}`, PARTIAL UNIQUE), `status` open→closed→shipped, `closed_at`/`shipped_at`. Bitta nusxa faqat bitta qadoqda — `ix_pachka_item_instance` PARTIAL UNIQUE | Upakovka |
+| `pachka`/`pachka_item` | Qadoq va uning tarkibi (`7e2e0ae9f7f3`): `code` = chekdagi QR (`PK-{buyurtma}-{NN}`, PARTIAL UNIQUE), `status` open→closed (`shipped` va `shipped_at` — o'lik, hech kim yozmaydi), `closed_at`. Bitta nusxa faqat bitta qadoqda — `ix_pachka_item_instance` PARTIAL UNIQUE | Upakovka |
 | `work_session` | Smena (beyjik → sessiya) | 8.2 |
 | `order_file` | project / scx / hujjatlar (diskda `UPLOAD_DIR` ostida); `meta` JSONB — anketa xona rasmlari uchun `{"room_id", "content_type"}` | 2.4.3 |
 | `audit_log` | Kim-qachon-nima (`crud/audit.py: log_action`, tranzaksiya ichida) | 10.11 |
 | `waste_item` | FOYDALI atxot (GibLab `business="true"`) — saqlashga arziydigan yirik qoldiq: `qr_text` = `ATX-{buyurtma}-{n}` (PARTIAL UNIQUE), material, list raqami, foydali o'lcham va `label_printed_at`. Mayda qoldiq bu jadvalga tushmaydi (GibSaw xulqi bilan bir xil). Marshrutda yurmaydi — vazifasi chek chiqarib ID ni yo'qotmaslik | 5.7.5 |
 | `bridge_agent` | Printerli kompyuterdagi chop etish agenti: `name`, `token_hash` (sha256, unique), bir martalik `pair_code` + `pair_expires_at` (15 daqiqa), `last_seen_at` (panelda "Ulandi"/"Uzilgan"); migratsiya `d5e81a24c3b7`. Qo'shimcha: `machine_id` — skan-forvard bog'lash (`f4b8c2a91e55`), `version` — agent exe versiyasi, WS handshake `X-Agent-Version` dan (`a7c3e9d12f04`), `can_print` — False bo'lsa printersiz stansiya chek navbatidan job olmaydi (`d4f7a8c25e91`) | 2.2.2 |
 
-`user` jadvaliga qo'shildi: `role` (`UserRole`, 15 a'zo) + `machine_id`. Rollar ikki guruhga
+`user` jadvaliga qo'shildi: `role` (`UserRole`, 16 a'zo) + `machine_id`. Rollar uch guruhga
 bo'linadi (`app/models/enums.py`):
 
 - staff/qurilma: admin, director, manager, texnolog, terminal, tablo — terminal/TABLO qurilma
@@ -33,8 +33,8 @@ bo'linadi (`app/models/enums.py`):
   **upakovkachi**, **omborchi** — `POST_ROLES` mapping orqali postga bog'lanadi (ARRACHI→ARRA …
   OMBORCHI→TMO); odatdagi yo'l — `/login/badge`. Parol bilan kirish ROLGA emas, HISOB TURIGA
   bog'liq: seed yaratgan `is_system=True` hisob 401 oladi, odamning shaxsiy hisobi esa kiradi va
-  smenasi avtomat ochiladi (§3.0.1) — skaneri yo'q post uchun (ARRA). Beyjik yo'lida smena
-  terminalda ochiladi (§3, §3.0.1). Smena HARAKATSIZLIK bilan yopiladi (ish jadvali bilan emas —
+  smenasi avtomat ochiladi (03-backend-api.md, «Beyjik bilan kirish») — skaneri yo'q post uchun (ARRA). Beyjik yo'lida smena
+  terminalda ochiladi (03-backend-api.md, «Beyjik bilan kirish»). Smena HARAKATSIZLIK bilan yopiladi (ish jadvali bilan emas —
   smena kechroq tugashi mumkin): brauzer chegaradan keyin login sahifasiga qaytaradi, worker esa
   brauzersiz qolgan brigadani yopadi (`services/activity.py`, 04-backend-data.md §6). Ish markazi biriktirish shart
   emas: `resolve_terminal` postdan `scanning.post_machine` bilan topadi.
@@ -42,8 +42,9 @@ bo'linadi (`app/models/enums.py`):
   esa "TMO omborchisi" (`ROLE_LABELS`) — u ishlaydigan post nomi bilan.
 - **`skladchi` — «Mahsulot omborchisi»** (2026-09-25): mahsulotlar (xomashyo) ombori katalogini
   yuritadi (`docs/14`). OFIS roli — parol bilan kiradi, `POST_ROLES` da ATAYLAB yo'q: bu
-  lavozimning posti ham, terminali ham yo'q. `_layout` uni to'g'ri `/warehouse` ga yuboradi va
-  menyuda boshqa band ko'rsatilmaydi. **`omborchi` bilan chalkashtirmaslik kerak**: u TAYYOR
+  lavozimning posti ham, terminali ham yo'q. `_layout` uni o'z yo'llaridan (`OMBOR_YOLLARI`:
+  `/warehouse`, `/sotuv`, `/settings` — parolini o'zi almashtiradi) tashqarida to'g'ri
+  `/warehouse` ga yuboradi va menyuda boshqa band ko'rsatilmaydi. **`omborchi` bilan chalkashtirmaslik kerak**: u TAYYOR
   mahsulot omborchisi, tsex roli va terminalda ishlaydi. Ikki xil ombor, ikki xil odam —
   shuning uchun ikki xil rol.
 
@@ -52,13 +53,13 @@ bo'linadi (`app/models/enums.py`):
 | Atama | Nima | Nima EMAS |
 |---|---|---|
 | **TMO** | Tayyor Mahsulot Ombori — marshrutning oxirgi posti (`PostCode.TMO`) | "Ombor", "sklad", "tayyor mahsulot skladi" |
-| **Ish markazi** | `Machine` modeli / `machine` jadvali — postdagi jismoniy ish nuqtasi: monoblok yoki stanok qayerda tursa, smena shu yerda ochiladi, skan shu yerga yoziladi. UI da "Ish markazi", URL `/work-centers`. Nom SAP `Arbeitsplatz` / 1C «рабочий центр» / APICS *work center* dan; ISA-95 da `Post` = Work Center darajasi, bu esa Work Unit | "Stanok" — ARRA/KROMKA/OVAL/PRISADKA/ROVER da haqiqiy stanok bor, STOLYARKA/BOYOQ/UPAKOVKA/TMO da esa faqat brigada + monoblok. Klass va jadval nomi `machine` qoladi (5 jadval `machine_id` FK bilan bog'langan), lekin FOYDALANUVCHI hech qayerda "stanok" so'zini ko'rmaydi |
+| **Ish markazi** | `Machine` modeli / `machine` jadvali — postdagi jismoniy ish nuqtasi: monoblok yoki stanok qayerda tursa, smena shu yerda ochiladi, skan shu yerga yoziladi. UI da "Ish markazi", URL `/work-centers`. Nom SAP `Arbeitsplatz` / 1C «рабочий центр» / APICS *work center* dan; ISA-95 da `Post` = Work Center darajasi, bu esa Work Unit | "Stanok" — ARRA/KROMKA/OVAL/PRISADKA/ROVER da haqiqiy stanok bor, STOLYARKA/BOYOQ/UPAKOVKA/TMO da esa faqat brigada + monoblok. Klass va jadval nomi `machine` qoladi (9 jadval `machine_id` FK bilan bog'langan), lekin FOYDALANUVCHI hech qayerda "stanok" so'zini ko'rmaydi |
 | **Qadoqlash bo'limi** | `PostCode.UPAKOVKA` — marshrutning oddiy posti | "Upakovka ombori" — bunday ombor yo'q |
 
 Bu MENYU VA URL ga ham tegishli: ish markazlari sahifasi "Ish markazlari" / `/work-centers` (ilgari "Stanoklar" / `/machines` edi — 9 ta yozuvning 4 tasida stanok yo'q). GibLab material katalogi sahifasi BUTUNLAY OLIB TASHLANDI (`d2b71f4c86e9`): u `.project` fayllaridan avtomat to'lardi va hech kim o'qimasdi. Material sarfi `Order.material_usage` dan hisoblanadi, yorliq va kesish xaritasi `Part.material_name` dan.
 
 Yolg'iz "Ombor" va "sklad" ishlatilmaydi: tsexda tayyor mahsulot omboridan tashqari
-xomashyo ombori ham bor (u MESda yuritilmaydi), nomsiz atalganda qaysi biri ekani
+xomashyo ombori ham bor (2026-09-25 dan uning katalogi MESda — «Mahsulotlar ombori», `docs/14`), nomsiz atalganda qaysi biri ekani
 yo'qoladi. Boshqa tizimning ombori haqida yozilganda kimniki ekani
 aytiladi ("GibLab ombori") — 10-giblab-reference.md dagidek.
 
@@ -68,7 +69,7 @@ aytiladi ("GibLab ombori") — 10-giblab-reference.md dagidek.
 |---|---|
 | `models.py` | Parse natijasi dataclasslari (ORM emas): `ParsedProject/Product/Part`, `XncOp`, `ParsedMaterial`, `CutOperation` + `ParseError` (matni to'g'ridan texnologga ko'rsatiladi); `PROCESS_POSTS` — tsexning "Jarayon uchun kodlar" jadvali (jarayon kodi → post kodi, quyida) |
 | `parser.py` | .project XML (to'la parser, regex YO'Q; cp1251/UTF-8; PROCESSED/TEMPLATE avlodlar; kontekstli id qidiruv); takror detal kodlari deterministik rename (`code`, `code-2`, …) + o'zbekcha warning — QR/SCX kaliti unikal qoladi. Detal NOMI marshrutga umuman ta'sir qilmaydi: eski `{7;11;8}` figurali qavs kodlari butunlay olib tashlangan, marshrut endi bazadagi tartibli qadamlar (quyida) |
-| `xnc.py` | XNC program parse (atribut yoki bola element), xavfsiz ifoda hisoblash (`dz+3`), `merge_xnc_ops` — BARCHA operatsiyalar saqlanadi, (`side2`, `code`) bo'yicha tartiblanadi, soni cheklanmaydi (`parser.py` 2 tadan ko'pi uchun faqat ogohlantiradi) |
+| `xnc.py` | XNC program parse (atribut yoki bola element), xavfsiz ifoda hisoblash (`dz+3`); buzilgan raqamli atribut (`d="5,0"`, `ac="inf"`) yoki XML — `ParseError` (422, yalang'och 500 emas); `merge_xnc_ops` — BARCHA operatsiyalar saqlanadi, (`side2`, `code`) bo'yicha tartiblanadi, soni cheklanmaydi (`parser.py` 2 tadan ko'pi uchun faqat ogohlantiradi) |
 | `csblob.py` | CS `data` blob dekoderi: big-endian, 15B yozuvlar, guillotine daraxt, dims+117 root-o'q sloti, 5.7.4 self-check |
 | `cutmap.py` | Vizual model (5.7.5): sheets/parts/cuts + holes overlay, rot/eW/eH, atxot foydali o'lcham, instance↔katakcha binding; har list uchun root-strip o'lcham zanjiri `dims` (ax/a/b/v, ≥10mm poloslar, GibSaw uslubi) — cutmap JSONida saqlanadi, terminal SVG chizadi |
 | `scx.py` | SCX generatsiya — Nanxing haqiqiy konvensiyasi (Scx-korpusdan, 87 proyekt): Y=Width−y; qirra Face l4/r3/t1/b2; orqa dastur Face=6 bilan bitta faylda; 32mm qo'shqavat 16/Z÷2; freza kompensatsiyalangan yo'l. To'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §7.2 |
@@ -94,8 +95,8 @@ skan talab qilinar, prisadkachi bitta detalni «0/2» deb ko'rardi — eski qada
 Fayldan boshqa qadam chiqmaydi; ustiga `ingest.py` tizim DUMINI qo'shadi — UPAKOVKA
 (kod 15, anketada `packaging` bo'lsa) va TMO (kod 16, DOIM, eng oxirgi qadam).
 
-Paz/freza uchun ROVER bosqichi **ataylab yaratilmaydi** (`ParsedPart.stage_sides()` endi FAQAT
-prisadka qaytaradi): roverdan chiqqan detal keyin bo'yalishi ham, stolyarkaga ketishi ham mumkin —
+Paz/freza uchun ROVER bosqichi **ataylab yaratilmaydi** (`ParsedPart.prisadka_passes()` FAQAT
+PRISADKA qadamini beradi — 0 yoki 1): roverdan chiqqan detal keyin bo'yalishi ham, stolyarkaga ketishi ham mumkin —
 buni fayl bilmaydi, ya'ni taxmin qilingan marshrut noto'g'ri bo'lardi. Paz/freza geometriyasi
 baribir SCX ga va yorliq eskiziga ketadi, faqat ROVER qadami bo'lmaydi — pazli/frezali detal
 PRISADKA qadamini oladi (aks holda u ARRA→TMO bo'ylab ishlov KO'RMASDAN o'tib ketardi). ROVER, STOLYARKA va
@@ -206,12 +207,12 @@ to'liq jadval: [10-giblab-reference.md](10-giblab-reference.md) §2.3. Qoidalar:
 
 **Nusxani topish — QR buyurtmaga bog'lanmagan** (`scanning.record_scan_at`). QR satri
 2026-09-03 dan `{buyurtma}_{productCode}_{partCode}[_n]` (`docs/11`) — butun tizimda unikal (`ix_part_instance_qr_serial`, 2026-09-05 dan predikat `WHERE NOT is_deleted` — shakldan qat'i nazar)
-bo'yicha: bir xil GibLab kodlaridan yig'ilgan IKKI jonli buyurtma bitta QR ni ulashishi
-mumkin. Dvijok mos keluvchi jonli (PRODUCTION/CANCELLED) qatorlarni oladi; to'qnashuv deb FAQAT
-PRODUCTION qatorlar sanaladi (CANCELLED faqat E003 xabari uchun — bekor qilingan buyurtma o'sha
-.project dan qayta yaratilsa qr_text bir xil bo'ladi) va PRODUCTION qatorlar birdan
-ko'p bo'lsa `E001` — "Bu QR bir nechta buyurtmada uchradi — managerga murojaat qiling" —
-beradi. Ilgari `ORDER BY order.id DESC` bilan JIMGINA eng yangi buyurtmaga yozardi, ya'ni
+bo'yicha — ya'ni ikki jonli buyurtma bitta QR ni ulasha OLMAYDI (docs/11; 2026-09-05 gacha
+prefikssiz qatorlar predikatdan tashqarida edi va takrorlanishi mumkin edi). Dvijok mos keluvchi
+jonli (PRODUCTION/CANCELLED) qatorlarni oladi; to'qnashuv deb FAQAT PRODUCTION qatorlar sanaladi
+(CANCELLED faqat E003 xabari uchun) va PRODUCTION qatorlar birdan
+ko'p bo'lsa `E001` — "Bu QR bir nechta buyurtmada uchradi — menejerga murojaat qiling" —
+beradi (hozir indeks buni bazada to'sadi, tekshiruv zaxira). Ilgari `ORDER BY order.id DESC` bilan JIMGINA eng yangi buyurtmaga yozardi, ya'ni
 skan boshqa buyurtmaning hisobiga tushib ketardi. Diqqat: bu tekshiruv faqat skan
 dvijokida; `terminal.py resolve_terminal_qr` (QR → buyurtma sahifasi) hali ham eng
 yangisini tanlaydi.
@@ -266,8 +267,9 @@ MES bilan bog'lanish kaliti — sarlavhadagi `Code` = `Product.code`. Detal kodl
 - `/ws/events` — brauzer klientlar: JWT (`Authorization: Bearer` header yoki access cookie; `?token=`
   query ATAYLAB qabul qilinmaydi — access-loglariga sizardi); rol → scope (terminal/tablo/dashboard),
   post/ish markazi bo'yicha filtrlash; `ping`→`pong` heartbeat. Heartbeat'da token har **300 s** da
-  qayta tekshiriladi (`_RECHECK_SECONDS`): logout (`token_version` bump) yoki hisobni
-  o'chirish/nofaol qilish ochiq soketni ham **4401** bilan yopadi. Tekshiruv BEKOR QILINGANLIK
+  qayta tekshiriladi (`_RECHECK_SECONDS`): parol almashtirish yoki refresh-replay (`token_version`
+  bump), hisobni o'chirish/nofaol qilish ochiq soketni ham **4401** bilan yopadi; logout esa
+  `token_version` ni oshirmaydi (faqat joriy qurilma), o'sha brauzerning soketi sahifa bilan birga yopiladi. Tekshiruv BEKOR QILINGANLIK
   bo'yicha (`resolve_user(..., verify_exp=False)`): ulanishdagi access token 30 daqiqada eskiradi,
   tablo/terminal soketi esa kun bo'yi ochiq — muddat bo'yicha uzish har ekranni yarim soatda
   uzib qayta ulardi. DB xatosi ulanishni uzmaydi.
@@ -294,7 +296,7 @@ MES bilan bog'lanish kaliti — sarlavhadagi `Code` = `Product.code`. Detal kodl
   tushadi (`log_rejected_scan`) VA `scan.rejected` WS eventi bilan (`post_id` + `machine_id` bo'yicha)
   terminal ekraniga chiqadi — ilgari bu holat faqat agent logiga tushar, stanokda skanerlagan
   operator skanini yo'qotganini bilmasdi. `ATX-`/`PK-` QR bu yo'ldan o'tsa `SKIP` bilan jimgina
-  chetlab o'tiladi, beyjik UUID'i esa `BADGE` bilan (§3.0).
+  chetlab o'tiladi, beyjik UUID'i esa `BADGE` bilan (03-backend-api.md, `POST /bridge-agents/scan`).
 
 ## 5. Yorliq chop etish (TT 12.3 / 13.2)
 
@@ -303,14 +305,15 @@ MES bilan bog'lanish kaliti — sarlavhadagi `Code` = `Product.code`. Detal kodl
 `PachkaLabelData`/`render_pachka_label_png` (qadoq), `WasteLabelData`/`render_waste_label_png`
 (foydali atxot), `BadgeLabelData`/`render_badge_png` (hodim beyjigi). Mos arq tasklari —
 `print_label`, `print_pachka_label`, `print_waste_label`, `print_badge`
-(`app/tasks/__init__.py: all_tasks`). Yagona chiqish — PNG rasm; `LabelData` maydonlari: qr_text, part_code,
-part_name, project_name (`order.project_name or order.number`), order_number, material, l/w/t, count,
+(`app/tasks/__init__.py: all_tasks`). Yagona chiqish — PNG rasm; `LabelData` maydonlari: qr_text,
+part_name, project_name (`order.project_name or order.number`), material, length/width, count,
 instance_no, edges, xnc_summary, label_num, printed_at (Asia/Tashkent — yorliq pastida sana bo'lib
-chiqadi), **holes**, **texture**, **route_codes** (marshrut jarayon kodlari `seq` tartibida).
+chiqadi), **holes**, **texture**, **route_codes** (marshrut jarayon kodlari `seq` tartibida; faqat
+nostandart detalda to'ldiriladi), **product_name**.
 `holes` — `order.cutmap` dan shu detal katakchasi bo'yicha
 (`part.label_num` → cutmap `parts[].num` → `cutmap.holes[cell.id]`).
 
-**`render_label_png(d, scale=1)` — asosiy maket** (GibSaw `mebelix.lbl` uslubi).
+**`render_label_png(d)` — asosiy maket** (GibSaw `mebelix.lbl` uslubi).
 
 > GibSaw sexda **endi chek bosmaydi** — hamma chekni MES bosadi. Uning
 > o'rnatmasi faqat MA'LUMOTNOMA sifatida saqlanadi (shu sababli undagi
@@ -323,11 +326,12 @@ chiqadi), **holes**, **texture**, **route_codes** (marshrut jarayon kodlari `seq
   (avval chek eniga LANCZOS bilan kichraytiriladi, keyin threshold 160; natija eni bo'yicha
   keshlanadi — 2806x760 masterni har chekda ochish ~12 ms edi). Ilgari GibSaw
   `Universal.lbl` dan olingan 469x148 nusxa turardi va u ~16% SIQILGAN edi (nisbat 3.11,
-  brendniki 3.69) — har chekda logo cho'zilib chiqardi, `Formatka` + product kodi, detal kaliti,
-  loyiha nomi (`text(..., max_mm=34)` — `draw.textlength` bo'yicha QR chap chetigacha kesiladi;
+  brendniki 3.69) — har chekda logo cho'zilib chiqardi; logo yonida tepada `N{label_num}` va
+  (count>1 bo'lsa) `{instance_no}/{count}`, ostida nusxa ID (= QR matni; mahsulot kodi alohida
+  chizilmaydi — u ID ichida), loyiha nomi (`text(..., max_mm=34)` — `draw.textlength` bo'yicha QR chap chetigacha kesiladi;
   ilgari 26 belgi limiti turardi va u QR'ni hisobga olmagani uchun uzun nomning dumi
-  QR ostida ko'rinmay qolardi), kromka materiallari 2×2 (t/l/b/r, tagchiziq bilan), markazda katta `L x W = soni`,
-  `N_detal nomi`. **Sverlo ikonkasi** — detalda teshik bo'lsa (`xnc_summary` da `bores`
+  QR ostida ko'rinmay qolardi), kromka materiallari 2×2 (t/l/b/r, tagchiziq bilan), markazda katta `L x W`,
+  detal nomi (N prefiksisiz, 44 mm da kesiladi). **Sverlo ikonkasi** — detalda teshik bo'lsa (`xnc_summary` da `bores`
   yoki `edge_bores`) HAR DOIM, marshrut qatorining o'ngida (x=49.5, y=40 mm, 6×6 mm;
   `app/assets/label-icon-drill.png`). Teshikning o'zi eskizda ham o'z joyida aylana bo'lib
   chiziladi — lekin bu takror EMAS, vazifasi boshqa: eskiz teshik QAYERDA ekanini aytadi,
@@ -343,18 +347,19 @@ chiqadi), **holes**, **texture**, **route_codes** (marshrut jarayon kodlari `seq
   sverlo — 1-bit quvur uchun qayta chizilgan `drill-hires.png` ning nusxasi (asl 40x40
   48 px da shashkaga aylanib kul rang bosilardi). Chorak va ikki bo'lak uchun MESda
   ma'lumot manbai yo'q,
-  marshrut ALOHIDA qatorda (`Marshrut: 7/11/8`, y=41.5mm — detal NOMIGA qo'shilmaydi, chunki nom
-  24 belgida kesiladi va marshrut jimgina yo'qolardi). Marshrut satri **faqat nostandart detalda**
+  marshrut ALOHIDA qatorda (POST nomlari `·` bilan, masalan `ROVER·STOLYARKA·BOYOQ`, qadoqlash/TMO
+  dumi yozilmaydi; y=41.5mm, sig'masa 2–3 qatorga o'raladi — detal NOMIGA qo'shilmaydi, chunki nom
+  44 mm da kesiladi va marshrut jimgina yo'qolardi). Marshrut satri **faqat nostandart detalda**
   (`part.is_custom`) chiqadi: standart detalning yo'li oldindan ma'lum, chekda u joyni behuda band
   qilardi; nostandartda esa operator keyingi postni aynan shundan biladi,
-  pastda material + sana + `N{label_num} {instance_no}/{count}`;
+  pastda mahsulot nomi (marshrut bir qatordan oshmasa), material (+ `TEKSTURA`) va sana;
 - o'ng ustun: QR (`qrcode`, `d.qr_text`) tepada, ostida **vertikal detal eskizi** — ingichka kontur,
   kromka konturdan 1 mm tashqarida qalin chiziq, `texture` bo'lsa `l` O'QI bo'ylab 3 chiziq — yo'nalish eskizga ergashadi (`burilgan` bo'lsa vertikal, aks holda gorizontal; ilgari doim vertikal edi va 250×832 kabi l<w detalda chek teksturani 90° noto'g'ri ko'rsatib, kesish xaritasi bilan mos kelmasdi),
   ishlangan qirra kontur ICHIDA chiziq bilan (paz uzuq, freza tutash) va qirraga tushmagan ishlov o'z joyi bilan — eskiz shunda 46 mm emas 41 mm (batafsil quyida, «`XncOp.machined_sides`»),
   cutmap'dagi **haqiqiy teshiklar** (`bores` aylana, `edge` qirra shtrixi; burilgan eskizda HAQIQIY 90° burilish `(x,y)→(y, l−x)` — xarita va GibSaw bilan bitta konvensiya, ilgari transpose/oyna edi), o'lchamlar en pastda va
   uzunlik o'ngda 90° aylantirilgan, har biri yoniga o'sha tomonlar kromka simvoli.
 
-Chiziqlar `width=max(2, scale)` — GDI kichraytirishda 1 px chiziq yo'qoladi.
+Chiziqlar `width=2` — GDI kichraytirishda 1 px chiziq yo'qoladi.
 
 Zanjir (terminal → printer) — GoDEX G500-U faqat USB, tarmoq porti yo'q, shuning uchun bitta yo'l:
 
@@ -429,8 +434,7 @@ operator keyin oddiy skan bilan yakunlaydi.
 
 Chekni bekor qilish (`DELETE /terminal/labels/{id}`) shu avto-skanni ham bekor qiladi va
 `total_done` ni qaytaradi; operator qo'lda qilgan skanga tegilmaydi. Qidiruv ikkala shaklni ham
-qamraydi — eski doimiy `cutprint-{id}` / `rvprint-{id}` va yangi vaqt tamg'ali `cutprint-{id}-%` /
-`rvprint-{id}-%`.
+qamraydi — eski doimiy `cutprint-{id}` / `rvprint-{id}` va yangi vaqt tamg'ali `cutprint-{id}-%`.
 
 `bridge-agent/agent.py` — tsexdagi mustaqil servis (websockets + pywin32 + Pillow): outbound WS,
 lokal JSONL navbat `QUEUE_FILE` (printer/internet uzilganda yo'qotmaydi), flusher **event-driven** —
@@ -457,9 +461,9 @@ O'rnatish qadamlari: [07-infra-devops.md](07-infra-devops.md) → "Chop etish in
 | `terminal` | `/context`, `/employees` ("Kim ishlayapti?" — shu postdagi faol hodimlar), `/session`, `/session/end`, `/orders` (loyiha kartalari: done/total post semantikasida — ARRA: NUSXA bo'yicha (done = chek∪skan, total = ARRA marshruti bor nusxalar soni; ikkalasi bir o'lchovda, chunki bir detalda ikkita ARRA qadami bo'lishi mumkin), KROMKA: detal bo'yicha, qolganlarida `PartRoute.total_done/total_required` qadam yig'indisi), `/orders/{id}/cutmap`, `/orders/{id}/kromka` (KROMKA/OVAL sahifasi), `/orders/{id}/prisadka` (detallar + SCX fayllar), `/orders/{id}/queue` (post navbati NUSXA darajasida — BOYOQ/STOLYARKA; postga bog'liq emas, kontekstdagi postni oladi), `/qr/{qr}/order` (QR→buyurtma), `/labels/{id}` POST (GoDEX navbat) / DELETE (chekni bekor qilish, manager/texnolog ham), `/waste/{id}/label` POST/DELETE (foydali atxot cheki — arrachi xaritadagi ATX katakdan, §5), `/labels/{id}.png`, `/files/{id}` | terminal + 9 operator rol; ish markazi/post konteksti (`_terminal_ctx` → `TerminalCtx`) har route'ga alohida qo'yiladi — yorliq/fayl route'lariga ataylab emas, ular ish markazisiz ham ishlaydi; javoblar typed (`app/schemas/terminal.py`: `TerminalOrderCard`, `QrOrderRef`, `Kromka*`/`Prisadka*` modellari — `list[dict]` yo'q) |
 | `pachka` | `/orders/{id}` GET (qadoqlash holati) / POST (yangi qadoq — buyurtmada bitta ochiq qadoq), `/{id}/scan` (detalni qadoqqa — bu AYNI paytda marshrutning UPAKOVKA qadami), `/{id}/items/{instance_id}` DELETE (xato skanni qaytarish — skan ham bekor bo'ladi), `/{id}/reopen` (yopilganini qayta ochish), `/{id}/close` (yakunlash + chek) | terminal + operator rollar; faqat UPAKOVKA postida (`_pack_ctx`) |
 | `tmo` | `/orders/{id}` GET, `/orders/{id}/accept` (QABUL — `PK-...` bo'lsa qadoq ichidagi HAMMA nusxa bitta skanda, aks holda bitta detal), **`/orders/{id}/ship` ham OLIB TASHLANDI** — TMO da qadoq ro'yxati yo'q. **Buyurtmani TOPSHIRISH endpointi ham TMO da YO'Q** — u managerda (`orders.deliver_order`, faqat TAYYOR holatdan); TMO faqat qabul qiladi va hamma detal o'tgach buyurtma o'zi TAYYOR bo'ladi | terminal + operator rollar; faqat TMO postida (`_wh_ctx`) |
-| `tablo` | `/matrix`, `/orders/{id}` | istalgan auth |
+| `tablo` | `/matrix`, `/orders/{id}`, `/machines` + `/machines/{id}` (stanok taxtasi — `/tablo/stanoklar`, docs/03) | istalgan auth |
 | `reports` | `/productivity`, `/orders`, `/materials` (+`?format=xlsx`), `/dashboard` | manager/director/admin |
-| `audit-logs` | filtrli ro'yxat + `summary` (modul × amal sonlari). Modullar backend `log_action(module=…)` qiymatlari (scan, print, sessions, orders, pachka, tmo, bridge_agents, employees, users, clients, machines, posts, auth); frontend tab'larni `summary`dan quradi — qo'lda ro'yxat YO'Q, faqat `MODULE_LABELS` tarjimasi. `scans` (19 ta qo'lda yozilgan yozuv) `scan` bilan bitta modul deb o'qiladi (`_MODULE_ALIASES`). Eski `ombor` nomi `e5b83c04d7a1` da `tmo` ga birlashtirilgan |
+| `audit-logs` | filtrli ro'yxat + `summary` (modul × amal sonlari). Modullar backend `log_action(module=…)` qiymatlari (scan, print, sessions, orders, pachka, tmo, bridge_agents, employees, users, clients, machines, posts, auth, downtime, defect, settings, system, catalog); frontend tab'larni `summary`dan quradi — qo'lda ro'yxat YO'Q, faqat `MODULE_LABELS` tarjimasi. `scans` (19 ta qo'lda yozilgan yozuv) `scan` bilan bitta modul deb o'qiladi (`_MODULE_ALIASES`). Eski `ombor` nomi `e5b83c04d7a1` da `tmo` ga birlashtirilgan | admin (`AdminUser`) |
 | `bridge-agents` | ro'yxat/yaratish, `/{id}` PATCH (ish markazi bog'lash + `can_print`), `/{id}/code` (yangi ulanish kodi), `/{id}` DELETE, `/pair`, `/scan` (skan-forvard, §4), `/logs` POST + `/{id}/logs` GET (agent loglari Redisda — `mes:agent:log:{id}`, oxirgi 200 satr, TTL 7 kun; admin panelda ko'rinadi, tsexdagi kompyuterga masofadan kirish yo'q), `/latest` + `/download` (agent avto-yangilanishi: `agent-dist/version.json` — versiya + sha256 — va `mebelix-agent.exe`; 2026-08-27 dan CI har deploy'da exe quradi, ya'ni eskirishning iloji yo'q) | admin (`AdminUser`); `/pair`, `/latest`, `/download` ochiq (router global auth'siz — agentda sessiya yo'q, exe sir emas), `/scan` va `/logs` agent tokeni bilan (Bearer → sha256) |
 
 ### Buyurtma lifecycle va to'lovlar
@@ -678,7 +682,8 @@ direktor ham ko'radi.
 - Dizayn tokenlar: `src/index.css` (post/status ranglari, `.num`, print CSS); domen konstantalar `src/lib/mes.ts`.
 - Imzo komponent: `Common/StagePipeline` — post zanjiri (dinamik; buyurtma sahifasi sarlavhasida `showLabels` bilan — `routes/_layout/orders/$orderId.tsx`; boshqaruv paneli endi uni ishlatmaydi — u yerda buyurtma kartalari yo'q, faqat kechikkan/to'xtab qolgan/tayyor ro'yxatlari; buyurtmalar reyestrida bosqich ustuni yo'q).
 - Routelar: `_layout/*` admin modullar (index — boshqaruv paneli, orders (`index` + `$orderId`),
-  clients, employees, work-centers, reports, logs, printers, admin, settings, system-health
+  clients, employees, work-centers, warehouse, sotuv, defects, reports, agents, logs, settings, system-settings
+  (`printers` → `/agents`, `admin` → `/employees` — faqat eski havolalar uchun redirect), system-health
   («Tizim holati», `requireAccess(isAdmin)`, 30/120 s da yangilanadi, oyna 15 daq / 1 / 3 / 12 soat, qator → endpoint tafsiloti; yon menyuda holat belgisi),
   cutmap.$orderId, `anketa.$orderId`), `/terminal`, `/tablo`
   ("Jami" yig'indi qatori + rejimlar + drill-down; sarlavhada brend logo, ish markaziga bog'langan
@@ -722,8 +727,8 @@ direktor ham ko'radi.
     `POST /terminal/waste/{id}/label` chek chiqaradi, DELETE bekor qiladi, cheki chiqarilgani
     ham YASHIL bo'ladi. Katak↔`WasteItem` bog'lanishi `w.qr_text.endsWith("-{atx}")` +
     `sheet_no` orqali — ya'ni `ingest.py` cutmap katagiga yozgan `atx` raqami bilan.
-  · **KROMKA** (`Terminal/KromkaView`) — ikki panel: chapda arradan chiqqan detallar
-    (tugaganlari yashil, pastda), o'ngda "Jarayonda" (2+ tomonli, boshlangan, tugamagan).
+  · **KROMKA** (`Terminal/KromkaView`) — bitta to'liq kenglikdagi jadval (arradan chiqqan detallar): jarayondagi (2+ tomonli,
+    boshlangan, tugamagan) qatorlar tepada sariq, tugaganlari pastda yashil; sarlavhada «Jarayonda N».
     Har skan darhol yoziladi (tomon = skan, `per_instance`); bir QR uchun 5 s to'siq;
     picker'da skan qilinsa proyekt o'zi ochiladi (`/qr/{qr}/order`); begona detalga aniq xato.
     Kromka ustunida tomon NOMI emas, qirra simvollari — yorliq eskizi detal o'lchamiga

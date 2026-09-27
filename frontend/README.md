@@ -107,7 +107,7 @@ The frontend code is structured as follows:
 * `frontend/src/components` -  The different components of the frontend.
 * `frontend/src/hooks` - Custom hooks.
 * `frontend/src/lib` - Shared helpers: MES domain constants and formatting (`mes.ts`), zod schemas and input formatters (`validation.ts`), anketa variantlari katalogi (`anketa.ts`), route guard'lari (`guards.ts`), TanStack Query mijozi (`queryClient.ts`), SCX papkasi (File System Access + IndexedDB) uchun `scxDir.ts`, `cn()` className helper'i (`utils.ts`).
-* `frontend/src/utils.ts` - `lib` dan tashqarida, `src/` ildizida: `extractErrorMessage`, `detailParts`, `detailMessage`, `handleError`, `API_BASE`, `getInitials`.
+* `frontend/src/utils.ts` - `lib` dan tashqarida, `src/` ildizida: `extractErrorMessage`, `detailParts`, `toastScanError`, `handleError`, `API_BASE`, `getInitials`. (`detailMessage` 2026-09-27 da olib tashlandi — terminal kontekst-xato sahifasi endi `extractErrorMessage` ni ishlatadi.)
 * `frontend/src/queries` - TanStack Query option factories (`mes.ts`, `users.ts`).
 * `frontend/src/routes` - The different routes of the frontend which include the pages.
 * `frontend/public/assets` - Static assets (served as `/assets/*`).

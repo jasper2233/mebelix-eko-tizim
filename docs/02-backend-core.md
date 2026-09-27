@@ -6,9 +6,9 @@ Umumiy arxitektura oqimi:
 
 ```
 backend/app/main.py
-  └── create_application(router, settings)        # core/setup.py
+  └── create_application(router)                  # core/setup.py
         ├── Settings (env → pydantic)             # core/config.py
-        ├── lifespan: gc.freeze + perf.lag_monitor + perf.flush_loop + Redis pool'lar + WS pub/sub listener + DB probe   # core/setup.py, core/ws.py, core/perf.py
+        ├── lifespan: gc.freeze + perf.lag_monitor + perf.flush_loop + Redis pool'lar + WS pub/sub listener + DB probe   # core/setup.py, core/ws.py, core/perf.py, core/health.py
         ├── RequestLoggingMiddleware              # core/middleware.py
         ├── CORSMiddleware, ProxyHeadersMiddleware
         ├── Prometheus /metrics
@@ -25,13 +25,13 @@ backend/app/main.py
 | `backend/app/core/config.py` | Barcha sozlamalar (`Settings`) + production xavfsizlik validatori |
 | `backend/app/core/db.py` | Async SQLAlchemy engine, session factory, `Base` model |
 | `backend/app/core/exceptions.py` | Umumiy HTTP exception klasslari (o'zbekcha xabarlar bilan) |
-| `backend/app/core/health.py` | DB va Redis health-check funksiyalari |
+| `backend/app/core/health.py` | DB va Redis health-check funksiyalari (`/ready`) va startup probe'lari (lifespan, arq worker) |
 | `backend/app/core/logger.py` | JSON formatdagi structured logging (stdout) |
 | `backend/app/core/middleware.py` | `X-Request-ID` + so'rov loglash middleware'i; «Tizim holati» uchun so'rov davomiyligini route shabloni bilan yozadi va ishlayotgan so'rovlarni ro'yxatga oladi (`core/perf.py`) |
 | `backend/app/core/perf.py` | «Tizim holati» o'lchovlari Redis'da, ikkala gunicorn ishchisidan umumiy: `mes:perf:req` (so'rovlar, 100 000 ≈ 12 soat), `mes:perf:lag` (event loop bloklari, 2 000), `mes:perf:print` (chek kechikishi, 10 000) — LTRIM bilan cheklangan; yozuv xotiradagi buferga, `flush_loop` soniyada bir paket; `record_request`, `record_delivered`, `finish`, `lag_monitor` (muzlash yozuvida shundan GC vaqti — `gc_ms`), `read_window` |
 | `backend/app/services/system_health.py` | «Tizim holati» tahlili: oyna o'qish (qamrov bilan), endpoint guruhlari, sekin so'rovning muzlashga to'g'ri kelgan ulushi (pid + vaqt), chek navbatlari, TOPILMALAR (tayyor o'zbekcha jumlalar) va chegaralar — sahifa ham, yon menyu belgisi ham shu yagona manbadan |
 | `backend/app/core/security.py` | bcrypt parol hash, JWT token, httpOnly cookie'lar |
-| `backend/app/core/setup.py` | Application factory, lifespan, probe'lar, metrics, docs |
+| `backend/app/core/setup.py` | Application factory, lifespan, metrics, docs |
 | `backend/app/core/worker.py` | arq background worker konfiguratsiyasi |
 | `backend/app/core/ws.py` | Real-time ko'prik — WebSocket fan-out + Redis pub/sub (`WsManager`) |
 | `backend/app/core/utils/__init__.py` | Bo'sh package marker |
@@ -43,7 +43,7 @@ backend/app/main.py
 
 ## `backend/app/main.py`
 
-**Maqsadi:** butun backend'ning kirish nuqtasi. Bor-yo'g'i 5 qator: `app.api`dagi yagona `router`ni olib `create_application()` factory'siga uzatadi (`settings` factory ichida modul darajasida import qilinadi).
+**Maqsadi:** butun backend'ning kirish nuqtasi. Bor-yo'g'i 4 qator: `app.api`dagi yagona `router`ni olib `create_application()` factory'siga uzatadi (`settings` factory ichida modul darajasida import qilinadi).
 
 ```python
 app = create_application(router=router)
@@ -69,7 +69,7 @@ app = create_application(router=router)
 | PostgreSQL | `POSTGRES_USER/PASSWORD/SERVER/PORT/DB`, `POSTGRES_ASYNC_PREFIX="postgresql+asyncpg://"`, `DB_POOL_SIZE=10`, `DB_MAX_OVERFLOW=20` |
 | First admin | `ADMIN_NAME/PHONE/USERNAME/PASSWORD` — startup'da yaratiladigan birinchi admin |
 | Redis | `REDIS_HOST`, `REDIS_PORT` — navbat ham, rate limit ham, WS pub/sub ham, «Tizim holati» ro'yxatlari (`mes:perf:*`, `core/perf.py` o'z klienti bilan) ham shu bitta Redis'ga boradi (yoqish/o'chirish bayroqlari yo'q) |
-| Rate limit | `LOGIN_RATE_LIMIT_ATTEMPTS=5`/`LOGIN_RATE_LIMIT_PERIOD=300` — rate limit faqat login uchun ishlatiladi, umumiy default'lar yo'q |
+| Rate limit | `LOGIN_RATE_LIMIT_ATTEMPTS=5`/`LOGIN_RATE_LIMIT_PERIOD=300` — faqat parol bilan kirish uchun sozlanadi; boshqa cheklovlar kodda qat'iy (beyjik bilan kirish 30/60 s, ochiq `/public` 3D havola 60/300 s), umumiy default'lar yo'q |
 | Pagination | `DEFAULT_PAGE_SIZE=50`, `MAX_PAGE_SIZE=100` |
 | File storage | `UPLOAD_DIR="uploads"` (project/scx/label fayllar ildizi,; nisbiy yo'l `backend/` paket ildiziga nisbatan), `MAX_PROJECT_FILE_SIZE` = 50 MB |
 | Production floor | `STRICT_STAGE_ORDER=True` (E004 — oldingi qadam tugamaguncha skanni bloklash,; tartib postlarning global ketma-ketligidan emas, detalning O'Z marshrutidagi `seq` bo'yicha, chunki nostandart marshrut roverdan ham boshlanishi mumkin), `SCAN_UNDO_SECONDS=60` (BEKOR QILISH oynasi) |
@@ -80,7 +80,7 @@ app = create_application(router=router)
 | Env / CORS | `ENVIRONMENT`, `CORS_ORIGINS=["http://localhost:5173"]`, `CORS_METHODS`, `CORS_HEADERS` |
 
 - Computed field'lar: `POSTGRES_URI` (`user:pass@host:port/db`) va `REDIS_URL` (`redis://host:port`). `POSTGRES_URI` da `POSTGRES_USER` va `POSTGRES_PASSWORD` `urllib.parse.quote(..., safe="")` bilan percent-encode qilinadi (band belgili parol DSN'ni buzmasin); `POSTGRES_DB` xom qoladi — SQLAlchemy baza komponentini unquote qilmaydi. Shu sababli `migrations/env.py` `set_main_option` ga berishdan oldin `%` ni ikkilantiradi (configparser uni interpolatsiya deb o'qiydi).
-- Modul darajasidagi eksportlar: `TASHKENT_TZ = ZoneInfo("Asia/Tashkent")` — tsex mahalliy vaqti, hisobot/audit kunlari va chek timestamp'lari shu zonada (`audit.py`, `reports.py`, `scans.py`, `tablo.py`, `orders/_common.py` route'lari, `services/labels.py`, `services/scanning.py` va `tasks/__init__.py` ishlatadi); `upload_root()` — `UPLOAD_DIR`ning absolyut `Path` ildizi. Nisbiy `UPLOAD_DIR` jarayon CWD'siga emas, `backend/` paket ildiziga (`Path(__file__).resolve().parents[2]`) bog'lanadi — ombor xizmat qayerdan ishga tushirilganiga qarab surilmasligi uchun; absolyut qiymat o'zgarishsiz ishlatiladi. Uni to'rtta route moduli import qiladi: `orders/files.py`, `orders/survey.py`, `orders/lifecycle.py` (o'chirishda fayllarni unlink qiladi), `terminal.py`. `services/giblab/ingest.py` esa `config`dan import qilmaydi — ildizni `upload_root: Path` PARAMETRI sifatida oladi, qiymatni `orders/files.py` (`root = upload_root()`) uzatadi.
+- Modul darajasidagi eksportlar: `TASHKENT_TZ = ZoneInfo("Asia/Tashkent")` — tsex mahalliy vaqti, hisobot/audit kunlari va chek timestamp'lari shu zonada (`audit.py`, `machines.py`, `reports.py`, `scans.py`, `tablo.py`, `orders/_common.py` route'lari, `crud/orders.py`, `services/andon.py`, `services/availability.py`, `services/excel.py`, `services/labels.py`, `services/scanning.py`, `services/system_health.py` va `tasks/__init__.py` ishlatadi); `upload_root()` — `UPLOAD_DIR`ning absolyut `Path` ildizi. Nisbiy `UPLOAD_DIR` jarayon CWD'siga emas, `backend/` paket ildiziga (`Path(__file__).resolve().parents[2]`) bog'lanadi — ombor xizmat qayerdan ishga tushirilganiga qarab surilmasligi uchun; absolyut qiymat o'zgarishsiz ishlatiladi. Uni yettita route moduli import qiladi: `orders/files.py`, `orders/survey.py`, `orders/lifecycle.py` (o'chirishda fayllarni unlink qiladi), `orders/bazis.py`, `orders/matrix.py`, `public.py`, `terminal.py`; hamda `commands/rebuild_bazis_models.py`. `services/giblab/ingest.py` esa `config`dan import qilmaydi — ildizni `upload_root: Path` PARAMETRI sifatida oladi, qiymatni `orders/files.py` (`root = upload_root()`) uzatadi.
 - `_validate_production_settings(s)` — **har qanday non-LOCAL muhitda (STAGING ham, PRODUCTION ham) xavfsiz bo'lmagan default'lar bilan boot qilishni rad etadi** (faqat LOCAL o'tkazib yuboriladi): `SECRET_KEY`, `ADMIN_PASSWORD`, `POSTGRES_PASSWORD`, `ADMIN_PHONE` placeholder qiymatda qolgan bo'lsa YOKI `FORWARDED_ALLOW_IPS` ichida `*` bo'lsa `RuntimeError` ko'taradi (`*` app-level `ProxyHeadersMiddleware` orqali gunicorn'ning qat'iy `--forwarded-allow-ips` flagini bekor qiladi va rate-limit bypass'ini qaytarib ochadi). Modul import bo'lganda darhol ishlaydi (birinchi so'rovda emas, startup'da).
 - Modul oxirida global singleton: `settings = Settings()`.
 
@@ -106,7 +106,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
         yield db
 ```
 
-**Bog'lanishlar:** `config.py`dan `settings`; `setup.py` engine'ni startup probe uchun import qiladi; API endpointlari `async_get_db`ni `Depends` orqali oladi; ORM modellar `Base`dan meros oladi.
+**Bog'lanishlar:** `config.py`dan `settings`; `health.py` engine'ni startup probe (`check_database_connection`) uchun import qiladi; API endpointlari `async_get_db`ni `Depends` orqali oladi; ORM modellar `Base`dan meros oladi.
 
 ---
 
@@ -120,7 +120,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 | `ForbiddenException` | 403 | "Ruxsat berilmagan" |
 | `UnauthorizedException` | 401 | "Tizimga kirilmagan" (+ `WWW-Authenticate: Bearer` header) |
 | `DuplicateValueException` | 409 | "Takroriy qiymat" |
-| `RateLimitException` | 429 | "So'rovlar chegarasidan oshib ketdi" |
+| `RateLimitException` | 429 | "So'rovlar chegarasidan oshib ketdi." |
 
 **Bog'lanishlar:** `utils/rate_limit.py` (`RateLimitException`), auth dependency'lari va CRUD qatlamlari shu klasslarni ishlatadi.
 
@@ -128,12 +128,16 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 
 ## `backend/app/core/health.py`
 
-**Maqsadi:** health-check endpointlari uchun tekshiruv funksiyalari.
+**Maqsadi:** DB va Redis tirikligini tekshiruvchi funksiyalar — `/ready` endpointi uchun ham, lifespan va arq worker startup probe'lari uchun ham. Probe'lar ilgari `setup.py`da edi — arq worker bitta `SELECT 1` uchun butun ilova-fabrikasini (prometheus, uvicorn middleware, `app.api.deps`) import qilishga majbur bo'lardi, shuning uchun shu yerga ko'chirildi.
 
 - `check_database_health(db: AsyncSession) -> bool` — `SELECT 1` bajaradi; xato bo'lsa log yozib `False` qaytaradi.
 - `check_redis_health() -> bool` — lifespan ochadigan **ikkita** Redis klientni (`queue.pool` va `rate_limiter.client`) `ping()` qiladi; ro'yxat bo'sh bo'lsa (masalan lifespan'gacha) tekshiruv "vacuously" muvaffaqiyatli hisoblanadi (`True`). WS pub/sub klienti (lifespan'da alohida ochiladigan `ws_redis`) va `/ws/bridge` ichidagi per-ulanish klienti bu tekshiruvga kirmaydi — ya'ni `/ready` real-time kanal holatini qamramaydi.
+- `redis_clients()` — lifespan egalik qiladigan Redis klientlar ro'yxati (`queue.pool`, `rate_limiter.client`; `None` bo'lganlari tashlab ketiladi); startup probe ham, `/ready` ham shundan o'qiydi.
+- `_retry_async(label, fn)` — startup probe'lar uchun retry helper: `STARTUP_RETRY_MAX_ATTEMPTS` (5) marta urinadi, orasida `STARTUP_RETRY_DELAY_SECONDS` (2s) kutadi; `CancelledError`/`KeyboardInterrupt` darhol yuqoriga uzatiladi.
+- `check_database_connection()` — engine orqali `SELECT 1` probe (retry bilan); `setup.py` lifespan'i va arq worker (`worker.py`, `startup`) chaqiradi.
+- `check_redis_connection()` — `redis_clients()`ni ping qiladi (retry bilan) va qaysilari tekshirilganini logga yozadi; lifespan chaqiradi.
 
-**Bog'lanishlar:** `utils/queue.py`, `utils/rate_limit.py`; shu funksiyalarni faqat `/api/v1/ready` endpointi chaqiradi (`routes/health.py`) — `/api/v1/health` esa sof liveness probe: hech qanday bog'liqlikni tekshirmaydi, doim 200 va statik payload qaytaradi (prod'dagi konteyner healthcheck'i aynan shu pathga uradi). Ikkala path `setup.py`dagi `NON_BUSINESS_PATHS`da ham ro'yxatga olingan.
+**Bog'lanishlar:** `config.py` (`settings`), `db.py` (`async_engine`), `utils/queue.py`, `utils/rate_limit.py`; `check_database_health`/`check_redis_health`ni faqat `/api/v1/ready` endpointi chaqiradi (`routes/health.py`) — `/api/v1/health` esa sof liveness probe: hech qanday bog'liqlikni tekshirmaydi, doim 200 va statik payload qaytaradi (prod'dagi konteyner healthcheck'i aynan shu pathga uradi). Ikkala path `setup.py`dagi `NON_BUSINESS_PATHS`da ham ro'yxatga olingan.
 
 ---
 
@@ -142,7 +146,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 **Maqsadi:** 12-factor uslubidagi structured JSON logging — process o'zi log fayl yozmaydi, hamma narsa stdout'ga bir qatorli JSON sifatida chiqadi.
 
 - `JsonFormatter(logging.Formatter)` — har bir log record'ni `{"timestamp", "level", "logger", "message"}` + mavjud bo'lsa `_EXTRA_FIELDS` (`request_id`, `method`, `path`, `status_code`, `duration_ms`) va `exc_info` bilan JSON'ga aylantiradi.
-- `setup_logging(level=logging.INFO)` — root logger handlerlarini stdout JSON handler bilan **almashtiradi** (`root.handlers = [handler]`). Import-time side-effect yo'q — har bir uzoq yashovchi entrypoint uni **explicit** chaqiradi: `create_application()` (`setup.py`) va arq worker (`core/worker.py`, modul yuklanishida). `app/commands/` dagi ikkala CLI komanda (`seed_defaults.py`, `create_first_superuser.py`) esa oddiy `logging.basicConfig(level=INFO)` bilan kifoyalanadi.
+- `setup_logging()` — argumentsiz, daraja qat'iy INFO; root logger handlerlarini stdout JSON handler bilan **almashtiradi** (`root.handlers = [handler]`). Import-time side-effect yo'q — har bir uzoq yashovchi entrypoint uni **explicit** chaqiradi: `create_application()` (`setup.py`) va arq worker (`core/worker.py`, modul yuklanishida). `app/commands/` dagi uchala CLI komanda (`seed_defaults.py`, `create_first_superuser.py`, `rebuild_bazis_models.py`) esa oddiy `logging.basicConfig(level=INFO)` bilan kifoyalanadi.
 
 - `ARQ_LOG_DICT` — arq CLI'ga `--custom-log-dict app.core.logger.ARQ_LOG_DICT` orqali uzatiladigan dictConfig: `arq` loggerini handlersiz qoldirib `propagate: True` qiladi. arq o'z dictConfig'ini `setup_logging()`dan **keyin** qo'llagani uchun (CLI avval `WorkerSettings`ni import qiladi), busiz har bir `arq.*` yozuvi ikki marta chiqadi — o'zining plain-matn handleri va root JSON handleri orqali.
 
@@ -156,7 +160,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 
 - `REQUEST_ID_HEADER = "X-Request-ID"`.
 - `RequestLoggingMiddleware(BaseHTTPMiddleware)`:
-  - Klientdan kelgan `X-Request-ID`ni qabul qiladi, bo'lmasa `uuid4().hex` yaratadi; `request.state.request_id`ga saqlaydi va javob header'iga qo'shadi.
+  - Klientdan kelgan `X-Request-ID`ni qabul qiladi, bo'lmasa `uuid4().hex` yaratadi va javob header'iga qo'shadi.
   - `NON_BUSINESS_PATHS`dagi pathlar (`/metrics`, health/ready) **loglanmaydi** — faqat header qo'shiladi. (Circular import oldini olish uchun `NON_BUSINESS_PATHS` `dispatch` ichida local import qilinadi.)
   - Boshqa so'rovlar uchun `time.perf_counter()` bilan davomiylik o'lchanadi va `logger.info("request", extra={request_id, method, path, status_code, duration_ms})` yoziladi — bu `logger.py`dagi `JsonFormatter` orqali JSON bo'lib chiqadi.
   - **«Tizim holati»:** `call_next` dan oldin so'rov `perf.inflight` ga yoziladi (NOM FUNKSIYASI va boshlanish; nom — "METOD /yo'l", aks holda bir yo'ldagi GET va PATCH bitta endpoint bo'lib ko'rinardi), `finally` da `perf.finish` uni olib «yaqinda tugaganlar» ga (`perf.recent`) qo'yadi — event loop bloki so'rov OXIRIDA bo'lsa ham aybdor topilsin. Nom muzlash paytida hisoblanadi: routingdan keyin — route shabloni (`/orders/{order_id}`), undan oldin — xom yo'l. Ilgari xom yo'l yozilardi va u endpoint jadvalidagi shablonga mos kelmasdi (bitta endpoint id'lar bo'yicha bo'linib sanalardi). Javobdan keyin `perf.record_request(method, route shabloni, ms, status)`. Shablon (`_route_template`): `scope["route"].path` ichki routerning o'z yo'li, ota prefikslarsiz (`/{order_id}/matrix`) — u haqiqiy yo'lning OXIRI, prefiks haqiqiy yo'ldan olinadi; qiymat bo'yicha almashtirilmaydi (`/orders/5/files/5`). Route topilmasa (404) — `(topilmadi)`.
@@ -205,7 +209,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 - JWT:
   - `_create_token(data, token_type, expires_delta)` — payload'ga `exp` va `token_type` qo'shib `HS256` bilan imzolaydi.
   - `create_access_token(data)` — `ACCESS_TOKEN_EXPIRE_MINUTES` (30 daqiqa); `create_refresh_token(data, days=None)` — `days` berilmasa `REFRESH_TOKEN_EXPIRE_DAYS` (7 kun), berilsa o'sha muddat: `routes/login.py` qurilma akkauntlariga (`UserRole.TERMINAL` / `UserRole.TABLO`) `days=settings.DEVICE_REFRESH_TOKEN_EXPIRE_DAYS` (90 kun) uzatadi. Refresh token payload'iga unikal `jti` (`uuid4().hex`) qo'shiladi — har bir refresh token unikal bo'ladi va bir marta rotation'dan keyin "ishlatilgan" deb belgilash mumkin.
-  - `verify_token(token, expected_token_type) -> TokenData | None` — decode qiladi, `sub` mavjudligini va `token_type` mosligini tekshiradi; `sub` **int `user_id`** sifatida parse qilinadi (parse bo'lmasa `None`) va natijada `TokenData(user_id, token_version, jti)` qaytadi — `token_version` (default 0) token bekor qilish (revocation) mexanizmi uchun, `jti` esa refresh tokenning bir martalik (one-time-use) nazorati uchun (access tokenlarda `None`).
+  - `verify_token(token, expected_token_type, *, verify_exp=True) -> TokenData | None` — decode qiladi, `sub` mavjudligini va `token_type` mosligini tekshiradi; `sub` **int `user_id`** sifatida parse qilinadi (parse bo'lmasa `None`) va natijada `TokenData(user_id, token_version, jti)` qaytadi — `token_version` (default 0) token bekor qilish (revocation) mexanizmi uchun, `jti` esa refresh tokenning bir martalik (one-time-use) nazorati uchun (access tokenlarda `None`). `verify_exp=False` — faqat imzo/tur tekshiriladi, muddat emas; `routes/ws.py` ochiq soketni bekor qilinganlik (`token_version`, `is_active`) bo'yicha qayta tekshirishda (`deps.resolve_user(..., verify_exp=False)` orqali) ishlatadi — kun bo'yi ochiq tablo/terminal soketi 30 daqiqalik access muddati bilan uzilmasin.
 - Cookie'lar:
   - `set_auth_cookie(response, key, value, max_age)` — `httponly=True`, `samesite="strict"` (klassik CSRF vektorini neytrallaydi), `secure` faqat non-LOCAL muhitlarda (muhit solishtiruvi `set_auth_cookie` ichida, alohida helper yo'q), local'da oddiy HTTP ustida ishlashi uchun o'chirilgan.
   - `clear_auth_cookies(response)` — ikkala cookie'ni o'chiradi (logout).
@@ -220,9 +224,6 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 
 **Muhim funksiyalar:**
 
-- `_retry_async(label, fn)` — startup probe'lar uchun retry helper: `STARTUP_RETRY_MAX_ATTEMPTS` (5) marta urinadi, orasida `STARTUP_RETRY_DELAY_SECONDS` (2s) kutadi; `CancelledError`/`KeyboardInterrupt` darhol yuqoriga uzatiladi.
-- `check_database_connection()` — engine orqali `SELECT 1` probe (retry bilan).
-- `check_redis_connection()` — ochilgan Redis klientlarni (`queue.pool`, `rate_limiter.client`) ping qiladi (retry bilan) va qaysilari tekshirilganini logga yozadi.
 - `set_threadpool_tokens()` — AnyIO thread-pool hajmini `THREADPOOL_TOKENS`ga ko'taradi (bloklovchi chaqiriqlar navbatda turib qolmasligi uchun).
 - `lifespan(app)` — modul darajasidagi `@asynccontextmanager` (pool ochish/yopish alohida wrapper funksiyalarsiz, shu yerda inline): threadpool → `gc.collect()` + `gc.freeze()` (import paytidagi ~216 ming doimiy obyekt GC'ning to'liq yig'imidan chiqadi: prodda har yig'im ~120 ms loop to'xtashi edi, keyin 3–18 ms; monitor'dan OLDIN — bir martalik yig'im muzlash bo'lib yozilmasin) → `perf_tasks` = `perf.lag_monitor()` + `perf.flush_loop()` (har gunicorn ishchisi o'z loop'ini o'lchaydi va o'lchovni soniyada bir Redis'ga yozadi, «Tizim holati») → arq navbat pool (`queue.pool = await create_pool(...)`) + `rate_limiter.initialize(settings.REDIS_URL)` + ping → **WS real-time ko'prik**: alohida Redis klient ochilib `ws_manager.start_listener(...)` ishga tushiriladi (`core/ws.py`) → DB probe → `yield` → `finally`da `perf_tasks` bekor qilinib oxirgi `perf.flush()` yoziladi, WS listener to'xtatiladi, WS Redis klienti, `queue.pool` va `rate_limiter.client` yopiladi. Hech qanday shart yo'q — Redis ilovaning majburiy bog'liqligi, ko'tarilmasa startup probe'da yiqiladi.
 - `_install_docs_router(application)` — docs siyosati:
@@ -239,7 +240,7 @@ async def async_get_db() -> AsyncGenerator[AsyncSession, None]:
 - `NON_BUSINESS_PATHS = ["/metrics", "/api/v1/health", "/api/v1/ready"]` — metrics'dan ham, access-log'dan ham chiqarib tashlanadigan pathlar (yagona manba — single source of truth).
 - `_install_metrics(application)` — `prometheus_fastapi_instrumentator` orqali `/metrics` endpoint (gzip, schema'da ko'rinmaydi). Endpoint autentifikatsiyasiz, shuning uchun prod'da Caddy uni tashqariga UMUMAN chiqarmaydi: `handle /metrics` har doim 403 qaytaradi (`caddy/Caddyfile`) — ilgarigi `remote_ip private_ranges` matcher olib tashlangan, chunki Caddy host-nginx ortida turgani uchun har bir tashqi so'rov ham private range'dan kelgandek ko'rinardi. Metrikalarga faqat compose tarmog'i ichidan, to'g'ridan-to'g'ri `api:8000/metrics` orqali borish mumkin; repoda scraper (Prometheus/Grafana) xizmatining o'zi yo'q.
 
-**Bog'lanishlar:** `config.py`, `db.py`, `logger.py` (`setup_logging`), `middleware.py`, `ws.py` (`ws_manager`), `utils/queue.py`, `utils/rate_limit.py`, `perf.py` (`lag_monitor`), `backend/app/api/deps.py` (`get_current_superuser`); `main.py` va `worker.py` bu modulni ishlatadi.
+**Bog'lanishlar:** `config.py`, `health.py` (`check_database_connection`, `check_redis_connection`), `logger.py` (`setup_logging`), `middleware.py`, `ws.py` (`ws_manager`), `utils/queue.py`, `utils/rate_limit.py`, `perf.py` (`lag_monitor`, `flush_loop`, `flush`), `backend/app/api/deps.py` (`get_current_superuser`); bu modulni `main.py` ishlatadi (`middleware.py` esa `NON_BUSINESS_PATHS`ni local import qiladi).
 
 ---
 
@@ -273,12 +274,13 @@ class WorkerSettings:
 
 - `handle_signals` endi o'rnatilmaydi (default `True`): `docker stop`da SIGTERM to'g'ri ushlanib, bajarilayotgan joblar tugatiladi yoki qayta navbatga qo'yiladi.
 
-**Bog'lanishlar:** `config.py`, `setup.py` (`check_database_connection`), `backend/app/tasks/__init__.py` (`all_tasks = [print_label, print_pachka_label, print_waste_label, print_badge]`, cron `close_idle_sessions`, `sync_downtimes`). Web-process `utils/queue.py`dagi pool orqali vazifalarni shu worker navbatiga qo'yadi.
+**Bog'lanishlar:** `config.py`, `health.py` (`check_database_connection`), `logger.py` (`setup_logging`), `backend/app/tasks/__init__.py` (`all_tasks = [print_label, print_pachka_label, print_waste_label, print_badge]`, cron `close_idle_sessions`, `sync_downtimes`). Web-process `utils/queue.py`dagi pool orqali vazifalarni shu worker navbatiga qo'yadi.
 
 ### `backend/app/tasks/__init__.py` — ro'yxatga olingan vazifalar
 
 - `PRINT_QUEUE_KEY = "mes:print:queue"` — kalit prefiksi; manzilsiz kalitning o'zi endi o'qilmaydi. `print_queue_key(agent_id)` esa
-  manzilli kalitni beradi: `agent_id` bo'lsa `mes:print:queue:{agent_id}`, bo'lmasa umumiy kalit.
+  manzilli kalitni beradi: doim `mes:print:queue:{agent_id}` (`agent_id` majburiy; ilgari `None` berilsa umumiy
+  kalitga tushardi, uni hech kim o'qimagani uchun job "queued" deb jimgina yo'qolardi).
   Chek SO'RAGAN ish markazining printeriga borishi uchun shunday: `ws.py` ulangan agent uchun
   `brpop([o'z kaliti], timeout=5)` qiladi — FAQAT o'ziga atalgan kalitdan oladi, umumiy
   `PRINT_QUEUE_KEY` ATAYLAB o'qilmaydi. Ack kelmasa job AYNAN kelgan kalitiga (`src_key`) qaytariladi.
@@ -302,7 +304,7 @@ class WorkerSettings:
   manzillanadi, `ws.py` esa faqat o'z kalitini o'qiydi. Aynan umumiy navbat
   "ofisdagi test printeri tsexdagi chekni tortib oldi" nuqsonini bergan edi:
   kim birinchi `BRPOP` qilsa, chek o'shanikiga chiqardi.
-- `print_label(ctx, instance_id, agent_id=None)` — yorliq chiqarish vazifasi.
+- `print_label(ctx, instance_id, agent_id)` — yorliq chiqarish vazifasi (`agent_id` majburiy, standart qiymati yo'q — agentni unutgan chaqiruvchi `TypeError` oladi).
   Bitta DB sessiyasida (`local_session`) `services/labels.py`dan:
   - `load_label_data(db, instance_id)` — `None` bo'lsa `"skip:{id}"` qaytarib chiqadi;
   - `render_label_png(data)` — o'sha yorliqning 80×60 mm / 203 dpi rasteri; `base64` bilan kodlanadi.
@@ -317,13 +319,13 @@ class WorkerSettings:
   (`SEEN_JOBS`). Natija `"queued:{id}"`. Redis mavjud bo'lmasa — xato loglanadi, `"lost:{id}"`.
 - Qolgan uchta vazifa AYNAN shu zanjirdan o'tadi (`_print_job` + `LPUSH print_queue_key(agent_id)`,
   `skip:`/`queued:`/`lost:` natijalari) — faqat render qilinadigan ma'lumot boshqacha:
-  - `print_pachka_label(ctx, pachka_id, agent_id=None)` — qadoq cheki (`render_pachka_label_png`;
+  - `print_pachka_label(ctx, pachka_id, agent_id)` — qadoq cheki (`render_pachka_label_png`;
     buyurtma raqami, loyiha nomi, qadoqdagi detallar soni). `pachka.py` qadoq yopilganda qo'yadi.
-  - `print_waste_label(ctx, waste_id, agent_id=None)` — FOYDALI ATXOT cheki (`render_waste_label_png`;
+  - `print_waste_label(ctx, waste_id, agent_id)` — FOYDALI ATXOT cheki (`render_waste_label_png`;
     `ATX-` prefiksli QR, material, o'lcham, list raqami). `terminal.py` dagi
     `POST /terminal/waste/{waste_id}/label` qo'yadi; `label_printed_at` ni ENDPOINT yozadi, vazifa emas —
     aks holda javob bilan yozuv orasida poyga bo'lib, kesish xaritasidagi katak darhol yangilanmasdi.
-  - `print_badge(ctx, employee_id, agent_id=None)` — hodim beyjigi (`render_badge_png`). `employees.py`
+  - `print_badge(ctx, employee_id, agent_id)` — hodim beyjigi (`render_badge_png`). `employees.py`
     qo'yadi; brauzerdan chop etish o'rniga shu yo'l, chunki brauzer drayverdagi saqlangan qog'oz
     o'lchamiga tayanardi va 80×60 bo'lmasa kontent yorliqqa sig'masdi.
 
@@ -357,7 +359,7 @@ Ulanishda token `Authorization: Bearer` headerda keladi (server access-loglariga
 
 **Istisno — agentni O'CHIRISH.** `DELETE /api/v1/bridge-agents/{agent_id}` `_revoke_live_connection(..., purge_queue=True)` chaqiradi: bayroqdan tashqari u `llen` bilan sanab `print_queue_key(agent_id)` kalitini butunlay `delete` qiladi, ya'ni o'sha agentning navbatidagi HAMMA chek ATAYLAB bekor qilinadi va javobda «Navbatdagi N ta chek bekor qilindi» deb aytiladi. Sabab: har chek aniq agentga manzillangan — o'chirilgan agentning navbatini endi hech kim o'qimaydi va kalit jimgina abadiy qolardi.
 
-Ulanish/uzilish/pairing panelga `bridge.connected` / `bridge.disconnected` / `bridge.paired` eventlari bilan (`ws_manager.publish`) tarqatiladi — admin "Printerlar" sahifasi pollingsiz yangilanadi.
+Ulanish/uzilish/pairing panelga `bridge.connected` / `bridge.disconnected` / `bridge.paired` eventlari bilan (`ws_manager.publish`) tarqatiladi — admin "MES agentlar" sahifasi pollingsiz yangilanadi.
 
 **Skan-forvard va printersiz stansiyalar.** `bridge_agent.machine_id` agentni ish markaziga bog'laydi: stanok skaneri o'qigan QR agent orqali `POST /api/v1/bridge-agents/scan` endpointiga (agent tokeni bilan) yuboriladi va bog'langan ish markazining terminalidagi AKTIV sessiya nomidan odatdagi skan yo'li bilan yoziladi. `can_print=False` agent (masalan, Nanxing skan-forvard stansiyasi — printeri yo'q) ulanib turadi, lekin chek OLMAYDI: BRPOP o'rniga 5s uxlaydi — aks holda chekni "o'g'irlab" lokalida qoldirardi. Shart aslida IKKITA (`if can_print and own_keys`): `own_keys` bo'sh bo'lgani uchun legacy umumiy `BRIDGE_TOKEN` bilan ulangan agent (`agent_id is None`) ham HECH QACHON chek olmaydi — u qaysi ish markazi ekani noma'lum, unga chek berish yana o'sha tasodif bo'lardi. Ya'ni legacy token faqat WS handshake'dan o'tkazadi: chop etish uchun ham, skan-forvard uchun ham (`/bridge-agents/scan` juftlangan tokenni talab qiladi) yaroqsiz. Ikkala maydonni admin `PATCH /api/v1/bridge-agents/{agent_id}` bilan boshqaradi (endpoint tafsilotlari: `docs/03-backend-api.md`).
 
@@ -390,7 +392,7 @@ Ulanish/uzilish/pairing panelga `bridge.connected` / `bridge.disconnected` / `br
 pool: ArqRedis | None = None
 ```
 
-Pool `setup.py`dagi lifespan'da (`queue.pool = await create_pool(ArqRedisSettings(...))`) to'ldiriladi va shutdown'da `aclose()` bilan yopiladi. Vazifa qo'ymoqchi bo'lgan kod `queue.pool.enqueue_job(...)`ni shu modul orqali chaqiradi; `health.py` va `setup.py` ping uchun ishlatadi.
+Pool `setup.py`dagi lifespan'da (`queue.pool = await create_pool(ArqRedisSettings(...))`) to'ldiriladi va shutdown'da `aclose()` bilan yopiladi. Vazifa qo'ymoqchi bo'lgan kod `queue.pool.enqueue_job(...)`ni shu modul orqali chaqiradi; `health.py` (`redis_clients()`) ping uchun ishlatadi.
 
 ---
 
@@ -405,12 +407,12 @@ Pool `setup.py`dagi lifespan'da (`queue.pool = await create_pool(ArqRedisSetting
   - `over_limit(key, limit) -> bool` — faqat `GET` bilan o'qiydi, hisobni OSHIRMAYDI; hisob `limit`dan katta yoki teng bo'lsa `True`. **Fail-closed**: Redis xatosi bo'lsa ham, klient `None` bo'lsa ham `True` qaytaradi (so'rov 429 oladi, xato loglanadi) — Redis yiqilishi brute-force himoyasini jimgina o'chirib qo'ymasligi uchun. Klient `None` bo'lishi normal holat emas: lifespan doim `initialize()` qiladi.
   - `bump(key, period)` — `INCR` + birinchi urinishda `EXPIRE`; bitta MUVAFFAQIYATSIZ urinishni hisobga oladi. Bu yerda xato **fail-open**: Redis yiqilsa faqat loglanadi (hisob oshmaydi), so'rovning o'zi to'silmaydi.
 - `RateLimit(limit, period)` — endpoint dependency (callable klass):
-  - Kalit: `ratelimit:{ip}:{path}:{window_start}` — fixed-window algoritmi (`window_start = timestamp - timestamp % period`).
+  - Kalit: `ratelimit:{ip}:{route shabloni}:{window_start}` (ichki router shabloni, masalan `/public/3d/{token}` — real yo'l emas, aks holda parametrli marshrutda har token alohida kalit bo'lib cheklov ishlamasdi) — fixed-window algoritmi (`window_start = timestamp - timestamp % period`).
   - Limit oshsa `RateLimitException` (429, o'zbekcha xabar) ko'taradi.
   - **Faqat MUVAFFAQIYATSIZ urinishlar sanaladi:** dependency (`__call__`) faqat TEKSHIRADI (`over_limit`), hisobni esa chaqiruvchi xato yo'lda `await _LOGIN_RATE_LIMIT.hit(request)` bilan oshiradi (`routes/login.py`). Sabab: tsex bitta tashqi IP orqali chiqadi (NAT), ya'ni har so'rovni sanaganda smena boshida navbatma-navbat kirgan operatorlar butun zavod uchun umumiy byudjetni tugatar va keyingi odam — odatda admin — parolni xato termasa ham 429 olardi (prodda o'lchangan: 30 daqiqada 9 muvaffaqiyatli kirish va 8 ta 429).
   - `ip` `request.client.host`dan olinadi — shuning uchun `setup.py`dagi `ProxyHeadersMiddleware` muhim (aks holda hamma bitta bucket'da bo'lardi).
 
-**Bog'lanishlar:** `exceptions.py` (`RateLimitException`); `setup.py` lifecycle'ni boshqaradi; `routes/login.py` ikkita instansiyani ishlatadi: `_LOGIN_RATE_LIMIT` (`LOGIN_RATE_LIMIT_ATTEMPTS`/`PERIOD` sozlamalaridan — parol bilan kirish) va `_BADGE_RATE_LIMIT` (30/60 s, kodda qat'iy — beyjik bilan kirish: 122-bitli UUID topib bo'lmaydi, tor chegara esa smena almashuvida butun tsexni qulflardi). Logging oddiy `import logging` orqali — `logger.py`ga bog'liq emas.
+**Bog'lanishlar:** `exceptions.py` (`RateLimitException`); `setup.py` lifecycle'ni boshqaradi; `routes/login.py` ikkita instansiyani ishlatadi: `_LOGIN_RATE_LIMIT` (`LOGIN_RATE_LIMIT_ATTEMPTS`/`PERIOD` sozlamalaridan — parol bilan kirish) va `_BADGE_RATE_LIMIT` (30/60 s, kodda qat'iy — beyjik bilan kirish: 122-bitli UUID topib bo'lmaydi, tor chegara esa smena almashuvida butun tsexni qulflardi). `routes/public.py` esa `_SHARE_RATE_LIMIT` (60/300 s, kodda qat'iy — 3D havola tokenini taxmin qilishga qarshi, faqat topilmagan token sanaladi) ni butun `/public` routeriga qo'yadi. Logging oddiy `import logging` orqali — `logger.py`ga bog'liq emas.
 
 ---
 

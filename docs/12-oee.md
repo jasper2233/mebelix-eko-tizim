@@ -30,10 +30,6 @@ OEE          = Availability × Performance × Quality
 | **OEE kesim sanasi** | `settings_service.OEE_START_DATE`, Tizim sozlamalari → «Ish jadvali» (§4.12) | ✅ bor (2026-09-20): kesimdan oldingi kunlar hisobotga kirmaydi |
 | **Quality hisobi** | `services/performance.py: quality_pct`, Hisobotlar → «Stanok vaqti» (§4.7, kromka — §4.11) | ✅ bor: Prisadka (2026-09-19) va Kromka (2026-09-20) |
 | Brak | `part_defect` — terminal skan tasmasidagi BRAK tugmasi (§4.7) | ✅ bor (2026-09-19); qayta ishlab chiqarish (remake) YO'Q |
-| **ROVER (CNC 2130) kuzatuvi** | `bridge-agent/agent.py` (v1.7.0), `andon_event.kind='rover'` (§4.13) | ✅ bor (2026-09-20): holat, to'xtash va Pico hodisalari; rele hali o'chiq |
-| **Devordagi stanok taxtasi** | `/tablo/stanoklar`, `GET /tablo/machines` | ✅ bor (2026-09-21): jonli holat, smena, bugungi A·P·Q·OEE, sababsiz to'xtashlar, «aloqa yo'q» ajratilgan |
-| **OEE kesim sanasi** | `settings_service.OEE_START_DATE`, Tizim sozlamalari → «Ish jadvali» (§4.12) | ✅ bor (2026-09-20): kesimdan oldingi kunlar hisobotga kirmaydi |
-| **Quality hisobi** | `services/performance.py: quality_pct`, Hisobotlar → «Stanok vaqti» (§4.7) | ✅ bor (2026-09-19) |
 | **OEE = A × P × Q** | `services/performance.py: oee_pct`, o'sha hisobot ustuni (§4.7) | ✅ bor (2026-09-19) |
 
 ## 2. Tarix
@@ -202,7 +198,7 @@ Availability = ishladi ÷ reja vaqti                           (reja vaqti 0 bo'
 | Qoida | Nega |
 | --- | --- |
 | To'xtash: qizil (FAULT) va o'chiq (OFF) — darhol; sariq (IDLE/STOPPED) — `stop_prompt_idle_minutes` dan uzoq bo'lsa (`availability.stop_runs`). §4.4 dagi sabab SO'RASH qoidasi bundan farq qiladi: u 2026-09-20 dan chegarani HAMMA turga qo'llaydi — qisqa qizil/o'chiq to'xtash Availability'ni tushiradi, lekin sababi so'ralmaydi va «Sabab kiritilmagan» bo'lib chiqadi | qisqa sariq to'xtash — mikro-to'xtash: u Performance yo'qotishi, Availability emas |
-| Ish vaqtida Pico'dan ma'lumot yo'q — TO'XTASH | §7 qarori; alohida «Ma'lumot yo'q» va «Qamrov» ustunlarida ko'rinadi, toki qamrov muammosi (§5) Availability'ni nega tushirayotgani ko'rinib tursin |
+| Ish vaqtida Pico'dan ma'lumot yo'q — TO'XTASH | §7 qarori; bu vaqt (`no_data_s`) «To'xtash» ustuniga qo'shiladi va sabablar taqsimotida «Stanok o'chiq» qatori bo'lib ko'rinadi. Alohida «Ma'lumot yo'q» va «Qamrov» ustunlari 2026-09-19 da olib tashlandi (quyida) |
 | Ish vaqtidan tashqaridagi holat hisobga kirmaydi | tungi OFF va tushlikdagi OFF jadval bilan o'zi kesiladi — «Smena tugadi» sababi va uni avtomat qo'yish KERAK EMAS |
 | Sabab `downtime` dan VAQT bo'yicha olinadi (eng ko'p ustma-ust tushgan yozuv), to'xtashning o'zi esa `andon_event` dan | `downtime` jadvali 2026-09-18 da paydo bo'ldi — undan oldingi kunlar ham to'g'ri hisoblanadi; oraliq to'xtash o'rtasidan boshlansa ham sabab topiladi |
 | LOCK yozuvlari kirmaydi | qulf vaqt tashimaydi: stanok to'xtaganini Pico yozadi, qulf ostida boshlangan to'xtash sababni `sync_machine` da allaqachon olgan |
@@ -219,8 +215,8 @@ vaqtni BIRGA beradi (ikkalasi ham reja ichidagi yo'qotish), sabablar taqsimoti e
 trekda ham bo'yalmagan qism O'CHIQ rangida, legendada alohida band yo'q. Olib tashlanganlar: «Ma'lumot yo'q» va «Qamrov» ustunlari, «Rejali to'xtash»
 ustuni (sabablar jadvalida `Turi = Rejali` bo'lib turibdi) va butun «Chiroq holatlari» jadvali (PROCESSING/IDLE/…
 soatlari BUTUN sutka bo'yicha edi — ikkinchi maxraj foizlarni chalkashtirardi; holatlar kunlik rangli trekda qoldi). **To'xtashlarning bittalab ro'yxati 2026-09-19 da OLIB TASHLANDI** (egasining
-so'rovi): ketma-ket o'nlab qator o'qilmasdi, kerakli narsa — umumiy to'xtash vaqti va uning sabablari. Avariya SONI
-jadvalda qoldi — u «necha marta» degan boshqa savol. Ish jadvali kiritilmagan bo'lsa qizil izoh chiqadi va foiz hisoblanmaydi.
+so'rovi): ketma-ket o'nlab qator o'qilmasdi, kerakli narsa — umumiy to'xtash vaqti va uning sabablari. «Avariya soni»
+ustuni ham shu kuni (`469c575`) olib tashlandi. Ish jadvali kiritilmagan bo'lsa qizil izoh chiqadi va foiz hisoblanmaydi.
 
 Tekshiruv (bir martalik skriptlar, repoda saqlanmaydi): sof funksiyalar 31/31 — qo'lda hisoblangan kun (67.4%),
 tungi smena va yarim tun bo'linishi, dam olish kunidan oldingi/keyingi smena, mikro-to'xtash, oraliq chegarasidagi
@@ -261,7 +257,7 @@ vaqti (`wait_s + process_s`) yonma-yon. Performance 100% dan oshsa kesilmaydi �
 | --- | --- |
 | Skan↔sikl bog'lash KERAK EMAS | yig'indi darajasida skanlar (detalga bog'langan) va ishlagan vaqt (§4.5) yetadi; bog'lash faqat koeffitsiyentlarni o'lchovdan aniq chiqarish uchun, keyinga |
 | Faqat KUZATILGAN ish vaqtidagi skan sanaladi | ma'lumotsiz vaqt «ishladi» ga kirmaydi — o'sha paytdagi detal sanalsa foiz shishardi; tushlik va jadvaldan tashqari skan ham kirmaydi |
-| Faqat posti PRISADKA bo'lgan ish markazi | formula teshik/paz/freza haqida — boshqa postga (kromka — metr) mos emas, u yerda «—» |
+| Faqat posti PRISADKA bo'lgan ish markazi | formula teshik/paz/freza haqida — boshqa postga (kromka — metr) mos emas. KROMKA da 2026-09-20 dan o'z formulasi bor (§4.9), qolgan postlarda «—» |
 | Koeffitsiyentlar post bo'yicha BITTA to'plam | Pico hozir bitta Prisadkada; boshqa tezlikdagi ikkinchi stanok chiqsa sozlama `machine_id` bo'yicha lug'atga aylantiriladi (`ponytail:` izohi) |
 | Koeffitsiyent o'zgarsa o'tgan kunlar ham qayta hisoblanadi | ideal vaqt saqlanmaydi, har safar hisoblanadi — kalibrlashda butun tarix birdan to'g'rilanadi |
 
@@ -290,7 +286,7 @@ OEE     = Availability × Performance × Quality
 | Terminal | `Terminal/DefectDialog.tsx` + skan tasmasidagi BRAK tugmasi | oxirgi MUVAFFAQIYATLI skan turganda tugma chiqadi; oyna sabab tugmalari va ixtiyoriy izoh; ro'yxat bo'sh bo'lsa tugma umuman chizilmaydi |
 | API | `GET /terminal/defect-reasons`, `POST /terminal/defects`, `DELETE /terminal/defects/{id}` (docs/03) | belgilash va noto'g'ri bosilganini qaytarish (yumshoq o'chirish) |
 | Menejer qarori | `/defects` sahifasi (`routes/_layout/defects.tsx`), `GET /defects`, `POST /defects/{id}/review` | tasdiqlaydi yoki «brak emas» deb rad etadi; aybdor QADAM (post emas) va qayta boshlash nuqtasi belgilanadi; sidebar belgisida kutayotganlar soni |
-| Qayta ochish | `services/defects.py: reopen_from_step` (tasdiqda avtomatik) | tanlangan qadamdan KEYINGI skanlar `revoke_scan` bilan bekor qilinadi, qadoqdan chiqariladi, kesish postidan boshlansa chek ham qaytariladi |
+| Qayta ochish | `services/defects.py: reopen_from_step` (tasdiqda avtomatik) | tanlangan qadamdan BOSHLAB (o'zi ham, `seq >= restart.seq`) skanlar `revoke_scan` bilan bekor qilinadi, qadoqdan chiqariladi, kesish postidan boshlansa chek ham qaytariladi |
 | Hisob | `services/performance.py: quality_pct` / `oee_pct`, `GET /reports/machine-time` | «Stanok vaqti» dagi «Brak», «Quality» va «OEE» ustunlari, kunlik trekda ham |
 
 | Qoida | Nega |
@@ -313,7 +309,7 @@ OEE     = Availability × Performance × Quality
 | Sabab ro'yxatdan bo'lishi shart (422 «Sahifani yangilang») | terminal eskirgan ro'yxatni ko'rsatib turgan bo'lishi mumkin |
 | Detal sanalmagan bo'lsa Quality `None` (—), 0% emas | 0% «hammasi brak» degan yolg'on baho bo'lardi |
 | Brak detaldan ko'p chiqsa 0% da to'xtaydi | kechagi skan bugun brak qilinsa foiz manfiy bo'lib ketardi |
-| Quality faqat PRISADKA ish markazida | detallar (maxraj) faqat o'sha yerda sanaladi (§4.6); brakni boshqa post ham belgilay oladi, lekin uning Quality ustuni hali yo'q |
+| Quality faqat PRISADKA ish markazida (2026-09-20 dan KROMKA da ham — §4.11) | detallar (maxraj) faqat o'sha yerda sanaladi (§4.6; kromkada — qirra o'tishlari, §4.9); brakni boshqa post ham belgilay oladi, lekin uning Quality ustuni hali yo'q |
 
 Tekshiruv (bir martalik skriptlar, repoda saqlanmaydi): HAQIQIY Postgres'da to'liq hisobot
 18/18 (bir kunlik ekilgan ma'lumot: reja 7.5 soat, ishladi 5.5 soat, A 73.3%, qamrov 87.5%,
@@ -346,15 +342,15 @@ faqat KUZATILADI: hech narsa bloklanmaydi, skan oqimiga tegilmaydi. Foyda darhol
 
 | Qism | Qayerda | Nima qiladi |
 | --- | --- | --- |
-| Tur aniqlash | `bridge-agent/agent.py: _andon_line` | Prisadka `MES event {...}` deb yozadi, kromka YALANG'OCH JSON (`{"ev":"olchov"}`) — birinchi tushunarli qatordan aniqlanadi, `ANDON_TUR` env bilan majburlash mumkin |
+| Tur aniqlash | `bridge-agent/agent.py: _andon_line` | Prisadka `MES event {...}` deb yozadi, kromka YALANG'OCH JSON (`{"ev":"olchov"}`) — birinchi tushunarli qatordan aniqlanadi va har tushunarli qator uni qayta belgilaydi; `ANDON_TUR` env — faqat boshlang'ich taxmin (qurilma hali jim turganda `HB`/`PING` oralig'i uchun), qaysi portni o'qishni `ANDON_PORT` hal qiladi |
 | Yurak urishi | o'sha faylda `_andon_session` | Kromka Pico'si 3 soniya BUYRUQ ko'rmasa hodisalarni RAM ga yig'a boshlaydi — unga har soniyada `HB`, prisadkaga 5 soniyalik `PING` |
 | Kalit | `_kromka_xbxq`, `_kromka_kalit` | v1.22 dan kalit Pico'nikidir: `xb` (yonish belgisi) → `session`, `xq` → `seq`. Undan oldingi proshivkada agent o'zi beradi (har ulanishda yangi sessiya). Ikkala holatda ham serverdagi `(machine_id, session, seq)` unikal indeksi qayta yuborishni tashlaydi |
 | Buferdan kelgani | `_kromka_line` | `eski_ms` — hodisa Pico xotirasida qancha kutgani; `ts = hozir − eski_ms`, aks holda tun bo'yi yig'ilgani bitta daqiqaga tiqilardi |
-| Qabul | `POST /bridge-agents/andon` (o'sha endpoint) | `AndonEventIn.type` ga kromka turlari qo'shildi: `olchov`, `uskuna`, `tezlik`, `ogoh`, `avariya_toxtash`, `boot`, `tiqilish`. Yangi jadval YO'Q — xom hodisa `andon_event.payload` da |
+| Qabul | `POST /bridge-agents/andon` (o'sha endpoint) | `AndonEventIn.type` ga kromka turlari qo'shildi: `olchov`, `uskuna`, `tezlik`, `ogoh`, `avariya_toxtash`, `boot`, `tiqilish`. Yangi jadval YO'Q — xom hodisa `andon_event.payload` da. `andon_event.kind` 2026-09-27 gacha `VARCHAR(10)` edi: 15 belgilik `avariya_toxtash` INSERT'ni yiqitib, butun partiya 500 qaytarardi; endi `VARCHAR(20)` (migratsiya `a1c4e7b20d95`) |
 | Joriy holat | agent har 30 s `HOLAT` so'raydi (`_kromka_holat`) | Kromka `uskuna` ni faqat RUN kirishi O'ZGARGANDA yuboradi — stanok ertalab yoqilib, agent kunduzi ulansa hech narsa kelmasdi. `HOLAT` javobidagi `uskuna` o'sha lahzadagi holat; **o'zgargan bo'lsagina** hodisa yoziladi (`manba: "holat"`), aks holda oraliqlar maydalanardi |
 | Oraliqlar | `services/andon.py: uskuna_spans` | Kromka Pico'si holat DAVOMIYLIGINI o'lchamaydi (prisadkadagi `prev_duration_s` yo'q) — oraliq hodisalar orasidan quriladi: `holat=1` → PROCESSING, `0` → OFF. Oxirgi oraliq faqat agent hozir aloqada bo'lsa ochiq qoladi |
 | Admin panel | `WorkCenters/KromkaLive` + `GET /machines/kromka-measurements` + WS `kromka.measure` | «Ish markazlari» sahifasi ostida JONLI oqim: detal o'tishi bilan qator chiqadi (vaqt, mm, HUKM, kutilgan o'lcham va farq, detal nomi + chek ID si, stanok), eng yangisi bir marta yashil uriladi. Pico kodi faqat `OK` bo'lmaganda ko'rsatiladi. Bitta partiyadan ko'pi bilan 5 ta xabar tarqatiladi — oflayn agent yuzlab yig'ilganini birdan yuborsa ekran ko'milmasin |
-| Terminal | `Terminal/KromkaView: StationStrip` + `GET /terminal/kromka/measurements` | Sarlavha ostida oxirgi o'lchov: `mm`, hukm, kutilgan o'lcham, detal nomi va oldingi 7 tasi. `nomos` kelganda brak oynasi o'zi ochiladi (`routes/terminal.tsx`, WS `kromka.measure`). Stansiyasiz postda umuman chizilmaydi |
+| Terminal | `Terminal/KromkaView: StationStrip` + `GET /terminal/kromka/measurements` | Sarlavha ostida oxirgi o'lchov: `mm`, hukm, kutilgan o'lcham, detal nomi va oldingi 7 tasi. WS `kromka.measure` tasmani darhol yangilaydi (`routes/terminal.tsx`); `nomos` da brak oynasi O'ZI ochilmaydi — datchik ishonchsiz (§4.10), brak faqat operator BRAK tugmasi bilan. Stansiyasiz postda umuman chizilmaydi |
 
 Ma'lumot sifatini o'lchash uchun `scripts/kromka_audit.sql` — faqat o'qiydigan SQL
 (o'sha `oee_audit.sql` naqshi, 10 bo'lim): qamrov, kunlik sanoq, Pico kodlari taqsimoti
@@ -522,7 +518,8 @@ Oyna ikki tomonlama: operator detalni lentaga qo'ygandan keyin ham skanerlashi m
 > o'chirilgan (faqat tasdiq kutayotganlari — menejer ko'rgan qarorga tegilmagan).
 > O'lchov hozir KUZATUV: raqam, kutilgan o'lcham va farq ekranda ko'rinadi — aynan shu
 > ko'rsatkichlar datchikni to'g'rilashda kerak bo'ladi. Datchik to'g'rilangach avtomatik
-> brakni qaytarish uchun `services/kromka.py` dagi `_auto_defect` tiklanadi.
+> brakni qaytarish uchun `services/kromka.py: bind_measurement` ga `nomos` da brak qaydi
+> (sabab «O'lcham mos emas») qaytadan qo'shiladi.
 
 Hukm `kromka_measurement` jadvalida (xom hodisa `andon_event` da o'zgarmasdan qoladi),
 mantiq `services/kromka.py` da, chaqiruv joyi — agent partiyasi qabul qilinadigan
@@ -656,7 +653,7 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `kromka_v122_oracle.py` (15/15) | §4.8, proshivka v1.19-v1.22 |
 | `rover_oracle.py` (19/19) | §4.13 |
 | `tablo_machines_oracle.py` (29/29) | `docs/05` — stanok taxtasi |
-| `kromka_dedup_oracle.py` (17/17) | `scripts/kromka_dedup.sql` — v1.22 takrorlarini tozalash |
+| `kromka_dedup_oracle.py` (18/18) | `scripts/kromka_dedup.sql` — v1.22 takrorlarini tozalash |
 
 ## 5. Prod auditi natijalari (2026-09-16)
 
@@ -694,14 +691,15 @@ ya'ni keyingi detal skani ham sanalardi. SQL'da 5 s ga tuzatildi — qayta ishga
 4. **To'xtash sabablari** — kiritish qilindi, egasining ro'yxati keldi (§4.4). Qolgani: admin ro'yxatni
    prodda Tizim sozlamalariga kiritadi.
 5. **Availability hisoboti** — qilindi (§4.5). Qolgani: prodda ish jadvali kiritilganini tekshirish (usiz foiz
-   hisoblanmaydi); qamrov (1-band) tuzatilmaguncha foiz past chiqadi — «Ma'lumot yo'q» ustuni shuni ko'rsatadi.
+   hisoblanmaydi); qamrov (1-band) tuzatilmaguncha foiz past chiqadi — sabablar taqsimotidagi «Stanok o'chiq» qatori shuni ko'rsatadi.
 6. **Performance** — qilindi (§4.6), koeffitsiyentlar TAXMINIY. Qolgani: tsexda sekundomer bilan o'lchab Tizim
    sozlamalarida to'g'rilash; keyin (ixtiyoriy) skan↔sikl FIFO bog'lash (prototip `mes/bridge.py` mantiqi) —
    koeffitsiyentlarni 2–4 haftalik o'lchovdan chiqarish uchun.
 7. **Quality** — brak qaydi va MENEJER TASDIG'I qilindi (§4.7): terminalda BRAK tugmasi,
    `/defects` sahifasida tasdiq/rad va aybdor qadam, Quality va OEE hisobotda.
    Qolgani: admin sabablar ro'yxatini kiritsin; keyin qayta ishlab chiqarish oqimi (§7) —
-   `-B1` nusxa, yangi chek va marshrutni qayta ochish.
+   `-B1` nusxa, uning yangi cheki va SCX fayli (marshrutni tanlangan qadamdan qayta ochish
+   tasdiqda allaqachon qilinadi — §4.7, `reopen_from_step`).
 
 ## 7. Qarorlar
 
@@ -727,7 +725,7 @@ ya'ni keyingi detal skani ham sanalardi. SQL'da 5 s ga tuzatildi — qayta ishga
   Tsexda bir daqiqalik kutishda ham oyna chiqib turgani uchun qoida bitta bo'ldi: hamma
   to'xtash bir xil chegaradan o'tadi. Qisqa to'xtash hisobdan chiqmaydi — faqat sababi
   so'ralmaydi.
-- **Brak oqimi** (1-band 2026-09-19 da bajarildi — §4.7; qolgan bandlar hali yo'q)**:**
+- **Brak oqimi** (1–3-bandlar 2026-09-19 da bajarildi — §4.7; tasdiqda marshrut tanlangan qadamdan qayta ochiladi, lekin `-B1` nusxa, yangi chek va SCX hali yo'q)**:**
   1. **Hodim** detalni skanerlaydi, skan chizig'idagi BRAK tugmasini bosadi va faqat NIMA bo'lganini tanlaydi.
   2. Qayta ishlab chiqarish so'rovi **avtomat** yaratiladi ("Kutmoqda").
   3. **Menejer** (admin → Brak sahifasi, sidebar belgisida kutayotganlar soni) belgilaydi:
@@ -802,4 +800,5 @@ ya'ni keyingi detal skani ham sanalardi. SQL'da 5 s ga tuzatildi — qayta ishga
   (hodisalarda versiya maydoni yo'q); o'zgarish ikkala tomonda birga qilinadi.
 - **Operator ekrani** — o'tgan OEE aynan tugmalar sig'magani uchun qaytarilgan; sabab va brak
   kiritish doimiy tugma emas, kerak paytda chiqadigan oyna.
-- **Talqin** — signal ustuni faqat Prisadkada: bu "Prisadka OEE", tsex OEE emas.
+- **Talqin** — Pico faqat Prisadka (signal ustuni), Kromka (o'lchov stansiyasi) va ROVER da; to'liq
+  OEE (A·P·Q) faqat Prisadka va Kromkada, ROVER da faqat Availability — bu tsex OEE emas.

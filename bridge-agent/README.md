@@ -110,7 +110,7 @@ Odatda qo'lda hech narsa yozilmaydi — birinchi ulanish ikkalasini ham to'ldira
 | `QUEUE_FILE` | lokal navbat fayli (default `%APPDATA%\MebelixAgent\print-queue.jsonl` — avtostartda ishchi papka System32 bo'lgani uchun nisbiy yo'l ishlamaydi) |
 | `ANDON` | stanok signal ustunini (Pico, USB) o'qish; default yoniq, `0` o'chiradi. Pico topilmagan kompyuterda o'zi jim turadi |
 | `ANDON_PORT` | Pico COM porti (bo'sh — Raspberry Pi VID `2E8A` bo'yicha o'zi topadi) |
-| `ANDON_TUR` | Pico turi: `prisadka` (signal ustuni), `kromka` (o'lchash stansiyasi) yoki `rover` (CNC 2130). Bo'sh — birinchi qatordan o'zi aniqlaydi |
+| `ANDON_TUR` | Pico turining boshlang'ich taxmini: `prisadka` (signal ustuni), `kromka` (o'lchash stansiyasi) yoki `rover` (CNC 2130) — qurilma hali jim turganda HB/PING/vaqt yuborish oralig'ini belgilaydi. Tur baribir har tushunarli qatordan qayta aniqlanadi |
 | `ROVER_T_REASON` | Rover Pico'siga yuboriladigan chegara, soniya (default `300`): shundan uzun to'xtash hodisa bo'lib yoziladi |
 | `ROVER_AUTO_SHUTDOWN` | `1` bo'lsa rover Pico'si taymer bo'yicha stanokni o'chiradi (default `0` — kuzatuv) |
 | `ANDON_TAKEOVER` | `0` — port band bo'lsa eski `PrisadkaMES.exe` ni to'xtatmaslik |
@@ -121,7 +121,7 @@ Odatda qo'lda hech narsa yozilmaydi — birinchi ulanish ikkalasini ham to'ldira
 ```
 Terminal "Chop etish"
   -> POST /api/v1/terminal/labels/{id}   (label_printed_at + TABLO xabari)
-  -> arq print_label: render_label_png -> LPUSH mes:print:queue
+  -> arq print_label: render_label_png -> LPUSH mes:print:queue:{agent_id}
   -> /ws/bridge: brpop -> agentga yuboradi, agent ack qiladi
   -> agent: print-queue.jsonl ga yozadi -> Windows GDI -> GoDEX
 ```
@@ -230,8 +230,10 @@ o'lchaydi (firmware alohida repoda). Agent ikkalasini ham o'qiydi:
 | Buferdan kelgani | `age_ms` | `eski_ms` — ikkalasida ham vaqt shundan tiklanadi |
 | Tasdiq | yo'q | **v1.22+**: `ACK <xb> <xq…>` — server YOZGANDAN keyin |
 
-Tur birinchi tushunarli qatordan aniqlanadi; bitta kompyuterda ikki Pico bo'lsa
-`ANDON_TUR` va `ANDON_PORT` bilan aniq ko'rsatiladi.
+Tur birinchi tushunarli qatordan aniqlanadi va har tushunarli qator uni qayta
+belgilaydi — `ANDON_TUR` uni majburlamaydi, faqat boshlang'ich taxmin (qurilma hali
+jim turganda HB/PING/vaqt yuborish oralig'ini belgilaydi). Agent bitta portni o'qiydi:
+bitta kompyuterda ikki Pico bo'lsa port `ANDON_PORT` bilan tanlanadi.
 
 **Firmware v1.16 (2026-09-21):** yangi hodisa `tiqilish` — detallar birga o'tgan yoki
 biri datchik ostida turib qolgan, ya'ni o'lchov chiqmagan (soxta uzunlik o'rniga hodisa

@@ -1,6 +1,6 @@
 # MebeliX MES — Backend
 
-FastAPI asosidagi MES (ishlab chiqarish boshqaruvi) backend: buyurtmalar hayot sikli, GibLab `.project` parser (CUTMAP/SCX), scan engine, operator terminali, TABLO, hisobotlar, PNG yorliq chop etish (bridge-agent orqali USB GoDEX G500-U, Windows GDI — EZPL/RAW dialekt ishlatilmaydi) va WebSocket real-time (`/api/v1/*`, jami 97 HTTP endpoint + 2 WebSocket).
+FastAPI asosidagi MES (ishlab chiqarish boshqaruvi) backend: buyurtmalar hayot sikli, GibLab `.project` parser (CUTMAP/SCX), scan engine, operator terminali, TABLO, hisobotlar, PNG yorliq chop etish (bridge-agent orqali USB GoDEX G500-U, Windows GDI — EZPL/RAW dialekt ishlatilmaydi) va WebSocket real-time (`/api/v1/*`, jami 150 HTTP endpoint + 2 WebSocket; to'liq ro'yxat: `docs/03-backend-api.md`).
 
 Texnologiyalar: Python 3.11–3.13 (`pyproject.toml`: `requires-python >=3.11, <3.14`; Docker image'lari 3.13 da quriladi), FastAPI, SQLAlchemy 2 (async) + Alembic, PostgreSQL, Redis (pub/sub + navbatlar), ARQ worker, Pillow/qrcode (yorliq PNG), openpyxl (Excel).
 
@@ -25,7 +25,7 @@ uv sync                                            # bog'liqliklarni o'rnatish
 cp ../.env.example ../.env                         # so'ng .env ni tahrirlang (SECRET_KEY, POSTGRES_*, ADMIN_*)
 uv run alembic upgrade head                        # migratsiyalar
 uv run python -m app.commands.create_first_superuser  # birinchi admin (ADMIN_PHONE/ADMIN_PASSWORD dan)
-uv run python -m app.commands.seed_defaults        # default tashkilot + 9 post (ARRA..TMO)
+uv run python -m app.commands.seed_defaults        # 9 post (ARRA..TMO) + post hisoblari
 ```
 
 ## Ishga tushirish

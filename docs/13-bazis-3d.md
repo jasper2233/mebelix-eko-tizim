@@ -452,7 +452,9 @@ bazis/{order_id}/{product_code}.png     kartochka eskizi (qayta ishlangan)
 
 Mahsulot kodi fayl nomiga aylanadi, shuning uchun `[^A-Za-z0-9_-]` tozalanadi
 va 40 belgiga qisqartiriladi (yo'l bo'ylab chiqib ketishga qarshi). Bir xil
-kodli fayl qayta yuklansa eskisining o'rnini oladi.
+kodli fayl qayta yuklansa eskisining o'rnini oladi. Yangi faylda `Thumbnail`
+bo'lmasa eski `.png` o'chiriladi (eskiz endpointi 404 beradi) — aks holda
+yangi yozuv oldingi faylning eskizini ko'rsatardi.
 
 ### Model JSON
 
@@ -815,8 +817,10 @@ faqat rasm suriladi; nur ham shu proyeksiyadan otiladi. Ilgari telefonda
 chegara `o`, kesmalar `h` va aylanalar `c` — `Shape.holes` ga; yoy backendda
 nuqtalarga bo'lingan (§2.5). Har panelda
 `EdgesGeometry` qirra chizig'i: busiz bir xil rangdagi qo'shni panellar bitta
-yaxlit blokka aylanib ko'rinadi. Xira holatda qirra chizig'i **yashiriladi** —
-aks holda u tanlangan detal ustida "qafas" bo'lib qolardi.
+yaxlit blokka aylanib ko'rinadi. Tanlov va qidiruvda fon panelning qirra
+chizig'i **juda xira** (`fonQirraMat`, 13%) chiziladi — to'liq kuchda u
+tanlangan detal ustida "qafas" bo'lib qolardi. Xona yuzasida va yashirin
+`zamena` qatlamida (topilmagan/tanlanmagan bo'lsa) qirra chizig'i yo'q.
 
 **Kadr faqat KERAK BO'LGANDA chiziladi**: `OrbitControls` ning `change`
 hodisasi "kir" bayrog'ini ko'taradi, qolgan holatlarda uni kod o'zi ko'taradi.

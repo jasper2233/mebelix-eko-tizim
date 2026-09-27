@@ -4,7 +4,8 @@ Chekdagi yozuv, QR mazmuni, SCX fayl nomi va bazadagi `qr_text` — **hammasi
 bitta satr**. Bu Nanxing skan mosligi (skaner o'qigan matn = fayl nomi) va
 operator adashmasligi uchun qat'iy qoida. UI sahifalarning ko'pi ham shu satrni
 ko'rsatadi, lekin HAMMASI emas: KROMKA/PRISADKA jadvallarining «Kod» ustuni,
-UPAKOVKA dagi ochiq qadoq ro'yxati, navbatdagi yig'ma bog'lami va WS orqali
+BOYOQ/STOLYARKA/TMO navbatining «Kod» ustuni, UPAKOVKA dagi o'ngdagi detallar
+ro'yxati, navbatdagi yig'ma bog'lami va WS orqali
 kelgan begona skan banneri `_n` SIZ detal kalitini
 (`{mahsulotKodi}_{detalKodi}`) chiqaradi — to'liq sanog'i «Qoida qo'llanadigan
 joylar» bo'limida. Bu kalitning sxema maydoni har joyda bir xil atalmaydi:
@@ -28,7 +29,7 @@ B-2026-047   100701        03_002    -2   _1
 | --- | --- | --- |
 | `B-2026-047` | `order.number` (`crud/orders.next_number`, yil ichida ketma-ket, `ix_order_number` unikal) | buyurtma tokeni — `giblab/models.py`: `order_token()` (hozir raqamning o'zi), `instance_qr()` (yig'uvchi), `strip_order_prefix()` (`ORDER_PREFIX_RE = ^B-\d{4}-\d+_`). Nanxing Panel ID `-` ni qabul qilmasa faqat shu uch funksiya o'zgaradi (`B2026047`) |
 | `100701` | .project dagi mahsulot `code` (bo'lmasa `name`, u ham bo'lmasa `PRODUCT`); 50 belgidan uzun bo'lsa `ParseError` — `Product.code` ustuni `VARCHAR(50)` | buyurtma ichidagi mahsulot (masalan 1007-buyurtma, 01-shkaf) |
-| `03_002` | .project dagi detal `code`, u bo'lmasa `part.code` atributi (GibLab sxemasi `{blok}_{part.position}` — `parser.py` izohi; namunaviy 5 faylda o'lchandi 2026-08-29: kodli 582 detalning 539 tasida oxirgi bo'lak aynan `part.position`. DIQQAT: `c9e5b2a41d78` migratsiyasining izohi buni `{blok}_{tovar}` deydi — o'sha izoh eskirgan, prod migratsiyasi tahrirlanmaydi); ikkalasi ham bo'lmasa parser tartib raqami beradi (`001`, `002`, ...) — ogohlantirish esa FAQAT mahsulotning BIRINCHI detali kodsiz bo'lganda chiqadi, o'rtadagi kodsiz detal jimgina raqamlanadi | detal turi |
+| `03_002` | .project dagi detal `code`, u bo'lmasa `part.code` atributi (GibLab sxemasi `{blok}_{part.position}` — `parser.py` izohi; namunaviy 5 faylda o'lchandi 2026-08-29: kodli 582 detalning 539 tasida oxirgi bo'lak aynan `part.position`. DIQQAT: `c9e5b2a41d78` migratsiyasining izohi buni `{blok}_{tovar}` deydi — o'sha izoh eskirgan, prod migratsiyasi tahrirlanmaydi); ikkalasi ham bo'lmasa parser tartib raqami beradi (`001`, `002`, ...) — ogohlantirish mahsulot kodi bo'yicha BIR MARTA chiqadi: istalgan (birinchisi bo'lishi shart emas) detali kodsiz bo'lsa (`parser.py` — `auto_coded` to'plami); keyingi kodsiz detallar shu bitta ogohlantirish ostida raqamlanadi | detal turi |
 | `-2` | parser qo'shadi (`_dedupe_part_code`) | bir xil mahsulot KODI ichida IKKI detal bir xil kod bilan kelgan — ikkinchisi `-2` (uchinchisi `-3`, ...). `seen` to'plami `product.code` bo'yicha, ya'ni kodi bir xil ikki alohida `<good>` ham bitta to'plamni bo'lishadi. Bu BOSHQA detal, nusxa emas: odatda ko'zgu juftlik (chap/o'ng bok — teshiklari qarama-qarshi) yoki kromka tomoni farqli juftlik |
 | `_n` | ingest (`ParsedPart.serial_qrs(order.number)` → `instance_qr`) | nusxa raqami — FAQAT detal 1 dan ko'p nusxada bo'lsa (`_1.._count`). Yagona nusxada suffiks YO'Q |
 
@@ -136,10 +137,10 @@ sababli bitta chek ID si va bitta bekor qilish tugmasini ko'rsatadi
 | Joy | Manba kod |
 | --- | --- |
 | Bazadagi `part_instance.qr_text` | `ingest.py` (`ParsedPart.serial_qrs(order.number)` → `instance_qr` — `giblab/models.py`; `qr_texts` faqat fayl ichidagi to'qnashuv tekshiruvi uchun), matritsada son o'zgarsa `orders/matrix.py _resize_instances` (o'sha PATCH ichida SCX fayllari ham `ingest.rebuild_order_scx` bilan qayta yaratiladi — nom QR bilan mos qolsin) |
-| Chekdagi matn qatori va QR | `services/labels.py` (`qr_text`; `qr_part_code` — `scanning.py` dan import) |
-| SCX fayl nomi va ichidagi Panel ID | `services/giblab/scx.py` (`build_scx_files`; nomlar ingestda parser bergan `qr_texts`dan, qayta yaratishda bazadagi QR'lardan) |
+| Chekdagi matn qatori va QR | `services/labels.py` (`qr_text`) |
+| SCX fayl nomi va ichidagi Panel ID | `services/giblab/scx.py` (`build_scx_files`; nomlar ingestda `ParsedPart.serial_qrs(order.number)` dan — buyurtma prefiksli, `part_instance.qr_text` bilan aynan bir satr; qayta yaratishda (`rebuild_order_scx`) bazadagi QR'lardan) |
 | Skan tekshiruvi | `services/scanning.py`, `api/routes/terminal.py` (`resolve_terminal_qr`), `api/routes/pachka.py` — uchalasi FAQAT aynan moslik (buyurtma prefiksi `strip_order_prefix` bilan olinadi, `_1` fallback 2026-09-04 da olib tashlangan) |
-| Terminal UI (banner, navbat, arra, kromka, prisadka, TMO) | Asosan `qr_text` to'g'ridan ko'rsatiladi, qismlarga ajratilmaydi: ARRA (`PartCard`), navbat (`PostQueueView`), TMO (`TmoView`), PRISADKA nusxa chiplari, `KromkaView` ning «Jarayonda» paneli va O'Z skani banneri (`terminal.tsx` — `code: r.qr_text`). To'rt istisno: (a) KROMKA va PRISADKA jadvallarining «Kod» ustuni backend qurgan `{product_code}_{part.code}` ni, ya'ni `_n` SIZ satrni chiqaradi (sxema maydoni `code`, `terminal.py`) — `KromkaView` nusxalarida esa faqat `№{instance_no}`, `qr_text` `title=` tooltipida qoladi; (b) WS orqali kelgan BEGONA skan bannerida `part_code` chiqadi (`terminal.tsx` — `code: String(p.part_code ?? "")`); (c) (olib tashlandi 2026-09-04 — `KromkaView` ham aynan moslik); (d) navbatdagi YIG'MA bog'lami — detal ostidagi `Yig'ma:` qatori bolalar detallarini `{product_code}_{child.code} ×{har bir otaga soni}` deb yozadi, ya'ni yana `_n` SIZ kalit (`terminal.py` `PostQueueRow.assembly` → `PostQueueView`) |
+| Terminal UI (banner, navbat, arra, kromka, prisadka, TMO) | `qr_text` to'g'ridan ko'rsatiladi, qismlarga ajratilmaydi: ARRA (`PartCard`), PRISADKA nusxa chiplari (`Serial`) va O'Z skani banneri (`terminal.tsx` — `code: r.qr_text`). Istisnolar: (a) KROMKA va PRISADKA jadvallarining «Kod» ustuni backend qurgan `{product_code}_{part.code}` ni, ya'ni `_n` SIZ satrni chiqaradi (sxema maydoni `code`, `terminal.py`) — `KromkaView` nusxalarida esa faqat `№{instance_no}`, `qr_text` `title=` tooltipida qoladi; (b) WS orqali kelgan BEGONA skan bannerida `part_code` chiqadi (`terminal.tsx` — `code: String(p.part_code ?? "")`); (c) (olib tashlandi 2026-09-04 — `KromkaView` ham aynan moslik); (d) navbatdagi YIG'MA bog'lami — detal ostidagi `Yig'ma:` qatori bolalar detallarini `{product_code}_{child.code} ×{har bir otaga soni}` deb yozadi, ya'ni yana `_n` SIZ kalit (`terminal.py` `PostQueueRow.assembly` → `PostQueueView`); (e) BOYOQ/STOLYARKA/TMO navbati (`PostQueueView`; `TmoView` ham shuni chizadi, faqat skanni o'zi yozadi) «Kod» ustunida `part_code` = `{product_code}_{part.code}` (`terminal.py` `PostQueueRow`), nusxalar faqat `№n` chip (`InstanceChip`), `qr_text` `title=` tooltipida |
 | Terminal UI (upakovka) | 2026-09-04 dan boshqa postlar bilan bir: ochiq qadoq ichida `qr_text` (`Serial`, nusxa ko'rinadi — ilgari `part_code`, uch nusxa uch bir xil qator edi), o'ngdagi detallar ro'yxatida `part_code` + `№n` chiplar (`InstanceChip`). Skan aynan `qr_text` ni kutadi (fallback yo'q) |
 
 Ikki eski konvensiya. (1) 2026-09-03 gacha: buyurtma prefiksi YO'Q (`100701_03_002`) — o'shagacha
@@ -175,7 +176,9 @@ SELECT count(*) FROM part_instance WHERE NOT is_deleted AND qr_text !~ '^B-[0-9]
 
 endi `0` qaytaradi. Ammo funksiyaning O'ZI olib tashlanmaydi — u vaqtinchalik moslik
 emas, DETAL KODINI chiqaruvchi kod: `scanning.py: qr_part_code` shu bilan prefiksni
-kesadi va terminal jadvalidagi «Kod» ustuni `100701_03_002` bo'lib ko'rinadi.
+kesadi va WS `scan.recorded` dagi `part_code` (terminaldagi begona skan banneri)
+`100701_03_002` bo'lib ko'rinadi (terminal jadvallarining «Kod» ustuni esa `terminal.py`
+da `{product_code}_{part.code}` dan quriladi, bu funksiyadan emas).
 O'lchab tekshirilgan (2026-09-05): chaqiruv olib tashlansa `qr_part_code` UI ga
 `B-2026-047_100701_03_002` beradi — regressiya. Shartli («prefiks bo'lmasa o'zgartirmaydi»)
 qolishi ham ataylab: ATX chiqindi yorlig'i va qo'lda kiritilgan kod shu yo'ldan o'tadi.
