@@ -113,7 +113,7 @@ Serverda cheksiz o'sishi mumkin bo'lgan uch narsa bor edi; hammasi yopilgan:
 |---|---|
 | Docker **build keshi** | Endi umuman paydo bo'lmaydi: server build qilmaydi, `deploy.sh` faqat `pull` qiladi. Ghcr o'tishidan oldin 11.6 GB yig'ilgan edi — bir marta tozalandi (`docker builder prune -af`). |
 | Konteyner **loglari** | `docker-compose.prod.yml` dagi `x-logging` anchor: `json-file`, `max-size 20m` × `max-file 3` — har xizmatga maksimum 60 MB. Sozlama **repoda**, serverdagi `/etc/docker/daemon.json` da emas: yangi o'rnatishda o'zi qo'llanadi va yagona manba bo'lib qoladi. |
-| **journald** | `/etc/systemd/journald.conf.d/99-mebelix.conf`: `SystemMaxUse=300M`, `MaxRetentionSec=1month`. Default cheklov diskning 10% i (bu serverda ~4.8 GB) — 3 GB gacha o'sgan edi. |
+| **journald** | `/etc/systemd/journald.conf.d/99-mebelix.conf`: `SystemMaxUse=300M`, `MaxRetentionSec=1month`. Default cheklov diskning 10% i (eski 48 GB serverda ~4.8 GB — 3 GB gacha o'sgan edi; hozirgi 77 GB serverda ~7.7 GB). Server 2026-08-22 da yangidan qurilganda fayl qayta yaratilmagan va jurnal cheklovsiz 412 MB gacha o'sgan — 2026-09-27 da qayta yaratildi (277.9 MB ga tushdi). Amaldagi qiymatni tekshirish: `systemd-analyze cat-config systemd/journald.conf`. |
 
 Image'lar tomonida: `deploy.sh` har muvaffaqiyatli deploydan keyin eskilarini o'chiradi (joriy + oldingi stable qoladi), CI esa ghcr'da oxirgi 10 versiyani saqlab qolganini tozalaydi (`actions/delete-package-versions`) — har deploy registrga ~620 MB qo'yadi va private repo paket xotirasi cheklangan.
 

@@ -1,8 +1,8 @@
 # TODO — ochiq ishlar
 
 To'liq audit sanasi — **2026-09-27**. Kod bazasi — **`e4dc7fb`**. Tuzatishlar
-`audit/2026-09-27` branch'ida (`4bc2c9c`, `3b574e5` va undan keyingi hujjat
-commit'lari).
+(`4bc2c9c`, `3b574e5` va keyingi hujjat commit'lari) 2026-09-27 da `main` ga
+qo'shilib prodga chiqdi (`a45977b`).
 
 Bu ro'yxat eski TODO.md o'rnini bosadi (81 band, baza `e234cf2`). Eski bandlarning
 har biri joriy kodda qayta tekshirildi:
@@ -14,7 +14,7 @@ har biri joriy kodda qayta tekshirildi:
 | tuzatildi (CLAUDE.md) | 1 | 47 |
 | rad etildi | 3 | 58, 76, 81 — pastdagi bo'limda |
 | yopildi | 1 | 52 (avvalroq tuzatilgan) |
-| repodan hal bo'lmaydi | 1 | 80 — prod tekshiruvi quyida |
+| serverda tuzatildi | 1 | 80 — journald drop-in yo'q edi, 2026-09-27 da qayta yaratildi |
 
 **Qanday tekshirildi.** Git kuzatadigan 335 kod/konfig va 24 hujjat fayli
 auditorga boshidan oxirigacha o'qitildi. O'qilgan qatorlar agent
@@ -22,8 +22,9 @@ transkriptlaridan skript bilan sanaldi. Quyidagilar o'qilmadi:
 - generatsiya qilingan fayllar (18 ta);
 - binar va lock fayllar (60 ta);
 - prodga qo'llangan migratsiyalar (61 ta; ular faqat docs/04 ni tekshirishda manba bo'ldi);
-- `scripts/catalog.csv`. Topilmani ikkinchi, mustaqil agent
-qayta tekshirdi va tasdiqladi. Xulq haqidagi har da'vo bir martalik skript bilan
+- `scripts/catalog.csv`.
+
+Topilmani ikkinchi, mustaqil agent qayta tekshirdi va tasdiqladi. Xulq haqidagi har da'vo bir martalik skript bilan
 ishga tushirildi: vaqtinchalik Postgres/Redis, haqiqiy endpoint funksiyalari.
 Quyidagi "Dalil" qatorlari o'sha chiqishlardan olingan. Bu yerga faqat
 **qaror talab qiladigan** bandlar kiritildi: mahsulot qarori, prod ma'lumotini
@@ -37,7 +38,6 @@ Tuzatishlar branch orqali boradi; `main` ga push = tsexga deploy (19:00 dan keyi
 | yuqori | 1 |
 | o'rta | 8 |
 | past | 11 |
-| prod tekshiruvi | 1 |
 
 ---
 
@@ -434,16 +434,6 @@ Tuzatishlar branch orqali boradi; `main` ga push = tsexga deploy (19:00 dan keyi
   shu sonni ishlating.
 - **Nega hozir emas:** API javob sxemasi o'zgaradi. Server baribir 409 beradi, ya'ni
   zarar faqat noto'g'ri ko'rsatma.
-
-## Prod tekshiruvi (repodan hal bo'lmaydi)
-
-### 21. journald hajm chegarasi prod'da haqiqatan qo'yilganmi (eski #80)
-
-docs/07 da drop-in `/etc/systemd/journald.conf.d/99-mebelix.conf` bor
-(`SystemMaxUse=300M`, `22c6547`). Eski band esa faqat `journald.conf` ni grep
-qilgan, drop-in'ni ko'rmagan. Lekin o'lchangan 377.6M 300M dan katta, ya'ni server
-drop-in'siz qayta qurilgan bo'lishi mumkin. O'qish-only tekshiruv:
-`systemd-analyze cat-config systemd/journald.conf`.
 
 ---
 
