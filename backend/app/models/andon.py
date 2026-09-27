@@ -41,7 +41,7 @@ class AndonEvent(BaseModel):
     agent_id: Mapped[int | None] = mapped_column(ForeignKey("bridge_agent.id"), default=None, kw_only=True)
     session: Mapped[str] = mapped_column(String(16), kw_only=True)
     seq: Mapped[int] = mapped_column(kw_only=True)
-    kind: Mapped[str] = mapped_column(String(10), kw_only=True)
+    kind: Mapped[str] = mapped_column(String(20), kw_only=True)  # `avariya_toxtash` — 15 belgi
     state: Mapped[str | None] = mapped_column(String(16), default=None, kw_only=True)
     prev_state: Mapped[str | None] = mapped_column(String(16), default=None, kw_only=True)
     prev_duration_s: Mapped[int | None] = mapped_column(default=None, kw_only=True)

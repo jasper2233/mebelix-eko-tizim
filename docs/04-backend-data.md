@@ -153,7 +153,7 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
 - `AndonEvent` (`andon_event`, `5d8e2a61c0f4`) — stanok signal ustunidan (Pico → MES agent →
   `POST /bridge-agents/andon`) kelgan XOM hodisa: `machine_id` FK (agent bog'lanishidan, Pico'dagi
   `MACHINE_ID` matnidan emas), `agent_id` FK NULL, `session(16)` + `seq` (Pico kaliti — har
-  yuklanishda yangi sessiya, `seq` uning ichida uzluksiz), `kind(10)` (`state` | `cycle`),
+  yuklanishda yangi sessiya, `seq` uning ichida uzluksiz), `kind(20)` (`AndonEventIn.type`: `state`, `cycle`, kromka `olchov`/`uskuna`/`tezlik`/`ogoh`/`avariya_toxtash`/`boot`/`tiqilish`, `rover`; 2026-09-27 gacha `10` edi — 15 belgilik `avariya_toxtash` butun partiyani 500 bilan yiqitardi, `a1c4e7b20d95`),
   `state`/`prev_state(16)`, `prev_duration_s`, `happened_at` (agent qo'ygan vaqt — USB rejimda Pico
   soatsiz), `payload` JSONB (hodisaning o'zi, to'liq). Indekslar: `ix_andon_event_key`
   UNIQUE `(machine_id, session, seq)` — qayta yuborish takrorini tashlaydi; `ix_andon_event_machine_at`
