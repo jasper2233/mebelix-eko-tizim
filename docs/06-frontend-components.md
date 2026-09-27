@@ -332,7 +332,7 @@ Reyestr sahifalagichi: `page` (0 dan), `pageSize`, `total`, `onPage`. Tartib bit
 - Props: `stages: StageCell[]` (`{ code, done, total }`) va `showLabels?` (pastda); har katak (`h-6 w-12`) `POST_COLORS[code]` rangida (`mixTint` fon + foizli progress chizig'i), ichida `done/total` (`--foreground` rangda — post rangi o'z tinti ustida AA dan o'tmasdi), tugallanganda "✓"; kataklar orasida ulovchi chiziqcha, `title` da `KOD: done/total (N%)`.
 - Buyurtma sahifasi sarlavhasida (`routes/_layout/orders/$orderId.tsx`) va `Orders/PartTrace` da ishlatiladi (boshqaruv paneli endi ishlatmaydi); xuddi shu vizual grammatika `Orders/OrderMatrix` va TABLO ekranida takrorlanadi.
 
-- `showLabels` — katak ostida post kodi (jadval ustunisiz turganda rangning o'zi bosqichni aytmaydi); ikkala chaqiruvchi ham beradi.
+- `showLabels` — katak ostida post kodi (jadval ustunisiz turganda rangning o'zi bosqichni aytmaydi); ikkala chaqiruvchi ham beradi. Shu rejimda zanjir `flex-wrap` — tor ekranda kataklar keyingi qatorga o'tadi: yorliq katakni kengaytiradi va 360 px da 6 bosqich (354 px) ichki kenglikdan (312 px) oshib, buyurtma sahifasini yonga surardi. Yashirilmaydi — hamma bosqich ko'rinsin. Telefonda (`<sm`) ulovchi chiziqcha yashirin, kataklar orasida oraliq (`gap-x-1.5`) — aks holda o'ralgan qator «—» bilan boshlanardi.
 
 ### `frontend/src/components/Common/StatusBadge.tsx`
 
@@ -869,7 +869,7 @@ shadcn/ui asosidagi 24 ta primitiv. Ko'pchiligi standart generatsiya; quyidagi j
 | `sonner.tsx` | Toaster | sonner kutubxonasi | **Kichik custom**: `theme="light"` qattiq belgilangan (next-themes yo'q), lucide ikonkalar to'plami (success/info/warning/error/loading), CSS o'zgaruvchilar mapping'i |
 | `switch.tsx` | Switch | Radix Switch | Yo'q (butun frontendda YAGONA chaqiruvchi — `agents.tsx` dagi chek chiqarish `can_print` almashtirgichi) |
 | `table.tsx` | Table, TableHeader/Body/Row/Head/Cell | native table | **Stil custom**: konteyner `rounded-lg border`, TableHeader `bg-muted/50`, TableHead `h-11 text-xs font-semibold uppercase tracking-wider`, TableCell `px-4 py-3 whitespace-nowrap` |
-| `tabs.tsx` | Tabs, TabsList, TabsTrigger, TabsContent | Radix Tabs | `dark:` klasslar olib tashlangan (boshqasi standart) |
+| `tabs.tsx` | Tabs, TabsList, TabsTrigger, TabsContent | Radix Tabs | `dark:` klasslar olib tashlangan; **mobil uchun o'zgartirilgan** (2026-09-27): `TabsList` ota elementdan kengaymaydi — `max-w-full overflow-x-auto justify-start`, tab'lar `shrink-0`, scroll chizig'i yashirin (`scrollbar-width: none`); qaysi tomonda yana tab bo'lsa o'sha chet 40 px xiralashadi (`index.css`: `@property --tabs-chap/--tabs-ong` + scroll-driven `tabs-chet`, `@supports` ichida — qator sig'sa timeline faol emas, xiralik yo'q); `Tabs` ildizi `min-w-0` (qatordagi flex element bo'lsa torayishi uchun — hisobotlar). Ilgari 360 px da buyurtma (+47 px), nuqsonlar (+24) va hisobotlar (+60) sahifasi yonga surilardi (390 px da buyurtma +17, hisobotlar +30), tizim sozlamalarida oxirgi tab'lar qirqilib, ularga yetib bo'lmasdi |
 | `textarea.tsx` | Textarea | native `<textarea>` | Yo'q (standart shadcn; anketa "Qo'shimcha izoh" maydoni uchun qo'shilgan) |
 | `tooltip.tsx` | Tooltip, TooltipTrigger/Content/Provider | Radix Tooltip | Yo'q (delayDuration=0) |
 

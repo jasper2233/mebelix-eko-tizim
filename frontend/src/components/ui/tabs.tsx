@@ -10,7 +10,8 @@ function Tabs({
   return (
     <TabsPrimitive.Root
       data-slot="tabs"
-      className={cn("flex flex-col gap-2", className)}
+      // min-w-0: qatordagi flex element bo'lsa (hisobotlar) tab'lar kengligidan torayib, ro'yxatni suradigan bo'lsin
+      className={cn("flex min-w-0 flex-col gap-2", className)}
       {...props}
     />
   )
@@ -23,8 +24,12 @@ function TabsList({
   return (
     <TabsPrimitive.List
       data-slot="tabs-list"
+      // Sig'masa (telefon) qator ota elementdan KENGAYMAYDI — yonga suriladi:
+      // ilgari 390 px da buyurtma va hisobotlar sahifasi yonga siljirdi, tizim
+      // sozlamalarida oxirgi tab'lar qirqilib, ularga yetib bo'lmasdi.
+      // justify-start: markazlangan toshgan qatorning chap boshiga aylantirib bo'lmaydi.
       className={cn(
-        "bg-muted text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-lg p-[3px]",
+        "bg-muted text-muted-foreground inline-flex h-9 w-fit max-w-full items-center justify-start overflow-x-auto rounded-lg p-[3px] [scrollbar-width:none] [&>*]:shrink-0",
         className
       )}
       {...props}
