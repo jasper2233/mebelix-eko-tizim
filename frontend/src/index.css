@@ -307,6 +307,51 @@
   }
 }
 
+/* Tab qatori sig'masa yonga suriladi (ui/tabs.tsx) — qaysi tomonda yana tab
+   bo'lsa, o'sha chet xiralashadi. Busiz 360 px da buyurtmaning «3D model» tabi
+   chetdan butunlay tashqarida turardi va borligi bilinmasdi. Scroll-driven
+   animatsiya: qator sig'sa timeline faol emas — xiralik yo'q; qo'llamaydigan
+   brauzerda ham xiralik yo'q, surish esa baribir ishlaydi. */
+@property --tabs-chap {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --tabs-ong {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes tabs-chet {
+  from {
+    --tabs-chap: 0px;
+    --tabs-ong: 40px;
+  }
+  10% {
+    --tabs-chap: 40px;
+  }
+  90% {
+    --tabs-ong: 40px;
+  }
+  to {
+    --tabs-chap: 40px;
+    --tabs-ong: 0px;
+  }
+}
+@supports (animation-timeline: scroll()) {
+  [data-slot="tabs-list"] {
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 var(--tabs-chap),
+      #000 calc(100% - var(--tabs-ong)),
+      transparent
+    );
+    animation: tabs-chet linear both;
+    animation-timeline: scroll(self inline);
+  }
+}
+
 /* Chrome autofill'ning och-ko'k foni palitra bilan urishadi — fon inset-soya
    bilan surface rangiga qaytariladi. ATAYLAB qatlamsiz (`@layer` tashqarisida):
    Input'dagi `shadow-xs` utility box-shadow'ni qayta yozadi, qatlamsiz qoida

@@ -296,6 +296,26 @@ export type BazisModelRead = {
 };
 
 /**
+ * BazisProductRead
+ *
+ * Buyurtmadagi mahsulot (`.project` dan) — 3D ro'yxatining bir qatori.
+ */
+export type BazisProductRead = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * BazisState
  *
  * Buyurtmaning 3D holati.
@@ -305,6 +325,10 @@ export type BazisState = {
      * Models
      */
     models: Array<BazisModelRead>;
+    /**
+     * Products
+     */
+    products: Array<BazisProductRead>;
     /**
      * Share Token
      */
@@ -4121,6 +4145,10 @@ export type PublicProduct = {
      * Panels
      */
     panels: number;
+    /**
+     * Linked
+     */
+    linked: boolean;
 };
 
 /**
@@ -7604,9 +7632,9 @@ export type UploadOrderBazisData = {
     };
     query?: {
         /**
-         * Tasdiq
+         * Product Code
          */
-        tasdiq?: boolean;
+        product_code?: string | null;
     };
     url: '/api/v1/orders/{order_id}/bazis';
 };
@@ -7655,6 +7683,38 @@ export type ReadOrderBazisThumbErrors = {
 export type ReadOrderBazisThumbError = ReadOrderBazisThumbErrors[keyof ReadOrderBazisThumbErrors];
 
 export type ReadOrderBazisThumbResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type ReadOrderBazisModelData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+        /**
+         * File Id
+         */
+        file_id: number;
+    };
+    query?: never;
+    url: '/api/v1/orders/{order_id}/bazis/{file_id}/model';
+};
+
+export type ReadOrderBazisModelErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadOrderBazisModelError = ReadOrderBazisModelErrors[keyof ReadOrderBazisModelErrors];
+
+export type ReadOrderBazisModelResponses = {
     /**
      * Successful Response
      */

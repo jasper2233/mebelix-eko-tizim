@@ -390,9 +390,36 @@ o'lchandi: `2083` da uchta — `208301`, `208302`, `208303`).
 boshlanadi (`2083 Anvar.project` da `01_004` ikki mahsulotda ham bor), ya'ni
 yagona ishonchli kalit — mahsulot kodi.
 
-Kod mos kelmasligi ham bo'ladi: bitta namunada `Code = "1126"` (buyurtma
-raqami, mahsulot suffiksisiz). Bunda model baribir ko'rinadi, lekin
-`matched=false` va texnologga ogohlantirish chiqadi.
+**Fayl `.project` ga MOS bo'lishi shart — kod ham, nom ham** (2026-09-27 dan).
+Xabarlar texnolog tilida — mahsulotni NOMI bilan (kod qavsda) aytadi va nima
+qilish kerakligini qo'shadi; rad etilganda HECH NARSA yozilmaydi:
+
+| Holat | Javob |
+|---|---|
+| buyurtmada mahsulot yo'q (`.project` yuklanmagan) | 422 «Avval project faylni yuklang — Bazis fayllar uning mahsulotlariga bog'lanadi.» — parserdan OLDIN |
+| fayldagi kod buyurtmada yo'q | 409 «Bu Bazis fayli shu buyurtmaning project fayliga tegishli emas: faylda «X» (kod) mahsuloti bor, project faylda esa «A» (kod), … To'g'ri buyurtmaning Bazis faylini tanlang.» |
+| kod bir xil, nomi boshqa | 409 «Bu Bazis fayli project faylga mos emas: kodi bir xil (kod), lekin nomi boshqa — project faylda «A», Bazis faylida «X». Bu boshqa mijozning fayli bo'lishi mumkin (Bazis raqamlari takrorlanadi). Nomni Bazisda o'zgartirgan bo'lsangiz, uni project fayldagi bilan bir xil qilib qayta eksport qiling.» |
+| panelda A qatoriga yuklangan, fayl esa (kodi ham, nomi ham) shu buyurtmaning B mahsulotiniki (`product_code`) | 409 «Bu fayl «A» (kod) uchun emas — unda «B» (kod) mahsuloti bor. Uni «B» qatoriga yuklang.» — nom tekshiruvidan KEYIN: boshqa mijozning fayli B qatoriga yo'naltirilmaydi, «nomi boshqa» xabarini oladi |
+| `product_code` buyurtmada yo'q | 404 «Bu mahsulot buyurtmada topilmadi — sahifani yangilang.» — parserdan OLDIN |
+
+Kodi buyurtmada yo'q fayl ilgari «bog'lanmagan» (`matched=false`) bo'lib
+saqlanardi: bitta namunada `Code = "1126"` (buyurtma raqami, mahsulot
+suffiksisiz), prodda 12 yuklashdan bittasi — `B-2026-060` ning `120602`
+modeli. Ustaga ta'siri — chekdagi Detal ID bunday modelda TOPILMAYDI: ID
+ichidagi mahsulot kodi `.project` niki, modelniki boshqa; detal raqamlari ham
+mos kelishi shart emas (`120602` da ular umuman bo'sh).
+
+Eski qatorlar, hamda `.project` qayta yuklanib mahsuloti yo'qolgan modellar,
+`matched=false` bo'lib qoladi: panelda qator amber «Bog'lanmagan» belgisi va
+«o'chiring va buyurtmaning o'z Bazis faylini yuklang» izohi bilan birinchi
+turadi, tab yorlig'ida ogohlantirish belgisi chiqadi (§7); ochiq sahifa
+kartochkasi va qidiruv ustaga detal NOMI bilan qidirishni aytadi (§7.1).
+
+`matched` O'QISHDA tirik mahsulot kodlaridan hisoblanadi (`orders/bazis.py:
+_read`, ochiq ro'yxatdagi `linked` ham shu qoida), yuklash paytida muzlatilmaydi:
+`.project` keyin qayta yuklanib mahsulotlar o'zgarsa ham holat to'g'ri qoladi.
+2026-09-27 gacha `meta.matched` va «mahsulot topilmadi» matni qatorga yozilardi —
+eski qatorlarda qolgan, o'qishda e'tiborsiz.
 
 **Kod mos, lekin fayl BOSHQA buyurtmaniki.** Bazis raqamlari mijozlar orasida
 takrorlanadi: `2083 Ilyos aka` ham, `2083 Anvar` ham `208301` kodli (namuna
@@ -403,16 +430,14 @@ harf va bo'shliqlar hisobga olinmaydi): `.project` dagi nom ham, `.b3d` dagi
 nom ham Bazisning `Article.Name` idan (GibLab eksport skripti,
 `GibLabExport.js: getModelName()`), ya'ni to'g'ri faylda ular mos keladi.
 
-**Nom farq qilsa — 409, hech narsa yozilmaydi.** Ilgari fayl ogohlantirish va
-`matched=false` bilan baribir saqlanardi, ammo `matched` faqat bayroq edi:
-model shu mahsulot kodi bilan ochiq sahifada chiqib, chekdagi Detal ID uning
-panellarini AYNAN topardi — usta boshqa o'lchamdagi detalni ko'rardi, texnolog
-esa «detallar bog'lanmadi» deb o'qirdi. Endi server ikkala nomni aytib 409
-qaytaradi; texnolog panelida (`BazisPanel`) bir nechta fayldan nomi farq
-qilganlari yig'ilib BITTA dialogda so'raladi, «Baribir yuklash» —
-`tasdiq=true` bilan qayta yuborish (nom rostdan o'zgargan bo'lishi mumkin).
-Tasdiqlangan model bog'lanadi (`matched=true`) va ogohlantirishda «texnolog
-tasdiqlab yukladi» qoladi.
+**Nom farq qilsa — 409, hech narsa yozilmaydi.** Server ikkala nomni aytadi va
+«Nomni Bazisda o'zgartirgan bo'lsangiz, uni project fayldagi bilan bir xil qilib
+qayta eksport qiling» deydi (to'liq matn — yuqoridagi jadval). 2026-09-27 gacha texnolog «Baribir yuklash»
+(`?tasdiq=true`) bilan o'tkazib yubora olardi — prodda bir marta ham
+ishlatilmagan, olib tashlandi: tasdiqlangan fayl chekdagi Detal ID bilan
+boshqa buyurtmaning panelini AYNAN topishi mumkin edi. Buyurtmada bir xil kodli
+ikki mahsulot bo'lsa (parser takror kodlarga ruxsat beradi, docs/11) nomi mosi
+olinadi — ilgari bu holat `MultipleResultsFound` bilan 500 berardi.
 
 ---
 
@@ -529,7 +554,7 @@ MESda umuman qayd etilmaydi. Shuning uchun himoya «imkoniyat-havola»
 | Har so'rov TOKEN bo'yicha buyurtmani topadi | `order_id` ochiq modulga tashqaridan hech qachon kirmaydi |
 | Yopilgan token 404 (403 emas) | «bunday buyurtma bormi» degan savolga ham javob bermaymiz |
 | Fayl yo'li DBdagi qatordan | manzildagi `code` diskka tegmaydi |
-| Javobda faqat raqam + geometriya | mijoz nomi, telefoni, narx, ishlab chiqarish holati YO'Q |
+| Javobda faqat raqam + geometriya (+ `linked`) | mijoz nomi, telefoni, narx, ishlab chiqarish holati YO'Q; `linked` — model buyurtmaga bog'langanmi, usta qidiruvni qanday qilishini bilishi uchun |
 | `X-Robots-Tag: noindex, nofollow` | qidiruv tizimi indekslamasin |
 | `Referrer-Policy: no-referrer` | havola tashqi saytga oqib ketmasin |
 | Ikkalasi `/3d/{token}` SAHIFASIDA ham (`frontend/nginx/index.conf`, `location ^~ /3d/`) | manzilning o'zida token bor; ilgari sarlavhalar faqat API javoblarida edi |
@@ -552,6 +577,7 @@ sababli `_protected` dan tashqarida ro'yxatga olinadi.
 | GET | `/api/v1/orders/{id}/bazis` | `StaffReadUser` |
 | POST | `/api/v1/orders/{id}/bazis` | `TexnologUser` |
 | GET | `/api/v1/orders/{id}/bazis/{file_id}/thumb` | `StaffReadUser` |
+| GET | `/api/v1/orders/{id}/bazis/{file_id}/model` | `StaffReadUser` |
 | POST | `/api/v1/orders/{id}/bazis/share` | `ManagerOrTexnologUser` |
 | DELETE | `/api/v1/orders/{id}/bazis/share` | `ManagerOrTexnologUser` |
 | DELETE | `/api/v1/orders/{id}/bazis/{file_id}` | `TexnologUser` |
@@ -575,7 +601,8 @@ paytida, ya'ni ishlab chiqarish tugagandan KEYIN kerak bo'ladi.
 | `components/Bazis/scene.ts` | three.js sahnasi — Reactdan mustaqil |
 | `components/Bazis/ModelViewer.tsx` | Kanvas + qidiruv + detal kartochkasi |
 | `routes/3d.$token.tsx` | Ochiq sahifa (`_layout` dan TASHQARIDA) |
-| `components/Orders/BazisPanel.tsx` | Texnolog tomoni: yuklash, ro'yxat, havola + QR |
+| `components/Orders/BazisPanel.tsx` | Buyurtma sahifasidagi «3D model»: uch qadam — project fayl, Bazis fayllar (har mahsulot qatori: yuklash, ko'rish, holat), yig'uvchi uchun havola + QR |
+| `components/Orders/BazisPreview.tsx` | Panel ichida «Ko'rish» dialogi: xuddi shu `ModelViewer`, model `GET /orders/{id}/bazis/{file_id}/model` dan |
 
 Sarlavhada **to'liq logotip**, ikonka emas: sahifani MebeliX
 xodimi emas, usta yoki mijoz ochadi va ular MX belgisini tanimaydi — havolani
@@ -597,15 +624,36 @@ rangi (`#f0a52f`) bilan deyarli bir xil (1.04) — sarlavhadagi tilla belgi
 "men qidirayotgan detal" signalini suyultirardi. Navy esa `--primary` ning
 o'zi (1.04), ya'ni sarlavha faol segment tugmasi bilan bitta oilada turadi.
 
-three.js faqat `/3d/$token` chunk'ida (`autoCodeSplitting`) — 644 KB, gzip 167 KB;
-asosiy bundle'ga tegmaydi.
+three.js faqat `ModelViewer` chunk'ida — 612 KB (2026-09-27 build); asosiy
+bundle'ga ham, buyurtma sahifasi chunk'iga ham tegmaydi. Ochiq sahifa uni
+marshrut bo'linishi (`autoCodeSplitting`) orqali oladi, panel dialogi esa
+`React.lazy` bilan — dialog birinchi ochilganda yuklanadi (ilovadagi yagona
+`lazy`: aks holda har buyurtma sahifasi three.js ni ham tortardi).
+
+**Panel (texnolog/menejer tomoni) — uch qadamli oqim**: Bazis fayllar project fayl
+yuklangach ochiladi, havola esa birinchi model yuklangach chiqadi. 1) **Project fayl** — nomi va mahsulotlar soni;
+yuklanmagan bo'lsa «avval uni yuklang» va shu yerda yuklash tugmasi; 2) **Bazis
+fayllar — har mahsulotga bitta** (`K/N`) — buyurtmaning HAR mahsuloti bitta qator:
+eskiz, nom, `kod · N dona · M detal`, holat (`Badge`: «Model bor» — navy, «Model
+yo'q» — outline, «Bog'lanmagan» — amber), yuklash/«Almashtirish» shu QATORDA
+(`product_code` bilan — fayl aynan shu mahsulotga tekshiriladi, rad etilsa xabar
+qator ostida qoladi), «Ko'rish» va o'chirish; buyurtmada kodi yo'q model ro'yxat
+BOSHIDA (muammo birinchi); alohida katta yuklash maydoni yo'q; 3) **Yig'uvchi uchun
+havola** — kamida bitta model bo'lgandagina chiqadi. Tab yorlig'i: model bor
+bo'lsa `3D model (K/N)`, bog'lanmagan model bo'lsa amber `TriangleAlert`; model
+yo'q buyurtmada hisob yo'q (3D ixtiyoriy — «(0/3)» har buyurtmada shovqin
+bo'lardi).
 
 ### 7.1 Mahsulot ro'yxati
 
 Birinchi ekran — kartochkalar to'ri; bitta mahsulot bo'lsa u o'tkazib
 yuboriladi va model darhol ochiladi. Kartochkada **eskiz, nom, mahsulot kodi va
 detal soni** bor. Kod kerak: bitta buyurtmada bir xil nomli ikki mahsulot
-bo'ladi (`01 Kuxniya` ikkita), ularni faqat kod ajratadi.
+bo'ladi (`01 Kuxniya` ikkita), ularni faqat kod ajratadi. Bog'lanmagan
+modelning (`linked=false`, §3) kartochkasida amber izoh: «Chekdagi kod bilan
+qidirib bo'lmaydi — detal nomi bilan qidiring»; bitta mahsulotli buyurtmada
+kartochka o'tkazib yuboriladi, shuning uchun o'sha gap qidiruv bo'sh qolganda
+ham chiqadi (`ModelViewer`, `bogLanmagan`).
 
 Nom `OrderFile.meta.product_name` dan: model MES mahsulotiga bog'lansa (kod va
 nom mos, §3) — `Product.name`, aks holda `.b3d` sarlavhasidagi `Name` (ya'ni

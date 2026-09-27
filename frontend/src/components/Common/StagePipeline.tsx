@@ -20,8 +20,15 @@ export function StagePipeline({
 }) {
   if (!stages.length)
     return <span className="text-xs text-muted-foreground">—</span>
+  // Yorliqli rejimda katakchalar tor ekranda keyingi qatorga o'tadi: yorliq katakni
+  // kengaytiradi va 360 px telefonda 6 bosqich (354 px) ichki kenglikdan (312 px)
+  // oshib, sahifani yonga surardi. Yashirilmaydi — hamma bosqich ko'rinsin.
+  // Telefonda ulovchi chiziqcha o'rniga oraliq: aks holda o'ralgan qator «—» bilan
+  // boshlanardi.
   return (
-    <div className={`flex ${showLabels ? "items-start" : "items-center"}`}>
+    <div
+      className={`flex ${showLabels ? "flex-wrap items-start gap-y-1 max-sm:gap-x-1.5" : "items-center"}`}
+    >
       {stages.map((s, i) => {
         const color = POST_COLORS[s.code] ?? "var(--status-draft)"
         const pct =
@@ -32,7 +39,11 @@ export function StagePipeline({
             key={s.code}
             className={`flex ${showLabels ? "items-start" : "items-center"}`}
           >
-            {i > 0 && <div className="mt-3 h-px w-1.5 bg-border" />}
+            {i > 0 && (
+              <div
+                className={`mt-3 h-px w-1.5 bg-border ${showLabels ? "max-sm:hidden" : ""}`}
+              />
+            )}
             <div>
               <div
                 className="relative h-6 w-12 overflow-hidden rounded-sm"

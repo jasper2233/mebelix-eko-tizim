@@ -14,7 +14,8 @@ bilinmaydi (ustalar hech qayerda qayd etilmaydi). Shu sababli himoya
   bo'lmasa ham, skanerlash shovqinini to'xtatadi.
 
 Javoblarda mijoz nomi, telefoni, narx va ichki holat YO'Q: faqat buyurtma
-raqami, mahsulot nomi va geometriya.
+raqami, mahsulot nomi, geometriya va model buyurtmaga bog'langanmi (usta
+qidiruvni qanday qilishini bilishi uchun).
 """
 
 from pathlib import Path
@@ -27,7 +28,7 @@ from app.api.deps import SessionDep
 from app.core.config import upload_root
 from app.core.exceptions import NotFoundException
 from app.core.utils.rate_limit import RateLimit
-from app.models import Order, OrderFile
+from app.models import Order, OrderFile, Product
 from app.models.enums import FileKind
 from app.schemas.bazis import PublicOrder, PublicProduct
 
@@ -94,17 +95,28 @@ async def read_public_order(db: SessionDep, request: Request, token: str, respon
     """Havoladagi buyurtma: raqami va 3D modeli bor mahsulotlar."""
     order = await _order(db, request, token)
     response.headers.update(_HEADERS)
-    return PublicOrder(
-        number=order.number,
-        products=[
+    # Bog'lanish — tirik mahsulot kodlaridan (`orders/bazis.py: _read` bilan bir qoida)
+    codes = set(
+        (
+            await db.execute(
+                select(Product.code).where(Product.order_id == order.id, Product.is_deleted == False)  # noqa: E712
+            )
+        )
+        .scalars()
+        .all()
+    )
+    products = []
+    for r in await _models(db, order.id):
+        code = str(r.meta.get("product_code") or "")
+        products.append(
             PublicProduct(
-                code=str(r.meta.get("product_code") or ""),
+                code=code,
                 name=str(r.meta.get("product_name") or ""),
                 panels=int(r.meta.get("panels") or 0),
+                linked=code in codes,
             )
-            for r in await _models(db, order.id)
-        ],
-    )
+        )
+    return PublicOrder(number=order.number, products=products)
 
 
 @router.get("/3d/{token}/{code}/model", operation_id="read_public_model")

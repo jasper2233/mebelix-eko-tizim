@@ -11,6 +11,7 @@ import {
   Lock,
   Play,
   Trash2,
+  TriangleAlert,
   Truck,
   XCircle,
 } from "lucide-react"
@@ -24,7 +25,11 @@ import { QueryError } from "@/components/Common/QueryError"
 import { SectionTitle } from "@/components/Common/SectionTitle"
 import { StagePipeline } from "@/components/Common/StagePipeline"
 import { StatusBadge } from "@/components/Common/StatusBadge"
-import { BazisPanel } from "@/components/Orders/BazisPanel"
+import {
+  BazisPanel,
+  bazisHolati,
+  useOrderBazis,
+} from "@/components/Orders/BazisPanel"
 import { CustomRoutes } from "@/components/Orders/CustomRoutes"
 import { EditOrder } from "@/components/Orders/EditOrder"
 import { MachineAssign } from "@/components/Orders/MachineAssign"
@@ -143,6 +148,16 @@ function OrderDetailPage() {
   const admin = isAdmin(currentUser)
   const canManage = isManager(currentUser)
   const isTexnolog = admin || role === "texnolog"
+  // «3D model» tab yorlig'i — BazisPanel bilan BITTA so'rov (bir xil kalit).
+  // Faqat texnolog tabida: boshqa rollarda blok sarlavhasi hisobsiz.
+  const { data: bazisState } = useOrderBazis(id, isTexnolog)
+  const bazis = bazisState ? bazisHolati(bazisState) : null
+  // Hisob faqat model bo'lsa: 3D ixtiyoriy (buyurtmalarning kichik qismida) —
+  // har buyurtmada «(0/3)» shovqin bo'lib, bajarilmagan ishdek o'qilardi
+  const bazisSoni =
+    bazis && bazis.modellar > 0 && bazis.mahsulotlar > 0
+      ? ` (${bazis.modelliMahsulot}/${bazis.mahsulotlar})`
+      : ""
 
   // ["orders"] prefiksi ["orders", id] va ["orders", id, "matrix"] ni ham
   // qamraydi — qolgan ikki chaqiruv ortiqcha edi.
@@ -249,6 +264,8 @@ function OrderDetailPage() {
   const canUpload = isTexnolog && canEdit
   const isTerminal = TERMINAL_STATUSES.includes(order.status)
   const scxFiles = (order.files ?? []).filter((f) => f.kind === "scx")
+  // «3D model» ning 1-qadami: Bazis fayllar shu faylning mahsulotlariga bog'lanadi
+  const projectFile = (order.files ?? []).find((f) => f.kind === "project")
   const fileUrl = (name: string | number) =>
     `${API_BASE}/api/v1/orders/${id}/files/${name}`
   const customCount = (matrix?.parts ?? []).filter((p) => p.is_custom).length
@@ -478,7 +495,7 @@ function OrderDetailPage() {
               {/* Aniq NIMA qulflangani: menejerning «Tahrirlash»i (narx, muddat,
                 prioritet) baribir ishlaydi — qulf faylga va marshrutga tegishli */}
               <div className="font-medium">
-                Fayl va marshrutni o'zgartirib bo'lmaydi
+                Project fayl va marshrutni o'zgartirib bo'lmaydi
               </div>
               <div className="text-muted-foreground">
                 {order.edit_blocked_reason}
@@ -592,7 +609,15 @@ function OrderDetailPage() {
                   Furnituralar ({hardware.length})
                 </TabsTrigger>
               )}
-              <TabsTrigger value="bazis">3D model</TabsTrigger>
+              <TabsTrigger value="bazis">
+                3D model{bazisSoni}
+                {bazis?.bogLanmagan ? (
+                  <TriangleAlert
+                    className="text-amber-600"
+                    aria-label="Bog'lanmagan model bor"
+                  />
+                ) : null}
+              </TabsTrigger>
             </TabsList>
             <div ref={setMatrixToolbarEl} className="empty:hidden" />
           </div>
@@ -609,7 +634,15 @@ function OrderDetailPage() {
           <TabsContent value="bazis">
             {/* Yuklash `canEdit` ga bog'liq EMAS: model ishlab chiqarish
                 tugagach, yig'uv paytida kerak bo'ladi. */}
-            <BazisPanel orderId={id} canUpload canShare />
+            <BazisPanel
+              orderId={id}
+              canUpload
+              canShare
+              projectFile={projectFile}
+              onUploadProject={
+                canUpload ? () => fileInput.current?.click() : undefined
+              }
+            />
           </TabsContent>
           <TabsContent value="hardware">
             <Table>
@@ -648,7 +681,12 @@ function OrderDetailPage() {
           {/* Havolani mijozga ko'pincha menejer uzatadi, shuning uchun bu shoxda ham */}
           <div className="mt-8">
             <SectionTitle>3D model</SectionTitle>
-            <BazisPanel orderId={id} canUpload={false} canShare={canManage} />
+            <BazisPanel
+              orderId={id}
+              canUpload={false}
+              canShare={canManage}
+              projectFile={projectFile}
+            />
           </div>
         </>
       )}
