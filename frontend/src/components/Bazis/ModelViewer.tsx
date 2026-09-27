@@ -175,7 +175,17 @@ function PanelCard({
   )
 }
 
-export function ModelViewer({ model }: { model: BazisModel }) {
+export function ModelViewer({
+  model,
+  bogLanmagan = false,
+}: {
+  model: BazisModel
+  /** Model buyurtmadagi mahsulotga bog'lanmagan: chekdagi Detal ID uning
+   * detallarini topmaydi (mahsulot kodi boshqa, detal raqamlari ham mos kelishi
+   * shart emas — prodda bo'sh ham uchradi) — qidiruv bo'sh qolsa ustaga nom
+   * bilan qidirish aytiladi. */
+  bogLanmagan?: boolean
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const apiRef = useRef<SceneApi | null>(null)
   /** Sahna bir marta yaratiladi, bosish esa JORIY modelning nusxalarini yig'adi */
@@ -569,8 +579,14 @@ export function ModelViewer({ model }: { model: BazisModel }) {
             </Button>
           </div>
           {natijalar?.length === 0 && (
-            <div className="pointer-events-auto rounded-xl bg-card/95 px-4 py-2 text-center text-muted-foreground text-sm shadow">
+            <div className="pointer-events-auto max-w-sm rounded-xl bg-card/95 px-4 py-2 text-center text-muted-foreground text-sm shadow">
               Bunday detal topilmadi
+              {bogLanmagan && (
+                <div className="mt-1 text-amber-700 text-xs">
+                  Bu model buyurtmaga bog'lanmagan — chekdagi kod bilan
+                  topilmaydi, detal nomi bilan qidiring.
+                </div>
+              )}
             </div>
           )}
         </div>

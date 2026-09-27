@@ -37,7 +37,7 @@ Tuzatishlar branch orqali boradi; `main` ga push = tsexga deploy (19:00 dan keyi
 | --- | ---: |
 | yuqori | 1 |
 | o'rta | 8 |
-| past | 11 |
+| past | 10 |
 
 ---
 
@@ -274,18 +274,9 @@ Tuzatishlar branch orqali boradi; `main` ga push = tsexga deploy (19:00 dan keyi
 
 ## Past
 
-### 10. Bazis yuklash: buyurtmada bir xil kodli ikki mahsulot bo'lsa 500
-
-- **Joy:** `backend/app/api/routes/orders/bazis.py:159`
-- **Muammo:** `Product` `(order_id, code)` bo'yicha `scalar_one_or_none()` bilan
-  izlanadi. Unique indeks yo'q. Parser takror kodlarga ataylab ruxsat beradi
-  (docs/11). Natija: `MultipleResultsFound` → 500.
-- **Dalil:** ikki `code='DUP1'` mahsulot bilan haqiqiy `upload_order_bazis` chaqirildi.
-  Natija: `MultipleResultsFound`.
-- **Taklif:** `.scalars().all()` (`Product.id` tartibida) olib, nomi mos keladiganini
-  tanlang, aks holda birinchisini. Keyin mavjud 409/tasdiq oqimi davom etadi.
-- **Nega hozir emas:** Kod to'qnashganda `matched` qaysi mahsulotga bog'lanishi —
-  kichik mahsulot qarori.
+10-band (Bazis yuklashda takror mahsulot kodi — 500) 2026-09-27 da hal qilindi: yuklash
+endi kod va nomi mos mahsulotni oladi. Raqamlar ataylab o'zgartirilmadi — kod va hujjatlar
+«TODO.md #N» deb havola qiladi.
 
 ### 11. `GET /tmo/orders/{order_id}` ni hech kim chaqirmaydi
 

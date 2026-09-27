@@ -23,7 +23,7 @@ from app.core.exceptions import NotFoundException
 from app.crud import log_action
 from app.models import Order, OrderFile, Product
 from app.models.enums import FileKind
-from app.schemas.bazis import BazisModelRead, BazisState
+from app.schemas.bazis import BazisModelRead, BazisProductRead, BazisState
 from app.schemas.common import Message
 from app.services.bazis import BazisParseError, ParsedBazis, dump_model, read_b3d, thumbnail_png
 
@@ -36,6 +36,11 @@ router = APIRouter()
 MAX_BAZIS_FILE_SIZE = 40 * 1024 * 1024
 #: Mahsulot kodi fayl nomiga aylanadi — yo'l bo'ylab chiqib ketmasligi uchun.
 _XAVFSIZ_KOD = re.compile(r"[^A-Za-z0-9_-]")
+#: 2026-09-27 gacha kodi buyurtmada yo'q fayl ham saqlanib, «mahsulot topilmadi»
+#: matni `meta.warnings` ga yozilardi. Endi bunday fayl RAD etiladi; eski qatorlar
+#: `matched=false` bo'lib ko'rinadi va ulardagi matn o'qishda tashlanadi — aks
+#: holda panelda holat ikki marta chiqardi.
+_TOPILMADI = "kodli mahsulot bu buyurtmada topilmadi"
 
 
 def _tozala(code: str) -> str:
@@ -65,16 +70,20 @@ def model_paths(root: Path, order_id: int, code: str) -> tuple[Path, Path, Path]
     return katalog / f"{code}.b3d", katalog / f"{code}.json", katalog / f"{code}.png"
 
 
-def _read(row: OrderFile) -> BazisModelRead:
+def _read(row: OrderFile, codes: set[str]) -> BazisModelRead:
+    """`codes` — buyurtmadagi tirik mahsulot kodlari: bog'lanish HOZIRGI holatdan
+    olinadi, yuklash paytidagi `meta.matched` dan emas (`.project` keyin qayta
+    yuklansa u eskirib qolardi)."""
+    code = str(row.meta.get("product_code") or "")
     return BazisModelRead(
         file_id=row.id,
-        product_code=str(row.meta.get("product_code") or ""),
+        product_code=code,
         product_name=str(row.meta.get("product_name") or ""),
         filename=row.filename,
         size=row.size,
         panels=int(row.meta.get("panels") or 0),
-        matched=bool(row.meta.get("matched")),
-        warnings=list(row.meta.get("warnings") or []),
+        matched=code in codes,
+        warnings=[w for w in row.meta.get("warnings") or [] if _TOPILMADI not in w],
         created_at=row.created_at,
     )
 
@@ -97,11 +106,35 @@ async def _models(db: SessionDep, order_id: int) -> list[OrderFile]:
     )
 
 
+async def _products(db: SessionDep, order_id: int) -> list[Product]:
+    return list(
+        (
+            await db.execute(
+                select(Product)
+                .where(Product.order_id == order_id, Product.is_deleted == False)  # noqa: E712
+                .order_by(Product.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+
+async def _state(db: SessionDep, order: Order) -> BazisState:
+    products = await _products(db, order.id)
+    codes = {p.code for p in products}
+    return BazisState(
+        models=[_read(r, codes) for r in await _models(db, order.id)],
+        products=[BazisProductRead(code=p.code, name=p.name, count=p.count) for p in products],
+        share_token=order.share_token,
+    )
+
+
 @router.get("/{order_id}/bazis", response_model=BazisState, operation_id="read_order_bazis")
 async def read_order_bazis(db: SessionDep, current_user: StaffReadUser, order_id: int) -> BazisState:
-    """Buyurtmaning 3D modellari va ochiq havolasi."""
+    """Buyurtmaning 3D modellari, mahsulotlari (qaysi biriga model yetishmaydi) va ochiq havolasi."""
     order = await _get_visible_order(db, current_user, order_id)
-    return BazisState(models=[_read(r) for r in await _models(db, order_id)], share_token=order.share_token)
+    return await _state(db, order)
 
 
 @router.post("/{order_id}/bazis", response_model=BazisModelRead, status_code=201, operation_id="upload_order_bazis")
@@ -111,7 +144,6 @@ async def upload_order_bazis(
     order_id: int,
     file: UploadFile,
     request: Request,
-    tasdiq: bool = False,
 ) -> BazisModelRead:
     """Bitta mahsulotning Bazis faylini yuklaydi.
 
@@ -121,12 +153,20 @@ async def upload_order_bazis(
     Ishlab chiqarishdagi buyurtmaga ham yuklanadi: model aynan yig'uv paytida,
     ya'ni ish tugagandan KEYIN kerak bo'ladi.
 
-    Fayldagi mahsulot nomi buyurtmanikidan farq qilsa — 409 va hech narsa
-    yozilmaydi; texnolog nomlarni ko'rib tasdiqlasa (`tasdiq=true`) yuklanadi.
+    Fayl `.project` dagi mahsulotga MOS bo'lishi shart — kod ham, nom ham (ikkalasi
+    Bazisning bitta `Article` idan keladi). Mos kelmasa 409 va hech narsa yozilmaydi.
     """
     order = await _get_order(db, order_id)
     if not (file.filename or "").lower().endswith(".b3d"):
         raise HTTPException(status_code=422, detail="Faqat Bazis `.b3d` fayli qabul qilinadi.")
+    # Parserdan (1.7 s gacha CPU) OLDIN: mahsulotsiz buyurtmada fayl baribir rad etilardi
+    products = await _products(db, order_id)
+    if not products:
+        raise HTTPException(
+            status_code=422,
+            detail="Buyurtmada hali mahsulot yo'q — avval .project faylini yuklang: "
+            "Bazis fayli uning mahsulotiga bog'lanadi.",
+        )
     content = await file.read()
     if len(content) > MAX_BAZIS_FILE_SIZE:
         raise HTTPException(status_code=422, detail=f"Fayl {MAX_BAZIS_FILE_SIZE // 1024**2} MB dan katta bo'lmasin.")
@@ -148,38 +188,39 @@ async def upload_order_bazis(
         ) from None
 
     kod = _kod_fayl(parsed.code)
-    product = (
-        await db.execute(
-            select(Product).where(
-                Product.order_id == order_id,
-                Product.code == parsed.code,
-                Product.is_deleted == False,  # noqa: E712
-            )
+    # Bir buyurtmada bir xil kodli ikki mahsulot bo'lishi mumkin (parser takror
+    # kodlarga ruxsat beradi, docs/11) — nomi mosi olinadi. Ilgari
+    # `scalar_one_or_none()` shu holatda 500 berardi.
+    bir_kodli = [p for p in products if p.code == parsed.code]
+    if not bir_kodli:
+        # Ilgari bunday fayl «bog'lanmagan» bo'lib SAQLANARDI: model ochiq havolada
+        # chiqardi, lekin chekdagi Detal ID uning detallarini topmasdi (prodda 12
+        # yuklashdan bittasi — B-2026-060 `120602`: `.project` da bunday mahsulot yo'q).
+        kodlar = ", ".join(p.code for p in products[:8]) + (" …" if len(products) > 8 else "")
+        raise HTTPException(
+            status_code=409,
+            detail=f"`{parsed.code}` kodli mahsulot bu buyurtmada yo'q — fayl boshqa buyurtmaniki. "
+            f"Buyurtmadagi mahsulotlar: {kodlar}.",
         )
-    ).scalar_one_or_none()
-
-    ogohlar = list(parsed.warnings)
+    product = next((p for p in bir_kodli if _nomi(p.name) == _nomi(parsed.name)), None)
     if product is None:
-        ogohlar.append(
-            f"`{parsed.code}` kodli mahsulot bu buyurtmada topilmadi — model ko'rinadi, "
-            "lekin detallari MES detallari bilan bog'lanmaydi."
-        )
-    elif _nomi(product.name) != _nomi(parsed.name):
         # Bazis raqamlari mijozlar orasida takrorlanadi: `2083 Ilyos aka` ham,
         # `2083 Anvar` ham `208301` kodli. Kod bo'yicha bog'lansa boshqa mijozning
         # TV zonasi bu buyurtmaning kupesi deb ko'rsatilardi (36 detal kodi mos,
         # o'lchami 0/36). `.project` dagi mahsulot nomi va `.b3d` dagi nom — ikkalasi
         # ham Bazisning `Article.Name` idan (GibLab eksport skripti), ya'ni to'g'ri
-        # faylda ular mos keladi.
-        #
-        # Ogohlantirish bilan yuklash YETMAYDI: model baribir shu kod bilan ochiq
-        # sahifada chiqib, chekdagi Detal ID uning panellarini AYNAN topardi —
-        # usta boshqa o'lchamdagi detalni ko'rardi. Shuning uchun FAYL YOZILMASDAN
-        # rad etiladi; nom rostdan o'zgargan bo'lsa texnolog tasdiqlaydi.
-        farq = f"Bu buyurtmadagi `{parsed.code}` mahsuloti «{product.name}», Bazis faylidagisi esa «{parsed.name}»"
-        if not tasdiq:
-            raise HTTPException(status_code=409, detail=f"{farq} — fayl boshqa buyurtmaniki bo'lishi mumkin.")
-        ogohlar.append(f"{farq} — texnolog tasdiqlab yukladi.")
+        # faylda ular mos keladi. 2026-09-27 gacha texnolog «Baribir yuklash» bilan
+        # tasdiqlay olardi — prodda bir marta ham ishlatilmagan, olib tashlandi: nom
+        # Bazisda rostdan o'zgargan bo'lsa, uni buyurtmadagi bilan tenglab qayta
+        # eksport qilinadi.
+        raise HTTPException(
+            status_code=409,
+            detail=f"Bu buyurtmadagi `{parsed.code}` mahsuloti «{bir_kodli[0].name}», Bazis faylidagisi esa "
+            f"«{parsed.name}» — fayl boshqa buyurtmaniki bo'lishi mumkin. Nom Bazisda o'zgargan bo'lsa, "
+            "uni buyurtmadagi bilan bir xil qilib qayta eksport qiling.",
+        )
+
+    ogohlar = list(parsed.warnings)
 
     root = upload_root()
     b3d, model, eskiz = model_paths(root, order_id, kod)
@@ -207,9 +248,10 @@ async def upload_order_bazis(
         size=len(content),
         meta={
             "product_code": parsed.code,
-            "product_name": product.name if product else parsed.name,
+            "product_name": product.name,
             "panels": parsed.part_count,
-            "matched": product is not None,
+            # `matched` yozilmaydi — u o'qishda tirik mahsulotlardan hisoblanadi (`_read`);
+            # 2026-09-27 gacha yozilgan qatorlarda bu kalit qolgan, hech kim o'qimaydi
             "warnings": ogohlar,
         },
     )
@@ -228,7 +270,7 @@ async def upload_order_bazis(
     )
     await db.commit()
     await db.refresh(row)
-    return _read(row)
+    return _read(row, {parsed.code})
 
 
 @router.get("/{order_id}/bazis/{file_id}/thumb", operation_id="read_order_bazis_thumb")
@@ -244,6 +286,22 @@ async def read_order_bazis_thumb(
     if not yol.is_file():
         raise NotFoundException("Eskiz topilmadi.")
     return FileResponse(yol, media_type="image/png")
+
+
+@router.get("/{order_id}/bazis/{file_id}/model", operation_id="read_order_bazis_model")
+async def read_order_bazis_model(
+    db: SessionDep, current_user: StaffReadUser, order_id: int, file_id: int
+) -> FileResponse:
+    """Modelning brauzerga tayyor JSON'i — texnolog uni ochiq havolasiz, panelning
+    o'zida ko'radi (ustaga aynan nima ketishini). Ochiq sahifadagi bilan bitta fayl."""
+    await _get_visible_order(db, current_user, order_id)
+    row = next((r for r in await _models(db, order_id) if r.id == file_id), None)
+    if row is None:
+        raise NotFoundException("Model topilmadi.")
+    yol = (upload_root() / row.path).with_suffix(".json")
+    if not yol.is_file():
+        raise NotFoundException("Model topilmadi.")
+    return FileResponse(yol, media_type="application/json")
 
 
 @router.post("/{order_id}/bazis/share", response_model=BazisState, operation_id="open_order_share")
@@ -270,7 +328,7 @@ async def open_order_share(
         ip=client_ip(request),
     )
     await db.commit()
-    return BazisState(models=[_read(r) for r in await _models(db, order_id)], share_token=order.share_token)
+    return await _state(db, order)
 
 
 @router.delete("/{order_id}/bazis/share", response_model=Message, operation_id="close_order_share")

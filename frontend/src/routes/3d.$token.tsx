@@ -10,7 +10,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { ChevronLeft, Link2Off, PackageX } from "lucide-react"
+import { ChevronLeft, Link2Off, PackageX, TriangleAlert } from "lucide-react"
 import { useMemo, useState } from "react"
 import { type PublicProduct, PublicService } from "@/client"
 import { ModelViewer } from "@/components/Bazis/ModelViewer"
@@ -65,7 +65,9 @@ function ProductGrid({
             type="button"
             key={p.code}
             onClick={() => onPick(p.code)}
-            className="overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition-all hover:border-primary/40 hover:shadow-md active:scale-[0.99]"
+            // `flex-col`: qatordagi qo'shni karta izoh bilan balandroq bo'lsa, tugma
+            // cho'ziladi va kontenti o'rtaga tushib tepada oq chiziq qolardi
+            className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition-all hover:border-primary/40 hover:shadow-md active:scale-[0.99]"
           >
             {/* Eskizni Bazisning o'zi chizib qo'ygan — unda mebeldan tashqari
                 texnika, tutqich va xona ham bor, ya'ni tanish uchun bizning
@@ -89,7 +91,7 @@ function ProductGrid({
                 className="h-full w-full object-contain p-2"
               />
             </div>
-            <div className="border-border border-t p-3">
+            <div className="w-full flex-1 border-border border-t p-3">
               <div className="truncate font-medium">{p.name}</div>
               {/* Mahsulot KODI — bir buyurtmada bir xil nomli ikki mahsulot
                   bo'ladi («01 Kuxniya» ikkita), ularni faqat kod ajratadi.
@@ -99,6 +101,17 @@ function ProductGrid({
                 <span aria-hidden>·</span>
                 <span className="tabular-nums">{p.panels} detal</span>
               </div>
+              {/* Bog'lanmagan modelda chekdagi to'liq Detal ID ishlamaydi — usta
+                  buni qidirib ko'rgandan KEYIN emas, tanlashdan oldin bilsin */}
+              {!p.linked && (
+                <div className="mt-1.5 flex items-start gap-1.5 text-amber-700 text-xs">
+                  <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+                  <span>
+                    Chekdagi kod bilan qidirib bo'lmaydi — detal nomi bilan
+                    qidiring
+                  </span>
+                </div>
+              )}
             </div>
           </button>
         ))}
@@ -177,7 +190,8 @@ function PublicModelPage() {
     )
   }
 
-  const nomi = products.find((p) => p.code === joriy)?.name
+  const tanlangan = products.find((p) => p.code === joriy)
+  const nomi = tanlangan?.name
 
   return (
     <div className="flex h-dvh flex-col bg-surface">
@@ -256,7 +270,10 @@ function PublicModelPage() {
           </p>
         </div>
       ) : (
-        <ModelViewer model={model.data} />
+        <ModelViewer
+          model={model.data}
+          bogLanmagan={tanlangan ? !tanlangan.linked : false}
+        />
       )}
     </div>
   )

@@ -1,32 +1,47 @@
-/** Texnolog tomoni: Bazis modellari va yig'uvchiga beriladigan havola.
+/** Buyurtma sahifasidagi «3D model» tabi (menejer va direktorda — matritsa ostidagi blok).
  *
- * Buyurtma sahifasidagi «3D model» tabi. Bitta buyurtmada bir nechta model
- * bo'ladi — har mahsulotga bittadan, chunki Bazis har mahsulotni alohida
- * faylga eksport qiladi.
+ * Tartib ish ketma-ketligi bilan bir xil: 1) xulosa va «Bazis fayl yuklash»;
+ * 2) mahsulotlar — har biriga model bormi, u buyurtmaga bog'langanmi; 3) yig'uvchiga
+ * havola — OXIRIDA, chunki u model tayyor bo'lgandan keyingi qadam (model yo'q
+ * bo'lsa havola bo'sh sahifa ochardi). Bitta buyurtmada bir nechta model bo'ladi —
+ * har mahsulotga bittadan, chunki Bazis har mahsulotni alohida faylga eksport qiladi.
+ *
+ * Nomlash: tab — foydalanuvchi ko'radigan narsa («3D model», ochiq sahifa ham shunday
+ * ataladi), fayl amallari — manba fayl («Bazis fayl», `.project` dagi «Project fayl»
+ * bilan bir xil).
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AxiosError } from "axios"
 import {
-  AlertTriangle,
+  Box,
   Check,
   Copy,
+  FileUp,
   Link2,
   Link2Off,
   RefreshCw,
+  Rotate3d,
   Trash2,
-  Upload,
+  TriangleAlert,
 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
-import { OrdersService } from "@/client"
+import {
+  type BazisModelRead,
+  type BazisProductRead,
+  type BazisState,
+  OrdersService,
+} from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { QueryError } from "@/components/Common/QueryError"
+import { BazisPreviewDialog } from "@/components/Orders/BazisPreview"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Card, cardSurface } from "@/components/ui/card"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils"
 import { API_BASE, handleError } from "@/utils"
 
 const thumbUrl = (orderId: number, fileId: number) =>
@@ -35,24 +50,70 @@ const thumbUrl = (orderId: number, fileId: number) =>
 /** To'liq manzilni brauzer yig'adi: server o'z domenini bilmaydi. */
 const shareUrl = (token: string) => `${window.location.origin}/3d/${token}`
 
-/** Server 409 bilan qaytargan fayl: nomi buyurtmadagi mahsulotnikiga mos emas */
-type NomFarqi = { file: File; xabar: string }
+/** `["orders", id]` OSTIDA: `.project` qayta yuklansa (mahsulotlar almashadi) va WS
+ * `order.*` hodisasida sahifa `["orders"]` ni invalidatsiya qiladi — bog'lanish holati
+ * va tab yorlig'idagi hisob ham shu bilan yangilanadi */
+const bazisKey = (orderId: number) => ["orders", orderId, "bazis"] as const
+
+/** Panel va tab sarlavhasi BITTA so'rovni ulashadi (bir xil kalit — ikkinchi so'rov ketmaydi) */
+export const useOrderBazis = (orderId: number, enabled = true) =>
+  useQuery({
+    queryKey: bazisKey(orderId),
+    enabled,
+    queryFn: async () =>
+      (await OrdersService.readOrderBazis({ path: { order_id: orderId } }))
+        .data,
+  })
+
+/** Ro'yxat qatori: buyurtma mahsuloti va uning modeli, yoki buyurtmada kodi yo'q model */
+type Qator = {
+  key: string
+  product: BazisProductRead | null
+  model: BazisModelRead | undefined
+}
+
+/** Qatorlar va ularning hisobi — panel ham, tab sarlavhasi ham shundan o'qiydi */
+export function bazisHolati(state: BazisState) {
+  const byCode = new Map(state.models.map((m) => [m.product_code, m]))
+  const bogLanmagan = state.models.filter((m) => !m.matched)
+  const qatorlar: Qator[] = [
+    // Muammo birinchi: bog'lanmagan model — ustaga ishlamaydigan yagona holat
+    ...bogLanmagan.map((m) => ({
+      key: `m${m.file_id}`,
+      product: null,
+      model: m,
+    })),
+    ...state.products.map((p, i) => ({
+      key: `p${i}`,
+      product: p,
+      model: byCode.get(p.code),
+    })),
+  ]
+  return {
+    qatorlar,
+    mahsulotlar: state.products.length,
+    modelliMahsulot: state.products.filter((p) => byCode.has(p.code)).length,
+    bogLanmagan: bogLanmagan.length,
+    modellar: state.models.length,
+  }
+}
 
 function ShareBlock({
   orderId,
   token,
   canShare,
+  hasModels,
 }: {
   orderId: number
   token: string | null
   canShare: boolean
+  hasModels: boolean
 }) {
   const qc = useQueryClient()
   const [copied, setCopied] = useState(false)
   /** Ikkalasi ham ustalardagi havolani O'LDIRADI — bir bosishda emas, so'rab */
   const [tasdiq, setTasdiq] = useState<"yangilash" | "yopish" | null>(null)
-  const yangilash = () =>
-    qc.invalidateQueries({ queryKey: ["order-bazis", orderId] })
+  const yangilash = () => qc.invalidateQueries({ queryKey: bazisKey(orderId) })
 
   const open = useMutation({
     mutationFn: () =>
@@ -85,14 +146,15 @@ function ShareBlock({
         <div className="flex-1">
           <div className="font-medium">Yig'uvchi uchun havola</div>
           <div className="text-muted-foreground text-sm">
-            Havolani ochsangiz, uni olgan har kim modelni ko'ra oladi — tizimga
-            kirmasdan. Boshqa buyurtmalar ochilmaydi.
+            {hasModels
+              ? "Havolani ochsangiz, uni olgan har kim modelni ko'ra oladi — tizimga kirmasdan. Boshqa buyurtmalar ochilmaydi."
+              : "Model yuklangandan keyin ochiladi — hozir havola bo'sh sahifa ochardi."}
           </div>
         </div>
         <LoadingButton
           onClick={() => open.mutate()}
           loading={open.isPending}
-          disabled={open.isPending}
+          disabled={open.isPending || !hasModels}
         >
           <Link2 /> Havolani ochish
         </LoadingButton>
@@ -109,7 +171,7 @@ function ShareBlock({
         <QRCodeSVG value={url} size={116} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="font-medium">Havola ochiq</div>
+        <div className="font-medium">Yig'uvchi uchun havola ochiq</div>
         <code className="mt-1 block truncate rounded-lg bg-muted px-2 py-1.5 font-mono text-xs">
           {url}
         </code>
@@ -167,6 +229,109 @@ function ShareBlock({
   )
 }
 
+/** Amber ogohlantirish qatori — sahifadagi boshqa ogohlantirishlar bilan bir shakl */
+function Ogoh({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-1 flex items-start gap-1.5 text-amber-700 text-xs">
+      <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+      <span>{children}</span>
+    </div>
+  )
+}
+
+function ModelQatori({
+  orderId,
+  qator,
+  canUpload,
+  onPreview,
+  onDelete,
+}: {
+  orderId: number
+  qator: Qator
+  canUpload: boolean
+  onPreview: (m: BazisModelRead) => void
+  onDelete: (m: BazisModelRead) => void
+}) {
+  const { product, model } = qator
+  const bogLanmagan = model !== undefined && !model.matched
+  return (
+    <li className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:flex-nowrap">
+      {model ? (
+        <button
+          type="button"
+          onClick={() => onPreview(model)}
+          title="3D ko'rinishni ochish"
+          className="shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <img
+            src={thumbUrl(orderId, model.file_id)}
+            alt=""
+            className="size-14 rounded-lg bg-muted object-contain"
+          />
+        </button>
+      ) : (
+        <div className="flex size-14 shrink-0 items-center justify-center rounded-lg border border-dashed text-muted-foreground/50">
+          <Box className="size-5" />
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="truncate font-medium">
+          {product?.name ?? model?.product_name}
+        </div>
+        <div className="num text-muted-foreground text-xs">
+          {product?.code ?? model?.product_code}
+          {product && ` · ${product.count} dona`}
+          {model && ` · ${model.panels} detal`}
+        </div>
+        {bogLanmagan && (
+          <Ogoh>
+            Buyurtmada bu kodli mahsulot yo'q — ustalar chekdagi Detal ID bilan
+            detal joyini topa olmaydi. Fayl boshqa buyurtmaniki bo'lishi mumkin:
+            o'chiring va buyurtmaning o'z Bazis faylini yuklang.
+          </Ogoh>
+        )}
+        {model?.warnings.map((w) => (
+          <Ogoh key={w}>{w}</Ogoh>
+        ))}
+      </div>
+      {/* Telefonda holat va amallar ikkinchi qatorga, matn ostiga tushadi */}
+      <div className="flex w-full shrink-0 items-center gap-2 pl-[4.25rem] sm:w-auto sm:pl-0">
+        {!model ? (
+          <Badge variant="outline" className="text-muted-foreground">
+            Model yo'q
+          </Badge>
+        ) : bogLanmagan ? (
+          <Badge
+            variant="outline"
+            className="border-amber-500/40 bg-amber-500/10 text-amber-700"
+          >
+            <TriangleAlert /> Bog'lanmagan
+          </Badge>
+        ) : (
+          <Badge>Model bor</Badge>
+        )}
+        {model && (
+          <Button variant="outline" size="sm" onClick={() => onPreview(model)}>
+            <Rotate3d /> Ko'rish
+          </Button>
+        )}
+        {model && canUpload && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            onClick={() => onDelete(model)}
+            aria-label="Modelni o'chirish"
+            title="Modelni o'chirish"
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        )}
+      </div>
+    </li>
+  )
+}
+
 export function BazisPanel({
   orderId,
   canUpload,
@@ -182,18 +347,10 @@ export function BazisPanel({
   const fileInput = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [nomFarqi, setNomFarqi] = useState<NomFarqi[]>([])
-  const [ochiriladi, setOchiriladi] = useState<{
-    fileId: number
-    code: string
-  } | null>(null)
+  const [ochiriladi, setOchiriladi] = useState<BazisModelRead | null>(null)
+  const [korish, setKorish] = useState<BazisModelRead | null>(null)
 
-  const state = useQuery({
-    queryKey: ["order-bazis", orderId],
-    queryFn: async () =>
-      (await OrdersService.readOrderBazis({ path: { order_id: orderId } }))
-        .data,
-  })
+  const state = useOrderBazis(orderId)
 
   const remove = useMutation({
     mutationFn: (fileId: number) =>
@@ -203,7 +360,7 @@ export function BazisPanel({
     onSuccess: () => {
       toast.success("Model o'chirildi")
       setOchiriladi(null)
-      qc.invalidateQueries({ queryKey: ["order-bazis", orderId] })
+      qc.invalidateQueries({ queryKey: bazisKey(orderId) })
     },
     onError: handleError,
   })
@@ -211,11 +368,10 @@ export function BazisPanel({
   /** Bir nechta faylni KETMA-KET yuboramiz: har biri serverda 1.7 s gacha
    * CPU oladi, bir vaqtda yuborilsa ishchilar band bo'lib qolardi.
    *
-   * Mahsulot nomi farq qilgan fayllar (409) YIG'ILADI va oxirida BITTA
-   * dialogda so'raladi: server ularni yozmagan, texnolog nomlarni ko'rib
-   * `tasdiq` bilan qayta yuboradi. */
+   * Buyurtmaga mos bo'lmagan fayl (kodi yoki nomi `.project` dagidan boshqa)
+   * serverda 409 bilan rad etiladi — xabar o'z toast'ida, qolganlari davom etadi. */
   const inFlight = useRef(false)
-  const upload = async (files: File[], tasdiq = false) => {
+  const upload = async (files: File[]) => {
     const b3d = files.filter((f) => f.name.toLowerCase().endsWith(".b3d"))
     if (!b3d.length) {
       toast.error("Faqat Bazis .b3d fayli qabul qilinadi")
@@ -227,32 +383,22 @@ export function BazisPanel({
     if (inFlight.current) return
     inFlight.current = true
     setBusy(true)
-    const farqli: NomFarqi[] = []
     try {
       for (const file of b3d) {
         try {
           const { data } = await OrdersService.uploadOrderBazis({
             path: { order_id: orderId },
-            query: { tasdiq },
             body: { file },
           })
-          toast.success(
-            `${data.product_code} — ${data.panels} detal${data.matched ? "" : " (detallar bog'lanmadi — ogohlantirishni qarang)"}`,
-          )
+          toast.success(`${data.product_code} — ${data.panels} detal`)
         } catch (err) {
-          if (err instanceof AxiosError && err.response?.status === 409) {
-            const detail = (err.response.data as { detail?: unknown })?.detail
-            farqli.push({ file, xabar: String(detail ?? "") })
-          } else {
-            handleError(err)
-          }
+          handleError(err)
         }
       }
     } finally {
       inFlight.current = false
       setBusy(false)
-      setNomFarqi(farqli)
-      qc.invalidateQueries({ queryKey: ["order-bazis", orderId] })
+      qc.invalidateQueries({ queryKey: bazisKey(orderId) })
     }
   }
 
@@ -262,155 +408,157 @@ export function BazisPanel({
   if (state.isPending) return <Skeleton className="h-48 w-full" />
   if (state.isError) return <QueryError onRetry={() => state.refetch()} />
 
-  const models = state.data.models
+  const holat = bazisHolati(state.data)
+  // Fayl buyurtma mahsulotiga bog'lanishi SHART — mahsulotsiz (`.project` yo'q)
+  // buyurtmada yuklash ma'nosiz, server ham rad etadi
+  const yuklash = canUpload && holat.mahsulotlar > 0
+  const drop = yuklash
+    ? {
+        onDragOver: (e: React.DragEvent) => {
+          e.preventDefault()
+          setDragOver(true)
+        },
+        onDragLeave: () => setDragOver(false),
+        onDrop: (e: React.DragEvent) => {
+          e.preventDefault()
+          setDragOver(false)
+          upload([...(e.dataTransfer.files ?? [])])
+        },
+      }
+    : {}
 
   return (
     <div className="space-y-4">
-      <ShareBlock
-        orderId={orderId}
-        token={state.data.share_token ?? null}
-        canShare={canShare}
-      />
+      {/* Xulosa + yuklash: `.project` dagi «Project fayl yuklash» bilan bir shakl */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-muted-foreground text-sm">
+          {holat.mahsulotlar > 0
+            ? holat.modellar === 0
+              ? `${holat.mahsulotlar} ta mahsulot — 3D model hali yuklanmagan`
+              : holat.modelliMahsulot === 0
+                ? `${holat.mahsulotlar} ta mahsulotning hech birida mos 3D model yo'q`
+                : holat.modelliMahsulot === holat.mahsulotlar
+                  ? `${holat.mahsulotlar} ta mahsulotning hammasida 3D model bor`
+                  : `${holat.mahsulotlar} ta mahsulotdan ${holat.modelliMahsulot} tasida 3D model bor`
+            : holat.modellar > 0
+              ? `${holat.modellar} ta model`
+              : "Buyurtmada hali mahsulot yo'q — avval .project yuklanadi"}
+          {holat.bogLanmagan > 0 && (
+            <span className="font-medium text-amber-700">
+              {` · ${holat.bogLanmagan} ta model bog'lanmagan`}
+            </span>
+          )}
+        </p>
+        {canUpload && (
+          <>
+            <LoadingButton
+              variant="outline"
+              loading={busy}
+              disabled={!yuklash}
+              title={yuklash ? undefined : "Avval .project faylini yuklang"}
+              onClick={() => fileInput.current?.click()}
+            >
+              <FileUp /> Bazis fayl yuklash
+            </LoadingButton>
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".b3d"
+              multiple
+              hidden
+              onChange={(e) => {
+                upload([...(e.target.files ?? [])])
+                e.target.value = ""
+              }}
+            />
+          </>
+        )}
+      </div>
 
-      {canUpload && (
-        // biome-ignore lint/a11y/noStaticElementInteractions: tashlash maydoni — klaviatura yo'li ichidagi tugma
-        // biome-ignore lint/a11y/useKeyWithClickEvents: klaviatura yo'li ichidagi "Fayl tanlash" tugmasi
+      {/* Model hali yo'q — katta tashlash maydoni asosiy harakat. Model bor
+          bo'lsa u keraksiz joy egallardi: ro'yxatning o'zi tashlash maydoni */}
+      {yuklash && holat.modellar === 0 && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: tashlash maydoni — klaviatura yo'li tepadagi «Bazis fayl yuklash» tugmasi
+        // biome-ignore lint/a11y/useKeyWithClickEvents: klaviatura yo'li tepadagi «Bazis fayl yuklash» tugmasi
         <div
-          onDragOver={(e) => {
-            e.preventDefault()
-            setDragOver(true)
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => {
-            e.preventDefault()
-            setDragOver(false)
-            upload([...(e.dataTransfer.files ?? [])])
-          }}
+          {...drop}
           onClick={() => fileInput.current?.click()}
-          className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+          className={cn(
+            "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed p-6 text-center transition-colors",
             dragOver
               ? "border-primary bg-primary/5"
-              : "border-muted-foreground/30 text-muted-foreground hover:border-primary/50"
-          } ${busy ? "opacity-60" : ""}`}
+              : "border-muted-foreground/30 text-muted-foreground hover:border-primary/50",
+            busy && "opacity-60",
+          )}
         >
-          <Upload className={`size-6 ${dragOver ? "animate-bounce" : ""}`} />
+          <FileUp className={cn("size-6", dragOver && "animate-bounce")} />
           <span className="font-medium">
             {busy
               ? "Yuklanmoqda..."
               : dragOver
                 ? "Qo'yib yuboring"
-                : "Bazis .b3d fayllarini shu yerga tashlang"}
+                : "Bazis fayllarini (.b3d) shu yerga tashlang yoki bosing"}
           </span>
           <span className="text-xs">
-            Har mahsulotga bitta fayl — bir vaqtda bir nechtasini tanlash mumkin
+            Har mahsulotga bitta fayl — kodi va nomi buyurtmadagi mahsulot bilan
+            bir xil bo'lishi shart
           </span>
-          <input
-            ref={fileInput}
-            type="file"
-            accept=".b3d"
-            multiple
-            hidden
-            onChange={(e) => {
-              upload([...(e.target.files ?? [])])
-              e.target.value = ""
-            }}
-          />
         </div>
       )}
 
-      {models.length === 0 ? (
-        <div className="rounded-xl border border-border border-dashed p-8 text-center text-muted-foreground text-sm">
-          Hali model yuklanmagan.
-        </div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {models.map((m) => (
-            <Card key={m.file_id} className="flex gap-3 p-3">
-              <img
-                src={thumbUrl(orderId, m.file_id)}
-                alt=""
-                className="size-20 shrink-0 rounded-lg bg-muted object-contain"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium">{m.product_name}</div>
-                    <div className="font-mono text-muted-foreground text-xs">
-                      {m.product_code} · {m.panels} detal
-                    </div>
-                  </div>
-                  {canUpload && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="-mt-1 -mr-1 size-8"
-                      onClick={() =>
-                        setOchiriladi({
-                          fileId: m.file_id,
-                          code: m.product_code,
-                        })
-                      }
-                      disabled={remove.isPending}
-                      aria-label="O'chirish"
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  )}
-                </div>
-                {m.warnings.map((w) => (
-                  <div
-                    key={w}
-                    className="mt-2 flex items-start gap-1.5 text-amber-700 text-xs"
-                  >
-                    <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-                    <span>{w}</span>
-                  </div>
-                ))}
-              </div>
-            </Card>
+      {holat.qatorlar.length > 0 ? (
+        <ul
+          {...(holat.modellar > 0 ? drop : {})}
+          className={cn(
+            cardSurface,
+            "divide-y transition-colors",
+            dragOver &&
+              holat.modellar > 0 &&
+              "border-primary bg-primary/5 ring-2 ring-primary/30",
+          )}
+        >
+          {holat.qatorlar.map((q) => (
+            <ModelQatori
+              key={q.key}
+              orderId={orderId}
+              qator={q}
+              canUpload={canUpload}
+              onPreview={setKorish}
+              onDelete={setOchiriladi}
+            />
           ))}
-        </div>
+        </ul>
+      ) : (
+        !canUpload && (
+          <div className="rounded-xl border border-border border-dashed p-8 text-center text-muted-foreground text-sm">
+            Hali model yuklanmagan.
+          </div>
+        )
       )}
+
+      <ShareBlock
+        orderId={orderId}
+        token={state.data.share_token ?? null}
+        canShare={canShare}
+        hasModels={holat.modellar > 0}
+      />
+
+      <BazisPreviewDialog
+        orderId={orderId}
+        model={korish}
+        shareToken={state.data.share_token ?? null}
+        onClose={() => setKorish(null)}
+      />
 
       <ConfirmDialog
         open={ochiriladi !== null}
         onOpenChange={(ochiq) => !ochiq && setOchiriladi(null)}
         title="Modelni o'chirish"
-        description={`${ochiriladi?.code ?? ""} modeli fayllari bilan o'chiriladi — uni qayta yuklash kerak bo'ladi. Havola ochiq qolsa, qolgan modellar ko'rinaveradi.`}
+        description={`${ochiriladi?.product_code ?? ""} modeli fayllari bilan o'chiriladi — uni qayta yuklash kerak bo'ladi. Havola ochiq qolsa, qolgan modellar ko'rinaveradi.`}
         confirmText="O'chirish"
         destructive
         loading={remove.isPending}
-        onConfirm={() => ochiriladi && remove.mutate(ochiriladi.fileId)}
-      />
-
-      <ConfirmDialog
-        open={nomFarqi.length > 0}
-        onOpenChange={(ochiq) => !ochiq && setNomFarqi([])}
-        title="Mahsulot nomi mos emas"
-        description={
-          <span className="block space-y-2">
-            {nomFarqi.map(({ file, xabar }) => (
-              <span key={file.name} className="block">
-                <span className="font-medium text-foreground">
-                  {file.name}:
-                </span>{" "}
-                {xabar}
-              </span>
-            ))}
-            <span className="block">
-              Fayl yuklanmadi. Baribir yuklansa, u ochiq havolada shu mahsulot
-              kodi bilan chiqadi va chekdagi Detal ID uning detallarini topadi.
-            </span>
-          </span>
-        }
-        confirmText="Baribir yuklash"
-        loading={busy}
-        onConfirm={() =>
-          upload(
-            nomFarqi.map((f) => f.file),
-            true,
-          )
-        }
+        onConfirm={() => ochiriladi && remove.mutate(ochiriladi.file_id)}
       />
     </div>
   )
