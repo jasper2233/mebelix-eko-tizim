@@ -264,6 +264,8 @@ function OrderDetailPage() {
   const canUpload = isTexnolog && canEdit
   const isTerminal = TERMINAL_STATUSES.includes(order.status)
   const scxFiles = (order.files ?? []).filter((f) => f.kind === "scx")
+  // «3D model» ning 1-qadami: Bazis fayllar shu faylning mahsulotlariga bog'lanadi
+  const projectFile = (order.files ?? []).find((f) => f.kind === "project")
   const fileUrl = (name: string | number) =>
     `${API_BASE}/api/v1/orders/${id}/files/${name}`
   const customCount = (matrix?.parts ?? []).filter((p) => p.is_custom).length
@@ -632,7 +634,15 @@ function OrderDetailPage() {
           <TabsContent value="bazis">
             {/* Yuklash `canEdit` ga bog'liq EMAS: model ishlab chiqarish
                 tugagach, yig'uv paytida kerak bo'ladi. */}
-            <BazisPanel orderId={id} canUpload canShare />
+            <BazisPanel
+              orderId={id}
+              canUpload
+              canShare
+              projectFile={projectFile}
+              onUploadProject={
+                canUpload ? () => fileInput.current?.click() : undefined
+              }
+            />
           </TabsContent>
           <TabsContent value="hardware">
             <Table>
@@ -671,7 +681,12 @@ function OrderDetailPage() {
           {/* Havolani mijozga ko'pincha menejer uzatadi, shuning uchun bu shoxda ham */}
           <div className="mt-8">
             <SectionTitle>3D model</SectionTitle>
-            <BazisPanel orderId={id} canUpload={false} canShare={canManage} />
+            <BazisPanel
+              orderId={id}
+              canUpload={false}
+              canShare={canManage}
+              projectFile={projectFile}
+            />
           </div>
         </>
       )}

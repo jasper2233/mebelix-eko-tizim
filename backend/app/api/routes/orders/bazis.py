@@ -59,6 +59,12 @@ def _nomi(nom: str) -> str:
     return " ".join(nom.split()).casefold()
 
 
+def _mahsulotlar(products: list[Product]) -> str:
+    """Xabar uchun: «01 shkaf» (120601), … — texnolog mahsulotni NOMIDAN taniydi, kod aniqlik uchun."""
+    qism = ", ".join(f"«{p.name}» ({p.code})" for p in products[:6])
+    return qism + (f" va yana {len(products) - 6} ta" if len(products) > 6 else "")
+
+
 def _tayyorla(parsed: ParsedBazis) -> tuple[bytes, bytes | None]:
     """Diskka yoziladigan model JSON'i va eskiz — ikkalasi ham sof CPU."""
     return dump_model(parsed), thumbnail_png(parsed.thumbnail) if parsed.thumbnail else None
@@ -144,6 +150,7 @@ async def upload_order_bazis(
     order_id: int,
     file: UploadFile,
     request: Request,
+    product_code: str | None = None,
 ) -> BazisModelRead:
     """Bitta mahsulotning Bazis faylini yuklaydi.
 
@@ -155,6 +162,9 @@ async def upload_order_bazis(
 
     Fayl `.project` dagi mahsulotga MOS bo'lishi shart — kod ham, nom ham (ikkalasi
     Bazisning bitta `Article` idan keladi). Mos kelmasa 409 va hech narsa yozilmaydi.
+    `product_code` — panelda fayl QAYSI mahsulot qatoriga yuklangani: fayl boshqa
+    kodli mahsulotniki bo'lsa (hatto shu buyurtmaniki bo'lsa ham) rad etiladi — texnolog
+    bir qatorni to'ldirib, boshqasiga jimgina yozilib ketgani sezilmasin.
     """
     order = await _get_order(db, order_id)
     if not (file.filename or "").lower().endswith(".b3d"):
@@ -164,9 +174,13 @@ async def upload_order_bazis(
     if not products:
         raise HTTPException(
             status_code=422,
-            detail="Buyurtmada hali mahsulot yo'q — avval .project faylini yuklang: "
-            "Bazis fayli uning mahsulotiga bog'lanadi.",
+            detail="Avval project faylni yuklang — Bazis fayllar uning mahsulotlariga bog'lanadi.",
         )
+    maqsad: Product | None = None
+    if product_code is not None:
+        maqsad = next((p for p in products if p.code == product_code), None)
+        if maqsad is None:
+            raise NotFoundException("Bu mahsulot buyurtmada topilmadi — sahifani yangilang.")
     content = await file.read()
     if len(content) > MAX_BAZIS_FILE_SIZE:
         raise HTTPException(status_code=422, detail=f"Fayl {MAX_BAZIS_FILE_SIZE // 1024**2} MB dan katta bo'lmasin.")
@@ -191,16 +205,16 @@ async def upload_order_bazis(
     # Bir buyurtmada bir xil kodli ikki mahsulot bo'lishi mumkin (parser takror
     # kodlarga ruxsat beradi, docs/11) — nomi mosi olinadi. Ilgari
     # `scalar_one_or_none()` shu holatda 500 berardi.
+    faylda = f"«{parsed.name}» ({parsed.code})"
     bir_kodli = [p for p in products if p.code == parsed.code]
     if not bir_kodli:
         # Ilgari bunday fayl «bog'lanmagan» bo'lib SAQLANARDI: model ochiq havolada
         # chiqardi, lekin chekdagi Detal ID uning detallarini topmasdi (prodda 12
         # yuklashdan bittasi — B-2026-060 `120602`: `.project` da bunday mahsulot yo'q).
-        kodlar = ", ".join(p.code for p in products[:8]) + (" …" if len(products) > 8 else "")
         raise HTTPException(
             status_code=409,
-            detail=f"`{parsed.code}` kodli mahsulot bu buyurtmada yo'q — fayl boshqa buyurtmaniki. "
-            f"Buyurtmadagi mahsulotlar: {kodlar}.",
+            detail=f"Bu Bazis fayli shu buyurtmaning project fayliga tegishli emas: faylda {faylda} mahsuloti "
+            f"bor, project faylda esa {_mahsulotlar(products)}. To'g'ri buyurtmaning Bazis faylini tanlang.",
         )
     product = next((p for p in bir_kodli if _nomi(p.name) == _nomi(parsed.name)), None)
     if product is None:
@@ -215,9 +229,19 @@ async def upload_order_bazis(
         # eksport qilinadi.
         raise HTTPException(
             status_code=409,
-            detail=f"Bu buyurtmadagi `{parsed.code}` mahsuloti «{bir_kodli[0].name}», Bazis faylidagisi esa "
-            f"«{parsed.name}» — fayl boshqa buyurtmaniki bo'lishi mumkin. Nom Bazisda o'zgargan bo'lsa, "
-            "uni buyurtmadagi bilan bir xil qilib qayta eksport qiling.",
+            detail=f"Bu Bazis fayli project faylga mos emas: kodi bir xil ({parsed.code}), lekin nomi boshqa — "
+            f"project faylda «{bir_kodli[0].name}», Bazis faylida «{parsed.name}». Bu boshqa mijozning fayli "
+            "bo'lishi mumkin (Bazis raqamlari takrorlanadi). Nomni Bazisda o'zgartirgan bo'lsangiz, uni "
+            "project fayldagi bilan bir xil qilib qayta eksport qiling.",
+        )
+    if maqsad is not None and maqsad.code != product.code:
+        # Fayl shu buyurtmaniki, lekin BOSHQA mahsulotniki — noto'g'ri qatorga tashlangan.
+        # Nom tekshiruvidan KEYIN: aks holda boshqa mijozning fayli «B qatoriga yuklang»
+        # deb yuborilar, B qatori esa uni nomi uchun baribir rad etardi.
+        raise HTTPException(
+            status_code=409,
+            detail=f"Bu fayl «{maqsad.name}» ({maqsad.code}) uchun emas — unda {faylda} mahsuloti bor. "
+            f"Uni «{product.name}» qatoriga yuklang.",
         )
 
     ogohlar = list(parsed.warnings)

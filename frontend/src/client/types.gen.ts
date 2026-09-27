@@ -7630,7 +7630,12 @@ export type UploadOrderBazisData = {
          */
         order_id: number;
     };
-    query?: never;
+    query?: {
+        /**
+         * Product Code
+         */
+        product_code?: string | null;
+    };
     url: '/api/v1/orders/{order_id}/bazis';
 };
 

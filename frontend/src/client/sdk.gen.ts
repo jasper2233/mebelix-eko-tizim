@@ -1053,6 +1053,9 @@ export class OrdersService {
      *
      * Fayl `.project` dagi mahsulotga MOS bo'lishi shart — kod ham, nom ham (ikkalasi
      * Bazisning bitta `Article` idan keladi). Mos kelmasa 409 va hech narsa yozilmaydi.
+     * `product_code` — panelda fayl QAYSI mahsulot qatoriga yuklangani: fayl boshqa
+     * mahsulotniki bo'lsa (hatto shu buyurtmaniki bo'lsa ham) rad etiladi — texnolog
+     * bir qatorni to'ldirib, boshqasiga jimgina yozilib ketgani sezilmasin.
      */
     public static uploadOrderBazis<ThrowOnError extends boolean = true>(options: Options<UploadOrderBazisData, ThrowOnError>): RequestResult<UploadOrderBazisResponses, UploadOrderBazisErrors, ThrowOnError> {
         return (options.client ?? client).post<UploadOrderBazisResponses, UploadOrderBazisErrors, ThrowOnError>({
