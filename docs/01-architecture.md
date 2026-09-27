@@ -179,7 +179,7 @@ Asosiy nuqtalar:
   boot); rate limit runtime'da ham fail-closed — Redis xatosida so'rov bloklanadi.
   Lifespan eng avval `gc.collect(); gc.freeze()` qiladi: import paytida yaratilgan
   ~216 ming doimiy obyekt GC'ning to'liq yig'imidan chiqadi (prodda har yig'im
-  ~120 ms loop to'xtashi edi, muzlatilgach 4–11 ms — 2026-09-27 probe).
+  ~120 ms loop to'xtashi edi, muzlatilgach 3–18 ms — 2026-09-27 probe).
   Lifespan har gunicorn ishchisida `perf.lag_monitor()` (event loop bloklarini
   o'lchaydi) va `perf.flush_loop()` vazifalarini ham boshlaydi, to'xtashda bekor
   qilib oxirgi paketni yozadi. Monitor ham, har so'rov (`RequestLoggingMiddleware`)

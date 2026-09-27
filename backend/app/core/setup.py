@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     """Open Redis pools, verify connections, then yield. Closes pools on shutdown."""
     set_threadpool_tokens()
     # Import paytida yaratilgan ~216 ming doimiy obyekt (modullar, sxemalar, marshrutlar) GC'ning har
-    # to'liq yig'imida qayta ko'rilardi: prodda har safar ~120 ms loop to'xtashi. Muzlatilgach 4–11 ms
+    # to'liq yig'imida qayta ko'rilardi: prodda har safar ~120 ms loop to'xtashi. Muzlatilgach 3–18 ms
     # (prod probe, 2026-09-27). Avval yig'iladi: muzlatilgan chiqindi keyin hech qachon tozalanmaydi.
     # Monitor'dan OLDIN — ishga tushishdagi bir martalik yig'im muzlash bo'lib yozilmasin
     gc.collect()

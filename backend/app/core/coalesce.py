@@ -1,7 +1,7 @@
 """Hamma uchun bir xil og'ir o'qish — ishchida bir vaqtda BITTA hisob.
 
-Tsexdagi har skan WS orqali hamma TABLO ekraniga boradi va ular matritsani bir xil
-millisekundlarda so'raydi (prodda to'da ichida 1–13 ms, 2026-09-27). Har so'rov o'zi
+Tsexdagi har skan WS orqali hamma TABLO ekraniga boradi va ular matritsani ko'pincha deyarli
+bir paytda so'raydi (prod, 2026-09-27: bir nechta so'rovli 29 to'dadan 17 tasida 1–13 ms farq). Har so'rov o'zi
 hisoblasa bir ishchida 2–4 ta bir xil hisob ustma-ust tushib, event loop'ni 200–650 ms
 band qilardi — o'sha paytda shu ishchiga kelgan chek va skan so'rovlari kutadi.
 
@@ -54,6 +54,10 @@ class Coalesced(Generic[T]):
                     result = await self._fn()
                 except asyncio.CancelledError:  # ishchi to'xtayapti — kutuvchilar osilib qolmasin
                     fut.cancel()
+                    # Keyingi hisobni kutayotganlar ham: uni endi hech kim boshlamaydi
+                    if self._pending is not None:
+                        self._pending.cancel()
+                        self._pending = None
                     raise
                 except Exception as e:  # noqa: BLE001 — kutuvchilarga uzatiladi, har biri o'zi ko'taradi
                     fut.set_exception(e)
