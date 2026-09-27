@@ -1,12 +1,9 @@
 /** Chap toolbar tugmasi: ikonka + kichik yozuv (sanoat HMI uslubi).
- * tone — funksiya bo'yicha rang kodi: primary (asosiy nav), warn (qulf), danger (chiqish). */
+ * tone — funksiya bo'yicha rang kodi: default, primary (asosiy nav), success (chop etishga tayyor). */
 const TBTN_TONES = {
   default: "border bg-white text-primary hover:border-primary",
   primary:
     "border-transparent bg-primary text-primary-foreground hover:bg-primary/90",
-  // warn to'ldirilmaydi: amber fon xarita apelsini bilan qo'shilib ketardi — faqat ikonka rangi
-  warn: "border bg-white text-amber-600 hover:border-amber-500",
-  danger: "border-transparent bg-red-600 text-white hover:bg-red-700",
   success: "border-transparent bg-green-600 text-white hover:bg-green-700",
 } as const
 

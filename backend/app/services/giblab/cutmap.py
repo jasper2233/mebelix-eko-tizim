@@ -76,10 +76,10 @@ def _place(
 ) -> float:
     """Place one preorder node whose slice starts at (x, y) inside a w×h region.
 
-        vertical=True → the slice runs along X (slice size = value × h);
-        otherwise along Y (w × value). qty expands into consecutive physical copies
-    . Children of an inner strip cut across the other axis.
-        Returns the consumed extent along the current axis.
+    vertical=True → the slice runs along X (slice size = value × h);
+    otherwise along Y (w × value). qty expands into consecutive physical copies.
+    Children of an inner strip cut across the other axis.
+    Returns the consumed extent along the current axis.
     """
     consumed = 0.0
     for _rep in range(max(node.qty, 1)):
@@ -284,11 +284,13 @@ async def unplaced_arra_parts(db: AsyncSession, order_id: int) -> list[str]:
     """Marshrutida ARRA bor, lekin nusxasi kesish xaritasida joyi YO'Q detallar — "kod (nom)".
 
     Arra terminali chekni faqat xaritadagi katakdan chiqaradi (`CutmapView`
-    `pattern_no == null` nusxani umuman ko'rsatmaydi). Fayldan kelgan marshrut
-    bunday detalga ARRA bermaydi (`ingest`: `pp.placed`), lekin texnolog uni
-    nostandart qilib qo'lda "Raspil" chizishi mumkin — shunda arrachi uni
-    ko'rmaydi, chek chiqmaydi va buyurtma arrada abadiy qotadi (2026-09-26,
-    B-2026-088: GibLab'da listga joylanmagan uchta stoleshnitsa).
+    `pattern_no == null` nusxani umuman ko'rsatmaydi). Ikki yo'l bilan tushadi:
+    (a) texnolog joylanmagan detalni nostandart qilib qo'lda "Raspil" chizadi (fayldan
+    kelgan marshrut unga ARRA bermaydi — `ingest`: `pp.placed`) — 2026-09-26,
+    B-2026-088: GibLab'da listga joylanmagan uchta stoleshnitsa; (b) GibLab
+    optimallashtirmagan (blobsiz CS) materialning detallari — `material_name`
+    bo'lgani uchun fayldan ARRA oladi, lekin xaritada katagi yo'q. Ikkala holatda
+    arrachi uni ko'rmaydi, chek chiqmaydi va buyurtma arrada abadiy qotadi.
     Buyurtma sahifasining banneri, yuklash javobi va "ishlab chiqarishga
     uzatish" to'sig'i shu BITTA ro'yxatdan foydalanadi.
     """
@@ -313,7 +315,7 @@ async def unplaced_arra_parts(db: AsyncSession, order_id: int) -> list[str]:
 
 
 async def build_cutmap_state(db: AsyncSession, order: Order, post_id: int) -> CutmapState:
-    """ARRA terminali (7.1.7), ROVER terminali va admin paneldagi ko'rinish (10.3) uchun umumiy.
+    """ARRA terminali, ROVER terminali va admin paneldagi ko'rinish uchun umumiy.
 
     `done` — SHU postdagi skanlar bo'yicha: roverchi o'z listida o'zi kesganini ko'radi.
     """

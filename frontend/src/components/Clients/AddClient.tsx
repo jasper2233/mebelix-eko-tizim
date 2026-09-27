@@ -68,8 +68,8 @@ export function AddClient({
     mode: "onBlur",
     defaultValues: {
       full_name: client?.full_name ?? "",
-      phone: client?.phone ?? "",
-      phone_alt: client?.phone_alt ?? "",
+      phone: formatUzPhone(client?.phone ?? ""),
+      phone_alt: formatUzPhone(client?.phone_alt ?? ""),
       address: client?.address ?? "",
       notes: client?.notes ?? "",
     },

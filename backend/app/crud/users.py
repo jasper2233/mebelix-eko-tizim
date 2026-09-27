@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # Verified against when the login identifier doesn't exist, so a miss costs the same
 # bcrypt work as a wrong password — otherwise response timing leaks which users exist.
 # Birinchi kerak bo'lganda hisoblanadi: import paytida hisoblansa `app.crud` ni import
-# qiladigan HAR jarayon (web, arq worker, ikkala prestart CLI) kirishga aloqasi
+# qiladigan HAR jarayon (web, arq worker) kirishga aloqasi
 # bo'lmasa ham ~250 ms bcrypt ishini bloklab bajarardi.
 _DUMMY_HASH: str | None = None
 

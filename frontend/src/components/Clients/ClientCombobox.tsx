@@ -41,7 +41,7 @@ export function ClientCombobox({
   const listId = useId()
   const debounced = useDebounced(search.trim())
 
-  const { data, isFetching } = useQuery({
+  const { data, isFetching, isError, refetch } = useQuery({
     ...getClientsQueryOptions(debounced),
     enabled: open,
   })
@@ -153,7 +153,21 @@ export function ClientCombobox({
               Qidirilmoqda…
             </p>
           )}
-          {items.length === 0 && !isFetching && (
+          {/* So'rov YIQILSA «topilmadi» deyilmaydi: aks holda pastdagi «Yangi mijoz
+              qo'shish» vaqtinchalik xatodan keyin takroriy mijoz yaratishga undardi */}
+          {isError && !isFetching && (
+            <p className="px-2 py-6 text-center text-sm text-destructive">
+              Mijozlar ro'yxatini yuklab bo'lmadi —{" "}
+              <button
+                type="button"
+                className="underline underline-offset-2"
+                onClick={() => refetch()}
+              >
+                qayta urinish
+              </button>
+            </p>
+          )}
+          {items.length === 0 && !isFetching && !isError && (
             <p className="px-2 py-6 text-center text-sm text-muted-foreground">
               {debounced
                 ? `"${debounced}" bo'yicha mijoz topilmadi`

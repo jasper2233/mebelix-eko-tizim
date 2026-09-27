@@ -22,8 +22,6 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         from app.core.setup import NON_BUSINESS_PATHS
 
         request_id = request.headers.get(REQUEST_ID_HEADER) or uuid.uuid4().hex
-        # Xato ishlovchilari javobga header qo'sha olishi uchun.
-        request.state.request_id = request_id
 
         if request.url.path in NON_BUSINESS_PATHS:
             response = await call_next(request)

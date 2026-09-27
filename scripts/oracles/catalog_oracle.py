@@ -40,9 +40,8 @@ def importni_yukla():
 
 
 class SoxtaRequest:
-    """`client_ip` faqat shu ikkitasiga qaraydi."""
+    """`client_ip` faqat `request.client` ni o'qiydi."""
 
-    headers: dict[str, str] = {}
     client = None
 
 

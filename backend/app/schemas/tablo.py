@@ -47,8 +47,8 @@ class TabloOrderRow(BaseModel):
     #: dushanba ertalab butun taxta "2 kun to'xtagan" bo'lib yonardi va belgi
     #: ma'nosini yo'qotardi. "Tsex ishlagan kun" = o'sha kuni bironta skan
     #: bo'lgan kun, ya'ni bayram/ta'til/to'xtash ro'yxatini yuritish kerak emas.
-    #: Doim PRODUCTION (so'rov shu bo'yicha filtrlaydi), lekin dashboard uni
-    #: StatusBadge bo'lib chizadi — olib tashlash UI o'zgarishi, tozalash emas.
+    #: Doim PRODUCTION (so'rov shu bo'yicha filtrlaydi); frontend hozir uni o'qimaydi
+    #: (dashboard StatusBadge 6cfc423 da olib tashlangan).
     status: str
     idle_days: int | None = None
 
@@ -111,10 +111,9 @@ class TabloMachineRow(BaseModel):
     #: savolga javob beradi; nolga teng bo'lsa qator umuman chizilmaydi.
     mos_count: int = 0
     nomos_count: int = 0
-    #: KROMKA: oxirgi o'lchov (mm, hukm, detal nomi). Boshqa postda bo'sh
+    #: KROMKA: oxirgi o'lchov (mm, hukm). Boshqa postda bo'sh
     last_mm: float | None = None
     last_verdict: str | None = None
-    last_part: str | None = None
 
 
 class TabloPeriod(BaseModel):

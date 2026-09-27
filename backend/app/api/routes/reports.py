@@ -1,7 +1,8 @@
-"""Reports: productivity, order status, material consumption + Excel export.
+"""Reports: productivity, machine time (OEE), order status, material consumption.
 
-Every endpoint returns JSON by default; `?format=xlsx` streams an Excel file.
-Access: manager/director/admin.
+These four return JSON by default; `?format=xlsx` streams an Excel file. Access:
+manager/director (admin and superuser always). `/dashboard` is JSON only and is also
+open to texnolog — its money block stays management-only.
 """
 
 from collections.abc import Callable, Sequence
@@ -601,9 +602,8 @@ async def build_machine_time_report(
         ideal_total = sum(v[0] for (m, _d), v in ideal_by.items() if m == mid)
         parts_total = int(sum(v[1] for (m, _d), v in ideal_by.items() if m == mid))
         defects_total = sum(n for (m, _d), n in defects_by.items() if m == mid)
-        # Quality FAQAT brak sanaladigan ish markazida. Kromkada brak hali detalga
-        # bog'lanmagan (QR bog'lash — keyingi bosqich), shuning uchun u yerda `parts` bor
-        # bo'lsa ham Quality hisoblanmaydi: «brak yo'q» emas, «hali o'lchanmaydi».
+        # Quality FAQAT brak sanaladigan ish markazida (Prisadka va Kromka — `quality_ids`);
+        # boshqa postlarda o'lchov manbasi yo'q, ya'ni Quality `None`.
         row_quality = quality_pct(parts_total, defects_total) if mid in quality_ids else None
         rows.append(
             MachineTimeRow(

@@ -27,5 +27,5 @@ class BaseModel(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
     # Indekssiz: boolean ustun o'zi tanlovsiz, har so'rov uni aniqroq ustun bilan
     # birga filtrlaydi — issiq yo'llardagi PARTIAL indekslar (`WHERE NOT is_deleted`)
-    # shu ishni qiladi. 18 ta `ix_*_is_deleted` migratsiyada o'chirilgan.
+    # shu ishni qiladi. 19 ta `ix_*_is_deleted` `6a5051b7b420` da o'chirilgan.
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)

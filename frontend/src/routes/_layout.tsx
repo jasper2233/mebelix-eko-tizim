@@ -31,8 +31,9 @@ const sectionTitles: Record<string, string> = {
   "/settings": "Sozlamalar",
 }
 
-//: Mahsulot omborchisiga ochiq yo'llar — katalog va undan ochiladigan sotuv listi
-const OMBOR_YOLLARI = ["/warehouse", "/sotuv"]
+//: Mahsulot omborchisiga ochiq yo'llar — katalog, undan ochiladigan sotuv listi va o'z
+//: sozlamalari (parolini o'zi almashtiradi; «Sozlamalar» havolasi hammaga ko'rinadi)
+const OMBOR_YOLLARI = ["/warehouse", "/sotuv", "/settings"]
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,

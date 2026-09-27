@@ -85,7 +85,7 @@ function escapeHtml(s: string): string {
 }
 
 /** Barcha kesish xaritalarini chop etish: har xarita tepasida
- * "Material nomi | №1 — 2750 × 1830 mm × 2 list" sarlavha, har list o'z sahifasida. */
+ * "Material nomi | №1 — 2750 × 1830 mm" sarlavha, har jismoniy list o'z sahifasida. */
 function printAllMaps(
   orderNumber: string,
   materials: Material[],
@@ -430,8 +430,6 @@ export function CutmapView({
     printAllMaps(data.order_number, materials, holes, cellInsts, wastePrinted),
   )
 
-  // Material statistikasi — ixcham bir qator (terminalda SKAN ON qatoriga portal,
-  // admin sahifada xarita tepasida). Xarita balandligidan joy olmaydi.
   // Belgilangan katak — DETAL yoki QOLDIQ. Ikkalasi bir xil oqimdan o'tadi:
   // bir marta bosish belgilaydi, chap qatordagi "Chop etish" chiqaradi, ikki
   // marta bosish kartochkani ochadi (bekor qilish o'sha yerda).

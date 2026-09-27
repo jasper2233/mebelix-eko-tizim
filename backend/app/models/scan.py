@@ -29,7 +29,8 @@ class Scan(BaseModel):
     """Successful work-unit registration (one QOLDIQ decrement). created_at = scan time.
 
     Idempotentlik kaliti `client_event_id`: terminal UUID yuboradi, chek/qadoq/TMO/yig'ma
-    oqimlari esa server tomonda DETERMINISTIK kalit yozadi (`cutprint-`, `pack-`, `wh-`, `asm-`).
+    oqimlari esa server tomonda kalit yozadi: `pack-`, `wh-`, `asm-` DETERMINISTIK; `cutprint-{id}-{unix_s}`
+    ataylab har chop etishda yangi (`terminal.print_instance_label`).
     Yagona indeks takrorni rad etadi va u bekor qilingan qatorlarni HAM qamraydi —
     bekor qilingan skan audit uchun qoladi (is_cancelled=True, hisoblagich qaytariladi).
     """
@@ -40,7 +41,7 @@ class Scan(BaseModel):
         Index("ix_scan_client_event_id", "client_event_id", unique=True),
         Index("ix_scan_order_post", "order_id", "post_id"),
         Index("ix_scan_instance_post", "instance_id", "post_id", postgresql_where=text("NOT is_cancelled")),
-        # Skan hisobi QADAM bo'yicha sanaladi (`scanning._scans_done`) — issiq yo'l
+        # Skan hisobi QADAM bo'yicha sanaladi (`scanning._scans_done_map`) — issiq yo'l
         Index("ix_scan_instance_route", "instance_id", "route_id"),
         # Dashboard "bugungi skanlar" hisoblagichi har 60 soniyada shu ustunni
         # so'raydi; indekssiz butun jadval skanerlanardi, ya'ni narx tarix

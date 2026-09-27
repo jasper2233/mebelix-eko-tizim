@@ -12,13 +12,12 @@ import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { ChevronLeft, Link2Off, PackageX } from "lucide-react"
 import { useMemo, useState } from "react"
-import { PublicService } from "@/client"
+import { type PublicProduct, PublicService } from "@/client"
 import { ModelViewer } from "@/components/Bazis/ModelViewer"
 import {
   type BazisModel,
   gabarit,
   MODEL_VERSIYA,
-  type PublicProduct,
 } from "@/components/Bazis/model"
 import { BrandLoader } from "@/components/Common/BrandLoader"
 import { Button } from "@/components/ui/button"

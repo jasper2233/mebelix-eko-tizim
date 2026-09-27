@@ -14,7 +14,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 import { type TabloMachineRow, TabloService } from "@/client"
 import { BrandLoader } from "@/components/Common/BrandLoader"
@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useMesWs } from "@/hooks/useMesWs"
+import { useThrottled } from "@/hooks/useThrottled"
 import { requireAuth } from "@/lib/guards"
 import {
   ANDON_STATE_LABELS,
@@ -459,8 +460,12 @@ function StanoklarPage() {
   })
 
   // WS har hodisada so'rov yubormaydi: hisob bir kunlik oraliqni qayta yuritadi,
-  // kromkada esa har detalda xabar keladi. Eng tez 15 soniyada bir marta.
-  const oxirgi = useRef(0)
+  // kromkada esa har detalda xabar keladi. Eng tez 15 soniyada bir marta —
+  // oynadagi OXIRGI hodisa ham oxirida olinadi (`useThrottled`: leading + trailing)
+  const refresh = useThrottled(
+    () => queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
+    15_000,
+  )
   const [, tik] = useState(0)
   useMesWs(
     useCallback(
@@ -471,12 +476,9 @@ function StanoklarPage() {
           )
         )
           return
-        const endi = Date.now()
-        if (endi - oxirgi.current < 15_000) return
-        oxirgi.current = endi
-        queryClient.invalidateQueries({ queryKey: QUERY_KEY })
+        refresh()
       },
-      [queryClient],
+      [refresh],
     ),
   )
   // Holat davomiyligi va yuqoridagi soat o'zi sanab tursin — usiz qotib qolardi

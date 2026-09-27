@@ -68,7 +68,7 @@ async def main() -> None:
     port = SoxtaPort()
 
     XB = "a1b2c3d4"
-    # --- Uchta o'lchov + boot (v1.21 dan `sabab` bilan)
+    # --- Boot + ikkita o'lchov (v1.21 dan `sabab` bilan)
     qatorlar = [
         json.dumps({"ev": "boot", "D": 2555.0, "V10": 10.0, "V18": 18.0,
                     "sabab": "wdt", "xb": XB, "xq": 1}),

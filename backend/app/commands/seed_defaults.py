@@ -1,4 +1,5 @@
-"""Idempotent bootstrap: tashkilot, 9 ishlab chiqarish posti va post hisoblari.
+"""Idempotent bootstrap: 9 ishlab chiqarish posti va post hisoblari (tashkilot qatorini
+`1393a241b793` migratsiyasi qo'yadi).
 
 Run: python -m app.commands.seed_defaults (called from prestart/setup scripts).
 """

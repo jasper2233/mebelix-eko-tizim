@@ -82,7 +82,7 @@ echo "==> Switch: TAG=$TAG"
 # `set -e` shu yerda to'xtatsa smoke ham, rollback ham ishlamasdi.
 TAG="$TAG" $COMPOSE up -d || echo "==> up -d yiqildi (api ko'tarilmadi?) — smoke va rollback davom etadi" >&2
 
-# Caddyfile bind-mount (`./caddy/Caddyfile:/etc/caddy/Caddyfile:ro`), ya'ni
+# caddy/ katalogi bind-mount (`./caddy:/etc/caddy:ro`), ya'ni
 # `up -d` uni O'ZGARGAN deb bilmaydi: compose faqat service ta'rifi (image, env,
 # volumes RO'YXATI) o'zgarsa konteynerni qayta yaratadi, mount qilingan faylning
 # MAZMUNI hisobga olinmaydi. Natijada rsync yangi konfigni serverga qo'ysa ham,

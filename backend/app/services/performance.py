@@ -52,7 +52,7 @@ def quality_pct(parts: int, defects: int) -> float | None:
 def oee_pct(availability: float | None, performance: float | None, quality: float | None) -> float | None:
     """OEE = Availability × Performance × Quality (uchalasi ham foiz).
 
-    Biri hisoblanmagan bo'lsa (ish jadvali yo'q, Prisadka emas, detal sanalmagan) — `None`.
+    Biri hisoblanmagan bo'lsa (ish jadvali yo'q, Prisadka ham, Kromka ham emas, detal sanalmagan) — `None`.
     Nolga tenglashtirilmaydi: hisoblanmagan ko'rsatkich «yomon» degani emas.
     """
     if availability is None or performance is None or quality is None:

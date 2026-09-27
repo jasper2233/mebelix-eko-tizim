@@ -18,13 +18,11 @@ from app.core.config import TASHKENT_TZ
 from app.models import Order, Part, PartInstance, PartRoute, Product
 from app.services.giblab.cutmap import holes_by_label_num
 from app.services.giblab.models import PROCESS_POSTS, TAIL_CODES, stored_machined_sides
-from app.services.scanning import qr_part_code
 
 
 @dataclass
 class LabelData:
     qr_text: str  # {buyurtma}_productCode_partCode[_n] — `_n` faqat count > 1 (docs/11)
-    part_code: str  # productCode_partCode (chek: "4202_8")
     part_name: str
     project_name: str
     material: str  # plita (chek: "ldsp kashmir shagrin")
@@ -92,7 +90,6 @@ async def load_label_data(db: AsyncSession, instance_id: int) -> LabelData | Non
     return LabelData(
         route_codes=route_codes,
         qr_text=instance.qr_text,
-        part_code=qr_part_code(instance.qr_text, part.count),
         part_name=part.name,
         project_name=order.project_name or order.number,
         material=part.material_name or "",
@@ -482,7 +479,7 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
         harfli_tomonlar = {t for t in qirra if d.edges.get(t) and edge_field(t, "symbol")[:3]}
 
         # Detal koordinatasi -> eskiz piksellari. Teshiklar bilan BIR XIL o'girish
-        # (yuqoridagi `gor, ver`), chunki ikkalasi ham bitta `ParsedPart` dan keladi.
+        # (pastdagi teshik blokidagi `gor, ver`), chunki ikkalasi ham bitta `ParsedPart` dan keladi.
         # Nuqta detaldan tashqarida bo'lishi normal (freza kirish yo'li x=-30) —
         # o'q bo'yicha eskiz chegarasiga bosiladi.
         uzun_mm, en_mm = float(d.length or 1), float(d.width or 1)

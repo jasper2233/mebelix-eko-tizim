@@ -90,7 +90,7 @@ export function useTerminalScan({
 
     if (postCode !== "KROMKA" && postCode !== "OVAL") {
       if (cooled(value, COOLDOWN_MS)) return
-      // QADOQLASH: skan faqat OCHIQ QADOQqa tushadi (umumiy yo'lni server ham E002
+      // QADOQLASH: skan faqat OCHIQ QADOQqa tushadi (umumiy yo'lni server ham E001
       // bilan rad etadi — qadoqsiz UPAKOVKA skani detalni qadoqlab bo'lmaydigan
       // qilardi). Bu shox faqat ro'yxat ochiqligida ishlaydi (ekran o'z skanini
       // `viewScanRef` bilan oladi): KROMKA kabi QR'ning buyurtmasi ochiladi va

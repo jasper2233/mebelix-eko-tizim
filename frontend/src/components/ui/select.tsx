@@ -46,8 +46,8 @@ function SelectContent({
   className,
   children,
   position = "popper",
-  // Loyihadagi boshqa suzuvchi qatlamlar bilan bir xil: `popover.tsx` va
-  // `dropdown-menu.tsx` ham `align="start"` va `sideOffset={4}`. Ilgari select
+  // `popover.tsx` bilan bir xil: `align="start"` va `sideOffset={4}` (`dropdown-menu.tsx`
+  // faqat `sideOffset={4}` ni oladi — uning chaqiruvchisi align'ni o'zi beradi). Ilgari select
   // markazga tekislanardi va tugmaga yopishib turardi — bir ekranda ikki xil
   // uslub ko'rinardi.
   align = "start",

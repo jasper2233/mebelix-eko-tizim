@@ -68,10 +68,6 @@ class DayTotals:
     def availability_pct(self) -> float | None:
         return round(self.run_s * 100 / self.planned_s, 1) if self.planned_s > 0 else None
 
-    @property
-    def coverage_pct(self) -> float | None:
-        return round((self.shift_s - self.no_data_s) * 100 / self.shift_s, 1) if self.shift_s > 0 else None
-
 
 @dataclass
 class ReasonTotals:

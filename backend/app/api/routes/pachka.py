@@ -308,11 +308,8 @@ async def scan_into_pachka(
         )
     except ScanRejected as exc:
         # Rad etilgan urinish ham logga — /scans bilan bir: Loglar sahifasida ko'rinsin.
-        # `user_id` yuqorida OLDINDAN olingan: `record_scan_at` takroriy
-        # `client_event_id` da o'zi rollback qilib keyin ScanRejected beradi, shundan
-        # keyin `user.id` ni o'qish MissingGreenlet -> 500 bo'lardi. Bu yerda kalit
-        # BARQAROR (`pack-{pachka}-{instance}`), ya'ni ikki so'rov ustma-ust tushsa
-        # poyga oddiy holat.
+        # Kalit BARQAROR (`pack-{pachka}-{instance}`), ya'ni ikki so'rov ustma-ust tushsa
+        # poyga oddiy holat (`user_id` nega oldindan olingani — yuqorida).
         await log_rejected_scan(db, exc, qr, user_id=user_id)
         raise scan_error(exc.code, exc.message) from None
 

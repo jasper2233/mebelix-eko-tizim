@@ -27,6 +27,11 @@ _EDITABLE_STATUSES = (OrderStatus.DRAFT, OrderStatus.TECHNICAL_REVIEW)
 _EDITABLE_IF_UNTOUCHED = (*_EDITABLE_STATUSES, OrderStatus.PRODUCTION)
 
 
+def _first_n(items: list[str], n: int = 5) -> str:
+    """Birinchi n ta nom + «va yana N ta» — xato xabari yuzlab detal bilan to'lib ketmasin."""
+    return ", ".join(items[:n]) + (f" va yana {len(items) - n} ta" if len(items) > n else "")
+
+
 async def _first_work(db: SessionDep, order_id: int) -> "Row | None":
     """Buyurtmada bajarilgan BIRINCHI amal: `(post nomi, soni, vaqti)` yoki `None`.
 

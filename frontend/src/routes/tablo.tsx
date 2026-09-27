@@ -167,10 +167,7 @@ function useFitScale<T>(rows: T[]) {
       // o'z balandligiga kirmaydi. 20 qatorda bu 8x19+16 = 168px — ikki
       // qatorcha, ya'ni taxta sig'adiganidan ko'pini sig'adi deb o'ylardi.
       const yuqori = (i: number) => trs[i].getBoundingClientRect().top
-      const jami =
-        trs.length > 1
-          ? yuqori(1) - yuqori(0)
-          : trs[0].getBoundingClientRect().height
+      const jami = yuqori(1) - yuqori(0)
       const qator =
         trs.length > 2
           ? yuqori(2) - yuqori(1)

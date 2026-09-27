@@ -1,7 +1,7 @@
 """Bazis 3D modellari: texnolog paneli va OCHIQ havola javoblari.
 
 Ochiq javoblarda mijoz ma'lumoti, narx va ichki holat YO'Q — havolani usta ham,
-mijoz ham ochadi, kim ekani bilinmaydi (`docs/12`).
+mijoz ham ochadi, kim ekani bilinmaydi (`docs/13` §5).
 """
 
 from datetime import datetime

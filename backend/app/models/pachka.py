@@ -14,7 +14,7 @@ class Pachka(BaseModel):
     detallar birma-bir skanerlanadi, "Yakunlash" bilan yopiladi. Tizim og'irlikni
     faqat KO'RSATADI — chegara qo'ymaydi, qaror hodimniki.
 
-    `code` — chekdagi QR matni. Detal QR'i `{mahsulot}_{detal}[_n]` shaklida
+    `code` — chekdagi QR matni. Detal QR'i `{buyurtma}_{mahsulot}_{detal}[_n]` shaklida
     (`scanning._QR_RE` ostki chiziq kutadi), bu esa `PK-` bilan boshlanadi va
     ostki chiziq umuman yo'q — terminal skanni ko'rib qaysi oqimga yuborishni
     shundan ajratadi.

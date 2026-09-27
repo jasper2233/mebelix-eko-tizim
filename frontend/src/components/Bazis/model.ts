@@ -470,20 +470,6 @@ export const fasadlar = (model: BazisModel): Set<number> => {
   return natija
 }
 
-/** Mahsulot kartochkasi — ochiq sahifaning bosh ro'yxati. */
-export type PublicProduct = { code: string; name: string; panels: number }
-
-/** Material NOMIDAN ko'rinish — KATALOGDA topilmagan nomlar uchun ZAXIRA yo'l.
- * Birinchi navbat `MAT_RANG` da (`matRang.gen.ts`, ishlatilishning 74% i).
- *
- * Kalit so'zlar 437 ta haqiqiy buyurtmadagi
- * 162 material nomidan olingan (85 753 ishlatilish), o'ylab topilmagan:
- * `kromka PVC 06-19 oq`, `LDSP DUB VATAN TEKSTURA`, `AKRIL KASHMIR GLYANETS`.
- *
- * Nega nom bo'yicha, indeks bo'yicha emas: ilgari rang `mats` massividagi
- * o'rindan olinardi, ya'ni AYNAN BIR XIL material bir mahsulotda bej,
- * boshqasida kulrang chiqardi — bitta buyurtmaning ikki mahsulotini
- * solishtirgan usta chalg'irdi. */
 /** Xona yuzasi — devor, pol, shift. MEBEL EMAS: bazischi mahsulot qayerga
  * qo'yilishini ko'rsatish uchun qo'shadi.
  *
@@ -511,6 +497,17 @@ export const mebelEmas = (nom: string): boolean =>
   DEVOR_QOPLAMASI.test(nom) ||
   maxsusYuza(nom) === "zamena"
 
+/** Material NOMIDAN ko'rinish — KATALOGDA topilmagan nomlar uchun ZAXIRA yo'l.
+ * Birinchi navbat `MAT_RANG` da (`matRang.gen.ts`, ishlatilishning 74% i).
+ *
+ * Kalit so'zlar 437 ta haqiqiy buyurtmadagi
+ * 162 material nomidan olingan (85 753 ishlatilish), o'ylab topilmagan:
+ * `kromka PVC 06-19 oq`, `LDSP DUB VATAN TEKSTURA`, `AKRIL KASHMIR GLYANETS`.
+ *
+ * Nega nom bo'yicha, indeks bo'yicha emas: ilgari rang `mats` massividagi
+ * o'rindan olinardi, ya'ni AYNAN BIR XIL material bir mahsulotda bej,
+ * boshqasida kulrang chiqardi — bitta buyurtmaning ikki mahsulotini
+ * solishtirgan usta chalg'irdi. */
 const RANGLAR: [RegExp, string][] = [
   // Xona yuzalari BIRINCHI: ular mebel emas va zaxira rangda «yong'oq devor»
   // bo'lib chiqardi.

@@ -212,9 +212,10 @@ async def update_system_setting(
     if (bounds := INT_RANGES.get(key)) is not None:
         low, high = bounds
         if not (value.isascii() and value.isdigit() and low <= int(value) <= high):
-            raise HTTPException(status_code=422, detail=f"Daqiqa {low} dan {high} gacha butun son bo'lishi kerak.")
+            raise HTTPException(status_code=422, detail=f"Qiymat {low} dan {high} gacha butun son bo'lishi kerak.")
         value = str(int(value))  # "090" -> "90"
     row = await set_setting(db, key, value, current_user.id)
+    await db.flush()  # yangi qatorning id si audit yozuviga tushsin
     log_action(
         db,
         module="settings",

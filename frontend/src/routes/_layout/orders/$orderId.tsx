@@ -376,18 +376,15 @@ function OrderDetailPage() {
                 <Trash2 /> O'chirish
               </Button>
             )}
-            {canManage &&
-              !isTerminal &&
-              order.status !== "cancelled" &&
-              order.status !== "draft" && (
-                <Button
-                  variant="outline"
-                  className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => setCancelOpen(true)}
-                >
-                  <XCircle /> Bekor qilish
-                </Button>
-              )}
+            {canManage && !isTerminal && order.status !== "draft" && (
+              <Button
+                variant="outline"
+                className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => setCancelOpen(true)}
+              >
+                <XCircle /> Bekor qilish
+              </Button>
+            )}
             {/* Bekor qilingandan keyingi tozalash — faqat superuser. Ilgari shartda
                 `!isTerminal` ham turardi — `cancelled` terminal holat, tugma HECH
                 QACHON chiqmasdi. */}

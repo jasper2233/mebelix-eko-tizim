@@ -1,4 +1,5 @@
-// Texnolog matritsasi: rows = parts, columns = 6 posts.
+// Texnolog matritsasi: rows = parts, columns = STANDARD_MATRIX_POSTS (ARRA/KROMKA/PRISADKA);
+// boshqa postlar Nostandart tabida chiziladi.
 // Read mode: progress cells. Edit mode (texnolog, pre-production): stage toggles + notes.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"

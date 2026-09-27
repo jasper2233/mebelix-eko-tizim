@@ -320,11 +320,12 @@ function EdgeZoom({ row }: { row: KromkaPartRow }) {
 
 /** Kromka stansiyasi o'lchagan oxirgi detallar — HUKMI bilan.
  *
- *  O'lchov o'sha ish markazidagi oxirgi skanga bog'lanadi (`services/kromka.py`),
- *  shuning uchun tasmada raqam yonida kutilgan o'lcham va qolgan tomonlar turadi:
- *  «520 mm — 2/2 · 430 mm — 1/2». Tartib ahamiyatsiz — operator qaysi tomonni
- *  oldin qo'ysa, o'sha guruhdan bitta joy yopiladi. Mos kelmagan o'lchovda brak
- *  oynasi o'zi ochiladi (`routes/terminal.tsx`), bu tasma faqat ko'rsatadi.
+ *  O'lchov oyna ichidagi skanga o'lcham bo'yicha bog'lanadi (`services/kromka.py:
+ *  bind_measurement`); tasmada raqam yonida hukm, Pico kodi, kutilgan o'lcham va
+ *  detal nomi, o'ngda oldingi o'lchovlar turadi. Tartib ahamiyatsiz — operator qaysi
+ *  tomonni oldin qo'ysa, o'sha guruhdan bitta joy yopiladi. Brak oynasi O'ZI
+ *  OCHILMAYDI (2026-09-20, docs/12 §4.10) — brak faqat BRAK tugmasidan; tasma faqat
+ *  ko'rsatadi.
  *  Stansiya ulanmagan postda tasma umuman chizilmaydi. */
 function StationStrip() {
   const { data } = useQuery({
@@ -651,7 +652,7 @@ export function KromkaView({
                         {/* Eskiz — BIR MARTA bosilsa luppa ochiladi, qayta
                             bosilsa yopiladi. Bosib turish EMAS: qo'lqopda
                             uzluksiz tegib turish ishonchsiz va qo'l band
-                            bo'ladi. Mantiq bitta joyda — quyidagi effektda. */}
+                            bo'ladi. Mantiq bitta joyda — yuqoridagi pointerdown/pointerup effektida. */}
                         <span
                           className="cursor-zoom-in"
                           data-glyph={p.route_id}

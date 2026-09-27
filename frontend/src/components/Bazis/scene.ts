@@ -510,7 +510,8 @@ export function createScene(
   let meshes: Object3D[] = []
   /** Furnitura geometriyasi — nusxalar o'rtasida UMUMIY, bir marta dispose */
   let furnGeo: BufferGeometry[] = []
-  /** Har panelning qirra chizig'i — xira holatda yashiriladi (pastda) */
+  /** Har panelning qirra chizig'i — tanlov/qidiruvda fondagisi juda xira (`fonQirraMat`, `applyStates`);
+   *  xona yuzasi va yashirin `zamena` qatlamida chizilmaydi */
   let qirralar: LineSegments[] = []
   /** Panel konturdan cho'zilganmi (tekstura faqat shunda — `BoxGeometry` UV'si 0..1) */
   let ekstruziya: boolean[] = []
@@ -951,7 +952,7 @@ export function createScene(
     const bosh = controls.target.clone()
     const yonalish = camera.position.clone().sub(controls.target).normalize()
     const d0 = camera.position.distanceTo(controls.target)
-    const d1 = fokusdanOldin || d0
+    const d1 = fokusdanOldin
     fokusdanOldin = 0
     tween(360, (k) => {
       controls.target.lerpVectors(bosh, fokus, k)

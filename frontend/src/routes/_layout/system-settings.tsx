@@ -264,7 +264,7 @@ function IdleLogoutCard({ settings }: { settings: SystemSettingRead[] }) {
           (tsexda smena ham yopiladi). Terminalda stanok skaneridan kelgan skan
           ham harakat hisoblanadi. Beyjikli postda qayta kirish — beyjikni
           skanerlash. Tsex — terminal va operator hisoblari; ofis — admin,
-          direktor, menejer, texnolog.
+          direktor, menejer, texnolog va mahsulot omborchisi.
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -299,10 +299,11 @@ const STOP_MAX = 120
 // Backend `settings_service.KROMKA_IDLE_MINUTES` va `INT_RANGES` bilan bir xil
 const KROMKA_IDLE_KEY = "kromka_idle_minutes"
 const KROMKA_IDLE_MAX = 240
-// Backend `settings_service.KROMKA_TOLERANCE_MM` / `KROMKA_BIND_MINUTES` bilan bir xil
+// Backend `settings_service.KROMKA_TOLERANCE_MM` / `KROMKA_BIND_WINDOW_S` va `INT_RANGES` bilan bir xil
 const KROMKA_TOL_KEY = "kromka_tolerance_mm"
 const KROMKA_TOL_MAX = 50
 const KROMKA_BIND_KEY = "kromka_bind_window_s"
+const KROMKA_BIND_MIN = 5
 const KROMKA_BIND_MAX = 600
 
 const REASONS_KEY = ["system-settings", "downtime-reasons"]
@@ -826,8 +827,8 @@ function KromkaBindCard({ settings }: { settings: SystemSettingRead[] }) {
   const [bind, setBind] = useState("")
   useEffect(() => setTol(savedTol), [savedTol])
   useEffect(() => setBind(savedBind), [savedBind])
-  const ok = (v: string, max: number) =>
-    /^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= max
+  const ok = (v: string, min: number, max: number) =>
+    /^\d+$/.test(v) && Number(v) >= min && Number(v) <= max
   const saqla = (key: string, value: string) =>
     SettingsService.updateSystemSetting({ path: { key }, body: { value } })
   const saveTol = useMutation({
@@ -859,14 +860,14 @@ function KromkaBindCard({ settings }: { settings: SystemSettingRead[] }) {
             min={1}
             max={KROMKA_TOL_MAX}
             value={tol}
-            aria-invalid={!ok(tol, KROMKA_TOL_MAX)}
+            aria-invalid={!ok(tol, 1, KROMKA_TOL_MAX)}
             className="w-40"
             onChange={(e) => setTol(e.target.value)}
           />
         </Field>
         <LoadingButton
           loading={saveTol.isPending}
-          disabled={!ok(tol, KROMKA_TOL_MAX) || tol === savedTol}
+          disabled={!ok(tol, 1, KROMKA_TOL_MAX) || tol === savedTol}
           onClick={() => saveTol.mutate()}
         >
           Saqlash
@@ -883,17 +884,19 @@ function KromkaBindCard({ settings }: { settings: SystemSettingRead[] }) {
           <Input
             type="number"
             inputMode="numeric"
-            min={1}
+            min={KROMKA_BIND_MIN}
             max={KROMKA_BIND_MAX}
             value={bind}
-            aria-invalid={!ok(bind, KROMKA_BIND_MAX)}
+            aria-invalid={!ok(bind, KROMKA_BIND_MIN, KROMKA_BIND_MAX)}
             className="w-40"
             onChange={(e) => setBind(e.target.value)}
           />
         </Field>
         <LoadingButton
           loading={saveBind.isPending}
-          disabled={!ok(bind, KROMKA_BIND_MAX) || bind === savedBind}
+          disabled={
+            !ok(bind, KROMKA_BIND_MIN, KROMKA_BIND_MAX) || bind === savedBind
+          }
           onClick={() => saveBind.mutate()}
         >
           Saqlash
@@ -906,7 +909,8 @@ function KromkaBindCard({ settings }: { settings: SystemSettingRead[] }) {
         skanga bog'lash XATO berardi: detal datchiklar orasida 8–15 soniya
         yuradi, operator esa 4–10 soniyada bir marta skanerlaydi — o'lchov
         keyingi detalga yopishib qolardi. Skan topilmasa o'lchov «skansiz»
-        bo'lib yoziladi va hech kimni ayblamaydi. Oraliq: 5–{KROMKA_BIND_MAX}.
+        bo'lib yoziladi va hech kimni ayblamaydi. Oraliq: {KROMKA_BIND_MIN}–
+        {KROMKA_BIND_MAX}.
       </p>
     </div>
   )

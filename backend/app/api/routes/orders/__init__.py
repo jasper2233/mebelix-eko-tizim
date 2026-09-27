@@ -2,10 +2,10 @@
 mavzu bo'yicha bo'lingan; prefiks, tag va ro'yxatga olish TARTIBI shu yerda.
 
 Tartib muhim: FastAPI birinchi mos kelgan marshrutni oladi va mos kelmasa
-pastga tushmaydi. Aynan bir joyda ahamiyatli — `/status-counts` `/{order_id}`
-dan oldin (ikkalasi ham `lifecycle` da) va `/files/scx.zip` `/files/{file_id}`
-dan oldin (ikkalasi ham `files` da), ya'ni fayl ichidagi tartib saqlansa
-yetarli.
+pastga tushmaydi. Fayllar ARO: `trace` `lifecycle` dan oldin ulanadi (`/instances`
+aks holda `/{order_id}` deb o'qiladi). Fayl ICHIDA: `/status-counts` `/{order_id}`
+dan oldin (`lifecycle`), `/files/scx.zip` `/files/{file_id}` dan oldin (`files`),
+`/bazis/share` `/bazis/{file_id}` dan oldin (`bazis`).
 """
 
 from fastapi import APIRouter

@@ -208,18 +208,24 @@ export function BazisPanel({
     onError: handleError,
   })
 
-  /** Bir nechta faylni KETMA-KET yuboramiz: har biri serverda 1 soniyagacha
+  /** Bir nechta faylni KETMA-KET yuboramiz: har biri serverda 1.7 s gacha
    * CPU oladi, bir vaqtda yuborilsa ishchilar band bo'lib qolardi.
    *
    * Mahsulot nomi farq qilgan fayllar (409) YIG'ILADI va oxirida BITTA
    * dialogda so'raladi: server ularni yozmagan, texnolog nomlarni ko'rib
    * `tasdiq` bilan qayta yuboradi. */
+  const inFlight = useRef(false)
   const upload = async (files: File[], tasdiq = false) => {
     const b3d = files.filter((f) => f.name.toLowerCase().endsWith(".b3d"))
     if (!b3d.length) {
       toast.error("Faqat Bazis .b3d fayli qabul qilinadi")
       return
     }
+    // Yuklash davomida yangi tashlash/tanlash YUTILADI ($orderId.tsx dagi `.project`
+    // bilan bir xil): parallel partiya ketma-ketlikni buzar va birining 409 dialogini
+    // ikkinchisining bo'sh ro'yxati yopib yuborardi
+    if (inFlight.current) return
+    inFlight.current = true
     setBusy(true)
     const farqli: NomFarqi[] = []
     try {
@@ -243,6 +249,7 @@ export function BazisPanel({
         }
       }
     } finally {
+      inFlight.current = false
       setBusy(false)
       setNomFarqi(farqli)
       qc.invalidateQueries({ queryKey: ["order-bazis", orderId] })

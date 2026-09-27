@@ -3,7 +3,7 @@ import { PROCESS_OPS } from "@/lib/mes"
 /**
  * Marshrut qadamining AMAL nomi: kod 11 → "G petlya o'ngdan".
  *
- * Kodlar postga ko'pdan-birga tushadi (stolyarkada oltita amal, kromkada uchta,
+ * Kodlar postga ko'pdan-birga tushadi (stolyarkada oltita amal, kromkada ikkita — oddiy va fasat,
  * arrada oddiy va 45° kesish) — chipsiz operator raqamni yoddan tarjima qilishi
  * kerak edi, va noto'g'ri petlya eshikni brak qiladi. Bitta amalli postda
  * (rover, bo'yoq, prisadka) hech narsa chizilmaydi: post nomi ekran

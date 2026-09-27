@@ -6,7 +6,8 @@ Hard rules from the 205-file corpus analysis:
   when given raw bytes.
 - good@id / operation@id / part@id are THREE separate id spaces — lookups stay inside
   their own element kind.
-- Kerf lives ONLY in tool.cutting@swSawthick.
+- Kerf/trim (tool.cutting@swSawthick, cTrimL/cTrimW) are not read: the cut map is drawn from the
+  data blob, which already includes them.
 - part@id is NOT stable across files; the durable key is productCode_partCode (+ project.uuid).
 """
 
@@ -45,9 +46,9 @@ _PRODUCT_CODE_MAX = 50
 _HANDLED_OPS = {"CS", "EL", "XNC"}
 _IGNORED_OPS = {"LB", "O", "CL"}
 _OP_NAMES = {
-    "CN": "нестинговый раскрой (CNC nesting)",
-    "SP": "обработка поверхности (yuza ishlovi)",
-    "GR": "пазование (paz)",
+    "CN": "CNC nesting kesish",
+    "SP": "yuza ishlovi",
+    "GR": "paz ochish",
 }
 
 
@@ -231,13 +232,13 @@ def _advisories(
             f"Faylda import qilinmaydigan operatsiya bor: {names}. O'sha bosqich detallari vazifa ro'yxatiga tushmaydi."
         )
 
-    # Korpusda detalda ko'pi bilan 2 ta XNC bor; ko'pi bo'lsa skan sonlari kutilmagan
-    # bo'lishi mumkin (prisadka_passes har operatsiyaga +1 beradi), shuning uchun aytamiz.
+    # Korpusda detalda ko'pi bilan 2 ta XNC bor; ko'pi kutilmagan dastur bo'lishi mumkin —
+    # texnolog tekshirsin. Skan soniga ta'sir qilmaydi: `prisadka_passes()` 0 yoki 1.
     many_xnc = sum(1 for ops in xnc_ops_by_part.values() if len(ops) > 2)
     if many_xnc:
         out.append(
-            f"{many_xnc} detalda 2 tadan ko'p XNC operatsiya bor. Hammasi saqlandi, lekin "
-            f"skan sonini texnolog tekshirishi kerak (har operatsiya bir skan talab qiladi)."
+            f"{many_xnc} detalda 2 tadan ko'p XNC operatsiya bor. Hammasi saqlandi, PRISADKA qadami "
+            f"baribir bitta skan — ishlov dasturlarini texnolog tekshirishi kerak."
         )
 
     # `description` faqat izoh emas: u ishlov dasturi kodini ham saqlashi mumkin —
@@ -310,7 +311,6 @@ def parse_project(content: bytes) -> ParsedProject:
     # Faqat furnitura qo'yilgan eksportlarda uchraydi va listga joylashtirilmaydi:
     # bu yerda u faqat material registriga va sarf hisobiga tushadi.
     hardware = [g for g in goods if g.get("typeId") == "simple"]
-    cutting_tools = {_i(g, "id"): g for g in goods if g.get("typeId") == "tool.cutting"}
 
     project = ParsedProject(
         uuid=root.get("project.uuid"),
@@ -381,7 +381,7 @@ def parse_project(content: bytes) -> ParsedProject:
         type_id = op_el.get("typeId")
 
         if type_id == "CS":
-            label_counter = _parse_cs_operation(op_el, sheets, cutting_tools, part_by_file_id, project, label_counter)
+            label_counter = _parse_cs_operation(op_el, sheets, part_by_file_id, project, label_counter)
 
         elif type_id == "EL":
             _apply_el_symbols(op_el, products_goods, part_by_file_id, bands)
@@ -426,8 +426,10 @@ def parse_project(content: bytes) -> ParsedProject:
         project.generation = "processed"
         # Optimallashtirilgan faylda ham blobsiz kesish operatsiyasi bo'lishi mumkin: texnolog
         # bir materialni optimallashtirmagan. `build_cutmap` uni jimgina o'tkazib yuboradi
-        # (nusxa tekshiruvi ham 0 ni sanamaydi), lekin detallari arrachiga baribir tushadi —
-        # ya'ni vazifa bor, xarita yo'q. Faqat shu materialni aytamiz, fayl rad etilmaydi.
+        # (nusxa tekshiruvi ham 0 ni sanamaydi). Detallari fayldan ARRA qadamini oladi, lekin
+        # xaritada katagi yo'q: arrachi ularni ko'rmaydi va `/start` buyurtmani material
+        # optimallashtirilib fayl qayta yuklanguncha rad etadi (`cutmap.unplaced_arra_parts`).
+        # Faqat shu materialni aytamiz, fayl rad etilmaydi.
         unmapped = [c.material_name or f"operatsiya #{c.op_id}" for c in project.cut_ops if not c.data_blob]
         if unmapped:
             project.warnings.append(
@@ -440,13 +442,11 @@ def parse_project(content: bytes) -> ParsedProject:
 def _parse_cs_operation(
     op_el: ET.Element,
     sheets: dict[int, ET.Element],
-    cutting_tools: dict[int, ET.Element],
     part_by_file_id: dict[int, ParsedPart],
     project: ParsedProject,
     label_counter: int,
 ) -> int:
     """One CS = one sheet material. Returns the advanced file-global label counter."""
-    tool = cutting_tools.get(_i(op_el, "tool1"))
     material_el = _base_material(op_el)
     mat_gid = _i(material_el, "id") if material_el is not None else 0
     sheet = sheets.get(mat_gid)
@@ -455,38 +455,21 @@ def _parse_cs_operation(
         for key in (
             "cPartCount",
             "cMaterialCount",
-            "cWasteCount",
             "cWasteAmount",
             "cPartAmount",
             "cCountPackets",
             "cTrimLength",
             "cTrimCount",
-            "cFilling",
         )
     }
-    # Zaxira qiymatlar FAQAT atribut yozilmaganda (None) ishlaydi — faylda aniq `0` yozilgan
-    # bo'lsa (torsovkasiz kesish) o'sha 0 saqlanadi, aks holda arrachi yolg'on raqam ko'rardi.
-    kerf_raw = _f(tool, "swSawthick") if tool is not None else None
-    trim_l_raw = _f(op_el, "cTrimL")
-    trim_w_raw = _f(op_el, "cTrimW")
     cut = CutOperation(
         op_id=_i(op_el, "id"),
         material_name=sheet.get("name", "") if sheet is not None else "",
         thickness=_f(sheet, "t") if sheet is not None else None,
-        # Yagona kerf manbasi. Yozilmasa GibLab o'zining standarti — 4.4 mm — bilan
-        # optimallashtirgan (spetsifikatsiya, `swSawthick`), shuning uchun zaxira qiymat ham 4.4:
-        # eski eksportda (`tool.cutting` bo'sh) arrachiga 3.0 deb yolg'on ko'rsatilardi.
-        kerf=4.4 if kerf_raw is None else kerf_raw,
-        # Torsovka. Zaxira qiymatlar spetsifikatsiyadagi GibLab standarti (10 mm) — ilgari bu
-        # yerda korpusdan olingan 2.0 turardi, ya'ni atribut yozilmagan faylda arrachi 2 mm
-        # ko'rib, GibLab esa 10 mm bilan optimallashtirgan bo'lardi. Geometriyaga ta'sir qilmaydi
-        # (torsovka blobdan, type=1), faqat xarita sarlavhasida ko'rsatiladi.
-        trim_l=10.0 if trim_l_raw is None else trim_l_raw,
-        trim_w=10.0 if trim_w_raw is None else trim_w_raw,
         stats=stats,
         data_blob=op_el.get("data") or None,
     )
-    # Stub order = GibSaw label number (1-based, file-global) —
+    # Stub order = GibSaw label number (1-based, file-global).
     for stub in op_el.findall("part"):
         pid = _i(stub, "id")
         label_counter += 1

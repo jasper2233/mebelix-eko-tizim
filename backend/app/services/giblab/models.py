@@ -356,7 +356,7 @@ class ParsedPart:
         return base
 
     def prisadka_passes(self) -> int:
-        """PRISADKA qadami bormi: 1 — bitta skan (ikki yuzli ham), 0 — qadam yo'q (7.3.3).
+        """PRISADKA qadami bormi: 1 — bitta skan (ikki yuzli ham), 0 — qadam yo'q.
 
         FAQAT PRISADKA — ROVER bosqichi ataylab yaratilmaydi: roverdan chiqqan detal
         keyin bo'yalishi ham mumkin, ya'ni QOLGAN marshrutni fayldan chiqarib
@@ -389,9 +389,6 @@ class CutOperation:
     op_id: int
     material_name: str
     thickness: float | None
-    kerf: float  # tool.cutting swSawthick — the ONLY source
-    trim_l: float
-    trim_w: float
     stats: dict[str, float]  # cPartCount, cMaterialCount, cWasteAmount, ... (GibSaw indicators)
     data_blob: str | None  # base64; None on TEMPLATE files
     waste_parts: dict[int, dict[str, float]] = field(default_factory=dict)  # waste part defs by id

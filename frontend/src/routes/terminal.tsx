@@ -64,7 +64,7 @@ import { requireAuth } from "@/lib/guards"
 import { OPERATOR_ROLES, POST_COLORS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { getTerminalContextQueryOptions } from "@/queries/mes"
-import { detailMessage, detailParts, toastScanError } from "@/utils"
+import { detailParts, extractErrorMessage, toastScanError } from "@/utils"
 
 export const Route = createFileRoute("/terminal")({
   component: TerminalPage,
@@ -95,7 +95,7 @@ function TerminalPage() {
   const isOperator = !!currentUser && OPERATOR_ROLES.includes(currentUser.role)
 
   // Oxirgi skan URINISHI vaqti (muvaffaqiyat ham, xato ham) — avto-reload
-  // "tinchlik" o'lchovi; lastScan holatidan farqli, 15s da tozalanmaydi
+  // "tinchlik" o'lchovi; lastScan holatidan farqli, 60 s da tozalanmaydi
   const lastScanAtRef = useRef(0)
   const [locked, setLocked] = useState(false)
   // ROVER: detallar ro'yxati (SCX/chek) va kesish xaritasi almashtirgichi
@@ -134,7 +134,7 @@ function TerminalPage() {
     return true
   }, [])
   // Bekor qilinayotgan skan — dialog OCHILGANDA suratga olinadi. `lastScan`
-  // 15 s da tozalanadi, ya'ni dialog ochiqligicha qolsa tasdiqlash tugmasi jim
+  // 60 s da tozalanadi, ya'ni dialog ochiqligicha qolsa tasdiqlash tugmasi jim
   // no-op bo'lib qolardi.
   const [undoFor, setUndoFor] = useState<{
     scanId: number
@@ -358,7 +358,7 @@ function TerminalPage() {
       // oynalarini yopib o'tirardi.
       //
       // Skanning ishi — bosqichni yopish, u shu yerda bajarildi. Fayl kerak
-      // bo'lsa operator "Hammasini yuklab olish" ni bir marta bosadi.
+      // bo'lsa operator "SCX (N fayl)" tugmasini bir marta bosadi.
     },
     onError: (err, qr) => {
       if (!yangiXabar(qr)) return
@@ -549,9 +549,8 @@ function TerminalPage() {
             Onlayn holat ko'rsatilmaydi: tray o'sha mashinada doimiy holatni
             beradi, terminalda dublikat shovqin bo'lardi — chip yo'qolishi
             "tuzaldi" tasdig'i. Faqat agent biriktirilgan postda ma'no bor
-            (agent_online null = signal yo'q). Matn ikonkasiz emas: qizil
-            belgi yolg'iz o'zini tushuntirmaydi. Ikonka rolni aytadi
-            (printer / skaner). Cheklar baribir yo'qolmaydi — ogohlantirish. */}
+            (agent_online null = signal yo'q). Cheklar baribir yo'qolmaydi —
+            ogohlantirish. */}
         {(printerLive ?? ctx?.agent_online) === false && (
           <div
             className="flex h-12 w-12 shrink-0 animate-pulse items-center justify-center rounded-lg bg-red-600 text-white"
@@ -577,14 +576,14 @@ function TerminalPage() {
 
         {/* Skan maydoni IXCHAM: ishchi unga yozmaydi, skaner yozadi — 448px li
             matn maydoni header markazini bekorga egallardi. Endi holat chipi
-            ko'rinishida (224px): «Skan tayyor» / «Beyjik kuting»; skaner
+            ko'rinishida (176px): «Skan tayyor» / «Beyjik kuting»; skaner
             yozgan matn bir zum ko'rinib turadi (nosozlikda foydali).
             Xarita ochiq bo'lsa o'rnini ixcham material statlari egallaydi. */}
         <div
           className={cn("relative mx-auto w-44 shrink-0", mapOpen && "hidden")}
         >
           {/* Tayyor holatda ikonka yengil pulsatsiya qiladi — «skan kutyapman»
-              signali; skan o'chiq / smena yo'q bo'lsa jim kulrang */}
+              signali; smena yo'q bo'lsa jim kulrang */}
           <ScanLine
             className={cn(
               "absolute left-3 top-3 size-5",
@@ -712,7 +711,7 @@ function TerminalPage() {
           <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
             <TriangleAlert className="size-12 text-destructive/60" />
             <div className="max-w-md text-lg font-bold text-destructive">
-              {detailMessage(ctxError)}
+              {extractErrorMessage(ctxError)}
             </div>
             <p className="text-sm text-muted-foreground">
               Muammo hal bo'lgach sahifa o'zi yangilanadi.

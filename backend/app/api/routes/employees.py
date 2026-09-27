@@ -36,9 +36,10 @@ async def _validate_post_ids(db: SessionDep, post_ids: list[int]) -> None:
 async def _validate_user_link(db: SessionDep, user_id: int | None, employee_id: int | None = None) -> None:
     """Hodimni kirish hisobiga bog'lash qoidalari.
 
-    Qurilma va post hisoblari (TERMINAL/TABLO va POST_ROLES) ODAM EMAS — ular
-    monoblokning o'zi va smena qaysi hisob nomidan yozilishini hal qiladigan
-    texnik hisoblar (`login._terminal_user`). Odam ularga bog'lanmaydi.
+    Qurilma hisoblari (TERMINAL/TABLO) va `seed_defaults` yaratgan post TEXNIK hisobi
+    (`is_system`) ODAM EMAS — ular monoblokning o'zi va smena qaysi hisob nomidan
+    yozilishini hal qiladi (`login._terminal_user`). Odam ularga bog'lanmaydi. Post
+    rolidagi SHAXSIY hisobga esa ataylab bog'lanadi (skanersiz post, masalan ARRA).
 
     Bitta hisob ikki hodimga tegishli bo'lolmaydi: `ix_employee_user_id` PARTIAL
     UNIQUE indeksi buni baribir rad etardi, lekin xato xabari tushunarsiz bo'lardi.

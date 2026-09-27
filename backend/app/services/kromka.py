@@ -36,13 +36,13 @@ from app.models.enums import KromkaVerdict
 #: UZUNLIGI bo'ylab ketadi, chap/o'ng qirra ENI bo'ylab.
 _SIDE_GROUP = {"t": "length", "b": "length", "l": "width", "r": "width"}
 
-#: 2026-09-20 gacha `nomos` o'lchov brak qaydini O'ZI ochardi. Tsexda datchik uzunlikka
-#: qarab XATO o'lchayotgani aniqlandi — o'sha qaydlar soxta bo'lib chiqdi, shuning uchun
-#: avtomatik brak O'CHIRILDI (`d4b8e1f37c92` eski qatorlarni tozalagan). Brak faqat
-#: operator skandan keyin BRAK tugmasini bossa yoziladi. O'lchov hozircha KUZATUV:
-#: hukmi ekranda ko'rinadi, hech narsani bloklamaydi va hech kimni ayblamaydi.
-#: Datchik to'g'rilangach shu qator qaytariladi (docs/12 §4.10).
-AUTO_DEFECT_REASON = "O'lcham mos emas"
+# 2026-09-20 gacha `nomos` o'lchov brak qaydini O'ZI ochardi. Tsexda datchik uzunlikka
+# qarab XATO o'lchayotgani aniqlandi — o'sha qaydlar soxta bo'lib chiqdi, shuning uchun
+# avtomatik brak O'CHIRILDI (`d4b8e1f37c92` eski qatorlarni tozalagan). Brak faqat
+# operator skandan keyin BRAK tugmasini bossa yoziladi. O'lchov hozircha KUZATUV:
+# hukmi ekranda ko'rinadi, hech narsani bloklamaydi va hech kimni ayblamaydi.
+# Datchik to'g'rilangach avtomatik brak qaytariladi (docs/12 §4.10; eski sabab matni —
+# «O'lcham mos emas»).
 
 
 @dataclass(slots=True)

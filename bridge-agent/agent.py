@@ -46,7 +46,8 @@ from typing import Any
 from uuid import uuid4
 
 # websockets>=14 shart: additional_headers= va InvalidStatus.response.status_code
-# API'si ishlatiladi (exe hozir 16.x bilan yig'iladi — README'dagi install qatori)
+# API'si ishlatiladi (CI exe'ni pinlanmagan `websockets>=14` ning eng so'nggi versiyasi
+# bilan yig'adi — README'dagi install qatori)
 import websockets
 import websockets.exceptions
 
@@ -57,7 +58,7 @@ for _stream in (sys.stdout, sys.stderr):
         _stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
-# yuboriladi — admin paneldagi "Printerlar"da qaysi exe ishlayotgani ko'rinadi.
+# yuboriladi — admin paneldagi "MES agentlar" sahifasida qaysi exe ishlayotgani ko'rinadi.
 AGENT_VERSION = "1.8.0"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
@@ -1303,11 +1304,13 @@ def start_scan_forward() -> None:
 # o'zi ushlaydi — andon yiqilsa ham chek chiqaveradi.
 
 _PICO_VID = 0x2E8A  # Raspberry Pi (RP2040)
-#: Ikki xil Pico bor va ikkalasi ham shu VID bilan keladi:
+#: Uch xil Pico bor va hammasi shu VID bilan keladi:
 #:   PRISADKA — signal ustuni, qatorlari "MES event {...}" ko'rinishida (firmware `fsm.py`);
-#:   KROMKA   — uzunlik o'lchash stansiyasi, YALANG'OCH JSON qator: {"ev":"olchov",...}.
-#: Tur BIRINCHI tushunarli qatordan aniqlanadi; `ANDON_TUR` env bilan majburlash mumkin
-#: (bitta kompyuterga ikki Pico ulansa yoki qurilma jim tursa).
+#:   KROMKA   — uzunlik o'lchash stansiyasi, YALANG'OCH JSON qator: {"ev":"olchov",...};
+#:   ROVER    — CNC 2130, ikki tomonlama JSON: {"t":"hello"|"state"|"event"|...}.
+#: Tur BIRINCHI tushunarli qatordan aniqlanadi va har tushunarli qator uni qayta belgilaydi.
+#: `ANDON_TUR` env faqat boshlang'ich taxmin — qurilma hali jim turganda HB/PING/vaqt
+#: yuborish oralig'ini belgilaydi; qaysi portni o'qishni esa `ANDON_PORT` hal qiladi.
 _TUR_PRISADKA, _TUR_KROMKA, _TUR_ROVER = "prisadka", "kromka", "rover"
 #: Kromka Pico'si `XOST_MS` = 3 s ichida BUYRUQ ko'rmasa o'zini «stansiya yo'q» deb
 #: hisoblaydi va hodisalarni RAM ga yig'a boshlaydi (300 ta, keyin eng eskisi tushadi).
@@ -1318,20 +1321,21 @@ _KROMKA_HB_S = 1
 #: birga o'tgan yoki datchik ostida turib qolgan, o'lchov chiqmagan).
 #: `holat`/`pong`/`kal`/`kalib_rejim`/`yigilgan`
 #: — javob va diagnostika qatorlari, tarixga kerak emas.
-_KROMKA_EVENTS = ("olchov", "ogoh", "uskuna", "tezlik", "avariya_toxtash", "boot", "tiqilish")
 #: v1.20 dan kelgan `sig` (lampa fazasi — MES tovushni shundan boshlaydi) va
 #: `yigilgan` (xotira hisoboti) ATAYLAB ro'yxatda yo'q: ular MESga yozilmaydi.
+_KROMKA_EVENTS = ("olchov", "ogoh", "uskuna", "tezlik", "avariya_toxtash", "boot", "tiqilish")
 #: ROVER (CNC 2130) Pico'si IKKI TOMONLAMA gaplashadi — kromkadan farqi shu. Undan
 #: hodisa olish uchun unga har 10 soniyada kompyuter vaqti yuborilishi SHART: 30 s
 #: jim qolsa u «kompyuter yo'q» deb biladi va hodisalarni fleshga yig'a boshlaydi.
-_ROVER_TIME_S = 10
 #: Hodisa TASDIQ (`ack`) kelmaguncha Pico xotirasida qoladi va har 10 s qayta keladi.
 #: Tasdiq faqat SERVER yozgandan keyin beriladi (`andon_shipper`), ya'ni internet
 #: uzilsa hodisa Pico'da ham, navbatda ham saqlanib turadi.
-_ROVER_SESSION = "rover"
+_ROVER_TIME_S = 10
 #: Rover hodisasining `seq` i fleshda saqlanadi va hech qachon takrorlanmaydi —
 #: shuning uchun serverdagi `(machine_id, session, seq)` kaliti aynan shu juftlik
 #: bilan ishlaydi va qayta yuborilgan hodisa jimgina tashlanadi.
+_ROVER_SESSION = "rover"
+#: `andon_shipper` bir so'rovda yuboradigan eng ko'p hodisa.
 _ANDON_BATCH = 200
 #: Internet uzoq yo'q bo'lsa navbat shundan oshmaydi — eng eskilari tashlanadi
 #: (bitta stanok kuniga ~1000 hodisa beradi, ya'ni bu ~20 kunlik zaxira).
@@ -1498,7 +1502,7 @@ def _kromka_line(data: dict[str, Any]) -> None:
 #: ROVER Pico'si bilan aloqa holati. O'qish OQIMI va yuborish TASKI ikkalasi ham
 #: tegadi — har ikkalasi `ANDON_LOCK` ostida.
 ROVER: dict[str, Any] = {
-    "boot": None,      # Pico yuklanishlar soni (hodisa vaqtini tiklashda kerak)
+    "boot": None,      # Pico yuklanishlar soni (hello'dan); None — hello hali kelmagan, sozlama keyin
     "ack_upto": 0,     # server YOZGAN eng katta uzluksiz seq
     "ack_sent": 0,     # Pico'ga aytilgan oxirgi tasdiq
     "config": False,   # sozlama shu ulanishda yuborildimi
@@ -1662,11 +1666,11 @@ def _kromka_ack(port: Any) -> None:
 
 
 def _andon_line(text: str) -> None:
-    """Pico'dan kelgan bitta qator — ikkala firmware ham shu yerdan o'tadi.
+    """Pico'dan kelgan bitta qator — uchala firmware ham shu yerdan o'tadi.
 
-    Tur BIRINCHI tushunarli qatordan aniqlanadi: prisadka `MES ...` deb yozadi,
-    kromka esa yalang'och JSON. Aniqlangach `_andon_session` PING/HB oralig'ini
-    shunga moslaydi."""
+    Tur BIRINCHI tushunarli qatordan aniqlanadi: prisadka `MES ...`, kromka
+    `{"ev":...}`, rover `{"t":...}`. Aniqlangach `_andon_session` PING/HB/vaqt
+    yuborishini shunga moslaydi."""
     if text.startswith("{"):
         try:
             data = json.loads(text)
@@ -2269,7 +2273,7 @@ def start_tray() -> None:
 
     Ilgari agent butunlay ko'rinmas edi — "ishlayaptimi?" savoli exe'ni qayta
     bosish (mutex xabari) yoki admin panelga qarash bilan hal bo'lardi. Menyu
-    minimal: holat satri va log papkasi. "Chiqish" ATAYIN yo'q — tsexda tasodifan
+    minimal: holat satri, log papkasi va «Qayta ulash (yangi kod)». "Chiqish" ATAYIN yo'q — tsexda tasodifan
     yopilgan agent = chek chiqmaydi va uzoq qidiruv; kerak bo'lsa Task Manager
     bor. pystray o'rnatilmagan bo'lsa (eski build) jim o'tib ketadi."""
     try:

@@ -587,7 +587,7 @@
     renumber(); paintTotals();
   });
 
-  // Ctrl/Cmd+P → joriy ko'rinish chop etiladi
+  // Ctrl/Cmd+Enter → yangi qator qo'shiladi
   window.addEventListener('keydown', function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'enter') { e.preventDefault(); addRow(); }
   });

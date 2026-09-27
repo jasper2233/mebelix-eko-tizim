@@ -258,8 +258,10 @@ function SidebarTrigger({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar, open } = useSidebar()
-  const sidebarCopy = open ? "Menyuni yig'ish" : "Menyuni ochish"
+  const { toggleSidebar, open, openMobile, isMobile } = useSidebar()
+  // Telefonda tugma Sheet'ni (`openMobile`) almashtiradi — nom ham o'shandan
+  const expanded = isMobile ? openMobile : open
+  const sidebarCopy = expanded ? "Menyuni yig'ish" : "Menyuni ochish"
 
   return (
     <Button

@@ -773,7 +773,8 @@ export class OrdersService {
     /**
      * Cancel Order
      *
-     * any stage; scans/history stay for audit; terminals are notified in real time.
+     * TECHNICAL_REVIEW/PRODUCTION/COMPLETED dan (qoralama bekor qilinmaydi — o'chiriladi);
+     * skanlar va tarix audit uchun qoladi; terminallarga jonli xabar ketadi.
      */
     public static cancelOrder<ThrowOnError extends boolean = true>(options: Options<CancelOrderData, ThrowOnError>): RequestResult<CancelOrderResponses, CancelOrderErrors, ThrowOnError> {
         return (options.client ?? client).post<CancelOrderResponses, CancelOrderErrors, ThrowOnError>({
@@ -872,7 +873,8 @@ export class OrdersService {
     /**
      * Edit Order Matrix
      *
-     * Texnolog matrix edits: stage toggles, notes, rare count fixes. Pre-production only.
+     * Texnolog matrix edits: stage toggles, notes, count fixes, is_custom/route_codes. Allowed while
+     * `_require_editable` passes (DRAFT/TECHNICAL_REVIEW, or PRODUCTION with no live scans).
      */
     public static editOrderMatrix<ThrowOnError extends boolean = true>(options: Options<EditOrderMatrixData, ThrowOnError>): RequestResult<EditOrderMatrixResponses, EditOrderMatrixErrors, ThrowOnError> {
         return (options.client ?? client).patch<EditOrderMatrixResponses, EditOrderMatrixErrors, ThrowOnError>({
@@ -1428,7 +1430,7 @@ export class TerminalService {
     /**
      * Read Terminal Orders
      *
-     * Active orders relevant to this terminal (for the ARRA map order picker).
+     * Shu postga tegishli aktiv buyurtmalar — har post terminalining buyurtma tanlagichi uchun.
      */
     public static readTerminalOrders<ThrowOnError extends boolean = true>(options?: Options<ReadTerminalOrdersData, ThrowOnError>): RequestResult<ReadTerminalOrdersResponses, unknown, ThrowOnError> {
         return (options?.client ?? client).get<ReadTerminalOrdersResponses, unknown, ThrowOnError>({

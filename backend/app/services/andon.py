@@ -179,11 +179,10 @@ class MachineTime:
 
     To'xtashlarning BITTALAB ro'yxati ataylab yo'q (2026-09-19): rahbarga kerakli narsa —
     umumiy to'xtash vaqti va uning sabablari (`services/availability.py`), ketma-ket
-    o'nlab qator emas. Avariya SONI qoladi: u «necha marta» degan boshqa savol."""
+    o'nlab qator emas."""
 
     seconds: dict[int, dict[str, int]] = field(default_factory=dict)
     days: dict[tuple[int, date], dict[str, int]] = field(default_factory=dict)
-    faults: dict[int, int] = field(default_factory=dict)
 
 
 def andon_spans(
@@ -229,6 +228,4 @@ def machine_time(spans: Iterable[AndonSpan], start: datetime, end: datetime, now
             per_day = out.days.setdefault((span.machine_id, local_day), dict.fromkeys(ANDON_STATES, 0))
             per_day[span.state] += int((seg_end - cur).total_seconds())
             cur = seg_end
-        if span.state == "FAULT":
-            out.faults[span.machine_id] = out.faults.get(span.machine_id, 0) + 1
     return out

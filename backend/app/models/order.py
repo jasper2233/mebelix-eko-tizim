@@ -111,7 +111,8 @@ class Part(BaseModel):
     label_num: Mapped[int | None] = mapped_column(default=None, kw_only=True)  # CS stub order, 1-based
     # Edge banding per side: {"l": {"mat": "06-19 SASNA", "symbol": "A"}, "t": {...}} (ell/elr/elt/elb)
     edges: Mapped[dict[str, Any]] = mapped_column(JSONB, default_factory=dict, kw_only=True)
-    # Merged XNC summary: {"bores": N, "edge_bores": N, "grooves": N, "mills": N, "sides": 1|2}
+    # Merged XNC summary: {"bores", "edge_bores", "grooves", "mills": N, "groove_sides"/"mill_sides": [...],
+    # "groove_paths"/"mill_paths": [...]} — eski `sides` ni faqat `1cfd3b2182fc` downgrade'i o'qiydi (docs/04)
     xnc_summary: Mapped[dict[str, Any]] = mapped_column(JSONB, default_factory=dict, kw_only=True)
     note: Mapped[str | None] = mapped_column(Text, default=None, kw_only=True)  # texnolog izohi
     #: Nostandart detal: marshrutini texnolog QO'LDA chizadi (Nostandart detallar tabi).
@@ -135,7 +136,8 @@ PART_FAT_COLUMNS = (Part.xnc_summary, Part.note)
 
 
 class PartInstance(BaseModel):
-    """Physical copy of a part. QR = productCode_partCode_n; each copy tracked separately."""
+    """Physical copy of a part. QR = {order}_productCode_partCode[_n] (`_n` only when count > 1, docs/11);
+    each copy tracked separately."""
 
     __tablename__ = "part_instance"
 
@@ -201,7 +203,7 @@ class PartRoute(BaseModel):
 
 
 class OrderFile(BaseModel):
-    """Stored file: uploaded .project, generated .scx per part, label PDFs, contract docs."""
+    """Stored file: uploaded .project, generated .scx per part, survey room photos (DOCUMENT), Bazis .b3d (BAZIS)."""
 
     __tablename__ = "order_file"
 
@@ -243,7 +245,7 @@ class WasteItem(BaseModel):
 
     order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), index=True, kw_only=True)
     material_name: Mapped[str] = mapped_column(String(150), kw_only=True)
-    sheet_no: Mapped[int] = mapped_column(kw_only=True)  # material ichidagi list raqami
+    sheet_no: Mapped[int] = mapped_column(kw_only=True)  # kesish xaritasidagi GLOBAL list raqami (materiallar bo'ylab)
     length: Mapped[float] = mapped_column(kw_only=True)  # foydali o'lcham, mm
     width: Mapped[float] = mapped_column(kw_only=True)
     #: "ATX-{buyurtma}-{n}" — chekdagi QR. Detal QR'idan ataylab farqli prefiks:

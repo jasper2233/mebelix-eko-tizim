@@ -302,9 +302,6 @@ async def sync_downtimes(ctx: dict[str, Any]) -> str:
     return f"synced:{len(machine_ids)}"
 
 
-all_tasks = [print_label, print_pachka_label, print_waste_label, print_badge]
-
-
 #: Worker cron oralig'i — smena chegara oshgandan ko'pi bilan shuncha keyin yopiladi.
 IDLE_SWEEP_MINUTES = 10
 

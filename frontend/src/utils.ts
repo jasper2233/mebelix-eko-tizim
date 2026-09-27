@@ -127,12 +127,6 @@ export function toastScanError(err: unknown): void {
   )
 }
 
-/** Skan/terminal uchun bir qatorlik matn — kod oldinda (holat sahifasi, log). */
-export function detailMessage(err: unknown): string {
-  const { code, message } = detailParts(err)
-  return message ? `${code}: ${message}` : code
-}
-
 /** Mutatsiya xatosi toast bilan ko'rsatiladi. Usage: `onError: handleError`. */
 export const handleError = (err: unknown): void => {
   toast.error(extractErrorMessage(err))

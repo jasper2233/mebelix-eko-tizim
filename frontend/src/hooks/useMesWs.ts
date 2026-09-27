@@ -34,13 +34,15 @@ export function useMesWs(onEvent: (event: MesEvent) => void) {
         }, 30_000)
       }
       socket.onmessage = (e) => {
+        let event: MesEvent
         try {
-          const event = JSON.parse(e.data)
-          if (event.type === "pong") lastPongAt = Date.now()
-          else if (event.type) handler.current(event)
+          event = JSON.parse(e.data)
         } catch {
-          /* skip non-JSON frames */
+          return /* skip non-JSON frames */
         }
+        // Tinglovchi xatosi JSON catch'ida jim yutilmasin — konsolga chiqsin
+        if (event.type === "pong") lastPongAt = Date.now()
+        else if (event.type) handler.current(event)
       }
       socket.onclose = () => {
         setOnline(false)

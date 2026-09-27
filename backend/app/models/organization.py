@@ -5,7 +5,7 @@ from .base import BaseModel
 
 
 class Organization(BaseModel):
-    """Tenant. Bitta qator ("Mebelix"), `seed_defaults` yaratadi.
+    """Tenant. Bitta qator ("Mebelix"), `1393a241b793` migratsiyasi yaratadi.
 
     Oltita jadvaldagi `organization_id` FK hech qayerda filtrlanmaydi va hech
     qachon berilmaydi (`default=1`): ikkinchi tashkilot tayyor mexanizmni yoqish

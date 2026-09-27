@@ -78,7 +78,7 @@ export function UpakovkaView({
 
   const put = (d: typeof data) => queryClient.setQueryData(key, d)
   // 30 s'lik fon so'rovi uchib turgan bo'lsa, uning ESKI javobi `put` natijasini
-  // ustidan yozadi (TmoView'da tuzatilgan poyga) — avval fon so'rovi bekor qilinadi.
+  // ustidan yozadi — avval fon so'rovi bekor qilinadi.
   const cancel = () => queryClient.cancelQueries({ queryKey: key })
   const invalidate = () => queryClient.invalidateQueries({ queryKey: key })
   // Xatodan keyin holat serverdan qayta o'qiladi: boshqa terminal qadoqni yopgan
@@ -213,8 +213,7 @@ export function UpakovkaView({
         : null,
       !p.ready,
     )
-  const tier = (g: Group) =>
-    g.instances.some((i) => !i.packed) ? 0 : g.instances.length ? 2 : 1
+  const tier = (g: Group) => (g.instances.some((i) => !i.packed) ? 0 : 1)
   const rows = [...groups.values()]
     .filter((g) => g.instances.length > 0)
     .map((g) => ({

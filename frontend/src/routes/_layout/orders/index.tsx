@@ -438,7 +438,7 @@ function OrdersPage() {
         loading={remove.isPending}
         onConfirm={() => deleteTarget && remove.mutate(deleteTarget.id)}
       />
-      {rows.length >= PAGE_SIZE && (
+      {!detalRejimi && rows.length >= PAGE_SIZE && (
         <p className="mt-3 text-center text-xs text-muted-foreground">
           Faqat oxirgi {PAGE_SIZE} ta buyurtma ko'rsatilmoqda — kerakligini
           qidiruv yoki holat bo'yicha toping.

@@ -63,7 +63,8 @@ type Head = {
 
 type Sheet = { head: Head; rows: Row[]; seq: number }
 
-const bugun = () => new Date().toISOString().slice(0, 10)
+// Mahalliy (Toshkent) sana — `toISOString` UTC berardi va 00:00-04:59 da kechagi kun chiqardi
+const bugun = () => new Date().toLocaleDateString("sv-SE")
 
 const bosh = (seller = ""): Sheet => ({
   head: {
@@ -404,7 +405,7 @@ function SotuvPage() {
                   Jami summa
                 </span>
                 <span className="num text-2xl font-bold">
-                  {formatMoney(jami)}{" "}
+                  {groupThousands(String(Math.round(jami)))}{" "}
                   <span className="text-sm font-semibold text-muted-foreground">
                     so'm
                   </span>

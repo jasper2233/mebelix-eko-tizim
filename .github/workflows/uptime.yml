@@ -34,8 +34,10 @@ jobs:
           set -u
           problems=""
 
-          # curl ulanolmasa o'zi 000 chiqaradi va noldan farqli kod bilan tugaydi — `|| echo` qo'shsa 000000 bo'lardi
-          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$SITE/api/v1/ready"); code=${code:-000}
+          # curl ulanolmasa o'zi 000 chiqaradi va noldan farqli kod bilan tugaydi — `|| echo` qo'shsa 000000 bo'lardi.
+          # `|| :` SHART: qadam `bash -e` ostida yuradi va usiz server o'lganda qadam shu yerda yiqilib,
+          # Telegram'ga hech narsa ketmasdi — ish aynan shu holat uchun.
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$SITE/api/v1/ready") || :; code=${code:-000}
           [ "$code" = "200" ] || problems="$problems
           ❌ Sayt javob bermayapti: /api/v1/ready → $code"
 

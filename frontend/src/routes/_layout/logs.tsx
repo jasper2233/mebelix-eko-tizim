@@ -78,6 +78,7 @@ const MODULE_LABELS: Record<string, string> = {
   auth: "Kirish/chiqish",
   settings: "Sozlamalar",
   system: "Tizim holati",
+  catalog: "Mahsulotlar ombori",
 }
 const MODULE_ORDER = Object.keys(MODULE_LABELS)
 
@@ -96,6 +97,9 @@ const ENTITY_LABELS: Record<string, string> = {
   downtime_reason: "To'xtash sababi",
   defect: "Brak",
   system_setting: "Sozlama",
+  catalog_item: "Katalog pozitsiyasi",
+  pachka: "Qadoq",
+  post: "Post",
 }
 
 // Salbiy amallar qizil, yakunlovchi milestone'lar yashil — ro'yxatda ko'z

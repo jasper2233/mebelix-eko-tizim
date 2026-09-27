@@ -1,5 +1,5 @@
 // PRISADKA post sahifasi: buyurtmaning prisadka detallari ro'yxati,
-// har detalning SCX fayllari. "Hammasini yuklab olish" barcha SCX'ni BIR MARTA
+// har detalning SCX fayllari. "SCX (N fayl)" tugmasi barcha SCX'ni BIR MARTA
 // tanlangan papkaga yozadi (File System Access API) — papka IndexedDB'da
 // saqlanadi, keyingi safar so'ralmaydi. SKAN esa hech qanday fayl yuklamaydi:
 // yuklash faqat shu tugma orqali, operator xohlaganda.

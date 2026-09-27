@@ -19,6 +19,8 @@ import { useAuth } from "@/hooks/useAuth"
 export const LAST_ACTIVITY_KEY = "mes.lastActivity"
 /** Serverga faollik xabari — ko'pi bilan shuncha vaqtda bir marta. */
 const PING_MS = 60_000
+//: Ping yiqilsa (tarmoq/5xx) shundan keyin qayta uriniladi — har harakatda emas
+const RETRY_MS = 5_000
 const CHECK_MS = 30_000
 const INPUT_EVENTS = ["pointerdown", "keydown", "wheel", "touchstart"] as const
 
@@ -83,7 +85,7 @@ export function useIdleLogout() {
     if (now - lastPingRef.current > PING_MS) {
       lastPingRef.current = now
       UsersService.touchUserActivity().catch(() => {
-        lastPingRef.current = 0 // tarmoq uzildi — keyingi harakatda qayta urinamiz
+        lastPingRef.current = now - PING_MS + RETRY_MS // tarmoq uzildi — 5 s dan keyin qayta urinamiz
       })
     }
   }, [limitMs, expired])

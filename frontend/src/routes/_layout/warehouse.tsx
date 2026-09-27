@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { Pencil, ReceiptText } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import type { CatalogItemRead } from "@/client"
 import { EmptyRow } from "@/components/Common/EmptyRow"
@@ -63,6 +63,10 @@ function WarehousePage() {
   const [lowStock, setLowStock] = useState(false)
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(0)
+  // Katalog/guruh manzildan (yon menyu ham) almashadi, route esa qayta mount bo'lmaydi —
+  // eski sahifa raqami yangi katalogda bo'sh jadval berardi
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filtr o'zgarganda nolga qaytish — maqsadning o'zi
+  useEffect(() => setPage(0), [catalog, guruh])
   const [editFor, setEditFor] = useState<CatalogItemRead | null>(null)
   const debounced = useDebounced(search.trim())
 
@@ -71,7 +75,7 @@ function WarehousePage() {
     ...getCatalogItemsQueryOptions(
       {
         // Guruh tanlansa katalog ham o'shanikidan olinadi (`M-LG` -> M + LG):
-        // «Hammasi» tabida turib guruh tanlash ham to'g'ri ishlasin
+        // katalog tanlanmagan (butun katalog) holatda guruh tanlash ham to'g'ri ishlasin
         catalog: guruh ? guruh.slice(0, 1) : catalog,
         groupCode: guruh ? guruh.slice(2) : undefined,
         status: status as "Aktiv" | "Arxiv" | undefined,
@@ -94,7 +98,6 @@ function WarehousePage() {
 
   // Manzildagi filtr — sahifa ham nolga qaytadi
   const yonalt = (next: { katalog?: string; guruh?: string }) => {
-    setPage(0)
     navigate({ search: next, replace: true })
   }
 
@@ -109,8 +112,8 @@ function WarehousePage() {
   // Guruh ro'yxati TANLANGAN katalog ichidan. Tanlov qiymati TO'LIQ kod
   // (`M-LG`), faqat `group_code` emas: `LG` ikki katalogda ham bor — `M-LG`
   // (LEGE fasad paneli) va `X-LG` (logistika), `KM`/`KR` esa kromka nomini
-  // ikkovida takrorlaydi. Faqat guruh harfi bilan filtrlaganda «Hammasi»
-  // tanlangan holatda boshqa katalogning pozitsiyalari ham chiqib ketardi.
+  // ikkovida takrorlaydi. Faqat guruh harfi bilan filtrlaganda butun katalog
+  // ko'rinishida boshqa katalogning pozitsiyalari ham chiqib ketardi.
   const guruhlar = guruhlarHammasi
     .filter((g) => !catalog || g.catalog === catalog)
     .map((g) => ({

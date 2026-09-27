@@ -7,7 +7,8 @@ nima o'zgargani ko'rinmaydi; CSV esa deploy bilan boradi va har qatori o'qiladi.
 
 Yuklash KOD bo'yicha upsert: kod katalogning yagona kaliti va u hech qachon
 o'zgarmaydi. Qayta yurgizish xavfsiz — mavjud pozitsiya YANGILANADI, qoldiq va
-joylashuv esa TEGILMAYDI (ular omborchining ishi, varaqda yo'q).
+joylashuv esa TEGILMAYDI (ular omborchining ishi; varaqdagi `Miqdor`/`Min`/`Joylashuv`
+ustunlari ataylab olinmaydi).
 
     # varaqdan CSV yasash (faqat lokalda, xlsx yonida bo'lsa)
     cd backend && uv run python ../scripts/catalog_import.py --xlsx ../docs/Katalog.xlsx
@@ -217,7 +218,7 @@ async def bazaga() -> tuple[int, int]:
             }
             item = bor.get(r["code"])
             if item is None:
-                # Qoldiq va joylashuv varaqda yo'q — yangi pozitsiya nol bilan tushadi
+                # Varaqdagi qoldiq/chegara olinmaydi — yangi pozitsiya nol bilan tushadi
                 db.add(CatalogItem(**maydon))
                 yangi += 1
             else:

@@ -235,7 +235,7 @@ jobs:
           # Bo'sh bo'lsa oddiy chatga ketadi, ya'ni eski sozlama buzilmaydi.
           TG_TOPIC: ${{ secrets.TG_TOPIC_ID }}
         run: |
-          printf 'TG_BOT_TOKEN=%s\nTG_CHAT_ID=%s\n' "$TG_TOKEN" "$TG_CHAT" |
+          printf 'TG_BOT_TOKEN=%s\nTG_CHAT_ID=%s\nTG_TOPIC_ID=%s\n' "$TG_TOKEN" "$TG_CHAT" "$TG_TOPIC" |
             ssh "root@${{ secrets.DEPLOY_HOST }}" \
               "umask 077 && cat > /opt/mebelix-mes/.backup.env"
 
@@ -253,9 +253,11 @@ jobs:
             "cd /opt/mebelix-mes && TAG=${{ github.sha }} REGISTRY=ghcr.io/${{ github.repository_owner }} bash scripts/deploy.sh"
       - name: Public smoke (nginx/TLS yo'li)
         run: |
-          code=$(curl -s -o /dev/null -w '%{http_code}' https://mes.mebelix.uz/api/v1/ready)
+          # `--max-time` SHART (`deploy.sh` dagi sabab bilan): TCP qabul qilib javob bermaydigan API da
+          # usiz curl cheksiz kutadi va job `prod-deploy` navbatini 6 soatgacha band qiladi
+          code=$(curl -s --connect-timeout 5 --max-time 15 -o /dev/null -w '%{http_code}' https://mes.mebelix.uz/api/v1/ready) || :
           [ "$code" = "200" ] || { echo "public ready: $code" >&2; exit 1; }
-          curl -s https://mes.mebelix.uz/api/v1/ready
+          curl -s --connect-timeout 5 --max-time 15 https://mes.mebelix.uz/api/v1/ready
 
   notify:
     # Alohida job: CI (backend/frontend) yiqilsa deploy skip bo'ladi —
@@ -294,5 +296,5 @@ jobs:
           # 1 qaytaradi va qadam `bash -e` ostida shu yerda yiqilardi.
           topic=""
           if [ -n "${TG_TOPIC:-}" ]; then topic="-d message_thread_id=${TG_TOPIC}"; fi
-          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+          curl -s --max-time 20 -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             -d chat_id="$TG_CHAT" $topic --data-urlencode text="$msg" >/dev/null

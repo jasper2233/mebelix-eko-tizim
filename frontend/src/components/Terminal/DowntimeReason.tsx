@@ -1,6 +1,7 @@
 // To'xtash sababi — smenadagi hodim terminalda kiritadi (docs/12-oee.md §7).
 // Doimiy tugma YO'Q (2026-08-21 dagi modul 1366×768 ekranga sig'magani uchun qaytarilgan):
-// - Pico to'xtashi (qizil chiroq, hammasi o'chiq, sariq chiroq chegaradan uzoq) — oyna O'ZI chiqadi;
+// - Pico to'xtashi (qizil, hammasi o'chiq, sariq, kromka/rover lentasi) `stop_prompt_idle_minutes`
+//   dan uzoq davom etsa — oyna O'ZI chiqadi;
 // - qulf tugmasi — avval sabab, "Saqlash va qulflash" dan keyin ekran qulflanadi.
 // Faqat Pico ulangan ish markazida (`TerminalContext.has_andon`).
 

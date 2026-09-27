@@ -62,7 +62,8 @@ export function MachineAssign({ order }: { order: OrderDetail }) {
 
   // Faqat HAQIQIY tanlov: postda 2+ aktiv stanok bo'lsa. Bittasi bo'lsa backend
   // ishlab chiqarishga uzatishda o'zi biriktiradi — bitta variantli select
-  // odamga ortiqcha «majburiy qadam» edi.
+  // odamga ortiqcha «majburiy qadam» edi. Faqat AKTIV: ta'mirdagi/noaktivga server
+  // ham biriktirmaydi (409).
   const activeFor = (postId: number) =>
     (machines ?? []).filter(
       (m) => m.post_id === postId && m.status === "active",
@@ -76,10 +77,7 @@ export function MachineAssign({ order }: { order: OrderDetail }) {
     <div className="mb-6 flex flex-wrap items-center gap-3 text-sm">
       <span className="text-muted-foreground">Ish markazi:</span>
       {withChoice.map((post) => {
-        // Faqat AKTIV: ta'mirdagi/noaktivga server ham biriktirmaydi (409)
-        const options = (machines ?? []).filter(
-          (m) => m.post_id === post.id && m.status === "active",
-        )
+        const options = activeFor(post.id)
         return (
           <div key={post.id} className="flex items-center gap-2">
             <span
@@ -94,9 +92,7 @@ export function MachineAssign({ order }: { order: OrderDetail }) {
               onChange={(v) =>
                 setSelection((prev) => ({ ...prev, [post.code]: v }))
               }
-              placeholder={
-                options.length ? "Ish markazini tanlang" : "AKTIV markaz yo'q"
-              }
+              placeholder="Ish markazini tanlang"
               emptyLabel="Biriktirilmagan"
               options={options.map((m) => ({
                 value: String(m.id),

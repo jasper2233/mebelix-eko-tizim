@@ -247,7 +247,7 @@ export function SheetSvg({
   const ptsRef = useRef(new Map<number, { x: number; y: number }>())
   const pinchRef = useRef<number | null>(null)
   const swipeRef = useRef<{ x: number; y: number; t: number } | null>(null)
-  // Long press (chekni bekor qilish): taymer + boshlang'ich nuqta; barmoq
+  // Long press (detal kartochkasini ochadi): taymer + boshlang'ich nuqta; barmoq
   // siljisa/ko'tarilsa bekor. Otilgach keyingi click yutiladi (tanlash ochilmasin)
   const lpRef = useRef<{
     t: number
@@ -705,9 +705,7 @@ export function SheetSvg({
           )
       }
       if (!tight && showW && oW.mode === "h") {
-        // GibSaw: pastki-chap burchak, qirradan 6 ichkarida. Muqobil nomzodlar
-        // faqat teshik ustiga tushganda (GibSaw teshiklarni umuman tekshirmaydi
-        // — bu bizning qo'shimcha).
+        // GibSaw: pastki-chap burchak, qirradan 6 ichkarida.
         const wlen = wText.length * dW * CH
         const spot = { x: p.x + 6, y: p.y + hv - 4 - DESC * dW }
         dimBoxes.push({

@@ -4,15 +4,16 @@ Operator terminalda faqat QAYD qiladi — u kim aybdor va qayerdan qayta boshlan
 bilmaydi. Menejer shu sahifada aybdor QADAMNI (post emas: bitta post marshrutda ikki
 marta uchrashi mumkin) va qayta boshlash nuqtasini belgilaydi.
 
-Qayta ishlab chiqarishning O'ZI (eski skanlarni bekor qilish, `-B1` nusxa, yangi chek,
-marshrutni qayta ochish) hali YO'Q — bu sahifa hozircha QARORNI yozadi. Sabab: qaror
-yozuvisiz brak statistikasi (aybdor post, qaytish nuqtasi) umuman yig'ilmaydi, remake
-esa alohida katta oqim.
+TASDIQ ishni tanlangan qadamdan qayta ochadi (`services/defects.reopen_from_step`): o'sha
+qadamdan boshlab skanlar bekor qilinadi, detal qadoqdan chiqariladi, qayta boshlash kesish
+postida bo'lsa chek ham qaytariladi. Faqat `-B1` yangi nusxa (yangi PartInstance/SCX) hali
+YO'Q. Qaror yozuvi baribir kerak: usiz brak statistikasi (aybdor post, qaytish nuqtasi)
+umuman yig'ilmasdi.
 """
 
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import defer
@@ -167,7 +168,7 @@ async def _rows(db: AsyncSession, *, status: DefectStatus | None, defect_id: int
 async def read_defects(
     db: SessionDep,
     _: ManagerUser,
-    status: DefectStatus | None = Query(default=DefectStatus.PENDING),
+    status: DefectStatus | None = None,
 ) -> list[DefectRow]:
     """Brak ro'yxati. `status` berilmasa — HAMMASI (sahifadagi «Hammasi» tabi)."""
     return await _rows(db, status=status)

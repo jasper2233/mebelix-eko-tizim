@@ -76,7 +76,7 @@ POST_ROLES: dict[UserRole, PostCode] = {
 
 
 class PachkaStatus(StrEnum):
-    """Qadoq holati: ochiq (detal qo'shiladi) -> yopiq (chek chiqadi) -> jo'natildi."""
+    """Qadoq holati: ochiq (detal qo'shiladi) -> yopiq (chek chiqadi). `shipped` O'LIK (`models/pachka.py`)."""
 
     OPEN = "open"
     CLOSED = "closed"

@@ -30,7 +30,7 @@ from app.services.giblab.ingest import (
     wipe_previous_parse,
 )
 
-from ._common import _get_order, _get_visible_order, _require_editable, stamp_route_machines
+from ._common import _first_n, _get_order, _get_visible_order, _require_editable, stamp_route_machines
 
 router = APIRouter()
 
@@ -109,7 +109,7 @@ async def upload_order_project(
         # qadam ham MANUAL bo'lib saqlanadi va shu sanoqqa kiradi.
         summary["warnings"].append(f"{restored} detalning qo'lda kiritilgan marshrut qadamlari tiklandi.")
     if lost:
-        names = ", ".join(lost[:5]) + (f" va yana {len(lost) - 5} ta" if len(lost) > 5 else "")
+        names = _first_n(lost)
         summary["warnings"].append(f"Yangi faylda topilmagani uchun marshruti yo'qolgan detallar: {names}")
     # Tiklangan qo'lda marshrut xaritada joyi yo'q detalga "Raspil" qaytargan bo'lishi
     # mumkin — bunday detalni arrachi ko'rmaydi, uzatish ham rad etiladi (`/start`)
@@ -178,7 +178,7 @@ async def download_order_scx_zip(db: SessionDep, current_user: StaffReadUser, or
     # `download_order_file` ham xuddi shu holatda 404 beradi.
     missing = [row.filename for row in rows if not (root / row.path).is_file()]
     if missing:
-        names = ", ".join(missing[:5]) + (f" va yana {len(missing) - 5} ta" if len(missing) > 5 else "")
+        names = _first_n(missing)
         raise NotFoundException(f"SCX fayllar diskda topilmadi: {names}. SCX'ni qayta yarating.")
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:

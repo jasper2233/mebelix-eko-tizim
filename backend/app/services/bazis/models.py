@@ -157,10 +157,6 @@ class ParsedBazis:
     warnings: list[str] = field(default_factory=list)
 
     @property
-    def coded_panels(self) -> list[BazisPanel]:
-        return [p for p in self.panels if p.des]
-
-    @property
     def part_count(self) -> int:
         """Kartochkadagi «N detal»: panellar va KODLI jismlar. Kodsiz profil —
         muzlatkich korpusi, rels — detal emas, texnika yoki furnitura."""

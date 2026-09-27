@@ -155,6 +155,17 @@ def _groove(el: ET.Element, num: _Num, code: str) -> dict[str, Any]:
 
 
 def parse_xnc_program(code: str, program_xml: str, side: str | None = None) -> XncOp:
+    """Buzilgan raqamli atribut (`d="5,0"`, `ac="inf"`) ham `ParseError` — yuklash va qayta
+    generatsiya faqat shuni tutadi, aks holda texnolog 422 o'rniga yalang'och 500 olardi."""
+    try:
+        return _parse_xnc_program(code, program_xml, side)
+    except ParseError:
+        raise
+    except (ValueError, OverflowError) as exc:
+        raise ParseError(f"XNC dasturida noto'g'ri raqam ({code}): {exc}") from exc
+
+
+def _parse_xnc_program(code: str, program_xml: str, side: str | None) -> XncOp:
     try:
         root = ET.fromstring(program_xml)
     except ET.ParseError as exc:
@@ -333,6 +344,6 @@ def merge_xnc_ops(ops: list[XncOp]) -> list[XncOp]:
     XNC1..XNC5 maydonlarini taklif qiladi (help/labels_ru.html). Ilgari bu yerda ikkitadan
     ko'pi uchun ParseError bor edi — ya'ni uch tomoni ishlanadigan detal bo'lsa BUTUN fayl
     import bo'lmasdi. Cheklov TZ talabi emas, korpus kuzatuvidan qotib qolgan edi.
-    `prisadka_passes()` N ta operatsiyani baribir to'g'ri sanaydi (har biri +1 skan).
+    `prisadka_passes()` operatsiyalar soni qancha bo'lmasin bitta PRISADKA skanini beradi (0 yoki 1).
     """
     return sorted(ops, key=lambda o: (o.side2, o.code))

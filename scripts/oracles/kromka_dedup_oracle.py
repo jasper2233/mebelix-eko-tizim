@@ -169,8 +169,8 @@ async def main() -> None:
 
         oldin = await report_machine_time(db, admin, date_from=KECHA.date(), date_to=KECHA.date())
         r0 = oldin.rows[0]
-        # Takrorlar tufayli 30 ta o'tish 30 × NUSXA bo'lib sanalgan (+3 ta yolg'iz yozuv),
-        # ideal vaqt ham shuncha shishgan: 2177.5 s ÷ 10680 s = 20.4%
+        # Takrorlar tufayli 30 ta o'tish 30 × NUSXA bo'lib sanalgan (+10 ta bir soniyalik to'qnashuv
+        # nusxasi va 3 ta yolg'iz yozuv), ideal vaqt ham shuncha shishgan: ≈2226 s ÷ 10683 s = 20.8%
         natija.append(("tozalashdan OLDIN detal soni shishgan", r0.parts, 30 * NUSXA + 13))
         natija.append(("tozalashdan OLDIN Performance shishgan", r0.performance_pct, 20.8))
 
@@ -216,14 +216,14 @@ async def main() -> None:
 
         olchov_qoldi = await db.scalar(select(func.count()).select_from(KromkaMeasurement)
                                        .where(KromkaMeasurement.is_deleted == False))  # noqa: E712
-        # Har HODISAGA bitta: 30 + tegilmaydigan eski yozuv. Vaqt bo'yicha tozalash
+        # Har HODISAGA bitta: 30 + bir soniyadagi 2 ta hodisa + tegilmaydigan eski yozuv. Vaqt bo'yicha tozalash
         # bu yerda 30 × 4 = 120 satr qoldirardi — kalit `xb`/`xq` bo'lgani shu uchun muhim.
         natija.append(("o'lchov tarixi: har hodisaga BITTA yozuv", olchov_qoldi, 33))
 
         keyin = await report_machine_time(db, admin, date_from=KECHA.date(), date_to=KECHA.date())
         r1 = keyin.rows[0]
         natija.append(("tozalashdan KEYIN detal soni haqiqiy", r1.parts, 35))
-        # 197.5 s ÷ 10680 s — endi Pico rostdan qilgan ish
+        # ≈207 s ÷ 10680 s — endi Pico rostdan qilgan ish
         natija.append(("tozalashdan KEYIN Performance haqiqiy", r1.performance_pct, 1.9))
         # Ishlagan vaqt deyarli o'zgarmaydi: bo'sh yurish chegarasi o'lchov BELGILARIGA
         # tayanadi, takror nusxalar esa o'sha belgilarni bir necha soniyaga cho'zib

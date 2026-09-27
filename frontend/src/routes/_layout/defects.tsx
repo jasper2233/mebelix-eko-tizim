@@ -64,7 +64,8 @@ const STATUS_STYLE: Record<string, string> = {
   rejected: "border-transparent bg-muted text-muted-foreground",
 }
 
-/** Qadam nomi: «3. Prisadka — Prisadka (Ali Valiyev)». Amal nomi postnikidan farq qilsa qo'shiladi. */
+/** Qadam nomi: «3. Prisadka» yoki «3. Kromka · Pazlash» — amal nomi postnikidan farq qilsagina
+ * qo'shiladi (hodim nomi alohida chiziladi). */
 const stepLabel = (s: DefectRow["steps"][number]) => {
   const op = PROCESS_OPS[s.process_code]?.name
   const amal = op && op !== s.post_name ? ` · ${op}` : ""

@@ -200,7 +200,6 @@ async def read_tablo_machines(db: SessionDep, user: CurrentUser) -> list[TabloMa
                 nomos_count=hukmlar.get(r.machine_id, {}).get(KromkaVerdict.NOMOS.value, 0),
                 last_mm=float(olchov.measured_mm) if olchov and olchov.measured_mm is not None else None,
                 last_verdict=olchov.verdict.value if olchov else None,
-                last_part=None,
             )
         )
     return rows

@@ -87,7 +87,8 @@ async def read_order_matrix(db: SessionDep, current_user: StaffReadUser, order_i
 async def edit_order_matrix(
     db: SessionDep, current_user: TexnologUser, order_id: int, body: MatrixEdit, request: Request
 ) -> OrderMatrix:
-    """Texnolog matrix edits: stage toggles, notes, rare count fixes. Pre-production only."""
+    """Texnolog matrix edits: stage toggles, notes, count fixes, is_custom/route_codes. Allowed while
+    `_require_editable` passes (DRAFT/TECHNICAL_REVIEW, or PRODUCTION with no live scans)."""
     order = await _get_order(db, order_id)
     await _require_editable(db, order, "Matritsani o'zgartirib bo'lmaydi")
 
@@ -385,7 +386,8 @@ async def _set_custom_route(
 
 
 async def _resize_instances(db: SessionDep, part: Part, new_count: int) -> None:
-    """Adjust physical copies + route totals when texnolog changes count (pre-production only)."""
+    """Adjust physical copies + route totals when texnolog changes count (only while the order is
+    editable, see `_require_editable`)."""
     product_code = (await db.execute(select(Product.code).where(Product.id == part.product_id))).scalar_one()
     order_number = (await db.execute(select(Order.number).where(Order.id == part.order_id))).scalar_one()
     instances = (

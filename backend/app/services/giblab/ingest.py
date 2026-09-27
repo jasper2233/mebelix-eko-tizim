@@ -2,7 +2,6 @@
 materials auto-registry, SCX files and the cut map. Re-upload fully replaces previous results
 (gate — `_require_editable`: PRODUCTION included, until the first live scan)."""
 
-import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -22,8 +21,6 @@ from .models import TAIL_CODES, ParsedPart, ParsedProject, ParseError, paths_jso
 from .parser import parse_project
 from .routes import build_manual_route, resolve_post
 from .scx import build_scx_files, plate_thickness_map
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -687,11 +684,6 @@ async def ingest_project(
         if m.count
     ]
     order.project_uuid = project.uuid
-    # Nom YUKLANGAN FAYL nomidan olinadi (kengaytmasiz): "2064 alisher.project" -> "2064 alisher".
-    # Ilgari `project.name` — ya'ni fayl ICHIDAGI `<root name=...>` atributi ishlatilardi, lekin
-    # GibLab eksportlarining bir qismida u umuman bo'lmaydi: prodda 39 buyurtmadan faqat 19 tasida
-    # nom bor edi, qolganlarida `.project` fayli yuklangan bo'lsa ham nom BO'SH qolardi va reestrda
-    # ham, TABLOda ham ko'rinmasdi. Fayl nomi esa doim bor.
     # Nomi bo'yicha nostandart bo'lgan detalning AUTO marshruti YUMSHOQ o'chiriladi —
     # `restore_custom_routes` dagi bilan bir xil naqsh va bir xil sabab. Umuman
     # qurmaslik yaramaydi: texnolog keyin bayroqni olib tashlasa (matritsadagi
@@ -703,6 +695,11 @@ async def ingest_project(
             .values(is_deleted=True, deleted_at=datetime.now(UTC))
         )
 
+    # Nom YUKLANGAN FAYL nomidan olinadi (kengaytmasiz): "2064 alisher.project" -> "2064 alisher".
+    # Ilgari `project.name` — ya'ni fayl ICHIDAGI `<root name=...>` atributi ishlatilardi, lekin
+    # GibLab eksportlarining bir qismida u umuman bo'lmaydi: prodda 39 buyurtmadan faqat 19 tasida
+    # nom bor edi, qolganlarida `.project` fayli yuklangan bo'lsa ham nom BO'SH qolardi va reestrda
+    # ham, TABLOda ham ko'rinmasdi. Fayl nomi esa doim bor.
     order.project_name = Path(original_filename).stem or project.name
     order.project_loaded_at = datetime.now(UTC)
     order.cutmap = cutmap.model if cutmap else None
@@ -733,8 +730,9 @@ async def ingest_project(
                     )
 
     # Kesish xaritasi qurilgan bo'lsa: unda joyi yo'q detallarni texnolog bilishi shart.
-    # Ikki sabab bo'ladi — (a) listdan kesilmaydigan profil, (b) GibLab uni ataylab
-    # joylashtirmagan (usedCount=0), ya'ni material yetmagan yoki dizayner chiqarib tashlagan.
+    # Uch sabab bo'ladi — (a) listdan kesilmaydigan profil, (b) GibLab uni ataylab
+    # joylashtirmagan (usedCount=0), ya'ni material yetmagan yoki dizayner chiqarib tashlagan,
+    # (c) material optimallashtirilmagan (blobsiz CS — `build_cutmap` uni o'tkazib yuboradi).
     unplaced: list[str] = []
     if cutmap:
         placed = {b.part_key for b in cutmap.bindings}

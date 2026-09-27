@@ -139,9 +139,9 @@ export function PersonDialog({
     }))
 
   const queryClient = useQueryClient()
-  // Telefon FORMATLANGAN holda saqlanadi (boshqa 4 chaqiruvchidagi kabi), shu
-  // sabab payload ham, ko'rinish ham aynan shu satr: "901234567" paste qilinsa
-  // ekranda ham, serverda ham "+998 90 123-45-67" bo'ladi.
+  // Telefon ekranda maskalangan ("+998 90 123-45-67"), payload esa
+  // `optionalFormattedPhoneSchema` chiqargan kanonik "+998901234567" (backend faqat
+  // `^\+998\d{9}$` ni qabul qiladi): "901234567" paste qilinsa ham to'g'ri raqam ketadi.
   const parsedPhone = optionalFormattedPhoneSchema.safeParse(form.phone)
   const phone =
     parsedPhone.success && parsedPhone.data ? parsedPhone.data : null

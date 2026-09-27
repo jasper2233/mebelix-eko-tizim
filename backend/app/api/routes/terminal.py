@@ -304,7 +304,7 @@ def _own_sheets(order: Order, own_nos: set[int] | None) -> int:
 
 @router.get("/orders", response_model=list[TerminalOrderCard], operation_id="read_terminal_orders")
 async def read_terminal_orders(db: SessionDep, ctx: TerminalCtx) -> list[TerminalOrderCard]:
-    """Active orders relevant to this terminal (for the ARRA map order picker)."""
+    """Shu postga tegishli aktiv buyurtmalar — har post terminalining buyurtma tanlagichi uchun."""
     machine, post = ctx
     # SHOSHILINCH tepada tursin: prioritet birinchi, keyin deadline (nulls oxirida)
     rows = (
@@ -1053,7 +1053,8 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     """YORLIQ CHOP ETISH: on-demand, per selected cell. Queued to the bridge-agent."""
     instance = await crud_part_instances.get_or_404(db, "Nusxa topilmadi.", id=instance_id)
 
-    # Post aniqlanmasa (ish markazi yo'q terminal) tekshiruvsiz chiqadi — yorliq ko'rish uchun
+    # Post aniqlanmasa `print_post=None` — faqat ARRA/ROVER tekshiruvlari o'tkazib yuboriladi;
+    # ish markazisiz terminal pastda `require_printer` da 422 oladi (chek chiqmaydi)
     print_machine: Machine | None = None
     try:
         print_machine, print_post = await resolve_terminal(db, user)
@@ -1157,9 +1158,8 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     # hamma joyda (total_done, TABLO, ish haqi, tartib nazorati) bitta bo'lsin.
     # Rad etilsa (oldingi bosqich tugamagan) chek baribir chiqqan bo'ladi — operator
     # keyin qo'lda skan bilan yakunlaydi.
-    # Post aniqlanmasa (ish markazi biriktirilmagan terminal) chek baribir chiqqan
-    # bo'ladi — bu yerda faqat avto-skan o'tkazib yuboriladi. Ilgari himoyasiz edi
-    # va chop etish so'rovi 500 bilan tugardi.
+    # Ish markazi yo'q terminal bu yergacha yetmaydi (`require_printer` 422 beradi) —
+    # shart faqat `record_scan_at` uchun tiplarni toraytiradi.
     if print_post is None or print_machine is None:
         return Message(message=natija)
     if cut_by_print and crew_session is not None:

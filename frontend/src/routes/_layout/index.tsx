@@ -295,7 +295,7 @@ function Dashboard() {
               </Panel>
               <Panel
                 title="Topshirishga tayyor"
-                count={stats.ready.length}
+                count={stats.orders.ready}
                 more={
                   stats.ready.length > LIST_LIMIT ? (
                     <MoreLink to="/orders" search={{ status: "completed" }}>

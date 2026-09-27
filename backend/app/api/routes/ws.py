@@ -192,7 +192,7 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
     if not await touch_agent():
         await websocket.close(code=WS_CLOSE_UNAUTHORIZED)
         return
-    # Admin "Printerlar" sahifasi darhol "Ulandi" ko'rsatsin — 10s pollingni kutmasdan
+    # Admin "MES agentlar" sahifasi darhol "Ulandi" ko'rsatsin — 10s pollingni kutmasdan
     await ws_manager.publish("bridge.connected", {"agent_id": agent_id, "machine_id": agent_machine_id})
     last_touch = asyncio.get_event_loop().time()
 

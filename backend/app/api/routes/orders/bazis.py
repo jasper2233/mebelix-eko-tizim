@@ -188,6 +188,10 @@ async def upload_order_bazis(
     await run_in_threadpool(model.write_bytes, model_json)
     if eskiz_png is not None:
         await run_in_threadpool(eskiz.write_bytes, eskiz_png)
+    else:
+        # Eskizsiz fayl bilan almashtirilsa eskisi o'chadi — aks holda yangi yozuv uchun
+        # oldingi faylning eskizi ko'rsatilardi (texnolog aynan shu bilan faylni tekshiradi)
+        eskiz.unlink(missing_ok=True)
 
     # Solishtirish TOZALANGAN kod bo'yicha: `2083.01` va `208301` bir xil
     # faylga yoziladi, ya'ni eskisini almashtirmasak diskda bittasi ikkinchisini

@@ -57,6 +57,7 @@ from app.services.giblab.cutmap import unplaced_arra_parts
 from ._common import (
     _ROUTE_START_POSTS,
     _edit_block_reason,
+    _first_n,
     _get_order,
     _get_visible_order,
     _hidden_statuses,
@@ -82,11 +83,6 @@ async def _order_read_with_client(db: SessionDep, order: Order) -> OrderRead:
     """Javob uchun mijoz nomini qo'shib beradi (soft-deleted mijozda bo'sh satr)."""
     client = await crud_clients.get(db, id=order.client_id)
     return _order_read(order, client.full_name if client else "")
-
-
-def _first_n(items: list[str], n: int = 5) -> str:
-    """Birinchi n ta nom + «va yana N ta» — xato xabari yuzlab detal bilan to'lib ketmasin."""
-    return ", ".join(items[:n]) + (f" va yana {len(items) - n} ta" if len(items) > n else "")
 
 
 @router.post("/", response_model=OrderRead, status_code=201, operation_id="create_order")
@@ -281,7 +277,8 @@ async def update_order(
 async def cancel_order(
     db: SessionDep, current_user: ManagerUser, order_id: int, body: OrderCancel, request: Request
 ) -> OrderRead:
-    """any stage; scans/history stay for audit; terminals are notified in real time."""
+    """TECHNICAL_REVIEW/PRODUCTION/COMPLETED dan (qoralama bekor qilinmaydi — o'chiriladi);
+    skanlar va tarix audit uchun qoladi; terminallarga jonli xabar ketadi."""
     order = await _get_order(db, order_id)
     if order.status in (OrderStatus.DELIVERED, OrderStatus.CANCELLED):
         raise ForbiddenException("Bu buyurtmani bekor qilib bo'lmaydi.")

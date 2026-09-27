@@ -45,11 +45,6 @@ AGENT_CROSS_POST_WINDOW = timedelta(seconds=10)
 _QR_RE = re.compile(r"^.+_.+$")  # {productCode}_{partCode}[_{n}] — yagona nusxada suffiks yo'q
 
 
-def _utc(dt: datetime) -> datetime:
-    """Naive `created_at` (SQLite/dev) ni UTC deb belgilaydi — solishtirish yiqilmasin."""
-    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
-
-
 def qr_part_code(qr: str, count: int) -> str:
     """Nusxa QR'idan detal kodi (`productCode_partCode`): buyurtma prefiksi va `_n` olib tashlanadi."""
     qr = strip_order_prefix(qr)
@@ -968,9 +963,10 @@ async def log_rejected_scan(
 async def revoke_scan(db: AsyncSession, scan: Scan, *, at: datetime | None = None) -> PartRoute | None:
     """Bitta skanni QAYTARADI: o'zi, hosilalari, hisoblagichlar va buyurtma holati.
 
-    Skanni bekor qilish UCH joyda bo'ladi — terminaldagi BEKOR QILISH tugmasi
-    (`cancel_scan`), chekni bekor qilish (`terminal.cancel_instance_label`) va
-    qadoqdan chiqarish (`pachka.remove_from_pachka`). Ilgari uchalasi alohida
+    Skanni bekor qilish TO'RT joyda bo'ladi — terminaldagi BEKOR QILISH tugmasi
+    (`cancel_scan`), chekni bekor qilish (`terminal.cancel_instance_label`),
+    qadoqdan chiqarish (`pachka.remove_from_pachka`) va brak tasdig'ida marshrutni
+    qayta ochish (`defects.reopen_from_step`). Ilgari birinchi uchtasi alohida
     yozilgan edi va ikkitasida ikki qadam YETISHMASDI:
 
       * hosila skanlar (`parent_scan_id`) qaytmasdi — yig'ma buyumda asosiy detal
@@ -1042,7 +1038,7 @@ async def cancel_scan(db: AsyncSession, *, user: User, scan_id: int) -> tuple[Sc
         raise ScanRejected("E001", "Skan topilmadi yoki boshqa smenada yozilgan — bekor qilib bo'lmaydi.")
     if scan.is_cancelled:
         raise ScanRejected("E001", "Bu skan allaqachon bekor qilingan.")
-    if datetime.now(UTC) - _utc(scan.created_at) > timedelta(seconds=settings.SCAN_UNDO_SECONDS):
+    if datetime.now(UTC) - scan.created_at > timedelta(seconds=settings.SCAN_UNDO_SECONDS):
         raise ScanRejected("E001", f"{settings.SCAN_UNDO_SECONDS} sekunddan ko'p o'tdi — faqat admin bekor qila oladi.")
 
     # Qadoq skani (`pack-{qadoq}-{nusxa}`): detal qadoq ICHIDA turadi. Faqat skanni

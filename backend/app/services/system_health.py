@@ -16,7 +16,7 @@ from collections import Counter, defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Literal, NamedTuple
+from typing import NamedTuple
 
 from redis.asyncio import Redis as AsyncRedis
 from sqlalchemy import select
@@ -25,10 +25,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import perf
 from app.core.config import TASHKENT_TZ
 from app.models import BridgeAgent, Machine
-from app.schemas.system import Finding, QueueStat, Thresholds
+from app.schemas.system import Finding, Level, QueueStat, Thresholds
 from app.tasks import print_queue_key
-
-Level = Literal["ok", "warn", "bad", "nodata"]
 
 #: Chegaralar tinch holatda sahifa ham tinch turishi uchun tanlangan: tuzatishdan keyingi
 #: normal soatda (p95 ≤ 0,9 s) hech narsa bo'yalmaydi, 2026-09-26 dagi muammo qizil chiqadi.

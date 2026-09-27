@@ -2,9 +2,9 @@
 
 Oqim eng qisqa yo'l bilan: operator detalni odatdagidek skanerlaydi, skan tasmasidagi
 BRAK tugmasini bosadi va faqat NIMA bo'lganini tanlaydi (docs/12 §7 qarori — doimiy
-tugma emas, kerak paytda chiqadigan oyna). Skan BEKOR QILINMAYDI va marshrut qayta
-ochilmaydi: qayta ishlab chiqarish oqimi (`-B1` nusxa, yangi chek, aybdor post) —
-keyingi bosqich. Ya'ni brak hozir faqat O'LCHANADI, ish oqimini o'zgartirmaydi.
+tugma emas, kerak paytda chiqadigan oyna). QAYD faqat yozadi: skan bekor qilinmaydi va
+marshrut qayta ochilmaydi. Buni menejer TASDIG'I qiladi (`defects_review.review_defect` ->
+`services/defects.reopen_from_step`); `-B1` nusxa hali yo'q.
 """
 
 from datetime import UTC, datetime
@@ -19,7 +19,7 @@ from app.crud import log_action
 from app.models import PartDefect, Scan
 from app.models.enums import DefectStatus
 from app.schemas.defects import DefectCreate, DefectRead
-from app.services.scanning import active_session
+from app.services.scanning import ScanRejected, active_session, scan_error
 from app.services.settings_service import get_defect_reasons
 
 router = APIRouter(prefix="/terminal", tags=["terminal"])
@@ -62,7 +62,10 @@ async def mark_defect(
     if already is not None:
         raise HTTPException(status_code=422, detail="Bu skan allaqachon brak deb belgilangan.")
 
-    session = await active_session(db, machine)  # E005/E006 — smena yo'q yoki hodim nofaol
+    try:
+        session = await active_session(db, machine)  # E005/E006 — smena yo'q yoki hodim nofaol
+    except ScanRejected as exc:
+        raise scan_error(exc.code, exc.message) from None
     defect = PartDefect(
         order_id=scan.order_id,
         part_id=scan.part_id,

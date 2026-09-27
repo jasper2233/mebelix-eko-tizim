@@ -2,7 +2,7 @@
 //
 // Login sahifasida yashirin inputga fokus berib bo'lmaydi: ofis xodimi o'sha
 // paytda foydalanuvchi nomi va parolni terayotgan bo'lishi mumkin, fokus esa
-// har necha soniyada tortib olinardi. Shuning uchun `document` darajasida
+// har necha soniyada tortib olinardi. Shuning uchun `window` darajasida
 // tinglaymiz va HECH NARSAGA tegmaymiz.
 //
 // Skanerni odamdan farqlash — TEZLIK: u klaviatura bo'lib belgilarni ketma-ket,

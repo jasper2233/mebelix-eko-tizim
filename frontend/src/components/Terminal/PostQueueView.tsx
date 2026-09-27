@@ -88,8 +88,7 @@ export function PostQueueView({
   const doneTotal = rows.filter((r) => r.done).length
   const waitingTotal = rows.filter((r) => !r.done && !r.ready).length
   // Tartib: ishi bor (navbatda nusxa) detallar tepada, tugaganlari pastda yashil
-  const tier = (g: Group) =>
-    g.instances.some((i) => !i.done) ? 0 : g.instances.length ? 2 : 1
+  const tier = (g: Group) => (g.instances.some((i) => !i.done) ? 0 : 1)
   const sorted = [...groups.values()]
     .filter((g) => g.instances.length > 0)
     .map((g) => ({

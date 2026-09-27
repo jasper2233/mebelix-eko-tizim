@@ -3604,7 +3604,7 @@ export type PachkaScan = {
 /**
  * PachkaStatus
  *
- * Qadoq holati: ochiq (detal qo'shiladi) -> yopiq (chek chiqadi) -> jo'natildi.
+ * Qadoq holati: ochiq (detal qo'shiladi) -> yopiq (chek chiqadi). `shipped` O'LIK (`models/pachka.py`).
  */
 export type PachkaStatus = 'open' | 'closed' | 'shipped';
 
@@ -4927,10 +4927,6 @@ export type TabloMachineRow = {
      * Last Verdict
      */
     last_verdict?: string | null;
-    /**
-     * Last Part
-     */
-    last_part?: string | null;
 };
 
 /**

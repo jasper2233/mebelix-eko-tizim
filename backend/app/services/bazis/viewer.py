@@ -169,7 +169,7 @@ def build_model(parsed: ParsedBazis) -> dict[str, Any]:
     nomlar: list[str] = []
     mat: dict[str, int] = {}
     # FAQAT panel va furnitura qismlarining materiali. Kromka materiali ham shu
-    # ro'yxatda edi, lekin brauzer uni ishlatmaydi (§3.1) va `mats` ni bekorga uzaytirardi.
+    # ro'yxatda edi, lekin brauzer uni ishlatmaydi (docs/13 §4, «Model JSON») va `mats` ni bekorga uzaytirardi.
     for nom in [p.mat_name for p in parsed.panels] + [q.mat_name for m in parsed.meshes for q in m.parts]:
         if nom not in mat:
             mat[nom] = len(nomlar)

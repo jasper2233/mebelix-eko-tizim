@@ -42,9 +42,8 @@ async def reopen_from_step(db: AsyncSession, defect: PartDefect) -> list[dict[st
     rows = (
         (
             await db.execute(
-                select(Scan, Post.id, Post.code)
+                select(Scan)
                 .join(PartRoute, PartRoute.id == Scan.route_id)
-                .join(Post, Post.id == Scan.post_id)
                 .where(
                     Scan.instance_id == defect.instance_id,
                     PartRoute.seq >= restart.seq,
@@ -54,13 +53,13 @@ async def reopen_from_step(db: AsyncSession, defect: PartDefect) -> list[dict[st
                 .order_by(PartRoute.seq.desc(), Scan.created_at.desc())
             )
         )
-        .tuples()
+        .scalars()
         .all()
     )
 
     now = datetime.now(UTC)
     events: list[dict[str, Any]] = []
-    for scan, post_id, _post_code in rows:
+    for scan in rows:
         route = await revoke_scan(db, scan, at=now)
         events.append(
             {
@@ -69,10 +68,10 @@ async def reopen_from_step(db: AsyncSession, defect: PartDefect) -> list[dict[st
                     "scan_id": scan.id,
                     "order_id": scan.order_id,
                     "part_id": scan.part_id,
-                    "post_id": post_id,
+                    "post_id": scan.post_id,
                     "qoldiq": (route.total_required - route.total_done) if route else None,
                 },
-                "post_id": post_id,
+                "post_id": scan.post_id,
                 "machine_id": scan.machine_id,
             }
         )

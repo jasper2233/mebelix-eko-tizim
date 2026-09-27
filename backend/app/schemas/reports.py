@@ -50,8 +50,9 @@ class MachineTimeRow(BaseModel):
     run_s: int  # ishlagan = planned_s - unplanned_stop_s - no_data_s
     availability_pct: float | None  # run_s / planned_s; reja vaqti 0 bo'lsa None
     reasons: list[AvailabilityReason]  # ko'p vaqt olgani birinchi
-    # --- OEE Performance (`services/performance.py`) — faqat Prisadka ish markazlarida, qolganida 0 / None
-    parts: int  # kuzatilgan ish vaqtida skanerlangan detallar
+    # --- OEE Performance (`services/performance.py`) — Prisadka (xnc formulasi) va Kromka (stansiya
+    # o'lchovi, L / v + oraliq) ish markazlarida, qolganida 0 / None
+    parts: int  # Prisadka: kuzatilgan ish vaqtida skanerlangan detallar; Kromka: o'lchangan o'tishlar
     ideal_s: int  # o'sha detallarning ideal sikl vaqti yig'indisi
     performance_pct: float | None  # ideal_s / run_s; 100 dan oshsa KESILMAYDI — koeffitsiyent yumshoqligi belgisi
     cycles: int  # Pico o'lchagan tugallangan sikllar (kalibrlash uchun)
