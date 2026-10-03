@@ -7,6 +7,7 @@ import hashlib
 import json
 import logging
 import secrets
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 
@@ -22,7 +23,7 @@ from app.core.security import ACCESS_COOKIE_NAME
 from app.core.ws import WsClient, ws_manager
 from app.models import BridgeAgent, Machine, Post
 from app.models.enums import POST_ROLES, UserRole
-from app.tasks import agent_revoked_key, print_queue_key
+from app.tasks import agent_revoked_key, bridge_conn_key, print_queue_key
 
 router = APIRouter()
 
@@ -124,6 +125,37 @@ async def ws_events(websocket: WebSocket) -> None:
         ws_manager.disconnect(client)
 
 
+async def _bridge_claim(redis: AsyncRedis, agent_id: int | None, conn_id: str) -> None:
+    """Shu ulanishni agentning eng oxirgisi deb belgilaydi (`bridge_conn_key`).
+    Legacy umumiy token (`agent_id is None`) — kalitsiz: jadvalda qatori yo'q."""
+    if agent_id is not None:
+        await redis.set(bridge_conn_key(agent_id), conn_id, ex=600)
+
+
+async def _bridge_superseded(redis: AsyncRedis, agent_id: int | None, conn_id: str) -> bool:
+    """Agentning YANGIROQ ulanishi bormi — kalitda boshqa ulanishning id'si turibdi.
+    Redis xatosi — noma'lum: False, ya'ni eskicha (hodisa chiqadi)."""
+    if agent_id is None:
+        return False
+    with contextlib.suppress(Exception):
+        latest = await redis.get(bridge_conn_key(agent_id))
+        return latest is not None and latest.decode() != conn_id
+    return False
+
+
+async def _bridge_gone(redis: AsyncRedis, agent_id: int | None, machine_id: int | None, conn_id: str) -> None:
+    """«Uzildi» hodisasi — FAQAT agentning eng oxirgi ulanishi yopilganda (sabab: `bridge_conn_key`)."""
+    payload = {"agent_id": agent_id, "machine_id": machine_id}
+    if await _bridge_superseded(redis, agent_id, conn_id):
+        logger.info("Bridge: agent=%s conn=%s — yangiroq ulanish bor, «uzildi» hodisasi yuborilmadi", agent_id, conn_id)
+        return
+    await ws_manager.publish("bridge.disconnected", payload)
+    # Tekshiruv bilan e'lon orasida yangi ulanish kirib ulgurgan bo'lsa, uning «ulandi» si bizning
+    # «uzildi» dan OLDIN ketgan — terminal oxirgi hodisaga ishonadi, shuning uchun «ulandi» takrorlanadi.
+    if await _bridge_superseded(redis, agent_id, conn_id):
+        await ws_manager.publish("bridge.connected", payload)
+
+
 @router.websocket("/ws/bridge")
 async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
     """Bridge-agent uplink: outbound connection from the shop network.
@@ -192,9 +224,8 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
     if not await touch_agent():
         await websocket.close(code=WS_CLOSE_UNAUTHORIZED)
         return
-    # Admin "MES agentlar" sahifasi darhol "Ulandi" ko'rsatsin — 10s pollingni kutmasdan
-    await ws_manager.publish("bridge.connected", {"agent_id": agent_id, "machine_id": agent_machine_id})
     last_touch = asyncio.get_event_loop().time()
+    conn_id = uuid.uuid4().hex[:12]  # shu ulanishning id'si: `bridge_conn_key` qiymati va logdagi iz
 
     # HAR chek aniq bir agentga manzillangan (`tasks.require_printer`), shuning
     # uchun agent FAQAT o'zining navbatidan oladi. Umumiy `PRINT_QUEUE_KEY`
@@ -209,6 +240,12 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
     own_keys = [] if agent_id is None else [print_queue_key(agent_id)]
     redis = AsyncRedis.from_url(settings.REDIS_URL)
     try:
+        # Avval "eng oxirgi ulanish — men", KEYIN hodisa: shundan keyin yopilgan eski soket
+        # o'zini eskirgan deb ko'radi va «uzildi» chiqarmaydi (`_bridge_gone`).
+        await _bridge_claim(redis, agent_id, conn_id)
+        logger.info("Bridge ulandi: agent=%s conn=%s", agent_id, conn_id)
+        # Admin "MES agentlar" sahifasi darhol "Ulandi" ko'rsatsin — 10s pollingni kutmasdan
+        await ws_manager.publish("bridge.connected", {"agent_id": agent_id, "machine_id": agent_machine_id})
         while True:
             if can_print and own_keys:
                 popped = await redis.brpop(own_keys, timeout=5)
@@ -307,11 +344,10 @@ async def ws_bridge(websocket: WebSocket, token: str = "") -> None:
                 await redis.rpush(src_key, job)
                 raise
     except Exception as exc:  # noqa: BLE001 — connection teardown; the job was already requeued
-        logger.info("Bridge ulanishi yopildi: agent=%s sabab=%s", agent_id, exc)
+        # `%r`: starlette `WebSocketDisconnect(code=1006)` ning matni bo'sh — `%s` "sabab=" deb chiqarardi;
+        # `%r` istisno turini ko'rsatadi (1006 kodining o'zi ko'rinmaydi — u kalit so'z bilan beriladi)
+        logger.info("Bridge ulanishi yopildi: agent=%s conn=%s sabab=%r", agent_id, conn_id, exc)
     finally:
-        await redis.aclose()
         with contextlib.suppress(Exception):
-            await ws_manager.publish(
-                "bridge.disconnected",
-                {"agent_id": agent_id, "machine_id": agent_machine_id},
-            )
+            await _bridge_gone(redis, agent_id, agent_machine_id, conn_id)
+        await redis.aclose()

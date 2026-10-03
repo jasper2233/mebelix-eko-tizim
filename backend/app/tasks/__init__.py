@@ -47,6 +47,18 @@ def agent_revoked_key(agent_id: int) -> str:
     return f"mes:agent:revoked:{agent_id}"
 
 
+def bridge_conn_key(agent_id: int) -> str:
+    """Agentning ENG OXIRGI `/ws/bridge` ulanishi (qiymat — ulanish id'si).
+
+    Tarmoq uzilgach agent qayta ulanadi, eski yarim-ochiq soketi esa serverda yana
+    20-40 s yashaydi (uvicorn ping'i shunda sezadi). U yopilganda chiqqan «uzildi»
+    hodisasi yangi ulanishning «ulandi» sidan KEYIN kelardi va terminal «MES agent
+    uzilgan» belgisida qotib qolardi, agent esa ishlab turardi (prod 2026-10-03).
+    Endi «uzildi» ni faqat kalitda hali O'Z id'si turgan ulanish chiqaradi
+    (`ws.py: _bridge_gone`). TTL 10 daqiqa — eski soket bundan ancha oldin yopiladi."""
+    return f"mes:bridge:conn:{agent_id}"
+
+
 def print_queue_key(agent_id: int) -> str:
     """Chek navbati kaliti — FAQAT o'sha agentniki.
 
