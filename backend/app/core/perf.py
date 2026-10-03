@@ -65,8 +65,11 @@ LAG_ALERT_S = 0.2
 inflight: dict[int, tuple[Callable[[], str], float]] = {}
 #: Yaqinda TUGAGAN so'rovlar: (nomi, boshlangan, tugagan). Blok so'rovning OXIRIDA bo'lsa
 #: (o'qish, keyin hisob, keyin javob) so'rov monitor uyg'onguncha tugab ulguradi — aybdor
-#: shu yerdan topiladi (tekshiruvda 6 tadan 5 ta shunday blok aybdorsiz yozilgani ushlangan)
-recent: deque[tuple[Callable[[], str], float, float]] = deque(maxlen=64)
+#: shu yerdan topiladi (tekshiruvda 6 tadan 5 ta shunday blok aybdorsiz yozilgani ushlangan).
+#: Nom bu yerda tayyor SATR: funksiya so'rov obyektini ushlab turardi, ya'ni oxirgi 64 so'rov xotirada
+#: qolardi va `setup._refreeze_loop` ularni muzlatsa, o'sha siklik chiqindi hech qachon tozalanmasdi
+#: (lokal o'lchov: har muzlatishda ~1 575 obyekt)
+recent: deque[tuple[str, float, float]] = deque(maxlen=64)
 
 #: Shu ishchida Python GC yig'imlariga ketgan jami vaqt (s). Muzlash yozuvi o'z oynasidagi farqni
 #: oladi — «shundan GC»: 2026-09-27 prodda to'liq yig'im ~120 ms edi va qisqa muzlashlarning bir
@@ -122,7 +125,7 @@ def finish(key: int) -> None:
     """So'rov tugadi: ishlayotganlardan olib, «yaqinda tugaganlar» ga qo'yadi."""
     item = inflight.pop(key, None)
     if item is not None:
-        recent.append((item[0], item[1], time.perf_counter()))
+        recent.append((item[0](), item[1], time.perf_counter()))
 
 
 def record_request(method: str, route: str, ms: float, status: int) -> None:
@@ -175,7 +178,7 @@ async def _watch_loop() -> None:
         # kechikishni kutmagan va unga hissa qo'shmagan — ro'yxatga kirmaydi
         busy = sorted(
             [(name(), round((now - st) * 1000)) for name, st in inflight.values() if now - max(st, t0) >= LAG_STEP_S]
-            + [(name(), round((end - st) * 1000)) for name, st, end in recent if end - max(st, t0) >= LAG_STEP_S],
+            + [(name, round((end - st) * 1000)) for name, st, end in recent if end - max(st, t0) >= LAG_STEP_S],
             key=lambda x: -x[1],
         )
         logger.warning(

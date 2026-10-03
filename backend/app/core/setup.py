@@ -1,5 +1,7 @@
 import asyncio
 import gc
+import logging
+import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -26,11 +28,50 @@ from app.core.ws import ws_manager
 from .config import EnvironmentOption, settings
 from .utils import queue
 
+logger = logging.getLogger(__name__)
+
+#: Muzlatilmagan (GC har to'liq yig'imda aylanib chiqadigan) obyektlar shundan oshsa qayta muzlatiladi
+REFREEZE_OBJECTS = 20_000
+#: ...shu oraliqda tekshiriladi (soniya)
+REFREEZE_CHECK_S = 60
+
 
 # -------------- thread pool --------------
 def set_threadpool_tokens() -> None:
     """Raise AnyIO's thread-pool size (`THREADPOOL_TOKENS`) so blocking calls don't queue behind each other."""
     anyio.to_thread.current_default_thread_limiter().total_tokens = settings.THREADPOOL_TOKENS
+
+
+# -------------- GC --------------
+async def _refreeze_loop() -> None:
+    """Ishchi ishlay boshlagach to'planadigan uzoq yashovchi obyektlarni ham GC'ning to'liq yig'imidan chiqaradi.
+
+    `lifespan` dagi birinchi `gc.freeze()` faqat import paytidagi obyektlarni qamraydi. Prod muzlash yozuvlarida
+    (2026-09-27..10-03) to'liq yig'im qayta ishga tushgach 2–21 ms, bir-ikki soat ishdan keyin yana 75–130 ms
+    edi; muzlash vaqtining 28% i GC, 20 ta muzlashda GC'ning o'zi 200 ms dan oshgan.
+
+    Jonli ishchida aynan nima to'planishi PRODDA O'LCHANMAGAN. Lokal o'lchovda bu keshlar: 30 endpoint
+    chaqirilgach muzlatilmagan obyektlar 0,6 mingdan 52 mingga chiqdi (SQLAlchemy so'rov keshi, asyncpg tur
+    keshi, FastAPI bog'liqliklari), qayta muzlatilgach ~0,3 mingda qoldi. Lokalda ular to'liq yig'imdan ~5 ms
+    oladi; proddagi 75–130 ms uchun taxminan 140–240 ming obyekt kerak. Haqiqiy son va vaqt — pastdagi logda.
+
+    Hajm bo'yicha va faqat ishchi bo'sh paytda: `gc.collect()` — to'liq yig'im, so'rov o'rtasiga tushmasin.
+    Lokal sinovda 1–6 parallel so'rovda ikki marta ishlab to'xtadi; 10 tada (DB pool hajmi) ~2,6 ming so'rovda
+    bir takrorlandi — prodda so'rovlarning 99,8% i ishchida 5 tagacha so'rov bor paytda keladi. `freeze` o'sha
+    lahzada tirik hamma narsani muzlatadi, muzlatilgan siklik chiqindi esa tozalanmaydi — shuning uchun
+    `perf.recent` so'rov obyektlarini ushlamaydi."""
+    while True:
+        await asyncio.sleep(REFREEZE_CHECK_S)
+        if perf.inflight or len(gc.get_objects()) < REFREEZE_OBJECTS:
+            continue
+        t0, before = time.perf_counter(), gc.get_freeze_count()
+        gc.collect()
+        gc.freeze()
+        logger.info(
+            "GC: %d obyekt qayta muzlatildi (yig'im %d ms)",
+            gc.get_freeze_count() - before,
+            (time.perf_counter() - t0) * 1000,
+        )
 
 
 # -------------- application factory --------------
@@ -39,14 +80,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     """Open Redis pools, verify connections, then yield. Closes pools on shutdown."""
     set_threadpool_tokens()
     # Import paytida yaratilgan ~216 ming doimiy obyekt (modullar, sxemalar, marshrutlar) GC'ning har
-    # to'liq yig'imida qayta ko'rilardi: prodda har safar ~120 ms loop to'xtashi. Muzlatilgach 3–18 ms
-    # (prod probe, 2026-09-27). Avval yig'iladi: muzlatilgan chiqindi keyin hech qachon tozalanmaydi.
+    # to'liq yig'imida qayta ko'rilardi: prodda har safar ~120 ms loop to'xtashi. Muzlatilgach YANGI ishchida
+    # 3–18 ms (prod probe, 2026-09-27); ishlay boshlagach to'ladigan keshlar uchun — `_refreeze_loop`.
+    # Avval yig'iladi: muzlatilgan chiqindi keyin hech qachon tozalanmaydi.
     # Monitor'dan OLDIN — ishga tushishdagi bir martalik yig'im muzlash bo'lib yozilmasin
     gc.collect()
     gc.freeze()
     ws_redis: AsyncRedis | None = None
-    # Har gunicorn ishchisi o'z loop'ini o'lchaydi, o'lchovni soniyasiga bir yozadi («Tizim holati», `core/perf.py`)
-    perf_tasks = [asyncio.create_task(perf.lag_monitor()), asyncio.create_task(perf.flush_loop())]
+    # Ishchi umri davomidagi fon vazifalari: har gunicorn ishchisi o'z loop'ini o'lchaydi va o'lchovni
+    # soniyasiga bir yozadi («Tizim holati», `core/perf.py`), keshlar to'lgach GC'ni qayta muzlatadi
+    worker_tasks = [
+        asyncio.create_task(perf.lag_monitor()),
+        asyncio.create_task(perf.flush_loop()),
+        asyncio.create_task(_refreeze_loop()),
+    ]
     try:
         queue.pool = await create_pool(ArqRedisSettings(host=settings.REDIS_HOST, port=settings.REDIS_PORT))
         rate_limiter.initialize(settings.REDIS_URL)
@@ -58,7 +105,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         await check_database_connection()
         yield
     finally:
-        for task in perf_tasks:
+        for task in worker_tasks:
             task.cancel()
         await perf.flush()  # oxirgi soniya yo'qolmasin
         await ws_manager.stop_listener()
