@@ -296,6 +296,19 @@ function TerminalPage() {
       [invalidateWorkWs, ctx, yangiXabar, touchActivity, queryClient],
     ),
   )
+  // O'z soketimiz uzilib turganda chiqqan `bridge.*` hodisalari yo'qoladi — qayta ulangach
+  // jonli override ishonchsiz: tashlanadi va holat kontekstdan qayta o'qiladi (tablo.tsx
+  // dagi naqsh). Busiz o'tkazib yuborilgan hodisadan keyin chip sahifa yangilanmaguncha
+  // qotardi; endi eng yomoni — kontekstning 6 daqiqalik oynasi o'tguncha noto'g'ri turadi
+  // (jumladan to'g'ri qizil chip ham shu vaqtga yo'qolishi mumkin).
+  const wasOnline = useRef(online)
+  useEffect(() => {
+    if (online && !wasOnline.current) {
+      setPrinterLive(null)
+      queryClient.invalidateQueries({ queryKey: ["terminal", "context"] })
+    }
+    wasOnline.current = online
+  }, [online, queryClient])
 
   // Avto-skan: input doim fokusda. ARRA xaritasi ochiqda o'chadi
   // (input yashirin) — KROMKA proyekt sahifasida skan doim ishlashi kerak.
