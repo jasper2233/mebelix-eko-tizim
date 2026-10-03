@@ -187,8 +187,9 @@ Asosiy nuqtalar:
   WebSocket pub/sub uchun alohida `ws_redis` (`AsyncRedis.from_url`, `mes:events`
   kanali — gunicorn worker'lar orasida `ws_manager` fan-out'ini ta'minlaydi).
   Ularning ustiga har `/ws/bridge` ulanishi O'Z qisqa umrli klientini ochadi
-  (`ws.py`, chek navbatini `brpop`/`rpush` qilish uchun) va uzilganda `finally`
-  da yopadi — u lifespan tomonidan boshqarilmaydi, startup probe'ga ham kirmaydi.
+  (`ws.py`: chek navbati `brpop`/`rpush`, revoke bayrog'i va ulanish belgisi
+  `bridge_conn_key`) va uzilganda `finally` da yopadi — u lifespan tomonidan
+  boshqarilmaydi, startup probe'ga ham kirmaydi.
   Startup'dagi retry'li probe faqat birinchi ikkitasini tekshiradi (fail-fast
   boot); rate limit runtime'da ham fail-closed — Redis xatosida so'rov bloklanadi.
   Lifespan eng avval `gc.collect(); gc.freeze()` qiladi: import paytida yaratilgan
