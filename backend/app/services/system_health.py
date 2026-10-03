@@ -350,29 +350,59 @@ async def queue_stats(db: AsyncSession, redis: AsyncRedis) -> list[QueueStat]:
     return out
 
 
+def lag_culprit(
+    lags: list[Lag], stats: dict[tuple[str, str], list[float]], min_share: float = 0.0
+) -> tuple[str, str | None, str | None]:
+    """Muzlashlarning eng ko'pida o'sha paytda eng uzoq ishlayotgan so'rov: (jumla, metod, yo'l) — jumla
+    topilmaga qo'shiladi, metod va yo'l uni endpoint tafsilotiga bog'laydi. Qisqa muzlashlar topilmasi
+    ilgari nom aytmay jadvalga yuborardi, holbuki bir haftalik prod yozuvida (2026-09-27..10-03) 1567
+    muzlashning 95% ida bu bitta endpoint edi.
+
+    Jumla bo'sh: hech bir muzlashda so'rov yozilmagan, yoki eng ko'p uchragani `min_share` ulushdan oshmaydi
+    (sabab aralash — bittasini sarlavhaga chiqarish chalg'itadi). Bog'lanmaydi: nom so'rovlar jurnalidagi
+    endpoint emas — routingdan oldin ushlangan xom yo'l yoki metodsiz eski yozuv (tafsilot bo'sh ochilardi)."""
+    names = Counter(g.inflight[0][0] for g in lags if g.inflight)
+    if not names:
+        return "", None, None
+    name, n = names.most_common(1)[0]
+    if n <= len(lags) * min_share:
+        return "", None, None
+    text = f" {len(lags)} tadan {n} tasida o'sha paytda eng uzoq ishlayotgan so'rov — {short(name)}."
+    method, _, route = name.partition(" ")
+    return (text, method, route) if (method, route) in stats else (text, None, None)
+
+
 def findings(
     w: Window, queues: list[QueueStat], stats: dict[tuple[str, str], list[float]] | None = None
 ) -> list[Finding]:
     """Xulosa: nima yomon va nega — raqamlarni o'qimasdan ham ko'rinsin. Jiddiysi birinchi.
     `stats` — chaqiruvchida `endpoint_groups(w.reqs)` tayyor bo'lsa (12 soatda qayta hisob ~10 ms)."""
     out: list[Finding] = []
+    if stats is None:
+        stats = endpoint_groups(w.reqs)
     lags_long = [g for g in w.lags if g.lag_ms >= LIMITS.lag_bad_ms]
     if lags_long:
-        culprits = Counter(g.inflight[0][0] for g in lags_long if g.inflight)
-        text = (
-            f"Server ishchisi {len(lags_long)} marta 1 soniyadan uzoq muzladi "
-            f"(eng uzuni {dur(max(g.lag_ms for g in lags_long))})."
+        who, method, route = lag_culprit(lags_long, stats)
+        out.append(
+            Finding(
+                level="bad",
+                text=f"Server ishchisi {len(lags_long)} marta 1 soniyadan uzoq muzladi "
+                f"(eng uzuni {dur(max(g.lag_ms for g in lags_long))}).{who} "
+                "Muzlash paytida o'sha ishchidagi so'rovlar navbatda turadi.",
+                method=method,
+                route=route,
+            )
         )
-        if culprits:
-            name, n = culprits.most_common(1)[0]
-            text += f" {len(lags_long)} tadan {n} tasida o'sha paytda eng uzoq ishlayotgan so'rov — {short(name)}."
-        out.append(Finding(level="bad", text=text + " Muzlash paytida o'sha ishchidagi so'rovlar navbatda turadi."))
     elif len(w.lags) >= LIMITS.lag_warn_count:
+        # Nom yarmidan ko'pida bitta so'rov bo'lsagina aytiladi; aks holda jadvalga yuboradi
+        who, method, route = lag_culprit(w.lags, stats, min_share=0.5)
         out.append(
             Finding(
                 level="warn",
-                text=f"Server ishchisi {len(w.lags)} marta qisqa muzladi (0.2–1 s) — «Server muzlashlari» "
-                "jadvalida o'sha paytda nima ishlaganini ko'ring.",
+                text=f"Server ishchisi {len(w.lags)} marta qisqa muzladi (0.2–1 s)."
+                + (who or " «Server muzlashlari» jadvalida o'sha paytda nima ishlaganini ko'ring."),
+                method=method,
+                route=route,
             )
         )
 
@@ -387,8 +417,6 @@ def findings(
                 )
             )
 
-    if stats is None:
-        stats = endpoint_groups(w.reqs)
     reliable = {k: xs for k, xs in stats.items() if len(xs) >= LIMITS.min_count}
     own = sorted(
         ((k, pct(xs, 0.5), pct(xs, 0.95)) for k, xs in reliable.items() if pct(xs, 0.5) >= LIMITS.p50_warn_ms),
