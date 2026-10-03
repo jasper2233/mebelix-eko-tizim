@@ -37,7 +37,7 @@ backend/app/main.py
 | `backend/app/core/utils/__init__.py` | Bo'sh package marker |
 | `backend/app/core/utils/queue.py` | arq Redis pool uchun global holder |
 | `backend/app/core/utils/rate_limit.py` | Redis asosidagi rate limiting (`RateLimiter`, `RateLimit`) |
-| `backend/app/tasks/__init__.py` | arq'ga ro'yxatga olinadigan vazifalar (`print_label`, `print_pachka_label`, `print_waste_label`, `print_badge`) + `PRINT_QUEUE_KEY`, `print_queue_key()`, `agent_revoked_key()`, `AGENT_ONLINE_WINDOW`/`agent_online()`, `printer_agent()`, `require_printer()`/`NoPrinterBound`, `printing_agents()` |
+| `backend/app/tasks/__init__.py` | arq'ga ro'yxatga olinadigan vazifalar (`print_label`, `print_pachka_label`, `print_waste_label`, `print_badge`) + `PRINT_QUEUE_KEY`, `print_queue_key()`, `agent_revoked_key()`, `bridge_conn_key()`, `AGENT_ONLINE_WINDOW`/`agent_online()`, `printer_agent()`, `require_printer()`/`NoPrinterBound`, `printing_agents()` |
 
 ---
 
@@ -287,6 +287,8 @@ class WorkerSettings:
   `PRINT_QUEUE_KEY` ATAYLAB o'qilmaydi. Ack kelmasa job AYNAN kelgan kalitiga (`src_key`) qaytariladi.
 - `agent_revoked_key(agent_id)` — `mes:agent:revoked:{agent_id}`, bekor qilingan agent bayrog'i
   (TTL 10 daqiqa). `bridge_agents.py` uni qo'yadi, `/ws/bridge` har brpop iteratsiyasida o'qiydi.
+- `bridge_conn_key(agent_id)` — `mes:bridge:conn:{agent_id}`, agentning ENG OXIRGI `/ws/bridge` ulanishi
+  id'si (TTL 10 daqiqa). `/ws/bridge` uni ulanishda yozadi, yopilishda o'qiydi — «uzildi» hodisasi (pastda).
 - `require_printer(db, machine_id)` — chek qaysi agentga ketishini ANIQ aytadi, agent biriktirilmagan bo'lsa `NoPrinterBound` (chaqiruvchi 422 beradi, chek YUBORILMAYDI); `terminal.py` va `pachka.py`
   navbatga qo'yishdan OLDIN aynan shuni chaqiradi. `printing_agents(db)` — beyjik uchun tanlov ro'yxati.
   `printer_agent(db, machine_id)` — shu ish markaziga bog'langan, `can_print=True`, juftlangan
@@ -389,7 +391,7 @@ Ulanishda token `Authorization: Bearer` headerda keladi (server access-loglariga
 
 **Istisno — agentni O'CHIRISH.** `DELETE /api/v1/bridge-agents/{agent_id}` `_revoke_live_connection(..., purge_queue=True)` chaqiradi: bayroqdan tashqari u `llen` bilan sanab `print_queue_key(agent_id)` kalitini butunlay `delete` qiladi, ya'ni o'sha agentning navbatidagi HAMMA chek ATAYLAB bekor qilinadi va javobda «Navbatdagi N ta chek bekor qilindi» deb aytiladi. Sabab: har chek aniq agentga manzillangan — o'chirilgan agentning navbatini endi hech kim o'qimaydi va kalit jimgina abadiy qolardi.
 
-Ulanish/uzilish/pairing panelga `bridge.connected` / `bridge.disconnected` / `bridge.paired` eventlari bilan (`ws_manager.publish`) tarqatiladi — admin "MES agentlar" sahifasi pollingsiz yangilanadi.
+Ulanish/uzilish/pairing panelga `bridge.connected` / `bridge.disconnected` / `bridge.paired` eventlari bilan (`ws_manager.publish`) tarqatiladi — admin "MES agentlar" sahifasi pollingsiz yangilanadi. **`bridge.disconnected` ni faqat agentning ENG OXIRGI ulanishi chiqaradi** (`ws.py: _bridge_gone`): har ulanish `bridge.connected` dan oldin o'z id'sini `bridge_conn_key` ga yozadi; yopilganda kalitda boshqa id tursa (agent allaqachon qayta ulangan) hodisa yuborilmaydi. Sabab (prod 2026-10-03): qayta ulangan agentning eski yarim-ochiq soketini server 20–40 s kech yopadi (uvicorn ping'i), terminal esa oxirgi kelgan hodisaga ishonadi — eski soketning «uzildi» si yangi ulanishning «ulandi» sidan keyin kelib, «MES agent uzilgan» chipi qizilda qotib qolardi, agent esa ishlab turardi. Tekshiruv bilan e'lon orasiga yangi ulanish kirib ulgursa, «uzildi» dan keyin «ulandi» takrorlanadi (nazariy istisno: yangi ulanish ham o'sha oynada — ikki Redis so'rovi oralig'i, ~1–2 ms — yopilib ulgursa, takror noto'g'ri bo'ladi). Legacy umumiy token va Redis xatosida hodisa avvalgidek chiqadi. Logdagi iz: `Bridge ulandi: agent=… conn=…`, `Bridge ulanishi yopildi: agent=… conn=… sabab=…`, `… yangiroq ulanish bor, «uzildi» hodisasi yuborilmadi`.
 
 **Skan-forvard va printersiz stansiyalar.** `bridge_agent.machine_id` agentni ish markaziga bog'laydi: stanok skaneri o'qigan QR agent orqali `POST /api/v1/bridge-agents/scan` endpointiga (agent tokeni bilan) yuboriladi va bog'langan ish markazining terminalidagi AKTIV sessiya nomidan odatdagi skan yo'li bilan yoziladi. `can_print=False` agent (masalan, Nanxing skan-forvard stansiyasi — printeri yo'q) ulanib turadi, lekin chek OLMAYDI: BRPOP o'rniga 5s uxlaydi — aks holda chekni "o'g'irlab" lokalida qoldirardi. Shart aslida IKKITA (`if can_print and own_keys`): `own_keys` bo'sh bo'lgani uchun legacy umumiy `BRIDGE_TOKEN` bilan ulangan agent (`agent_id is None`) ham HECH QACHON chek olmaydi — u qaysi ish markazi ekani noma'lum, unga chek berish yana o'sha tasodif bo'lardi. Ya'ni legacy token faqat WS handshake'dan o'tkazadi: chop etish uchun ham, skan-forvard uchun ham (`/bridge-agents/scan` juftlangan tokenni talab qiladi) yaroqsiz. Ikkala maydonni admin `PATCH /api/v1/bridge-agents/{agent_id}` bilan boshqaradi (endpoint tafsilotlari: `docs/03-backend-api.md`).
 
