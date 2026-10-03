@@ -15,6 +15,11 @@ Prodda A/B (ishchiga o'xshash jarayon, 3 takror x 55 so'rov, 1/2/4 talik to'dala
 >=200 ms muzlash 20 -> 7, javob p95 ~800 -> ~500 ms, eski javob 0. Ikki ishchi uchun
 umumiy (Redis) hisob kerak emas: ikki jarayon bir soniyada hisoblaganda muzlash yakka
 hisobdagidek chiqdi (loop max 195 va 187 ms).
+
+Jonli trafik (2026-09-27..10-03) to'dalardan iborat emas ekan: 1567 muzlashdan 1370 tasida
+ishchida BITTA matritsa so'rovi bo'lgan, ya'ni bu mexanizm kam hollarda ishlaydi va muzlashlar
+bitta hisobning o'zidan edi — u `tablo.py: build_tablo_matrix` da yengillashtirilgan. Boshqa
+ishchida ham hisob ketayotgan bo'lsa so'rov sekinroq (p50 317 -> 364 ms, 6 083 so'rov).
 """
 
 import asyncio

@@ -1,7 +1,6 @@
 """TABLO data API: orders × stages live matrix. Read-only, any authenticated device."""
 
 from datetime import UTC, date, datetime, time, timedelta
-from typing import Any
 
 from fastapi import APIRouter
 from sqlalchemy import func, or_, select, text, true
@@ -366,7 +365,7 @@ async def build_tablo_matrix(db: AsyncSession) -> TabloMatrix:
         .scalars()
         .all()
     )
-    posts_by_id = {p.id: p for p in posts}
+    post_code = {p.id: str(p.code) for p in posts}
 
     orders = (
         (
@@ -452,56 +451,67 @@ async def build_tablo_matrix(db: AsyncSession) -> TabloMatrix:
         .all()
     )
 
+    # Qatorlar BITTA o'tishda va NOM bilan emas, yoyib o'qiladi (ustun tartibi — yuqoridagi `select`).
+    # Bu bo'lak sinxron: tugaguncha shu ishchidagi boshqa so'rovlar kutadi. `row.maydon` har o'qishda
+    # ~0,6 µs turadi va avvalgi uch o'tish 7 083 qatorda loop'ni ~120 ms band qilardi; bitta o'tish —
+    # ~20 ms, javob baytma-bayt o'sha (prod, 2026-10-03; o'sha haftadagi 1567 qisqa muzlashning 95% ida
+    # eng uzoq ishlayotgan so'rov shu edi).
+    #
     # Har detalning `seq` bo'yicha BIRINCHI tugallanmagan qadami — tayyor;
     # undan keyingilari shu detal uchun bloklangan. Detal darajasi yetarli:
     # nusxa darajasidagi hisob bilan prodda AYNAN bir xil chiqdi (35 juftlik,
     # farq 0), ya'ni qo'shimcha so'rov keraksiz.
-    qadamlar: dict[int, list[Any]] = {}
-    for row in routes:
-        qadamlar.setdefault(row.part_id, []).append(row)
-    tayyor: set[tuple[int, int]] = set()
-    for detal in qadamlar.values():
-        for r in sorted(detal, key=lambda x: x.seq):
-            if r.total_done < r.total_required:
-                tayyor.add((r.order_id, r.post_id))
-                break
-
-    agg: dict[tuple[int, int], StageAgg] = {}
+    # detal -> (seq, agregat kaliti): tugallanmagan qadamlari ichida `seq` i eng kichigi
+    birinchi_ochiq: dict[int, tuple[int, tuple[int, int]]] = {}
+    # (buyurtma, post) -> [bajarilgan, kerak]
+    agg: dict[tuple[int, int], list[int]] = {}
     # Hajm HAR DETAL uchun postda BIR MARTA sanaladi, BAJARILGAN ulushi esa o'sha
     # detalning shu postdagi hamma qatoridan yig'iladi — qoida va sababi
     # `metrics.VolumeShare` da. `done`/`total` esa HAMMA qatordan yig'iladi: ular
     # skan soni, ikki o'tish rostdan ikki skan.
     # (detal, post) -> (agregat kaliti, ulush hisoblagichi)
     part_vol: dict[tuple[int, int], tuple[tuple[int, int], VolumeShare]] = {}
-    for row in routes:
-        key = (row.order_id, row.post_id)
-        post = posts_by_id[row.post_id]
+    for order_id, post_id, part_id, seq, done, required, length, width, part_count, edges in routes:
+        key = (order_id, post_id)
+        if done < required:
+            ochiq = birinchi_ochiq.get(part_id)
+            # Teng `seq` da birinchi uchragan qator qoladi — `seq` bo'yicha barqaror saralash bergan natija
+            if ochiq is None or seq < ochiq[0]:
+                birinchi_ochiq[part_id] = (seq, key)
         entry = agg.get(key)
         if entry is None:
-            entry = StageAgg(
-                post_id=row.post_id,
-                done=0,
-                total=0,
-                volume_total=0.0,
-                volume_done=0.0,
-                ready=key in tayyor,
-            )
-            agg[key] = entry
-        entry.done += row.total_done
-        entry.total += row.total_required
-        pair = part_vol.get((row.part_id, row.post_id))
+            entry = agg[key] = [0, 0]
+        entry[0] += done
+        entry[1] += required
+        pair = part_vol.get((part_id, post_id))
         if pair is None:
-            vol = part_volume(str(post.code), length=row.length, width=row.width, count=row.part_count, edges=row.edges)
-            pair = (key, VolumeShare(volume=vol))
-            part_vol[(row.part_id, row.post_id)] = pair
+            vol = part_volume(post_code[post_id], length=length, width=width, count=part_count, edges=edges)
+            pair = part_vol[(part_id, post_id)] = (key, VolumeShare(volume=vol))
         share = pair[1]
-        share.scans += row.total_done
-        share.required += row.total_required
+        share.scans += done
+        share.required += required
+    tayyor = {key for _seq, key in birinchi_ochiq.values()}
 
+    # (buyurtma, post) -> [jami hajm, bajarilgan hajm]
+    hajm = {key: [0.0, 0.0] for key in agg}
     for agg_key, share in part_vol.values():
-        entry = agg[agg_key]
-        entry.volume_total += share.volume
-        entry.volume_done += share.share()
+        h = hajm[agg_key]
+        h[0] += share.volume
+        h[1] += share.share()
+
+    # buyurtma -> {post kodi: katakcha}; tartib — marshrut qatorlarida birinchi uchrash tartibi
+    stages: dict[int, dict[str, StageAgg]] = {}
+    for key, (done, total) in agg.items():
+        order_id, post_id = key
+        volume_total, volume_done = hajm[key]
+        stages.setdefault(order_id, {})[post_code[post_id]] = StageAgg(
+            post_id=post_id,
+            done=done,
+            total=total,
+            volume_total=volume_total,
+            volume_done=volume_done,
+            ready=key in tayyor,
+        )
 
     rows = [
         TabloOrderRow(
@@ -511,7 +521,7 @@ async def build_tablo_matrix(db: AsyncSession) -> TabloMatrix:
             deadline=o.deadline,
             status=str(o.status),
             priority=str(o.priority),
-            stages={str(posts_by_id[pid].code): stage for (oid, pid), stage in agg.items() if oid == o.id},
+            stages=stages.get(o.id, {}),
             # Bazaviy kun: oxirgi skan, u bo'lmasa — ishlab chiqarishga uzatilgan kun.
             # Ilgari skansiz buyurtma `None` bo'lib, frontend uni DARHOL «BOSHLANMAGAN»
             # deb tamg'alardi — bugun uzatilgan buyurtma ham. Endi bir qoida: 2 ish
