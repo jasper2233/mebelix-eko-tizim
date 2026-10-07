@@ -56,10 +56,11 @@ async def _refreeze_loop() -> None:
     oladi; proddagi 75–130 ms uchun taxminan 140–240 ming obyekt kerak. Haqiqiy son va vaqt — pastdagi logda.
 
     Hajm bo'yicha va faqat ishchi bo'sh paytda: `gc.collect()` — to'liq yig'im, so'rov o'rtasiga tushmasin.
-    Lokal sinovda 1–6 parallel so'rovda ikki marta ishlab to'xtadi; 10 tada (DB pool hajmi) ~2,6 ming so'rovda
-    bir takrorlandi — prodda so'rovlarning 99,8% i ishchida 5 tagacha so'rov bor paytda keladi. `freeze` o'sha
-    lahzada tirik hamma narsani muzlatadi, muzlatilgan siklik chiqindi esa tozalanmaydi — shuning uchun
-    `perf.recent` so'rov obyektlarini ushlamaydi."""
+    Lokal sinovda 1–6 parallel so'rovda ikki marta ishlab to'xtadi, prodda esa to'xtamaydi: 2026-10-04 ertalab
+    08:17–12:10 da ikki ishchida jami 7 marta (oraliq 12–98 daqiqa), har safar 20–25 ming obyekt, pauza 44–63 ms.
+    `freeze` o'sha lahzada tirik hamma narsani muzlatadi, muzlatilgan siklik chiqindi esa tozalanmaydi — shuning
+    uchun `perf.recent` so'rov obyektlarini ushlamaydi. Qolgan qoldiq lokal o'lchovda bir muzlatishga ~190 obyekt
+    (~30 KB); takror ko'p bo'lgani uchun u to'planadi, prodda hajmi o'lchanmagan."""
     while True:
         await asyncio.sleep(REFREEZE_CHECK_S)
         if perf.inflight or len(gc.get_objects()) < REFREEZE_OBJECTS:
