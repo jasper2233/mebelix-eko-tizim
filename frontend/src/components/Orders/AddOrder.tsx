@@ -115,6 +115,7 @@ export function AddOrder() {
             <OrderFields
               control={form.control}
               notesPlaceholder="Maxsus talablar (masalan, qora kromka)"
+              isNew
             />
             <DialogFooter className="pt-2">
               <LoadingButton type="submit" loading={mutation.isPending}>

@@ -40,12 +40,16 @@ export function DatePicker({
   onChange,
   placeholder = "Sanani tanlang",
   className,
+  disablePast = false,
   "aria-label": ariaLabel,
 }: {
   value: string
   onChange: (value: string) => void
   placeholder?: string
   className?: string
+  /** Bugundan oldingi kunlar xira va tanlanmaydi — kelajakdagi sana so'raladigan joyda
+   *  (yangi buyurtma muddati). Hisobot, log va sozlama sanalari o'tgan kunni tanlaydi. */
+  disablePast?: boolean
   "aria-label"?: string
 }) {
   const [open, setOpen] = useState(false)
@@ -93,6 +97,9 @@ export function DatePicker({
             onChange(d ? toValue(d) : "")
             setOpen(false)
           }}
+          // O'tgan oyga o'tish ataylab ochiq: `startMonth` qo'yilsa react-day-picker undan oldingi kunlarni
+          // bo'sh katak qiladi, `flex` qatorda birinchi hafta chapga suriladi va sana boshqa hafta kuni ostiga tushadi
+          disabled={disablePast ? { before: new Date() } : undefined}
           showOutsideDays
           classNames={{
             months: "relative",
@@ -110,11 +117,18 @@ export function DatePicker({
             day: "p-0",
             day_button:
               "num flex size-9 items-center justify-center rounded-lg text-sm hover:bg-muted aria-selected:hover:bg-primary",
-            today: "[&>button]:font-bold [&>button]:text-primary",
+            // Bugun — tizimdagi «bugun» rangi (amber, jadvaldagi bugungi muddat ham shu): och amber fon va
+            // qalin to'q amber raqam (6.41:1). Ilgari qalin `text-primary` edi — oddiy kun raqami bilan
+            // kontrasti 1.56:1, ya'ni bugun ko'zga tashlanmasdi. Halqa emas, fon: ilovada amber halqa — fokus.
+            // Rang faqat TANLANMAGAN bugunga (`data-selected` katakda, tugmada emas): tanlangani to'q ko'k.
+            today:
+              "[&>button]:font-bold [&:not([data-selected])>button]:bg-amber-100 [&:not([data-selected])>button]:text-amber-800 [&:not([data-selected])>button]:hover:bg-amber-200",
             selected:
               "[&>button]:bg-primary [&>button]:text-primary-foreground",
-            outside: "[&>button]:text-muted-foreground/40",
-            disabled: "[&>button]:opacity-30",
+            // Qo'shni oy kunlari tanlanadi — xira (tanlanmaydigan) o'tgan kunlardan to'qroq bo'lsin
+            outside: "[&>button]:text-muted-foreground/70",
+            disabled:
+              "[&>button]:cursor-not-allowed [&>button]:opacity-30 [&>button]:hover:bg-transparent",
           }}
         />
         <div className="mt-1 flex items-center justify-between border-t pt-2">
