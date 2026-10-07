@@ -404,7 +404,9 @@ async def rebuild_order_scx(db: AsyncSession, order: Order, upload_root: Path) -
         return None
 
     project_path = upload_root / project_row.path
-    project = await run_in_threadpool(lambda: parse_project(project_path.read_bytes()))
+    # Saqlangan fayl: ID'lar bazada bor — yuklash qoidasi (`check_ids`) qo'llanmaydi, aks holda qoidadan
+    # oldin yuklangan kirill ID'li buyurtmaning SCX'i endi qayta yaratilmay qolardi
+    project = await run_in_threadpool(lambda: parse_project(project_path.read_bytes(), check_ids=False))
 
     parts_by_key: dict[str, Part] = {
         f"{product_code}_{part.code}": part
