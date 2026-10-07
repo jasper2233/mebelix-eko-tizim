@@ -28,7 +28,7 @@ B-2026-047   100701        03_002    -2   _1
 | Qism | Qayerdan | Ma'nosi |
 | --- | --- | --- |
 | `B-2026-047` | `order.number` (`crud/orders.next_number`, yil ichida ketma-ket, `ix_order_number` unikal) | buyurtma tokeni — `giblab/models.py`: `order_token()` (hozir raqamning o'zi), `instance_qr()` (yig'uvchi), `strip_order_prefix()` (`ORDER_PREFIX_RE = ^B-\d{4}-\d+_`). Nanxing Panel ID `-` ni qabul qilmasa faqat shu uch funksiya o'zgaradi (`B2026047`) |
-| `100701` | .project dagi mahsulot `code` (bo'lmasa `name`, u ham bo'lmasa `PRODUCT`); 50 belgidan uzun bo'lsa `ParseError` — `Product.code` ustuni `VARCHAR(50)` | buyurtma ichidagi mahsulot (masalan 1007-buyurtma, 01-shkaf) |
+| `100701` | .project dagi mahsulot `code` (bo'lmasa `name`, u ham bo'lmasa `PRODUCT`); 50 belgidan uzun bo'lsa `ParseError` — `Product.code` ustuni `VARCHAR(50)`; ko'rinadigan ASCII'dan boshqa belgi bo'lsa ham `ParseError` (kodsiz mahsulotga GibLab qo'yadigan «Изделие1» nomi shu yerga tushadi — «Himoya tekshiruvlari») | buyurtma ichidagi mahsulot (masalan 1007-buyurtma, 01-shkaf) |
 | `03_002` | .project dagi detal `code`, u bo'lmasa `part.code` atributi (GibLab sxemasi `{blok}_{part.position}` — `parser.py` izohi; namunaviy 5 faylda o'lchandi 2026-08-29: kodli 582 detalning 539 tasida oxirgi bo'lak aynan `part.position`. DIQQAT: `c9e5b2a41d78` migratsiyasining izohi buni `{blok}_{tovar}` deydi — o'sha izoh eskirgan, prod migratsiyasi tahrirlanmaydi); ikkalasi ham bo'lmasa parser tartib raqami beradi (`001`, `002`, ...) — ogohlantirish mahsulot kodi bo'yicha BIR MARTA chiqadi: istalgan (birinchisi bo'lishi shart emas) detali kodsiz bo'lsa (`parser.py` — `auto_coded` to'plami); keyingi kodsiz detallar shu bitta ogohlantirish ostida raqamlanadi | detal turi |
 | `-2` | parser qo'shadi (`_dedupe_part_code`) | bir xil mahsulot KODI ichida IKKI detal bir xil kod bilan kelgan — ikkinchisi `-2` (uchinchisi `-3`, ...). `seen` to'plami `product.code` bo'yicha, ya'ni kodi bir xil ikki alohida `<good>` ham bitta to'plamni bo'lishadi. Bu BOSHQA detal, nusxa emas: odatda ko'zgu juftlik (chap/o'ng bok — teshiklari qarama-qarshi) yoki kromka tomoni farqli juftlik |
 | `_n` | ingest (`ParsedPart.serial_qrs(order.number)` → `instance_qr`) | nusxa raqami — FAQAT detal 1 dan ko'p nusxada bo'lsa (`_1.._count`). Yagona nusxada suffiks YO'Q |
@@ -93,6 +93,23 @@ sababli bitta chek ID si va bitta bekor qilish tugmasini ko'rsatadi
 - **Mahsulot kodi uzunligi**: nom-zaxirasi ishlaganda kod 50 belgidan oshishi mumkin;
   `parser.py` uni yozishdan OLDIN tekshiradi ("Mahsulot kodi juda uzun ..."), aks holda
   `VARCHAR(50)` ustuni ingest paytida 500 berardi.
+- **Faqat ko'rinadigan ASCII**: mahsulot yoki detal kodida undan boshqa belgi (kirill harfi, `ʻ`,
+  NBSP, tab, ...) bo'lsa parse `ParseError` bilan to'xtaydi va hammasini bitta xabarda sanaydi
+  (`parser.py: _require_scannable`). ID'ni skaner klaviatura sifatida «yozadi», kirill harfini esa
+  buzadi yoki tashlab yuboradi. 2026-10-07 prodda B-2026-150 faylida mahsulotga kod berilmagan va
+  GibLab nomi «Изделие1» ID'ga tushgan edi: Kromka terminaliga u `§ª§Ù§Õ§Ö§Ý§Ú§Ö1` (GB2312 baytlari
+  Latin-1 sifatida), stanok agentiga harflarsiz `B-2026-150_1_003` bo'lib keldi — serverga kelgan 6
+  ta qidiruvning hammasi 404 («hech bir aktiv buyurtmada topilmadi»). O'sha kuni 08:44 da esa xuddi
+  shu Kromka-1 da boshqa kirill ID'li buyurtmaning (B-2026-147, «Модель54») 12 ta skani terminal
+  orqali yozilgan — kirill QR o'shanda to'g'ri kelgan, ya'ni kirill ID ba'zan o'tadi, ba'zan yo'q.
+  Kodsiz mahsulotda ID nomdan olinadi — xabar buni alohida aytadi. Bo'shliq va kodsiz detalning
+  tartib raqami (`001`) ASCII, rad etilmaydi: prodda «4358 Sarvar» kodli buyurtma skanlanadi, detal
+  kodi `001` kabi uch xonali raqam bo'lgan buyurtmalar ishlab chiqarishda 14 ta. Qoida kiritilganda
+  prodning 147 ta `.project` faylidan 144 tasining parse natijasi o'zgarmadi, 3 tasi — kirill nomli
+  B-2026-039, B-2026-147, B-2026-150 — rad etiladi. Qoida faqat YANGI yuklashda ishlaydi: saqlangan
+  faylni qayta o'qish (`ingest.rebuild_order_scx` — SCX qayta yaratish, matritsada son o'zgarishi)
+  uni `check_ids=False` bilan chaqiradi, ya'ni oldin yuklangan buyurtmalar avvalgidek ishlaydi
+  (ularning ID'lari bazada, qayta o'qish ularni o'zgartirmaydi).
 - **ID to'qnashuvini oldindan aniqlash**: ikki HAR XIL detal bir xil QR bersa
   (masalan `010` kodli 2 nusxa va `010_2` kodli detal), ingest unique-indeks
   500 xatosi o'rniga do'stona `ParseError` beradi: "Detal ID to'qnashuvi: ..."

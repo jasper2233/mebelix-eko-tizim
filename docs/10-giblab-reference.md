@@ -814,6 +814,9 @@ ko'rmay qolardi.
 - mahsulot kodi 50 belgidan uzun bo'lsa (`parser.py`) — kodsiz eski eksportda zaxira sifatida
   mahsulot NOMI olinadi, `Product.code` esa `VARCHAR(50)`: tekshiruvsiz ingest DB darajasida
   500 bilan yiqilardi, endi tushunarli 422 qaytadi;
+- YANGI yuklashda mahsulot yoki detal kodida ko'rinadigan ASCII'dan boshqa belgi bo'lsa (`parser.py:
+  _require_scannable`) — masalan kodsiz mahsulotga GibLab qo'yadigan «Изделие1» nomi. Skaner
+  bunday ID'ni buzib o'qiydi va detal tsexda topilmaydi (`docs/11` «Himoya tekshiruvlari»);
 - XNC ifodasi xavfsiz bo'lmasa yoki hisoblanmasa — §3.2;
 - XNC elementida majburiy atribut bo'lmasa va meros zanjirida ham qiymat bo'lmasa
   (`XNC (C1): <bf> da dp yo'q`) yoxud dastur XML'i buzilgan bo'lsa — §3.2;

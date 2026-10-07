@@ -79,6 +79,40 @@ def _base_material(op_el: ET.Element) -> ET.Element | None:
     return next((m for m in mats if m.get("used") == "base"), mats[0] if mats else None)
 
 
+def _scannable(code: str) -> bool:
+    """Kod detal ID'siga (chekdagi QR, SCX nomi) kiradi, ID'ni esa skaner klaviatura sifatida «yozadi» —
+    ishonchlisi faqat ko'rinadigan ASCII. Kirill harfini skaner buzadi yoki tashlab yuboradi: 2026-10-07 prodda
+    B-2026-150 ning «Изделие1» si Kromka terminaliga `§ª§Ù§Õ§Ö§Ý§Ú§Ö1` (GB2312 baytlari), stanok agentiga
+    harflarsiz `B-2026-150_1_003` bo'lib keldi va detal «hech bir aktiv buyurtmada topilmadi». Bo'shliq
+    ASCII: prodda «4358 Sarvar» kodli buyurtma skanlanadi."""
+    return code.isascii() and code.isprintable()
+
+
+def _require_scannable(goods: list[ET.Element], products: list[ParsedProduct]) -> None:
+    """Skaner o'qiy olmaydigan kod bo'lsa fayl rad etiladi — texnolog hammasini bitta xabarda ko'rsin.
+    Kodsiz mahsulotga GibLab o'zi «Изделие1» deb nom qo'yadi va ID shu nomdan olinadi: bunda kodni emas,
+    nomni (yoki kodni) tuzatish kerakligi alohida aytiladi."""
+    bad: list[str] = []
+    for g, product in zip(goods, products, strict=True):
+        if not _scannable(product.code):
+            bad.append(
+                f"«{product.code}» (mahsulot kodi)"
+                if g.get("code")
+                else f"«{product.code}» (mahsulot nomi — kodi yo'q, ID nomdan olinadi)"
+            )
+        bad += [
+            f"«{p.code}» («{product.code}» mahsulotidagi detal kodi)" for p in product.parts if not _scannable(p.code)
+        ]
+    if bad:
+        raise ParseError(
+            "Detal ID'sida skaner o'qiy olmaydigan belgi bor (kirill harfi yoki boshqa lotin bo'lmagan belgi): "
+            + "; ".join(bad)
+            + ". Chekdagi QR shu belgilar bilan chiqadi, skaner ularni buzib o'qiydi va detal tsexda topilmay "
+            "qoladi. GibLab'da mahsulot nomi va kodlarni lotin harflari va raqamlar bilan yozing (masalan 4384) "
+            "va faylni qayta yuklang."
+        )
+
+
 def _dedupe_part_code(code: str, seen: set[str], product_code: str, warnings: list[str]) -> str:
     """Real exports repeat codes (e.g. the same product good twice) — rename deterministically
     so the durable key productCode_partCode stays unique (QR, SCX)."""
@@ -290,7 +324,9 @@ def _advisories(
     return out
 
 
-def parse_project(content: bytes) -> ParsedProject:
+def parse_project(content: bytes, *, check_ids: bool = True) -> ParsedProject:
+    """`check_ids` — yangi fayl yuklanayotganda ID qoidasi (`_require_scannable`). Saqlangan faylni qayta
+    o'qish (`ingest.rebuild_order_scx`) uni o'chiradi: u ID yaratmaydi, ular bazada allaqachon bor."""
     try:
         root = ET.fromstring(content)
     except ET.ParseError as exc:
@@ -372,6 +408,8 @@ def parse_project(content: bytes) -> ParsedProject:
             product.parts.append(part)
             part_by_file_id[part.file_part_id] = part
         project.products.append(product)
+    if check_ids:
+        _require_scannable(products_goods, project.products)
 
     # --- operations ---
     label_counter = 0  # file-global: matches GibSaw print order
