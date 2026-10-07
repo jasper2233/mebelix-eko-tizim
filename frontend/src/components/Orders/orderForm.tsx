@@ -61,9 +61,13 @@ export const toRequestBody = (data: FormValues) => ({
 export function OrderFields({
   control,
   notesPlaceholder,
+  isNew = false,
 }: {
   control: Control<FormValues>
   notesPlaceholder?: string
+  /** Yangi buyurtma: muddat o'tgan kun bo'lolmaydi. Tahrirlashda cheklov yo'q — muddatsiz
+   *  buyurtmaga kelishilgan (o'tgan) sanani keyin yozish mumkin bo'lsin. */
+  isNew?: boolean
 }) {
   return (
     <>
@@ -79,6 +83,7 @@ export function OrderFields({
                   value={field.value ?? ""}
                   onChange={field.onChange}
                   className="w-full"
+                  disablePast={isNew}
                 />
               </FormControl>
             </FormItem>
