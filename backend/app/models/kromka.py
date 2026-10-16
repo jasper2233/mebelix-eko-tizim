@@ -78,3 +78,29 @@ class KromkaKalibSession(BaseModel):
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
     segments: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default_factory=list, kw_only=True)
     excluded: Mapped[list[int]] = mapped_column(JSONB, default_factory=list, kw_only=True)
+
+
+class KromkaKalApply(BaseModel):
+    """Kalibrlashni Pico'ga qo'llash buyrug'i (docs/12 §4.20, 3-qadam).
+
+    Server buyruqni agentga `POST /bridge-agents/andon` JAVOBIDA beradi (`kal_set`), agent
+    (1.12.0+) uni Pico'ga `SET ...` qatori qilib yozadi, Pico `{"ev":"kal",...}` bilan javob
+    qaytaradi — o'sha `kal` hodisasidagi qiymatlar `values` ga mos kelsa `confirmed_at` yoziladi.
+    `previous` — qo'llashdan oldingi Pico qiymatlari: orqaga qaytarish shu bilan yangi buyruq."""
+
+    __tablename__ = "kromka_kal_apply"
+
+    __table_args__ = (Index("ix_kromka_kal_apply_machine", "machine_id", "created_at"),)
+
+    machine_id: Mapped[int] = mapped_column(ForeignKey("machine.id"), kw_only=True)
+    session_id: Mapped[int | None] = mapped_column(ForeignKey("kromka_kalib_session.id"), default=None, kw_only=True)
+    #: Pico'ga yuboriladigan qiymatlar (faqat shu kalitlar `SET` ga kiradi)
+    values: Mapped[dict[str, float]] = mapped_column(JSONB, kw_only=True)
+    previous: Mapped[dict[str, float]] = mapped_column(JSONB, kw_only=True)
+    #: Orqaga qaytarish bo'lsa — qaysi qo'llash bekor qilinmoqda
+    rollback_of_id: Mapped[int | None] = mapped_column(ForeignKey("kromka_kal_apply.id"), default=None, kw_only=True)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
+    #: Agentga birinchi marta berilgan payt
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
+    #: Pico qiymatlarni qaytarib aytgan payt (`kal` hodisasi)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)

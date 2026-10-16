@@ -6,7 +6,7 @@ from .client import Client
 from .defect import PartDefect
 from .downtime import Downtime, DowntimeReason
 from .employee import Employee
-from .kromka import KromkaKalibSession, KromkaMeasurement
+from .kromka import KromkaKalApply, KromkaKalibSession, KromkaMeasurement
 from .machine import Machine
 from .order import (
     ORDER_FAT_COLUMNS,
@@ -40,6 +40,7 @@ __all__ = [
     "DowntimeReason",
     "Employee",
     "CatalogItem",
+    "KromkaKalApply",
     "KromkaKalibSession",
     "KromkaMeasurement",
     "Machine",

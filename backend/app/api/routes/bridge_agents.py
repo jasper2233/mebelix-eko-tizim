@@ -45,12 +45,13 @@ from app.schemas.bridge_agents import (
     BridgePairRequest,
     BridgePairResponse,
     BridgeScanRequest,
+    KalSet,
 )
 from app.schemas.common import Message
 from app.schemas.terminal import ScanResult
 from app.services.andon import save_live
 from app.services.kromka import bind_measurement
-from app.services.kromka_kalib import ichida, kalib_oraliqlar
+from app.services.kromka_kalib import ichida, kal_sync, kalib_oraliqlar
 from app.services.scanning import (
     ScanRejected,
     active_session,
@@ -560,7 +561,17 @@ async def push_andon_events(
                 machine_id=machine_id,
             )
 
-    return AndonPushResult(accepted=accepted, duplicates=len(rows) - accepted, skipped=skipped)
+    # Kalibrlashni qo'llash (docs/12 §4.20): kelgan `kal` lar tasdiqmi, agentga buyruq bormi
+    kal_set = await kal_sync(
+        db, machine_id, [(r["happened_at"], r["payload"]) for r in rows if r["kind"] == "kal"], now
+    )
+    await db.commit()
+    return AndonPushResult(
+        accepted=accepted,
+        duplicates=len(rows) - accepted,
+        skipped=skipped,
+        kal_set=KalSet(id=kal_set[0], line=kal_set[1]) if kal_set else None,
+    )
 
 
 #: Beyjik QR'i — UUID (Employee.badge_id String(36)). Detal QR'ida esa DOIM `_`

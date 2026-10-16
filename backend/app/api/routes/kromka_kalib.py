@@ -2,19 +2,24 @@
 
 Admin sessiyani boshlaydi va etalon detallarni oddiy ish rejimida o'tkazadi: Pico har o'tishda
 `olchov` yuboradi (`d1`, `d2`, `ish_ms`), shu oraliqdagi hodisalar nuqta bo'ladi. Hisob —
-stansiyaning aynan algoritmi (`services/kromka_kalib.py`). Natija faqat ko'rsatiladi;
-`SET` bilan Pico'ga yozish — 3-qadam."""
+stansiyaning aynan algoritmi (`services/kromka_kalib.py`).
+
+3-qadam (§4.20): tugagan sessiya natijasini Pico'ga qo'llash va orqaga qaytarish. Qiymatlar
+mijozdan OLINMAYDI — server sessiyadan qayta hisoblaydi va chegaralarni tekshiradi."""
 
 from datetime import UTC, datetime
+from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import select
 
-from app.api.deps import AdminUser, SessionDep
+from app.api.deps import AdminUser, SessionDep, client_ip
 from app.core.exceptions import DuplicateValueException, NotFoundException
-from app.models import AndonEvent, KromkaKalibSession, Machine, Post
+from app.crud import log_action
+from app.models import AndonEvent, KromkaKalApply, KromkaKalibSession, Machine, Post
 from app.models.enums import PostCode
 from app.schemas.kromka_kalib import (
+    KalApplyRow,
     KalibDetail,
     KalibEtalon,
     KalibExclude,
@@ -22,7 +27,16 @@ from app.schemas.kromka_kalib import (
     KalibSessionRow,
     KalibStart,
 )
-from app.services.kromka_kalib import etalon, hisobla, nuqta
+from app.services.kromka_kalib import (
+    Nuqta,
+    etalon,
+    hisobla,
+    holati,
+    nuqta,
+    qollash_qiymatlari,
+    set_qatori,
+    tekshir,
+)
 
 router = APIRouter(prefix="/kromka-kalib", tags=["kromka-kalib"])
 
@@ -133,9 +147,25 @@ async def exclude_kalib_point(
     return _row(s, name)
 
 
-@router.get("/{session_id}", response_model=KalibDetail, operation_id="read_kalib_session")
-async def read_kalib_session(db: SessionDep, _: AdminUser, session_id: int) -> KalibDetail:
-    s, name = await _get(db, session_id)
+def _son(v: object) -> float | None:
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+
+async def _joriy(db: SessionDep, machine_id: int) -> dict[str, float]:
+    """Pico'dagi joriy KAL — oxirgi `kal` hodisasidan."""
+    kal = await db.scalar(
+        select(AndonEvent.payload)
+        .where(AndonEvent.machine_id == machine_id, AndonEvent.kind == "kal", AndonEvent.is_deleted == False)  # noqa: E712
+        .order_by(AndonEvent.happened_at.desc(), AndonEvent.id.desc())
+        .limit(1)
+    )
+    return {k: v for k in _KAL_KEYS if (v := _son((kal or {}).get(k))) is not None}
+
+
+async def _hisob(
+    db: SessionDep, s: KromkaKalibSession
+) -> tuple[list[tuple[int, datetime, dict[str, Any], Nuqta]], dict[str, Any] | None]:
+    """Sessiya nuqtalari `(hodisa id, vaqt, payload, Nuqta)` va hisob natijasi."""
     q = select(AndonEvent.id, AndonEvent.happened_at, AndonEvent.payload).where(
         AndonEvent.machine_id == s.machine_id,
         AndonEvent.kind == "olchov",
@@ -145,27 +175,45 @@ async def read_kalib_session(db: SessionDep, _: AdminUser, session_id: int) -> K
     if s.ended_at is not None:
         q = q.where(AndonEvent.happened_at <= s.ended_at)
     events = (await db.execute(q.order_by(AndonEvent.happened_at, AndonEvent.id))).tuples().all()
-
     excluded = set(s.excluded)
-    jadval = []  # (hodisa, nuqta)
+    jadval = []
     for eid, at, payload in events:
         L = etalon(s.segments, at)
         p = nuqta(eid, L, payload) if L else None
         if p is not None:
             jadval.append((eid, at, payload, p))
-    result = hisobla([p for eid, _a, _p, p in jadval if eid not in excluded])
+    return jadval, hisobla([p for eid, _a, _p, p in jadval if eid not in excluded])
 
-    oxirgi_kal = await db.scalar(
-        select(AndonEvent.payload)
-        .where(AndonEvent.machine_id == s.machine_id, AndonEvent.kind == "kal", AndonEvent.is_deleted == False)  # noqa: E712
-        .order_by(AndonEvent.happened_at.desc(), AndonEvent.id.desc())
-        .limit(1)
+
+def _apply_row(a: KromkaKalApply, now: datetime) -> KalApplyRow:
+    return KalApplyRow(
+        id=a.id,
+        session_id=a.session_id,
+        rollback_of_id=a.rollback_of_id,
+        values=a.values,
+        previous=a.previous,
+        created_at=a.created_at,
+        sent_at=a.sent_at,
+        confirmed_at=a.confirmed_at,
+        status=holati(a.confirmed_at, a.created_at, now),
+        line=set_qatori(a.values),
     )
-    kal = oxirgi_kal or {}
 
-    def son(v: object) -> float | None:
-        return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
 
+@router.get("/{session_id}", response_model=KalibDetail, operation_id="read_kalib_session")
+async def read_kalib_session(db: SessionDep, _: AdminUser, session_id: int) -> KalibDetail:
+    s, name = await _get(db, session_id)
+    jadval, result = await _hisob(db, s)
+    excluded = set(s.excluded)
+    now = datetime.now(UTC)
+    applies = (
+        await db.scalars(
+            select(KromkaKalApply)
+            .where(KromkaKalApply.machine_id == s.machine_id, KromkaKalApply.is_deleted == False)  # noqa: E712
+            .order_by(KromkaKalApply.created_at.desc())
+            .limit(10)
+        )
+    ).all()
     return KalibDetail(
         **_row(s, name).model_dump(),
         points=[
@@ -174,7 +222,7 @@ async def read_kalib_session(db: SessionDep, _: AdminUser, session_id: int) -> K
                 at=at,
                 L_ref=p.L_ref,
                 S=p.S,
-                L_pico=son(payload.get("L")),
+                L_pico=_son(payload.get("L")),
                 kod=str(payload["kod"]) if payload.get("kod") else None,
                 t1=p.t1,
                 t2=p.t2,
@@ -187,5 +235,86 @@ async def read_kalib_session(db: SessionDep, _: AdminUser, session_id: int) -> K
             for eid, at, payload, p in jadval
         ],
         result=result,
-        current={k: v for k in _KAL_KEYS if (v := son(kal.get(k))) is not None},
+        current=await _joriy(db, s.machine_id),
+        applies=[_apply_row(a, now) for a in applies],
     )
+
+
+async def _kutilayotgan(db: SessionDep, machine_id: int) -> None:
+    """Stanokda javob kutayotgan buyruq bo'lsa — yangisi berilmaydi (ikkalasi navbatlashib ketmasin)."""
+    now = datetime.now(UTC)
+    rows = await db.scalars(
+        select(KromkaKalApply).where(
+            KromkaKalApply.machine_id == machine_id,
+            KromkaKalApply.confirmed_at.is_(None),
+            KromkaKalApply.is_deleted == False,  # noqa: E712
+        )
+    )
+    if any(holati(None, a.created_at, now) == "kutilmoqda" for a in rows.all()):
+        raise DuplicateValueException("Oldingi buyruq hali Pico javobini kutmoqda")
+
+
+async def _yoz(db: SessionDep, user_id: int | None, request: Request, a: KromkaKalApply, action: str) -> KalApplyRow:
+    db.add(a)
+    await db.flush()
+    log_action(
+        db,
+        module="kromka_kalib",
+        action=action,
+        user_id=user_id,
+        entity_type="kromka_kal_apply",
+        entity_id=a.id,
+        message=set_qatori(a.values),
+        meta={"machine_id": a.machine_id, "values": a.values, "previous": a.previous},
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return _apply_row(a, datetime.now(UTC))
+
+
+@router.post("/{session_id}/apply", response_model=KalApplyRow, operation_id="apply_kalib_session")
+async def apply_kalib_session(db: SessionDep, user: AdminUser, session_id: int, request: Request) -> KalApplyRow:
+    """Tugagan sessiya natijasini Pico'ga qo'llash (`SET`). Agent keyingi andon javobida oladi."""
+    s, _name = await _get(db, session_id)
+    if s.ended_at is None:
+        raise HTTPException(status_code=409, detail="Avval sessiyani tugating")
+    _jadval, result = await _hisob(db, s)
+    if not result or not result["qollasa_boladi"]:
+        raise HTTPException(status_code=409, detail="Qo'llash uchun kamida 2 xil uzunlikdagi etalon kerak")
+    joriy = await _joriy(db, s.machine_id)
+    if "D" not in joriy:
+        raise HTTPException(
+            status_code=409, detail="Pico'dagi joriy qiymatlar noma'lum — agent 1.11.0+ va ulangan Pico kerak"
+        )
+    values = qollash_qiymatlari(result)
+    if xato := tekshir(values, joriy):
+        raise HTTPException(status_code=422, detail=f"Qo'llanmadi: {xato}")
+    await _kutilayotgan(db, s.machine_id)
+    a = KromkaKalApply(
+        machine_id=s.machine_id,
+        session_id=s.id,
+        values=values,
+        previous={k: joriy[k] for k in values if k in joriy},
+        created_by_id=user.id,
+    )
+    return await _yoz(db, user.id, request, a, "kal_apply")
+
+
+@router.post("/applies/{apply_id}/rollback", response_model=KalApplyRow, operation_id="rollback_kal_apply")
+async def rollback_kal_apply(db: SessionDep, user: AdminUser, apply_id: int, request: Request) -> KalApplyRow:
+    """Qo'llashdan oldingi qiymatlarni qaytarish — yangi buyruq. Chegara tekshiruvisiz: bu
+    qiymatlar Pico'ning o'zida turgan edi."""
+    old = await db.get(KromkaKalApply, apply_id)
+    if old is None or old.is_deleted:
+        raise NotFoundException("Qo'llash topilmadi")
+    await _kutilayotgan(db, old.machine_id)
+    joriy = await _joriy(db, old.machine_id)
+    a = KromkaKalApply(
+        machine_id=old.machine_id,
+        session_id=old.session_id,
+        values=old.previous,
+        previous={k: joriy[k] for k in old.previous if k in joriy},
+        rollback_of_id=old.id,
+        created_by_id=user.id,
+    )
+    return await _yoz(db, user.id, request, a, "kal_rollback")

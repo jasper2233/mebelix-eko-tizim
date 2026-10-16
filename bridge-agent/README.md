@@ -273,6 +273,13 @@ bo'lib yozilardi.
 `kal` hodisasi bo'lib MES ga ketadi (har yangi ulanishda birinchisi ham). Faqat o'qish:
 MES joriy kalibrlashni ko'rsatadi (`docs/12` §4.18).
 
+**Agent 1.12.0 — kalibrlashni qo'llash.** `POST /bridge-agents/andon` javobida `kal_set`
+(`{id, line}`) kelsa, agent `line` ni Kromka Pico'siga yozadi — har Pico ulanishida bir marta.
+Faqat `SET D=.. B1=.. ...` shaklidagi qator (kalitlar: D, V10, V18, K1, K2, B1, B2, C) o'tadi,
+boshqa har qanday matn portga TUSHMAYDI (`_KAL_SET_RE`): Pico `ALARM`, `KALIB` kabi buyruqlarni ham
+bajaradi. Yozgach `kal` dedup holati tozalanadi — qiymat o'zgarmagan bo'lsa ham Pico javobi MES ga
+ketadi va server buyruqni shu bilan tasdiqlaydi (`docs/12` §4.20).
+
 ## Rover Pico'si — CNC 2130 (v1.7.0+)
 
 Uchinchi xil Pico (firmware alohida repoda: `jasper2233/cnc2130-oyy-mes`). Oldingi
