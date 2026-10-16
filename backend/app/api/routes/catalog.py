@@ -24,6 +24,7 @@ from app.schemas.catalog import (
 )
 from app.schemas.common import Paginated
 from app.services.settings_service import set_setting
+from app.services.stock import adjust_quantity
 from app.services.warehouse import WAREHOUSE_PRICING, abc_classes, get_pricing, reprice
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
@@ -373,6 +374,9 @@ async def update_catalog_item(
     if item is None or item.is_deleted:
         raise HTTPException(status_code=404, detail="Pozitsiya topilmadi.")
     data = drop_forbidden_nulls(body.model_dump(exclude_unset=True), _NULLABLE_FIELDS)
+    if "quantity" in data:
+        # Qoldiq faqat harakat bilan o'zgaradi: qo'lda tuzatish ham partiya/FIFO va izi bilan (docs/14 §9)
+        await adjust_quantity(db, item, data.pop("quantity"), current_user.id)
     for field, value in data.items():
         setattr(item, field, value)
     if "purchase_price" in data and "purchase_usd" not in data:

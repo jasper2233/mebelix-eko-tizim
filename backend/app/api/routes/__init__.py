@@ -22,6 +22,7 @@ from .public import router as public_router
 from .reports import router as reports_router
 from .scans import router as scans_router
 from .settings import router as settings_router
+from .stock import router as stock_router
 from .system import router as system_router
 from .tablo import router as tablo_router
 from .terminal import router as terminal_router
@@ -49,6 +50,7 @@ router.include_router(orders_router, dependencies=_protected)
 router.include_router(pachka_router, dependencies=_protected)
 router.include_router(tmo_router, dependencies=_protected)
 router.include_router(catalog_router, dependencies=_protected)  # mahsulotlar ombori katalogi
+router.include_router(stock_router, dependencies=_protected)  # ombor hujjatlari va FIFO (docs/14 §9)
 router.include_router(audit_router, dependencies=_protected)
 router.include_router(terminal_router, dependencies=_protected)
 router.include_router(terminal_devices_router, dependencies=_protected)

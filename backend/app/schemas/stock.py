@@ -1,0 +1,118 @@
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+Text200 = Annotated[str, Field(max_length=200)]
+DocKind = Literal["kirim", "chiqim"]
+
+
+class DocLineIn(BaseModel):
+    """Hujjat qatori. Qoralamada `item_id` bo'sh bo'lishi mumkin (nom yozilgan, tanlanmagan) —
+    tasdiqlashda bunday qator rad etiladi."""
+
+    item_id: int | None = None
+    name: Text200 = ""
+    qty: Annotated[Decimal, Field(ge=0, le=10**9)] = Decimal(0)
+    #: kirimda DOLLAR, chiqimda so'm
+    price: Annotated[Decimal, Field(ge=0, le=10**12)] = Decimal(0)
+    discount: Annotated[Decimal, Field(ge=0, le=10**12)] = Decimal(0)
+    note: Text200 = ""
+
+
+class DocIn(BaseModel):
+    """Hujjat — qoralama sifatida saqlash yoki tasdiqlash uchun. `id` berilsa — o'sha qoralama."""
+
+    id: int | None = None
+    kind: DocKind
+    doc_date: date
+    #: Dizayndagi bosh qism maydonlari (`client`, `supplier`, `rate` ...) — matn sifatida
+    head: dict[Annotated[str, Field(max_length=20)], Text200] = Field(default_factory=dict, max_length=20)
+    lines: Annotated[list[DocLineIn], Field(max_length=500)] = Field(default_factory=list)
+
+
+class DocLineRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    line_no: int
+    item_id: int | None
+    code: str | None = None
+    unit: str | None = None
+    catalog: str | None = None
+    name: str
+    qty: Decimal
+    price: Decimal
+    discount: Decimal
+    note: str
+    cost: Decimal | None
+
+
+class DocRead(BaseModel):
+    id: int
+    no: str
+    kind: str
+    status: str
+    doc_date: date
+    head: dict[str, str]
+    rate: Decimal | None
+    total: Decimal
+    cogs: Decimal | None
+    confirmed_at: datetime | None
+    created_at: datetime
+    lines: list[DocLineRead]
+
+
+class DocRow(BaseModel):
+    """«Hujjatlar» ro'yxatining qatori."""
+
+    id: int
+    no: str
+    kind: str
+    status: str
+    doc_date: date
+    #: Kim bilan: mijoz yoki yetkazib beruvchi (+ buyurtma / faktura)
+    who: str
+    rows: int
+    total: Decimal
+    cogs: Decimal | None
+    rate: Decimal | None
+    confirmed_at: datetime | None
+    created_at: datetime
+
+
+class LotRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    received_on: date
+    source: str
+    qty: Decimal
+    qty_left: Decimal
+    unit_cost: Decimal
+    usd: Decimal | None
+
+
+class MoveRead(BaseModel):
+    id: int
+    created_at: datetime
+    item_id: int
+    code: str
+    name: str
+    kind: str
+    qty: Decimal
+    balance: Decimal
+    amount: Decimal | None
+    note: str
+    doc_id: int | None
+    doc_no: str | None
+
+
+class ItemHistory(BaseModel):
+    """Kartochka: QOLGAN partiyalar (eng eskisi birinchi — keyingi chiqim shundan) va harakatlar."""
+
+    lots: list[LotRead]
+    moves: list[MoveRead]
+    #: Keyingi chiqimning bir birlik tannarxi (eng eski partiya), so'm
+    next_cost: Decimal | None

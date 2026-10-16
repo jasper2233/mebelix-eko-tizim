@@ -1943,6 +1943,235 @@ export type DefectStep = {
 };
 
 /**
+ * DocIn
+ *
+ * Hujjat — qoralama sifatida saqlash yoki tasdiqlash uchun. `id` berilsa — o'sha qoralama.
+ */
+export type DocIn = {
+    /**
+     * Id
+     */
+    id?: number | null;
+    /**
+     * Kind
+     */
+    kind: 'kirim' | 'chiqim';
+    /**
+     * Doc Date
+     */
+    doc_date: string;
+    /**
+     * Head
+     */
+    head?: {
+        [key: string]: string;
+    };
+    /**
+     * Lines
+     */
+    lines?: Array<DocLineIn>;
+};
+
+/**
+ * DocLineIn
+ *
+ * Hujjat qatori. Qoralamada `item_id` bo'sh bo'lishi mumkin (nom yozilgan, tanlanmagan) —
+ * tasdiqlashda bunday qator rad etiladi.
+ */
+export type DocLineIn = {
+    /**
+     * Item Id
+     */
+    item_id?: number | null;
+    /**
+     * Name
+     */
+    name?: string;
+    /**
+     * Qty
+     */
+    qty?: number | string;
+    /**
+     * Price
+     */
+    price?: number | string;
+    /**
+     * Discount
+     */
+    discount?: number | string;
+    /**
+     * Note
+     */
+    note?: string;
+};
+
+/**
+ * DocLineRead
+ */
+export type DocLineRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Line No
+     */
+    line_no: number;
+    /**
+     * Item Id
+     */
+    item_id: number | null;
+    /**
+     * Code
+     */
+    code?: string | null;
+    /**
+     * Unit
+     */
+    unit?: string | null;
+    /**
+     * Catalog
+     */
+    catalog?: string | null;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Qty
+     */
+    qty: string;
+    /**
+     * Price
+     */
+    price: string;
+    /**
+     * Discount
+     */
+    discount: string;
+    /**
+     * Note
+     */
+    note: string;
+    /**
+     * Cost
+     */
+    cost: string | null;
+};
+
+/**
+ * DocRead
+ */
+export type DocRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * No
+     */
+    no: string;
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Doc Date
+     */
+    doc_date: string;
+    /**
+     * Head
+     */
+    head: {
+        [key: string]: string;
+    };
+    /**
+     * Rate
+     */
+    rate: string | null;
+    /**
+     * Total
+     */
+    total: string;
+    /**
+     * Cogs
+     */
+    cogs: string | null;
+    /**
+     * Confirmed At
+     */
+    confirmed_at: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Lines
+     */
+    lines: Array<DocLineRead>;
+};
+
+/**
+ * DocRow
+ *
+ * «Hujjatlar» ro'yxatining qatori.
+ */
+export type DocRow = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * No
+     */
+    no: string;
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Doc Date
+     */
+    doc_date: string;
+    /**
+     * Who
+     */
+    who: string;
+    /**
+     * Rows
+     */
+    rows: number;
+    /**
+     * Total
+     */
+    total: string;
+    /**
+     * Cogs
+     */
+    cogs: string | null;
+    /**
+     * Rate
+     */
+    rate: string | null;
+    /**
+     * Confirmed At
+     */
+    confirmed_at: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
  * DowntimeKind
  *
  * To'xtash turi (`downtime.kind`). Frontenddagi `DOWNTIME_KIND_LABELS` (lib/mes.ts) bilan qo'lda oynalangan.
@@ -2606,6 +2835,26 @@ export type InstanceTrace = {
 };
 
 /**
+ * ItemHistory
+ *
+ * Kartochka: QOLGAN partiyalar (eng eskisi birinchi — keyingi chiqim shundan) va harakatlar.
+ */
+export type ItemHistory = {
+    /**
+     * Lots
+     */
+    lots: Array<LotRead>;
+    /**
+     * Moves
+     */
+    moves: Array<MoveRead>;
+    /**
+     * Next Cost
+     */
+    next_cost: string | null;
+};
+
+/**
  * KalApplyRow
  */
 export type KalApplyRow = {
@@ -3156,6 +3405,40 @@ export type LagIncident = {
 };
 
 /**
+ * LotRead
+ */
+export type LotRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Received On
+     */
+    received_on: string;
+    /**
+     * Source
+     */
+    source: string;
+    /**
+     * Qty
+     */
+    qty: string;
+    /**
+     * Qty Left
+     */
+    qty_left: string;
+    /**
+     * Unit Cost
+     */
+    unit_cost: string;
+    /**
+     * Usd
+     */
+    usd: string | null;
+};
+
+/**
  * MachineAssignments
  *
  * Manager's machine choice per post before production start.
@@ -3654,6 +3937,60 @@ export type Message = {
      * Message
      */
     message: string;
+};
+
+/**
+ * MoveRead
+ */
+export type MoveRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Item Id
+     */
+    item_id: number;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * Qty
+     */
+    qty: string;
+    /**
+     * Balance
+     */
+    balance: string;
+    /**
+     * Amount
+     */
+    amount: string | null;
+    /**
+     * Note
+     */
+    note: string;
+    /**
+     * Doc Id
+     */
+    doc_id: number | null;
+    /**
+     * Doc No
+     */
+    doc_no: string | null;
 };
 
 /**
@@ -9176,6 +9513,218 @@ export type UpdateCatalogItemResponses = {
 };
 
 export type UpdateCatalogItemResponse = UpdateCatalogItemResponses[keyof UpdateCatalogItemResponses];
+
+export type ReadStockDocsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Status
+         */
+        status?: 'draft' | 'confirmed' | null;
+        /**
+         * Kind
+         */
+        kind?: 'kirim' | 'chiqim' | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/stock/docs';
+};
+
+export type ReadStockDocsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadStockDocsError = ReadStockDocsErrors[keyof ReadStockDocsErrors];
+
+export type ReadStockDocsResponses = {
+    /**
+     * Response Read Stock Docs
+     *
+     * Successful Response
+     */
+    200: Array<DocRow>;
+};
+
+export type ReadStockDocsResponse = ReadStockDocsResponses[keyof ReadStockDocsResponses];
+
+export type SaveStockDocData = {
+    body: DocIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/stock/docs';
+};
+
+export type SaveStockDocErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveStockDocError = SaveStockDocErrors[keyof SaveStockDocErrors];
+
+export type SaveStockDocResponses = {
+    /**
+     * Successful Response
+     */
+    200: DocRead;
+};
+
+export type SaveStockDocResponse = SaveStockDocResponses[keyof SaveStockDocResponses];
+
+export type DeleteStockDocData = {
+    body?: never;
+    path: {
+        /**
+         * Doc Id
+         */
+        doc_id: number;
+    };
+    query?: never;
+    url: '/api/v1/stock/docs/{doc_id}';
+};
+
+export type DeleteStockDocErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteStockDocError = DeleteStockDocErrors[keyof DeleteStockDocErrors];
+
+export type DeleteStockDocResponses = {
+    /**
+     * Successful Response
+     */
+    200: DocRow;
+};
+
+export type DeleteStockDocResponse = DeleteStockDocResponses[keyof DeleteStockDocResponses];
+
+export type ReadStockDocData = {
+    body?: never;
+    path: {
+        /**
+         * Doc Id
+         */
+        doc_id: number;
+    };
+    query?: never;
+    url: '/api/v1/stock/docs/{doc_id}';
+};
+
+export type ReadStockDocErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadStockDocError = ReadStockDocErrors[keyof ReadStockDocErrors];
+
+export type ReadStockDocResponses = {
+    /**
+     * Successful Response
+     */
+    200: DocRead;
+};
+
+export type ReadStockDocResponse = ReadStockDocResponses[keyof ReadStockDocResponses];
+
+export type ConfirmStockDocData = {
+    body: DocIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/stock/docs/confirm';
+};
+
+export type ConfirmStockDocErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ConfirmStockDocError = ConfirmStockDocErrors[keyof ConfirmStockDocErrors];
+
+export type ConfirmStockDocResponses = {
+    /**
+     * Successful Response
+     */
+    200: DocRead;
+};
+
+export type ConfirmStockDocResponse = ConfirmStockDocResponses[keyof ConfirmStockDocResponses];
+
+export type ReadStockMovesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/stock/moves';
+};
+
+export type ReadStockMovesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadStockMovesError = ReadStockMovesErrors[keyof ReadStockMovesErrors];
+
+export type ReadStockMovesResponses = {
+    /**
+     * Response Read Stock Moves
+     *
+     * Successful Response
+     */
+    200: Array<MoveRead>;
+};
+
+export type ReadStockMovesResponse = ReadStockMovesResponses[keyof ReadStockMovesResponses];
+
+export type ReadStockItemHistoryData = {
+    body?: never;
+    path: {
+        /**
+         * Item Id
+         */
+        item_id: number;
+    };
+    query?: never;
+    url: '/api/v1/stock/items/{item_id}/history';
+};
+
+export type ReadStockItemHistoryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadStockItemHistoryError = ReadStockItemHistoryErrors[keyof ReadStockItemHistoryErrors];
+
+export type ReadStockItemHistoryResponses = {
+    /**
+     * Successful Response
+     */
+    200: ItemHistory;
+};
+
+export type ReadStockItemHistoryResponse = ReadStockItemHistoryResponses[keyof ReadStockItemHistoryResponses];
 
 export type ReadAuditSummaryData = {
     body?: never;
