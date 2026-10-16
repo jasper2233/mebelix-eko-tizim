@@ -59,12 +59,17 @@ def quality_pct(parts: int, defects: int) -> float | None:
     return round(max(parts - defects, 0) * 100 / parts, 1) if parts > 0 else None
 
 
-def oee_pct(availability: float | None, performance: float | None, quality: float | None) -> float | None:
-    """OEE = Availability × Performance × Quality (uchalasi ham foiz).
+def oee_pct(planned_s: int, run_s: int, ideal_s: float | None, parts: int, defects: int) -> float | None:
+    """OEE = Availability × Performance × Quality — XOM nisbatlardan, bitta yaxlitlash bilan.
 
-    Biri hisoblanmagan bo'lsa (ish jadvali yo'q, Prisadka ham, Kromka ham emas, detal sanalmagan) — `None`.
-    Nolga tenglashtirilmaydi: hisoblanmagan ko'rsatkich «yomon» degani emas.
+    A = run/planned, P = ideal/run, Q = yaroqli/detallar, ya'ni OEE = ideal × yaroqli / (planned × detallar).
+    Ilgari 0.1 gacha yaxlitlangan uchta foiz ko'paytirilib yana yaxlitlanardi — ~13% hollarda
+    sahifadagi OEE haqiqiydan 0.1 ga farq qilardi (docs/12 §4.25).
+
+    Biri hisoblanmagan bo'lsa — `None`: ish jadvali yo'q (`planned_s` 0), Performance sanalmaydigan
+    ish markazi (`ideal_s` None) yoki ishlamagan, detal sanalmagan. Nolga tenglashtirilmaydi:
+    hisoblanmagan ko'rsatkich «yomon» degani emas.
     """
-    if availability is None or performance is None or quality is None:
+    if planned_s <= 0 or run_s <= 0 or ideal_s is None or parts <= 0:
         return None
-    return round(availability * performance * quality / 10_000, 1)
+    return round(ideal_s * max(parts - defects, 0) * 100 / (planned_s * parts), 1)
