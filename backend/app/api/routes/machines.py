@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, time, timedelta
 
 from fastapi import APIRouter, HTTPException, Request
-from sqlalchemy import func, select
+from sqlalchemy import func, select, true
 
 from app.api.deps import AdminUser, CurrentUser, SessionDep, StaffReadUser, client_ip
 from app.api.routes._shared import drop_forbidden_nulls
@@ -9,12 +9,14 @@ from app.core.config import TASHKENT_TZ
 from app.core.exceptions import DuplicateValueException, NotFoundException
 from app.crud import crud_machines, crud_posts, log_action
 from app.models import (
+    AndonEvent,
     BridgeAgent,
     Machine,
     Order,
     Part,
     PartInstance,
     PartRoute,
+    Post,
     Scan,
     User,
     WorkSession,
@@ -22,9 +24,10 @@ from app.models import (
 from app.models import (
     KromkaMeasurement as KromkaMeasurementRecord,
 )
-from app.models.enums import OrderStatus, SessionStatus
+from app.models.enums import OrderStatus, PostCode, SessionStatus
 from app.schemas.common import Message
 from app.schemas.machines import (
+    KromkaKalRow,
     KromkaMeasurementRow,
     MachineCreate,
     MachineOverview,
@@ -245,6 +248,52 @@ async def read_machines_overview(db: SessionDep, _: StaffReadUser) -> list[Machi
 #: Jonli oqimda ko'rsatiladigan o'lchovlar soni. Yangi o'lchov WS bilan darhol qo'shiladi —
 #: bu faqat sahifa ochilgandagi BOSHLANG'ICH ro'yxat.
 _KROMKA_LIVE_N = 20
+
+
+#: `KromkaKalRow.values` kalitlari — Pico `KAL` lug'ati (`kromka-stansiya-OYY: pico/main.py`)
+_KAL_KEYS = ("D", "V10", "V18", "K1", "K2", "B1", "B2", "C", "TD", "AO", "HQ", "HA", "AV")
+
+
+@router.get("/kromka-calibration", response_model=list[KromkaKalRow], operation_id="read_kromka_calibration")
+async def read_kromka_calibration(db: SessionDep, _: AdminUser) -> list[KromkaKalRow]:
+    """Har KROMKA ish markazi Pico'sidagi joriy kalibrlash — oxirgi `kal` hodisasidan.
+
+    Faqat o'qish (docs/12 §4.18, 1-qadam). Marshrut `/{machine_id}` dan OLDIN turishi shart."""
+    oxirgi = (
+        select(AndonEvent.payload, AndonEvent.happened_at)
+        .where(
+            AndonEvent.machine_id == Machine.id,
+            AndonEvent.kind == "kal",
+            AndonEvent.is_deleted == False,  # noqa: E712
+        )
+        .order_by(AndonEvent.happened_at.desc(), AndonEvent.id.desc())
+        .limit(1)
+        .lateral()
+    )
+    rows = (
+        await db.execute(
+            select(Machine.id, Machine.name, oxirgi.c.payload, oxirgi.c.happened_at)
+            .join(Post, Post.id == Machine.post_id)
+            .outerjoin(oxirgi, true())
+            .where(Post.code == PostCode.KROMKA, Machine.is_deleted == False)  # noqa: E712
+            .order_by(Machine.name)
+        )
+    ).all()
+    out = []
+    for mid, name, payload, at in rows:
+        p = payload or {}
+        out.append(
+            KromkaKalRow(
+                machine_id=mid,
+                machine_name=name,
+                at=at,
+                values={k: float(p[k]) for k in _KAL_KEYS if isinstance(p.get(k), (int, float))},
+                ver=str(p["ver"]) if p.get("ver") else None,
+                alarm=int(p["alarm"]) if isinstance(p.get("alarm"), (int, float)) else None,
+                manba=str(p["manba"]) if p.get("manba") else None,
+            )
+        )
+    return out
 
 
 @router.get(

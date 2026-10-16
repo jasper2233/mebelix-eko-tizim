@@ -55,6 +55,25 @@ class MachineUpdate(BaseModel):
     status: MachineStatus | None = None
 
 
+class KromkaKalRow(BaseModel):
+    """KROMKA stansiyasi Pico'sidagi JORIY kalibrlash (`main.py: KAL`) — agent `HOLAT` javobidan
+    o'zgarganda yuboradi (agent 1.11.0+). Faqat o'qish: qiymatlarni o'zgartirish keyingi bosqich
+    (docs/12 §4.18). Agent hali yubormagan stanokda `at` va `values` bo'sh."""
+
+    machine_id: int
+    machine_name: str
+    #: Pico qiymatlarni qachon aytgan (oxirgi o'zgarish yoki yangi ulanish)
+    at: datetime | None
+    #: D, V10, V18, K1, K2, B1, B2, C, TD, AO, HQ, HA, AV — Pico'dagi aynan qiymatlar
+    values: dict[str, float]
+    #: proshivka versiyasi (`HOLAT.ver`)
+    ver: str | None
+    #: avariya lampasi hozir miltillayaptimi (`HOLAT.alarm`)
+    alarm: int | None
+    #: `holat` — davriy so'rovdan, `set` — `SET` javobidan
+    manba: str | None
+
+
 class KromkaMeasurementRow(BaseModel):
     """Kromka stansiyasi o'lchagan bitta detal — admin panelidagi JONLI oqim uchun.
 

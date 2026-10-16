@@ -94,10 +94,11 @@ class AndonEventIn(BaseModel):
     #: detallar birga o'tgan yoki datchik ostida turib qolgan — o'lchov chiqmagan);
     #: ROVER (CNC 2130) —
     #: `rover` (Pico o'zi o'lchab tugatgan davr: POWER_ON, SPINDLE_IDLE, AUTO_SHUTDOWN ...)
-    #: va o'sha stanokning RUN o'zgarishi uchun o'sha `uskuna`. Ro'yxat YOPIQ: noma'lum
+    #: va o'sha stanokning RUN o'zgarishi uchun o'sha `uskuna`; `kal` — Kromka Pico'sidagi joriy
+    #: kalibrlash (agent 1.11.0, `HOLAT`/`SET` javobidan, o'zgarganda). Ro'yxat YOPIQ: noma'lum
     #: turni hech kim o'qimasdi, agent esa xatoni ko'rmay navbatni bo'shatardi.
     type: Literal[
-        "state", "cycle", "olchov", "uskuna", "tezlik", "ogoh", "avariya_toxtash", "boot", "tiqilish", "rover"
+        "state", "cycle", "olchov", "uskuna", "tezlik", "ogoh", "avariya_toxtash", "boot", "tiqilish", "rover", "kal"
     ]
     session: Annotated[str, Field(min_length=1, max_length=16, pattern=r"^[0-9A-Za-z_-]+$")]
     seq: Annotated[int, Field(ge=0, le=2_000_000_000)]
