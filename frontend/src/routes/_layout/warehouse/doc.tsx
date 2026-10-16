@@ -9,7 +9,12 @@
 // (sahifa yangilansa yo'qolmasin) — har tur uchun alohida.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
+import {
+  createFileRoute,
+  Link,
+  Navigate,
+  useNavigate,
+} from "@tanstack/react-router"
 import { FileUp, Plus, Printer, X } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
@@ -43,6 +48,7 @@ import {
 } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { GotoSearch } from "@/components/Warehouse/GotoSearch"
+import { SexTabs } from "@/components/Warehouse/SexTabs"
 import { Shartnoma, type ShartnomaRow } from "@/components/Warehouse/Shartnoma"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { requireAccess } from "@/lib/guards"
@@ -53,8 +59,10 @@ import {
   type CatalogLetter,
   fmt,
   fmtQty,
+  groupKey,
   num,
   parseNum,
+  SEX_FROM_F,
   usdOf,
 } from "@/lib/warehouse"
 import {
@@ -63,7 +71,7 @@ import {
 } from "@/queries/mes"
 import { handleError } from "@/utils"
 
-type Kind = "kirim" | "chiqim"
+type Kind = "kirim" | "chiqim" | "sex"
 
 export const Route = createFileRoute("/_layout/warehouse/doc")({
   component: DocPage,
@@ -71,8 +79,12 @@ export const Route = createFileRoute("/_layout/warehouse/doc")({
   head: () => ({ meta: [{ title: "Hujjat | MebeliX" }] }),
   validateSearch: (
     s: Record<string, unknown>,
-  ): { turi: Kind; id?: number; add?: string } => ({
-    turi: s.turi === "kirim" ? "kirim" : "chiqim",
+  ): { turi: Kind | "inv"; id?: number; add?: string } => ({
+    // `inv` — faqat tasdiqlangan inventarizatsiyani ko'rish (`?id=`), yangisi `/warehouse/inv` da
+    turi:
+      s.turi === "kirim" || s.turi === "sex" || s.turi === "inv"
+        ? s.turi
+        : "chiqim",
     id: typeof s.id === "number" && s.id > 0 ? s.id : undefined,
     add: typeof s.add === "string" && s.add ? s.add : undefined,
   }),
@@ -110,7 +122,12 @@ const today = () => new Date().toLocaleDateString("sv-SE")
 const blank = (kind: Kind, me: string, rate?: string): Draft => ({
   kind,
   doc_date: today(),
-  head: kind === "kirim" ? { receiver: me, rate: rate ?? "" } : { seller: me },
+  head:
+    kind === "kirim"
+      ? { receiver: me, rate: rate ?? "" }
+      : kind === "sex"
+        ? { giver: me }
+        : { seller: me },
   lines: [blankLine(), blankLine(), blankLine()],
 })
 const storeKey = (k: Kind) => `mebelix.ombor.hujjat.${k}`
@@ -196,6 +213,7 @@ function DocPage() {
       />
     )
   }
+  if (turi === "inv") return <Navigate to="/warehouse/inv" />
   if (!catalog || !pricing) return <Skeleton className="h-96 w-full" />
   const rate = String(num(pricing.usd_rate) || 12800)
   return (
@@ -234,6 +252,9 @@ function Editor({
   const [contract, setContract] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const isK = doc.kind === "kirim"
+  // Sexga kirim: narx — tannarx (FIFO, tasdiqda aniqlanadi), chegirma va shartnoma yo'q
+  const isSx = doc.kind === "sex"
+  const isC = doc.kind === "chiqim"
   const byId = useMemo(() => new Map(catalog.map((r) => [r.id, r])), [catalog])
   const rate = isK ? parseNum(doc.head.rate ?? "") || globalRate : globalRate
   const added = useRef(false)
@@ -251,7 +272,11 @@ function Editor({
     }, 30)
 
   const priceOf = (r: CatalogRow) =>
-    isK ? (usdOf(r, rate) ?? 0) : num(r.sale_price)
+    isK
+      ? (usdOf(r, rate) ?? 0)
+      : isSx
+        ? num(r.purchase_price)
+        : num(r.sale_price)
   const mergeLine = (lines: Line[], r: CatalogRow, q: number): Line[] => {
     const ex = lines.find((l) => l.item_id === r.id)
     if (ex)
@@ -403,7 +428,7 @@ function Editor({
   for (const l of usedLines)
     if (l.item_id) need.set(l.item_id, (need.get(l.item_id) ?? 0) + units(l))
 
-  const sums = { M: 0, F: 0, X: 0 }
+  const sums = { M: 0, F: 0, X: 0, S: 0 }
   let gross = 0
   let disc = 0
   for (const l of usedLines) {
@@ -443,9 +468,13 @@ function Editor({
     </div>
   )
 
-  const title = isK ? "Kirim listi" : "Sotuv listi (chiqim)"
+  const title = isK
+    ? "Kirim listi"
+    : isSx
+      ? "Sexga kirim listi"
+      : "Sotuv listi (chiqim)"
 
-  if (contract && !isK)
+  if (contract && isC)
     return (
       <div className="flex flex-col gap-4">
         <div className="flex gap-2 print:hidden">
@@ -478,6 +507,7 @@ function Editor({
         description="Qoralama — tasdiqlanmaguncha qoldiq o'zgarmaydi"
         actions={<GotoSearch />}
       />
+      {isSx && <SexTabs active="give" />}
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-xl font-bold">{title}</h2>
         <span className="num text-sm text-muted-foreground">
@@ -487,7 +517,7 @@ function Editor({
           Qoralama
         </span>
         <div className="ml-auto flex gap-2">
-          {!isK && (
+          {isC && (
             <Button variant="outline" onClick={() => setContract(true)}>
               Shartnoma
             </Button>
@@ -503,9 +533,22 @@ function Editor({
       <div className="grid max-w-5xl gap-3 md:grid-cols-2">
         <section className={cn(cardSurface, "space-y-3 p-4")}>
           <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            {isK ? "Yetkazib beruvchi" : "Mijoz"}
+            {isK ? "Yetkazib beruvchi" : isSx ? "Kim oldi" : "Mijoz"}
           </h3>
-          {isK ? (
+          {isSx ? (
+            <>
+              {F("Kim oldi (usta)", "taker", {
+                ph: "Masalan: Bobur usta",
+                big: true,
+              })}
+              {F("Qaysi uskuna / uchastka uchun", "equip", {
+                ph: "Masalan: Raspil stanogi, CNC, kromka stanogi",
+              })}
+              {F("Izoh", "note", {
+                ph: "Masalan: disk sinib qoldi, almashtirildi",
+              })}
+            </>
+          ) : isK ? (
             <>
               {F("Yetkazib beruvchi", "supplier", {
                 ph: "Masalan: Ningbo Haitian Hardware",
@@ -529,9 +572,20 @@ function Editor({
         </section>
         <section className={cn(cardSurface, "grid grid-cols-2 gap-3 p-4")}>
           <h3 className="col-span-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            {isK ? "Hujjat" : "Buyurtma"}
+            {isK || isSx ? "Hujjat" : "Buyurtma"}
           </h3>
-          {isK ? (
+          {isSx ? (
+            <>
+              <div className="col-span-2">
+                {F("Buyurtma / loyiha №", "order", {
+                  ph: "ixtiyoriy",
+                  big: true,
+                })}
+              </div>
+              {F("Berdi (omborchi)", "giver")}
+              {F("Sana", "doc_date", { type: "date" })}
+            </>
+          ) : isK ? (
             <>
               <div className="col-span-2">
                 {F("Dollar kursi · 1 $ = so'm", "rate", {
@@ -573,9 +627,9 @@ function Editor({
               <TableHead>Mahsulot nomi</TableHead>
               <TableHead className="w-24 text-right">Soni</TableHead>
               <TableHead className="w-28 text-right">
-                {isK ? "Narx, $" : "Narxi"}
+                {isK ? "Narx, $" : isSx ? "Tannarx" : "Narxi"}
               </TableHead>
-              {!isK && (
+              {isC && (
                 <TableHead className="w-28 text-right">Chegirma</TableHead>
               )}
               <TableHead className="w-32 text-right">Summa</TableHead>
@@ -589,7 +643,7 @@ function Editor({
                 key={l.key}
                 no={ix + 1}
                 line={l}
-                isK={isK}
+                kind={doc.kind}
                 rate={rate}
                 catalog={catalog}
                 item={l.item_id ? byId.get(l.item_id) : undefined}
@@ -659,7 +713,9 @@ function Editor({
         <div className="flex gap-10 text-sm">
           {(isK
             ? ["Qabul qildi (omborchi)", "Topshirdi (yetkazib beruvchi)"]
-            : ["Sotuvchi imzosi", "Mijoz imzosi"]
+            : isSx
+              ? ["Berdi (omborchi)", "Oldi (usta)"]
+              : ["Sotuvchi imzosi", "Mijoz imzosi"]
           ).map((s) => (
             <div key={s} className="w-44 border-b pb-1 text-muted-foreground">
               {s}
@@ -669,7 +725,7 @@ function Editor({
         <section
           className={cn(cardSurface, "w-full max-w-sm space-y-2 p-4 text-sm")}
         >
-          {!isK &&
+          {isC &&
             (["M", "F", "X"] as const).map((c) => (
               <div key={c} className="flex justify-between">
                 <span>
@@ -685,14 +741,16 @@ function Editor({
             <span>Mahsulotlar summasi</span>
             <b className="num">{isK ? `$${gross.toFixed(2)}` : fmt(gross)}</b>
           </div>
-          {!isK && (
+          {isC && (
             <div className="flex justify-between">
               <span>Chegirma</span>
               <span className="num text-primary">− {fmt(disc)}</span>
             </div>
           )}
           <div className="flex items-baseline justify-between border-t pt-2">
-            <b className="text-xs tracking-wide uppercase">Jami summa</b>
+            <b className="text-xs tracking-wide uppercase">
+              {isSx ? "Jami tannarx" : "Jami summa"}
+            </b>
             <b className="num text-2xl">
               {isK ? `${jami.toFixed(2)} $` : fmt(jami)}{" "}
               <span className="text-xs font-normal">{isK ? "" : "so'm"}</span>
@@ -772,7 +830,7 @@ function contractRows(
 function LineRow({
   no,
   line: l,
-  isK,
+  kind,
   rate,
   catalog,
   item,
@@ -790,7 +848,7 @@ function LineRow({
 }: {
   no: number
   line: Line
-  isK: boolean
+  kind: Kind
   rate: number
   catalog: CatalogRow[]
   item: CatalogRow | undefined
@@ -806,13 +864,22 @@ function LineRow({
   onNext: () => void
   onDelete: () => void
 }) {
+  const isK = kind === "kirim"
+  const isSx = kind === "sex"
   const t = l.name.trim().toLowerCase()
+  // Sexga — sex xo'jaligi va asbob/kley furniturasi; kirimga — xizmatsiz; sotuvga — sex mahsulotisiz
+  const allowed = (r: CatalogRow) =>
+    isSx
+      ? r.catalog === "S" || SEX_FROM_F.has(groupKey(r))
+      : isK
+        ? r.catalog !== "X"
+        : r.catalog !== "S"
   const sug =
     active && !item && t.length >= 2
       ? catalog
           .filter(
             (r) =>
-              (!isK || r.catalog !== "X") &&
+              allowed(r) &&
               (r.code.toLowerCase().includes(t) ||
                 r.name.toLowerCase().includes(t) ||
                 (r.decor_name ?? "").toLowerCase().includes(t) ||
@@ -861,8 +928,7 @@ function LineRow({
             )
             onChange({
               name: v,
-              item_id:
-                exact && (!isK || exact.catalog !== "X") ? exact.id : null,
+              item_id: exact && allowed(exact) ? exact.id : null,
             })
             onFocus()
           }}
@@ -956,14 +1022,19 @@ function LineRow({
           inputMode="decimal"
           placeholder="0"
           value={l.price}
-          disabled={disabled}
+          disabled={disabled || isSx}
+          title={
+            isSx
+              ? "Tannarx FIFO bo'yicha tasdiqda aniqlanadi — bu taxminiy (xarid narxi)"
+              : undefined
+          }
           onFocus={(e) => e.target.select()}
           onChange={(e) =>
             onChange({ price: e.target.value.replace(/[^0-9.,]/g, "") })
           }
         />
       </TableCell>
-      {!isK && (
+      {kind === "chiqim" && (
         <TableCell>
           <Input
             className="num h-8 text-right"
@@ -1117,6 +1188,9 @@ function ReadOnlyDoc({ doc }: { doc: DocRead }) {
   const [contract, setContract] = useState(false)
   const isK = doc.kind === "kirim"
   const h = doc.head
+  if (doc.kind === "inv") return <InvDoc doc={doc} />
+  const isSx = doc.kind === "sex"
+  const isC = doc.kind === "chiqim"
   const rows: ShartnomaRow[] = doc.lines.map((l) => {
     const g = num(l.qty) * num(l.price)
     return {
@@ -1164,14 +1238,22 @@ function ReadOnlyDoc({ doc }: { doc: DocRead }) {
         ["Kurs", doc.rate ? `1 $ = ${fmt(doc.rate)} so'm` : undefined],
         ["Izoh", h.note],
       ]
-    : [
-        ["Mijoz", h.client],
-        ["Telefon", h.phone],
-        ["Manzil", h.addr],
-        ["Buyurtma №", h.order],
-        ["Sotuvchi", h.seller],
-        ["Topshirish muddati", h.due],
-      ]
+    : isSx
+      ? [
+          ["Kim oldi", h.taker],
+          ["Uskuna / uchastka", h.equip],
+          ["Buyurtma / loyiha №", h.order],
+          ["Berdi", h.giver],
+          ["Izoh", h.note],
+        ]
+      : [
+          ["Mijoz", h.client],
+          ["Telefon", h.phone],
+          ["Manzil", h.addr],
+          ["Buyurtma №", h.order],
+          ["Sotuvchi", h.seller],
+          ["Topshirish muddati", h.due],
+        ]
   return (
     <div className="flex max-w-5xl flex-col gap-4">
       <Link
@@ -1182,14 +1264,18 @@ function ReadOnlyDoc({ doc }: { doc: DocRead }) {
       </Link>
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="text-xl font-bold">
-          {isK ? "Kirim listi" : "Sotuv listi (chiqim)"}
+          {isK
+            ? "Kirim listi"
+            : isSx
+              ? "Sexga kirim listi"
+              : "Sotuv listi (chiqim)"}
         </h1>
         <span className="num text-sm text-muted-foreground">{doc.no}</span>
         <span className="rounded bg-emerald-600 px-1.5 text-xs font-semibold text-white uppercase">
           Tasdiqlangan
         </span>
         <span className="text-sm text-muted-foreground">{doc.doc_date}</span>
-        {!isK && (
+        {isC && (
           <Button
             variant="outline"
             className="ml-auto"
@@ -1220,11 +1306,11 @@ function ReadOnlyDoc({ doc }: { doc: DocRead }) {
               <TableHead>Nom</TableHead>
               <TableHead className="text-right">Soni</TableHead>
               <TableHead className="text-right">
-                {isK ? "Narx, $" : "Narxi"}
+                {isK ? "Narx, $" : isSx ? "Tannarx" : "Narxi"}
               </TableHead>
-              {!isK && <TableHead className="text-right">Chegirma</TableHead>}
+              {isC && <TableHead className="text-right">Chegirma</TableHead>}
               <TableHead className="text-right">Summa</TableHead>
-              {!isK && <TableHead className="text-right">Tannarx</TableHead>}
+              {isC && <TableHead className="text-right">Tannarx</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1246,9 +1332,13 @@ function ReadOnlyDoc({ doc }: { doc: DocRead }) {
                   {fmtQty(l.qty)} {l.unit ?? ""}
                 </TableCell>
                 <TableCell className="num text-right">
-                  {isK ? `$${num(l.price).toFixed(2)}` : fmt(l.price)}
+                  {isK
+                    ? `$${num(l.price).toFixed(2)}`
+                    : isSx // sexda narx — tasdiqdagi FIFO tannarx (`cost`)
+                      ? fmt(num(l.cost) / (num(l.qty) || 1))
+                      : fmt(l.price)}
                 </TableCell>
-                {!isK && (
+                {isC && (
                   <TableCell className="num text-right">
                     {num(l.discount) ? fmt(l.discount) : "—"}
                   </TableCell>
@@ -1256,9 +1346,11 @@ function ReadOnlyDoc({ doc }: { doc: DocRead }) {
                 <TableCell className="num text-right font-semibold">
                   {isK
                     ? fmt(num(l.qty) * num(l.price) * num(doc.rate))
-                    : fmt(rows[i].sum)}
+                    : isSx
+                      ? fmt(l.cost)
+                      : fmt(rows[i].sum)}
                 </TableCell>
-                {!isK && (
+                {isC && (
                   <TableCell className="num text-right text-muted-foreground">
                     {l.cost != null ? fmt(l.cost) : "—"}
                   </TableCell>
@@ -1268,7 +1360,7 @@ function ReadOnlyDoc({ doc }: { doc: DocRead }) {
           </TableBody>
         </Table>
         <div className="flex flex-wrap justify-end gap-6 border-t p-4 text-sm">
-          {!isK && doc.cogs != null && (
+          {isC && doc.cogs != null && (
             <>
               <span>
                 FIFO tannarx <b className="num">{fmt(doc.cogs)}</b>
@@ -1281,6 +1373,87 @@ function ReadOnlyDoc({ doc }: { doc: DocRead }) {
           )}
           <span>
             Jami <b className="num text-lg">{fmt(doc.total)} so'm</b>
+          </span>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+/** Tasdiqlangan inventarizatsiya: hisobdagi va sanalgan miqdor, farq va uning summasi */
+function InvDoc({ doc }: { doc: DocRead }) {
+  return (
+    <div className="flex max-w-5xl flex-col gap-4">
+      <Link
+        to="/warehouse/docs"
+        className="text-sm font-semibold text-primary hover:underline"
+      >
+        ← Hujjatlar
+      </Link>
+      <div className="flex flex-wrap items-center gap-2">
+        <h1 className="text-xl font-bold">Inventarizatsiya</h1>
+        <span className="num text-sm text-muted-foreground">{doc.no}</span>
+        <span className="rounded bg-emerald-600 px-1.5 text-xs font-semibold text-white uppercase">
+          Tasdiqlangan
+        </span>
+        <span className="text-sm text-muted-foreground">{doc.doc_date}</span>
+        {doc.head.note && (
+          <span className="text-sm text-muted-foreground">
+            · {doc.head.note}
+          </span>
+        )}
+      </div>
+      <section className={cn(cardSurface, "overflow-hidden")}>
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50 text-xs uppercase">
+              <TableHead className="w-8">№</TableHead>
+              <TableHead className="w-32">Kod</TableHead>
+              <TableHead>Nom</TableHead>
+              <TableHead className="text-right">Hisobda</TableHead>
+              <TableHead className="text-right">Haqiqiy</TableHead>
+              <TableHead className="text-right">Farq</TableHead>
+              <TableHead className="text-right">Summa farqi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {doc.lines.map((l, i) => {
+              const d = num(l.qty) - num(l.book_qty)
+              return (
+                <TableRow key={l.id}>
+                  <TableCell className="num text-muted-foreground">
+                    {i + 1}
+                  </TableCell>
+                  <TableCell className="num text-xs text-muted-foreground">
+                    {l.code ?? "—"}
+                  </TableCell>
+                  <TableCell>{l.name}</TableCell>
+                  <TableCell className="num text-right">
+                    {fmtQty(l.book_qty)}
+                  </TableCell>
+                  <TableCell className="num text-right">
+                    {fmtQty(l.qty)} {l.unit ?? ""}
+                  </TableCell>
+                  <TableCell
+                    className={cn(
+                      "num text-right font-semibold",
+                      d < 0 ? "text-destructive" : "text-emerald-600",
+                    )}
+                  >
+                    {d > 0 ? "+" : ""}
+                    {fmtQty(d)}
+                  </TableCell>
+                  <TableCell className="num text-right">
+                    {l.cost != null ? fmt(l.cost) : "—"}
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+        <div className="flex justify-end border-t p-4 text-sm">
+          <span>
+            Jami farq <b className="num text-lg">{fmt(doc.total)} so'm</b>
           </span>
         </div>
       </section>

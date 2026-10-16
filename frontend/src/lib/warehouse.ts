@@ -7,8 +7,21 @@ export const CATALOG_NAMES = {
   M: "Material",
   F: "Furnitura",
   X: "Xizmat",
+  S: "Sex xo'jaligi",
 } as const
 export type CatalogLetter = keyof typeof CATALOG_NAMES
+
+/** Sex xo'jaligi guruhlari — varaqda yo'q, birinchi pozitsiya shu nom bilan ochiladi.
+ *  Backend'dagi nusxasi: `services/warehouse.py: SEX_GROUPS`. */
+export const SEX_GROUPS: [string, string][] = [
+  ["S-ZP", "Uskuna zapchastlari"],
+  ["S-AS", "Sex asbob va sarfi"],
+  ["S-KG", "Qog'oz va kanselyariya"],
+  ["S-XJ", "Xo'jalik va himoya"],
+  ["S-UP", "Upakovka materiali"],
+]
+/** Sexga berilishi mumkin bo'lgan furnitura guruhlari (asbob, kley) — dizayndagi takliflar filtri */
+export const SEX_FROM_F = new Set(["F-AS", "F-KL"])
 
 export const TIERS = [
   ["S", "Standart"],

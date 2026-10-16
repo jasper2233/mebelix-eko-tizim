@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { downloadCsv, groupKey, parseNum } from "@/lib/warehouse"
+import { downloadCsv, groupKey, parseNum, SEX_GROUPS } from "@/lib/warehouse"
 import { handleError } from "@/utils"
 
 export const TEMPLATE_HEAD = [
@@ -39,6 +39,30 @@ export const TEMPLATE_HEAD = [
   "Sotuv narxi (so'm)",
 ]
 const EXAMPLE = [
+  [
+    "S",
+    "S-ZP",
+    "Pila diski 300×3,2×30 Z96",
+    "raspil stanogi uchun",
+    "dona",
+    "4",
+    "2",
+    "B-01-1",
+    "450000",
+    "",
+  ],
+  [
+    "S",
+    "S-KG",
+    "Qog'oz A4 500 varaq",
+    "chizma, hujjat",
+    "pachka",
+    "10",
+    "3",
+    "B-03-1",
+    "45000",
+    "",
+  ],
   [
     "F",
     "F-RC",
@@ -98,7 +122,7 @@ function parse(text: string, groups: Set<string>) {
     }
     const xizmat = gk[0] === "X"
     ok.push({
-      catalog: gk[0] as "M" | "F" | "X",
+      catalog: gk[0] as "M" | "F" | "X" | "S",
       group_code: gk.slice(2),
       name,
       description: c[3] || null,
@@ -124,7 +148,10 @@ export function ImportDialog({
 }) {
   const queryClient = useQueryClient()
   const [text, setText] = useState("")
-  const groups = useMemo(() => new Set(rows.map(groupKey)), [rows])
+  const groups = useMemo(
+    () => new Set([...rows.map(groupKey), ...SEX_GROUPS.map(([k]) => k)]),
+    [rows],
+  )
   const { ok, errs } = useMemo(() => parse(text, groups), [text, groups])
 
   const run = useMutation({

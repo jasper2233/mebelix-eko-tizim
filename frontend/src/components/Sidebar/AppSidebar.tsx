@@ -5,6 +5,7 @@ import {
   BarChart3,
   Bolt,
   Boxes,
+  ClipboardCheck,
   ClipboardList,
   Download,
   Factory,
@@ -22,6 +23,7 @@ import {
   Tv,
   Upload,
   UserRound,
+  Wrench,
 } from "lucide-react"
 import type { UserRead } from "@/client"
 import { DefectsService, SystemService } from "@/client"
@@ -118,7 +120,7 @@ export const NAV_ITEMS: (Item & {
         path: "/warehouse/doc",
         search: { turi: "chiqim" },
         match: (s: Record<string, unknown>, p: string) =>
-          p === "/warehouse/doc" && s.turi !== "kirim",
+          p === "/warehouse/doc" && s.turi === "chiqim",
       },
       {
         icon: Download,
@@ -127,6 +129,27 @@ export const NAV_ITEMS: (Item & {
         search: { turi: "kirim" },
         match: (s: Record<string, unknown>, p: string) =>
           p === "/warehouse/doc" && s.turi === "kirim",
+      },
+      // Sex xo'jaligi (docs/14 §10): S katalogi, sexga kirim (F3) va sex sarfi — bitta bo'lim
+      {
+        icon: Wrench,
+        title: "Sex xo'jaligi · F3",
+        path: "/warehouse",
+        search: { katalog: "S" },
+        match: (s: Record<string, unknown>, p: string) =>
+          p.startsWith("/warehouse/item/")
+            ? p.slice(16, 17) === "S"
+            : (p === "/warehouse" && katalogOf(s) === "S") ||
+              (p === "/warehouse/doc" && s.turi === "sex") ||
+              p === "/warehouse/sex-sarfi",
+      },
+      {
+        icon: ClipboardCheck,
+        title: "Inventarizatsiya",
+        path: "/warehouse/inv",
+        match: (s: Record<string, unknown>, p: string) =>
+          p === "/warehouse/inv" ||
+          (p === "/warehouse/doc" && s.turi === "inv"),
       },
       {
         icon: FileText,

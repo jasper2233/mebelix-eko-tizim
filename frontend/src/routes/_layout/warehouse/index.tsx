@@ -34,6 +34,7 @@ import {
 import { GotoSearch } from "@/components/Warehouse/GotoSearch"
 import { ImportDialog } from "@/components/Warehouse/ImportDialog"
 import { NewItemRow } from "@/components/Warehouse/NewItemRow"
+import { SexTabs } from "@/components/Warehouse/SexTabs"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { requireAccess } from "@/lib/guards"
 import { isWarehouseStaff, isWarehouseWriter } from "@/lib/mes"
@@ -68,11 +69,11 @@ export const Route = createFileRoute("/_layout/warehouse/")({
     s: Record<string, unknown>,
   ): { katalog?: string; guruh?: string } => ({
     katalog:
-      typeof s.katalog === "string" && /^[MFX]$/.test(s.katalog)
+      typeof s.katalog === "string" && /^[MFXS]$/.test(s.katalog)
         ? s.katalog
         : undefined,
     guruh:
-      typeof s.guruh === "string" && /^[MFX]-[A-Z]{2}$/.test(s.guruh)
+      typeof s.guruh === "string" && /^[MFXS]-[A-Z]{2}$/.test(s.guruh)
         ? s.guruh
         : undefined,
   }),
@@ -113,7 +114,7 @@ function NomenklaturaPage() {
 
   const all = data ?? []
   const byCat = useMemo(() => {
-    const c = { M: 0, F: 0, X: 0 }
+    const c = { M: 0, F: 0, X: 0, S: 0 }
     for (const r of all) c[r.catalog as CatalogLetter]++
     return c
   }, [all])
@@ -270,10 +271,11 @@ function NomenklaturaPage() {
         description={
           isLoading
             ? "Katalog yuklanmoqda…"
-            : `${fmt(all.length)} pozitsiya · material ${fmt(byCat.M)} · furnitura ${fmt(byCat.F)} · xizmat ${fmt(byCat.X)}${lowCount ? ` · kam qolgan ${lowCount}` : ""}`
+            : `${fmt(all.length)} pozitsiya · material ${fmt(byCat.M)} · furnitura ${fmt(byCat.F)} · xizmat ${fmt(byCat.X)}${byCat.S ? ` · sex ${fmt(byCat.S)}` : ""}${lowCount ? ` · kam qolgan ${lowCount}` : ""}`
         }
         actions={<GotoSearch />}
       />
+      {cat === "S" && <SexTabs active="list" />}
 
       {cat === "M" && (
         <div className="flex flex-wrap items-center gap-2 text-sm">

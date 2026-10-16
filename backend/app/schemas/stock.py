@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 Text200 = Annotated[str, Field(max_length=200)]
-DocKind = Literal["kirim", "chiqim"]
+DocKind = Literal["kirim", "chiqim", "sex"]
 
 
 class DocLineIn(BaseModel):
@@ -47,6 +47,8 @@ class DocLineRead(BaseModel):
     discount: Decimal
     note: str
     cost: Decimal | None
+    #: Inventarizatsiya: hisobdagi qoldiq (`qty` — sanalgani)
+    book_qty: Decimal | None = None
 
 
 class DocRead(BaseModel):
@@ -116,3 +118,36 @@ class ItemHistory(BaseModel):
     moves: list[MoveRead]
     #: Keyingi chiqimning bir birlik tannarxi (eng eski partiya), so'm
     next_cost: Decimal | None
+
+
+class InventoryCount(BaseModel):
+    item_id: int
+    #: Sanalgan HAQIQIY miqdor
+    qty: Annotated[Decimal, Field(ge=0, le=10**9)]
+
+
+class InventoryIn(BaseModel):
+    """Inventarizatsiya: sanalgan pozitsiyalar — farqi qoldiqqa yoziladi, `INV` hujjati tasdiqlangan holda."""
+
+    doc_date: date
+    #: `group` (sanalgan guruh, `F-RC`), `note`
+    head: dict[Annotated[str, Field(max_length=20)], Text200] = Field(default_factory=dict, max_length=10)
+    counts: Annotated[list[InventoryCount], Field(min_length=1, max_length=5000)]
+
+
+class SexLogRow(BaseModel):
+    """«Sex sarfi» jurnali qatori — kim, qachon, qaysi uskuna uchun nima oldi."""
+
+    doc_id: int
+    doc_no: str
+    doc_date: date
+    taker: str
+    equip: str
+    order: str
+    giver: str
+    item_id: int
+    code: str
+    name: str
+    unit: str | None
+    qty: Decimal
+    amount: Decimal | None

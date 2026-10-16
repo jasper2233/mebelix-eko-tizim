@@ -62,8 +62,10 @@ class StockDocLine(BaseModel):
     #: Chegirma, so'm (faqat chiqim) — qator summasidan oshmaydi
     discount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal(0), kw_only=True)
     note: Mapped[str] = mapped_column(String(200), default="", kw_only=True)
-    #: Chiqimda shu qatorning FIFO tannarxi, so'm (tasdiqlanganda)
+    #: Chiqimda shu qatorning FIFO tannarxi, so'm (tasdiqlanganda); inventarizatsiyada — farq summasi (ishorali)
     cost: Mapped[Decimal | None] = mapped_column(Numeric(16, 2), default=None, kw_only=True)
+    #: Inventarizatsiya: sanash paytidagi HISOBDAGI qoldiq (`qty` — haqiqiy, sanalgani)
+    book_qty: Mapped[Decimal | None] = mapped_column(Numeric(12, 3), default=None, kw_only=True)
 
 
 class StockLot(BaseModel):
