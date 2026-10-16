@@ -239,7 +239,10 @@ Tuzatishlar branch orqali boradi; `main` ga push = tsexga deploy (19:00 dan keyi
 - **Nega hozir emas:** Ingest ma'lumot modeli va QR raqamlanishini o'zgartiradi.
   Mahsulot qarori kerak.
 
-### 8. Sotuv listi: kasr miqdorni terib bo'lmaydi — "1,5" 15 bo'ladi
+### 8. ✅ ESKIRDI (2026-10-16): Sotuv listi: kasr miqdorni terib bo'lmaydi — "1,5" 15 bo'ladi
+
+- **Holat:** `sotuv.tsx` endi faqat `/warehouse/doc?turi=chiqim` ga yo'naltiradi; yangi hujjatda
+  miqdor/narx/chegirma matn bo'lib saqlanadi (`doc.tsx` `Line`), son faqat hisobda `parseNum` bilan olinadi.
 
 - **Joy:** `frontend/src/routes/_layout/sotuv.tsx:500` (`RaqamKatak`)
 - **Muammo:** Input boshqariladi va `korinish` son qiymatdan quriladi. "1," terilsa
@@ -406,6 +409,48 @@ Raqamlar ataylab o'zgartirilmadi — kod va hujjatlar «TODO.md #N» deb havola 
   shu sonni ishlating.
 - **Nega hozir emas:** API javob sxemasi o'zgaradi. Server baribir 409 beradi, ya'ni
   zarar faqat noto'g'ri ko'rsatma.
+
+---
+
+## Mahsulotlar ombori — qilinadigan ishlar (2026-10-16)
+
+«Qudrat Ombor» dizaynining uch bosqichi prodda (`7a1228c`, `1336686`, `24d2277` — docs/14 §8–10).
+Quyidagilar keyingi ish. Lokal muhit, orakllar va deploy tartibi — `CLAUDE.md`.
+
+### O1. Prodda Sex xo'jaligi (`S`) katalogi bo'sh
+
+- `ombor_seed.py` faqat M/F/X ni to'ldirgan. Sex tovarlarini (zapchast, asbob, kanselyariya, xo'jalik,
+  upakovka) kiritish kerak: Nomenklatura → «Sex xo'jaligi» → «Yangi mahsulot» yoki «Excel'dan yuklash»
+  (shablonda `S-ZP`/`S-KG` namunalari bor). Ro'yxatni ombor egasi beradi.
+- Kiritilgach qoldiq — Inventarizatsiya yoki Kirim hujjati bilan (qo'lda emas).
+
+### O2. 3-bosqichni prodda brauzerda tekshirish
+
+- Lokalda tekshirilgan (docs/14 §10.3 oxiri), prodda — yo'q. Tekshirish: menyuda «Sex xo'jaligi · F3» va
+  «Inventarizatsiya»; F3 → sexga kirim → F9; «Sex sarfi» CSV; bitta kichik guruhda inventarizatsiya
+  (faqat haqiqiy sanash bilan — tasdiqlangan INV qoldiqni o'zgartiradi va qaytarilmaydi).
+
+### O3. Inventarizatsiya qoralamasi yo'q
+
+- `/warehouse/inv` da kiritilgan sonlar faqat sahifa xotirasida: yangilansa yoki guruh almashsa yo'qoladi.
+  Katta guruhni (LDSP — 1 000+ pozitsiya) bir o'tirishda sanash qiyin.
+- Taklif: sotuv/kirimdagidek `localStorage` (`mebelix.ombor.inv.<guruh>`) yoki `stock_doc` da `inv`
+  qoralamasi. Birinchisi — kichik, faqat bitta brauzer.
+
+### O4. Inventarizatsiyada materiallar
+
+- `M` guruhida zaxiraga olinmagan (`tracked=false`) dekorlar ham chiqadi. Kerak bo'lsa — faqat `tracked`
+  yoki qoldig'i bor pozitsiyalar filtri. Ombor egasi bilan kelishish.
+
+### O5. Sex sarfi chegarasi
+
+- `GET /stock/sex-log` sukut bo'yicha oxirgi 5 000 qator, sahifa sana filtri yo'q. Yil oxirida sana
+  oralig'i (`from`/`to`) kerak bo'ladi.
+
+### O6. Eski brauzer listlari
+
+- 2026-10-16 gacha `/sotuv` da `localStorage` (`mebelix.sotuv-listi.v1`) da qolgan listlar ko'chirilmadi
+  (docs/14 §9.3). Omborchi so'rasa — qo'lda qayta kiritiladi; kod kerak emas.
 
 ---
 
