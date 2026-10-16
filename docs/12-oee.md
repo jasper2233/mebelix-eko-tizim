@@ -676,6 +676,7 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `downtime_cleanup_oracle.py` (14/14) | `scripts/downtime_deleted_events.sql` — soxta to'xtashlarni tozalash |
 | `kromka_kirish_oracle.py` (4/4) | §4.10 — kirish `ts − (ish_ms + d2)`, oyna −60 … +20 s, skan darajasida FIFO |
 | `kromka_kal_oracle.py` (8/8) | §4.18 — Pico'dagi joriy kalibrlash agentdan MES gacha (o'zgarganda, takrorsiz) |
+| `lock_end_oracle.py` (3/3) | §4.24 — qulf stanok ishlay boshlaguncha amal qiladi: keyingi to'xtash qulf sababini olmaydi (eski kodda 1/3) |
 | `reason_lookup_oracle.py` (4/4) | §4.23 — qisqa to'xtash qo'shni yozuvning sababini (rejali «Tushlik») olmaydi (eski kodda 0/4) |
 | `day_boundary_stop_oracle.py` (4/4) | §4.22 — yarim tundan o'tgan to'xtash bir kunlik hisobotda chegaradan tushib qolmaydi (eski kodda 2/4) |
 | `availability_range_oracle.py` (7/7) | §4.21 — kunning Availability'si so'ralgan oraliqqa bog'liq emas (eski kodda 2/7) |
@@ -988,6 +989,25 @@ sababsiz, «Tushlik» faqat o'zining 3600 s, uzunroq yozuvli (14:58–16:00) «M
 to'xtashiga (15:00–16:00) baribir biriktiriladi. `oee_oracle` dagi «bugun: reja hozirgacha»
 tekshiruvi ±1 s ga yumshatildi: orakl `hozir` ni hisobotdan oldin oladi, §4.22 dagi `round()` bilan
 farq 1 s bo'lishi mumkin (31/31, 3 marta). Qolgan 16 ta orakl o'zgarmadi.
+
+### 4.24 Qulf stanok ishlay boshlaguncha amal qiladi (2026-10-16)
+
+**Muammo.** Qulf (LOCK) — operator ketishdan oldin sababni aytadi; shu oraliqda boshlangan Pico
+to'xtashi sababni qulfdan oladi (`sync_machine`). Qulf yozuvi faqat kimdir shu stanokda smena
+ochganda yopiladi (`close_open_locks`). Odatiy tartibda yetarli — ishdan oldin qulf ochiladi. Lekin
+stanok terminalga bog'liq emas: Kromka skanersiz o'lchaydi, ertasi kuni boshqa odam terminalga
+kirmasdan yoqishi mumkin. Shunda qulf ochiq qolib, keyingi HAMMA to'xtash uning sababini (masalan
+rejali «Tushlik») olardi va reja vaqtidan chiqib, Availability'ni shishirardi.
+
+**Tuzatish (2-variant, egasi tanladi).** Sinxronda qulfning amal qilish muddati — yozuv yopilgan
+payt yoki qulfdan keyingi BIRINCHI «ishlayapti» hodisasi (Prisadka `state = PROCESSING`,
+Kromka/Rover `uskuna.holat = 1`), qaysi biri oldin bo'lsa. Undan keyin boshlangan to'xtash qulf
+sababini olmaydi — operatordan so'raladi. Qulf yozuvining o'ziga tegilmaydi: terminal ekrani o'z
+holatida qoladi (qulf frontend holati, beyjik bilan ochiladi).
+
+Tekshiruv — `scripts/oracles/lock_end_oracle.py` **3/3** (eski kodda **1/3**): Prisadka va Kromka'da
+12:00 dagi «Tushlik» qulfi 12:05 dagi to'xtashga beriladi, stanok 12:50 da ishlagach 13:30 dagi
+to'xtash sababsiz qoladi; qulf yozuvi ochiq qoldi. Qolgan 18 ta orakl o'zgarmadi.
 
 ## 5. Prod auditi natijalari (2026-09-16)
 
