@@ -1168,7 +1168,7 @@ function KromkaKalCard() {
         <p className="text-sm text-muted-foreground">
           Kromka stansiyasi Pico'sining hozirgi o'lchash parametrlari — Pico
           o'zi aytgan qiymatlar (har ulanishda va o'zgarganda yangilanadi).
-          Faqat ko'rish uchun: kalibrlashni MES dan qo'llash keyingi bosqichda.
+          Yangi qiymatlar quyidagi «Kalibrlash sessiyasi» dan qo'llanadi.
         </p>
       </div>
       {data.length === 0 ? (

@@ -81,6 +81,7 @@ export type AndonPushResult = {
      * Skipped
      */
     skipped: number;
+    kal_set?: KalSet | null;
 };
 
 /**
@@ -2360,6 +2361,74 @@ export type InstanceTrace = {
 };
 
 /**
+ * KalApplyRow
+ */
+export type KalApplyRow = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Session Id
+     */
+    session_id: number | null;
+    /**
+     * Rollback Of Id
+     */
+    rollback_of_id: number | null;
+    /**
+     * Values
+     */
+    values: {
+        [key: string]: number;
+    };
+    /**
+     * Previous
+     */
+    previous: {
+        [key: string]: number;
+    };
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Sent At
+     */
+    sent_at: string | null;
+    /**
+     * Confirmed At
+     */
+    confirmed_at: string | null;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Line
+     */
+    line: string;
+};
+
+/**
+ * KalSet
+ *
+ * Kromka Pico'siga yoziladigan kalibrlash (docs/12 §4.20). Agent 1.12.0+ `line` ni portga
+ * yozadi; Pico'ning `kal` javobi keyingi partiyada keladi va server tasdiqlaydi. Tasdiqlanguncha
+ * har javobda qayta beriladi (`SET` takrori zararsiz — Pico faqat o'zgarganda fleshga yozadi).
+ */
+export type KalSet = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Line
+     */
+    line: string;
+};
+
+/**
  * KalibDetail
  */
 export type KalibDetail = {
@@ -2405,6 +2474,10 @@ export type KalibDetail = {
     current: {
         [key: string]: number;
     };
+    /**
+     * Applies
+     */
+    applies: Array<KalApplyRow>;
 };
 
 /**
@@ -2571,8 +2644,8 @@ export type KromkaInstance = {
  * KromkaKalRow
  *
  * KROMKA stansiyasi Pico'sidagi JORIY kalibrlash (`main.py: KAL`) — agent `HOLAT` javobidan
- * o'zgarganda yuboradi (agent 1.11.0+). Faqat o'qish: qiymatlarni o'zgartirish keyingi bosqich
- * (docs/12 §4.18). Agent hali yubormagan stanokda `at` va `values` bo'sh.
+ * o'zgarganda yuboradi (agent 1.11.0+). Qo'llash — `/kromka-kalib/{id}/apply` (docs/12 §4.20).
+ * Agent hali yubormagan stanokda `at` va `values` bo'sh.
  */
 export type KromkaKalRow = {
     /**
@@ -7297,6 +7370,66 @@ export type ReadKalibSessionResponses = {
 };
 
 export type ReadKalibSessionResponse = ReadKalibSessionResponses[keyof ReadKalibSessionResponses];
+
+export type ApplyKalibSessionData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: number;
+    };
+    query?: never;
+    url: '/api/v1/kromka-kalib/{session_id}/apply';
+};
+
+export type ApplyKalibSessionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ApplyKalibSessionError = ApplyKalibSessionErrors[keyof ApplyKalibSessionErrors];
+
+export type ApplyKalibSessionResponses = {
+    /**
+     * Successful Response
+     */
+    200: KalApplyRow;
+};
+
+export type ApplyKalibSessionResponse = ApplyKalibSessionResponses[keyof ApplyKalibSessionResponses];
+
+export type RollbackKalApplyData = {
+    body?: never;
+    path: {
+        /**
+         * Apply Id
+         */
+        apply_id: number;
+    };
+    query?: never;
+    url: '/api/v1/kromka-kalib/applies/{apply_id}/rollback';
+};
+
+export type RollbackKalApplyErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RollbackKalApplyError = RollbackKalApplyErrors[keyof RollbackKalApplyErrors];
+
+export type RollbackKalApplyResponses = {
+    /**
+     * Successful Response
+     */
+    200: KalApplyRow;
+};
+
+export type RollbackKalApplyResponse = RollbackKalApplyResponses[keyof RollbackKalApplyResponses];
 
 export type ReadPostsData = {
     body?: never;

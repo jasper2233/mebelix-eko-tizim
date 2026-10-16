@@ -129,7 +129,18 @@ class AndonPush(BaseModel):
     current: AndonCurrent | None = None
 
 
+class KalSet(BaseModel):
+    """Kromka Pico'siga yoziladigan kalibrlash (docs/12 §4.20). Agent 1.12.0+ `line` ni portga
+    yozadi; Pico'ning `kal` javobi keyingi partiyada keladi va server tasdiqlaydi. Tasdiqlanguncha
+    har javobda qayta beriladi (`SET` takrori zararsiz — Pico faqat o'zgarganda fleshga yozadi)."""
+
+    id: int
+    line: str
+
+
 class AndonPushResult(BaseModel):
     accepted: int  # yangi yozilgan hodisalar
     duplicates: int  # allaqachon bor (agent qayta yuborgan)
     skipped: int  # buzuq — yozilmadi
+    #: Kromka uchun kutilayotgan kalibrlash buyrug'i (eski agent bu maydonni e'tiborsiz qoldiradi)
+    kal_set: KalSet | None = None

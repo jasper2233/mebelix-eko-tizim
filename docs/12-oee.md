@@ -676,7 +676,7 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `downtime_cleanup_oracle.py` (14/14) | `scripts/downtime_deleted_events.sql` — soxta to'xtashlarni tozalash |
 | `kromka_kirish_oracle.py` (4/4) | §4.10 — kirish `ts − (ish_ms + d2)`, oyna −60 … +20 s, skan darajasida FIFO |
 | `kromka_kal_oracle.py` (8/8) | §4.18 — Pico'dagi joriy kalibrlash agentdan MES gacha (o'zgarganda, takrorsiz) |
-| `kromka_kalib_oracle.py` (16/16) | §4.19 — hisob stansiya JS bilan raqamma-raqam bir xil, ma'lum parametrlar qaytarib topiladi, sessiya o'tishlari skanga bog'lanmaydi |
+| `kromka_kalib_oracle.py` (28/28) | §4.19 — hisob stansiya JS bilan raqamma-raqam bir xil, ma'lum parametrlar qaytarib topiladi, sessiya o'tishlari skanga bog'lanmaydi; §4.20 — qo'llash server → agent → Pico → tasdiq, chegaralar, qaytarish, muddat |
 | `defect_oracle.py` (8/8) | §4.17 — brak skan vaqti/stanogida, tasdiq bekor qilgan ish sanaladi, Kromka kvotasi |
 | `agent_gap_oracle.py` (8/8) | §4.16 — agent uzilgan payt: Rover Pico yozuvlaridan tiklanadi, Kromka davomiyligi saqlanadi, tokdan qayta yonish kesiladi (eski kodda 2/8) |
 | `tablo_machines_oracle.py` (29/29) | `docs/05` — stanok taxtasi |
@@ -822,7 +822,7 @@ Kromka kvotasi bekor skandagi o'lchovni sanamadi. `oee_oracle` va `rover_oee_ora
 
 Kalibrlashni MES dan qo'llash uch qadamda qilinadi, har biri alohida deploy (egasi bilan
 kelishilgan): **1) joriy parametrlarni o'qish**, 2) kalibrlash sessiyasi va hisob (qo'llashsiz),
-3) Pico'ga `SET` — chegaralar, tasdiq va orqaga qaytarish bilan. Bu bo'lim — 1-qadam.
+3) Pico'ga `SET` — chegaralar, tasdiq va orqaga qaytarish bilan (§4.20). Bu bo'lim — 1-qadam.
 
 Pico (`kromka-stansiya-OYY: pico/main.py`) o'lchash parametrlarini `KAL` lug'atida saqlaydi va
 `kal.json` ga yozadi: `D` (datchiklar orasi, mm), `V10`/`V18` (zaxira tezlik), `K1`/`K2` (datchik
@@ -869,8 +869,7 @@ sanaydi — idealni olib tashlash Performance'ni sun'iy tushirardi.
 **UI:** Tizim sozlamalari → «Kalibrlash» tabi: «Pico'dagi kalibrlash» (§4.18) va «Kalibrlash
 sessiyasi» — stanok, etalon, sessiyalar ro'yxati, natija (Pico'dagi qiymat / yangi / farq),
 guruhlar (etalon × tezlik: n, o'rtacha, σ, xato), nuqtalar jadvali (har birini hisobdan chetlatish
-mumkin; 3σ bilan tashlangani `⊘`). Ochiq sessiya 5 s da yangilanadi. «Qo'llash» tugmasi YO'Q —
-3-qadam.
+mumkin; 3σ bilan tashlangani `⊘`). Ochiq sessiya 5 s da yangilanadi. Qo'llash — §4.20.
 
 Tekshiruv — `scripts/oracles/kromka_kalib_oracle.py` **16/16**: (1) ma'lum `D, B1, B2, C, K` bilan
 sun'iy o'tishlardan parametrlar ±0.5 ichida qaytarib topildi, 1 uzunlik/1 tezlikda soddaroq model,
@@ -879,6 +878,53 @@ yurgizildi — natija 1e-9 nisbiy aniqlikda bir xil; (3) haqiqiy endpointlar Pos
 ikkinchi ochiq sessiya 409, sessiyadagi 24 o'tish skanga bog'lanmadi (tashqaridagisi bog'landi),
 tafsilot sof hisob bilan bir xil, chetlatish ishladi, tugagan sessiyaga etalon qo'shilmaydi.
 Kromka orakllari (bind 23, kirish 4, kal 8, dedup 18, v122 19) va `oee` 31 o'zgarmadi.
+
+### 4.20 Kromka kalibrlash — 3-qadam: Pico'ga qo'llash va orqaga qaytarish (2026-10-16)
+
+**Yo'l.** Admin tugagan sessiyada «Pico'ga qo'llash» bosadi → server natijani sessiyadan QAYTA
+hisoblaydi (mijoz yuborgan raqam ishlatilmaydi) → chegaralarni tekshiradi → `kromka_kal_apply` ga
+buyruq yozadi. Agent har partiyadan keyin (navbat bo'sh bo'lsa ham har 30 s) `POST /bridge-agents/andon`
+qiladi; javobdagi `kal_set` (`{id, line: "SET D=.. B1=.. B2=.. K1=.. K2=.. C=.. V10=.. V18=.."}`)
+agent 1.12.0 da Pico portiga yoziladi. Pico `SET` ni qo'llaydi, `kal.json` ga saqlaydi (qayta yonganda
+ham shu qiymat) va `{"ev":"kal",...}` bilan javob beradi; agent uni `kal` hodisasi qilib yuboradi,
+server qiymatlarni solishtirib (`mos`, 0.002 bardosh — Pico float32 da saqlaydi) `confirmed_at`
+yozadi. Ya'ni «qo'llandi» — Pico'ning O'Z javobi, bizning yuborganimiz emas.
+
+**Nega shu yo'l.** `/ws/bridge` da chek ack mantiqi bor — boshqa xabar ack o'rniga o'qilsa chop
+etish buzilardi (andon ham shu sabab HTTP da). Andon javobi esa allaqachon har 3–30 s keladi; eski
+agent yangi maydonni e'tiborsiz qoldiradi.
+
+**Himoya** (Pico `SET` ni chegarasiz qabul qiladi):
+- faqat `D, B1, B2, K1, K2, C, V10, V18` yuboriladi — `TD`, `AO`, ovoz sozlamalariga tegilmaydi
+  (Pico `SET` da kelmagan kalitni o'zgartirmaydi — haqiqiy `main.py` da tekshirildi);
+- `services/kromka_kalib.CHEGARA`: mutlaq oraliq (D 2400–2700, |B| ≤ 30, |K| ≤ 5, |C| ≤ 10,
+  V10 9–11.5, V18 16–20.5) va joriydan eng ko'p siljish (D ±15 mm, B ±15, V10 ±1, V18 ±1.5);
+- `qollasa_boladi` (2+ uzunlik — stansiya ham 1 uzunlikda «Qo'llash» ni o'chiradi), sessiya tugagan,
+  Pico'dagi joriy qiymat ma'lum (aks holda qaytarishga narsa yo'q);
+- stanokda javob kutayotgan buyruq bo'lsa yangisi berilmaydi; 10 daqiqada javob bo'lmasa `javobsiz` —
+  boshqa yuborilmaydi (kompyuter o'chiq turib, ertasi kuni kutilmaganda qo'llanib qolmasin);
+- agent faqat `^SET( (D|V10|V18|K1|K2|B1|B2|C)=-?\d+(\.\d+)?)+$` ni portga yozadi — server xatosi
+  `ALARM`/`KALIB` kabi buyruqni chaqira olmaydi;
+- har qo'llash va qaytarish auditda (`kromka_kalib/kal_apply`, `kal_rollback`).
+
+**Orqaga qaytarish:** har tasdiqlangan qatorda «Qaytarish» — `previous` (qo'llashdan oldingi Pico
+qiymatlari) yangi buyruq bo'lib xuddi shu yo'ldan ketadi va xuddi shunday tasdiqlanadi.
+
+**Diqqat — stansiya kiosk sahifasi.** `stansiya.html` Pico ulanganda (`boot`) o'zining saqlangan
+qiymatlarini `SET` bilan yuboradi. Hozir portni agent ushlaydi, kiosk ishlamaydi; uni qayta ochish
+MES qo'llagan kalibrlashni stansiya sozlamasi bilan ustidan yozadi.
+
+Tekshiruv — `scripts/oracles/kromka_kalib_oracle.py` **28/28** (+12): ochiq sessiya qo'llanmaydi;
+qiymatlar hisobdan, `previous` saqlanadi; kutilayotganda ikkinchisi 409; andon javobida buyruq bor;
+HAQIQIY agent uni soxta portga aynan bir marta yozdi; `ALARM`, `SET TD=1`, `SET D=1;ALARM`,
+`KALIB 1` portga tushmadi; Pico'ning float32 javobi agent orqali kelib tasdiq bo'ldi va buyruq
+boshqa berilmadi; qaytarish eski qiymatlar bilan yangi buyruq va agentga beriladi; 11 daqiqalik
+javobsiz buyruq to'xtaydi; D 33 mm siljishi 422; tasdiqlangan buyruq Pico qayta ulanganda qayta yozilmaydi (agent `kal_set: null` da uni unutadi). Alohida: MES yasagan `SET` qatori stansiyaning
+HAQIQIY `pico/main.py: buyruq_tekshir` ga (`sinov_pc` muhitida) berildi — `kal` javobi hamma 8
+qiymatni aynan qaytardi, `TD`/`AO` o'zgarmadi, `kal.json` yozildi.
+
+**Birinchi qo'llash — tsexda, odam yonida:** qo'llagach 1–2 etalonni qayta o'tkazib Pico o'lchagan
+uzunlikni tekshirish; noto'g'ri bo'lsa «Qaytarish».
 
 ## 5. Prod auditi natijalari (2026-09-16)
 

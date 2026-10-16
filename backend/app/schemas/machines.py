@@ -57,8 +57,8 @@ class MachineUpdate(BaseModel):
 
 class KromkaKalRow(BaseModel):
     """KROMKA stansiyasi Pico'sidagi JORIY kalibrlash (`main.py: KAL`) — agent `HOLAT` javobidan
-    o'zgarganda yuboradi (agent 1.11.0+). Faqat o'qish: qiymatlarni o'zgartirish keyingi bosqich
-    (docs/12 §4.18). Agent hali yubormagan stanokda `at` va `values` bo'sh."""
+    o'zgarganda yuboradi (agent 1.11.0+). Qo'llash — `/kromka-kalib/{id}/apply` (docs/12 §4.20).
+    Agent hali yubormagan stanokda `at` va `values` bo'sh."""
 
     machine_id: int
     machine_name: str

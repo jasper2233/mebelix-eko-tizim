@@ -18,13 +18,13 @@ kerak emas. `dt_mid = ish_ms + (t2 − t1)/2` — Pico'ning o'zi shunday hisobla
 
 import math
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import KromkaKalibSession
+from app.models import KromkaKalApply, KromkaKalibSession
 
 
 @dataclass(eq=False)  # `in` / `not in` — JS dagi kabi obyekt identifikatori bo'yicha
@@ -336,3 +336,85 @@ async def kalib_oraliqlar(db: AsyncSession, machine_id: int) -> list[tuple[datet
 
 def ichida(oraliqlar: list[tuple[datetime, datetime | None]], at: datetime) -> bool:
     return any(a <= at and (b is None or at <= b) for a, b in oraliqlar)
+
+
+# --- 3-qadam: Pico'ga qo'llash (docs/12 §4.20) ---------------------------------------------
+
+#: Pico'ga yuboriladigan kalitlar va kasr xonasi — stansiyaning «Qo'llash» tugmasi bilan bir xil
+#: (`stansiya.html: kalApply`). TD/AO/HQ/HA/AV ga tegilmaydi: ular kalibrlash emas.
+QOLLASH_KALIT = {"D": 2, "B1": 2, "B2": 2, "K1": 3, "K2": 3, "C": 3, "V10": 3, "V18": 3}
+
+#: Pico `SET` ni CHEGARASIZ qabul qiladi — himoya shu yerda. Mutlaq oraliq (fizik ma'no) va
+#: joriy qiymatdan eng ko'p siljish (bitta kalibrlash D ni 15 mm dan ko'p surmaydi; ko'proq
+#: bo'lsa — etalon noto'g'ri kiritilgan yoki datchik ko'chgan, avval tsexda tekshirish kerak).
+CHEGARA: dict[str, tuple[float, float, float]] = {  # kalit: (min, max, joriydan eng ko'p farq)
+    "D": (2400.0, 2700.0, 15.0),
+    "B1": (-30.0, 30.0, 15.0),
+    "B2": (-30.0, 30.0, 15.0),
+    "K1": (-5.0, 5.0, 5.0),
+    "K2": (-5.0, 5.0, 5.0),
+    "C": (-10.0, 10.0, 10.0),
+    "V10": (9.0, 11.5, 1.0),
+    "V18": (16.0, 20.5, 1.5),
+}
+
+#: Shuncha vaqtda Pico tasdiqlamasa buyruq «javobsiz» — boshqa yuborilmaydi
+JAVOB_S = 600
+
+
+def qollash_qiymatlari(natija: dict[str, Any]) -> dict[str, float]:
+    """Hisob natijasidan `SET` qiymatlari (yaxlitlangan). V10/V18 faqat o'sha tezlikda nuqta bo'lsa."""
+    return {k: round(float(natija[k]), dp) for k, dp in QOLLASH_KALIT.items() if natija.get(k) is not None}
+
+
+def tekshir(values: dict[str, float], joriy: dict[str, float]) -> str | None:
+    """Chegaradan chiqqan birinchi qiymat haqida xabar (o'zbekcha) yoki None."""
+    for k, v in values.items():
+        lo, hi, farq = CHEGARA[k]
+        if not (math.isfinite(v) and lo <= v <= hi):
+            return f"{k} = {v} ruxsat etilgan oraliqdan tashqarida ({lo} … {hi})"
+        if k in joriy and abs(v - joriy[k]) > farq:
+            return f"{k} joriy qiymatdan {abs(v - joriy[k]):.3f} ga farq qiladi (ko'pi bilan {farq})"
+    return None
+
+
+def set_qatori(values: dict[str, float]) -> str:
+    # Tartib qat'iy: JSONB kalitlarni o'z tartibida saqlaydi, qator esa jurnalda bir xil ko'rinsin
+    return "SET " + " ".join(f"{k}={values[k]}" for k in QOLLASH_KALIT if k in values)
+
+
+def mos(values: dict[str, float], kal: dict[str, Any]) -> bool:
+    """Pico qaytargan qiymatlar yuborilganiga tengmi. Pico float32 da saqlaydi — 0.002 bardosh."""
+    return all(isinstance(kal.get(k), (int, float)) and abs(float(kal[k]) - v) <= 0.002 for k, v in values.items())
+
+
+def holati(confirmed_at: datetime | None, created_at: datetime, now: datetime) -> str:
+    if confirmed_at is not None:
+        return "tasdiqlandi"
+    return "javobsiz" if (now - created_at).total_seconds() > JAVOB_S else "kutilmoqda"
+
+
+async def kal_sync(
+    db: AsyncSession, machine_id: int, kal_events: list[tuple[datetime, dict[str, Any]]], now: datetime
+) -> tuple[int, str] | None:
+    """Agent partiyasidan keyin: kelgan `kal` hodisalari kutilayotgan buyruqni tasdiqlaydimi,
+    va agentga qaysi buyruq berilishi kerak (`(id, "SET ...")`). `commit` chaqiruvchida."""
+    kutilgan = await db.scalar(
+        select(KromkaKalApply)
+        .where(
+            KromkaKalApply.machine_id == machine_id,
+            KromkaKalApply.confirmed_at.is_(None),
+            KromkaKalApply.is_deleted == False,  # noqa: E712
+        )
+        .order_by(KromkaKalApply.created_at.desc())
+        .limit(1)
+    )
+    if kutilgan is None or holati(None, kutilgan.created_at, now) == "javobsiz":
+        return None
+    for at, payload in kal_events:
+        if at >= kutilgan.created_at - timedelta(seconds=5) and mos(kutilgan.values, payload):
+            kutilgan.confirmed_at = at
+            return None
+    if kutilgan.sent_at is None:
+        kutilgan.sent_at = now
+    return kutilgan.id, set_qatori(kutilgan.values)

@@ -36,6 +36,7 @@ import contextlib
 import json
 import logging
 import os
+import re
 import sys
 import threading
 import time
@@ -59,7 +60,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "MES agentlar" sahifasida qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.11.0"
+AGENT_VERSION = "1.12.0"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -1437,7 +1438,43 @@ KROMKA: dict[str, Any] = {
     "seen": set(),   # navbatga olingan `xq` lar — qayta kelgani takror
     "saved": set(),  # server YOZGAN `xq` lar — qayta kelsa tasdig'i yo'qolgan, qayta aytiladi
     "ack": set(),    # server YOZGAN, lekin Pico'ga hali aytilmagan `xq` lar
+    "set": None,     # (id, "SET ...") — server bergan kalibrlash buyrug'i (1.12.0)
+    "set_done": None,  # shu Pico ulanishida yozilgan buyruq id'si
 }
+
+#: Server beradigan kalibrlash qatori — FAQAT shu shaklda Pico'ga yoziladi (docs/12 §4.20).
+#: Javobdagi boshqa har qanday matn (buyruq, kalit) portga tushmaydi: Pico `SET` dan
+#: boshqa buyruqlarni ham qabul qiladi (`ALARM`, `KALIB` ...), server xatosi ularni chaqirmasin.
+_KAL_SET_RE = re.compile(r"^SET( (D|V10|V18|K1|K2|B1|B2|C)=-?\d+(\.\d+)?)+$")
+
+
+def _kromka_set_qabul(cmd: Any) -> None:
+    """Andon javobidagi `kal_set` — tekshiriladi va Pico'ga yozish uchun qo'yiladi.
+
+    Buyruq yo'q (tasdiqlangan yoki muddati o'tgan) — eslab qolingani ham o'chadi: aks holda Pico
+    qayta ulanganda eski `SET` yana yozilardi."""
+    if not isinstance(cmd, dict) or not isinstance(cmd.get("id"), int) or not isinstance(cmd.get("line"), str):
+        with ANDON_LOCK:
+            KROMKA["set"] = None
+        return
+    if not _KAL_SET_RE.match(cmd["line"]):
+        log.error("Andon: kalibrlash buyrug'i rad etildi (shakli noto'g'ri): %r", cmd["line"][:200])
+        return
+    with ANDON_LOCK:
+        KROMKA["set"] = (cmd["id"], cmd["line"])
+
+
+def _kromka_set_yoz(port: Any) -> None:
+    """Kutilayotgan `SET` — bitta ulanishda bir marta. Pico `{"ev":"kal"}` bilan javob beradi;
+    u (qiymat o'zgarmagan bo'lsa ham) MES ga ketsin — server shu bilan tasdiqlaydi."""
+    with ANDON_LOCK:
+        cmd = KROMKA["set"]
+        if cmd is None or KROMKA["set_done"] == cmd[0]:
+            return
+        KROMKA["set_done"] = cmd[0]
+    ANDON_TUR["kal"] = None
+    port.write((cmd[1] + "\n").encode())
+    log.info("Andon: kalibrlash Pico'ga yozildi (#%s): %s", cmd[0], cmd[1])
 
 
 def _kromka_kalit() -> tuple[str, int]:
@@ -1843,6 +1880,7 @@ def _andon_session(port: Any) -> None:
         # kromka `seen`/`saved` saqlanadi, aks holda u qayta yuborayotgan hammasi takror
         # yozilardi. Yo'qolgan ACK lar Pico qayta yuborganda `_kromka_xbxq` da qayta aytiladi.
         KROMKA["ack"] = set()
+        KROMKA["set_done"] = None  # yangi ulanish — tasdiqlanmagan buyruq qayta yoziladi
     next_ping = 0.0
     next_holat = 0.0
     pending = b""
@@ -1871,6 +1909,7 @@ def _andon_session(port: Any) -> None:
                     port.write(b"HOLAT\n")
                     next_holat = now + _KROMKA_HOLAT_S
                 _kromka_ack(port)
+                _kromka_set_yoz(port)
             # timeout 0.2 s: vaqt tugasa YARIM qator ham qaytishi mumkin — yig'ib boramiz
             chunk = port.readline()
             if not chunk:
@@ -2102,6 +2141,7 @@ async def andon_shipper() -> None:
                 await asyncio.to_thread(_andon_ack, count)
                 _rover_acked(events)
                 _kromka_acked(events)
+                _kromka_set_qabul(javob.get("kal_set"))
                 if javob.get("skipped"):
                     log.warning("Andon: server %s ta buzuq hodisani yozmadi", javob.get("skipped"))
                 continue

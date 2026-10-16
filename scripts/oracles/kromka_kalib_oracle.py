@@ -8,6 +8,7 @@
    natija raqamma-raqam solishtiriladi.
 
 3) DB berilsa — haqiqiy endpointlar (sessiya, bog'lanmaslik, chetlatish).
+4) 3-qadam: qo'llash buyrug'i server → agent → Pico → tasdiq, chegaralar, orqaga qaytarish.
 
 Yurgizish:
     cd backend && KROMKA_STANSIYA_HTML=../../ext/kromka-stansiya-OYY/server/stansiya.html \\
@@ -198,10 +199,179 @@ async def db_qismi() -> None:
             natija.append(("tugagan sessiyaga etalon qo'shilmaydi", e.status_code == 409, str(e.status_code)))
 
 
+async def qollash_qismi() -> None:
+    """3-qadam uchidan-uchiga: HAQIQIY endpoint → HAQIQIY `push_andon_events` javobi → HAQIQIY
+    agent (`_kromka_set_qabul`/`_kromka_set_yoz`, soxta port) → Pico'ning float32 `kal` javobi
+    agent orqali → server tasdiqlaydi. Chegaralar, navbat, orqaga qaytarish, muddat."""
+    import hashlib
+    import importlib.util
+    import struct
+    import sys
+    import types
+    from datetime import UTC, datetime, timedelta
+    from uuid import uuid4
+
+    from fastapi import HTTPException
+    from sqlalchemy import text
+
+    from app.api.routes.bridge_agents import push_andon_events
+    from app.api.routes.kromka_kalib import (
+        apply_kalib_session,
+        read_kalib_session,
+        rollback_kal_apply,
+    )
+    from app.core.db import local_session
+    from app.models import BridgeAgent, KromkaKalApply, KromkaKalibSession, Machine, Post
+    from app.models.enums import PostCode, PostUnit
+    from app.schemas.bridge_agents import AndonPush
+
+    navbat = os.path.join(tempfile.mkdtemp(prefix="kalset-"), "q.jsonl")
+    os.environ.update(BRIDGE_TOKEN="t", MES_URL="ws://localhost", ANDON="0", ANDON_QUEUE_FILE=navbat)
+    for nom in ("websockets", "websockets.exceptions"):
+        sys.modules.setdefault(nom, types.ModuleType(nom))
+    sys.modules["websockets"].exceptions = sys.modules["websockets.exceptions"]  # type: ignore[attr-defined]
+    spec = importlib.util.spec_from_file_location(
+        "mx_agent", os.path.join(os.path.dirname(__file__), "..", "..", "bridge-agent", "agent.py")
+    )
+    agent = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
+    spec.loader.exec_module(agent)  # type: ignore[union-attr]
+    agent.ANDON_TUR.update({"tur": "kromka", "session": "", "seq": 0, "uskuna": None, "kal": None})
+
+    class Port:
+        def __init__(self) -> None:
+            self.yozildi: list[str] = []
+
+        def write(self, b: bytes) -> None:
+            self.yozildi.append(b.decode())
+
+    def f32(v: float) -> float:
+        return struct.unpack("f", struct.pack("f", v))[0]
+
+    def navbatni_ol() -> list[dict]:
+        if not os.path.exists(navbat):
+            return []
+        out = [json.loads(x) for x in open(navbat, encoding="utf-8").read().splitlines()]
+        open(navbat, "w").close()
+        return out
+
+    admin = types.SimpleNamespace(id=None)
+    req = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+    joriy = {"D": 2550.0, "V10": 10.151, "V18": 18.227, "K1": 0.0, "K2": 0.0, "B1": -2.0, "B2": -5.0, "C": 0.5,
+             "TD": 12.0, "AO": 0.0, "HQ": 2500.0, "HA": 1500.0, "AV": 1.0}
+    async with local_session() as db:
+        for jadval in ("kromka_kal_apply", "kromka_kalib_session", "kromka_measurement", "andon_event",
+                       "bridge_agent", "machine", "post"):
+            await db.execute(text(f"TRUNCATE {jadval} RESTART IDENTITY CASCADE"))
+        await db.commit()
+        post = Post(code=PostCode.KROMKA, name="Kromka", order_index=2, unit=PostUnit.METER)
+        db.add(post)
+        await db.flush()
+        k1 = Machine(name="Kromka-1", post_id=post.id)
+        db.add(k1)
+        await db.flush()
+        token = uuid4().hex
+        db.add(BridgeAgent(name="pc", token_hash=hashlib.sha256(token.encode()).hexdigest(), machine_id=k1.id))
+        await db.commit()
+
+        async def push(events: list[dict]):  # noqa: ANN202
+            return await push_andon_events(db, AndonPush(events=events), authorization=f"Bearer {token}")
+
+        bosh = datetime.now(UTC).replace(microsecond=0) - timedelta(minutes=30)
+        await push([{"type": "kal", "session": "k", "seq": 1, "ts": int(bosh.timestamp()) - 60, **joriy}])
+        ots = otishlar([580, 2000], [10, 18], 8, 0.0002, 11)
+        await push([{"type": "olchov", "session": "k", "seq": 10 + i, "ts": int(bosh.timestamp()) + 10 + i * 10,
+                     "kod": "OK", "L": o["L_ref"], **{k: o[k] for k in ("d1", "d2", "ish_ms", "v_nom")}}
+                    for i, o in enumerate(ots)])
+        seg2 = bosh + timedelta(seconds=10 + 16 * 10 - 5)
+        s = KromkaKalibSession(machine_id=k1.id, started_at=bosh, ended_at=None,
+                               segments=[{"L_ref": 580, "dan": bosh.isoformat()}, {"L_ref": 2000, "dan": seg2.isoformat()}])
+        db.add(s)
+        await db.commit()
+
+        try:
+            await apply_kalib_session(db, admin, s.id, req)  # type: ignore[arg-type]
+            natija.append(("ochiq sessiya qo'llanmaydi", False, "qo'llandi"))
+        except HTTPException as e:
+            natija.append(("ochiq sessiya qo'llanmaydi", e.status_code == 409, str(e.status_code)))
+        s.ended_at = bosh + timedelta(minutes=10)
+        await db.commit()
+
+        a = await apply_kalib_session(db, admin, s.id, req)  # type: ignore[arg-type]
+        natija.append(("qo'llash: qiymatlar hisobdan, oldingisi saqlandi",
+                       abs(a.values["D"] - ASL["D"]) < 0.5 and a.previous["D"] == 2550.0 and a.status == "kutilmoqda",
+                       a.line))
+        try:
+            await apply_kalib_session(db, admin, s.id, req)  # type: ignore[arg-type]
+            natija.append(("javob kutilayotganda ikkinchi buyruq yo'q", False, "berildi"))
+        except HTTPException as e:
+            natija.append(("javob kutilayotganda ikkinchi buyruq yo'q", e.status_code == 409, str(e.status_code)))
+
+        j = await push([])
+        natija.append(("andon javobida buyruq bor", j.kal_set is not None and j.kal_set.line == a.line, str(j.kal_set)))
+
+        port = Port()
+        agent._kromka_set_qabul(j.kal_set.model_dump() if j.kal_set else None)  # noqa: SLF001
+        agent._kromka_set_yoz(port)  # noqa: SLF001
+        agent._kromka_set_yoz(port)  # noqa: SLF001
+        natija.append(("agent Pico'ga aynan bir marta yozdi", port.yozildi == [a.line + "\n"], str(port.yozildi)))
+
+        port2 = Port()
+        for yomon in ("ALARM", "SET D=2550 ALARM", "SET TD=1", "SET D=1;ALARM", "KALIB 1"):
+            agent._kromka_set_qabul({"id": 999, "line": yomon})  # noqa: SLF001
+        agent.KROMKA["set_done"] = None
+        agent.KROMKA["set"] = None
+        agent._kromka_set_yoz(port2)  # noqa: SLF001
+        natija.append(("agent SET dan boshqa matnni portga yozmaydi", port2.yozildi == [], str(port2.yozildi)))
+
+        # Pico javobi: SET dan keyin qiymatlar float32 da qaytadi
+        pico = {**joriy, **{k: f32(v) for k, v in a.values.items()}}
+        agent._andon_line(json.dumps({"ev": "kal", **pico}))  # noqa: SLF001
+        j2 = await push(navbatni_ol())
+        row = await db.get(KromkaKalApply, a.id)
+        natija.append(("Pico javobi (float32) tasdiq bo'ldi, buyruq boshqa berilmaydi",
+                       row is not None and row.confirmed_at is not None and j2.kal_set is None, str(j2.kal_set)))
+        # Tasdiqdan keyin Pico qayta ulansa eski buyruq yana yozilmasin
+        agent.KROMKA.update(set=(a.id, a.line), set_done=a.id)
+        agent._kromka_set_qabul(j2.kal_set)  # noqa: SLF001
+        agent.KROMKA["set_done"] = None  # `_andon_session` yangi ulanishda shunday qiladi
+        port3 = Port()
+        agent._kromka_set_yoz(port3)  # noqa: SLF001
+        natija.append(("tasdiqlangan buyruq qayta ulanishda yozilmaydi", port3.yozildi == [], str(port3.yozildi)))
+
+        r = await rollback_kal_apply(db, admin, a.id, req)  # type: ignore[arg-type]
+        natija.append(("orqaga qaytarish — eski qiymatlar bilan yangi buyruq",
+                       r.values["D"] == 2550.0 and r.rollback_of_id == a.id, r.line))
+        j3 = await push([])
+        natija.append(("qaytarish ham agentga beriladi", j3.kal_set is not None and j3.kal_set.id == r.id, str(j3.kal_set)))
+
+        # Pico javob bermadi — 10 daqiqadan keyin «javobsiz», boshqa berilmaydi, yangisiga yo'l ochiq
+        rr = await db.get(KromkaKalApply, r.id)
+        assert rr
+        rr.created_at = datetime.now(UTC) - timedelta(minutes=11)
+        await db.commit()
+        j4 = await push([])
+        d = await read_kalib_session(db, admin, s.id)  # type: ignore[arg-type]
+        st = next(x.status for x in d.applies if x.id == r.id)
+        natija.append(("javobsiz buyruq to'xtaydi", j4.kal_set is None and st == "javobsiz", st))
+
+        # Chegara: joriy D 2520 bo'lsa yangi 2553 — 15 mm dan ko'p siljish, rad
+        await push([{"type": "kal", "session": "k", "seq": 500, "ts": int(datetime.now(UTC).timestamp()),
+                     **{**joriy, "D": 2520.0}}])
+        try:
+            await apply_kalib_session(db, admin, s.id, req)  # type: ignore[arg-type]
+            natija.append(("D 15 mm dan ko'p siljisa rad etiladi", False, "qo'llandi"))
+        except HTTPException as e:
+            natija.append(("D 15 mm dan ko'p siljisa rad etiladi", e.status_code == 422, str(e.detail)))
+
+
 if os.environ.get("POSTGRES_PORT"):
     import asyncio
 
-    asyncio.run(db_qismi())
+    async def ikkalasi() -> None:  # bitta event loop — ulanishlar puli shunga bog'langan
+        await db_qismi()
+        await qollash_qismi()
+
+    asyncio.run(ikkalasi())
 else:
     print("  (POSTGRES_PORT yo'q — DB qismi o'tkazib yuborildi)")
 

@@ -48,9 +48,26 @@ class KalibPoint(BaseModel):
     excluded: bool
 
 
+class KalApplyRow(BaseModel):
+    id: int
+    session_id: int | None
+    rollback_of_id: int | None
+    values: dict[str, float]
+    previous: dict[str, float]
+    created_at: datetime
+    sent_at: datetime | None
+    confirmed_at: datetime | None
+    #: `kutilmoqda` · `tasdiqlandi` · `javobsiz` (10 daqiqada Pico javob bermadi)
+    status: str
+    #: Agentga beriladigan aynan qator
+    line: str
+
+
 class KalibDetail(KalibSessionRow):
     points: list[KalibPoint]
     #: `services/kromka_kalib.hisobla` natijasi; nuqta bo'lmasa None
     result: dict[str, Any] | None
     #: Pico'dagi joriy KAL (oxirgi `kal` hodisasi) — solishtirish uchun
     current: dict[str, float]
+    #: Shu stanokning oxirgi 10 qo'llashi (yangisi birinchi)
+    applies: list[KalApplyRow]

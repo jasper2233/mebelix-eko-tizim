@@ -1,19 +1,22 @@
-// Kromka kalibrlash sessiyasi (docs/12 §4.19, 2-qadam) — hisob, Pico'ga QO'LLAMASDAN.
+// Kromka kalibrlash sessiyasi (docs/12 §4.19–4.20).
 //
 // Admin sessiyani boshlaydi va etalon detallarni oddiy ishdagidek o'tkazadi: Pico har o'tishda
 // `olchov` yuboradi, shu oraliqdagi hodisalar nuqta bo'ladi. Hisob — stansiyaning aynan
-// algoritmi (`backend/app/services/kromka_kalib.py`). «Qo'llash» tugmasi ataylab yo'q: Pico'ga
-// `SET` yozish — 3-qadam, birinchi marta tsexda, odam yonida.
+// algoritmi (`backend/app/services/kromka_kalib.py`). Tugagan sessiyani «Pico'ga qo'llash»
+// mumkin: server qiymatlarni o'zi qayta hisoblaydi va chegaralarni tekshiradi, agent `SET`
+// yozadi, Pico javobi tasdiq bo'ladi. Har qo'llashni orqaga qaytarish mumkin.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 
 import {
+  type KalApplyRow,
   type KalibDetail,
   type KalibPoint,
   KromkaKalibService,
   MachinesService,
 } from "@/client"
+import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { QueryError } from "@/components/Common/QueryError"
 import { cardSurface } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -63,6 +66,7 @@ type Natija = {
   dif_ort: number | null
   hukm: [string, string]
   kam: string[]
+  qollasa_boladi: boolean
   td_tavsiya: number | null
   dopusk_tavsiya: number
   grp: {
@@ -238,8 +242,12 @@ function SessionDetail({ id }: { id: number }) {
     queryFn: async () =>
       (await KromkaKalibService.readKalibSession({ path: { session_id: id } }))
         .data,
-    // Ochiq sessiyada nuqtalar o'tgan sari qo'shiladi
-    refetchInterval: (q) => (q.state.data?.ended_at == null ? 5_000 : false),
+    // Ochiq sessiyada nuqtalar o'tgan sari qo'shiladi; qo'llash Pico javobini kutayotganda ham
+    refetchInterval: (q) =>
+      q.state.data?.ended_at == null ||
+      q.state.data?.applies.some((a) => a.status === "kutilmoqda")
+        ? 5_000
+        : false,
   })
   const [lRef, setLRef] = useState("")
   const invalidate = () => {
@@ -272,9 +280,30 @@ function SessionDetail({ id }: { id: number }) {
     onSettled: invalidate,
   })
 
+  const [confirm, setConfirm] = useState<"apply" | KalApplyRow | null>(null)
+  const applyCb = crudCallbacks(
+    queryClient,
+    LIST_KEY,
+    "Buyruq yuborildi — Pico javobi kutilmoqda",
+  )
+  const apply = useMutation({
+    mutationFn: () =>
+      confirm === "apply"
+        ? KromkaKalibService.applyKalibSession({ path: { session_id: id } })
+        : KromkaKalibService.rollbackKalApply({
+            path: { apply_id: (confirm as KalApplyRow).id },
+          }),
+    ...applyCb,
+    onSuccess: () => {
+      applyCb.onSuccess()
+      setConfirm(null)
+    },
+  })
+
   if (isLoading) return <Skeleton className="h-48 w-full" />
   if (isError || !data) return <QueryError onRetry={() => refetch()} />
   const r = data.result as Natija | null
+  const kutilmoqda = data.applies.some((a) => a.status === "kutilmoqda")
 
   return (
     <div className="space-y-4 border-t pt-4">
@@ -318,7 +347,122 @@ function SessionDetail({ id }: { id: number }) {
           Hali nuqta yo'q — etalonni o'tkazing.
         </p>
       )}
+      {r && data.ended_at != null && (
+        <div className="flex flex-wrap items-center gap-2">
+          <LoadingButton
+            disabled={!r.qollasa_boladi || kutilmoqda}
+            loading={apply.isPending && confirm === "apply"}
+            onClick={() => setConfirm("apply")}
+          >
+            Pico'ga qo'llash
+          </LoadingButton>
+          <span className="text-sm text-muted-foreground">
+            {!r.qollasa_boladi
+              ? "Kamida 2 xil uzunlikdagi etalon kerak"
+              : "Qo'llagach 1–2 etalonni qayta o'tkazib tekshiring"}
+          </span>
+        </div>
+      )}
+      {data.applies.length > 0 && (
+        <Applies
+          rows={data.applies}
+          busy={kutilmoqda}
+          onRollback={(a) => setConfirm(a)}
+        />
+      )}
       <Points data={data} onToggle={(p) => exclude.mutate(p)} />
+      <ConfirmDialog
+        open={confirm != null}
+        onOpenChange={(v) => !v && setConfirm(null)}
+        title={
+          confirm === "apply"
+            ? `${data.machine_name}: kalibrlashni qo'llash`
+            : "Oldingi qiymatlarni qaytarish"
+        }
+        description={
+          confirm === "apply"
+            ? "Yangi qiymatlar Pico'ga yoziladi va shu zahoti hamma o'lchovga ta'sir qiladi. Natija yuqoridagi jadvaldagi «Yangi» ustuni. Qo'llagach etalonni qayta o'tkazib tekshiring; noto'g'ri bo'lsa — «Qaytarish»."
+            : confirm
+              ? `Pico'ga yoziladi: ${
+                  confirm.previous
+                    ? Object.entries(confirm.previous)
+                        .map(([k, v]) => `${k}=${v}`)
+                        .join(" ")
+                    : ""
+                }`
+              : ""
+        }
+        confirmText={confirm === "apply" ? "Qo'llash" : "Qaytarish"}
+        destructive={confirm !== "apply"}
+        loading={apply.isPending}
+        onConfirm={() => apply.mutate()}
+      />
+    </div>
+  )
+}
+
+const STATUS_STYLE: Record<string, string> = {
+  tasdiqlandi: "text-emerald-700",
+  kutilmoqda: "text-amber-700",
+  javobsiz: "text-red-700",
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  tasdiqlandi: "Pico tasdiqladi",
+  kutilmoqda: "Pico javobi kutilmoqda…",
+  javobsiz: "Javob kelmadi (agent 1.12.0 va ulangan Pico kerak)",
+}
+
+/** Stanokdagi oxirgi qo'llashlar — holati va orqaga qaytarish. */
+function Applies({
+  rows,
+  busy,
+  onRollback,
+}: {
+  rows: KalApplyRow[]
+  busy: boolean
+  onRollback: (a: KalApplyRow) => void
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Vaqt</TableHead>
+            <TableHead>Buyruq</TableHead>
+            <TableHead>Holat</TableHead>
+            <TableHead />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((a) => (
+            <TableRow key={a.id}>
+              <TableCell>{formatDateTime(a.created_at)}</TableCell>
+              <TableCell className="num text-xs">
+                {a.rollback_of_id != null && "↩ "}
+                {a.line}
+              </TableCell>
+              <TableCell className={STATUS_STYLE[a.status]}>
+                {STATUS_LABEL[a.status] ?? a.status}
+                {a.confirmed_at && ` · ${formatDateTime(a.confirmed_at)}`}
+              </TableCell>
+              <TableCell className="text-right">
+                {a.status === "tasdiqlandi" && (
+                  <LoadingButton
+                    variant="outline"
+                    size="sm"
+                    loading={false}
+                    disabled={busy}
+                    onClick={() => onRollback(a)}
+                  >
+                    Qaytarish
+                  </LoadingButton>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }
