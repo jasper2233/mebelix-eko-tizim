@@ -258,6 +258,9 @@ function MachineCard({
 }
 
 const QUERY_KEY = ["tablo", "machines"]
+// Kartani bosganda ochiladigan oyna. Ro'yxat bilan BIRGA yangilanadi (WS + poll): ilgari oyna
+// ochilgan lahzadagi raqamlarda qotib qolardi — usta uni ochiq qoldirib kuzatsa ham o'zgarmasdi
+const DIALOG_KEY = ["tablo", "machine"]
 
 /** Kartani bosganda: shu stanokning kunlik/haftalik/oylik OEE si va oxirgi
  *  hodisalari. Devor ekrani uchun emas — usta yoki menejer bosadi, shuning
@@ -270,7 +273,7 @@ function MachineDialog({
   onClose: () => void
 }) {
   const { data, isLoading } = useQuery({
-    queryKey: ["tablo", "machine", machineId],
+    queryKey: [...DIALOG_KEY, machineId],
     queryFn: async () =>
       (
         await TabloService.readTabloMachine({
@@ -278,6 +281,7 @@ function MachineDialog({
         })
       ).data,
     enabled: machineId != null,
+    refetchInterval: 60_000, // WS uzilgan bo'lsa ham
   })
 
   return (
@@ -462,10 +466,11 @@ function StanoklarPage() {
   // WS har hodisada so'rov yubormaydi: hisob bir kunlik oraliqni qayta yuritadi,
   // kromkada esa har detalda xabar keladi. Eng tez 15 soniyada bir marta —
   // oynadagi OXIRGI hodisa ham oxirida olinadi (`useThrottled`: leading + trailing)
-  const refresh = useThrottled(
-    () => queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
-    15_000,
-  )
+  const refresh = useThrottled(() => {
+    queryClient.invalidateQueries({ queryKey: QUERY_KEY })
+    // Faqat OCHIQ oyna qayta so'raladi (yopilgani faol emas — invalidate uni so'ramaydi)
+    queryClient.invalidateQueries({ queryKey: DIALOG_KEY })
+  }, 15_000)
   const [, tik] = useState(0)
   useMesWs(
     useCallback(
