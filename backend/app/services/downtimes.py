@@ -123,10 +123,17 @@ async def _bosh_yurish(
         .scalars()
         .all()
     )
-    spans = uskuna_spans(
-        [(e.machine_id, e.payload or {}, e.happened_at) for e in uskuna],
-        {machine_id},  # oxirgi oraliq shu hisob uchun hozirgacha cho'ziladi
-    )
+    # Faqat ISHLAYOTGAN oraliqlar bo'linadi: ROVER'ning o'z IDLE holati (yoqiq, shpindel
+    # to'xtagan) `_runs` da allaqachon to'xtash — bu yerga tushsa ikkinchi `idle-*` yozuv
+    # bo'lib, chegarasiz (3 daqiqalik pauzaga ham) sabab so'ralardi.
+    spans = [
+        sp
+        for sp in uskuna_spans(
+            [(e.machine_id, e.payload or {}, e.happened_at) for e in uskuna],
+            {machine_id},  # oxirgi oraliq shu hisob uchun hozirgacha cho'ziladi
+        )
+        if sp.state == "PROCESSING"
+    ]
     return [
         _Run(kind=DowntimeKind.IDLE, key=f"idle-{int(sp.began.timestamp())}", session="", start=sp.began, end=sp.ended)
         for sp in split_idle(spans, {machine_id: sorted(olchovlar)}, gap, now)

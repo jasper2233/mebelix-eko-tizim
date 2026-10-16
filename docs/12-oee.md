@@ -636,7 +636,9 @@ QABUL QILDI (300 s dan qisqa 200 s lik to'xtash hodisa bermadi, 360 s lik berdi)
 `run` o'zgarishlari `uskuna` bo'lib yozildi (`0·1·0·1·0`), takror yuborilgan hodisa
 navbatga bir marta tushdi, `POWER_ON` va `SPINDLE_IDLE` xom maydonlari bilan bazaga
 tushdi, takror partiya 0 ta yangi yozuv berdi, RUN tushishidan to'xtash yozildi,
-tasdiq esa FAQAT server yozgandan keyin va bir marta ketdi.
+tasdiq esa FAQAT server yozgandan keyin va bir marta ketdi. (O'sha 23 bandli skript ularning
+firmware'ini yurgizardi va repoga tushmagan; repodagi `rover_oracle.py` uning firmware'siz,
+agent + server qismi — §4.14 jadvalidagi son shuniki.)
 
 ### 4.14 Orakllar qayerda turadi (2026-09-25)
 
@@ -652,7 +654,9 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `kromka_bind_oracle.py` (23/23) | §4.10 |
 | `kromka_v116_oracle.py` (11/11) | §4.8 |
 | `kromka_v122_oracle.py` (15/15) | §4.8, proshivka v1.19-v1.22 |
-| `rover_oracle.py` (19/19) | §4.13 |
+| `rover_oracle.py` (21/21) | §4.13, agent 1.9.0 (§4.15) |
+| `rover_oee_oracle.py` (19/19) | §4.15 — Rover A/P/Q/OEE va to'xtash sinxroni |
+| `downtime_cleanup_oracle.py` (14/14) | `scripts/downtime_deleted_events.sql` — soxta to'xtashlarni tozalash |
 | `tablo_machines_oracle.py` (29/29) | `docs/05` — stanok taxtasi |
 | `kromka_dedup_oracle.py` (18/18) | `scripts/kromka_dedup.sql` — v1.22 takrorlarini tozalash |
 
@@ -704,12 +708,22 @@ ataylab yashirilgan), ya'ni unga BRAK belgilab bo'lmasdi. Endi ROVER'da avto-ska
 OVOZSIZ va BEKOR QILISH tugmasisiz chiqadi — faqat BRAK uchun (`routes/terminal.tsx`). Chekni
 bekor qilish avvalgidek katak dialogida.
 
-Tekshiruv (bir martalik skript, sof funksiyalar): **21/21** — Rover uch holati, Kromka o'zgarmadi
-(`pwr` begona bo'lsa ham OFF), `_stop_kind`, 9 soatlik smenada 3 daqiqalik pauza sanalmadi,
-30 daqiqalik IDLE va 1 soatlik OFF to'xtash → Availability 83.3% (eski qoida bilan 93 daqiqa
-to'xtash edi), IDLE → OFF ikki alohida downtime yozuvi, ideal vaqt (600×400 → 32 s). Haqiqiy
-`build_machine_time_report` Postgres'da ISHGA TUSHIRILMADI (lokal muhitda Postgres yo'q edi) —
-prodga chiqishdan oldin `scripts/oracles/` naqshida qilinishi kerak.
+Tekshiruv — `scripts/oracles/rover_oee_oracle.py`, HAQIQIY handler va HAQIQIY to'xtash sinxroni
+Postgres 15 da: **19/19** — reja 8 soat, 3 daqiqalik bo'sh turish sanalmadi, 36 daqiqalik bo'sh
+turish va 1 soatlik o'chiq → A 80.0%; 41 detal (o'lchamsiz 1 tasi faqat `load_s`, tanaffusdagi
+va braksiz bekor qilingani sanalmadi) → ideal 1300 s, P 5.6%; 4 brak (rad etilgani yo'q) →
+Q 90.2%, OEE 4.0%; `manba` siz nazorat stanogida 3 daqiqa ham OFF (Kromka o'zgarmadi);
+chegara 1 daqiqa → pauza to'xtash bo'ldi; koeffitsiyent o'zgarsa o'tgan kun qayta hisoblandi;
+downtime yozuvlari turi va vaqti bilan, ikkinchi sinxronda takror yo'q. Agent tomoni —
+`rover_oracle.py` **21/21** (1.8.0 bilan 20/21: bo'sh turish → o'chirildi o'tishi yozilmaydi).
+
+⚠️ **Deploy qilingan birinchi versiyada xato bor edi** (2026-10-16 05:00, `162522a`): Kromka bo'sh
+yurishini qidiradigan `downtimes._bosh_yurish` `uskuna` oraliqlaridan HAMMA IDLE ni olardi, endi
+esa Rover'ning o'z IDLE holati ham u yerga tushdi — har bo'sh turish IKKINCHI `idle-*` downtime
+yozuvi bo'ldi, chegarasiz (3 daqiqalik pauzaga ham sabab so'raldi). Orakl buni ushladi (eski
+kodda 17/19). Tuzatish: `_bosh_yurish` endi faqat PROCESSING oraliqlarini bo'ladi. O'sha soatlarda
+yozilgan soxta yozuvlarni `scripts/downtime_deleted_events.sql` tozalaydi (Rover `idle-*` —
+uning ikkinchi manbasi), orakli `downtime_cleanup_oracle.py` **14/14**.
 
 **Hali yo'q:** agent o'chiq paytni Pico'ning `POWER_ON`/`run_sec` hodisalaridan to'ldirish (§4.13
 dagi cheklov), koeffitsiyentlarning haqiqiy qiymatlari (sekundomer).
