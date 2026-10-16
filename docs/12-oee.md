@@ -653,8 +653,8 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `oee_oracle.py` (31/31) | §4.1, §4.5-4.7, §4.9, §4.12 — A/P/Q/OEE, tanaffus, to'xtash chegarasi, bo'sh yurish, kesim sanasi, rejaning hozirgacha kesilishi |
 | `kromka_bind_oracle.py` (23/23) | §4.10 |
 | `kromka_v116_oracle.py` (11/11) | §4.8 |
-| `kromka_v122_oracle.py` (15/15) | §4.8, proshivka v1.19-v1.22 |
-| `rover_oracle.py` (21/21) | §4.13, agent 1.9.0 (§4.15) |
+| `kromka_v122_oracle.py` (19/19) | §4.8, proshivka v1.19-v1.22; agent 1.10.0 — tartibsiz kelish, yo'qolgan ACK |
+| `rover_oracle.py` (25/25) | §4.13, agent 1.9.0 (§4.15), 1.10.0 — tartibsiz kelish va uzluksiz tasdiq |
 | `rover_oee_oracle.py` (19/19) | §4.15 — Rover A/P/Q/OEE va to'xtash sinxroni |
 | `downtime_cleanup_oracle.py` (14/14) | `scripts/downtime_deleted_events.sql` — soxta to'xtashlarni tozalash |
 | `tablo_machines_oracle.py` (29/29) | `docs/05` — stanok taxtasi |

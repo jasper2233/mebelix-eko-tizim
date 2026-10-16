@@ -59,7 +59,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "MES agentlar" sahifasida qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.9.0"
+AGENT_VERSION = "1.10.0"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -1420,9 +1420,18 @@ def _andon_ack(count: int) -> None:
 #: keladi va Pico uni `ACK <xb> <xq>` kelmaguncha HAR 5 SONIYADA QAYTA yuboradi.
 #: Tasdiqsiz agent har takrorni yangi hodisa deb yozardi: bitta o'lchov daqiqada
 #: 12 marta sanalib, Performance ham, o'lchov tarixi ham shishib ketardi.
+#:
+#: Takror `xq` TO'PLAMI bilan aniqlanadi, «eng katta xq» bilan emas (1.10.0): Pico
+#: to'plangan zaxirani 40 talab qayta yuboradi va orasiga jonli o'lchov qo'shiladi —
+#: 1..40, 61, 41..60. «Eng katta» qoidasi 41..60 ni takror deb tashlardi, ular MES ga
+#: yetmas va tasdiqlanmay Pico xotirasida abadiy aylanardi.
+# ponytail: to'plamlar bitta yonish (`xb`) davomida o'sadi — kuniga ~1500 o'lchov, oyiga
+# ~45 ming butun son (bir necha MB). Pico deyarli har kuni qayta yonadi; kerak bo'lsa
+# tasdiqlangan pastki uzluksiz qismni kesib borish mumkin.
 KROMKA: dict[str, Any] = {
     "xb": None,      # Pico'ning joriy yonish belgisi (o'zgarsa hisob noldan)
-    "seen": 0,       # navbatga olingan eng katta `xq` — takror shundan past keladi
+    "seen": set(),   # navbatga olingan `xq` lar — qayta kelgani takror
+    "saved": set(),  # server YOZGAN `xq` lar — qayta kelsa tasdig'i yo'qolgan, qayta aytiladi
     "ack": set(),    # server YOZGAN, lekin Pico'ga hali aytilmagan `xq` lar
 }
 
@@ -1507,7 +1516,8 @@ ROVER: dict[str, Any] = {
     "ack_sent": 0,     # Pico'ga aytilgan oxirgi tasdiq
     "config": False,   # sozlama shu ulanishda yuborildimi
     "holat": None,     # oxirgi holat (PROCESSING/IDLE/OFF) — faqat O'ZGARISH hodisaga aylanadi
-    "seen": 0,         # navbatga olingan eng katta hodisa seq'i
+    "seen": set(),     # `ack_upto` dan yuqori, navbatga olingan seq lar (1.10.0: to'plam)
+    "saved": set(),    # `ack_upto` dan yuqori, server YOZGAN seq lar — uzluksiz bo'lgach tasdiqlanadi
 }
 
 
@@ -1530,7 +1540,8 @@ def _rover_line(data: dict[str, Any]) -> None:
             # o'sha joydan davom etamiz, aks holda eski seq'ni qayta tasdiqlardik
             ROVER["ack_upto"] = ROVER["ack_sent"] = int(data.get("last_ack") or 0)
             # Tasdiqlanganidan keyingilari qayta keladi — o'shalardan boshlab qabul qilamiz
-            ROVER["seen"] = int(data.get("last_ack") or 0)
+            ROVER["seen"] = set()
+            ROVER["saved"] = set()
             ROVER["config"] = False
             ROVER["holat"] = None
         log.info(
@@ -1592,10 +1603,18 @@ def _rover_event(data: dict[str, Any]) -> None:
     # Tasdiq kelmaguncha Pico o'sha hodisani har 10 soniyada QAYTA yuboradi — navbatga
     # bir marta olinadi. Serverdagi unikal indeks ham tashlardi, lekin u paytgacha
     # navbat va trafik bekorga to'lardi.
+    # Takror TO'PLAM bilan aniqlanadi (1.10.0): zaxira qayta yuborilayotganda jonli hodisa
+    # o'rtaga tushadi (1, 2, 4, 3) — «eng katta seq» qoidasi 3 ni tashlardi, umumiy
+    # tasdiq esa uni Pico'da ham o'chirib, hodisa BUTUNLAY yo'qolardi.
     with ANDON_LOCK:
-        if seq <= int(ROVER["seen"]):
+        if seq <= int(ROVER["ack_upto"]):
+            # Server yozgan va biz tasdiqlagan — Pico baribir qayta yubordi, ya'ni tasdiq
+            # yetib bormagan. Keyingi `_rover_ack` uni qayta aytadi.
+            ROVER["ack_sent"] = min(int(ROVER["ack_sent"]), seq - 1)
             return
-        ROVER["seen"] = seq
+        if seq in ROVER["seen"]:
+            return
+        ROVER["seen"].add(seq)
     data = dict(data)
     # Pico hodisaning turini `type` da beradi (POWER_ON, SPINDLE_IDLE ...), server
     # sxemasi esa `type` ni O'ZI uchun band qilgan — asl turi `rover_type` da qoladi,
@@ -1630,10 +1649,14 @@ def _kromka_xbxq(data: dict[str, Any]) -> tuple[str, int] | None:
     with ANDON_LOCK:
         if KROMKA["xb"] != xb:
             # Pico qayta yongan: raqamlar 1 dan boshlanadi, eski tasdiqlar ham keraksiz
-            KROMKA.update(xb=xb, seen=0, ack=set())
-        if xq <= int(KROMKA["seen"]):
+            KROMKA.update(xb=xb, seen=set(), saved=set(), ack=set())
+        if xq in KROMKA["seen"]:
+            # Server yozgan-u Pico baribir qayta yubordi — bizning ACK yetib bormagan
+            # (port uzilgan, qayta ulanish). Qayta aytamiz, aks holda u abadiy aylanardi.
+            if xq in KROMKA["saved"]:
+                KROMKA["ack"].add(xq)
             return None
-        KROMKA["seen"] = xq
+        KROMKA["seen"].add(xq)
     return xb[:16], xq
 
 
@@ -1647,6 +1670,7 @@ def _kromka_acked(events: list[dict[str, Any]]) -> None:
             seq = e.get("seq")
             if e.get("session") == str(xb)[:16] and isinstance(seq, int) and not isinstance(seq, bool):
                 KROMKA["ack"].add(seq)
+                KROMKA["saved"].add(seq)
 
 
 #: Bitta `ACK` qatoriga sig'adigan raqamlar soni. Pico bir qadamda 40 tagacha
@@ -1789,9 +1813,13 @@ def _andon_session(port: Any) -> None:
     ANDON_TUR["session"] = ""          # har ulanish — yangi kalit
     ANDON_TUR["uskuna"] = None         # holat noma'lum: birinchi javob yoziladi
     with ANDON_LOCK:
-        ROVER.update(boot=None, config=False, holat=None, seen=0)
+        # ROVER `seen` tozalanadi: Pico qayta yuborgani yana navbatga tushadi, server esa
+        # unikal kalit bilan takrorni tashlaydi. `saved`/`ack_upto` saqlanadi — server yozgani
+        # o'zgarmaydi, tasdiq uzluksizligi buzilmasin.
+        ROVER.update(boot=None, config=False, holat=None, seen=set())
         # Pico'ning yonish belgisi o'zgarmagan bo'lishi mumkin (faqat kabel uzilgan):
-        # `seen` ni saqlaymiz, aks holda u qayta yuborayotgan hammasi takror yozilardi
+        # kromka `seen`/`saved` saqlanadi, aks holda u qayta yuborayotgan hammasi takror
+        # yozilardi. Yo'qolgan ACK lar Pico qayta yuborganda `_kromka_xbxq` da qayta aytiladi.
         KROMKA["ack"] = set()
     next_ping = 0.0
     next_holat = 0.0
@@ -1997,17 +2025,26 @@ def _andon_current() -> dict[str, Any] | None:
 
 
 def _rover_acked(events: list[dict[str, Any]]) -> None:
-    """Server qabul qilgan partiyadagi eng katta ROVER seq — keyingi `ack` uchun.
+    """Server yozgan ROVER seq lari — tasdiq UZILISHSIZ qismigacha suriladi.
 
-    Navbat FIFO, ya'ni bu seq gacha hammasi allaqachon yozilgan: Pico esa aynan
-    «uzilishsiz saqlangan eng katta seq» ni kutadi."""
-    seqlar = [e.get("seq") for e in events if e.get("session") == _ROVER_SESSION]
-    eng = max((s for s in seqlar if isinstance(s, int)), default=0)
-    if not eng:
+    Pico «N gacha uzilishsiz saqlangan eng katta seq» ni kutadi va N gacha HAMMASINI
+    o'chiradi. Hodisalar tartibsiz kelishi mumkin (zaxira + jonli): 1, 2, 4 yozilgan,
+    3 hali yo'lda bo'lsa tasdiq 2 da to'xtaydi — 3 yetib kelgach 4 gacha. 1.10.0 gacha
+    partiyadagi eng katta seq tasdiqlanardi va yo'ldagi 3 Pico'da o'chib yo'qolardi."""
+    seqlar = [
+        s for e in events
+        if e.get("session") == _ROVER_SESSION and isinstance(s := e.get("seq"), int) and not isinstance(s, bool)
+    ]
+    if not seqlar:
         return
     with ANDON_LOCK:
-        if eng > int(ROVER["ack_upto"]):
-            ROVER["ack_upto"] = eng
+        upto = int(ROVER["ack_upto"])
+        ROVER["saved"].update(s for s in seqlar if s > upto)
+        while upto + 1 in ROVER["saved"]:
+            upto += 1
+            ROVER["saved"].discard(upto)
+            ROVER["seen"].discard(upto)
+        ROVER["ack_upto"] = upto
 
 
 async def andon_shipper() -> None:
@@ -2051,6 +2088,11 @@ async def andon_shipper() -> None:
                 # abadiy to'sib qo'yardi
                 log.error("Andon: server partiyani rad etdi (422) — %d ta qator tashlandi", count)
                 await asyncio.to_thread(_andon_ack, count)
+                # Pico'ga ham tasdiqlanadi: rad etilgan partiya qayta yuborilsa ham o'tmaydi,
+                # tasdiqsiz esa ROVER ning uzluksiz tasdig'i shu joyda abadiy to'xtab (keyingi
+                # hamma hodisa ham), Pico jurnali to'lib qolardi
+                _rover_acked(events)
+                _kromka_acked(events)
                 continue
             if time.monotonic() - ogohlantirildi >= _ANDON_WARN_EVERY_S:
                 ogohlantirildi = time.monotonic()

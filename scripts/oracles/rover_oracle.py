@@ -68,7 +68,7 @@ async def main() -> None:
         "t": "hello", "machine": "CNC2130", "boot": 12, "seq": 9, "last_ack": 7, "need_time": 1}))
     natija.append(("tur rover deb aniqlandi", agent.ANDON_TUR["tur"], "rover"))
     natija.append(("tasdiqlangan joydan davom etadi",
-                   (agent.ROVER["ack_upto"], agent.ROVER["seen"], agent.ROVER["boot"]), (7, 7, 12)))
+                   (agent.ROVER["ack_upto"], agent.ROVER["seen"], agent.ROVER["boot"]), (7, set(), 12)))
 
     agent._rover_time(port)    # noqa: SLF001
     agent._rover_config(port)  # noqa: SLF001
@@ -113,7 +113,10 @@ async def main() -> None:
 
     oldin = len(port.xabarlar)
     agent._rover_ack(port)  # noqa: SLF001
-    natija.append(("server yozmaguncha tasdiq yo'q", len(port.xabarlar), oldin))
+    # 7 allaqachon tasdiqlangan edi-yu Pico uni qayta yubordi — 1.10.0 dan tasdiq QAYTA
+    # aytiladi (yetib bormagan bo'lishi mumkin). Lekin yangi 8, 9 server yozmaguncha tasdiqlanmaydi.
+    natija.append(("server yozmaguncha tasdiq 7 dan oshmaydi",
+                   [m["seq"] for m in port.xabarlar[oldin:]], [7]))
 
     # --- SERVER
     from app.api.routes.bridge_agents import push_andon_events
@@ -170,6 +173,35 @@ async def main() -> None:
     natija.append(("bo'sh turish → o'chirildi: ikkala o'tish yozildi, takror yo'q",
                    [(e["holat"], e["pwr"], e["run"]) for e in yangi], [(0, 1, 0), (0, 0, 0)]))
     natija.append(("jonli holat o'chiq", agent.ANDON_CURRENT["state"], "OFF"))
+
+    # --- 1.10.0: TARTIBSIZ kelish. Pico qayta ulandi (20 gacha tasdiqlangan), zaxira
+    # qayta yuborilayotganda jonli hodisa o'rtaga tushdi: 21, 22, 24, keyin 23
+    agent._andon_line(json.dumps({"t": "hello", "boot": 13, "seq": 24, "last_ack": 20}))  # noqa: SLF001
+    oldin = len(navbatni_oqi(navbat))
+
+    def hodisa(seq: int) -> None:
+        agent._andon_line(json.dumps({  # noqa: SLF001
+            "t": "event", "seq": seq, "type": "SPINDLE_IDLE", "end": "2026-10-15T10:00:00", "dur": 60}))
+
+    for s in (21, 22, 24):
+        hodisa(s)
+    birinchi = navbatni_oqi(navbat)[oldin:]
+    agent._rover_acked(birinchi)  # noqa: SLF001  — server shularni yozdi
+    agent._rover_ack(port)        # noqa: SLF001
+    natija.append(("tartibsiz: 23 yo'lda — tasdiq 22 da to'xtaydi (24 emas)",
+                   port.xabarlar[-1], {"t": "ack", "seq": 22}))
+    hodisa(23)
+    ikkinchi = navbatni_oqi(navbat)[oldin + 3:]
+    natija.append(("tartibsiz: kechikkan 23 navbatga tushdi", [e["seq"] for e in ikkinchi], [23]))
+    agent._rover_acked(ikkinchi)  # noqa: SLF001
+    agent._rover_ack(port)        # noqa: SLF001
+    natija.append(("23 yozilgach tasdiq 24 gacha", port.xabarlar[-1], {"t": "ack", "seq": 24}))
+    # Tasdiq Pico'ga yetmadi (port uzildi) — u 22 ni qayta yubordi: tasdiq qayta aytiladi
+    oldin_x = len(port.xabarlar)
+    hodisa(22)
+    agent._rover_ack(port)        # noqa: SLF001
+    natija.append(("yo'qolgan tasdiq qayta aytiladi, hodisa qayta yozilmaydi",
+                   (port.xabarlar[oldin_x:], len(navbatni_oqi(navbat)) - oldin), ([{"t": "ack", "seq": 24}], 4)))
 
     xato = sum(1 for _, olingan, kutilgan in natija if olingan != kutilgan)
     for nom, olingan, kutilgan in natija:
