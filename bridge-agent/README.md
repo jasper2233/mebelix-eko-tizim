@@ -255,6 +255,12 @@ bo'lib yozilardi.
   bizda ham yozilmay yo'qolardi — rover bilan bir xil qoida.
   ⚠️ **Agent 1.8.0 dan pastini v1.22 Pico bilan ishlatib bo'lmaydi**: tasdiq
   bo'lmagach Pico qayta yuboraveradi, agent esa har takrorni yangi hodisa deb yozadi.
+  **Agent 1.10.0 — tartibsiz kelish.** Agent uzilgan paytda yig'ilgan zaxirani Pico
+  40 talab qayta yuboradi va orasiga jonli o'lchov tushadi (1..40, 61, 41..60).
+  1.10.0 gacha takror «eng katta `xq`» bilan aniqlanardi va 41..60 tashlanardi: ular
+  MES ga yetmas, tasdiqlanmay Pico RAM ida abadiy aylanardi. Endi `xq` TO'PLAMI
+  saqlanadi; server yozgan `xq` Pico'dan qayta kelsa (bizning ACK yetib bormagan) —
+  tasdiq qayta yuboriladi.
 - **v1.21 — qayta yuklanish sababi.** `boot` da `sabab` (`tok` | `wdt`), `HOLAT`
   javobida `sabab` va `up` (ms). Xom holida `payload` ga tushadi, kod o'zgarmadi.
 - **v1.20 — ovoz Pico'dan MES tomoniga o'tdi.** Rele almashganda `{"ev":"sig",...}`
@@ -279,6 +285,16 @@ eshitishi SHART.
 **Tasdiq qoidasi:** agent `{"t":"ack","seq":N}` ni FAQAT server hodisani yozgandan
 keyin yuboradi (`andon_shipper` → `_rover_acked`). Erta tasdiqlansa, internet
 uzilgan paytdagi hodisa Pico'da o'chib, bizda ham yozilmay yo'qolardi.
+
+Tasdiq UMUMIY — Pico N gacha hammasini o'chiradi. Shuning uchun 1.10.0 dan N —
+server yozgan **uzilishsiz** qatorning oxiri: 21, 22, 24 yozilgan-u 23 hali yo'lda
+bo'lsa tasdiq 22. 1.10.0 gacha partiyadagi eng katta seq (24) tasdiqlanardi, takror
+esa «eng katta seq» bilan tashlanardi — zaxira bilan jonli hodisa aralashganda (21,
+22, 24, 23) 23 navbatga tushmay Pico'da ham o'chib, BUTUNLAY yo'qolardi. Takror
+endi seq TO'PLAMI bilan aniqlanadi; Pico allaqachon tasdiqlangan seq ni qayta
+yuborsa (tasdiq yetib bormagan) — tasdiq qayta aytiladi. Server partiyani 422 bilan
+rad etsa, u Pico'ga ham tasdiqlanadi: qayta yuborish tuzatmaydi, tasdiqsiz esa
+uzluksiz tasdiq o'sha joyda abadiy to'xtab, Pico jurnali to'lib qolardi.
 
 **Nima yoziladi:**
 - `state` (har 10 s) — jonli holat; holat (shpindel aylanyapti / stanok yoqiq,

@@ -46,8 +46,8 @@ Windows'da Docker'siz: EDB'ning portativ PostgreSQL 15 zip'i (`initdb -A trust`,
 portativ Redis yetadi. Git Bash'da `PATH` ga `/c/...` ko'rinishida qo'shing —
 `C:/...` dagi ikki nuqta yo'lni bo'lib yuboradi.
 
-Oxirgi to'liq yurgizish (2026-10-16): `oee` 31/31, `rover` 21/21, `rover_oee` 19/19,
-`downtime_cleanup` 14/14, `kromka_bind` 23/23, `kromka_v116` 11/11, `kromka_v122` 15/15,
+Oxirgi to'liq yurgizish (2026-10-16): `oee` 31/31, `rover` 25/25, `rover_oee` 19/19,
+`downtime_cleanup` 14/14, `kromka_bind` 23/23, `kromka_v116` 11/11, `kromka_v122` 19/19,
 `kromka_dedup` 18/18, `tablo_machines` 29/29, `catalog` 36/36.
 
 ## Nima tekshiriladi

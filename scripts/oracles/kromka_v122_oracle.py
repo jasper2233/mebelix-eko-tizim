@@ -150,6 +150,29 @@ async def main() -> None:
     natija.append(("eski proshivkaga agent kalit beradi",
                    (eski["session"] != YANGI_XB, isinstance(eski["seq"], int)), (True, True)))
 
+    # --- 1.10.0: TARTIBSIZ kelish. Agent uzilgan paytda 60 ta o'lchov yig'ilgan; Pico
+    # zaxirani 40 talab qayta yuboradi, orasiga jonli o'lchov (61) tushadi: 1..40, 61, 41..60
+    TXB = "0badc0de"
+    oldin = len(open(navbat, encoding="utf-8").read().splitlines())
+    for xq in [*range(1, 41), 61, *range(41, 61)]:
+        agent._andon_line(olchov(TXB, xq, 700.0))  # noqa: SLF001
+    yangi = [json.loads(x) for x in open(navbat, encoding="utf-8").read().splitlines()][oldin:]
+    natija.append(("tartibsiz: 61 ta o'lchovning hammasi navbatda",
+                   sorted(e["seq"] for e in yangi), list(range(1, 62))))
+    agent._andon_line(olchov(TXB, 45, 700.0))  # noqa: SLF001  — tasdiq kutib qayta kelgan
+    natija.append(("tartibsiz: qayta kelgani takror yozilmadi",
+                   len(open(navbat, encoding="utf-8").read().splitlines()) - oldin, 61))
+    # Server yozdi → ACK ketdi, LEKIN port uzilib Pico uni olmadi va 7 ni qayta yubordi
+    port2 = SoxtaPort()
+    agent._kromka_acked(yangi)  # noqa: SLF001
+    agent._kromka_ack(port2)    # noqa: SLF001
+    agent._kromka_ack(port2)    # noqa: SLF001
+    jami = sorted(int(x) for s in port2.satrlar for x in s.split()[2:])
+    natija.append(("tartibsiz: hammasi tasdiqlandi (40 talab)", jami, list(range(1, 62))))
+    agent._andon_line(olchov(TXB, 7, 700.0))  # noqa: SLF001
+    agent._kromka_ack(port2)    # noqa: SLF001
+    natija.append(("yo'qolgan ACK: qayta kelganda qayta aytiladi", port2.satrlar[-1], f"ACK {TXB} 7"))
+
     xato = sum(1 for _, olingan, kutilgan in natija if olingan != kutilgan)
     for nom, olingan, kutilgan in natija:
         print(f"  {'OK ' if olingan == kutilgan else 'XATO'} {nom}: olingan={olingan} kutilgan={kutilgan}")
