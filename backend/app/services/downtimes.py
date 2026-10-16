@@ -299,6 +299,24 @@ async def sync_machine(db: AsyncSession, machine_id: int, now: datetime) -> None
             )
         ).scalars()
     )
+    # Qulf stanok ISHLAY BOSHLAGUNCHA amal qiladi (docs/12 §4.24): odatda qulf smena ochilganda yopiladi,
+    # lekin stanok terminalga kirmasdan ham yurishi mumkin (Kromka skanersiz o'lchaydi, ertasi kuni
+    # boshqa odam yoqadi). Shunda qulf ochiq qolib, keyingi HAMMA to'xtashga o'z (masalan rejali
+    # «Tushlik») sababini berardi. Qulf yozuvining o'ziga tegilmaydi — terminal ekrani o'z holatida.
+    lock_end: dict[int, datetime | None] = {}
+    for lk in locks:
+        ish = await db.scalar(
+            select(func.min(AndonEvent.happened_at)).where(
+                AndonEvent.machine_id == machine_id,
+                AndonEvent.is_deleted == False,  # noqa: E712
+                or_(
+                    and_(AndonEvent.kind == "state", AndonEvent.state == "PROCESSING"),
+                    and_(AndonEvent.kind == "uskuna", AndonEvent.payload["holat"].as_integer() == 1),
+                ),
+                AndonEvent.happened_at > lk.started_at,
+            )
+        )
+        lock_end[lk.id] = min((t for t in (lk.ended_at, ish) if t is not None), default=None)
     for run in runs:
         row = existing.get(run.key)
         if row is not None:
@@ -307,7 +325,11 @@ async def sync_machine(db: AsyncSession, machine_id: int, now: datetime) -> None
             continue
         row = Downtime(machine_id=machine_id, kind=run.kind, start_key=run.key, started_at=run.start, ended_at=run.end)
         lock = next(
-            (lk for lk in locks if lk.started_at <= run.start and (lk.ended_at is None or run.start <= lk.ended_at)),
+            (
+                lk
+                for lk in locks
+                if lk.started_at <= run.start and ((end := lock_end[lk.id]) is None or run.start <= end)
+            ),
             None,
         )
         if lock is not None:
