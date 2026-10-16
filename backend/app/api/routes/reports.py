@@ -756,7 +756,9 @@ async def build_machine_time_report(
                 measured_cycle_s=round(measured.get(mid, [0.0, 0])[0]),
                 defects=defects_total,
                 quality_pct=row_quality,
-                oee_pct=oee_pct(a.availability_pct, perf(mid, ideal_total, a.run_s), row_quality),
+                oee_pct=oee_pct(
+                    a.planned_s, a.run_s, ideal_total if mid in quality_ids else None, parts_total, defects_total
+                ),
             )
         )
     empty_day = DayTotals()
@@ -779,9 +781,11 @@ async def build_machine_time_report(
                 defects=day_defects,
                 quality_pct=day_quality,
                 oee_pct=oee_pct(
-                    d.availability_pct,
-                    perf(mid, ideal_by.get((mid, day), [0.0, 0])[0], d.run_s),
-                    day_quality,
+                    d.planned_s,
+                    d.run_s,
+                    ideal_by.get((mid, day), [0.0, 0])[0] if mid in quality_ids else None,
+                    day_parts,
+                    day_defects,
                 ),
             )
         )

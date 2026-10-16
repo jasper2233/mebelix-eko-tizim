@@ -14,7 +14,9 @@ ROVER (`uskuna`, `manba="rover"`, `pwr` bilan):
     to'xtash 5760 s → ishladi 23040 s → A = 80.0%
     40 detal 600×400 (perimetr 2 m) × (20 + 2 × 6) = 1280 s + 1 o'lchamsiz detal 20 s
     → ideal 1300 s → P = 1300 / 23040 = 5.6%
-    4 brak (rad etilgani sanalmaydi) → Q = 37 / 41 = 90.2%  →  OEE = 80 × 5.6 × 90.2 / 10⁴ = 4.0%
+    4 brak (rad etilgani sanalmaydi) → Q = 37 / 41 = 90.2%
+    →  OEE = 1300 × 37 / (28800 × 41) = 4.07 → 4.1%  (xom nisbatlardan, docs/12 §4.25; yaxlitlangan
+       80 × 5.6 × 90.2 bo'yicha 4.0 chiqardi)
 
 NAZORAT stanogi (o'sha hodisalar `manba`/`pwr` SIZ — Kromka xulqi): har `holat=0` — OFF,
 ya'ni 3 daqiqalik pauza ham to'xtash: 180 + 2160 + 3600 = 5940 s.
@@ -163,7 +165,7 @@ async def main() -> None:
         natija.append(("rover: Performance", r.performance_pct, 5.6))
         natija.append(("rover: rad etilgan brak sanalmaydi", r.defects, 4))
         natija.append(("rover: Quality", r.quality_pct, 90.2))
-        natija.append(("rover: OEE = A × P × Q", r.oee_pct, 4.0))
+        natija.append(("rover: OEE = A × P × Q (xom nisbatlardan)", r.oee_pct, 4.1))
         natija.append(("rover: sababsiz to'xtash", [(x.name, x.seconds) for x in r.reasons],
                        [("Sabab kiritilmagan", 5760)]))
         natija.append(("koeffitsiyentlar javobda", (hisobot.ideal_cycle_rover.load_s,

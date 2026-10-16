@@ -672,11 +672,12 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `kromka_v116_oracle.py` (11/11) | §4.8 |
 | `kromka_v122_oracle.py` (19/19) | §4.8, proshivka v1.19-v1.22; agent 1.10.0 — tartibsiz kelish, yo'qolgan ACK |
 | `rover_oracle.py` (25/25) | §4.13, agent 1.9.0 (§4.15), 1.10.0 — tartibsiz kelish va uzluksiz tasdiq |
-| `rover_oee_oracle.py` (19/19) | §4.15 — Rover A/P/Q/OEE va to'xtash sinxroni |
+| `rover_oee_oracle.py` (19/19) | §4.15 — Rover A/P/Q/OEE va to'xtash sinxroni (OEE kutilgani §4.25 da 4.0 → 4.1) |
 | `downtime_cleanup_oracle.py` (14/14) | `scripts/downtime_deleted_events.sql` — soxta to'xtashlarni tozalash |
 | `kromka_kirish_oracle.py` (4/4) | §4.10 — kirish `ts − (ish_ms + d2)`, oyna −60 … +20 s, skan darajasida FIFO |
 | `kromka_kal_oracle.py` (8/8) | §4.18 — Pico'dagi joriy kalibrlash agentdan MES gacha (o'zgarganda, takrorsiz) |
 | `lock_end_oracle.py` (3/3) | §4.24 — qulf stanok ishlay boshlaguncha amal qiladi: keyingi to'xtash qulf sababini olmaydi (eski kodda 1/3) |
+| `oee_rounding_oracle.py` (9/9) | §4.25 — OEE xom nisbatlardan: 100 000 tasodifiy holatda aniq kasr bilan bir xil (eski usul ~13% da 0.1 farq) |
 | `reason_lookup_oracle.py` (4/4) | §4.23 — qisqa to'xtash qo'shni yozuvning sababini (rejali «Tushlik») olmaydi (eski kodda 0/4) |
 | `day_boundary_stop_oracle.py` (4/4) | §4.22 — yarim tundan o'tgan to'xtash bir kunlik hisobotda chegaradan tushib qolmaydi (eski kodda 2/4) |
 | `availability_range_oracle.py` (7/7) | §4.21 — kunning Availability'si so'ralgan oraliqqa bog'liq emas (eski kodda 2/7) |
@@ -738,7 +739,7 @@ Tekshiruv — `scripts/oracles/rover_oee_oracle.py`, HAQIQIY handler va HAQIQIY 
 Postgres 15 da: **19/19** — reja 8 soat, 3 daqiqalik bo'sh turish sanalmadi, 36 daqiqalik bo'sh
 turish va 1 soatlik o'chiq → A 80.0%; 41 detal (o'lchamsiz 1 tasi faqat `load_s`, tanaffusdagi
 va braksiz bekor qilingani sanalmadi) → ideal 1300 s, P 5.6%; 4 brak (rad etilgani yo'q) →
-Q 90.2%, OEE 4.0%; `manba` siz nazorat stanogida 3 daqiqa ham OFF (Kromka o'zgarmadi);
+Q 90.2%, OEE 4.0% (§4.25 dan 4.1% — xom nisbatlardan); `manba` siz nazorat stanogida 3 daqiqa ham OFF (Kromka o'zgarmadi);
 chegara 1 daqiqa → pauza to'xtash bo'ldi; koeffitsiyent o'zgarsa o'tgan kun qayta hisoblandi;
 downtime yozuvlari turi va vaqti bilan, ikkinchi sinxronda takror yo'q. Agent tomoni —
 `rover_oracle.py` **21/21** (1.8.0 bilan 20/21: bo'sh turish → o'chirildi o'tishi yozilmaydi).
@@ -1008,6 +1009,24 @@ holatida qoladi (qulf frontend holati, beyjik bilan ochiladi).
 Tekshiruv — `scripts/oracles/lock_end_oracle.py` **3/3** (eski kodda **1/3**): Prisadka va Kromka'da
 12:00 dagi «Tushlik» qulfi 12:05 dagi to'xtashga beriladi, stanok 12:50 da ishlagach 13:30 dagi
 to'xtash sababsiz qoladi; qulf yozuvi ochiq qoldi. Qolgan 18 ta orakl o'zgarmadi.
+
+### 4.25 OEE xom nisbatlardan hisoblanadi (2026-10-16)
+
+**Xato.** `oee_pct` 0.1 gacha yaxlitlangan A, P, Q foizlarini ko'paytirib yana yaxlitlardi. Tasodifiy
+holatlarning ~13% ida sahifadagi OEE haqiqiydan 0.1 ga farq qilardi (masalan 42.4 o'rniga 42.5).
+`rover_oee_oracle` ning o'zi ham shu xato bilan yozilgan edi: 80 × 5.6 × 90.2 = 4.0, aniq qiymat
+1300 × 37 / (28800 × 41) = 4.07 → 4.1.
+
+**Tuzatish.** `oee_pct(planned_s, run_s, ideal_s, parts, defects)` = `ideal_s × yaroqli × 100 ÷
+(planned_s × parts)` — bitta yaxlitlash. A, P, Q ning o'zi sahifada avvalgidek yaxlitlangan holda
+ko'rsatiladi; ularni qo'lda ko'paytirgan odam OEE dan 0.1 farq ko'rishi mumkin — bu endi to'g'ri.
+`None` qoidasi o'zgarmadi (reja 0, ishlamagan, Performance sanalmaydigan ish markazi, detal yo'q).
+
+Tekshiruv — `scripts/oracles/oee_rounding_oracle.py` **9/9** (sof, DB'siz): 100 000 tasodifiy holatda
+natija `Fraction` bilan aniq hisoblangan qiymatga teng (aniq .x5 tengliklari — 4 ta — alohida: ular
+suzuvchi nuqtada ifodalanmaydi, har `round()` ning xususiyati); eski usul 5% dan ko'p holatda farq
+qilardi; `None` holatlari. `oee` 31/31 (6.0 va 3.4 aniq qiymatga mos edi), `rover_oee` 19/19 (kutilgani
+4.1 ga tuzatildi), `tablo_machines` 29/29.
 
 ## 5. Prod auditi natijalari (2026-09-16)
 
