@@ -64,16 +64,24 @@ from app.schemas.reports import (
     ReadyOrder,
     TrendDay,
 )
+from app.schemas.settings import IdealCycleRover
 from app.services.andon import ANDON_STATES, andon_spans, machine_time, read_live, split_idle, uskuna_spans
-from app.services.availability import DayTotals, StopRun, availability, inside, plan_windows
+from app.services.availability import Availability, DayTotals, StopRun, availability, inside, plan_windows
 from app.services.excel import xlsx_response
 from app.services.metrics import VolumeShare, part_volume
-from app.services.performance import ideal_seconds, kromka_ideal_seconds, oee_pct, quality_pct
+from app.services.performance import (
+    ideal_seconds,
+    kromka_ideal_seconds,
+    oee_pct,
+    quality_pct,
+    rover_ideal_seconds,
+)
 from app.services.settings_service import (
     KROMKA_IDLE_MINUTES,
     STOP_PROMPT_IDLE_MINUTES,
     get_ideal_cycle,
     get_ideal_cycle_kromka,
+    get_ideal_cycle_rover,
     get_oee_start,
     get_setting,
     get_work_schedule,
@@ -247,6 +255,46 @@ async def report_machine_time(
     return _machine_time_xlsx(report) if format == "xlsx" else report
 
 
+async def _rover_parts(
+    db: AsyncSession,
+    rover_ids: set[int],
+    avail: dict[int, Availability],
+    defect_scan_ids: set[int],
+    start: datetime,
+    end: datetime,
+    cycle: IdealCycleRover,
+    ideal_by: dict[tuple[int, date], list[float]],
+) -> None:
+    """ROVER Performance: birlik — DETAL (2026-10-16 qarori), `ideal_by` ga qo'shadi.
+
+    Manba — shu stanokdagi skanlar: chek chiqarish (`rvprint-*` avto-skani, roverda
+    kesiladigan detal) ham, ARRA'dan keyin oddiy skan ham. Ideal vaqt kontur uzunligidan
+    (`services/performance.rover_ideal_seconds`). Filtr Prisadkadagi bilan bir xil:
+    faqat KUZATILGAN ish vaqtidagi skan, brak bilan bekor qilingani ham sanaladi."""
+    rows = (
+        (
+            await db.execute(
+                select(Scan.machine_id, Scan.created_at, Part.length, Part.width)
+                .join(Part, Part.id == Scan.part_id)
+                .where(
+                    Scan.machine_id.in_(rover_ids),
+                    or_(Scan.is_cancelled == False, Scan.id.in_(defect_scan_ids)),  # noqa: E712
+                    Scan.is_deleted == False,  # noqa: E712
+                    Scan.created_at >= start,
+                    Scan.created_at <= end,
+                )
+            )
+        )
+        .tuples()
+        .all()
+    )
+    for mid, at, length, width in rows:
+        if mid is not None and inside(avail[mid].observed, at):
+            cell = ideal_by.setdefault((mid, at.astimezone(TASHKENT_TZ).date()), [0.0, 0])
+            cell[0] += rover_ideal_seconds(cycle, length, width)
+            cell[1] += 1
+
+
 async def build_machine_time_report(
     db: AsyncSession, date_from: date | None, date_to: date | None, only: frozenset[int] | None = None
 ) -> MachineTimeReport:
@@ -278,6 +326,7 @@ async def build_machine_time_report(
             idle_threshold_min=int(await get_setting(db, STOP_PROMPT_IDLE_MINUTES)),
             ideal_cycle=await get_ideal_cycle(db),
             ideal_cycle_kromka=await get_ideal_cycle_kromka(db),
+            ideal_cycle_rover=await get_ideal_cycle_rover(db),
             oee_start=oee_start,
         )
         return bosh
@@ -448,7 +497,7 @@ async def build_machine_time_report(
             await db.execute(
                 select(Machine.id, Post.code)
                 .join(Post, Post.id == Machine.post_id)
-                .where(Machine.id.in_(ids), Post.code.in_((PostCode.PRISADKA, PostCode.KROMKA)))
+                .where(Machine.id.in_(ids), Post.code.in_((PostCode.PRISADKA, PostCode.KROMKA, PostCode.ROVER)))
             )
         )
         .tuples()
@@ -456,10 +505,12 @@ async def build_machine_time_report(
     )
     prisadka_ids = {mid for mid, kod in post_kodi.items() if kod == PostCode.PRISADKA}
     kromka_ids = {mid for mid, kod in post_kodi.items() if kod == PostCode.KROMKA}
+    rover_ids = {mid for mid, kod in post_kodi.items() if kod == PostCode.ROVER}
     #: Quality hisoblanadigan stanoklar. Kromkada BITTA SKAN = BITTA QIRRA o'tishi
     #: (`per_instance` = qirralar soni), o'lchov ham qirra bo'yicha keladi — ya'ni surat
-    #: va maxraj bir xil birlikda. Boshqa postlarda o'lchov manbasi yo'q, Quality `—`.
-    quality_ids = prisadka_ids | kromka_ids
+    #: va maxraj bir xil birlikda. ROVER'da birlik — DETAL (skan), Prisadkadagi kabi.
+    #: Boshqa postlarda o'lchov manbasi yo'q, Quality `—`.
+    quality_ids = prisadka_ids | kromka_ids | rover_ids
 
     # OEE Quality: BRAK (`part_defect`) — detallar bilan BIR XIL filtr (kuzatilgan ish vaqti),
     # aks holda surat va maxraj boshqa-boshqa vaqtdan yig'ilardi. Brak kiritilmagan bo'lsa
@@ -593,6 +644,10 @@ async def build_machine_time_report(
             cell[0] += sek
             cell[1] += 1
 
+    ideal_rover = await get_ideal_cycle_rover(db)
+    if rover_ids:
+        await _rover_parts(db, rover_ids, avail, defect_scan_ids, start, end, ideal_rover, ideal_by)
+
     def perf(mid: int, ideal_s: float, run_s: int) -> float | None:
         return round(ideal_s * 100 / run_s, 1) if mid in quality_ids and run_s > 0 else None
 
@@ -670,6 +725,7 @@ async def build_machine_time_report(
         idle_threshold_min=idle_minutes,
         ideal_cycle=ideal,
         ideal_cycle_kromka=ideal_kromka,
+        ideal_cycle_rover=ideal_rover,
         oee_start=oee_start,
     )
 

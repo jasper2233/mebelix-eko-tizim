@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import SystemSetting
-from app.schemas.settings import DefectReasons, IdealCycle, IdealCycleKromka, WorkSchedule
+from app.schemas.settings import DefectReasons, IdealCycle, IdealCycleKromka, IdealCycleRover, WorkSchedule
 
 #: Bazisda detal nomi shu belgi bilan tugasa — yuklashda NOSTANDART.
 #: Bo'sh qiymat qoidani BUTUNLAY o'chiradi (belgisiz hamma detal nostandart
@@ -69,6 +69,8 @@ WORK_SCHEDULE = "work_schedule"
 IDEAL_CYCLE = "ideal_cycle_prisadka"
 #: Kromka ideal sikli (JSON, `IdealCycleKromka`) — u yerda ideal vaqtni lenta belgilaydi.
 IDEAL_CYCLE_KROMKA = "ideal_cycle_kromka"
+#: ROVER ideal sikli (JSON, `IdealCycleRover`) — detalga + kontur metriga soniya.
+IDEAL_CYCLE_ROVER = "ideal_cycle_rover"
 #: Brak sabablari (JSON, `DefectReasons`) — terminaldagi BRAK oynasi shundan.
 DEFECT_REASONS = "defect_reasons"
 #: OEE shu KUNDAN boshlab hisoblanadi (ISO sana, bo'sh — cheklov yo'q). Undan oldingi
@@ -128,6 +130,12 @@ async def get_ideal_cycle_kromka(db: AsyncSession) -> IdealCycleKromka:
     """Kromka koeffitsiyenti; kiritilmagan bo'lsa sxemadagi sukut (3 s oraliq)."""
     raw = await get_setting(db, IDEAL_CYCLE_KROMKA)
     return IdealCycleKromka.model_validate_json(raw) if raw else IdealCycleKromka()
+
+
+async def get_ideal_cycle_rover(db: AsyncSession) -> IdealCycleRover:
+    """ROVER koeffitsiyentlari; kiritilmagan bo'lsa sxemadagi TAXMINIY sukut qiymatlar."""
+    raw = await get_setting(db, IDEAL_CYCLE_ROVER)
+    return IdealCycleRover.model_validate_json(raw) if raw else IdealCycleRover()
 
 
 async def get_oee_start(db: AsyncSession) -> date | None:

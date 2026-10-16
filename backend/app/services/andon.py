@@ -90,6 +90,18 @@ class AndonSpan:
     ended: datetime | None
 
 
+def uskuna_state(payload: dict[str, Any]) -> str:
+    """`uskuna` hodisasining holati: `holat=1` → PROCESSING, aks holda OFF yoki IDLE.
+
+    ROVER (`manba="rover"`) stanok tokini ham yuboradi (`pwr`): stanok YOQIQ-u shpindel
+    aylanmasa — bu bo'sh turish (IDLE, sariq qoida: `stop_prompt_idle_minutes` dan qisqasi
+    mikro-to'xtash), o'chiq emas. List almashtirish, nolga keltirish, asbob almashtirish
+    Availability'ni darhol tushirmasin (2026-10-16 qarori). Kromkada `pwr` yo'q — OFF."""
+    if payload.get("holat"):
+        return "PROCESSING"
+    return "IDLE" if payload.get("manba") == "rover" and payload.get("pwr") else "OFF"
+
+
 def uskuna_spans(
     events: Iterable[tuple[int, dict[str, Any], datetime]],
     live: set[int],
@@ -102,9 +114,10 @@ def uskuna_spans(
     hodisasini yuboradi (`holat` 0/1). Shuning uchun oraliq SHU YERDA quriladi:
     har hodisa oldingisini yopadi, oxirgisi `now` gacha davom etadi.
 
-    `holat=1` → PROCESSING (lenta yuryapti), `holat=0` → OFF. OFF ataylab: bizda
-    u DARHOL to'xtash deb sanaladi, sariq chiroqning mikro-to'xtash chegarasi esa
-    kromkada ma'nosiz — u yerda «kutish» degan oraliq holat umuman yo'q.
+    Holat `uskuna_state` dan: `holat=1` → PROCESSING (lenta yuryapti), `holat=0` → OFF.
+    OFF ataylab: bizda u DARHOL to'xtash deb sanaladi, sariq chiroqning mikro-to'xtash
+    chegarasi esa kromkada ma'nosiz — u yerda «kutish» degan oraliq holat umuman yo'q.
+    ROVER esa uni biladi (stanok yoqiq, shpindel to'xtagan) — u IDLE.
 
     `events` — `(machine_id, payload, happened_at)`, VAQT bo'yicha tartiblangan.
     `live` — hozir aloqada turgan ish markazlari: faqat ular uchun OXIRGI oraliq
@@ -115,7 +128,7 @@ def uskuna_spans(
     ochiq: dict[int, AndonSpan] = {}
     spans: list[AndonSpan] = []
     for machine_id, payload, at in events:
-        holat = "PROCESSING" if payload.get("holat") else "OFF"
+        holat = uskuna_state(payload)
         oldingi = ochiq.get(machine_id)
         if oldingi is not None:
             if oldingi.state == holat:

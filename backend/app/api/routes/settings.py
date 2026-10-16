@@ -10,6 +10,7 @@ from app.schemas.settings import (
     DefectReasons,
     IdealCycle,
     IdealCycleKromka,
+    IdealCycleRover,
     OeeStart,
     SystemSettingRead,
     SystemSettingUpdate,
@@ -20,12 +21,14 @@ from app.services.settings_service import (
     DEFECT_REASONS,
     IDEAL_CYCLE,
     IDEAL_CYCLE_KROMKA,
+    IDEAL_CYCLE_ROVER,
     INT_RANGES,
     OEE_START_DATE,
     WORK_SCHEDULE,
     get_defect_reasons,
     get_ideal_cycle,
     get_ideal_cycle_kromka,
+    get_ideal_cycle_rover,
     get_oee_start,
     get_setting,
     get_work_schedule,
@@ -129,6 +132,34 @@ async def update_ideal_cycle_kromka(
         entity_type="system_setting",
         entity_id=row.id,
         message=f"Kromka ideal sikli o'zgardi: detallar oralig'i {body.gap_s:g} s",
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return body
+
+
+# NOTE: `/ideal-cycle-rover` ham `/{key}` dan OLDIN — sabab yuqoridagidek.
+@router.get("/ideal-cycle-rover", response_model=IdealCycleRover, operation_id="read_ideal_cycle_rover")
+async def read_ideal_cycle_rover(db: SessionDep, _: AdminUser) -> IdealCycleRover:
+    """ROVER ideal sikli (OEE Performance); kiritilmagan bo'lsa taxminiy sukut qiymatlar."""
+    return await get_ideal_cycle_rover(db)
+
+
+@router.put("/ideal-cycle-rover", response_model=IdealCycleRover, operation_id="update_ideal_cycle_rover")
+async def update_ideal_cycle_rover(
+    db: SessionDep, current_user: AdminUser, body: IdealCycleRover, request: Request
+) -> IdealCycleRover:
+    """Ikkala koeffitsiyent BIRGA almashtiriladi. Hisobot o'tgan kunlarni ham yangi qiymat bilan qayta hisoblaydi."""
+    row = await set_setting(db, IDEAL_CYCLE_ROVER, body.model_dump_json(), current_user.id)
+    await db.flush()  # yangi qatorning id si audit yozuviga tushsin
+    log_action(
+        db,
+        module="settings",
+        action="updated",
+        user_id=current_user.id,
+        entity_type="system_setting",
+        entity_id=row.id,
+        message=f"Rover ideal sikli o'zgardi: detalga {body.load_s:g} s, kontur metriga {body.cut_s_per_m:g} s",
         ip=client_ip(request),
     )
     await db.commit()

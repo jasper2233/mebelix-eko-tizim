@@ -270,9 +270,13 @@ function TerminalPage() {
           // bekor — katak dialogida). Post nomi bo'yicha EMAS: ROVER ham chek
           // chiqaradi, ham qo'lda skan oladi — farq skanning kelib chiqishida.
           // XATO baribir pastdagi scan.rejected shoxidan ko'rinadi.
-          if (p.auto) return
+          // ROVER istisno: roverda kesiladigan detalning YAGONA skani shu avto-skan —
+          // tasmaga chiqmasa unga BRAK belgilab bo'lmasdi (OEE Quality, docs/12 §4.15).
+          // Ovozsiz va BEKOR QILISHsiz (`auto`), faqat BRAK uchun.
+          const auto = Boolean(p.auto)
+          if (auto && ctx?.post_code !== "ROVER") return
           if (!yangiXabar(String(p.qr_text ?? p.part_code ?? ""))) return
-          playSuccess()
+          if (!auto) playSuccess()
           lastScanAtRef.current = Date.now()
           setLastScan({
             kind: "ok",
@@ -280,6 +284,7 @@ function TerminalPage() {
             qoldiq: Number(p.qoldiq ?? 0),
             scanId: sid,
             at: Date.now(),
+            auto,
           })
         } else if (event.type === "scan.rejected") {
           if (!yangiXabar(String(p.qr_text ?? ""))) return
@@ -489,7 +494,7 @@ function TerminalPage() {
   // tugma bilan birga, ya'ni 20-soniyada xatoni sezgan ishchi bekor qila
   // olmasdi (server hali ruxsat bergan holda). Muddat taymeri yo'q — tugma
   // bor ekan, bekor qilish mumkin.
-  const canUndo = lastScan?.kind === "ok"
+  const canUndo = lastScan?.kind === "ok" && !lastScan.auto
 
   // Skan chizig'i 60 s dan keyin o'zi yo'qoladi — ekranni band qilib turmasin;
   // har yangi skan taymerni qaytadan boshlaydi

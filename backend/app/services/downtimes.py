@@ -12,7 +12,7 @@ Qarorlar (2026-09-17, docs/12-oee.md §7; chegara qoidasi 2026-09-20 da o'zgardi
 
 KROMKA va ROVER (2026-09-20) boshqacha gapiradi: ularda chiroq yo'q, RUN kirishi bor va u
 faqat O'ZGARGANDA `uskuna` hodisasi keladi (`holat` 0/1). `holat=0` — lenta/shpindel to'xtagan,
-ya'ni to'xtash (`OFF`).
+ya'ni to'xtash (`OFF`); ROVER'da stanok yoqiq bo'lsa — bo'sh turish (`IDLE`, `andon.uskuna_state`).
 
 Chegaradan qisqa to'xtash HISOBGA baribir kiradi (Availability oraliqlardan hisoblanadi) —
 faqat SABAB so'ralmaydi.
@@ -29,7 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AndonEvent, Downtime
 from app.models.enums import DowntimeKind
-from app.services.andon import split_idle, uskuna_spans
+from app.services.andon import split_idle, uskuna_spans, uskuna_state
 from app.services.settings_service import KROMKA_IDLE_MINUTES, STOP_PROMPT_IDLE_MINUTES, get_setting
 
 #: Pico holati -> to'xtash turi. Qolgan holatlar (PROCESSING, AWAIT_PART, BOOT ...) — stanok ishlayapti.
@@ -61,7 +61,7 @@ def _stop_kind(ev: AndonEvent) -> DowntimeKind | None:
     if ev.kind == "state":
         return _STOP_KIND.get(ev.state or "")
     if ev.kind == "uskuna":
-        return None if (ev.payload or {}).get("holat") else DowntimeKind.OFF
+        return _STOP_KIND.get(uskuna_state(ev.payload or {}))
     return None
 
 
@@ -115,6 +115,7 @@ async def _bosh_yurish(
                 select(AndonEvent.happened_at).where(
                     AndonEvent.machine_id == machine_id,
                     AndonEvent.kind == "olchov",
+                    AndonEvent.is_deleted == False,  # noqa: E712
                     AndonEvent.happened_at >= since,
                 )
             )
@@ -159,6 +160,7 @@ async def sync_machine(db: AsyncSession, machine_id: int, now: datetime) -> None
         await db.execute(
             select(func.max(AndonEvent.happened_at)).where(
                 AndonEvent.machine_id == machine_id,
+                AndonEvent.is_deleted == False,  # noqa: E712
                 ishlayapti,
                 AndonEvent.happened_at <= since,
             )
@@ -174,6 +176,7 @@ async def sync_machine(db: AsyncSession, machine_id: int, now: datetime) -> None
                 .where(
                     AndonEvent.machine_id == machine_id,
                     AndonEvent.kind.in_(("state", "uskuna")),
+                    AndonEvent.is_deleted == False,  # noqa: E712
                     AndonEvent.happened_at >= since,
                 )
                 .order_by(AndonEvent.happened_at, AndonEvent.id)

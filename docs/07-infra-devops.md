@@ -429,7 +429,7 @@ pip install "websockets>=14" pywin32 pillow pynput pystray pyserial "pyinstaller
 pyinstaller --onefile --noconsole --icon mebelix.ico --name mebelix-agent agent.py
 ```
 
-`websockets>=14` majburiy — agent kodi v14+ API'siga (`additional_headers`) yozilgan, eski v13 shim olib tashlangan; v13 bilan yig'ilgan exe serverga ulanolmaydi. `pystray` ham majburiy: usiz qurilgan exe tray belgisisiz chiqadi (`start_tray` ImportError bilan jimgina o'chadi). `pyserial` ham shunday — usiz andon (Pico) qismi jimgina o'chadi (`start_andon`). Joriy `AGENT_VERSION` — `1.8.0`.
+`websockets>=14` majburiy — agent kodi v14+ API'siga (`additional_headers`) yozilgan, eski v13 shim olib tashlangan; v13 bilan yig'ilgan exe serverga ulanolmaydi. `pystray` ham majburiy: usiz qurilgan exe tray belgisisiz chiqadi (`start_tray` ImportError bilan jimgina o'chadi). `pyserial` ham shunday — usiz andon (Pico) qismi jimgina o'chadi (`start_andon`). Joriy `AGENT_VERSION` — `1.9.0`.
 
 Natijadagi `mebelix-agent.exe` ni **CI o'zi quradi va serverga qo'yadi** (`agent` job → `agent-dist/` artifact, deploy uni rsync bilan serverga eltadi): paneldagi havola ham, agentning `self_update()` i ham exe'ni `GET /api/v1/bridge-agents/download` dan, versiya/sha256 ni esa `GET /api/v1/bridge-agents/latest` dan oladi. Qo'lda (flashka) ko'chirish faqat serverga kirish yo'q bo'lganda kerak; binar repoda saqlanmaydi. Paneldagi versiya belgisi (handshake'dagi `X-Agent-Version` → `bridge_agent.version`) qaysi mashinada eski exe qolganini ko'rsatadi.
 

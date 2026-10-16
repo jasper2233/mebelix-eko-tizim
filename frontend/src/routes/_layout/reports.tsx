@@ -754,13 +754,13 @@ function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
           </TableHead>
           <TableHead
             className="hidden text-right md:table-cell"
-            title="Prisadkada: ishlagan vaqtda skanerlangan detallar (brak bo'lgani ham sanaladi). Kromkada: stansiya o'lchagan o'tishlar — to'rt qirrali detal to'rt marta sanaladi"
+            title="Prisadkada: ishlagan vaqtda skanerlangan detallar (brak bo'lgani ham sanaladi). Roverda: shu stanokdagi skanlar (chek chiqarish ham). Kromkada: stansiya o'lchagan o'tishlar — to'rt qirrali detal to'rt marta sanaladi"
           >
             Detallar
           </TableHead>
           <TableHead
             className="text-right"
-            title="Ideal vaqt ÷ ishlagan vaqt. Prisadkada ideal vaqt teshik/paz/freza soniga qarab, kromkada uzunlik ÷ lenta tezligi + oraliq. Sozlamalar — Tizim sozlamalari → «Ideal sikl»"
+            title="Ideal vaqt ÷ ishlagan vaqt. Prisadkada ideal vaqt teshik/paz/freza soniga qarab, roverda detalga + perimetr × metrga soniya, kromkada uzunlik ÷ lenta tezligi + oraliq. Sozlamalar — Tizim sozlamalari → «Ideal sikl»"
           >
             Performance
           </TableHead>

@@ -48,6 +48,7 @@ MebeliX-Mes-System/
 │                     #   catalog_import.py + catalog.csv (ombor katalogi: varaq → CSV → baza, docs/14),
 │                     #   oee_audit.sql, kromka_audit.sql (faqat o'qiydigan auditlar),
 │                     #   kromka_dedup.sql (v1.22 takrorlarini tozalash) — docs/12,
+│                     #   downtime_deleted_events.sql (o'chirilgan hodisadan yasalgan to'xtashlar, TODO.md #15),
 │                     #   oracles/ (bir martalik tekshiruv skriptlari, CI chaqirmaydi — docs/12 §4.14)
 ├── docs/             # Ushbu hujjatlar to'plami
 ├── design/           # Dizayn MANBALARI — build'ga kirmaydi (`.dockerignore`):
@@ -693,7 +694,7 @@ o'rnini bosadi: menejer to'ldiradi, texnolog o'qib dizayn yasaydi.
 | [09-mes-domain.md](./09-mes-domain.md) | MES domeni: data model, GibLab parser, scan engine, cutmap, chop etish, terminal/tablo/reports API va frontend tuzilishi. |
 | [10-giblab-reference.md](./10-giblab-reference.md) | GibLab manba tizim ma'lumotnomasi: `.project` fayl formati, ma'lumot modeli, operatsiya turlari — parser nimaga tayanishini asoslaydi. |
 | [11-detal-id-nomlash.md](./11-detal-id-nomlash.md) | Detal ID nomlash qoidasi: chek, QR, SCX fayl nomi va `qr_text` — hammasi bitta satr (Nanxing skan mosligi). |
-| [12-oee.md](./12-oee.md) | OEE (Prisadka): formula va har qismining manbasi, andon (Pico signal ustuni) shartnomasi, ish jadvali sozlamalari, `scripts/oee_audit.sql` auditi, `scripts/oracles/` tekshiruv skriptlari. |
+| [12-oee.md](./12-oee.md) | OEE (Prisadka, Kromka, Rover): formula va har qismining manbasi, andon (Pico signal ustuni) shartnomasi, ish jadvali sozlamalari, `scripts/oee_audit.sql` auditi, `scripts/oracles/` tekshiruv skriptlari. |
 | [13-bazis-3d.md](./13-bazis-3d.md) | Bazis `.b3d` formati (teskari muhandislik) va yig'uvchiga ochiq 3D havola moduli: bog'lanish kaliti, capability-URL himoyasi, endpointlar, frontend sahnasi. |
 | [14-mahsulotlar-ombori.md](./14-mahsulotlar-ombori.md) | Mahsulotlar ombori katalogi: kodlash tizimi, `catalog_item` jadvali, `scripts/catalog_import.py` (varaq → CSV → baza), `/catalog` endpointlari va rollari, `/warehouse` sahifasi. |
 

@@ -59,6 +59,22 @@ class IdealCycleKromka(BaseModel):
     gap_s: Seconds = 3
 
 
+class IdealCycleRover(BaseModel):
+    """ROVER (CNC 2130) ideal sikli — OEE Performance (`services/performance.py`).
+
+        ideal vaqt (detal) = har detalga + perimetr (m) × metrga soniya
+
+    Rover detalni kontur bo'yicha kesadi yoki frezalaydi — ish hajmini KONTUR uzunligi
+    belgilaydi, perimetr esa bazada bor (`part.length/width`). Sukut qiymatlar TAXMINIY
+    (2026-10-16): 10 m/min surish = 6 s/m; har detalga — listni qo'yish/olib tashlashning
+    detalga to'g'ri keladigan ulushi. Admin sekundomer bilan to'g'rilaydi."""
+
+    #: Har detalga qat'iy vaqt: list qo'yish, nolga keltirish, detalni olishning ulushi
+    load_s: Seconds = 20
+    #: Kontur metriga soniya (60 ÷ surish m/min; 10 m/min → 6 s)
+    cut_s_per_m: Seconds = 6
+
+
 class DefectReasons(BaseModel):
     """Brak sabablari — terminaldagi BRAK oynasida tugma bo'lib chiqadi (OEE Quality).
 

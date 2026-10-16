@@ -140,6 +140,7 @@ function SystemSettingsPage() {
           <div className="space-y-6">
             <IdealCycleCard />
             <KromkaCycleCard />
+            <RoverCycleCard />
           </div>
         </TabsContent>
         <TabsContent value="defect" forceMount className={TAB_PANEL}>
@@ -981,6 +982,108 @@ function KromkaCycleCard() {
           <LoadingButton
             loading={save.isPending}
             disabled={!valid || n === (data?.gap_s ?? 0)}
+            onClick={() => save.mutate()}
+          >
+            Saqlash
+          </LoadingButton>
+        </>
+      )}
+    </div>
+  )
+}
+
+/** ROVER (CNC 2130) ideal sikli: detalning ideal vaqti = har detalga + perimetr (m) × metrga
+ *  soniya (`backend/app/services/performance.py: rover_ideal_seconds`). Birlik — DETAL. */
+function RoverCycleCard() {
+  const queryClient = useQueryClient()
+  const queryKey = ["system-settings", "ideal-cycle-rover"]
+  const { data, isError, refetch } = useQuery({
+    queryKey,
+    queryFn: async () => (await SettingsService.readIdealCycleRover()).data,
+  })
+  const [load, setLoad] = useState("")
+  const [perM, setPerM] = useState("")
+  useEffect(() => {
+    if (data) {
+      setLoad(String(data.load_s ?? 0))
+      setPerM(String(data.cut_s_per_m ?? 0))
+    }
+  }, [data])
+  const ok = (s: string) =>
+    s.trim() !== "" &&
+    Number.isFinite(Number(s)) &&
+    Number(s) >= 0 &&
+    Number(s) <= IDEAL_MAX
+  const valid = ok(load) && ok(perM)
+  const dirty =
+    !!data &&
+    (Number(load) !== (data.load_s ?? 0) ||
+      Number(perM) !== (data.cut_s_per_m ?? 0))
+  const save = useMutation({
+    mutationFn: () =>
+      SettingsService.updateIdealCycleRover({
+        body: { load_s: Number(load), cut_s_per_m: Number(perM) },
+      }),
+    ...crudCallbacks(queryClient, queryKey, "Rover sikli saqlandi"),
+  })
+  // Jonli misol: detal o'lchami (mm) — perimetr metrda
+  const misol = (l: number, w: number) =>
+    valid
+      ? `${Math.round((Number(load) + ((2 * (l + w)) / 1000) * Number(perM)) * 10) / 10} s`
+      : "—"
+
+  return (
+    <div className={cn(cardSurface, "space-y-4 p-4")}>
+      <div>
+        <h2 className="text-lg font-semibold">Ideal sikl (Rover)</h2>
+        <p className="text-sm text-muted-foreground">
+          Roverda ish hajmini kontur uzunligi belgilaydi:{" "}
+          <b>ideal = har detalga + perimetr (m) × metrga soniya</b>. Perimetr
+          detal o'lchamidan olinadi. Metrga soniya = 60 ÷ surish (m/min): 10
+          m/min — 6 s. Boshlang'ich qiymatlar TAXMINIY — tsexda sekundomer bilan
+          5–10 detalni o'lchab to'g'rilang.
+        </p>
+      </div>
+      {isError ? (
+        <QueryError onRetry={() => refetch()} />
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Har detalga, s">
+              <Input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={IDEAL_MAX}
+                step={0.5}
+                value={load}
+                title="List qo'yish, nolga keltirish, detalni olishning ulushi"
+                aria-invalid={!ok(load)}
+                onChange={(e) => setLoad(e.target.value)}
+              />
+            </Field>
+            <Field label="Kontur metriga, s">
+              <Input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={IDEAL_MAX}
+                step={0.5}
+                value={perM}
+                title="60 ÷ surish tezligi (m/min)"
+                aria-invalid={!ok(perM)}
+                onChange={(e) => setPerM(e.target.value)}
+              />
+            </Field>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Misol: 600×400 mm detal — {misol(600, 400)}; 2000×600 mm detal —{" "}
+            {misol(2000, 600)}. Oraliq: 0–{IDEAL_MAX} s. O'zgartirilsa hisobot
+            o'tgan kunlarni ham yangi qiymat bilan qayta hisoblaydi.
+          </p>
+          <LoadingButton
+            loading={save.isPending}
+            disabled={!valid || !dirty}
             onClick={() => save.mutate()}
           >
             Saqlash

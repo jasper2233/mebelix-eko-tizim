@@ -302,7 +302,9 @@ async def sync_downtimes(ctx: dict[str, Any]) -> str:
         machine_ids = (
             (
                 await db.execute(
-                    select(AndonEvent.machine_id).where(AndonEvent.happened_at >= now - SYNC_WINDOW).distinct()
+                    select(AndonEvent.machine_id)
+                    .where(AndonEvent.happened_at >= now - SYNC_WINDOW, AndonEvent.is_deleted == False)  # noqa: E712
+                    .distinct()
                 )
             )
             .scalars()

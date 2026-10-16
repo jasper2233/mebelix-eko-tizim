@@ -9,7 +9,16 @@ import { scanWord } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 
 export type LastScan =
-  | { kind: "ok"; code: string; qoldiq: number; scanId: number; at: number }
+  | {
+      kind: "ok"
+      code: string
+      qoldiq: number
+      scanId: number
+      at: number
+      /** Chek chiqarishdan tug'ilgan avto-skan (ROVER): BRAK bor, BEKOR QILISH yo'q —
+       *  chek bekor qilinishi katak dialogida (skanni yolg'iz qaytarish yarim-tuzoq) */
+      auto?: boolean
+    }
   | { kind: "error"; code: string; message: string; at: number }
   // "info" — skan xato ham, muvaffaqiyat ham emas (mas. ATX: qoldiq QR
   // ma'lumot uchun skan qilindi). Ko'k rang: qizil "to'xta!" degani, bu emas.
@@ -92,17 +101,19 @@ export function ScanStrip({
           <TriangleAlert /> BRAK
         </Button>
       )}
-      <Button
-        variant="destructive"
-        className={cn(
-          "h-12 shrink-0 px-4 text-sm font-black",
-          !(ok && onDefect) && "ml-auto",
-        )}
-        disabled={!canUndo}
-        onClick={onUndo}
-      >
-        <Undo2 /> BEKOR QILISH
-      </Button>
+      {!(scan.kind === "ok" && scan.auto) && (
+        <Button
+          variant="destructive"
+          className={cn(
+            "h-12 shrink-0 px-4 text-sm font-black",
+            !(ok && onDefect) && "ml-auto",
+          )}
+          disabled={!canUndo}
+          onClick={onUndo}
+        >
+          <Undo2 /> BEKOR QILISH
+        </Button>
+      )}
     </div>
   )
 }
