@@ -29,8 +29,6 @@ import { DOWNTIME_KIND_LABELS } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { handleError } from "@/utils"
 
-/** "Keyinroq" — oyna shuncha vaqt chiqmaydi */
-const SNOOZE_MS = 10 * 60_000
 export const PENDING_KEY = ["terminal", "downtimes", "pending"]
 
 const KIND_VIEW = {
@@ -158,7 +156,11 @@ function Who({ crew, extra }: { crew: SessionRead[]; extra?: string }) {
 
 /** Stanok o'zi to'xtaganda. Server to'xtashni Pico hodisalaridan yozadi (`services/downtimes.py`);
  *  terminal WS `andon.state` da ro'yxatni darhol qayta so'raydi. Chiqmaydi: smena ochilmagan,
- *  ekran qulflangan (sabab qulflashda aytilgan) yoki sabablar ro'yxati hali kiritilmagan. */
+ *  ekran qulflangan (sabab qulflashda aytilgan) yoki sabablar ro'yxati hali kiritilmagan.
+ *
+ *  MAJBURIY (2026-10-16, egasining qarori): oynadan faqat SABAB SAQLAB chiqiladi — «Keyinroq»,
+ *  X tugmasi, Esc va tashqariga bosish yo'q. Ilgari «Keyinroq» bosilib to'xtashlar sababsiz
+ *  qolar, Availability taqsimotida «Sabab kiritilmagan» ko'payardi. */
 export function StopReasonPrompt({
   crew,
   suppressed,
@@ -178,17 +180,20 @@ export function StopReasonPrompt({
   })
   const reasons = useReasons()
   const now = useNow(1_000)
-  const [snoozedUntil, setSnoozedUntil] = useState(0)
   const [reasonId, setReasonId] = useState<number | null>(null)
   const [note, setNote] = useState("")
 
   const current = pending[0]
+  // Oynadagi to'xtash almashdi (ro'yxat yangilandi) — eski tanlov yangisiga saqlanib ketmasin
+  // (render paytida moslash — React tavsiyasi: effect bilan bir kadr eski tanlov ko'rinib qolardi)
+  const [shownId, setShownId] = useState(current?.id)
+  if (shownId !== current?.id) {
+    setShownId(current?.id)
+    setReasonId(null)
+    setNote("")
+  }
   const visible =
-    !!current &&
-    crew.length > 0 &&
-    reasons.length > 0 &&
-    !suppressed &&
-    now >= snoozedUntil
+    !!current && crew.length > 0 && reasons.length > 0 && !suppressed
   useEffect(() => onVisibleChange(visible), [visible, onVisibleChange])
 
   const save = useMutation({
@@ -212,11 +217,15 @@ export function StopReasonPrompt({
   const view = KIND_VIEW[current.kind]
   const Icon = view.icon
   const end = current.ended_at ? Date.parse(current.ended_at) : now
-  const snooze = () => setSnoozedUntil(Date.now() + SNOOZE_MS)
 
   return (
-    <Dialog open={visible} onOpenChange={(v) => !v && snooze()}>
-      <DialogContent className="gap-5 sm:max-w-4xl">
+    <Dialog open={visible}>
+      <DialogContent
+        className="gap-5 sm:max-w-4xl"
+        showCloseButton={false}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader className="flex-row items-center gap-4 space-y-0">
           <div
             className={cn(
@@ -270,13 +279,6 @@ export function StopReasonPrompt({
         />
 
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            className="h-12 px-5 text-base"
-            onClick={snooze}
-          >
-            Keyinroq (10 daq)
-          </Button>
           <LoadingButton
             className="ml-auto h-12 min-w-44 text-base font-black"
             loading={save.isPending}

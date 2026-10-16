@@ -788,7 +788,7 @@ Qulf ekranida `lockReason` berilsa (qulf tugmasida sabab tanlangan) matn «To'xt
 
 **Maqsadi:** stanok to'xtashi sababini smenadagi hodim kiritadi (`docs/12-oee.md` §7, endpointlar `docs/03` — `downtimes.py`). Ikki eksport, bitta ichki `ReasonGrid` (rejasiz/rejali guruhlar, `min-h-14` katta tugmalar; `needs_note` sabab tanlansa izoh maydoni chiqadi va bo'sh izohda «Saqlash» o'chadi) va `Who` (kim kiritadi — brigada ismlari).
 
-- `StopReasonPrompt({ crew, suppressed, onVisibleChange })` — Pico to'xtashi: `PENDING_KEY` so'rovining birinchi yozuvi; sarlavha qizilda «Avariya — nima bo'ldi?», qolganida «Stanok ishlamayapti — nima sababdan?», tur yorlig'i (`DOWNTIME_KIND_LABELS`), vaqt oralig'i, davomiyligi (1 s da yangilanadi), davom etayotgan bo'lsa «davom etmoqda»; bir nechta bo'lsa «yana N ta to'xtash sababsiz». «Keyinroq (10 daq)» / yopish — `SNOOZE_MS`. Ko'rinish holati `onVisibleChange` bilan `terminal.tsx` ga qaytadi (skan fokusi to'xtaydi).
+- `StopReasonPrompt({ crew, suppressed, onVisibleChange })` — Pico to'xtashi: `PENDING_KEY` so'rovining birinchi yozuvi; sarlavha qizilda «Avariya — nima bo'ldi?», qolganida «Stanok ishlamayapti — nima sababdan?», tur yorlig'i (`DOWNTIME_KIND_LABELS`), vaqt oralig'i, davomiyligi (1 s da yangilanadi), davom etayotgan bo'lsa «davom etmoqda»; bir nechta bo'lsa «yana N ta to'xtash sababsiz». MAJBURIY (2026-10-16): «Keyinroq» yo'q, X tugmasi chizilmaydi (`DialogContent showCloseButton={false}`), Esc va tashqariga bosish o'chirilgan — oyna faqat sabab saqlab yopiladi. Oynadagi to'xtash almashsa tanlangan sabab va izoh tozalanadi (render paytida, `shownId`), ya'ni eski tanlov boshqa to'xtashga saqlanmaydi. Ko'rinish holati `onVisibleChange` bilan `terminal.tsx` ga qaytadi (skan fokusi to'xtaydi).
 - `LockReasonDialog({ open, crew, onCancel, onLocked })` — qulf tugmasi: sabab → «Saqlash va qulflash» (`lockWithDowntimeReason`) → `onLocked(sabab nomi)`. Sabablar ro'yxati bo'sh bo'lsa ogohlantirish va «Sababsiz qulflash» (`onLocked(null)`) — ro'yxat kiritilmagani ishni to'smaydi.
 
 ### `frontend/src/components/Terminal/useKiosk.ts`
@@ -854,7 +854,7 @@ shadcn/ui asosidagi 24 ta primitiv. Ko'pchiligi standart generatsiya; quyidagi j
 | `card.tsx` | Card, `cardSurface` konstanta | native div | **Soddalashtirilgan custom**: faqat yuza (`rounded-xl border bg-card`), shadcn'ning 5 qismli Header/Title/... API'si ataylab yo'q; `<ul>`/`<details>` kabi teglar uchun `cardSurface` klassi ham eksport |
 | `checkbox.tsx` | Checkbox | Radix Checkbox | `dark:` klasslar olib tashlangan (boshqasi standart) |
 | `date-picker.tsx` | DatePicker | react-day-picker + Popover | **To'liq custom** (pastda) |
-| `dialog.tsx` | Dialog, DialogContent, DialogHeader/Footer/Title/Description, ... | Radix Dialog | Yo'q (yopish tugmasi doim chiqadi; upstream shadcn'dagi `showCloseButton` propi bu nusxada yo'q) |
+| `dialog.tsx` | Dialog, DialogContent, DialogHeader/Footer/Title/Description, ... | Radix Dialog | `showCloseButton` (sukut `true`; `false` — X chizilmaydi, majburiy oyna uchun: `StopReasonPrompt`, 2026-10-16) |
 | `dropdown-menu.tsx` | DropdownMenu* (Item `variant="destructive"` bilan), 6 ta eksport | Radix DropdownMenu | `dark:` klasslar olib tashlangan (boshqasi standart) |
 | `form.tsx` | Form, FormField, FormItem/Label/Control/Message, useFormField | react-hook-form + Radix Label | Yo'q |
 | `input.tsx` | Input | native `<input>` | `dark:` klasslar olib tashlangan (boshqasi standart) |
