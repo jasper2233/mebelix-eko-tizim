@@ -192,13 +192,19 @@ def _reason_lookup(
     rows: Sequence[tuple[int, datetime, datetime | None, int, str, bool]], now: datetime
 ) -> Callable[[StopRun], tuple[int, str, bool] | None]:
     """To'xtashga sabab: shu ish markazining sababi kiritilgan `downtime` yozuvlaridan ENG KO'P ustma-ust
-    tushgani. Kalit bo'yicha emas, vaqt bo'yicha: hisobot oralig'i to'xtash o'rtasidan boshlansa ham topiladi."""
+    tushgani. Kalit bo'yicha emas, vaqt bo'yicha: hisobot oralig'i to'xtash o'rtasidan boshlansa ham topiladi.
+
+    Ustma-ust qism ikkalasining QISQAROG'INING kamida yarmi bo'lishi shart (docs/12 §4.23): o'z yozuvi
+    doim deyarli to'liq ustma-ust, qo'shni yozuvning cheti esa bir necha soniya. Ilgari 1 soniya ham
+    yetardi — «Tushlik» yozuvi 13:00:01 da yopilsa, 13:00 da boshlangan qisqa avariya rejali bo'lib qolardi."""
 
     def find(run: StopRun) -> tuple[int, str, bool] | None:
         best: tuple[float, tuple[int, str, bool]] | None = None
         for _mid, began, ended, reason_id, name, is_planned in rows:
-            overlap = (min(run.ended, ended or now) - max(run.began, began)).total_seconds()
-            if overlap > 0 and (best is None or overlap > best[0]):
+            ended = ended or now
+            overlap = (min(run.ended, ended) - max(run.began, began)).total_seconds()
+            shorter = min(run.ended - run.began, ended - began).total_seconds()
+            if overlap > 0 and overlap * 2 >= shorter and (best is None or overlap > best[0]):
                 best = (overlap, (reason_id, name, is_planned))
         return best[1] if best else None
 
