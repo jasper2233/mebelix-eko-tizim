@@ -12,13 +12,19 @@ import { type CatalogRow, CatalogService } from "@/client"
 import { SelectField } from "@/components/Common/SelectField"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { type CatalogLetter, groupKey, parseNum } from "@/lib/warehouse"
+import {
+  type CatalogLetter,
+  groupKey,
+  parseNum,
+  SEX_GROUPS,
+} from "@/lib/warehouse"
 import { handleError } from "@/utils"
 
 const UNIT_OF: Record<CatalogLetter, string> = {
   M: "list",
   F: "dona",
   X: "xizmat",
+  S: "dona",
 }
 
 export function NewItemRow({
@@ -35,7 +41,8 @@ export function NewItemRow({
 }) {
   const queryClient = useQueryClient()
   const groups = useMemo(() => {
-    const m = new Map<string, string>()
+    // Sex xo'jaligi guruhlari pozitsiyasiz ham tanlanadi (birinchisi shu yerdan ochiladi)
+    const m = new Map<string, string>(catalog === "S" ? SEX_GROUPS : [])
     for (const r of rows)
       if (r.catalog === catalog) m.set(groupKey(r), r.group_name)
     return [...m].sort(([a], [b]) => a.localeCompare(b))

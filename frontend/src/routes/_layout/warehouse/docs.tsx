@@ -38,10 +38,12 @@ export const Route = createFileRoute("/_layout/warehouse/docs")({
   head: () => ({ meta: [{ title: "Hujjatlar | MebeliX" }] }),
 })
 
-const KIND = { kirim: "Kirim", chiqim: "Chiqim (sotuv)" } as Record<
-  string,
-  string
->
+const KIND: Record<string, string> = {
+  kirim: "Kirim",
+  chiqim: "Chiqim (sotuv)",
+  sex: "Sexga kirim",
+  inv: "Inventarizatsiya",
+}
 
 function DocsPage() {
   const { currentUser } = useCurrentUser()
@@ -96,7 +98,7 @@ function DocsPage() {
   const open = (d: DocRow) =>
     navigate({
       to: "/warehouse/doc",
-      search: { turi: d.kind === "kirim" ? "kirim" : "chiqim", id: d.id },
+      search: { turi: d.kind as "kirim" | "chiqim" | "sex" | "inv", id: d.id },
     })
 
   const table = (list: DocRow[], draft: boolean) => (
@@ -140,7 +142,7 @@ function DocsPage() {
                 {draft ? "—" : fmt(d.total)}
               </TableCell>
               <TableCell className="num text-right text-muted-foreground">
-                {!draft && d.cogs != null
+                {!draft && d.kind === "chiqim" && d.cogs != null
                   ? fmt(num(d.total) - num(d.cogs))
                   : ""}
               </TableCell>

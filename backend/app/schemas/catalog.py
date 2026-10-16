@@ -127,10 +127,11 @@ class CatalogItemCreate(BaseModel):
     """Yangi pozitsiya. Kod server tomonida beriladi: guruhning keyingi modeli (`F-RC-104-01`) yoki
     `model` berilsa — shu modelning keyingi varianti (`F-RC-008-10`). O'chirilgan kod qayta berilmaydi."""
 
-    catalog: Literal["M", "F", "X"]
+    #: `S` — sex xo'jaligi (zapchast, asbob, kanselyariya ...): sotilmaydi, sexga beriladi (docs/14 §10)
+    catalog: Literal["M", "F", "X", "S"]
     group_code: Annotated[str, Field(pattern=r"^[A-Z]{2}$")]
     #: Mavjud model (`F-RC-008`) — yangi rang/o'lcham varianti uchun
-    model: Annotated[str, Field(pattern=r"^[MFX]-[A-Z]{2}-\d{3}$")] | None = None
+    model: Annotated[str, Field(pattern=r"^[MFXS]-[A-Z]{2}-\d{3}$")] | None = None
     name: Annotated[str, Field(min_length=1, max_length=200)]
     description: Annotated[str, Field(max_length=200)] | None = None
     unit: Annotated[str, Field(min_length=1, max_length=10)] = "dona"

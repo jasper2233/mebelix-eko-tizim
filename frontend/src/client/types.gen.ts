@@ -629,7 +629,7 @@ export type CatalogItemCreate = {
     /**
      * Catalog
      */
-    catalog: 'M' | 'F' | 'X';
+    catalog: 'M' | 'F' | 'X' | 'S';
     /**
      * Group Code
      */
@@ -1955,7 +1955,7 @@ export type DocIn = {
     /**
      * Kind
      */
-    kind: 'kirim' | 'chiqim';
+    kind: 'kirim' | 'chiqim' | 'sex';
     /**
      * Doc Date
      */
@@ -2057,6 +2057,10 @@ export type DocLineRead = {
      * Cost
      */
     cost: string | null;
+    /**
+     * Book Qty
+     */
+    book_qty?: string | null;
 };
 
 /**
@@ -2832,6 +2836,42 @@ export type InstanceTrace = {
      * Defect Reason
      */
     defect_reason?: string | null;
+};
+
+/**
+ * InventoryCount
+ */
+export type InventoryCount = {
+    /**
+     * Item Id
+     */
+    item_id: number;
+    /**
+     * Qty
+     */
+    qty: number | string;
+};
+
+/**
+ * InventoryIn
+ *
+ * Inventarizatsiya: sanalgan pozitsiyalar — farqi qoldiqqa yoziladi, `INV` hujjati tasdiqlangan holda.
+ */
+export type InventoryIn = {
+    /**
+     * Doc Date
+     */
+    doc_date: string;
+    /**
+     * Head
+     */
+    head?: {
+        [key: string]: string;
+    };
+    /**
+     * Counts
+     */
+    counts: Array<InventoryCount>;
 };
 
 /**
@@ -5329,6 +5369,66 @@ export type SessionRead = {
  * SessionStatus
  */
 export type SessionStatus = 'active' | 'ended';
+
+/**
+ * SexLogRow
+ *
+ * «Sex sarfi» jurnali qatori — kim, qachon, qaysi uskuna uchun nima oldi.
+ */
+export type SexLogRow = {
+    /**
+     * Doc Id
+     */
+    doc_id: number;
+    /**
+     * Doc No
+     */
+    doc_no: string;
+    /**
+     * Doc Date
+     */
+    doc_date: string;
+    /**
+     * Taker
+     */
+    taker: string;
+    /**
+     * Equip
+     */
+    equip: string;
+    /**
+     * Order
+     */
+    order: string;
+    /**
+     * Giver
+     */
+    giver: string;
+    /**
+     * Item Id
+     */
+    item_id: number;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Unit
+     */
+    unit: string | null;
+    /**
+     * Qty
+     */
+    qty: string;
+    /**
+     * Amount
+     */
+    amount: string | null;
+};
 
 /**
  * ShiftStart
@@ -9525,7 +9625,7 @@ export type ReadStockDocsData = {
         /**
          * Kind
          */
-        kind?: 'kirim' | 'chiqim' | null;
+        kind?: 'kirim' | 'chiqim' | 'sex' | 'inv' | null;
         /**
          * Limit
          */
@@ -9663,6 +9763,63 @@ export type ConfirmStockDocResponses = {
 };
 
 export type ConfirmStockDocResponse = ConfirmStockDocResponses[keyof ConfirmStockDocResponses];
+
+export type ConfirmStockInventoryData = {
+    body: InventoryIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/stock/inventory';
+};
+
+export type ConfirmStockInventoryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ConfirmStockInventoryError = ConfirmStockInventoryErrors[keyof ConfirmStockInventoryErrors];
+
+export type ConfirmStockInventoryResponses = {
+    /**
+     * Successful Response
+     */
+    200: DocRead;
+};
+
+export type ConfirmStockInventoryResponse = ConfirmStockInventoryResponses[keyof ConfirmStockInventoryResponses];
+
+export type ReadStockSexLogData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/stock/sex-log';
+};
+
+export type ReadStockSexLogErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadStockSexLogError = ReadStockSexLogErrors[keyof ReadStockSexLogErrors];
+
+export type ReadStockSexLogResponses = {
+    /**
+     * Response Read Stock Sex Log
+     *
+     * Successful Response
+     */
+    200: Array<SexLogRow>;
+};
+
+export type ReadStockSexLogResponse = ReadStockSexLogResponses[keyof ReadStockSexLogResponses];
 
 export type ReadStockMovesData = {
     body?: never;

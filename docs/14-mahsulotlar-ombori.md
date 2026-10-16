@@ -354,3 +354,41 @@ kirim $0.30 × 12 800 → partiya 3 840, xarid 3 840, sotuv 5 400 (40% ustama); 
 jami); tasdiqlangan hujjat o'zgarmaydi va o'chmaydi; qoralama o'chadi; qo'lda tuzatish +3/−5 partiya va
 harakat bilan; partiyalar yig'indisi = qoldiq. Brauzerda (lokal): sotuv klaviatura bilan kiritilib F9 bilan
 tasdiqlandi (16 200, foyda 4 680), kartochka tarixi, shartnoma, F4.
+
+## 10. 3-bosqich: Sex xo'jaligi va Inventarizatsiya (2026-10-16)
+
+### 10.1 Sex xo'jaligi — `S` katalogi
+
+- To'rtinchi katalog harfi `S` (zapchast, asbob, kanselyariya, xo'jalik, upakovka) — sotilmaydi, sexga
+  beriladi. Guruhlar varaqda yo'q, birinchi pozitsiya ochilganda nomi `SEX_GROUPS` dan olinadi
+  (`services/warehouse.py` va `lib/warehouse.ts` — qo'lda oynalangan): `S-ZP`, `S-AS`, `S-KG`, `S-XJ`, `S-UP`.
+- **Sexga kirim** hujjati (`kind=sex`, raqam `SEX-2026-0001`): bosh qismda `taker` (kim oldi — MAJBURIY,
+  «Kim olgani kiritilmagan»), `equip` (uskuna/uchastka), `note`, `order`, `giver`. Qatorga `S` pozitsiyalar
+  va furnituraning `F-AS`/`F-KL` guruhlari (asbob, kley) taklif qilinadi. Xizmat sexga berilmaydi.
+- Tasdiqda FIFO bo'yicha chiqim; summa = tannarx (narx yo'q, chegirma yo'q, shartnoma yo'q). Harakat izohi
+  «Sexga kirim · taker · equip».
+- Sotuv hujjatida `S` pozitsiya rad etiladi: «… sex xo'jaligiga tegishli — sotilmaydi».
+
+### 10.2 Inventarizatsiya
+
+- `POST /stock/inventory` — sanalgan haqiqiy miqdorlar (`services/stock.inventory`): ortiqcha — yangi
+  partiya (xarid narxida), kami — FIFO chiqim; ikkalasi `inv` harakati. Hujjat (`INV-2026-0001`) darhol
+  TASDIQLANGAN yoziladi; qatorda `qty` — haqiqiy, `book_qty` — hisobdagi (migratsiya `b8e2f4a6c013`),
+  `cost` — farqning summasi; `total` — ishorali jami farq.
+- Sanalmagan (bo'sh qoldirilgan) pozitsiya hujjatga kirmaydi va qoldig'i o'zgarmaydi.
+
+### 10.3 Sahifalar
+
+- `/warehouse?katalog=S` — mahsulotlar va qoldiq, tepada tablar (`Warehouse/SexTabs.tsx`): «Mahsulotlar va
+  qoldiq» · «Sexga kirim F3» (`/warehouse/doc?turi=sex`) · «Sex sarfi».
+- `/warehouse/sex-sarfi` — tasdiqlangan sexga kirim qatorlari: qidiruv (usta, uskuna, tovar), usta filtri,
+  jami va usta bo'yicha yig'indi, CSV, qatorni bosish — hujjat.
+- `/warehouse/inv` — guruh tanlanadi (xizmatdan tashqari), «Pozitsiya / Farq topildi / Summada»; har qatorda
+  haqiqiy miqdor (Enter/↓ — keyingisi, ↑ — oldingisi), «Excel'dan yuklash» (kod + soni), `F9` yoki «Tasdiqlash
+  va qoldiqni to'g'rilash» — keyin Hujjatlar. Tasdiqlangan INV `/warehouse/doc?turi=inv&id=` da: Hisobda,
+  Haqiqiy, Farq, Summa farqi.
+- `F3` — har ombor sahifasida yangi sexga kirim; menyuda «Sex xo'jaligi · F3», «Inventarizatsiya».
+
+Tekshiruv — `scripts/oracles/ombor_sex_inv_oracle.py` **16/16**. Brauzerda (lokal): F-RC guruhida 2 pozitsiya
+sanab F9 (−95 dona, −347 700 so'm) — INV hujjati va kartochka qoldig'i; sex sarfi va SEX hujjati ko'rinishi
+(FIFO tannarx 448 000); F3.

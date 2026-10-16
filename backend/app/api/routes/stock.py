@@ -11,8 +11,18 @@ from sqlalchemy import func, select
 from app.api.deps import SessionDep, WarehouseReadUser, WarehouseUser, client_ip
 from app.crud import log_action
 from app.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
-from app.schemas.stock import DocIn, DocLineRead, DocRead, DocRow, ItemHistory, LotRead, MoveRead
-from app.services.stock import KIND_NAME, DocError, confirm, open_lots, save_draft
+from app.schemas.stock import (
+    DocIn,
+    DocLineRead,
+    DocRead,
+    DocRow,
+    InventoryIn,
+    ItemHistory,
+    LotRead,
+    MoveRead,
+    SexLogRow,
+)
+from app.services.stock import KIND_NAME, DocError, confirm, inventory, open_lots, save_draft
 
 router = APIRouter(prefix="/stock", tags=["stock"])
 
@@ -21,6 +31,10 @@ def _who(doc: StockDoc) -> str:
     h = doc.head
     if doc.kind == "kirim":
         parts = [h.get("supplier"), h.get("invoice"), f"qabul: {h['receiver']}" if h.get("receiver") else None]
+    elif doc.kind == "sex":
+        parts = [h.get("taker"), h.get("equip"), h.get("order"), f"berdi: {h['giver']}" if h.get("giver") else None]
+    elif doc.kind == "inv":
+        parts = [f"guruh {h['group']}" if h.get("group") else "Ombor", h.get("note")]
     else:
         parts = [h.get("client"), h.get("order"), f"sotuvchi: {h['seller']}" if h.get("seller") else None]
     return " · ".join(p for p in parts if p)
@@ -59,7 +73,7 @@ async def read_stock_docs(
     db: SessionDep,
     _: WarehouseReadUser,
     status: Annotated[Literal["draft", "confirmed"] | None, Query()] = None,
-    kind: Annotated[Literal["kirim", "chiqim"] | None, Query()] = None,
+    kind: Annotated[Literal["kirim", "chiqim", "sex", "inv"] | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=2000)] = 500,
 ) -> list[DocRow]:
     """«Hujjatlar»: yangisi birinchi. Qatorlar soni bitta so'rovda (subquery)."""
@@ -135,6 +149,66 @@ async def confirm_stock_doc(db: SessionDep, current_user: WarehouseUser, body: D
     )
     await db.commit()
     return await _read(db, doc)
+
+
+@router.post("/inventory", response_model=DocRead, operation_id="confirm_stock_inventory")
+async def confirm_stock_inventory(
+    db: SessionDep, current_user: WarehouseUser, body: InventoryIn, request: Request
+) -> DocRead:
+    """Inventarizatsiya: haqiqiy miqdorlar bo'yicha qoldiq to'g'rilanadi (ortiqcha — partiya, kami — FIFO),
+    TASDIQLANGAN `INV` hujjati yoziladi. Bitta tranzaksiya."""
+    try:
+        doc = await inventory(db, body.doc_date, body.head, [(c.item_id, c.qty) for c in body.counts], current_user.id)
+    except DocError as e:
+        await db.rollback()
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    log_action(
+        db,
+        module="stock",
+        action="inventory",
+        user_id=current_user.id,
+        entity_type="stock_doc",
+        entity_id=doc.id,
+        message=f"{doc.no} · {len(body.counts)} pozitsiya · farq {doc.total} so'm",
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return await _read(db, doc)
+
+
+@router.get("/sex-log", response_model=list[SexLogRow], operation_id="read_stock_sex_log")
+async def read_stock_sex_log(
+    db: SessionDep, _: WarehouseReadUser, limit: Annotated[int, Query(ge=1, le=20000)] = 5000
+) -> list[SexLogRow]:
+    """«Sex sarfi»: tasdiqlangan «Sexga kirim» hujjatlarining qatorlari — yangisi birinchi."""
+    rows = (
+        await db.execute(
+            select(StockDocLine, StockDoc, CatalogItem.code, CatalogItem.unit)
+            .join(StockDoc, StockDoc.id == StockDocLine.doc_id)
+            .join(CatalogItem, CatalogItem.id == StockDocLine.item_id)
+            .where(StockDoc.kind == "sex", StockDoc.status == "confirmed", StockDoc.is_deleted == False)  # noqa: E712
+            .order_by(StockDoc.confirmed_at.desc(), StockDocLine.line_no)
+            .limit(limit)
+        )
+    ).all()
+    return [
+        SexLogRow(
+            doc_id=d.id,
+            doc_no=d.no,
+            doc_date=d.doc_date,
+            taker=d.head.get("taker", ""),
+            equip=d.head.get("equip", ""),
+            order=d.head.get("order", ""),
+            giver=d.head.get("giver", ""),
+            item_id=ln.item_id,  # type: ignore[arg-type]
+            code=code,
+            name=ln.name,
+            unit=unit,
+            qty=ln.qty,
+            amount=ln.cost,
+        )
+        for ln, d, code, unit in rows
+    ]
 
 
 @router.delete("/docs/{doc_id}", response_model=DocRow, operation_id="delete_stock_doc")

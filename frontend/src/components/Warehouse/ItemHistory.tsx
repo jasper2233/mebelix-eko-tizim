@@ -21,6 +21,8 @@ import { fmt, fmtQty, num } from "@/lib/warehouse"
 const MOVE_KIND: Record<string, string> = {
   kirim: "Kirim",
   chiqim: "Sotuv",
+  sex: "Sexga kirim",
+  inv: "Inventarizatsiya",
   tuzatish: "Tuzatish",
 }
 const INITIAL = "Boshlang'ich"
@@ -166,7 +168,7 @@ export function ItemHistory({
                     {m.note && (
                       <span className="text-xs text-muted-foreground">
                         {" "}
-                        · {m.note.replace(/^(Kirim|Sotuv) · /, "")}
+                        · {m.note.replace(/^(Kirim|Sotuv|Sexga kirim) · /, "")}
                       </span>
                     )}
                   </TableCell>

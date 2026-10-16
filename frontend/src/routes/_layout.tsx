@@ -88,18 +88,18 @@ function Layout() {
   // Harakatsizlikdan keyin login sahifasiga (chegara — Tizim sozlamalarida)
   useIdleLogout()
 
-  // Mahsulotlar ombori ichida (docs/14 §9): F2 — sotuv, F4 — kirim — har ombor sahifasida,
+  // Mahsulotlar ombori ichida (docs/14 §9): F2 — sotuv, F3 — sexga kirim, F4 — kirim — har ombor sahifasida,
   // shartnoma va tasdiqlangan hujjat ko'rinishida ham (saqlanmagan ish brauzerda turadi)
   const navigateHot = useNavigate()
   useEffect(() => {
     if (!pathname.startsWith("/warehouse")) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "F2" && e.key !== "F4") return
+      const turi = ({ F2: "chiqim", F3: "sex", F4: "kirim" } as const)[
+        e.key as "F2" | "F3" | "F4"
+      ]
+      if (!turi) return
       e.preventDefault()
-      navigateHot({
-        to: "/warehouse/doc",
-        search: { turi: e.key === "F2" ? "chiqim" : "kirim" },
-      })
+      navigateHot({ to: "/warehouse/doc", search: { turi } })
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)

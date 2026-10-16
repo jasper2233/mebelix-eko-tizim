@@ -21,8 +21,8 @@ from app.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovem
 from app.schemas.stock import DocIn
 from app.services.warehouse import get_pricing, reprice
 
-PREFIX = {"kirim": "KIR", "chiqim": "CHQ"}
-KIND_NAME = {"kirim": "Kirim", "chiqim": "Chiqim (sotuv)"}
+PREFIX = {"kirim": "KIR", "chiqim": "CHQ", "sex": "SEX", "inv": "INV"}
+KIND_NAME = {"kirim": "Kirim", "chiqim": "Chiqim (sotuv)", "sex": "Sexga kirim", "inv": "Inventarizatsiya"}
 
 
 class DocError(Exception):
@@ -204,11 +204,14 @@ async def confirm(db: AsyncSession, doc: StockDoc, user_id: int | None) -> None:
         if not i.is_deleted
     }
 
+    is_sx = doc.kind == "sex"
     errors: list[str] = []
     rate = (head_rate(head) or cfg.usd_rate) if is_k else None
     if is_k and not head.get("supplier"):
         errors.append("Yetkazib beruvchi kiritilmagan")
-    if not is_k and not head.get("client"):
+    if is_sx and not head.get("taker"):
+        errors.append("Kim olgani kiritilmagan")
+    if doc.kind == "chiqim" and not head.get("client"):
         errors.append("Mijoz F.I.Sh. kiritilmagan")
     if not lines:
         errors.append("Birorta ham mahsulot qatori yo'q")
@@ -221,6 +224,10 @@ async def confirm(db: AsyncSession, doc: StockDoc, user_id: int | None) -> None:
             errors.append(f"{ln.line_no}-qator: soni kiritilmagan")
         elif is_k and it.catalog == "X":
             errors.append(f"{ln.line_no}-qator: xizmat kirim qilinmaydi — omborda saqlanmaydi")
+        elif is_sx and it.catalog == "X":
+            errors.append(f"{ln.line_no}-qator: xizmat sexga berilmaydi")
+        elif doc.kind == "chiqim" and it.catalog == "S":
+            errors.append(f"{ln.line_no}-qator: «{it.name}» sex xo'jaligiga tegishli — sotilmaydi")
         elif it.catalog != "X":
             need[it.id] = need.get(it.id, Decimal(0)) + ln.qty
     if not is_k:
@@ -233,7 +240,12 @@ async def confirm(db: AsyncSession, doc: StockDoc, user_id: int | None) -> None:
 
     today = doc.doc_date
     total, cogs = Decimal(0), Decimal(0)
-    who = head.get("supplier", "") if is_k else " · ".join(x for x in (head.get("client"), head.get("seller")) if x)
+    if is_k:
+        who, verb = head.get("supplier", ""), "Kirim"
+    elif is_sx:
+        who, verb = " · ".join(x for x in (head.get("taker"), head.get("equip")) if x), "Sexga kirim"
+    else:
+        who, verb = " · ".join(x for x in (head.get("client"), head.get("seller")) if x), "Sotuv"
     for ln in lines:
         it = items[ln.item_id]  # type: ignore[index]
         s = line_sum(ln.qty, ln.price, ln.discount)
@@ -257,7 +269,8 @@ async def confirm(db: AsyncSession, doc: StockDoc, user_id: int | None) -> None:
             ln.cost = amount
             it.quantity -= ln.qty
             cogs += amount
-            total += s
+            # Sexga — sotuv emas: summasi tannarxning o'zi (dizayndagi `sum += isSx ? fc`)
+            total += amount if is_sx else s
         db.add(
             StockMovement(
                 item_id=it.id,
@@ -266,7 +279,7 @@ async def confirm(db: AsyncSession, doc: StockDoc, user_id: int | None) -> None:
                 qty=ln.qty if is_k else -ln.qty,
                 balance=it.quantity,
                 amount=_so_m(amount),
-                note=f"{'Kirim' if is_k else 'Sotuv'} · {who}"[:200],
+                note=f"{verb} · {who}"[:200],
                 user_id=user_id,
             )
         )
@@ -277,6 +290,72 @@ async def confirm(db: AsyncSession, doc: StockDoc, user_id: int | None) -> None:
     doc.confirmed_at = datetime.now(UTC)
     doc.confirmed_by_id = user_id
     await db.flush()
+
+
+async def inventory(
+    db: AsyncSession, doc_date: date, head: dict[str, str], counts: list[tuple[int, Decimal]], user_id: int | None
+) -> StockDoc:
+    """Inventarizatsiya — haqiqiy miqdor bo'yicha qoldiqni to'g'rilaydi va TASDIQLANGAN `INV` hujjati yozadi.
+
+    Ortiqcha — yangi partiya (xarid narxida), kami — FIFO bo'yicha chiqim (dizayndagi `confirmInv`).
+    Hujjat summasi — farqlar yig'indisi (ishorali): ortiqcha qiymati minus kamomad tannarxi."""
+    if not counts:
+        raise DocError(["Avval kamida bitta «haqiqiy miqdor» kiriting"])
+    ids = [i for i, _ in counts]
+    items = {
+        i.id: i
+        for i in (await db.execute(select(CatalogItem).where(CatalogItem.id.in_(ids)).with_for_update())).scalars()
+        if not i.is_deleted
+    }
+    errors = [f"{iid}: pozitsiya topilmadi" for iid in ids if iid not in items]
+    errors += [f"«{items[i].name}» — xizmat sanalmaydi" for i in ids if i in items and items[i].catalog == "X"]
+    if errors:
+        raise DocError(errors)
+    doc = StockDoc(
+        no=await next_no(db, "inv", doc_date.year),
+        kind="inv",
+        doc_date=doc_date,
+        head={k: v for k, v in head.items() if v},
+        created_by_id=user_id,
+    )
+    db.add(doc)
+    await db.flush()
+    diff_sum = Decimal(0)
+    for n, (iid, real) in enumerate(counts, start=1):
+        it = items[iid]
+        book = it.quantity
+        d = real - book
+        amount = Decimal(0)
+        if d > 0:
+            await _ensure_initial_lot(db, it)
+            add_lot(db, it, d, it.purchase_price or Decimal(0), doc_date, doc.no, doc.id)
+            amount = _so_m(d * (it.purchase_price or Decimal(0)))
+        elif d < 0:
+            amount = -(await consume(db, it, -d))
+        diff_sum += amount
+        it.quantity = real
+        db.add(
+            StockDocLine(doc_id=doc.id, line_no=n, item_id=it.id, name=it.name, qty=real, book_qty=book, cost=amount)
+        )
+        if d != 0:
+            db.add(
+                StockMovement(
+                    item_id=it.id,
+                    doc_id=doc.id,
+                    kind="inv",
+                    qty=d,
+                    balance=real,
+                    amount=abs(amount),
+                    note="Inventarizatsiya tuzatishi",
+                    user_id=user_id,
+                )
+            )
+    doc.status = "confirmed"
+    doc.total = diff_sum
+    doc.confirmed_at = datetime.now(UTC)
+    doc.confirmed_by_id = user_id
+    await db.flush()
+    return doc
 
 
 async def adjust_quantity(

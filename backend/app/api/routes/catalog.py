@@ -25,7 +25,7 @@ from app.schemas.catalog import (
 from app.schemas.common import Paginated
 from app.services.settings_service import set_setting
 from app.services.stock import adjust_quantity
-from app.services.warehouse import WAREHOUSE_PRICING, abc_classes, get_pricing, reprice
+from app.services.warehouse import SEX_GROUPS, WAREHOUSE_PRICING, abc_classes, get_pricing, reprice
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
 
@@ -135,6 +135,8 @@ async def _create(db: SessionDep, body: CatalogItemCreate, cfg: WarehousePricing
             CatalogItem.catalog == body.catalog, CatalogItem.group_code == body.group_code
         )
     )
+    # Sex xo'jaligi guruhlari varaqda yo'q — nomi kodda (birinchi pozitsiya shu bilan ochiladi)
+    group_name = group_name or SEX_GROUPS.get(f"{body.catalog}-{body.group_code}")
     if group_name is None:
         raise HTTPException(status_code=404, detail=f"{body.catalog}-{body.group_code} guruhi topilmadi.")
     code, model_no, variant_no = await _next_code(db, body.catalog, body.group_code, body.model)
@@ -306,7 +308,7 @@ async def read_catalog_groups(db: SessionDep, _: WarehouseReadUser) -> CatalogTr
 async def read_catalog_items(
     db: SessionDep,
     _: WarehouseReadUser,
-    catalog: Annotated[str | None, Query(pattern=r"^[MFX]$")] = None,
+    catalog: Annotated[str | None, Query(pattern=r"^[MFXS]$")] = None,
     group_code: Annotated[str | None, Query(pattern=r"^[A-Z]{2}$")] = None,
     status: Annotated[Literal["Aktiv", "Arxiv"] | None, Query()] = None,
     low_stock: Annotated[bool, Query()] = False,

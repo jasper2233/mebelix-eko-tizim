@@ -36,7 +36,9 @@ import { Route as LayoutOrdersOrderIdRouteImport } from './routes/_layout/orders
 import { Route as LayoutWarehouseIndexRouteImport } from './routes/_layout/warehouse/index'
 import { Route as LayoutWarehouseDocRouteImport } from './routes/_layout/warehouse/doc'
 import { Route as LayoutWarehouseDocsRouteImport } from './routes/_layout/warehouse/docs'
+import { Route as LayoutWarehouseInvRouteImport } from './routes/_layout/warehouse/inv'
 import { Route as LayoutWarehousePanelRouteImport } from './routes/_layout/warehouse/panel'
+import { Route as LayoutWarehouseSexSarfiRouteImport } from './routes/_layout/warehouse/sex-sarfi'
 import { Route as LayoutWarehouseItemCodeRouteImport } from './routes/_layout/warehouse/item.$code'
 
 const LayoutRoute = LayoutRouteImport.update({
@@ -173,9 +175,19 @@ const LayoutWarehouseDocsRoute = LayoutWarehouseDocsRouteImport.update({
   path: '/warehouse/docs',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutWarehouseInvRoute = LayoutWarehouseInvRouteImport.update({
+  id: '/warehouse/inv',
+  path: '/warehouse/inv',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutWarehousePanelRoute = LayoutWarehousePanelRouteImport.update({
   id: '/warehouse/panel',
   path: '/warehouse/panel',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutWarehouseSexSarfiRoute = LayoutWarehouseSexSarfiRouteImport.update({
+  id: '/warehouse/sex-sarfi',
+  path: '/warehouse/sex-sarfi',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutWarehouseItemCodeRoute = LayoutWarehouseItemCodeRouteImport.update({
@@ -209,7 +221,9 @@ export interface FileRoutesByFullPath {
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
   '/warehouse/doc': typeof LayoutWarehouseDocRoute
   '/warehouse/docs': typeof LayoutWarehouseDocsRoute
+  '/warehouse/inv': typeof LayoutWarehouseInvRoute
   '/warehouse/panel': typeof LayoutWarehousePanelRoute
+  '/warehouse/sex-sarfi': typeof LayoutWarehouseSexSarfiRoute
   '/orders/': typeof LayoutOrdersIndexRoute
   '/warehouse/': typeof LayoutWarehouseIndexRoute
   '/warehouse/item/$code': typeof LayoutWarehouseItemCodeRoute
@@ -239,7 +253,9 @@ export interface FileRoutesByTo {
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
   '/warehouse/doc': typeof LayoutWarehouseDocRoute
   '/warehouse/docs': typeof LayoutWarehouseDocsRoute
+  '/warehouse/inv': typeof LayoutWarehouseInvRoute
   '/warehouse/panel': typeof LayoutWarehousePanelRoute
+  '/warehouse/sex-sarfi': typeof LayoutWarehouseSexSarfiRoute
   '/orders': typeof LayoutOrdersIndexRoute
   '/warehouse': typeof LayoutWarehouseIndexRoute
   '/warehouse/item/$code': typeof LayoutWarehouseItemCodeRoute
@@ -271,7 +287,9 @@ export interface FileRoutesById {
   '/_layout/orders/$orderId': typeof LayoutOrdersOrderIdRoute
   '/_layout/warehouse/doc': typeof LayoutWarehouseDocRoute
   '/_layout/warehouse/docs': typeof LayoutWarehouseDocsRoute
+  '/_layout/warehouse/inv': typeof LayoutWarehouseInvRoute
   '/_layout/warehouse/panel': typeof LayoutWarehousePanelRoute
+  '/_layout/warehouse/sex-sarfi': typeof LayoutWarehouseSexSarfiRoute
   '/_layout/orders/': typeof LayoutOrdersIndexRoute
   '/_layout/warehouse/': typeof LayoutWarehouseIndexRoute
   '/_layout/warehouse/item/$code': typeof LayoutWarehouseItemCodeRoute
@@ -303,7 +321,9 @@ export interface FileRouteTypes {
     | '/orders/$orderId'
     | '/warehouse/doc'
     | '/warehouse/docs'
+    | '/warehouse/inv'
     | '/warehouse/panel'
+    | '/warehouse/sex-sarfi'
     | '/orders/'
     | '/warehouse/'
     | '/warehouse/item/$code'
@@ -333,7 +353,9 @@ export interface FileRouteTypes {
     | '/orders/$orderId'
     | '/warehouse/doc'
     | '/warehouse/docs'
+    | '/warehouse/inv'
     | '/warehouse/panel'
+    | '/warehouse/sex-sarfi'
     | '/orders'
     | '/warehouse'
     | '/warehouse/item/$code'
@@ -364,7 +386,9 @@ export interface FileRouteTypes {
     | '/_layout/orders/$orderId'
     | '/_layout/warehouse/doc'
     | '/_layout/warehouse/docs'
+    | '/_layout/warehouse/inv'
     | '/_layout/warehouse/panel'
+    | '/_layout/warehouse/sex-sarfi'
     | '/_layout/orders/'
     | '/_layout/warehouse/'
     | '/_layout/warehouse/item/$code'
@@ -570,11 +594,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutWarehouseDocsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/warehouse/inv': {
+      id: '/_layout/warehouse/inv'
+      path: '/warehouse/inv'
+      fullPath: '/warehouse/inv'
+      preLoaderRoute: typeof LayoutWarehouseInvRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/warehouse/panel': {
       id: '/_layout/warehouse/panel'
       path: '/warehouse/panel'
       fullPath: '/warehouse/panel'
       preLoaderRoute: typeof LayoutWarehousePanelRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/warehouse/sex-sarfi': {
+      id: '/_layout/warehouse/sex-sarfi'
+      path: '/warehouse/sex-sarfi'
+      fullPath: '/warehouse/sex-sarfi'
+      preLoaderRoute: typeof LayoutWarehouseSexSarfiRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/warehouse/item/$code': {
@@ -607,7 +645,9 @@ interface LayoutRouteChildren {
   LayoutOrdersOrderIdRoute: typeof LayoutOrdersOrderIdRoute
   LayoutWarehouseDocRoute: typeof LayoutWarehouseDocRoute
   LayoutWarehouseDocsRoute: typeof LayoutWarehouseDocsRoute
+  LayoutWarehouseInvRoute: typeof LayoutWarehouseInvRoute
   LayoutWarehousePanelRoute: typeof LayoutWarehousePanelRoute
+  LayoutWarehouseSexSarfiRoute: typeof LayoutWarehouseSexSarfiRoute
   LayoutOrdersIndexRoute: typeof LayoutOrdersIndexRoute
   LayoutWarehouseIndexRoute: typeof LayoutWarehouseIndexRoute
   LayoutWarehouseItemCodeRoute: typeof LayoutWarehouseItemCodeRoute
@@ -633,7 +673,9 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutOrdersOrderIdRoute: LayoutOrdersOrderIdRoute,
   LayoutWarehouseDocRoute: LayoutWarehouseDocRoute,
   LayoutWarehouseDocsRoute: LayoutWarehouseDocsRoute,
+  LayoutWarehouseInvRoute: LayoutWarehouseInvRoute,
   LayoutWarehousePanelRoute: LayoutWarehousePanelRoute,
+  LayoutWarehouseSexSarfiRoute: LayoutWarehouseSexSarfiRoute,
   LayoutOrdersIndexRoute: LayoutOrdersIndexRoute,
   LayoutWarehouseIndexRoute: LayoutWarehouseIndexRoute,
   LayoutWarehouseItemCodeRoute: LayoutWarehouseItemCodeRoute,

@@ -19,6 +19,15 @@ from app.schemas.catalog import WarehousePricing
 from app.services.settings_service import get_setting
 
 WAREHOUSE_PRICING = "warehouse_pricing"
+#: Sex xo'jaligi guruhlari (dizayndagi `SEX_G`) — katalog varag'ida yo'q, birinchi pozitsiya shu nom bilan
+#: ochiladi. Frontend'dagi nusxasi: `lib/warehouse.ts: SEX_GROUPS`.
+SEX_GROUPS = {
+    "S-ZP": "Uskuna zapchastlari",
+    "S-AS": "Sex asbob va sarfi",
+    "S-KG": "Qog'oz va kanselyariya",
+    "S-XJ": "Xo'jalik va himoya",
+    "S-UP": "Upakovka materiali",
+}
 #: Sinf narxi qo'llanadigan guruhlar — LDSP va LMDF dekorlari
 TIER_GROUPS = ("M-LD", "M-LM")
 
