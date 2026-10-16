@@ -624,9 +624,9 @@ paneli, rover hodisalaridan to'xtash yasash (sabab bizning `uskuna` zanjiridan
 so'raladi — ikki manba bo'lsa operatordan bitta narsa uchun ikki marta so'ralardi),
 `start_job`/`planned_stop` buyruqlari.
 
-**Ma'lum cheklov:** agent o'chiq turgan davrda `state` kelmaydi, ya'ni o'sha vaqt
-hisobotda «stanok o'chiq» bo'lib qoladi — Pico'ning o'zi esa o'sha davrni `POWER_ON`
-hodisasi bilan bergan bo'ladi. Ikkalasini birlashtirish keyingi bosqichda.
+~~**Ma'lum cheklov:** agent o'chiq turgan davrda `state` kelmaydi~~ — 2026-10-16 da hal
+qilindi: agent uzilgan payt Pico'ning `POWER_ON`/`POWER_CYCLE`/`SPINDLE_IDLE` yozuvlaridan
+tiklanadi (§4.16).
 
 Tekshiruv (bir martalik skript, haqiqiy Postgres): **23/23** — ULARNING firmware'i
 kompyuterda yurgizildi (soxta `machine`/USB), chiqqan qatorlar BIZNING agent
@@ -657,6 +657,7 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `rover_oracle.py` (25/25) | §4.13, agent 1.9.0 (§4.15), 1.10.0 — tartibsiz kelish va uzluksiz tasdiq |
 | `rover_oee_oracle.py` (19/19) | §4.15 — Rover A/P/Q/OEE va to'xtash sinxroni |
 | `downtime_cleanup_oracle.py` (14/14) | `scripts/downtime_deleted_events.sql` — soxta to'xtashlarni tozalash |
+| `agent_gap_oracle.py` (8/8) | §4.16 — agent uzilgan payt: Rover Pico yozuvlaridan tiklanadi, Kromka davomiyligi saqlanadi, tokdan qayta yonish kesiladi (eski kodda 2/8) |
 | `tablo_machines_oracle.py` (29/29) | `docs/05` — stanok taxtasi |
 | `kromka_dedup_oracle.py` (18/18) | `scripts/kromka_dedup.sql` — v1.22 takrorlarini tozalash |
 
@@ -727,6 +728,42 @@ uning ikkinchi manbasi), orakli `downtime_cleanup_oracle.py` **14/14**.
 
 **Hali yo'q:** agent o'chiq paytni Pico'ning `POWER_ON`/`run_sec` hodisalaridan to'ldirish (§4.13
 dagi cheklov), koeffitsiyentlarning haqiqiy qiymatlari (sekundomer).
+
+### 4.16 Agent uzilgan payt — ma'lumot yo'qotmasdan (2026-10-16)
+
+Kromka va Rover holati (`uskuna`) faqat O'ZGARGANDA keladi, server oraliqni hodisalar
+orasidan quradi. Agent uzilsa (kompyuter qayta yondi, agent yangilandi, USB uxladi) savol:
+uzilish payti nima bo'lgan? Egasining talabi — «yo'qotish bo'lmasin, ma'lumot to'liq va to'g'ri».
+Javob stanokka qarab har xil, chunki Pico'lar har xil saqlaydi:
+
+| Stanok | Uzilish paytida nima saqlanadi | Qoida |
+| --- | --- | --- |
+| **KROMKA** (v1.22) | Pico hodisalarni RAM da (300 gacha) saqlaydi va qaytgach ASL vaqti bilan (`eski_ms`) yuboradi | Hodisa kelmagan bo'lsa holat O'ZGARMAGAN — oraliq davomi TO'G'RI, kesilmaydi. Faqat Pico TOKDAN qayta yonsa (`boot.sabab` `wdt`/`reset` emas) RAM o'chadi: oxirgi kelgan hodisadan yonishgacha NOMA'LUM (`andon.kromka_power_gaps`) — §7 bo'yicha stanok o'chiq |
+| **ROVER** | Ishlov/bo'sh/o'chiq holati agentning 10 s li so'rovidan — Pico uni saqlamaydi. Lekin fleshda (2000 gacha) o'z davrlarini aniq vaqt bilan saqlaydi: `POWER_ON` (yoqiq davr), `POWER_CYCLE` (toksiz davr), `SPINDLE_IDLE`/`UNPLANNED_STOP`/`AUTO_SHUTDOWN` (300 s dan uzun bo'sh turish) | Agent holati faqat BITTA ulanish (`session`) ichida davom etadi; ulanishlar orasi Pico davrlaridan va qayta ulanishdagi `on_sec`/`idle_sec` dan tiklanadi (`andon.rover_spans`) |
+
+`rover_spans`: hamma fakt bitta vaqt chizig'iga — ustuvorlik **bo'sh turish > o'chiq > ishlov**,
+hech bir fakt qamramagan vaqt — «ma'lumot yo'q». 300 s dan qisqa pauzani Pico yozmaydi, lekin
+u baribir mikro-to'xtash (Availability'ga kirmaydi) — qoida mos.
+
+**To'xtash sababi** (`downtimes._rover_pico`): agent ko'rmagan Pico bo'sh turishi va o'chiq davri
+ham `downtime` yozuvi (`rv-{seq}`) bo'ladi — terminal sabab so'raydi. Takror yo'q: o'sha turdagi
+agent yozuvi (yoki shu sinxrondagi agent oralig'i) 60 s aniqlikda ustma-ust tushsa o'tkaziladi,
+agent uni ulanish almashganda nol uzunlikda yopgan bo'lsa — tugashi Pico'nikiga cho'ziladi.
+
+Avvalgi taklif — har 5 daqiqada agent «yurak urishi» va 6 daqiqalik jimlikni kesish —
+RAD ETILDI: Kromka'da Pico saqlab bergan to'g'ri ma'lumotni «ma'lumot yo'q» qilib o'chirardi.
+Agent ham o'zgarmadi — hammasi serverda, ya'ni O'TGAN kunlar ham qayta to'g'ri hisoblanadi.
+
+**Qolgan cheklovlar** (firmware, bizda emas): Kromka RAM 300 hodisadan oshsa (uzoq uzilishda
+faol ish) eng eskisi tushadi; Rover Pico'ning o'zi toksiz qolsa o'sha vaqt noma'lum; Kromka tokdan
+qayta yonganda noma'lumlik oxirgi kelgan hodisadan boshlanadi (Pico qachon o'chganini bilmaydi).
+
+Tekshiruv — `scripts/oracles/agent_gap_oracle.py`, haqiqiy handler va sinxron Postgres 15 da:
+**8/8** (eski kodda 2/8): Rover — uzilish paytidagi 15 daq bo'sh turish va 20 daq o'chiq Pico'dan
+tiklandi, A 76.0% (eski hisob 83.3% — uzilish «ishlov» edi); kunlik trekda o'chiq 1200 s, bo'sh
+2100 s; downtime: Pico'dan 2 ta, agentdan 2 ta, agent ko'rgan bo'sh turish takrorlanmadi,
+ikkinchi sinxronda yangi yozuv yo'q. Kromka — Pico tirik uzilishda davomiylik saqlandi (87.5%),
+tokdan yonishda 10:00-11:00 noma'lum (75.0%), `wdt` da kesilmadi (87.5%).
 
 ## 5. Prod auditi natijalari (2026-09-16)
 

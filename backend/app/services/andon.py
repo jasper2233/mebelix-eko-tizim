@@ -140,6 +140,159 @@ def uskuna_spans(
     return spans
 
 
+#: KROMKA Pico'si qayta yonish sabablari (proshivka v1.21, `boot.sabab`): qorovul (`wdt`) va
+#: qo'lda `reset` — soniyalik, holat uzilmagan. Qolgani (`tok` — ta'minot uzildi, yoki eski
+#: proshivkadagi sababsiz `boot`) — Pico qachon o'chganini va RAM idagi yuborilmagan
+#: hodisalarni bilmaymiz.
+_TEZ_YONISH = ("wdt", "reset")
+
+
+def kromka_power_gaps(
+    boots: Iterable[tuple[int, dict[str, Any], datetime]],
+    last_before: dict[tuple[int, datetime], datetime],
+) -> dict[int, list[tuple[datetime, datetime]]]:
+    """KROMKA: tok uzilib qayta yonishdan oldingi NOMA'LUM oraliqlar (stanok -> [(a, b)]).
+
+    Agent uzilsa Kromka Pico'si hodisalarni RAM da saqlab, qaytgach asl vaqti bilan yuboradi —
+    hodisa kelmagan bo'lsa holat o'zgarmagan, ya'ni oraliq davomi TO'G'RI. Lekin Pico TOKSIZ
+    qolsa RAM o'chadi: oxirgi kelgan hodisadan qayta yonishgacha nima bo'lgani noma'lum
+    (docs/12 §7 — ma'lumot yo'q, stanok o'chiq).
+
+    `boots` — `(machine_id, payload, happened_at)`; `last_before[(machine_id, boot_at)]` —
+    o'sha yonishdan OLDINGI eng so'nggi hodisa vaqti (har turdagi)."""
+    out: dict[int, list[tuple[datetime, datetime]]] = {}
+    for mid, payload, at in boots:
+        if str((payload or {}).get("sabab") or "") in _TEZ_YONISH:
+            continue
+        before = last_before.get((mid, at))
+        if before is not None and before < at:
+            out.setdefault(mid, []).append((before, at))
+    return out
+
+
+def cut_spans(
+    spans: Iterable[AndonSpan], gaps: dict[int, list[tuple[datetime, datetime]]], now: datetime
+) -> list[AndonSpan]:
+    """Oraliqlardan NOMA'LUM vaqtni kesib tashlaydi (u «ma'lumot yo'q» bo'lib qoladi)."""
+    out: list[AndonSpan] = []
+    for span in spans:
+        pieces = [(span.began, span.ended or now)]
+        for a, b in gaps.get(span.machine_id, ()):
+            pieces = [p for x, y in pieces for p in ((x, min(y, a)), (max(x, b), y)) if p[1] > p[0]]
+        for x, y in pieces:
+            out.append(AndonSpan(span.machine_id, span.state, x, y if (y != now or span.ended) else None))
+    return out
+
+
+#: ROVER Pico'sining o'zi o'lchab tugatgan davrlari (fleshda saqlanadi, agent uzilsa ham yo'qolmaydi)
+_ROVER_BOSH = ("SPINDLE_IDLE", "UNPLANNED_STOP", "AUTO_SHUTDOWN")
+
+
+def rover_time(value: Any) -> datetime | None:
+    """Rover Pico vaqti — kompyuterning MAHALLIY (Toshkent) vaqti, `2026-10-15T10:00:00`."""
+    if not isinstance(value, str) or len(value) < 19:
+        return None
+    try:
+        return datetime.fromisoformat(value[:19]).replace(tzinfo=TASHKENT_TZ)
+    except ValueError:
+        return None
+
+
+def rover_facts(payload: dict[str, Any]) -> tuple[str, datetime, datetime] | None:
+    """Pico hodisasidan fakt: `(label, boshlanish, tugash)`. Vaqti noma'lum bo'lsa None.
+
+    label: `ON` — stanok yoqiq (`POWER_ON`), `OFF` — toksiz (`POWER_CYCLE`), `IDLE` —
+    yoqiq-u shpindel to'xtagan, `t_reason` (300 s) dan uzoq (`SPINDLE_IDLE` ...)."""
+    a, b = rover_time(payload.get("start")), rover_time(payload.get("end"))
+    if a is None or b is None or b <= a:
+        return None
+    kind = str(payload.get("rover_type") or "")
+    label = "ON" if kind == "POWER_ON" else "OFF" if kind == "POWER_CYCLE" else "IDLE" if kind in _ROVER_BOSH else None
+    return (label, a, b) if label else None
+
+
+def _sekund(value: Any) -> float:
+    """Pico bergan soniya (son bo'lmasa yoki manfiy — 0)."""
+    return float(value) if type(value) in (int, float) and value > 0 else 0.0
+
+
+def rover_spans(
+    uskuna: Iterable[tuple[int, dict[str, Any], datetime, str]],
+    pico: Iterable[tuple[int, dict[str, Any]]],
+    live: set[int],
+    now: datetime,
+) -> list[AndonSpan]:
+    """ROVER (CNC 2130) holat oraliqlari — barcha faktlardan, hech birini yo'qotmasdan.
+
+    Manbalar (2026-10-16):
+    - agentning `uskuna` hodisalari (`uskuna_state`: PROCESSING / IDLE / OFF) — holat keyingi
+      hodisagacha davom etadi, lekin FAQAT bitta agent ulanishi (`session`) ichida: ulanishlar
+      orasida agent ko'rmagan, ya'ni u yerdagi davomiylik taxmin bo'lardi;
+    - qayta ulanishdagi `on_sec` (stanok shuncha soniyadan beri yoqiq) va `idle_sec`;
+    - Pico'ning fleshdagi yopiq davrlari (`rover_facts`): agent uzilgan paytni ham aniq vaqt
+      bilan beradi — 300 s dan qisqa pauzani yozmaydi, lekin u baribir mikro-to'xtash.
+
+    Ustuvorlik: bo'sh turish > o'chiq > ishlov. Hech bir fakt qamramagan vaqt — oraliq yo'q
+    («ma'lumot yo'q»). Oxirgi agent oralig'i faqat agent hozir aloqada bo'lsa `now` gacha."""
+    facts: dict[int, list[tuple[str, datetime, datetime]]] = {}
+    by_machine: dict[int, list[tuple[dict[str, Any], datetime, str]]] = {}
+    for mid, payload, at, session in uskuna:
+        by_machine.setdefault(mid, []).append((payload or {}, at, session))
+    for mid, rows in by_machine.items():
+        rows.sort(key=lambda r: r[1])
+        f = facts.setdefault(mid, [])
+        for i, (payload, at, session) in enumerate(rows):
+            state = uskuna_state(payload)
+            label = "RUN" if state == "PROCESSING" else state
+            nxt = rows[i + 1] if i + 1 < len(rows) else None
+            if nxt is not None and nxt[2] == session:
+                f.append((label, at, nxt[1]))
+            elif nxt is None and mid in live:
+                f.append((label, at, now))
+            # Qayta ulanishda Pico aytadi: stanok qancha vaqtdan beri yoqiq / bo'sh turibdi
+            on_sec = _sekund(payload.get("on_sec"))
+            if payload.get("pwr") and on_sec:
+                f.append(("ON", at - timedelta(seconds=on_sec), at))
+            idle_sec = _sekund(payload.get("idle_sec"))
+            if state == "IDLE" and idle_sec:
+                f.append(("IDLE", at - timedelta(seconds=idle_sec), at))
+    for mid, payload in pico:
+        fact = rover_facts(payload or {})
+        if fact is not None:
+            facts.setdefault(mid, []).append(fact)
+
+    priority = {"IDLE": "IDLE", "OFF": "OFF", "RUN": "PROCESSING", "ON": "PROCESSING"}
+    order = ("IDLE", "OFF", "RUN", "ON")
+    out: list[AndonSpan] = []
+    for mid, items in facts.items():
+        points = sorted({t for _l, a, b in items for t in (a, b)})
+        marks = sorted(((a, +1, label) for label, a, _b in items), key=lambda m: m[0])
+        ends = sorted(((b, -1, label) for label, _a, b in items), key=lambda m: m[0])
+        # ponytail: oddiy supurish — har nuqtada faol yorliqlar soni; stanok kuniga yuzlab fakt beradi
+        active = dict.fromkeys(order, 0)
+        mi = ei = 0
+        cur: AndonSpan | None = None
+        for k, t in enumerate(points[:-1]):
+            while mi < len(marks) and marks[mi][0] <= t:
+                active[marks[mi][2]] += 1
+                mi += 1
+            while ei < len(ends) and ends[ei][0] <= t:
+                active[ends[ei][2]] -= 1
+                ei += 1
+            top = next((lb for lb in order if active[lb] > 0), None)
+            seg_end = points[k + 1]
+            if top is None:
+                cur = None
+                continue
+            state = priority[top]
+            if cur is not None and cur.state == state and cur.ended == t:
+                cur.ended = seg_end
+            else:
+                cur = AndonSpan(mid, state, t, seg_end)
+                out.append(cur)
+    return out
+
+
 def split_idle(
     spans: Iterable[AndonSpan],
     measurements: dict[int, list[datetime]],
