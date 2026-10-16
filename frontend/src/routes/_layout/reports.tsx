@@ -833,7 +833,7 @@ function AvailabilityTable({ rows }: { rows: MachineTimeRow[] }) {
 function ReasonsTable({ row }: { row: MachineTimeRow }) {
   // Pico qayd qilmagan vaqt STANOK O'CHIQ deb sanaladi (egasining qarori) — uning
   // sababi yo'q, shuning uchun `reasons` da emas. Jadvalga o'sha nom bilan qator
-  // bo'lib qo'shiladi, aks holda «Jami to'xtash» yuqoridagi ustundan kam chiqardi.
+  // bo'lib qo'shiladi, aks holda «Rejasiz to'xtash» yuqoridagi ustundan kam chiqardi.
   const items = [
     ...row.reasons.map((r) => ({
       key: String(r.reason_id ?? "none"),
@@ -878,23 +878,41 @@ function ReasonsTable({ row }: { row: MachineTimeRow }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {/* JAMI — rahbarga kerak bo'lgan yagona yig'indi: ketma-ket to'xtashlar
-              ro'yxati (2026-09-19 da olib tashlandi) o'rnini shu qator egallaydi. */}
-          <TableRow className="bg-muted/50 font-semibold">
-            <TableCell>Jami to'xtash</TableCell>
-            <TableCell>—</TableCell>
-            <TableCell className="num text-right">
-              {items.reduce((n, x) => n + x.count, 0) || "—"}
-            </TableCell>
-            <TableCell className="num whitespace-nowrap text-right">
-              {hm(items.reduce((n, x) => n + x.seconds, 0))}
-            </TableCell>
-            <TableCell className="num text-right">
-              {row.shift_s
-                ? `${Math.round((items.reduce((n, x) => n + x.seconds, 0) * 1000) / row.shift_s) / 10}%`
-                : "—"}
-            </TableCell>
-          </TableRow>
+          {/* JAMI — ikkita: «Rejasiz» yuqoridagi «To'xtash» ustuni bilan AYNAN bir xil (serverning
+              o'sha maydonlari), «Rejali» — reja vaqtidan chiqarilgani. Ilgari bitta «Jami to'xtash»
+              rejalilarni ham qo'shib, ustundan katta chiqardi. */}
+          {[
+            {
+              name: "Rejasiz to'xtash (jami)",
+              kind: "Rejasiz",
+              seconds: row.unplanned_stop_s + row.no_data_s,
+            },
+            {
+              name: "Rejali to'xtash (jami)",
+              kind: "Rejali",
+              seconds: row.shift_s - row.planned_s,
+            },
+          ]
+            .filter((t) => t.kind === "Rejasiz" || t.seconds > 0)
+            .map((t) => (
+              <TableRow key={t.kind} className="bg-muted/50 font-semibold">
+                <TableCell>{t.name}</TableCell>
+                <TableCell>{t.kind}</TableCell>
+                <TableCell className="num text-right">
+                  {items
+                    .filter((x) => x.kind === t.kind)
+                    .reduce((n, x) => n + x.count, 0) || "—"}
+                </TableCell>
+                <TableCell className="num whitespace-nowrap text-right">
+                  {hm(t.seconds)}
+                </TableCell>
+                <TableCell className="num text-right">
+                  {row.shift_s
+                    ? `${Math.round((t.seconds * 1000) / row.shift_s) / 10}%`
+                    : "—"}
+                </TableCell>
+              </TableRow>
+            ))}
           {items.map((x) => (
             <TableRow key={x.key}>
               <TableCell

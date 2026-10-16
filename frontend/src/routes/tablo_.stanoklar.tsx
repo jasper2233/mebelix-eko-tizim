@@ -217,12 +217,23 @@ function MachineCard({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2 border-t border-[#232B36] pt-4">
-          <Fakt nom="Ishladi" qiymat={soat(row.run_s)} />
-          <Fakt nom="To'xtadi" qiymat={soat(row.stop_s)} />
-          <Fakt nom="Detal" qiymat={String(row.parts)} />
-          {row.defects > 0 && <Fakt nom="Brak" qiymat={String(row.defects)} />}
-        </div>
+        {/* Reja vaqti yo'q (ish jadvalida dam olish kuni yoki smena hali boshlanmagan) — OEE
+            hisoblanmaydi va «Ishladi 0:00» stanok ishlab turgan bo'lsa ham buzuqdek ko'rinardi */}
+        {row.planned_s > 0 ? (
+          <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2 border-t border-[#232B36] pt-4">
+            <Fakt nom="Ishladi" qiymat={soat(row.run_s)} />
+            <Fakt nom="To'xtadi" qiymat={soat(row.stop_s)} />
+            <Fakt nom="Detal" qiymat={String(row.parts)} />
+            {row.defects > 0 && (
+              <Fakt nom="Brak" qiymat={String(row.defects)} />
+            )}
+          </div>
+        ) : (
+          <p className="border-t border-[#232B36] pt-4 text-lg text-[#8B95A5]">
+            Bugun reja vaqti yo'q — dam olish kuni yoki smena hali boshlanmagan.
+            OEE ish jadvali bo'yicha hisoblanadi.
+          </p>
+        )}
 
         {/* KROMKA: bugun nechta o'lchov kutilgan tomonga tushdi, nechtasi yo'q */}
         {(mos > 0 || nomos > 0 || row.last_mm != null) && (
