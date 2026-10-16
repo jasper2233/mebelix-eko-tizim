@@ -6,7 +6,7 @@ Bu hujjat MebeliX MES backend'ining ma'lumotlar qatlamini qamrab oladi: SQLAlche
 API routes  →  schemas (validation)  →  crud (biznes DB-operatsiyalar)  →  models (ORM)  →  PostgreSQL
 ```
 
-Domen modeli to'liq MES sohasini qamrab oladi: **27 jadval** — `user` + 26 MES jadvali (`organization`, `client`, `employee`, `post`, `machine`, `audit_log`, `order`, `work_session`, `product`, `part`, `order_file`, `part_instance`, `part_route`, `scan`, `bridge_agent`, `pachka`, `pachka_item`, `waste_item`, `catalog_item`, `andon_event`, `downtime`, `downtime_reason`, `kromka_measurement`, `part_defect`, `system_setting`, `terminal_device`). Shablondan qolgan demo `Item` moduli to'liq olib tashlangan; GibLab katalogidan avtomat to'ladigan `material` jadvali ham endi yo'q (`d2b71f4c86e9` da drop — 4.4-bo'lim). Materiallar ombori moduli ham olib tashlandi: `stock_item`/`stock_move`/`sale`/`payment` jadvallari bazada bo'sh turadi (migratsiyalari prodga qo'llangan, 4.4-bo'lim), lekin model qatlamida ular YO'Q. Mahsulotlar ombori KATALOGI esa 2026-09-25 da YANGI jadval bilan qo'shildi (`catalog_item`, `6d9d9f645802`) — `stock_item` nomi qayta ishlatilmadi: u yetim jadval, ustunlari boshqa modelga tegishli edi. Batafsil: `docs/14`.
+Domen modeli to'liq MES sohasini qamrab oladi: **28 jadval** — `user` + 27 MES jadvali (`organization`, `client`, `employee`, `post`, `machine`, `audit_log`, `order`, `work_session`, `product`, `part`, `order_file`, `part_instance`, `part_route`, `scan`, `bridge_agent`, `pachka`, `pachka_item`, `waste_item`, `catalog_item`, `andon_event`, `downtime`, `downtime_reason`, `kromka_measurement`, `kromka_kalib_session`, `part_defect`, `system_setting`, `terminal_device`). Shablondan qolgan demo `Item` moduli to'liq olib tashlangan; GibLab katalogidan avtomat to'ladigan `material` jadvali ham endi yo'q (`d2b71f4c86e9` da drop — 4.4-bo'lim). Materiallar ombori moduli ham olib tashlandi: `stock_item`/`stock_move`/`sale`/`payment` jadvallari bazada bo'sh turadi (migratsiyalari prodga qo'llangan, 4.4-bo'lim), lekin model qatlamida ular YO'Q. Mahsulotlar ombori KATALOGI esa 2026-09-25 da YANGI jadval bilan qo'shildi (`catalog_item`, `6d9d9f645802`) — `stock_item` nomi qayta ishlatilmadi: u yetim jadval, ustunlari boshqa modelga tegishli edi. Batafsil: `docs/14`.
 
 ---
 
@@ -198,6 +198,12 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   Tomon NOMI (t/b/l/r) ATAYLAB saqlanmaydi: bir xil uzunlikdagi ikki qirrani o'lchov ajrata
   olmaydi va ajratishi shart emas — ikkalasi ham lentalanadi, tartib befarq. Bog'lash mantiqi
   `services/kromka.py`, qoidasi docs/12 §4.10.
+- `KromkaKalibSession` (`kromka_kalib_session`, `d4a1c9e7b203`) — Kromka kalibrlash sessiyasi:
+  `machine_id` FK, `started_at`, `ended_at` NULL (= ochiq), `created_by_id` FK `user` NULL,
+  `segments` JSONB `[{L_ref, dan}]` (etalon almashganda yangi bo'lak), `excluded` JSONB (admin
+  chetlatgan `andon_event.id` lari). Nuqtalar alohida saqlanmaydi — ular oraliqdagi `olchov`
+  hodisalari. Qisman unikal indeks `ix_kromka_kalib_session_open (machine_id) WHERE ended_at IS
+  NULL AND NOT is_deleted` — stanokda bitta ochiq sessiya. Docs/12 §4.19.
 - `DowntimeReason` (`downtime_reason`, `9e4b7c1d2a60`) — to'xtash sabablari ro'yxati, admin Tizim
   sozlamalarida yuritadi: `name(60)`, `is_planned` (rejali — tushlik, sozlash; OEE reja vaqtidan
   chiqariladi), `needs_note` (izohsiz saqlanmaydi, masalan «Boshqa»), `order_index`, `is_active`.

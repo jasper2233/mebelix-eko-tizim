@@ -30,12 +30,13 @@ Bu hujjat MebeliX MES backend'ining HTTP API qatlamini tavsiflaydi: router ierar
         ├── /tablo/*        ← tablo.py     │
         ├── /catalog/*      ← catalog.py   │
         ├── /reports/*      ← reports.py   │
+        ├── /kromka-kalib/* ← kromka_kalib.py (Kromka kalibrlash sessiyasi, AdminUser)
         ├── /system/*       ← system.py    ┘  («Tizim holati» — endpoint ichida AdminUser)
         ├── /bridge-agents/*← bridge_agents.py (router darajasida auth YO'Q — /pair ochiq, admin endpointlar o'zini himoyalaydi)
         └── /ws/*           ← ws.py        (router darajasida auth YO'Q — auth endpoint ichida)
 ```
 
-Jami 26 router: 3 ta ochiq (`health`, `login`, `public`), 21 tasi `get_current_user` ortida, `bridge_agents` va `ws` esa router darajasida himoyalanmaydi — autentifikatsiyani endpointlar o'zi bajaradi (WebSocket'da HTTP dependency ishlamaydi, `/bridge-agents/pair` esa sessiyasiz agent uchun ochiq bo'lishi shart).
+Jami 27 router: 3 ta ochiq (`health`, `login`, `public`), 22 tasi `get_current_user` ortida, `bridge_agents` va `ws` esa router darajasida himoyalanmaydi — autentifikatsiyani endpointlar o'zi bajaradi (WebSocket'da HTTP dependency ishlamaydi, `/bridge-agents/pair` esa sessiyasiz agent uchun ochiq bo'lishi shart).
 
 Autentifikatsiya modeli: JWT access + refresh token juftligi, ikkalasi ham `httpOnly` cookie sifatida o'rnatiladi; qo'shimcha ravishda `Authorization: Bearer` header ham qabul qilinadi (header cookie'dan ustun). Token bekor qilishning IKKI darajasi bor. (1) **Chiqish — faqat shu qurilma**: `logout` joriy refresh tokenning `jti` sini Redis'dagi `auth:refresh:used:` tombstone'iga qo'yadi va cookie'larni tozalaydi; boshqa qurilmalardagi sessiyalarga tegilmaydi (ilgari bu yerda ham `token_version` oshirilardi — monoblokdan chiqqan admin noutbukdagi ishidan ham uchib tushardi; sanoat amaliyotida chiqish joriy sessiyani yopadi). (2) **Global bekor qilish** — `token_version` oshirilishi, u BARCHA qurilmadagi access va refresh tokenlarni birdan o'ldiradi va faqat jiddiy holatlarda ishlatiladi: parol almashtirilganda (`users.py`, o'z paroli ham, admin boshqasinikini almashtirganda ham) va refresh token qayta ishlatilganda (o'g'irlanish belgisi, `login.py`). Alohida «hamma qurilmadan chiqish» tugmasi ATAYLAB yo'q: u kerak bo'ladigan yagona jiddiy holat — token o'g'irlangani — parolni almashtirish bilan yopiladi.
 
@@ -294,6 +295,21 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 **Bog'lanishlar:** `backend/app/schemas/machines.py`, `backend/app/crud` (`crud_machines`, `crud_posts`, `log_action`).
 
 ---
+
+## `backend/app/api/routes/kromka_kalib.py` — Kromka kalibrlash sessiyasi
+
+**Maqsadi:** etalon detallar o'tkazilgan vaqt oralig'ini belgilash va Pico vaqtlaridan yangi
+kalibrlashni hisoblash (docs/12 §4.19, 2-qadam). Natija faqat ko'rsatiladi — Pico'ga yozilmaydi.
+Hammasi `AdminUser`.
+
+| Metod | Path | Rol | Izoh |
+|---|---|---|---|
+| GET | `/api/v1/kromka-kalib` | `AdminUser` | Oxirgi 30 sessiya, `list[KalibSessionRow]` |
+| POST | `/api/v1/kromka-kalib` | `AdminUser` | Boshlash `KalibStart {machine_id, L_ref}`; faqat KROMKA stanogi (404), stanokda ochiq sessiya bo'lsa 409 |
+| PUT | `/api/v1/kromka-kalib/{session_id}/etalon` | `AdminUser` | `KalibEtalon {L_ref}` — shu lahzadan yangi etalon bo'lagi; tugagan sessiyada 409 |
+| POST | `/api/v1/kromka-kalib/{session_id}/end` | `AdminUser` | Tugatish; ikkinchi marta 409 |
+| PUT | `/api/v1/kromka-kalib/{session_id}/points/{event_id}` | `AdminUser` | `KalibExclude {excluded}` — nuqtani hisobdan chetlatish/qaytarish |
+| GET | `/api/v1/kromka-kalib/{session_id}` | `AdminUser` | `KalibDetail`: nuqtalar (`olchov` hodisalari, etalon bo'lak bo'yicha), `result` (`services/kromka_kalib.hisobla`), `current` (Pico'dagi oxirgi `kal`) |
 
 ## `backend/app/api/routes/posts.py` — Ishlab chiqarish postlari
 
