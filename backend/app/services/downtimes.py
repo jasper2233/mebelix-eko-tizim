@@ -115,6 +115,7 @@ async def _bosh_yurish(
                 select(AndonEvent.happened_at).where(
                     AndonEvent.machine_id == machine_id,
                     AndonEvent.kind == "olchov",
+                    AndonEvent.is_deleted == False,  # noqa: E712
                     AndonEvent.happened_at >= since,
                 )
             )
@@ -159,6 +160,7 @@ async def sync_machine(db: AsyncSession, machine_id: int, now: datetime) -> None
         await db.execute(
             select(func.max(AndonEvent.happened_at)).where(
                 AndonEvent.machine_id == machine_id,
+                AndonEvent.is_deleted == False,  # noqa: E712
                 ishlayapti,
                 AndonEvent.happened_at <= since,
             )
@@ -174,6 +176,7 @@ async def sync_machine(db: AsyncSession, machine_id: int, now: datetime) -> None
                 .where(
                     AndonEvent.machine_id == machine_id,
                     AndonEvent.kind.in_(("state", "uskuna")),
+                    AndonEvent.is_deleted == False,  # noqa: E712
                     AndonEvent.happened_at >= since,
                 )
                 .order_by(AndonEvent.happened_at, AndonEvent.id)

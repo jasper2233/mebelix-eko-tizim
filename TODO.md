@@ -37,7 +37,7 @@ Tuzatishlar branch orqali boradi; `main` ga push = tsexga deploy (19:00 dan keyi
 | --- | ---: |
 | yuqori | 1 |
 | o'rta | 8 |
-| past | 10 |
+| past | 9 |
 
 ---
 
@@ -275,8 +275,11 @@ Tuzatishlar branch orqali boradi; `main` ga push = tsexga deploy (19:00 dan keyi
 ## Past
 
 10-band (Bazis yuklashda takror mahsulot kodi — 500) 2026-09-27 da hal qilindi: yuklash
-endi kod va nomi mos mahsulotni oladi. Raqamlar ataylab o'zgartirilmadi — kod va hujjatlar
-«TODO.md #N» deb havola qiladi.
+endi kod va nomi mos mahsulotni oladi. 15-band (downtime sinxroni yumshoq o'chirilgan
+andon hodisalaridan to'xtash yasardi) 2026-10-16 da hal qilindi: `sync_machine`,
+`_bosh_yurish` va `sync_downtimes` `is_deleted` ni filtrlaydi; prodda qolgan soxta
+yozuvlar deploy'dan KEYIN `scripts/downtime_deleted_events.sql` bilan tozalanadi.
+Raqamlar ataylab o'zgartirilmadi — kod va hujjatlar «TODO.md #N» deb havola qiladi.
 
 ### 11. `GET /tmo/orders/{order_id}` ni hech kim chaqirmaydi
 
@@ -322,30 +325,6 @@ endi kod va nomi mos mahsulotni oladi. Raqamlar ataylab o'zgartirilmadi — kod 
   `le=Decimal("999999999999.99")`, keyin `make frontend-gen`.
 - **Nega hozir emas:** OpenAPI o'zgaradi. `decimal_places=2` hozir jim yaxlitlanayotgan
   qiymatlarni rad eta boshlaydi, shuning uchun chegara qarori kerak.
-
-### 15. Downtime sinxroni soft-delete qilingan andon hodisalaridan to'xtash yasaydi
-
-- **Joy:** `backend/app/services/downtimes.py:115-118`, `:160-164`, `:173-177`
-- **Muammo:** `sync_machine` va `_bosh_yurish` `andon_event` ni `is_deleted` filtrisiz
-  o'qiydi. `scripts/kromka_dedup.sql` soft-delete qilgan dublikatlar ham to'xtash
-  yaratadi (prod'da ~258k Pico dublikati bor). `reports.py` esa ularni hamma joyda
-  filtrlaydi. Filtr yo'qligi sabab so'rovlar qisman indeks `ix_andon_event_live`
-  dan ham foydalanmaydi.
-- **Dalil:** Ikki Kromka'ga bir xil tirik hodisalar yozildi. Birinchisiga qo'shimcha
-  ravishda soft-delete qilingan `holat=0` dublikati qo'shildi. Natija:
-  `DOWNTIME machine 1 off k-4 ... end= None` faqat o'chirilgan qatordan chiqdi va
-  OCHIQ qoldi, ya'ni terminal sabab so'raydi.
-- **Taklif:** Uch so'rovga `AndonEvent.is_deleted == False` ni qo'shing. Deploy'dan
-  OLDIN prod'da o'chirilgan hodisadan chiqqan ochiq downtime'larni toping:
-  ```sql
-  SELECT d.id FROM downtime d JOIN andon_event e ON e.machine_id=d.machine_id
-   AND d.start_key = e.session||'-'||e.seq
-  WHERE d.ended_at IS NULL AND NOT d.is_deleted AND e.is_deleted;
-  ```
-  Topilganlarini yopish kerak. Aks holda ular abadiy ochiq qolib, sinxron oynasini
-  orqaga tortadi (2026-09-26 CPU hodisasi naqshi).
-- **Nega hozir emas:** Terminal qaysi to'xtashlarni so'rashi o'zgaradi. Avval prod
-  tekshiruvi kerak.
 
 ### 16. XNC: teshik qatori soni `ac` chegarasiz; `nan`/`inf` koordinata jim o'tadi
 

@@ -48,6 +48,7 @@ MebeliX-Mes-System/
 │                     #   catalog_import.py + catalog.csv (ombor katalogi: varaq → CSV → baza, docs/14),
 │                     #   oee_audit.sql, kromka_audit.sql (faqat o'qiydigan auditlar),
 │                     #   kromka_dedup.sql (v1.22 takrorlarini tozalash) — docs/12,
+│                     #   downtime_deleted_events.sql (o'chirilgan hodisadan yasalgan to'xtashlar, TODO.md #15),
 │                     #   oracles/ (bir martalik tekshiruv skriptlari, CI chaqirmaydi — docs/12 §4.14)
 ├── docs/             # Ushbu hujjatlar to'plami
 ├── design/           # Dizayn MANBALARI — build'ga kirmaydi (`.dockerignore`):
