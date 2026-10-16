@@ -237,13 +237,14 @@ async def main() -> None:
         # ---------- 5. Bugungi kun: reja HOZIRGACHA ----------
         hozir = datetime.now(TASHKENT_TZ)
         kutilgan_smena = sum(
-            max(0, int((min(hozir, b) - a).total_seconds()))
+            max(0, round((min(hozir, b) - a).total_seconds()))
             for a, b in ((BUGUN + timedelta(hours=8), BUGUN + timedelta(hours=12)),
                          (BUGUN + timedelta(hours=13), BUGUN + timedelta(hours=17)))
         )
         bugungi_hisobot = await report_machine_time(db, admin, date_from=BUGUN.date(), date_to=BUGUN.date())
         b2 = next(r for r in bugungi_hisobot.rows if r.machine_name == "Prisadka-2")
-        natija.append(("bugun: reja hozirgacha kesiladi", b2.shift_s, kutilgan_smena))
+        # ±1 s: `hozir` hisobotdan millisoniyalar oldin olinadi, server esa soniyani yaxlitlaydi (§4.22)
+        natija.append(("bugun: reja hozirgacha kesiladi (±1 s)", abs(b2.shift_s - kutilgan_smena) <= 1, True))
         natija.append(("bugun: kun tugamaguncha to'liq smena berilmaydi",
                        b2.shift_s < 28800 or hozir >= BUGUN + timedelta(hours=17), True))
 

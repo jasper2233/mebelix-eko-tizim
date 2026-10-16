@@ -676,6 +676,7 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `downtime_cleanup_oracle.py` (14/14) | `scripts/downtime_deleted_events.sql` — soxta to'xtashlarni tozalash |
 | `kromka_kirish_oracle.py` (4/4) | §4.10 — kirish `ts − (ish_ms + d2)`, oyna −60 … +20 s, skan darajasida FIFO |
 | `kromka_kal_oracle.py` (8/8) | §4.18 — Pico'dagi joriy kalibrlash agentdan MES gacha (o'zgarganda, takrorsiz) |
+| `reason_lookup_oracle.py` (4/4) | §4.23 — qisqa to'xtash qo'shni yozuvning sababini (rejali «Tushlik») olmaydi (eski kodda 0/4) |
 | `day_boundary_stop_oracle.py` (4/4) | §4.22 — yarim tundan o'tgan to'xtash bir kunlik hisobotda chegaradan tushib qolmaydi (eski kodda 2/4) |
 | `availability_range_oracle.py` (7/7) | §4.21 — kunning Availability'si so'ralgan oraliqqa bog'liq emas (eski kodda 2/7) |
 | `kromka_kalib_oracle.py` (28/28) | §4.19 — hisob stansiya JS bilan raqamma-raqam bir xil, ma'lum parametrlar qaytarib topiladi, sessiya o'tishlari skanga bog'lanmaydi; §4.20 — qo'llash server → agent → Pico → tasdiq, chegaralar, qaytarish, muddat |
@@ -969,6 +970,24 @@ Tekshiruv — `scripts/oracles/day_boundary_stop_oracle.py` **4/4** (eski kodda 
 20:00–08:00, 8 daqiqalik to'xtash ikkala kunda 240 s dan, ikki kunlik hisobotda 480 s; butunicha
 2.5 daqiqalik to'xtash hech qaysi kunda sanalmaydi. `availability_range` endi 1 s farqsiz 7/7;
 qolgan 15 ta orakl o'zgarmadi.
+
+### 4.23 Qisqa to'xtash qo'shni yozuvning sababini olardi (2026-10-16)
+
+**Xato.** Hisobot to'xtashga sababni `downtime` yozuvlaridan vaqt bo'yicha topadi
+(`reports._reason_lookup`) va har qanday musbat ustma-ust tushishni qabul qilardi. Rejali «Tushlik»
+yozuvi 13:00:01 da yopilsa, 13:00 da boshlangan 4 daqiqalik avariya (o'z yozuvi yo'q — chegaradan
+qisqa) o'sha 1 soniya tufayli «Tushlik» bo'lib, reja vaqtidan chiqarilardi: Availability shishardi
+(oraklda 86.7% o'rniga 87.4%).
+
+**Tuzatish.** Ustma-ust qism to'xtash va yozuvning QISQAROG'INING kamida yarmi bo'lishi shart. O'z
+yozuvi doim deyarli to'liq mos (yozuv bir necha soniya oldin/keyin boshlansa ham), qo'shni yozuvning
+cheti esa bir necha soniya. Sababsiz qolgan to'xtash «Sabab kiritilmagan» — rejasiz.
+
+Tekshiruv — `scripts/oracles/reason_lookup_oracle.py` **4/4** (eski kodda **0/4**): avariya 240 s
+sababsiz, «Tushlik» faqat o'zining 3600 s, uzunroq yozuvli (14:58–16:00) «Material yo'q» o'z
+to'xtashiga (15:00–16:00) baribir biriktiriladi. `oee_oracle` dagi «bugun: reja hozirgacha»
+tekshiruvi ±1 s ga yumshatildi: orakl `hozir` ni hisobotdan oldin oladi, §4.22 dagi `round()` bilan
+farq 1 s bo'lishi mumkin (31/31, 3 marta). Qolgan 16 ta orakl o'zgarmadi.
 
 ## 5. Prod auditi natijalari (2026-09-16)
 
