@@ -148,7 +148,8 @@ def _by_day(items: Iterable[Interval]) -> dict[date, int]:
             day = cur.astimezone(TASHKENT_TZ).date()
             nxt = datetime.combine(day + timedelta(days=1), time.min, tzinfo=TASHKENT_TZ)
             seg_end = min(b, nxt)
-            out[day] = out.get(day, 0) + int((seg_end - cur).total_seconds())
+            # round: oraliq oxiri `time.max` (23:59:59.999999) — int() har kunda 1 s yo'qotardi
+            out[day] = out.get(day, 0) + round((seg_end - cur).total_seconds())
             cur = seg_end
     return out
 
@@ -218,7 +219,7 @@ def availability(
     reasons: dict[int | None, ReasonTotals] = {}
     for run in stop_runs(spans, idle_threshold, now):
         inside = _intersect([(run.began, run.ended)], windows)
-        seconds = sum(int((b - a).total_seconds()) for a, b in inside)
+        seconds = sum(round((b - a).total_seconds()) for a, b in inside)
         if not seconds:
             continue
         found = reason_of(run)

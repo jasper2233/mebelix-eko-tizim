@@ -441,7 +441,11 @@ async def build_machine_time_report(
                 .where(
                     AndonEvent.kind == "state",
                     AndonEvent.is_deleted == False,  # noqa: E712
-                    AndonEvent.happened_at >= start,
+                    # Oraliqdan OLDINGI hodisalar ham kerak (docs/12 §4.22): to'xtash UZUNLIGI butun
+                    # to'xtash bo'yicha o'lchanadi (`stop_runs` chegarasi). Yarim tundan o'tgan 8 daqiqalik
+                    # sariq to'xtash ertangi kun hisobotida 23:59 dagi hodisasiz 4.5 daqiqa bo'lib,
+                    # chegaradan o'tmay tushib qolardi. Oraliqqa kesish `machine_time`/`availability` da.
+                    AndonEvent.happened_at >= start - _ANDON_TAIL,
                     AndonEvent.happened_at <= end + _ANDON_TAIL,
                     faqat(AndonEvent.machine_id),
                 )

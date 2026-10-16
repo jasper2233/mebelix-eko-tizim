@@ -676,6 +676,7 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `downtime_cleanup_oracle.py` (14/14) | `scripts/downtime_deleted_events.sql` — soxta to'xtashlarni tozalash |
 | `kromka_kirish_oracle.py` (4/4) | §4.10 — kirish `ts − (ish_ms + d2)`, oyna −60 … +20 s, skan darajasida FIFO |
 | `kromka_kal_oracle.py` (8/8) | §4.18 — Pico'dagi joriy kalibrlash agentdan MES gacha (o'zgarganda, takrorsiz) |
+| `day_boundary_stop_oracle.py` (4/4) | §4.22 — yarim tundan o'tgan to'xtash bir kunlik hisobotda chegaradan tushib qolmaydi (eski kodda 2/4) |
 | `availability_range_oracle.py` (7/7) | §4.21 — kunning Availability'si so'ralgan oraliqqa bog'liq emas (eski kodda 2/7) |
 | `kromka_kalib_oracle.py` (28/28) | §4.19 — hisob stansiya JS bilan raqamma-raqam bir xil, ma'lum parametrlar qaytarib topiladi, sessiya o'tishlari skanga bog'lanmaydi; §4.20 — qo'llash server → agent → Pico → tasdiq, chegaralar, qaytarish, muddat |
 | `defect_oracle.py` (8/8) | §4.17 — brak skan vaqti/stanogida, tasdiq bekor qilgan ish sanaladi, Kromka kvotasi |
@@ -942,13 +943,32 @@ bo'lsa — eski shart o'zgarmadi), oraliqdan keyin boshlangani bundan mustasno. 
 `machine_time` da edi: oraliq `min(end, now)` da to'xtaydi. Agent o'lik bo'lsa tugamagan holat
 ishonchsiz — avvalgidek qo'shilmaydi, vaqt ma'lumotsiz qoladi.
 
-**Ma'lum mayda xususiyat (o'zgartirilmadi):** oraliq oxiri `time.max` (23:59:59.999999), soniyalar
-butunga kesiladi — oraliq chegarasidan o'tgan holat trekda 1 s qisqa. Availability'ga ta'siri yo'q.
+Oraliq oxiri `time.max` (23:59:59.999999) bo'lgani uchun soniyalar butunga kesilib, chegaradan
+o'tgan holat 1 s qisqa chiqardi — §4.22 da tuzatildi (`round`).
 
 Tekshiruv — `scripts/oracles/availability_range_oracle.py` **7/7** (eski kodda **2/7**): yoniq qolgan
 stanok kecha ikkala so'rovda 100%, o'chiq qolgani 75% va trekda OFF 15:00–24:00, agenti o'lik stanok
 ikkala so'rovda 75% (qo'shilmaydi). `oee` 31, `rover_oee` 19, `rover` 25, `agent_gap` 8,
 `tablo_machines` 29, `defect` 8, `downtime_cleanup` 14, `kromka_bind` 23 o'zgarmadi.
+
+### 4.22 Yarim tundan o'tgan to'xtash kesilib tushib qolardi (2026-10-16)
+
+**Xato.** Sariq chiroq to'xtashi (IDLE → STOPPED) `stop_prompt_idle_minutes` (5 daq) dan qisqa
+bo'lsa — mikro-to'xtash, sanalmaydi; uzunlik `stop_runs` da butun to'xtash bo'yicha o'lchanadi.
+Hisobot esa Prisadka hodisalarini `happened_at >= start` bilan o'qirdi: 23:56–00:04 dagi 8 daqiqalik
+to'xtashning 23:59:30 dagi hodisasi (IDLE tugadi) ertangi kun hisobotiga kirmas, to'xtash
+4.5 daqiqa bo'lib chegaradan o'tmasdi — 00:00–00:04 to'xtash emas, ISH bo'lib sanalardi. Ikki
+kunlik hisobotda esa to'g'ri (480 s) — yana oraliqqa bog'liq natija.
+
+**Tuzatish.** Hodisalar oraliqdan 3 kun (`_ANDON_TAIL`) oldindan o'qiladi — KROMKA/ROVER
+(`uskuna_machine_spans`) allaqachon shunday qilardi. Oraliqqa kesish o'zgarmadi
+(`machine_time`, `availability` — reja oynalari bilan kesishma). Qo'shimcha: soniyalar `int()`
+o'rniga `round()` — oraliq oxiri `time.max` bo'lgani uchun har kun 1 s yo'qolardi.
+
+Tekshiruv — `scripts/oracles/day_boundary_stop_oracle.py` **4/4** (eski kodda **2/4**): tungi smena
+20:00–08:00, 8 daqiqalik to'xtash ikkala kunda 240 s dan, ikki kunlik hisobotda 480 s; butunicha
+2.5 daqiqalik to'xtash hech qaysi kunda sanalmaydi. `availability_range` endi 1 s farqsiz 7/7;
+qolgan 15 ta orakl o'zgarmadi.
 
 ## 5. Prod auditi natijalari (2026-09-16)
 

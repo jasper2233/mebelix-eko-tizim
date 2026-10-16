@@ -385,13 +385,13 @@ def machine_time(spans: Iterable[AndonSpan], start: datetime, end: datetime, now
         if b <= a:
             continue
         per_machine = out.seconds.setdefault(span.machine_id, dict.fromkeys(ANDON_STATES, 0))
-        per_machine[span.state] += int((b - a).total_seconds())
+        per_machine[span.state] += round((b - a).total_seconds())  # `_by_day` dagi kabi: time.max
         cur = a
         while cur < b:
             local_day = cur.astimezone(TASHKENT_TZ).date()
             next_midnight = datetime.combine(local_day + timedelta(days=1), time.min, tzinfo=TASHKENT_TZ)
             seg_end = min(b, next_midnight)
             per_day = out.days.setdefault((span.machine_id, local_day), dict.fromkeys(ANDON_STATES, 0))
-            per_day[span.state] += int((seg_end - cur).total_seconds())
+            per_day[span.state] += round((seg_end - cur).total_seconds())
             cur = seg_end
     return out
