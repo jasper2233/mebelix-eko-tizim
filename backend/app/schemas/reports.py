@@ -4,7 +4,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel
 
-from app.schemas.settings import IdealCycle, IdealCycleKromka
+from app.schemas.settings import IdealCycle, IdealCycleKromka, IdealCycleRover
 
 # ---------- 11.1.1 Hodim mahsuldorligi ----------
 
@@ -50,7 +50,7 @@ class MachineTimeRow(BaseModel):
     run_s: int  # ishlagan = planned_s - unplanned_stop_s - no_data_s
     availability_pct: float | None  # run_s / planned_s; reja vaqti 0 bo'lsa None
     reasons: list[AvailabilityReason]  # ko'p vaqt olgani birinchi
-    # --- OEE Performance (`services/performance.py`) — Prisadka (xnc formulasi) va Kromka (stansiya
+    # --- OEE Performance (`services/performance.py`) — Prisadka (xnc formulasi), Rover (kontur) va Kromka (stansiya
     # o'lchovi, L / v + oraliq) ish markazlarida, qolganida 0 / None
     parts: int  # Prisadka: kuzatilgan ish vaqtida skanerlangan detallar; Kromka: o'lchangan o'tishlar
     ideal_s: int  # o'sha detallarning ideal sikl vaqti yig'indisi
@@ -88,6 +88,7 @@ class MachineTimeReport(BaseModel):
     idle_threshold_min: int  # sariq chiroq shundan uzoq yonsa to'xtash (`stop_prompt_idle_minutes`)
     ideal_cycle: IdealCycle  # Prisadka Performance'i shu koeffitsiyentlar bilan hisoblangan
     ideal_cycle_kromka: IdealCycleKromka  # Kromkada sozlanadigani — detallar oralig'i
+    ideal_cycle_rover: IdealCycleRover  # Rover: detalga + kontur metriga soniya
     #: OEE shu kundan hisoblanadi; undan oldingi kunlar hisobotdan tushirilgan (None — cheklov yo'q)
     oee_start: date | None
 

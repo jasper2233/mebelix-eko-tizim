@@ -281,9 +281,12 @@ keyin yuboradi (`andon_shipper` → `_rover_acked`). Erta tasdiqlansa, internet
 uzilgan paytdagi hodisa Pico'da o'chib, bizda ham yozilmay yo'qolardi.
 
 **Nima yoziladi:**
-- `state` (har 10 s) — jonli holat; `run` o'zgarganda kromkadagi bilan BIR XIL
-  `uskuna` hodisasi (`holat` 1/0), ya'ni serverdagi to'xtash/OEE zanjiri o'zgarmaydi.
-  Bir xil holat qayta yozilmaydi.
+- `state` (har 10 s) — jonli holat; holat (shpindel aylanyapti / stanok yoqiq,
+  shpindel to'xtagan / o'chiq) o'zgarganda kromkadagi bilan BIR XIL `uskuna`
+  hodisasi (`holat` 1/0, yonida `pwr`). Server `pwr=1, holat=0` ni bo'sh turish
+  (IDLE), `pwr=0` ni o'chiq (OFF) deb hisoblaydi (`docs/12` §4.15). v1.9.0 gacha
+  hodisa faqat `holat` o'zgarganda yozilardi — bo'sh turgan stanok o'chirilsa
+  bu bilinmasdi. Bir xil holat qayta yozilmaydi.
 - `event` — Pico o'zi o'lchab tugatgan davr (`POWER_ON`, `SPINDLE_IDLE`,
   `UNPLANNED_STOP`, `AUTO_SHUTDOWN`, `SHUTDOWN_FAILED`, `POWER_CYCLE`,
   `PLANNED_STOP`, `LOG_FULL`). Serverga `kind="rover"` bo'lib boradi, asl turi

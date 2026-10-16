@@ -59,7 +59,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "MES agentlar" sahifasida qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.8.0"
+AGENT_VERSION = "1.9.0"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -1506,7 +1506,7 @@ ROVER: dict[str, Any] = {
     "ack_upto": 0,     # server YOZGAN eng katta uzluksiz seq
     "ack_sent": 0,     # Pico'ga aytilgan oxirgi tasdiq
     "config": False,   # sozlama shu ulanishda yuborildimi
-    "holat": None,     # oxirgi ishlash holati — faqat O'ZGARISH hodisaga aylanadi
+    "holat": None,     # oxirgi holat (PROCESSING/IDLE/OFF) — faqat O'ZGARISH hodisaga aylanadi
     "seen": 0,         # navbatga olingan eng katta hodisa seq'i
 }
 
@@ -1559,12 +1559,15 @@ def _rover_state(data: dict[str, Any]) -> None:
     state = "PROCESSING" if run else ("IDLE" if pwr else "OFF")
     now = int(time.time())
     with ANDON_LOCK:
+        # O'zgarish UCHALA holat bo'yicha (holat 0/1 emas): server yoqiq-u shpindel
+        # to'xtagan stanokni IDLE, o'chiqni OFF deb hisoblaydi (`andon.uskuna_state`).
+        # Faqat 0/1 bo'yicha yozilsa IDLE → OFF (stanok o'chirildi) hech qachon kelmasdi.
         oldingi = ROVER["holat"]
-        ROVER["holat"] = holat
+        ROVER["holat"] = state
         if ANDON_CURRENT.get("state") != state:
             ANDON_CURRENT["since"] = now
         ANDON_CURRENT.update(state=state, lamps={}, part_count=None)
-    if oldingi == holat:
+    if oldingi == state:
         return
     session, seq = _kromka_kalit()
     _andon_enqueue({

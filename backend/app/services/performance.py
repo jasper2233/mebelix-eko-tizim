@@ -12,7 +12,7 @@ qiymatlar TAXMINIY — docs/12 §4.6). Skan↔sikl bog'lash kerak emas: yig'indi
 (MES) va ishlagan vaqt (`services/availability.py`) yetadi.
 """
 
-from app.schemas.settings import IdealCycle, IdealCycleKromka
+from app.schemas.settings import IdealCycle, IdealCycleKromka, IdealCycleRover
 
 # ponytail: koeffitsiyentlar POST bo'yicha bitta to'plam — Pico hozir faqat bitta Prisadkada.
 # Boshqa tezlikdagi ikkinchi stanok paydo bo'lsa: sozlamani `machine_id -> IdealCycle` lug'atiga aylantirish.
@@ -37,6 +37,16 @@ def kromka_ideal_seconds(c: IdealCycleKromka, length_mm: float | None, speed_m_m
     if not length_mm or not speed_m_min or length_mm <= 0 or speed_m_min <= 0:
         return None
     return length_mm / (speed_m_min * 1000.0 / 60.0) + c.gap_s
+
+
+def rover_ideal_seconds(c: IdealCycleRover, length_mm: float | None, width_mm: float | None) -> float:
+    """ROVER: bitta detalning ideal vaqti, soniya — `har detalga + perimetr (m) × metrga soniya`.
+
+    Ish hajmi — kontur uzunligi; to'g'ri to'rtburchak perimetri uning pastki bahosi (egri
+    kontur uzunroq — koeffitsiyent kalibrlashda buni o'ziga oladi). O'lcham yo'q bo'lsa
+    faqat `load_s`: detal baribir ishlangan, uni Performance'dan tushirib qoldirmaymiz."""
+    perimetr_m = 2 * ((length_mm or 0) + (width_mm or 0)) / 1000
+    return c.load_s + perimetr_m * c.cut_s_per_m
 
 
 def quality_pct(parts: int, defects: int) -> float | None:

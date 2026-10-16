@@ -2236,6 +2236,29 @@ export type IdealCycleKromka = {
 };
 
 /**
+ * IdealCycleRover
+ *
+ * ROVER (CNC 2130) ideal sikli — OEE Performance (`services/performance.py`).
+ *
+ * ideal vaqt (detal) = har detalga + perimetr (m) × metrga soniya
+ *
+ * Rover detalni kontur bo'yicha kesadi yoki frezalaydi — ish hajmini KONTUR uzunligi
+ * belgilaydi, perimetr esa bazada bor (`part.length/width`). Sukut qiymatlar TAXMINIY
+ * (2026-10-16): 10 m/min surish = 6 s/m; har detalga — listni qo'yish/olib tashlashning
+ * detalga to'g'ri keladigan ulushi. Admin sekundomer bilan to'g'rilaydi.
+ */
+export type IdealCycleRover = {
+    /**
+     * Load S
+     */
+    load_s?: number;
+    /**
+     * Cut S Per M
+     */
+    cut_s_per_m?: number;
+};
+
+/**
  * IdleLimit
  */
 export type IdleLimit = {
@@ -2802,6 +2825,7 @@ export type MachineTimeReport = {
     idle_threshold_min: number;
     ideal_cycle: IdealCycle;
     ideal_cycle_kromka: IdealCycleKromka;
+    ideal_cycle_rover: IdealCycleRover;
     /**
      * Oee Start
      */
@@ -9269,6 +9293,47 @@ export type UpdateIdealCycleKromkaResponses = {
 };
 
 export type UpdateIdealCycleKromkaResponse = UpdateIdealCycleKromkaResponses[keyof UpdateIdealCycleKromkaResponses];
+
+export type ReadIdealCycleRoverData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/ideal-cycle-rover';
+};
+
+export type ReadIdealCycleRoverResponses = {
+    /**
+     * Successful Response
+     */
+    200: IdealCycleRover;
+};
+
+export type ReadIdealCycleRoverResponse = ReadIdealCycleRoverResponses[keyof ReadIdealCycleRoverResponses];
+
+export type UpdateIdealCycleRoverData = {
+    body: IdealCycleRover;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/ideal-cycle-rover';
+};
+
+export type UpdateIdealCycleRoverErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateIdealCycleRoverError = UpdateIdealCycleRoverErrors[keyof UpdateIdealCycleRoverErrors];
+
+export type UpdateIdealCycleRoverResponses = {
+    /**
+     * Successful Response
+     */
+    200: IdealCycleRover;
+};
+
+export type UpdateIdealCycleRoverResponse = UpdateIdealCycleRoverResponses[keyof UpdateIdealCycleRoverResponses];
 
 export type ReadOeeStartData = {
     body?: never;

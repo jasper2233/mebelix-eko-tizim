@@ -1,4 +1,4 @@
-# 12 — OEE (Prisadka): holat, bajarilgan ishlar va reja
+# 12 — OEE (Prisadka, Kromka, Rover): holat, bajarilgan ishlar va reja
 
 Holat: **2026-09-19**. OEE'ning uchala qismi ham hisoblanadi (Availability, Performance,
 Quality) va hisobotda `A × P × Q` raqami chiqadi — lekin qiymatlar ma'lumot qamroviga va
@@ -23,12 +23,12 @@ OEE          = Availability × Performance × Quality
 | **Availability hisobi** | `services/availability.py`, Hisobotlar → «Stanok vaqti» (§4.5) | ✅ bor (2026-09-18) |
 | Detallar soni | MES skanlari (`scan`) + Pico sikllari | ✅ bor, o'zaro deyarli mos (§5) |
 | Ideal sikl vaqti | `part.xnc_summary` (teshik/paz/freza) + koeffitsiyentlar (Tizim sozlamalari, §4.6) | ⚠️ bor, qiymatlar TAXMINIY — sekundomer bilan to'g'rilash kerak |
-| **Performance hisobi** | `services/performance.py`, Hisobotlar → «Stanok vaqti» (§4.6, kromka — §4.9) | ✅ bor: Prisadka (2026-09-18) va Kromka (2026-09-20) |
+| **Performance hisobi** | `services/performance.py`, Hisobotlar → «Stanok vaqti» (§4.6, kromka — §4.9, rover — §4.15) | ✅ bor: Prisadka (2026-09-18), Kromka (2026-09-20) va Rover (2026-10-16, koeffitsiyentlar TAXMINIY) |
 | **Kromka o'lchovi ↔ detal** | `services/kromka.py`, Tizim sozlamalari → «Kromka o'lchovi» (§4.10) | ⚠️ hukm bor (mos/ortiqcha/nomos), lekin KUZATUV: datchik xato o'lchayapti, avtomatik brak o'chirilgan (2026-09-20) |
 | **ROVER (CNC 2130) kuzatuvi** | `bridge-agent/agent.py` (v1.7.0), `andon_event.kind='rover'` (§4.13) | ✅ bor (2026-09-20): holat, to'xtash va Pico hodisalari; rele hali o'chiq |
 | **Devordagi stanok taxtasi** | `/tablo/stanoklar`, `GET /tablo/machines` | ✅ bor (2026-09-21): jonli holat, smena, bugungi A·P·Q·OEE, sababsiz to'xtashlar, «aloqa yo'q» ajratilgan |
 | **OEE kesim sanasi** | `settings_service.OEE_START_DATE`, Tizim sozlamalari → «Ish jadvali» (§4.12) | ✅ bor (2026-09-20): kesimdan oldingi kunlar hisobotga kirmaydi |
-| **Quality hisobi** | `services/performance.py: quality_pct`, Hisobotlar → «Stanok vaqti» (§4.7, kromka — §4.11) | ✅ bor: Prisadka (2026-09-19) va Kromka (2026-09-20) |
+| **Quality hisobi** | `services/performance.py: quality_pct`, Hisobotlar → «Stanok vaqti» (§4.7, kromka — §4.11, rover — §4.15) | ✅ bor: Prisadka (2026-09-19), Kromka (2026-09-20) va Rover (2026-10-16) |
 | Brak | `part_defect` — terminal skan tasmasidagi BRAK tugmasi (§4.7) | ✅ bor (2026-09-19); qayta ishlab chiqarish (remake) YO'Q |
 | **OEE = A × P × Q** | `services/performance.py: oee_pct`, o'sha hisobot ustuni (§4.7) | ✅ bor (2026-09-19) |
 
@@ -656,6 +656,64 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `tablo_machines_oracle.py` (29/29) | `docs/05` — stanok taxtasi |
 | `kromka_dedup_oracle.py` (18/18) | `scripts/kromka_dedup.sql` — v1.22 takrorlarini tozalash |
 
+### 4.15 ROVER: to'liq OEE (2026-10-16)
+
+§4.13 dagi kuzatuvga Performance va Quality qo'shildi, Availability qoidasi tuzatildi.
+Egasining qarorlari: bo'sh turish — IDLE; ideal vaqt — FORMULA (A varianti); birlik — DETAL.
+
+**Availability: yoqiq-u shpindel to'xtagan stanok — IDLE, o'chiq emas.** Ilgari agent
+`holat = pwr AND run` yozardi va server `holat=0` ni darhol `OFF` to'xtash qilardi: list
+almashtirish, nolga keltirish, asbob almashtirish — har pauza Availability'dan ayirilardi
+(Prisadkada xuddi shu holat — sariq chiroq — 5 daqiqagacha mikro-to'xtash). Endi
+`services/andon.uskuna_state` hodisadagi `pwr` ni ham o'qiydi:
+
+| Rover hodisasi | Holat | Qoida |
+| --- | --- | --- |
+| `holat=1` | PROCESSING | ishladi |
+| `holat=0`, `pwr=1` | IDLE | sariq: `stop_prompt_idle_minutes` dan qisqasi mikro-to'xtash, uzuni to'xtash (sababi so'raladi, turi «Kutish») |
+| `holat=0`, `pwr=0` | OFF | darhol to'xtash |
+
+`pwr` hodisada boshidan saqlanayotgan edi — ya'ni ESKI kunlar ham hisobotda yangi qoida bilan
+chiqadi (hisob har safar hodisalardan). Kromka hodisasida `manba`/`pwr` yo'q — u o'zgarmadi.
+Agent **1.9.0** hodisani UCHALA holat o'zgarishida yozadi (ilgari faqat `holat` 0/1 o'zgarganda —
+bo'sh turgan stanok o'chirilsa bilinmasdi va o'sha vaqt IDLE bo'lib qolardi). Eski agent bilan
+ham ishlaydi, faqat IDLE → OFF o'tishi ko'rinmaydi.
+
+**Performance:**
+
+```
+ideal vaqt (detal) = har detalga + perimetr (m) × kontur metriga soniya
+perimetr           = 2 × (uzunlik + eni) / 1000         (part.length / part.width)
+Performance        = Σ ideal vaqt (kuzatilgan ish vaqtidagi Rover skanlari) ÷ ishladi
+```
+
+| Qoida | Nega |
+| --- | --- |
+| Manba — shu stanokdagi SKANLAR: chek chiqarish avto-skani (`rvprint-*`, roverda kesiladigan detal) ham, ARRA'dan keyingi oddiy skan ham | birlik — detal; ikkala yo'l ham bitta detal = bitta skan |
+| Ish hajmi — KONTUR uzunligi, perimetr uning pastki bahosi | egri kontur uzunroq — buni `cut_s_per_m` kalibrlashda o'ziga oladi |
+| O'lcham yo'q detal faqat `load_s` oladi | detal ishlangan — Performance'dan tushib qolmasin |
+| Filtr Prisadkadagi bilan bir xil: kuzatilgan ish vaqti, brak bilan bekor qilingan skan ham sanaladi | §4.6, §4.7 dagi sabablar |
+
+Koeffitsiyentlar Tizim sozlamalari → «Ideal sikl» → «Ideal sikl (Rover)» (`GET/PUT
+/settings/ideal-cycle-rover`, kalit `ideal_cycle_rover`). Sukut **TAXMINIY**: `load_s` 20 s,
+`cut_s_per_m` 6 s (10 m/min surish). Tsexda sekundomer bilan 5–10 detal o'lchanib to'g'rilanadi.
+
+**Quality:** Prisadkadagi formula, birlik — detal. Roverda kesiladigan detalning yagona skani
+chek chiqarish avto-skani: ilgari u terminal tasmasiga chiqmasdi (avto-skan banneri ARRA'da
+ataylab yashirilgan), ya'ni unga BRAK belgilab bo'lmasdi. Endi ROVER'da avto-skan tasmaga
+OVOZSIZ va BEKOR QILISH tugmasisiz chiqadi — faqat BRAK uchun (`routes/terminal.tsx`). Chekni
+bekor qilish avvalgidek katak dialogida.
+
+Tekshiruv (bir martalik skript, sof funksiyalar): **21/21** — Rover uch holati, Kromka o'zgarmadi
+(`pwr` begona bo'lsa ham OFF), `_stop_kind`, 9 soatlik smenada 3 daqiqalik pauza sanalmadi,
+30 daqiqalik IDLE va 1 soatlik OFF to'xtash → Availability 83.3% (eski qoida bilan 93 daqiqa
+to'xtash edi), IDLE → OFF ikki alohida downtime yozuvi, ideal vaqt (600×400 → 32 s). Haqiqiy
+`build_machine_time_report` Postgres'da ISHGA TUSHIRILMADI (lokal muhitda Postgres yo'q edi) —
+prodga chiqishdan oldin `scripts/oracles/` naqshida qilinishi kerak.
+
+**Hali yo'q:** agent o'chiq paytni Pico'ning `POWER_ON`/`run_sec` hodisalaridan to'ldirish (§4.13
+dagi cheklov), koeffitsiyentlarning haqiqiy qiymatlari (sekundomer).
+
 ## 5. Prod auditi natijalari (2026-09-16)
 
 Davr: 2026-09-14 09:36 — 2026-09-16 15:16, faqat Prisadka (ish markazi 1, agent v1.5.0, `can_print=false`).
@@ -802,4 +860,4 @@ ya'ni keyingi detal skani ham sanalardi. SQL'da 5 s ga tuzatildi — qayta ishga
 - **Operator ekrani** — o'tgan OEE aynan tugmalar sig'magani uchun qaytarilgan; sabab va brak
   kiritish doimiy tugma emas, kerak paytda chiqadigan oyna.
 - **Talqin** — Pico faqat Prisadka (signal ustuni), Kromka (o'lchov stansiyasi) va ROVER da; to'liq
-  OEE (A·P·Q) faqat Prisadka va Kromkada, ROVER da faqat Availability — bu tsex OEE emas.
+  OEE (A·P·Q) Prisadka, Kromka va ROVER da (2026-10-16 dan, §4.15) — bu tsex OEE emas.
