@@ -137,13 +137,14 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   `oee_start_date` — OEE shu KUNDAN hisoblanadi (ISO sana; bo'sh — butun tarix; `DEFAULTS` da yo'q,
   o'z endpointi bor, chunki umumiy `PUT /{key}` 8 belgi oladi);
   `kromka_tolerance_mm = "3"` (1..50) — kromka o'lchovining dopuski, mm;
-  `kromka_bind_window_s = "20"` (5..600) — o'lchov detal DATCHIKKA KIRGAN lahza atrofidagi
-  shuncha soniyalik oynadan skan qidiradi (2026-09-21 gacha `kromka_bind_minutes` — «oxirgi
+  `kromka_bind_before_s = "60"` va `kromka_bind_window_s = "20"` (5..600) — o'lchov detal DATCHIKKA
+  KIRGAN lahzadan shuncha soniya OLDIN va KEYIN oynadan skan qidiradi (2026-10-16 gacha bitta
+  ±20 s oyna edi) (2026-09-21 gacha `kromka_bind_minutes` — «oxirgi
   skan» modeli, u prodda xato bog'lardi, docs/12 §4.10);
   `kromka_idle_minutes = "10"` (1..240) — kromkada lenta yuryapti-yu shuncha daqiqa detal o'tmasa,
   bo'sh yurish deb sanaladi (`services/andon.split_idle`);
   `PUT /settings/{key}` butun son kalitlarini `INT_RANGES` bo'yicha tekshiradi (ikkala idle 10..1440,
-  stop_prompt 1..120, kromka_idle 1..240, kromka_tolerance_mm 1..50, kromka_bind_window_s 5..600;
+  stop_prompt 1..120, kromka_idle 1..240, kromka_tolerance_mm 1..50, kromka_bind_before_s va kromka_bind_window_s 5..600;
   tashqarisi 422 «Qiymat {min} dan {max} gacha butun son bo'lishi kerak.»). `work_schedule` kaliti — ish jadvali
   JSON'i (`schemas/settings.py: WorkSchedule` — smenalar, tanaffuslar, haftalik dam olish kunlari,
   bayram sanalari); u `DEFAULTS` da YO'Q, o'z endpointi bor (`GET/PUT /settings/work-schedule`),

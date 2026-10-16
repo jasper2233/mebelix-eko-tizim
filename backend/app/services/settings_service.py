@@ -40,6 +40,10 @@ KROMKA_TOLERANCE_MM = "kromka_tolerance_mm"
 #: berardi: detal datchiklar orasida 8–15 soniya yuradi, operator esa 4–10 soniyada
 #: bir marta skanerlaydi — o'lchov keyingi detalning skaniga yopishardi.
 KROMKA_BIND_WINDOW_S = "kromka_bind_window_s"
+#: O'sha oynaning kirishdan OLDINGI qismi, SONIYA (2026-10-16). Yuqoridagi `kromka_bind_window_s`
+#: endi faqat KEYINGI qismi: operator odatda detalni qo'yishdan oldin, ba'zan bir necha detal
+#: oldindan skanerlaydi — stansiya egasining tavsiyasi −60 s … +20 s.
+KROMKA_BIND_BEFORE_S = "kromka_bind_before_s"
 
 #: Butun son sozlamalar va ularning ruxsat etilgan oralig'i — `PUT /settings/{key}` tashqarisini rad etadi.
 INT_RANGES: dict[str, tuple[int, int]] = {
@@ -49,6 +53,7 @@ INT_RANGES: dict[str, tuple[int, int]] = {
     KROMKA_IDLE_MINUTES: (1, 240),
     KROMKA_TOLERANCE_MM: (1, 50),
     KROMKA_BIND_WINDOW_S: (5, 600),
+    KROMKA_BIND_BEFORE_S: (5, 600),
 }
 
 #: Sahifada ko'rsatiladigan sozlamalar va ularning sukut qiymati.
@@ -60,6 +65,7 @@ DEFAULTS: dict[str, str] = {
     KROMKA_IDLE_MINUTES: "10",
     KROMKA_TOLERANCE_MM: "3",
     KROMKA_BIND_WINDOW_S: "20",
+    KROMKA_BIND_BEFORE_S: "60",
 }
 
 #: Ish jadvali (JSON). `DEFAULTS` da YO'Q: umumiy `PUT /settings/{key}` 8 belgilik

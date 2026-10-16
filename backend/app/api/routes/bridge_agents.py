@@ -58,7 +58,12 @@ from app.services.scanning import (
     record_scan_at,
     scan_error,
 )
-from app.services.settings_service import KROMKA_BIND_WINDOW_S, KROMKA_TOLERANCE_MM, get_setting
+from app.services.settings_service import (
+    KROMKA_BIND_BEFORE_S,
+    KROMKA_BIND_WINDOW_S,
+    KROMKA_TOLERANCE_MM,
+    get_setting,
+)
 from app.tasks import agent_revoked_key, print_queue_key
 
 router = APIRouter(prefix="/bridge-agents", tags=["bridge-agents"])
@@ -483,17 +488,24 @@ async def push_andon_events(
         accepted = len(yangi)
         await db.commit()
 
-        # KROMKA o'lchovi: avval DETALGA bog'lanadi (oxirgi skan), so'ng admin
+        # KROMKA o'lchovi: avval DETALGA bog'lanadi (kirish vaqti + o'lcham), so'ng admin
         # paneliga DARHOL uzatiladi — sahifa 30 soniyalik pollni kutmaydi.
         # Faqat YANGI yozuvlar: agent partiyani qayta yuborsa o'lchov ikki marta
         # sanalib, qirra kvotasini bekordan yopib qo'yardi.
         olchovlar = [r for r in rows if r["kind"] == "olchov" and (r["session"], r["seq"]) in yangi]
         if olchovlar:
             tolerance = float(await get_setting(db, KROMKA_TOLERANCE_MM) or 3)
-            window = timedelta(seconds=int(await get_setting(db, KROMKA_BIND_WINDOW_S) or 20))
+            after = timedelta(seconds=int(await get_setting(db, KROMKA_BIND_WINDOW_S) or 20))
+            before = timedelta(seconds=int(await get_setting(db, KROMKA_BIND_BEFORE_S) or 60))
             natijalar = [
                 await bind_measurement(
-                    db, machine_id, row["happened_at"], row["payload"], tolerance_mm=tolerance, window=window
+                    db,
+                    machine_id,
+                    row["happened_at"],
+                    row["payload"],
+                    tolerance_mm=tolerance,
+                    before=before,
+                    after=after,
                 )
                 for row in olchovlar
             ]
