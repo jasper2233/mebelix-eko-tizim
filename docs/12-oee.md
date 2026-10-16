@@ -676,6 +676,7 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `downtime_cleanup_oracle.py` (14/14) | `scripts/downtime_deleted_events.sql` — soxta to'xtashlarni tozalash |
 | `kromka_kirish_oracle.py` (4/4) | §4.10 — kirish `ts − (ish_ms + d2)`, oyna −60 … +20 s, skan darajasida FIFO |
 | `kromka_kal_oracle.py` (8/8) | §4.18 — Pico'dagi joriy kalibrlash agentdan MES gacha (o'zgarganda, takrorsiz) |
+| `availability_range_oracle.py` (7/7) | §4.21 — kunning Availability'si so'ralgan oraliqqa bog'liq emas (eski kodda 2/7) |
 | `kromka_kalib_oracle.py` (28/28) | §4.19 — hisob stansiya JS bilan raqamma-raqam bir xil, ma'lum parametrlar qaytarib topiladi, sessiya o'tishlari skanga bog'lanmaydi; §4.20 — qo'llash server → agent → Pico → tasdiq, chegaralar, qaytarish, muddat |
 | `defect_oracle.py` (8/8) | §4.17 — brak skan vaqti/stanogida, tasdiq bekor qilgan ish sanaladi, Kromka kvotasi |
 | `agent_gap_oracle.py` (8/8) | §4.16 — agent uzilgan payt: Rover Pico yozuvlaridan tiklanadi, Kromka davomiyligi saqlanadi, tokdan qayta yonish kesiladi (eski kodda 2/8) |
@@ -925,6 +926,29 @@ qiymatni aynan qaytardi, `TD`/`AO` o'zgarmadi, `kal.json` yozildi.
 
 **Birinchi qo'llash — tsexda, odam yonida:** qo'llagach 1–2 etalonni qayta o'tkazib Pico o'lchagan
 uzunlikni tekshirish; noto'g'ri bo'lsa «Qaytarish».
+
+### 4.21 Kunning Availability'si oraliqqa bog'liq edi (2026-10-16)
+
+**Xato.** Prisadka Pico'si holat TUGAGANDA hodisa yuboradi; tugamagan oxirgi holat jonli holatdan
+(Redis, agent tirik bo'lsa) qo'shiladi. `report_machine_time` uni faqat `end >= now` bo'lganda
+qo'shardi. Stanok kecha 15:00 dan beri bir holatda tursa (kechasi o'chiq qoldirilgan yoki yoniq),
+«Kecha» so'rovida 15:00 dan keyingi vaqt umuman yo'q — smena oxirigacha ma'lumotsiz (= to'xtash),
+«Kecha + bugun» so'rovida esa o'sha holat sanalardi. Bir kun ikki xil foiz: yoniq qolgan stanokda
+75% va 100%. Holat tugashi bilan (hodisa kelgach) farq yo'qolardi, ya'ni xato faqat tugamagan holat
+bor paytda — kechasi va dam olish kunlari — ko'rinardi. Haqiqiy bazada tasdiqlangan.
+
+**Tuzatish.** Tugamagan holat har doim olinadi (agent tirik va jonli holat oxirgi hodisaga mos
+bo'lsa — eski shart o'zgarmadi), oraliqdan keyin boshlangani bundan mustasno. Kesish allaqachon
+`machine_time` da edi: oraliq `min(end, now)` da to'xtaydi. Agent o'lik bo'lsa tugamagan holat
+ishonchsiz — avvalgidek qo'shilmaydi, vaqt ma'lumotsiz qoladi.
+
+**Ma'lum mayda xususiyat (o'zgartirilmadi):** oraliq oxiri `time.max` (23:59:59.999999), soniyalar
+butunga kesiladi — oraliq chegarasidan o'tgan holat trekda 1 s qisqa. Availability'ga ta'siri yo'q.
+
+Tekshiruv — `scripts/oracles/availability_range_oracle.py` **7/7** (eski kodda **2/7**): yoniq qolgan
+stanok kecha ikkala so'rovda 100%, o'chiq qolgani 75% va trekda OFF 15:00–24:00, agenti o'lik stanok
+ikkala so'rovda 75% (qo'shilmaydi). `oee` 31, `rover_oee` 19, `rover` 25, `agent_gap` 8,
+`tablo_machines` 29, `defect` 8, `downtime_cleanup` 14, `kromka_bind` 23 o'zgarmadi.
 
 ## 5. Prod auditi natijalari (2026-09-16)
 
