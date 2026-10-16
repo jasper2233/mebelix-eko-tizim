@@ -65,7 +65,18 @@ from app.schemas.reports import (
     TrendDay,
 )
 from app.schemas.settings import IdealCycleRover
-from app.services.andon import ANDON_STATES, andon_spans, machine_time, read_live, split_idle, uskuna_spans
+from app.services.andon import (
+    ANDON_STATES,
+    AndonSpan,
+    andon_spans,
+    cut_spans,
+    kromka_power_gaps,
+    machine_time,
+    read_live,
+    rover_spans,
+    split_idle,
+    uskuna_spans,
+)
 from app.services.availability import Availability, DayTotals, StopRun, availability, inside, plan_windows
 from app.services.excel import xlsx_response
 from app.services.metrics import VolumeShare, part_volume
@@ -255,6 +266,100 @@ async def report_machine_time(
     return _machine_time_xlsx(report) if format == "xlsx" else report
 
 
+async def uskuna_machine_spans(
+    db: AsyncSession, start: datetime, end: datetime, now: datetime, faqat: ColumnElement[bool]
+) -> list[AndonSpan]:
+    """KROMKA va ROVER holat oraliqlari (`uskuna` — RUN kirishi; chiroq yo'q, davomiylikni
+    hodisalar orasidan quramiz). Oxirgi oraliq faqat agent hozir aloqada bo'lsa ochiq qoladi.
+
+    - ROVER: `andon.rover_spans` — agent hodisalari faqat bitta ulanish ichida davom etadi,
+      ulanishlar orasidagi vaqt Pico'ning fleshdagi davrlaridan (POWER_ON, POWER_CYCLE,
+      SPINDLE_IDLE ...) va qayta ulanishdagi `on_sec`/`idle_sec` dan tiklanadi.
+    - KROMKA: Pico agent uzilsa hodisalarni RAM da saqlaydi — davomiylik to'g'ri; faqat tok
+      uzilib qayta yonganda (`andon.kromka_power_gaps`) oxirgi hodisadan yonishgacha noma'lum.
+      Lenta yuryapti-yu detal o'tmagan qism — BO'SH YURISH (`split_idle`)."""
+    lo, hi = start - _ANDON_TAIL, end + _ANDON_TAIL
+    rows = (
+        (
+            await db.execute(
+                select(
+                    AndonEvent.machine_id,
+                    AndonEvent.kind,
+                    AndonEvent.payload,
+                    AndonEvent.happened_at,
+                    AndonEvent.session,
+                )
+                .where(
+                    AndonEvent.kind.in_(("uskuna", "rover", "boot")),
+                    AndonEvent.is_deleted == False,  # noqa: E712
+                    # Oraliqdan OLDINGI oxirgi hodisa ham kerak: u oraliq boshidagi
+                    # holatni belgilaydi (stanok kecha yoqilgan bo'lsa bugun ham ishlayapti).
+                    AndonEvent.happened_at >= lo,
+                    AndonEvent.happened_at <= hi,
+                    faqat,
+                )
+                .order_by(AndonEvent.happened_at, AndonEvent.id)
+            )
+        )
+        .tuples()
+        .all()
+    )
+    rover_mids = {mid for mid, kind, p, _at, _s in rows if kind == "rover" or (p or {}).get("manba") == "rover"}
+    uskuna = [(mid, p or {}, at, s) for mid, kind, p, at, s in rows if kind == "uskuna"]
+    tirik = set(await read_live({mid for mid, *_ in uskuna} | rover_mids)) if uskuna or rover_mids else set()
+    spans = rover_spans(
+        [u for u in uskuna if u[0] in rover_mids],
+        [(mid, p or {}) for mid, kind, p, _at, _s in rows if kind == "rover" and mid in rover_mids],
+        tirik & rover_mids,
+        now,
+    )
+    kromka = uskuna_spans([(mid, p, at) for mid, p, at, _s in uskuna if mid not in rover_mids], tirik)
+    if not kromka:
+        return spans
+    kromka_mids = {sp.machine_id for sp in kromka}
+    boots = [(mid, p or {}, at) for mid, kind, p, at, _s in rows if kind == "boot" and mid in kromka_mids]
+    last_before: dict[tuple[int, datetime], datetime] = {}
+    for mid, _p, at in boots:
+        oldingi = (
+            await db.execute(
+                select(func.max(AndonEvent.happened_at)).where(
+                    AndonEvent.machine_id == mid,
+                    AndonEvent.is_deleted == False,  # noqa: E712
+                    AndonEvent.happened_at < at,
+                    AndonEvent.happened_at >= at - _ANDON_TAIL,
+                )
+            )
+        ).scalar()
+        if oldingi is not None:
+            last_before[(mid, at)] = oldingi
+    kromka = cut_spans(kromka, kromka_power_gaps(boots, last_before), now)
+    # Lenta yuryapti, lekin uzoq vaqt detal o'tmagan qismi — BO'SH YURISH (`IDLE`):
+    # u «ishladi» ga kirmasligi kerak (`services/andon.split_idle`). Yo'qotish shu bilan
+    # Availability'ga ko'chadi, Performance maxraji (`run_s`) esa qisqaradi — ya'ni
+    # bitta yo'qotish ikki marta jazolanmaydi.
+    olchov_vaqtlari: dict[int, list[datetime]] = {}
+    for olchov_mid, olchov_at in (
+        (
+            await db.execute(
+                select(AndonEvent.machine_id, AndonEvent.happened_at)
+                .where(
+                    AndonEvent.kind == "olchov",
+                    AndonEvent.is_deleted == False,  # noqa: E712
+                    AndonEvent.machine_id.in_(kromka_mids),
+                    AndonEvent.happened_at >= lo,
+                    AndonEvent.happened_at <= hi,
+                )
+                .order_by(AndonEvent.happened_at)
+            )
+        )
+        .tuples()
+        .all()
+    ):
+        olchov_vaqtlari.setdefault(olchov_mid, []).append(olchov_at)
+    kromka_gap = timedelta(minutes=int(await get_setting(db, KROMKA_IDLE_MINUTES)))
+    return spans + split_idle(kromka, olchov_vaqtlari, kromka_gap, now)
+
+
 async def _rover_parts(
     db: AsyncSession,
     rover_ids: set[int],
@@ -382,57 +487,7 @@ async def build_machine_time_report(
             if state is not None and live.get(mid, {}).get("state") == state
         }
 
-    # KROMKA stansiyasi: u chiroq emas, RUN kirishini yuboradi (`uskuna`) va holat
-    # davomiyligini o'lchamaydi — oraliqlar hodisalar orasidan quriladi. Oxirgi
-    # oraliq faqat agent hozir aloqada bo'lsa ochiq qoladi (`services/andon.py`).
-    uskuna_rows = (
-        (
-            await db.execute(
-                select(AndonEvent.machine_id, AndonEvent.payload, AndonEvent.happened_at)
-                .where(
-                    AndonEvent.kind == "uskuna",
-                    AndonEvent.is_deleted == False,  # noqa: E712
-                    # Oraliqdan OLDINGI oxirgi hodisa ham kerak: u oraliq boshidagi
-                    # holatni belgilaydi (stanok kecha yoqilgan bo'lsa bugun ham ishlayapti).
-                    AndonEvent.happened_at >= start - _ANDON_TAIL,
-                    AndonEvent.happened_at <= end + _ANDON_TAIL,
-                    faqat(AndonEvent.machine_id),
-                )
-                .order_by(AndonEvent.happened_at, AndonEvent.id)
-            )
-        )
-        .tuples()
-        .all()
-    )
-    tirik = set(await read_live({mid for mid, _p, _at in uskuna_rows})) if uskuna_rows else set()
-    kromka_spans = uskuna_spans(uskuna_rows, tirik)
-    if kromka_spans:
-        # Lenta yuryapti, lekin uzoq vaqt detal o'tmagan qismi — BO'SH YURISH (`IDLE`):
-        # u «ishladi» ga kirmasligi kerak (`services/andon.split_idle`). Yo'qotish shu bilan
-        # Availability'ga ko'chadi, Performance maxraji (`run_s`) esa qisqaradi — ya'ni
-        # bitta yo'qotish ikki marta jazolanmaydi.
-        olchov_vaqtlari: dict[int, list[datetime]] = {}
-        for olchov_mid, olchov_at in (
-            (
-                await db.execute(
-                    select(AndonEvent.machine_id, AndonEvent.happened_at)
-                    .where(
-                        AndonEvent.kind == "olchov",
-                        AndonEvent.is_deleted == False,  # noqa: E712
-                        AndonEvent.machine_id.in_({sp.machine_id for sp in kromka_spans}),
-                        AndonEvent.happened_at >= start - _ANDON_TAIL,
-                        AndonEvent.happened_at <= end + _ANDON_TAIL,
-                    )
-                    .order_by(AndonEvent.happened_at)
-                )
-            )
-            .tuples()
-            .all()
-        ):
-            olchov_vaqtlari.setdefault(olchov_mid, []).append(olchov_at)
-        kromka_gap = timedelta(minutes=int(await get_setting(db, KROMKA_IDLE_MINUTES)))
-        kromka_spans = split_idle(kromka_spans, olchov_vaqtlari, kromka_gap, now)
-    spans = andon_spans(events, ongoing) + kromka_spans
+    spans = andon_spans(events, ongoing) + await uskuna_machine_spans(db, start, end, now, faqat(AndonEvent.machine_id))
     result = machine_time(spans, start, end, now)
 
     # OEE Availability: ish jadvali + to'xtashlar. Signal ustuni ulangan HAR ish markazi kiradi —

@@ -29,7 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AndonEvent, Downtime
 from app.models.enums import DowntimeKind
-from app.services.andon import split_idle, uskuna_spans, uskuna_state
+from app.services.andon import rover_facts, split_idle, uskuna_spans, uskuna_state
 from app.services.settings_service import KROMKA_IDLE_MINUTES, STOP_PROMPT_IDLE_MINUTES, get_setting
 
 #: Pico holati -> to'xtash turi. Qolgan holatlar (PROCESSING, AWAIT_PART, BOOT ...) — stanok ishlayapti.
@@ -141,6 +141,67 @@ async def _bosh_yurish(
     ]
 
 
+#: Pico va agent bitta to'xtashni bir necha soniya farq bilan ko'radi (agent 10 s da so'raydi,
+#: Pico RUN tushishini 30 s birlashtiradi) — shu oraliqda boshlangan yozuv o'sha to'xtash.
+_ROVER_MOS = timedelta(seconds=60)
+
+
+async def _rover_pico(
+    db: AsyncSession, machine_id: int, since: datetime, threshold: timedelta, stops: list[_Run]
+) -> list[_Run]:
+    """ROVER: agent KO'RMAGAN to'xtashlar — Pico'ning fleshdagi yopiq davrlaridan.
+
+    Agent uzilgan paytda shpindel to'xtashi va stanok o'chirilishi agentning `uskuna`
+    zanjirida yo'q, Pico esa ularni aniq vaqt bilan saqlab, qaytgach yuboradi
+    (`SPINDLE_IDLE`/`UNPLANNED_STOP`/`AUTO_SHUTDOWN` → IDLE, `POWER_CYCLE` → OFF). Agent o'zi
+    ko'rgan to'xtash IKKINCHI marta yozilmaydi: o'sha turdagi yozuv (yoki shu sinxrondagi agent
+    oralig'i) Pico davri bilan ustma-ust tushsa — o'tkazib yuboriladi; agent uni ulanish
+    almashganda nol uzunlikda yopib qo'ygan bo'lsa — tugashi Pico'nikiga cho'ziladi.
+
+    Kalit `rv-{seq}` — Pico raqami, qayta hisobda o'zgarmaydi."""
+    rows = (
+        await db.execute(
+            select(AndonEvent.seq, AndonEvent.payload).where(
+                AndonEvent.machine_id == machine_id,
+                AndonEvent.kind == "rover",
+                AndonEvent.is_deleted == False,  # noqa: E712
+                AndonEvent.happened_at >= since,
+            )
+        )
+    ).all()
+    out: list[_Run] = []
+    for seq, payload in rows:
+        fact = rover_facts(payload or {})
+        if fact is None or fact[0] == "ON" or fact[2] - fact[1] < threshold:
+            continue
+        label, a, b = fact
+        kind = DowntimeKind.OFF if label == "OFF" else DowntimeKind.IDLE
+        if any(
+            r.kind == kind and r.start <= b + _ROVER_MOS and (r.end is None or r.end >= a - _ROVER_MOS) for r in stops
+        ):
+            continue
+        agent_row = (
+            await db.execute(
+                select(Downtime)
+                .where(
+                    Downtime.machine_id == machine_id,
+                    Downtime.kind == kind,
+                    Downtime.is_deleted == False,  # noqa: E712
+                    Downtime.start_key != f"rv-{seq}",
+                    Downtime.started_at <= b + _ROVER_MOS,
+                    (Downtime.ended_at.is_(None)) | (Downtime.ended_at >= a - _ROVER_MOS),
+                )
+                .limit(1)
+            )
+        ).scalar()
+        if agent_row is not None:
+            if agent_row.ended_at is not None and agent_row.ended_at == agent_row.started_at:
+                agent_row.ended_at = b
+            continue
+        out.append(_Run(kind=kind, key=f"rv-{seq}", session="", start=a, end=b))
+    return out
+
+
 async def sync_machine(db: AsyncSession, machine_id: int, now: datetime) -> None:
     """Ish markazining Pico to'xtashlarini `downtime` jadvaliga yozadi yoki yangilaydi. Commit chaqiruvchida."""
     earliest_open = (
@@ -195,6 +256,7 @@ async def sync_machine(db: AsyncSession, machine_id: int, now: datetime) -> None
     threshold = timedelta(minutes=int(await get_setting(db, STOP_PROMPT_IDLE_MINUTES)))
     stops = _runs(events)
     bosh = await _bosh_yurish(db, machine_id, events, since, now)
+    bosh += await _rover_pico(db, machine_id, since, threshold, stops)
     if not stops and not bosh:
         return
 
