@@ -8,6 +8,7 @@ import {
   useNavigate,
   useRouterState,
 } from "@tanstack/react-router"
+import { useEffect } from "react"
 import { toast } from "sonner"
 
 import { MX_PATH, MX_VIEWBOX } from "@/components/Common/BrandLoader"
@@ -86,6 +87,23 @@ function Layout() {
 
   // Harakatsizlikdan keyin login sahifasiga (chegara — Tizim sozlamalarida)
   useIdleLogout()
+
+  // Mahsulotlar ombori ichida (docs/14 §9): F2 — sotuv, F4 — kirim — har ombor sahifasida,
+  // shartnoma va tasdiqlangan hujjat ko'rinishida ham (saqlanmagan ish brauzerda turadi)
+  const navigateHot = useNavigate()
+  useEffect(() => {
+    if (!pathname.startsWith("/warehouse")) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "F2" && e.key !== "F4") return
+      e.preventDefault()
+      navigateHot({
+        to: "/warehouse/doc",
+        search: { turi: e.key === "F2" ? "chiqim" : "kirim" },
+      })
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [pathname, navigateHot])
 
   // Jonli xabar (butun admin qobig'i uchun): tsex buyurtmani tugatganda manager
   // qaysi sahifada bo'lmasin toast + «Ochish». Har qanday `order.*` hodisasida

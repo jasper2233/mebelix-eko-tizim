@@ -292,3 +292,65 @@ dollar narxi va kurs, sinf narxi (bitta, ko'plab, narx o'zgarganda hammasi), fur
 berilmaydi, zaxira faqat materialda, kod berish (yangi model, variant, o'chirilgan kod qayta
 berilmaydi), xizmatda qoldiq yo'q, noma'lum guruh 404, import hammasi-yoki-hech-biri, ABC, importer
 narxni qayta yozmaydi. `catalog_oracle` 36/36 (holat endi omborniki — tekshiruv shunga moslandi).
+
+## 9. 2-bosqich: Kirim va Sotuv hujjatlari, FIFO, Hujjatlar (2026-10-16)
+
+### 9.1 Jadvallar (`a5d9e3c71f28`)
+
+| Jadval | Nima |
+|---|---|
+| `stock_doc` | Hujjat: `no` (`KIR-2026-0148` / `CHQ-2026-0393`, turi va yili bo'yicha ketma-ket, unikal), `kind` (`kirim`/`chiqim`), `status` (`draft`/`confirmed`), `doc_date`, `head` JSONB (dizayndagi bosh maydonlar o'z nomi bilan: kirimda `supplier`, `phone`, `note`, `invoice`, `receiver`, `rate`, `due`; sotuvda `client`, `phone`, `addr`, `order`, `seller`, `due`), `rate` (kirim kursi — tasdiqda qotadi), `total` (so'm), `cogs` (sotuvning FIFO tannarxi), kim va qachon tasdiqlagan |
+| `stock_doc_line` | Qator: `item_id` (qoralamada bo'sh bo'lishi mumkin — nom yozilgan, tanlanmagan), `name`, `qty`, `price` (kirimda $, sotuvda so'm), `discount`, `note`, `cost` (sotuv qatorining FIFO tannarxi) |
+| `stock_lot` | FIFO partiyasi: `qty` / `qty_left`, `unit_cost` (so'm), `usd`, `rate`, `source` (kirim raqami / `Boshlang'ich` / `Tuzatish`); qisman indeks `ix_stock_lot_open (item_id, received_on, id) WHERE qty_left > 0` |
+| `stock_movement` | Har qoldiq o'zgarishining izi: `kind` (`kirim`/`chiqim`/`tuzatish`), ishorali `qty`, keyingi `balance`, `amount`, `note`, hujjat va foydalanuvchi |
+
+Nomlar ATAYLAB `stock_move`/`stock_item` emas — o'sha nomdagi eski bo'sh jadvallar prodda yotibdi (`LEGACY_TABLES`).
+
+### 9.2 Qoidalar (`backend/app/services/stock.py`) — dizayndagi `confirmDoc` / `consume` / `lotsOf`
+
+- **Qoralama** qoldiqqa ta'sir qilmaydi, tahrirlanadi va o'chiriladi. **Tasdiqlangan** hujjat
+  QULFLANGAN: o'zgarmaydi, o'chmaydi.
+- Tasdiqlash bitta tranzaksiya; rad etilsa hech narsa yozilmaydi. Rad sabablari (o'zbekcha, « · »
+  bilan): yetkazib beruvchi / mijoz kiritilmagan; qator yo'q; «N-qator: «…» nomenklaturada yo'q —
+  ro'yxatdan tanlang»; «soni kiritilmagan»; «xizmat kirim qilinmaydi»; sotuvda
+  «{nom}: N {birlik} kerak, omborda M bor» (pozitsiya bo'yicha JAMI — ikki qatorda bo'lsa ham).
+- Pozitsiyalar tasdiqda `FOR UPDATE` bilan qulflanadi — ikki sotuvchi bir vaqtda oxirgi qoldiqni sotolmaydi.
+- **Kirim** (narx $): partiya tannarxi `round($ × kurs)` (kurs hujjatdagi, bo'lmasa Boshqaruv panelidagi);
+  pozitsiyaning `purchase_usd`/`purchase_price` yangilanadi va furniturada ustamali sotuv qayta
+  hisoblanadi; jami = `Σ soni × $ × kurs`.
+- **Sotuv**: ENG ESKI partiyadan (FIFO) olinadi; qator va hujjat tannarxi yoziladi; foyda = jami − tannarx.
+  Xizmat summaga kiradi, omborga ta'sir qilmaydi.
+- **Boshlang'ich partiya**: 1-bosqichdan qolgan qoldiq (partiyasiz) birinchi harakatda «Boshlang'ich»
+  partiya bo'ladi — tannarxi o'sha paytdagi xarid narxi, sanasi pozitsiya yaratilgan kun (FIFO da doim
+  birinchi). Kartochkada u harakatdan OLDIN ham ko'rinadi (bazaga yozilmasdan).
+- **Qo'lda tuzatish** (kartochkadagi «Qoldiq (tuzatish)» — `PATCH /catalog/items/{id}` `quantity`): ortiqchasi —
+  yangi partiya (xarid narxida), kami — FIFO bo'yicha chiqim; ikkalasi ham `tuzatish` harakati. 3-bosqichdagi
+  Inventarizatsiya shu yo'lni hujjat bilan qiladi.
+
+### 9.3 Sahifalar
+
+- `/warehouse/doc?turi=chiqim|kirim` — **Sotuv / Kirim listi**: bosh qism (mijoz yoki yetkazib beruvchi +
+  buyurtma/hujjat), qatorlar, M/F/X bo'yicha jami (sotuvda), $ va so'mdagi jami (kirimda), «Tozalash»,
+  «Saqlash (Ctrl+S)» — qoralama, «Tasdiqlash (F9)». Klaviatura oqimi dizayndagidek: nom → takliflar (kod,
+  nom, dekor, artikul; ↑↓, Enter yoki Tab) → soni (fokus DARHOL o'tadi — skanerning keyingi belgisi nom
+  maydoniga tushmasin, lokal sinovda topilgan) → Enter → keyingi qator; qator ostida «omborda 15 → 12»,
+  yetmasa qizil. «Excel'dan yuklash» — kod (yoki to'liq nom) + soni ustunlari. Sotuvda «Shartnoma» — oldingi
+  `/sotuv` dagi chop etiladigan shartnoma (huquqiy matn o'zgarmagan, `Warehouse/Shartnoma.tsx`).
+  Saqlanmagan ish brauzerda (`mebelix.ombor.hujjat.<tur>`). Tasdiqlangach — toast (summa, FIFO tannarx,
+  foyda) va yangi bo'sh list. `?id=` — qoralamani davom ettirish yoki tasdiqlanganni ko'rish (qulflangan).
+  `?add=KOD` — kartochkadagi «Kirimga / Sotuv listiga qo'shish».
+- `/warehouse/docs` — **Hujjatlar**: qoralamalar (o'chirish mumkin) va tasdiqlanganlar (summa, foyda),
+  «Hujjatlarni / Harakatlarni Excel'ga chiqarish».
+- Kartochka — **Partiyalar (FIFO)** (keyingi chiqim narxi, qoldiq qiymati) va **Harakat tarixi** (hujjatga havola).
+- `F2` / `F4` — har ombor sahifasida yangi sotuv / kirim (`routes/_layout.tsx`); menyuda «Sotuv (chiqim) · F2»,
+  «Kirim · F4», «Hujjatlar».
+- `/sotuv` — eski manzil, yangi Sotuv hujjatiga yo'naltiradi. Brauzerda saqlangan eski listlar
+  (`mebelix.sotuv-listi.v1`) ko'chirilmadi — ular bazaga hech qachon yozilmagan edi.
+
+Tekshiruv — `scripts/oracles/ombor_hujjat_oracle.py` **21/21**: partiyasiz qoldiq «Boshlang'ich» bo'lib
+ko'rinadi; qoralama qoldiqqa ta'sir qilmaydi; sotuv 10 × 5 100 − 1 000 + xizmat = 56 000, tannarx 36 600;
+kirim $0.30 × 12 800 → partiya 3 840, xarid 3 840, sotuv 5 400 (40% ustama); FIFO 97 × 3 660 + 3 × 3 840 =
+366 540; rad etishlar (qoldiqdan ko'p, mijozsiz, nomenklaturada yo'q, xizmat kirimi, soni yo'q, ikki qator
+jami); tasdiqlangan hujjat o'zgarmaydi va o'chmaydi; qoralama o'chadi; qo'lda tuzatish +3/−5 partiya va
+harakat bilan; partiyalar yig'indisi = qoldiq. Brauzerda (lokal): sotuv klaviatura bilan kiritilib F9 bilan
+tasdiqlandi (16 200, foyda 4 680), kartochka tarixi, shartnoma, F4.

@@ -34,6 +34,8 @@ import { Route as LayoutCutmapOrderIdRouteImport } from './routes/_layout/cutmap
 import { Route as LayoutOrdersIndexRouteImport } from './routes/_layout/orders/index'
 import { Route as LayoutOrdersOrderIdRouteImport } from './routes/_layout/orders/$orderId'
 import { Route as LayoutWarehouseIndexRouteImport } from './routes/_layout/warehouse/index'
+import { Route as LayoutWarehouseDocRouteImport } from './routes/_layout/warehouse/doc'
+import { Route as LayoutWarehouseDocsRouteImport } from './routes/_layout/warehouse/docs'
 import { Route as LayoutWarehousePanelRouteImport } from './routes/_layout/warehouse/panel'
 import { Route as LayoutWarehouseItemCodeRouteImport } from './routes/_layout/warehouse/item.$code'
 
@@ -161,6 +163,16 @@ const LayoutWarehouseIndexRoute = LayoutWarehouseIndexRouteImport.update({
   path: '/warehouse/',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutWarehouseDocRoute = LayoutWarehouseDocRouteImport.update({
+  id: '/warehouse/doc',
+  path: '/warehouse/doc',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutWarehouseDocsRoute = LayoutWarehouseDocsRouteImport.update({
+  id: '/warehouse/docs',
+  path: '/warehouse/docs',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutWarehousePanelRoute = LayoutWarehousePanelRouteImport.update({
   id: '/warehouse/panel',
   path: '/warehouse/panel',
@@ -195,6 +207,8 @@ export interface FileRoutesByFullPath {
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
+  '/warehouse/doc': typeof LayoutWarehouseDocRoute
+  '/warehouse/docs': typeof LayoutWarehouseDocsRoute
   '/warehouse/panel': typeof LayoutWarehousePanelRoute
   '/orders/': typeof LayoutOrdersIndexRoute
   '/warehouse/': typeof LayoutWarehouseIndexRoute
@@ -223,6 +237,8 @@ export interface FileRoutesByTo {
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
+  '/warehouse/doc': typeof LayoutWarehouseDocRoute
+  '/warehouse/docs': typeof LayoutWarehouseDocsRoute
   '/warehouse/panel': typeof LayoutWarehousePanelRoute
   '/orders': typeof LayoutOrdersIndexRoute
   '/warehouse': typeof LayoutWarehouseIndexRoute
@@ -253,6 +269,8 @@ export interface FileRoutesById {
   '/_layout/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/_layout/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/_layout/orders/$orderId': typeof LayoutOrdersOrderIdRoute
+  '/_layout/warehouse/doc': typeof LayoutWarehouseDocRoute
+  '/_layout/warehouse/docs': typeof LayoutWarehouseDocsRoute
   '/_layout/warehouse/panel': typeof LayoutWarehousePanelRoute
   '/_layout/orders/': typeof LayoutOrdersIndexRoute
   '/_layout/warehouse/': typeof LayoutWarehouseIndexRoute
@@ -283,6 +301,8 @@ export interface FileRouteTypes {
     | '/anketa/$orderId'
     | '/cutmap/$orderId'
     | '/orders/$orderId'
+    | '/warehouse/doc'
+    | '/warehouse/docs'
     | '/warehouse/panel'
     | '/orders/'
     | '/warehouse/'
@@ -311,6 +331,8 @@ export interface FileRouteTypes {
     | '/anketa/$orderId'
     | '/cutmap/$orderId'
     | '/orders/$orderId'
+    | '/warehouse/doc'
+    | '/warehouse/docs'
     | '/warehouse/panel'
     | '/orders'
     | '/warehouse'
@@ -340,6 +362,8 @@ export interface FileRouteTypes {
     | '/_layout/anketa/$orderId'
     | '/_layout/cutmap/$orderId'
     | '/_layout/orders/$orderId'
+    | '/_layout/warehouse/doc'
+    | '/_layout/warehouse/docs'
     | '/_layout/warehouse/panel'
     | '/_layout/orders/'
     | '/_layout/warehouse/'
@@ -532,6 +556,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutWarehouseIndexRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/warehouse/doc': {
+      id: '/_layout/warehouse/doc'
+      path: '/warehouse/doc'
+      fullPath: '/warehouse/doc'
+      preLoaderRoute: typeof LayoutWarehouseDocRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/warehouse/docs': {
+      id: '/_layout/warehouse/docs'
+      path: '/warehouse/docs'
+      fullPath: '/warehouse/docs'
+      preLoaderRoute: typeof LayoutWarehouseDocsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/warehouse/panel': {
       id: '/_layout/warehouse/panel'
       path: '/warehouse/panel'
@@ -567,6 +605,8 @@ interface LayoutRouteChildren {
   LayoutAnketaOrderIdRoute: typeof LayoutAnketaOrderIdRoute
   LayoutCutmapOrderIdRoute: typeof LayoutCutmapOrderIdRoute
   LayoutOrdersOrderIdRoute: typeof LayoutOrdersOrderIdRoute
+  LayoutWarehouseDocRoute: typeof LayoutWarehouseDocRoute
+  LayoutWarehouseDocsRoute: typeof LayoutWarehouseDocsRoute
   LayoutWarehousePanelRoute: typeof LayoutWarehousePanelRoute
   LayoutOrdersIndexRoute: typeof LayoutOrdersIndexRoute
   LayoutWarehouseIndexRoute: typeof LayoutWarehouseIndexRoute
@@ -591,6 +631,8 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAnketaOrderIdRoute: LayoutAnketaOrderIdRoute,
   LayoutCutmapOrderIdRoute: LayoutCutmapOrderIdRoute,
   LayoutOrdersOrderIdRoute: LayoutOrdersOrderIdRoute,
+  LayoutWarehouseDocRoute: LayoutWarehouseDocRoute,
+  LayoutWarehouseDocsRoute: LayoutWarehouseDocsRoute,
   LayoutWarehousePanelRoute: LayoutWarehousePanelRoute,
   LayoutOrdersIndexRoute: LayoutOrdersIndexRoute,
   LayoutWarehouseIndexRoute: LayoutWarehouseIndexRoute,

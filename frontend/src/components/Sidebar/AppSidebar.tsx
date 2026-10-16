@@ -6,7 +6,9 @@ import {
   Bolt,
   Boxes,
   ClipboardList,
+  Download,
   Factory,
+  FileText,
   Gauge,
   Hammer,
   Home,
@@ -18,6 +20,7 @@ import {
   SlidersHorizontal,
   TriangleAlert,
   Tv,
+  Upload,
   UserRound,
 } from "lucide-react"
 import type { UserRead } from "@/client"
@@ -108,6 +111,30 @@ export const NAV_ITEMS: (Item & {
             ? p.slice(16, 17) === harf
             : p === "/warehouse" && katalogOf(s) === harf,
       })),
+      // Hujjatlar (docs/14 §9): F2 — sotuv, F4 — kirim (tugmalar `routes/_layout.tsx` da)
+      {
+        icon: Upload,
+        title: "Sotuv (chiqim) · F2",
+        path: "/warehouse/doc",
+        search: { turi: "chiqim" },
+        match: (s: Record<string, unknown>, p: string) =>
+          p === "/warehouse/doc" && s.turi !== "kirim",
+      },
+      {
+        icon: Download,
+        title: "Kirim · F4",
+        path: "/warehouse/doc",
+        search: { turi: "kirim" },
+        match: (s: Record<string, unknown>, p: string) =>
+          p === "/warehouse/doc" && s.turi === "kirim",
+      },
+      {
+        icon: FileText,
+        title: "Hujjatlar",
+        path: "/warehouse/docs",
+        match: (_s: Record<string, unknown>, p: string) =>
+          p === "/warehouse/docs",
+      },
     ],
   },
   { icon: UserRound, title: "Mijozlar", path: "/clients", show: isManagement },

@@ -25,6 +25,7 @@ from .pachka import Pachka, PachkaItem
 from .post import Post
 from .scan import Scan, WorkSession
 from .setting import SystemSetting
+from .stock import StockDoc, StockDocLine, StockLot, StockMovement
 from .terminal_device import TerminalDevice
 from .user import User
 
@@ -57,6 +58,10 @@ __all__ = [
     "Post",
     "Product",
     "Scan",
+    "StockDoc",
+    "StockDocLine",
+    "StockLot",
+    "StockMovement",
     "SystemSetting",
     "TerminalDevice",
     "User",

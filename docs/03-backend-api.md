@@ -31,12 +31,13 @@ Bu hujjat MebeliX MES backend'ining HTTP API qatlamini tavsiflaydi: router ierar
         ├── /catalog/*      ← catalog.py   │
         ├── /reports/*      ← reports.py   │
         ├── /kromka-kalib/* ← kromka_kalib.py (Kromka kalibrlash sessiyasi, AdminUser)
+        ├── /stock/*        ← stock.py     (ombor hujjatlari va FIFO, docs/14 §9)
         ├── /system/*       ← system.py    ┘  («Tizim holati» — endpoint ichida AdminUser)
         ├── /bridge-agents/*← bridge_agents.py (router darajasida auth YO'Q — /pair ochiq, admin endpointlar o'zini himoyalaydi)
         └── /ws/*           ← ws.py        (router darajasida auth YO'Q — auth endpoint ichida)
 ```
 
-Jami 27 router: 3 ta ochiq (`health`, `login`, `public`), 22 tasi `get_current_user` ortida, `bridge_agents` va `ws` esa router darajasida himoyalanmaydi — autentifikatsiyani endpointlar o'zi bajaradi (WebSocket'da HTTP dependency ishlamaydi, `/bridge-agents/pair` esa sessiyasiz agent uchun ochiq bo'lishi shart).
+Jami 28 router: 3 ta ochiq (`health`, `login`, `public`), 23 tasi `get_current_user` ortida, `bridge_agents` va `ws` esa router darajasida himoyalanmaydi — autentifikatsiyani endpointlar o'zi bajaradi (WebSocket'da HTTP dependency ishlamaydi, `/bridge-agents/pair` esa sessiyasiz agent uchun ochiq bo'lishi shart).
 
 Autentifikatsiya modeli: JWT access + refresh token juftligi, ikkalasi ham `httpOnly` cookie sifatida o'rnatiladi; qo'shimcha ravishda `Authorization: Bearer` header ham qabul qilinadi (header cookie'dan ustun). Token bekor qilishning IKKI darajasi bor. (1) **Chiqish — faqat shu qurilma**: `logout` joriy refresh tokenning `jti` sini Redis'dagi `auth:refresh:used:` tombstone'iga qo'yadi va cookie'larni tozalaydi; boshqa qurilmalardagi sessiyalarga tegilmaydi (ilgari bu yerda ham `token_version` oshirilardi — monoblokdan chiqqan admin noutbukdagi ishidan ham uchib tushardi; sanoat amaliyotida chiqish joriy sessiyani yopadi). (2) **Global bekor qilish** — `token_version` oshirilishi, u BARCHA qurilmadagi access va refresh tokenlarni birdan o'ldiradi va faqat jiddiy holatlarda ishlatiladi: parol almashtirilganda (`users.py`, o'z paroli ham, admin boshqasinikini almashtirganda ham) va refresh token qayta ishlatilganda (o'g'irlanish belgisi, `login.py`). Alohida «hamma qurilmadan chiqish» tugmasi ATAYLAB yo'q: u kerak bo'ladigan yagona jiddiy holat — token o'g'irlangani — parolni almashtirish bilan yopiladi.
 
@@ -311,6 +312,21 @@ kalibrlashni hisoblash (docs/12 §4.19) va uni Pico'ga qo'llash/qaytarish (§4.2
 | GET | `/api/v1/kromka-kalib/{session_id}` | `AdminUser` | `KalibDetail`: nuqtalar (`olchov` hodisalari, etalon bo'lak bo'yicha), `result` (`services/kromka_kalib.hisobla`), `current` (Pico'dagi oxirgi `kal`), `applies` (shu stanokning oxirgi 10 qo'llashi, `KalApplyRow`: `status` — `kutilmoqda`/`tasdiqlandi`/`javobsiz`, `line` — aynan `SET` qatori) |
 | POST | `/api/v1/kromka-kalib/{session_id}/apply` | `AdminUser` | **Pico'ga qo'llash** (§4.20): faqat TUGAGAN sessiya (409), `qollasa_boladi` (2+ uzunlik, 409), Pico'dagi joriy qiymat ma'lum (409). Qiymatlar mijozdan olinmaydi — server sessiyadan qayta hisoblaydi; `services/kromka_kalib.CHEGARA` dan chiqsa 422; stanokda javob kutayotgan buyruq bo'lsa 409. `kromka_kal_apply` ga yoziladi, audit `kromka_kalib/kal_apply` |
 | POST | `/api/v1/kromka-kalib/applies/{apply_id}/rollback` | `AdminUser` | Qo'llashdan oldingi qiymatlarni (`previous`) yangi buyruq qilib yuborish; chegara tekshiruvisiz (ular Pico'ning o'zida turgan). Audit `kal_rollback` |
+
+## `backend/app/api/routes/stock.py` — Ombor hujjatlari, partiyalar, harakatlar
+
+**Maqsadi:** Mahsulotlar omborining kirim / sotuv hujjatlari (qoralama → tasdiq), FIFO partiyalar va qoldiq
+harakatlari (docs/14 §9). O'qish — `WarehouseReadUser`, yozish — `WarehouseUser`.
+
+| Metod | Path | Rol | Izoh |
+|---|---|---|---|
+| GET | `/api/v1/stock/docs` | `WarehouseReadUser` | Hujjatlar (`list[DocRow]`, yangisi birinchi): `status`, `kind` filtrlari, `limit` ≤2000; `who` — mijoz/yetkazib beruvchi + buyurtma/faktura + sotuvchi/qabul qilgan; qatorlar soni subquery |
+| GET | `/api/v1/stock/docs/{doc_id}` | `WarehouseReadUser` | Bitta hujjat (`DocRead`: bosh qism, qatorlar kod/birlik/katalog bilan, `total`, `cogs`, `rate`); o'chirilgan — 404 |
+| POST | `/api/v1/stock/docs` | `WarehouseUser` | **Qoralama** (`DocIn`): `id` bo'lmasa yaratadi va raqam beradi, bo'lsa yangilaydi (qatorlar to'liq almashadi); tasdiqlanganni o'zgartirish — 409. Qoldiqqa ta'sir qilmaydi |
+| POST | `/api/v1/stock/docs/confirm` | `WarehouseUser` | **Saqlab tasdiqlash** — bitta tranzaksiya (`services/stock.confirm`): pozitsiyalar `FOR UPDATE`, qoidalar docs/14 §9.2; rad etilsa 422 va xabarlar « · » bilan, hech narsa yozilmaydi. Audit `stock/confirm` |
+| DELETE | `/api/v1/stock/docs/{doc_id}` | `WarehouseUser` | Faqat qoralama (yumshoq); tasdiqlangan — 409 |
+| GET | `/api/v1/stock/moves` | `WarehouseReadUser` | Barcha harakatlar (`limit` ≤20 000) — «Harakatlarni Excel'ga chiqarish» |
+| GET | `/api/v1/stock/items/{item_id}/history` | `WarehouseReadUser` | Kartochka: qolgan partiyalar (FIFO tartibida; partiyasiz qoldiq «Boshlang'ich» bo'lib, bazaga yozilmasdan), oxirgi 50 harakat, `next_cost` |
 
 ## `backend/app/api/routes/posts.py` — Ishlab chiqarish postlari
 
@@ -759,7 +775,7 @@ Kodlash tizimi, jadval va yuklash skripti: `docs/14`.
 | --- | --- | --- | --- |
 | GET | `/api/v1/catalog/groups` | `WarehouseReadUser` | **Kategoriya daraxti**: `GROUP BY catalog, group_code` — har guruhda nechta pozitsiya va katalog (`M`/`F`/`X`) bo'yicha jami. Alohida `catalog_group` jadvali yo'q: guruh 33 ta va nomi pozitsiyaning o'zida yotadi |
 | GET | `/api/v1/catalog/items` | `WarehouseReadUser` | **Katalog ro'yxati** (`Paginated[CatalogItemRead]`). Filtrlar: `catalog` (`^[MFX]$`), `group_code` (`^[A-Z]{2}$`), `status` (`Aktiv`/`Arxiv`), `low_stock` (chegara belgilangan va qoldiq shundan past), `search` — KOD, nom, artikul va dekor nomi bo'ylab `ilike` (omborchi qo'lidagi qog'ozda qaysi biri turgani oldindan ma'lum emas). Tartib: katalog, guruh, model, variant — ya'ni kod tartibi |
-| PATCH | `/api/v1/catalog/items/{item_id}` | `WarehouseUser` | **Ombor yozuvi**: `quantity`, `min_quantity`, `location`, `purchase_price`, `sale_price`, `status`, `note`, `name`, `description`, `unit`, `purchase_usd`, `tier`, `markup_pct`, `tracked`. Kod va guruh o'zgarmaydi. Narxga ta'sir qiluvchi maydon o'zgarsa narx qoidalar bo'yicha qayta hisoblanadi (`services/warehouse.reprice`, docs/14 §8.1); so'mdagi xarid qo'lda berilsa `purchase_usd` bekor bo'ladi. Yo'q pozitsiya — 404, o'zgarish `audit_log` ga (`module=catalog`) |
+| PATCH | `/api/v1/catalog/items/{item_id}` | `WarehouseUser` | **Ombor yozuvi** (`quantity` 2026-10-16 dan «qo'lda tuzatish» harakati bo'lib yoziladi — partiya/FIFO bilan, `services/stock.adjust_quantity`): `quantity`, `min_quantity`, `location`, `purchase_price`, `sale_price`, `status`, `note`, `name`, `description`, `unit`, `purchase_usd`, `tier`, `markup_pct`, `tracked`. Kod va guruh o'zgarmaydi. Narxga ta'sir qiluvchi maydon o'zgarsa narx qoidalar bo'yicha qayta hisoblanadi (`services/warehouse.reprice`, docs/14 §8.1); so'mdagi xarid qo'lda berilsa `purchase_usd` bekor bo'ladi. Yo'q pozitsiya — 404, o'zgarish `audit_log` ga (`module=catalog`) |
 | GET | `/api/v1/catalog/all` | `WarehouseReadUser` | **Butun nomenklatura** (`list[CatalogRow]`, ≈2 700 qator, o'chirilganlarsiz) + `abc` — qoldiq qiymati (miqdor × xarid, yo'q bo'lsa sotuv) bo'yicha A (80%) / B (95%) / C, xizmatda `null`. Nomenklatura sahifasi qidiruv va filtrni brauzerda qiladi (docs/14 §8.6) |
 | GET | `/api/v1/catalog/pricing` | `WarehouseReadUser` | Ombor narx sozlamasi `WarehousePricing` (`usd_rate`, `tier_prices`, `markup_all`, `markup_groups`); kiritilmagan bo'lsa sukut (kurs 12 800) |
 | PUT | `/api/v1/catalog/pricing` | `WarehouseUser` | Sozlamani saqlaydi va HAMMA pozitsiyaning narxini qayta hisoblaydi; auditga eski/yangi qiymat va o'zgargan pozitsiyalar soni |

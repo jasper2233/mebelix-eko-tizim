@@ -1,8 +1,8 @@
 // Mahsulotlar ombori — Tovar kartochkasi (dizayndagi «Tovar kartochkasi»).
 //
-// 1-bosqichda: qoldiq, xarid va sotuv narxi (qoldiq qiymati bilan), chegara, ustama, kod tuzilmasi,
-// tahrirlash va o'chirish. FIFO partiyalar va harakat tarixi 2-bosqichda — kirim/sotuv hujjatlari
-// bilan birga (`docs/14` §8): hozir harakatlar bazada yo'q, bo'sh jadval ko'rsatilmaydi.
+// Qoldiq, xarid va sotuv narxi (qoldiq qiymati bilan), chegara, ustama, kod tuzilmasi, tez amallar
+// (kirimga / sotuv listiga qo'shish), FIFO partiyalar (keyingi chiqim narxi) va harakat tarixi
+// (docs/14 §8–9). Qo'lda qoldiq tuzatish ham harakat bo'lib yoziladi.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { GotoSearch } from "@/components/Warehouse/GotoSearch"
+import { ItemHistory } from "@/components/Warehouse/ItemHistory"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { requireAccess } from "@/lib/guards"
 import { isWarehouseStaff, isWarehouseWriter } from "@/lib/mes"
@@ -203,6 +204,24 @@ function ItemCard() {
 
         {canWrite && (
           <div className="flex flex-wrap gap-2 border-t pt-4">
+            {!xizmat && (
+              <Button asChild>
+                <Link
+                  to="/warehouse/doc"
+                  search={{ turi: "kirim", add: r.code }}
+                >
+                  Kirimga qo'shish
+                </Link>
+              </Button>
+            )}
+            <Button variant="outline" asChild>
+              <Link
+                to="/warehouse/doc"
+                search={{ turi: "chiqim", add: r.code }}
+              >
+                Sotuv listiga qo'shish
+              </Link>
+            </Button>
             <Button variant="outline" onClick={() => setEditing(!editing)}>
               <Pencil /> Tahrirlash
             </Button>
@@ -218,10 +237,7 @@ function ItemCard() {
         {editing && <EditForm row={r} onDone={() => setEditing(false)} />}
       </section>
 
-      <p className="text-sm text-muted-foreground">
-        Partiyalar (FIFO) va harakat tarixi kirim/sotuv hujjatlari bilan birga
-        qo'shiladi.
-      </p>
+      {!xizmat && <ItemHistory itemId={r.id} unit={r.unit} />}
 
       <ConfirmDialog
         open={askDelete}
@@ -296,7 +312,7 @@ function F({
 }
 
 /** Tahrirlash: nom, tavsif, birlik, chegara, joy, narxlar, ustama, sinf, zaxira — va qoldiq.
- *  Qoldiq bu yerdan FAQAT 2-bosqichgacha (kirim/sotuv hujjatlari) o'zgartiriladi. */
+ *  Qoldiq o'zgarsa server uni «Qo'lda tuzatish» harakati qilib yozadi (FIFO partiya bilan). */
 function EditForm({ row, onDone }: { row: CatalogRow; onDone: () => void }) {
   const queryClient = useQueryClient()
   const cat = row.catalog as CatalogLetter
@@ -374,7 +390,7 @@ function EditForm({ row, onDone }: { row: CatalogRow; onDone: () => void }) {
       </F>
       {cat !== "X" && (
         <>
-          <F id="e-qty" label="Qoldiq">
+          <F id="e-qty" label="Qoldiq (tuzatish)">
             <Input
               id="e-qty"
               inputMode="decimal"

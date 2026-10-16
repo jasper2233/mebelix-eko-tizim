@@ -6,8 +6,8 @@
 // Kategoriya (`?katalog=M|F|X`) va guruh (`?guruh=F-RC`) MANZILDA — yon menyu havolalari shu yerga.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { Download, FileUp, Plus, ReceiptText, Trash2 } from "lucide-react"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { Download, FileUp, Plus, Trash2 } from "lucide-react"
 import { type ReactNode, useMemo, useState } from "react"
 import { toast } from "sonner"
 
@@ -272,16 +272,7 @@ function NomenklaturaPage() {
             ? "Katalog yuklanmoqda…"
             : `${fmt(all.length)} pozitsiya · material ${fmt(byCat.M)} · furnitura ${fmt(byCat.F)} · xizmat ${fmt(byCat.X)}${lowCount ? ` · kam qolgan ${lowCount}` : ""}`
         }
-        actions={
-          <>
-            <Button variant="outline" asChild>
-              <Link to="/sotuv">
-                <ReceiptText /> Sotuv listi
-              </Link>
-            </Button>
-            <GotoSearch />
-          </>
-        }
+        actions={<GotoSearch />}
       />
 
       {cat === "M" && (
