@@ -676,6 +676,7 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `downtime_cleanup_oracle.py` (14/14) | `scripts/downtime_deleted_events.sql` — soxta to'xtashlarni tozalash |
 | `kromka_kirish_oracle.py` (4/4) | §4.10 — kirish `ts − (ish_ms + d2)`, oyna −60 … +20 s, skan darajasida FIFO |
 | `kromka_kal_oracle.py` (8/8) | §4.18 — Pico'dagi joriy kalibrlash agentdan MES gacha (o'zgarganda, takrorsiz) |
+| `kromka_kalib_oracle.py` (16/16) | §4.19 — hisob stansiya JS bilan raqamma-raqam bir xil, ma'lum parametrlar qaytarib topiladi, sessiya o'tishlari skanga bog'lanmaydi |
 | `defect_oracle.py` (8/8) | §4.17 — brak skan vaqti/stanogida, tasdiq bekor qilgan ish sanaladi, Kromka kvotasi |
 | `agent_gap_oracle.py` (8/8) | §4.16 — agent uzilgan payt: Rover Pico yozuvlaridan tiklanadi, Kromka davomiyligi saqlanadi, tokdan qayta yonish kesiladi (eski kodda 2/8) |
 | `tablo_machines_oracle.py` (29/29) | `docs/05` — stanok taxtasi |
@@ -832,13 +833,52 @@ faqat saqlanadi). `SET` ularni CHEGARASIZ qabul qiladi — shuning uchun 3-qadam
 **1-qadam:** agent 1.11.0 `HOLAT` javobidagi (har 30 s) va `SET` javobidagi (`{"ev":"kal"}`)
 qiymatlarni O'ZGARGANDA (har yangi ulanishda birinchisi ham) `kal` andon hodisasi qilib yuboradi
 (`agent.py: _kromka_kal`). `GET /machines/kromka-calibration` har Kromka stanogi uchun oxirgisini
-beradi; Tizim sozlamalari → «Brak sabablari» tabi → «Pico'dagi kalibrlash» kartasi (faqat o'qish).
+beradi; Tizim sozlamalari → «Kalibrlash» tabi (§4.19 gacha «Brak sabablari» da edi) → «Pico'dagi
+kalibrlash» kartasi (faqat o'qish).
 `ver` (proshivka) va `alarm` (lampa miltillayaptimi) ham ko'rinadi.
 
 Tekshiruv — `scripts/oracles/kromka_kal_oracle.py` **8/8**: haqiqiy agent parseri → haqiqiy
 `push_andon_events` → endpoint: bir xil `HOLAT` takror yozilmadi, `SET` javobi `manba: set` bilan
 yangi hodisa, qayta ulanishda birinchisi yuborildi, endpoint oxirgi 13 qiymatni berdi, agent
 yubormagan stanok bo'sh. Kromka orakllari (v1.16, v1.22, bind, kirish, dedup) o'zgarmadi.
+
+### 4.19 Kromka kalibrlash — 2-qadam: sessiya va hisob, qo'llashsiz (2026-10-16)
+
+**Nuqta qayerdan.** Maxsus `KALIB` rejimi kerak emas: Pico har oddiy `olchov` da `d1`, `d2`
+(datchik ostidagi vaqt, µs), `ish_ms` (D1→D2 old qirralar orasi, ms) va `v_nom` ni yuboradi —
+prodda 30 kunda Kromka-1 ning 29 365 o'lchovidan 29 338 tasida bor. Kalibrlash uchun yetmaydigani
+— detalning HAQIQIY uzunligi. Shuni sessiya beradi: admin «Boshlash» bosadi (stanok + etalon
+uzunligi, shtangensirkul bilan), etalonlarni lentadan o'tkazadi, keyingi etalonga o'tganda
+uzunlikni almashtiradi (`segments` ga yangi bo'lak), oxirida «Tugatish». Sessiya oralig'idagi
+har `olchov` — nuqta: `t1 = d1/1000`, `t2 = d2/1000`, `dt_mid = ish_ms + (t2 − t1)/2`, `S = v_nom`,
+`L_ref` — hodisa vaqtidan oldin boshlangan oxirgi bo'lak.
+
+**Hisob** (`services/kromka_kalib.py`) — stansiya egasining algoritmi (`server/stansiya.html`:
+`gauss` … `kalHisob`) QATORMA-QATOR ko'chirilgan: chiziqli eng kichik kvadratlar (ustunlar
+normallashtiriladi), 1 uzunlik → faqat `D`, 2+ uzunlik → `D, B1, B2`, 2 tezlik → `+C`, `K1/K2`
+faqat qoldiqni ≥10% kamaytirsa; fizik chegaralar `|B| ≤ 30`, `|K| ≤ 5`, `|C| ≤ 10`; 3σ (kamida
+0.5 mm) dan chetdagilar 3 marta tashlanadi. Hukm, dopusk va `TD` tavsiyasi ham o'sha sahifadagi
+qoidalar. O'zimizcha «yaxshilash» ataylab yo'q — natija stansiya hisoblagani bilan bir xil bo'lishi
+shart, aks holda kim to'g'ri ekanini tsexda aniqlab bo'lmaydi.
+
+**Ajratish.** Sessiya oralig'idagi `olchov` skanga BOG'LANMAYDI (`push_andon_events`,
+`kalib_oraliqlar`): etalon — detal emas, uni yaqin skanga ulash qirra kvotasini bekordan yopardi.
+OEE Performance'dan esa chiqarilmaydi: lenta rostdan shuncha o'tish qilgan va `run_s` ham bu vaqtni
+sanaydi — idealni olib tashlash Performance'ni sun'iy tushirardi.
+
+**UI:** Tizim sozlamalari → «Kalibrlash» tabi: «Pico'dagi kalibrlash» (§4.18) va «Kalibrlash
+sessiyasi» — stanok, etalon, sessiyalar ro'yxati, natija (Pico'dagi qiymat / yangi / farq),
+guruhlar (etalon × tezlik: n, o'rtacha, σ, xato), nuqtalar jadvali (har birini hisobdan chetlatish
+mumkin; 3σ bilan tashlangani `⊘`). Ochiq sessiya 5 s da yangilanadi. «Qo'llash» tugmasi YO'Q —
+3-qadam.
+
+Tekshiruv — `scripts/oracles/kromka_kalib_oracle.py` **16/16**: (1) ma'lum `D, B1, B2, C, K` bilan
+sun'iy o'tishlardan parametrlar ±0.5 ichida qaytarib topildi, 1 uzunlik/1 tezlikda soddaroq model,
+buzilgan o'tish chetlatildi; (2) stansiyaning ASL JS funksiyalari Node'da xuddi shu 5 to'plamda
+yurgizildi — natija 1e-9 nisbiy aniqlikda bir xil; (3) haqiqiy endpointlar Postgres ustida:
+ikkinchi ochiq sessiya 409, sessiyadagi 24 o'tish skanga bog'lanmadi (tashqaridagisi bog'landi),
+tafsilot sof hisob bilan bir xil, chetlatish ishladi, tugagan sessiyaga etalon qo'shilmaydi.
+Kromka orakllari (bind 23, kirish 4, kal 8, dedup 18, v122 19) va `oee` 31 o'zgarmadi.
 
 ## 5. Prod auditi natijalari (2026-09-16)
 

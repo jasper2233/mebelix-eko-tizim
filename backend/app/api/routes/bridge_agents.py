@@ -50,6 +50,7 @@ from app.schemas.common import Message
 from app.schemas.terminal import ScanResult
 from app.services.andon import save_live
 from app.services.kromka import bind_measurement
+from app.services.kromka_kalib import ichida, kalib_oraliqlar
 from app.services.scanning import (
     ScanRejected,
     active_session,
@@ -493,6 +494,10 @@ async def push_andon_events(
         # Faqat YANGI yozuvlar: agent partiyani qayta yuborsa o'lchov ikki marta
         # sanalib, qirra kvotasini bekordan yopib qo'yardi.
         olchovlar = [r for r in rows if r["kind"] == "olchov" and (r["session"], r["seq"]) in yangi]
+        if olchovlar:
+            # Kalibrlash sessiyasidagi o'tish — ETALON, detal emas: skanga bog'lanmaydi (docs/12 §4.19)
+            kalib = await kalib_oraliqlar(db, machine_id)
+            olchovlar = [r for r in olchovlar if not ichida(kalib, r["happened_at"])]
         if olchovlar:
             tolerance = float(await get_setting(db, KROMKA_TOLERANCE_MM) or 3)
             after = timedelta(seconds=int(await get_setting(db, KROMKA_BIND_WINDOW_S) or 20))

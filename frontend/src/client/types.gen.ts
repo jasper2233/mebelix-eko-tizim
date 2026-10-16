@@ -2360,6 +2360,178 @@ export type InstanceTrace = {
 };
 
 /**
+ * KalibDetail
+ */
+export type KalibDetail = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Machine Id
+     */
+    machine_id: number;
+    /**
+     * Machine Name
+     */
+    machine_name: string;
+    /**
+     * Started At
+     */
+    started_at: string;
+    /**
+     * Ended At
+     */
+    ended_at: string | null;
+    /**
+     * Segments
+     */
+    segments: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * Points
+     */
+    points: Array<KalibPoint>;
+    /**
+     * Result
+     */
+    result: {
+        [key: string]: unknown;
+    } | null;
+    /**
+     * Current
+     */
+    current: {
+        [key: string]: number;
+    };
+};
+
+/**
+ * KalibEtalon
+ */
+export type KalibEtalon = {
+    /**
+     * L Ref
+     */
+    L_ref: number;
+};
+
+/**
+ * KalibExclude
+ */
+export type KalibExclude = {
+    /**
+     * Excluded
+     */
+    excluded: boolean;
+};
+
+/**
+ * KalibPoint
+ */
+export type KalibPoint = {
+    /**
+     * Event Id
+     */
+    event_id: number;
+    /**
+     * At
+     */
+    at: string;
+    /**
+     * L Ref
+     */
+    L_ref: number;
+    /**
+     * S
+     */
+    S: number;
+    /**
+     * L Pico
+     */
+    L_pico: number | null;
+    /**
+     * Kod
+     */
+    kod: string | null;
+    /**
+     * T1
+     */
+    t1: number;
+    /**
+     * T2
+     */
+    t2: number;
+    /**
+     * Dtm
+     */
+    dtm: number;
+    /**
+     * Lfit
+     */
+    Lfit: number | null;
+    /**
+     * Err
+     */
+    err: number | null;
+    /**
+     * Chet
+     */
+    chet: boolean;
+    /**
+     * Excluded
+     */
+    excluded: boolean;
+};
+
+/**
+ * KalibSessionRow
+ */
+export type KalibSessionRow = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Machine Id
+     */
+    machine_id: number;
+    /**
+     * Machine Name
+     */
+    machine_name: string;
+    /**
+     * Started At
+     */
+    started_at: string;
+    /**
+     * Ended At
+     */
+    ended_at: string | null;
+    /**
+     * Segments
+     */
+    segments: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+/**
+ * KalibStart
+ */
+export type KalibStart = {
+    /**
+     * Machine Id
+     */
+    machine_id: number;
+    /**
+     * L Ref
+     */
+    L_ref: number;
+};
+
+/**
  * KromkaInstance
  *
  * Bitta fizik nusxa KROMKA nazarida: nechta tomoni yopishtirilgan va YETIB KELGANMI.
@@ -6958,6 +7130,173 @@ export type UpdateMachineResponses = {
 };
 
 export type UpdateMachineResponse = UpdateMachineResponses[keyof UpdateMachineResponses];
+
+export type ReadKalibSessionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/kromka-kalib';
+};
+
+export type ReadKalibSessionsResponses = {
+    /**
+     * Response Read Kalib Sessions
+     *
+     * Successful Response
+     */
+    200: Array<KalibSessionRow>;
+};
+
+export type ReadKalibSessionsResponse = ReadKalibSessionsResponses[keyof ReadKalibSessionsResponses];
+
+export type StartKalibSessionData = {
+    body: KalibStart;
+    path?: never;
+    query?: never;
+    url: '/api/v1/kromka-kalib';
+};
+
+export type StartKalibSessionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StartKalibSessionError = StartKalibSessionErrors[keyof StartKalibSessionErrors];
+
+export type StartKalibSessionResponses = {
+    /**
+     * Successful Response
+     */
+    200: KalibSessionRow;
+};
+
+export type StartKalibSessionResponse = StartKalibSessionResponses[keyof StartKalibSessionResponses];
+
+export type SetKalibEtalonData = {
+    body: KalibEtalon;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: number;
+    };
+    query?: never;
+    url: '/api/v1/kromka-kalib/{session_id}/etalon';
+};
+
+export type SetKalibEtalonErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SetKalibEtalonError = SetKalibEtalonErrors[keyof SetKalibEtalonErrors];
+
+export type SetKalibEtalonResponses = {
+    /**
+     * Successful Response
+     */
+    200: KalibSessionRow;
+};
+
+export type SetKalibEtalonResponse = SetKalibEtalonResponses[keyof SetKalibEtalonResponses];
+
+export type EndKalibSessionData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: number;
+    };
+    query?: never;
+    url: '/api/v1/kromka-kalib/{session_id}/end';
+};
+
+export type EndKalibSessionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type EndKalibSessionError = EndKalibSessionErrors[keyof EndKalibSessionErrors];
+
+export type EndKalibSessionResponses = {
+    /**
+     * Successful Response
+     */
+    200: KalibSessionRow;
+};
+
+export type EndKalibSessionResponse = EndKalibSessionResponses[keyof EndKalibSessionResponses];
+
+export type ExcludeKalibPointData = {
+    body: KalibExclude;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: number;
+        /**
+         * Event Id
+         */
+        event_id: number;
+    };
+    query?: never;
+    url: '/api/v1/kromka-kalib/{session_id}/points/{event_id}';
+};
+
+export type ExcludeKalibPointErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ExcludeKalibPointError = ExcludeKalibPointErrors[keyof ExcludeKalibPointErrors];
+
+export type ExcludeKalibPointResponses = {
+    /**
+     * Successful Response
+     */
+    200: KalibSessionRow;
+};
+
+export type ExcludeKalibPointResponse = ExcludeKalibPointResponses[keyof ExcludeKalibPointResponses];
+
+export type ReadKalibSessionData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: number;
+    };
+    query?: never;
+    url: '/api/v1/kromka-kalib/{session_id}';
+};
+
+export type ReadKalibSessionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadKalibSessionError = ReadKalibSessionErrors[keyof ReadKalibSessionErrors];
+
+export type ReadKalibSessionResponses = {
+    /**
+     * Successful Response
+     */
+    200: KalibDetail;
+};
+
+export type ReadKalibSessionResponse = ReadKalibSessionResponses[keyof ReadKalibSessionResponses];
 
 export type ReadPostsData = {
     body?: never;

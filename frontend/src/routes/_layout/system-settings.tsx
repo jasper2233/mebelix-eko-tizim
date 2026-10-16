@@ -40,6 +40,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { KromkaKalibCard } from "@/components/WorkCenters/KromkaKalib"
 import { requireAccess } from "@/lib/guards"
 import { formatDate, formatDateTime, isAdmin } from "@/lib/mes"
 import { cn } from "@/lib/utils"
@@ -54,6 +55,7 @@ const SETTINGS_TABS = [
   { value: "downtime", label: "To'xtash sabablari" },
   { value: "ideal", label: "Ideal sikl" },
   { value: "defect", label: "Brak sabablari" },
+  { value: "kalib", label: "Kalibrlash" },
 ] as const
 type SettingsTab = (typeof SETTINGS_TABS)[number]["value"]
 const TAB_PANEL = "data-[state=inactive]:hidden"
@@ -158,7 +160,12 @@ function SystemSettingsPage() {
             {withSettings((settings) => (
               <KromkaBindCard settings={settings} />
             ))}
+          </div>
+        </TabsContent>
+        <TabsContent value="kalib" forceMount className={TAB_PANEL}>
+          <div className="space-y-6">
             <KromkaKalCard />
+            <KromkaKalibCard />
           </div>
         </TabsContent>
       </Tabs>

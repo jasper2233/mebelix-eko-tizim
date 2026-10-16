@@ -1,6 +1,8 @@
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Index, Numeric, String
+from sqlalchemy import DateTime, ForeignKey, Index, Numeric, String, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import BaseModel
@@ -46,3 +48,33 @@ class KromkaMeasurement(BaseModel):
     side_group: Mapped[str | None] = mapped_column(String(10), default=None, kw_only=True)
     expected_mm: Mapped[float | None] = mapped_column(Numeric(9, 1), default=None, kw_only=True)
     delta_mm: Mapped[float | None] = mapped_column(Numeric(9, 1), default=None, kw_only=True)
+
+
+class KromkaKalibSession(BaseModel):
+    """Kalibrlash sessiyasi — admin etalon detallarni o'tkazayotgan vaqt oralig'i (docs/12 §4.19).
+
+    Nuqtalar alohida saqlanmaydi: ular oddiy `olchov` hodisalari (`andon_event`), Pico ularni har
+    o'tishda `d1`/`d2`/`ish_ms` bilan yuboradi. Sessiya faqat aytadi: shu oraliqda o'tgan detal
+    ETALON edi va uzunligi qancha. Shu oraliqdagi o'lchov skanga bog'lanmaydi.
+
+    `segments` — `[{"L_ref": mm, "dan": iso}]`: etalon almashganda yangi bo'lak qo'shiladi, hodisa
+    vaqti bo'yicha eng oxirgi boshlangan bo'lak olinadi. `excluded` — admin chetlatgan hodisa id'lari."""
+
+    __tablename__ = "kromka_kalib_session"
+
+    __table_args__ = (
+        # Stanokda bir vaqtda bitta ochiq sessiya
+        Index(
+            "ix_kromka_kalib_session_open",
+            "machine_id",
+            unique=True,
+            postgresql_where=text("ended_at IS NULL AND NOT is_deleted"),
+        ),
+    )
+
+    machine_id: Mapped[int] = mapped_column(ForeignKey("machine.id"), kw_only=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), kw_only=True)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
+    segments: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default_factory=list, kw_only=True)
+    excluded: Mapped[list[int]] = mapped_column(JSONB, default_factory=list, kw_only=True)

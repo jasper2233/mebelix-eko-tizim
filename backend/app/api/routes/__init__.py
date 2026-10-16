@@ -11,6 +11,7 @@ from .defects_review import router as defects_review_router
 from .downtimes import router as downtimes_router
 from .employees import router as employees_router
 from .health import router as health_router
+from .kromka_kalib import router as kromka_kalib_router
 from .login import router as login_router
 from .logout import router as logout_router
 from .machines import router as machines_router
@@ -42,6 +43,7 @@ router.include_router(users_router, dependencies=_protected)
 router.include_router(clients_router, dependencies=_protected)
 router.include_router(employees_router, dependencies=_protected)
 router.include_router(machines_router, dependencies=_protected)
+router.include_router(kromka_kalib_router, dependencies=_protected)  # Kromka kalibrlash (admin)
 router.include_router(posts_router, dependencies=_protected)
 router.include_router(orders_router, dependencies=_protected)
 router.include_router(pachka_router, dependencies=_protected)
