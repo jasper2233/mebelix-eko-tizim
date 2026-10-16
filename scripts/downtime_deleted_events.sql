@@ -11,8 +11,11 @@
 -- ochiq yozuvni har 5 daqiqada (`sync_downtimes`) qayta OCHADI
 -- (`ended_at = NULL`), ya'ni deploy'dan oldin yopish befoyda.
 --
--- NIMA QILADI. Boshlagan hodisasi (`start_key = session-seq`) o'chirilgan
--- `downtime` yozuvlari:
+-- Ikkinchi manba (2026-10-16 Rover OEE deploy'i): ROVER stanogida har bo'sh turish
+-- IKKINCHI `idle-*` yozuv bo'lib tushgan, 3 daqiqalik pauza ham — tuzatish keyingi
+-- deploy'da (`_bosh_yurish` endi faqat ishlayotgan oraliqni bo'ladi).
+--
+-- NIMA QILADI. Shu ikki manbadagi soxta `downtime` yozuvlari (`soxta` ko'rinishi):
 --   - sababi KIRITILMAGAN — yumshoq o'chiriladi (soxta to'xtash, terminal ham,
 --     tablodagi «sababsiz» soni ham uni boshqa ko'rmaydi);
 --   - sababi KIRITILGAN (operator yozgan) — tegilmaydi, faqat OCHIQ bo'lsa
@@ -20,9 +23,12 @@
 --     ustma-ust tushishni so'raydi, ya'ni boshqa to'xtashga sabab bermaydi).
 -- Hech narsa jismonan o'chirilmaydi. Qaytarish — pastdagi «QAYTARISH».
 --
--- Kromka bo'sh yurishi (`start_key = idle-...`) hodisaga emas, o'lchov VAQTIGA
+-- KROMKA bo'sh yurishi (`start_key = idle-...`) hodisaga emas, o'lchov VAQTIGA
 -- bog'langan — uni bu kalit bilan topib bo'lmaydi. 2-bo'lim uzoq ochiq qolgan
 -- HAMMA yozuvni ko'rsatadi; ulardan qaysini yopish — qo'lda qaror.
+--
+-- Ikkinchi yurgizish xavfsiz: soxta yozuv qolmagan bo'lsa hech narsa o'zgarmaydi.
+-- Tekshiruv: `scripts/oracles/downtime_cleanup_oracle.py`.
 --
 -- Ishga tushirish (serverda, repo ildizida):
 --   cd /opt/mebelix-mes
@@ -45,20 +51,35 @@ SET statement_timeout = '120s';
   \set faqat_hisobot 0
 \endif
 
--- `start_key` = boshlagan hodisaning `session || '-' || seq` (`downtimes._runs`).
--- `(machine_id, session, seq)` unikal, ya'ni kalit yo tirik, yo o'chirilgan hodisaniki.
+-- Soxta to'xtashning IKKI manbasi:
+-- (a) `start_key` = boshlagan hodisaning `session || '-' || seq` (`downtimes._runs`), hodisa
+--     o'chirilgan. `(machine_id, session, seq)` unikal — kalit yo tirik, yo o'chirilganniki.
+-- (b) ROVER stanogidagi `idle-*` (kromka bo'sh yurishi) yozuvi. Roverda o'lchov yo'q, ya'ni
+--     bo'sh yurish bo'lishi mumkin emas: 2026-10-16 deploy'idagi xato (`_bosh_yurish` Rover'ning
+--     o'z IDLE holatini ham olardi) har bo'sh turishni IKKINCHI yozuv qilgan, chegarasiz.
 CREATE TEMP VIEW soxta AS
-SELECT d.id, d.machine_id, d.kind, d.start_key, d.started_at, d.ended_at, d.reason_id
+SELECT d.id, d.machine_id, d.kind, d.start_key, d.started_at, d.ended_at, d.reason_id,
+       'o''chirilgan hodisa' AS manba
 FROM downtime d
 JOIN andon_event e
   ON e.machine_id = d.machine_id
  AND d.start_key = e.session || '-' || e.seq
 WHERE NOT d.is_deleted
   AND e.is_deleted
-  AND d.kind <> 'lock';
+  AND d.kind <> 'lock'
+UNION ALL
+SELECT d.id, d.machine_id, d.kind, d.start_key, d.started_at, d.ended_at, d.reason_id,
+       'rover idle-*' AS manba
+FROM downtime d
+JOIN machine m ON m.id = d.machine_id
+JOIN post p ON p.id = m.post_id
+WHERE NOT d.is_deleted
+  AND p.code = 'ROVER'
+  AND d.start_key LIKE 'idle-%';
 
-\echo '=== 1. O''CHIRILGAN HODISADAN YASALGAN TO''XTASHLAR ==='
+\echo '=== 1. SOXTA TO''XTASHLAR (o''chirilgan hodisadan va Rover idle-*) ==='
 SELECT m.name AS stanok,
+       s.manba,
        s.kind AS tur,
        count(*) AS jami,
        count(*) FILTER (WHERE s.ended_at IS NULL) AS ochiq,
@@ -67,8 +88,8 @@ SELECT m.name AS stanok,
        max(s.started_at AT TIME ZONE 'Asia/Tashkent') AS oxirgi
 FROM soxta s
 JOIN machine m ON m.id = s.machine_id
-GROUP BY 1, 2
-ORDER BY 1, 2;
+GROUP BY 1, 2, 3
+ORDER BY 1, 2, 3;
 
 \echo ''
 \echo '=== 2. 12 SOATDAN UZOQ OCHIQ TURGAN HAMMA TO''XTASH (bo''sh yurish ham) ==='

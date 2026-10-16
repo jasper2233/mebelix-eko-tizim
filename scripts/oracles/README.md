@@ -22,8 +22,8 @@ cd backend && uv run alembic upgrade head       # DATABASE sozlamalari env dan
 ```
 ENVIRONMENT=local
 SECRET_KEY=test-secret-key-for-local-oracle-only
-FIRST_SUPERUSER=admin
-FIRST_SUPERUSER_PASSWORD=demo12345
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=demo12345
 POSTGRES_USER=<foydalanuvchi>
 POSTGRES_PASSWORD=
 POSTGRES_SERVER=localhost
@@ -38,6 +38,18 @@ cd backend && set -a && . /tmp/oee_test.env && set +a \
   && uv run python ../scripts/oracles/oee_oracle.py
 ```
 
+Qo'shimcha talablar: `kromka_dedup_oracle.py` va `downtime_cleanup_oracle.py` SQL'ni
+AYNAN `psql` orqali yurgizadi — u `PATH` da bo'lsin; `tablo_machines_oracle.py` ga
+Redis kerak (qolganlari Redis'siz ham ishlaydi: jonli holat o'qilmasa «aloqa yo'q»).
+Windows'da Docker'siz: EDB'ning portativ PostgreSQL 15 zip'i (`initdb -A trust`,
+`pg_ctl -o "-p 5434 -c shared_preload_libraries=pg_stat_statements" start`) va
+portativ Redis yetadi. Git Bash'da `PATH` ga `/c/...` ko'rinishida qo'shing —
+`C:/...` dagi ikki nuqta yo'lni bo'lib yuboradi.
+
+Oxirgi to'liq yurgizish (2026-10-16): `oee` 31/31, `rover` 21/21, `rover_oee` 19/19,
+`downtime_cleanup` 14/14, `kromka_bind` 23/23, `kromka_v116` 11/11, `kromka_v122` 15/15,
+`kromka_dedup` 18/18, `tablo_machines` 29/29, `catalog` 36/36.
+
 ## Nima tekshiriladi
 
 | Skript | Da'vo |
@@ -46,7 +58,9 @@ cd backend && set -a && . /tmp/oee_test.env && set +a \
 | `kromka_bind_oracle.py` | O'lchovni detalga bog'lash: kirish vaqti (`ish_ms`), oyna, o'lcham bo'yicha juftlash, mos/nomos/ortiqcha hukmi (`docs/12` §4.10) |
 | `kromka_v116_oracle.py` | Proshivka v1.16: `tiqilish`, `eski_ms`, avariya xabari holat bo'lib yozilmasligi |
 | `kromka_v122_oracle.py` | Proshivka v1.19-v1.22: `xb`/`xq` kaliti, takror hodisa, `ACK` faqat server yozgach, `sig`/`yigilgan` uzatilmasligi |
-| `rover_oracle.py` | CNC 2130: `hello`/`state`/`event`, `rover_type`, tasdiq (`ack`) tartibi, vaqt va sozlama yuborish |
+| `rover_oracle.py` | CNC 2130: `hello`/`state`/`event`, `rover_type`, tasdiq (`ack`) tartibi, vaqt va sozlama yuborish; agent 1.9.0 — hodisa uchala holat (ishlov / bo'sh turish / o'chiq) o'zgarishida |
+| `rover_oee_oracle.py` | Rover to'liq OEE: bo'sh turish IDLE (mikro-to'xtash qoidasi), Performance (detalga + perimetr × s/m), Quality, koeffitsiyent o'zgarsa qayta hisob, to'xtash sinxroni (tur, chegara, `idle-*` takror yo'qligi) (`docs/12` §4.15) |
+| `downtime_cleanup_oracle.py` | `scripts/downtime_deleted_events.sql`: o'chirilgan hodisadan va Rover `idle-*` dan yasalgan soxta to'xtashlar tozalanadi, haqiqiylari, qulf, Kromka bo'sh yurishi va operator sababi qoladi, faqat-hisobot rejimi hech narsa o'zgartirmaydi, ikkinchi yurgizish xavfsiz |
 | `tablo_machines_oracle.py` | Stanok taxtasi (`GET /tablo/machines`) — raqamlar hisobotning aynan o'zidan |
 | `kromka_dedup_oracle.py` | `scripts/kromka_dedup.sql`: takrorlar o'chadi, haqiqiylari qoladi, hisobot to'g'rilanadi, ikkinchi yurgizish xavfsiz |
 | `catalog_oracle.py` | Mahsulotlar ombori: `catalog_import.py` CSV ni bazaga yuklashi, kategoriya daraxti, filtr va qidiruv, qoldiq yozish, qayta importda qoldiqning saqlanishi (`docs/14`) |

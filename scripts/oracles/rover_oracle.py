@@ -160,6 +160,17 @@ async def main() -> None:
     agent._rover_ack(port)        # noqa: SLF001
     natija.append(("bir xil tasdiq takrorlanmaydi", len(port.xabarlar), oldin))
 
+    # --- Agent 1.9.0: hodisa UCHALA holat o'zgarishida (docs/12 §4.15). Ilgari faqat
+    # `holat` 0/1 bo'yicha — bo'sh turgan stanok o'chirilsa (ikkalasi holat=0) yozilmasdi
+    oldin = len(navbatni_oqi(navbat))
+    agent._andon_line(json.dumps({"t": "state", "pwr": 1, "run": 0}))  # noqa: SLF001
+    agent._andon_line(json.dumps({"t": "state", "pwr": 0, "run": 0}))  # noqa: SLF001
+    agent._andon_line(json.dumps({"t": "state", "pwr": 0, "run": 0}))  # noqa: SLF001
+    yangi = navbatni_oqi(navbat)[oldin:]
+    natija.append(("bo'sh turish → o'chirildi: ikkala o'tish yozildi, takror yo'q",
+                   [(e["holat"], e["pwr"], e["run"]) for e in yangi], [(0, 1, 0), (0, 0, 0)]))
+    natija.append(("jonli holat o'chiq", agent.ANDON_CURRENT["state"], "OFF"))
+
     xato = sum(1 for _, olingan, kutilgan in natija if olingan != kutilgan)
     for nom, olingan, kutilgan in natija:
         print(f"  {'OK ' if olingan == kutilgan else 'XATO'} {nom}: olingan={olingan} kutilgan={kutilgan}")
