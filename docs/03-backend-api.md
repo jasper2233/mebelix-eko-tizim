@@ -332,8 +332,9 @@ Barcha mutatsiyalar `log_action` bilan audit qilinadi (`module="clients"`).
 | PATCH | `/api/v1/settings/downtime-reasons/{reason_id}` | `AdminUser` | Sababni o'zgartiradi (`DowntimeReasonUpdate` — hamma maydon ixtiyoriy, `is_active`, `order_index` ham). O'chirish YO'Q: eski to'xtashlar sababga bog'langan — `is_active=false` terminal ro'yxatidan olib tashlaydi. Yo'q/o'chirilgan — 404 «Sabab topilmadi.». Audit `settings/updated` |
 
 Kromka o'lchovining ikki sozlamasi umumiy `PUT /settings/{key}` orqali boradi (butun son, `INT_RANGES`):
-`kromka_tolerance_mm` (dopusk, sukut 3, 1..50) va `kromka_bind_window_s` (skanga bog'lash oynasi
-— detal datchikka kirgan lahza atrofida, sukut 20 soniya, 5..600) — docs/12 §4.10.
+`kromka_tolerance_mm` (dopusk, sukut 3, 1..50), `kromka_bind_before_s` va `kromka_bind_window_s`
+(skanga bog'lash oynasi — detal datchikka kirgan lahzadan OLDIN sukut 60 s va KEYIN sukut 20 s,
+5..600) — docs/12 §4.10.
 
 **Bog'lanishlar:** `backend/app/schemas/settings.py`, `backend/app/schemas/downtimes.py`, `backend/app/services/settings_service.py`, `backend/app/crud` (`log_action`).
 

@@ -8,10 +8,13 @@ soniyada bir marta skanerlaydi — ya'ni endi kelgan o'lchov 2–4 ta skan OLDIN
 detalniki. Har detal MES da ikki marta chiqardi: avval «mos emas», keyin «mos»
 (stansiya egasining o'lchovi, `docs/onlayn_mes_hodisalar.md`).
 
-Endi kirish lahzasi o'lchovdan hisoblanadi: `kirish = o'lchov vaqti − ish_ms`
-(`ish_ms` — Pico bergan D1→D2 yurish vaqti). Nomzod skanlar shu lahza atrofidagi
-oynadan olinadi (`kromka_bind_window_s`, sukut ±20 s) va ular orasidan O'LCHAMGA
-mos keladigani tanlanadi: 289 mm o'lchov 700 mm lik detalga yozilib qolmasin.
+Endi kirish lahzasi o'lchovdan hisoblanadi: `kirish = o'lchov vaqti − (ish_ms + d2)`
+(`ish_ms` — Pico bergan D1→D2 old qirralar orasidagi vaqt, `d2` — detal D2 ostidan o'tgan
+vaqt; o'lchov D2 dan CHIQQANDA tayyor bo'ladi). Nomzod skanlar shu lahzadan
+`kromka_bind_before_s` (sukut 60 s) OLDIN va `kromka_bind_window_s` (sukut 20 s) KEYIN
+oralig'idan olinadi — operator detalni odatda lentaga qo'yishdan oldin skanerlaydi,
+ba'zan bir necha detal oldindan. Ular orasidan O'LCHAMGA mos keladigani tanlanadi:
+289 mm o'lchov 700 mm lik detalga yozilib qolmasin.
 «Joriy detal» degan alohida holat saqlanmaydi: terminal qulasa ham, agent qayta
 ulansa ham skan bazada turaveradi.
 
@@ -77,11 +80,14 @@ def edge_quota(part: Part) -> dict[str, dict[str, float]]:
     return quota
 
 
-async def _nomzodlar(db: AsyncSession, machine_id: int, kirish: datetime, window: timedelta) -> list[Scan]:
-    """Kirish lahzasi atrofidagi bekor qilinmagan skanlar — eng yaqini birinchi.
+async def _nomzodlar(
+    db: AsyncSession, machine_id: int, kirish: datetime, before: timedelta, after: timedelta
+) -> list[Scan]:
+    """Kirish lahzasi atrofidagi bekor qilinmagan skanlar — ENG ESKISI birinchi (FIFO).
 
-    Oyna IKKI TOMONLAMA: operator detalni lentaga qo'ygandan KEYIN ham skanerlashi
-    mumkin (chek qo'lida qoladi), shuning uchun kirishdan keyingi skan ham nomzod."""
+    Oyna ASIMMETRIK (stansiya egasining tavsiyasi): operator odatda detalni lentaga
+    qo'yishdan OLDIN skanerlaydi, ba'zan bir necha detal oldindan (`before`, sukut 60 s);
+    lekin keyin ham skanerlashi mumkin — chek qo'lida qoladi (`after`, sukut 20 s)."""
     rows = (
         (
             await db.execute(
@@ -90,8 +96,8 @@ async def _nomzodlar(db: AsyncSession, machine_id: int, kirish: datetime, window
                     Scan.machine_id == machine_id,
                     Scan.is_cancelled == False,  # noqa: E712
                     Scan.is_deleted == False,  # noqa: E712
-                    Scan.created_at >= kirish - window,
-                    Scan.created_at <= kirish + window,
+                    Scan.created_at >= kirish - before,
+                    Scan.created_at <= kirish + after,
                 )
                 .order_by(Scan.created_at)
             )
@@ -99,18 +105,32 @@ async def _nomzodlar(db: AsyncSession, machine_id: int, kirish: datetime, window
         .scalars()
         .all()
     )
-    return sorted(rows, key=lambda r: abs((r.created_at - kirish).total_seconds()))
+    # FIFO (so'rov tartibi): «eng yaqini» qoidasida bir xil o'lchamli ikki detal oldindan
+    # skanerlansa, birinchi kirgan detalning o'lchovi KEYINGI skanga yopishardi
+    return list(rows)
+
+
+def _son(value: Any) -> float:
+    """Pico bergan musbat son, aks holda 0."""
+    return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0 else 0.0
 
 
 def _kirish(at: datetime, payload: dict[str, Any]) -> datetime:
-    """Detal BIRINCHI datchikka kirgan lahza: o'lchov vaqtidan yurish vaqti ayiriladi.
+    """Detal BIRINCHI datchikka kirgan lahza: `o'lchov vaqti − (ish_ms + d2)`.
 
-    `ish_ms` — Pico o'lchagan D1→D2 vaqti (millisekund). Bo'lmasa (eski proshivka
-    yoki FAQAT1/FAQAT2) o'lchov vaqtining o'zi olinadi."""
-    ish_ms = payload.get("ish_ms")
-    if not isinstance(ish_ms, (int, float)) or isinstance(ish_ms, bool) or ish_ms <= 0:
+    O'lchov detal D2 dan CHIQQANDA tayyor bo'ladi. `ish_ms` — D1 va D2 old qirralari
+    orasidagi vaqt (ms), `d2` — detal D2 nurini to'sib turgan vaqt (µs), ya'ni uzunlik ÷
+    tezlik. Stansiya egasining formulasi (`docs/onlayn_mes_hodisalar.md` §5, `stansiya.html:
+    kirishVaqti`). 2026-10-16 gacha `d2` ayirilmasdi — kirish detal uzunligicha KECH
+    hisoblanardi (stansiya bazasida median 2.5 s, 10% da 7 s dan ko'p, eng ko'pi 30 s) va
+    uzun detalning oldindan qilingan skani oynadan chiqib qolardi.
+
+    `ish_ms` bo'lmasa (eski proshivka yoki FAQAT1/FAQAT2) o'lchov vaqtining o'zi olinadi."""
+    ish_ms = _son(payload.get("ish_ms"))
+    if not ish_ms:
         return at
-    return at - timedelta(milliseconds=min(float(ish_ms), 120_000))
+    d2_ms = _son(payload.get("d2")) / 1000.0
+    return at - timedelta(milliseconds=min(ish_ms + d2_ms, 180_000))
 
 
 async def bind_measurement(
@@ -120,7 +140,8 @@ async def bind_measurement(
     payload: dict[str, Any],
     *,
     tolerance_mm: float,
-    window: timedelta,
+    before: timedelta,
+    after: timedelta,
 ) -> BindResult:
     """Bitta `olchov` hodisasini detalga bog'laydi va hukm yozadi. `flush` chaqiruvchida.
 
@@ -151,7 +172,7 @@ async def bind_measurement(
     qr_text: str | None = None
     if code == "OK" and measured:
         kirish = _kirish(at, payload)
-        tanlov = await _tanla(db, machine_id, kirish, window, float(measured), tolerance_mm)
+        tanlov = await _tanla(db, machine_id, kirish, before, after, float(measured), tolerance_mm)
         if tanlov is None:
             row.verdict = KromkaVerdict.SKANERSIZ
         else:
@@ -173,33 +194,58 @@ async def _tanla(
     db: AsyncSession,
     machine_id: int,
     kirish: datetime,
-    window: timedelta,
+    before: timedelta,
+    after: timedelta,
     measured: float,
     tol: float,
 ) -> tuple[Scan, dict[str, dict[str, float]]] | None:
     """Kirish lahzasi atrofidagi skanlardan SHU o'lchovga mos keladiganini tanlaydi.
 
-    Tartib (stansiya egasining tavsiyasi, `docs/onlayn_mes_hodisalar.md` §5):
-    1. o'lchamga mos va qirrasi hali yopilmagan skan — vaqt bo'yicha eng yaqini;
-    2. o'lchamga mos, lekin kvotasi tugagani (takroriy o'tish);
-    3. hech biri mos kelmasa — vaqt bo'yicha eng yaqini (hukmi `nomos` bo'ladi).
+    Kromka'da BITTA SKAN = BITTA QIRRA O'TISHI (`per_instance` = qirralar soni): operator har
+    qirrani alohida skanerlaydi. Shuning uchun tanlov SKAN darajasida, FIFO bilan (stansiya
+    egasining tavsiyasi, `docs/onlayn_mes_hodisalar.md` §5 — lentada detallar bir-birini
+    quvib o'tmaydi, oldindan skanerlangani oldin kiradi):
+    1. hali o'lchov bog'lanmagan, o'lchamga mos va nusxaning o'sha guruhi ochiq skan — ENG ESKISI;
+    2. o'lchamga mos, guruhi ochiq, lekin skani allaqachon band — operator bitta skan bilan bir
+       necha qirra o'tkazgan;
+    3. o'lchamga mos, lekin kvotasi tugagan (takroriy o'tish — `ortiqcha`);
+    4. hech biri mos kelmasa — kirishga vaqt bo'yicha eng yaqini (hukmi `nomos`).
     Bo'sh oyna — `None`: bu brak emas, juftlash uchun ma'lumot yo'q."""
+    nomzodlar = await _nomzodlar(db, machine_id, kirish, before, after)
+    if not nomzodlar:
+        return None
+    band = set(
+        (
+            await db.execute(
+                select(KromkaMeasurement.scan_id).where(
+                    KromkaMeasurement.scan_id.in_([s.id for s in nomzodlar]),
+                    KromkaMeasurement.is_deleted == False,  # noqa: E712
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    bosh: tuple[Scan, dict[str, dict[str, float]]] | None = None
     ochiq: tuple[Scan, dict[str, dict[str, float]]] | None = None
     tugagan: tuple[Scan, dict[str, dict[str, float]]] | None = None
-    birinchi: tuple[Scan, dict[str, dict[str, float]]] | None = None
-    for scan in await _nomzodlar(db, machine_id, kirish, window):
+    for scan in nomzodlar:
         progress = await _progress(db, scan.instance_id, await db.get(Part, scan.part_id))
-        if birinchi is None:
-            birinchi = (scan, progress)
         mos = [g for g, sl in progress.items() if abs(measured - sl["expected"]) <= tol]
         if not mos:
             continue
-        if ochiq is None and any(progress[g]["done"] < progress[g]["quota"] for g in mos):
-            ochiq = (scan, progress)
-            break  # eng yaqini va qirrasi ochiq — qidirishning ma'nosi yo'q
-        if tugagan is None:
-            tugagan = (scan, progress)
-    return ochiq or tugagan or birinchi
+        if any(progress[g]["done"] < progress[g]["quota"] for g in mos):
+            if scan.id not in band:
+                bosh = (scan, progress)
+                break  # eng eski bo'sh skan — qidirishning ma'nosi yo'q
+            ochiq = ochiq or (scan, progress)
+        else:
+            tugagan = tugagan or (scan, progress)
+    tanlov = bosh or ochiq or tugagan
+    if tanlov is not None:
+        return tanlov
+    yaqin = min(nomzodlar, key=lambda s: abs((s.created_at - kirish).total_seconds()))
+    return yaqin, await _progress(db, yaqin.instance_id, await db.get(Part, yaqin.part_id))
 
 
 def _judge(row: KromkaMeasurement, progress: dict[str, dict[str, float]], measured: float, tol: float) -> None:

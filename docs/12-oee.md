@@ -474,9 +474,11 @@ ideal 2533 s ga o'sdi; Quality va OEE `—` bo'lib qoldi.
 
 Stansiya uzunlikni o'lchaydi, lekin QAYSI detal ekanini bilmaydi. Bog'lash modeli —
 **kirish lahzasi**: detal birinchi datchikka kirgan payt hisoblanadi
-(`kirish = o'lchov vaqti − ish_ms`, `ish_ms` — Pico bergan D1→D2 yurish vaqti) va shu
-lahza atrofidagi skanlar nomzod bo'ladi (`kromka_bind_window_s`, sukut ±20 s). Nomzodlar
-ichidan O'LCHAMGA mos keladigani tanlanadi. «Joriy detal» degan alohida holat
+(`kirish = o'lchov vaqti − (ish_ms + d2)`: `ish_ms` — D1 va D2 old qirralari orasidagi vaqt,
+`d2` — detal D2 ostidan o'tgan vaqt; o'lchov detal D2 dan CHIQQANDA tayyor) va shu lahzadan
+`kromka_bind_before_s` (sukut 60 s) OLDIN — `kromka_bind_window_s` (sukut 20 s) KEYIN oralig'idagi
+skanlar nomzod bo'ladi. Nomzodlar ichidan O'LCHAMGA mos keladigani tanlanadi — skan
+darajasida, FIFO (2026-10-16 tuzatishi, pastda). «Joriy detal» degan alohida holat
 saqlanmaydi — terminal qulasa yoki agent qayta ulansa ham skan bazada turaveradi.
 
 > **Nega «oxirgi skan» emas (2026-09-21).** Prodda har detal ikki marta chiqdi: avval
@@ -507,9 +509,24 @@ yopgani to'g'riroq.
 
 **Sozlamalar** (Tizim sozlamalari → «Brak sabablari» → «Kromka o'lchovi»):
 `kromka_tolerance_mm` (dopusk, sukut 3 mm, 1..50) — lenta detalni HARAKATDA o'lchaydi,
-nol dopusk har detalni brak qilardi; `kromka_bind_window_s` (bog'lash oynasi, sukut **20 soniya**,
-5..600) — kirish lahzasidan shuncha soniya oldin/keyin yozilgan skanlar nomzod bo'ladi.
-Oyna ikki tomonlama: operator detalni lentaga qo'ygandan keyin ham skanerlashi mumkin.
+nol dopusk har detalni brak qilardi; `kromka_bind_before_s` (sukut **60 s**, 5..600) va
+`kromka_bind_window_s` (sukut **20 s**, 5..600) — kirish lahzasidan shuncha soniya OLDIN va
+KEYIN yozilgan skanlar nomzod bo'ladi. Operator odatda detalni lentaga qo'yishdan oldin, ba'zan
+bir necha detal oldindan skanerlaydi; keyin ham skanerlashi mumkin (chek qo'lida qoladi).
+
+> **2026-10-16 tuzatishi** (stansiya repo'si bilan solishtirildi — `jasper2233/kromka-stansiya-OYY`:
+> `docs/onlayn_mes_hodisalar.md` §5, `stansiya.html: kirishVaqti`):
+> 1. kirishdan `d2` ayirilmasdi — kirish detal uzunligicha KECH edi (stansiya bazasidagi 531
+>    o'lchovda d2: median 2.5 s, 10% da 7 s dan ko'p, eng ko'pi 30 s);
+> 2. oyna ±20 s edi — kirishdan 20 s oldingi skan nomzod bo'lmasdi (tavsiya −60 … +20);
+> 3. nomzodlar «vaqt bo'yicha eng yaqini» tartibida edi — bir xil o'lchamli ikki detal oldindan
+>    skanerlansa birinchisining o'lchovi keyingi skanga yopishardi. Endi FIFO, SKAN darajasida:
+>    hali o'lchov bog'lanmagan, o'lchami mos va guruhi ochiq ENG ESKI skan; u bo'lmasa — guruhi
+>    ochiq band skan (bitta skan bilan bir necha qirra); keyin kvotasi tugagani (`ortiqcha`);
+>    hech biri mos kelmasa — kirishga eng yaqini (`nomos`). Kromka'da bitta skan = bitta qirra.
+> Tekshiruv: `scripts/oracles/kromka_kirish_oracle.py` **4/4** (eski kodda 1/4) — 2000 mm
+> detal (d2 12 s) o'z skaniga, 45 s oldingi skan topildi, FIFO, 70 s oldingisi oynadan tashqari;
+> `kromka_bind_oracle.py` 23/23 o'zgarmadi.
 
 > **Datchik ishonchsiz (2026-09-20).** Tsexda stansiya uzunlikka qarab xato o'lchayotgani
 > aniqlandi, ya'ni `nomos` hukmining o'zi noto'g'ri bo'lishi mumkin. Shuning uchun
@@ -657,6 +674,7 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `rover_oracle.py` (25/25) | §4.13, agent 1.9.0 (§4.15), 1.10.0 — tartibsiz kelish va uzluksiz tasdiq |
 | `rover_oee_oracle.py` (19/19) | §4.15 — Rover A/P/Q/OEE va to'xtash sinxroni |
 | `downtime_cleanup_oracle.py` (14/14) | `scripts/downtime_deleted_events.sql` — soxta to'xtashlarni tozalash |
+| `kromka_kirish_oracle.py` (4/4) | §4.10 — kirish `ts − (ish_ms + d2)`, oyna −60 … +20 s, skan darajasida FIFO |
 | `defect_oracle.py` (8/8) | §4.17 — brak skan vaqti/stanogida, tasdiq bekor qilgan ish sanaladi, Kromka kvotasi |
 | `agent_gap_oracle.py` (8/8) | §4.16 — agent uzilgan payt: Rover Pico yozuvlaridan tiklanadi, Kromka davomiyligi saqlanadi, tokdan qayta yonish kesiladi (eski kodda 2/8) |
 | `tablo_machines_oracle.py` (29/29) | `docs/05` — stanok taxtasi |

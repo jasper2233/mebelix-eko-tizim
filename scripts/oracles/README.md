@@ -48,7 +48,7 @@ portativ Redis yetadi. Git Bash'da `PATH` ga `/c/...` ko'rinishida qo'shing —
 
 Oxirgi to'liq yurgizish (2026-10-16): `oee` 31/31, `rover` 25/25, `rover_oee` 19/19,
 `downtime_cleanup` 14/14, `kromka_bind` 23/23, `kromka_v116` 11/11, `kromka_v122` 19/19,
-`kromka_dedup` 18/18, `tablo_machines` 29/29, `catalog` 36/36, `agent_gap` 8/8, `defect` 8/8.
+`kromka_dedup` 18/18, `tablo_machines` 29/29, `catalog` 36/36, `agent_gap` 8/8, `defect` 8/8, `kromka_kirish` 4/4.
 
 ## Nima tekshiriladi
 
@@ -60,6 +60,7 @@ Oxirgi to'liq yurgizish (2026-10-16): `oee` 31/31, `rover` 25/25, `rover_oee` 19
 | `kromka_v122_oracle.py` | Proshivka v1.19-v1.22: `xb`/`xq` kaliti, takror hodisa, `ACK` faqat server yozgach, `sig`/`yigilgan` uzatilmasligi |
 | `rover_oracle.py` | CNC 2130: `hello`/`state`/`event`, `rover_type`, tasdiq (`ack`) tartibi, vaqt va sozlama yuborish; agent 1.9.0 — hodisa uchala holat (ishlov / bo'sh turish / o'chiq) o'zgarishida |
 | `rover_oee_oracle.py` | Rover to'liq OEE: bo'sh turish IDLE (mikro-to'xtash qoidasi), Performance (detalga + perimetr × s/m), Quality, koeffitsiyent o'zgarsa qayta hisob, to'xtash sinxroni (tur, chegara, `idle-*` takror yo'qligi) (`docs/12` §4.15) |
+| `kromka_kirish_oracle.py` | Kromka o'lchovi ↔ skan: kirish `ts − (ish_ms + d2)`, oyna −60 … +20 s, skan darajasida FIFO (stansiya repo'si tavsiyasi, `docs/12` §4.10) |
 | `defect_oracle.py` | Brak — skanning xossasi: tushlikda/ertasi kuni/begona terminaldan bosilgan brak o'z skanining kuni va stanogida sanaladi, brak tasdig'i bekor qilgan skan (boshqa postniki ham, rad etilgandan keyin ham) P va Q da qoladi, Kromka kvotasi bekor skandagi o'lchovni sanamaydi (`docs/12` §4.17) |
 | `agent_gap_oracle.py` | Agent uzilgan payt: Rover holati Pico'ning `POWER_ON`/`POWER_CYCLE`/`SPINDLE_IDLE` yozuvlaridan tiklanadi va to'xtash yozuvi bo'ladi (takrorsiz), Kromka davomiyligi saqlanadi, tokdan qayta yonish kesiladi, `wdt` kesilmaydi (`docs/12` §4.16) |
 | `downtime_cleanup_oracle.py` | `scripts/downtime_deleted_events.sql`: o'chirilgan hodisadan va Rover `idle-*` dan yasalgan soxta to'xtashlar tozalanadi, haqiqiylari, qulf, Kromka bo'sh yurishi va operator sababi qoladi, faqat-hisobot rejimi hech narsa o'zgartirmaydi, ikkinchi yurgizish xavfsiz |

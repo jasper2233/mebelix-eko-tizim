@@ -304,6 +304,8 @@ const KROMKA_IDLE_MAX = 240
 const KROMKA_TOL_KEY = "kromka_tolerance_mm"
 const KROMKA_TOL_MAX = 50
 const KROMKA_BIND_KEY = "kromka_bind_window_s"
+// Kirishdan OLDINGI qism (2026-10-16); yuqoridagisi — KEYINGI qism
+const KROMKA_BEFORE_KEY = "kromka_bind_before_s"
 const KROMKA_BIND_MIN = 5
 const KROMKA_BIND_MAX = 600
 
@@ -824,10 +826,14 @@ function KromkaBindCard({ settings }: { settings: SystemSettingRead[] }) {
   const queryClient = useQueryClient()
   const savedTol = settings.find((x) => x.key === KROMKA_TOL_KEY)?.value ?? ""
   const savedBind = settings.find((x) => x.key === KROMKA_BIND_KEY)?.value ?? ""
+  const savedBefore =
+    settings.find((x) => x.key === KROMKA_BEFORE_KEY)?.value ?? ""
   const [tol, setTol] = useState("")
   const [bind, setBind] = useState("")
+  const [before, setBefore] = useState("")
   useEffect(() => setTol(savedTol), [savedTol])
   useEffect(() => setBind(savedBind), [savedBind])
+  useEffect(() => setBefore(savedBefore), [savedBefore])
   const ok = (v: string, min: number, max: number) =>
     /^\d+$/.test(v) && Number(v) >= min && Number(v) <= max
   const saqla = (key: string, value: string) =>
@@ -837,9 +843,15 @@ function KromkaBindCard({ settings }: { settings: SystemSettingRead[] }) {
     ...crudCallbacks(queryClient, ["system-settings"], "Sozlama saqlandi"),
   })
   const saveBind = useMutation({
-    mutationFn: () => saqla(KROMKA_BIND_KEY, bind),
+    mutationFn: async () => {
+      if (before !== savedBefore) await saqla(KROMKA_BEFORE_KEY, before)
+      if (bind !== savedBind) await saqla(KROMKA_BIND_KEY, bind)
+    },
     ...crudCallbacks(queryClient, ["system-settings"], "Sozlama saqlandi"),
   })
+  const bindOk =
+    ok(bind, KROMKA_BIND_MIN, KROMKA_BIND_MAX) &&
+    ok(before, KROMKA_BIND_MIN, KROMKA_BIND_MAX)
 
   return (
     <div className={cn(cardSurface, "space-y-5 p-4")}>
@@ -849,8 +861,9 @@ function KromkaBindCard({ settings }: { settings: SystemSettingRead[] }) {
           Stansiya o'lchagan uzunlik detalning kutilgan tomoni bilan
           solishtiriladi. Tomonlar <b>guruh</b> bo'yicha sanaladi (uzunlik va
           eni), tartib ahamiyatsiz: operator qaysi tomonni oldin qo'ysa, o'sha
-          guruhdan bitta joy yopiladi. Mos kelmasa terminalda brak oynasi
-          ochiladi va operator sababni tanlaydi.
+          guruhdan bitta joy yopiladi. Mos kelmasa faqat ko'rsatiladi — brak deb
+          belgilanmaydi (datchik ishonchsiz, docs/12 §4.10); brakni operator
+          BRAK tugmasi bilan yozadi.
         </p>
       </div>
       <div className="flex items-end gap-3">
@@ -881,7 +894,19 @@ function KromkaBindCard({ settings }: { settings: SystemSettingRead[] }) {
         {KROMKA_TOL_MAX}.
       </p>
       <div className="flex items-end gap-3">
-        <Field label="Skanga bog'lash oynasi, soniya">
+        <Field label="Kirishdan oldin, s">
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={KROMKA_BIND_MIN}
+            max={KROMKA_BIND_MAX}
+            value={before}
+            aria-invalid={!ok(before, KROMKA_BIND_MIN, KROMKA_BIND_MAX)}
+            className="w-32"
+            onChange={(e) => setBefore(e.target.value)}
+          />
+        </Field>
+        <Field label="Kirishdan keyin, s">
           <Input
             type="number"
             inputMode="numeric"
@@ -889,15 +914,13 @@ function KromkaBindCard({ settings }: { settings: SystemSettingRead[] }) {
             max={KROMKA_BIND_MAX}
             value={bind}
             aria-invalid={!ok(bind, KROMKA_BIND_MIN, KROMKA_BIND_MAX)}
-            className="w-40"
+            className="w-32"
             onChange={(e) => setBind(e.target.value)}
           />
         </Field>
         <LoadingButton
           loading={saveBind.isPending}
-          disabled={
-            !ok(bind, KROMKA_BIND_MIN, KROMKA_BIND_MAX) || bind === savedBind
-          }
+          disabled={!bindOk || (bind === savedBind && before === savedBefore)}
           onClick={() => saveBind.mutate()}
         >
           Saqlash
@@ -905,13 +928,16 @@ function KromkaBindCard({ settings }: { settings: SystemSettingRead[] }) {
       </div>
       <p className="text-sm text-muted-foreground">
         Detal birinchi datchikka <b>kirgan lahza</b> hisoblanadi (o'lchov
-        vaqtidan lenta yurish vaqti ayiriladi) va shu lahza atrofidagi skanlar
-        nomzod bo'ladi; ular orasidan o'lchamga mos keladigani tanlanadi. Oxirgi
-        skanga bog'lash XATO berardi: detal datchiklar orasida 8–15 soniya
-        yuradi, operator esa 4–10 soniyada bir marta skanerlaydi — o'lchov
-        keyingi detalga yopishib qolardi. Skan topilmasa o'lchov «skansiz»
-        bo'lib yoziladi va hech kimni ayblamaydi. Oraliq: {KROMKA_BIND_MIN}–
-        {KROMKA_BIND_MAX}.
+        vaqtidan datchiklar orasidagi yurish va detalning ikkinchi datchikdan
+        o'tish vaqti ayiriladi). Shu lahzadan «oldin» va «keyin» oralig'idagi
+        skanlar nomzod bo'ladi — operator odatda detalni lentaga qo'yishdan
+        oldin, ba'zan bir necha detal oldindan skanerlaydi (stansiya egasining
+        tavsiyasi: 60 s oldin, 20 s keyin). Ular orasidan o'lchamga mos va
+        qirrasi hali yopilmagan ENG ESKI skan tanlanadi. Oxirgi skanga bog'lash
+        XATO berardi: detal datchiklar orasida 8–15 soniya yuradi, operator esa
+        4–10 soniyada bir marta skanerlaydi — o'lchov keyingi detalga yopishib
+        qolardi. Skan topilmasa o'lchov «skansiz» bo'lib yoziladi va hech kimni
+        ayblamaydi. Oraliq: {KROMKA_BIND_MIN}–{KROMKA_BIND_MAX}.
       </p>
     </div>
   )
