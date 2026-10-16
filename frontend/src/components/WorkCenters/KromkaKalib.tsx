@@ -92,8 +92,12 @@ const PARAMS: { key: keyof Natija; label: string; dp: number }[] = [
 
 const f = (v: number | null | undefined, dp: number) =>
   v == null ? "—" : v.toFixed(dp)
-const signed = (v: number | null | undefined, dp: number) =>
-  v == null ? "—" : (v >= 0 ? "+" : "") + v.toFixed(dp)
+const signed = (v: number | null | undefined, dp: number) => {
+  if (v == null) return "—"
+  const s = v.toFixed(dp)
+  // -0.004 → "-0.00" emas, "0.00": belgisiz nol farq yo'qligini ko'rsatadi
+  return Number(s) === 0 ? (0).toFixed(dp) : (v > 0 ? "+" : "") + s
+}
 
 export function KromkaKalibCard() {
   const queryClient = useQueryClient()
@@ -150,7 +154,8 @@ export function KromkaKalibCard() {
           Sessiyani boshlang va shtangensirkul bilan o'lchangan etalon
           detallarni lentadan oddiy o'tkazing (kamida 2 xil uzunlik, ikkala
           tezlik, jami ~40 o'tish). Sessiya davomidagi o'tishlar skanga
-          bog'lanmaydi. Natija faqat ko'rsatiladi — Pico'ga yozilmaydi.
+          bog'lanmaydi. Tugagan sessiyani «Pico'ga qo'llash» mumkin — har
+          qo'llashni orqaga qaytarsa bo'ladi.
         </p>
       </div>
 
