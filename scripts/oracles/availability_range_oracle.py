@@ -73,10 +73,7 @@ async def main() -> None:
 
         def kun(rep, m: Machine):  # noqa: ANN001, ANN202
             d = next(x for x in rep.days if x.machine_id == m.id and x.day == KECHA.date())
-            # OFF soniyasi 1 s ga yaxlitlanadi: «Kecha» so'rovining oxiri `time.max` (23:59:59.999999),
-            # `machine_time` esa butun soniyagacha kesadi — oraliq oxiridagi holat 1 s qisqa chiqadi.
-            # Bu eski va alohida xususiyat; Availability'ga tegmaydi (smena 17:00 da tugaydi).
-            return d.availability_pct, d.run_s, round(d.seconds.get("OFF", 0), -1)
+            return d.availability_pct, d.run_s, d.seconds.get("OFF", 0)
 
         for m in (ish, off, olik):
             natija.append((f"{m.name}: kecha ikkala so'rovda bir xil", kun(faqat_kecha, m), kun(bugungacha, m)))
