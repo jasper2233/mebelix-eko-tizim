@@ -29,8 +29,9 @@ export type SubItem = {
   /** Havolaning qidiruv qismi (`?katalog=M`) */
   search?: Record<string, string>
   /** Qaysi manzilda faol: bitta sahifaning bir nechta ko'rinishi — ota ham, kategoriyalar
-   *  ham `/warehouse`; qidiruvni sahifa qanday o'qisa shunday solishtiriladi */
-  match: (search: Search) => boolean
+   *  ham `/warehouse`; qidiruvni sahifa qanday o'qisa shunday solishtiriladi. `pathname` —
+   *  alohida yo'ldagi bo'lim uchun (`/warehouse/panel`) */
+  match: (search: Search, pathname: string) => boolean
 }
 
 export type Item = {
@@ -92,6 +93,7 @@ export function Main({ items }: MainProps) {
                 subItems={item.children}
                 inside={pathMatches(item.path, currentPath)}
                 currentSearch={currentSearch}
+                currentPath={currentPath}
                 onNavigate={handleMenuClick}
               />
             ) : (
@@ -211,12 +213,14 @@ function NavGroup({
   subItems,
   inside,
   currentSearch,
+  currentPath,
   onNavigate,
 }: {
   item: Item
   subItems: SubItem[]
   inside: boolean
   currentSearch: Search
+  currentPath: string
   onNavigate: () => void
 }) {
   const { isMobile, state } = useSidebar()
@@ -227,7 +231,7 @@ function NavGroup({
     setOpen(inside)
   }, [inside])
   const current = inside
-    ? subItems.find((sub) => sub.match(currentSearch))
+    ? subItems.find((sub) => sub.match(currentSearch, currentPath))
     : undefined
 
   if (rail) {

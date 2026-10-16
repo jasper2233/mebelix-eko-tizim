@@ -206,3 +206,89 @@ Ikki ko'rinish, bitta ma'lumot:
 etiladi. Ya'ni u boshqa kompyuterda ko'rinmaydi va MES hisobotlariga kirmaydi.
 Bazaga ko'chirilsa: `sale_sheet` + `sale_sheet_row` jadvallari, buyurtmaga
 bog'lanish va saqlash kaliti versiyasini oshirish kerak.
+
+## 8. «Qudrat Ombor» dizayni — 1-bosqich: Nomenklatura va narx boshqaruvi (2026-10-16)
+
+Egasi `Ombor Dastur.html` (Claude dizayni, «Qudrat Ombor») asosida omborni TUBDAN qayta qurishni
+so'radi — UX deyarli bir xil, lekin MES ichida (MES menyusi va komponentlari, dizayndagi joylashuv,
+ustunlar va tugmalar). Uch bosqich, har biri alohida deploy:
+
+1. **Nomenklatura + Boshqaruv paneli** (shu bo'lim) — narx sinflari, kurs, ustama, kartochka,
+   yangi mahsulot, o'chirish, Excel import/eksport, ABC;
+2. **Kirim va Sotuv hujjatlari** — FIFO partiyalar, harakat tarixi, qoralama → tasdiq, `F2`/`F4`/`F9`,
+   «Hujjatlar»; `/sotuv` (brauzerdagi list) shu hujjatga almashadi, «Shartnoma» chop etish ko'chadi;
+3. **Sex xo'jaligi va Inventarizatsiya.**
+
+**Egasining qarorlari (2026-10-16):** bosqichma-bosqich; boshlang'ich qoldiq va narx — dizayn
+fayli ichidagi katalogdan; `/sotuv` yangisiga almashadi; ko'rinish — MES ichida, dizayn tartibida.
+
+### 8.1 Narx qoidalari (`backend/app/services/warehouse.py`)
+
+Narx endi OMBORNIKI — katalog varag'i uni qayta yozmaydi (quyida 8.4). Qoidalar dizayndagi
+`markupPrice` / `setTierPrice` / `setUsd` bilan bir xil:
+
+| Kim | Sotuv narxi | Qachon qayta hisoblanadi |
+|---|---|---|
+| Furnitura (`F`) | `round(xarid × (1 + ustama/100) / 100) × 100` — 100 so'mgacha. Ustama: pozitsiyaniki → guruhniki → umumiy; hech biri yo'q — sotuv qo'lda qoladi | ustama, xarid yoki kurs o'zgarganda |
+| LDSP / LMDF dekori (`M-LD`, `M-LM`) | sinf (Standart / Medium / Premium) belgilangan bo'lsa — shu sinfning BITTA list narxi | sinf yoki sinf narxi o'zgarganda — shu sinfdagi HAMMA dekor birdan |
+| Xarid dollarda (`purchase_usd`) | so'mdagi xarid = `round($ × kurs)` | kurs o'zgarganda (so'mda qo'lda kiritilsa dollar narxi bekor bo'ladi) |
+
+Sozlama bitta JSON — `system_setting.warehouse_pricing` (`WarehousePricing`: `usd_rate`, `tier_prices`,
+`markup_all`, `markup_groups`). `PUT /catalog/pricing` uni saqlaydi va HAMMA pozitsiyaning narxini
+qayta hisoblaydi (≈2 700 qator — bir zumda); o'zgarish auditga eski va yangi qiymat bilan yoziladi.
+
+### 8.2 Jadvalga qo'shilgan ustunlar (`f3c8a2d6e915`)
+
+`description` (tavsif — rang / o'lcham, dizayndagi `o`), `purchase_usd`, `tier` (S/M/P), `markup_pct`,
+`tracked` (material «zaxiraga olingan»). Kam qoldiq ogohlantirishi materialda FAQAT zaxiraga
+olinganlarda — 2 000+ dekorning hammasi omborda turmaydi, aks holda ro'yxat doim qizil bo'lardi.
+Xizmatda qoldiq ham, chegara ham yo'q.
+
+### 8.3 Kod berish va o'chirish
+
+Yangi pozitsiya kodi serverda: guruhning keyingi modeli (`F-RC-104-01`) yoki tanlangan modelning keyingi
+varianti (`F-RC-008-10`). O'chirish YUMSHOQ: pozitsiya ro'yxatdan chiqadi, kodi band qoladi va qayta
+berilmaydi (o'chirilganlar ham hisobga olinadi). Qoldiqli pozitsiyani o'chirishda ogohlantirish chiqadi.
+
+### 8.4 Varaq bilan munosabat (TODO #9 yopildi — «ombor egasi» varianti)
+
+`scripts/catalog_import.py --apply` mavjud pozitsiyada endi faqat katalog ma'lumotini (guruh nomi,
+o'lcham, dekor, rasm, artikul, `extra`) yangilaydi: nom, xarid, sotuv, holat, izoh, qoldiq, chegara va
+joy — OMBORNIKI, yozilmaydi. O'chirilgan pozitsiyani varaq qayta tiriltirmaydi.
+
+### 8.5 Boshlang'ich ma'lumot — `scripts/ombor_seed.py`
+
+Dizayn fayli ichidagi katalogdan chiqarilgan `scripts/ombor_seed.json` (kodlar `scripts/catalog.csv`
+bilan 2662/2662 mos). FAQAT BO'SH maydon to'ldiriladi — omborchi kiritgani hech qachon ustidan
+yozilmaydi, skriptni ikki marta yurgizish ham xavfsiz. Lokal bazada: qoldiq 323 ta furniturada,
+chegara 446 ta, tavsif 2 592 ta; xarid va sotuv narxlari dizaynda ham, varaqda ham AYNAN bir xil
+(farq 0). `--apply` siz faqat hisobot beradi.
+
+### 8.6 Sahifalar
+
+- `/warehouse/panel` — **Boshqaruv paneli** (dizayndagi «Ombor holati»): sinf narxlari jadvali (LDSP / LMDF
+  × S / M / P, ostida nechta dekor), dollar kursi, furnitura ustamasi — umumiy va 18 guruh bo'yicha.
+  Maydon fokusdan chiqqanda saqlanadi.
+- `/warehouse?katalog=M|F|X&guruh=…` — **Nomenklatura**: butun katalog bitta so'rovda
+  (`GET /catalog/all`) va qidiruv/filtr brauzerda — darhol; ekranda 100 qator, «Yana ko'rsatish».
+  Ustunlar: kod, nom (ostida tavsif), birlik, qoldiq, xarid, xarid $, min, (furniturada) ustama %
+  — qatorning o'zida tahrirlanadi, (materialda) sinf, sotuv, sotuv $, ABC. Xizmatda — xarajat va sotuv.
+  Kam qoldiq — qizil chap chiziq va pushti fon. Materialda: zaxira va sinf filtrlari,
+  «Ko'rinayotgan N ta dekorga: Standart / Medium / Premium». Belgilanganlarga: sinf, zaxiraga olish /
+  chiqarish, o'chirish. Jadval ustida «Yangi mahsulot» QATORI (kod oldindan ko'rinadi, saqlangach qator
+  ochiq qoladi), «Excel'ga chiqarish» (CSV, `;`, UTF-8 BOM) va «Excel'dan yuklash» (shablon bo'yicha
+  yangi pozitsiyalar — hammasi yoki hech biri).
+- `/warehouse/item/$code` — **Tovar kartochkasi**: qoldiq, xarid (so'm va $), sotuv (qoldiq qiymati
+  bilan), min, joy, ustama, kod tuzilmasi, tahrirlash va o'chirish. Partiyalar va harakat tarixi —
+  2-bosqichda. Qoldiq hozircha shu yerda qo'lda tahrirlanadi — 2-bosqichdan faqat hujjat bilan.
+- Sarlavhadagi qidiruv «Kod / nom — skaner»: `/` bilan fokus, Enter — kartochka.
+
+Rasm yo'q: dizayndagi ekranlar skrinshotlari bilan solishtirildi (2026-10-16), farqi — MES menyusi va
+komponentlari (egasining tanlovi). Dizaynda yangi qo'shilganlar ro'yxat tepasiga chiqadi — bizda kod
+tartibida, guruh oxirida.
+
+Tekshiruv — `scripts/oracles/ombor_nomenklatura_oracle.py` **23/23**: guruh / umumiy / pozitsiya ustamasi,
+dollar narxi va kurs, sinf narxi (bitta, ko'plab, narx o'zgarganda hammasi), furnituraga sinf
+berilmaydi, zaxira faqat materialda, kod berish (yangi model, variant, o'chirilgan kod qayta
+berilmaydi), xizmatda qoldiq yo'q, noma'lum guruh 404, import hammasi-yoki-hech-biri, ABC, importer
+narxni qayta yozmaydi. `catalog_oracle` 36/36 (holat endi omborniki — tekshiruv shunga moslandi).

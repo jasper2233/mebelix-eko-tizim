@@ -254,7 +254,9 @@ Tuzatishlar branch orqali boradi; `main` ga push = tsexga deploy (19:00 dan keyi
   onBlur'da `setDraft(null)`.
 - **Nega hozir emas:** Shartnoma chop etadigan forma. Brauzerda qo'lda tekshirish kerak.
 
-### 9. `catalog_import --apply` omborchi o'zgartirgan narx/holat/izohni qaytarib yozadi
+### 9. ✅ HAL QILINDI (2026-10-16, «ombor egasi»): `catalog_import --apply` omborchi o'zgartirgan narx/holat/izohni qaytarib yozadi
+
+- **Hal:** `bazaga()` mavjud qatorda nom, narx, holat va izohni yozmaydi, o'chirilganni tiklamaydi — docs/14 §8.4.
 
 - **Joy:** `scripts/catalog_import.py:225`
 - **Muammo:** `PATCH /catalog/items/{id}` da omborchi `purchase_price`, `sale_price`,

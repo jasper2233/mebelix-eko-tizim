@@ -27,6 +27,22 @@ export const getCatalogGroupsQueryOptions = () =>
     staleTime: 5 * 60_000,
   })
 
+/** Butun nomenklatura (≈2 700 qator) + ABC — qidiruv va filtr brauzerda, darhol (docs/14 §8). */
+export const getCatalogAllQueryOptions = () =>
+  queryOptions({
+    queryKey: ["catalog", "all"],
+    queryFn: async () => (await CatalogService.readCatalogAll()).data,
+    staleTime: 60_000,
+  })
+
+/** Ombor narx sozlamalari: kurs, sinf narxlari, ustama. */
+export const getWarehousePricingQueryOptions = () =>
+  queryOptions({
+    queryKey: ["catalog", "pricing"],
+    queryFn: async () => (await CatalogService.readWarehousePricing()).data,
+    staleTime: 60_000,
+  })
+
 export type CatalogFilter = {
   catalog?: string
   groupCode?: string
