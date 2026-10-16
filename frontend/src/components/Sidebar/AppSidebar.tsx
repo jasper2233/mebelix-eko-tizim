@@ -12,6 +12,7 @@ import {
   Home,
   IdCard,
   Layers,
+  LayoutDashboard,
   MonitorCog,
   ScrollText,
   SlidersHorizontal,
@@ -46,10 +47,14 @@ import { User } from "./User"
 // menyuda ko'rinib, ochilganda qaytarib yuboradigan sahifa bo'lmasligi uchun.
 // _layout.tsx mobil sarlavhalari ham SHU ro'yxatdan olinadi.
 //: Katalog harflarining ekrandagi nomi va ikonkasi (`docs/14` §1)
-const KATEGORIYA_NOM = { M: "Material", F: "Furnitura", X: "Xizmat" } as const
+const KATEGORIYA_NOM = {
+  M: "Materiallar",
+  F: "Furnitura",
+  X: "Xizmatlar",
+} as const
 const KATEGORIYA_IKONKA = { M: Layers, F: Bolt, X: Hammer } as const
 //: Ombor sahifasi katalogni qanday o'qisa shunday: guruh berilsa undan (`M-LD` -> M), aks holda
-//: `katalog`; ikkalasi yo'q — butun katalog (`routes/_layout/warehouse.tsx`)
+//: `katalog`; ikkalasi yo'q — butun katalog (`routes/_layout/warehouse/index.tsx`)
 const katalogOf = (s: Record<string, unknown>): string =>
   typeof s.guruh === "string" && s.guruh
     ? s.guruh.slice(0, 1)
@@ -84,12 +89,24 @@ export const NAV_ITEMS: (Item & {
     path: "/warehouse",
     show: isWarehouseStaff,
     children: [
+      // «Qudrat Ombor» dizayni (docs/14 §8): narx boshqaruvi + nomenklatura bo'limlari.
+      // Kartochka (`/warehouse/item/F-RC-…`) o'z kategoriyasini faol qiladi — kod harfidan.
+      {
+        icon: LayoutDashboard,
+        title: "Boshqaruv paneli",
+        path: "/warehouse/panel",
+        match: (_s: Record<string, unknown>, p: string) =>
+          p === "/warehouse/panel",
+      },
       ...(["M", "F", "X"] as const).map((harf) => ({
         icon: KATEGORIYA_IKONKA[harf],
         title: KATEGORIYA_NOM[harf],
         path: "/warehouse",
         search: { katalog: harf },
-        match: (s: Record<string, unknown>) => katalogOf(s) === harf,
+        match: (s: Record<string, unknown>, p: string) =>
+          p.startsWith("/warehouse/item/")
+            ? p.slice(16, 17) === harf
+            : p === "/warehouse" && katalogOf(s) === harf,
       })),
     ],
   },

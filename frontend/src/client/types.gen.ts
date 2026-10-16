@@ -544,6 +544,36 @@ export type BridgeScanRequest = {
 };
 
 /**
+ * CatalogBulk
+ *
+ * Bir nechta pozitsiyaga birdan: sinf (`""` — sinfni olib tashlash) yoki zaxira belgisi.
+ */
+export type CatalogBulk = {
+    /**
+     * Ids
+     */
+    ids: Array<number>;
+    /**
+     * Tier
+     */
+    tier?: 'S' | 'M' | 'P' | '' | null;
+    /**
+     * Tracked
+     */
+    tracked?: boolean | null;
+};
+
+/**
+ * CatalogCreated
+ */
+export type CatalogCreated = {
+    /**
+     * Codes
+     */
+    codes: Array<string>;
+};
+
+/**
  * CatalogGroup
  *
  * Kategoriya daraxtining bitta bandi — `M-LD`, «LDSP dekorlar», 836 pozitsiya.
@@ -565,6 +595,81 @@ export type CatalogGroup = {
      * Count
      */
     count: number;
+};
+
+/**
+ * CatalogIds
+ */
+export type CatalogIds = {
+    /**
+     * Ids
+     */
+    ids: Array<number>;
+};
+
+/**
+ * CatalogImport
+ *
+ * Shablon bo'yicha yangi pozitsiyalar (Excel → CSV, brauzer o'qiydi).
+ */
+export type CatalogImport = {
+    /**
+     * Rows
+     */
+    rows: Array<CatalogItemCreate>;
+};
+
+/**
+ * CatalogItemCreate
+ *
+ * Yangi pozitsiya. Kod server tomonida beriladi: guruhning keyingi modeli (`F-RC-104-01`) yoki
+ * `model` berilsa — shu modelning keyingi varianti (`F-RC-008-10`). O'chirilgan kod qayta berilmaydi.
+ */
+export type CatalogItemCreate = {
+    /**
+     * Catalog
+     */
+    catalog: 'M' | 'F' | 'X';
+    /**
+     * Group Code
+     */
+    group_code: string;
+    /**
+     * Model
+     */
+    model?: string | null;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Unit
+     */
+    unit?: string;
+    /**
+     * Quantity
+     */
+    quantity?: number | string;
+    /**
+     * Min Quantity
+     */
+    min_quantity?: number | string | null;
+    /**
+     * Location
+     */
+    location?: string | null;
+    /**
+     * Purchase Price
+     */
+    purchase_price?: number | string | null;
+    /**
+     * Sale Price
+     */
+    sale_price?: number | string | null;
 };
 
 /**
@@ -669,6 +774,26 @@ export type CatalogItemRead = {
     extra: {
         [key: string]: unknown;
     };
+    /**
+     * Description
+     */
+    description: string | null;
+    /**
+     * Purchase Usd
+     */
+    purchase_usd: string | null;
+    /**
+     * Tier
+     */
+    tier: string | null;
+    /**
+     * Markup Pct
+     */
+    markup_pct: string | null;
+    /**
+     * Tracked
+     */
+    tracked: boolean;
 };
 
 /**
@@ -676,9 +801,8 @@ export type CatalogItemRead = {
  *
  * Omborchi tahrirlaydigan maydonlar.
  *
- * Kod, nom, guruh va o'lcham ATAYLAB yo'q: ular katalogdan (`Katalog.xlsx` →
- * `scripts/catalog_import.py`) keladi va shu yerda o'zgartirilsa keyingi
- * yuklashda ustiga yozilardi. Kod esa umuman o'zgarmaydi — katalog qoidasi.
+ * Kod va guruh ATAYLAB yo'q: kod umuman o'zgarmaydi — katalog qoidasi. Narx, nom va tavsif
+ * 2026-10-16 dan OMBORNIKI (`scripts/catalog_import.py` ularni endi qayta yozmaydi).
  */
 export type CatalogItemUpdate = {
     /**
@@ -709,6 +833,127 @@ export type CatalogItemUpdate = {
      * Note
      */
     note?: string | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Unit
+     */
+    unit?: string | null;
+    /**
+     * Purchase Usd
+     */
+    purchase_usd?: number | string | null;
+    /**
+     * Tier
+     */
+    tier?: 'S' | 'M' | 'P' | null;
+    /**
+     * Markup Pct
+     */
+    markup_pct?: number | string | null;
+    /**
+     * Tracked
+     */
+    tracked?: boolean | null;
+};
+
+/**
+ * CatalogRow
+ *
+ * Nomenklatura jadvalining bitta qatori — butun katalog BIR so'rovda keladi (≈2 700 qator):
+ * dizayndagidek qidiruv va filtr darhol, sahifa almashmasdan ishlaydi.
+ */
+export type CatalogRow = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Catalog
+     */
+    catalog: string;
+    /**
+     * Group Code
+     */
+    group_code: string;
+    /**
+     * Group Name
+     */
+    group_name: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Description
+     */
+    description: string | null;
+    /**
+     * Decor Name
+     */
+    decor_name: string | null;
+    /**
+     * Article
+     */
+    article: string | null;
+    /**
+     * Unit
+     */
+    unit: string | null;
+    /**
+     * Quantity
+     */
+    quantity: string;
+    /**
+     * Min Quantity
+     */
+    min_quantity: string | null;
+    /**
+     * Location
+     */
+    location: string | null;
+    /**
+     * Purchase Price
+     */
+    purchase_price: string | null;
+    /**
+     * Purchase Usd
+     */
+    purchase_usd: string | null;
+    /**
+     * Sale Price
+     */
+    sale_price: string | null;
+    /**
+     * Tier
+     */
+    tier: string | null;
+    /**
+     * Markup Pct
+     */
+    markup_pct: string | null;
+    /**
+     * Tracked
+     */
+    tracked: boolean;
+    /**
+     * Image Url
+     */
+    image_url: string | null;
+    /**
+     * Abc
+     */
+    abc?: string | null;
 };
 
 /**
@@ -6135,6 +6380,66 @@ export type ValidationError = {
 };
 
 /**
+ * WarehousePricing
+ *
+ * Ombor narx sozlamalari (Boshqaruv paneli). Bitta JSON — `system_setting.warehouse_pricing`.
+ */
+export type WarehousePricingInput = {
+    /**
+     * Usd Rate
+     */
+    usd_rate?: number | string;
+    /**
+     * Tier Prices
+     */
+    tier_prices?: {
+        [key: string]: {
+            [key: string]: number | string;
+        };
+    };
+    /**
+     * Markup All
+     */
+    markup_all?: number | string | null;
+    /**
+     * Markup Groups
+     */
+    markup_groups?: {
+        [key: string]: number | string;
+    };
+};
+
+/**
+ * WarehousePricing
+ *
+ * Ombor narx sozlamalari (Boshqaruv paneli). Bitta JSON — `system_setting.warehouse_pricing`.
+ */
+export type WarehousePricingOutput = {
+    /**
+     * Usd Rate
+     */
+    usd_rate?: string;
+    /**
+     * Tier Prices
+     */
+    tier_prices?: {
+        [key: string]: {
+            [key: string]: string;
+        };
+    };
+    /**
+     * Markup All
+     */
+    markup_all?: string | null;
+    /**
+     * Markup Groups
+     */
+    markup_groups?: {
+        [key: string]: string;
+    };
+};
+
+/**
  * WorkBreak
  */
 export type WorkBreak = {
@@ -8613,21 +8918,64 @@ export type AcceptIntoTmoResponses = {
 
 export type AcceptIntoTmoResponse = AcceptIntoTmoResponses[keyof AcceptIntoTmoResponses];
 
-export type ReadCatalogGroupsData = {
+export type ReadCatalogAllData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/api/v1/catalog/groups';
+    url: '/api/v1/catalog/all';
 };
 
-export type ReadCatalogGroupsResponses = {
+export type ReadCatalogAllResponses = {
+    /**
+     * Response Read Catalog All
+     *
+     * Successful Response
+     */
+    200: Array<CatalogRow>;
+};
+
+export type ReadCatalogAllResponse = ReadCatalogAllResponses[keyof ReadCatalogAllResponses];
+
+export type ReadWarehousePricingData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/catalog/pricing';
+};
+
+export type ReadWarehousePricingResponses = {
     /**
      * Successful Response
      */
-    200: CatalogTree;
+    200: WarehousePricingOutput;
 };
 
-export type ReadCatalogGroupsResponse = ReadCatalogGroupsResponses[keyof ReadCatalogGroupsResponses];
+export type ReadWarehousePricingResponse = ReadWarehousePricingResponses[keyof ReadWarehousePricingResponses];
+
+export type UpdateWarehousePricingData = {
+    body: WarehousePricingInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/catalog/pricing';
+};
+
+export type UpdateWarehousePricingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateWarehousePricingError = UpdateWarehousePricingErrors[keyof UpdateWarehousePricingErrors];
+
+export type UpdateWarehousePricingResponses = {
+    /**
+     * Successful Response
+     */
+    200: WarehousePricingOutput;
+};
+
+export type UpdateWarehousePricingResponse = UpdateWarehousePricingResponses[keyof UpdateWarehousePricingResponses];
 
 export type ReadCatalogItemsData = {
     body?: never;
@@ -8682,6 +9030,122 @@ export type ReadCatalogItemsResponses = {
 };
 
 export type ReadCatalogItemsResponse = ReadCatalogItemsResponses[keyof ReadCatalogItemsResponses];
+
+export type CreateCatalogItemData = {
+    body: CatalogItemCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/catalog/items';
+};
+
+export type CreateCatalogItemErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateCatalogItemError = CreateCatalogItemErrors[keyof CreateCatalogItemErrors];
+
+export type CreateCatalogItemResponses = {
+    /**
+     * Successful Response
+     */
+    200: CatalogItemRead;
+};
+
+export type CreateCatalogItemResponse = CreateCatalogItemResponses[keyof CreateCatalogItemResponses];
+
+export type ImportCatalogItemsData = {
+    body: CatalogImport;
+    path?: never;
+    query?: never;
+    url: '/api/v1/catalog/import';
+};
+
+export type ImportCatalogItemsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ImportCatalogItemsError = ImportCatalogItemsErrors[keyof ImportCatalogItemsErrors];
+
+export type ImportCatalogItemsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CatalogCreated;
+};
+
+export type ImportCatalogItemsResponse = ImportCatalogItemsResponses[keyof ImportCatalogItemsResponses];
+
+export type DeleteCatalogItemsData = {
+    body: CatalogIds;
+    path?: never;
+    query?: never;
+    url: '/api/v1/catalog/items/delete';
+};
+
+export type DeleteCatalogItemsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteCatalogItemsError = DeleteCatalogItemsErrors[keyof DeleteCatalogItemsErrors];
+
+export type DeleteCatalogItemsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CatalogCreated;
+};
+
+export type DeleteCatalogItemsResponse = DeleteCatalogItemsResponses[keyof DeleteCatalogItemsResponses];
+
+export type BulkUpdateCatalogItemsData = {
+    body: CatalogBulk;
+    path?: never;
+    query?: never;
+    url: '/api/v1/catalog/items/bulk';
+};
+
+export type BulkUpdateCatalogItemsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BulkUpdateCatalogItemsError = BulkUpdateCatalogItemsErrors[keyof BulkUpdateCatalogItemsErrors];
+
+export type BulkUpdateCatalogItemsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CatalogCreated;
+};
+
+export type BulkUpdateCatalogItemsResponse = BulkUpdateCatalogItemsResponses[keyof BulkUpdateCatalogItemsResponses];
+
+export type ReadCatalogGroupsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/catalog/groups';
+};
+
+export type ReadCatalogGroupsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CatalogTree;
+};
+
+export type ReadCatalogGroupsResponse = ReadCatalogGroupsResponses[keyof ReadCatalogGroupsResponses];
 
 export type UpdateCatalogItemData = {
     body: CatalogItemUpdate;

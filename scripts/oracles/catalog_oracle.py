@@ -173,7 +173,8 @@ async def main() -> None:
         item = (await db.execute(select(CatalogItem).where(CatalogItem.code == "M-LD-005-05"))).scalar_one()
         natija.append(("qoldiq va joy saqlanib qoldi",
                        (item.quantity, item.location), (Decimal("1.000"), "A-3")))
-        natija.append(("holat esa varaqdan qaytadi (Aktiv)", item.status, "Aktiv"))
+        # 2026-10-16 dan holat (va nom, narx, izoh) OMBORNIKI — varaq qayta yozmaydi (docs/14 §8, TODO #9)
+        natija.append(("holat omborniki — varaq uni qaytarmaydi (Arxiv qoladi)", item.status, "Arxiv"))
         jami = await db.scalar(select(func.count()).select_from(CatalogItem))
         natija.append(("takror yozuv paydo bo'lmadi", jami, len(satrlar)))
 

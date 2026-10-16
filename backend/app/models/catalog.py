@@ -71,3 +71,17 @@ class CatalogItem(BaseModel):
 
     note: Mapped[str | None] = mapped_column(Text, default=None, kw_only=True)
     extra: Mapped[dict[str, Any]] = mapped_column(JSONB, default_factory=dict, kw_only=True)
+
+    # --- Ombor narxi (docs/14 §8, 2026-10-16): narx katalog varag'idan emas, OMBORDAN boshqariladi ---
+    #: Qisqa tavsif — rang / o'lcham (`bronza · 128 mm`). Ro'yxatda nom ostida, qidiruvda ham
+    description: Mapped[str | None] = mapped_column(String(200), default=None, kw_only=True)
+    #: Xarid narxi DOLLARDA (kirim dollarda yoziladi). Bo'lsa `purchase_price` = shu × kurs —
+    #: kurs o'zgarganda so'mdagi xarid va ustamali sotuv narxi qayta hisoblanadi
+    purchase_usd: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), default=None, kw_only=True)
+    #: LDSP/LMDF dekor sinfi: `S` standart, `M` medium, `P` premium — sotuv narxi sinf narxidan
+    tier: Mapped[str | None] = mapped_column(String(1), default=None, kw_only=True)
+    #: Furnitura ustamasi (%) — shu pozitsiyaga xos; bo'lmasa guruhniki, u ham bo'lmasa umumiy
+    markup_pct: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), default=None, kw_only=True)
+    #: Material «zaxiraga olingan» — kam qoldiq ogohlantirishi FAQAT shularda (2 000+ dekorning
+    #: hammasi omborda turmaydi, aks holda ro'yxat doim qizil bo'lardi)
+    tracked: Mapped[bool] = mapped_column(default=False, server_default="false", kw_only=True)

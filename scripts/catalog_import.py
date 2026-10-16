@@ -176,6 +176,10 @@ def varaqdan_csv(xlsx: Path) -> int:
     return len(chiqdi)
 
 
+#: Mavjud pozitsiyada varaq yozmaydigan maydonlar — ular Mahsulotlar omborida tahrirlanadi
+_OMBORNIKI = ("name", "purchase_price", "sale_price", "status", "note")
+
+
 async def bazaga() -> tuple[int, int]:
     """CSV ni bazaga upsert qiladi. Qaytaradi: (yangi, yangilangan)."""
     sys.path.insert(0, str(SCRIPTS.parent / "backend"))
@@ -221,12 +225,16 @@ async def bazaga() -> tuple[int, int]:
                 # Varaqdagi qoldiq/chegara olinmaydi — yangi pozitsiya nol bilan tushadi
                 db.add(CatalogItem(**maydon))
                 yangi += 1
+            elif item.is_deleted:
+                # Omborda o'chirilgan — varaq uni qayta tiriltirmaydi (kod band qoladi)
+                continue
             else:
-                # MAVJUD pozitsiyada `quantity`, `min_quantity`, `location` TEGILMAYDI:
-                # ular omborchining ishi, varaqdan qaytib kelib ustiga yozmasin
+                # MAVJUD pozitsiyada omborchining maydonlari TEGILMAYDI: qoldiq, chegara, joy va
+                # 2026-10-16 dan nom, narx, holat, izoh ham (TODO #9 — narx omborniki, docs/14 §8)
+                for k in _OMBORNIKI:
+                    maydon.pop(k)
                 for k, v in maydon.items():
                     setattr(item, k, v)
-                item.is_deleted = False
                 yangilandi += 1
         await db.commit()
     return yangi, yangilandi

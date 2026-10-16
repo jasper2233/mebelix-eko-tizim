@@ -27,13 +27,15 @@ import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutSotuvRouteImport } from './routes/_layout/sotuv'
 import { Route as LayoutSystemHealthRouteImport } from './routes/_layout/system-health'
 import { Route as LayoutSystemSettingsRouteImport } from './routes/_layout/system-settings'
-import { Route as LayoutWarehouseRouteImport } from './routes/_layout/warehouse'
 import { Route as LayoutWorkCentersRouteImport } from './routes/_layout/work-centers'
 import { Route as TabloStanoklarRouteImport } from './routes/tablo_.stanoklar'
 import { Route as LayoutAnketaOrderIdRouteImport } from './routes/_layout/anketa.$orderId'
 import { Route as LayoutCutmapOrderIdRouteImport } from './routes/_layout/cutmap.$orderId'
 import { Route as LayoutOrdersIndexRouteImport } from './routes/_layout/orders/index'
 import { Route as LayoutOrdersOrderIdRouteImport } from './routes/_layout/orders/$orderId'
+import { Route as LayoutWarehouseIndexRouteImport } from './routes/_layout/warehouse/index'
+import { Route as LayoutWarehousePanelRouteImport } from './routes/_layout/warehouse/panel'
+import { Route as LayoutWarehouseItemCodeRouteImport } from './routes/_layout/warehouse/item.$code'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -124,11 +126,6 @@ const LayoutSystemSettingsRoute = LayoutSystemSettingsRouteImport.update({
   path: '/system-settings',
   getParentRoute: () => LayoutRoute,
 } as any)
-const LayoutWarehouseRoute = LayoutWarehouseRouteImport.update({
-  id: '/warehouse',
-  path: '/warehouse',
-  getParentRoute: () => LayoutRoute,
-} as any)
 const LayoutWorkCentersRoute = LayoutWorkCentersRouteImport.update({
   id: '/work-centers',
   path: '/work-centers',
@@ -159,6 +156,21 @@ const LayoutOrdersOrderIdRoute = LayoutOrdersOrderIdRouteImport.update({
   path: '/orders/$orderId',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutWarehouseIndexRoute = LayoutWarehouseIndexRouteImport.update({
+  id: '/warehouse/',
+  path: '/warehouse/',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutWarehousePanelRoute = LayoutWarehousePanelRouteImport.update({
+  id: '/warehouse/panel',
+  path: '/warehouse/panel',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutWarehouseItemCodeRoute = LayoutWarehouseItemCodeRouteImport.update({
+  id: '/warehouse/item/$code',
+  path: '/warehouse/item/$code',
+  getParentRoute: () => LayoutRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
@@ -178,13 +190,15 @@ export interface FileRoutesByFullPath {
   '/sotuv': typeof LayoutSotuvRoute
   '/system-health': typeof LayoutSystemHealthRoute
   '/system-settings': typeof LayoutSystemSettingsRoute
-  '/warehouse': typeof LayoutWarehouseRoute
   '/work-centers': typeof LayoutWorkCentersRoute
   '/tablo/stanoklar': typeof TabloStanoklarRoute
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
+  '/warehouse/panel': typeof LayoutWarehousePanelRoute
   '/orders/': typeof LayoutOrdersIndexRoute
+  '/warehouse/': typeof LayoutWarehouseIndexRoute
+  '/warehouse/item/$code': typeof LayoutWarehouseItemCodeRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -203,14 +217,16 @@ export interface FileRoutesByTo {
   '/sotuv': typeof LayoutSotuvRoute
   '/system-health': typeof LayoutSystemHealthRoute
   '/system-settings': typeof LayoutSystemSettingsRoute
-  '/warehouse': typeof LayoutWarehouseRoute
   '/work-centers': typeof LayoutWorkCentersRoute
   '/tablo/stanoklar': typeof TabloStanoklarRoute
   '/': typeof LayoutIndexRoute
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
+  '/warehouse/panel': typeof LayoutWarehousePanelRoute
   '/orders': typeof LayoutOrdersIndexRoute
+  '/warehouse': typeof LayoutWarehouseIndexRoute
+  '/warehouse/item/$code': typeof LayoutWarehouseItemCodeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -231,14 +247,16 @@ export interface FileRoutesById {
   '/_layout/sotuv': typeof LayoutSotuvRoute
   '/_layout/system-health': typeof LayoutSystemHealthRoute
   '/_layout/system-settings': typeof LayoutSystemSettingsRoute
-  '/_layout/warehouse': typeof LayoutWarehouseRoute
   '/_layout/work-centers': typeof LayoutWorkCentersRoute
   '/tablo_/stanoklar': typeof TabloStanoklarRoute
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/_layout/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/_layout/orders/$orderId': typeof LayoutOrdersOrderIdRoute
+  '/_layout/warehouse/panel': typeof LayoutWarehousePanelRoute
   '/_layout/orders/': typeof LayoutOrdersIndexRoute
+  '/_layout/warehouse/': typeof LayoutWarehouseIndexRoute
+  '/_layout/warehouse/item/$code': typeof LayoutWarehouseItemCodeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -260,13 +278,15 @@ export interface FileRouteTypes {
     | '/sotuv'
     | '/system-health'
     | '/system-settings'
-    | '/warehouse'
     | '/work-centers'
     | '/tablo/stanoklar'
     | '/anketa/$orderId'
     | '/cutmap/$orderId'
     | '/orders/$orderId'
+    | '/warehouse/panel'
     | '/orders/'
+    | '/warehouse/'
+    | '/warehouse/item/$code'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -285,14 +305,16 @@ export interface FileRouteTypes {
     | '/sotuv'
     | '/system-health'
     | '/system-settings'
-    | '/warehouse'
     | '/work-centers'
     | '/tablo/stanoklar'
     | '/'
     | '/anketa/$orderId'
     | '/cutmap/$orderId'
     | '/orders/$orderId'
+    | '/warehouse/panel'
     | '/orders'
+    | '/warehouse'
+    | '/warehouse/item/$code'
   id:
     | '__root__'
     | '/_layout'
@@ -312,14 +334,16 @@ export interface FileRouteTypes {
     | '/_layout/sotuv'
     | '/_layout/system-health'
     | '/_layout/system-settings'
-    | '/_layout/warehouse'
     | '/_layout/work-centers'
     | '/tablo_/stanoklar'
     | '/_layout/'
     | '/_layout/anketa/$orderId'
     | '/_layout/cutmap/$orderId'
     | '/_layout/orders/$orderId'
+    | '/_layout/warehouse/panel'
     | '/_layout/orders/'
+    | '/_layout/warehouse/'
+    | '/_layout/warehouse/item/$code'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -459,13 +483,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSystemSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/_layout/warehouse': {
-      id: '/_layout/warehouse'
-      path: '/warehouse'
-      fullPath: '/warehouse'
-      preLoaderRoute: typeof LayoutWarehouseRouteImport
-      parentRoute: typeof LayoutRoute
-    }
     '/_layout/work-centers': {
       id: '/_layout/work-centers'
       path: '/work-centers'
@@ -508,6 +525,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutOrdersOrderIdRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/warehouse/': {
+      id: '/_layout/warehouse/'
+      path: '/warehouse'
+      fullPath: '/warehouse/'
+      preLoaderRoute: typeof LayoutWarehouseIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/warehouse/panel': {
+      id: '/_layout/warehouse/panel'
+      path: '/warehouse/panel'
+      fullPath: '/warehouse/panel'
+      preLoaderRoute: typeof LayoutWarehousePanelRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/warehouse/item/$code': {
+      id: '/_layout/warehouse/item/$code'
+      path: '/warehouse/item/$code'
+      fullPath: '/warehouse/item/$code'
+      preLoaderRoute: typeof LayoutWarehouseItemCodeRouteImport
+      parentRoute: typeof LayoutRoute
+    }
   }
 }
 
@@ -524,13 +562,15 @@ interface LayoutRouteChildren {
   LayoutSotuvRoute: typeof LayoutSotuvRoute
   LayoutSystemHealthRoute: typeof LayoutSystemHealthRoute
   LayoutSystemSettingsRoute: typeof LayoutSystemSettingsRoute
-  LayoutWarehouseRoute: typeof LayoutWarehouseRoute
   LayoutWorkCentersRoute: typeof LayoutWorkCentersRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
   LayoutAnketaOrderIdRoute: typeof LayoutAnketaOrderIdRoute
   LayoutCutmapOrderIdRoute: typeof LayoutCutmapOrderIdRoute
   LayoutOrdersOrderIdRoute: typeof LayoutOrdersOrderIdRoute
+  LayoutWarehousePanelRoute: typeof LayoutWarehousePanelRoute
   LayoutOrdersIndexRoute: typeof LayoutOrdersIndexRoute
+  LayoutWarehouseIndexRoute: typeof LayoutWarehouseIndexRoute
+  LayoutWarehouseItemCodeRoute: typeof LayoutWarehouseItemCodeRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
@@ -546,13 +586,15 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutSotuvRoute: LayoutSotuvRoute,
   LayoutSystemHealthRoute: LayoutSystemHealthRoute,
   LayoutSystemSettingsRoute: LayoutSystemSettingsRoute,
-  LayoutWarehouseRoute: LayoutWarehouseRoute,
   LayoutWorkCentersRoute: LayoutWorkCentersRoute,
   LayoutIndexRoute: LayoutIndexRoute,
   LayoutAnketaOrderIdRoute: LayoutAnketaOrderIdRoute,
   LayoutCutmapOrderIdRoute: LayoutCutmapOrderIdRoute,
   LayoutOrdersOrderIdRoute: LayoutOrdersOrderIdRoute,
+  LayoutWarehousePanelRoute: LayoutWarehousePanelRoute,
   LayoutOrdersIndexRoute: LayoutOrdersIndexRoute,
+  LayoutWarehouseIndexRoute: LayoutWarehouseIndexRoute,
+  LayoutWarehouseItemCodeRoute: LayoutWarehouseItemCodeRoute,
 }
 
 const LayoutRouteWithChildren =
