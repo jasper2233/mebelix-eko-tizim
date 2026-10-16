@@ -268,6 +268,11 @@ bo'lib yozilardi.
   `andon_event` ga bitta yozuv bo'lardi. `yigilgan` (xotira hisoboti) ham shunday.
 - **v1.19 — navbat sig'imi va juftlash chegarasi** — Pico ichida, agentga tegmaydi.
 
+**Agent 1.11.0 — kalibrlash qiymatlari.** `HOLAT` javobidagi (va `SET` javobidagi
+`{"ev":"kal"}`) Pico `KAL` qiymatlari — D, V10/V18, K1/K2, B1/B2, C, TD, AO, HQ/HA/AV — o'zgarganda
+`kal` hodisasi bo'lib MES ga ketadi (har yangi ulanishda birinchisi ham). Faqat o'qish:
+MES joriy kalibrlashni ko'rsatadi (`docs/12` §4.18).
+
 ## Rover Pico'si — CNC 2130 (v1.7.0+)
 
 Uchinchi xil Pico (firmware alohida repoda: `jasper2233/cnc2130-oyy-mes`). Oldingi

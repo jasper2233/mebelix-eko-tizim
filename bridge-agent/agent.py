@@ -59,7 +59,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 # Har agent o'zgarishida qo'lda +1 (commit bilan birga). WS headerida serverga
 # yuboriladi — admin paneldagi "MES agentlar" sahifasida qaysi exe ishlayotgani ko'rinadi.
-AGENT_VERSION = "1.10.0"
+AGENT_VERSION = "1.11.0"
 
 # MX logotipi (PNG, 112px balandlik, base64). MANBAGA JOYLANGAN sabab:
 # PyInstaller onefile'da --add-data va runtime yo'l topish o'rniga bitta
@@ -1319,11 +1319,15 @@ _ANDON_PING_S = 5
 _KROMKA_HB_S = 1
 #: Kromkadan MES ga yoziladigan hodisalar (`tiqilish` — proshivka v1.16 dan: detallar
 #: birga o'tgan yoki datchik ostida turib qolgan, o'lchov chiqmagan).
-#: `holat`/`pong`/`kal`/`kalib_rejim`/`yigilgan`
-#: — javob va diagnostika qatorlari, tarixga kerak emas.
+#: `holat`/`pong`/`kalib_rejim`/`yigilgan`
+#: — javob va diagnostika qatorlari, tarixga kerak emas. `kal` (1.11.0) — Pico'dagi
+#: KALIBRLASH qiymatlari: `HOLAT` javobidan (va `SET` javobidan) O'ZGARGANDA yuboriladi —
+#: MES joriy parametrlarni ko'rsin va keyin `SET` qo'llanganini tasdiqlay olsin.
 #: v1.20 dan kelgan `sig` (lampa fazasi — MES tovushni shundan boshlaydi) va
 #: `yigilgan` (xotira hisoboti) ATAYLAB ro'yxatda yo'q: ular MESga yozilmaydi.
-_KROMKA_EVENTS = ("olchov", "ogoh", "uskuna", "tezlik", "avariya_toxtash", "boot", "tiqilish")
+_KROMKA_EVENTS = ("olchov", "ogoh", "uskuna", "tezlik", "avariya_toxtash", "boot", "tiqilish", "kal")
+#: Pico kalibrlash kalitlari (`main.py: KAL`) — `HOLAT` va `SET` javobida keladi
+_KROMKA_KAL = ("D", "V10", "V18", "K1", "K2", "B1", "B2", "C", "TD", "AO", "HQ", "HA", "AV")
 #: ROVER (CNC 2130) Pico'si IKKI TOMONLAMA gaplashadi — kromkadan farqi shu. Undan
 #: hodisa olish uchun unga har 10 soniyada kompyuter vaqti yuborilishi SHART: 30 s
 #: jim qolsa u «kompyuter yo'q» deb biladi va hodisalarni fleshga yig'a boshlaydi.
@@ -1455,15 +1459,30 @@ def _kromka_kalit() -> tuple[str, int]:
 _KROMKA_HOLAT_S = 30
 
 
+def _kromka_kal(data: dict[str, Any], manba: str) -> None:
+    """Pico'dagi kalibrlash qiymatlari (`HOLAT` yoki `SET` javobidan) — O'ZGARGANDA hodisa.
+
+    Faqat o'qiladi va uzatiladi: MES joriy parametrlarni ko'rsatadi va keyin o'zi yuborgan
+    `SET` Pico'da qo'llanganini shu qiymatlar bilan tasdiqlaydi (docs/12 §4.18). Har 30 s lik
+    `HOLAT` da bir xil bo'lsa yozilmaydi; har yangi ulanishda birinchisi baribir ketadi."""
+    snap = {k: data[k] for k in _KROMKA_KAL if isinstance(data.get(k), (int, float))}
+    if len(snap) < 3 or snap == ANDON_TUR.get("kal"):
+        return
+    ANDON_TUR["kal"] = snap
+    _kromka_line({"ev": "kal", **snap, "ver": data.get("ver") or ANDON_TUR.get("ver"),
+                  "alarm": data.get("alarm"), "manba": manba})
+
+
 def _kromka_holat(data: dict[str, Any]) -> None:
     """`HOLAT` javobi: joriy holatni o'qiydi va O'ZGARGAN bo'lsa hodisa qilib yozadi.
 
     O'zgarmagan bo'lsa hech narsa yozilmaydi — aks holda har 30 soniyada bir xil
     yozuv tushib, oraliqlar maydalanib ketardi."""
-    if "uskuna" not in data:
-        return
     if data.get("ver"):
         ANDON_TUR["ver"] = str(data["ver"])
+    _kromka_kal(data, "holat")
+    if "uskuna" not in data:
+        return
     holat = 1 if data.get("uskuna") else 0
     if ANDON_TUR.get("uskuna") == holat:
         return
@@ -1721,6 +1740,8 @@ def _andon_line(text: str) -> None:
             log.info("Andon: KROMKA stansiyasi Pico'si aniqlandi")
         if data.get("ev") == "holat":
             _kromka_holat(data)
+        elif data.get("ev") == "kal":
+            _kromka_kal(data, "set")
         else:
             _kromka_line(data)
         return
@@ -1812,6 +1833,7 @@ def _andon_session(port: Any) -> None:
     ANDON_CONNECTED = True
     ANDON_TUR["session"] = ""          # har ulanish — yangi kalit
     ANDON_TUR["uskuna"] = None         # holat noma'lum: birinchi javob yoziladi
+    ANDON_TUR["kal"] = None            # kalibrlash ham — birinchi HOLAT da yuboriladi
     with ANDON_LOCK:
         # ROVER `seen` tozalanadi: Pico qayta yuborgani yana navbatga tushadi, server esa
         # unikal kalit bilan takrorni tashlaydi. `saved`/`ack_upto` saqlanadi — server yozgani

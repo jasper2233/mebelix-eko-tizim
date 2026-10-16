@@ -13,6 +13,7 @@ import {
   type DowntimeReasonUpdate,
   type Holiday,
   type IdealCycle,
+  MachinesService,
   SettingsService,
   type SystemSettingRead,
   type WorkBreak,
@@ -30,9 +31,17 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { requireAccess } from "@/lib/guards"
-import { formatDate, isAdmin } from "@/lib/mes"
+import { formatDate, formatDateTime, isAdmin } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { crudCallbacks } from "@/queries/mes"
 
@@ -149,6 +158,7 @@ function SystemSettingsPage() {
             {withSettings((settings) => (
               <KromkaBindCard settings={settings} />
             ))}
+            <KromkaKalCard />
           </div>
         </TabsContent>
       </Tabs>
@@ -1115,6 +1125,96 @@ function RoverCycleCard() {
             Saqlash
           </LoadingButton>
         </>
+      )}
+    </div>
+  )
+}
+
+// Pico `KAL` kalitlari (kromka-stansiya-OYY: pico/main.py) — birligi va ma'nosi
+const KAL_FIELDS: { key: string; label: string; unit: string }[] = [
+  { key: "D", label: "D — datchiklar orasi", unit: "mm" },
+  { key: "V10", label: "V10 — 10 m/min tezlik", unit: "m/min" },
+  { key: "V18", label: "V18 — 18 m/min tezlik", unit: "m/min" },
+  { key: "B1", label: "B1 — 1-datchik siljishi", unit: "mm" },
+  { key: "B2", label: "B2 — 2-datchik siljishi", unit: "mm" },
+  { key: "K1", label: "K1 — 1-datchik kechikishi", unit: "ms" },
+  { key: "K2", label: "K2 — 2-datchik kechikishi", unit: "ms" },
+  { key: "C", label: "C — markazlar tuzatmasi", unit: "ms" },
+  { key: "TD", label: "TD — datchiklar farqi chegarasi", unit: "mm" },
+  { key: "AO", label: "AO — avariya lampasi o'chiq", unit: "" },
+]
+
+/** Kromka Pico'sidagi JORIY kalibrlash — faqat o'qish (docs/12 §4.18, 1-qadam). Agent 1.11.0
+ *  `HOLAT` javobidan qiymatlar o'zgarganda yuboradi; eski agentli stanokda «hali kelmagan». */
+function KromkaKalCard() {
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["system-settings", "kromka-calibration"],
+    queryFn: async () => (await MachinesService.readKromkaCalibration()).data,
+  })
+  if (isLoading) return <Skeleton className="h-48 w-full" />
+  if (isError || !data) return <QueryError onRetry={() => refetch()} />
+
+  return (
+    <div className={cn(cardSurface, "space-y-4 p-4")}>
+      <div>
+        <h2 className="text-lg font-semibold">Pico'dagi kalibrlash</h2>
+        <p className="text-sm text-muted-foreground">
+          Kromka stansiyasi Pico'sining hozirgi o'lchash parametrlari — Pico
+          o'zi aytgan qiymatlar (har ulanishda va o'zgarganda yangilanadi).
+          Faqat ko'rish uchun: kalibrlashni MES dan qo'llash keyingi bosqichda.
+        </p>
+      </div>
+      {data.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Kromka ish markazi yo'q.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Parametr</TableHead>
+                {data.map((m) => (
+                  <TableHead key={m.machine_id} className="text-right">
+                    {m.machine_name}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {KAL_FIELDS.map((f) => (
+                <TableRow key={f.key}>
+                  <TableCell>
+                    {f.label}
+                    {f.unit && (
+                      <span className="text-muted-foreground"> · {f.unit}</span>
+                    )}
+                  </TableCell>
+                  {data.map((m) => (
+                    <TableCell key={m.machine_id} className="num text-right">
+                      {m.values[f.key] ?? "—"}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+              <TableRow>
+                <TableCell className="text-muted-foreground">
+                  Proshivka · yangilangan
+                </TableCell>
+                {data.map((m) => (
+                  <TableCell
+                    key={m.machine_id}
+                    className="text-right text-muted-foreground"
+                  >
+                    {m.at
+                      ? `v${m.ver ?? "?"} · ${formatDateTime(m.at)}`
+                      : "hali kelmagan (agent 1.11.0 kerak)"}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   )

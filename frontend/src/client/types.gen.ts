@@ -2396,6 +2396,46 @@ export type KromkaInstance = {
 };
 
 /**
+ * KromkaKalRow
+ *
+ * KROMKA stansiyasi Pico'sidagi JORIY kalibrlash (`main.py: KAL`) — agent `HOLAT` javobidan
+ * o'zgarganda yuboradi (agent 1.11.0+). Faqat o'qish: qiymatlarni o'zgartirish keyingi bosqich
+ * (docs/12 §4.18). Agent hali yubormagan stanokda `at` va `values` bo'sh.
+ */
+export type KromkaKalRow = {
+    /**
+     * Machine Id
+     */
+    machine_id: number;
+    /**
+     * Machine Name
+     */
+    machine_name: string;
+    /**
+     * At
+     */
+    at: string | null;
+    /**
+     * Values
+     */
+    values: {
+        [key: string]: number;
+    };
+    /**
+     * Ver
+     */
+    ver: string | null;
+    /**
+     * Alarm
+     */
+    alarm: number | null;
+    /**
+     * Manba
+     */
+    manba: string | null;
+};
+
+/**
  * KromkaMeasurement
  *
  * Kromka stansiyasi o'lchagan bitta detal — HUKMI bilan (`kromka_measurement`).
@@ -6822,6 +6862,24 @@ export type ReadMachinesOverviewResponses = {
 };
 
 export type ReadMachinesOverviewResponse = ReadMachinesOverviewResponses[keyof ReadMachinesOverviewResponses];
+
+export type ReadKromkaCalibrationData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/machines/kromka-calibration';
+};
+
+export type ReadKromkaCalibrationResponses = {
+    /**
+     * Response Read Kromka Calibration
+     *
+     * Successful Response
+     */
+    200: Array<KromkaKalRow>;
+};
+
+export type ReadKromkaCalibrationResponse = ReadKromkaCalibrationResponses[keyof ReadKromkaCalibrationResponses];
 
 export type ReadKromkaMeasurementFeedData = {
     body?: never;

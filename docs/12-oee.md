@@ -675,6 +675,7 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `rover_oee_oracle.py` (19/19) | §4.15 — Rover A/P/Q/OEE va to'xtash sinxroni |
 | `downtime_cleanup_oracle.py` (14/14) | `scripts/downtime_deleted_events.sql` — soxta to'xtashlarni tozalash |
 | `kromka_kirish_oracle.py` (4/4) | §4.10 — kirish `ts − (ish_ms + d2)`, oyna −60 … +20 s, skan darajasida FIFO |
+| `kromka_kal_oracle.py` (8/8) | §4.18 — Pico'dagi joriy kalibrlash agentdan MES gacha (o'zgarganda, takrorsiz) |
 | `defect_oracle.py` (8/8) | §4.17 — brak skan vaqti/stanogida, tasdiq bekor qilgan ish sanaladi, Kromka kvotasi |
 | `agent_gap_oracle.py` (8/8) | §4.16 — agent uzilgan payt: Rover Pico yozuvlaridan tiklanadi, Kromka davomiyligi saqlanadi, tokdan qayta yonish kesiladi (eski kodda 2/8) |
 | `tablo_machines_oracle.py` (29/29) | `docs/05` — stanok taxtasi |
@@ -815,6 +816,29 @@ Tekshiruv — `scripts/oracles/defect_oracle.py` **8/8**: tushlikdagi, ertangi v
 stanogidagi brak sanaldi (Q 70.0%), tasdiqdan keyin va rad etilgandan keyin Prisadka 10 / 270 s,
 Kromka kvotasi bekor skandagi o'lchovni sanamadi. `oee_oracle` va `rover_oee_oracle` fixture'larida
 «brak bekor qilgan skan» endi haqiqiy oqimdagidek `defect_id` bilan yasaladi (31/31, 19/19).
+
+### 4.18 Kromka kalibrlash — 1-qadam: joriy parametrlarni ko'rish (2026-10-16)
+
+Kalibrlashni MES dan qo'llash uch qadamda qilinadi, har biri alohida deploy (egasi bilan
+kelishilgan): **1) joriy parametrlarni o'qish**, 2) kalibrlash sessiyasi va hisob (qo'llashsiz),
+3) Pico'ga `SET` — chegaralar, tasdiq va orqaga qaytarish bilan. Bu bo'lim — 1-qadam.
+
+Pico (`kromka-stansiya-OYY: pico/main.py`) o'lchash parametrlarini `KAL` lug'atida saqlaydi va
+`kal.json` ga yozadi: `D` (datchiklar orasi, mm), `V10`/`V18` (zaxira tezlik), `K1`/`K2` (datchik
+vaqt kechikishi, ms), `B1`/`B2` (datchik uzunlik siljishi, mm), `C` (markazlar tuzatmasi, ms),
+`TD` (datchiklar farqi chegarasi), `AO` (avariya lampasi o'chiq), `HQ`/`HA`/`AV` (ovoz — v1.20 dan
+faqat saqlanadi). `SET` ularni CHEGARASIZ qabul qiladi — shuning uchun 3-qadamda himoya serverda.
+
+**1-qadam:** agent 1.11.0 `HOLAT` javobidagi (har 30 s) va `SET` javobidagi (`{"ev":"kal"}`)
+qiymatlarni O'ZGARGANDA (har yangi ulanishda birinchisi ham) `kal` andon hodisasi qilib yuboradi
+(`agent.py: _kromka_kal`). `GET /machines/kromka-calibration` har Kromka stanogi uchun oxirgisini
+beradi; Tizim sozlamalari → «Brak sabablari» tabi → «Pico'dagi kalibrlash» kartasi (faqat o'qish).
+`ver` (proshivka) va `alarm` (lampa miltillayaptimi) ham ko'rinadi.
+
+Tekshiruv — `scripts/oracles/kromka_kal_oracle.py` **8/8**: haqiqiy agent parseri → haqiqiy
+`push_andon_events` → endpoint: bir xil `HOLAT` takror yozilmadi, `SET` javobi `manba: set` bilan
+yangi hodisa, qayta ulanishda birinchisi yuborildi, endpoint oxirgi 13 qiymatni berdi, agent
+yubormagan stanok bo'sh. Kromka orakllari (v1.16, v1.22, bind, kirish, dedup) o'zgarmadi.
 
 ## 5. Prod auditi natijalari (2026-09-16)
 
